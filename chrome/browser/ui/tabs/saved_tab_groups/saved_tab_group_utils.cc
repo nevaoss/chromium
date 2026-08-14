@@ -74,7 +74,7 @@ GetSharedTabGroupRecallTypeMetric(
           SharedTabGroupRecallTypeDesktop::kOpenedFromSubmenuFromBookmarksBar;
     case tab_groups::TabGroupMenuContext::SAVED_TAB_GROUP_EVERYTHING_MENU:
       return tab_groups::saved_tab_groups::metrics::
-          SharedTabGroupRecallTypeDesktop::kOpenedFromSubmenuFromEverythingMenu;
+          SharedTabGroupRecallTypeDesktop::kOpenedFromEverythingMenu;
     case tab_groups::TabGroupMenuContext::APP_MENU:
       return tab_groups::saved_tab_groups::metrics::
           SharedTabGroupRecallTypeDesktop::kOpenedFromSubmenuFromAppMenu;
@@ -635,8 +635,9 @@ void SavedTabGroupUtils::FocusFirstTabOrWindowInOpenGroup(
     return;
   }
 
-  browser_for_activation->ActivateContents(
-      tab_group->GetFirstTab()->GetContents());
+  if (auto* delegate = tab_group->GetFirstTab()->GetContents()->GetDelegate()) {
+    delegate->ActivateContents(tab_group->GetFirstTab()->GetContents());
+  }
 
   base::RecordAction(
       base::UserMetricsAction("TabGroups_SavedTabGroups_Focused"));
@@ -902,12 +903,6 @@ void SavedTabGroupUtils::PerformTabGroupMenuAction(
       break;
     case TabGroupMenuAction::Type::LEAVE_GROUP:
       SavedTabGroupUtils::LeaveSharedGroup(browser, uuid);
-      break;
-    case TabGroupMenuAction::Type::CONVERT_TO_BOOKMARK:
-      if (std::optional<tab_groups::SavedTabGroup> group =
-              tab_group_service->GetGroup(uuid)) {
-        bookmarks::ShowBookmarkSavedTabGroupDialog(browser, group.value());
-      }
       break;
     case TabGroupMenuAction::Type::OPEN_URL:
     case TabGroupMenuAction::Type::DEFAULT:

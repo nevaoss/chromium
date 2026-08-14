@@ -325,10 +325,6 @@ BASE_FEATURE(kMigrateManagementPageToWebUIOnMobile,
 BASE_FEATURE(kViewsJSAppModalDialog, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif
 
-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
-BASE_FEATURE(kUsePortalAccentColor, base::FEATURE_ENABLED_BY_DEFAULT);
-#endif
-
 BASE_FEATURE(kPageSpecificDataDialogRelatedInstalledAppsSection,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -341,15 +337,7 @@ BASE_FEATURE(kLensOverlayHomeworkPageActionFocusOptimization,
 BASE_FEATURE(kPageActionAnchoredMessageEasyDismiss,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kPageActionsMigration, base::FEATURE_ENABLED_BY_DEFAULT);
-
 BASE_FEATURE(kAiModePageActionOptimization, base::FEATURE_DISABLED_BY_DEFAULT);
-
-BASE_FEATURE_PARAM(bool,
-                   kPageActionsMigrationEnableAll,
-                   &kPageActionsMigration,
-                   "enable_all",
-                   false);
 
 BASE_FEATURE(kPageActionsPrioritySelector, base::FEATURE_DISABLED_BY_DEFAULT);
 

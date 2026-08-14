@@ -630,7 +630,15 @@ BASE_FEATURE(kEnableRtcpReporting, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Controls whether the OpusAudioDecoder is used for Opus audio decoding
 // (instead of the FFmpegAudioDecoder).
-BASE_FEATURE(kDirectOpusAudioDecoding, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kDirectOpusAudioDecoding,
+// Android / Fuchsia are expected to launch in M150.
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
+    BUILDFLAG(IS_CHROMEOS)
+             base::FEATURE_ENABLED_BY_DEFAULT
+#else
+             base::FEATURE_DISABLED_BY_DEFAULT
+#endif
+);
 
 // Approach original pre-REC MSE object URL autorevoking behavior, though await
 // actual attempt to use the object URL for attachment to perform revocation.
@@ -966,10 +974,12 @@ BASE_FEATURE(kOnDeviceWebSpeechSmallExpertModel,
 // Enables multi-language support for on-device speech recognition using
 // on-device TinyGemma.
 BASE_FEATURE(kOnDeviceWebSpeechSmallExpertModelMultiLanguage,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 const base::FeatureParam<std::string>
     kOnDeviceWebSpeechSmallExpertModelLanguages{
-        &kOnDeviceWebSpeechSmallExpertModelMultiLanguage, "languages", ""};
+        &kOnDeviceWebSpeechSmallExpertModelMultiLanguage, "languages",
+        "en-US,fr-FR,it-IT,de-DE,es-ES,ja-JP,hi-IN,pt-BR,ko-KR,pl-PL,th-TH,"
+        "tr-TR,id-ID,cmn-Hans-CN,cmn-Hant-TW,vi-VN,ru-RU"};
 
 // Enables the Live Caption feature on supported devices.
 BASE_FEATURE(kLiveCaption, base::FEATURE_ENABLED_BY_DEFAULT);

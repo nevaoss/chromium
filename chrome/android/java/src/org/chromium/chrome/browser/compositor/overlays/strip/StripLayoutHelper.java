@@ -563,7 +563,6 @@ public class StripLayoutHelper
 
     // Layout Constants
     private final float mNewTabButtonWidth;
-    private final float mTabSearchButtonWidth;
 
     // All views are overlapped by TAB_OVERLAP_WIDTH_DP. Group titles do not need to be overlapped
     // by this much, so we offset the drawX.
@@ -715,6 +714,7 @@ public class StripLayoutHelper
 
     private final StripLayoutTabDelegate mTabDelegate;
     private @Nullable StripTabUnderlineManager mStripTabUnderlineManager;
+    private StripTabUnderlineManager.@Nullable Observer mTabUnderlineObserver;
 
     // Pinned tabs.
     private boolean mIsPinnedOnlyStripRecorded;
@@ -808,11 +808,6 @@ public class StripLayoutHelper
         mScrollDelegate = new ScrollDelegate(context);
 
         Resources res = context.getResources();
-        // Set tab search button background resource.
-        mTabSearchButtonWidth =
-                ChromeFeatureList.sTabSearchForDesktop.isEnabled()
-                        ? BUTTON_TOUCH_TARGET_SIZE_DP
-                        : 0.f;
         mTabSearchButton = createTabSearchButton(context, incognito, res);
 
         // Use toolbar menu button padding to align NTB with menu button.
@@ -882,7 +877,20 @@ public class StripLayoutHelper
         if (!mIncognito
                 && (GlicEnabling.isEnabledByFlags()
                         || ChromeFeatureList.sContextualTasks.isEnabled())) {
-            mStripTabUnderlineManager = new StripTabUnderlineManager(this, windowAndroid);
+            mStripTabUnderlineManager = new StripTabUnderlineManager(windowAndroid);
+            mTabUnderlineObserver =
+                    new StripTabUnderlineManager.Observer() {
+                        @Override
+                        public void onIndicatorStateChanged(int tabId, boolean isUnderlined) {
+                            setTabUnderline(tabId, isUnderlined);
+                        }
+
+                        @Override
+                        public void onResetAnimationCycle(int tabId) {
+                            resetTabUnderlineAnimationCycle(tabId);
+                        }
+                    };
+            mStripTabUnderlineManager.addObserver(mTabUnderlineObserver);
         }
 
         mIsFirstLayoutPass = true;
@@ -929,6 +937,10 @@ public class StripLayoutHelper
             mTabStripContextMenuCoordinator = null;
         }
         if (mStripTabUnderlineManager != null) {
+            if (mTabUnderlineObserver != null) {
+                mStripTabUnderlineManager.removeObserver(mTabUnderlineObserver);
+                mTabUnderlineObserver = null;
+            }
             mStripTabUnderlineManager.destroy();
             mStripTabUnderlineManager = null;
         }
@@ -936,13 +948,17 @@ public class StripLayoutHelper
 
     private TintedCompositorButton createTabSearchButton(
             Context context, boolean incognito, Resources res) {
+        float width =
+                ChromeFeatureList.sTabSearchForDesktop.isEnabled()
+                        ? BUTTON_TOUCH_TARGET_SIZE_DP
+                        : 0.f;
         TintedCompositorButton button =
                 new TintedCompositorButton(
                         context,
                         incognito,
                         ButtonType.TAB_SEARCH,
                         /* parentView= */ null,
-                        BUTTON_BACKGROUND_SIZE_DP,
+                        width,
                         BUTTON_BACKGROUND_SIZE_DP,
                         mControlContainer::setTooltipText,
                         /* clickHandler= */ this,
@@ -970,10 +986,10 @@ public class StripLayoutHelper
     }
 
     private void updateTabSearchButton() {
-        mTabSearchButton.setVisible(mTabSearchButtonWidth > 0.f);
+        mTabSearchButton.setVisible(mTabSearchButton.getWidth() > 0.f);
         if (mTabSearchButton.isVisible()) {
             if (LocalizationUtils.isLayoutRtl()) {
-                mTabSearchButton.setDrawX(mWidth - mRightPadding - mTabSearchButtonWidth);
+                mTabSearchButton.setDrawX(mWidth - mRightPadding - mTabSearchButton.getWidth());
             } else {
                 mTabSearchButton.setDrawX(mLeftPadding);
             }
@@ -1029,10 +1045,6 @@ public class StripLayoutHelper
      */
     public TintedCompositorButton getTabSearchButton() {
         return mTabSearchButton;
-    }
-
-    float getTabSearchButtonWidth() {
-        return mTabSearchButtonWidth;
     }
 
     /**
@@ -1246,7 +1258,7 @@ public class StripLayoutHelper
 
     private void updateMargins(boolean recalculateTabWidth) {
         // Reserve space for tab search button if it is visible at the start of the strip.
-        mReservedStartMargin = mTabSearchButton.isVisible() ? mTabSearchButtonWidth : 0.f;
+        mReservedStartMargin = mTabSearchButton.isVisible() ? mTabSearchButton.getWidth() : 0.f;
         if (LocalizationUtils.isLayoutRtl()) {
             mLeftMargin = mReservedEndMargin + mLeftPadding;
             mRightMargin = mReservedStartMargin + mRightPadding;
@@ -4637,7 +4649,7 @@ public class StripLayoutHelper
     }
 
     /** Set the underline state for a tab. */
-    void setTabUnderline(int tabId, boolean isUnderlined) {
+    private void setTabUnderline(int tabId, boolean isUnderlined) {
         StripLayoutTab stripTab = findTabById(tabId);
         if (stripTab != null) {
             stripTab.setIsUnderlined(isUnderlined);
@@ -4645,7 +4657,7 @@ public class StripLayoutHelper
     }
 
     /** Reset the underline animation cycle for a tab. */
-    void resetTabUnderlineAnimationCycle(int tabId) {
+    private void resetTabUnderlineAnimationCycle(int tabId) {
         StripLayoutTab stripTab = findTabById(tabId);
         if (stripTab != null) {
             stripTab.resetUnderlineAnimationCycle();
@@ -6020,5 +6032,9 @@ public class StripLayoutHelper
     void startDragAndDropTabForTesting(StripLayoutTab clickedTab, PointF dragStartPointF) {
         startReorderMode(
                 dragStartPointF.x, dragStartPointF.y, clickedTab, ReorderType.START_DRAG_DROP);
+    }
+
+    @Nullable StripTabUnderlineManager getStripTabUnderlineManagerForTesting() {
+        return mStripTabUnderlineManager;
     }
 }

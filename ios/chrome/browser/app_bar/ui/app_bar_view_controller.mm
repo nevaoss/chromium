@@ -1382,8 +1382,12 @@ UIColor* AssistantHighlightBackgroundColor() {
       base::RecordAction(
           base::UserMetricsAction("MobileToolbarNewTabShortcutOnNTP"));
     }
-    [self recordAction:"MobileToolbarNewTabShortcut"
-        withFullscreenAction:"MobileToolbarNewTabShortcutFullscreen"];
+    const char* action = _incognito ? "MobileToolbarNewIncognitoTabShortcut"
+                                    : "MobileToolbarNewTabShortcut";
+    const char* fullscreenAction =
+        _incognito ? "MobileToolbarNewIncognitoTabShortcutFullscreen"
+                   : "MobileToolbarNewTabShortcutFullscreen";
+    [self recordAction:action withFullscreenAction:fullscreenAction];
     base::RecordAction(base::UserMetricsAction("MobileTabNewTab"));
   }
   [self.mutator createNewTabFromView:sender];
@@ -1516,7 +1520,8 @@ UIColor* AssistantHighlightBackgroundColor() {
 
 - (BOOL)shouldHideButtonLabels {
   return IsAppBarLabelsHidden() ||
-         (_geminiFloatyInvoked && IsAppBarHiddenInFullscreen());
+         (_geminiFloatyInvoked && IsAppBarHiddenInFullscreen()) ||
+         self.layoutState.appBarLockedInFullscreen;
 }
 
 @end

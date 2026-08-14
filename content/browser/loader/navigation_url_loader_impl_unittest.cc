@@ -204,7 +204,6 @@ class NavigationURLLoaderImplTest : public testing::Test {
             false /* is_pdf */, ChildProcessId() /* initiator_process_id */,
             std::nullopt /* initiator_document_token */,
             false /* allow_cookies_from_browser */, 0 /* navigation_id */,
-            false /* shared_storage_writable */,
             is_ad_tagged /* is_ad_tagged */,
             false /* force_no_https_upgrade */));
 
@@ -513,6 +512,8 @@ TEST_F(NavigationURLLoaderImplTest,
                               ->enabled_client_hints->origin);
 }
 
+// TODO(crbug.com/539424101): Flaky / timing out on macOS.
+#if !BUILDFLAG(IS_MAC)
 TEST_F(NavigationURLLoaderImplTest, Redirect301Tests) {
   ASSERT_TRUE(http_test_server_.Start());
 
@@ -589,6 +590,7 @@ TEST_F(NavigationURLLoaderImplTest, Redirect308Tests) {
   HTTPRedirectOriginHeaderTest(https_redirect_url, "POST", "POST", "null",
                                true);
 }
+#endif  // !BUILDFLAG(IS_MAC)
 
 namespace {
 

@@ -267,6 +267,13 @@ inline constexpr char kAutofillEnableWalletBrandingV2Description[] =
     "When enabled, further brings certain strings and images referencing "
     "Google Pay and Google Wallet into consistency with branding requirements.";
 
+inline constexpr char kAutofillEnableWalletReminderNoticeName[] =
+    "Enable Wallet Reminder Notice";
+inline constexpr char kAutofillEnableWalletReminderNoticeDescription[] =
+    "When enabled, shows the Wallet Reminder Notice after payment form "
+    "submission if higher-priority Autofill features (such as mandatory "
+    "re-auth, VCN, or card save) do not take precedence.";
+
 inline constexpr char kAutofillManualTestingDataName[] =
     "Autofill manual testing data";
 inline constexpr char kAutofillManualTestingDataDescription[] =
@@ -426,6 +433,14 @@ inline constexpr char kComposeboxConditionalPlusButtonName[] =
     "Composebox Conditional Plus Button";
 inline constexpr char kComposeboxConditionalPlusButtonDescription[] =
     "When enabled, hides the plus button when typing a URL in compact mode.";
+
+inline constexpr char kComposeboxConnectedAppsSettingName[] =
+    "Enable Composebox connected apps setting";
+inline constexpr char kComposeboxConnectedAppsSettingDescription[] =
+    "Enables the composebox connected apps setting, the setting is used to "
+    "load "
+    "the web page where the user can the connect their Google apps to the "
+    "search services";
 
 inline constexpr char kComposeboxDeepSearchName[] =
     "Enable Composebox Deep Search";
@@ -604,11 +619,6 @@ inline constexpr char kDisableLensCameraDescription[] =
     "When enabled, the option use Lens to search for images from your device "
     "camera menu when Google is the selected search engine, accessible from "
     "the home screen widget, new tab page, and keyboard, is disabled.";
-
-inline constexpr char kDisableShareButtonName[] =
-    "Disable Share Button in Toolbar";
-inline constexpr char kDisableShareButtonDescription[] =
-    "Hides the share button in toolbar.";
 
 inline constexpr char kDisplayTracingName[] = "Display Tracing";
 inline constexpr char kDisplayTracingDescription[] =
@@ -999,11 +1009,6 @@ inline constexpr char kIOSCobaltName[] = "IOS Cobalt";
 inline constexpr char kIOSCobaltDescription[] =
     "Enables the Cobalt feature on iOS.";
 
-inline constexpr char kIOSCustomFileUploadMenuName[] =
-    "Custom file upload menu";
-inline constexpr char kIOSCustomFileUploadMenuDescription[] =
-    "Enables the custom file upload menu implementation.";
-
 inline constexpr char kIOSDateToCalendarSignedOutName[] =
     "Date to Calendar Signed Out";
 inline constexpr char kIOSDateToCalendarSignedOutDescription[] =
@@ -1217,6 +1222,12 @@ inline constexpr char
 inline constexpr char
     kLensBlockFetchObjectsInteractionRPCsOnSeparateHandshakeDescription[] =
         "When enabled, RPCs are blocked on separate handshake.";
+
+inline constexpr char kLensBypassCompressionForC2paName[] =
+    "Lens Bypass Compression for C2PA";
+inline constexpr char kLensBypassCompressionForC2paDescription[] =
+    "Bypasses image downscaling and compression if a C2PA metadata urn is "
+    "detected, ensuring provenance is preserved during upload. Works across all surfaces.";
 
 inline constexpr char kLensCameraNoStillOutputRequiredName[] =
     "Lens camera avoids creating unused outputs";
@@ -1658,6 +1669,14 @@ inline constexpr char kPageContextIPCOptimizationName[] =
 inline constexpr char kPageContextIPCOptimizationDescription[] =
     "Enables the PageContextIPCOptimization feature.";
 
+inline constexpr char kPageContextPdfName[] = "Page Context PDF";
+inline constexpr char kPageContextPdfDescription[] =
+    "Enables PDF support for Page Context in Gemini.";
+
+inline constexpr char kPageStabilityMetricsName[] = "Page Stability Metrics";
+inline constexpr char kPageStabilityMetricsDescription[] =
+    "Enables metrics to track DOM mutation frequency after user interactions.";
+
 inline constexpr char kPageToolsFeatureUnavailabilityName[] =
     "PageToolsFeatureUnavailability";
 inline constexpr char kPageToolsFeatureUnavailabilityDescription[] =
@@ -1760,12 +1779,6 @@ inline constexpr char kReaderModeSupportNewFontsName[] =
 inline constexpr char kReaderModeSupportNewFontsDescription[] =
     "Enables new accessible font options in Reader Mode.";
 
-inline constexpr char kReaderModeTranslationWithInfobarName[] =
-    "Enables Reader Mode Translation Settings";
-inline constexpr char kReaderModeTranslationWithInfobarDescription[] =
-    "Enables translation of web pages in Reader Mode with Settings available "
-    "via the infobar.";
-
 inline constexpr char kReaderModeUSEnabledName[] = "Enables Reader Mode in US";
 inline constexpr char kReaderModeUSEnabledDescription[] =
     "Enables Reader Mode for users in the US. Requires reader-mode-enabled.";
@@ -1820,36 +1833,11 @@ inline constexpr char kSegmentationPlatformIosModuleRankerCachingDescription[] =
     "Enables the Segmentation platform to cache the Magic Stack module rank "
     "for Start";
 
-inline constexpr char kSegmentationPlatformIosModuleRankerName[] =
-    "Enable Magic Stack Segmentation Ranking";
-inline constexpr char kSegmentationPlatformIosModuleRankerDescription[] =
-    "Enables the Segmentation platform to rank Magic Stack modules";
-
-inline constexpr char kSegmentationPlatformIosModuleRankerSplitBySurfaceName[] =
-    "Enable Magic Stack Segmentation Ranking split by surface";
-inline constexpr char
-    kSegmentationPlatformIosModuleRankerSplitBySurfaceDescription[] =
-        "Enables the Magic Stack module ranking to be split by surface for "
-        "engagement";
-
 inline constexpr char kSendTabToSelfEnhancedHandoffName[] =
     "Send Tab To Self enhanced handoff";
 inline constexpr char kSendTabToSelfEnhancedHandoffDescription[] =
     "Enables an enhanced version of Send Tab To Self that propagates more "
     "information, such as form fields, and updates various UIs.";
-
-inline constexpr char kShareInOmniboxLongPressName[] =
-    "Share in Omnibox Long Press";
-inline constexpr char kShareInOmniboxLongPressDescription[] =
-    "Displays an option to share current page in the omnibox long press menu";
-
-inline constexpr char kShareInOverflowMenuName[] = "Share in Overflow Menu";
-inline constexpr char kShareInOverflowMenuDescription[] =
-    "Displays share menu item in overflow menu";
-
-inline constexpr char kShareInVerbatimMatchName[] = "Share in Verbatim Match";
-inline constexpr char kShareInVerbatimMatchDescription[] =
-    "Displays share button in the omnibox verbatim match";
 
 inline constexpr char kSharedHighlightingIOSName[] =
     "Enable Shared Highlighting features";

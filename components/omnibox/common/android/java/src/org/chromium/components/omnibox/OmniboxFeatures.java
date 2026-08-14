@@ -91,7 +91,7 @@ public class OmniboxFeatures {
     public static final CachedFlag sOmniboxSearchPrefetchOnEnterKeyDown =
             newFlag(
                     OmniboxFeatureList.OMNIBOX_SEARCH_PREFETCH_ON_ENTER_KEY_DOWN,
-                    FeatureState.DISABLED);
+                    FeatureState.ENABLED_IN_TEST);
 
     public static final CachedFlag sUrlBarWithoutLigatures =
             newFlag(OmniboxFeatureList.URL_BAR_WITHOUT_LIGATURES, FeatureState.ENABLED_IN_PROD);
@@ -110,10 +110,10 @@ public class OmniboxFeatures {
                     FeatureState.ENABLED_IN_PROD);
 
     public static final CachedFlag sPlatformAgnosticXGeo =
-            newFlag(OmniboxFeatureList.PLATFORM_AGNOSTIC_X_GEO, FeatureState.DISABLED);
+            newFlag(OmniboxFeatureList.PLATFORM_AGNOSTIC_X_GEO, FeatureState.ENABLED_IN_TEST);
 
     public static final CachedFlag sInlineLocationSignaling =
-            newFlag(OmniboxFeatureList.INLINE_LOCATION_SIGNALING, FeatureState.DISABLED);
+            newFlag(OmniboxFeatureList.INLINE_LOCATION_SIGNALING, FeatureState.ENABLED_IN_TEST);
 
     public static final CachedFlag sAsyncViewInflation =
             newFlag(OmniboxFeatureList.OMNIBOX_ASYNC_VIEW_INFLATION, FeatureState.ENABLED_IN_TEST);
@@ -176,7 +176,7 @@ public class OmniboxFeatures {
             newBooleanParam(sOmniboxMultimodalInput, "show_ntp_plus_button", false);
 
     public static final CachedFlag sAndroidDesktopAimGate =
-            newFlag(OmniboxFeatureList.ANDROID_DESKTOP_AIM_GATE, FeatureState.ENABLED_IN_TEST);
+            newFlag(OmniboxFeatureList.ANDROID_DESKTOP_AIM_GATE, FeatureState.ENABLED_IN_PROD);
 
     public static final CachedFlag sMultilineEditField =
             newFlag(OmniboxFeatureList.MULTILINE_EDIT_FIELD, FeatureState.ENABLED_IN_PROD);
@@ -199,11 +199,6 @@ public class OmniboxFeatures {
 
     public static final CachedFlag sResetSuggestionsScroll =
             newFlag(OmniboxFeatureList.RESET_SUGGESTIONS_SCROLL, FeatureState.DISABLED);
-
-    public static final CachedFlag sOmniboxListMenuContextMenu =
-            newFlag(
-                    OmniboxFeatureList.OMNIBOX_LIST_MENU_CONTEXT_MENU,
-                    FeatureState.ENABLED_IN_PROD);
 
     public static final IntCachedFeatureParam sGeolocationRequestTimeoutMinutes =
             newIntParam(

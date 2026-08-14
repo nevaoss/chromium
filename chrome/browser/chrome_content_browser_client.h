@@ -57,6 +57,9 @@
 #include "ui/base/clipboard/clipboard_metadata.h"
 
 class ChromeContentBrowserClientParts;
+#if !BUILDFLAG(IS_ANDROID)
+class FetchKeepAliveProcessManager;
+#endif
 class PrefRegistrySimple;
 class ScopedKeepAlive;
 
@@ -134,6 +137,10 @@ class HttpAuthCoordinator;
 class MainThreadStackSamplingProfiler;
 class WindowsSystemTracingClient;
 struct NavigateParams;
+
+#if BUILDFLAG(SAFE_BROWSING_AVAILABLE)
+class Profile;
+#endif
 
 #if BUILDFLAG(ENABLE_VR)
 namespace vr {
@@ -963,6 +970,10 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
   void OnKeepaliveRequestStarted(
       content::BrowserContext* browser_context) override;
   void OnKeepaliveRequestFinished() override;
+  void OnFetchKeepAliveRequestCreated(
+      content::BrowserContext& browser_context) override;
+  void OnFetchKeepAliveRequestDestroyed(
+      content::BrowserContext& browser_context) override;
 
 #if BUILDFLAG(IS_MAC)
   bool SetupEmbedderSandboxParameters(
@@ -982,6 +993,11 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
 
   std::unique_ptr<content::DigitalIdentityProvider>
   CreateDigitalIdentityProvider() override;
+
+#if BUILDFLAG(IS_ANDROID)
+  std::unique_ptr<content::NativeIdpFetcher> CreateNativeIdpFetcher(
+      const url::Origin& idp_origin) override;
+#endif
 
 #if !BUILDFLAG(IS_ANDROID)
   static base::TimeDelta GetKeepaliveTimerTimeout(
@@ -1404,6 +1420,12 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
   uint64_t num_keepalive_requests_ = 0;
   base::OneShotTimer keepalive_timer_;
   base::TimeTicks keepalive_deadline_;
+
+  // Keeps the browser process and relevant profiles alive while browser-side
+  // fetch keepalive / fetchLater loaders are in flight. Lazily created on the
+  // first request when features::kKeepAliveBrowserProcessAlive is enabled.
+  std::unique_ptr<FetchKeepAliveProcessManager>
+      fetch_keepalive_process_manager_;
 #endif
 
 #if BUILDFLAG(IS_MAC)

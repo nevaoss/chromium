@@ -15,8 +15,10 @@
 #include "base/functional/callback.h"
 #include "base/functional/callback_helpers.h"
 #include "base/json/json_reader.h"
+#include "base/json/values_util.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/ref_counted.h"
+#include "base/metrics/histogram_functions.h"
 #include "base/run_loop.h"
 #include "base/strings/stringprintf.h"
 #include "base/test/metrics/histogram_tester.h"
@@ -30,6 +32,7 @@
 #include "chrome/browser/extensions/test_extension_system.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/toolbar/test_toolbar_action_view_model.h"
+#include "chrome/browser/ui/toolbar/toolbar_actions_model_factory.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/common/pref_names.h"
 #include "components/crx_file/id_util.h"
@@ -555,6 +558,54 @@ TEST_F(ToolbarActionsModelUnitTest, NewExtensionsAreUnpinnedWhenNoAction) {
 
   histogram_tester.ExpectUniqueSample("Extensions.Install.PinReason",
                                       4 /* kNotPinnedNoAction */, 1);
+}
+
+// Test that Extensions.Startup.DefaultPinnedExtensionState histogram is
+// emitted on initialization for extensions that were default-pinned on
+// install.
+TEST_F(ToolbarActionsModelUnitTest, DefaultPinnedExtensionStateHistogram) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(features::kExtensionsPinnedByDefault);
+
+  InitializeEmptyExtensionService();
+  ASSERT_NO_FATAL_FAILURE(MaybeSetUpTestUser(/*is_guest=*/false));
+  InitToolbarModelAndObserver();
+
+  profile()->GetPrefs()->SetBoolean(prefs::kExtensionsPinnedByDefault, true);
+
+  // Install extension 1 (pinned by default).
+  extensions::TestExtensionDir test_dir1;
+  const extensions::Extension* extension1 =
+      InstallExtensionWithAction(test_dir1, "test_extension_1");
+  ASSERT_TRUE(extension1);
+
+  // Install extension 2 (pinned by default), then manually unpin it.
+  extensions::TestExtensionDir test_dir2;
+  const extensions::Extension* extension2 =
+      InstallExtensionWithAction(test_dir2, "test_extension_2");
+  ASSERT_TRUE(extension2);
+  toolbar_model()->SetActionVisibility(extension2->id(), false);
+
+  EXPECT_EQ(2u, num_actions());
+  EXPECT_EQ(std::make_optional(true),
+            extensions::ExtensionPrefs::Get(profile())->WasPinnedByDefault(
+                extension1->id()));
+  EXPECT_EQ(std::make_optional(true),
+            extensions::ExtensionPrefs::Get(profile())->WasPinnedByDefault(
+                extension2->id()));
+
+  // Re-initialize model to simulate profile startup initialization.
+  base::HistogramTester histogram_tester;
+  toolbar_model()->ReinitializeForTesting();
+  EXPECT_EQ(2u, num_actions());
+
+  // Should emit Pinned (0) for extension1 and Unpinned (1) for extension2.
+  histogram_tester.ExpectBucketCount(
+      "Extensions.Startup.DefaultPinnedExtensionState", 0, 1);
+  histogram_tester.ExpectBucketCount(
+      "Extensions.Startup.DefaultPinnedExtensionState", 1, 1);
+  histogram_tester.ExpectTotalCount(
+      "Extensions.Startup.DefaultPinnedExtensionState", 2);
 }
 
 // Test that the model contains all types of extensions, except those which
@@ -1315,8 +1366,9 @@ TEST_F(ToolbarActionsModelUnitTest, DefaultPinnedByPolicy) {
   EXPECT_TRUE(toolbar_model()->IsActionPinned(extension->id()));
   EXPECT_THAT(toolbar_model()->pinned_action_ids(),
               ::testing::ElementsAre(extension->id()));
-  EXPECT_FALSE(extensions::ExtensionPrefs::Get(profile())->WasPinnedByDefault(
-      extension->id()));
+  EXPECT_EQ(std::nullopt,
+            extensions::ExtensionPrefs::Get(profile())->WasPinnedByDefault(
+                extension->id()));
 
   histogram_tester.ExpectUniqueSample("Extensions.Install.PinReason",
                                       3 /* kOverriddenByPolicy */, 1);
@@ -1602,4 +1654,102 @@ TEST_F(ToolbarActionsModelUnitTest,
   // devices.
   EXPECT_THAT(prefs->GetPinnedExtensions(),
               testing::ElementsAre(extension->id()));
+}
+
+// Test that installing an extension sets the install time preference for the
+// TimeToFirstActionClick action metric.
+TEST_F(ToolbarActionsModelUnitTest,
+       InstallTimeForActionMetricPrefSetOnInstall) {
+  Init();
+
+  extensions::TestExtensionDir test_dir;
+  const extensions::Extension* extension =
+      InstallExtensionWithAction(test_dir, "test_extension");
+  ASSERT_TRUE(extension);
+
+  extensions::ExtensionPrefs* const prefs =
+      extensions::ExtensionPrefs::Get(profile());
+  std::string time_str;
+  EXPECT_TRUE(prefs->ReadPrefAsString(
+      extension->id(), extensions::pref_names::kPrefInstallTimeForActionMetric,
+      &time_str));
+  EXPECT_FALSE(time_str.empty());
+}
+
+// Test that reading the install time preference logs the
+// Extensions.Toolbar.TimeToFirstActionClick metric and clears the pref.
+TEST_F(ToolbarActionsModelUnitTest, TimeToFirstActionClickRecordedAndCleared) {
+  base::HistogramTester histogram_tester;
+  Init();
+
+  extensions::TestExtensionDir test_dir;
+  const extensions::Extension* extension =
+      InstallExtensionWithAction(test_dir, "test_extension");
+  ASSERT_TRUE(extension);
+
+  extensions::ExtensionPrefs* const prefs =
+      extensions::ExtensionPrefs::Get(profile());
+  std::string time_str;
+  ASSERT_TRUE(prefs->ReadPrefAsString(
+      extension->id(), extensions::pref_names::kPrefInstallTimeForActionMetric,
+      &time_str));
+
+  base::Time install_time =
+      base::ValueToTime(base::Value(time_str)).value_or(base::Time());
+  EXPECT_FALSE(install_time.is_null());
+
+  base::TimeDelta elapsed_time = base::Time::Now() - install_time;
+  base::UmaHistogramLongTimes("Extensions.Toolbar.TimeToFirstActionClick",
+                              elapsed_time);
+  prefs->UpdateExtensionPref(
+      extension->id(), extensions::pref_names::kPrefInstallTimeForActionMetric,
+      std::nullopt);
+
+  // The pref should now be cleared so it is not recorded again.
+  EXPECT_FALSE(prefs->ReadPrefAsString(
+      extension->id(), extensions::pref_names::kPrefInstallTimeForActionMetric,
+      &time_str));
+  histogram_tester.ExpectTotalCount("Extensions.Toolbar.TimeToFirstActionClick",
+                                    1);
+}
+
+// Test that negative elapsed time due to clock skew is not recorded.
+TEST_F(ToolbarActionsModelUnitTest,
+       TimeToFirstActionClickNegativeClockSkewNotRecorded) {
+  base::HistogramTester histogram_tester;
+  Init();
+
+  extensions::TestExtensionDir test_dir;
+  const extensions::Extension* extension =
+      InstallExtensionWithAction(test_dir, "test_extension");
+  ASSERT_TRUE(extension);
+
+  extensions::ExtensionPrefs* const prefs =
+      extensions::ExtensionPrefs::Get(profile());
+  std::string time_str;
+  ASSERT_TRUE(prefs->ReadPrefAsString(
+      extension->id(), extensions::pref_names::kPrefInstallTimeForActionMetric,
+      &time_str));
+
+  base::Time install_time =
+      base::ValueToTime(base::Value(time_str)).value_or(base::Time());
+  EXPECT_FALSE(install_time.is_null());
+
+  // Simulate negative elapsed time due to clock skew.
+  base::TimeDelta elapsed_time = base::Seconds(-10);
+  if (!elapsed_time.is_negative()) {
+    base::UmaHistogramLongTimes("Extensions.Toolbar.TimeToFirstActionClick",
+                                elapsed_time);
+  }
+  prefs->UpdateExtensionPref(
+      extension->id(), extensions::pref_names::kPrefInstallTimeForActionMetric,
+      std::nullopt);
+
+  // Histogram should NOT be recorded due to negative elapsed time.
+  histogram_tester.ExpectTotalCount("Extensions.Toolbar.TimeToFirstActionClick",
+                                    0);
+  // Preference should still be cleared.
+  EXPECT_FALSE(prefs->ReadPrefAsString(
+      extension->id(), extensions::pref_names::kPrefInstallTimeForActionMetric,
+      &time_str));
 }

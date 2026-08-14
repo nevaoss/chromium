@@ -71,18 +71,26 @@ public class VerticalTabRailLayout extends ConstraintLayout {
 
         mCollapseButton = findViewById(R.id.collapse_button);
         assert mCollapseButton != null;
+        TooltipCompat.setTooltipText(mCollapseButton, mCollapseButton.getContentDescription());
 
         mGridButton = findViewById(R.id.grid_button);
         assert mGridButton != null;
+        TooltipCompat.setTooltipText(
+                mGridButton, getContext().getString(R.string.accessibility_tab_groups));
 
         mSearchButton = findViewById(R.id.tab_search_button);
         assert mSearchButton != null;
+        TooltipCompat.setTooltipText(
+                mSearchButton,
+                getContext().getString(R.string.accessibility_search_loupe_tooltip_text));
 
         mHeaderSpacer = findViewById(R.id.header_spacer);
         assert mHeaderSpacer != null;
 
         mNewTabButton = findViewById(R.id.new_tab_button);
         assert mNewTabButton != null;
+        TooltipCompat.setTooltipText(
+                mNewTabButton, getContext().getString(R.string.accessibility_toolbar_btn_new_tab));
     }
 
     /** Returns the main tab list recycler view. */
@@ -149,7 +157,18 @@ public class VerticalTabRailLayout extends ConstraintLayout {
     @Override
     public boolean dispatchGenericMotionEvent(MotionEvent event) {
         expandOrCollapseOnHover(event);
-        return super.dispatchGenericMotionEvent(event);
+        if (super.dispatchGenericMotionEvent(event)) return true;
+        // Prevent mouse button presses/releases from falling back to the window's
+        // focused view (ContentView), which would send out-of-bounds mouse events to Blink and
+        // blur the active webpage document.
+        if (event != null && event.isFromSource(InputDevice.SOURCE_MOUSE)) {
+            int action = event.getActionMasked();
+            if (action == MotionEvent.ACTION_BUTTON_PRESS
+                    || action == MotionEvent.ACTION_BUTTON_RELEASE) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void expandOrCollapseOnHover(@Nullable MotionEvent event) {

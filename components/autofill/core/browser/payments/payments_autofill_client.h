@@ -658,7 +658,7 @@ class PaymentsAutofillClient : public RiskDataLoader {
   // possible, and returns `true` on success. `delegate` will be notified of
   // events. `suggestions` are generated using the `cards_to_suggest` data and
   // include fields such as `main_text`, `minor_text`, and
-  // `HasDeactivatedStyle` member function. Should be called only if the feature
+  // `IsSelectable` member function. Should be called only if the feature
   // is supported by the platform. This function is implemented on all
   // platforms so this should be a pure virtual function to enforce the override
   // implementation.
@@ -842,7 +842,7 @@ class PaymentsAutofillClient : public RiskDataLoader {
   // Shows the Payments Churned Users UI. This UI is responsible for providing
   // users that have turned off autofill with a value prop to turn autofill back
   // on.
-  // TODO(crbug.com/524740910): Rename to ShowPaymentsChurnedUsersUi().
+  // TODO(crbug.com/524740910): Rename to MaybeShowPaymentsChurnedUsersUi().
   virtual void ShowPaymentsChurnedUsersUI(base::OnceClosure accept_callback,
                                           base::OnceClosure cancel_callback,
                                           base::OnceClosure closed_callback) {}

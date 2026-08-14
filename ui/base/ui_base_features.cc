@@ -87,6 +87,10 @@ BASE_FEATURE(kCATransactionV2, base::FEATURE_DISABLED_BY_DEFAULT);
 // Make live-resize of an NSWindow be asynchronous (so it doesn't block the
 // UI thread).
 BASE_FEATURE(kAsyncLiveResize, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Keeps the NSWindow invisible (via its `alphaValue`) until the first
+// compositor frame has been received.
+BASE_FEATURE(kAlphaInsteadOfCATransaction, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_MAC)
 
 #if BUILDFLAG(IS_CHROMEOS)
@@ -509,8 +513,6 @@ BASE_FEATURE_PARAM(int,
                    "acceptable_latency_ms",
                    50);
 
-BASE_FEATURE(kSplitViewLinkOpen, base::FEATURE_ENABLED_BY_DEFAULT);
-
 BASE_FEATURE(kDesktopGlowUp, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlassFrame, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -524,6 +526,10 @@ BASE_FEATURE(kWebUIRoundedIcons, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Updates the default dark neutrals for the theme palette.
 BASE_FEATURE(kChromeDarkNeutrals26, base::FEATURE_DISABLED_BY_DEFAULT);
+
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
+BASE_FEATURE(kUsePortalAccentColor, base::FEATURE_ENABLED_BY_DEFAULT);
+#endif
 
 bool IsGlassFrameEnabled() {
 #if BUILDFLAG(IS_MAC)

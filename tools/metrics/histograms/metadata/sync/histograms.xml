@@ -68,6 +68,7 @@ chromium-metrics-reviews@google.com.
   <variant name=".HISTORY_DELETE_DIRECTIVE" summary="HISTORY_DELETE_DIRECTIVE"/>
   <variant name=".INCOMING_PASSWORD_SHARING_INVITATION"
       summary="INCOMING_PASSWORD_SHARING_INVITATION"/>
+  <variant name=".JOURNEY" summary="JOURNEY"/>
   <variant name=".MANAGED_USER_SETTING" summary="MANAGED_USER_SETTING"/>
   <variant name=".NIGORI" summary="NIGORI"/>
   <variant name=".NOTEBOOK" summary="NOTEBOOK"/>
@@ -222,7 +223,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.AccountMenu.UserActionableError"
-    enum="UserActionableError" expires_after="2026-11-22">
+    enum="UserActionableError" expires_after="2027-01-24">
   <owner>rgod@google.com</owner>
   <owner>ylahodiuk@google.com</owner>
   <summary>
@@ -560,7 +561,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.BookmarksModelMetadataCorruptionReason"
-    enum="SyncBookmarkModelMetadataCorruptionReason" expires_after="2026-09-06">
+    enum="SyncBookmarkModelMetadataCorruptionReason" expires_after="2027-09-06">
   <owner>rushans@google.com</owner>
   <owner>mastiz@chromium.org</owner>
   <summary>
@@ -1842,7 +1843,7 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Sync.Local.FileSizeKB" units="KB" expires_after="2026-11-22">
+<histogram name="Sync.Local.FileSizeKB" units="KB" expires_after="2027-01-24">
   <owner>igorruvinov@chromium.org</owner>
   <owner>pastarmovj@chromium.org</owner>
   <summary>
@@ -2295,7 +2296,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.SearchEngine.FaviconOnlyUpdate" enum="Boolean"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>ankushkush@google.com</owner>
   <owner>mahmadi@chromium.org</owner>
   <summary>
@@ -2567,7 +2568,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.SyncEverythingOS" enum="Boolean"
-    expires_after="2026-11-19">
+    expires_after="2027-01-24">
   <owner>mmoskvitin@google.com</owner>
   <owner>treib@chromium.org</owner>
   <summary>

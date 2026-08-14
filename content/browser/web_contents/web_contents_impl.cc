@@ -1445,6 +1445,16 @@ WebContentsImpl::~WebContentsImpl() {
     SetPointerLockWidgetInParentChain(nullptr);
   }
 
+  // Auto-detach any WebContents embedded in this one via SurfaceEmbed.
+  // Swap to a local since Detach modifies surface_embed_children_.
+  std::vector<base::WeakPtr<WebContents>> children;
+  children.swap(surface_embed_children_);
+  for (auto& child_weak : children) {
+    if (WebContents* child = child_weak.get()) {
+      SurfaceEmbedConnector::Detach(child);
+    }
+  }
+
   if (surface_embed_connector_) {
     ClearSurfaceEmbedConnector();
   }
@@ -3556,11 +3566,13 @@ void WebContentsImpl::SetSurfaceEmbedConnector(
 
   RecursivelyRegisterRenderWidgetHostViews();
 
-  surface_embed_connector_->UpdateViewForCurrentRenderFrameHost();
+  surface_embed_connector_->OnAttachedToParent();
 }
 
 void WebContentsImpl::ClearSurfaceEmbedConnector() {
   CHECK(surface_embed_connector_);
+
+  surface_embed_connector_->OnDetachedFromParent();
 
   surface_embed_connector_->ClearFocusOnInnerWebContents();
 
@@ -3730,6 +3742,13 @@ void WebContentsImpl::RecursivelyRegisterRenderWidgetHostViews() {
       static_cast<RenderWidgetHostViewChildFrame*>(view)->RegisterFrameSinkId();
     }
   }
+
+  // surface_embed_children_ is not expected to change during registration.
+  for (const auto& child_weak : surface_embed_children_) {
+    if (auto* child = static_cast<WebContentsImpl*>(child_weak.get())) {
+      child->RecursivelyRegisterRenderWidgetHostViews();
+    }
+  }
 }
 
 void WebContentsImpl::RecursivelyUnregisterRenderWidgetHostViews() {
@@ -3746,6 +3765,13 @@ void WebContentsImpl::RecursivelyUnregisterRenderWidgetHostViews() {
     if (view->IsRenderWidgetHostViewChildFrame()) {
       static_cast<RenderWidgetHostViewChildFrame*>(view)
           ->UnregisterFrameSinkId();
+    }
+  }
+
+  // surface_embed_children_ is not expected to change during unregistration.
+  for (const auto& child_weak : surface_embed_children_) {
+    if (auto* child = static_cast<WebContentsImpl*>(child_weak.get())) {
+      child->RecursivelyUnregisterRenderWidgetHostViews();
     }
   }
 }
@@ -9859,6 +9885,7 @@ void WebContentsImpl::SurfaceEmbedChildWebContentsAttached(
     RenderFrameHost* embedder_render_frame_host) {
   OPTIONAL_TRACE_EVENT0(
       "content", "WebContentsImpl::SurfaceEmbedChildWebContentsAttached");
+  surface_embed_children_.push_back(inner_web_contents->GetWeakPtr());
   observers_.NotifyObservers(
       &WebContentsObserver::SurfaceEmbedChildWebContentsAttached,
       inner_web_contents, embedder_render_frame_host);
@@ -9868,6 +9895,9 @@ void WebContentsImpl::SurfaceEmbedChildWebContentsDetached(
     WebContents* inner_web_contents) {
   OPTIONAL_TRACE_EVENT0(
       "content", "WebContentsImpl::SurfaceEmbedChildWebContentsDetached");
+  std::erase_if(surface_embed_children_, [inner_web_contents](const auto& ptr) {
+    return ptr.get() == inner_web_contents;
+  });
   observers_.NotifyObservers(
       &WebContentsObserver::SurfaceEmbedChildWebContentsDetached,
       inner_web_contents);
@@ -10760,12 +10790,16 @@ void WebContentsImpl::SetFocusedFrame(FrameTreeNode* node,
       CHECK(GetOuterWebContents());
       SetFocusedFrameTree(&node->frame_tree());
     }
-  } else if (!GetOuterWebContents() || GetFocusedWebContents() == this) {
+  } else if ((!GetOuterWebContents() && !surface_embed_connector_) ||
+             GetFocusedWebContents() == this) {
     // This is an outermost WebContents or we are currently focused so allow
     // the requested node's frame tree to be focused. The
     // (GetFocusedWebContents() == this) is needed when there are multiple
     // frame trees within an inner WebContents (ie. a GuestView with fenced
     // frames).
+    //
+    // A SurfaceEmbed child is not an outermost WebContents and cannot take
+    // focus through a renderer request alone.
     SetFocusedFrameTree(&node->frame_tree());
   }
 
@@ -10969,11 +11003,6 @@ void WebContentsImpl::FocusOwningWebContents(
   OPTIONAL_TRACE_EVENT1("content", "WebContentsImpl::FocusOwningWebContents",
                         "render_widget_host", render_widget_host);
 
-  if (surface_embed_connector_) {
-    // Requests focus for the embedding element in the parent page.
-    surface_embed_connector_->GetDelegate()->RequestFocus();
-  }
-
   RenderWidgetHostImpl* main_frame_widget_host =
       GetPrimaryMainFrame()->GetRenderWidgetHost();
   RenderWidgetHostImpl* focused_widget =
@@ -10993,6 +11022,12 @@ void WebContentsImpl::FocusOwningWebContents(
 #if BUILDFLAG(IS_ANDROID)
     UMA_HISTOGRAM_BOOLEAN("Android.FocusChanged.FocusOwningWebContents", false);
 #endif
+  }
+
+  if (surface_embed_connector_) {
+    // Requests focus for the embedding elements after their owning frames got
+    // focus as part of SetAsFocusedWebContentsIfNecessary.
+    surface_embed_connector_->RequestFocusOnEmbedElement();
   }
 }
 
@@ -11109,6 +11144,11 @@ void WebContentsImpl::CancelModalDialogsForRenderManager() {
   // cross-process navigation will either destroy the browser plugins or not
   // require their dialogs to close.
   CancelDialogManagerDialogs(/*reset_state=*/true);
+}
+
+void WebContentsImpl::NotifyPrimaryPageWillBeDeactivated(PageImpl& page) {
+  observers_.NotifyObservers(&WebContentsObserver::PrimaryPageWillBeDeactivated,
+                             page);
 }
 
 void WebContentsImpl::NotifySwappedFromRenderManager(

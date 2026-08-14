@@ -103,7 +103,7 @@ double GetGlassFrameTintOpacity(bool is_dark_mode, bool is_vertical_tabs) {
                              : features::kGlassTintOpacityForLightMode.Get();
 
   constexpr double kLiquidGlassOpacityLightMode = 0.55;
-  constexpr double kLiquidGlassOpacityDarkMode = 0.80;
+  constexpr double kLiquidGlassOpacityDarkMode = 0.90;
 
   double opacity = opacity_value >= 0.0
                        ? opacity_value
@@ -264,6 +264,7 @@ void BrowserNativeWidgetMac::OnWidgetDestroyed(views::Widget* widget) {
   browser_view_ = nullptr;
   last_preferred_color_scheme_.reset();
   last_theme_color_.reset();
+  glass_frame_service_subscription_ = {};
   NativeWidgetMac::OnWidgetDestroyed(widget);
 }
 
@@ -501,8 +502,8 @@ bool BrowserNativeWidgetMac::WillExecuteCommand(
     // on macOS.
     input::NativeWebKeyboardEvent dummy_event(
         blink::WebInputEvent::Type::kKeyDown, 0, base::TimeTicks());
-    if (!browser->command_controller()->IsReservedCommandOrKey(command,
-                                                               dummy_event)) {
+    if (!chrome::BrowserCommandController::From(browser)
+             ->IsReservedCommandOrKey(command, dummy_event)) {
       return false;
     }
   }
@@ -796,6 +797,10 @@ bool BrowserNativeWidgetMac::IsBrowserWidgetEligible() const {
 }
 
 void BrowserNativeWidgetMac::UpdateBackground(bool is_eligible) {
+  if (!GetNSWindowHost()) {
+    return;
+  }
+
   NSWindow* const ns_window = GetNSWindowHost()->GetInProcessNSWindow();
   if (!ns_window) {
     return;

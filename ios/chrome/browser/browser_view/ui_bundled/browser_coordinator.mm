@@ -235,6 +235,7 @@
 #import "ios/chrome/browser/shared/coordinator/default_browser_promo/non_modal_default_browser_promo_scheduler_scene_agent.h"
 #import "ios/chrome/browser/shared/coordinator/layout_guide/layout_guide_util.h"
 #import "ios/chrome/browser/shared/coordinator/scene/scene_controller.h"
+#import "ios/chrome/browser/shared/coordinator/scene/scene_ui_provider.h"
 #import "ios/chrome/browser/shared/coordinator/scene/state/layout_state.h"
 #import "ios/chrome/browser/shared/model/browser/browser.h"
 #import "ios/chrome/browser/shared/model/browser/browser_provider.h"
@@ -2013,9 +2014,7 @@ const char kChromeAppStoreUrl[] =
   [self hideCobaltAlert];
   [self hideCobaltPopup];
   if (@available(iOS 18.4, *)) {
-    if (base::FeatureList::IsEnabled(kIOSCustomFileUploadMenu)) {
-      [self hideFileUploadPanel];
-    }
+    [self hideFileUploadPanel];
   }
   [self hideContextualSheet];
   [self dismissEditAddressBottomSheet];
@@ -2642,6 +2641,14 @@ const char kChromeAppStoreUrl[] =
   _passkeyIncognitoCoordinator = nil;
 }
 
+- (void)showCredentialProviderPromoOnPasskeyCreated {
+  id<CredentialProviderPromoCommands> credentialProviderPromoHandler =
+      HandlerForProtocol(self.dispatcher, CredentialProviderPromoCommands);
+  [credentialProviderPromoHandler
+      showCredentialProviderPromoWithTrigger:CredentialProviderPromoTrigger::
+                                                 SuccessfulPasskeyCreation];
+}
+
 - (void)cancelPasskeyRequest:
     (webauthn::IOSPasskeyClient::RequestInfo)requestInfo {
   if ([_passkeyCreationBottomSheetCoordinator hasPendingRequest:requestInfo]) {
@@ -3172,12 +3179,6 @@ const char kChromeAppStoreUrl[] =
   }
 }
 
-- (void)hideComposeboxAndShowShareSheet {
-  [self hideComposeboxWithCompletion:^{
-    [self showShareSheetFromShareButton:nil];
-  }];
-}
-
 - (void)hideComposeboxWithCompletion:(ProceduralBlock)completion {
   if (IsComposeboxIOSEnabled()) {
     [self hideComposeboxImmediately:NO completion:completion];
@@ -3195,9 +3196,7 @@ const char kChromeAppStoreUrl[] =
   [self hideCobaltAlert];
   [self hideCobaltPopup];
   if (@available(iOS 18.4, *)) {
-    if (base::FeatureList::IsEnabled(kIOSCustomFileUploadMenu)) {
-      [self hideFileUploadPanel];
-    }
+    [self hideFileUploadPanel];
   }
   if (IsDownloadListEnabled()) {
     [self hideDownloadList];
@@ -3708,7 +3707,6 @@ const char kChromeAppStoreUrl[] =
 #pragma mark - FileUploadPanelCommands
 
 - (void)showFileUploadPanel API_AVAILABLE(ios(18.4)) {
-  CHECK(base::FeatureList::IsEnabled(kIOSCustomFileUploadMenu));
   ChooseFileTabHelper* tabHelper =
       ChooseFileTabHelper::FromWebState(self.activeWebState);
   if (!tabHelper || !tabHelper->IsChoosingFiles()) {
@@ -3724,7 +3722,6 @@ const char kChromeAppStoreUrl[] =
 }
 
 - (void)hideFileUploadPanel API_AVAILABLE(ios(18.4)) {
-  CHECK(base::FeatureList::IsEnabled(kIOSCustomFileUploadMenu));
   [_fileUploadPanelCoordinator stop];
   _fileUploadPanelCoordinator = nil;
 }
@@ -5695,9 +5692,18 @@ const char kChromeAppStoreUrl[] =
 #pragma mark - PictureInPictureCommands
 
 - (void)showPictureInPictureWithConfig:(PictureInPictureConfiguration*)config {
+  // Use the scene's active view controller if available (e.g., when in
+  // Incognito mode) so that presentation is performed on a view controller
+  // that is currently in the window hierarchy. Fall back to the coordinator's
+  // default view controller if the active scene UI is not fully initialized
+  // (e.g., in unit testing environments or early startup).
+  id<SceneUIProvider> sceneUIProvider =
+      (id<SceneUIProvider>)self.browser->GetSceneState().controller;
+  UIViewController* baseViewController =
+      sceneUIProvider.activeViewController ?: self.viewController;
   _pictureInPictureCoordinator = [[PictureInPictureCoordinator alloc]
       initWithConfiguration:config
-         baseViewController:self.viewController
+         baseViewController:baseViewController
                     browser:self.browser];
   [_pictureInPictureCoordinator start];
 }

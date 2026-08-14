@@ -73,6 +73,7 @@
 #include "chrome/browser/translate/chrome_translate_client.h"
 #include "chrome/browser/ui/accelerator_table.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
+#include "chrome/browser/ui/actions/chrome_action_properties.h"
 #include "chrome/browser/ui/animation/browser_animation_controller.h"
 #include "chrome/browser/ui/autofill/autofill_bubble_base.h"
 #include "chrome/browser/ui/autofill/payments/save_card_ui.h"
@@ -186,7 +187,6 @@
 #include "chrome/browser/ui/views/omnibox/omnibox_popup_closer.h"
 #include "chrome/browser/ui/views/omnibox/omnibox_popup_view_browser_view.h"
 #include "chrome/browser/ui/views/omnibox/omnibox_view_views.h"
-#include "chrome/browser/ui/views/page_action/page_action_icon_controller.h"
 #include "chrome/browser/ui/views/page_action/page_action_icon_view.h"
 #include "chrome/browser/ui/views/page_action/page_action_view.h"
 #include "chrome/browser/ui/views/permissions/chip/permission_dashboard_view.h"
@@ -976,7 +976,7 @@ BrowserView::BrowserView(Browser* browser)
     auto vertical_tab_strip_container =
         std::make_unique<VerticalTabStripRegionView>(
             vertical_tab_strip_state_controller,
-            browser_->GetActions()->root_action_item(), this);
+            BrowserActions::From(browser_)->root_action_item(), this);
 
     if (base::FeatureList::IsEnabled(features::kGlassFrame)) {
       vertical_tab_strip_background_blur_backdrop_ = AddChildView(
@@ -1011,7 +1011,7 @@ BrowserView::BrowserView(Browser* browser)
       OrganizerPanelStateController::From(browser_);
   if (organizer_panel_state_controller) {
     auto organizer_panel_container = std::make_unique<OrganizerPanelView>(
-        browser_.get(), browser_->GetActions()->root_action_item(),
+        browser_.get(), BrowserActions::From(browser_)->root_action_item(),
         organizer_panel_state_controller);
     organizer_panel_container_ =
         AddChildView(std::move(organizer_panel_container));
@@ -1498,7 +1498,8 @@ bool BrowserView::GetIsWebAppType() const {
 }
 
 bool BrowserView::GetIsPictureInPictureType() const {
-  return browser_->is_type_picture_in_picture();
+  return browser_->GetType() ==
+         BrowserWindowInterface::Type::TYPE_PICTURE_IN_PICTURE;
 }
 
 std::optional<blink::mojom::PictureInPictureWindowOptions>
@@ -3164,7 +3165,8 @@ content::KeyboardEventProcessingResult BrowserView::PreHandleKeyboardEvent(
   // - If the |browser_| is not for an app, and the |accelerator| is associated
   //   with the browser, and it is not a reserved one, do nothing.
 
-  if (browser_->is_type_app() || browser_->is_type_app_popup()) {
+  if (browser_->GetType() == BrowserWindowInterface::Type::TYPE_APP ||
+      browser_->is_type_app_popup()) {
     // Let all keys fall through to a v1 app's web content, even accelerators.
     // We don't use NOT_HANDLED_IS_SHORTCUT here. If we do that, the app
     // might not be able to see a subsequent Char event. See
@@ -3199,7 +3201,8 @@ content::KeyboardEventProcessingResult BrowserView::PreHandleKeyboardEvent(
 
   // If it's a known browser command, we decide whether to consume it now, i.e.
   // reserved by browser.
-  chrome::BrowserCommandController* controller = browser_->command_controller();
+  chrome::BrowserCommandController* controller =
+      chrome::BrowserCommandController::From(browser_);
   // Executing the command may cause |this| object to be destroyed.
   if (controller->IsReservedCommandOrKey(id, event)) {
     UpdateAcceleratorMetrics(accelerator, id);
@@ -3333,18 +3336,18 @@ void BrowserView::CutCopyPaste(int command_id) {
     }
   }
 
-  // Any Views which want to handle the clipboard commands in the Chrome menu
-  // should:
-  //   (a) Register ctrl-X/C/V as accelerators
-  //   (b) Implement CanHandleAccelerators() to not return true unless they're
-  //       focused, as the FocusManager will try all registered accelerator
-  //       handlers, not just the focused one.
-  // Currently, Textfield (which covers the omnibox and find bar, and likely any
-  // other native UI in the future that wants to deal with clipboard commands)
-  // does the above.
-  ui::Accelerator accelerator;
-  GetAccelerator(command_id, &accelerator);
-  GetFocusManager()->ProcessAccelerator(accelerator);
+  // If a native View (such as the Omnibox or FindBar) is focused, execute the
+  // accelerator directly on it rather than processing through FocusManager
+  // (which would re-enter BrowserView and ActionItems).
+  views::View* focused_view = GetFocusManager()->GetFocusedView();
+  if (focused_view) {
+    ui::Accelerator accelerator;
+    if (GetAccelerator(command_id, &accelerator) &&
+        focused_view->CanHandleAccelerators() &&
+        focused_view->AcceleratorPressed(accelerator)) {
+      return;
+    }
+  }
 #endif  // BUILDFLAG(IS_MAC)
 }
 
@@ -3640,7 +3643,8 @@ std::u16string BrowserView::GetAccessibleWindowTitleForChannelAndProfile(
   }
 
   // Add the name of the browser, unless this is an app window.
-  if (browser()->is_type_normal() || browser()->is_type_popup()) {
+  if (browser()->is_type_normal() ||
+      browser()->GetType() == BrowserWindowInterface::Type::TYPE_POPUP) {
     int message_id;
     switch (channel) {
       case version_info::Channel::CANARY:
@@ -3959,7 +3963,7 @@ bool BrowserView::GetSavedWindowPlacement(
   chrome::GetSavedWindowBoundsAndShowState(browser_.get(), bounds, show_state);
   // TODO(crbug.com/40092782): Generalize this code for app and non-app popups?
   if (chrome::SavedBoundsAreContentBounds(browser_.get()) &&
-      browser_->is_type_popup()) {
+      browser_->GetType() == BrowserWindowInterface::Type::TYPE_POPUP) {
     // This is normal non-app popup window. The value passed in |bounds|
     // represents two pieces of information:
     // - the position of the window, in screen coordinates (outer position).
@@ -4622,14 +4626,18 @@ int BrowserView::NonClientHitTest(const gfx::Point& point) {
                          &test_point)) {
       if (vertical_tab_strip_region_view_->IsPositionInWindowCaption(
               test_point)) {
-        return HTCAPTION;
+        // We return HTNOWHERE so that the caller will hit-test the window
+        // controls before finally falling back to HTCAPTION.
+        return HTNOWHERE;
       }
       return HTCLIENT;
     } else {
       gfx::Point test_point2(point);
       if (ConvertedHitTest(parent(), top_container_, &test_point2) &&
           top_container_->IsPositionInWindowCaption(test_point2)) {
-        return HTCAPTION;
+        // We return HTNOWHERE so that the caller will hit-test the window
+        // controls before finally falling back to HTCAPTION.
+        return HTNOWHERE;
       }
     }
   } else if (GetTabStripVisible()) {
@@ -5116,21 +5124,19 @@ bool BrowserView::AcceleratorPressed(const ui::Accelerator& accelerator) {
         this);
   }
 
+  actions::ActionInvocationContext context;
+  context.SetProperty(chrome::kActionInvocationSourceKey,
+                      chrome::ActionInvocationSource::kKeyboardShortcut);
+
   if (command_id == IDC_SHOW_READING_MODE_SIDE_PANEL) {
-    actions::ActionInvocationContext context =
-        actions::ActionInvocationContext::Builder()
-            .SetProperty(
-                kSidePanelOpenTriggerKey,
-                static_cast<std::underlying_type_t<SidePanelOpenTrigger>>(
-                    SidePanelOpenTrigger::kReadAnythingKeyboardShortcut))
-            .Build();
-    return chrome::ExecuteCommandWithContext(browser_.get(), command_id,
-                                             std::move(context),
-                                             accelerator.time_stamp());
+    context.SetProperty(
+        kSidePanelOpenTriggerKey,
+        static_cast<std::underlying_type_t<SidePanelOpenTrigger>>(
+            SidePanelOpenTrigger::kReadAnythingKeyboardShortcut));
   }
 
-  return chrome::ExecuteCommand(browser_.get(), command_id,
-                                accelerator.time_stamp());
+  return chrome::ExecuteCommandWithContext(
+      browser_.get(), command_id, std::move(context), accelerator.time_stamp());
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -5497,8 +5503,10 @@ void BrowserView::LoadAccelerators() {
   for (const auto& entry : accelerator_list) {
     // In app mode, only allow accelerators of allowlisted commands to pass
     // through.
-    if (is_app_mode && !IsCommandAllowedInAppMode(entry.command_id,
-                                                  browser()->is_type_popup())) {
+    if (is_app_mode &&
+        !IsCommandAllowedInAppMode(
+            entry.command_id,
+            browser()->GetType() == BrowserWindowInterface::Type::TYPE_POPUP)) {
       continue;
     }
 

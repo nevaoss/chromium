@@ -150,10 +150,6 @@ void SystemMenuModelBuilder::BuildSystemMenuForBrowserWindow(
       model->GetIndexOfCommandId(IDC_RESTORE_TAB).value(),
       kSystemMenuRestoreTabElementId);
 
-  if (features::IsTabGroupMenuMoreEntryPointsEnabled()) {
-    model->AddItemWithStringId(IDC_GROUP_UNGROUPED_TABS,
-                               IDS_GROUP_UNGROUPED_TABS);
-  }
 
 #if BUILDFLAG(IS_MAC)
   model->AddItemWithStringId(IDC_BOOKMARK_ALL_TABS, IDS_BOOKMARK_ALL_TABS);
@@ -284,7 +280,8 @@ void SystemMenuModelBuilder::BuildSystemMenuForAppOrPopupWindow(
 #endif
     if (!is_captive_portal_signin) {
       model->AddSeparator(ui::NORMAL_SEPARATOR);
-      if (browser()->is_type_app() || browser()->is_type_app_popup()) {
+      if (browser()->GetType() == BrowserWindowInterface::Type::TYPE_APP ||
+          browser()->is_type_app_popup()) {
         model->AddItemWithStringId(IDC_NEW_TAB, IDS_APP_MENU_NEW_WEB_PAGE);
       } else {
         model->AddItemWithStringId(IDC_SHOW_AS_TAB, IDS_SHOW_AS_TAB);
@@ -307,7 +304,8 @@ void SystemMenuModelBuilder::BuildSystemMenuForAppOrPopupWindow(
   }
 
   bool should_show_task_manager =
-      (browser()->is_type_app() || browser()->is_type_app_popup()) &&
+      (browser()->GetType() == BrowserWindowInterface::Type::TYPE_APP ||
+       browser()->is_type_app_popup()) &&
       chrome::CanOpenTaskManager();
 #if BUILDFLAG(IS_CHROMEOS)
   // Hide TaskManager option for the app if it is locked for OnTask. Only

@@ -132,6 +132,7 @@ Called by update_bad_message_reasons.py.-->
   <int value="12" label="PVM_PRINT_FENCED_FRAME"/>
   <int value="13" label="SAGPC_INVALID_PERMISSION_REQUEST_CONTEXT"/>
   <int value="14" label="TLSAPC_INVALID_PERMISSION_REQUEST_CONTEXT"/>
+  <int value="15" label="CCBC_GOOGLE_CHROME_SCHEME"/>
 </enum>
 
 <enum name="BadMessageReasonContent">
@@ -468,7 +469,7 @@ Called by update_bad_message_reasons.py.-->
   <int value="304" label="PSI_REQUEST_EMBEDDED_PERMISSION_WITHOUT_FEATURE"/>
   <int value="305" label="RFH_FOCUS_ACROSS_FENCED_BOUNDARY"/>
   <int value="306"
-      label="RFH_RECEIVED_INVALID_SHARED_STORAGE_WRITABLE_ATTRIBUTE"/>
+      label="OBSOLETE_RFH_RECEIVED_INVALID_SHARED_STORAGE_WRITABLE_ATTRIBUTE"/>
   <int value="307"
       label="MSDH_EXCLUDE_MONITORS_BUT_PREFERRED_MONITOR_REQUESTED"/>
   <int value="308" label="PSI_REGISTER_PERMISSION_ELEMENT_WITHOUT_FEATURE"/>
@@ -540,6 +541,7 @@ Called by update_bad_message_reasons.py.-->
   <int value="363" label="RFH_FORM_SUBMISSION_FROM_SANDBOXED_FRAME"/>
   <int value="364" label="RFPH_FORM_SUBMISSION_FROM_SANDBOXED_FRAME"/>
   <int value="365" label="INSTALLED_APP_PROVIDER_FACTORY_INVALID_FRAME"/>
+  <int value="366" label="RFH_INVALID_CONNECTION_ALLOWLIST_ATTRIBUTE"/>
 </enum>
 
 <enum name="BadMessageReasonExtensions">
@@ -639,6 +641,19 @@ Called by update_bad_message_reasons.py.-->
 <enum name="BooleanRebooted">
   <int value="0" label="Has not rebooted"/>
   <int value="1" label="Rebooted"/>
+</enum>
+
+<enum name="CommitLimitTerminatedTabReloadResult">
+  <int value="0" label="Success"/>
+  <int value="1" label="Failed: Repeated OOM"/>
+  <int value="2" label="Failed: Other Error"/>
+  <int value="3" label="Failed: Hidden Tab Not Discarded"/>
+</enum>
+
+<enum name="CommitLimitTerminatedTabVisibility">
+  <int value="0" label="Hidden"/>
+  <int value="1" label="Occluded"/>
+  <int value="2" label="Visible"/>
 </enum>
 
 <enum name="CrashpadExceptionCaptureResult">

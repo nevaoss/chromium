@@ -20,12 +20,12 @@ BASE_FEATURE(kOidcEnrollmentTimeout,
              "kOidcEnrollmentTimeout",
              base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kEnableGenericOidcAuthProfileManagement,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
 BASE_FEATURE(kOidcEnrollmentAuthSource, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kOidcAuthHeaderInterception, base::FEATURE_ENABLED_BY_DEFAULT);
+
+BASE_FEATURE(kOidcNavigationThrottleAsyncMode,
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Allow Oidc Enrollment flow to use a stubbed DM token rather than fetching a
 // real one from DM server, if one is supplied.

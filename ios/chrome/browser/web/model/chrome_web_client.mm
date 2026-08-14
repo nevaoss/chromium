@@ -13,6 +13,7 @@
 #import "base/feature_list.h"
 #import "base/ios/ios_util.h"
 #import "base/ios/ns_error_util.h"
+#import "base/memory/ref_counted_memory.h"
 #import "base/metrics/histogram_functions.h"
 #import "base/no_destructor.h"
 #import "base/notreached.h"
@@ -372,7 +373,7 @@ std::string_view ChromeWebClient::GetDataResource(
       resource_id, scale_factor);
 }
 
-base::RefCountedMemory* ChromeWebClient::GetDataResourceBytes(
+scoped_refptr<base::RefCountedMemory> ChromeWebClient::GetDataResourceBytes(
     int resource_id) const {
   return ui::ResourceBundle::GetSharedInstance().LoadDataResourceBytes(
       resource_id);
@@ -637,8 +638,7 @@ void ChromeWebClient::BuildEditMenu(web::WebState* web_state,
 
 bool ChromeWebClient::CanRunOpenPanel(web::WebState* source) const
     API_AVAILABLE(ios(18.4)) {
-  return base::FeatureList::IsEnabled(kIOSCustomFileUploadMenu) &&
-         ChooseFileTabHelper::FromWebState(source) != nullptr;
+  return ChooseFileTabHelper::FromWebState(source) != nullptr;
 }
 
 void ChromeWebClient::RunOpenPanel(
@@ -647,7 +647,6 @@ void ChromeWebClient::RunOpenPanel(
     WKFrameInfo* frame,
     base::OnceCallback<void(NSArray<NSURL*>*)> completion) const
     API_AVAILABLE(ios(18.4)) {
-  CHECK(base::FeatureList::IsEnabled(kIOSCustomFileUploadMenu));
   ChooseFileTabHelper* tab_helper = ChooseFileTabHelper::FromWebState(source);
   CHECK(tab_helper);
   tab_helper->RunOpenPanel(parameters, frame, std::move(completion));

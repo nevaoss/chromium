@@ -22,7 +22,7 @@ BASE_FEATURE_PARAM(bool,
                    "split_view_horizontal_direct_access",
                    false);
 
-BASE_FEATURE(kSplitViewTabRestore, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kSplitViewTabRestore, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kTabSearchCjkWordBoundary, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -111,7 +111,6 @@ BASE_FEATURE(kMigrateEverythingMenuPinnedToTabstrip,
 bool IsVerticalTabsFeatureEnabled() {
   return base::FeatureList::IsEnabled(kVerticalTabs) ||
          base::FeatureList::IsEnabled(kVerticalTabsLaunch);
-  ;
 }
 
 bool IsVerticalTabsExpandOnHoverFeatureEnabled() {

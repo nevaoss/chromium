@@ -560,6 +560,11 @@ bool ModelContext::ExecuteTool(const base::UnguessableToken& invocation_id,
 }
 
 bool ModelContext::CancelTool(const base::UnguessableToken& invocation_id) {
+  CHECK(document_->IsActive());
+
+  // It's possible for `invocation_id` to not match any pending execution, for
+  // example, if the tool execution finishes before a tool caller's signal to
+  // cancel execution comes in.
   auto it = pending_executions_.find(String(invocation_id.ToString()));
   if (it == pending_executions_.end()) {
     return false;
@@ -1031,12 +1036,20 @@ ScriptPromise<IDLNullable<IDLString>> ModelContext::executeTool(
                                            kPermissionPolicyNotEnabledError));
   }
 
+  KURL expected_url(NullUrl(), tool->origin());
+  if (!expected_url.IsValid()) {
+    return ScriptPromise<IDLNullable<IDLString>>::RejectWithDOMException(
+        script_state,
+        MakeGarbageCollected<DOMException>(DOMExceptionCode::kNotSupportedError,
+                                           "The provided origin is invalid."));
+  }
+
   scoped_refptr<SecurityOrigin> expected_target_origin =
-      SecurityOrigin::CreateFromString(tool->origin());
+      SecurityOrigin::Create(expected_url);
   if (expected_target_origin->IsOpaque()) {
     return ScriptPromise<IDLNullable<IDLString>>::RejectWithDOMException(
         script_state, MakeGarbageCollected<DOMException>(
-                          DOMExceptionCode::kDataError,
+                          DOMExceptionCode::kNotSupportedError,
                           "Cannot execute tools that live in a document with "
                           "an opaque origin."));
   }

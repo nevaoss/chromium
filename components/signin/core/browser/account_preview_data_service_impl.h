@@ -15,6 +15,7 @@
 #include "base/memory/weak_ptr.h"
 #include "base/scoped_observation.h"
 #include "base/version_info/channel.h"
+#include "build/build_config.h"
 #include "components/signin/core/browser/account_preview_data_service.h"
 #include "components/signin/core/browser/account_preview_metrics_recorder.h"
 #include "components/signin/public/base/wait_for_network_callback_helper.h"
@@ -37,6 +38,15 @@ class AccountPreviewDataFetcher;
 class AccountPreviewDataServiceImpl : public AccountPreviewDataService,
                                       public IdentityManager::Observer {
  public:
+  // LINT.IfChange(FetchTriggerCause)
+  enum class FetchTriggerCause {
+    kPeriodicRefresh = 0,
+    kRefreshTokenUpdated = 1,
+    kRefreshTokenRemoved = 2,
+    kMaxValue = kRefreshTokenRemoved,
+  };
+  // LINT.ThenChange(//tools/metrics/histograms/metadata/signin/enums.xml:AccountPreviewFetchTriggerCause)
+
   AccountPreviewDataServiceImpl(
       IdentityManager* identity_manager,
       PrefService* pref_service,
@@ -59,9 +69,12 @@ class AccountPreviewDataServiceImpl : public AccountPreviewDataService,
   std::optional<AccountPreviewData> GetAccountPreviewData(
       const GaiaId& gaia_id) const;
 
-  bool HasActiveFetcherForTesting(const GaiaId& gaia_id) const {
-    return active_fetchers_.contains(gaia_id);
-  }
+#if BUILDFLAG(IS_ANDROID)
+  void UpdateExternalAppAccount(
+      const std::optional<std::string>& email) override;
+#endif
+
+  bool HasActiveFetcherForTesting(const GaiaId& gaia_id) const;
 
   void SetFetchCompleteCallbackForTesting(base::OnceClosure callback);
   void SetAllDataAvailableCallbackForTesting(base::OnceClosure callback);
@@ -76,7 +89,7 @@ class AccountPreviewDataServiceImpl : public AccountPreviewDataService,
 
  private:
   void RefreshAllAccountPreviewData();
-  void EnsureAllAccountsFetched(bool is_periodic_refresh);
+  void EnsureAllAccountsFetched(FetchTriggerCause cause);
   void FetchAccountPreviewData(const GaiaId& gaia_id);
   void StartFetch(const GaiaId& gaia_id);
   void OnSingleFetchCompleted(const GaiaId& gaia_id,
@@ -86,10 +99,10 @@ class AccountPreviewDataServiceImpl : public AccountPreviewDataService,
   void ResetTimer();
   std::optional<AccountPreviewPreference> ComputePreferredAccount() const;
 
-  std::optional<AccountPreviewPreference> ReadPreviewPreferenceFromPrefs()
-      const;
-  void WritePreviewPreferenceToPrefs(
-      const AccountPreviewPreference& preference);
+  std::optional<AccountPreviewPreference> ReadPreferredAccountFromPrefs() const;
+  // Writing `std::nullopt` as `preference` clears the pref.
+  void WritePreferredAccountToPrefs(
+      std::optional<AccountPreviewPreference> preference);
 
   raw_ptr<IdentityManager> identity_manager_ = nullptr;
   raw_ptr<PrefService> pref_service_ = nullptr;

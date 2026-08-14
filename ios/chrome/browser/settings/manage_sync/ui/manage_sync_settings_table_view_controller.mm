@@ -167,9 +167,14 @@ constexpr CGFloat kDefaultSectionFooterHeightPointSize = 10.;
   CHECK(avatarImage);
   // Put a small non-empty frame to avoid layout constraint error during
   // initialization. The actual frame size is changed by the CentralAccountView.
+  // The AITier is not displayed in this view.
+  BOOL AITierRing = NO;
   CentralAccountView* identityAccountItem =
       [[CentralAccountView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)
                                     avatarImage:avatarImage
+                                showsAITierRing:AITierRing
+                                 aiTierFullName:nil
+                           subscriptionChipView:nil
                                            name:name
                                           email:email
                           managementDescription:managementDescription

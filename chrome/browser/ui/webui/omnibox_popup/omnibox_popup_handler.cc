@@ -33,6 +33,17 @@ void OmniboxPopupHandler::CloseUI() {
   if (embedder_) {
     embedder_->CloseUI();
   }
+  // Transfer focus from the location bar to the active web tab DOM and notify
+  // the edit model that focus was killed so internal focus state and metrics
+  // trackers are updated.
+  if (controller_) {
+    if (controller_->client()) {
+      controller_->client()->FocusWebContents();
+    }
+    if (controller_->edit_model()) {
+      controller_->edit_model()->OnKillFocus();
+    }
+  }
 }
 
 void OmniboxPopupHandler::OnSelectionChanged(const gfx::Range& selection,
@@ -79,7 +90,7 @@ void OmniboxPopupHandler::RequestInputState() {
   auto* edit_model = controller_ ? controller_->edit_model() : nullptr;
   auto* popup_view = edit_model ? edit_model->popup_view() : nullptr;
   if (popup_view) {
-    popup_view->SyncNativeStateToWebUI();
+    popup_view->SyncNativeStateToWebUI(/*query_zps=*/false);
   }
 }
 
@@ -98,7 +109,8 @@ void OmniboxPopupHandler::SetInputState(
     const std::string& full_url,
     bool is_focused,
     const std::string& permanent_display_text,
-    bool show_full_url) {
+    bool show_full_url,
+    bool query_zps) {
   latest_selection_ = selection;
   show_full_url_ = show_full_url;
   current_sequence_number_++;
@@ -112,6 +124,7 @@ void OmniboxPopupHandler::SetInputState(
   state->is_focused = is_focused;
   state->permanent_display_text = permanent_display_text;
   state->show_full_url = show_full_url;
+  state->query_zps = query_zps;
   page_->SetInputState(std::move(state));
 }
 

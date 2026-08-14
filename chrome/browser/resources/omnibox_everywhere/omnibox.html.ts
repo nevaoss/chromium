@@ -36,6 +36,8 @@ export function getHtml(this: OmniboxEverywhereOmniboxElement) {
         ` :
                                   ''}
       </cr-searchbox-input>
+      <img id="profileIcon" src="${this.profileAvatarUrl_}"
+          alt="${this.i18n('profileButtonLabel')}">
       <div class="dropdownContainer">
         <cr-searchbox-dropdown id="matches" part="searchbox-dropdown"
             exportparts="dropdown-content"
@@ -68,6 +70,7 @@ export function getHtml(this: OmniboxEverywhereOmniboxElement) {
       this.onContextMenuEntrypointClick_}"
                   @context-menu-opened="${this.onContextMenuOpened_}"
                   @context-menu-closed="${this.onContextMenuClosed_}"
+                  @add-tab-context="${this.onAddTabContext_}"
                   @request-tab-suggestions-load="${
       this.onRequestTabSuggestionsLoad}"
                   @tool-click="${this.onToolClick_}"

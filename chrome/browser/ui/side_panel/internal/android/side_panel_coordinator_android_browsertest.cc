@@ -184,15 +184,25 @@ class AutoOpenSidePanelTabModelObserver : public TabModelObserver {
     if (!registry->GetEntryForKey(key)) {
       registry->Register(
           CreateSidePanelEntry(key, browser_, /*use_thin_web_view=*/true));
+      side_panel_entry_observers_.push_back(
+          std::make_unique<TestSidePanelEntryObserver>(
+              registry->GetEntryForKey(key)));
     }
     coordinator_->SidePanelUIBase::Show(key,
                                         SidePanelOpenTrigger::kToolbarButton,
                                         /*suppress_animations=*/true);
   }
 
+  const std::vector<std::unique_ptr<TestSidePanelEntryObserver>>&
+  side_panel_entry_observers() const {
+    return side_panel_entry_observers_;
+  }
+
  private:
   raw_ptr<BrowserWindowInterface> browser_;
   raw_ptr<SidePanelCoordinatorAndroid> coordinator_;
+  std::vector<std::unique_ptr<TestSidePanelEntryObserver>>
+      side_panel_entry_observers_;
 };
 
 BrowserWindowInterface* CreateBrowserWindowAsync(Profile* profile) {
@@ -455,6 +465,46 @@ IN_PROC_BROWSER_TEST_F(SidePanelCoordinatorAndroidBrowserTest,
   EXPECT_NE(nullptr, entry_ptr->CachedView().get());
   EXPECT_TRUE(AttachCurrentThread()->IsSameObject(
       entry_java_view.obj(), entry_ptr->CachedView()->view().obj()));
+}
+
+IN_PROC_BROWSER_TEST_F(SidePanelCoordinatorAndroidBrowserTest,
+                       Destructor_ClearsCachedEntryViews) {
+  // Arrange: Register entries in window and tab registries and populate cache.
+  tabs::TabInterface* active_tab = tab_list_->GetActiveTab();
+  auto window_key = SidePanelEntryKey(SidePanelEntryId::kAboutThisSite);
+  auto tab_key = SidePanelEntryKey(SidePanelEntryId::kGlic);
+
+  auto window_entry = CreateSidePanelEntry(window_key, browser_);
+  auto tab_entry = CreateSidePanelEntry(tab_key, browser_);
+  SidePanelEntry* window_entry_ptr = window_entry.get();
+  SidePanelEntry* tab_entry_ptr = tab_entry.get();
+
+  SidePanelRegistry::From(browser_)->Register(std::move(window_entry));
+  SidePanelRegistry::From(active_tab)->Register(std::move(tab_entry));
+
+  coordinator_->SidePanelUIBase::Show(window_key,
+                                      SidePanelOpenTrigger::kToolbarButton,
+                                      /*suppress_animations=*/true);
+  WaitUntilOpened(coordinator_);
+  coordinator_->SidePanelUIBase::Show(tab_key,
+                                      SidePanelOpenTrigger::kToolbarButton,
+                                      /*suppress_animations=*/true);
+  WaitUntilOpened(coordinator_);
+
+  ASSERT_NE(nullptr, window_entry_ptr->CachedView().get());
+  ASSERT_NE(nullptr, tab_entry_ptr->CachedView().get());
+
+  // Act: Destroy the coordinator (simulating window/activity destruction).
+  delete coordinator_.ExtractAsDangling();
+
+  // Assert: Cached views in both window and tab registries are cleared...
+  EXPECT_EQ(nullptr, window_entry_ptr->CachedView().get());
+  EXPECT_EQ(nullptr, tab_entry_ptr->CachedView().get());
+
+  // ...but active entry selection remains preserved for window restoration.
+  EXPECT_EQ(
+      tab_entry_ptr,
+      SidePanelRegistry::From(active_tab)->GetActiveEntry().value_or(nullptr));
 }
 
 IN_PROC_BROWSER_TEST_F(
@@ -3028,29 +3078,47 @@ IN_PROC_BROWSER_TEST_F(
 
 IN_PROC_BROWSER_TEST_F(SidePanelCoordinatorAndroidBrowserTest,
                        RapidTabSwitch_AutoOpenSidePanel) {
+  coordinator_->ConfigDeferredViewReplacementForTesting(true);
+
   // Simulate GLiC's "automatically open side panel for a new tab" behavior.
   AutoOpenSidePanelTabModelObserver observer(browser_, coordinator_);
   auto* tab_model = static_cast<TabModel*>(tab_list_);
   tab_model->AddObserver(&observer);
 
-  // Switch tabs rapidly to trigger side panel creation and show.
-  // We open three new tabs here:
-  // - Tab 2: Opens the side panel initially.
-  // - Tab 3: Replaces Tab 2's panel (1st replacement).
-  // - Tab 4: Replaces Tab 3's panel (2nd replacement, forces the 1st
-  // replacement to complete synchronously).
+  const auto& side_panel_entry_observers =
+      observer.side_panel_entry_observers();
+
+  // Tab 2: Opens the side panel initially.
   tab_list_->OpenTab(GURL("about:blank"), tab_list_->GetTabCount());
+  ASSERT_EQ(1u, side_panel_entry_observers.size());
+  EXPECT_EQ(1, side_panel_entry_observers[0]->num_on_entry_shown_received_);
+
+  // Tab 3: Replaces Tab 2's panel (1st replacement).
+  // In a real device, this uses delayed detachment. In the headless test
+  // environment, it may complete synchronously.
   tab_list_->OpenTab(GURL("about:blank"), tab_list_->GetTabCount());
+  ASSERT_EQ(2u, side_panel_entry_observers.size());
+  EXPECT_EQ(1, side_panel_entry_observers[1]->num_on_entry_shown_received_);
+
+  // Tab 4: Replaces Tab 3's panel (2nd replacement).
   tab_list_->OpenTab(GURL("about:blank"), tab_list_->GetTabCount());
+  ASSERT_EQ(3u, side_panel_entry_observers.size());
+  EXPECT_EQ(1, side_panel_entry_observers[2]->num_on_entry_shown_received_);
 
   // Wait for the final tab's panel to open.
   WaitUntilOpened(coordinator_);
   EXPECT_EQ(SidePanelEntryId::kGlic, coordinator_->GetCurrentEntryId());
 
-  // Wait for the background delayed detachment of the intermediate tab's side
-  // panel to finish successfully.
+  // Wait for any background delayed detachments (if any) to finish
+  // successfully.
   ASSERT_TRUE(base::test::RunUntil(
       [this]() { return !coordinator_->HasPendingReplacedEntryForTesting(); }));
 
+  // At this point, the older tabs should be hidden and the active tab shown.
+  EXPECT_EQ(1, side_panel_entry_observers[0]->num_on_entry_hidden_received_);
+  EXPECT_EQ(1, side_panel_entry_observers[1]->num_on_entry_hidden_received_);
+  EXPECT_EQ(0, side_panel_entry_observers[2]->num_on_entry_hidden_received_);
+
   tab_model->RemoveObserver(&observer);
+  coordinator_->ConfigDeferredViewReplacementForTesting(false);
 }

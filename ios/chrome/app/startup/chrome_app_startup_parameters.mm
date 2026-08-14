@@ -19,6 +19,7 @@
 #import "ios/chrome/browser/shared/model/url/chrome_url_constants.h"
 #import "ios/chrome/browser/shared/public/features/features.h"
 #import "ios/chrome/common/app_group/app_group_constants.h"
+#import "ios/chrome/common/app_group/widget_constants.h"
 #import "ios/chrome/common/x_callback_url.h"
 #import "ios/components/webui/web_ui_url_constants.h"
 #import "net/base/apple/url_conversions.h"
@@ -53,45 +54,6 @@ NSString* const kExternalActionAppSwitcherTesting = @"appswitchertesting";
 // here due to a Smart App Banner presentation on a Google.com page.
 NSString* const kSmartAppBannerKey = @"safarisab";
 
-// TODO(crbug.com/40725595): When swift is supported move WidgetKit constants to
-// a file where they can be shared with the extension. Currently these are also
-// declared as URLs in ios/c/widget_kit_extension/widget_urls.swift.
-//
-// Scheme used by the widget extension actions. It's important that this scheme
-// is never defined as Custom URL Scheme for Chrome so only the widgets can use
-// the actions on it.
-NSString* const kWidgetKitSchemeChrome = @"chromewidgetkit";
-// Host used to identify Search (small) widget.
-NSString* const kWidgetKitHostSearchWidget = @"search-widget";
-// Host used to identify Quick Actions (medium) widget.
-NSString* const kWidgetKitHostQuickActionsWidget = @"quick-actions-widget";
-// Host used to identify Dino Game (small) widget.
-NSString* const kWidgetKitHostDinoGameWidget = @"dino-game-widget";
-// Host used to identify the Lockscreen Launcher widget.
-NSString* const kWidgetKitHostLockscreenLauncherWidget =
-    @"lockscreen-launcher-widget";
-// Host used to identify the Chrome Shortcuts widget.
-NSString* const kWidgetKitHostShortcutsWidget = @"shortcuts-widget";
-// Host used to identify the Search Passwords widget.
-NSString* const kWidgetKitHostSearchPasswordsWidget =
-    @"search-passwords-widget";
-// Path for search action.
-NSString* const kWidgetKitActionSearch = @"/search";
-// Path for incognito action.
-NSString* const kWidgetKitActionIncognito = @"/incognito";
-// Path for Voice Search action.
-NSString* const kWidgetKitActionVoiceSearch = @"/voicesearch";
-// Path for QR Reader action.
-NSString* const kWidgetKitActionQRReader = @"/qrreader";
-// Path for Lens action.
-NSString* const kWidgetKitActionLens = @"/lens";
-// Path for Game action.
-NSString* const kWidgetKitActionGame = @"/game";
-// Path for open URL action.
-NSString* const kWidgetKitActionOpenURL = @"/open";
-// Path for search passwords action.
-NSString* const kWidgetKitActionSearchPasswords = @"/search-passwords";
-
 const CGFloat kAppGroupTriggersVoiceSearchTimeout = 15.0;
 
 // Histogram helper to log the UMA IOS.WidgetKit.Action histogram.
@@ -123,6 +85,10 @@ bool CallerAppIsFirstParty(MobileSessionCallerApp callerApp) {
   }
 }
 
+// LINT.IfChange(IsShowDefaultBrowserSettings)
+// TODO(crbug.com/462018636): This code will be soon migrated to
+// task_request_url_context.mm, so any change should be reflected also there.
+// Contact fedegermi for additional information or support.
 TabOpeningPostOpeningAction XCallbackPoaToPostOpeningAction(
     const std::string& poa_param) {
   if (poa_param == "default-browser-settings") {
@@ -130,6 +96,7 @@ TabOpeningPostOpeningAction XCallbackPoaToPostOpeningAction(
   }
   return NO_ACTION;
 }
+// LINT.ThenChange(//ios/chrome/app/task_request_url_context.mm:IsShowDefaultBrowserSettings)
 
 }  // namespace
 
@@ -166,6 +133,10 @@ TabOpeningPostOpeningAction XCallbackPoaToPostOpeningAction(
     return nil;
   }
 
+  // LINT.IfChange(WidgetKitScheme)
+  // TODO(crbug.com/462018636): This code will be soon migrated to
+  // task_request_url_context.mm, so any change should be reflected also there.
+  // Contact fedegermi for additional information or support.
   if ([completeURL.scheme isEqualToString:kWidgetKitSchemeChrome]) {
     UMA_HISTOGRAM_ENUMERATION(kUMAMobileSessionStartActionHistogram,
                               START_ACTION_WIDGET_KIT_COMMAND,
@@ -231,7 +202,7 @@ TabOpeningPostOpeningAction XCallbackPoaToPostOpeningAction(
                      forceApplicationMode:forceApplicationMode];
     appStartupParameters.openedViaWidgetScheme = YES;
     return appStartupParameters;
-
+    // LINT.ThenChange(//ios/chrome/app/task_request_url_context.mm:WidgetKitScheme)
   } else if (IsXCallbackURL(parsedURL)) {
     base::UmaHistogramEnumeration(kAppLaunchSource,
                                   AppLaunchSource::X_CALLBACK);
@@ -803,6 +774,10 @@ TabOpeningPostOpeningAction XCallbackPoaToPostOpeningAction(
     action = ACTION_NO_ACTION;
   }
 
+  // LINT.IfChange(WidgetKitAction)
+  // TODO(crbug.com/462018636): This code will be soon migrated to
+  // task_request_url_context.mm, so any change should be reflected also there.
+  // Contact fedegermi for additional information or support.
   if ([secureAppID isEqualToString:kWidgetKitHostSearchWidget]) {
     LogWidgetKitAction(WidgetKitExtensionAction::ACTION_SEARCH_WIDGET_SEARCH);
   }
@@ -878,9 +853,14 @@ TabOpeningPostOpeningAction XCallbackPoaToPostOpeningAction(
     base::RecordAction(base::UserMetricsAction(
         "MobileSearchPasswordsWidgetOpenPasswordManager"));
   }
+  // LINT.ThenChange(//ios/chrome/app/task_request_url_context.mm:WidgetKitScheme)
   return params;
 }
 
+// LINT.IfChange(GetCallerApp)
+// TODO(crbug.com/462018636): This code will be soon migrated to
+// task_request_url_context.mm, so any change should be reflected also there.
+// Contact fedegermi for additional information or support.
 - (MobileSessionCallerApp)callerApp {
   if ([_secureSourceApp
           isEqualToString:app_group::kOpenCommandSourceShareExtension]) {
@@ -939,7 +919,12 @@ TabOpeningPostOpeningAction XCallbackPoaToPostOpeningAction(
 
   return CALLER_APP_OTHER;
 }
+// LINT.ThenChange(//ios/chrome/app/task_request_url_context.mm:GetCallerApp)
 
+// LINT.IfChange(GetLaunchSource)
+// TODO(crbug.com/462018636): This code will be soon migrated to
+// task_request_url_context.mm, so any change should be reflected also there.
+// Contact fedegermi for additional information or support.
 - (first_run::ExternalLaunch)launchSource {
   if ([self callerApp] != CALLER_APP_APPLE_MOBILESAFARI) {
     return first_run::LAUNCH_BY_OTHERS;
@@ -974,5 +959,6 @@ TabOpeningPostOpeningAction XCallbackPoaToPostOpeningAction(
   }
   return first_run::LAUNCH_BY_SMARTAPPBANNER;
 }
+// LINT.ThenChange(//ios/chrome/app/task_request_url_context.mm:GetLaunchSource)
 
 @end

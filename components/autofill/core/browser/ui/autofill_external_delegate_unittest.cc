@@ -523,6 +523,12 @@ class AutofillExternalDelegateTest : public testing::Test,
                           testing::Field(&Suggestion::Text::value, text));
   }
 
+  Matcher<const Suggestion&> HasMinorText(const std::u16string& text) {
+    return testing::Field(
+        &Suggestion::minor_texts,
+        testing::ElementsAre(testing::Field(&Suggestion::Text::value, text)));
+  }
+
   Matcher<const Suggestion&> HasLabel(const std::u16string& label) {
     return testing::Field(
         &Suggestion::labels,
@@ -946,7 +952,7 @@ TEST_F(AutofillExternalDelegateTest, AtMemoryFlyoutChildrenFirstPartySources) {
               AllOf(HasMainText(u"Marian Paździoch"), HasLabel(u"Name")),
               Field(&Suggestion::type, SuggestionType::kSeparator),
               AllOf(
-                  HasMainText(l10n_util::GetStringUTF16(
+                  HasMinorText(l10n_util::GetStringUTF16(
                       IDS_AUTOFILL_AT_MEMORY_SOURCE_ATTRIBUTION_PERSONAL_INTELLIGENCE)),
                   Field(&Suggestion::type,
                         SuggestionType::kAtMemorySourceAttribution)),
@@ -954,9 +960,14 @@ TEST_F(AutofillExternalDelegateTest, AtMemoryFlyoutChildrenFirstPartySources) {
               Field(&Suggestion::type,
                     SuggestionType::kManageEnhancedAutofill)))));
 
-  // The first call notifies the UI that search has started (clearing current
-  // suggestions). The second call provides the actual results.
-  EXPECT_CALL(autofill_client(), UpdateAutofillSuggestions(IsEmpty(), _, _, _));
+  InSequence sequence;
+  // The first call notifies the UI that search has started and shows a fetching
+  // indicator. The second call provides the actual results.
+  EXPECT_CALL(autofill_client(),
+              UpdateAutofillSuggestions(
+                  ElementsAre(Field(&Suggestion::type,
+                                    SuggestionType::kAtMemoryFetching)),
+                  _, _, _));
   EXPECT_CALL(autofill_client(), UpdateAutofillSuggestions(matcher, _, _, _));
 
   external_delegate().OnSearchSubmitted(u"shoe size");
@@ -982,24 +993,25 @@ TEST_F(AutofillExternalDelegateTest, AtMemoryFlyoutChildrenAutofillSource) {
 
   SetupMockAtMemoryQueryService(u"addr", std::move(search_results));
 
-  auto matcher = testing::ElementsAre(testing::AllOf(
+  auto matcher = ElementsAre(AllOf(
       HasMainText(u"1600 Amphitheatre Pkwy"),
-      testing::Field(
-          &Suggestion::children,
-          testing::ElementsAre(
-              testing::AllOf(HasMainText(u"Mountain View"), HasLabel(u"City")),
-              testing::AllOf(HasMainText(u"CA"), HasLabel(u"State")),
-              testing::Field(&Suggestion::type, SuggestionType::kSeparator),
-              testing::AllOf(
-                  HasMainText(l10n_util::GetStringUTF16(
-                      IDS_AUTOFILL_AT_MEMORY_MANAGE_CONTACT_INFO)),
-                  testing::Field(&Suggestion::type,
-                                 SuggestionType::kManageAddress))))));
+      Field(&Suggestion::children,
+            ElementsAre(AllOf(HasMainText(u"Mountain View"), HasLabel(u"City")),
+                        AllOf(HasMainText(u"CA"), HasLabel(u"State")),
+                        Field(&Suggestion::type, SuggestionType::kSeparator),
+                        AllOf(HasMainText(l10n_util::GetStringUTF16(
+                                  IDS_AUTOFILL_AT_MEMORY_MANAGE_CONTACT_INFO)),
+                              Field(&Suggestion::type,
+                                    SuggestionType::kManageAddress))))));
 
-  // The first call notifies the UI that search has started (clearing current
-  // suggestions). The second call provides the actual results.
+  InSequence sequence;
+  // The first call notifies the UI that search has started and shows a fetching
+  // indicator. The second call provides the actual results.
   EXPECT_CALL(autofill_client(),
-              UpdateAutofillSuggestions(testing::IsEmpty(), _, _, _));
+              UpdateAutofillSuggestions(
+                  ElementsAre(Field(&Suggestion::type,
+                                    SuggestionType::kAtMemoryFetching)),
+                  _, _, _));
   EXPECT_CALL(autofill_client(), UpdateAutofillSuggestions(matcher, _, _, _));
 
   external_delegate().OnSearchSubmitted(u"addr");
@@ -1010,11 +1022,7 @@ TEST_F(AutofillExternalDelegateTest, AtMemoryFlyoutChildrenAutofillSource) {
 // results.
 TEST_F(AutofillExternalDelegateTest,
        AtMemorySubsequentSearchClearsPreviousSuggestions) {
-  IssueOnQuery(AutofillSuggestionTriggerSource::kAtMemoryTriggerString);
-
-  autofill_client().set_suggestion_ui_session_id(
-      AutofillClient::SuggestionUiSessionId(1));
-  external_delegate().OnSuggestionsShown({}, std::nullopt);
+  StartAtMemorySession();
 
   std::vector<MemorySearchResult> entries1;
   MemorySearchResult entry(MemoryDataType::kAddressFull, u"Address",
@@ -1033,9 +1041,15 @@ TEST_F(AutofillExternalDelegateTest,
       .WillOnce(base::test::RunOnceCallback<3>(std::move(search_results1)));
 
   EXPECT_CALL(autofill_client(),
-              UpdateAutofillSuggestions(testing::IsEmpty(), _, _, _));
+              UpdateAutofillSuggestions(
+                  ElementsAre(Field(&Suggestion::type,
+                                    SuggestionType::kAtMemoryFetching)),
+                  _, _, _));
   EXPECT_CALL(autofill_client(),
-              UpdateAutofillSuggestions(testing::SizeIs(1), _, _, _));
+              UpdateAutofillSuggestions(
+                  ElementsAre(Field(&Suggestion::type,
+                                    SuggestionType::kAtMemorySearchResult)),
+                  _, _, _));
 
   external_delegate().OnSearchSubmitted(u"addr");
 
@@ -1051,9 +1065,12 @@ TEST_F(AutofillExternalDelegateTest,
       .WillOnce(testing::SaveArg<3>(&received_callback));
 
   // We expect that UpdateAutofillSuggestions IS called when the second search
-  // starts, which clears the suggestions list.
+  // starts, which shows the fetching suggestion.
   EXPECT_CALL(autofill_client(),
-              UpdateAutofillSuggestions(testing::IsEmpty(), _, _, _));
+              UpdateAutofillSuggestions(
+                  ElementsAre(Field(&Suggestion::type,
+                                    SuggestionType::kAtMemoryFetching)),
+                  _, _, _));
 
   external_delegate().OnSearchSubmitted(u"addr2");
 
@@ -1068,18 +1085,17 @@ TEST_F(AutofillExternalDelegateTest,
                                       std::move(entries2));
 
   EXPECT_CALL(autofill_client(),
-              UpdateAutofillSuggestions(testing::SizeIs(1), _, _, _));
+              UpdateAutofillSuggestions(
+                  ElementsAre(Field(&Suggestion::type,
+                                    SuggestionType::kAtMemorySearchResult)),
+                  _, _, _));
   received_callback.Run(std::move(search_results2));
 }
 
 // Tests that when a partial response is received, the controller continues
 // to accept subsequent responses for the same query.
 TEST_F(AutofillExternalDelegateTest, AtMemoryPartialResponseKeepsSearching) {
-  IssueOnQuery(AutofillSuggestionTriggerSource::kAtMemoryTriggerString);
-
-  autofill_client().set_suggestion_ui_session_id(
-      AutofillClient::SuggestionUiSessionId(1));
-  external_delegate().OnSuggestionsShown({}, std::nullopt);
+  StartAtMemorySession();
 
   auto mock_service =
       std::make_unique<testing::NiceMock<MockAtMemoryQueryService>>();
@@ -1090,9 +1106,12 @@ TEST_F(AutofillExternalDelegateTest, AtMemoryPartialResponseKeepsSearching) {
   EXPECT_CALL(*mock_service_ptr, Query(std::u16string_view(u"addr"), _, _, _))
       .WillOnce(testing::SaveArg<3>(&received_callback));
 
-  // Trigger the search, which clears suggestions.
+  // Trigger the search, which shows the fetching suggestion.
   EXPECT_CALL(autofill_client(),
-              UpdateAutofillSuggestions(testing::IsEmpty(), _, _, _));
+              UpdateAutofillSuggestions(
+                  ElementsAre(Field(&Suggestion::type,
+                                    SuggestionType::kAtMemoryFetching)),
+                  _, _, _));
   external_delegate().OnSearchSubmitted(u"addr");
 
   // Simulate first result arriving with kPartialResponseSuccess.
@@ -1104,7 +1123,10 @@ TEST_F(AutofillExternalDelegateTest, AtMemoryPartialResponseKeepsSearching) {
 
   // We expect that UpdateAutofillSuggestions IS called with these results.
   EXPECT_CALL(autofill_client(),
-              UpdateAutofillSuggestions(testing::SizeIs(1), _, _, _));
+              UpdateAutofillSuggestions(
+                  ElementsAre(Field(&Suggestion::type,
+                                    SuggestionType::kAtMemorySearchResult)),
+                  _, _, _));
 
   received_callback.Run(std::move(search_results1));
 
@@ -1121,7 +1143,10 @@ TEST_F(AutofillExternalDelegateTest, AtMemoryPartialResponseKeepsSearching) {
   // We expect that UpdateAutofillSuggestions IS called AGAIN with the new
   // results, because the previous response was only a partial success.
   EXPECT_CALL(autofill_client(),
-              UpdateAutofillSuggestions(testing::SizeIs(1), _, _, _));
+              UpdateAutofillSuggestions(
+                  ElementsAre(Field(&Suggestion::type,
+                                    SuggestionType::kAtMemorySearchResult)),
+                  _, _, _));
 
   received_callback.Run(std::move(search_results2));
 }
@@ -1129,11 +1154,7 @@ TEST_F(AutofillExternalDelegateTest, AtMemoryPartialResponseKeepsSearching) {
 // Tests that when a non-partial response (e.g., final success) is received,
 // the controller stops accepting subsequent responses for the same query.
 TEST_F(AutofillExternalDelegateTest, AtMemoryFinalResponseStopsSearching) {
-  IssueOnQuery(AutofillSuggestionTriggerSource::kAtMemoryTriggerString);
-
-  autofill_client().set_suggestion_ui_session_id(
-      AutofillClient::SuggestionUiSessionId(1));
-  external_delegate().OnSuggestionsShown({}, std::nullopt);
+  StartAtMemorySession();
 
   auto mock_service =
       std::make_unique<testing::NiceMock<MockAtMemoryQueryService>>();
@@ -1144,9 +1165,12 @@ TEST_F(AutofillExternalDelegateTest, AtMemoryFinalResponseStopsSearching) {
   EXPECT_CALL(*mock_service_ptr, Query(std::u16string_view(u"addr"), _, _, _))
       .WillOnce(testing::SaveArg<3>(&received_callback));
 
-  // Trigger the search, which clears suggestions.
+  // Trigger the search, which shows the fetching suggestion.
   EXPECT_CALL(autofill_client(),
-              UpdateAutofillSuggestions(testing::IsEmpty(), _, _, _));
+              UpdateAutofillSuggestions(
+                  ElementsAre(Field(&Suggestion::type,
+                                    SuggestionType::kAtMemoryFetching)),
+                  _, _, _));
   external_delegate().OnSearchSubmitted(u"addr");
 
   // Simulate first result arriving with kFinalResponseSuccess.
@@ -1158,7 +1182,10 @@ TEST_F(AutofillExternalDelegateTest, AtMemoryFinalResponseStopsSearching) {
 
   // We expect that UpdateAutofillSuggestions IS called with these results.
   EXPECT_CALL(autofill_client(),
-              UpdateAutofillSuggestions(testing::SizeIs(1), _, _, _));
+              UpdateAutofillSuggestions(
+                  ElementsAre(Field(&Suggestion::type,
+                                    SuggestionType::kAtMemorySearchResult)),
+                  _, _, _));
 
   received_callback.Run(std::move(search_results1));
 
@@ -1183,11 +1210,7 @@ TEST_F(AutofillExternalDelegateTest, AtMemoryFinalResponseStopsSearching) {
 // previous queries are ignored.
 TEST_F(AutofillExternalDelegateTest,
        AtMemoryLateResponseIgnoredIfFilterCleared) {
-  IssueOnQuery(AutofillSuggestionTriggerSource::kAtMemoryTriggerString);
-
-  autofill_client().set_suggestion_ui_session_id(
-      AutofillClient::SuggestionUiSessionId(1));
-  external_delegate().OnSuggestionsShown({}, std::nullopt);
+  StartAtMemorySession();
 
   auto mock_service =
       std::make_unique<testing::NiceMock<MockAtMemoryQueryService>>();
@@ -1199,7 +1222,10 @@ TEST_F(AutofillExternalDelegateTest,
       .WillOnce(testing::SaveArg<3>(&received_callback));
 
   EXPECT_CALL(autofill_client(),
-              UpdateAutofillSuggestions(testing::IsEmpty(), _, _, _));
+              UpdateAutofillSuggestions(
+                  ElementsAre(Field(&Suggestion::type,
+                                    SuggestionType::kAtMemoryFetching)),
+                  _, _, _));
   external_delegate().OnSearchSubmitted(u"addr");
 
   // Now user clears the filter.
@@ -1223,11 +1249,7 @@ TEST_F(AutofillExternalDelegateTest,
 // Tests that results from a stale query (interrupted by a new query) are
 // ignored and do not update the suggestions.
 TEST_F(AutofillExternalDelegateTest, AtMemoryStaleResponseIgnored) {
-  IssueOnQuery(AutofillSuggestionTriggerSource::kAtMemoryTriggerString);
-
-  autofill_client().set_suggestion_ui_session_id(
-      AutofillClient::SuggestionUiSessionId(1));
-  external_delegate().OnSuggestionsShown({}, std::nullopt);
+  StartAtMemorySession();
 
   auto mock_service =
       std::make_unique<testing::NiceMock<MockAtMemoryQueryService>>();
@@ -1239,7 +1261,10 @@ TEST_F(AutofillExternalDelegateTest, AtMemoryStaleResponseIgnored) {
       .WillOnce(testing::SaveArg<3>(&received_callback1));
 
   EXPECT_CALL(autofill_client(),
-              UpdateAutofillSuggestions(testing::IsEmpty(), _, _, _));
+              UpdateAutofillSuggestions(
+                  ElementsAre(Field(&Suggestion::type,
+                                    SuggestionType::kAtMemoryFetching)),
+                  _, _, _));
   external_delegate().OnSearchSubmitted(u"addr1");
 
   // Trigger second search before first one completes.
@@ -1248,7 +1273,10 @@ TEST_F(AutofillExternalDelegateTest, AtMemoryStaleResponseIgnored) {
       .WillOnce(testing::SaveArg<3>(&received_callback2));
 
   EXPECT_CALL(autofill_client(),
-              UpdateAutofillSuggestions(testing::IsEmpty(), _, _, _));
+              UpdateAutofillSuggestions(
+                  ElementsAre(Field(&Suggestion::type,
+                                    SuggestionType::kAtMemoryFetching)),
+                  _, _, _));
 
   external_delegate().OnSearchSubmitted(u"addr2");
 
@@ -1276,7 +1304,10 @@ TEST_F(AutofillExternalDelegateTest, AtMemoryStaleResponseIgnored) {
                                       std::move(entries2));
 
   EXPECT_CALL(autofill_client(),
-              UpdateAutofillSuggestions(testing::SizeIs(1), _, _, _));
+              UpdateAutofillSuggestions(
+                  ElementsAre(Field(&Suggestion::type,
+                                    SuggestionType::kAtMemorySearchResult)),
+                  _, _, _));
   received_callback2.Run(std::move(search_results2));
 }
 
@@ -1363,8 +1394,9 @@ TEST_F(AutofillExternalDelegateTest, AtMemoryRemoteQuery_NoData) {
                 testing::Field(&Suggestion::type,
                                SuggestionType::kAtMemorySearchResult),
                 testing::Field(&Suggestion::icon, Suggestion::Icon::kSadTab),
-                testing::Field(&Suggestion::acceptability,
-                               Suggestion::Acceptability::kUnacceptable))));
+                testing::Field(
+                    &Suggestion::acceptability,
+                    Suggestion::Acceptability::kSelectableButUnacceptable))));
       });
 
   external_delegate().OnSearchSubmitted(u"shoe size");
@@ -1392,9 +1424,9 @@ TEST_F(AutofillExternalDelegateTest, AtMemoryRemoteQuery_NoConnection) {
                           Suggestion::Text(l10n_util::GetStringUTF16(
                               IDS_AUTOFILL_AT_MEMORY_NO_CONNECTION))))),
                 Field(&Suggestion::icon, Suggestion::Icon::kSadTab),
-                Field(&Suggestion::acceptability,
-                      Suggestion::Acceptability::
-                          kUnacceptableWithDeactivatedStyle))));
+                Field(
+                    &Suggestion::acceptability,
+                    Suggestion::Acceptability::kUnselectableAndUnacceptable))));
       });
 
   external_delegate().OnSearchSubmitted(u"shoe size");
@@ -1431,7 +1463,7 @@ TEST_P(AutofillExternalDelegateAtMemoryGenericErrorTest,
                 Field(&Suggestion::type, SuggestionType::kAtMemoryGenericError),
                 Field(&Suggestion::icon, Suggestion::Icon::kSadTab),
                 Field(&Suggestion::acceptability,
-                      Suggestion::Acceptability::kUnacceptable))));
+                      Suggestion::Acceptability::kSelectableButUnacceptable))));
       });
 
   external_delegate().OnSearchSubmitted(u"shoe size");
@@ -2719,7 +2751,7 @@ TEST_F(AutofillExternalDelegateTest, AutofillAiReauthFlow_ReauthAccepted) {
         Field(&Suggestion::is_loading, Suggestion::IsLoading(true));
     auto is_deactivated =
         AllOf(Field(&Suggestion::acceptability,
-                    Suggestion::Acceptability::kUnacceptable),
+                    Suggestion::Acceptability::kSelectableButUnacceptable),
               Field(&Suggestion::is_loading, Suggestion::IsLoading(false)));
 
     EXPECT_CALL(
@@ -3271,8 +3303,9 @@ TEST_F(AutofillExternalDelegateWithAmbientAutofillTest,
       .Times(0);
 
   auto is_loading = Field(&Suggestion::is_loading, Suggestion::IsLoading(true));
-  auto is_unacceptable = Field(&Suggestion::acceptability,
-                               Suggestion::Acceptability::kUnacceptable);
+  auto is_unacceptable =
+      Field(&Suggestion::acceptability,
+            Suggestion::Acceptability::kSelectableButUnacceptable);
   EXPECT_CALL(autofill_client(),
               UpdateAutofillSuggestions(
                   ElementsAre(AllOf(is_loading, is_unacceptable)),

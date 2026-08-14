@@ -211,7 +211,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="API.StorageAccessHeader.StorageAccessStatusOutcome"
-    enum="StorageAccessStatusOutcome" expires_after="2026-11-22">
+    enum="StorageAccessStatusOutcome" expires_after="2027-01-24">
   <owner>sledoux@chromium.org</owner>
   <owner>cfredric@chromium.org</owner>
   <summary>
@@ -1032,7 +1032,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="LocalStorage.DatabaseOnDiskSizeKB{DomStorageSqliteRolloutStage}"
-    units="KB" expires_after="2026-11-22">
+    units="KB" expires_after="2027-01-24">
   <owner>fergal@chromium.org</owner>
   <owner>rahsin@microsoft.com</owner>
   <owner>chrome-owp-storage@google.com</owner>

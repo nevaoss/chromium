@@ -44,7 +44,6 @@ SuggestionSection GetSuggestionSection(SuggestionType type) {
     case SuggestionType::kAllLoyaltyCardsEntry:
     case SuggestionType::kAllSavedPasswordsEntry:
     case SuggestionType::kAtMemoryAiDisclosure:
-    case SuggestionType::kAtMemorySourceAttribution:
     case SuggestionType::kAutocompleteAtMemoryButton:
     case SuggestionType::kBnplFootnote:
     case SuggestionType::kFreeformFooter:
@@ -70,10 +69,12 @@ SuggestionSection GetSuggestionSection(SuggestionType type) {
     case SuggestionType::kAddressEntryOnTyping:
     case SuggestionType::kAddressFieldByFieldFilling:
     case SuggestionType::kAtMemoryGenericError:
+    case SuggestionType::kAtMemoryFetching:
     case SuggestionType::kAtMemoryInactivityNudge:
     case SuggestionType::kAtMemoryNoConnection:
     case SuggestionType::kAtMemorySearchAffordance:
     case SuggestionType::kAtMemorySearchResult:
+    case SuggestionType::kAtMemorySourceAttribution:
     case SuggestionType::kAutocompleteEntry:
     case SuggestionType::kAutofillAiOtherOrders:
     case SuggestionType::kAutofillAiOtherShipments:
@@ -153,6 +154,10 @@ bool IsStandaloneSuggestionType(SuggestionType type) {
       return false;
   }
   NOTREACHED();
+}
+
+bool ShouldApplyDeactivatedStyle(const Suggestion& suggestion) {
+  return !suggestion.IsSelectable();
 }
 
 content::RenderFrameHost* GetRenderFrameHost_DoNotUse(

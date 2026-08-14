@@ -475,7 +475,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="CastStreaming.Sender.Audio.NegotiatedCodec" enum="AudioCodec"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>jophba@chromium.org</owner>
   <owner>openscreen-eng@google.com</owner>
   <summary>
@@ -484,7 +484,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="CastStreaming.Sender.Video.Bitrate" units="kbps"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>jophba@chromium.org</owner>
   <owner>openscreen-eng@google.com</owner>
   <summary>
@@ -494,7 +494,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="CastStreaming.Sender.Video.EncoderType"
-    enum="CastStreamingVideoEncoderType" expires_after="2026-11-22">
+    enum="CastStreamingVideoEncoderType" expires_after="2027-01-24">
   <owner>jophba@chromium.org</owner>
   <owner>openscreen-eng@google.com</owner>
   <summary>
@@ -506,7 +506,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="CastStreaming.Sender.Video.NegotiatedCodec" enum="VideoCodec"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>jophba@chromium.org</owner>
   <owner>openscreen-eng@google.com</owner>
   <summary>
@@ -841,6 +841,21 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Media.Audio.Android.AAudio.InputTimestampDiscontinuitySizeV2"
+    units="ms" expires_after="2027-01-10">
+  <owner>tguilbert@chromium.org</owner>
+  <owner>media-dev-uma@chromium.org</owner>
+  <summary>
+    The size (magnitude of deviation from expected callback interval) of a
+    timestamp discontinuity for AAudio input streams. Logged whenever a
+    discontinuity is detected (i.e. the actual interval differs from the
+    expected interval by more than 10% of the callback duration). This V2
+    version tracks timestamps from the start of captured audio buffers (the
+    oldest sample, as expected by the media pipeline) rather than the most
+    recent sample, fixing errors caused by variable-sized callbacks.
+  </summary>
+</histogram>
+
 <histogram name="Media.Audio.Android.AAudio.TimestampDiscontinuitiesPer10s"
     units="discontinuities" expires_after="2027-01-03">
   <owner>tguilbert@chromium.org</owner>
@@ -851,6 +866,22 @@ chromium-metrics-reviews@google.com.
     differs from the expected timestamp by more than 10% of the callback
     duration. Logged periodically every 10 seconds while the stream is running.
     Streams shorter than 10 seconds are ignored.
+  </summary>
+</histogram>
+
+<histogram name="Media.Audio.Android.AAudio.TimestampDiscontinuitiesPer10sV2"
+    units="discontinuities" expires_after="2027-01-03">
+  <owner>tguilbert@chromium.org</owner>
+  <owner>media-dev-uma@chromium.org</owner>
+  <summary>
+    The number of discontinuities in OnData() timestamps per 10 second interval
+    for AAudio input streams. A discontinuity is counted if the timestamp
+    differs from the expected timestamp by more than 10% of the callback
+    duration. Logged periodically every 10 seconds while the stream is running.
+    Streams shorter than 10 seconds are ignored. This V2 version tracks
+    timestamps from the start of captured audio buffers (the oldest sample, as
+    expected by the media pipeline) rather than the most recent sample, fixing
+    errors caused by variable-sized callbacks.
   </summary>
 </histogram>
 
@@ -2208,7 +2239,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Media.Audio.Render.OutputDeviceAuthorizationTime" units="ms"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>olka@chromium.org</owner>
   <owner>henrika@chromium.org</owner>
   <owner>webrtc-audio-uma@google.com</owner>
@@ -5305,7 +5336,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Media.GPU.OutputFormatHardwareGmb" enum="OutputFormat"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>hitawala@chromium.org</owner>
   <owner>vasilyt@chromium.org</owner>
   <owner>shared-image-team@google.com</owner>
@@ -5317,7 +5348,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Media.GPU.OutputFormatSoftwareGmb" enum="OutputFormat"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>hitawala@chromium.org</owner>
   <owner>vasilyt@chromium.org</owner>
   <owner>shared-image-team@google.com</owner>

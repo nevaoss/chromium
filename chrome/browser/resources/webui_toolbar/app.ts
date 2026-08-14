@@ -8,6 +8,7 @@ import './location_bar.js';
 import './split_tabs_button.js';
 import './home_button.js';
 import './battery_saver_button.js';
+import './performance_intervention_button.js';
 import './pinned_toolbar_actions.js';
 import './extensions.js';
 import './app_menu_button.js';
@@ -70,6 +71,10 @@ import type {PinnedToolbarActionsElement} from './pinned_toolbar_actions.js';
 import {PointerProxyImpl} from './pointer_proxy.js';
 import type {PointerProxy} from './pointer_proxy.js';
 import {ReadonlyOmniboxElement} from './readonly_omnibox.js';
+import {AnimationTracker, ToolbarActionContainerMixin} from './toolbar_action_container_mixin.js';
+import type {KeyedActionState, ToolbarActionContainerMixinInterface} from './toolbar_action_container_mixin.js';
+import {ToolbarActionMixin} from './toolbar_action_mixin.js';
+import type {ToolbarActionMixinInterface} from './toolbar_action_mixin.js';
 import {getClickSourceType, getContextMenuSourceType, PressHandler} from './toolbar_button.js';
 import {ToolbarChipButtonElement} from './toolbar_chip_button.js';
 import {CrLazyIconset} from './cr_lazy_iconset.js';
@@ -79,6 +84,7 @@ import {getTrustedHTML} from '//resources/js/static_types.js';
 
 // TODO(crbug.com/535392412): do not export these from app.ts, find a better place for them instead.
 export {
+  AnimationTracker,
   AppMenuButtonElement,
   AppMenuIconType,
   AppMenuSeverity,
@@ -117,11 +123,14 @@ export {
   PressHandler,
   ReadonlyOmniboxElement,
   resetInitialStateForTesting,
+  ToolbarActionContainerMixin,
+  ToolbarActionMixin,
   ToolbarChipButtonElement,
   TrackedElementManager,
 };
 export type {
   IconFromTableElement,
+  KeyedActionState,
   LocationBarState,
   OmniboxAction,
   PageActionState,
@@ -131,6 +140,8 @@ export type {
   PinnedToolbarActionElement,
   PinnedToolbarActionsElement,
   PointerProxy,
+  ToolbarActionContainerMixinInterface,
+  ToolbarActionMixinInterface,
   ToolbarFlatStateSchema,
 };
 // clang-format on
@@ -145,6 +156,10 @@ const TRACKED_ELEMENTS: Array<{selector: string, id: string}> = [
   {selector: '#app-menu', id: 'kToolbarAppMenuButtonElementId'},
   {selector: '#avatar', id: 'kToolbarAvatarButtonElementId'},
   {selector: '#battery-saver', id: 'kToolbarBatterySaverButtonElementId'},
+  {
+    selector: '#performance-intervention',
+    id: 'kToolbarPerformanceInterventionButtonElementId',
+  },
 ];
 
 const AppElementBase = HelpBubbleMixinLit(CrLitElement);
@@ -276,6 +291,7 @@ export class ToolbarAppElement extends AppElementBase {
       isPinnedToolbarActionsEnabled_: {type: Boolean},
       isExtensionsContainerEnabled_: {type: Boolean},
       isAvatarButtonEnabled_: {type: Boolean},
+      isPerformanceInterventionButtonEnabled_: {type: Boolean},
       isInitialized_: {type: Boolean},
       isInitializedSyncForTesting_: {type: Boolean},
       initialSyncBootSuccess_: {type: Boolean},
@@ -302,6 +318,8 @@ export class ToolbarAppElement extends AppElementBase {
       loadTimeData.getBoolean('enableExtensionsContainer');
   protected accessor isAvatarButtonEnabled_: boolean =
       loadTimeData.getBoolean('enableAvatarButton');
+  protected accessor isPerformanceInterventionButtonEnabled_: boolean =
+      loadTimeData.getBoolean('enablePerformanceInterventionButton');
   /**
    * Tracks whether the element has received its first navigation state
    * update from the browser and completed its initial visual render.
@@ -352,6 +370,10 @@ export class ToolbarAppElement extends AppElementBase {
           getTypedBoolean(ToolbarStateKey.HOME_BUTTON_SHOULD_BE_SHOWN),
       isContextMenuVisible: false,
     },
+    performanceInterventionControlState: {
+      shouldBeShown: false,
+      isActive: true,
+    },
     appMenuControlState: {
       iconType: AppMenuIconType.kNone,
       severity: AppMenuSeverity.kNone,
@@ -380,6 +402,7 @@ export class ToolbarAppElement extends AppElementBase {
       locationBarFlags: {
         userInputInProgress: false,
         popupOpen: false,
+        forceAimButtonFocusRing: false,
       },
       selectedKeyword: null,
       contentSettingImageStates: [],
@@ -549,6 +572,7 @@ export class ToolbarAppElement extends AppElementBase {
       '#extensions',
       '#pinnedToolbarActions',
       '#battery-saver',
+      '#performance-intervention',
       '#avatar',
       '#app-menu',
     ];

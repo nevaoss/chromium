@@ -312,8 +312,11 @@ public class StatusMediator
         // origins then.
         if (isPageInfoMovedToAppMenu()) return;
 
+        if (mShowStatusIconForSecureOrigins == showStatusIconForSecureOrigins) return;
         mShowStatusIconForSecureOrigins = showStatusIconForSecureOrigins;
-        updateStatusViewVisibility();
+        // Call updateLocationBarIcon() so STATUS_ICON_RESOURCE is cleared from the PropertyModel,
+        // allowing SHOW_STATUS_VIEW to become View.GONE and preventing an invisible touch target.
+        updateLocationBarIcon(IconTransitionType.CROSSFADE);
     }
 
     /** Specify minimum width of the separator field. */
@@ -400,6 +403,9 @@ public class StatusMediator
                     .getAutocompleteInput()
                     .getPreviewMatchUrlSupplier()
                     .addSyncObserver(mOnPreviewMatchUrlChanged);
+
+            onPreviewMatchUrlChanged(
+                    mInputSessionState.getAutocompleteInput().getPreviewMatchUrl());
         }
     }
 
@@ -1072,8 +1078,7 @@ public class StatusMediator
 
     private boolean isUrlBarTextSearch() {
         return (mInputSessionState == null
-                || mInputSessionState.getAutocompleteInput().getPreviewMatchUrlSupplier().get()
-                        == null);
+                || mInputSessionState.getAutocompleteInput().getPreviewMatchUrl() == null);
     }
 
     private boolean isPageInfoMovedToAppMenu() {

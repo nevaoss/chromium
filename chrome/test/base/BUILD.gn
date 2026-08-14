@@ -9,6 +9,100 @@ import("//printing/buildflags/buildflags.gni")
 import("//services/device/public/cpp/geolocation/buildflags.gni")
 import("//ui/views/features.gni")
 
+source_set("test_switches") {
+  testonly = true
+  sources = [
+    "test_switches.cc",
+    "test_switches.h",
+  ]
+}
+
+if (toolkit_views) {
+  source_set("test_theme_provider") {
+    testonly = true
+    sources = [
+      "test_theme_provider.cc",
+      "test_theme_provider.h",
+    ]
+    public_deps = [ "//ui/base" ]
+    deps = [ "//ui/gfx" ]
+  }
+}
+
+source_set("tracing") {
+  testonly = true
+  sources = [
+    "tracing.cc",
+    "tracing.h",
+  ]
+  public_deps = [ "//base" ]
+  deps = [
+    "//content/public/browser",
+    "//content/test:test_support",
+    "//services/tracing/public/mojom",
+  ]
+}
+
+source_set("web_feature_histogram_tester") {
+  testonly = true
+  sources = [
+    "web_feature_histogram_tester.cc",
+    "web_feature_histogram_tester.h",
+  ]
+  public_deps = [
+    "//base",
+    "//base/test:test_support",
+    "//third_party/blink/public/mojom:web_feature_mojo_bindings",
+  ]
+  deps = [
+    "//components/metrics:content",
+    "//content/test:test_support",
+  ]
+}
+
+source_set("web_ui_test_data_source") {
+  testonly = true
+  sources = [
+    "web_ui_test_data_source.cc",
+    "web_ui_test_data_source.h",
+  ]
+  public_deps = [
+    "//base",
+    "//content/public/browser",
+  ]
+  deps = [
+    "//chrome/common",
+    "//chrome/test/data/webui:resources",
+    "//content/public/common",
+    "//services/network/public/mojom",
+    "//ui/webui",
+    "//ui/webui/resources",
+  ]
+  if (is_chromeos) {
+    deps += [ "//ash/webui/common:trusted_types_util" ]
+  }
+}
+
+if (is_chrome_branded && (is_mac || is_win || is_linux)) {
+  source_set("scoped_channel_override") {
+    testonly = true
+    sources = [ "scoped_channel_override.h" ]
+    public_deps = [ "//build:branding_buildflags" ]
+    if (is_mac) {
+      sources += [ "scoped_channel_override_mac.cc" ]
+      deps = [ "//chrome/common" ]
+    } else if (is_win) {
+      sources += [ "scoped_channel_override_win.cc" ]
+      public_deps += [ "//chrome/install_static/test:test_support" ]
+      deps = [ "//chrome/install_static:install_static_util" ]
+    } else {
+      sources += [ "scoped_channel_override_posix.cc" ]
+      public_deps += [ "//base/test:test_support" ]
+      deps = [ "//base" ]
+    }
+  }
+}
+
 source_set("in_process_browser_test_mixin") {
   testonly = true
   sources = [

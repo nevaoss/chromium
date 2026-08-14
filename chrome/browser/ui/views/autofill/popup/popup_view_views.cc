@@ -44,9 +44,9 @@
 #include "chrome/browser/ui/views/autofill/popup/popup_at_memory_ai_disclosure_view.h"
 #include "chrome/browser/ui/views/autofill/popup/popup_base_view.h"
 #include "chrome/browser/ui/views/autofill/popup/popup_bnpl_footnote_view.h"
+#include "chrome/browser/ui/views/autofill/popup/popup_centered_text_view.h"
 #include "chrome/browser/ui/views/autofill/popup/popup_interactive_row_view.h"
 #include "chrome/browser/ui/views/autofill/popup/popup_loading_view.h"
-#include "chrome/browser/ui/views/autofill/popup/popup_no_suggestions_view.h"
 #include "chrome/browser/ui/views/autofill/popup/popup_personal_context_notice_view.h"
 #include "chrome/browser/ui/views/autofill/popup/popup_row_factory_utils.h"
 #include "chrome/browser/ui/views/autofill/popup/popup_row_view.h"
@@ -156,7 +156,7 @@ bool CanShowRootPopup(AutofillPopupController& controller) {
 // when hovering the content area. This is used for manual fallback
 // suggestions.
 bool ContentCellShouldOpenSubPopupSuggestion(const Suggestion& suggestion) {
-  return !suggestion.IsAcceptable() && !suggestion.HasDeactivatedStyle() &&
+  return !suggestion.IsAcceptable() && suggestion.IsSelectable() &&
          !suggestion.children.empty();
 }
 
@@ -350,7 +350,7 @@ void PopupViewViews::MaybeAutoSelectSuggestion(
     // Selecting first selectable row.
     // TODO(crbug.com/327931044): Remove the if condition and make the else as
     // the default as part of cleanup.
-    if (!controller_->GetSuggestionAt(0).HasDeactivatedStyle()) {
+    if (controller_->GetSuggestionAt(0).IsSelectable()) {
       SetSelectedCell(CellIndex{0u, PopupRowView::CellType::kContent},
                       PopupCellSelectionSource::kNonUserInput);
     } else {
@@ -991,7 +991,7 @@ void PopupViewViews::SetSelectedCell(
         controller_->GetSuggestionAt(cell_index->first);
 
     bool can_open_sub_popup =
-        !suppress_popup &&
+        !suppress_popup && !suggestion.is_loading &&
         (cell_index->second == PopupRowView::CellType::kControl ||
          ContentCellShouldOpenSubPopupSuggestion(suggestion));
 
@@ -1203,7 +1203,7 @@ void PopupViewViews::CreateSuggestionViews() {
   // Show the "no results" message if the controller identifies this state.
   if (search_bar_ && controller_->ShouldShowNoSuggestionsMessage()) {
     suggestions_container_->AddChildView(
-        std::make_unique<PopupNoSuggestionsView>(
+        std::make_unique<PopupCenteredTextView>(
             search_bar_config_->no_results_message));
   }
 
@@ -1240,6 +1240,12 @@ void PopupViewViews::CreateSuggestionViews() {
               body_container->AddChildView(std::make_unique<PopupLoadingView>(
                   suggestions[current_line_number]
                       .expected_number_of_suggestions.value_or(1))));
+          break;
+        }
+        case SuggestionType::kAtMemoryFetching: {
+          rows_.push_back(body_container->AddChildView(
+              std::make_unique<PopupCenteredTextView>(
+                  suggestions[current_line_number].main_text.value)));
           break;
         }
         case SuggestionType::kPersonalContextNotice: {

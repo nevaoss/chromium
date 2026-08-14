@@ -1564,7 +1564,7 @@ fyi_ios_builder(
         mixins = [
             "expand-as-isolated-script",
             "has_native_resultdb_integration",
-            "mac_beta_arm64",
+            "mac_default_arm64",
             "mac_toolchain",
             "out_dir_arg",
             "xcode_26_main",
@@ -2835,7 +2835,10 @@ ci.builder(
     builder_spec = builder_config.copy_from("ci/Linux Builder"),
     gn_args = "ci/Linux Builder",
     targets = targets.bundle(
-        targets = ["webdriver_bidi_unittests"],
+        targets = [
+            "webdriver_bidi_e2e_tests",
+            "webdriver_bidi_unittests",
+        ],
         mixins = [
             "linux-jammy",
         ],

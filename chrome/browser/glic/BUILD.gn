@@ -710,11 +710,14 @@ mojom("mojo_bindings") {
 source_set("unit_tests") {
   testonly = true
   sources = [
+    "experimental_triggering/glic_experimental_triggering_coordinator_unittest.cc",
     "glic_settings_util_unittest.cc",
+    "host/auth_controller_unittest.cc",
     "host/context/glic_sharing_utils_unittest.cc",
     "host/glic_web_contents_warming_pool_unittest.cc",
     "public/glic_cui_tracker_unittest.cc",
     "public/glic_enabling_unittest.cc",
+    "service/glic_invoke_handler_unittest.cc",
     "service/glic_invoke_task_unittest.cc",
   ]
   deps = [
@@ -738,7 +741,6 @@ source_set("unit_tests") {
       "glic_metrics_provider_unittest.cc",
       "glic_metrics_unittest.cc",
       "glic_selection_observer_unittest.cc",
-      "host/auth_controller_unittest.cc",
       "host/context/glic_page_features_manager_unittest.cc",
       "host/context/glic_pin_candidate_comparator_unittest.cc",
       "host/context/glic_screenshot_capturer_unittest.cc",
@@ -943,6 +945,7 @@ source_set("browser_tests") {
     ]
     deps += [
       "//chrome/browser/glic/browser_ui",
+      "//chrome/browser/ui/omnibox",
       "//chrome/browser/ui/side_panel",
       "//chrome/browser/ui/side_panel/android",
       "//chrome/test:test_support_ui_android",

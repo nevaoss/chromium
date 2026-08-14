@@ -325,7 +325,9 @@ actions::ActionItem::ActionItemBuilder SidePanelAction(
 
 bool IsInProgressiveWebApp(BrowserWindowInterface* bwi) {
   const Browser* const browser = bwi->GetBrowserForMigrationOnly();
-  return browser && (browser->is_type_app() || browser->is_type_app_popup());
+  return browser &&
+         (browser->GetType() == BrowserWindowInterface::Type::TYPE_APP ||
+          browser->is_type_app_popup());
 }
 
 BrowserWindowInterface* FindNormalBrowser(const Profile* profile) {
@@ -398,8 +400,23 @@ void ExecOpenLink(BrowserWindowInterface* bwi,
 
 }  // namespace
 
+DEFINE_USER_DATA(BrowserActions);
+
+// static
+BrowserActions* BrowserActions::From(BrowserWindowInterface* browser) {
+  return Get(browser->GetUnownedUserDataHost());
+}
+
+// static
+const BrowserActions* BrowserActions::From(
+    const BrowserWindowInterface* browser) {
+  return Get(browser->GetUnownedUserDataHost());
+}
+
 BrowserActions::BrowserActions(BrowserWindowInterface* bwi)
-    : bwi_(CHECK_DEREF(bwi)), profile_(CHECK_DEREF(bwi->GetProfile())) {}
+    : bwi_(CHECK_DEREF(bwi)),
+      profile_(CHECK_DEREF(bwi->GetProfile())),
+      scoped_unowned_user_data_(bwi->GetUnownedUserDataHost(), *this) {}
 
 BrowserActions::~BrowserActions() {
   browser_action_prefs_listener_.reset();
@@ -595,6 +612,39 @@ void BrowserActions::InitializeSidePanelActions() {
               },
               bwi))
           .SetActionId(kActionShowReadingModeKeyboard)
+          .SetText(l10n_util::GetStringUTF16(IDS_READING_MODE_TITLE))
+          .SetTooltipText(l10n_util::GetStringFUTF16(IDS_READING_MODE_TOOLTIP,
+                                                     reading_mode_shortcut))
+          .SetImage(ui::ImageModel::FromVectorIcon(
+              features::IsRoundedIconsEnabled() ? kMenuBookIcon
+                                                : kMenuBookChromeRefreshOldIcon,
+              ui::kColorIcon))
+          .Build());
+
+  root_action_item_->AddChild(
+      actions::ActionItem::Builder(
+          base::BindRepeating(
+              [](BrowserWindowInterface* bwi, actions::ActionItem* item,
+                 actions::ActionInvocationContext context) {
+                std::underlying_type_t<SidePanelOpenTrigger>
+                    side_panel_trigger =
+                        context.GetProperty(kSidePanelOpenTriggerKey);
+                ReadAnythingOpenTrigger open_trigger =
+                    ReadAnythingOpenTrigger::kAppMenu;
+                if (side_panel_trigger != -1) {
+                  std::optional<ReadAnythingOpenTrigger> mapped_trigger =
+                      read_anything::SidePanelToReadAnythingOpenTrigger(
+                          static_cast<SidePanelOpenTrigger>(
+                              side_panel_trigger));
+                  if (mapped_trigger.has_value()) {
+                    open_trigger = mapped_trigger.value();
+                  }
+                }
+                read_anything::ReadAnythingEntryPointController::ShowUI(
+                    bwi, open_trigger);
+              },
+              bwi))
+          .SetActionId(kActionShowReadingModeSidePanel)
           .SetText(l10n_util::GetStringUTF16(IDS_READING_MODE_TITLE))
           .SetTooltipText(l10n_util::GetStringFUTF16(IDS_READING_MODE_TOOLTIP,
                                                      reading_mode_shortcut))
@@ -862,11 +912,12 @@ void BrowserActions::InitializePageActionIconActions() {
                         /*from_user_gesture=*/true);
               },
               bwi))
-          .SetActionId(kActionZoomNormal)
+          .SetActionId(kActionShowZoomBubble)
           .SetText(l10n_util::GetStringUTF16(IDS_ZOOM_NORMAL))
           .SetTooltipText(l10n_util::GetStringUTF16(IDS_TOOLTIP_ZOOM))
           .SetImage(ui::ImageModel::FromVectorIcon(
               features::IsRoundedIconsEnabled() ? kZoomInIcon : kZoomInOldIcon))
+          .SetEnabled(true)
           .Build());
 
   root_action_item_->AddChild(
@@ -1113,10 +1164,19 @@ void BrowserActions::InitializeChromeMenuActions() {
                       controller->GetCollapseState() ==
                       tabs::VerticalTabStripCollapseState::kExpanded;
                   controller->RequestCollapse(collapse);
-                  base::RecordAction(base::UserMetricsAction(
-                      collapse
-                          ? "VerticalTabs_TabStrip_ButtonToggleCollapsed"
-                          : "VerticalTabs_TabStrip_ButtonToggleUncollapsed"));
+                  if (context.GetProperty(chrome::kActionInvocationSourceKey) ==
+                      chrome::ActionInvocationSource::kKeyboardShortcut) {
+                    base::RecordAction(base::UserMetricsAction(
+                        collapse ? "VerticalTabs_TabStrip_"
+                                   "KeyboardShortcutToggleCollapsed"
+                                 : "VerticalTabs_TabStrip_"
+                                   "KeyboardShortcutToggleUncollapsed"));
+                  } else {
+                    base::RecordAction(base::UserMetricsAction(
+                        collapse
+                            ? "VerticalTabs_TabStrip_ButtonToggleCollapsed"
+                            : "VerticalTabs_TabStrip_ButtonToggleUncollapsed"));
+                  }
                 },
                 bwi))
             .SetActionId(kActionToggleCollapseVertical)
@@ -2881,6 +2941,44 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
           base::BindRepeating(
               [](BrowserWindowInterface* bwi, actions::ActionItem* item,
                  actions::ActionInvocationContext context) {
+                if (chrome::IsCtrlTabMruEnabled(bwi)) {
+                  base::RecordAction(
+                      base::UserMetricsAction("Accel_CycleToNextTab"));
+                  chrome::CycleToMruTab(bwi);
+                } else {
+                  base::RecordAction(
+                      base::UserMetricsAction("Accel_SelectNextTab"));
+                  chrome::SelectNextTab(bwi);
+                }
+              },
+              bwi))
+          .SetActionId(kActionCycleToNextTab)
+          .Build());
+
+  root_action_item_->AddChild(
+      actions::ActionItem::Builder(
+          base::BindRepeating(
+              [](BrowserWindowInterface* bwi, actions::ActionItem* item,
+                 actions::ActionInvocationContext context) {
+                if (chrome::IsCtrlTabMruEnabled(bwi)) {
+                  base::RecordAction(
+                      base::UserMetricsAction("Accel_CycleToPrevTab"));
+                  chrome::CycleToMruTab(bwi);
+                } else {
+                  base::RecordAction(
+                      base::UserMetricsAction("Accel_SelectPreviousTab"));
+                  chrome::SelectPreviousTab(bwi);
+                }
+              },
+              bwi))
+          .SetActionId(kActionCycleToPrevTab)
+          .Build());
+
+  root_action_item_->AddChild(
+      actions::ActionItem::Builder(
+          base::BindRepeating(
+              [](BrowserWindowInterface* bwi, actions::ActionItem* item,
+                 actions::ActionInvocationContext context) {
                 base::RecordAction(
                     base::UserMetricsAction("Accel_SelectNumberedTab"));
                 chrome::SelectNumberedTab(bwi, 0);
@@ -3434,6 +3532,21 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
               },
               bwi))
           .SetActionId(kActionZoomMinus)
+          .Build());
+
+  root_action_item_->AddChild(
+      actions::ActionItem::Builder(
+          base::BindRepeating(
+              [](BrowserWindowInterface* bwi, actions::ActionItem* item,
+                 actions::ActionInvocationContext context) {
+                chrome::Zoom(bwi, content::PAGE_ZOOM_RESET);
+              },
+              bwi))
+          .SetActionId(kActionZoomNormal)
+          .SetText(l10n_util::GetStringUTF16(IDS_ZOOM_NORMAL))
+          .SetTooltipText(l10n_util::GetStringUTF16(IDS_TOOLTIP_ZOOM))
+          .SetImage(ui::ImageModel::FromVectorIcon(
+              features::IsRoundedIconsEnabled() ? kZoomInIcon : kZoomInOldIcon))
           .Build());
 
   root_action_item_->AddChild(

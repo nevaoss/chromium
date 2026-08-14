@@ -556,6 +556,10 @@ public final class ProductionSupportedFlagList {
                 UiEventsFeatures.COMPENSATE_GESTURE_DETECTOR_TIMEOUTS,
                 "Componesate for event processing delay for calculating gesture timeouts."),
         Flag.baseFeature("ReduceCpuUtilization2"),
+        Flag.baseFeature(
+                "ReduceMojoURLLoaderFactoryCloning",
+                "Minimizes Mojo URLLoaderFactory cloning overhead during navigation and worker"
+                        + " startup."),
         Flag.baseFeature("NetworkServiceCookiesHighPriorityTaskRunner"),
         Flag.baseFeature("IncreaseCoookieAccesCacheSize"),
         Flag.baseFeature("AvoidScheduleWorkDuringNativeEventProcessing"),
@@ -1432,6 +1436,7 @@ public final class ProductionSupportedFlagList {
                 PaymentFeatureList.PAYMENT_HANDLER_DIALOG_USE_INITIATOR_IN_URL_LOAD,
                 "When enabled, the merchant site is set as the initiator for the web payment"
                         + " handler modal dialog popup."),
+        Flag.baseFeature("EnableUdpGro", "Utilizes GRO over recvmmsg for readMultiple."),
         // Add new commandline switches and features above. The final entry should have a
         // trailing comma for cleaner diffs.
     };

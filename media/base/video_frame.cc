@@ -307,7 +307,28 @@ static std::optional<VideoFrameLayout> GetDefaultLayout(
       planes = std::vector<ColorPlaneLayout>{
           ColorPlaneLayout(coded_size.width(), 0, coded_size.GetArea()),
           ColorPlaneLayout(uv_stride, coded_size.GetArea(), uv_size),
-          ColorPlaneLayout(coded_size.width(), 0, coded_size.GetArea()),
+          ColorPlaneLayout(coded_size.width(), coded_size.GetArea() + uv_size,
+                           coded_size.GetArea()),
+      };
+      break;
+    }
+
+    case PIXEL_FORMAT_P010LE:
+    case PIXEL_FORMAT_P210LE:
+    case PIXEL_FORMAT_P410LE: {
+      int y_stride = coded_size.width() * 2;
+      int y_size = y_stride * coded_size.height();
+      int uv_width = (format == PIXEL_FORMAT_P410LE)
+                         ? coded_size.width()
+                         : (coded_size.width() + 1) / 2;
+      int uv_height = (format == PIXEL_FORMAT_P010LE)
+                          ? (coded_size.height() + 1) / 2
+                          : coded_size.height();
+      int uv_stride = uv_width * 4;
+      int uv_size = uv_stride * uv_height;
+      planes = std::vector<ColorPlaneLayout>{
+          ColorPlaneLayout(y_stride, 0, y_size),
+          ColorPlaneLayout(uv_stride, y_size, uv_size),
       };
       break;
     }

@@ -884,18 +884,49 @@ void ReadAnythingUntrustedPageHandler::OnLinksEnabledChanged(bool enabled) {
       prefs::kAccessibilityReadAnythingLinksEnabled, enabled);
 }
 
+std::string ReadAnythingUntrustedPageHandler::GetDisplayLanguage() {
+  std::string source_lang = current_language_code_;
+
+  content::WebContents* main_contents = GetWebContents();
+  if (!main_contents) {
+    return source_lang;
+  }
+
+  ChromeTranslateClient* main_client =
+      ChromeTranslateClient::FromWebContents(main_contents);
+  if (!main_client) {
+    return source_lang;
+  }
+
+  const translate::LanguageState& main_language_state =
+      main_client->GetLanguageState();
+
+  // Use the main page's translated language if it has already been translated.
+  if (main_language_state.IsPageTranslated()) {
+    return main_language_state.current_language();
+  }
+
+  // Fall back to the main page's source language if ours is unknown.
+  if (source_lang.empty() || source_lang == "und" || source_lang == "und-und") {
+    return main_language_state.source_language();
+  }
+
+  return source_lang;
+}
+
 void ReadAnythingUntrustedPageHandler::OnTranslationRequested() {
   if (!features::IsReadAnythingTranslateEntryPointEnabled()) {
     mojo::ReportBadMessage("Translate entry point not enabled");
     return;
   }
-  content::WebContents* contents = GetWebContents();
-  if (!contents) {
+  content::WebContents* side_panel_contents = web_ui_->GetWebContents();
+  if (!side_panel_contents) {
     return;
   }
 
+  ChromeTranslateClient::CreateForWebContents(side_panel_contents);
   ChromeTranslateClient* translate_client =
-      ChromeTranslateClient::FromWebContents(contents);
+      ChromeTranslateClient::FromWebContents(side_panel_contents);
   if (!translate_client) {
     return;
   }
@@ -903,7 +934,34 @@ void ReadAnythingUntrustedPageHandler::OnTranslationRequested() {
   translate::TranslateManager* translate_manager =
       translate_client->GetTranslateManager();
   if (translate_manager) {
-    translate_manager->ShowTranslateUI(/*auto_translate=*/true,
+    // Sync the article's true source language to the side panel
+    // TranslateManager (using the current language if the main page was
+    // translated) and preserve any existing target language before opening the
+    // Translate bubble.
+    std::optional<std::string> target_lang;
+    translate::LanguageState* language_state =
+        translate_manager->GetLanguageState();
+
+    if (language_state) {
+      if (language_state->IsPageTranslated()) {
+        target_lang = language_state->current_language();
+      }
+
+      std::string source_lang = GetDisplayLanguage();
+
+      if (target_lang == source_lang) {
+        target_lang = std::nullopt;
+      }
+      if (!source_lang.empty() && source_lang != "und" &&
+          source_lang != "und-und") {
+        language_state->LanguageDetermined(
+            source_lang, /*page_level_translation_criteria_met=*/true);
+      }
+      language_state->set_translation_pending(false);
+    }
+    translate_manager->ShowTranslateUI(/*source_code=*/std::nullopt,
+                                       /*target_code=*/target_lang,
+                                       /*auto_translate=*/true,
                                        /*triggered_from_menu=*/true);
   }
 }
@@ -1091,8 +1149,16 @@ void ReadAnythingUntrustedPageHandler::CloseUI() {
     return;
   }
   CHECK(read_anything_controller_);
-  DCHECK(read_anything_controller_->GetPresentationState() ==
-         ReadAnythingController::PresentationState::kInImmersiveOverlay);
+  // Because Mojo messages from the untrusted WebUI arrive asynchronously, the
+  // presentation state may have already changed away from kInImmersiveOverlay
+  // (e.g., due to tab switching or closing the overlay). Ignore stale close
+  // requests rather than DCHECK / CHECK-ing.
+  if (read_anything_controller_->GetPresentationState() !=
+      ReadAnythingController::PresentationState::kInImmersiveOverlay) {
+    VLOG(1) << "Received CloseUI request when presentation state is not "
+               "kInImmersiveOverlay";
+    return;
+  }
   read_anything_controller_->CloseImmersiveUI(
       ReadAnythingCloseReason::kClosedByUser);
 }

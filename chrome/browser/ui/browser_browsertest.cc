@@ -72,6 +72,7 @@
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_tabstrip.h"
 #include "chrome/browser/ui/browser_ui_prefs.h"
+#include "chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
@@ -432,8 +433,9 @@ class BrowserTest : public extensions::ExtensionBrowserTest {
   }
 
   void OpenURLFromTab(WebContents* source, OpenURLParams params) {
-    browser()->OpenURLFromTab(source, params,
-                              /*navigation_handle_callback=*/{});
+    BrowserWebContentsDelegate::From(browser())->OpenURLFromTab(
+        source, params,
+        /*navigation_handle_callback=*/{});
   }
 
   // Returns the app extension aptly named "App Test".
@@ -1340,7 +1342,7 @@ IN_PROC_BROWSER_TEST_F(BrowserTest, MAYBE_AppIdSwitch) {
 
   ASSERT_TRUE(launch_done.Wait());
   Browser* app_browser = browser_created_observer.Wait();
-  EXPECT_TRUE(app_browser->is_type_app());
+  EXPECT_EQ(app_browser->GetType(), BrowserWindowInterface::Type::TYPE_APP);
 
 #if BUILDFLAG(IS_WIN)
   {  // From launch_mode_recorder.cc:
@@ -1363,14 +1365,16 @@ IN_PROC_BROWSER_TEST_F(BrowserTest, MAYBE_AppIdSwitch) {
 #if defined(USE_AURA)
 IN_PROC_BROWSER_TEST_F(BrowserTest, OverscrollEnabledInRegularWindows) {
   ASSERT_TRUE(browser()->is_type_normal());
-  EXPECT_TRUE(browser()->CanOverscrollContent());
+  EXPECT_TRUE(
+      BrowserWebContentsDelegate::From(browser())->CanOverscrollContent());
 }
 
 IN_PROC_BROWSER_TEST_F(BrowserTest, OverscrollEnabledInPopups) {
   Browser* popup_browser = Browser::Create(Browser::CreateParams(
       Browser::TYPE_POPUP, browser()->GetProfile(), true));
-  ASSERT_TRUE(popup_browser->is_type_popup());
-  EXPECT_TRUE(popup_browser->CanOverscrollContent());
+  ASSERT_EQ(popup_browser->GetType(), BrowserWindowInterface::Type::TYPE_POPUP);
+  EXPECT_TRUE(
+      BrowserWebContentsDelegate::From(popup_browser)->CanOverscrollContent());
 }
 
 IN_PROC_BROWSER_TEST_F(BrowserTest, OverscrollDisabledInDevToolsWindows) {
@@ -1379,8 +1383,8 @@ IN_PROC_BROWSER_TEST_F(BrowserTest, OverscrollDisabledInDevToolsWindows) {
       GlobalBrowserCollection::GetInstance()->GetLastActiveBrowser();
   ASSERT_EQ(dev_tools_browser->GetType(),
             BrowserWindowInterface::Type::TYPE_DEVTOOLS);
-  EXPECT_FALSE(
-      dev_tools_browser->GetBrowserForMigrationOnly()->CanOverscrollContent());
+  EXPECT_FALSE(BrowserWebContentsDelegate::From(dev_tools_browser)
+                   ->CanOverscrollContent());
 }
 #endif
 
@@ -1600,7 +1604,7 @@ IN_PROC_BROWSER_TEST_F(BrowserTest, OpenAppWindowLikeNtp) {
   ASSERT_TRUE(new_browser);
   ASSERT_TRUE(new_browser != browser());
 
-  EXPECT_TRUE(new_browser->is_type_app());
+  EXPECT_EQ(new_browser->GetType(), BrowserWindowInterface::Type::TYPE_APP);
 
   // The browser's app name should include the extension's id.
   std::string app_name = new_browser->app_name_;
@@ -1666,7 +1670,8 @@ IN_PROC_BROWSER_TEST_F(BrowserTest, ForwardDisabledOnForward) {
       browser()->tab_strip_model()->GetActiveWebContents());
   chrome::GoBack(browser(), WindowOpenDisposition::CURRENT_TAB);
   back_nav_load_observer.Wait();
-  CommandUpdater* command_updater = browser()->command_controller();
+  CommandUpdater* command_updater =
+      chrome::BrowserCommandController::From(browser());
   EXPECT_TRUE(command_updater->IsCommandEnabled(IDC_FORWARD));
 
   content::LoadStopObserver forward_nav_load_observer(
@@ -1680,7 +1685,8 @@ IN_PROC_BROWSER_TEST_F(BrowserTest, ForwardDisabledOnForward) {
 
 // Makes sure certain commands are disabled when Incognito mode is forced.
 IN_PROC_BROWSER_TEST_F(BrowserTest, DisableMenuItemsWhenIncognitoIsForced) {
-  CommandUpdater* command_updater = browser()->command_controller();
+  CommandUpdater* command_updater =
+      chrome::BrowserCommandController::From(browser());
   // At the beginning, all commands are enabled.
   EXPECT_TRUE(command_updater->IsCommandEnabled(IDC_NEW_WINDOW));
   EXPECT_TRUE(command_updater->IsCommandEnabled(IDC_NEW_INCOGNITO_WINDOW));
@@ -1706,7 +1712,8 @@ IN_PROC_BROWSER_TEST_F(BrowserTest, DisableMenuItemsWhenIncognitoIsForced) {
   Browser* new_browser = Browser::Create(Browser::CreateParams(
       browser()->GetProfile()->GetPrimaryOTRProfile(/*create_if_needed=*/true),
       true));
-  CommandUpdater* new_command_updater = new_browser->command_controller();
+  CommandUpdater* new_command_updater =
+      chrome::BrowserCommandController::From(new_browser);
   // It should have Bookmarks & Settings commands disabled by default.
   EXPECT_FALSE(new_command_updater->IsCommandEnabled(IDC_NEW_WINDOW));
   EXPECT_FALSE(
@@ -1721,7 +1728,8 @@ IN_PROC_BROWSER_TEST_F(BrowserTest, DisableMenuItemsWhenIncognitoIsForced) {
 // not available.
 IN_PROC_BROWSER_TEST_F(BrowserTest,
                        NoNewIncognitoWindowWhenIncognitoIsDisabled) {
-  CommandUpdater* command_updater = browser()->command_controller();
+  CommandUpdater* command_updater =
+      chrome::BrowserCommandController::From(browser());
   // Set Incognito to DISABLED.
   IncognitoModePrefs::SetAvailability(
       browser()->GetProfile()->GetPrefs(),
@@ -1738,7 +1746,8 @@ IN_PROC_BROWSER_TEST_F(BrowserTest,
   // Create a new browser.
   Browser* new_browser =
       Browser::Create(Browser::CreateParams(browser()->GetProfile(), true));
-  CommandUpdater* new_command_updater = new_browser->command_controller();
+  CommandUpdater* new_command_updater =
+      chrome::BrowserCommandController::From(new_browser);
   EXPECT_FALSE(new_command_updater->IsCommandEnabled(IDC_NEW_INCOGNITO_WINDOW));
   EXPECT_TRUE(new_command_updater->IsCommandEnabled(IDC_NEW_WINDOW));
   EXPECT_TRUE(new_command_updater->IsCommandEnabled(IDC_SHOW_BOOKMARK_MANAGER));
@@ -1770,7 +1779,8 @@ class BrowserTestWithExtensionsDisabled : public BrowserTest {
 // circumstances even though normally they should stay enabled.
 IN_PROC_BROWSER_TEST_F(BrowserTestWithExtensionsDisabled,
                        DisableExtensionsAndSettingsWhenIncognitoIsDisabled) {
-  CommandUpdater* command_updater = browser()->command_controller();
+  CommandUpdater* command_updater =
+      chrome::BrowserCommandController::From(browser());
   // Set Incognito to DISABLED.
   IncognitoModePrefs::SetAvailability(
       browser()->GetProfile()->GetPrefs(),
@@ -1786,7 +1796,8 @@ IN_PROC_BROWSER_TEST_F(BrowserTestWithExtensionsDisabled,
   // as Extensions should be disabled.
   Browser* popup_browser = Browser::Create(Browser::CreateParams(
       Browser::TYPE_POPUP, browser()->GetProfile(), true));
-  CommandUpdater* popup_command_updater = popup_browser->command_controller();
+  CommandUpdater* popup_command_updater =
+      chrome::BrowserCommandController::From(popup_browser);
   EXPECT_FALSE(popup_command_updater->IsCommandEnabled(IDC_MANAGE_EXTENSIONS));
   EXPECT_FALSE(popup_command_updater->IsCommandEnabled(IDC_OPTIONS));
   EXPECT_TRUE(
@@ -1801,7 +1812,8 @@ IN_PROC_BROWSER_TEST_F(BrowserTest,
   // Create a popup browser.
   Browser* popup_browser = Browser::Create(Browser::CreateParams(
       Browser::TYPE_POPUP, browser()->GetProfile(), true));
-  CommandUpdater* command_updater = popup_browser->command_controller();
+  CommandUpdater* command_updater =
+      chrome::BrowserCommandController::From(popup_browser);
   // OPTIONS and IMPORT_SETTINGS are disabled for a non-normal UI.
   EXPECT_FALSE(command_updater->IsCommandEnabled(IDC_OPTIONS));
   EXPECT_FALSE(command_updater->IsCommandEnabled(IDC_IMPORT_SETTINGS));
@@ -2389,7 +2401,7 @@ IN_PROC_BROWSER_TEST_F(AppModeTest, EnableAppModeTest) {
   // Test that an application browser window loads correctly.
 
   // Verify the browser is in application mode.
-  EXPECT_TRUE(browser()->is_type_app());
+  EXPECT_EQ(browser()->GetType(), BrowserWindowInterface::Type::TYPE_APP);
 }
 
 // Confirm chrome://version contains some expected content.
@@ -3263,7 +3275,8 @@ IN_PROC_BROWSER_TEST_F(
 IN_PROC_BROWSER_TEST_F(BrowserTest, CreatePictureInPicture) {
   Browser* popup_browser = Browser::Create(Browser::CreateParams(
       Browser::TYPE_PICTURE_IN_PICTURE, browser()->GetProfile(), true));
-  ASSERT_TRUE(popup_browser->is_type_picture_in_picture());
+  ASSERT_EQ(popup_browser->GetType(),
+            BrowserWindowInterface::Type::TYPE_PICTURE_IN_PICTURE);
 }
 
 #if BUILDFLAG(IS_CHROMEOS)

@@ -69,7 +69,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PersonalContext.FetchContext.Latency.{ContextMemoryFeature}"
-    units="ms" expires_after="2026-11-15">
+    units="ms" expires_after="2027-01-24">
   <owner>qiaoli@google.com</owner>
   <owner>chrome-memory-context-eng@google.com</owner>
   <summary>
@@ -129,16 +129,6 @@ chromium-metrics-reviews@google.com.
     request completion or failure.
   </summary>
   <token key="ContextMemoryFeature" variants="ContextMemoryFeature"/>
-</histogram>
-
-<histogram name="PersonalContext.NoticeInteractions"
-    enum="PersonalContextNoticeInteractions" expires_after="2026-10-04">
-  <owner>kalinino@google.com</owner>
-  <owner>chrome-browser-privacy-team@google.com</owner>
-  <summary>
-    Records the user interaction with the Personal Context notice. Recorded when
-    the notice is shown to the user, and when the user accepts or dismisses it.
-  </summary>
 </histogram>
 
 </histograms>

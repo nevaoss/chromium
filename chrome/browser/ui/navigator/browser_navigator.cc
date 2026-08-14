@@ -85,6 +85,8 @@
 #include "chrome/browser/ash/boca/on_task/on_task_locked_controller.h"
 #include "chrome/browser/ui/ash/system_web_apps/system_web_app_ui_utils.h"
 #include "components/account_id/account_id.h"
+#include "content/public/browser/global_routing_id.h"
+#include "services/network/public/mojom/web_sandbox_flags.mojom.h"
 #endif
 
 #if defined(USE_AURA)
@@ -584,7 +586,25 @@ base::WeakPtr<content::NavigationHandle> NavigateImpl(
       !IncognitoModeForced(params->initiating_profile)) {
     // Navigation outside of the current tab or the initial popup window from a
     // captive portal signin window should be prevented.
-    params->disposition = WindowOpenDisposition::CURRENT_TAB;
+    content::RenderFrameHost* initiator_rfh = nullptr;
+    if (params->initiator_frame_token.has_value()) {
+      initiator_rfh = content::RenderFrameHost::FromFrameToken(
+          content::GlobalRenderFrameHostToken(params->initiator_process_id,
+                                              *params->initiator_frame_token));
+    }
+    // If the navigation is initiated by a subframe that is sandboxed against
+    // top-level navigation (e.g., an iframe with allow-popups but without
+    // allow-top-navigation), rewriting the disposition to CURRENT_TAB would
+    // allow the sandboxed frame to navigate the top-level captive portal
+    // window, bypassing the sandbox restriction. In that case, fall back to
+    // NEW_POPUP so that the sandbox restriction is respected while still
+    // allowing popups.
+    if (initiator_rfh && initiator_rfh->IsSandboxed(
+                             network::mojom::WebSandboxFlags::kTopNavigation)) {
+      params->disposition = WindowOpenDisposition::NEW_POPUP;
+    } else {
+      params->disposition = WindowOpenDisposition::CURRENT_TAB;
+    }
   }
 #endif
 
@@ -689,8 +709,9 @@ base::WeakPtr<content::NavigationHandle> NavigateImpl(
   if (params->disposition == WindowOpenDisposition::NEW_PICTURE_IN_PICTURE) {
     // Picture in picture windows may not be opened by other picture in
     // picture windows, or without an opener.
-    if (!params->browser || params->browser->GetBrowserForMigrationOnly()
-                                ->is_type_picture_in_picture()) {
+    if (!params->browser ||
+        params->browser->GetType() ==
+            BrowserWindowInterface::Type::TYPE_PICTURE_IN_PICTURE) {
       params->browser = nullptr;
       return nullptr;
     }
@@ -748,7 +769,8 @@ base::WeakPtr<content::NavigationHandle> NavigateImpl(
   // focusing a regular browser window and opening a tab in the background
   // of that window. Change the disposition to NEW_FOREGROUND_TAB so that
   // the new tab is focused.
-  if (source_browser && source_browser->is_type_app() &&
+  if (source_browser &&
+      source_browser->GetType() == BrowserWindowInterface::Type::TYPE_APP &&
       params->disposition == WindowOpenDisposition::NEW_BACKGROUND_TAB &&
       !(web_app::AppBrowserController::From(source_browser) &&
         web_app::AppBrowserController::From(source_browser)->has_tab_strip())) {

@@ -39,12 +39,12 @@ CSSSelectorList* CSSSelectorList::Empty() {
       MakeGarbageCollected<CSSSelectorList>(base::PassKey<CSSSelectorList>());
   new (list->first_selector_) CSSSelector();
   list->first_selector_[0].SetMatch(CSSSelector::kInvalidList);
-  DCHECK(!list->IsValid());
+  DCHECK(list->IsInvalidWithoutUnparsed());
   return list;
 }
 
 CSSSelectorList* CSSSelectorList::Copy() const {
-  if (!IsValid()) {
+  if (IsInvalidWithoutUnparsed()) {
     return CSSSelectorList::Empty();
   }
 
@@ -64,10 +64,16 @@ CSSSelectorList* CSSSelectorList::Copy() const {
 HeapVector<CSSSelector> CSSSelectorList::Copy(
     const CSSSelector* selector_list) {
   HeapVector<CSSSelector> selectors;
-  for (const CSSSelector* selector = selector_list; selector;
-       selector = selector->IsLastInSelectorList()
-                      ? nullptr
-                      : UNSAFE_BUFFERS(selector + 1)) {
+
+  const CSSSelector* selector = selector_list;
+
+  if (!selector || CSSSelectorList::IsInvalidWithoutUnparsed(*selector)) {
+    return selectors;
+  }
+
+  for (; selector; selector = selector->IsLastInSelectorList()
+                                  ? nullptr
+                                  : UNSAFE_BUFFERS(selector + 1)) {
     selectors.push_back(*selector);
   }
   return selectors;
@@ -96,10 +102,10 @@ CSSSelectorList* CSSSelectorList::AdoptSelectorVector(
 }
 
 unsigned CSSSelectorList::ComputeLength() const {
-  if (!IsValid()) {
+  if (IsInvalidWithoutUnparsed()) {
     return 0;
   }
-  const CSSSelector* current = First();
+  const CSSSelector* current = FirstIncludingUnparsedInvalid();
   while (!current->IsLastInSelectorList()) {
     UNSAFE_BUFFERS(++current);
   }
@@ -149,7 +155,7 @@ const CSSSelectorList* CSSSelectorList::Renest(StyleRule* new_parent) const {
 String CSSSelectorList::SelectorsText(const CSSSelector* first) {
   StringBuilder result;
 
-  for (const CSSSelector* s = first; s; s = Next(*s)) {
+  for (const CSSSelector* s = first; s; s = NextIncludingUnparsedInvalid(*s)) {
     if (s != first) {
       result.Append(", ");
     }
@@ -160,7 +166,7 @@ String CSSSelectorList::SelectorsText(const CSSSelector* first) {
 }
 
 void CSSSelectorList::Trace(Visitor* visitor) const {
-  if (!IsValid()) {
+  if (IsInvalidWithoutUnparsed()) {
     return;
   }
 

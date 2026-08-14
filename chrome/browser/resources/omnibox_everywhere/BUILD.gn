@@ -22,7 +22,9 @@ build_webui("build") {
     "composebox.css",
     "app.css",
     "omnibox.css",
+    "searchbox_shared_style.css",
   ]
+  ts_composite = true
   ts_deps = [
     "//third_party/lit/v3_0:build_ts",
     "//ui/webui/resources/cr_components/composebox:build_ts",

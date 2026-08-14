@@ -132,7 +132,7 @@
 #include "third_party/blink/renderer/core/page/scrolling/sync_scroll_attempt_heuristic.h"
 #include "third_party/blink/renderer/core/paint/paint_layer_scrollable_area.h"
 #include "third_party/blink/renderer/core/probe/core_probes.h"
-#include "third_party/blink/renderer/core/route_matching/route_map.h"
+#include "third_party/blink/renderer/core/route_matching/navigation_state.h"
 #include "third_party/blink/renderer/core/scheduler/scripted_idle_task_controller.h"
 #include "third_party/blink/renderer/core/scheduler/task_attribution_util.h"
 #include "third_party/blink/renderer/core/script/modulator.h"
@@ -279,13 +279,13 @@ void LocalDOMWindow::ClearForReuse() {
           document_->DidRemoveEventListeners(count);
         });
   }
-  // Reset per-document metrics bookkeeping before clearing `document_`.
+  document_ = nullptr;
+
+  // Reset per-document metrics bookkeeping.
   if (soft_navigation_heuristics_) {
     soft_navigation_heuristics_->Shutdown();
     soft_navigation_heuristics_ = nullptr;
   }
-  document_ = nullptr;
-
   WindowPerformance::ClearForWindowReuse(*this);
 }
 
@@ -526,11 +526,8 @@ bool LocalDOMWindow::AllowInlineJavascriptUrl(const DOMWrapperWorld* world,
 
   // AllowInline below will check the source's hash against CSP, which is why
   // it needs an exact script_source.
-  const int kJavascriptSchemeLength = sizeof("javascript:") - 1;
   String decoded_url = DecodeUrlEscapeSequences(
       url.GetString(), DecodeUrlMode::kUtf8OrIsomorphic);
-  String script_source =
-      decoded_url.DeprecatedSubstring(kJavascriptSchemeLength);
 
   // Check the CSP of the caller (the "source browsing context") if required,
   // as per https://html.spec.whatwg.org/C/#javascript-protocol.
@@ -1036,10 +1033,10 @@ void LocalDOMWindow::DispatchPagehideEvent(
     return;
   }
 
-  if (auto* route_map = RouteMap::Get(document_)) {
+  if (RuntimeEnabledFeatures::NavigationStateEnabled()) {
     // In case we come back to this document later via BFCache, there must not
     // be a dangling active navigation.
-    route_map->OnNavigationDone();
+    NavigationState::AttemptFinishNavigationAndDestroy(document_);
   }
 
   // The navigation that triggered this pagehide is past the point of being
@@ -2432,8 +2429,8 @@ void LocalDOMWindow::FinishedLoading(FrameLoader::NavigationFinishState state) {
     print(nullptr);
   }
 
-  if (auto* route_map = RouteMap::Get(document_)) {
-    route_map->OnNavigationDone();
+  if (RuntimeEnabledFeatures::NavigationStateEnabled()) {
+    NavigationState::AttemptFinishNavigationAndDestroy(document_);
   }
 }
 

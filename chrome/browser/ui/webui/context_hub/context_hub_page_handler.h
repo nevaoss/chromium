@@ -28,7 +28,7 @@ class ContextHubPageHandler : public browser::context_hub::mojom::PageHandler {
     virtual std::vector<content::WebContents*> GetTabs(
         content::WebContents* web_contents) = 0;
     virtual void SwitchToTab(content::WebContents* web_contents,
-                             int32_t tab_id) = 0;
+                             int64_t tab_id) = 0;
   };
 
   ContextHubPageHandler(
@@ -53,10 +53,13 @@ class ContextHubPageHandler : public browser::context_hub::mojom::PageHandler {
                             RetrieveAndGroupTabsCallback callback) override;
   void GetExistingTabGroupsAndChats(
       GetExistingTabGroupsAndChatsCallback callback) override;
-  void SwitchToTab(int32_t tab_id) override;
+  void SwitchToTab(int64_t tab_id) override;
   void ClearTabGroups(ClearTabGroupsCallback callback) override;
   void ClearTabGroupChatHistory(
       ClearTabGroupChatHistoryCallback callback) override;
+  void AskGeminiWithContext(const std::string& user_command,
+                            const std::vector<int64_t>& memory_bank_entry_ids,
+                            AskGeminiWithContextCallback callback) override;
 
  private:
   void OnAutoTodosGenerated(

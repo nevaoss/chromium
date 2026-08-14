@@ -70,6 +70,7 @@
 #include "components/omnibox/browser/aim_eligibility_service.h"
 #include "components/omnibox/common/composebox_features.h"
 #include "components/omnibox/common/logger.h"
+#include "components/omnibox/common/omnibox_features.h"
 #include "components/prefs/pref_service.h"
 #include "components/sessions/content/session_tab_helper.h"
 #include "components/signin/public/base/consent_level.h"
@@ -103,11 +104,7 @@
 
 #if BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/flags/android/chrome_feature_list.h"
-#endif
-
-#include "components/omnibox/common/omnibox_features.h"
-
-#if !BUILDFLAG(IS_ANDROID)
+#else
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/lens/lens_search_controller.h"
 #include "chrome/browser/ui/views/user_education/browser_help_bubble.h"
@@ -306,9 +303,7 @@ bool ContextualTasksUI::AreUrlsEqual(const GURL& a, const GURL& b) {
 }
 
 ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
-    : ui::MojoWebUIController(web_ui,
-                              /*enable_chrome_send=*/true,
-                              /*enable_chrome_histograms=*/true),
+    : contextual_tasks::ContextualTasksUIBase(web_ui),
       auto_suggestion_manager_(
           std::make_unique<
               contextual_tasks::ContextualTasksAutoSuggestionManager>()),
@@ -452,44 +447,8 @@ ContextualTasksUI::~ContextualTasksUI() {
 
 content::WebUIDataSource* ContextualTasksUI::RegisterWebUIDataSource(
     Profile* profile) {
-#if BUILDFLAG(ENABLE_WEBUI_CONTEXTUAL_TASKS_COMPOSEBOX)
-  content::URLDataSource::Add(profile,
-                              std::make_unique<SanitizedImageSource>(profile));
-  content::URLDataSource::Add(
-      profile, std::make_unique<FaviconSource>(
-                   profile, chrome::FaviconUrlFormat::kFavicon2));
-#endif
-
-  content::WebUIDataSource* source = content::WebUIDataSource::CreateAndAdd(
-      profile, chrome::kChromeUIContextualTasksHost);
-  webui::SetupWebUIDataSource(source, kContextualTasksResources,
-                              IDR_CONTEXTUAL_TASKS_CONTEXTUAL_TASKS_HTML);
-
-  // TODO(447633840): This is a placeholder URL until the real page is ready.
-  source->OverrideContentSecurityPolicy(
-      network::mojom::CSPDirectiveName::ChildSrc,
-      "child-src 'self' https://*.google.com;");
-
-#if !BUILDFLAG(ENABLE_EXTENSIONS_CORE)
-  source->AddResourcePaths(kGuestViewSharedResources);
-#endif  // !BUILDFLAG(ENABLE_EXTENSIONS_CORE)
-
-#if !BUILDFLAG(IS_ANDROID)
-  source->AddResourcePaths(kWebuiToolbarSharedResources);
-  WebUIToolbarLayoutCssHelper::SetAsRequestFilter(source);
-#endif
-
-  // Add strings.js
-  source->UseStringsJs();
-
-  // Set up chrome://contextual-tasks/internals debug UI.
-  source->AddResourcePath(
-      "internals",
-      IDR_CONTEXTUAL_TASKS_INTERNALS_CONTEXTUAL_TASKS_INTERNALS_HTML);
-  source->AddResourcePath(
-      "internals/",
-      IDR_CONTEXTUAL_TASKS_INTERNALS_CONTEXTUAL_TASKS_INTERNALS_HTML);
-
+  content::WebUIDataSource* source =
+      contextual_tasks::ContextualTasksUIBase::RegisterWebUIDataSource(profile);
   source->AddLocalizedStrings(GetContextualTasksLoadTimeData(profile));
 
   return source;
@@ -700,7 +659,7 @@ base::DictValue ContextualTasksUI::GetContextualTasksLoadTimeData(
   dict.Set("windowTrackingEnabled",
            contextual_tasks::GetIsContextualTasksWindowTrackingEnabled());
   dict.Set("supportsLensButtonInComposebox", !BUILDFLAG(IS_ANDROID));
-  dict.Set("isSystemVoiceSearchEnabled", BUILDFLAG(IS_ANDROID));
+  dict.Set("isSystemVoiceSearchEnabled", !!BUILDFLAG(IS_ANDROID));
   dict.Set("isUserFeedbackAllowed", IsUserFeedbackAllowed(profile));
   dict.Set("enableComposeboxJumpFix",
            contextual_tasks::GetEnableComposeboxJumpFix());
@@ -1011,7 +970,7 @@ BrowserWindowInterface* ContextualTasksUI::GetBrowser() {
 }
 
 Profile* ContextualTasksUI::GetProfile() {
-  return Profile::FromWebUI(web_ui());
+  return contextual_tasks::ContextualTasksUIBase::GetProfile();
 }
 
 contextual_tasks::ContextualTasksAutoSuggestionManager*
@@ -1081,6 +1040,9 @@ ContextualTasksUIConfig::CreateWebUIController(content::WebUI* web_ui,
 void ContextualTasksUI::BindInterface(
     mojo::PendingReceiver<composebox::mojom::PageHandlerFactory>
         pending_receiver) {
+  if (!contextual_tasks::IsContextualTasksUIEnabled()) {
+    return;
+  }
   composebox_page_handler_factory_receiver_.reset();
   composebox_page_handler_factory_receiver_.Bind(std::move(pending_receiver));
 }
@@ -1996,19 +1958,18 @@ void ContextualTasksUI::OnRestoredTabsFetched(
 #if !BUILDFLAG(IS_ANDROID)
 // static
 // Favicons for WebUI pages are only used on desktop builds.
-base::RefCountedMemory* ContextualTasksUI::GetFaviconResourceBytes(
+scoped_refptr<base::RefCountedMemory>
+ContextualTasksUI::GetFaviconResourceBytes(
     ui::ResourceScaleFactor scale_factor) {
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
   // Use the Google G favicon for Google Chrome branded builds.
-  return static_cast<base::RefCountedMemory*>(
-      ui::ResourceBundle::GetSharedInstance().LoadDataResourceBytesForScale(
-          IDR_GOOGLE_G_GRADIENT_16, scale_factor));
+  constexpr int kId = IDR_GOOGLE_G_GRADIENT_16;
 #else
   // Use the Chromium favicon for Chromium builds.
-  return static_cast<base::RefCountedMemory*>(
-      ui::ResourceBundle::GetSharedInstance().LoadDataResourceBytesForScale(
-          IDR_NTP_FAVICON, scale_factor));
+  constexpr int kId = IDR_NTP_FAVICON;
 #endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
+  return ui::ResourceBundle::GetSharedInstance().LoadDataResourceBytesForScale(
+      kId, scale_factor);
 }
 
 void ContextualTasksUI::SyncZoom(bool site_to_webui) {

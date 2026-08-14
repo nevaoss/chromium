@@ -18,6 +18,7 @@
 #import "ios/chrome/browser/authentication/account_menu/public/account_menu_constants.h"
 #import "ios/chrome/browser/authentication/account_menu/ui/account_menu_data_source.h"
 #import "ios/chrome/browser/authentication/account_menu/ui/account_menu_mutator.h"
+#import "ios/chrome/browser/authentication/account_menu/ui/ui_swift.h"
 #import "ios/chrome/browser/authentication/ui_bundled/cells/central_account_view.h"
 #import "ios/chrome/browser/keyboard/ui_bundled/UIKeyCommand+Chrome.h"
 #import "ios/chrome/browser/policy/model/management_state.h"
@@ -30,6 +31,7 @@
 #import "ios/chrome/browser/shared/ui/table_view/content_configuration/table_view_cell_content_configuration.h"
 #import "ios/chrome/browser/shared/ui/table_view/table_view_utils.h"
 #import "ios/chrome/browser/signin/model/constants.h"
+#import "ios/chrome/browser/signin/model/signin_util.h"
 #import "ios/chrome/common/ui/colors/semantic_color_names.h"
 #import "ios/chrome/common/ui/table_view/table_view_cells_constants.h"
 #import "ios/chrome/common/ui/util/image_util.h"
@@ -211,7 +213,13 @@ NSString* const kCustomExpandedDetentIdentifier = @"customExpandedDetent";
     height = kViewControllerDefaultPreferredHeight;
   }
   CGFloat width = self.tableView.frame.size.width;
-  self.preferredContentSize = CGSize(width, height);
+  // During initial layout passes or transitions (especially in Multi-window or
+  // Split-screen mode on iPad), the table view's frame width can be 0. Setting
+  // preferredContentSize with 0 width causes unsatisfiable constraints inside
+  // UIKit's popover layout engine, leading to crashes. See crbug.com/505638993.
+  if (width > 0) {
+    self.preferredContentSize = CGSize(width, height);
+  }
 }
 
 // Creates a button for the navigation bar.
@@ -718,9 +726,21 @@ NSString* const kCustomExpandedDetentIdentifier = @"customExpandedDetent";
 }
 
 - (void)updatePrimaryAccount {
+  UIImage* avatarImage = [self.dataSource primaryAccountAvatar];
+  BOOL showsRing = [self.dataSource primaryAccountAvatarNeedsRing];
+  NSString* aiTierName = [self.dataSource primaryAccountAITierName];
+  UIView* subscriptionChipView = nil;
+  if (aiTierName.length > 0) {
+    subscriptionChipView =
+        [[AISubscriptionChipWrapperView alloc] initWithText:aiTierName];
+  }
+
   _identityAccountView = [[CentralAccountView alloc]
               initWithFrame:CGRectMake(0, 0, self.tableView.frame.size.width, 0)
-                avatarImage:self.dataSource.primaryAccountAvatar
+                avatarImage:avatarImage
+            showsAITierRing:showsRing
+             aiTierFullName:self.dataSource.primaryAccountAITierFullName
+       subscriptionChipView:subscriptionChipView
                        name:self.dataSource.primaryAccountUserFullName
                       email:self.dataSource.primaryAccountEmail
       managementDescription:self.dataSource.managementDescription

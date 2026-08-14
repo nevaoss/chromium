@@ -63,7 +63,6 @@
 #include "chrome/browser/ui/views/omnibox/omnibox_popup_closer.h"
 #include "chrome/browser/ui/views/omnibox/omnibox_text_view.h"
 #include "chrome/browser/ui/views/page_action/page_action_container_view.h"
-#include "chrome/browser/ui/views/page_action/page_action_icon_controller.h"
 #include "chrome/browser/ui/views/page_action/page_action_view.h"
 #include "chrome/browser/ui/views/send_tab_to_self/send_tab_to_self_bubble_controller.h"
 #include "chrome/common/webui_url_constants.h"
@@ -546,7 +545,7 @@ void OmniboxViewViews::SetFocus(bool is_user_initiated) {
   if (is_user_initiated) {
     controller()->edit_model()->StartZeroSuggestRequest();
     if (location_bar_view_) {
-      location_bar_view_->OpenOmniboxPopup();
+      location_bar_view_->OpenOmniboxPopup(/*query_zps=*/is_user_initiated);
     }
   }
 
@@ -1485,13 +1484,14 @@ void OmniboxViewViews::OnMouseReleased(const ui::MouseEvent& event) {
   }
 
   if (location_bar_view_) {
-    location_bar_view_->OpenOmniboxPopup();
+    location_bar_view_->OpenOmniboxPopup(/*query_zps=*/true);
 
     // Transfer selection to the full webui popup.
     if (location_bar_view_->GetOmniboxPopupView() &&
         base::FeatureList::IsEnabled(
             omnibox::kWebUIOmniboxFullPopupDoubleClick)) {
-      location_bar_view_->GetOmniboxPopupView()->SyncNativeStateToWebUI();
+      location_bar_view_->GetOmniboxPopupView()->SyncNativeStateToWebUI(
+          /*query_zps=*/true);
     }
   }
 }
@@ -1602,25 +1602,8 @@ bool OmniboxViewViews::HandleAccessibleAction(
   return Textfield::HandleAccessibleAction(action_data);
 }
 
-void OmniboxViewViews::UpdateTextForContextualTasksPage() {
-  if (!controller()->client()->IsContextualTasksPage()) {
-    return;
-  }
-
-  if (HasFocus()) {
-    std::u16string text = controller()->client()->GetURLForDisplay();
-    controller()->edit_model()->SetUserText(text);
-    SetWindowTextAndCaretPos(text, /*caret_pos=*/0, /*update_popup=*/true,
-                             /*notify_text_changed=*/true);
-  } else {
-    RevertAll();
-  }
-}
-
 void OmniboxViewViews::OnFocus() {
   views::Textfield::OnFocus();
-
-  UpdateTextForContextualTasksPage();
 
   // TODO(oshima): Get control key state.
   controller()->edit_model()->OnSetFocus(false);
@@ -1651,15 +1634,16 @@ void OmniboxViewViews::OnFocus() {
 void OmniboxViewViews::OnBlur() {
   views::Textfield::OnBlur();
 
-  UpdateTextForContextualTasksPage();
-
   // Save the user's existing selection to restore it later.
   saved_selection_for_focus_change_ = GetSelectedRange();
 
-  // If focus is transferring to the WebUI popup widget, treat this as a
-  // logical focus transfer rather than a true blur. Keep the edit model's
-  // focus state active, and skip all reversion/blurring.
-  if (base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxFullPopup)) {
+  // If focus is transferring to a WebUI popup widget (e.g., Full Popup or AIM
+  // Popup), treat this as a logical focus transfer rather than a true blur.
+  // Keep the edit model's focus state active, and skip all reversion/blurring.
+  if (controller()->popup_state_manager()->popup_state() ==
+          OmniboxPopupState::kFull ||
+      controller()->popup_state_manager()->popup_state() ==
+          OmniboxPopupState::kAim) {
     return;
   }
 

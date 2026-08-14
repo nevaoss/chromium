@@ -981,12 +981,12 @@ component("views") {
       }
       if (is_linux || is_fuchsia) {
         public += [
+          "widget/desktop_aura/desktop_drag_drop_client_ozone.h",
           "widget/desktop_aura/desktop_window_tree_host_platform.h",
           "widget/desktop_aura/window_move_client_platform.h",
         ]
         sources += [
           "widget/desktop_aura/desktop_drag_drop_client_ozone.cc",
-          "widget/desktop_aura/desktop_drag_drop_client_ozone.h",
           "widget/desktop_aura/desktop_window_tree_host_platform.cc",
           "widget/desktop_aura/window_move_client_platform.cc",
         ]
@@ -1379,6 +1379,7 @@ test("views_unittests") {
     "focus/focus_manager_unittest.cc",
     "focus/focus_traversal_unittest.cc",
     "input_event_activation_protector_unittest.cc",
+    "input_protection/default_input_protection_policy_unittest.cc",
     "input_protection/occluded_widget_input_protector_unittest.cc",
     "input_protection/occlusion_aware_input_protection_policy_unittest.cc",
     "input_protection/window_activation_input_protection_policy_unittest.cc",

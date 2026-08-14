@@ -49,6 +49,9 @@ public class WebViewResizingHelper {
     }
 
     private static final int RESIZING_ANIMATION_DURATION_MS = 150;
+    // Epsilon tolerance in pixels to prevent false size-changed detections caused by DP-to-PX
+    // integer rounding.
+    private static final int EPSILON_PX = 2;
 
     private final AnimationHandler mAnimationHandler = new AnimationHandler();
 
@@ -141,7 +144,7 @@ public class WebViewResizingHelper {
                 res.getDimensionPixelSize(R.dimen.tab_bottom_sheet_resizing_fade_offset);
         mMinHeight = res.getDimensionPixelSize(R.dimen.tab_bottom_sheet_peek_height_total);
         mResizingContainer.addView(mResizingPlaceholder);
-        mResizingPlaceholder.setVisibility(View.GONE);
+        mResizingPlaceholder.setVisibility(View.INVISIBLE);
 
         ColorDrawable background = new ColorDrawable();
         background.setColor(backgroundColor);
@@ -196,7 +199,7 @@ public class WebViewResizingHelper {
     public void reset() {
         mResizingContainer.removeAllViews();
         mResizingContainer.addView(mResizingPlaceholder);
-        mResizingPlaceholder.setVisibility(View.GONE);
+        mResizingPlaceholder.setVisibility(View.INVISIBLE);
         mThinWebView = null;
         mIsViewportSizeFixed = false;
         mPauseInsetUpdates = false;
@@ -355,8 +358,6 @@ public class WebViewResizingHelper {
 
         @Px int resizingContainerWidth = mResizingContainer.getMeasuredWidth();
         @Px int resizingContainerHeight = mResizingContainer.getMeasuredHeight();
-        @Px int webContentsWidth = ViewUtils.dpToPx(mContext, mWebContents.getWidth());
-        @Px int webContentsHeight = ViewUtils.dpToPx(mContext, mWebContents.getHeight());
 
         // TODO(crbug.com/524719583): Make this feature-agnostic.
         if (mIsSidePanel) {
@@ -372,9 +373,12 @@ public class WebViewResizingHelper {
             return;
         }
 
+        @Px int webContentsWidth = ViewUtils.dpToPx(mContext, mWebContents.getWidth());
+        @Px int webContentsHeight = ViewUtils.dpToPx(mContext, mWebContents.getHeight());
+
         if (!ignoreCache
-                && resizingContainerWidth == webContentsWidth
-                && resizingContainerHeight == webContentsHeight) {
+                && isApproxEqual(resizingContainerWidth, webContentsWidth, EPSILON_PX)
+                && isApproxEqual(resizingContainerHeight, webContentsHeight, EPSILON_PX)) {
             return;
         }
 
@@ -383,5 +387,9 @@ public class WebViewResizingHelper {
         } else {
             mWebContents.setSize(resizingContainerWidth, resizingContainerHeight);
         }
+    }
+
+    private static boolean isApproxEqual(int a, int b, int epsilon) {
+        return Math.abs(a - b) <= epsilon;
     }
 }

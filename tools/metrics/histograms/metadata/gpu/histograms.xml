@@ -338,7 +338,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="GPU.ANGLE.D3D11FeatureLevel" enum="D3DFeatureLevel"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>geofflang@google.com</owner>
   <owner>angle-team@google.com</owner>
   <summary>
@@ -1237,6 +1237,30 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Gpu.Graphite.SkiaOutputDeviceSubmitDurationUs"
+    units="microseconds" expires_after="2026-10-31">
+  <owner>magchen@chromium.org</owner>
+  <owner>chrome-gpu-metric-alerts@chromium.org</owner>
+  <improvement direction="LOWER_IS_BETTER"/>
+  <summary>
+    The duration of each Graphite context submit call in SkiaOutputDevice in
+    microseconds. This is subsampled at 1%. Only reported on platforms
+    supporting high-resolution clocks.
+  </summary>
+</histogram>
+
+<histogram name="Gpu.Graphite.SubmitDurationUs" units="microseconds"
+    expires_after="2026-10-31">
+  <owner>magchen@chromium.org</owner>
+  <owner>chrome-gpu-metric-alerts@chromium.org</owner>
+  <improvement direction="LOWER_IS_BETTER"/>
+  <summary>
+    The duration of each Graphite context submit call in microseconds. This is
+    subsampled at 1%. Only reported on platforms supporting high-resolution
+    clocks.
+  </summary>
+</histogram>
+
 <histogram name="GPU.GraphiteDawn.DeviceLockAcquireTimeAvgUs"
     units="microseconds" expires_after="2027-06-01">
   <owner>magchen@chromium.org</owner>
@@ -1920,6 +1944,18 @@ chromium-metrics-reviews@google.com.
     to LUMINANCE_F16 because the OpenGL ES context lacks ES3 or half-float
     linear filtering support. Recorded when getting GL format info for a plane
     during backing creation.
+  </summary>
+</histogram>
+
+<histogram name="GPU.SharedImage.R8ToAlpha8Fallback" enum="Boolean"
+    expires_after="2027-07-01">
+  <owner>hitawala@chromium.org</owner>
+  <owner>chrome-gpu-metric-alerts@chromium.org</owner>
+  <summary>
+    Records whether a single-channel 8-bit texture (R_8) fell back to ALPHA_8
+    because the OpenGL context lacks ext_texture_rg support. Recorded only for
+    single-channel 8-bit planes (R_8) of a multi-planar texture and only when
+    getting GL format info for such textures during GL based backing creation.
   </summary>
 </histogram>
 
@@ -2638,7 +2674,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Viz.ExternalBeginFrameSource.Interval" units="ms"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>lizeb@chromium.org</owner>
   <owner>chromeos-gfx@chromium.org</owner>
   <summary>
@@ -2741,6 +2777,18 @@ chromium-metrics-reviews@google.com.
     <variant name="NumSoftMax" summary="Maximum number of"/>
     <variant name="PercentageUsed" summary="Percentage of in use"/>
   </token>
+</histogram>
+
+<histogram name="Viz.FrameDeadlineDecider.SelectedSustainableDeadline"
+    enum="Boolean" expires_after="2026-11-29">
+  <owner>kartarsingh@google.com</owner>
+  <owner>woa-performance-team@google.com</owner>
+  <summary>
+    Records whether the deadline selected by viz::FrameDeadlineDecider has a
+    presentation delta that is sustainable with the current number of allowed
+    buffers to avoid multiple-vsync swap throttling. Recorded every time a frame
+    is drawn and swapped.
+  </summary>
 </histogram>
 
 <histogram name="Viz.FrameIntervalDecider.ActualIntervalDefault" units="ms"

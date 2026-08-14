@@ -529,8 +529,8 @@ import java.util.function.Supplier;
             targetState =
                     // If we're showing the request type button...
                     showRequestTypeButton
-                                    // or the text is wrapping...
-                                    || mIsTextWrapping
+                                    // or the text is wrapping (popover doesn't care)...
+                                    || (mIsTextWrapping && !isPopover)
                                     // or the attachments list has elements...
                                     || !mModelList.isEmpty()
                                     // or popover with any ai request type, even when the request
@@ -1054,7 +1054,7 @@ import java.util.function.Supplier;
                                 == FuseboxLayoutMode.SUGGESTIONS_POPOVER
                         && mInput.getRequestType() == AutocompleteRequestType.SEARCH
                         && mInput.getSiteSearchData() == null
-                        && (mInput.getPreviewMatchUrlSupplier().get() == null);
+                        && (mInput.getPreviewMatchUrl() == null);
         if (mProfile != null
                 && !UserPrefs.get(mProfile).getBoolean(Pref.SHOW_AI_MODE_OMNIBOX_BUTTON)) {
             showActivationChip = false;

@@ -301,6 +301,12 @@ chromium-metrics-reviews@google.com.
 
 <!-- LINT.ThenChange(//tools/metrics/histograms/metadata/navigation/histograms.xml:PagePreloadingTriggerType) -->
 
+<variants name="PrerenderStatus">
+  <variant name="" summary="prerender and non-prerender navigations"/>
+  <variant name=".NonPrerender" summary="non-prerender navigations"/>
+  <variant name=".Prerender" summary="prerender navigations"/>
+</variants>
+
 <variants name="PrivacySandboxAdsApi">
   <variant name="FencedFrames"/>
   <variant name="PrivateAggregation"/>
@@ -523,7 +529,6 @@ chromium-metrics-reviews@google.com.
   <variant name=".password-manager"/>
   <variant name=".password-manager-internals"/>
   <variant name=".personal-context-internals"/>
-  <variant name=".personal-context-notice"/>
   <variant name=".personalization"/>
   <variant name=".policy"/>
   <variant name=".power"/>
@@ -632,7 +637,6 @@ chromium-metrics-reviews@google.com.
   <variant name=".OmniboxEverywhere"/>
   <variant name=".OmniboxPopup"/>
   <variant name=".PerformanceSidePanel"/>
-  <variant name=".PersonalContextNotice"/>
   <variant name=".ReadAnythingUntrusted"/>
   <variant name=".ReadingList"/>
   <variant name=".ReloadButtonUI"/>
@@ -853,7 +857,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.BeforeSoftNavigation.CumulativeLayoutShift"
-    units="ms" expires_after="2026-11-22">
+    units="ms" expires_after="2027-01-24">
   <owner>sullivan@chromium.org</owner>
   <owner>iclelland@chromium.org</owner>
   <owner>haoliuk@chromium.org</owner>
@@ -867,7 +871,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.BeforeSoftNavigation.InteractionToNextPaint"
-    units="ms" expires_after="2026-11-22">
+    units="ms" expires_after="2027-01-24">
   <owner>sullivan@chromium.org</owner>
   <owner>iclelland@chromium.org</owner>
   <owner>haoliuk@chromium.org</owner>
@@ -879,7 +883,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.BeforeSoftNavigation.LargestContentfulPaint2"
-    units="ms" expires_after="2026-11-22">
+    units="ms" expires_after="2027-01-24">
   <owner>sullivan@chromium.org</owner>
   <owner>mmocny@chromium.org</owner>
   <owner>johannes@chromium.org</owner>
@@ -2077,16 +2081,17 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram
-    name="PageLoad.Clients.GoogleSearch.HadPriorPrewarmCommitStatus{InitiatorOfNavigation}"
+    name="PageLoad.Clients.GoogleSearch.HadPriorPrewarmCommitStatus2{InitiatorOfNavigation}{PrerenderStatus}"
     enum="PriorPrewarmCommitStatus" expires_after="2026-11-29">
   <owner>suzukikeita@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
   <summary>
     The status of whether the DSEPrewarm feature was ever triggered on the same
     renderer process host. This is recorded once, when a Google search page is
-    committed for {InitiatorOfNavigation}.
+    committed for {InitiatorOfNavigation} and {PrerenderStatus}.
   </summary>
   <token key="InitiatorOfNavigation" variants="InitiatorOfNavigation"/>
+  <token key="PrerenderStatus" variants="PrerenderStatus"/>
 </histogram>
 
 <histogram name="PageLoad.Clients.GoogleSearch.HttpNetworkSessionQuicEnabled"
@@ -2824,16 +2829,18 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram
-    name="PageLoad.Clients.GoogleSearch.Prerender.PrewarmNavigationStatus{InitiatorOfNavigation}"
+    name="PageLoad.Clients.GoogleSearch.Prerender.PrewarmNavigationStatus2{InitiatorOfNavigation}{PrerenderStatus}"
     enum="PrerenderPrewarmNavigationStatus" expires_after="2026-11-29">
   <owner>suzukikeita@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
   <summary>
     The status of whether the DSEPrewarm feature was triggered before the
     prerender host reuse happened. This is recorded once, when a prerendered
-    page is activated for Google search page loads for {InitiatorOfNavigation}.
+    page is activated for Google search page loads for {InitiatorOfNavigation}
+    and {PrerenderStatus}.
   </summary>
   <token key="InitiatorOfNavigation" variants="InitiatorOfNavigation"/>
+  <token key="PrerenderStatus" variants="PrerenderStatus"/>
 </histogram>
 
 <histogram
@@ -2851,15 +2858,17 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram
-    name="PageLoad.Clients.GoogleSearch.SiteInstanceProcessAssignment{InitiatorOfNavigation}"
+    name="PageLoad.Clients.GoogleSearch.SiteInstanceProcessAssignment2{InitiatorOfNavigation}{PrerenderStatus}"
     enum="SiteInstanceProcessAssignment" expires_after="2026-11-29">
   <owner>suzukikeita@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
   <summary>
     Records how the main frame's SiteInstance was assigned a renderer process.
-    This is recorded once, when a Google search page is committed.
+    This is recorded once, when a Google search page is committed for
+    {InitiatorOfNavigation} and {PrerenderStatus}.
   </summary>
   <token key="InitiatorOfNavigation" variants="InitiatorOfNavigation"/>
+  <token key="PrerenderStatus" variants="PrerenderStatus"/>
 </histogram>
 
 <histogram name="PageLoad.Clients.GoogleSearch.WarmUpType" enum="GwsWarmUpType"
@@ -4243,7 +4252,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="PageLoad.Experimental.NavigationTiming.NavigationStartToFinalResponseStart"
-    units="ms" expires_after="2026-11-22">
+    units="ms" expires_after="2027-01-24">
   <owner>nhiroki@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
   <summary>
@@ -4291,7 +4300,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="PageLoad.Experimental.NavigationTiming.NavigationStartToNavigationCommitSent"
-    units="ms" expires_after="2026-11-22">
+    units="ms" expires_after="2027-01-24">
   <owner>nhiroki@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
   <summary>
@@ -4379,7 +4388,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.Experimental.SoftNavigations.Count"
-    units="Soft navigations" expires_after="2026-11-22">
+    units="Soft navigations" expires_after="2027-01-24">
   <owner>iclelland@chromium.org</owner>
   <owner>speed-metrics-dev@chromium.org</owner>
   <summary>
@@ -4591,7 +4600,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.InteractiveTiming.ProcessingTime" units="ms"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>iclelland@chromium.org</owner>
   <owner>speed-metrics-dev@chromium.org</owner>
   <summary>
@@ -4807,7 +4816,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.Internal.SoftNavigationOutcome"
-    enum="SoftNavigationOutcome" expires_after="2026-11-22">
+    enum="SoftNavigationOutcome" expires_after="2027-01-24">
   <owner>iclelland@chromium.org</owner>
   <owner>speed-metrics-dev@chromium.org</owner>
   <summary>
@@ -5536,7 +5545,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.SoftNavigation.CumulativeLayoutShift" units="ms"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>sullivan@chromium.org</owner>
   <owner>iclelland@chromium.org</owner>
   <owner>haoliuk@chromium.org</owner>
@@ -5551,7 +5560,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.SoftNavigation.InteractionToNextPaint" units="ms"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>sullivan@chromium.org</owner>
   <owner>iclelland@chromium.org</owner>
   <owner>haoliuk@chromium.org</owner>
@@ -5564,7 +5573,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.SoftNavigation.LargestContentfulPaint" units="ms"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>sullivan@chromium.org</owner>
   <owner>iclelland@chromium.org</owner>
   <owner>haoliuk@chromium.org</owner>
@@ -5588,7 +5597,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.SoftNavigation.StartTime" units="ms"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>sullivan@chromium.org</owner>
   <owner>johannes@chromium.org</owner>
   <owner>speed-metrics-dev@chromium.org</owner>

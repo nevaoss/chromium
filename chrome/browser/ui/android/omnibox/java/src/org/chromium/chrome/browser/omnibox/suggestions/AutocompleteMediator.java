@@ -8,6 +8,7 @@ import static org.chromium.build.NullUtil.assumeNonNull;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Resources;
@@ -36,6 +37,7 @@ import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider.ControlsPosition;
 import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
 import org.chromium.chrome.browser.lifecycle.PauseResumeWithNativeObserver;
+import org.chromium.chrome.browser.lifecycle.TopResumedActivityChangedObserver;
 import org.chromium.chrome.browser.omnibox.DeferredIMEWindowInsetApplicationCallback;
 import org.chromium.chrome.browser.omnibox.FuseboxSessionState;
 import org.chromium.chrome.browser.omnibox.LocationBarDataProvider;
@@ -125,6 +127,7 @@ class AutocompleteMediator
         implements OnSuggestionsReceivedListener,
                 OmniboxSuggestionsDropdown.GestureObserver,
                 OmniboxSuggestionsDropdownScrollListener,
+                TopResumedActivityChangedObserver,
                 PauseResumeWithNativeObserver,
                 FuseboxAttachmentChangeListener,
                 SuggestionHost {
@@ -204,6 +207,7 @@ class AutocompleteMediator
     private boolean mShouldPreventOmniboxAutocomplete;
     private long mLastActionUpTimestamp;
     private boolean mIgnoreOmniboxItemSelection = true;
+    private boolean mActivityWindowFocused;
 
     // The number of touch down events sent to native during an omnibox session.
     private int mNumTouchDownEventForwardedInOmniboxSession;
@@ -264,7 +268,8 @@ class AutocompleteMediator
         OmniboxResourceProvider.invalidateDrawableCache();
         mLifecycleDispatcher = lifecycleDispatcher;
         mLifecycleDispatcher.register(this);
-
+        Activity activity = windowAndroid.getActivity().get();
+        mActivityWindowFocused = (activity != null && activity.hasWindowFocus());
         mDeferredIMEWindowInsetApplicationCallback = deferredIMEWindowInsetApplicationCallback;
         mUiOverrides = uiOverrides;
 
@@ -487,9 +492,7 @@ class AutocompleteMediator
         }
 
         setAutocompleteInput(session.getAutocompleteInput());
-        setAutocompleteController(
-                session.getAutocompleteController(),
-                session.getAutocompleteInput().getAutocompleteState());
+        setAutocompleteController(session.getAutocompleteController());
         mSessionState = session;
         setFuseboxAttachmentModelList(mSessionState.getFuseboxAttachmentModelList());
 
@@ -581,7 +584,7 @@ class AutocompleteMediator
         clearSuggestions();
 
         setAutocompleteInput(null);
-        setAutocompleteController(null, AutocompleteState.DISABLED);
+        setAutocompleteController(null);
 
         mSessionState = null;
         setFuseboxAttachmentModelList(null);
@@ -613,15 +616,14 @@ class AutocompleteMediator
         return omniboxAnimator;
     }
 
-    private void setAutocompleteController(
-            @Nullable AutocompleteController controller, @AutocompleteState int state) {
-        onAutocompleteStateChanged(AutocompleteState.DISABLED);
+    private void setAutocompleteController(@Nullable AutocompleteController controller) {
+        removeAutocompleteObservers();
         mAutocomplete = controller;
-        onAutocompleteStateChanged(state);
+        installAutocompleteObservers();
     }
 
     private void installAutocompleteObservers() {
-        if (mAutocomplete == null) return;
+        if (mAutocomplete == null || !mActivityWindowFocused) return;
         mAutocomplete.addOnSuggestionsReceivedListener(this);
     }
 
@@ -1194,6 +1196,16 @@ class AutocompleteMediator
             input.resetPreviewText();
         }
 
+        // If the defaultMatch is null, but user text is non-empty, then we've just focused the url
+        // bar on a webpage on desktop. In that case, we don't want to overwrite the preview url
+        // set by FuseboxSessionState#activate. If the default match is null, and the user text is
+        // empty, then the only reasonable preview url is the default match, and given that's null,
+        // the preview url should be null. Currently, this happens when the user deletes their query
+        // on desktop.
+        if (defaultMatch != null || TextUtils.isEmpty(input.getUserText())) {
+            input.setPreviewMatchUrl(getPreviewMatchUrl(defaultMatch));
+        }
+
         if (!(mAutocompleteResult != null && mAutocompleteResult.equals(autocompleteResult))) {
             mAutocompleteResult = autocompleteResult;
             var viewInfoList =
@@ -1205,6 +1217,21 @@ class AutocompleteMediator
 
         mListPropertyModel.set(SuggestionListProperties.LIST_IS_FINAL, isFinal);
         measureSuggestionRequestToUiModelTime(isFinal);
+    }
+
+    private @Nullable GURL getPreviewMatchUrl(@Nullable AutocompleteMatch defaultMatch) {
+        if (mAutocompleteInput == null) return null;
+
+        // Non-conventional modes will not have site favicons.
+        if (!mAutocompleteInput.isConventionalRequestType()) return null;
+
+        // Zero suggest is always considered Search, there may be a match, but we shouldn't show it.
+        if (TextUtils.isEmpty(mAutocompleteInput.getUserText())) return null;
+
+        // Search suggestions will not have site favicons.
+        if (defaultMatch == null || defaultMatch.isSearchSuggestion()) return null;
+
+        return defaultMatch.getUrl();
     }
 
     /**
@@ -1348,14 +1375,10 @@ class AutocompleteMediator
     }
 
     private void onAutocompleteStateChanged(@AutocompleteState int state) {
-        if (mAutocomplete == null) return;
-
         if (state == AutocompleteState.ENABLED) {
-            installAutocompleteObservers();
             onInputChanged();
-        } else {
+        } else if (state == AutocompleteState.STANDBY) {
             stopAutocomplete(AutocompleteStopReason.CLOBBERED);
-            removeAutocompleteObservers();
         }
     }
 
@@ -2071,6 +2094,36 @@ class AutocompleteMediator
 
         // Re-request ZPS in the event of new attachments being uploaded.
         onInputChanged();
+    }
+
+    @Override
+    public void onTopResumedActivityChanged(boolean isTopResumedActivity) {
+        mActivityWindowFocused = isTopResumedActivity;
+        boolean showSuggestionsContainer = isTopResumedActivity;
+
+        if (isInInputSession()) {
+            // Always set the window activity focused property to true for hub search so that the
+            // dropdown container persists when search activity is dismissed.
+            // TODO(crbug.com/390011136): Find a better way to create a seamless animation when
+            // exiting hub search that dismisses the URL bar and suggestions list together.
+            showSuggestionsContainer |=
+                    mAutocompleteInput.getPageClassification()
+                            == PageClassification.ANDROID_HUB_VALUE;
+
+            if (isTopResumedActivity) {
+                installAutocompleteObservers();
+                onInputChanged();
+            } else {
+                stopAutocomplete(AutocompleteStopReason.CLOBBERED);
+                removeAutocompleteObservers();
+            }
+        }
+
+        // TODO(crbug.com/390011136): Find a better / more appropriate name for this property. It is
+        // a misnomer: this property doesn't reflect activity window focus, but the intent to show
+        // the suggestions list container.
+        mListPropertyModel.set(
+                SuggestionListProperties.ACTIVITY_WINDOW_FOCUSED, showSuggestionsContainer);
     }
 
     /**

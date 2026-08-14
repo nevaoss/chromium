@@ -484,7 +484,7 @@ void GetPresetNTPBackgroundPreview(
     _customizeHomepageAction.symbolTintColor =
         [UIColor colorNamed:kTextQuaternaryColor];
     _customizeHomepageAction.fallbackPreviewImage =
-        DefaultSymbolWithConfiguration(kPencilSymbol, nil);
+        SymbolWithConfiguration(SymbolPencil, nil);
   }
   [self configureThemePreviewForCustomizeHomepageAction];
   return _customizeHomepageAction;
@@ -1919,8 +1919,7 @@ void GetPresetNTPBackgroundPreview(
   NSMutableArray<OverflowMenuAction*>* appActions =
       [[NSMutableArray alloc] init];
 
-  if ((base::FeatureList::IsEnabled(kShareInOverflowMenu) ||
-       (IsChromeNextIaEnabled() && !IsChromeNextIaShareIconVisible())) &&
+  if (IsChromeNextIaEnabled() && !IsChromeNextIaShareIconVisible() &&
       [self isCurrentURLWebURL]) {
     base::UmaHistogramEnumeration("Mobile.ShareThisPage.Shown",
                                   ShareThisPageLocation::kOverflowMenu);
@@ -2117,10 +2116,7 @@ void GetPresetNTPBackgroundPreview(
 
 // Returns whether translate is enabled on the current page.
 - (BOOL)isTranslateEnabled {
-  return
-      [self canManuallyTranslate:NO] && ![self isLensOverlayVisible] &&
-      (![self isReaderModeActive] ||
-       base::FeatureList::IsEnabled(kEnableReaderModeTranslationWithInfobar));
+  return [self canManuallyTranslate:NO] && ![self isLensOverlayVisible];
 }
 
 // Returns whether lens overlay is enabled on the current page.

@@ -292,15 +292,6 @@ const FeatureEntry::FeatureVariation kContentPushNotificationsVariations[] = {
     {"Set up list Registeration Only",
      kContentPushNotificationsSetUpListRegistrationOnly, nullptr}};
 
-const FeatureEntry::FeatureParam kEnableDefaultModel[] = {
-    {segmentation_platform::kDefaultModelEnabledParam, "true"}};
-
-const FeatureEntry::FeatureVariation
-    kSegmentationPlatformIosModuleRankerVariations[]{
-        {"Enabled With Default Model Parameter (Must Set this!)",
-         kEnableDefaultModel, nullptr},
-    };
-
 #if BUILDFLAG(IOS_BACKGROUND_MODE_ENABLED)
 // Feed Background Refresh Feature Params.
 const FeatureEntry::FeatureParam kOneHourIntervalOneHourMaxAgeOnce[] = {
@@ -1539,27 +1530,11 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kIOSKeyboardAccessoryDefaultViewName,
      flag_descriptions::kIOSKeyboardAccessoryDefaultViewDescription,
      flags_ui::kOsIos, FEATURE_VALUE_TYPE(kIOSKeyboardAccessoryDefaultView)},
-    {"ios-magic-stack-segmentation-ranking",
-     flag_descriptions::kSegmentationPlatformIosModuleRankerName,
-     flag_descriptions::kSegmentationPlatformIosModuleRankerDescription,
-     flags_ui::kOsIos,
-     FEATURE_WITH_PARAMS_VALUE_TYPE(
-         segmentation_platform::features::kSegmentationPlatformIosModuleRanker,
-         kSegmentationPlatformIosModuleRankerVariations,
-         flag_descriptions::kSegmentationPlatformIosModuleRankerName)},
     {"ios-magic-stack-segmentation-ranking-caching",
      flag_descriptions::kSegmentationPlatformIosModuleRankerCachingName,
      flag_descriptions::kSegmentationPlatformIosModuleRankerCachingDescription,
      flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kSegmentationPlatformIosModuleRankerCaching)},
-    {"ios-magic-stack-segmentation-ranking-split-by-surface",
-     flag_descriptions::kSegmentationPlatformIosModuleRankerSplitBySurfaceName,
-     flag_descriptions::
-         kSegmentationPlatformIosModuleRankerSplitBySurfaceDescription,
-     flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(
-         segmentation_platform::features::
-             kSegmentationPlatformIosModuleRankerSplitBySurface)},
     {"ios-proactive-password-generation-bottom-sheet",
      flag_descriptions::kIOSProactivePasswordGenerationBottomSheetName,
      flag_descriptions::kIOSProactivePasswordGenerationBottomSheetDescription,
@@ -1844,6 +1819,11 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kLensUnaryHttpTransportEnabledName,
      flag_descriptions::kLensUnaryHttpTransportEnabledDescription,
      flags_ui::kOsIos, FEATURE_VALUE_TYPE(kLensUnaryHttpTransportEnabled)},
+    {"lens-bypass-compression-for-c2pa",
+     flag_descriptions::kLensBypassCompressionForC2paName,
+     flag_descriptions::kLensBypassCompressionForC2paDescription,
+     flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(lens::features::kLensBypassCompressionForC2pa)},
     {"collaboration-messaging", flag_descriptions::kCollaborationMessagingName,
      flag_descriptions::kCollaborationMessagingDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(collaboration::features::kCollaborationMessaging)},
@@ -2041,11 +2021,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      FEATURE_WITH_PARAMS_VALUE_TYPE(kWelcomeBack,
                                     kWelcomeBackVariations,
                                     "WelcomeBack")},
-    {"reader-mode-translation-with-infobar-enabled",
-     flag_descriptions::kReaderModeTranslationWithInfobarName,
-     flag_descriptions::kReaderModeTranslationWithInfobarDescription,
-     flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(kEnableReaderModeTranslationWithInfobar)},
     {"reader-mode-optimization-guide-eligibility",
      flag_descriptions::kReaderModeOptimizationGuideEligibilityName,
      flag_descriptions::kReaderModeOptimizationGuideEligibilityDescription,
@@ -2150,22 +2125,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kDataSharingVersioningStatesDescription,
      flags_ui::kOsIos, MULTI_VALUE_TYPE(kDataSharingVersioningStateChoices)},
     // LINT.ThenChange(//chrome/browser/about_flags.cc:DataSharingVersioning)
-    {"share-ablation-hide-share-in-toolbar",
-     flag_descriptions::kDisableShareButtonName,
-     flag_descriptions::kDisableShareButtonDescription, flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(kDisableShareButton)},
-    {"share-ablation-omnibox-long-press",
-     flag_descriptions::kShareInOmniboxLongPressName,
-     flag_descriptions::kShareInOmniboxLongPressDescription, flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(kShareInOmniboxLongPress)},
-    {"share-ablation-omnibox-overflow-menu",
-     flag_descriptions::kShareInOverflowMenuName,
-     flag_descriptions::kShareInOverflowMenuDescription, flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(kShareInOverflowMenu)},
-    {"share-ablation-verbatim-match",
-     flag_descriptions::kShareInVerbatimMatchName,
-     flag_descriptions::kShareInVerbatimMatchDescription, flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(kShareInVerbatimMatch)},
     {"ios-trusted-vault-notification",
      flag_descriptions::kIOSTrustedVaultNotificationName,
      flag_descriptions::kIOSTrustedVaultNotificationDescription,
@@ -2259,10 +2218,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kNtpComposeboxUsesChromeComposeClientDescription,
      flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(omnibox::kComposeboxUsesChromeComposeClient)},
-    {"ios-custom-file-upload-menu",
-     flag_descriptions::kIOSCustomFileUploadMenuName,
-     flag_descriptions::kIOSCustomFileUploadMenuDescription, flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(kIOSCustomFileUploadMenu)},
     {"cache-identity-list-in-chrome",
      flag_descriptions::kCacheIdentityListInChromeName,
      flag_descriptions::kCacheIdentityListInChromeDescription, flags_ui::kOsIos,
@@ -2706,11 +2661,20 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kPageContextIPCOptimizationName,
      flag_descriptions::kPageContextIPCOptimizationDescription,
      flags_ui::kOsIos, FEATURE_VALUE_TYPE(kPageContextIPCOptimization)},
+    {"page-context-pdf", flag_descriptions::kPageContextPdfName,
+     flag_descriptions::kPageContextPdfDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kPageContextPdf)},
     {"autofill-enable-wallet-branding-v2",
      flag_descriptions::kAutofillEnableWalletBrandingV2Name,
      flag_descriptions::kAutofillEnableWalletBrandingV2Description,
      flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(autofill::features::kAutofillEnableWalletBrandingV2)},
+    {"autofill-enable-wallet-reminder-notice",
+     flag_descriptions::kAutofillEnableWalletReminderNoticeName,
+     flag_descriptions::kAutofillEnableWalletReminderNoticeDescription,
+     flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(
+         autofill::features::kAutofillEnableWalletReminderNotice)},
     {"assistant-side-panel", flag_descriptions::kAssistantSidePanelName,
      flag_descriptions::kAssistantSidePanelDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kAssistantSidePanel)},
@@ -2899,6 +2863,10 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
     {"glass-toolbar", flag_descriptions::kGlassToolbarName,
      flag_descriptions::kGlassToolbarDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kGlassToolbar)},
+    {"composebox-connected-apps-setting",
+     flag_descriptions::kComposeboxConnectedAppsSettingName,
+     flag_descriptions::kComposeboxConnectedAppsSettingDescription,
+     flags_ui::kOsIos, FEATURE_VALUE_TYPE(kComposeboxConnectedAppsSetting)},
 });
 
 bool SkipConditionalFeatureEntry(const flags_ui::FeatureEntry& entry) {

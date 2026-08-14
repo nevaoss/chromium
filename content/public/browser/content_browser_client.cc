@@ -64,6 +64,7 @@
 #include "content/public/browser/web_ui_controller.h"
 ///@}
 #include "content/public/browser/webid/identity_request_dialog_controller.h"
+#include "content/public/browser/webid/native_idp_fetcher.h"
 #include "content/public/common/alternative_error_page_override_info.mojom.h"
 #include "content/public/common/content_features.h"
 #include "content/public/common/url_utils.h"
@@ -1644,6 +1645,10 @@ void ContentBrowserClient::OnKeepaliveRequestStarted(BrowserContext*) {}
 
 void ContentBrowserClient::OnKeepaliveRequestFinished() {}
 
+void ContentBrowserClient::OnFetchKeepAliveRequestCreated(BrowserContext&) {}
+
+void ContentBrowserClient::OnFetchKeepAliveRequestDestroyed(BrowserContext&) {}
+
 #if BUILDFLAG(IS_MAC)
 bool ContentBrowserClient::SetupEmbedderSandboxParameters(
     sandbox::mojom::Sandbox sandbox_type,
@@ -1667,6 +1672,11 @@ ContentBrowserClient::CreateIdentityRequestDialogController(
 
 std::unique_ptr<DigitalIdentityProvider>
 ContentBrowserClient::CreateDigitalIdentityProvider() {
+  return nullptr;
+}
+
+std::unique_ptr<NativeIdpFetcher> ContentBrowserClient::CreateNativeIdpFetcher(
+    const url::Origin& idp_origin) {
   return nullptr;
 }
 

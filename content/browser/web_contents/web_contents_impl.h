@@ -1289,6 +1289,7 @@ class CONTENT_EXPORT WebContentsImpl
       bool proceed,
       bool* proceed_to_fire_unload) override;
   void CancelModalDialogsForRenderManager() override;
+  void NotifyPrimaryPageWillBeDeactivated(PageImpl& page) override;
   void NotifySwappedFromRenderManager(RenderFrameHostImpl* old_frame,
                                       RenderFrameHostImpl* new_frame) override;
   void NotifySwappedFromRenderManagerWithoutFallbackContent(
@@ -2414,6 +2415,9 @@ class CONTENT_EXPORT WebContentsImpl
   // Helps connect to embedder when embedded in a SurfaceEmbed plugin.
   // nullptr if not embedded.
   std::unique_ptr<SurfaceEmbedConnectorImpl> surface_embed_connector_;
+
+  // WebContents that are embedded in this WebContents via SurfaceEmbed.
+  std::vector<base::WeakPtr<WebContents>> surface_embed_children_;
 
   // Helper classes ------------------------------------------------------------
 

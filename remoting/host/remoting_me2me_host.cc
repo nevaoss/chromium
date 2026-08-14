@@ -115,6 +115,7 @@
 #include "remoting/host/test_echo_extension.h"
 #include "remoting/host/usage_stats_consent.h"
 #include "remoting/host/zombie_host_detector.h"
+#include "remoting/proto/control.pb.h"
 #include "remoting/protocol/authenticator.h"
 #include "remoting/protocol/chromium_port_allocator_factory.h"
 #include "remoting/protocol/host_authentication_config.h"
@@ -379,6 +380,10 @@ class HostProcess : public ConfigWatcher::Delegate,
 
   // Called on the network thread to set the host's Authenticator factory.
   void CreateAuthenticatorFactory();
+
+  void RequestPairing(
+      const std::string& client_name,
+      PeerSessionImpl::RequestPairingResponseCallback response_cb);
 
   // Tear down resources that run on the UI thread.
   void ShutdownOnUiThread();
@@ -932,6 +937,15 @@ void HostProcess::CreateAuthenticatorFactory() {
     return;
   }
 
+  if (peer_session_factory_) {
+    // `CreateAuthenticatorFactory()` is called dynamically upon configuration
+    // or policy changes (such as when the user updates their PIN in
+    // `OnConfigParsed()`). We clear the pairing callback here before re-wiring
+    // authentication to ensure we do not retain a stale or invalid callback if
+    // pairing is no longer enabled under the new configuration.
+    peer_session_factory_->set_request_pairing_callback(base::NullCallback());
+  }
+
   auto auth_config = std::make_unique<protocol::HostAuthenticationConfig>(
       local_certificate, key_pair_);
   if (is_cloud_host_) {
@@ -984,8 +998,9 @@ void HostProcess::CreateAuthenticatorFactory() {
 
     auth_config->AddPairingAuth(pairing_registry);
     auth_config->AddSharedSecretAuth(pin_hash_);
-    if (peer_session_factory_) {
-      peer_session_factory_->set_pairing_registry(pairing_registry);
+    if (peer_session_factory_ && allow_pairing_) {
+      peer_session_factory_->set_request_pairing_callback(base::BindRepeating(
+          &HostProcess::RequestPairing, base::Unretained(this)));
     }
   }
   HOST_LOG << "Host's supported authentication methods: ";
@@ -1006,6 +1021,29 @@ void HostProcess::CreateAuthenticatorFactory() {
   }
 #endif  // BUILDFLAG(IS_POSIX) && !BUILDFLAG(IS_CHROMEOS)
   host_->SetAuthenticatorFactory(std::move(factory));
+}
+
+void HostProcess::RequestPairing(
+    const std::string& client_name,
+    PeerSessionImpl::RequestPairingResponseCallback response_cb) {
+  DCHECK(context_->network_task_runner()->BelongsToCurrentThread());
+  if (!allow_pairing_ || !pairing_registry_ || client_name.empty() ||
+      client_name.size() > PeerSessionImpl::kMaxClientNameLength ||
+      !base::IsStringUTF8(client_name)) {
+    std::move(response_cb).Run(std::nullopt);
+    return;
+  }
+  protocol::PairingRegistry::Pairing pairing =
+      pairing_registry_->CreatePairing(client_name);
+  if (!pairing.is_valid() || pairing.client_id().empty() ||
+      pairing.shared_secret().empty()) {
+    std::move(response_cb).Run(std::nullopt);
+    return;
+  }
+  protocol::PairingResponse pairing_response;
+  pairing_response.set_client_id(pairing.client_id());
+  pairing_response.set_shared_secret(pairing.shared_secret());
+  std::move(response_cb).Run(std::move(pairing_response));
 }
 
 // IPC::Listener implementation.
@@ -1109,7 +1147,7 @@ void HostProcess::StartOnUiThread() {
           kAudioPipeSwitchName);
   if (!audio_pipe_name.empty()) {
     remoting::PulseAudioCapturer::InitializePipeReader(
-        context_->audio_task_runner(), audio_pipe_name);
+        context_->file_task_runner(), audio_pipe_name);
   }
 #endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
 
@@ -1143,8 +1181,8 @@ void HostProcess::StartOnUiThread() {
 
     auto desktop_environment_factory =
         std::make_unique<IpcDesktopEnvironmentFactory>(
-            context_->audio_task_runner(), context_->network_task_runner(),
-            context_->network_task_runner(), std::move(remote));
+            context_->network_task_runner(), context_->network_task_runner(),
+            std::move(remote));
     desktop_session_connector_ = desktop_environment_factory.get();
     desktop_environment_factory_ = std::move(desktop_environment_factory);
   } else
@@ -2035,8 +2073,7 @@ void HostProcess::StartHost() {
 #endif
 
   auto peer_session_factory = std::make_unique<PeerSessionImplFactory>(
-      desktop_environment_factory_.get(), std::move(get_ice_config_fetcher_cb),
-      context_->audio_task_runner());
+      desktop_environment_factory_.get(), std::move(get_ice_config_fetcher_cb));
   peer_session_factory_ = peer_session_factory.get();
 
   host_ = std::make_unique<ChromotingHost>(

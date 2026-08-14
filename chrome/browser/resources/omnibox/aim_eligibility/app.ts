@@ -200,6 +200,15 @@ export class AimEligibilityAppElement extends CrLitElement {
         '✗ Disabled';
   }
 
+  protected getDisclaimerFlagText_(): string {
+    if (!this.eligibilityState_.driveStatus) {
+      return '';
+    }
+    return this.eligibilityState_.driveStatus.isDisclaimerFlagEnabled ?
+        '✓ Enabled' :
+        '✗ Disabled';
+  }
+
   protected getForceDisclaimerText_(): string {
     if (!this.eligibilityState_.driveStatus) {
       return '';
@@ -275,7 +284,7 @@ export class AimEligibilityAppElement extends CrLitElement {
   }
 
   private getProtoshopUrl_(base64Proto: string): string {
-    const protoType = 'gws.searchbox.chrome.AimEligibilityResponse';
+    const protoType = 'com.google.gws.plugins.aim.AimEligibilityResponse';
     if (!base64Proto) {
       return `http://protoshop/${protoType}`;
     }

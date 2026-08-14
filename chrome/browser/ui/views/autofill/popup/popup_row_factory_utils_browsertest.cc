@@ -82,7 +82,7 @@ Suggestion CreateFreeformFooter() {
       "of trouble, Google Password Manager can help you sign in.";
   Suggestion suggestion(kMainText, SuggestionType::kFreeformFooter);
   suggestion.acceptability =
-      Suggestion::Acceptability::kUnacceptableWithDeactivatedStyle;
+      Suggestion::Acceptability::kUnselectableAndUnacceptable;
   return suggestion;
 }
 
@@ -113,7 +113,7 @@ Suggestion CreateBnplSuggestion(const std::u16string& main_text,
   suggestion.payload = Suggestion::BnplIssuer(issuer);
   if (deactivated) {
     suggestion.acceptability =
-        Suggestion::Acceptability::kUnacceptableWithDeactivatedStyle;
+        Suggestion::Acceptability::kUnselectableAndUnacceptable;
   }
   return suggestion;
 }

@@ -60,7 +60,7 @@ class BrowserTabProvider : public ContextHubPageHandler::TabProvider {
   }
 
   void SwitchToTab(content::WebContents* web_contents,
-                   int32_t tab_id) override {
+                   int64_t tab_id) override {
     if (!web_contents) {
       return;
     }
@@ -368,7 +368,7 @@ void ContextHubPageHandler::GetExistingTabGroupsAndChats(
       std::move(open_tabs), std::move(mojo_history), std::move(callback)));
 }
 
-void ContextHubPageHandler::SwitchToTab(int32_t tab_id) {
+void ContextHubPageHandler::SwitchToTab(int64_t tab_id) {
   if (tab_provider_) {
     tab_provider_->SwitchToTab(web_contents_, tab_id);
   }
@@ -393,4 +393,26 @@ void ContextHubPageHandler::ClearTabGroupChatHistory(
     service->ClearTabGroupChatHistory();
   }
   std::move(callback).Run();
+}
+
+void ContextHubPageHandler::AskGeminiWithContext(
+    const std::string& user_command,
+    const std::vector<int64_t>& memory_bank_entry_ids,
+    AskGeminiWithContextCallback callback) {
+  context_hub::ContextHubService* service =
+      ContextHubServiceFactory::GetForProfile(profile_);
+  auto response = browser::context_hub::mojom::ChatMessage::New();
+  response->role = browser::context_hub::mojom::ChatRole::kAssistant;
+
+  if (!service) {
+    response->content = "Service unavailable.";
+    std::move(callback).Run(std::move(response));
+    return;
+  }
+
+  // TODO(crbug.com/537894637): Integrate with llm service.
+  response->content = base::StringPrintf(
+      "Gemini response for prompt: \"%s\"\n\nUsing %zu selected memory ID(s).",
+      user_command.c_str(), memory_bank_entry_ids.size());
+  std::move(callback).Run(std::move(response));
 }

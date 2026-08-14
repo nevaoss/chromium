@@ -139,6 +139,26 @@ chromium-metrics-reviews@google.com.
   <variant name=".UrlUws" summary=""/>
 </variants>
 
+<variants name="SafeBrowsingCheckUrlStep">
+  <variant name="DatabaseNotReadyQueueDelay"
+      summary="time spent waiting in queue because database was not ready"/>
+  <variant name="GetFullHashDuration"
+      summary="total duration of get full hash wait (cache or network)"/>
+  <variant name="GetFullHashQueueDelay"
+      summary="wait time in UI thread message loop before starting get full
+               hash"/>
+  <variant name="LocalLookup"
+      summary="total end-to-end local lookup time on the UI thread"/>
+  <variant name="LocalLookup.DbThreadQueueDelay"
+      summary="time spent waiting in the DB thread's task queue"/>
+  <variant name="LocalLookup.StoreLookupDuration"
+      summary="actual lookup execution time in the store on DB thread"/>
+  <variant name="LocalLookup.UiCallbackQueueDelay"
+      summary="wait time returning back to UI thread message loop"/>
+  <variant name="ResponseProcessingDuration"
+      summary="time spent parsing and handling response on UI thread"/>
+</variants>
+
 <variants name="SafeBrowsingV4OrSB">
   <variant name="SB" summary="Safe Browsing"/>
   <variant name="V4" summary="Safe Browsing V4"/>
@@ -163,26 +183,6 @@ chromium-metrics-reviews@google.com.
   <variant name=".NativePVer5RealTime"/>
   <variant name=".Unknown"/>
   <variant name=".UrlRealTimeCheck"/>
-</variants>
-
-<variants name="V4CheckUrlStep">
-  <variant name="DatabaseNotReadyQueueDelay"
-      summary="time spent waiting in queue because database was not ready"/>
-  <variant name="GetFullHashDuration"
-      summary="total duration of get full hash wait (cache or network)"/>
-  <variant name="GetFullHashQueueDelay"
-      summary="wait time in UI thread message loop before starting get full
-               hash"/>
-  <variant name="LocalLookup"
-      summary="total end-to-end local lookup time on the UI thread"/>
-  <variant name="LocalLookup.DbThreadQueueDelay"
-      summary="time spent waiting in the DB thread's task queue"/>
-  <variant name="LocalLookup.StoreLookupDuration"
-      summary="actual lookup execution time in V4Store on DB thread"/>
-  <variant name="LocalLookup.UiCallbackQueueDelay"
-      summary="wait time returning back to UI thread message loop"/>
-  <variant name="ResponseProcessingDuration"
-      summary="time spent parsing and handling response on UI thread"/>
 </variants>
 
 <variants name="V5CacheType">
@@ -460,7 +460,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="SafeBrowsing.BrowserThrottle.IsAsyncCheckTrackerAliveOnTransfer"
-    enum="BooleanAvailable" expires_after="2026-11-22">
+    enum="BooleanAvailable" expires_after="2027-01-24">
   <owner>xinghuilu@chromium.org</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>
@@ -561,6 +561,16 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="SafeBrowsing.CheckUrl.Result.HashDatabase" enum="SBThreatType"
+    expires_after="2026-11-22">
+  <owner>thefrog@chromium.org</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
+  <summary>
+    The threat type result of the Safe Browsing local blocklist check. Logged
+    each time a local browse URL check in DatabaseManagerMechanism completes.
+  </summary>
+</histogram>
+
 <histogram name="SafeBrowsing.CheckUrl.Timeout" enum="BooleanTimedOut"
     expires_after="2027-01-17">
 <!-- Note to owner: This histogram can be renewed 1 full year if it is still
@@ -617,7 +627,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="SafeBrowsing.ClientSafeBrowsingReport.BadRequestReportType"
-    enum="ClientSafeBrowsingReportType" expires_after="2026-11-22">
+    enum="ClientSafeBrowsingReportType" expires_after="2027-01-24">
   <owner>thefrog@chromium.org</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>
@@ -837,8 +847,33 @@ useful for Chirp alerts (go/crca-alerts). -->
   </summary>
 </histogram>
 
+<histogram
+    name="SafeBrowsing.ClientSidePhishingDetection.AllowlistAsyncMatchResult"
+    enum="AllowlistAsyncMatchResult" expires_after="2026-11-22">
+  <owner>thefrog@chromium.org</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
+  <summary>
+    Logs the result of an asynchronous CSD allowlist lookup in
+    AllowlistCheckerClient. Recorded when an async lookup completes or times
+    out.
+  </summary>
+</histogram>
+
+<histogram
+    name="SafeBrowsing.ClientSidePhishingDetection.AllowlistCheckDuration"
+    units="ms" expires_after="2026-11-22">
+  <owner>thefrog@chromium.org</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
+  <summary>
+    Records the duration of checking a URL against the local client-side
+    phishing detection allowlist in AllowlistCheckerClient. Recorded when the
+    check completes, whether synchronously (immediate match/no match) or after
+    an asynchronous lookup completes.
+  </summary>
+</histogram>
+
 <histogram name="SafeBrowsing.ClientSidePhishingDetection.AllowlistMatchResult"
-    enum="SafeBrowsingAllowlistAsyncMatch" expires_after="2026-11-22">
+    enum="SafeBrowsingAllowlistAsyncMatch" expires_after="2027-01-24">
   <owner>thefrog@chromium.org</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>
@@ -944,7 +979,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="SafeBrowsing.Enhanced.ProtegoRequestSentInLast7Days"
-    enum="SafeBrowsingEnhancedProtegoPingType" expires_after="2026-09-08">
+    enum="SafeBrowsingEnhancedProtegoPingType" expires_after="2027-09-08">
   <owner>jacastro@chromium.org</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>
@@ -3481,7 +3516,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="SafeBrowsing.SyncedEsbDialogEnabledMessageOutcome"
-    enum="SyncedEsbOutcome" expires_after="2026-11-22">
+    enum="SyncedEsbOutcome" expires_after="2027-01-24">
   <owner>zackhan@chromium.org</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>
@@ -3507,7 +3542,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 
 <histogram
     name="SafeBrowsing.TailoredSecurity.ConsentedDesktopDialogEnabledOutcome"
-    enum="SafeBrowsingTailoredSecurityOutcome" expires_after="2026-11-22">
+    enum="SafeBrowsingTailoredSecurityOutcome" expires_after="2027-01-24">
   <owner>jacastro@chromium.org</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>
@@ -3592,7 +3627,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="SafeBrowsing.TailoredSecurityService.OAuthTokenErrorState"
-    enum="GoogleServiceAuthError" expires_after="2026-08-09">
+    enum="GoogleServiceAuthError" expires_after="2027-07-27">
   <owner>jacastro@chromium.org</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>
@@ -3723,17 +3758,6 @@ useful for Chirp alerts (go/crca-alerts). -->
   </summary>
 </histogram>
 
-<histogram name="SafeBrowsing.V4CheckUrl.TimeTaken.{StepName}" units="ms"
-    expires_after="2027-05-10">
-  <owner>thefrog@chromium.org</owner>
-  <owner>chrome-counter-abuse-alerts@google.com</owner>
-  <summary>
-    Records the duration of the {StepName} step in a Safe Browsing V4 URL check.
-    Logged when this step completes.
-  </summary>
-  <token key="StepName" variants="V4CheckUrlStep"/>
-</histogram>
-
 <histogram name="SafeBrowsing.V4Database.SizeLinear{ThreatTypeKB}"
     units="100 KB" expires_after="2026-11-29">
   <owner>thefrog@chromium.org</owner>
@@ -3796,7 +3820,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="SafeBrowsing.V4GetHash.CacheFullyHit" enum="BooleanCacheHit"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>thefrog@chromium.org</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>
@@ -3859,17 +3883,6 @@ useful for Chirp alerts (go/crca-alerts). -->
   </summary>
 </histogram>
 
-<histogram name="SafeBrowsing.V4GetHash.Result.BackoffErrorCount" units="times"
-    expires_after="2027-06-28">
-  <owner>skrakowi@chromium.org</owner>
-  <owner>chrome-counter-abuse-alerts@google.com</owner>
-  <summary>
-    Records the number of GetHash attempts skipped (due to being in backoff)
-    within the same backoff time window. Logged if there are any backoff errors
-    at the time of backoff window expiry.
-  </summary>
-</histogram>
-
 <histogram name="SafeBrowsing.V4LocalDatabaseManager.ThreatInfoSize"
     units="verdicts" expires_after="2026-12-22">
   <owner>xinghuilu@chromium.org</owner>
@@ -3877,20 +3890,6 @@ useful for Chirp alerts (go/crca-alerts). -->
   <summary>
     Records the number of verdicts received in the full hash check. Logged each
     time a full hash check response is received.
-  </summary>
-</histogram>
-
-<histogram
-    name="SafeBrowsing.V4LocalDatabaseManager.TimeSinceLastUpdateResponse"
-    units="ms" expires_after="2027-04-05">
-  <owner>danieltwhite@google.com</owner>
-  <owner>joemerramos@chromium.org</owner>
-  <owner>chrome-counter-abuse-alerts@google.com</owner>
-  <summary>
-    Records the time since the last network response was received for a request
-    to udpate the Safe Browsing local database. This will be logged whenever the
-    database is queried, but only if at least one such network response has been
-    received since the browser was launched.
   </summary>
 </histogram>
 
@@ -4079,7 +4078,7 @@ and applied correctly. -->
 </histogram>
 
 <histogram name="SafeBrowsing.V4ProcessUpdate.UpdateType"
-    enum="SafeBrowsingV4UpdateType" expires_after="2026-11-01">
+    enum="SafeBrowsingV4UpdateType" expires_after="2027-01-24">
   <owner>thefrog@chromium.org</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>
@@ -4329,6 +4328,17 @@ risk. -->
   </summary>
 </histogram>
 
+<histogram name="SafeBrowsing.V5GetHash.NumRequestsSkippedDuringBackoff"
+    units="times" expires_after="2027-06-28">
+  <owner>thefrog@chromium.org</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
+  <summary>
+    Records the number of GetHash attempts skipped (due to being in backoff)
+    within the same backoff time window. Logged when recovering from backoff if
+    any requests were skipped.
+  </summary>
+</histogram>
+
 <histogram name="SafeBrowsing.V5GetHash.OperationOutcome"
     enum="SafeBrowsingV5GetHashOperationOutcome" expires_after="2027-07-14">
   <owner>thefrog@chromium.org</owner>
@@ -4376,6 +4386,19 @@ parsed correctly. -->
     parsing it successfully as a protobuf for V5.
   </summary>
   <token key="Store" variants="SafeBrowsing_SBStore_Metrics"/>
+</histogram>
+
+<histogram
+    name="SafeBrowsing.V5Store.ConvertExtensionBlocklistV4ToV5.ChecksumDuration"
+    units="ms" expires_after="2027-05-05">
+  <owner>thefrog@chromium.org</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
+  <summary>
+    Records how long it took to verify and compute the checksum when converting
+    the extensions blocklist hash file from v4 to v5 format. Logged only when
+    checksum verification is performed and the hash file conversion completes
+    without error.
+  </summary>
 </histogram>
 
 <histogram name="SafeBrowsing.V5Store.ConvertExtensionBlocklistV4ToV5Result"
@@ -4694,6 +4717,19 @@ failing to fetch the updates which puts users' security at risk. -->
   </token>
 </histogram>
 
+<histogram
+    name="SafeBrowsing.{SafeBrowsingV4OrSB}GetHash.Result.BackoffErrorCount"
+    units="times" expires_after="2027-06-28">
+  <owner>skrakowi@chromium.org</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
+  <summary>
+    Records the number of GetHash attempts skipped (due to being in backoff)
+    within the same backoff time window. Logged if there are any backoff errors
+    at the time of backoff window expiry.
+  </summary>
+  <token key="SafeBrowsingV4OrSB" variants="SafeBrowsingV4OrSB"/>
+</histogram>
+
 <histogram name="SafeBrowsing.{SafeBrowsingV4OrSB}Update.Result"
     enum="SafeBrowsingV4OperationResult" expires_after="never">
 <!-- expires-never: This reports the outcome of fetching the Safe Browsing
@@ -4707,6 +4743,19 @@ failing to fetch the updates which puts users' security at risk. -->
     of this histogram overlap, so the counts cannot be used as percentages.
   </summary>
   <token key="SafeBrowsingV4OrSB" variants="SafeBrowsingV4OrSB"/>
+</histogram>
+
+<histogram
+    name="SafeBrowsing.{SafeBrowsingV4OrV5OrSB}CheckUrl.TimeTaken.{StepName}"
+    units="ms" expires_after="2027-05-10">
+  <owner>thefrog@chromium.org</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
+  <summary>
+    Records the duration of the {StepName} step in a Safe Browsing
+    {SafeBrowsingV4OrV5OrSB} URL check. Logged when this step completes.
+  </summary>
+  <token key="SafeBrowsingV4OrV5OrSB" variants="SafeBrowsingV4OrV5OrSB"/>
+  <token key="StepName" variants="SafeBrowsingCheckUrlStep"/>
 </histogram>
 
 <histogram
@@ -4741,6 +4790,21 @@ failing to fetch the updates which puts users' security at risk. -->
     The time that it took to receive a response from the Google SafeBrowsing
     servers for a {SafeBrowsingV4OrV5OrSB} GetHash request. Logged when the
     network request completes (either successfully or with an error).
+  </summary>
+  <token key="SafeBrowsingV4OrV5OrSB" variants="SafeBrowsingV4OrV5OrSB"/>
+</histogram>
+
+<histogram
+    name="SafeBrowsing.{SafeBrowsingV4OrV5OrSB}LocalDatabaseManager.TimeSinceLastUpdateResponse"
+    units="ms" expires_after="2027-04-05">
+  <owner>danieltwhite@google.com</owner>
+  <owner>joemerramos@chromium.org</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
+  <summary>
+    Records the time since the last network response was received for a request
+    to update the Safe Browsing local database. This will be logged whenever the
+    database is queried, but only if at least one such network response has been
+    received since the browser was launched.
   </summary>
   <token key="SafeBrowsingV4OrV5OrSB" variants="SafeBrowsingV4OrV5OrSB"/>
 </histogram>

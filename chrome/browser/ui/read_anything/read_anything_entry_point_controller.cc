@@ -82,8 +82,7 @@ bool IsTriggeredByOmnibox(const actions::ActionInvocationContext& context) {
   std::underlying_type_t<page_actions::PageActionTrigger> page_action_trigger =
       context.GetProperty(page_actions::kPageActionTriggerKey);
   return (page_action_trigger != page_actions::kInvalidPageActionTrigger) &&
-         features::IsReadAnythingOmniboxChipEnabled() &&
-         base::FeatureList::IsEnabled(features::kPageActionsMigration);
+         features::IsReadAnythingOmniboxChipEnabled();
 }
 
 void LogDecision(ReadAnythingOmniboxChipDecision decision) {
@@ -339,8 +338,7 @@ void ReadAnythingEntryPointController::UpdatePageActionVisibility(
     tabs::TabInterface* tab,
     base::OnceCallback<void(user_education::FeaturePromoResult promo_result)>
         show_promo_callback) {
-  if (!base::FeatureList::IsEnabled(features::kPageActionsMigration) ||
-      !features::IsReadAnythingOmniboxChipEnabled() || !tab) {
+  if (!features::IsReadAnythingOmniboxChipEnabled() || !tab) {
     return;
   }
 
@@ -401,7 +399,9 @@ bool ReadAnythingEntryPointController::CheckIfShouldSuggestReadingModeNaive(
   // Disable the omnibox on app windows, as these windows don't usually have
   // omnibox support.
   Browser* browser = bwi->GetBrowserForMigrationOnly();
-  if (browser && (browser->is_type_app() || browser->is_type_app_popup())) {
+  if (browser &&
+      (browser->GetType() == BrowserWindowInterface::Type::TYPE_APP ||
+       browser->is_type_app_popup())) {
     LogDecision(ReadAnythingOmniboxChipDecision::kHideAppWindow);
     return false;
   }
@@ -479,8 +479,7 @@ void ReadAnythingEntryPointController::CheckIfShouldSuggestReadingMode(
 // static
 void ReadAnythingEntryPointController::OnPageActionIgnored(
     BrowserWindowInterface* bwi) {
-  if (!base::FeatureList::IsEnabled(features::kPageActionsMigration) ||
-      !features::IsReadAnythingOmniboxChipEnabled() || !bwi) {
+  if (!features::IsReadAnythingOmniboxChipEnabled() || !bwi) {
     return;
   }
 

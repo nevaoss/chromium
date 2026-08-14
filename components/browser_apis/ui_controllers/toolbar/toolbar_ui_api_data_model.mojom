@@ -136,12 +136,12 @@ struct OmniboxActionKey {
 };
 
 // Used to notify the browser process that the user has either pressed or
-// released the mouse on the omnibox.
-struct OmniboxActionMouse {
-  bool is_mouse_down = false;
+// released a pointer (mouse, touch, or pen) on the omnibox.
+struct OmniboxActionPointer {
+  bool is_pointer_down = false;
 
   // If true, asks for zero-suggest completion to start. Applies only if
-  // `is_mouse_down` is false.
+  // `is_pointer_down` is false.
   bool start_zero_suggest = false;
 };
 
@@ -173,7 +173,7 @@ union OmniboxAction {
   OmniboxActionFocusChange focus_change;
   OmniboxActionTextInput text_input;
   OmniboxActionKey key;
-  OmniboxActionMouse mouse;
+  OmniboxActionPointer pointer;
   OmniboxActionDropText drop_text;
   OmniboxActionDropFile drop_file;
 };
@@ -212,6 +212,15 @@ struct BackForwardControlState {
 struct HomeControlState {
   bool should_be_shown;
   bool is_context_menu_visible;
+};
+
+struct PerformanceInterventionControlState {
+  bool should_be_shown;
+  // Boolean that keeps track if the intervention button icon should be shown
+  // in the active color. The intervention button should show the active color
+  // when it becomes visible and stay in the active color until the user clicks
+  // on the button.
+  bool is_active;
 };
 
 // The type of icon state for the app menu. These values drive the visual
@@ -342,21 +351,11 @@ struct ContentSettingImageState {
 
   // If true, the bubble is visible, so the icon should be highlighted.
   //
-  // TODO: crbug.com/489109708 - Consider removing `should_run_animation` if we
+  // TODO: crbug.com/489109708 - Consider removing `is_bubble_visible` if we
   // can use element tracking for highlighting instead.
   bool is_bubble_visible;
 
-  // TODO: crbug.com/489109708 - For stateful property below, we'll need to
-  // send an incrementing generation number instead, as updates can be
-  // consolidated, and check against the last known number on the WebUI side.
-  // This prevents an issue where the initial message (run animation) gets lost
-  // in consolidation.
-
-  // If true, when `explanitory_string` is displayed, it should appear via an
-  // animation.
-  bool should_run_animation;
-
-  // Explanatory text that animates in if `should_run_animation` is true.
+  // Explanatory text that animates in if non empty.
   mojo_base.mojom.String16 explanatory_string;
 
   // NOTE: The visual icon to display is determined by `type`
@@ -376,7 +375,7 @@ enum PageActionId {
   kActionShowJsOptimizationsIcon,
   kActionRecordReplay,
   kActionShowIntentPicker,
-  kActionZoomNormal,
+  kActionShowZoomBubble,
   kActionSidePanelShowReadAnything,
   kActionOffersAndRewardsForPage,
   kActionShowFileSystemAccess,
@@ -497,6 +496,9 @@ struct LocationBarFlags {
 
   // Whether the omnibox popup is open
   bool popup_open = false;
+
+  // Whether to render the AIM button as focused even when it's not.
+  bool force_aim_button_focus_ring = false;
 };
 
 // Search keyword chip, which shows up when the user enters things like
@@ -698,6 +700,7 @@ struct NavigationControlsState {
   SplitTabsControlState split_tabs_control_state;
   BackForwardControlState back_forward_control_state;
   HomeControlState home_control_state;
+  PerformanceInterventionControlState performance_intervention_control_state;
   AppMenuControlState app_menu_control_state;
   AvatarControlState avatar_control_state;
   bool battery_saver_button_visible;

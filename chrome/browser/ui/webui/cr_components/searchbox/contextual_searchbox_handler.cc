@@ -404,8 +404,7 @@ ContextualSearchboxHandler::CreateTabPreviewEncodingOptions(
 void ContextualSearchboxHandler::WaitForTabFaviconLoad(
     int32_t tab_id,
     WaitForTabFaviconLoadCallback callback) {
-  tab_favicon_helper_->WaitForTabFaviconLoad(tab_id, profile_,
-                                             std::move(callback));
+  tab_favicon_helper_->WaitForTabFaviconLoad(tab_id, std::move(callback));
 }
 
 // Helper class that observes the WebContents of the active tab for navigation.
@@ -2132,8 +2131,8 @@ void ContextualSearchboxHandler::OpenUrl(
       contextual_session_handle->deselected_tabs_urls());
   new_contextual_session_handle->set_smart_tab_sharing_active(
       contextual_session_handle->smart_tab_sharing_active());
-  new_contextual_session_handle->set_smart_tab_sharing_toggled_off_in_thread(
-      contextual_session_handle->smart_tab_sharing_toggled_off_in_thread());
+  new_contextual_session_handle->set_smart_tab_sharing_toggled_since_last_turn(
+      contextual_session_handle->smart_tab_sharing_toggled_since_last_turn());
 
   // TODO(crbug.com/470404040): Determine what to do with the return
   // value of this call, or move this call to a different location.

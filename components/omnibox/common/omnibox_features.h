@@ -224,7 +224,6 @@ BASE_DECLARE_FEATURE(kSuppressIntermediateACUpdatesOnLowEndDevices);
 // Delay focusTab to prioritize navigation (https://crbug.com/374852568).
 BASE_DECLARE_FEATURE(kPostDelayedTaskFocusTab);
 BASE_DECLARE_FEATURE(kResetSuggestionsScroll);
-BASE_DECLARE_FEATURE(kOmniboxListMenuContextMenu);
 #endif  // BUILDFLAG(IS_ANDROID)
 
 // If enabled, X-Geo headers are sent for all search navigations on all
@@ -265,6 +264,12 @@ extern const base::FeatureParam<bool> kAskGLensChipRoute;
 extern const base::FeatureParam<bool> kAskGSwapIcon;
 // Whether to show the current tab chip.
 extern const base::FeatureParam<bool> kAskGCurrentTabChip;
+// Whether to show the Lens icon.
+extern const base::FeatureParam<bool> kAskGLensIcon;
+// Whether to use alternate text for Lens chip.
+extern const base::FeatureParam<bool> kAskGLensSearchHintText;
+// Whether to show the lens chip in omnibox composebox.
+extern const base::FeatureParam<bool> kAskGComposeboxLensChip;
 // Note: no new flags beyond this point.
 
 namespace flag_descriptions {

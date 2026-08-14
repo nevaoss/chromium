@@ -16,17 +16,130 @@ import sys
 
 # List of targets that do not have matching gn target generated.
 _SKIP_TARGETS = {
+    'container:btree_test':
+    'TODO(mbonadei): Fix issue with EXPECT_DEATH and uncomment.',
+    'container:container_memory_test':
+    'Disabled because container_memory_test requires -frtti',
+    'container:raw_hash_set_test':
+    'raw_hash_set_test uses typeid(), i.e., relies on RTTI.',
+    'debugging:demangle_test': 'Disabled because this test relies on RTTI',
+    'flags:commandlineflag_test':
+    'Conflicts at link_time with "parse_test" because defines the same flags.',
+    'flags:reflection_test':
+    'Conflicts at link time with "flag_test" because defines the same flags.',
+    'log:check_test': 'Overlaps with absl_check_test',
+    'log:log_basic_test': 'Overlaps with absl_log_basic_test',
+    'profiling:sample_recorder_test':
+    'TODO: Re-enable once the issue with gmock activating generic gtest printers hitting issues with -Wmicrosoft-cast.',
+    'random/internal:nanobenchmark': 'Only used for benchmarking',
+    'synchronization:blocking_counter_test':
+    'Conflicts at link time with "tracing_strong_test" because also defines strong functions for AbslInternalTraceWait and alike',
+    'synchronization:mutex_method_pointer_test': 'Doesn\'t compile.',
+    'synchronization:notification_test':
+    'Conflicts at link time with "tracing_strong_test" because also defines strong functions for AbslInternalTraceWait and alike',
     'types:any_span_test':
     'any_span_test is not ported because relies on RTTI',
 }
 
-def _ast_get_value(node):
+# Extra output added just before the target.
+_ADD_PREFIX = {
+    'flags:config':
+    '''# Since absl/flags are only used by some test binaries (e.g. in WebRTC),
+# there is no need to strip flags from mobile platforms binaries.
+# This does not affect Chromium.
+config("absl_flags_config") {
+  defines = [ "ABSL_FLAGS_STRIP_NAMES=0" ]
+ }
+ ''',
+    'log:check':
+    '''# This target is banned both for 1st party and 3rd party code, use absl_check
+# in third_party code instead.
+# This header introduces CHECK macros that collides with chromium's macros.
+# Instead libraries should use ABSL_CHECK that provides the same functionality.''',
+    'log:log':
+    '''# This target is banned both for 1st party and 3rd party code. Use absl_log
+# in third_party code instead.
+# This header introduces LOG macros that collides with chromium's macros.
+# Instead libraries should use ABSL_LOG that provides the same functionality.''',
+    'log:vlog_is_on':
+    '''# This target is banned both for 1st party and 3rd party code, use ABSL_
+# prefixed macros and absl_vlog_is_on in third_party code instead.'''
+}
+
+# Extra build rules added at the end. The reason they are needed vary per target.
+_ADD_CONTENT = {
+    'cleanup:cleanup_internal':
+    'visibility = [ "//third_party/abseil-cpp/absl/*" ]',
+    'container:hashtablez_sampler_test':
+    'if (is_win) { sources = [] }',
+    'container:test_allocator':
+    'deps = [ "//third_party/abseil-cpp/absl/base:config", "//third_party/googletest:gtest" ]',
+    'flags:config':
+    'public_configs = [ ":absl_flags_config" ]',
+    'flags:parse_test':
+    'if (is_ios) { sources = [] }',
+    'log:absl_check_test':
+    'if (is_ios) { sources = [] }',
+    'log:log_sink_test':
+    'if (is_ios) { sources = [] }',
+    'log:scoped_mock_log_test':
+    'if (is_ios) { sources = [] }',
+    'log/internal:log_sink_set':
+    'if (is_android) { libs = [ "log" ]  }',
+    'log/internal:stderr_log_sink_test':
+    'if (is_apple || is_android) { sources = [] }',
+    'random:uniform_real_distribution_test':
+    'if (is_ios) { sources = [] }',
+    'random/internal:seed_material':
+    'if (is_win) {  libs = [ "bcrypt.lib" ]}',
+    'strings:strings':
+    '''public_deps = [
+    # string_view.h was once part of :strings, so string_view.h is
+    # re-exported for backwards compatibility.
+    # New code should directly depend on :string_view.
+    # TODO(crbug.com/40276308): Remove once all targets are migrated to
+    # :string_view.
+    ":string_view" ]''',
+    'strings:str_format_convert_test':
+    'if (is_fuchsia) { sources = [] }',
+    # Instead of parsing 'select', add platform-specific rules manually while there are few of those.
+    'time/internal/cctz:time_zone':
+    '''
+if (is_win) { sources += [ "src/time_zone_name_win.cc" ]
+              public += [ "src/time_zone_name_win.h" ] }
+defines = []
+if (is_apple) {
+  frameworks = [ "Foundation.framework" ]
+  # Work-around for https://github.com/llvm/llvm-project/issues/117630
+  defines += [ "_XOPEN_SOURCE=700" ]
+}
+if (is_fuchsia) {
+  deps += [
+    "//third_party/fuchsia-sdk/sdk/fidl/fuchsia.intl:fuchsia.intl_hlcpp",
+    "//third_party/fuchsia-sdk/sdk/pkg/async",
+    "//third_party/fuchsia-sdk/sdk/pkg/async-loop-cpp",
+    "//third_party/fuchsia-sdk/sdk/pkg/sys_cpp",
+    "//third_party/fuchsia-sdk/sdk/pkg/zx",
+  ]
+}''',
+    'time/internal/cctz:time_zone_name_win_test':
+    'if (is_win) { sources = [ "src/time_zone_name_win_test.cc" ] }',
+}
+
+
+def _ast_get_value(node, local_vars):
     if isinstance(node, ast.Constant):
         return node.value
     elif isinstance(node, ast.List):
-        return [_ast_get_value(elt) for elt in node.elts]
+        return [_ast_get_value(elt, local_vars) for elt in node.elts]
     elif isinstance(node, ast.Name):
+        if node.id in local_vars:
+            return local_vars[node.id]
         return node.id
+    elif isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+        left = _ast_get_value(node.left, local_vars) or []
+        right = _ast_get_value(node.right, local_vars) or []
+        return left + right
     return None
 
 
@@ -34,6 +147,7 @@ class _Converter:
 
     def __init__(self, path, old_gn_content=None):
         self.bazel_targets = []
+        self.packages = {}
         self.year = str(datetime.datetime.now().year)
         self.path = path
         m = re.search(r'.*/absl/(.*)', path)
@@ -44,8 +158,14 @@ class _Converter:
                 self.year = m.group(1)
 
     def _translate_dep(self, dep):
+        if dep.startswith('@do_not_use'):
+            return None
+        if dep == '//absl/' + self.rel_path:
+            return ':' + self.rel_path.split('/')[-1]
         if dep.startswith(':'):
             return dep
+        if dep.startswith('//absl/' + self.rel_path + ':'):
+            return dep[7 + len(self.rel_path):]
         if dep.startswith('//absl'):
             return '//third_party/abseil-cpp/' + dep[2:]
         if dep.startswith('@googletest'):
@@ -65,24 +185,36 @@ class _Converter:
                 parts = vis.split(':')
                 pkg = parts[0]
                 rule = parts[1] if len(parts) > 1 else ''
-                gn_pkg = '//third_party/abseil-cpp/' + pkg[2:]
+                gn_pkg = '' if pkg[7:] == self.rel_path else (
+                    '//third_party/abseil-cpp/' + pkg[2:])
                 if rule == '__pkg__':
                     result.append(gn_pkg + ':*')
                 elif rule == '__subpackages__':
                     result.append(gn_pkg + '/*')
                 else:
                     result.append(gn_pkg + ':' + rule)
+            if vis.startswith(':') and vis[1:] in self.packages:
+                result += self.packages[vis[1:]]
         # In bazel targets are implicitly visible to the same BUILD file
         # in gn such visibility should be explicit.
         if ':*' not in result and '//third_party/abseil-cpp/absl/*' not in result:
             result.append(':*')
         return result
 
+    def _translate_package(self, package):
+        if package.endswith('/...'):
+            return '//third_party/abseil-cpp' + package[1:-4] + "/*"
+        else:
+            path = package[7:]
+            gn_path = '' if path == self.rel_path else '//third_party/abseil-cpp/absl/' + path
+            return gn_path + ':*'
+
     # Targets that include string_view.h should depend on string_view target.
     # For backward compatibility it is possible to depend just on 'strings', but it is
     # better to depend on string_view directly.
     def _need_to_add_string_view(self, bt):
-        if "//absl/strings" not in bt.get('deps', []):
+        string_target = ':strings' if self.rel_path == 'strings' else '//absl/strings'
+        if string_target not in bt.get('deps', []):
             # If target doesn't depend on 'strings', it either doesn't use string_view,
             # or already directly depends on string_view. Skip reading source files.
             return False
@@ -96,8 +228,18 @@ class _Converter:
 
     def parse_bazel(self, content):
         tree = ast.parse(content)
+        local_vars = {
+            'ABSL_DEFAULT_LINKOPTS': [],
+            'ABSL_DEFAULT_COPTS': [],
+            'ABSL_TEST_COPTS': []
+        }
         default_vis = []
         for node in tree.body:
+            if isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if isinstance(target, ast.Name):
+                        local_vars[target.id] = _ast_get_value(
+                            node.value, local_vars)
             if isinstance(node, ast.Expr) and isinstance(node.value, ast.Call):
                 call = node.value
                 if isinstance(call.func, ast.Name):
@@ -105,11 +247,23 @@ class _Converter:
                     if func_name == 'package':
                         for kw in call.keywords:
                             if kw.arg == 'default_visibility':
-                                default_vis = _ast_get_value(kw.value)
+                                default_vis = _ast_get_value(
+                                    kw.value, local_vars)
+                    elif func_name == 'package_group':
+                        name = None
+                        packages = []
+                        for kw in call.keywords:
+                            if kw.arg == 'name':
+                                name = _ast_get_value(kw.value, local_vars)
+                            elif kw.arg == 'packages':
+                                for p in _ast_get_value(kw.value, local_vars):
+                                    packages.append(self._translate_package(p))
+                        if name:
+                            self.packages[name] = packages
                     elif func_name in ('cc_library', 'cc_test'):
                         t = {'is_test': func_name == 'cc_test'}
                         for kw in call.keywords:
-                            t[kw.arg] = _ast_get_value(kw.value)
+                            t[kw.arg] = _ast_get_value(kw.value, local_vars)
                         if 'visibility' not in t and default_vis:
                             t['visibility'] = default_vis
                         self.bazel_targets.append(t)
@@ -134,6 +288,7 @@ class _Converter:
 
             is_test = bt.get('is_test')
             rule = 'absl_test' if is_test else 'absl_source_set'
+            bazel_deps = bt.get('deps', [])
             target_name = f"{self.rel_path}:{name}"
 
             skip = _SKIP_TARGETS.get(target_name)
@@ -143,7 +298,27 @@ class _Converter:
                 out.append(f'')
                 continue
 
+            if '@google_benchmark//:benchmark_main' in bazel_deps:
+                # Porting benchmarks targets is not implemented.
+                continue
+
+            if '//absl/base:exception_safety_testing' in bazel_deps:
+                out.append(
+                    f'# skipped because chromium doesn\'t use c++ exceptions')
+                out.append(f'# {rule}("{name}")')
+                out.append(f'')
+                continue
+
+            if is_test and '@googletest//:gtest_main' not in bazel_deps:
+                out.append(
+                    f'# {name} is excluded because defines its own main function'
+                )
+                out.append(f'# {rule}("{name}")')
+                out.append(f'')
+                continue
+
             # Start writing the output.
+            out.append(_ADD_PREFIX.get(target_name, ''))
             out.append(f'{rule}("{name}") {{')
 
             if bt.get('testonly'):
@@ -156,10 +331,13 @@ class _Converter:
                     out.append(f'"{s}",')
                 out.append(']')
 
-            hdrs = bt.get('hdrs')
+            hdrs = bt.get('hdrs', []) + bt.get('textual_hdrs', [])
             if hdrs:
                 out.append('public = [')
                 for h in sorted(hdrs):
+                    # One exception where header is excluded
+                    if target_name == 'strings:strings' and h == 'string_view.h':
+                        continue
                     out.append(f'"{h}",')
                 out.append(']')
 
@@ -174,7 +352,7 @@ class _Converter:
                 out.append(']')
 
             gn_deps = []
-            for d in bt.get('deps', []):
+            for d in bazel_deps:
                 td = self._translate_dep(d)
                 if td:
                     gn_deps.append(td)
@@ -190,6 +368,7 @@ class _Converter:
                     out.append(f'"{d}",')
                 out.append(']')
 
+            out.append(_ADD_CONTENT.get(target_name, ''))
             out.append('}')
             out.append('')
 
@@ -230,13 +409,26 @@ def convert_all(root_dir):
     # TODO: crbug.com/524565513: walk the root dir when script is fully ready to handle all edge cases.
     for folder in [
             'algorithm',
+            'cleanup',
+            'container',
             'crc',
+            'debugging',
+            'flags',
             'functional',
+            'hash',
+            'log',
+            'log/internal',
             'memory',
             'meta',
             'numeric',
+            'profiling',
+            'random',
+            'random/internal',
             'status',
+            'strings',
+            'synchronization',
             'time',
+            'time/internal/cctz',
             'types',
             'utility',
     ]:

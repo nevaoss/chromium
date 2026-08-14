@@ -280,10 +280,6 @@ BASE_DECLARE_FEATURE(kMigrateManagementPageToWebUIOnMobile);
 BASE_DECLARE_FEATURE(kViewsJSAppModalDialog);
 #endif
 
-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
-BASE_DECLARE_FEATURE(kUsePortalAccentColor);
-#endif
-
 // Controls whether the site-specific data dialog shows a related installed
 // applications section.
 BASE_DECLARE_FEATURE(kPageSpecificDataDialogRelatedInstalledAppsSection);
@@ -299,16 +295,9 @@ BASE_DECLARE_FEATURE(kLensOverlayHomeworkPageActionFocusOptimization);
 // losing focus).
 BASE_DECLARE_FEATURE(kPageActionAnchoredMessageEasyDismiss);
 
-// Controls whether the new page actions framework should be displaying page
-// actions.
-BASE_DECLARE_FEATURE(kPageActionsMigration);
-
 // Gates the optimization for AI Mode page action to reduce mouse pressed
 // latency.
 BASE_DECLARE_FEATURE(kAiModePageActionOptimization);
-
-// For development only, set this to enable all page actions.
-BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationEnableAll);
 
 // The following feature params indicate whether individual features should
 // have their page actions controlled using the new framework.

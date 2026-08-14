@@ -11,6 +11,7 @@
 
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
+#include "base/strings/strcat.h"
 #include "base/test/gmock_callback_support.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/mock_callback.h"
@@ -50,6 +51,7 @@
 #include "components/autofill/core/browser/webdata/autofill_ai/entity_table.h"
 #include "components/autofill/core/browser/webdata/autofill_webdata_service_test_helper.h"
 #include "components/autofill/core/common/autofill_debug_features.h"
+#include "components/autofill/core/common/autofill_features.h"
 #include "components/autofill/core/common/autofill_prefs.h"
 #include "components/optimization_guide/core/optimization_guide_prefs.h"
 #include "components/personal_context/core/mock_personal_context_eligibility_service.h"
@@ -87,6 +89,7 @@ using ::testing::Values;
 using ::testing::WithParamInterface;
 
 constexpr size_t kVisibleSuffixLength = 4;
+constexpr std::u16string_view kDots = u"\u2022\u2060\u2006\u2060";
 
 class MockAutofillClient : public TestAutofillClient {
  public:
@@ -155,7 +158,11 @@ class AtMemoryManagerTest : public Test,
                                 NiceMock<MockBrowserAutofillManager>> {
  public:
   AtMemoryManagerTest() {
-    feature_list_.InitWithFeatures({features::kAutofillAtMemory}, {});
+    // AutofillAiWalletPrivatePasses is default enabled on most platforms and
+    // affects how sensitive attributes are masked.
+    feature_list_.InitWithFeatures(
+        {features::kAutofillAtMemory, features::kAutofillAiWalletPrivatePasses},
+        {});
   }
 
   void SetUp() override {
@@ -213,6 +220,11 @@ class AtMemoryManagerTest : public Test,
       MemorySearchStatus status,
       std::vector<MemorySearchResult> entries,
       std::vector<Suggestion>& final_suggestions) {
+    InSequence s;
+    EXPECT_CALL(update_callback_,
+                Run(ElementsAre(Field("type", &Suggestion::type,
+                                      SuggestionType::kAtMemoryFetching)),
+                    AutofillSuggestionTriggerSource::kAtMemoryTriggerString));
     EXPECT_CALL(mock_query_service(), Query(query, _, _, _))
         .WillOnce([status, entries = std::move(entries)](
                       std::u16string_view query, const GURL& url,
@@ -221,10 +233,6 @@ class AtMemoryManagerTest : public Test,
                           callback) mutable {
           callback.Run(MemorySearchResults(status, std::move(entries)));
         });
-    InSequence s;
-    EXPECT_CALL(update_callback_,
-                Run(IsEmpty(),
-                    AutofillSuggestionTriggerSource::kAtMemoryTriggerString));
     EXPECT_CALL(update_callback_,
                 Run(_, AutofillSuggestionTriggerSource::kAtMemoryTriggerString))
         .WillOnce(SaveArg<0>(&final_suggestions));
@@ -300,12 +308,13 @@ Matcher<Suggestion> EqualsSuggestionWithManageEnhancedAutofillFooter(
     MemoryDataType memory_data_type,
     Matchers&&... matchers) {
   auto attribution_matcher = AllOf(
-      EqualsSuggestion(
-          SuggestionType::kAtMemorySourceAttribution,
-          l10n_util::GetStringUTF16(
-              IDS_AUTOFILL_AT_MEMORY_SOURCE_ATTRIBUTION_PERSONAL_INTELLIGENCE)),
+      EqualsSuggestion(SuggestionType::kAtMemorySourceAttribution),
+      Field(
+          &Suggestion::minor_texts,
+          ElementsAre(Suggestion::Text(l10n_util::GetStringUTF16(
+              IDS_AUTOFILL_AT_MEMORY_SOURCE_ATTRIBUTION_PERSONAL_INTELLIGENCE)))),
       Field(&Suggestion::acceptability,
-            Suggestion::Acceptability::kUnacceptable));
+            Suggestion::Acceptability::kSelectableButUnacceptable));
 
   if constexpr (sizeof...(matchers) == 0) {
     return EqualsAtMemorySuggestion(
@@ -388,8 +397,7 @@ TEST_F(AtMemoryManagerTest,
                                  {{Suggestion::Text(l10n_util::GetStringUTF16(
                                      IDS_AUTOFILL_AT_MEMORY_NO_CONNECTION))}}),
                 Field(&Suggestion::acceptability,
-                      Suggestion::Acceptability::
-                          kUnacceptableWithDeactivatedStyle)),
+                      Suggestion::Acceptability::kUnselectableAndUnacceptable)),
           EqualsSuggestion(SuggestionType::kSeparator),
           EqualsSuggestion(SuggestionType::kAtMemoryAiDisclosure)));
 }
@@ -438,8 +446,8 @@ TEST_F(AtMemoryManagerTest, OnFilterChanged_EmptyFilterClearsSuggestions) {
   manager().OnFilterChanged(u"");
 }
 
-// Tests that OnSearchSubmitted triggers full search, clears currently shown
-// suggestions, and successfully updates suggestions with the results once they
+// Tests that OnSearchSubmitted triggers full search, shows the fetching
+// suggestion, and successfully updates suggestions with the results once they
 // arrive.
 TEST_F(AtMemoryManagerTest,
        OnSearchSubmitted_TriggersQueryServiceAndClearsSuggestions) {
@@ -450,10 +458,11 @@ TEST_F(AtMemoryManagerTest,
               Query(std::u16string_view(u"query"), _, _, _))
       .WillOnce(SaveArg<3>(&search_callback));
 
-  // Expect that executing the query immediately clears suggestions.
-  EXPECT_CALL(
-      update_callback_,
-      Run(IsEmpty(), AutofillSuggestionTriggerSource::kAtMemoryTriggerString));
+  // Expect that executing the query immediately shows the fetching suggestion.
+  EXPECT_CALL(update_callback_,
+              Run(ElementsAre(Field("type", &Suggestion::type,
+                                    SuggestionType::kAtMemoryFetching)),
+                  AutofillSuggestionTriggerSource::kAtMemoryTriggerString));
 
   manager().OnSearchSubmitted(u"query");
 
@@ -548,8 +557,6 @@ TEST_F(AtMemoryManagerTest,
 }
 
 TEST_F(AtMemoryManagerTest, OnSearchSubmitted_AutofillSource_Flight_Footer) {
-  base::test::ScopedFeatureList feature_list{
-      features::kYourSavedInfoSettingsPage};
 
   SeeFormAndShowPopup();
 
@@ -664,7 +671,7 @@ TEST_F(AtMemoryManagerTest,
   EXPECT_EQ(final_suggestions[0].labels[0][0].value,
             l10n_util::GetStringUTF16(IDS_AUTOFILL_AT_MEMORY_NO_CONNECTION));
   EXPECT_EQ(final_suggestions[0].acceptability,
-            Suggestion::Acceptability::kUnacceptableWithDeactivatedStyle);
+            Suggestion::Acceptability::kUnselectableAndUnacceptable);
 }
 
 // Tests that when filling an attribute (e.g. Passport Number), the manager
@@ -1267,11 +1274,12 @@ TEST_F(AtMemoryManagerTest, FiltersSpiiWhenDeviceReauthNotSupported) {
       .WillOnce(RunOnceCallback<3>(std::move(results)));
 
   InSequence s;
-  // Executing the query immediately clears existing suggestions before
+  // Executing the query immediately shows the fetching suggestion before
   // returning search results.
-  EXPECT_CALL(
-      update_callback_,
-      Run(IsEmpty(), AutofillSuggestionTriggerSource::kAtMemoryTriggerString));
+  EXPECT_CALL(update_callback_,
+              Run(ElementsAre(Field("type", &Suggestion::type,
+                                    SuggestionType::kAtMemoryFetching)),
+                  AutofillSuggestionTriggerSource::kAtMemoryTriggerString));
   EXPECT_CALL(update_callback_,
               Run(ElementsAre(EqualsSuggestionWithManageEnhancedAutofillFooter(
                                   MemoryDataType::kAddressFull),
@@ -1304,11 +1312,12 @@ TEST_F(AtMemoryManagerTest,
       .WillOnce(RunOnceCallback<3>(std::move(results)));
 
   InSequence s;
-  // Executing the query immediately clears existing suggestions before
+  // Executing the query immediately shows the fetching suggestion before
   // returning search results.
-  EXPECT_CALL(
-      update_callback_,
-      Run(IsEmpty(), AutofillSuggestionTriggerSource::kAtMemoryTriggerString));
+  EXPECT_CALL(update_callback_,
+              Run(ElementsAre(Field("type", &Suggestion::type,
+                                    SuggestionType::kAtMemoryFetching)),
+                  AutofillSuggestionTriggerSource::kAtMemoryTriggerString));
   EXPECT_CALL(update_callback_,
               Run(ElementsAre(EqualsSuggestionWithManageEnhancedAutofillFooter(
                       MemoryDataType::kIban)),
@@ -1428,7 +1437,7 @@ TEST_P(AtMemoryManagerPolicyTest, RespectsEnterprisePolicy) {
     EXPECT_EQ(resulting_suggestions[0].type,
               SuggestionType::kAtMemorySearchResult);
     EXPECT_EQ(resulting_suggestions[0].acceptability,
-              Suggestion::Acceptability::kUnacceptable);
+              Suggestion::Acceptability::kSelectableButUnacceptable);
   }
 }
 
@@ -1440,17 +1449,21 @@ INSTANTIATE_TEST_SUITE_P(
                                          MemoryEntrySourceType::kAutofill,
                                          true},
            AtMemoryManagerFilterTestCase{
-               MemoryDataType::kCreditCardNumber, u"Credit Card", u"1111",
+               MemoryDataType::kCreditCardNumber, u"Credit Card",
+               base::StrCat({kDots, kDots, kDots, kDots, u"1111"}),
                MemoryEntrySourceType::kAutofill, false},
-           AtMemoryManagerFilterTestCase{MemoryDataType::kCreditCardNumber,
-                                         u"Credit Card", u"2222",
-                                         MemoryEntrySourceType::kGmail, true},
            AtMemoryManagerFilterTestCase{
-               MemoryDataType::kPassportNumber, u"Passport", u"1234",
+               MemoryDataType::kCreditCardNumber, u"Credit Card",
+               base::StrCat({kDots, kDots, kDots, kDots, u"2222"}),
+               MemoryEntrySourceType::kGmail, true},
+           AtMemoryManagerFilterTestCase{
+               MemoryDataType::kPassportNumber, u"Passport",
+               base::StrCat({kDots, kDots, kDots, kDots, u"1234"}),
                MemoryEntrySourceType::kAutofill, false},
-           AtMemoryManagerFilterTestCase{MemoryDataType::kPassportNumber,
-                                         u"Passport", u"5678",
-                                         MemoryEntrySourceType::kGmail, true}));
+           AtMemoryManagerFilterTestCase{
+               MemoryDataType::kPassportNumber, u"Passport",
+               base::StrCat({kDots, kDots, kDots, kDots, u"5678"}),
+               MemoryEntrySourceType::kGmail, true}));
 
 // Tests that credit card suggestions are filtered out when the credit card
 // autofill preference is disabled.
@@ -1494,7 +1507,7 @@ TEST_P(AtMemoryManagerPrefTest, FiltersOutCreditCardsWhenPrefDisabled) {
     EXPECT_EQ(resulting_suggestions[0].type,
               SuggestionType::kAtMemorySearchResult);
     EXPECT_EQ(resulting_suggestions[0].acceptability,
-              Suggestion::Acceptability::kUnacceptable);
+              Suggestion::Acceptability::kSelectableButUnacceptable);
   }
 }
 
@@ -1506,11 +1519,13 @@ INSTANTIATE_TEST_SUITE_P(
                                          MemoryEntrySourceType::kAutofill,
                                          true},
            AtMemoryManagerFilterTestCase{
-               MemoryDataType::kCreditCardNumber, u"Credit Card", u"1111",
+               MemoryDataType::kCreditCardNumber, u"Credit Card",
+               base::StrCat({kDots, kDots, kDots, kDots, u"1111"}),
                MemoryEntrySourceType::kAutofill, false},
-           AtMemoryManagerFilterTestCase{MemoryDataType::kCreditCardNumber,
-                                         u"Credit Card", u"2222",
-                                         MemoryEntrySourceType::kGmail, true}));
+           AtMemoryManagerFilterTestCase{
+               MemoryDataType::kCreditCardNumber, u"Credit Card",
+               base::StrCat({kDots, kDots, kDots, kDots, u"2222"}),
+               MemoryEntrySourceType::kGmail, true}));
 
 // Tests that non-SPII data fills correctly and records the funnel metrics.
 TEST_F(AtMemoryManagerTest, FillNonSensitiveData_Success) {
@@ -1739,12 +1754,44 @@ TEST_F(AtMemoryManagerTest, PersonalContext_NoticePositioning_SearchResults) {
   EXPECT_EQ(SuggestionType::kAtMemorySearchResult, suggestions[1].type);
 }
 
-// Tests that the personal context notice is not appended when the user does not
-// need to see the notice.
-TEST_F(AtMemoryManagerTest, PersonalContext_DoesNotAppendNoticeSuggestion) {
+// Tests that during the fetching state (while search is in progress), the UI
+// receives the `kAtMemoryFetching` meta-suggestion followed by a separator and
+// the notice card if active.
+TEST_F(AtMemoryManagerTest, FetchingState_Suggestions_NoticeActive) {
+  autofill_client().set_should_show_personal_context_at_memory_notice(true);
+  auto [form_id, field_id] = SeeForm();
+  manager().OnPopupShown(
+      form_id, field_id,
+      AutofillSuggestionTriggerSource::kAtMemoryTriggerString, std::nullopt,
+      /*is_context_secure=*/true, update_callback_.Get(),
+      ukm::kInvalidSourceId);
+
+  EXPECT_CALL(
+      update_callback_,
+      Run(ElementsAre(
+              Field(&Suggestion::type, SuggestionType::kAtMemoryFetching),
+              Field(&Suggestion::type, SuggestionType::kSeparator),
+              Field(&Suggestion::type, SuggestionType::kPersonalContextNotice)),
+          AutofillSuggestionTriggerSource::kAtMemoryTriggerString));
+
+  // Trigger query without completing it immediately to observe fetching state.
+  EXPECT_CALL(mock_query_service(),
+              Query(std::u16string_view(u"query"), _, _, _));
+
+  manager().OnSearchSubmitted(u"query");
+}
+
+// Tests that during the fetching state when the notice has been accepted,
+// the UI receives only `kAtMemoryFetching` meta-suggestion.
+TEST_F(AtMemoryManagerTest, FetchingState_Suggestions_NoticeAccepted) {
   autofill_client().set_should_show_personal_context_at_memory_notice(false);
 
-  SeeFormAndShowPopup();
+  auto [form_id, field_id] = SeeForm();
+  manager().OnPopupShown(
+      form_id, field_id,
+      AutofillSuggestionTriggerSource::kAtMemoryTriggerString, std::nullopt,
+      /*is_context_secure=*/true, update_callback_.Get(),
+      ukm::kInvalidSourceId);
 
   std::vector<Suggestion> suggestions;
   EXPECT_CALL(update_callback_,

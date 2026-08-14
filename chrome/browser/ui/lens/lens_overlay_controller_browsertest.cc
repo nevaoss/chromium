@@ -91,7 +91,6 @@
 #include "chrome/browser/ui/views/location_bar/location_bar_view.h"
 #include "chrome/browser/ui/views/omnibox/omnibox_view_views.h"
 #include "chrome/browser/ui/views/page_action/page_action_container_view.h"
-#include "chrome/browser/ui/views/page_action/page_action_icon_controller.h"
 #include "chrome/browser/ui/views/page_action/page_action_view.h"
 #include "chrome/browser/ui/views/side_panel/side_panel.h"
 #include "chrome/browser/ui/views/side_panel/side_panel_coordinator.h"
@@ -4719,31 +4718,24 @@ class LensOverlayControllerEntrypointsBrowserTest
     auto* location_bar =
         BrowserView::GetBrowserViewForBrowser(browser())->GetLocationBarView();
     location_bar->omnibox_view()->RequestFocus();
-    views::View* omnibox_entrypoint;
-    if (IsPageActionMigrated(PageActionIconType::kLensOverlay)) {
-      omnibox_entrypoint =
-          location_bar->page_action_container()->GetPageActionView(
-              kActionSidePanelShowLensOverlayResults);
-    } else {
-      location_bar->page_action_icon_controller()->UpdateAll();
-      omnibox_entrypoint =
-          location_bar->page_action_icon_controller()->GetIconView(
-              PageActionIconType::kLensOverlay);
-    }
+    views::View* omnibox_entrypoint =
+        location_bar->page_action_container()->GetPageActionView(
+            kActionSidePanelShowLensOverlayResults);
     ASSERT_TRUE(base::test::RunUntil([&]() {
       return omnibox_entrypoint->GetVisible() == expected_visible;
     }));
 
     // Verify three dot menu entrypoint matches expected visibility.
-    EXPECT_EQ(expected_visible,
-              browser()->command_controller()->IsCommandEnabled(
-                  IDC_CONTENT_CONTEXT_LENS_OVERLAY));
+    EXPECT_EQ(
+        expected_visible,
+        chrome::BrowserCommandController::From(browser())->IsCommandEnabled(
+            IDC_CONTENT_CONTEXT_LENS_OVERLAY));
 
     // Verify toolbar entrypoint is always enabled and visible.
     actions::ActionItem* toolbar_entry_point =
         actions::ActionManager::Get().FindAction(
             kActionSidePanelShowLensOverlayResults,
-            browser()->browser_actions()->root_action_item());
+            BrowserActions::From(browser())->root_action_item());
     EXPECT_TRUE(toolbar_entry_point->GetVisible());
     EXPECT_TRUE(toolbar_entry_point->GetEnabled());
   }
@@ -5294,10 +5286,11 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserFullscreenDisabled,
   actions::ActionItem* toolbar_entry_point =
       actions::ActionManager::Get().FindAction(
           kActionSidePanelShowLensOverlayResults,
-          browser()->browser_actions()->root_action_item());
+          BrowserActions::From(browser())->root_action_item());
   EXPECT_TRUE(toolbar_entry_point->GetEnabled());
-  EXPECT_TRUE(browser()->command_controller()->IsCommandEnabled(
-      IDC_CONTENT_CONTEXT_LENS_OVERLAY));
+  EXPECT_TRUE(
+      chrome::BrowserCommandController::From(browser())->IsCommandEnabled(
+          IDC_CONTENT_CONTEXT_LENS_OVERLAY));
 
   // Enter into fullscreen mode.
   FullscreenController* fullscreen_controller = browser()
@@ -5313,7 +5306,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserFullscreenDisabled,
   ASSERT_TRUE(base::test::RunUntil(
       [&]() { return !toolbar_entry_point->GetEnabled(); }));
   ASSERT_TRUE(base::test::RunUntil([&]() {
-    return !browser()->command_controller()->IsCommandEnabled(
+    return !chrome::BrowserCommandController::From(browser())->IsCommandEnabled(
         IDC_CONTENT_CONTEXT_LENS_OVERLAY);
   }));
 
@@ -5324,7 +5317,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserFullscreenDisabled,
   ASSERT_TRUE(base::test::RunUntil(
       [&]() { return toolbar_entry_point->GetEnabled(); }));
   ASSERT_TRUE(base::test::RunUntil([&]() {
-    return browser()->command_controller()->IsCommandEnabled(
+    return chrome::BrowserCommandController::From(browser())->IsCommandEnabled(
         IDC_CONTENT_CONTEXT_LENS_OVERLAY);
   }));
 }

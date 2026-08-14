@@ -174,8 +174,10 @@
 #include "content/public/browser/storage_partition.h"
 #include "content/public/common/content_features.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
+#include "third_party/blink/public/common/input/web_keyboard_event.h"
 #include "third_party/blink/public/mojom/content_extraction/ai_page_content.mojom.h"
 #include "ui/base/interaction/element_identifier.h"
+#include "ui/events/keycodes/keyboard_codes.h"
 #include "ui/gfx/geometry/rect.h"
 #include "url/origin.h"
 
@@ -183,14 +185,11 @@
 #include "chrome/browser/android/preferences/autofill/settings_navigation_helper.h"
 #include "chrome/browser/android/tab_android.h"
 #include "chrome/browser/autofill/android/android_sms_otp_backend_factory.h"
-#include "chrome/browser/autofill/android/at_memory_bottom_sheet_delegate.h"
 #include "chrome/browser/flags/android/chrome_feature_list.h"
 #include "chrome/browser/keyboard_accessory/android/manual_filling_controller.h"
 #include "chrome/browser/signin/android/signin_bridge.h"
 #include "chrome/browser/touch_to_fill/autofill/android/touch_to_fill_autofill_controller.h"
 #include "chrome/browser/touch_to_fill/autofill/android/touch_to_fill_autofill_view_impl.h"
-#include "chrome/browser/ui/android/autofill/at_memory_bottom_sheet_bridge.h"
-#include "chrome/browser/ui/android/autofill/at_memory_bottom_sheet_delegate_android.h"
 #include "chrome/browser/ui/android/autofill/autofill_ai_save_update_entity_flow_manager.h"
 #include "chrome/browser/ui/android/autofill/save_update_address_profile_flow_manager.h"
 #include "chrome/browser/ui/autofill/autofill_message_controller_impl.h"
@@ -331,6 +330,51 @@ void ChromeAutofillClient::AtMemoryCopyPasteObserver::OnPaste() {
     client_->ShowAutofillAtMemoryPromo();
 #endif
   }
+}
+
+// Observes direct user interaction events to detect hotkey paste (e.g., Ctrl+V,
+// Cmd+V, Ctrl+Shift+V, Cmd+Shift+V, Option+Cmd+Shift+V). Hotkey paste needs to
+// be observed separately because `WebContentsObserver::OnPaste()` is not
+// guaranteed to be triggered by hotkey paste.
+//
+// Note: This function doesn't need to perfectly detect hotkey paste. For
+// example, a false positive can happen when JS handles Ctrl+V and prevents the
+// default action. Slight false positives are OK for promo triggering since the
+// promo is displayed rarely anyway, and for metrics, comparing the copied value
+// hash to the pasted value hash effectively prevents most false positives.
+void ChromeAutofillClient::AtMemoryCopyPasteObserver::DidGetUserInteraction(
+    const blink::WebInputEvent& event) {
+  if constexpr (BUILDFLAG(IS_ANDROID)) {
+    return;
+  }
+
+  if (event.GetType() != blink::WebInputEvent::Type::kRawKeyDown &&
+      event.GetType() != blink::WebInputEvent::Type::kKeyDown) {
+    return;
+  }
+
+  const auto& key_event = static_cast<const blink::WebKeyboardEvent&>(event);
+  const int modifiers = key_event.GetModifiers();
+#if BUILDFLAG(IS_MAC)
+  constexpr int kPasteModifier = blink::WebInputEvent::kMetaKey;
+#else
+  constexpr int kPasteModifier = blink::WebInputEvent::kControlKey;
+#endif
+
+  const bool is_paste = (key_event.windows_key_code == ui::VKEY_V) &&
+                        (modifiers & kPasteModifier);
+
+  if (!is_paste) {
+    return;
+  }
+
+  // Ignore hotkey events when no editable element is focused to reduce false
+  // positives.
+  if (!web_contents() || !web_contents()->IsFocusedElementEditable()) {
+    return;
+  }
+
+  OnPaste();
 }
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
@@ -762,13 +806,9 @@ void ChromeAutofillClient::ShowAutofillSettings(
       return;
     case SuggestionType::kManageAutofillAi:
     case SuggestionType::kManageEnhancedAutofill:
-      if (base::FeatureList::IsEnabled(features::kYourSavedInfoSettingsPage)) {
-        ShowAutofillPersonalContextSettings(
-            web_contents(),
-            AutofillOptionsReferrer::kPersonalContextAtmemoryNotice);
-      } else {
-        autofill::ShowAutofillSettings(web_contents());
-      }
+      ShowAutofillPersonalContextSettings(
+          web_contents(),
+          AutofillOptionsReferrer::kPersonalContextAtmemoryNotice);
       return;
     default:
       break;
@@ -786,15 +826,10 @@ void ChromeAutofillClient::ShowAutofillSettings(
         chrome::ShowSettingsSubPage(browser, chrome::kAddressesSubPage);
         return;
       case SuggestionType::kManageAutofillAi:
-        if (base::FeatureList::IsEnabled(
-                features::kYourSavedInfoSettingsPage)) {
-          base::UmaHistogramEnumeration(
-              "Autofill.YourSavedInfoSettingsPage.VisitReferrer",
-              autofill_metrics::AutofillSettingsReferrer::kFillingFlowDropdown);
-          chrome::ShowSettingsSubPage(browser, chrome::kAutofillSubPage);
-        } else {
-          chrome::ShowSettingsSubPage(browser, chrome::kAutofillAiSubPage);
-        }
+        base::UmaHistogramEnumeration(
+            "Autofill.YourSavedInfoSettingsPage.VisitReferrer",
+            autofill_metrics::AutofillSettingsReferrer::kFillingFlowDropdown);
+        chrome::ShowSettingsSubPage(browser, chrome::kAutofillSubPage);
         return;
       case SuggestionType::kManageAutofillAiIdentityDocs:
         base::UmaHistogramEnumeration(
@@ -1131,38 +1166,6 @@ bool ChromeAutofillClient::IsAndroidLargeFormFactor() const {
 }
 
 #if BUILDFLAG(IS_ANDROID)
-void ChromeAutofillClient::ShowAtMemoryBottomSheet(
-    base::span<const Suggestion> suggestions,
-    base::WeakPtr<AutofillSuggestionDelegate> delegate) {
-  if (AtMemoryBottomSheetBridge* bridge =
-          GetOrCreateAtMemoryBottomSheetBridge()) {
-    bridge->RequestShowContent(
-        std::make_unique<AtMemoryBottomSheetDelegateAndroid>(
-            this, delegate, base::ToVector(suggestions)),
-        suggestions);
-  }
-}
-
-void ChromeAutofillClient::HideAtMemoryBottomSheet() {
-  if (at_memory_bottom_sheet_bridge_) {
-    at_memory_bottom_sheet_bridge_->Hide();
-  }
-}
-
-AtMemoryBottomSheetBridge*
-ChromeAutofillClient::GetOrCreateAtMemoryBottomSheetBridge() {
-  if (!at_memory_bottom_sheet_bridge_) {
-    if (ui::WindowAndroid* window_android =
-            web_contents()->GetTopLevelNativeWindow()) {
-      at_memory_bottom_sheet_bridge_ =
-          std::make_unique<AtMemoryBottomSheetBridge>(
-              window_android,
-              Profile::FromBrowserContext(web_contents()->GetBrowserContext()));
-    }
-  }
-  return at_memory_bottom_sheet_bridge_.get();
-}
-
 AutofillSnackbarControllerImpl*
 ChromeAutofillClient::GetAutofillSnackbarController() {
   if (!autofill_snackbar_controller_impl_) {

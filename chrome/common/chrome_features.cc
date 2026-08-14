@@ -1039,6 +1039,8 @@ const base::FeatureParam<bool> kGlicButtonContainerBackground{
     &kGlicButtonPressedState, "glic-button-container-background", false};
 const base::FeatureParam<bool> kGlicButtonPressedForceSolidIcon{
     &kGlicButtonPressedState, "glic-button-pressed-force-solid-icon", true};
+const base::FeatureParam<bool> kGlicButtonCustomThemeFallback{
+    &kGlicButtonPressedState, "custom-theme-fallback", true};
 
 BASE_FEATURE(kGlicShareImage, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicShareImageNoNewConversation,
@@ -1282,7 +1284,7 @@ BASE_FEATURE(kHttpsFirstModeForAdvancedProtectionUsers,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kHttpsFirstModeDefaultSettingPairsWithEsb,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables HTTPS-First Mode for engaged sites. No-op if HttpsFirstModeV2 or
 // HTTPS-Upgrades is disabled.
@@ -1414,6 +1416,18 @@ constexpr base::FeatureParam<int> kLinuxLowMemoryMonitorCriticalLevel{
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
 BASE_FEATURE(kListWebAppsSwitch, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif
+
+// When enabled, keyed services are instantiated lazily rather than eagerly at
+// startup.
+BASE_FEATURE(kLazyKeyedServiceInstantiation, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// When enabled, autofill and password manager keyed services are instantiated
+// lazily.
+BASE_FEATURE_PARAM(bool,
+                   kLazyKeyedServiceInstantiationAutofillAndPassword,
+                   &features::kLazyKeyedServiceInstantiation,
+                   "autofill_and_password",
+                   true);
 
 // Enables the use of system notification centers instead of using the Message
 // Center for displaying the toasts. The feature is hardcoded to enabled for

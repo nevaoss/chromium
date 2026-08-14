@@ -46,6 +46,7 @@
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_tabstrip.h"
+#include "chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
@@ -265,7 +266,7 @@ class WebAppBrowserTest : public base::test::WithFeatureOverride,
 
     webapps::AppId app_id = InstallWebApp(std::move(web_app_info));
     Browser* app_browser = LaunchWebAppBrowser(app_id);
-    DCHECK(app_browser->is_type_app());
+    DCHECK(app_browser->GetType() == BrowserWindowInterface::Type::TYPE_APP);
     DCHECK(web_app::AppBrowserController::From(app_browser));
     tester.ExpectUniqueSample(kLaunchWebAppDisplayModeHistogram,
                               expected_launch_display, 1);
@@ -1209,7 +1210,7 @@ IN_PROC_BROWSER_TEST_P(WebAppBrowserTest, PWANavigatedToAboutBlank) {
   EXPECT_TRUE(AppBrowserController::IsWebApp(app_browser));
 
   // The app browser's BrowserWindowInterface::Type should be TYPE_APP.
-  EXPECT_TRUE(app_browser->is_type_app());
+  EXPECT_EQ(app_browser->GetType(), BrowserWindowInterface::Type::TYPE_APP);
 
   // Navigate to about:blank in the app.
   const GURL about_blank_url("about:blank");
@@ -1272,9 +1273,11 @@ IN_PROC_BROWSER_TEST_P(WebAppBrowserTest, OverscrollEnabled) {
 
   // Overscroll is only enabled on Aura platforms currently.
 #if defined(USE_AURA)
-  EXPECT_TRUE(app_browser->CanOverscrollContent());
+  EXPECT_TRUE(
+      BrowserWebContentsDelegate::From(app_browser)->CanOverscrollContent());
 #else
-  EXPECT_FALSE(app_browser->CanOverscrollContent());
+  EXPECT_FALSE(
+      BrowserWebContentsDelegate::From(app_browser)->CanOverscrollContent());
 #endif
 }
 

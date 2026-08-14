@@ -1987,11 +1987,6 @@ base::DictValue DevToolsUIBindings::GetHostConfigDictionary(Profile* profile) {
                       std::move(ai_assistance_file_agent_dict));
   }
 
-  response_dict.Set("devToolsAiAssistanceV2",
-                    base::DictValue().Set(
-                        "enabled", base::FeatureList::IsEnabled(
-                                       ::features::kDevToolsAiAssistanceV2)));
-
   response_dict.Set("devToolsAiV2Architecture",
                     base::DictValue().Set(
                         "enabled", base::FeatureList::IsEnabled(
@@ -2056,8 +2051,7 @@ base::DictValue DevToolsUIBindings::GetHostConfigDictionary(Profile* profile) {
                                      enabled_by_flags, disabled_by_flags)));
 
   base::DictValue devtools_well_known_dict;
-  devtools_well_known_dict.Set(
-      "enabled", base::FeatureList::IsEnabled(::features::kDevToolsWellKnown));
+  devtools_well_known_dict.Set("enabled", true);
   response_dict.Set("devToolsWellKnown", std::move(devtools_well_known_dict));
 
   base::DictValue ve_logging_dict;

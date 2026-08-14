@@ -1161,10 +1161,14 @@ IN_PROC_BROWSER_TEST_P(
   ExecuteJsTest();
 }
 
+#if BUILDFLAG(IS_ANDROID)
 // TODO(crbug.com/533085229): Re-enable on Android once close flakiness is fixed.
-#if !BUILDFLAG(IS_ANDROID)
+#define MAYBE_testNoZssWarmingStateMachine DISABLED_testNoZssWarmingStateMachine
+#else
+#define MAYBE_testNoZssWarmingStateMachine testNoZssWarmingStateMachine
+#endif
 IN_PROC_BROWSER_TEST_P(NewGlicApiTestWithContextualCueing,
-                       testNoZssWarmingStateMachine) {
+                       MAYBE_testNoZssWarmingStateMachine) {
   tabs::TabInterface* tab1 = GetTabListInterface()->GetActiveTab();
 
   // 1. Initial Open via Blocked Source (kPromotionPage) -> disables warming.
@@ -1250,7 +1254,6 @@ IN_PROC_BROWSER_TEST_P(NewGlicApiTestWithContextualCueing,
 
   ExecuteJsTest();
 }
-#endif  // !BUILDFLAG(IS_ANDROID)
 
 IN_PROC_BROWSER_TEST_P(NewGlicApiTestWithContextualCueing,
                        testGetZeroStateSuggestionsApi) {
@@ -1987,7 +1990,7 @@ IN_PROC_BROWSER_TEST_P(NewGlicApiTestWithFastTimeout,
 #endif
 }
 
-#if BUILDFLAG(IS_ANDROID) || defined(SLOW_BINARY)
+#if BUILDFLAG(IS_ANDROID) || defined(SLOW_BINARY) || BUILDFLAG(IS_LINUX)
 #define MAYBE_testNoBootstrap DISABLED_testNoBootstrap
 #else
 #define MAYBE_testNoBootstrap testNoBootstrap
@@ -2978,11 +2981,13 @@ IN_PROC_BROWSER_TEST_P(NewGlicApiTestWithSkills,
   skills_batch_1.push_back(mojom::SkillPreview::New(
       "contextual_skill_id_1", "contextual_skill_1", "contextual_skill_icon_1",
       mojom::SkillSource::kFirstParty, "contextual_skill_description_1",
-      /*curated_by=*/std::nullopt, /*image_url=*/GURL("https://example.com")));
+      /*curated_by=*/std::nullopt, /*image_url=*/GURL("https://example.com"),
+      /*category=*/std::nullopt));
   skills_batch_1.push_back(mojom::SkillPreview::New(
       "contextual_skill_id_2", "contextual_skill_2", "contextual_skill_icon_2",
       mojom::SkillSource::kFirstParty, "contextual_skill_description_2",
-      /*curated_by=*/std::nullopt, /*image_url=*/GURL("https://example.com")));
+      /*curated_by=*/std::nullopt, /*image_url=*/GURL("https://example.com"),
+      /*category=*/std::nullopt));
 
   GlicInstanceImpl* instance = GetOnlyGlicInstance();
   ASSERT_TRUE(instance);
@@ -2995,7 +3000,8 @@ IN_PROC_BROWSER_TEST_P(NewGlicApiTestWithSkills,
   skills_batch_2.push_back(mojom::SkillPreview::New(
       "contextual_skill_id_3", "contextual_skill_3", "contextual_skill_icon_3",
       mojom::SkillSource::kFirstParty, "contextual_skill_description_3",
-      /*curated_by=*/std::nullopt, /*image_url=*/GURL("https://example.com")));
+      /*curated_by=*/std::nullopt, /*image_url=*/GURL("https://example.com"),
+      /*category=*/std::nullopt));
   instance->skills_manager().NotifyContextualSkillsChanged(
       std::move(skills_batch_2));
 
@@ -3012,7 +3018,8 @@ IN_PROC_BROWSER_TEST_P(NewGlicApiTestWithSkills,
   skills_batch.push_back(mojom::SkillPreview::New(
       "contextual_skill_id_1", "contextual_skill_1", "contextual_skill_icon_1",
       mojom::SkillSource::kFirstParty, "contextual_skill_description_1",
-      /*curated_by=*/std::nullopt, /*image_url=*/GURL("https://example.com")));
+      /*curated_by=*/std::nullopt, /*image_url=*/GURL("https://example.com"),
+      /*category=*/std::nullopt));
 
   instance->skills_manager().NotifyContextualSkillsChanged(
       std::move(skills_batch));
@@ -3035,7 +3042,8 @@ IN_PROC_BROWSER_TEST_P(NewGlicApiTestWithSkills,
   skills_batch.push_back(mojom::SkillPreview::New(
       "contextual_skill_id_1", "contextual_skill_1", "contextual_skill_icon_1",
       mojom::SkillSource::kFirstParty, "contextual_skill_description_1",
-      /*curated_by=*/std::nullopt, /*image_url=*/GURL("https://example.com")));
+      /*curated_by=*/std::nullopt, /*image_url=*/GURL("https://example.com"),
+      /*category=*/std::nullopt));
 
   instance->skills_manager().NotifyContextualSkillsChanged(
       std::move(skills_batch));

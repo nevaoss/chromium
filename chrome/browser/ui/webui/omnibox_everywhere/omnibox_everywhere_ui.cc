@@ -6,8 +6,13 @@
 
 #include "base/feature_list.h"
 #include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
+#include "chrome/browser/browser_process.h"
 #include "chrome/browser/contextual_search/contextual_search_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/profiles/profile_attributes_entry.h"
+#include "chrome/browser/profiles/profile_attributes_storage.h"
+#include "chrome/browser/profiles/profile_avatar_icon_util.h"
+#include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/ui/omnibox/omnibox_everywhere_service_factory.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/browser/ui/webui/cr_components/searchbox/searchbox_handler.h"
@@ -30,7 +35,6 @@
 #include "components/omnibox/common/omnibox_features.h"
 #include "content/public/browser/web_ui.h"
 #include "content/public/browser/web_ui_data_source.h"
-#include "ui/base/pointer/touch_ui_controller.h"
 #include "ui/webui/webui_util.h"
 
 namespace {
@@ -70,6 +74,25 @@ OmniboxEverywhereUI::OmniboxEverywhereUI(content::WebUI* web_ui)
   webui::SetupWebUIDataSource(source, kOmniboxEverywhereResources,
                               IDR_OMNIBOX_EVERYWHERE_OMNIBOX_EVERYWHERE_HTML);
 
+  std::string profile_avatar_url =
+      "chrome://theme/IDR_PROFILE_AVATAR_PLACEHOLDER_LARGE";
+  if (g_browser_process && g_browser_process->profile_manager()) {
+    ProfileAttributesEntry* entry =
+        g_browser_process->profile_manager()
+            ->GetProfileAttributesStorage()
+            .GetProfileAttributesWithPath(profile_->GetPath());
+    if (entry) {
+      gfx::Image icon =
+          profiles::GetSizedAvatarIcon(entry->GetAvatarIcon(), 40, 40);
+      profile_avatar_url = webui::GetBitmapDataUrl(icon.AsBitmap());
+    }
+  }
+  source->AddString("profileAvatarUrl", profile_avatar_url);
+  source->AddLocalizedString("profileButtonLabel",
+                             IDS_OVERFLOW_MENU_ITEM_TEXT_PROFILE);
+  source->AddLocalizedString("searchBoxHintAskOrType",
+                             IDS_NTP_SEARCH_BOX_PLACEHOLDER_ASK_OR_TYPE);
+
   // Sanitized image and favicon source initialization
   content::URLDataSource::Add(profile_,
                               std::make_unique<SanitizedImageSource>(profile_));
@@ -91,17 +114,9 @@ OmniboxEverywhereUI::OmniboxEverywhereUI(content::WebUI* web_ui)
        .session_allows_drag_and_drop = session_allows_drag_and_drop}));
 
   source->AddBoolean("isTopChromeSearchbox", false);
-  source->AddBoolean("isTouchUi", ui::TouchUiController::Get()->touch_ui());
-  source->AddBoolean("omniboxAimPopupEnabled",
-                     omnibox::IsAimPopupFeatureEnabled());
-  source->AddBoolean("omniboxShowContextButtonSuggestionLabel",
-                     omnibox::kContextButtonShowSuggestionLabel.Get());
   source->AddBoolean(
       "omniboxPopupDebugEnabled",
       base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxPopupDebug));
-  source->AddBoolean("webuiOmniboxPopupSelectionControlEnabled",
-                     base::FeatureList::IsEnabled(
-                         omnibox::kWebUIOmniboxPopupSelectionControl));
 
   source->AddBoolean("reportMetrics", true);
   source->AddString("charTypedToPaintMetricName",
@@ -138,9 +153,6 @@ OmniboxEverywhereUI::OmniboxEverywhereUI(content::WebUI* web_ui)
                      omnibox::kShowContextMenuTabPreviews.Get());
   source->AddBoolean("composeboxShowImageSuggest",
                      omnibox::kShowComposeboxImageSuggestions.Get());
-  source->AddBoolean("composeboxShowLensSearchChip",
-                     omnibox::IsAimPopupEnabled(profile_) &&
-                         omnibox::kShowLensSearchChip.Get());
 
   source->AddBoolean("searchboxShowComposeEntrypoint", IsAimEligible(profile_));
   source->AddBoolean("ntpRealboxNextEnabled", IsFuseboxEligible(profile_));
@@ -151,13 +163,9 @@ OmniboxEverywhereUI::OmniboxEverywhereUI(content::WebUI* web_ui)
   source->AddBoolean("composeboxShowZps", omnibox::kShowComposeboxZps.Get());
   source->AddBoolean("composeboxSmartComposeEnabled",
                      omnibox::kShowSmartCompose.Get());
-  source->AddBoolean("contextButtonHasBackground",
-                     omnibox::kContextButtonHasBackground.Get());
   source->AddBoolean("webuiOmniboxSimplificationEnabled",
                      base::FeatureList::IsEnabled(
                          omnibox::internal::kWebUIOmniboxSimplification));
-  source->AddBoolean("hideClassicContextButton",
-                     omnibox::kHideClassicContextButton.Get());
   source->AddBoolean(
       "contextManagementInComposeboxEnabled",
       base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox) &&
@@ -203,6 +211,9 @@ OmniboxEverywhereUI::~OmniboxEverywhereUI() = default;
 
 void OmniboxEverywhereUI::BindInterface(
     mojo::PendingReceiver<composebox::mojom::PageHandlerFactory> receiver) {
+  if (!base::FeatureList::IsEnabled(omnibox::kOmniboxEverywhere)) {
+    return;
+  }
   if (composebox_page_factory_receiver_.is_bound()) {
     composebox_page_factory_receiver_.reset();
   }
@@ -258,12 +269,10 @@ OmniboxEverywhereUI::GetOrCreateContextualSessionHandle() {
     auto* contextual_search_service =
         ContextualSearchServiceFactory::GetForProfile(profile_);
     if (contextual_search_service) {
-      // TODO(crbug.com/526721235): Create new contextual search source and lens
-      // invocation source for everywhere omnibox.
       shared_session_handle_ = contextual_search_service->CreateSession(
           omnibox::CreateQueryControllerConfigParams(),
           contextual_search::ContextualSearchSource::kOmniboxEverywhere,
-          lens::LensOverlayInvocationSource::kOmniboxContextualQuery);
+          lens::LensOverlayInvocationSource::kOmniboxEverywhereComposebox);
       shared_session_handle_->CheckSearchContentSharingSettings(
           profile_->GetPrefs());
     }

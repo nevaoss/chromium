@@ -102,8 +102,6 @@ BASE_DECLARE_FEATURE(kDevToolsSharedProcessInfobar);
 
 BASE_DECLARE_FEATURE(kDevToolsAnimationStylesInStylesTab);
 
-BASE_DECLARE_FEATURE(kDevToolsWellKnown);
-
 BASE_DECLARE_FEATURE(kDevToolsAiGeneratedTimelineLabels);
 
 BASE_DECLARE_FEATURE(kDevToolsNewPermissionDialog);
@@ -128,8 +126,6 @@ BASE_DECLARE_FEATURE(kDevToolsAiAssistanceContextSelectionAgent);
 BASE_DECLARE_FEATURE(kDevToolsConsoleInsightsTeasers);
 extern const base::FeatureParam<bool>
     kDevToolsConsoleInsightsTeasersAllowWithoutGpu;
-
-BASE_DECLARE_FEATURE(kDevToolsAiAssistanceV2);
 
 BASE_DECLARE_FEATURE(kDevToolsAiV2Architecture);
 

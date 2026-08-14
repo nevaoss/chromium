@@ -66,6 +66,15 @@ namespace autofill {
 
 namespace {
 
+Suggestion CreateFetchingSuggestion() {
+  Suggestion suggestion(
+      l10n_util::GetStringUTF16(IDS_AUTOFILL_AT_MEMORY_FETCHING),
+      SuggestionType::kAtMemoryFetching);
+  suggestion.acceptability =
+      Suggestion::Acceptability::kSelectableButUnacceptable;
+  suggestion.filtration_policy = Suggestion::FiltrationPolicy::kStatic;
+  return suggestion;
+}
 
 std::optional<Suggestion> CreateManageSuggestion(MemoryDataType type) {
   auto create_suggestion = [](SuggestionType suggestion_type, int string_id) {
@@ -121,14 +130,9 @@ std::optional<Suggestion> CreateManageSuggestion(MemoryDataType type) {
     case MemoryDataType::kDriversLicenseNumber:
     case MemoryDataType::kDriversLicenseIssueDate:
     case MemoryDataType::kDriversLicenseExpirationDate:
-      if (base::FeatureList::IsEnabled(features::kYourSavedInfoSettingsPage)) {
-        return create_suggestion(
-            SuggestionType::kManageAutofillAiIdentityDocs,
-            IDS_AUTOFILL_AI_MANAGE_IDENTITY_DOCS_SUGGESTION_MAIN_TEXT);
-      } else {
-        return create_suggestion(SuggestionType::kManageAutofillAi,
-                                 IDS_AUTOFILL_AI_MANAGE_SUGGESTION_MAIN_TEXT);
-      }
+      return create_suggestion(
+          SuggestionType::kManageAutofillAiIdentityDocs,
+          IDS_AUTOFILL_AI_MANAGE_IDENTITY_DOCS_SUGGESTION_MAIN_TEXT);
 
     case MemoryDataType::kFlightReservationFull:
     case MemoryDataType::kFlightReservationFlightNumber:
@@ -154,14 +158,9 @@ std::optional<Suggestion> CreateManageSuggestion(MemoryDataType type) {
     case MemoryDataType::kVehiclePlateNumber:
     case MemoryDataType::kVehiclePlateState:
     case MemoryDataType::kVehicleVin:
-      if (base::FeatureList::IsEnabled(features::kYourSavedInfoSettingsPage)) {
-        return create_suggestion(
-            SuggestionType::kManageAutofillAiTravel,
-            IDS_AUTOFILL_AI_MANAGE_TRAVEL_SUGGESTION_MAIN_TEXT);
-      } else {
-        return create_suggestion(SuggestionType::kManageAutofillAi,
-                                 IDS_AUTOFILL_AI_MANAGE_SUGGESTION_MAIN_TEXT);
-      }
+      return create_suggestion(
+          SuggestionType::kManageAutofillAiTravel,
+          IDS_AUTOFILL_AI_MANAGE_TRAVEL_SUGGESTION_MAIN_TEXT);
 
     case MemoryDataType::kOrderFull:
     case MemoryDataType::kOrderId:
@@ -180,14 +179,9 @@ std::optional<Suggestion> CreateManageSuggestion(MemoryDataType type) {
     case MemoryDataType::kShipmentCarrierDomain:
     case MemoryDataType::kShipmentEstimatedDeliveryDate:
     case MemoryDataType::kShipmentShippedDate:
-      if (base::FeatureList::IsEnabled(features::kYourSavedInfoSettingsPage)) {
-        return create_suggestion(
-            SuggestionType::kManageAutofillAiShopping,
-            IDS_AUTOFILL_AI_MANAGE_SHOPPING_SUGGESTION_MAIN_TEXT);
-      } else {
-        return create_suggestion(SuggestionType::kManageAutofillAi,
-                                 IDS_AUTOFILL_AI_MANAGE_SUGGESTION_MAIN_TEXT);
-      }
+      return create_suggestion(
+          SuggestionType::kManageAutofillAiShopping,
+          IDS_AUTOFILL_AI_MANAGE_SHOPPING_SUGGESTION_MAIN_TEXT);
 
     case MemoryDataType::kUnknown:
       return std::nullopt;
@@ -491,11 +485,11 @@ std::vector<Suggestion> CreateSecondarySuggestions(
 }
 
 Suggestion CreateSourceAttributionSuggestion() {
-  Suggestion source_info(
-      l10n_util::GetStringUTF16(
-          IDS_AUTOFILL_AT_MEMORY_SOURCE_ATTRIBUTION_PERSONAL_INTELLIGENCE),
-      SuggestionType::kAtMemorySourceAttribution);
-  source_info.acceptability = Suggestion::Acceptability::kUnacceptable;
+  Suggestion source_info(SuggestionType::kAtMemorySourceAttribution);
+  source_info.minor_texts.emplace_back(l10n_util::GetStringUTF16(
+      IDS_AUTOFILL_AT_MEMORY_SOURCE_ATTRIBUTION_PERSONAL_INTELLIGENCE));
+  source_info.acceptability =
+      Suggestion::Acceptability::kSelectableButUnacceptable;
   source_info.filtration_policy = Suggestion::FiltrationPolicy::kStatic;
   return source_info;
 }
@@ -585,7 +579,7 @@ Suggestion CreateNoDataSuggestion() {
       l10n_util::GetStringUTF16(IDS_AUTOFILL_AT_MEMORY_NO_DATA),
       SuggestionType::kAtMemorySearchResult);
   suggestion.acceptability =
-      Suggestion::Acceptability::kUnacceptable;
+      Suggestion::Acceptability::kSelectableButUnacceptable;
   suggestion.filtration_policy = Suggestion::FiltrationPolicy::kStatic;
   suggestion.icon = Suggestion::Icon::kSadTab;
   return suggestion;
@@ -599,7 +593,7 @@ Suggestion CreateNoConnectionSuggestion(std::u16string query) {
   suggestion.labels = {{Suggestion::Text(
       l10n_util::GetStringUTF16(IDS_AUTOFILL_AT_MEMORY_NO_CONNECTION))}};
   suggestion.acceptability =
-      Suggestion::Acceptability::kUnacceptableWithDeactivatedStyle;
+      Suggestion::Acceptability::kUnselectableAndUnacceptable;
   suggestion.filtration_policy = Suggestion::FiltrationPolicy::kStatic;
   suggestion.icon = Suggestion::Icon::kSadTab;
   return suggestion;
@@ -611,7 +605,8 @@ Suggestion CreateGenericErrorSuggestion() {
   Suggestion suggestion(
       l10n_util::GetStringUTF16(IDS_AUTOFILL_AT_MEMORY_GENERIC_ERROR),
       SuggestionType::kAtMemoryGenericError);
-  suggestion.acceptability = Suggestion::Acceptability::kUnacceptable;
+  suggestion.acceptability =
+      Suggestion::Acceptability::kSelectableButUnacceptable;
   suggestion.filtration_policy = Suggestion::FiltrationPolicy::kStatic;
   suggestion.icon = Suggestion::Icon::kSadTab;
   return suggestion;
@@ -1035,7 +1030,8 @@ void AtMemoryManager::MaybeAppendPersonalContextNotice(
   notice.filtration_policy = Suggestion::FiltrationPolicy::kStatic;
 
   if (suggestions.size() == 1u &&
-      suggestions[0].type == SuggestionType::kAtMemorySearchAffordance) {
+      (suggestions[0].type == SuggestionType::kAtMemorySearchAffordance ||
+       suggestions[0].type == SuggestionType::kAtMemoryFetching)) {
     suggestions.emplace_back(SuggestionType::kSeparator);
     suggestions.back().filtration_policy =
         Suggestion::FiltrationPolicy::kStatic;
@@ -1066,7 +1062,7 @@ void AtMemoryManager::ExecuteQuery(const std::u16string& filter) {
 
   is_searching_ = true;
   // Notify the UI that search has started.
-  ClearSuggestions();
+  ShowFetchingSuggestion();
   query_service->Query(
       filter, owner_->client().GetLastCommittedPrimaryMainFrameURL(),
       owner_->client().GetPageTitle(),
@@ -1083,7 +1079,8 @@ Suggestion AtMemoryManager::CreateUnsupportedQuerySuggestion(
       SuggestionType::kOpenGemini);
   suggestion.labels = {{Suggestion::Text(l10n_util::GetStringUTF16(
       IDS_AUTOFILL_AT_MEMORY_UNSUPPORTED_QUERY_DESCRIPTION))}};
-  suggestion.acceptability = Suggestion::Acceptability::kAcceptable;
+  suggestion.acceptability =
+      Suggestion::Acceptability::kSelectableAndAcceptable;
   suggestion.filtration_policy = Suggestion::FiltrationPolicy::kStatic;
   suggestion.payload = Suggestion::OpenGeminiPayload(query);
   suggestion.icon = Suggestion::Icon::kSpark;
@@ -1103,7 +1100,7 @@ Suggestion AtMemoryManager::CreateSearchAffordanceSuggestion(
 Suggestion AtMemoryManager::CreateAiDisclosureSuggestion() const {
   Suggestion suggestion(SuggestionType::kAtMemoryAiDisclosure);
   suggestion.acceptability =
-      Suggestion::Acceptability::kUnacceptableWithDeactivatedStyle;
+      Suggestion::Acceptability::kUnselectableAndUnacceptable;
   suggestion.filtration_policy = Suggestion::FiltrationPolicy::kStatic;
   return suggestion;
 }
@@ -1118,6 +1115,12 @@ void AtMemoryManager::SendSuggestions(std::vector<Suggestion> suggestions) {
   if (update_callback_) {
     update_callback_.Run(std::move(suggestions), trigger_source_);
   }
+}
+
+void AtMemoryManager::ShowFetchingSuggestion() {
+  std::vector<Suggestion> suggestions;
+  suggestions.emplace_back(CreateFetchingSuggestion());
+  SendSuggestions(std::move(suggestions));
 }
 
 void AtMemoryManager::ClearSuggestions() {

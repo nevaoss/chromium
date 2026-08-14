@@ -83,7 +83,8 @@ std::u16string WindowMetadataController::GetWindowTitleForCurrentTab(
   // For document picture-in-picture windows, we use the title from the opener
   // WebContents instead of the picture-in-picture WebContents itself.
   content::WebContents* web_contents_for_title =
-      browser_->is_type_picture_in_picture()
+      browser_->GetType() ==
+              BrowserWindowInterface::Type::TYPE_PICTURE_IN_PICTURE
           ? PictureInPictureWindowManager::GetInstance()->GetWebContents()
           : browser_->tab_strip_model()->GetActiveWebContents();
 
@@ -97,7 +98,8 @@ std::u16string WindowMetadataController::GetWindowTitleForTab(
 
   if (title.empty()) {
     title = tab.Get()->GetContents()->GetTitle();
-    if (browser_->is_type_picture_in_picture()) {
+    if (browser_->GetType() ==
+        BrowserWindowInterface::Type::TYPE_PICTURE_IN_PICTURE) {
       content::WebContents* pip_web_contents =
           PictureInPictureWindowManager::GetInstance()->GetWebContents();
       if (pip_web_contents) {
@@ -108,7 +110,8 @@ std::u16string WindowMetadataController::GetWindowTitleForTab(
   }
 
   if (title.empty() &&
-      (browser_->is_type_normal() || browser_->is_type_popup())) {
+      (browser_->is_type_normal() ||
+       browser_->GetType() == BrowserWindowInterface::Type::TYPE_POPUP)) {
     title = CoreTabHelper::GetDefaultTitle();
   }
 
@@ -167,7 +170,8 @@ std::u16string WindowMetadataController::GetWindowTitleForMaxWidth(
 
   // If there is no title, leave it empty for apps.
   if (title.empty() &&
-      (browser_->is_type_normal() || browser_->is_type_popup())) {
+      (browser_->is_type_normal() ||
+       browser_->GetType() == BrowserWindowInterface::Type::TYPE_POPUP)) {
     title = CoreTabHelper::GetDefaultTitle();
   }
 
@@ -208,7 +212,7 @@ std::u16string WindowMetadataController::GetWindowTitleFromWebContents(
         captive_portal::CaptivePortalTabHelper::FromWebContents(contents) &&
         captive_portal::CaptivePortalTabHelper::FromWebContents(contents)
             ->is_captive_portal_window()) {
-      DCHECK(browser_->is_type_popup());
+      DCHECK(browser_->GetType() == BrowserWindowInterface::Type::TYPE_POPUP);
       return l10n_util::GetStringFUTF16(
           IDS_CAPTIVE_PORTAL_BROWSER_WINDOW_TITLE_FORMAT,
           title.empty() ? CoreTabHelper::GetDefaultTitle() : title);
@@ -218,7 +222,8 @@ std::u16string WindowMetadataController::GetWindowTitleFromWebContents(
 
   // If there is no title, leave it empty for apps.
   if (title.empty() &&
-      (browser_->is_type_normal() || browser_->is_type_popup())) {
+      (browser_->is_type_normal() ||
+       browser_->GetType() == BrowserWindowInterface::Type::TYPE_POPUP)) {
     title = CoreTabHelper::GetDefaultTitle();
   }
 
@@ -230,8 +235,8 @@ std::u16string WindowMetadataController::GetWindowTitleFromWebContents(
   // ensures that the native window gets a title which is important for a11y,
   // for example the window selector uses the Aura window title.
   if (title.empty() &&
-      (browser_->is_type_app() || browser_->is_type_app_popup() ||
-       browser_->is_type_devtools()) &&
+      (browser_->GetType() == BrowserWindowInterface::Type::TYPE_APP ||
+       browser_->is_type_app_popup() || browser_->is_type_devtools()) &&
       include_app_name) {
     auto* const app_browser_controller =
         web_app::AppBrowserController::From(browser_);
@@ -240,7 +245,8 @@ std::u16string WindowMetadataController::GetWindowTitleFromWebContents(
   }
   // Include the app name in window titles for tabbed browser windows when
   // requested with |include_app_name|.
-  return ((browser_->is_type_normal() || browser_->is_type_popup()) &&
+  return ((browser_->is_type_normal() ||
+           browser_->GetType() == BrowserWindowInterface::Type::TYPE_POPUP) &&
           include_app_name)
              ? l10n_util::GetStringFUTF16(IDS_BROWSER_WINDOW_TITLE_FORMAT,
                                           title)

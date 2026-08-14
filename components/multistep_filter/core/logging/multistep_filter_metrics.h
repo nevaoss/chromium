@@ -15,17 +15,6 @@ namespace multistep_filter {
 // ENUMS
 // =============================================================================
 
-// LINT.IfChange(MultistepFilterApplicationOutcome)
-// Records the overall technical filter application outcome after a user accepts
-// a Multistep Filter suggestion.
-enum class MultistepFilterApplicationOutcome {
-  kAllFiltersApplied = 0,
-  kNotAllFiltersApplied = 1,
-  kAbandonedBeforeVerification = 2,
-  kMaxValue = kAbandonedBeforeVerification,
-};
-// LINT.ThenChange(//tools/metrics/histograms/metadata/multistep_filter/enums.xml:MultistepFilterApplicationOutcome)
-
 // LINT.IfChange(MultistepFilterFacetType)
 // If you add a new facet here, also update `MapStringToFacetType` in
 // `multistep_filter_metrics_util.h/cc`.
@@ -173,6 +162,12 @@ inline constexpr char kMultistepFilterTimeSuggestionShownToAcceptedHistogram[] =
 inline constexpr char
     kMultistepFilterPostSuggestionApplicationUserEngagementHistogram[] =
         "MultistepFilter.PostSuggestionApplication.UserEngagement";
+
+// Synthetic trial names and groups.
+inline constexpr char kMultistepFilterEvalsSyntheticTrialName[] =
+    "SyntheticMultistepFilterEvals";
+inline constexpr char kMultistepFilterEvalsSyntheticTrialGroupEnabled[] =
+    "Enabled";
 
 // =============================================================================
 // TASK TYPE NAMES

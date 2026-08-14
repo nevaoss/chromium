@@ -5,7 +5,9 @@
 package org.chromium.chrome.browser.tasks.tab_management.vertical_tabs;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.verify;
 
 import android.app.Activity;
@@ -66,6 +68,30 @@ public class VerticalTabRailLayoutUnitTest {
 
     @Test
     @SmallTest
+    public void testHeaderAndNewTabButtonTooltips() {
+        View gridButton = mRailLayout.findViewById(R.id.grid_button);
+        assertNotNull(gridButton);
+        assertEquals(
+                mRailLayout.getContext().getString(R.string.accessibility_tab_groups),
+                gridButton.getTooltipText());
+
+        View searchButton = mRailLayout.findViewById(R.id.tab_search_button);
+        assertNotNull(searchButton);
+        assertEquals(
+                mRailLayout
+                        .getContext()
+                        .getString(R.string.accessibility_search_loupe_tooltip_text),
+                searchButton.getTooltipText());
+
+        View newTabButton = mRailLayout.findViewById(R.id.new_tab_button);
+        assertNotNull(newTabButton);
+        assertEquals(
+                mRailLayout.getContext().getString(R.string.accessibility_toolbar_btn_new_tab),
+                newTabButton.getTooltipText());
+    }
+
+    @Test
+    @SmallTest
     public void testSetCollapseState_ExpandedAndCollapsed() {
         mRailLayout.setCollapseState(RailCollapseState.EXPANDED);
         LinearLayout header = mRailLayout.getHeaderContainer();
@@ -111,5 +137,47 @@ public class VerticalTabRailLayoutUnitTest {
         hoverExit.setSource(InputDevice.SOURCE_MOUSE);
         mRailLayout.dispatchGenericMotionEvent(hoverExit);
         verify(mMockHoverListener).onResult(RailCollapseState.COLLAPSED);
+    }
+
+    @Test
+    public void testDispatchGenericMotionEvent_consumesMouseButtonEvent() {
+        mRailLayout.setCollapseState(RailCollapseState.COLLAPSED);
+        mRailLayout.layout(0, 0, 200, 500);
+
+        MotionEvent pressEvent =
+                MotionEvent.obtain(0, 0, MotionEvent.ACTION_BUTTON_PRESS, 50f, 50f, 0);
+        pressEvent.setSource(InputDevice.SOURCE_MOUSE);
+        assertTrue(mRailLayout.dispatchGenericMotionEvent(pressEvent));
+
+        MotionEvent releaseEvent =
+                MotionEvent.obtain(0, 0, MotionEvent.ACTION_BUTTON_RELEASE, 50f, 50f, 0);
+        releaseEvent.setSource(InputDevice.SOURCE_MOUSE);
+        assertTrue(mRailLayout.dispatchGenericMotionEvent(releaseEvent));
+
+        MotionEvent otherEvent = MotionEvent.obtain(0, 0, MotionEvent.ACTION_MOVE, 50f, 50f, 0);
+        otherEvent.setSource(InputDevice.SOURCE_MOUSE);
+        assertFalse(mRailLayout.dispatchGenericMotionEvent(otherEvent));
+    }
+
+    @Test
+    @SmallTest
+    public void testButtonTooltips() {
+        View collapseButton = mRailLayout.findViewById(R.id.collapse_button);
+        View gridButton = mRailLayout.findViewById(R.id.grid_button);
+        View searchButton = mRailLayout.findViewById(R.id.tab_search_button);
+        View newTabButton = mRailLayout.findViewById(R.id.new_tab_button);
+
+        assertEquals(collapseButton.getContentDescription(), collapseButton.getTooltipText());
+        assertEquals(
+                mRailLayout.getContext().getString(R.string.accessibility_tab_groups),
+                gridButton.getTooltipText());
+        assertEquals(
+                mRailLayout
+                        .getContext()
+                        .getString(R.string.accessibility_search_loupe_tooltip_text),
+                searchButton.getTooltipText());
+        assertEquals(
+                mRailLayout.getContext().getString(R.string.accessibility_toolbar_btn_new_tab),
+                newTabButton.getTooltipText());
     }
 }

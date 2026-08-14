@@ -166,6 +166,10 @@ OmniboxPopupUI::OmniboxPopupUI(content::WebUI* web_ui)
                          omnibox::kShowLensSearchChip.Get());
   source->AddBoolean("composeboxShowCurrentTabChip",
                      omnibox::kAskGCurrentTabChip.Get());
+  source->AddBoolean("composeboxShowLensIcon",
+                     omnibox::kAskGLensIcon.Get());
+  source->AddBoolean("askGComposeboxLensChipEnabled",
+                     omnibox::kAskGComposeboxLensChip.Get());
   source->AddBoolean("composeboxShowTypedSuggest",
                      omnibox::kShowComposeboxTypedSuggest.Get());
   source->AddBoolean("composeboxShowZps", omnibox::kShowComposeboxZps.Get());
@@ -317,6 +321,9 @@ void OmniboxPopupUI::CreatePageHandler(
 
 void OmniboxPopupUI::BindInterface(
     mojo::PendingReceiver<composebox::mojom::PageHandlerFactory> receiver) {
+  if (!omnibox::IsAimPopupFeatureEnabled()) {
+    return;
+  }
   if (composebox_page_factory_receiver_.is_bound()) {
     composebox_page_factory_receiver_.reset();
   }

@@ -33,6 +33,10 @@ IN_PROC_BROWSER_TEST_F(WebUiToolbarJsTest, AppMenuButton) {
   RunTest("webui_toolbar/app_menu_button_test.js", "mocha.run();");
 }
 
+IN_PROC_BROWSER_TEST_F(WebUiToolbarJsTest, BackForwardButton) {
+  RunTest("webui_toolbar/back_forward_button_test.js", "mocha.run();");
+}
+
 IN_PROC_BROWSER_TEST_F(WebUiToolbarJsTest, ReadOnlyOmnibox) {
   RunTest("webui_toolbar/readonly_omnibox_test.js", "mocha.run();");
 }
@@ -79,6 +83,15 @@ IN_PROC_BROWSER_TEST_F(WebUiToolbarJsTest, PermissionDashboard) {
   RunTest("webui_toolbar/permission_dashboard_test.js", "mocha.run();");
 }
 
+IN_PROC_BROWSER_TEST_F(WebUiToolbarJsTest, ToolbarActionMixin) {
+  RunTest("webui_toolbar/toolbar_action_mixin_test.js", "mocha.run();");
+}
+
+IN_PROC_BROWSER_TEST_F(WebUiToolbarJsTest, ToolbarActionContainerMixin) {
+  RunTest("webui_toolbar/toolbar_action_container_mixin_test.js",
+          "mocha.run();");
+}
+
 IN_PROC_BROWSER_TEST_F(WebUiToolbarJsTest, ToolbarButton) {
   RunTest("webui_toolbar/toolbar_button_test.js", "mocha.run();");
 }
@@ -101,4 +114,9 @@ IN_PROC_BROWSER_TEST_F(WebUiToolbarJsTest, BatterySaverButton) {
 
 IN_PROC_BROWSER_TEST_F(WebUiToolbarJsTest, CrLazyIconset) {
   RunTest("webui_toolbar/cr_lazy_iconset_test.js", "mocha.run();");
+}
+
+IN_PROC_BROWSER_TEST_F(WebUiToolbarJsTest, PerformanceInterventionButton) {
+  RunTest("webui_toolbar/performance_intervention_button_test.js",
+          "mocha.run();");
 }

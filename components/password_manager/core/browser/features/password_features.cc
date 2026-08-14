@@ -173,9 +173,6 @@ BASE_FEATURE(kPasswordManualFallbackSecurityChecks,
 BASE_FEATURE(kPasswordSaveInContextErrorResolution,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kPasswordStorePropagatesActionableErrors,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 BASE_FEATURE(kPreventAPCOnFederatedLogin, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kPreventPasswordManagerOnFederatedLogin,
@@ -196,10 +193,6 @@ const base::FeatureParam<base::TimeDelta> kCapturePageContentDelay = {
 const base::FeatureParam<int> kCapturePageContentRetryCount = {
     &kRetryCapturePageContent, "retry_count", 3};
 
-// Shows a confirmation dialog before filling grouped credentials from the
-// manual fallback popup on Desktop.
-BASE_FEATURE(kShowConfirmationForGroupedCredentials,
-             base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kShowTabWithPasswordChangeOnSuccess,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -217,7 +210,5 @@ BASE_FEATURE(kTriggerPasswordResyncWhenUndecryptablePasswordsDetected,
 
 BASE_FEATURE(kUseDetachedWidget, base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kWebAuthnUsePasskeyFromAnotherDeviceInManualFallback,
-             base::FEATURE_ENABLED_BY_DEFAULT);
 
 }  // namespace password_manager::features

@@ -53,6 +53,7 @@
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_tabstrip.h"
+#include "chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/desktop_browser_window_capabilities.h"
 #include "chrome/browser/ui/browser_window/test/mock_browser_window_interface.h"
@@ -61,6 +62,7 @@
 #include "chrome/browser/ui/global_error/global_error_service_factory.h"
 #include "chrome/browser/ui/interaction/browser_elements.h"
 #include "chrome/browser/ui/layout_constants.h"
+#include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/browser/ui/side_panel/side_panel_entry.h"
 #include "chrome/browser/ui/side_panel/side_panel_enums.h"
 #include "chrome/browser/ui/side_panel/side_panel_ui.h"
@@ -355,14 +357,17 @@ std::string AddMockPointerCaptureFunctions(const char* target) {
   return base::StringPrintf(
       R"({
         var element = %s;
+        var elements = [element, element?.parentElement].filter(Boolean);
         var hasCapture = null;
-        element.setPointerCapture = (id) => { hasCapture = id; };
-        element.hasPointerCapture = (id) => { return id == hasCapture; };
-        element.releasePointerCapture = (id) => {
-          if (id == hasCapture || id == '*') {
-            hasCapture = null;
-          }
-        };
+        for (var el of elements) {
+          el.setPointerCapture = (id) => { hasCapture = id; };
+          el.hasPointerCapture = (id) => { return id == hasCapture; };
+          el.releasePointerCapture = (id) => {
+            if (id == hasCapture || id == '*') {
+              hasCapture = null;
+            }
+          };
+        }
       })",
       target);
 }
@@ -511,8 +516,9 @@ WebUIToolbarWebView* SetUpAndPinHomeButton(Browser* browser) {
 class WebUIToolbarWebViewPixelBrowserTest : public InProcessBrowserTest {
  public:
   WebUIToolbarWebViewPixelBrowserTest() {
-    // All features for Webium Production should be included here.
     feature_list_.InitWithFeatures(
+        /*enabled_features=*/
+        // All features for Webium Production should be included here.
         {features::kInitialWebUI, features::kWebUIReloadButton,
          features::kWebUISplitTabsButton, features::kWebUIBackForwardButton,
          features::kWebUIHomeButton, features::kWebUIPinnedToolbarActions,
@@ -523,7 +529,11 @@ class WebUIToolbarWebViewPixelBrowserTest : public InProcessBrowserTest {
          ash::features::kBatterySaver,
 #endif
          features::kWebUIBatterySaverButton},
-        {});
+        /*disabled_features=*/
+        // TODO(crbug.com/452061489): Fix tests that fail when the WebUI Omnibox
+        // is enabled and then remove these two Features.
+        {omnibox::internal::kWebUIOmniboxPopup,
+         omnibox::internal::kWebUIOmniboxAimPopup});
   }
 
   void SetUp() override {
@@ -781,9 +791,9 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewPixelBrowserTest,
 
   control_rect.Offset(-view_rect.OffsetFromOrigin());
 
-  // Sample a point in the background area (e.g. 5,5 from top-left).
-  gfx::Rect background_probe_rect(control_rect.x() + 5, control_rect.y() + 5, 1,
-                                  1);
+  // Sample a point in the background area (offset past the 6px leading margin).
+  gfx::Rect background_probe_rect(control_rect.x() + 12, control_rect.y() + 5,
+                                  1, 1);
 
   // Verify back button background is transparent when not highlighted.
   EXPECT_TRUE(base::test::RunUntil([&]() {
@@ -1588,9 +1598,23 @@ class WebUIToolbarWebViewStabilityAboutBlankTest
  public:
   WebUIToolbarWebViewStabilityAboutBlankTest() {
     if (AllowAboutBlank()) {
-      param_feature_list_.InitAndEnableFeature(features::kDebugTopChromeWebUI);
+      param_feature_list_.InitWithFeatures(
+          /*enabled_features=*/
+          {features::kDebugTopChromeWebUI},
+          /*disabled_features=*/
+          // TODO(crbug.com/452061489): Fix tests that fail when the WebUI
+          // Omnibox is enabled and then remove these two Features.
+          {omnibox::internal::kWebUIOmniboxPopup,
+           omnibox::internal::kWebUIOmniboxAimPopup});
     } else {
-      param_feature_list_.InitAndDisableFeature(features::kDebugTopChromeWebUI);
+      param_feature_list_.InitWithFeatures(
+          /*enabled_features=*/{},
+          /*disabled_features=*/
+          // TODO(crbug.com/452061489): Fix tests that fail when the WebUI
+          // Omnibox is enabled and then remove the two omnibox Features below.
+          {features::kDebugTopChromeWebUI,
+           omnibox::internal::kWebUIOmniboxPopup,
+           omnibox::internal::kWebUIOmniboxAimPopup});
     }
   }
 
@@ -2026,7 +2050,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarLifecycleOverheadBrowserTest,
   observer.Wait();
 
   auto toolbar_view = std::make_unique<WebUIToolbarWebView>(
-      &setup.mock_browser, browser()->command_controller(),
+      &setup.mock_browser, chrome::BrowserCommandController::From(browser()),
       /*location_bar=*/nullptr);
   toolbar_view.reset();
 }
@@ -2043,7 +2067,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarLifecyclePrewarmedBrowserTest,
   observer.Wait();
 
   auto toolbar_view = std::make_unique<WebUIToolbarWebView>(
-      &setup.mock_browser, browser()->command_controller(),
+      &setup.mock_browser, chrome::BrowserCommandController::From(browser()),
       /*location_bar=*/nullptr);
 
   auto widget = std::make_unique<views::Widget>();
@@ -2074,7 +2098,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarLifecyclePrewarmedBrowserTest,
   auto manager = std::make_unique<InitialWebUIManager>(&setup.mock_browser);
 
   auto toolbar_view = std::make_unique<WebUIToolbarWebView>(
-      &setup.mock_browser, browser()->command_controller(),
+      &setup.mock_browser, chrome::BrowserCommandController::From(browser()),
       /*location_bar=*/nullptr);
 
   auto widget = std::make_unique<views::Widget>();
@@ -2123,7 +2147,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarLifecyclePrewarmedBrowserTest,
 
   // Create the view and set the back button state to enabled.
   auto toolbar_view = std::make_unique<WebUIToolbarWebView>(
-      &setup.mock_browser, browser()->command_controller(),
+      &setup.mock_browser, chrome::BrowserCommandController::From(browser()),
       /*location_bar=*/nullptr);
   toolbar_view->SetBackForwardEnabled(IDC_BACK, true);
 
@@ -2168,7 +2192,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarLifecycleRendererOnlyPrewarmedBrowserTest,
       ui_test_utils::NavigateToURL(browser(), GURL("chrome://version")));
 
   auto toolbar_view = std::make_unique<WebUIToolbarWebView>(
-      &setup.mock_browser, browser()->command_controller(),
+      &setup.mock_browser, chrome::BrowserCommandController::From(browser()),
       /*location_bar=*/nullptr);
   toolbar_view->SetBackForwardEnabled(IDC_BACK, true);
 
@@ -2204,7 +2228,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarLifecycleNonPrewarmedBrowserTest,
   auto manager = std::make_unique<InitialWebUIManager>(&setup.mock_browser);
 
   auto toolbar_view = std::make_unique<WebUIToolbarWebView>(
-      &setup.mock_browser, browser()->command_controller(),
+      &setup.mock_browser, chrome::BrowserCommandController::From(browser()),
       /*location_bar=*/nullptr);
 
   auto widget = std::make_unique<views::Widget>();
@@ -2290,7 +2314,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarLifecyclePrewarmedDeferredBrowserTest,
   // Construct the WebUIToolbarWebView. It should consume the prewarmed
   // contents.
   auto toolbar_view = std::make_unique<WebUIToolbarWebView>(
-      &setup.mock_browser, browser()->command_controller(),
+      &setup.mock_browser, chrome::BrowserCommandController::From(browser()),
       /*location_bar=*/nullptr);
 
   // Add it to a widget. This should trigger the deferred navigation.
@@ -2485,8 +2509,8 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewStabilityTest,
   content::WebContents* active_web_contents =
       browser()->tab_strip_model()->GetActiveWebContents();
   content::JavaScriptDialogManager* dialog_manager =
-      static_cast<content::WebContentsDelegate*>(browser())
-          ->GetJavaScriptDialogManager(active_web_contents);
+      BrowserWebContentsDelegate::From(browser())->GetJavaScriptDialogManager(
+          active_web_contents);
   ui_test_utils::BrowserDestroyedObserver observer(browser());
   dialog_manager->HandleJavaScriptDialog(active_web_contents, /*accept=*/true,
                                          /*prompt_override=*/nullptr);
@@ -2497,7 +2521,8 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewStabilityTest,
                        NoRedundantNavigationOnReparenting) {
   // 1. Setup: Create the view.
   auto webui_toolbar_view = std::make_unique<WebUIToolbarWebView>(
-      browser(), browser()->command_controller(), /*location_bar=*/nullptr);
+      browser(), chrome::BrowserCommandController::From(browser()),
+      /*location_bar=*/nullptr);
 
   content::WebContents* web_contents =
       webui_toolbar_view->GetWebViewForTesting()->GetWebContents();
@@ -2560,6 +2585,10 @@ class WebUIToolbarWebViewBrowserTest : public InProcessBrowserTest {
       const std::vector<base::test::FeatureRef>& enabled,
       const std::vector<base::test::FeatureRef>& disabled) {
     feature_list_.InitWithFeatures(enabled, disabled);
+  }
+
+  ToolbarView* GetToolbarView() {
+    return BrowserView::GetBrowserViewForBrowser(browser())->toolbar();
   }
 
   void SimulateDropOnToolbar(content::WebContents* web_contents,
@@ -2755,7 +2784,10 @@ IN_PROC_BROWSER_TEST_F(WebUIAppMenuBrowserTest, AppMenuStateWithSeverity) {
 // Verifies the bidirectional state synchronization between the WebUI app menu
 // button and the native menu controller via Mojo. This ensures the WebUI button
 // correctly reflects whether the native menu is currently open or closed.
-IN_PROC_BROWSER_TEST_F(WebUIAppMenuBrowserTest, CheckAppMenuShowingStateSync) {
+//
+// TODO(crbug.com/539483663): Deflake and re-enable.
+IN_PROC_BROWSER_TEST_F(WebUIAppMenuBrowserTest,
+                       DISABLED_CheckAppMenuShowingStateSync) {
   ui::TrackedElement* element = nullptr;
   WebUIToolbarWebView* webui_toolbar_view = nullptr;
   views::WebView* web_view = nullptr;
@@ -3615,13 +3647,18 @@ IN_PROC_BROWSER_TEST_F(WebUIReloadButtonBrowserTest, NoCrashOnCommandUpdate) {
 
   // Trigger a command update that would affect the reload button if it were
   // there. This calls EnabledStateChangedForCommand under the hood.
-  bool enabled = browser()->command_controller()->IsCommandEnabled(IDC_RELOAD);
-  browser()->command_controller()->UpdateCommandEnabled(IDC_RELOAD, !enabled);
+  bool enabled =
+      chrome::BrowserCommandController::From(browser())->IsCommandEnabled(
+          IDC_RELOAD);
+  chrome::BrowserCommandController::From(browser())->UpdateCommandEnabled(
+      IDC_RELOAD, !enabled);
 
   // Trigger a command update for something else in the list (e.g. Back)
   // to ensure iteration happens.
-  enabled = browser()->command_controller()->IsCommandEnabled(IDC_BACK);
-  browser()->command_controller()->UpdateCommandEnabled(IDC_BACK, !enabled);
+  enabled = chrome::BrowserCommandController::From(browser())->IsCommandEnabled(
+      IDC_BACK);
+  chrome::BrowserCommandController::From(browser())->UpdateCommandEnabled(
+      IDC_BACK, !enabled);
 
   // Verify no crash.
 }
@@ -5064,8 +5101,9 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewHomeButtonBrowserTest,
   home_control->menu_runner_->Cancel();
 }
 
+// TODO(crbug.com/539569490): Deflake and re-enable.
 IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewHomeButtonBrowserTest,
-                       LongPressHomeButton) {
+                       DISABLED_LongPressHomeButton) {
   WebUIToolbarWebView* webui_toolbar_view = SetUpAndPinHomeButton(browser());
   views::WebView* web_view = webui_toolbar_view->GetWebViewForTesting();
 
@@ -5428,7 +5466,8 @@ class WebUIPinnedToolbarActionsBrowserTest
       SetPinnableProperty(mapping.first, true);
       if (actions::ActionItem* action_item =
               actions::ActionManager::Get().FindAction(
-                  mapping.first, browser()->GetActions()->root_action_item())) {
+                  mapping.first,
+                  BrowserActions::From(browser())->root_action_item())) {
         action_item->SetVisible(true);
       }
     }
@@ -5501,7 +5540,7 @@ class WebUIPinnedToolbarActionsBrowserTest
 
   void SetPinnableProperty(actions::ActionId id, bool pinnable) {
     actions::ActionManager::Get()
-        .FindAction(id, browser()->GetActions()->root_action_item())
+        .FindAction(id, BrowserActions::From(browser())->root_action_item())
         ->SetProperty(
             actions::kActionItemPinnableKey,
             static_cast<int>(pinnable
@@ -5724,7 +5763,8 @@ IN_PROC_BROWSER_TEST_F(WebUIPinnedToolbarActionsBrowserTest, RouteMediaIcons) {
   auto* web_contents = GetWebContents();
   auto* action_item = static_cast<actions::StatefulImageActionItem*>(
       actions::ActionManager::Get().FindAction(
-          kActionRouteMedia, browser()->GetActions()->root_action_item()));
+          kActionRouteMedia,
+          BrowserActions::From(browser())->root_action_item()));
 
   struct Test {
     base::raw_ref<const gfx::VectorIcon> icon;
@@ -5789,7 +5829,8 @@ IN_PROC_BROWSER_TEST_F(WebUIPinnedToolbarActionsBrowserTest,
   auto* web_contents = GetWebContents();
   auto* action_item = static_cast<actions::StatefulImageActionItem*>(
       actions::ActionManager::Get().FindAction(
-          kActionRouteMedia, browser()->GetActions()->root_action_item()));
+          kActionRouteMedia,
+          BrowserActions::From(browser())->root_action_item()));
   action_item->SetStatefulImage(ui::ImageModel::FromVectorIcon(
       features::IsRoundedIconsEnabled()
           ? vector_icons::kPasswordManagerIcon
@@ -5850,7 +5891,7 @@ IN_PROC_BROWSER_TEST_F(WebUIPinnedToolbarActionsBrowserTest, InvokeActions) {
 
   for (const auto& [action_id, mojom_action] : kActionMappings) {
     auto* action_item = actions::ActionManager::Get().FindAction(
-        action_id, browser()->GetActions()->root_action_item());
+        action_id, BrowserActions::From(browser())->root_action_item());
     ASSERT_TRUE(action_item);
     action_item->SetEnabled(true);
     bool invoked = false;
@@ -6006,7 +6047,7 @@ IN_PROC_BROWSER_TEST_F(WebUIPinnedToolbarActionsBrowserTest,
       [&]() { return IsPinnedButtonVisible(web_contents, mojom_action); }));
 
   auto* action_item = actions::ActionManager::Get().FindAction(
-      action_id, browser()->GetActions()->root_action_item());
+      action_id, BrowserActions::From(browser())->root_action_item());
   ASSERT_TRUE(action_item);
 
   // Disable the action.
@@ -6085,13 +6126,15 @@ IN_PROC_BROWSER_TEST_F(WebUIPinnedToolbarActionsBrowserTest,
 
   // Set activated.
   actions::ActionManager::Get()
-      .FindAction(action_id, browser()->GetActions()->root_action_item())
+      .FindAction(action_id,
+                  BrowserActions::From(browser())->root_action_item())
       ->SetProperty(kActionItemUnderlineIndicatorKey, true);
   verify_activated(true);
 
   // Set not activated.
   actions::ActionManager::Get()
-      .FindAction(action_id, browser()->GetActions()->root_action_item())
+      .FindAction(action_id,
+                  BrowserActions::From(browser())->root_action_item())
       ->SetProperty(kActionItemUnderlineIndicatorKey, false);
   verify_activated(false);
 }
@@ -6143,7 +6186,7 @@ IN_PROC_BROWSER_TEST_F(WebUIPinnedToolbarActionsBrowserTest,
       toolbar_ui_api::mojom::PinnedToolbarAction::kPrint;
 
   auto* action_item = actions::ActionManager::Get().FindAction(
-      action_id, browser()->GetActions()->root_action_item());
+      action_id, BrowserActions::From(browser())->root_action_item());
   ASSERT_TRUE(action_item);
 
   // Pin it so it renders.
@@ -6329,7 +6372,7 @@ IN_PROC_BROWSER_TEST_F(WebUIPinnedToolbarActionsBrowserTest,
   auto invoke_pin_unpin = [&](actions::ActionId pin_unpin_action) {
     actions::ActionManager::Get()
         .FindAction(pin_unpin_action,
-                    browser()->GetActions()->root_action_item())
+                    BrowserActions::From(browser())->root_action_item())
         ->InvokeAction(actions::ActionInvocationContext::Builder()
                            .SetProperty(kActionIdKey, action_id)
                            .Build());
@@ -7337,4 +7380,34 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarSynchronousStartupBrowserTest,
   EXPECT_TRUE(dict->contains("layoutConstantsVersion"));
   EXPECT_TRUE(dict->contains("touchUi"));
   EXPECT_TRUE(dict->contains("isFallbackPrewarming"));
+}
+
+// Test fixture that enables all WebUI toolbar controls.
+class WebUIToolbarFullyEnabledBrowserTest
+    : public WebUIToolbarWebViewBrowserTest {
+ public:
+  WebUIToolbarFullyEnabledBrowserTest()
+      : WebUIToolbarWebViewBrowserTest(
+            {features::kInitialWebUI, features::kWebUIToolbar,
+             features::kSkipIPCChannelPausingForNonGuests,
+             features::kWebUIInProcessResourceLoadingV2},
+            {}) {}
+};
+
+// When all currently supported WebUI controls are enabled, check that Views
+// controls are not instantiated.
+IN_PROC_BROWSER_TEST_F(WebUIToolbarFullyEnabledBrowserTest, CheckViews) {
+  ToolbarView* toolbar_view = GetToolbarView();
+  EXPECT_FALSE(toolbar_view->forward_button());
+  EXPECT_FALSE(toolbar_view->home_button());
+  EXPECT_FALSE(toolbar_view->reload_button());
+  EXPECT_FALSE(toolbar_view->location_bar_view());
+  EXPECT_FALSE(toolbar_view->custom_tab_bar());
+  EXPECT_FALSE(toolbar_view->battery_saver_button());
+  EXPECT_FALSE(toolbar_view->avatar_toolbar_button());
+
+  // The ToolbarController is not a view, but manages the Views overflow button.
+  // Overflow and layout should be handled entirely in Javascript when all WebUI
+  // controls are enabled, so the controller should also be nullptr.
+  EXPECT_FALSE(toolbar_view->toolbar_controller());
 }

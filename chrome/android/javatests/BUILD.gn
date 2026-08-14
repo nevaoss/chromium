@@ -677,6 +677,7 @@ android_library("chrome_test_java_org.chromium.chrome.browser.compositor") {
     "src/org/chromium/chrome/browser/compositor/layouts/content/TabContentManagerTest.java",
     "src/org/chromium/chrome/browser/compositor/overlays/strip/TabStripContextMenuTest.java",
     "src/org/chromium/chrome/browser/compositor/overlays/strip/TabStripGroupContextMenuTest.java",
+    "src/org/chromium/chrome/browser/compositor/overlays/strip/TabStripNavigationFailureTest.java",
     "src/org/chromium/chrome/browser/compositor/overlays/strip/TabStripPinUnpinTabsTest.java",
     "src/org/chromium/chrome/browser/compositor/overlays/strip/TabStripTest.java",
     "src/org/chromium/chrome/browser/compositor/overlays/strip/TabStripTestUtils.java",
@@ -1967,6 +1968,7 @@ android_library(
 
   deps = [
     ":common_unit_test_deps_java",
+    "//chrome/browser/glic:public_java",
     "//chrome/browser/gsa:java",
     "//chrome/browser/language/android:java",
     "//chrome/browser/ui/android/signin:java",

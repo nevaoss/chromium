@@ -19,6 +19,7 @@
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
+#include "base/i18n/break_iterator.h"
 #include "base/i18n/rtl.h"
 #include "base/logging.h"
 #include "base/metrics/field_trial.h"
@@ -30,6 +31,7 @@
 #include "base/strings/escape.h"
 #include "base/strings/strcat.h"
 #include "base/strings/string_util.h"
+#include "base/strings/string_tokenizer.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/system/sys_info.h"
 #include "build/branding_buildflags.h"
@@ -1602,6 +1604,18 @@ void RenderViewContextMenu::RecordUsedItem(int id) {
   if (id == IDC_CONTENT_CONTEXT_SEARCHWEBFOR) {
     base::RecordAction(base::UserMetricsAction(
         "RenderViewContextMenu.Used.IDC_CONTENT_CONTEXT_SEARCHWEBFOR"));
+    base::i18n::BreakIterator break_iter(params_.selection_text,
+                                         base::i18n::BreakIterator::BREAK_WORD);
+    if (break_iter.Init()) {
+      int word_count = 0;
+      while (break_iter.Advance()) {
+        if (break_iter.IsWord()) {
+          word_count++;
+        }
+      }
+      base::UmaHistogramCounts1000(
+          "RenderViewContextMenu.SelectedTextWordCount.SearchWeb", word_count);
+    }
   }
 
   // Log other situations.
@@ -2758,16 +2772,8 @@ void RenderViewContextMenu::AppendReadAnythingItem() {
 
   // Show Read Anything option if it's not already open in the side panel.
   if (IsNormalBrowser() && !IsReadAnythingEntryShowing(GetBrowser())) {
-    std::u16string label;
-    const std::u16string printable_selection_text = PrintableSelectionText();
-    if (is_menu_simplification_enabled && !printable_selection_text.empty()) {
-      label = l10n_util::GetStringFUTF16(
-          IDS_CONTENT_CONTEXT_READING_MODE_SELECTION, printable_selection_text);
-    } else {
-      label = l10n_util::GetStringUTF16(IDS_CONTENT_CONTEXT_READING_MODE);
-    }
-
-    menu_model_.AddItem(IDC_CONTENT_CONTEXT_OPEN_IN_READING_MODE, label);
+    menu_model_.AddItemWithStringId(IDC_CONTENT_CONTEXT_OPEN_IN_READING_MODE,
+                                    IDS_CONTENT_CONTEXT_READING_MODE);
 
     if (is_menu_simplification_enabled) {
       menu_model_.SetIconForCommandId(
@@ -2778,7 +2784,7 @@ void RenderViewContextMenu::AppendReadAnythingItem() {
                                          ui::kColorMenuIcon, kTabMenuIconSize));
     }
 
-    if (features::IsImprovedReadAloudEnabled()) {
+    if (features::IsReadAnythingImprovedUiEnabled()) {
       menu_model_.AddItemWithStringId(IDC_CONTENT_CONTEXT_LISTEN_TO_THIS_PAGE,
                                       IDS_CONTENT_CONTEXT_LISTEN_TO_THIS_PAGE);
       if (is_menu_simplification_enabled) {

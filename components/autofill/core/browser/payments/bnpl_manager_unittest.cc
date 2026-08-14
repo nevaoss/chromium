@@ -2670,12 +2670,13 @@ TEST_F(BnplManagerTest, OnIssuerAccepted_ShowProgressSuggestion) {
       mock_update_suggestions_callback,
       Run(ElementsAre(
               Field(&Suggestion::type, SuggestionType::kCreditCardEntry),
-              AllOf(Field(&Suggestion::type, SuggestionType::kLoadingThrobber),
-                    Field(&Suggestion::acceptability,
-                          Suggestion::Acceptability::kUnacceptable),
-                    Field(&Suggestion::expected_number_of_suggestions,
-                          std::optional(2)),
-                    Field(&Suggestion::tab_index, kPayLaterSuggestionTabIndex)),
+              AllOf(
+                  Field(&Suggestion::type, SuggestionType::kLoadingThrobber),
+                  Field(&Suggestion::acceptability,
+                        Suggestion::Acceptability::kSelectableButUnacceptable),
+                  Field(&Suggestion::expected_number_of_suggestions,
+                        std::optional(2)),
+                  Field(&Suggestion::tab_index, kPayLaterSuggestionTabIndex)),
               Field(&Suggestion::type, SuggestionType::kBnplFootnote),
               Field(&Suggestion::type, SuggestionType::kManageCreditCard)),
           AutofillSuggestionTriggerSource::kFormControlElementClicked));
@@ -3832,6 +3833,36 @@ TEST_F(BnplManagerPayLaterTabTest,
 }
 #endif  // #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) ||
         // BUILDFLAG(IS_CHROMEOS)
+
+#if BUILDFLAG(IS_ANDROID)
+TEST_F(BnplManagerTest, OnUserDecisionToUseSavedCards_AndroidStrategy) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitWithFeatures(
+      {features::kAutofillEnableBuyNowPayLater,
+       features::kAutofillEnableAiBasedAmountExtraction,
+       features::kAutofillEnablePayNowPayLaterTabs},
+      {});
+
+  // Calling OnUserDecisionToUseSavedCards when flow state is null should be
+  // safe.
+  bnpl_manager_->OnUserDecisionToUseSavedCards();
+
+  // Start BNPL flow so flow state exists.
+  bnpl_manager_->OnUserDecisionToUseBnpl(/*final_checkout_amount=*/1000,
+                                         base::DoNothing());
+  EXPECT_NE(test_api(*bnpl_manager_).GetOngoingFlowState(), nullptr);
+
+  bnpl_manager_->OnUserDecisionToUseSavedCards();
+
+  // With a valid extracted amount, flow state stays intact with issuer reset.
+  EXPECT_NE(test_api(*bnpl_manager_).GetOngoingFlowState(), nullptr);
+  EXPECT_EQ(test_api(*bnpl_manager_).GetOngoingFlowState()->issuer,
+            std::nullopt);
+  EXPECT_EQ(
+      test_api(*bnpl_manager_).GetOngoingFlowState()->final_checkout_amount,
+      1000);
+}
+#endif  // BUILDFLAG(IS_ANDROID)
 
 }  // namespace
 }  // namespace autofill::payments

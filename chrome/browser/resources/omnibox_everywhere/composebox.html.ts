@@ -45,6 +45,8 @@ export function getHtml(this: OmniboxEverywhereComposeboxElement) {
             @input-input="${this.onInputInput}"
             @input-focusin="${this.onInputFocusin}">
         </cr-composebox-input>
+        <img id="profileIcon" src="${this.profileAvatarUrl_}"
+            alt="${this.i18n('profileButtonLabel')}">
         <div id="context" part="context-entrypoint">
           <!-- Note: Copied from omnibox_composebox.html.ts. May need to re-add
                shouldDisableFileInputs_ when added to mixin. -->
@@ -102,6 +104,15 @@ export function getHtml(this: OmniboxEverywhereComposeboxElement) {
                         @open-image-upload="${this.onOpenImageUpload}"
                         @open-file-upload="${this.onOpenFileUpload}"
                         @open-drive-upload="${this.onOpenDriveUpload}"
+                        @smart-tab-sharing-active-changed="${
+                            this.onSmartTabSharingActiveChanged}"
+                        @share-tabs-flyout-open-changed="${
+                            this.onShareTabsFlyoutOpenChanged}"
+                        @request-tab-suggestions-load="${
+                            this.onRequestTabSuggestionsLoad}"
+                        .shareTabsFlyoutOpen="${this.shareTabsFlyoutOpen}"
+                        .smartTabSharingVisible="${this.smartTabSharingVisible}"
+                        .tabSuggestionsState="${this.tabSuggestionsState}"
                         .inputState="${this.inputState}"
                         .usePecApi="${this.usePecApi}"
                         .smartTabSharingActive="${this.smartTabSharingActive}"

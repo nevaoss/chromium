@@ -78,7 +78,10 @@ if (!is_android) {
 
   source_set("browser_actions") {
     public = [ "browser_actions.h" ]
-    public_deps = [ "//base" ]
+    public_deps = [
+      "//base",
+      "//ui/base/unowned_user_data",
+    ]
   }
 
   source_set("browser_actions_impl") {
@@ -412,8 +415,6 @@ static_library("ui") {
     "tab_ui_helper.h",
     "views/frame/glass_frame_service.cc",
     "views/frame/glass_frame_service.h",
-    "webui/chrome_web_ui_controller_factory.cc",
-    "webui/chrome_web_ui_controller_factory.h",
   ]
 
   defines = []
@@ -1705,8 +1706,6 @@ static_library("ui") {
       "//chrome/browser/ui/webui/omnibox_everywhere",
       "//chrome/browser/ui/webui/omnibox_popup",
       "//chrome/browser/ui/webui/omnibox_popup/mojom",
-      "//chrome/browser/ui/webui/personal_context",
-      "//chrome/browser/ui/webui/personal_context:mojo_bindings",
       "//chrome/browser/ui/webui/search_engine_choice:mojo_bindings",
       "//chrome/browser/ui/webui/side_panel/comments:mojo_bindings",
       "//chrome/browser/ui/webui/side_panel/history:impl",
@@ -1977,6 +1976,13 @@ static_library("ui") {
 
     if (enable_rlz) {
       deps += [ "//components/rlz" ]
+    }
+
+    if (enable_dice_support) {
+      deps += [
+        "//chrome/browser/ui/webui/cr_components/signin",
+        "//ui/webui/resources/cr_components/signin:mojo_bindings",
+      ]
     }
 
     if (is_win || is_chromeos) {
@@ -2749,8 +2755,6 @@ static_library("ui") {
       "//chrome/browser/web_applications",
       "//chrome/browser/webshare:storage",
       "//chrome/services/file_util/public/cpp",
-      "//chrome/services/media_gallery_util/public/cpp",
-      "//chrome/services/media_gallery_util/public/mojom",
       "//chromeos/ash/components/account_manager",
       "//chromeos/ash/components/assistant:buildflags",
       "//chromeos/ash/components/audio",
@@ -2886,6 +2890,8 @@ static_library("ui") {
       "//components/enterprise/data_controls/core/browser",
       "//components/exo",
       "//components/login",
+      "//components/media_gallery_util",
+      "//components/media_gallery_util/public/mojom",
       "//components/metrics/structured:structured_events",
       "//components/push_notification",
       "//components/reporting/proto:health_proto",
@@ -3408,8 +3414,8 @@ static_library("ui") {
   if (is_win || is_mac || is_linux || is_chromeos || is_android) {
     deps += [
       "//chrome/browser/enterprise/connectors/device_trust:features",
-      "//chrome/browser/enterprise/connectors/device_trust/attestation/common:types",
       "//chrome/browser/enterprise/connectors/device_trust/common",
+      "//components/enterprise/device_trust/core/attestation:types",
     ]
 
     if (enterprise_client_certificates) {
@@ -3751,12 +3757,12 @@ static_library("ui") {
       "views/autofill/popup/popup_bnpl_footnote_view.h",
       "views/autofill/popup/popup_cell_utils.cc",
       "views/autofill/popup/popup_cell_utils.h",
+      "views/autofill/popup/popup_centered_text_view.cc",
+      "views/autofill/popup/popup_centered_text_view.h",
       "views/autofill/popup/popup_interactive_row_view.cc",
       "views/autofill/popup/popup_interactive_row_view.h",
       "views/autofill/popup/popup_loading_view.cc",
       "views/autofill/popup/popup_loading_view.h",
-      "views/autofill/popup/popup_no_suggestions_view.cc",
-      "views/autofill/popup/popup_no_suggestions_view.h",
       "views/autofill/popup/popup_personal_context_notice_view.cc",
       "views/autofill/popup/popup_personal_context_notice_view.h",
       "views/autofill/popup/popup_row_content_view.cc",
@@ -4470,7 +4476,6 @@ static_library("ui") {
       "//chrome/browser/ui/views/permissions",
       "//chrome/browser/ui/views/permissions/chip",
       "//chrome/browser/ui/views/permissions/chip:impl",
-      "//chrome/browser/ui/views/personal_context",
       "//chrome/browser/ui/views/promos",
       "//chrome/browser/ui/views/qrcode_generator",
       "//chrome/browser/ui/views/record_replay",

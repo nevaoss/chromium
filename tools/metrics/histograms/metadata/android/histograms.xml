@@ -167,6 +167,7 @@ chromium-metrics-reviews@google.com.
   <variant name=".FramebustBlocked"/>
   <variant name=".GeneratedPasswordSaved"/>
   <variant name=".GlicWindowResized"/>
+  <variant name=".ImmersivePlaybackConfirmation"/>
   <variant name=".InstallableAmbientBadge"/>
   <variant name=".KnownInterceptionDisclosure"/>
   <variant name=".MerchantTrust"/>
@@ -1477,7 +1478,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.ChildProcessBinding.SetPriorityLatency"
-    units="microseconds" expires_after="2026-11-22">
+    units="microseconds" expires_after="2027-01-24">
   <owner>kawasin@google.com</owner>
   <owner>yfriedman@chromium.org</owner>
   <summary>
@@ -1937,7 +1938,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.DesktopWindowHeuristicResult4"
-    enum="DesktopWindowHeuristicResult" expires_after="2026-11-22">
+    enum="DesktopWindowHeuristicResult" expires_after="2027-01-24">
   <owner>aishwaryarj@google.com</owner>
   <owner>clank-large-form-factors@google.com</owner>
   <summary>
@@ -2003,6 +2004,17 @@ chromium-metrics-reviews@google.com.
 
     Logged once for every onDisplayAdded() call in which the Display descriptor
     associated with the sdkDisplayId is null.
+  </summary>
+</histogram>
+
+<histogram name="Android.Download.OpenTarget" enum="AndroidDownloadOpenTarget"
+    expires_after="2026-10-28">
+  <owner>jhimawan@google.com</owner>
+  <owner>clank-downloads@google.com</owner>
+  <summary>
+    Records the target application used when a user opens a download on Android.
+    Logged when a download open request is handled in the downloads UI or from
+    notifications.
   </summary>
 </histogram>
 
@@ -2572,7 +2584,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.Handoff.Enabled.{UpdateType}" enum="Boolean"
-    expires_after="2026-10-07">
+    expires_after="2027-01-24">
   <owner>zheliooo@google.com</owner>
   <owner>clank-large-form-factors@google.com</owner>
   <summary>
@@ -2735,22 +2747,6 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Android.InputDevice.Keyboard.Active" enum="Boolean"
-    expires_after="2026-08-30">
-  <owner>aishwaryarj@google.com</owner>
-  <owner>clank-large-form-factors@google.com</owner>
-  <summary>
-    Emitted when a hardware keyboard is connected or disconnected.
-  </summary>
-</histogram>
-
-<histogram name="Android.InputDevice.Mouse.Active" enum="Boolean"
-    expires_after="2026-08-30">
-  <owner>aishwaryarj@google.com</owner>
-  <owner>clank-large-form-factors@google.com</owner>
-  <summary>Emitted when a mouse is connected or disconnected.</summary>
-</histogram>
-
 <histogram name="Android.InputHintChecker.InitializationResult"
     enum="InputHintInitializationResult" expires_after="2026-12-20">
   <owner>pasko@chromium.org</owner>
@@ -2833,7 +2829,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.InputOnViz.Browser.SequenceDroppedReason3"
-    enum="InputOnVizSequenceDroppedReason" expires_after="2026-11-22">
+    enum="InputOnVizSequenceDroppedReason" expires_after="2027-01-24">
   <owner>kartarsingh@google.com</owner>
   <owner>woa-performance-team@google.com</owner>
   <summary>
@@ -3137,7 +3133,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Android.IsolatedSplits.ClassLoaderReplaced.{AndroidFeatureModuleName}"
-    enum="BooleanYesNo" expires_after="2023-06-26">
+    enum="BooleanYesNo" expires_after="2027-07-26">
   <owner>cduvall@chromium.org</owner>
   <owner>agrieve@chromium.org</owner>
   <summary>
@@ -3295,7 +3291,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.MaybeCopyContentAreaAsBitmap.Time" units="ms"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>chikamune@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
   <owner>clank-app-team@google.com</owner>
@@ -3571,7 +3567,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.MultiInstance.NumInstances.DesktopWindow"
-    units="instances" expires_after="2026-11-22">
+    units="instances" expires_after="2027-01-24">
   <owner>aishwaryarj@google.com</owner>
   <owner>wenyufu@chromium.org</owner>
   <owner>clank-large-form-factors@google.com</owner>
@@ -3642,7 +3638,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.MultiInstance.WindowManager.DesktopWindowModeState"
-    enum="DesktopWindowModeState" expires_after="2026-11-22">
+    enum="DesktopWindowModeState" expires_after="2027-01-24">
   <owner>aishwaryarj@google.com</owner>
   <owner>wenyufu@chromium.org</owner>
   <owner>clank-large-form-factors@google.com</owner>
@@ -4542,7 +4538,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.Omnibox.SuggestionView.CreatedType"
-    enum="OmniboxSuggestionUiType" expires_after="2026-11-22">
+    enum="OmniboxSuggestionUiType" expires_after="2027-01-24">
   <owner>ender@google.com</owner>
   <owner>gangwu@chromium.org</owner>
   <owner>rongtan@chromium.org</owner>
@@ -4611,7 +4607,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.Omnibox.SuggestionView.ReusedType"
-    enum="OmniboxSuggestionUiType" expires_after="2026-11-22">
+    enum="OmniboxSuggestionUiType" expires_after="2027-01-24">
   <owner>ender@google.com</owner>
   <owner>gangwu@chromium.org</owner>
   <owner>rongtan@chromium.org</owner>
@@ -5180,7 +5176,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.Pdf.DocumentLoad" enum="Boolean"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>shuyng@google.com</owner>
   <owner>clank-large-form-factors@google.com</owner>
   <summary>
@@ -5202,7 +5198,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.Pdf.DocumentLoadResult.Detail"
-    enum="AndroidPdfLoadResult" expires_after="2026-11-22">
+    enum="AndroidPdfLoadResult" expires_after="2027-01-24">
   <owner>shuyng@google.com</owner>
   <owner>clank-large-form-factors@google.com</owner>
   <summary>
@@ -5258,7 +5254,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.Pdf.FindInPageCounts" units="count"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>shuyng@google.com</owner>
   <owner>clank-large-form-factors@google.com</owner>
   <summary>
@@ -5280,7 +5276,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.Pdf.IsFrozenWhenDisplayed" enum="Boolean"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>shuyng@google.com</owner>
   <owner>clank-large-form-factors@google.com</owner>
   <summary>
@@ -5312,92 +5308,12 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.Pdf.UriIsNull" enum="Boolean"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>shuyng@google.com</owner>
   <owner>clank-large-form-factors@google.com</owner>
   <summary>
     Records whether the PDF file URI is null when attempting to load the file.
     Recorded in PdfCoordinator#loadPdfFile.
-  </summary>
-</histogram>
-
-<histogram name="Android.PhotoPicker.CacheHits" units="Hits"
-    expires_after="2024-06-01">
-  <owner>finnur@chromium.org</owner>
-  <owner>twellington@chromium.org</owner>
-  <summary>
-    Measures the total number of images served from the high-res cache during
-    the lifetime of the dialog. Note: This metric was not logged in June 2023.
-  </summary>
-</histogram>
-
-<histogram name="Android.PhotoPicker.DecodeRequests" units="Hits"
-    expires_after="2024-06-01">
-  <owner>finnur@chromium.org</owner>
-  <owner>twellington@chromium.org</owner>
-  <summary>
-    Measures the total number of images sent for decoding during the lifetime of
-    the dialog. Note: This metric was not logged in June 2023.
-  </summary>
-</histogram>
-
-<histogram name="Android.PhotoPicker.DecoderHostFailureOutOfMemory" units="%"
-    expires_after="2024-06-01">
-  <owner>finnur@chromium.org</owner>
-  <owner>twellington@chromium.org</owner>
-  <summary>
-    The percentage of out-of-memory decoding failures, per batch of photos (not
-    videos) decoded. Intended to help identify if there are devices where
-    decoding fails 100% of the time. Be wary at looking at other numbers in the
-    histogram, as a value emitted at, say, 50% may represent one failure in a
-    two-item decoding or 50 failures in a hundred-item decoding. These are
-    qualitatively different experiences for a user. Note: This metric was not
-    logged in June 2023.
-  </summary>
-</histogram>
-
-<histogram name="Android.PhotoPicker.DecoderHostVideoFileError" units="%"
-    expires_after="2024-06-01">
-  <owner>finnur@chromium.org</owner>
-  <owner>twellington@chromium.org</owner>
-  <summary>
-    The percentage of file error decoding failures, per batch of videos (not
-    photos) decoded. Intended to help identify if there are devices where
-    decoding fails 100% of the time. Be wary at looking at other numbers in the
-    histogram, as a value emitted at, say, 50% may represent one failure in a
-    two-item decoding or 50 failures in a hundred-item decoding. These are
-    qualitatively different experiences for a user. Note: This metric was not
-    logged in June 2023.
-  </summary>
-</histogram>
-
-<histogram name="Android.PhotoPicker.DecoderHostVideoIoError" units="%"
-    expires_after="2024-06-01">
-  <owner>finnur@chromium.org</owner>
-  <owner>twellington@chromium.org</owner>
-  <summary>
-    The percentage of IO error decoding failures, per batch of videos (not
-    photos) decoded. Intended to help identify if there are devices where
-    decoding fails 100% of the time. Be wary at looking at other numbers in the
-    histogram, as a value emitted at, say, 50% may represent one failure in a
-    two-item decoding or 50 failures in a hundred-item decoding. These are
-    qualitatively different experiences for a user. Note: This metric was not
-    logged in June 2023.
-  </summary>
-</histogram>
-
-<histogram name="Android.PhotoPicker.DecoderHostVideoRuntimeError" units="%"
-    expires_after="2024-06-01">
-  <owner>finnur@chromium.org</owner>
-  <owner>twellington@chromium.org</owner>
-  <summary>
-    The percentage of runtime error decoding failures, per batch of videos (not
-    photos) decoded. Intended to help identify if there are devices where
-    decoding fails 100% of the time. Be wary at looking at other numbers in the
-    histogram, as a value emitted at, say, 50% may represent one failure in a
-    two-item decoding or 50 failures in a hundred-item decoding. These are
-    qualitatively different experiences for a user. Note: This metric was not
-    logged in June 2023.
   </summary>
 </histogram>
 
@@ -5407,151 +5323,6 @@ chromium-metrics-reviews@google.com.
   <owner>twellington@chromium.org</owner>
   <summary>
     Records which action the user takes in the PhotoPickerDialog.
-  </summary>
-</histogram>
-
-<histogram name="Android.PhotoPicker.EnumeratedFiles" units="Files"
-    expires_after="2024-06-01">
-  <owner>finnur@chromium.org</owner>
-  <owner>twellington@chromium.org</owner>
-  <summary>
-    Measures the total number of files returned from the enumeration operation.
-    Measured once at the end of the enumeration operation. Note: This metric was
-    not logged in June 2023.
-  </summary>
-</histogram>
-
-<histogram name="Android.PhotoPicker.EnumeratedRate"
-    units="Files per 10th of a second" expires_after="2024-06-01">
-  <owner>finnur@chromium.org</owner>
-  <owner>twellington@chromium.org</owner>
-  <summary>
-    Measures the enumeration rate (files per tenths of a second). Measured once
-    at the end of the enumeration operation. Note: This metric was not logged in
-    June 2023.
-  </summary>
-</histogram>
-
-<histogram name="Android.PhotoPicker.EnumerationTime" units="ms"
-    expires_after="2024-06-01">
-  <owner>finnur@chromium.org</owner>
-  <owner>twellington@chromium.org</owner>
-  <summary>
-    Measures the amount of time the BitmapScaler spent enumerating files on
-    disk. Measured once at the end of the enumeration operation. Note: This
-    metric was not logged in June 2023.
-  </summary>
-</histogram>
-
-<histogram name="Android.PhotoPicker.ExifOrientation" enum="ExifOrientation"
-    expires_after="2024-06-01">
-  <owner>finnur@chromium.org</owner>
-  <owner>twellington@chromium.org</owner>
-  <summary>
-    Records whether the EXIF orientation directive is present and what it is set
-    to. Collected once per decoded image, but only on Android N and above (and
-    when no IO error occurs). Note: This metric was not logged in June 2023.
-  </summary>
-</histogram>
-
-<histogram name="Android.PhotoPicker.ImageByteCount" units="KB"
-    expires_after="2024-06-01">
-  <owner>finnur@chromium.org</owner>
-  <owner>twellington@chromium.org</owner>
-  <summary>
-    Measures the byte count of a decoded image. Only recorded on successful
-    decodes. Note: This metric was not logged in June 2023.
-  </summary>
-</histogram>
-
-<histogram name="Android.PhotoPicker.ImageDecodeTime" units="ms"
-    expires_after="2024-06-01">
-  <owner>finnur@chromium.org</owner>
-  <owner>twellington@chromium.org</owner>
-  <summary>
-    Measures the amount of time it takes the decoder to decode one image. Only
-    recorded on successful decodes. Note: This metric was not logged in June
-    2023.
-  </summary>
-</histogram>
-
-<histogram name="Android.PhotoPicker.RequestProcessTime" units="ms"
-    expires_after="2024-06-01">
-  <owner>finnur@chromium.org</owner>
-  <owner>twellington@chromium.org</owner>
-  <summary>
-    Measures the amount of time it takes to process one image decode request
-    (not video) end to end (RPC and actual decoding of the bits by utility
-    process). Recorded whether or not the RPC/decode request was successful.
-    Note: This metric was not logged in June 2023.
-  </summary>
-</histogram>
-
-<histogram name="Android.PhotoPicker.RequestProcessTimeAnimation" units="ms"
-    expires_after="2024-06-01">
-  <owner>finnur@chromium.org</owner>
-  <owner>twellington@chromium.org</owner>
-  <summary>
-    Measures the amount of time it takes to decode all the frames needed to show
-    the animation -- end to end (RPC and actual decoding of the bits by utility
-    process). Recorded whether or not the RPC/decode request was successful.
-    Note: This metric was not logged in June 2023.
-  </summary>
-</histogram>
-
-<histogram name="Android.PhotoPicker.RequestProcessTimeThumbnail" units="ms"
-    expires_after="2024-06-01">
-  <owner>finnur@chromium.org</owner>
-  <owner>twellington@chromium.org</owner>
-  <summary>
-    Measures the amount of time it takes to process one video frame request end
-    to end (RPC and actual decoding of the bits by utility process). Recorded
-    whether or not the RPC/decode request was successful. Note: This metric was
-    not logged in June 2023.
-  </summary>
-</histogram>
-
-<histogram name="Android.PhotoPicker.UpscaleLowResBitmap" units="ms"
-    expires_after="2024-06-01">
-  <owner>finnur@chromium.org</owner>
-  <owner>twellington@chromium.org</owner>
-  <summary>
-    Measures the amount of time it takes to upscale a bitmap from the low-res
-    cache. Recorded only when there a cache miss from the high-res bitmap but a
-    cache hit from the low-res (placeholder) bitmap. Note: This metric was not
-    logged in June 2023.
-  </summary>
-</histogram>
-
-<histogram name="Android.PhotoPicker.VideoByteCount" units="KB"
-    expires_after="2024-06-01">
-  <owner>finnur@chromium.org</owner>
-  <owner>twellington@chromium.org</owner>
-  <summary>
-    Measures the byte count of the first video thumbnail. Only recorded on
-    successful decodes. Note: This metric was not logged in June 2023.
-  </summary>
-</histogram>
-
-<histogram name="Android.PhotoPicker.VideoDecodeTimeAnimation" units="ms"
-    expires_after="2024-06-01">
-  <owner>finnur@chromium.org</owner>
-  <owner>twellington@chromium.org</owner>
-  <summary>
-    Measures the amount of time it takes the decoder to decode all the frames
-    needed to display an animated thumbnail. Only recorded on successful
-    decodes. Note: This metric was not logged in June 2023.
-  </summary>
-</histogram>
-
-<histogram name="Android.PhotoPicker.VideoDecodeTimeThumbnail" units="ms"
-    expires_after="2024-06-01">
-  <owner>finnur@chromium.org</owner>
-  <owner>twellington@chromium.org</owner>
-  <summary>
-    Measures the amount of time it takes the decoder to decode the first frame
-    of a video. Only recorded on successful decodes. Note: This metric was not
-    logged in June 2023.
   </summary>
 </histogram>
 
@@ -5652,7 +5423,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.RequestDesktopSite.Changed" enum="SiteLayout"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>shuyng@google.com</owner>
   <owner>twellington@chromium.org</owner>
   <summary>
@@ -5663,7 +5434,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.RequestDesktopSite.DomainSettingChanged"
-    enum="Boolean" expires_after="2026-11-22">
+    enum="Boolean" expires_after="2027-01-24">
   <owner>shuyng@google.com</owner>
   <owner>twellington@chromium.org</owner>
   <summary>
@@ -6347,7 +6118,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.TabItemPicker.ActiveTabs.Count" units="count"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>bbetini@google.com</owner>
   <owner>ssid@chromium.org</owner>
   <summary>
@@ -6358,7 +6129,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.TabItemPicker.ActiveTabsPicked.Count" units="count"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>bbetini@google.com</owner>
   <owner>ssid@chromium.org</owner>
   <summary>
@@ -6368,7 +6139,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.TabItemPicker.BackgroundTabs.Count" units="count"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>ckitagawa@chromium.org</owner>
   <owner>ssid@chromium.org</owner>
   <summary>
@@ -6379,7 +6150,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.TabItemPicker.CachedTabs.Count" units="count"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>bbetini@google.com</owner>
   <owner>ssid@chromium.org</owner>
   <summary>
@@ -6390,7 +6161,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.TabItemPicker.CachedTabsPicked.Count" units="count"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>bbetini@google.com</owner>
   <owner>ssid@chromium.org</owner>
   <summary>
@@ -6437,7 +6208,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.TabItemPicker.SelectableTabs.Count" units="count"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>haileywang@google.com</owner>
   <owner>ssid@chromium.org</owner>
   <summary>
@@ -6447,7 +6218,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.TabItemPicker.SelectedTabs.Count" units="count"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>haileywang@google.com</owner>
   <owner>ssid@chromium.org</owner>
   <summary>
@@ -6948,6 +6719,29 @@ chromium-metrics-reviews@google.com.
     Records the duration (wall-clock time) for which Vertical Tabs remained
     enabled. Recorded when the user toggles Vertical Tabs off (reverting to
     Horizontal Tabs).
+  </summary>
+</histogram>
+
+<histogram name="Android.VerticalTabs.LayoutToggleSourceAndDirection"
+    enum="AndroidVerticalTabsLayoutToggleSourceAndDirection"
+    expires_after="2027-07-22">
+  <owner>agazal@google.com</owner>
+  <owner>jinsukkim@chromium.org</owner>
+  <owner>eleanorlee@google.com</owner>
+  <summary>
+    Records the entry point and direction (enable/disable) when the user toggles
+    Vertical Tabs.
+  </summary>
+</histogram>
+
+<histogram name="Android.VerticalTabs.RailCollapsed" enum="Boolean"
+    expires_after="2027-07-22">
+  <owner>agazal@google.com</owner>
+  <owner>spdonghao@google.com</owner>
+  <summary>
+    Recorded when the user clicks on the collapse button to collapse or expand
+    the vertical tab strip rail. True if the user is collapsing the rail and
+    false if a user is expanding it.
   </summary>
 </histogram>
 

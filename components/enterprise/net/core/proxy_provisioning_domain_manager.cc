@@ -72,17 +72,47 @@ bool IsTransientError(const ProvisioningDomainFetchError& error) {
   }
 }
 
+ProvisioningDomainConfig ParsePolicyFromValue(const base::Value& policy_val) {
+  const base::DictValue* dict = policy_val.GetIfDict();
+  ProvisioningDomainConfig fallback_policy;
+  if (!dict) {
+    return fallback_policy;
+  }
+
+  std::optional<ProvisioningDomainConfig> parsed_policy =
+      ParseProxyProvisioningDomainPolicy(*dict);
+  if (parsed_policy.has_value()) {
+    return std::move(*parsed_policy);
+  }
+
+  // Fallback: If parsing fails, try to retrieve pvd_id if available.
+  const std::string* pvd_id = dict->FindString("pvd_id");
+  if (pvd_id) {
+    fallback_policy.pvd_id = *pvd_id;
+  }
+  return fallback_policy;
+}
+
 }  // namespace
 
 ProxyProvisioningDomainManager::ProxyProvisioningDomainManager(
-    const ProvisioningDomainConfig& policy,
+    const base::Value& policy_val,
     EnterpriseNetworkAuthService* auth_service,
-    scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory)
-    : policy_(policy),
+    GetURLLoaderFactoryCallback url_loader_factory_callback)
+    : policy_(ParsePolicyFromValue(policy_val)),
       auth_service_(auth_service),
-      url_loader_factory_(std::move(url_loader_factory)) {
+      url_loader_factory_callback_(std::move(url_loader_factory_callback)) {
   CHECK(auth_service_);
-  CHECK(url_loader_factory_);
+  CHECK(url_loader_factory_callback_);
+
+  const base::DictValue* dict = policy_val.GetIfDict();
+  if (!dict || !ParseProxyProvisioningDomainPolicy(*dict).has_value()) {
+    fetched_config_.pvd_id = policy_.pvd_id;
+    fetched_config_.state =
+        ProvisioningDomainProxyConfig::State::kFailedPermanent;
+    return;
+  }
+
   fetched_config_.pvd_id = policy_.pvd_id;
   fetched_config_.state = ProvisioningDomainProxyConfig::State::kRefreshNeeded;
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
@@ -129,11 +159,24 @@ void ProxyProvisioningDomainManager::Refresh() {
 }
 
 void ProxyProvisioningDomainManager::StartRefreshInternal() {
+  if (state() == ProvisioningDomainProxyConfig::State::kFailedPermanent) {
+    return;
+  }
+  if (!url_loader_factory_) {
+    url_loader_factory_ = url_loader_factory_callback_.Run();
+  }
+
+  if (!url_loader_factory_) {
+    fetched_config_.state =
+        ProvisioningDomainProxyConfig::State::kFailedTransient;
+    NotifyIfStateChanged();
+    return;
+  }
+  fetcher_ = std::make_unique<ProvisioningDomainFetcher>(policy_, auth_service_,
+                                                         url_loader_factory_);
   fetched_config_.state = ProvisioningDomainProxyConfig::State::kFetching;
   NotifyIfStateChanged();
 
-  fetcher_ = std::make_unique<ProvisioningDomainFetcher>(policy_, auth_service_,
-                                                         url_loader_factory_);
   fetcher_->Start(
       base::BindOnce(&ProxyProvisioningDomainManager::OnRefreshComplete,
                      weak_factory_.GetWeakPtr()));

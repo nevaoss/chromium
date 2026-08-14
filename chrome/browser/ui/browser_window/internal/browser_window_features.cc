@@ -752,7 +752,9 @@ void BrowserWindowFeatures::InitPostWindowConstruction(Browser* browser) {
   // Must be after exclusive_access_manager_ and
   // desktop_browser_window_capabilities_.
   browser_web_contents_delegate_ = std::make_unique<BrowserWebContentsDelegate>(
-      browser, *exclusive_access_manager_, *BrowserWindow::FromBrowser(browser),
+      browser, *exclusive_access_manager_, *browser_command_controller_,
+      *unload_controller_, app_browser_controller_.get(),
+      *BrowserWindow::FromBrowser(browser),
       *desktop_browser_window_capabilities_);
 
   // Must be after exclusive_access_manager_.
@@ -849,7 +851,8 @@ void BrowserWindowFeatures::InitPostWindowConstruction(Browser* browser) {
       browser, browser->GetTabStripModel(), browser->GetSessionID(),
       browser->GetType());
 
-  if (browser->is_type_normal() || browser->is_type_app()) {
+  if (browser->is_type_normal() ||
+      browser->GetType() == BrowserWindowInterface::Type::TYPE_APP) {
     toast_service_ = std::make_unique<ToastService>(browser);
   }
 
@@ -904,8 +907,7 @@ void BrowserWindowFeatures::InitPostWindowConstruction(Browser* browser) {
       }
     }
 
-    if (browser_view && IsPageActionMigrated(PageActionIconType::kAiMode) &&
-        AiModeButtonServiceFactory::GetForProfile(profile)) {
+    if (browser_view && AiModeButtonServiceFactory::GetForProfile(profile)) {
       LocationBar* location_bar = browser_view->GetLocationBar();
       if (location_bar) {
         ai_mode_page_action_controller_ =

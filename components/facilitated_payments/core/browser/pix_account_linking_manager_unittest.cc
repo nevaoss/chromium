@@ -41,14 +41,7 @@ class PixAccountLinkingManagerTest : public testing::Test {
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 
-  PixAccountLinkingManagerTest() {
-    api_client_ = std::make_unique<MockFacilitatedPaymentsApiClient>();
-    api_client_ptr_ = api_client_.get();
-    manager_ = std::make_unique<PixAccountLinkingManager>(
-        &client_,
-        base::BindRepeating(&PixAccountLinkingManagerTest::CreateApiClient,
-                            base::Unretained(this)));
-  }
+  PixAccountLinkingManagerTest() = default;
 
   std::unique_ptr<FacilitatedPaymentsApiClient> CreateApiClient() {
     return std::move(api_client_);
@@ -79,14 +72,22 @@ class PixAccountLinkingManagerTest : public testing::Test {
     ON_CALL(client_, GetFacilitatedPaymentsNetworkInterface)
         .WillByDefault(testing::Return(payments_network_interface_.get()));
 
-    // Success path setup. The Pix account linking user pref is default enabled.
-    ON_CALL(client_, GetLastCommittedOrigin)
-        .WillByDefault(testing::ReturnRef(kPixPaymentPageOrigin));
+    api_client_ = std::make_unique<MockFacilitatedPaymentsApiClient>();
+    api_client_ptr_ = api_client_.get();
     ON_CALL(*api_client_ptr_, GetClientToken(testing::_))
         .WillByDefault(
             [](base::OnceCallback<void(std::vector<uint8_t>)> callback) {
               std::move(callback).Run(std::vector<uint8_t>{1, 2, 3});
             });
+
+    manager_ = std::make_unique<PixAccountLinkingManager>(
+        &client_,
+        base::BindRepeating(&PixAccountLinkingManagerTest::CreateApiClient,
+                            base::Unretained(this)));
+
+    // Success path setup. The Pix account linking user pref is default enabled.
+    ON_CALL(client_, GetLastCommittedOrigin)
+        .WillByDefault(testing::ReturnRef(kPixPaymentPageOrigin));
     ON_CALL(client(), IsWebContentsVisibleOrOccluded)
         .WillByDefault(testing::Return(true));
     // Simulate the payments server returns that the user is eligible for Pix
@@ -160,6 +161,67 @@ TEST_F(PixAccountLinkingManagerTest, SuccessPathShowsPrompt) {
   EXPECT_CALL(client(), ShowPixAccountLinkingPrompt(0, testing::_, testing::_));
 
   // Fast-forward time by 3 seconds to trigger the delayed task.
+  task_environment_.FastForwardBy(kShowPromptDelay);
+}
+
+TEST_F(PixAccountLinkingManagerTest,
+       UserReturnsBeforeBackendResponse_PromptShownWhenResponseArrives) {
+  base::OnceCallback<void(
+      autofill::payments::PaymentsAutofillClient::PaymentsRpcResult, bool,
+      const std::vector<uint8_t>&)>
+      pending_rpc_callback;
+
+  // Intercept the backend RPC callback so it does not run immediately.
+  EXPECT_CALL(*payments_network_interface(),
+              GetDetailsForCreatePaymentInstrument(testing::_, testing::_,
+                                                   testing::_, testing::_))
+      .WillOnce([&pending_rpc_callback](long, const std::vector<uint8_t>&,
+                                        auto callback, const std::string&) {
+        pending_rpc_callback = std::move(callback);
+        return base::StrongAlias<autofill::payments::RequestIdTag,
+                                 std::string>();
+      });
+
+  // User copies key and returns to Chrome.
+  manager()->MaybeShowPixAccountLinkingPrompt(kPixPaymentPageOrigin);
+
+  // Fast-forward delay time: RPC response has not arrived yet, prompt must NOT
+  // show.
+  EXPECT_CALL(client(), ShowPixAccountLinkingPrompt).Times(0);
+  task_environment_.FastForwardBy(kShowPromptDelay);
+
+  // Now backend response completes with success (and action token {1, 2, 3}).
+  // The prompt should be shown immediately because the 3s delay has already
+  // passed.
+  EXPECT_CALL(client(), ShowPixAccountLinkingPrompt(0, testing::_, testing::_));
+  std::move(pending_rpc_callback)
+      .Run(autofill::payments::PaymentsAutofillClient::PaymentsRpcResult::
+               kSuccess,
+           true, std::vector<uint8_t>{1, 2, 3});
+}
+
+TEST_F(PixAccountLinkingManagerTest,
+       BackendResponseBeforeUserReturn_PromptShownWhenUserReturns) {
+  base::OnceClosure return_to_chrome_callback;
+
+  // Intercept the return-to-chrome callback so it does not run immediately.
+  EXPECT_CALL(*device_delegate(), SetOnReturnToChromeCallbackAndObserveAppState)
+      .WillOnce([&return_to_chrome_callback](base::OnceClosure callback) {
+        return_to_chrome_callback = std::move(callback);
+      });
+
+  // User copies key on merchant page.
+  manager()->MaybeShowPixAccountLinkingPrompt(kPixPaymentPageOrigin);
+
+  // Prompt must NOT show before user returns.
+  EXPECT_CALL(client(), ShowPixAccountLinkingPrompt).Times(0);
+  task_environment_.FastForwardBy(kShowPromptDelay);
+
+  // User now returns to Chrome tab.
+  EXPECT_CALL(client(), ShowPixAccountLinkingPrompt(0, testing::_, testing::_));
+  std::move(return_to_chrome_callback).Run();
+
+  // Fast-forward delay time.
   task_environment_.FastForwardBy(kShowPromptDelay);
 }
 
@@ -331,7 +393,7 @@ TEST_F(PixAccountLinkingManagerTest,
   // Set account info to empty.
   payments_data_manager_->SetAccountInfoForPayments(CoreAccountInfo());
   EXPECT_CALL(client(), GetCoreAccountInfo)
-      .WillOnce(testing::Return(CoreAccountInfo()));
+      .WillRepeatedly(testing::Return(std::nullopt));
 
   EXPECT_CALL(client(), DismissPrompt);
   EXPECT_CALL(*api_client_ptr_, InvokeInstrumentManager).Times(0);
@@ -560,18 +622,37 @@ TEST_F(PixAccountLinkingManagerTest, ScreenlockNotEnabled_ExitedReasonLogged) {
 TEST_F(PixAccountLinkingManagerTest,
        ServerEligibilityCheckNotCompleted_ExitedReasonLogged) {
   base::HistogramTester histogram_tester;
-  // Simulate that the payments server hasn't yet returned eligibility.
+  base::OnceCallback<void(
+      autofill::payments::PaymentsAutofillClient::PaymentsRpcResult, bool,
+      const std::vector<uint8_t>&)>
+      pending_rpc_callback;
+
+  // Simulate that the payments server response is in-flight.
   EXPECT_CALL(*payments_network_interface(),
               GetDetailsForCreatePaymentInstrument(testing::_, testing::_,
                                                    testing::_, testing::_))
-      .WillOnce(testing::Return(
-          base::StrongAlias<autofill::payments::RequestIdTag, std::string>()));
+      .WillOnce([&pending_rpc_callback](long, const std::vector<uint8_t>&,
+                                        auto callback, const std::string&) {
+        pending_rpc_callback = std::move(callback);
+        return base::StrongAlias<autofill::payments::RequestIdTag,
+                                 std::string>();
+      });
 
   manager()->MaybeShowPixAccountLinkingPrompt(kPixPaymentPageOrigin);
 
+  // While server response is in-flight, no exit reason should be logged yet.
+  histogram_tester.ExpectTotalCount(
+      "FacilitatedPayments.Pix.AccountLinking.FlowExitedReason", 0);
+
+  // Server response completes with ineligible.
+  std::move(pending_rpc_callback)
+      .Run(autofill::payments::PaymentsAutofillClient::PaymentsRpcResult::
+               kSuccess,
+           false, std::vector<uint8_t>{});
+
   histogram_tester.ExpectUniqueSample(
       "FacilitatedPayments.Pix.AccountLinking.FlowExitedReason",
-      /*sample=*/AccountLinkingFlowExitedReason::kServerSideIneligible,
+      /*sample=*/AccountLinkingFlowExitedReason::kNotEligiblePerPaymentsBackend,
       /*expected_bucket_count=*/1);
 }
 
@@ -637,6 +718,7 @@ TEST_F(PixAccountLinkingManagerTest, TabNotActive_ExitedReasonLogged) {
       .WillByDefault(testing::Return(false));
 
   manager()->MaybeShowPixAccountLinkingPrompt(kPixPaymentPageOrigin);
+  task_environment_.FastForwardBy(kShowPromptDelay);
 
   histogram_tester.ExpectUniqueSample(
       "FacilitatedPayments.Pix.AccountLinking.FlowExitedReason",
@@ -654,6 +736,7 @@ TEST_F(PixAccountLinkingManagerTest, DifferentOrigin_ExitedReasonLogged) {
       .WillByDefault(testing::ReturnRef(different_website_origin));
 
   manager()->MaybeShowPixAccountLinkingPrompt(kPixPaymentPageOrigin);
+  task_environment_.FastForwardBy(kShowPromptDelay);
 
   histogram_tester.ExpectUniqueSample(
       "FacilitatedPayments.Pix.AccountLinking.FlowExitedReason",
@@ -839,6 +922,8 @@ TEST_F(PixAccountLinkingManagerTest,
 
   EXPECT_CALL(client(), DismissPrompt());
   EXPECT_CALL(client(), ShowPixAccountLinkingSuccessScreen()).Times(0);
+  EXPECT_CALL(client(), ShowAccountLinkingFailureNotification(
+                            FacilitatedPaymentsType::kPix));
 
   test_api().DoOnAccountLinkingResult(
       AccountLinkingResult{/*is_successful=*/true, /*instrument_id=*/0,
@@ -871,7 +956,7 @@ TEST_F(PixAccountLinkingManagerTest, DoOnAccountLinkingResult_Canceled) {
       "FacilitatedPayments.Pix.AccountLinking.Result",
       /*sample=*/false,
       /*expected_bucket_count=*/1);
-  histogram_tester.ExpectUniqueSample(
+  histogram_tester.ExpectBucketCount(
       "FacilitatedPayments.Pix.AccountLinking.FlowExitedReason",
       /*sample=*/AccountLinkingFlowExitedReason::kUserCanceledInGmsCore,
       /*expected_bucket_count=*/1);
@@ -883,6 +968,8 @@ TEST_F(PixAccountLinkingManagerTest, DoOnAccountLinkingResult_Failure) {
   task_environment_.FastForwardBy(kShowPromptDelay);
 
   EXPECT_CALL(client(), DismissPrompt());
+  EXPECT_CALL(client(), ShowAccountLinkingFailureNotification(
+                            FacilitatedPaymentsType::kPix));
 
   test_api().DoOnAccountLinkingResult(AccountLinkingResult{
       /*is_successful=*/false, 0, AccountLinkingResultCode::kResultError});

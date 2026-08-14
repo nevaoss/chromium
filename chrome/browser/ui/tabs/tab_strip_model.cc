@@ -400,6 +400,28 @@ int TabStripModel::InsertDetachedTabAt(
     std::optional<tab_groups::TabGroupId> group) {
   ReentrancyCheck reentrancy_check(&reentrancy_guard_);
   tab->OnAddedToModel(this);
+
+  // Newly attached dragged tabs without an explicit group should join the
+  // focused group if focus mode is active, unless the tab is pinned.
+  const bool is_pinned = (add_types & ADD_PINNED) != 0;
+  if (base::FeatureList::IsEnabled(features::kTabGroupsFocusing) &&
+      !group.has_value() && !is_pinned) {
+    group = GetFocusedGroup();
+  }
+
+  // Ensure the insertion index stays within the group's range to preserve
+  // group contiguity when adding a tab into a group.
+  if (group_model_ && group.has_value()) {
+    const TabGroup* tab_group = group_model_->GetTabGroup(group.value());
+    if (tab_group) {
+      gfx::Range grouped_tabs = tab_group->ListTabs();
+      if (grouped_tabs.length() > 0) {
+        index = std::clamp(index, static_cast<int>(grouped_tabs.start()),
+                           static_cast<int>(grouped_tabs.end()));
+      }
+    }
+  }
+
   return InsertTabAtImpl(index, std::move(tab), add_types, group);
 }
 
@@ -1039,11 +1061,12 @@ void TabStripModel::ActivateTab(tabs::TabInterface* tab,
   scrubbing_metrics_.IncrementPressCount(user_gesture);
 
   // If this tab was activated, eg. by an extension, but is not in the focused
-  // group, unfocus the focused group.
-  std::optional<tab_groups::TabGroupId> group_id = tab->GetGroup();
+  // group, unfocus the focused group (unless it is a pinned tab and pinned
+  // tabs are allowed in focus mode).
   std::optional<tab_groups::TabGroupId> focused_group = GetFocusedGroup();
   if (focused_group.has_value() &&
-      (!group_id.has_value() || group_id.value() != focused_group.value())) {
+      !tabs::TabStripModelSelectionState::IsTabValidInFocusedGroup(
+          tab, focused_group)) {
     SetFocusedGroup(std::nullopt);
   }
 
@@ -1744,6 +1767,13 @@ void TabStripModel::AddTab(std::unique_ptr<tabs::TabModel> tab,
     if (index < 0 || index > count()) {
       index = count();
     }
+  }
+
+  // Newly created tabs without an explicit group join the focused group if
+  // focus mode is active.
+  if (base::FeatureList::IsEnabled(features::kTabGroupsFocusing) &&
+      !group.has_value()) {
+    group = GetFocusedGroup();
   }
 
   // Prevent the tab from being inserted at an index that would make the group
@@ -3440,7 +3470,12 @@ std::vector<int> TabStripModel::GetIndicesClosedByCommand(
           : gfx::Range(index, index + 1);
 
   // NOTE: callers expect the vector to be sorted in descending order.
+  std::optional<tab_groups::TabGroupId> focused_group = GetFocusedGroup();
   for (int i = count() - 1; i > last_unclosed_tab; --i) {
+    // Skip tabs that are not part of the focused group.
+    if (focused_group.has_value() && GetTabGroupForTab(i) != focused_group) {
+      continue;
+    }
     if (!indices_to_exclude.Contains(gfx::Range(i, i + 1)) && !IsTabPinned(i) &&
         (!is_selected || !IsTabSelected(i))) {
       indices.push_back(i);
@@ -3468,8 +3503,15 @@ std::vector<tabs::TabInterface*> TabStripModel::GetTabsClosedByCommand(
     start_it = tabs::TabCollection::TabIterator(invoked_tab);
   }
 
+  std::optional<tab_groups::TabGroupId> focused_group = GetFocusedGroup();
+
   for (auto it = start_it; it != end(); ++it) {
     tabs::TabInterface* tab = *it;
+
+    // Skip tabs unless they are part of the focused group.
+    if (focused_group.has_value() && tab->GetGroup() != focused_group) {
+      continue;
+    }
 
     if (tab == invoked_tab || tab->IsPinned()) {
       continue;
@@ -3738,7 +3780,8 @@ tabs::TabStripModelSelectionState TabStripModel::GetSelectionStateFrom(
   if (focused_group.has_value()) {
     bool all_in_focused_group = !selected_tabs.empty();
     for (tabs::TabInterface* tab : selected_tabs) {
-      if (!tab || tab->GetGroup() != focused_group) {
+      if (!tabs::TabStripModelSelectionState::IsTabValidInFocusedGroup(
+              tab, focused_group)) {
         all_in_focused_group = false;
         break;
       }

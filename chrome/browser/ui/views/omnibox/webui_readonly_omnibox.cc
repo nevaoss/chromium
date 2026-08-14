@@ -16,6 +16,7 @@
 #include "chrome/browser/ui/omnibox/ai_mode_page_action_controller.h"
 #include "chrome/browser/ui/omnibox/omnibox_controller.h"
 #include "chrome/browser/ui/omnibox/omnibox_edit_model.h"
+#include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/browser/ui/omnibox/omnibox_tab_helper.h"
 #include "chrome/browser/ui/views/chrome_typography.h"
 #include "chrome/browser/ui/views/location_bar/location_bar_util.h"
@@ -132,8 +133,9 @@ WebUIReadOnlyOmnibox::OnOmniboxAction(
     case toolbar_ui_api::mojom::OmniboxAction::Tag::kKey:
       return OnKey(*action->get_key());
 
-    case toolbar_ui_api::mojom::OmniboxAction::Tag::kMouse:
-      return OnMouse(*action->get_mouse());
+    case toolbar_ui_api::mojom::OmniboxAction::Tag::kPointer:
+      return OnPointer(action->get_pointer()->is_pointer_down,
+                       action->get_pointer()->start_zero_suggest);
 
     case toolbar_ui_api::mojom::OmniboxAction::Tag::kDropText:
       return OnDropText(*action->get_drop_text());
@@ -262,6 +264,11 @@ void WebUIReadOnlyOmnibox::SetFocus(bool is_user_initiated) {
       is_user_initiated
           ? toolbar_ui_api::mojom::FocusRequestTarget::kLocationBarUserInitiated
           : toolbar_ui_api::mojom::FocusRequestTarget::kLocationBar);
+}
+
+void WebUIReadOnlyOmnibox::ApplyFocusRingToAimButton(bool focus_aim) {
+  aim_page_action_icon_has_fake_focus_ = focus_aim;
+  update_propagator_->PropagateApplyFocusRingToAimButton(focus_aim);
 }
 
 bool WebUIReadOnlyOmnibox::AimButtonVisible() const {
@@ -608,12 +615,22 @@ WebUIReadOnlyOmnibox::OnKey(
 
   switch (dom_key) {
     case ui::DomKey::ENTER: {
+      if (omnibox::kShowRhsAimHint.Get()) {
+#if BUILDFLAG(IS_MAC)
+        const bool ai_mode_modifier = command;
+#else
+        const bool ai_mode_modifier = control;
+#endif
+        if (ai_mode_modifier && !shift) {
+          controller()->edit_model()->OpenAiMode(
+              OmniboxEditModel::AimActivation::kKeyboard);
+          return base::ok(std::monostate());
+        }
+      }
+
       WindowOpenDisposition disposition =
           searchbox::ComputeOpenDispositionFromModifiersAndLogToUma(
               shift, control, alt, command);
-      // TODO(crbug.com/503784580): Views impl has some special handling of
-      //   AIM button here. We may or may not need it depending on how we
-      //   implement its focus behavior.
       if (!control) {
         controller()->edit_model()->OpenCurrentSelection(base::TimeTicks::Now(),
                                                          disposition,
@@ -633,27 +650,86 @@ WebUIReadOnlyOmnibox::OnKey(
       controller()->edit_model()->OnEscapeKeyPressed();
       break;
 
+    case ui::DomKey::DEL:
+      DCHECK(shift);
+      if (controller()->IsPopupOpen()) {
+        controller()->edit_model()->TryDeletingPopupLine(
+            controller()->edit_model()->GetPopupSelection().line);
+      }
+      break;
+
     case ui::DomKey::ARROW_UP:
+      DCHECK(!shift);
       controller()->edit_model()->OnUpOrDownPressed(/*down=*/false,
                                                     /*page=*/false);
       break;
 
     case ui::DomKey::ARROW_DOWN:
+      DCHECK(!shift);
       controller()->edit_model()->OnUpOrDownPressed(/*down=*/true,
                                                     /*page=*/false);
       break;
 
+    case ui::DomKey::PAGE_UP:
+      DCHECK(!control);
+      DCHECK(!alt);
+      DCHECK(!shift);
+      controller()->edit_model()->OnUpOrDownPressed(/*down=*/false,
+                                                    /*page=*/true);
+      break;
+
+    case ui::DomKey::PAGE_DOWN:
+      DCHECK(!control);
+      DCHECK(!alt);
+      DCHECK(!shift);
+      controller()->edit_model()->OnUpOrDownPressed(/*down=*/true,
+                                                    /*page=*/true);
+      break;
+
     case ui::DomKey::FromCharacter(' '):
-      // This is relying on search keyword activation incrementing browser
-      // version to resolve the conflict with text input with ' ' appended
-      // that's incoming --- the JS side doesn't know whether the space will
-      // trigger the keyboard or not.
-      controller()->edit_model()->OnSpacePressed();
+      if (aim_page_action_icon_has_fake_focus_) {
+        if (base::FeatureList::IsEnabled(
+                omnibox::kAiModeSpaceDoesNotActivate)) {
+          ApplyFocusRingToAimButton(false);
+          // The JS side will apply space.
+        } else {
+          controller()->edit_model()->OpenSelection(
+              OmniboxPopupSelection(
+                  OmniboxPopupSelection::kNoMatch,
+                  OmniboxPopupSelection::LineState::FOCUSED_BUTTON_AIM),
+              base::TimeTicks::Now(), WindowOpenDisposition::CURRENT_TAB,
+              /*via_keyboard=*/true);
+        }
+        return base::ok(std::monostate());
+      }
+
+      if (controller()->IsPopupOpen() && !control && !alt && !shift) {
+        // This is relying on search keyword activation incrementing browser
+        // version to resolve the conflict with text input with ' ' appended
+        // that's incoming --- the JS side doesn't know whether the space will
+        // trigger the keyboard or not.
+        if (controller()->edit_model()->OnSpacePressed()) {
+          return base::ok(std::monostate());
+        }
+        OmniboxPopupSelection selection =
+            controller()->edit_model()->GetPopupSelection();
+        if (selection.IsButtonFocused()) {
+          controller()->edit_model()->OpenSelection(
+              selection, base::TimeTicks::Now(),
+              WindowOpenDisposition::CURRENT_TAB, /*via_keyboard=*/true);
+        }
+      }
       break;
 
     case ui::DomKey::BACKSPACE:
       if (controller()->edit_model()->is_keyword_selected()) {
         controller()->edit_model()->ClearKeyword();
+      }
+      break;
+
+    case ui::DomKey::TAB:
+      if (controller()->IsPopupOpen()) {
+        controller()->edit_model()->OnTabPressed(shift);
       }
       break;
 
@@ -664,13 +740,12 @@ WebUIReadOnlyOmnibox::OnKey(
 }
 
 base::expected<std::monostate, mojo_base::mojom::ErrorPtr>
-WebUIReadOnlyOmnibox::OnMouse(
-    const toolbar_ui_api::mojom::OmniboxActionMouse& mouse) {
-  // Either mouse up or mouse down permit launches.
+WebUIReadOnlyOmnibox::OnPointer(bool is_down, bool start_zero_suggest) {
+  // Either pointer up or pointer down permit launches.
   ExternalProtocolHandler::PermitLaunchUrl();
 
-  if (mouse.is_mouse_down) {
-    // Mouse down clears the pseudo-focus the popup has.
+  if (is_down) {
+    // Pointer down clears the pseudo-focus the popup has.
     if (controller()->IsPopupOpen()) {
       OmniboxPopupSelection selection =
           controller()->edit_model()->GetPopupSelection();
@@ -680,8 +755,8 @@ WebUIReadOnlyOmnibox::OnMouse(
       }
     }
   } else {
-    // Mouse up may start zero-suggest.
-    if (mouse.start_zero_suggest) {
+    // Pointer up may start zero-suggest.
+    if (start_zero_suggest) {
       controller()->edit_model()->StartZeroSuggestRequest();
     }
   }

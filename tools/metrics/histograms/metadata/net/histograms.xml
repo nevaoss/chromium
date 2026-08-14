@@ -219,6 +219,17 @@ chromium-metrics-reviews@google.com.
 
 <!-- LINT.ThenChange(//net/socket/stream_socket_close_reason.h:StreamSocketCloseReason) -->
 
+<variants name="StructuredHeaderBackend">
+  <variant name="Cpp" summary="the legacy C++ parser"/>
+  <variant name="Rust" summary="the new Rust parser"/>
+</variants>
+
+<variants name="StructuredHeaderType">
+  <variant name="Dictionary" summary="a Dictionary"/>
+  <variant name="Item" summary="an Item"/>
+  <variant name="List" summary="a List"/>
+</variants>
+
 <variants name="SuccessOrFailure">
   <variant name="Failure" summary="Operation failed"/>
   <variant name="Success" summary="Operation succeeded"/>
@@ -498,7 +509,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Crypto.TPMOperation.Win.LoadTBSLibrary.Result" enum="Hresult"
-    expires_after="2026-11-20">
+    expires_after="2027-01-24">
   <owner>jdoerrie@chromium.org</owner>
   <owner>src/crypto/OWNERS</owner>
   <summary>
@@ -518,7 +529,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Crypto.TPMOperation.Win.TpmCertifyExtractProperty.Result"
-    enum="Win32TpmErrorCodes" expires_after="2026-11-20">
+    enum="Win32TpmErrorCodes" expires_after="2027-01-24">
   <owner>jdoerrie@chromium.org</owner>
   <owner>src/crypto/OWNERS</owner>
   <summary>
@@ -529,7 +540,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Crypto.TPMOperation.Win.TpmCertifyParse.Result"
-    enum="TpmCertifyParseResult" expires_after="2026-11-20">
+    enum="TpmCertifyParseResult" expires_after="2027-01-24">
   <owner>jdoerrie@chromium.org</owner>
   <owner>src/crypto/OWNERS</owner>
   <summary>
@@ -540,7 +551,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Crypto.TPMOperation.Win.TpmCertifyResponse.TpmResponseCode"
-    enum="TPMResponseCode" expires_after="2026-11-20">
+    enum="TPMResponseCode" expires_after="2027-01-24">
   <owner>jdoerrie@chromium.org</owner>
   <owner>src/crypto/OWNERS</owner>
   <summary>
@@ -550,7 +561,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Crypto.TPMOperation.Win.TpmCertifyVerify.HashAlgorithm"
-    enum="TpmAlgorithm" expires_after="2026-11-20">
+    enum="TpmAlgorithm" expires_after="2027-01-24">
   <owner>jdoerrie@chromium.org</owner>
   <owner>src/crypto/OWNERS</owner>
   <summary>
@@ -560,7 +571,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Crypto.TPMOperation.Win.TpmCertifyVerify.Result"
-    enum="TpmCertifyVerifyResult" expires_after="2026-11-20">
+    enum="TpmCertifyVerifyResult" expires_after="2027-01-24">
   <owner>jdoerrie@chromium.org</owner>
   <owner>src/crypto/OWNERS</owner>
   <summary>
@@ -570,7 +581,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Crypto.TPMOperation.Win.TpmCertifyVerify.SignatureAlgorithm"
-    enum="TpmAlgorithm" expires_after="2026-11-20">
+    enum="TpmAlgorithm" expires_after="2027-01-24">
   <owner>jdoerrie@chromium.org</owner>
   <owner>src/crypto/OWNERS</owner>
   <summary>
@@ -2321,7 +2332,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Net.DeviceBoundSessions.GoogleRegistrationIsFromStandard"
-    enum="Boolean" expires_after="2026-11-22">
+    enum="Boolean" expires_after="2027-01-24">
   <owner>thefrog@chromium.org</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>
@@ -2520,7 +2531,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Net.DeviceBoundSessions.RequestDeferralDecision3"
-    enum="DeviceBoundSessionUsage2" expires_after="2026-11-22">
+    enum="DeviceBoundSessionUsage2" expires_after="2027-01-24">
   <owner>thefrog@chromium.org</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>
@@ -3658,7 +3669,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Net.DNS.UpgradeConfig.InsecureUpgradeSucceeded" enum="Boolean"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>awillia@chromium.org</owner>
   <owner>src/net/dns/OWNERS</owner>
   <summary>
@@ -3710,6 +3721,28 @@ chromium-metrics-reviews@google.com.
   <summary>
     The outcome of a Domain Reliability beacon, logged upon destruction of the
     beacon.
+  </summary>
+</histogram>
+
+<histogram name="Net.EphemeralPortRandomizer.ConnectResult"
+    enum="NetErrorCodes" expires_after="2027-01-28">
+  <owner>arichiv@chromium.org</owner>
+  <owner>awillia@chromium.org</owner>
+  <owner>katabolism-finch@google.com</owner>
+  <summary>
+    Logged on connection completion when EphemeralPortRandomizer was used to
+    pick the port. Records the associated net error (or OK). MacOS only.
+  </summary>
+</histogram>
+
+<histogram name="Net.EphemeralPortRandomizer.PickPortExhausted" enum="Boolean"
+    expires_after="2027-01-28">
+  <owner>arichiv@chromium.org</owner>
+  <owner>awillia@chromium.org</owner>
+  <owner>katabolism-finch@google.com</owner>
+  <summary>
+    Logged as true when EphemeralPortRandomizer::PickPort fails to find a port
+    to allocate for a pending TCP connection. Never logged as false. MacOS only.
   </summary>
 </histogram>
 
@@ -3813,6 +3846,17 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Net.HttpCache.LogicalInvalidation.ActiveFilterCountOnAddition"
+    units="filters" expires_after="2027-05-26">
+  <owner>deepakr@chromium.org</owner>
+  <owner>net-dev@chromium.org</owner>
+  <summary>
+    The number of active logical HTTP cache invalidation filters present in
+    memory at the moment a new invalidation filter is added. Recorded in
+    HttpCache::AddInvalidationFilter upon each filter addition.
+  </summary>
+</histogram>
+
 <histogram name="Net.HttpCache.LogicalInvalidation.ClearContext"
     enum="NetHttpCacheLogicalInvalidationClearContext"
     expires_after="2027-05-26">
@@ -3823,6 +3867,19 @@ chromium-metrics-reviews@google.com.
     (i.e., whether it was cleared during the same session it was added, or if it
     was successfully recovered from disk after a crash/restart and then
     subsequently cleared). Recorded when a filter is removed.
+  </summary>
+</histogram>
+
+<histogram name="Net.HttpCache.LogicalInvalidation.FilterCapEvicted"
+    enum="Boolean" expires_after="2027-05-26">
+  <owner>deepakr@chromium.org</owner>
+  <owner>net-dev@chromium.org</owner>
+  <summary>
+    Recorded as true when adding a new logical HTTP cache invalidation filter
+    causes the oldest active filter to be evicted due to reaching the maximum
+    filter capacity cap (configured via FeatureParam
+    kLogicalClearHttpCacheMaxFilters, defaulting to 500). Recorded in
+    HttpCache::AddInvalidationFilter.
   </summary>
 </histogram>
 
@@ -9615,7 +9672,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Net.StructuredHeaders.DecimalWithZeroFractionalDigits"
-    enum="Boolean" expires_after="2026-10-01">
+    enum="Boolean" expires_after="2027-01-24">
   <owner>apaseltiner@chromium.org</owner>
   <owner>net-dev@chromium.org</owner>
   <summary>
@@ -9626,6 +9683,32 @@ chromium-metrics-reviews@google.com.
     top-level Structured Header is successful. See crbug.com/517189418 for
     details.
   </summary>
+</histogram>
+
+<histogram name="Net.StructuredHeaders.Parse{Type}.{Backend}Success"
+    enum="BooleanSuccess" expires_after="2027-05-28">
+  <owner>apaseltiner@chromium.org</owner>
+  <owner>net-dev@chromium.org</owner>
+  <summary>
+    The result (success or failure) of parsing a structured-header {Type} using
+    {Backend}. See crbug.com/377941140 for more details.
+  </summary>
+  <token key="Type" variants="StructuredHeaderType"/>
+  <token key="Backend" variants="StructuredHeaderBackend"/>
+</histogram>
+
+<histogram name="Net.StructuredHeaders.Parse{Type}.{Backend}Time"
+    units="microseconds" expires_after="2027-05-28">
+  <owner>apaseltiner@chromium.org</owner>
+  <owner>net-dev@chromium.org</owner>
+  <summary>
+    The time taken to parse a structured-header {Type} using {Backend} via the
+    net::structured_headers::Parse{Type} function. Recorded for all clients, not
+    just ones with high-resolution time, and recorded regardless of whether
+    parsing succeeds or fails. See crbug.com/377941140 for more details.
+  </summary>
+  <token key="Type" variants="StructuredHeaderType"/>
+  <token key="Backend" variants="StructuredHeaderBackend"/>
 </histogram>
 
 <histogram name="Net.TaskRunner.RequestPriority" enum="RequestPriority"
@@ -9953,7 +10036,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Net.URLLoader.AcceptCH.RunObserverCall" enum="Boolean"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>yyanagisawa@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
   <summary>
@@ -9998,7 +10081,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Net.URLLoader.HasHeaderClient" enum="Boolean"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>bashi@chromium.org</owner>
   <owner>blink-network-stack@google.com</owner>
   <summary>
@@ -10008,7 +10091,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Net.URLLoader.OnBeforeSendHeadersDuration" units="ms"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>bashi@chromium.org</owner>
   <owner>blink-network-stack@google.com</owner>
   <summary>

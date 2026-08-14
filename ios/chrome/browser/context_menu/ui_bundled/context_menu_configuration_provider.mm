@@ -910,8 +910,8 @@ NSString* const kAlertAccessibilityIdentifier = @"AlertAccessibilityIdentifier";
   [imageSavingElements addObject:saveImageToPhotosAction];
 
   // Save Image Menu.
-  UIImage* image = DefaultSymbolWithPointSize(kPhotoBadgeArrowDownSymbol,
-                                              kSymbolActionPointSize);
+  UIImage* image =
+      SymbolWithPointSize(SymbolPhotoBadgeArrowDown, kSymbolActionPointSize);
   UIMenu* saveImageInMenu = [UIMenu
       menuWithTitle:l10n_util::GetNSString(IDS_IOS_TOOLS_MENU_SAVE_IMAGE_IN)
               image:image
@@ -1185,7 +1185,10 @@ NSString* const kAlertAccessibilityIdentifier = @"AlertAccessibilityIdentifier";
   GeminiStartupState* state = [[GeminiStartupState alloc]
       initWithEntryPoint:gemini::EntryPoint::ImageContextMenu];
   state.imageAttachment = image;
-  [handler startGeminiFlowWithStartupState:state];
+  [handler startGeminiEntryFlowWithStartupState:state
+                             baseViewController:self.baseViewController
+                       showSnackbarOnCompletion:YES
+                                     completion:nil];
 }
 
 @end

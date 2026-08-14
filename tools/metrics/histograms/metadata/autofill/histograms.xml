@@ -1459,7 +1459,7 @@ Called by update_autofill_enums.py. This is a manual comment.-->
 
 <histogram
     name="Autofill.AddressSuggestionOnTypingShown.DaysSinceLastUse.Profile"
-    units="days" expires_after="2026-10-26">
+    units="days" expires_after="2027-01-24">
   <owner>brunobraga@google.com</owner>
   <owner>chrome-autofill-alerts@google.com</owner>
   <summary>
@@ -1899,16 +1899,6 @@ Called by update_autofill_enums.py. This is a manual comment.-->
   </summary>
 </histogram>
 
-<histogram name="Autofill.Ai.OptIn.PrefMigration."
-    enum="AutofillAiPrefMigrationStatus" expires_after="2026-12-12">
-  <owner>brunobraga@google.com</owner>
-  <owner>chrome-autofill-alerts@google.com</owner>
-  <summary>
-    Records the Autofill AI syncable pref migration result, which depends on the
-    its initial value and the account keyed pref. Emitted during startup.
-  </summary>
-</histogram>
-
 <histogram name="Autofill.Ai.OptIn.Status.{EmissionStrategy}"
     enum="AutofillAiOptInStatus" expires_after="2026-12-12">
   <owner>jihadghanna@google.com</owner>
@@ -1926,7 +1916,8 @@ Called by update_autofill_enums.py. This is a manual comment.-->
   </token>
 </histogram>
 
-<histogram name="Autofill.Ai.PersonalContext.Cache.ReadinessOnFirstInteraction"
+<histogram
+    name="Autofill.Ai.PersonalContext.Cache.ReadinessOnFirstInteraction{EntityType}"
     enum="AutofillAiPersonalContextCacheReadinessOnFirstInteraction"
     expires_after="2026-12-12">
   <owner>vidhanj@google.com</owner>
@@ -1937,6 +1928,9 @@ Called by update_autofill_enums.py. This is a manual comment.-->
     focuses/clicks an Ambient Autofill supported field. Recorded at most once
     per page load.
   </summary>
+  <token key="EntityType" variants="Autofill.Ai.EntityType">
+    <variant name="" summary="Emitted for all entity types (aggregate)."/>
+  </token>
 </histogram>
 
 <histogram name="Autofill.Ai.PersonalContext.NonEligibilityReason"
@@ -2659,7 +2653,7 @@ Called by update_autofill_enums.py. This is a manual comment.-->
 </histogram>
 
 <histogram name="Autofill.AutofillAi.ModelCache.InitSuccess" enum="Boolean"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>jkeitel@google.com</owner>
   <owner>schwering@google.com</owner>
   <owner>chrome-autofill-alerts@google.com</owner>
@@ -5326,7 +5320,7 @@ Called by update_autofill_enums.py. This is a manual comment.-->
 </histogram>
 
 <histogram name="Autofill.iOS.FormActivity.SendRatio" units="%"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>vincb@google.com</owner>
   <owner>eic@google.com</owner>
   <owner>bling-transactions@google.com</owner>
@@ -5930,7 +5924,7 @@ Called by update_autofill_enums.py. This is a manual comment.-->
 </histogram>
 
 <histogram name="Autofill.NumberOfFieldsPerAutofill" units="count"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>schwering@google.com</owner>
   <owner>chrome-autofill-alerts@google.com</owner>
   <summary>
@@ -6793,7 +6787,7 @@ Called by update_autofill_enums.py. This is a manual comment.-->
 </histogram>
 
 <histogram name="Autofill.PopupHidingReason"
-    enum="AutofillSuggestionHidingReason" expires_after="2026-11-22">
+    enum="AutofillSuggestionHidingReason" expires_after="2027-01-24">
   <owner>koerber@google.com</owner>
   <owner>mamir@chromium.org</owner>
   <summary>
@@ -7552,7 +7546,7 @@ Called by update_autofill_enums.py. This is a manual comment.-->
 </histogram>
 
 <histogram name="Autofill.ResetAutofillPrefToChrome" enum="Boolean"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>friedrichh@chromium.org</owner>
   <owner>chrome-autofill-alerts@google.com</owner>
   <summary>
@@ -10401,7 +10395,7 @@ Called by update_autofill_enums.py. This is a manual comment.-->
 
 <histogram
     name="Autofill.YourSavedInfoSettingsPage.AutofillSettingsCategoryClick"
-    enum="Boolean" expires_after="2026-10-28">
+    enum="Boolean" expires_after="2027-01-24">
   <owner>jsobiech@google.com</owner>
   <owner>chrome-autofill-team@google.com</owner>
   <summary>

@@ -15,6 +15,7 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.PersistableBundle;
 import android.text.TextUtils;
 import android.view.View;
@@ -329,6 +330,8 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
             ObservableSuppliers.createNonNull(false);
     private final SettableNonNullObservableSupplier<Boolean> mIsGlicPinnedSupplier =
             ObservableSuppliers.createNonNull(false);
+    private final SettableNonNullObservableSupplier<Integer> mVerticalTabsWidthSupplier =
+            ObservableSuppliers.createNonNull(0);
     private @Nullable PrefChangeRegistrar mPrefChangeRegistrar;
     private @Nullable OnSharedPreferenceChangeListener mVerticalTabsPreferenceListener;
     private @Nullable TabbedSystemUiCoordinator mSystemUiCoordinator;
@@ -357,6 +360,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
             mPrivacySandbox3pcdRollbackMessageController;
     private @Nullable GestureUserEducationIphController mGestureUserEducationIphController;
     private @Nullable GlicButtonContextMenuCoordinator mGlicButtonContextMenuCoordinator;
+    private @Nullable ToolbarControlContainer mControlContainer;
     private final InsetObserver mInsetObserver;
     private final Function<Tab, Boolean> mBackButtonShouldCloseTabFn;
     private final Callback<@Nullable Tab> mSendToBackground;
@@ -984,6 +988,11 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
             mForcedSigninController = null;
         }
 
+        if (mControlContainer != null) {
+            mControlContainer.setVerticalTabsContainerWidthSupplier(null);
+            mControlContainer = null;
+        }
+
         destroySideUi();
 
         super.onDestroy();
@@ -1019,20 +1028,21 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
     @Override
     @EnsuresNonNull("mToolbarManager")
     protected void initializeToolbar() {
-        ToolbarControlContainer controlContainer = mActivity.findViewById(R.id.control_container);
+        mControlContainer = mActivity.findViewById(R.id.control_container);
         if (OpenInAppUtils.isOpenInAppAvailable()) {
-            assert controlContainer != null;
+            assert mControlContainer != null;
 
             ViewGroup omniboxChipContainer =
-                    controlContainer.findViewById(R.id.omnibox_chip_container);
+                    mControlContainer.findViewById(R.id.omnibox_chip_container);
             LocationBarEmbedder locationBarEmbedder = mActivity.findViewById(R.id.toolbar);
             mOmniboxChipManager = new OmniboxChipManager(omniboxChipContainer, locationBarEmbedder);
         }
 
         assert mFindToolbarManager != null;
         super.initializeToolbar();
-        if (controlContainer != null) {
-            controlContainer.setIsVerticalTabsActiveSupplier(mIsVerticalTabsActiveSupplier);
+        if (mControlContainer != null) {
+            mControlContainer.setIsVerticalTabsActiveSupplier(mIsVerticalTabsActiveSupplier);
+            mControlContainer.setVerticalTabsContainerWidthSupplier(mVerticalTabsWidthSupplier);
         }
 
         if (AndroidSidePanelEnabledFn.isEnabled()
@@ -1273,7 +1283,6 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                 PwaBottomSheetControllerFactory.createPwaBottomSheetController(mActivity);
         PwaBottomSheetControllerFactory.attach(mWindowAndroid, mPwaBottomSheetController);
         initCommerceSubscriptionsService();
-        initUndoGroupSnackbarController();
 
         new OneShotCallback<>(mProfileSupplier, this::initCollaborationDelegatesOnProfile);
 
@@ -1460,6 +1469,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                                 mSnackbarManagerSupplier);
             }
         }
+        initUndoGroupSnackbarController();
         initializeSideUi(currentlySelectedProfile);
     }
 
@@ -1793,6 +1803,16 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
             return false;
         }
 
+        boolean hasEvaluatedGlicPromo =
+                ChromeSharedPreferences.getInstance()
+                        .contains(ChromePreferenceKeys.GLIC_PROMO_ACCEPTED);
+
+        if (!GlicEnabling.isEnabledByFlags() && hasEvaluatedGlicPromo) {
+            ChromeSharedPreferences.getInstance()
+                    .removeKey(ChromePreferenceKeys.GLIC_PROMO_ACCEPTED);
+            return false;
+        }
+
         if (!ChromeFeatureList.getFieldTrialParamByFeatureAsBoolean(
                 ChromeFeatureList.GLIC, "adaptive-toolbar-auto-pin", true)) {
             return false;
@@ -1806,9 +1826,6 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
             return false;
         }
 
-        boolean hasEvaluatedGlicPromo =
-                ChromeSharedPreferences.getInstance()
-                        .contains(ChromePreferenceKeys.GLIC_PROMO_ACCEPTED);
         if (hasEvaluatedGlicPromo) {
             return false;
         }
@@ -2269,6 +2286,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                         mActivityLifecycleDispatcher,
                         mLayoutStateProviderOneShotSupplier,
                         mBrowserControlsManager,
+                        mFullscreenManager,
                         mTopControlsStacker,
                         anchorContainerParent,
                         sideUiStartAnchorContainerStub,
@@ -2349,10 +2367,12 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                                     mShareDelegateSupplier,
                                     mDataSharingTabManager,
                                     mIsVerticalTabsActiveSupplier,
+                                    mVerticalTabsWidthSupplier,
                                     canActivateTabLayoutToggleMenu(),
                                     mActivity.findViewById(
                                             R.id.vertical_tab_hover_card_holder_stub),
-                                    mTabContentManagerSupplier),
+                                    mTabContentManagerSupplier,
+                                    mUndoGroupSnackbarController),
                             mIsVerticalTabsActiveSupplier);
             mSideUiCoordinator.registerSideUiContainer(mVerticalTabsSideUiCoordinator);
         }
@@ -2360,6 +2380,9 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         mSideUiStateProviderSupplier.onAvailable(
                 provider -> maybeInitializeVerticalTabs(currentlySelectedProfile));
         mSideUiStateProviderSupplier.set(mSideUiCoordinator);
+        if (mTopControlsLockCoordinator != null) {
+            mTopControlsLockCoordinator.setSideUiStateProvider(mSideUiCoordinator);
+        }
 
         // TODO(crbug.com/510890983): Add render tests for the secondary container adjustment.
         View secondaryUiContainer = mActivity.findViewById(R.id.secondary_ui_container);
@@ -2378,7 +2401,8 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                             mActivityLifecycleDispatcher,
                             mTabModelSelectorSupplier,
                             mEdgeToEdgeManager.getEdgeToEdgeSystemBarColorHelper(),
-                            mBackPressManager);
+                            mBackPressManager,
+                            mCompositorViewHolderSupplier);
         }
     }
 
@@ -2387,9 +2411,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         if (!VerticalTabUtils.isVerticalTabsEligible(mActivity)) return;
 
         // Restore the user's saved tab layout preference upon browser cold launch.
-        boolean useVerticalLayoutOnLaunch =
-                ChromeSharedPreferences.getInstance()
-                        .readBoolean(ChromePreferenceKeys.VERTICAL_TABS_ENABLED, false);
+        boolean useVerticalLayoutOnLaunch = VerticalTabUtils.isVerticalTabsEnabled(mActivity);
 
         mIsVerticalTabsActiveSupplier.addSyncObserver(
                 active -> {
@@ -2403,11 +2425,15 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         if (transitionCoordinator != null) {
             transitionCoordinator.addObserver(
                     success -> {
-                        if (!success) return;
+                        if (!success || mVerticalTabsSideUiCoordinator == null) return;
 
                         boolean active = VerticalTabUtils.isVerticalTabsEnabled(mActivity);
-                        assumeNonNull(mVerticalTabsSideUiCoordinator)
-                                .setVisible(active, /* suppressAnimations= */ false);
+                        // Defer the request here to let SideUiCoordinatorImpl finish processing
+                        // other events also triggered by tab strip transition - namely
+                        // BrowserControlsStateProvider.Observer#onTopControlsHeightChanged/
+                        // onControlsOffsetChanged. Otherwise these event cancel the animation
+                        // started by the request in the middle, causing the regression.
+                        new Handler().post(() -> showVerticalTabs(active));
                     });
         }
 
@@ -2467,13 +2493,16 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                 });
     }
 
+    private void showVerticalTabs(boolean show) {
+        if (mVerticalTabsSideUiCoordinator != null) {
+            mVerticalTabsSideUiCoordinator.setVisible(show, /* suppressAnimations= */ false);
+        }
+    }
+
     /** Toggle the visibility between horizontal tab strip and vertical tab list. */
     public void toggleTabStrip() {
-        boolean shouldShowVerticalTabs =
-                !ChromeSharedPreferences.getInstance()
-                        .readBoolean(ChromePreferenceKeys.VERTICAL_TABS_ENABLED, false);
-        ChromeSharedPreferences.getInstance()
-                .writeBoolean(ChromePreferenceKeys.VERTICAL_TABS_ENABLED, shouldShowVerticalTabs);
+        boolean shouldShowVerticalTabs = !VerticalTabUtils.isVerticalTabsEnabled(mActivity);
+        VerticalTabUtils.setVerticalTabsEnabled(shouldShowVerticalTabs);
 
         if (shouldShowVerticalTabs) {
             Profile profile = mProfileSupplier.get();

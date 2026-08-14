@@ -635,6 +635,8 @@ export enum FeatureMode {
   UNIVERSAL_CART = 4,
   // Client feature mode for Promotion Page.
   PROMOTION_PAGE = 5,
+  // Client feature mode to initiate actuation for Password Change.
+  PASSWORD_CHANGE = 6,
 }
 
 // Settings for Gemini Enterprise.
@@ -829,6 +831,8 @@ export declare interface SkillPreview {
   curatedBy?: string;
   // The image URL to show when rendering this skill.
   imageUrl?: string;
+  // The category of the skill.
+  category?: string;
 }
 
 // A single skill.
@@ -1008,6 +1012,17 @@ export declare interface PanelState {
   windowId?: string;
 }
 
+// Payload for invoking a skill.
+export declare interface SkillsPayload {
+  // Skill ID to trigger.
+  skillId: string;
+  // Skill name to show in the Glic client. Empty string is the null state.
+  skillName: string;
+  // Skill icon (emoji) to show in the Glic client.
+  // Empty string is the null state.
+  skillIcon: string;
+}
+
 // Payload for Universal Cart invocation.
 export declare interface UniversalCartPayload {
   // This metadata is received from the same Google endpoint we receive the
@@ -1032,6 +1047,7 @@ export declare interface InvokeOptions {
   // Whether to suppress Zero State Suggestions.
   disableZeroStateSuggestions: boolean;
   // Skill ID to trigger.
+  // Deprecated: Use payload.skills_payload.skill_id instead.
   skillId?: string;
   // Configuration to override the default ZSS behavior for the invocation.
   zssConfig?: ZssConfig;

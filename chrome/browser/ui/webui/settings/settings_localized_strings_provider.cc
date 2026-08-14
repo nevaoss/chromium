@@ -3378,14 +3378,23 @@ void AddSiteSettingsStrings(content::WebUIDataSource* html_source,
        IDS_SITE_SETTINGS_TYPE_PROTECTED_MEDIA_ID_MID_SENTENCE},
       {"siteSettingsProtectedContentIdentifiers",
        IDS_SITE_SETTINGS_TYPE_PROTECTED_MEDIA_ID},
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
+      {"siteSettingsProtectedContentDescription",
+       IDS_SETTINGS_SITE_SETTINGS_PROTECTED_CONTENT_DESCRIPTION_WITH_BROWSER_CHECK},
+#else
       {"siteSettingsProtectedContentDescription",
        IDS_SETTINGS_SITE_SETTINGS_PROTECTED_CONTENT_DESCRIPTION},
+#endif
       {"siteSettingsProtectedContentAllowed",
        IDS_SETTINGS_SITE_SETTINGS_PROTECTED_CONTENT_ALLOWED},
       {"siteSettingsProtectedContentBlocked",
        IDS_SETTINGS_SITE_SETTINGS_PROTECTED_CONTENT_BLOCKED},
       {"siteSettingsProtectedContentBlockedSubLabel",
        IDS_SETTINGS_SITE_SETTINGS_PROTECTED_CONTENT_BLOCKED_SUB_LABEL},
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
+      {"siteSettingsProtectedContentAllowedSubLabel",
+       IDS_SETTINGS_SITE_SETTINGS_PROTECTED_CONTENT_ALLOWED_SUB_LABEL},
+#endif
 #if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_WIN)
       {"siteSettingsProtectedContentIdentifiersExplanation",
        IDS_SETTINGS_SITE_SETTINGS_PROTECTED_CONTENT_IDENTIFIERS_EXPLANATION},
@@ -4293,6 +4302,10 @@ void AddSystemStrings(content::WebUIDataSource* html_source) {
       {"featureNotificationsLabel",
        IDS_SETTINGS_SYSTEM_FEATURE_NOTIFICATIONS_LABEL},
 #endif  // BUILDFLAG(IS_WIN) && BUILDFLAG(GOOGLE_CHROME_BRANDING)
+#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+      {"onDeviceAiLinkSubtitle",
+       IDS_SETTINGS_SYSTEM_ON_DEVICE_AI_LINK_SUBTITLE},
+#endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
   };
   html_source->AddLocalizedStrings(kLocalizedStrings);
 

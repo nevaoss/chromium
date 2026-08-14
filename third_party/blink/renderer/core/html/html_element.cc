@@ -43,6 +43,7 @@
 #include "third_party/blink/renderer/bindings/core/v8/v8_union_boolean_togglepopoveroptions.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_union_stringlegacynulltoemptystring_trustedscript.h"
 #include "third_party/blink/renderer/core/accessibility/ax_object_cache.h"
+#include "third_party/blink/renderer/core/context_features/context_feature_settings.h"
 #include "third_party/blink/renderer/core/core_probes_inl.h"
 #include "third_party/blink/renderer/core/css/css_color.h"
 #include "third_party/blink/renderer/core/css/css_identifier_value.h"
@@ -53,6 +54,7 @@
 #include "third_party/blink/renderer/core/css/css_ratio_value.h"
 #include "third_party/blink/renderer/core/css/css_value_list.h"
 #include "third_party/blink/renderer/core/css/style_change_reason.h"
+#include "third_party/blink/renderer/core/css/style_engine.h"
 #include "third_party/blink/renderer/core/css_value_keywords.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/document_fragment.h"
@@ -1619,25 +1621,14 @@ ScriptPromise<IDLUndefined> HTMLElement::showUnboundedElement(
     return promise;
   }
 
-  // If you change the preconditions/permissions for unbounded elements, be sure
-  // to update the corresponding browser-side checks in
-  // RenderFrameHostImpl::RequestUnboundedSurface.
-  const SecurityOrigin* security_origin =
-      GetDocument().GetExecutionContext()->GetSecurityOrigin();
-  bool is_privileged =
-      security_origin &&
-      (security_origin->Protocol() == "chrome" ||
-       security_origin->Protocol() == "chrome-untrusted" ||
-       SchemeRegistry::IsWebUIScheme(security_origin->Protocol()));
-  if (!is_privileged &&
-      !RuntimeEnabledFeatures::UnboundedElementOnTheOpenWebEnabled()) {
-    resolver->Reject(MakeGarbageCollected<DOMException>(
-        DOMExceptionCode::kSecurityError,
-        "showUnboundedElement is only supported from privileged contexts."));
-    return promise;
-  }
+  ContextFeatureSettings::UnboundedElementAuth auth =
+      ContextFeatureSettings::GetUnboundedElementAuth(
+          GetDocument().GetExecutionContext());
+  CHECK_NE(auth, ContextFeatureSettings::UnboundedElementAuth::kDenied);
 
-  if (!is_privileged && !LocalFrame::HasTransientUserActivation(frame)) {
+  if (auth !=
+          ContextFeatureSettings::UnboundedElementAuth::kAllowedPrivileged &&
+      !LocalFrame::HasTransientUserActivation(frame)) {
     resolver->Reject(MakeGarbageCollected<DOMException>(
         DOMExceptionCode::kNotAllowedError,
         "API can only be initiated by a user gesture."));
@@ -1760,20 +1751,24 @@ void HTMLElement::SetUnboundedElementActive(bool active,
       widget->DecrementActiveUnboundedElementCount();
     }
   }
-  PseudoStateChanged(CSSSelector::kPseudoUnbounded);
-  // An active unbounded element is treated as stacked (gets its own PaintLayer)
-  // by default, which is managed via LayoutObject::IsStacked. Since this state
-  // is not a CSS property, we must explicitly trigger a local style recalc on
-  // the element itself to ensure its LayoutObject is updated. A local style
-  // change is sufficient because the unbounded state does not affect the style
-  // of the subtree (any CSS rules matching descendants via the :unbounded
-  // pseudo-class are already handled by PseudoStateChanged above).
-  SetNeedsStyleRecalc(
-      kLocalStyleChange,
-      StyleChangeReasonForTracing::Create(style_change_reason::kPseudoClass));
-  if (auto* layout_object = GetLayoutObject()) {
-    layout_object->AddSubtreePaintPropertyUpdateReason(
-        SubtreePaintPropertyUpdateReason::kContainerChainMayChange);
+  if (!GetDocument().GetStyleEngine().InDetachLayoutTree() &&
+      !GetDocument().InStyleRecalc()) {
+    PseudoStateChanged(CSSSelector::kPseudoUnbounded);
+    // An active unbounded element is treated as stacked (gets its own
+    // PaintLayer) by default, which is managed via LayoutObject::IsStacked.
+    // Since this state is not a CSS property, we must explicitly trigger a
+    // local style recalc on the element itself to ensure its LayoutObject is
+    // updated. A local style change is sufficient because the unbounded state
+    // does not affect the style of the subtree (any CSS rules matching
+    // descendants via the :unbounded pseudo-class are already handled by
+    // PseudoStateChanged above).
+    SetNeedsStyleRecalc(
+        kLocalStyleChange,
+        StyleChangeReasonForTracing::Create(style_change_reason::kPseudoClass));
+    if (auto* layout_object = GetLayoutObject()) {
+      layout_object->AddSubtreePaintPropertyUpdateReason(
+          SubtreePaintPropertyUpdateReason::kContainerChainMayChange);
+    }
   }
   if (fire_events == UnboundedEvents::kFire) {
     auto& event_data = EnsureUnboundedEventData();
@@ -1803,6 +1798,25 @@ void HTMLElement::SetUnboundedElementActive(bool active,
     DCHECK_EQ(fire_events, UnboundedEvents::kSuppress);
     if (auto* event_data = GetUnboundedEventData()) {
       event_data->cancelPendingEventTask();
+    }
+  }
+}
+
+void HTMLElement::AttachLayoutTree(AttachContext& context) {
+  Element::AttachLayoutTree(context);
+  if (RuntimeEnabledFeatures::UnboundedElementEnabled() &&
+      IsUnboundedElementActive() && !GetLayoutObject()) {
+    if (auto* frame = GetDocument().GetFrame()) {
+      if (auto* web_frame =
+              WebLocalFrameImpl::FromFrame(&frame->LocalFrameRoot())) {
+        if (auto* widget = web_frame->FrameWidgetImpl()) {
+          // When an active unbounded element loses its layout object (e.g. via
+          // display: none), explicitly dismiss the surface so the browser
+          // process tears down the Viz plumbing and closes the native OS
+          // window.
+          widget->OnDismissed();
+        }
+      }
     }
   }
 }

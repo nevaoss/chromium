@@ -73,6 +73,11 @@ class MEDIA_EXPORT AudioBus {
   static bool IsAligned(void* ptr);
   static bool IsAligned(base::span<float> span);
 
+  ~AudioBus();
+
+  AudioBus(const AudioBus&) = delete;
+  AudioBus& operator=(const AudioBus&) = delete;
+
   // Methods that are expected to be called after AudioBus::CreateWrapper() in
   // order to wrap externally allocated memory.
   // To avoid cases where channel sizes and number of frames don't match,
@@ -222,24 +227,16 @@ class MEDIA_EXPORT AudioBus {
   // the channels are valid.
   void SwapChannels(int a, int b);
 
-  AudioBus(const AudioBus&) = delete;
-  AudioBus& operator=(const AudioBus&) = delete;
-
-  virtual ~AudioBus();
-
- protected:
+ private:
   AudioBus(int channels, int frames);
   AudioBus(int channels, int frames, base::span<float> data);
   explicit AudioBus(int channels);
 
- private:
   void ZeroBitstream();
 
   // Helper method for building |channel_data_| from a block of memory.  |data|
   // must be at least CalculateMemorySize(...) bytes in size.
   void BuildChannelData(int channels, base::span<float> data);
-
-  static void CheckOverflow(int start_frame, int frames, int total_frames);
 
   template <class SourceSampleTypeTraits>
   static void CopyConvertFromInterleavedSourceToAudioBus(

@@ -262,7 +262,10 @@ IN_PROC_BROWSER_TEST_P(DataControlsClipboardUtilsBrowserTest,
       }),
       *contents()->GetPrimaryMainFrame());
 
-  ui::ClipboardMetadata metadata = {.size = 100};
+  ui::ClipboardMetadata metadata = {
+      .size = 100,
+      .format_type = ui::ClipboardFormatType::PlainTextType(),
+  };
   content::ClipboardPasteData data;
   data.text = std::u16string(100, 'a');
 
@@ -291,7 +294,7 @@ IN_PROC_BROWSER_TEST_P(DataControlsClipboardUtilsBrowserTest,
   enterprise_connectors::CopyWarningDelegateTracker::SetDelegate(contents(),
                                                                  nullptr);
 
-  EXPECT_EQ(future.Get<0>(), metadata.format_type);
+  EXPECT_EQ(future.Get<0>().GetName(), metadata.format_type.GetName());
 
   EXPECT_TRUE(future.Get<1>().empty());
 
@@ -327,7 +330,10 @@ IN_PROC_BROWSER_TEST_P(DataControlsClipboardUtilsBrowserTest,
   base::test::TestFuture<std::optional<content::ClipboardPasteData>> future;
   auto source = content::ClipboardEndpoint(std::nullopt);
   auto destination = CreateURLClipboardEndpoint("https://google.com");
-  ui::ClipboardMetadata metadata = {.size = 1234};
+  ui::ClipboardMetadata metadata = {
+      .size = 1234,
+      .format_type = ui::ClipboardFormatType::PlainTextType(),
+  };
   EXPECT_FALSE(IsPastePolicyCheckRequired(source, destination, metadata));
   PasteIfAllowedByPolicy(source, destination, metadata,
                          MakeClipboardPasteData("text", "image", {}),
@@ -1123,7 +1129,10 @@ IN_PROC_BROWSER_TEST_P(DataControlsClipboardUtilsBrowserTest, CopyAllowed) {
       base::BindLambdaForTesting(
           [this]() { return contents()->GetBrowserContext(); }),
       *contents()->GetPrimaryMainFrame());
-  ui::ClipboardMetadata metadata = {.size = 1234};
+  ui::ClipboardMetadata metadata = {
+      .size = 1234,
+      .format_type = ui::ClipboardFormatType::PlainTextType(),
+  };
   EXPECT_FALSE(IsCopyPolicyCheckRequired(source, metadata));
 
   base::test::TestFuture<const ui::ClipboardFormatType&,
@@ -2403,7 +2412,10 @@ IN_PROC_BROWSER_TEST_P(DataControlsClipboardUtilsBrowserTest,
           [this]() { return contents()->GetBrowserContext(); }),
       *contents()->GetPrimaryMainFrame());
 
-  ui::ClipboardMetadata metadata = {.size = 100};
+  ui::ClipboardMetadata metadata = {
+      .size = 100,
+      .format_type = ui::ClipboardFormatType::PlainTextType(),
+  };
   content::ClipboardPasteData data;
   data.text = std::u16string(100, 'a');
 
@@ -2433,7 +2445,7 @@ IN_PROC_BROWSER_TEST_P(DataControlsClipboardUtilsBrowserTest,
   EXPECT_EQ(data_controls::GetLastReplacedClipboardData().restriction_level,
             data_controls::CopyRestrictionLevel::kOngoingScan);
 
-  EXPECT_EQ(future.Get<0>(), metadata.format_type);
+  EXPECT_EQ(future.Get<0>().GetName(), metadata.format_type.GetName());
 
   EXPECT_EQ(future.Get<1>().text, data.text);
 
@@ -2504,7 +2516,10 @@ IN_PROC_BROWSER_TEST_P(DataControlsClipboardUtilsBrowserTest,
           [this]() { return contents()->GetBrowserContext(); }),
       *contents()->GetPrimaryMainFrame());
 
-  ui::ClipboardMetadata metadata = {.size = 100};
+  ui::ClipboardMetadata metadata = {
+      .size = 100,
+      .format_type = ui::ClipboardFormatType::PlainTextType(),
+  };
   content::ClipboardPasteData data;
   data.text = std::u16string(100, 'a');
 
@@ -2521,7 +2536,7 @@ IN_PROC_BROWSER_TEST_P(DataControlsClipboardUtilsBrowserTest,
   EXPECT_EQ(data_controls::GetLastReplacedClipboardData().restriction_level,
             data_controls::CopyRestrictionLevel::kOngoingScan);
 
-  EXPECT_EQ(future.Get<0>(), metadata.format_type);
+  EXPECT_EQ(future.Get<0>().GetName(), metadata.format_type.GetName());
 
   EXPECT_TRUE(future.Get<1>().empty());
 
@@ -2582,7 +2597,10 @@ IN_PROC_BROWSER_TEST_P(DataControlsClipboardUtilsBrowserTest,
           [this]() { return contents()->GetBrowserContext(); }),
       *contents()->GetPrimaryMainFrame());
 
-  ui::ClipboardMetadata metadata = {.size = 100};
+  ui::ClipboardMetadata metadata = {
+      .size = 100,
+      .format_type = ui::ClipboardFormatType::PlainTextType(),
+  };
   content::ClipboardPasteData data;
   data.text = std::u16string(100, 'a');
 
@@ -2599,7 +2617,7 @@ IN_PROC_BROWSER_TEST_P(DataControlsClipboardUtilsBrowserTest,
   EXPECT_EQ(data_controls::GetLastReplacedClipboardData().restriction_level,
             data_controls::CopyRestrictionLevel::kOngoingScan);
 
-  EXPECT_EQ(future.Get<0>(), metadata.format_type);
+  EXPECT_EQ(future.Get<0>().GetName(), metadata.format_type.GetName());
 
   EXPECT_TRUE(future.Get<1>().empty());
 
@@ -2657,7 +2675,10 @@ IN_PROC_BROWSER_TEST_P(DataControlsClipboardUtilsBrowserTest,
           [this]() { return contents()->GetBrowserContext(); }),
       *contents()->GetPrimaryMainFrame());
 
-  ui::ClipboardMetadata metadata = {.size = 100};
+  ui::ClipboardMetadata metadata = {
+      .size = 100,
+      .format_type = ui::ClipboardFormatType::PlainTextType(),
+  };
   content::ClipboardPasteData data;
   data.text = std::u16string(100, 'a');
 
@@ -2674,7 +2695,7 @@ IN_PROC_BROWSER_TEST_P(DataControlsClipboardUtilsBrowserTest,
   EXPECT_EQ(data_controls::GetLastReplacedClipboardData().restriction_level,
             data_controls::CopyRestrictionLevel::kOngoingScan);
 
-  EXPECT_EQ(future.Get<0>(), metadata.format_type);
+  EXPECT_EQ(future.Get<0>().GetName(), metadata.format_type.GetName());
 
   EXPECT_EQ(future.Get<1>().text, data.text);
 

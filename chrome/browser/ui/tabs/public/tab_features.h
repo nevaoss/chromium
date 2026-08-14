@@ -1,6 +1,27 @@
 // Copyright 2024 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+//
+// This class is used to construct and hold tab-scoped state associated with a
+// WebContents. When a WebContents is transformed into a tab, and instance of
+// this class is created. When the tab is destroyed, this instance is destroyed.
+//
+// This class exists for 3 reasons:
+//  (1) It provides explicit construction and destruction ordering.
+//  (2) It allows for dependency-injection at construction time of tab features.
+//  (3) It pairs with the UnownedUserData design pattern to ensure dependencies
+//      are precisely specified by BUILD.gn files. This prevents circular
+//      dependencies.
+//
+// If you want to make a new TabFeature, following these steps:
+//  (1) Make a regular C++ class. It should NOT inherit from SupportsUserData.
+//  (2) Forward declare the class, and add a std::unique_ptr member to this
+//      header file.
+//  (3) Construct the member in tab_features.cc.
+//  (4) If tab-consumers need to access the feature, expose it via TabInterface
+//      and UnownedUserData.
+//
+// For more details on UnownedUserData, see ui/base/unowned_user_data/README.md.
 
 #ifndef CHROME_BROWSER_UI_TABS_PUBLIC_TAB_FEATURES_H_
 #define CHROME_BROWSER_UI_TABS_PUBLIC_TAB_FEATURES_H_
@@ -14,33 +35,35 @@
 #include "ui/base/unowned_user_data/user_data_factory.h"
 
 class AskBeforeHttpDialogController;
+class BookmarkBarPreloadPipelineManager;
 class BookmarkPageActionController;
 class CollaborationMessagingPageActionController;
+class CommitLimitOOMRecoveryTracker;
 class CookieControlsPageActionController;
 class FileSystemAccessPageActionController;
 class FromGWSNavigationAndKeepAliveRequestObserver;
+class HttpAuthCacheStatus;
 class IntentPickerViewPageActionController;
+class JsOptimizationsPageActionController;
 class LensOverlayController;
 class LensOverlayHomeworkPageActionController;
 class LensSearchController;
+class ManagePasswordsPageActionController;
 class MemorySaverChipTabHelper;
+class NewTabPagePreloadPipelineManager;
 class PinnedTranslateActionListener;
 class Profile;
 class PwaInstallPageActionController;
-class RecordReplayPageActionController;
-class JsOptimizationsPageActionController;
+class QwacWebContentsObserver;
 class ReadAnythingController;
 class ReadAnythingSidePanelController;
+class RecordReplayPageActionController;
 class RollBackModeBInfoBarController;
+class SearchPromotionNavigationObserver;
 class SidePanelRegistry;
 class TabResourceUsageTabHelper;
 class TabUIHelper;
 class TranslatePageActionController;
-class QwacWebContentsObserver;
-class ManagePasswordsPageActionController;
-class BookmarkBarPreloadPipelineManager;
-class NewTabPagePreloadPipelineManager;
-class SearchPromotionNavigationObserver;
 
 namespace skills {
 class SkillsUiTabControllerInterface;
@@ -107,6 +130,7 @@ class ExtensionSidePanelManager;
 }  // namespace extensions
 
 namespace glic {
+class GlicCueTabState;
 class GlicInstanceHelper;
 class GlicTabIndicatorHelper;
 class GlicSidePanelCoordinator;
@@ -509,6 +533,9 @@ class TabFeatures {
 
   std::unique_ptr<glic::GlicPageFeaturesManager> glic_page_features_manager_;
 
+  // Per-tab eligibility state for the glic contextual cue.
+  std::unique_ptr<glic::GlicCueTabState> glic_cue_tab_state_;
+
   std::unique_ptr<memory_saver::MemorySaverChipController>
       memory_saver_chip_controller_;
 
@@ -517,6 +544,10 @@ class TabFeatures {
 
   std::unique_ptr<FromGWSNavigationAndKeepAliveRequestObserver>
       from_gws_navigation_and_keep_alive_request_observer_;
+
+  // Records use counters for cross-partition subresource loads that used
+  // server HTTP auth.
+  std::unique_ptr<HttpAuthCacheStatus> http_auth_cache_status_;
 
   std::unique_ptr<TabResourceUsageTabHelper> resource_usage_helper_;
 
@@ -613,6 +644,8 @@ class TabFeatures {
 #if BUILDFLAG(IS_WIN)
   std::unique_ptr<SearchPromotionNavigationObserver>
       search_promotion_navigation_observer_;
+  std::unique_ptr<CommitLimitOOMRecoveryTracker>
+      commit_limit_oom_recovery_tracker_;
 #endif
 
   std::unique_ptr<accessibility_annotator::ContentAnnotatorTabHelper>

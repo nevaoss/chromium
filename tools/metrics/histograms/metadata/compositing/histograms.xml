@@ -225,7 +225,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Compositing.DirectRenderer.OverlayProcessingUs"
-    units="microseconds" expires_after="2026-11-22">
+    units="microseconds" expires_after="2027-01-24">
   <owner>khaslett@chromium.org</owner>
   <owner>kylechar@chromium.org</owner>
   <improvement direction="LOWER_IS_BETTER"/>
@@ -395,8 +395,22 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Compositing.Display.DrawToVizScheduledDraw"
+    units="microseconds" expires_after="2026-10-28">
+  <owner>magchen@chromium.org</owner>
+  <owner>chrome-gpu-metric-alerts@chromium.org</owner>
+  <improvement direction="LOWER_IS_BETTER"/>
+  <summary>
+    This is logged once per frame, if the output surface provides timing
+    information. It measures the time from the display compositor starting a
+    draw on the Viz Compositor thread to when the Viz thread scheduled work to
+    the GPU thread. Only reported for platforms supporting high resolution
+    clocks.
+  </summary>
+</histogram>
+
 <histogram name="Compositing.Display.FlattenedRenderPassCount" units="units"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>jonross@chromium.org</owner>
   <owner>chrome-gpu-metric-alerts@chromium.org</owner>
   <summary>
@@ -639,7 +653,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Compositing.TileManager.EnoughMemory.{ProcessType}"
-    enum="Boolean" expires_after="2026-11-22">
+    enum="Boolean" expires_after="2027-01-24">
   <owner>lizeb@chromium.org</owner>
   <owner>chrome-gpu-memory@google.com</owner>
   <summary>

@@ -501,30 +501,25 @@ try_.builder(
     main_list_view = "try",
 )
 
-try_.orchestrator_builder(
+try_.builder(
     name = "linux-full-remote-rel",
-    description_html = "Experimental " + linkify_builder("try", "linux-rel", "chromium") + " builder with more kinds of remote actions. e.g. remote linking",
+    description_html = "Builds with the same configuration as " + linkify_builder("try", "linux-rel", "chromium") + " builder with more kinds of remote actions.",
     mirrors = builder_config.copy_from("linux-rel"),
     builder_config_settings = builder_config.try_settings(
         is_compile_only = True,
     ),
     gn_args = "try/linux-rel",
-    compilator = "linux-full-remote-rel-compilator",
     contact_team_email = "chrome-build-team@google.com",
     cq_settings = try_.cq_settings(
-        experiment_percentage = 10,
-        on_default_cq = True,
+        location_filters = [
+            "build/conifg/siso/.+",
+        ],
     ),
     siso_configs = ["builder", "default-remote"],
     # TODO(crbug.com/529185604): Remove this once the missing input issue is resolved.
     # We need to download all outputs to prevent build failures caused by missing inputs.
     siso_output_local_strategy = "full",
     use_clang_coverage = True,
-)
-
-try_.compilator_builder(
-    name = "linux-full-remote-rel-compilator",
-    contact_team_email = "chrome-build-team@google.com",
 )
 
 try_.builder(
@@ -1175,7 +1170,7 @@ gpu.try_.optional_tests_builder(
         location_filters = gpu.try_.optional_trybot_location_filters.LINUX,
     ),
     experiments = {
-        "luci.buildbucket.run_in_turboci": 3,
+        "luci.buildbucket.run_in_turboci": 50,
     },
     main_list_view = "try",
     max_concurrent_builds = 7,
@@ -1226,6 +1221,9 @@ try_.builder(
             cq.location_filter(path_regexp = r".*\.(js|ts)"),
         ],
     ),
+    experiments = {
+        "luci.buildbucket.run_in_turboci": 25,
+    },
     main_list_view = "try",
     use_javascript_coverage = True,
 )

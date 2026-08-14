@@ -304,6 +304,7 @@ void CanvasRenderingContext2D::LoseContext(LostContextMode lost_mode) {
   if (element != nullptr) [[likely]] {
     shared_image_provider_ = nullptr;
     bitmap_provider_ = nullptr;
+    last_recording_ = std::nullopt;
     element->DiscardResources();
     element->DiscardResourceDispatcher();
 
@@ -385,14 +386,11 @@ bool CanvasRenderingContext2D::WritePixels(const SkImageInfo& orig_info,
   if (shared_image_provider_) {
     result =
         shared_image_provider_->WritePixels(orig_info, pixels, row_bytes, x, y);
-    if (result) {
-      shared_image_provider_->ClearLastRecording();
-    }
   } else {
     result = bitmap_provider_->WritePixels(orig_info, pixels, row_bytes, x, y);
-    if (result) {
-      bitmap_provider_->ClearLastRecording();
-    }
+  }
+  if (result) {
+    last_recording_ = std::nullopt;
   }
   return result;
 }
@@ -597,6 +595,20 @@ std::optional<cc::PaintRecord> CanvasRenderingContext2D::FlushCanvas(
   }
   return FlushCanvasInternal(shared_image_provider_.get(),
                              bitmap_provider_.get(), reason);
+}
+
+void CanvasRenderingContext2D::DidFlushRecording(
+    const cc::PaintRecord& recording,
+    bool clear_frame,
+    FlushReason reason) {
+  bool want_to_print = (Host() && Host()->IsPrinting()) ||
+                       reason == FlushReason::kPrinting ||
+                       reason == FlushReason::kCanvasPushFrameWhilePrinting;
+  if (want_to_print && clear_frame) {
+    last_recording_ = recording;
+  } else {
+    last_recording_ = std::nullopt;
+  }
 }
 
 void CanvasRenderingContext2D::OnFlushForImage(
@@ -838,16 +850,7 @@ CanvasRenderingContext2D::PaintRenderingResultsToSnapshot(
 
 const std::optional<cc::PaintRecord>&
 CanvasRenderingContext2D::GetLastRecording() {
-  if (!canvas()) {
-    return empty_recording_;
-  }
-  if (shared_image_provider_) {
-    return shared_image_provider_->LastRecording();
-  }
-  if (bitmap_provider_) {
-    return bitmap_provider_->LastRecording();
-  }
-  return empty_recording_;
+  return last_recording_;
 }
 
 bool CanvasRenderingContext2D::CanCreateResourceProvider() {
@@ -896,15 +899,6 @@ void CanvasRenderingContext2D::EnableAccelerationIfPossible() {
   }
 }
 
-void CanvasRenderingContext2D::PreFinalizeFrame() {
-  // Low-latency 2d canvases produce their frames after the resource gets single
-  // buffered.
-  // TODO(crbug.com/40280152): Analyze whether this call is redundant (i.e.,
-  // whether the CRP is guaranteed to always be present).
-  if (canvas() && canvas()->LowLatencyEnabled() && canvas()->IsDirty()) {
-    InitializeResourceProvider();
-  }
-}
 
 void CanvasRenderingContext2D::FinalizeFrame(FlushReason reason) {
   TRACE_EVENT0("blink", "CanvasRenderingContext2D::FinalizeFrame");
@@ -1171,6 +1165,7 @@ UniqueFontSelector* CanvasRenderingContext2D::GetFontSelector() const {
 void CanvasRenderingContext2D::SizeChanged() {
   shared_image_provider_ = nullptr;
   bitmap_provider_ = nullptr;
+  last_recording_ = std::nullopt;
   did_fail_to_create_resource_provider_ = false;
 }
 
@@ -1184,6 +1179,7 @@ void CanvasRenderingContext2D::Dispose() {
   hibernation_handler_ = nullptr;
   shared_image_provider_ = nullptr;
   bitmap_provider_ = nullptr;
+  last_recording_ = std::nullopt;
   CanvasRenderingContext::Dispose();
 }
 
@@ -1349,6 +1345,7 @@ bool CanvasRenderingContext2D::InitializeResourceProvider() {
 void CanvasRenderingContext2D::ResetResourceProvider() {
   auto old_shared = std::move(shared_image_provider_);
   auto old_bitmap = std::move(bitmap_provider_);
+  last_recording_ = std::nullopt;
   if (canvas()) {
     canvas()->UpdateMemoryUsage();
   }

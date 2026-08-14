@@ -17,7 +17,7 @@ import sys
 
 from gn_helpers import ToGNString
 
-# VS 2026 18 with 10.0.26100.7705 SDK with ARM64 libraries and UWP support.
+# VS 2026 18 with 10.0.28000.2270 SDK with ARM64 libraries and UWP support.
 # See go/win-toolchain-reference for instructions about how to update the
 # toolchain.
 #
@@ -59,8 +59,8 @@ from gn_helpers import ToGNString
 # * docs/windows_build_instructions.md
 #   Make sure any version numbers in the documentation match the code.
 #
-TOOLCHAIN_HASH = 'e66617bc68'
-SDK_VERSION = '10.0.26100.0'
+TOOLCHAIN_HASH = '3bfcb536c8'
+SDK_VERSION = '10.0.28000.0'
 
 # Visual Studio versions are listed in descending order of priority.
 # The first version is assumed by this script to be the one that is packaged,
@@ -460,7 +460,8 @@ def _CopyDebugger(target_dir, target_cpu):
   symsrv.dll, if present, is used by dbghelp.dll to fetch symbols from a
   developer's configured symbol server(s).
 
-  msdia140.dll is needed for tools like symupload.exe and dump_syms.exe.
+  msdia140.dll is needed for tools like symupload.exe and dump_syms.exe. In
+  SDK version 10.0.28000+, it's also needed for dbghelp.dll.
   """
   win_sdk_dir = SetEnvironmentAndGetSDKDir()
   if not win_sdk_dir:
@@ -483,11 +484,16 @@ def _CopyDebugger(target_dir, target_cpu):
     target_path = os.path.join(target_dir, debug_file)
     _CopyRuntimeImpl(target_path, full_path)
 
-  # The x64 version of msdia140.dll is always used because symupload and
-  # dump_syms are always built as x64 binaries.
-  dia_path = os.path.join(NormalizePath(os.environ['GYP_MSVS_OVERRIDE_PATH']),
-                          'DIA SDK', 'bin', 'amd64', 'msdia140.dll')
-  _CopyRuntimeImpl(os.path.join(target_dir, 'msdia140.dll'), dia_path)
+  # msdia140.dll must be copied from the DIA SDK directory in the toolchain
+  # package rather than the SDK Debuggers directory because the Debuggers
+  # version statically links ole32.dll, which pulls user32.dll into memory.
+  assert ('GYP_MSVS_OVERRIDE_PATH' in os.environ)  # Just to make sure
+  vs_path = os.environ.get('GYP_MSVS_OVERRIDE_PATH')
+  arch_str = {'x64': 'amd64', 'arm64': 'arm64', 'x86': ''}.get(target_cpu)
+  dia_path = os.path.join(NormalizePath(vs_path), 'DIA SDK', 'bin', arch_str,
+                          'msdia140.dll')
+  if os.path.exists(dia_path):
+    _CopyRuntimeImpl(os.path.join(target_dir, 'msdia140.dll'), dia_path)
 
 
 def _GetDesiredVsToolchainHashes():

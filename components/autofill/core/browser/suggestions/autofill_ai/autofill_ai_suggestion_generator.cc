@@ -212,12 +212,8 @@ std::vector<Suggestion> GetFooterSuggestions(
     suggestions.emplace_back(CreateUndoSuggestion());
   }
 
-  const bool is_split_manage_enabled =
-      base::FeatureList::IsEnabled(
-          features::kSuggestionManageButtonSplitForEnhancedAutofill) &&
-      base::FeatureList::IsEnabled(features::kYourSavedInfoSettingsPage);
-
-  if (is_split_manage_enabled) {
+  if (base::FeatureList::IsEnabled(
+          features::kSuggestionManageButtonSplitForEnhancedAutofill)) {
     CHECK(!ui_sections.empty());
     if (ui_sections.size() == 1) {
       switch (*ui_sections.begin()) {
@@ -870,7 +866,8 @@ Suggestion CreateParentFallbackSuggestion(EntityType entity_type,
                                         ? IDS_AUTOFILL_AI_OTHER_ORDERS
                                         : IDS_AUTOFILL_AI_ALL_ORDERS),
           SuggestionType::kAutofillAiOtherOrders);
-      suggestion.acceptability = Suggestion::Acceptability::kUnacceptable;
+      suggestion.acceptability =
+          Suggestion::Acceptability::kSelectableButUnacceptable;
       suggestion.children = std::move(children);
       return suggestion;
     }
@@ -880,7 +877,8 @@ Suggestion CreateParentFallbackSuggestion(EntityType entity_type,
                                         ? IDS_AUTOFILL_AI_OTHER_SHIPMENTS
                                         : IDS_AUTOFILL_AI_ALL_SHIPMENTS),
           SuggestionType::kAutofillAiOtherShipments);
-      suggestion.acceptability = Suggestion::Acceptability::kUnacceptable;
+      suggestion.acceptability =
+          Suggestion::Acceptability::kSelectableButUnacceptable;
       suggestion.children = std::move(children);
       return suggestion;
     }

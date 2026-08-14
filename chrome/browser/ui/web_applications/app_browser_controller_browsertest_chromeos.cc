@@ -17,6 +17,7 @@
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_tabstrip.h"
+#include "chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
@@ -233,7 +234,7 @@ IN_PROC_BROWSER_TEST_F(AppBrowserControllerBrowserTestCrOs, TabsTest) {
   EXPECT_EQ(GetActiveTabURL(), tabbed_app_url_);
 
   // Enter tab fullscreen, check tab strip not supported.
-  static_cast<content::WebContentsDelegate*>(app_browser_)
+  BrowserWebContentsDelegate::From(app_browser_.get())
       ->EnterFullscreenModeForTab(app_browser_->tab_strip_model()
                                       ->GetActiveWebContents()
                                       ->GetPrimaryMainFrame(),
@@ -253,7 +254,7 @@ IN_PROC_BROWSER_TEST_F(AppBrowserControllerBrowserTestCrOs, NonAppUrl) {
   EXPECT_EQ(
       browser()->tab_strip_model()->GetActiveWebContents()->GetVisibleURL(),
       "about:blank");
-  EXPECT_TRUE(app_browser_->is_type_app());
+  EXPECT_EQ(app_browser_->GetType(), BrowserWindowInterface::Type::TYPE_APP);
   EXPECT_EQ(app_browser_->tab_strip_model()->count(), 1);
   EXPECT_EQ(GetActiveTabURL(), tabbed_app_url_);
 
@@ -266,7 +267,7 @@ IN_PROC_BROWSER_TEST_F(AppBrowserControllerBrowserTestCrOs, NonAppUrl) {
   EXPECT_EQ(
       browser()->tab_strip_model()->GetActiveWebContents()->GetVisibleURL(),
       "chrome://newtab/");
-  EXPECT_TRUE(app_browser_->is_type_app());
+  EXPECT_EQ(app_browser_->GetType(), BrowserWindowInterface::Type::TYPE_APP);
   EXPECT_EQ(app_browser_->tab_strip_model()->count(), 1);
   EXPECT_EQ(GetActiveTabURL(), tabbed_app_url_);
 }

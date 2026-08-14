@@ -961,6 +961,7 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
   if (!_isBottomOmnibox) {
     CGFloat currentWidth = self.fakeOmniboxContainer.bounds.size.width;
     CGFloat currentHeight = self.fakeOmniboxContainer.bounds.size.height;
+    CGPoint currentCenter = self.fakeOmniboxContainer.center;
 
     if (currentWidth <= 0 || currentHeight <= 0) {
       return;
@@ -968,14 +969,26 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
 
     CGFloat targetWidth = topOmniboxView.frame.size.width;
     CGFloat targetHeight = topOmniboxView.frame.size.height;
+    CGPoint targetCenter = [topOmniboxView
+        convertPoint:CGPointMake(CGRectGetMidX(topOmniboxView.bounds),
+                                 CGRectGetMidY(topOmniboxView.bounds))
+              toView:self];
 
-    CGFloat scaleX = Interpolate(1.0, (targetWidth / currentWidth),
-                                 (progress * (2.0 - progress)));
-    CGFloat scaleY = Interpolate(1.0, (targetHeight / currentHeight),
-                                 (progress * (2.0 - progress)));
+    CGFloat progressEase = progress * (2.0 - progress);
+
+    CGFloat scaleX =
+        Interpolate(1.0, (targetWidth / currentWidth), progressEase);
+    CGFloat scaleY =
+        Interpolate(1.0, (targetHeight / currentHeight), progressEase);
+    CGFloat translateX = (targetCenter.x - currentCenter.x) * progressEase;
+
+    CGAffineTransform scaleTransform =
+        CGAffineTransformMakeScale(scaleX, scaleY);
+    CGAffineTransform translateTransform =
+        CGAffineTransformMakeTranslation(translateX, 0.0);
 
     self.fakeOmniboxContainer.transform =
-        CGAffineTransformMakeScale(scaleX, scaleY);
+        CGAffineTransformConcat(scaleTransform, translateTransform);
   } else {
     // Bottom omnibox.
     // No transform for the fakebox transition when the omnibox is pinned to the
@@ -1407,6 +1420,8 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
     self.lensButton =
         [ExtendedTouchTargetButton buttonWithType:UIButtonTypeSystem];
     [_buttonStack addArrangedSubview:self.lensButton];
+    [self.layoutGuideCenter referenceView:self.lensButton
+                                underName:kFakeboxLensIconGuide];
     if (_useNewBadgeForLensButton) {
       [self.lensButton addTarget:self
                           action:@selector(lensButtonWithNewBadgeTapped:)
@@ -1931,11 +1946,20 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
   [self.identityDiscButton setSignedOutAccountImage];
 }
 
-- (void)updateAccountImage:(UIImage*)image
-                      name:(NSString*)name
-                     email:(NSString*)email {
+// Updates current signed-in user account avatar with the supplied images.
+// `avatarWithoutAITier` is the normal-sized avatar image to be displayed when
+// the AI tier ring is not shown.
+// `avatarForAITier` is the smaller-sized avatar image to be displayed when
+// the AI tier ring is shown, so that the ring fits within the normal bounds.
+- (void)updateAccountWithName:(NSString*)name
+                        email:(NSString*)email
+          avatarWithoutAITier:(UIImage*)avatarWithoutAITier
+              avatarForAITier:(UIImage*)avatarForAITier {
   _isSignedIn = YES;
-  [self.identityDiscButton updateAccountImage:image name:name email:email];
+  [self.identityDiscButton updateAccountWithName:name
+                                           email:email
+                             avatarWithoutAITier:avatarWithoutAITier
+                                 avatarForAITier:avatarForAITier];
 }
 
 #pragma mark - SearchEngineLogoConsumer

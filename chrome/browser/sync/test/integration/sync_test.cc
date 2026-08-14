@@ -992,19 +992,21 @@ void SyncTest::TearDownOnMainThread() {
 void SyncTest::OnProfileWillBeDestroyed(Profile* profile) {
   profile->RemoveObserver(this);
 
+  if (server_type_ == IN_PROCESS_FAKE_SERVER) {
+    CHECK(profile_to_fake_gcm_driver_.contains(profile));
+    if (fake_server_sync_invalidation_sender_) {
+      fake_server_sync_invalidation_sender_->RemoveFakeGCMDriver(
+          profile_to_fake_gcm_driver_[profile]);
+    }
+    profile_to_fake_gcm_driver_.erase(profile);
+  }
+
   for (size_t index = 0; index < profiles_.size(); ++index) {
     if (profiles_[index] != profile) {
       continue;
     }
 
     CheckForDataTypeFailures(/*client_index=*/index);
-
-    // |profile_to_fake_gcm_driver_| may be empty when using an external server.
-    if (profile_to_fake_gcm_driver_.contains(profile)) {
-      fake_server_sync_invalidation_sender_->RemoveFakeGCMDriver(
-          profile_to_fake_gcm_driver_[profile]);
-      profile_to_fake_gcm_driver_.erase(profile);
-    }
     profiles_[index] = nullptr;
     clients_[index].reset();
 #if !BUILDFLAG(IS_ANDROID)
@@ -1057,6 +1059,9 @@ std::unique_ptr<KeyedService> SyncTest::CreateGCMProfileService(
            base::TaskShutdownBehavior::SKIP_ON_SHUTDOWN}));
 
   Profile* profile = Profile::FromBrowserContext(context);
+  CHECK(!profile_to_fake_gcm_driver_.contains(profile))
+      << "CreateGCMProfileService called multiple times for profile: "
+      << profile->GetDebugName() << ", is_otr: " << context->IsOffTheRecord();
 
   auto fake_gcm_driver =
       std::make_unique<FakeSyncGCMDriver>(profile, blocking_task_runner);
@@ -1284,7 +1289,7 @@ std::string SetupSyncModeAsString(SyncTest::SetupSyncMode sync_test_mode) {
 // enabled by default, e.g. HISTORY requires a dedicated opt-in via
 // SyncUserSettings::SetSelectedTypes().
 syncer::DataTypeSet AllowedTypesInStandaloneTransportMode() {
-  static_assert(66 == syncer::GetNumDataTypes(),
+  static_assert(67 == syncer::GetNumDataTypes(),
                 "Add new types below if they can run in transport mode");
 
 #if BUILDFLAG(IS_ANDROID)
@@ -1378,12 +1383,14 @@ syncer::DataTypeSet AllowedTypesInStandaloneTransportMode() {
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 #if BUILDFLAG(IS_CHROMEOS)
     if (base::FeatureList::IsEnabled(
-            syncer::kReplaceSyncPromosWithSignInPromos))
-#endif
-    {
+            syncer::kReplaceSyncPromosWithSignInPromos)) {
       allowed_types.Put(syncer::EXTENSIONS);
       allowed_types.Put(syncer::EXTENSION_SETTINGS);
     }
+#else
+    allowed_types.Put(syncer::EXTENSIONS);
+    allowed_types.Put(syncer::EXTENSION_SETTINGS);
+#endif
 #endif  // BUILDFLAG(ENABLE_EXTENSIONS_CORE)
   }
   allowed_types.Put(syncer::AUTOFILL_VALUABLE);
@@ -1410,6 +1417,10 @@ syncer::DataTypeSet AllowedTypesInStandaloneTransportMode() {
 
   if (base::FeatureList::IsEnabled(syncer::kSyncNotebook)) {
     allowed_types.Put(syncer::NOTEBOOK);
+  }
+
+  if (base::FeatureList::IsEnabled(syncer::kSyncJourney)) {
+    allowed_types.Put(syncer::JOURNEY);
   }
 
   if (base::FeatureList::IsEnabled(syncer::kSyncAccountSettings)) {

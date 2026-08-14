@@ -1077,6 +1077,11 @@ bool LayerTreeHostImpl::HasDamage() const {
     return true;
   }
 
+  if (unbounded_frame_sink_handler_ &&
+      unbounded_frame_sink_handler_->HasUnsubmittedLocalSurfaceId()) {
+    return true;
+  }
+
   const LayerTreeImpl* active_tree = active_tree_.get();
   // Make sure we propagate the primary main item sequence number. If there is
   // no stored sequence number, we don't need to damage: either damage will
@@ -3784,7 +3789,7 @@ static void PopulateHitTestRegion(viz::HitTestRegion* hit_test_region,
                                   const LayerImpl* layer,
                                   uint32_t flags,
                                   uint32_t async_hit_test_reasons,
-                                  const gfx::Rect& rect,
+                                  const gfx::RRectF& rect,
                                   const viz::SurfaceId& surface_id,
                                   float device_scale_factor) {
   hit_test_region->frame_sink_id = surface_id.frame_sink_id();
@@ -3853,6 +3858,8 @@ std::optional<viz::HitTestRegionList> LayerTreeHostImpl::BuildHitTestData() {
         continue;
       }
 
+      // Using the enclosing rect to ensure antialised boundary pixels cause
+      // pointer input to be routed to this layer.
       gfx::Rect content_rect(gfx::ScaleToEnclosingRect(
           gfx::Rect(surface_layer->bounds()), device_scale_factor));
 
@@ -3895,8 +3902,8 @@ std::optional<viz::HitTestRegionList> LayerTreeHostImpl::BuildHitTestData() {
       const auto& surface_id = surface_layer->range().end();
       hit_test_region_list->regions.emplace_back();
       PopulateHitTestRegion(&hit_test_region_list->regions.back(), layer, flag,
-                            async_hit_test_reasons, content_rect, surface_id,
-                            device_scale_factor);
+                            async_hit_test_reasons, gfx::RRectF(content_rect),
+                            surface_id, device_scale_factor);
       continue;
     }
 
@@ -4758,6 +4765,10 @@ float LayerTreeHostImpl::CurrentBottomControlsShownRatio() const {
 
 gfx::PointF LayerTreeHostImpl::ViewportScrollOffset() const {
   return viewport_->TotalScrollOffset();
+}
+
+float LayerTreeHostImpl::MaxViewportScrollOffsetY() const {
+  return viewport_->MaxUserReachableTotalScrollOffsetY();
 }
 
 void LayerTreeHostImpl::AutoScrollAnimationCreate(

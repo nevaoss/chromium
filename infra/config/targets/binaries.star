@@ -1494,6 +1494,14 @@ targets.binaries.generated_script(
 )
 
 targets.binaries.generated_script(
+    name = "ios_web_content_unittests",
+    label = "//ios/web/content:ios_web_content_unittests",
+    # All references have been moved to starlark
+    skip_usage_check = True,
+    module_scheme = "gtest",
+)
+
+targets.binaries.generated_script(
     name = "ios_web_inttests",
     label = "//ios/web:ios_web_inttests",
     # All references have been moved to starlark
@@ -2696,6 +2704,12 @@ targets.binaries.generated_script(
     label = "//third_party/chromium-bidi:webdriver_bidi_unittests",
     skip_usage_check = True,
     module_scheme = "mocha",
+)
+
+targets.binaries.generated_script(
+    name = "webdriver_bidi_e2e_tests",
+    label = "//third_party/chromium-bidi:webdriver_bidi_e2e_tests",
+    skip_usage_check = True,
 )
 
 targets.binaries.generated_script(

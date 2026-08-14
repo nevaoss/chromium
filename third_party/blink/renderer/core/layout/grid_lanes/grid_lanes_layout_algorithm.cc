@@ -18,6 +18,7 @@
 #include "third_party/blink/renderer/core/layout/grid_lanes/layout_grid_lanes.h"
 #include "third_party/blink/renderer/core/layout/grid_lanes/stacking_baseline_accumulator.h"
 #include "third_party/blink/renderer/core/layout/layout_utils.h"
+#include "third_party/blink/renderer/core/layout/length_utils.h"
 #include "third_party/blink/renderer/core/layout/logical_box_fragment.h"
 #include "third_party/blink/renderer/core/layout/relative_utils.h"
 #include "third_party/blink/renderer/platform/wtf/functional.h"
@@ -336,6 +337,13 @@ const LayoutResult* GridLanesLayoutAlgorithm::Layout() {
 
 namespace {
 
+bool ShouldDeferFillReverse(const ComputedStyle& style,
+                            bool is_for_columns,
+                            const LogicalSize& child_available_size) {
+  return is_for_columns && style.IsReverseGridLanesFillDirection() &&
+         child_available_size.block_size == kIndefiniteSize;
+}
+
 LayoutUnit AlignContentOffset(
     LayoutUnit intrinsic_size,
     LayoutUnit container_size,
@@ -584,13 +592,6 @@ void GridLanesLayoutAlgorithm::PlaceGridLanesItems(
     intrinsic_block_size_ = stacking_axis_size_;
   }
 
-  if (out_grid_lanes) {
-    // TODO(almaher): Persist content and stacking-axis alignment data.
-    // TODO(almaher): Persist fill-reverse offsets and order each lane's items
-    // from the container's physical top.
-    return;
-  }
-
   // To determine the size of the grid axis, add the size of the tracks.
   const LayoutUnit grid_axis_size = track_collection.CalculateSetSpanSize();
   const auto child_available_size = ChildAvailableSize();
@@ -610,16 +611,15 @@ void GridLanesLayoutAlgorithm::PlaceGridLanesItems(
   // block direction. Every other case of fill-reverse will have been handled
   // earlier in `RunGridLanesPlacementPhase`.
   const bool is_fill_reverse = style.IsReverseGridLanesFillDirection();
-  const bool apply_fill_reverse_to_children =
-      is_fill_reverse && is_for_columns &&
-      child_available_size.block_size == kIndefiniteSize;
+  const bool is_deferred_fill_reverse =
+      ShouldDeferFillReverse(style, is_for_columns, child_available_size);
 
   // Apply content alignment/justification. This is an additional offset
   // determined by the intrinsic inline or block size of the grid-lanes
   // container, so it must occur after that has been determined. This must also
   // occur after the container baselines have been set.
   if (content_alignment != ComputedStyleInitialValues::InitialAlignContent() ||
-      apply_fill_reverse_to_children) {
+      is_deferred_fill_reverse) {
     const LayoutUnit intrinsic_inline_size =
         is_for_columns ? grid_axis_size : stacking_axis_size_;
     const LayoutUnit content_stacking_axis_size =
@@ -639,7 +639,7 @@ void GridLanesLayoutAlgorithm::PlaceGridLanesItems(
                        : BorderScrollbarPadding().inline_start;
     std::optional<BoxFragmentBuilder::AdditionalOffsetAdjustment>
         additional_offset_adjustment;
-    if (apply_fill_reverse_to_children) {
+    if (is_deferred_fill_reverse) {
       additional_offset_adjustment.emplace(blink::BindRepeating(
           [](WritingDirectionMode writing_direction, bool is_block_direction,
              LayoutUnit stacking_axis_size,
@@ -653,19 +653,43 @@ void GridLanesLayoutAlgorithm::PlaceGridLanesItems(
           /*is_block_direction=*/is_for_columns, effective_stacking_axis_size,
           border_scrollbar_padding_start));
     }
-    container_builder_.MoveChildrenInDirection(
-        align_content_offset, /*is_block_direction=*/is_for_columns,
-        additional_offset_adjustment);
+
+    if (out_grid_lanes) {
+      // When `out_grid_lanes` is provided, this is the pre-fragmentation
+      // collection pass that computes stitched-container placement without
+      // adding child results to the builder. Persist the final offset
+      // adjustment so it is applied during each item's per-fragment layout.
+      //
+      // TODO(almaher): Fragmented OOF placement will need to apply this
+      // adjustment separately because `out_grid_lanes` only stores in-flow
+      // items.
+      const LayoutUnit offset_adjustment =
+          align_content_offset + (is_deferred_fill_reverse
+                                      ? effective_stacking_axis_size
+                                      : LayoutUnit());
+      AdjustGridLanesItemPlacementOffsets(offset_adjustment,
+                                          /*is_block_direction=*/is_for_columns,
+                                          *out_grid_lanes);
+    } else {
+      container_builder_.MoveChildrenInDirection(
+          align_content_offset, /*is_block_direction=*/is_for_columns,
+          additional_offset_adjustment);
+    }
   }
 
   ApplyStackingAxisAlignment(running_positions, effective_stacking_axis_size,
-                             stacking_axis_gap);
+                             stacking_axis_gap, out_grid_lanes);
+
+  if (out_grid_lanes && is_for_columns && is_fill_reverse) {
+    ReverseGridLanesItemOrder(*out_grid_lanes);
+  }
 }
 
 void GridLanesLayoutAlgorithm::ApplyStackingAxisAlignment(
     GridLanesRunningPositions& running_positions,
     LayoutUnit effective_stacking_axis_size,
-    LayoutUnit stacking_axis_gap) {
+    LayoutUnit stacking_axis_gap,
+    GridLanesDataVector* grid_lanes) {
   if (!running_positions.IsStackingAxisAlignmentSet()) {
     return;
   }
@@ -683,6 +707,10 @@ void GridLanesLayoutAlgorithm::ApplyStackingAxisAlignment(
   while (auto candidate = alignment_candidate_iterator.Next()) {
     GridItemData& item = *candidate->item;
     DCHECK_NE(candidate->item_index, kNotFound);
+
+    GridLanesItemPlacementData* grid_lanes_placement_data =
+        FindGridLanesItemPlacementData(item, candidate->item_index,
+                                       grid_axis_direction, grid_lanes);
 
     const auto& item_style = item.node.Style();
     const StyleSelfAlignmentData normal_value(ItemPosition::kNormal,
@@ -702,6 +730,14 @@ void GridLanesLayoutAlgorithm::ApplyStackingAxisAlignment(
           is_for_columns ? !item_style.LogicalHeight().IsAuto()
                          : !item_style.LogicalWidth().IsAuto();
       if (has_explicit_stacking_size) {
+        continue;
+      }
+
+      // During pre-fragmentation collection, persist the available alignment
+      // space so the item can be stretched during its per-fragment layout.
+      if (grid_lanes_placement_data) {
+        grid_lanes_placement_data->available_stacking_axis_alignment_space =
+            candidate->available_alignment_space;
         continue;
       }
 
@@ -747,18 +783,36 @@ void GridLanesLayoutAlgorithm::ApplyStackingAxisAlignment(
         /*baseline_offset=*/LayoutUnit(), stacking_axis_alignment,
         /*is_overflow_safe=*/false);
     if (alignment_offset_adjustment) {
-      LogicalOffset adjusted_offset =
-          container_builder_.Children()[candidate->item_index].offset;
-      if (is_for_columns) {
-        adjusted_offset.block_offset += is_fill_reverse
-                                            ? -alignment_offset_adjustment
-                                            : alignment_offset_adjustment;
+      const LayoutUnit signed_offset_adjustment =
+          is_fill_reverse ? -alignment_offset_adjustment
+                          : alignment_offset_adjustment;
+      if (grid_lanes_placement_data) {
+        // During fragmentation collection no child results are added to the
+        // builder. Update the shared placement data so the alignment adjustment
+        // is applied during the item's per-fragment layout.
+        //
+        // TODO(layout-dev): If a track opening expands after an aligned item
+        // starts fragmenting, this offset may become incorrect. Correcting it
+        // may require relaying out earlier fragments with the expanded
+        // alignment space.
+        if (is_for_columns) {
+          grid_lanes_placement_data->placement_data.offset.block_offset +=
+              signed_offset_adjustment;
+        } else {
+          grid_lanes_placement_data->placement_data.offset.inline_offset +=
+              signed_offset_adjustment;
+        }
       } else {
-        adjusted_offset.inline_offset += is_fill_reverse
-                                             ? -alignment_offset_adjustment
-                                             : alignment_offset_adjustment;
+        LogicalOffset adjusted_offset =
+            container_builder_.Children()[candidate->item_index].offset;
+        if (is_for_columns) {
+          adjusted_offset.block_offset += signed_offset_adjustment;
+        } else {
+          adjusted_offset.inline_offset += signed_offset_adjustment;
+        }
+        container_builder_.SetChildOffset(candidate->item_index,
+                                          adjusted_offset);
       }
-      container_builder_.SetChildOffset(candidate->item_index, adjusted_offset);
     }
   }
 }
@@ -844,6 +898,11 @@ void GridLanesLayoutAlgorithm::RunGridLanesPlacementPhase(
   const bool is_for_columns = grid_axis_direction == kForColumns;
   const wtf_size_t grid_axis_start_offset =
       Node().CachedPlacementData().StartOffset(grid_axis_direction);
+
+  // An indefinite column size prevents fill-reverse from being completed until
+  // placement determines the container's intrinsic block size.
+  const bool is_deferred_fill_reverse =
+      ShouldDeferFillReverse(style, is_for_columns, ChildAvailableSize());
 
   // During the `kCalculateBaselines` pass, subgrid layout is skipped to
   // avoid corrupting cached placement data. The sibling iterator is only
@@ -982,6 +1041,12 @@ void GridLanesLayoutAlgorithm::RunGridLanesPlacementPhase(
     const LayoutUnit fragment_stacking_axis_contribution =
         visual_stacking_axis_size.ClampNegativeToZero();
 
+    // During normal layout this indexes the child that will be added to the
+    // container builder. Fragmentation collection determines the item's index
+    // in its start lane after dense placement has selected an opening.
+    wtf_size_t item_index =
+        out_grid_lanes ? kNotFound : container_builder_.Children().size();
+
     // If dense packing is set, we need to figure out if the item can possibly
     // fit into any previous track openings. If it can, then we need to adjust
     // `item_span` as well as the offset of `containing_grid_area`, which is
@@ -998,8 +1063,7 @@ void GridLanesLayoutAlgorithm::RunGridLanesPlacementPhase(
               fragment_stacking_axis_contribution,
               /*auto_placement_stacking_axis_offset=*/
               start_offset_in_stacking_axis, track_collection, grid_lanes_item,
-              /*item_index=*/container_builder_.Children().size(),
-              child_layout_subtree,
+              item_index, child_layout_subtree, out_grid_lanes,
               out_grid_lanes ? &spanner_indices_below_opening : nullptr);
 
       // If we have a valid offset for the item in the stacking axis, it means
@@ -1117,6 +1181,15 @@ void GridLanesLayoutAlgorithm::RunGridLanesPlacementPhase(
     // size of the item, the size of the opening in the stacking axis, and the
     // margin.
     if (!item_moved_to_earlier_opening) {
+      // During fragmentation collection, a normally placed item will be
+      // appended directly to its start lane at the lane's current size.
+      if (out_grid_lanes) {
+        const wtf_size_t start_lane =
+            grid_lanes_item.StartLine(grid_axis_direction);
+        const GridLaneData* lane_data = out_grid_lanes->at(start_lane);
+        item_index = lane_data ? lane_data->item_data.size() : 0;
+      }
+
       auto new_running_position = start_offset_in_stacking_axis +
                                   fragment_stacking_axis_contribution;
 
@@ -1124,13 +1197,6 @@ void GridLanesLayoutAlgorithm::RunGridLanesPlacementPhase(
       // need to input the maximum running position of the tracks our items span
       // so that we can account for any new openings that may form.
       //
-      // `UpdateRunningPositionsForSpan` stores `item_index` on stacking-axis
-      // alignment candidates so post-placement alignment can find the child in
-      // `container_builder_`. Fragmentation collection doesn't add a child to
-      // the builder; it stores offsets in `out_grid_lanes` for the later
-      // fragmentation layout pass, so no valid child index exists.
-      const wtf_size_t item_index =
-          out_grid_lanes ? kNotFound : container_builder_.Children().size();
       running_positions.UpdateRunningPositionsForSpan(
           grid_lanes_item, new_running_position,
           (is_dense_packing || running_positions.IsStackingAxisAlignmentSet())
@@ -1173,13 +1239,38 @@ void GridLanesLayoutAlgorithm::RunGridLanesPlacementPhase(
         // When `out_grid_lanes` is provided, the container is fragmented. This
         // pass only collects initial item offsets; items will run their actual
         // fragmentation layout pass later using the data aggregated here.
-        AddItemToGridLanesData(
-            grid_lanes_item,
-            GridItemPlacementData(
-                containing_grid_area.offset,
-                result->HasDescendantThatDependsOnPercentageBlockSize()),
-            spanner_indices_below_opening, grid_axis_direction,
-            *out_grid_lanes);
+        LogicalOffset placement_offset = containing_grid_area.offset;
+        if (is_deferred_fill_reverse) {
+          // Fill-reverse changes an item's block offset from its distance to
+          // the container's block start to the equivalent distance from block
+          // end:
+          //
+          //   container block size - original offset - item block size
+          //       + border, padding, and margin adjustments
+          //
+          // Non-fragmented layout retains each child result in the fragment
+          // builder, so it can evaluate the complete expression after intrinsic
+          // sizing determines the container block size. This collection pass
+          // does not retain child results. Capture the item-specific terms
+          // while the item's size and margins are available, passing zero for
+          // the unknown container block size. The final container block size
+          // will be added later to all collected offsets once the intrinsic
+          // block size is known.
+          LayoutUnit& stacking_axis_offset = placement_offset.block_offset;
+          stacking_axis_offset = CalculateReverseChildOffset(
+              stacking_axis_offset, fragment.BlockSize(),
+              /*container_size=*/LayoutUnit(),
+              border_scrollbar_padding.block_start, margins.block_start,
+              margins.block_end);
+        }
+        auto* grid_lanes_placement_data =
+            MakeGarbageCollected<GridLanesItemPlacementData>(
+                GridItemPlacementData(
+                    placement_offset,
+                    result->HasDescendantThatDependsOnPercentageBlockSize()));
+        AddItemToGridLanesData(grid_lanes_item, grid_lanes_placement_data,
+                               spanner_indices_below_opening,
+                               grid_axis_direction, *out_grid_lanes);
       } else {
         // Items are only added to the container in the final placement pass.
         // During the baseline calculation pass, we only compute and store track

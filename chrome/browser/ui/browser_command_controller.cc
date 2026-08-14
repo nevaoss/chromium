@@ -192,6 +192,8 @@ using ExtensionRegistryObserver = extensions::ExtensionRegistryObserver;
 using UnloadedExtensionReason = extensions::UnloadedExtensionReason;
 using WebExposedIsolationLevel = content::WebExposedIsolationLevel;
 
+DEFINE_USER_DATA(chrome::BrowserCommandController);
+
 namespace chrome {
 
 namespace {
@@ -231,7 +233,8 @@ void AppInfoDialogClosedCallback(SessionID session_id,
 }
 
 bool CanOpenFile(Browser* browser) {
-  if (browser->is_type_devtools() || browser->is_type_app() ||
+  if (browser->is_type_devtools() ||
+      browser->GetType() == BrowserWindowInterface::Type::TYPE_APP ||
       browser->is_type_app_popup()) {
     return false;
   }
@@ -251,7 +254,7 @@ void InvokeAction(actions::ActionId id, actions::ActionItem* scope) {
 
 actions::ActionItem* FindAction(actions::ActionId action_id, Browser* browser) {
   actions::ActionItem* const root_action_item =
-      browser->GetActions()->root_action_item();
+      BrowserActions::From(browser)->root_action_item();
   if (!root_action_item) {
     return nullptr;
   }
@@ -295,11 +298,24 @@ class BrowserCommandController::ExtensionStateObserver
 ///////////////////////////////////////////////////////////////////////////////
 // BrowserCommandController, public:
 
+// static
+BrowserCommandController* BrowserCommandController::From(
+    BrowserWindowInterface* browser) {
+  return Get(browser->GetUnownedUserDataHost());
+}
+
+// static
+const BrowserCommandController* BrowserCommandController::From(
+    const BrowserWindowInterface* browser) {
+  return Get(browser->GetUnownedUserDataHost());
+}
+
 // TODO(crbug.com/434734349): Implement dependency injection for this class to
 // allow removing the Browser dependency.
 BrowserCommandController::BrowserCommandController(BrowserWindowInterface* bwi)
     : browser_(bwi->GetBrowserForMigrationOnly()),
-      command_updater_(CreateCommandUpdater()) {
+      command_updater_(CreateCommandUpdater()),
+      scoped_unowned_user_data_(bwi->GetUnownedUserDataHost(), *this) {
   browser_->tab_strip_model()->AddObserver(this);
   PrefService* local_state = g_browser_process->local_state();
   if (local_state) {
@@ -443,7 +459,8 @@ bool BrowserCommandController::IsReservedCommandOrKey(
     int command_id,
     const input::NativeWebKeyboardEvent& event) {
   // In Apps mode, no keys are reserved.
-  if (browser_->is_type_app() || browser_->is_type_app_popup()) {
+  if (browser_->GetType() == BrowserWindowInterface::Type::TYPE_APP ||
+      browser_->is_type_app_popup()) {
     return false;
   }
 
@@ -1033,15 +1050,15 @@ void BrowserCommandController::HandleCommandWithDisposition(
     // Clipboard commands
     case IDC_CUT:
       InvokeAction(actions::kActionCut,
-                   browser_->GetActions()->root_action_item());
+                   BrowserActions::From(browser_)->root_action_item());
       break;
     case IDC_COPY:
       InvokeAction(actions::kActionCopy,
-                   browser_->GetActions()->root_action_item());
+                   BrowserActions::From(browser_)->root_action_item());
       break;
     case IDC_PASTE:
       InvokeAction(actions::kActionPaste,
-                   browser_->GetActions()->root_action_item());
+                   BrowserActions::From(browser_)->root_action_item());
       break;
 
     // Find-in-page
@@ -1734,7 +1751,9 @@ void BrowserCommandController::InitCommandState() {
       !app_controller || !app_controller->ShouldHideNewTabButton());
   command_updater_->UpdateCommandEnabled(IDC_CLOSE_TAB, true);
   command_updater_->UpdateCommandEnabled(
-      IDC_DUPLICATE_TAB, !browser_->is_type_picture_in_picture());
+      IDC_DUPLICATE_TAB,
+      browser_->GetType() !=
+          BrowserWindowInterface::Type::TYPE_PICTURE_IN_PICTURE);
   UpdateTabRestoreCommandState();
   command_updater_->UpdateCommandEnabled(IDC_EXIT, true);
   command_updater_->UpdateCommandEnabled(IDC_NAME_WINDOW, true);
@@ -1923,8 +1942,10 @@ void BrowserCommandController::InitCommandState() {
   command_updater_->UpdateCommandEnabled(IDC_CARET_BROWSING_TOGGLE, true);
   // Navigation commands
   command_updater_->UpdateCommandEnabled(
-      IDC_HOME, normal_window || browser_->is_type_app() ||
-                    browser_->is_type_app_popup());
+      IDC_HOME,
+      normal_window ||
+          browser_->GetType() == BrowserWindowInterface::Type::TYPE_APP ||
+          browser_->is_type_app_popup());
 
   // Hosted app browser commands.
   const bool is_web_app_or_custom_tab = IsWebAppOrCustomTab(browser_);
@@ -2149,7 +2170,8 @@ void BrowserCommandController::UpdateCommandsForTabState() {
 #endif
 
   // Window management commands
-  bool is_app = browser_->is_type_app() || browser_->is_type_app_popup();
+  bool is_app = browser_->GetType() == BrowserWindowInterface::Type::TYPE_APP ||
+                browser_->is_type_app_popup();
   bool is_normal = browser_->is_type_normal();
 
   command_updater_->UpdateCommandEnabled(IDC_DUPLICATE_TAB,
@@ -2351,9 +2373,11 @@ void BrowserCommandController::UpdateCommandsForFullscreenMode() {
 
   // Window management commands
   command_updater_->UpdateCommandEnabled(
-      IDC_SHOW_AS_TAB, !browser_->is_type_normal() && !is_fullscreen &&
-                           !browser_->is_type_devtools() &&
-                           !browser_->is_type_picture_in_picture());
+      IDC_SHOW_AS_TAB,
+      !browser_->is_type_normal() && !is_fullscreen &&
+          !browser_->is_type_devtools() &&
+          browser_->GetType() !=
+              BrowserWindowInterface::Type::TYPE_PICTURE_IN_PICTURE);
 
   // Focus various bits of UI
   command_updater_->UpdateCommandEnabled(IDC_FOCUS_TOOLBAR, show_main_ui);
@@ -2632,10 +2656,10 @@ void BrowserCommandController::UpdateCommandsForMediaRouter() {
 void BrowserCommandController::UpdateCommandsForTabKeyboardFocus(
     std::optional<int> target_index) {
   command_updater_->UpdateCommandEnabled(
-      IDC_DUPLICATE_TARGET_TAB, !browser_->is_type_app() &&
-                                    !browser_->is_type_app_popup() &&
-                                    target_index.has_value() &&
-                                    CanDuplicateTabAt(browser_, *target_index));
+      IDC_DUPLICATE_TARGET_TAB,
+      browser_->GetType() != BrowserWindowInterface::Type::TYPE_APP &&
+          !browser_->is_type_app_popup() && target_index.has_value() &&
+          CanDuplicateTabAt(browser_, *target_index));
   const bool normal_window = browser_->is_type_normal();
   command_updater_->UpdateCommandEnabled(
       IDC_MUTE_TARGET_SITE, normal_window && target_index.has_value());
@@ -2691,7 +2715,7 @@ void BrowserCommandController::UpdateCommandsForEnableGlicChanged() {
 
   if (glic::GlicEnabling::IsEnabledByGlobalCriteria()) {
     actions::ActionItem* const root_action_item =
-        browser_->GetActions()->root_action_item();
+        BrowserActions::From(browser_)->root_action_item();
     if (root_action_item) {
       if (auto* const action = actions::ActionManager::Get().FindAction(
               kActionSidePanelShowGlic, root_action_item)) {
@@ -2717,7 +2741,7 @@ std::unique_ptr<CommandUpdater>
 BrowserCommandController::CreateCommandUpdater() {
   if (base::FeatureList::IsEnabled(features::kUseActionsForBrowserCommands)) {
     return std::make_unique<CommandActionUpdater>(
-        browser_->GetActions()->root_action_item());
+        BrowserActions::From(browser_)->root_action_item());
   }
   return std::make_unique<CommandUpdaterImpl>(this);
 }

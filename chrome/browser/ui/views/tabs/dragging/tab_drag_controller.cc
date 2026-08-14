@@ -102,6 +102,10 @@
 #include "ui/wm/core/window_modality_controller.h"  // nogncheck
 #endif
 
+#if BUILDFLAG(IS_LINUX)
+#include "ui/views/widget/desktop_aura/desktop_drag_drop_client_ozone.h"
+#endif
+
 using content::OpenURLParams;
 using content::WebContents;
 
@@ -1393,15 +1397,27 @@ void TabDragController::AttachToNewContext(
   // the new model.
   CHECK(GetViewsMatchingDraggedContents(attached_context_).empty());
 
-  selection_model_before_attach_ = attached_context_->GetTabStripModel()
-                                       ->selection_model()
-                                       .GetListSelectionModel();
+  TabStripModel* tab_strip_model = attached_context_->GetTabStripModel();
+  selection_model_before_attach_ =
+      tab_strip_model->selection_model().GetListSelectionModel();
 
   // Insert at any valid index in the tabstrip. We'll fix up the insertion
   // index in MoveAttached() later, if we're transitioning to kDraggingTabs;
   // if we're transitioning to kDraggingWindow this is the correct index, 0.
-  size_t index =
-      attached_context_->GetTabStripModel()->IndexOfFirstNonPinnedTab();
+  size_t index = tab_strip_model->IndexOfFirstNonPinnedTab();
+  // When focus mode is active, initial insertion of attached dragged tabs
+  // should target the focused group's range to prevent index desync.
+  if (base::FeatureList::IsEnabled(features::kTabGroupsFocusing)) {
+    const std::optional<tab_groups::TabGroupId> focused_group =
+        tab_strip_model->GetFocusedGroup();
+    if (focused_group.has_value()) {
+      const TabGroup* group =
+          tab_strip_model->group_model()->GetTabGroup(*focused_group);
+      if (group && group->ListTabs().length() > 0) {
+        index = group->ListTabs().start();
+      }
+    }
+  }
 
   base::AutoReset<bool> setter(&is_mutating_, true);
 
@@ -1755,6 +1771,13 @@ TabDragController::DetachIntoNewBrowserAndRunMoveLoop(
       current_state_ = DragState::kWaitingForWindowToShow;
       VisibilityWaiter waiter(dragged_widget);
 
+#if BUILDFLAG(IS_LINUX)
+      // VisibilityWaiter runs a kNestableTasksAllowed loop while the user holds
+      // the pointer button, before the move loop's own suppression scope is
+      // established; suppress data drags for its duration as well.
+      auto suppress_data_drag =
+          views::DesktopDragDropClientOzone::ScopedSuppressForWindowMove();
+#endif
       base::WeakPtr<TabDragController> ref(weak_factory_.GetWeakPtr());
       waiter.Wait();
       if (!ref) {
@@ -2906,7 +2929,7 @@ bool TabDragController::CanAttachTo(gfx::NativeWindow window) {
 
   // Ensure that browser types and app names are the same.
   if (other_browser->type() != browser->type() ||
-      (browser->is_type_app() &&
+      (browser->GetType() == BrowserWindowInterface::Type::TYPE_APP &&
        browser->app_name() != other_browser->app_name())) {
     return false;
   }

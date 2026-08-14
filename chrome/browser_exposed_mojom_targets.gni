@@ -55,7 +55,6 @@ browser_exposed_mojom_targets = [
   "//chrome/browser/ui/webui/on_device_internals:mojom",
   "//chrome/browser/ui/webui/on_device_translation_internals:mojo_bindings",
   "//chrome/browser/ui/webui/password_manager:mojo_bindings",
-  "//chrome/browser/ui/webui/personal_context:mojo_bindings",
   "//chrome/browser/ui/webui/personal_context_internals:mojo_bindings",
   "//components/private_ai/private_ai_internals/webui:mojo_bindings",
   "//chrome/browser/ui/webui/reset_password:mojo_bindings",
@@ -90,7 +89,7 @@ browser_exposed_mojom_targets = [
   "//components/record_replay/core/common:mojom",
   "//chrome/common/search:mojo_bindings",
   "//chrome/services/file_util/public/mojom:mojom",
-  "//chrome/services/media_gallery_util/public/mojom:mojom",
+  "//components/media_gallery_util/public/mojom:mojom",
   "//chrome/services/printing/public/mojom:mojom",
   "//chrome/services/removable_storage_writer/public/mojom:mojom",
   "//components/accessibility_annotator/core/logging:mojo_bindings",
@@ -140,6 +139,7 @@ browser_exposed_mojom_targets = [
   "//components/mirroring/mojom:service",
   "//components/network_hints/common:mojo_bindings",
   "//components/no_state_prefetch/common:mojo_bindings",
+  "//components/notebooks/internals/webui:mojo_bindings",
   "//components/omnibox/browser:mojo_bindings",
   "//components/omnibox/composebox:mojo_bindings",
   "//components/optimization_guide/content/mojom:mojo_interfaces",
@@ -357,6 +357,11 @@ if (!is_android) {
     "//chrome/browser/ui/webui/feedback/report_unsafe_site:mojo_bindings",
     "//chrome/browser/ui/webui/iwa_dev:mojo_bindings",
   ]
+}
+
+if (!is_chromeos) {
+  browser_exposed_mojom_targets +=
+      [ "//ui/webui/resources/cr_components/signin:mojo_bindings" ]
 }
 
 if (enable_webui_ntp) {

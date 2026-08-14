@@ -1011,7 +1011,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="WebRTC.DataChannelCounters" enum="DataChannelCounters"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>orphis@chromium.org</owner>
   <owner>toprice@chromium.org</owner>
   <summary>
@@ -1813,7 +1813,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="WebRTC.PeerConnection.ValidBundledPayloadTypes" enum="Boolean"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>hbos@chromium.org</owner>
   <owner>webrtc-dev@chromium.org</owner>
   <owner>phancke@microsoft.com</owner>
@@ -1841,9 +1841,10 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="WebRTC.PeerConnection.{ServerType}.ServerAddressType"
-    enum="IpAddressType" expires_after="2026-08-02">
+    enum="IpAddressType" expires_after="2027-04-02">
   <owner>danilchap@chromium.org</owner>
   <owner>ortuno@chromium.org</owner>
+  <owner>cthomp@chromium.org</owner>
   <owner>webrtc-dev@chromium.org</owner>
   <summary>
     Counts the different address types used in STUN/TURN servers. Recorded
@@ -2607,7 +2608,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="WebRTC.Video.HarmonicFrameRate" units="fps"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>ssilkin@chromium.org</owner>
   <owner>webrtc-video@google.com</owner>
   <summary>

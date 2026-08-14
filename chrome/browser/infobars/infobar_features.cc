@@ -19,6 +19,11 @@ BASE_FEATURE_PARAM(bool,
                    false);
 
 BASE_FEATURE_PARAM(bool,
+                   kMigratedGoogleApiKeys,
+                   &kCentralizedInfoBarFramework,
+                   false);
+
+BASE_FEATURE_PARAM(bool,
                    kMigratedInstallerDownloader,
                    &kCentralizedInfoBarFramework,
                    false);
@@ -29,18 +34,33 @@ BASE_FEATURE_PARAM(bool,
                    false);
 
 BASE_FEATURE_PARAM(bool, kMigratedPdf, &kCentralizedInfoBarFramework, false);
+BASE_FEATURE_PARAM(bool,
+                   kMigratedObsoleteSystem,
+                   &kCentralizedInfoBarFramework,
+                   false);
+
+BASE_FEATURE_PARAM(bool,
+                   kMigratedChromeForTesting,
+                   &kCentralizedInfoBarFramework,
+                   false);
 
 const base::FeatureParam<bool>* GetInfoBarMigrationParam(
     InfoBarDelegate::InfoBarIdentifier infobar_id) {
   switch (infobar_id) {
     case InfoBarDelegate::COLLECTED_COOKIES_INFOBAR_DELEGATE:
       return &kMigratedCollectedCookies;
+    case InfoBarDelegate::GOOGLE_API_KEYS_INFOBAR_DELEGATE:
+      return &kMigratedGoogleApiKeys;
     case InfoBarDelegate::INSTALLER_DOWNLOADER_INFOBAR_DELEGATE:
       return &kMigratedInstallerDownloader;
     case InfoBarDelegate::PAGE_INFO_INFOBAR_DELEGATE:
       return &kMigratedPageInfo;
     case InfoBarDelegate::PDF_INFOBAR_DELEGATE:
       return &kMigratedPdf;
+    case InfoBarDelegate::CHROME_FOR_TESTING_INFOBAR_DELEGATE:
+      return &kMigratedChromeForTesting;
+    case InfoBarDelegate::OBSOLETE_SYSTEM_INFOBAR_DELEGATE:
+      return &kMigratedObsoleteSystem;
     default:
       return nullptr;
   }

@@ -45,6 +45,9 @@
 #include "net/disk_cache/sql/sql_backend_constants.h"
 #include "net/disk_cache/sql/sql_persistent_store_backend.h"
 #include "net/disk_cache/sql/sql_persistent_store_backend_shard.h"
+#include "net/disk_cache/sql/sql_shared_cache.h"
+#include "net/disk_cache/sql/sql_shared_cache_isolated_database.h"
+#include "net/disk_cache/sql/sql_shared_cache_manager.h"
 #include "sql/database.h"
 #include "sql/meta_table.h"
 #include "sql/statement.h"
@@ -175,6 +178,7 @@ class SqlPersistentStoreTestBase : public testing::Test {
       background_task_runner->PostTask(FROM_HERE, run_loop.QuitClosure());
       run_loop.Run();
     }
+    async_task_manager_.RunUntilAllTasksCompleteForTest();
   }
 
   // Custom deleter for the unique_ptr returned by ManuallyOpenDatabase.
@@ -7036,6 +7040,107 @@ class SqlPersistentStoreSharedCacheTest
   bool IsWalModeEnabled() const override { return GetParam(); }
   bool IsRendererAccessibleHttpCacheEnabled() const override { return true; }
 
+  static constexpr int kTestHeaderSize = 4;
+  static constexpr int kTestBodySize = 3;
+
+  struct SharedCacheEntryData {
+    scoped_refptr<SqlSharedCacheHandle> handle;
+    SqlSharedCacheDbId db_id;
+    CacheEntryKey key;
+    SqlPersistentStore::ResId res_id;
+    SqlSharedCacheRowId row_id;
+  };
+
+  SharedCacheEntryData PrepareLiveSharedCacheEntry(
+      const CacheEntryKey& key = CacheEntryKey("0/0/https://example.com/1")) {
+    CreateAndInitStore();
+    auto* manager = store_->shared_cache_manager_for_testing();
+    EXPECT_TRUE(manager);
+
+    net::NetworkIsolationKey nik(net::SchemefulSite(GURL("https://foo.test")),
+                                 net::SchemefulSite(GURL("https://bar.test")));
+    base::test::TestFuture<scoped_refptr<SqlSharedCacheHandle>> handle_future;
+    manager->GetCacheByNik(nik, /*require_shared_cache_db_id=*/true,
+                           handle_future.GetCallback());
+    scoped_refptr<SqlSharedCacheHandle> handle = handle_future.Take();
+    EXPECT_TRUE(handle);
+    EXPECT_TRUE((*handle)->shared_cache_db_id().has_value());
+    SqlSharedCacheDbId db_id = *(*handle)->shared_cache_db_id();
+
+    auto create_res = CreateEntry(key);
+    EXPECT_TRUE(create_res.has_value());
+    SqlPersistentStore::ResId res_id = create_res->res_id;
+
+    // Insert entry into shared cache isolated database.
+    auto headers = base::MakeRefCounted<net::IOBufferWithSize>(kTestHeaderSize);
+    headers->span().copy_from(base::span<const uint8_t>({1, 2, 3, 4}));
+    auto body = base::MakeRefCounted<net::IOBufferWithSize>(kTestBodySize);
+    body->span().copy_from(base::span<const uint8_t>({5, 6, 7}));
+
+    base::test::TestFuture<base::expected<
+        SqlSharedCacheRowId, SqlSharedCacheIsolatedDatabase::Error>>
+        insert_future;
+    (*handle)
+        ->isolated_database_for_testing()
+        .AsyncCall(&SqlSharedCacheIsolatedDatabase::Insert)
+        .WithArgs(key, headers, kTestBodySize, body)
+        .Then(insert_future.GetCallback());
+    FlushPendingTask();
+    auto insert_res = insert_future.Take();
+    EXPECT_TRUE(insert_res.has_value());
+    SqlSharedCacheRowId row_id = *insert_res;
+
+    // Link shared cache resource ID to the entry in resources table.
+    base::test::TestFuture<SqlPersistentStore::Error> move_future;
+    store_->MoveBlobsToSharedCache(key, res_id,
+                                   SqlSharedCacheResourceId{db_id, row_id},
+                                   move_future.GetCallback());
+    FlushPendingTask();
+    EXPECT_EQ(move_future.Get(), SqlPersistentStore::Error::kOk);
+
+    return SharedCacheEntryData{
+        .handle = std::move(handle),
+        .db_id = db_id,
+        .key = key,
+        .res_id = res_id,
+        .row_id = row_id,
+    };
+  }
+
+  SharedCacheEntryData PrepareDoomedSharedCacheEntry(
+      const CacheEntryKey& key = CacheEntryKey("0/0/https://example.com/1")) {
+    auto data = PrepareLiveSharedCacheEntry(key);
+
+    // Doom entry.
+    base::test::TestFuture<SqlPersistentStore::Error> doom_future;
+    store_->DoomEntry(data.key, data.res_id, /*accept_index_mismatch=*/false,
+                      doom_future.GetCallback());
+    FlushPendingTask();
+    EXPECT_EQ(doom_future.Get(), SqlPersistentStore::Error::kOk);
+
+    return data;
+  }
+
+  void VerifySharedCacheEntryDeleted(
+      const scoped_refptr<SqlSharedCacheHandle>& handle,
+      const CacheEntryKey& key,
+      SqlSharedCacheRowId row_id) {
+    auto read_buf = base::MakeRefCounted<net::IOBufferWithSize>(kTestBodySize);
+    base::test::TestFuture<SqlSharedCacheIsolatedDatabase::ReadResultOrError>
+        read_future;
+    (*handle)
+        ->isolated_database_for_testing()
+        .AsyncCall(&SqlSharedCacheIsolatedDatabase::Read)
+        .WithArgs(key, row_id, /*offset=*/0, read_buf)
+        .Then(read_future.GetCallback());
+    FlushPendingTask();
+
+    auto read_res = read_future.Take();
+    EXPECT_FALSE(read_res.has_value());
+    EXPECT_EQ(read_res.error(),
+              SqlSharedCacheIsolatedDatabase::Error::kEntryNotFound);
+  }
+
  private:
   base::test::ScopedFeatureList feature_list_;
 };
@@ -7109,6 +7214,242 @@ TEST_P(SqlPersistentStoreSharedCacheTest, MoveBlobsToSharedCache) {
             kSharedResourceId.db_id);
   EXPECT_EQ(next_result->info.shared_cache_resource_id->row_id,
             kSharedResourceId.row_id);
+}
+
+TEST_P(SqlPersistentStoreSharedCacheTest,
+       DeleteDoomedEntryDeletesSharedCacheResource) {
+  auto entry_data = PrepareDoomedSharedCacheEntry();
+
+  // Delete doomed entry.
+  base::test::TestFuture<SqlPersistentStore::Error> delete_future;
+  store_->DeleteDoomedEntry(entry_data.key, entry_data.res_id,
+                            delete_future.GetCallback());
+  FlushPendingTask();
+  ASSERT_EQ(delete_future.Get(), SqlPersistentStore::Error::kOk);
+
+  VerifySharedCacheEntryDeleted(entry_data.handle, entry_data.key,
+                                entry_data.row_id);
+}
+
+TEST_P(SqlPersistentStoreSharedCacheTest,
+       MaybeRunCleanupDoomedEntriesDeletesSharedCacheResource) {
+  auto entry_data = PrepareDoomedSharedCacheEntry();
+
+  // Reload the store and load in-memory index to mark doomed entries for
+  // deletion.
+  ClearStore();
+  CreateAndInitStore();
+  EXPECT_TRUE(LoadInMemoryIndex());
+
+  auto* manager = store_->shared_cache_manager_for_testing();
+  ASSERT_TRUE(manager);
+  base::test::TestFuture<scoped_refptr<SqlSharedCacheHandle>> handle_future;
+  manager->GetCacheByDbId(entry_data.db_id, handle_future.GetCallback());
+  auto handle = handle_future.Take();
+  ASSERT_TRUE(handle);
+
+  // Run cleanup of doomed entries via MaybeRunCleanupDoomedEntries.
+  base::test::TestFuture<SqlPersistentStore::Error> cleanup_future;
+  EXPECT_TRUE(
+      store_->MaybeRunCleanupDoomedEntries(cleanup_future.GetCallback()));
+  FlushPendingTask();
+  FlushPendingTask();
+  base::ThreadPoolInstance::Get()->FlushForTesting();
+  FlushPendingTask();
+
+  VerifySharedCacheEntryDeleted(handle, entry_data.key, entry_data.row_id);
+}
+
+TEST_P(SqlPersistentStoreSharedCacheTest,
+       DeleteLiveEntryDeletesSharedCacheResource) {
+  auto entry_data = PrepareLiveSharedCacheEntry();
+
+  // Delete live entry.
+  base::test::TestFuture<SqlPersistentStore::Error> delete_future;
+  store_->DeleteLiveEntry(entry_data.key, delete_future.GetCallback());
+  FlushPendingTask();
+  ASSERT_EQ(delete_future.Get(), SqlPersistentStore::Error::kOk);
+
+  VerifySharedCacheEntryDeleted(entry_data.handle, entry_data.key,
+                                entry_data.row_id);
+}
+
+TEST_P(SqlPersistentStoreSharedCacheTest,
+       DeleteLiveEntriesBetweenDeletesSharedCacheResource) {
+  base::Time start_time = base::Time::Now();
+  auto entry_data = PrepareLiveSharedCacheEntry();
+  base::Time end_time = base::Time::Now() + base::Seconds(10);
+
+  // Delete live entries between start_time and end_time.
+  base::test::TestFuture<SqlPersistentStore::Error> delete_future;
+  store_->DeleteLiveEntriesBetween(start_time - base::Seconds(1), end_time,
+                                   /*excluded_list=*/{},
+                                   delete_future.GetCallback());
+  FlushPendingTask();
+  ASSERT_EQ(delete_future.Get(), SqlPersistentStore::Error::kOk);
+
+  VerifySharedCacheEntryDeleted(entry_data.handle, entry_data.key,
+                                entry_data.row_id);
+}
+
+TEST_P(SqlPersistentStoreSharedCacheTest, EvictionDeletesSharedCacheResource) {
+  const int64_t kMaxBytes = 100 * 1024;
+  CreateStore(kMaxBytes);
+  ASSERT_EQ(Init(), SqlPersistentStore::Error::kOk);
+
+  auto* manager = store_->shared_cache_manager_for_testing();
+  ASSERT_TRUE(manager);
+
+  net::NetworkIsolationKey nik(net::SchemefulSite(GURL("https://foo.test")),
+                               net::SchemefulSite(GURL("https://bar.test")));
+  base::test::TestFuture<scoped_refptr<SqlSharedCacheHandle>> handle_future;
+  manager->GetCacheByNik(nik, /*require_shared_cache_db_id=*/true,
+                         handle_future.GetCallback());
+  scoped_refptr<SqlSharedCacheHandle> handle = handle_future.Take();
+  ASSERT_TRUE(handle);
+  ASSERT_TRUE((*handle)->shared_cache_db_id().has_value());
+  SqlSharedCacheDbId db_id = *(*handle)->shared_cache_db_id();
+
+  // Populate cache with enough entries to exceed the high watermark.
+  std::vector<SqlPersistentStore::ResId> res_ids;
+  PopulateCache(100, 1024, &res_ids);
+  ASSERT_FALSE(res_ids.empty());
+
+  CacheEntryKey key("key_0");
+  SqlPersistentStore::ResId target_res_id = res_ids[0];
+  UpdateEntryLastUsedByKey(key, base::Time::Now() - base::Seconds(1000));
+
+  // Insert entry into shared cache isolated database.
+  auto headers = base::MakeRefCounted<net::IOBufferWithSize>(kTestHeaderSize);
+  headers->span().copy_from(base::span<const uint8_t>({1, 2, 3, 4}));
+  auto body = base::MakeRefCounted<net::IOBufferWithSize>(kTestBodySize);
+  body->span().copy_from(base::span<const uint8_t>({5, 6, 7}));
+
+  base::test::TestFuture<base::expected<SqlSharedCacheRowId,
+                                        SqlSharedCacheIsolatedDatabase::Error>>
+      insert_future;
+  (*handle)
+      ->isolated_database_for_testing()
+      .AsyncCall(&SqlSharedCacheIsolatedDatabase::Insert)
+      .WithArgs(key, headers, kTestBodySize, body)
+      .Then(insert_future.GetCallback());
+  FlushPendingTask();
+  auto insert_res = insert_future.Take();
+  ASSERT_TRUE(insert_res.has_value());
+  SqlSharedCacheRowId row_id = *insert_res;
+
+  // Link shared cache resource ID to the entry in resources table.
+  base::test::TestFuture<SqlPersistentStore::Error> move_future;
+  store_->MoveBlobsToSharedCache(key, target_res_id,
+                                 SqlSharedCacheResourceId{db_id, row_id},
+                                 move_future.GetCallback());
+  FlushPendingTask();
+  ASSERT_EQ(move_future.Get(), SqlPersistentStore::Error::kOk);
+
+  EXPECT_EQ(store_->GetEvictionUrgency(),
+            SqlPersistentStore::EvictionUrgency::kNeeded);
+
+  // Trigger eviction.
+  ASSERT_EQ(StartEviction({}, /*is_idle_time_eviction=*/false),
+            SqlPersistentStore::Error::kOk);
+
+  VerifySharedCacheEntryDeleted(handle, key, row_id);
+}
+
+TEST_P(SqlPersistentStoreSharedCacheTest,
+       ResumePendingEvictionDeletesSharedCacheResource) {
+  base::test::ScopedFeatureList feature_list;
+  // Disable consolidated in-memory index to ensure `EvictEntries` uses
+  // `trust_target_size = true` (which calls `DeleteResourceByResIdReturnHash`),
+  // while `ResumePendingEviction` uses `trust_target_size = false`
+  // (which calls `DeleteLiveResourceByResIdReturnUsageAndHash`). This tests
+  // that shared cache resource deletion works correctly across both code paths.
+  feature_list.InitWithFeaturesAndParameters(
+      {{net::features::kDiskCacheBackendExperiment,
+        {{"SqlDiskCacheConsolidatedInMemoryIndex", "false"}}}},
+      {});
+
+  const int64_t kMaxBytes = 100 * 1024;
+  CreateStore(kMaxBytes);
+  ASSERT_EQ(Init(), SqlPersistentStore::Error::kOk);
+
+  auto* manager = store_->shared_cache_manager_for_testing();
+  ASSERT_TRUE(manager);
+
+  net::NetworkIsolationKey nik(net::SchemefulSite(GURL("https://foo.test")),
+                               net::SchemefulSite(GURL("https://bar.test")));
+  base::test::TestFuture<scoped_refptr<SqlSharedCacheHandle>> handle_future;
+  manager->GetCacheByNik(nik, /*require_shared_cache_db_id=*/true,
+                         handle_future.GetCallback());
+  scoped_refptr<SqlSharedCacheHandle> handle = handle_future.Take();
+  ASSERT_TRUE(handle);
+  ASSERT_TRUE((*handle)->shared_cache_db_id().has_value());
+  SqlSharedCacheDbId db_id = *(*handle)->shared_cache_db_id();
+
+  const int kNumEntries = 100;
+  // Populate cache with enough entries to exceed the high watermark.
+  std::vector<SqlPersistentStore::ResId> res_ids;
+  PopulateCache(kNumEntries, 1024, &res_ids);
+  ASSERT_FALSE(res_ids.empty());
+
+  struct SharedCacheTestEntry {
+    CacheEntryKey key;
+    SqlSharedCacheRowId row_id;
+  };
+  std::vector<SharedCacheTestEntry> shared_cache_entries;
+
+  // Move ALL 100 entries to SharedCache.
+  for (int i = 0; i < kNumEntries; ++i) {
+    CacheEntryKey key("key_" + base::NumberToString(i));
+    SqlPersistentStore::ResId target_res_id = res_ids[i];
+
+    auto headers = base::MakeRefCounted<net::IOBufferWithSize>(kTestHeaderSize);
+    headers->span().copy_from(base::span<const uint8_t>({1, 2, 3, 4}));
+    auto body = base::MakeRefCounted<net::IOBufferWithSize>(kTestBodySize);
+    body->span().copy_from(base::span<const uint8_t>({5, 6, 7}));
+
+    base::test::TestFuture<base::expected<
+        SqlSharedCacheRowId, SqlSharedCacheIsolatedDatabase::Error>>
+        insert_future;
+    (*handle)
+        ->isolated_database_for_testing()
+        .AsyncCall(&SqlSharedCacheIsolatedDatabase::Insert)
+        .WithArgs(key, headers, kTestBodySize, body)
+        .Then(insert_future.GetCallback());
+    FlushPendingTask();
+    auto insert_res = insert_future.Take();
+    ASSERT_TRUE(insert_res.has_value());
+    SqlSharedCacheRowId row_id = *insert_res;
+
+    base::test::TestFuture<SqlPersistentStore::Error> move_future;
+    store_->MoveBlobsToSharedCache(key, target_res_id,
+                                   SqlSharedCacheResourceId{db_id, row_id},
+                                   move_future.GetCallback());
+    FlushPendingTask();
+    ASSERT_EQ(move_future.Get(), SqlPersistentStore::Error::kOk);
+
+    shared_cache_entries.push_back({key, row_id});
+  }
+
+  // Start eviction and pause execution at the hook.
+  StartAndPauseEviction();
+  EXPECT_TRUE(store_->HasPendingEviction());
+
+  // Resume pending eviction.
+  ASSERT_EQ(StartEviction({}, /*is_idle_time_eviction=*/false),
+            SqlPersistentStore::Error::kOk);
+
+  // Check all 100 entries: any entry that is no longer in store_ must have
+  // its shared cache resource deleted from SqlSharedCacheIsolatedDatabase.
+  for (const auto& entry : shared_cache_entries) {
+    auto open_result = OpenEntry(entry.key);
+    ASSERT_TRUE(open_result.has_value());
+    bool entry_exists_in_store = open_result->has_value();
+
+    if (!entry_exists_in_store) {
+      VerifySharedCacheEntryDeleted(handle, entry.key, entry.row_id);
+    }
+  }
 }
 
 }  // namespace disk_cache

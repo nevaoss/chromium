@@ -170,8 +170,8 @@ class LocationBarMediator
                 TemplateUrlServiceObserver,
                 BackPressHandler,
                 PauseResumeWithNativeObserver,
-                WindowFocusChangedObserver,
                 AppBannerManager.Observer,
+                WindowFocusChangedObserver,
                 OmniboxSuggestionsDropdownScrollListener {
 
     private static final int ICON_FADE_ANIMATION_DURATION_MS = 150;
@@ -280,7 +280,6 @@ class LocationBarMediator
     private UrlBarCoordinator mUrlCoordinator;
     private GURL mOriginalUrl = GURL.emptyGURL();
     private @Nullable Animator mUrlFocusChangeAnimator;
-    private boolean mWindowHasFocus;
     private boolean mNativeInitialized;
     private boolean mUrlFocusedWithoutAnimations;
     private boolean mIsUrlFocusChangeInProgress;
@@ -290,7 +289,8 @@ class LocationBarMediator
     // buttons are hidden if the window size is < 600dp.
     private boolean mShouldShowButtonsWhenUnfocused;
     private float mUrlFocusChangeFraction;
-    private boolean mUrlHasFocus;
+    private @Deprecated boolean mUrlHasFocus; // Please check mCurrentInput instead.
+    private boolean mWindowHasFocus;
     private @Nullable Boolean mPreviousDeleteButtonVisible;
     private @Nullable Boolean mPreviousInstallButtonVisible;
     private @Nullable Boolean mPreviousMicButtonVisible;
@@ -363,12 +363,12 @@ class LocationBarMediator
         mBrowserControlsStateProvider = browserControlsStateProvider;
         mModalDialogManagerSupplier = modalDialogManagerSupplier;
         mPageZoomIndicatorCoordinator = pageZoomIndicatorCoordinator;
+        var activity = mWindowAndroid.getActivity().get();
+        mWindowHasFocus = activity != null && activity.getWindow().isActive();
         if (mPageZoomIndicatorCoordinator != null) {
             mPageZoomIndicatorCoordinator.setOnDismissCallbacks(
                     () -> updateZoomButtonVisibility(/* notifyEmbedder= */ true));
         }
-        Activity activity = mWindowAndroid.getActivity().get();
-        mWindowHasFocus = activity != null && activity.hasWindowFocus();
         AppBannerManager.addObserver(this);
         mScrimHandler = scrimHandler;
         if (mScrimHandler != null) {
@@ -921,21 +921,6 @@ class LocationBarMediator
         mLocationBarLayout.onSuggestionsListScrollOffsetChanged(scrollOffset);
     }
 
-    private @Nullable GURL getPreviewMatchUrl(@Nullable AutocompleteMatch defaultMatch) {
-        if (mCurrentInput == null) return null;
-
-        // Non-conventional modes will not have site favicons.
-        if (!mCurrentInput.isConventionalRequestType()) return null;
-
-        // Zero suggest is always considered Search, there may be a match, but we shouldn't show it.
-        if (TextUtils.isEmpty(mCurrentInput.getUserText())) return null;
-
-        // Search suggestions will not have site favicons.
-        if (defaultMatch == null || defaultMatch.isSearchSuggestion()) return null;
-
-        return defaultMatch.getUrl();
-    }
-
     /* package */ void onSuggestionsChanged(
             @Nullable AutocompleteMatch defaultMatch, boolean hasSuggestions) {
         if (mAutocompleteCoordinator == null || mCurrentInput == null) return;
@@ -948,7 +933,6 @@ class LocationBarMediator
             mScrimHandler.setVisibility(
                     mCurrentInput.getAutocompleteState() == AutocompleteState.ENABLED);
         }
-        mCurrentInput.getPreviewMatchUrlSupplier().set(getPreviewMatchUrl(defaultMatch));
 
         if (mUrlCoordinator.shouldAutocomplete()) {
             String siteSearchLabel = null;
@@ -2693,12 +2677,18 @@ class LocationBarMediator
         return true;
     }
 
+    @Override
+    public void onWindowFocusChanged(boolean windowHasFocus) {
+        mWindowHasFocus = windowHasFocus;
+        updateShowStandbyRing();
+    }
+
     private void updateShowStandbyRing() {
         boolean showStandbyRing =
                 mCurrentInput != null
-                        && mWindowHasFocus
                         && mCurrentInput.getAutocompleteState() == AutocompleteState.STANDBY
-                        && mSelectionController.getSelectedView() == mUrlBarSelectableView;
+                        && mSelectionController.getSelectedView() == mUrlBarSelectableView
+                        && mWindowHasFocus;
         mLocationBarLayout.setShowStandbyRing(showStandbyRing);
     }
 
@@ -2785,7 +2775,6 @@ class LocationBarMediator
         if (state != null && state.isSessionActive()) {
             AutocompleteInput input = state.getAutocompleteInput();
             input.setFocusReason(OmniboxFocusReason.LOCATION_BAR_STATE_RESTORATION);
-            input.setAutocompleteState(AutocompleteState.STANDBY);
             mUrlFocusedWithoutAnimations = true;
             beginInput(input);
         }
@@ -2904,6 +2893,8 @@ class LocationBarMediator
         mCurrentInput = null;
 
         if (input.getAutocompleteState() == AutocompleteState.ENABLED && input.hasPreviewText()) {
+            // TODO(https://crbug.com/540458873): Should not commit preview text here, but instead
+            // retain it. When resumed, use it to calculate the autocomplete text and update urlbar.
             input.commitPreviewText();
         } else {
             input.setSelection(
@@ -2912,19 +2903,26 @@ class LocationBarMediator
                             mUrlCoordinator.getSelectionEnd()));
         }
 
+        if (input.getAutocompleteState() == AutocompleteState.ENABLED) {
+            input.setAutocompleteState(AutocompleteState.STANDBY);
+        }
+
         updateReparentingState();
 
         // StatusMediator#onPreviewMatchUrlChanged observes this supplier, so we need it to see this
         // null value before the observer is disconnected in StatusMediator#endInput. This will
         // no longer be needed after implementing drafting w/o focus TODO(b/530079993), because
         // suspend input won't clear the favicon anymore.
-        input.getPreviewMatchUrlSupplier().set(null);
+        input.setPreviewMatchUrl(null);
 
         mAutocompleteCoordinator.endInput();
         mStatusCoordinator.endInput();
         mUrlCoordinator.endInput();
 
-        if (mScrimHandler != null) mScrimHandler.setVisibility(false);
+        if (mScrimHandler != null) {
+            mScrimHandler.setVisibility(
+                    false, /* animate= */ OmniboxCapabilities.areAnimationsEnabled());
+        }
         disconnectObservers(input);
         FuseboxSessionState state = FuseboxSessionState.from(mLocationBarDataProvider);
         if (state != null) {
@@ -3214,18 +3212,6 @@ class LocationBarMediator
         if (OmniboxFeatures.sUseFusedLocationProvider.isEnabled()) {
             GeolocationHeader.stopListeningForLocationUpdates();
         }
-    }
-
-    @Override
-    public void onWindowFocusChanged(boolean hasFocus) {
-        mWindowHasFocus = hasFocus;
-        if (!hasFocus) {
-            if (mCurrentInput != null
-                    && mCurrentInput.getAutocompleteState() == AutocompleteState.ENABLED) {
-                mCurrentInput.setAutocompleteState(AutocompleteState.STANDBY);
-            }
-        }
-        updateShowStandbyRing();
     }
 
     /* package */ void setLocationBarButtonTranslationForNtpAnimation(float translationX) {

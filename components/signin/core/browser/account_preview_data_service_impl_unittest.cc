@@ -299,8 +299,15 @@ TEST_F(AccountPreviewDataServiceTest,
   dict.Set("gaia_id", account1.gaia.ToString());
   prefs_.SetDict(prefs::kAccountPreviewPreference, std::move(dict));
 
-  // 3. Remove account1. This triggers EnsureAllAccountsFetched().
+  ASSERT_TRUE(service_->GetPreferredAccountForPromo().has_value());
+  EXPECT_EQ(account1.gaia, service_->GetPreferredAccountForPromo()->gaia_id);
+
+  // 3. Remove account1. This triggers EnsureAllAccountsFetched() and clears the
+  // preferred account preference.
   identity_test_env_.RemoveRefreshTokenForAccount(account1.account_id);
+
+  // Preferred account pref should be cleared now since account1 was preferred.
+  EXPECT_FALSE(service_->GetPreferredAccountForPromo().has_value());
 
   // account1 is cleared. Fetch should start for the remaining uncached
   // account2.
@@ -680,10 +687,15 @@ TEST_F(AccountPreviewDataServiceTest,
   // Now remove account2 (which is NOT the preferred account).
   // Because it is not the preferred account, OnRefreshTokenRemovedForAccount
   // should NOT trigger a new fetch cycle (i.e. it should NOT call
-  // EnsureAllAccountsFetched()).
-  // We verify this by asserting that no active fetcher is started for the
-  // uncached account1.
+  // EnsureAllAccountsFetched()) and should NOT clear the preferred account
+  // pref. We verify this by asserting that no active fetcher is started for the
+  // uncached account1 and the preferred account pref remains intact.
   identity_test_env_.RemoveRefreshTokenForAccount(account2.account_id);
+
+  std::optional<AccountPreviewDataService::AccountPreviewPreference>
+      preferred_account_after = service_->GetPreferredAccountForPromo();
+  ASSERT_TRUE(preferred_account_after.has_value());
+  EXPECT_EQ(account1.gaia, preferred_account_after->gaia_id);
 
   EXPECT_FALSE(service_->GetAccountPreviewData(account2.gaia).has_value());
   EXPECT_FALSE(service_->HasActiveFetcherForTesting(account1.gaia));
@@ -741,6 +753,291 @@ TEST_F(AccountPreviewDataServiceTest, ReadPreviewPreferenceFromPrefsDataTypes) {
   std::vector<syncer::DataType> expected_types = {syncer::BOOKMARKS,
                                                   syncer::PASSWORDS};
   EXPECT_EQ(expected_types, preference->preferred_data_types);
+}
+
+#if BUILDFLAG(ENABLE_DICE_SUPPORT)
+TEST_F(AccountPreviewDataServiceTest, LogsFetchTriggerCause) {
+  base::HistogramTester histograms;
+
+  // 1. Trigger cause by token update (sign in / update).
+  MockSuccessfulFetch(&test_url_loader_factory_);
+  base::RunLoop run_loop1;
+  service_->SetFetchCompleteCallbackForTesting(run_loop1.QuitClosure());
+  AccountInfo account_info =
+      identity_test_env_.MakeAccountAvailable("user@gmail.com");
+  run_loop1.Run();
+
+  histograms.ExpectUniqueSample(
+      "Signin.AccountPreview.AllFetchTriggerCause",
+      AccountPreviewDataServiceImpl::FetchTriggerCause::kRefreshTokenUpdated,
+      1);
+  histograms.ExpectUniqueSample(
+      "Signin.AccountPreview.SuccessfulFetchTriggerCause",
+      AccountPreviewDataServiceImpl::FetchTriggerCause::kRefreshTokenUpdated,
+      1);
+
+  // 2. Trigger cause by token removal (sign out / removal).
+  // Make account2 available and fail its fetch so it remains uncached.
+  MockFailedStatsFetch(&test_url_loader_factory_, net::ERR_FAILED);
+  MockFailedPreviewsFetch(&test_url_loader_factory_, net::ERR_FAILED);
+  base::RunLoop run_loop_fail;
+  service_->SetFetchCompleteCallbackForTesting(run_loop_fail.QuitClosure());
+  AccountInfo account2 =
+      identity_test_env_.MakeAccountAvailable("account2@gmail.com");
+  run_loop_fail.Run();
+
+  // Manually set account_info as preferred account so removing it triggers a
+  // refresh.
+  base::DictValue dict;
+  dict.Set("gaia_id", account_info.gaia.ToString());
+  prefs_.SetDict(prefs::kAccountPreviewPreference, std::move(dict));
+
+  MockSuccessfulFetch(&test_url_loader_factory_);
+  base::RunLoop run_loop2;
+  service_->SetFetchCompleteCallbackForTesting(run_loop2.QuitClosure());
+  identity_test_env_.RemoveRefreshTokenForAccount(account_info.account_id);
+  run_loop2.Run();
+
+  histograms.ExpectBucketCount(
+      "Signin.AccountPreview.AllFetchTriggerCause",
+      AccountPreviewDataServiceImpl::FetchTriggerCause::kRefreshTokenRemoved,
+      1);
+  histograms.ExpectBucketCount(
+      "Signin.AccountPreview.SuccessfulFetchTriggerCause",
+      AccountPreviewDataServiceImpl::FetchTriggerCause::kRefreshTokenRemoved,
+      1);
+
+  // 3. Trigger cause by periodic refresh.
+  // Fast forward the time by 24 hours.
+  MockSuccessfulFetch(&test_url_loader_factory_);
+  base::RunLoop run_loop3;
+  service_->SetFetchCompleteCallbackForTesting(run_loop3.QuitClosure());
+  task_environment_.FastForwardBy(base::Hours(24));
+  run_loop3.Run();
+
+  histograms.ExpectBucketCount(
+      "Signin.AccountPreview.AllFetchTriggerCause",
+      AccountPreviewDataServiceImpl::FetchTriggerCause::kPeriodicRefresh, 1);
+  histograms.ExpectBucketCount(
+      "Signin.AccountPreview.SuccessfulFetchTriggerCause",
+      AccountPreviewDataServiceImpl::FetchTriggerCause::kPeriodicRefresh, 1);
+}
+
+TEST_F(AccountPreviewDataServiceTest, LogsTriggerCauseWithAllCachesAvailable) {
+  base::HistogramTester histograms;
+
+  // Make account available and cache it.
+  MockSuccessfulFetch(&test_url_loader_factory_);
+  base::RunLoop run_loop;
+  service_->SetFetchCompleteCallbackForTesting(run_loop.QuitClosure());
+  AccountInfo account_info =
+      identity_test_env_.MakeAccountAvailable("user@gmail.com");
+  run_loop.Run();
+
+  ASSERT_TRUE(service_->GetAccountPreviewData(account_info.gaia).has_value());
+
+  // Trigger a new update for the same account. Since it's already cached,
+  // gaia_ids_to_fetch will be empty (all caches available).
+  identity_test_env_.SetRefreshTokenForAccount(account_info.account_id);
+
+  histograms.ExpectUniqueSample(
+      "Signin.AccountPreview.TriggerCauseWithAllCachesAvailable",
+      AccountPreviewDataServiceImpl::FetchTriggerCause::kRefreshTokenUpdated,
+      1);
+}
+#endif
+
+TEST_F(AccountPreviewDataServiceTest, LogsPercentAccountsToFetch) {
+  base::HistogramTester histograms;
+
+  // Make account1 available and cached first.
+  MockSuccessfulFetch(&test_url_loader_factory_);
+  base::RunLoop run_loop1;
+  service_->SetFetchCompleteCallbackForTesting(run_loop1.QuitClosure());
+  AccountInfo account1 =
+      identity_test_env_.MakeAccountAvailable("account1@gmail.com");
+  run_loop1.Run();
+
+  // Now make account2 available.
+  // This starts a fetch. There are 2 accounts total (account1 and account2).
+  // Only account2 needs to be fetched (since account1 is cached).
+  // So percent accounts fetched is 1/2 = 50%.
+  MockSuccessfulFetch(&test_url_loader_factory_);
+  base::RunLoop run_loop2;
+  service_->SetFetchCompleteCallbackForTesting(run_loop2.QuitClosure());
+  AccountInfo account2 =
+      identity_test_env_.MakeAccountAvailable("account2@gmail.com");
+  run_loop2.Run();
+
+  // The first fetch was 1/1 = 100%. The second fetch was 1/2 = 50%.
+  histograms.ExpectBucketCount("Signin.AccountPreview.PercentAccountsToFetch",
+                               100, 1);
+  histograms.ExpectBucketCount("Signin.AccountPreview.PercentAccountsToFetch",
+                               50, 1);
+}
+
+TEST_F(AccountPreviewDataServiceTest,
+       LogsNonPeriodicFetchesUntilNextPeriodicRefresh) {
+  base::HistogramTester histograms;
+
+  // 1. Initial state: count pref is 0.
+  EXPECT_EQ(0,
+            prefs_.GetInteger(prefs::kAccountPreviewNonPeriodicFetchCountPref));
+
+  // 2. Perform 3 non-periodic fetches (making accounts available).
+  for (int i = 0; i < 3; ++i) {
+    MockSuccessfulFetch(&test_url_loader_factory_);
+    base::RunLoop run_loop;
+    service_->SetFetchCompleteCallbackForTesting(run_loop.QuitClosure());
+    identity_test_env_.MakeAccountAvailable(
+        base::StrCat({"user", base::NumberToString(i), "@gmail.com"}));
+    run_loop.Run();
+  }
+
+  // Count pref should be 3 now.
+  EXPECT_EQ(3,
+            prefs_.GetInteger(prefs::kAccountPreviewNonPeriodicFetchCountPref));
+
+  // 3. Fast forward time by 24 hours to trigger periodic refresh.
+  // Mock fetches for the 3 accounts since periodic refresh clears cache and
+  // refetches them all.
+  MockSuccessfulFetch(&test_url_loader_factory_);
+  MockSuccessfulFetch(&test_url_loader_factory_);
+  MockSuccessfulFetch(&test_url_loader_factory_);
+  base::RunLoop run_loop_periodic;
+  service_->SetAllDataAvailableCallbackForTesting(
+      run_loop_periodic.QuitClosure());
+  task_environment_.FastForwardBy(base::Hours(24));
+  run_loop_periodic.Run();
+
+  histograms.ExpectUniqueSample(
+      "Signin.AccountPreview.NonPeriodicFetchesUntilNextPeriodicRefresh", 3, 1);
+  EXPECT_EQ(0,
+            prefs_.GetInteger(prefs::kAccountPreviewNonPeriodicFetchCountPref));
+}
+
+TEST_F(AccountPreviewDataServiceTest, PeriodicRefreshWithNoAccounts) {
+  // 1. When non-periodic fetch count is 0 and 0 accounts are signed in.
+  {
+    base::HistogramTester histograms;
+    EXPECT_EQ(
+        0, prefs_.GetInteger(prefs::kAccountPreviewNonPeriodicFetchCountPref));
+
+    // Fast-forward 24 hours to trigger periodic refresh with 0 accounts signed
+    // in.
+    task_environment_.FastForwardBy(base::Hours(24));
+
+    // Count is 0, so NonPeriodicFetchesUntilNextPeriodicRefresh should NOT be
+    // recorded.
+    histograms.ExpectTotalCount(
+        "Signin.AccountPreview.NonPeriodicFetchesUntilNextPeriodicRefresh", 0);
+    EXPECT_EQ(
+        0, prefs_.GetInteger(prefs::kAccountPreviewNonPeriodicFetchCountPref));
+  }
+
+  // 2. When non-periodic fetch count > 0 (e.g. from previous fetches), but
+  // currently 0 accounts are signed in.
+  {
+    base::HistogramTester histograms;
+    prefs_.SetInteger(prefs::kAccountPreviewNonPeriodicFetchCountPref, 2);
+
+    // Fast-forward 24 hours to trigger periodic refresh with 0 accounts signed
+    // in.
+    task_environment_.FastForwardBy(base::Hours(24));
+
+    // Count was 2 (> 0), so NonPeriodicFetchesUntilNextPeriodicRefresh should
+    // be recorded with value 2.
+    histograms.ExpectUniqueSample(
+        "Signin.AccountPreview.NonPeriodicFetchesUntilNextPeriodicRefresh", 2,
+        1);
+    // Count pref should be cleared to 0.
+    EXPECT_EQ(
+        0, prefs_.GetInteger(prefs::kAccountPreviewNonPeriodicFetchCountPref));
+  }
+}
+
+TEST_F(AccountPreviewDataServiceTest, PeriodicRefreshTimingParam) {
+  base::test::ScopedFeatureList custom_feature_list;
+  custom_feature_list.InitAndEnableFeatureWithParameters(
+      switches::kEnableAccountPreviewData,
+      {{switches::kAccountPreviewDataPeriodicRefreshTiming.name, "18h"}});
+
+  // Destroy existing service so it can be re-created with the custom param.
+  network_delay_helper_ = nullptr;
+  service_.reset();
+
+  AccountInfo account_info =
+      identity_test_env_.MakeAccountAvailable("user@gmail.com");
+  prefs_.SetTime(prefs::kAccountPreviewDataLastUpdatePref, base::Time::Now());
+
+  auto helper = std::make_unique<TestWaitForNetworkCallbackHelper>();
+  network_delay_helper_ = helper.get();
+  service_ = std::make_unique<AccountPreviewDataServiceImpl>(
+      identity_test_env_.identity_manager(), &prefs_,
+      test_url_loader_factory_.GetSafeWeakWrapper(), std::move(helper),
+      version_info::Channel::UNKNOWN, &profile_metrics_service_);
+
+  MockSuccessfulFetch(&test_url_loader_factory_);
+
+  // Fast forward 17 hours: timer shouldn't fire yet.
+  task_environment_.FastForwardBy(base::Hours(17));
+  EXPECT_FALSE(service_->GetAccountPreviewData(account_info.gaia).has_value());
+
+  // Fast forward 1 more hour (total 18 hours): timer fires.
+  task_environment_.FastForwardBy(base::Hours(1));
+  EXPECT_TRUE(service_->GetAccountPreviewData(account_info.gaia).has_value());
+}
+
+TEST_F(AccountPreviewDataServiceTest,
+       PeriodicRefreshTimingParamClampedToMinimum) {
+  base::test::ScopedFeatureList custom_feature_list;
+  // Set parameter to 10 minutes, which is less than the 12 hour minimum.
+  custom_feature_list.InitAndEnableFeatureWithParameters(
+      switches::kEnableAccountPreviewData,
+      {{switches::kAccountPreviewDataPeriodicRefreshTiming.name, "10m"}});
+
+  // Destroy existing service so it can be re-created with the custom param.
+  network_delay_helper_ = nullptr;
+  service_.reset();
+
+  AccountInfo account_info =
+      identity_test_env_.MakeAccountAvailable("user@gmail.com");
+  prefs_.SetTime(prefs::kAccountPreviewDataLastUpdatePref, base::Time::Now());
+
+  auto helper = std::make_unique<TestWaitForNetworkCallbackHelper>();
+  network_delay_helper_ = helper.get();
+  service_ = std::make_unique<AccountPreviewDataServiceImpl>(
+      identity_test_env_.identity_manager(), &prefs_,
+      test_url_loader_factory_.GetSafeWeakWrapper(), std::move(helper),
+      version_info::Channel::UNKNOWN, &profile_metrics_service_);
+
+  MockSuccessfulFetch(&test_url_loader_factory_);
+
+  // Fast forward 11 hours: timer shouldn't fire (clamped to 12 hours minimum).
+  task_environment_.FastForwardBy(base::Hours(11));
+  EXPECT_FALSE(service_->GetAccountPreviewData(account_info.gaia).has_value());
+
+  // Fast forward 1 more hour (total 12 hours): timer fires.
+  task_environment_.FastForwardBy(base::Hours(1));
+  EXPECT_TRUE(service_->GetAccountPreviewData(account_info.gaia).has_value());
+}
+
+TEST_F(AccountPreviewDataServiceTest,
+       OnRefreshTokenRemovedForAccountWithNullBarrier) {
+  AccountInfo account_info =
+      identity_test_env_.MakeAccountAvailable("secondary@gmail.com");
+
+  base::RunLoop all_fetches_run_loop;
+  service_->SetAllDataAvailableCallbackForTesting(
+      all_fetches_run_loop.QuitClosure());
+
+  // An active fetcher is created for account_info, along with a barrier that is
+  // not yet hit. Removing the refresh token for this account should safely
+  // erase the fetcher and hit the barrier.
+  service_->OnRefreshTokenRemovedForAccount(account_info.account_id);
+  // Removing the account should hit the barrier which would complete the fetch.
+  all_fetches_run_loop.Run();
+  EXPECT_FALSE(service_->GetAccountPreviewData(account_info.gaia).has_value());
 }
 
 }  // namespace signin

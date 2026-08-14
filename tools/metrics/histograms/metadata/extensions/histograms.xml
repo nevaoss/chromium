@@ -483,7 +483,7 @@ This is emitted for two scenarios when a worker may be unregistered:
 </histogram>
 
 <histogram name="Extensions.CommandLineInstalled" units="count"
-    expires_after="2026-11-15">
+    expires_after="2027-01-24">
   <owner>richche@chromium.org</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>
@@ -495,7 +495,7 @@ This is emitted for two scenarios when a worker may be unregistered:
 </histogram>
 
 <histogram name="Extensions.CommandLineManifestSettingsOverride"
-    enum="ManifestSettingsOverrideType" expires_after="2026-11-15">
+    enum="ManifestSettingsOverrideType" expires_after="2027-01-24">
   <owner>richche@chromium.org</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>
@@ -1064,7 +1064,7 @@ This is emitted for two scenarios when a worker may be unregistered:
 
 <histogram
     name="Extensions.DeclarativeNetRequest.AddRulesetCalledTwiceInSuccession"
-    enum="BooleanSuccess" expires_after="2026-11-22">
+    enum="BooleanSuccess" expires_after="2027-01-24">
   <owner>kelvinjiang@chromium.org</owner>
   <owner>src/extensions/OWNERS</owner>
   <summary>
@@ -2021,7 +2021,7 @@ This is emitted for two scenarios when a worker may be unregistered:
 </histogram>
 
 <histogram name="Extensions.ExtensionInstalled.NewFromWebstore" units="count"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>jlulejian@chromium.org</owner>
   <owner>extensions-core@chromium.org</owner>
   <summary>
@@ -3956,6 +3956,17 @@ This is emitted for two scenarios when a worker may be unregistered:
   </summary>
 </histogram>
 
+<histogram name="Extensions.SafeBrowsing.BlocklistedCount" units="count"
+    expires_after="2026-11-22">
+  <owner>thefrog@chromium.org</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
+  <summary>
+    The number of blocklisted extensions found during a Safe Browsing extension
+    check. Recorded each time a Safe Browsing check for extension IDs completes,
+    whether synchronously or asynchronously.
+  </summary>
+</histogram>
+
 <histogram name="Extensions.SandboxUnpackFailureReason2"
     enum="ExtensionUnpackFailureReason" expires_after="never">
 <!-- expires-never: Monitors core extension installation flows. -->
@@ -4554,6 +4565,18 @@ This is emitted for two scenarios when a worker may be unregistered:
   </summary>
 </histogram>
 
+<histogram name="Extensions.Startup.DefaultPinnedExtensionState"
+    enum="DefaultPinnedExtensionState" expires_after="2027-01-01">
+  <owner>evasu@chromium.org</owner>
+  <owner>extensions-core@chromium.org</owner>
+  <summary>
+    Recorded on profile initialization for each extension that was originally
+    pinned by default on installation. Logs whether the extension is currently
+    pinned or unpinned by the user. Recorded only when the
+    kExtensionsPinnedByDefault feature is enabled.
+  </summary>
+</histogram>
+
 <histogram name="Extensions.SyncBlockedByDefaultWebAppMigration" enum="Boolean"
     expires_after="2024-02-08">
   <owner>alancutter@chromium.org</owner>
@@ -4643,6 +4666,16 @@ This is emitted for two scenarios when a worker may be unregistered:
     this will be 100 if the user has every extension pinned). Recorded once per
     profile during initialization if the user has at least one extension with an
     action in the toolbar.
+  </summary>
+</histogram>
+
+<histogram name="Extensions.Toolbar.TimeToFirstActionClick" units="ms"
+    expires_after="2026-12-31">
+  <owner>evasu@chromium.org</owner>
+  <owner>extensions-core@chromium.org</owner>
+  <summary>
+    The time elapsed between a user installing an extension and the first time
+    the user clicks on that extension in ms. Recorded once per extension.
   </summary>
 </histogram>
 

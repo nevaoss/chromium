@@ -136,7 +136,6 @@
 #include "components/search_engines/search_engines_pref_names.h"
 #include "components/security_interstitials/core/https_only_mode_policy_handler.h"
 #include "components/security_interstitials/core/pref_names.h"
-#include "components/sharing_message/pref_names.h"
 #include "components/signin/public/base/signin_buildflags.h"
 #include "components/signin/public/base/signin_pref_names.h"
 #include "components/skills/internal/enterprise_published_skills_policy_handler.h"
@@ -543,11 +542,6 @@ const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
     prefs::kManagedWebHidBlockedForUrls,
     base::Value::Type::LIST },
 // Policies for all platforms - End
-#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_FUCHSIA)
-  { key::kChromeSuggestionsSettings,
-    optimization_guide::prefs::kChromeSuggestionsSettings,
-    base::Value::Type::INTEGER },
-#endif
 #if BUILDFLAG(IS_ANDROID)
   { key::kAccessibilityPerformanceFilteringAllowed,
     prefs::kAccessibilityPerformanceFilteringAllowed,
@@ -628,6 +622,9 @@ const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
   { key::kBrowserLabsEnabled,
     chrome_labs_prefs::kBrowserLabsEnabledEnterprisePolicy,
     base::Value::Type::BOOLEAN },
+  { key::kChromeSuggestionsSettings,
+    optimization_guide::prefs::kChromeSuggestionsSettings,
+    base::Value::Type::INTEGER },
 #if defined(TOOLKIT_VIEWS)
   { key::kSideSearchEnabled,
     side_search_prefs::kSideSearchEnabled,
@@ -1083,9 +1080,6 @@ const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
     base::Value::Type::STRING },
   { key::kPromptForDownloadLocation,
     prefs::kPromptForDownload,
-    base::Value::Type::BOOLEAN },
-  { key::kSharedClipboardEnabled,
-    prefs::kSharedClipboardEnabled,
     base::Value::Type::BOOLEAN },
 
   { key::kSensorsAllowedForUrls,

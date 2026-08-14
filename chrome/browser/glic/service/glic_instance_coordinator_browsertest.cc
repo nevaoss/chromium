@@ -63,7 +63,6 @@
 #include "ui/gfx/geometry/point_conversions.h"
 
 #if BUILDFLAG(IS_ANDROID)
-
 #include "chrome/browser/sessions/tab_restore_service_factory.h"
 #include "chrome/browser/ui/android/tab_model/tab_model.h"
 #include "components/sessions/core/tab_restore_service.h"
@@ -160,22 +159,14 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest,
   EXPECT_EQ(coordinator().GetInstances().size(), 0u);
 }
 
-#if BUILDFLAG(IS_ANDROID)
-// TODO(crbug.com/523146661): Failing on Android.
-#define MAYBE_CloseHidesInstance DISABLED_CloseHidesInstance
-#else
-#define MAYBE_CloseHidesInstance CloseHidesInstance
-#endif
-IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest, MAYBE_CloseHidesInstance) {
+IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest, CloseHidesInstance) {
   ToggleGlicForActiveTab();
   ASSERT_OK_AND_ASSIGN(auto* instance, WaitForGlicOpen());
 
   PreventDeletionOnClose(instance, "test_conversation");
-  ToggleGlicForActiveTab();
-  ASSERT_OK(WaitForGlicClose());
+  tabs::TabInterface* tab = GetTabListInterface()->GetActiveTab();
+  ASSERT_OK(CloseGlicForTabAndWait(tab));
   EXPECT_FALSE(instance->IsShowing());
-  EXPECT_OK(
-      WaitForWebUiContentsVisibility(instance, content::Visibility::HIDDEN));
 }
 
 IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest,
@@ -245,9 +236,9 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorUnbindOnCloseTest,
   EXPECT_EQ(GetContentsVisibility(instance1), content::Visibility::HIDDEN);
 }
 
-// TODO(crbug.com/514816170): Re-enable when no longer flaky on Android,
-// Windows, and Linux.
-#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX)
+// TODO(crbug.com/514816170): Re-enable when no longer flaky on Android
+// and Linux.
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_LINUX)
 #define MAYBE_UnboundWhenClosedBySidePanelCoordinator \
   DISABLED_UnboundWhenClosedBySidePanelCoordinator
 #else
@@ -287,7 +278,8 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorUnbindOnCloseTest,
   // But because it was bound to tab1 (and kept bound), the instance itself
   // should still exist.
   EXPECT_EQ(GetInstanceForTab(tab1), instance1);
-  EXPECT_EQ(GetContentsVisibility(instance1), content::Visibility::HIDDEN);
+  EXPECT_OK(
+      WaitForWebUiContentsVisibility(instance1, content::Visibility::HIDDEN));
 }
 
 IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorUnbindOnCloseTest,
@@ -1700,14 +1692,8 @@ class GlicInstanceCoordinatorLocalHotkeyScopeTest
   base::test::ScopedFeatureList scoped_feature_list_;
 };
 
-#if BUILDFLAG(IS_ANDROID)
-// TODO(crbug.com/522616857): Failing on Android.
-#define MAYBE_HotkeyTriggersToggle DISABLED_HotkeyTriggersToggle
-#else
-#define MAYBE_HotkeyTriggersToggle HotkeyTriggersToggle
-#endif
 IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorLocalHotkeyScopeTest,
-                       MAYBE_HotkeyTriggersToggle) {
+                       HotkeyTriggersToggle) {
   EXPECT_EQ(coordinator().GetInstances().size(), 0u);
 
   // Simulate receiving the hotkey command.
@@ -2006,6 +1992,34 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorRemoveBlankInstancesTest,
 
   // Wait for the blank instance to be deleted asynchronously.
   ASSERT_OK(WaitForInstanceDeletion(weak_instance));
+}
+
+IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorRemoveBlankInstancesTest,
+                       DoNotRemoveBlankInstanceWhenInvoking) {
+  // Start an invocation. This asynchronously initializes the web client.
+  tabs::TabInterface* tab = GetTabListInterface()->GetActiveTab();
+  GlicInvokeOptions options(glic::Target(*tab),
+                            mojom::InvocationSource::kOsButton);
+  coordinator().Invoke(std::move(options));
+
+  // The instance should be created and in the invoking state.
+  GlicInstanceImpl* instance = GetInstanceForTab(tab);
+  ASSERT_TRUE(instance);
+
+  EXPECT_TRUE(instance->IsInvoking());
+
+  // Close the panel before the invocation finishes initializing.
+  instance->CloseAllEmbedders();
+  ASSERT_OK(WaitForGlicClose());
+
+  // Wait a bit to ensure the timeout has passed, but the instance shouldn't
+  // be deleted. The timer delay is 100ms.
+  base::RunLoop run_loop;
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
+      FROM_HERE, run_loop.QuitClosure(), base::Milliseconds(200));
+  run_loop.Run();
+
+  EXPECT_EQ(GetInstanceForTab(tab), instance);
 }
 
 #if !BUILDFLAG(IS_ANDROID)

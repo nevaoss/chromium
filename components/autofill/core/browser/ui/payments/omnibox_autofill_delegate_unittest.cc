@@ -64,7 +64,14 @@ class MockAutofillDriver : public TestAutofillDriver {
 class MockAutofillClient : public TestAutofillClient {
  public:
   MockAutofillClient() = default;
-  ~MockAutofillClient() override = default;
+  ~MockAutofillClient() override {
+    // This is required because `RoutingMockAutofillDriver` attempts to cast the
+    // client to `MockAutofillClient` in its DTOR (to access the router). As
+    // noted in `~TestAutofillClient()`, we must explicitly delete the drivers
+    // here while the dynamic type is still `MockAutofillClient`, to prevent
+    // CFI / UBSan crashes during that cast.
+    GetAutofillDriverFactory().DeleteAll();
+  }
 
   MOCK_METHOD(AutofillManager*,
               GetAutofillManagerForPrimaryMainFrame,

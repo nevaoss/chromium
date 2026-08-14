@@ -51,6 +51,9 @@ BASE_DECLARE_FEATURE(kSyncLoyaltyCardMetadata);
 // Enables syncing Notebooks.
 BASE_DECLARE_FEATURE(kSyncNotebook);
 
+// Enables syncing history journeys.
+BASE_DECLARE_FEATURE(kSyncJourney);
+
 #if !BUILDFLAG(IS_CHROMEOS)
 // Flag that controls Uno fast-follow features which are:
 // On Android:
@@ -256,6 +259,10 @@ BASE_DECLARE_FEATURE(kSyncFixWebSigninSessionDurationForShortLivedSessions);
 // legacy deduplication and name-based local device filtering. This affects Send
 // Tab to Self and Sharing features.
 BASE_DECLARE_FEATURE(kSyncSimplifyDeviceNaming);
+
+// If enabled alongside `kSyncSimplifyDeviceNaming`, disambiguates duplicate
+// device display names using release channel labels (e.g., "(Canary)").
+BASE_DECLARE_FEATURE(kSyncDisambiguateDeviceNamesWithChannel);
 
 // If enabled, uses the server-determined model name (marketing name) as the
 // preferred name (and fallback name) if available. This provides a more

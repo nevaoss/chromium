@@ -4,6 +4,7 @@
 
 #include "chrome/browser/glic/host/glic_internals_page_handler.h"
 
+#include <algorithm>
 #include <cstdio>
 #include <sstream>
 
@@ -291,6 +292,8 @@ std::string FeatureModeToString(glic::mojom::FeatureMode mode) {
       return "kUniversalCart";
     case glic::mojom::FeatureMode::kPromotionPage:
       return "kPromotionPage";
+    case glic::mojom::FeatureMode::kPasswordChange:
+      return "kPasswordChange";
   }
   LOG(ERROR) << "Unexpected value for FeatureMode: " << static_cast<int>(mode);
   return "Unknown";
@@ -776,6 +779,7 @@ void GlicInternalsPageHandler::TriggerInvokeFromInternalsAction(
   options.skill_id = std::move(mojo_options->skill_id);
   options.error_message = std::move(mojo_options->error_message);
   options.timeout = mojo_options->timeout;
+  options.supersede_if_in_progress = mojo_options->supersede_if_in_progress;
   options.fre_override = mojo_options->fre_override;
   options.wait_for_panel_open = mojo_options->wait_for_panel_open;
   if (mojo_options->focus_on_show.has_value()) {
@@ -884,6 +888,28 @@ void GlicInternalsPageHandler::TriggerInvokeFromInternalsAction(
       if (target_tab) {
         options.target.surface = target_tab->GetHandle();
       }
+    }
+  }
+
+  if (mojo_options->specific_tabs_to_share_indices.has_value()) {
+    std::vector<tabs::TabHandle> tabs_to_pin;
+    TabListInterface* tab_list = TabListInterface::From(current_browser);
+    if (tab_list) {
+      for (int32_t index :
+           mojo_options->specific_tabs_to_share_indices.value()) {
+        if (index >= 0 && index < tab_list->GetTabCount()) {
+          tabs::TabInterface* target_tab = tab_list->GetTab(index);
+          if (target_tab &&
+              std::find(tabs_to_pin.begin(), tabs_to_pin.end(),
+                        target_tab->GetHandle()) == tabs_to_pin.end()) {
+            tabs_to_pin.push_back(target_tab->GetHandle());
+          }
+        }
+      }
+    }
+    if (!tabs_to_pin.empty()) {
+      options.tab_sharing = TabSharingOptions(std::move(tabs_to_pin),
+                                              GlicPinTrigger::kContextMenu);
     }
   }
 

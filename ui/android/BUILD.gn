@@ -115,6 +115,7 @@ component("android") {
     "//ui/events/devices",
     "//ui/gfx",
     "//ui/gfx/geometry",
+    "//ui/native_theme",
     "//ui/touch_selection",
     "//url",
   ]
@@ -126,6 +127,7 @@ component("android") {
   public_deps = [
     ":ui_android_feature_map_jni",
     ":ui_android_jni_headers",
+    "//ui/color:color_headers",
   ]
 }
 
@@ -812,6 +814,7 @@ robolectric_library("ui_android_junit_tests") {
     "junit/src/org/chromium/ui/animation/TranslationAnimatorFactoryUnitTest.java",
     "junit/src/org/chromium/ui/animation/transition/IntegerValueTransitionUnitTest.java",
     "junit/src/org/chromium/ui/animation/transition/ShrinkTransitionUnitTest.java",
+    "junit/src/org/chromium/ui/base/AcceleratorManagerTest.java",
     "junit/src/org/chromium/ui/base/ActivityKeyboardVisibilityDelegateUnitTest.java",
     "junit/src/org/chromium/ui/base/ActivityResultTrackerImplTest.java",
     "junit/src/org/chromium/ui/base/ApplicationViewportInsetTrackerTest.java",

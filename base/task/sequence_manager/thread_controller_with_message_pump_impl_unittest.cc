@@ -98,7 +98,7 @@ class MockMessagePump : public MessagePump {
   MOCK_METHOD(void, Run, (MessagePump::Delegate*), (override));
   MOCK_METHOD(void, Quit, (), (override));
   MOCK_METHOD(void, ScheduleWork, (), (override));
-  MOCK_METHOD(void, ScheduleDelayedWork_TimeTicks, (const TimeTicks&));
+  MOCK_METHOD(void, ScheduleDelayedWork_TimeTicks, (TimeTicks));
 
   void ScheduleDelayedWork(
       const MessagePump::Delegate::NextWorkInfo& next_work_info) override {
@@ -2282,12 +2282,18 @@ TEST_F(ThreadControllerWithMessagePumpTest, LockMetricsReportedOnIdle) {
 
   HistogramTester histogram_tester;
 
+  constexpr LockMetricsRecorder::LockMetricSample kBaseLockMetricSample = {
+      test_sample1, LockMetricsRecorder::LockType::kBaseLock};
+  constexpr LockMetricsRecorder::LockMetricSample
+      kPartitionAllocLockMetricSample = {
+          test_sample2, LockMetricsRecorder::LockType::kPartitionAllocLock};
+
   base::LockMetricsRecorder::GetForCurrentThread()->RecordLockAcquisitionTime(
-      test_sample1, LockMetricsRecorder::LockType::kBaseLock);
+      kBaseLockMetricSample);
   base::LockMetricsRecorder::GetForCurrentThread()->RecordLockAcquisitionTime(
-      test_sample2, LockMetricsRecorder::LockType::kPartitionAllocLock);
+      kPartitionAllocLockMetricSample);
   base::LockMetricsRecorder::GetForCurrentThread()->RecordLockAcquisitionTime(
-      test_sample2, LockMetricsRecorder::LockType::kPartitionAllocLock);
+      kPartitionAllocLockMetricSample);
 
   EXPECT_CALL(*message_pump_, Run(_))
       .WillOnce([&](MessagePump::Delegate* delegate) {

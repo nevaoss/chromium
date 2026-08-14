@@ -96,10 +96,6 @@ void SurfaceEmbedConnector::Attach(WebContents* child_web_contents,
       child_web_contents, parent_web_contents, outer_document_rfh, delegate));
   static_cast<WebContentsImpl*>(child_web_contents)
       ->SetSurfaceEmbedConnector(std::move(connector));
-
-  static_cast<WebContentsImpl*>(parent_web_contents)
-      ->SurfaceEmbedChildWebContentsAttached(child_web_contents,
-                                             outer_document_rfh);
 }
 
 // static
@@ -111,12 +107,6 @@ void SurfaceEmbedConnector::Detach(WebContents* child_web_contents) {
     // SHOULD have the visibility of kNotRendered, to prevent
     // visibility/intersection notifications from being sent to it.
     connector->OnVisibilityChanged(blink::mojom::FrameVisibility::kNotRendered);
-
-    if (WebContentsImpl* parent_web_contents =
-            connector->parent_web_contents()) {
-      parent_web_contents->SurfaceEmbedChildWebContentsDetached(
-          child_web_contents);
-    }
   }
 
   // Connector will be freed by ClearSurfaceEmbedConnector().
@@ -133,13 +123,11 @@ SurfaceEmbedConnectorImpl::SurfaceEmbedConnectorImpl(
       child_web_contents_(static_cast<WebContentsImpl*>(child_web_contents)),
       // Rely on Chromium's WeakPtrFactory to automatically invalidate this
       // pointer safely at the start of parent_web_contents's destructor.
-      parent_web_contents_(
-          parent_web_contents ? parent_web_contents->GetWeakPtr() : nullptr) {
+      parent_web_contents_(parent_web_contents->GetWeakPtr()),
+      embedder_rfh_(
+          static_cast<RenderFrameHostImpl*>(embedder_rfh)->GetWeakPtr()) {
+  CHECK_EQ(WebContents::FromRenderFrameHost(embedder_rfh), parent_web_contents);
   wc_observer_ = std::make_unique<WCObserver>(this, child_web_contents);
-  // The parent WebContents could be null if the child is being moved from one
-  // parent to another.
-  // TODO(crbug.com/496266440): Repoint this observer to the new parent
-  // WebContents when the move occurs.
   parent_wc_observer_ =
       std::make_unique<ParentWCObserver>(this, parent_web_contents);
   CHECK(current_child_frame_host());
@@ -291,6 +279,11 @@ void SurfaceEmbedConnectorImpl::SetFocusedFrameTree(
   // or an inner WebContents in the subtree. Otherwise, this object's
   // SetFocusedFrameTree should not be involved.
   CHECK(ContainsOrIsFocusedWebContents(child_web_contents()));
+
+  CHECK(embedder_rfh_);
+  FrameTreeNode* embedder_node = embedder_rfh_->frame_tree_node();
+  embedder_node->frame_tree().SetFocusedFrame(embedder_node,
+                                              /*source=*/nullptr);
 
   // Ensure that outer frame trees are focused.
   parent_web_contents()->GetPrimaryFrameTree().FocusOuterFrameTrees();
@@ -729,6 +722,38 @@ void SurfaceEmbedConnectorImpl::UpdateViewForCurrentRenderFrameHost() {
 
   if (view_ != child_view) {
     SetView(child_view, /*allow_paint_holding=*/false);
+  }
+}
+
+void SurfaceEmbedConnectorImpl::OnAttachedToParent() {
+  UpdateViewForCurrentRenderFrameHost();
+  if (parent_web_contents()) {
+    CHECK(embedder_rfh_);
+    parent_web_contents()->SurfaceEmbedChildWebContentsAttached(
+        child_web_contents_, embedder_rfh_.get());
+  }
+}
+
+void SurfaceEmbedConnectorImpl::OnDetachedFromParent() {
+  if (parent_web_contents()) {
+    parent_web_contents()->SurfaceEmbedChildWebContentsDetached(
+        child_web_contents_);
+  }
+}
+
+void SurfaceEmbedConnectorImpl::RequestFocusOnEmbedElement() {
+  // Walk up the embedding chain, requesting focus for each ancestor's
+  // <embed> element so that all levels show the correct active element.
+  delegate_->RequestFocusOnEmbedElement();
+  WebContentsImpl* parent = parent_web_contents();
+  while (parent) {
+    auto* parent_connector = static_cast<SurfaceEmbedConnectorImpl*>(
+        parent->GetSurfaceEmbedConnector());
+    if (!parent_connector) {
+      break;
+    }
+    parent_connector->GetDelegate()->RequestFocusOnEmbedElement();
+    parent = parent_connector->parent_web_contents();
   }
 }
 

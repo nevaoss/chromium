@@ -195,7 +195,7 @@ BASE_FEATURE(kHideAimEntrypointForUrlSuggestions, DISABLED);
 BASE_FEATURE(kOmniboxMultimodalInput, DISABLED);
 
 // An additional gate to the behavior of OmniboxMultimodalInput on desktop.
-BASE_FEATURE(kAndroidDesktopAimGate, DISABLED);
+BASE_FEATURE(kAndroidDesktopAimGate, ENABLED);
 
 // Enables the AIM entrypoint for third party search engines.
 BASE_FEATURE(kAim3pEntrypoint, DISABLED);
@@ -225,7 +225,7 @@ BASE_FEATURE(kOmniboxWebUIDetachWebContentsOnHide, ENABLED);
 
 // When enabled, the Omnibox WebUI popup will mark its web contents as hidden
 // when hidden, to unlock frames from compositor cache.
-BASE_FEATURE(kOmniboxWebUIPopupMarkAsHidden, DISABLED);
+BASE_FEATURE(kOmniboxWebUIPopupMarkAsHidden, ENABLED);
 
 // When enabled, the WebUI searchbox will bypass OmniboxController and
 // OmniboxEditModel.
@@ -498,9 +498,6 @@ BASE_FEATURE(kServeJavaCachedZeroSuggest, ENABLED);
 // of the Omnibox suggestion list to the top during any re-layout.
 BASE_FEATURE(kResetSuggestionsScroll, DISABLED);
 
-// If enabled, the UrlBar context menu will use ListMenu instead of MenuItem.
-BASE_FEATURE(kOmniboxListMenuContextMenu, ENABLED);
-
 namespace android {
 static int64_t JNI_OmniboxFeatureMap_GetNativeMap(JNIEnv* env) {
   static const base::Feature* const kFeaturesExposedToJava[] = {
@@ -525,7 +522,6 @@ static int64_t JNI_OmniboxFeatureMap_GetNativeMap(JNIEnv* env) {
       &kServeJavaCachedZeroSuggest,
       &kAIMSuppressVerbatimMatch,
       &kResetSuggestionsScroll,
-      &kOmniboxListMenuContextMenu,
       &kExactMatchFavicons,
       &kStarterPackExpansion,
       &kOmniboxSearchPrefetchOnEnterKeyDown,
@@ -587,6 +583,12 @@ const base::FeatureParam<bool> kAskGSwapIcon{
     &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGSwapIcon", false};
 const base::FeatureParam<bool> kAskGCurrentTabChip{
     &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGCurrentTabChip", false};
+const base::FeatureParam<bool> kAskGLensIcon{
+    &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGLensIcon", false};
+const base::FeatureParam<bool> kAskGLensSearchHintText{
+    &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGLensSearchHintText", false};
+const base::FeatureParam<bool> kAskGComposeboxLensChip{
+    &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGComposeboxLensChip", false};
 // Note: no new flags beyond this point.
 
 namespace flag_descriptions {

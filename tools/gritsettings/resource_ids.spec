@@ -481,9 +481,13 @@
     "META": {"sizes": {"includes": [10]}},
     "includes": [3769],
   },
+  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/contextual_tasks/extension/resources.grd": {
+    "META": {"sizes": {"includes": [10]}},
+    "includes": [3770],
+  },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/contextual_tasks/resources.grd": {
     "META": {"sizes": {"includes": [100]}},
-    "includes": [3770],
+    "includes": [3771],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/data_sharing/resources.grd": {
    "META": {"sizes": {"includes": [20]}},
@@ -700,10 +704,6 @@
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/pdf/resources.grd": {
     "META": {"sizes": {"includes": [200]}},
     "includes": [4540],
-  },
-  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/personal_context_notice/resources.grd": {
-    "META": {"sizes": {"includes": [10]}},
-    "includes": [4550],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/personal_context_internals/resources.grd": {
     "META": {"sizes": {"includes": [10]}},
@@ -1300,9 +1300,11 @@
   # share the same id because they define the same strings, but only one of them
   # is built depending on whether src_internal is available.
   "components/plus_addresses/core/browser/resources/internal/strings/plus_addresses_internal_strings.grd": {
+    "META": {"sizes": {"messages": [130]}},
     "messages": [7160],
   },
   "components/plus_addresses/core/browser/resources/strings/plus_addresses_strings.grd": {
+    "META": {"sizes": {"messages": [130]}},
     "messages": [7160],
   },
   # components/policy/resources/policy_templates.grd and

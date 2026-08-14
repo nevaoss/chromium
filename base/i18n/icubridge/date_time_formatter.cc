@@ -14,6 +14,7 @@
 #include "base/i18n/icubridge/icu_bridge.h"
 #include "base/i18n/icubridge/icu_bridge_helpers.h"
 #include "base/i18n/language_tag.h"
+#include "base/i18n/tag_converters.h"
 #include "base/logging.h"
 #include "base/notreached.h"
 #include "base/numerics/safe_conversions.h"
@@ -32,13 +33,13 @@ namespace base::i18n {
 namespace {
 
 // DateTime Formatting Helpers
-UDate ToUDate(const base::Time& time) {
+UDate ToUDate(base::Time time) {
   return time.InMillisecondsFSinceUnixEpoch();
 }
 
 std::u16string DateTimeFormat(
     const icu::DateFormat& formatter,
-    const base::Time& time,
+    base::Time time,
     std::optional<base::AmPmClockType> am_pm_type = std::nullopt) {
   icu::UnicodeString date_string;
 
@@ -498,7 +499,7 @@ icu::Locale GetLocaleWithHourClockType(
   return locale;
 }
 
-std::u16string FormatWithLocale(const base::Time& time,
+std::u16string FormatWithLocale(base::Time time,
                                 const DateTimeFormatterOptions& options,
                                 const icu::Locale& locale_arg) {
   icu::Locale locale =
@@ -523,19 +524,18 @@ std::u16string FormatWithLocale(const base::Time& time,
 
 // DateTime Formatting
 std::u16string IcuBridge::DateTimeFormatter::Format(
-    const base::Time& time,
+    base::Time time,
     const DateTimeFormatterOptions& options) const {
   return FormatWithLocale(time, options, icu::Locale::getDefault());
 }
 
 std::u16string IcuBridge::DateTimeFormatter::Format(
-    const base::Time& time,
+    base::Time time,
     const LanguageTag& locale,
     const DateTimeFormatterOptions& options) const {
-  UErrorCode status = U_ZERO_ERROR;
-  icu::Locale icu_locale = icu::Locale::forLanguageTag(
-      std::string(locale.tag_string()).c_str(), status);
-  if (U_FAILURE(status) || icu_locale.isBogus()) {
+  icu::Locale icu_locale =
+      IcuLocaleConverter::GetInstance().FromLanguageTag(locale);
+  if (icu_locale.isBogus()) {
     icu_locale = icu::Locale::getDefault();
   }
   return FormatWithLocale(time, options, icu_locale);

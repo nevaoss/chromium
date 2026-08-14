@@ -473,8 +473,6 @@ test("components_unittests") {
       "//components/autofill/content/browser:unit_tests",
       "//components/autofill/core/common/mojom:unit_tests",
       "//components/browsing_data/content:unit_tests",
-      "//components/browsing_topics:unit_tests",
-      "//components/browsing_topics/common:unit_tests",
       "//components/captive_portal/content:unit_tests",
       "//components/capture_mode:unit_tests",
       "//components/cast_receiver:unit_tests",
@@ -528,8 +526,6 @@ test("components_unittests") {
       "//components/origin_matcher:unit_tests",
       "//components/origin_trials:unit_tests",
       "//components/page_content_annotations/core:unit_tests",
-      "//components/page_image_annotation/content/renderer:unit_tests",
-      "//components/page_image_annotation/core:unit_tests",
       "//components/page_load_metrics/browser:unit_tests",
       "//components/page_load_metrics/browser/observers/ad_metrics:unit_tests",
       "//components/page_load_metrics/common:unit_tests",
@@ -1393,6 +1389,7 @@ if (use_blink) {
   test("components_perftests") {
     sources = [
       "autofill/core/browser/ml_model/field_classification_model_executor_perftest.cc",
+      "cbor/cbor_perftest.cc",
       "discardable_memory/common/discardable_shared_memory_heap_perftest.cc",
       "omnibox/browser/history_quick_provider_performance_unittest.cc",
       "subresource_filter/core/common/perftests/indexed_ruleset_perftest.cc",
@@ -1405,6 +1402,8 @@ if (use_blink) {
       "//components/autofill/content/browser",
       "//components/autofill/core/common:test_support",
       "//components/bookmarks/test",
+      "//components/cbor",
+      "//components/cbor:buildflags",
       "//components/discardable_memory/common",
       "//components/history/core/test",
       "//components/omnibox/browser",
@@ -1414,6 +1413,7 @@ if (use_blink) {
       "//components/subresource_filter/tools:tools_lib",
       "//components/test:test_support",
       "//components/visitedlink/browser",
+      "//components/web_package",
       "//testing/perf",
       "//third_party/google_benchmark",
       "//url",
@@ -1431,6 +1431,7 @@ if (use_blink) {
       "//components/subresource_filter/core/common/perftests/data/",
       "//third_party/subresource-filter-ruleset/data/",
       "test/data/autofill/",
+      "test/data/web_package/",
     ]
 
     if (is_android) {

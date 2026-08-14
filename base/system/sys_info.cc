@@ -136,6 +136,9 @@ BucketizedSize GetSystemRamBucketizedSize() {
 }
 
 BucketizedSize GetCachedSystemRamBucketizedSize() {
+  if (g_amount_of_physical_memory_for_testing) {
+    return GetSystemRamBucketizedSize();
+  }
   static BucketizedSize s_size = GetSystemRamBucketizedSize();
   return s_size;
 }
@@ -234,6 +237,9 @@ bool DetectLowEndDevice() {
 
 // static
 bool SysInfo::IsLowEndDeviceImpl() {
+  if (g_amount_of_physical_memory_for_testing) {
+    return DetectLowEndDevice();
+  }
   static internal::LazySysInfoValue<bool, DetectLowEndDevice> instance;
   return instance.value();
 }

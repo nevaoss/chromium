@@ -105,6 +105,10 @@ source_set("settings") {
         [ "//ui/webui/resources/js/batch_upload_promo:mojo_bindings" ]
   }
 
+  if (enable_dice_support) {
+    public_deps += [ "//ui/webui/resources/cr_components/signin:mojo_bindings" ]
+  }
+
   if (is_win || is_mac || is_linux) {
     sources += [
       "settings_default_browser_handler.h",
@@ -392,6 +396,10 @@ source_set("impl") {
       "//ui/chromeos",
     ]
   }
+
+  if (enable_dice_support) {
+    deps += [ "//chrome/browser/ui/webui/cr_components/signin" ]
+  }
 }
 
 source_set("test_support") {
@@ -431,6 +439,7 @@ source_set("browser_tests") {
     "//chrome/browser/profiles:profile",
     "//chrome/browser/profiles/batch_upload",
     "//chrome/browser/signin",
+    "//chrome/browser/signin:signin_browser_test_base",
     "//chrome/browser/sync",
     "//chrome/browser/ui",
     "//chrome/browser/ui:chrome_pages",

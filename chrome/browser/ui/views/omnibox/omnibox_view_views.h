@@ -237,12 +237,6 @@ class OmniboxViewViews
                            NavigationToAndFromContextualTasks);
   FRIEND_TEST_ALL_PREFIXES(OmniboxViewViewsPlaceholderTest,
                            TitleChangeUpdatesPlaceholder);
-  FRIEND_TEST_ALL_PREFIXES(OmniboxViewViewsSendTabToSelfSubmenuEnabledTest,
-                           SendTabToSelfContextMenuSubmenuEnabled);
-  FRIEND_TEST_ALL_PREFIXES(OmniboxViewViewsSendTabToSelfSubmenuDisabledTest,
-                           SendTabToSelfContextMenuSubmenuDisabled);
-  FRIEND_TEST_ALL_PREFIXES(OmniboxViewViewsSendTabToSelfSubmenuEnabledTest,
-                           SendTabToSelfContextMenuNotOffered);
 
   enum class UnelisionGesture {
     kHomeKeyPressed,
@@ -404,10 +398,6 @@ class OmniboxViewViews
   // Returns the AI Mode page action icon view, if present, or nullptr if the
   // view doesn't exist.
   IconLabelBubbleView* GetAiModePageActionIconView() const;
-
-  // Helper for updating the text in the Omnibox based on current focus state
-  // and whether the user is currently on a "contextual tasks" page.
-  void UpdateTextForContextualTasksPage();
 
   // When true, the location bar view is read only and also is has a slightly
   // different presentation (smaller font size). This is used for popups.

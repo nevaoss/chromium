@@ -13,6 +13,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -165,6 +166,9 @@ public final class StatusMediatorUnitTest {
         doReturn(mNewTabPageDelegate).when(mLocationBarDataProvider).getNewTabPageDelegate();
         doReturn(mAutocompleteInput).when(mFuseboxSessionState).getAutocompleteInput();
         doReturn(mPreviewMatchUrlSupplier).when(mAutocompleteInput).getPreviewMatchUrlSupplier();
+        doAnswer(invocation -> mPreviewMatchUrlSupplier.get())
+                .when(mAutocompleteInput)
+                .getPreviewMatchUrl();
         doReturn(mRequestTypeSupplier).when(mAutocompleteInput).getRequestTypeSupplier();
 
         mContext =
@@ -608,16 +612,57 @@ public final class StatusMediatorUnitTest {
 
         mMediator.setShowStatusIconForSecureOrigins(false);
         assertFalse(mModel.get(StatusProperties.SHOW_STATUS_VIEW));
+        assertNull(mModel.get(StatusProperties.STATUS_ICON_RESOURCE));
 
         mMediator.updateSecurityIcon(R.drawable.ic_logo_googleg_20dp, 0, 0);
         mMediator.updateVerboseStatus(ConnectionSecurityLevel.WARNING, false, false);
         assertTrue(mModel.get(StatusProperties.SHOW_STATUS_VIEW));
+        assertNotNull(mModel.get(StatusProperties.STATUS_ICON_RESOURCE));
+        assertEquals(
+                R.drawable.ic_logo_googleg_20dp,
+                mModel.get(StatusProperties.STATUS_ICON_RESOURCE).getIconRes());
 
         mMediator.updateVerboseStatus(ConnectionSecurityLevel.SECURE, false, false);
         assertFalse(mModel.get(StatusProperties.SHOW_STATUS_VIEW));
+        assertNull(mModel.get(StatusProperties.STATUS_ICON_RESOURCE));
 
         mMediator.setShowStatusIconForSecureOrigins(true);
         assertTrue(mModel.get(StatusProperties.SHOW_STATUS_VIEW));
+        assertNotNull(mModel.get(StatusProperties.STATUS_ICON_RESOURCE));
+        assertEquals(
+                R.drawable.ic_logo_googleg_20dp,
+                mModel.get(StatusProperties.STATUS_ICON_RESOURCE).getIconRes());
+    }
+
+    @Test
+    @SmallTest
+    @DisableFeatures({ChromeFeatureList.ANDROID_PAGE_INFO_AS_APP_MENU_ITEM})
+    public void testShowStatusIconForSecureOrigins_restoresIconResourceAfterNavigation() {
+        mMediator.updateSecurityIcon(R.drawable.ic_logo_googleg_20dp, 0, 0);
+        mMediator.updateVerboseStatus(ConnectionSecurityLevel.SECURE, false, false);
+        assertTrue(mModel.get(StatusProperties.SHOW_STATUS_VIEW));
+        assertNotNull(mModel.get(StatusProperties.STATUS_ICON_RESOURCE));
+        assertEquals(
+                R.drawable.ic_logo_googleg_20dp,
+                mModel.get(StatusProperties.STATUS_ICON_RESOURCE).getIconRes());
+
+        // Simulate Mini Origin Bar hiding status icon for secure origins.
+        mMediator.setShowStatusIconForSecureOrigins(false);
+        assertFalse(mModel.get(StatusProperties.SHOW_STATUS_VIEW));
+        assertNull(mModel.get(StatusProperties.STATUS_ICON_RESOURCE));
+
+        // Simulate a navigation or URL update occurring while secure origin icon is hidden.
+        mMediator.updateLocationBarIcon(IconTransitionType.CROSSFADE);
+        assertFalse(mModel.get(StatusProperties.SHOW_STATUS_VIEW));
+        assertNull(mModel.get(StatusProperties.STATUS_ICON_RESOURCE));
+
+        // Simulate Mini Origin Bar closing and restoring status icon for secure origins.
+        mMediator.setShowStatusIconForSecureOrigins(true);
+        assertTrue(mModel.get(StatusProperties.SHOW_STATUS_VIEW));
+        assertNotNull(mModel.get(StatusProperties.STATUS_ICON_RESOURCE));
+        assertEquals(
+                R.drawable.ic_logo_googleg_20dp,
+                mModel.get(StatusProperties.STATUS_ICON_RESOURCE).getIconRes());
     }
 
     @Test

@@ -23,8 +23,6 @@ import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
 import org.chromium.base.test.BaseRobolectricTestRunner;
-import org.chromium.base.test.util.Features.EnableFeatures;
-import org.chromium.components.omnibox.OmniboxFeatureList;
 import org.chromium.ui.base.TestActivity;
 import org.chromium.ui.listmenu.ListMenuItemProperties;
 import org.chromium.ui.modelutil.MVCListAdapter.ListItem;
@@ -32,7 +30,6 @@ import org.chromium.ui.modelutil.PropertyModel;
 
 /** Unit tests for {@link UrlBarContextMenuHelper}. */
 @RunWith(BaseRobolectricTestRunner.class)
-@EnableFeatures(OmniboxFeatureList.OMNIBOX_LIST_MENU_CONTEXT_MENU)
 public class UrlBarContextMenuHelperUnitTest {
     @Rule
     public ActivityScenarioRule<TestActivity> mActivityScenarioRule =
@@ -86,11 +83,8 @@ public class UrlBarContextMenuHelperUnitTest {
 
     @Test
     public void testMenuItemClick_manageSearchEngines() {
-        int[] called = {0};
-        Runnable callback = () -> called[0]++;
-        doReturn(callback).when(mDelegate).getManageSearchEnginesCallback();
         mHelper.onMenuItemClicked(R.id.url_bar_manage_search_engines);
-        assertEquals(1, called[0]);
+        verify(mDelegate).onTextContextMenuItem(R.id.url_bar_manage_search_engines);
     }
 
     @Test

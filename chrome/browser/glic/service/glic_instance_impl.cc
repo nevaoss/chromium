@@ -40,6 +40,7 @@
 #include "chrome/browser/glic/host/webui_contents_container.h"
 #include "chrome/browser/glic/public/context/glic_sharing_manager.h"
 #include "chrome/browser/glic/public/features.h"
+#include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/glic/public/glic_keyed_service.h"
 #include "chrome/browser/glic/public/glic_keyed_service_factory.h"
 #include "chrome/browser/glic/public/glic_side_panel_coordinator.h"
@@ -387,6 +388,18 @@ bool GlicInstanceImpl::IsShowing() const {
     }
   }
   return false;
+}
+
+bool GlicInstanceImpl::IsFullyClosedForTesting() const {
+  if (HasActiveEmbedder()) {
+    return false;
+  }
+  for (const auto& [key, entry] : embedders_) {
+    if (entry.embedder && entry.embedder->IsShowingOrBackgrounded()) {
+      return false;
+    }
+  }
+  return true;
 }
 
 bool GlicInstanceImpl::HasActiveEmbedder() const {
@@ -1409,7 +1422,11 @@ void GlicInstanceImpl::OnBoundTabActivated(tabs::TabInterface* tab) {
 
 void GlicInstanceImpl::OnBoundTabActivatedAsync(
     base::WeakPtr<tabs::TabInterface> tab) {
-  if (!tab) {
+  // It is possible for the tab to be deactivated between the time this async
+  // task is posted and when it runs (e.g., during rapid tab switching). If the
+  // tab is no longer active, we should abort to avoid erroneously showing the
+  // side panel on a background tab.
+  if (!tab || !tab->IsActivated()) {
     return;
   }
   auto* embedder = GetEmbedderForTab(tab.get());
@@ -1609,7 +1626,7 @@ GlicInstanceImpl::EmbedderEntry& GlicInstanceImpl::BindTab(
   return new_entry;
 }
 
-void GlicInstanceImpl::ShowGlicTabInGroup(tab_groups::TabGroupId group_id) {
+void GlicInstanceImpl::ShowForTabGroup(tab_groups::TabGroupId group_id) {
   tab_group_id_ = group_id;
 
   BrowserWindowInterface* window = FindBrowserWithTabGroup(profile_, group_id);
@@ -1630,6 +1647,14 @@ void GlicInstanceImpl::ShowGlicTabInGroup(tab_groups::TabGroupId group_id) {
   for (tabs::TabInterface* tab : group_tabs) {
     BindTabWithoutShowing(tab, GlicPinTrigger::kTabGroupIntegration,
                           /*pin_on_bind=*/true);
+  }
+
+  if (!features::kGlicTabGroupsUseFullTabEmbedder.Get()) {
+    for (tabs::TabInterface* tab : group_tabs) {
+      Show(ShowOptions::ForSidePanel(*tab, GlicPinTrigger::kTabGroupIntegration,
+                                     mojom::InvocationSource::kUnsupported));
+    }
+    return;
   }
 
   EnsureHostContentsCreated();
@@ -1815,6 +1840,10 @@ void GlicInstanceImpl::MaybeRemoveBlankInstanceOnClose() {
   }
   // If the conversation id is set, then the instance isn't blank.
   if (conversation_id().has_value()) {
+    return;
+  }
+  // If an invocation is active, do not remove the instance.
+  if (IsInvoking()) {
     return;
   }
   // If the user has submitted input, the instance is not blank.

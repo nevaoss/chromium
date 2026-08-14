@@ -635,6 +635,13 @@ BASE_FEATURE_PARAM(bool,
                    &kReduceMojoURLLoaderFactoryCloning,
                    false);
 
+// Controls whether lazy URLLoaderFactory cloning is used for subresource
+// proxying factory bundle during navigation commit.
+BASE_FEATURE_PARAM(bool,
+                   kUseLazyURLLoaderFactoryForSubresourceProxying,
+                   &kReduceMojoURLLoaderFactoryCloning,
+                   false);
+
 // Causes hidden tabs with crashed subframes to be marked for reload, meaning
 // that if a user later switches to that tab, the current page will be
 // reloaded.  This will hide crashed subframes from the user at the cost of
@@ -798,7 +805,7 @@ BASE_FEATURE(kSharedWorkerSecureContextDerivationFromBrowser,
 // Storage Access API) will correctly restrict SameSite cookies on WebSocket
 // connections.
 BASE_FEATURE(kRestrictSharedWorkerWebSocketCrossSiteCookies,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables skipping the early call to CommitPending when navigating away from a
 // crashed frame.

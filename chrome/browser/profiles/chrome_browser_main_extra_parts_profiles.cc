@@ -384,6 +384,7 @@
 #include "chrome/browser/new_tab_page/chrome_colors/chrome_colors_factory.h"
 #include "chrome/browser/password_manager/factories/bulk_leak_check_service_factory.h"
 #include "chrome/browser/password_manager/factories/password_counter_factory.h"
+#include "chrome/browser/password_manager/remote_actor/remote_actor_credential_sharing_service_factory.h"
 #include "chrome/browser/payments/payment_request_display_manager_factory.h"
 #include "chrome/browser/picture_in_picture/hats/auto_picture_in_picture_hats_service_factory.h"
 #include "chrome/browser/prefs/persistent_renderer_prefs_manager_factory.h"
@@ -575,12 +576,14 @@
 #endif  // BUILDFLAG(ENABLE_EXTENSIONS)
 
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+#include "chrome/browser/contextual_tasks/contextual_tasks_extension_bridge_factory.h"
 #include "chrome/browser/extensions/keyed_services/browser_context_keyed_service_factories.h"
 #include "chrome/browser/omnibox/omnibox_input_watcher_factory.h"
 #include "chrome/browser/omnibox/omnibox_suggestions_watcher_factory.h"
 #include "chrome/browser/policy/cloud/extension_install_policy_service_factory.h"
 #include "chrome/browser/speech/extension_api/tts_extension_api.h"
 #include "chrome/browser/ui/webui/omnibox/aim_eligibility_extension/aim_eligibility_extension_bridge_factory.h"
+#include "components/contextual_tasks/public/features.h"
 #include "extensions/browser/browser_context_keyed_service_factories.h"
 #include "extensions/browser/extensions_browser_client.h"
 #endif
@@ -1251,9 +1254,13 @@ void ChromeBrowserMainExtraPartsProfiles::
   OfflineItemModelManagerFactory::GetInstance();
 #endif
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+  AimEligibilityExtensionBridgeFactory::GetInstance();
+  if (base::FeatureList::IsEnabled(
+          contextual_tasks::kContextualTasksRearchitecture)) {
+    contextual_tasks::ContextualTasksExtensionBridgeFactory::GetInstance();
+  }
   OmniboxInputWatcherFactory::GetInstance();
   OmniboxSuggestionsWatcherFactory::GetInstance();
-  AimEligibilityExtensionBridgeFactory::GetInstance();
 #endif
   GeolocationHeaderServiceFactory::GetInstance();
 #if BUILDFLAG(ENABLE_ON_DEVICE_TRANSLATION)
@@ -1303,6 +1310,9 @@ void ChromeBrowserMainExtraPartsProfiles::
   PasswordReuseManagerFactory::GetInstance();
 #if !BUILDFLAG(IS_ANDROID)
   PasswordStatusCheckServiceFactory::GetInstance();
+  if (base::FeatureList::IsEnabled(features::kRemoteActorCredentialSharing)) {
+    password_manager::RemoteActorCredentialSharingServiceFactory::GetInstance();
+  }
 #endif
   payments::BrowserBoundKeyDeleterServiceFactory::GetInstance();
   payments::HasEnrolledInstrumentQueryFactory::GetInstance();

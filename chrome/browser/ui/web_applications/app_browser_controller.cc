@@ -428,14 +428,11 @@ bool AppBrowserController::HasTitlebarContentSettings() const {
 
 std::vector<actions::ActionId> AppBrowserController::GetTitleBarPageActions()
     const {
-  if (!base::FeatureList::IsEnabled(features::kPageActionsMigration)) {
-    return {};
-  }
 #if BUILDFLAG(IS_CHROMEOS)
   if (system_app()) {
     return {
         kActionFind,
-        kActionZoomNormal,
+        kActionShowZoomBubble,
     };
   }
 #endif  // BUILDFLAG(IS_CHROMEOS)
@@ -444,7 +441,7 @@ std::vector<actions::ActionId> AppBrowserController::GetTitleBarPageActions()
       kActionFind,
       kActionShowPasswordsBubbleOrPage,
       kActionShowTranslate,
-      kActionZoomNormal,
+      kActionShowZoomBubble,
       kActionShowFileSystemAccess,
       kActionShowCookieControls,
       kActionShowAddressesBubbleOrPage,
@@ -885,7 +882,8 @@ void AppBrowserController::OnReceivedInitialURL() {
 
   // Browsers of picture in picture type already take care of setting the proper
   // window bounds.
-  if (browser()->is_type_picture_in_picture()) {
+  if (browser()->GetType() ==
+      BrowserWindowInterface::Type::TYPE_PICTURE_IN_PICTURE) {
     return;
   }
 

@@ -58,6 +58,7 @@
 #include "chrome/browser/after_startup_task_utils.h"
 #include "chrome/browser/ai/ai_manager.h"
 #include "chrome/browser/app_mode/app_mode_utils.h"
+#include "chrome/browser/bad_message.h"
 #include "chrome/browser/battery/battery_saver.h"
 #include "chrome/browser/bluetooth/chrome_bluetooth_delegate.h"
 #include "chrome/browser/bluetooth/chrome_bluetooth_delegate_impl_client.h"
@@ -533,6 +534,7 @@
 #include "chrome/browser/safe_browsing/android/safe_browsing_referring_app_bridge_android.h"
 #include "chrome/browser/ui/android/tab_model/tab_model.h"
 #include "chrome/browser/ui/android/tab_model/tab_model_list.h"
+#include "chrome/browser/webid/android_native_idp_fetcher.h"
 #include "chrome/common/chrome_descriptors_android.h"
 #include "components/browser_ui/accessibility/android/font_size_prefs_android.h"
 #include "components/crash/content/browser/child_exit_observer_android.h"
@@ -553,6 +555,8 @@
 #include "chrome/browser/direct_sockets/chrome_direct_sockets_delegate.h"
 #include "chrome/browser/glic/host/guest_util.h"
 #include "chrome/browser/indigo/onboarding/indigo_onboarding_dialog.h"
+#include "chrome/browser/loader/features.h"
+#include "chrome/browser/loader/fetch_keepalive_process_manager.h"
 #include "chrome/browser/metrics/usage_scenario/chrome_responsiveness_calculator_delegate.h"
 #include "chrome/browser/new_tab_page/new_tab_page_util.h"
 #include "chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.h"
@@ -2820,7 +2824,7 @@ bool ChromeContentBrowserClient::IsMultiCaptureAllowed(
              WebContents::FromRenderFrameHost(render_frame_host)
                  ->GetBrowserContext())
       ->IsMultiCaptureAllowed(
-          render_frame_host->GetMainFrame()->GetLastCommittedOrigin().GetURL());
+          render_frame_host->GetLastCommittedOrigin().GetURL());
 #else
   return false;
 #endif  // BUILDFLAG(IS_CHROMEOS)
@@ -7240,18 +7244,23 @@ bool ChromeContentBrowserClient::HandleExternalProtocol(
   // origin as a secure fallback when the initiator is missing.
   if (std::optional<GURL> new_url =
           startup::ExtractGoogleChromeSchemeInnerUrl(url)) {
+    // Direct launch scheme navigations originating from Chrome's own renderers
+    // are blocked in Blink (see TODO(deepakr) in FrameLoader). Receiving an
+    // un-blocked direct launch scheme from a renderer document indicates a
+    // compromised renderer.
+    if (initiator_document) {
+      bad_message::ReceivedBadMessage(initiator_document->GetProcess(),
+                                      bad_message::CCBC_GOOGLE_CHROME_SCHEME);
+      return false;
+    }
+
     if (startup::ValidateLaunchUrlWebSafe(*new_url)) {
       auto* web_contents = web_contents_getter.Run();
       if (web_contents) {
-        // Treat this navigation as renderer-initiated to ensure downstream
-        // components apply all standard renderer-initiated security
+        // Treat OS-initiated direct launch navigations as renderer-initiated
+        // to ensure downstream components apply standard security
         // restrictions (such as blocking navigations to privileged chrome://
         // pages).
-        //
-        // TODO(crbug.com/513728023): Block this scheme when coming from
-        // Chrome's own renderers, since this should only be allowed from
-        // external renderers. Blink should drop the scheme before it gets to
-        // the browser.
         content::OpenURLParams params(
             *new_url,
             content::Referrer(web_contents->GetLastCommittedURL(),
@@ -7381,9 +7390,7 @@ bool ChromeContentBrowserClient::HandleWebUI(
   // Rewrite chrome://settings/addresses to chrome://settings/contactInfo.
   if (url->SchemeIs(content::kChromeUIScheme) &&
       url->host() == chrome::kChromeUISettingsHost &&
-      (url->path() == chrome::kChromeUIAddressesPath) &&
-      base::FeatureList::IsEnabled(
-          autofill::features::kYourSavedInfoSettingsPage)) {
+      (url->path() == chrome::kChromeUIAddressesPath)) {
     GURL::Replacements replacements;
     replacements.SetPathStr(chrome::kChromeUIContactInfoPath);
     *url = url->ReplaceComponents(replacements);
@@ -8319,6 +8326,33 @@ void ChromeContentBrowserClient::OnKeepaliveRequestFinished() {
 #endif  // !BUILDFLAG(IS_ANDROID)
 }
 
+void ChromeContentBrowserClient::OnFetchKeepAliveRequestCreated(
+    content::BrowserContext& browser_context) {
+#if !BUILDFLAG(IS_ANDROID)
+  if (!base::FeatureList::IsEnabled(features::kKeepAliveBrowserProcessAlive)) {
+    return;
+  }
+  if (!fetch_keepalive_process_manager_) {
+    fetch_keepalive_process_manager_ =
+        std::make_unique<FetchKeepAliveProcessManager>();
+  }
+  fetch_keepalive_process_manager_->OnRequestCreated(
+      *Profile::FromBrowserContext(&browser_context));
+#endif  // !BUILDFLAG(IS_ANDROID)
+}
+
+void ChromeContentBrowserClient::OnFetchKeepAliveRequestDestroyed(
+    content::BrowserContext& browser_context) {
+#if !BUILDFLAG(IS_ANDROID)
+  if (!base::FeatureList::IsEnabled(features::kKeepAliveBrowserProcessAlive)) {
+    return;
+  }
+  CHECK(fetch_keepalive_process_manager_);
+  fetch_keepalive_process_manager_->OnRequestDestroyed(
+      *Profile::FromBrowserContext(&browser_context));
+#endif  // !BUILDFLAG(IS_ANDROID)
+}
+
 #if BUILDFLAG(IS_MAC)
 bool ChromeContentBrowserClient::SetupEmbedderSandboxParameters(
     sandbox::mojom::Sandbox sandbox_type,
@@ -8413,6 +8447,14 @@ ChromeContentBrowserClient::CreateDigitalIdentityProvider() {
   return std::make_unique<DigitalIdentityProviderDesktop>();
 #endif
 }
+
+#if BUILDFLAG(IS_ANDROID)
+std::unique_ptr<content::NativeIdpFetcher>
+ChromeContentBrowserClient::CreateNativeIdpFetcher(
+    const url::Origin& idp_origin) {
+  return std::make_unique<chrome::AndroidNativeIdpFetcher>(idp_origin);
+}
+#endif
 
 bool ChromeContentBrowserClient::SuppressDifferentOriginSubframeJSDialogs(
     content::BrowserContext* browser_context) {

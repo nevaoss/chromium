@@ -30,6 +30,9 @@ extern const char kClearTokenService[];
 
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
+extern const char kDisableSigninPromoOnAvatarPillForTesting[];
+
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
 extern const char kForceFreDefaultBrowserStep[];
 
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
@@ -283,11 +286,19 @@ BASE_DECLARE_FEATURE(kDontIncludeSIDUnsecureCookiesInGaiaAuthFetcher);
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kEnableAccountPreviewData);
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
+extern const base::FeatureParam<base::TimeDelta>
+    kAccountPreviewDataPeriodicRefreshTiming;
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kEnableAccountPreviewEntityPreviews);
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kEnableAccountPreviewPreferredAccount);
 
 #if BUILDFLAG(IS_ANDROID)
+// Enables the use of 1P app account information on Android in preferred account
+// computation.
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE(kEnableAccountPreviewUseAppAccount);
+
 // Whether activityless sign-in should be used for all entry points.
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kEnableActivitylessSigninAllEntryPoint);

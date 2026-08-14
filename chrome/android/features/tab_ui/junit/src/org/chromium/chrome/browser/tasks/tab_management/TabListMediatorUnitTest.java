@@ -118,6 +118,7 @@ import org.chromium.chrome.browser.actor.ui.ActorUiTabController.HandoffButtonSt
 import org.chromium.chrome.browser.actor.ui.ActorUiTabController.UiTabState;
 import org.chromium.chrome.browser.actor.ui.TabIndicatorStatus;
 import org.chromium.chrome.browser.collaboration.CollaborationServiceFactory;
+import org.chromium.chrome.browser.compositor.overlays.strip.StripTabUnderlineManager;
 import org.chromium.chrome.browser.data_sharing.DataSharingServiceFactory;
 import org.chromium.chrome.browser.data_sharing.DataSharingTabManager;
 import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
@@ -6023,6 +6024,50 @@ public class TabListMediatorUnitTest {
                 TabIndicatorStatus.DYNAMIC, model.get(TabProperties.ACTOR_UI_STATE).tabIndicator);
     }
 
+    @Test
+    public void testGlicIndicatorManager_NullInGridMode() {
+        GlicEnabling.setEnabledForTesting(true);
+        setUpTabListMediator(TabListMediatorType.TAB_SWITCHER, TabListMode.GRID);
+        assertNull(mMediator.getOrInitGlicIndicatorManagerForTesting(mTab1));
+    }
+
+    @Test
+    public void testGlicIndicatorManager_NullInIncognito() {
+        GlicEnabling.setEnabledForTesting(true);
+        setUpTabListMediator(TabListMediatorType.TAB_SWITCHER, TabListMode.VERTICAL);
+        when(mTab1.isIncognito()).thenReturn(true);
+        assertNull(mMediator.getOrInitGlicIndicatorManagerForTesting(mTab1));
+    }
+
+    @Test
+    @DisableFeatures(ChromeFeatureList.CONTEXTUAL_TASKS)
+    public void testGlicIndicatorManager_NullWhenFlagsDisabled() {
+        GlicEnabling.setEnabledForTesting(false);
+        setUpTabListMediator(TabListMediatorType.TAB_SWITCHER, TabListMode.VERTICAL);
+        when(mTab1.isIncognito()).thenReturn(false);
+        assertNull(mMediator.getOrInitGlicIndicatorManagerForTesting(mTab1));
+    }
+
+    @Test
+    public void testGlicObserver_UpdatesModel() {
+        setUpTabListMediator(TabListMediatorType.TAB_SWITCHER, TabListMode.VERTICAL);
+        initAndAssertAllProperties();
+
+        StripTabUnderlineManager.Observer observer = mMediator.getGlicObserverForTesting();
+        assertNotNull(observer);
+
+        assertFalse(mModelList.get(0).model.get(TabProperties.IS_GLIC_ACTIVE));
+
+        observer.onIndicatorStateChanged(TAB1_ID, true);
+        assertTrue(mModelList.get(0).model.get(TabProperties.IS_GLIC_ACTIVE));
+
+        observer.onIndicatorStateChanged(TAB1_ID, false);
+        assertFalse(mModelList.get(0).model.get(TabProperties.IS_GLIC_ACTIVE));
+
+        // Ensure no NPE occurs when an invalid or unknown tab ID is updated.
+        observer.onIndicatorStateChanged(Tab.INVALID_TAB_ID, true);
+    }
+
     private void setUpTabGroupCardDescriptionString() {
         doAnswer(
                         invocation -> {
@@ -6144,6 +6189,36 @@ public class TabListMediatorUnitTest {
                 .onPropertyChanged(eq(model), eq(TabProperties.SHOW_THUMBNAIL_SPINNER));
         assertFalse(model.get(TabProperties.SHOW_THUMBNAIL_SPINNER));
         verify(mPropertyObserver).onPropertyChanged(eq(model), eq(TabProperties.THUMBNAIL_FETCHER));
+    }
+
+    @Test
+    public void testSetThumbnailSpinnerVisibility_TabInGroup() {
+        setUpTabListMediator(TabListMediatorType.TAB_GRID_DIALOG, TabListMode.GRID);
+        initAndAssertAllProperties();
+
+        createTabGroup(List.of(mTab1), TAB_GROUP_ID);
+
+        PropertyModel model = mModelList.get(0).model;
+        model.addObserver(mPropertyObserver);
+
+        mMediator.setThumbnailSpinnerVisibility(mTab1, true);
+        verify(mPropertyObserver)
+                .onPropertyChanged(eq(model), eq(TabProperties.SHOW_THUMBNAIL_SPINNER));
+        assertTrue(model.get(TabProperties.SHOW_THUMBNAIL_SPINNER));
+
+        mMediator.setThumbnailSpinnerVisibility(mTab1, false);
+        verify(mPropertyObserver, times(2))
+                .onPropertyChanged(eq(model), eq(TabProperties.SHOW_THUMBNAIL_SPINNER));
+        assertFalse(model.get(TabProperties.SHOW_THUMBNAIL_SPINNER));
+        verify(mPropertyObserver).onPropertyChanged(eq(model), eq(TabProperties.THUMBNAIL_FETCHER));
+    }
+
+    @Test(expected = AssertionError.class)
+    public void testSetThumbnailSpinnerVisibility_NotFlatLayout_Asserts() {
+        setUpTabListMediator(TabListMediatorType.TAB_SWITCHER, TabListMode.GRID);
+        initAndAssertAllProperties();
+
+        mMediator.setThumbnailSpinnerVisibility(mTab1, true);
     }
 
     @Test

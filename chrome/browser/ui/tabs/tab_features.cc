@@ -120,6 +120,7 @@
 #endif
 
 #if BUILDFLAG(IS_WIN)
+#include "chrome/browser/metrics/oom/commit_limit_oom_recovery_tracker.h"
 #include "chrome/browser/ui/search_promotion/search_promotion_navigation_observer.h"
 #include "components/feature_engagement/public/feature_constants.h"
 #endif
@@ -222,8 +223,7 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
             *page_action_controller_);
   }
 
-  if (IsPageActionMigrated(PageActionIconType::kIntentPicker) &&
-      page_action_controller_->ActionExists(kActionShowIntentPicker)) {
+  if (page_action_controller_->ActionExists(kActionShowIntentPicker)) {
     intent_picker_view_page_action_controller_ =
         std::make_unique<IntentPickerViewPageActionController>(tab);
   }
@@ -233,7 +233,7 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
         std::make_unique<FileSystemAccessPageActionController>(tab);
   }
 
-  if (page_action_controller_->ActionExists(kActionZoomNormal)) {
+  if (page_action_controller_->ActionExists(kActionShowZoomBubble)) {
     zoom_view_controller_ = std::make_unique<zoom::ZoomViewController>(
         tab, *page_action_controller_);
   }
@@ -251,31 +251,27 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
                 tab, tab, *page_action_controller_);
   }
 
-  if (IsPageActionMigrated(PageActionIconType::kManagePasswords) &&
-      page_action_controller_->ActionExists(kActionShowPasswordsBubbleOrPage)) {
+  if (page_action_controller_->ActionExists(kActionShowPasswordsBubbleOrPage)) {
     manage_passwords_page_action_controller_ =
         std::make_unique<ManagePasswordsPageActionController>(
             *page_action_controller_);
   }
 
-  if (IsPageActionMigrated(PageActionIconType::kCookieControls) &&
-      page_action_controller_->ActionExists(kActionShowCookieControls)) {
+  if (page_action_controller_->ActionExists(kActionShowCookieControls)) {
     cookie_controls_page_action_controller_ =
         GetUserDataFactory().CreateInstance<CookieControlsPageActionController>(
             tab, tab, *profile, *page_action_controller_);
     cookie_controls_page_action_controller_->Init();
   }
 
-  if (IsPageActionMigrated(PageActionIconType::kLensOverlayHomework) &&
-      page_action_controller_->ActionExists(kActionLensOverlayHomework)) {
+  if (page_action_controller_->ActionExists(kActionLensOverlayHomework)) {
     lens_overlay_homework_page_action_controller_ =
         GetUserDataFactory()
             .CreateInstance<LensOverlayHomeworkPageActionController>(
                 tab, tab, *profile, *page_action_controller_);
   }
 
-  if (IsPageActionMigrated(PageActionIconType::kBookmarkStar) &&
-      tab.GetBrowserWindowInterface()->GetType() ==
+  if (tab.GetBrowserWindowInterface()->GetType() ==
           BrowserWindowInterface::TYPE_NORMAL &&
       page_action_controller_->ActionExists(kActionBookmarkThisTab)) {
     bookmark_page_action_controller_ =
@@ -332,7 +328,7 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
     }
 
     glic::ContextualCueingHelper::MaybeCreateForWebContents(tab.GetContents());
-    glic::GlicCueTabState::CreateForWebContents(tab.GetContents());
+    glic_cue_tab_state_ = std::make_unique<glic::GlicCueTabState>(tab);
 
     if (tab_groups::TabGroupSyncService* tab_group_sync_service =
             tab_groups::TabGroupSyncServiceFactory::GetForProfile(profile)) {
@@ -340,11 +336,6 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
           std::make_unique<tab_groups::SavedTabGroupWebContentsListener>(
               tab_group_sync_service, &tab);
 
-      if (features::IsTabGroupMenuMoreEntryPointsEnabled()) {
-        saved_tab_group_on_close_helper_ =
-            std::make_unique<tab_groups::SavedTabGroupOnCloseHelper>(
-                tab_group_sync_service, &tab);
-      }
     }
 
     if (tab_groups::SavedTabGroupUtils::SupportsSharedTabGroups()) {
@@ -496,8 +487,8 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
 
   // Create the HttpAuthCacheStatus to start observing resource load
   // completions.
-  HttpAuthCacheStatus::HttpAuthCacheStatus::CreateForWebContents(
-      tab.GetContents());
+  http_auth_cache_status_ =
+      std::make_unique<HttpAuthCacheStatus>(tab.GetContents());
 
   if (web_app::AreWebAppsEnabled(profile)) {
     web_app::WebAppTabHelper::Create(&tab, tab.GetContents());
@@ -512,7 +503,7 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
           favicon::ContentFaviconDriver::FromWebContents(tab.GetContents()));
 
   from_gws_navigation_and_keep_alive_request_observer_ =
-      FromGWSNavigationAndKeepAliveRequestObserver::MaybeCreateForWebContents(
+      FromGWSNavigationAndKeepAliveRequestObserver::MaybeCreate(
           tab.GetContents());
 
   resource_usage_helper_ =
@@ -556,6 +547,9 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
         GetUserDataFactory().CreateInstance<SearchPromotionNavigationObserver>(
             tab, tab);
   }
+  commit_limit_oom_recovery_tracker_ =
+      GetUserDataFactory().CreateInstance<CommitLimitOOMRecoveryTracker>(tab,
+                                                                         tab);
 #endif
 
   if (base::FeatureList::IsEnabled(net::features::kVerifyQWACs)) {

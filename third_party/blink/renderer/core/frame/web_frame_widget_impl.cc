@@ -201,6 +201,20 @@ namespace blink {
 
 namespace {
 
+Element* GetElementFromDOMNodeId(DOMNodeIdType target_dom_node_id) {
+  if (target_dom_node_id.is_null()) {
+    return nullptr;
+  }
+  Node* node = DOMNodeIds::NodeForId(target_dom_node_id.value());
+  if (!node) {
+    return nullptr;
+  }
+  if (Element* element = DynamicTo<Element>(node)) {
+    return element;
+  }
+  return node->parentElement();
+}
+
 // Used for IME operations which can accept a target node for composition. Focus
 // will temporarily be set to the target node for the operation, then restored.
 class TargetImeNodeFocusChangeScope {
@@ -208,17 +222,7 @@ class TargetImeNodeFocusChangeScope {
 
  public:
   explicit TargetImeNodeFocusChangeScope(DOMNodeIdType target_dom_node_id) {
-    if (target_dom_node_id.is_null()) {
-      return;
-    }
-    Node* node = DOMNodeIds::NodeForId(target_dom_node_id.value());
-    if (!node) {
-      return;
-    }
-    Element* element = DynamicTo<Element>(node);
-    if (!element) {
-      element = node->parentElement();
-    }
+    Element* element = GetElementFromDOMNodeId(target_dom_node_id);
     if (!element) {
       return;
     }
@@ -2061,7 +2065,7 @@ void WebFrameWidgetImpl::UpdateVisualProperties(
           active_element, DocumentUpdateReason::kJavaScript);
       gfx::Rect bounds;
       if (auto* layout_object = active_element->GetLayoutObject()) {
-        bounds = layout_object->AbsoluteBoundingBoxRect();
+        bounds = layout_object->AbsoluteBoundingBoxRectForUnboundedElement();
       }
       if (!bounds.IsEmpty()) {
         unbounded_surface_state_->host_->UpdateBounds(bounds);
@@ -2797,36 +2801,42 @@ WebFrameWidgetImpl::GetOrCreateUnboundedSurfaceState(
   return unbounded_surface_state_.Get();
 }
 
-void WebFrameWidgetImpl::UnboundedContextDestroyed() {
+void WebFrameWidgetImpl::DismissUnboundedSurfaceState(bool is_teardown) {
   CHECK(RuntimeEnabledFeatures::UnboundedElementEnabled());
   if (!unbounded_surface_state_) {
     return;
   }
-  if (auto* resolver =
-          unbounded_surface_state_->unbounded_element_resolver_.Get()) {
-    if (auto* context = resolver->GetExecutionContext()) {
+  auto state = unbounded_surface_state_;
+  unbounded_surface_state_ = nullptr;
+  state->host_.reset();
+  state->client_receiver_.reset();
+  if (auto* resolver = state->unbounded_element_resolver_.Get()) {
+    auto reject_promise = [](ScriptPromiseResolver<IDLUndefined>* resolver) {
+      resolver->Reject(MakeGarbageCollected<DOMException>(
+          DOMExceptionCode::kAbortError,
+          "The unbounded element was dismissed."));
+    };
+    if (!is_teardown) {
+      reject_promise(resolver);
+    } else if (auto* context = resolver->GetExecutionContext()) {
       context->GetTaskRunner(TaskType::kInternalDefault)
           ->PostTask(FROM_HERE,
-                     BindOnce(
-                         [](ScriptPromiseResolver<IDLUndefined>* resolver) {
-                           resolver->Reject(MakeGarbageCollected<DOMException>(
-                               DOMExceptionCode::kAbortError,
-                               "The unbounded element context was destroyed."));
-                         },
-                         WrapPersistent(resolver)));
+                     BindOnce(reject_promise, WrapPersistent(resolver)));
     }
-    unbounded_surface_state_->unbounded_element_resolver_ = nullptr;
+    state->unbounded_element_resolver_ = nullptr;
   }
-  if (unbounded_surface_state_->active_element_) {
-    // The context is being destroyed, so we should suppress event dispatch
-    // to avoid executing script during teardown.
-    unbounded_surface_state_->active_element_->SetUnboundedElementActive(
-        false, UnboundedEvents::kSuppress);
+  if (state->active_element_) {
+    state->active_element_->SetUnboundedElementActive(
+        false,
+        is_teardown ? UnboundedEvents::kSuppress : UnboundedEvents::kFire);
   }
-  unbounded_surface_state_ = nullptr;
   if (auto* host = LayerTreeHost()) {
     host->DismissUnboundedFrameSink();
   }
+}
+
+void WebFrameWidgetImpl::UnboundedContextDestroyed() {
+  DismissUnboundedSurfaceState(/*is_teardown=*/true);
 }
 
 HTMLElement* WebFrameWidgetImpl::GetActiveUnboundedElement() const {
@@ -2934,23 +2944,7 @@ void WebFrameWidgetImpl::OnSurfaceAllocated(
 }
 
 void WebFrameWidgetImpl::OnDismissed() {
-  CHECK(RuntimeEnabledFeatures::UnboundedElementEnabled());
-  if (!unbounded_surface_state_) {
-    return;
-  }
-  if (unbounded_surface_state_->unbounded_element_resolver_) {
-    unbounded_surface_state_->unbounded_element_resolver_->Reject(
-        MakeGarbageCollected<DOMException>(
-            DOMExceptionCode::kAbortError,
-            "The unbounded element was dismissed."));
-  }
-  if (unbounded_surface_state_->active_element_) {
-    unbounded_surface_state_->active_element_->SetUnboundedElementActive(false);
-  }
-  unbounded_surface_state_ = nullptr;
-  if (auto* host = LayerTreeHost()) {
-    host->DismissUnboundedFrameSink();
-  }
+  DismissUnboundedSurfaceState(/*is_teardown=*/false);
 }
 
 void WebFrameWidgetImpl::UpdateUnboundedElementBounds(const gfx::Rect& bounds) {
@@ -2959,6 +2953,9 @@ void WebFrameWidgetImpl::UpdateUnboundedElementBounds(const gfx::Rect& bounds) {
     return;
   }
   unbounded_surface_state_->host_->UpdateBounds(bounds);
+  if (auto* host = LayerTreeHost()) {
+    host->SetNeedsCommitWithForcedRedraw();
+  }
 }
 
 void WebFrameWidgetImpl::BeginMainFrame(const viz::BeginFrameArgs& args) {
@@ -4332,6 +4329,19 @@ void WebFrameWidgetImpl::CommitText(
                      base::checked_cast<int>(replacement_range.length()))
           : WebRange(),
       relative_cursor_pos);
+}
+
+void WebFrameWidgetImpl::PasteIntoNode(const String& text,
+                                       DOMNodeIdType target_dom_node_id) {
+  Element* target_element = GetElementFromDOMNodeId(target_dom_node_id);
+  if (!target_element) {
+    target_element = FocusedElement();
+  }
+  if (!target_element) {
+    return;
+  }
+
+  WebElement(target_element).PasteText(text, /*replace_all=*/false);
 }
 
 void WebFrameWidgetImpl::FinishComposingText(bool keep_selection) {

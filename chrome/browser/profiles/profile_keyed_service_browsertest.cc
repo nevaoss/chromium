@@ -17,6 +17,7 @@
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/profiles/profile_selections.h"
 #include "chrome/browser/ui/browser.h"
+#include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/test/base/in_process_browser_test.h"
@@ -372,7 +373,15 @@ IN_PROC_BROWSER_TEST_F(ProfileKeyedServiceBrowserTest,
 class ProfileKeyedServiceGuestBrowserTest
     : public ProfileKeyedServiceBrowserTest {
  public:
-  ProfileKeyedServiceGuestBrowserTest() = default;
+  ProfileKeyedServiceGuestBrowserTest() {
+    // TODO(crbug.com/452061489): Fix tests that fail when the WebUI Omnibox is
+    // enabled and then remove this.
+    scoped_feature_list_.InitWithFeatures(
+        /*enabled_features=*/{},
+        /*disabled_features=*/
+        {omnibox::internal::kWebUIOmniboxPopup,
+         omnibox::internal::kWebUIOmniboxAimPopup});
+  }
   ~ProfileKeyedServiceGuestBrowserTest() override = default;
 
   // ProfileKeyedServiceBrowserTest:
@@ -384,16 +393,33 @@ class ProfileKeyedServiceGuestBrowserTest
         ash::switches::kLoginUser,
         user_manager::GuestAccountId().GetUserEmail());
   }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
 };
 #else
-using ProfileKeyedServiceGuestBrowserTest = ProfileKeyedServiceBrowserTest;
+class ProfileKeyedServiceGuestBrowserTest
+    : public ProfileKeyedServiceBrowserTest {
+ public:
+  ProfileKeyedServiceGuestBrowserTest() {
+    // TODO(crbug.com/452061489): Fix tests that fail when the WebUI Omnibox is
+    // enabled and then remove this.
+    scoped_feature_list_.InitWithFeatures(
+        /*enabled_features=*/{},
+        /*disabled_features=*/{omnibox::internal::kWebUIOmniboxPopup,
+                               omnibox::internal::kWebUIOmniboxAimPopup});
+  }
+  ~ProfileKeyedServiceGuestBrowserTest() override = default;
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
+};
 #endif
 
 IN_PROC_BROWSER_TEST_F(ProfileKeyedServiceGuestBrowserTest,
                        GuestProfileOTR_NeededServices) {
   // clang-format off
   std::set<std::string> guest_otr_active_services {
-    "AimEligibilityExtensionBridge",
     "AlarmManager",
     "AXMainNodeAnnotatorController",
     "AutocompleteActionPredictor",
@@ -573,6 +599,11 @@ IN_PROC_BROWSER_TEST_F(ProfileKeyedServiceGuestBrowserTest,
       SearchEnginePreconnector::ShouldBeEnabledForOffTheRecord()) {
     guest_otr_active_services.insert("SearchEnginePreconnector");
   }
+  if (base::FeatureList::IsEnabled(
+          omnibox::kAimEligibilityComponentExtension)) {
+    guest_otr_active_services.insert("AimEligibilityExtensionBridge");
+    guest_otr_active_services.insert("ExtensionMojoBinderRegistry");
+  }
 
 #if BUILDFLAG(IS_CHROMEOS)
   EXPECT_TRUE(user_manager::UserManager::Get()->IsLoggedInAsGuest());
@@ -601,7 +632,6 @@ IN_PROC_BROWSER_TEST_F(ProfileKeyedServiceGuestBrowserTest,
     "ActivityLogPrivateAPI",
     "AdvancedProtectionStatusManager",
     "AiModeButtonService",
-    "AimEligibilityExtensionBridge",
     "AimEligibilityService",
     "AlarmManager",
     "AnnouncementNotificationService",
@@ -971,6 +1001,11 @@ IN_PROC_BROWSER_TEST_F(ProfileKeyedServiceGuestBrowserTest,
 
   if (SearchEnginePreconnector::ShouldBeEnabledAsKeyedService()) {
     guest_active_services.insert("SearchEnginePreconnector");
+  }
+  if (base::FeatureList::IsEnabled(
+          omnibox::kAimEligibilityComponentExtension)) {
+    guest_active_services.insert("AimEligibilityExtensionBridge");
+    guest_active_services.insert("ExtensionMojoBinderRegistry");
   }
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
   if (base::FeatureList::IsEnabled(

@@ -196,7 +196,6 @@ class CONTENT_EXPORT StoragePartitionImpl
   HostZoomLevelContext* GetHostZoomLevelContext() override;
   ZoomLevelDelegate* GetZoomLevelDelegate() override;
   PlatformNotificationContextImpl* GetPlatformNotificationContext() override;
-  BrowsingTopicsSiteDataManager* GetBrowsingTopicsSiteDataManager() override;
   leveldb_proto::ProtoDatabaseProvider* GetProtoDatabaseProvider() override;
 #if BUILDFLAG(ENABLE_LIBRARY_CDMS)
   CdmStorageDataModel* GetCdmStorageDataModel() override;
@@ -362,12 +361,6 @@ class CONTENT_EXPORT StoragePartitionImpl
   void OnDataUseUpdate(int32_t network_traffic_annotation_id_hash,
                        base::ByteSize recv_bytes,
                        base::ByteSize sent_bytes) override;
-  void OnSharedStorageHeaderReceived(
-      const url::Origin& request_origin,
-      std::vector<network::mojom::SharedStorageModifierMethodWithOptionsPtr>
-          methods_with_options,
-      const std::optional<std::string>& with_lock,
-      OnSharedStorageHeaderReceivedCallback callback) override;
 
   // performance_scenarios::MatchingScenarioObserver overrides:
   void OnScenarioMatchChanged(performance_scenarios::ScenarioScope scope,
@@ -800,8 +793,6 @@ class CONTENT_EXPORT StoragePartitionImpl
       proto_database_provider_;
   scoped_refptr<ContentIndexContextImpl> content_index_context_;
   std::unique_ptr<FontAccessManager> font_access_manager_;
-  std::unique_ptr<BrowsingTopicsSiteDataManager>
-      browsing_topics_site_data_manager_;
 #if BUILDFLAG(ENABLE_LIBRARY_CDMS)
   std::unique_ptr<CdmStorageManager> cdm_storage_manager_;
 #endif  // BUILDFLAG(ENABLE_LIBRARY_CDMS)

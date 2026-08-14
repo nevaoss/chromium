@@ -112,6 +112,7 @@
 #include "chrome/browser/ui/tabs/tab_enums.h"
 #include "chrome/browser/ui/tabs/tab_group_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
+#include "chrome/browser/ui/tabs/tab_strip_model_selection_state.h"
 #include "chrome/browser/ui/tabs/tab_strip_user_gesture_details.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
 #include "chrome/browser/ui/ui_features.h"
@@ -182,6 +183,7 @@
 #include "components/zoom/page_zoom.h"
 #include "components/zoom/zoom_controller.h"
 #include "content/public/browser/browsing_data_remover.h"
+#include "content/public/browser/child_process_security_policy.h"
 #include "content/public/browser/devtools_agent_host.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
@@ -537,6 +539,26 @@ void ActivateTab(TabStripModel* model,
     model->ChangeTabGroupVisuals(group_id.value(), std::move(new_visual_data));
   }
   model->ActivateTabAt(index, gesture_detail);
+}
+
+bool IsTabSelectable(
+    TabStripModel* model,
+    tabs::TabInterface* tab,
+    const std::optional<tab_groups::TabGroupId>& focused_group) {
+  // Do not select the tab if it is in a collapsed group.
+  if (tab->GetGroup().has_value() &&
+      model->IsGroupCollapsed(tab->GetGroup().value())) {
+    return false;
+  }
+
+  // Do not select the tab if it is not part of the focused state.
+  if (focused_group.has_value() &&
+      !tabs::TabStripModelSelectionState::IsTabValidInFocusedGroup(
+          tab, focused_group)) {
+    return false;
+  }
+
+  return true;
 }
 
 }  // namespace
@@ -1335,7 +1357,10 @@ void NewTabFromClipboardURL(BrowserWindowInterface* browser) {
                   ->Classify(text, false, false,
                              metrics::OmniboxEventProto::BLANK, &match,
                              nullptr);
-              if (match.destination_url.is_valid()) {
+              if (match.destination_url.is_valid() &&
+                  content::ChildProcessSecurityPolicy::GetInstance()
+                      ->IsWebSafeScheme(
+                          std::string(match.destination_url.scheme()))) {
                 browser_weak->tab_strip_model()->delegate()->AddTabAt(
                     match.destination_url, -1, true);
               }
@@ -1372,10 +1397,19 @@ void CloseTab(BrowserWindowInterface* browser) {
     return;
   }
 
-  const bool single_pinned_tab_selected =
-      active_tab->IsPinned() &&
-      browser->GetTabStripModel()->selection_model().size() == 1;
-  if (single_pinned_tab_selected &&
+  const auto& selected_tabs =
+      browser->GetTabStripModel()->selection_model().selected_tabs();
+  bool all_selected_tabs_pinned = !selected_tabs.empty();
+  for (const tabs::TabInterface* tab : selected_tabs) {
+    if (!tab->IsPinned()) {
+      all_selected_tabs_pinned = false;
+      break;
+    }
+  }
+
+  // If all selected tabs are pinned, show a confirmation toast if one isn't
+  // already shown.
+  if (all_selected_tabs_pinned &&
       toast_controller->GetCurrentToastId() != ToastId::kClosePinnedTab) {
     BrowserView* browser_view = BrowserView::GetBrowserViewForBrowser(browser);
     CHECK(browser_view);
@@ -1386,10 +1420,11 @@ void CloseTab(BrowserWindowInterface* browser) {
     ToastParams params(ToastId::kClosePinnedTab);
     params.body_string_replacement_params.emplace_back(
         accelerator.GetShortcutText());
+    params.body_string_cardinality_param = selected_tabs.size();
     toast_controller->MaybeShowToast(std::move(params));
   } else {
     CloseSelectedTabAndRecordTabCountMetric(browser);
-    if (single_pinned_tab_selected) {
+    if (all_selected_tabs_pinned) {
       base::RecordAction(
           UserMetricsAction("Tab.PinnedTabToastClosedAfterConfirmation"));
     }
@@ -1458,14 +1493,18 @@ void MoveTabPrevious(BrowserWindowInterface* browser) {
 void SelectNumberedTab(BrowserWindowInterface* browser,
                        int index,
                        TabStripUserGestureDetails gesture_detail) {
+  TabStripModel* model = browser->GetTabStripModel();
+  std::optional<tab_groups::TabGroupId> focused_group =
+      model->GetFocusedGroup();
   int visible_count = 0;
-  for (int i = 0; i < browser->GetTabStripModel()->count(); i++) {
-    if (browser->GetTabStripModel()->IsTabCollapsed(i)) {
+  for (tabs::TabInterface* tab : *model) {
+    if (!IsTabSelectable(model, tab, focused_group)) {
       continue;
     }
+
     if (visible_count == index) {
       base::RecordAction(UserMetricsAction("SelectNumberedTab"));
-      browser->GetTabStripModel()->ActivateTabAt(i, gesture_detail);
+      model->ActivateTab(tab, gesture_detail);
       break;
     }
     visible_count += 1;
@@ -1474,12 +1513,18 @@ void SelectNumberedTab(BrowserWindowInterface* browser,
 
 void SelectLastTab(BrowserWindowInterface* browser,
                    TabStripUserGestureDetails gesture_detail) {
-  for (int i = browser->GetTabStripModel()->count() - 1; i >= 0; i--) {
-    if (!browser->GetTabStripModel()->IsTabCollapsed(i)) {
-      base::RecordAction(UserMetricsAction("SelectLastTab"));
-      browser->GetTabStripModel()->ActivateTabAt(i, gesture_detail);
-      break;
+  TabStripModel* model = browser->GetTabStripModel();
+  std::optional<tab_groups::TabGroupId> focused_group =
+      model->GetFocusedGroup();
+  for (int i = model->count() - 1; i >= 0; i--) {
+    tabs::TabInterface* tab = model->GetTabAtIndex(i);
+    if (!IsTabSelectable(model, tab, focused_group)) {
+      continue;
     }
+
+    base::RecordAction(UserMetricsAction("SelectLastTab"));
+    model->ActivateTab(tab, gesture_detail);
+    break;
   }
 }
 
@@ -1538,7 +1583,7 @@ void MoveGroupToNewWindow(BrowserWindowInterface* browser,
                           tab_groups::TabGroupId group) {
   Browser* current_browser = browser->GetBrowserForMigrationOnly();
   Browser* new_browser;
-  if (current_browser->is_type_app() &&
+  if (current_browser->GetType() == BrowserWindowInterface::Type::TYPE_APP &&
       web_app::AppBrowserController::From(current_browser)->has_tab_strip()) {
     auto* app_controller = web_app::AppBrowserController::From(current_browser);
     new_browser = Browser::Create(Browser::CreateParams::CreateForApp(
@@ -1561,7 +1606,7 @@ void MoveTabsToNewWindow(BrowserWindowInterface* browser,
   Browser* current_browser = browser->GetBrowserForMigrationOnly();
   Browser* new_browser;
   base::TimeTicks now = base::TimeTicks::Now();
-  if (current_browser->is_type_app() &&
+  if (current_browser->GetType() == BrowserWindowInterface::Type::TYPE_APP &&
       web_app::AppBrowserController::From(current_browser)->has_tab_strip()) {
     auto* app_controller = web_app::AppBrowserController::From(current_browser);
     new_browser = Browser::Create(Browser::CreateParams::CreateForApp(
@@ -1803,7 +1848,7 @@ bool GroupAllUngroupedTabs(BrowserWindowInterface* browser) {
 }
 
 void AddNewTabToRecentGroup(BrowserWindowInterface* browser) {
-  if (!features::IsTabGroupMenuMoreEntryPointsEnabled()) {
+  if (!base::FeatureList::IsEnabled(features::kNewTabButtonContextMenu)) {
     return;
   }
 

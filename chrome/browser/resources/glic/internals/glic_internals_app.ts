@@ -52,6 +52,7 @@ export class GlicInternalsAppElement extends CrLitElement {
       invokeFreCompletionWaitMode_: {type: Number},
       freCompletionWaitModeEnumValues_: {type: Array},
       invokeTakeScreenshot_: {type: Boolean},
+      invokeSupersedeIfInProgress_: {type: Boolean},
       invokePublicKey_: {type: String},
       invokeAuthSecret_: {type: String},
 
@@ -59,6 +60,7 @@ export class GlicInternalsAppElement extends CrLitElement {
       invokeConversationType_: {type: String},
       invokeConversationId_: {type: String},
       invokeSpecificTabIndex_: {type: Number},
+      invokeSpecificTabsToShareIndices_: {type: Array},
       availableTabs_: {type: Array},
       tabNames_: {type: Array},
       featureModeEnumValues_: {type: Array},
@@ -87,6 +89,7 @@ export class GlicInternalsAppElement extends CrLitElement {
   protected accessor invokeFreCompletionWaitMode_: FreCompletionWaitMode =
       FreCompletionWaitMode.kDefault;
   protected accessor invokeTakeScreenshot_: boolean = false;
+  protected accessor invokeSupersedeIfInProgress_: boolean = false;
   protected accessor invokePublicKey_: string =
       'BFlvj1VrkwP8pxa1zSiJZzZ7yeMEO1DOPS' +
       'bNw6XV8NK3Xo++7ql9NTcxNaciYM2eQ/G1ebnwrtRrHyMXEDhN5ck=';
@@ -94,6 +97,7 @@ export class GlicInternalsAppElement extends CrLitElement {
   protected accessor invokeConversationType_: string = 'default';
   protected accessor invokeConversationId_: string = '';
   protected accessor invokeSpecificTabIndex_: number = 0;
+  protected accessor invokeSpecificTabsToShareIndices_: number[] = [];
   protected accessor availableTabs_: string[] = [];
 
   protected accessor selectedTabIndex_: number = 0;
@@ -124,6 +128,8 @@ export class GlicInternalsAppElement extends CrLitElement {
         ({internalsData}: {internalsData: InternalsDataPayload}) => {
           this.data_ = internalsData;
         });
+
+    this.refreshOpenTabs_();
   }
 
   protected onShowErrorAllowedChange(e: Event) {
@@ -349,6 +355,27 @@ export class GlicInternalsAppElement extends CrLitElement {
         Number((e.target as HTMLSelectElement).value);
   }
 
+  protected onInvokeSpecificTabsToShareIndexChange_(e: Event) {
+    const select = e.target as HTMLSelectElement;
+    const indexInArray = Number(select.dataset['index']);
+    const newIndices = [...this.invokeSpecificTabsToShareIndices_];
+    newIndices[indexInArray] = Number(select.value);
+    this.invokeSpecificTabsToShareIndices_ = newIndices;
+  }
+
+  protected onRemoveTabsToShareIndexClick_(e: Event) {
+    const button = e.target as HTMLElement;
+    const indexToRemove = Number(button.dataset['index']);
+    this.invokeSpecificTabsToShareIndices_ =
+        this.invokeSpecificTabsToShareIndices_.filter(
+            (_, index) => index !== indexToRemove);
+  }
+
+  protected onAddTabsToShareIndexClick_() {
+    this.invokeSpecificTabsToShareIndices_ =
+        [...this.invokeSpecificTabsToShareIndices_, 0];
+  }
+
   protected onInvokeZssOverrideChange_(e: Event) {
     this.invokeZssOverride_ = (e.target as HTMLInputElement).checked;
   }
@@ -374,6 +401,9 @@ export class GlicInternalsAppElement extends CrLitElement {
   }
   protected onInvokeTakeScreenshotChange_(e: Event) {
     this.invokeTakeScreenshot_ = (e.target as HTMLInputElement).checked;
+  }
+  protected onInvokeSupersedeIfInProgressChange_(e: Event) {
+    this.invokeSupersedeIfInProgress_ = (e.target as HTMLInputElement).checked;
   }
   protected onInvokePublicKeyInput_(e: Event) {
     this.invokePublicKey_ = (e.target as HTMLInputElement).value;
@@ -437,10 +467,15 @@ export class GlicInternalsAppElement extends CrLitElement {
       specificTabIndex: this.invokeSurfaceType_ === 'specificTab' ?
           this.invokeSpecificTabIndex_ :
           null,
+      specificTabsToShareIndices:
+          this.invokeSpecificTabsToShareIndices_.length > 0 ?
+          this.invokeSpecificTabsToShareIndices_ :
+          null,
       actuationTarget: this.invokeActuationTarget_,
       showPanel: this.invokeAutoSubmit_ ? this.invokeShowPanel_ : null,
       payload: payload,
       takeScreenshot: this.invokeTakeScreenshot_,
+      supersedeIfInProgress: this.invokeSupersedeIfInProgress_,
       keyConfig: (this.invokePublicKey_ || this.invokeAuthSecret_) ? {
         publicKey: this.invokePublicKey_,
         authSecret: this.invokeAuthSecret_,

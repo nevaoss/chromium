@@ -40,6 +40,7 @@ group("resources") {
   if (enable_extensions_core) {
     public_deps += [
       ":component_extension_resources",
+      "contextual_tasks/extension:resources",
       "omnibox/aim_eligibility_extension:resources",
     ]
   }
@@ -255,10 +256,7 @@ if (enable_extensions_core) {
 
     # Some resources within component_extension_resources.grd are generated at
     # build time so we include them as explicit dependencies here
-    deps = [
-      "//chrome/browser/resources/contextual_tasks/extension:build_ts",
-      "//chrome/browser/resources/glic/extension:build_ts",
-    ]
+    deps = [ "//chrome/browser/resources/glic/extension:build_ts" ]
 
     if (is_chromeos) {
       deps += [
@@ -380,7 +378,6 @@ group("dev_ui_resources") {
       "media_router/internals:resources",
       "multistep_filter_internals:resources",
       "on_device_internals:resources",
-      "personal_context_notice:resources",
       "user_education_internals:resources",
       "webnn_internals:resources",
       "webui_js_error:resources",
@@ -462,7 +459,6 @@ repack("dev_ui_paks") {
       "$root_gen_dir/chrome/media_router_internals_resources.pak",
       "$root_gen_dir/chrome/multistep_filter_internals_resources.pak",
       "$root_gen_dir/chrome/on_device_internals_resources.pak",
-      "$root_gen_dir/chrome/personal_context_notice_resources.pak",
       "$root_gen_dir/chrome/user_education_internals_resources.pak",
       "$root_gen_dir/chrome/webui_js_error_resources.pak",
     ]

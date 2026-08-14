@@ -73,17 +73,8 @@ TabStripComboButton::TabStripComboButton(BrowserWindowInterface* browser,
 
   std::unique_ptr<TabStripFlatEdgeButton> start_button;
   if (context_ == Context::kVerticalTabStrip) {
-    if (organizer_panel::IsOrganizerPanelVisibleForProfile(
-            browser->GetProfile())) {
-      start_button =
-          CreateFlatEdgeButtonFor(kActionToggleOrganizerPanel,
-                                  kVerticalTabStripOrganizerButtonElementId);
-      organizer_panel_button_subscription_ =
-          start_button->RegisterWillInvokeActionCallback(base::BindRepeating(
-              &TabStripComboButton::OnOrganizerPanelButtonPressed,
-              base::Unretained(this)));
-    } else if (tab_groups::SavedTabGroupUtils::IsEnabledForProfile(
-                   browser_->GetProfile())) {
+    if (tab_groups::SavedTabGroupUtils::IsEnabledForProfile(
+            browser_->GetProfile())) {
       start_button = CreateFlatEdgeButtonFor(kActionTabGroupsMenu,
                                              kSavedTabGroupButtonElementId);
 
@@ -111,10 +102,6 @@ TabStripComboButton::TabStripComboButton(BrowserWindowInterface* browser,
       base::BindRepeating(&TabStripComboButton::UpdateButtonsVisibility,
                           base::Unretained(this)));
   pref_registrar_.Add(
-      prefs::kOrganizerPanelPinnedToTabstrip,
-      base::BindRepeating(&TabStripComboButton::UpdateButtonsVisibility,
-                          base::Unretained(this)));
-  pref_registrar_.Add(
       prefs::kEverythingMenuPinnedToTabstrip,
       base::BindRepeating(&TabStripComboButton::UpdateButtonsVisibility,
                           base::Unretained(this)));
@@ -127,7 +114,7 @@ TabStripComboButton::~TabStripComboButton() {
 }
 
 void TabStripComboButton::UpdateButtonsVisibility() {
-  if (!browser_ || !browser_->GetActions()) {
+  if (!browser_ || !BrowserActions::From(browser_)) {
     return;
   }
   auto update_button_visibility = [&](actions::ActionItem* action_item,
@@ -149,15 +136,10 @@ void TabStripComboButton::UpdateButtonsVisibility() {
   };
 
   PrefService* prefs = browser_->GetProfile()->GetPrefs();
-  const std::string_view pref_name =
-      tab_groups::IsOrganizerPanelFeatureEnabled()
-          ? prefs::kOrganizerPanelPinnedToTabstrip
-          : prefs::kEverythingMenuPinnedToTabstrip;
-
   if (start_button_) {
-    update_button_visibility(GetStartButtonActionItem(),
-                             start_button_animation_,
-                             prefs->GetBoolean(pref_name));
+    update_button_visibility(
+        GetStartButtonActionItem(), start_button_animation_,
+        prefs->GetBoolean(prefs::kEverythingMenuPinnedToTabstrip));
   }
 
   update_button_visibility(GetEndButtonActionItem(), end_button_animation_,
@@ -220,11 +202,6 @@ void TabStripComboButton::ShowEverythingMenu() {
   everything_menu_->RunMenu();
 }
 
-void TabStripComboButton::OnOrganizerPanelButtonPressed() {
-  base::RecordAction(
-      base::UserMetricsAction("OrganizerPanel.OpenButtonPressed"));
-}
-
 std::unique_ptr<TabStripFlatEdgeButton>
 TabStripComboButton::CreateFlatEdgeButtonFor(actions::ActionId action_id,
                                              ui::ElementIdentifier element_id) {
@@ -233,11 +210,11 @@ TabStripComboButton::CreateFlatEdgeButtonFor(actions::ActionId action_id,
   button->SetShouldShowLabel(context_ == Context::kVerticalTabStrip);
   button->SetExpansionOrientation(orientation_);
   button->set_context_menu_controller(this);
-  if (!browser_ || !browser_->GetActions()) {
+  if (!browser_ || !BrowserActions::From(browser_)) {
     return button;
   }
   actions::ActionItem* action_item = actions::ActionManager::Get().FindAction(
-      action_id, browser_->GetActions()->root_action_item());
+      action_id, BrowserActions::From(browser_)->root_action_item());
   CHECK(action_item);
   action_view_controller_->CreateActionViewRelationship(
       button.get(), action_item->GetAsWeakPtr());
@@ -294,21 +271,12 @@ void TabStripComboButton::ShowContextMenuForViewImpl(
   PrefService* prefs = browser_->GetProfile()->GetPrefs();
 
   if (source == start_button_) {
-    if (tab_groups::IsOrganizerPanelFeatureEnabled()) {
-      command_id = IDC_ORGANIZER_PANEL_TOGGLE_PIN;
-      pref_name = prefs::kOrganizerPanelPinnedToTabstrip;
-      string_id = prefs->GetBoolean(pref_name)
-                      ? IDS_ORGANIZER_PANEL_BUTTON_CXMENU_UNPIN
-                      : IDS_ORGANIZER_PANEL_BUTTON_CXMENU_PIN;
-      element_id = kOrganizerPanelUnpinMenuItem;
-    } else {
-      command_id = IDC_EVERYTHING_MENU_TOGGLE_PIN;
-      pref_name = prefs::kEverythingMenuPinnedToTabstrip;
-      string_id = prefs->GetBoolean(pref_name)
-                      ? IDS_EVERYTHING_MENU_BUTTON_CXMENU_UNPIN
-                      : IDS_EVERYTHING_MENU_BUTTON_CXMENU_PIN;
-      element_id = kEverythingMenuUnpinMenuItem;
-    }
+    command_id = IDC_EVERYTHING_MENU_TOGGLE_PIN;
+    pref_name = prefs::kEverythingMenuPinnedToTabstrip;
+    string_id = prefs->GetBoolean(pref_name)
+                    ? IDS_EVERYTHING_MENU_BUTTON_CXMENU_UNPIN
+                    : IDS_EVERYTHING_MENU_BUTTON_CXMENU_PIN;
+    element_id = kEverythingMenuUnpinMenuItem;
   } else if (source == end_button_) {
     command_id = IDC_TAB_SEARCH_TOGGLE_PIN;
     pref_name = prefs::kTabSearchPinnedToTabstrip;
@@ -462,16 +430,13 @@ bool TabStripComboButton::IsTabSearchPinned() {
 }
 
 actions::ActionItem* TabStripComboButton::GetStartButtonActionItem() {
-  const actions::ActionId start_action_id =
-      tab_groups::IsOrganizerPanelFeatureEnabled() ? kActionToggleOrganizerPanel
-                                                   : kActionTabGroupsMenu;
   return actions::ActionManager::Get().FindAction(
-      start_action_id, browser_->GetActions()->root_action_item());
+      kActionTabGroupsMenu, BrowserActions::From(browser_)->root_action_item());
 }
 
 actions::ActionItem* TabStripComboButton::GetEndButtonActionItem() {
   return actions::ActionManager::Get().FindAction(
-      kActionTabSearch, browser_->GetActions()->root_action_item());
+      kActionTabSearch, BrowserActions::From(browser_)->root_action_item());
 }
 
 void TabStripComboButton::AnimationProgressed(const gfx::Animation* animation) {

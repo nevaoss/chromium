@@ -66,6 +66,7 @@
 #include "content/common/features.h"
 #include "content/common/frame.mojom.h"
 #include "content/common/frame_messages.mojom.h"
+#include "content/common/lazy_shared_url_loader_factory.h"
 #include "content/common/main_frame_counter.h"
 #include "content/common/navigation_client.mojom.h"
 #include "content/common/navigation_params_utils.h"
@@ -96,7 +97,6 @@
 #include "content/renderer/effective_connection_type_helper.h"
 #include "content/renderer/frame_owner_properties_converter.h"
 #include "content/renderer/gpu_benchmarking_extension.h"
-#include "content/renderer/lazy_shared_url_loader_factory.h"
 #include "content/renderer/local_resource_url_loader_factory.h"
 #include "content/renderer/media/media_permission_dispatcher.h"
 #include "content/renderer/mhtml_handle_writer.h"
@@ -2422,10 +2422,6 @@ const blink::web_pref::WebPreferences& RenderFrameImpl::GetBlinkPreferences() {
 const blink::RendererPreferences& RenderFrameImpl::GetRendererPreferences()
     const {
   return GetWebView()->GetRendererPreferences();
-}
-
-void RenderFrameImpl::ShowVirtualKeyboard() {
-  GetLocalRootWebFrameWidget()->ShowVirtualKeyboard();
 }
 
 void RenderFrameImpl::ExecuteJavaScript(const std::u16string& javascript) {
@@ -4879,6 +4875,19 @@ void RenderFrameImpl::DidCreateScriptContext(v8::Local<v8::Context> context,
     if (mojo_js_features_) {
       if (mojo_js_features_->file_system_access)
         blink::WebV8Features::EnableMojoJSFileSystemAccessHelper(context, true);
+    }
+  }
+
+  if (world_id == ISOLATED_WORLD_ID_GLOBAL &&
+      base::FeatureList::IsEnabled(blink::features::kUnboundedElement)) {
+    bool is_unbounded_allowed =
+        base::FeatureList::IsEnabled(
+            blink::features::kUnboundedElementOnTheOpenWeb) ||
+        enabled_bindings_.Has(BindingsPolicyValue::kWebUi) ||
+        (GetWebFrame() && !GetWebFrame()->GetSecurityOrigin().IsNull() &&
+         GetWebFrame()->GetSecurityOrigin().IsWebUI());
+    if (is_unbounded_allowed) {
+      blink::WebV8Features::EnableUnboundedElement(context, true);
     }
   }
 

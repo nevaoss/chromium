@@ -2626,7 +2626,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="History.URLRowAddedAsHidden" enum="Boolean"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>svend@chromium.org</owner>
   <owner>kyraseevers@chromium.org</owner>
   <summary>
@@ -2665,7 +2665,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="History.VisitedLinks.AdditionCausedBy404" enum="Boolean"
-    expires_after="2026-11-22">
+    expires_after="2027-01-24">
   <owner>svend@chromium.org</owner>
   <owner>kyraseevers@chromium.org</owner>
   <summary>
@@ -2761,6 +2761,20 @@ chromium-metrics-reviews@google.com.
     HistoryService, record its PageTransitionForVisitedLinks type. This enum
     represents our ui::PageTransition types of interest (link vs. typed vs.
     subframe) and a catch-all other bucket.
+  </summary>
+</histogram>
+
+<histogram name="History.VisitedLinks.WebView.LookupCollisionCount"
+    units="collisions" expires_after="2027-07-21">
+  <owner>tiffanysong@google.com</owner>
+  <owner>kyraseevers@chromium.org</owner>
+  <summary>
+    WebView collapses the triple-key space into a flat 1D key-space and hashes
+    using a static constant salt, meaning the database loses the natural entropy
+    of Chrome's randomized salt scheme. This metric monitors if the static salt
+    causes hash clustering by recording the collision count for each visited
+    link lookup. Recorded on every visited link lookup in Android WebView when
+    the pseudo-partitioned database is enabled.
   </summary>
 </histogram>
 

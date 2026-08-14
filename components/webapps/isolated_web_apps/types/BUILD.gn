@@ -4,6 +4,10 @@
 
 source_set("types") {
   sources = [
+    "isolated_web_app_external_install_options.cc",
+    "isolated_web_app_external_install_options.h",
+    "isolated_web_app_policy_constants.cc",
+    "isolated_web_app_policy_constants.h",
     "iwa_origin.cc",
     "iwa_origin.h",
     "iwa_version.cc",
@@ -14,6 +18,8 @@ source_set("types") {
     "storage_location.h",
     "update_channel.cc",
     "update_channel.h",
+    "update_check_and_prepare_result.cc",
+    "update_check_and_prepare_result.h",
     "url_loading_types.h",
   ]
 
@@ -34,6 +40,7 @@ source_set("types") {
 source_set("unit_tests") {
   testonly = true
   sources = [
+    "isolated_web_app_external_install_options_unittest.cc",
     "iwa_version_unittest.cc",
     "source_unittest.cc",
   ]

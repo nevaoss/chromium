@@ -111,6 +111,7 @@
 #import "ios/chrome/browser/shared/coordinator/scene/scene_controller+OTRProfileDeletion.h"
 #import "ios/chrome/browser/shared/coordinator/scene/scene_state.h"
 #import "ios/chrome/browser/shared/coordinator/scene/scene_state_options.h"
+#import "ios/chrome/browser/shared/coordinator/scene/scene_state_prefs.h"
 #import "ios/chrome/browser/shared/coordinator/scene/scene_ui_provider.h"
 #import "ios/chrome/browser/shared/coordinator/scene/state/incognito_state.h"
 #import "ios/chrome/browser/shared/coordinator/scene/state/scene_ui_blocker_state.h"
@@ -425,7 +426,7 @@ UrlLoadParams UpdateParamsForDinoGame(UrlLoadParams params) {
 
 #pragma mark - Setters and Getters
 
-    - (BOOL)isIncognitoDisabled {
+- (BOOL)isIncognitoDisabled {
   return IsIncognitoModeDisabled(
       self.mainInterface.browser->GetProfile()->GetPrefs());
 }
@@ -881,6 +882,17 @@ UrlLoadParams UpdateParamsForDinoGame(UrlLoadParams params) {
 - (void)profileState:(ProfileState*)profileState
     didTransitionToInitStage:(ProfileInitStage)nextInitStage
                fromInitStage:(ProfileInitStage)fromInitStage {
+  if (nextInitStage >= ProfileInitStage::kProfileLoaded && !_sceneState.prefs) {
+    CHECK(profileState.profile);
+    ProfileManagerIOS* manager = GetApplicationContext()->GetProfileManager();
+    _sceneState.prefs = [[SceneStatePrefs alloc]
+        initWithProfileManager:manager
+                   profileName:profileState.profile->GetProfileName()
+             sessionIdentifier:_sceneState.sceneSessionID
+                  sceneSession:_sceneState.scene.session];
+    [_sceneState.incognitoState preferencesDidLoad];
+  }
+
   [self transitionToSceneActivationLevel:self.sceneState.activationLevel
                         profileInitStage:nextInitStage];
 }
@@ -1715,11 +1727,16 @@ UrlLoadParams UpdateParamsForDinoGame(UrlLoadParams params) {
 
 - (void)connectWithOptions:(SceneStateOptions)options {
   DCHECK(!_sceneState.profileState);
+
+  ProfileState* profileState = options.profile_state;
+  DCHECK(profileState);
+
+  // Set the properties to SceneState.
   DCHECK(!options.identifier.empty());
+  _sceneState.profileState = profileState;
+  _sceneState.sceneSessionID = options.identifier;
 
   // Connect the ProfileState with the SceneState.
-  ProfileState* profileState = options.profile_state;
-  [_sceneState connectWithOptions:std::move(options)];
   [profileState sceneStateConnected:_sceneState];
 
   // Add agents. They may depend on the ProfileState, so they need to be

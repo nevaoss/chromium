@@ -4,6 +4,7 @@
 
 #import <Foundation/Foundation.h>
 
+#import "ios/chrome/browser/shared/ui/symbols/symbols.h"
 #import "ios/public/provider/chrome/browser/intelligence/signin/signin_ai_logo.h"
 
 namespace ios::provider {
@@ -20,8 +21,16 @@ NSString* GetAITierName(int ai_tier) {
   return [NSString stringWithFormat:@"%d", ai_tier];
 }
 
+NSString* GetAITierFullName(int ai_tier) {
+  NSString* name = GetAITierName(ai_tier);
+  if (!name) {
+    return nil;
+  }
+  return [NSString stringWithFormat:@"AI %@", name];
+}
+
 UIImage* GetPremiumRingImage() {
-  return [UIImage imageNamed:@"premium_ring"];
+  return [UIImage imageNamed:@"premium_disk"];
 }
 
 }  // namespace ios::provider

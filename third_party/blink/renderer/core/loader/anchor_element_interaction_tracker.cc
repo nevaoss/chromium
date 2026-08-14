@@ -413,6 +413,14 @@ void AnchorElementInteractionTracker::OnPointerEvent(
     sender->MaybeReportAnchorElementPointerEvent(*anchor, pointer_event);
   }
 
+  // Android's low-memory detector can destroy the execution context while
+  // keeping the frame alive, which unbinds this remote.
+  // TODO(crbug.com/538633734): Consider rebinding `interaction_host_` after an
+  // OOM purge so speculative loads and browser-side warmups can resume.
+  if (!interaction_host_.is_bound()) {
+    return;
+  }
+
   if (event_type == event_type_names::kPointerdown) {
     if (!pointer_event.IsLinkClickButton()) {
       return;
@@ -429,20 +437,7 @@ void AnchorElementInteractionTracker::OnPointerEvent(
     // Notify the browser regardless: it still owns the generic pointerdown side
     // effects (HTTP disk cache and service worker prewarm) that don't depend on
     // speculation-rule candidate selection.
-    //
-    // interaction_host_ can be unbound: Android's low-memory detector calls
-    // NotifyContextDestroyed, unbinding pipes for pages that can still
-    // navigate.
-    if (interaction_host_.is_bound()) {
-      interaction_host_->OnPointerDown(url);
-    }
-    return;
-  }
-
-  // interaction_host_ might become unbound: Android's low memory detector
-  // sometimes call NotifyContextDestroyed to save memory. This unbinds mojo
-  // pipes using that ExecutionContext even if those pages can still navigate.
-  if (!interaction_host_.is_bound()) {
+    interaction_host_->OnPointerDown(url);
     return;
   }
 
@@ -532,8 +527,20 @@ void AnchorElementInteractionTracker::OnClickEvent(
 }
 
 void AnchorElementInteractionTracker::HoverTimerFired(TimerBase*) {
+  // With renderer-side heuristics enabled, the renderer selects and enacts the
+  // matching candidate via DocumentSpeculationRules. The browser is still
+  // notified so it can perform generic hover side effects such as HTTP disk
+  // cache and service worker warmups.
   if (!interaction_host_.is_bound()) {
     return;
+  }
+  const bool renderer_side_heuristics = base::FeatureList::IsEnabled(
+      features::kSpeculationRulesRendererSideHeuristics);
+  DocumentSpeculationRules* speculation_rules = nullptr;
+  if (renderer_side_heuristics) {
+    if (Document* document = GetDocument()) {
+      speculation_rules = DocumentSpeculationRules::FromIfExists(*document);
+    }
   }
   const base::TimeTicks now = clock_->NowTicks();
   auto next_fire_time = base::TimeTicks::Max();
@@ -557,14 +564,19 @@ void AnchorElementInteractionTracker::HoverTimerFired(TimerBase*) {
         }
       }
 
+      if (renderer_side_heuristics && speculation_rules) {
+        speculation_rules->OnHoverHeuristic(hover_event_candidate.key.first,
+                                            hover_event_candidate.key.second);
+      }
+
       if (hover_event_candidate.key.second ==
-          blink::mojom::SpeculationEagerness::kEager) {
+          mojom::blink::SpeculationEagerness::kEager) {
         CHECK(base::FeatureList::IsEnabled(
             blink::features::kPreloadingEagerHoverHeuristics));
         interaction_host_->OnPointerHoverEager(hover_event_candidate.key.first,
                                                std::move(pointer_data));
       } else if (hover_event_candidate.key.second ==
-                 blink::mojom::SpeculationEagerness::kModerate) {
+                 mojom::blink::SpeculationEagerness::kModerate) {
         interaction_host_->OnPointerHoverModerate(
             hover_event_candidate.key.first, std::move(pointer_data));
       } else {
@@ -779,16 +791,36 @@ void AnchorElementInteractionTracker::ModerateViewportHeuristicTimerFired(
     return;
   }
 
+  // Renderer-driven enactment (SpeculationRulesRendererSideHeuristics) does not
+  // use `interaction_host_`; the legacy path still requires it.
   // interaction_host_ might become unbound: Android's low memory detector
   // sometimes call NotifyContextDestroyed to save memory. This unbinds mojo
   // pipes using that ExecutionContext even if those pages can still navigate.
-  if (!interaction_host_.is_bound()) {
+  const bool renderer_side_heuristics = base::FeatureList::IsEnabled(
+      features::kSpeculationRulesRendererSideHeuristics);
+  if (!renderer_side_heuristics && !interaction_host_.is_bound()) {
     return;
   }
 
-  if (IsPreloadingEligible()) {
-    interaction_host_->OnModerateViewportHeuristicTriggered(
-        largest_anchor_element_in_viewport_->Url());
+  if (!IsPreloadingEligible()) {
+    return;
+  }
+
+  const KURL& url = largest_anchor_element_in_viewport_->Url();
+  if (renderer_side_heuristics) {
+    // Enact the matching moderate candidate via DocumentSpeculationRules
+    // instead of forwarding the signal to the browser's PreloadingDecider, and
+    // only when configured to enact (mirrors
+    // PreloadingDecider::OnModerateViewportHeuristicTriggered).
+    if (!features::kPreloadingModerateViewportHeuristicsEnactCandidates.Get()) {
+      return;
+    }
+    if (auto* rules = DocumentSpeculationRules::FromIfExists(*GetDocument())) {
+      rules->OnViewportHeuristic(url,
+                                 mojom::blink::SpeculationEagerness::kModerate);
+    }
+  } else {
+    interaction_host_->OnModerateViewportHeuristicTriggered(url);
   }
 }
 
@@ -812,12 +844,27 @@ void AnchorElementInteractionTracker::EagerViewportHeuristicTimerFired(
     next_fire_time = std::min(next_fire_time, candidate.timestamp);
   }
 
-  if (!interaction_host_.is_bound()) {
+  // Renderer-driven enactment (SpeculationRulesRendererSideHeuristics) does
+  // not use `interaction_host_`; the legacy path still requires it.
+  const bool renderer_side_heuristics = base::FeatureList::IsEnabled(
+      features::kSpeculationRulesRendererSideHeuristics);
+  if (!renderer_side_heuristics && !interaction_host_.is_bound()) {
     return;
   }
 
   if (!fired_candidates.empty() && IsPreloadingEligible()) {
-    interaction_host_->OnEagerViewportHeuristicTriggered(fired_candidates);
+    if (renderer_side_heuristics) {
+      if (Document* document = GetDocument()) {
+        if (auto* rules = DocumentSpeculationRules::FromIfExists(*document)) {
+          for (const KURL& url : fired_candidates) {
+            rules->OnViewportHeuristic(
+                url, mojom::blink::SpeculationEagerness::kEager);
+          }
+        }
+      }
+    } else {
+      interaction_host_->OnEagerViewportHeuristicTriggered(fired_candidates);
+    }
   }
   RemoveAll(eager_viewport_heuristics_candidates_, fired_candidates);
   if (!next_fire_time.is_max()) {

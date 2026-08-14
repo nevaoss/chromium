@@ -138,7 +138,8 @@ void BrowserWidget::InitBrowserWidget() {
   params.delegate = browser_view_;
 
   Browser* browser = browser_view_->browser();
-  if (browser->is_type_picture_in_picture()) {
+  if (browser->GetType() ==
+      BrowserWindowInterface::Type::TYPE_PICTURE_IN_PICTURE) {
     params.z_order = ui::ZOrderLevel::kFloatingWindow;
     params.visible_on_all_workspaces = true;
 #if !BUILDFLAG(IS_WIN)
@@ -170,14 +171,15 @@ void BrowserWidget::InitBrowserWidget() {
 
 #if BUILDFLAG(IS_OZONE)
   params.inhibit_keyboard_shortcuts =
-      browser->is_type_app() || browser->is_type_app_popup();
+      browser->GetType() == BrowserWindowInterface::Type::TYPE_APP ||
+      browser->is_type_app_popup();
 
   params.session_data = browser->platform_session_data();
 #endif
 
   if (browser_native_widget_->ShouldRestorePreviousBrowserWidgetState()) {
     if (browser->is_type_normal() || browser->is_type_devtools() ||
-        browser->is_type_app()) {
+        browser->GetType() == BrowserWindowInterface::Type::TYPE_APP) {
       // Typed panel/popup can only return a size once the widget has been
       // created.
       // DevTools counts as a popup, but DevToolsWindow::CreateDevToolsBrowser
@@ -377,7 +379,8 @@ void BrowserWidget::ShowContextMenuForViewImpl(
 
   // Do not show context menu for Document picture-in-picture browser. Context:
   // http://b/274862709.
-  if (browser_view_->browser()->is_type_picture_in_picture()) {
+  if (browser_view_->browser()->GetType() ==
+      BrowserWindowInterface::Type::TYPE_PICTURE_IN_PICTURE) {
     return;
   }
 

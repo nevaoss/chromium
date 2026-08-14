@@ -14,6 +14,7 @@
 #include "chrome/browser/ui/views/toolbar/mock_webui_toolbar_control_delegate.h"
 #include "chrome/grit/generated_resources.h"
 #include "chrome/test/base/chrome_render_view_host_test_harness.h"
+#include "content/public/browser/page.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/base/l10n/l10n_util.h"
@@ -84,7 +85,7 @@ class MockContentSettingImageModel : public FakeContentSettingImageModel {
 
   MOCK_METHOD(std::unique_ptr<ContentSettingBubbleModel>,
               CreateBubbleModelImpl,
-              (ContentSettingBubbleModel::Delegate*, content::WebContents*),
+              (ContentSettingBubbleModel::Delegate*, content::Page&),
               (override));
 };
 
@@ -221,7 +222,7 @@ TEST_F(WebUIContentSettingImageControlTest, ShowContentSettingsBubble) {
   EXPECT_CALL(
       *cookies_model,
       CreateBubbleModelImpl(delegate_->GetContentSettingBubbleModelDelegate(),
-                            web_contents()))
+                            testing::Ref(web_contents()->GetPrimaryPage())))
       .WillOnce(testing::Return(
           testing::ByMove(std::unique_ptr<ContentSettingBubbleModel>())));
 
@@ -253,7 +254,7 @@ TEST_F(WebUIContentSettingImageControlTest, AutoOpenBubble) {
   EXPECT_CALL(
       *cookies_model,
       CreateBubbleModelImpl(delegate_->GetContentSettingBubbleModelDelegate(),
-                            web_contents()))
+                            testing::Ref(web_contents()->GetPrimaryPage())))
       .WillOnce(testing::Return(
           testing::ByMove(std::unique_ptr<ContentSettingBubbleModel>())));
 
@@ -309,7 +310,37 @@ TEST_F(WebUIContentSettingImageControlTest, AnimationAnnouncement) {
 
   auto state = control_->ProcessContentSettingState(web_contents());
   ASSERT_EQ(1u, state.size());
-  EXPECT_TRUE(state[0]->should_run_animation);
+  EXPECT_EQ(expected_announcement, state[0]->explanatory_string);
+}
+
+TEST_F(WebUIContentSettingImageControlTest,
+       NoAnimationAnnounceOnSubsequentUpdates) {
+  std::vector<std::unique_ptr<ContentSettingImageModel>> models;
+  auto popups_model_ptr = std::make_unique<FakeContentSettingImageModel>(
+      ImageType::kPopups, ContentSettingsType::POPUPS,
+      /*image_type_should_notify_accessibility=*/false);
+  auto* popups_model = popups_model_ptr.get();
+  popups_model->set_visible(true);
+  popups_model->set_explanatory_string_id(IDS_BLOCKED_POPUPS_EXPLANATORY_TEXT);
+  models.push_back(std::move(popups_model_ptr));
+
+  testing::StrictMock<MockWebUIToolbarControlDelegate> webui_delegate;
+  control_->InitForTesting(std::move(models), &webui_delegate);
+
+  std::u16string expected_announcement =
+      l10n_util::GetStringUTF16(IDS_BLOCKED_POPUPS_EXPLANATORY_TEXT);
+
+  // The alert should only be announced once during the first update when the
+  // animation actually runs.
+  EXPECT_CALL(webui_delegate, AnnounceAlert(expected_announcement)).Times(1);
+
+  auto state1 = control_->ProcessContentSettingState(web_contents());
+  ASSERT_EQ(1u, state1.size());
+
+  // Second update: animation has already run, so AnnounceAlert should not be
+  // called again.
+  auto state2 = control_->ProcessContentSettingState(web_contents());
+  ASSERT_EQ(1u, state2.size());
 }
 
 }  // namespace

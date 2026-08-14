@@ -42,8 +42,6 @@ BASE_DECLARE_FEATURE(kSharedHighlightingIOS);
 // Feature flag to log metrics for the edit menu.
 BASE_DECLARE_FEATURE(kIOSBrowserEditMenuMetrics);
 
-// Feature flag to enable the custom file upload menu.
-BASE_DECLARE_FEATURE(kIOSCustomFileUploadMenu);
 
 // Docking Promo experiment variations.
 extern const char kIOSDockingPromoV2VariationParam[];
@@ -567,6 +565,8 @@ bool IsRunDefaultStatusCheckEnabled();
 // Feature flag to highlight the app's features during the FRE.
 BASE_DECLARE_FEATURE(kBestOfAppFRE);
 
+extern const base::FeatureParam<std::string> kBestOfAppFREVariantParam;
+
 // Whether the feature to highlight the app's features during the FRE is
 // enabled.
 bool IsBestOfAppFREEnabled();
@@ -811,12 +811,6 @@ void SaveEnableNewStartupFlowForNextStart();
 
 // Resets the cached value for IsEnableNewStartupFlowEnabled, needed for tests.
 void ResetEnableNewStartupFlowEnabledForTesting();
-
-// Flags for Share Ablation study.
-BASE_DECLARE_FEATURE(kDisableShareButton);
-BASE_DECLARE_FEATURE(kShareInOmniboxLongPress);
-BASE_DECLARE_FEATURE(kShareInOverflowMenu);
-BASE_DECLARE_FEATURE(kShareInVerbatimMatch);
 
 BASE_DECLARE_FEATURE(kUseSceneViewController);
 

@@ -20,6 +20,7 @@ import type {ContextualTasksComposeboxElement} from './composebox.js';
 import type {ContextualTasksOnboardingTooltipElement} from './onboarding_tooltip.js';
 // </if>
 
+
 import '//resources/cr_elements/cr_button/cr_button.js';
 import './error_dialog.js';
 import './error_page.js';
@@ -260,14 +261,8 @@ export class ContextualTasksAppElement extends ContextualTasksAppElementBase {
       friendlyZeroStateTitle: {type: String},
       friendlyZeroStateSubtitle: {type: String},
       occluders_: {type: Array},
-      showOnboardingTooltip_: {
-        type: Boolean,
-        value: loadTimeData.getBoolean('showOnboardingTooltip'),
-      },
-      showLensSearchTooltip_: {
-        type: Boolean,
-        value: loadTimeData.getBoolean('askGCoBrowseEnabled'),
-      },
+      showOnboardingTooltip_: {type: Boolean},
+      showLensSearchTooltip_: {type: Boolean},
       lensSearchTooltipShowing_: {type: Boolean},
       energyEffectEnabled_: {
         type: Boolean,
@@ -834,6 +829,8 @@ export class ContextualTasksAppElement extends ContextualTasksAppElementBase {
     if (changedPrivateProperties.has('isShownInTab_')) {
       this.updateCommonSearchParams();
     }
+
+    this.updateTooltipVisibility_();
   }
 
   // <if expr="not is_android">
@@ -871,30 +868,34 @@ export class ContextualTasksAppElement extends ContextualTasksAppElementBase {
             '#lensSearchTooltip') || null;
     // </if>
 
+    const isComposeboxHidden = this.isComposeboxHidden_() ||
+        (this.enableBasicMode_ && this.isInBasicMode_);
+
     const composeboxContainer = this.composebox_;
-    if (!composeboxContainer) {
-      return;
-    }
-    const crComposebox = this.composebox_.getComposebox();
-    if (!crComposebox) {
-      return;
-    }
+    const crComposebox = composeboxContainer?.getComposebox() || null;
 
     if (onboardingTooltip) {
-      const hasToken = crComposebox.getHasAutomaticActiveTabChipToken();
+      const hasToken = !isComposeboxHidden &&
+          !!crComposebox?.getHasAutomaticActiveTabChipToken();
       const isCoinsEnabled = loadTimeData.getBoolean('tabFaviconChipsToCoinsEnabled');
-      const target = isCoinsEnabled ?
+      const target = crComposebox ? (isCoinsEnabled ?
           crComposebox.getContextEntrypointElement() :
-          crComposebox.getAutomaticActiveTabChipElement();
+          crComposebox.getAutomaticActiveTabChipElement()) : null;
 
-      onboardingTooltip.updateTooltipVisibility(hasToken, target, composeboxContainer);
+      onboardingTooltip.updateTooltipVisibility(
+          hasToken, target, composeboxContainer || undefined);
       this.onboardingTooltipShowing_ = onboardingTooltip.shouldShow;
     }
 
     // <if expr="not is_android">
     if (lensSearchTooltip) {
-      lensSearchTooltip.updateTooltipVisibility(composeboxContainer, crComposebox);
-      this.lensSearchTooltipShowing_ = lensSearchTooltip.shouldShow;
+      if (isComposeboxHidden || !composeboxContainer || !crComposebox) {
+        lensSearchTooltip.hide();
+        this.lensSearchTooltipShowing_ = false;
+      } else {
+        lensSearchTooltip.updateTooltipVisibility(composeboxContainer, crComposebox);
+        this.lensSearchTooltipShowing_ = lensSearchTooltip.shouldShow;
+      }
     }
     // </if>
   }

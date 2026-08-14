@@ -50,7 +50,6 @@ BASE_FEATURE(kSharedHighlightingIOS, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kIOSBrowserEditMenuMetrics, base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kIOSCustomFileUploadMenu, base::FEATURE_ENABLED_BY_DEFAULT);
 
 const char kIOSDockingPromoV2VariationParam[] =
     "IOSDockingPromoV2VariationParam";
@@ -615,17 +614,21 @@ bool IsRunDefaultStatusCheckEnabled() {
   return base::FeatureList::IsEnabled(kRunDefaultStatusCheck);
 }
 
-BASE_FEATURE(kBestOfAppFRE, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kBestOfAppFRE, base::FEATURE_ENABLED_BY_DEFAULT);
 
 bool IsBestOfAppFREEnabled() {
   return base::FeatureList::IsEnabled(kBestOfAppFRE);
 }
 
+// Enable Lens Promo arm by default.
+constexpr base::FeatureParam<std::string> kBestOfAppFREVariantParam{
+    &kBestOfAppFRE,
+    /*name=*/"variant",
+    /*default_value=*/"1"};
+
 std::vector<std::string> GetBestOfAppFREActiveVariants() {
-  std::string variants_string =
-      base::GetFieldTrialParamValueByFeature(kBestOfAppFRE, "variant");
-  return SplitString(variants_string, ",", base::TRIM_WHITESPACE,
-                     base::SPLIT_WANT_NONEMPTY);
+  return SplitString(kBestOfAppFREVariantParam.Get(), ",",
+                     base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 }
 
 bool IsBestOfAppGuidedTourEnabled() {
@@ -1009,12 +1012,6 @@ void ResetEnableNewStartupFlowEnabledForTesting() {
   startup_flow_status = NewStartupFlowStatus::kUnspecified;
 }
 
-// Flags for Share Ablation study.
-BASE_FEATURE(kDisableShareButton, base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kShareInOmniboxLongPress, base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kShareInOverflowMenu, base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kShareInVerbatimMatch, base::FEATURE_DISABLED_BY_DEFAULT);
-
 BASE_FEATURE(kUseSceneViewController, base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool IsUseSceneViewControllerEnabled() {
@@ -1068,7 +1065,7 @@ bool IsAimCobrowseEnabled() {
 }
 
 BASE_FEATURE(kFeedbackEntryPointsRequireCanSubmitFeedbackCapability,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 bool IsFeedbackEntryPointsRequireCanSubmitFeedbackCapabilityEnabled() {
   return base::FeatureList::IsEnabled(

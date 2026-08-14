@@ -48,6 +48,7 @@
 #include "build/build_config.h"
 #include "cc/test/pixel_test_utils.h"
 #include "components/input/render_widget_host_input_event_router.h"
+#include "components/viz/client/frame_eviction_manager.h"
 #include "components/viz/client/frame_evictor.h"
 #include "components/viz/common/frame_sinks/copy_output_result.h"
 #include "content/browser/file_system/file_system_manager_impl.h"
@@ -121,7 +122,6 @@
 #include "net/test/embedded_test_server/embedded_test_server.h"
 #include "net/test/embedded_test_server/http_request.h"
 #include "net/test/embedded_test_server/http_response.h"
-#include "net/test/python_utils.h"
 #include "net/traffic_annotation/network_traffic_annotation_test_helper.h"
 #include "services/network/public/cpp/features.h"
 #include "services/network/public/cpp/simple_url_loader.h"
@@ -4389,6 +4389,15 @@ void VerifyStaleContentOnFrameEviction(
 }
 
 #endif  // defined(USE_AURA)
+
+size_t GetUnlockedCompositorFrameCount() {
+  return viz::FrameEvictionManager::GetInstance()
+      ->GetUnlockedFramesCountForTesting();
+}
+
+void PurgeUnlockedCompositorFrames() {
+  viz::FrameEvictionManager::GetInstance()->PurgeAllUnlockedFrames();
+}
 
 // static
 void BlobURLStoreInterceptor::Intercept(GURL target_url,

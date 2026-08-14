@@ -187,6 +187,7 @@
 #else  // !BUILDFLAG(IS_CHROMEOS)
 #include "chrome/browser/search/background/ntp_custom_background_service_factory.h"
 #include "chrome/browser/signin/account_consistency_mode_manager.h"
+#include "chrome/browser/ui/webui/cr_components/signin/signin_utils_handler.h"
 #include "chrome/browser/ui/webui/cr_components/theme_color_picker/theme_color_picker_handler.h"
 #include "chrome/browser/ui/webui/settings/captions_handler.h"
 #include "chrome/browser/ui/webui/settings/settings_default_browser_handler.h"
@@ -420,10 +421,6 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
           ->GetPaymentsDataManager()
           .ShouldShowBnplSettings());
 
-  html_source->AddBoolean("enableYourSavedInfoSettingsPage",
-                          base::FeatureList::IsEnabled(
-                              autofill::features::kYourSavedInfoSettingsPage));
-
   html_source->AddBoolean("shoppingIntegrationEnabled",
                           base::FeatureList::IsEnabled(
                               autofill::features::kAutofillAmbientAutofill));
@@ -597,6 +594,9 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
                ->UserIsActivePasswordChangeUser()},
       {"showAiSuggestionsControl",
        base::FeatureList::IsEnabled(contextual_cueing::kContextualCueingV2)},
+      {"showInlineCueMenuControl",
+       base::FeatureList::IsEnabled(features::kGlicSelectionPrompt) &&
+           glic_enablement.ShouldShowSettingsPage()},
       {"showSkillsSettingPage",
        base::FeatureList::IsEnabled(features::kSkillsEnabled)},
       {"showIndigoControl", base::FeatureList::IsEnabled(features::kIndigo)},
@@ -745,6 +745,15 @@ void SettingsUI::BindInterface(
   theme_color_picker_handler_factory_receiver_.Bind(
       std::move(pending_receiver));
 }
+
+void SettingsUI::BindInterface(
+    mojo::PendingReceiver<signin::mojom::SigninPageHandlerFactory>
+        pending_receiver) {
+  if (signin_handler_factory_receiver_.is_bound()) {
+    signin_handler_factory_receiver_.reset();
+  }
+  signin_handler_factory_receiver_.Bind(std::move(pending_receiver));
+}
 #endif  // !BUILDFLAG(IS_CHROMEOS)
 
 void SettingsUI::BindInterface(
@@ -796,6 +805,14 @@ void SettingsUI::CreateThemeColorPickerHandler(
       NtpCustomBackgroundServiceFactory::GetForProfile(
           Profile::FromWebUI(web_ui())),
       web_ui()->GetWebContents());
+}
+
+void SettingsUI::CreateSigninPageHandler(
+    mojo::PendingReceiver<signin::mojom::SigninPageHandler> handler) {
+#if BUILDFLAG(ENABLE_DICE_SUPPORT)
+  signin_handler_ = std::make_unique<SigninUtilsHandler>(
+      std::move(handler), Profile::FromWebUI(web_ui()));
+#endif
 }
 #endif  // !BUILDFLAG(IS_CHROMEOS)
 

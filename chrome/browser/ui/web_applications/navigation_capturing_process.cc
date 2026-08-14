@@ -36,7 +36,6 @@
 #include "chrome/browser/web_applications/isolated_web_apps/window_management/isolated_web_apps_window_open_permission_service.h"
 #include "chrome/browser/web_applications/isolated_web_apps/window_management/isolated_web_apps_window_open_permission_service_factory.h"
 #include "chrome/browser/web_applications/link_capturing_features.h"
-#include "chrome/browser/web_applications/navigation_capturing_log.h"
 #include "chrome/browser/web_applications/navigation_capturing_metrics.h"
 #include "chrome/browser/web_applications/navigation_capturing_settings.h"
 #include "chrome/browser/web_applications/web_app_command_scheduler.h"
@@ -47,6 +46,7 @@
 #include "chrome/browser/web_applications/web_app_registrar.h"
 #include "chrome/browser/web_applications/web_app_tab_helper.h"
 #include "chrome/browser/web_applications/web_app_utils.h"
+#include "components/webapps/browser/navigation_capturing_log.h"
 #include "content/public/browser/navigation_throttle.h"
 #include "content/public/browser/site_isolation_policy.h"
 #include "content/public/browser/web_contents.h"
@@ -280,6 +280,37 @@ void LaunchIsolatedWebAppInNewWindow(web_app::WebAppProvider* provider,
                                                   base::DoNothing());
 }
 
+bool IsCrossIwaNavigation(
+    const web_app::WebAppRegistrar& registrar,
+    const NavigateParams& params,
+    const webapps::AppId& iwa_id,
+    const std::optional<webapps::AppId>& source_browser_app_id) {
+  // Service worker `clients.openWindow()` arrives with no source browser and a
+  // non-link transition, so the link-based source check below does not apply.
+  // Use the initiator origin to enforce the same cross-IWA restriction.
+  if (params.is_service_worker_open_window && params.initiator_origin &&
+      !params.initiator_origin->IsSameOriginWith(params.url)) {
+    return true;
+  }
+
+  // Any links: window.open(), anchor link, meta tag redirect. Cancel
+  // navigations that do not originate from a browser belonging to the target
+  // app's family (the app itself, its parent app, or a sibling sub-app),
+  // regardless of disposition, before falling through to the
+  // disposition-specific handling. With sub-apps, navigations are allowed in
+  // all directions as long as both apps are in the same family.
+  if (ui::PageTransitionCoreTypeIs(params.transition,
+                                   ui::PAGE_TRANSITION_LINK) &&
+      (!source_browser_app_id ||
+       registrar.GetParentAppId(*source_browser_app_id)
+               .value_or(*source_browser_app_id) !=
+           registrar.GetParentAppId(iwa_id).value_or(iwa_id))) {
+    return true;
+  }
+
+  return false;
+}
+
 }  // namespace
 
 NavigationCapturingOverride::~NavigationCapturingOverride() = default;
@@ -433,15 +464,6 @@ NavigationCapturingProcess::NavigationCapturingProcess(
     CHECK(registrar.GetAppById(*first_navigation_app_id_));
     first_navigation_app_display_mode_ =
         registrar.GetAppEffectiveDisplayMode(*first_navigation_app_id_);
-
-    first_navigation_parent_app_id_ =
-        registrar.GetAppById(*first_navigation_app_id_)->parent_app_id();
-
-    CHECK(
-        !first_navigation_parent_app_id_ ||
-        url::IsSameOriginWith(
-            params.url, registrar.GetAppById(*first_navigation_parent_app_id_)
-                            ->start_url()));
   }
 
   isolated_web_app_navigation_ =
@@ -893,12 +915,22 @@ NavigationCapturingProcess::HandleIsolatedWebAppNavigation(
   const webapps::AppId& iwa_id = *first_navigation_app_id_;
   const DisplayMode& app_display_mode = *first_navigation_app_display_mode_;
 
+  WebAppProvider* provider = WebAppProvider::GetForWebApps(&*profile_);
+  CHECK(provider);
+  web_app::WebAppRegistrar& registrar = provider->registrar_unsafe();
+
+  if (IsCrossIwaNavigation(registrar, params, iwa_id, source_browser_app_id_)) {
+    // TODO(crbug.com/424422466): Support cross-IWA navigations to start_url.
+    return CancelInitialNavigation(
+        NavigationCapturingInitialResult::kNavigationCanceled);
+  }
+
   // Prefer `params.browser` if it's a compatible IWA browser.
   bool iwa_browser =
       params.browser &&
       (web_app::AppBrowserController::IsForWebApp(params.browser, iwa_id) ||
        web_app::AppBrowserController::IsForIsolatedSubApp(
-           params.browser, first_navigation_parent_app_id_));
+           params.browser, registrar.GetParentAppId(iwa_id)));
 
   bool capturing_disabled = [&]() {
     switch (disposition_) {
@@ -934,34 +966,13 @@ NavigationCapturingProcess::HandleIsolatedWebAppNavigation(
     return CapturingDisabled();
   }
 
-  // Service worker `clients.openWindow()` arrives with no source browser and a
-  // non-link transition, so the link-based source check below does not apply.
-  // Use the initiator origin to enforce the same cross-IWA restriction.
-  if (params.is_service_worker_open_window && params.initiator_origin &&
-      !params.initiator_origin->IsSameOriginWith(params.url)) {
-    // TODO(crbug.com/424422466): Support cross-IWA navigations to start_url.
-    return CancelInitialNavigation(
-        NavigationCapturingInitialResult::kNavigationCanceled);
-  }
-
   if (ui::PageTransitionCoreTypeIs(params.transition,
-                                   ui::PAGE_TRANSITION_LINK)) {
-    // Any links: same-IWA or cross-IWA window.open(), same-IWA or cross-IWA
-    // anchor link, cross-IWA meta tag redirect.
-    if (source_browser_app_id_ != iwa_id &&
-        (!first_navigation_parent_app_id_.has_value() ||
-         source_browser_app_id_ != first_navigation_parent_app_id_.value())) {
-      // TODO(crbug.com/424422466): Support cross-IWA navigations to start_url.
-      return CancelInitialNavigation(
-          NavigationCapturingInitialResult::kNavigationCanceled);
-    }
-
-    if (IsAuxiliaryBrowsingContext(params)) {
-      debug_data_.Set("is_auxiliary_browsing_context", true);
-      Browser* aux_window =
-          CreateWebAppWindowFromNavigationParams(iwa_id, params);
-      return AuxiliaryContextInAppWindow(aux_window);
-    }
+                                   ui::PAGE_TRANSITION_LINK) &&
+      IsAuxiliaryBrowsingContext(params)) {
+    debug_data_.Set("is_auxiliary_browsing_context", true);
+    Browser* aux_window =
+        CreateWebAppWindowFromNavigationParams(iwa_id, params);
+    return AuxiliaryContextInAppWindow(aux_window);
   }
 
   // Auxiliary browsing contexts should only be openable via link transitions.
@@ -1496,9 +1507,16 @@ void NavigationCapturingProcess::OnAttachedToNavigationHandle() {
   auto* navigation_handle_user_data =
       WebAppLaunchNavigationHandleUserData::GetOrCreateForNavigationHandle(
           *navigation_handle());
-  navigation_handle_user_data->SetLaunchParamsMetadata(
-      *launched_app_id_, navigation_handle()->GetURL(),
-      time_navigation_started_);
+  if (initial_nav_handling_result_ !=
+          NavigationCapturingInitialResult::kAuxiliaryContextAppBrowserTab &&
+      initial_nav_handling_result_ !=
+          NavigationCapturingInitialResult::kAuxiliaryContextAppWindow) {
+    // Omit launch params for auxiliary context - this isn't really a launch,
+    // but an extension of an existing app.
+    navigation_handle_user_data->SetLaunchParamsMetadata(
+        *launched_app_id_, navigation_handle()->GetURL(),
+        time_navigation_started_);
+  }
   navigation_handle_user_data->set_force_iph_off(force_iph_off_ ||
                                                  isolated_web_app_navigation_);
   navigation_handle_user_data->set_is_navigation_capturing(true);
@@ -2029,6 +2047,14 @@ void NavigationCapturingProcess::SetLaunchedAppIdAndUpdateLaunchParams(
     if (!navigation_handle()) {
       return std::nullopt;
     }
+    if (initial_nav_handling_result_ ==
+            NavigationCapturingInitialResult::kAuxiliaryContextAppBrowserTab ||
+        initial_nav_handling_result_ ==
+            NavigationCapturingInitialResult::kAuxiliaryContextAppWindow) {
+      // Auxiliary contexts don't set `user_data->GetLaunchParams()`.
+      return std::nullopt;
+    }
+
     auto* user_data =
         WebAppLaunchNavigationHandleUserData::GetForNavigationHandle(
             *navigation_handle());

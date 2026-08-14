@@ -12,6 +12,7 @@
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
 #include "base/json/json_reader.h"
+#include "base/memory/scoped_refptr.h"
 #include "base/strings/stringprintf.h"
 #include "base/values.h"
 #include "components/private_verification_tokens/common/private_verification_tokens_issuer_config_internal.h"
@@ -24,26 +25,6 @@
 namespace private_verification_tokens {
 
 namespace internal {
-
-TEST(PrivateVerificationTokensIssuerConfigInternalTest,
-     IsRegistrableDomain_Valid) {
-  EXPECT_TRUE(IsRegistrableDomain("example.com"));
-}
-
-TEST(PrivateVerificationTokensIssuerConfigInternalTest,
-     IsRegistrableDomain_Subdomain) {
-  EXPECT_FALSE(IsRegistrableDomain("sub.example.com"));
-}
-
-TEST(PrivateVerificationTokensIssuerConfigInternalTest,
-     IsRegistrableDomain_TldOnly) {
-  EXPECT_FALSE(IsRegistrableDomain("com"));
-}
-
-TEST(PrivateVerificationTokensIssuerConfigInternalTest,
-     IsRegistrableDomain_Empty) {
-  EXPECT_FALSE(IsRegistrableDomain(""));
-}
 
 TEST(PrivateVerificationTokensIssuerConfigInternalTest, GetValidVersion_Valid) {
   base::DictValue dict;
@@ -108,137 +89,90 @@ TEST(PrivateVerificationTokensIssuerConfigInternalTest,
   EXPECT_FALSE(bytes.has_value());
 }
 
-TEST(PrivateVerificationTokensIssuerConfigInternalTest, GetValidKeyId_Valid) {
+TEST(PrivateVerificationTokensIssuerConfigInternalTest,
+     GetValidRedeemers_Valid) {
+  PrivateVerificationTokensParameters params{.max_number_of_redeemers = 2};
   base::DictValue dict;
-  dict.Set(kKeyIdKey, base::Value(3));
-  std::optional<uint32_t> key_id = GetValidKeyId(dict);
-  EXPECT_THAT(key_id, testing::Optional(3u));
+  base::ListValue list;
+  list.Append("https://s1.example.com");
+  list.Append("https://s2.example.com");
+  dict.Set(kRedeemersKey, std::move(list));
+  std::optional<std::vector<url::Origin>> redeemers =
+      GetValidRedeemers(dict, "example.com", params);
+  ASSERT_TRUE(redeemers.has_value());
+  EXPECT_THAT(*redeemers,
+              testing::ElementsAre(
+                  url::Origin::Create(GURL("https://s1.example.com")),
+                  url::Origin::Create(GURL("https://s2.example.com"))));
 }
 
 TEST(PrivateVerificationTokensIssuerConfigInternalTest,
-     GetValidKeyId_Negative) {
+     GetValidRedeemers_TooManyOrigins) {
+  PrivateVerificationTokensParameters params{.max_number_of_redeemers = 2};
   base::DictValue dict;
-  dict.Set(kKeyIdKey, base::Value(-1));
-  std::optional<uint32_t> key_id = GetValidKeyId(dict);
-  EXPECT_FALSE(key_id.has_value());
+  base::ListValue list;
+  for (int i = 0; i < 3; ++i) {
+    list.Append(base::StringPrintf("https://s%d.example.com", i));
+  }
+  dict.Set(kRedeemersKey, std::move(list));
+  std::optional<std::vector<url::Origin>> redeemers =
+      GetValidRedeemers(dict, "example.com", params);
+  EXPECT_FALSE(redeemers.has_value());
 }
 
 TEST(PrivateVerificationTokensIssuerConfigInternalTest,
-     GetValidKeyId_InvalidType) {
+     GetValidRedeemers_NonHttpsScheme) {
+  PrivateVerificationTokensParameters params{.max_number_of_redeemers = 2};
   base::DictValue dict;
-  dict.Set(kKeyIdKey, base::Value("3"));
-  std::optional<uint32_t> key_id = GetValidKeyId(dict);
-  EXPECT_FALSE(key_id.has_value());
-}
-
-TEST(PrivateVerificationTokensIssuerConfigInternalTest, GetValidKeyId_Missing) {
-  base::DictValue dict;
-  std::optional<uint32_t> key_id = GetValidKeyId(dict);
-  EXPECT_FALSE(key_id.has_value());
-}
-
-TEST(PrivateVerificationTokensIssuerConfigInternalTest,
-     GetValidBatchSize_Valid) {
-  base::DictValue dict;
-  dict.Set(kBatchSizeKey, base::Value(3));
-  PrivateVerificationTokensParameters params{.min_batch_size = 2,
-                                             .max_batch_size = 5};
-  std::optional<int> batch_size = GetValidBatchSize(dict, params);
-  EXPECT_THAT(batch_size, testing::Optional(3));
+  base::ListValue list;
+  list.Append("http://s1.example.com");
+  dict.Set(kRedeemersKey, std::move(list));
+  std::optional<std::vector<url::Origin>> redeemers =
+      GetValidRedeemers(dict, "example.com", params);
+  EXPECT_FALSE(redeemers.has_value());
 }
 
 TEST(PrivateVerificationTokensIssuerConfigInternalTest,
-     GetValidBatchSize_TooSmall) {
+     GetValidRedeemers_DifferentEtldPlusOne) {
+  PrivateVerificationTokensParameters params{.max_number_of_redeemers = 2};
   base::DictValue dict;
-  dict.Set(kBatchSizeKey, base::Value(1));
-  PrivateVerificationTokensParameters params{.min_batch_size = 2,
-                                             .max_batch_size = 5};
-  std::optional<int> batch_size = GetValidBatchSize(dict, params);
-  EXPECT_FALSE(batch_size.has_value());
+  base::ListValue list;
+  list.Append("https://s1.other.com");
+  dict.Set(kRedeemersKey, std::move(list));
+  std::optional<std::vector<url::Origin>> redeemers =
+      GetValidRedeemers(dict, "example.com", params);
+  EXPECT_FALSE(redeemers.has_value());
 }
 
 TEST(PrivateVerificationTokensIssuerConfigInternalTest,
-     GetValidBatchSize_TooLarge) {
+     GetValidRedeemers_Missing) {
+  PrivateVerificationTokensParameters params{.max_number_of_redeemers = 2};
   base::DictValue dict;
-  dict.Set(kBatchSizeKey, base::Value(6));
-  PrivateVerificationTokensParameters params{.min_batch_size = 2,
-                                             .max_batch_size = 5};
-  std::optional<int> batch_size = GetValidBatchSize(dict, params);
-  EXPECT_FALSE(batch_size.has_value());
-}
-
-TEST(PrivateVerificationTokensIssuerConfigInternalTest,
-     GetValidBatchSize_InvalidType) {
-  base::DictValue dict;
-  dict.Set(kBatchSizeKey, base::Value("3"));  // String, not integer
-  PrivateVerificationTokensParameters params{.min_batch_size = 2,
-                                             .max_batch_size = 5};
-  std::optional<int> batch_size = GetValidBatchSize(dict, params);
-  EXPECT_FALSE(batch_size.has_value());
-}
-
-TEST(PrivateVerificationTokensIssuerConfigInternalTest,
-     GetValidBatchSize_Missing) {
-  base::DictValue dict;
-  PrivateVerificationTokensParameters params{.min_batch_size = 2,
-                                             .max_batch_size = 5};
-  std::optional<int> batch_size = GetValidBatchSize(dict, params);
-  EXPECT_FALSE(batch_size.has_value());
-}
-
-TEST(PrivateVerificationTokensIssuerConfigInternalTest,
-     GetValidExpiration_Valid) {
-  base::DictValue dict;
-  dict.Set(kExpirationKey, base::Value("1234567890123456"));
-  std::optional<int64_t> expiration = GetValidExpiration(dict);
-  EXPECT_THAT(expiration, testing::Optional(1234567890123456LL));
-}
-
-TEST(PrivateVerificationTokensIssuerConfigInternalTest,
-     GetValidExpiration_InvalidString) {
-  base::DictValue dict;
-  dict.Set(kExpirationKey, base::Value("abc"));
-  std::optional<int64_t> expiration = GetValidExpiration(dict);
-  EXPECT_FALSE(expiration.has_value());
-}
-
-TEST(PrivateVerificationTokensIssuerConfigInternalTest,
-     GetValidExpiration_Negative) {
-  base::DictValue dict;
-  dict.Set(kExpirationKey, base::Value("-123"));
-  std::optional<int64_t> expiration = GetValidExpiration(dict);
-  EXPECT_FALSE(expiration.has_value());
-}
-
-TEST(PrivateVerificationTokensIssuerConfigInternalTest,
-     GetValidExpiration_NotAString) {
-  base::DictValue dict;
-  dict.Set(kExpirationKey, base::Value(123456));  // Number, not string
-  std::optional<int64_t> expiration = GetValidExpiration(dict);
-  EXPECT_FALSE(expiration.has_value());
-}
-
-TEST(PrivateVerificationTokensIssuerConfigInternalTest,
-     GetValidExpiration_Missing) {
-  base::DictValue dict;
-  std::optional<int64_t> expiration = GetValidExpiration(dict);
-  EXPECT_FALSE(expiration.has_value());
+  std::optional<std::vector<url::Origin>> redeemers =
+      GetValidRedeemers(dict, "example.com", params);
+  EXPECT_FALSE(redeemers.has_value());
 }
 
 TEST(PrivateVerificationTokensIssuerConfigInternalTest, ParseEntry_Valid) {
   base::DictValue entry;
-  entry.Set(kDomainKey, base::Value("example.com"));
+  entry.Set(kOriginKey, base::Value("https://example.com"));
   entry.Set(kVersionKey, base::Value(1));
-  entry.Set(kKeyIdKey, base::Value(3));
   entry.Set(kPublicKeyKey, base::Value(base::Base64Encode("some-pvt-key")));
   entry.Set(kBatchSizeKey, base::Value(3));
   entry.Set(kExpirationKey, base::Value("12"));
+  base::ListValue redeemers_list;
+  redeemers_list.Append("https://s1.example.com");
+  entry.Set(kRedeemersKey, std::move(redeemers_list));
 
   auto result = ParseEntry(entry);
   EXPECT_TRUE(result.has_value());
   EXPECT_EQ(result->batch_size, 3);
   EXPECT_EQ(result->public_key.issuer(),
             url::Origin::Create(GURL("https://example.com")));
+  EXPECT_EQ(result->public_key.key_id(), 27u);
+  EXPECT_EQ(result->redeemers.size(), 1u);
+  EXPECT_EQ(result->redeemers[0],
+            url::Origin::Create(GURL("https://s1.example.com")));
 }
 
 struct MissingFieldTestCase {
@@ -253,12 +187,14 @@ TEST_P(PrivateVerificationTokensIssuerConfigInternalMissingFieldTest,
   const auto& test_case = GetParam();
 
   base::DictValue entry;
-  entry.Set(kDomainKey, base::Value("example.com"));
+  entry.Set(kOriginKey, base::Value("https://example.com"));
   entry.Set(kVersionKey, base::Value(1));
-  entry.Set(kKeyIdKey, base::Value(3));
   entry.Set(kPublicKeyKey, base::Value(base::Base64Encode("some-pvt-key")));
   entry.Set(kBatchSizeKey, base::Value(3));
   entry.Set(kExpirationKey, base::Value("12"));
+  base::ListValue redeemers_list;
+  redeemers_list.Append("https://s1.example.com");
+  entry.Set(kRedeemersKey, std::move(redeemers_list));
   entry.Remove(test_case.field_to_remove);
   auto result = ParseEntry(entry);
   EXPECT_FALSE(result.has_value());
@@ -267,12 +203,12 @@ TEST_P(PrivateVerificationTokensIssuerConfigInternalMissingFieldTest,
 INSTANTIATE_TEST_SUITE_P(
     All,
     PrivateVerificationTokensIssuerConfigInternalMissingFieldTest,
-    testing::Values(MissingFieldTestCase{kDomainKey},
+    testing::Values(MissingFieldTestCase{kOriginKey},
                     MissingFieldTestCase{kVersionKey},
                     MissingFieldTestCase{kPublicKeyKey},
-                    MissingFieldTestCase{kKeyIdKey},
                     MissingFieldTestCase{kBatchSizeKey},
-                    MissingFieldTestCase{kExpirationKey}));
+                    MissingFieldTestCase{kExpirationKey},
+                    MissingFieldTestCase{kRedeemersKey}));
 
 }  // namespace internal
 
@@ -313,9 +249,7 @@ TEST_F(PrivateVerificationTokensIssuerConfigTest,
 
 TEST_F(PrivateVerificationTokensIssuerConfigTest,
        Create_ValidArgument_SuccessSingleIssuer) {
-  const std::string domain = "example.com";
   const url::Origin issuer = url::Origin::Create(GURL("https://example.com"));
-  const uint32_t key_id = 3;
   const std::vector<uint8_t> serialized_public_key = {3, 6, 8, 12, 14};
   const std::string encoded_public_key =
       base::Base64Encode(serialized_public_key);
@@ -325,29 +259,33 @@ TEST_F(PrivateVerificationTokensIssuerConfigTest,
       R"({
     "issuers": [
       {
-        "domain": "%s",
+        "origin": "%s",
         "version": 1,
-        "key_id": %u,
-        "public_key": "%s",
-        "batch_size": 3,
-        "expiration": "%s"
+        "publicKey": "%s",
+        "batchSize": 3,
+        "expiration": "%s",
+        "redeemers": ["https://s1.example.com", "https://s2.example.com"]
       }
     ]
   })",
-      domain.c_str(), key_id, encoded_public_key.c_str(),
+      issuer.Serialize().c_str(), encoded_public_key.c_str(),
       expiration_str.c_str());
   GetDictFromJSON(json_str);
-  std::unique_ptr<PrivateVerificationTokensIssuerConfig> config =
+  scoped_refptr<PrivateVerificationTokensIssuerConfig> config =
       PrivateVerificationTokensIssuerConfig::Create(std::move(config_dict_));
   EXPECT_THAT(config, testing::NotNull());
   EXPECT_THAT(config->config(), testing::SizeIs(1));
 
   PrivateVerificationTokensPublicKey expected_public_key{
-      issuer, serialized_public_key, key_id,
+      issuer, serialized_public_key,
       base::Time::UnixEpoch() + base::Seconds(12), version};
   const auto& parsed_issuer_config = config->config().at(issuer);
   EXPECT_EQ(parsed_issuer_config.batch_size, 3);
   EXPECT_EQ(parsed_issuer_config.public_key, expected_public_key);
+  EXPECT_THAT(parsed_issuer_config.redeemers,
+              testing::ElementsAre(
+                  url::Origin::Create(GURL("https://s1.example.com")),
+                  url::Origin::Create(GURL("https://s2.example.com"))));
 }
 
 TEST_F(PrivateVerificationTokensIssuerConfigTest,
@@ -362,26 +300,26 @@ TEST_F(PrivateVerificationTokensIssuerConfigTest,
       R"({
     "issuers": [
       {
-        "domain": "a.com",
+        "origin": "https://a.com",
         "version": 1,
-        "key_id": 2,
-        "public_key": "%s",
-        "batch_size": 3,
-        "expiration": "49"
+        "publicKey": "%s",
+        "batchSize": 3,
+        "expiration": "49",
+        "redeemers": ["https://sub1.a.com"]
       },
       {
-        "domain": "b.com",
+        "origin": "https://b.com",
         "version": 1,
-        "key_id": 5,
-        "public_key": "%s",
-        "batch_size": 5,
-        "expiration": "53"
+        "publicKey": "%s",
+        "batchSize": 5,
+        "expiration": "53",
+        "redeemers": ["https://sub1.b.com"]
       }
     ]
   })",
       encoded_public_key1.c_str(), encoded_public_key2.c_str());
   GetDictFromJSON(json_str);
-  std::unique_ptr<PrivateVerificationTokensIssuerConfig> config =
+  scoped_refptr<PrivateVerificationTokensIssuerConfig> config =
       PrivateVerificationTokensIssuerConfig::Create(std::move(config_dict_));
   EXPECT_THAT(config, testing::NotNull());
   EXPECT_THAT(config->config(), testing::SizeIs(2));
@@ -390,18 +328,24 @@ TEST_F(PrivateVerificationTokensIssuerConfigTest,
   const url::Origin b_origin = url::Origin::Create(GURL("https://b.com"));
 
   PrivateVerificationTokensPublicKey expected_pk1{
-      a_origin, serialized_public_key1, 2,
+      a_origin, serialized_public_key1,
       base::Time::UnixEpoch() + base::Seconds(49), 1};
   const auto& config1 = config->config().at(a_origin);
   EXPECT_EQ(config1.batch_size, 3);
   EXPECT_EQ(config1.public_key, expected_pk1);
+  EXPECT_THAT(
+      config1.redeemers,
+      testing::ElementsAre(url::Origin::Create(GURL("https://sub1.a.com"))));
 
   PrivateVerificationTokensPublicKey expected_pk2{
-      b_origin, serialized_public_key2, 5,
+      b_origin, serialized_public_key2,
       base::Time::UnixEpoch() + base::Seconds(53), 1};
   const auto& config2 = config->config().at(b_origin);
   EXPECT_EQ(config2.batch_size, 5);
   EXPECT_EQ(config2.public_key, expected_pk2);
+  EXPECT_THAT(
+      config2.redeemers,
+      testing::ElementsAre(url::Origin::Create(GURL("https://sub1.b.com"))));
 }
 
 TEST_F(PrivateVerificationTokensIssuerConfigTest,
@@ -413,26 +357,26 @@ TEST_F(PrivateVerificationTokensIssuerConfigTest,
       R"({
     "issuers": [
       {
-        "domain": "valid.com",
+        "origin": "https://valid.com",
         "version": 1,
-        "key_id": 2,
-        "public_key": "%s",
-        "batch_size": 3,
-        "expiration": "49"
+        "publicKey": "%s",
+        "batchSize": 3,
+        "expiration": "49",
+        "redeemers": ["https://sub.valid.com"]
       },
       {
-        "domain": "invalid.com",
+        "origin": "https://invalid.com",
         "version": 2,
-        "key_id": 5,
-        "public_key": "Cg==",
-        "batch_size": 5,
-        "expiration": "53"
+        "publicKey": "Cg==",
+        "batchSize": 5,
+        "expiration": "53",
+        "redeemers": ["https://sub.invalid.com"]
       }
     ]
   })",
       encoded_public_key1.c_str());
   GetDictFromJSON(json_str);
-  std::unique_ptr<PrivateVerificationTokensIssuerConfig> config =
+  scoped_refptr<PrivateVerificationTokensIssuerConfig> config =
       PrivateVerificationTokensIssuerConfig::Create(std::move(config_dict_));
   EXPECT_THAT(config, testing::NotNull());
   EXPECT_THAT(config->config(), testing::SizeIs(1));
@@ -443,7 +387,7 @@ TEST_F(PrivateVerificationTokensIssuerConfigTest,
       url::Origin::Create(GURL("https://invalid.com"));
 
   PrivateVerificationTokensPublicKey expected_pk1{
-      valid_origin, serialized_public_key1, 2,
+      valid_origin, serialized_public_key1,
       base::Time::UnixEpoch() + base::Seconds(49), 1};
   const auto& config1 = config->config().at(valid_origin);
   EXPECT_EQ(config1.batch_size, 3);
@@ -462,35 +406,35 @@ TEST_F(PrivateVerificationTokensIssuerConfigTest,
       R"({
     "issuers": [
       {
-        "domain": "a.com",
+        "origin": "https://a.com",
         "version": 1,
-        "key_id": 2,
-        "public_key": "%s",
-        "batch_size": 3,
-        "expiration": "49"
+        "publicKey": "%s",
+        "batchSize": 3,
+        "expiration": "49",
+        "redeemers": ["https://sub.a.com"]
       },
       {
-        "domain": "b.com",
+        "origin": "https://b.com",
         "version": 1,
-        "key_id": 5,
-        "public_key": "%s",
-        "batch_size": 5,
-        "expiration": "53"
+        "publicKey": "%s",
+        "batchSize": 5,
+        "expiration": "53",
+        "redeemers": ["https://sub.b.com"]
       },
       {
-        "domain": "a.com",
+        "origin": "https://a.com",
         "version": 2,
-        "key_id": 3,
-        "public_key": "%s",
-        "batch_size": 7,
-        "expiration": "62"
+        "publicKey": "%s",
+        "batchSize": 7,
+        "expiration": "62",
+        "redeemers": ["https://sub.a.com"]
       }
     ]
   })",
       encoded_public_key.c_str(), encoded_public_key.c_str(),
       encoded_public_key.c_str());
   GetDictFromJSON(json_str);
-  std::unique_ptr<PrivateVerificationTokensIssuerConfig> config =
+  scoped_refptr<PrivateVerificationTokensIssuerConfig> config =
       PrivateVerificationTokensIssuerConfig::Create(std::move(config_dict_));
   EXPECT_THAT(config, testing::NotNull());
   EXPECT_THAT(config->config(), testing::SizeIs(2));
@@ -500,14 +444,14 @@ TEST_F(PrivateVerificationTokensIssuerConfigTest,
 
   // Verify first a.com entry is picked
   PrivateVerificationTokensPublicKey expected_pk1{
-      a_origin, serialized_public_key, 2,
+      a_origin, serialized_public_key,
       base::Time::UnixEpoch() + base::Seconds(49), 1};
   const auto& config1 = config->config().at(a_origin);
   EXPECT_EQ(config1.batch_size, 3);
   EXPECT_EQ(config1.public_key, expected_pk1);
 
   PrivateVerificationTokensPublicKey expected_pk2{
-      b_origin, serialized_public_key, 5,
+      b_origin, serialized_public_key,
       base::Time::UnixEpoch() + base::Seconds(53), 1};
   const auto& config2 = config->config().at(b_origin);
   EXPECT_EQ(config2.batch_size, 5);
@@ -555,16 +499,18 @@ TEST_F(PrivateVerificationTokensIssuerConfigTest, LoadFromFile_ValidJson) {
       base::Base64Encode(serialized_public_key);
   const std::string json_str = base::StringPrintf(
       R"({
-    "issuers": [
-      {
-        "domain": "example.com",
-        "version": 1,
-        "key_id": 3,
-        "public_key": "%s",
-        "batch_size": 3,
-        "expiration": "12"
-      }
-    ]
+    "1": {
+      "issuers": [
+        {
+          "origin": "https://example.com",
+          "version": 1,
+          "publicKey": "%s",
+          "batchSize": 3,
+          "expiration": "12",
+          "redeemers": ["https://s1.example.com", "https://s2.example.com"]
+        }
+      ]
+    }
   })",
       encoded_public_key.c_str());
   base::ScopedTempDir temp_dir;
@@ -582,10 +528,14 @@ TEST_F(PrivateVerificationTokensIssuerConfigTest, LoadFromFile_ValidJson) {
   EXPECT_EQ(result->config().at(expected_origin).batch_size, 3);
 
   const PrivateVerificationTokensPublicKey expected_public_key{
-      expected_origin, serialized_public_key, 3,
+      expected_origin, serialized_public_key,
       base::Time::UnixEpoch() + base::Seconds(12), 1};
   EXPECT_EQ(result->config().at(expected_origin).public_key,
             expected_public_key);
+  EXPECT_THAT(result->config().at(expected_origin).redeemers,
+              testing::ElementsAre(
+                  url::Origin::Create(GURL("https://s1.example.com")),
+                  url::Origin::Create(GURL("https://s2.example.com"))));
 }
 
 }  // namespace private_verification_tokens

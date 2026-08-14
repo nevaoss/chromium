@@ -1951,8 +1951,8 @@ TEST_WITH_SIGNED_IN_FROM_PRE(IN_PROC_BROWSER_TEST_P,
                              PromoNotShownWhenPromotionsDisabled) {
   SetupRequirementsForPromoType(GetAvatarPromoType());
 
-  TestingBrowserProcess::GetGlobal()->local_state()->SetBoolean(
-      prefs::kPromotionsEnabled, false);
+  g_browser_process->local_state()->SetBoolean(prefs::kPromotionsEnabled,
+                                               false);
   AvatarToolbarButtonInterface* avatar =
       GetAvatarToolbarButtonInterface(browser());
   AvatarToolbarButtonTestAccessor avatar_accessor(browser());
@@ -2557,6 +2557,13 @@ class MAYBE_AvatarToolbarButtonSignedOutPromoBrowserTest
         /*disabled_features=*/{});
   }
 
+  void SetUpDefaultCommandLine(base::CommandLine* command_line) override {
+    AvatarToolbarButtonWithInteractiveFeaturePromoBrowserTest::
+        SetUpDefaultCommandLine(command_line);
+    command_line->RemoveSwitch(
+        switches::kDisableSigninPromoOnAvatarPillForTesting);
+  }
+
  private:
   base::test::ScopedFeatureList scoped_feature_list_;
 };
@@ -2598,6 +2605,12 @@ class
         /*enabled_features=*/{syncer::kReplaceSyncPromosWithSignInPromos,
                               switches::kSigninPromoOnAvatarPill},
         /*disabled_features=*/{});
+  }
+
+  void SetUpDefaultCommandLine(base::CommandLine* command_line) override {
+    InProcessBrowserTest::SetUpDefaultCommandLine(command_line);
+    command_line->RemoveSwitch(
+        switches::kDisableSigninPromoOnAvatarPillForTesting);
   }
 
   // AvatarToolbarButtonInterfaceBaseBrowserTest

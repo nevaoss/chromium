@@ -601,6 +601,17 @@ public class FuseboxMediatorUnitTest {
     }
 
     @Test
+    public void updateFuseboxState_popover_textWrapping_remainsCompact() {
+        mInput.setRequestType(AutocompleteRequestType.SEARCH);
+        mModel.set(FuseboxProperties.FUSEBOX_LAYOUT_MODE, FuseboxLayoutMode.SUGGESTIONS_POPOVER);
+        recreateMediator();
+
+        mMediator.setIsTextWrapping(true);
+
+        assertEquals(FuseboxState.COMPACT, mModel.get(FuseboxProperties.FUSEBOX_STATE).intValue());
+    }
+
+    @Test
     public void updateFuseboxState_notDesktop_notSearchRequest_isExpanded() {
         OmniboxCapabilities.setIsDesktopPlatformForTesting(false);
         mInput.setRequestType(AutocompleteRequestType.AI_MODE);
@@ -2555,10 +2566,10 @@ public class FuseboxMediatorUnitTest {
         mInput.setSiteSearchData(null);
         assertTrue(mModel.get(FuseboxProperties.ACTIVATION_CHIP_VISIBLE));
 
-        mInput.getPreviewMatchUrlSupplier().set(new GURL("https://example.com"));
+        mInput.setPreviewMatchUrl(new GURL("https://example.com"));
         assertFalse(mModel.get(FuseboxProperties.ACTIVATION_CHIP_VISIBLE));
 
-        mInput.getPreviewMatchUrlSupplier().set(null);
+        mInput.setPreviewMatchUrl(null);
         assertTrue(mModel.get(FuseboxProperties.ACTIVATION_CHIP_VISIBLE));
 
         mInput.setRequestType(AutocompleteRequestType.AI_MODE);
@@ -2687,7 +2698,7 @@ public class FuseboxMediatorUnitTest {
     public void testAlwaysShowAiModePrefChangesActivationChipVisibility() {
         mModel.set(FuseboxProperties.FUSEBOX_LAYOUT_MODE, FuseboxLayoutMode.SUGGESTIONS_POPOVER);
         mInput.setRequestType(AutocompleteRequestType.SEARCH);
-        mInput.getPreviewMatchUrlSupplier().set(null);
+        mInput.setPreviewMatchUrl(null);
         recreateMediator();
 
         // Verify registrar is initialized

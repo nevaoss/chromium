@@ -188,10 +188,6 @@ BASE_DECLARE_FEATURE(kPasswordManualFallbackSecurityChecks);
 // password save flow.
 BASE_DECLARE_FEATURE(kPasswordSaveInContextErrorResolution);
 
-// When enabled, the password store triggers the `OnErrorStateChanged`
-// notifications.
-BASE_DECLARE_FEATURE(kPasswordStorePropagatesActionableErrors);
-
 // Prevents offering Automatic Password Change on federated login.
 BASE_DECLARE_FEATURE(kPreventAPCOnFederatedLogin);
 
@@ -209,9 +205,6 @@ BASE_DECLARE_FEATURE(kRetryCapturePageContent);
 extern const base::FeatureParam<base::TimeDelta> kCapturePageContentDelay;
 extern const base::FeatureParam<int> kCapturePageContentRetryCount;
 
-// Shows a confirmation dialog before filling grouped credentials from the
-// manual fallback popup on Desktop.
-BASE_DECLARE_FEATURE(kShowConfirmationForGroupedCredentials);
 
 // Shows a tab with password change instead of bubble/settings page after
 // successful password change.
@@ -228,10 +221,6 @@ BASE_DECLARE_FEATURE(kTriggerPasswordResyncWhenUndecryptablePasswordsDetected);
 // to which WebContents is attached. This helps to resolve the problem
 // that requestAnimationFrame() is not fired on a detached WebContents.
 BASE_DECLARE_FEATURE(kUseDetachedWidget);
-
-// Enables the "Use a passkey / Use a different passkey" in the password manual
-// fallback.
-BASE_DECLARE_FEATURE(kWebAuthnUsePasskeyFromAnotherDeviceInManualFallback);
 
 // All features parameters in alphabetical order.
 

@@ -1273,6 +1273,14 @@ void NewTabPageUI::BindInterface(
 void NewTabPageUI::BindInterface(
     mojo::PendingReceiver<composebox::mojom::PageHandlerFactory>
         pending_receiver) {
+  auto* aim_service = AimEligibilityServiceFactory::GetForProfile(profile_);
+  bool aim_eligible = aim_service && aim_service->IsAimEligible();
+
+  if (!aim_eligible &&
+      !ntp_composebox::IsNtpComposeboxEnabled(profile_) &&
+      !SearchboxHandler::GetVoiceSearchCoherenceAnySearchboxExperimentEnabled()) {
+    return;
+  }
   if (composebox_page_factory_receiver_.is_bound()) {
     composebox_page_factory_receiver_.reset();
   }
@@ -1441,7 +1449,9 @@ void NewTabPageUI::CreateActionChipsHandler(
     mojo::PendingRemote<action_chips::mojom::Page> page) {
   action_chips_handler_ = std::make_unique<ActionChipsHandler>(
       std::move(handler), std::move(page), profile_, web_ui(),
-      std::make_unique<ActionChipsGeneratorImpl>(profile_));
+      std::make_unique<ActionChipsGeneratorImpl>(profile_),
+      base::BindRepeating(&NewTabPageUI::GetOrCreateContextualSessionHandle,
+                          base::Unretained(this)));
 }
 
 // OnColorProviderChanged can be called during the destruction process and
@@ -1593,11 +1603,10 @@ void NewTabPageUI::MaybeEnableEnterpriseShortcutsVisibility() {
 }
 
 // static
-base::RefCountedMemory* NewTabPageUI::GetFaviconResourceBytes(
+scoped_refptr<base::RefCountedMemory> NewTabPageUI::GetFaviconResourceBytes(
     ui::ResourceScaleFactor scale_factor) {
-  return static_cast<base::RefCountedMemory*>(
-      ui::ResourceBundle::GetSharedInstance().LoadDataResourceBytesForScale(
-          IDR_NTP_FAVICON, scale_factor));
+  return ui::ResourceBundle::GetSharedInstance().LoadDataResourceBytesForScale(
+      IDR_NTP_FAVICON, scale_factor);
 }
 
 std::string_view NewTabPageUI::GetNtpPromoType() {

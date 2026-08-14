@@ -156,7 +156,7 @@ class GlicInstanceImpl : public GlicInstance,
   void SetTabGroup(tab_groups::TabGroupId group_id) {
     tab_group_id_ = group_id;
   }
-  void ShowGlicTabInGroup(tab_groups::TabGroupId group_id);
+  void ShowForTabGroup(tab_groups::TabGroupId group_id);
   void OnTabGroupingChanged(tabs::TabInterface* tab, bool is_added);
   void BindTabWithoutShowing(tabs::TabInterface* tab,
                              GlicPinTrigger pin_trigger,
@@ -173,6 +173,7 @@ class GlicInstanceImpl : public GlicInstance,
   Target GetInvokeTarget(Target::Surface fallback_surface) override;
   bool IsActive() override;
   bool IsHibernated() const override;
+  bool IsFullyClosedForTesting() const override;
 
   bool HasActiveEmbedder() const;
   bool IsDetached();

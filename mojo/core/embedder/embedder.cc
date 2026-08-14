@@ -6,8 +6,6 @@
 
 #include <stdint.h>
 
-#include <optional>
-#include <string>
 #include <utility>
 
 #include "base/check.h"
@@ -28,15 +26,6 @@
 #include "mojo/core/ipcz_driver/transport.h"
 #include "mojo/public/c/system/thunks.h"
 
-#if BUILDFLAG(MOJO_SUPPORT_LEGACY_CORE)
-#include <atomic>
-
-#include "base/environment.h"
-#include "mojo/core/core.h"
-#include "mojo/core/entrypoints.h"
-#include "mojo/core/node_controller.h"
-#endif
-
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID)
 #include "mojo/core/channel_linux.h"
 #endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) ||
@@ -46,6 +35,7 @@ namespace mojo::core {
 
 namespace {
 
+<<<<<<< HEAD
 #if BUILDFLAG(MOJO_SUPPORT_LEGACY_CORE)
 // TODO(neva): Remove BUILDFLAG(IS_WEBOS) if mojoipcz is better when considering
 // memory and performance perspective.
@@ -73,6 +63,8 @@ bool IsMojoIpczForceEnabledByEnvironment() {
 }
 #endif  // BUILDFLAG(MOJO_SUPPORT_LEGACY_CORE)
 
+=======
+>>>>>>> 153.0.7981.0~1
 bool g_enable_memv2 = false;
 
 }  // namespace
@@ -97,35 +89,13 @@ void InitFeatures() {
         // BUILDFLAG(IS_ANDROID)
 #endif  // BUILDFLAG(IS_POSIX) && !BUILDFLAG(IS_MAC)
 
-#if BUILDFLAG(MOJO_SUPPORT_LEGACY_CORE)
-  if (base::FeatureList::IsEnabled(kMojoIpcz)) {
-    EnableMojoIpcz();
-  } else {
-    g_mojo_ipcz_enabled.store(false, std::memory_order_release);
-  }
-#endif  // !BUILDFLAG(IS_ANDROID)
-
   g_enable_memv2 = base::FeatureList::IsEnabled(kMojoIpczMemV2);
-}
-
-void EnableMojoIpcz() {
-#if BUILDFLAG(MOJO_SUPPORT_LEGACY_CORE)
-  g_mojo_ipcz_enabled.store(true, std::memory_order_release);
-#endif
 }
 
 void Init(const Configuration& configuration) {
   internal::g_configuration = configuration;
 
-#if BUILDFLAG(MOJO_SUPPORT_LEGACY_CORE)
-  if (configuration.disable_ipcz) {
-    // Allow the caller to override MojoIpcz even when enabled by Feature or
-    // environment.
-    g_mojo_ipcz_force_disabled = true;
-  }
-#else
   CHECK(!configuration.disable_ipcz);
-#endif
 
   if (IsMojoIpczEnabled()) {
     CHECK(InitializeIpczNodeForProcess({
@@ -137,12 +107,7 @@ void Init(const Configuration& configuration) {
     }));
     MojoEmbedderSetSystemThunks(GetMojoIpczImpl());
   } else {
-#if BUILDFLAG(MOJO_SUPPORT_LEGACY_CORE)
-    InitializeCore();
-    MojoEmbedderSetSystemThunks(&GetSystemThunks());
-#else
     NOTREACHED();
-#endif
   }
 }
 
@@ -154,11 +119,7 @@ void ShutDown() {
   if (IsMojoIpczEnabled()) {
     DestroyIpczNodeForProcess();
   } else {
-#if BUILDFLAG(MOJO_SUPPORT_LEGACY_CORE)
-    ShutDownCore();
-#else
     NOTREACHED();
-#endif
   }
 }
 
@@ -166,32 +127,12 @@ scoped_refptr<base::SingleThreadTaskRunner> GetIOTaskRunner() {
   if (IsMojoIpczEnabled()) {
     return ipcz_driver::Transport::GetIOTaskRunner();
   } else {
-#if BUILDFLAG(MOJO_SUPPORT_LEGACY_CORE)
-    return Core::Get()->GetNodeController()->io_task_runner();
-#else
     NOTREACHED();
-#endif
   }
 }
 
 bool IsMojoIpczEnabled() {
-#if !BUILDFLAG(MOJO_SUPPORT_LEGACY_CORE)
   return true;
-#else
-  // Because Mojo and FeatureList are both brought up early in many binaries, it
-  // can be tricky to ensure there aren't races that would lead to two different
-  // Mojo implementations being selected at different points throughout the
-  // process's lifetime. We cache the result of the first call to this function
-  // and DCHECK that every subsequent call produces the same result. Note that
-  // setting `disable_ipcz` in the Mojo config overrides both the Feature value
-  // and the environment variable if set.
-  const bool enabled = (g_mojo_ipcz_enabled.load(std::memory_order_acquire) ||
-                        IsMojoIpczForceEnabledByEnvironment()) &&
-                       !g_mojo_ipcz_force_disabled;
-  static bool enabled_on_first_call = enabled;
-  DCHECK_EQ(enabled, enabled_on_first_call);
-  return enabled;
-#endif
 }
 
 void InstallMojoIpczBaseSharedMemoryHooks() {

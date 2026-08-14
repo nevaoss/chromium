@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "chrome/browser/ui/views/frame/picture_in_picture_browser_frame_view.h"
+
 #include <optional>
 
 #include "base/i18n/rtl.h"
@@ -22,8 +24,8 @@
 #include "chrome/browser/preloading/scoped_prewarm_feature_list.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_window.h"
+#include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
-#include "chrome/browser/ui/views/frame/picture_in_picture_browser_frame_view.h"
 #include "chrome/browser/ui/views/location_bar/location_bar_view.h"
 #include "chrome/browser/ui/views/permissions/chip/permission_dashboard_controller.h"
 #include "chrome/browser/ui/views/permissions/chip/permission_dashboard_view.h"
@@ -292,10 +294,13 @@ class PictureInPictureBrowserFrameViewTest : public WebRtcTestBase,
   }
 
   void SetUp() override {
+    // TODO(crbug.com/452061489): Fix tests that fail when the WebUI Omnibox is
+    // enabled and then remove the two omnibox features.
     scoped_feature_list_.InitWithFeatures(
         /*enabled_features=*/{blink::features::kDocumentPictureInPictureAPI,
                               media::kPictureInPictureOcclusionTracking},
-        /*disabled_features=*/{});
+        /*disabled_features=*/{omnibox::internal::kWebUIOmniboxPopup,
+                               omnibox::internal::kWebUIOmniboxAimPopup});
     InProcessBrowserTest::SetUp();
   }
 
@@ -369,7 +374,8 @@ class PictureInPictureBrowserFrameViewTest : public WebRtcTestBase,
     auto* browser_view = static_cast<BrowserView*>(
         BrowserWindow::FindBrowserWindowWithWebContents(child_web_contents));
     ASSERT_TRUE(browser_view);
-    ASSERT_TRUE(browser_view->browser()->is_type_picture_in_picture());
+    ASSERT_EQ(browser_view->browser()->GetType(),
+              BrowserWindowInterface::Type::TYPE_PICTURE_IN_PICTURE);
 
     pip_frame_view_ = static_cast<PictureInPictureBrowserFrameView*>(
         browser_view->browser_widget()->GetFrameView());

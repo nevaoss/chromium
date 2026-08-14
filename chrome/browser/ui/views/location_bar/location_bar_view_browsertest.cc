@@ -38,7 +38,6 @@
 #include "chrome/browser/ui/views/omnibox/omnibox_context_menu.h"
 #include "chrome/browser/ui/views/omnibox/omnibox_view_views.h"
 #include "chrome/browser/ui/views/page_action/page_action_container_view.h"
-#include "chrome/browser/ui/views/page_action/page_action_icon_controller.h"
 #include "chrome/browser/ui/views/page_action/page_action_icon_view.h"
 #include "chrome/browser/ui/views/page_action/page_action_view.h"
 #include "chrome/browser/ui/views/page_action/test_support/page_action_test_support.h"
@@ -120,8 +119,9 @@ class LocationBarViewBrowserTest : public InProcessBrowserTest {
         BrowserView::GetBrowserViewForBrowser(browser())
             ->toolbar_button_provider();
     return page_actions::GetIconLabelBubbleViewForTesting(
-        toolbar_button_provider->GetPageActionViewInterface(kActionZoomNormal),
-        kActionZoomNormal);
+        toolbar_button_provider->GetPageActionViewInterface(
+            kActionShowZoomBubble),
+        kActionShowZoomBubble);
   }
 
   ContentSettingImageView& GetContentSettingImageView(
@@ -516,15 +516,12 @@ IN_PROC_BROWSER_TEST_F(LocationBarViewGeolocationBackForwardCacheBrowserTest,
 class LocationBarViewPageActionHideWhileEditingTests
     : public InProcessBrowserTest {
  public:
-  LocationBarViewPageActionHideWhileEditingTests() {
-    scoped_feature_list_.InitAndEnableFeature(
-        ::features::kPageActionsMigration);
-  }
+  LocationBarViewPageActionHideWhileEditingTests() = default;
 
   void SetUpOnMainThread() override {
     // 1. Ensure the Zoom action is globally visible/enabled.
     auto* zoom_action =
-        actions::ActionManager::Get().FindAction(kActionZoomNormal);
+        actions::ActionManager::Get().FindAction(kActionShowZoomBubble);
     ASSERT_TRUE(zoom_action);
     zoom_action->SetVisible(true);
     zoom_action->SetEnabled(true);
@@ -535,7 +532,7 @@ class LocationBarViewPageActionHideWhileEditingTests
     page_actions::PageActionController* controller =
         tab_features->page_action_controller();
     ASSERT_TRUE(controller);
-    controller->Show(kActionZoomNormal);
+    controller->Show(kActionShowZoomBubble);
 
     // 3. Make the Zoom icon visible by actually adjusting page zoom from 100%.
     auto* web_contents = browser()->tab_strip_model()->GetActiveWebContents();
@@ -548,7 +545,7 @@ class LocationBarViewPageActionHideWhileEditingTests
  protected:
   page_actions::PageActionView* GetZoomPageActionView() {
     return GetLocationBarView()->page_action_container()->GetPageActionView(
-        kActionZoomNormal);
+        kActionShowZoomBubble);
   }
 
   LocationBarView* GetLocationBarView() {
@@ -753,4 +750,55 @@ IN_PROC_BROWSER_TEST_F(LocationBarViewBrowserTest, OmniboxActionsRegistered) {
   ASSERT_TRUE(regular_model_action);
   EXPECT_TRUE(regular_model_action->GetText().empty());
   EXPECT_FALSE(regular_model_action->GetImage().IsEmpty());
+}
+
+// Tests that unsafe schemes are not allowed to be opened from middle clicks.
+IN_PROC_BROWSER_TEST_F(LocationBarViewBrowserTest,
+                       MiddleClickPasteAndGoBlocksUnsafeSchemes) {
+  if (!ui::Clipboard::IsMiddleClickPasteEnabled() ||
+      !ui::Clipboard::IsSupportedClipboardBuffer(
+          ui::ClipboardBuffer::kSelection)) {
+    return;
+  }
+
+  ASSERT_TRUE(embedded_test_server()->Start());
+  GURL start_url = embedded_test_server()->GetURL("/title1.html");
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), start_url));
+
+  LocationBarView* location_bar_view = GetLocationBarView();
+  LocationIconView* location_icon_view =
+      location_bar_view->location_icon_view();
+
+  // Try file:// URL. Note: ui::Clipboard::ReadText is asynchronous on Linux, so
+  // we must pump the runloop to allow the callback to run and be rejected.
+  {
+    ui::ScopedClipboardWriter writer(ui::ClipboardBuffer::kSelection);
+    writer.WriteText(u"file:///etc/passwd");
+  }
+
+  ui::MouseEvent middle_click_event(ui::EventType::kMousePressed, gfx::Point(),
+                                    gfx::Point(), base::TimeTicks::Now(),
+                                    ui::EF_MIDDLE_MOUSE_BUTTON,
+                                    ui::EF_MIDDLE_MOUSE_BUTTON);
+  location_icon_view->OnMousePressed(middle_click_event);
+  base::RunLoop().RunUntilIdle();
+
+  EXPECT_EQ(start_url, browser()
+                           ->tab_strip_model()
+                           ->GetActiveWebContents()
+                           ->GetLastCommittedURL());
+
+  // Try chrome:// URL.
+  {
+    ui::ScopedClipboardWriter writer(ui::ClipboardBuffer::kSelection);
+    writer.WriteText(u"chrome://version");
+  }
+
+  location_icon_view->OnMousePressed(middle_click_event);
+  base::RunLoop().RunUntilIdle();
+
+  EXPECT_EQ(start_url, browser()
+                           ->tab_strip_model()
+                           ->GetActiveWebContents()
+                           ->GetLastCommittedURL());
 }

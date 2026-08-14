@@ -239,6 +239,11 @@ class WebUIToolbarPixelInteractiveUiTest : public InteractiveBrowserTest {
     ASSERT_NO_FATAL_FAILURE(SetUpWebUI(kWebUIToolbarElementIdentifier, &element,
                                        &webui_toolbar_view, &web_view,
                                        browser));
+    // Wait for the WebContents to finish loading before checking `IsLoading()`,
+    // in case a load is triggered, which can happen whenever
+    // `WebUIToolbarWebView::AddedToWidget()` is called if WebUI is not
+    // initialized.
+    ASSERT_TRUE(content::WaitForLoadStop(web_view->GetWebContents()));
 
     // Assert that WebContents is not loading, as it affects the state of the
     // reload button.
@@ -1211,11 +1216,11 @@ class WebUIToolbarViewsLocationBarInteractiveUiTest
                           wait_copy_text_js),
         // Note: earlier version used execCommand, but that causes issues
         // the impl uses execCommand, too, and it complains about re-entry.
-        // The key press is asynchronous, however, so we may need to wait a bit
-        // for the text to show up in the clipboard.
-        SendAccelerator(WebUIToolbarId(), accelerator),
+        // Observe state before sending accelerator so the monitor observer is
+        // ready before the clipboard data changes.
         ObserveState(kClipboardText,
                      []() { return ui::ClipboardMonitor::GetInstance(); }),
+        SendAccelerator(WebUIToolbarId(), accelerator),
         WaitForState(kClipboardText, expected_clipboard_text),
         StopObservingState(kClipboardText));
   }
@@ -1588,9 +1593,19 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarViewsLocationBarInteractiveUiTest,
 IN_PROC_BROWSER_TEST_F(WebUIToolbarViewsLocationBarInteractiveUiTest,
                        MAYBE_CopyTextFromWebUIOmnibox) {
 #if defined(USE_AURA) && !BUILDFLAG(IS_CHROMEOS)
+  const char kAdjustTextScript[] = R"(
+    (el) => {
+      el.focus();
+      el.value = 'title1';
+      el.select();
+      // Let the element know about our new value to avoid races.
+      el.dispatchEvent(new InputEvent('input'));
+    }
+  )";
+
   RunTestSequence(RunClipboardSetTest(
       kClipboardOp::kCopy, embedded_test_server()->GetURL("/title1.html"),
-      "title1", "(el) => { el.focus(); el.value = 'title1'; el.select(); }",
+      "title1", kAdjustTextScript,
       "el => el.adjustedCopyResult?.adjustedText === 'title1'", u"title1"));
 #endif
 }
@@ -1623,14 +1638,22 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarViewsLocationBarInteractiveUiTest,
 IN_PROC_BROWSER_TEST_F(WebUIToolbarViewsLocationBarInteractiveUiTest,
                        MAYBE_CopyJavascriptFromWebUIOmnibox) {
 #if defined(USE_AURA) && !BUILDFLAG(IS_CHROMEOS)
+  const char kAdjustTextTemplate[] = R"(
+    (el) => {
+      el.focus();
+      el.value = $1;
+      el.select();
+      // Let the element know about our new value to avoid races.
+      el.dispatchEvent(new InputEvent('input'));
+    }
+  )";
+
   const std::string js_to_copy = "javascript:alert(1)";
   RunTestSequence(RunClipboardSetTest(
       kClipboardOp::kCopy, embedded_test_server()->GetURL("/title1.html"),
-      "title1",
-      base::StringPrintf(
-          "(el) => { el.focus(); el.value = '%s'; el.select(); }",
-          js_to_copy.c_str()),
-      "el => el.adjustedCopyResult !== null", base::UTF8ToUTF16(js_to_copy)));
+      "title1", content::JsReplace(kAdjustTextTemplate, js_to_copy),
+      "el => el.adjustedCopyResult?.adjustedText.includes('alert')",
+      base::UTF8ToUTF16(js_to_copy)));
 #endif
 }
 
@@ -1725,7 +1748,8 @@ class WebUIToolbarFocusInteractiveUiTestBase
           let curr = active;
           while (curr && curr !== el) {
             if (curr.id && curr.id !== 'container' &&
-                curr.id !== 'textInput' && curr.id !== 'button') {
+                curr.id !== 'buttonWrapper' && curr.id !== 'textInput' &&
+                curr.id !== 'button') {
               return curr.id;
             }
             if (curr.id === 'container') {
@@ -1789,7 +1813,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarFocusMinimalInteractiveUiTest,
   // Navigate back once so forward is enabled too.
   content::TestNavigationObserver back_nav_observer(
       browser()->tab_strip_model()->GetActiveWebContents());
-  browser()->command_controller()->ExecuteCommand(IDC_BACK);
+  chrome::BrowserCommandController::From(browser())->ExecuteCommand(IDC_BACK);
   back_nav_observer.Wait();
 
   RunTestSequence(
@@ -1803,7 +1827,8 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarFocusMinimalInteractiveUiTest,
 
       // 2. Focus the toolbar using the browser command (Alt+Shift+T).
       Do(base::BindLambdaForTesting([this]() {
-        browser()->command_controller()->ExecuteCommand(IDC_FOCUS_TOOLBAR);
+        chrome::BrowserCommandController::From(browser())->ExecuteCommand(
+            IDC_FOCUS_TOOLBAR);
       })),
       ExpectFocusedWebUIElement("back"),
 
@@ -1949,7 +1974,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarFocusFullInteractiveUiTest,
   // Navigate back once so forward is enabled too.
   content::TestNavigationObserver back_nav_observer(
       browser()->tab_strip_model()->GetActiveWebContents());
-  browser()->command_controller()->ExecuteCommand(IDC_BACK);
+  chrome::BrowserCommandController::From(browser())->ExecuteCommand(IDC_BACK);
   back_nav_observer.Wait();
 
   RunTestSequence(
@@ -1970,7 +1995,8 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarFocusFullInteractiveUiTest,
 
       // 2. Focus the toolbar using the browser command (Alt+Shift+T).
       Do(base::BindLambdaForTesting([this]() {
-        browser()->command_controller()->ExecuteCommand(IDC_FOCUS_TOOLBAR);
+        chrome::BrowserCommandController::From(browser())->ExecuteCommand(
+            IDC_FOCUS_TOOLBAR);
       })),
       ExpectFocusedWebUIElement("back"),
 
@@ -2083,7 +2109,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarFocusFullRtlInteractiveUiTest,
   // Navigate back once so forward is enabled too.
   content::TestNavigationObserver back_nav_observer(
       browser()->tab_strip_model()->GetActiveWebContents());
-  browser()->command_controller()->ExecuteCommand(IDC_BACK);
+  chrome::BrowserCommandController::From(browser())->ExecuteCommand(IDC_BACK);
   back_nav_observer.Wait();
 
   RunTestSequence(
@@ -2097,7 +2123,8 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarFocusFullRtlInteractiveUiTest,
 
       // 2. Focus the toolbar using the browser command (Alt+Shift+T).
       Do(base::BindLambdaForTesting([this]() {
-        browser()->command_controller()->ExecuteCommand(IDC_FOCUS_TOOLBAR);
+        chrome::BrowserCommandController::From(browser())->ExecuteCommand(
+            IDC_FOCUS_TOOLBAR);
       })),
       ExpectFocusedWebUIElement("back"),
 

@@ -285,13 +285,17 @@ class NET_EXPORT_PRIVATE SqlPersistentStore {
 
   // The result of an eviction operation.
   struct EvictionResult {
-    EvictionResult(Error error, size_t evicted_entry_count);
+    EvictionResult(
+        Error error,
+        size_t evicted_entry_count,
+        std::vector<SqlSharedCacheResourceId> deleted_shared_cache_resources);
     ~EvictionResult();
     EvictionResult(EvictionResult&& other);
     EvictionResult& operator=(EvictionResult&& other);
 
     Error error;
     size_t evicted_entry_count;
+    std::vector<SqlSharedCacheResourceId> deleted_shared_cache_resources;
   };
 
   struct EvictionResultWithMetadata {
@@ -369,15 +373,42 @@ class NET_EXPORT_PRIVATE SqlPersistentStore {
   using ResIdOrErrorAndStoreStatus = ResultAndStoreStatus<ResIdOrError>;
   using HashAndResIdListOrErrorAndStoreStatus =
       ResultAndStoreStatus<HashAndResIdListOrError>;
+  struct HashAndSharedCacheResource {
+    CacheEntryKey::Hash hash;
+    std::optional<SqlSharedCacheResourceId> shared_cache_resource_id;
+  };
+  using HashAndSharedCacheResourceOrError =
+      base::expected<HashAndSharedCacheResource, Error>;
   using HashOrError = base::expected<CacheEntryKey::Hash, Error>;
   struct UsageAndHash {
     int64_t bytes_usage;
     CacheEntryKey::Hash hash;
+    std::optional<SqlSharedCacheResourceId> shared_cache_resource_id;
   };
   using UsageAndHashOrError = base::expected<UsageAndHash, Error>;
   using EvictionResultCallback = base::OnceCallback<void(EvictionResult)>;
   using EvictionResultWithMetadataCallback =
       base::OnceCallback<void(EvictionResultWithMetadata)>;
+  using DeletedSharedCacheResourceOrError =
+      base::expected<std::optional<SqlSharedCacheResourceId>, Error>;
+  using DeletedSharedCacheResourceOrErrorCallback =
+      base::OnceCallback<void(DeletedSharedCacheResourceOrError)>;
+  using DeletedSharedCacheResourcesOrError =
+      base::expected<std::vector<SqlSharedCacheResourceId>, Error>;
+  using DeletedSharedCacheResourcesOrErrorCallback =
+      base::OnceCallback<void(DeletedSharedCacheResourcesOrError)>;
+
+  struct DeleteLiveEntryResult {
+    HashAndResIdList deleted_hash_and_res_ids;
+    std::vector<SqlSharedCacheResourceId> deleted_shared_cache_resources;
+  };
+  using DeleteLiveEntryResultOrError =
+      base::expected<DeleteLiveEntryResult, Error>;
+  using DeleteLiveEntryResultOrErrorAndStoreStatus =
+      ResultAndStoreStatus<DeleteLiveEntryResultOrError>;
+  using DeleteLiveEntryResultOrErrorCallback =
+      base::OnceCallback<void(DeleteLiveEntryResultOrError)>;
+
   using InMemoryIndexAndDoomedResIdsOrError =
       base::expected<InMemoryIndexAndDoomedResIds, Error>;
 
@@ -657,6 +688,23 @@ class NET_EXPORT_PRIVATE SqlPersistentStore {
   void MaybeRunIncrementalVacuum(
       scoped_refptr<base::RefCountedData<std::atomic_bool>> abort_flag,
       base::OnceCallback<void(bool)> callback);
+
+  // Notifies the SqlSharedCacheManager that the specified shared cache
+  // resources were deleted from the store shards, so that corresponding entries
+  // in the shared cache database can be cleaned up.
+  void OnSharedCacheResourcesDeleted(std::vector<SqlSharedCacheResourceId> ids);
+
+  // Wraps an ErrorCallback to handle deletion of a single shared cache
+  // resource. When the shard operation completes successfully, if a shared
+  // cache resource was deleted, triggers OnSharedCacheResourcesDeleted.
+  DeletedSharedCacheResourceOrErrorCallback
+  WrapCallbackWithSingleSharedCacheDelete(ErrorCallback callback);
+
+  // Wraps an ErrorCallback to handle deletion of multiple shared cache
+  // resources. When the shard operation completes successfully, if shared cache
+  // resources were deleted, triggers OnSharedCacheResourcesDeleted.
+  DeletedSharedCacheResourcesOrErrorCallback WrapCallbackWithSharedCacheDelete(
+      ErrorCallback callback);
 
   enum class IndexState {
     // The in-memory index is not available (e.g., not yet loaded or

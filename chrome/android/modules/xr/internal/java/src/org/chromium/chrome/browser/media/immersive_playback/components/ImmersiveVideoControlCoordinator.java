@@ -40,6 +40,9 @@ public class ImmersiveVideoControlCoordinator {
 
         /** Called when the pose of the control panel changes during movement. */
         void onControlPanelPoseChanged(XrPose pose);
+
+        /** Called when accessibility focus state of the control panel changes. */
+        void onControlPanelAccessibilityFocusChanged(boolean focused);
     }
 
     private final PropertyModel mModel =
@@ -65,7 +68,9 @@ public class ImmersiveVideoControlCoordinator {
                 }
 
                 @Override
-                public void onMoveUpdate(XrPose pose, float scale) {}
+                public void onMoveUpdate(XrPose pose, float scale) {
+                    mVideoControlDelegate.onControlPanelPoseChanged(pose);
+                }
 
                 @Override
                 public void onMoveEnd(XrPose pose, float scale) {
@@ -99,6 +104,8 @@ public class ImmersiveVideoControlCoordinator {
 
         mMediator = new ImmersiveVideoControlMediator(mModel, mVideoControlDelegate);
         mView = createView(mActivity, mMediator);
+        mView.setAccessibilityFocusListener(
+                mVideoControlDelegate::onControlPanelAccessibilityFocusChanged);
         mHolder = mSessionManager.createPanelEntity(mView, "MediaControlPanel");
         mHolder.getMovableComponent().addMoveListener(mOnMoveListener);
 
@@ -121,14 +128,25 @@ public class ImmersiveVideoControlCoordinator {
      */
     public void show(XrEntityHolder<?> parent) {
         ensureInitialized();
+        setParent(parent);
 
         if (mHolder != null) {
-            mHolder.setParent(parent);
             mHolder.setEntityEnabled(true);
         }
         if (mView != null) {
             mView.setVisibility(View.VISIBLE);
             mView.setHoverListener(mVideoControlDelegate::onControlPanelHoverChanged);
+        }
+    }
+
+    /**
+     * Sets the parent entity for the control panel.
+     *
+     * @param parent The parent entity to attach to.
+     */
+    public void setParent(XrEntityHolder<?> parent) {
+        if (mHolder != null) {
+            mHolder.setParent(parent);
         }
     }
 

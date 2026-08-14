@@ -32,13 +32,6 @@ GUID GetD3D11DecoderGUID(const VideoCodecProfile& profile,
     case H264PROFILE_MAIN:
     case H264PROFILE_EXTENDED:
     case H264PROFILE_HIGH:
-    case H264PROFILE_HIGH10PROFILE:
-    case H264PROFILE_HIGH422PROFILE:
-    case H264PROFILE_HIGH444PREDICTIVEPROFILE:
-    case H264PROFILE_SCALABLEBASELINE:
-    case H264PROFILE_SCALABLEHIGH:
-    case H264PROFILE_STEREOHIGH:
-    case H264PROFILE_MULTIVIEWHIGH:
       return D3D11_DECODER_PROFILE_H264_VLD_NOFGT;
     case VP9PROFILE_PROFILE0:
       return D3D11_DECODER_PROFILE_VP9_VLD_PROFILE0;
@@ -158,7 +151,7 @@ std::unique_ptr<D3D11DecoderConfigurator> D3D11DecoderConfigurator::Create(
 }
 
 bool D3D11DecoderConfigurator::SupportsDevice(
-    ComD3D11VideoDevice video_device) {
+    ComD3D11VideoDevice1 video_device) {
   for (UINT i = video_device->GetVideoDecoderProfileCount(); i--;) {
     GUID profile = {};
     if (SUCCEEDED(video_device->GetVideoDecoderProfile(i, &profile))) {

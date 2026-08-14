@@ -57,7 +57,7 @@ std::string_view OmniboxPopupAimPresenter::GetPopupMetricPrefix() const {
 
 void OmniboxPopupAimPresenter::LogResultToContentReadyMetric(
     base::TimeTicks /*result_ready_time*/,
-    bool /*success*/) {
+    bool /*is_first_show*/) {
   // The AIM popup calculates its ready state inherently differently than
   // standard dropdowns. We explicitly override this metric to a no-op here to
   // prevent logging garbage data and to avoid polluting standard WebUI
@@ -174,20 +174,33 @@ void OmniboxPopupAimPresenter::OnDidChangeFocus(views::View* focused_before,
     auto* fm = location_bar_view->GetWidget()->GetFocusManager();
     if (fm && fm->focus_change_reason() ==
                   views::FocusManager::FocusChangeReason::kFocusRestore) {
-      // Defer `RequestFocus` asynchronously to prevent re-entrant activation in
-      // wm::FocusController.
+      // Defer `FinishFocusRestoration` asynchronously to prevent re-entrant
+      // widget activation and focus shifts while `views::FocusManager` is in
+      // the middle of restoring window focus.
       base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-          FROM_HERE, base::BindOnce(&OmniboxPopupAimPresenter::RequestFocus,
-                                    weak_factory_.GetWeakPtr()));
+          FROM_HERE,
+          base::BindOnce(&OmniboxPopupAimPresenter::FinishFocusRestoration,
+                         weak_factory_.GetWeakPtr()));
+      return;
     }
-  } else {
-    // Focus intentionally went to a completely different view (e.g., a toolbar
-    // button). We should ensure the popup closes.
-    controller()->popup_state_manager()->SetPopupState(
-        OmniboxPopupState::kNone);
   }
 
+  // Focus intentionally went to a completely different view (e.g., a toolbar
+  // button). We should ensure the popup closes.
+  controller()->popup_state_manager()->SetPopupState(OmniboxPopupState::kNone);
+
   // Reset state and stop observing focus transitions.
+  ResetFocusRestorationState();
+}
+
+void OmniboxPopupAimPresenter::FinishFocusRestoration() {
+  // Activate popup widget and focus WebContents.
+  RequestFocus();
+  // Focus the WebUI's text input element.
+  if (auto* content =
+          static_cast<OmniboxAimPopupWebUIContent*>(GetWebUIContent())) {
+    content->FocusInput();
+  }
   ResetFocusRestorationState();
 }
 

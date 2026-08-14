@@ -117,7 +117,8 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewInteractiveTest, FocusReloadButton) {
       InstrumentNonTabWebView(kWebUIToolbarWebViewId, kInstrumentedWebViewId,
                               /*wait_for_ready=*/true),
       Do([this]() {
-        browser()->command_controller()->ExecuteCommand(IDC_FOCUS_TOOLBAR);
+        chrome::BrowserCommandController::From(browser())->ExecuteCommand(
+            IDC_FOCUS_TOOLBAR);
       }),
       CheckJsResultAt(kWebUIToolbarWebViewId, DeepQuery{},
                       "() => {"
@@ -147,7 +148,7 @@ class WebUIPinnedToolbarActionsInteractiveTest : public InteractiveBrowserTest {
 
     // Set tested actions as pinnable.
     auto* action_item = actions::ActionManager::Get().FindAction(
-        kActionPrint, browser()->GetActions()->root_action_item());
+        kActionPrint, BrowserActions::From(browser())->root_action_item());
     if (action_item) {
       action_item->SetProperty(
           actions::kActionItemPinnableKey,
@@ -155,7 +156,7 @@ class WebUIPinnedToolbarActionsInteractiveTest : public InteractiveBrowserTest {
     }
     action_item = actions::ActionManager::Get().FindAction(
         kActionSidePanelShowBookmarks,
-        browser()->GetActions()->root_action_item());
+        BrowserActions::From(browser())->root_action_item());
     if (action_item) {
       action_item->SetProperty(
           actions::kActionItemPinnableKey,
