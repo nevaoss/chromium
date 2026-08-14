@@ -50,7 +50,6 @@
 #include "third_party/blink/renderer/modules/peerconnection/rtc_peer_connection_controller.h"
 #include "third_party/blink/renderer/modules/peerconnection/rtc_peer_connection_handler.h"
 #include "third_party/blink/renderer/modules/peerconnection/rtc_rtp_transceiver.h"
-#include "third_party/blink/renderer/modules/peerconnection/rtc_session_description_enums.h"
 #include "third_party/blink/renderer/modules/peerconnection/rtp_contributing_source_cache.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_map.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_set.h"
@@ -481,6 +480,10 @@ class MODULES_EXPORT RTCPeerConnection final
   webrtc::PeerConnectionInterface::IceGatheringState ice_gathering_state_;
   webrtc::PeerConnectionInterface::IceConnectionState ice_connection_state_;
   webrtc::PeerConnectionInterface::PeerConnectionState peer_connection_state_;
+
+  // True once the connection has reached the connected state at least once.
+  // Used to report first-connect usage metrics exactly once per connection.
+  bool was_ever_connected_ = false;
 
   // A map containing any track that is in use by the peer connection. This
   // includes tracks of |rtp_senders_| and |rtp_receivers_|.

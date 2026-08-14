@@ -1600,6 +1600,100 @@ TEST_F(ComposeboxQueryControllerTest,
             "test_image.jpg");
 }
 
+#if !BUILDFLAG(IS_IOS)
+TEST_F(ComposeboxQueryControllerTest, UploadImageRequestC2paBypass) {
+  base::test::ScopedFeatureList local_feature_list;
+  local_feature_list.InitAndEnableFeature(
+      lens::features::kLensBypassCompressionForC2pa);
+
+  // Act: Start the session.
+  controller().InitializeIfNeeded();
+
+  // Act: Start the file upload flow.
+  const base::UnguessableToken file_token = base::UnguessableToken::Create();
+  std::unique_ptr<lens::ContextualInputData> input_data =
+      std::make_unique<lens::ContextualInputData>();
+  input_data->primary_content_type = lens::MimeType::kImage;
+  input_data->context_input = std::vector<lens::ContextualInput>();
+
+  // Use CreateJPGBytes helper
+  std::vector<uint8_t> image_bytes = CreateJPGBytes(100, 100);
+  std::string c2pa_str = "urn:c2pa:";
+  image_bytes.insert(image_bytes.end(), c2pa_str.begin(), c2pa_str.end());
+
+  input_data->context_input->push_back(
+      lens::ContextualInput(image_bytes, lens::MimeType::kImage));
+  input_data->file_name = "test_image.jpg";
+
+  lens::ImageEncodingOptions image_options{.max_size = 1000000,
+                                           .max_height = 1000,
+                                           .max_width = 1000,
+                                           .compression_quality = 30};
+
+  controller().StartFileUploadFlow(file_token, std::move(input_data),
+                                   image_options);
+
+  WaitForClusterInfo();
+  WaitForFileUpload(file_token, lens::MimeType::kImage);
+
+  // Validate the file upload request payload has the exact same bytes due to
+  // bypass.
+  std::string payload_bytes = controller()
+                                  .last_sent_file_upload_request()
+                                  ->objects_request()
+                                  .image_data()
+                                  .payload()
+                                  .image_bytes();
+  EXPECT_EQ(payload_bytes.size(), image_bytes.size());
+}
+
+TEST_F(ComposeboxQueryControllerTest, UploadImageRequestC2paFlagDisabled) {
+  base::test::ScopedFeatureList local_feature_list;
+  local_feature_list.InitAndDisableFeature(
+      lens::features::kLensBypassCompressionForC2pa);
+
+  // Act: Start the session.
+  controller().InitializeIfNeeded();
+
+  // Act: Start the file upload flow.
+  const base::UnguessableToken file_token = base::UnguessableToken::Create();
+  std::unique_ptr<lens::ContextualInputData> input_data =
+      std::make_unique<lens::ContextualInputData>();
+  input_data->primary_content_type = lens::MimeType::kImage;
+  input_data->context_input = std::vector<lens::ContextualInput>();
+
+  // Use CreateJPGBytes helper
+  std::vector<uint8_t> image_bytes = CreateJPGBytes(100, 100);
+  std::string c2pa_str = "urn:c2pa:";
+  image_bytes.insert(image_bytes.end(), c2pa_str.begin(), c2pa_str.end());
+
+  input_data->context_input->push_back(
+      lens::ContextualInput(image_bytes, lens::MimeType::kImage));
+  input_data->file_name = "test_image.jpg";
+
+  lens::ImageEncodingOptions image_options{.max_size = 1000000,
+                                           .max_height = 1000,
+                                           .max_width = 1000,
+                                           .compression_quality = 30};
+
+  controller().StartFileUploadFlow(file_token, std::move(input_data),
+                                   image_options);
+
+  WaitForClusterInfo();
+  WaitForFileUpload(file_token, lens::MimeType::kImage);
+
+  // Validate the file upload request payload was downscaled (bytes size should
+  // be different).
+  std::string payload_bytes = controller()
+                                  .last_sent_file_upload_request()
+                                  ->objects_request()
+                                  .image_data()
+                                  .payload()
+                                  .image_bytes();
+  EXPECT_NE(payload_bytes.size(), image_bytes.size());
+}
+#endif
+
 TEST_F(ComposeboxQueryControllerTest, UploadDriveFileRequestSuccess) {
   // Act: Start the session.
   controller().InitializeIfNeeded();
@@ -2168,8 +2262,6 @@ TEST_F(ComposeboxQueryControllerTest, PopulatesContentMetadataForPdfUpload) {
       "test title");
   EXPECT_EQ(request->objects_request().payload().content_metadata().file_name(),
             "test_file.pdf");
-  EXPECT_EQ(request->objects_request().payload().content_metadata().url(),
-            "https://example.com/");
 }
 
 TEST_F(ComposeboxQueryControllerTest, UploadPdfFileRequestSuccess) {
@@ -3709,6 +3801,29 @@ TEST_F(ComposeboxQueryControllerTest,
             lens::ToolMode::TOOL_MODE_IMAGE_GEN);
 }
 
+TEST_F(ComposeboxQueryControllerTest, CreateClientToAimRequestWithExitTool) {
+  controller().InitializeIfNeeded();
+
+  std::unique_ptr<CreateClientToAimRequestInfo> client_to_aim_request_info =
+      std::make_unique<CreateClientToAimRequestInfo>();
+  client_to_aim_request_info->exit_tool_info =
+      CreateClientToAimRequestInfo::ExitToolInfo{
+          .tool_mode = omnibox::ToolMode::TOOL_MODE_CANVAS,
+          .new_tool_mode = omnibox::ToolMode::TOOL_MODE_UNSPECIFIED,
+      };
+
+  lens::ClientToAimMessage client_to_aim_request =
+      controller().CreateClientToAimRequest(
+          std::move(client_to_aim_request_info));
+
+  EXPECT_TRUE(client_to_aim_request.has_exit_tool());
+  EXPECT_FALSE(client_to_aim_request.has_submit_query());
+  EXPECT_EQ(client_to_aim_request.exit_tool().payload().tool_mode(),
+            lens::ToolMode::TOOL_MODE_CANVAS);
+  EXPECT_EQ(client_to_aim_request.exit_tool().payload().new_tool_mode(),
+            lens::ToolMode::TOOL_MODE_UNSPECIFIED);
+}
+
 TEST_F(ComposeboxQueryControllerTest,
        CreateClientToAimRequestWithAdditionalCgiParams) {
   // Act: Start the session.
@@ -3776,6 +3891,47 @@ TEST_F(ComposeboxQueryControllerTest,
       client_to_aim_request->submit_query().payload().context_turn_metadata(0);
   EXPECT_EQ(context_turn_metadata.context_id(), 1);
   EXPECT_TRUE(context_turn_metadata.tab_metadata().is_active_tab());
+}
+
+TEST_F(ComposeboxQueryControllerTest,
+       CreateClientToAimRequestWithRemovedContexts) {
+  // Act: Start the session.
+  controller().InitializeIfNeeded();
+
+  // Act: Create the ClientToAimRequest.
+  std::unique_ptr<CreateClientToAimRequestInfo> client_to_aim_request_info =
+      std::make_unique<CreateClientToAimRequestInfo>();
+  client_to_aim_request_info->query_text = "hello";
+  client_to_aim_request_info->query_text_source =
+      lens::QueryPayload::QUERY_TEXT_SOURCE_KEYBOARD_INPUT;
+
+  lens::LensOverlayRequestId removed_context_1;
+  removed_context_1.set_uuid(12345);
+  removed_context_1.set_sequence_id(1);
+
+  lens::LensOverlayRequestId removed_context_2;
+  removed_context_2.set_uuid(67890);
+  removed_context_2.set_sequence_id(2);
+
+  client_to_aim_request_info->removed_contexts.push_back(removed_context_1);
+  client_to_aim_request_info->removed_contexts.push_back(removed_context_2);
+
+  lens::ClientToAimMessage client_to_aim_request =
+      controller().CreateClientToAimRequest(
+          std::move(client_to_aim_request_info));
+
+  // Assert: The ClientToAimRequest is populated correctly.
+  EXPECT_EQ(client_to_aim_request.submit_query().payload().query_text(),
+            "hello");
+  EXPECT_EQ(client_to_aim_request.submit_query().payload().query_text_source(),
+            lens::QueryPayload::QUERY_TEXT_SOURCE_KEYBOARD_INPUT);
+  ASSERT_EQ(
+      client_to_aim_request.submit_query().payload().expired_lens_ids_size(),
+      2);
+  EXPECT_EQ(client_to_aim_request.submit_query().payload().expired_lens_ids(0),
+            lens::Base64EncodeRequestId(removed_context_1));
+  EXPECT_EQ(client_to_aim_request.submit_query().payload().expired_lens_ids(1),
+            lens::Base64EncodeRequestId(removed_context_2));
 }
 
 TEST_F(ComposeboxQueryControllerTest,

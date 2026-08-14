@@ -408,6 +408,9 @@ BASE_FEATURE(kEncryptedMediaOcclusionTracking,
 BASE_FEATURE(kExtendedVideoBitstreamValidation,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+// Enables Rust version of MPEG parser (MP3/ADTS). Remove after M152 stable.
+BASE_FEATURE(kRustMpegAudioDataParser, base::FEATURE_ENABLED_BY_DEFAULT);
+
 // Enables support for >8 audio channel layouts (i.e., 5.1.4 and 7.1.4).
 BASE_FEATURE(kEnableHighChannelLayouts, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -672,6 +675,10 @@ BASE_FEATURE(kSymphoniaPcmDecoding, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kSymphoniaVorbisDecoding, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif
 
+#if BUILDFLAG(ENABLE_IAMF_TOOLS)
+BASE_FEATURE(kIamfAudioDecoding, base::FEATURE_DISABLED_BY_DEFAULT);
+#endif
+
 // Forces D3D11VideoDecoder to use one decoder texture per picture buffer.
 // Owner: media-gpu-team@chromium.org
 // Expiry: When no longer needed for decode texture selection experiments.
@@ -764,6 +771,14 @@ BASE_FEATURE(kForceSoftwareForRtcLowResolutions,
 // Auto-dismiss global media controls.
 BASE_FEATURE(kGlobalMediaControlsAutoDismiss, base::FEATURE_ENABLED_BY_DEFAULT);
 
+// Enables the "Save Video Frame" button in Global Media Controls.
+BASE_FEATURE(kGlobalMediaControlsSaveVideoFrame,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Enable selection of audio output device in Global Media Controls.
+BASE_FEATURE(kGlobalMediaControlsSeamlessTransfer,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 #if BUILDFLAG(IS_ANDROID)
 // Kill switch for removing idiosyncratic use of MediaCodec color APIs.
 BASE_FEATURE(kMediaCodecColorSpaceCleanup, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -779,10 +794,6 @@ BASE_FEATURE(kMediaRemotingWithoutFullscreen,
 #endif
 );
 #endif
-
-// Enable selection of audio output device in Global Media Controls.
-BASE_FEATURE(kGlobalMediaControlsSeamlessTransfer,
-             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // CanPlayThrough issued according to standard.
 BASE_FEATURE(kSpecCompliantCanPlayThrough, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -817,6 +828,14 @@ BASE_FEATURE(kAcceleratedVideoEncodeLinux,
 // Intended for manual usage only in order to gague the status of newer driver
 // implementations.
 BASE_FEATURE(kVaapiIgnoreDriverChecks, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// When both USE_VAAPI and USE_V4L2_CODEC are compiled in, selects the active
+// hardware video acceleration backend. Disabled (default) => VA-API; enabled
+// => V4L2. Flip with --enable-features=PreferV4L2VideoAcceleration. Consulted
+// by media::ActiveLinuxVideoDecoderType() in decoder.cc.
+#if BUILDFLAG(USE_VAAPI) && BUILDFLAG(USE_V4L2_CODEC)
+BASE_FEATURE(kPreferV4L2VideoAcceleration, base::FEATURE_DISABLED_BY_DEFAULT);
+#endif
 #endif  // BUILDFLAG(IS_LINUX)
 
 // NVIDIA VA-API drivers do not support Chromium and can sometimes cause
@@ -913,6 +932,10 @@ BASE_FEATURE(kWebRTCColorAccuracy,
 #endif  // BUILDFLAG(IS_CHROMEOS)
 );
 
+// Enables verbose logging of color space.
+// TODO: Delete this after testing is done.
+BASE_FEATURE(kWebRTCLogColorSpace, base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Enables support for External Clear Key (ECK) key system for testing on
 // supported platforms. On platforms that do not support ECK, this feature has
 // no effect.
@@ -939,6 +962,14 @@ BASE_FEATURE(kOnDeviceWebSpeechGeminiNano, base::FEATURE_DISABLED_BY_DEFAULT);
 // Enables on-device speech recognition using on-device TinyGemma.
 BASE_FEATURE(kOnDeviceWebSpeechSmallExpertModel,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Enables multi-language support for on-device speech recognition using
+// on-device TinyGemma.
+BASE_FEATURE(kOnDeviceWebSpeechSmallExpertModelMultiLanguage,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+const base::FeatureParam<std::string>
+    kOnDeviceWebSpeechSmallExpertModelLanguages{
+        &kOnDeviceWebSpeechSmallExpertModelMultiLanguage, "languages", ""};
 
 // Enables the Live Caption feature on supported devices.
 BASE_FEATURE(kLiveCaption, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -1047,13 +1078,6 @@ BASE_FEATURE(kHardwareSecureDecryptionAv1, base::FEATURE_DISABLED_BY_DEFAULT);
 // Enables hardware secure VP9 decoding if supported by the hardware
 // and the OS Content Decryption Module (CDM).
 BASE_FEATURE(kHardwareSecureDecryptionVp9, base::FEATURE_DISABLED_BY_DEFAULT);
-
-#if BUILDFLAG(ENABLE_PLATFORM_ENCRYPTED_DOLBY_VISION)
-// Enables hardware secure Dolby Vision decoding always with HDR display check
-// if supported by the hardware and the OS Content Decryption Module (CDM).
-BASE_FEATURE(kHardwareSecureDecryptionDolbyVisionWithHdrCheck,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-#endif  // ENABLE_PLATFORM_ENCRYPTED_DOLBY_VISION
 
 #if BUILDFLAG(IS_WIN)
 // Enables showing permission indicator in the omnibox when a site is allowed or
@@ -1197,10 +1221,6 @@ BASE_FEATURE(kMediaCodecBlockModel, base::FEATURE_DISABLED_BY_DEFAULT);
 // Allow selection of low latency decoders in low delay mode.
 BASE_FEATURE(kMediaCodecLowDelayMode, base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Enable a gesture to make the media controls expanded into the display cutout.
-// TODO(beccahughes): Remove this.
-BASE_FEATURE(kMediaControlsExpandGesture, base::FEATURE_ENABLED_BY_DEFAULT);
-
 // An experimental feature to enable persistent-license type support in MediaDrm
 // when using Encrypted Media Extensions (EME) API.
 // TODO(xhwang): Remove this after feature launch. See http://crbug.com/493521
@@ -1280,7 +1300,7 @@ BASE_FEATURE(kNdkVideoEncodeAcceleratorBitrateLayering,
 
 // Enables skipping MediaCodec reallocation if input buffer requirements
 // are already met.
-BASE_FEATURE(kSkipMediaCodecReallocation, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kSkipMediaCodecReallocation, base::FEATURE_ENABLED_BY_DEFAULT);
 
 #endif  // BUILDFLAG(IS_ANDROID)
 

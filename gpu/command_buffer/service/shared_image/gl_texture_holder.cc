@@ -7,6 +7,7 @@
 #include <optional>
 
 #include "base/bits.h"
+#include "base/memory/raw_ptr.h"
 #include "build/build_config.h"
 #include "gpu/command_buffer/service/shared_context_state.h"
 #include "gpu/command_buffer/service/shared_image/gl_repack_utils.h"
@@ -19,6 +20,7 @@
 #include "ui/gl/gl_version_info.h"
 #include "ui/gl/progress_reporter.h"
 #include "ui/gl/scoped_binders.h"
+#include "ui/gl/scoped_gl_framebuffer.h"
 #include "ui/gl/scoped_make_current.h"
 #include "ui/gl/scoped_restore_texture.h"
 
@@ -55,6 +57,8 @@ constexpr int ComputeBestAlignment(size_t bytes_per_pixel, size_t stride) {
 
   return bytes_per_pixel;
 }
+
+
 
 }  // anonymous namespace
 
@@ -96,25 +100,7 @@ GLTextureHolder::GLTextureHolder(viz::SharedImageFormat format,
   CHECK(format_.is_single_plane());
 }
 
-// TODO(kylechar): When `texture_` is removed with validating command decoder
-// move constructor/assignment can be defaulted.
-GLTextureHolder::GLTextureHolder(GLTextureHolder&& other) {
-  operator=(std::move(other));
-}
 
-GLTextureHolder& GLTextureHolder::operator=(GLTextureHolder&& other) {
-  format_ = other.format_;
-  size_ = other.size_;
-  is_passthrough_ = other.is_passthrough_;
-  context_lost_ = other.context_lost_;
-  texture_ = other.texture_;
-  other.texture_ = nullptr;
-  passthrough_texture_ = std::move(other.passthrough_texture_);
-  context_ = std::move(other.context_);
-  format_desc_ = other.format_desc_;
-  progress_reporter_ = other.progress_reporter_;
-  return *this;
-}
 
 GLTextureHolder::~GLTextureHolder() {
   if (is_passthrough_) {
@@ -399,9 +385,15 @@ bool GLTextureHolder::ReadbackToMemory(const SkPixmap& pixmap) {
   }
 
   gl::GLApi* api = gl::g_current_gl_context;
-  GLuint framebuffer;
-  api->glGenFramebuffersEXTFn(1, &framebuffer);
-  gl::ScopedFramebufferBinder scoped_framebuffer_binder(framebuffer);
+  // ScopedGLFramebuffer must be declared before ScopedFramebufferBinder
+  // so that when this scope exits, ScopedFramebufferBinder is destroyed first
+  // (restoring the previous framebuffer binding) before the temporary FBO is
+  // deleted. Some drivers retain an internal reference to the previously bound
+  // FBO across bind transitions; deleting it while bound can trigger a
+  // driver UAF (see https://crbug.com/525317502).
+  auto temp_fbo = gl::CreateScopedGLFramebuffer(api);
+  gl::ScopedFramebufferBinder scoped_framebuffer_binder(temp_fbo.get());
+
   // This uses GL_FRAMEBUFFER instead of GL_READ_FRAMEBUFFER as the target for
   // GLES2 compatibility.
   api->glFramebufferTexture2DEXTFn(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
@@ -479,8 +471,6 @@ bool GLTextureHolder::ReadbackToMemory(const SkPixmap& pixmap) {
     api->glReadPixelsFn(0, 0, size_.width(), size_.height(), gl_format, gl_type,
                         pixels);
   }
-
-  api->glDeleteFramebuffersEXTFn(1, &framebuffer);
 
   if (!unpack_buffer.empty()) {
     DCHECK_GT(dst_stride, expected_stride);

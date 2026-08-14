@@ -162,6 +162,7 @@ public final class ToolbarLongPressMenuHandlerUnitTest {
                         mWindowAndroid,
                         () -> mUrl,
                         () -> mViewRectProvider,
+                        url -> true,
                         () -> {});
 
         verify(mActivityLifecycleDispatcher).register(mToolbarLongPressMenuHandler);
@@ -569,8 +570,7 @@ public final class ToolbarLongPressMenuHandlerUnitTest {
                 list.get(1).model.get(ListMenuItemProperties.MENU_ITEM_ID));
 
         assertEquals(
-                R.string.sharing_send_tab_to_self,
-                list.get(2).model.get(ListMenuItemProperties.TITLE_ID));
+                R.string.menu_send_to_devices, list.get(2).model.get(ListMenuItemProperties.TITLE_ID));
         assertEquals(
                 ToolbarLongPressMenuHandler.MenuItemType.SEND_TAB_TO_SELF,
                 list.get(2).model.get(ListMenuItemProperties.MENU_ITEM_ID));
@@ -580,10 +580,39 @@ public final class ToolbarLongPressMenuHandlerUnitTest {
     @SmallTest
     @Restriction({DeviceFormFactor.PHONE})
     @EnableFeatures(ChromeFeatureList.SEND_TAB_TO_SELF_EXTRA_ENTRY_POINTS)
-    public void testBuildMenuItemsWithSendTabToSelf_invalidUrl() {
-        mUrl = GURL.emptyGURL();
+    public void testBuildMenuItemsWithSendTabToSelf_nullUrl() {
+        mUrl = null;
         ModelList list = mToolbarLongPressMenuHandler.buildMenuItems(true);
 
+        assertEquals(2, list.size());
+        assertEquals(
+                R.string.toolbar_move_to_the_bottom,
+                list.get(0).model.get(ListMenuItemProperties.TITLE_ID));
+        assertEquals(
+                R.string.toolbar_copy_link, list.get(1).model.get(ListMenuItemProperties.TITLE_ID));
+    }
+
+    @Test
+    @SmallTest
+    @Restriction({DeviceFormFactor.PHONE})
+    @EnableFeatures(ChromeFeatureList.SEND_TAB_TO_SELF_EXTRA_ENTRY_POINTS)
+    public void testBuildMenuItemsWithSendTabToSelf_unavailable() {
+        ToolbarLongPressMenuHandler handler =
+                new ToolbarLongPressMenuHandler(
+                        mActivity,
+                        mProfileSupplier,
+                        false,
+                        mSuppressSupplier,
+                        mActivityLifecycleDispatcher,
+                        mWindowAndroid,
+                        () -> mUrl,
+                        () -> mViewRectProvider,
+                        url -> false, // The availability predicate returns false.
+                        () -> {});
+        mUrl = JUnitTestGURLs.URL_1;
+        ModelList list = handler.buildMenuItems(true);
+
+        // Since the predicate returns false, the STTS entry should not be listed.
         assertEquals(2, list.size());
         assertEquals(
                 R.string.toolbar_move_to_the_bottom,
@@ -606,6 +635,7 @@ public final class ToolbarLongPressMenuHandlerUnitTest {
                         mWindowAndroid,
                         () -> mUrl,
                         () -> mViewRectProvider,
+                        url -> true,
                         onSendTabToSelfClicked);
         handler.handleMenuClick(ToolbarLongPressMenuHandler.MenuItemType.SEND_TAB_TO_SELF);
         verify(onSendTabToSelfClicked).run();

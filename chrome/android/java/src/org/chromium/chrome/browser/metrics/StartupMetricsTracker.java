@@ -7,7 +7,6 @@ package org.chromium.chrome.browser.metrics;
 import android.app.ActivityManager;
 import android.app.ApplicationStartInfo;
 import android.content.Context;
-import android.os.Build;
 import android.os.Process;
 import android.os.SystemClock;
 import android.view.View;
@@ -19,6 +18,7 @@ import org.chromium.base.BinderCallsListener;
 import org.chromium.base.ContextUtils;
 import org.chromium.base.ThreadUtils;
 import org.chromium.base.TimeUtils;
+import org.chromium.base.TraceEvent;
 import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.base.supplier.MonotonicObservableSupplier;
 import org.chromium.base.task.PostTask;
@@ -53,18 +53,15 @@ public class StartupMetricsTracker {
     private static final long TIME_TO_DRAW_METRIC_RECORDING_DELAY_MS = 2500;
     private static final String NTP_COLD_START_HISTOGRAM =
             "Startup.Android.Cold.NewTabPage.TimeToFirstDraw";
-    private static final String NTP_WEBUI_COLD_START_HISTOGRAM =
-            "Startup.Android.Cold.NewTabPageWebUi.TimeToFirstDraw";
     private static final String TIME_TO_STARTUP_FCP_OR_PAINT_PREVIEW_HISTOGRAM =
             "Startup.Android.Cold.TimeToStartupFcpOrPaintPreview";
-    private static final String COLD_START_TIME_TO_FIRST_FRAME =
-            "Startup.Android.Cold.TimeToFirstFrame";
-    private static final String COLD_START_MISMATCH_HISTOGRAM =
-            "Startup.Android.Cold.TemperatureMismatch";
+    private static final String COLD_START_TIME_TO_FIRST_FRAME2 =
+            "Startup.Android.Cold.TimeToFirstFrame2";
     private static final String COLD_START_EXPERIMENTAL_FCP_TABBED_HISTOGRAM =
             "Startup.Android.Cold.ExperimentalProcessStart.TimeToFirstContentfulPaint.Tabbed";
     private static final String COLD_START_EXPERIMENTAL_FIRST_VISIBLE_CONTENT_HISTOGRAM =
             "Startup.Android.Cold.ExperimentalProcessStart.TimeToFirstVisibleContent";
+    private static boolean sBypassStartChecksForTesting;
     private boolean mFirstNavigationCommitted;
 
     // These values are persisted to logs. Entries should not be renumbered and
@@ -89,25 +86,6 @@ public class StartupMetricsTracker {
 
     // LINT.ThenChange(//tools/metrics/histograms/metadata/startup/enums.xml:AndroidStartupTemperature)
 
-    // LINT.IfChange(AndroidColdStartMismatchLocation)
-    @IntDef({
-        AndroidColdStartMismatchLocation.TRACKER_COLD_SYSTEM_NOT_COLD_ACTIVITY,
-        AndroidColdStartMismatchLocation.TRACKER_COLD_SYSTEM_NOT_COLD_OTHER,
-        AndroidColdStartMismatchLocation.TRACKER_NOT_COLD_SYSTEM_COLD_ACTIVITY,
-        AndroidColdStartMismatchLocation.TRACKER_NOT_COLD_SYSTEM_COLD_OTHER,
-        AndroidColdStartMismatchLocation.NUM_ENTRIES
-    })
-    @Retention(RetentionPolicy.SOURCE)
-    public @interface AndroidColdStartMismatchLocation {
-        int TRACKER_COLD_SYSTEM_NOT_COLD_ACTIVITY = 0;
-        int TRACKER_COLD_SYSTEM_NOT_COLD_OTHER = 1;
-        int TRACKER_NOT_COLD_SYSTEM_COLD_ACTIVITY = 2;
-        int TRACKER_NOT_COLD_SYSTEM_COLD_OTHER = 3;
-        int NUM_ENTRIES = 4;
-    }
-
-    // LINT.ThenChange(//tools/metrics/histograms/metadata/startup/enums.xml:AndroidColdStartMismatchLocation)
-
     private class TabObserver extends TabModelSelectorTabObserver {
         private boolean mFirstLoadStarted;
 
@@ -121,14 +99,26 @@ public class StartupMetricsTracker {
             if (tab.isNativePage()) destroy();
             if (!UrlUtilities.isNtpUrl(tab.getUrl())) {
                 mShouldTrackTimeToFirstDraw = false;
-            } else if (UrlOverrideUtils.isWebUiNtpOverrideEnabled()
-                    && mShouldTrackTimeToFirstDraw) {
-                View tabView = tab.getView();
-                if (tabView != null) {
-                    mShouldTrackTimeToFirstDraw = false;
-                    trackTimeToFirstDraw(tabView, NTP_WEBUI_COLD_START_HISTOGRAM);
-                }
             }
+        }
+
+        @Override
+        public void didFirstVisuallyNonEmptyPaint(Tab tab) {
+            if (!UrlOverrideUtils.isWebUiNtpOverrideEnabled()
+                    || !mShouldTrackTimeToFirstDraw
+                    || !UrlUtilities.isNtpUrl(tab.getUrl())) {
+                return;
+            }
+
+            mShouldTrackTimeToFirstDraw = false;
+
+            if (!SimpleStartupForegroundSessionDetector.runningCleanForegroundSession()
+                    || !ColdStartTracker.wasColdOnFirstActivityCreationOrNow()) {
+                return;
+            }
+
+            onFirstDrawDetected(
+                    NTP_COLD_START_HISTOGRAM, SystemClock.uptimeMillis() - mActivityStartTimeMs);
         }
 
         @Override
@@ -144,23 +134,31 @@ public class StartupMetricsTracker {
         @Override
         public void onDidFinishNavigationInPrimaryMainFrame(Tab tab, NavigationHandle navigation) {
             if (!mShouldTrack || mFirstNavigationCommitted) return;
-            boolean shouldTrack =
-                    navigation.hasCommitted()
-                            && !navigation.isErrorPage()
-                            && UrlUtilities.isHttpOrHttps(navigation.getUrl())
-                            && !navigation.isSameDocument();
-            if (!shouldTrack) {
-                // When navigation leads to an error page, download or chrome:// URLs, avoid
-                // recording both commit and FCP.
-                //
-                // In rare cases a same-document navigation can commit before all other
-                // http(s)+non-error navigations (crbug.com/40074911). Filter out such scenarios
-                // since they are counter-intuitive.
+
+            // In rare cases a same-document navigation can commit before all other
+            // http(s)+non-error navigations (crbug.com/40074911). Filter out such scenarios
+            // since they are counter-intuitive. Also discard if not committed or error page.
+            if (!navigation.hasCommitted()
+                    || navigation.isErrorPage()
+                    || navigation.isSameDocument()) {
                 destroy();
-            } else {
-                mFirstNavigationCommitted = true;
-                recordNavigationCommitMetrics();
+                return;
             }
+
+            if (UrlOverrideUtils.isWebUiNtpOverrideEnabled()
+                    && UrlUtilities.isNtpUrl(navigation.getUrl())) {
+                mFirstNavigationCommitted = true;
+                return;
+            }
+
+            // When navigation leads to chrome:// URLs (except WebUI NTP) or other non-http/s
+            // schemes, avoid recording both commit and FCP.
+            if (!UrlUtilities.isHttpOrHttps(navigation.getUrl())) {
+                destroy();
+                return;
+            }
+            mFirstNavigationCommitted = true;
+            recordNavigationCommitMetrics();
         }
     }
 
@@ -221,6 +219,10 @@ public class StartupMetricsTracker {
     private volatile long mFirstSafeBrowsingResponseTimeMicros;
     private boolean mFirstSafeBrowsingResponseTimeRecorded;
 
+    public static void setBypassStartChecksForTesting() {
+        sBypassStartChecksForTesting = true;
+    }
+
     public StartupMetricsTracker(
             MonotonicObservableSupplier<TabModelSelector> tabModelSelectorSupplier,
             Supplier<Boolean> isRestoringPersistentStateSupplier) {
@@ -236,7 +238,7 @@ public class StartupMetricsTracker {
      * Sets up a listener for ApplicationStartInfo that will eventually report TimeToFirstFrame once
      * per application lifecycle.
      */
-    @RequiresApi(35)
+    @RequiresApi(36)
     public void registerApplicationStartInfoListener() {
         ActivityManager activityManager =
                 (ActivityManager)
@@ -332,28 +334,29 @@ public class StartupMetricsTracker {
 
     private void trackTimeToFirstDraw(View view, String histogram) {
         if (!SimpleStartupForegroundSessionDetector.runningCleanForegroundSession()
-                || !ColdStartTracker.wasColdOnFirstActivityCreationOrNow()) return;
+                || !ColdStartTracker.wasColdOnFirstActivityCreationOrNow()) {
+            return;
+        }
         FirstDrawDetector.waitForFirstDrawStrict(
                 view,
                 () -> {
                     long timeToFirstDrawMs = SystemClock.uptimeMillis() - mActivityStartTimeMs;
-                    if (NTP_COLD_START_HISTOGRAM.equals(histogram)) {
-                        recordBinderMetricsCold("NewTabPage");
-                    } else if (NTP_WEBUI_COLD_START_HISTOGRAM.equals(histogram)) {
-                        recordBinderMetricsCold("NewTabPageWebUi");
-                    }
-                    // During a cold start, first draw can be triggered while Chrome is in
-                    // the background, leading to ablated draw times. This early in the startup
-                    // process, events that indicate Chrome has been backgrounded do not run until
-                    // after the first draw pass. To work around this, post a task to be run with
-                    // a delay to record the metric once we can possibly verify if Chrome was ever
-                    // sent to the background during startup.
-                    PostTask.postDelayedTask(
-                            TaskTraits.BEST_EFFORT_MAY_BLOCK,
-                            () -> recordTimeToFirstDraw(histogram, timeToFirstDrawMs),
-                            TIME_TO_DRAW_METRIC_RECORDING_DELAY_MS);
-                    mShouldTrackTimeToFirstDraw = false;
+                    onFirstDrawDetected(histogram, timeToFirstDrawMs);
                 });
+    }
+
+    private void onFirstDrawDetected(String histogram, long timeToFirstDrawMs) {
+        if (NTP_COLD_START_HISTOGRAM.equals(histogram)) {
+            recordBinderMetricsCold("NewTabPage");
+        }
+        // During a cold start, first draw can be triggered while Chrome is in
+        // the background, leading to ablated draw times. Post a task to be run with
+        // a delay to record the metric once we can verify if Chrome was backgrounded.
+        PostTask.postDelayedTask(
+                TaskTraits.BEST_EFFORT_MAY_BLOCK,
+                () -> recordTimeToFirstDraw(histogram, timeToFirstDrawMs),
+                TIME_TO_DRAW_METRIC_RECORDING_DELAY_MS);
+        mShouldTrackTimeToFirstDraw = false;
     }
 
     @SuppressWarnings("NullAway")
@@ -473,7 +476,9 @@ public class StartupMetricsTracker {
      */
     private void recordTimeToFirstDraw(String histogramName, long timeToFirstDrawMs) {
         if (!SimpleStartupForegroundSessionDetector.runningCleanForegroundSession()
-                || !ColdStartTracker.wasColdOnFirstActivityCreationOrNow()) return;
+                || !ColdStartTracker.wasColdOnFirstActivityCreationOrNow()) {
+            return;
+        }
         RecordHistogram.recordMediumTimesHistogram(histogramName, timeToFirstDrawMs);
     }
 
@@ -501,67 +506,29 @@ public class StartupMetricsTracker {
      *
      * @param applicationStartInfo contains various bits of information regarding app startup.
      */
-    @RequiresApi(35)
+    @RequiresApi(36)
     private void recordTimeToFirstFrame(ApplicationStartInfo applicationStartInfo) {
         if (!SimpleStartupForegroundSessionDetector.runningCleanForegroundSession()
                 || mActivityStartInfoMetricsRecorded) return;
 
-        boolean isTrackerCold = ColdStartTracker.wasColdOnFirstActivityCreationOrNow();
-        boolean isSystemCold =
-                applicationStartInfo.getStartType() == ApplicationStartInfo.START_TYPE_COLD;
-        if (isTrackerCold != isSystemCold && Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
-            recordMismatchHistogram(applicationStartInfo, isTrackerCold);
+        boolean isActivityColdStart =
+                applicationStartInfo.getStartComponent()
+                                == ApplicationStartInfo.START_COMPONENT_ACTIVITY
+                        && applicationStartInfo.getStartType()
+                                == ApplicationStartInfo.START_TYPE_COLD;
+        if (!sBypassStartChecksForTesting && !isActivityColdStart) {
+            return;
         }
-
-        // TODO(crbug.com/463329742): Replace ColdStartTracker with ApplicationStartInfo when
-        // test-related cold-start tracking issues are mitigated.
-        if (!isTrackerCold) return;
         mActivityStartInfoMetricsRecorded = true;
         final long firstFrameTimeMs =
                 applicationStartInfo
                                 .getStartupTimestamps()
                                 .getOrDefault(ApplicationStartInfo.START_TIMESTAMP_FIRST_FRAME, 0L)
                         / TimeUtils.NANOSECONDS_PER_MILLISECOND;
-        if (firstFrameTimeMs != 0L && mActivityStartTimeMs < firstFrameTimeMs) {
-            RecordHistogram.recordMediumTimesHistogram(
-                    COLD_START_TIME_TO_FIRST_FRAME, firstFrameTimeMs - mActivityStartTimeMs);
+        if (firstFrameTimeMs != 0L && mProcessStartTimeMs < firstFrameTimeMs) {
+            long durationMs = firstFrameTimeMs - mProcessStartTimeMs;
+            RecordHistogram.recordMediumTimesHistogram(COLD_START_TIME_TO_FIRST_FRAME2, durationMs);
+            TraceEvent.startupTimeToFirstFrame2(mProcessStartTimeMs, durationMs);
         }
-    }
-
-    /**
-     * Records a histogram capturing TemperatureMismatch context.
-     *
-     * <p>This metric records context around how a cold start detection mismatch occurred using
-     * ColdStartTracker (Clank's solution) and ApplicationStartInfo (Android API). If there is a
-     * mismatch, see if Clank and Android agree on what component caused this launch.
-     *
-     * @param applicationStartInfo contains various bits of information regarding app startup.
-     * @param isTrackerCold boolean that determines whether Clank had a cold start based on whether
-     *     the start was caused by an Activity launch.
-     */
-    @RequiresApi(36)
-    private void recordMismatchHistogram(
-            ApplicationStartInfo applicationStartInfo, boolean isTrackerCold) {
-        boolean isSystemActivity =
-                applicationStartInfo.getStartComponent()
-                        == ApplicationStartInfo.START_COMPONENT_ACTIVITY;
-
-        @AndroidColdStartMismatchLocation int sample;
-        if (isTrackerCold) {
-            sample =
-                    isSystemActivity
-                            ? AndroidColdStartMismatchLocation.TRACKER_COLD_SYSTEM_NOT_COLD_ACTIVITY
-                            : AndroidColdStartMismatchLocation.TRACKER_COLD_SYSTEM_NOT_COLD_OTHER;
-        } else {
-            sample =
-                    isSystemActivity
-                            ? AndroidColdStartMismatchLocation.TRACKER_NOT_COLD_SYSTEM_COLD_ACTIVITY
-                            : AndroidColdStartMismatchLocation.TRACKER_NOT_COLD_SYSTEM_COLD_OTHER;
-        }
-
-        RecordHistogram.recordEnumeratedHistogram(
-                COLD_START_MISMATCH_HISTOGRAM,
-                sample,
-                AndroidColdStartMismatchLocation.NUM_ENTRIES);
     }
 }

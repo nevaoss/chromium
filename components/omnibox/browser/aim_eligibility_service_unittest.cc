@@ -15,6 +15,7 @@
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/task_environment.h"
+#include "components/contextual_tasks/public/features.h"
 #include "components/country_codes/country_codes.h"
 #include "components/omnibox/browser/aim_eligibility_service_features.h"
 #include "components/prefs/testing_pref_service.h"
@@ -84,7 +85,7 @@ class MockAimEligibilityServiceForInterception : public AimEligibilityService {
   }
 };
 
-omnibox::AimEligibilityResponse::QueryParam CreateRequiredParam(
+omnibox::AimEligibilityResponse::QueryParam CreateQueryParam(
     const std::string& key,
     const std::string& value) {
   omnibox::AimEligibilityResponse::QueryParam param;
@@ -130,8 +131,8 @@ TEST_F(AimEligibilityServiceTest, UrlInterceptRules_Match) {
   omnibox::AimEligibilityResponse response;
   omnibox::AimEligibilityResponse::AimDetectionUrlRule rule;
 
-  rule.mutable_required_params()->Add(CreateRequiredParam("a", "1"));
-  rule.mutable_required_params()->Add(CreateRequiredParam("b", "2"));
+  rule.mutable_required_params()->Add(CreateQueryParam("a", "1"));
+  rule.mutable_required_params()->Add(CreateQueryParam("b", "2"));
   response.mutable_aim_detection_url_rule()->Add(std::move(rule));
 
   aim_eligibility_service_->SetAimEligibilityResponse(std::move(response));
@@ -145,8 +146,8 @@ TEST_F(AimEligibilityServiceTest, UrlInterceptRules_MissingParam) {
   omnibox::AimEligibilityResponse response;
   omnibox::AimEligibilityResponse::AimDetectionUrlRule rule;
 
-  rule.mutable_required_params()->Add(CreateRequiredParam("a", "1"));
-  rule.mutable_required_params()->Add(CreateRequiredParam("b", "2"));
+  rule.mutable_required_params()->Add(CreateQueryParam("a", "1"));
+  rule.mutable_required_params()->Add(CreateQueryParam("b", "2"));
   response.mutable_aim_detection_url_rule()->Add(std::move(rule));
 
   aim_eligibility_service_->SetAimEligibilityResponse(std::move(response));
@@ -160,8 +161,8 @@ TEST_F(AimEligibilityServiceTest, UrlInterceptRules_NoParams) {
   omnibox::AimEligibilityResponse response;
   omnibox::AimEligibilityResponse::AimDetectionUrlRule rule;
 
-  rule.mutable_required_params()->Add(CreateRequiredParam("a", "1"));
-  rule.mutable_required_params()->Add(CreateRequiredParam("b", "2"));
+  rule.mutable_required_params()->Add(CreateQueryParam("a", "1"));
+  rule.mutable_required_params()->Add(CreateQueryParam("b", "2"));
   response.mutable_aim_detection_url_rule()->Add(std::move(rule));
 
   aim_eligibility_service_->SetAimEligibilityResponse(std::move(response));
@@ -175,12 +176,12 @@ TEST_F(AimEligibilityServiceTest, UrlInterceptRules_MultipleRules) {
   omnibox::AimEligibilityResponse response;
 
   omnibox::AimEligibilityResponse::AimDetectionUrlRule rule1;
-  rule1.mutable_required_params()->Add(CreateRequiredParam("a", "1"));
-  rule1.mutable_required_params()->Add(CreateRequiredParam("b", "2"));
+  rule1.mutable_required_params()->Add(CreateQueryParam("a", "1"));
+  rule1.mutable_required_params()->Add(CreateQueryParam("b", "2"));
   response.mutable_aim_detection_url_rule()->Add(std::move(rule1));
 
   omnibox::AimEligibilityResponse::AimDetectionUrlRule rule2;
-  rule2.mutable_required_params()->Add(CreateRequiredParam("c", "1"));
+  rule2.mutable_required_params()->Add(CreateQueryParam("c", "1"));
   response.mutable_aim_detection_url_rule()->Add(std::move(rule2));
 
   aim_eligibility_service_->SetAimEligibilityResponse(std::move(response));
@@ -197,6 +198,121 @@ TEST_F(AimEligibilityServiceTest, UrlInterceptRules_NoRules) {
   GURL url("https://google.com?c=1");
 
   EXPECT_FALSE(aim_eligibility_service_->HasAimUrlParams(url));
+}
+
+TEST_F(AimEligibilityServiceTest, IsAimUrl) {
+  omnibox::AimEligibilityResponse response;
+
+  omnibox::AimEligibilityResponse::AimDetectionUrlRule rule;
+  rule.mutable_required_params()->Add(CreateQueryParam("a", "1"));
+  rule.mutable_required_params()->Add(CreateQueryParam("b", "2"));
+  response.mutable_aim_detection_url_rule()->Add(std::move(rule));
+
+  response.mutable_interception_allowed_hosts()->Add("google.com");
+  response.mutable_interception_allowed_hosts()->Add("example.com");
+
+  response.mutable_interception_allowed_paths()->Add("/search");
+  response.mutable_interception_allowed_paths()->Add("/search_dev");
+
+  // Add a "no cobrowse" param to make sure this IsAimUrl is not affected by it.
+  response.mutable_no_cobrowse_params()->Add(CreateQueryParam("ncb", "1"));
+
+  aim_eligibility_service_->SetAimEligibilityResponse(std::move(response));
+
+  // Matches all criteria
+  EXPECT_TRUE(aim_eligibility_service_->IsAimUrl(
+      GURL("https://google.com/search?a=1&b=2"), std::nullopt));
+
+  // Matches all criteria, second host and path
+  EXPECT_TRUE(aim_eligibility_service_->IsAimUrl(
+      GURL("https://example.com/search_dev?a=1&b=2"), std::nullopt));
+
+  // Missing param
+  EXPECT_FALSE(aim_eligibility_service_->IsAimUrl(
+      GURL("https://google.com/search?a=1"), std::nullopt));
+
+  // Invalid host
+  EXPECT_FALSE(aim_eligibility_service_->IsAimUrl(
+      GURL("https://host.google.com/search?a=1&b=2"), std::nullopt));
+
+  // Invalid path
+  EXPECT_FALSE(aim_eligibility_service_->IsAimUrl(
+      GURL("https://google.com/feature?a=1&b=2"), std::nullopt));
+
+  // Check that the host override works correctly
+  EXPECT_FALSE(aim_eligibility_service_->IsAimUrl(
+      GURL("https://goo.gl/feature?a=1&b=2"), "goo.gl"));
+}
+
+TEST_F(AimEligibilityServiceTest, IsAimUrl_HostWildcard) {
+  omnibox::AimEligibilityResponse response;
+
+  omnibox::AimEligibilityResponse::AimDetectionUrlRule rule;
+  rule.mutable_required_params()->Add(CreateQueryParam("a", "1"));
+  rule.mutable_required_params()->Add(CreateQueryParam("b", "2"));
+  response.mutable_aim_detection_url_rule()->Add(std::move(rule));
+
+  // The example here does not represent what should be sent from the
+  // backend. If a zero-or-one subdomain needs to be accounted for two
+  // rules should be sent instead:
+  //  - google.com
+  //  - *.google.com
+  // This will avoid catching cases like fakegoogle.com.
+  response.mutable_interception_allowed_hosts()->Add(".*.?google.com");
+
+  response.mutable_interception_allowed_paths()->Add("/search");
+
+  aim_eligibility_service_->SetAimEligibilityResponse(std::move(response));
+
+  // No subdomain for wildcard
+  EXPECT_TRUE(aim_eligibility_service_->IsAimUrl(
+      GURL("https://google.com/search?a=1&b=2"), std::nullopt));
+
+  // Valid subdomain
+  EXPECT_TRUE(aim_eligibility_service_->IsAimUrl(
+      GURL("https://prod.google.com/search?a=1&b=2"), std::nullopt));
+
+  // Invalid host
+  EXPECT_FALSE(aim_eligibility_service_->IsAimUrl(
+      GURL("https://google.example.com/search?a=1&b=2"), std::nullopt));
+}
+
+TEST_F(AimEligibilityServiceTest, HasNoCobrowseParams_ExactMatch) {
+  omnibox::AimEligibilityResponse response;
+  response.mutable_no_cobrowse_params()->Add(CreateQueryParam("ncb", "1"));
+
+  aim_eligibility_service_->SetAimEligibilityResponse(std::move(response));
+
+  GURL url("https://google.com?ncb=1");
+
+  EXPECT_TRUE(aim_eligibility_service_->HasNoCobrowseParams(url));
+}
+
+// Checking for no-cobrowse params should be a "contains" check rather than an
+// exact match.
+TEST_F(AimEligibilityServiceTest, HasNoCobrowseParams_Contains) {
+  omnibox::AimEligibilityResponse response;
+  response.mutable_no_cobrowse_params()->Add(
+      CreateQueryParam("deb", "nocobrowse1"));
+
+  aim_eligibility_service_->SetAimEligibilityResponse(std::move(response));
+
+  GURL url("https://google.com?deb=debug0nocobrowse1other0");
+
+  EXPECT_TRUE(aim_eligibility_service_->HasNoCobrowseParams(url));
+}
+
+// Check `false` is returned if the params aren't present.
+TEST_F(AimEligibilityServiceTest, HasNoCobrowseParams_None) {
+  omnibox::AimEligibilityResponse response;
+  response.mutable_no_cobrowse_params()->Add(
+      CreateQueryParam("deb", "nocobrowse1"));
+
+  aim_eligibility_service_->SetAimEligibilityResponse(std::move(response));
+
+  GURL url("https://google.com?deb=0");
+
+  EXPECT_FALSE(aim_eligibility_service_->HasNoCobrowseParams(url));
 }
 
 TEST_F(AimEligibilityServiceTest, ClientLocaleParam) {
@@ -391,20 +507,23 @@ TEST_F(AimEligibilityServiceTest, RequestMode_PostWithProto) {
 
 TEST_F(AimEligibilityServiceTest, IsCobrowseEligible) {
   base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndEnableFeature(
-      omnibox::kAimCoBrowseEligibilityCheckEnabled);
+  feature_list.InitWithFeatures({omnibox::kAimCoBrowseEligibilityCheckEnabled,
+                                 contextual_tasks::kContextualTasks},
+                                {});
 
   omnibox::AimEligibilityResponse response;
   response.set_is_cobrowse_eligible(true);
   response.set_is_eligible(true);
   aim_eligibility_service_->SetAimEligibilityResponse(std::move(response));
   EXPECT_TRUE(aim_eligibility_service_->IsCobrowseEligible());
+  EXPECT_TRUE(aim_eligibility_service_->IsCobrowseServerEligible());
 
   omnibox::AimEligibilityResponse response2;
   response2.set_is_cobrowse_eligible(false);
   response.set_is_eligible(true);
   aim_eligibility_service_->SetAimEligibilityResponse(std::move(response2));
   EXPECT_FALSE(aim_eligibility_service_->IsCobrowseEligible());
+  EXPECT_FALSE(aim_eligibility_service_->IsCobrowseServerEligible());
 }
 
 TEST_F(AimEligibilityServiceTest, FetchEligibility) {
@@ -417,7 +536,7 @@ TEST_F(AimEligibilityServiceTest, FetchEligibility) {
 
 TEST_F(AimEligibilityServiceTest, IsCobrowseEligible_FeatureDisabled) {
   base::test::ScopedFeatureList feature_list;
-  feature_list.InitWithFeatures({},
+  feature_list.InitWithFeatures({contextual_tasks::kContextualTasks},
                                 {omnibox::kAimCoBrowseEligibilityCheckEnabled,
                                  omnibox::kAimServerEligibilityEnabled});
 
@@ -427,12 +546,28 @@ TEST_F(AimEligibilityServiceTest, IsCobrowseEligible_FeatureDisabled) {
 
   // Should be true regardless of response if feature is disabled.
   EXPECT_TRUE(aim_eligibility_service_->IsCobrowseEligible());
+  EXPECT_TRUE(aim_eligibility_service_->IsCobrowseServerEligible());
+}
+
+TEST_F(AimEligibilityServiceTest, IsCobrowseEligible_ContextualTasksDisabled) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitWithFeatures({omnibox::kAimCoBrowseEligibilityCheckEnabled},
+                                {contextual_tasks::kContextualTasks});
+
+  omnibox::AimEligibilityResponse response;
+  response.set_is_cobrowse_eligible(true);
+  response.set_is_eligible(true);
+  aim_eligibility_service_->SetAimEligibilityResponse(std::move(response));
+  EXPECT_FALSE(aim_eligibility_service_->IsCobrowseEligible());
+  EXPECT_TRUE(aim_eligibility_service_->IsCobrowseServerEligible());
 }
 
 TEST_F(AimEligibilityServiceTest, ParsingResponse) {
   base::test::ScopedFeatureList feature_list;
   feature_list.InitWithFeatures(
-      {omnibox::kAimEnabled, omnibox::kAimServerEligibilityEnabled}, {});
+      {omnibox::kAimEnabled, omnibox::kAimServerEligibilityEnabled,
+       contextual_tasks::kContextualTasks},
+      {});
 
   omnibox::AimEligibilityResponse response;
   response.set_is_eligible(true);

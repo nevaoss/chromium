@@ -34,6 +34,7 @@
 #include "chrome/browser/sessions/session_restore.h"
 #include "chrome/browser/sessions/session_service_factory.h"
 #include "chrome/browser/ui/browser.h"
+#include "chrome/browser/ui/browser_init_state.h"
 #include "chrome/browser/ui/browser_window/public/browser_collection.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
@@ -101,8 +102,7 @@ void SavePreRestartTabWindowCounts() {
             return true;
           }
           // Skip windows that are explicitly not restored.
-          if (browser->GetBrowserForMigrationOnly()
-                  ->omit_from_session_restore()) {
+          if (BrowserInitState::From(browser)->omit_from_session_restore()) {
             return true;
           }
 
@@ -168,7 +168,8 @@ void PostTryToCloseBrowsersForProfile(
                                    original_profile
                              : browser->GetProfile() == original_profile;
           if (matches) {
-            browser->GetBrowserForMigrationOnly()->ResetTryToCloseWindow();
+            UnloadController::From(browser->GetBrowserForMigrationOnly())
+                ->ResetTryToCloseWindow();
           }
           return true;
         });
@@ -199,12 +200,13 @@ void TryToCloseBrowsersForProfile(
         if (!matches_profile(browser)) {
           return true;
         }
-        if (browser->GetBrowserForMigrationOnly()->TryToCloseWindow(
-                skip_beforeunload,
-                base::BindRepeating(&PostTryToCloseBrowsersForProfile,
-                                    original_profile, match_original_profile,
-                                    on_close_success, on_close_aborted,
-                                    profile_path, skip_beforeunload))) {
+        if (UnloadController::From(browser->GetBrowserForMigrationOnly())
+                ->TryToCloseWindow(
+                    skip_beforeunload,
+                    base::BindRepeating(
+                        &PostTryToCloseBrowsersForProfile, original_profile,
+                        match_original_profile, on_close_success,
+                        on_close_aborted, profile_path, skip_beforeunload))) {
           waiting_for_close = true;
           return false;
         }

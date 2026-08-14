@@ -80,7 +80,6 @@
 #include "net/test/test_data_directory.h"
 #include "services/network/public/cpp/resource_request.h"
 #include "services/network/public/cpp/web_sandbox_flags.h"
-#include "services/network/public/mojom/attribution.mojom.h"
 #include "services/network/test/test_network_context.h"
 #include "skia/ext/skia_utils_base.h"
 #include "testing/gmock/include/gmock/gmock.h"
@@ -1902,7 +1901,7 @@ TEST_F(WebContentsImplTest, PendingContentsDestroyed) {
   contents()->AddPendingContents(std::move(other_contents), GURL());
   RenderWidgetHost* widget =
       test_web_contents->GetPrimaryMainFrame()->GetRenderWidgetHost();
-  int process_id = widget->GetProcess()->GetDeprecatedID();
+  ChildProcessId process_id = widget->GetProcess()->GetID();
   int widget_id = widget->GetRoutingID();
 
   // TODO(erikchen): Fix ownership semantics of WebContents. Nothing should be
@@ -1920,7 +1919,7 @@ TEST_F(WebContentsImplTest, PendingContentsShown) {
 
   RenderWidgetHost* widget =
       test_web_contents->GetPrimaryMainFrame()->GetRenderWidgetHost();
-  int process_id = widget->GetProcess()->GetDeprecatedID();
+  ChildProcessId process_id = widget->GetProcess()->GetID();
   int widget_id = widget->GetRoutingID();
 
   // The first call to GetCreatedWindow pops it off the pending list.
@@ -3962,8 +3961,6 @@ TEST_F(WebContentsImplTest, OnKeepAliveRequestCreated) {
   TestRenderFrameHost* rfh = main_test_rfh();
   network::ResourceRequest request;
   request.url = GURL("https://example.com");
-  request.attribution_reporting_eligibility =
-      network::mojom::AttributionReportingEligibility::kEmpty;
   request.keepalive = true;
   request.keepalive_token = base::UnguessableToken::Create();
 

@@ -239,32 +239,11 @@ Node::InsertionNotificationRequest HTMLFrameOwnerElement::InsertedInto(
   return result;
 }
 
-static void SetIsCanvasOrInCanvasSubtreeRecursively(Element& element,
-                                                    bool is_in_canvas) {
-  if (IsA<HTMLCanvasElement>(element)) {
-    is_in_canvas = true;
-  }
-  if (element.IsCanvasOrInCanvasSubtree() == is_in_canvas) {
-    return;
-  }
-  element.SetIsCanvasOrInCanvasSubtree(is_in_canvas);
-
-  if (ShadowRoot* shadow_root = element.GetShadowRoot()) {
-    for (Element& child : ElementTraversal::ChildrenOf(*shadow_root)) {
-      SetIsCanvasOrInCanvasSubtreeRecursively(child, is_in_canvas);
-    }
-  }
-  for (Element& child : ElementTraversal::ChildrenOf(element)) {
-    SetIsCanvasOrInCanvasSubtreeRecursively(child, is_in_canvas);
-  }
-}
-
-void HTMLFrameOwnerElement::DidChangeIsCanvasOrInCanvasSubtree() {
-  HTMLElement::DidChangeIsCanvasOrInCanvasSubtree();
+void HTMLFrameOwnerElement::DidChangeIsInCanvasSubtree() {
+  HTMLElement::DidChangeIsInCanvasSubtree();
   if (Document* inner_document = contentDocument()) {
     if (Element* root = inner_document->documentElement()) {
-      SetIsCanvasOrInCanvasSubtreeRecursively(*root,
-                                              IsCanvasOrInCanvasSubtree());
+      root->SetIsInCanvasSubtree(IsInCanvasSubtree());
     }
   }
 }
@@ -568,17 +547,12 @@ void HTMLFrameOwnerElement::AddResourceTiming(
     return;
   }
 
-  // This would only happen in rare cases, where the frame is navigated from the
-  // outside, e.g. by a web extension or window.open() with target, and that
-  // navigation would cancel the container-initiated navigation. This safeguard
-  // would make this type of race harmless.
-  // TODO(crbug.com/1410705): fix this properly by moving IFrame reporting to
-  // the browser side.
-  if (fallback_timing_info_->name != info->name) {
-    return;
-  }
-
   info->initiator_url = fallback_timing_info_->initiator_url;
+
+  // When the kSanitizeOriginalUrlDuringNavigation feature is enabled, the
+  // original URL will be sanitized in the child frame's commit parameters.
+  // Restore it from the fallback info.
+  info->name = fallback_timing_info_->name;
 
   DOMWindowPerformance::performance(*GetDocument().domWindow())
       ->AddResourceTiming(std::move(info), localName());

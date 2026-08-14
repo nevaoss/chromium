@@ -5,8 +5,10 @@
 #ifndef CHROME_BROWSER_MULTISTEP_FILTER_UI_FILTER_UI_CONTROLLER_H_
 #define CHROME_BROWSER_MULTISTEP_FILTER_UI_FILTER_UI_CONTROLLER_H_
 
+#include <memory>
 #include <optional>
 
+#include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/task/cancelable_task_tracker.h"
@@ -14,10 +16,14 @@
 #include "chrome/browser/ui/tabs/contents_observing_tab_feature.h"
 #include "components/favicon_base/favicon_types.h"
 #include "components/multistep_filter/core/data_models/url_filter_suggestion.h"
+#include "components/multistep_filter/core/multistep_filter_ui_delegate.h"
+#include "ui/base/models/image_model.h"
 #include "ui/base/unowned_user_data/scoped_unowned_user_data.h"
 #include "ui/menus/simple_menu_model.h"
 
-class GURL;
+namespace favicon {
+class FaviconService;
+}
 
 namespace tabs {
 class TabInterface;
@@ -25,10 +31,6 @@ class TabInterface;
 
 namespace page_actions {
 class PageActionController;
-}
-
-namespace favicon {
-class FaviconService;
 }
 
 class PrefService;
@@ -40,11 +42,12 @@ enum class SuggestionUserDecision;
 namespace internal {
 inline constexpr int kDismissCommand = 1;
 inline constexpr int kSettingsCommand = 2;
+inline constexpr int kSendFeedbackCommand = 3;
 }  // namespace internal
 
+class FilterAcceptanceMetricsLogger;
 class FilterUiControllerTestApi;
 class MultistepFilterLogRouter;
-class MultistepFilterService;
 
 // Manages the UI lifecycle and user interactions for multistep filter
 // suggestions within a tab.
@@ -83,6 +86,13 @@ class FilterUiController : public tabs::ContentsObservingTabFeature,
 
     // The current tracking state of the suggestion's presentation lifecycle.
     SuggestionViewState view_state;
+
+    // Cached favicon image for the source host.
+    std::optional<ui::ImageModel> favicon;
+
+    // Callbacks to notify the core about user interactions with this
+    // suggestion.
+    MultistepFilterUiDelegate::SuggestionUiCallbacks callbacks;
   };
 
   static FilterUiController* From(tabs::TabInterface* tab);
@@ -94,7 +104,8 @@ class FilterUiController : public tabs::ContentsObservingTabFeature,
 
   // Callback for when a suggestion is generated.
   virtual void OnSuggestionGenerated(
-      std::optional<UrlFilterSuggestion> suggestion);
+      std::optional<UrlFilterSuggestion> suggestion,
+      MultistepFilterUiDelegate::SuggestionUiCallbacks callbacks);
 
   // Clears the current suggestion, hides the UI, and logs the action.
   virtual void ClearSuggestion(SuggestionUserDecision decision);
@@ -106,8 +117,9 @@ class FilterUiController : public tabs::ContentsObservingTabFeature,
   virtual void OnActionInvoked();
 
  protected:
-  // Navigates the current tab to the given URL. Virtual for testing.
-  virtual void NavigateTo(const GURL& url);
+  // Navigates the current tab applying the given suggestion. Virtual for
+  // testing.
+  virtual void NavigateTo(const UrlFilterSuggestion& suggestion);
 
  private:
   friend class FilterUiControllerTestApi;
@@ -120,8 +132,16 @@ class FilterUiController : public tabs::ContentsObservingTabFeature,
   // Opens the settings page.
   void OpenSettings();
 
+  // Opens the feedback page.
+  void OpenFeedback();
+
   // Shows the cue for the given suggestion.
   void ShowCue(const UrlFilterSuggestion& suggestion);
+
+  // Shows the cue with the given favicon.
+  void ShowCueWithFavicon();
+
+  void OnFaviconAvailable(const favicon_base::FaviconImageResult& result);
 
   // Helper check to verify if the contextual cue feature is enabled.
   bool ShouldShowCue() const;
@@ -129,15 +149,17 @@ class FilterUiController : public tabs::ContentsObservingTabFeature,
   // Clears the cue UI.
   void ClearCue();
 
+  // Attempts to show the First Run Experience Toast promo bubble.
+  void MaybeShowPromo();
+
+  // Closes or aborts any active educational Toast promo bubble.
+  void ClosePromo(SuggestionUserDecision decision);
+
   // page_actions::PageActionObserver:
   void OnPageActionAnchoredMessageShown(
       const page_actions::PageActionState& page_action) override;
   void OnPageActionAnchoredMessageHidden(
       const page_actions::PageActionState& page_action) override;
-
-  // Callback for when the favicon image is available.
-  void OnFaviconAvailable(UrlFilterSuggestion suggestion,
-                          const favicon_base::FaviconImageResult& result);
 
   // Helper variable to scope tab instance unowned user data ownership.
   ui::ScopedUnownedUserData<FilterUiController> scoped_unowned_user_data_;
@@ -149,19 +171,16 @@ class FilterUiController : public tabs::ContentsObservingTabFeature,
   // Router for logging filter events.
   raw_ptr<MultistepFilterLogRouter> log_router_ = nullptr;
 
-  // Service for managing filters.
-  raw_ptr<MultistepFilterService> service_ = nullptr;
-
   // Controller for the page action.
   raw_ptr<page_actions::PageActionController> page_action_controller_ = nullptr;
-
-  // Service for fetching favicons.
-  raw_ptr<favicon::FaviconService> favicon_service_ = nullptr;
 
   // Service for user preferences.
   raw_ptr<PrefService> pref_service_ = nullptr;
 
-  // Tracker for favicon fetch requests.
+  // Service for fetching favicons.
+  raw_ptr<favicon::FaviconService> favicon_service_ = nullptr;
+
+  // Tracker for pending favicon requests.
   base::CancelableTaskTracker favicon_task_tracker_;
 
   // Factory for dismissal callbacks. Must be the last member variable to

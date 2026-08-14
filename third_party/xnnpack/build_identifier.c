@@ -564,6 +564,10 @@
 // - external/xnnpack+/src/log.c
 // - external/xnnpack+/src/microparams-init.c
 // - external/xnnpack+/src/operators/fingerprint_id.c
+// - external/xnnpack+/src/qd8-bf16-qb4w-gemm/gen/qd8-bf16-qb4w-gemm-1x4-minmax-scalar.c
+// - external/xnnpack+/src/qd8-bf16-qb4w-gemm/gen/qd8-bf16-qb4w-gemm-1x8c8-minmax-avx2.c
+// - external/xnnpack+/src/qd8-bf16-qb4w-gemm/gen/qd8-bf16-qb4w-gemm-3x8c8-minmax-avx2.c
+// - external/xnnpack+/src/qd8-bf16-qb4w-gemm/gen/qd8-bf16-qb4w-gemm-4x4-minmax-scalar.c
 // - external/xnnpack+/src/qd8-f16-qb4w-gemm/gen/qd8-f16-qb4w-gemm-1x8c8-minmax-avx2.c
 // - external/xnnpack+/src/qd8-f16-qb4w-gemm/gen/qd8-f16-qb4w-gemm-3x8c8-minmax-avx2.c
 // - external/xnnpack+/src/qd8-f16-qc2w-gemm/gen/qd8-f16-qc2w-gemm-1x2-minmax-scalar.c
@@ -1075,6 +1079,7 @@
 // - external/xnnpack+/src/xx-fill/xx-fill-sse2-u64.c
 // - external/xnnpack+/src/xx-pad/xx-pad-p16-sse2-u16.c
 // - external/xnnpack+/src/xx-pad/xx-pad-p4-scalar-u16.c
+// - external/xnnpack+/src/xx-pad/xx-pad-p64-avx512skx-u128.c
 // - external/xnnpack+/src/xx-transposev/xx-transposev-1x1-scalar-memcpy.c
 
 #include <stdbool.h>
@@ -1083,10 +1088,10 @@
 #include <string.h>
 
 static const uint8_t xnn_build_identifier[] = {
-  243,  88, 189, 125,  17,  71, 202, 136,
-  155,  61, 129, 229,  54, 161,  81, 132,
-   98, 101,  54, 114,  22, 240,  68, 158,
-  248, 134,  86,  77, 191, 134, 101, 246
+  209, 255,  96,  62,  50, 152, 128,  79,
+   16, 186, 179,  98, 171,  40,   3,   7,
+  111, 155, 209,  94,  28, 240, 250, 229,
+  222,  67, 105, 135,  84, 147,  58, 231
 };
 
 size_t xnn_experimental_get_build_identifier_size() {

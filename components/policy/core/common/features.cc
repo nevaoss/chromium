@@ -69,6 +69,9 @@ BASE_FEATURE(kEnableExtensionInstallPolicyFetching,
 BASE_FEATURE(kUseManagementServiceForSensitivePolicies,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+BASE_FEATURE(kFilterSensitivePoliciesOnWorkplaceJoinedDevices,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 // Modifies behavior of policies utilizing URLBlocklistManager.
 // When enabled, bypasses the wildcard "*" in the blocklist for internal
 // chrome:// URLs such as chrome://ntp, chrome://bookmarks, etc.
@@ -85,8 +88,15 @@ BASE_FEATURE(kPolicyPageMojoMigration, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kDeviceSignalsBackfillDisclaimer,
              base::FEATURE_DISABLED_BY_DEFAULT);
+const base::FeatureParam<bool> kClearDeviceSignalsPermissionOnStartup{
+    &kDeviceSignalsBackfillDisclaimer,
+    "clear_device_signals_permission_on_startup", false};
 
 BASE_FEATURE(kURLBlocklistOverridesIncognitoAllowlist,
              base::FEATURE_ENABLED_BY_DEFAULT);
+
+BASE_FEATURE(kExportPlatformPoliciesJson,
+             "ExportPlatformPoliciesJson",
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 }  // namespace policy::features

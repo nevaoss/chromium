@@ -97,7 +97,7 @@ bool IsPageActionMenuEnabled() {
   return base::FeatureList::IsEnabled(kPageActionMenu);
 }
 
-BASE_FEATURE(kPageActionMenuAuthFlow, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kPageActionMenuAuthFlow, base::FEATURE_ENABLED_BY_DEFAULT);
 
 bool IsPageActionMenuAuthFlowEnabled() {
   return IsPageActionMenuEnabled() &&
@@ -320,6 +320,28 @@ bool IsZeroStateSuggestionsEnabled() {
   return base::FeatureList::IsEnabled(kZeroStateSuggestions);
 }
 
+BASE_FEATURE(kZeroStateSuggestionsWCGD, base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsZeroStateSuggestionsWCGDEnabled() {
+  variations::VariationsService* variations_service =
+      GetApplicationContext()->GetVariationsService();
+  bool is_launched_country =
+      variations_service &&
+      base::ToLowerASCII(variations_service->GetStoredPermanentCountry()) ==
+          "us";
+
+  ApplicationLocaleStorage* locale_storage =
+      GetApplicationContext()->GetApplicationLocaleStorage();
+  bool is_launched_locale =
+      locale_storage && base::ToLowerASCII(locale_storage->Get()) == "en-us";
+
+  if (is_launched_country && is_launched_locale) {
+    return true;
+  }
+
+  return base::FeatureList::IsEnabled(kZeroStateSuggestionsWCGD);
+}
+
 BASE_FEATURE(kZeroStateSuggestionsCentralization,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -453,22 +475,6 @@ base::TimeDelta GetGeminiSessionValidityDuration() {
       kGeminiSessionValidityDurationDefault));
 }
 
-BASE_FEATURE(kPageStabilityMetrics, base::FEATURE_DISABLED_BY_DEFAULT);
-
-// The length of time after an interaction we will track mutations before
-// reporting UMA.
-BASE_FEATURE_PARAM(base::TimeDelta,
-                   kPageStabilityIntervalDuration,
-                   &kPageStabilityMetrics,
-                   base::Milliseconds(4000));
-
-bool IsPageStabilityMetricsEnabled() {
-  return base::FeatureList::IsEnabled(kPageStabilityMetrics);
-}
-
-base::TimeDelta GetPageStabilityIntervalDuration() {
-  return kPageStabilityIntervalDuration.Get();
-}
 
 BASE_FEATURE(kActorTools, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -699,6 +705,12 @@ bool IsPageContextIPCOptimizationActionableEnabled() {
          kPageContextIPCOptimizationActionable.Get();
 }
 
+BASE_FEATURE(kPageContextPdf, base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsPageContextPDFEnabled() {
+  return base::FeatureList::IsEnabled(kPageContextPdf);
+}
+
 BASE_FEATURE(kGeminiClientMigration, base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool IsGeminiClientMigrationEnabled() {
@@ -711,13 +723,13 @@ bool IsGeminiClientMigrationEnabled() {
 BASE_FEATURE(kGeminiMultiTabContext, base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool IsGeminiMultiTabContextEnabled() {
-  if (!IsPageActionMenuEnabled()) {
+  if (!IsPageActionMenuEnabled() || !IsGeminiScreenContextMigrationEnabled()) {
     return false;
   }
   return base::FeatureList::IsEnabled(kGeminiMultiTabContext);
 }
 
-BASE_FEATURE(kGeminiScreenContextMigration, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGeminiScreenContextMigration, base::FEATURE_ENABLED_BY_DEFAULT);
 
 bool IsGeminiScreenContextMigrationEnabled() {
   if (!IsPageActionMenuEnabled()) {
@@ -742,7 +754,7 @@ bool IsGeneralizedGeminiEntryFlowEnabled() {
   return base::FeatureList::IsEnabled(kGeneralizedGeminiEntryFlow);
 }
 
-BASE_FEATURE(kGeminiLuminous, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGeminiLuminous, base::FEATURE_ENABLED_BY_DEFAULT);
 
 bool IsGeminiLuminousEnabled() {
   if (!IsPageActionMenuEnabled()) {
@@ -828,4 +840,22 @@ BASE_FEATURE(kIOSGeminiBottomSheetMigration, base::FEATURE_DISABLED_BY_DEFAULT);
 bool IsIOSGeminiBottomSheetMigrationEnabled() {
   return IsAssistantContainerEnabled() &&
          base::FeatureList::IsEnabled(kIOSGeminiBottomSheetMigration);
+}
+
+BASE_FEATURE(kGeminiQuizzes, base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsGeminiQuizzesEnabled() {
+  return base::FeatureList::IsEnabled(kGeminiQuizzes);
+}
+
+BASE_FEATURE(kGeminiFRERefactor, base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsGeminiFRERefactorEnabled() {
+  return base::FeatureList::IsEnabled(kGeminiFRERefactor);
+}
+
+BASE_FEATURE(kGeminiCoordinatorTeardownFix, base::FEATURE_ENABLED_BY_DEFAULT);
+
+bool IsGeminiCoordinatorTeardownFixEnabled() {
+  return base::FeatureList::IsEnabled(kGeminiCoordinatorTeardownFix);
 }

@@ -76,7 +76,8 @@ PrepareClientToAimRequestInfo(
     omnibox::ModelMode active_model,
     std::optional<int64_t> active_tab_context_id,
     std::optional<base::UnguessableToken> overlay_token,
-    bool is_voice_search);
+    bool is_voice_search,
+    const std::map<std::string, std::string>& additional_cgi_params = {});
 
 // Finalizes the AIM query request (consuming tokens) and delivers it to the
 // page.
@@ -93,6 +94,9 @@ void SendInjectedInputRemovedUpdate(
 
 // Returns true if the side panel should be used instead of the bottom sheet.
 bool ShouldShowSidePanel();
+
+// Returns true if running on Android mobile (phone form factor).
+bool IsAndroidMobileFormFactor();
 
 // Returns whether the provided URL is to a contextual tasks WebUI page.
 bool IsContextualTasksUrl(const GURL& url);

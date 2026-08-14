@@ -19,6 +19,7 @@
 #include "components/optimization_guide/core/model_execution/manifest_broker/manifest.h"
 #include "components/optimization_guide/core/model_execution/model_broker_impl.h"
 #include "components/optimization_guide/core/model_execution/on_device_model_access_controller.h"
+#include "components/optimization_guide/core/model_execution/performance_class.h"
 #include "components/optimization_guide/proto/manifest.pb.h"
 #include "components/optimization_guide/proto/text_safety_model_metadata.pb.h"
 #include "components/optimization_guide/public/mojom/model_broker.mojom-shared.h"
@@ -99,7 +100,9 @@ class ManifestSolutionFactory {
                           UsageTracker& usage_tracker,
                           on_device_model::ServiceClient& service_client,
                           OnDeviceModelAccessController& access_controller,
-                          base::OnceClosure on_init_complete);
+                          PerformanceClassifier& performance_classifier,
+                          base::OnceClosure on_init_complete,
+                          base::RepeatingClosure on_solutions_updated);
   ~ManifestSolutionFactory();
 
   // Notifies the factory of a change in an asset's state.
@@ -155,6 +158,7 @@ class ManifestSolutionFactory {
   const raw_ref<on_device_model::ServiceClient> service_client_;
   const raw_ref<UsageTracker> usage_tracker_;
   const raw_ref<OnDeviceModelAccessController> access_controller_;
+  const raw_ref<PerformanceClassifier> performance_classifier_;
 
   const Manifest manifest_;
 
@@ -165,6 +169,7 @@ class ManifestSolutionFactory {
   base::flat_map<std::string, SolutionState> solutions_;
 
   base::RepeatingClosure on_asset_init_;
+  base::RepeatingClosure on_solutions_updated_;
 
   base::WeakPtrFactory<ManifestSolutionFactory> weak_ptr_factory_{this};
 };

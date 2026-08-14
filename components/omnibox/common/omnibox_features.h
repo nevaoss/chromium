@@ -24,7 +24,7 @@ BASE_DECLARE_FEATURE(kGroupingFrameworkForNonZPS);
 
 // Num suggestions - these affect how many suggestions are shown based on e.g.
 // focus, page context, provider, or URL v non-URL.
-BASE_DECLARE_FEATURE(kMaxZeroSuggestMatches);
+
 BASE_DECLARE_FEATURE(kUIExperimentMaxAutocompleteMatches);
 BASE_DECLARE_FEATURE(kDynamicMaxAutocomplete);
 
@@ -46,7 +46,6 @@ BASE_DECLARE_FEATURE(kZeroSuggestPrefetchDebouncing);
 BASE_DECLARE_FEATURE(kZeroSuggestPrefetchingForComposebox);
 BASE_DECLARE_FEATURE(kZeroSuggestPrefetchingOnSRP);
 BASE_DECLARE_FEATURE(kZeroSuggestPrefetchingOnWeb);
-// Related, kMaxZeroSuggestMatches.
 
 // On Device Suggest.
 BASE_DECLARE_FEATURE(kOnDeviceHeadProviderIncognito);
@@ -91,6 +90,7 @@ BASE_DECLARE_FEATURE(kHideAimEntrypointForUrlSuggestions);
 BASE_DECLARE_FEATURE(kOmniboxMultimodalInput);
 BASE_DECLARE_FEATURE(kAndroidDesktopAimGate);
 BASE_DECLARE_FEATURE(kAim3pEntrypoint);
+extern const base::FeatureParam<bool> kAim3pEntrypointDebug;
 
 // Navigation experiments.
 BASE_DECLARE_FEATURE(kDefaultTypedNavigationsToHttps);
@@ -116,6 +116,9 @@ BASE_DECLARE_FEATURE(kUrlScoringModel);
 // suggestions and only controls whether the signal is sent.
 BASE_DECLARE_FEATURE(kOmniboxTouchDownTriggerForPrefetch);
 
+// Enables simultaneous prefetch and navigation on Enter KeyDown in Omnibox.
+BASE_DECLARE_FEATURE(kOmniboxSearchPrefetchOnEnterKeyDown);
+
 // Site search/Keyword mode related features.
 BASE_DECLARE_FEATURE(kOmniboxSiteSearch);
 BASE_DECLARE_FEATURE(kStarterPackExpansion);
@@ -134,8 +137,8 @@ BASE_DECLARE_FEATURE(kUseFusedLocationProvider);
 BASE_DECLARE_FEATURE(kOmniboxMobileParityUpdate);
 BASE_DECLARE_FEATURE(kOmniboxMobileParityUpdateV2);
 BASE_DECLARE_FEATURE(kOmniboxXGeoPermissionGranularity);
-BASE_DECLARE_FEATURE(kOmniboxItemDecoration);
 BASE_DECLARE_FEATURE(kExactMatchFavicons);
+BASE_DECLARE_FEATURE(kOmniboxAimImageDownscaling);
 
 // Omnibox suggestions tuning
 BASE_DECLARE_FEATURE(kNumNtpZpsRecentSearches);
@@ -181,6 +184,10 @@ extern const base::FeatureParam<bool> kComposeboxDriveIdentityFallback;
 // Whether to enable Google Drive context menu option's disclaimer flow in the
 // composebox.
 BASE_DECLARE_FEATURE(kComposeboxDriveContextMenuOptionDisclaimer);
+extern const base::FeatureParam<int> kComposeboxDriveConsentFlowId;
+extern const base::FeatureParam<int> kComposeboxDriveConsentProductId;
+extern const base::FeatureParam<std::string>
+    kComposeboxDriveConsentEntrypointId;
 
 // Whether to force the Google Drive disclaimer to be accepted.
 BASE_DECLARE_FEATURE(kForceDriveDisclaimerAccepted);
@@ -217,6 +224,7 @@ BASE_DECLARE_FEATURE(kSuppressIntermediateACUpdatesOnLowEndDevices);
 // Delay focusTab to prioritize navigation (https://crbug.com/374852568).
 BASE_DECLARE_FEATURE(kPostDelayedTaskFocusTab);
 BASE_DECLARE_FEATURE(kResetSuggestionsScroll);
+BASE_DECLARE_FEATURE(kOmniboxListMenuContextMenu);
 #endif  // BUILDFLAG(IS_ANDROID)
 
 // If enabled, X-Geo headers are sent for all search navigations on all
@@ -243,6 +251,20 @@ extern const base::FeatureParam<InlineLocationSignalingDisplayOrder>
 extern const base::FeatureParam<InlineLocationSignalingWording>
     kInlineLocationSignalingWording;
 
+// If enabled, the "Ask Google about this page" action will route to cobrowse.
+BASE_DECLARE_FEATURE(kWebUIOmniboxAskGAboutThisPage);
+// Whether to open the next panel with cobrowse.
+extern const base::FeatureParam<bool> kAskGCoBrowse;
+// Whether to open the next panel with cobrowse and visual selection.
+extern const base::FeatureParam<bool> kAskGCoBrowseWithVisualSelection;
+// Whether to open the composebox for AskG.
+extern const base::FeatureParam<bool> kAskGComposeBox;
+// Determines how to route the lens chip.
+extern const base::FeatureParam<bool> kAskGLensChipRoute;
+// Whether to swap the icon to spark loupe for the AskG button.
+extern const base::FeatureParam<bool> kAskGSwapIcon;
+// Whether to show the current tab chip.
+extern const base::FeatureParam<bool> kAskGCurrentTabChip;
 // Note: no new flags beyond this point.
 
 namespace flag_descriptions {

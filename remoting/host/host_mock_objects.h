@@ -11,7 +11,10 @@
 #include <optional>
 #include <string>
 
+#include "base/callback_list.h"
 #include "base/functional/callback.h"
+#include "base/memory/raw_ptr.h"
+#include "base/memory/raw_ptr_exclusion.h"
 #include "base/memory/weak_ptr.h"
 #include "build/build_config.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
@@ -27,7 +30,6 @@
 #include "remoting/host/chromoting_host_services_provider.h"
 #include "remoting/host/client_session.h"
 #include "remoting/host/client_session_control.h"
-#include "remoting/host/client_session_details.h"
 #include "remoting/host/client_session_events.h"
 #include "remoting/host/desktop_display_info_monitor.h"
 #include "remoting/host/desktop_environment.h"
@@ -38,6 +40,7 @@
 #include "remoting/host/mojom/chromoting_host_services.mojom.h"
 #include "remoting/host/mojom/remote_url_opener.mojom.h"
 #include "remoting/host/mojom/webauthn_proxy.mojom.h"
+#include "remoting/host/peer_session.h"
 #include "remoting/host/remote_open_url/url_forwarder_configurator.h"
 #include "remoting/host/security_key/security_key_auth_handler.h"
 #include "remoting/host/webauthn/remote_webauthn_state_change_notifier.h"
@@ -148,17 +151,7 @@ class MockClientSessionControl : public ClientSessionControl {
               (override));
 };
 
-class MockClientSessionDetails : public ClientSessionDetails {
- public:
-  MockClientSessionDetails();
 
-  MockClientSessionDetails(const MockClientSessionDetails&) = delete;
-  MockClientSessionDetails& operator=(const MockClientSessionDetails&) = delete;
-
-  ~MockClientSessionDetails() override;
-
-  MOCK_METHOD(ClientSessionControl*, session_control, (), (override));
-};
 
 class MockClientSessionEvents : public ClientSessionEvents {
  public:
@@ -312,13 +305,17 @@ class MockSecurityKeyAuthHandler : public SecurityKeyAuthHandler {
               (override));
 
   void SetSendMessageCallback(
-      const SecurityKeyAuthHandler::SendMessageCallback& callback) override;
+      const SecurityKeyAuthHandler::SendMessageCallback& callback,
+      const void* client_id) override;
+  void ClearSendMessageCallback(const void* client_id) override;
+
   const SecurityKeyAuthHandler::SendMessageCallback& GetSendMessageCallback();
 
   base::WeakPtr<SecurityKeyAuthHandler> GetWeakPtr() override;
 
  private:
-  SecurityKeyAuthHandler::SendMessageCallback callback_;
+  RAW_PTR_EXCLUSION const void* active_client_id_ = nullptr;
+  SecurityKeyAuthHandler::SendMessageCallback send_message_callback_;
 
   base::WeakPtrFactory<MockSecurityKeyAuthHandler> weak_factory_{this};
 };
@@ -405,6 +402,50 @@ class MockChromotingHostServicesProvider
               set_disconnect_handler,
               (base::OnceClosure disconnect_handler),
               (override));
+};
+
+class MockPeerSession : public PeerSession {
+ public:
+  MockPeerSession();
+
+  MockPeerSession(const MockPeerSession&) = delete;
+  MockPeerSession& operator=(const MockPeerSession&) = delete;
+
+  ~MockPeerSession() override;
+
+  MOCK_METHOD(void,
+              Start,
+              (EventHandler * event_handler,
+               std::string_view client_jid,
+               const DesktopEnvironmentOptions& desktop_environment_options,
+               const std::vector<HostExtension*>& extensions,
+               const SessionPolicies& session_policies,
+               const SessionOptions& session_options),
+              (override));
+  MOCK_METHOD(void,
+              DisconnectSession,
+              (protocol::ErrorCode error,
+               std::string_view error_details,
+               const SourceLocation& error_location),
+              (override));
+  MOCK_METHOD(
+      void,
+      OnSessionServicesClientConnected,
+      (mojo::PendingReceiver<mojom::ChromotingSessionServices> receiver),
+      (override));
+  MOCK_METHOD(protocol::Transport*, transport, (), (const, override));
+};
+
+class MockPeerSessionFactory : public PeerSessionFactory {
+ public:
+  MockPeerSessionFactory();
+
+  MockPeerSessionFactory(const MockPeerSessionFactory&) = delete;
+  MockPeerSessionFactory& operator=(const MockPeerSessionFactory&) = delete;
+
+  ~MockPeerSessionFactory() override;
+
+  MOCK_METHOD(std::unique_ptr<PeerSession>, Create, (), (override));
 };
 
 }  // namespace remoting

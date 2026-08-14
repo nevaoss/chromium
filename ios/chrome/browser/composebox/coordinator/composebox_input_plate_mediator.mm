@@ -79,6 +79,7 @@
 #import "ios/chrome/browser/favicon/model/favicon_loader.h"
 #import "ios/chrome/browser/intelligence/persist_tab_context/model/persist_tab_context_browser_agent.h"
 #import "ios/chrome/browser/intelligence/proto_wrappers/page_context_wrapper.h"
+#import "ios/chrome/browser/intelligence/proto_wrappers/page_context_wrapper_config.h"
 #import "ios/chrome/browser/lens/ui_bundled/lens_availability.h"
 #import "ios/chrome/browser/lens/ui_bundled/lens_entrypoint.h"
 #import "ios/chrome/browser/ntp/model/new_tab_page_tab_helper.h"
@@ -143,24 +144,6 @@ NSData* ReadDataFromURL(GURL url) {
   return data;
 }
 
-// Generates a UIImage preview for the given PDF data.
-UIImage* GeneratePDFPreview(NSData* pdf_data) {
-  if (!pdf_data) {
-    return nil;
-  }
-  PDFDocument* doc = [[PDFDocument alloc] initWithData:pdf_data];
-  if (!doc) {
-    return nil;
-  }
-  PDFPage* page = [doc pageAtIndex:0];
-  if (!page) {
-    return nil;
-  }
-  // TODO(crbug.com/40280872): Determine the correct size for the thumbnail.
-  return [page thumbnailOfSize:CGSizeMake(200, 200)
-                        forBox:kPDFDisplayBoxCropBox];
-}
-
 // Creates an initial ContextualInputData object using the information from the
 // passed in `annotated_page_content` and `web_state`.
 std::unique_ptr<lens::ContextualInputData>
@@ -223,10 +206,10 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
 }  // namespace
 
 @interface ComposeboxInputPlateMediator () <
-    SearchEngineObserving,
     ComposeboxInputItemCollectionDelegate,
-    WebStateDeferredExecutorDelegate,
-    ComposeboxQueryContextualizerDelegate>
+    ComposeboxQueryContextualizerDelegate,
+    SearchEngineObserving,
+    WebStateDeferredExecutorDelegate>
 
 @end
 
@@ -389,6 +372,8 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
 
     signin::IdentityManager* identityManager =
         _profile ? IdentityManagerFactory::GetForProfile(_profile) : nullptr;
+    scoped_refptr<network::SharedURLLoaderFactory> urlLoaderFactory =
+        _profile ? _profile->GetSharedURLLoaderFactory() : nullptr;
     _stateManager = [[ComposeboxInputStateManager alloc]
          initWithWebStateList:_webStateList
                    modeHolder:_modeHolder
@@ -398,7 +383,8 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
            templateURLService:_templateURLService
                 sessionHandle:_contextualSearchSession.get()
                    entrypoint:_entrypoint
-                  isIncognito:_isIncognito];
+                  isIncognito:_isIncognito
+             urlLoaderFactory:urlLoaderFactory];
     _stateManager.delegate = self;
     _stateManager.items = _items;
 
@@ -486,6 +472,31 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   return [_stateManager remainingNumberOfImagesAllowed];
 }
 
+- (NSArray<NSString*>*)attachedImageAssetIDs {
+  NSMutableArray<NSString*>* assetIDs = [[NSMutableArray alloc] init];
+  for (ComposeboxInputItem* item in _items.containedItems) {
+    if (item.type == ComposeboxInputItemType::kComposeboxInputItemTypeImage &&
+        item.assetID.length > 0) {
+      [assetIDs addObject:item.assetID];
+    }
+  }
+  return [assetIDs copy];
+}
+
+- (void)removeImageWithAssetID:(NSString*)assetID {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(_sequenceChecker);
+  if (!assetID.length) {
+    return;
+  }
+  for (ComposeboxInputItem* item in [_items.containedItems copy]) {
+    if (item.type == ComposeboxInputItemType::kComposeboxInputItemTypeImage &&
+        [item.assetID isEqualToString:assetID]) {
+      [self removeItem:item];
+      break;
+    }
+  }
+}
+
 - (ComposeboxAttachmentSelection*)currentAttachmentSelection {
   std::set<web::WebStateID> tabIDs;
   NSMutableArray<ComposeboxPickerImageResult*>* images =
@@ -545,11 +556,28 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
     return;
   }
 
-  for (ComposeboxPickerImageResult* item in attachments.images) {
-    [self processImageItemProvider:item.imageProvider
-                           assetID:item.assetID
-                            source:item.source
-                        completion:nil];
+  if (attachments.images) {
+    NSMutableSet<NSString*>* newAssetIDs = [[NSMutableSet alloc] init];
+    for (ComposeboxPickerImageResult* item in attachments.images) {
+      if (item.assetID.length > 0) {
+        [newAssetIDs addObject:item.assetID];
+      }
+    }
+
+    for (ComposeboxInputItem* item in [_items.containedItems copy]) {
+      if (item.type == ComposeboxInputItemType::kComposeboxInputItemTypeImage &&
+          item.assetID.length > 0 &&
+          ![newAssetIDs containsObject:item.assetID]) {
+        [self removeItem:item];
+      }
+    }
+
+    for (ComposeboxPickerImageResult* item in attachments.images) {
+      [self processImageItemProvider:item.imageProvider
+                             assetID:item.assetID
+                              source:item.source
+                          completion:nil];
+    }
   }
 
   for (NSURL* url in attachments.files) {
@@ -580,6 +608,23 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   // focus flow. Verify metrics recording in both flows.
   [self attachSelectedTabsWithWebStateIDs:attachments.tabIDs
                         cachedWebStateIDs:attachments.cachedWebStateIDs];
+}
+
+- (void)removeSharedTabWithServerToken:
+    (const base::UnguessableToken&)serverToken {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(_sequenceChecker);
+  ComposeboxInputItem* item = [_items itemForServerToken:serverToken];
+  if (item) {
+    [self removeItem:item];
+  }
+}
+
+- (ComposeboxUIInputState*)currentUIInputState {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(_sequenceChecker);
+  return [_stateManager
+      computeUIInputStateWithFavicon:_currentTabFavicon
+                 attachedWebStateIDs:[self
+                                         attachedWebStateIDsInCurrentContext]];
 }
 
 - (void)applyFocusParams:(ComposeboxFocusParams*)params {
@@ -689,8 +734,11 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
 - (void)sendText:(NSString*)text
     additionalParams:(std::map<std::string, std::string>)additionalParams {
   DCHECK_CALLED_ON_VALID_SEQUENCE(_sequenceChecker);
-  // Contextual search session can be null when fusebox is disabled.
-  if (!_contextualSearchSession) {
+  // If the session is null, or if this is a regular search with no attachments,
+  // the contextual session is bypassed and a standard search URL is generated.
+  BOOL isRegularSearchWithoutContext =
+      [_modeHolder isRegularSearch] && (!_items || _items.empty);
+  if (!_contextualSearchSession || isRegularSearchWithoutContext) {
     if (_templateURLService) {
       GURL URL = GetDefaultSearchURLForSearchTerms(_templateURLService,
                                                    [text cr_UTF16String]);
@@ -706,6 +754,12 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   std::unique_ptr<ComposeboxQueryController::CreateSearchUrlRequestInfo>
       search_url_request_info = std::make_unique<
           ComposeboxQueryController::CreateSearchUrlRequestInfo>();
+  search_url_request_info->search_url_type =
+      [_modeHolder isRegularSearch]
+          ? contextual_search::ContextualSearchContextController::
+                SearchUrlType::kStandard
+          : contextual_search::ContextualSearchContextController::
+                SearchUrlType::kAim;
   search_url_request_info->query_text = base::SysNSStringToUTF8(text);
   search_url_request_info->query_start_time = base::Time::Now();
   search_url_request_info->aim_entry_point =
@@ -771,10 +825,10 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   ComposeboxInputItem* item = [[ComposeboxInputItem alloc]
       initWithComposeboxInputItemType:ComposeboxInputItemType::
                                           kComposeboxInputItemTypeTab
-                               // TODO (crbug.com/525711987): Add the
-                               // appropriate item source.
-                               source:ComposeboxInputItemSource::kUnknown];
+                               source:ComposeboxInputItemSource::
+                                          kContextLibrary];
   item.title = title;
+  item.tabURL = url;
   item.state = ComposeboxInputItemState::kLoaded;
   base::UnguessableToken identifier = item.identifier;
 
@@ -875,7 +929,18 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   BOOL unableToLoadUIImage =
       ![itemProvider canLoadObjectOfClass:[UIImage class]];
 
-  BOOL assetAlreadyLoaded = [_items assetAlreadyLoaded:assetID];
+  BOOL assetAlreadyLoaded = NO;
+  if (assetID.length > 0) {
+    assetAlreadyLoaded = [_items assetAlreadyLoaded:assetID];
+  } else if (itemProvider) {
+    for (ComposeboxInputItem* item in _items.containedItems) {
+      if (item.imageProvider == itemProvider) {
+        assetAlreadyLoaded = YES;
+        break;
+      }
+    }
+  }
+
   if (unableToLoadUIImage || assetAlreadyLoaded) {
     if (completion) {
       completion();
@@ -909,18 +974,18 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
                 }];
 
   // Concurrently load the full image.
-  [itemProvider loadObjectOfClass:[UIImage class]
-                completionHandler:^(__kindof id<NSItemProviderReading> object,
-                                    NSError* error) {
-                  dispatch_async(dispatch_get_main_queue(), ^{
-                    [weakSelf didLoadFullImage:(UIImage*)object
-                         forItemWithIdentifier:identifier];
-                    requiredNumberOfLoads--;
-                    if (requiredNumberOfLoads == 0 && completion) {
-                      completion();
-                    }
-                  });
-                }];
+  [itemProvider
+      loadDataRepresentationForTypeIdentifier:UTTypeImage.identifier
+                            completionHandler:^(NSData* data, NSError* error) {
+                              dispatch_async(dispatch_get_main_queue(), ^{
+                                [weakSelf didLoadFullImage:data
+                                     forItemWithIdentifier:identifier];
+                                requiredNumberOfLoads--;
+                                if (requiredNumberOfLoads == 0 && completion) {
+                                  completion();
+                                }
+                              });
+                            }];
 }
 
 - (void)setModelOption:(ComposeboxModelOption)modelOption
@@ -962,6 +1027,7 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
                                           kComposeboxInputItemTypeTab
                                source:source];
   item.title = base::SysUTF16ToNSString(webState->GetTitle());
+  item.tabURL = webState->GetVisibleURL();
   base::UnguessableToken identifier = item.identifier;
   _latestTabSelectionMapping[identifier] = webState->GetUniqueIdentifier();
 
@@ -1014,8 +1080,17 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
     return;
   }
 
+  bool use_apc_v2 = IsComposeboxAimRichAPCExtractionEnabled();
+  PageContextWrapperConfig config =
+      PageContextWrapperConfigBuilder()
+          .SetGraftCrossOriginFrameContent(use_apc_v2)
+          .SetUseRichExtraction(use_apc_v2)
+          .SetExtractPaidContent(use_apc_v2)
+          .Build();
+
   PageContextWrapper* pageContextWrapper = [[PageContextWrapper alloc]
         initWithWebState:webState
+                  config:config
       completionCallback:base::BindOnce(^(
                              PageContextWrapperCallbackResponse response) {
         if (response.has_value()) {
@@ -1279,10 +1354,7 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   [_stateManager onContextChanged];
 }
 
-// Updates the awaiting attachment signals state. Note that this flag is only
-// set to YES during the initial focus flow (triggering the composebox with
-// initial attachments). We stop awaiting signals when there are no more items
-// in the loading or uploading state.
+// Updates the awaiting attachment signals state.
 - (void)updateAwaitingAttachmentSignalsState {
   if (!_awaitingAttachmentSignals) {
     return;
@@ -1315,6 +1387,7 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
                                withType:[self attachmentEventTypeForItem:item]
                                   title:[self
                                             attachmentEventTitleForItem:item]]];
+  _awaitingAttachmentSignals = YES;
   [_items addItem:item];
 }
 
@@ -1478,10 +1551,7 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(_sequenceChecker);
   [self recordNavigationInitiated];
 
-  // TODO(crbug.com/40280872): Handle AIM enabled in the query controller.
-  if ([_modeHolder isRegularSearch]) {
-    URL = net::AppendOrReplaceQueryParameter(URL, "udm", "24");
-  } else if (_modeHolder.mode == ComposeboxMode::kAIM) {
+  if (_modeHolder.mode == ComposeboxMode::kAIM) {
     // If the active tab is attached to the composebox, an AIM query should
     // invoke the Assistant directly using the query URL instead of routing
     // through the standard search navigation flow.
@@ -1610,7 +1680,7 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
 }
 
 // Handles the loaded full `image` for the item with the given `identifier`.
-- (void)didLoadFullImage:(UIImage*)image
+- (void)didLoadFullImage:(NSData*)data
     forItemWithIdentifier:(base::UnguessableToken)identifier {
   DCHECK_CALLED_ON_VALID_SEQUENCE(_sequenceChecker);
   ComposeboxInputItem* item = [_items itemForIdentifier:identifier];
@@ -1618,7 +1688,7 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
     return;
   }
 
-  if (!image) {
+  if (!data) {
     [self setState:ComposeboxInputItemState::kError onItem:item];
     [self.consumer updateState:item.state
          forItemWithIdentifier:item.identifier];
@@ -1628,7 +1698,7 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   __weak __typeof(self) weakSelf = self;
   base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE, base::BindOnce(^{
-        [weakSelf didFinishSimulatedLoadForImage:image
+        [weakSelf didFinishSimulatedLoadForImage:data
                                   itemIdentifier:identifier];
       }),
       GetImageLoadDelay());
@@ -1636,7 +1706,7 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
 
 // Called after the simulated image load delay for the item with the given
 // `identifier`. This simulates a network delay for development purposes.
-- (void)didFinishSimulatedLoadForImage:(UIImage*)image
+- (void)didFinishSimulatedLoadForImage:(NSData*)data
                         itemIdentifier:(base::UnguessableToken)identifier {
   DCHECK_CALLED_ON_VALID_SEQUENCE(_sequenceChecker);
   ComposeboxInputItem* item = [_items itemForIdentifier:identifier];
@@ -1648,6 +1718,7 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   [self.consumer updateState:item.state forItemWithIdentifier:item.identifier];
 
   if (!item.previewImage) {
+    UIImage* image = [UIImage imageWithData:data];
     item.previewImage =
         ResizeImage(image, composeboxAttachments::kImageInputItemSize,
                     ProjectionMode::kAspectFill);
@@ -1671,7 +1742,9 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
     });
   } else {
     task = base::BindOnce(^{
-      [weakSelf uploadImage:image itemIdentifier:identifier];
+      [weakSelf handleImageUploadWithData:data
+                        forItemIdentifier:identifier
+                                  options:GetDefaultImageEncodingOptions()];
     });
   }
 
@@ -1704,29 +1777,6 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
       serverToken, fileName, kPortableNetworkGraphicMimeType, std::move(buffer),
       options);
   [self notifyContextChanged];
-}
-
-// Uploads the `image` for the item with the given `identifier`.
-- (void)uploadImage:(UIImage*)image
-     itemIdentifier:(base::UnguessableToken)identifier {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(_sequenceChecker);
-  ComposeboxInputItem* item = [_items itemForIdentifier:identifier];
-  if (!item || !_contextualSearchSession) {
-    return;
-  }
-
-  // UIImagePNGRepresentation is an expensive operation. We execute this on a
-  // background thread to prevent blocking the UI, especially during batch
-  // processing.
-  __weak __typeof(self) weakSelf = self;
-  base::ThreadPool::PostTaskAndReplyWithResult(
-      FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
-      base::BindOnce(&UIImagePNGRepresentation, image),
-      base::BindOnce(^(NSData* data) {
-        [weakSelf handleImageUploadWithData:data
-                          forItemIdentifier:identifier
-                                    options:GetDefaultImageEncodingOptions()];
-      }));
 }
 
 // Handles uploading the context after the snapshot is generated.
@@ -1818,15 +1868,6 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
         GetDefaultImageEncodingOptions());
     [self notifyContextChanged];
   }
-
-  // Concurrently, generate a preview for the UI.
-  __weak __typeof(self) weakSelf = self;
-  base::ThreadPool::PostTaskAndReplyWithResult(
-      FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
-      base::BindOnce(&GeneratePDFPreview, data),
-      base::BindOnce(^(UIImage* preview) {
-        [weakSelf didLoadPreviewImage:preview forItemWithIdentifier:identifier];
-      }));
 }
 
 - (void)processDriveFileWithIdentifier:(NSString*)identifier
@@ -1885,6 +1926,13 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   BOOL forceExpansionOnFocus = self.isCobrowse && _omniboxFocused;
   if (forceExpansionOnFocus) {
     return NO;
+  }
+
+  // Cobrowse keeps the input plate expanded when files or images are attached.
+  if (self.isCobrowse) {
+    if (_items.hasFile || _items.hasImage) {
+      return NO;
+    }
   }
 
   std::set<ComposeboxMode> modesAllowingCompact;
@@ -2037,9 +2085,10 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   BOOL allowsMultimodalActions =
       dseGoogle && eligibleToAIM && !compactInCobrowse;
   BOOL canSend = hasContent && !compactMode && allowsMultimodalActions;
-  BOOL showShortcuts =
-      !hasContent && !canSend &&
-      !base::FeatureList::IsEnabled(kHideFuseboxVoiceLensActions);
+  BOOL forceDisableShortcuts =
+      base::FeatureList::IsEnabled(kHideFuseboxVoiceLensActions);
+  BOOL hasVisibleContent = compactMode ? _hasText : hasContent;
+  BOOL showShortcuts = !hasVisibleContent && !canSend && !forceDisableShortcuts;
   // Hide the plus button is different from !allowsMultimodalActions. When the
   // plus button is hidden, the user can still use multimodal actions from other
   // sources such as drag and drop.

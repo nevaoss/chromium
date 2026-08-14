@@ -5,6 +5,7 @@
 package org.chromium.chrome.browser.tasks.tab_management;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -20,6 +21,7 @@ import android.content.Context;
 
 import androidx.test.core.app.ApplicationProvider;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -36,11 +38,16 @@ import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.SettableNullableObservableSupplier;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.RobolectricUtil;
+import org.chromium.base.test.util.Features.EnableFeatures;
+import org.chromium.chrome.browser.flags.ChromeFeatureList;
+import org.chromium.chrome.browser.profiles.Profile;
+import org.chromium.chrome.browser.share.send_tab_to_self.SendTabToSelfAndroidBridge;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabObserver;
 import org.chromium.chrome.browser.tab.TabSelectionType;
 import org.chromium.chrome.browser.tab.state.PersistedTabDataConfiguration;
 import org.chromium.chrome.browser.tab.state.SendTabToSelfTabCardLabelData;
+import org.chromium.chrome.browser.tab.state.SendTabToSelfTabCardLabelDataJni;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 
 import java.util.Collections;
@@ -53,11 +60,14 @@ public class SendTabToSelfTabLabellerUnitTest {
     @Rule public final MockitoRule mMockitoRule = MockitoJUnit.rule();
 
     private static final int TAB_ID = 1;
+    private static final int TAB_ID_2 = 2;
     private static final String SENDER_DEVICE_NAME = "Example Phone";
 
     @Mock private TabListNotificationHandler mTabListNotificationHandler;
     @Mock private TabModel mTabModel;
     @Mock private Tab mTab;
+    @Mock private Profile mProfile;
+    @Mock private SendTabToSelfTabCardLabelData.Natives mSendTabToSelfTabCardLabelDataNatives;
 
     @Captor private ArgumentCaptor<Map<Integer, TabCardLabelData>> mLabelDataCaptor;
     @Captor private ArgumentCaptor<TabObserver> mTabObserverCaptor;
@@ -72,7 +82,7 @@ public class SendTabToSelfTabLabellerUnitTest {
     private SendTabToSelfTabCardLabelData createAndSetLabelData() {
         SendTabToSelfTabCardLabelData sttsData =
                 new SendTabToSelfTabCardLabelData(
-                        mTab, SENDER_DEVICE_NAME, System.currentTimeMillis());
+                        mTab, "test_guid", SENDER_DEVICE_NAME, System.currentTimeMillis());
         mUserDataHost.setUserData(SendTabToSelfTabCardLabelData.class, sttsData);
         return sttsData;
     }
@@ -103,12 +113,32 @@ public class SendTabToSelfTabLabellerUnitTest {
         when(mTab.getId()).thenReturn(TAB_ID);
         when(mTab.isInitialized()).thenReturn(true);
         when(mTab.getUserDataHost()).thenReturn(mUserDataHost);
+        when(mTab.getProfile()).thenReturn(mProfile);
+        SendTabToSelfTabCardLabelDataJni.setInstanceForTesting(
+                mSendTabToSelfTabCardLabelDataNatives);
 
         mTabModelSupplier.set(mTabModel);
         when(mTabModel.getCount()).thenReturn(1);
         when(mTabModel.getTabAt(0)).thenReturn(mTab);
 
         mLabeller = new SendTabToSelfTabLabeller(mTabListNotificationHandler, mTabModelSupplier);
+    }
+
+    @After
+    public void tearDown() {
+        if (mLabeller != null) {
+            mLabeller.destroy();
+        }
+        PersistedTabDataConfiguration.TEST_CONFIG
+                .getStorage()
+                .delete(
+                        TAB_ID,
+                        PersistedTabDataConfiguration.SEND_TAB_TO_SELF_TAB_CARD_LABEL_DATA.getId());
+        PersistedTabDataConfiguration.TEST_CONFIG
+                .getStorage()
+                .delete(
+                        TAB_ID_2,
+                        PersistedTabDataConfiguration.SEND_TAB_TO_SELF_TAB_CARD_LABEL_DATA.getId());
     }
 
     @Test
@@ -155,13 +185,37 @@ public class SendTabToSelfTabLabellerUnitTest {
     public void testShowAll_Expired() {
         SendTabToSelfTabCardLabelData sttsData = createAndSetLabelData();
         sttsData.setAdditionTimestampMsForTesting(
+                System.currentTimeMillis() - TimeUnit.DAYS.toMillis(11)); // 11 days old
+
+        mLabeller.showAll(Collections.singletonList(mTab));
+        RobolectricUtil.runAllBackgroundAndUi();
+
+        // Verify that we do NOT push any updates.
+        verify(mTabListNotificationHandler, never()).updateTabCardLabels(any());
+
+        // Verify it was deleted and replaced by a negative cache in memory.
+        SendTabToSelfTabCardLabelData retrieved = SendTabToSelfTabCardLabelData.get(mTab);
+        assertNotNull(retrieved);
+        assertTrue(retrieved.isNegativeCache());
+    }
+
+    @Test
+    public void testShowAll_LabelExpired() {
+        SendTabToSelfTabCardLabelData sttsData = createAndSetLabelData();
+        sttsData.setAdditionTimestampMsForTesting(
                 System.currentTimeMillis() - TimeUnit.DAYS.toMillis(6)); // 6 days old
 
         mLabeller.showAll(Collections.singletonList(mTab));
         RobolectricUtil.runAllBackgroundAndUi();
 
-        // Verify that we do NOT push any updates (since we never set a label)
+        // Verify that we do NOT push any updates (label is expired).
         verify(mTabListNotificationHandler, never()).updateTabCardLabels(any());
+
+        // Verify it is NOT deleted from memory (data is still valid).
+        SendTabToSelfTabCardLabelData retrieved = SendTabToSelfTabCardLabelData.get(mTab);
+        assertNotNull(retrieved);
+        assertTrue(!retrieved.isNegativeCache());
+        assertTrue(!retrieved.shouldShowLabel());
     }
 
     @Test
@@ -231,7 +285,10 @@ public class SendTabToSelfTabLabellerUnitTest {
         // Replace it with a negative cache (simulating invalidation/clear).
         SendTabToSelfTabCardLabelData negativeCache =
                 new SendTabToSelfTabCardLabelData(
-                        mTab, /* senderDeviceName= */ "", /* additionTimestampMs= */ 0);
+                        mTab,
+                        /* guid= */ "",
+                        /* senderDeviceName= */ "",
+                        /* additionTimestampMs= */ 0);
         mUserDataHost.setUserData(SendTabToSelfTabCardLabelData.class, negativeCache);
 
         // Call showAll again.
@@ -251,7 +308,10 @@ public class SendTabToSelfTabLabellerUnitTest {
         // Set negative cache immediately (no prior valid label).
         SendTabToSelfTabCardLabelData negativeCache =
                 new SendTabToSelfTabCardLabelData(
-                        mTab, /* senderDeviceName= */ "", /* additionTimestampMs= */ 0);
+                        mTab,
+                        /* guid= */ "",
+                        /* senderDeviceName= */ "",
+                        /* additionTimestampMs= */ 0);
         mUserDataHost.setUserData(SendTabToSelfTabCardLabelData.class, negativeCache);
 
         mLabeller.showAll(Collections.singletonList(mTab));
@@ -268,7 +328,7 @@ public class SendTabToSelfTabLabellerUnitTest {
         // Set up tabB (ID=2) with no STTS data.
         Tab tabB = mock(Tab.class);
         UserDataHost userDataHostB = new UserDataHost();
-        when(tabB.getId()).thenReturn(2);
+        when(tabB.getId()).thenReturn(TAB_ID_2);
         when(tabB.isInitialized()).thenReturn(true);
         when(tabB.getUserDataHost()).thenReturn(userDataHostB);
 
@@ -305,7 +365,7 @@ public class SendTabToSelfTabLabellerUnitTest {
         // Set up Tab B (ID=2) with no STTS data (restarted/removed from memory).
         Tab tabB = mock(Tab.class);
         UserDataHost userDataHostB = new UserDataHost();
-        when(tabB.getId()).thenReturn(2);
+        when(tabB.getId()).thenReturn(TAB_ID_2);
         when(tabB.isInitialized()).thenReturn(true);
         when(tabB.getUserDataHost()).thenReturn(userDataHostB);
 
@@ -337,17 +397,76 @@ public class SendTabToSelfTabLabellerUnitTest {
     }
 
     @Test
+    @EnableFeatures(ChromeFeatureList.SEND_TAB_TO_SELF_SUPPORT_AUTO_OPEN_IN_TAB_GRID)
     public void testDestroy() {
+        // Initially, the supplier must have the observer registered by the labeller.
+        assertTrue(mTabModelSupplier.hasObservers());
         mLabeller.destroy();
-        verify(mTabModel).removeObserver(mLabeller);
+
+        // Verify that the labeller removed its observer from the supplier.
+        assertFalse(mTabModelSupplier.hasObservers());
+
+        // Verify that the labeller also unregistered from the bridge and no longer updates UI.
+        reset(mTabListNotificationHandler);
+        SendTabToSelfAndroidBridge.attachTabLabel(mTab, "guid", "Example Phone");
+        RobolectricUtil.runAllBackgroundAndUi();
+        verify(mTabListNotificationHandler, never()).updateTabCardLabels(any());
     }
 
     @Test
     public void testOnTabModelChange() {
+        // Create a new TabModel with a new Tab (ID 2).
         TabModel newTabModel = mock(TabModel.class);
+        Tab newTab = mock(Tab.class);
+        when(newTab.getId()).thenReturn(TAB_ID_2);
+        when(newTab.isInitialized()).thenReturn(true);
+        UserDataHost newUserDataHost = new UserDataHost();
+        when(newTab.getUserDataHost()).thenReturn(newUserDataHost);
+
+        // Associate label data with the new tab.
+        SendTabToSelfTabCardLabelData sttsData =
+                new SendTabToSelfTabCardLabelData(
+                        newTab, "test_guid2", "New Phone", System.currentTimeMillis());
+        newUserDataHost.setUserData(SendTabToSelfTabCardLabelData.class, sttsData);
+
+        when(newTabModel.getCount()).thenReturn(1);
+        when(newTabModel.getTabAt(0)).thenReturn(newTab);
+
+        // Switch the supplier to the new model.
         mTabModelSupplier.set(newTabModel);
 
-        verify(mTabModel).removeObserver(mLabeller);
-        verify(newTabModel).addObserver(mLabeller);
+        // Trigger showAll(null) which should fetch tabs from the current active model.
+        mLabeller.showAll(null);
+        RobolectricUtil.runAllBackgroundAndUi();
+
+        // Verify that the UI was updated for the new tab (ID 2).
+        verify(mTabListNotificationHandler).updateTabCardLabels(mLabelDataCaptor.capture());
+        Map<Integer, TabCardLabelData> labelDataMap = mLabelDataCaptor.getValue();
+        assertTrue(labelDataMap.containsKey(TAB_ID_2));
+        assertEquals("From New Phone", labelDataMap.get(TAB_ID_2).textResolver.resolve(mContext));
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.SEND_TAB_TO_SELF_SUPPORT_AUTO_OPEN_IN_TAB_GRID)
+    public void testOnLabelAttached_UpdatesUISynchronously() {
+        createAndSetLabelData();
+
+        verify(mTabListNotificationHandler, never()).updateTabCardLabels(any());
+
+        mLabeller.onLabelAttached(mTab);
+
+        // Verify label update is synchronous (no looper pumping required).
+        verifyTabCardLabelUpdated("From Example Phone", 1);
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.SEND_TAB_TO_SELF_SUPPORT_AUTO_OPEN_IN_TAB_GRID)
+    public void testAttachTabLabel_NotifiesObserverAndUpdatesUISynchronously() {
+        // Simulates the end-to-end flow when JNI attaches a label to a tab.
+        SendTabToSelfAndroidBridge.attachTabLabel(mTab, "test_guid", SENDER_DEVICE_NAME);
+
+        // Verify that the observer registered in constructor was notified and UI updated
+        // synchronously.
+        verifyTabCardLabelUpdated("From Example Phone", 1);
     }
 }

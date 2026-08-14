@@ -63,6 +63,7 @@ import org.chromium.cc.input.BrowserControlsState;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.ActivityTabProvider;
 import org.chromium.chrome.browser.IntentHandler;
+import org.chromium.chrome.browser.app.tabwindow.TabWindowManagerSingleton;
 import org.chromium.chrome.browser.back_press.BackPressManager;
 import org.chromium.chrome.browser.back_press.BackPressMetrics;
 import org.chromium.chrome.browser.back_press.BackPressMetrics.NavigationDirection;
@@ -98,6 +99,7 @@ import org.chromium.chrome.browser.gesturenav.OverscrollGlowCoordinator;
 import org.chromium.chrome.browser.gesturenav.TabOnBackGestureHandler;
 import org.chromium.chrome.browser.glic.GlicButtonDelegate;
 import org.chromium.chrome.browser.glic.GlicKeyedService.GlicInvocationSource;
+import org.chromium.chrome.browser.glic.GlicUtils;
 import org.chromium.chrome.browser.history.HistoryManagerUtils;
 import org.chromium.chrome.browser.homepage.HomepageManager;
 import org.chromium.chrome.browser.homepage.HomepageManager.HomepageStateListener;
@@ -113,13 +115,10 @@ import org.chromium.chrome.browser.metrics.UmaActivityObserver;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManager.PersistedInstanceType;
 import org.chromium.chrome.browser.multiwindow.MultiWindowUtils;
 import org.chromium.chrome.browser.ntp.IncognitoNewTabPage;
-import org.chromium.chrome.browser.ntp.IncognitoNtpOmniboxAutofocusManager;
-import org.chromium.chrome.browser.ntp.IncognitoNtpUtils;
 import org.chromium.chrome.browser.ntp.NewTabPage;
 import org.chromium.chrome.browser.ntp.NewTabPageUma;
 import org.chromium.chrome.browser.offlinepages.OfflinePageTabData;
 import org.chromium.chrome.browser.omaha.UpdateMenuItemHelper;
-import org.chromium.chrome.browser.omnibox.BackKeyBehaviorDelegate;
 import org.chromium.chrome.browser.omnibox.LocationBar;
 import org.chromium.chrome.browser.omnibox.LocationBarCoordinator;
 import org.chromium.chrome.browser.omnibox.LocationBarEmbedderUiOverrides;
@@ -140,6 +139,7 @@ import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.readaloud.ReadAloudController;
 import org.chromium.chrome.browser.search_engines.TemplateUrlServiceFactory;
 import org.chromium.chrome.browser.share.ShareDelegate;
+import org.chromium.chrome.browser.share.send_tab_to_self.SendTabToSelfAndroidBridge;
 import org.chromium.chrome.browser.share.send_tab_to_self.SendTabToSelfCoordinator;
 import org.chromium.chrome.browser.share.send_tab_to_self.ShareEntryPoint;
 import org.chromium.chrome.browser.signin.SigninAndHistorySyncActivityLauncherImpl;
@@ -161,6 +161,7 @@ import org.chromium.chrome.browser.tabmodel.TabCreatorManager;
 import org.chromium.chrome.browser.tabmodel.TabCreatorUtil;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
+import org.chromium.chrome.browser.tabmodel.TabModelSelectorObserver;
 import org.chromium.chrome.browser.tabstrip.TabStripTopControlLayer;
 import org.chromium.chrome.browser.tasks.tab_management.TabGroupUi;
 import org.chromium.chrome.browser.tasks.tab_management.TabGroupUiOneshotSupplier;
@@ -313,8 +314,6 @@ public class ToolbarManager
     private final NonNullObservableSupplier<Boolean> mOmniboxFocusStateSupplier;
     private final SettableNonNullObservableSupplier<Boolean> mIsNtpWithFakeboxShowingSupplier =
             ObservableSuppliers.createNonNull(false);
-    private final SettableNonNullObservableSupplier<Boolean> mIsIncognitoNtpShowingSupplier =
-            ObservableSuppliers.createNonNull(false);
     private final SettableNonNullObservableSupplier<Boolean> mFindInPageShowingSupplier =
             ObservableSuppliers.createNonNull(false);
     private final SettableNonNullObservableSupplier<Boolean> mIsTabSwitcherFinishedShowingSupplier =
@@ -349,6 +348,7 @@ public class ToolbarManager
             ObservableSuppliers.createMonotonic();
     private @MonotonicNonNull TabModelSelector mTabModelSelector;
     private final Callback<TabModel> mCurrentTabModelObserver;
+    private TabModelSelectorObserver mTabModelSelectorObserver;
     private MonotonicObservableSupplier<TabModelSelector> mTabModelSelectorSupplier;
     private ActivityTabProvider.ActivityTabTabObserver mActivityTabTabObserver;
     private final ActivityTabProvider mActivityTabProvider;
@@ -428,6 +428,10 @@ public class ToolbarManager
     private final BrowserStateBrowserControlsVisibilityDelegate mControlsVisibilityDelegate;
     private int mFullscreenFocusToken = TokenHolder.INVALID_TOKEN;
     private int mFullscreenFindInPageToken = TokenHolder.INVALID_TOKEN;
+    private final TokenHolder mHairlineVisibilityTokenHolder =
+            new TokenHolder(this::updateHairlineVisibility);
+    private int mFullscreenHairlineToken = TokenHolder.INVALID_TOKEN;
+    private int mXrSpaceHairlineToken = TokenHolder.INVALID_TOKEN;
 
     private boolean mInitializedWithNative;
     private @Nullable Runnable mMenuStateObserver;
@@ -454,7 +458,6 @@ public class ToolbarManager
     private @Nullable TabGroupUiOneshotSupplier mTabGroupUiOneshotSupplier;
 
     private @Nullable SideUiStateProvider mSideUiStateProvider;
-    private @Nullable SideUiObserver mSideUiObserver;
     private @Nullable SideUiObserver mControlContainerSideUiObserver;
     private @Nullable SideUiObserver mProgressBarSideUiObserver;
 
@@ -493,7 +496,6 @@ public class ToolbarManager
     private @Nullable MiniOriginBarController mMiniOriginBarController;
     private @Nullable ToolbarPositionController mToolbarPositionController;
     private @Nullable UndoBarThrottle mUndoBarThrottle;
-    private @Nullable IncognitoNtpOmniboxAutofocusManager mIncognitoNtpOmniboxAutofocusManager;
     private final @Nullable BottomBarHostManager mBottomBarHostManager;
 
     private OverridableTabCount mOverridableTabCount;
@@ -1163,6 +1165,7 @@ public class ToolbarManager
                         mWindowAndroid,
                         () -> mLocationBarModel.getUrlBarData().url,
                         () -> getUrlBarViewRectProvider(),
+                        this::isSendTabToSelfAvailable,
                         this::onSendTabToSelfClicked);
         OnLongClickListener onLongClickListener =
                 mToolbarLongPressMenuHandler.getOnLongClickListener();
@@ -1317,7 +1320,7 @@ public class ToolbarManager
                             mIncognitoStateProvider,
                             activityLifecycleDispatcher,
                             mOverrideUrlLoadingDelegate,
-                            new BackKeyBehaviorDelegate() {},
+                            () -> false,
                             toolbarPageInfo::show,
                             IntentHandler::bringTabGroupToFront,
                             NewTabPageUma::recordOmniboxNavigation,
@@ -1335,7 +1338,7 @@ public class ToolbarManager
                             tabModelSelectorSupplier,
                             topInsetProvider,
                             mToolbarLayout,
-                            new LocationBarEmbedderUiOverrides(),
+                            new LocationBarEmbedderUiOverrides().setIsMainBrowserOmnibox(),
                             mActivity.findViewById(R.id.coordinator),
                             bottomWindowPaddingSupplier,
                             onLongClickListener,
@@ -1411,6 +1414,7 @@ public class ToolbarManager
                         refreshSelectedTab(tab);
                         onTabOrModelChanged();
                         maybeTriggerCacheRefreshForZeroSuggest(tab.getUrl());
+                        maybeShowGlicIph(tab);
                     }
 
                     /**
@@ -1480,6 +1484,13 @@ public class ToolbarManager
                         updateTabLoadingState(true);
                         mLocationBarModel.onPageLoadStopped();
                         mToolbar.onPageLoadStopped();
+                    }
+
+                    @Override
+                    public void onPageLoadFinished(Tab tab, GURL url) {
+                        if (tab == mActivityTabProvider.get()) {
+                            maybeShowGlicIph(tab);
+                        }
                     }
 
                     @Override
@@ -1698,6 +1709,16 @@ public class ToolbarManager
                     @Override
                     public void onEnterFullscreen(Tab tab, FullscreenOptions options) {
                         if (mFindToolbarManager != null) mFindToolbarManager.hideToolbar();
+                        mFullscreenHairlineToken =
+                                setToolbarShadowVisibilityAndClearOldToken(
+                                        false, mFullscreenHairlineToken);
+                    }
+
+                    @Override
+                    public void onExitFullscreen(Tab tab) {
+                        mFullscreenHairlineToken =
+                                setToolbarShadowVisibilityAndClearOldToken(
+                                        true, mFullscreenHairlineToken);
                     }
                 };
         mFullscreenManager.addObserver(mFullscreenObserver);
@@ -1858,25 +1879,27 @@ public class ToolbarManager
 
         mSideUiStateProvider = sideUiStateProvider;
 
-        mSideUiObserver =
-                (sideUiSpecs) -> {
-                    // Can be null after destroy(), empty specs are passed when the observer
-                    // is removed.
-                    if (mFindToolbarManager != null) {
-                        mFindToolbarManager.onSideUiSpecsChanged(sideUiSpecs);
-                    }
-                };
-        mSideUiStateProvider.addObserver(mSideUiObserver);
+        // This method may be called after a SideUiContainer is already shown, in which case the
+        // SideUiObservers will miss the SideUiSpecs change. So we use the current SideUiSpecs to
+        // initialize Views that observe SideUiSpecs.
+        // TODO(https://crbug.com/536963036): Remove the explicit calls to onSideUiSpecsChanged
+        // after fixing the initialization order.
+        var currentSideUiSpecs = sideUiStateProvider.getCurrentSideUiSpecs();
 
         mControlContainerSideUiObserver = new ToolbarMarginAdjusterForSideUi(mControlContainer);
+        mControlContainerSideUiObserver.onSideUiSpecsChanged(currentSideUiSpecs);
         mSideUiStateProvider.addObserver(mControlContainerSideUiObserver);
-        mProgressBarSideUiObserver = new ViewMarginAdjusterForSideUi(mProgressBarContainer);
+
+        mProgressBarSideUiObserver =
+                new ViewMarginAdjusterForSideUi(
+                        mProgressBarContainer, /* forToolbarElement= */ true);
+        mProgressBarSideUiObserver.onSideUiSpecsChanged(currentSideUiSpecs);
         mSideUiStateProvider.addObserver(mProgressBarSideUiObserver);
     }
 
     private static class ToolbarMarginAdjusterForSideUi extends ViewMarginAdjusterForSideUi {
         ToolbarMarginAdjusterForSideUi(View view) {
-            super(view);
+            super(view, /* forToolbarElement= */ true);
         }
 
         @Override
@@ -1936,7 +1959,6 @@ public class ToolbarManager
         mIsNtpWithFakeboxShowingSupplier.set(
                 getNewTabPageForCurrentTab() != null
                         && getNewTabPageForCurrentTab().isLocationBarShownInNtp());
-        mIsIncognitoNtpShowingSupplier.set(isIncognitoNewTabPageCurrentlyVisible());
         mIsTabSwitcherFinishedShowingSupplier.set(
                 mLayoutStateProvider != null
                         && mLayoutStateProvider.getActiveLayoutType() == LayoutType.HUB);
@@ -1962,7 +1984,6 @@ public class ToolbarManager
                         mBrowserControlsSizer,
                         sharedPreferences,
                         mIsNtpWithFakeboxShowingSupplier,
-                        mIsIncognitoNtpShowingSupplier,
                         mIsTabSwitcherFinishedShowingSupplier,
                         mOmniboxFocusStateSupplier,
                         mFormFieldFocusedSupplier.getObservable(),
@@ -2333,7 +2354,10 @@ public class ToolbarManager
             Tab tab = mLocationBarModel.getTab();
             assumeNonNull(tab);
             NativePage nativePage = tab.getNativePage();
-            return nativePage instanceof IncognitoNewTabPage;
+            // Check nativePage instance and fallback to URL check to handle tab navigation
+            // transitions before the NativePage instance is instantiated/updated.
+            return nativePage instanceof IncognitoNewTabPage
+                    || (tab.isIncognito() && UrlUtilities.isNtpUrl(tab.getUrl()));
         }
         return false;
     }
@@ -2358,11 +2382,6 @@ public class ToolbarManager
             return false;
         }
         return mLocationBar.getOmniboxStub().isUrlBarFocused();
-    }
-
-    public @Nullable IncognitoNtpOmniboxAutofocusManager
-            getIncognitoNtpOmniboxAutofocusManagerForTesting() {
-        return mIncognitoNtpOmniboxAutofocusManager;
     }
 
     /** Returns the UrlBar text excluding the autocomplete text. */
@@ -2551,6 +2570,14 @@ public class ToolbarManager
         mUndoBarThrottle = undoBarThrottle;
 
         mTabModelSelector = tabModelSelector;
+        mTabModelSelectorObserver =
+                new TabModelSelectorObserver() {
+                    @Override
+                    public void onTabHidden(Tab tab) {
+                        suspendFuseboxInput();
+                    }
+                };
+        mTabModelSelector.addObserver(mTabModelSelectorObserver);
         if (mActionRegistry != null) {
             PropertyModel newTabModel = mActionRegistry.get(ActionId.NEW_TAB).get();
             assert newTabModel != null : "NEW_TAB action should be registered";
@@ -2607,6 +2634,13 @@ public class ToolbarManager
                 // its C++ UnownedUserData objects are destroyed prior to the host (BWI) when a
                 // Profile is destroyed on mobile Android. Explicit destruction in
                 // ToolbarManager.destroy() is also preserved for standard Activity teardown.
+                Runnable cleanup =
+                        () -> {
+                            if (mToolbar != null) {
+                                mToolbar.setExtensionsToolbarCoordinator(null);
+                            }
+                            mExtensionsToolbarCoordinator = null;
+                        };
                 mExtensionsToolbarCoordinator =
                         (ExtensionsToolbarCoordinator)
                                 task.addFeature(
@@ -2629,14 +2663,7 @@ public class ToolbarManager
                                                         selectionDropdownMenuDelegate,
                                                         mTabModelSelector,
                                                         mModalDialogManagerSupplier.get(),
-                                                        () -> {
-                                                            if (mToolbar != null) {
-                                                                mToolbar
-                                                                        .setExtensionsToolbarCoordinator(
-                                                                                null);
-                                                            }
-                                                            mExtensionsToolbarCoordinator = null;
-                                                        }));
+                                                        cleanup));
                 if (mExtensionsToolbarCoordinator != null) {
                     mToolbar.setExtensionsToolbarCoordinator(mExtensionsToolbarCoordinator);
                 }
@@ -2738,16 +2765,6 @@ public class ToolbarManager
             mUpdateMenuItemHelper.registerObserver(mMenuStateObserver);
         }
 
-        mIncognitoNtpOmniboxAutofocusManager =
-                IncognitoNtpOmniboxAutofocusManager.maybeCreate(
-                        mActivity,
-                        getOmniboxStub(),
-                        mLayoutManager,
-                        tabModelSelector,
-                        IncognitoNtpUtils::getIncognitoNtpView,
-                        IncognitoNtpUtils::getIncognitoNtpScrollView,
-                        IncognitoNtpUtils::getIncognitoNtpContentMetrics);
-
         mInitializedWithNative = true;
         tabModelSelector
                 .getCurrentTabModelSupplier()
@@ -2779,6 +2796,19 @@ public class ToolbarManager
 
     private void onGlicToggled() {
         mToggleGlicCallback.onClick(/* preventClose= */ false, GlicInvocationSource.TOOLBAR_BUTTON);
+    }
+
+    private void maybeShowGlicIph(@Nullable Tab tab) {
+        if (tab == null || tab.isIncognitoBranded()) return;
+        if (!mToolbar.shouldShowGlicToolbarButton()) return;
+        if (!GlicUtils.isTabEligibleForGlicIph(tab)) return;
+
+        View anchorView = assumeNonNull(mToolbar.getGlicActionChipView());
+        if (anchorView.getVisibility() != View.VISIBLE || !anchorView.isAttachedToWindow()) {
+            return;
+        }
+
+        mIphController.showGlicIph(anchorView);
     }
 
     /**
@@ -2846,12 +2876,8 @@ public class ToolbarManager
     /** Call to tear down all of the toolbar dependencies. */
     @SuppressWarnings("NullAway")
     public void destroy() {
+        if (mIsDestroyed) return;
         mIsDestroyed = true;
-
-        if (mIncognitoNtpOmniboxAutofocusManager != null) {
-            mIncognitoNtpOmniboxAutofocusManager.destroy();
-            mIncognitoNtpOmniboxAutofocusManager = null;
-        }
 
         var omnibox = mLocationBar.getOmniboxStub();
         if (omnibox != null) {
@@ -2865,6 +2891,9 @@ public class ToolbarManager
         }
         if (mTabModelSelectorSupplier != null) {
             mTabModelSelectorSupplier = null;
+        }
+        if (mTabModelSelectorObserver != null) {
+            mTabModelSelector.removeObserver(mTabModelSelectorObserver);
         }
         if (mTabModelSelector != null) {
             mTabModelSelector.getCurrentTabModelSupplier().removeObserver(mCurrentTabModelObserver);
@@ -3051,9 +3080,6 @@ public class ToolbarManager
 
     private void removeSideUiObservers() {
         if (mSideUiStateProvider != null) {
-            if (mSideUiObserver != null) {
-                mSideUiStateProvider.removeObserver(mSideUiObserver);
-            }
             if (mControlContainerSideUiObserver != null) {
                 mSideUiStateProvider.removeObserver(mControlContainerSideUiObserver);
             }
@@ -3229,6 +3255,44 @@ public class ToolbarManager
         return mEdgeToEdgeControllerSupplier;
     }
 
+    private void updateHairlineVisibility() {
+        if (mHairlineVisibilityTokenHolder != null) {
+            boolean suppressed = mHairlineVisibilityTokenHolder.hasTokens();
+            setToolbarShadowVisibility(suppressed ? View.INVISIBLE : View.VISIBLE);
+            if (mToolbar != null) mToolbar.onToolbarHairlineSuppressedChanged(suppressed);
+        }
+    }
+
+    /**
+     * Suppresses or restores the toolbar shadow (hairline) via a token mechanism.
+     *
+     * <p>Tokens are required because multiple independent features (e.g., Fullscreen video, XR
+     * Space mode, and Custom Tab Media Viewer) may suppress the hairline simultaneously. Using
+     * tokens prevents state collisions where exiting one mode prematurely restores visibility while
+     * another active mode still requires the hairline to be hidden.
+     *
+     * @param visible True to restore visibility (release token), false to suppress (acquire token).
+     * @param oldToken The previous token held by the caller, or {@link TokenHolder#INVALID_TOKEN}.
+     * @return A valid token if suppressing, or {@link TokenHolder#INVALID_TOKEN} if making visible.
+     */
+    public int setToolbarShadowVisibilityAndClearOldToken(boolean visible, int oldToken) {
+        if (!visible) {
+            // If requesting suppression and we do not already hold a token, acquire one.
+            if (oldToken == TokenHolder.INVALID_TOKEN) {
+                return mHairlineVisibilityTokenHolder.acquireToken();
+            }
+            return oldToken;
+        } else {
+            // If requesting visibility and we currently hold a valid token, release it.
+            if (oldToken != TokenHolder.INVALID_TOKEN) {
+                mHairlineVisibilityTokenHolder.releaseToken(oldToken);
+            }
+            return TokenHolder.INVALID_TOKEN;
+        }
+    }
+
+    // TODO(crbug.com/528031001): Migrate CustomTabToolbarCoordinator to use
+    // setToolbarShadowVisibilityAndClearOldToken and make setToolbarShadowVisibility private.
     /** Sets the visibility of the Toolbar shadow. */
     public void setToolbarShadowVisibility(int visibility) {
         if (mToolbarHairline != null) mToolbarHairline.setVisibility(visibility);
@@ -3528,9 +3592,6 @@ public class ToolbarManager
 
         checkIfNtpShowingWithNoPendingLoad();
 
-        if (mToolbarPositionController != null) {
-            mIsIncognitoNtpShowingSupplier.set(isIncognitoNewTabPageCurrentlyVisible());
-        }
     }
 
     private void setBookmarkModel(
@@ -3588,6 +3649,11 @@ public class ToolbarManager
         return mLocationBar.getOmniboxStub();
     }
 
+    /** Returns the {@link OneshotSupplier} of {@link OmniboxStub}. */
+    public OneshotSupplier<OmniboxStub> getOmniboxStubSupplier() {
+        return mOmniboxStubSupplier;
+    }
+
     public @Nullable VoiceRecognitionHandler getVoiceRecognitionHandler() {
         return mLocationBar.getVoiceRecognitionHandler();
     }
@@ -3620,6 +3686,15 @@ public class ToolbarManager
 
         layoutParams.topMargin = margin;
         mControlContainer.setLayoutParams(layoutParams);
+    }
+
+    private boolean isSendTabToSelfAvailable(GURL url) {
+        Profile profile = mProfileSupplier.get();
+        if (profile == null) {
+            return false;
+        }
+        return SendTabToSelfAndroidBridge.getEntryPointDisplayReason(profile, url.getSpec())
+                != null;
     }
 
     private void onSendTabToSelfClicked() {
@@ -3796,7 +3871,8 @@ public class ToolbarManager
     public void onXrSpaceModeChanged(Boolean fullSpaceMode) {
         boolean isFsm = Boolean.TRUE.equals(fullSpaceMode);
         mSuppressToolbarSceneLayerSupplier.set(isFsm);
-        setToolbarShadowVisibility(isFsm ? View.INVISIBLE : View.VISIBLE);
+        mXrSpaceHairlineToken =
+                setToolbarShadowVisibilityAndClearOldToken(!isFsm, mXrSpaceHairlineToken);
         getToolbar().getProgressBar().setVisibility(isFsm ? View.INVISIBLE : View.VISIBLE);
     }
 
@@ -3837,6 +3913,7 @@ public class ToolbarManager
         return TabSwitcherActionMenuCoordinator.createOnLongClickListener(
                 menuItemId -> mAppMenuDelegate.onOptionsItemSelected(menuItemId, null),
                 profile,
-                mTabModelSelectorSupplier);
+                mTabModelSelectorSupplier,
+                TabWindowManagerSingleton.getInstance());
     }
 }

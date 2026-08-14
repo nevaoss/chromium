@@ -17,6 +17,7 @@
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/common/pref_names.h"
+#include "chrome/grit/generated_resources.h"
 #include "chrome/test/base/search_test_utils.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "components/search_engines/search_engines_pref_names.h"
@@ -24,6 +25,7 @@
 #include "content/public/test/browser_test.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/mojom/context_menu/context_menu.mojom.h"
+#include "ui/base/l10n/l10n_util.h"
 #include "ui/base/ui_base_features.h"
 
 namespace glic {
@@ -85,7 +87,7 @@ IN_PROC_BROWSER_TEST_F(GlicContextMenuBrowserTest, GlicItemAbsentForImage) {
 IN_PROC_BROWSER_TEST_F(GlicContextMenuBrowserTest,
                        GlicPrecedesLensAndReadingModeInPageMenu) {
   TemplateURLService* model =
-      TemplateURLServiceFactory::GetForProfile(browser()->profile());
+      TemplateURLServiceFactory::GetForProfile(browser()->GetProfile());
   ASSERT_NE(model, nullptr);
   search_test_utils::WaitForTemplateURLServiceToLoad(model);
 
@@ -219,9 +221,10 @@ IN_PROC_BROWSER_TEST_F(GlicContextMenuArm3BrowserTest, GlicInvokeArm3) {
 
 IN_PROC_BROWSER_TEST_F(GlicContextMenuBrowserTest, GlicItemAbsentInAppWindow) {
   // Create an app browser window.
-  Browser* app_browser = Browser::Create(Browser::CreateParams::CreateForApp(
-      "test_app", /*trusted_source=*/false, gfx::Rect(), browser()->profile(),
-      /*user_gesture=*/true));
+  Browser* app_browser = Browser::Create(
+      Browser::CreateParams::CreateForApp("test_app", /*trusted_source=*/false,
+                                          gfx::Rect(), browser()->GetProfile(),
+                                          /*user_gesture=*/true));
 
   // Add a tab and navigate to a test page.
   content::WebContents* blank_tab = chrome::AddSelectedTabWithURL(
@@ -266,7 +269,7 @@ IN_PROC_BROWSER_TEST_F(GlicContextMenuBrowserTest,
 IN_PROC_BROWSER_TEST_F(GlicContextMenuBrowserTest,
                        GlicItemPrecedesSearchProvider) {
   TemplateURLService* model =
-      TemplateURLServiceFactory::GetForProfile(browser()->profile());
+      TemplateURLServiceFactory::GetForProfile(browser()->GetProfile());
   ASSERT_NE(model, nullptr);
   search_test_utils::WaitForTemplateURLServiceToLoad(model);
 
@@ -307,7 +310,7 @@ IN_PROC_BROWSER_TEST_F(GlicContextMenuBrowserTest,
 IN_PROC_BROWSER_TEST_F(GlicContextMenuBrowserTest,
                        GlicItemPrecedesSearchProviderInEditableField) {
   TemplateURLService* model =
-      TemplateURLServiceFactory::GetForProfile(browser()->profile());
+      TemplateURLServiceFactory::GetForProfile(browser()->GetProfile());
   ASSERT_NE(model, nullptr);
   search_test_utils::WaitForTemplateURLServiceToLoad(model);
 
@@ -366,7 +369,7 @@ class GlicContextMenuSimplificationBrowserTest
 IN_PROC_BROWSER_TEST_F(GlicContextMenuSimplificationBrowserTest,
                        GlicItemPrecedesSearchProvider) {
   TemplateURLService* model =
-      TemplateURLServiceFactory::GetForProfile(browser()->profile());
+      TemplateURLServiceFactory::GetForProfile(browser()->GetProfile());
   ASSERT_NE(model, nullptr);
   search_test_utils::WaitForTemplateURLServiceToLoad(model);
 
@@ -443,7 +446,7 @@ class GlicContextMenuStandardBrowserTest
 IN_PROC_BROWSER_TEST_F(GlicContextMenuStandardBrowserTest,
                        GlicItemPrecedesSearchProvider) {
   TemplateURLService* model =
-      TemplateURLServiceFactory::GetForProfile(browser()->profile());
+      TemplateURLServiceFactory::GetForProfile(browser()->GetProfile());
   ASSERT_NE(model, nullptr);
   search_test_utils::WaitForTemplateURLServiceToLoad(model);
 
@@ -484,7 +487,7 @@ IN_PROC_BROWSER_TEST_F(GlicContextMenuStandardBrowserTest,
 IN_PROC_BROWSER_TEST_F(GlicContextMenuStandardBrowserTest,
                        GlicItemPrecedesSearchProviderInEditableField) {
   TemplateURLService* model =
-      TemplateURLServiceFactory::GetForProfile(browser()->profile());
+      TemplateURLServiceFactory::GetForProfile(browser()->GetProfile());
   ASSERT_NE(model, nullptr);
   search_test_utils::WaitForTemplateURLServiceToLoad(model);
 
@@ -541,4 +544,76 @@ IN_PROC_BROWSER_TEST_F(GlicContextMenuStandardBrowserTest,
   EXPECT_TRUE(menu->IsItemPresent(IDC_CONTENT_CONTEXT_GLIC));
 }
 
+class GlicTextSelectionContextMenuBrowserTest
+    : public GlicContextMenuBrowserTestBase {
+ public:
+  GlicTextSelectionContextMenuBrowserTest() {
+    feature_list_.InitWithFeatures({features::kGlicTextSelectionContextMenu},
+                                   {features::kGlicContextMenu});
+  }
+
+ private:
+  base::test::ScopedFeatureList feature_list_;
+};
+
+IN_PROC_BROWSER_TEST_F(GlicTextSelectionContextMenuBrowserTest,
+                       GlicItemAbsentForWhitespaceOnlySelection) {
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GetSimpleTestUrl()));
+
+  content::WebContents* web_contents =
+      browser()->tab_strip_model()->GetActiveWebContents();
+  content::ContextMenuParams params;
+  params.page_url = web_contents->GetVisibleURL();
+  params.selection_text = u"   \n\t   ";
+
+  auto menu = std::make_unique<TestRenderViewContextMenu>(
+      *web_contents->GetPrimaryMainFrame(), params);
+  menu->Init();
+
+  EXPECT_FALSE(menu->IsItemPresent(IDC_CONTENT_CONTEXT_GLIC));
+}
+
+IN_PROC_BROWSER_TEST_F(GlicTextSelectionContextMenuBrowserTest,
+                       GlicItemPresentForValidSelection) {
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GetSimpleTestUrl()));
+
+  content::WebContents* web_contents =
+      browser()->tab_strip_model()->GetActiveWebContents();
+  content::ContextMenuParams params;
+  params.page_url = web_contents->GetVisibleURL();
+  params.selection_text = u"   valid text   ";
+
+  auto menu = std::make_unique<TestRenderViewContextMenu>(
+      *web_contents->GetPrimaryMainFrame(), params);
+  menu->Init();
+
+  EXPECT_TRUE(menu->IsItemPresent(IDC_CONTENT_CONTEXT_GLIC));
+  auto glic_index = menu->GetMenuModelAndItemIndex(IDC_CONTENT_CONTEXT_GLIC);
+  ASSERT_TRUE(glic_index.has_value());
+  EXPECT_EQ(glic_index->first->GetLabelAt(glic_index->second),
+            l10n_util::GetStringFUTF16(IDS_GLIC_CONTEXT_MENU_ASK_GEMINI_ABOUT,
+                                       u"valid text"));
+}
+
+IN_PROC_BROWSER_TEST_F(GlicTextSelectionContextMenuBrowserTest,
+                       GlicItemSanitizesSelectionText) {
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GetSimpleTestUrl()));
+
+  content::WebContents* web_contents =
+      browser()->tab_strip_model()->GetActiveWebContents();
+  content::ContextMenuParams params;
+  params.page_url = web_contents->GetVisibleURL();
+  params.selection_text = u"line1\u2028line2\u2029line3\r\nline4";
+
+  auto menu = std::make_unique<TestRenderViewContextMenu>(
+      *web_contents->GetPrimaryMainFrame(), params);
+  menu->Init();
+
+  EXPECT_TRUE(menu->IsItemPresent(IDC_CONTENT_CONTEXT_GLIC));
+  auto glic_index = menu->GetMenuModelAndItemIndex(IDC_CONTENT_CONTEXT_GLIC);
+  ASSERT_TRUE(glic_index.has_value());
+  EXPECT_EQ(glic_index->first->GetLabelAt(glic_index->second),
+            l10n_util::GetStringFUTF16(IDS_GLIC_CONTEXT_MENU_ASK_GEMINI_ABOUT,
+                                       u"line1 line2 line3  line4"));
+}
 }  // namespace glic

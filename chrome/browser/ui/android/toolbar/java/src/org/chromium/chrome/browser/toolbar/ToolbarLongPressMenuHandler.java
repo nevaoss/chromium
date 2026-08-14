@@ -49,6 +49,7 @@ import org.chromium.url.GURL;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.function.BooleanSupplier;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 /** The handler for the toolbar long press menu. */
@@ -81,6 +82,7 @@ public class ToolbarLongPressMenuHandler implements ConfigurationChangedObserver
     private final @Nullable OnLongClickListener mOnLongClickListener;
     private final WindowAndroid mWindowAndroid;
     private final ActivityLifecycleDispatcher mLifecycleDispatcher;
+    private final Predicate<GURL> mIsSendTabToSelfAvailable;
     private final Runnable mOnSendTabToSelfClicked;
 
     /**
@@ -94,6 +96,8 @@ public class ToolbarLongPressMenuHandler implements ConfigurationChangedObserver
      * @param windowAndroid window for the activity.
      * @param urlSupplier supplier of the current URL, can be null.
      * @param urlBarViewRectProviderSupplier supplier of the URL bar view rect provider.
+     * @param isSendTabToSelfAvailable predicate checking if Send Tab To Self is available for a
+     *     given URL.
      * @param onSendTabToSelfClicked callback for when Send Tab To Self is clicked.
      */
     public ToolbarLongPressMenuHandler(
@@ -105,6 +109,7 @@ public class ToolbarLongPressMenuHandler implements ConfigurationChangedObserver
             WindowAndroid windowAndroid,
             Supplier<@Nullable GURL> urlSupplier,
             Supplier<ViewRectProvider> urlBarViewRectProviderSupplier,
+            Predicate<GURL> isSendTabToSelfAvailable,
             Runnable onSendTabToSelfClicked) {
         mContext = context;
         mProfileSupplier = profileSupplier;
@@ -114,6 +119,7 @@ public class ToolbarLongPressMenuHandler implements ConfigurationChangedObserver
         mWindowAndroid = windowAndroid;
         mLifecycleDispatcher = lifecycleDispatcher;
         mLifecycleDispatcher.register(this);
+        mIsSendTabToSelfAvailable = isSendTabToSelfAvailable;
         mOnSendTabToSelfClicked = onSendTabToSelfClicked;
 
         mScreenWidthDp = context.getResources().getConfiguration().screenWidthDp;
@@ -189,7 +195,7 @@ public class ToolbarLongPressMenuHandler implements ConfigurationChangedObserver
                 BrowserUiListMenuUtils.getBasicListMenu(
                         view.getContext(),
                         buildMenuItems(onTop),
-                        (model, unusedView) -> {
+                        (model, _) -> {
                             handleMenuClick(model.get(ListMenuItemProperties.MENU_ITEM_ID));
                             assumeNonNull(mPopupMenu);
                             mPopupMenu.dismiss();
@@ -247,17 +253,23 @@ public class ToolbarLongPressMenuHandler implements ConfigurationChangedObserver
                         .withTitleRes(R.string.toolbar_copy_link)
                         .withMenuId(MenuItemType.COPY_LINK)
                         .build());
-        if (ChromeFeatureList.isEnabled(ChromeFeatureList.SEND_TAB_TO_SELF_EXTRA_ENTRY_POINTS)) {
-            GURL url = mUrlSupplier.get();
-            if (url != null && url.isValid() && !url.isEmpty()) {
-                itemList.add(
-                        new ListItemBuilder()
-                                .withTitleRes(R.string.sharing_send_tab_to_self)
-                                .withMenuId(MenuItemType.SEND_TAB_TO_SELF)
-                                .build());
-            }
-        }
+        maybeAddSendTabToSelf(itemList);
         return itemList;
+    }
+
+    private void maybeAddSendTabToSelf(ModelList itemList) {
+        if (!ChromeFeatureList.isEnabled(ChromeFeatureList.SEND_TAB_TO_SELF_EXTRA_ENTRY_POINTS)) {
+            return;
+        }
+        GURL url = mUrlSupplier.get();
+        if (url == null || !mIsSendTabToSelfAvailable.test(url)) {
+            return;
+        }
+        itemList.add(
+                new ListItemBuilder()
+                        .withTitleRes(R.string.menu_send_to_devices)
+                        .withMenuId(MenuItemType.SEND_TAB_TO_SELF)
+                        .build());
     }
 
     @VisibleForTesting

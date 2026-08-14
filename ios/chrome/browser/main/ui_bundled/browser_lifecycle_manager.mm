@@ -89,9 +89,10 @@
 - (void)createMainCoordinatorAndInterface {
   TRACE_EVENT("ui",
               "-[BrowserLifecycleManager createMainCoordinatorAndInterface]");
-  DCHECK(!_mainInterface)
-      << "-createMainCoordinatorAndInterface must not be called once";
+  CHECK(!_mainInterface, base::NotFatalUntil::M155)
+      << "-createMainCoordinatorAndInterface must not be called multiple times";
 
+  CHECK(!_mainBrowserCoordinator, base::NotFatalUntil::M155);
   // Create the main coordinator, and thus the main interface.
   _mainBrowserCoordinator = [[BrowserCoordinator alloc]
       initWithBaseViewController:nil
@@ -251,16 +252,24 @@
   }
 }
 
-- (void)shutdown {
-  CHECK(!_isShutdown, base::NotFatalUntil::M152);
-  _isShutdown = YES;
-
+- (void)prepareForShutdown {
+  // Prevent null pointer dereference crashes if this method is called after
+  // `-shutdown` has already run and reset `_mainBrowser` and `_otrBrowser`.
+  if (_isShutdown) {
+    return;
+  }
   // Inform the command dispatchers of the shutdown. Should be in reverse
   // order of -init.
   Browser* inactiveBrowser = _mainBrowser->GetInactiveBrowser();
   [_otrBrowser->GetCommandDispatcher() prepareForShutdown];
   [inactiveBrowser->GetCommandDispatcher() prepareForShutdown];
   [_mainBrowser->GetCommandDispatcher() prepareForShutdown];
+}
+
+- (void)shutdown {
+  CHECK(!_isShutdown, base::NotFatalUntil::M152);
+  [self prepareForShutdown];
+  _isShutdown = YES;
 
   // At this stage, new BrowserCoordinators shouldn't be lazily constructed by
   // calling their property getters.
@@ -274,6 +283,7 @@
   [self cleanupBrowser:_otrBrowser.get()];
   _otrBrowser.reset();
 
+  Browser* inactiveBrowser = _mainBrowser->GetInactiveBrowser();
   [self cleanupBrowser:inactiveBrowser];
   [self cleanupBrowser:_mainBrowser.get()];
   _mainBrowser->DestroyInactiveBrowser();
@@ -323,10 +333,10 @@
 // Create the OTR interface object.
 - (WrangledBrowser*)createOTRInterface {
   TRACE_EVENT("ui", "-[BrowserLifecycleManager createOTRInterface]");
-  DCHECK(!_incognitoInterface);
+  CHECK(!_incognitoInterface, base::NotFatalUntil::M155);
 
   // The backing coordinator should not have been created yet.
-  DCHECK(!_incognitoBrowserCoordinator);
+  CHECK(!_incognitoBrowserCoordinator, base::NotFatalUntil::M155);
   _incognitoBrowserCoordinator =
       [[BrowserCoordinator alloc] initWithBaseViewController:nil
                                                      browser:_otrBrowser.get()];

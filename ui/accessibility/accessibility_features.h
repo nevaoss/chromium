@@ -29,8 +29,8 @@
 //
 // In the .cc file, a corresponding new entry should look like:
 //
-//    BASE_FEATURE(kNewFeature, "NewFeature",
-//    base::FEATURE_DISABLED_BY_DEFAULT); bool IsNewFeatureEnabled() {
+//    BASE_FEATURE(kNewFeature, base::FEATURE_DISABLED_BY_DEFAULT);
+//    bool IsNewFeatureEnabled() {
 //      return base::FeatureList::IsEnabled(::features::kNewFeature);
 //    }
 //
@@ -264,9 +264,15 @@ AX_BASE_EXPORT bool IsAccessibilityInlineLineSeparatorsEnabled();
 // Propagate bounding rectangles of cursor moves and input focus changes to the
 // Android platform to allow Magnification to follow them. For compatibility
 // with older behaviour, Android SDK levels before Baklava 36.1 will only be
-// notified on cursor moves.
-AX_BASE_EXPORT BASE_DECLARE_FEATURE(kAccessibilityMagnificationFollowsFocus);
-AX_BASE_EXPORT bool IsAccessibilityMagnificationFollowsFocusEnabled();
+// notified on cursor moves. Feature controls behavior for when a keyboard is
+// attached.
+AX_BASE_EXPORT BASE_DECLARE_FEATURE(
+    kAccessibilityMagnificationFollowsFocusKeyboardAttached);
+
+// Similar to kAccessibilityMagnificationFollowsFocusKeyboardAttached but
+// controls behavior when no keyboard is attached.
+AX_BASE_EXPORT BASE_DECLARE_FEATURE(
+    kAccessibilityMagnificationFollowsFocusNoKeyboard);
 
 // Enables MathML support for Android.
 AX_BASE_EXPORT BASE_DECLARE_FEATURE(kAccessibilityAndroidMath);
@@ -297,6 +303,10 @@ AX_BASE_EXPORT bool IsMainNodeAnnotationsEnabled();
 // Enable Improved Read Aloud.
 AX_BASE_EXPORT BASE_DECLARE_FEATURE(kImprovedReadAloud);
 AX_BASE_EXPORT bool IsImprovedReadAloudEnabled();
+
+// Enable heuristic enhancements for PDF accessibility.
+AX_BASE_EXPORT BASE_DECLARE_FEATURE(kPdfAccessibilityHeuristicEnhancements);
+AX_BASE_EXPORT bool IsPdfAccessibilityHeuristicEnhancementsEnabled();
 
 enum class ReadAnythingMenuShuffleExperimentGroup {
   kDefault,              // Leaves in default position
@@ -330,6 +340,14 @@ AX_BASE_EXPORT bool IsReadAnythingReadAloudPhraseHighlightingEnabled();
 // Enable the omnibox entrypoint for Read Anything.
 AX_BASE_EXPORT BASE_DECLARE_FEATURE(kReadAnythingOmniboxChip);
 AX_BASE_EXPORT bool IsReadAnythingOmniboxChipEnabled();
+
+// Enable the translate entrypoint for Read Anything.
+AX_BASE_EXPORT BASE_DECLARE_FEATURE(kReadAnythingTranslateEntryPoint);
+AX_BASE_EXPORT bool IsReadAnythingTranslateEntryPointEnabled();
+
+// Enable improved UI layouts and controls in Read Anything.
+AX_BASE_EXPORT BASE_DECLARE_FEATURE(kReadAnythingImprovedUi);
+AX_BASE_EXPORT bool IsReadAnythingImprovedUiEnabled();
 
 // Enable the line focus feature for Read Anything.
 AX_BASE_EXPORT BASE_DECLARE_FEATURE(kReadAnythingLineFocus);

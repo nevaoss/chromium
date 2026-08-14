@@ -133,11 +133,21 @@ public class ContentFeatureList {
             sAccessibilityDeprecateJavaNodeCacheDisableCache =
                     sAccessibilityDeprecateJavaNodeCache.newBooleanParam("disable_cache", false);
 
-    public static final MutableFlagWithSafeDefault sAccessibilityMagnificationFollowsFocus =
-            new MutableFlagWithSafeDefault(
-                    ContentFeatureMap.getInstance(),
-                    AccessibilityFeatures.ACCESSIBILITY_MAGNIFICATION_FOLLOWS_FOCUS,
-                    true);
+    public static final MutableFlagWithSafeDefault
+            sAccessibilityMagnificationFollowsFocusKeyboardAttached =
+                    new MutableFlagWithSafeDefault(
+                            ContentFeatureMap.getInstance(),
+                            AccessibilityFeatures
+                                    .ACCESSIBILITY_MAGNIFICATION_FOLLOWS_FOCUS_KEYBOARD_ATTACHED,
+                            true);
+
+    public static final MutableFlagWithSafeDefault
+            sAccessibilityMagnificationFollowsFocusNoKeyboard =
+                    new MutableFlagWithSafeDefault(
+                            ContentFeatureMap.getInstance(),
+                            AccessibilityFeatures
+                                    .ACCESSIBILITY_MAGNIFICATION_FOLLOWS_FOCUS_NO_KEYBOARD,
+                            false);
 
     public static final MutableFlagWithSafeDefault sAccessibilityRequestScopedContentChangedEvents =
             new MutableFlagWithSafeDefault(
@@ -150,6 +160,12 @@ public class ContentFeatureList {
                     ContentFeatureMap.getInstance(),
                     ContentInternalFeatures.STRICT_HIGH_RANK_PROCESS_LRU,
                     true);
+
+    public static final MutableFlagWithSafeDefault sEarlyTopAppForSandboxedRenderer =
+            new MutableFlagWithSafeDefault(
+                    ContentFeatureMap.getInstance(),
+                    ContentInternalFeatures.EARLY_TOP_APP_FOR_SANDBOXED_RENDERER,
+                    false);
 
     public static final MutableFlagWithSafeDefault sSpareRendererProcessPriority =
             new MutableFlagWithSafeDefault(

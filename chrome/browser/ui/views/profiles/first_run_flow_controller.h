@@ -16,6 +16,7 @@
 #include "base/memory/weak_ptr.h"
 #include "chrome/browser/shell_integration.h"
 #include "chrome/browser/ui/profiles/profile_picker.h"
+#include "chrome/browser/ui/views/profiles/feature_showcase/feature_showcase_metrics.h"
 #include "chrome/browser/ui/views/profiles/profile_management_flow_controller.h"
 #include "chrome/browser/ui/views/profiles/profile_management_flow_controller_impl.h"
 #include "chrome/browser/ui/views/profiles/profile_management_types.h"
@@ -29,25 +30,13 @@ enum class IntroChoice;
 class FeatureShowcaseStepController;
 class Profile;
 
-// Exposed for testing purposes only.
-// These values are persisted to UMA logs. Entries should not be renumbered and
-// numeric values should never be reused.
-// LINT.IfChange(FeatureShowcaseStep)
-enum class FeatureShowcaseStep {
-  kDefaultBrowser = 0,
-  kGoogleLens = 1,
-  kPasswordManager = 2,
-  kThemesAndCustomization = 3,
-  kMaxValue = kThemesAndCustomization,
-};
-// LINT.ThenChange(//tools/metrics/histograms/metadata/profile/enums.xml:FeatureShowcaseStep)
-
 // Creates a step to represent the intro. Exposed for testing.
 std::unique_ptr<ProfileManagementStepController> CreateIntroStep(
     ProfilePickerWebContentsHost* host,
     base::RepeatingCallback<void(IntroChoice)> choice_callback,
     bool enable_animations,
-    base::RepeatingCallback<bool()> query_effects_callback);
+    base::RepeatingCallback<bool()> query_effects_callback,
+    bool effects_button_shown_by_default);
 
 std::unique_ptr<ProfileManagementStepController> CreateDefaultBrowserStep(
     ProfilePickerWebContentsHost* host,
@@ -66,7 +55,9 @@ std::unique_ptr<ProfileManagementStepController> CreateFinishOrContinueStep(
     ProfilePickerWebContentsHost* host,
     base::OnceCallback<bool()> eligibility_callback,
     base::RepeatingCallback<bool()> query_effects_callback,
-    base::OnceCallback<void(FinishOrContinueChoice)> step_completed_callback);
+    base::OnceCallback<void(FinishOrContinueChoice)> step_completed_callback,
+    base::OnceClosure play_all_set_sound_callback,
+    bool effects_button_shown_by_default);
 
 class FirstRunFlowController : public ProfileManagementFlowControllerImpl {
  public:
@@ -77,6 +68,7 @@ class FirstRunFlowController : public ProfileManagementFlowControllerImpl {
       kFeatureShowcaseAmbientSoundKey = 3;
   static constexpr audio::SoundsManager::SoundKey
       kFeatureShowcaseProgressSoundKey = 4;
+  static constexpr audio::SoundsManager::SoundKey kAllSetSoundKey = 5;
 
   // Profile management flow controller that will run the FRE for `profile` in
   // `host`.
@@ -139,6 +131,8 @@ class FirstRunFlowController : public ProfileManagementFlowControllerImpl {
   void ToggleFeatureShowcaseAmbientSound(bool active);
 
   void PlayFeatureShowcaseProgressSound();
+
+  void PlayAllSetSound();
 
   bool AreEffectsEnabled() const;
 

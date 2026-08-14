@@ -19,6 +19,9 @@
 // clang-format off
 #define CHROME_COMMON_ACTION_IDS \
   /* Navigation commands */ \
+  E(kActionCut, IDC_CUT, actions) \
+  E(kActionCopy, IDC_COPY, actions) \
+  E(kActionPaste, IDC_PASTE, actions) \
   E(kActionBack, IDC_BACK, kChromeActionsStart, ChromeActionIds) \
   E(kActionReload, IDC_RELOAD) \
   E(kActionOpenCurrentUrl, IDC_OPEN_CURRENT_URL) \
@@ -32,6 +35,8 @@
   E(kActionCloseTab, IDC_CLOSE_TAB) \
   E(kActionSelectNextTab, IDC_SELECT_NEXT_TAB) \
   E(kActionSelectPreviousTab, IDC_SELECT_PREVIOUS_TAB) \
+  E(kActionCycleToNextTab, IDC_CYCLE_TO_NEXT_TAB) \
+  E(kActionCycleToPrevTab, IDC_CYCLE_TO_PREV_TAB) \
   E(kActionSelectTab0, IDC_SELECT_TAB_0) \
   E(kActionSelectTab1, IDC_SELECT_TAB_1) \
   E(kActionSelectTab2, IDC_SELECT_TAB_2) \
@@ -89,8 +94,8 @@
   E(kActionFocusPrevTabGroup, IDC_FOCUS_PREV_TAB_GROUP) \
   E(kActionCloseTabGroup, IDC_CLOSE_TAB_GROUP) \
   E(kActionGroupUngroupedTabs, IDC_GROUP_UNGROUPED_TABS) \
-  E(kActionCreateNewTabGroupTopLevel, IDC_CREATE_NEW_TAB_GROUP_TOP_LEVEL) \
   E(kActionAddNewTabRecentGroup, IDC_ADD_NEW_TAB_RECENT_GROUP) \
+  E(kActionFakePageActionForDebug, IDC_FAKE_PAGE_ACTION_FOR_DEBUG) \
   /* Page-manipulation commands that target a specified tab, which may not */ \
   /* be the active one. */ \
   E(kActionMuteTargetSite, IDC_MUTE_TARGET_SITE) \
@@ -107,6 +112,7 @@
   E(kActionCloseProfile, IDC_CLOSE_PROFILE) \
   E(kActionManageGoogleAccount, IDC_MANAGE_GOOGLE_ACCOUNT) \
   E(kActionShowSyncSettings, IDC_SHOW_SYNC_SETTINGS) \
+  E(kActionShowSyncPassphraseDialog, IDC_SHOW_SYNC_PASSPHRASE_DIALOG) \
   E(kActionTurnOnSync, IDC_TURN_ON_SYNC) \
   E(kActionShowSigninWhenPaused, IDC_SHOW_SIGNIN_WHEN_PAUSED) \
   E(kActionOpenGuestProfile, IDC_OPEN_GUEST_PROFILE) \
@@ -134,7 +140,14 @@
   E(kActionDevToolsConsole, IDC_DEV_TOOLS_CONSOLE) \
   E(kActionDevToolsDevices, IDC_DEV_TOOLS_DEVICES) \
   E(kActionFeedback, IDC_FEEDBACK) \
+  E(kActionReportUnsafeSite, IDC_REPORT_UNSAFE_SITE) \
   E(kActionShowBookmarkBar, IDC_SHOW_BOOKMARK_BAR) \
+  E(kActionBookmarkBarSubmenuAlwaysShow, \
+    IDC_BOOKMARK_BAR_SUBMENU_ALWAYS_SHOW) \
+  E(kActionBookmarkBarSubmenuAlwaysHide, \
+    IDC_BOOKMARK_BAR_SUBMENU_ALWAYS_HIDE) \
+  E(kActionBookmarkBarSubmenuOnlyOnNtp, \
+    IDC_BOOKMARK_BAR_SUBMENU_ONLY_ON_NTP) \
   E(kActionShowHistory, IDC_SHOW_HISTORY) \
   E(kActionShowBookmarkManager, IDC_SHOW_BOOKMARK_MANAGER) \
   E(kActionImportSettings, IDC_IMPORT_SETTINGS) \
@@ -146,6 +159,11 @@
   E(kActionHelpPageViaMenu, IDC_HELP_PAGE_VIA_MENU) \
   E(kActionShowAppMenu, IDC_SHOW_APP_MENU) \
   E(kActionManageExtensions, IDC_MANAGE_EXTENSIONS) \
+  E(kActionSafetyHubManageExtensions, IDC_SAFETY_HUB_MANAGE_EXTENSIONS) \
+  E(kActionFindExtensions, IDC_FIND_EXTENSIONS) \
+  E(kActionOpenSafetyHub, IDC_OPEN_SAFETY_HUB) \
+  E(kActionChromeEnterpriseReleaseNotes, \
+    IDC_CHROME_ENTERPRISE_RELEASE_NOTES) \
   E(kActionDevToolsInspect, IDC_DEV_TOOLS_INSPECT) \
   E(kActionUpgradeDialog, IDC_UPGRADE_DIALOG) \
   E(kActionSetBrowserAsDefault, IDC_SET_BROWSER_AS_DEFAULT) \
@@ -153,12 +171,11 @@
   E(kActionExtensionErrors, IDC_EXTENSION_ERRORS) \
   E(kActionShowAvatarMenu, IDC_SHOW_AVATAR_MENU) \
   E(kActionExtensionInstallErrorFirst, IDC_EXTENSION_INSTALL_ERROR_FIRST) \
-  E(kActionExtensionInstallErrorLast, IDC_EXTENSION_INSTALL_ERROR_LAST) \
   E(kActionToggleRequestTabletSite, IDC_TOGGLE_REQUEST_TABLET_SITE) \
   E(kActionDevToolsToggle, IDC_DEV_TOOLS_TOGGLE) \
-  E(kActionRecentTabsNoDeviceTabs, IDC_RECENT_TABS_NO_DEVICE_TABS) \
   E(kActionTakeScreenshot, IDC_TAKE_SCREENSHOT) \
   E(kActionToggleFullscreenToolbar, IDC_TOGGLE_FULLSCREEN_TOOLBAR) \
+  E(kActionCustomizeTouchBar, IDC_CUSTOMIZE_TOUCH_BAR) \
   E(kActionShowBetaForum, IDC_SHOW_BETA_FORUM) \
   E(kActionToggleJavascriptAppleEvents, IDC_TOGGLE_JAVASCRIPT_APPLE_EVENTS) \
   E(kActionInstallPwa, IDC_INSTALL_PWA) \
@@ -167,9 +184,15 @@
   E(kActionPasteAndGo, IDC_PASTE_AND_GO) \
   E(kActionShowFullUrls, IDC_SHOW_FULL_URLS) \
   E(kActionShowGoogleLensShortcut, IDC_SHOW_GOOGLE_LENS_SHORTCUT) \
+  E(kActionShowLensOverlayFromAppMenu, IDC_CONTENT_CONTEXT_LENS_OVERLAY) \
   E(kActionShowAiModeOmniboxButton, IDC_SHOW_AI_MODE_OMNIBOX_BUTTON) \
   E(kActionRecordReplay) \
   E(kActionShowSearchTools, IDC_SHOW_SEARCH_TOOLS) \
+  E(kActionSafetyHubShowPasswordCheckup, \
+    IDC_SAFETY_HUB_SHOW_PASSWORD_CHECKUP) \
+  E(kActionShowContactInfo, IDC_SHOW_CONTACT_INFO) \
+  E(kActionShowIdentityDocs, IDC_SHOW_IDENTITY_DOCS) \
+  E(kActionShowTravel, IDC_SHOW_TRAVEL) \
   E(kActionCaretBrowsingToggle, IDC_CARET_BROWSING_TOGGLE) \
   E(kActionChromeTips, IDC_CHROME_TIPS) \
   E(kActionChromeWhatsNew, IDC_CHROME_WHATS_NEW) \
@@ -187,42 +210,15 @@
   E(kActionIndigo) \
   E(kActionAnchoredContextualCue) \
   E(kActionMultistepFilter) \
-  /* Spell-check */ \
-  /* Insert any additional suggestions before _LAST; these have to be */ \
-  /* consecutive. */ \
-  E(kActionSpellcheckSuggestion0, IDC_SPELLCHECK_SUGGESTION_0) \
-  E(kActionSpellcheckSuggestion1, IDC_SPELLCHECK_SUGGESTION_1) \
-  E(kActionSpellcheckSuggestion2, IDC_SPELLCHECK_SUGGESTION_2) \
-  E(kActionSpellcheckSuggestion3, IDC_SPELLCHECK_SUGGESTION_3) \
-  E(kActionSpellcheckSuggestion4, IDC_SPELLCHECK_SUGGESTION_4) \
-  E(kActionSpellcheckSuggestionLast, IDC_SPELLCHECK_SUGGESTION_LAST) \
-  /* Language entries are inserted using autogenerated values between */ \
-  /* [_FIRST, _LAST). */ \
-  E(kActionSpellcheckLanguagesFirst, IDC_SPELLCHECK_LANGUAGES_FIRST) \
-  E(kActionSpellcheckLanguagesLast, IDC_SPELLCHECK_LANGUAGES_LAST) \
   E(kActionCheckSpellingWhileTyping, IDC_CHECK_SPELLING_WHILE_TYPING) \
   E(kActionSpellcheckAddToDictionary, IDC_SPELLCHECK_ADD_TO_DICTIONARY) \
   E(kActionSpellcheckMultiLingual, IDC_SPELLCHECK_MULTI_LINGUAL) \
   E(kActionSpellcheckRemoveFromDictionary, \
     IDC_SPELLCHECK_REMOVE_FROM_DICTIONARY) \
   /* Writing direction */ \
-  E(kActionWritingDirectionDefault, IDC_WRITING_DIRECTION_DEFAULT) \
   E(kActionWritingDirectionLtr, IDC_WRITING_DIRECTION_LTR) \
   E(kActionWritingDirectionRtl, IDC_WRITING_DIRECTION_RTL) \
-  /* Translate */ \
-  E(kActionTranslateOriginalLanguageBase, \
-    IDC_TRANSLATE_ORIGINAL_LANGUAGE_BASE) \
-  E(kActionTranslateTargetLanguageBase, IDC_TRANSLATE_TARGET_LANGUAGE_BASE) \
-  /* Identifiers for platform-specific items. */ \
-  /* Placed in a common file to help insure they never collide. */ \
   E(kActionHideApp, IDC_HIDE_APP) \
-  /* Range of command ids reserved for context menus added by web content */ \
-  E(kActionContentContextCustomFirst, IDC_CONTENT_CONTEXT_CUSTOM_FIRST) \
-  E(kActionContentContextCustomLast, IDC_CONTENT_CONTEXT_CUSTOM_LAST) \
-  /* Range of command ids reserved for context menus added by extensions */ \
-  E(kActionExtensionsContextCustomFirst, IDC_EXTENSIONS_CONTEXT_CUSTOM_FIRST) \
-  E(kActionExtensionsContextCustomLast, IDC_EXTENSIONS_CONTEXT_CUSTOM_LAST) \
-  /* Context menu items in the render view. */ \
   /* Link items. */ \
   E(kActionContentContextOpenLinkNewTab, IDC_CONTENT_CONTEXT_OPENLINKNEWTAB) \
   E(kActionContentContextOpenLinkNewWindow, \
@@ -232,7 +228,6 @@
   E(kActionContentContextSaveLinkAs, IDC_CONTENT_CONTEXT_SAVELINKAS) \
   E(kActionContentContextCopyLinkLocation, \
     IDC_CONTENT_CONTEXT_COPYLINKLOCATION) \
-  E(kActionContentContextOpenLinkWith, IDC_CONTENT_CONTEXT_OPENLINKWITH) \
   E(kActionContentContextCopyLinkText, IDC_CONTENT_CONTEXT_COPYLINKTEXT) \
   E(kActionContentContextOpenLinkInProfile, \
     IDC_CONTENT_CONTEXT_OPENLINKINPROFILE) \
@@ -286,12 +281,9 @@
   /* Other items. */ \
   E(kActionContentContextTranslate, IDC_CONTENT_CONTEXT_TRANSLATE) \
   E(kActionContentContextInspectElement, IDC_CONTENT_CONTEXT_INSPECTELEMENT) \
-  E(kActionContentContextViewPageInfo, IDC_CONTENT_CONTEXT_VIEWPAGEINFO) \
   E(kActionContentContextLanguageSettings, \
     IDC_CONTENT_CONTEXT_LANGUAGE_SETTINGS) \
   E(kActionContentContextLookUp, IDC_CONTENT_CONTEXT_LOOK_UP) \
-  E(kActionContentContextNoSpellingSuggestions, \
-    IDC_CONTENT_CONTEXT_NO_SPELLING_SUGGESTIONS) \
   E(kActionContentContextSpellingSuggestion, \
     IDC_CONTENT_CONTEXT_SPELLING_SUGGESTION) \
   E(kActionContentContextSpellingToggle, IDC_CONTENT_CONTEXT_SPELLING_TOGGLE) \
@@ -326,30 +318,11 @@
   /* Frame items. */ \
   E(kActionContentContextReloadFrame, IDC_CONTENT_CONTEXT_RELOADFRAME) \
   E(kActionContentContextViewFrameSource, IDC_CONTENT_CONTEXT_VIEWFRAMESOURCE) \
-  E(kActionContentContextViewFrameInfo, IDC_CONTENT_CONTEXT_VIEWFRAMEINFO) \
-  /* User Notes. */ \
-  E(kActionContentContextAddANote, IDC_CONTENT_CONTEXT_ADD_A_NOTE) \
   /* Search items. */ \
   E(kActionContentContextGoToUrl, IDC_CONTENT_CONTEXT_GOTOURL) \
   E(kActionContentContextSearchWebFor, IDC_CONTENT_CONTEXT_SEARCHWEBFOR) \
   E(kActionContentContextSearchWebForNewTab, \
     IDC_CONTENT_CONTEXT_SEARCHWEBFORNEWTAB) \
-  /* Open with items. */ \
-  E(kActionContentContextOpenWith1, IDC_CONTENT_CONTEXT_OPEN_WITH1) \
-  E(kActionContentContextOpenWith2, IDC_CONTENT_CONTEXT_OPEN_WITH2) \
-  E(kActionContentContextOpenWith3, IDC_CONTENT_CONTEXT_OPEN_WITH3) \
-  E(kActionContentContextOpenWith4, IDC_CONTENT_CONTEXT_OPEN_WITH4) \
-  E(kActionContentContextOpenWith5, IDC_CONTENT_CONTEXT_OPEN_WITH5) \
-  E(kActionContentContextOpenWith6, IDC_CONTENT_CONTEXT_OPEN_WITH6) \
-  E(kActionContentContextOpenWith7, IDC_CONTENT_CONTEXT_OPEN_WITH7) \
-  E(kActionContentContextOpenWith8, IDC_CONTENT_CONTEXT_OPEN_WITH8) \
-  E(kActionContentContextOpenWith9, IDC_CONTENT_CONTEXT_OPEN_WITH9) \
-  E(kActionContentContextOpenWith10, IDC_CONTENT_CONTEXT_OPEN_WITH10) \
-  E(kActionContentContextOpenWith11, IDC_CONTENT_CONTEXT_OPEN_WITH11) \
-  E(kActionContentContextOpenWith12, IDC_CONTENT_CONTEXT_OPEN_WITH12) \
-  E(kActionContentContextOpenWith13, IDC_CONTENT_CONTEXT_OPEN_WITH13) \
-  E(kActionContentContextOpenWith14, IDC_CONTENT_CONTEXT_OPEN_WITH14) \
-  E(kActionContentContextOpenWithLast, IDC_CONTENT_CONTEXT_OPEN_WITH_LAST) \
   /* Context menu items that provide fast access to input methods. */ \
   E(kActionContentContextEmoji, IDC_CONTENT_CONTEXT_EMOJI) \
   /* Context menu items in the bookmark bar */ \
@@ -380,15 +353,8 @@
   E(kActionBookmarkBarRemoveFromBookmarksBar, \
     IDC_BOOKMARK_BAR_REMOVE_FROM_BOOKMARKS_BAR) \
   /* Context menu items for Sharing */ \
-  E(kActionContentContextSharingClickToCallSingleDevice, \
-    IDC_CONTENT_CONTEXT_SHARING_CLICK_TO_CALL_SINGLE_DEVICE) \
-  E(kActionContentContextSharingClickToCallMultipleDevices, \
-    IDC_CONTENT_CONTEXT_SHARING_CLICK_TO_CALL_MULTIPLE_DEVICES) \
-  E(kActionContentContextSharingSharedClipboardSingleDevice, \
-    IDC_CONTENT_CONTEXT_SHARING_SHARED_CLIPBOARD_SINGLE_DEVICE) \
-  E(kActionContentContextSharingSharedClipboardMultipleDevices, \
-    IDC_CONTENT_CONTEXT_SHARING_SHARED_CLIPBOARD_MULTIPLE_DEVICES) \
   E(kActionContentContextGenerateQrCode, IDC_CONTENT_CONTEXT_GENERATE_QR_CODE) \
+  E(kActionContentContextSharingSubmenu, IDC_CONTENT_CONTEXT_SHARING_SUBMENU) \
   /* Context menu item to show the clipboard history menu */ \
   E(kActionContentPasteFromClipboard, IDC_CONTENT_PASTE_FROM_CLIPBOARD) \
   /* Context menu items in the status tray */ \
@@ -403,47 +369,24 @@
   /* Context menu items for media toolbar button */ \
   E(kActionMediaToolbarContextShowOtherSessions, \
     IDC_MEDIA_TOOLBAR_CONTEXT_SHOW_OTHER_SESSIONS) \
-  /* Context menu items for media stream status tray */ \
-  E(kActionMediaContextMediaStreamCaptureListFirst, \
-    IDC_MEDIA_CONTEXT_MEDIA_STREAM_CAPTURE_LIST_FIRST) \
-  E(kActionMediaContextMediaStreamCaptureListLast, \
-    IDC_MEDIA_CONTEXT_MEDIA_STREAM_CAPTURE_LIST_LAST) \
   /* Protocol handler menu entries */ \
-  E(kActionContentContextProtocolHandlerFirst, \
-    IDC_CONTENT_CONTEXT_PROTOCOL_HANDLER_FIRST) \
-  E(kActionContentContextProtocolHandlerLast, \
-    IDC_CONTENT_CONTEXT_PROTOCOL_HANDLER_LAST) \
   E(kActionContentContextProtocolHandlerSettings, \
     IDC_CONTENT_CONTEXT_PROTOCOL_HANDLER_SETTINGS) \
-  /* Open link in profile entries */ \
-  E(kActionOpenLinkInProfileFirst, IDC_OPEN_LINK_IN_PROFILE_FIRST) \
-  E(kActionOpenLinkInProfileLast, IDC_OPEN_LINK_IN_PROFILE_LAST) \
   /* Start smart text selection actions */ \
-  E(kActionContentContextStartSmartSelectionAction1, \
-    IDC_CONTENT_CONTEXT_START_SMART_SELECTION_ACTION1) \
-  E(kActionContentContextStartSmartSelectionAction2, \
-    IDC_CONTENT_CONTEXT_START_SMART_SELECTION_ACTION2) \
-  E(kActionContentContextStartSmartSelectionAction3, \
-    IDC_CONTENT_CONTEXT_START_SMART_SELECTION_ACTION3) \
-  E(kActionContentContextStartSmartSelectionAction4, \
-    IDC_CONTENT_CONTEXT_START_SMART_SELECTION_ACTION4) \
-  E(kActionContentContextStartSmartSelectionAction5, \
-    IDC_CONTENT_CONTEXT_START_SMART_SELECTION_ACTION5) \
-  E(kActionContentContextStartSmartSelectionActionLast, \
-    IDC_CONTENT_CONTEXT_START_SMART_SELECTION_ACTION_LAST) \
   /* Accessibility labels */ \
   E(kActionContentContextAccessibilityLabelsToggle, \
     IDC_CONTENT_CONTEXT_ACCESSIBILITY_LABELS_TOGGLE) \
-  E(kActionContentContextAccessibilityLabels, \
-    IDC_CONTENT_CONTEXT_ACCESSIBILITY_LABELS) \
   E(kActionContentContextAccessibilityLabelsToggleOnce, \
     IDC_CONTENT_CONTEXT_ACCESSIBILITY_LABELS_TOGGLE_ONCE) \
   /* Tab Search */ \
   E(kActionTabSearchClose, IDC_TAB_SEARCH_CLOSE) \
+  E(kActionTabSearchTogglePin, IDC_TAB_SEARCH_TOGGLE_PIN) \
   /* Views debug commands. */ \
   E(kActionDebugToggleTabletMode, IDC_DEBUG_TOGGLE_TABLET_MODE) \
   E(kActionDebugPrintViewTree, IDC_DEBUG_PRINT_VIEW_TREE) \
   E(kActionDebugPrintViewTreeDetails, IDC_DEBUG_PRINT_VIEW_TREE_DETAILS) \
+  E(kActionDebugPrintWindowHierarchy, IDC_DEBUG_PRINT_WINDOW_HIERARCHY) \
+  E(kActionDebugPrintLayerHierarchy, IDC_DEBUG_PRINT_LAYER_HIERARCHY) \
   /* Autofill feedback. */ \
   E(kActionContentContextAutofillFeedback, \
     IDC_CONTENT_CONTEXT_AUTOFILL_FEEDBACK) \
@@ -461,7 +404,6 @@
   E(kActionLiveCaption, IDC_LIVE_CAPTION) \
   /* Device API system tray icon */ \
   E(kActionDeviceSystemTrayIconFirst, IDC_DEVICE_SYSTEM_TRAY_ICON_FIRST) \
-  E(kActionDeviceSystemTrayIconLast, IDC_DEVICE_SYSTEM_TRAY_ICON_LAST) \
   /*Shows the Intent Picker bubble */ \
   E(kActionShowIntentPicker) \
   /*Shows the File System Access bubble */ \
@@ -473,9 +415,13 @@
   E(kActionCommercePriceInsights) \
   E(kActionCommerceDiscounts) \
   /*Vertical Tabs*/ \
-  E(kActionToggleCollapseVertical) \
-  /*Projects Panel*/ \
-  E(kActionToggleProjectsPanel) \
+  E(kActionToggleVerticalTabs, IDC_TOGGLE_VERTICAL_TABS) \
+  E(kActionToggleCollapseVertical, IDC_TOGGLE_VERTICAL_TABS_COLLAPSE) \
+  E(kActionToggleVerticalTabsExpandOnHover, \
+    IDC_TOGGLE_VERTICAL_TABS_EXPAND_ON_HOVER) \
+  E(kActionVerticalTabsSendFeedback, IDC_VERTICAL_TABS_SEND_FEEDBACK) \
+  /*Organizer Panel*/ \
+  E(kActionToggleOrganizerPanel) \
   /*Omnibox Context Menu*/       \
   E(kActionOmniboxContextAddImage, IDC_OMNIBOX_CONTEXT_ADD_IMAGE)\
   E(kActionOmniboxContextAddFile, IDC_OMNIBOX_CONTEXT_ADD_FILE)  \
@@ -489,14 +435,20 @@
 
 #if BUILDFLAG(IS_CHROMEOS)
 #define CHROME_PLATFORM_SPECIFIC_ACTION_IDS \
-  E(kToggleMultitaskMenu, IDC_TOGGLE_MULTITASK_MENU)
+  E(kToggleMultitaskMenu, IDC_TOGGLE_MULTITASK_MENU) \
+  E(kActionVisitDesktopOfLruUser2, IDC_VISIT_DESKTOP_OF_LRU_USER_2) \
+  E(kActionVisitDesktopOfLruUser3, IDC_VISIT_DESKTOP_OF_LRU_USER_3) \
+  E(kActionVisitDesktopOfLruUser4, IDC_VISIT_DESKTOP_OF_LRU_USER_4) \
+  E(kActionVisitDesktopOfLruUser5, IDC_VISIT_DESKTOP_OF_LRU_USER_5)
 #elif BUILDFLAG(IS_LINUX)
 #define CHROME_PLATFORM_SPECIFIC_ACTION_IDS \
   E(kUseSystemTitleBar, IDC_USE_SYSTEM_TITLE_BAR) \
   E(kRestoreWindow, IDC_RESTORE_WINDOW)
 #elif BUILDFLAG(IS_WIN)
 #define CHROME_PLATFORM_SPECIFIC_ACTION_IDS \
-  E(kRestoreWindow, IDC_RESTORE_WINDOW)
+  E(kRestoreWindow, IDC_RESTORE_WINDOW) \
+  E(kActionMoveWindow, IDC_MOVE_WINDOW) \
+  E(kActionSizeWindow, IDC_SIZE_WINDOW)
 #else
 #define CHROME_PLATFORM_SPECIFIC_ACTION_IDS
 #endif  // BUILDFLAG(IS_CHROMEOS)
@@ -521,15 +473,17 @@
   E(kActionSidePanelShowComments, IDC_SHOW_COMMENTS_SIDE_PANEL) \
   E(kActionSidePanelShowCustomizeChrome, IDC_SHOW_CUSTOMIZE_CHROME_SIDE_PANEL) \
   E(kActionSidePanelShowCustomizeChromeFooter) \
-  E(kActionSidePanelShowCustomizeChromeToolbar) \
+  E(kActionSidePanelShowCustomizeChromeToolbar, \
+    IDC_SHOW_CUSTOMIZE_CHROME_TOOLBAR) \
   E(kActionSidePanelShowFeed) \
   E(kActionSidePanelShowGlic) \
   E(kActionSidePanelShowContextualTasks) \
   E(kActionSidePanelShowHistoryCluster, IDC_SHOW_HISTORY_CLUSTERS_SIDE_PANEL) \
   E(kActionSidePanelShowHistory, IDC_SHOW_HISTORY_SIDE_PANEL) \
   E(kActionSidePanelShowLens) \
-  E(kActionSidePanelShowLensOverlayResults, IDC_CONTENT_CONTEXT_LENS_OVERLAY) \
+  E(kActionSidePanelShowLensOverlayResults) \
   E(kActionSidePanelShowReadAnything, IDC_SHOW_READING_MODE_SIDE_PANEL) \
+  E(kActionShowReadingModeKeyboard, IDC_SHOW_READING_MODE_KEYBOARD) \
   E(kActionSidePanelShowReadingList, IDC_READING_LIST_MENU_SHOW_UI) \
   E(kActionSidePanelShowSearchCompanion) \
   E(kActionSidePanelShowShoppingInsights) \
@@ -555,6 +509,10 @@
   E(kActionQrCodeGenerator, IDC_QRCODE_GENERATOR) \
   E(kActionRouteMedia, IDC_ROUTE_MEDIA) \
   E(kActionTaskManager, IDC_TASK_MANAGER) \
+  E(kActionTaskManagerAppMenu, IDC_TASK_MANAGER_APP_MENU) \
+  E(kActionTaskManagerShortcut, IDC_TASK_MANAGER_SHORTCUT) \
+  E(kActionTaskManagerContextMenu, IDC_TASK_MANAGER_CONTEXT_MENU) \
+  E(kActionTaskManagerMainMenu, IDC_TASK_MANAGER_MAIN_MENU) \
   E(kActionDevTools, IDC_DEV_TOOLS) \
   E(kActionShowChromeLabs, IDC_SHOW_CHROME_LABS) \
   E(kActionSaveCreditCardForPage, IDC_SAVE_CREDIT_CARD_FOR_PAGE) \
@@ -568,9 +526,24 @@
   E(kActionSplitTab, IDC_NEW_SPLIT_TAB) \
   E(kActionFederation) \
   E(kActionGlicContextualCueing) \
+  E(kActionGlicTogglePin, IDC_GLIC_TOGGLE_PIN) \
+  E(kActionOpenGlic, IDC_OPEN_GLIC) \
   E(kActionShowAiOverlayDialog) \
   E(kActionWebAuthnAmbientSignin) \
   E(kActionAutofillPayment) \
+
+#define SUBMENU_ACTION_IDS                                                     \
+  E(kActionMenuBookmarksSubmenu, kBookmarksMenuId)                             \
+  E(kActionMenuPasswordsAndAutofillSubmenu, kPasswordsAndAutofillMenuId)       \
+  E(kActionMenuReadingListSubmenu, kReadingListMenuId)                         \
+  E(kActionMenuZoomSubmenu, kZoomMenuId)                                       \
+  E(kActionMenuProfileSubmenu, kProfileMenuId)                                 \
+  E(kActionMenuFindAndEditSubmenu, kFindAndEditMenuId)                         \
+  E(kActionMenuSaveAndShareSubmenu, kSaveAndShareMenuId)                       \
+  E(kActionMenuHelpSubmenu, kHelpMenuId)                                       \
+  E(kActionMenuSavedTabGroupsSubmenu, kSavedTabGroupsMenuId)                   \
+  E(kActionMenuRecentTabsSubmenu, kRecentTabsMenuId)                           \
+  E(kActionMenuDeveloperSubmenu, kDeveloperMenuId)
 
 #define CHROME_ACTION_IDS \
     CHROME_COMMON_ACTION_IDS \
@@ -585,6 +558,7 @@ enum ChromeActionIds : actions::ActionId {
   CHROME_ACTION_IDS
   SIDE_PANEL_ACTION_IDS
   TOOLBAR_PINNABLE_ACTION_IDS
+  SUBMENU_ACTION_IDS
 
   kChromeActionsEnd,
 };

@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//components/signin/features.gni")
+
 source_set("history") {
   if (is_android) {
     sources = [ "history_ui_android.cc" ]
@@ -21,6 +23,9 @@ source_set("history") {
       "history_ui.cc",
       "navigation_handler.cc",
     ]
+    if (enable_dice_support) {
+      sources += [ "history_cross_device_signin_promo_handler.cc" ]
+    }
     public = [
       "browsing_history_handler.h",
       "foreign_session_handler.h",
@@ -29,6 +34,9 @@ source_set("history") {
       "history_ui.h",
       "navigation_handler.h",
     ]
+    if (enable_dice_support) {
+      public += [ "history_cross_device_signin_promo_handler.h" ]
+    }
     public_deps = [ "//chrome/browser:browser_public_dependencies" ]
     deps = [
       "//base",
@@ -48,6 +56,7 @@ source_set("history") {
       "//chrome/browser/supervised_user",
       "//chrome/browser/sync",
       "//chrome/browser/ui:browser_element_identifiers",
+      "//chrome/browser/ui:chrome_pages",
       "//chrome/browser/ui:ui_features",
       "//chrome/browser/ui:url_identity",
       "//chrome/browser/ui/browser_window",
@@ -55,6 +64,9 @@ source_set("history") {
       "//chrome/browser/ui/profiles",
       "//chrome/browser/ui/views/side_panel",
       "//chrome/browser/ui/webui:favicon_source",
+      "//chrome/browser/ui/webui:managed_ui_handler",
+      "//chrome/browser/ui/webui:metrics_handler",
+      "//chrome/browser/ui/webui:theme_source",
       "//chrome/browser/ui/webui:webui_util",
       "//chrome/browser/ui/webui/cr_components/history",
       "//chrome/browser/ui/webui/cr_components/history_clusters",
@@ -66,6 +78,7 @@ source_set("history") {
       "//chrome/browser/ui/webui/signin:signin_utils",
       "//chrome/browser/ui/webui/top_chrome",
       "//chrome/common",
+      "//components/critical_actions/core/browser",
       "//components/favicon_base",
       "//components/history/core/browser",
       "//components/history_clusters/core",

@@ -204,9 +204,12 @@ void ManifestBrokerState::OnManifestUpdated() {
   // for a manifest.
   auto factory = std::make_unique<ManifestSolutionFactory>(
       *manifest_monitor_.manifest(), model_broker_impl_, usage_tracker_,
-      service_client_, access_controller_,
+      service_client_, access_controller_, performance_classifier_,
       base::BindOnce(&ManifestBrokerState::OnInitComplete,
-                     weak_ptr_factory_.GetWeakPtr()));
+                     weak_ptr_factory_.GetWeakPtr()),
+      base::BindRepeating(
+          &ManifestBrokerState::NotifyObserversOfBrokerStateChange,
+          weak_ptr_factory_.GetWeakPtr()));
   if (!asset_manager_) {
     asset_manager_ = std::make_unique<ManifestAssetManager>(
         *local_state_, usage_tracker_, *delegate_, component_update_service_,
@@ -214,6 +217,7 @@ void ManifestBrokerState::OnManifestUpdated() {
   } else {
     asset_manager_->UpdateSolutionFactory(std::move(factory));
   }
+  NotifyObserversOfBrokerStateChange();
 }
 
 void ManifestBrokerState::OnInitComplete() {
@@ -232,6 +236,7 @@ void ManifestBrokerState::OnInitComplete() {
           category_config.validations());
     }
   }
+  NotifyObserversOfBrokerStateChange();
 }
 
 on_device_model::Capabilities
@@ -282,6 +287,7 @@ void ManifestBrokerState::OnServiceDisconnected(
 void ManifestBrokerState::GetStateInfo(
     mojom::ModelBrokerDebug::GetStateInfoCallback callback) {
   auto result = mojom::BrokerStateInfo::New();
+  result->is_asset_manager_initialized = asset_manager_ != nullptr;
   result->properties.push_back(
       mojom::BrokerPropertyInfo::New("Broker Type", "ManifestBrokerState"));
   base::Extend(result->properties,
@@ -326,12 +332,26 @@ void ManifestBrokerState::SetUseCaseRequested(const std::string& use_case,
 }
 
 void ManifestBrokerState::UninstallModels() {
-  asset_manager_->UninstallModels();
+  if (asset_manager_) {
+    asset_manager_->UninstallModels();
+    OnManifestUpdated();
+  }
 }
 
 void ManifestBrokerState::ResetModelCrashCount() {
   local_state_->SetInteger(
       model_execution::prefs::localstate::kOnDeviceModelCrashCount, 0);
+}
+
+void ManifestBrokerState::AddObserver(
+    mojo::PendingRemote<mojom::ModelBrokerDebugObserver> observer) {
+  debug_observers_.Add(std::move(observer));
+}
+
+void ManifestBrokerState::NotifyObserversOfBrokerStateChange() {
+  for (auto& observer : debug_observers_) {
+    observer->OnBrokerStateChanged();
+  }
 }
 
 }  // namespace optimization_guide

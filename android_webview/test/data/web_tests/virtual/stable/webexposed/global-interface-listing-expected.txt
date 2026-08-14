@@ -1652,6 +1652,7 @@ interface DelegatedInkTrailPresenter
     method constructor
     method updateInkTrailStartPoint
 interface DeviceMotionEvent : Event
+    static method requestPermission
     attribute @@toStringTag
     getter acceleration
     getter accelerationIncludingGravity
@@ -1671,6 +1672,7 @@ interface DeviceMotionEventRotationRate
     getter gamma
     method constructor
 interface DeviceOrientationEvent : Event
+    static method requestPermission
     attribute @@toStringTag
     getter absolute
     getter alpha
@@ -4728,14 +4730,18 @@ interface HTMLTemplateElement : HTMLElement
     getter shadowRootCustomElementRegistry
     getter shadowRootDelegatesFocus
     getter shadowRootMode
+    getter shadowRootReferenceTarget
     getter shadowRootSerializable
+    getter shadowRootSlotAssignment
     method constructor
     setter htmlFor
     setter shadowRootClonable
     setter shadowRootCustomElementRegistry
     setter shadowRootDelegatesFocus
     setter shadowRootMode
+    setter shadowRootReferenceTarget
     setter shadowRootSerializable
+    setter shadowRootSlotAssignment
 interface HTMLTextAreaElement : HTMLElement
     attribute @@toStringTag
     getter autocomplete
@@ -6103,6 +6109,7 @@ interface Navigator
     getter connection
     getter contacts
     getter cookieEnabled
+    getter cpuPerformance
     getter credentials
     getter deviceMemory
     getter doNotTrack
@@ -6652,6 +6659,9 @@ interface PerformanceMark : PerformanceEntry
     attribute @@toStringTag
     getter detail
     method constructor
+interface PerformanceMarkConditional : PerformanceEntry
+    attribute @@toStringTag
+    method constructor
 interface PerformanceMeasure : PerformanceEntry
     attribute @@toStringTag
     getter detail
@@ -6810,6 +6820,13 @@ interface Permissions
     attribute @@toStringTag
     method constructor
     method query
+interface PermissionsPolicy
+    attribute @@toStringTag
+    method allowedFeatures
+    method allowsFeature
+    method constructor
+    method features
+    method getAllowlistForFeature
 interface PictureInPictureEvent : Event
     attribute @@toStringTag
     getter pictureInPictureWindow
@@ -7195,7 +7212,7 @@ interface RadioNodeList : NodeList
     method @@iterator
     method constructor
     setter value
-interface Range : AbstractRange
+interface Range : NodeRange
     attribute @@toStringTag
     attribute END_TO_END
     attribute END_TO_START
@@ -8735,6 +8752,7 @@ interface ShadowRoot : DocumentFragment
     getter onslotchange
     getter pictureInPictureElement
     getter pointerLockElement
+    getter referenceTarget
     getter serializable
     getter slotAssignment
     getter styleSheets
@@ -8750,6 +8768,7 @@ interface ShadowRoot : DocumentFragment
     setter fullscreenElement
     setter innerHTML
     setter onslotchange
+    setter referenceTarget
 interface SnapEvent : Event
     attribute @@toStringTag
     getter snapTargetBlock
@@ -8860,7 +8879,7 @@ interface SpeechRecognitionEvent : Event
     getter resultIndex
     getter results
     method constructor
-interface StaticRange : AbstractRange
+interface StaticRange : NodeRange
     attribute @@toStringTag
     method constructor
 interface StereoPannerNode : AudioNode

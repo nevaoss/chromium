@@ -433,7 +433,7 @@ bool IsABookmarkNodeSectionForIdentifier(
     [self.consumer.tableViewModel addItem:signinPromoItem
                   toSectionWithIdentifier:BookmarksHomeSectionIdentifierPromo];
   } else {
-    if (!signinPromoViewMediator.invalidClosedOrNeverVisible) {
+    if (signinPromoViewMediator.isUsable) {
       // When the sign-in view is closed, the promo state changes, but
       // -[SigninPromoViewMediator signinPromoViewIsHidden] should not be
       // called.
@@ -825,8 +825,8 @@ bool IsABookmarkNodeSectionForIdentifier(
               IDS_IOS_BOOKMARKS_HOME_BULK_UPLOAD_SECTION_DESCRIPTION),
           "count", local_bookmarks_count, "email",
           _syncService->GetAccountInfo().email));
-  item.image = CustomSymbolWithPointSize(kCloudAndArrowUpSymbol,
-                                         kBatchUploadSymbolPointSize);
+  item.image =
+      SymbolWithPointSize(SymbolCloudAndArrowUp, kBatchUploadSymbolPointSize);
   item.enabled = NO;
   item.accessibilityIdentifier =
       kBookmarksHomeBatchUploadRecommendationItemIdentifier;

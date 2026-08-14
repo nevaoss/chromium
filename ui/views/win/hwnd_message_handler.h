@@ -117,6 +117,9 @@ class VIEWS_EXPORT HWNDMessageHandler : public gfx::WindowImpl,
 
   void DestroyHandler();
 
+  // Delete `this` if `in_wnd_proc_depth_` is 0.
+  void DeleteIfStackUnwound();
+
   virtual gfx::Rect GetWindowBoundsInScreen() const;
   virtual gfx::Rect GetClientAreaBoundsInScreen() const;
   virtual gfx::Rect GetRestoredBounds() const;
@@ -286,6 +289,8 @@ class VIEWS_EXPORT HWNDMessageHandler : public gfx::WindowImpl,
 
  private:
   friend class ::views::test::DesktopWindowTreeHostWinTestApi;
+
+  class ScopedWndProcDepth;
 
   using TouchIDs = std::set<DWORD>;
   enum class DwmFrameState { kOff, kOn };
@@ -811,8 +816,8 @@ class VIEWS_EXPORT HWNDMessageHandler : public gfx::WindowImpl,
   // glass. Defaults to false.
   bool dwm_transition_desired_;
 
-  // True if HandleWindowSizeChanging has been called in the delegate, but not
-  // HandleClientSizeChanged.
+  // True if a size-changing WM_WINDOWPOSCHANGING has been observed but the
+  // corresponding client size change hasn't been processed yet.
   bool sent_window_size_changing_;
 
   // This is used to keep track of whether a WM_WINDOWPOSCHANGED has
@@ -926,6 +931,9 @@ class VIEWS_EXPORT HWNDMessageHandler : public gfx::WindowImpl,
       observation_{this};
 
   bool delete_pending_ = false;
+
+  // Tracks how many instances of OnWndProc are on the stack.
+  int in_wnd_proc_depth_ = 0;
 
   // Returns true if the message handler has been destroyed, and CHECKs that
   // kDeferHWNDMessageHandlerDestruction is not enabled in that case.

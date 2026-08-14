@@ -517,6 +517,11 @@ bool ContainsMultiOpus(String sdp) {
   return sdp.contains("multiopus");
 }
 
+bool ContainsSctpSnap(String sdp) {
+  // SNAP (draft-hancke-tsvwg-snap) is signaled via the a=sctp-init: attribute.
+  return sdp.contains("\na=sctp-init:");
+}
+
 // Keep in sync with tools/metrics/histograms/metadata/web_rtc/enums.xml
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
@@ -1003,7 +1008,7 @@ DOMException* RTCPeerConnection::checkSdpForStateErrors(
                             WebFeature::kRTCLocalSdpModificationIceUfragPwd);
         }
         if (ContainsOpusStereo(parsed_sdp.sdp()) &&
-            !ContainsOpusStereo(last_offer_)) {
+            !ContainsOpusStereo(last_answer_)) {
           UseCounter::Count(context,
                             WebFeature::kRTCLocalSdpModificationOpusStereo);
         }
@@ -2026,6 +2031,15 @@ std::optional<webrtc::RtpTransceiverInit> ValidateRtpTransceiverInit(
     ExceptionState& exception_state,
     const RTCRtpTransceiverInit* init,
     const String kind) {
+  if (init->hasSendEncodings()) {
+    for (const auto& encoding : init->sendEncodings()) {
+      if (encoding->hasMaxBitrate() && encoding->maxBitrate() == 0) {
+        exception_state.ThrowRangeError("maxBitrate must be greater than 0.");
+        return std::nullopt;
+      }
+    }
+  }
+
   auto webrtc_init = ToRtpTransceiverInit(execution_context, init, kind);
   // Validate sendEncodings.
   for (auto& encoding : webrtc_init.send_encodings) {
@@ -3050,6 +3064,20 @@ void RTCPeerConnection::ChangePeerConnectionState(
         Event::Create(event_type_names::kConnectionstatechange),
         BindOnce(&RTCPeerConnection::SetPeerConnectionState,
                  WrapPersistent(this), peer_connection_state));
+  }
+  // The first time the connection gets established iѕ used to trigger
+  // some measurements.
+  if (peer_connection_state ==
+          webrtc::PeerConnectionInterface::PeerConnectionState::kConnected &&
+      !was_ever_connected_) {
+    was_ever_connected_ = true;
+    RTCSessionDescription* local = currentLocalDescription();
+    RTCSessionDescription* remote = currentRemoteDescription();
+    if (local && remote && ContainsSctpSnap(local->sdp()) &&
+        ContainsSctpSnap(remote->sdp())) {
+      UseCounter::Count(GetExecutionContext(),
+                        WebFeature::kRTCSctpSnapNegotiated);
+    }
   }
 }
 

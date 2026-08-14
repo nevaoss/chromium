@@ -273,6 +273,7 @@ class COMPONENT_EXPORT(OZONE) OzonePlatform {
   // Some tests may skip based on the platform name.
   static std::string GetPlatformNameForTest();
   static bool RunningOnWaylandForTest();
+  static bool RunningOnX11ForTest();
 
   ///@name IS_NEVA_APPRUNTIME
   ///@{

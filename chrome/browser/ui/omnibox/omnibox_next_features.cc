@@ -19,6 +19,7 @@
 #include "components/contextual_search/contextual_search_session_handle.h"
 #include "components/omnibox/browser/aim_eligibility_service.h"
 #include "components/omnibox/browser/omnibox_field_trial.h"
+#include "components/omnibox/common/omnibox_features.h"
 #include "ui/base/l10n/l10n_util.h"
 
 namespace {
@@ -96,12 +97,11 @@ BASE_FEATURE(kOmniboxAnimatedCaret, ENABLED);
 // If enabled, enables energy effect in the omnibox.
 BASE_FEATURE(kEnergyEffectInOmnibox, ENABLED);
 
-// If enabled, the "Ask Google about this page" action will route to cobrowse.
-BASE_FEATURE(kWebUIOmniboxAskGAboutThisPage, DISABLED);
-
-
 // If enabled, the Ai Mode button will be dynamically shown in the omnibox.
 BASE_FEATURE(kWebUIOmniboxDynamicAiModeButton, DISABLED);
+
+// If enabled, prevents closing the AIM popup while file chooser is open.
+BASE_FEATURE(kOmniboxKeepOpenOnFileSelection, ENABLED);
 
 // Decodes a proto object from its serialized Base64 string representation.
 // Returns true if decoding and parsing succeed, false otherwise.
@@ -234,6 +234,12 @@ bool IsWebUIOmniboxPopupEnabled() {
 
 bool IsWebUIOmniboxFullPopupEnabled() {
   return base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxFullPopup);
+}
+
+bool ShouldUseWebUIOmniboxFullHandler() {
+  return IsWebUIOmniboxFullPopupEnabled() &&
+         base::FeatureList::IsEnabled(
+             omnibox::kWebUISearchboxWithoutModelController);
 }
 
 bool IsWebUIOmniboxInBrowserViewEnabled() {
@@ -372,12 +378,10 @@ const base::FeatureParam<bool> kWebUIOmniboxFullPopupUseBrowserView{
     &kWebUIOmniboxFullPopup, "Omnibox_UseBrowserView", false};
 const base::FeatureParam<bool> kWebUIOmniboxFullPopupMultiline{
     &kWebUIOmniboxFullPopup, "Omnibox_Multiline", false};
-
-const base::FeatureParam<bool> kAskGCoBrowse{
-    &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGCoBrowse", false};
-const base::FeatureParam<bool> kAskGCoBrowseWithVisualSelection{
-    &kWebUIOmniboxAskGAboutThisPage,
-    "Omnibox_AskGCoBrowseWithVisualSelection", false};
+const base::FeatureParam<bool> kWebUIOmniboxDynamicAnimation{
+    &kWebUIOmniboxDynamicAiModeButton, "Omnibox_DynamicAnimation", false};
+const base::FeatureParam<bool> kWebUIOmniboxDynamicColorScheme{
+    &kWebUIOmniboxDynamicAiModeButton, "Omnibox_DynamicColorScheme", false};
 
 FeatureConfig::FeatureConfig() : config(GetNTPComposeboxConfig()) {}
 

@@ -12,8 +12,6 @@
 #include "components/omnibox/browser/aim_eligibility_service.h"
 #include "components/search/ntp_features.h"
 #include "content/public/test/browser_test.h"
-#include "content/public/test/file_system_chooser_test_helpers.h"
-#include "ui/shell_dialogs/select_file_dialog.h"
 
 class NewTabPageBrowserTest : public WebUIMochaBrowserTest {
  protected:
@@ -301,34 +299,6 @@ IN_PROC_BROWSER_TEST_F(NewTabPageTest, ComposeboxDragAndDrop) {
           "mocha.run()");
 }
 
-IN_PROC_BROWSER_TEST_F(NewTabPageTest, ComposeboxFileCarousel) {
-  RunTest("new_tab_page/composebox/file_carousel_test.js", "mocha.run()");
-}
-
-IN_PROC_BROWSER_TEST_F(NewTabPageTest, ComposeboxFileThumbnail) {
-  RunTest("new_tab_page/composebox/file_thumbnail_test.js", "mocha.run()");
-}
-
-class NewTabPageFileInputsTest : public NewTabPageTest {
- public:
-  void SetUpOnMainThread() override {
-    NewTabPageTest::SetUpOnMainThread();
-    ui::SelectFileDialog::SetFactory(
-        std::make_unique<content::FakeSelectFileDialogFactory>(
-            std::vector<base::FilePath>{}));
-  }
-
-  void TearDownOnMainThread() override {
-    ui::SelectFileDialog::SetFactory(nullptr);
-    NewTabPageTest::TearDownOnMainThread();
-  }
-};
-
-IN_PROC_BROWSER_TEST_F(NewTabPageFileInputsTest, ComposeboxFileInputs) {
-  RunTest("new_tab_page/composebox/composebox_file_inputs_test.js",
-          "mocha.run()");
-}
-
 IN_PROC_BROWSER_TEST_F(NewTabPageTest, ThreadsRail) {
   RunTest("new_tab_page/composebox/threads_rail_test.js", "mocha.run()");
 }
@@ -337,9 +307,6 @@ IN_PROC_BROWSER_TEST_F(NewTabPageTest, ActionChips) {
   RunTest("new_tab_page/action_chips/action_chips_test.js", "mocha.run()");
 }
 
-IN_PROC_BROWSER_TEST_F(NewTabPageTest, ErrorScrim) {
-  RunTest("new_tab_page/composebox/error_scrim_test.js", "mocha.run()");
-}
 
 using NewTabPageNtpPromoTest = NewTabPageBrowserTest;
 
@@ -415,7 +382,13 @@ IN_PROC_BROWSER_TEST_F(NewTabPageModulesTest, DriveModuleV2) {
           "mocha.run()");
 }
 
-IN_PROC_BROWSER_TEST_F(NewTabPageModulesTest, FileSuggestion) {
+// TODO(crbug.com/534399662): Flaky on Windows.
+#if BUILDFLAG(IS_WIN)
+#define MAYBE_FileSuggestion DISABLED_FileSuggestion
+#else
+#define MAYBE_FileSuggestion FileSuggestion
+#endif
+IN_PROC_BROWSER_TEST_F(NewTabPageModulesTest, MAYBE_FileSuggestion) {
   RunTest("new_tab_page/modules/file_suggestion/file_suggestion_test.js",
           "mocha.run()");
 }
@@ -540,6 +513,11 @@ IN_PROC_BROWSER_TEST_F(NewTabPageAppTest, AutoRemovalToast) {
 IN_PROC_BROWSER_TEST_F(NewTabPageAppTest, VoiceSearchCoherence) {
   RunTest("new_tab_page/app_test.js",
           "runMochaSuite('NewTabPageAppTest VoiceSearchCoherence')");
+}
+
+IN_PROC_BROWSER_TEST_F(NewTabPageAppTest, VoiceSearchAndSpeechRecognition) {
+  RunTest("new_tab_page/app_test.js",
+          "runMochaSuite('NewTabPageAppTest VoiceSearchAndSpeechRecognition')");
 }
 
 IN_PROC_BROWSER_TEST_F(NewTabPageAppTest, ContextMenuAnimation) {

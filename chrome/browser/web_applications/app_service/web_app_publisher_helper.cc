@@ -42,6 +42,7 @@
 #include "base/strings/string_util.h"
 #include "base/strings/to_string.h"
 #include "base/strings/utf_string_conversions.h"
+#include "base/task/sequenced_task_runner.h"
 #include "base/time/time.h"
 #include "base/values.h"
 #include "build/build_config.h"
@@ -60,6 +61,7 @@
 #include "chrome/browser/web_applications/app_service/publisher_helper.h"
 #include "chrome/browser/web_applications/commands/compute_app_size_command.h"
 #include "chrome/browser/web_applications/commands/computed_app_size.h"
+#include "chrome/browser/web_applications/link_capturing_features.h"
 #include "chrome/browser/web_applications/locks/app_lock.h"
 #include "chrome/browser/web_applications/mojom/user_display_mode.mojom-shared.h"
 #include "chrome/browser/web_applications/os_integration/os_integration_manager.h"
@@ -134,6 +136,7 @@
 #include "components/app_restore/full_restore_utils.h"
 #include "components/services/app_service/public/cpp/app_registry_cache.h"
 #include "components/services/app_service/public/cpp/preferred_apps_list_handle.h"
+#include "components/services/app_service/public/cpp/types_util.h"
 #include "components/sessions/core/session_id.h"
 #include "ui/message_center/public/cpp/notification.h"
 #include "ui/message_center/public/cpp/notifier_id.h"
@@ -500,6 +503,9 @@ bool AppHasSupportedLinks(apps::AppServiceProxy* proxy,
   bool has_intent_filters = false;
   proxy->AppRegistryCache().ForOneApp(
       app_id, [&](const apps::AppUpdate& update) {
+        if (!apps_util::IsInstalled(update.Readiness())) {
+          return;
+        }
         for (auto& intent_filter : update.IntentFilters()) {
           if (apps_util::IsSupportedLinkForApp(app_id, intent_filter)) {
             has_intent_filters = true;
@@ -536,7 +542,7 @@ MigrationState GetTargetMigrationState() {
   if (!base::FeatureList::IsEnabled(::features::kPwaNavigationCapturing)) {
     return MigrationState::kDefaultOff;
   }
-  switch (::features::kNavigationCapturingDefaultState.Get()) {
+  switch (apps::features::GetNavigationCapturingDefaultState()) {
     case ::features::CapturingState::kReimplDefaultOn:
       return MigrationState::kDefaultOn;
     case ::features::CapturingState::kReimplOnViaClientMode:
@@ -903,6 +909,14 @@ apps::AppPtr WebAppPublisherHelper::ConvertUninstalledWebApp(
     webapps::WebappUninstallSource uninstall_source) {
   auto app = std::make_unique<apps::App>(apps::AppType::kWeb, app_id);
   app->readiness = ConvertWebappUninstallSourceToReadiness(uninstall_source);
+
+  // As per the comment for `App::intent_filters`, setting this to an empty
+  // vector "resets" the intent filters for this app instead of assigning its
+  // default value, which leads to incorrect behavior when the app is
+  // reinstalled, as AppService treats this app as if it used to capture links
+  // before, and prevents it from being set as the preferred app for capturing
+  // links anymore.
+  app->intent_filters = apps::IntentFilters();
 
   return app;
 }
@@ -1451,33 +1465,34 @@ void WebAppPublisherHelper::MaybeSetSupportedLinksPreference(
     return;
   }
 
-  // PWAs
-  if (base::FeatureList::IsEnabled(features::kPwaNavigationCapturing)) {
-    bool should_capture_links = false;
-    switch (features::kNavigationCapturingDefaultState.Get()) {
-      case features::CapturingState::kReimplDefaultOn:
-        should_capture_links = true;
-        break;
-      case features::CapturingState::kReimplOnViaClientMode:
-        should_capture_links = web_app->launch_handler()
-                                   .value_or(LaunchHandler())
-                                   .client_mode_valid_and_specified();
-        break;
-      default:
-        break;
-    }
+  if (!apps::features::IsNavigationCapturingOnByDefault()) {
+    return;
+  }
 
-    if (!should_capture_links) {
-      return;
-    }
+  bool should_capture_links = false;
+  switch (apps::features::GetNavigationCapturingDefaultState()) {
+    case features::CapturingState::kReimplDefaultOn:
+      should_capture_links = true;
+      break;
+    case features::CapturingState::kReimplOnViaClientMode:
+      should_capture_links = web_app->launch_handler()
+                                 .value_or(LaunchHandler())
+                                 .client_mode_valid_and_specified();
+      break;
+    default:
+      break;
+  }
 
-    if (AreOtherAppsPreferredForLinks(proxy, app_id, intent_filters)) {
-      return;
-    }
-    if (proxy->PreferredAppsList().IsPreferredAppForSupportedLinks(app_id) ||
-        !app_had_supported_links) {
-      proxy->SetSupportedLinksPreference(app_id);
-    }
+  if (!should_capture_links) {
+    return;
+  }
+
+  if (AreOtherAppsPreferredForLinks(proxy, app_id, intent_filters)) {
+    return;
+  }
+  if (proxy->PreferredAppsList().IsPreferredAppForSupportedLinks(app_id) ||
+      !app_had_supported_links) {
+    proxy->SetSupportedLinksPreference(app_id);
   }
 }
 #endif  // BUILDFLAG(IS_CHROMEOS)
@@ -2362,7 +2377,11 @@ void WebAppPublisherHelper::MaybeMigrateLinkCapturingPreferences() {
 }
 
 void WebAppPublisherHelper::OnPreferredAppsListInitialized() {
-  MaybeMigrateLinkCapturingPreferences();
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE,
+      base::BindOnce(
+          &WebAppPublisherHelper::MaybeMigrateLinkCapturingPreferences,
+          weak_ptr_factory_.GetWeakPtr()));
 }
 
 void WebAppPublisherHelper::OnPreferredAppChanged(const std::string& app_id,

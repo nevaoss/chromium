@@ -20,6 +20,8 @@
 #include "components/optimization_guide/core/hints/optimization_guide_decision.h"
 #include "components/viz/common/surfaces/tracked_element_rects.h"
 #include "content/public/browser/tracked_element_observer.h"
+#include "mojo/public/cpp/bindings/remote.h"
+#include "third_party/blink/public/mojom/document_metadata/document_metadata.mojom.h"
 #include "ui/base/unowned_user_data/scoped_unowned_user_data.h"
 #include "ui/base/unowned_user_data/unowned_user_data_host.h"
 #include "ui/gfx/geometry/rect.h"
@@ -61,10 +63,29 @@ enum class IndigoTransformationResult {
   kRefreshTokenInPersistentErrorState = 11,
   kManagedDomain = 12,
   kGlicDisabledForProfile = 13,
-  kMaxValue = kGlicDisabledForProfile,
+  kEnterpriseDisallowed = 14,
+  kPrimaryImageDisconnected = 15,
+  kEmptyPrimaryImageSize = 16,
+  kPrimaryImageTooSmall = 17,
+  kNoPrimaryImageFound = 18,
+  kPrimaryImageReplacementCreationFailed = 19,
+  kMaxValue = kPrimaryImageReplacementCreationFailed,
 };
 
 // LINT.ThenChange(//tools/metrics/histograms/metadata/indigo/enums.xml:IndigoTransformationResult)
+
+// Trigger sources for the Indigo page action.
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+// LINT.IfChange(IndigoTriggerSource)
+enum class IndigoTriggerSource {
+  kUnknown = 0,
+  kForced = 1,
+  kOptimizationGuide = 2,
+  kLocalProductKeywordHeuristic = 3,
+  kMaxValue = kLocalProductKeywordHeuristic,
+};
+// LINT.ThenChange(//tools/metrics/histograms/metadata/indigo/enums.xml:IndigoTriggerSource)
 
 enum class ResetType {
   kResetReplacementsAndContentScript,
@@ -109,6 +130,7 @@ class IndigoPageActionController : public tabs::ContentsObservingTabFeature,
   static IndigoPageActionController* From(tabs::TabInterface* tab);
 
   void InvokeAction(EntryPoint entry_point);
+  void DeleteOriginalPhoto();
 
   // Resets all image replacements and hides the toolbar.
   void Reset(ResetType reset_type);
@@ -124,7 +146,9 @@ class IndigoPageActionController : public tabs::ContentsObservingTabFeature,
   }
 
   // Shows a toast notification informing the user that an error has occurred.
-  void ShowInvocationErrorToast();
+  // Note: `result` is only used for metrics purposes and doesn't affect the
+  // error toast displayed.
+  void ShowInvocationErrorToast(IndigoTransformationResult result);
 
   base::WeakPtr<IndigoPageActionController> GetWeakPtr() {
     return weak_ptr_factory_.GetWeakPtr();
@@ -136,10 +160,16 @@ class IndigoPageActionController : public tabs::ContentsObservingTabFeature,
   // content::WebContentsObserver:
   void DidFinishNavigation(
       content::NavigationHandle* navigation_handle) override;
+  void DocumentOnLoadCompletedInPrimaryMainFrame() override;
   void RenderViewHostChanged(content::RenderViewHost* old_host,
                              content::RenderViewHost* new_host) override;
   void FrameSizeChanged(content::RenderFrameHost* render_frame_host,
                         const gfx::Size& frame_size) override;
+
+  // tabs::ContentsObservingTabFeature:
+  void OnDiscardContents(tabs::TabInterface* tab,
+                         content::WebContents* old_contents,
+                         content::WebContents* new_contents) override;
 
   // content::TrackedElementObserver:
   void OnTrackedElementRectsChanged(const viz::TrackedElementRects& rects,
@@ -181,8 +211,15 @@ class IndigoPageActionController : public tabs::ContentsObservingTabFeature,
   };
 
  private:
+  // Resets the page triggering and classification state.
+  void ResetTriggeringState();
+
   // Updates the visibility and states of all entry points.
   void UpdateEntryPointsState();
+
+  // Determines the source that triggered the Indigo page action, if it should
+  // be shown. Returns std::nullopt if the page action should not be shown.
+  std::optional<IndigoTriggerSource> DetermineTriggerSource() const;
 
   // Shows the onboarding dialog with the appropriate URL based on disposition.
   void ShowOnboardingDialog(OnboardingDisposition disposition,
@@ -281,8 +318,20 @@ class IndigoPageActionController : public tabs::ContentsObservingTabFeature,
   void RegisterObserverWithHost(content::RenderWidgetHost* host);
   void UnregisterObserverFromHost(content::RenderWidgetHost* host);
   void ClearTrackedBoundsAndHideToolbar();
+  void TriggerMetadataClassification();
+  void OnProductClassified(blink::mojom::ProductClassificationResultPtr result);
 
   raw_ptr<content::RenderWidgetHost> current_host_ = nullptr;
+
+  // True if the metadata heuristic determined this page has an allowed
+  // category.
+  bool page_has_allowed_category_by_heuristic_ = false;
+
+  // Remote to the Blink-side metadata extraction service.
+  mojo::Remote<blink::mojom::DocumentMetadata> metadata_remote_;
+
+  // True if a delete original photo request is currently in flight.
+  bool delete_photo_in_flight_ = false;
 
   // Weak pointer factory used for the invocation flow. This is invalidated on
   // navigation to ensure that if a user starts an action (like onboarding) and

@@ -112,7 +112,7 @@ public class TabCollectionTabModelImplTest {
                 () -> {
                     TabModelUtils.runOnTabStateInitialized(
                             mTabModelSelector,
-                            (unused) -> {
+                            _ -> {
                                 helper.notifyCalled();
                             });
                 });
@@ -3723,7 +3723,8 @@ public class TabCollectionTabModelImplTest {
 
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
-                    mCollectionModel.closeTabs(TabClosureParams.closeTabs(tabsToClose).allowUndo(true).build());
+                    mCollectionModel.closeTabs(
+                            TabClosureParams.closeTabs(tabsToClose).allowUndo(true).build());
                     assertTrue(mCollectionModel.isClosurePending(tab0.getId()));
                     assertTrue(mCollectionModel.isClosurePending(tab1.getId()));
                 });

@@ -74,7 +74,6 @@ class MockSearchboxPage : public searchbox::mojom::Page {
                searchbox::mojom::SelectionStep));
   MOCK_METHOD(void, OpenCurrentSelection, (WindowOpenDisposition));
   MOCK_METHOD(void, SetAimButtonVisible, (bool visible));
-  MOCK_METHOD(void, SetKeywordSelected, (bool is_keyword_selected), (override));
   MOCK_METHOD(void, SetInputText, (const std::string& input_text));
   MOCK_METHOD(void,
               SetThumbnail,
@@ -95,9 +94,13 @@ class MockSearchboxPage : public searchbox::mojom::Page {
                searchbox::mojom::SelectedFileInfoPtr));
   MOCK_METHOD(void,
               UpdateAutoSuggestedTabContext,
-              (searchbox::mojom::TabInfoPtr));
+              (searchbox::mojom::TabInfoPtr,
+               const std::optional<std::string>&));
   MOCK_METHOD(void, UpdateLensSearchEligibility, (bool eligible), (override));
   MOCK_METHOD(void, UpdateAimPopupEligibility, (bool eligible), (override));
+#if !BUILDFLAG(IS_ANDROID)
+  MOCK_METHOD(void, UpdateSmartTabSharingActive, (bool active), (override));
+#endif
   MOCK_METHOD(void, UpdateContentSharingPolicy, (bool enabled), (override));
   MOCK_METHOD(void,
               OnPermissionPromptChanged,
@@ -129,6 +132,7 @@ class MockOmniboxPopupPage : public omnibox_popup::mojom::Page {
               SetInputState,
               (omnibox_popup::mojom::OmniboxInputStatePtr state),
               (override));
+  MOCK_METHOD(void, SetFocus, (bool is_focused), (override));
 };
 #endif
 

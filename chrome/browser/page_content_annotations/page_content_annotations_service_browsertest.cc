@@ -43,7 +43,7 @@
 #include "components/history/core/browser/history_service.h"
 #include "components/history/core/test/history_service_test_util.h"
 #include "components/network_session_configurator/common/network_switches.h"
-#include "components/optimization_guide/core/delivery/test_model_info_builder.h"
+#include "components/optimization_guide/core/delivery/model_info.h"
 #include "components/optimization_guide/core/inference/execution_status.h"
 #include "components/optimization_guide/core/optimization_guide_enums.h"
 #include "components/optimization_guide/core/optimization_guide_features.h"
@@ -148,6 +148,12 @@ class HangingPdfListener : public pdf::mojom::PdfListener {
   void HasMeaningfulText(HasMeaningfulTextCallback callback) override {
     std::move(callback).Run(true);
   }
+  void HasJavaScript(HasJavaScriptCallback callback) override {
+    std::move(callback).Run(false);
+  }
+  void IsPasswordProtected(IsPasswordProtectedCallback callback) override {
+    std::move(callback).Run(false);
+  }
 #if BUILDFLAG(ENABLE_PDF_SAVE_TO_DRIVE)
   void GetSaveDataBufferHandlerForDrive(
       pdf::mojom::SaveRequestType request_type,
@@ -229,7 +235,7 @@ class PageContentAnnotationsServiceDisabledBrowserTest
 IN_PROC_BROWSER_TEST_F(PageContentAnnotationsServiceDisabledBrowserTest,
                        KeyedServiceEnabledButFeaturesDisabled) {
   EXPECT_EQ(nullptr, PageContentAnnotationsServiceFactory::GetForProfile(
-                         browser()->profile()));
+                         browser()->GetProfile()));
 }
 
 class PageContentAnnotationsServiceKioskModeBrowserTest
@@ -251,7 +257,7 @@ class PageContentAnnotationsServiceKioskModeBrowserTest
 IN_PROC_BROWSER_TEST_F(PageContentAnnotationsServiceKioskModeBrowserTest,
                        DisabledInKioskMode) {
   EXPECT_EQ(nullptr, PageContentAnnotationsServiceFactory::GetForProfile(
-                         browser()->profile()));
+                         browser()->GetProfile()));
 }
 
 #if BUILDFLAG(IS_CHROMEOS)
@@ -280,7 +286,7 @@ class PageContentAnnotationsServiceEphemeralProfileBrowserTest
 IN_PROC_BROWSER_TEST_F(PageContentAnnotationsServiceEphemeralProfileBrowserTest,
                        EphemeralProfileDoesNotInstantiateService) {
   EXPECT_EQ(nullptr, PageContentAnnotationsServiceFactory::GetForProfile(
-                         browser()->profile()));
+                         browser()->GetProfile()));
 }
 #endif
 
@@ -300,7 +306,7 @@ class PageContentAnnotationsServiceValidationBrowserTest
 IN_PROC_BROWSER_TEST_F(PageContentAnnotationsServiceValidationBrowserTest,
                        ValidationEnablesService) {
   EXPECT_NE(nullptr, PageContentAnnotationsServiceFactory::GetForProfile(
-                         browser()->profile()));
+                         browser()->GetProfile()));
 }
 
 class PageContentAnnotationsServiceBrowserTest : public InProcessBrowserTest {
@@ -323,7 +329,7 @@ class PageContentAnnotationsServiceBrowserTest : public InProcessBrowserTest {
 
   PageContentAnnotationsService* service() {
     return PageContentAnnotationsServiceFactory::GetForProfile(
-        browser()->profile());
+        browser()->GetProfile());
   }
 
   void SetUpOnMainThread() override {
@@ -352,12 +358,12 @@ class PageContentAnnotationsServiceBrowserTest : public InProcessBrowserTest {
 
     base::HistogramTester histogram_tester;
 
-    OptimizationGuideKeyedServiceFactory::GetForProfile(browser()->profile())
+    OptimizationGuideKeyedServiceFactory::GetForProfile(browser()->GetProfile())
         ->OverrideTargetModelForTesting(
             optimization_guide::proto::OPTIMIZATION_TARGET_PAGE_VISIBILITY,
-            optimization_guide::TestModelInfoBuilder()
-                .SetModelFilePath(model_file_path)
-                .Build());
+            optimization_guide::ModelInfo{
+                .model_file_path = model_file_path,
+            });
 
     optimization_guide::RetryForHistogramUntilCountReached(
         &histogram_tester,
@@ -368,7 +374,7 @@ class PageContentAnnotationsServiceBrowserTest : public InProcessBrowserTest {
       const GURL& url) {
     history::HistoryService* history_service =
         HistoryServiceFactory::GetForProfile(
-            browser()->profile(), ServiceAccessType::IMPLICIT_ACCESS);
+            browser()->GetProfile(), ServiceAccessType::IMPLICIT_ACCESS);
     if (!history_service) {
       return std::nullopt;
     }
@@ -417,7 +423,7 @@ class PageContentAnnotationsServiceBrowserTest : public InProcessBrowserTest {
   void Annotate(const HistoryVisit& visit) {
     PageContentAnnotationsService* service =
         PageContentAnnotationsServiceFactory::GetForProfile(
-            browser()->profile());
+            browser()->GetProfile());
     service->Annotate(visit);
   }
 
@@ -425,7 +431,7 @@ class PageContentAnnotationsServiceBrowserTest : public InProcessBrowserTest {
     base::RunLoop().RunUntilIdle();
     history::HistoryService* history_service =
         HistoryServiceFactory::GetForProfile(
-            browser()->profile(), ServiceAccessType::IMPLICIT_ACCESS);
+            browser()->GetProfile(), ServiceAccessType::IMPLICIT_ACCESS);
     if (!history_service) {
       return;
     }
@@ -551,7 +557,7 @@ IN_PROC_BROWSER_TEST_F(PageContentAnnotationsServiceBrowserTest,
   LoadAndWaitForModel();
 
   PageContentAnnotationsService* service =
-      PageContentAnnotationsServiceFactory::GetForProfile(browser()->profile());
+      PageContentAnnotationsServiceFactory::GetForProfile(browser()->GetProfile());
 
   // Important: Consumers of the visibility score should query the HistoryDB
   // instead of hitting the PCAService directly. We only do this in tests
@@ -593,7 +599,7 @@ IN_PROC_BROWSER_TEST_F(PageContentAnnotationsServiceBrowserTest,
   LoadAndWaitForModel(model_file_path);
 
   PageContentAnnotationsService* service =
-      PageContentAnnotationsServiceFactory::GetForProfile(browser()->profile());
+      PageContentAnnotationsServiceFactory::GetForProfile(browser()->GetProfile());
 
   // Important: Consumers of the visibility score should query the HistoryDB
   // instead of hitting the PCAService directly. We only do this in tests
@@ -702,7 +708,7 @@ IN_PROC_BROWSER_TEST_F(PageContentAnnotationsServiceBrowserTest,
       PageContentAnnotationsWebContentsObserver::GetOrCreateForWebContents(
           browser()->tab_strip_model()->GetActiveWebContents(),
           *PageContentAnnotationsServiceFactory::GetForProfile(
-              browser()->profile()))
+              browser()->GetProfile()))
           ->content_visibility_score()
           .has_value());
 }
@@ -750,7 +756,7 @@ IN_PROC_BROWSER_TEST_F(PageContentAnnotationsServiceRemoteMetadataBrowserTest,
   optimization_guide::OptimizationMetadata metadata;
   metadata.set_any_metadata(
       optimization_guide::AnyWrapProto(page_entities_metadata));
-  OptimizationGuideKeyedServiceFactory::GetForProfile(browser()->profile())
+  OptimizationGuideKeyedServiceFactory::GetForProfile(browser()->GetProfile())
       ->AddHintForTesting(url, optimization_guide::proto::PAGE_ENTITIES,
                           metadata);
 
@@ -793,7 +799,7 @@ IN_PROC_BROWSER_TEST_F(PageContentAnnotationsServiceRemoteMetadataBrowserTest,
   optimization_guide::OptimizationMetadata metadata;
   metadata.set_any_metadata(
       optimization_guide::AnyWrapProto(page_entities_metadata));
-  OptimizationGuideKeyedServiceFactory::GetForProfile(browser()->profile())
+  OptimizationGuideKeyedServiceFactory::GetForProfile(browser()->GetProfile())
       ->AddHintForTesting(url, optimization_guide::proto::PAGE_ENTITIES,
                           metadata);
 
@@ -824,7 +830,7 @@ IN_PROC_BROWSER_TEST_F(PageContentAnnotationsServiceRemoteMetadataBrowserTest,
   optimization_guide::OptimizationMetadata metadata;
   metadata.set_any_metadata(
       optimization_guide::AnyWrapProto(page_entities_metadata));
-  OptimizationGuideKeyedServiceFactory::GetForProfile(browser()->profile())
+  OptimizationGuideKeyedServiceFactory::GetForProfile(browser()->GetProfile())
       ->AddHintForTesting(url, optimization_guide::proto::PAGE_ENTITIES,
                           metadata);
 
@@ -847,7 +853,7 @@ IN_PROC_BROWSER_TEST_F(PageContentAnnotationsServiceRemoteMetadataBrowserTest,
   optimization_guide::OptimizationMetadata metadata;
   metadata.set_any_metadata(
       optimization_guide::AnyWrapProto(page_entities_metadata));
-  OptimizationGuideKeyedServiceFactory::GetForProfile(browser()->profile())
+  OptimizationGuideKeyedServiceFactory::GetForProfile(browser()->GetProfile())
       ->AddHintForTesting(url, optimization_guide::proto::PAGE_ENTITIES,
                           metadata);
 
@@ -887,7 +893,7 @@ IN_PROC_BROWSER_TEST_F(
   optimization_guide::OptimizationMetadata metadata;
   metadata.set_any_metadata(
       optimization_guide::AnyWrapProto(salient_image_metadata));
-  OptimizationGuideKeyedServiceFactory::GetForProfile(browser()->profile())
+  OptimizationGuideKeyedServiceFactory::GetForProfile(browser()->GetProfile())
       ->AddHintForTesting(url, optimization_guide::proto::SALIENT_IMAGE,
                           metadata);
 
@@ -913,7 +919,7 @@ IN_PROC_BROWSER_TEST_F(
   optimization_guide::OptimizationMetadata metadata;
   metadata.set_any_metadata(
       optimization_guide::AnyWrapProto(salient_image_metadata));
-  OptimizationGuideKeyedServiceFactory::GetForProfile(browser()->profile())
+  OptimizationGuideKeyedServiceFactory::GetForProfile(browser()->GetProfile())
       ->AddHintForTesting(url, optimization_guide::proto::SALIENT_IMAGE,
                           metadata);
 
@@ -940,7 +946,7 @@ IN_PROC_BROWSER_TEST_F(
   optimization_guide::OptimizationMetadata metadata;
   metadata.set_any_metadata(
       optimization_guide::AnyWrapProto(salient_image_metadata));
-  OptimizationGuideKeyedServiceFactory::GetForProfile(browser()->profile())
+  OptimizationGuideKeyedServiceFactory::GetForProfile(browser()->GetProfile())
       ->AddHintForTesting(url, optimization_guide::proto::SALIENT_IMAGE,
                           metadata);
 
@@ -1067,7 +1073,7 @@ class PageContentAnnotationsServiceBatchVisitTest
 
     PageContentAnnotationsService* service =
         PageContentAnnotationsServiceFactory::GetForProfile(
-            browser()->profile());
+            browser()->GetProfile());
 
     annotator_.UseVisibilityScores(
         /*model_info=*/std::nullopt, {
@@ -1312,21 +1318,21 @@ class PageContentAnnotationsServiceOnDeviceCategoryClassifierTest
 
   PageContentAnnotationsService* service() {
     return PageContentAnnotationsServiceFactory::GetForProfile(
-        browser()->profile());
+        browser()->GetProfile());
   }
 
   void PushClassifierModel(
       optimization_guide::proto::OptimizationTarget optimization_target) {
     base::FilePath test_data_dir;
     base::PathService::Get(base::DIR_SRC_TEST_DATA_ROOT, &test_data_dir);
-    OptimizationGuideKeyedServiceFactory::GetForProfile(browser()->profile())
+    OptimizationGuideKeyedServiceFactory::GetForProfile(browser()->GetProfile())
         ->OverrideTargetModelForTesting(
             optimization_target,
-            optimization_guide::TestModelInfoBuilder()
-                .SetModelFilePath(test_data_dir.AppendASCII(
+            optimization_guide::ModelInfo{
+                .model_file_path = test_data_dir.AppendASCII(
                     "components/test/data/page_content_annotations/"
-                    "edu_classifier.tflite"))
-                .Build());
+                    "edu_classifier.tflite"),
+            });
   }
 
   void NotifyEmbedderMetadata() {
@@ -1726,7 +1732,7 @@ IN_PROC_BROWSER_TEST_P(
     ObserverAddedAfterWebContentsInit) {
   FakeExtractionServiceObserver observer;
   auto* service =
-      PageContentExtractionServiceFactory::GetForProfile(browser()->profile());
+      PageContentExtractionServiceFactory::GetForProfile(browser()->GetProfile());
   observer.Observe(service);
 
   content::WebContents* web_contents =
@@ -1773,7 +1779,7 @@ IN_PROC_BROWSER_TEST_P(
     AsyncGettersWaitUntilExtracted) {
   FakeExtractionServiceObserver observer;
   auto* service =
-      PageContentExtractionServiceFactory::GetForProfile(browser()->profile());
+      PageContentExtractionServiceFactory::GetForProfile(browser()->GetProfile());
   service->AddObserver(&observer);
 
   content::WebContents* web_contents =
@@ -1805,7 +1811,7 @@ IN_PROC_BROWSER_TEST_P(
     AsyncGettersInvalidateOnNavigation) {
   FakeExtractionServiceObserver observer;
   auto* service =
-      PageContentExtractionServiceFactory::GetForProfile(browser()->profile());
+      PageContentExtractionServiceFactory::GetForProfile(browser()->GetProfile());
   service->AddObserver(&observer);
 
   content::WebContents* web_contents =
@@ -1852,7 +1858,7 @@ IN_PROC_BROWSER_TEST_P(
     Basic) {
   FakeExtractionServiceObserver observer;
   auto* service =
-      PageContentExtractionServiceFactory::GetForProfile(browser()->profile());
+      PageContentExtractionServiceFactory::GetForProfile(browser()->GetProfile());
   observer.Observe(service);
 
   content::WebContents* web_contents =
@@ -1882,7 +1888,7 @@ IN_PROC_BROWSER_TEST_P(PageContentAnnotationsServiceContentExtractionTest,
                        RefreshAPC) {
   FakeExtractionServiceObserver observer;
   auto* service =
-      PageContentExtractionServiceFactory::GetForProfile(browser()->profile());
+      PageContentExtractionServiceFactory::GetForProfile(browser()->GetProfile());
   observer.Observe(service);
 
   content::WebContents* web_contents =
@@ -1929,7 +1935,7 @@ IN_PROC_BROWSER_TEST_P(PageContentAnnotationsServiceContentExtractionTest,
                        RefreshAPC_QueuedCallbacks) {
   FakeExtractionServiceObserver observer;
   auto* service =
-      PageContentExtractionServiceFactory::GetForProfile(browser()->profile());
+      PageContentExtractionServiceFactory::GetForProfile(browser()->GetProfile());
   observer.Observe(service);
 
   content::WebContents* web_contents =
@@ -1973,7 +1979,7 @@ IN_PROC_BROWSER_TEST_P(PageContentAnnotationsServiceContentExtractionTest,
                        RefreshAPC_WebContentsClosed) {
   FakeExtractionServiceObserver observer;
   auto* service =
-      PageContentExtractionServiceFactory::GetForProfile(browser()->profile());
+      PageContentExtractionServiceFactory::GetForProfile(browser()->GetProfile());
   observer.Observe(service);
 
   content::WebContents* web_contents =
@@ -2005,7 +2011,7 @@ IN_PROC_BROWSER_TEST_P(PageContentAnnotationsServiceContentExtractionTest,
                        RefreshAPC_WhileInitialExtractionPending) {
   FakeExtractionServiceObserver observer;
   auto* service =
-      PageContentExtractionServiceFactory::GetForProfile(browser()->profile());
+      PageContentExtractionServiceFactory::GetForProfile(browser()->GetProfile());
   observer.Observe(service);
 
   content::WebContents* web_contents =
@@ -2062,7 +2068,7 @@ IN_PROC_BROWSER_TEST_P(
     RefreshAPC_MultipleNavigations_PendingCallbackResolvedWithNullopt) {
   FakeExtractionServiceObserver observer;
   auto* service =
-      PageContentExtractionServiceFactory::GetForProfile(browser()->profile());
+      PageContentExtractionServiceFactory::GetForProfile(browser()->GetProfile());
   observer.Observe(service);
 
   content::WebContents* web_contents =
@@ -2115,7 +2121,7 @@ IN_PROC_BROWSER_TEST_P(PageContentAnnotationsServiceContentExtractionTestHidden,
                        RefreshAPC_WithOnHiddenTrigger) {
   FakeExtractionServiceObserver observer;
   auto* service =
-      PageContentExtractionServiceFactory::GetForProfile(browser()->profile());
+      PageContentExtractionServiceFactory::GetForProfile(browser()->GetProfile());
   observer.Observe(service);
 
   content::WebContents* web_contents =
@@ -2145,7 +2151,7 @@ IN_PROC_BROWSER_TEST_P(PageContentAnnotationsServiceContentExtractionTestHidden,
                        AsyncGettersReturnNulloptWhenVisibleInOnHiddenMode) {
   FakeExtractionServiceObserver observer;
   auto* service =
-      PageContentExtractionServiceFactory::GetForProfile(browser()->profile());
+      PageContentExtractionServiceFactory::GetForProfile(browser()->GetProfile());
   observer.Observe(service);
 
   content::WebContents* web_contents =
@@ -2169,7 +2175,7 @@ IN_PROC_BROWSER_TEST_P(PageContentAnnotationsServiceContentExtractionTestHidden,
                        AsyncGetterTriggersExtractionWhenNotCached) {
   FakeExtractionServiceObserver observer;
   auto* service =
-      PageContentExtractionServiceFactory::GetForProfile(browser()->profile());
+      PageContentExtractionServiceFactory::GetForProfile(browser()->GetProfile());
   observer.Observe(service);
 
   content::WebContents* web_contents =
@@ -2279,7 +2285,7 @@ IN_PROC_BROWSER_TEST_P(PageContentAnnotationsServiceContentExtractionPdfTest,
   // Set up the observer for page content extraction.
   FakeExtractionServiceObserver observer;
   auto* service =
-      PageContentExtractionServiceFactory::GetForProfile(browser()->profile());
+      PageContentExtractionServiceFactory::GetForProfile(browser()->GetProfile());
   observer.Observe(service);
 
   // Set up the UKM metrics recorder for PDF page count.
@@ -2354,7 +2360,7 @@ IN_PROC_BROWSER_TEST_P(PageContentAnnotationsServiceContentExtractionPdfTest,
   // Set up the observer for page content extraction.
   FakeExtractionServiceObserver observer;
   auto* service =
-      PageContentExtractionServiceFactory::GetForProfile(browser()->profile());
+      PageContentExtractionServiceFactory::GetForProfile(browser()->GetProfile());
   observer.Observe(service);
 
   // Set up the UKM metrics recorder for PDF page count.
@@ -2429,7 +2435,7 @@ IN_PROC_BROWSER_TEST_P(PageContentAnnotationsServiceContentExtractionPdfTest,
   // Set up the observer for page content extraction.
   FakeExtractionServiceObserver observer;
   auto* service =
-      PageContentExtractionServiceFactory::GetForProfile(browser()->profile());
+      PageContentExtractionServiceFactory::GetForProfile(browser()->GetProfile());
   observer.Observe(service);
 
   // Set up the UKM metrics recorder for PDF page count.
@@ -2510,7 +2516,7 @@ IN_PROC_BROWSER_TEST_P(PageContentAnnotationsServiceContentExtractionPdfTest,
   // Set up the observer for page content extraction.
   FakeExtractionServiceObserver observer;
   auto* service =
-      PageContentExtractionServiceFactory::GetForProfile(browser()->profile());
+      PageContentExtractionServiceFactory::GetForProfile(browser()->GetProfile());
   observer.Observe(service);
 
   // Set up the UKM metrics recorder for PDF page count.
@@ -2587,7 +2593,7 @@ IN_PROC_BROWSER_TEST_P(PageContentAnnotationsServiceContentExtractionPdfTest,
   // Set up the observer for page content extraction.
   FakeExtractionServiceObserver observer;
   auto* service =
-      PageContentExtractionServiceFactory::GetForProfile(browser()->profile());
+      PageContentExtractionServiceFactory::GetForProfile(browser()->GetProfile());
   observer.Observe(service);
 
   // Set up the UKM metrics recorder for PDF page count.
@@ -2668,7 +2674,7 @@ IN_PROC_BROWSER_TEST_P(PageContentAnnotationsServiceContentExtractionPdfTest,
   // Set up the observer for page content and PDF text extraction.
   FakeExtractionServiceObserver observer;
   auto* service =
-      PageContentExtractionServiceFactory::GetForProfile(browser()->profile());
+      PageContentExtractionServiceFactory::GetForProfile(browser()->GetProfile());
   observer.Observe(service);
 
   // Set up the UKM metrics recorder for PDF page count.
@@ -2782,7 +2788,7 @@ IN_PROC_BROWSER_TEST_P(PageContentAnnotationsServiceContentExtractionPdfTest,
   // Set up the observer for page content and PDF text extraction.
   FakeExtractionServiceObserver observer;
   auto* service =
-      PageContentExtractionServiceFactory::GetForProfile(browser()->profile());
+      PageContentExtractionServiceFactory::GetForProfile(browser()->GetProfile());
   observer.Observe(service);
 
   content::WebContents* web_contents =
@@ -2820,7 +2826,7 @@ IN_PROC_BROWSER_TEST_P(PageContentAnnotationsServiceContentExtractionPdfTest,
   // Set up the observer for page content and PDF text extraction.
   FakeExtractionServiceObserver observer;
   auto* service =
-      PageContentExtractionServiceFactory::GetForProfile(browser()->profile());
+      PageContentExtractionServiceFactory::GetForProfile(browser()->GetProfile());
   observer.Observe(service);
 
   content::WebContents* web_contents =

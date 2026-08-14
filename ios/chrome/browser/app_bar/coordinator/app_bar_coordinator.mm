@@ -5,6 +5,7 @@
 #import "ios/chrome/browser/app_bar/coordinator/app_bar_coordinator.h"
 
 #import "components/signin/public/base/signin_metrics.h"
+#import "ios/chrome/browser/aim/model/ios_chrome_aim_eligibility_service_factory.h"
 #import "ios/chrome/browser/app_bar/coordinator/app_bar_container_mediator.h"
 #import "ios/chrome/browser/app_bar/coordinator/app_bar_mediator.h"
 #import "ios/chrome/browser/app_bar/ui/app_bar_container_view_controller.h"
@@ -18,6 +19,7 @@
 #import "ios/chrome/browser/fullscreen/ui_bundled/fullscreen_controller.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_browser_agent.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_service_factory.h"
+#import "ios/chrome/browser/keyboard/ui_bundled/responder_chaining.h"
 #import "ios/chrome/browser/menu/ui_bundled/browser_action_factory.h"
 #import "ios/chrome/browser/search_engines/model/template_url_service_factory.h"
 #import "ios/chrome/browser/shared/coordinator/layout_guide/layout_guide_util.h"
@@ -30,7 +32,7 @@
 #import "ios/chrome/browser/shared/public/commands/fullscreen_commands.h"
 #import "ios/chrome/browser/shared/public/commands/gemini_commands.h"
 #import "ios/chrome/browser/shared/public/commands/guided_tour_commands.h"
-#import "ios/chrome/browser/shared/public/commands/lens_commands.h"
+#import "ios/chrome/browser/shared/public/commands/lens_overlay_commands.h"
 #import "ios/chrome/browser/shared/public/commands/scene_commands.h"
 #import "ios/chrome/browser/shared/public/commands/settings_commands.h"
 #import "ios/chrome/browser/shared/public/commands/show_signin_command.h"
@@ -94,6 +96,7 @@
   _viewController = [[AppBarViewController alloc] init];
   _viewController.sceneHandler = sceneHandler;
   _viewController.tabGridHandler = tabGridHandler;
+  _viewController.geminiHandler = geminiHandler;
   _viewController.layoutGuideCenter = LayoutGuideCenterForScene(sceneState);
   _viewController.layoutState = sceneState.layoutState;
   ProfileIOS* profile = _regularBrowser->GetProfile();
@@ -142,12 +145,17 @@
                                           profile)
                    geminiBrowserAgent:GeminiBrowserAgent::FromBrowser(
                                           _regularBrowser)
+                aimEligibilityService:IOSChromeAimEligibilityServiceFactory::
+                                          GetForProfile(profile)
                             URLLoader:UrlLoadingBrowserAgent::FromBrowser(
                                           _regularBrowser)
                          tabGridState:sceneState.tabGridState
-                       incognitoState:sceneState.incognitoState];
+                       incognitoState:sceneState.incognitoState
+             lensOverlayStateNotifier:sceneState.lensOverlayStateNotifier];
+  _mediator.layoutState = sceneState.layoutState;
   _mediator.sceneHandler = sceneHandler;
-  _mediator.lensHandler = HandlerForProtocol(regularDispatcher, LensCommands);
+  _mediator.lensOverlayHandler =
+      HandlerForProtocol(regularDispatcher, LensOverlayCommands);
   _mediator.delegate = self;
   _mediator.tabGridHandler = tabGridHandler;
   _mediator.settingsHandler =
@@ -254,7 +262,7 @@
 
 #pragma mark - Properties
 
-- (UIViewController*)viewController {
+- (UIViewController<ResponderChaining>*)viewController {
   return _containerViewController;
 }
 

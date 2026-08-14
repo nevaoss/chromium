@@ -8,6 +8,7 @@
 #import <UIKit/UIKit.h>
 
 #import "ios/chrome/browser/keyboard/ui_bundled/key_command_actions.h"
+#import "ios/chrome/browser/keyboard/ui_bundled/responder_chaining.h"
 #import "ios/chrome/browser/tab_switcher/ui_bundled/tab_grid/tab_grid_paging.h"
 
 @class LayoutState;
@@ -30,7 +31,7 @@
 //   Tab Groups page: [                                                  ]
 //   Remote page:     [                                                  ]
 //   Selection mode:  [CloseTabButton       shareButton       AddToButton]
-@interface TabGridBottomToolbar : UIView <KeyCommandActions>
+@interface TabGridBottomToolbar : UIView <KeyCommandActions, ResponderChaining>
 
 // This property together with `mode` and self.traitCollection control the items
 // shown in toolbar and its background color. Setting this property will also
@@ -56,31 +57,20 @@
 - (void)setNewTabButtonEnabled:(BOOL)enabled;
 // Sets `enabled` on the done button.
 - (void)setDoneButtonEnabled:(BOOL)enabled;
-// Sets `enabled` on the closeAll button.
-- (void)setCloseAllButtonEnabled:(BOOL)enabled;
-// Uses undo or closeAll text on the close all button based on `useUndo` value.
-- (void)useUndoCloseAll:(BOOL)useUndo;
 
 // Sets `enabled` on the close tabs button.
 - (void)setCloseTabsButtonEnabled:(BOOL)enabled;
 
-// Sets `enabled` on the close tabs button.
+// Sets `enabled` on the share tabs button.
 - (void)setShareTabsButtonEnabled:(BOOL)enabled;
 
 // Sets the `menu` displayed on tapping the Add To button.
 - (void)setAddToButtonMenu:(UIMenu*)menu;
 // Sets `enabled` on the Add To button.
 - (void)setAddToButtonEnabled:(BOOL)enabled;
-
-// Sets the `menu` displayed on tapping the Edit button.
-- (void)setEditButtonMenu:(UIMenu*)menu;
-// Sets `enabled` on the Edit button.
-- (void)setEditButtonEnabled:(BOOL)enabled;
 // Updates the appearance of the this toolbar, based on whether the content
 // below it is `scrolledToEdge` or not.
 - (void)setScrollViewScrolledToEdge:(BOOL)scrolledToEdge;
-// Adds the receiver in the chain before the original next responder.
-- (void)respondBeforeResponder:(UIResponder*)nextResponder;
 // Sets the toolbar background offset to match the content scroll view offset.
 - (void)setBackgroundContentOffset:(CGPoint)backgroundContentOffset
                           animated:(BOOL)animated;

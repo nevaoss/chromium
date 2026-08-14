@@ -45,7 +45,7 @@
 #include "chrome/browser/new_tab_page/modules/modules_constants.h"
 #include "chrome/browser/new_tab_page/modules/new_tab_page_modules.h"
 #include "chrome/browser/new_tab_page/new_tab_page_util.h"
-#include "chrome/browser/new_tab_page/ntp_pref_names.h"
+#include "chrome/browser/new_tab_page/prefs/ntp_pref_names.h"
 #include "chrome/browser/new_tab_page/promos/promo_service_factory.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
@@ -113,7 +113,8 @@
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
-#include "components/user_education/webui/help_bubble_handler.h"
+#include "chrome/browser/ui/user_education/browser_user_education_interface.h"
+#include "components/user_education/webui/help_bubble_handler.h"  // nogncheck
 #include "ui/webui/tracked_element/tracked_element_handler.h"
 #include "ui/webui/tracked_element/tracked_element_web_ui.h"
 #endif
@@ -510,12 +511,13 @@ NewTabPageHandler::NewTabPageHandler(
         segmentation_platform_service,
     content::WebContents* web_contents,
     const base::Time& ntp_navigation_start_time,
+    base::TimeTicks ntp_navigation_start_time_ticks,
     const std::vector<ntp::ModuleIdDetail>* module_id_details)
     : SettingsEnabledObserver(
           optimization_guide::UserVisibleFeatureKey::kWallpaperSearch),
       logger_(profile,
               chrome::ChromeUINewTabPageURLAsGURL(),
-              ntp_navigation_start_time),
+              ntp_navigation_start_time_ticks),
       ntp_custom_background_service_(ntp_custom_background_service),
       logo_service_(logo_service),
 // TODO(b/502297163): Implement for Android.
@@ -1229,6 +1231,20 @@ void NewTabPageHandler::RecordRealboxContextMenuAnimationImpression() {
   }
 }
 
+void NewTabPageHandler::OnContextualSearchIPHEngaged() {
+#if !BUILDFLAG(IS_ANDROID)
+  auto* browser = webui::GetBrowserWindowInterface(web_contents_);
+  if (browser) {
+    auto* user_education = BrowserUserEducationInterface::From(browser);
+    if (user_education) {
+      user_education->NotifyFeaturePromoFeatureUsed(
+          feature_engagement::kIPHDesktopRealboxContextualSearchFeature,
+          FeaturePromoFeatureUsedAction::kClosePromoIfPresent);
+    }
+  }
+#endif  // !BUILDFLAG(IS_ANDROID)
+}
+
 void NewTabPageHandler::OnNativeThemeUpdated(ui::NativeTheme* observed_theme) {
   OnThemeChanged();
 }
@@ -1377,18 +1393,12 @@ void NewTabPageHandler::MaybeTriggerAutomaticCustomizeChromePromo() {
 }
 
 void NewTabPageHandler::LogEvent(NTPLoggingEventType event) {
-// TODO(b/502297163): Implement for Android.
-#if !BUILDFLAG(IS_ANDROID)
   logger_.LogEvent(event, base::TimeDelta() /* unused */);
-#endif
 }
 
 void NewTabPageHandler::LogEvent(NTPLoggingEventType event,
                                  base::TimeDelta delta) {
-// TODO(b/502297163): Implement for Android.
-#if !BUILDFLAG(IS_ANDROID)
   logger_.LogEvent(event, delta);
-#endif
 }
 
 void NewTabPageHandler::Fetch(const GURL& url,

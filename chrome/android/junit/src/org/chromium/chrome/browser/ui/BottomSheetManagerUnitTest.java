@@ -5,7 +5,9 @@
 package org.chromium.chrome.browser.ui;
 
 import static org.junit.Assert.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -80,7 +82,8 @@ public class BottomSheetManagerUnitTest {
                         mOmniboxFocusStateSupplier,
                         mOverlayManager,
                         mLayoutStateProviderSupplier,
-                        mBottomControlsStacker);
+                        mBottomControlsStacker,
+                        /* isBottomSheetAsBrowserControlsEnabled= */ true);
 
         ArgumentCaptor<BottomControlsLayer> captor =
                 ArgumentCaptor.forClass(BottomControlsLayer.class);
@@ -93,6 +96,23 @@ public class BottomSheetManagerUnitTest {
     public void testLayerDeregistration() {
         mBottomSheetManager.onDestroy();
         verify(mBottomControlsStacker).removeLayer(mLayer);
+    }
+
+    @Test
+    public void testLayerRegistration_disabled() {
+        clearInvocations(mBottomControlsStacker);
+        new BottomSheetManager(
+                mSheetController,
+                mTabProvider,
+                mControlsVisibilityManager,
+                mExpandedSheetHelper,
+                mOmniboxFocusStateSupplier,
+                mOverlayManager,
+                mLayoutStateProviderSupplier,
+                mBottomControlsStacker,
+                /* isBottomSheetAsBrowserControlsEnabled= */ false);
+        verify(mBottomControlsStacker, never()).addLayer(any());
+        verify(mControlsVisibilityManager).addObserver(any());
     }
 
     @Test
@@ -266,6 +286,7 @@ public class BottomSheetManagerUnitTest {
     public void testGetBackgroundColor() {
         when(mSheetController.getCurrentSheetContent()).thenReturn(mSheetContent);
         when(mSheetContent.actsAsBrowserControls()).thenReturn(true);
+        when(mSheetController.isFullWidth()).thenReturn(true);
         when(mSheetController.getSheetBackgroundColor()).thenReturn(Color.RED);
         assertEquals(Color.RED, (int) mLayer.getBackgroundColor());
     }

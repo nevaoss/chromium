@@ -13,6 +13,7 @@
 #include "base/metrics/field_trial_params.h"
 #include "base/run_loop.h"
 #include "base/test/mock_callback.h"
+#include "base/test/run_until.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/values_test_util.h"
 #include "build/build_config.h"
@@ -67,6 +68,8 @@
 #include "content/public/test/test_utils.h"
 #include "net/dns/mock_host_resolver.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
+#include "net/test/embedded_test_server/http_request.h"
+#include "net/test/embedded_test_server/http_response.h"
 #include "services/device/public/cpp/test/scoped_geolocation_overrider.h"
 #include "third_party/blink/public/common/permissions/permission_utils.h"
 #include "third_party/blink/public/mojom/permissions/permission_status.mojom-shared.h"
@@ -131,7 +134,7 @@ class PermissionRequestManagerBrowserTestBase : public InProcessBrowserTest {
     }));
 
     browser()
-        ->profile()
+        ->GetProfile()
         ->GetPermissionController()
         ->RequestPermissionFromCurrentDocument(
             rfh, std::move(request_description), callback.Get());
@@ -341,6 +344,62 @@ IN_PROC_BROWSER_TEST_F(PermissionRequestManagerBrowserTest,
 
   EXPECT_EQ(1, bubble_factory()->show_count());
   EXPECT_EQ(2, bubble_factory()->TotalRequestCount());
+}
+
+// Verifies that when a background tab is discarded (e.g. by memory saver) and
+// subsequently reloads in the background, requesting permissions inside it does
+// not pop up permission prompt bubbles while another tab is active.
+IN_PROC_BROWSER_TEST_F(PermissionRequestManagerBrowserTest,
+                       TestSplitViewDiscardInitializationRace) {
+  ASSERT_TRUE(embedded_test_server()->Start());
+
+  // Open tab 0 (title1.html) and tab 1 (title2.html in foreground).
+  EXPECT_TRUE(ui_test_utils::NavigateToURL(
+      browser(), embedded_test_server()->GetURL("/title1.html")));
+
+  EXPECT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
+      browser(), embedded_test_server()->GetURL("/title2.html"),
+      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
+
+  // Discard background tab 0, replacing its WebContents with a new hidden one.
+  content::WebContents::CreateParams params(browser()->GetProfile());
+  params.initially_hidden = true;
+  std::unique_ptr<content::WebContents> new_contents =
+      content::WebContents::Create(params);
+  content::WebContents* raw_new_contents = new_contents.get();
+  browser()->tab_strip_model()->DiscardWebContentsAt(0,
+                                                     std::move(new_contents));
+
+  permissions::PermissionRequestManager* manager =
+      permissions::PermissionRequestManager::FromWebContents(raw_new_contents);
+
+  // Reload discarded tab 0 while tab 1 remains the active foreground tab.
+  raw_new_contents->GetController().LoadURL(
+      embedded_test_server()->GetURL("/title1.html"), content::Referrer(),
+      ui::PAGE_TRANSITION_LINK, std::string());
+
+  EXPECT_TRUE(content::WaitForLoadStop(raw_new_contents));
+
+  EXPECT_EQ(1, browser()->tab_strip_model()->active_index());
+
+  permissions::MockPermissionPromptFactory mock_factory(manager);
+
+  // Issue a notifications permission request in background tab 0.
+  ExecuteScriptAsync(raw_new_contents, "Notification.requestPermission();");
+
+  // Wait for the request to reach tab 0's manager, then verify no prompt bubble
+  // is shown on screen because tab 0 is inactive in the tab strip.
+  ASSERT_TRUE(
+      base::test::RunUntil([&]() { return !manager->Requests().empty(); }));
+
+  EXPECT_EQ(0, mock_factory.TotalRequestCount());
+
+  // After the discarded tab is revived by activating it, the pending request's
+  // prompt must appear.
+  browser()->tab_strip_model()->ActivateTabAt(0);
+  EXPECT_TRUE(base::test::RunUntil(
+      [&]() { return mock_factory.TotalRequestCount() == 1; }));
 }
 
 // Requests before the load should not be bundled with a request after the
@@ -2257,7 +2316,7 @@ IN_PROC_BROWSER_TEST_F(PermissionRequestManagerApproximateLocationBrowserTest,
   permissions::PermissionRequestManager* request_manager =
       GetPermissionRequestManager();
   content::PermissionController* permission_controller =
-      browser()->profile()->GetPermissionController();
+      browser()->GetProfile()->GetPermissionController();
 
   {
     base::HistogramTester histograms;
@@ -2323,7 +2382,7 @@ IN_PROC_BROWSER_TEST_F(PermissionRequestManagerApproximateLocationBrowserTest,
   permissions::PermissionRequestManager* request_manager =
       GetPermissionRequestManager();
   content::PermissionController* permission_controller =
-      browser()->profile()->GetPermissionController();
+      browser()->GetProfile()->GetPermissionController();
 
   {
     base::HistogramTester histograms;
@@ -2413,7 +2472,7 @@ IN_PROC_BROWSER_TEST_F(
   permissions::PermissionRequestManager* request_manager =
       GetPermissionRequestManager();
   content::PermissionController* permission_controller =
-      browser()->profile()->GetPermissionController();
+      browser()->GetProfile()->GetPermissionController();
 
   base::HistogramTester histograms;
   request_manager->set_auto_response_for_test(
@@ -2626,6 +2685,40 @@ IN_PROC_BROWSER_TEST_F(PermissionRequestManagerApproximateLocationBrowserTest,
   EXPECT_THAT(content::EvalJs(web_contents, "approximateStatuses"),
               content::EvalJsResult::IsOkAndHolds(
                   base::test::IsJson(R"(["granted", "denied", "prompt"])")));
+}
+
+IN_PROC_BROWSER_TEST_F(PermissionRequestManagerBrowserTest,
+                       PermissionRequestInSandboxedTopLevelFrame) {
+  embedded_test_server()->RegisterRequestHandler(base::BindRepeating(
+      [](const net::test_server::HttpRequest& request)
+          -> std::unique_ptr<net::test_server::HttpResponse> {
+        if (request.relative_url == "/sandbox_csp") {
+          auto response =
+              std::make_unique<net::test_server::BasicHttpResponse>();
+          response->set_code(net::HTTP_OK);
+          response->set_content("<html><body>Sandboxed Page</body></html>");
+          response->set_content_type("text/html");
+          response->AddCustomHeader("Content-Security-Policy",
+                                    "sandbox allow-scripts");
+          return response;
+        }
+        return nullptr;
+      }));
+  ASSERT_TRUE(embedded_test_server()->Start());
+
+  GURL target = embedded_test_server()->GetURL("/sandbox_csp");
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), target));
+
+  bubble_factory()->set_response_type(
+      permissions::PermissionRequestManager::AutoResponseType::ACCEPT_ALL);
+
+  EXPECT_EQ(
+      RequestPermissionFromDocumentSync(
+          GetActiveMainFrame(), content::PermissionDescriptorUtil::
+                                    CreatePermissionDescriptorForPermissionType(
+                                        blink::PermissionType::GEOLOCATION))
+          .status,
+      blink::mojom::PermissionStatus::GRANTED);
 }
 
 }  // anonymous namespace

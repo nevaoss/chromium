@@ -265,10 +265,18 @@ class WebMediaPlayer {
   virtual bool HasVideo() const = 0;
   virtual bool HasAudio() const = 0;
 
+  // Returns true if video frames from this player have recently been consumed
+  // by an external caller, such as canvas drawImage() or captureStream().
+  virtual bool IsVideoBeingCaptured() const = 0;
+
   // Dimension of the video.
   virtual gfx::Size NaturalSize() const = 0;
 
   virtual gfx::Size VisibleSize() const = 0;
+
+  virtual media::VideoTransformation GetVideoTransformation() const {
+    return media::kNoTransformation;
+  }
 
   // Spatial format of the video.
   virtual media::VideoSpatialFormat GetSpatialFormat() const { return {}; }

@@ -20,6 +20,7 @@
 #include "base/task/sequenced_task_runner.h"
 #include "base/test/bind.h"
 #include "base/test/scoped_feature_list.h"
+#include "base/test/test_future.h"
 #include "base/test/values_test_util.h"
 #include "base/time/time.h"
 #include "build/build_config.h"
@@ -332,7 +333,7 @@ IN_PROC_BROWSER_TEST_F(WebAuthnBrowserTest, ChromeExtensions) {
                       base::test::ParseJson(kWebAccessibleResources));
 
   scoped_refptr<const extensions::Extension> extension = builder.Build();
-  extensions::ExtensionRegistrar::Get(browser()->profile())
+  extensions::ExtensionRegistrar::Get(browser()->GetProfile())
       ->OnExtensionInstalled(extension.get(), syncer::StringOrdinal(), 0);
 
   auto virtual_device_factory =
@@ -682,7 +683,7 @@ IN_PROC_BROWSER_TEST_F(WebAuthnBrowserTest,
 
   // Set up GPM Passkey.
   auto* passkey_model = static_cast<webauthn::TestPasskeyModel*>(
-      PasskeyModelFactory::GetForProfile(browser()->profile()));
+      PasskeyModelFactory::GetForProfile(browser()->GetProfile()));
   passkey_model->AddNewPasskeyForTesting(CreateWebAuthnCredentialSpecifics(
       kCredentialID, kUserId1, kUsername1, kDisplayName1));
 
@@ -706,7 +707,7 @@ IN_PROC_BROWSER_TEST_F(WebAuthnBrowserTest,
       browser(), https_server_.GetURL("www.example.com", "/title1.html")));
   // Set up GPM Passkey.
   auto* passkey_model = static_cast<webauthn::TestPasskeyModel*>(
-      PasskeyModelFactory::GetForProfile(browser()->profile()));
+      PasskeyModelFactory::GetForProfile(browser()->GetProfile()));
   passkey_model->AddNewPasskeyForTesting(CreateWebAuthnCredentialSpecifics(
       kCredentialID, kUserId1, kUsername1, kDisplayName1));
 
@@ -742,7 +743,7 @@ IN_PROC_BROWSER_TEST_F(WebAuthnBrowserTest,
       browser(), https_server_.GetURL("www.example.com", "/title1.html")));
   // Set up GPM Passkey.
   auto* passkey_model = static_cast<webauthn::TestPasskeyModel*>(
-      PasskeyModelFactory::GetForProfile(browser()->profile()));
+      PasskeyModelFactory::GetForProfile(browser()->GetProfile()));
   passkey_model->AddNewPasskeyForTesting(CreateWebAuthnCredentialSpecifics(
       kCredentialID2, kUserId2, kUsername2, kDisplayName2));
 
@@ -841,7 +842,7 @@ IN_PROC_BROWSER_TEST_F(WebAuthnBrowserTest,
 
   // Set up GPM Passkey.
   auto* passkey_model = static_cast<webauthn::TestPasskeyModel*>(
-      PasskeyModelFactory::GetForProfile(browser()->profile()));
+      PasskeyModelFactory::GetForProfile(browser()->GetProfile()));
   passkey_model->AddNewPasskeyForTesting(CreateWebAuthnCredentialSpecifics(
       kCredentialID, kUserId1, kUsername1, kDisplayName1));
 
@@ -892,7 +893,7 @@ IN_PROC_BROWSER_TEST_F(WebAuthnBrowserTest, SignalCurrentUserDetailsQuota) {
 
   // Set up GPM Passkey.
   auto* passkey_model = static_cast<webauthn::TestPasskeyModel*>(
-      PasskeyModelFactory::GetForProfile(browser()->profile()));
+      PasskeyModelFactory::GetForProfile(browser()->GetProfile()));
   passkey_model->AddNewPasskeyForTesting(CreateWebAuthnCredentialSpecifics(
       kCredentialID, kUserId1, kUsername1, kDisplayName1));
 
@@ -928,7 +929,7 @@ IN_PROC_BROWSER_TEST_F(WebAuthnBrowserTest,
 
   // Set up GPM Passkey.
   auto* passkey_model = static_cast<webauthn::TestPasskeyModel*>(
-      PasskeyModelFactory::GetForProfile(browser()->profile()));
+      PasskeyModelFactory::GetForProfile(browser()->GetProfile()));
   passkey_model->AddNewPasskeyForTesting(CreateWebAuthnCredentialSpecifics(
       kCredentialID, kUserId1, kUsername1, kDisplayName1));
 
@@ -1155,7 +1156,8 @@ IN_PROC_BROWSER_TEST_F(WebAuthnConditionalUITest,
   virtual_device_factory_->mutable_state()->simulate_press_callback =
       base::BindLambdaForTesting(
           [&](device::VirtualFidoDevice* device) { return true; });
-  ChromeWebAuthnCredentialsDelegate delegate(web_contents);
+  ChromeWebAuthnCredentialsDelegate delegate(
+      web_contents->GetPrimaryMainFrame());
   delegate.LaunchSecurityKeyOrHybridFlow();
 
   std::string result;
@@ -1196,10 +1198,7 @@ class WebAuthnAmbientUITest : public WebAuthnBrowserTest {
 
  public:
   WebAuthnAmbientUITest() {
-    // kWebAuthnImmediateGet is necessary because the uiMode attribute is not
-    // supported without it.
-    scoped_feature_list_.InitWithFeatures(
-        {device::kWebAuthnAmbientSignin, device::kWebAuthnImmediateGet}, {});
+    scoped_feature_list_.InitAndEnableFeature(device::kWebAuthnAmbientSignin);
   }
 
   class Observer : public ChromeAuthenticatorRequestDelegate::TestObserver {
@@ -1275,7 +1274,7 @@ class WebAuthnAmbientUITest : public WebAuthnBrowserTest {
     virtual_device_factory_->mutable_state()->fingerprints_enrolled = true;
 
     auto* passkey_model = static_cast<webauthn::TestPasskeyModel*>(
-        PasskeyModelFactory::GetForProfile(browser()->profile()));
+        PasskeyModelFactory::GetForProfile(browser()->GetProfile()));
     passkey_model->AddNewPasskeyForTesting(CreateWebAuthnCredentialSpecifics(
         kCredentialID, kUserId1, kUsername1, kDisplayName1));
 
@@ -1344,7 +1343,7 @@ IN_PROC_BROWSER_TEST_F(WebAuthnAmbientUITest, AmbientUIBubble) {
       "sakuya", "Sakuya Izayoi");
 
   auto* passkey_model = static_cast<webauthn::TestPasskeyModel*>(
-      PasskeyModelFactory::GetForProfile(browser()->profile()));
+      PasskeyModelFactory::GetForProfile(browser()->GetProfile()));
   passkey_model->AddNewPasskeyForTesting(CreateWebAuthnCredentialSpecifics(
       kCredentialID2, kUserId2, kUsername2, kDisplayName2));
 
@@ -1379,7 +1378,7 @@ IN_PROC_BROWSER_TEST_F(WebAuthnAmbientUITest, AmbientUIBubble) {
 IN_PROC_BROWSER_TEST_F(WebAuthnAmbientUITest, AmbientUIDeduplication) {
   // One passkey is provided by GPM and the other is from a platform provider.
   auto* passkey_model = static_cast<webauthn::TestPasskeyModel*>(
-      PasskeyModelFactory::GetForProfile(browser()->profile()));
+      PasskeyModelFactory::GetForProfile(browser()->GetProfile()));
   passkey_model->AddNewPasskeyForTesting(CreateWebAuthnCredentialSpecifics(
       kCredentialID, kUserId1, kUsername1, kDisplayName1));
 
@@ -1424,7 +1423,7 @@ IN_PROC_BROWSER_TEST_F(WebAuthnAmbientUITest, AmbientUIPasswordDeduplication) {
       std::vector<uint8_t>(std::begin(kUserId1), std::end(kUserId1)),
       kUsername1, kDisplayName1);
   auto* passkey_model = static_cast<webauthn::TestPasskeyModel*>(
-      PasskeyModelFactory::GetForProfile(browser()->profile()));
+      PasskeyModelFactory::GetForProfile(browser()->GetProfile()));
   passkey_model->AddNewPasskeyForTesting(CreateWebAuthnCredentialSpecifics(
       kCredentialID, kUserId1, kUsername1, kDisplayName1));
 
@@ -1475,14 +1474,7 @@ class WebAuthnAmbientUIAnchoredMessageTest : public WebAuthnAmbientUITest {
     scoped_feature_list_.Reset();
     scoped_feature_list_.InitAndEnableFeatureWithParameters(
         device::kWebAuthnAmbientSignin, {{"display", "anchored_message"}});
-    // kWebAuthnImmediateGet is necessary because the uiMode attribute is not
-    // supported without it.
-    scoped_feature_list_immediate_.InitAndEnableFeature(
-        device::kWebAuthnImmediateGet);
   }
-
- private:
-  base::test::ScopedFeatureList scoped_feature_list_immediate_;
 };
 
 IN_PROC_BROWSER_TEST_F(WebAuthnAmbientUIAnchoredMessageTest,
@@ -1538,9 +1530,6 @@ class WebAuthnImmediateGetTest : public WebAuthnBrowserTest {
     }}).then(c => 'webauthn: OK', e => 'error ' + e);
   )";
 
- private:
-  base::test::ScopedFeatureList scoped_feature_list_{
-      device::kWebAuthnImmediateGet};
 };
 
 IN_PROC_BROWSER_TEST_F(WebAuthnImmediateGetTest, NoCreds_NotFoundError) {
@@ -1561,7 +1550,7 @@ IN_PROC_BROWSER_TEST_F(WebAuthnImmediateGetTest, NoCreds_NotFoundError) {
 IN_PROC_BROWSER_TEST_F(WebAuthnImmediateGetTest,
                        Incognito_NoCreds_NotFoundError) {
   auto* otr_browser = OpenURLOffTheRecord(
-      browser()->profile(),
+      browser()->GetProfile(),
       https_server_.GetURL("www.example.com", "/title1.html"));
   content::WebContents* web_contents =
       otr_browser->tab_strip_model()->GetActiveWebContents();
@@ -1632,7 +1621,8 @@ class WebAuthnActorBrowserTest : public WebAuthnBrowserTest {
   }
 
   void CreateActingTask() {
-    auto* actor_service = actor::ActorKeyedService::Get(browser()->profile());
+    auto* actor_service =
+        actor::ActorKeyedService::Get(browser()->GetProfile());
     actor::TaskId task_id = actor_service->CreateTask(
         actor::TestTaskSourceInfo(), actor::NoEnterprisePolicyChecker());
 
@@ -1756,7 +1746,7 @@ IN_PROC_BROWSER_TEST_F(WebAuthnIWABrowserTest,
           // check due to no remote desktop override extensrion is used.
           )
           .BuildBundle();
-  auto url_info = app->Install(browser()->profile());
+  auto url_info = app->Install(browser()->GetProfile());
 
   auto virtual_device_factory =
       std::make_unique<device::test::VirtualFidoDeviceFactory>();
@@ -1768,7 +1758,7 @@ IN_PROC_BROWSER_TEST_F(WebAuthnIWABrowserTest,
       std::move(virtual_device_factory));
 
   content::RenderFrameHost* app_frame =
-      OpenApp(url_info->app_id(), browser()->profile());
+      OpenApp(url_info->app_id(), browser()->GetProfile());
   content::EvalJsResult result = EvalJs(app_frame, kGetAssertionCredID1234);
 
   EXPECT_THAT(result.ExtractString(), testing::HasSubstr("NotAllowedError"));
@@ -1791,7 +1781,7 @@ IN_PROC_BROWSER_TEST_F(
                                     true, {}))
           .BuildBundle();
 
-  auto url_info = app->Install(browser()->profile());
+  auto url_info = app->Install(browser()->GetProfile());
 
   auto virtual_device_factory =
       std::make_unique<device::test::VirtualFidoDeviceFactory>();
@@ -1804,7 +1794,7 @@ IN_PROC_BROWSER_TEST_F(
       std::move(virtual_device_factory));
 
   content::RenderFrameHost* app_frame =
-      OpenApp(url_info->app_id(), browser()->profile());
+      OpenApp(url_info->app_id(), browser()->GetProfile());
 
   content::EvalJsResult result = EvalJs(app_frame, kGetAssertionCredID1234);
   // Call not permitted due to 'local' case, we only allow WebAuthn for IWAs if
@@ -1833,11 +1823,11 @@ IN_PROC_BROWSER_TEST_F(
                                     true, {}))
           .BuildBundle();
 
-  auto url_info = app->Install(browser()->profile());
+  auto url_info = app->Install(browser()->GetProfile());
   // Put IWA origin to prefs to emulate values set by
   // WebAuthenticationRemoteDesktopAllowedOrigins policy
   PrefService* prefs =
-      Profile::FromBrowserContext(browser()->profile())->GetPrefs();
+      Profile::FromBrowserContext(browser()->GetProfile())->GetPrefs();
   base::ListValue list =
       base::ListValue().Append("isolated-app://" + url_info->origin().host());
   prefs->SetList(webauthn::pref_names::kRemoteDesktopAllowedOrigins,
@@ -1854,7 +1844,7 @@ IN_PROC_BROWSER_TEST_F(
       std::move(virtual_device_factory));
 
   content::RenderFrameHost* app_frame =
-      OpenApp(url_info->app_id(), browser()->profile());
+      OpenApp(url_info->app_id(), browser()->GetProfile());
 
   content::EvalJsResult result = EvalJs(app_frame, kGetAssertionCredID1234);
   // Call not permitted due to 'local' case, despite same rp_id, we only allow
@@ -1871,7 +1861,11 @@ class WebAuthnUAFReproductionTest
       public ChromeAuthenticatorRequestDelegate::TestObserver,
       public AuthenticatorRequestDialogModel::Observer {
  public:
-  WebAuthnUAFReproductionTest() = default;
+  WebAuthnUAFReproductionTest() {
+#if BUILDFLAG(IS_WIN)
+    win_api_.set_available(false);
+#endif
+  }
   ~WebAuthnUAFReproductionTest() override = default;
 
   // ChromeAuthenticatorRequestDelegate::TestObserver:
@@ -1882,9 +1876,7 @@ class WebAuthnUAFReproductionTest
   }
 
   void UIShown(ChromeAuthenticatorRequestDelegate* delegate) override {
-    if (run_loop_) {
-      run_loop_->Quit();
-    }
+    delegate_shown_future_.SetValue(delegate);
   }
 
   void OnDestroy(ChromeAuthenticatorRequestDelegate* delegate) override {
@@ -1894,7 +1886,9 @@ class WebAuthnUAFReproductionTest
   // AuthenticatorRequestDialogModel::Observer:
   void OnStepTransition() override {
     if (model_ &&
-        model_->step() == AuthenticatorRequestDialogModel::Step::kClosed) {
+        (model_->step() == AuthenticatorRequestDialogModel::Step::kClosed ||
+         model_->step() ==
+             AuthenticatorRequestDialogModel::Step::kPlatformAuthenticator)) {
       DeleteWebContents();
     }
   }
@@ -1930,8 +1924,13 @@ class WebAuthnUAFReproductionTest
 
   raw_ptr<ChromeAuthenticatorRequestDelegate> delegate_ = nullptr;
   raw_ptr<AuthenticatorRequestDialogModel> model_ = nullptr;
-  std::unique_ptr<base::RunLoop> run_loop_;
+  base::test::TestFuture<ChromeAuthenticatorRequestDelegate*>
+      delegate_shown_future_;
   bool web_contents_deleted_ = false;
+#if BUILDFLAG(IS_WIN)
+  device::FakeWinWebAuthnApi win_api_;
+  device::WinWebAuthnApi::ScopedOverride win_webauthn_api_override_{&win_api_};
+#endif
 };
 
 IN_PROC_BROWSER_TEST_F(WebAuthnUAFReproductionTest, CancelUAF) {
@@ -1958,10 +1957,7 @@ IN_PROC_BROWSER_TEST_F(WebAuthnUAFReproductionTest, CancelUAF) {
     });
   )");
 
-  if (!delegate_) {
-    run_loop_ = std::make_unique<base::RunLoop>();
-    run_loop_->Run();
-  }
+  ASSERT_TRUE(delegate_shown_future_.Wait());
   ASSERT_TRUE(delegate_);
   ASSERT_TRUE(delegate_->dialog_controller());
 
@@ -1971,6 +1967,39 @@ IN_PROC_BROWSER_TEST_F(WebAuthnUAFReproductionTest, CancelUAF) {
 
   // Trigger UAF
   delegate_->dialog_controller()->CancelAuthenticatorRequest();
+}
+
+IN_PROC_BROWSER_TEST_F(WebAuthnUAFReproductionTest, HideDialogUAF) {
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(
+      browser(), https_server_.GetURL("www.example.com", "/title1.html")));
+
+  content::WebContents* web_contents =
+      browser()->tab_strip_model()->GetActiveWebContents();
+
+  // Trigger WebAuthn flow asynchronously
+  content::ExecuteScriptAsync(web_contents, R"(
+    navigator.credentials.create({
+      publicKey: {
+        challenge: new Uint8Array([1, 2, 3, 4]),
+        rp: { name: "Example" },
+        user: {
+          id: new Uint8Array([1, 2, 3, 4]),
+          name: "test",
+          displayName: "test"
+        },
+        pubKeyCredParams: [{ type: "public-key", alg: -7 }],
+        timeout: 60000
+      }
+    });
+  )");
+
+  ASSERT_TRUE(delegate_shown_future_.Wait());
+  ASSERT_TRUE(delegate_);
+  ASSERT_TRUE(delegate_->dialog_controller());
+
+  // Trigger UAF
+  delegate_->dialog_controller()->HideDialogAndDispatchToPlatformAuthenticator(
+      std::nullopt);
 }
 
 }  // namespace

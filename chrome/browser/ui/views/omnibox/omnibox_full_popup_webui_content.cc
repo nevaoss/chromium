@@ -4,19 +4,26 @@
 
 #include "chrome/browser/ui/views/omnibox/omnibox_full_popup_webui_content.h"
 
-#include "base/strings/utf_string_conversions.h"
-#include "base/supports_user_data.h"
+#include <memory>
+#include <utility>
+
+#include "base/functional/bind.h"
+#include "base/memory/raw_ptr.h"
 #include "chrome/browser/ui/location_bar/location_bar.h"
 #include "chrome/browser/ui/omnibox/omnibox_controller.h"
 #include "chrome/browser/ui/omnibox/omnibox_edit_model.h"
-#include "chrome/browser/ui/omnibox/omnibox_next_features.h"
-#include "chrome/browser/ui/omnibox/omnibox_tab_helper.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/omnibox/omnibox_popup_presenter_base.h"
-#include "chrome/browser/ui/views/omnibox/omnibox_view_views.h"
-#include "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_handler.h"
 #include "chrome/common/webui_url_constants.h"
+#include "content/public/browser/render_widget_host_view.h"
+#include "content/public/browser/web_contents.h"
+#include "third_party/blink/public/common/context_menu_data/edit_flags.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
+#include "ui/menus/simple_menu_model.h"
+#include "ui/touch_selection/touch_editing_controller.h"
+#include "ui/views/style/typography.h"
+#include "ui/views/style/typography_provider.h"
+#include "ui/views/widget/widget.h"
 
 OmniboxFullPopupWebUIContent::OmniboxFullPopupWebUIContent(
     OmniboxPopupPresenterBase* presenter,
@@ -26,7 +33,9 @@ OmniboxFullPopupWebUIContent::OmniboxFullPopupWebUIContent(
                                location_bar,
                                controller,
                                /*include_location_bar_cutout=*/false,
-                               /*wants_focus=*/true) {
+                               /*wants_focus=*/true),
+      OmniboxContextMenuMixin<ui::SimpleMenuModel::Delegate>(location_bar,
+                                                             controller) {
   SetContentURL(chrome::kChromeUIOmniboxPopupURL);
 }
 
@@ -65,10 +74,78 @@ std::string_view OmniboxFullPopupWebUIContent::GetMetricPrefix() const {
 bool OmniboxFullPopupWebUIContent::HandleContextMenu(
     content::RenderFrameHost& render_frame_host,
     const content::ContextMenuParams& params) {
-  // Suppress the context menu unless it's on an editable element (e.g. a
-  // text field). This allows users to use spellcheck and other text-editing
-  // features in text fields, but hides the menu otherwise.
-  return !params.is_editable;
+  if (!params.is_editable) {
+    return true;
+  }
+
+  // Fetch clipboard text asynchronously and store it before showing the menu.
+  PrepareToShowContextMenu(
+      base::BindOnce(&OmniboxFullPopupWebUIContent::ShowContextMenuComplete,
+                     weak_ptr_factory_.GetWeakPtr(), params));
+  return true;
+}
+
+void OmniboxFullPopupWebUIContent::ShowContextMenuComplete(
+    const content::ContextMenuParams& params) {
+  params_ = params;
+
+  menu_model_ = std::make_unique<ui::SimpleMenuModel>(this);
+
+  content::WebContents* web_contents = GetWebContents();
+  AddTextfieldItems(web_contents ? web_contents->GetWeakPtr()
+                                 : base::WeakPtr<content::WebContents>(),
+                    params, menu_model_.get());
+  AddOmniboxSpecificItems(menu_model_.get());
+
+  menu_runner_ = std::make_unique<views::MenuRunner>(
+      menu_model_.get(),
+      views::MenuRunner::HAS_MNEMONICS | views::MenuRunner::CONTEXT_MENU);
+
+  gfx::Point screen_point(params.x, params.y);
+  views::View::ConvertPointToScreen(this, &screen_point);
+
+  menu_runner_->RunMenuAt(GetWidget(), /*button_controller=*/nullptr,
+                          gfx::Rect(screen_point, gfx::Size()),
+                          views::MenuAnchorPosition::kTopLeft,
+                          ui::mojom::MenuSourceType::kMouse);
+}
+
+void OmniboxFullPopupWebUIContent::ExecuteCommand(int command_id,
+                                                  int event_flags) {
+  if (HandleExecuteCommand(command_id, event_flags)) {
+    return;
+  }
+  content::WebContents* web_contents = GetWebContents();
+  if (!web_contents) {
+    return;
+  }
+  HandleExecuteTextEditingCommandOnWebContents(web_contents, command_id,
+                                               event_flags);
+}
+
+bool OmniboxFullPopupWebUIContent::GetAcceleratorForCommandId(
+    int command_id,
+    ui::Accelerator* accelerator) const {
+  return HandleGetAcceleratorForCommandId(command_id, accelerator);
+}
+
+bool OmniboxFullPopupWebUIContent::IsContextMenuForReadOnlyOmnibox() const {
+  return !params_.is_editable;
+}
+
+const gfx::FontList& OmniboxFullPopupWebUIContent::FontListForContextMenu()
+    const {
+  return views::TypographyProvider::Get().GetFont(views::style::CONTEXT_MENU,
+                                                  views::style::STYLE_PRIMARY);
+}
+
+bool OmniboxFullPopupWebUIContent::IsContextMenuTextEditingCommandEnabled(
+    int command_id) const {
+  return HandleIsContextMenuTextEditingCommandEnabled(command_id, params_);
+}
+
+views::Widget* OmniboxFullPopupWebUIContent::GetWidgetForTextServices() {
+  return GetWidget();
 }
 
 BEGIN_METADATA(OmniboxFullPopupWebUIContent)

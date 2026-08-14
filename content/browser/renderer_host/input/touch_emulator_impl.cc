@@ -132,7 +132,11 @@ void TouchEmulatorImpl::Disable() {
     return;
 
   mode_ = Mode::kEmulatingTouchFromMouse;
+  auto weak_this = weak_ptr_factory_.GetWeakPtr();
   CancelTouch();
+  if (!weak_this) {
+    return;
+  }
   if (gesture_provider_) {
     gesture_provider_->Shutdown();
     gesture_provider_ = nullptr;
@@ -485,6 +489,8 @@ void TouchEmulatorImpl::InjectTouchEvent(
     base::OnceClosure callback) {
   CHECK(IsEnabled() && mode_ == Mode::kInjectingTouchEvents,
         base::NotFatalUntil::M152);
+  // Injected touch events use the target root view's coordinate space, which
+  // is also used by the gesture provider and emulated gesture routing.
   touch_event_ = event;
   injected_touch_completion_callbacks_.push(std::move(callback));
   auto weak_this = weak_ptr_factory_.GetWeakPtr();

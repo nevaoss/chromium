@@ -10,7 +10,6 @@
 
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
-#include "base/memory/raw_ptr.h"
 #include "components/optimization_guide/content/browser/page_content_metadata_observer.h"
 #include "components/optimization_guide/content/browser/page_context_eligibility.h"
 #include "components/optimization_guide/content/browser/page_context_eligibility_api.h"
@@ -123,6 +122,16 @@ class PageContextEligibilityObserverTest
     content::RenderViewHostTestHarness::TearDown();
   }
 
+  std::unique_ptr<PageContextEligibilityObserver> CreateObserver(
+      std::string account = std::string(),
+      base::RepeatingCallback<void(PageContextEligibilityStatus)> callback =
+          base::DoNothing()) {
+    auto observer = PageContextEligibilityObserver::Create(
+        web_contents(), std::move(account), std::move(callback));
+    task_environment()->RunUntilIdle();
+    return observer;
+  }
+
   MockEligibilityAPI* mock_api() { return mock_api_.get(); }
 
   void CallOnMetaTagsChanged(PageContextEligibilityObserver& observer,
@@ -150,11 +159,11 @@ TEST_F(PageContextEligibilityObserverTest, AccountGetterExecution) {
                                                "test@example.com", testing::_))
       .WillRepeatedly(testing::Return(true));
 
-  auto observer_ptr = PageContextEligibilityObserver::Create(
-      web_contents(), "test@example.com", base::DoNothing());
+  auto observer_ptr = CreateObserver("test@example.com");
   ASSERT_TRUE(observer_ptr);
   PageContextEligibilityObserver& observer = *observer_ptr;
-  EXPECT_TRUE(observer.IsPageContextEligible());
+  EXPECT_EQ(observer.IsPageContextEligible(),
+            PageContextEligibilityStatus::kEligible);
 }
 
 TEST_F(PageContextEligibilityObserverTest, MetaTagParsingAndObserverUpdates) {
@@ -173,8 +182,7 @@ TEST_F(PageContextEligibilityObserverTest, MetaTagParsingAndObserverUpdates) {
                                "www.example.com", "/path", "", testing::_))
       .WillRepeatedly(testing::Return(true));
 
-  auto observer_ptr = PageContextEligibilityObserver::Create(
-      web_contents(), std::string(), base::DoNothing());
+  auto observer_ptr = CreateObserver();
   ASSERT_TRUE(observer_ptr);
   PageContextEligibilityObserver& observer = *observer_ptr;
 
@@ -194,7 +202,8 @@ TEST_F(PageContextEligibilityObserverTest, MetaTagParsingAndObserverUpdates) {
       .WillRepeatedly(testing::Return(false));
 
   CallOnMetaTagsChanged(observer, std::move(page_metadata));
-  EXPECT_FALSE(observer.IsPageContextEligible());
+  EXPECT_EQ(observer.IsPageContextEligible(),
+            PageContextEligibilityStatus::kNotEligible);
 }
 
 TEST_F(PageContextEligibilityObserverTest, EligibilityChangeNotification) {
@@ -212,17 +221,20 @@ TEST_F(PageContextEligibilityObserverTest, EligibilityChangeNotification) {
       .WillRepeatedly(testing::Return(true));
 
   int callback_count = 0;
-  bool last_eligibility = true;
+  PageContextEligibilityStatus last_eligibility =
+      PageContextEligibilityStatus::kUnknown;
 
-  auto observer_ptr = PageContextEligibilityObserver::Create(
-      web_contents(), std::string(),
-      base::BindRepeating(
-          [](int* count, bool* last_val, bool is_eligible) {
-            (*count)++;
-            *last_val = is_eligible;
-          },
-          &callback_count, &last_eligibility));
+  auto observer_ptr = CreateObserver(
+      std::string(), base::BindRepeating(
+                         [](int* count, PageContextEligibilityStatus* last_val,
+                            PageContextEligibilityStatus status) {
+                           (*count)++;
+                           *last_val = status;
+                         },
+                         &callback_count, &last_eligibility));
   ASSERT_TRUE(observer_ptr);
+  EXPECT_EQ(1, callback_count);
+  EXPECT_EQ(PageContextEligibilityStatus::kEligible, last_eligibility);
   PageContextEligibilityObserver& observer = *observer_ptr;
 
   // Change to false
@@ -237,8 +249,8 @@ TEST_F(PageContextEligibilityObserverTest, EligibilityChangeNotification) {
       .WillOnce(testing::Return(false));
 
   CallOnMetaTagsChanged(observer, std::move(page_metadata));
-  EXPECT_EQ(1, callback_count);
-  EXPECT_FALSE(last_eligibility);
+  EXPECT_EQ(2, callback_count);
+  EXPECT_EQ(PageContextEligibilityStatus::kNotEligible, last_eligibility);
 
   // Redundant update (still false) should not trigger callback
   auto page_metadata2 = blink::mojom::PageMetadata::New();
@@ -252,7 +264,7 @@ TEST_F(PageContextEligibilityObserverTest, EligibilityChangeNotification) {
       .WillOnce(testing::Return(false));
 
   CallOnMetaTagsChanged(observer, std::move(page_metadata2));
-  EXPECT_EQ(1, callback_count);  // Should not have incremented
+  EXPECT_EQ(2, callback_count);  // Should not have incremented
 
   // Change back to true
   EXPECT_CALL(*mock_api(),
@@ -260,8 +272,8 @@ TEST_F(PageContextEligibilityObserverTest, EligibilityChangeNotification) {
                                                testing::IsEmpty()))
       .WillOnce(testing::Return(true));
   CallOnMetaTagsChanged(observer, nullptr);
-  EXPECT_EQ(2, callback_count);
-  EXPECT_TRUE(last_eligibility);
+  EXPECT_EQ(3, callback_count);
+  EXPECT_EQ(last_eligibility, PageContextEligibilityStatus::kEligible);
 }
 
 TEST_F(PageContextEligibilityObserverTest, NavigationResetsObserver) {
@@ -279,8 +291,7 @@ TEST_F(PageContextEligibilityObserverTest, NavigationResetsObserver) {
                                                testing::IsEmpty()))
       .WillOnce(testing::Return(true));
 
-  auto observer_ptr = PageContextEligibilityObserver::Create(
-      web_contents(), std::string(), base::DoNothing());
+  auto observer_ptr = CreateObserver();
   ASSERT_TRUE(observer_ptr);
 
   // Navigate to a new page
@@ -319,8 +330,7 @@ TEST_F(PageContextEligibilityObserverTest, SubframeNavigation) {
                                                testing::IsEmpty()))
       .WillRepeatedly(testing::Return(true));
 
-  auto observer_ptr = PageContextEligibilityObserver::Create(
-      web_contents(), std::string(), base::DoNothing());
+  auto observer_ptr = CreateObserver();
   ASSERT_TRUE(observer_ptr);
 
   // Append a subframe
@@ -366,8 +376,7 @@ TEST_F(PageContextEligibilityObserverTest, SubframeDataUrlPrecursor) {
                                                testing::IsEmpty()))
       .WillRepeatedly(testing::Return(true));
 
-  auto observer_ptr = PageContextEligibilityObserver::Create(
-      web_contents(), std::string(), base::DoNothing());
+  auto observer_ptr = CreateObserver();
   ASSERT_TRUE(observer_ptr);
 
   // Append a subframe

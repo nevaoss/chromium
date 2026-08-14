@@ -18,7 +18,6 @@
 #include "base/metrics/histogram_functions.h"
 #include "build/build_config.h"
 #include "chrome/browser/page_load_metrics/observers/top_chrome_webui_metrics_observer.h"
-#include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/omnibox/omnibox_controller.h"
 #include "chrome/browser/ui/omnibox/omnibox_edit_model.h"
@@ -34,7 +33,6 @@
 #include "chrome/browser/ui/views/omnibox/rounded_omnibox_results_frame.h"
 #include "chrome/browser/ui/views/theme_copying_widget.h"
 #include "components/omnibox/common/omnibox_feature_configs.h"
-#include "components/omnibox/common/omnibox_features.h"
 #include "components/omnibox/common/omnibox_metrics_utils.h"
 #include "components/viz/common/frame_timing_details.h"
 #include "ui/accessibility/ax_node_data.h"
@@ -359,6 +357,9 @@ void OmniboxPopupViewViews::UpdatePopupAppearance() {
       if (!widget_->ShouldHandleNativeWidgetActivationChanged(false)) {
         return;
       }
+      // Drop stale metrics callbacks.
+      metrics_weak_factory_.InvalidateWeakPtrs();
+
       widget_->CloseAnimated();  // This will eventually delete the popup.
       widget_->RemoveObserver(&widget_observer_helper_);
       widget_.reset();
@@ -390,6 +391,9 @@ void OmniboxPopupViewViews::UpdatePopupAppearance() {
   // Ensure that we have an existing popup widget prior to creating the result
   // views to ensure the proper initialization of the views hierarchy.
   if (!was_open) {
+    // Drop stale metrics callbacks.
+    metrics_weak_factory_.InvalidateWeakPtrs();
+
     views::Widget* popup_parent = location_bar_view_->GetWidget();
 
     // If the popup is currently closed, we need to create it.
@@ -597,13 +601,16 @@ void OmniboxPopupViewViews::OnWidgetVisibilityChanged(views::Widget* widget,
     // has been created.
     widget_->GetCompositor()->RequestSuccessfulPresentationTimeForNextFrame(
         base::BindOnce(&OmniboxPopupViewViews::OnPopupFirstPaintPresented,
-                       weak_ptr_factory_.GetWeakPtr(),
+                       metrics_weak_factory_.GetWeakPtr(),
                        controller()
                            ->autocomplete_controller()
                            ->result()
                            .result_ready_time(),
                        popup_create_start_time_));
     popup_create_start_time_.reset();
+  } else {
+    // Drop metrics callbacks if the widget is not visible.
+    metrics_weak_factory_.InvalidateWeakPtrs();
   }
 }
 
@@ -613,6 +620,9 @@ void OmniboxPopupViewViews::OnWidgetDestroying(views::Widget* widget) {
     widget_->RemoveObserver(&widget_observer_helper_);
     widget_ = nullptr;
   }
+  // Drop metrics callbacks when the widget is destroyed.
+  metrics_weak_factory_.InvalidateWeakPtrs();
+
   UpdateAccessibleStates();
 
   // Update the popup state manager if widget was destroyed externally, e.g., by
@@ -676,7 +686,8 @@ void OmniboxPopupViewViews::OnPopupFirstPaintPresented(
 
   if (request_start_time.is_null()) {
     omnibox::LogResultToContentReadyEarlyExitReason(
-        omnibox::ResultToContentReadyEarlyExitReason::kNoResultReadyTime);
+        omnibox::ResultToContentReadyEarlyExitReason::kNoResultReadyTime,
+        "Omnibox.Popup");
     return;
   }
 
@@ -863,7 +874,7 @@ std::u16string OmniboxPopupViewViews::UpdateRowView(
     const AutocompleteMatch& match,
     const std::u16string& previous_row_header) {
   std::u16string current_row_header =
-      controller()->edit_model()->GetSuggestionGroupHeaderText(
+      controller()->autocomplete_controller()->GetSuggestionGroupHeaderText(
           match.suggestion_group_id);
   // Show the header if it's distinct from the previous match's header.
   if (!current_row_header.empty() &&

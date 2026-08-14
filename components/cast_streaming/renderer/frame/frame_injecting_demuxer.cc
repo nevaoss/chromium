@@ -312,37 +312,16 @@ class FrameInjectingVideoDemuxerStream final
 };
 
 FrameInjectingDemuxer::FrameInjectingDemuxer(
-    DemuxerConnector* demuxer_connector,
+    scoped_refptr<DemuxerStreamConfigBuffer> config_buffer,
     scoped_refptr<base::SequencedTaskRunner> media_task_runner)
     : media_task_runner_(std::move(media_task_runner)),
-      original_task_runner_(base::SequencedTaskRunner::GetCurrentDefault()),
-      demuxer_connector_(demuxer_connector),
-      weak_factory_(this) {
+      config_buffer_(std::move(config_buffer)) {
   DVLOG(1) << __func__;
-  DCHECK(demuxer_connector_);
+  DCHECK(config_buffer_);
 }
 
 FrameInjectingDemuxer::~FrameInjectingDemuxer() {
   DVLOG(1) << __func__;
-
-  if (was_initialization_successful_) {
-    original_task_runner_->PostTask(
-        FROM_HERE, base::BindOnce(&DemuxerConnector::OnDemuxerDestroyed,
-                                  base::Unretained(demuxer_connector_)));
-  }
-}
-
-void FrameInjectingDemuxer::OnStreamsInitialized(
-    mojom::AudioStreamInitializationInfoPtr audio_stream_info,
-    mojom::VideoStreamInitializationInfoPtr video_stream_info) {
-  DVLOG(1) << __func__;
-  DCHECK(!media_task_runner_->RunsTasksInCurrentSequence());
-
-  media_task_runner_->PostTask(
-      FROM_HERE,
-      base::BindOnce(&FrameInjectingDemuxer::OnStreamsInitializedOnMediaThread,
-                     weak_factory_.GetWeakPtr(), std::move(audio_stream_info),
-                     std::move(video_stream_info)));
 }
 
 void FrameInjectingDemuxer::OnStreamsInitializedOnMediaThread(
@@ -427,17 +406,19 @@ void FrameInjectingDemuxer::Initialize(
   host_->SetDuration(media::kInfiniteDuration);
   initialized_cb_ = std::move(status_cb);
 
-  original_task_runner_->PostTask(
-      FROM_HERE, base::BindOnce(&DemuxerConnector::SetDemuxer,
-                                base::Unretained(demuxer_connector_),
-                                base::Unretained(this)));
+  config_buffer_->ReadConfigs(
+      media_task_runner_,
+      base::BindOnce(&FrameInjectingDemuxer::OnStreamsInitializedOnMediaThread,
+                     weak_factory_.GetWeakPtr()));
 }
 
 void FrameInjectingDemuxer::AbortPendingReads() {
   DVLOG(2) << __func__;
   DCHECK(media_task_runner_->RunsTasksInCurrentSequence());
 
-  timestamp_tracker_->ResetPosition();
+  if (timestamp_tracker_) {
+    timestamp_tracker_->ResetPosition();
+  }
 
   if (audio_stream_) {
     audio_stream_->AbortPendingRead();
@@ -456,7 +437,9 @@ void FrameInjectingDemuxer::CancelPendingSeek(base::TimeDelta seek_time) {}
 // Not supported.
 void FrameInjectingDemuxer::Seek(base::TimeDelta time,
                                  media::PipelineStatusCallback status_cb) {
-  timestamp_tracker_->ResetPosition();
+  if (timestamp_tracker_) {
+    timestamp_tracker_->ResetPosition();
+  }
   std::move(status_cb).Run(media::PIPELINE_OK);
 }
 
@@ -474,6 +457,7 @@ void FrameInjectingDemuxer::Stop() {
   if (video_stream_) {
     video_stream_.reset();
   }
+  weak_factory_.InvalidateWeakPtrs();
 }
 
 base::TimeDelta FrameInjectingDemuxer::GetStartTime() const {

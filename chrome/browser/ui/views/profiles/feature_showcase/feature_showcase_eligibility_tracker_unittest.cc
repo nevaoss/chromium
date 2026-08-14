@@ -26,11 +26,16 @@ using ::testing::Return;
 class MockFeatureShowcaseStepEligibilityChecker
     : public FeatureShowcaseStepEligibilityChecker {
  public:
+  MockFeatureShowcaseStepEligibilityChecker() {
+    ON_CALL(*this, OnTimeout()).WillByDefault(Return(false));
+  }
+
   MOCK_METHOD(void,
               CheckEligibility,
               (Profile&, base::OnceCallback<void(bool)>),
               (override));
   MOCK_METHOD(std::string, GetStepIdentifier, (), (const, override));
+  MOCK_METHOD(bool, OnTimeout, (), (override));
 };
 
 class FeatureShowcaseEligibilityTrackerTest : public testing::Test {
@@ -341,6 +346,96 @@ TEST_F(FeatureShowcaseEligibilityTrackerTest,
   std::move(second_eval_callback_2).Run(true);
 
   EXPECT_THAT(second_eval_future.Get(), ElementsAre("step_2"));
+}
+
+TEST_F(FeatureShowcaseEligibilityTrackerTest, OnTimeoutIncludesEligibleSteps) {
+  base::OnceCallback<void(bool)> callback_1;
+  auto checker = std::make_unique<MockFeatureShowcaseStepEligibilityChecker>();
+  ON_CALL(*checker, GetStepIdentifier()).WillByDefault(Return("step_1"));
+  EXPECT_CALL(*checker, CheckEligibility)
+      .WillOnce([&](Profile& profile, base::OnceCallback<void(bool)> callback) {
+        callback_1 = std::move(callback);
+      });
+  EXPECT_CALL(*checker, OnTimeout).WillOnce(Return(true));
+
+  std::vector<std::unique_ptr<FeatureShowcaseStepEligibilityChecker>> checkers;
+  checkers.push_back(std::move(checker));
+
+  FeatureShowcaseEligibilityTracker tracker(std::move(checkers));
+
+  base::test::TestFuture<const std::vector<std::string>&> future;
+  tracker.EvaluateEligibleSteps(profile_, future.GetCallback());
+
+  ASSERT_FALSE(future.IsReady());
+
+  task_environment_.FastForwardBy(base::Seconds(2));
+
+  EXPECT_THAT(future.Get(), ElementsAre("step_1"));
+}
+
+TEST_F(FeatureShowcaseEligibilityTrackerTest, ConflictingSteps) {
+  auto primary_checker =
+      std::make_unique<MockFeatureShowcaseStepEligibilityChecker>();
+  ON_CALL(*primary_checker, GetStepIdentifier())
+      .WillByDefault(Return("primary"));
+  ON_CALL(*primary_checker, CheckEligibility)
+      .WillByDefault([](Profile&, base::OnceCallback<void(bool)> callback) {
+        std::move(callback).Run(true);
+      });
+
+  auto secondary_checker =
+      std::make_unique<MockFeatureShowcaseStepEligibilityChecker>();
+  ON_CALL(*secondary_checker, GetStepIdentifier())
+      .WillByDefault(Return("secondary"));
+  ON_CALL(*secondary_checker, CheckEligibility)
+      .WillByDefault([](Profile&, base::OnceCallback<void(bool)> callback) {
+        std::move(callback).Run(true);
+      });
+
+  std::vector<std::unique_ptr<FeatureShowcaseStepEligibilityChecker>> checkers;
+  checkers.push_back(std::move(primary_checker));
+  checkers.push_back(std::move(secondary_checker));
+
+  FeatureShowcaseEligibilityTracker tracker(std::move(checkers),
+                                            {{"primary", "secondary"}});
+
+  base::test::TestFuture<const std::vector<std::string>&> future;
+  tracker.EvaluateEligibleSteps(profile_, future.GetCallback());
+
+  EXPECT_THAT(future.Get(), ElementsAre("primary"));
+}
+
+TEST_F(FeatureShowcaseEligibilityTrackerTest,
+       ConflictingStepsPrimaryIneligible) {
+  auto primary_checker =
+      std::make_unique<MockFeatureShowcaseStepEligibilityChecker>();
+  ON_CALL(*primary_checker, GetStepIdentifier())
+      .WillByDefault(Return("primary"));
+  ON_CALL(*primary_checker, CheckEligibility)
+      .WillByDefault([](Profile&, base::OnceCallback<void(bool)> callback) {
+        std::move(callback).Run(false);
+      });
+
+  auto secondary_checker =
+      std::make_unique<MockFeatureShowcaseStepEligibilityChecker>();
+  ON_CALL(*secondary_checker, GetStepIdentifier())
+      .WillByDefault(Return("secondary"));
+  ON_CALL(*secondary_checker, CheckEligibility)
+      .WillByDefault([](Profile&, base::OnceCallback<void(bool)> callback) {
+        std::move(callback).Run(true);
+      });
+
+  std::vector<std::unique_ptr<FeatureShowcaseStepEligibilityChecker>> checkers;
+  checkers.push_back(std::move(primary_checker));
+  checkers.push_back(std::move(secondary_checker));
+
+  FeatureShowcaseEligibilityTracker tracker(std::move(checkers),
+                                            {{"primary", "secondary"}});
+
+  base::test::TestFuture<const std::vector<std::string>&> future;
+  tracker.EvaluateEligibleSteps(profile_, future.GetCallback());
+
+  EXPECT_THAT(future.Get(), ElementsAre("secondary"));
 }
 
 }  // namespace

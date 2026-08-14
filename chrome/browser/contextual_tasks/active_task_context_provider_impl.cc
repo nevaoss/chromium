@@ -4,6 +4,10 @@
 
 #include "chrome/browser/contextual_tasks/active_task_context_provider_impl.h"
 
+#include <map>
+
+#include "base/feature_list.h"
+#include "base/strings/utf_string_conversions.h"
 #include "chrome/browser/contextual_search/contextual_search_web_contents_helper.h"
 #include "chrome/browser/contextual_tasks/active_task_context_provider.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_panel_controller.h"
@@ -15,6 +19,8 @@
 #include "components/contextual_tasks/public/context_decoration_params.h"
 #include "components/contextual_tasks/public/contextual_task.h"
 #include "components/contextual_tasks/public/contextual_task_context.h"
+#include "components/contextual_tasks/public/features.h"
+#include "components/omnibox/common/composebox_features.h"
 #include "components/sessions/content/session_tab_helper.h"
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/page.h"
@@ -26,19 +32,23 @@ namespace {
 
 std::set<tabs::TabHandle> GetTabsFromContext(
     const ContextualTaskContext& context,
-    BrowserWindowInterface* browser_window) {
+    BrowserWindowInterface* browser_window,
+    contextual_search::ContextualSearchSessionHandle* session_handle) {
   std::set<tabs::TabHandle> tabs;
 
+  // Map SessionID to its GURL and title.
+  std::map<SessionID, std::pair<GURL, std::u16string>>
+      context_session_ids_url_map;
   // Add the tabs from context if they exist in the current browser window.
-  std::set<SessionID> context_session_ids;
   for (const auto& attachment : context.GetUrlAttachments()) {
     SessionID id = attachment.GetTabSessionId();
     if (id.is_valid()) {
-      context_session_ids.insert(id);
+      context_session_ids_url_map[id] =
+          std::make_pair(attachment.GetURL(), attachment.GetTitle());
     }
   }
 
-  if (context_session_ids.empty()) {
+  if (context_session_ids_url_map.empty()) {
     return tabs;
   }
 
@@ -54,7 +64,30 @@ std::set<tabs::TabHandle> GetTabsFromContext(
       continue;
     }
     SessionID tab_id = sessions::SessionTabHelper::IdForTab(web_contents);
-    if (context_session_ids.contains(tab_id)) {
+    auto matching_attachment = context_session_ids_url_map.find(tab_id);
+    if (matching_attachment != context_session_ids_url_map.end()) {
+      // Verify if the tab's current URL is equivalent to the context URL.
+      // If not, the tab has navigated away and is removed from context.
+      if (omnibox::IsTabDeselectionInComposeboxEnabled()) {
+        bool is_equivalent =
+            session_handle
+                ? session_handle->AreUrlsEquivalent(
+                      matching_attachment->second.first,
+                      base::UTF16ToUTF8(matching_attachment->second.second),
+                      web_contents->GetLastCommittedURL(),
+                      base::UTF16ToUTF8(tab->GetTitle()))
+                : (matching_attachment->second.first ==
+                   web_contents->GetLastCommittedURL());
+        if (!is_equivalent) {
+          continue;
+        }
+      }
+
+      if (session_handle && session_handle->IsTabDeselected(
+                                tab_id, web_contents->GetLastCommittedURL(),
+                                base::UTF16ToUTF8(tab->GetTitle()))) {
+        continue;
+      }
       tabs.insert(tab->GetHandle());
     }
   }
@@ -162,7 +195,21 @@ void ActiveTaskContextProviderImpl::PrimaryPageChanged(content::Page& page) {
                       url.host() == chrome::kChromeUINewTabPageHost);
 
   if (!is_aim_page) {
-    local_tab_underlines_.clear();
+    if (base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox)) {
+      tabs::TabInterface* navigating_tab =
+          tabs::TabInterface::MaybeGetFromContents(web_contents());
+      tabs::TabHandle navigating_tab_handle = navigating_tab
+                                                  ? navigating_tab->GetHandle()
+                                                  : tabs::TabHandle::Null();
+
+      // Only erase local underlines owned by the navigating tab, not all
+      // of the tabs, because now, there are multiple owners of tab underlines,
+      // not just one. This is because this tab's AIM/entrypoint searchbox has
+      // likely changed upon navigation, and no other tabs. If it navigates
+      // back to an AIM page, it will add the underlined tabs again in the
+      // contextual searchbox handler.
+      local_tab_underlines_.erase(navigating_tab_handle);
+    }
 
     auto* helper =
         ContextualSearchWebContentsHelper::FromWebContents(web_contents());
@@ -209,6 +256,11 @@ void ActiveTaskContextProviderImpl::OnTaskDisassociatedFromTab(
 }
 
 void ActiveTaskContextProviderImpl::RefreshContext() {
+  if (!contextual_tasks::IsContextualTasksUIEnabled()) {
+    ResetStateAndNotifyObservers();
+    return;
+  }
+
   // Increment the callback ID to invalidate any outstanding callbacks.
   callback_id_++;
 
@@ -221,6 +273,8 @@ void ActiveTaskContextProviderImpl::RefreshContext() {
   } else {
     ResetStateAndNotifyObservers();
   }
+
+  session_handle_ = session_handle ? session_handle->AsWeakPtr() : nullptr;
 
   if (!active_task_id_.has_value()) {
     ResetStateAndNotifyObservers();
@@ -250,7 +304,8 @@ void ActiveTaskContextProviderImpl::OnGetContextForTask(
   }
 
   if (context) {
-    backend_context_tabs_ = GetTabsFromContext(*context, browser_window_);
+    backend_context_tabs_ =
+        GetTabsFromContext(*context, browser_window_, session_handle_.get());
   } else {
     backend_context_tabs_.clear();
   }
@@ -261,6 +316,7 @@ void ActiveTaskContextProviderImpl::OnGetContextForTask(
 void ActiveTaskContextProviderImpl::ResetStateAndNotifyObservers() {
   active_task_id_ = std::nullopt;
   backend_context_tabs_.clear();
+  session_handle_ = nullptr;
   NotifyObservers();
 }
 

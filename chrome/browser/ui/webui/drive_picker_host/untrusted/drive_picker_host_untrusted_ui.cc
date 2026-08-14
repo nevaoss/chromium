@@ -8,7 +8,9 @@
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/grit/drive_picker_host_untrusted_resources.h"
 #include "chrome/grit/drive_picker_host_untrusted_resources_map.h"
+#include "chrome/grit/generated_resources.h"
 #include "components/omnibox/common/omnibox_features.h"
+#include "components/strings/grit/components_strings.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_ui.h"
 #include "content/public/browser/web_ui_data_source.h"
@@ -49,6 +51,13 @@ DrivePickerUntrustedHostUI::DrivePickerUntrustedHostUI(content::WebUI* web_ui)
   webui::SetupWebUIDataSource(
       source, kDrivePickerHostUntrustedResources,
       IDR_DRIVE_PICKER_HOST_UNTRUSTED_DRIVE_PICKER_HOST_UNTRUSTED_HTML);
+
+  source->AddLocalizedString("driveDisclaimerError",
+                             IDS_NTP_DRIVE_DISCLAIMER_ERROR);
+  source->AddLocalizedString("driveDisclaimerTryAgain",
+                             IDS_NTP_DRIVE_DISCLAIMER_TRY_AGAIN);
+  source->AddLocalizedString("cancel", IDS_CANCEL);
+  source->UseStringsJs();
 
   source->AddFrameAncestor(GURL(chrome::kChromeUIDrivePickerHostURL));
 
@@ -139,5 +148,32 @@ void DrivePickerUntrustedHostUI::OnPageDisconnected() {
         ->OnError(
             drive_picker_host::mojom::DrivePickerError::kMojoDisconnected);
     pending_request_.reset();
+  }
+}
+
+void DrivePickerUntrustedHostUI::OnConsentKitIframeMessage(
+    mojo_base::ProtoWrapper message_wrapper) {
+  if (delegate_) {
+    delegate_->OnConsentKitIframeMessage(std::move(message_wrapper));
+  }
+}
+
+void DrivePickerUntrustedHostUI::OnConsentKitPrivacyFlowResult(
+    mojo_base::ProtoWrapper result_wrapper) {
+  if (delegate_) {
+    delegate_->OnConsentKitPrivacyFlowResult(std::move(result_wrapper));
+  }
+}
+
+void DrivePickerUntrustedHostUI::OnConsentKitError(
+    const std::string& error_message) {
+  if (delegate_) {
+    delegate_->OnConsentKitError(error_message);
+  }
+}
+
+void DrivePickerUntrustedHostUI::OnShowErrorDialog() {
+  if (delegate_) {
+    delegate_->OnShowErrorDialog();
   }
 }

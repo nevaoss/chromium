@@ -335,9 +335,8 @@ NavigationCapturingProcess::MaybeHandleAppNavigation(
   const std::optional<ash::SystemWebAppType> capturing_system_app_type =
       ash::GetCapturingSystemAppForURL(profile, params.url);
   if (capturing_system_app_type.has_value()) {
-    if (params.browser && ash::IsBrowserForSystemWebApp(
-                              params.browser->GetBrowserForMigrationOnly(),
-                              capturing_system_app_type.value())) {
+    if (params.browser && GetSystemWebAppType(params.browser) ==
+                              capturing_system_app_type.value()) {
       RecordInitialNavigationCapturingResult(
           NavigationCapturingInitialResult::kNotHandled);
       return nullptr;
@@ -760,14 +759,15 @@ NavigationCapturingProcess::GetInitialNavigationParamsOverride(
         (app_display_mode == DisplayMode::kBrowser ||
          (app_id == source_browser_app_id_ &&
           is_in_source_app_with_url_in_scope))) {
-      auto* const app_controller =
-          web_app::AppBrowserController::From(params.browser);
-      if (source_browser_app_id_.has_value() &&
-          !app_controller->ShouldHideNewTabButton()) {
-        // Apps that support tabbed mode can open a new tab in the current app
-        // browser itself.
-        return ForcedNewAppContext(
-            app_display_mode, params.browser->GetBrowserForMigrationOnly());
+      if (params.browser && source_browser_app_id_.has_value()) {
+        auto* const app_controller =
+            web_app::AppBrowserController::From(params.browser);
+        if (!app_controller->ShouldHideNewTabButton()) {
+          // Apps that support tabbed mode can open a new tab in the current app
+          // browser itself.
+          return ForcedNewAppContext(
+              app_display_mode, params.browser->GetBrowserForMigrationOnly());
+        }
       }
       Browser* app_host_window;
       if (app_display_mode == DisplayMode::kBrowser) {

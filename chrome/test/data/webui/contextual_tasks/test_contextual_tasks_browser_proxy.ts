@@ -32,6 +32,7 @@ class MockPage extends TestBrowserProxy implements PageInterface {
       'enterBasicMode',
       'exitBasicMode',
       'setOAuthToken',
+      'onCookieSyncCompleted',
       'setTaskDetails',
       'setThreadTitle',
       'showOauthErrorDialog',
@@ -84,6 +85,10 @@ class MockPage extends TestBrowserProxy implements PageInterface {
   // eslint-disable-next-line @typescript-eslint/naming-convention
   setOAuthToken(oauthToken: string) {
     this.methodCalled('setOAuthToken', oauthToken);
+  }
+
+  onCookieSyncCompleted() {
+    this.methodCalled('onCookieSyncCompleted');
   }
 
   hideInput() {
@@ -212,6 +217,7 @@ class TestContextualTasksPageHandler extends TestBrowserProxy implements
       'isZeroState',
       'moveTaskUiToNewTab',
       'onboardingTooltipDismissed',
+      'lensSearchTooltipDismissed',
       'onContextMenuOpened',
       'onFileClickedFromSourcesMenu',
       'onImageClickedFromSourcesMenu',
@@ -235,6 +241,8 @@ class TestContextualTasksPageHandler extends TestBrowserProxy implements
       'onWindowClosed',
       'closeWindow',
       'maybeTriggerPinningPromo',
+      'showPageInfoBubble',
+      'createNewThread',
     ]);
 
     this.url_ = url;
@@ -332,6 +340,10 @@ class TestContextualTasksPageHandler extends TestBrowserProxy implements
 
   onboardingTooltipDismissed() {
     this.methodCalled('onboardingTooltipDismissed');
+  }
+
+  lensSearchTooltipDismissed() {
+    this.methodCalled('lensSearchTooltipDismissed');
   }
 
   moveTaskUiToNewTab() {
@@ -457,6 +469,14 @@ class TestContextualTasksPageHandler extends TestBrowserProxy implements
   maybeTriggerPinningPromo() {
     this.methodCalled('maybeTriggerPinningPromo');
   }
+
+  showPageInfoBubble() {
+    this.methodCalled('showPageInfoBubble');
+  }
+
+  createNewThread() {
+    this.methodCalled('createNewThread');
+  }
 }
 
 /**
@@ -481,11 +501,12 @@ export class TestContextualTasksBrowserProxy extends TestBrowserProxy implements
     ]);
     this.callbackRouter = new PageCallbackRouter();
     this.page = new MockPage();
+    this.callbackRouterRemote =
+        this.callbackRouter.$.bindNewPipeAndPassRemote();
     this.handler = new TestContextualTasksPageHandler(url, this.page);
     this.composeboxHandler = new TestBrowserProxy();
     this.searchboxHandler = new TestSearchboxPageHandler();
-    this.callbackRouterRemote =
-        this.callbackRouter.$.bindNewPipeAndPassRemote();
+    this.callbackRouterRemote.onCookieSyncCompleted();
   }
 
   createPageHandler() {

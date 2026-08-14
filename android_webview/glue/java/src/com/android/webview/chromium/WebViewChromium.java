@@ -68,7 +68,6 @@ import org.chromium.android_webview.AwContentsStatics;
 import org.chromium.android_webview.AwDataDirLock;
 import org.chromium.android_webview.AwLayoutSizer;
 import org.chromium.android_webview.AwPrintDocumentAdapter;
-import org.chromium.android_webview.AwSettings;
 import org.chromium.android_webview.AwThreadUtils;
 import org.chromium.android_webview.DarkModeHelper;
 import org.chromium.android_webview.DualTraceEvent;
@@ -1326,9 +1325,6 @@ class WebViewChromium
             // Check that the current thread is the UI thread, which will throw if it was
             // already started using a different thread as the UI thread.
             checkThread();
-            mContentsClientAdapter =
-                    mFactory.createWebViewContentsClientAdapter(mWebView, mContext);
-            mSharedWebViewChromium.init(mContentsClientAdapter);
 
             // This will run initForReal synchronously except when the experiment to defer running
             // Chromium startup is enabled.
@@ -1379,44 +1375,6 @@ class WebViewChromium
             recordWebViewApiCall(
                     ApiCall.WEBVIEW_CHROMIUM_INIT_FOR_REAL,
                     ApiCallUserAction.WEBVIEW_INSTANCE_WEBVIEW_CHROMIUM_INIT_FOR_REAL);
-            final boolean isAccessFromFileUrlsGrantedByDefault =
-                    mAppTargetSdkVersion < Build.VERSION_CODES.JELLY_BEAN;
-            final boolean areLegacyQuirksEnabled =
-                    mAppTargetSdkVersion < Build.VERSION_CODES.KITKAT;
-            final boolean allowEmptyDocumentPersistence =
-                    mAppTargetSdkVersion <= Build.VERSION_CODES.M;
-            final boolean allowGeolocationOnInsecureOrigins =
-                    mAppTargetSdkVersion <= Build.VERSION_CODES.M;
-
-            // https://crbug.com/698752
-            final boolean doNotUpdateSelectionOnMutatingSelectionRange =
-                    mAppTargetSdkVersion <= Build.VERSION_CODES.M;
-
-            try (ScopedSysTraceEvent e2 =
-                    ScopedSysTraceEvent.scoped("WebViewChromium.ContentSettingsAdapter")) {
-                mWebSettings =
-                        mFactory.createContentSettingsAdapter(
-                                new AwSettings(
-                                        mContext,
-                                        isAccessFromFileUrlsGrantedByDefault,
-                                        areLegacyQuirksEnabled,
-                                        allowEmptyDocumentPersistence,
-                                        allowGeolocationOnInsecureOrigins,
-                                        doNotUpdateSelectionOnMutatingSelectionRange));
-            }
-
-            if (mAppTargetSdkVersion < Build.VERSION_CODES.LOLLIPOP) {
-                // Prior to Lollipop we always allowed third party cookies and mixed content.
-                mWebSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-                mWebSettings.setAcceptThirdPartyCookies(true);
-                mWebSettings.getAwSettings().setZeroLayoutHeightDisablesViewportQuirk(true);
-            }
-
-            if (mAppTargetSdkVersion >= Build.VERSION_CODES.P) {
-                mWebSettings.getAwSettings().setCssHexAlphaColorEnabled(true);
-                mWebSettings.getAwSettings().setScrollTopLeftInteropEnabled(true);
-            }
-
             AwContentsStatics.setRecordFullDocument(
                     sRecordWholeDocumentEnabledByApi
                             || mAppTargetSdkVersion < Build.VERSION_CODES.LOLLIPOP);
@@ -1441,13 +1399,14 @@ class WebViewChromium
                             mContext,
                             new InternalAccessAdapter(),
                             mFactory.getWebViewDelegate()::drawWebViewFunctor,
-                            mContentsClientAdapter,
-                            mWebSettings.getAwSettings(),
+                            awContents ->
+                                    new WebViewContentsClientAdapter(
+                                            awContents, mFactory.getWebViewDelegate()),
                             new AwContents.DependencyFactory());
-            if (mAppTargetSdkVersion >= Build.VERSION_CODES.KITKAT) {
-                // On KK and above, favicons are automatically downloaded as the method
-                // old apps use to enable that behavior is deprecated.
-                AwSettings.setShouldDownloadFaviconsGlobal();
+            mContentsClientAdapter = (WebViewContentsClientAdapter) mAwContents.getContentsClient();
+            try (ScopedSysTraceEvent e2 =
+                    ScopedSysTraceEvent.scoped("WebViewChromium.ContentSettingsAdapter")) {
+                mWebSettings = mFactory.createContentSettingsAdapter(mAwContents.getSettings());
             }
 
             if (mAppTargetSdkVersion < Build.VERSION_CODES.LOLLIPOP) {
@@ -2767,6 +2726,13 @@ class WebViewChromium
     @Override
     public void setFindListener(WebView.FindListener listener) {
         forbidBuilderConfiguration();
+        if (checkNeedsPost()) {
+            mFactory.addTask(
+                    () -> {
+                        setFindListener(listener);
+                    });
+            return;
+        }
         try (TraceEvent event = TraceEvent.scoped("WebView.APICall.Framework.SET_FIND_LISTENER")) {
             recordWebViewApiCall(
                     ApiCall.SET_FIND_LISTENER,
@@ -2921,19 +2887,13 @@ class WebViewChromium
     @Override
     public void setWebViewClient(WebViewClient client) {
         forbidBuilderConfiguration();
-        mSharedWebViewChromium.setWebViewClient(client);
-        if (checkNeedsPost()) {
-            mFactory.addTask(
-                    () -> {
-                        setWebViewClient(client);
-                    });
-            return;
-        }
+        mAwInit.triggerAndWaitForChromiumStarted(CallSite.WEBVIEW_INSTANCE_SET_WEBVIEW_CLIENT);
         try (TraceEvent event = TraceEvent.scoped("WebView.APICall.Framework.SET_WEBVIEW_CLIENT")) {
             recordWebViewApiCall(
                     ApiCall.SET_WEBVIEW_CLIENT,
                     ApiCallUserAction.WEBVIEW_INSTANCE_SET_WEBVIEW_CLIENT);
             mAwContents.cancelAllPrerendering();
+            mSharedWebViewChromium.setWebViewClient(client);
             mContentsClientAdapter.setWebViewClient(mSharedWebViewChromium.getWebViewClient());
             mAwContents.onWebViewClientUpdated(client);
             if (client != null) {
@@ -3008,6 +2968,13 @@ class WebViewChromium
     @Override
     public void setDownloadListener(DownloadListener listener) {
         forbidBuilderConfiguration();
+        if (checkNeedsPost()) {
+            mFactory.addTask(
+                    () -> {
+                        setDownloadListener(listener);
+                    });
+            return;
+        }
         try (TraceEvent event =
                 TraceEvent.scoped("WebView.APICall.Framework.SET_DOWNLOAD_LISTENER")) {
             recordWebViewApiCall(
@@ -3020,14 +2987,7 @@ class WebViewChromium
     @Override
     public void setWebChromeClient(WebChromeClient client) {
         forbidBuilderConfiguration();
-        mSharedWebViewChromium.setWebChromeClient(client);
-        if (checkNeedsPost()) {
-            mFactory.addTask(
-                    () -> {
-                        setWebChromeClient(client);
-                    });
-            return;
-        }
+        mAwInit.triggerAndWaitForChromiumStarted(CallSite.WEBVIEW_INSTANCE_SET_WEBCHROME_CLIENT);
         try (TraceEvent event =
                 TraceEvent.scoped("WebView.APICall.Framework.SET_WEBCHROME_CLIENT")) {
             recordWebViewApiCall(
@@ -3035,6 +2995,7 @@ class WebViewChromium
                     ApiCallUserAction.WEBVIEW_INSTANCE_SET_WEBCHROME_CLIENT);
             mAwContents.cancelAllPrerendering();
             mWebSettings.getAwSettings().setFullscreenSupported(doesSupportFullscreen(client));
+            mSharedWebViewChromium.setWebChromeClient(client);
             mContentsClientAdapter.setWebChromeClient(mSharedWebViewChromium.getWebChromeClient());
             if (client != null) {
                 ApiImplementationLogger.logWebChromeClientImplementation(client);
@@ -3076,7 +3037,7 @@ class WebViewChromium
             while (clientClass != WebChromeClient.class && (!foundShowMethod || !foundHideMethod)) {
                 if (!foundShowMethod) {
                     try {
-                        var unused =
+                        var _ =
                                 clientClass.getDeclaredMethod(
                                         "onShowCustomView", View.class, CustomViewCallback.class);
                         foundShowMethod = true;
@@ -3087,7 +3048,7 @@ class WebViewChromium
 
                 if (!foundHideMethod) {
                     try {
-                        var unused = clientClass.getDeclaredMethod("onHideCustomView");
+                        var _ = clientClass.getDeclaredMethod("onHideCustomView");
                         foundHideMethod = true;
                     } catch (NoSuchMethodException e) {
                         // Intentionally empty.

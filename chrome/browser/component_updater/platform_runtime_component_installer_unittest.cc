@@ -26,6 +26,7 @@
 #include "content/public/test/browser_task_environment.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/strings/str_format.h"
 
 namespace component_updater {
 
@@ -33,10 +34,10 @@ using ::testing::_;
 
 class MockOnDemandUpdater : public OnDemandUpdater {
  public:
-  MOCK_METHOD3(OnDemandUpdate,
-               void(const std::string& id,
-                    Priority priority,
-                    Callback callback));
+  MOCK_METHOD(void,
+              OnDemandUpdate,
+              (const std::string& id, Priority priority, Callback callback),
+              (override));
 };
 
 class PlatformRuntimeComponentInstallerTest : public testing::Test {
@@ -385,6 +386,45 @@ TEST_F(PlatformRuntimeComponentInstallerTest,
   histogram_tester2.ExpectUniqueSample(
       "ComponentUpdater.PlatformRuntime.InstallTrigger",
       PlatformRuntimeInstallTrigger::kStale, 1);
+}
+
+TEST_F(PlatformRuntimeComponentInstallerTest,
+       ComponentReady_RecordsReleaseTimeFromVersionAndTriggersStale) {
+  auto* local_state =
+      TestingBrowserProcess::GetGlobal()->GetTestingLocalState();
+
+  // Test version with date <year>.<month>.<day>.<suffix> dynamically generated
+  // 10 days in the past (`> 7 days` staleness threshold).
+  base::Time past_time = base::Time::Now() - base::Days(10);
+  base::Time::Exploded exploded;
+  past_time.UTCExplode(&exploded);
+  base::Version version(absl::StrFormat("%d.%d.%d.1", exploded.year,
+                                        exploded.month, exploded.day_of_month));
+
+  base::Time expected_release_time = past_time.UTCMidnight();
+
+  PlatformRuntimeComponentInstallerPolicy policy;
+  policy.ComponentReadyForTesting(version, component_install_dir_.GetPath(),
+                                  base::DictValue());
+
+  // Verify the preference stored the extracted UTC midnight date from the
+  // version, not base::Time::Now().
+  EXPECT_EQ(local_state->GetTime(kPlatformRuntimeLastInstallTime),
+            expected_release_time);
+
+  // Verify that ShouldTriggerInstallOrUpdate immediately sees this version as
+  // stale because its release time is older than 7 days threshold.
+  auto service =
+      std::make_unique<component_updater::MockComponentUpdateService>();
+  const std::string crx_id = "test_crx_id";
+  EXPECT_CALL(*service, GetComponentDetails(crx_id, _))
+      .WillOnce([&](const std::string& id, update_client::CrxUpdateItem* item) {
+        item->component = update_client::CrxComponent();
+        item->component->version = version;
+        return true;
+      });
+  EXPECT_TRUE(
+      policy.ShouldTriggerInstallOrUpdate(service.get(), local_state, crx_id));
 }
 
 }  // namespace component_updater

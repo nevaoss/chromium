@@ -21,6 +21,7 @@
 #import "ios/chrome/browser/shared/model/web_state_list/web_state_list.h"
 #import "ios/chrome/browser/shared/public/commands/gemini_commands.h"
 #import "ios/chrome/browser/shared/public/commands/settings_commands.h"
+#import "ios/public/provider/chrome/browser/bwg/gemini_api.h"
 #import "ios/web/public/test/fakes/fake_web_state.h"
 #import "ios/web/public/test/web_task_environment.h"
 #import "testing/gtest/include/gtest/gtest.h"
@@ -123,6 +124,7 @@ TEST_F(GeminiSessionHandlerTest, TestSessionDurationRecorded) {
   histogram_tester_.ExpectTotalCount(kGeminiSessionTimeHistogram, 1);
   histogram_tester_.ExpectTimeBucketCount(kGeminiSessionTimeHistogram,
                                           kTestSessionDuration, 1);
+  EXPECT_EQ(1, user_action_tester_.GetActionCount("MobileGeminiSessionOpened"));
 }
 
 // Tests that responseReceivedWithClientID records response latency.
@@ -528,4 +530,37 @@ TEST_F(GeminiSessionHandlerTest,
                           imagesAttachedCount:0
                                longPressImage:NO
                           pageContextAttached:NO];
+}
+
+// Tests that showConsentScreenWithCompletion switches view mode to kFloaty if
+// rejected.
+TEST_F(GeminiSessionHandlerTest,
+       TestShowConsentScreenRejectionSwitchesToFloaty) {
+  ios::provider::SwitchToMode(ios::provider::GeminiViewMode::kLive,
+                              /*animated=*/false);
+  EXPECT_EQ(ios::provider::GetCurrentMode(),
+            ios::provider::GeminiViewMode::kLive);
+
+  OCMExpect([mock_gemini_handler_
+                startGeminiLiveFirstRunWithBaseViewController:[OCMArg any]
+                                                   completion:[OCMArg any]])
+      .andDo(^(NSInvocation* invocation) {
+        void (^completion)(BOOL success);
+        [invocation getArgument:&completion atIndex:3];
+        if (completion) {
+          completion(NO);
+        }
+      });
+
+  __block BOOL callback_invoked = NO;
+  [session_handler_ geminiLive:nil
+      showConsentScreenWithCompletion:^(BOOL accepted) {
+        EXPECT_FALSE(accepted);
+        callback_invoked = YES;
+      }];
+
+  EXPECT_TRUE(callback_invoked);
+  EXPECT_EQ(ios::provider::GetCurrentMode(),
+            ios::provider::GeminiViewMode::kFloaty);
+  [mock_gemini_handler_ verify];
 }

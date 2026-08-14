@@ -4,7 +4,7 @@ ci/ASAN Release Media
 ci/ASan Release (32-bit x86 with V8-ARM)
 ci/ASan Release Media (32-bit x86 with V8-ARM)
 ci/Android FYI Experimental Release (Pixel 6)
-ci/Android FYI Release (NVIDIA Shield TV)
+ci/Android FYI Release (Pixel 10)
 ci/Android FYI Release (Pixel 2)
 ci/Android FYI Release (Pixel 4)
 ci/Android FYI Release (Pixel 6)
@@ -406,6 +406,8 @@ ci/mac13-arm64-rel-tests
 ci/mac14-arm64-rel-tests
 ci/mac15-arm64-rel-tests
 ci/mac15-x64-rel-tests
+ci/mac26-arm64-rel-tests
+ci/mac26-x64-rel-tests
 ci/win-angle-chromium-x64-builder
 ci/win-angle-chromium-x86-builder
 ci/win-archive-rel
@@ -524,7 +526,6 @@ try/fuchsia-x64-perf-cast-receiver-rel
 try/gn-args-verifier
 try/gpu-fyi-try-android-a13-32
 try/gpu-fyi-try-android-a23-32
-try/gpu-fyi-try-android-nvidia-shield-tv
 try/gpu-fyi-try-android-pixel-10-64
 try/gpu-fyi-try-android-pixel-6-64
 try/gpu-fyi-try-android-pixel-6-64-exp
@@ -534,12 +535,10 @@ try/gpu-fyi-try-android-s23-64
 try/gpu-fyi-try-chromeos-amd64-generic
 try/gpu-fyi-try-linux-amd-780m-exp
 try/gpu-fyi-try-linux-amd-890m-exp
-try/gpu-fyi-try-linux-amd-9900x-exp
 try/gpu-fyi-try-linux-amd-rel
 try/gpu-fyi-try-linux-amd-rx-5500xt-exp
 try/gpu-fyi-try-linux-amd-rx-7600-rel
 try/gpu-fyi-try-linux-amd-rx-9070xt-exp
-try/gpu-fyi-try-linux-intel-arc-140v-exp
 try/gpu-fyi-try-linux-intel-exp
 try/gpu-fyi-try-linux-intel-rel
 try/gpu-fyi-try-linux-intel-uhd770-rel
@@ -583,9 +582,7 @@ try/gpu-fyi-try-win11-nvidia-4070-rel-64
 try/gpu-fyi-try-win11-qualcomm-snapdragon-x-elite-rel-64
 try/gpu-fyi-try-win11-x64-amd-780m-exp
 try/gpu-fyi-try-win11-x64-amd-890m-exp
-try/gpu-fyi-try-win11-x64-amd-9900x-exp
 try/gpu-fyi-try-win11-x64-amd-rx-9070xt-exp
-try/gpu-fyi-try-win11-x64-intel-arc-140v-exp
 try/gpu-fyi-try-win11-x64-nvidia-rtx-5080-exp
 try/gpu-try-android-pixel-2-64
 try/gpu-try-linux-nvidia-rel
@@ -656,6 +653,7 @@ try/linux-utr-tester
 try/linux-v4l2-codec-rel
 try/linux-wayland-mutter-rel
 try/linux-wayland-weston-rel
+try/linux-webdriver-bidi-rel
 try/linux-win-cross-rel
 try/linux-x64-centipede-asan-rel-tests
 try/linux-x64-libfuzzer-asan-dbg-tests
@@ -700,7 +698,8 @@ try/mac14-arm64-rel
 try/mac14-tests
 try/mac15-arm64-rel
 try/mac15-x64-rel-tests
-try/mac26-arm64-rel-tests
+try/mac26-arm64-rel
+try/mac26-x64-rel-tests
 try/mac_chromium_asan_rel_ng
 try/mac_chromium_compile_dbg_ng
 try/mac_chromium_compile_rel_ng

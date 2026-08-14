@@ -14,14 +14,21 @@
 namespace contextual_tasks {
 
 BASE_DECLARE_FEATURE(kContextualTasks);
+BASE_DECLARE_FEATURE(kContextualTasksPrivateApiNoAnimation);
+BASE_DECLARE_FEATURE(kContextualTasksSidePanel);
+BASE_DECLARE_FEATURE(kContextualTasksEphemeralBrandedEntryPoint);
 BASE_DECLARE_FEATURE(kContextualTasksExtraOauthScopes);
 BASE_DECLARE_FEATURE(kEnableContextualTasksPinButtonInToolbar);
 BASE_DECLARE_FEATURE(kContextualTasksContext);
+BASE_DECLARE_FEATURE(kContextualTasksSearchQuery);
 BASE_DECLARE_FEATURE(
     kContextualTasksContextSmartTabSharingDefaultOnAvailability);
 BASE_DECLARE_FEATURE(kContextualTasksContextLibrary);
 BASE_DECLARE_FEATURE(kContextualTasksContextLogging);
 BASE_DECLARE_FEATURE(kContextualTasksShowOnboardingTooltip);
+
+// Bypasses the dismissed cap for contextual tasks tooltips.
+BASE_DECLARE_FEATURE(kContextualTasksBypassDismissedCap);
 
 // Enables prefetching of cookies for contextual tasks.
 BASE_DECLARE_FEATURE(kContextualTasksCookiePrefetch);
@@ -81,6 +88,9 @@ BASE_DECLARE_FEATURE(kContextualTasksRoundedClipPath);
 // panel. The menu is still shown for lens flows.
 BASE_DECLARE_FEATURE(kContextualTasksHideMenuOnAiPage);
 
+// Enables painting dropdown menus outside WebUI boundaries.
+BASE_DECLARE_FEATURE(kContextualTasksUnboundedMenu);
+
 // Enables hiding the close button when in vertical tabs or immersive mode.
 BASE_DECLARE_FEATURE(kContextualTasksHideCloseButtonInVerticalTabs);
 
@@ -123,6 +133,9 @@ BASE_DECLARE_FEATURE(kContextualTasksUploadChunking);
 // new side panel and ghost loader for contextual tasks.
 BASE_DECLARE_FEATURE(kContextualTasksRearchitecture);
 
+// Enables the side panel changes as part of the rearchitecture.
+BASE_DECLARE_FEATURE(kContextualTasksSidePanelRearchitecture);
+
 // Enables sticky conversation UI that follows the user around.
 BASE_DECLARE_FEATURE(kContextualTasksEnableStickyConversation);
 
@@ -137,6 +150,8 @@ extern const base::FeatureParam<OverflowMenuItems>
     kContextualTasksSpatialModelToolbarLayoutOverflowItems;
 
 bool GetIsContextualTasksPdfCitationsEnabled();
+bool ShouldContextualTasksPrivateApiUseNoAnimation();
+bool GetIsContextualTasksSearchQueryEnabled();
 
 bool GetIsContextualTasksLazyFetchClusterInfoEnabled();
 
@@ -147,6 +162,12 @@ bool GetIsContextualTasksUploadChunkingEnabled();
 bool GetContextualTasksSpatialModelToolbarLayoutEnabled();
 
 bool GetContextualTasksSpatialModelToolbarLayoutNewThreadInOverflow();
+
+// Returns whether the Contextual Tasks side panel container, coordinator,
+// and supporting response services should be initialized.
+// Returns true if either full Contextual Tasks (`kContextualTasks`) or
+// infrastructure-only mode (`kContextualTasksSidePanel`) is enabled.
+bool IsContextualTasksUIEnabled();
 
 bool IsStickyConversationEnabled();
 
@@ -283,6 +304,14 @@ extern int GetContextualTasksShowOnboardingTooltipSessionImpressionCap();
 // The maximum number of times the onboarding tooltip can be dismissed by the
 // user before it no longer shows up.
 extern int GetContextualTasksOnboardingTooltipDismissedCap();
+
+// The maximum number of times the lens search tooltip can be dismissed by the
+// user before it no longer shows up.
+extern int GetContextualTasksLensSearchTooltipDismissedCap();
+
+// The maximum number of times the lens search tooltip can be shown to the user
+// in a single session before it no longer shows up.
+extern int GetContextualTasksLensSearchTooltipSessionImpressionCap();
 
 // The delay in milliseconds before the onboarding tooltip is considered shown.
 extern int GetContextualTasksOnboardingTooltipImpressionDelay();
@@ -425,14 +454,23 @@ extern int GetContextualTasksNumSessionsBeforeRequestPinPromo();
 // Returns whether the webpage APC comparison is enabled.
 extern bool GetIsWebpageApcComparisonEnabled();
 
+extern bool IsContextualTasksRearchitectureEnabled();
+extern bool IsContextualTasksSidePanelRearchitectureEnabled();
+
 namespace flag_descriptions {
 
+extern const char kContextualTasksPrivateApiNoAnimationName[];
+extern const char kContextualTasksPrivateApiNoAnimationDescription[];
 extern const char kContextualTasksName[];
 extern const char kContextualTasksDescription[];
+extern const char kContextualTasksSidePanelName[];
+extern const char kContextualTasksSidePanelDescription[];
 extern const char kContextualTasksContextLibraryName[];
 extern const char kContextualTasksContextLibraryDescription[];
 extern const char kContextualTasksContextName[];
 extern const char kContextualTasksContextDescription[];
+extern const char kContextualTasksSearchQueryName[];
+extern const char kContextualTasksSearchQueryDescription[];
 extern const char kContextualTasksSuggestionsEnabledName[];
 extern const char kContextualTasksSuggestionsEnabledDescription[];
 extern const char kContextualTasksJavaFuseboxName[];
@@ -452,6 +490,12 @@ extern const char kContextualTasksEnableSpatialModelToolbarLayoutName[];
 extern const char kContextualTasksEnableSpatialModelToolbarLayoutDescription[];
 extern const char kContextualTasksRearchitectureName[];
 extern const char kContextualTasksRearchitectureDescription[];
+extern const char kContextualTasksEphemeralBrandedEntryPointName[];
+extern const char kContextualTasksEphemeralBrandedEntryPointDescription[];
+extern const char kContextualTasksSidePanelRearchitectureName[];
+extern const char kContextualTasksSidePanelRearchitectureDescription[];
+extern const char kContextualTasksBypassDismissedCapName[];
+extern const char kContextualTasksBypassDismissedCapDescription[];
 
 }  // namespace flag_descriptions
 

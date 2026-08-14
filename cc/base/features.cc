@@ -122,8 +122,6 @@ const base::FeatureParam<std::string> kNewContentForCheckerboardedScrollsParam(
     "mode",
     kNewContentForCheckerboardedScrollsPerFrame);
 
-BASE_FEATURE(kAllowLCDTextWithFilter, base::FEATURE_ENABLED_BY_DEFAULT);
-
 BASE_FEATURE(kPreventDuplicateImageDecodes, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kResolveLargeImageDecodes, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -253,6 +251,9 @@ BASE_FEATURE_PARAM(double,
                    &kScrollJankV4Metric,
                    "fling_continuity_threshold_pixels",
                    0.2);
+
+BASE_FEATURE(kScrollJankV4MetricFastScrollContinuityRequiresSameDirection,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kUseScrollIdToCalculateScrollJankV4FrameStages,
              base::FEATURE_ENABLED_BY_DEFAULT);

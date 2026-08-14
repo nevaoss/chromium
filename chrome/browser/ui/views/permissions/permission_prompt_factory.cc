@@ -31,6 +31,7 @@
 #include "content/public/browser/web_contents.h"
 #include "content/public/common/content_switches.h"
 #include "third_party/blink/public/common/features_generated.h"
+#include "url/origin.h"
 
 #if BUILDFLAG(IS_MAC)
 #include "chrome/browser/ui/views/permissions/permission_prompt_notifications_mac.h"
@@ -98,11 +99,15 @@ bool ShouldIgnorePermissionRequest(
   // - NTP has an empty omnibox.
   // - Contextual Tasks Tab has an empty omnibox.
   // - Omnibox Popup is an embedded WebUI that itself may request permissions.
-  const GURL visible_url = web_contents->GetVisibleURL();
-  const GURL committed_url = web_contents->GetLastCommittedURL();
-  if (visible_url == chrome::ChromeUINewTabURLAsGURL() ||
-      committed_url.host() == chrome::kChromeUIOmniboxPopupHost ||
-      committed_url.host() == chrome::kChromeUIContextualTasksHost) {
+  const url::Origin committed_origin =
+      web_contents->GetPrimaryMainFrame()->GetLastCommittedOrigin();
+  if (committed_origin.IsSameOriginWith(chrome::ChromeUINewTabURLAsGURL()) ||
+      committed_origin.IsSameOriginWith(
+          chrome::ChromeUINewTabPageURLAsGURL()) ||
+      committed_origin.IsSameOriginWith(
+          GURL(chrome::kChromeUIOmniboxPopupURL)) ||
+      committed_origin.IsSameOriginWith(
+          GURL(chrome::kChromeUIContextualTasksURL))) {
     return false;
   }
 
@@ -295,5 +300,30 @@ std::unique_ptr<permissions::PermissionPrompt> CreatePermissionPrompt(
   } else if (delegate->ShouldCurrentRequestUseQuietUI()) {
     return CreateQuietPrompt(web_contents, delegate);
   }
-  return CreateNormalPrompt(web_contents, delegate);
+
+  // If omnibox is open and this is a microphone request, notify the
+  // `LocationBar` (and Omnibox presenter) that a permission prompt is starting
+  // right before constructing the prompt view widget. This ensures the omnibox
+  // ignores focus-loss events during the time that the permission prompt is
+  // showing.
+  bool has_mic_request =
+      std::ranges::any_of(delegate->Requests(), [](const auto& request) {
+        return request->request_type() == permissions::RequestType::kMicStream;
+      });
+
+  if (has_mic_request) {
+    if (LocationBar* location_bar = GetLocationBar(web_contents)) {
+      location_bar->SetPermissionPromptShowing(true);
+    }
+  }
+
+  auto prompt = CreateNormalPrompt(web_contents, delegate);
+
+  if (!prompt && has_mic_request) {
+    if (LocationBar* location_bar = GetLocationBar(web_contents)) {
+      location_bar->SetPermissionPromptShowing(false);
+    }
+  }
+
+  return prompt;
 }

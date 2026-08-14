@@ -31,6 +31,7 @@
 #include "cc/input/browser_controls_state.h"
 #include "content/common/content_export.h"
 #include "content/public/browser/frame_tree_node_id.h"
+#include "content/public/browser/global_routing_id.h"
 #include "content/public/browser/invalidate_type.h"
 #include "content/public/browser/page_navigator.h"
 #include "content/public/browser/prefetch_priority.h"
@@ -78,7 +79,7 @@ namespace base {
 class FilePath;
 }  // namespace base
 namespace perfetto {
-class NamedTrack;
+struct Track;
 }  // namespace perfetto
 
 namespace blink {
@@ -86,7 +87,6 @@ namespace web_pref {
 struct WebPreferences;
 }
 class WebInputEvent;
-struct Impression;
 struct UserAgentOverride;
 struct RendererPreferences;
 }  // namespace blink
@@ -148,7 +148,6 @@ class UnownedInnerWebContentsClient;
 class WebContentsDelegate;
 class WebUI;
 struct DropData;
-struct GlobalRenderFrameHostId;
 struct MHTMLGenerationParams;
 class PreloadingAttempt;
 #if BUILDFLAG(IS_ANDROID)
@@ -205,11 +204,8 @@ class WebContents : public PageNavigator, public base::SupportsUserData {
     // privileged process.
     scoped_refptr<SiteInstance> site_instance;
 
-    // The process id of the frame initiating the open.
-    int opener_render_process_id = content::ChildProcessHost::kInvalidUniqueID;
-
-    // The routing id of the frame initiating the open.
-    int opener_render_frame_id = IPC::mojom::kRoutingIdNone;
+    // The process and routing id of the frame initiating the open.
+    GlobalRenderFrameHostId opener_id;
 
     // If the opener is suppressed, then the new WebContents doesn't hold a
     // reference to its opener.
@@ -479,7 +475,7 @@ class WebContents : public PageNavigator, public base::SupportsUserData {
 
   // Returns a tracing track to use as a grouping parent. Do not emit directly
   // events to this track.
-  virtual const perfetto::NamedTrack& GetTracingTrack() const = 0;
+  virtual const perfetto::Track& GetTracingTrack() const = 0;
 
   // Returns true if the WebContents is never user-visible and thus never need
   // to generate pixels for display.
@@ -1181,9 +1177,7 @@ class WebContents : public PageNavigator, public base::SupportsUserData {
   virtual void ReplaceMisspelling(const std::u16string& word) = 0;
 
   // Let the renderer know that the menu has been closed.
-  virtual void NotifyContextMenuClosed(
-      const GURL& link_followed,
-      const std::optional<blink::Impression>&) = 0;
+  virtual void NotifyContextMenuClosed(const GURL& link_followed) = 0;
 
   // Executes custom context menu action that was provided from Blink.
   virtual void ExecuteCustomContextMenuCommand(int action,
@@ -1829,10 +1823,6 @@ class WebContents : public PageNavigator, public base::SupportsUserData {
   // TODO(crbug.com/40062641): Remove after bug is fixed.
   virtual void SetOwnerLocationForDebug(
       std::optional<base::Location> owner_location) = 0;
-
-  // Sends the attribution support state to all renderer processes for the
-  // current page.
-  virtual void UpdateAttributionSupportRenderer() = 0;
 
   // Return all currently streaming devices of `type` via `callback`.
   virtual void GetMediaCaptureRawDeviceIdsOpened(

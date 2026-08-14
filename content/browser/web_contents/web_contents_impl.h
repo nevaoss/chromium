@@ -72,6 +72,7 @@
 #include "services/device/public/mojom/geolocation_context.mojom.h"
 #include "services/network/public/cpp/permissions_policy/permissions_policy_declaration.h"
 #include "services/network/public/mojom/fetch_api.mojom-forward.h"
+#include "third_party/blink/public/common/dom/dom_node_id.h"
 #include "third_party/blink/public/common/page/color_provider_color_maps.h"
 #include "third_party/blink/public/common/renderer_preferences/renderer_preferences.h"
 #include "third_party/blink/public/common/web_preferences/web_preferences.h"
@@ -439,7 +440,7 @@ class CONTENT_EXPORT WebContentsImpl
   BrowserContext* GetBrowserContext() override;
   base::WeakPtr<WebContents> GetWeakPtr() override;
   const UniqueToken& GetUniqueToken() const override;
-  const perfetto::NamedTrack& GetTracingTrack() const override;
+  const perfetto::Track& GetTracingTrack() const override;
   const GURL& GetURL() override;
   const GURL& GetVisibleURL() override;
   const GURL& GetLastCommittedURL() const override;
@@ -571,9 +572,7 @@ class CONTENT_EXPORT WebContentsImpl
   void ScrollToBottomOfDocument() override;
   void Replace(const std::u16string& word) override;
   void ReplaceMisspelling(const std::u16string& word) override;
-  void NotifyContextMenuClosed(
-      const GURL& link_followed,
-      const std::optional<blink::Impression>&) override;
+  void NotifyContextMenuClosed(const GURL& link_followed) override;
   void ExecuteCustomContextMenuCommand(int action,
                                        const GURL& link_followed) override;
   gfx::NativeView GetNativeView() override;
@@ -844,7 +843,8 @@ class CONTENT_EXPORT WebContentsImpl
   void OnFocusedElementChangedInFrame(
       RenderFrameHostImpl* frame,
       const gfx::Rect& bounds_in_root_view,
-      blink::mojom::FocusType focus_type) override;
+      blink::mojom::FocusType focus_type,
+      blink::DOMNodeIdType editable_dom_node_id) override;
   void OnAdvanceFocus(RenderFrameHostImpl* source_rfh) override;
   FrameTree* CreateNewWindow(
       RenderFrameHostImpl* opener,
@@ -879,7 +879,8 @@ class CONTENT_EXPORT WebContentsImpl
   void ResourceLoadComplete(
       RenderFrameHostImpl* render_frame_host,
       const GlobalRequestID& request_id,
-      blink::mojom::ResourceLoadInfoPtr resource_load_information) override;
+      const GURL& original_url,
+      blink::mojom::ResourceLoadInfoPtr resource_load_info) override;
   void OnCookiesAccessed(RenderFrameHostImpl*,
                          const CookieAccessDetails& details) override;
   void OnTrustTokensAccessed(RenderFrameHostImpl*,
@@ -991,7 +992,10 @@ class CONTENT_EXPORT WebContentsImpl
                             int error_code) override;
   void DraggableRegionsChanged(
       const std::vector<blink::mojom::DraggableRegionPtr>& regions) override;
-  void OnFirstContentfulPaintInPrimaryMainFrame() override;
+  void OnFirstContentfulPaintInPrimaryMainFrame(
+      base::TimeTicks presentation_time) override;
+  void OnLargestContentfulPaintInPrimaryMainFrame(
+      base::TimeTicks presentation_time) override;
   gfx::NativeWindow GetOwnerNativeWindow() override;
 
   media::PictureInPictureEventsInfo::AutoPipInfo GetAutoPipInfo()
@@ -1027,7 +1031,7 @@ class CONTENT_EXPORT WebContentsImpl
   bool ShouldIgnoreInputEvents() override;
   void OnIgnoredUIEvent() override;
   void Activate() override;
-  void ShowCreatedWidget(int process_id,
+  void ShowCreatedWidget(ChildProcessId process_id,
                          int widget_route_id,
                          const gfx::Rect& initial_rect,
                          const gfx::Rect& initial_anchor_rect) override;
@@ -1085,9 +1089,6 @@ class CONTENT_EXPORT WebContentsImpl
       std::optional<base::Location> owner_location) override;
   blink::ColorProviderColorMaps GetColorProviderColorMaps() const override;
 
-  network::mojom::AttributionSupport GetAttributionSupport() override;
-  void UpdateAttributionSupportRenderer() override;
-  static void UpdateAttributionSupportAllRenderers();
   BackForwardTransitionAnimationManager*
   GetBackForwardTransitionAnimationManager() override;
   net::handles::NetworkHandle GetTargetNetwork() override;
@@ -1245,6 +1246,7 @@ class CONTENT_EXPORT WebContentsImpl
   // The following function is already listed under WebContents overrides:
   // bool IsFullscreen() const override;
   blink::mojom::DisplayMode GetDisplayMode() const override;
+  blink::mojom::ApplicationContext GetApplicationContext() const override;
   ui::mojom::WindowShowState GetWindowShowState() override;
   DevicePostureProviderImpl* GetDevicePostureProvider() override;
   bool GetResizable() override;
@@ -1719,6 +1721,7 @@ class CONTENT_EXPORT WebContentsImpl
   friend class TestWebContentsDestructionObserver;
   friend class BeforeUnloadBlockingDelegate;
   friend class TestWCDelegateForDialogsAndFullscreen;
+  friend class SurfaceEmbedConnectorImpl;
 
   FRIEND_TEST_ALL_PREFIXES(WebContentsImplTest, CaptureHoldsWakeLock);
   FRIEND_TEST_ALL_PREFIXES(WebContentsImplTest,
@@ -2083,12 +2086,13 @@ class CONTENT_EXPORT WebContentsImpl
 
   // Finds the new RenderWidgetHost and returns it. Note that this can only be
   // called once as this call also removes it from the internal map.
-  RenderWidgetHostView* GetCreatedWidget(int process_id, int route_id);
+  RenderWidgetHostView* GetCreatedWidget(ChildProcessId process_id,
+                                         int route_id);
 
   // Finds the new CreatedWindow by |main_frame_widget_route_id|, initializes
   // it for renderer-initiated creation, and returns it. Note that this can only
   // be called once as this call also removes it from the internal map.
-  std::optional<CreatedWindow> GetCreatedWindow(int process_id,
+  std::optional<CreatedWindow> GetCreatedWindow(ChildProcessId process_id,
                                                 int main_frame_widget_route_id);
 
   // Execute a PageBroadcast Mojo method.
@@ -2320,6 +2324,18 @@ class CONTENT_EXPORT WebContentsImpl
   void HandleUserInteractionForInputEvent(
       RenderWidgetHostImpl* render_widget_host,
       const blink::WebInputEvent& event);
+
+  // Returns the first WebContentsDelegate found in the embedding chain,
+  // traversing both SurfaceEmbedConnector and outer WebContents.
+  WebContentsDelegate* GetFirstWebContentsDelegate();
+
+  // Returns true if any WebContents in the parent chain (including this one)
+  // has a pointer lock widget.
+  bool HasPointerLockWidgetInParentChain();
+
+  // Sets the pointer lock widget for this WebContents and propagates it to all
+  // parents in the chain (both SurfaceEmbed and GuestView).
+  void SetPointerLockWidgetInParentChain(RenderWidgetHostImpl* widget);
 
 #if BUILDFLAG(IS_ANDROID)
   // Apply the cached primary subframe importance to the primary frame tree.
@@ -2903,7 +2919,7 @@ class CONTENT_EXPORT WebContentsImpl
   std::optional<DragId> active_drag_id_;
 
   const UniqueToken web_contents_token_;
-  std::optional<base::trace_event::TrackRegistration<perfetto::NamedTrack>>
+  std::optional<base::trace_event::TrackRegistration<perfetto::StateTrack>>
       tracing_track_;
 
   void EmitTracingSlice(const std::string& name);

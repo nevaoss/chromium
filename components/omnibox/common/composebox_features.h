@@ -31,9 +31,31 @@ BASE_DECLARE_FEATURE(kContextManagementInOmnibox);
 // If enabled, the impressions of the context menu animation will be capped.
 BASE_DECLARE_FEATURE(kContextMenuAnimationLimiting);
 
+// If enabled, skills are enabled in the composebox/searchbox for Contextual Tasks.
+BASE_DECLARE_FEATURE(kComposeboxSkillsContextualTasks);
+
+// If enabled, skills are enabled in the composebox/searchbox for NTP.
+BASE_DECLARE_FEATURE(kComposeboxSkillsNtp);
+
+// If enabled, skills are enabled in the composebox/searchbox for Omnibox Everywhere.
+BASE_DECLARE_FEATURE(kComposeboxSkillsOmniboxEverywhere);
+
+// If enabled, skills are enabled in the composebox/searchbox for Omnibox Popup.
+BASE_DECLARE_FEATURE(kComposeboxSkillsOmniboxPopup);
+
 // If enabled, the composebox context menu will stay open on selection for
 // realbox.
 extern const base::FeatureParam<bool> kKeepMenuOpenOnTabSelectForRealbox;
+
+// If enabled, previously-submitted tabs can be deselected in the composebox
+// context menu.
+extern const base::FeatureParam<bool>
+    kContextManagementInComposeboxEnableTabDeselection;
+
+// Helper to check if tab deselection is enabled, which requires the parent
+// feature kContextManagementInComposebox to be enabled and the param to be
+// true.
+bool IsTabDeselectionInComposeboxEnabled();
 
 }  // namespace omnibox
 

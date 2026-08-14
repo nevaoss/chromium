@@ -7,7 +7,6 @@
 #include <memory>
 #include <utility>
 
-#include "base/logging.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/notreached.h"
 #include "base/types/expected.h"
@@ -22,6 +21,8 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/contextual_search/searchbox_context_data.h"
 #include "chrome/browser/ui/location_bar/location_bar.h"
+#include "chrome/browser/ui/omnibox/ai_mode_page_action_controller.h"
+#include "chrome/browser/ui/omnibox/chrome_omnibox_client.h"
 #include "chrome/browser/ui/omnibox/omnibox_controller.h"
 #include "chrome/browser/ui/omnibox/omnibox_edit_model.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
@@ -55,6 +56,7 @@
 #include "components/omnibox/browser/omnibox_prefs.h"
 #include "components/omnibox/browser/search_suggestion_parser.h"
 #include "components/omnibox/browser/searchbox.mojom-shared.h"
+#include "components/omnibox/browser/searchbox_utils.h"
 #include "components/omnibox/browser/suggestion_answer.h"
 #include "components/omnibox/browser/vector_icons.h"
 #include "components/omnibox/common/composebox_features.h"
@@ -285,17 +287,30 @@ void WebuiOmniboxHandler::SetAimButtonVisible(bool visible) {
   page_->SetAimButtonVisible(visible);
 }
 
+WindowOpenDisposition WebuiOmniboxHandler::ComputeWindowOpenDisposition(
+    uint8_t mouse_button,
+    bool alt_key,
+    bool ctrl_key,
+    bool meta_key,
+    bool shift_key,
+    bool via_keyboard) {
+  return via_keyboard
+             ? searchbox::ComputeOpenDispositionFromModifiersAndLogToUma(
+                   shift_key, ctrl_key, alt_key, meta_key)
+             : ui::DispositionFromClick(
+                   /*middle_button=*/mouse_button == 1, alt_key, ctrl_key,
+                   meta_key, shift_key);
+}
+
 std::optional<searchbox::mojom::AutocompleteMatchPtr>
 WebuiOmniboxHandler::CreateAutocompleteMatch(
     const AutocompleteMatch& match,
     size_t line,
-    const OmniboxEditModel* edit_model,
     bookmarks::BookmarkModel* bookmark_model,
     const omnibox::GroupConfigMap& suggestion_groups_map,
     const TemplateURLService* turl_service) const {
   auto mojom_match = SearchboxHandler::CreateAutocompleteMatch(
-      match, line, edit_model, bookmark_model, suggestion_groups_map,
-      turl_service);
+      match, line, bookmark_model, suggestion_groups_map, turl_service);
 
   // Override contextual search spark loupe icon for GROUP_CONTEXTUAL_SEARCH.
   // Results on the omnibox webui will use an arrow icon instead.
@@ -307,13 +322,8 @@ WebuiOmniboxHandler::CreateAutocompleteMatch(
 
   mojom_match.value()->has_instant_keyword =
       match.HasInstantKeyword(turl_service);
-  const OmniboxEditModel* model_to_use =
-      base::FeatureList::IsEnabled(
-          omnibox::kWebUISearchboxWithoutModelController)
-          ? (controller_ ? controller_->edit_model() : nullptr)
-          : edit_model;
-  if (mojom_match && !match.HasInstantKeyword(turl_service) && model_to_use &&
-      model_to_use->IsPopupControlPresentOnMatch(
+  if (mojom_match && !match.HasInstantKeyword(turl_service) && edit_model() &&
+      edit_model()->IsPopupControlPresentOnMatch(
           OmniboxPopupSelection{line, OmniboxPopupSelection::KEYWORD_MODE})) {
     const auto names = SelectedKeywordView::GetKeywordLabelNames(
         match.associated_keyword, turl_service);
@@ -330,7 +340,11 @@ void WebuiOmniboxHandler::OnFocusChanged(bool focused) {
     edit_model()->OnSetFocus(false);
   } else {
     edit_model()->OnWillKillFocus();
+    // Delay killing focus for full popup until state is properly synced in
+    // omnibox_popup_view_full_webui's `OnTabChanged`
     if (!base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxFullPopup)) {
+      // Kill focus on focus loss to properly terminate the edit session and
+      // reset popup and keyword state.
       edit_model()->OnKillFocus();
     }
   }
@@ -365,6 +379,19 @@ void WebuiOmniboxHandler::OnResultChanged(AutocompleteController* controller,
   if (metrics_reporter_ && !metrics_reporter_->HasLocalMark("ResultChanged")) {
     metrics_reporter_->Mark("ResultChanged");
   }
+
+  // Update visibility of the AIM page action.
+  if (omnibox_controller() &&
+      omnibox_controller()->client()->IsChromeOmniboxClient()) {
+    auto* client =
+        static_cast<ChromeOmniboxClient*>(omnibox_controller()->client());
+    if (LocationBar* location_bar = client->GetLocationBar()) {
+      SetAimButtonVisible(
+          omnibox::AiModePageActionController::ShouldShowPageAction(
+              profile_, *location_bar));
+    }
+  }
+
   SearchboxHandler::OnResultChanged(controller, default_match_changed);
 }
 
@@ -378,10 +405,6 @@ void WebuiOmniboxHandler::OnSelectionChanged(
       searchbox::mojom::OmniboxPopupSelection::New(
           selection.line, ConvertLineState(selection.state),
           selection.action_index));
-}
-
-void WebuiOmniboxHandler::OnKeywordStateChanged(bool is_keyword_selected) {
-  page_->SetKeywordSelected(is_keyword_selected);
 }
 
 void WebuiOmniboxHandler::OnCharTyped(base::TimeTicks timestamp) {

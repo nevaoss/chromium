@@ -43,6 +43,7 @@
 #include "content/common/input/synthetic_tap_gesture_params.h"
 #include "content/public/common/content_features.h"
 #include "content/public/common/url_constants.h"
+#include "third_party/blink/public/common/dom/dom_node_id.h"
 #include "third_party/blink/public/common/input/web_input_event.h"
 #include "third_party/blink/public/common/page/page_zoom.h"
 #include "ui/base/clipboard/clipboard_constants.h"
@@ -1299,7 +1300,7 @@ void InputHandler::InsertText(const std::string& text,
   widget_host->Focus();
   widget_host->GetWidgetInputHandler()->ImeCommitText(
       text16, std::vector<ui::ImeTextSpan>(), gfx::Range::InvalidRange(), 0,
-      std::move(closure));
+      /*target_dom_node_id=*/blink::DOMNodeIdType(), std::move(closure));
 }
 
 void InputHandler::ImeSetComposition(
@@ -1354,7 +1355,7 @@ void InputHandler::ImeSetComposition(
   widget_host->GetWidgetInputHandler()->ImeSetComposition(
       text16, std::vector<ui::ImeTextSpan>(), replacement_range,
       selection_start, selection_end, blink::mojom::ImeState::kNone,
-      std::move(closure));
+      /*target_dom_node_id=*/blink::DOMNodeIdType(), std::move(closure));
 }
 
 void InputHandler::DispatchMouseEvent(
@@ -1744,8 +1745,12 @@ void InputHandler::OnWidgetForDispatchWebTouchEvent(
   RenderWidgetHostImpl* widget_host =
       RenderWidgetHostImpl::From(target->GetRenderWidgetHost());
 
-  gfx::PointF original(events[0].touches[0].PositionInWidget());
-  gfx::Vector2dF delta = *transformed - original;
+  RenderWidgetHostViewBase* root_view = target->GetRootView();
+  if (!root_view) {
+    root_view = target.get();
+  }
+  // Keep injected touches in root coordinates for the touch emulator. The
+  // input event router converts them to target coordinates for the renderer.
   for (auto& event : events) {
     event.dispatch_type =
         event.GetType() == blink::WebInputEvent::Type::kTouchCancel
@@ -1754,12 +1759,8 @@ void InputHandler::OnWidgetForDispatchWebTouchEvent(
     event.moved_beyond_slop_region = true;
     event.unique_touch_event_id = ui::GetNextTouchEventId();
     for (unsigned j = 0; j < event.touches_length; j++) {
-      gfx::PointF point = event.touches[j].PositionInWidget();
-      gfx::PointF position_in_widget(point.x() + delta.x(),
-                                     point.y() + delta.y());
-      event.touches[j].SetPositionInWidget(position_in_widget);
       event.touches[j].SetPositionInScreen(ConvertWidgetPointToScreenPoint(
-          CHECK_DEREF(target.get()), position_in_widget));
+          CHECK_DEREF(root_view), event.touches[j].PositionInWidget()));
     }
   }
   EnsureInjector(widget_host)->InjectTouchEvents(events, std::move(callback));

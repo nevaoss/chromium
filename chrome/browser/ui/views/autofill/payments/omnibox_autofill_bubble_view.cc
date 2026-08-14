@@ -14,12 +14,14 @@
 #include "components/autofill/core/browser/suggestions/suggestion.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/base/mojom/dialog_button.mojom.h"
+#include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/bubble/bubble_frame_view.h"
 #include "ui/views/controls/button/button.h"
 #include "ui/views/controls/label.h"
 #include "ui/views/layout/box_layout.h"
 #include "ui/views/layout/box_layout_view.h"
 #include "ui/views/layout/fill_layout.h"
+#include "ui/views/view.h"
 
 namespace autofill {
 
@@ -29,10 +31,15 @@ class SuggestionButton : public views::Button {
   METADATA_HEADER(SuggestionButton, views::Button)
  public:
   SuggestionButton(std::unique_ptr<PopupRowContentView> content_view,
-                   const std::u16string& accessible_name)
-      : content_view_(AddChildView(std::move(content_view))) {
+                   const std::u16string& accessible_name,
+                   PressedCallback pressed_callback,
+                   base::RepeatingClosure selected_callback,
+                   base::RepeatingClosure deselection_callback)
+      : views::Button(std::move(pressed_callback)),
+        content_view_(AddChildView(std::move(content_view))),
+        selected_callback_(std::move(selected_callback)),
+        deselection_callback_(std::move(deselection_callback)) {
     SetLayoutManager(std::make_unique<views::FillLayout>());
-    SetFocusBehavior(FocusBehavior::ALWAYS);
     SetRequestFocusOnPress(true);
     SetAccessibleName(accessible_name);
     SetNotifyEnterExitOnChild(true);
@@ -59,10 +66,25 @@ class SuggestionButton : public views::Button {
 
  private:
   void UpdateSelectionState(bool selected) {
-    content_view_->UpdateStyle(selected);
+    if (selected_ != selected) {
+      selected_ = selected;
+      content_view_->UpdateStyle(selected);
+      if (selected_) {
+        if (selected_callback_) {
+          selected_callback_.Run();
+        }
+      } else {
+        if (deselection_callback_) {
+          deselection_callback_.Run();
+        }
+      }
+    }
   }
 
   raw_ptr<PopupRowContentView> content_view_;
+  base::RepeatingClosure selected_callback_;
+  base::RepeatingClosure deselection_callback_;
+  bool selected_ = false;
 };
 
 BEGIN_METADATA(SuggestionButton)
@@ -84,12 +106,19 @@ OmniboxAutofillBubbleView::OmniboxAutofillBubbleView(
   set_fixed_width(ChromeLayoutProvider::Get()->GetDistanceMetric(
                       views::DISTANCE_BUBBLE_PREFERRED_WIDTH) +
                   width_adjustment);
+
+  SetFocusBehavior(FocusBehavior::ACCESSIBLE_ONLY);
+  GetViewAccessibility().SetRole(ax::mojom::Role::kDialog);
+  GetViewAccessibility().SetName(GetWindowTitle());
 }
 
 OmniboxAutofillBubbleView::~OmniboxAutofillBubbleView() = default;
 
 void OmniboxAutofillBubbleView::Show(DisplayReason reason) {
   ShowForReason(reason);
+  if (controller_) {
+    controller_->OnSuggestionsShown();
+  }
 }
 
 void OmniboxAutofillBubbleView::Hide() {
@@ -123,9 +152,6 @@ void OmniboxAutofillBubbleView::AddedToWidget() {
   }
 }
 
-views::View* OmniboxAutofillBubbleView::GetInitiallyFocusedView() {
-  return initially_focused_view_;
-}
 
 void OmniboxAutofillBubbleView::Init() {
   SetLayoutManager(std::make_unique<views::BoxLayout>(
@@ -148,6 +174,7 @@ void OmniboxAutofillBubbleView::Init() {
       ChromeLayoutProvider::Get()->GetDistanceMetric(
           views::DISTANCE_RELATED_CONTROL_VERTICAL));
 
+  size_t row_index = 0;
   for (const auto& suggestion : suggestions) {
     std::unique_ptr<PopupRowContentView> content_view;
     if (suggestion.type == SuggestionType::kVirtualCreditCardEntry) {
@@ -162,12 +189,37 @@ void OmniboxAutofillBubbleView::Init() {
     }
 
     auto suggestion_button = std::make_unique<SuggestionButton>(
-        std::move(content_view), suggestion.main_text.value);
-    // Ensures the first suggestion is initially focused.
-    if (!initially_focused_view_) {
-      initially_focused_view_ = suggestion_button.get();
-    }
+        std::move(content_view), suggestion.main_text.value,
+        base::BindRepeating(&OmniboxAutofillBubbleView::OnSuggestionAccepted,
+                            base::Unretained(this), suggestion, row_index),
+        base::BindRepeating(&OmniboxAutofillBubbleView::OnSuggestionSelected,
+                            base::Unretained(this), suggestion),
+        base::BindRepeating(&OmniboxAutofillBubbleView::OnSuggestionDeselected,
+                            weak_ptr_factory_.GetWeakPtr()));
     suggestions_container->AddChildView(std::move(suggestion_button));
+    row_index++;
+  }
+}
+
+void OmniboxAutofillBubbleView::OnSuggestionAccepted(
+    const Suggestion& suggestion,
+    size_t row_index) {
+  if (controller_) {
+    controller_->OnSuggestionAccepted(suggestion, row_index);
+    CloseBubble();
+  }
+}
+
+void OmniboxAutofillBubbleView::OnSuggestionSelected(
+    const Suggestion& suggestion) {
+  if (controller_) {
+    controller_->OnSuggestionSelected(suggestion);
+  }
+}
+
+void OmniboxAutofillBubbleView::OnSuggestionDeselected() {
+  if (controller_) {
+    controller_->OnSuggestionDeselected();
   }
 }
 

@@ -7,22 +7,26 @@
 #include <memory>
 
 #include "base/command_line.h"
+#include "base/files/file_path.h"
 #include "base/memory/raw_ptr.h"
 #include "base/task/current_thread.h"
 #include "base/test/mock_callback.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/test_future.h"
 #include "chrome/browser/ai/ai_language_model.h"
+#include "chrome/browser/ai/ai_semantic_embedder_service_launcher.h"
 #include "chrome/browser/ai/ai_test_utils.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/optimization_guide/mock_optimization_guide_keyed_service.h"
 #include "components/keyed_service/core/keyed_service.h"
+#include "components/optimization_guide/core/delivery/model_info.h"
 #include "components/optimization_guide/core/model_execution/on_device_capability.h"
 #include "components/optimization_guide/core/model_execution/test/fake_model_broker.h"
 #include "components/optimization_guide/core/model_execution/test/mock_on_device_capability.h"
 #include "components/optimization_guide/core/optimization_guide_features.h"
+#include "components/optimization_guide/core/optimization_guide_proto_util.h"
 #include "components/optimization_guide/core/optimization_guide_switches.h"
-#include "components/optimization_guide/proto/features/classify_api.pb.h"
+#include "components/optimization_guide/proto/passage_embeddings_model_metadata.pb.h"
 #include "components/optimization_guide/proto/string_value.pb.h"
 #include "components/optimization_guide/public/mojom/model_broker.mojom-shared.h"
 #include "components/policy/core/common/policy_pref_names.h"
@@ -32,7 +36,6 @@
 #include "mojo/public/mojom/base/work_in_progress.mojom.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/common/features_generated.h"
-#include "third_party/blink/public/mojom/ai/ai_classifier.mojom.h"
 #include "third_party/blink/public/mojom/ai/ai_common.mojom.h"
 #include "third_party/blink/public/mojom/ai/ai_language_model.mojom.h"
 #include "third_party/blink/public/mojom/ai/ai_manager.mojom.h"
@@ -64,7 +67,7 @@ class AIManagerTest : public AITestUtils::AITestBase {
         {blink::features::kAIPromptAPI, blink::features::kAIWriterAPI,
          blink::features::kAISummarizationAPI, blink::features::kAIRewriterAPI,
          blink::features::kAIProofreadingAPI,
-         blink::features::kAIClassifierAPI},
+         blink::features::kAIEmbeddingsAPI},
         {});
   }
 
@@ -132,19 +135,62 @@ TEST_F(AIManagerTest, CanCreate) {
     EXPECT_EQ(future.Get(),
               blink::mojom::ModelAvailabilityCheckResult::kDownloadable);
   }
+#endif  // !BUILDFLAG(IS_ANDROID)
+}
+
+TEST_F(AIManagerTest, CanCreateSemanticEmbedderCrashLimit) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitWithFeatures(
+      /*enabled_features=*/{blink::features::kAIEmbeddingsAPI},
+      /*disabled_features=*/{});
+
+  auto* service_launcher = AISemanticEmbedderServiceLauncher::Get();
+  service_launcher->RecordSuccessfulUse();
+  service_launcher->controller()->MaybeUpdateModelInfo(
+      optimization_guide::ModelInfo{
+          .model_file_path = base::FilePath(FILE_PATH_LITERAL("embeddings")),
+          .additional_files = {base::FilePath(FILE_PATH_LITERAL("sp"))},
+          .version = 1,
+          .model_metadata = optimization_guide::AnyWrapProto(
+              optimization_guide::proto::PassageEmbeddingsModelMetadata()),
+      });
+
+  // Ensure it's ready.
+  EXPECT_TRUE(service_launcher->controller()->IsModelAvailable());
+
+  // Check it is available
   {
     base::test::TestFuture<blink::mojom::ModelAvailabilityCheckResult> future;
-    ai_manager_->CanCreateClassifier(/*options=*/{}, future.GetCallback());
+    ai_manager_->CanCreateSemanticEmbedder(future.GetCallback());
     EXPECT_EQ(future.Get(),
-              blink::mojom::ModelAvailabilityCheckResult::kDownloadable);
+              blink::mojom::ModelAvailabilityCheckResult::kAvailable);
   }
-#endif  // !BUILDFLAG(IS_ANDROID)
+
+  // Crash 3 times.
+  service_launcher->OnServiceDisconnected(false);
+  service_launcher->OnServiceDisconnected(false);
+  service_launcher->OnServiceDisconnected(false);
+
+  // Check it is unavailable.
+  {
+    base::test::TestFuture<blink::mojom::ModelAvailabilityCheckResult> future;
+    ai_manager_->CanCreateSemanticEmbedder(future.GetCallback());
+    EXPECT_EQ(future.Get(), blink::mojom::ModelAvailabilityCheckResult::
+                                kUnavailableTooManyRecentCrashes);
+  }
+
+  // Cleanup
+  service_launcher->RecordSuccessfulUse();
+  service_launcher->controller()->MaybeUpdateModelInfo(std::nullopt);
 }
 
 TEST_F(AIManagerTest, CanCreateNotEnabled) {
   base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitAndDisableFeature(
-      optimization_guide::features::kOptimizationGuideModelExecution);
+  scoped_feature_list.InitWithFeatures(
+      /*enabled_features=*/{},
+      /*disabled_features=*/{
+          optimization_guide::features::kOptimizationGuideModelExecution,
+          blink::features::kAIEmbeddingsAPI});
   {
     base::test::TestFuture<blink::mojom::ModelAvailabilityCheckResult> future;
     ai_manager_->CanCreateLanguageModel(/*options=*/{}, future.GetCallback());
@@ -171,7 +217,7 @@ TEST_F(AIManagerTest, CanCreateNotEnabled) {
   }
   {
     base::test::TestFuture<blink::mojom::ModelAvailabilityCheckResult> future;
-    ai_manager_->CanCreateClassifier(/*options=*/{}, future.GetCallback());
+    ai_manager_->CanCreateSemanticEmbedder(future.GetCallback());
     EXPECT_EQ(future.Get(), blink::mojom::ModelAvailabilityCheckResult::
                                 kUnavailableFeatureNotEnabled);
   }
@@ -180,25 +226,24 @@ TEST_F(AIManagerTest, CanCreateNotEnabled) {
 TEST_F(AIManagerTest, CanCreateFeatureDisabled) {
   base::test::ScopedFeatureList scoped_feature_list;
   scoped_feature_list.InitWithFeatures(
-      {}, {blink::features::kAIPromptAPI,
-           blink::features::kAIPromptAPIMultimodalInput,
-           blink::features::kAIWriterAPI, blink::features::kAISummarizationAPI,
-           blink::features::kAIRewriterAPI, blink::features::kAIProofreadingAPI,
-           blink::features::kAIClassifierAPI});
+      {},
+      {blink::features::kAIPromptAPI,
+       blink::features::kAIPromptAPIMultimodalInput,
+       blink::features::kAIWriterAPI, blink::features::kAISummarizationAPI,
+       blink::features::kAIRewriterAPI, blink::features::kAIProofreadingAPI});
 
   base::MockCallback<
       base::OnceCallback<void(blink::mojom::ModelAvailabilityCheckResult)>>
       callback;
   EXPECT_CALL(callback, Run(blink::mojom::ModelAvailabilityCheckResult::
                                 kUnavailableFeatureNotEnabled))
-      .Times(6);
+      .Times(5);
 
   ai_manager_->CanCreateLanguageModel(/*options=*/{}, callback.Get());
   ai_manager_->CanCreateWriter(/*options=*/{}, callback.Get());
   ai_manager_->CanCreateSummarizer(/*options=*/{}, callback.Get());
   ai_manager_->CanCreateRewriter(/*options=*/{}, callback.Get());
   ai_manager_->CanCreateProofreader(/*options=*/{}, callback.Get());
-  ai_manager_->CanCreateClassifier(/*options=*/{}, callback.Get());
 }
 
 TEST_F(AIManagerTest, CanCreateEnterprisePolicyDisabled) {
@@ -215,7 +260,7 @@ TEST_F(AIManagerTest, CanCreateEnterprisePolicyDisabled) {
   ai_manager_->CanCreateSummarizer(/*options=*/{}, callback.Get());
   ai_manager_->CanCreateRewriter(/*options=*/{}, callback.Get());
   ai_manager_->CanCreateProofreader(/*options=*/{}, callback.Get());
-  ai_manager_->CanCreateClassifier(/*options=*/{}, callback.Get());
+  ai_manager_->CanCreateSemanticEmbedder(callback.Get());
   SetBuiltInAIAPIsEnterprisePolicy(true);
 }
 
@@ -233,7 +278,7 @@ TEST_F(AIManagerTest, CanCreateLocalStateEnterprisePolicyDisabled) {
   ai_manager_->CanCreateSummarizer(/*options=*/{}, callback.Get());
   ai_manager_->CanCreateRewriter(/*options=*/{}, callback.Get());
   ai_manager_->CanCreateProofreader(/*options=*/{}, callback.Get());
-  ai_manager_->CanCreateClassifier(/*options=*/{}, callback.Get());
+  ai_manager_->CanCreateSemanticEmbedder(callback.Get());
   SetGenAILocalEnterprisePolicy(true);
 }
 
@@ -251,7 +296,7 @@ TEST_F(AIManagerTest, CanCreateLocalStateUserSettingsDisabled) {
   ai_manager_->CanCreateSummarizer(/*options=*/{}, callback.Get());
   ai_manager_->CanCreateRewriter(/*options=*/{}, callback.Get());
   ai_manager_->CanCreateProofreader(/*options=*/{}, callback.Get());
-  ai_manager_->CanCreateClassifier(/*options=*/{}, callback.Get());
+  ai_manager_->CanCreateSemanticEmbedder(callback.Get());
   SetOnDeviceAiUserSetting(true);
 }
 

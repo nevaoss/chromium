@@ -55,6 +55,7 @@ interface PageElementTypes {
   locationMismatchPanel: HTMLElement;
   locationMismatchHelpButton: HTMLButtonElement;
   ineligibleAccountHelpButton: HTMLButtonElement;
+  ineligibleAccountPanel: HTMLElement;
 }
 
 const $: PageElementTypes = new Proxy({}, {
@@ -122,6 +123,7 @@ export enum WebUiErrorReason {
 
 export class GlicAppController implements WebviewDelegate, ApiHostEmbedder {
   loadingTimer: number|undefined;
+  private isFreCompleted: boolean = loadTimeData.getBoolean('completedFre');
 
   // This is used to simulate no connection for tests.
   private simulateNoConnection: boolean =
@@ -228,6 +230,7 @@ export class GlicAppController implements WebviewDelegate, ApiHostEmbedder {
         this.installDebugButton();
       });
     }
+    this.initializeIcons_();
   }
 
   // WebviewDelegate implementation.
@@ -330,7 +333,17 @@ export class GlicAppController implements WebviewDelegate, ApiHostEmbedder {
       return;
     }
     chrome.histograms.recordEnumerationValue(
-        'Glic.PanelWebUiState.Error', reason, WebUiErrorReason.MAX_VALUE + 1);
+        'Glic.PanelWebUiState.Error',
+        reason,
+        WebUiErrorReason.MAX_VALUE + 1,
+    );
+    if (!this.isFreCompleted) {
+      chrome.histograms.recordEnumerationValue(
+          'Glic.Fre.PanelWebUiState.Error',
+          reason,
+          WebUiErrorReason.MAX_VALUE + 1,
+      );
+    }
     this.setState(WebUiState.kError);
   }
 
@@ -749,6 +762,10 @@ export class GlicAppController implements WebviewDelegate, ApiHostEmbedder {
     });
   }
 
+  onboardingCompleted(): void {
+    this.isFreCompleted = true;
+  }
+
   webClientWarmed(): void {
     if (this.state === WebUiState.kBeginLoad ||
         this.state === WebUiState.kFinishLoading ||
@@ -930,5 +947,27 @@ export class GlicAppController implements WebviewDelegate, ApiHostEmbedder {
     return loadTimeData.getBoolean('ignoreOfflineState') ?
         true :
         navigator.onLine && !this.simulateNoConnection;
+  }
+
+  private initializeIcons_() {
+    const isRounded = loadTimeData.getBoolean('webuiRoundedIconsEnabled');
+    const updateIcon =
+        (panel: HTMLElement, roundedIcon: string, oldIcon: string) => {
+          const el = panel.querySelector('cr-icon');
+          if (el) {
+            el.setAttribute('icon', isRounded ? roundedIcon : oldIcon);
+          }
+        };
+    updateIcon($.offlinePanel, 'glic:wifi-off', 'glic:offline-old');
+    updateIcon($.errorPanel, 'glic:error', 'glic:error-old');
+    updateIcon(
+        $.unavailablePanel, 'glic:person-alert', 'glic:person-alert-old');
+    updateIcon(
+        $.ineligibleAccountPanel, 'glic:do-not-touch',
+        'glic:ineligible-account-old');
+    updateIcon($.signInPanel, 'glic:person-alert', 'glic:person-alert-old');
+    updateIcon(
+        $.locationMismatchPanel, 'glic:location-on',
+        'glic:location-mismatch-old');
   }
 }

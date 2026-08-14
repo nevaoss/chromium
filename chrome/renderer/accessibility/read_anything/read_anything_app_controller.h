@@ -8,6 +8,7 @@
 #include <deque>
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -181,6 +182,8 @@ class ReadAnythingAppController
   void OnGetVoicePackInfo(
       read_anything::mojom::VoicePackInfoPtr voice_pack_info) override;
   void OnReadingModeHidden(bool tab_active) override;
+  void OnReadingModeShown(
+      read_anything::mojom::ReadAnythingOpenTrigger open_trigger) override;
   void OnTabWillDetach() override;
   void OnTabMuteStateChange(bool muted) override;
   void UpdateContent(const std::string& title,
@@ -226,6 +229,7 @@ class ReadAnythingAppController
   void OnFontSizeChanged(bool increase);
   void OnFontSizeReset();
   void OnLinksEnabledToggled();
+  void OnTranslationRequested();
   void OnImagesEnabledToggled();
   int LetterSpacing() const;
   int LineSpacing() const;
@@ -316,6 +320,8 @@ class ReadAnythingAppController
                          ui::AXNodeID focus_node_id,
                          int focus_offset);
   void OnCollapseSelection();
+  bool MaybeHasKeyPointsSection() const;
+  std::string GetKeyPointsRegex() const;
   void AttemptLogEarlySelection(bool from_side_panel);
   void OnDistilled(int word_count);
   void OnRenderedTextBlocksAvailable(const std::vector<std::u16string>& blocks);
@@ -324,6 +330,8 @@ class ReadAnythingAppController
   bool IsPdf() const;
   bool IsImmersiveEnabled() const;
   bool IsImprovedReadAloudEnabled() const;
+  bool IsReadAnythingImprovedUiEnabled() const;
+  bool IsReadAnythingTranslateEntryPointEnabled() const;
   bool IsTsTextSegmentationEnabled() const;
   bool IsReadabilityEnabled() const;
   bool IsReadabilitySelectTextEnabled() const;
@@ -445,6 +453,11 @@ class ReadAnythingAppController
   void SetAnchorsForTesting(v8::Local<v8::Value> v8_snapshot_lite,
                             std::vector<ui::AXNodeID> content_node_ids);
   void SetLanguageForTesting(const std::string& language_code);
+  void set_forced_distillation_method_for_testing(
+      ReadAnythingAppModel::DistillationMethod method) {
+    forced_distillation_method_for_testing_ = method;
+    model_.set_current_content_distillation_method(method);
+  }
 
  private:
   friend ReadAnythingAppControllerTest;
@@ -522,7 +535,7 @@ class ReadAnythingAppController
   // accurate for voices that don't support word boundaries.
   void RecordEstimatedWordsHeard();
 
-  void RecordScreen2xDistillationStatus();
+  void RecordScreen2xDistillationStatus(bool just_hidden);
   void RecordDistillationStatus(
       read_anything::mojom::DistillationStatus status);
 
@@ -562,6 +575,12 @@ class ReadAnythingAppController
 
   void OnUrlInformationSet();
 
+  void OnPdfDebounceFinished();
+
+  // Logs the time it took for the AXTree to become ready after the active
+  // tree ID changed.
+  void MaybeLogAXTreeReady();
+
   // Stores a screenshot of the page and triggers distillation to record protos.
   // This function is not used in production and is behind the disabled
   // `DataCollectionModeForScreen2x` flag.
@@ -595,6 +614,10 @@ class ReadAnythingAppController
   // Tracks the time since the active tree ID was last changed.
   base::TimeTicks active_tree_changed_start_time_;
 
+  // Tracks the time it took for the AXTree to become ready after the active
+  // tree changes.
+  base::TimeDelta elapsed_time_ax_tree_ready_;
+
   // Model that holds Reading mode state for this controller.
   ReadAnythingAppModel model_;
 
@@ -618,6 +641,16 @@ class ReadAnythingAppController
   // The time when the WebUI connects i.e. when onConnected is called.
   base::TimeTicks web_ui_connected_time_ms_;
 
+  // Flag to ensure the AXTree ready metric is logged only once per active
+  // tree change. Initially set as true to make sure that the variable reset is
+  // called before trying to log the metric.
+  bool ax_tree_ready_for_current_active_tree_recorded_ = true;
+
+  // Flag to ensure the AXTree ready metric is measured only once per active
+  // tree change. Initially set as true to make sure that the variable reset is
+  // called before trying to measure the metric.
+  bool ax_tree_ready_for_current_active_tree_measured_ = true;
+
   // A timer that causes a distillation after a user stops typing for a set
   // number of seconds.
   std::unique_ptr<base::RetainingOneShotTimer> post_user_entry_draw_timer_;
@@ -636,11 +669,24 @@ class ReadAnythingAppController
   // change. Used for logging.
   int distillations_completed_;
 
+  // The number of times distillation is attempted after a page
+  // change. distillation_attempts_ may be greater than
+  // distillations_completed_, especially on ad-heavy pages where distillation
+  // is re-triggered multiple times before completion. Used for logging.
+  int distillation_attempts_;
+
   // The distilled title result of DOM distiller distillation.
   std::string dom_distiller_title_;
 
+  // Tracks whether the distillation status for the current active tree
+  // navigation has already been recorded.
+  bool has_logged_distillation_status_ = false;
+
   // The distilled content result of DOM distiller distillation.
   std::string dom_distiller_content_html_;
+
+  std::optional<ReadAnythingAppModel::DistillationMethod>
+      forced_distillation_method_for_testing_;
 
   // As a subclass of RenderFrameObserver, all objects of this class are stored
   // in data structure and should not get deallocated as long as the object is

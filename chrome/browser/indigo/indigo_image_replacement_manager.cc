@@ -202,6 +202,12 @@ void IndigoImageReplacementManager::ReplacementFrameAttached(
   content::WebContents* web_contents =
       content::WebContents::FromRenderFrameHost(&page().GetMainDocument());
 
+  Profile* profile =
+      Profile::FromBrowserContext(web_contents->GetBrowserContext());
+  IndigoService* service = IndigoServiceFactory::GetForProfile(profile);
+  CHECK(service);
+  service->EnsureComponentExtensionRegistered();
+
   content::NavigationController::LoadURLParams params{
       extensions::Extension::GetResourceURL(
           extensions::Extension::GetBaseURLFromExtensionId(
@@ -271,13 +277,10 @@ void IndigoImageReplacementManager::OnReplacementImageGenerated(
 
   if (!result.has_value()) {
     DVLOG(1) << "Generate image failed: " << result.error().message;
-    base::UmaHistogramEnumeration(
-        "Indigo.Transformation.Result",
-        IndigoTransformationResult::kGenerateImageError);
     base::RecordAction(
         base::UserMetricsAction("Indigo.Transformation.Failure"));
     Reset(ResetType::kResetReplacementsAndContentScript);
-    ShowErrorToast();
+    ShowErrorToast(IndigoTransformationResult::kGenerateImageError);
     return;
   }
 
@@ -312,7 +315,7 @@ void IndigoImageReplacementManager::OnReceiverDisconnected() {
     DVLOG(1) << "Primary image replacement disconnected before receiving "
                 "generated image";
     Reset(ResetType::kResetReplacementsAndContentScript);
-    ShowErrorToast();
+    ShowErrorToast(IndigoTransformationResult::kPrimaryImageDisconnected);
   }
 }
 
@@ -322,9 +325,10 @@ void IndigoImageReplacementManager::Reset(ResetType reset_type) {
   }
 }
 
-void IndigoImageReplacementManager::ShowErrorToast() {
+void IndigoImageReplacementManager::ShowErrorToast(
+    IndigoTransformationResult result) {
   if (auto* controller = GetIndigoPageActionController()) {
-    controller->ShowInvocationErrorToast();
+    controller->ShowInvocationErrorToast(result);
   }
 }
 

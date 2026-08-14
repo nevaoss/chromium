@@ -7,6 +7,7 @@
 
 #import <UIKit/UIKit.h>
 
+#import <map>
 #import <memory>
 #import <set>
 
@@ -24,16 +25,19 @@
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_tab_helper_observer.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_view_state_change_handler.h"
 #import "ios/chrome/browser/intelligence/bwg/utils/gemini_constants.h"
+#import "ios/chrome/browser/intelligence/persist_tab_context/model/persist_tab_context_browser_agent.h"
 #import "ios/chrome/browser/shared/coordinator/scene/scene_activation_level.h"
 #import "ios/chrome/browser/shared/coordinator/scene/state/tab_grid_state_observer.h"
 #import "ios/chrome/browser/shared/model/browser/browser_observer.h"
 #import "ios/chrome/browser/shared/model/browser/browser_user_data.h"
 #import "ios/chrome/browser/tabs/model/tabs_dependency_installer.h"
 #import "ios/public/provider/chrome/browser/bwg/gemini_api.h"
+#import "ios/web/public/web_state_id.h"
 
 class Browser;
 class FullscreenController;
 class AppBarMediatorTest;
+class ToolbarMediatorTest;
 class LocationBarBadgeMediatorTest;
 
 namespace gemini {
@@ -41,6 +45,7 @@ enum class FloatyUpdateSource;
 }  // namespace gemini
 
 class ScopedFullscreenDisabler;
+@class GeminiContainerMediator;
 @class GeminiLinkOpeningHandler;
 @class GeminiPageStateChangeHandler;
 @class GeminiSessionHandler;
@@ -95,6 +100,9 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
   // Returns true if Gemini is available for the active web state.
   bool IsGeminiAvailableForActiveWebState() const;
 
+  // Returns true if the floaty is currently visible.
+  bool IsFloatyVisible() const;
+
   // Returns true if Gemini Live mode is currently active.
   bool IsInGeminiLiveMode() const;
 
@@ -124,10 +132,11 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
   void StartGeminiFlow(UIViewController* base_view_controller,
                        GeminiStartupState* startup_state);
 
-  // Creates and returns the GeminiConfiguration for the active web state.
-  GeminiConfiguration* CreateGeminiConfigurationForActiveWebState(
-      UIViewController* base_view_controller,
-      GeminiStartupState* startup_state);
+  // Returns the gateway for bridging internal protocols.
+  id<BWGGatewayProtocol> bwg_gateway() const { return bwg_gateway_; }
+
+  // Sets the UI command handlers on the session handler.
+  void SetSessionCommandHandlers();
 
   // Presents a Gemini Live microphone authorization alert or Settings prompt.
   void ShowGeminiLiveMicrophoneAlert(UIViewController* base_view_controller,
@@ -135,6 +144,13 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
 
   // Dismisses the floaty and resets the Gemini flow.
   void DismissFloaty();
+
+  // Called when the tab picker selection changes.
+  void OnTabPickerSelectionChanged(std::set<web::WebStateID> selected_tabs,
+                                   std::set<web::WebStateID> cached_tabs);
+
+  // Returns the number of currently attached tabs.
+  NSUInteger AttachedTabsCount() const;
 
   // Hide Gemini floaty with `animated` flag. When in a hidden state, the floaty
   // view is dismissed but still persists in memory and needs to be properly
@@ -157,6 +173,8 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
       ios::provider::GeminiViewState view_state) override;
   void OnLiveButtonTapped() override;
   void OnGeminiLiveUserDidBargeIn() override;
+  void OnGeminiLiveUserDidPressStopButton() override;
+  void OnModeChanged(ios::provider::GeminiViewMode mode) override;
   void OnGeminiUIDidAppear() override;
 
   // Called when the scene activation level changes.
@@ -179,28 +197,27 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
   friend class BrowserUserData<GeminiBrowserAgent>;
   friend class GeminiBrowserAgentTest;
   friend class AppBarMediatorTest;
+  friend class ToolbarMediatorTest;
   friend class LocationBarBadgeMediatorTest;
 
   // Fetches the full context of the active page and feeds it to Gemini.
   void RequestPageContextGeneration();
 
-  // Propagates the page context to the provider if the floaty is invoked.
-  void PropagatePageContextToProvider(GeminiPageContext* gemini_page_context);
+  // Updates the active page context and passes it to the Gemini provider, along
+  // with any shared tabs.
+  void PropagatePageContextToProvider(GeminiPageContext* active_page_context);
 
   // Updates the floaty with partial page context synchronously if the tab
   // helper is available.
   void UpdateFloatyWithPartialPageContext();
 
+  // Returns the array of page contexts for all currently attached
+  // shared tabs.
+  NSArray<GeminiPageContext*>* GetSharedTabs() const;
+
   // Starts the Gemini session (prepares context and shows overlay).
   void PresentFloaty(UIViewController* base_view_controller,
                      GeminiStartupState* startup_state);
-
-  // Creates the configuration for the Gemini overlay.
-  GeminiConfiguration* CreateGeminiConfiguration(
-      UIViewController* base_view_controller,
-      GeminiStartupState* startup_state,
-      web::WebState* web_state,
-      GeminiPageContext* page_context);
 
   // Adjusts the configuration around the Gemini page context based on user
   // prefs.
@@ -208,11 +225,6 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
 
   // Records the page type when Gemini is invoked.
   void RecordInvocationPageType();
-
-  // Sets the UI command handlers on the session handler. This cannot be called
-  // in the constructor because some objects fail the protocol conformance test
-  // at that time.
-  void SetSessionCommandHandlers();
 
   // Helper to get the GeminiTabHelper for the active web state if it matches
   // the provided web state.
@@ -257,7 +269,7 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
   void SetIsShowingLiveSessionDormantSnackbar(bool showing);
 
   // Updates the Gemini Live leading icon visibility in the location bar.
-  void UpdateGeminiLiveIconVisibility();
+  void UpdateGeminiLiveIconVisibility(bool animated = true);
 
   // Returns the floaty offset based on current fullscreen progress.
   CGFloat GetFloatyOffset();
@@ -279,6 +291,10 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
   // Forces the floaty to be dismissed and cleaned up, ignoring if it is
   // temporarily hidden.
   void ForceDismissFloaty();
+
+  // Switches the view mode to Floaty (i.e., chat) mode if the current page is
+  // eligible, or dismisses the floaty if ineligible.
+  void SwitchToChatModeOrDismiss(bool animated);
 
   // Whether to allow the floaty to be shown given a `source`. If not allowed,
   // the floaty state will be as if a floaty was never shown.
@@ -326,6 +342,15 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
   // Handles an generated page context by updating the floaty.
   void OnPageContextGenerated(GeminiPageContext* gemini_page_context);
 
+  // Called when cached APC has been retrieved for a list of shared tabs.
+  void OnCachedAPCRetrievedForSharedTabs(
+      PersistTabContextBrowserAgent::PageContextMap contexts_map);
+
+  // Called when full page context for a shared tab becomes available.
+  void OnFullPageContextAvailableForSharedTab(
+      web::WebStateID web_state_id,
+      GeminiPageContext* full_page_context);
+
   // Called for the fullscreen update animation.
   void FullscreenProgressUpdatedForAnimation();
 
@@ -334,6 +359,26 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
 
   // Called when the page content sharing preference changes.
   void OnPageContentPrefChanged();
+
+  // Called when the microphone preference changes.
+  void OnMicrophonePrefChanged();
+
+  // Clears the set of attached tabs if it doesn't include the active web
+  // state.
+  void UpdateAttachedTabsForActiveWebState(web::WebState* active_web_state);
+
+  // Creates a partial page context synchronously for a web state.
+  GeminiPageContext* CreatePartialPageContext(web::WebState* web_state);
+
+  // Removes a tab from selected tabs and propagates attached tabs to Gemini.
+  void DetachTabWithID(NSString* tab_id);
+
+  // Changes the attachment state of the given tab without propagating it to the
+  // provider. Useful when the provider notifies Chrome about changes to page
+  // context attachment state.
+  void UpdateLocalTabAttachmentState(
+      NSString* tab_id,
+      ios::provider::GeminiPageContextAttachmentState new_state);
 
   // The gateway for bridging internal protocols.
   __strong id<BWGGatewayProtocol> bwg_gateway_ = nullptr;
@@ -366,6 +411,9 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
   // Handler for Gemini actor.
   __strong GeminiActuationHandler* gemini_actuation_handler_ = nullptr;
 
+  // Mediator for the Gemini container. Remove after bottom sheet migrations.
+  __strong GeminiContainerMediator* gemini_container_mediator_ = nil;
+
   // Delegate implementation for BWGSessionHandler.
   __strong GeminiViewStateChangeHandler* gemini_view_state_handler_ = nullptr;
 
@@ -393,6 +441,10 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
   // Whether the keyboard is currently visible.
   bool is_keyboard_visible_ = false;
 
+  // The active and shared tabs currently attached to the floaty, represented by
+  // a mapping of the tab's WebStateID to its page context.
+  std::map<web::WebStateID, __strong GeminiPageContext*> attached_tabs_;
+
   // Used to track the last shown view state of an invoked floaty. Used to show
   // a hidden floaty with the previous view state.
   ios::provider::GeminiViewState last_shown_view_state_ =
@@ -400,6 +452,10 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
 
   // Whether the floaty is currently invoked.
   bool is_floaty_invoked_ = false;
+
+  // Tracks the number of times the active tab was switched while the floaty
+  // was invoked.
+  int floaty_tab_switch_count_ = 0;
 
   // Whether the floaty is temporarily hidden. Used to hide the floaty without
   // triggering logic related to ending floaty persistence.
@@ -429,6 +485,26 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
   // Whether the floaty is hidden by the keyboard.
   bool is_hidden_by_keyboard_ = false;
 
+  // Start time of the current Gemini Live response. Used for barge-in latency
+  // and response duration.
+  base::TimeTicks live_response_start_time_;
+
+  // Start time of the Gemini Live thinking state. Used for response latency.
+  base::TimeTicks live_thinking_start_time_;
+
+  // The number of turns in the current Gemini Live session.
+  int live_turn_count_ = 0;
+
+  // The start time of the current Gemini Live session segment.
+  base::TimeTicks live_session_start_time_;
+
+  // The accumulated duration of all Gemini Live segments within a single
+  // overall interaction.
+  base::TimeDelta live_session_accumulated_duration_;
+
+  // Logs Gemini live related metrics and resets values if needed.
+  void LogLiveSessionMetrics(bool floaty_dismissed = false);
+
   // The current processing status of the Gemini client.
   ios::provider::GeminiClientMode processing_status_ =
       ios::provider::GeminiClientMode::kUnknown;
@@ -442,20 +518,20 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
   // Handles the client transitioning to a dormant status.
   void HandleDormantStatus(ios::provider::GeminiDormantReason dormant_reason);
 
+  // Logs state transition events for Gemini Live metrics.
+  void LogLiveStatusTransition(ios::provider::GeminiClientMode old_status,
+                               ios::provider::GeminiClientMode new_status);
+
   // Whether we are currently displaying the Live session dormant snackbar.
   bool is_showing_live_session_dormant_snackbar_ = false;
-
-  // Track if we have triggered feature engagement for Gemini Live IPH or New
-  // Badge.
-  bool has_triggered_gemini_live_iph_ = false;
-  bool has_triggered_gemini_live_new_badge_ = false;
 
   // The entry point that triggered the current Gemini flow.
   gemini::EntryPoint entry_point_ = gemini::EntryPoint::Unknown;
 
-  // Weak pointer factory.
   // Observers for GeminiBrowserAgent.
   base::ObserverList<Observer> observers_;
+
+  // Weak pointer factory.
   base::WeakPtrFactory<GeminiBrowserAgent> weak_factory_{this};
 };
 

@@ -9,6 +9,7 @@
 
 #include "base/functional/callback_forward.h"
 #include "base/memory/raw_ptr.h"
+#include "base/metrics/histogram_functions.h"
 #include "build/build_config.h"
 #include "chrome/app/chrome_command_ids.h"
 #include "chrome/browser/glic/browser_ui/glic_nudge_controller.h"
@@ -18,7 +19,6 @@
 #include "chrome/browser/ui/webui/top_chrome/top_chrome_web_ui_controller.h"
 #include "chrome/browser/ui/webui/webui_embedding_context.h"
 #include "chrome/common/buildflags.h"
-#include "components/favicon_base/favicon_types.h"
 #include "components/omnibox/common/composebox_features.h"
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/web_contents.h"
@@ -88,10 +88,9 @@ int OmniboxContextMenu::GetMaxWidthForMenu(views::MenuItemView* menu) {
       !base::FeatureList::IsEnabled(omnibox::kContextManagementInOmnibox)) {
     return kDefaultMenuWidth;
   }
-  // If is top level menu, return main menu's width;
-  // otherwise it is the submenu, so return submenu's (default width).
-  int width =
-      (menu == menu_) ? kMainMenuWidthWithSubmenuEnabled : kDefaultMenuWidth;
+  // If top level menu, return main menu's minimum width plus submenu
+  // width; otherwise return default width (320px) for submenus.
+  int width = GetMinimumMenuWidth(menu);
   // The context menu has drop shadow and borders drawn. Ensure that
   // those are not taken into account when calculating the minimum width.
   if (menu->HasSubmenu() && menu->GetSubmenu()->GetScrollViewContainer()) {
@@ -103,6 +102,28 @@ int OmniboxContextMenu::GetMaxWidthForMenu(views::MenuItemView* menu) {
   return width;
 }
 void OmniboxContextMenu::WillShowMenu(views::MenuItemView* menu) {
+  if (base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox)) {
+    if (menu == menu_ && controller_->shared_tabs_menu_model() &&
+        !was_add_tabs_button_shown_logged_) {
+      base::UmaHistogramBoolean("ContextualSearch.AddTabsButton.Shown.Omnibox",
+                                true);
+      was_add_tabs_button_shown_logged_ = true;
+    }
+
+    if (menu->GetCommand() == IDC_OMNIBOX_CONTEXT_SHARED_TABS_SUBMENU) {
+      if (!was_add_tabs_button_hovered_logged_) {
+        base::UmaHistogramBoolean(
+            "ContextualSearch.AddTabsButton.Hovered.Omnibox", true);
+        was_add_tabs_button_hovered_logged_ = true;
+      }
+      if (!was_add_tabs_flyout_shown_logged_) {
+        base::UmaHistogramBoolean(
+            "ContextualSearch.AddTabsFlyout.Shown.Omnibox", true);
+        was_add_tabs_flyout_shown_logged_ = true;
+      }
+    }
+  }
+
   // For both tabs and regular context menu:
   if (menu == menu_ ||
       menu->GetCommand() == IDC_OMNIBOX_CONTEXT_SHARED_TABS_SUBMENU) {
@@ -145,15 +166,13 @@ void OmniboxContextMenu::RunMenuAt(const gfx::Point& point,
   if (menu_ && menu_->HasSubmenu()) {
     if (base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox) &&
         base::FeatureList::IsEnabled(omnibox::kContextManagementInOmnibox)) {
-      // Set main menu to the narrower width when a submenu is enabled.
-      menu_->GetSubmenu()->set_minimum_preferred_width(
-          kMainMenuWidthWithSubmenuEnabled);
+      menu_->GetSubmenu()->set_minimum_preferred_width(GetMinimumMenuWidth(menu_));
       // Apply preferred width to each submenu width; this is more robust
       // than applying the width to the submenu itself or a command ID, which
       // causes the width of submenu items to be incorrect.
       for (views::MenuItemView* item : menu_->GetSubmenu()->GetMenuItems()) {
         if (item->HasSubmenu()) {
-          item->GetSubmenu()->set_minimum_preferred_width(kDefaultMenuWidth);
+          item->GetSubmenu()->set_minimum_preferred_width(GetMinimumMenuWidth(item));
         }
       }
     } else {
@@ -187,7 +206,7 @@ void OmniboxContextMenu::RunMenuAt(const gfx::Point& point,
 
   glic_nudge_controller->UpdateNudgeLabel(
       browser_window_interface->GetActiveTabInterface()->GetContents(), "",
-      std::nullopt, /*anchored_message_text=*/std::string(),
+      std::nullopt,
       glic::GlicNudgeActivity::kNudgeIgnoredOmniboxContextMenuInteraction,
       base::DoNothing());
 }
@@ -246,4 +265,14 @@ void OmniboxContextMenu::OnIconChanged(int command_id) {
   if (menu_item) {
     menu_item->SetIcon(model->GetIconAt(index.value()));
   }
+}
+
+int OmniboxContextMenu::GetMinimumMenuWidth(const views::MenuItemView* menu) const {
+  if (menu != menu_) {
+    return kDefaultMenuWidth;
+  }
+  bool has_tabs_submenu =
+      controller_ && controller_->shared_tabs_menu_model() != nullptr;
+  return has_tabs_submenu ? kMainMenuWidthWithSubmenuEnabled
+                          : kDefaultMenuWidth;
 }

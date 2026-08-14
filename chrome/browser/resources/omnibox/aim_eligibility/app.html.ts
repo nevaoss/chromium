@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {html} from '//resources/lit/v3_0/lit.rollup.js';
+import {html} from 'chrome://resources/lit/v3_0/lit.rollup.js';
 
 import type {AimEligibilityAppElement} from './app.js';
 
@@ -160,9 +160,11 @@ export function getHtml(this: AimEligibilityAppElement) {
         </div>
       `}
     </div>
-    <div class="footer">
-      Last updated: ${this.getLastUpdatedTimestamp_()}
-    </div>
+    ${this.showFooter_ ? html`
+      <div class="footer">
+        Last updated: ${this.getLastUpdatedTimestamp_()}
+      </div>
+    ` : ''}
   `;
   // clang-format on
 }

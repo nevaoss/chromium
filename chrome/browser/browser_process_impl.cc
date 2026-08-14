@@ -481,8 +481,6 @@ void BrowserProcessImpl::Init() {
 
   // This preference must be kept in sync with external values; update them
   // whenever the preference or its controlling policy changes.
-  // TODO(b/483043192): We'll need to make similar changes for the
-  // kMetricsReportingLevel pref.
   pref_change_registrar_.Add(
       metrics::prefs::kMetricsReportingEnabled,
       base::BindRepeating(&metrics::ApplyMetricsReportingPolicy));
@@ -1643,6 +1641,7 @@ void BrowserProcessImpl::PreMainMessageLoopRun() {
   storage_monitor::StorageMonitor::Create();
 #endif
 
+  features_->PreMainMessageLoopRun();
   platform_part_->PreMainMessageLoopRun();
 
   InitializeNetworkTimeTracker();

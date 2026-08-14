@@ -40,13 +40,6 @@ BASE_FEATURE(kGroupingFrameworkForNonZPS,
              "OmniboxGroupingFrameworkForNonZPS",
              enable_if(IS_ANDROID));
 
-// Feature used to cap max zero suggestions shown according to the param
-// OmniboxMaxZeroSuggestMatches. If omitted,
-// OmniboxUIExperimentMaxAutocompleteMatches will be used instead. If present,
-// OmniboxMaxZeroSuggestMatches will override
-// OmniboxUIExperimentMaxAutocompleteMatches when |from_omnibox_focus| is true.
-BASE_FEATURE(kMaxZeroSuggestMatches, "OmniboxMaxZeroSuggestMatches", DISABLED);
-
 // Feature used to cap max suggestions shown according to the params
 // UIMaxAutocompleteMatches and UIMaxAutocompleteMatchesByProvider.
 BASE_FEATURE(kUIExperimentMaxAutocompleteMatches,
@@ -206,6 +199,8 @@ BASE_FEATURE(kAndroidDesktopAimGate, DISABLED);
 
 // Enables the AIM entrypoint for third party search engines.
 BASE_FEATURE(kAim3pEntrypoint, DISABLED);
+const base::FeatureParam<bool> kAim3pEntrypointDebug{
+    &kAim3pEntrypoint, "Aim3pEntrypointDebug", false};
 
 // When enabled, AI mode will remove verbatim suggestions from the suggestions
 // list.
@@ -296,6 +291,9 @@ BASE_FEATURE(kUrlScoringModel, enable_if(!IS_ANDROID));
 // are enabled.
 BASE_FEATURE(kOmniboxTouchDownTriggerForPrefetch, enable_if(IS_ANDROID));
 
+// Enables simultaneous prefetch and navigation on Enter KeyDown in Omnibox.
+BASE_FEATURE(kOmniboxSearchPrefetchOnEnterKeyDown, DISABLED);
+
 // Enables keyword-based site search functionality on Android devices.
 BASE_FEATURE(kOmniboxSiteSearch, DISABLED);
 
@@ -324,6 +322,10 @@ BASE_FEATURE(kOmniboxAsyncViewInflation, DISABLED);
 // Enable asynchronous Fusebox view inflation.
 BASE_FEATURE(kOmniboxFuseboxAsyncInflation, DISABLED);
 
+// When enabled, AIM image attachments will be downscaled on load before
+// reaching the C++ side.
+BASE_FEATURE(kOmniboxAimImageDownscaling, DISABLED);
+
 // Use FusedLocationProvider on Android to fetch device location.
 BASE_FEATURE(kUseFusedLocationProvider, ENABLED);
 
@@ -337,9 +339,6 @@ BASE_FEATURE(kOmniboxMobileParityUpdateV2, ENABLED);
 
 // If enabled, the X-Geo header will include permission granularity.
 BASE_FEATURE(kOmniboxXGeoPermissionGranularity, ENABLED);
-
-// If enabled, omnibox group separators and headers will use item decorations.
-BASE_FEATURE(kOmniboxItemDecoration, DISABLED);
 
 // When the first suggestion is a url, the favicon is shown in the status view.
 BASE_FEATURE(kExactMatchFavicons, DISABLED);
@@ -405,11 +404,22 @@ const base::FeatureParam<bool> kComposeboxDriveIdentityFallback{
 // composebox.
 BASE_FEATURE(kComposeboxDriveContextMenuOptionDisclaimer, DISABLED);
 
+// For Workspace AIM, the Flow ID is the ConsentKit frontend identifier
+// (e.g. CHOICEFLOW_PCONTEXT_WORKSPACE_AIM) and the Product ID is the
+// Footprints ConsentVariant ID (e.g.
+// CHOICEFLOW_VARIANT_PCONTEXT_WORKSPACE_AIM_DEFAULT)
+const base::FeatureParam<int> kComposeboxDriveConsentFlowId{
+    &kComposeboxDriveContextMenuOptionDisclaimer, "flow_id", 76};
+
+const base::FeatureParam<int> kComposeboxDriveConsentProductId{
+    &kComposeboxDriveContextMenuOptionDisclaimer, "product_id", 89978449};
+const base::FeatureParam<std::string> kComposeboxDriveConsentEntrypointId{
+    &kComposeboxDriveContextMenuOptionDisclaimer, "entrypoint_id", "aim-drive"};
+
 // Whether to force the Google Drive disclaimer to be accepted. This flag is
 // only used for testing purposes since dasher accounts are not allowed to
 // consent via pContext.
 BASE_FEATURE(kForceDriveDisclaimerAccepted,
-             "ForceDriveDisclaimerAccepted",
              DISABLED);
 
 // Whether the composebox should show a verbatim match for context in
@@ -488,6 +498,9 @@ BASE_FEATURE(kServeJavaCachedZeroSuggest, ENABLED);
 // of the Omnibox suggestion list to the top during any re-layout.
 BASE_FEATURE(kResetSuggestionsScroll, DISABLED);
 
+// If enabled, the UrlBar context menu will use ListMenu instead of MenuItem.
+BASE_FEATURE(kOmniboxListMenuContextMenu, ENABLED);
+
 namespace android {
 static int64_t JNI_OmniboxFeatureMap_GetNativeMap(JNIEnv* env) {
   static const base::Feature* const kFeaturesExposedToJava[] = {
@@ -512,9 +525,11 @@ static int64_t JNI_OmniboxFeatureMap_GetNativeMap(JNIEnv* env) {
       &kServeJavaCachedZeroSuggest,
       &kAIMSuppressVerbatimMatch,
       &kResetSuggestionsScroll,
-      &kOmniboxItemDecoration,
+      &kOmniboxListMenuContextMenu,
       &kExactMatchFavicons,
-      &kStarterPackExpansion};
+      &kStarterPackExpansion,
+      &kOmniboxSearchPrefetchOnEnterKeyDown,
+      &kOmniboxAimImageDownscaling};
   static base::NoDestructor<base::android::FeatureMap> kFeatureMap(
       kFeaturesExposedToJava);
   return reinterpret_cast<int64_t>(kFeatureMap.get());
@@ -556,6 +571,22 @@ const base::FeatureParam<InlineLocationSignalingWording>
         InlineLocationSignalingWording::kUseApproximateLocation,
         &kInlineLocationSignalingWordingOptions};
 
+// If enabled, the "Ask Google about this page" action will route to cobrowse.
+BASE_FEATURE(kWebUIOmniboxAskGAboutThisPage, DISABLED);
+
+const base::FeatureParam<bool> kAskGCoBrowse{
+    &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGCoBrowse", false};
+const base::FeatureParam<bool> kAskGCoBrowseWithVisualSelection{
+    &kWebUIOmniboxAskGAboutThisPage,
+    "Omnibox_AskGCoBrowseWithVisualSelection", false};
+const base::FeatureParam<bool> kAskGComposeBox{
+    &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGComposeBox", false};
+const base::FeatureParam<bool> kAskGLensChipRoute{
+    &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGLensChipRoute", false};
+const base::FeatureParam<bool> kAskGSwapIcon{
+    &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGSwapIcon", false};
+const base::FeatureParam<bool> kAskGCurrentTabChip{
+    &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGCurrentTabChip", false};
 // Note: no new flags beyond this point.
 
 namespace flag_descriptions {

@@ -7,6 +7,9 @@ package org.chromium.chrome.browser.tasks.tab_management;
 import static org.chromium.chrome.browser.tasks.tab_management.TabListModel.CardProperties.CARD_ALPHA;
 import static org.chromium.chrome.browser.tasks.tab_management.TabListModel.CardProperties.CARD_ANIMATION_STATUS;
 import static org.chromium.chrome.browser.tasks.tab_management.TabListModel.CardProperties.CARD_TYPE;
+import static org.chromium.chrome.browser.tasks.tab_management.TabListModel.CardProperties.ModelType.ARCHIVED_TAB_GROUP;
+import static org.chromium.chrome.browser.tasks.tab_management.TabListModel.CardProperties.ModelType.TAB;
+import static org.chromium.chrome.browser.tasks.tab_management.TabListModel.CardProperties.ModelType.TAB_GROUP;
 
 import android.util.Size;
 import android.view.View.AccessibilityDelegate;
@@ -16,8 +19,10 @@ import androidx.annotation.IntDef;
 import org.chromium.base.Token;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.chrome.browser.actor.ui.ActorUiTabController.UiTabState;
+import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab_ui.TabListFaviconProvider;
 import org.chromium.chrome.browser.tasks.tab_management.TabListMediator.ShoppingPersistedTabDataFetcher;
+import org.chromium.chrome.browser.tasks.tab_management.TabListModel.CardProperties;
 import org.chromium.components.browser_ui.util.TextResolver;
 import org.chromium.components.browser_ui.widget.selectable_list.SelectionDelegate;
 import org.chromium.components.tab_groups.TabGroupColorId;
@@ -126,8 +131,10 @@ public class TabProperties {
 
     public static final WritableBooleanPropertyKey IS_COLLAPSED = new WritableBooleanPropertyKey();
 
-    public static final WritableBooleanPropertyKey IS_BEING_DRAGGED =
-            new WritableBooleanPropertyKey();
+    public static final WritableIntPropertyKey RAIL_COLLAPSE_STATE = new WritableIntPropertyKey();
+
+    public static final WritableObjectPropertyKey<Float> DRAGGING_Y =
+            new WritableObjectPropertyKey<>();
 
     public static final WritableObjectPropertyKey<Token> TAB_GROUP_ID =
             new WritableObjectPropertyKey<>();
@@ -231,7 +238,7 @@ public class TabProperties {
 
     private static final PropertyKey[] COMMON_KEYS_TAB_AND_GROUP_GRID =
             new PropertyKey[] {
-                IS_BEING_DRAGGED,
+                DRAGGING_Y,
                 IS_INCOGNITO,
                 IS_SELECTED,
                 TAB_CLICK_LISTENER,
@@ -257,7 +264,8 @@ public class TabProperties {
                 TAB_GROUP_CARD_COLOR,
                 VISIBILITY,
                 USE_SHRINK_CLOSE_ANIMATION,
-                ACTOR_UI_STATE
+                ACTOR_UI_STATE,
+                RAIL_COLLAPSE_STATE
             };
 
     // TAB_ACTION_STATE must always be the first property as keys are iterated in order. TAB_ID must
@@ -318,15 +326,17 @@ public class TabProperties {
                 ACCESSIBILITY_DELEGATE,
                 ACTION_BUTTON_DESCRIPTION_TEXT_RESOLVER,
                 ACTOR_UI_STATE,
+                CARD_TYPE,
                 CONTENT_DESCRIPTION_TEXT_RESOLVER,
+                DRAGGING_Y,
                 FAVICON_FETCHER,
-                IS_BEING_DRAGGED,
                 IS_COLLAPSED,
                 IS_INCOGNITO,
                 IS_LOADING,
                 IS_PINNED,
                 IS_SELECTED,
                 MEDIA_INDICATOR,
+                RAIL_COLLAPSE_STATE,
                 TAB_ACTION_BUTTON_DATA,
                 TAB_CLICK_LISTENER,
                 TAB_CONTEXT_CLICK_LISTENER,
@@ -338,4 +348,43 @@ public class TabProperties {
                 TITLE
                 // go/keep-sorted end
             };
+
+    /** Returns whether the given model represents a pinned tab. */
+    public static boolean isPinnedTab(PropertyModel model) {
+        return isTabOrTabGroup(model) && model.containsKey(IS_PINNED) && model.get(IS_PINNED);
+    }
+
+    /** Returns whether the given model is a TAB, TAB_GROUP, or ARCHIVED_TAB_GROUP card. */
+    public static boolean isTabOrTabGroup(PropertyModel model) {
+        @CardProperties.ModelType int type = model.get(CARD_TYPE);
+        return type == TAB || type == TAB_GROUP || type == ARCHIVED_TAB_GROUP;
+    }
+
+    /** Returns whether the given model is a tab group header card. */
+    public static boolean isTabGroupHeader(PropertyModel model) {
+        return isTabOrTabGroup(model)
+                && model.containsKey(TAB_GROUP_HEADER_ID)
+                && model.get(TAB_GROUP_HEADER_ID) != null;
+    }
+
+    /** Returns whether the given group header model is collapsed. */
+    public static boolean isTabGroupCollapsed(PropertyModel model) {
+        return isTabGroupHeader(model)
+                && model.containsKey(IS_COLLAPSED)
+                && Boolean.TRUE.equals(model.get(IS_COLLAPSED));
+    }
+
+    /** Returns whether the given model represents a nested child tab within a group. */
+    public static boolean isTabInGroup(PropertyModel model) {
+        return isTabOrTabGroup(model)
+                && model.containsKey(TAB_GROUP_ID)
+                && model.get(TAB_GROUP_ID) != null;
+    }
+
+    /** Returns the tab ID associated with the given model, or {@link Tab#INVALID_TAB_ID}. */
+    public static int getTabId(PropertyModel model) {
+        return isTabOrTabGroup(model) && model.containsKey(TAB_ID)
+                ? model.get(TAB_ID)
+                : Tab.INVALID_TAB_ID;
+    }
 }

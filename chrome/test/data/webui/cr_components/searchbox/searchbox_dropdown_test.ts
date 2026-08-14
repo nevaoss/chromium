@@ -42,4 +42,5 @@ suite('SearchboxDropdown', () => {
     // even though it is the first (and only) visible element.
     assertEquals(1, matchEls[0]!.matchIndex);
   });
+
 });

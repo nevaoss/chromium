@@ -654,10 +654,6 @@ inline constexpr char kSplitViewDragAndDropNudgeUsedCount[] =
 // recently used tabs.
 inline constexpr char kCtrlTabMru[] = "browser.ctrl_tab_mru";
 
-// A boolean pref set to true if Gemini integration be enabled. This is managed
-// by enterprise policy.
-inline constexpr char kGeminiSettings[] = "browser.gemini_settings";
-
 // An int pref that controls the voice typing feature. This is managed by
 // enterprise policy.
 inline constexpr char kVoiceTypingSettings[] = "browser.voice_typing_settings";
@@ -728,6 +724,11 @@ inline constexpr char kGrayscaleThemeEnabled[] = "browser.theme.is_grayscale2";
 // (showing developer packing tools and extensions details)
 inline constexpr char kExtensionsUIDeveloperMode[] =
     "extensions.ui.developer_mode";
+
+// Boolean pref which persists whether new extensions should be pinned by
+// default.
+inline constexpr char kExtensionsPinnedByDefault[] =
+    "extensions.pinned_by_default";
 
 #if BUILDFLAG(IS_ANDROID) && BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 // A boolean pref set to true if the extensions menu button should be pinned to
@@ -1195,8 +1196,10 @@ inline constexpr char kSuppressDifferentOriginSubframeJSDialogs[] =
 inline constexpr char kUserAgentReduction[] = "user_agent_reduction";
 
 #if !BUILDFLAG(IS_ANDROID)
-// Boolean determining whether the projects panel entrypoint is displayed in the
-// tab strip.
+// Boolean determining whether the organizer panel entrypoint is displayed in
+// the tab strip.
+inline constexpr char kOrganizerPanelEntrypointEnabled[] =
+    "organizer_panel.entrypoint_enabled";
 inline constexpr char kProjectsPanelEntrypointEnabled[] =
     "projects_panel.entrypoint_enabled";
 
@@ -1222,8 +1225,10 @@ inline constexpr char kGoogleSearchSidePanelEnabled[] =
 inline constexpr char kTabSearchPinnedToTabstrip[] =
     "tab_search.pinned_to_tabstrip";
 
-// Boolean determining whether the projects panel button is pinned to the tab
+// Boolean determining whether the organizer panel button is pinned to the tab
 // strip.
+inline constexpr char kOrganizerPanelPinnedToTabstrip[] =
+    "organizer_panel.pinned_to_tabstrip";
 inline constexpr char kProjectsPanelPinnedToTabstrip[] =
     "projects_panel.pinned_to_tabstrip";
 
@@ -1231,6 +1236,13 @@ inline constexpr char kProjectsPanelPinnedToTabstrip[] =
 // strip.
 inline constexpr char kEverythingMenuPinnedToTabstrip[] =
     "everything_menu.pinned_to_tabstrip";
+
+// Boolean indicating whether the one-time migration for
+// kEverythingMenuPinnedToTabstrip has been completed. This sets the pinned
+// state for the button to true for users who have used vertical tab strip
+// before the migration happened.
+inline constexpr char kEverythingMenuPinnedToTabstripMigrationComplete[] =
+    "everything_menu.pinned_to_tabstrip_migration_complete";
 
 // Boolean determining whether vertical tabs are enabled.
 inline constexpr char kVerticalTabsEnabled[] = "vertical_tabs.enabled";
@@ -1315,7 +1327,6 @@ inline constexpr char kManagedSerialAllowAllPortsForUrls[] =
 inline constexpr char kManagedSerialAllowUsbDevicesForUrls[] =
     "managed.serial_allow_usb_devices_for_urls";
 
-#if !BUILDFLAG(IS_ANDROID)
 // Used to store the value of the WebHidAllowAllDevicesForUrls policy.
 inline constexpr char kManagedWebHidAllowAllDevicesForUrls[] =
     "managed.web_hid_allow_all_devices_for_urls";
@@ -1333,7 +1344,6 @@ inline constexpr char kManagedWebHidAllowDevicesForUrlsOnLoginScreen[] =
 // policy.
 inline constexpr char kManagedWebHidAllowDevicesWithHidUsagesForUrls[] =
     "managed.web_hid_allow_devices_with_hid_usages_for_urls";
-#endif  // !BUILDFLAG(IS_ANDROID)
 
 // Directory of the last profile used.
 inline constexpr char kProfileLastUsed[] = "profile.last_used";
@@ -1584,6 +1594,12 @@ static_assert(std::string_view(kWasRestarted) ==
 // Dictionary containing the number of tabs and windows before a restart.
 inline constexpr char kPreSmartRestartSessionState[] =
     "session.pre_smart_restart_session_state";
+
+#if BUILDFLAG(IS_MAC)
+// Boolean preference controlling zero window relaunch per enterprise policy.
+inline constexpr char kUpdateOnZeroWindowEnabled[] =
+    "policy.update_on_zero_window_enabled";
+#endif  //  BUILDFLAG(IS_MAC)
 
 #endif  // !BUILDFLAG(IS_ANDROID)
 
@@ -2253,6 +2269,9 @@ inline constexpr char kTabCaptureAllowedByOrigins[] =
 // capturing Windowed Chrome Apps with the same origin as the site.
 inline constexpr char kSameOriginTabCaptureAllowedByOrigins[] =
     "hardware.same_origin_tab_capture_allowed_by_origins";
+
+// Boolean determining whether the glass frame is enabled.
+inline constexpr char kGlassFrameEnabled[] = "glass_frame.enabled";
 
 #if BUILDFLAG(IS_CHROMEOS)
 // An any-api scoped refresh token for enterprise-enrolled devices.  Allows

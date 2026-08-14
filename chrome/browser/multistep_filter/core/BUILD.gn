@@ -19,6 +19,7 @@ source_set("core") {
   deps = [
     "//chrome/browser:browser_process",
     "//chrome/browser/history",
+    "//chrome/browser/optimization_guide",
     "//chrome/browser/signin",
     "//chrome/browser/sync",
     "//chrome/common:channel_info",

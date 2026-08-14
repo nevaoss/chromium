@@ -245,7 +245,7 @@ Tab::Tab(tabs::TabHandle handle, TabSlotController* controller)
       ((base::FeatureList::IsEnabled(features::kGlicMultitabUnderlines) &&
         glic::GlicEnabling::IsProfileEligible(
             browser_window_interface->GetProfile())) ||
-       base::FeatureList::IsEnabled(contextual_tasks::kContextualTasks))) {
+       contextual_tasks::IsContextualTasksUIEnabled())) {
     glic_tab_underline_view_ = AddChildView(
         views::Builder<glic::TabUnderlineView>(
             glic::TabUnderlineView::Factory::Create(
@@ -277,11 +277,7 @@ Tab::Tab(tabs::TabHandle handle, TabSlotController* controller)
   title_animation_.SetDuration(base::Milliseconds(100));
 
   // Enable keyboard focus.
-#if BUILDFLAG(IS_MAC)
-  SetFocusBehavior(FocusBehavior::ALWAYS);
-#else
   SetFocusBehavior(FocusBehavior::ACCESSIBLE_ONLY);
-#endif
   views::FocusRing::Install(this);
   views::HighlightPathGenerator::Install(
       this,
@@ -516,13 +512,6 @@ void Tab::Layout(PassKey) {
 }
 
 bool Tab::OnKeyPressed(const ui::KeyEvent& event) {
-#if BUILDFLAG(IS_MAC)
-  if (event.key_code() == ui::VKEY_RETURN && event.IsControlDown()) {
-    ShowContextMenu(GetKeyboardContextMenuLocation(),
-                    ui::mojom::MenuSourceType::kKeyboard);
-    return true;
-  }
-#endif
   if (event.key_code() == ui::VKEY_RETURN && !IsSelected()) {
     controller_->SelectTab(this, event);
     return true;
@@ -792,6 +781,10 @@ void Tab::OnFocus() {
   View::OnFocus();
 
   controller_->TabKeyboardFocusChangedTo(tab_handle_.Get());
+
+  // Update the accessible name so that screen reader announce the correct
+  // memory usage that will be shown on hover card.
+  UpdateAccessibleName();
   controller_->UpdateHoverCard(this,
                                TabSlotController::HoverCardUpdateType::kFocus);
   if (features::IsTabStripDeclutterEnabled()) {
@@ -1192,7 +1185,7 @@ void Tab::UpdateIconVisibility() {
       showing_icon_ = !showing_alert_indicator_ && has_favicon;
 
       // See comments near top of function on why this conditional is here.
-      if (!closing_) {
+      if (!closing_ && (showing_alert_indicator_ || showing_icon_)) {
         center_icon_ = true;
       }
     }
@@ -1314,6 +1307,17 @@ void Tab::CloseButtonPressed(const ui::Event& event) {
 
 void Tab::OnTabDataChanged(TabChangeType tab_change_type,
                            const tabs::TabData& tab_data) {
+  // Update the accessible name when the hovered tab's memory usage changes
+  // so screen readers are in sync with the hover card. Skips updating
+  // other visual UI elements (title, favicon, alert buttons) because those
+  // states usually do not change when memory is updated.
+  if (tab_change_type == TabChangeType::kResourceUsageOnly) {
+    if (IsActive() || HasFocus()) {
+      UpdateAccessibleName();
+    }
+    return;
+  }
+
   if (tab_data == data_) {
     return;
   }

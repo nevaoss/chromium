@@ -53,8 +53,10 @@
 #include "components/omnibox/common/logger.h"
 #include "components/prefs/pref_service.h"
 #include "components/sessions/core/session_id.h"
+#include "components/tabs/public/tab_handle_factory.h"
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/browser_context.h"
+#include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_ui.h"
 #include "google_apis/gaia/gaia_constants.h"
@@ -93,7 +95,11 @@ PopulateContextualResources(contextual_tasks::ContextualTaskContext* context) {
     return {};
   }
   std::vector<contextual_tasks::mojom::ContextInfoPtr> context_items;
-  for (const auto& attachment : context->GetUniqueUrlAttachments()) {
+  const std::vector<contextual_tasks::UrlAttachment>& attachments =
+      base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox)
+          ? context->GetUrlAttachments()
+          : context->GetUniqueUrlAttachments();
+  for (const auto& attachment : attachments) {
     const GURL url = attachment.GetURL();
     const std::string title = base::UTF16ToUTF8(attachment.GetTitle());
 
@@ -253,6 +259,9 @@ ContextualTasksPageHandler::ContextualTasksPageHandler(
       panel_controller_(panel_controller) {
   CHECK(contextual_tasks_service_);
   contextual_tasks_service_observation_.Observe(contextual_tasks_service_);
+  ui_service_->EnsureCookiesSynced(
+      base::BindOnce(&ContextualTasksPageHandler::OnCookieSyncCompleted,
+                     weak_ptr_factory_.GetWeakPtr()));
 
 #if !BUILDFLAG(IS_ANDROID)
   if (contextual_tasks::IsContextualTasksPinButtonInToolbarEnabled()) {
@@ -267,6 +276,12 @@ ContextualTasksPageHandler::ContextualTasksPageHandler(
 }
 
 ContextualTasksPageHandler::~ContextualTasksPageHandler() = default;
+
+void ContextualTasksPageHandler::OnCookieSyncCompleted() {
+  if (web_ui_controller_ && web_ui_controller_->GetPageRemote()) {
+    web_ui_controller_->GetPageRemote()->OnCookieSyncCompleted();
+  }
+}
 
 void ContextualTasksPageHandler::GetThreadUrl(GetThreadUrlCallback callback) {
   std::optional<base::Uuid> task_id = web_ui_controller_->GetTaskId();
@@ -580,6 +595,15 @@ void ContextualTasksPageHandler::OnboardingTooltipDismissed() {
 #endif  // !BUILDFLAG(IS_ANDROID)
 }
 
+void ContextualTasksPageHandler::LensSearchTooltipDismissed() {
+  PrefService* prefs = web_ui_controller_->GetProfile()->GetPrefs();
+  int count = prefs->GetInteger(
+      contextual_tasks::kContextualTasksLensSearchTooltipDismissedCount);
+  prefs->SetInteger(
+      contextual_tasks::kContextualTasksLensSearchTooltipDismissedCount,
+      count + 1);
+}
+
 void ContextualTasksPageHandler::ReopenTabs() {
   // TODO(crbug.com/489832161): Implement tab restoration logic.
 }
@@ -705,8 +729,12 @@ void ContextualTasksPageHandler::OnReceivedUpdatedThreadContextLibrary(
                 for (const auto& item : context_items) {
                   if (item->is_tab() && item->get_tab()->has_chrome_tab_data) {
                     auto tab_info = searchbox::mojom::TabInfo::New();
+                    tab_info->tab_id = item->get_tab()->tab_id;
                     tab_info->url = item->get_tab()->url;
                     tab_info->title = item->get_tab()->title;
+                    tab_info->tab_id =
+                        tabs::SessionMappedTabHandleFactory::GetInstance()
+                            .GetHandleForSessionId(item->get_tab()->tab_id);
                     tabs.push_back(std::move(tab_info));
                   }
                 }
@@ -953,4 +981,28 @@ void ContextualTasksPageHandler::MaybeTriggerPinningPromo() {
       ->MaybeShowFeaturePromo(
               feature_engagement::kIPHSidePanelContextualTasksPinnableFeature);
 #endif
+}
+
+void ContextualTasksPageHandler::ShowPageInfoBubble() {
+  if (!contextual_tasks::IsContextualTasksSidePanelRearchitectureEnabled()) {
+    return;
+  }
+  if (panel_controller_) {
+    panel_controller_->ShowPageInfoBubble();
+  }
+}
+
+void ContextualTasksPageHandler::CreateNewThread() {
+  std::optional<base::Uuid> task_id = web_ui_controller_->GetTaskId();
+  GURL url;
+  if (task_id.has_value()) {
+    url = ui_service_->GetDefaultAiPageUrlForTask(task_id.value());
+  } else {
+    url = ui_service_->GetDefaultAiPageUrl();
+  }
+  if (auto* inner_contents = web_ui_controller_->GetInnerWebContents()) {
+    content::NavigationController::LoadURLParams params(url);
+    params.transition_type = ui::PAGE_TRANSITION_AUTO_TOPLEVEL;
+    inner_contents->GetController().LoadURLWithParams(params);
+  }
 }

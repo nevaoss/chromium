@@ -13,21 +13,26 @@
 #include "base/memory/ptr_util.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/task/sequenced_task_runner.h"
+#include "chrome/browser/ui/actions/chrome_action_id.h"
 #include "chrome/browser/ui/layout_constants.h"
 #include "chrome/browser/ui/page_action/page_action_controller.h"
 #include "chrome/browser/ui/page_action/page_action_model.h"
 #include "chrome/browser/ui/page_action/page_action_triggers.h"
+#include "chrome/browser/ui/side_panel/side_panel_action_callback.h"
+#include "chrome/browser/ui/side_panel/side_panel_enums.h"
+#include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/location_bar/icon_label_bubble_view.h"
 #include "chrome/browser/ui/views/page_action/page_action_view_params.h"
+#include "chrome/browser/ui/views/page_action/page_action_view_util.h"
+#include "chrome/grit/generated_resources.h"
 #include "ui/actions/actions.h"
+#include "ui/base/l10n/l10n_util.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/base/models/image_model.h"
-#include "ui/color/color_id.h"
 #include "ui/events/event.h"
 #include "ui/gfx/animation/slide_animation.h"
 #include "ui/gfx/font_list.h"
 #include "ui/gfx/geometry/insets.h"
-#include "ui/gfx/paint_vector_icon.h"
 #include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/animation/ink_drop.h"
 #include "ui/views/controls/button/single_animated_image_container.h"
@@ -35,6 +40,20 @@
 #include "ui/views/widget/widget_delegate.h"
 
 namespace page_actions {
+
+namespace {
+
+IconLabelBubbleView::AnimationStyle GetViewsAnimationStyle(
+    PageActionAnimationStyle style) {
+  switch (style) {
+    case PageActionAnimationStyle::kStandard:
+      return IconLabelBubbleView::AnimationStyle::kStandard;
+    case PageActionAnimationStyle::kSlideAndCrossfade:
+      return IconLabelBubbleView::AnimationStyle::kSlideAndCrossfade;
+  }
+}
+
+}  // namespace
 
 PageActionView::PageActionView(actions::ActionItem* action_item,
                                const PageActionViewParams& params,
@@ -163,8 +182,6 @@ void PageActionView::OnPageActionModelChanged(
 
   if (visible) {
     SetLabel(model.GetText(), model.GetAccessibleName());
-    SetTooltipText(model.GetTooltipText());
-    UpdateIconImage();
   }
 
   if (model.GetActionActive() && !highlight_) {
@@ -174,10 +191,60 @@ void PageActionView::OnPageActionModelChanged(
   }
 
   const bool was_chip_visible = IsChipVisible();
+
+  UpdateIconImage();
+  UpdateAnimationState(model);
+
+  if (visible && model.ShouldShowAnchoredMessage()) {
+    CreateAndShowAnchoredMessage(model);
+  } else if (anchored_message_ && anchored_message_widget_) {
+    anchored_message_ = nullptr;
+    anchored_message_widget_ = nullptr;
+  }
+
+  UpdateTooltipText();
+
+  // Announce the chip only if announcements are enabled and the chip was
+  // newly shown.
+  if (model.GetShouldAnnounceChip() && !was_chip_visible && IsChipVisible()) {
+    GetViewAccessibility().AnnounceAlert(label()->GetText());
+  }
+}
+
+void PageActionView::UpdateAnimationState(
+    const PageActionModelInterface& model) {
+  const bool visible = model.GetVisible();
+
+  // Configure views style and trailing icon first.
+  const auto views_style = GetViewsAnimationStyle(model.GetAnimationStyle());
+
+  // If hidden, reset the slide animation.
   if (!visible) {
     ResetSlideAnimation(/*show=*/false);
     NotifyIsChipShowingChange();
-  } else if (model.ShouldShowSuggestionChip()) {
+    return;
+  }
+
+  // Drive the transitions based on the animation.
+  if (views_style == IconLabelBubbleView::AnimationStyle::kSlideAndCrossfade) {
+    HandleSlideAndCrossfadeTransition(model);
+  } else {
+    HandleSuggestionChipTransition(model);
+  }
+}
+
+void PageActionView::HandleSlideAndCrossfadeTransition(
+    const PageActionModelInterface& model) {
+  if (model.GetShowTrailingIcon()) {
+    AnimateIn(/*string_id=*/std::nullopt);
+  } else {
+    AnimateOut();
+  }
+}
+
+void PageActionView::HandleSuggestionChipTransition(
+    const PageActionModelInterface& model) {
+  if (model.ShouldShowSuggestionChip()) {
     if (model.GetShouldAnimateChipIn()) {
       AnimateIn(/*string_id=*/std::nullopt);
     } else {
@@ -189,19 +256,6 @@ void PageActionView::OnPageActionModelChanged(
   } else {
     ResetSlideAnimation(/*show=*/false);
     NotifyIsChipShowingChange();
-  }
-
-  if (visible && model.ShouldShowAnchoredMessage()) {
-    CreateAndShowAnchoredMessage(model);
-  } else if (anchored_message_ && anchored_message_widget_) {
-    anchored_message_ = nullptr;
-    anchored_message_widget_ = nullptr;
-  }
-
-  // Announce the chip only if announcements are enabled and the chip was
-  // newly shown.
-  if (model.GetShouldAnnounceChip() && !was_chip_visible && IsChipVisible()) {
-    GetViewAccessibility().AnnounceAlert(label()->GetText());
   }
 }
 
@@ -299,16 +353,16 @@ void PageActionView::NotifyClick(const ui::Event& event) {
   click_callback_.Run(trigger_source);
 
   IconLabelBubbleView::NotifyClick(event);
-  action_item_->InvokeAction(
-      actions::ActionInvocationContext::Builder()
-          .SetProperty(kPageActionTriggerKey,
-                       static_cast<std::underlying_type_t<PageActionTrigger>>(
-                           trigger_source))
-          .SetProperty(
-              kPageActionEntryPointKey,
-              static_cast<std::underlying_type_t<PageActionEntryPoint>>(
-                  PageActionEntryPoint::kSuggestionChip))
-          .Build());
+  auto builder = actions::ActionInvocationContext::Builder()
+                     .SetProperty(kPageActionTriggerKey, trigger_source)
+                     .SetProperty(kPageActionEntryPointKey,
+                                  PageActionEntryPoint::kSuggestionChip);
+  if (auto side_panel_trigger =
+          GetSidePanelOpenTriggerForPageAction(action_item_->GetActionId())) {
+    builder = std::move(builder).SetProperty(kSidePanelOpenTriggerKey,
+                                             *side_panel_trigger);
+  }
+  action_item_->InvokeAction(std::move(builder).Build());
 }
 
 void PageActionView::AnimationEnded(const gfx::Animation* animation) {
@@ -335,16 +389,36 @@ void PageActionView::UpdateIconImage() {
     AnimateImage(params.value(), icon_color);
   }
 
+  const int drawing_icon_size =
+      icon_image.IsVectorIcon() ? icon_size_ : icon_image.Size().width();
+
   // If image does not have a vector icon, set it directly.
   if (icon_image.IsVectorIcon()) {
     SetImageModel(ui::ImageModel::FromVectorIcon(
-        *icon_image.GetVectorIcon().vector_icon(), icon_color, icon_size_));
+        *icon_image.GetVectorIcon().vector_icon(), icon_color,
+        drawing_icon_size));
   } else {
     SetImageModel(icon_image);
     // For non-vector icons, the border needs to be updated to accommodate the
     // icon, as the icon size may vary. For vector icons, the border gets
     // set on instantiation and does not need to be updated again.
     UpdateBorder();
+  }
+
+  // Add trailing icon if it is set.
+  std::optional<ui::ImageModel> trailing_image_opt =
+      observation_.GetSource()->GetTrailingImage();
+  if (trailing_image_opt.has_value()) {
+    const auto& trailing_image = trailing_image_opt.value();
+    if (trailing_image.IsVectorIcon()) {
+      SetCrossfadeImage(ui::ImageModel::FromVectorIcon(
+          *trailing_image.GetVectorIcon().vector_icon(), icon_color,
+          drawing_icon_size));
+    } else {
+      SetCrossfadeImage(trailing_image);
+    }
+  } else {
+    SetCrossfadeImage(ui::ImageModel());
   }
 }
 
@@ -392,6 +466,7 @@ const gfx::Insets PageActionView::GetInsetsForNonVectorIcon() const {
 void PageActionView::SetModel(PageActionModelInterface* model) {
   observation_.Reset();
   observation_.Observe(model);
+  UpdateTooltipText();
 }
 
 gfx::Size PageActionView::GetMinimumSize() const {
@@ -471,6 +546,7 @@ void PageActionView::CreateAndShowAnchoredMessage(
 
   if (anchored_message_) {
     anchored_message_->UpdateContent(model);
+    UpdateTooltipText();
     return;
   }
 
@@ -494,30 +570,70 @@ void PageActionView::CreateAndShowAnchoredMessage(
     anchored_message_ = nullptr;
   }
 
+  UpdateTooltipText();
   anchored_message_visibility_changed_callbacks_.Notify(this);
 }
 void PageActionView::OnAnchoredMessageWidgetClose(
     views::Widget::ClosedReason closed_reason) {
-  CHECK(anchored_message_);
+  // If `anchored_message_` is already null, it means we are in the middle of
+  // programmatically destroying the widget (e.g. from
+  // OnPageActionModelChanged). In this case, early return to avoid re-entrancy
+  // crashes.
+  if (!anchored_message_) {
+    return;
+  }
   CHECK(anchored_message_widget_);
   anchored_message_ = nullptr;
-  anchored_message_widget_.reset();
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE, base::BindOnce(&PageActionView::CloseWidgetDeferred,
+                                weak_factory_.GetWeakPtr(),
+                                anchored_message_widget_->GetWeakPtr()));
+  UpdateTooltipText();
   anchored_message_visibility_changed_callbacks_.Notify(this);
+
+  if (observation_.IsObserving() &&
+      observation_.GetSource()->ShouldShowAnchoredMessage()) {
+    CloseAnchoredMessage();
+  }
+}
+
+void PageActionView::UpdateTooltipText() {
+  if (!observation_.IsObserving() || !observation_.GetSource() ||
+      !GetVisible()) {
+    SetTooltipText(std::u16string());
+    return;
+  }
+
+  std::u16string tooltip_text = observation_.GetSource()->GetTooltipText();
+  if (IsAnchoredMessageVisible() && !tooltip_text.empty()) {
+    tooltip_text = l10n_util::GetStringFUTF16(
+        IDS_PAGE_ACTION_ANCHORED_MESSAGE_SHOWING, tooltip_text);
+  }
+  SetTooltipText(tooltip_text);
+}
+
+void PageActionView::CloseWidgetDeferred(
+    base::WeakPtr<views::Widget> widget_to_close) {
+  if (anchored_message_widget_ &&
+      anchored_message_widget_.get() == widget_to_close.get()) {
+    anchored_message_widget_.reset();
+  }
 }
 
 void PageActionView::AnchoredMessageChipClick() {
   CHECK(click_callback_);
   click_callback_.Run(PageActionTrigger::kMouse);
-  action_item_->InvokeAction(
+  auto builder =
       actions::ActionInvocationContext::Builder()
-          .SetProperty(kPageActionTriggerKey,
-                       static_cast<std::underlying_type_t<PageActionTrigger>>(
-                           PageActionTrigger::kMouse))
-          .SetProperty(
-              kPageActionEntryPointKey,
-              static_cast<std::underlying_type_t<PageActionEntryPoint>>(
-                  PageActionEntryPoint::kAnchoredMessage))
-          .Build());
+          .SetProperty(kPageActionTriggerKey, PageActionTrigger::kMouse)
+          .SetProperty(kPageActionEntryPointKey,
+                       PageActionEntryPoint::kAnchoredMessage);
+  if (auto side_panel_trigger =
+          GetSidePanelOpenTriggerForPageAction(action_item_->GetActionId())) {
+    builder = std::move(builder).SetProperty(kSidePanelOpenTriggerKey,
+                                             *side_panel_trigger);
+  }
+  action_item_->InvokeAction(std::move(builder).Build());
   anchored_message_close_callback_.Run();
 }
 
@@ -568,6 +684,16 @@ void PageActionView::MaybeRecordCollapsedMetrics(int label_width) {
   }
 
   chip_shown_metric_recorded_ = true;
+}
+
+SkColor PageActionView::GetBackgroundColor() const {
+  if (observation_.IsObserving() &&
+      observation_.GetSource()->GetOverrideBackgroundColorId().has_value() &&
+      GetColorProvider()) {
+    return GetColorProvider()->GetColor(
+        *observation_.GetSource()->GetOverrideBackgroundColorId());
+  }
+  return IconLabelBubbleView::GetBackgroundColor();
 }
 
 BEGIN_METADATA(PageActionView)

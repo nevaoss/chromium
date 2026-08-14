@@ -87,6 +87,7 @@
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/content_browser_client.h"
 #include "content/public/browser/cookie_access_details.h"
+#include "content/public/browser/editable_level.h"
 #include "content/public/browser/frame_tree_node_id.h"
 #include "content/public/browser/frame_type.h"
 #include "content/public/browser/global_request_id.h"
@@ -136,6 +137,7 @@
 #include "services/network/public/mojom/url_loader_network_service_observer.mojom-forward.h"
 #include "third_party/abseil-cpp/absl/container/flat_hash_map.h"
 #include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
+#include "third_party/blink/public/common/dom/dom_node_id.h"
 #include "third_party/blink/public/common/frame/delegated_capability_request_token.h"
 #include "third_party/blink/public/common/frame/frame_owner_element_type.h"
 #include "third_party/blink/public/common/frame/history_user_activation_state.h"
@@ -185,7 +187,7 @@
 #include "third_party/blink/public/mojom/webaudio/audio_context_manager.mojom-forward.h"
 #include "third_party/blink/public/mojom/webauthn/authenticator.mojom-forward.h"
 #include "third_party/blink/public/mojom/webid/digital_identity_request.mojom-forward.h"
-#include "third_party/blink/public/mojom/webid/federated_auth_request.mojom-forward.h"
+#include "third_party/blink/public/mojom/webid/federated_request.mojom-forward.h"
 #include "third_party/blink/public/mojom/websockets/websocket_connector.mojom-forward.h"
 #include "third_party/blink/public/mojom/webtransport/web_transport_connector.mojom-forward.h"
 #include "third_party/blink/public/mojom/worker/dedicated_worker_host_factory.mojom-forward.h"
@@ -350,7 +352,8 @@ class CONTENT_EXPORT RenderFrameHostImpl
       public LockManager<storage::BucketId>::Observer,
       public base::trace_event::TraceSessionObserver,
       public BucketContext,
-      public base::PassiveMemoryConsumer {
+      public base::PassiveMemoryConsumer,
+      public PolicyContainerHost::Client {
  public:
   using BeforeUnloadExecutionMode = NavigationHandle::BeforeUnloadExecutionMode;
   using JavaScriptDialogCallback =
@@ -459,7 +462,7 @@ class CONTENT_EXPORT RenderFrameHostImpl
   GetInitiatorNavigationStateFromFrameToken(
       const blink::LocalFrameToken* frame_token,
       int initiator_process_id,
-      StoragePartitionImpl* storage_partition);
+      BrowserContext* browser_context);
 
   RenderFrameHostImpl(const RenderFrameHostImpl&) = delete;
   RenderFrameHostImpl& operator=(const RenderFrameHostImpl&) = delete;
@@ -470,7 +473,7 @@ class CONTENT_EXPORT RenderFrameHostImpl
   const blink::StorageKey& GetStorageKey() const override;
   int GetRoutingID() const override;
   const blink::LocalFrameToken& GetFrameToken() const override;
-  const perfetto::NamedTrack& GetTracingTrack() const override;
+  const perfetto::Track& GetTracingTrack() const override;
   const base::UnguessableToken& GetReportingSource() override;
 
   ui::AXTreeID GetAXTreeID() override;
@@ -1741,12 +1744,16 @@ class CONTENT_EXPORT RenderFrameHostImpl
 
   void ClearFocusedElement();
 
+  EditableLevel focused_editable_level() const {
+    return focused_editable_level_;
+  }
+
   bool has_focused_editable_element() const {
-    return has_focused_editable_element_;
+    return focused_editable_level_ != EditableLevel::kNotEditable;
   }
 
   bool has_focused_richly_editable_element() const {
-    return has_focused_richly_editable_element_;
+    return focused_editable_level_ == EditableLevel::kRichlyEditable;
   }
 
   // Binds a DevToolsAgent interface for debugging.
@@ -2117,9 +2124,7 @@ class CONTENT_EXPORT RenderFrameHostImpl
   void GetFileSystemAccessManager(
       mojo::PendingReceiver<blink::mojom::FileSystemAccessManager> receiver);
 
-#if !BUILDFLAG(IS_ANDROID)
   void GetHidService(mojo::PendingReceiver<blink::mojom::HidService> receiver);
-#endif
 
   void BindSerialService(
       mojo::PendingReceiver<blink::mojom::SerialService> receiver);
@@ -2214,8 +2219,6 @@ class CONTENT_EXPORT RenderFrameHostImpl
   void BindDigitalIdentityRequestReceiver(
       mojo::PendingReceiver<blink::mojom::DigitalIdentityRequest> receiver);
 
-  void BindFederatedAuthRequestReceiver(
-      mojo::PendingReceiver<blink::mojom::FederatedAuthRequest> receiver);
   void BindFederatedRequestServiceReceiver(
       mojo::PendingReceiver<blink::mojom::FederatedRequestService> receiver);
 
@@ -2566,10 +2569,12 @@ class CONTENT_EXPORT RenderFrameHostImpl
   void UpdateFaviconURL(std::vector<blink::mojom::FaviconURLPtr> favicon_urls,
                         blink::mojom::FaviconUpdateReason reason) override;
   void DownloadURL(blink::mojom::DownloadURLParamsPtr params) override;
-  void FocusedElementChanged(bool is_editable_element,
-                             bool is_richly_editable_element,
-                             const gfx::Rect& bounds_in_frame_widget,
-                             blink::mojom::FocusType focus_type) override;
+  void FocusedElementChanged(
+      bool is_editable_element,
+      bool is_richly_editable_element,
+      const gfx::Rect& bounds_in_frame_widget,
+      blink::mojom::FocusType focus_type,
+      const blink::DOMNodeIdType& editable_dom_node_id) override;
   void TextSelectionChanged(const std::u16string& text,
                             uint32_t offset,
                             const gfx::Range& range) override;
@@ -2642,8 +2647,7 @@ class CONTENT_EXPORT RenderFrameHostImpl
   void SendLegacyTechEvent(
       const std::string& type,
       blink::mojom::LegacyTechEventCodeLocationPtr code_location) override;
-  void SendPrivateAggregationRequestsForFencedFrameEvent(
-      const std::string& event_type) override;
+
   void CreateFencedFrame(
       mojo::PendingAssociatedReceiver<blink::mojom::FencedFrameOwnerHost>
           pending_receiver,
@@ -2716,13 +2720,22 @@ class CONTENT_EXPORT RenderFrameHostImpl
   void DraggableRegionsChanged(
       std::vector<blink::mojom::DraggableRegionPtr> regions) override;
   void NotifyDocumentInteractive() override;
-  void OnFirstContentfulPaint(base::TimeDelta duration) override;
-  void NotifyFirstContentfulPaint();
+  void OnFirstContentfulPaint(base::TimeTicks presentation_time) override;
+  void OnLargestContentfulPaint(base::TimeTicks presentation_time) override;
   void SetStorageAccessApiStatus(net::StorageAccessApiStatus status) override;
   std::unique_ptr<download::DownloadUrlParameters> CreateDownloadUrlParameters(
       const GURL& url,
       const net::NetworkTrafficAnnotationTag& traffic_annotation)
       const override;
+
+  // Dispatches the first contentful paint notification to the delegate when
+  // this is the primary main frame. Split from the OnFirstContentfulPaint()
+  // mojo handler because it is also invoked when a prerendered page is
+  // activated (see PageImpl::MaybeDispatchLoadEventsOnPrerenderActivation()) to
+  // re-dispatch the FCP that was observed while prerendering.
+  // |presentation_time| is the renderer-side presentation timestamp of the
+  // paint.
+  void NotifyFirstContentfulPaint(base::TimeTicks presentation_time);
 
   void ReportNoBinderForInterface(const std::string& error);
 
@@ -3043,8 +3056,6 @@ class CONTENT_EXPORT RenderFrameHostImpl
   // nullptr if `this` is not the main frame of an inner frame tree.
   RenderFrameProxyHost* GetProxyToOuterDelegate();
 
-  void DidChangeReferrerPolicy(network::mojom::ReferrerPolicy referrer_policy);
-
   float GetPageScaleFactor() const;
 
 #if BUILDFLAG(IS_ANDROID)
@@ -3150,6 +3161,9 @@ class CONTENT_EXPORT RenderFrameHostImpl
   // Returns the sticky bit of the User Activation v2 state of this document.
   bool HasStickyUserActivation() const;
   bool IsActiveUserActivation() const;
+  base::TimeTicks last_user_activation_consumed_time() const {
+    return last_user_activation_consumed_time_;
+  }
   void ClearUserActivation();
   void ConsumeTransientUserActivation();
   void ActivateUserActivation(
@@ -3283,15 +3297,6 @@ class CONTENT_EXPORT RenderFrameHostImpl
   // beforeunload is currently in progress.
   RenderFrameHostImpl* GetBeforeUnloadInitiator();
 
-  const base::WeakPtr<PageImpl> auction_initiator_page() const {
-    return auction_initiator_page_;
-  }
-
-  void set_auction_initiator_page(base::WeakPtr<PageImpl> page_impl) {
-    auction_initiator_page_ = page_impl;
-  }
-
-  base::Uuid GetBaseAuctionNonce() const { return base_auction_nonce_; }
 
   void GetBoundInterfacesForTesting(std::vector<std::string>& out);
 
@@ -4307,6 +4312,10 @@ class CONTENT_EXPORT RenderFrameHostImpl
   void SetPolicyContainerHost(
       scoped_refptr<PolicyContainerHost> policy_container_host);
 
+  // PolicyContainerHost::Client:
+  void DidChangeReferrerPolicy(
+      network::mojom::ReferrerPolicy referrer_policy) final;
+
   // Initializes |local_network_access_request_policy_|. Constructor helper.
   void InitializeLocalNetworkAccessRequestPolicy();
 
@@ -5036,12 +5045,8 @@ class CONTENT_EXPORT RenderFrameHostImpl
   // navigation requests should be queued.
   bool waiting_for_init_;
 
-  // If true then this frame's document has a focused element which is editable.
-  bool has_focused_editable_element_ = false;
-
-  // If true then this frame's document has a focused element which is richly
-  // editable.
-  bool has_focused_richly_editable_element_ = false;
+  // The editability level of the focused element in this frame's document.
+  EditableLevel focused_editable_level_ = EditableLevel::kNotEditable;
 
   std::unique_ptr<PendingNavigation> pending_navigate_;
 
@@ -5475,6 +5480,9 @@ class CONTENT_EXPORT RenderFrameHostImpl
   // details on how this state is maintained.
   blink::UserActivationState user_activation_state_;
 
+  // The timestamp when the transient user activation was last consumed.
+  base::TimeTicks last_user_activation_consumed_time_;
+
   // Similar to `user_activation_state_`, but specifically for use with
   // web-exposed history manipulation (e.g., cancelling a history navigation via
   // the Navigation API). Activated when `user_activation_state_` is activated,
@@ -5607,27 +5615,6 @@ class CONTENT_EXPORT RenderFrameHostImpl
   std::unique_ptr<webauthn::RemoteValidation> webauthn_remote_rp_id_validation_;
 #endif
 
-  // Tracks the page that initiates Protected Audience auction. This is set
-  // when AdAuctionServiceImpl is constructed, which is when the first call to
-  // Protected Audience API takes place on the frame.
-  //
-  // See crbug.com/1422301 for why this is needed.
-  //
-  // TODO(crbug.com/40615943): Once RenderDocument is launched, the `PageImpl`
-  // will not change. Remove this weak pointer and corresponding verification
-  // logics.
-  base::WeakPtr<PageImpl> auction_initiator_page_;
-
-  // The base auction nonce used to generate all auction nonces returned by
-  // `navigator.createAuctionNonce`. This base auction nonce is generated here
-  // in the browser process so that it can later verify that all auctions that
-  // provide a nonce in this frame provide a nonce based on this UUID, and
-  // // specifically, that all such auction nonces share the first 26
-  // hexadecimal digits (of UUIDv4's 32 hexadecimal digits) with this base
-  // auction nonce. The last six hexadecimal digits of this UUID are combined
-  // in the renderer process with a sequential value to guarantee that each
-  // nonce returned is unique.
-  base::Uuid base_auction_nonce_;
 
   // The default group for crash reports is `default`. However, if
   // `Reporting-Endpoints` response header specifies `crash-reporting`, crash
@@ -5640,7 +5627,7 @@ class CONTENT_EXPORT RenderFrameHostImpl
   base::OnceClosure on_process_before_unload_completed_for_testing_;
 
   // Tracing track used to emit async event related to lifecycle.
-  const base::trace_event::TrackRegistration<perfetto::NamedTrack>
+  const base::trace_event::TrackRegistration<perfetto::StateTrack>
       tracing_track_;
 
   base::MemoryConsumerRegistration memory_consumer_registration_;

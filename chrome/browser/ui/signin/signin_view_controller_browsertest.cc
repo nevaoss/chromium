@@ -6,6 +6,9 @@
 
 #include <string_view>
 
+#include "chrome/browser/ui/signin/signin_qrcode_infobar.h"
+#include "chrome/browser/ui/signin/signin_qrcode_model.h"
+#include "content/public/test/url_loader_interceptor.h"
 #include "base/scoped_observation.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/mock_callback.h"
@@ -19,10 +22,15 @@
 #include "chrome/browser/signin/signin_ui_util.h"
 #include "chrome/browser/sync/sync_service_factory.h"
 #include "chrome/browser/ui/browser.h"
+#include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/signin/chrome_signout_confirmation_prompt.h"
+#include "chrome/browser/ui/signin/cross_device_signin_qr_bubble.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/ui_features.h"
+#include "chrome/browser/ui/views/frame/browser_view.h"
+#include "chrome/browser/ui/views/frame/toolbar_button_provider.h"
+#include "chrome/browser/ui/views/toolbar/avatar_toolbar_button_interface.h"
 #include "chrome/browser/ui/webui/signin/signin_utils.h"
 #include "chrome/browser/ui/webui/signin/signout_confirmation/signout_confirmation_ui.h"
 #include "chrome/browser/ui/webui/signin/signout_confirmation/test_signout_confirmation_handler_waiter.h"
@@ -46,12 +54,18 @@
 #include "components/sync/base/data_type_histogram.h"
 #include "components/sync/test/test_sync_service.h"
 #include "content/public/test/browser_test.h"
+#include "content/public/test/browser_test_utils.h"
 #include "content/public/test/test_navigation_observer.h"
+#include "content/public/test/url_loader_interceptor.h"
 #include "device/bluetooth/bluetooth_adapter_factory.h"
 #include "device/bluetooth/test/mock_bluetooth_adapter.h"
 #include "extensions/browser/extension_registry.h"
 #include "google_apis/gaia/google_service_auth_error.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "ui/views/controls/webview/webview.h"
+#include "ui/views/interaction/element_tracker_views.h"
+#include "ui/views/test/widget_test.h"
+#include "ui/views/view_utils.h"
 #include "ui/views/widget/any_widget_observer.h"
 #include "ui/views/widget/widget.h"
 #include "ui/views/widget/widget_delegate.h"
@@ -63,7 +77,6 @@
 #include "chrome/browser/extensions/scoped_test_mv2_enabler.h"
 #include "chrome/browser/extensions/signin_test_util.h"
 #include "chrome/browser/extensions/sync/extension_sync_util.h"
-#include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/webui/test_support/webui_interactive_test_mixin.h"
 #include "chrome/common/chrome_paths.h"
 #include "chrome/test/interaction/interactive_browser_test.h"
@@ -848,6 +861,11 @@ class SigninViewControllerSignInBanner
     mock_bluetooth_adapter_ = base::MakeRefCounted<AsyncMockBluetoothAdapter>();
     ON_CALL(*mock_bluetooth_adapter_, IsPresent())
         .WillByDefault(testing::Return(true));
+    ON_CALL(*mock_bluetooth_adapter_, IsPowered())
+        .WillByDefault(testing::Return(true));
+    ON_CALL(*mock_bluetooth_adapter_, GetOsPermissionStatus())
+        .WillByDefault(testing::Return(
+            device::BluetoothAdapter::PermissionStatus::kAllowed));
     device::BluetoothAdapterFactory::SetAdapterForTesting(
         mock_bluetooth_adapter_);
     // Other parts of Chrome may keep a reference to the bluetooth adapter.
@@ -856,12 +874,31 @@ class SigninViewControllerSignInBanner
     bluetooth_override_values_ =
         device::BluetoothAdapterFactory::Get()->InitGlobalOverrideValues();
     bluetooth_override_values_->SetLESupported(true);
+
+    url_loader_interceptor_ =
+        std::make_unique<content::URLLoaderInterceptor>(base::BindRepeating(
+            [](content::URLLoaderInterceptor::RequestParams* params) {
+              if (params->url_request.url.path() == "/signin/chrome/sync") {
+                content::URLLoaderInterceptor::WriteResponse(
+                    "HTTP/1.1 200 OK\nContent-Type: text/html\n\n",
+                    "<html><body>Fake Sign-in Page</body></html>",
+                    params->client.get());
+                return true;
+              }
+              return false;
+            }));
+  }
+
+  void TearDownOnMainThread() override {
+    url_loader_interceptor_.reset();
+    SigninViewControllerBrowserTestBase::TearDownOnMainThread();
   }
 
  protected:
   scoped_refptr<AsyncMockBluetoothAdapter> mock_bluetooth_adapter_;
   std::unique_ptr<device::BluetoothAdapterFactory::GlobalOverrideValues>
       bluetooth_override_values_;
+  std::unique_ptr<content::URLLoaderInterceptor> url_loader_interceptor_;
 
  private:
   base::test::ScopedFeatureList feature_list_;
@@ -876,6 +913,7 @@ IN_PROC_BROWSER_TEST_F(SigninViewControllerSignInBanner, Visibility) {
   content::WebContents* active_contents =
       browser()->tab_strip_model()->GetActiveWebContents();
   ASSERT_TRUE(active_contents);
+  content::WaitForLoadStop(active_contents);
 
   // Check that the infobar is shown.
   infobars::ContentInfoBarManager* infobar_manager =
@@ -912,16 +950,27 @@ IN_PROC_BROWSER_TEST_F(SigninViewControllerSignInBanner,
   EXPECT_EQ(0u, infobar_manager->infobars().size());
 }
 
-IN_PROC_BROWSER_TEST_F(SigninViewControllerSignInBanner, WebUIEnabled) {
-  content::WebContents* web_contents =
-      browser()->tab_strip_model()->GetActiveWebContents();
+IN_PROC_BROWSER_TEST_F(SigninViewControllerSignInBanner,
+                       BluetoothResolvedAfterNavigationCommitted) {
+  browser()->GetFeatures().signin_view_controller()->ShowDiceAddAccountTab(
+      signin_metrics::AccessPoint::kSettings, std::string());
 
-  // Navigation should succeed when the feature flag is enabled.
-  bool success = ui_test_utils::NavigateToURL(
-      browser(), GURL(chrome::kChromeUISigninQRCodeBarURL));
-  EXPECT_TRUE(success);
-  EXPECT_EQ(web_contents->GetVisibleURL(), chrome::kChromeUISigninQRCodeBarURL);
-  EXPECT_NE(web_contents->GetWebUI(), nullptr);
+  content::WebContents* active_contents =
+      browser()->tab_strip_model()->GetActiveWebContents();
+  ASSERT_TRUE(active_contents);
+
+  // Wait for navigation to complete before resolving Bluetooth initialization.
+  content::WaitForLoadStop(active_contents);
+
+  infobars::ContentInfoBarManager* infobar_manager =
+      infobars::ContentInfoBarManager::FromWebContents(active_contents);
+  ASSERT_TRUE(infobar_manager);
+  EXPECT_EQ(0u, infobar_manager->infobars().size());
+
+  // Now resolve the Bluetooth check. Since the navigation already committed and
+  // we are on the signin page, the banner should be added now.
+  mock_bluetooth_adapter_->SetInitialized(true);
+  EXPECT_EQ(1u, infobar_manager->infobars().size());
 }
 
 class SigninViewControllerSignInBannerNoBluetooth
@@ -973,6 +1022,216 @@ IN_PROC_BROWSER_TEST_F(SigninViewControllerSignInBannerNoBluetooth,
   EXPECT_EQ(0u, infobar_manager->infobars().size());
 }
 
+IN_PROC_BROWSER_TEST_F(SigninViewControllerSignInBanner, EndToEndFlow) {
+  // 1. Open the sign-in page, which triggers the tab helper and starts the
+  // flow.
+  signin_ui_util::SignInFromSingleAccountPromo(
+      browser()->GetProfile(), CoreAccountInfo(),
+      signin_metrics::AccessPoint::kPasswordBubble);
+
+  content::WebContents* sign_in_tab =
+      signin_ui_util::GetSignInTabWithAccessPoint(
+          browser(), signin_metrics::AccessPoint::kPasswordBubble);
+  ASSERT_TRUE(sign_in_tab);
+
+  mock_bluetooth_adapter_->SetInitialized(true);
+
+  // Wait for the sign-in tab to finish loading to ensure asynchronous
+  // loader and Bluetooth check callbacks have completed.
+  content::WaitForLoadStop(sign_in_tab);
+
+  // Verify that the InfoBar is created and added to the manager.
+  auto* infobar_manager =
+      infobars::ContentInfoBarManager::FromWebContents(sign_in_tab);
+  ASSERT_TRUE(infobar_manager);
+
+  // The infobar should be added instantly.
+  ASSERT_EQ(1u, infobar_manager->infobars().size());
+
+  infobars::InfoBar* infobar = infobar_manager->infobars()[0];
+  ASSERT_TRUE(infobar);
+
+  // Verify it is our QR code infobar.
+  EXPECT_EQ(infobars::InfoBarDelegate::SIGNIN_QRCODE_INFOBAR_DELEGATE,
+            infobar->delegate()->GetIdentifier());
+
+  SigninQRCodeInfoBar* qr_infobar = static_cast<SigninQRCodeInfoBar*>(infobar);
+
+  // 2. Initially, the QR code is NOT ready, so it must show the throbber.
+  EXPECT_FALSE(qr_infobar->IsShowingQrCodeForTesting());
+
+  // Get the model and set a dummy QR code payload.
+  SigninQRCodeModel* model = SigninQRCodeModel::FromWebContents(sign_in_tab);
+  ASSERT_TRUE(model);
+
+  // Setting the QR code should trigger the observer and swap to the QR view.
+  model->SetQrCode("dummy_qr_code_payload_for_testing");
+
+  // Verify that the InfoBar is now showing the QR code!
+  EXPECT_TRUE(qr_infobar->IsShowingQrCodeForTesting());
+
+  // 3. Navigate away from the sign-in page.
+  // This should trigger the DiceTabHelper to notify that it's no longer the
+  // sign-in page, and the InfoBar should be automatically dismissed.
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GURL("about:blank")));
+
+  // The infobar should have been automatically dismissed!
+  EXPECT_EQ(0u, infobar_manager->infobars().size());
+}
+
+class SigninViewControllerCrossDeviceSigninBrowserTest
+    : public SigninViewControllerBrowserTestBase {
+ public:
+  SigninViewControllerCrossDeviceSigninBrowserTest() {
+    feature_list_.InitAndEnableFeature(switches::kCrossDeviceSigninFromDesktop);
+  }
+
+ private:
+  base::test::ScopedFeatureList feature_list_;
+};
+
+IN_PROC_BROWSER_TEST_F(SigninViewControllerCrossDeviceSigninBrowserTest,
+                       ShowCrossDeviceSigninQrBubble) {
+  SetPrimaryAccount();
+
+  views::AnyWidgetObserver observer(views::test::AnyWidgetTestPasskey{});
+  base::test::TestFuture<views::Widget*> widget_future;
+  observer.set_shown_callback(widget_future.GetRepeatingCallback());
+
+  base::MockCallback<base::OnceClosure> closing_callback;
+  EXPECT_CALL(closing_callback, Run()).Times(1);
+  BrowserView* browser_view = BrowserView::GetBrowserViewForBrowser(browser());
+  AvatarToolbarButtonInterface* avatar_button =
+      browser_view->toolbar_button_provider()
+          ->GetAvatarToolbarButtonInterface();
+  ASSERT_TRUE(avatar_button);
+  // Before showing, there should be no explicit state.
+  EXPECT_FALSE(avatar_button->HasExplicitButtonState());
+
+  browser()
+      ->GetFeatures()
+      .signin_view_controller()
+      ->ShowCrossDeviceSigninQrBubble(closing_callback.Get());
+
+  views::Widget* bubble_widget = widget_future.Get();
+  ASSERT_TRUE(bubble_widget);
+
+  views::WidgetDelegate* delegate = bubble_widget->widget_delegate();
+  ASSERT_TRUE(delegate);
+  EXPECT_TRUE(delegate->ShouldShowCloseButton());
+  if (auto* bubble_delegate = delegate->AsBubbleDialogDelegate()) {
+    EXPECT_FALSE(bubble_delegate->ShouldCloseOnDeactivate());
+  }
+
+  views::WebView* web_view = views::AsViewClass<views::WebView>(
+      views::ElementTrackerViews::GetInstance()->GetUniqueView(
+          kCrossDeviceSigninQrBubbleWebViewElementId,
+          views::ElementTrackerViews::GetContextForWidget(bubble_widget)));
+  ASSERT_TRUE(web_view);
+
+  content::WebContents* web_contents = web_view->GetWebContents();
+  ASSERT_TRUE(web_contents);
+
+  // Note: This observer is attached after the WebContents has started loading,
+  // so it won't reliably catch load-time JS errors (like missing imports),
+  // but it will successfully catch post-load runtime errors or unhandled
+  // exceptions.
+  content::WebContentsConsoleObserver console_observer(web_contents);
+  if (web_contents->IsLoading()) {
+    content::WaitForLoadStop(web_contents);
+  }
+  for (const auto& message : console_observer.messages()) {
+    LOG(INFO) << "Console message: " << message.message;
+    EXPECT_NE(message.log_level, blink::mojom::ConsoleMessageLevel::kError)
+        << "JS Error on WebUI: " << message.message;
+  }
+
+  // After showing, the explicit state should be set.
+  EXPECT_TRUE(avatar_button->HasExplicitButtonState());
+
+  // Verify that the WebUI URL loaded successfully.
+  EXPECT_EQ(web_contents->GetVisibleURL(),
+            GURL(chrome::kChromeUICrossDeviceSigninQrBubbleURL));
+
+  views::test::WidgetDestroyedWaiter waiter(bubble_widget);
+  // Simulating a click on the avatar button should close the bubble because of
+  // the explicit action.
+  avatar_button->ButtonPressed(/*is_source_accelerator=*/false);
+  waiter.Wait();
+
+  // After closing, wait until the explicit state is cleared (reverted).
+  EXPECT_FALSE(avatar_button->HasExplicitButtonState());
+}
+IN_PROC_BROWSER_TEST_F(SigninViewControllerCrossDeviceSigninBrowserTest,
+                       ClosesOnSignOut) {
+  AccountInfo account_info = SetPrimaryAccount();
+
+  views::AnyWidgetObserver observer(views::test::AnyWidgetTestPasskey{});
+  base::test::TestFuture<views::Widget*> widget_future;
+  observer.set_shown_callback(widget_future.GetRepeatingCallback());
+
+  base::MockCallback<base::OnceClosure> closing_callback;
+  browser()
+      ->GetFeatures()
+      .signin_view_controller()
+      ->ShowCrossDeviceSigninQrBubble(closing_callback.Get());
+  views::Widget* bubble_widget = widget_future.Get();
+
+  ASSERT_TRUE(bubble_widget);
+  EXPECT_TRUE(bubble_widget->IsVisible());
+
+  views::test::WidgetDestroyedWaiter waiter(bubble_widget);
+  identity_test_env()->ClearPrimaryAccount();
+  waiter.Wait();
+}
+
+IN_PROC_BROWSER_TEST_F(SigninViewControllerCrossDeviceSigninBrowserTest,
+                       ClosesOnRefreshTokenRemoved) {
+  AccountInfo account_info = SetPrimaryAccount();
+
+  views::AnyWidgetObserver observer(views::test::AnyWidgetTestPasskey{});
+  base::test::TestFuture<views::Widget*> widget_future;
+  observer.set_shown_callback(widget_future.GetRepeatingCallback());
+
+  base::MockCallback<base::OnceClosure> closing_callback;
+  browser()
+      ->GetFeatures()
+      .signin_view_controller()
+      ->ShowCrossDeviceSigninQrBubble(closing_callback.Get());
+  views::Widget* bubble_widget = widget_future.Get();
+
+  ASSERT_TRUE(bubble_widget);
+  EXPECT_TRUE(bubble_widget->IsVisible());
+
+  views::test::WidgetDestroyedWaiter waiter(bubble_widget);
+  identity_test_env()->RemoveRefreshTokenForAccount(account_info.account_id);
+  waiter.Wait();
+}
+IN_PROC_BROWSER_TEST_F(SigninViewControllerCrossDeviceSigninBrowserTest,
+                       ClosesOnRefreshTokenError) {
+  AccountInfo account_info = SetPrimaryAccount();
+
+  views::AnyWidgetObserver observer(views::test::AnyWidgetTestPasskey{});
+  base::test::TestFuture<views::Widget*> widget_future;
+  observer.set_shown_callback(widget_future.GetRepeatingCallback());
+
+  base::MockCallback<base::OnceClosure> closing_callback;
+  browser()
+      ->GetFeatures()
+      .signin_view_controller()
+      ->ShowCrossDeviceSigninQrBubble(closing_callback.Get());
+  views::Widget* bubble_widget = widget_future.Get();
+
+  ASSERT_TRUE(bubble_widget);
+  EXPECT_TRUE(bubble_widget->IsVisible());
+
+  views::test::WidgetDestroyedWaiter waiter(bubble_widget);
+  identity_test_env()->UpdatePersistentErrorOfRefreshTokenForAccount(
+      account_info.account_id,
+      GoogleServiceAuthError(GoogleServiceAuthError::INVALID_GAIA_CREDENTIALS));
+  waiter.Wait();
+}
+
 #endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
 
 IN_PROC_BROWSER_TEST_F(SigninViewControllerBrowserTest,
@@ -996,10 +1255,10 @@ IN_PROC_BROWSER_TEST_F(SigninViewControllerBrowserTest,
               mock_process_user_choice_callback.Get(),
               mock_done_callback.Get()));
   EXPECT_FALSE(ManagedProfileRequiredNavigationThrottle::IsBlockingNavigations(
-      browser()->profile()));
+      browser()->GetProfile()));
   browser()->GetFeatures().signin_view_controller()->CloseModalSignin();
   EXPECT_FALSE(ManagedProfileRequiredNavigationThrottle::IsBlockingNavigations(
-      browser()->profile()));
+      browser()->GetProfile()));
 
   browser()
       ->GetFeatures()
@@ -1015,10 +1274,10 @@ IN_PROC_BROWSER_TEST_F(SigninViewControllerBrowserTest,
               mock_process_user_choice_callback.Get(),
               mock_done_callback.Get()));
   EXPECT_TRUE(ManagedProfileRequiredNavigationThrottle::IsBlockingNavigations(
-      browser()->profile()));
+      browser()->GetProfile()));
   browser()->GetFeatures().signin_view_controller()->CloseModalSignin();
   EXPECT_FALSE(ManagedProfileRequiredNavigationThrottle::IsBlockingNavigations(
-      browser()->profile()));
+      browser()->GetProfile()));
 }
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)

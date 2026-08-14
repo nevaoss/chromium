@@ -42,7 +42,7 @@
     </cr-link-row>
     <cr-link-row id="skillsRow" class="hr"
         hidden="[[!showSkillsSettingPage_]]"
-        start-icon="settings20:flash-on"
+        start-icon="settings20:flash-on-filled"
         label="$i18n{skillsSettingLabel}"
         sub-label="$i18n{skillsSettingSublabel}"
         role-description="$i18n{subpageArrowRoleDescription}"
@@ -50,10 +50,38 @@
     </cr-link-row>
     <cr-link-row id="indigoRow" class="hr"
         hidden="[[!showIndigoControl_]]"
-        start-icon="settings20:magic"
+<if expr="not _google_chrome">
+        start-icon="settings20:button-magic"
+</if>
+<if expr="_google_chrome">
+        start-icon="settings-internal:face-retouch"
+</if>
         label="$i18n{indigoLabel}"
         sub-label="$i18n{indigoSublabel}"
         on-click="onIndigoRowClick_" external>
     </cr-link-row>
+    <cr-link-row id="googleSearchAiModeWorkspaceRow" class="hr"
+        hidden="[[!showGoogleSearchAiModeWorkspaceControl_]]"
+        start-icon="settings20:apps"
+        label="$i18n{googleSearchAiModeWorkspaceLabel}"
+        sub-label="$i18n{googleSearchAiModeWorkspaceSublabel}"
+        on-click="onGoogleSearchAiModeWorkspaceRowClick_" external>
+    </cr-link-row>
   </div>
 </settings-section>
+<if expr="_google_chrome">
+  <settings-section page-title="$i18n{onDeviceAiEnabledLabel}"
+      show-send-feedback-button
+      on-send-feedback="onOnDeviceAiSendFeedback_">
+    <template is="dom-if" if="[[showOnDeviceAiSettings_]]">
+      <settings-toggle-button id="onDeviceAiToggle" class="hr"
+          pref="[[onDeviceAiPref_]]"
+          label="$i18n{onDeviceAiEnabledLabel}"
+          sub-label-with-link="$i18n{onDeviceAiEnabledSubLabel}"
+          on-sub-label-link-clicked="onOnDeviceAiSubLabelLinkClicked_"
+          on-settings-boolean-control-change=
+              "onOnDeviceAiSettingsBooleanControlChange_">
+      </settings-toggle-button>
+    </template>
+  </settings-section>
+</if>

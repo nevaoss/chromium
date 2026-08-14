@@ -95,6 +95,7 @@
 #include "third_party/blink/renderer/bindings/core/v8/v8_local_compile_hints_producer.h"
 #include "third_party/blink/renderer/bindings/core/v8/window_proxy_manager.h"
 #include "third_party/blink/renderer/core/ad_tracker/ad_tracker.h"
+#include "third_party/blink/renderer/core/ad_tracker/script_initiation_monitor.h"
 #include "third_party/blink/renderer/core/clipboard/system_clipboard.h"
 #include "third_party/blink/renderer/core/content_capture/content_capture_manager.h"
 #include "third_party/blink/renderer/core/core_export.h"
@@ -141,7 +142,6 @@
 #include "third_party/blink/renderer/core/exported/web_plugin_container_impl.h"
 #include "third_party/blink/renderer/core/fileapi/public_url_manager.h"
 #include "third_party/blink/renderer/core/fragment_directive/text_fragment_handler.h"
-#include "third_party/blink/renderer/core/frame/attribution_src_loader.h"
 #include "third_party/blink/renderer/core/frame/csp/content_security_policy.h"
 #include "third_party/blink/renderer/core/frame/event_handler_registry.h"
 #include "third_party/blink/renderer/core/frame/frame_console.h"
@@ -194,6 +194,7 @@
 #include "third_party/blink/renderer/core/layout/hit_test_result.h"
 #include "third_party/blink/renderer/core/layout/layout_embedded_content.h"
 #include "third_party/blink/renderer/core/layout/layout_object_inlines.h"
+#include "third_party/blink/renderer/core/layout/layout_video.h"
 #include "third_party/blink/renderer/core/layout/layout_view.h"
 #include "third_party/blink/renderer/core/lcp_critical_path_predictor/lcp_critical_path_predictor.h"
 #include "third_party/blink/renderer/core/loader/document_loader.h"
@@ -508,8 +509,8 @@ LocalFrame::~LocalFrame() {
 
 void LocalFrame::Trace(Visitor* visitor) const {
   visitor->Trace(ad_tracker_);
+  visitor->Trace(script_initiation_monitor_);
   visitor->Trace(script_observer_);
-  visitor->Trace(attribution_src_loader_);
   visitor->Trace(probe_sink_);
   visitor->Trace(performance_monitor_);
   visitor->Trace(idleness_detector_);
@@ -781,6 +782,9 @@ bool LocalFrame::DetachImpl(FrameDetachType type) {
 
     if (ad_tracker_)
       ad_tracker_->Shutdown();
+    if (script_initiation_monitor_) {
+      script_initiation_monitor_->Shutdown();
+    }
     // Unregister only if this is LocalRoot because the paint_image_generator_
     // was created on LocalRoot.
     if (background_color_paint_image_generator_)
@@ -1023,15 +1027,20 @@ void LocalFrame::OnFirstPaint(bool text_painted, bool image_painted) {
 }
 
 void LocalFrame::OnFirstContentfulPaint(
-    const base::TimeTicks& paint_time,
-    const base::TimeTicks& navigation_time) {
+    const base::TimeTicks& presentation_time) {
   if (IsOutermostMainFrame()) {
-    GetPage()->GetChromeClient().OnFirstContentfulPaint(paint_time -
-                                                        navigation_time);
+    GetPage()->GetChromeClient().OnFirstContentfulPaint(presentation_time);
   }
   auto* widget = GetWidgetForLocalRoot();
   if (widget) {
     widget->OnFirstContentfulPaint();
+  }
+}
+
+void LocalFrame::OnLargestContentfulPaint(
+    const base::TimeTicks& presentation_time) {
+  if (IsOutermostMainFrame()) {
+    GetPage()->GetChromeClient().OnLargestContentfulPaint(presentation_time);
   }
 }
 
@@ -1996,7 +2005,8 @@ LocalFrame::LocalFrame(
     inspector_trace_events_ = MakeGarbageCollected<InspectorTraceEvents>();
     probe_sink_->AddInspectorTraceEvents(inspector_trace_events_);
     if (RuntimeEnabledFeatures::AdTaggingEnabled()) {
-      ad_tracker_ = MakeGarbageCollected<AdTracker>(this);
+      ad_tracker_ = MakeGarbageCollected<AdTracker>(
+          this, GetOrCreateScriptInitiationMonitor());
     }
     if (blink::LcppScriptObserverEnabled()) {
       script_observer_ = MakeGarbageCollected<LCPScriptObserver>(this);
@@ -2012,7 +2022,6 @@ LocalFrame::LocalFrame(
     script_observer_ = LocalFrameRoot().script_observer_;
   }
   idleness_detector_ = MakeGarbageCollected<IdlenessDetector>(this, clock);
-  attribution_src_loader_ = MakeGarbageCollected<AttributionSrcLoader>(this);
   inspector_task_runner_->InitIsolate(isolate);
 
   if (IsOutermostMainFrame()) {
@@ -2373,6 +2382,19 @@ PluginData* LocalFrame::GetPluginData() const {
   if (!Loader().AllowPlugins())
     return nullptr;
   return GetPage()->GetPluginData();
+}
+
+ScriptInitiationMonitor* LocalFrame::GetScriptInitiationMonitor() const {
+  return LocalFrameRoot().script_initiation_monitor_.Get();
+}
+
+ScriptInitiationMonitor* LocalFrame::GetOrCreateScriptInitiationMonitor() {
+  LocalFrame& root = LocalFrameRoot();
+  if (!root.script_initiation_monitor_) {
+    root.script_initiation_monitor_ =
+        MakeGarbageCollected<ScriptInitiationMonitor>(&root);
+  }
+  return root.script_initiation_monitor_.Get();
 }
 
 void LocalFrame::SetAdTrackerForTesting(AdTracker* ad_tracker) {
@@ -3706,7 +3728,19 @@ void LocalFrame::MediaPlayerActionAtViewportPoint(
       break;
     case mojom::blink::MediaPlayerActionType::kCopyVideoFrame:
       if (auto* video = DynamicTo<HTMLVideoElement>(media_element); video) {
-        auto image = video->CreateStaticBitmapImage();
+        std::optional<gfx::Size> size;
+        // A site could theoretically apply the CSS `content: url(...)` property
+        // to a <video> element. In this edge case,
+        // HTMLVideoElement::CreateLayoutObject instantiates a LayoutImage
+        // instead of a LayoutVideo, which is safely caught by the DynamicTo
+        // here.
+        if (auto* layout_video =
+                DynamicTo<LayoutVideo>(video->GetLayoutObject())) {
+          size = layout_video->ReplacedContentRect().PixelSnappedSize();
+        }
+        auto image = video->CreateStaticBitmapImage(
+            size, /*reinterpret_as_srgb=*/false,
+            /*respect_orientation=*/kDoNotRespectImageOrientation);
         if (image) {
           GetEditor().CopyImage(result, image);
         }
@@ -4254,18 +4288,6 @@ void LocalFrame::OnStorageAccessCallback(
   std::move(callback).Run(is_allowed);
 }
 
-void LocalFrame::NotifyFrameVisibilityChanged(
-    mojom::blink::FrameVisibility visibility) {
-  // Iterate on a copy of the vector to avoid invalidating the iterator if
-  // `FrameVisibilityChanged` happens to remove the observer from
-  // `frame_visibility_observers_`.
-  HeapVector<Member<FrameVisibilityObserver>>
-      frame_visibility_observers_as_vector(frame_visibility_observers_);
-  for (auto observer : frame_visibility_observers_as_vector) {
-    observer->FrameVisibilityChanged(visibility);
-  }
-}
-
 void LocalFrame::AddVisibilityObserver(FrameVisibilityObserver* observer) {
   frame_visibility_observers_.insert(observer);
 }
@@ -4283,7 +4305,7 @@ void LocalFrame::OnFrameVisibilityChangedForMediaPlayback(bool is_hidden) {
   is_hidden_for_media_playback_ = is_hidden;
 
   // Iterate on a copy of the vector to avoid invalidating the iterator if
-  // `FrameVisibilityChanged` happens to remove the observer from
+  // `OnFrameHidden` or `OnFrameShown` happens to remove the observer from
   // `frame_visibility_observers_`.
   HeapVector<Member<FrameVisibilityObserver>>
       frame_visibility_observers_as_vector(frame_visibility_observers_);

@@ -468,11 +468,7 @@ void AutocompleteControllerAndroid::OnSuggestionSelected(
     predictors::AutocompleteActionPredictorFactory::GetForProfile(profile_)
         ->OnOmniboxOpenedUrl(log);
   }
-  if (auto* geolocation_header_service =
-          autocomplete_controller_->autocomplete_provider_client()
-              ->GetGeolocationHeaderService()) {
-    geolocation_header_service->RecordInlineLocationSuggestionClicked(match);
-  }
+  autocomplete_controller_->MaybeProcessInlineLocationSuggestionMatch(match);
 }
 
 bool AutocompleteControllerAndroid::OnSuggestionTouchDown(
@@ -482,21 +478,22 @@ bool AutocompleteControllerAndroid::OnSuggestionTouchDown(
     int match_index) {
   const auto& match = *reinterpret_cast<AutocompleteMatch*>(match_ptr);
 
+  bool started = false;
   if (SearchPrefetchService* search_prefetch_service =
           SearchPrefetchServiceFactory::GetForProfile(profile_)) {
-    return search_prefetch_service->OnNavigationLikely(
+    started = search_prefetch_service->OnNavigationLikely(
+        match_index, match, omnibox::mojom::NavigationPredictor::kTouchDown,
+        web_contents);
+  } else if (SearchPreloadService* search_preload_service =
+                 SearchPreloadServiceFactory::GetForProfile(profile_)) {
+    started = search_preload_service->OnNavigationLikely(
         match_index, match, omnibox::mojom::NavigationPredictor::kTouchDown,
         web_contents);
   }
 
-  if (SearchPreloadService* search_preload_service =
-          SearchPreloadServiceFactory::GetForProfile(profile_)) {
-    return search_preload_service->OnNavigationLikely(
-        match_index, match, omnibox::mojom::NavigationPredictor::kTouchDown,
-        web_contents);
-  }
-
-  return false;
+  TRACE_EVENT("omnibox", "AutocompleteControllerAndroid::OnNavigationLikely",
+              "url", match.destination_url, "started", started);
+  return started;
 }
 
 void AutocompleteControllerAndroid::DeleteMatch(JNIEnv* env,

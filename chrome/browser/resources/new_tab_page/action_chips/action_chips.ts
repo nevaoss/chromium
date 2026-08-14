@@ -84,6 +84,11 @@ export class ActionChipsElement extends CrLitElement {
         type: Boolean,
         reflect: true,
       },
+      smallChipsEnabled_: {
+        type: Boolean,
+        reflect: true,
+        attribute: 'small-chips-enabled',
+      },
     };
   }
 
@@ -94,6 +99,8 @@ export class ActionChipsElement extends CrLitElement {
       loadTimeData.getBoolean('ntpNextShowDismissalUIEnabled');
   protected accessor disablementContextMenuEnabled_: boolean =
       loadTimeData.getBoolean('ntpNextDisablementContextMenuEnabled');
+  protected accessor smallChipsEnabled_: boolean =
+      loadTimeData.getBoolean('ntpSmallActionChipsEnabled');
 
   private callbackRouter: PageCallbackRouter;
   private delayTabUploads_: boolean =
@@ -233,7 +240,6 @@ export class ActionChipsElement extends CrLitElement {
 
   private onActionChipClick_(chip: ActionChip) {
     recordClick(chip.suggestTemplateInfo.typeIcon);
-    this.handler.notifyActionChipClicked();
     const contextFiles: TabUpload[] = [];
     const tab = chip.tab;
     if (tab) {

@@ -13,8 +13,8 @@
           "containment_type": "AUTO",
           "dimensions": {
             "display_attached": "1",
-            "gpu": "10de:2184-32.0.15.8180",
-            "os": "Windows-11-26100",
+            "gpu": "10de:2184-32.0.16.1074",
+            "os": "Windows-11-26200",
             "pool": "chromium.tests.gpu"
           },
           "expiration": 21600,
@@ -42,8 +42,8 @@
           "containment_type": "AUTO",
           "dimensions": {
             "display_attached": "1",
-            "gpu": "10de:2184-32.0.15.8180",
-            "os": "Windows-11-26100",
+            "gpu": "10de:2184-32.0.16.1074",
+            "os": "Windows-11-26200",
             "pool": "chromium.tests.gpu"
           },
           "expiration": 21600,
@@ -76,8 +76,8 @@
           "containment_type": "AUTO",
           "dimensions": {
             "display_attached": "1",
-            "gpu": "10de:2184-32.0.15.8180",
-            "os": "Windows-11-26100",
+            "gpu": "10de:2184-32.0.16.1074",
+            "os": "Windows-11-26200",
             "pool": "chromium.tests.gpu"
           },
           "expiration": 21600,
@@ -99,8 +99,8 @@
           "containment_type": "AUTO",
           "dimensions": {
             "display_attached": "1",
-            "gpu": "10de:2184-32.0.15.8180",
-            "os": "Windows-11-26100",
+            "gpu": "10de:2184-32.0.16.1074",
+            "os": "Windows-11-26200",
             "pool": "chromium.tests.gpu"
           },
           "expiration": 21600,
@@ -126,8 +126,8 @@
           "containment_type": "AUTO",
           "dimensions": {
             "display_attached": "1",
-            "gpu": "10de:2184-32.0.15.8180",
-            "os": "Windows-11-26100",
+            "gpu": "10de:2184-32.0.16.1074",
+            "os": "Windows-11-26200",
             "pool": "chromium.tests.gpu"
           },
           "expiration": 21600,
@@ -153,8 +153,8 @@
           "containment_type": "AUTO",
           "dimensions": {
             "display_attached": "1",
-            "gpu": "10de:2184-32.0.15.8180",
-            "os": "Windows-11-26100",
+            "gpu": "10de:2184-32.0.16.1074",
+            "os": "Windows-11-26200",
             "pool": "chromium.tests.gpu"
           },
           "expiration": 21600,
@@ -179,8 +179,8 @@
           "containment_type": "AUTO",
           "dimensions": {
             "display_attached": "1",
-            "gpu": "10de:2184-32.0.15.8180",
-            "os": "Windows-11-26100",
+            "gpu": "10de:2184-32.0.16.1074",
+            "os": "Windows-11-26200",
             "pool": "chromium.tests.gpu"
           },
           "expiration": 21600,
@@ -219,8 +219,8 @@
           "containment_type": "AUTO",
           "dimensions": {
             "display_attached": "1",
-            "gpu": "10de:2184-32.0.15.8180",
-            "os": "Windows-11-26100",
+            "gpu": "10de:2184-32.0.16.1074",
+            "os": "Windows-11-26200",
             "pool": "chromium.tests.gpu"
           },
           "expiration": 21600,
@@ -258,8 +258,8 @@
           "containment_type": "AUTO",
           "dimensions": {
             "display_attached": "1",
-            "gpu": "10de:2184-32.0.15.8180",
-            "os": "Windows-11-26100",
+            "gpu": "10de:2184-32.0.16.1074",
+            "os": "Windows-11-26200",
             "pool": "chromium.tests.gpu"
           },
           "expiration": 21600,
@@ -306,8 +306,8 @@
           "containment_type": "AUTO",
           "dimensions": {
             "display_attached": "1",
-            "gpu": "10de:2184-32.0.15.8180",
-            "os": "Windows-11-26100",
+            "gpu": "10de:2184-32.0.16.1074",
+            "os": "Windows-11-26200",
             "pool": "chromium.tests.gpu"
           },
           "expiration": 21600,
@@ -354,8 +354,8 @@
           "containment_type": "AUTO",
           "dimensions": {
             "display_attached": "1",
-            "gpu": "10de:2184-32.0.15.8180",
-            "os": "Windows-11-26100",
+            "gpu": "10de:2184-32.0.16.1074",
+            "os": "Windows-11-26200",
             "pool": "chromium.tests.gpu"
           },
           "expiration": 21600,
@@ -393,8 +393,8 @@
           "containment_type": "AUTO",
           "dimensions": {
             "display_attached": "1",
-            "gpu": "10de:2184-32.0.15.8180",
-            "os": "Windows-11-26100",
+            "gpu": "10de:2184-32.0.16.1074",
+            "os": "Windows-11-26200",
             "pool": "chromium.tests.gpu"
           },
           "expiration": 21600,
@@ -432,8 +432,8 @@
           "containment_type": "AUTO",
           "dimensions": {
             "display_attached": "1",
-            "gpu": "10de:2184-32.0.15.8180",
-            "os": "Windows-11-26100",
+            "gpu": "10de:2184-32.0.16.1074",
+            "os": "Windows-11-26200",
             "pool": "chromium.tests.gpu"
           },
           "expiration": 21600,
@@ -475,8 +475,8 @@
           "containment_type": "AUTO",
           "dimensions": {
             "display_attached": "1",
-            "gpu": "10de:2184-32.0.15.8180",
-            "os": "Windows-11-26100",
+            "gpu": "10de:2184-32.0.16.1074",
+            "os": "Windows-11-26200",
             "pool": "chromium.tests.gpu"
           },
           "expiration": 21600,
@@ -509,8 +509,8 @@
           "containment_type": "AUTO",
           "dimensions": {
             "display_attached": "1",
-            "gpu": "10de:2184-32.0.15.8180",
-            "os": "Windows-11-26100",
+            "gpu": "10de:2184-32.0.16.1074",
+            "os": "Windows-11-26200",
             "pool": "chromium.tests.gpu"
           },
           "expiration": 21600,
@@ -556,8 +556,8 @@
           "containment_type": "AUTO",
           "dimensions": {
             "display_attached": "1",
-            "gpu": "10de:2184-32.0.15.8180",
-            "os": "Windows-11-26100",
+            "gpu": "10de:2184-32.0.16.1074",
+            "os": "Windows-11-26200",
             "pool": "chromium.tests.gpu"
           },
           "expiration": 21600,
@@ -604,8 +604,8 @@
           "containment_type": "AUTO",
           "dimensions": {
             "display_attached": "1",
-            "gpu": "10de:2184-32.0.15.8180",
-            "os": "Windows-11-26100",
+            "gpu": "10de:2184-32.0.16.1074",
+            "os": "Windows-11-26200",
             "pool": "chromium.tests.gpu"
           },
           "expiration": 21600,
@@ -644,8 +644,8 @@
           "containment_type": "AUTO",
           "dimensions": {
             "display_attached": "1",
-            "gpu": "10de:2184-32.0.15.8180",
-            "os": "Windows-11-26100",
+            "gpu": "10de:2184-32.0.16.1074",
+            "os": "Windows-11-26200",
             "pool": "chromium.tests.gpu"
           },
           "expiration": 21600,
@@ -684,8 +684,8 @@
           "containment_type": "AUTO",
           "dimensions": {
             "display_attached": "1",
-            "gpu": "10de:2184-32.0.15.8180",
-            "os": "Windows-11-26100",
+            "gpu": "10de:2184-32.0.16.1074",
+            "os": "Windows-11-26200",
             "pool": "chromium.tests.gpu"
           },
           "expiration": 21600,
@@ -723,8 +723,8 @@
           "containment_type": "AUTO",
           "dimensions": {
             "display_attached": "1",
-            "gpu": "10de:2184-32.0.15.8180",
-            "os": "Windows-11-26100",
+            "gpu": "10de:2184-32.0.16.1074",
+            "os": "Windows-11-26200",
             "pool": "chromium.tests.gpu"
           },
           "expiration": 21600,
@@ -762,8 +762,8 @@
           "containment_type": "AUTO",
           "dimensions": {
             "display_attached": "1",
-            "gpu": "10de:2184-32.0.15.8180",
-            "os": "Windows-11-26100",
+            "gpu": "10de:2184-32.0.16.1074",
+            "os": "Windows-11-26200",
             "pool": "chromium.tests.gpu"
           },
           "expiration": 21600,
@@ -803,8 +803,8 @@
           "containment_type": "AUTO",
           "dimensions": {
             "display_attached": "1",
-            "gpu": "10de:2184-32.0.15.8180",
-            "os": "Windows-11-26100",
+            "gpu": "10de:2184-32.0.16.1074",
+            "os": "Windows-11-26200",
             "pool": "chromium.tests.gpu"
           },
           "expiration": 21600,
@@ -844,8 +844,8 @@
           "containment_type": "AUTO",
           "dimensions": {
             "display_attached": "1",
-            "gpu": "10de:2184-32.0.15.8180",
-            "os": "Windows-11-26100",
+            "gpu": "10de:2184-32.0.16.1074",
+            "os": "Windows-11-26200",
             "pool": "chromium.tests.gpu"
           },
           "expiration": 21600,
@@ -885,8 +885,8 @@
           "containment_type": "AUTO",
           "dimensions": {
             "display_attached": "1",
-            "gpu": "10de:2184-32.0.15.8180",
-            "os": "Windows-11-26100",
+            "gpu": "10de:2184-32.0.16.1074",
+            "os": "Windows-11-26200",
             "pool": "chromium.tests.gpu"
           },
           "expiration": 21600,
@@ -925,8 +925,8 @@
           "containment_type": "AUTO",
           "dimensions": {
             "display_attached": "1",
-            "gpu": "10de:2184-32.0.15.8180",
-            "os": "Windows-11-26100",
+            "gpu": "10de:2184-32.0.16.1074",
+            "os": "Windows-11-26200",
             "pool": "chromium.tests.gpu"
           },
           "expiration": 21600,
@@ -4667,45 +4667,6 @@
       }
     ]
   },
-  "Win11 FYI x64 Experimental Release (AMD 9900X)": {
-    "isolated_scripts": [
-      {
-        "args": [
-          "noop_sleep",
-          "--show-stdout",
-          "--browser=release_x64",
-          "--passthrough",
-          "-v",
-          "--stable-jobs",
-          "--extra-browser-args=--enable-logging=stderr --js-flags=--expose-gc",
-          "--enforce-browser-version",
-          "--jobs=4"
-        ],
-        "merge": {
-          "script": "//testing/merge_scripts/standard_isolated_script_merge.py"
-        },
-        "module_name": "//chrome/test:telemetry_gpu_integration_test",
-        "module_scheme": "flat",
-        "name": "noop_sleep_tests",
-        "swarming": {
-          "containment_type": "AUTO",
-          "dimensions": {
-            "display_attached": "1",
-            "gpu": "1002:13c0",
-            "os": "Windows-11",
-            "pool": "chromium.tests.gpu.experimental"
-          },
-          "expiration": 43200,
-          "hard_timeout": 1800,
-          "idempotent": false,
-          "io_timeout": 1800,
-          "service_account": "chromium-tester@chops-service-accounts.iam.gserviceaccount.com"
-        },
-        "test": "telemetry_gpu_integration_test",
-        "test_id_prefix": "ninja://chrome/test:telemetry_gpu_integration_test/"
-      }
-    ]
-  },
   "Win11 FYI x64 Experimental Release (AMD RX 5500XT)": {
     "isolated_scripts": [
       {
@@ -4735,45 +4696,6 @@
             "pool": "chromium.tests.gpu"
           },
           "expiration": 21600,
-          "hard_timeout": 1800,
-          "idempotent": false,
-          "io_timeout": 1800,
-          "service_account": "chromium-tester@chops-service-accounts.iam.gserviceaccount.com"
-        },
-        "test": "telemetry_gpu_integration_test",
-        "test_id_prefix": "ninja://chrome/test:telemetry_gpu_integration_test/"
-      }
-    ]
-  },
-  "Win11 FYI x64 Experimental Release (Intel Arc 140V)": {
-    "isolated_scripts": [
-      {
-        "args": [
-          "noop_sleep",
-          "--show-stdout",
-          "--browser=release_x64",
-          "--passthrough",
-          "-v",
-          "--stable-jobs",
-          "--extra-browser-args=--enable-logging=stderr --js-flags=--expose-gc",
-          "--enforce-browser-version",
-          "--jobs=4"
-        ],
-        "merge": {
-          "script": "//testing/merge_scripts/standard_isolated_script_merge.py"
-        },
-        "module_name": "//chrome/test:telemetry_gpu_integration_test",
-        "module_scheme": "flat",
-        "name": "noop_sleep_tests",
-        "swarming": {
-          "containment_type": "AUTO",
-          "dimensions": {
-            "display_attached": "1",
-            "gpu": "8086:64a0",
-            "os": "Windows-11",
-            "pool": "chromium.tests.gpu.experimental"
-          },
-          "expiration": 43200,
           "hard_timeout": 1800,
           "idempotent": false,
           "io_timeout": 1800,

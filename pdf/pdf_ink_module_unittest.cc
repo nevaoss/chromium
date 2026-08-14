@@ -9,12 +9,14 @@
 #include <set>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "base/check_op.h"
 #include "base/containers/span.h"
 #include "base/containers/to_vector.h"
 #include "base/files/file_path.h"
+#include "base/strings/stringprintf.h"
 #include "base/strings/to_string.h"
 #include "base/test/bind.h"
 #include "base/test/metrics/histogram_tester.h"
@@ -69,6 +71,7 @@ using testing::_;
 using testing::ElementsAre;
 using testing::ElementsAreArray;
 using testing::Field;
+using testing::HasSubstr;
 using testing::InSequence;
 using testing::Matcher;
 using testing::NiceMock;
@@ -162,7 +165,8 @@ constexpr auto kTwoPageVerticalLayoutHorzLinePage1Inputs =
     });
 
 // Commonly used test brush color. The color corresponds to "Yellow 1" for pen
-// brushes and "Light Yellow" for highlighter brushes.
+// brushes and "Light Yellow" for highlighter brushes. It is also "Yellow 1" for
+// text annotations.
 constexpr SkColor kYellow = SkColorSetRGB(0xFD, 0xD6, 0x63);
 
 // Commonly used test brush color and message params. The color corresponds to
@@ -279,7 +283,9 @@ class FakeClient : public PdfInkModuleClient {
   // PdfInkModuleClient:
   MOCK_METHOD(void,
               AddFont,
-              (FontId font_id, base::span<const uint8_t> serialized_typeface),
+              (FontId font_id,
+               const std::string&,
+               base::span<const uint8_t> serialized_typeface),
               (override));
 
   MOCK_METHOD(void,
@@ -1021,7 +1027,7 @@ class PdfInkModuleTextTest : public testing::Test {
     InkTextBox test_box(
         /*id=*/42, InkTextBoxAttributes(
                        /*rect=*/gfx::RectF(10.0f, 20.0f, 100.0f, 15.0f),
-                       /*color=*/SkColorSetRGB(255, 111, 99),
+                       /*color=*/kYellow,
                        /*css_font_size=*/12.0f,
                        /*typeface=*/TextTypeface::kSerif,
                        /*alignment=*/TextAlignment::kCenter,
@@ -1047,8 +1053,9 @@ class PdfInkModuleTextTest : public testing::Test {
 
   static base::DictValue SampleTextAttributesDict() {
     base::DictValue text_attributes;
+    // Color components values for `kYellow`.
     text_attributes.Set(
-        "color", base::DictValue().Set("r", 255).Set("g", 111).Set("b", 99));
+        "color", base::DictValue().Set("r", 253).Set("g", 214).Set("b", 99));
     text_attributes.Set("size", 12.0f);
     text_attributes.Set("typeface", "serif");
     text_attributes.Set("alignment", "center");
@@ -1072,7 +1079,7 @@ class PdfInkModuleTextTest : public testing::Test {
   SampleInkTextBoxAttributesMatcher() {
     return InkTextBoxAttributesEq(
         /*rect=*/gfx::RectF(10.0f, 20.0f, 100.0f, 15.0f),
-        /*color=*/SkColorSetRGB(255, 111, 99),
+        /*color=*/kYellow,
         /*css_font_size=*/12.0f,
         /*typeface=*/TextTypeface::kSerif,
         /*alignment=*/TextAlignment::kCenter,
@@ -1088,7 +1095,7 @@ class PdfInkModuleTextTest : public testing::Test {
                                         PageOrientation viewport_orientation) {
     return InkTextBoxAttributesEq(
         /*rect=*/gfx::RectF(10.0f, 20.0f, 100.0f, 15.0f),
-        /*color=*/SkColorSetRGB(255, 111, 99),
+        /*color=*/kYellow,
         /*css_font_size=*/12.0f,
         /*typeface=*/TextTypeface::kSerif,
         /*alignment=*/TextAlignment::kCenter,
@@ -1131,7 +1138,8 @@ class PdfInkModuleTextTest : public testing::Test {
       base::span<const uint8_t> font_data) {
     return base::DictValue()
         .Set("uniqueId", font_id.value())
-        .Set("serializedTypeface", base::Value(font_data));
+        .Set("serializedTypeface", base::Value(font_data))
+        .Set("name", base::StringPrintf("sample font_id: %d", *font_id));
   }
 
   static base::DictValue SampleFinishTextAnnotationData(int frontend_id,
@@ -1187,6 +1195,73 @@ class PdfInkModuleTextTest : public testing::Test {
             TestAnnotationUndoRedoMessageType::kRedo)));
   }
 
+  void RunNegativeTextAnnotationMetricsTestScenarios(
+      int frontend_id,
+      FontId font_id,
+      int page_index,
+      double pdf_zoom,
+      const base::HistogramTester& histograms,
+      const std::vector<std::pair<std::string, int>>& expected_counts) {
+    {
+      // Starting an edit and aborting it does not record any new histograms.
+      EXPECT_TRUE(
+          ink_module().OnMessage(CreateEditTextAnnotationMessage(frontend_id)));
+      base::DictValue data = SampleFinishTextAnnotationData(
+          frontend_id, font_id, page_index, pdf_zoom);
+      data.Set("isEdited", false);
+
+      EXPECT_TRUE(ink_module().OnMessage(
+          CreateFinishTextAnnotationMessage(std::move(data))));
+
+      for (const auto& [metric_name, count] : expected_counts) {
+        histograms.ExpectTotalCount(metric_name, count);
+      }
+    }
+
+    {
+      // Undo does not record any new histograms.
+      base::DictValue data = SampleFinishTextAnnotationDataWithSource(
+          frontend_id, font_id, page_index, pdf_zoom, /*source=*/"undo");
+      data.Set("text", "");
+
+      EXPECT_TRUE(ink_module().OnMessage(
+          CreateFinishTextAnnotationMessage(std::move(data))));
+      PerformUndo();
+
+      for (const auto& [metric_name, count] : expected_counts) {
+        histograms.ExpectTotalCount(metric_name, count);
+      }
+    }
+
+    {
+      // Redo does not record any new histograms.
+      base::DictValue data = SampleFinishTextAnnotationDataWithSource(
+          frontend_id, font_id, page_index, pdf_zoom, /*source=*/"redo");
+
+      EXPECT_TRUE(ink_module().OnMessage(
+          CreateFinishTextAnnotationMessage(std::move(data))));
+      PerformRedo();
+
+      for (const auto& [metric_name, count] : expected_counts) {
+        histograms.ExpectTotalCount(metric_name, count);
+      }
+    }
+
+    {
+      // Deletion does not record any new histograms.
+      base::DictValue data = SampleFinishTextAnnotationData(
+          frontend_id, font_id, page_index, pdf_zoom);
+      data.Set("text", "");
+
+      EXPECT_TRUE(ink_module().OnMessage(
+          CreateFinishTextAnnotationMessage(std::move(data))));
+
+      for (const auto& [metric_name, count] : expected_counts) {
+        histograms.ExpectTotalCount(metric_name, count);
+      }
+    }
+  }
+
  private:
   base::test::ScopedFeatureList feature_list_;
 
@@ -1208,7 +1283,7 @@ TEST_F(PdfInkModuleTextTest, HandleEditTextAnnotationMessage) {
 
     EXPECT_CALL(client(),
                 DrawText(kPageIndex, kBackendId, _, kAscent, kPdfZoom, _));
-    EXPECT_CALL(client(), AddFont(_, _)).Times(0);
+    EXPECT_CALL(client(), AddFont(_, _, _)).Times(0);
     EXPECT_CALL(client(), UpdateTextActiveAndInvalidate(_, _)).Times(0);
 
     EXPECT_TRUE(ink_module().OnMessage(
@@ -1219,7 +1294,7 @@ TEST_F(PdfInkModuleTextTest, HandleEditTextAnnotationMessage) {
   {
     EXPECT_CALL(client(), UpdateTextActiveAndInvalidate(TextId(kBackendId),
                                                         /*active=*/false));
-    EXPECT_CALL(client(), AddFont(_, _)).Times(0);
+    EXPECT_CALL(client(), AddFont(_, _, _)).Times(0);
     EXPECT_CALL(client(), DrawText(_, _, _, _, _, _)).Times(0);
 
     EXPECT_TRUE(
@@ -1246,7 +1321,8 @@ TEST_F(PdfInkModuleTextTest, HandleFinishTextAnnotationMessageNew) {
   data.Set("newTypefaces", std::move(typefaces));
 
   InSequence seq;
-  EXPECT_CALL(client(), AddFont(kFontId, ElementsAreArray(kTypefaceBlob)));
+  EXPECT_CALL(client(), AddFont(kFontId, HasSubstr(base::ToString(*kFontId)),
+                                ElementsAreArray(kTypefaceBlob)));
   EXPECT_CALL(client(),
               DrawText(kPageIndex, kTextId,
                        ElementsAre(SampleInkTextInfoMatcher(kFontId)), kAscent,
@@ -1256,6 +1332,330 @@ TEST_F(PdfInkModuleTextTest, HandleFinishTextAnnotationMessageNew) {
 
   EXPECT_TRUE(ink_module().OnMessage(
       CreateFinishTextAnnotationMessage(std::move(data))));
+}
+
+TEST_F(PdfInkModuleTextTest, HandleFinishTextAnnotationMessageColorMetrics) {
+  static constexpr int kFrontendId = 5;
+  static constexpr int kPageIndex = 3;
+  static constexpr FontId kFontId(123);
+  static constexpr double kPdfZoom = 2.0;
+  static constexpr auto kTypefaceBlob =
+      std::to_array<const uint8_t>({1, 2, 3, 4});
+
+  base::HistogramTester histograms;
+  histograms.ExpectTotalCount("PDF.Ink2TextAnnotationColor", 0);
+
+  {
+    base::DictValue data = SampleFinishTextAnnotationData(kFrontendId, kFontId,
+                                                          kPageIndex, kPdfZoom);
+
+    base::ListValue typefaces;
+    typefaces.Append(SampleSerializedTypeface(kFontId, kTypefaceBlob));
+    data.Set("newTypefaces", std::move(typefaces));
+
+    // Change color to Cyan1 (#78d9ec)
+    base::DictValue text_attributes = SampleTextAttributesDict();
+    text_attributes.Set(
+        "color", base::DictValue().Set("r", 120).Set("g", 217).Set("b", 236));
+    data.Set("textAttributes", std::move(text_attributes));
+
+    EXPECT_TRUE(ink_module().OnMessage(
+        CreateFinishTextAnnotationMessage(std::move(data))));
+
+    histograms.ExpectUniqueSample("PDF.Ink2TextAnnotationColor",
+                                  TextAnnotationColor::kCyan1, 1);
+  }
+
+  {
+    // Send an edited message with Cyan3 (#12a4af)
+    base::DictValue data = SampleFinishTextAnnotationData(kFrontendId, kFontId,
+                                                          kPageIndex, kPdfZoom);
+    base::ListValue typefaces_edit;
+    typefaces_edit.Append(SampleSerializedTypeface(kFontId, kTypefaceBlob));
+    data.Set("newTypefaces", std::move(typefaces_edit));
+
+    base::DictValue text_attributes_edit = SampleTextAttributesDict();
+    text_attributes_edit.Set(
+        "color", base::DictValue().Set("r", 18).Set("g", 164).Set("b", 175));
+    data.Set("textAttributes", std::move(text_attributes_edit));
+
+    EXPECT_TRUE(ink_module().OnMessage(
+        CreateFinishTextAnnotationMessage(std::move(data))));
+
+    histograms.ExpectBucketCount("PDF.Ink2TextAnnotationColor",
+                                 TextAnnotationColor::kCyan3, 1);
+    histograms.ExpectTotalCount("PDF.Ink2TextAnnotationColor", 2);
+  }
+
+  RunNegativeTextAnnotationMetricsTestScenarios(
+      kFrontendId, kFontId, kPageIndex, kPdfZoom, histograms,
+      {{"PDF.Ink2TextAnnotationColor", 2}});
+}
+
+TEST_F(PdfInkModuleTextTest, HandleFinishTextAnnotationMessageTypefaceMetrics) {
+  static constexpr int kFrontendId = 5;
+  static constexpr int kPageIndex = 3;
+  static constexpr FontId kFontId(123);
+  static constexpr double kPdfZoom = 2.0;
+  static constexpr auto kTypefaceBlob =
+      std::to_array<const uint8_t>({1, 2, 3, 4});
+
+  base::HistogramTester histograms;
+  histograms.ExpectTotalCount("PDF.Ink2TextAnnotationTypeface", 0);
+
+  {
+    base::DictValue data = SampleFinishTextAnnotationData(kFrontendId, kFontId,
+                                                          kPageIndex, kPdfZoom);
+
+    base::ListValue typefaces;
+    typefaces.Append(SampleSerializedTypeface(kFontId, kTypefaceBlob));
+    data.Set("newTypefaces", std::move(typefaces));
+
+    base::DictValue text_attributes = SampleTextAttributesDict();
+    text_attributes.Set("typeface", "sans-serif");
+    data.Set("textAttributes", std::move(text_attributes));
+
+    EXPECT_TRUE(ink_module().OnMessage(
+        CreateFinishTextAnnotationMessage(std::move(data))));
+
+    histograms.ExpectUniqueSample("PDF.Ink2TextAnnotationTypeface",
+                                  TextTypeface::kSansSerif, 1);
+  }
+
+  {
+    // Send an edited message with monospace
+    base::DictValue data = SampleFinishTextAnnotationData(kFrontendId, kFontId,
+                                                          kPageIndex, kPdfZoom);
+    base::ListValue typefaces_edit;
+    typefaces_edit.Append(SampleSerializedTypeface(kFontId, kTypefaceBlob));
+    data.Set("newTypefaces", std::move(typefaces_edit));
+
+    base::DictValue text_attributes_edit = SampleTextAttributesDict();
+    text_attributes_edit.Set("typeface", "monospace");
+    data.Set("textAttributes", std::move(text_attributes_edit));
+
+    EXPECT_TRUE(ink_module().OnMessage(
+        CreateFinishTextAnnotationMessage(std::move(data))));
+
+    histograms.ExpectBucketCount("PDF.Ink2TextAnnotationTypeface",
+                                 TextTypeface::kMonospace, 1);
+    histograms.ExpectTotalCount("PDF.Ink2TextAnnotationTypeface", 2);
+  }
+
+  {
+    // Send another edited message with serif
+    base::DictValue data = SampleFinishTextAnnotationData(kFrontendId, kFontId,
+                                                          kPageIndex, kPdfZoom);
+    base::ListValue typefaces_edit2;
+    typefaces_edit2.Append(SampleSerializedTypeface(kFontId, kTypefaceBlob));
+    data.Set("newTypefaces", std::move(typefaces_edit2));
+
+    base::DictValue text_attributes_edit2 = SampleTextAttributesDict();
+    text_attributes_edit2.Set("typeface", "serif");
+    data.Set("textAttributes", std::move(text_attributes_edit2));
+
+    EXPECT_TRUE(ink_module().OnMessage(
+        CreateFinishTextAnnotationMessage(std::move(data))));
+
+    histograms.ExpectBucketCount("PDF.Ink2TextAnnotationTypeface",
+                                 TextTypeface::kSerif, 1);
+    histograms.ExpectTotalCount("PDF.Ink2TextAnnotationTypeface", 3);
+  }
+
+  RunNegativeTextAnnotationMetricsTestScenarios(
+      kFrontendId, kFontId, kPageIndex, kPdfZoom, histograms,
+      {{"PDF.Ink2TextAnnotationTypeface", 3}});
+}
+
+TEST_F(PdfInkModuleTextTest,
+       HandleFinishTextAnnotationMessageAlignmentMetrics) {
+  static constexpr int kFrontendId = 5;
+  static constexpr int kPageIndex = 3;
+  static constexpr FontId kFontId(123);
+  static constexpr double kPdfZoom = 2.0;
+  static constexpr auto kTypefaceBlob =
+      std::to_array<const uint8_t>({1, 2, 3, 4});
+
+  base::HistogramTester histograms;
+  histograms.ExpectTotalCount("PDF.Ink2TextAnnotationAlignment", 0);
+
+  {
+    // Send an edited message with left alignment.
+    base::DictValue data = SampleFinishTextAnnotationData(kFrontendId, kFontId,
+                                                          kPageIndex, kPdfZoom);
+
+    base::ListValue typefaces;
+    typefaces.Append(SampleSerializedTypeface(kFontId, kTypefaceBlob));
+    data.Set("newTypefaces", std::move(typefaces));
+
+    base::DictValue text_attributes = SampleTextAttributesDict();
+    text_attributes.Set("alignment", "left");
+    data.Set("textAttributes", std::move(text_attributes));
+
+    EXPECT_TRUE(ink_module().OnMessage(
+        CreateFinishTextAnnotationMessage(std::move(data))));
+
+    histograms.ExpectUniqueSample("PDF.Ink2TextAnnotationAlignment",
+                                  TextAlignment::kLeft, 1);
+  }
+
+  {
+    // Send an edited message with center alignment.
+    base::DictValue data = SampleFinishTextAnnotationData(kFrontendId, kFontId,
+                                                          kPageIndex, kPdfZoom);
+    base::ListValue typefaces_edit;
+    typefaces_edit.Append(SampleSerializedTypeface(kFontId, kTypefaceBlob));
+    data.Set("newTypefaces", std::move(typefaces_edit));
+
+    base::DictValue text_attributes_edit = SampleTextAttributesDict();
+    text_attributes_edit.Set("alignment", "center");
+    data.Set("textAttributes", std::move(text_attributes_edit));
+
+    EXPECT_TRUE(ink_module().OnMessage(
+        CreateFinishTextAnnotationMessage(std::move(data))));
+
+    histograms.ExpectBucketCount("PDF.Ink2TextAnnotationAlignment",
+                                 TextAlignment::kCenter, 1);
+    histograms.ExpectTotalCount("PDF.Ink2TextAnnotationAlignment", 2);
+  }
+
+  {
+    // Send an edited message with right alignment.
+    base::DictValue data = SampleFinishTextAnnotationData(kFrontendId, kFontId,
+                                                          kPageIndex, kPdfZoom);
+    base::ListValue typefaces_edit2;
+    typefaces_edit2.Append(SampleSerializedTypeface(kFontId, kTypefaceBlob));
+    data.Set("newTypefaces", std::move(typefaces_edit2));
+
+    base::DictValue text_attributes_edit2 = SampleTextAttributesDict();
+    text_attributes_edit2.Set("alignment", "right");
+    data.Set("textAttributes", std::move(text_attributes_edit2));
+
+    EXPECT_TRUE(ink_module().OnMessage(
+        CreateFinishTextAnnotationMessage(std::move(data))));
+
+    histograms.ExpectBucketCount("PDF.Ink2TextAnnotationAlignment",
+                                 TextAlignment::kRight, 1);
+    histograms.ExpectTotalCount("PDF.Ink2TextAnnotationAlignment", 3);
+  }
+
+  RunNegativeTextAnnotationMetricsTestScenarios(
+      kFrontendId, kFontId, kPageIndex, kPdfZoom, histograms,
+      {{"PDF.Ink2TextAnnotationAlignment", 3}});
+}
+
+TEST_F(PdfInkModuleTextTest, HandleFinishTextAnnotationMessageStyleMetrics) {
+  static constexpr int kFrontendId = 5;
+  static constexpr int kPageIndex = 3;
+  static constexpr FontId kFontId(123);
+  static constexpr double kPdfZoom = 2.0;
+  static constexpr auto kTypefaceBlob =
+      std::to_array<const uint8_t>({1, 2, 3, 4});
+
+  base::HistogramTester histograms;
+  histograms.ExpectTotalCount("PDF.Ink2TextAnnotationBold", 0);
+  histograms.ExpectTotalCount("PDF.Ink2TextAnnotationItalic", 0);
+
+  {
+    // Send an edited message with bold=true, italic=true.
+    base::DictValue data = SampleFinishTextAnnotationData(kFrontendId, kFontId,
+                                                          kPageIndex, kPdfZoom);
+
+    base::ListValue typefaces;
+    typefaces.Append(SampleSerializedTypeface(kFontId, kTypefaceBlob));
+    data.Set("newTypefaces", std::move(typefaces));
+
+    base::DictValue text_attributes = SampleTextAttributesDict();
+    text_attributes.Set(
+        "styles", base::DictValue().Set("bold", true).Set("italic", false));
+    data.Set("textAttributes", std::move(text_attributes));
+
+    EXPECT_TRUE(ink_module().OnMessage(
+        CreateFinishTextAnnotationMessage(std::move(data))));
+
+    histograms.ExpectUniqueSample("PDF.Ink2TextAnnotationBold", true, 1);
+    histograms.ExpectUniqueSample("PDF.Ink2TextAnnotationItalic", false, 1);
+  }
+
+  {
+    // Send an edited message with bold=false, italic=true.
+    base::DictValue data = SampleFinishTextAnnotationData(kFrontendId, kFontId,
+                                                          kPageIndex, kPdfZoom);
+    base::ListValue typefaces_edit;
+    typefaces_edit.Append(SampleSerializedTypeface(kFontId, kTypefaceBlob));
+    data.Set("newTypefaces", std::move(typefaces_edit));
+
+    base::DictValue text_attributes_edit = SampleTextAttributesDict();
+    text_attributes_edit.Set(
+        "styles", base::DictValue().Set("bold", false).Set("italic", true));
+    data.Set("textAttributes", std::move(text_attributes_edit));
+
+    EXPECT_TRUE(ink_module().OnMessage(
+        CreateFinishTextAnnotationMessage(std::move(data))));
+
+    histograms.ExpectBucketCount("PDF.Ink2TextAnnotationBold", false, 1);
+    histograms.ExpectBucketCount("PDF.Ink2TextAnnotationItalic", true, 1);
+    histograms.ExpectTotalCount("PDF.Ink2TextAnnotationBold", 2);
+    histograms.ExpectTotalCount("PDF.Ink2TextAnnotationItalic", 2);
+  }
+
+  RunNegativeTextAnnotationMetricsTestScenarios(
+      kFrontendId, kFontId, kPageIndex, kPdfZoom, histograms,
+      {{"PDF.Ink2TextAnnotationBold", 2}, {"PDF.Ink2TextAnnotationItalic", 2}});
+}
+
+TEST_F(PdfInkModuleTextTest, HandleFinishTextAnnotationMessageSizeMetrics) {
+  static constexpr int kFrontendId = 5;
+  static constexpr int kPageIndex = 3;
+  static constexpr FontId kFontId(123);
+  static constexpr double kPdfZoom = 2.0;
+  static constexpr auto kTypefaceBlob =
+      std::to_array<const uint8_t>({1, 2, 3, 4});
+
+  base::HistogramTester histograms;
+  histograms.ExpectTotalCount("PDF.Ink2TextAnnotationSize", 0);
+
+  {
+    // Send an edited message with size 12.
+    base::DictValue data = SampleFinishTextAnnotationData(kFrontendId, kFontId,
+                                                          kPageIndex, kPdfZoom);
+
+    base::ListValue typefaces;
+    typefaces.Append(SampleSerializedTypeface(kFontId, kTypefaceBlob));
+    data.Set("newTypefaces", std::move(typefaces));
+
+    base::DictValue text_attributes = SampleTextAttributesDict();
+    text_attributes.Set("size", 12.0f);
+    data.Set("textAttributes", std::move(text_attributes));
+
+    EXPECT_TRUE(ink_module().OnMessage(
+        CreateFinishTextAnnotationMessage(std::move(data))));
+
+    histograms.ExpectUniqueSample("PDF.Ink2TextAnnotationSize", 12, 1);
+  }
+
+  {
+    // Send an edited message with size 25.
+    base::DictValue data = SampleFinishTextAnnotationData(kFrontendId, kFontId,
+                                                          kPageIndex, kPdfZoom);
+    base::ListValue typefaces_edit;
+    typefaces_edit.Append(SampleSerializedTypeface(kFontId, kTypefaceBlob));
+    data.Set("newTypefaces", std::move(typefaces_edit));
+
+    base::DictValue text_attributes_edit = SampleTextAttributesDict();
+    text_attributes_edit.Set("size", 25.0f);
+    data.Set("textAttributes", std::move(text_attributes_edit));
+
+    EXPECT_TRUE(ink_module().OnMessage(
+        CreateFinishTextAnnotationMessage(std::move(data))));
+
+    histograms.ExpectBucketCount("PDF.Ink2TextAnnotationSize", 25, 1);
+    histograms.ExpectTotalCount("PDF.Ink2TextAnnotationSize", 2);
+  }
+
+  RunNegativeTextAnnotationMetricsTestScenarios(
+      kFrontendId, kFontId, kPageIndex, kPdfZoom, histograms,
+      {{"PDF.Ink2TextAnnotationSize", 2}});
 }
 
 TEST_F(PdfInkModuleTextTest, HandleFinishTextAnnotationMessageNoEdit) {
@@ -1277,7 +1677,8 @@ TEST_F(PdfInkModuleTextTest, HandleFinishTextAnnotationMessageNoEdit) {
     data.Set("newTypefaces", std::move(typefaces));
 
     InSequence seq;
-    EXPECT_CALL(client(), AddFont(kFontId, ElementsAreArray(kTypefaceBlob)));
+    EXPECT_CALL(client(), AddFont(kFontId, HasSubstr(base::ToString(*kFontId)),
+                                  ElementsAreArray(kTypefaceBlob)));
     EXPECT_CALL(
         client(),
         DrawText(kPageIndex, kTextId0,
@@ -1299,7 +1700,7 @@ TEST_F(PdfInkModuleTextTest, HandleFinishTextAnnotationMessageNoEdit) {
 
     EXPECT_CALL(client(), UpdateTextActiveAndInvalidate(TextId(kTextId0),
                                                         /*active=*/true));
-    EXPECT_CALL(client(), AddFont(_, _)).Times(0);
+    EXPECT_CALL(client(), AddFont(_, _, _)).Times(0);
     EXPECT_CALL(client(), DiscardText(_)).Times(0);
     EXPECT_CALL(client(), DrawText(_, _, _, _, _, _)).Times(0);
     EXPECT_CALL(client(), RequestThumbnail(_, _)).Times(0);
@@ -1330,7 +1731,8 @@ TEST_F(PdfInkModuleTextTest, HandleFinishTextAnnotationMessageEdit) {
     data.Set("newTypefaces", std::move(typefaces));
 
     InSequence seq;
-    EXPECT_CALL(client(), AddFont(kFontId, ElementsAreArray(kTypefaceBlob)));
+    EXPECT_CALL(client(), AddFont(kFontId, HasSubstr(base::ToString(*kFontId)),
+                                  ElementsAreArray(kTypefaceBlob)));
     EXPECT_CALL(
         client(),
         DrawText(kPageIndex, kTextId0,
@@ -1360,7 +1762,7 @@ TEST_F(PdfInkModuleTextTest, HandleFinishTextAnnotationMessageEdit) {
                  kPdfZoom,
                  InkTextBoxAttributesEq(
                      /*rect=*/gfx::RectF(10.0f, 20.0f, 100.0f, 15.0f),
-                     /*color=*/SkColorSetRGB(255, 111, 99),
+                     /*color=*/kYellow,
                      /*css_font_size=*/12.0f,
                      /*typeface=*/TextTypeface::kSerif,
                      /*alignment=*/TextAlignment::kCenter,
@@ -1370,7 +1772,7 @@ TEST_F(PdfInkModuleTextTest, HandleFinishTextAnnotationMessageEdit) {
                      /*is_italic=*/true,
                      /*text=*/"ah")));
     EXPECT_CALL(client(), RequestThumbnail(kPageIndex, _));
-    EXPECT_CALL(client(), AddFont(_, _)).Times(0);
+    EXPECT_CALL(client(), AddFont(_, _, _)).Times(0);
 
     EXPECT_TRUE(ink_module().OnMessage(
         CreateFinishTextAnnotationMessage(std::move(data))));
@@ -1397,7 +1799,7 @@ TEST_F(PdfInkModuleTextTest, HandleFinishTextAnnotationMessageDelete) {
     data.Set("newTypefaces", std::move(typefaces));
 
     InSequence seq;
-    EXPECT_CALL(client(), AddFont(kFontId, ElementsAreArray(kTypefaceBlob)));
+    EXPECT_CALL(client(), AddFont(kFontId, _, ElementsAreArray(kTypefaceBlob)));
     EXPECT_CALL(
         client(),
         DrawText(kPageIndex, kTextId,
@@ -1422,7 +1824,7 @@ TEST_F(PdfInkModuleTextTest, HandleFinishTextAnnotationMessageDelete) {
                                                         /*active=*/false));
     EXPECT_CALL(client(), DiscardText(kTextId));
     EXPECT_CALL(client(), RequestThumbnail(kPageIndex, _));
-    EXPECT_CALL(client(), AddFont(_, _)).Times(0);
+    EXPECT_CALL(client(), AddFont(_, _, _)).Times(0);
     EXPECT_CALL(client(), DrawText(_, _, _, _, _, _)).Times(0);
 
     EXPECT_TRUE(ink_module().OnMessage(
@@ -1453,7 +1855,7 @@ TEST_F(PdfInkModuleTextTest,
     data.Set("newTypefaces", std::move(typefaces));
 
     InSequence seq;
-    EXPECT_CALL(client(), AddFont(kFontId, ElementsAreArray(kTypefaceBlob)));
+    EXPECT_CALL(client(), AddFont(kFontId, _, ElementsAreArray(kTypefaceBlob)));
     EXPECT_CALL(
         client(),
         DrawText(kPageIndex, kTextId0,
@@ -1480,7 +1882,7 @@ TEST_F(PdfInkModuleTextTest,
                                                         /*active=*/false));
     EXPECT_CALL(client(), DiscardText(kTextId0));
     EXPECT_CALL(client(), RequestThumbnail(kPageIndex, _));
-    EXPECT_CALL(client(), AddFont(_, _)).Times(0);
+    EXPECT_CALL(client(), AddFont(_, _, _)).Times(0);
     EXPECT_CALL(client(), DrawText(_, _, _, _, _, _)).Times(0);
 
     EXPECT_TRUE(ink_module().OnMessage(
@@ -1501,7 +1903,7 @@ TEST_F(PdfInkModuleTextTest,
                  ElementsAre(SampleInkTextInfoMatcher(kFontId)), kAscent,
                  kPdfZoom, SampleInkTextBoxAttributesMatcher()));
     EXPECT_CALL(client(), RequestThumbnail(kPageIndex, _));
-    EXPECT_CALL(client(), AddFont(_, _)).Times(0);
+    EXPECT_CALL(client(), AddFont(_, _, _)).Times(0);
     EXPECT_CALL(client(), DiscardText(_)).Times(0);
     EXPECT_CALL(client(), UpdateTextActiveAndInvalidate(_, _)).Times(0);
 
@@ -1527,7 +1929,7 @@ TEST_F(PdfInkModuleTextTest,
                  ElementsAre(SampleInkTextInfoMatcher(kFontId)), kAscent,
                  kPdfZoom, SampleInkTextBoxAttributesMatcher()));
     EXPECT_CALL(client(), RequestThumbnail(kPageIndex, _));
-    EXPECT_CALL(client(), AddFont(_, _)).Times(0);
+    EXPECT_CALL(client(), AddFont(_, _, _)).Times(0);
 
     EXPECT_TRUE(ink_module().OnMessage(
         CreateFinishTextAnnotationMessage(std::move(data))));
@@ -1550,7 +1952,7 @@ TEST_F(PdfInkModuleTextTest,
                  ElementsAre(SampleInkTextInfoMatcher(kFontId)), kAscent,
                  kPdfZoom, SampleInkTextBoxAttributesMatcher()));
     EXPECT_CALL(client(), RequestThumbnail(kPageIndex, _));
-    EXPECT_CALL(client(), AddFont(_, _)).Times(0);
+    EXPECT_CALL(client(), AddFont(_, _, _)).Times(0);
 
     EXPECT_TRUE(ink_module().OnMessage(
         CreateFinishTextAnnotationMessage(std::move(data))));
@@ -1570,7 +1972,7 @@ TEST_F(PdfInkModuleTextTest,
                                                         /*active=*/false));
     EXPECT_CALL(client(), DiscardText(kTextId0));
     EXPECT_CALL(client(), RequestThumbnail(kPageIndex, _));
-    EXPECT_CALL(client(), AddFont(_, _)).Times(0);
+    EXPECT_CALL(client(), AddFont(_, _, _)).Times(0);
     EXPECT_CALL(client(), DrawText(_, _, _, _, _, _)).Times(0);
 
     EXPECT_TRUE(ink_module().OnMessage(
@@ -1593,7 +1995,7 @@ TEST_F(PdfInkModuleTextTest,
                  ElementsAre(SampleInkTextInfoMatcher(kFontId)), kAscent,
                  kPdfZoom, SampleInkTextBoxAttributesMatcher()));
     EXPECT_CALL(client(), RequestThumbnail(kPageIndex, _));
-    EXPECT_CALL(client(), AddFont(_, _)).Times(0);
+    EXPECT_CALL(client(), AddFont(_, _, _)).Times(0);
     EXPECT_CALL(client(), DiscardText(_)).Times(0);
     EXPECT_CALL(client(), UpdateTextActiveAndInvalidate(_, _)).Times(0);
 
@@ -1624,7 +2026,7 @@ TEST_F(PdfInkModuleTextTest,
     data.Set("newTypefaces", std::move(typefaces));
 
     InSequence seq;
-    EXPECT_CALL(client(), AddFont(kFontId, ElementsAreArray(kTypefaceBlob)));
+    EXPECT_CALL(client(), AddFont(kFontId, _, ElementsAreArray(kTypefaceBlob)));
     EXPECT_CALL(
         client(),
         DrawText(kPageIndex, kTextId0,
@@ -1648,7 +2050,7 @@ TEST_F(PdfInkModuleTextTest,
     EXPECT_CALL(client(), UpdateTextActiveAndInvalidate(TextId(kTextId0),
                                                         /*active=*/false));
     EXPECT_CALL(client(), DiscardText(kTextId0));
-    EXPECT_CALL(client(), AddFont(_, _)).Times(0);
+    EXPECT_CALL(client(), AddFont(_, _, _)).Times(0);
     EXPECT_CALL(client(), DrawText(_, _, _, _, _, _)).Times(0);
 
     EXPECT_TRUE(ink_module().OnMessage(
@@ -1666,7 +2068,7 @@ TEST_F(PdfInkModuleTextTest,
         DrawText(kPageIndex, kTextId0,
                  ElementsAre(SampleInkTextInfoMatcher(kFontId)), kAscent,
                  kPdfZoom, SampleInkTextBoxAttributesMatcher()));
-    EXPECT_CALL(client(), AddFont(_, _)).Times(0);
+    EXPECT_CALL(client(), AddFont(_, _, _)).Times(0);
     EXPECT_CALL(client(), DiscardText(_)).Times(0);
     EXPECT_CALL(client(), UpdateTextActiveAndInvalidate(_, _)).Times(0);
 
@@ -1686,7 +2088,7 @@ TEST_F(PdfInkModuleTextTest,
     EXPECT_CALL(client(), UpdateTextActiveAndInvalidate(TextId(kTextId0),
                                                         /*active=*/false));
     EXPECT_CALL(client(), DiscardText(kTextId0));
-    EXPECT_CALL(client(), AddFont(_, _)).Times(0);
+    EXPECT_CALL(client(), AddFont(_, _, _)).Times(0);
     EXPECT_CALL(client(), DrawText(_, _, _, _, _, _)).Times(0);
 
     EXPECT_TRUE(ink_module().OnMessage(
@@ -1722,7 +2124,7 @@ TEST_F(PdfInkModuleTextTest,
                                                         /*active=*/false));
     EXPECT_CALL(client(),
                 DrawText(kPageIndex, kNewTextId, _, kAscent, kPdfZoom, _));
-    EXPECT_CALL(client(), AddFont(_, _)).Times(0);
+    EXPECT_CALL(client(), AddFont(_, _, _)).Times(0);
     EXPECT_CALL(client(), DiscardText(_)).Times(0);
 
     EXPECT_TRUE(ink_module().OnMessage(
@@ -1744,7 +2146,7 @@ TEST_F(PdfInkModuleTextTest,
     EXPECT_CALL(client(), DiscardText(kNewTextId));
     EXPECT_CALL(client(), UpdateTextActiveAndInvalidate(TextId(kLoadedTextId),
                                                         /*active=*/true));
-    EXPECT_CALL(client(), AddFont(_, _)).Times(0);
+    EXPECT_CALL(client(), AddFont(_, _, _)).Times(0);
     EXPECT_CALL(client(), DrawText(_, _, _, _, _, _)).Times(0);
 
     EXPECT_TRUE(ink_module().OnMessage(
@@ -1765,7 +2167,7 @@ TEST_F(PdfInkModuleTextTest,
                                                         /*active=*/false));
     EXPECT_CALL(client(),
                 DrawText(kPageIndex, kNewTextId, _, kAscent, kPdfZoom, _));
-    EXPECT_CALL(client(), AddFont(_, _)).Times(0);
+    EXPECT_CALL(client(), AddFont(_, _, _)).Times(0);
     EXPECT_CALL(client(), DiscardText(_)).Times(0);
 
     EXPECT_TRUE(ink_module().OnMessage(
@@ -1808,7 +2210,7 @@ TEST_F(PdfInkModuleTextTest,
     InSequence seq;
     EXPECT_CALL(client(), UpdateTextActiveAndInvalidate(TextId(kLoadedTextId),
                                                         /*active=*/false));
-    EXPECT_CALL(client(), AddFont(kFontId, ElementsAreArray(kTypefaceBlob)));
+    EXPECT_CALL(client(), AddFont(kFontId, _, ElementsAreArray(kTypefaceBlob)));
     EXPECT_CALL(client(),
                 DrawText(kPageIndex, kTextId0,
                          ElementsAre(SampleInkTextInfoMatcher(kFontId)),
@@ -1894,7 +2296,7 @@ TEST_F(PdfInkModuleTextTest,
     data.Set("newTypefaces", std::move(typefaces));
 
     InSequence seq;
-    EXPECT_CALL(client(), AddFont(kFontId, ElementsAreArray(kTypefaceBlob)));
+    EXPECT_CALL(client(), AddFont(kFontId, _, ElementsAreArray(kTypefaceBlob)));
     EXPECT_CALL(client(),
                 DrawText(kPageIndex, kTextId0,
                          ElementsAre(SampleInkTextInfoMatcher(kFontId)),
@@ -1976,7 +2378,7 @@ TEST_F(PdfInkModuleTextTest,
     data.Set("newTypefaces", std::move(typefaces));
 
     InSequence seq;
-    EXPECT_CALL(client(), AddFont(kFontId, ElementsAreArray(kTypefaceBlob)));
+    EXPECT_CALL(client(), AddFont(kFontId, _, ElementsAreArray(kTypefaceBlob)));
     EXPECT_CALL(client(),
                 DrawText(kPageIndex, kTextId0,
                          ElementsAre(SampleInkTextInfoMatcher(kFontId)),

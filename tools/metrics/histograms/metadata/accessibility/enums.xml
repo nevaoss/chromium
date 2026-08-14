@@ -1650,7 +1650,7 @@ Unknown properties are collapsed to zero. -->
   <int value="3" label="Content Too Short"/>
 </enum>
 
-<!-- LINT.ThenChange(//components/dom_distiller/core/distiller_page.cc:DistillationParseResult) -->
+<!-- LINT.ThenChange(//components/dom_distiller/core/distiller_page.h:DistillationParseResult) -->
 
 <!-- LINT.IfChange(DistillationResult)-->
 
@@ -1794,6 +1794,7 @@ Unknown properties are collapsed to zero. -->
   <int value="63" label="Zoom in (Visual/Legacy) (deprecated)"/>
   <int value="64" label="Zoom out (Visual/Legacy) (deprecated)"/>
   <int value="65" label="Focus on the app menu button in toolbar"/>
+  <int value="66" label="Tab search start anchored side UI"/>
 </enum>
 
 <!-- LINT.ThenChange(//chrome/android/java/src/org/chromium/chrome/browser/KeyboardShortcuts.java:KeyboardShortcutsSemanticMeaning) -->
@@ -2139,6 +2140,7 @@ Unknown properties are collapsed to zero. -->
   <int value="4" label="Not Used"/>
   <int value="5" label="MediaApp"/>
   <int value="6" label="Screenshot Text Detection"/>
+  <int value="7" label="Canvas"/>
 </enum>
 
 <!-- LINT.ThenChange(//services/screen_ai/screen_ai_service_impl.cc:OCRClientType) -->
@@ -2370,6 +2372,14 @@ Unknown properties are collapsed to zero. -->
 
 <!-- LINT.ThenChange(//chrome/renderer/accessibility/read_anything/read_anything_app_model.cc:ReadAnythingScrollEvent) -->
 
+<!-- LINT.IfChange(ReadAnythingSettingsAction) -->
+
+<enum name="ReadAnythingSettingsAction">
+  <int value="0" label="Translate entrypoint"/>
+</enum>
+
+<!-- LINT.ThenChange(//chrome/browser/resources/side_panel/read_anything/shared/metrics_browser_proxy.ts:ReadAnythingSettingsAction) -->
+
 <!-- LINT.IfChange(ReadAnythingSettingsChange) -->
 
 <enum name="ReadAnythingSettingsChange">
@@ -2383,6 +2393,7 @@ Unknown properties are collapsed to zero. -->
   <int value="7" label="Line focus change (Deprecated)"/>
   <int value="8" label="Line focus style change"/>
   <int value="9" label="Line focus movement change"/>
+  <int value="10" label="Line focus toggle"/>
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/resources/side_panel/read_anything/shared/metrics_browser_proxy.ts:ReadAnythingSettingsChange) -->

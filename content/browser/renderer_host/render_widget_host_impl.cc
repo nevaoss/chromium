@@ -96,6 +96,8 @@
 #include "content/public/browser/content_browser_client.h"
 #include "content/public/browser/device_service.h"
 #include "content/public/browser/disallow_activation_reason.h"
+#include "content/public/browser/global_dom_node_id.h"
+#include "content/public/browser/gpu_data_manager.h"
 #include "content/public/browser/keyboard_event_processing_result.h"
 #include "content/public/browser/peak_gpu_memory_tracker_factory.h"
 #include "content/public/browser/render_frame_metadata_provider.h"
@@ -660,13 +662,13 @@ void RenderWidgetHostImpl::SendScreenRects() {
     return;
   }
 
-  if (last_view_screen_rect_ == view_->GetViewBounds() &&
-      last_window_screen_rect_ == view_->GetBoundsInRootWindow()) {
+  if (last_view_screen_rect_ == view_->GetViewBoundsWithoutTransform() &&
+      last_window_screen_rect_ == view_->GetBoundsInScreenWithoutTransform()) {
     return;
   }
 
-  last_view_screen_rect_ = view_->GetViewBounds();
-  last_window_screen_rect_ = view_->GetBoundsInRootWindow();
+  last_view_screen_rect_ = view_->GetViewBoundsWithoutTransform();
+  last_window_screen_rect_ = view_->GetBoundsInScreenWithoutTransform();
   blink_widget_->UpdateScreenRects(
       last_view_screen_rect_, last_window_screen_rect_,
       base::BindOnce(&RenderWidgetHostImpl::OnUpdateScreenRectsAck,
@@ -1056,6 +1058,15 @@ blink::VisualProperties RenderWidgetHostImpl::GetVisualProperties() {
   visual_properties.screen_infos = GetScreenInfos();
   auto& current_screen_info = visual_properties.screen_infos.mutable_current();
 
+  // If hardware acceleration is disabled then do not report the display as
+  // HDR or high bit depth because it is too resource intensive to run on the
+  // CPU.
+  if (!GpuDataManager::GetInstance()->HardwareAccelerationEnabled()) {
+    for (auto& screen_info : visual_properties.screen_infos.screen_infos) {
+      display::DisplayUtil::DisableHdrAndHighBitDepth(&screen_info);
+    }
+  }
+
   // For testing, override the raster color profile.
   // Note: this needs to be done here and not earlier in the pipeline because
   // Mac uses the display color space to update an NSSurface and this setting
@@ -1071,6 +1082,7 @@ blink::VisualProperties RenderWidgetHostImpl::GetVisualProperties() {
 
   if (is_frame_widget) {
     visual_properties.display_mode = delegate_->GetDisplayMode();
+    visual_properties.application_context = delegate_->GetApplicationContext();
   } else {
     visual_properties.display_mode = blink::mojom::DisplayMode::kBrowser;
   }
@@ -1404,6 +1416,22 @@ void RenderWidgetHostImpl::Blur() {
 
   if (!focused_widget) {
     focused_widget = this;
+  }
+  // `GetRenderWidgetHostWithPageFocus()` always returns a main frame's widget.
+  // If this widget is itself a main frame widget (it has an `owner_delegate_`)
+  // but page focus is held by a *different* main frame in the *same* FrameTree,
+  // then this is an outgoing page being swapped out for another page in the
+  // same tab, e.g. while restoring a page from the back-forward cache. Hiding
+  // the outgoing view can route a page-level blur to the page that just gained
+  // focus; forwarding it would spuriously toggle that page's focus and fire
+  // blur/focus events on its focused element, even though a BFCached page's
+  // focused area must be preserved. Skip the blur in that case. Note this is
+  // restricted to the same FrameTree so that legitimate cross-WebContents focus
+  // changes (e.g. focusing the omnibox while an inner page is focused) still
+  // propagate the blur.
+  if (owner_delegate_ && focused_widget != this &&
+      focused_widget->frame_tree() == frame_tree_) {
+    return;
   }
   focused_widget->SetPageFocus(false);
 }
@@ -2400,7 +2428,8 @@ void RenderWidgetHostImpl::ImeSetComposition(
   // Passing null callback since it is only needed for Devtools
   GetWidgetInputHandler()->ImeSetComposition(
       text, ime_text_spans, replacement_range, selection_start, selection_end,
-      ime_state, base::OnceClosure());
+      ime_state, /*target_dom_node_id=*/blink::DOMNodeIdType(),
+      base::OnceClosure());
 #if BUILDFLAG(IS_ANDROID)
   for (auto& observer : ime_input_event_observers_) {
     observer.OnImeSetComposingTextEvent(text);
@@ -2414,9 +2443,9 @@ void RenderWidgetHostImpl::ImeCommitText(
     const gfx::Range& replacement_range,
     int relative_cursor_pos) {
   // Passing null callback since it is only needed for Devtools
-  GetWidgetInputHandler()->ImeCommitText(text, ime_text_spans,
-                                         replacement_range, relative_cursor_pos,
-                                         base::OnceClosure());
+  GetWidgetInputHandler()->ImeCommitText(
+      text, ime_text_spans, replacement_range, relative_cursor_pos,
+      /*target_dom_node_id=*/blink::DOMNodeIdType(), base::OnceClosure());
 #if BUILDFLAG(IS_ANDROID)
   for (auto& observer : ime_input_event_observers_) {
     observer.OnImeTextCommittedEvent(text);
@@ -2438,23 +2467,26 @@ void RenderWidgetHostImpl::ImeCancelComposition() {
   GetWidgetInputHandler()->ImeSetComposition(
       std::u16string(), std::vector<ui::ImeTextSpan>(),
       gfx::Range::InvalidRange(), 0, 0, blink::mojom::ImeState::kNone,
-      base::OnceClosure());
+      /*target_dom_node_id=*/blink::DOMNodeIdType(), base::OnceClosure());
 }
 
 void RenderWidgetHostImpl::SetExternallySourcedComposition(
     const std::u16string& text,
-    const std::vector<ui::ImeTextSpan>& ime_text_spans) {
+    const std::vector<ui::ImeTextSpan>& ime_text_spans,
+    const GlobalDOMNodeId& target_dom_node_id) {
   int length = text.length();
   GetWidgetInputHandler()->ImeSetComposition(
       text, ime_text_spans, gfx::Range::InvalidRange(), length, length,
-      blink::mojom::ImeState::kNone, base::OnceClosure());
+      blink::mojom::ImeState::kNone, target_dom_node_id.target_element_dom_id,
+      base::OnceClosure());
 }
 
 void RenderWidgetHostImpl::CommitExternallySourcedComposition(
-    const std::u16string& text) {
-  GetWidgetInputHandler()->ImeCommitText(text, std::vector<ui::ImeTextSpan>(),
-                                         gfx::Range::InvalidRange(), 0,
-                                         base::OnceClosure());
+    const std::u16string& text,
+    const GlobalDOMNodeId& target_dom_node_id) {
+  GetWidgetInputHandler()->ImeCommitText(
+      text, std::vector<ui::ImeTextSpan>(), gfx::Range::InvalidRange(), 0,
+      target_dom_node_id.target_element_dom_id, base::OnceClosure());
 }
 
 void RenderWidgetHostImpl::RejectPointerLockOrUnlockIfNecessary(
@@ -2864,9 +2896,8 @@ void RenderWidgetHostImpl::ShowPopup(const gfx::Rect& initial_screen_rect,
   // `delegate_` may be null since this message may be received from when
   // the delegate shutdown but this widget is not yet destroyed.
   if (delegate_) {
-    delegate_->ShowCreatedWidget(GetProcess()->GetDeprecatedID(),
-                                 GetRoutingID(), initial_screen_rect,
-                                 anchor_screen_rect);
+    delegate_->ShowCreatedWidget(GetProcess()->GetID(), GetRoutingID(),
+                                 initial_screen_rect, anchor_screen_rect);
   }
   std::move(callback).Run();
 }
@@ -2910,8 +2941,8 @@ void RenderWidgetHostImpl::OnUpdateScreenRectsAck() {
 
   view_->SendInitialPropertiesIfNeeded();
 
-  if (view_->GetViewBounds() == last_view_screen_rect_ &&
-      view_->GetBoundsInRootWindow() == last_window_screen_rect_) {
+  if (view_->GetViewBoundsWithoutTransform() == last_view_screen_rect_ &&
+      view_->GetBoundsInScreenWithoutTransform() == last_window_screen_rect_) {
     return;
   }
 
@@ -3218,6 +3249,8 @@ bool RenderWidgetHostImpl::StoredVisualPropertiesNeedsUpdate(
              new_visual_properties.is_fullscreen_granted ||
          old_visual_properties->display_mode !=
              new_visual_properties.display_mode ||
+         old_visual_properties->application_context !=
+             new_visual_properties.application_context ||
          old_visual_properties->window_show_state !=
              new_visual_properties.window_show_state ||
          old_visual_properties->resizable != new_visual_properties.resizable ||
@@ -3484,6 +3517,14 @@ void RenderWidgetHostImpl::SetAutoscrollSelectionActiveInMainFrame(
     mojo::ReportBadMessage(
         "|SetAutoscrollSelectionActiveInMainFrame| should only be invoked on "
         "main frame's RenderWidgetHost");
+    return;
+  }
+
+  // Only the outermost main frame should request this. Main frames of inner
+  // frame trees (e.g. fenced frames, guest views) share the outer WebContents'
+  // input event router, but should not be allowed to trigger mouse-up routing
+  // to the outermost root view.
+  if (!frame_tree_ || !frame_tree_->is_primary()) {
     return;
   }
 
@@ -4224,15 +4265,18 @@ void RenderWidgetHostImpl::AnimateDoubleTapZoomInMainFrame(
   }
 
   gfx::Rect view_local_bounds(view_->GetViewBounds().size());
-  if (!view_local_bounds.IsEmpty() &&
-      (!view_local_bounds.Contains(point) ||
-       !view_local_bounds.Intersects(rect_to_zoom))) {
+  if (!view_local_bounds.Contains(point)) {
+    return;
+  }
+  gfx::Rect clipped_rect_to_zoom(rect_to_zoom);
+  clipped_rect_to_zoom.Intersect(view_local_bounds);
+  if (clipped_rect_to_zoom.IsEmpty()) {
     return;
   }
 
   auto* root_view = view_->GetRootView();
   gfx::Point transformed_point(point);
-  gfx::Rect transformed_rect_to_zoom(rect_to_zoom);
+  gfx::Rect transformed_rect_to_zoom(clipped_rect_to_zoom);
   if (!RenderWidgetHostViewBase::TransformPointAndRectToRootView(
           view_.get(), root_view, &transformed_point,
           &transformed_rect_to_zoom)) {
@@ -4254,13 +4298,14 @@ void RenderWidgetHostImpl::ZoomToFindInPageRectInMainFrame(
   }
 
   gfx::Rect view_local_bounds(view_->GetViewBounds().size());
-  if (!view_local_bounds.IsEmpty() &&
-      !view_local_bounds.Intersects(rect_to_zoom)) {
+  gfx::Rect clipped_rect_to_zoom(rect_to_zoom);
+  clipped_rect_to_zoom.Intersect(view_local_bounds);
+  if (clipped_rect_to_zoom.IsEmpty()) {
     return;
   }
 
   auto* root_view = view_->GetRootView();
-  gfx::Rect transformed_rect_to_zoom(rect_to_zoom);
+  gfx::Rect transformed_rect_to_zoom(clipped_rect_to_zoom);
   if (!RenderWidgetHostViewBase::TransformPointAndRectToRootView(
           view_.get(), root_view, nullptr, &transformed_rect_to_zoom)) {
     return;

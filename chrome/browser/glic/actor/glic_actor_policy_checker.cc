@@ -384,16 +384,14 @@ GlicActorPolicyChecker::ComputeActOnWebCapability(bool disable_for_enterprise) {
   signin::IdentityManager* identity_manager =
       IdentityManagerFactory::GetForProfile(profile_);
   CHECK(identity_manager);
-  // `account_info` is empty if the user has not signed in.
-  auto can_use_model_execution_features =
+  bool can_use_adult_features = GlicEnabling::CanUseAdultFeatures(
       identity_manager
           ->FindExtendedAccountInfoByAccountId(
               identity_manager
                   ->GetPrimaryAccountInfo(signin::ConsentLevel::kSignin)
                   .account_id)
-          .GetAccountCapabilities()
-          .can_use_model_execution_features();
-  if (can_use_model_execution_features != signin::Tribool::kTrue) {
+          .GetAccountCapabilities());
+  if (!can_use_adult_features) {
     return log_and_return(CanActOutcome::kNo,
                           CannotActReason::kAccountCapabilityIneligible);
   }
@@ -458,6 +456,16 @@ GlicActorPolicyChecker::ComputeActOnWebCapability(bool disable_for_enterprise) {
     }
 
     // policy_enabled is true here.
+    if (!disable_for_enterprise &&
+        base::FeatureList::IsEnabled(
+            features::
+                kGlicActorWorkspaceExemptFromTierCheckRegressionFixKillswitch) &&
+        IsEnterpriseAccountForActor(*profile_, *journal_)) {
+      return log_and_return(
+          CanActOutcome::kYes,
+          "Managed: actuation enabled via policy for enterprise account");
+    }
+
     // If they have Chrome benefits, they can act everywhere.
     if (AccountHasChromeBenefits(*profile_, *journal_)) {
       return log_and_return(

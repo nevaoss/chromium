@@ -639,7 +639,6 @@ if (_is_default_toolchain) {
       "//components/safe_browsing/android:safe_browsing_java",
       "//components/sensitive_content:java",
       "//components/sensitive_content:sensitive_content_features_java",
-      "//components/stylus_handwriting/android:feature_list_java",
       "//components/stylus_handwriting/android:java",
       "//components/url_formatter/android:url_formatter_java",
       "//components/variations:variations_java",
@@ -1078,6 +1077,7 @@ if (_is_default_toolchain) {
     defines = [
       "enable_pdf=$enable_pdf",
       "enable_printing=$enable_printing",
+      "enable_private_insights=false",
       "safe_browsing_mode=$safe_browsing_mode",
       "enable_supervised_users=$enable_supervised_users",
       "optimize_webui=$optimize_webui",

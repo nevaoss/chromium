@@ -28,6 +28,7 @@
 #include "chrome/browser/tab_group_sync/tab_group_sync_service_factory.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
+#include "chrome/browser/ui/browser_init_state.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
 #include "chrome/browser/ui/sad_tab_helper.h"
@@ -433,6 +434,14 @@ TabDragController::Liveness TabDragController::Init(
       views::View::ConvertPointToScreen(source_view, offset_from_source_view);
   ref->event_source_ = event_source;
   ref->last_point_in_screen_ = start_point_in_screen_;
+#if BUILDFLAG(IS_MAC)
+  // Tracked for Mac only to enable resizing when dragging windows across
+  // displays.
+  ref->last_sized_display_id_ =
+      display::Screen::Get()
+          ->GetDisplayNearestPoint(start_point_in_screen_)
+          .id();
+#endif
   // Detachable tabs are not supported on Mac if the window is an out-of-process
   // (remote_cocoa) window, i.e. a PWA window.
   // TODO(crbug.com/40128833): Make detachable tabs work in PWAs on Mac.
@@ -742,7 +751,7 @@ TabDragController::Liveness TabDragController::Drag(
     }
 
     current_state_ = DragState::kDraggingTabs;
-      StartDraggingTabsSession(true, point_in_screen);
+    StartDraggingTabsSession(true, point_in_screen);
   }
 
   return ContinueDragging(point_in_screen);
@@ -1001,6 +1010,25 @@ TabDragController::Liveness TabDragController::ContinueDragging(
   }
 
   if (current_state_ == DragState::kDraggingWindow) {
+#if BUILDFLAG(IS_MAC)
+    // On Mac, resizing the window during dragging ensures that it fits within
+    // the target display's work area. This is not enabled or tested on other
+    // desktop platforms because their interactive UI test environments do not
+    // support mocking multi-display layouts.
+    display::Display current_display =
+        display::Screen::Get()->GetDisplayNearestPoint(point_in_screen);
+    if (current_display.id() != last_sized_display_id_) {
+      last_sized_display_id_ = current_display.id();
+      gfx::Size new_size = CalculateDraggedWindowSize(attached_context_);
+      views::Widget* browser_widget = GetAttachedBrowserWidget();
+      gfx::Rect bounds = browser_widget->GetWindowBoundsInScreen();
+      if (bounds.size() != new_size) {
+        bounds.set_size(new_size);
+        browser_widget->SetBounds(bounds);
+      }
+    }
+#endif
+
     bring_to_front_timer_.Start(
         FROM_HERE, base::Milliseconds(750),
         base::BindOnce(&TabDragController::BringWindowUnderPointToFront,
@@ -1539,6 +1567,24 @@ TabDragController::Detach(ReleaseCapture release_capture) {
 
   const std::vector<tab_groups::TabGroupId> groups_to_move =
       attached_model->GetGroupsDestroyedFromRemovingIndices(dragged_indices);
+
+  // If we are detaching from the source tabstrip, make sure the tab that was
+  // initially active is selected. This ensures that when the currently active
+  // dragged tab is removed, TabStripModel will fall back to activating the
+  // initially active tab, preventing a brief flash of an incorrect active tab.
+  if (attached_context_ == source_context_ &&
+      !initial_selection_model_.empty() &&
+      initial_selection_model_.active().has_value()) {
+    const int initial_active_index = initial_selection_model_.active().value();
+    if (attached_model->ContainsIndex(initial_active_index) &&
+        std::ranges::find(dragged_indices, initial_active_index) ==
+            dragged_indices.end()) {
+      ui::ListSelectionModel selection =
+          attached_model->selection_model().GetListSelectionModel();
+      selection.AddIndexToSelection(initial_active_index);
+      UpdateSelectionModel(attached_model, selection);
+    }
+  }
 
   std::vector<std::variant<std::unique_ptr<DetachedTab>,
                            std::unique_ptr<DetachedTabCollection>>>
@@ -2512,10 +2558,13 @@ gfx::Size TabDragController::CalculateDraggedWindowSize(
           ->GetDisplayNearestPoint(last_point_in_screen_)
           .work_area()
           .size();
-  if (new_size.width() >= work_area.width() &&
-      new_size.height() >= work_area.height()) {
-    new_size = work_area;
-    new_size.Enlarge(-2 * kMaximizedWindowInset, -2 * kMaximizedWindowInset);
+  if (new_size.width() > work_area.width()) {
+    new_size.set_width(
+        std::max(0, work_area.width() - 2 * kMaximizedWindowInset));
+  }
+  if (new_size.height() > work_area.height()) {
+    new_size.set_height(
+        std::max(0, work_area.height() - 2 * kMaximizedWindowInset));
   }
 
   if (source->GetWidget()->IsMaximized()) {
@@ -2606,7 +2655,7 @@ std::optional<webapps::AppId> TabDragController::GetControllingAppForDrag(
     return std::nullopt;
   }
   const web_app::WebAppProvider* provider =
-      web_app::WebAppProvider::GetForWebApps(browser->profile());
+      web_app::WebAppProvider::GetForWebApps(browser->GetProfile());
   const base::flat_map<webapps::AppId, std::string> all_controlling_apps =
       provider->registrar_unsafe().GetAllAppsControllingUrl(
           active_contents->GetLastCommittedURL());
@@ -2641,13 +2690,13 @@ Browser* TabDragController::CreateBrowserForDrag(TabDragContext* source,
   const bool open_as_web_app = controlling_app.has_value();
 
   Browser::CreateParams create_params =
-      open_as_web_app
-          ? Browser::CreateParams::CreateForApp(
-                web_app::GenerateApplicationNameFromAppId(
-                    controlling_app.value()),
-                /* trusted_source=*/true, gfx::Rect(), from_browser->profile(),
-                /* user_gesture=*/true)
-          : from_browser->create_params();
+      open_as_web_app ? Browser::CreateParams::CreateForApp(
+                            web_app::GenerateApplicationNameFromAppId(
+                                controlling_app.value()),
+                            /* trusted_source=*/true, gfx::Rect(),
+                            from_browser->GetProfile(),
+                            /* user_gesture=*/true)
+                      : BrowserInitState::From(from_browser)->create_params();
 
   // Web app windows have their own initial size independent of the source
   // browser window.
@@ -2851,7 +2900,7 @@ bool TabDragController::CanAttachTo(gfx::NativeWindow window) {
                          ->browser();
 
   // Profiles must be the same.
-  if (other_browser->profile() != browser->profile()) {
+  if (other_browser->GetProfile() != browser->GetProfile()) {
     return false;
   }
 
@@ -2906,13 +2955,13 @@ void TabDragController::MaybePauseTrackingSavedTabGroup() {
     return;
   }
 
-  const Browser* const browser =
-      BrowserView::GetBrowserViewForNativeWindow(
-          GetAttachedBrowserWidget()->GetNativeWindow())
-          ->browser();
+  Browser* const browser = BrowserView::GetBrowserViewForNativeWindow(
+                               GetAttachedBrowserWidget()->GetNativeWindow())
+                               ->browser();
 
   tab_groups::TabGroupSyncService* tab_group_service =
-      tab_groups::TabGroupSyncServiceFactory::GetForProfile(browser->profile());
+      tab_groups::TabGroupSyncServiceFactory::GetForProfile(
+          browser->GetProfile());
 
   if (!tab_group_service ||
       !tab_group_service->GetGroup(
@@ -2928,13 +2977,13 @@ void TabDragController::MaybeResumeTrackingSavedTabGroup() {
     return;
   }
 
-  const Browser* const browser =
-      BrowserView::GetBrowserViewForNativeWindow(
-          GetAttachedBrowserWidget()->GetNativeWindow())
-          ->browser();
+  Browser* const browser = BrowserView::GetBrowserViewForNativeWindow(
+                               GetAttachedBrowserWidget()->GetNativeWindow())
+                               ->browser();
 
   tab_groups::TabGroupSyncService* tab_group_service =
-      tab_groups::TabGroupSyncServiceFactory::GetForProfile(browser->profile());
+      tab_groups::TabGroupSyncServiceFactory::GetForProfile(
+          browser->GetProfile());
 
   if (!tab_group_service) {
     return;

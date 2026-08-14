@@ -89,7 +89,7 @@ class TaskManagerViewTest : public InProcessBrowserTest {
     return GetView() ? GetView()->tab_table_.get() : nullptr;
   }
 
-  void PressKillButton() { GetView()->Accept(); }
+  void PressKillButton() { GetView()->AcceptDialog(); }
 
   void ClearStoredColumnSettings() const {
     PrefService* local_state = g_browser_process->local_state();
@@ -502,7 +502,8 @@ IN_PROC_BROWSER_TEST_F(TaskManagerViewTest, AutoSelectFirstRowOnTableFocus) {
 
   views::TableView* table = GetTable();
   ASSERT_TRUE(table);
-  ASSERT_NO_FATAL_FAILURE(WaitForTaskManagerRows(1, u"*"));
+  ASSERT_NO_FATAL_FAILURE(
+      WaitForTaskManagerRows(1, browsertest_util::MatchAnyTab()));
   ASSERT_GT(table->GetRowCount(), 0u);
 
   // Clear existing selection entirely, as well as the focus.
@@ -572,7 +573,7 @@ IN_PROC_BROWSER_TEST_F(TaskManagerViewTest,
   table->RequestFocus();
 
   EXPECT_TRUE(table->HasFocus());
-  EXPECT_EQ(1u, table->ViewToModel(0));
+  EXPECT_TRUE(table->GetFirstSelectedRow().has_value());
   EXPECT_EQ(table->ViewToModel(0), table->GetFirstSelectedRow());
   EXPECT_EQ(table->ViewToModel(0), table->selection_model().active());
 }

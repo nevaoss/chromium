@@ -558,6 +558,14 @@ std::unique_ptr<ToolRequest> MakeClickRequest(content::RenderFrameHost& rfh,
       mojom::ClickType::kLeft, mojom::ClickCount::kSingle);
 }
 
+std::unique_ptr<ToolRequest> MakeDirectElementActivationClickRequest(
+    content::RenderFrameHost& rfh,
+    int content_node_id) {
+  return std::make_unique<ClickToolRequest>(
+      GetTabHandleForFrame(rfh), MakeTarget(rfh, content_node_id),
+      mojom::ClickType::kLeftOnOccludedTarget, mojom::ClickCount::kSingle);
+}
+
 std::unique_ptr<ToolRequest> MakeClickRequest(TabInterface& tab,
                                               const gfx::Point& click_point) {
   return std::make_unique<ClickToolRequest>(
@@ -765,6 +773,23 @@ void ExpectErrorResult(ActResultFuture& future,
                            << " not found in action results.";
 }
 
+void ExpectElementDisabledResultWithReason(ActResultFuture& future,
+                                           std::string_view reason) {
+  const auto& action_results = future.Get();
+  ASSERT_EQ(1u, action_results.size());
+
+  // The actor layer uses one result for one requested action.
+  const mojom::ActionResultPtr& result = action_results[0].result;
+  EXPECT_EQ(mojom::ActionResultCode::kElementDisabled, result->code);
+  EXPECT_FALSE(result->requires_page_stabilization);
+
+  std::string expected_message =
+      "The target element is unavailable because it is ";
+  expected_message += reason;
+  expected_message += ".";
+  EXPECT_EQ(expected_message, result->message);
+}
+
 bool SetUpOptimizationGuideComponentBlocklist(const base::FilePath& path,
                                               const std::string& blocked_host) {
   base::ScopedAllowBlockingForTesting allow_blocking;
@@ -848,8 +873,9 @@ ScopedExecutionEngineFactory::~ScopedExecutionEngineFactory() {
 MockActorTaskDelegate::MockActorTaskDelegate() = default;
 MockActorTaskDelegate::~MockActorTaskDelegate() = default;
 
-MockPolicyChecker::MockPolicyChecker(UrlBlockReason reason,
-                                     ContentValidationReason content_reason)
+MockPolicyChecker::MockPolicyChecker(
+    UrlBlockReason reason,
+    std::optional<ContentValidationReason> content_reason)
     : reason_(reason), content_reason_(content_reason) {}
 MockPolicyChecker::~MockPolicyChecker() = default;
 
@@ -862,8 +888,12 @@ void MockPolicyChecker::ValidateContentSentToRenderer(
     content::RenderFrameHost* frame,
     const std::string& content,
     ContentValidationCallback callback) const {
+  if (!content_reason_) {
+    // Silently drop the callback without running it.
+    return;
+  }
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE, base::BindOnce(std::move(callback), content_reason_));
+      FROM_HERE, base::BindOnce(std::move(callback), *content_reason_));
 }
 
 const EnterprisePolicyChecker* NoEnterprisePolicyChecker() {

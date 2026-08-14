@@ -38,7 +38,12 @@ install_scripts("browser_scripts") {
   sources = [ "run_webbrowser",
               "kill_webbrowser",
               "mem_webbrowser" ]
-  outputs = [ "$image_path/$browser_dir/" ]
+
+  outputs = [
+    "$image_path/$browser_dir/run_webbrowser",
+    "$image_path/$browser_dir/kill_webbrowser",
+    "$image_path/$browser_dir/mem_webbrowser",
+  ]
 }
 
 

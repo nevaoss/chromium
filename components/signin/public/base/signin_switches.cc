@@ -105,7 +105,7 @@ const base::FeatureParam<std::string>
 #endif
 
 #if BUILDFLAG(IS_IOS)
-BASE_FEATURE(kCacheIdentityListInChrome, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kCacheIdentityListInChrome, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kEnableACPrefetch, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif
 
@@ -273,17 +273,31 @@ const base::FeatureParam<std::string> kCrossDeviceSigninUrl{&kCrossDeviceSignin,
                                                             "url", ""};
 #endif  // BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
 
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+BASE_FEATURE(kCrossDeviceSigninFromDesktop, base::FEATURE_DISABLED_BY_DEFAULT);
+const base::FeatureParam<std::string> kCrossDeviceSigninFromDesktopUrl{
+    &kCrossDeviceSigninFromDesktop, "url",
+    "https://www.google.com/chrome/go-mobile?entry_point_id=1&email=$1"};
+const base::FeatureParam<bool> kCrossDeviceSigninFromDesktopNewBadge{
+    &kCrossDeviceSigninFromDesktop, "show_new_badge", true};
+#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+
+#if BUILDFLAG(ENABLE_DICE_SUPPORT)
+BASE_FEATURE(kDiceHeaderVersion2, base::FEATURE_DISABLED_BY_DEFAULT);
+#endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
+
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
 BASE_FEATURE(kDiceLinkedAccounts, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
-BASE_FEATURE(kCrossDeviceSigninFromDesktop, base::FEATURE_DISABLED_BY_DEFAULT);
-#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
-
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 BASE_FEATURE(kDisableU18FeedbackDesktop, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+
+#if BUILDFLAG(IS_IOS)
+BASE_FEATURE(kDontIncludeSIDUnsecureCookiesInGaiaAuthFetcher,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+#endif
 
 // Enables fetching sync preview data from the server for accounts with refresh
 // tokens.
@@ -293,16 +307,32 @@ BASE_FEATURE(kEnableAccountPreviewData, base::FEATURE_DISABLED_BY_DEFAULT);
 // enabled.
 BASE_FEATURE(kEnableAccountPreviewEntityPreviews,
              base::FEATURE_DISABLED_BY_DEFAULT);
+// Controls whether computing and storing the preferred account is enabled.
+// This flag has no effect if `kEnableAccountPreviewData` is not enabled.
+BASE_FEATURE(kEnableAccountPreviewPreferredAccount,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_ANDROID)
 // Whether activityless sign-in should be used for all entry points.
+// Extensions are not shipped on Android yet. The flow is newly implemented. We
+// enable activityless signin by default on this new userless entrypoint to
+// avoid implementing the legacy flow which will never be shipped.
 BASE_FEATURE(kEnableActivitylessSigninAllEntryPoint,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+#if BUILDFLAG(ENABLE_DESKTOP_ANDROID_EXTENSIONS)
+             base::FEATURE_ENABLED_BY_DEFAULT
+#else
+             base::FEATURE_DISABLED_BY_DEFAULT
+#endif
+);
 #endif
 
 #if BUILDFLAG(IS_ANDROID)
 BASE_FEATURE(kEnableAddSessionRedirect, base::FEATURE_ENABLED_BY_DEFAULT);
 #endif
+
+// Enables the AI subscription level decorative ring around the user's avatar.
+BASE_FEATURE(kEnableAiSubscriptionAvatarRing,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_IOS)
 BASE_FEATURE(kEnableASWebAuthenticationSession,
@@ -524,7 +554,11 @@ const base::FeatureParam<base::TimeDelta>
 BASE_FEATURE(kFetchAccountInfoOnRestart, base::FEATURE_DISABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+#if BUILDFLAG(IS_WIN)
+BASE_FEATURE(kFirstRunDesktopRefresh, base::FEATURE_ENABLED_BY_DEFAULT);
+#else
 BASE_FEATURE(kFirstRunDesktopRefresh, base::FEATURE_DISABLED_BY_DEFAULT);
+#endif
 BASE_FEATURE(kFirstRunDesktopChoiceScreenRefresh,
              base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kDisableFirstRunAnimationsForTesting,
@@ -557,6 +591,7 @@ BASE_FEATURE(kFirstRunDesktopRefreshSurvey, base::FEATURE_DISABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 BASE_FEATURE(kFirstRunDesktopRevamp, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kFirstRunDesktopRevampSound, base::FEATURE_ENABLED_BY_DEFAULT);
 bool IsFirstRunDesktopRevampEnabled(bool is_in_search_engine_choice_region) {
   return IsFirstRunDesktopRefreshEnabled(is_in_search_engine_choice_region) &&
          base::FeatureList::IsEnabled(kFirstRunDesktopRevamp);
@@ -570,6 +605,11 @@ BASE_FEATURE(kFirstRunDesktopRevampNoFeatureShowcaseSurvey,
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 BASE_FEATURE(kFirstRunDesktopRevampSurvey, base::FEATURE_DISABLED_BY_DEFAULT);
+#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+BASE_FEATURE(kFirstRunFeatureShowcaseGeminiStep,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 
 #if BUILDFLAG(IS_ANDROID)
@@ -650,11 +690,14 @@ BASE_FEATURE(kNoAccountWebSignin, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kNonDefaultGaiaOriginCheck, base::FEATURE_ENABLED_BY_DEFAULT);
 
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
-    BUILDFLAG(IS_CHROMEOS)
-BASE_FEATURE(kPasswordUploadUiUpdate, base::FEATURE_ENABLED_BY_DEFAULT);
-#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) ||
-        // BUILDFLAG(IS_CHROMEOS)
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+BASE_FEATURE(kPreFirstRunDesktopRefresh, base::FEATURE_DISABLED_BY_DEFAULT);
+bool IsPreFirstRunDesktopRefreshEnabled(
+    bool is_in_search_engine_choice_region) {
+  return IsFirstRunDesktopRevampEnabled(is_in_search_engine_choice_region) &&
+         base::FeatureList::IsEnabled(kPreFirstRunDesktopRefresh);
+}
+#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 BASE_FEATURE(kProfileCreationDeclineSigninCTAExperiment,
@@ -796,6 +839,11 @@ BASE_FEATURE(kUndoChromeOsUseConsentLevelSignin,
 
 BASE_FEATURE(kUsePrimaryAndTonalButtonsForPromos,
              base::FEATURE_ENABLED_BY_DEFAULT);
+
+#if BUILDFLAG(IS_ANDROID)
+BASE_FEATURE(kUserPolicyFetchRequiresAcceptance,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+#endif  // BUILDFLAG(IS_ANDROID)
 
 // keep-sorted end
 

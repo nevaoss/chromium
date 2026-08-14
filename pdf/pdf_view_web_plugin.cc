@@ -245,7 +245,8 @@ bool IsPrintPreviewUrl(std::string_view url) {
 }
 
 int ExtractPrintPreviewPageIndex(std::string_view src_url) {
-  // Sample `src_url` format: chrome-untrusted://print/id/page_index/print.pdf
+  // Sample `src_url` format:
+  // chrome-untrusted://print/token/page_index/print.pdf
   // The page_index is zero-based, but can be negative with special meanings.
   std::vector<std::string_view> url_substr =
       base::SplitStringPiece(src_url.substr(kChromeUntrustedPrintHost.size()),
@@ -312,8 +313,9 @@ class PdfViewWebPlugin::PdfInkModuleClientImpl : public PdfInkModuleClient {
 
   // PdfInkModuleClient:
   void AddFont(FontId font_id,
+               const std::string& font_name,
                base::span<const uint8_t> serialized_typeface) override {
-    plugin_->engine_->AddFont(font_id, serialized_typeface);
+    plugin_->engine_->AddFont(font_id, font_name, serialized_typeface);
   }
 
   void ClearSelection() override { plugin_->engine_->ClearTextSelection(); }
@@ -1776,6 +1778,15 @@ void PdfViewWebPlugin::HasMeaningfulText(HasMeaningfulTextCallback callback) {
   std::move(callback).Run(engine_ && engine_->HasMeaningfulText());
 }
 
+void PdfViewWebPlugin::HasJavaScript(HasJavaScriptCallback callback) {
+  std::move(callback).Run(engine_ && engine_->HasJavaScript());
+}
+
+void PdfViewWebPlugin::IsPasswordProtected(
+    IsPasswordProtectedCallback callback) {
+  std::move(callback).Run(engine_ && engine_->IsPasswordProtected());
+}
+
 void PdfViewWebPlugin::GetPageText(int32_t page_index,
                                    GetPageTextCallback callback) {
   if (page_index < 0 || page_index >= engine_->GetNumberOfPages()) {
@@ -2883,8 +2894,10 @@ void PdfViewWebPlugin::RecordDocumentMetrics() {
   if (ink_module_) {
     // Use a timeout limit of 100ms, which will capture over 90 percent of PDFs
     // without increasing the PDF load time a significant amount.
-    RecordPdfLoadedWithV2InkAnnotations(
-        engine_->ContainsV2InkPath(base::Milliseconds(100)));
+    PDFiumEngine::InkIdentifiers ink_identifiers =
+        engine_->ScanForInkAnnotations(base::Milliseconds(100));
+    RecordPdfLoadedWithV2InkAnnotations(ink_identifiers.v2_ink_path);
+    RecordPdfLoadedWithInkTextAnnotations(ink_identifiers.ink_text_annotations);
   }
 #endif  // BUILDFLAG(ENABLE_PDF_INK2)
 }

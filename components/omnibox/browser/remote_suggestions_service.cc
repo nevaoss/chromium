@@ -13,6 +13,7 @@
 #include "base/functional/bind.h"
 #include "base/i18n/char_iterator.h"
 #include "base/metrics/histogram_functions.h"
+#include "base/strings/string_number_conversions.h"
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
@@ -334,6 +335,21 @@ GURL AddSuggestInventoryParamToEndpointUrl(
   return modified_url;
 }
 
+GURL AddQueryBuilderStatsToEndpointUrl(
+    const TemplateURLRef::SearchTermsArgs& search_terms_args,
+    const GURL& url_to_modify) {
+  GURL modified_url = GURL(url_to_modify);
+  if (search_terms_args.input_method > 0) {
+    modified_url = net::AppendOrReplaceQueryParameter(
+        modified_url, "qbi.m",
+        base::NumberToString(search_terms_args.input_method));
+    modified_url = net::AppendOrReplaceQueryParameter(
+        modified_url, "qbi.l",
+        base::NumberToString(search_terms_args.search_terms.length()));
+  }
+  return modified_url;
+}
+
 GURL ReplaceLensSuggestPathPlaceholderInEndpointUrl(
     const TemplateURLRef::SearchTermsArgs& search_terms_args,
     const GURL& url_to_modify) {
@@ -423,10 +439,12 @@ GURL RemoteSuggestionsService::EndpointUrl(
                                                "chrome-multimodal");
       break;
     }
+    case metrics::OmniboxEventProto::COMPOSEBOX_EVERYWHERE:
     case metrics::OmniboxEventProto::NTP_REALBOX:
     case metrics::OmniboxEventProto::NTP_COMPOSEBOX:
     case metrics::OmniboxEventProto::CO_BROWSING_COMPOSEBOX:
     case metrics::OmniboxEventProto::NTP_OMNIBOX_COMPOSEBOX:
+    case metrics::OmniboxEventProto::OMNIBOX_EVERYWHERE:
     case metrics::OmniboxEventProto::SRP_OMNIBOX_COMPOSEBOX:
     case metrics::OmniboxEventProto::OTHER_OMNIBOX_COMPOSEBOX:
       if (search_terms_args.lens_overlay_suggest_inputs.has_value() &&
@@ -457,6 +475,7 @@ GURL RemoteSuggestionsService::EndpointUrl(
   url = AddSmartComposePreviousQueryToEndpointUrl(search_terms_args, url);
   url = ReplaceLensSuggestPathPlaceholderInEndpointUrl(search_terms_args, url);
   url = AddSuggestInventoryParamToEndpointUrl(search_terms_args, url);
+  url = AddQueryBuilderStatsToEndpointUrl(search_terms_args, url);
 
   return url;
 }

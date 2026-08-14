@@ -361,7 +361,7 @@ void WebAppBrowserTestBase::SetUpCommandLine(base::CommandLine* command_line) {
 
 void WebAppBrowserTestBase::PreRunTestOnMainThread() {
   WebAppBrowserTestBaseParent::PreRunTestOnMainThread();
-  browser_profile_ = browser()->profile()->GetWeakPtr();
+  browser_profile_ = browser()->GetProfile()->GetWeakPtr();
 }
 
 void WebAppBrowserTestBase::SetUpOnMainThread() {
@@ -376,7 +376,7 @@ void WebAppBrowserTestBase::SetUpOnMainThread() {
   cert_verifier_.mock_cert_verifier()->set_default_result(net::OK);
 
   web_app::test::WaitUntilReady(
-      web_app::WebAppProvider::GetForTest(browser()->profile()));
+      web_app::WebAppProvider::GetForTest(browser()->GetProfile()));
 }
 
 }  // namespace web_app

@@ -11,6 +11,7 @@ import android.os.Build;
 import android.os.Looper;
 import android.os.SystemClock;
 import android.webkit.CookieManager;
+import android.webkit.WebIconDatabase;
 import android.webkit.WebSettings;
 import android.webkit.WebViewDatabase;
 
@@ -407,6 +408,8 @@ public class WebViewChromiumAwInit {
         CallSite.PROFILE_CLEAR_ALL_ORIGIN_MATCHED_HEADERS,
         CallSite.PROFILE_ADD_QUIC_HINTS,
         CallSite.PROFILE_GET_HTTP_CACHE_MANAGER,
+        CallSite.PROFILE_SET_CROSS_ORIGIN_ISOLATED_ALLOW_LIST,
+        CallSite.PROFILE_GET_CROSS_ORIGIN_ISOLATED_ALLOW_LIST,
         CallSite.COUNT,
     })
     public @interface CallSite {
@@ -552,8 +555,10 @@ public class WebViewChromiumAwInit {
         int PROFILE_CLEAR_ALL_ORIGIN_MATCHED_HEADERS = 140;
         int PROFILE_ADD_QUIC_HINTS = 141;
         int PROFILE_GET_HTTP_CACHE_MANAGER = 142;
+        int PROFILE_SET_CROSS_ORIGIN_ISOLATED_ALLOW_LIST = 143;
+        int PROFILE_GET_CROSS_ORIGIN_ISOLATED_ALLOW_LIST = 144;
         // Remember to update WebViewStartupCallSite in enums.xml when adding new values here.
-        int COUNT = 143;
+        int COUNT = 145;
     };
 
     // LINT.ThenChange(//tools/metrics/histograms/metadata/android/enums.xml:WebViewStartupCallSite)
@@ -812,16 +817,6 @@ public class WebViewChromiumAwInit {
                     }
 
                     AwCrashyClassUtils.maybeCrashIfEnabled();
-                    // This must happen before `mStartupFinished.countDown()`. Otherwise, a method
-                    // called on the background thread that calls into the run queue would crash if
-                    // the run queue is not notified that Chromium has started. See b/520483584.
-                    // This must also happen before we set `mInitState` to `INIT_FINISHED`,
-                    // otherwise it's possible for the method call on the background thread to
-                    // happen at the same time that the UI thread is setting the state to
-                    // INIT_FINISHED, so the background thread may see that init is done, not block
-                    // on the latch and then call into `runOnUiThreadBlocking` before the run queue
-                    // has been notified, which would still crash.
-                    mFactory.getRunQueue().notifyChromiumStarted();
                     // Must happen right after Chromium initialization is complete.
                     mInitState.set(INIT_FINISHED);
                     mStartupFinished.countDown();
@@ -838,9 +833,8 @@ public class WebViewChromiumAwInit {
                     }
 
                     // This runs all the pending tasks queued for after Chromium init is
-                    // finished, so should run after `mInitState` is `INIT_FINISHED` and after
-                    // notifying the run queue.
-                    mFactory.getRunQueue().drainQueue();
+                    // finished, so should run after `mInitState` is `INIT_FINISHED`.
+                    mFactory.getRunQueue().notifyChromiumStarted();
                     if (mRunStartupTasksAsync) {
                         // Re-enables the taskrunners
                         PostTask.disablePreNativeUiTasks(false);
@@ -921,7 +915,6 @@ public class WebViewChromiumAwInit {
         mWebViewStartUpDiagnostics.setMaxTimePerTaskUiThreadChromiumInitMillis(
                 longestUiBlockingTaskTimeMs);
         mWebViewStartUpCallbackRunQueue.notifyChromiumStarted();
-        mWebViewStartUpCallbackRunQueue.drainQueue();
 
         // Record histograms
         String startupModeString =
@@ -1217,6 +1210,11 @@ public class WebViewChromiumAwInit {
     }
 
     public ProfileStore getProfileStore() {
+        if (WebViewCachedFlags.get()
+                .isCachedFeatureEnabled(
+                        AwFeatures.WEBVIEW_MULTI_PROFILE_SKIP_DEFAULT_PROFILE)) {
+            mShouldInitializeDefaultProfile = false;
+        }
         if (ProfileStore.requiresStartup()) {
             triggerAndWaitForChromiumStarted(CallSite.GET_PROFILE_STORE);
         }
@@ -1242,7 +1240,7 @@ public class WebViewChromiumAwInit {
         }
     }
 
-    public android.webkit.WebIconDatabase getWebIconDatabase() {
+    public WebIconDatabase getWebIconDatabase() {
         triggerAndWaitForChromiumStarted(CallSite.GET_WEB_ICON_DATABASE);
         WebViewChromium.recordWebViewApiCall(
                 ApiCall.WEB_ICON_DATABASE_GET_INSTANCE,

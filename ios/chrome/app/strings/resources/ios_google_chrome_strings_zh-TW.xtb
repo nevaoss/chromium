@@ -109,7 +109,7 @@
 <translation id="322254490661677575">如要將 Chrome 的資料儲存到 Google 帳戶及使用這類資料，請輸入通關密語。</translation>
 <translation id="3303503998967553377">在 iOS 上使用 Chrome 快捷操作</translation>
 <translation id="3348862487678490430">將閱讀清單項目加入 Chrome</translation>
-<translation id="3357827134511189025">使用 Chrome 做為自動填寫來源，可從任何應用程式使用已儲存的密碼和密碼金鑰登入</translation>
+<translation id="3357827134511189025">透過 Chrome 自動填入功能，使用任何應用程式的已儲存密碼和密碼金鑰登入</translation>
 <translation id="3360031466389132716">{THRESHOLD,plural, =1{如果 Chrome 閒置 {THRESHOLD} 分鐘，就會執行這些動作}other{如果 Chrome 閒置 {THRESHOLD} 分鐘，就會執行這些動作}}</translation>
 <translation id="3367797402528056312">完成 Chrome 設定</translation>
 <translation id="3371064404604898522">將 Chrome 設為預設瀏覽器</translation>
@@ -263,6 +263,7 @@
 <translation id="7038674195294813388">在 iOS 中開啟「預設 App」設定，然後依序輕觸「瀏覽器 App」和「Chrome」。</translation>
 <translation id="7056826488869329999">在 Chrome 中開啟並執行安全檢查。</translation>
 <translation id="7061455974939528301">按住 Chrome 圖示，然後點選「編輯主畫面」</translation>
+<translation id="7095110968493193530">儲存到 <ph name="EMAIL" /> 的 Google 密碼管理工具</translation>
 <translation id="7124339256045485976">確保使用最新版本的 Chrome</translation>
 <translation id="7145599899567697473">在 Chrome 中儲存及自動填寫密碼</translation>
 <translation id="7161390184744336561">Google Chrome 版本過舊</translation>

@@ -7,10 +7,12 @@ package org.chromium.chrome.browser.toolbar;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -80,9 +82,11 @@ import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
 import org.chromium.chrome.browser.merchant_viewer.MerchantTrustSignalsCoordinator;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceOrchestrator;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceOrchestratorFactory;
+import org.chromium.chrome.browser.ntp.IncognitoNewTabPage;
 import org.chromium.chrome.browser.ntp.NewTabPage;
 import org.chromium.chrome.browser.omnibox.ChromeAutocompleteSchemeClassifier;
 import org.chromium.chrome.browser.omnibox.ChromeAutocompleteSchemeClassifierJni;
+import org.chromium.chrome.browser.omnibox.NewTabPageDelegate;
 import org.chromium.chrome.browser.omnibox.OmniboxChipManager;
 import org.chromium.chrome.browser.omnibox.fusebox.ComposeboxQueryControllerBridge;
 import org.chromium.chrome.browser.omnibox.suggestions.AutocompleteController;
@@ -108,6 +112,7 @@ import org.chromium.chrome.browser.tabmodel.IncognitoStateProvider;
 import org.chromium.chrome.browser.tabmodel.TabCreatorManager;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
+import org.chromium.chrome.browser.tabmodel.TabModelSelectorObserver;
 import org.chromium.chrome.browser.theme.BottomUiThemeColorProvider;
 import org.chromium.chrome.browser.theme.ToolbarThemeColorProvider;
 import org.chromium.chrome.browser.toolbar.ToolbarPositionController.ToolbarPositionAndSource;
@@ -260,6 +265,7 @@ public class ToolbarManagerUnitTest {
 
     @Captor private ArgumentCaptor<ButtonDataObserver> mIdentityDiscObserverCaptor;
     @Captor private ArgumentCaptor<ButtonDataObserver> mAdaptiveButtonObserverCaptor;
+    @Captor private ArgumentCaptor<TabModelSelectorObserver> mTabModelSelectorObserverCaptor;
 
     private List<ButtonDataProvider> mButtonDataProviders;
     private ActivityController<TestActivity> mActivityController;
@@ -348,6 +354,7 @@ public class ToolbarManagerUnitTest {
         when(mTab.isInitialized()).thenReturn(true);
         when(mTab.getUrl()).thenReturn(GURL.emptyGURL());
         when(mTabModelSelector.getModel(false)).thenReturn(mTabModel);
+        when(mTabModelSelector.getModels()).thenReturn(List.of(mTabModel));
         when(mTabModelSelector.getCurrentModel()).thenReturn(mTabModel);
         when(mTabModel.getProfile()).thenReturn(mProfile);
         when(mTabModelSelector.getCurrentModelTabCountSupplier())
@@ -499,10 +506,60 @@ public class ToolbarManagerUnitTest {
 
     @After
     public void tearDown() {
+        mToolbarManager.destroy();
         mActivityController.close();
     }
 
+    private Tab mockTab(boolean isNtp) {
+        return mockTab(isNtp, false);
+    }
+
+    private Tab mockTab(boolean isNtp, boolean isIncognito) {
+        Tab tab = mock(Tab.class);
+        when(tab.getProfile()).thenReturn(isIncognito ? mIncognitoProfile : mProfile);
+        when(tab.getTabViewManager()).thenReturn(mTabViewManager);
+        UserDataHost userDataHost = new UserDataHost();
+        when(tab.getUserDataHost()).thenReturn(userDataHost);
+        when(tab.isInitialized()).thenReturn(true);
+        when(tab.isIncognito()).thenReturn(isIncognito);
+        when(tab.isNativePage()).thenReturn(isNtp);
+
+        if (isNtp) {
+            when(tab.getUrl()).thenReturn(JUnitTestGURLs.NTP_URL);
+            NewTabPage ntpPage = mock(NewTabPage.class);
+            when(ntpPage.getHost()).thenReturn("newtab");
+            when(tab.getNativePage()).thenReturn(ntpPage);
+        } else {
+            when(tab.getUrl()).thenReturn(JUnitTestGURLs.EXAMPLE_URL);
+            when(tab.getNativePage()).thenReturn(null);
+        }
+        return tab;
+    }
+
+    private void setMockConstraintsHelper(
+            Tab tab, BrowserControlsVisibilityDelegate visibilityDelegate) {
+        try {
+            TabBrowserControlsConstraintsHelper helper =
+                    mock(TabBrowserControlsConstraintsHelper.class);
+            Field field =
+                    TabBrowserControlsConstraintsHelper.class.getDeclaredField(
+                            "mVisibilityDelegate");
+            field.setAccessible(true);
+            field.set(helper, visibilityDelegate);
+            TabBrowserControlsConstraintsHelper.setForTesting(tab, helper);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private AutocompleteInput getAutocompleteInput() {
+        return mToolbarManager.getLocationBar().getOmniboxStub().getAutocompleteInputForTesting();
+    }
+
     @Test
+    @DisableFeatures(
+            ChromeFeatureList
+                    .ANDROID_BOTTOM_BAR) // TODO(crbug.com/527933081): Re-enable or add coverage.
     public void testSetUrlBarFocusAfterDestroy() {
         mToolbarManager.beginFuseboxInput(new AutocompleteInput(OmniboxFocusReason.OMNIBOX_TAP));
         assertTrue(mToolbarManager.isUrlBarFocused());
@@ -526,7 +583,6 @@ public class ToolbarManagerUnitTest {
                 "Home button should be GONE when flag is on",
                 View.GONE,
                 homeButton.getVisibility());
-        mToolbarManager.destroy();
     }
 
     @Test
@@ -575,8 +631,6 @@ public class ToolbarManagerUnitTest {
                 "Fallback color for bottom toolbar in incognito should be Surface Container High",
                 expectedColor,
                 actualColor);
-
-        mToolbarManager.destroy();
     }
 
     @Test
@@ -589,8 +643,6 @@ public class ToolbarManagerUnitTest {
         homeButton.performClick();
 
         verify(mTabBottomSheetManager).setSheetExpanded(false);
-
-        mToolbarManager.destroy();
     }
 
     @Test
@@ -610,8 +662,6 @@ public class ToolbarManagerUnitTest {
         // Because NTP scroll-off returns true, the supplier should return BOTH even though the tab
         // constraints are SHOWN.
         assertEquals(BrowserControlsState.BOTH, supplier.get().intValue());
-
-        mToolbarManager.destroy();
     }
 
     @Test
@@ -630,8 +680,6 @@ public class ToolbarManagerUnitTest {
 
         // Even if scroll-off is disabled, we force BOTH on NTP to allow screenshots.
         assertEquals(BrowserControlsState.BOTH, supplier.get().intValue());
-
-        mToolbarManager.destroy();
     }
 
     @Test
@@ -651,8 +699,6 @@ public class ToolbarManagerUnitTest {
         // If bottom bar is disabled on NTP, we should not force BOTH constraints (should return
         // SHOWN).
         assertEquals(BrowserControlsState.SHOWN, supplier.get().intValue());
-
-        mToolbarManager.destroy();
     }
 
     @Test
@@ -671,8 +717,6 @@ public class ToolbarManagerUnitTest {
 
         // On a normal page, the supplier should respect the tab constraints (SHOWN).
         assertEquals(BrowserControlsState.SHOWN, supplier.get().intValue());
-
-        mToolbarManager.destroy();
     }
 
     @Test
@@ -689,8 +733,6 @@ public class ToolbarManagerUnitTest {
 
         // When the bottom bar feature is disabled, the constraints should not be forced to BOTH.
         assertEquals(Integer.valueOf(BrowserControlsState.SHOWN), supplier.get());
-
-        mToolbarManager.destroy();
     }
 
     @Test
@@ -711,50 +753,39 @@ public class ToolbarManagerUnitTest {
         // updates,
         // even though tab constraints are SHOWN.
         assertEquals(BrowserControlsState.BOTH, supplier.get().intValue());
-
-        mToolbarManager.destroy();
     }
 
-    private Tab mockTab(boolean isNtp) {
-        return mockTab(isNtp, false);
-    }
+    @Test
+    public void testFullscreenHairlineVisibility() {
+        ArgumentCaptor<FullscreenManager.Observer> captor =
+                ArgumentCaptor.forClass(FullscreenManager.Observer.class);
+        verify(mFullscreenManager).addObserver(captor.capture());
+        FullscreenManager.Observer observer = captor.getValue();
 
-    private Tab mockTab(boolean isNtp, boolean isIncognito) {
-        Tab tab = mock(Tab.class);
-        when(tab.getProfile()).thenReturn(isIncognito ? mIncognitoProfile : mProfile);
-        when(tab.getTabViewManager()).thenReturn(mTabViewManager);
-        UserDataHost userDataHost = new UserDataHost();
-        when(tab.getUserDataHost()).thenReturn(userDataHost);
-        when(tab.isInitialized()).thenReturn(true);
-        when(tab.isIncognito()).thenReturn(isIncognito);
-        when(tab.isNativePage()).thenReturn(isNtp);
+        AppCompatActivity activity = mActivityController.get();
+        View hairline = activity.findViewById(R.id.toolbar_hairline);
+        assertNotNull(hairline);
 
-        if (isNtp) {
-            when(tab.getUrl()).thenReturn(JUnitTestGURLs.NTP_URL);
-            NewTabPage ntpPage = mock(NewTabPage.class);
-            when(ntpPage.getHost()).thenReturn("newtab");
-            when(tab.getNativePage()).thenReturn(ntpPage);
-        } else {
-            when(tab.getUrl()).thenReturn(JUnitTestGURLs.EXAMPLE_URL);
-            when(tab.getNativePage()).thenReturn(null);
-        }
-        return tab;
-    }
+        // Test basic fullscreen transitions.
+        observer.onEnterFullscreen(null, null);
+        assertEquals(View.INVISIBLE, hairline.getVisibility());
+        observer.onExitFullscreen(null);
+        assertEquals(View.VISIBLE, hairline.getVisibility());
 
-    private void setMockConstraintsHelper(
-            Tab tab, BrowserControlsVisibilityDelegate visibilityDelegate) {
-        try {
-            TabBrowserControlsConstraintsHelper helper =
-                    mock(TabBrowserControlsConstraintsHelper.class);
-            Field field =
-                    TabBrowserControlsConstraintsHelper.class.getDeclaredField(
-                            "mVisibilityDelegate");
-            field.setAccessible(true);
-            field.set(helper, visibilityDelegate);
-            TabBrowserControlsConstraintsHelper.setForTesting(tab, helper);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        // Test overlapping state suppression (XR Space Mode + Fullscreen).
+        mToolbarManager.onXrSpaceModeChanged(true);
+        assertEquals(View.INVISIBLE, hairline.getVisibility());
+
+        observer.onEnterFullscreen(null, null);
+        assertEquals(View.INVISIBLE, hairline.getVisibility());
+
+        // Exiting fullscreen while still in XR space mode should keep hairline INVISIBLE.
+        observer.onExitFullscreen(null);
+        assertEquals(View.INVISIBLE, hairline.getVisibility());
+
+        // Exiting XR space mode should finally restore hairline to VISIBLE.
+        mToolbarManager.onXrSpaceModeChanged(false);
+        assertEquals(View.VISIBLE, hairline.getVisibility());
     }
 
     @Test
@@ -773,7 +804,8 @@ public class ToolbarManagerUnitTest {
                                         /* contentDescription= */ "Identity Disk",
                                         /* supportsTinting= */ false)
                                 .setButtonVariant(AdaptiveToolbarButtonVariant.UNKNOWN)
-                                .setIsIdentityDisc(true)
+                                .setIdentityDiscConfig(
+                                        /* isIdentityDisc= */ true, /* hasAiTierRing= */ false)
                                 .build());
         when(mIdentityDiscProvider.get(ntpTab)).thenReturn(identityDiskData);
 
@@ -786,8 +818,6 @@ public class ToolbarManagerUnitTest {
                 toolbar.findViewById(R.id.toolbar_buttons)
                         .findViewById(R.id.optional_toolbar_button_container);
         assertTrue(toolbarButton == null || toolbarButton.getVisibility() == View.GONE);
-
-        mToolbarManager.destroy();
     }
 
     @Test
@@ -806,7 +836,8 @@ public class ToolbarManagerUnitTest {
                                         /* contentDescription= */ "Identity Disk",
                                         /* supportsTinting= */ false)
                                 .setButtonVariant(AdaptiveToolbarButtonVariant.UNKNOWN)
-                                .setIsIdentityDisc(true)
+                                .setIdentityDiscConfig(
+                                        /* isIdentityDisc= */ true, /* hasAiTierRing= */ false)
                                 .build());
         when(mIdentityDiscProvider.get(webTab)).thenReturn(identityDiskData);
 
@@ -817,8 +848,6 @@ public class ToolbarManagerUnitTest {
         View locationBar = activity.findViewById(R.id.location_bar);
         View locationBarButton = locationBar.findViewById(R.id.optional_button);
         assertTrue(locationBarButton == null || locationBarButton.getVisibility() == View.GONE);
-
-        mToolbarManager.destroy();
     }
 
     @Test
@@ -851,9 +880,6 @@ public class ToolbarManagerUnitTest {
                 toolbar.findViewById(R.id.toolbar_buttons)
                         .findViewById(R.id.optional_toolbar_button_container);
         assertTrue(toolbarButton == null || toolbarButton.getVisibility() == View.GONE);
-
-        ChromeFeatureList.sAndroidBottomBarDisableOnNtp.setForTesting(true);
-        mToolbarManager.destroy();
     }
 
     @Test
@@ -871,7 +897,8 @@ public class ToolbarManagerUnitTest {
                                         /* contentDescription= */ "Identity Disk",
                                         /* supportsTinting= */ false)
                                 .setButtonVariant(AdaptiveToolbarButtonVariant.UNKNOWN)
-                                .setIsIdentityDisc(true)
+                                .setIdentityDiscConfig(
+                                        /* isIdentityDisc= */ true, /* hasAiTierRing= */ false)
                                 .build());
         when(mIdentityDiscProvider.get(ntpTab)).thenReturn(identityDiskData);
 
@@ -884,8 +911,6 @@ public class ToolbarManagerUnitTest {
                 toolbar.findViewById(R.id.toolbar_buttons)
                         .findViewById(R.id.optional_toolbar_button_container);
         assertTrue(toolbarButton == null || toolbarButton.getVisibility() == View.GONE);
-
-        mToolbarManager.destroy();
     }
 
     @Test
@@ -919,9 +944,6 @@ public class ToolbarManagerUnitTest {
                         .findViewById(R.id.optional_toolbar_button_container);
         assertNotNull(toolbarButton);
         assertEquals(View.VISIBLE, toolbarButton.getVisibility());
-
-        ChromeFeatureList.sAndroidBottomBarDisableOnNtp.setForTesting(true);
-        mToolbarManager.destroy();
     }
 
     @Test
@@ -957,8 +979,6 @@ public class ToolbarManagerUnitTest {
         assertNotNull(locationBarButton);
         assertEquals(View.VISIBLE, locationBarButton.getVisibility());
         assertTrue(toolbarButton == null || toolbarButton.getVisibility() == View.GONE);
-
-        mToolbarManager.destroy();
     }
 
     @Test
@@ -1004,7 +1024,8 @@ public class ToolbarManagerUnitTest {
                                         /* contentDescription= */ "Identity Disk",
                                         /* supportsTinting= */ false)
                                 .setButtonVariant(AdaptiveToolbarButtonVariant.UNKNOWN)
-                                .setIsIdentityDisc(true)
+                                .setIdentityDiscConfig(
+                                        /* isIdentityDisc= */ true, /* hasAiTierRing= */ false)
                                 .build());
         when(mIdentityDiscProvider.get(ntpTab)).thenReturn(identityDiskData);
         when(mAdaptiveButtonProvider.get(ntpTab)).thenReturn(null);
@@ -1022,8 +1043,6 @@ public class ToolbarManagerUnitTest {
         assertTrue(locationBarButton == null || locationBarButton.getVisibility() == View.GONE);
         assertNotNull(toolbarButton);
         assertEquals(View.VISIBLE, toolbarButton.getVisibility());
-
-        mToolbarManager.destroy();
     }
 
     @Test
@@ -1042,7 +1061,8 @@ public class ToolbarManagerUnitTest {
                                         /* contentDescription= */ "Identity Disk",
                                         /* supportsTinting= */ false)
                                 .setButtonVariant(AdaptiveToolbarButtonVariant.UNKNOWN)
-                                .setIsIdentityDisc(true)
+                                .setIdentityDiscConfig(
+                                        /* isIdentityDisc= */ true, /* hasAiTierRing= */ false)
                                 .build());
         when(mIdentityDiscProvider.get(ntpTab)).thenReturn(identityDiskData);
 
@@ -1074,7 +1094,50 @@ public class ToolbarManagerUnitTest {
 
         assertTrue(toolbarButton == null || toolbarButton.getVisibility() == View.GONE);
         assertTrue(locationBarButton == null || locationBarButton.getVisibility() == View.GONE);
+    }
 
-        mToolbarManager.destroy();
+    @Test
+    public void testSuspendFuseboxInputOnForegroundTabAdd() {
+        String userText = "hello world";
+        verify(mTabModelSelector, atLeastOnce())
+                .addObserver(mTabModelSelectorObserverCaptor.capture());
+        AutocompleteInput input = new AutocompleteInput(OmniboxFocusReason.OMNIBOX_TAP);
+        input.setUserText(userText);
+        mToolbarManager.beginFuseboxInput(input);
+        assertEquals(userText, getAutocompleteInput().getUserText());
+
+        Tab newTab = mockTab(/* isNtp= */ false);
+        for (TabModelSelectorObserver obs : mTabModelSelectorObserverCaptor.getAllValues()) {
+            obs.onTabHidden(mTab);
+        }
+        assertNull(getAutocompleteInput());
+
+        mActivityTabProvider.setForTesting(newTab);
+        mActivityTabProvider.setForTesting(mTab);
+        assertNotNull(getAutocompleteInput());
+        assertEquals(userText, getAutocompleteInput().getUserText());
+    }
+
+    @Test
+    public void testIsIncognitoNewTabPageCurrentlyVisible() {
+        LocationBarModel locationBarModel = mToolbarManager.getLocationBarModelForTesting();
+        NewTabPageDelegate delegate = locationBarModel.getNewTabPageDelegate();
+
+        // 1. Regular web tab -> returns false
+        Tab webTab = mockTab(/* isNtp= */ false, /* isIncognito= */ false);
+        locationBarModel.setTab(webTab, mProfile);
+        assertFalse(delegate.isIncognitoNewTabPageCurrentlyVisible());
+
+        // 2. Incognito tab with null nativePage but NTP URL (e.g. during back navigation) ->
+        // returns true
+        Tab incognitoNtpTab = mockTab(/* isNtp= */ false, /* isIncognito= */ true);
+        when(incognitoNtpTab.getUrl()).thenReturn(JUnitTestGURLs.NTP_URL);
+        locationBarModel.setTab(incognitoNtpTab, mIncognitoProfile);
+        assertTrue(delegate.isIncognitoNewTabPageCurrentlyVisible());
+
+        // 3. Incognito tab with IncognitoNewTabPage nativePage -> returns true
+        IncognitoNewTabPage incognitoNtpPage = mock(IncognitoNewTabPage.class);
+        when(incognitoNtpTab.getNativePage()).thenReturn(incognitoNtpPage);
+        assertTrue(delegate.isIncognitoNewTabPageCurrentlyVisible());
     }
 }

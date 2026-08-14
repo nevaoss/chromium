@@ -16,9 +16,11 @@ source_set("omnibox_everywhere") {
   public_deps = [ "//chrome/browser:browser_public_dependencies" ]
   deps = [
     "//base",
+    "//chrome/browser/autocomplete:aim_eligibility_service",
     "//chrome/browser/contextual_search",
     "//chrome/browser/profiles:profile",
     "//chrome/browser/resources/omnibox_everywhere:resources",
+    "//chrome/browser/ui/browser_window",
     "//chrome/browser/ui/omnibox",
     "//chrome/browser/ui/webui:favicon_source",
     "//chrome/browser/ui/webui:plural_string_handler",

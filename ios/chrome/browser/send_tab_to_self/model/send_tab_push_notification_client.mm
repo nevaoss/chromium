@@ -11,6 +11,7 @@
 #import "base/strings/sys_string_conversions.h"
 #import "components/prefs/pref_service.h"
 #import "components/send_tab_to_self/features.h"
+#import "components/send_tab_to_self/metrics_util.h"
 #import "components/send_tab_to_self/send_tab_to_self_entry.h"
 #import "components/send_tab_to_self/send_tab_to_self_model.h"
 #import "components/send_tab_to_self/send_tab_to_self_sync_service.h"
@@ -138,34 +139,57 @@ void SendTabPushNotificationClient::LoadSendTabUrlInNewTab(
       sync_service->GetSendTabToSelfModel();
 
   const send_tab_to_self::SendTabToSelfEntry* entry =
-      send_tab_model->GetEntryByGUID(std::string(identifier));
+      send_tab_model->GetEntryByGUID(identifier);
 
   OpenNewTabCommand* command = nil;
   if (entry) {
     command = send_tab_to_self::CreateOpenNewTabCommand(entry);
   } else {
     command = [OpenNewTabCommand commandWithURLFromChrome:url];
+    if (!identifier.empty()) {
+      // Attach the entry GUID even if the entry is not in the model yet so that
+      // navigation tracking attributes the tab to the Send Tab to Self entry.
+      command.sendTabToSelfEntryGUID = base::SysUTF8ToNSString(identifier);
+    }
   }
 
   id<SceneCommands> handler =
       HandlerForProtocol(browser->GetCommandDispatcher(), SceneCommands);
   [handler openURLInNewTab:command];
 
-  if (entry) {
-    send_tab_model->MarkEntryOpened(std::string(identifier));
+  if (!identifier.empty()) {
+    // Mark the entry opened and activated even if `entry` is null (not yet in
+    // the model). The underlying bridge buffers these IDs in
+    // `unknown_opened_entries_` / `unknown_activated_entries_`, preventing the
+    // auto-open logic from opening a duplicate tab when sync later finishes
+    // receiving the entry.
+    send_tab_model->MarkEntryOpened(identifier);
+    send_tab_model->MarkEntryActivated(
+        identifier,
+        send_tab_to_self::ShareActivatedEntryPoint::kMobileNotification);
   }
 
-  if (IsProvisionalNotificationAlertEnabled()) {
-    AuthenticationService* authService =
-        AuthenticationServiceFactory::GetForProfile(browser->GetProfile());
-    id<SystemIdentity> identity = authService->GetPrimaryIdentity();
-    if (!push_notification_settings::
-            GetMobileNotificationPermissionStatusForClient(
-                PushNotificationClientId::kSendTab, identity.gaiaId)) {
-      PushNotificationService* service =
-          GetApplicationContext()->GetPushNotificationService();
-      service->SetPreference(identity.gaiaId,
-                             PushNotificationClientId::kSendTab, true);
-    }
+  send_tab_to_self::RecordAutoOpenOutcome(
+      send_tab_to_self::AutoOpenOutcome::kTabOpenedViaNotification);
+
+  if (!IsProvisionalNotificationAlertEnabled()) {
+    return;
+  }
+
+  AuthenticationService* auth_service =
+      AuthenticationServiceFactory::GetForProfile(browser->GetProfile());
+  id<SystemIdentity> identity =
+      auth_service ? auth_service->GetPrimaryIdentity() : nil;
+  if (!identity) {
+    return;
+  }
+
+  if (!push_notification_settings::
+          GetMobileNotificationPermissionStatusForClient(
+              PushNotificationClientId::kSendTab, identity.gaiaId)) {
+    PushNotificationService* service =
+        GetApplicationContext()->GetPushNotificationService();
+    service->SetPreference(identity.gaiaId, PushNotificationClientId::kSendTab,
+                           true);
   }
 }

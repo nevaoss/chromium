@@ -41,6 +41,7 @@
 #include "base/trace_event/trace_event.h"
 #include "base/types/expected.h"
 #include "base/types/fixed_array.h"
+#include "base/unguessable_token.h"
 #include "build/build_config.h"
 #include "components/grit/components_resources.h"
 #include "components/printing/common/print_params.h"
@@ -1406,9 +1407,30 @@ void PrintRenderFrameHelper::PrintWithParams(
                        ? DebugEvent::kSetPrintSettings1
                        : DebugEvent::kSetPrintSettings2);
   SetPrintPagesParamsForPrinting(*settings);
+
+  is_loading_ = frame->WillPrintSoon();
+  if (is_loading_) {
+    on_stop_loading_closure_ =
+        base::BindOnce(&PrintRenderFrameHelper::OnPrintWithParamsFinished,
+                       weak_ptr_factory_.GetWeakPtr());
+    SetupOnStopLoadingTimeout();
+    return;
+  }
+
+  OnPrintWithParamsFinished();
+}
+
+void PrintRenderFrameHelper::OnPrintWithParamsFinished() {
+  if (render_frame_gone_) {
+    return;
+  }
+
+  blink::WebLocalFrame* frame = render_frame()->GetWebFrame();
+  const blink::WebNode plugin_node = delegate_->GetPdfElement(frame);
+
   prep_frame_view_ =
       std::make_unique<PrepareFrameAndViewForPrint>(frame, plugin_node);
-  prep_frame_view_->EnterPrintMode(*settings->params,
+  prep_frame_view_->EnterPrintMode(*print_pages_params_->params,
                                    /*ignore_css_margins=*/false);
 
   PrintPages();
@@ -2255,7 +2277,7 @@ void PrintRenderFrameHelper::Reset() {
   prep_frame_view_.reset();
   print_pages_params_.reset();
 #if BUILDFLAG(ENABLE_PRINT_PREVIEW)
-  preview_ui_id_ = -1;
+  preview_ui_id_ = base::UnguessableToken();
 #endif
   notify_browser_of_print_failure_ = true;
   snapshotter_.reset();
@@ -2507,8 +2529,13 @@ bool PrintRenderFrameHelper::UpdatePrintSettings(
                            mojom::SkiaDocumentType::kMSKP
                        ? DebugEvent::kSetPrintSettings7
                        : DebugEvent::kSetPrintSettings8);
-  SetPrintPagesParamsForPrintPreview(
-      *settings, job_settings.FindInt(kPreviewUIID).value());
+
+  const std::string* preview_ui_id_str = job_settings.FindString(kPreviewUIID);
+  CHECK(preview_ui_id_str);
+  std::optional<base::UnguessableToken> preview_ui_id =
+      base::UnguessableToken::DeserializeFromString(*preview_ui_id_str);
+  CHECK(preview_ui_id.has_value());
+  SetPrintPagesParamsForPrintPreview(*settings, preview_ui_id.value());
   return true;
 }
 #endif  // BUILDFLAG(ENABLE_PRINT_PREVIEW)
@@ -2535,7 +2562,7 @@ mojom::PrintPagesParamsPtr PrintRenderFrameHelper::GetPrintSettingsFromUser(
 
   print_pages_params_.reset();
 #if BUILDFLAG(ENABLE_PRINT_PREVIEW)
-  preview_ui_id_ = -1;
+  preview_ui_id_ = base::UnguessableToken();
 #endif
 
   mojom::PrintPagesParamsPtr print_settings;
@@ -2553,8 +2580,16 @@ bool PrintRenderFrameHelper::RenderPagesForPrint(blink::WebLocalFrame* frame,
   const mojom::PrintPagesParams& params = *print_pages_params_;
   const mojom::PrintParams& print_params = *params.params;
   prep_frame_view_ = std::make_unique<PrepareFrameAndViewForPrint>(frame, node);
+#if !BUILDFLAG(IS_ANDROID)
+  // On Desktop, the Print Preview WebUI explicitly prevents page range
+  // selection when "Selection only" is checked. Therefore, `pages` is always
+  // expected to be empty. However, on Android, Chrome relies on the standard
+  // Android Print Spooler UI. The spooler operates on the extracted
+  // selection-only document and allows users to specify a page range. Thus,
+  // `pages` can be non-empty.
   DCHECK(!print_pages_params_->params->selection_only ||
          print_pages_params_->pages.empty());
+#endif
   prep_frame_view_->BeginPrinting(
       render_frame()->GetBlinkPreferences(), print_params, ignore_css_margins_,
       base::BindOnce(&PrintRenderFrameHelper::OnFramePreparedForPrintPages,
@@ -2696,14 +2731,12 @@ void PrintRenderFrameHelper::RequestPrintPreview(PrintPreviewRequestType type,
     }
   }
 
-  const bool is_modifiable = print_preview_context_.IsModifiable();
   const bool has_selection = print_preview_context_.HasSelection();
 
   auto params = mojom::RequestPrintPreviewParams::New();
 #if BUILDFLAG(IS_CHROMEOS)
   params->is_from_arc = print_preview_context_.IsForArc();
 #endif
-  params->is_modifiable = is_modifiable;
   params->has_selection = has_selection;
   switch (type) {
     case PrintPreviewRequestType::kScripted: {
@@ -3121,14 +3154,14 @@ void PrintRenderFrameHelper::SetPrintPagesParamsForPrinting(
   print_pages_params_ = settings.Clone();
 #if BUILDFLAG(ENABLE_PRINT_PREVIEW)
   // Invalid ID since this is not for Print Preview.
-  preview_ui_id_ = -1;
+  preview_ui_id_ = base::UnguessableToken();
 #endif
 }
 
 #if BUILDFLAG(ENABLE_PRINT_PREVIEW)
 void PrintRenderFrameHelper::SetPrintPagesParamsForPrintPreview(
     const mojom::PrintPagesParams& settings,
-    int preview_ui_id) {
+    const base::UnguessableToken& preview_ui_id) {
   CHECK(PrintMsgPrintParamsIsValid(*settings.params));
   print_pages_params_ = settings.Clone();
   preview_ui_id_ = preview_ui_id;

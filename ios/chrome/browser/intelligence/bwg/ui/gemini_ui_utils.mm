@@ -13,9 +13,9 @@
 
 + (UIImage*)brandedGeminiSymbolWithPointSize:(CGFloat)pointSize {
 #if BUILDFLAG(IOS_USE_BRANDED_ASSETS)
-  return CustomSymbolWithPointSize(kGeminiBrandedLogoSymbol, pointSize);
+  return SymbolWithPointSize(SymbolGeminiBrandedLogo, pointSize);
 #else
-  return DefaultSymbolWithPointSize(kGeminiNonBrandedLogoSymbol, pointSize);
+  return SymbolWithPointSize(SymbolGeminiNonBrandedLogo, pointSize);
 #endif
 }
 
@@ -55,6 +55,25 @@
       }];
 
   return gradientImage;
+}
+
++ (CGFloat)contentHeightForView:(UIView*)targetView
+             withContainerWidth:(CGFloat)containerWidth {
+  if (!targetView) {
+    return 0;
+  }
+  if (containerWidth <= 0) {
+    return
+        [targetView systemLayoutSizeFittingSize:UILayoutFittingCompressedSize]
+            .height;
+  }
+  CGSize targetSize =
+      CGSizeMake(containerWidth, UILayoutFittingCompressedSize.height);
+  return
+      [targetView systemLayoutSizeFittingSize:targetSize
+                withHorizontalFittingPriority:UILayoutPriorityRequired
+                      verticalFittingPriority:UILayoutPriorityFittingSizeLevel]
+          .height;
 }
 
 @end

@@ -14,6 +14,7 @@
 
 #include "base/apple/bridging.h"
 #include "base/apple/foundation_util.h"
+#include "base/apple/scoped_cftyperef.h"
 #include "base/auto_reset.h"
 #include "base/check_is_test.h"
 #include "base/check_op.h"
@@ -35,6 +36,7 @@
 #include "base/task/thread_pool.h"
 #include "base/threading/scoped_blocking_call.h"
 #include "base/threading/thread_restrictions.h"
+#include "base/time/time.h"
 #include "build/branding_buildflags.h"
 #include "chrome/app/chrome_command_ids.h"
 #include "chrome/browser/apps/app_shim/app_shim_termination_manager.h"
@@ -90,7 +92,6 @@
 #import "chrome/browser/ui/cocoa/history_menu_bridge.h"
 #import "chrome/browser/ui/cocoa/profiles/profile_menu_controller.h"
 #import "chrome/browser/ui/cocoa/share_menu_controller.h"
-#import "chrome/browser/ui/cocoa/tab_group_menu_bridge.h"
 #import "chrome/browser/ui/cocoa/tab_menu_bridge.h"
 #include "chrome/browser/ui/dialogs/browser_dialogs.h"
 #include "chrome/browser/ui/extensions/application_launch.h"
@@ -175,8 +176,9 @@ void BeginHandlingWebAuthenticationSessionRequestWithProfile(
     ASWebAuthenticationSessionRequest* request,
     Profile* profile) {
   NSUUID* key = request.UUID;
-  if (![GetPendingWebAuthRequests() objectForKey:key])
+  if (![GetPendingWebAuthRequests() objectForKey:key]) {
     return;  // The request has been canceled, do not start the session.
+  }
 
   [GetPendingWebAuthRequests() removeObjectForKey:key];
 
@@ -700,7 +702,6 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
 
   std::unique_ptr<HistoryMenuBridge> _historyMenuBridge;
 
-  std::unique_ptr<TabGroupMenuBridge> _tabGroupMenuBridge;
 
   // The profile menu, which appears right before the Help menu. It is only
   // available when multiple profiles is enabled.
@@ -1076,7 +1077,6 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
   // deleted first.
   _historyMenuBridge.reset();
 
-  _tabGroupMenuBridge.reset();
 
   // It's safe to delete |_lastProfile| now.
   [self setLastProfile:nullptr];
@@ -1172,30 +1172,52 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
 
 - (void)onVerticalTabStripModeChanged:
     (tabs::VerticalTabStripStateController*)stateController {
-  bool enabled = stateController->ShouldDisplayVerticalTabs();
-  bool is_rtl = base::i18n::IsRTL();
-
-  // Updates the `Tab` menu's "New Tab to the ..." and "Close Tabs to the ..."
-  // accordingly.
-  if (_tabMenuBridge) {
-    NSMenu* tabSubmenu = [[[NSApp mainMenu] itemWithTag:kMacTabMenuId] submenu];
-    NSMenuItem* newTabPositionalItem =
-        [tabSubmenu itemWithTag:IDC_NEW_TAB_TO_RIGHT];
-    NSMenuItem* closeTabsPositionalItem =
-        [tabSubmenu itemWithTag:IDC_WINDOW_CLOSE_TABS_TO_RIGHT];
-
-    [newTabPositionalItem
-        setTitle:l10n_util::GetNSString(enabled ? IDS_TAB_CXMENU_NEWTABBELOW
-                                        : is_rtl
-                                            ? IDS_TAB_CXMENU_NEWTABTOLEFT
-                                            : IDS_TAB_CXMENU_NEWTABTORIGHT)];
-
-    [closeTabsPositionalItem
-        setTitle:l10n_util::GetNSString(enabled ? IDS_TAB_CXMENU_CLOSETABSBELOW
-                                        : is_rtl
-                                            ? IDS_TAB_CXMENU_CLOSETABSTOLEFT
-                                            : IDS_TAB_CXMENU_CLOSETABSTORIGHT)];
+  if (!_tabMenuBridge) {
+    return;
   }
+
+  NSMenu* tabSubmenu = [[[NSApp mainMenu] itemWithTag:kMacTabMenuId] submenu];
+  if (!tabSubmenu) {
+    return;
+  }
+
+  bool enabled = stateController->ShouldDisplayVerticalTabs();
+
+  auto updateMenuState = ^(NSInteger tag, bool enableVerticalTabs) {
+    NSMutableArray<NSMenuItem*>* matchingItems = [NSMutableArray array];
+    for (NSMenuItem* item in [tabSubmenu itemArray]) {
+      if (item.tag == tag) {
+        [matchingItems addObject:item];
+      }
+    }
+
+    // There are 2 copies of "New Tab to Right" and "Close Tabs to Right"
+    // for horizontal and vertical tab modes.
+    CHECK_EQ(matchingItems.count, 2u);
+
+    NSMenuItem* horizontalItem = matchingItems[0];
+    NSMenuItem* verticalItem = matchingItems[1];
+
+    NSMenuItem* activeItem =
+        horizontalItem.hidden ? verticalItem : horizontalItem;
+    NSMenuItem* incomingItem =
+        enableVerticalTabs ? verticalItem : horizontalItem;
+
+    if (activeItem != incomingItem) {
+      incomingItem.keyEquivalent = activeItem.keyEquivalent;
+      incomingItem.keyEquivalentModifierMask =
+          activeItem.keyEquivalentModifierMask;
+
+      horizontalItem.hidden = enableVerticalTabs;
+      verticalItem.hidden = !enableVerticalTabs;
+    }
+  };
+
+  // Process "New Tab to the Right" / "New Tab Below" items.
+  updateMenuState(IDC_NEW_TAB_TO_RIGHT, enabled);
+
+  // Process "Close Tabs to the Right" / "Close Tabs Below" items.
+  updateMenuState(IDC_WINDOW_CLOSE_TABS_TO_RIGHT, enabled);
 }
 
 // Called when shutting down or logging out.
@@ -1220,11 +1242,12 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
   CFStringRef app = CFSTR("com.google.Keystone.Agent");
   CFStringRef checkInterval = CFSTR("checkInterval");
-  CFPropertyListRef plist = CFPreferencesCopyAppValue(checkInterval, app);
-  if (!plist) {
-    const float fiveHoursInSeconds = 5.0 * 60.0 * 60.0;
+  base::apple::ScopedCFTypeRef<CFPropertyListRef> plist(
+      CFPreferencesCopyAppValue(checkInterval, app));
+  if (!plist.get()) {
+    const float interval = base::Hours(5).InSecondsF();
     CFPreferencesSetAppValue(
-        checkInterval, base::apple::NSToCFPtrCast(@(fiveHoursInSeconds)), app);
+        checkInterval, base::apple::NSToCFPtrCast(@(interval)), app);
     CFPreferencesAppSynchronize(app);
   }
 #endif
@@ -2202,7 +2225,6 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
     _historyMenuBridge->OnProfileWillBeDestroyed();
   }
 
-  _tabGroupMenuBridge.reset();
 
   _profilePrefRegistrar.reset();
 
@@ -2258,15 +2280,6 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
   _historyMenuBridge = std::make_unique<HistoryMenuBridge>(_lastProfile);
   _historyMenuBridge->BuildMenu();
 
-  if (features::IsShowTabGroupsMacSystemMenuEnabled()) {
-    auto* tab_group_service =
-        tab_groups::TabGroupSyncServiceFactory::GetForProfile(_lastProfile);
-    if (tab_group_service) {
-      _tabGroupMenuBridge =
-          std::make_unique<TabGroupMenuBridge>(_lastProfile, tab_group_service);
-      _tabGroupMenuBridge->BuildMenu();
-    }
-  }
 
   chrome::BrowserCommandController::
       UpdateSharedCommandsForIncognitoAvailability(
@@ -2501,7 +2514,7 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
 
 - (void)beginHandlingWebAuthenticationSessionRequest:
     (ASWebAuthenticationSessionRequest*)request {
-  dispatch_async(dispatch_get_main_queue(), ^(void) {
+  dispatch_async(dispatch_get_main_queue(), ^{
     // Start tracking the pending request, so it's possible to cancel it before
     // the session actually starts.
     NSUUID* key = request.UUID;
@@ -2518,23 +2531,20 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
 
 - (void)cancelWebAuthenticationSessionRequest:
     (ASWebAuthenticationSessionRequest*)request {
-  dispatch_async(dispatch_get_main_queue(), ^(void) {
-    NSUUID* key = request.UUID;
-    if ([GetPendingWebAuthRequests() objectForKey:key]) {
-      // Remove the pending request: for the case when the session is not
-      // started.
+  dispatch_async(dispatch_get_main_queue(), ^{
+    if (NSUUID* key = request.UUID;
+        [GetPendingWebAuthRequests() objectForKey:key]) {
+      // If the web authentication request is still pending, remove it from the
+      // list of pending requests and notify the OS that it was successfully
+      // canceled.
       [GetPendingWebAuthRequests() removeObjectForKey:key];
-
-      // Take care of the undocumented requirement (https://crbug.com/40250389)
-      // that -[ASWebAuthenticationSessionRequest cancelWithError:] be called
-      // for authentication sessions canceled by the OS.
       NSError* error = [NSError
           errorWithDomain:ASWebAuthenticationSessionErrorDomain
                      code:ASWebAuthenticationSessionErrorCodeCanceledLogin
                  userInfo:nil];
       [request cancelWithError:error];
     } else {
-      // Cancel the session: for the case when it was already started.
+      // Otherwise, tell the web authentication request to cancel itself.
       AuthSessionRequest::CancelAuthSession(request);
     }
   });

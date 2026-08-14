@@ -14,6 +14,7 @@
 #include "base/functional/callback.h"
 #include "base/functional/callback_helpers.h"
 #include "base/metrics/histogram_functions.h"
+#include "base/task/single_thread_task_runner.h"
 #include "build/build_config.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/profiles/profile.h"
@@ -25,6 +26,7 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/dialogs/browser_dialogs.h"
 #include "chrome/browser/ui/profiles/signin_intercept_first_run_experience_dialog.h"
+#include "chrome/browser/ui/signin/cross_device_signin_qr_bubble.h"
 #include "chrome/browser/ui/signin/signin_modal_dialog.h"
 #include "chrome/browser/ui/signin/signin_modal_dialog_impl.h"
 #include "chrome/browser/ui/signin/signin_view_controller_delegate.h"
@@ -51,6 +53,9 @@
 #include "extensions/buildflags/buildflags.h"
 #include "google_apis/gaia/core_account_id.h"
 #include "google_apis/gaia/gaia_id.h"
+#include "ui/views/bubble/bubble_dialog_delegate_view.h"
+#include "ui/views/widget/widget.h"
+#include "ui/views/widget/widget_observer.h"
 
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
 #include "base/strings/utf_string_conversions.h"
@@ -129,6 +134,73 @@ class NewTabWebContentsObserver : public content::WebContentsObserver {
   }
   base::OnceCallback<void(content::WebContents*)> callback_;
 };
+
+class SigninQRCodeInfoBarLoader
+    : public content::WebContentsObserver,
+      public content::WebContentsUserData<SigninQRCodeInfoBarLoader> {
+ public:
+  ~SigninQRCodeInfoBarLoader() override = default;
+
+  // content::WebContentsObserver:
+  void ReadyToCommitNavigation(
+      content::NavigationHandle* navigation_handle) override {
+    if (!navigation_handle->IsInPrimaryMainFrame()) {
+      return;
+    }
+    ready_to_commit_ = true;
+    MaybeShowInfoBar();
+  }
+
+  void OnHybridTransportSupported(bool can_show) {
+    hybrid_supported_check_done_ = true;
+    can_show_infobar_ = can_show;
+    MaybeShowInfoBar();
+  }
+
+ private:
+  explicit SigninQRCodeInfoBarLoader(content::WebContents* web_contents)
+      : content::WebContentsObserver(web_contents),
+        content::WebContentsUserData<SigninQRCodeInfoBarLoader>(*web_contents) {
+  }
+
+  void MaybeShowInfoBar() {
+    if (hybrid_supported_check_done_ && !can_show_infobar_) {
+      // We already know hybrid transport is not supported; no need to wait for
+      // navigation to commit.
+      web_contents()->RemoveUserData(UserDataKey());
+      return;
+    }
+    if (!ready_to_commit_ || !hybrid_supported_check_done_) {
+      // Wait for both events to complete.
+      return;
+    }
+    // Verify we are still on the sign-in page (e.g. the navigation wasn't
+    // redirected or cancelled).
+    DiceTabHelper* tab_helper = DiceTabHelper::FromWebContents(web_contents());
+    if (tab_helper && tab_helper->IsChromeSigninPage()) {
+      infobars::InfoBarManager* infobar_manager =
+          infobars::ContentInfoBarManager::FromWebContents(web_contents());
+      if (infobar_manager) {
+        auto delegate =
+            std::make_unique<SigninQRCodeInfoBarDelegate>(web_contents());
+        auto* model =
+            SigninQRCodeModel::GetOrCreateForWebContents(web_contents());
+        infobar_manager->AddInfoBar(
+            std::make_unique<SigninQRCodeInfoBar>(std::move(delegate), model));
+      }
+    }
+    web_contents()->RemoveUserData(UserDataKey());
+  }
+
+  bool ready_to_commit_ = false;
+  bool hybrid_supported_check_done_ = false;
+  bool can_show_infobar_ = false;
+
+  friend class content::WebContentsUserData<SigninQRCodeInfoBarLoader>;
+  WEB_CONTENTS_USER_DATA_KEY_DECL();
+};
+
+WEB_CONTENTS_USER_DATA_KEY_IMPL(SigninQRCodeInfoBarLoader);
 
 // Opens a new tab on |url| or reuses the current tab if it is the NTP.
 void ShowTabOverwritingNTP(BrowserWindowInterface* browser,
@@ -480,6 +552,25 @@ void SigninViewController::ShowModalSigninEmailConfirmationDialog(
 }
 #endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
 
+#if BUILDFLAG(ENABLE_DICE_SUPPORT)
+void SigninViewController::ShowCrossDeviceSigninQrBubble(
+    base::OnceClosure closing_callback) {
+  CloseBubbleSignin();
+  auto delegate = ::CreateCrossDeviceSigninQrBubble(
+      &*browser_, std::move(closing_callback));
+  bubble_widget_ = views::BubbleDialogDelegate::CreateBubble(
+      delegate.release(),
+      base::BindOnce(&SigninViewController::OnBubbleClosed, AsWeakPtr()));
+}
+#endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
+
+void SigninViewController::OnBubbleClosed(views::Widget::ClosedReason reason) {
+  if (bubble_widget_) {
+    base::SingleThreadTaskRunner::GetCurrentDefault()->DeleteSoon(
+        FROM_HERE, std::move(bubble_widget_));
+  }
+}
+
 void SigninViewController::ShowModalSyncConfirmationDialog(
     bool is_signin_intercept,
     bool is_sync_promo) {
@@ -514,7 +605,7 @@ void SigninViewController::ShowModalManagedUserNoticeDialog(
   CloseModalSignin();
   dialog_ = std::make_unique<SigninModalDialogImpl>(
       SigninViewControllerDelegate::CreateManagedUserNoticeDelegate(
-          browser_->GetBrowserForMigrationOnly(), std::move(create_param)),
+          browser_.get(), std::move(create_param)),
       GetOnModalDialogClosedCallback());
 #else
   NOTREACHED() << "Managed user notice dialog modal not supported";
@@ -542,6 +633,16 @@ void SigninViewController::CloseModalSignin() {
   }
 
   DCHECK(!dialog_);
+}
+
+void SigninViewController::CloseBubbleSignin() {
+  if (bubble_widget_) {
+    // Extract the pointer so bubble_widget_ is nullified immediately.
+    auto widget = std::move(bubble_widget_);
+    widget->CloseWithReason(views::Widget::ClosedReason::kUnspecified);
+    base::SingleThreadTaskRunner::GetCurrentDefault()->DeleteSoon(
+        FROM_HERE, std::move(widget));
+  }
 }
 
 void SigninViewController::SetModalSigninHeight(int height) {
@@ -648,25 +749,15 @@ void SigninViewController::ShowDiceSigninTab(
       DiceTabHelper::GetShowSigninErrorCallbackForBrowser());
 
   if (switches::IsMagiChromePasskeyBannerEnabled()) {
+    SigninQRCodeInfoBarLoader::CreateForWebContents(active_contents);
     signin::IsHybridTransportSupportedForQrCodeSignin(base::BindOnce(
         [](base::WeakPtr<content::WebContents> web_contents, bool can_start) {
-          if (!can_start || !web_contents) {
+          if (!web_contents) {
             return;
           }
-          DiceTabHelper* tab_helper =
-              DiceTabHelper::FromWebContents(web_contents.get());
-          if (!tab_helper || !tab_helper->IsChromeSigninPage()) {
-            return;
-          }
-          infobars::InfoBarManager* infobar_manager =
-              infobars::ContentInfoBarManager::FromWebContents(
-                  web_contents.get());
-          if (infobar_manager) {
-            auto delegate = std::make_unique<SigninQRCodeInfoBarDelegate>(
-                web_contents.get());
-            Profile* profile = delegate->profile();
-            infobar_manager->AddInfoBar(std::make_unique<SigninQRCodeInfoBar>(
-                profile, std::move(delegate)));
+          if (auto* loader = SigninQRCodeInfoBarLoader::FromWebContents(
+                  web_contents.get())) {
+            loader->OnHybridTransportSupported(can_start);
           }
         },
         active_contents->GetWeakPtr()));

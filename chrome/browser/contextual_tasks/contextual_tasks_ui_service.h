@@ -73,15 +73,18 @@ class ContextualTasksUIInterface;
 class ContextualTasksWindowTracker;
 class ContextualTasksWindowTrackerManager;
 
+struct StartTaskUiOptions {
+  bool associate_web_contents = true;
+  omnibox::ChromeAimEntryPoint entry_point =
+      omnibox::ChromeAimEntryPoint::UNKNOWN_AIM_ENTRY_POINT;
+  bool use_mstk_for_task_association = false;
+  bool use_no_animation = false;
+};
+
 // A service used to coordinate all of the side panel instances showing an AI
 // thread. Events like tab switching and Intercepted navigations from both the
 // sidepanel and omnibox will be routed here.
 class ContextualTasksUiService : public KeyedService {
-  FRIEND_TEST_ALL_PREFIXES(ContextualTasksUiServiceTest,
-                           IsAllowedHost_WithOverride);
-  FRIEND_TEST_ALL_PREFIXES(ContextualTasksUiServiceTest,
-                           IsAllowedHost_LensDebugNotAllowed);
-
  public:
   class Observer : public base::CheckedObserver {
    public:
@@ -105,7 +108,8 @@ class ContextualTasksUiService : public KeyedService {
   void Shutdown() override;
 
   // Triggers the cookie synchronization to the isolated partition.
-  virtual void EnsureCookiesSynced();
+  virtual void EnsureCookiesSynced(
+      base::OnceClosure callback = base::DoNothing());
 
   void AddObserver(Observer* observer);
   void RemoveObserver(Observer* observer);
@@ -258,30 +262,13 @@ class ContextualTasksUiService : public KeyedService {
 
   // Opens the contextual tasks side panel and creates a new task with the given
   // URL as its initial thread URL.
-  virtual void StartTaskUiInSidePanel(
+  void StartTaskUiInSidePanel(
       BrowserWindowInterface* browser_window_interface,
       tabs::TabInterface* tab_interface,
       const GURL& url,
       std::unique_ptr<contextual_search::ContextualSearchSessionHandle>
           session_handle,
-      omnibox::ChromeAimEntryPoint entry_point =
-          omnibox::ChromeAimEntryPoint::UNKNOWN_AIM_ENTRY_POINT);
-
-  // Opens the contextual tasks side panel and creates a new task with the given
-  // URL as its initial thread URL. Allows specifying whether the active tab's
-  // WebContents should be associated with the new task. If
-  // `associate_web_contents` is false, the task is started in the side panel
-  // but remains independent of the active tab. This allows the auto suggested
-  // tab chip/coin to appear immediately on open.
-  virtual void StartTaskUiInSidePanel(
-      BrowserWindowInterface* browser_window_interface,
-      tabs::TabInterface* tab_interface,
-      const GURL& url,
-      std::unique_ptr<contextual_search::ContextualSearchSessionHandle>
-          session_handle,
-      bool associate_web_contents,
-      omnibox::ChromeAimEntryPoint entry_point =
-          omnibox::ChromeAimEntryPoint::UNKNOWN_AIM_ENTRY_POINT);
+      StartTaskUiOptions options = {});
 
   // Opens the contextual tasks side panel showing a ghost loader while waiting
   // for the initial thread URL to be provided for that task. This creates an
@@ -334,6 +321,9 @@ class ContextualTasksUiService : public KeyedService {
   // correct params and isn't a shopping query.
   bool IsValidSearchResultsPage(const GURL& url);
 
+  // Returns whether the provided URL is a Google CAPTCHA ("sorry") page.
+  virtual bool IsGoogleCaptchaUrl(const GURL& url);
+
   // Returns a copy of base_url with the URL params from webui_url applied to
   // it. This will exclude chrome webui-specific params, specifically "task".
   static GURL CopyParamsFromWebUIUrl(const GURL& base_url,
@@ -345,6 +335,9 @@ class ContextualTasksUiService : public KeyedService {
 
   // Returns whether the provided host is trusted for overrides.
   static bool IsTrustedHost(const std::string& host);
+
+  // Returns the host parameter from the URL if present and trusted.
+  static std::optional<std::string> GetHostFromUrl(const GURL& url);
 
   // Called when the Lens overlay is shown/hidden. No-op if the active UI is not
   // in the side panel since the Lens button is always hidden in a tab.
@@ -434,6 +427,13 @@ class ContextualTasksUiService : public KeyedService {
           session_handle);
 
  protected:
+  virtual void StartTaskUiInSidePanelImpl(
+      BrowserWindowInterface* browser_window_interface,
+      tabs::TabInterface* tab_interface,
+      const GURL& url,
+      std::unique_ptr<contextual_search::ContextualSearchSessionHandle>
+          session_handle,
+      StartTaskUiOptions options);
   // The actual implementation of `HandleNavigation` that extracts more of the
   // components needed to decide if the navigation should be handled by this
   // service.
@@ -571,7 +571,7 @@ class ContextualTasksUiService : public KeyedService {
                                            const GURL& url);
 
   // Checks if the provided URL matches any of the allowed hosts.
-  static bool IsAllowedHost(const GURL& url);
+  bool IsAllowedHost(const GURL& url);
 
   // Returns the host override for a given task if it differs from the default.
   std::string GetHostForTask(const base::Uuid& task_id);
@@ -627,6 +627,11 @@ class ContextualTasksUiService : public KeyedService {
   // intercepting a query from some other surface like the omnibox. The entry
   // in this map is removed once the UI is loaded with the correct thread.
   std::map<base::Uuid, GURL> task_id_to_creation_url_;
+
+  // Map a task's ID to the initial Magi State Token (mstk) used to create it.
+  // This is used to identify and reuse tasks when launched again with the same
+  // initial token, even after the task's active thread turn ID has changed.
+  std::map<base::Uuid, std::string> task_id_to_initial_mstk_;
 
   // Map a task's ID to the entry point that was used to open it. This is used
   // to populate the aep param for GetInitialUrlForTask.

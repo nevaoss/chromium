@@ -21,6 +21,7 @@
 #include "content/browser/devtools/network_service_devtools_observer.h"
 #include "content/browser/devtools/service_worker_devtools_agent_host.h"
 #include "content/browser/devtools/service_worker_devtools_manager.h"
+#include "content/browser/hid/hid_service.h"
 #include "content/browser/loader/url_loader_factory_utils.h"
 #include "content/browser/network/cross_origin_embedder_policy_reporter.h"
 #include "content/browser/process_lock.h"
@@ -59,10 +60,6 @@
 #include "third_party/blink/public/mojom/renderer_preference_watcher.mojom.h"
 #include "third_party/blink/public/mojom/service_worker/service_worker_object.mojom.h"
 #include "url/gurl.h"
-
-#if !BUILDFLAG(IS_ANDROID)
-#include "content/browser/hid/hid_service.h"
-#endif
 
 // TODO(crbug.com/40568315): Much of this file, which dealt with thread hops
 // between UI and IO, can likely be simplified when the service worker core
@@ -724,6 +721,14 @@ void EmbeddedWorkerInstance::OnStarted(
   pause_initializing_global_scope_ = false;
   thread_id_ = thread_id;
   inflight_start_info_.reset();
+
+  // The worker finished starting; re-evaluate whether its process still needs
+  // foreground priority. In particular this drops the startup foreground boost
+  // given to extension service workers in
+  // ServiceWorkerVersion::ShouldRequireForegroundPriority(), unless the worker
+  // still requires foreground priority for another reason.
+  UpdateForegroundPriority();
+
   for (auto& observer : listener_list_) {
     observer.OnStarted(start_status, fetch_handler_type, has_hid_event_handlers,
                        has_usb_event_handlers);
@@ -804,7 +809,6 @@ void EmbeddedWorkerInstance::BindCacheStorage(
   BindCacheStorageInternal();
 }
 
-#if !BUILDFLAG(IS_ANDROID)
 void EmbeddedWorkerInstance::BindHidService(
     const url::Origin& origin,
     mojo::PendingReceiver<blink::mojom::HidService> receiver) {
@@ -818,7 +822,6 @@ void EmbeddedWorkerInstance::BindHidService(
                        std::move(receiver));
   }
 }
-#endif  // !BUILDFLAG(IS_ANDROID)
 
 void EmbeddedWorkerInstance::BindUsbService(
     const url::Origin& origin,

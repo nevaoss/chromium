@@ -14,7 +14,6 @@
 #include "base/logging.h"
 #include "base/values.h"
 #include "remoting/base/logging.h"
-#include "remoting/host/client_session_details.h"
 #include "remoting/host/security_key/security_key_auth_handler.h"
 #include "remoting/proto/control.pb.h"
 #include "remoting/protocol/client_stub.h"
@@ -71,23 +70,21 @@ SecurityKeyExtensionSession::SecurityKeyExtensionSession(
   if (auth_handler_) {
     auth_handler_->SetSendMessageCallback(
         base::BindRepeating(&SecurityKeyExtensionSession::SendMessageToClient,
-                            weak_factory_.GetWeakPtr()));
+                            weak_factory_.GetWeakPtr()),
+        this);
   }
 }
 
 SecurityKeyExtensionSession::~SecurityKeyExtensionSession() {
   DCHECK(thread_checker_.CalledOnValidThread());
   if (auth_handler_) {
-    auth_handler_->SetSendMessageCallback(base::NullCallback());
+    auth_handler_->ClearSendMessageCallback(this);
   }
 }
 
 // Returns true if the |message| is a Security Key ExtensionMessage.
 // This is done so the host does not pass |message| to other HostExtensions.
-// TODO(joedow): Use |client_session_details| to disconnect the session if we
-//               receive an invalid extension message.
 bool SecurityKeyExtensionSession::OnExtensionMessage(
-    ClientSessionDetails* client_session_details,
     protocol::ClientStub* client_stub,
     const protocol::ExtensionMessage& message) {
   DCHECK(thread_checker_.CalledOnValidThread());

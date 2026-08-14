@@ -2,11 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "partition_alloc/bucket_lookup.h"
-#include "partition_alloc/slot_start.h"
-#if !defined(MEMORY_TOOL_REPLACES_ALLOCATOR)
+#include "partition_alloc/buildflags.h"
+
+#if !PA_BUILDFLAG(MEMORY_TOOL_REPLACES_ALLOCATOR)
 
 #include <algorithm>
+#include <array>
+#include <bit>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -21,8 +23,8 @@
 
 #include "partition_alloc/address_space_randomization.h"
 #include "partition_alloc/bounds_checks.h"
+#include "partition_alloc/bucket_lookup.h"
 #include "partition_alloc/build_config.h"
-#include "partition_alloc/buildflags.h"
 #include "partition_alloc/dangling_raw_ptr_checks.h"
 #include "partition_alloc/in_slot_metadata.h"
 #include "partition_alloc/internal/partition_root_internal.h"
@@ -51,6 +53,7 @@
 #include "partition_alloc/reservation_offset_table.h"
 #include "partition_alloc/scheduler_loop_quarantine_support.h"
 #include "partition_alloc/slot_address_and_size.h"
+#include "partition_alloc/slot_start.h"
 #include "partition_alloc/tagging.h"
 #include "partition_alloc/thread_isolation/thread_isolation.h"
 #include "partition_alloc/use_death_tests.h"
@@ -196,7 +199,7 @@ bool ClearAddressSpaceLimit() {
 #endif
 }
 
-const size_t kTestSizes[] = {
+const auto kTestSizes = std::to_array<size_t>({
     1,
     17,
     100,
@@ -205,7 +208,7 @@ const size_t kTestSizes[] = {
     partition_alloc::PartitionRoot::GetDirectMapSlotSize(100),
     1 << 20,
     1 << 21,
-};
+});
 constexpr size_t kTestSizesCount = std::size(kTestSizes);
 // A lambda function for unit tests to try Free, FreeWithSize, and
 // FreeWithSizeAndAlignment. It always takes a size_t argument, but ignores it
@@ -5864,8 +5867,7 @@ TEST_P(PartitionAllocDeathTest, CheckTriggered) {
 // Not on chromecast, since gtest considers extra output from itself as a test
 // failure:
 // https://ci.chromium.org/ui/p/chromium/builders/ci/Cast%20Audio%20Linux/98492/overview
-#if PA_BUILDFLAG(USE_PARTITION_ALLOC_AS_MALLOC) && PA_USE_DEATH_TESTS() && \
-    !PA_BUILDFLAG(IS_CASTOS)
+#if PA_BUILDFLAG(USE_PARTITION_ALLOC_AS_MALLOC) && PA_USE_DEATH_TESTS()
 
 namespace {
 
@@ -5942,7 +5944,7 @@ TEST_P(PartitionAllocTest, DISABLED_PreforkHandler) {
 }
 
 #endif  // PA_BUILDFLAG(USE_PARTITION_ALLOC_AS_MALLOC) &&
-        // PA_USE_DEATH_TESTS() && !PA_BUILDFLAG(IS_CASTOS)
+        // PA_USE_DEATH_TESTS()
 
 // Checks the bucket index logic.
 TEST_P(PartitionAllocTest, GetIndex) {
@@ -6010,7 +6012,7 @@ TEST_P(PartitionAllocTest, ConfigurablePool) {
   const size_t min_pool_size = PartitionAddressSpace::ConfigurablePoolMinSize();
   for (size_t pool_size = max_pool_size; pool_size >= min_pool_size;
        pool_size /= 2) {
-    PA_DCHECK(base::bits::HasSingleBit(pool_size));
+    PA_DCHECK(std::has_single_bit(pool_size));
     EXPECT_FALSE(IsConfigurablePoolAvailable());
     uintptr_t pool_base =
         AllocPages(pool_size, pool_size,
@@ -6628,6 +6630,18 @@ TEST_P(PartitionAllocTest, MultipleThreadCachePerThread) {
       internal::SlotStart::Unchecked(ptr2).Untag(), bucket_index, pos2));
   EXPECT_EQ(pos2, 0u);
 }
+
+// Documentation tests demonstrating the behavior of `IsExtentOutOfBounds()`.
+// This test passes if it doesn't crash.
+TEST_P(PartitionAllocTest, BoundsChecksDontCrash) {
+  EXPECT_FALSE(IsExtentOutOfBounds(static_cast<const void*>(nullptr), 1024u,
+                                   sizeof(char)));
+
+  void* object = allocator.root()->Alloc(32u);
+  EXPECT_FALSE(IsExtentOutOfBounds(object, 0u, sizeof(char)));
+  allocator.root()->Free(object);
+}
+
 }  // namespace partition_alloc::internal
 
-#endif  // !defined(MEMORY_TOOL_REPLACES_ALLOCATOR)
+#endif  // !PA_BUILDFLAG(MEMORY_TOOL_REPLACES_ALLOCATOR)

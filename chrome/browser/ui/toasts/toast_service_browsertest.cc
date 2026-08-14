@@ -6,6 +6,7 @@
 
 #include "base/containers/enum_set.h"
 #include "base/test/scoped_feature_list.h"
+#include "chrome/browser/dictation/features.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/toasts/api/toast_id.h"
@@ -22,8 +23,7 @@
 
 namespace {
 
-using ToastIdEnumSet =
-    base::EnumSet<ToastId, ToastId::kMinValue, ToastId::kMaxValue>;
+using ToastIdEnumSet = base::EnumSet<ToastId>;
 
 // Toast IDs that have been deprecated and no longer have a registered
 // specification.
@@ -56,7 +56,8 @@ class ToastServiceBrowserTest : public InProcessBrowserTest {
          {features::kGlicActorUi, {{features::kGlicActorUiToastName, "true"}}},
          {multistep_filter::kMultistepFilter, {}},
          {features::kIndigo, {}},
-         {autofill::features::kAutofillAmbientAutofill, {}}},
+         {autofill::features::kAutofillAmbientAutofill, {}},
+         {dictation::kDictation, {}}},
         /*disabled_features*/ {});
     InProcessBrowserTest::SetUp();
   }
@@ -85,7 +86,7 @@ IN_PROC_BROWSER_TEST_F(ToastServiceBrowserTest, ServiceExistForBrowserTypes) {
       browser()->browser_window_features();
   EXPECT_TRUE(normal_window_features->toast_service());
   EXPECT_TRUE(normal_window_features->toast_controller());
-  Profile* const profile = browser()->profile();
+  Profile* const profile = browser()->GetProfile();
 
   BrowserWindowFeatures* const popup_window_features =
       CreateBrowserForPopup(profile)->browser_window_features();
@@ -97,16 +98,20 @@ IN_PROC_BROWSER_TEST_F(ToastServiceBrowserTest, ServiceExistForBrowserTypes) {
   EXPECT_TRUE(app_window_features->toast_service());
   EXPECT_TRUE(app_window_features->toast_controller());
 
-  BrowserWindowFeatures* const pip_window_features =
+  Browser* const pip_browser =
       Browser::Create(Browser::CreateParams::CreateForPictureInPicture(
-                          "test_app_name", false, profile, false))
-          ->browser_window_features();
+          "test_app_name", false, profile, false));
+  AddBlankTabAndShow(pip_browser);
+  BrowserWindowFeatures* const pip_window_features =
+      pip_browser->browser_window_features();
   EXPECT_FALSE(pip_window_features->toast_service());
   EXPECT_FALSE(pip_window_features->toast_controller());
 
+  Browser* const devtools_browser =
+      Browser::Create(Browser::CreateParams::CreateForDevTools(profile));
+  AddBlankTabAndShow(devtools_browser);
   BrowserWindowFeatures* const devtools_window_features =
-      Browser::Create(Browser::CreateParams::CreateForDevTools(profile))
-          ->browser_window_features();
+      devtools_browser->browser_window_features();
   EXPECT_FALSE(devtools_window_features->toast_service());
   EXPECT_FALSE(devtools_window_features->toast_controller());
 }

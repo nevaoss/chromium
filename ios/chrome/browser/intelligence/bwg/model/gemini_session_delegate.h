@@ -148,8 +148,14 @@ typedef NS_ENUM(NSInteger, GeminiCancelType) {
                                           sessionID:(NSString*)sessionID
                                      conversationID:(NSString*)conversationID;
 
-// Called when a request to detach a tab with a specific ID is made.
+// Called when a request to detach a tab with the given ID is made.
 - (void)didRequestToDetachTabWithID:(NSString*)tabID;
+
+// Called when a tab with the given ID has been attached by the Floaty.
+- (void)didAttachTabWithID:(NSString*)tabID;
+
+// Called when a tab with the given ID has been detached by the Floaty.
+- (void)didDetachTabWithID:(NSString*)tabID;
 
 #pragma mark - Gemini Live
 
@@ -158,6 +164,9 @@ typedef NS_ENUM(NSInteger, GeminiCancelType) {
 
 // Called when the user taps the Live button in Gemini UI.
 - (void)geminiLiveUserDidTapLiveButton;
+
+// Called when the user presses the Live stop button.
+- (void)geminiLiveUserDidPressStopButton;
 
 // Called when the SDK has shown the Live intro sequence. Chrome should
 // update its preferences to record that the intro has been shown.
@@ -172,6 +181,9 @@ typedef NS_ENUM(NSInteger, GeminiCancelType) {
 // Chrome must present the FRE consent UI and invoke the completion.
 - (void)geminiLive:(UIViewController*)viewController
     showConsentScreenWithCompletion:(void (^)(BOOL accepted))completion;
+
+// Called when the Gemini view mode changes.
+- (void)didSwitchToMode:(ios::provider::GeminiViewMode)mode;
 
 #pragma mark - Gemini View Delegate
 

@@ -4,6 +4,7 @@
 
 #include "components/contextual_tasks/public/features.h"
 
+#include <limits>
 #include <optional>
 #include <string>
 #include <vector>
@@ -33,6 +34,16 @@ namespace contextual_tasks {
 
 // Enables the contextual tasks side panel while browsing.
 BASE_FEATURE(kContextualTasks, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kContextualTasksPrivateApiNoAnimation,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Enables the contextual tasks side panel infrastructure without full product
+// capabilities.
+BASE_FEATURE(kContextualTasksSidePanel, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Enables the branded entry point for contextual tasks.
+BASE_FEATURE(kContextualTasksEphemeralBrandedEntryPoint,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables extra OAuth scopes for contextual tasks.
 BASE_FEATURE(kContextualTasksExtraOauthScopes,
@@ -45,6 +56,8 @@ BASE_FEATURE(kEnableContextualTasksPinButtonInToolbar,
 
 // Enables relevant context determination for contextual tasks.
 BASE_FEATURE(kContextualTasksContext, base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kContextualTasksSearchQuery, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables whether the option to enable smart tab sharing by default is enabled.
 BASE_FEATURE(kContextualTasksContextSmartTabSharingDefaultOnAvailability,
@@ -66,6 +79,10 @@ BASE_FEATURE(kContextualTasksSuggestionsEnabled,
 
 BASE_FEATURE(kContextualTasksShowOnboardingTooltip,
              base::FEATURE_ENABLED_BY_DEFAULT);
+
+// Bypasses the dismissed cap for contextual tasks.
+BASE_FEATURE(kContextualTasksBypassDismissedCap,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Overrides the value of EntryPointEligibilitymanager::IsEligible to true.
 BASE_FEATURE(kContextualTasksForceEntryPointEligibility,
@@ -114,6 +131,8 @@ BASE_FEATURE(kContextualTasksRoundedClipPath, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kContextualTasksHideMenuOnAiPage,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+BASE_FEATURE(kContextualTasksUnboundedMenu, base::FEATURE_DISABLED_BY_DEFAULT);
+
 BASE_FEATURE(kContextualTasksHideCloseButtonInVerticalTabs,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -146,7 +165,7 @@ BASE_FEATURE(kContextualTasksOverrideShowBottomSheetOnLargeScreen,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables prefetching of cookies for contextual tasks.
-BASE_FEATURE(kContextualTasksCookiePrefetch, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kContextualTasksCookiePrefetch, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kAimTriggeredThreadLinks, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -159,11 +178,22 @@ BASE_FEATURE(kContextualTasksEnableSpatialModelToolbarLayout,
 
 BASE_FEATURE(kContextualTasksRearchitecture, base::FEATURE_DISABLED_BY_DEFAULT);
 
+BASE_FEATURE(kContextualTasksSidePanelRearchitecture,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 BASE_FEATURE(kContextualTasksEnableStickyConversation,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool GetIsContextualTasksPdfCitationsEnabled() {
   return base::FeatureList::IsEnabled(kContextualTasksPdfCitations);
+}
+
+bool ShouldContextualTasksPrivateApiUseNoAnimation() {
+  return base::FeatureList::IsEnabled(kContextualTasksPrivateApiNoAnimation);
+}
+
+bool GetIsContextualTasksSearchQueryEnabled() {
+  return base::FeatureList::IsEnabled(kContextualTasksSearchQuery);
 }
 
 bool GetIsContextualTasksLazyFetchClusterInfoEnabled() {
@@ -270,7 +300,7 @@ const base::FeatureParam<base::TimeDelta> kPreviousTabRecencyThreshold(
     base::Seconds(30));
 
 const base::FeatureParam<std::string> kQueryEmbeddingTask{
-    &kContextualTasksContext, "ContextualTasksContextQueryEmbeddingTask", "question answering"};
+    &kContextualTasksContext, "ContextualTasksContextQueryEmbeddingTask", ""};
 
 const base::FeatureParam<bool> kContextualTasksContextSmartTabSharing(
     &kContextualTasksContext,
@@ -339,7 +369,7 @@ const base::FeatureParam<SmartTabSharingMegaplusStringOption>
     kSmartTabSharingMegaplusStringOption(
         &kContextualTasksContext,
         "ContextualTasksContextSmartTabSharingMegaplusStringOption",
-        SmartTabSharingMegaplusStringOption::kMegaplusV1,
+        SmartTabSharingMegaplusStringOption::kMegaplusV2,
         &kSmartTabSharingMegaplusOptions);
 const base::FeatureParam<double> kContextualTasksContextLoggingSampleRate{
     &kContextualTasksContextLogging, "ContextualTasksContextLoggingSampleRate",
@@ -381,7 +411,7 @@ constexpr base::FeatureParam<EntryPointOption>::Option kEntryPointOptions[] = {
     {EntryPointOption::kToolbarEphemeralBranded, "toolbar-ephemeral-branded"}};
 
 const base::FeatureParam<EntryPointOption> kShowEntryPoint(
-    &kContextualTasks,
+    &kContextualTasksEphemeralBrandedEntryPoint,
     "ContextualTasksEntryPoint",
     EntryPointOption::kNoEntryPoint,
     &kEntryPointOptions);
@@ -419,8 +449,9 @@ const base::FeatureParam<bool> kForceGscInTabMode(
 // Version 2.5: Support for link click post messages and window.open calls from
 //              AIM.
 // Version 2.6: Add inverted quote and follow up injected input icons.
+// Version 2.7: NLM hidden searchbox bug fixes.
 const base::FeatureParam<std::string> kContextualTasksUserAgentSuffix{
-    &kContextualTasks, "contextual-tasks-user-agent-suffix", "Cobrowsing/2.6"};
+    &kContextualTasks, "contextual-tasks-user-agent-suffix", "Cobrowsing/2.7"};
 
 const base::FeatureParam<std::string> kContextualTasksOAuthScopes{
     &kContextualTasksExtraOauthScopes, "ContextualTasksOAuthScopes", ""};
@@ -460,6 +491,16 @@ const base::FeatureParam<int> kContextualTasksOnboardingTooltipDismissedCap(
     &kContextualTasksShowOnboardingTooltip,
     "ContextualTasksOnboardingTooltipDismissedCap",
     1);
+
+const base::FeatureParam<int> kContextualTasksLensSearchTooltipDismissedCap(
+    &kContextualTasksShowOnboardingTooltip,
+    "ContextualTasksLensSearchTooltipDismissedCap", 1);
+
+const base::FeatureParam<int>
+    kContextualTasksLensSearchTooltipSessionImpressionCap(
+        &kContextualTasksShowOnboardingTooltip,
+        "ContextualTasksLensSearchTooltipSessionImpressionCap",
+        1);
 
 const base::FeatureParam<int> kContextualTasksOnboardingTooltipImpressionDelay(
     &kContextualTasksShowOnboardingTooltip,
@@ -522,7 +563,27 @@ int GetContextualTasksOnboardingTooltipDismissedCap() {
   if (!base::FeatureList::IsEnabled(kContextualTasksShowOnboardingTooltip)) {
     return 0;
   }
+  if (base::FeatureList::IsEnabled(kContextualTasksBypassDismissedCap)) {
+    return std::numeric_limits<int>::max();
+  }
   return kContextualTasksOnboardingTooltipDismissedCap.Get();
+}
+
+int GetContextualTasksLensSearchTooltipDismissedCap() {
+  if (!base::FeatureList::IsEnabled(kContextualTasksShowOnboardingTooltip)) {
+    return 0;
+  }
+  if (base::FeatureList::IsEnabled(kContextualTasksBypassDismissedCap)) {
+    return std::numeric_limits<int>::max();
+  }
+  return kContextualTasksLensSearchTooltipDismissedCap.Get();
+}
+
+int GetContextualTasksLensSearchTooltipSessionImpressionCap() {
+  if (!base::FeatureList::IsEnabled(kContextualTasksShowOnboardingTooltip)) {
+    return 0;
+  }
+  return kContextualTasksLensSearchTooltipSessionImpressionCap.Get();
 }
 
 int GetContextualTasksOnboardingTooltipImpressionDelay() {
@@ -530,7 +591,7 @@ int GetContextualTasksOnboardingTooltipImpressionDelay() {
 }
 
 int ContextualTasksInactiveSidePanelKeepInCacheMinutes() {
-  if (!base::FeatureList::IsEnabled(kContextualTasks)) {
+  if (!IsContextualTasksUIEnabled()) {
     return 0;
   }
   return kContextualTasksInactiveSidePanelKeepInCacheMinutes.Get();
@@ -657,8 +718,7 @@ bool GetIsTabAutoSuggestionChipEnabled() {
 }
 
 bool GetEnableLensInContextualTasks() {
-  return base::FeatureList::IsEnabled(kContextualTasks) &&
-         kEnableLensInContextualTasks.Get();
+  return IsContextualTasksUIEnabled() && kEnableLensInContextualTasks.Get();
 }
 
 std::string GetContextualTasksUserAgentSuffix() {
@@ -743,15 +803,43 @@ bool GetIsWebpageApcComparisonEnabled() {
   return base::FeatureList::IsEnabled(kContextualTasksWebpageApcComparison);
 }
 
+bool IsContextualTasksRearchitectureEnabled() {
+  return base::FeatureList::IsEnabled(kContextualTasksRearchitecture);
+}
+
+bool IsContextualTasksSidePanelRearchitectureEnabled() {
+  return base::FeatureList::IsEnabled(kContextualTasksSidePanelRearchitecture);
+}
+
+bool IsContextualTasksUIEnabled() {
+  return base::FeatureList::IsEnabled(kContextualTasksSidePanel) ||
+         base::FeatureList::IsEnabled(kContextualTasks);
+}
+
 namespace flag_descriptions {
+
+const char kContextualTasksPrivateApiNoAnimationName[] =
+    "Contextual Tasks Private API No Animation";
+const char kContextualTasksPrivateApiNoAnimationDescription[] =
+    "Disable animation when opening Contextual Tasks side panel from the "
+    "private API.";
 
 const char kContextualTasksName[] = "Contextual Tasks";
 const char kContextualTasksDescription[] =
     "Enable the contextual tasks feature.";
 
+const char kContextualTasksSidePanelName[] = "Contextual Tasks Side Panel";
+const char kContextualTasksSidePanelDescription[] =
+    "Enable the contextual tasks side panel infrastructure without enabling "
+    "full Contextual Tasks capabilities.";
+
 const char kContextualTasksContextName[] = "Contextual Tasks Context";
 const char kContextualTasksContextDescription[] =
     "Enables relevant context determination for contextual tasks.";
+
+const char kContextualTasksSearchQueryName[] = "Contextual Tasks Search Query";
+const char kContextualTasksSearchQueryDescription[] =
+    "Enables forwarding the search query parameter 'q' in contextual tasks.";
 
 const char kContextualTasksContextLibraryName[] =
     "Contextual Tasks Context Library";
@@ -804,6 +892,22 @@ const char kContextualTasksRearchitectureName[] =
 const char kContextualTasksRearchitectureDescription[] =
     "Enables composebox embedded in AIM main frame, new auth,"
     " and new side panel and ghost loader for contextual tasks.";
+
+const char kContextualTasksEphemeralBrandedEntryPointName[] =
+    "Contextual Tasks Ephemeral Branded Entry Point";
+const char kContextualTasksEphemeralBrandedEntryPointDescription[] =
+    "Enables the ephemeral branded entry point for contextual tasks.";
+const char kContextualTasksSidePanelRearchitectureName[] =
+    "Contextual Tasks Side Panel Rearchitecture";
+const char kContextualTasksSidePanelRearchitectureDescription[] =
+    "Enables the side panel rearchitecture for contextual tasks.";
+
+const char kContextualTasksBypassDismissedCapName[] =
+    "Contextual Tasks Bypass Dismissed Cap";
+const char kContextualTasksBypassDismissedCapDescription[] =
+    "Debugging flag that bypasses the dismissal count limit for contextual "
+    "tasks tooltips, allowing them to be shown even after the user has "
+    "dismissed them.";
 
 }  // namespace flag_descriptions
 

@@ -16,9 +16,11 @@ BASE_FEATURE(kAndroidUseCorrectWindowBounds, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kAndroidUseDisplayTopology, base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kAndroidWindowOcclusion, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kAndroidWindowOcclusion, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kBlockMouseEventsOnView, base::FEATURE_ENABLED_BY_DEFAULT);
+
+BASE_FEATURE(kCachedGestureNavMetrics, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kCheckIntentCallerPermission, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -57,7 +59,7 @@ BASE_FEATURE(kSupportKeyboard, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kUseNewEtc1Encoder, base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kCheckHitEligibility, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kCheckHitEligibility, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kAndroidTouchpadOverscrollHistoryNavigation,
              base::FEATURE_ENABLED_BY_DEFAULT);

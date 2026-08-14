@@ -5,13 +5,17 @@
 #ifndef CHROME_BROWSER_UI_VIEWS_OMNIBOX_OMNIBOX_FULL_POPUP_WEBUI_CONTENT_H_
 #define CHROME_BROWSER_UI_VIEWS_OMNIBOX_OMNIBOX_FULL_POPUP_WEBUI_CONTENT_H_
 
+#include <memory>
 #include <string_view>
 
 #include "base/memory/weak_ptr.h"
+#include "chrome/browser/ui/views/omnibox/omnibox_context_menu_mixin.h"
 #include "chrome/browser/ui/views/omnibox/omnibox_popup_webui_content.h"
 #include "content/public/browser/context_menu_params.h"
 #include "content/public/browser/render_frame_host.h"
 #include "ui/base/metadata/metadata_header_macros.h"
+#include "ui/menus/simple_menu_model.h"
+#include "ui/views/controls/menu/menu_runner.h"
 #include "ui/views/metadata/view_factory.h"
 
 class LocationBar;
@@ -20,7 +24,9 @@ class OmniboxController;
 
 // The content WebView for the full popup (input row + suggestions dropdown) of
 // a WebUI Omnibox.
-class OmniboxFullPopupWebUIContent : public OmniboxPopupWebUIContent {
+class OmniboxFullPopupWebUIContent
+    : public OmniboxPopupWebUIContent,
+      public OmniboxContextMenuMixin<ui::SimpleMenuModel::Delegate> {
   METADATA_HEADER(OmniboxFullPopupWebUIContent, OmniboxPopupWebUIContent)
 
  public:
@@ -37,6 +43,17 @@ class OmniboxFullPopupWebUIContent : public OmniboxPopupWebUIContent {
 
   void CloseUI() override;
 
+  // ui::SimpleMenuModel::Delegate:
+  void ExecuteCommand(int command_id, int event_flags) override;
+  bool GetAcceleratorForCommandId(int command_id,
+                                  ui::Accelerator* accelerator) const override;
+
+  // OmniboxContextMenuMixinBase:
+  bool IsContextMenuForReadOnlyOmnibox() const override;
+  const gfx::FontList& FontListForContextMenu() const override;
+  bool IsContextMenuTextEditingCommandEnabled(int command_id) const override;
+  views::Widget* GetWidgetForTextServices() override;
+
  protected:
   std::string_view GetMetricPrefix() const override;
 
@@ -45,7 +62,13 @@ class OmniboxFullPopupWebUIContent : public OmniboxPopupWebUIContent {
   bool HandleContextMenu(content::RenderFrameHost& render_frame_host,
                          const content::ContextMenuParams& params) override;
 
-  base::WeakPtrFactory<OmniboxPopupWebUIContent> weak_factory_{this};
+  void ShowContextMenuComplete(const content::ContextMenuParams& params);
+
+  content::ContextMenuParams params_;
+  std::unique_ptr<ui::SimpleMenuModel> menu_model_;
+  std::unique_ptr<views::MenuRunner> menu_runner_;
+
+  base::WeakPtrFactory<OmniboxFullPopupWebUIContent> weak_ptr_factory_{this};
 };
 
 BEGIN_VIEW_BUILDER(/* no export */,

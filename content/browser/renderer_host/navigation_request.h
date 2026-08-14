@@ -123,6 +123,7 @@ class PrerenderHostRegistry;
 class RenderFrameHostCSPContext;
 class ServiceWorkerMainResourceHandle;
 class SubframeHistoryNavigationThrottle;
+class NavigationFastFetchManager;
 
 // The primary implementation of NavigationHandle.
 //
@@ -265,7 +266,6 @@ class CONTENT_EXPORT NavigationRequest
       NavigationEntryImpl* entry,
       bool is_form_submission,
       std::unique_ptr<NavigationUIData> navigation_ui_data,
-      const std::optional<blink::Impression>& impression,
       EmbedderIsolationInfo::Mode embedder_isolation_mode,
       bool is_embedder_initiated_fenced_frame_navigation = false,
       std::optional<std::u16string> embedder_shared_storage_context =
@@ -291,7 +291,7 @@ class CONTENT_EXPORT NavigationRequest
       bool browser_initiated,
       bool was_opener_suppressed,
       const std::optional<blink::LocalFrameToken>& initiator_frame_token,
-      int initiator_process_id,
+      ChildProcessId initiator_process_id,
       scoped_refptr<InitiatorNavigationState> initiator_navigation_state,
       bool should_ignore_initiator_policies_for_inheritance,
       const std::string& extra_headers,
@@ -299,7 +299,6 @@ class CONTENT_EXPORT NavigationRequest
       NavigationEntryImpl* entry,
       bool is_form_submission,
       std::unique_ptr<NavigationUIData> navigation_ui_data,
-      const std::optional<blink::Impression>& impression,
       bool started_with_transient_activation,
       bool started_by_ad,
       EmbedderIsolationInfo::Mode embedder_isolation_mode,
@@ -474,10 +473,9 @@ class CONTENT_EXPORT NavigationRequest
   bool WasResponseCached() override;
   bool NetworkAccessed() override;
   const std::string& GetHrefTranslate() override;
-  const std::optional<blink::Impression>& GetImpression() override;
   const std::optional<blink::LocalFrameToken>& GetInitiatorFrameToken()
       override;
-  int GetInitiatorProcessId() override;
+  ChildProcessId GetInitiatorProcessId() override;
   const std::optional<url::Origin>& GetInitiatorOrigin() override;
   const std::optional<GURL>& GetInitiatorBaseUrl() override;
   scoped_refptr<InitiatorNavigationState> GetInitiatorNavigationState()
@@ -741,6 +739,17 @@ class CONTENT_EXPORT NavigationRequest
     common_params_->has_possibly_filtered_user_gesture = has_user_gesture;
   }
 
+  NavigationFastFetchManager* fast_fetch_manager_for_testing() const {
+    return fast_fetch_manager_.get();
+  }
+
+  bool HasPrefetchedSignedExchange() const;
+
+  void SetNavigationHandleTimingForTesting(
+      const NavigationHandleTiming& timing) {
+    navigation_handle_timing_ = timing;
+  }
+
   // Ignores any interface disconnect that might happen to the
   // navigation_client used to commit.
   void IgnoreCommitInterfaceDisconnection();
@@ -941,8 +950,37 @@ class CONTENT_EXPORT NavigationRequest
   bool is_credentialless() const { return is_credentialless_; }
 
   // Returns a pointer to the policies copied from the navigation initiator.
-  // Returns nullptr if this navigation had no initiator.
+  // Returns nullptr if this navigation had no initiator. This function will
+  // return initiator policies, regardless of whether the policies can be
+  // inherited or not. See `GetInitiatorPolicyContainerPoliciesForInheritance()`
+  // for more context on why initiator policies might not be inherited.
+  //
+  // This function should be used when enforcing policies for the initiator, in
+  // particular when checking whether the navigation can proceed based on the
+  // initiator policies (e.g. for connection allowlist, CSP form-action or Local
+  // Network Access).
+  //
+  // When looking at which policies can be inherited from the initiator during a
+  // local navigation, this function should not be used. In that case,
+  // `GetInitiatorPolicyContainerPoliciesForInheritance()` should be used
+  // instead.
   const PolicyContainerPolicies* GetInitiatorPolicyContainerPolicies() const;
+
+  // This returns a pointer to the navigation's initiator PolicyContainerHost if
+  // its policies can be inherited by the navigation.
+  // Returns nullptr if there is no navigation initiator or if there is one but
+  // its policies cannot be inherited. The latter case happens if the initiator
+  // is not in the same StoragePartition as the navigation, or if the creator of
+  // the navigation specified that initiator policies should not be inherited
+  // (see `should_ignore_initiator_policies_for_inheritance_`).
+  // This function should only be called after the navigation has started, as
+  // the computation of the StoragePartition for the navigation is only correct
+  // after this point.
+  // When looking at whether a navigation can proceed based on the initiator's
+  // policies, this function should not be used, and
+  // GetInitiatorPolicyContainerPolicies() should be used instead.
+  const PolicyContainerPolicies*
+  GetInitiatorPolicyContainerPoliciesForInheritance() const;
 
   // The DocumentToken that should be used for the document created as a result
   // of committing this navigation.
@@ -1890,7 +1928,7 @@ class CONTENT_EXPORT NavigationRequest
           prefetched_signed_exchange_cache,
       std::optional<base::SafeRef<RenderFrameHostImpl>>
           rfh_restored_from_back_forward_cache,
-      int initiator_process_id,
+      ChildProcessId initiator_process_id,
       scoped_refptr<InitiatorNavigationState> initiator_navigation_state,
       bool should_ignore_initiator_policies_for_inheritance,
       bool was_opener_suppressed,
@@ -2657,7 +2695,7 @@ class CONTENT_EXPORT NavigationRequest
 
   // Returns the impl version of the |initiator_navigation_state_| stored
   // in this NavigationRequest.
-  InitiatorNavigationStateImpl* initiator_navigation_state_impl() {
+  InitiatorNavigationStateImpl* initiator_navigation_state_impl() const {
     return static_cast<InitiatorNavigationStateImpl*>(
         initiator_navigation_state_.get());
   }
@@ -2745,6 +2783,8 @@ class CONTENT_EXPORT NavigationRequest
   std::optional<BindingsPolicySet> bindings_;
 
   scoped_refptr<SiteInstanceImpl> starting_site_instance_;
+
+  std::unique_ptr<NavigationFastFetchManager> fast_fetch_manager_;
 
   // Whether the navigation should be sent to a renderer a process. This is
   // true, except for 204/205 responses and downloads.
@@ -3116,7 +3156,7 @@ class CONTENT_EXPORT NavigationRequest
   // ID of the renderer process of the frame host that initiated the navigation.
   // This is defined if and only if |initiator_frame_token_| above is, and it is
   // only valid in conjunction with it.
-  const int initiator_process_id_ = ChildProcessHost::kInvalidUniqueID;
+  const ChildProcessId initiator_process_id_;
 
   // The initiator Document's token, if it is present when this
   // NavigationRequest was created.
@@ -3351,29 +3391,6 @@ class CONTENT_EXPORT NavigationRequest
   // tests to ensure that input state is fully reset between tests. See comments
   // at RenderFrameHostImpl::must_be_replaced().
   bool force_new_compositor_ = false;
-
-  // Whether the ongoing navigation resource request is eligible for topics
-  // calculation. This is set before the initial request and each subsequent
-  // redirect. If `topics_eligible_` is true, the request headers will contain
-  // the "Sec-Browsing-Topics" header, and if the corresponding response headers
-  // contain "Observe-Browsing-Topics: ?1", a topic observation will be stored.
-  bool topics_eligible_ = false;
-
-  // Whether this navigation request is an iframe navigation for which the
-  // adAuctionHeaders attribute is set. Only requests with this attribute may be
-  // eligible for ad auction headerse, but not all requests with this attribute
-  // are eligible. `ad_auction_headers_eligible_`, below, indicates whether or
-  // not this request is eligible.
-  const bool has_ad_auction_headers_attribute_ = false;
-
-  // Whether the ongoing navigation resource request should have its Ad Auction
-  // response headers examined for interception. This is set before the initial
-  // request for iframe navigations that provide the `adAuctionHeaders`
-  // attribute. On redirect or error, this is always set to false. If this is
-  // set to true, the request headers will contain the "Sec-Ad-Auction-Fetch:
-  // ?1" header, and several response headers will be intercepted. See
-  // content/browser/interest_group/ad_auction_headers_util.h for more details.
-  bool ad_auction_headers_eligible_ = false;
 
   // Whether or not the original request (without considering redirects or
   // permissions policy) opted-in to write to shared storage from response
@@ -3730,6 +3747,12 @@ class CONTENT_EXPORT NavigationRequest
   // A record of the state of the document that initiated the navigation. Null
   // for browser intiiated navigations.
   scoped_refptr<InitiatorNavigationState> initiator_navigation_state_;
+
+  // Whether initiator web security policies can be inherited when navigating
+  // to a local scheme. This should generally be false, unless set to true by
+  // the content embedder to avoid inheritance of policies in specific cases
+  // like a navigation to the PDF extension.
+  bool should_ignore_initiator_policies_for_inheritance_;
 
   // Set to true if an early navigation failure has already been recorded
   // for this navigation, preventing duplicate recordings in the destructor.

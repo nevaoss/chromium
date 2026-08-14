@@ -96,8 +96,8 @@ void maybeShowSettingsIPH(Browser* browser) {
     AccountMenuMediatorDelegate,
     SettingsNavigationControllerDelegate,
     SigninReauthCoordinatorDelegate,
-    SyncErrorSettingsCommandHandler,
     SyncEncryptionPassphraseTableViewControllerPresentationDelegate,
+    SyncErrorSettingsCommandHandler,
     TrustedVaultReauthenticationCoordinatorDelegate,
     UIAdaptivePresentationControllerDelegate>
 
@@ -354,6 +354,7 @@ typedef NS_ENUM(NSUInteger, AccountMenuReauthAction) {
                             rect:targetRect
                             view:_viewController.view
         forceSnackbarOverToolbar:YES
+                  showUndoButton:IsIdentityAwarenessEnabled()
                       withSource:metricSignOut
                       completion:^(BOOL success, SceneState* scene_state) {
                         [weakSelf stopSignoutActionSheetCoordinator];

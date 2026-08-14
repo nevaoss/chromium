@@ -33,10 +33,6 @@ MockClientSessionControl::MockClientSessionControl() = default;
 
 MockClientSessionControl::~MockClientSessionControl() = default;
 
-MockClientSessionDetails::MockClientSessionDetails() = default;
-
-MockClientSessionDetails::~MockClientSessionDetails() = default;
-
 MockClientSessionEvents::MockClientSessionEvents() = default;
 
 MockClientSessionEvents::~MockClientSessionEvents() = default;
@@ -54,13 +50,23 @@ MockSecurityKeyAuthHandler::MockSecurityKeyAuthHandler() = default;
 MockSecurityKeyAuthHandler::~MockSecurityKeyAuthHandler() = default;
 
 void MockSecurityKeyAuthHandler::SetSendMessageCallback(
-    const SecurityKeyAuthHandler::SendMessageCallback& callback) {
-  callback_ = callback;
+    const SecurityKeyAuthHandler::SendMessageCallback& callback,
+    const void* client_id) {
+  send_message_callback_ = callback;
+  active_client_id_ = client_id;
+}
+
+void MockSecurityKeyAuthHandler::ClearSendMessageCallback(
+    const void* client_id) {
+  if (active_client_id_ == client_id) {
+    send_message_callback_.Reset();
+    active_client_id_ = nullptr;
+  }
 }
 
 const SecurityKeyAuthHandler::SendMessageCallback&
 MockSecurityKeyAuthHandler::GetSendMessageCallback() {
-  return callback_;
+  return send_message_callback_;
 }
 
 base::WeakPtr<SecurityKeyAuthHandler> MockSecurityKeyAuthHandler::GetWeakPtr() {
@@ -84,5 +90,13 @@ MockChromotingHostServicesProvider::MockChromotingHostServicesProvider() =
 
 MockChromotingHostServicesProvider::~MockChromotingHostServicesProvider() =
     default;
+
+MockPeerSession::MockPeerSession() = default;
+
+MockPeerSession::~MockPeerSession() = default;
+
+MockPeerSessionFactory::MockPeerSessionFactory() = default;
+
+MockPeerSessionFactory::~MockPeerSessionFactory() = default;
 
 }  // namespace remoting

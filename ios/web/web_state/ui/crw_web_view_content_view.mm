@@ -8,12 +8,49 @@
 #import <limits>
 
 #import "base/check.h"
+#import "base/feature_list.h"
 #import "base/notreached.h"
+#import "base/strings/sys_string_conversions.h"
 #import "ios/web/common/crw_viewport_controller.h"
 #import "ios/web/common/crw_web_view_resizing_type.h"
+#import "ios/web/public/content_type_util.h"
 #import "ios/web/public/web_client.h"
 
 namespace {
+
+// Feature flag to enable the strict bounds check for WKWebView viewport insets.
+BASE_FEATURE(kCRWWebViewContentViewLayoutFix, base::FEATURE_ENABLED_BY_DEFAULT);
+
+// Helper function to replicate WebKit's validation logic for a single inset.
+// WebKit casts `frame.size` and insets to 32-bit floats and considers the
+// viewport valid if the unobscured size is not empty (> 0), or if the inset
+// itself is empty.
+BOOL IsInsetValidForFrame(UIEdgeInsets inset, CGSize frameSize) {
+  float insetWidth = static_cast<float>(inset.left + inset.right);
+  float insetHeight = static_cast<float>(inset.top + inset.bottom);
+  BOOL insetEmpty = insetWidth <= 0 || insetHeight <= 0;
+  if (insetEmpty) {
+    return YES;
+  }
+
+  float frameWidth = static_cast<float>(frameSize.width);
+  float frameHeight = static_cast<float>(frameSize.height);
+
+  BOOL unobscuredEmpty =
+      (frameWidth - insetWidth) <= 0 || (frameHeight - insetHeight) <= 0;
+  return !unobscuredEmpty;
+}
+
+// Helper function to check if the frame is large enough for both min/max
+// insets.
+BOOL IsFrameLargeEnoughToApplyViewportInsets(CGSize frameSize,
+                                             UIEdgeInsets minInset,
+                                             UIEdgeInsets maxInset) {
+  if (!IsInsetValidForFrame(maxInset, frameSize)) {
+    return NO;
+  }
+  return IsInsetValidForFrame(minInset, frameSize);
+}
 
 // Background color RGB values for the content view which is displayed when the
 // `_webView` is offset from the screen due to user interaction. Displaying this
@@ -22,9 +59,6 @@ namespace {
 // used by UIWebView.
 const CGFloat kBackgroundRGBComponents[] = {0.75f, 0.74f, 0.76f};
 
-// MIME type string for PDF documents.
-NSString* const kPDFMimeType = @"application/pdf";
-
 }  // namespace
 
 @interface CRWWebViewContentView () {
@@ -32,6 +66,7 @@ NSString* const kPDFMimeType = @"application/pdf";
   UIEdgeInsets _pendingMaxInset;
   UIEdgeInsets _maxViewportInset;
   BOOL _hasPendingViewportInsets;
+  std::string _mimeTypeString;
 }
 @end
 
@@ -72,6 +107,7 @@ NSString* const kPDFMimeType = @"application/pdf";
 - (void)setMimeType:(NSString*)mimeType {
   if (_mimeType != mimeType && ![_mimeType isEqualToString:mimeType]) {
     _mimeType = mimeType;
+    _mimeTypeString = base::SysNSStringToUTF8(mimeType);
     [self setNeedsLayout];
     // Force a re-evaluation of obscuredInsets now that the MIME type is known.
     UIEdgeInsets currentInsets = _obscuredInsets;
@@ -123,7 +159,7 @@ NSString* const kPDFMimeType = @"application/pdf";
       }
       break;
     case WebViewResizingType::kFrame:
-      if ([self.mimeType isEqualToString:kPDFMimeType]) {
+      if (web::IsContentTypePdf(_mimeTypeString)) {
         UIEdgeInsets maxInsets = _maxViewportInset;
         maxInsets.bottom = 0;
         _webView.frame = UIEdgeInsetsInsetRect(self.frame, maxInsets);
@@ -169,22 +205,41 @@ NSString* const kPDFMimeType = @"application/pdf";
 }
 
 - (void)setObscuredInsets:(UIEdgeInsets)obscuredInsets {
-  if (UIEdgeInsetsEqualToEdgeInsets(_obscuredInsets, obscuredInsets)) {
+  BOOL insetsEqual =
+      UIEdgeInsetsEqualToEdgeInsets(_obscuredInsets, obscuredInsets);
+  BOOL scrollInsetsEqual = YES;
+  if (self.webViewResizingType == WebViewResizingType::kContentInset) {
+    scrollInsetsEqual =
+        UIEdgeInsetsEqualToEdgeInsets(_scrollView.contentInset, obscuredInsets);
+  }
+  if (insetsEqual && scrollInsetsEqual) {
     return;
   }
   switch (self.webViewResizingType) {
-    case WebViewResizingType::kContentInset:
+    case WebViewResizingType::kContentInset: {
+      UIEdgeInsets oldInsets = _scrollView.contentInset;
       _scrollView.contentInsetAdjustmentBehavior =
           UIScrollViewContentInsetAdjustmentNever;
       _scrollView.contentInset = obscuredInsets;
+      CGFloat topDelta = obscuredInsets.top - oldInsets.top;
+      // If the top inset changed, and the scroll view was scrolled to the very
+      // top, adjust the contentOffset to the new top boundary to prevent the
+      // page from appearing pre-scrolled.
+      if (!web::IsContentTypePdf(_mimeTypeString) && topDelta != 0 &&
+          fabs(_scrollView.contentOffset.y - (-oldInsets.top)) < 0.1) {
+        CGPoint offset = _scrollView.contentOffset;
+        offset.y = -obscuredInsets.top;
+        _scrollView.contentOffset = offset;
+      }
       if (@available(iOS 26, *)) {
         [_webView setObscuredContentInsets:obscuredInsets];
       } else {
         NOTREACHED();
       }
       break;
+    }
     case WebViewResizingType::kFrame:
-      if ([self.mimeType isEqualToString:kPDFMimeType]) {
+      if (web::IsContentTypePdf(_mimeTypeString)) {
         _scrollView.contentInsetAdjustmentBehavior =
             UIScrollViewContentInsetAdjustmentNever;
 
@@ -224,10 +279,18 @@ NSString* const kPDFMimeType = @"application/pdf";
            maximumViewportInset:(UIEdgeInsets)maxInset {
   switch (self.webViewResizingType) {
     case WebViewResizingType::kContentInset: {
-      CGRect insetRect = UIEdgeInsetsInsetRect(_webView.bounds, maxInset);
+      BOOL isFrameLargeEnough;
+      if (base::FeatureList::IsEnabled(kCRWWebViewContentViewLayoutFix)) {
+        isFrameLargeEnough = IsFrameLargeEnoughToApplyViewportInsets(
+            _webView.frame.size, minInset, maxInset);
+      } else {
+        isFrameLargeEnough =
+            !CGRectIsEmpty(UIEdgeInsetsInsetRect(_webView.bounds, maxInset));
+      }
+
       // Only apply the viewport insets if the web view's frame is large enough
       // to accommodate them.
-      if (_webView.window && !CGRectIsEmpty(insetRect)) {
+      if (_webView.window && isFrameLargeEnough) {
         [_webView setMinimumViewportInset:minInset
                      maximumViewportInset:maxInset];
         [_webView setNeedsLayout];
@@ -242,7 +305,7 @@ NSString* const kPDFMimeType = @"application/pdf";
     case WebViewResizingType::kFrame: {
       _maxViewportInset = maxInset;
 
-      if ([self.mimeType isEqualToString:kPDFMimeType]) {
+      if (web::IsContentTypePdf(_mimeTypeString)) {
         // Inset the frame by maxInsets to prevent covering the page indicator
         // badge underneath the top toolbar.
         UIEdgeInsets maxInsetsForFrame = _maxViewportInset;

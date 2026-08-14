@@ -8,7 +8,7 @@ import {SearchboxBrowserProxy} from 'chrome://omnibox-popup.top-chrome/omnibox_p
 import type {OmniboxComposeboxElement} from 'chrome://omnibox-popup.top-chrome/omnibox_popup.js';
 import {ComposeboxProxyImpl} from 'chrome://omnibox-popup.top-chrome/omnibox_popup.js';
 import {ComposeboxFile, TabUploadOrigin} from 'chrome://resources/cr_components/composebox/common.js';
-import {PageCallbackRouter, PageHandlerRemote} from 'chrome://resources/cr_components/composebox/composebox.mojom-webui.js';
+import {PageHandlerRemote} from 'chrome://resources/cr_components/composebox/composebox.mojom-webui.js';
 import type {ComposeboxFaviconGroupElement} from 'chrome://resources/cr_components/composebox/composebox_favicon_group.js';
 import {ContextUploadErrorType, ContextUploadStatus, InputType, ToolMode} from 'chrome://resources/cr_components/composebox/composebox_query.mojom-webui.js';
 import type {InputState} from 'chrome://resources/cr_components/composebox/composebox_query.mojom-webui.js';
@@ -65,7 +65,7 @@ suite('OmniboxComposeboxTest', () => {
     mockPageHandler.setResultMapperFor(
         'getSmartTabSharingActive', () => Promise.resolve({active: false}));
     ComposeboxProxyImpl.setInstance(new ComposeboxProxyImpl(
-        mockPageHandler, new PageCallbackRouter(),
+        mockPageHandler,
         testProxy.handler as unknown as SearchboxPageHandlerRemote,
         testProxy.callbackRouter as unknown as SearchboxPageCallbackRouter));
 
@@ -185,6 +185,7 @@ suite('OmniboxComposeboxTest', () => {
     ];
     testProxy.page.autocompleteResultChanged(
         createAutocompleteResultForTesting({
+          queryId: omniboxComposebox.activeQueryId,
           matches: matches,
         }));
     await testProxy.page.$.flushForTesting();
@@ -196,6 +197,7 @@ suite('OmniboxComposeboxTest', () => {
     // Set empty results.
     testProxy.page.autocompleteResultChanged(
         createAutocompleteResultForTesting({
+          queryId: omniboxComposebox.activeQueryId,
           matches: [],
         }));
     await testProxy.page.$.flushForTesting();
@@ -214,6 +216,7 @@ suite('OmniboxComposeboxTest', () => {
       mimeType: 'image/png',
       isDeletable: true,
       selectionTime: new Date(),
+      thumbnailUrl: null,
     };
 
     // Simulate Mojo Callback: Page interface callback router.
@@ -286,6 +289,7 @@ suite('OmniboxComposeboxTest', () => {
           name: 'test.pdf',
           mimeType: 'application/pdf',
           imageDataUrl: null,  // Non-image
+          thumbnailUrl: null,
           errorType: null,
           iconUrl: 'https://example.com/icon.png',
         },
@@ -355,7 +359,7 @@ suite('OmniboxComposeboxTest', () => {
     await microtasksFinished();
 
     const initialCallCount =
-        testProxy.handler.getCallCount('queryAutocompleteWithSuggestInventory');
+        testProxy.handler.getCallCount('queryAutocomplete');
 
     const context = {
       input: 'hello world',
@@ -372,8 +376,7 @@ suite('OmniboxComposeboxTest', () => {
     // Autocomplete should be queried.
     assertEquals(
         initialCallCount + 1,
-        testProxy.handler.getCallCount(
-            'queryAutocompleteWithSuggestInventory'));
+        testProxy.handler.getCallCount('queryAutocomplete'));
   });
 
   test(
@@ -490,6 +493,7 @@ suite('OmniboxComposeboxTest', () => {
           name: 'huge.zip',
           mimeType: 'application/zip',
           imageDataUrl: null,
+          thumbnailUrl: null,
           errorType:
               ContextUploadErrorType
                   .kBrowserProcessingFileTooLargeError,  // Validation error.
@@ -520,6 +524,7 @@ suite('OmniboxComposeboxTest', () => {
               name: 'test.txt',
               mimeType: 'text/plain',
               imageDataUrl: null,
+              thumbnailUrl: null,
               errorType: ContextUploadErrorType
                              .kBrowserProcessingUnsupportedFileTypeError,
               iconUrl: null,
@@ -690,6 +695,7 @@ suite('OmniboxComposeboxTest', () => {
         [createSearchMatchForTesting({allowedToBeDefaultMatch: true})];
     testProxy.page.autocompleteResultChanged(
         createAutocompleteResultForTesting({
+          queryId: omniboxComposebox.activeQueryId,
           input: 'test',
           matches,
         }));
@@ -768,6 +774,7 @@ suite('OmniboxComposeboxTest', () => {
       imageDataUrl: null,
       isDeletable: true,
       selectionTime: new Date(),
+      thumbnailUrl: null,
     };
 
     testProxy.page.addFileContext(testToken, testFileInfo);
@@ -792,6 +799,7 @@ suite('OmniboxComposeboxTest', () => {
       imageDataUrl: null,
       isDeletable: true,
       selectionTime: new Date(),
+      thumbnailUrl: null,
     };
 
     testProxy.page.addFileContext(testToken, testFileInfo);
@@ -1099,7 +1107,7 @@ suite('OmniboxComposeboxTest', () => {
 
         assertTrue(
             voiceSearchOverlay.classList.contains('permission-prompt-showing'));
-        assertEquals('0', window.getComputedStyle(bottomActions).opacity);
+        assertEquals('none', window.getComputedStyle(bottomActions).display);
       });
 
   test(
@@ -1253,6 +1261,7 @@ suite('OmniboxComposeboxTest', () => {
     ];
     testProxy.page.autocompleteResultChanged(
         createAutocompleteResultForTesting({
+          queryId: omniboxComposebox.activeQueryId,
           matches: matches,
         }));
     await testProxy.page.$.flushForTesting();
@@ -1299,6 +1308,7 @@ suite('OmniboxComposeboxTest', () => {
         ];
         testProxy.page.autocompleteResultChanged(
             createAutocompleteResultForTesting({
+              queryId: omniboxComposebox.activeQueryId,
               matches: matches,
             }));
         await testProxy.page.$.flushForTesting();
@@ -1455,6 +1465,7 @@ suite('OmniboxComposeboxTest', () => {
         mimeType: 'application/pdf',
         isDeletable: true,
         selectionTime: new Date(),
+        thumbnailUrl: null,
       };
       testProxy.page.addFileContext(sharedToken, testFileInfo);
       await testProxy.page.$.flushForTesting();
@@ -1529,6 +1540,7 @@ suite('OmniboxComposeboxTest', () => {
         mimeType: 'application/pdf',
         isDeletable: true,
         selectionTime: new Date(),
+        thumbnailUrl: null,
       };
       testProxy.page.addFileContext(sharedToken, testFileInfo);
       await testProxy.page.$.flushForTesting();
@@ -1828,6 +1840,7 @@ suite('OmniboxComposeboxTest', () => {
       omniboxComposebox.haveReceivedSynchronousAutocompleteResponse = true;
       testProxy.page.autocompleteResultChanged(
           createAutocompleteResultForTesting({
+            queryId: omniboxComposebox.activeQueryId,
             input: 'tes',
             smartComposeInlineHint: hint,
           }));
@@ -1881,6 +1894,7 @@ suite('OmniboxComposeboxTest', () => {
                 true;
             testProxy.page.autocompleteResultChanged(
                 createAutocompleteResultForTesting({
+                  queryId: omniboxComposebox.activeQueryId,
                   input: 'tes.',
                   smartComposeInlineHint: hint,
                 }));
@@ -1930,6 +1944,7 @@ suite('OmniboxComposeboxTest', () => {
                 true;
             testProxy.page.autocompleteResultChanged(
                 createAutocompleteResultForTesting({
+                  queryId: omniboxComposebox.activeQueryId,
                   input: 'tes.',
                   smartComposeInlineHint: hint,
                 }));
@@ -1964,6 +1979,7 @@ suite('OmniboxComposeboxTest', () => {
           omniboxComposebox.haveReceivedSynchronousAutocompleteResponse = true;
           testProxy.page.autocompleteResultChanged(
               createAutocompleteResultForTesting({
+                queryId: omniboxComposebox.activeQueryId,
                 input: 'test',
                 smartComposeInlineHint: hint,
               }));
@@ -1987,7 +2003,6 @@ suite('OmniboxComposeboxTest', () => {
 
     test('Favicon group rendered in contextual entrypoint button', async () => {
       loadTimeData.overrideValues({
-        contextManagementInComposeboxEnabled: true,
         contextManagementInOmniboxEnabled: true,
         tabFaviconChipsToCoinsEnabled: true,
       });
@@ -1995,6 +2010,7 @@ suite('OmniboxComposeboxTest', () => {
       omniboxComposebox.remove();
       omniboxComposebox = document.createElement('cr-omnibox-composebox');
       omniboxComposebox.contextMenuEnabled = true;
+      omniboxComposebox.contextManagementInComposeboxEnabled = true;
       document.body.appendChild(omniboxComposebox);
       await microtasksFinished();
 
@@ -2147,6 +2163,7 @@ suite('OmniboxComposeboxTest', () => {
         imageDataUrl: thumbnailUrl,
         isDeletable: true,
         selectionTime: new Date(),
+        thumbnailUrl: null,
       } as SelectedFileInfo);
       await testProxy.page.$.flushForTesting();
       await microtasksFinished();
@@ -2214,6 +2231,7 @@ suite('OmniboxComposeboxTest', () => {
         imageDataUrl: thumbnailUrl,
         isDeletable: true,
         selectionTime: new Date(),
+        thumbnailUrl: null,
       } as SelectedFileInfo);
       await testProxy.page.$.flushForTesting();
       await microtasksFinished();
@@ -2268,6 +2286,7 @@ suite('OmniboxComposeboxTest', () => {
         imageDataUrl: thumbnailUrl,
         isDeletable: true,
         selectionTime: new Date(),
+        thumbnailUrl: null,
       } as SelectedFileInfo);
       await testProxy.page.$.flushForTesting();
       await microtasksFinished();
@@ -2323,6 +2342,7 @@ suite('OmniboxComposeboxTest', () => {
             imageDataUrl: thumbnailUrl,
             isDeletable: true,
             selectionTime: new Date(),
+            thumbnailUrl: null,
           } as SelectedFileInfo);
           await testProxy.page.$.flushForTesting();
           await microtasksFinished();

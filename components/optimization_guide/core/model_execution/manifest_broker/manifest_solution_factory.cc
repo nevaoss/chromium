@@ -20,6 +20,7 @@
 #include "components/optimization_guide/core/model_execution/model_execution_util.h"
 #include "components/optimization_guide/core/model_execution/on_device_features.h"
 #include "components/optimization_guide/core/model_execution/on_device_model_feature_adapter.h"
+#include "components/optimization_guide/core/model_execution/performance_class.h"
 #include "components/optimization_guide/core/model_execution/usage_tracker.h"
 #include "components/optimization_guide/core/optimization_guide_constants.h"
 #include "components/optimization_guide/core/optimization_guide_features.h"
@@ -273,11 +274,14 @@ ManifestSolutionFactory::ManifestSolutionFactory(
     UsageTracker& usage_tracker,
     on_device_model::ServiceClient& service_client,
     OnDeviceModelAccessController& access_controller,
-    base::OnceClosure on_init_complete)
+    PerformanceClassifier& performance_classifier,
+    base::OnceClosure on_init_complete,
+    base::RepeatingClosure on_solutions_updated)
     : broker_impl_(broker_impl),
       service_client_(service_client),
       usage_tracker_(usage_tracker),
       access_controller_(access_controller),
+      performance_classifier_(performance_classifier),
       manifest_(std::move(manifest)),
       assets_(MakeAssetsMap(manifest_.GetAssets())),
       base_models_(MakeBaseModelsMap(manifest_.GetRecipes())),
@@ -285,7 +289,8 @@ ManifestSolutionFactory::ManifestSolutionFactory(
       safety_models_(MakeSafetyModelsMap(manifest_.GetRecipes())),
       solutions_(MakeSolutionsMap(manifest_.GetRecipes())),
       on_asset_init_(
-          base::BarrierClosure(assets_.size(), std::move(on_init_complete))) {}
+          base::BarrierClosure(assets_.size(), std::move(on_init_complete))),
+      on_solutions_updated_(std::move(on_solutions_updated)) {}
 ManifestSolutionFactory::~ManifestSolutionFactory() = default;
 
 void ManifestSolutionFactory::UpdateAssetState(const std::string& asset_id,
@@ -337,6 +342,9 @@ void ManifestSolutionFactory::UpdateSolutions() {
           .Update(base::unexpected(
               OnDeviceModelEligibilityReason::kFeatureExecutionNotEnabled));
     }
+  }
+  if (on_solutions_updated_) {
+    on_solutions_updated_.Run();
   }
 }
 
@@ -596,7 +604,9 @@ void ManifestSolutionFactory::LoadBaseModel(const std::string& model_id,
   on_device_model::ModelAssetPaths paths;
   // We should not get here unless the asset is available.
   paths.weights = *ResolveFile(recipe.weights_file());
-  if (recipe.backend_type() == proto::BaseModelRecipe::BACKEND_TYPE_CPU) {
+  if (recipe.backend_type() == proto::BaseModelRecipe::BACKEND_TYPE_CPU ||
+      base::FeatureList::IsEnabled(
+          on_device_model::features::kOnDeviceModelGpuWeightCache)) {
     paths.cache = paths.weights.DirName().Append(kWeightCacheFile);
   }
   paths.encoder_cache = paths.weights.DirName().Append(kEncoderCacheFile);
@@ -604,7 +614,7 @@ void ManifestSolutionFactory::LoadBaseModel(const std::string& model_id,
   // TODO(crbug.com/461547475): GPU cache is experimental for now, remove
   // once feature flag is no longer needed.
   if (base::FeatureList::IsEnabled(
-          on_device_model::features::kOnDeviceModelGpuCache) &&
+          on_device_model::features::kOnDeviceModelGpuProgramCache) &&
       recipe.backend_type() == proto::BaseModelRecipe::BACKEND_TYPE_GPU) {
     // Program cache will be used for GPU backend only.
     paths.program_cache = paths.weights.DirName().Append(kProgramCacheFile);
@@ -637,6 +647,8 @@ void ManifestSolutionFactory::LoadBaseModel(const std::string& model_id,
             }
             params->performance_hint =
                 ConvertPerformanceHint(recipe.performance_hint());
+            params->vram_mb =
+                factory->performance_classifier_->GetDeviceVramMb();
             for (int32_t rank : recipe.supported_adaptation_ranks()) {
               params->adaptation_ranks.push_back(rank);
             }

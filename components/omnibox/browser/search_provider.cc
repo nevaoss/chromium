@@ -757,9 +757,9 @@ void SearchProvider::StartOrStopSuggestQuery(bool minimal_changes) {
   // Since there is currently no contextual search suggest or typed AI mode
   // suggest, lens contextual searchboxes and the composebox, shouldn't query
   // suggest and only the verbatim matches should be shown.
-  if ((omnibox::IsLensContextualSearchbox(
-           input_.current_page_classification()) &&
-       !lens::features::ShowContextualSearchboxSearchSuggest())) {
+  if (input_.current_page_classification() ==
+          OmniboxEventProto::CONTEXTUAL_SEARCHBOX &&
+      !lens::features::ShowContextualSearchboxSearchSuggest()) {
     return;
   }
   // Make sure the current query can be sent to at least one suggest service.
@@ -952,6 +952,9 @@ std::unique_ptr<network::SimpleURLLoader> SearchProvider::CreateSuggestLoader(
   search_term_args.input_state = input.input_state();
   search_term_args.previous_query = input.previous_query();
   search_term_args.suggest_inventory = input.suggest_inventory();
+  if (input.input_method().has_value()) {
+    search_term_args.input_method = static_cast<int>(*input.input_method());
+  }
 
   const SearchTermsData& search_terms_data =
       client()->GetTemplateURLService()->search_terms_data();

@@ -14,6 +14,7 @@
 #include "base/test/bind.h"
 #include "base/test/gmock_callback_support.h"
 #include "base/test/mock_callback.h"
+#include "base/test/scoped_feature_list.h"
 #include "base/uuid.h"
 #include "build/build_config.h"
 #include "chrome/browser/contextual_search/contextual_search_web_contents_helper.h"
@@ -31,7 +32,9 @@
 #include "components/contextual_tasks/public/context_decoration_params.h"
 #include "components/contextual_tasks/public/contextual_task.h"
 #include "components/contextual_tasks/public/contextual_task_context.h"
+#include "components/contextual_tasks/public/features.h"
 #include "components/contextual_tasks/public/mock_contextual_tasks_service.h"
+#include "components/omnibox/common/composebox_features.h"
 #include "components/sessions/content/session_tab_helper.h"
 #include "components/tab_groups/tab_group_visual_data.h"
 #include "components/tabs/public/mock_tab_interface.h"
@@ -63,6 +66,7 @@ class MockObserver : public ActiveTaskContextProvider::Observer {
 class ActiveTaskContextProviderImplTest : public testing::Test {
  public:
   void SetUp() override {
+    InitializeFeatureList();
     profile_ = std::make_unique<TestingProfile>();
     browser_window_ = std::make_unique<NiceMock<MockBrowserWindowInterface>>();
 
@@ -104,6 +108,10 @@ class ActiveTaskContextProviderImplTest : public testing::Test {
     provider_->AddObserver(&observer_);
   }
 
+  virtual void InitializeFeatureList() {
+    feature_list_.InitWithFeatures({kContextualTasks}, {});
+  }
+
   void TearDown() override {
     provider_->RemoveObserver(&observer_);
     provider_.reset();
@@ -129,6 +137,8 @@ class ActiveTaskContextProviderImplTest : public testing::Test {
     sessions::SessionTabHelper::CreateForWebContents(web_contents_ptr,
                                                      base::NullCallback());
     ContextualSearchWebContentsHelper::CreateForWebContents(web_contents_ptr);
+    tabs::TabLookupFromWebContents::CreateForWebContents(web_contents_ptr,
+                                                         tab.get());
 
     ON_CALL(*tab, GetContents()).WillByDefault(Return(web_contents_ptr));
 
@@ -139,6 +149,7 @@ class ActiveTaskContextProviderImplTest : public testing::Test {
   }
 
  protected:
+  base::test::ScopedFeatureList feature_list_;
   content::BrowserTaskEnvironment task_environment_;
   content::RenderViewHostTestEnabler rvh_test_enabler_;
   std::unique_ptr<TestingProfile> profile_;
@@ -367,6 +378,10 @@ TEST_F(ActiveTaskContextProviderImplTest, LocalTabUnderlines) {
 
 TEST_F(ActiveTaskContextProviderImplTest,
        PrimaryPageChangedClearsLocalUnderlines) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndEnableFeature(
+      omnibox::kContextManagementInComposebox);
+
   tabs::TabInterface* tab = CreateMockTab();
 
   // Mock panel controller to return nullopt session to avoid context fetching
@@ -374,6 +389,7 @@ TEST_F(ActiveTaskContextProviderImplTest,
   EXPECT_CALL(*contextual_tasks_panel_controller_,
               GetSessionHandleForActiveTabOrPanel())
       .WillRepeatedly(Return(std::make_pair(std::nullopt, nullptr)));
+  EXPECT_CALL(*tab_list_, GetActiveTab()).WillRepeatedly(Return(tab));
 
   // Add local tab underline and expect `onContextTabsChanged` to be called.
   std::set<tabs::TabHandle> expected_tabs = {tab->GetHandle()};
@@ -391,6 +407,55 @@ TEST_F(ActiveTaskContextProviderImplTest,
   EXPECT_CALL(observer_, OnContextTabsChanged(std::set<tabs::TabHandle>()))
       .Times(1);
   provider_->PrimaryPageChanged(tab->GetContents()->GetPrimaryPage());
+}
+
+TEST_F(ActiveTaskContextProviderImplTest,
+       ActiveTabNavigationDoesNotClearTabUnderlines) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndEnableFeature(
+      omnibox::kContextManagementInComposebox);
+
+  tabs::TabInterface* tab1 = CreateMockTab();
+  tabs::TabInterface* tab2 = CreateMockTab();
+
+  EXPECT_CALL(*contextual_tasks_panel_controller_,
+              GetSessionHandleForActiveTabOrPanel())
+      .WillRepeatedly(Return(std::make_pair(std::nullopt, nullptr)));
+
+  // `tab1` is the active tab initially.
+  EXPECT_CALL(*tab_list_, GetActiveTab()).WillRepeatedly(Return(tab1));
+  EXPECT_CALL(*tab_list_, GetTabCount()).WillRepeatedly(Return(2));
+  EXPECT_CALL(*tab_list_, GetTab(0)).WillRepeatedly(Return(tab1));
+  EXPECT_CALL(*tab_list_, GetTab(1)).WillRepeatedly(Return(tab2));
+
+  // Add `tab2` as local tab underline for active `tab1`.
+  std::set<tabs::TabHandle> expected_tabs = {tab2->GetHandle()};
+  EXPECT_CALL(observer_, OnContextTabsChanged(expected_tabs)).Times(1);
+  provider_->AddLocalTabUnderline(tab2->GetHandle());
+
+  // Simulate active tab switch to `tab2`. Should have no tab underlines.
+  EXPECT_CALL(*tab_list_, GetActiveTab()).WillRepeatedly(Return(tab2));
+  EXPECT_CALL(observer_, OnContextTabsChanged(std::set<tabs::TabHandle>()))
+      .Times(1);
+  for (auto& observer : tab_list_observers_) {
+    observer.OnActiveTabChanged(*tab_list_, tab2);
+  }
+
+  // Simulate primary page change on the active tab `tab2` (navigating away to
+  // normal URL). This should not clear `tab1`'s underlines. Since `tab2`
+  // doesn't have local underlines, `OnContextTabsChanged` is called with empty
+  // set.
+  EXPECT_CALL(observer_, OnContextTabsChanged(std::set<tabs::TabHandle>()))
+      .Times(1);
+  provider_->PrimaryPageChanged(tab2->GetContents()->GetPrimaryPage());
+
+  // Simulate switching active tab back to `tab1`. `tab2` underline under
+  // `tab1` reappears because it was not cleared.
+  EXPECT_CALL(*tab_list_, GetActiveTab()).WillRepeatedly(Return(tab1));
+  EXPECT_CALL(observer_, OnContextTabsChanged(expected_tabs)).Times(1);
+  for (auto& observer : tab_list_observers_) {
+    observer.OnActiveTabChanged(*tab_list_, tab1);
+  }
 }
 
 TEST_F(ActiveTaskContextProviderImplTest,
@@ -441,6 +506,44 @@ TEST_F(ActiveTaskContextProviderImplTest, ObserverNotifiedOnDestruction) {
   EXPECT_CALL(local_observer, OnActiveTaskContextProviderDestroyed()).Times(1);
 
   local_provider.reset();
+}
+
+class ActiveTaskContextProviderImplFeatureDisabledTest
+    : public ActiveTaskContextProviderImplTest {
+ public:
+  void InitializeFeatureList() override {
+    feature_list_.InitWithFeatures(
+        {}, {kContextualTasksSidePanel, kContextualTasks});
+  }
+};
+
+TEST_F(ActiveTaskContextProviderImplFeatureDisabledTest,
+       RefreshContextWhenFeatureDisabled) {
+  EXPECT_CALL(*contextual_tasks_panel_controller_,
+              GetSessionHandleForActiveTabOrPanel())
+      .Times(0);
+  EXPECT_CALL(observer_, OnContextTabsChanged(std::set<tabs::TabHandle>()))
+      .Times(1);
+
+  provider_->RefreshContext();
+}
+
+class ActiveTaskContextProviderImplSidePanelOnlyTest
+    : public ActiveTaskContextProviderImplTest {
+ public:
+  void InitializeFeatureList() override {
+    feature_list_.InitWithFeatures({kContextualTasksSidePanel},
+                                   {kContextualTasks});
+  }
+};
+
+TEST_F(ActiveTaskContextProviderImplSidePanelOnlyTest,
+       RefreshContextWhenSidePanelOnlyEnabled) {
+  EXPECT_CALL(*contextual_tasks_panel_controller_,
+              GetSessionHandleForActiveTabOrPanel())
+      .WillOnce(testing::Return(std::make_pair(std::nullopt, nullptr)));
+
+  provider_->RefreshContext();
 }
 
 }  // namespace contextual_tasks

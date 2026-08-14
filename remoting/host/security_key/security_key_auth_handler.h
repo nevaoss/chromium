@@ -19,8 +19,6 @@
 
 namespace remoting {
 
-class ClientSessionDetails;
-
 // Class responsible for proxying authentication data between a local gnubbyd
 // and the client.
 class SecurityKeyAuthHandler {
@@ -33,17 +31,25 @@ class SecurityKeyAuthHandler {
 
   static void set_use_mojo_handler(bool use_mojo_handler);
 
+  using CreateHandlerCallbackForTesting =
+      base::RepeatingCallback<std::unique_ptr<SecurityKeyAuthHandler>()>;
+  static void SetCreateHandlerCallbackForTesting(
+      CreateHandlerCallbackForTesting callback);
+
   // Creates a platform-specific SecurityKeyAuthHandler.
-  // |client_session_details| will be valid until this instance is destroyed.
-  static std::unique_ptr<SecurityKeyAuthHandler> Create(
-      ClientSessionDetails* client_session_details);
+  static std::unique_ptr<SecurityKeyAuthHandler> Create();
 
   // Binds a SecurityKeyForwarder receiver for receiving SK forwarding requests.
   virtual void BindSecurityKeyForwarder(
       mojo::PendingReceiver<mojom::SecurityKeyForwarder> receiver);
 
-  // Sets the callback used to send messages to the client.
-  virtual void SetSendMessageCallback(const SendMessageCallback& callback) = 0;
+  // Sets the callback used to send messages to the client, associated with
+  // the given |client_id| (typically the transport's 'this' pointer).
+  virtual void SetSendMessageCallback(const SendMessageCallback& callback,
+                                      const void* client_id) = 0;
+
+  // Clears the callback if the registered |client_id| matches the caller.
+  virtual void ClearSendMessageCallback(const void* client_id) = 0;
 
   // Returns a weak pointer to this handler.
   virtual base::WeakPtr<SecurityKeyAuthHandler> GetWeakPtr() = 0;

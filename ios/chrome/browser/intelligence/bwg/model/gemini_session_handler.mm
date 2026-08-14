@@ -92,6 +92,8 @@ IOSGeminiFirstPromptSubmissionMethod ConvertInputTypeToHistogramEnum(
           kNanoBananaMakeThisImageLookLikeInstantFilm;
     case gemini::InputType::kEditMenuPrompt:
       return IOSGeminiFirstPromptSubmissionMethod::kEditMenuPrompt;
+    case gemini::InputType::kAppSwitcherSummarize:
+      return IOSGeminiFirstPromptSubmissionMethod::kAppSwitcherSummarize;
   }
 }
 
@@ -132,6 +134,7 @@ IOSGeminiSessionCancellationReason HistogramEnumFromGeminiCancelType(
   BOOL _hasSubmittedFirstPrompt;
   base::TimeTicks _lastPromptSentTime;
   BOOL _lastPromptHadPageContext;
+  BOOL _lastPromptUsedMultiTab;
   BOOL _waitingForResponse;
   // Track prompts per session.
   int _totalPromptsInSession;
@@ -204,6 +207,9 @@ IOSGeminiSessionCancellationReason HistogramEnumFromGeminiCancelType(
                        serverID:(NSString*)serverID {
   [self updateSessionWithClientID:clientID serverID:serverID];
 
+  // Record that the Gemini Floaty has successfully appeared on screen.
+  RecordGeminiSessionOpened();
+
   // Start session timer.
   _sessionStartTime = base::TimeTicks::Now();
   // Reset first response flag for new session.
@@ -218,6 +224,11 @@ IOSGeminiSessionCancellationReason HistogramEnumFromGeminiCancelType(
 
 - (void)UIDidDisappearWithClientID:(NSString*)clientID
                           serverID:(NSString*)serverID {
+  // If the bottom sheet migration is enabled, the UI will be dismissed after
+  // `didRequestDismissal` is called, so we don't need to do any work here.
+  if (IsIOSGeminiBottomSheetMigrationEnabled()) {
+    return;
+  }
   [self dismissAndRecordMetrics];
 }
 
@@ -238,7 +249,8 @@ IOSGeminiSessionCancellationReason HistogramEnumFromGeminiCancelType(
   // Calculate and record response latency.
   if (_waitingForResponse && !_lastPromptSentTime.is_null()) {
     base::TimeDelta latency = base::TimeTicks::Now() - _lastPromptSentTime;
-    RecordResponseLatency(latency, _lastPromptHadPageContext, isImageGenerated);
+    RecordResponseLatency(latency, _lastPromptHadPageContext, isImageGenerated,
+                          _lastPromptUsedMultiTab);
 
     // Reset latency tracking.
     _waitingForResponse = NO;
@@ -262,12 +274,18 @@ IOSGeminiSessionCancellationReason HistogramEnumFromGeminiCancelType(
               imagesAttachedCount:(NSUInteger)imagesAttachedCount
                    longPressImage:(BOOL)longPressImage
               pageContextAttached:(BOOL)pageContextAttached {
+  NSUInteger tabsAttachedCount =
+      self.attachedTabsCountProvider ? self.attachedTabsCountProvider() : 0;
+  BOOL usedMultiTab =
+      self.isMultiTabUsedProvider ? self.isMultiTabUsedProvider() : NO;
+
   _totalPromptsInSession++;
 
   // Record that a prompt was sent with arguments.
   RecordGeminiPromptSent(isNanoBananaToolSelected,
                          static_cast<int>(imagesAttachedCount), longPressImage,
-                         pageContextAttached);
+                         pageContextAttached,
+                         static_cast<int>(tabsAttachedCount), usedMultiTab);
 
   // Check if this is the user's first prompt.
   IOSGeminiFirstPromptSubmissionMethod method =
@@ -283,6 +301,7 @@ IOSGeminiSessionCancellationReason HistogramEnumFromGeminiCancelType(
   // Start latency tracking.
   _lastPromptSentTime = base::TimeTicks::Now();
   _lastPromptHadPageContext = pageContextAttached;
+  _lastPromptUsedMultiTab = usedMultiTab;
   _waitingForResponse = YES;
 
   if (_tracker && inputType == gemini::InputType::kWhatCanGeminiDo &&
@@ -358,7 +377,21 @@ IOSGeminiSessionCancellationReason HistogramEnumFromGeminiCancelType(
 }
 
 - (void)didRequestToDetachTabWithID:(NSString*)tabID {
-  // TODO(crbug.com/525782842): Implement tab detachment logic.
+  if (self.tabDetachRequestCallback) {
+    self.tabDetachRequestCallback(tabID);
+  }
+}
+
+- (void)didAttachTabWithID:(NSString*)tabID {
+  if (self.tabAttachedCallback) {
+    self.tabAttachedCallback(tabID);
+  }
+}
+
+- (void)didDetachTabWithID:(NSString*)tabID {
+  if (self.tabDetachedCallback) {
+    self.tabDetachedCallback(tabID);
+  }
 }
 
 - (void)geminiLiveUserDidBargeIn {
@@ -367,6 +400,14 @@ IOSGeminiSessionCancellationReason HistogramEnumFromGeminiCancelType(
 
 - (void)geminiLiveUserDidTapLiveButton {
   [self.geminiViewStateDelegate geminiLiveUserDidTapLiveButton];
+}
+
+- (void)geminiLiveUserDidPressStopButton {
+  [self.geminiViewStateDelegate geminiLiveUserDidPressStopButton];
+}
+
+- (void)didSwitchToMode:(ios::provider::GeminiViewMode)mode {
+  [self.geminiViewStateDelegate didSwitchToMode:mode];
 }
 
 - (void)geminiLiveIntroShown:(UIViewController*)viewController {
@@ -387,6 +428,16 @@ IOSGeminiSessionCancellationReason HistogramEnumFromGeminiCancelType(
   [self.geminiHandler
       startGeminiLiveFirstRunWithBaseViewController:viewController
                                          completion:^(BOOL success) {
+                                           if (!success) {
+                                             // TODO(crbug.com/535588632):
+                                             // switch directly to expanded
+                                             // floaty state once the method is
+                                             // bridged.
+                                             ios::provider::SwitchToMode(
+                                                 ios::provider::GeminiViewMode::
+                                                     kFloaty,
+                                                 /*animated=*/YES);
+                                           }
                                            if (completion) {
                                              completion(success);
                                            }

@@ -12,6 +12,7 @@
 #include <string_view>
 #include <tuple>
 #include <utility>
+#include <variant>
 
 #include "base/apple/foundation_util.h"
 #include "base/apple/owned_objc.h"
@@ -109,6 +110,74 @@ BASE_FEATURE(kDelayUpdateWindowsAfterTextInputStateChanged,
 // If enabled, throttles resize IPCs on Mac to prevent jank during window
 // resize.
 BASE_FEATURE(kThrottleResizeIpc, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// If enabled, checks the `had_saved_frame_at_start` parameter of a
+// VisibleTimeEvent to decide whether to log it in the "WithSavedFrames" metric.
+// Otherwise, overwrites the parameter with the current value of
+// HasSavedFrames(), which was the pre-M149 behaviour.
+BASE_FEATURE(kUseHadSavedFrameAtStart, base::FEATURE_ENABLED_BY_DEFAULT);
+
+// If true, sends all tab switch VisibleTimeEvents to the DelegatedFrameHost if
+// HasSavedFrames() is currently true. Otherwise, only sends those with
+// `had_saved_frame_at_start`.
+BASE_FEATURE_PARAM(bool,
+                   kSendAllSavedFramesToDelegatedFrameHost,
+                   &kUseHadSavedFrameAtStart,
+                   false);
+
+// Extract any events in `visible_time_request` that should go to the
+// DelegatedFrameHost and sends them to `delegated_frame_host`. Modifies
+// `visible_time_request` in place.
+void SendVisibleTimeRequestToDelegatedFrameHost(
+    blink::RecordContentToVisibleTimeRequest& visible_time_request,
+    DelegatedFrameHost* delegated_frame_host,
+    bool has_saved_frame) {
+  CHECK(delegated_frame_host);
+  std::optional<blink::RecordContentToVisibleTimeRequest> delegated_request;
+  if (base::FeatureList::IsEnabled(kUseHadSavedFrameAtStart)) {
+    if (kSendAllSavedFramesToDelegatedFrameHost.Get()) {
+      // If there's already a Surface available, send all tab switch events to
+      // the DelegatedFrameHost. ContentToVisibleTimeRecorder will use the
+      // ".WithSavedFrame" suffix for the ones with `had_saved_frame_at_start`,
+      // and a ".NoSavedFrames_*" suffix for the rest.
+      if (has_saved_frame) {
+        delegated_request = visible_time_request.ExtractAllTabSwitchEvents();
+      } else {
+        delegated_request =
+            visible_time_request.ExtractTabSwitchEventsWithSavedFrame();
+      }
+    } else {
+      // Send only the events that had a saved frame when the tab switch started
+      // to the DelegatedFrameHost. (This is the default behaviour starting in
+      // M149, but may over-estimate tab switch times because if a Surface
+      // exists the DelegatedFrameHost will present it before the renderer.)
+      delegated_request =
+          visible_time_request.ExtractTabSwitchEventsWithSavedFrame();
+    }
+  } else {
+    // If there's already a Surface available, send all tab switch events to the
+    // DelegatedFrameHost. Otherwise leave them all in `visible_time_request` to
+    // send to the renderer. (This is the behaviour before
+    // https://crrev.com/c/7723380.)
+    if (has_saved_frame) {
+      delegated_request = visible_time_request.ExtractAllTabSwitchEvents();
+
+      // Pretend all events had a saved frame at start, to match the pre-M149
+      // behaviour.
+      if (delegated_request) {
+        for (auto& event : delegated_request->events) {
+          std::get<blink::VisibleTimeEvent::TabSwitchReason>(event.reason)
+              .had_saved_frame_at_start = true;
+        }
+      }
+    }
+  }
+
+  if (delegated_request) {
+    delegated_frame_host->RequestSuccessfulPresentationTimeForNextFrame(
+        std::move(*delegated_request));
+  }
+}
 
 }  // namespace
 
@@ -447,6 +516,11 @@ void RenderWidgetHostViewMac::InitAsPopup(
     const gfx::Rect& pos,
     const gfx::Rect& anchor_rect) {
   CHECK_EQ(widget_type_, WidgetType::kPopup, base::NotFatalUntil::M152);
+  // A popup cannot be parented by a child frame view. Its parent must be the
+  // top-level outer view (RenderWidgetHostViewMac). Match the Aura
+  // implementation and refuse to proceed if the parent is a child frame.
+  CHECK(!static_cast<RenderWidgetHostViewBase*>(parent_host_view)
+             ->IsRenderWidgetHostViewChildFrame());
 
   popup_parent_host_view_ =
       static_cast<RenderWidgetHostViewMac*>(parent_host_view);
@@ -491,7 +565,9 @@ RenderWidgetHostViewMac::GetFocusedRenderWidgetHostDelegate() {
 }
 
 RenderWidgetHostImpl* RenderWidgetHostViewMac::GetWidgetForKeyboardEvent() {
-  CHECK(in_keyboard_event_, base::NotFatalUntil::M152);
+  // TODO(crbug.com/534500557): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK(in_keyboard_event_);
   return RenderWidgetHostImpl::FromID(keyboard_event_widget_process_id_,
                                       keyboard_event_widget_routing_id_);
 }
@@ -533,6 +609,9 @@ void RenderWidgetHostViewMac::NotifyHostAndDelegateOnWasShown(
   // tab switch measurement should go through DelegatedFrameHost) it's important
   // to call RequestSuccessfulPresentationTimeForNextFrame to register the
   // request before the compositor has a chance to commit.
+  const bool has_saved_frame =
+      browser_compositor_->GetDelegatedFrameHost()->HasSavedFrame();
+
   browser_compositor_->SetRenderWidgetHostIsHidden(false);
 
   // If the frame for the renderer is already available, then the
@@ -540,14 +619,9 @@ void RenderWidgetHostViewMac::NotifyHostAndDelegateOnWasShown(
   // SetRenderWidgetHostIsHidden above will show the DelegatedFrameHost
   // in this state, but doesn't include the presentation time request.
   if (tab_switch_start_state) {
-    if (std::optional<blink::RecordContentToVisibleTimeRequest>
-            delegated_visible_time_request =
-                tab_switch_start_state
-                    ->ExtractTabSwitchEventsWithSavedFrame()) {
-      browser_compositor_->GetDelegatedFrameHost()
-          ->RequestSuccessfulPresentationTimeForNextFrame(
-              std::move(*delegated_visible_time_request));
-    }
+    SendVisibleTimeRequestToDelegatedFrameHost(
+        *tab_switch_start_state, browser_compositor_->GetDelegatedFrameHost(),
+        has_saved_frame);
   }
 
   host()->WasShown(std::move(tab_switch_start_state));
@@ -560,13 +634,9 @@ void RenderWidgetHostViewMac::
 
   // If the frame for the renderer is already available, then the tab-switching
   // time is the presentation time for the browser-compositor.
-  if (std::optional<blink::RecordContentToVisibleTimeRequest>
-          delegated_visible_time_request =
-              visible_time_request.ExtractTabSwitchEventsWithSavedFrame()) {
-    browser_compositor_->GetDelegatedFrameHost()
-        ->RequestSuccessfulPresentationTimeForNextFrame(
-            std::move(*delegated_visible_time_request));
-  }
+  SendVisibleTimeRequestToDelegatedFrameHost(
+      visible_time_request, browser_compositor_->GetDelegatedFrameHost(),
+      browser_compositor_->GetDelegatedFrameHost()->HasSavedFrame());
 
   if (!visible_time_request.events.empty()) {
     host()->RequestSuccessfulPresentationTimeForNextFrame(
@@ -1458,7 +1528,7 @@ void RenderWidgetHostViewMac::TransformPointToRootSurface(gfx::PointF* point) {
   browser_compositor_->TransformPointToRootSurface(point);
 }
 
-gfx::Rect RenderWidgetHostViewMac::GetBoundsInRootWindow() {
+gfx::Rect RenderWidgetHostViewMac::GetBoundsInScreen() {
   return window_frame_in_screen_dip_;
 }
 
@@ -2299,6 +2369,11 @@ bool RenderWidgetHostViewMac::SyncGetFirstRectForRange(
     // which means we have to scale the rect by the device scale factor.
     *rect = gfx::ScaleToEnclosingRect(blink_rect, 1.f / device_scale_factor);
   }
+
+  // Ensure the returned rect is clamped to the viewport to prevent a
+  // compromised renderer from placing IME windows outside the page.
+  // See https://crbug.com/519210950.
+  rect->AdjustToFit(gfx::Rect(GetVisibleViewportSize()));
   return true;
 }
 
@@ -2625,9 +2700,13 @@ RenderWidgetHostViewMac::MaybeUpdateScreenInfosForHiDPI() {
 void RenderWidgetHostViewMac::CreateUnboundedSurface(
     mojo::PendingAssociatedReceiver<blink::mojom::UnboundedSurfaceHost> host,
     mojo::PendingAssociatedRemote<blink::mojom::UnboundedSurfaceClient> client,
-    const gfx::Rect& bounds_in_dips) {
+    const gfx::Rect& bounds_in_dips,
+    base::WeakPtr<RenderWidgetHostViewBase> subframe_view) {
+  gfx::Rect bounds_in_screen =
+      ConvertSubframeBoundsToScreen(bounds_in_dips, subframe_view.get());
   unbounded_surface_window_ = std::make_unique<UnboundedSurfaceWindowMac>(
-      this, std::move(host), std::move(client), bounds_in_dips);
+      this, std::move(host), std::move(client), bounds_in_screen,
+      std::move(subframe_view));
 }
 
 bool RenderWidgetHostViewMac::IsHeadless() const {

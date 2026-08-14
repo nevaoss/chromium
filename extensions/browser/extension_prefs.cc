@@ -48,6 +48,7 @@
 #include "extensions/browser/extension_util.h"
 #include "extensions/browser/install_flag.h"
 #include "extensions/browser/install_prefs_helper.h"
+#include "extensions/browser/manifest_v2_handler.h"
 #include "extensions/browser/pref_names.h"
 #include "extensions/browser/user_script_manager.h"
 #include "extensions/common/api/types.h"
@@ -1013,6 +1014,23 @@ void ExtensionPrefs::SetExternalInstallFirstRun(
                       base::Value(true));
 }
 
+std::optional<bool> ExtensionPrefs::WasPinnedByDefault(
+    const ExtensionId& extension_id) const {
+  bool was_pinned = false;
+  if (ReadPrefAsBoolean(extension_id, pref_names::kWasPinnedByDefault,
+                        &was_pinned)) {
+    return was_pinned;
+  }
+  return std::nullopt;
+}
+
+void ExtensionPrefs::SetWasPinnedByDefault(const ExtensionId& extension_id,
+                                           bool was_pinned) {
+  DCHECK(crx_file::id_util::IdIsValid(extension_id));
+  UpdateExtensionPref(extension_id, pref_names::kWasPinnedByDefault,
+                      base::Value(was_pinned));
+}
+
 bool ExtensionPrefs::SetAlertSystemFirstRun() {
   if (prefs_->GetBoolean(pref_names::kAlertsInitialized)) {
     return true;
@@ -1561,7 +1579,8 @@ void ExtensionPrefs::SetInstallLocation(const ExtensionId& extension_id,
                       base::Value(static_cast<int>(location)));
 }
 
-std::optional<ExtensionInfo> ExtensionPrefs::GetInstalledInfoHelper(
+std::optional<ExtensionPrefs::InstallRecord>
+ExtensionPrefs::GetInstalledInfoHelper(
     const ExtensionId& extension_id,
     const base::DictValue& extension,
     bool include_component_extensions) const {
@@ -1628,10 +1647,11 @@ std::optional<ExtensionInfo> ExtensionPrefs::GetInstalledInfoHelper(
   }
   const base::DictValue* manifest_dict =
       manifest && manifest->is_dict() ? &manifest->GetDict() : nullptr;
-  return ExtensionInfo(manifest_dict, extension_id, file_path, location);
+  return InstallRecord(manifest_dict, extension_id, file_path, location);
 }
 
-std::optional<ExtensionInfo> ExtensionPrefs::GetInstalledExtensionInfo(
+std::optional<ExtensionPrefs::InstallRecord>
+ExtensionPrefs::GetInstalledExtensionInfo(
     const ExtensionId& extension_id,
     bool include_component_extensions) const {
   const base::DictValue& extensions = prefs_->GetDict(pref_names::kExtensions);
@@ -1644,9 +1664,9 @@ std::optional<ExtensionInfo> ExtensionPrefs::GetInstalledExtensionInfo(
                                 include_component_extensions);
 }
 
-ExtensionPrefs::ExtensionsInfo ExtensionPrefs::GetInstalledExtensionsInfo(
+ExtensionPrefs::InstallRecords ExtensionPrefs::GetInstalledExtensionsInfo(
     bool include_component_extensions) const {
-  ExtensionsInfo extensions_info;
+  InstallRecords extensions_info;
 
   const base::DictValue& extensions = prefs_->GetDict(pref_names::kExtensions);
   for (const auto [extension_id, _] : extensions) {
@@ -1654,7 +1674,7 @@ ExtensionPrefs::ExtensionsInfo ExtensionPrefs::GetInstalledExtensionsInfo(
       continue;
     }
 
-    std::optional<ExtensionInfo> info =
+    std::optional<InstallRecord> info =
         GetInstalledExtensionInfo(extension_id, include_component_extensions);
     if (info) {
       extensions_info.push_back(*std::move(info));
@@ -1663,6 +1683,24 @@ ExtensionPrefs::ExtensionsInfo ExtensionPrefs::GetInstalledExtensionsInfo(
 
   return extensions_info;
 }
+
+ExtensionPrefs::InstallRecord::InstallRecord(const base::DictValue* manifest,
+                                             const ExtensionId& id,
+                                             const base::FilePath& path,
+                                             ManifestLocation location)
+    : extension_id(id), extension_path(path), extension_location(location) {
+  if (manifest) {
+    extension_manifest = std::make_unique<base::DictValue>(manifest->Clone());
+  }
+}
+
+ExtensionPrefs::InstallRecord::InstallRecord(InstallRecord&&) noexcept =
+    default;
+
+ExtensionPrefs::InstallRecord& ExtensionPrefs::InstallRecord::operator=(
+    InstallRecord&&) = default;
+
+ExtensionPrefs::InstallRecord::~InstallRecord() = default;
 
 ExtensionPrefs::DelayedInstallInfo::DelayedInstallInfo() = default;
 ExtensionPrefs::DelayedInstallInfo::DelayedInstallInfo(
@@ -1707,7 +1745,8 @@ void ExtensionPrefs::SetDelayedInstallInfo(const Extension* extension,
   extension_dict->SetInteger(kDelayedInstallFlags, install_info.install_flags);
 }
 
-std::optional<ExtensionInfo> ExtensionPrefs::GetDelayedInstallExtensionInfo(
+std::optional<ExtensionPrefs::InstallRecord>
+ExtensionPrefs::GetDelayedInstallExtensionInfo(
     const ExtensionId& extension_id) const {
   const base::DictValue* dict = GetDelayedInstallDict(extension_id);
   if (!dict) {
@@ -1762,9 +1801,9 @@ ExtensionPrefs::DelayReason ExtensionPrefs::GetDelayedInstallReason(
                                         : DelayReason::kNone;
 }
 
-ExtensionPrefs::ExtensionsInfo ExtensionPrefs::GetAllDelayedInstallInfo()
+ExtensionPrefs::InstallRecords ExtensionPrefs::GetAllDelayedInstallInfo()
     const {
-  ExtensionsInfo extensions_info;
+  InstallRecords extensions_info;
 
   const base::DictValue& extensions = prefs_->GetDict(pref_names::kExtensions);
   for (const auto [extension_id, _] : extensions) {
@@ -1772,7 +1811,7 @@ ExtensionPrefs::ExtensionsInfo ExtensionPrefs::GetAllDelayedInstallInfo()
       continue;
     }
 
-    std::optional<ExtensionInfo> info =
+    std::optional<InstallRecord> info =
         GetDelayedInstallExtensionInfo(extension_id);
     if (info) {
       extensions_info.push_back(*std::move(info));
@@ -1959,7 +1998,7 @@ void ExtensionPrefs::DecrementPref(const PrefMap& pref) {
 ExtensionIdList ExtensionPrefs::GetExtensions() const {
   ExtensionIdList result;
 
-  const ExtensionsInfo infos = GetInstalledExtensionsInfo();
+  const InstallRecords infos = GetInstalledExtensionsInfo();
   result.reserve(infos.size());
   std::ranges::transform(infos, std::back_inserter(result),
                          [](const auto& info) { return info.extension_id; });
@@ -2050,7 +2089,7 @@ void ExtensionPrefs::InitPrefStore() {
 
   // When this is called, the PrefService is initialized and provides access
   // to the user preferences stored in a JSON file.
-  ExtensionsInfo extensions_info =
+  InstallRecords extensions_info =
       GetInstalledExtensionsInfo(/*include_component_extensions=*/true);
 
   if (extensions_disabled_) {
@@ -2255,11 +2294,7 @@ void ExtensionPrefs::RegisterProfilePrefs(
                                 0);
   registry->RegisterListPref(pref_names::kExtensionInstallTypeBlocklist);
   registry->RegisterBooleanPref(
-      kMV2DeprecationWarningAcknowledgedGloballyPref.name, false);
-  registry->RegisterBooleanPref(
-      kMV2DeprecationDisabledAcknowledgedGloballyPref.name, false);
-  registry->RegisterBooleanPref(
-      kMV2DeprecationUnsupportedAcknowledgedGloballyPref.name, false);
+      ManifestV2Handler::kMV2UnsupportedAcknowledgedGloballyPref.name, false);
   registry->RegisterStringPref(pref_names::kGlobalShortcutsUuid, std::string());
 
   registry->RegisterBooleanPref(
@@ -2394,7 +2429,7 @@ void ExtensionPrefs::PopulateExtensionInfoPrefs(
 }
 
 void ExtensionPrefs::InitExtensionControlledPrefs(
-    const ExtensionsInfo& extensions_info) {
+    const InstallRecords& extensions_info) {
   TRACE_EVENT0("browser,startup",
                "ExtensionPrefs::InitExtensionControlledPrefs");
 
@@ -2521,7 +2556,7 @@ void ExtensionPrefs::FinishExtensionInfoPrefs(
 void ExtensionPrefs::BackfillAndMigrateInstallTimePrefs() {
   // Get information for for all extensions including component extensions
   // since the install time pref is saved for them too.
-  const ExtensionsInfo extensions_info =
+  const InstallRecords extensions_info =
       GetInstalledExtensionsInfo(/*include_component_extensions=*/true);
 
   for (const auto& info : extensions_info) {
@@ -2542,7 +2577,7 @@ void ExtensionPrefs::BackfillAndMigrateInstallTimePrefs() {
 
 #if BUILDFLAG(IS_CHROMEOS)
 void ExtensionPrefs::ApplyPendingUpdates() {
-  const ExtensionsInfo extensions_info = GetInstalledExtensionsInfo();
+  const InstallRecords extensions_info = GetInstalledExtensionsInfo();
 
   for (const auto& info : extensions_info) {
     ScopedExtensionPrefUpdate update(prefs_, info.extension_id);
@@ -2571,7 +2606,7 @@ void ExtensionPrefs::ApplyPendingUpdates() {
 #endif
 
 void ExtensionPrefs::MigrateDeprecatedDisableReasons() {
-  const ExtensionsInfo extensions_info = GetInstalledExtensionsInfo();
+  const InstallRecords extensions_info = GetInstalledExtensionsInfo();
 
 #if BUILDFLAG(IS_CHROMEOS)
   // Perform a post-Lacros cleanup by clearing the old Ash keeplist enforcement.
@@ -2609,7 +2644,7 @@ void ExtensionPrefs::MigrateDeprecatedDisableReasons() {
 }
 
 void ExtensionPrefs::CleanUpCdpInstalledExtensions() {
-  const ExtensionsInfo extensions_info = GetInstalledExtensionsInfo();
+  const InstallRecords extensions_info = GetInstalledExtensionsInfo();
 
   for (const auto& info : extensions_info) {
     if (GetCreationFlags(info.extension_id) & Extension::INSTALLED_VIA_CDP) {

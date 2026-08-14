@@ -484,7 +484,18 @@ SkSerialReturnType SerializeOopTypeface(SkTypeface* typeface, void* ctx) {
   stream.write32(typeface_id);
   stream.writeBool(data_included);
   if (data_included) {
-    typeface->serialize(&stream, SkTypeface::SerializeBehavior::kDoIncludeData);
+    SkTypeface::SerializeBehavior mode =
+        SkTypeface::SerializeBehavior::kDoIncludeData;
+#if BUILDFLAG(IS_MAC)
+    constexpr SkFontTableTag kHvglTag = SkSetFourByteTag('h', 'v', 'g', 'l');
+    if (typeface->getTableSize(kHvglTag) > 0) {
+      // hvgl fonts on MacOS cannot be successfully deserialized when
+      // kDoIncludeData was used due to restrictions in the CoreText API.
+      // See: https://crbug.com/455517173#comment4
+      mode = SkTypeface::SerializeBehavior::kIncludeDataIfLocal;
+    }
+#endif
+    typeface->serialize(&stream, mode);
   }
   return stream.detachAsData();
 }
@@ -508,8 +519,8 @@ sk_sp<SkTypeface> DeserializeOopTypeface(SkStream& stream, void* ctx) {
 
   // Typeface not encountered before, expect it to be present in the stream.
   DCHECK(data_included);
-  sk_sp<SkTypeface> typeface =
-      SkTypeface::MakeDeserialize(&stream, skia::DefaultFontMgr());
+  sk_sp<SkTypeface> typeface = SkTypeface::MakeDeserialize(
+      &stream, skia::DefaultFontMgr(), &skia::SanitizeTypefaceStream);
   context->emplace(id, typeface);
   return typeface;
 }

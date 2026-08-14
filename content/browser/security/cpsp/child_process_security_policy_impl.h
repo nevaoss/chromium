@@ -23,6 +23,7 @@
 #include "base/synchronization/lock.h"
 #include "base/thread_annotations.h"
 #include "base/time/time.h"
+#include "base/unguessable_token.h"
 #include "content/browser/can_commit_status.h"
 #include "content/browser/isolated_origin_util.h"
 #include "content/browser/isolation_context.h"
@@ -32,6 +33,7 @@
 #include "content/public/common/bindings_policy.h"
 #include "content/public/common/child_process_id.h"
 #include "storage/common/file_system/file_system_types.h"
+#include "third_party/abseil-cpp/absl/container/flat_hash_map.h"
 #include "url/origin.h"
 
 class GURL;
@@ -261,6 +263,9 @@ class CONTENT_EXPORT ChildProcessSecurityPolicyImpl
     // document with that origin to be hosted in this process. This is
     // specifically about whether a particular new origin may be introduced
     // into a given process.
+    //
+    // This access type can only be used on the UI thread, because it involves
+    // jail and citadel checks which require UI thread data structures.
     kCanCommitNewOrigin,
     // Whether the process has previously committed a document or instantiated a
     // worker with the particular origin. This can be used to verify whether a
@@ -271,6 +276,8 @@ class CONTENT_EXPORT ChildProcessSecurityPolicyImpl
     // processing legitimate IPCs on behalf of `origin`, this check also allows
     // the case where an origin has been hosted by the process in the past, but
     // not necessarily now.
+    //
+    // This access type can be used on any thread.
     kHostsOrigin,
     // Whether the process can access data belonging to an origin already
     // committed in the process, such as passwords, localStorage, or cookies.
@@ -280,6 +287,8 @@ class CONTENT_EXPORT ChildProcessSecurityPolicyImpl
     // processes that aren't supposed to access any data. For example, sandboxed
     // frame processes (which contain only opaque origins) or PDF processes
     // cannot access data for any origin.
+    //
+    // This access type can be used on any thread.
     kCanAccessDataForCommittedOrigin,
   };
   bool CanAccessOrigin(int child_id,
@@ -362,7 +371,7 @@ class CONTENT_EXPORT ChildProcessSecurityPolicyImpl
       const BrowsingInstanceId& browsing_instance_id,
       const url::Origin& origin,
       const OriginAgentClusterIsolationState& oac_isolation_state,
-      bool is_oac_enabled_by_default);
+      const OriginAgentClusterIsolationState& default_isolation_state);
 
   // Adds `origin` to the IsolatedOrigins list for only the BrowsingInstance of
   // `isolation_context`, without isolating all subdomains. For use when the
@@ -457,6 +466,20 @@ class CONTENT_EXPORT ChildProcessSecurityPolicyImpl
   bool CanReadRequestBody(
       RenderProcessHost* process,
       const scoped_refptr<network::ResourceRequestBody>& body);
+
+  // Grants the network service the capability to upload a specific file on
+  // the browser's behalf. The owner_token ties the lifetime of the grant to
+  // an object (e.g. SimpleURLLoader) so it can be revoked when the object is
+  // destroyed.
+  void GrantFileForBrowserUpload(const base::UnguessableToken& owner_token,
+                                 const base::FilePath& file);
+
+  // Revokes all file accesses previously granted to the specific owner_token.
+  void RevokeFileForBrowserUpload(const base::UnguessableToken& owner_token);
+
+  // Verifies whether the browser process has granted the network service
+  // permission to upload the given file.
+  bool CanReadFileForBrowserUpload(const base::FilePath& file);
 
   // Pseudo schemes are treated differently than other schemes because they
   // cannot be requested like normal URLs.  There is no mechanism for revoking
@@ -1131,12 +1154,12 @@ class CONTENT_EXPORT ChildProcessSecurityPolicyImpl
   // about the cause of the failure, as well as `out_expected_process_lock` with
   // what the process lock was expected to be (e.g., to be used in crash keys).
   //
-  // This function must be called while already holding `lock_`.
+  // This function must be called on the UI thread while already holding
+  // `lock_`, and it is only valid to use for AccessType::kCanCommitNewOrigin.
   bool PerformJailAndCitadelChecks(ChildProcessId child_id,
                                    const ProcessState& process_state,
                                    const GURL& url,
                                    bool url_is_precursor_of_opaque_origin,
-                                   AccessType access_type,
                                    ProcessLock& out_expected_process_lock,
                                    std::string& out_failure_reason)
       EXCLUSIVE_LOCKS_REQUIRED(lock_);
@@ -1310,6 +1333,17 @@ class CONTENT_EXPORT ChildProcessSecurityPolicyImpl
   // improvement, and with it the BrowsingInstance cleanup here can also be
   // improved.
   base::TimeDelta browsing_instance_cleanup_delay_;
+
+  // Tracks files that the browser process has granted permission to the
+  // network service to upload on the user's behalf.
+  //
+  // Each file path maps to a list of tokens representing the active requests
+  // that have been granted access to this file. A token is added when a request
+  // is created, and it is removed from all associated file paths when the
+  // request is destroyed. Access is allowed as long as the file is present in
+  // this map.
+  absl::flat_hash_map<base::FilePath, std::vector<base::UnguessableToken>>
+      browser_granted_files_ GUARDED_BY(lock_);
 };
 
 }  // namespace content

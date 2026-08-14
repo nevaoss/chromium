@@ -11,6 +11,9 @@ import type {ContextualTasksAppElement} from './app.js';
 // clang-format off
 export function getHtml(this: ContextualTasksAppElement) {
   return html`<!--_html_template_start_-->
+<if expr="not is_android">
+  <link rel="stylesheet" href="layout_constants.css">
+</if>
   ${this.isShownInTab_ ? '' : html`
     <div id="toolbarOverlay">
       <top-toolbar id="toolbar"
@@ -21,6 +24,7 @@ export function getHtml(this: ContextualTasksAppElement) {
           .isUserSignedIn="${this.isUserSignedIn_}"
           .enableOpenInNewTabButton="${this.isAiPage_ && !this.isErrorPageVisible_}"
           .onboardingTooltipShowing="${this.onboardingTooltipShowing_}"
+          .lensSearchTooltipShowing="${this.lensSearchTooltipShowing_}"
           @new-thread-click="${this.onNewThreadClick_}">
       </top-toolbar>
     </div>
@@ -50,11 +54,12 @@ export function getHtml(this: ContextualTasksAppElement) {
       </h1>
     </div>
 <if expr="not is_android">
-    ${this.showOnboardingTooltip_ ? html`
-      <contextual-tasks-onboarding-tooltip id="onboardingTooltip"
-          @onboarding-tooltip-dismissed="${this.onOnboardingTooltipDismissed_}">
-      </contextual-tasks-onboarding-tooltip>
+    ${this.showLensSearchTooltip_ ? html`
+      <contextual-tasks-lens-search-tooltip id="lensSearchTooltip"
+          @lens-search-tooltip-dismissed="${this.onLensSearchTooltipDismissed_}">
+      </contextual-tasks-lens-search-tooltip>
     ` : ''}
+
     ${this.showSmartTabSharingTryItIph_ ? html`
       <contextual-tasks-banner-promo id="stsTryItPromo"
           style="${this.getBannerPromoBoundsStyles_()}"
@@ -84,6 +89,8 @@ export function getHtml(this: ContextualTasksAppElement) {
     ` : ''}
 </if>
 <if expr="not is_android or enable_webui_contextual_tasks_composebox">
+
+
     <contextual-tasks-composebox id="composebox"
           style="${this.getComposeboxBoundsStyles()}"
           ?hidden="${this.isComposeboxHidden_()}"
@@ -101,6 +108,14 @@ export function getHtml(this: ContextualTasksAppElement) {
   </div>
   <error-page id="errorPage"></error-page>
   <div id="iphMenuSmartTabSharingAnchor"></div>
+<if expr="not is_android or enable_webui_contextual_tasks_composebox">
+  <!-- Placed at the top level to ensure it sits on top of all other elements in the z-order stacking context, avoiding confinement by container boundaries or lower z-index stacking contexts (like #flexCenterContainer). -->
+  ${this.showOnboardingTooltip_ ? html`
+    <contextual-tasks-onboarding-tooltip id="onboardingTooltip"
+        @onboarding-tooltip-dismissed="${this.onOnboardingTooltipDismissed_}">
+    </contextual-tasks-onboarding-tooltip>
+  ` : ''}
+</if>
   <!--_html_template_end_-->`;
 }
 // clang-format on

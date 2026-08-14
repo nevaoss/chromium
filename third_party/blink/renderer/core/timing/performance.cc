@@ -40,6 +40,7 @@
 #include "base/task/single_thread_task_runner.h"
 #include "base/time/default_clock.h"
 #include "base/time/time.h"
+#include "base/values.h"
 #include "services/metrics/public/cpp/ukm_builders.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/mojom/permissions_policy/document_policy_feature.mojom-blink.h"
@@ -580,6 +581,12 @@ PerformanceEntryVector Performance::getEntriesByTypeInternal(
         entries = &long_animation_frame_buffer_;
       break;
 
+    // Conditional user timing entries are included in other relevant
+    // Performance entries. They are not retrievable through Performance
+    // interface.
+    case PerformanceEntry::kMarkConditional:
+      break;
+
     case PerformanceEntry::kInvalid:
       break;
   }
@@ -766,6 +773,18 @@ void Performance::AddLargestContentfulPaint(LargestContentfulPaint* entry) {
            .find(PerformanceEntry::kLargestContentfulPaint)
            ->value);
   }
+
+  if (RuntimeEnabledFeatures::DeclarativePerformanceObserverEnabled(
+          GetExecutionContext()) &&
+      !is_declarative_performance_observer_disabled_for_document_) {
+    auto lcp_mojom_entry = mojom::blink::DeclarativePerformanceEntry::NewLcp(
+        mojom::blink::DeclarativeLargestContentfulPaint::New(
+            base::Milliseconds(entry->startTime()), entry->size(),
+            base::Milliseconds(entry->renderTime()),
+            base::Milliseconds(entry->loadTime()), entry->id(), entry->url(),
+            entry->element() ? entry->element()->tagName() : String()));
+    BufferPerformanceEntry(std::move(lcp_mojom_entry));
+  }
 }
 
 void Performance::AddInteractionContentfulPaint(
@@ -929,24 +948,28 @@ PerformanceMark* Performance::mark(ScriptState* script_state,
       }
     }
 
-    std::optional<base::Value> detail_value;
-    if (mark_options && mark_options->hasDetail()) {
-      ScriptValue detail = mark_options->detail();
-      if (!detail.IsEmpty() && !detail.V8Value()->IsNullOrUndefined()) {
-        v8::Local<v8::Context> context = script_state->GetContext();
-        std::unique_ptr<WebV8ValueConverter> converter =
-            Platform::Current()->CreateWebV8ValueConverter();
-        if (std::unique_ptr<base::Value> new_value =
-                converter->FromV8Value(detail.V8Value(), context)) {
-          detail_value = std::move(*new_value);
+    if (RuntimeEnabledFeatures::DeclarativePerformanceObserverEnabled(
+            GetExecutionContext()) &&
+        !is_declarative_performance_observer_disabled_for_document_) {
+      std::optional<base::Value> detail_value;
+      if (mark_options && mark_options->hasDetail()) {
+        ScriptValue detail = mark_options->detail();
+        if (!detail.IsEmpty() && !detail.V8Value()->IsNullOrUndefined()) {
+          v8::Local<v8::Context> context = script_state->GetContext();
+          std::unique_ptr<WebV8ValueConverter> converter =
+              Platform::Current()->CreateWebV8ValueConverter();
+          if (std::unique_ptr<base::Value> new_value =
+                  converter->FromV8Value(detail.V8Value(), context)) {
+            detail_value = std::move(*new_value);
+          }
         }
       }
+      auto entry = mojom::blink::DeclarativePerformanceEntry::NewMark(
+          mojom::blink::DeclarativePerformanceMark::New(
+              mark_name, base::Milliseconds(performance_mark->startTime()),
+              std::move(detail_value)));
+      BufferPerformanceEntry(std::move(entry));
     }
-    auto entry = mojom::blink::DeclarativePerformanceEntry::New();
-    entry->name = mark_name;
-    entry->start_time = base::Milliseconds(performance_mark->startTime());
-    entry->detail = std::move(detail_value);
-    BufferPerformanceEntry(std::move(entry));
 
     if (RuntimeEnabledFeatures::HTMLParserYieldByUserTimingEnabled() &&
         !mark_parser_blocking.empty() && !mark_parser_restart.empty()) {
@@ -1178,6 +1201,9 @@ void Performance::clearMeasures(const AtomicString& measure_name) {
   GetUserTiming().ClearMeasures(measure_name);
 }
 
+void Performance::markConditional(ScriptState* script_state,
+                                  const AtomicString& mark_name) {}
+
 void Performance::RegisterPerformanceObserver(PerformanceObserver& observer) {
   observer_filter_options_ |= observer.FilterOptions();
   observers_.insert(&observer);
@@ -1243,16 +1269,17 @@ void Performance::ActivateObserver(PerformanceObserver& observer) {
   if (active_observers_.empty())
     deliver_observations_timer_.StartOneShot(base::TimeDelta(), FROM_HERE);
 
-  if (suspended_observers_.Contains(&observer))
-    suspended_observers_.erase(&observer);
+  // erase() is a no-op when the observer isn't present, so no guard is needed.
+  suspended_observers_.erase(&observer);
   active_observers_.insert(&observer);
 }
 
 void Performance::SuspendObserver(PerformanceObserver& observer) {
   DCHECK(!suspended_observers_.Contains(&observer));
-  if (!active_observers_.Contains(&observer))
+  auto it = active_observers_.find(&observer);
+  if (it == active_observers_.end())
     return;
-  active_observers_.erase(&observer);
+  active_observers_.erase(it);
   suspended_observers_.insert(&observer);
 }
 
@@ -1468,8 +1495,7 @@ void Performance::BufferPerformanceEntry(
     mojom::blink::DeclarativePerformanceEntryPtr entry) {
   batched_performance_entries_.push_back(std::move(entry));
   if (!performance_entries_flush_timer_.IsActive()) {
-    performance_entries_flush_timer_.StartOneShot(base::Milliseconds(100),
-                                                  FROM_HERE);
+    performance_entries_flush_timer_.StartOneShot(kBufferTimerDelay, FROM_HERE);
   }
 }
 
@@ -1490,6 +1516,10 @@ void Performance::FlushPerformanceEntries() {
           frame->GetBrowserInterfaceBroker().GetInterface(
               declarative_performance_observer_host_.BindNewPipeAndPassReceiver(
                   frame->GetTaskRunner(TaskType::kInternalDefault)));
+          declarative_performance_observer_host_.set_disconnect_handler(
+              BindOnce(&Performance::
+                           OnDeclarativePerformanceObserverHostDisconnected,
+                       WrapWeakPersistent(this)));
         }
         declarative_performance_observer_host_->DidObservePerformanceEntries(
             std::move(batched_performance_entries_));
@@ -1501,6 +1531,12 @@ void Performance::FlushPerformanceEntries() {
 
 void Performance::ResetTimeOriginForTesting(base::TimeTicks time_origin) {
   time_origin_ = time_origin;
+}
+
+void Performance::OnDeclarativePerformanceObserverHostDisconnected() {
+  is_declarative_performance_observer_disabled_for_document_ = true;
+  declarative_performance_observer_host_.reset();
+  batched_performance_entries_.clear();
 }
 
 }  // namespace blink

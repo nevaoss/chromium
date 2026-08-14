@@ -27,6 +27,7 @@ import static org.robolectric.Shadows.shadowOf;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
+import android.view.ContextThemeWrapper;
 import android.view.View;
 
 import androidx.annotation.Nullable;
@@ -215,7 +216,10 @@ public class TabSwitcherPaneUnitTest {
     public void setUp() {
         TabSwitcherPaneBase.setShowIphForTesting(true);
 
-        mContext = ApplicationProvider.getApplicationContext();
+        mContext =
+                new ContextThemeWrapper(
+                        ApplicationProvider.getApplicationContext(),
+                        R.style.Theme_Chromium_TabbedMode);
 
         when(mHubContainerView.getContext()).thenReturn(mContext);
         TabGroupSyncServiceFactory.setForTesting(mTabGroupSyncService);
@@ -1392,5 +1396,18 @@ public class TabSwitcherPaneUnitTest {
         HubUtils.setIsTabletForTesting(true);
         mTabSwitcherPane.setPaneHubController(mPaneHubController);
         assertFalse(mTabSwitcherPane.getHubSearchBoxVisibilitySupplier().get());
+    }
+
+    @Test
+    public void testIsTouchOnInteractiveElement() {
+        assertFalse(mTabSwitcherPane.isTouchOnInteractiveElement(100f, 100f));
+
+        mTabSwitcherPane.createTabSwitcherPaneCoordinator();
+
+        when(mTabSwitcherPaneCoordinator.isTouchOnInteractiveElement(100f, 100f)).thenReturn(true);
+        assertTrue(mTabSwitcherPane.isTouchOnInteractiveElement(100f, 100f));
+
+        when(mTabSwitcherPaneCoordinator.isTouchOnInteractiveElement(100f, 100f)).thenReturn(false);
+        assertFalse(mTabSwitcherPane.isTouchOnInteractiveElement(100f, 100f));
     }
 }

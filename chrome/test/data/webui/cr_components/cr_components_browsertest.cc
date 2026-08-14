@@ -7,6 +7,8 @@
 #include "components/contextual_tasks/public/features.h"
 #include "components/lens/lens_features.h"
 #include "content/public/test/browser_test.h"
+#include "content/public/test/file_system_chooser_test_helpers.h"
+#include "ui/shell_dialogs/select_file_dialog.h"
 
 #if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/browser_features.h"
@@ -30,12 +32,6 @@ IN_PROC_BROWSER_TEST_F(CrComponentsTest, CustomizeColorSchemeMode) {
 IN_PROC_BROWSER_TEST_F(CrComponentsTest, HelpBubbleMixin) {
   set_test_loader_host(chrome::kChromeUINewTabPageHost);
   RunTest("cr_components/help_bubble/help_bubble_mixin_test.js", "mocha.run()");
-}
-
-IN_PROC_BROWSER_TEST_F(CrComponentsTest, HelpBubbleMixinLit) {
-  set_test_loader_host(chrome::kChromeUINewTabPageHost);
-  RunTest("cr_components/help_bubble/help_bubble_mixin_lit_test.js",
-          "mocha.run()");
 }
 
 IN_PROC_BROWSER_TEST_F(CrComponentsTest, HelpBubble) {
@@ -120,6 +116,11 @@ IN_PROC_BROWSER_TEST_F(CrComponentsSearchboxTest, RealboxPlaceholderTest) {
 IN_PROC_BROWSER_TEST_F(CrComponentsSearchboxTest, SearchboxDropdownTest) {
   set_test_loader_host(chrome::kChromeUINewTabPageHost);
   RunTest("cr_components/searchbox/searchbox_dropdown_test.js", "mocha.run()");
+}
+
+IN_PROC_BROWSER_TEST_F(CrComponentsSearchboxTest, SearchboxSelectionMixin) {
+  RunTest("cr_components/searchbox/searchbox_selection_mixin_test.js",
+          "mocha.run()");
 }
 
 IN_PROC_BROWSER_TEST_F(CrComponentsSearchboxTest, SearchboxIconTest) {
@@ -319,13 +320,17 @@ IN_PROC_BROWSER_TEST_F(CrComponentsComposeboxTest,
           "mocha.run()");
 }
 
+IN_PROC_BROWSER_TEST_F(CrComponentsComposeboxTest, RecordingWave) {
+  RunTest("cr_components/composebox/recording_wave_test.js", "mocha.run()");
+}
+
 IN_PROC_BROWSER_TEST_F(CrComponentsComposeboxTest, LensSearch) {
   RunTest("cr_components/composebox/composebox_lens_search_test.js",
           "mocha.run()");
 }
 
-IN_PROC_BROWSER_TEST_F(CrComponentsComposeboxTest, RecentTabChip) {
-  RunTest("cr_components/composebox/recent_tab_chip_test.js", "mocha.run()");
+IN_PROC_BROWSER_TEST_F(CrComponentsComposeboxTest, CurrentTabChip) {
+  RunTest("cr_components/composebox/current_tab_chip_test.js", "mocha.run()");
 }
 #endif
 
@@ -357,8 +362,37 @@ IN_PROC_BROWSER_TEST_F(CrComponentsComposeboxTest, ComposeboxDragAndDrop) {
           "mocha.run()");
 }
 
+IN_PROC_BROWSER_TEST_F(CrComponentsComposeboxTest, ComposeboxErrorScrim) {
+  RunTest("cr_components/composebox/error_scrim_test.js", "mocha.run()");
+}
+
 IN_PROC_BROWSER_TEST_F(CrComponentsComposeboxTest, ComposeboxFileCarousel) {
   RunTest("cr_components/composebox/file_carousel_test.js", "mocha.run()");
+}
+
+IN_PROC_BROWSER_TEST_F(CrComponentsComposeboxTest, ComposeboxFileThumbnail) {
+  RunTest("cr_components/composebox/file_thumbnail_test.js", "mocha.run()");
+}
+
+class CrComponentsComposeboxFileInputsTest : public CrComponentsComposeboxTest {
+ public:
+  void SetUpOnMainThread() override {
+    CrComponentsComposeboxTest::SetUpOnMainThread();
+    ui::SelectFileDialog::SetFactory(
+        std::make_unique<content::FakeSelectFileDialogFactory>(
+            std::vector<base::FilePath>{}));
+  }
+
+  void TearDownOnMainThread() override {
+    ui::SelectFileDialog::SetFactory(nullptr);
+    CrComponentsComposeboxTest::TearDownOnMainThread();
+  }
+};
+
+IN_PROC_BROWSER_TEST_F(CrComponentsComposeboxFileInputsTest,
+                       ComposeboxFileInputs) {
+  RunTest("cr_components/composebox/composebox_file_inputs_test.js",
+          "mocha.run()");
 }
 
 IN_PROC_BROWSER_TEST_F(CrComponentsComposeboxTest, ComposeboxInput) {
@@ -372,10 +406,6 @@ IN_PROC_BROWSER_TEST_F(CrComponentsComposeboxTest, ComposeboxInputPlaceholder) {
 
 IN_PROC_BROWSER_TEST_F(CrComponentsComposeboxTest, ComposeboxMatch) {
   RunTest("cr_components/composebox/composebox_match_test.js", "mocha.run()");
-}
-
-IN_PROC_BROWSER_TEST_F(CrComponentsComposeboxTest, Composebox) {
-  RunTest("cr_components/composebox/composebox_test.js", "mocha.run()");
 }
 
 IN_PROC_BROWSER_TEST_F(CrComponentsComposeboxTest, ComposeboxMixin) {

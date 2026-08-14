@@ -161,6 +161,8 @@ static_library("browser") {
     "actions/cross_device_tab_action.h",
     "actions/omnibox_action.cc",
     "actions/omnibox_action.h",
+    "actions/omnibox_action_client_delegator.cc",
+    "actions/omnibox_action_client_delegator.h",
     "actions/omnibox_action_concepts.h",
     "actions/omnibox_action_in_suggest.cc",
     "actions/omnibox_action_in_suggest.h",
@@ -333,6 +335,8 @@ static_library("browser") {
     "search_scoring_signals_annotator.h",
     "search_suggestion_parser.cc",
     "search_suggestion_parser.h",
+    "searchbox_utils.cc",
+    "searchbox_utils.h",
     "shortcuts_backend.cc",
     "shortcuts_backend.h",
     "shortcuts_constants.cc",
@@ -585,6 +589,8 @@ static_library("location_bar") {
       "autocomplete_scheme_classifier_android.cc",
       "autocomplete_scheme_classifier_android.h",
       "omnibox_url_emphasizer.cc",
+      "omnibox_word_boundary.cc",
+      "omnibox_word_boundary.h",
     ]
     deps += [ ":scheme_classifier_jni" ]
   }
@@ -599,8 +605,10 @@ if (is_android) {
 
   android_resources("java_resources") {
     sources = [
+      "android/java/res/color-night/omnibox_popover_suggestion_bg_color.xml",
       "android/java/res/color-night/omnibox_suggestion_dropdown_bg.xml",
       "android/java/res/color-night/search_suggestion_bg_color.xml",
+      "android/java/res/color/omnibox_popover_suggestion_bg_color.xml",
       "android/java/res/color/omnibox_suggestion_dropdown_bg.xml",
       "android/java/res/color/search_suggestion_bg_color.xml",
       "android/java/res/drawable-hdpi/omnibox_https_valid_lock.png",
@@ -631,6 +639,7 @@ if (is_android) {
     sources = [
       "android/java/src/org/chromium/components/omnibox/AutocompleteSchemeClassifier.java",
       "android/java/src/org/chromium/components/omnibox/OmniboxUrlEmphasizer.java",
+      "android/java/src/org/chromium/components/omnibox/OmniboxWordBoundary.java",
     ]
   }
 
@@ -640,6 +649,7 @@ if (is_android) {
     sources = [
       "android/java/src/org/chromium/components/omnibox/AutocompleteSchemeClassifier.java",
       "android/java/src/org/chromium/components/omnibox/OmniboxUrlEmphasizer.java",
+      "android/java/src/org/chromium/components/omnibox/OmniboxWordBoundary.java",
       "android/java/src/org/chromium/components/omnibox/SecurityStatusIcon.java",
     ]
     deps = [
@@ -931,6 +941,7 @@ source_set("unit_tests") {
     "remote_suggestions_service_unittest.cc",
     "scored_history_match_unittest.cc",
     "search_suggestion_parser_unittest.cc",
+    "searchbox_utils_unittest.cc",
     "shortcuts_backend_unittest.cc",
     "shortcuts_database_unittest.cc",
     "shortcuts_provider_unittest.cc",
@@ -954,10 +965,12 @@ source_set("unit_tests") {
     ":partner_location_descriptor_proto",
     ":test_support",
     ":unit_tests_bundle_data",
+    ":vector_icons",
     "//base",
     "//base/test:test_support",
     "//build:android_buildflags",
     "//build:blink_buildflags",
+    "//build:branding_buildflags",
     "//components/bookmarks/browser",
     "//components/bookmarks/test",
     "//components/content_settings/core/browser",
@@ -994,6 +1007,7 @@ source_set("unit_tests") {
     "//components/variations",
     "//components/variations:test_support",
     "//components/variations/net",
+    "//components/vector_icons",
     "//extensions/buildflags",
     "//services/metrics/public/cpp:ukm_builders",
     "//services/network:test_support",
@@ -1047,6 +1061,7 @@ source_set("unit_tests") {
   }
 
   if (is_android) {
+    sources += [ "omnibox_word_boundary_unittest.cc" ]
     deps += [ "//components/location/android:test_support" ]
   }
 

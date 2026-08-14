@@ -173,6 +173,28 @@ WebUIToolbarWebView* GetWebUIToolbarWebView(Browser* browser) {
       ->GetWebUIToolbarViewForTesting();
 }
 
+AvatarButtonUpdateWaiter::AvatarButtonUpdateWaiter(
+    AvatarToolbarButtonInterface* button)
+    : quit_closure_(run_loop_.QuitClosure()) {
+  if (button) {
+    scoped_observation_.Observe(button);
+  }
+}
+
+AvatarButtonUpdateWaiter::~AvatarButtonUpdateWaiter() = default;
+
+void AvatarButtonUpdateWaiter::Wait() {
+  if (updated_) {
+    return;
+  }
+  run_loop_.Run();
+}
+
+void AvatarButtonUpdateWaiter::OnIconUpdated() {
+  updated_ = true;
+  quit_closure_.Run();
+}
+
 AvatarToolbarButtonTestAccessor::AvatarToolbarButtonTestAccessor(
     BrowserWindowInterface* browser)
     : browser_(browser) {
@@ -253,6 +275,12 @@ bool AvatarToolbarButtonTestAccessor::WaitForTextNotEqual(
 bool AvatarToolbarButtonTestAccessor::WaitForState(
     AvatarToolbarButtonState state) {
   return base::test::RunUntil([this, state]() { return GetState() == state; });
+}
+
+std::unique_ptr<AvatarButtonUpdateWaiter>
+AvatarToolbarButtonTestAccessor::CreateUpdateWaiter() {
+  AvatarToolbarButtonInterface* button = GetInterface();
+  return std::make_unique<AvatarButtonUpdateWaiter>(button);
 }
 
 AvatarToolbarButtonState AvatarToolbarButtonTestAccessor::GetState() {
@@ -358,7 +386,7 @@ bool AvatarToolbarButtonTestAccessor::ShouldUseCppFallback(
   // the DOM at all when hidden. To allow these tests to pass without adding
   // ChromeOS-specific conditions to every test, we fall back to querying the
   // C++ state manager when the button is hidden.
-  Profile* profile = button->state_manager_->browser()->profile();
+  Profile* profile = button->state_manager_->browser()->GetProfile();
   return !AvatarToolbarButtonInterface::CanShowForProfile(profile);
 #else
   // On other platforms, the button is always visible for the profiles used in
@@ -391,7 +419,8 @@ bool AvatarToolbarButtonTestAccessor::GetEnabled() {
             }
             if (ShouldUseCppFallback(button)) {
 #if BUILDFLAG(IS_CHROMEOS)
-              Profile* profile = button->state_manager_->browser()->profile();
+              Profile* profile =
+                  button->state_manager_->browser()->GetProfile();
               return profile->IsOffTheRecord() && !profile->IsGuestSession() &&
                      !profile->GetOTRProfileID().IsCaptivePortal();
 #else
@@ -611,9 +640,13 @@ std::u16string AvatarToolbarButtonTestAccessor::GetRenderedTooltipText(
                     "app.shadowRoot?.querySelector('avatar-button');"
                     "  if (!btn) return '';"
                     "  await btn.updateComplete;"
-                    "  const buttonEl = "
+                    "  const chip = "
                     "btn.shadowRoot?.querySelector('#button');"
-                    "  return buttonEl?.title || btn.state?.tooltip || '';"
+                    "  if (!chip) return '';"
+                    "  await chip.updateComplete;"
+                    "  const innerButton = "
+                    "chip.shadowRoot?.querySelector('#button');"
+                    "  return innerButton?.title || btn.state?.tooltip || '';"
                     "})()")
                     .ExtractString());
           },
@@ -654,9 +687,13 @@ std::u16string AvatarToolbarButtonTestAccessor::GetAccessibilityLabel() {
                     "app.shadowRoot?.querySelector('avatar-button');"
                     "  if (!btn) return '';"
                     "  await btn.updateComplete;"
-                    "  const buttonEl = "
+                    "  const chip = "
                     "btn.shadowRoot?.querySelector('#button');"
-                    "  return buttonEl?.getAttribute('aria-label') || '';"
+                    "  if (!chip) return '';"
+                    "  await chip.updateComplete;"
+                    "  const innerButton = "
+                    "chip.shadowRoot?.querySelector('#button');"
+                    "  return innerButton?.getAttribute('aria-label') || '';"
                     "})()")
                     .ExtractString());
           },
@@ -698,9 +735,14 @@ std::u16string AvatarToolbarButtonTestAccessor::GetAccessibilityDescription() {
                     "app.shadowRoot?.querySelector('avatar-button');"
                     "  if (!btn) return '';"
                     "  await btn.updateComplete;"
-                    "  const buttonEl = "
+                    "  const chip = "
                     "btn.shadowRoot?.querySelector('#button');"
-                    "  return buttonEl?.getAttribute('aria-description') || '';"
+                    "  if (!chip) return '';"
+                    "  await chip.updateComplete;"
+                    "  const innerButton = "
+                    "chip.shadowRoot?.querySelector('#button');"
+                    "  return innerButton?.getAttribute('aria-description') || "
+                    "'';"
                     "})()")
                     .ExtractString());
           },

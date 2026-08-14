@@ -666,7 +666,7 @@ void NativeWidgetMacNSWindowHost::CreateCompositor(
       params.opacity == Widget::InitParams::WindowOpacity::kTranslucent;
 
   // Create the layer.
-  SetLayer(std::make_unique<ui::Layer>(params.layer_type));
+  SetLayer(ui::Layer::Create(params.layer_type));
   layer()->set_delegate(this);
   layer()->SetFillsBoundsOpaquely(!translucent);
 
@@ -1066,10 +1066,6 @@ remote_cocoa::DragDropClient* NativeWidgetMacNSWindowHost::GetDragDropClient() {
 
 ui::TextInputClient* NativeWidgetMacNSWindowHost::GetTextInputClient() {
   return text_input_host_->GetTextInputClient();
-}
-
-bool NativeWidgetMacNSWindowHost::MustPostTaskToRunModalSheetAnimation() const {
-  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

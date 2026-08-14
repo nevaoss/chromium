@@ -192,7 +192,6 @@ class AppMenuModel : public ui::SimpleMenuModel,
                      public user_education::HighlightingSimpleMenuModelDelegate,
                      public ui::ButtonMenuItemModel::Delegate {
  public:
-  DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kCreateNewTabGroupTopLevel);
   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kProfileMenuItem);
   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kProfileOpenGuestItem);
   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kBookmarksMenuItem);
@@ -216,8 +215,7 @@ class AppMenuModel : public ui::SimpleMenuModel,
   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kSetBrowserAsDefaultMenuItem);
   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kHelpMenuItem);
 
-  // Internal placeholder container command IDs (negative to avoid IDC
-  // conflicts).
+  // Internal placeholder container command IDs.
   static constexpr int kEditMenuPlaceholder = kEditMenuId;
   static constexpr int kZoomMenuPlaceholder = kZoomMenuId;
   static constexpr int kPasswordsAndAutofillMenuPlaceholder =

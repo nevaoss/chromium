@@ -19,7 +19,10 @@ import static org.mockito.Mockito.when;
 
 import android.content.ContentProvider;
 import android.content.ContentValues;
+import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.content.pm.ProviderInfo;
+import android.content.pm.ResolveInfo;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
@@ -48,6 +51,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.robolectric.annotation.Config;
@@ -64,7 +68,9 @@ import org.chromium.base.task.PostTask;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
+import org.chromium.base.test.util.HistogramWatcher;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
+import org.chromium.chrome.browser.pdf.PdfUtils.PdfHyperlinkClickResult;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.ui.native_page.NativePageHost;
 import org.chromium.chrome.browser.util.ChromeFileProvider;
@@ -150,6 +156,7 @@ public class PdfCoordinatorUnitTest {
         mPdfCoordinator.mChromePdfViewerFragment.setPdfViewForTesting(mPdfView);
         ViewGroup contentView = mActivity.findViewById(android.R.id.content);
         contentView.addView(mPdfCoordinator.getView());
+        ShadowLooper.idleMainLooper();
         if (mPdfCoordinator.getUri() != null) {
             mPdfCoordinator.mChromePdfViewerFragment.setDocumentUri(mPdfCoordinator.getUri());
         }
@@ -238,9 +245,14 @@ public class PdfCoordinatorUnitTest {
         };
 
         for (String raw : blockedUris) {
+            HistogramWatcher histogramExpectation =
+                    HistogramWatcher.newSingleRecordWatcher(
+                            "Android.Pdf.Hyperlink.ClickResult",
+                            PdfHyperlinkClickResult.BLOCKED_INVALID_SCHEME);
             assertFalse(
                     "onLinkClicked should reject " + raw,
                     mPdfCoordinator.onLinkClicked(Uri.parse(raw)));
+            histogramExpectation.assertExpected();
         }
         verify(mNativePageHost, never()).loadUrl(any(LoadUrlParams.class), anyBoolean());
     }
@@ -251,9 +263,31 @@ public class PdfCoordinatorUnitTest {
         when(mProfile.isOffTheRecord()).thenReturn(false);
         createPdfCoordinator();
 
+        HistogramWatcher histogramExpectation =
+                HistogramWatcher.newSingleRecordWatcher(
+                        "Android.Pdf.Hyperlink.ClickResult",
+                        PdfHyperlinkClickResult.BLOCKED_INVALID_SCHEME);
         assertFalse(
                 "onLinkClicked should reject schemeless URI.",
                 mPdfCoordinator.onLinkClicked(Uri.parse("//www.example.com/foo")));
+        histogramExpectation.assertExpected();
+        verify(mNativePageHost, never()).loadUrl(any(LoadUrlParams.class), anyBoolean());
+    }
+
+    @Test
+    @DisableFeatures(ChromeFeatureList.INLINE_PDF_V2)
+    public void testOnLinkClicked_V2Disabled() {
+        when(mProfile.isOffTheRecord()).thenReturn(false);
+        createPdfCoordinator();
+
+        HistogramWatcher histogramExpectation =
+                HistogramWatcher.newSingleRecordWatcher(
+                        "Android.Pdf.Hyperlink.ClickResult",
+                        PdfHyperlinkClickResult.IGNORED_V2_DISABLED);
+        assertFalse(
+                "onLinkClicked should return false when inline PDF V2 is disabled.",
+                mPdfCoordinator.onLinkClicked(Uri.parse("https://www.example.com/")));
+        histogramExpectation.assertExpected();
         verify(mNativePageHost, never()).loadUrl(any(LoadUrlParams.class), anyBoolean());
     }
 
@@ -273,9 +307,14 @@ public class PdfCoordinatorUnitTest {
         };
 
         for (String raw : allowedUris) {
+            HistogramWatcher histogramExpectation =
+                    HistogramWatcher.newSingleRecordWatcher(
+                            "Android.Pdf.Hyperlink.ClickResult",
+                            PdfHyperlinkClickResult.SUCCESS_LOAD_INITIATED);
             assertTrue(
                     "onLinkClicked should accept " + raw,
                     mPdfCoordinator.onLinkClicked(Uri.parse(raw)));
+            histogramExpectation.assertExpected();
         }
         verify(mNativePageHost, times(allowedUris.length))
                 .loadUrl(any(LoadUrlParams.class), eq(false));
@@ -285,8 +324,13 @@ public class PdfCoordinatorUnitTest {
         when(mProfile.isOffTheRecord()).thenReturn(isIncognito);
         createPdfCoordinator();
         Uri linkUri = Uri.parse(LINK_URL);
+        HistogramWatcher histogramExpectation =
+                HistogramWatcher.newSingleRecordWatcher(
+                        "Android.Pdf.Hyperlink.ClickResult",
+                        PdfHyperlinkClickResult.SUCCESS_LOAD_INITIATED);
         boolean result = mPdfCoordinator.onLinkClicked(linkUri);
         assertTrue("name should verify true", result);
+        histogramExpectation.assertExpected();
         ArgumentCaptor<LoadUrlParams> captor = ArgumentCaptor.forClass(LoadUrlParams.class);
         verify(mNativePageHost).loadUrl(captor.capture(), eq(isIncognito));
         LoadUrlParams params = captor.getValue();
@@ -538,6 +582,66 @@ public class PdfCoordinatorUnitTest {
 
     @Test
     @EnableFeatures(ChromeFeatureList.INLINE_PDF_V2)
+    @Config(shadows = {ShadowEditablePdfViewerFragment.class, ShadowPdfView.class})
+    public void testFormFillingEnabledBasedOnEditMode() {
+        createPdfCoordinator();
+
+        // Initially, when view is created with edit mode false, form filling should be enabled
+        mPdfCoordinator.mChromePdfViewerFragment.onPdfViewCreated(mPdfView);
+        ShadowPdfView shadowPdfView = Shadow.extract(mPdfView);
+        assertTrue(
+                "Form filling should be enabled initially since edit mode is false",
+                shadowPdfView.isFormFillingEnabled());
+
+        PdfDocument pdfDocument = Mockito.mock(PdfDocument.class);
+
+        // Simulate document load success
+        mPdfCoordinator.mChromePdfViewerFragment.onLoadDocumentSuccess(pdfDocument);
+        assertTrue(
+                "Form filling should still be enabled after document load success",
+                shadowPdfView.isFormFillingEnabled());
+
+        // Simulate entering edit mode
+        mPdfCoordinator.mChromePdfViewerFragment.onEnterEditMode();
+        assertFalse(
+                "Form filling should be disabled when in edit mode",
+                shadowPdfView.isFormFillingEnabled());
+
+        // Simulate exiting edit mode
+        mPdfCoordinator.mChromePdfViewerFragment.onExitEditMode();
+        assertTrue(
+                "Form filling should be enabled again when exiting edit mode",
+                shadowPdfView.isFormFillingEnabled());
+
+        // Simulate document reload success after edit mode is exited
+        mPdfCoordinator.mChromePdfViewerFragment.onLoadDocumentSuccess(pdfDocument);
+        assertTrue(
+                "Form filling should remain enabled after reload when edit mode is false",
+                shadowPdfView.isFormFillingEnabled());
+    }
+
+    @Test
+    @DisableFeatures(ChromeFeatureList.INLINE_PDF_V2)
+    @Config(shadows = {ShadowEditablePdfViewerFragment.class, ShadowPdfView.class})
+    public void testFormFillingDisabledWhenInlinePdfV2IsDisabled() {
+        createPdfCoordinator();
+        mPdfCoordinator.mChromePdfViewerFragment.onPdfViewCreated(mPdfView);
+        ShadowPdfView shadowPdfView = Shadow.extract(mPdfView);
+        assertFalse(
+                "Form filling should not be enabled when InlinePdfV2 is disabled",
+                shadowPdfView.isFormFillingEnabled());
+
+        PdfDocument pdfDocument = Mockito.mock(PdfDocument.class);
+        mPdfCoordinator.mChromePdfViewerFragment.onLoadDocumentSuccess(pdfDocument);
+        assertFalse(
+                "Form filling should still not be enabled after document load success when"
+                    + " InlinePdfV2 is disabled",
+                shadowPdfView.isFormFillingEnabled());
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.INLINE_PDF_V2)
+    @Config(qualifiers = "w800dp")
     public void testToolBoxViewVisibility() {
         createPdfCoordinator();
 
@@ -674,6 +778,22 @@ public class PdfCoordinatorUnitTest {
         assertTrue(restorePositionPending);
     }
 
+    @Test
+    @EnableFeatures(ChromeFeatureList.INLINE_PDF_V2)
+    public void testOnDownloadComplete_WhenLoaded_ReloadsWithContentUri() {
+        createPdfCoordinator();
+        assertTrue(mPdfCoordinator.getIsPdfLoadedForTesting());
+
+        String newFilePath = "/data/user/10/com.google.android.apps.chrome/cache/pdfs/new_fw4.pdf";
+        String newFileName = "new_fw4.pdf";
+        mPdfCoordinator.onDownloadComplete(newFilePath, newFileName);
+
+        assertEquals(newFilePath, mPdfCoordinator.getFilepath());
+        Uri expectedUri =
+                PdfUtils.getContentUri(newFilePath, newFileName, String.valueOf(TAB_ID), false);
+        assertEquals(expectedUri, mPdfCoordinator.getUri());
+    }
+
     public static class TestModalDialogActivity extends org.chromium.ui.base.TestActivity
             implements org.chromium.ui.modaldialog.ModalDialogManagerHolder {
         private org.chromium.ui.modaldialog.ModalDialogManager mModalDialogManager;
@@ -746,6 +866,9 @@ public class PdfCoordinatorUnitTest {
                                     return null;
                                 });
         shadowPdfView.mPdfDocument = mockPdfDocument;
+
+        // Run posted tasks (loadPdfFile) before showing properties
+        ShadowLooper.idleMainLooper();
 
         mPdfCoordinator.showDocumentProperties();
 
@@ -844,6 +967,9 @@ public class PdfCoordinatorUnitTest {
                                         return null;
                                     });
             shadowPdfView.mPdfDocument = mockPdfDocument;
+
+            // Run posted tasks (loadPdfFile) before showing properties
+            ShadowLooper.idleMainLooper();
 
             pdfCoordinator.showDocumentProperties();
 
@@ -1129,6 +1255,110 @@ public class PdfCoordinatorUnitTest {
         assertTrue("ParcelFileDescriptor should be closed", pfdClosed);
     }
 
+    private static final String ACTION_ANNOTATE = "android.intent.action.ANNOTATE";
+
+    @Test
+    @DisableFeatures(ChromeFeatureList.INLINE_PDF_V2)
+    public void testOnLoadDocumentSuccess_V2Disabled_HidesToolboxWhenNoAnnotator() {
+        createPdfCoordinator();
+
+        TestChromePdfViewerFragment fragment = new TestChromePdfViewerFragment(mPdfCoordinator);
+        mPdfCoordinator.mChromePdfViewerFragment = fragment;
+        mActivity
+                .getSupportFragmentManager()
+                .beginTransaction()
+                .add(fragment, "test_pdf_tag_1")
+                .commitNow();
+
+        FrameLayout fragmentView = new FrameLayout(mActivity);
+        View toolBoxView = new View(mActivity);
+        toolBoxView.setId(R.id.toolBoxView);
+        fragmentView.addView(toolBoxView);
+        fragment.onViewCreated(fragmentView, null);
+
+        assertEquals(View.VISIBLE, toolBoxView.getVisibility());
+
+        PdfDocument pdfDocument = Mockito.mock(PdfDocument.class);
+        fragment.onLoadDocumentSuccess(pdfDocument);
+
+        assertEquals(View.GONE, toolBoxView.getVisibility());
+    }
+
+    @Test
+    @DisableFeatures(ChromeFeatureList.INLINE_PDF_V2)
+    public void testOnLoadDocumentSuccess_V2Disabled_KeepsToolboxWhenAnnotatorExists() {
+        Intent intent = new Intent(ACTION_ANNOTATE);
+        intent.addCategory(Intent.CATEGORY_DEFAULT);
+        intent.setDataAndType(Uri.parse(TEST_CONTENT_URI), "application/pdf");
+
+        ResolveInfo resolveInfo = new ResolveInfo();
+        resolveInfo.activityInfo = new ActivityInfo();
+        resolveInfo.activityInfo.packageName = "com.example.pdfannotator";
+        resolveInfo.activityInfo.name = "com.example.pdfannotator.AnnotateActivity";
+        org.robolectric.Shadows.shadowOf(mActivity.getPackageManager())
+                .addResolveInfoForIntent(intent, resolveInfo);
+
+        createPdfCoordinator();
+
+        TestChromePdfViewerFragment fragment = new TestChromePdfViewerFragment(mPdfCoordinator);
+        mPdfCoordinator.mChromePdfViewerFragment = fragment;
+        mActivity
+                .getSupportFragmentManager()
+                .beginTransaction()
+                .add(fragment, "test_pdf_tag_2")
+                .commitNow();
+
+        FrameLayout fragmentView = new FrameLayout(mActivity);
+        View toolBoxView = new View(mActivity);
+        toolBoxView.setId(R.id.toolBoxView);
+        fragmentView.addView(toolBoxView);
+        fragment.onViewCreated(fragmentView, null);
+
+        PdfDocument pdfDocument = Mockito.mock(PdfDocument.class);
+        fragment.onLoadDocumentSuccess(pdfDocument);
+
+        assertEquals(View.VISIBLE, toolBoxView.getVisibility());
+    }
+
+    @Test
+    @DisableFeatures(ChromeFeatureList.INLINE_PDF_V2)
+    public void testOpenPdfInExternalEditor_OnClick() {
+        Intent intent = new Intent(ACTION_ANNOTATE);
+        intent.addCategory(Intent.CATEGORY_DEFAULT);
+        intent.setDataAndType(Uri.parse(TEST_CONTENT_URI), "application/pdf");
+
+        ResolveInfo resolveInfo = new ResolveInfo();
+        resolveInfo.activityInfo = new ActivityInfo();
+        resolveInfo.activityInfo.packageName = "com.example.pdfannotator";
+        resolveInfo.activityInfo.name = "com.example.pdfannotator.AnnotateActivity";
+        org.robolectric.Shadows.shadowOf(mActivity.getPackageManager())
+                .addResolveInfoForIntent(intent, resolveInfo);
+
+        createPdfCoordinator();
+
+        TestChromePdfViewerFragment fragment = new TestChromePdfViewerFragment(mPdfCoordinator);
+        mPdfCoordinator.mChromePdfViewerFragment = fragment;
+        mActivity
+                .getSupportFragmentManager()
+                .beginTransaction()
+                .add(fragment, "test_pdf_tag_3")
+                .commitNow();
+
+        FrameLayout fragmentView = new FrameLayout(mActivity);
+        View toolBoxView = new View(mActivity);
+        toolBoxView.setId(R.id.toolBoxView);
+        fragmentView.addView(toolBoxView);
+        fragment.onViewCreated(fragmentView, null);
+
+        toolBoxView.performClick();
+
+        Intent startedIntent = org.robolectric.Shadows.shadowOf(mActivity).getNextStartedActivity();
+        assertNotNull(startedIntent);
+        assertEquals(ACTION_ANNOTATE, startedIntent.getAction());
+        assertEquals(Uri.parse(TEST_CONTENT_URI), startedIntent.getData());
+        assertEquals("application/pdf", startedIntent.getType());
+    }
+
     @Implements(PdfView.class)
     public static class ShadowPdfView extends ShadowView {
         public PdfPoint mPdfPoint;
@@ -1136,8 +1366,19 @@ public class PdfCoordinatorUnitTest {
         public PdfDocument mPdfDocument;
         public int mPagesPerRow = 1;
         public int mFirstVisiblePage;
+        public boolean mFormFillingEnabled;
 
         public ShadowPdfView() {}
+
+        @Implementation
+        public void setFormFillingEnabled(boolean enabled) {
+            mFormFillingEnabled = enabled;
+        }
+
+        @Implementation
+        public boolean isFormFillingEnabled() {
+            return mFormFillingEnabled;
+        }
 
         @Implementation
         public int getFirstVisiblePage() {
@@ -1180,8 +1421,11 @@ public class PdfCoordinatorUnitTest {
         }
     }
 
-    private static class TestChromePdfViewerFragment
-            extends PdfCoordinator.ChromePdfViewerFragment {
+    public static class TestChromePdfViewerFragment extends PdfCoordinator.ChromePdfViewerFragment {
+        public TestChromePdfViewerFragment() {
+            super();
+        }
+
         public TestChromePdfViewerFragment(PdfActionsDelegate delegate) {
             super(delegate);
         }
@@ -1226,6 +1470,11 @@ public class PdfCoordinatorUnitTest {
         @Implementation
         public void setEditModeEnabled(boolean enabled) {
             mEditModeEnabled = enabled;
+        }
+
+        @Implementation
+        public boolean isEditModeEnabled() {
+            return mEditModeEnabled != null ? mEditModeEnabled : false;
         }
 
         @Implementation

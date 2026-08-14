@@ -38,9 +38,7 @@ import * as testSupport from './test_support.js';
 
           // Autocomplete queried once when composebox is opened.
           assertEquals(
-              testProxy.searchboxHandler.getCallCount(
-                  'queryAutocompleteWithSuggestInventory'),
-              1);
+              testProxy.searchboxHandler.getCallCount('queryAutocomplete'), 1);
           const id = testSupport.generateZeroId();
           await testSupport.uploadFileAndVerify(
               testProxy, id,
@@ -55,9 +53,7 @@ import * as testSupport from './test_support.js';
           assertEquals(
               testProxy.searchboxHandler.getCallCount('stopAutocomplete'), 1);
           assertEquals(
-              testProxy.searchboxHandler.getCallCount(
-                  'queryAutocompleteWithSuggestInventory'),
-              2);
+              testProxy.searchboxHandler.getCallCount('queryAutocomplete'), 2);
 
           // The suggest request should be triggered before the file has
           // finished uploading.
@@ -83,9 +79,7 @@ import * as testSupport from './test_support.js';
           assertEquals(
               testProxy.searchboxHandler.getCallCount('stopAutocomplete'), 2);
           assertEquals(
-              testProxy.searchboxHandler.getCallCount(
-                  'queryAutocompleteWithSuggestInventory'),
-              3);
+              testProxy.searchboxHandler.getCallCount('queryAutocomplete'), 3);
         });
 
         test('uploading image file without flag does nothing', async () => {
@@ -96,9 +90,7 @@ import * as testSupport from './test_support.js';
 
           // Autocomplete queried once when composebox is opened.
           assertEquals(
-              testProxy.searchboxHandler.getCallCount(
-                  'queryAutocompleteWithSuggestInventory'),
-              1);
+              testProxy.searchboxHandler.getCallCount('queryAutocomplete'), 1);
           const id = testSupport.generateZeroId();
           await testSupport.uploadFileAndVerify(
               testProxy, id,
@@ -111,9 +103,7 @@ import * as testSupport from './test_support.js';
           // Autocomplete should not be queried again since the uploaded file is
           // an image and the image suggest flag is disabled.
           assertEquals(
-              testProxy.searchboxHandler.getCallCount(
-                  'queryAutocompleteWithSuggestInventory'),
-              1);
+              testProxy.searchboxHandler.getCallCount('queryAutocomplete'), 1);
         });
 
         test(
@@ -126,8 +116,7 @@ import * as testSupport from './test_support.js';
 
               // Autocomplete queried once when composebox is opened.
               assertEquals(
-                  testProxy.searchboxHandler.getCallCount(
-                      'queryAutocompleteWithSuggestInventory'),
+                  testProxy.searchboxHandler.getCallCount('queryAutocomplete'),
                   1);
               const id = testSupport.generateZeroId();
               await testSupport.uploadFileAndVerify(
@@ -145,8 +134,7 @@ import * as testSupport from './test_support.js';
                   testProxy.searchboxHandler.getCallCount('stopAutocomplete'),
                   1);
               assertEquals(
-                  testProxy.searchboxHandler.getCallCount(
-                      'queryAutocompleteWithSuggestInventory'),
+                  testProxy.searchboxHandler.getCallCount('queryAutocomplete'),
                   2);
             });
 
@@ -499,7 +487,7 @@ import * as testSupport from './test_support.js';
               await testProxy.element.updateComplete;
 
               // Verify that the tab is initially selected.
-              assertEquals(testProxy.element.files.size, 1);
+              assertEquals(1, testProxy.element.files.size);
               assertTrue(testProxy.element.files.has(uuid));
 
               // Mock getRecentTabs to return empty list (simulates tab
@@ -508,13 +496,14 @@ import * as testSupport from './test_support.js';
                   'getRecentTabs', Promise.resolve({tabs: []}));
 
               // Trigger suggestion refresh to run the automatic tab cleanup.
-              await testProxy.element.refreshTabSuggestions();
+              await testProxy.element.refreshTabSuggestions(
+                  /*forceRefresh=*/ true);
               await testProxy.element.updateComplete;
               await microtasksFinished();
 
               // Verify the closed tab context has been removed.
-              assertEquals(testProxy.element.files.size, 0);
-              assertEquals(testProxy.element.addedTabsIds.size, 0);
+              assertEquals(0, testProxy.element.files.size);
+              assertEquals(0, testProxy.element.addedTabsIds.size);
               assertFalse(testProxy.element.files.has(uuid));
             });
 
@@ -643,8 +632,7 @@ import * as testSupport from './test_support.js';
 
               // Autocomplete queried once when composebox is opened for ZPS.
               assertEquals(
-                  testProxy.searchboxHandler.getCallCount(
-                      'queryAutocompleteWithSuggestInventory'),
+                  testProxy.searchboxHandler.getCallCount('queryAutocomplete'),
                   1);
 
               testProxy.searchboxHandler.setPromiseResolveFor(
@@ -1211,13 +1199,12 @@ import * as testSupport from './test_support.js';
           testSupport.createComposeboxElement(testProxy);
           // Autocomplete queried once when composebox is created.
           assertEquals(
-              testProxy.searchboxHandler.getCallCount(
-                  'queryAutocompleteWithSuggestInventory'),
-              1);
+              testProxy.searchboxHandler.getCallCount('queryAutocomplete'), 1);
 
           const matches = [createSearchMatchForTesting()];
           testProxy.searchboxCallbackRouterRemote.autocompleteResultChanged(
               createAutocompleteResultForTesting({
+                queryId: testProxy.element.activeQueryId,
                 input: '',
                 matches,
               }));
@@ -1244,9 +1231,7 @@ import * as testSupport from './test_support.js';
               new Event('input'));
           await microtasksFinished();
           assertEquals(
-              testProxy.searchboxHandler.getCallCount(
-                  'queryAutocompleteWithSuggestInventory'),
-              2);
+              testProxy.searchboxHandler.getCallCount('queryAutocomplete'), 2);
         });
 
         test('add file context fails', async () => {
@@ -1490,6 +1475,7 @@ suite('NewTabPageComposeboxUploadContextTest', () => {
       mimeType: 'image/jpeg',
       errorType: null,
       iconUrl: null,
+      thumbnailUrl: null,
     };
 
     const context = {
@@ -1525,6 +1511,7 @@ suite('NewTabPageComposeboxUploadContextTest', () => {
       errorType:
           ContextUploadErrorType.kBrowserProcessingUnsupportedFileTypeError,
       iconUrl: null,
+      thumbnailUrl: null,
     };
 
     const context = {
@@ -1617,7 +1604,7 @@ suite('NewTabPageComposeboxUploadContextTest', () => {
             testSupport.ADD_TAB_CONTEXT_FN, testSupport.FAKE_TOKEN_STRING);
 
         testProxy.searchboxCallbackRouterRemote.updateAutoSuggestedTabContext(
-            tab);
+            tab, null);
 
         await testProxy.searchboxCallbackRouterRemote.$.flushForTesting();
         await testProxy.element.updateComplete;
@@ -1643,7 +1630,7 @@ suite('NewTabPageComposeboxUploadContextTest', () => {
             testSupport.ADD_TAB_CONTEXT_FN, testSupport.FAKE_TOKEN_STRING);
 
         testProxy.searchboxCallbackRouterRemote.updateAutoSuggestedTabContext(
-            tab);
+            tab, null);
         await testProxy.searchboxCallbackRouterRemote.$.flushForTesting();
         await microtasksFinished();
 
@@ -1681,7 +1668,7 @@ suite('NewTabPageComposeboxUploadContextTest', () => {
             testSupport.ADD_TAB_CONTEXT_FN, '');
 
         testProxy.searchboxCallbackRouterRemote.updateAutoSuggestedTabContext(
-            tab);
+            tab, null);
         await testProxy.searchboxCallbackRouterRemote.$.flushForTesting();
         await testProxy.element.updateComplete;
         await microtasksFinished();
@@ -1703,7 +1690,7 @@ suite('NewTabPageComposeboxUploadContextTest', () => {
         // callback result.
 
         testProxy.searchboxCallbackRouterRemote.updateAutoSuggestedTabContext(
-            tab);
+            tab, null);
 
         await testProxy.searchboxCallbackRouterRemote.$.flushForTesting();
         await testProxy.element.updateComplete;
@@ -1731,7 +1718,7 @@ suite('NewTabPageComposeboxUploadContextTest', () => {
             testSupport.ADD_TAB_CONTEXT_FN, testSupport.FAKE_TOKEN_STRING_2);
 
         testProxy.searchboxCallbackRouterRemote.updateAutoSuggestedTabContext(
-            tab2);
+            tab2, null);
 
         await testProxy.searchboxCallbackRouterRemote.$.flushForTesting();
         await testProxy.element.updateComplete;
@@ -1770,7 +1757,7 @@ suite('NewTabPageComposeboxUploadContextTest', () => {
             testSupport.ADD_TAB_CONTEXT_FN, '');
 
         testProxy.searchboxCallbackRouterRemote.updateAutoSuggestedTabContext(
-            tab);
+            tab, null);
         await testProxy.searchboxCallbackRouterRemote.$.flushForTesting();
         await testProxy.element.updateComplete;
         await microtasksFinished();
@@ -1795,7 +1782,7 @@ suite('NewTabPageComposeboxUploadContextTest', () => {
             testSupport.ADD_TAB_CONTEXT_FN, testSupport.FAKE_TOKEN_STRING);
 
         testProxy.searchboxCallbackRouterRemote.updateAutoSuggestedTabContext(
-            tab);
+            tab, null);
         await testProxy.searchboxCallbackRouterRemote.$.flushForTesting();
 
         await testProxy.element.updateComplete;

@@ -126,6 +126,20 @@ std::string GetInvocationSourceString(mojom::InvocationSource source) {
       return "ZeroStateAutoSummarize";
     case mojom::InvocationSource::kPromotionPage:
       return "PromotionPage";
+    case mojom::InvocationSource::kDaisyChainOnNewTab:
+      return "DaisyChainOnNewTab";
+    case mojom::InvocationSource::kDaisyChainOnFollowLink:
+      return "DaisyChainOnFollowLink";
+    case mojom::InvocationSource::kConversationSwitch:
+      return "ConversationSwitch";
+    case mojom::InvocationSource::kDetachAttachButton:
+      return "DetachAttachButton";
+    case mojom::InvocationSource::kTabRestore:
+      return "TabRestore";
+    case mojom::InvocationSource::kReshowInactive:
+      return "ReshowInactive";
+    case mojom::InvocationSource::kTabContextMenu:
+      return "TabContextMenu";
   }
 }
 }  // namespace glic

@@ -279,7 +279,6 @@ class AILanguageModelTest : public AITestUtils::AITestBase {
          {blink::features::kAIPromptAPIMultimodalInput, {}},
          {features::kAILanguageModelOverrideConfiguration,
           {{"ai_language_model_output_buffer", "100"}}},
-         {features::kAILanguageModelAppendOutputTokensToContext, {}},
          {optimization_guide::features::kOptimizationGuideOnDeviceModel, {}},
          {optimization_guide::features::kAIModelUnloadableProgress,
           {{"ai_model_unloadable_progress_bytes", "0"}}}},

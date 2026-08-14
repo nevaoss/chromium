@@ -169,7 +169,8 @@ void NevaExtensionsBrowserClient::LoadResourceFromResourceBundle(
     const base::FilePath& resource_relative_path,
     int resource_id,
     scoped_refptr<net::HttpResponseHeaders> headers,
-    mojo::PendingRemote<network::mojom::URLLoaderClient> client) {
+    mojo::PendingRemote<network::mojom::URLLoaderClient> client,
+    content::BrowserContext* browser_context) {
   NOTREACHED() << "Load resources from bundles not supported.";
 }
 

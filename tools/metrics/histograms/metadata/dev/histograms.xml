@@ -66,7 +66,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="DevTools.DeveloperResourceLoaded"
-    enum="DevToolsDeveloperResourceLoaded" expires_after="2026-10-11">
+    enum="DevToolsDeveloperResourceLoaded" expires_after="2026-12-27">
   <owner>bmeurer@google.com</owner>
   <owner>danilsomsikov@google.com</owner>
   <summary>
@@ -182,6 +182,17 @@ chromium-metrics-reviews@google.com.
   <component>1633102</component>
   <summary>
     The length of the query (number of characters) given to the FreestylerAgent.
+  </summary>
+</histogram>
+
+<histogram name="DevTools.FrontendLocation" enum="DevToolsFrontendLocation"
+    expires_after="2027-01-16">
+  <owner>dsv@chromium.org</owner>
+  <owner>chrome-devtools@google.com</owner>
+  <summary>
+    Records whether the DevTools frontend being loaded is local (bundled/custom)
+    or remote (served via CDN). Recorded once per DevTools session at session
+    start.
   </summary>
 </histogram>
 

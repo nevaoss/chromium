@@ -63,6 +63,7 @@
 #include "chrome/browser/ui/lens/lens_searchbox_controller.h"
 #include "chrome/browser/ui/lens/lens_session_metrics_logger.h"
 #include "chrome/browser/ui/lens/page_content_type_conversions.h"
+#include "components/omnibox/common/omnibox_features.h"
 #include "chrome/browser/ui/search/omnibox_utils.h"
 #include "chrome/browser/ui/side_panel/side_panel_entry.h"
 #include "chrome/browser/ui/side_panel/side_panel_entry_key.h"
@@ -71,8 +72,6 @@
 #include "chrome/browser/ui/tabs/public/tab_features.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/user_education/browser_user_education_interface.h"
-#include "chrome/browser/ui/views/interaction/browser_elements_views.h"
-#include "chrome/browser/ui/views/side_panel/side_panel.h"
 #include "chrome/browser/ui/webui/webui_embedding_context.h"
 #include "chrome/common/chrome_render_frame.mojom.h"
 #include "chrome/common/pref_names.h"
@@ -538,6 +537,13 @@ void LensOverlayController::RecordLensOverlaySemanticEvent(
 
 void LensOverlayController::SaveAsImage(
     lens::mojom::CenterRotatedBoxPtr region) {
+  if (!tab_->IsActivated()) {
+    return;
+  }
+  if (!initialization_data_ ||
+      initialization_data_->initial_screenshot_.drawsNothing()) {
+    return;
+  }
   SkBitmap cropped = lens::CropBitmapToRegion(
       initialization_data_->initial_screenshot_, std::move(region));
   const GURL data_url = GURL(webui::GetBitmapDataUrl(cropped));
@@ -1371,13 +1377,21 @@ bool LensOverlayController::ShouldCloseSidePanel() {
   return true;
 }
 
+bool LensOverlayController::CoBrowsePanelWithLensOverlayEnabled() const {
+  return omnibox::kAskGCoBrowseWithVisualSelection.Get() &&
+         invocation_source_ ==
+             lens::LensOverlayInvocationSource::kOmniboxPageAction;
+}
+
 bool LensOverlayController::ShouldShowPreselectionBubble() {
-  return !pending_region_ && !IsResultsSidePanelShowing();
+  return !pending_region_ && (!IsResultsSidePanelShowing() ||
+                              CoBrowsePanelWithLensOverlayEnabled());
 }
 
 void LensOverlayController::ShowPreselectionBubble() {
-  // Don't show the preselection bubble if the overlay is not being shown.
-  if (IsResultsSidePanelShowing()) {
+  // Don't show the preselection bubble if the results panel is showing
+  // (unless we are in the CoBrowse visual selection flow).
+  if (IsResultsSidePanelShowing() && !CoBrowsePanelWithLensOverlayEnabled()) {
     return;
   }
   OverlayBaseController::ShowPreselectionBubble();
@@ -1515,15 +1529,18 @@ void LensOverlayController::NotifyTabWillEnterBackground() {
 
 OverlayBaseController::PreselectionUIConfig
 LensOverlayController::GetPreselectionBubbleConfig() {
-  return {
-      .message_string_id = IDS_LENS_OVERLAY_INITIAL_TOAST_MESSAGE_SIMPLIFIED,
-      .bubble_background_color = kColorLensOverlayToastBackground,
+  int message_string_id =
+      CoBrowsePanelWithLensOverlayEnabled()
+          ? IDS_LENS_OVERLAY_COBROWSE_INITIAL_TOAST_LABEL
+          : IDS_LENS_OVERLAY_INITIAL_TOAST_MESSAGE_SIMPLIFIED;
+  return {.message_string_id = message_string_id,
+          .bubble_background_color = kColorLensOverlayToastBackground,
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
-      .icon = &vector_icons::kGoogleLensMonochromeLogoIcon
+          .icon = &vector_icons::kGoogleLensMonochromeLogoIcon
 #else
-      .icon = &(features::IsRoundedIconsEnabled()
-                    ? vector_icons::kSearchIcon
-                    : vector_icons::kSearchChromeRefreshOldIcon)
+          .icon = &(features::IsRoundedIconsEnabled()
+                        ? vector_icons::kSearchIcon
+                        : vector_icons::kSearchChromeRefreshOldIcon)
 #endif
   };
 }

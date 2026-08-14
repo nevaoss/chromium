@@ -94,7 +94,6 @@ class OmniboxPopupViewViews : public views::View,
                           OmniboxPopupSelection new_selection) override;
   void OnMatchIconUpdated(size_t match_index) override;
   void OnContentsChanged() override;
-  void OnKeywordStateChanged(bool is_keyword_selected) override {}
   void OnCharTyped(base::TimeTicks timestamp) override {}
 
   void FireAXEventsForNewActiveDescendant(View* descendant_view);
@@ -226,7 +225,7 @@ class OmniboxPopupViewViews : public views::View,
   // first results that are ready after the popup is opened.
   bool has_logged_content_ready_since_open_ = false;
 
-  base::WeakPtrFactory<OmniboxPopupViewViews> weak_ptr_factory_{this};
+  base::WeakPtrFactory<OmniboxPopupViewViews> metrics_weak_factory_{this};
 };
 
 #endif  // CHROME_BROWSER_UI_VIEWS_OMNIBOX_OMNIBOX_POPUP_VIEW_VIEWS_H_

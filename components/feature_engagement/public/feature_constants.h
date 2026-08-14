@@ -12,6 +12,7 @@
 #include "base/metrics/field_trial_params.h"
 #include "build/branding_buildflags.h"
 #include "build/build_config.h"
+#include "build/buildflag.h"
 #include "extensions/buildflags/buildflags.h"
 
 namespace feature_engagement {
@@ -83,6 +84,7 @@ FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHGlicTryItFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHGMCCastStartStopFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHGMCLocalMediaCastingFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHMemorySaverModeFeature);
+FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHMultistepFilterPromoFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHLensOverlayFeature);
 COMPONENT_EXPORT(FEATURE_ENGAGEMENT_FEATURE_CONSTANTS)
 extern const base::FeatureParam<std::string> kIPHLensOverlayUrlAllowFilters;
@@ -157,6 +159,10 @@ FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHBackNavigationMenuFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHBookmarkBarSimplifiedFeature);
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_APPLE) || BUILDFLAG(IS_LINUX) ||
         // BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FUCHSIA)
+
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHExtensionsPinnedByDefaultFeature);
+#endif
 
 // All the features declared for Android below that are also used in Java,
 // should also be declared in:
@@ -254,6 +260,7 @@ FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHReadLaterAppMenuBookmarksFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHReadLaterAppMenuBookmarkThisPageFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHReadLaterBottomSheetFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHReadLaterContextMenuFeature);
+FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHRecentTabsFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHRequestDesktopSiteDefaultOnFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHRequestDesktopSiteExceptionsGenericFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHRequestDesktopSiteWindowSettingFeature);
@@ -436,7 +443,6 @@ FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHAutofillAiValuablesFeature);
 COMPONENT_EXPORT(FEATURE_ENGAGEMENT_FEATURE_CONSTANTS)
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHAutofillVirtualCardCVCSuggestionFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHAutofillVirtualCardSuggestionFeature);
-FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHCookieControlsFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHAutofillEnableLoyaltyCardsFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHAutofillDownstreamCardAwarenessFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHAutofillOmniboxPaymentChipFeature);

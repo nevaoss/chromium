@@ -28,12 +28,12 @@
 #include "components/sync_device_info/device_info.h"
 #include "content/public/browser/web_contents.h"
 
+class AccountCapabilities;
 class Profile;
 class ProfileAttributesStorage;
 
 namespace glic {
 namespace prefs {
-enum class SettingsPolicyState;
 enum class FreStatus;
 }  // namespace prefs
 namespace mojom {
@@ -146,8 +146,15 @@ class GlicEnabling final : public signin::IdentityManager::Observer,
   static signin::Tribool IsAccountManaged(Profile* profile);
   static bool IsEnterpriseAccount(Profile* profile);
 
+  // Returns whether the account capability permits using Glic features that are
+  // available only to adult users.
+  static bool CanUseAdultFeatures(const AccountCapabilities& capabilities);
+
   // Returns whether the OS version is supported.
   static bool IsOsVersionSupported();
+  // Returns whether system requirements (like RAM and Chromebook hardware) are
+  // met.
+  static bool IsSystemRequirementMet();
   // Checks whether this client is likely a dogfooder, taking the ignore dogfood
   // feature into account.
   static bool IsLikelyDogfoodClient();
@@ -178,6 +185,16 @@ class GlicEnabling final : public signin::IdentityManager::Observer,
   // Code inside should use instance method IsAllowed() instead.
   static bool IsEnabledForProfile(Profile* profile);
 
+  // Evaluates whether the GiC opt-in should be shown during the First Run
+  // Experience. Unlike `IsEnabledForProfile`, this method does not rely on
+  // the standard country determination methods, nor does it query
+  // `IdentityManager` directly. The caller is responsible for resolving the
+  // country data and account capabilities and providing them as arguments.
+  static bool IsEnabledForFirstRunProfile(Profile* profile,
+                                          std::string_view permanent_country,
+                                          std::string_view session_country,
+                                          const AccountInfo& account_info);
+
   // Returns true if the user was previously determined to be ineligible for
   // Glic.
   static bool WasPreviouslyNotAllowed(Profile* profile);
@@ -201,6 +218,10 @@ class GlicEnabling final : public signin::IdentityManager::Observer,
 
   // Same as IsReadyForProfile, but returns a more detailed state.
   static mojom::ProfileReadyState GetProfileReadyState(Profile* profile);
+
+  // If Glic has recovered to a ready state since the last check, logs the
+  // previous unhealthy state as a recovery outcome on user interaction.
+  void MaybeRecordRecoveryOnInteraction();
 
   // Whether the profile is in the Glic tiered rollout population.
   static bool IsEligibleForGlicTieredRollout(Profile* profile);
@@ -304,6 +325,23 @@ class GlicEnabling final : public signin::IdentityManager::Observer,
       kMaxValue = kOsVersionNotSupported,
     };
     // LINT.ThenChange(//tools/metrics/histograms/metadata/glic/enums.xml:GlicFeatureDisabledReason)
+
+    // LINT.IfChange(GlicAnchoredDespiteEligibilityReason)
+    enum class AnchoredDespiteEligibilityReason {
+      kFeatureFlagDisabled = 0,
+      kCountryDisabled = 1,
+      kLocaleDisabled = 2,
+      kSystemRequirementNotMet = 3,
+      kOsVersionNotSupported = 4,
+      kPrimaryAccountNotCapable = 5,
+      kDisallowedByChromePolicy = 6,
+      kDisallowedByRemoteAdmin = 7,
+      kDisallowedByRemoteOther = 8,
+      kNotRegularProfile = 9,
+      kNotRolledOut = 10,
+      kMaxValue = kNotRolledOut,
+    };
+    // LINT.ThenChange(//tools/metrics/histograms/metadata/glic/enums.xml:GlicAnchoredDespiteEligibilityReason)
 
     enum class DisabledReason {
       kFeatureDisabled = 0,
@@ -474,6 +512,9 @@ class GlicEnabling final : public signin::IdentityManager::Observer,
   // Test-only method to bypass enablement checks.
   static void SetBypassEnablementChecksForTesting(bool bypass);
 
+  // Test-only method to bypass system requirement checks.
+  static void SetSystemRequirementMetForTesting(std::optional<bool> met);
+
   // This is called anytime IsAllowed() might return a different value.
   using EnableChangedCallback = base::RepeatingClosure;
   base::CallbackListSubscription RegisterAllowedChanged(
@@ -540,6 +581,8 @@ class GlicEnabling final : public signin::IdentityManager::Observer,
   void UpdateEnabledStatus();
   void UpdateConsentStatus();
 
+  void MaybeNotifyProfileReadyStateChanged();
+
 #if BUILDFLAG(IS_CHROMEOS)
   static bool IsChromeOSProfileEligible(Profile* profile);
 #endif  // BUILDFLAG(IS_CHROMEOS)
@@ -583,6 +626,7 @@ class GlicEnabling final : public signin::IdentityManager::Observer,
       subscription_eligibility_service_observation_{this};
   syncer::DeviceInfo::GlicExperimentalTriggeringState
       last_experimental_triggering_state_;
+  mojom::ProfileReadyState last_profile_ready_state_;
 };
 
 }  // namespace glic

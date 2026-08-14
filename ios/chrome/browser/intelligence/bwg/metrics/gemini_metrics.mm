@@ -147,11 +147,24 @@ const char kPromptLongPressImageIncludedHistogram[] =
 const char kPromptContextAttachmentHistogram[] =
     "IOS.Gemini.Prompt.ContextAttachment";
 
+const char kPromptTabsAttachedCountHistogram[] =
+    "IOS.Gemini.Prompt.TabsAttachedCount";
+
+const char kPromptMultiTabUsedHistogram[] = "IOS.Gemini.Prompt.MultiTabUsed";
+
 const char kResponseGeneratedImageIncluded[] =
     "IOS.Gemini.Response.GeneratedImage.Included";
 
 const char kRegenerateButtonTappedHistogram[] =
     "IOS.Gemini.RegenerateButton.Tapped";
+
+const char kResponseLatencyHistogram[] = "IOS.Gemini.Response.Latency";
+
+const char kResponseLatencyMultiTabUsedHistogram[] =
+    "IOS.Gemini.Response.Latency.MultiTabUsed";
+
+const char kResponseLatencyMultiTabNotUsedHistogram[] =
+    "IOS.Gemini.Response.Latency.MultiTabNotUsed";
 
 const char kResponseLatencyWithContextHistogram[] =
     "IOS.Gemini.Response.Latency.WithContext";
@@ -168,6 +181,19 @@ const char kResponseLatencyWithoutGeneratedImageHistogram[] =
 const char kSessionPromptCountHistogram[] = "IOS.Gemini.Session.PromptCount";
 
 const char kSessionFirstPromptHistogram[] = "IOS.Gemini.Session.FirstPrompt";
+
+const char kSessionTabSwitchCountHistogram[] =
+    "IOS.Gemini.Session.TabSwitchCount";
+
+const char kGeminiLiveDormantReasonHistogram[] =
+    "IOS.Gemini.Live.DormantReason";
+const char kGeminiLiveResponseLatencyHistogram[] =
+    "IOS.Gemini.Live.ResponseLatency";
+const char kGeminiLiveResponseDurationHistogram[] =
+    "IOS.Gemini.Live.ResponseDuration";
+const char kGeminiLiveTurnCountHistogram[] = "IOS.Gemini.Live.TurnCount";
+const char kGeminiLiveAccumulatedDurationHistogram[] =
+    "IOS.Gemini.Live.AccumulatedDuration";
 
 const char kFloatyTimeMinimizedHistogram[] = "IOS.Gemini.Floaty.TimeMinimized";
 
@@ -285,6 +311,10 @@ void RecordGeminiSessionCancellation(
   base::UmaHistogramEnumeration(kGeminiSessionCancellationHistogram, reason);
 }
 
+void RecordGeminiSessionOpened() {
+  base::RecordAction(base::UserMetricsAction("MobileGeminiSessionOpened"));
+}
+
 void RecordGeminiSessionTime(base::TimeDelta session_duration) {
   base::UmaHistogramLongTimes100(kGeminiSessionTimeHistogram, session_duration);
 }
@@ -387,9 +417,28 @@ void RecordFirstRunConsentLinkClick() {
       base::UserMetricsAction("MobileGeminiFREConsentLinkClick"));
 }
 
+void RecordGeminiTabPickerOpened() {
+  base::RecordAction(base::UserMetricsAction("MobileGeminiTabPickerOpened"));
+}
+
+void RecordGeminiTabPickerDismissed() {
+  base::RecordAction(base::UserMetricsAction("MobileGeminiTabPickerDismissed"));
+}
+
 void RecordResponseLatency(base::TimeDelta latency,
                            bool had_page_context,
-                           bool had_generated_image) {
+                           bool had_generated_image,
+                           bool was_multi_tab_used) {
+  base::UmaHistogramMediumTimes(kResponseLatencyHistogram, latency);
+
+  if (was_multi_tab_used) {
+    base::UmaHistogramMediumTimes(kResponseLatencyMultiTabUsedHistogram,
+                                  latency);
+  } else {
+    base::UmaHistogramMediumTimes(kResponseLatencyMultiTabNotUsedHistogram,
+                                  latency);
+  }
+
   if (had_page_context) {
     base::UmaHistogramMediumTimes(kResponseLatencyWithContextHistogram,
                                   latency);
@@ -413,6 +462,11 @@ void RecordSessionPromptCount(int prompt_count) {
 
 void RecordSessionFirstPrompt(bool had_first_prompt) {
   base::UmaHistogramBoolean(kSessionFirstPromptHistogram, had_first_prompt);
+}
+
+void RecordSessionTabSwitchCount(int tab_switch_count) {
+  base::UmaHistogramCounts100(kSessionTabSwitchCountHistogram,
+                              tab_switch_count);
 }
 
 void RecordFloatyExpandedToCollapsed() {
@@ -525,7 +579,9 @@ void RecordAIHubIconTapped() {
 void RecordGeminiPromptSent(bool is_nano_banana_enabled,
                             int images_attached_count,
                             bool long_press_image_included,
-                            bool has_page_context) {
+                            bool has_page_context,
+                            int tabs_attached_count,
+                            bool was_multi_tab_used) {
   base::RecordAction(base::UserMetricsAction("MobileGeminiPromptSent"));
   base::UmaHistogramBoolean(kPromptImageRemixEnabledHistogram,
                             is_nano_banana_enabled);
@@ -535,6 +591,9 @@ void RecordGeminiPromptSent(bool is_nano_banana_enabled,
                             long_press_image_included);
   base::UmaHistogramBoolean(kPromptContextAttachmentHistogram,
                             has_page_context);
+  base::UmaHistogramCounts100(kPromptTabsAttachedCountHistogram,
+                              tabs_attached_count);
+  base::UmaHistogramBoolean(kPromptMultiTabUsedHistogram, was_multi_tab_used);
 }
 
 void RecordGeminiFeedback(IOSGeminiFeedback feedback) {
@@ -667,4 +726,58 @@ void RecordGeminiEditMenuSelectedTextLength(int length) {
 void RecordGeminiGlicContextualCueDecision(
     optimization_guide::OptimizationGuideDecision decision) {
   base::UmaHistogramEnumeration(kGlicContextualCueDecisionHistogram, decision);
+}
+
+void RecordGeminiLiveDormantReason(ios::provider::GeminiDormantReason reason) {
+  IOSGeminiDormantReason uma_reason = IOSGeminiDormantReason::kUnknown;
+  switch (reason) {
+    case ios::provider::GeminiDormantReason::kUnknown:
+      uma_reason = IOSGeminiDormantReason::kUnknown;
+      break;
+    case ios::provider::GeminiDormantReason::kInterruptedByExternalAudio:
+      uma_reason = IOSGeminiDormantReason::kInterruptedByExternalAudio;
+      break;
+    case ios::provider::GeminiDormantReason::kLowVolumeInBackground:
+      uma_reason = IOSGeminiDormantReason::kLowVolumeInBackground;
+      break;
+    case ios::provider::GeminiDormantReason::kLowVolumeInForeground:
+      uma_reason = IOSGeminiDormantReason::kLowVolumeInForeground;
+      break;
+    case ios::provider::GeminiDormantReason::kInactivityTimeout:
+      uma_reason = IOSGeminiDormantReason::kInactivityTimeout;
+      break;
+    case ios::provider::GeminiDormantReason::kLongInteractionTimeout:
+      uma_reason = IOSGeminiDormantReason::kLongInteractionTimeout;
+      break;
+    case ios::provider::GeminiDormantReason::kMovedToBackgroundWhenMicOff:
+      uma_reason = IOSGeminiDormantReason::kMovedToBackgroundWhenMicOff;
+      break;
+    case ios::provider::GeminiDormantReason::kUserStop:
+      uma_reason = IOSGeminiDormantReason::kUserStop;
+      break;
+    case ios::provider::GeminiDormantReason::kUserPause:
+      uma_reason = IOSGeminiDormantReason::kUserPause;
+      break;
+    case ios::provider::GeminiDormantReason::kServerPause:
+      uma_reason = IOSGeminiDormantReason::kServerPause;
+      break;
+  }
+  base::UmaHistogramEnumeration(kGeminiLiveDormantReasonHistogram, uma_reason);
+}
+
+void RecordGeminiLiveResponseLatency(base::TimeDelta latency) {
+  base::UmaHistogramTimes(kGeminiLiveResponseLatencyHistogram, latency);
+}
+
+void RecordGeminiLiveResponseDuration(base::TimeDelta duration) {
+  base::UmaHistogramMediumTimes(kGeminiLiveResponseDurationHistogram, duration);
+}
+
+void RecordGeminiLiveTurnCount(int turn_count) {
+  base::UmaHistogramCounts100(kGeminiLiveTurnCountHistogram, turn_count);
+}
+
+void RecordGeminiLiveAccumulatedDuration(base::TimeDelta duration) {
+  base::UmaHistogramLongTimes(kGeminiLiveAccumulatedDurationHistogram,
+                              duration);
 }

@@ -8,6 +8,7 @@
 #import <string>
 
 #import "base/functional/callback_helpers.h"
+#import "base/metrics/histogram_functions.h"
 #import "base/metrics/user_metrics.h"
 #import "base/metrics/user_metrics_action.h"
 #import "base/strings/sys_string_conversions.h"
@@ -44,7 +45,7 @@
 
 @interface AccountMenuMediator () <AuthenticationFlowDelegate,
                                    AuthenticationServiceObserving,
-                                   IdentityManagerObserverBridgeDelegate,
+                                   IdentityManagerObserving,
                                    SyncObserverModelBridge>
 
 // Redefine as readwrite.
@@ -124,6 +125,7 @@
             _authenticationService, self);
     _prefs = prefs;
     _accessPoint = accessPoint;
+    base::UmaHistogramEnumeration("Signin.IOSAccountMenu.Opened", _accessPoint);
     _url = url;
     _prepareChangeProfile = prepareChangeProfile;
     _primaryIdentityBeforeSignin = _authenticationService->GetPrimaryIdentity();
@@ -220,9 +222,9 @@
   return _error;
 }
 
-#pragma mark - IdentityManagerObserverBridgeDelegate
+#pragma mark - IdentityManagerObserving
 
-- (void)onEndBatchOfPrimaryAccountChanges {
+- (void)batchOfPrimaryAccountChangesDidEnd {
   if (_blockUpdates) {
     return;
   }
@@ -245,11 +247,11 @@
                  userTappedClose:NO];
 }
 
-- (void)onExtendedAccountInfoUpdated:(const AccountInfo&)info {
+- (void)extendedAccountInfoDidUpdate:(const AccountInfo&)info {
   [self updateIdentitiesIfAllowed];
 }
 
-- (void)onAccountsOnDeviceChanged {
+- (void)accountsOnDeviceDidChange {
   [self updateIdentitiesIfAllowed];
 }
 

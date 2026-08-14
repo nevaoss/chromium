@@ -523,16 +523,6 @@ TEST_P(EXTBlendFuncExtendedES3DrawTest, ES3GettersArray) {
   if (!IsApplicable())
     return;
 
-  // TODO(zmo): Figure out why this fails on AMD. crbug.com/585132.
-  // Also fails on the Intel Mesa driver, see
-  // https://bugs.freedesktop.org/show_bug.cgi?id=96765
-  gpu::GPUTestBotConfig bot_config;
-  if (bot_config.LoadCurrentConfig(nullptr) &&
-      (bot_config.Matches("linux amd") ||
-      bot_config.Matches("linux intel"))) {
-    return;
-  }
-
   const GLint kTestArraySize = 2;
   const GLint kFragData0Location = 2;
   const GLint kFragData1Location = 1;
@@ -593,7 +583,10 @@ TEST_P(EXTBlendFuncExtendedES3DrawTest, ES3GettersArray) {
     EXPECT_EQ(kFragData0Location,
               glGetFragDataLocation(program_, "FragData[0]"));
     EXPECT_EQ(0, glGetFragDataIndexEXT(program_, "FragData[0]"));
-    EXPECT_EQ(kFragData1Location,
+    // Binding FragData[1] to kFragData1Location is ignored because brackets are
+    // rejected. It receives the consecutive location following FragData[0]
+    // (kFragData0Location + 1).
+    EXPECT_EQ(kFragData0Location + 1,
               glGetFragDataLocation(program_, "FragData[1]"));
     EXPECT_EQ(0, glGetFragDataIndexEXT(program_, "FragData[1]"));
 
@@ -695,12 +688,16 @@ TEST_P(EXTBlendFuncExtendedES3DrawTest, ES3ConflictsArray) {
   glBindFragDataLocationEXT(program_, kColorName1Location, "FragData");
   glBindFragDataLocationEXT(program_, kColorName1Location, "FragData[1]");
   EXPECT_EQ(static_cast<GLenum>(GL_NO_ERROR), glGetError());
-  EXPECT_FALSE(LinkProgram());
+  // Binding FragData[1] is ignored due to bracket rejection, so there is no
+  // location conflict.
+  EXPECT_TRUE(LinkProgram());
   glBindFragDataLocationEXT(program_, kUnusedLocation, "FragData");
   glBindFragDataLocationEXT(program_, kColorName1Location, "FragData[0]");
   glBindFragDataLocationEXT(program_, kColorName1Location, "FragData[1]");
   EXPECT_EQ(static_cast<GLenum>(GL_NO_ERROR), glGetError());
-  EXPECT_FALSE(LinkProgram());
+  // Binding FragData[1] is ignored due to bracket rejection, so there is no
+  // location conflict.
+  EXPECT_TRUE(LinkProgram());
   // Test that binding actually works.
   glBindFragDataLocationEXT(program_, kColorName0Location, "FragData[0]");
   glBindFragDataLocationEXT(program_, kColorName1Location, "FragData[1]");

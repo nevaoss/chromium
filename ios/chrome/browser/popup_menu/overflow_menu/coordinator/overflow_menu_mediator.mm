@@ -18,6 +18,7 @@
 #import "components/feature_engagement/public/event_constants.h"
 #import "components/feature_engagement/public/feature_constants.h"
 #import "components/feature_engagement/public/tracker.h"
+#import "components/image_fetcher/core/image_fetcher.h"
 #import "components/language/ios/browser/ios_language_detection_tab_helper.h"
 #import "components/language/ios/browser/ios_language_detection_tab_helper_observer_bridge.h"
 #import "components/password_manager/core/browser/manage_passwords_referrer.h"
@@ -45,15 +46,18 @@
 #import "ios/chrome/browser/default_browser/model/default_browser_interest_signals.h"
 #import "ios/chrome/browser/find_in_page/model/find_tab_helper.h"
 #import "ios/chrome/browser/home_customization/model/home_background_customization_service.h"
+#import "ios/chrome/browser/home_customization/model/user_uploaded_image_manager.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_service.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_service_factory.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_tab_helper.h"
+#import "ios/chrome/browser/intelligence/bwg/utils/gemini_availability.h"
 #import "ios/chrome/browser/intelligence/bwg/utils/gemini_constants.h"
 #import "ios/chrome/browser/intelligence/features/features.h"
 #import "ios/chrome/browser/intents/model/intents_donation_helper.h"
-#import "ios/chrome/browser/lens_overlay/coordinator/lens_overlay_availability.h"
 #import "ios/chrome/browser/lens_overlay/model/lens_overlay_tab_helper.h"
-#import "ios/chrome/browser/ntp/model/ntp_background_image_cache_service.h"
+#import "ios/chrome/browser/lens_overlay/public/lens_overlay_availability.h"
+#import "ios/chrome/browser/lens_overlay/public/lens_overlay_availability_utils.h"
+#import "ios/chrome/browser/lens_overlay/public/lens_overlay_entrypoint.h"
 #import "ios/chrome/browser/ntp/shared/metrics/feed_metrics_recorder.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_color_palette.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_color_palette_util.h"
@@ -104,7 +108,6 @@
 #import "ios/chrome/browser/shared/public/commands/reminder_notifications_commands.h"
 #import "ios/chrome/browser/shared/public/commands/scene_commands.h"
 #import "ios/chrome/browser/shared/public/commands/settings_commands.h"
-#import "ios/chrome/browser/shared/public/commands/show_signin_command.h"
 #import "ios/chrome/browser/shared/public/commands/text_zoom_commands.h"
 #import "ios/chrome/browser/shared/public/commands/whats_new_commands.h"
 #import "ios/chrome/browser/shared/public/features/features.h"
@@ -154,8 +157,6 @@ const unsigned int kDefaultVisiblePageActionCount = 3u;
 
 // The size of the color palette preview image.
 constexpr CGFloat kPreviewImageSize = 24.0;
-// The size of a quadrant within the color palette preview image.
-constexpr CGFloat kColorPaletteImageQuadrantSize = kPreviewImageSize / 2.0;
 
 // Struct used to count and store the number of active WhatsNew badges,
 // as the FET does not support showing multiple badges for the same FET feature
@@ -185,109 +186,74 @@ OverflowMenuFooter* CreateOverflowMenuManagedFooter(
                                           handler:handler];
 }
 
-// Returns the color palette for an un-themed NTP in light or dark mode.
-NewTabPageColorPalette* DefaultNTPColorPalette() {
+// Retrieves a user-uploaded NTP background image using the
+// `user_uploaded_image_manager`.
+void GetUserUploadedNTPBackgroundPreview(
+    const HomeUserUploadedBackground* user_uploaded_background,
+    UserUploadedImageManager* user_uploaded_image_manager,
+    base::OnceCallback<void(UIImage*)> custom_background_fetcher_callback) {
   CHECK(IsOverflowMenuHomeCustomizationEntrypointEnabled());
-  NewTabPageColorPalette* color_palette = [[NewTabPageColorPalette alloc] init];
-  color_palette.lightColor = [UIColor
-      colorWithDynamicProvider:^UIColor*(UITraitCollection* trait_collection) {
-        BOOL isDark =
-            (trait_collection.userInterfaceStyle == UIUserInterfaceStyleDark);
-        return [UIColor
-            colorNamed:isDark ? kGrey100Color : @"ntp_background_color"];
-      }];
-  color_palette.mediumColor =
-      [UIColor colorNamed:@"fake_omnibox_solid_background_color"];
-  color_palette.darkColor = [UIColor colorNamed:kBlueColor];
-  return color_palette;
-}
+  CHECK(user_uploaded_background);
+  CHECK(user_uploaded_image_manager);
 
-// Returns a square image representing the three colors of the `color_palette`.
-UIImage* CreateColorPalettePreviewImage(
-    const NewTabPageColorPalette* color_palette,
-    UITraitCollection* trait_collection) {
-  CHECK(IsOverflowMenuHomeCustomizationEntrypointEnabled());
-  if (!color_palette) {
-    return nil;
-  }
-
-  CGSize size = CGSizeMake(kPreviewImageSize, kPreviewImageSize);
-  UIGraphicsImageRendererFormat* format =
-      [UIGraphicsImageRendererFormat preferredFormat];
-  UIGraphicsImageRenderer* renderer =
-      [[UIGraphicsImageRenderer alloc] initWithSize:size format:format];
-
-  return [renderer imageWithActions:^(UIGraphicsImageRendererContext* context) {
-    CGContextRef ctx = context.CGContext;
-
-    // Resolve dynamic colors using the provided trait collection.
-    UITraitCollection* resolved_trait_collection =
-        trait_collection ?: [UITraitCollection currentTraitCollection];
-    UIColor* light_color = [color_palette.lightColor
-        resolvedColorWithTraitCollection:resolved_trait_collection];
-    UIColor* medium_color = [color_palette.mediumColor
-        resolvedColorWithTraitCollection:resolved_trait_collection];
-    UIColor* dark_color = [color_palette.darkColor
-        resolvedColorWithTraitCollection:resolved_trait_collection];
-
-    // Top half rectangle.
-    [light_color setFill];
-    CGContextFillRect(ctx, CGRectMake(0, 0, kPreviewImageSize,
-                                      kColorPaletteImageQuadrantSize));
-
-    // Bottom-left quadrant square.
-    [medium_color setFill];
-    CGContextFillRect(ctx, CGRectMake(0, kColorPaletteImageQuadrantSize,
-                                      kColorPaletteImageQuadrantSize,
-                                      kColorPaletteImageQuadrantSize));
-
-    // Bottom-right quadrant square.
-    [dark_color setFill];
-    CGContextFillRect(ctx, CGRectMake(kColorPaletteImageQuadrantSize,
-                                      kColorPaletteImageQuadrantSize,
-                                      kColorPaletteImageQuadrantSize,
-                                      kColorPaletteImageQuadrantSize));
-  }];
-}
-
-// Returns a preview image for the custom background retrieved from the image
-// cache service.
-UIImage* CreateCustomBackgroundPreviewImage(
-    NTPBackgroundImageCacheService* image_cache_service) {
-  CHECK(IsOverflowMenuHomeCustomizationEntrypointEnabled());
-  if (!image_cache_service) {
-    return nil;
-  }
-  UIImage* cached_image = image_cache_service->GetCachedBackgroundImage();
-  if (!cached_image) {
-    return nil;
-  }
-
+  base::FilePath image_path(user_uploaded_background->image_path);
   CGSize target_size = CGSizeMake(kPreviewImageSize, kPreviewImageSize);
-  UIGraphicsImageRendererFormat* format =
-      [UIGraphicsImageRendererFormat preferredFormat];
-  UIGraphicsImageRenderer* renderer =
-      [[UIGraphicsImageRenderer alloc] initWithSize:target_size format:format];
 
-  return [renderer imageWithActions:^(UIGraphicsImageRendererContext* context) {
-    [cached_image
-        drawInRect:CGRectMake(0, 0, target_size.width, target_size.height)];
-  }];
+  user_uploaded_image_manager->LoadUserUploadedImage(
+      image_path, target_size,
+      base::BindOnce(
+          [](base::OnceCallback<void(UIImage*)> callback,
+             UIImage* fetched_image, CGSize, UserUploadedImageError) {
+            std::move(callback).Run(fetched_image);
+          },
+          std::move(custom_background_fetcher_callback)));
+}
+
+// Retrieves a preset NTP background image using the `image_fetcher`.
+void GetPresetNTPBackgroundPreview(
+    const sync_pb::NtpCustomBackground* preset_image_background,
+    image_fetcher::ImageFetcher* image_fetcher,
+    base::OnceCallback<void(UIImage*)> custom_background_fetcher_callback) {
+  CHECK(IsOverflowMenuHomeCustomizationEntrypointEnabled());
+  CHECK(preset_image_background);
+  CHECK(custom_background_fetcher_callback);
+
+  const GURL image_url = GURL(preset_image_background->url());
+  GURL thumbnail_url =
+      AddOptionsToImageURL(RemoveOptionsFromImageURL(image_url.spec()).spec(),
+                           GetThumbnailImageOptions());
+  const char kImageFetcherUmaClient[] = "OverflowMenuNtpCustomization";
+
+  image_fetcher::ImageFetcherParams params(NO_TRAFFIC_ANNOTATION_YET,
+                                           kImageFetcherUmaClient);
+
+  image_fetcher->FetchImageData(
+      thumbnail_url,
+      base::BindOnce(
+          [](base::OnceCallback<void(UIImage*)> callback,
+             const std::string& image_data,
+             const image_fetcher::RequestMetadata&) {
+            NSData* data = [NSData dataWithBytes:image_data.data()
+                                          length:image_data.length()];
+            std::move(callback).Run([UIImage imageWithData:data]);
+          },
+          std::move(custom_background_fetcher_callback)),
+      params);
 }
 
 }  // namespace
 
-@interface OverflowMenuMediator () <BookmarkModelBridgeObserver,
+@interface OverflowMenuMediator () <AuthenticationServiceObserving,
+                                    BookmarkModelBridgeObserver,
                                     CRWWebStateObserver,
+                                    IdentityManagerObserving,
                                     IOSLanguageDetectionTabHelperObserving,
                                     OverflowMenuDestinationProvider,
                                     OverlayPresenterObserving,
                                     PrefObserverDelegate,
                                     ReadingListModelBridgeObserver,
                                     SearchEngineObserving,
-                                    WebStateListObserving,
-                                    AuthenticationServiceObserving,
-                                    IdentityManagerObserverBridgeDelegate> {
+                                    WebStateListObserving> {
   std::unique_ptr<web::WebStateObserverBridge> _webStateObserver;
   std::unique_ptr<WebStateListObserverBridge> _webStateListObserver;
 
@@ -360,7 +326,6 @@ UIImage* CreateCustomBackgroundPreviewImage(
 @property(nonatomic, strong) OverflowMenuActionGroup* helpActionsGroup;
 @property(nonatomic, strong) OverflowMenuActionGroup* editActionsGroup;
 
-@property(nonatomic, strong) OverflowMenuAction* signinAction;
 @property(nonatomic, strong) OverflowMenuAction* identityAction;
 
 @property(nonatomic, strong) OverflowMenuAction* reloadAction;
@@ -482,7 +447,7 @@ UIImage* CreateCustomBackgroundPreviewImage(
   }
   _baseViewController = baseViewController;
 
-  if (IsOverflowMenuHomeCustomizationEntrypointEnabled()) {
+  if (IsOverflowMenuHomeCustomizationEntrypointEnabled() && !self.incognito) {
     // Ensures the colors in the background preview are updated when
     // transitioning to light/dark mode.
     [_baseViewController
@@ -518,6 +483,8 @@ UIImage* CreateCustomBackgroundPreviewImage(
                                          }];
     _customizeHomepageAction.symbolTintColor =
         [UIColor colorNamed:kTextQuaternaryColor];
+    _customizeHomepageAction.fallbackPreviewImage =
+        DefaultSymbolWithConfiguration(kPencilSymbol, nil);
   }
   [self configureThemePreviewForCustomizeHomepageAction];
   return _customizeHomepageAction;
@@ -791,7 +758,6 @@ UIImage* CreateCustomBackgroundPreviewImage(
   [self logTranslateAvailability];
 
   if (IsIdentityAwarenessEnabled()) {
-    self.signinAction = [self newSigninAction];
     self.identityAction = [self newIdentityAction];
     [self updateIdentityAction];
   }
@@ -938,7 +904,7 @@ UIImage* CreateCustomBackgroundPreviewImage(
                                    [weakSelf showShareSheetForChromeApp];
                                  }];
 
-  if ([self isLensOverlayEnabled]) {
+  if ([self isLensOverlayAvailable]) {
     self.lensOverlayAction = [self openLensOverlayAction];
   }
 
@@ -946,7 +912,7 @@ UIImage* CreateCustomBackgroundPreviewImage(
     self.AIPrototypeAction = [self openAIPrototypeAction];
   }
 
-  if (base::FeatureList::IsEnabled(kHideToolbarsInOverflowMenu)) {
+  if (IsHideToolbarEnabled()) {
     self.hideToolbarsAction = [self collapseToolbars];
   }
 
@@ -1025,7 +991,7 @@ UIImage* CreateCustomBackgroundPreviewImage(
   OverflowMenuAction* action = [self
       createOverflowMenuActionWithNameID:nameID
                               actionType:overflow_menu::ActionType::ReaderMode
-                              symbolName:GetReaderModeSymbolName()
+                              symbolName:kReaderModeSymbol
                             systemSymbol:YES
                         monochromeSymbol:NO
                          accessibilityID:kToolsMenuReaderMode
@@ -1224,24 +1190,6 @@ UIImage* CreateCustomBackgroundPreviewImage(
                                  handler:^{
                                    [weakSelf openClearBrowsingData];
                                  }];
-}
-
-- (OverflowMenuAction*)newSigninAction {
-  __weak __typeof(self) weakSelf = self;
-  OverflowMenuAction* action =
-      [self createOverflowMenuActionWithNameID:IDS_IOS_SIGNIN_BUTTON_TEXT
-                                    actionType:overflow_menu::ActionType::Signin
-                                    symbolName:kPersonCropCircleSymbol
-                                  systemSymbol:YES
-                              monochromeSymbol:NO
-                               accessibilityID:kToolsMenuSigninId
-                                  hideItemText:nil
-                                       handler:^{
-                                         [weakSelf showSignin];
-                                       }];
-  action.subtitle =
-      l10n_util::GetNSString(IDS_IOS_IDENTITY_DISC_SIGN_IN_PROMO_LABEL);
-  return action;
 }
 
 - (OverflowMenuAction*)newIdentityAction {
@@ -1840,8 +1788,8 @@ UIImage* CreateCustomBackgroundPreviewImage(
       NOTREACHED();
     case overflow_menu::ActionType::ShareThisPage:
       return self.shareAction;
-    case overflow_menu::ActionType::Signin:
-      return self.signinAction;
+    case overflow_menu::ActionType::SigninDeprecated:
+      NOTREACHED();
     case overflow_menu::ActionType::Identity:
       return self.identityAction;
     case overflow_menu::ActionType::CustomizeHomePage:
@@ -1945,7 +1893,7 @@ UIImage* CreateCustomBackgroundPreviewImage(
       IsIncognitoModeDisabled(self.profilePrefs);
 
   if (IsLensOverlayAllowedByPolicy(_profilePrefs)) {
-    self.lensOverlayAction.enabled = ![self isLensOverlayVisible];
+    self.lensOverlayAction.enabled = [self isLensOverlayEnabled];
   }
 
   if (IsReaderModeAvailable()) {
@@ -1954,7 +1902,7 @@ UIImage* CreateCustomBackgroundPreviewImage(
 
   self.askBWGAction.enabled = [self isGeminiAvailable];
 
-  if (base::FeatureList::IsEnabled(kHideToolbarsInOverflowMenu)) {
+  if (IsHideToolbarEnabled()) {
     self.hideToolbarsAction.enabled = ![self isCurrentWebPageNTP];
   }
 }
@@ -1979,10 +1927,16 @@ UIImage* CreateCustomBackgroundPreviewImage(
     [appActions addObject:self.shareAction];
   }
 
-  // The reload/stop action is only shown when the reload button is not in the
-  // toolbar. The reload button is shown in the toolbar when the toolbar is not
-  // split.
-  if (IsSplitToolbarMode(self.baseViewController)) {
+  BOOL showReloadStopAction;
+  if (IsChromeNextIaEnabled()) {
+    showReloadStopAction = !CanShowTabStrip(self.baseViewController);
+  } else {
+    // The reload/stop action is only shown when the reload button is not in the
+    // toolbar. The reload button is shown in the toolbar when the toolbar is
+    // not split.
+    showReloadStopAction = IsSplitToolbarMode(self.baseViewController);
+  }
+  if (showReloadStopAction) {
     OverflowMenuAction* reloadStopAction =
         ([self isPageLoading]) ? self.stopLoadAction : self.reloadAction;
     [appActions addObject:reloadStopAction];
@@ -2014,26 +1968,13 @@ UIImage* CreateCustomBackgroundPreviewImage(
   NSMutableArray<OverflowMenuActionGroup*>* actionGroups =
       [[NSMutableArray alloc] init];
 
-  if (IsIdentityAwarenessEnabled() && self.authenticationService) {
+  if (IsIdentityAwarenessEnabled() && self.authenticationService &&
+      !self.incognito) {
     NSMutableArray<OverflowMenuAction*>* identityActions =
         [NSMutableArray array];
     if (self.authenticationService->GetPrimaryIdentity()) {
       [self updateIdentityAction];
       [identityActions addObject:self.identityAction];
-    } else {
-      // Hide identity action if sign-in is not allowed.
-      AuthenticationService::ServiceStatus status =
-          self.authenticationService->GetServiceStatus();
-      switch (status) {
-        case AuthenticationService::ServiceStatus::SigninForcedByPolicy:
-        case AuthenticationService::ServiceStatus::SigninAllowed:
-          [identityActions addObject:self.signinAction];
-          break;
-        case AuthenticationService::ServiceStatus::SigninDisabledByUser:
-        case AuthenticationService::ServiceStatus::SigninDisabledByPolicy:
-        case AuthenticationService::ServiceStatus::SigninDisabledByInternal:
-          break;
-      }
     }
     self.identityActionsGroup.actions = identityActions;
 
@@ -2058,40 +1999,67 @@ UIImage* CreateCustomBackgroundPreviewImage(
 // background to be shown in the action to show the home customization menu.
 - (void)configureThemePreviewForCustomizeHomepageAction {
   CHECK(IsOverflowMenuHomeCustomizationEntrypointEnabled());
-
-  std::optional<sync_pb::UserColorTheme> colorTheme = std::nullopt;
-  std::optional<HomeCustomBackground> customBackground = std::nullopt;
-
-  if (self.backgroundCustomizationService) {
-    colorTheme = self.backgroundCustomizationService->GetCurrentColorTheme();
-    customBackground =
-        self.backgroundCustomizationService->GetCurrentCustomBackground();
+  CHECK(!self.incognito);
+  if (!self.backgroundCustomizationService) {
+    // Do not show a preview for the current background.
+    _customizeHomepageAction.previewImage = nil;
+    return;
   }
 
-  UIImage* previewImage = nil;
+  std::optional<HomeCustomBackground> customBackground =
+      self.backgroundCustomizationService->GetCurrentCustomBackground();
+
+  if (customBackground.has_value()) {
+    // Custom background image.
+    const HomeUserUploadedBackground* userUploadedBackground =
+        std::get_if<HomeUserUploadedBackground>(&customBackground.value());
+    const sync_pb::NtpCustomBackground* presetImageBackground =
+        std::get_if<sync_pb::NtpCustomBackground>(&customBackground.value());
+
+    __weak OverflowMenuAction* customizeHomepageAction =
+        _customizeHomepageAction;
+
+    if (userUploadedBackground && self.userUploadedImageManager) {
+      // User-uploaded background active.
+      GetUserUploadedNTPBackgroundPreview(
+          userUploadedBackground, self.userUploadedImageManager,
+          base::BindOnce(^(UIImage* image) {
+            customizeHomepageAction.previewImage = image;
+          }));
+    } else if (presetImageBackground && self.imageFetcher) {
+      // Preset background active.
+      GetPresetNTPBackgroundPreview(presetImageBackground, self.imageFetcher,
+                                    base::BindOnce(^(UIImage* image) {
+                                      customizeHomepageAction.previewImage =
+                                          image;
+                                    }));
+    } else {
+      _customizeHomepageAction.previewImage = nil;
+    }
+    return;
+  }
+
+  // Preview image for a color palette.
+  std::optional<sync_pb::UserColorTheme> colorTheme =
+      self.backgroundCustomizationService->GetCurrentColorTheme();
   UITraitCollection* traitCollection = self.baseViewController.traitCollection;
 
-  // Set the image thumbnail or colors for the background preview.
-  if (customBackground.has_value() && self.backgroundImageCacheService) {
-    // Custom background image.
-    previewImage =
-        CreateCustomBackgroundPreviewImage(self.backgroundImageCacheService);
-  } else if (colorTheme.has_value()) {
+  /// TODO(crbug.com/534705391): Investigate getting color palette previews from
+  /// home customization instead of drawing them in this mediator.
+  if (colorTheme.has_value()) {
     // Custom color theme.
     UIColor* seedColor = skia::UIColorFromSkColor(colorTheme->color());
     ui::ColorProviderKey::SchemeVariant schemeVariant =
         ProtoEnumToSchemeVariant(colorTheme->browser_color_variant());
     NewTabPageColorPalette* customColorPalette =
         CreateColorPaletteFromSeedColor(seedColor, schemeVariant);
-    previewImage =
-        CreateColorPalettePreviewImage(customColorPalette, traitCollection);
+    _customizeHomepageAction.previewImage = CreatePreviewImageForColorPalette(
+        customColorPalette, kPreviewImageSize, traitCollection);
   } else {
     // Default (un-themed).
-    previewImage = CreateColorPalettePreviewImage(DefaultNTPColorPalette(),
-                                                  traitCollection);
+    _customizeHomepageAction.previewImage = CreatePreviewImageForColorPalette(
+        DefaultNTPColorPalette(), kPreviewImageSize, traitCollection);
   }
-
-  _customizeHomepageAction.previewImage = previewImage;
 }
 
 #pragma mark - AuthenticationServiceObserving
@@ -2113,7 +2081,7 @@ UIImage* CreateCustomBackgroundPreviewImage(
 }
 
 - (void)updateIdentityAction {
-  if (!self.identityAction || !self.authenticationService ||
+  if (self.incognito || !self.identityAction || !self.authenticationService ||
       !self.authenticationService->HasPrimaryIdentity()) {
     return;
   }
@@ -2156,29 +2124,21 @@ UIImage* CreateCustomBackgroundPreviewImage(
 }
 
 // Returns whether lens overlay is enabled on the current page.
+- (BOOL)isLensOverlayAvailable {
+  return IsLensOverlayEntrypointAvailable(
+      LensOverlayEntrypoint::kOverflowMenu, _profilePrefs,
+      self.templateURLService, self.webState,
+      self.baseViewController.traitCollection);
+}
+
+// Returns whether lens overlay is enabled on the current page.
 - (BOOL)isLensOverlayEnabled {
-  if (IsOverflowMenuNTPRefactorEnabled() && [self isCurrentWebPageNTP]) {
-    return NO;
-  }
-  BOOL isPortrait = !IsCompactHeight(self.baseViewController.traitCollection);
-  BOOL isSupported =
-      search_engines::SupportsSearchImageWithLens(self.templateURLService);
-  BOOL portraitOverride =
-      IsLensOverlayLandscapeOrientationEnabled(_profilePrefs);
-  BOOL isAvailable = IsLensOverlayAllowedByPolicy(_profilePrefs);
-  return isAvailable && isSupported && (isPortrait || portraitOverride) &&
-         ![self isLensOverlayVisible];
+  return !IsLensOverlayVisible(self.webState);
 }
 
 // Returns whether Lens Overlay is currently being displayed.
 - (BOOL)isLensOverlayVisible {
-  if (!self.webState) {
-    return NO;
-  }
-  LensOverlayTabHelper* lensOverlayTabHelper =
-      LensOverlayTabHelper::FromWebState(self.webState);
-  return lensOverlayTabHelper &&
-         lensOverlayTabHelper->IsLensOverlayUIAttachedAndAlive();
+  return IsLensOverlayVisible(self.webState);
 }
 
 // Determines whether or not translate is available on the page and logs the
@@ -2355,10 +2315,6 @@ UIImage* CreateCustomBackgroundPreviewImage(
 // Returns whether the Ask Gemini feature is currently available for the web
 // state.
 - (BOOL)isGeminiAvailable {
-  if (!IsPageActionMenuEnabled()) {
-    return NO;
-  }
-
   if (!_webState) {
     return NO;
   }
@@ -2369,10 +2325,9 @@ UIImage* CreateCustomBackgroundPreviewImage(
 
   ProfileIOS* profile =
       ProfileIOS::FromBrowserState(_webState->GetBrowserState());
-  GeminiService* geminiService = GeminiServiceFactory::GetForProfile(profile);
-  GeminiTabHelper* tabHelper = GeminiTabHelper::FromWebState(_webState);
-  return tabHelper && tabHelper->IsGeminiAvailableForWebState() &&
-         geminiService && geminiService->IsProfileEligibleForGemini();
+  return gemini::IsGeminiAvailable(gemini::EntryPoint::OverflowMenu, profile,
+                                   _webState)
+      .enabled;
 }
 
 #pragma mark - CRWWebStateObserver
@@ -2679,7 +2634,7 @@ UIImage* CreateCustomBackgroundPreviewImage(
   actions.push_back(overflow_menu::ActionType::FindInPage);
   actions.push_back(overflow_menu::ActionType::TextZoom);
 
-  if ([self isLensOverlayEnabled]) {
+  if ([self isLensOverlayAvailable]) {
     actions.push_back(overflow_menu::ActionType::LensOverlay);
   }
 
@@ -2694,7 +2649,7 @@ UIImage* CreateCustomBackgroundPreviewImage(
   if (IsReaderModeAvailable()) {
     actions.push_back(overflow_menu::ActionType::ReaderMode);
   }
-  if (base::FeatureList::IsEnabled(kHideToolbarsInOverflowMenu)) {
+  if (IsHideToolbarEnabled()) {
     actions.push_back(overflow_menu::ActionType::HideToolbars);
   }
 
@@ -2730,7 +2685,7 @@ UIImage* CreateCustomBackgroundPreviewImage(
     case overflow_menu::ActionType::ShareChrome:
     case overflow_menu::ActionType::EditActions:
     case overflow_menu::ActionType::ShareThisPage:
-    case overflow_menu::ActionType::Signin:
+    case overflow_menu::ActionType::SigninDeprecated:
     case overflow_menu::ActionType::Identity:
     case overflow_menu::ActionType::CustomizeHomePage:
       NOTREACHED();
@@ -2915,17 +2870,6 @@ UIImage* CreateCustomBackgroundPreviewImage(
   RecordAction(UserMetricsAction("MobileMenuFindInPage"));
   [self dismissMenu];
   [self.findInPageHandler openFindInPage];
-}
-
-// Dismisses the menu and opens the sign-in bottom sheet.
-- (void)showSignin {
-  RecordAction(UserMetricsAction("MobileMenuSignin"));
-  [self dismissMenu];
-  ShowSigninCommand* command = [[ShowSigninCommand alloc]
-      initWithOperation:AuthenticationOperation::kSheetSigninAndHistorySync
-            accessPoint:signin_metrics::AccessPoint::kOverflowMenu];
-  [self.sceneHandler showSignin:command
-             baseViewController:self.baseViewController];
 }
 
 // Dismisses the menu and opens the account menu.
@@ -3253,9 +3197,9 @@ UIImage* CreateCustomBackgroundPreviewImage(
                                      actionSubtitle:subtitle];
 }
 
-#pragma mark - IdentityManagerObserverBridgeDelegate
+#pragma mark - IdentityManagerObserving
 
-- (void)onPrimaryAccountChanged:
+- (void)primaryAccountDidChange:
     (const signin::PrimaryAccountChangeEvent&)event {
   switch (event.GetEventTypeFor(signin::ConsentLevel::kSignin)) {
     case signin::PrimaryAccountChangeEvent::Type::kNone:
@@ -3267,7 +3211,7 @@ UIImage* CreateCustomBackgroundPreviewImage(
   }
 }
 
-- (void)onExtendedAccountInfoUpdated:(const AccountInfo&)info {
+- (void)extendedAccountInfoDidUpdate:(const AccountInfo&)info {
   [self updateModel];
 }
 

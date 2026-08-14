@@ -7,7 +7,6 @@
 #include "base/metrics/user_metrics.h"
 #include "build/build_config.h"
 #include "chrome/app/chrome_command_ids.h"
-#include "chrome/browser/command_updater.h"
 #include "chrome/browser/glic/glic_pref_names.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/profiles/profile.h"
@@ -52,7 +51,7 @@ SystemMenuModelDelegate::~SystemMenuModelDelegate() = default;
 bool SystemMenuModelDelegate::IsCommandIdChecked(int command_id) const {
 #if BUILDFLAG(IS_LINUX)
   if (command_id == IDC_USE_SYSTEM_TITLE_BAR) {
-    PrefService* prefs = browser_->profile()->GetPrefs();
+    PrefService* prefs = browser_->GetProfile()->GetPrefs();
     return !prefs->GetBoolean(prefs::kUseCustomChromeFrame);
   }
 #endif
@@ -67,7 +66,7 @@ bool SystemMenuModelDelegate::IsCommandIdEnabled(int command_id) const {
 #endif
   // Disable the glic toggle pin if it is showing and glic is not enabled.
   if (command_id == IDC_GLIC_TOGGLE_PIN) {
-    return glic::GlicEnabling::IsEnabledForProfile(browser_->profile());
+    return glic::GlicEnabling::IsEnabledForProfile(browser_->GetProfile());
   }
 
 #if BUILDFLAG(IS_WIN)
@@ -109,7 +108,7 @@ bool SystemMenuModelDelegate::IsCommandIdVisible(int command_id) const {
   }
 #endif
   if (command_id == IDC_GLIC_TOGGLE_PIN) {
-    return glic::GlicEnabling::IsEnabledForProfile(browser_->profile());
+    return glic::GlicEnabling::IsEnabledForProfile(browser_->GetProfile());
   }
   return true;
 }
@@ -121,8 +120,11 @@ bool SystemMenuModelDelegate::GetAcceleratorForCommandId(
 }
 
 bool SystemMenuModelDelegate::IsItemForCommandIdDynamic(int command_id) const {
-  return std::set{IDC_RESTORE_TAB, IDC_TAB_SEARCH_TOGGLE_PIN,
-                  IDC_GLIC_TOGGLE_PIN, IDC_TOGGLE_VERTICAL_TABS,
+  return std::set{IDC_RESTORE_TAB,
+                  IDC_TAB_SEARCH_TOGGLE_PIN,
+                  IDC_GLIC_TOGGLE_PIN,
+                  IDC_TOGGLE_VERTICAL_TABS,
+                  IDC_TOGGLE_VERTICAL_TABS_COLLAPSE,
                   IDC_TOGGLE_VERTICAL_TABS_EXPAND_ON_HOVER}
       .contains(command_id);
 }
@@ -137,7 +139,7 @@ std::u16string SystemMenuModelDelegate::GetLabelForCommandId(
       string_id = IDS_RESTORE_TAB;
       if (IsCommandIdEnabled(command_id)) {
         sessions::TabRestoreService* trs =
-            TabRestoreServiceFactory::GetForProfile(browser_->profile());
+            TabRestoreServiceFactory::GetForProfile(browser_->GetProfile());
         DCHECK(trs);
         trs->LoadTabsFromLastSession();
         if (!trs->entries().empty()) {
@@ -165,6 +167,13 @@ std::u16string SystemMenuModelDelegate::GetLabelForCommandId(
                       : IDS_SWITCH_TO_VERTICAL_TAB;
       break;
     }
+    case IDC_TOGGLE_VERTICAL_TABS_COLLAPSE: {
+      auto* controller = tabs::VerticalTabStripStateController::From(browser_);
+      CHECK(controller);
+      string_id = controller->IsCollapsed() ? IDS_EXPAND_VERTICAL_TABS
+                                            : IDS_COLLAPSE_VERTICAL_TABS;
+      break;
+    }
     case IDC_TOGGLE_VERTICAL_TABS_EXPAND_ON_HOVER: {
       auto* controller = tabs::VerticalTabStripStateController::From(browser_);
       CHECK(controller);
@@ -174,13 +183,13 @@ std::u16string SystemMenuModelDelegate::GetLabelForCommandId(
       break;
     }
     case IDC_TAB_SEARCH_TOGGLE_PIN:
-      string_id = browser_->profile()->GetPrefs()->GetBoolean(
+      string_id = browser_->GetProfile()->GetPrefs()->GetBoolean(
                       prefs::kTabSearchPinnedToTabstrip)
                       ? IDS_TAB_STRIP_UNPIN_TAB_SEARCH
                       : IDS_TAB_STRIP_PIN_TAB_SEARCH;
       break;
     case IDC_GLIC_TOGGLE_PIN:
-      string_id = browser_->profile()->GetPrefs()->GetBoolean(
+      string_id = browser_->GetProfile()->GetPrefs()->GetBoolean(
                       glic::prefs::kGlicPinnedToTabstrip)
                       ? IDS_GLIC_UNPIN
                       : IDS_GLIC_PIN;
@@ -221,8 +230,19 @@ void SystemMenuModelDelegate::ExecuteCommand(int command_id, int event_flags) {
       }
       break;
     }
+    case IDC_TOGGLE_VERTICAL_TABS_COLLAPSE: {
+      auto* controller = tabs::VerticalTabStripStateController::From(browser_);
+      if (controller) {
+        const bool collapse = controller->GetCollapseState() ==
+                              tabs::VerticalTabStripCollapseState::kExpanded;
+        base::RecordAction(base::UserMetricsAction(
+            collapse ? "VerticalTabs_TabStrip_ContextMenuToggleCollapsed"
+                     : "VerticalTabs_TabStrip_ContextMenuToggleUncollapsed"));
+      }
+      break;
+    }
     case IDC_TAB_SEARCH_TOGGLE_PIN: {
-      PrefService* prefs = browser_->profile()->GetPrefs();
+      PrefService* prefs = browser_->GetProfile()->GetPrefs();
       const bool is_pinned =
           prefs->GetBoolean(prefs::kTabSearchPinnedToTabstrip);
       base::RecordAction(base::UserMetricsAction(

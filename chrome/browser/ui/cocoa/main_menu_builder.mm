@@ -305,15 +305,21 @@ NSMenuItem* BuildViewMenu(NSApplication* nsapp,
                   .command_id(IDC_SHOW_FULL_URLS),
               Item(IDS_CONTEXT_MENU_SHOW_GOOGLE_LENS_SHORTCUT)
                   .command_id(IDC_SHOW_GOOGLE_LENS_SHORTCUT),
-              Item(IDS_CONTEXT_MENU_SHOW_AI_MODE_OMNIBOX_BUTTON)
-                  .command_id(IDC_SHOW_AI_MODE_OMNIBOX_BUTTON),
+               Item(IDS_AI_MODE_ENTRYPOINT_CONTEXT_MENU_SHOW)
+                   .string_format_1(
+                       l10n_util::GetStringUTF16(IDS_AI_MODE_ENTRYPOINT_LABEL))
+                   .command_id(IDC_SHOW_AI_MODE_OMNIBOX_BUTTON),
               Item(IDS_CONTEXT_MENU_SHOW_SEARCH_TOOLS)
                   .command_id(IDC_SHOW_SEARCH_TOOLS),
               Item(IDS_SWITCH_TO_VERTICAL_TAB)
                   .command_id(IDC_TOGGLE_VERTICAL_TABS)
                   .remove_if(!tabs::IsVerticalTabsFeatureEnabled()),
+              Item(IDS_VERTICAL_TABS_VIEW_MENU_TOGGLE_COLLAPSE)
+                  .command_id(IDC_TOGGLE_VERTICAL_TABS_COLLAPSE)
+                  .key_equivalent(@"L", NSEventModifierFlagCommand)
+                  .remove_if(!tabs::IsVerticalTabsFeatureEnabled()),
               Item(IDS_CUSTOMIZE_TOUCH_BAR)
-                  .tag(kCustomizeTouchBarMenuId)
+                  .tag(IDC_CUSTOMIZE_TOUCH_BAR)
                   .action(@selector(toggleTouchBarCustomizationPalette:))
                   .remove_if(is_pwa),
               Item().is_separator(),
@@ -441,31 +447,6 @@ NSMenuItem* BuildBookmarksMenu(NSApplication* nsapp,
   return item;
 }
 
-NSMenuItem* BuildGroupsMenu(NSApplication* nsapp,
-                            id app_delegate,
-                            const std::u16string& product_name,
-                            bool is_pwa,
-                            bool is_rtl) {
-  if (!features::IsShowTabGroupsMacSystemMenuEnabled()) {
-    return nil;
-  }
-
-  if (is_pwa) {
-    return nil;
-  }
-
-  // clang-format off
-  NSMenuItem* item =
-      Item(IDS_SAVED_TAB_GROUPS_MENU)
-          .tag(AppMenuModel::kSavedTabGroupsMenuPlaceholder)
-          .submenu({
-              Item(IDS_CREATE_NEW_TAB_GROUP)
-                  .command_id(IDC_CREATE_NEW_TAB_GROUP),
-          })
-          .Build();
-  // clang-format on
-  return item;
-}
 
 NSMenuItem* BuildPeopleMenu(NSApplication* nsapp,
                             id app_delegate,
@@ -546,10 +527,13 @@ NSMenuItem* BuildTabMenu(NSApplication* nsapp,
               Item(is_rtl ? IDS_TAB_CXMENU_NEWTABTOLEFT
                           : IDS_TAB_CXMENU_NEWTABTORIGHT)
                   .command_id(IDC_NEW_TAB_TO_RIGHT),
+              Item(IDS_TAB_CXMENU_NEWTABBELOW)
+                  .command_id(IDC_NEW_TAB_TO_RIGHT)
+                  .set_hidden(true),
               Item(IDS_NEXT_TAB_MAC)
-                  .command_id(IDC_SELECT_NEXT_TAB),
+                  .command_id(IDC_CYCLE_TO_NEXT_TAB),
               Item(IDS_PREV_TAB_MAC)
-                  .command_id(IDC_SELECT_PREVIOUS_TAB),
+                  .command_id(IDC_CYCLE_TO_PREV_TAB),
               Item(IDS_DUPLICATE_TAB_MAC)
                   .command_id(IDC_DUPLICATE_TAB),
               Item(IDS_DUPLICATE_TARGET_TAB_MAC)
@@ -579,6 +563,9 @@ NSMenuItem* BuildTabMenu(NSApplication* nsapp,
               Item(is_rtl ? IDS_TAB_CXMENU_CLOSETABSTOLEFT
                           : IDS_TAB_CXMENU_CLOSETABSTORIGHT)
                   .command_id(IDC_WINDOW_CLOSE_TABS_TO_RIGHT),
+              Item(IDS_TAB_CXMENU_CLOSETABSBELOW)
+                  .command_id(IDC_WINDOW_CLOSE_TABS_TO_RIGHT)
+                  .set_hidden(true),
               Item(IDS_MOVE_TAB_TO_NEW_WINDOW)
                   .command_id(IDC_MOVE_TAB_TO_NEW_WINDOW),
               Item(IDS_SEARCH_TABS)
@@ -643,7 +630,6 @@ NSMenu* BuildMainMenu(NSApplication* nsapp,
            &BuildViewMenu,
            &BuildHistoryMenu,
            &BuildBookmarksMenu,
-           &BuildGroupsMenu,
            &BuildPeopleMenu,
            &BuildTabMenu,
            &BuildWindowMenu,

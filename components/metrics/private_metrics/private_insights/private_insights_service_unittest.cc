@@ -72,12 +72,28 @@ class PrivateInsightsServiceTest : public testing::Test {
       test_shared_url_loader_factory_;
 };
 
+TEST_F(PrivateInsightsServiceTest, TriggerUploadSkipsPostingTaskWhenNoData) {
+  base::HistogramTester histogram_tester;
+  TestingPrefServiceSimple local_state;
+  PrivateInsightsService service(&local_state, tmp_profile_dir_.GetPath(),
+                                 test_shared_url_loader_factory_);
+
+  service.TriggerUpload();
+  histogram_tester.ExpectUniqueSample(
+      kTriggerUploadOutcomeHistogram,
+      PrivateInsightsService::TriggerUploadOutcome::kSkippedNoData, 1);
+  EXPECT_FALSE(service.is_upload_running_);
+}
+
 TEST_F(PrivateInsightsServiceTest,
        TriggerUploadSkipsPostingTaskWhenAlreadyRunning) {
   base::HistogramTester histogram_tester;
   TestingPrefServiceSimple local_state;
   PrivateInsightsService service(&local_state, tmp_profile_dir_.GetPath(),
                                  test_shared_url_loader_factory_);
+
+  events::ContextualCueLogEvent event;
+  service.LogContextualCueEvent(event);
 
   // First call: should post the task.
   service.TriggerUpload();
@@ -104,7 +120,8 @@ TEST_F(PrivateInsightsServiceTest,
       PrivateInsightsService::FederatedComputationOutcome::kSuccess, 1);
   histogram_tester.ExpectUniqueSample(kContributedTaskCountHistogram, 1, 1);
 
-  // Third call: now that task completed, should post the task again.
+  // Third call: now that task completed, queue another event and post again.
+  service.LogContextualCueEvent(event);
   service.TriggerUpload();
   histogram_tester.ExpectBucketCount(
       kTriggerUploadOutcomeHistogram,
@@ -123,7 +140,6 @@ TEST_F(PrivateInsightsServiceTest,
 TEST_F(PrivateInsightsServiceTest, MetricsChoiceCoupling) {
 
   TestingPrefServiceSimple local_state;
-  metrics::MetricsReportingChoiceService::RegisterPrefs(local_state.registry());
   local_state.registry()->RegisterBooleanPref(
       metrics::prefs::kMetricsReportingEnabled, false);
 
@@ -166,8 +182,6 @@ TEST_F(PrivateInsightsServiceTest, MetricsChoiceRespectedOnStartup) {
   // Verify choice is respected when disabled on startup.
   {
     TestingPrefServiceSimple local_state;
-    metrics::MetricsReportingChoiceService::RegisterPrefs(
-        local_state.registry());
     local_state.registry()->RegisterBooleanPref(
         metrics::prefs::kMetricsReportingEnabled, false);
 
@@ -182,8 +196,6 @@ TEST_F(PrivateInsightsServiceTest, MetricsChoiceRespectedOnStartup) {
   // Verify choice is respected when enabled on startup.
   {
     TestingPrefServiceSimple local_state;
-    metrics::MetricsReportingChoiceService::RegisterPrefs(
-        local_state.registry());
     local_state.registry()->RegisterBooleanPref(
         metrics::prefs::kMetricsReportingEnabled, true);
 
@@ -208,6 +220,9 @@ TEST_F(PrivateInsightsServiceTest, UploadSkippedWhenServerUriEmpty) {
   TestingPrefServiceSimple local_state;
   PrivateInsightsService service(&local_state, tmp_profile_dir_.GetPath(),
                                  test_shared_url_loader_factory_);
+
+  events::ContextualCueLogEvent event;
+  service.LogContextualCueEvent(event);
 
   service.TriggerUpload();
 
@@ -234,6 +249,9 @@ TEST_F(PrivateInsightsServiceTest, PopulationNameFinchParam) {
   TestingPrefServiceSimple local_state;
   PrivateInsightsService service(&local_state, tmp_profile_dir_.GetPath(),
                                  test_shared_url_loader_factory_);
+
+  events::ContextualCueLogEvent event;
+  service.LogContextualCueEvent(event);
 
   service.TriggerUpload();
   ASSERT_TRUE(

@@ -17,6 +17,10 @@
 class GURL;
 class Profile;
 
+namespace safe_browsing {
+class V5GetHashProtocolManager;
+}
+
 namespace {
 // Maximum time in milliseconds to wait for the Safe Browsing service reputation
 // check. After this amount of time the outstanding check will be aborted, and
@@ -31,10 +35,6 @@ inline constexpr char kSafeBrowsingUnwantedRevocationStr[] = "manual";
 inline constexpr char kSuspiciousContentAutoRevocationStr[] =
     "suspicious_content";
 }  // namespace
-
-namespace safe_browsing {
-struct ThreatMetadata;
-}  // namespace safe_browsing
 
 // This class keeps track of abusive notification permissions by checking URLs
 // against the Safe Browsing social engineering blocklist. This also handles
@@ -60,6 +60,8 @@ class AbusiveNotificationPermissionsManager {
   explicit AbusiveNotificationPermissionsManager(
       scoped_refptr<safe_browsing::SafeBrowsingDatabaseManager>
           database_manager,
+      base::WeakPtr<safe_browsing::V5GetHashProtocolManager>
+          v5_get_hash_protocol_manager,
       scoped_refptr<HostContentSettingsMap> hcsm,
       PrefService* pref_service);
 
@@ -219,6 +221,8 @@ class AbusiveNotificationPermissionsManager {
         base::PassKey<safe_browsing::SafeBrowsingDatabaseManager::Client>
             pass_key,
         safe_browsing::SafeBrowsingDatabaseManager* database_manager,
+        base::WeakPtr<safe_browsing::V5GetHashProtocolManager>
+            v5_get_hash_protocol_manager,
         raw_ptr<std::map<SafeBrowsingCheckClient*,
                          std::unique_ptr<SafeBrowsingCheckClient>>>
             safe_browsing_request_clients,
@@ -233,12 +237,15 @@ class AbusiveNotificationPermissionsManager {
     // Trigger the call to check the Safe Browsing social engineering blocklist.
     void CheckSocialEngineeringBlocklist();
 
+    // safe_browsing::SafeBrowsingDatabaseManager::Client:
+    base::WeakPtr<safe_browsing::V5GetHashProtocolManager>
+    GetV5GetHashProtocolManager() override;
+
    private:
     // safe_browsing::SafeBrowsingDatabaseManager::Client:
     void OnCheckBrowseUrlResult(
         const GURL& url,
-        safe_browsing::SBThreatType threat_type,
-        const safe_browsing::ThreatMetadata& metadata) override;
+        safe_browsing::SBThreatType threat_type) override;
 
     // Callback to be run if a Safe Browsing blocklist request does not return
     // a response within `kCheckUrlTimeoutMs` time.
@@ -247,6 +254,10 @@ class AbusiveNotificationPermissionsManager {
     // A pointer to the `database_manager_` of the
     // `AbusiveNotificationPermissionsManager`.
     raw_ptr<safe_browsing::SafeBrowsingDatabaseManager> database_manager_;
+
+    // The protocol manager used for Safe Browsing v5 get hash requests.
+    base::WeakPtr<safe_browsing::V5GetHashProtocolManager>
+        v5_get_hash_protocol_manager_;
 
     // A pointer to the `safe_browsing_request_clients_`
     // of the `AbusiveNotificationPermissionsManager`.
@@ -319,6 +330,10 @@ class AbusiveNotificationPermissionsManager {
 
   // Used for updating prefs after performing blocklist checks.
   raw_ptr<PrefService> pref_service_;
+
+  // The protocol manager used for Safe Browsing v5 get hash requests.
+  base::WeakPtr<safe_browsing::V5GetHashProtocolManager>
+      v5_get_hash_protocol_manager_;
 
   // Safe Browsing blocklist check clients. Each object is responsible for a
   // single Safe Browsing check, given a URL. Stored this way so that the object

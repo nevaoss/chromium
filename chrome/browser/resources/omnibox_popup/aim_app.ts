@@ -58,6 +58,7 @@ export class OmniboxAimAppElement extends CrLitElement {
       disableVoiceSearchAnimation_: {type: Boolean},
       usePecApi_: {type: Boolean},
       smartTabSharingVisible_: {type: Boolean},
+      contextManagementInComposeboxEnabled_: {type: Boolean},
       isOblongShape_: {type: Boolean},
       webuiOmniboxSimplificationEnabled_: {type: Boolean},
       smartComposeEnabled_: {type: Boolean},
@@ -86,6 +87,8 @@ export class OmniboxAimAppElement extends CrLitElement {
       loadTimeData.getBoolean('contextualMenuUsePecApi');
   protected accessor smartTabSharingVisible_: boolean =
       loadTimeData.getBoolean('composeboxSmartTabSharingVisible');
+  protected accessor contextManagementInComposeboxEnabled_: boolean =
+      loadTimeData.getBoolean('contextManagementInComposeboxEnabled');
   protected accessor isOblongShape_: boolean =
       loadTimeData.getBoolean('contextButtonShapeIsOblong');
   protected accessor webuiOmniboxSimplificationEnabled_: boolean =
@@ -224,6 +227,10 @@ export class OmniboxAimAppElement extends CrLitElement {
   private addContext_(context: SearchContext) {
     this.$.composebox.addSearchContext(context);
     this.focusInput_();
+    // Reset `preserveContextOnClose_` so subsequent popup closes correctly
+    // clear searchbox state (e.g. after adding context via Drive picker while
+    // popup stayed open).
+    this.setPreserveContextOnClose_(false);
   }
 
   private focusInput_() {

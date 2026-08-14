@@ -313,11 +313,12 @@ class OmniboxNextAimEligibilityTest : public testing::Test {
         &profile_, base::BindOnce([](content::BrowserContext* context)
                                       -> std::unique_ptr<KeyedService> {
           auto service = std::make_unique<TestAiModeButtonService>(
-              /*template_url_service=*/nullptr,
-              AiModeButtonService::GoogleStrings{u"AI", u"AI"});
-          static const ai_mode_button_config::AiModeButtonConfig test_config = {
-              .id = SearchEngineType::SEARCH_ENGINE_GOOGLE};
-          service->current_config_ = &test_config;
+              /*template_url_service=*/nullptr);
+          AiModeButtonUiConfig test_config(
+              SearchEngineType::SEARCH_ENGINE_GOOGLE, u"AI Mode", u"Google",
+              /*favicon_url=*/"", /*navigation_url=*/"",
+              /*navigation_url_empty=*/"");
+          service->current_ui_config_ = test_config;
           return service;
         }));
   }

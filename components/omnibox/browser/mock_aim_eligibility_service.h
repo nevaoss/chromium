@@ -24,10 +24,20 @@ class MockAimEligibilityService : public AimEligibilityService {
   MOCK_METHOD(bool, IsAimLocallyEligible, (), (const, override));
   MOCK_METHOD(bool, IsAimEligible, (), (const, override));
   MOCK_METHOD(bool, IsCanvasEligible, (), (const, override));
+  MOCK_METHOD(bool, IsCobrowseServerEligible, (), (const, override));
   MOCK_METHOD(bool, IsCobrowseEligible, (), (const, override));
   MOCK_METHOD(bool, IsDeepSearchEligible, (), (const, override));
   MOCK_METHOD(bool, IsCreateImagesEligible, (), (const, override));
   MOCK_METHOD(bool, IsFuseboxEligible, (), (const, override));
+  MOCK_METHOD(bool,
+              IsAimUrl,
+              (const GURL& url, std::optional<std::string> host_override),
+              (const, override));
+  MOCK_METHOD(bool,
+              IsAimHost,
+              (const GURL& url, std::optional<std::string> host_override),
+              (const, override));
+  MOCK_METHOD(bool, HasNoCobrowseParams, (const GURL& url), (const, override));
   MOCK_METHOD(base::CallbackListSubscription,
               RegisterEligibilityChangedCallback,
               (base::RepeatingClosure),

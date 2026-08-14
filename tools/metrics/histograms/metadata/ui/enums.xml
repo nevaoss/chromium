@@ -296,9 +296,13 @@ chromium-metrics-reviews@google.com.
   <int value="107"
       label="IDC_CONTENT_CONTEXT_SHARING_CLICK_TO_CALL_MULTIPLE_DEVICES"/>
   <int value="108"
-      label="IDC_CONTENT_CONTEXT_SHARING_SHARED_CLIPBOARD_SINGLE_DEVICE"/>
+      label="(Obsolete)
+             IDC_CONTENT_CONTEXT_SHARING_SHARED_CLIPBOARD_SINGLE_DEVICE.
+             Removed in 2026/07."/>
   <int value="109"
-      label="IDC_CONTENT_CONTEXT_SHARING_SHARED_CLIPBOARD_MULTIPLE_DEVICES"/>
+      label="(Obsolete)
+             IDC_CONTENT_CONTEXT_SHARING_SHARED_CLIPBOARD_MULTIPLE_DEVICES.
+             Removed in 2026/07."/>
   <int value="110" label="IDC_CONTENT_CONTEXT_GENERATE_QR_CODE"/>
   <int value="111"
       label="(Obsolete) IDC_CONTENT_CLIPBOARD_HISTORY_MENU. Removed in
@@ -361,7 +365,8 @@ chromium-metrics-reviews@google.com.
   <int value="156" label="IDC_CONTENT_CONTEXT_OPENLINKSPLITVIEW"/>
   <int value="157" label="IDC_CONTENT_CONTEXT_GLICSHAREIMAGE"/>
   <int value="158" label="IDC_CONTENT_CONTEXT_ARCHIVE_GLIC"/>
-  <int value="159" label="IDC_CONTENT_CONTEXT_INSPECTELEMENT_WITH_GEMINI"/>
+  <int value="159"
+      label="(Obsolete) IDC_CONTENT_CONTEXT_INSPECTELEMENT_WITH_GEMINI"/>
   <int value="160" label="IDC_CONTENT_CONTEXT_INSPECTELEMENT_WITH_DEVTOOLS"/>
   <int value="161" label="IDC_CONTENT_CONTEXT_AUTOFILL_FALLBACK_AT_MEMORY"/>
   <int value="162" label="IDC_CONTENT_CONTEXT_GLIC"/>
@@ -498,6 +503,7 @@ chromium-metrics-reviews@google.com.
   <int value="90" label="UMA_GLIC"/>
   <int value="91" label="UMA_TIPS_OPT_IN"/>
   <int value="92" label="UMA_NTP_THEME_TIP"/>
+  <int value="93" label="UMA_SEND_TAB_TO_SELF"/>
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/ui/messages/android/java/src/org/chromium/chrome/browser/ui/messages/snackbar/Snackbar.java:SnackbarIdentifier) -->
@@ -694,6 +700,7 @@ chromium-metrics-reviews@google.com.
   <int value="-2069349961" label="chrome://history-clusters-internals/"/>
   <int value="-2061366287" label="chrome://dev-ui-loader/"/>
   <int value="-2052079834" label="chrome://context-hub/"/>
+  <int value="-2049053969" label="chrome://iwa-dev/"/>
   <int value="-2038391710" label="chrome://tab-strip-internals/"/>
   <int value="-2034706497" label="chrome://net-internals/"/>
   <int value="-2031269077" label="chrome://signin-error/"/>
@@ -710,6 +717,7 @@ chromium-metrics-reviews@google.com.
   <int value="-1941995226" label="chrome://attribution-internals/"/>
   <int value="-1911971715" label="chrome://history/"/>
   <int value="-1899361569" label="chrome-untrusted://eche-app/"/>
+  <int value="-1891730544" label="chrome://cross-device-signin-qr-bubble/"/>
   <int value="-1887206190" label="chrome://nfc-debug/"/>
   <int value="-1877210733" label="chrome-untrusted://privacy-sandbox-dialog/"/>
   <int value="-1837941403" label="chrome://launcher-internals/"/>
@@ -930,6 +938,7 @@ chromium-metrics-reviews@google.com.
   <int value="459058510" label="chrome://status-area-internals/"/>
   <int value="460232055" label="chrome://lens-search-bubble/"/>
   <int value="461287992" label="chrome://help/"/>
+  <int value="483244151" label="chrome://notebooks-internals/"/>
   <int value="502364118" label="chrome://default-browser/"/>
   <int value="507734656" label="chrome://profile-customization/"/>
   <int value="519565566" label="chrome://personal-context-internals/"/>

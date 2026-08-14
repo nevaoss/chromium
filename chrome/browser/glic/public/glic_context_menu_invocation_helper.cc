@@ -12,6 +12,9 @@
 #include "chrome/browser/glic/public/glic_keyed_service_factory.h"
 #include "chrome/browser/glic/public/glic_passkeys.h"
 #include "chrome/browser/profiles/profile.h"
+#if !BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/ui/tabs/page_context_eligibility_helper.h"
+#endif
 #include "chrome/grit/generated_resources.h"
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/web_contents.h"
@@ -42,8 +45,22 @@ void GlicContextMenuInvocationHelper::HandleContextualMenuClick(
         glic::Target(*tab),
         glic::mojom::InvocationSource::kWebContentsContextMenu);
 
+    std::u16string_view trimmed_selection =
+        base::TrimWhitespace(selection_text, base::TRIM_ALL);
+    bool is_page_eligible = false;
     if (base::FeatureList::IsEnabled(features::kGlicTextSelectionContextMenu) &&
-        !selection_text.empty()) {
+        !trimmed_selection.empty()) {
+#if !BUILDFLAG(IS_ANDROID)
+      tabs::PageContextEligibilityHelper* helper =
+          tab ? tabs::PageContextEligibilityHelper::From(tab) : nullptr;
+      is_page_eligible =
+          helper &&
+          helper->IsPageContextEligible() ==
+              optimization_guide::PageContextEligibilityStatus::kEligible;
+#endif
+    }
+
+    if (is_page_eligible) {
       auto context = glic::mojom::AdditionalContext::New();
       context->source = glic::mojom::AdditionalContextSource::kTextSelection;
       context->tab_id = tab->GetHandle().raw_value();
@@ -51,7 +68,7 @@ void GlicContextMenuInvocationHelper::HandleContextualMenuClick(
       auto data = glic::mojom::ContextData::New();
       data->mime_type = kMimeTypeGlicSelection;
 
-      std::string utf8_text = base::UTF16ToUTF8(selection_text);
+      std::string utf8_text = base::UTF16ToUTF8(trimmed_selection);
       data->data = mojo_base::BigBuffer(base::as_byte_span(utf8_text));
 
       auto part = glic::mojom::AdditionalContextPart::NewData(std::move(data));

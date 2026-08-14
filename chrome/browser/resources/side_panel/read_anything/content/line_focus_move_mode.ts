@@ -31,9 +31,6 @@ export interface MoveModeDelegate {
   // Notifies that the content panel needs a scroll buffer to allow for
   // centering focus.
   notifyScrollBuffer(needsBuffer: boolean): void;
-
-  // Notifies that a line focus session has ended.
-  onSessionEnd(): void;
 }
 
 // Base class for line focus movement strategies.
@@ -129,18 +126,9 @@ export abstract class LineFocusMoveMode {
   }
 
   protected setFocalPoint(focalPointY: number, quietly: boolean = false): void {
-    const oldHeight = this.model_.getWindowHeight();
-    const oldTop = this.model_.getTop();
-    const oldFocalPoint = this.model_.getFocalPoint();
     this.model_.setFocalPoint(focalPointY);
     this.styleMode_.updateFocusBounds();
-    const heightDiff = Math.abs(oldHeight - this.model_.getWindowHeight());
-    const topDiff = Math.abs(oldTop - this.model_.getTop());
-    const focalDiff = Math.abs(oldFocalPoint - focalPointY);
-    if (!quietly &&
-        (focalDiff > this.movementThreshold ||
-         heightDiff > this.movementThreshold ||
-         topDiff > this.movementThreshold)) {
+    if (!quietly) {
       this.delegate_.notifyMove();
     }
   }
@@ -195,7 +183,6 @@ export abstract class LineFocusMoveMode {
   // Common setup logic for when a movement mode that enables line focus is
   // activated.
   protected setupEnabledMode(container: HTMLElement, height: number): void {
-    this.model_.setLastEnabledLineFocusStyle(this.styleMode_.getStyle());
     if (!this.model_.isSessionActive()) {
       chrome.readingMode.startLineFocusSession();
       this.model_.setSessionActive(true);
@@ -388,9 +375,24 @@ export class LineFocusCursorMoveMode extends LineFocusMoveMode {
   }
 
   protected moveToRect(rect: DOMRect): void {
-    const focalPoint = this.styleMode_.getFocalPointForRect(rect);
-    this.setFocalPoint(focalPoint);
+    const oldHeight = this.model_.getWindowHeight();
+    const oldTop = this.model_.getTop();
+    const oldFocalPoint = this.model_.getFocalPoint();
+
+    // Set the focal point quietly as the threshold calculation below will
+    // determine whether or not to notify of movement.
+    const newFocalPoint = this.styleMode_.getFocalPointForRect(rect);
+    this.setFocalPoint(newFocalPoint, /*quietly=*/ true);
     this.recenterCurrentTextLineIfNeeded(/*instant=*/ false);
+
+    const heightDiff = Math.abs(oldHeight - this.model_.getWindowHeight());
+    const topDiff = Math.abs(oldTop - this.model_.getTop());
+    const focalDiff = Math.abs(oldFocalPoint - newFocalPoint);
+    if (focalDiff > this.movementThreshold ||
+        heightDiff > this.movementThreshold ||
+        topDiff > this.movementThreshold) {
+      this.delegate_.notifyMove();
+    }
   }
 
   protected needsScrollBuffer(): boolean {
@@ -428,9 +430,6 @@ export class LineFocusNoneMoveMode extends LineFocusMoveMode {
   }
 
   onActivated(_container: HTMLElement, _height: number): void {
-    if (this.model_.isSessionActive()) {
-      this.delegate_.onSessionEnd();
-    }
     this.model_.reset();
     this.updateScrollBuffer();
   }

@@ -5,6 +5,7 @@
 #include "components/paint_preview/common/serial_utils.h"
 
 #include "base/compiler_specific.h"
+#include "base/containers/span.h"
 #include "base/trace_event/common/trace_event_common.h"
 #include "base/trace_event/trace_event.h"
 #include "build/build_config.h"
@@ -119,7 +120,8 @@ static sk_sp<SkTypeface> DeserializeTypeface(SkStream& stream, void* ctx) {
   // on Android due to the above behavior w/r to system fonts. Thus, we
   // call the underlying SkTypeface::MakeDeserialize and pass in the
   // system font manager ourselves.
-  return SkTypeface::MakeDeserialize(&stream, skia::DefaultFontMgr());
+  return SkTypeface::MakeDeserialize(&stream, skia::DefaultFontMgr(),
+                                     &skia::SanitizeTypefaceStream);
 }
 
 static bool is_supported_codec(sk_sp<const SkData> data) {
@@ -228,7 +230,11 @@ sk_sp<SkPicture> DeserializePictureAsRectData(const void* data,
   if (length < sizeof(rect_data)) {
     return MakeEmptyPicture();
   }
-  UNSAFE_TODO(memcpy(&rect_data, data, sizeof(rect_data)));
+  // SAFETY: We checked that `length` is at least `sizeof(rect_data)`.
+  base::byte_span_from_ref(base::allow_nonunique_obj, rect_data)
+      .copy_from(
+          UNSAFE_BUFFERS(base::span(static_cast<const uint8_t*>(data), length))
+              .first<sizeof(SerializedRectData)>());
   auto* context = reinterpret_cast<DeserializationContext*>(ctx);
   context->insert(
       {rect_data.content_id,
@@ -251,7 +257,11 @@ sk_sp<SkPicture> GetPictureFromDeserialContext(const void* data,
   if (length < sizeof(rect_data)) {
     return MakeEmptyPicture();
   }
-  UNSAFE_TODO(memcpy(&rect_data, data, sizeof(rect_data)));
+  // SAFETY: We checked that `length` is at least `sizeof(rect_data)`.
+  base::byte_span_from_ref(base::allow_nonunique_obj, rect_data)
+      .copy_from(
+          UNSAFE_BUFFERS(base::span(static_cast<const uint8_t*>(data), length))
+              .first<sizeof(SerializedRectData)>());
   auto* context = reinterpret_cast<LoadedFramesDeserialContext*>(ctx);
 
   auto it = context->find(rect_data.content_id);

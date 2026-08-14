@@ -460,6 +460,7 @@ SendTabToSelfBridge::GetUnopenedEntriesTargetedToLocalDevice() const {
       unopened_entries.push_back(entry.get());
     }
   }
+  std::ranges::sort(unopened_entries, {}, &SendTabToSelfEntry::GetSharedTime);
   return unopened_entries;
 }
 
@@ -528,9 +529,12 @@ const SendTabToSelfEntry* SendTabToSelfBridge::SendEntry(
         base::CollapseWhitespace(base::UTF8ToUTF16(title), false));
   }
 
+  std::string local_device_name = GetLocalDeviceName();
+  RecordIsLocalDeviceNameAvailableOnSend(!local_device_name.empty());
+
   std::unique_ptr<SendTabToSelfEntry> entry =
       std::make_unique<SendTabToSelfEntry>(
-          guid, url, trimmed_title, shared_time, GetLocalFallbackFullName(),
+          guid, url, trimmed_title, shared_time, std::move(local_device_name),
           target_device_cache_guid, context, std::move(navigation_history));
 
   // The size is recorded before potential truncation (dropping) of the context
@@ -594,21 +598,26 @@ void SendTabToSelfBridge::DismissEntry(std::string_view guid) {
 }
 
 void SendTabToSelfBridge::MarkEntryOpened(std::string_view guid) {
+  MarkEntryOpenedImpl(guid, clock_->Now());
+}
+
+void SendTabToSelfBridge::MarkEntryOpenedImpl(std::string_view guid,
+                                              base::Time opened_time) {
   SendTabToSelfEntry* entry = GetMutableEntryByGUID(guid);
   // Assure that an entry with that guid exists.
   if (!entry) {
     auto it = unknown_opened_entries_.find(guid);
     if (it != unknown_opened_entries_.end()) {
-      it->second = clock_->Now();
+      it->second = opened_time;
     } else {
-      unknown_opened_entries_.emplace(guid, clock_->Now());
+      unknown_opened_entries_.emplace(guid, opened_time);
     }
     return;
   }
 
   DCHECK(change_processor()->IsTrackingMetadata());
 
-  entry->MarkOpened(clock_->Now());
+  entry->MarkOpened(opened_time);
 
   RecordTimeSentToOpened(entry->GetOpenedTime() - entry->GetSharedTime());
   CommitLocalEntryMutation(*entry);
@@ -740,7 +749,7 @@ SendTabToSelfBridge::GetTargetDeviceInfoSortedList() {
   // by name and chooses between preferred/fallback names based on collisions.
   std::vector<syncer::DeviceInfoWithName> device_names =
       syncer::DetermineDisplayNamesAndDeduplicate(legacy_devices,
-                                                  GetLocalFallbackFullName());
+                                                  GetLocalDeviceName());
 
   return base::ToVector(device_names, [&](const auto& info) {
     auto it =
@@ -871,10 +880,13 @@ void SendTabToSelfBridge::OnReadAllMetadata(
   change_processor()->ModelReadyToSync(std::move(metadata_batch));
 
   if (IsReady()) {
-    // TODO(crbug.com/503283050): Also implement this for
-    // `unknown_opened_entries_`. On cold startups (for example if the tab is
-    // opened from a system-level notification), opening metrics won't otherwise
-    // be recorded given that the model won't be ready yet.
+    base::flat_map<std::string, base::Time, std::less<>> opened_queued =
+        std::move(unknown_opened_entries_);
+    unknown_opened_entries_.clear();
+    for (const auto& [guid, opened_time] : opened_queued) {
+      MarkEntryOpenedImpl(guid, opened_time);
+    }
+
     base::flat_map<std::string, std::pair<base::Time, ShareActivatedEntryPoint>,
                    std::less<>>
         queued = std::move(unknown_activated_entries_);
@@ -923,12 +935,23 @@ const syncer::DeviceInfo* SendTabToSelfBridge::GetLocalDeviceInfo() const {
       change_processor()->TrackedCacheGuid());
 }
 
-std::string SendTabToSelfBridge::GetLocalFallbackFullName() const {
+std::string SendTabToSelfBridge::GetLocalDeviceName() const {
   if (local_device_name_for_testing_.has_value()) {
     return *local_device_name_for_testing_;
   }
+  // `local_device` may be null during early startup before DeviceInfoTracker is
+  // initialized.
   const syncer::DeviceInfo* local_device = GetLocalDeviceInfo();
-  CHECK(local_device, base::NotFatalUntil::M148);
+  if (!local_device) {
+    return std::string();
+  }
+
+  // TODO(crbug.com/531649027): Remove fallback_full_name logic once
+  // kSyncSimplifyDeviceNaming launches. It is only needed for legacy name
+  // deduplication; simplified naming filters the local device by GUID.
+  if (base::FeatureList::IsEnabled(syncer::kSyncSimplifyDeviceNaming)) {
+    return syncer::GetDeviceDisplayName(local_device);
+  }
 
   return syncer::GetDisplayNameCandidates(local_device).fallback_full_name;
 }

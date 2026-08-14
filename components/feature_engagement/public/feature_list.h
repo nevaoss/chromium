@@ -145,6 +145,7 @@ DEFINE_VARIATION_PARAM(kIPHIdentityDiscFeature, "IPH_IdentityDisc");
 DEFINE_VARIATION_PARAM(kIPHIncognitoIndicatorCloseAllWindows,
                        "IPH_IncognitoIndicatorCloseAllWindows");
 DEFINE_VARIATION_PARAM(kIPHInstanceSwitcherFeature, "IPH_InstanceSwitcher");
+DEFINE_VARIATION_PARAM(kIPHRecentTabsFeature, "IPH_RecentTabs");
 DEFINE_VARIATION_PARAM(kIPHKeyboardAccessoryAddressFillingFeature,
                        "IPH_KeyboardAccessoryAddressFilling");
 DEFINE_VARIATION_PARAM(kIPHKeyboardAccessoryBarSwipingFeature,
@@ -435,12 +436,18 @@ DEFINE_VARIATION_PARAM(kIPHExtensionsRequestAccessButtonFeature,
 DEFINE_VARIATION_PARAM(kIPHExtensionsZeroStatePromoFeature,
                        "IPH_ExtensionsZeroStatePromo");
 #endif
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+DEFINE_VARIATION_PARAM(kIPHExtensionsPinnedByDefaultFeature,
+                       "IPH_ExtensionsPinnedByDefault");
+#endif
 DEFINE_VARIATION_PARAM(kIPHGMCCastStartStopFeature, "IPH_GMCCastStartStop");
 DEFINE_VARIATION_PARAM(kIPHGMCLocalMediaCastingFeature,
                        "IPH_GMCLocalMediaCasting");
 // The feature is used in Finch experiments so it is unable to be renamed
 // alongside the variable name.
 DEFINE_VARIATION_PARAM(kIPHMemorySaverModeFeature, "IPH_HighEfficiencyMode");
+DEFINE_VARIATION_PARAM(kIPHMultistepFilterPromoFeature,
+                       "IPH_MultistepFilterPromo");
 DEFINE_VARIATION_PARAM(kIPHLensOverlayFeature, "IPH_LensOverlay");
 DEFINE_VARIATION_PARAM(kIPHLensOverlayTranslateButtonFeature,
                        "IPH_LensOverlayTranslateButton");
@@ -574,7 +581,6 @@ DEFINE_VARIATION_PARAM(kIPHAutofillVirtualCardCVCSuggestionFeature,
                        "IPH_AutofillVirtualCardCVCSuggestion");
 DEFINE_VARIATION_PARAM(kIPHAutofillVirtualCardSuggestionFeature,
                        "IPH_AutofillVirtualCardSuggestion");
-DEFINE_VARIATION_PARAM(kIPHCookieControlsFeature, "IPH_CookieControls");
 
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_APPLE) || BUILDFLAG(IS_LINUX) ||
         // BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID) ||
@@ -691,6 +697,7 @@ inline constexpr flags_ui::FeatureEntry::FeatureVariation
         VARIATION_ENTRY(kIPHFeedHeaderMenuFeature),
         VARIATION_ENTRY(kIPHFeedSwipeRefresh),
         VARIATION_ENTRY(kIPHGestureUserEducation),
+        VARIATION_ENTRY(kIPHGlicPromoAndroidFeature),
         VARIATION_ENTRY(kIPHIdentityDiscFeature),
         VARIATION_ENTRY(kIPHIncognitoIndicatorCloseAllWindows),
         VARIATION_ENTRY(kIPHInstanceSwitcherFeature),
@@ -717,6 +724,7 @@ inline constexpr flags_ui::FeatureEntry::FeatureVariation
         VARIATION_ENTRY(kIPHReadLaterAppMenuBookmarkThisPageFeature),
         VARIATION_ENTRY(kIPHReadLaterBottomSheetFeature),
         VARIATION_ENTRY(kIPHReadLaterContextMenuFeature),
+        VARIATION_ENTRY(kIPHRecentTabsFeature),
         VARIATION_ENTRY(kIPHRequestDesktopSiteDefaultOnFeature),
         VARIATION_ENTRY(kIPHRequestDesktopSiteExceptionsGenericFeature),
         VARIATION_ENTRY(kIPHRequestDesktopSiteWindowSettingFeature),
@@ -840,6 +848,9 @@ inline constexpr flags_ui::FeatureEntry::FeatureVariation
         VARIATION_ENTRY(kIPHExtensionsMenuFeature),
         VARIATION_ENTRY(kIPHExtensionsRequestAccessButtonFeature),
 #endif
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+        VARIATION_ENTRY(kIPHExtensionsPinnedByDefaultFeature),
+#endif
 // keep-sorted start case=no
         VARIATION_ENTRY(kIPHBackNavigationMenuFeature),
         VARIATION_ENTRY(kIPHBatterySaverModeFeature),
@@ -862,6 +873,7 @@ inline constexpr flags_ui::FeatureEntry::FeatureVariation
         VARIATION_ENTRY(kIPHHistorySearchFeature),
         VARIATION_ENTRY(kIPHLiveCaptionFeature),
         VARIATION_ENTRY(kIPHMemorySaverModeFeature),
+        VARIATION_ENTRY(kIPHMultistepFilterPromoFeature),
         VARIATION_ENTRY(kIPHPasswordManagerShortcutFeature),
         VARIATION_ENTRY(kIPHPasswordSharingFeature),
         VARIATION_ENTRY(kIPHPasswordsManagementBubbleAfterSaveFeature),
@@ -923,7 +935,6 @@ inline constexpr flags_ui::FeatureEntry::FeatureVariation
         VARIATION_ENTRY(kIPHAutofillOmniboxPaymentChipFeature),
         VARIATION_ENTRY(kIPHAutofillVirtualCardCVCSuggestionFeature),
         VARIATION_ENTRY(kIPHAutofillVirtualCardSuggestionFeature),
-        VARIATION_ENTRY(kIPHCookieControlsFeature),
 
 // keep-sorted end
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_APPLE) || BUILDFLAG(IS_LINUX) ||

@@ -62,6 +62,7 @@
 #endif
 #include "ui/ozone/public/drm_modifiers_filter.h"
 #include "ui/ozone/public/ozone_platform.h"
+#include "ui/ozone/public/ozone_switches.h"
 #include "ui/ozone/public/surface_factory_ozone.h"
 #endif
 
@@ -1383,7 +1384,6 @@ bool GpuInit::InitializeDawn() {
 #endif  // BUILDFLAG(IS_ANDROID)
 
   static BASE_FEATURE(kGraphiteDawnReportWorkerTaskProgressToWatchdog,
-                      "GraphiteDawnReportWorkerTaskProgressToWatchdog",
                       base::FEATURE_ENABLED_BY_DEFAULT);
 
   gl::ProgressReporter* progress_reporter = nullptr;
@@ -1429,6 +1429,16 @@ bool GpuInit::InitializeVulkan() {
       return false;
     }
   }
+
+#if BUILDFLAG(IS_OZONE)
+  // Vulkan does not support implicit sync.
+  if (base::CommandLine::ForCurrentProcess()->HasSwitch(
+          switches::kDisableExplicitDmaFences)) {
+    LOG(WARNING)
+        << "Disabling Vulkan because explicit DMA fences are disabled.";
+    return false;
+  }
+#endif
 
   vulkan_implementation_ = CreateVulkanImplementation(
       vulkan_use_swiftshader, gpu_preferences_.enable_vulkan_protected_memory);

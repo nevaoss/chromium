@@ -181,6 +181,49 @@ bool IsTabGroupsCommand(int command_id) {
           kTabGroupsCommandIdOffset);
 }
 
+// Computes the target row height for the "Other profiles" section based on
+// the sizes of the profile icons. It ensures that all rows have the same
+// height, and that there is a minimum gap between adjacent icons.
+int ComputeTargetProfileRowHeight(int default_margin, ui::MenuModel* model) {
+  const int default_avatar_icon_size =
+      GetLayoutConstant(LayoutConstant::kAppMenuProfileRowAvatarIconSize);
+  // By default, the target height is the standard avatar row height.
+  int target_height = default_avatar_icon_size + 2 * default_margin;
+
+  // Iterate over all icons and pick a target height that allows for the icons
+  // to be displayed with a gap between them.
+  int previous_icon_height = 0;
+  constexpr int kMinIconSpacing = 1;
+  for (size_t i = 0, max = model->GetItemCount(); i < max; ++i) {
+    if (!IsOtherProfileCommand(model->GetCommandIdAt(i))) {
+      previous_icon_height = 0;
+      continue;
+    }
+
+    ui::ImageModel icon = model->GetIconAt(i);
+    int icon_height =
+        icon.IsEmpty() ? views::kMenuCheckSize : icon.Size().height();
+    // A row must be at least as tall as its icon.
+    target_height = std::max(target_height, icon_height);
+
+    if (previous_icon_height > 0) {
+      // Average the icon heights (rounded up) and add the minimum icon spacing.
+      int required_height =
+          (icon_height + previous_icon_height + 1) / 2 + kMinIconSpacing;
+      target_height = std::max(target_height, required_height);
+    }
+    previous_icon_height = icon_height;
+  }
+
+  // Ensure target_height has the same parity as avatar_icon_size so that
+  // integer division for margins doesn't truncate and cause varying heights.
+  if ((target_height - default_avatar_icon_size) % 2 != 0) {
+    ++target_height;
+  }
+
+  return target_height;
+}
+
 // Combination border/background for the buttons contained in the menu. The
 // painting of the border/background is done here as LabelButton does not always
 // paint the border.
@@ -699,7 +742,8 @@ class AppMenu::ZoomView : public AppMenuView, public views::WidgetObserver {
            size_t fullscreen_index)
       : AppMenuView(menu, menu_model) {
     browser_zoom_subscription_ =
-        zoom::ZoomEventManager::GetForBrowserContext(menu->browser_->profile())
+        zoom::ZoomEventManager::GetForBrowserContext(
+            menu->browser_->GetProfile())
             ->AddZoomLevelChangedCallback(
                 base::BindRepeating(&AppMenu::ZoomView::OnZoomLevelChanged,
                                     base::Unretained(this)));
@@ -872,13 +916,13 @@ class AppMenu::ZoomView : public AppMenuView, public views::WidgetObserver {
       decrement_button_->SetEnabled(zoom > contents->GetMinimumZoomPercent());
     }
     zoom_label_->SetText(base::FormatPercent(zoom));
+    zoom_label_max_width_.reset();
     if (!on_construction) {
       // An alert notification will ensure that the zoom label is always
       // announced even if is not focusable.
       zoom_label_->NotifyAccessibilityEventDeprecated(ax::mojom::Event::kAlert,
                                                       true);
     }
-    zoom_label_max_width_.reset();
   }
 
   void UpdateFullScreenButton() {
@@ -1054,7 +1098,7 @@ AppMenu::AppMenu(Browser* browser,
       run_types_(run_types),
       on_menu_closed_callback_(std::move(on_menu_closed_callback)) {
   global_error_observation_.Observe(
-      GlobalErrorServiceFactory::GetForProfile(browser->profile()));
+      GlobalErrorServiceFactory::GetForProfile(browser->GetProfile()));
 
   DCHECK(!root_);
   auto root = std::make_unique<MenuItemView>(/*delegate=*/this);
@@ -1077,7 +1121,8 @@ AppMenu::AppMenu(Browser* browser,
 AppMenu::~AppMenu() {
   if (bookmark_menu_delegate_.get()) {
     BookmarkMergedSurfaceService* service =
-        BookmarkMergedSurfaceServiceFactory::GetForProfile(browser_->profile());
+        BookmarkMergedSurfaceServiceFactory::GetForProfile(
+            browser_->GetProfile());
     if (service) {
       service->RemoveObserver(this);
     }
@@ -1124,6 +1169,10 @@ const gfx::FontList* AppMenu::GetLabelFontList(int command_id) const {
   ui::MenuModel* model = model_;
   size_t index = 0;
   ui::MenuModel::GetModelAndIndexForCommandId(command_id, &model, &index);
+  if (model->GetTypeAt(index) == ui::MenuModel::TYPE_TITLE) {
+    return &views::TypographyProvider::Get().GetFont(
+        views::style::CONTEXT_LABEL, views::style::STYLE_HEADLINE_5);
+  }
   return model->GetLabelFontListAt(index);
 }
 
@@ -1251,9 +1300,6 @@ bool AppMenu::IsCommandEnabled(int command_id) const {
     return true;
   }
 
-  if (command_id == IDC_CREATE_NEW_TAB_GROUP_TOP_LEVEL) {
-    return true;
-  }
 
   if (IsTabGroupsCommand(command_id)) {
     return stg_everything_menu_->ShouldEnableCommand(command_id);
@@ -1321,10 +1367,6 @@ void AppMenu::ExecuteCommand(int command_id, int mouse_event_flags) {
     return;
   }
 
-  if (command_id == IDC_CREATE_NEW_TAB_GROUP_TOP_LEVEL) {
-    base::RecordAction(
-        base::UserMetricsAction("TabGroups_NewTabGroup_AppMenu"));
-  }
 
   const Entry& entry = command_id_to_entry_.find(command_id)->second;
   return entry.first->ActivatedAt(entry.second, mouse_event_flags);
@@ -1345,13 +1387,6 @@ bool AppMenu::GetAccelerator(int command_id,
     return false;
   }
 
-  if (command_id == IDC_CREATE_NEW_TAB_GROUP_TOP_LEVEL) {
-    // Same as 'Create new tab group' except the menu item is at the top level
-    // of the app menu instead of in the tab groups submenu.
-    return browser_->browser_window_features()
-        ->accelerator_provider()
-        ->GetAcceleratorForCommandId(IDC_CREATE_NEW_TAB_GROUP, accelerator);
-  }
 
   if (IsTabGroupsCommand(command_id)) {
     return false;
@@ -1435,7 +1470,8 @@ void AppMenu::OnMenuClosed(views::MenuItemView* menu) {
   if (has_safety_hub_notification &&
       menu_opened_timer_.Elapsed() >= base::Seconds(5)) {
     if (SafetyHubHatsService* hats_service =
-            SafetyHubHatsServiceFactory::GetForProfile(browser_->profile())) {
+            SafetyHubHatsServiceFactory::GetForProfile(
+                browser_->GetProfile())) {
       hats_service->SafetyHubNotificationSeen();
     }
   }
@@ -1444,7 +1480,8 @@ void AppMenu::OnMenuClosed(views::MenuItemView* menu) {
 
   if (bookmark_menu_delegate_.get()) {
     BookmarkMergedSurfaceService* service =
-        BookmarkMergedSurfaceServiceFactory::GetForProfile(browser_->profile());
+        BookmarkMergedSurfaceServiceFactory::GetForProfile(
+            browser_->GetProfile());
     if (service) {
       service->RemoveObserver(this);
     }
@@ -1553,6 +1590,9 @@ views::View* AppMenu::GetZoomAppMenuViewForTest() {
 }
 
 void AppMenu::PopulateMenu(MenuItemView* parent, MenuModel* model) {
+  int target_profile_row_height = ComputeTargetProfileRowHeight(
+      views::MenuConfig::instance().item_vertical_margin, model);
+
   for (size_t i = 0, max = model->GetItemCount(); i < max; ++i) {
     // Add the menu item at the end.
     size_t menu_index = parent->HasSubmenu()
@@ -1581,12 +1621,12 @@ void AppMenu::PopulateMenu(MenuItemView* parent, MenuModel* model) {
                                     DISTANCE_CONTENT_LIST_VERTICAL_MULTI),
                                 ui::kColorAppMenuProfileRowBackground);
         ProfileAttributesEntry* profile_attributes =
-            GetProfileAttributesFromProfile(browser_->profile());
+            GetProfileAttributesFromProfile(browser_->GetProfile());
         if (profile_attributes &&
             !profile_attributes->GetLocalProfileName().empty()) {
           const MenuConfig& config = MenuConfig::instance();
           AddSignedInChipToProfileMenuItem(
-              browser_->profile(), item,
+              browser_->GetProfile(), item,
               config.arrow_to_edge_padding + config.arrow_size,
               profile_menu_item_selected_subscription_list_);
         }
@@ -1685,6 +1725,13 @@ void AppMenu::PopulateMenu(MenuItemView* parent, MenuModel* model) {
                            IDC_SHOW_MANAGEMENT_PAGE);
         break;
       default:
+        if (IsOtherProfileCommand(model->GetCommandIdAt(i))) {
+          ui::ImageModel icon = model->GetIconAt(i);
+          int icon_height =
+              icon.IsEmpty() ? views::kMenuCheckSize : icon.Size().height();
+          item->set_vertical_margin(
+              std::max(0, (target_profile_row_height - icon_height) / 2));
+        }
         break;
     }
   }
@@ -1734,7 +1781,8 @@ void AppMenu::CreateBookmarkMenu() {
   }
 
   BookmarkMergedSurfaceService* service =
-      BookmarkMergedSurfaceServiceFactory::GetForProfile(browser_->profile());
+      BookmarkMergedSurfaceServiceFactory::GetForProfile(
+          browser_->GetProfile());
   if (!service->loaded()) {
     return;
   }

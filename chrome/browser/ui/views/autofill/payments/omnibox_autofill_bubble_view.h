@@ -23,6 +23,7 @@ class View;
 namespace autofill {
 
 class OmniboxAutofillBubbleController;
+struct Suggestion;
 
 class OmniboxAutofillBubbleView : public AutofillLocationBarBubble {
   METADATA_HEADER(OmniboxAutofillBubbleView, AutofillLocationBarBubble)
@@ -45,15 +46,17 @@ class OmniboxAutofillBubbleView : public AutofillLocationBarBubble {
   std::u16string GetWindowTitle() const override;
   void WindowClosing() override;
   void AddedToWidget() override;
-  views::View* GetInitiallyFocusedView() override;
 
  protected:
   // LocationBarBubbleDelegateView:
   void Init() override;
 
  private:
+  void OnSuggestionAccepted(const Suggestion& suggestion, size_t row_index);
+  void OnSuggestionSelected(const Suggestion& suggestion);
+  void OnSuggestionDeselected();
+
   base::WeakPtr<OmniboxAutofillBubbleController> controller_;
-  raw_ptr<views::View> initially_focused_view_ = nullptr;
   base::WeakPtrFactory<OmniboxAutofillBubbleView> weak_ptr_factory_{this};
 };
 

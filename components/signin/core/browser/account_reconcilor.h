@@ -33,10 +33,6 @@
 #include "net/device_bound_sessions/session_key.h"
 #include "services/network/public/mojom/device_bound_sessions.mojom.h"
 
-#if BUILDFLAG(IS_CHROMEOS)
-#include "components/account_manager_core/account_manager_facade.h"
-#endif
-
 namespace signin {
 class AccountReconcilorDelegate;
 enum class SetAccountsInCookieResult;
@@ -45,13 +41,9 @@ enum class SetAccountsInCookieResult;
 class SigninClient;
 struct CoreAccountId;
 
-class AccountReconcilor
-    : public KeyedService,
-#if BUILDFLAG(IS_CHROMEOS)
-      public account_manager::AccountManagerFacade::Observer,
-#endif
-      public content_settings::Observer,
-      public signin::IdentityManager::Observer {
+class AccountReconcilor : public KeyedService,
+                          public content_settings::Observer,
+                          public signin::IdentityManager::Observer {
  public:
   // When an instance of this class exists, the account reconcilor is suspended.
   // It will automatically restart when all instances of Lock have been
@@ -92,18 +84,10 @@ class AccountReconcilor
     virtual void OnUnblockReconcile() {}
   };
 
-#if BUILDFLAG(IS_CHROMEOS)
-  AccountReconcilor(
-      signin::IdentityManager* identity_manager,
-      SigninClient* client,
-      account_manager::AccountManagerFacade* account_manager_facade,
-      std::unique_ptr<signin::AccountReconcilorDelegate> delegate);
-#else
   AccountReconcilor(
       signin::IdentityManager* identity_manager,
       SigninClient* client,
       std::unique_ptr<signin::AccountReconcilorDelegate> delegate);
-#endif  // BUILDFLAG(IS_CHROMEOS)
 
   AccountReconcilor(const AccountReconcilor&) = delete;
   AccountReconcilor& operator=(const AccountReconcilor&) = delete;
@@ -134,6 +118,13 @@ class AccountReconcilor
   void AddObserver(Observer* observer);
   void RemoveObserver(Observer* observer);
 
+#if BUILDFLAG(ENABLE_MIRROR)
+  // Returns a callback that, when run, will call `ForceReconcile()`.
+  // This is useful for registering with external triggers (currently only used
+  // on ChromeOS for dialog closures) to trigger a forced reconciliation.
+  base::RepeatingClosure CreateForceReconcileCallback();
+#endif  // BUILDFLAG(ENABLE_MIRROR)
+
   // Returns true if reconcilor is blocked.
   bool IsReconcileBlocked() const;
 
@@ -146,6 +137,7 @@ class AccountReconcilor
  protected:
   void OnSetAccountsInCookieCompleted(
       const std::vector<CoreAccountId>& accounts_to_send,
+      std::optional<base::TimeTicks> cookie_upgrade_start_time,
       signin::SetAccountsInCookieResult result);
   void OnLogOutFromCookieCompleted(const GoogleServiceAuthError& error);
 
@@ -171,6 +163,20 @@ class AccountReconcilor
   FRIEND_TEST_ALL_PREFIXES(
       AccountReconcilorTest,
       NeedsCookieBindingUpgradeNoUpgradeIfPrototypeSessionExists);
+  FRIEND_TEST_ALL_PREFIXES(AccountReconcilorTest,
+                           CookieBindingUpgradeStatusMetricsFeatureDisabled);
+  FRIEND_TEST_ALL_PREFIXES(AccountReconcilorTest,
+                           CookieBindingUpgradeStatusMetricsNoWrappedKey);
+  FRIEND_TEST_ALL_PREFIXES(AccountReconcilorTest,
+                           CookieBindingUpgradeStatusMetricsNeedsUpgrade);
+  FRIEND_TEST_ALL_PREFIXES(AccountReconcilorTest,
+                           CookieBindingUpgradeStatusMetricsHasStandardSession);
+  FRIEND_TEST_ALL_PREFIXES(AccountReconcilorTest,
+                           CookieBindingUpgradeStatusMetricsUpgradeNotDeferred);
+  FRIEND_TEST_ALL_PREFIXES(AccountReconcilorTest,
+                           GetGaiaApiSourceNormalReconcileParameter);
+  FRIEND_TEST_ALL_PREFIXES(AccountReconcilorTest,
+                           GetGaiaApiSourceCookieUpgradeParameter);
 
 #if BUILDFLAG(ENABLE_MIRROR)
   FRIEND_TEST_ALL_PREFIXES(AccountReconcilorTest,
@@ -185,7 +191,7 @@ class AccountReconcilor
       ForceReconcileSchedulesReconciliationIfReconcilorIsAlreadyRunning);
   FRIEND_TEST_ALL_PREFIXES(
       AccountReconcilorMirrorTest,
-      OnSigninDialogClosedNotificationTriggersForcedReconciliation);
+      CreateForceReconcileCallbackTriggersForcedReconciliation);
 #endif  // BUILDFLAG(ENABLE_MIRROR)
 
   FRIEND_TEST_ALL_PREFIXES(AccountReconcilorTestForceDiceMigration,
@@ -348,6 +354,21 @@ class AccountReconcilor
   };
   // LINT.ThenChange(//tools/metrics/histograms/metadata/signin/enums.xml:SigninReconcilerTrigger)
 
+  // These values are persisted to logs. Entries should not be renumbered and
+  // numeric values should never be reused.
+  // LINT.IfChange(CookieBindingUpgradeStatus)
+  enum class CookieBindingUpgradeStatus {
+    kFeatureNotSupported = 0,
+    kFeatureDisabled = 1,
+    kNoWrappedKey = 2,
+    kHasStandardSession = 3,
+    kHasPrototypeSession = 4,
+    kNotFirstRun = 5,
+    kNeedsUpgrade = 6,
+    kMaxValue = kNeedsUpgrade,
+  };
+  // LINT.ThenChange(//tools/metrics/histograms/metadata/signin/enums.xml:CookieBindingUpgradeStatus)
+
   void set_timer_for_testing(std::unique_ptr<base::OneShotTimer> timer);
 
   bool IsRegisteredWithIdentityManager() const {
@@ -361,21 +382,13 @@ class AccountReconcilor
   void UnregisterWithIdentityManager();
   void RegisterWithContentSettings();
   void UnregisterWithContentSettings();
-#if BUILDFLAG(IS_CHROMEOS)
-  // This registration with `AccountManagerFacade` is required to force an
-  // account reconciliation when `OnSigninDialogClosed()` is received.
-  // Currently, only ChromeOS provides this notification. Extend this to other
-  // Mirror platforms after adding the relevant implementation of
-  // `AccountManagerFacade` interface for that platform.
-  void RegisterWithAccountManagerFacade();
-  void UnregisterWithAccountManagerFacade();
-#endif  // BUILDFLAG(IS_CHROMEOS)
 
   // All actions with side effects, only doing meaningful work if account
   // consistency is enabled. Virtual so that they can be overridden in tests.
   virtual void PerformLogoutAllAccountsAction();
   virtual void PerformSetCookiesAction(
-      const signin::MultiloginParameters& parameters);
+      const signin::MultiloginParameters& parameters,
+      bool is_cookie_upgrade = false);
 
   // Used during periodic reconciliation.
   void StartReconcile(Trigger trigger);
@@ -428,15 +441,6 @@ class AccountReconcilor
       std::vector<gaia::ListedAccount>&& gaia_accounts);
   void CalculateIfMultiloginReconcileIsDone();
 
-#if BUILDFLAG(IS_CHROMEOS)
-  // Overridden from account_manager::AccountManagerFacade::Observer.
-  void OnAccountUpserted(const account_manager::Account& account) override;
-  void OnAccountRemoved(const account_manager::Account& account) override;
-  void OnAuthErrorChanged(const account_manager::AccountKey& account,
-                          const GoogleServiceAuthError& error) override;
-  void OnSigninDialogClosed() override;
-#endif  // BUILDFLAG(IS_CHROMEOS)
-
   // Lock related methods.
   void IncrementLockCount();
   void DecrementLockCount();
@@ -450,15 +454,21 @@ class AccountReconcilor
   // no-op.
   bool CookieNeedsUpdate(
       const signin::MultiloginParameters& parameters,
-      const std::vector<gaia::ListedAccount>& existing_accounts);
+      const std::vector<gaia::ListedAccount>& existing_accounts,
+      CookieBindingUpgradeStatus upgrade_status);
 
-  // Returns true if the reconcilor needs to trigger a cookie upgrade to bound
-  // cookies.
-  bool NeedsCookieBindingUpgrade() const;
+  // Returns the status of the cookie binding upgrade check.
+  CookieBindingUpgradeStatus NeedsCookieBindingUpgrade() const;
 
-  // Returns true if cookie binding features are enabled and the primary account
-  // has a bound key, meaning we might need a cookie upgrade.
-  bool PreconditionsForCookieBindingUpgradeMet() const;
+  // If some of the cookie binding preconditions aren't met, returns a
+  // `CookieBindingUpgradeStatus` indicating why upgrade is not possible.
+  base::expected<void, CookieBindingUpgradeStatus>
+  CheckCookieBindingUpgradePreconditions() const;
+
+  // Defers reconciliation on startup if we need to check DBSC sessions to see
+  // if a cookie upgrade is required. Returns true if reconciliation was
+  // deferred.
+  bool MaybeDeferReconciliationForCookieUpgrade();
 
   // Sets the reconcilor state and calls Observer::OnStateChanged() if needed.
   void SetState(signin_metrics::AccountReconcilorState state);
@@ -467,6 +477,11 @@ class AccountReconcilor
   bool WasShutDown() const;
 
   static void RecordReconcileOperation(Trigger trigger, Operation operation);
+
+  void FetchDeviceBoundSessions();
+  void OnDeviceBoundSessionsFetched(
+      std::optional<base::TimeTicks> fetch_start_time,
+      const std::vector<net::device_bound_sessions::SessionKey>& sessions);
 
   // Histogram names.
   static const char kOperationHistogramName[];
@@ -488,16 +503,8 @@ class AccountReconcilor
   // The SigninClient associated with this reconcilor.
   raw_ptr<SigninClient> client_;
 
-#if BUILDFLAG(IS_CHROMEOS)
-  // On Ash, this is a pointer to `AccountManagerFacadeImpl`.
-  raw_ptr<account_manager::AccountManagerFacade> account_manager_facade_;
-#endif  // BUILDFLAG(IS_CHROMEOS)
-
   bool registered_with_identity_manager_ = false;
   bool registered_with_content_settings_ = false;
-#if BUILDFLAG(IS_CHROMEOS)
-  bool registered_with_account_manager_facade_ = false;
-#endif  // BUILDFLAG(IS_CHROMEOS)
 
   // True while the reconcilor is busy checking or managing the accounts in
   // this profile.
@@ -554,13 +561,10 @@ class AccountReconcilor
   signin_metrics::AccountReconcilorState state_ =
       signin_metrics::AccountReconcilorState::kInactive;
 
-  void FetchDeviceBoundSessions();
-  void OnDeviceBoundSessionsFetched(
-      const std::vector<net::device_bound_sessions::SessionKey>& sessions);
-
   signin::Tribool has_standard_device_bound_session_ =
       signin::Tribool::kUnknown;
   bool reconcile_on_device_bound_sessions_fetched_ = false;
+  bool reconciliation_deferred_logged_ = false;
 
   // Set to true when Shutdown() is called.
   bool was_shut_down_ = false;

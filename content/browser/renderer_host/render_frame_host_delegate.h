@@ -13,6 +13,7 @@
 
 #include "base/functional/callback_forward.h"
 #include "base/memory/safe_ref.h"
+#include "base/time/time.h"
 #include "build/build_config.h"
 #include "components/viz/common/surfaces/surface_id.h"
 #include "content/browser/renderer_host/render_frame_host_impl.h"
@@ -37,6 +38,7 @@
 #include "services/device/public/mojom/wake_lock.mojom.h"
 #include "services/metrics/public/cpp/ukm_source_id.h"
 #include "services/network/public/cpp/permissions_policy/permissions_policy_declaration.h"
+#include "third_party/blink/public/common/dom/dom_node_id.h"
 #include "third_party/blink/public/common/mediastream/media_stream_request.h"
 #include "third_party/blink/public/mojom/choosers/popup_menu.mojom.h"
 #include "third_party/blink/public/mojom/devtools/console_message.mojom.h"
@@ -413,7 +415,8 @@ class CONTENT_EXPORT RenderFrameHostDelegate {
   virtual void OnFocusedElementChangedInFrame(
       RenderFrameHostImpl* frame,
       const gfx::Rect& bounds_in_root_view,
-      blink::mojom::FocusType focus_type) {}
+      blink::mojom::FocusType focus_type,
+      blink::DOMNodeIdType editable_dom_node_id) {}
 
   // The page is trying to open a new page (e.g. a popup window). The window
   // should be created and associated with the process of |opener|, but it
@@ -492,6 +495,7 @@ class CONTENT_EXPORT RenderFrameHostDelegate {
   virtual void ResourceLoadComplete(
       RenderFrameHostImpl* render_frame_host,
       const GlobalRequestID& request_id,
+      const GURL& original_url,
       blink::mojom::ResourceLoadInfoPtr resource_load_info) {}
 
   // Request to print a frame that is in a different process than its parent.
@@ -728,6 +732,9 @@ class CONTENT_EXPORT RenderFrameHostDelegate {
   GetActiveTopLevelDocumentsInBrowsingContextGroup(
       RenderFrameHostImpl* render_frame_host);
 
+  // Whether the delegate (e.g. WebContents) is currently being destroyed.
+  virtual bool IsBeingDestroyed();
+
   // Returns the PrerenderHostRegistry to start/cancel prerendering. This
   // doesn't return nullptr except for some tests.
   virtual PrerenderHostRegistry* GetPrerenderHostRegistry();
@@ -758,7 +765,16 @@ class CONTENT_EXPORT RenderFrameHostDelegate {
   virtual bool IsPopup() const;
 
   // Called when a first contentful paint happened in the primary main frame.
-  virtual void OnFirstContentfulPaintInPrimaryMainFrame() {}
+  // `presentation_time` is the renderer-side presentation timestamp of the
+  // paint.
+  virtual void OnFirstContentfulPaintInPrimaryMainFrame(
+      base::TimeTicks presentation_time) {}
+
+  // Called when the largest contentful paint candidate changed in the primary
+  // main frame. `presentation_time` is the renderer-side presentation timestamp
+  // of the current candidate.
+  virtual void OnLargestContentfulPaintInPrimaryMainFrame(
+      base::TimeTicks presentation_time) {}
 
   // Returns the top-level native window for the associated WebContents.
   virtual gfx::NativeWindow GetOwnerNativeWindow();

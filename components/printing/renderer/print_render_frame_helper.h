@@ -364,6 +364,7 @@ class PrintRenderFrameHelper
   // Page Printing / Rendering ------------------------------------------------
 
   void OnFramePreparedForPrintPages();
+  void OnPrintWithParamsFinished();
   void PrintPages();
   bool PrintPagesNative(blink::WebLocalFrame* frame,
                         uint32_t page_count,
@@ -428,7 +429,7 @@ class PrintRenderFrameHelper
 #if BUILDFLAG(ENABLE_PRINT_PREVIEW)
   void SetPrintPagesParamsForPrintPreview(
       const mojom::PrintPagesParams& settings,
-      int preview_ui_id);
+      const base::UnguessableToken& preview_ui_id);
 #endif  // BUILDFLAG(ENABLE_PRINT_PREVIEW)
 
   // Quits active runloop waiting for Mojo reply. It's called when
@@ -449,7 +450,7 @@ class PrintRenderFrameHelper
   mojom::PrintPagesParamsPtr print_pages_params_;
 #if BUILDFLAG(ENABLE_PRINT_PREVIEW)
   // The Print Preview UI ID associated with the current request.
-  int preview_ui_id_ = -1;
+  base::UnguessableToken preview_ui_id_;
 #endif
   gfx::Rect printer_printable_area_;
   bool is_print_ready_metafile_sent_ = false;

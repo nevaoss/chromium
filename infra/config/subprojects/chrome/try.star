@@ -87,6 +87,42 @@ chrome_internal_verifier(
 ### Optional builders ###
 
 chrome_internal_verifier(
+    builder = "ai_wpt-mac-arm64",
+    cq_settings = try_.cq_settings(
+        experiment_percentage = 100,
+        location_filters = [
+            "chrome/browser/ai/.+",
+            "components/on_device_translation/.+",
+            "components/optimization_guide/.+",
+            "services/on_device_model/.+",
+            "third_party/blink/web_tests/external/wpt/ai/.+",
+            "third_party/blink/web_tests/AIExpectations.*",
+        ],
+    ),
+    owner_whitelist = [
+        "google/optimization-guide-try-opt-in@google.com",
+    ],
+)
+
+chrome_internal_verifier(
+    builder = "ai_wpt-mac-x64",
+    cq_settings = try_.cq_settings(
+        experiment_percentage = 100,
+        location_filters = [
+            "chrome/browser/ai/.+",
+            "components/on_device_translation/.+",
+            "components/optimization_guide/.+",
+            "services/on_device_model/.+",
+            "third_party/blink/web_tests/external/wpt/ai/.+",
+            "third_party/blink/web_tests/AIExpectations.*",
+        ],
+    ),
+    owner_whitelist = [
+        "google/optimization-guide-try-opt-in@google.com",
+    ],
+)
+
+chrome_internal_verifier(
     # TODO(https://crbug.com/400712231): Turn on branches for this bot.
     #branch_selector = branches.selector.ANDROID_BRANCHES,
     builder = "android-arm32-orderfile",
@@ -154,7 +190,7 @@ chrome_internal_verifier(
     branch_selector = branches.selector.CROS_LTS_BRANCHES,
     builder = "chromeos-betty-compile-chrome",
     cq_settings = try_.cq_settings(
-        equivalent_builder = "chrome:try/chromeos-betty-chrome-noop",
+        equivalent_builder = "{}:try/chromeos-betty-chrome-noop".format(settings.chrome_project),
         equivalent_builder_percentage = 100,
         equivalent_builder_whitelist = "googlers",
         on_default_cq = True,
@@ -165,7 +201,7 @@ chrome_internal_verifier(
     branch_selector = branches.selector.CROS_LTS_BRANCHES,
     builder = "chromeos-betty-chrome-gtest",
     cq_settings = try_.cq_settings(
-        equivalent_builder = "chrome:try/chromeos-betty-chrome-gtest-and-cqtast",
+        equivalent_builder = "{}:try/chromeos-betty-chrome-gtest-and-cqtast".format(settings.chrome_project),
         equivalent_builder_percentage = 100,
         equivalent_builder_whitelist = "google/chromeos-pa@google.com",
         on_default_cq = True,
@@ -289,6 +325,10 @@ chrome_internal_verifier(
 
 chrome_internal_verifier(
     builder = "fuchsia-smoke-sherlock-roller",
+)
+
+chrome_internal_verifier(
+    builder = "fuchsia-starview-qemu-tests",
 )
 
 chrome_internal_verifier(

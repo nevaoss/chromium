@@ -8,6 +8,7 @@
 #include <array>
 #include <memory>
 
+#include "base/functional/function_ref.h"
 #include "base/gtest_prod_util.h"
 #include "base/time/time.h"
 #include "components/viz/common/frame_timing_details.h"
@@ -22,13 +23,13 @@
 #include "third_party/blink/renderer/platform/supplementable.h"
 #include "third_party/blink/renderer/platform/wtf/functional.h"
 
-namespace base {
-class TickClock;
-}
-
 namespace blink {
 struct DOMPaintTimingInfo;
+class LargestContentfulPaintManager;
+class ImageElementTiming;
 class LocalFrame;
+class PaintTimingClient;
+class PaintTimingDetector;
 class TextElementTiming;
 
 // PaintTiming is responsible for tracking paint-related timings for a given
@@ -97,7 +98,7 @@ class CORE_EXPORT PaintTiming final : public GarbageCollected<PaintTiming>,
       base::TimeTicks presentation_time,
       FirstMeaningfulPaintDetector::HadUserInput had_input);
   void NotifyPaint(bool is_first_paint, bool text_painted, bool image_painted);
-  void NotifyPaintFinished() { MarkPaintTimingInternal(); }
+  void NotifyPaintFinished();
 
   // The getters below return monotonically-increasing seconds, or zero if the
   // given paint event has not yet occurred. See the comments for
@@ -176,6 +177,8 @@ class CORE_EXPORT PaintTiming final : public GarbageCollected<PaintTiming>,
     return *fmp_detector_;
   }
 
+  Document* GetDocument() { return GetSupplementable(); }
+
   void RegisterNotifyPresentationTime(ReportTimeCallback);
   void ReportPresentationTime(PaintEvent,
                               base::TimeTicks rendering_update_end_time,
@@ -185,20 +188,46 @@ class CORE_EXPORT PaintTiming final : public GarbageCollected<PaintTiming>,
       wtf_size_t index,
       const viz::FrameTimingDetails&);
 
-  // The caller owns the |clock| which must outlive the PaintTiming.
-  void SetTickClockForTesting(const base::TickClock* clock);
-
   void OnRestoredFromBackForwardCache();
 
   void MarkPaintTiming();
 
+  void OnInputOrScroll();
+
   void Trace(Visitor*) const override;
+
+  // Returns the `LargestContentfulPaintManager` associated with this
+  // `PaintTiming`. Returns null if hard LCP is no longer being recorded, e.g.
+  // after first input.
+  LargestContentfulPaintManager* GetLargestContentfulPaintManager() {
+    return largest_contentful_paint_manager_;
+  }
 
   // Sets the `CallbackManager` to handle presentation time callbacks. Used for
   // unit tests.
   void SetCallbackManagerForTest(CallbackManager* manager) {
     callback_manager_ = manager;
   }
+
+  // TODO(crbug.com/503420427): Consider removing this and proxying through
+  // PaintTiming.
+  PaintTimingDetector& GetPaintTimingDetector() {
+    return *paint_timing_detector_.Get();
+  }
+
+  ImageElementTiming* GetImageElementTiming() { return image_element_timing_; }
+
+  // Adds a `PaintTimingClient` to observe contentful paints. The client must
+  // not have been previously added.
+  void AddClient(PaintTimingClient*);
+
+  // Removes a previously added `PaintTimingClient`. The client must have been
+  // previously added.
+  void RemoveClient(PaintTimingClient*);
+
+  // Iterates over the `PaintTimingClient`s invoking the given function. Must
+  // not add or remove clients.
+  void ForEachClient(base::FunctionRef<void(PaintTimingClient*)>);
 
  private:
   friend class RecodingTimeAfterBackForwardCacheRestoreFrameCallback;
@@ -273,18 +302,26 @@ class CORE_EXPORT PaintTiming final : public GarbageCollected<PaintTiming>,
 
   base::TimeTicks lcp_mouse_over_dispatch_time_;
 
+  Member<PaintTimingDetector> paint_timing_detector_;
+  Member<ImageElementTiming> image_element_timing_;
   Member<TextElementTiming> text_element_timing_;
+  Member<LargestContentfulPaintManager> largest_contentful_paint_manager_;
   Member<FirstMeaningfulPaintDetector> fmp_detector_;
   // The callback ID for requestAnimationFrame to record its time after the page
   // is restored from the back-forward cache.
   int raf_after_bfcache_restore_measurement_callback_id_ = 0;
 
-  const base::TickClock* clock_;
-
   HashSet<PaintEvent> pending_paint_events_;
 
   // Set in some unit tests.
   Member<CallbackManager> callback_manager_;
+
+  // List of `PaintTimingClient` observers. We could use HeapObserverList for
+  // this, but in practice the list should be small (3-4 observers at most), so
+  // we don't need to optimize for removal.
+  HeapVector<Member<PaintTimingClient>> clients_;
+  // Used to enforce `clients_` is not modified during iteration.
+  bool allow_client_modifications_ = true;
 };
 
 }  // namespace blink
