@@ -69,8 +69,6 @@ class AppRuntimeContentRendererClient : public content::ContentRendererClient {
   void RenderThreadStarted() override;
   void RunScriptsAtDocumentStart(content::RenderFrame* render_frame) override;
   void RunScriptsAtDocumentEnd(content::RenderFrame* render_frame) override;
-  bool AllowScriptExtensionForServiceWorker(
-      const url::Origin& script_origin) override;
   void DidInitializeServiceWorkerContextOnWorkerThread(
       blink::WebServiceWorkerContextProxy* context_proxy,
       const GURL& service_worker_scope,
