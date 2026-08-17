@@ -104,7 +104,7 @@ void InputMethodAuraLinuxNeva::OnCommit(const std::u16string& text) {
   // OnCommit handling. Neva Appruntime VKB calls OnCommit without key event
   // processing in InputMethod and therefore the first call of OnCommit is
   // ignored.
-  suppress_non_key_input_until_ = base::TimeTicks::UnixEpoch();
+  suppress_non_key_input_until_ = base::TimeTicks();
   InputMethodAuraLinux::OnCommit(text);
 
   if (IgnoringNonKeyInput() || IsTextInputTypeNone() || is_sync_mode_ ||

@@ -562,7 +562,7 @@ void PageContents::ScrollByY(int y_shift) {
     blink::WebMouseWheelEvent scroll_event(
         blink::WebInputEvent::Type::kMouseWheel,
         blink::WebInputEvent::kNoModifiers,
-        base::TimeTicks::UnixEpoch());
+        base::TimeTicks());
 
     scroll_event.delta_units = ui::ScrollGranularity::kScrollByPrecisePixel;
     scroll_event.delta_x = 0.0f;
