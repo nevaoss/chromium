@@ -246,11 +246,6 @@ void AppRuntimeContentRendererClient::RunScriptsAtDocumentEnd(
       render_frame);
 }
 
-bool AppRuntimeContentRendererClient::AllowScriptExtensionForServiceWorker(
-    const url::Origin& script_origin) {
-  return true;
-}
-
 void AppRuntimeContentRendererClient::
     DidInitializeServiceWorkerContextOnWorkerThread(
         blink::WebServiceWorkerContextProxy* context_proxy,
