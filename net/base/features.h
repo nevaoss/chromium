@@ -757,9 +757,6 @@ NET_EXPORT BASE_DECLARE_FEATURE(kTLSTrustAnchorIDs);
 // Controls whether TLS Trust Anchor IDs that are not for MTCs are sent.
 NET_EXPORT BASE_DECLARE_FEATURE(kNonMtcTrustAnchorIDs);
 
-// Enables ML-DSA signature support in TLS (draft-ietf-tls-mldsa-02).
-NET_EXPORT BASE_DECLARE_FEATURE(kTlsMldsaSignatures);
-
 #if BUILDFLAG(CHROME_ROOT_STORE_SUPPORTED)
 // Enables support for Merkle Tree Certificates. `kTLSTrustAnchorIDs` must also
 // be enabled for this to be useful.
@@ -1006,6 +1003,22 @@ NET_EXPORT BASE_DECLARE_FEATURE(kEnableBackendCleanupTrackerOnHttpCache);
 // once it has been verified safe.
 NET_EXPORT BASE_DECLARE_FEATURE(
     kPartitionWebSocketEndpointLocksByNetworkAnonymizationKey);
+
+// Controls initial delay for broken alternative services.
+NET_EXPORT BASE_DECLARE_FEATURE(kInitialDelayForBrokenAlternativeService);
+NET_EXPORT BASE_DECLARE_FEATURE_PARAM(
+    base::TimeDelta,
+    kInitialDelayForBrokenAlternativeServiceParam);
+
+// Controls whether broken alternative services should be persisted to disk
+// cache.
+NET_EXPORT BASE_DECLARE_FEATURE(kPersistBrokenAlternativeServices);
+
+// Controls maximum delay for broken alternative services.
+NET_EXPORT BASE_DECLARE_FEATURE(kMaxDelayForBrokenAlternativeService);
+NET_EXPORT BASE_DECLARE_FEATURE_PARAM(
+    base::TimeDelta,
+    kMaxDelayForBrokenAlternativeServiceParam);
 
 }  // namespace net::features
 

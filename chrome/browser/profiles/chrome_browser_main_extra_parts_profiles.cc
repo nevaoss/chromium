@@ -102,6 +102,7 @@
 #include "chrome/browser/finds/finds_service_factory.h"
 #include "chrome/browser/first_party_sets/first_party_sets_policy_service_factory.h"
 #include "chrome/browser/font_pref_change_notifier_factory.h"
+#include "chrome/browser/glic/browser_ui/glic_actor_task_icon_manager_factory.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/glic/public/glic_keyed_service_factory.h"
 #include "chrome/browser/glic/suggestions/contextual_cueing_service_factory.h"
@@ -195,7 +196,6 @@
 #include "chrome/browser/preloading/prerender/search_prewarm_progress_service_factory.h"
 #include "chrome/browser/preloading/search_preload/search_preload_service_factory.h"
 #include "chrome/browser/privacy/privacy_metrics_service_factory.h"
-#include "chrome/browser/privacy_sandbox/notice/notice_service_factory.h"
 #include "chrome/browser/privacy_sandbox/privacy_sandbox_service_factory.h"
 #include "chrome/browser/privacy_sandbox/privacy_sandbox_settings_factory.h"
 #include "chrome/browser/private_ai/private_ai_service_factory.h"
@@ -435,10 +435,10 @@
 #include "chrome/browser/enterprise/client_certificates/certificate_store_factory.h"
 #endif
 
-#if BUILDFLAG(ENTERPRISE_PROXY) && BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(ENTERPRISE_PROXY)
 #include "chrome/browser/enterprise/net/enterprise_network_auth_service_factory.h"
 #include "chrome/browser/enterprise/net/enterprise_proxy_service_factory.h"
-#endif
+#endif  // BUILDFLAG(ENTERPRISE_PROXY)
 
 #if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || \
     BUILDFLAG(IS_WIN)
@@ -586,10 +586,6 @@
 #include "components/contextual_tasks/public/features.h"
 #include "extensions/browser/browser_context_keyed_service_factories.h"
 #include "extensions/browser/extensions_browser_client.h"
-#endif
-
-#if !BUILDFLAG(IS_ANDROID)
-#include "chrome/browser/glic/browser_ui/glic_actor_task_icon_manager_factory.h"
 #endif
 
 #if BUILDFLAG(ENABLE_ON_DEVICE_TRANSLATION)
@@ -1033,10 +1029,10 @@ void ChromeBrowserMainExtraPartsProfiles::
   enterprise_idle::IdleServiceFactory::GetInstance();
 #endif
   enterprise_signals::SignalsAggregatorFactory::GetInstance();
-#if BUILDFLAG(ENTERPRISE_PROXY) && BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(ENTERPRISE_PROXY)
   EnterpriseNetworkAuthServiceFactory::GetInstance();
   EnterpriseProxyServiceFactory::GetInstance();
-#endif
+#endif  // BUILDFLAG(ENTERPRISE_PROXY)
   enterprise_reporting::CloudProfileReportingServiceFactory::GetInstance();
   enterprise_reporting::LegacyTechServiceFactory::GetInstance();
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
@@ -1103,9 +1099,7 @@ void ChromeBrowserMainExtraPartsProfiles::
   }
 #endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC)
   glic::GlicKeyedServiceFactory::GetInstance();
-#if !BUILDFLAG(IS_ANDROID)
   glic::GlicActorTaskIconManagerFactory::GetInstance();
-#endif
 #if !BUILDFLAG(IS_ANDROID)
   GlobalErrorServiceFactory::GetInstance();
 #endif
@@ -1380,7 +1374,6 @@ void ChromeBrowserMainExtraPartsProfiles::
   prerender::NoStatePrefetchLinkManagerFactory::GetInstance();
   prerender::NoStatePrefetchManagerFactory::GetInstance();
   PrivacyMetricsServiceFactory::GetInstance();
-  PrivacySandboxNoticeServiceFactory::GetInstance();
   PrivacySandboxServiceFactory::GetInstance();
   PrivacySandboxSettingsFactory::GetInstance();
   PrivateVerificationTokensServiceFactory::GetInstance();

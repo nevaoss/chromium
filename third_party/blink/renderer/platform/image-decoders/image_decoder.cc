@@ -29,6 +29,7 @@
 #include "base/containers/span.h"
 #include "base/feature_list.h"
 #include "base/logging.h"
+#include "base/notreached.h"
 #include "base/numerics/byte_conversions.h"
 #include "base/numerics/safe_conversions.h"
 #include "base/trace_event/trace_event.h"
@@ -41,7 +42,7 @@
 #include "third_party/blink/renderer/platform/image-decoders/bmp/bmp_decoder_factory.h"
 #include "third_party/blink/renderer/platform/image-decoders/fast_shared_buffer_reader.h"
 #include "third_party/blink/renderer/platform/image-decoders/gif/gif_image_decoder.h"
-#include "third_party/blink/renderer/platform/image-decoders/ico/ico_image_decoder.h"
+#include "third_party/blink/renderer/platform/image-decoders/ico/ico_decoder_factory.h"
 #include "third_party/blink/renderer/platform/image-decoders/jpeg/jpeg_image_decoder.h"
 #include "third_party/blink/renderer/platform/image-decoders/png/png_image_decoder.h"
 #include "third_party/blink/renderer/platform/image-decoders/webp/webp_image_decoder.h"
@@ -268,6 +269,32 @@ bool IsLosslessImageMIMEType(const String& mime_type) {
          EqualIgnoringAsciiCase(mime_type, "image/x-png");
 }
 
+skcms_PixelFormat SkColorTypeToSkcmsPixelFormat(SkColorType color_type) {
+  switch (color_type) {
+    case kRGBA_8888_SkColorType:
+      return skcms_PixelFormat_RGBA_8888;
+    case kBGRA_8888_SkColorType:
+      return skcms_PixelFormat_BGRA_8888;
+    case kRGBA_F16_SkColorType:
+      return skcms_PixelFormat_RGBA_hhhh;
+    default:
+      NOTREACHED();
+  }
+}
+
+skcms_AlphaFormat SkAlphaTypeToSkcmsAlphaFormat(SkAlphaType alpha_type) {
+  switch (alpha_type) {
+    case kOpaque_SkAlphaType:
+      return skcms_AlphaFormat_Opaque;
+    case kPremul_SkAlphaType:
+      return skcms_AlphaFormat_PremulAsEncoded;
+    case kUnpremul_SkAlphaType:
+      return skcms_AlphaFormat_Unpremul;
+    default:
+      NOTREACHED();
+  }
+}
+
 }  // namespace
 
 ImageDecoder::ImageDecoder(
@@ -282,7 +309,10 @@ ImageDecoder::ImageDecoder(
       aux_image_(aux_image),
       max_decoded_bytes_(max_decoded_bytes),
       allow_decode_to_yuv_(false),
-      purge_aggressively_(false) {}
+      purge_aggressively_(false),
+      sk_image_color_space_(color_behavior == ColorBehavior::kIgnore
+                                ? nullptr
+                                : SkColorSpace::MakeSRGB()) {}
 
 ImageDecoder::~ImageDecoder() = default;
 
@@ -342,8 +372,9 @@ std::unique_ptr<ImageDecoder> ImageDecoder::CreateByMimeType(
                                                  max_decoded_bytes);
   } else if (mime_type == "image/x-icon" ||
              mime_type == "image/vnd.microsoft.icon") {
-    decoder = std::make_unique<ICOImageDecoder>(alpha_option, color_behavior,
-                                                max_decoded_bytes);
+    decoder =
+        CreateIcoImageDecoder(alpha_option, high_bit_depth_decoding_option,
+                              color_behavior, max_decoded_bytes);
   } else if (mime_type == "image/bmp" || mime_type == "image/x-xbitmap") {
     decoder =
         CreateBmpImageDecoder(alpha_option, high_bit_depth_decoding_option,
@@ -1107,46 +1138,22 @@ void ImageDecoder::SetEmbeddedColorProfile(
   embedded_color_profile_ = std::move(profile);
   sk_image_color_space_ = nullptr;
   embedded_to_sk_image_transform_.reset();
-}
-
-ColorProfileTransform* ImageDecoder::ColorTransform() {
-  UpdateSkImageColorSpaceAndTransform();
-  return embedded_to_sk_image_transform_.get();
-}
-
-ColorProfileTransform::~ColorProfileTransform() = default;
-
-sk_sp<SkColorSpace> ImageDecoder::ColorSpaceForSkImages() {
-  UpdateSkImageColorSpaceAndTransform();
-  return sk_image_color_space_;
-}
-
-void ImageDecoder::UpdateSkImageColorSpaceAndTransform() {
-  if (color_behavior_ == ColorBehavior::kIgnore) {
-    return;
-  }
-
-  // If `color_behavior_` is not ignore, then this function will always set
-  // `sk_image_color_space_` to something non-nullptr, so, if it is non-nullptr,
-  // then everything is up to date.
-  if (sk_image_color_space_) {
-    return;
-  }
 
   if (color_behavior_ == ColorBehavior::kTag) {
     // Set `sk_image_color_space_` to the best SkColorSpace approximation
     // of `embedded_color_profile_`.
     if (embedded_color_profile_) {
-      const skcms_ICCProfile* profile = embedded_color_profile_->GetProfile();
+      const skcms_ICCProfile* icc_profile =
+          embedded_color_profile_->GetProfile();
 
       // If the ICC profile has CICP data, prefer to use that.
-      if (profile->has_CICP) {
-        sk_image_color_space_ =
-            skia::CICPGetSkColorSpace(profile->CICP.color_primaries,
-                                      profile->CICP.transfer_characteristics,
-                                      profile->CICP.matrix_coefficients,
-                                      profile->CICP.video_full_range_flag,
-                                      /*prefer_srgb_trfn=*/true);
+      if (icc_profile->has_CICP) {
+        sk_image_color_space_ = skia::CICPGetSkColorSpace(
+            icc_profile->CICP.color_primaries,
+            icc_profile->CICP.transfer_characteristics,
+            icc_profile->CICP.matrix_coefficients,
+            icc_profile->CICP.video_full_range_flag,
+            /*prefer_srgb_trfn=*/true);
         // A CICP profile's SkColorSpace is considered an exact representation
         // of `profile`, so don't create `embedded_to_sk_image_transform_`.
         if (sk_image_color_space_) {
@@ -1156,14 +1163,14 @@ void ImageDecoder::UpdateSkImageColorSpaceAndTransform() {
 
       // If there was not CICP data, then use the ICC profile.
       DCHECK(!sk_image_color_space_);
-      sk_image_color_space_ = SkColorSpace::Make(*profile);
+      sk_image_color_space_ = SkColorSpace::Make(*icc_profile);
 
       // If the embedded color space isn't supported by Skia, we will transform
       // to a supported color space using `embedded_to_sk_image_transform_` at
       // decode time.
-      if (!sk_image_color_space_ && profile->has_toXYZD50) {
+      if (!sk_image_color_space_ && icc_profile->has_toXYZD50) {
         // Preserve the gamut, but convert to a standard transfer function.
-        skcms_ICCProfile with_srgb = *profile;
+        skcms_ICCProfile with_srgb = *icc_profile;
         skcms_SetTransferFunction(&with_srgb, skcms_sRGB_TransferFunction());
         sk_image_color_space_ = SkColorSpace::Make(with_srgb);
       }
@@ -1203,6 +1210,56 @@ void ImageDecoder::UpdateSkImageColorSpaceAndTransform() {
 
   embedded_to_sk_image_transform_ =
       std::make_unique<ColorProfileTransform>(src_profile, &dst_profile);
+}
+
+ColorProfileTransform::~ColorProfileTransform() = default;
+
+void ImageDecoder::DoDecodeTimeColorTransformIfNeeded(
+    ImageFrame& buffer,
+    const SkIRect& rect,
+    std::optional<SkColorType> override_src_color_type,
+    std::optional<SkAlphaType> override_src_alpha_type) {
+  if (!NeedsDecodeTimeColorTransform()) {
+    return;
+  }
+  const ColorProfileTransform* transform = ColorTransform();
+
+  const skcms_AlphaFormat dst_alpha_format =
+      (buffer.HasAlpha() && buffer.PremultiplyAlpha())
+          ? skcms_AlphaFormat_PremulAsEncoded
+          : skcms_AlphaFormat_Unpremul;
+  const skcms_AlphaFormat src_alpha_format =
+      override_src_alpha_type.has_value()
+          ? SkAlphaTypeToSkcmsAlphaFormat(*override_src_alpha_type)
+          : dst_alpha_format;
+
+  if (buffer.GetPixelFormat() == ImageFrame::kRGBA_F16) {
+    CHECK(!override_src_color_type.has_value());
+    const skcms_PixelFormat color_format = skcms_PixelFormat_RGBA_hhhh;
+    for (int y = rect.top(); y < rect.bottom(); ++y) {
+      ImageFrame::PixelDataF16* const row = buffer.GetAddrF16(rect.left(), y);
+      const bool success = skcms_Transform(
+          row, color_format, src_alpha_format, transform->SrcProfile(), row,
+          color_format, dst_alpha_format, transform->DstProfile(),
+          rect.width());
+      DCHECK(success);
+    }
+  } else {
+    const skcms_PixelFormat dst_pixel_format =
+        SkColorTypeToSkcmsPixelFormat(kN32_SkColorType);
+    const skcms_PixelFormat src_pixel_format =
+        override_src_color_type.has_value()
+            ? SkColorTypeToSkcmsPixelFormat(*override_src_color_type)
+            : dst_pixel_format;
+    for (int y = rect.top(); y < rect.bottom(); ++y) {
+      ImageFrame::PixelData* const row = buffer.GetAddr(rect.left(), y);
+      const bool success = skcms_Transform(
+          row, src_pixel_format, src_alpha_format, transform->SrcProfile(), row,
+          dst_pixel_format, dst_alpha_format, transform->DstProfile(),
+          rect.width());
+      DCHECK(success);
+    }
+  }
 }
 
 bool ImageDecoder::CanReusePreviousFrameBuffer(wtf_size_t) const {

@@ -26,6 +26,9 @@
 #include "components/multistep_filter/core/prefs/multistep_filter_retention_prefs.h"
 #include "components/multistep_filter/core/storage/filter_store.h"
 #include "components/multistep_filter/core/switches.h"
+#include "components/optimization_guide/core/feature_registry/feature_registration.h"
+#include "components/optimization_guide/core/model_execution/model_execution_prefs.h"
+#include "components/optimization_guide/core/optimization_guide_prefs.h"
 #include "components/prefs/pref_registry_simple.h"
 #include "components/prefs/testing_pref_service.h"
 #include "components/signin/public/identity_manager/account_capabilities_test_mutator.h"
@@ -39,6 +42,20 @@
 
 namespace multistep_filter {
 
+class MockFilterStore : public FilterStore {
+ public:
+  MockFilterStore() = default;
+  ~MockFilterStore() override = default;
+
+  MOCK_METHOD(void,
+              DeleteAnnotationsForHosts,
+              (std::vector<std::string> hosts,
+               base::Time delete_begin,
+               base::Time delete_end,
+               base::OnceCallback<void(std::optional<int64_t>)> callback),
+              (override));
+};
+
 class MultistepFilterServiceTest : public testing::Test {
  public:
   MultistepFilterServiceTest() {
@@ -46,15 +63,18 @@ class MultistepFilterServiceTest : public testing::Test {
     pref_service_.registry()->RegisterBooleanPref(
         unified_consent::prefs::kUrlKeyedAnonymizedDataCollectionEnabled, true);
     RegisterRetentionProfilePrefs(pref_service_.registry());
+    optimization_guide::model_execution::prefs::RegisterProfilePrefs(
+        pref_service_.registry());
+    optimization_guide::prefs::RegisterProfilePrefs(pref_service_.registry());
     sync_service_.GetUserSettings()->SetSelectedType(
         syncer::UserSelectableType::kHistory, true);
   }
 
-  void CreateService() {
+  void CreateService(std::unique_ptr<FilterStore> filter_store =
+                         std::make_unique<FilterStore>()) {
     auto annotation_index_client =
         std::make_unique<MockAnnotationIndexClient>();
     mock_client_ = annotation_index_client.get();
-    auto filter_store = std::make_unique<FilterStore>();
     auto consent_helper = unified_consent::UrlKeyedDataCollectionConsentHelper::
         NewAnonymizedDataCollectionConsentHelper(&pref_service_);
 
@@ -252,6 +272,49 @@ TEST_F(MultistepFilterServiceTest,
       switches::kMultistepFilterBypassCapabilityCheck);
   CreateService();
   EXPECT_TRUE(service_->CanUseModelExecutionFeatures());
+}
+
+// Tests that OnHistoryDeletions does not call DeleteAnnotationsForHosts when
+// there are no deletions.
+TEST_F(MultistepFilterServiceTest, OnHistoryDeletions_NoOpDeletionsIgnored) {
+  auto mock_store = std::make_unique<testing::NiceMock<MockFilterStore>>();
+  EXPECT_CALL(*mock_store, DeleteAnnotationsForHosts).Times(0);
+  CreateService(std::move(mock_store));
+  history::DeletionInfo deletion_info =
+      history::DeletionInfo::ForUrls(/*deleted_rows=*/{},
+                                     /*favicon_urls=*/{});
+  service_->OnHistoryDeletions(/*history_service=*/nullptr, deletion_info);
+}
+
+// Tests that IsSmartSuggestionsEnabled returns true by default (when prefs are
+// default/enabled).
+TEST_F(MultistepFilterServiceTest, IsSmartSuggestionsEnabled_DefaultEnabled) {
+  CreateService();
+  EXPECT_TRUE(service_->IsSmartSuggestionsEnabled());
+}
+
+// Tests that IsSmartSuggestionsEnabled returns false when the user-controlled
+// contextual cueing pref is disabled.
+TEST_F(MultistepFilterServiceTest,
+       IsSmartSuggestionsEnabled_OptInPrefDisabled) {
+  pref_service_.SetInteger(
+      optimization_guide::prefs::GetSettingEnabledPrefName(
+          optimization_guide::UserVisibleFeatureKey::kContextualCueing),
+      static_cast<int>(
+          optimization_guide::prefs::FeatureOptInState::kDisabled));
+  CreateService();
+  EXPECT_FALSE(service_->IsSmartSuggestionsEnabled());
+}
+
+// Tests that IsSmartSuggestionsEnabled returns false when the enterprise policy
+// ChromeSuggestionsSettings is set to disabled.
+TEST_F(MultistepFilterServiceTest,
+       IsSmartSuggestionsEnabled_EnterprisePolicyDisabled) {
+  pref_service_.SetInteger(
+      optimization_guide::prefs::kChromeSuggestionsSettings,
+      MultistepFilterService::kChromeSuggestionsSettingsDisabled);
+  CreateService();
+  EXPECT_FALSE(service_->IsSmartSuggestionsEnabled());
 }
 
 }  // namespace multistep_filter

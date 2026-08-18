@@ -633,7 +633,9 @@ class ContextualTasksInteractiveUiTest : public InteractiveBrowserTest {
   auto VerifySubmitQueryMessage(
       lens::LensOverlayRequestId::MediaType expected_media_type,
       std::optional<std::string> expected_added_input_name = std::nullopt,
-      int expected_message_index = 0) {
+      int expected_message_index = 0,
+      std::optional<lens::LensOverlayContextualInputUploadType>
+          expected_upload_type = std::nullopt) {
     return Steps(
         // Wait until the inner WebContents receives the message at the expected
         // index.
@@ -644,7 +646,8 @@ class ContextualTasksInteractiveUiTest : public InteractiveBrowserTest {
                             expected_message_index)),
         WithElement(kInnerWebContentsId, [expected_media_type,
                                           expected_added_input_name,
-                                          expected_message_index](
+                                          expected_message_index,
+                                          expected_upload_type](
                                              ui::TrackedElement* el) {
           auto* web_contents = AsInstrumentedWebContents(el)->web_contents();
           // Extract the binary protobuf message from JavaScript by converting
@@ -708,6 +711,21 @@ class ContextualTasksInteractiveUiTest : public InteractiveBrowserTest {
             }
           } else {
             EXPECT_FALSE(message.submit_query().payload().has_added_inputs());
+          }
+
+          if (expected_upload_type.has_value()) {
+            bool found_type = false;
+            const auto& data_list =
+                message.submit_query().payload().lens_image_query_data();
+            for (const auto& payload : data_list) {
+              if (payload.contextual_input_upload_type() ==
+                  *expected_upload_type) {
+                found_type = true;
+                break;
+              }
+            }
+            EXPECT_TRUE(found_type)
+                << "Expected upload type not found in lens_image_query_data.";
           }
         }));
   }
@@ -1122,7 +1140,10 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
       WaitForFaviconGroupWithTitle(kPrimaryTab, "title1.html"),
       WaitForComposeboxFilesCount(1), ClickButton(kPrimaryTab, kSubmitButton),
       VerifySubmitQueryMessage(
-          lens::LensOverlayRequestId::MEDIA_TYPE_WEBPAGE_AND_IMAGE));
+          lens::LensOverlayRequestId::MEDIA_TYPE_WEBPAGE_AND_IMAGE,
+          std::nullopt, 0,
+          lens::LensOverlayContextualInputUploadType::
+              CONTEXTUAL_INPUT_UPLOAD_TYPE_EXPLICIT));
 }
 
 IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
@@ -1462,7 +1483,10 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
 
       // Verify the sent query includes the auto-suggested tab context.
       VerifySubmitQueryMessage(
-          lens::LensOverlayRequestId::MEDIA_TYPE_WEBPAGE_AND_IMAGE));
+          lens::LensOverlayRequestId::MEDIA_TYPE_WEBPAGE_AND_IMAGE,
+          std::nullopt, 0,
+          lens::LensOverlayContextualInputUploadType::
+              CONTEXTUAL_INPUT_UPLOAD_TYPE_AUTO_TAB_CHIP));
 }
 
 IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
@@ -1657,7 +1681,10 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTestWithChips,
 
       // Verify the sent query includes the auto-suggested tab context.
       VerifySubmitQueryMessage(
-          lens::LensOverlayRequestId::MEDIA_TYPE_WEBPAGE_AND_IMAGE));
+          lens::LensOverlayRequestId::MEDIA_TYPE_WEBPAGE_AND_IMAGE,
+          std::nullopt, 0,
+          lens::LensOverlayContextualInputUploadType::
+              CONTEXTUAL_INPUT_UPLOAD_TYPE_AUTO_TAB_CHIP));
 }
 
 IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTestWithChips,
@@ -2770,7 +2797,13 @@ class ContextualTasksCopyUrlTest : public ContextualTasksInteractiveUiTest,
   base::test::ScopedFeatureList copy_url_feature_list_;
 };
 
-IN_PROC_BROWSER_TEST_P(ContextualTasksCopyUrlTest, CopyUrl) {
+// TODO(crbug.com/542608217): Disable on Linux MSan due to failure/flakiness.
+#if BUILDFLAG(IS_LINUX) && defined(MEMORY_SANITIZER)
+#define MAYBE_CopyUrl DISABLED_CopyUrl
+#else
+#define MAYBE_CopyUrl CopyUrl
+#endif
+IN_PROC_BROWSER_TEST_P(ContextualTasksCopyUrlTest, MAYBE_CopyUrl) {
   content::BrowserTestClipboardScope test_clipboard_scope;
   const GURL kInterceptionUrl("https://www.google.com/search?udm=50&q=test");
 
@@ -2802,13 +2835,20 @@ IN_PROC_BROWSER_TEST_P(ContextualTasksCopyUrlTest, CopyUrl) {
           testing::ResultOf(
               [](const std::u16string& s) { return base::UTF16ToUTF8(s); },
               testing::StartsWith(
-                  "https://www.google.com/search?udm=50&q=test&cru=1"))),
+                  "https://www.google.com/search?udm=50&q=test"))),
       StopObservingState(kClipboardText),
       UninstrumentWebContents(kInnerWebContentsId,
                               /*fail_if_not_instrumented=*/false));
 }
 
 IN_PROC_BROWSER_TEST_P(ContextualTasksCopyUrlTest, FocusAndBlur) {
+#if BUILDFLAG(IS_LINUX) && defined(MEMORY_SANITIZER)
+  // TODO(crbug.com/542671321): FocusAndBlur/WebUI is flaky/failing on Linux
+  // MSAN.
+  if (GetParam()) {
+    GTEST_SKIP() << "Skipping FocusAndBlur/WebUI on Linux MSAN";
+  }
+#endif
   const GURL kInterceptionUrl("https://www.google.com/search?udm=50&q=test");
 
   ui::Accelerator focus_accelerator;

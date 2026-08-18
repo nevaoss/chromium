@@ -577,6 +577,7 @@ if (is_android) {
       "android/java/src/org/chromium/ui/accessibility/AccessibilityAutofillHelper.java",
       "android/java/src/org/chromium/ui/accessibility/AccessibilityState.java",
       "android/java/src/org/chromium/ui/accessibility/AccessibilityStateDelegateImpl.java",
+      "android/java/src/org/chromium/ui/accessibility/FakeAccessibilityStateDelegate.java",
     ]
     deps = [
       "//base:base_java",
@@ -590,7 +591,7 @@ if (is_android) {
 
   robolectric_library("ui_accessibility_junit_test_support") {
     testonly = true
-    sources = [ "android/javatests/src/org/chromium/ui/accessibility/AccessibilityStateTestHelper.java" ]
+    sources = [ "android/javatests/src/org/chromium/ui/accessibility/AccessibilityStateJUnitTestHelper.java" ]
     deps = [
       ":ax_base_java",
       "//base:base_java",

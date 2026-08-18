@@ -486,11 +486,14 @@ suite('ReadonlyOmnibox', function() {
         },
       ],
       inlineAutocompletion: 'les/1/',
+      additionalText: ' - Wikipedia',
       selection: {start: 17, end: 17},
       uiVersion: 1,
       browserVersion: 1,
     };
     await microtasksFinished();
+
+    assertEquals(' - Wikipedia', omnibox.$.additionalText.textContent);
 
     // Start composition.
     omnibox.isComposing = true;
@@ -508,6 +511,9 @@ suite('ReadonlyOmnibox', function() {
     // 3. Verify that the inline autocompletion was NOT cleared,
     // but instead sliced to 'es/1/'.
     assertEquals('es/1/', omnibox.omniboxViewState.inlineAutocompletion);
+    // Verify additional text is preserved.
+    assertEquals(' - Wikipedia', omnibox.omniboxViewState.additionalText);
+    assertEquals(' - Wikipedia', omnibox.$.additionalText.textContent);
 
     // 4. Verify that we sent the updated input to the browser.
     assertEquals(1, uiHandler.getCallCount('onOmniboxAction'));
@@ -587,6 +593,36 @@ suite('ReadonlyOmnibox', function() {
     // writing this test).
     assertLE(Math.abs(right1 - right2), 0.1);
     assertLE(Math.abs(right2 - right3), 0.1);
+  });
+
+  test('Clear additional text on delete', async () => {
+    omnibox.browserOmniboxState = {
+      ...initialState,
+      textPieces: [
+        {
+          text: 'popula',
+          strikethrough: false,
+          color: OmniboxTextColor.kOmniboxText,
+        },
+      ],
+      inlineAutocompletion: 'r page',
+      additionalText: ' - uk.wikipedia.org',
+    };
+    await microtasksFinished();
+
+    assertEquals(' - uk.wikipedia.org', omnibox.$.additionalText.textContent);
+
+    // Simulate user pressing backspace, which deletes the selection.
+    // The input value becomes "popula".
+    getTextInput().value = 'popula';
+    getTextInput().dispatchEvent(
+        new Event('input', {bubbles: true, composed: true}));
+
+    await microtasksFinished();
+
+    // Verify that additional text is cleared locally.
+    assertEquals('', omnibox.omniboxViewState.additionalText);
+    assertEquals('', omnibox.$.additionalText.textContent);
   });
 
   test('Inline completion race vs. browser handling', async () => {
@@ -1202,5 +1238,48 @@ suite('ReadonlyOmnibox', function() {
     // Select-all should be cancelled by pointercancel fallback.
     assertEquals('', getStringSelection());
   });
+
+  test(
+      'Pasting text/plain sanitizes javascript schema and newlines',
+      async () => {
+        const input = getTextInput();
+        input.focus();
+
+        const clipboardData = new DataTransfer();
+        clipboardData.setData(
+            'text/plain', '  javascript:javascript:alert(1)\r\nhello world\n');
+        const pasteEvent = new ClipboardEvent('paste', {
+          clipboardData,
+          bubbles: true,
+          cancelable: true,
+        });
+
+        input.dispatchEvent(pasteEvent);
+        await microtasksFinished();
+
+        assertTrue(pasteEvent.defaultPrevented);
+        assertEquals('alert(1) hello world', input.value);
+      });
+
+  test(
+      'Pasting text/uri-list fallback sanitizes javascript schema',
+      async () => {
+        const input = getTextInput();
+        input.focus();
+
+        const clipboardData = new DataTransfer();
+        clipboardData.setData('text/uri-list', 'javascript:alert(1)');
+        const pasteEvent = new ClipboardEvent('paste', {
+          clipboardData,
+          bubbles: true,
+          cancelable: true,
+        });
+
+        input.dispatchEvent(pasteEvent);
+        await microtasksFinished();
+
+        assertTrue(pasteEvent.defaultPrevented);
+        assertEquals('alert(1)', input.value);
+      });
 
 });

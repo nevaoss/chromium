@@ -4,6 +4,10 @@
 
 source_set("ui") {
   sources = [
+    "actor_overlay_scrim_view.h",
+    "actor_overlay_scrim_view.mm",
+    "actor_overlay_view_controller.h",
+    "actor_overlay_view_controller.mm",
     "actor_tool_chip_view.h",
     "actor_tool_chip_view.mm",
     "actuation_worklog_compact_view.h",
@@ -17,8 +21,19 @@ source_set("ui") {
   deps = [
     "//base",
     "//ios/chrome/browser/shared/ui/util",
+    "//ios/chrome/browser/shared/ui/util:util_swift",
     "//ios/chrome/common/ui/colors",
     "//ios/chrome/common/ui/util",
+    "//ui/base",
   ]
   frameworks = [ "UIKit.framework" ]
+}
+
+source_set("unit_tests") {
+  testonly = true
+  sources = [ "actor_overlay_scrim_view_unittest.mm" ]
+  deps = [
+    ":ui",
+    "//testing/gtest",
+  ]
 }

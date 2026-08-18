@@ -988,6 +988,7 @@ targets.legacy_basic_suite(
     name = "gpu_skia_renderer_vulkan_passthrough_telemetry_tests",
     tests = {
         "vulkan_pixel_skia_gold_test": targets.legacy_test_config(
+            ci_only = True,
             mixins = [
                 "gpu_integration_test_common_args",
             ],
@@ -1216,6 +1217,8 @@ targets.legacy_basic_suite(
         "exo_unittests": targets.legacy_test_config(),
         "gl_unittests_ozone": targets.legacy_test_config(),
         "keyboard_unittests": targets.legacy_test_config(),
+        "mojo_legacy_unittests": targets.legacy_test_config(),
+        "mojo_proxy_unittests": targets.legacy_test_config(),
         "ozone_gl_unittests": targets.legacy_test_config(
             args = [
                 "--ozone-platform=headless",

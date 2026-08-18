@@ -172,13 +172,14 @@ void BrowserWidget::InitBrowserWidget() {
 #if BUILDFLAG(IS_OZONE)
   params.inhibit_keyboard_shortcuts =
       browser->GetType() == BrowserWindowInterface::Type::TYPE_APP ||
-      browser->is_type_app_popup();
+      browser->GetType() == BrowserWindowInterface::Type::TYPE_APP_POPUP;
 
   params.session_data = browser->platform_session_data();
 #endif
 
   if (browser_native_widget_->ShouldRestorePreviousBrowserWidgetState()) {
-    if (browser->is_type_normal() || browser->is_type_devtools() ||
+    if (browser->GetType() == BrowserWindowInterface::Type::TYPE_NORMAL ||
+        browser->GetType() == BrowserWindowInterface::Type::TYPE_DEVTOOLS ||
         browser->GetType() == BrowserWindowInterface::Type::TYPE_APP) {
       // Typed panel/popup can only return a size once the widget has been
       // created.
@@ -311,6 +312,18 @@ bool BrowserWidget::GetAccelerator(int command_id,
 }
 
 const ui::ThemeProvider* BrowserWidget::GetThemeProvider() const {
+  // If there is a user color override (e.g., Focus Mode is active),
+  // fallback to the un-themed baseline provider so custom extension
+  // theme images are suppressed.
+  if (user_color_override().has_value()) {
+    Profile* profile = browser_view_->browser()->GetProfile();
+    return &ThemeServiceFactory::GetForProfile(profile)
+                ->GetDefaultThemeProvider();
+  }
+  return GetBaseThemeProvider();
+}
+
+const ui::ThemeProvider* BrowserWidget::GetBaseThemeProvider() const {
   Browser* browser = browser_view_->browser();
   auto* app_controller = web_app::AppBrowserController::From(browser);
   // Ignore the system theme for web apps with window-controls-overlay as the
@@ -326,8 +339,9 @@ const ui::ThemeProvider* BrowserWidget::GetThemeProvider() const {
 
 ui::ColorProviderKey::ThemeInitializerSupplier* BrowserWidget::GetCustomTheme()
     const {
-  // Do not return any custom theme if this is an incognito browser.
-  if (IsIncognitoBrowser()) {
+  // Do not return any custom theme if this is an incognito browser or if there
+  // is a user color override (e.g. Focus Mode).
+  if (IsIncognitoBrowser() || user_color_override().has_value()) {
     return nullptr;
   }
 
@@ -455,6 +469,7 @@ ui::ColorProviderKey BrowserWidget::GetColorProviderKey() const {
   CHECK(theme_service);
 
   key = theme_service->GetColorProviderKey(key, profile);
+  key.custom_theme = GetCustomTheme();
 
   // Re-apply Widget overrides because GetColorProviderKey might have
   // overwritten them.

@@ -186,56 +186,6 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(
     kBoostNonRenderBlockingStyleLoadingTaskPriority);
 
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(
-    kBrowsingTopicsBypassIPIsPubliclyRoutableCheck);
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kBrowsingTopicsDocumentAPI);
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kBrowsingTopicsParameters);
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
-    base::TimeDelta,
-    kBrowsingTopicsTimePeriodPerEpoch);
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
-    int,
-    kBrowsingTopicsNumberOfEpochsToExpose);
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
-    int,
-    kBrowsingTopicsNumberOfTopTopicsPerEpoch);
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
-    int,
-    kBrowsingTopicsUseRandomTopicProbabilityPercent);
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
-    base::TimeDelta,
-    kBrowsingTopicsMaxEpochIntroductionDelay);
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
-    base::TimeDelta,
-    kBrowsingTopicsEpochRetentionDuration);
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
-    base::TimeDelta,
-    kBrowsingTopicsMaxEpochPhaseOutTimeOffset);
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
-    int,
-    kBrowsingTopicsNumberOfEpochsOfObservationDataToUseForFiltering);
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
-    int,
-    kBrowsingTopicsMaxNumberOfApiUsageContextDomainsToKeepPerTopic);
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
-    int,
-    kBrowsingTopicsMaxNumberOfApiUsageContextEntriesToLoadPerEpoch);
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
-    int,
-    kBrowsingTopicsMaxNumberOfApiUsageContextDomainsToStorePerPageLoad);
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(int,
-                                               kBrowsingTopicsTaxonomyVersion);
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
-    std::string,
-    kBrowsingTopicsDisabledTopicsList);
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
-    std::string,
-    kBrowsingTopicsPrioritizedTopicsList);
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
-    base::TimeDelta,
-    kBrowsingTopicsFirstTimeoutRetryDelay);
-constexpr int kBrowsingTopicsTaxonomyVersionDefault = 2;
-
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kCacheStorageCodeCacheHintHeader);
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
     std::string,
@@ -429,7 +379,7 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kDetectZhVariants);
 // See http://crbug.com/40788570.
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kDevToolsImprovedNetworkError);
 
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kDevToolsAllowPopoverForcing);
+BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kDevToolsAllowInterestForcing);
 
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kDevToolsWebMCPSupport);
 
@@ -509,8 +459,6 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kFencedFramesReportEventHeaderChanges);
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kFencedFramesSrcPermissionsPolicy);
 
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kFetchDestinationJsonCssModules);
-
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kFileHandlingIcons);
 
 // Switch to temporary turn back on file system url navigation.
 // TODO(https://crbug.com/1332598): Remove this feature.
@@ -1599,6 +1547,9 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
 
 // Enables the Rust-based BMP image decoder.
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kRustyBmpFeature);
+
+// Enables the Rust-based ICO image decoder.
+BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kRustyIcoFeature);
 
 // When enabled, it adds Payto URI Scheme to the safe list for
 // registerProtocolHandler. This feature is disabled by default

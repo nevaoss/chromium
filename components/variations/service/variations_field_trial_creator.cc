@@ -240,6 +240,14 @@ std::string VariationsFieldTrialCreator::GetLatestCountry() const {
              : seed_store_->GetLatestCountry();
 }
 
+std::string VariationsFieldTrialCreator::GetLatestGeoLevel1() const {
+  const std::string override_geo = base::ToLowerASCII(
+      base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
+          switches::kVariationsOverrideGeoLevel1));
+  return !override_geo.empty() ? override_geo
+                               : seed_store_->GetLatestGeoLevel1();
+}
+
 bool VariationsFieldTrialCreator::SetUpFieldTrials(
     const std::vector<std::string>& variation_ids,
     const std::vector<base::FeatureList::FeatureOverrideInfo>& extra_overrides,
@@ -773,9 +781,8 @@ CreateTrialsResult VariationsFieldTrialCreator::CreateTrialsFromSeed(
   // is the case for clients on platforms, like Android WebView, that do not
   // support limited entropy randomization. For such clients,
   // `SeedHasMisconfiguredEntropy()`is always false.
-  const MisconfiguredEntropyResult result =
-      SeedHasMisconfiguredEntropy(*client_state, seed,
-                                  GetGoogleWebEntropyLimitInBits());
+  const MisconfiguredEntropyResult result = SeedHasMisconfiguredEntropy(
+      *client_state, seed, GetMaxLimitedEntropyInBits(client_state->platform));
   if (result.is_misconfigured) {
     RecordVariationsSeedUsage(
         run_in_safe_mode ? SeedUsage::kMisconfiguredSafeSeedNotUsed

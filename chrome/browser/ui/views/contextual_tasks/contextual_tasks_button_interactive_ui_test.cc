@@ -303,10 +303,7 @@ class ContextualTasksEphemeralButtonInteractiveTest
     ContextualTasksButtonInteractiveTestBase::SetUpOnMainThread();
     host_resolver()->AddRule("*", "127.0.0.1");
     ASSERT_TRUE(embedded_test_server()->Start());
-    browser()
-        ->browser_window_features()
-        ->side_panel_ui()
-        ->DisableAnimationsForTesting();
+    browser()->GetFeatures().side_panel_ui()->DisableAnimationsForTesting();
   }
 
   GURL GetTestURL() {
@@ -327,6 +324,9 @@ class ContextualTasksEphemeralButtonInteractiveTest
       SessionID session_id = sessions::SessionTabHelper::IdForTab(web_contents);
       GetContextualTasksService()->AssociateTabWithTask(task.GetTaskId(),
                                                         session_id);
+      GetContextualTasksService()->UpdateThreadForTask(
+          task.GetTaskId(), contextual_tasks::ThreadType::kAiMode,
+          "test_server_id", std::nullopt, "Test Title");
     });
   }
 
@@ -349,6 +349,13 @@ class ContextualTasksEphemeralButtonInteractiveTest
   auto SimulateOpeningContextualTaskSidePanel() {
     return Do([&] {
       contextual_tasks::ContextualTasksPanelController::From(browser())->Show();
+      content::WebContents* side_panel_contents =
+          contextual_tasks::ContextualTasksPanelController::From(browser())
+              ->GetActiveWebContents();
+      if (side_panel_contents) {
+        contextual_tasks::GetWebUiInterface(side_panel_contents)
+            ->SetIsAiPage(true);
+      }
     });
   }
 

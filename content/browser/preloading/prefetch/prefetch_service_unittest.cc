@@ -52,6 +52,7 @@
 #include "content/public/browser/prefetch_request_status_listener.h"
 #include "content/public/browser/preload_pipeline_info.h"
 #include "content/public/browser/preloading.h"
+#include "content/public/browser/site_instance.h"
 #include "content/public/browser/storage_partition.h"
 #include "content/public/common/content_client.h"
 #include "content/public/common/content_features.h"
@@ -62,6 +63,7 @@
 #include "content/public/test/preloading_test_util.h"
 #include "content/public/test/test_browser_context.h"
 #include "content/public/test/test_content_browser_client.h"
+#include "content/test/test_web_contents.h"
 #include "net/base/load_flags.h"
 #include "net/base/load_timing_internal_info.h"
 #include "net/base/proxy_chain.h"
@@ -748,6 +750,23 @@ class PrefetchServiceTestBase : public PrefetchingMetricsTestBase {
     ASSERT_TRUE(producer_handle_for_gurl_.count(url));
   }
 
+  void SendHeadOfResponseWithoutWaiting(
+      net::HttpStatusCode http_status,
+      const std::string mime_type,
+      bool use_prefetch_proxy,
+      std::vector<std::pair<std::string, std::string>> headers,
+      uint32_t expected_total_body_size) {
+    network::TestURLLoaderFactory::PendingRequest* request =
+        test_url_loader_factory_.GetPendingRequest(0);
+    GURL url = request->request.url;
+    ASSERT_FALSE(producer_handle_for_gurl_.count(url));
+    ASSERT_TRUE(request);
+    SendHeadOfResponseWithoutWaiting(http_status, mime_type, use_prefetch_proxy,
+                                     headers, expected_total_body_size,
+                                     request);
+    ASSERT_TRUE(producer_handle_for_gurl_.count(url));
+  }
+
   void SendHeadOfResponseForUrlAndWait(
       const GURL& request_url,
       net::HttpStatusCode http_status,
@@ -966,7 +985,7 @@ class PrefetchServiceTestBase : public PrefetchingMetricsTestBase {
                                       browser_context());
   }
 
-  void SendHeadOfResponseAndWait(
+  void SendHeadOfResponseWithoutWaiting(
       net::HttpStatusCode http_status,
       const std::string mime_type,
       bool use_prefetch_proxy,
@@ -989,6 +1008,18 @@ class PrefetchServiceTestBase : public PrefetchingMetricsTestBase {
 
     request->client->OnReceiveResponse(std::move(head), std::move(body),
                                        std::nullopt);
+  }
+
+  void SendHeadOfResponseAndWait(
+      net::HttpStatusCode http_status,
+      const std::string mime_type,
+      bool use_prefetch_proxy,
+      std::vector<std::pair<std::string, std::string>> headers,
+      uint32_t expected_total_body_size,
+      network::TestURLLoaderFactory::PendingRequest* request) {
+    SendHeadOfResponseWithoutWaiting(http_status, mime_type, use_prefetch_proxy,
+                                     headers, expected_total_body_size,
+                                     request);
     task_environment()->RunUntilIdle();
   }
 
@@ -1005,7 +1036,16 @@ class PrefetchServiceTestBase : public PrefetchingMetricsTestBase {
     task_environment()->RunUntilIdle();
   }
 
-  void CompleteResponseAndWait(
+  void CompleteResponseWithoutWaiting(net::Error net_error,
+                                      uint32_t expected_total_body_size) {
+    network::TestURLLoaderFactory::PendingRequest* request =
+        test_url_loader_factory_.GetPendingRequest(0);
+    ASSERT_TRUE(request);
+    CompleteResponseWithoutWaiting(net_error, expected_total_body_size,
+                                   request);
+  }
+
+  void CompleteResponseWithoutWaiting(
       net::Error net_error,
       uint32_t expected_total_body_size,
       network::TestURLLoaderFactory::PendingRequest* request) {
@@ -1020,9 +1060,17 @@ class PrefetchServiceTestBase : public PrefetchingMetricsTestBase {
     completion_status.decoded_body_length =
         base::ByteSize(expected_total_body_size);
     request->client->OnComplete(completion_status);
-    task_environment()->RunUntilIdle();
 
     test_url_loader_factory_.ClearResponses();
+  }
+
+  void CompleteResponseAndWait(
+      net::Error net_error,
+      uint32_t expected_total_body_size,
+      network::TestURLLoaderFactory::PendingRequest* request) {
+    CompleteResponseWithoutWaiting(net_error, expected_total_body_size,
+                                   request);
+    task_environment()->RunUntilIdle();
   }
 
   base::ScopedMockElapsedTimersForTest scoped_test_timer_;
@@ -2599,7 +2647,7 @@ TEST_P(PrefetchServiceTest,
   base::test::TestFuture<PrefetchServingHandle> future_1;
   GetPrefetchToServe(future_1, GURL("https://example.com"),
                      MainDocumentToken());
-  EXPECT_TRUE(future_1.IsReady());
+  EXPECT_TRUE(future_1.Wait());
   // No prefetch should be returned (the example.com prefetch had its cookies
   // changed).
   EXPECT_FALSE(future_1.Get().GetPrefetchContainer());
@@ -2608,7 +2656,7 @@ TEST_P(PrefetchServiceTest,
   base::test::TestFuture<PrefetchServingHandle> future_2;
   GetPrefetchToServe(future_2, GURL("https://example.com"),
                      MainDocumentToken());
-  EXPECT_TRUE(future_2.IsReady());
+  EXPECT_TRUE(future_2.Wait());
   EXPECT_FALSE(future_2.Get().GetPrefetchContainer());
 }
 
@@ -2869,6 +2917,31 @@ TEST_P(PrefetchServiceTest, NonDefaultStoragePartition) {
 
   NavigateInitiatedByRenderer(GURL("https://example.com"));
   EXPECT_FALSE(GetPrefetchToServe(GURL("https://example.com")));
+}
+
+TEST_P(PrefetchServiceTest, NonDefaultStoragePartitionReferringFrame) {
+  MakePrefetchService(
+      std::make_unique<testing::NiceMock<MockPrefetchServiceDelegate>>());
+
+  const StoragePartitionConfig kGuestPartitionConfig =
+      StoragePartitionConfig::Create(browser_context(), "someapp",
+                                     "somepartition", /*in_memory=*/false);
+  scoped_refptr<SiteInstance> guest_site_instance =
+      SiteInstance::CreateForGuest(browser_context(), kGuestPartitionConfig);
+  SetContents(TestWebContents::Create(browser_context(), guest_site_instance));
+
+  MakePrefetchOnMainFrame(
+      GURL("https://example.com"),
+      PrefetchType(PreloadingTriggerType::kSpeculationRule,
+                   /*use_prefetch_proxy=*/false,
+                   blink::mojom::SpeculationEagerness::kImmediate));
+
+  EXPECT_EQ(RequestCount(), 0);
+
+  histogram_tester().ExpectUniqueSample(
+      "Preloading.Prefetch.PrefetchStatus",
+      PrefetchStatus::kPrefetchIneligibleNonDefaultStoragePartition, 1);
+  ExpectPrefetchNotEligible(PreloadingEligibility::kNonDefaultStoragePartition);
 }
 
 TEST_P(PrefetchServiceTest, StreamingURLLoaderSuccessCase) {
@@ -6976,7 +7049,7 @@ TEST_P(PrefetchServiceTest,
       SimulatePartOfNavigation(GURL("https://example.com"),
                                /*is_renderer_initiated=*/true,
                                /*is_nav_prerender=*/true);
-  ASSERT_TRUE(navigation_result->serving_handle_future.IsReady());
+  ASSERT_TRUE(navigation_result->serving_handle_future.Wait());
   EXPECT_FALSE(navigation_result->serving_handle_future.Take());
 }
 

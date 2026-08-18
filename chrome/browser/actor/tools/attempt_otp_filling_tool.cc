@@ -334,9 +334,16 @@ void AttemptOtpFillingTool::Invoke(ToolCallback callback) {
           .GetActorOneTimeTokenFillingService()
           .ConsumeLoginContext();
 
+  tabs::TabInterface* tab = GetTargetTab().Get();
+  content::WebContents* web_contents = tab ? tab->GetContents() : nullptr;
+  url::Origin main_frame_origin =
+      web_contents
+          ? web_contents->GetPrimaryMainFrame()->GetLastCommittedOrigin()
+          : url::Origin();
+
   actor_login_flow_verifier_->VerifyIsActorLoginFlow(
       otp_frame->GetFrameTreeNodeId(), otp_frame->GetLastCommittedOrigin(),
-      context,
+      main_frame_origin, context,
       base::BindOnce(&AttemptOtpFillingTool::OnActorLoginFlowChecked,
                      weak_factory_.GetWeakPtr(), std::move(callback)));
 }
@@ -356,7 +363,6 @@ void AttemptOtpFillingTool::OnActorLoginFlowChecked(ToolCallback callback,
   requires_confirmation_ = !is_actor_login && !bypass_login_check;
 
   if (requires_confirmation_) {
-    RecordAttemptOtpFillingEvent(AttemptOtpFillingToolEvent::kNoActorLogin);
     LogJournalEvent(
         "AttemptOtpFillingTool::OnActorLoginFlowChecked",
         JournalDetailsBuilder()
@@ -547,6 +553,8 @@ void AttemptOtpFillingTool::OnGmailOtpConfirmationResponse(
                     JournalDetailsBuilder()
                         .Add("error", "Gmail OTP confirmation response is null")
                         .Build());
+    RecordAttemptOtpFillingEvent(
+        AttemptOtpFillingToolEvent::kGmailOtpConfirmationResponseNotValid);
     std::move(callback).Run(
         MakeResult(mojom::ActionResultCode::kOtpUnableToFill,
                    /*requires_page_stabilization=*/false,
@@ -559,6 +567,8 @@ void AttemptOtpFillingTool::OnGmailOtpConfirmationResponse(
                     JournalDetailsBuilder()
                         .Add("error_reason", response->get_error_reason())
                         .Build());
+    RecordAttemptOtpFillingEvent(
+        AttemptOtpFillingToolEvent::kGmailOtpConfirmationResponseNotValid);
     std::move(callback).Run(
         MakeResult(mojom::ActionResultCode::kOtpUnableToFill,
                    /*requires_page_stabilization=*/false,
@@ -573,6 +583,8 @@ void AttemptOtpFillingTool::OnGmailOtpConfirmationResponse(
             .Add("error",
                  "Gmail OTP confirmation response lacks response payload")
             .Build());
+    RecordAttemptOtpFillingEvent(
+        AttemptOtpFillingToolEvent::kGmailOtpConfirmationResponseNotValid);
     std::move(callback).Run(
         MakeResult(mojom::ActionResultCode::kOtpUnableToFill,
                    /*requires_page_stabilization=*/false,
@@ -586,6 +598,8 @@ void AttemptOtpFillingTool::OnGmailOtpConfirmationResponse(
                       .Build());
 
   if (!permission_granted) {
+    RecordAttemptOtpFillingEvent(
+        AttemptOtpFillingToolEvent::kGmailOtpConfirmationDeclinedByUser);
     std::move(callback).Run(
         MakeResult(mojom::ActionResultCode::kOtpUserDeclinedOptingIntoFilling,
                    /*requires_page_stabilization=*/false,

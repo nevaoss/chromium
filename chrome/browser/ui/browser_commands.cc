@@ -70,6 +70,7 @@
 #include "chrome/browser/ui/bookmarks/bookmark_utils_desktop.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_command_controller.h"
+#include "chrome/browser/ui/browser_init_state.h"
 #include "chrome/browser/ui/browser_live_tab_context.h"
 #include "chrome/browser/ui/browser_tabstrip.h"
 #include "chrome/browser/ui/browser_window.h"
@@ -123,6 +124,7 @@
 #include "chrome/browser/ui/web_applications/web_app_launch_utils.h"
 #include "chrome/browser/ui/web_applications/web_app_tabbed_utils.h"
 #include "chrome/browser/ui/webui/tab_search/tab_search.mojom.h"
+#include "chrome/browser/ui/window_feature_controller/window_feature_controller.h"
 #include "chrome/browser/upgrade_detector/upgrade_detector.h"
 #include "chrome/browser/web_applications/web_app_constants.h"
 #include "chrome/browser/web_applications/web_app_helpers.h"
@@ -261,6 +263,7 @@
 #include "chrome/browser/ui/toasts/api/toast_id.h"
 #include "chrome/browser/ui/toasts/toast_controller.h"
 #include "chrome/browser/ui/toasts/toast_features.h"
+#include "chrome/browser/ui/views/contextual_tasks/contextual_tasks_close_button_controller.h"
 #endif
 
 namespace {
@@ -280,8 +283,8 @@ void CreateAndShowNewWindowWithContents(
     const bool is_trusted_source =
         WindowFeatureController::From(original_browser)->IsTrustedSource();
     new_browser = Browser::Create(Browser::CreateParams::CreateForApp(
-        browser->app_name(), is_trusted_source, gfx::Rect(),
-        original_browser->GetProfile(), true));
+        BrowserInitState::From(browser)->create_params().app_name,
+        is_trusted_source, gfx::Rect(), original_browser->GetProfile(), true));
   } else {
     new_browser = Browser::Create(Browser::CreateParams(
         original_browser->GetType(), original_browser->GetProfile(), true));
@@ -371,8 +374,8 @@ content::WebContents* DuplicateTabAt(BrowserWindowInterface* browser,
   content::WebContents* raw_contents_dupe = contents_dupe.get();
 
   bool pinned = false;
-  if (browser->GetBrowserForMigrationOnly()->CanSupportWindowFeature(
-          Browser::WindowFeature::kFeatureTabStrip)) {
+  if (WindowFeatureController::From(browser)->CanSupportWindowFeature(
+          WindowFeatureController::WindowFeature::kFeatureTabStrip)) {
     // If this is a tabbed browser, just create a duplicate tab inside the same
     // window next to the tab being duplicated.
     TabStripModel* tab_strip_model = browser->GetTabStripModel();
@@ -887,7 +890,7 @@ void NewEmptyWindow(Profile* profile, bool should_trigger_session_restore) {
 
 BrowserWindowInterface* OpenEmptyWindow(Profile* profile,
                                         bool should_trigger_session_restore) {
-  if (Browser::GetCreationStatusForProfile(profile) !=
+  if (GetBrowserWindowCreationStatusForProfile(*profile) !=
       Browser::CreationStatus::kOk) {
     return nullptr;
   }
@@ -1310,8 +1313,8 @@ content::WebContents& NewTab(BrowserWindowInterface* browser,
       NewTabGroupingUserData::kNewTabGroupingUserDataKey,
       std::make_unique<NewTabGroupingUserData>(active_tab_group_id));
 
-  if (browser->GetBrowserForMigrationOnly()->SupportsWindowFeature(
-          Browser::WindowFeature::kFeatureTabStrip)) {
+  if (WindowFeatureController::From(browser)->SupportsWindowFeature(
+          WindowFeatureController::WindowFeature::kFeatureTabStrip)) {
     return *AddAndReturnTabAt(browser, GURL(), -1, true, std::nullopt);
   }
 
@@ -1390,6 +1393,19 @@ void CloseTab(BrowserWindowInterface* browser) {
     active_tab->GetContents()->Close();
     return;
   }
+
+#if !BUILDFLAG(IS_ANDROID)
+  if (base::FeatureList::IsEnabled(
+          contextual_tasks::kContextualTasksCloseTabExpandsSidePanel)) {
+    ContextualTasksCloseButtonController* const close_button_controller =
+        ContextualTasksCloseButtonController::From(browser);
+    if (close_button_controller &&
+        close_button_controller->ShouldShowCloseButton()) {
+      close_button_controller->MaybeCloseTabExpandSidePanel();
+      return;
+    }
+  }
+#endif
 
   ToastController* toast_controller = browser->GetFeatures().toast_controller();
   if (!toast_controller) {
@@ -1587,8 +1603,9 @@ void MoveGroupToNewWindow(BrowserWindowInterface* browser,
       web_app::AppBrowserController::From(current_browser)->has_tab_strip()) {
     auto* app_controller = web_app::AppBrowserController::From(current_browser);
     new_browser = Browser::Create(Browser::CreateParams::CreateForApp(
-        current_browser->app_name(), app_controller->IsTrustedSource(),
-        gfx::Rect(), current_browser->GetProfile(), true));
+        BrowserInitState::From(current_browser)->create_params().app_name,
+        app_controller->IsTrustedSource(), gfx::Rect(),
+        current_browser->GetProfile(), true));
     web_app::MaybeAddPinnedHomeTab(new_browser, app_controller->app_id());
   } else {
     new_browser = CreateNewBrowser(current_browser, true);
@@ -1610,8 +1627,9 @@ void MoveTabsToNewWindow(BrowserWindowInterface* browser,
       web_app::AppBrowserController::From(current_browser)->has_tab_strip()) {
     auto* app_controller = web_app::AppBrowserController::From(current_browser);
     new_browser = Browser::Create(Browser::CreateParams::CreateForApp(
-        current_browser->app_name(), app_controller->IsTrustedSource(),
-        gfx::Rect(), current_browser->GetProfile(), true));
+        BrowserInitState::From(current_browser)->create_params().app_name,
+        app_controller->IsTrustedSource(), gfx::Rect(),
+        current_browser->GetProfile(), true));
     web_app::MaybeAddPinnedHomeTab(new_browser, app_controller->app_id());
   } else {
     new_browser = CreateNewBrowser(current_browser, true);
@@ -1642,8 +1660,8 @@ WebContents* DuplicateTabAt(BrowserWindowInterface* browser, int index) {
 
 void DuplicateSplit(BrowserWindowInterface* browser,
                     split_tabs::SplitTabId split) {
-  CHECK(browser->GetBrowserForMigrationOnly()->CanSupportWindowFeature(
-      Browser::WindowFeature::kFeatureTabStrip));
+  CHECK(WindowFeatureController::From(browser)->CanSupportWindowFeature(
+      WindowFeatureController::WindowFeature::kFeatureTabStrip));
 
   TabStripModel* model = browser->GetTabStripModel();
   split_tabs::SplitTabData* split_data = model->GetSplitData(split);

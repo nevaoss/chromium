@@ -953,6 +953,24 @@ AgentClusterKey SiteInfo::GetAgentClusterKeyForURL(
             /*requires_origin_keyed_process=*/false);
   }
 
+  // A WebContents created with PrivilegedParams isolates every frame it hosts
+  // to its own origin -- stronger than the default site-keyed process model.
+  // This ensures that a compromise in a same-site but cross-origin subframe
+  // lands in a different process than the main frame and so cannot reach the
+  // privileged capabilities bound there. Force origin-keyed process isolation,
+  // as if the origin had sent an `Origin-Agent-Cluster: ?1` header, overriding
+  // any opt-out. This is only possible where OAC process isolation is available
+  // (see the CHECK below); on configurations where it is disabled (e.g. Android
+  // below the site-isolation memory threshold) privileged frames fall back to
+  // the site-keyed process, which still isolates them from ordinary content.
+  if (url_info.embedder_isolation_info.is_privileged() &&
+      SiteIsolationPolicy::IsProcessIsolationForOriginAgentClusterEnabled()) {
+    oac_isolation_state =
+        OriginAgentClusterIsolationState::CreateForOriginAgentCluster(
+            /*had_oac_request=*/true,
+            /*requires_origin_keyed_process=*/true);
+  }
+
   // Now check if the requested isolation state should be overridden by an OAC
   // isolation state already stored for the BrowsingInstance. This happens when
   // the origin has already requested an opt-in or an opt-out for origin
@@ -1322,6 +1340,12 @@ bool SiteInfo::RequiresDedicatedProcessInternal(
 
   // Isolate MIME handler extension content into per-document processes.
   if (embedder_isolation_info.is_unique_instance()) {
+    return true;
+  }
+
+  // Isolate privileged-feature content (see //chrome's PrivilegedWebContents)
+  // so it never shares a process with ordinary content of the same site.
+  if (embedder_isolation_info.is_privileged()) {
     return true;
   }
 

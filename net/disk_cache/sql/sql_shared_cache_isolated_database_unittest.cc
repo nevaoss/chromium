@@ -45,6 +45,15 @@ class SqlSharedCacheIsolatedDatabaseTest : public testing::TestWithParam<bool> {
   }
 
  protected:
+  base::expected<sql::StreamingBlobHandle,
+                 SqlSharedCacheIsolatedDatabase::Error>
+  GetStreamingBlobHandle(SqlSharedCacheIsolatedDatabase& db,
+                         const CacheEntryKey& key,
+                         SqlSharedCacheRowId shared_cache_row_id,
+                         int body_size) {
+    return db.GetStreamingBlobHandle(key, shared_cache_row_id, body_size);
+  }
+
   base::test::TaskEnvironment task_environment_;
   base::ScopedTempDir temp_dir_;
   base::test::ScopedFeatureList feature_list_;
@@ -127,8 +136,9 @@ TEST_P(SqlSharedCacheIsolatedDatabaseTest, InitializeAndNikMismatch) {
     EXPECT_TRUE(db.Init().has_value());
 
     auto read_buffer = base::MakeRefCounted<net::IOBufferWithSize>(3);
-    EXPECT_TRUE(db.Read(key, *row_id, /*offset=*/0, read_buffer).has_value());
-    EXPECT_EQ(read_buffer->span(), body->span());
+    EXPECT_TRUE(
+        db.Read(key, *row_id, /*body_size=*/3, /*offset=*/0, read_buffer)
+            .has_value());
   }
 
   {
@@ -138,7 +148,8 @@ TEST_P(SqlSharedCacheIsolatedDatabaseTest, InitializeAndNikMismatch) {
     EXPECT_TRUE(db.Init().has_value());
 
     auto read_buffer = base::MakeRefCounted<net::IOBufferWithSize>(3);
-    auto read_result = db.Read(key, *row_id, /*offset=*/0, read_buffer);
+    auto read_result =
+        db.Read(key, *row_id, /*body_size=*/3, /*offset=*/0, read_buffer);
     EXPECT_FALSE(read_result.has_value());
     EXPECT_EQ(read_result.error(),
               SqlSharedCacheIsolatedDatabase::Error::kEntryNotFound);
@@ -160,7 +171,8 @@ TEST_P(SqlSharedCacheIsolatedDatabaseTest, InsertAndReadSuccess) {
   ASSERT_TRUE(row_id_or_error.has_value());
 
   auto read_buffer = base::MakeRefCounted<net::IOBufferWithSize>(3);
-  auto read_result = db.Read(key, *row_id_or_error, /*offset=*/0, read_buffer);
+  auto read_result = db.Read(key, *row_id_or_error, /*body_size=*/3,
+                             /*offset=*/0, read_buffer);
   ASSERT_TRUE(read_result.has_value());
   EXPECT_EQ(read_result->read_bytes, 3);
   EXPECT_EQ(read_buffer->span(), body->span());
@@ -184,7 +196,8 @@ TEST_P(SqlSharedCacheIsolatedDatabaseTest, WriteBodyAndRead) {
                   .has_value());
 
   auto read_buffer = base::MakeRefCounted<net::IOBufferWithSize>(2);
-  auto read_result = db.Read(key, *row_id_or_error, /*offset=*/1, read_buffer);
+  auto read_result = db.Read(key, *row_id_or_error, /*body_size=*/4,
+                             /*offset=*/1, read_buffer);
   ASSERT_TRUE(read_result.has_value());
   EXPECT_EQ(read_result->read_bytes, 2);
   EXPECT_EQ(read_buffer->span(), body_chunk->span());
@@ -202,7 +215,8 @@ TEST_P(SqlSharedCacheIsolatedDatabaseTest, ReadNotReady) {
   ASSERT_TRUE(row_id_or_error.has_value());
 
   auto read_buffer = base::MakeRefCounted<net::IOBufferWithSize>(2);
-  auto read_result = db.Read(key, *row_id_or_error, /*offset=*/0, read_buffer);
+  auto read_result = db.Read(key, *row_id_or_error, /*body_size=*/4,
+                             /*offset=*/0, read_buffer);
   EXPECT_FALSE(read_result.has_value());
   EXPECT_EQ(read_result.error(),
             SqlSharedCacheIsolatedDatabase::Error::kEntryNotFound);
@@ -221,8 +235,8 @@ TEST_P(SqlSharedCacheIsolatedDatabaseTest, ReadKeyMismatch) {
 
   CacheEntryKey other_key("0/0/https://example.org/");
   auto read_buffer = base::MakeRefCounted<net::IOBufferWithSize>(2);
-  auto read_result =
-      db.Read(other_key, *row_id_or_error, /*offset=*/0, read_buffer);
+  auto read_result = db.Read(other_key, *row_id_or_error, /*body_size=*/2,
+                             /*offset=*/0, read_buffer);
   EXPECT_FALSE(read_result.has_value());
   EXPECT_EQ(read_result.error(),
             SqlSharedCacheIsolatedDatabase::Error::kEntryNotFound);
@@ -282,10 +296,12 @@ TEST_P(SqlSharedCacheIsolatedDatabaseTest, ReadInvalidRange) {
 
   auto read_buffer = base::MakeRefCounted<net::IOBufferWithSize>(2);
 
-  EXPECT_EQ(db.Read(key, *row_id_or_error, /*offset=*/-1, read_buffer).error(),
+  EXPECT_EQ(db.Read(key, *row_id_or_error, /*body_size=*/4, /*offset=*/-1,
+                    read_buffer)
+                .error(),
             SqlSharedCacheIsolatedDatabase::Error::kInvalidReadRange);
 
-  EXPECT_EQ(db.Read(key, *row_id_or_error,
+  EXPECT_EQ(db.Read(key, *row_id_or_error, /*body_size=*/4,
                     /*offset=*/std::numeric_limits<int32_t>::max(), read_buffer)
                 .error(),
             SqlSharedCacheIsolatedDatabase::Error::kInvalidReadRange);
@@ -316,7 +332,8 @@ TEST_P(SqlSharedCacheIsolatedDatabaseTest,
                   .has_value());
 
   auto read_buffer = base::MakeRefCounted<net::IOBufferWithSize>(6);
-  auto read_result = db.Read(key, *row_id_or_error, /*offset=*/2, read_buffer);
+  auto read_result = db.Read(key, *row_id_or_error, /*body_size=*/10,
+                             /*offset=*/2, read_buffer);
   ASSERT_TRUE(read_result.has_value());
   EXPECT_EQ(read_result->read_bytes, 6);
   EXPECT_EQ(read_buffer->span(), base::span<const uint8_t>({3, 4, 5, 6, 7, 8}));
@@ -338,13 +355,50 @@ TEST_P(SqlSharedCacheIsolatedDatabaseTest, ReadBeyondWrittenBody) {
 
   auto read_buffer = base::MakeRefCounted<net::IOBufferWithSize>(1);
 
-  EXPECT_EQ(db.Read(key, *row_id_or_error, /*offset=*/4, read_buffer).error(),
-            SqlSharedCacheIsolatedDatabase::Error::kFailedToReadBlob);
+  EXPECT_EQ(
+      db.Read(key, *row_id_or_error, /*body_size=*/4, /*offset=*/4, read_buffer)
+          .error(),
+      SqlSharedCacheIsolatedDatabase::Error::kInvalidReadRange);
 
   auto read_buffer_overflow = base::MakeRefCounted<net::IOBufferWithSize>(3);
-  EXPECT_EQ(db.Read(key, *row_id_or_error, /*offset=*/2, read_buffer_overflow)
+  EXPECT_EQ(db.Read(key, *row_id_or_error, /*body_size=*/4, /*offset=*/2,
+                    read_buffer_overflow)
                 .error(),
-            SqlSharedCacheIsolatedDatabase::Error::kFailedToReadBlob);
+            SqlSharedCacheIsolatedDatabase::Error::kInvalidReadRange);
+}
+
+TEST_P(SqlSharedCacheIsolatedDatabaseTest, ReadSizeMismatch) {
+  SqlSharedCacheDbId db_id(1);
+  SqlSharedCacheIsolatedDatabase db("nik", temp_dir_.GetPath(), db_id);
+  ASSERT_TRUE(db.Init().has_value());
+
+  CacheEntryKey key("0/0/https://example.com/");
+  auto headers = base::MakeRefCounted<net::IOBufferWithSize>(4);
+  headers->span().copy_from(base::span<const uint8_t>({1, 2, 3, 4}));
+  auto body = base::MakeRefCounted<net::IOBufferWithSize>(10);
+  body->span().copy_from(
+      base::span<const uint8_t>({0, 1, 2, 3, 4, 5, 6, 7, 8, 9}));
+
+  auto row_id_or_error = db.Insert(key, headers, 10, body);
+  ASSERT_TRUE(row_id_or_error.has_value());
+
+  // Pass body_size=5 which doesn't match actual blob size (10).
+  // Read range is offset=0, buf_len=2, so offset + buf_len (2) <= body_size
+  // (5), which passes range check, but size check in GetStreamingBlobHandle
+  // fails.
+  auto read_buffer = base::MakeRefCounted<net::IOBufferWithSize>(2);
+  auto read_result = db.Read(key, *row_id_or_error, /*body_size=*/5,
+                             /*offset=*/0, read_buffer);
+  EXPECT_FALSE(read_result.has_value());
+  EXPECT_EQ(read_result.error(),
+            SqlSharedCacheIsolatedDatabase::Error::kBodySizeMismatch);
+
+  // Also test GetStreamingBlobHandle directly
+  auto blob_handle_result =
+      GetStreamingBlobHandle(db, key, *row_id_or_error, /*body_size=*/5);
+  EXPECT_FALSE(blob_handle_result.has_value());
+  EXPECT_EQ(blob_handle_result.error(),
+            SqlSharedCacheIsolatedDatabase::Error::kBodySizeMismatch);
 }
 
 TEST_P(SqlSharedCacheIsolatedDatabaseTest, DeleteEntriesSuccess) {
@@ -369,11 +423,13 @@ TEST_P(SqlSharedCacheIsolatedDatabaseTest, DeleteEntriesSuccess) {
 
   // Verify row 1 cannot be read.
   auto read_buf = base::MakeRefCounted<net::IOBufferWithSize>(3);
-  EXPECT_EQ(db.Read(key1, *row1, /*offset=*/0, read_buf).error(),
-            SqlSharedCacheIsolatedDatabase::Error::kEntryNotFound);
+  EXPECT_EQ(
+      db.Read(key1, *row1, /*body_size=*/3, /*offset=*/0, read_buf).error(),
+      SqlSharedCacheIsolatedDatabase::Error::kEntryNotFound);
 
   // Verify row 2 can still be read.
-  EXPECT_TRUE(db.Read(key2, *row2, /*offset=*/0, read_buf).has_value());
+  EXPECT_TRUE(db.Read(key2, *row2, /*body_size=*/3, /*offset=*/0, read_buf)
+                  .has_value());
 
   // Delete row 2.
   EXPECT_TRUE(db.DeleteEntries({*row2}).has_value());
@@ -419,13 +475,16 @@ TEST_P(SqlSharedCacheIsolatedDatabaseTest, DeleteMultipleEntriesAtOnce) {
 
   // Verify row 1 and row 2 cannot be read.
   auto read_buf = base::MakeRefCounted<net::IOBufferWithSize>(3);
-  EXPECT_EQ(db.Read(key1, *row1, /*offset=*/0, read_buf).error(),
-            SqlSharedCacheIsolatedDatabase::Error::kEntryNotFound);
-  EXPECT_EQ(db.Read(key2, *row2, /*offset=*/0, read_buf).error(),
-            SqlSharedCacheIsolatedDatabase::Error::kEntryNotFound);
+  EXPECT_EQ(
+      db.Read(key1, *row1, /*body_size=*/3, /*offset=*/0, read_buf).error(),
+      SqlSharedCacheIsolatedDatabase::Error::kEntryNotFound);
+  EXPECT_EQ(
+      db.Read(key2, *row2, /*body_size=*/3, /*offset=*/0, read_buf).error(),
+      SqlSharedCacheIsolatedDatabase::Error::kEntryNotFound);
 
   // Verify row 3 can still be read.
-  EXPECT_TRUE(db.Read(key3, *row3, /*offset=*/0, read_buf).has_value());
+  EXPECT_TRUE(db.Read(key3, *row3, /*body_size=*/3, /*offset=*/0, read_buf)
+                  .has_value());
 
   // Delete remaining row 3.
   EXPECT_TRUE(db.DeleteEntries({*row3}).has_value());
@@ -452,7 +511,8 @@ TEST_P(SqlSharedCacheIsolatedDatabaseTest, DeleteNonExistentEntries) {
 
   // Verify row 1 can still be read.
   auto read_buf = base::MakeRefCounted<net::IOBufferWithSize>(3);
-  EXPECT_TRUE(db.Read(key1, *row1, /*offset=*/0, read_buf).has_value());
+  EXPECT_TRUE(db.Read(key1, *row1, /*body_size=*/3, /*offset=*/0, read_buf)
+                  .has_value());
 
   // Delete existing row 1 and non-existent row together.
   EXPECT_TRUE(db.DeleteEntries({*row1, non_existent_row}).has_value());

@@ -2529,7 +2529,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Enterprise.DMServerCloudPolicyRequestStatus{EnterpriseDMServerCloudPolicyRequest}"
-    enum="EnterpriseDeviceManagementStatus" expires_after="2026-12-01">
+    enum="EnterpriseDeviceManagementStatus" expires_after="2027-01-31">
   <owner>vincb@google.com</owner>
   <owner>zmin@chromium.org</owner>
   <summary>
@@ -3011,7 +3011,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Enterprise.FileAnalysisRequest.FileSize" units="KB"
-    expires_after="2026-11-30">
+    expires_after="2027-01-31">
   <owner>eliashomsi@google.com</owner>
   <owner>nancylanxiao@google.com</owner>
   <owner>cbe-cep-eng@google.com</owner>
@@ -3220,7 +3220,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Enterprise.IOS.DownloadProtection.ScanTriggered.EventResult"
-    enum="EnterpriseDownloadProtectionEventResult" expires_after="2026-09-15">
+    enum="EnterpriseDownloadProtectionEventResult" expires_after="2027-05-30">
   <owner>mxlg@google.com</owner>
   <owner>bling-enterprise@google.com</owner>
   <summary>
@@ -3231,7 +3231,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Enterprise.IOS.DownloadProtection.ScanTriggered.WarningBypassed"
-    units="bypasses" expires_after="2026-09-15">
+    units="bypasses" expires_after="2027-05-30">
   <owner>mxlg@google.com</owner>
   <owner>bling-enterprise@google.com</owner>
   <summary>

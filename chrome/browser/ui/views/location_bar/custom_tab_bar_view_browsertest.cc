@@ -64,7 +64,6 @@ class TestTitleObserver : public TabStripModelObserver {
 
   // TabstripModelObserver:
   void OnTabChangedAt(tabs::TabInterface* tab,
-                      int index,
                       TabChangeType change_type) override {
     content::NavigationEntry* entry =
         tab->GetContents()->GetController().GetVisibleEntry();
@@ -261,7 +260,7 @@ class CustomTabBarViewBrowserTest : public web_app::WebAppBrowserTestBase {
 // Check the custom tab bar is not instantiated for a tabbed browser window.
 IN_PROC_BROWSER_TEST_F(CustomTabBarViewBrowserTest,
                        IsNotCreatedInTabbedBrowser) {
-  EXPECT_TRUE(browser()->is_type_normal());
+  EXPECT_EQ(browser()->GetType(), BrowserWindowInterface::Type::TYPE_NORMAL);
   EXPECT_TRUE(browser_view_->GetIsNormalType());
   EXPECT_FALSE(custom_tab_bar_);
 }
@@ -296,7 +295,8 @@ IN_PROC_BROWSER_TEST_F(CustomTabBarViewBrowserTest,
 
   Browser* popup_browser =
       OpenPopup(app_view->GetActiveWebContents(), out_of_scope_url);
-  EXPECT_TRUE(popup_browser->is_type_app_popup());
+  EXPECT_EQ(popup_browser->GetType(),
+            BrowserWindowInterface::Type::TYPE_APP_POPUP);
 
   // Out of scope, so custom tab bar should be shown.
   EXPECT_TRUE(web_app::AppBrowserController::From(popup_browser)

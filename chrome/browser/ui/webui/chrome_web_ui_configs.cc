@@ -46,7 +46,6 @@
 #include "chrome/browser/ui/webui/notebooks_internals/notebooks_internals_ui_config.h"
 #include "chrome/browser/ui/webui/ntp_tiles_internals_ui.h"
 #include "chrome/browser/ui/webui/omnibox/omnibox_ui.h"
-#include "chrome/browser/ui/webui/personal_context_internals/personal_context_internals_ui.h"
 #include "chrome/browser/ui/webui/policy/policy_ui.h"
 #include "chrome/browser/ui/webui/predictors/predictors_ui.h"
 #include "chrome/browser/ui/webui/regional_capabilities_internals/regional_capabilities_internals_ui.h"
@@ -120,6 +119,7 @@
 #include "chrome/browser/ui/webui/omnibox_everywhere/omnibox_everywhere_ui.h"
 #include "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_ui.h"
 #include "chrome/browser/ui/webui/on_device_internals/on_device_internals_ui.h"
+#include "chrome/browser/ui/webui/organizer_panel/organizer_panel_ui.h"
 #include "chrome/browser/ui/webui/password_manager/password_manager_ui.h"
 #include "chrome/browser/ui/webui/profile_internals/profile_internals_ui.h"
 #include "chrome/browser/ui/webui/search_engine_choice/search_engine_choice_ui.h"
@@ -293,7 +293,6 @@ void RegisterChromeWebUIConfigs() {
   map.AddWebUIConfig(std::make_unique<OmniboxUIConfig>());
   map.AddWebUIConfig(std::make_unique<OptimizationGuideInternalsUIConfig>());
   map.AddWebUIConfig(std::make_unique<PasswordManagerInternalsUIConfig>());
-  map.AddWebUIConfig(std::make_unique<PersonalContextInternalsUIConfig>());
   map.AddWebUIConfig(std::make_unique<PolicyUIConfig>());
   map.AddWebUIConfig(std::make_unique<PredictorsUIConfig>());
   map.AddWebUIConfig(
@@ -374,6 +373,7 @@ void RegisterChromeWebUIConfigs() {
   map.AddWebUIConfig(std::make_unique<NewTabUIConfig>());
   map.AddWebUIConfig(std::make_unique<OmniboxEverywhereUIConfig>());
   map.AddWebUIConfig(std::make_unique<OmniboxPopupUIConfig>());
+  map.AddWebUIConfig(std::make_unique<OrganizerPanelUIConfig>());
   map.AddWebUIConfig(
       std::make_unique<on_device_internals::OnDeviceInternalsUIConfig>());
   map.AddWebUIConfig(std::make_unique<PasswordManagerUIConfig>());

@@ -41,6 +41,7 @@ class CollaborationMessagingPageActionController;
 class CommitLimitOOMRecoveryTracker;
 class CookieControlsPageActionController;
 class FileSystemAccessPageActionController;
+class FocusTabAfterNavigationHelper;
 class FromGWSNavigationAndKeepAliveRequestObserver;
 class HttpAuthCacheStatus;
 class IntentPickerViewPageActionController;
@@ -64,6 +65,7 @@ class SidePanelRegistry;
 class TabResourceUsageTabHelper;
 class TabUIHelper;
 class TranslatePageActionController;
+class ZeroSuggestPrefetchTabHelper;
 
 namespace skills {
 class SkillsUiTabControllerInterface;
@@ -130,6 +132,7 @@ class ExtensionSidePanelManager;
 }  // namespace extensions
 
 namespace glic {
+class ContextualCueingHelper;
 class GlicCueTabState;
 class GlicInstanceHelper;
 class GlicTabIndicatorHelper;
@@ -533,6 +536,9 @@ class TabFeatures {
 
   std::unique_ptr<glic::GlicPageFeaturesManager> glic_page_features_manager_;
 
+  // Observes page loads to decide when to offer glic contextual cueing.
+  std::unique_ptr<glic::ContextualCueingHelper> contextual_cueing_helper_;
+
   // Per-tab eligibility state for the glic contextual cue.
   std::unique_ptr<glic::GlicCueTabState> glic_cue_tab_state_;
 
@@ -541,6 +547,11 @@ class TabFeatures {
 
   std::unique_ptr<InactiveWindowMouseEventController>
       inactive_window_mouse_event_controller_;
+
+  // Focuses the tab contents after browser-initiated and NTP-leaving
+  // navigations.
+  std::unique_ptr<FocusTabAfterNavigationHelper>
+      focus_tab_after_navigation_helper_;
 
   std::unique_ptr<FromGWSNavigationAndKeepAliveRequestObserver>
       from_gws_navigation_and_keep_alive_request_observer_;
@@ -661,6 +672,10 @@ class TabFeatures {
       filter_navigation_observer_;
 
   std::unique_ptr<TabAttachmentTracker> tab_attachment_tracker_;
+
+  // Prefetches zero-prefix suggestions on opening or switching to an NTP.
+  std::unique_ptr<ZeroSuggestPrefetchTabHelper>
+      zero_suggest_prefetch_tab_helper_;
 
   // Must be the last member.
   base::WeakPtrFactory<TabFeatures> weak_factory_{this};

@@ -679,13 +679,6 @@ bool IsGeminiBinaryMigrationEnabled() {
   return base::FeatureList::IsEnabled(kGeminiBinaryMigration);
 }
 
-BASE_FEATURE(kPersistTabContextRichExtraction,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
-bool IsPersistTabContextRichExtractionEnabled() {
-  return base::FeatureList::IsEnabled(kPersistTabContextRichExtraction);
-}
-
 BASE_FEATURE(kPageContextIPCOptimization, base::FEATURE_ENABLED_BY_DEFAULT);
 
 const char kPageContextIPCOptimizationActionableParam[] = "enable_actionable";
@@ -858,4 +851,10 @@ BASE_FEATURE(kGeminiCoordinatorTeardownFix, base::FEATURE_ENABLED_BY_DEFAULT);
 
 bool IsGeminiCoordinatorTeardownFixEnabled() {
   return base::FeatureList::IsEnabled(kGeminiCoordinatorTeardownFix);
+}
+
+BASE_FEATURE(kGeminiVisualRichFRE, base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsGeminiVisualRichFREEnabled() {
+  return base::FeatureList::IsEnabled(kGeminiVisualRichFRE);
 }

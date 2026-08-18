@@ -21,6 +21,9 @@ export const SKILLS_CLOSE_DIALOG = 'close-dialog';
 /** Message type used by the guest to open a URL in a new tab. */
 export const SKILLS_OPEN_URL = 'open-url';
 
+/** Message type used by the guest to send a prompt to the host. */
+export const SKILLS_SEND_PROMPT = 'send-prompt';
+
 /** Message type used by the host to send the Gemini prompt. */
 export const SKILLS_GEMINI_PROMPT_TYPE = 'skills-gemini-prompt';
 
@@ -47,6 +50,15 @@ export function getPrimarySkillsOrigin(): string {
   return loadTimeData.getString('skillsPrimaryOrigin');
 }
 
+/** Returns the language code for the Skills guest page. */
+export function getLanguageCode(): string|null {
+  if (!loadTimeData.valueExists('languageCode') ||
+      typeof loadTimeData.getValue('languageCode') !== 'string') {
+    return null;
+  }
+  return loadTimeData.getString('languageCode') || null;
+}
+
 /** Returns the allowed origins list. */
 export function getSkillsApiAllowedOrigins(): string[] {
   return [
@@ -55,6 +67,8 @@ export function getSkillsApiAllowedOrigins(): string[] {
     // Only allowed for internal users.
     'https://login.corp.google.com',
     'https://accounts.googlers.com',
+    'https://gaiastaging.corp.google.com',
+    'https://*.proxy.googlers.com',
   ];
 }
 
@@ -65,12 +79,24 @@ export function getSkillsRemoteUrl(): string {
 
 const REMOTE_PATH_PREFIX = '/chromeskills';
 
+/** Message type used by the host to notify guest that undo was clicked. */
+export const SKILLS_UNDO_TYPE = 'skills-undo';
+
+/** Message type used by the host to notify guest that the toast closed. */
+export const SKILLS_TOAST_CLOSED_TYPE = 'toast-closed';
+
 /**
  * Translates a Chrome WebUI path (e.g. '/yourSkills') to the corresponding
- * staging remote URL.
+ * staging remote URL, including the localized 'hl' query parameter if present.
  */
 export function getRemoteUrlForChromePath(chromePath: string): string {
-  return `${getPrimarySkillsOrigin()}${REMOTE_PATH_PREFIX}${chromePath}`;
+  const url =
+      new URL(`${getPrimarySkillsOrigin()}${REMOTE_PATH_PREFIX}${chromePath}`);
+  const languageCode = getLanguageCode();
+  if (languageCode) {
+    url.searchParams.set('hl', languageCode);
+  }
+  return url.toString();
 }
 
 /**

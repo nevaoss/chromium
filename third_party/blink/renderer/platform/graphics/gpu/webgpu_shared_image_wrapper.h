@@ -32,7 +32,6 @@
 
 namespace gfx {
 class ColorSpace;
-struct HDRMetadata;
 class Size;
 }  // namespace gfx
 
@@ -40,12 +39,12 @@ namespace blink {
 
 class PLATFORM_EXPORT WebGpuSharedImageWrapper final {
  public:
-  static std::unique_ptr<WebGpuSharedImageWrapper> Create(
-      gfx::Size size,
-      viz::SharedImageFormat format,
-      SkAlphaType alpha_type,
-      const gfx::ColorSpace& color_space,
-      const gfx::HDRMetadata& hdr_metadata);
+  WebGpuSharedImageWrapper(gfx::Size size,
+                           viz::SharedImageFormat format,
+                           SkAlphaType alpha_type,
+                           const gfx::ColorSpace& color_space,
+                           base::WeakPtr<WebGraphicsContext3DProviderWrapper>
+                               context_provider_wrapper);
   ~WebGpuSharedImageWrapper();
 
   gfx::Size Size() const { return shared_image_->size(); }
@@ -60,21 +59,12 @@ class PLATFORM_EXPORT WebGpuSharedImageWrapper final {
   void WaitSyncToken(const gpu::SyncToken& sync_token);
 
   // Temporarily public for WebGpuSharedImageWrapperLease migration.
-  const gfx::HDRMetadata hdr_metadata_;
   std::unique_ptr<MemoryManagedPaintRecorder> recorder_for_external_draws_;
   const scoped_refptr<gpu::ClientSharedImage> shared_image_;
   gpu::SyncToken acquire_sync_token_;
   gpu::SyncToken release_sync_token_;
   bool is_cleared_ = false;
   base::WeakPtr<WebGraphicsContext3DProviderWrapper> context_provider_wrapper_;
-
- private:
-  WebGpuSharedImageWrapper(gfx::Size,
-                           viz::SharedImageFormat,
-                           SkAlphaType,
-                           const gfx::ColorSpace&,
-                           const gfx::HDRMetadata&,
-                           base::WeakPtr<WebGraphicsContext3DProviderWrapper>);
 };
 
 }  // namespace blink

@@ -21,6 +21,7 @@
 #include "net/disk_cache/sql/sql_backend_aliases.h"
 #include "net/disk_cache/sql/sql_persistent_store.h"
 #include "sql/database.h"
+#include "sql/streaming_blob_handle.h"
 
 namespace disk_cache {
 
@@ -64,6 +65,7 @@ class NET_EXPORT_PRIVATE SqlSharedCacheIsolatedDatabase {
     kFailedToReadBlob = 21,
     kFailedToShareConnection = 22,
     kIsolatedDatabaseNotAvailable = 23,
+    kBodySizeMismatch = 24,
   };
 
   using ReadResult = SqlPersistentStore::ReadResult;
@@ -104,11 +106,13 @@ class NET_EXPORT_PRIVATE SqlSharedCacheIsolatedDatabase {
                                         scoped_refptr<net::IOBuffer> buffer,
                                         bool set_ready);
 
-  // Reads data from the entry's body into `buffer` starting at
-  // `offset`. The entry must be in the `ready` state, otherwise this operation
-  // will fail.
+  // Reads data from the entry's body into `buffer` starting at `offset`. The
+  // total body size must be specified in `body_size` to validate that the read
+  // range (`offset` + `buffer->size()`) does not exceed `body_size`. The entry
+  // must be in the `ready` state, otherwise this operation will fail.
   ReadResultOrError Read(const CacheEntryKey& entry_key,
                          SqlSharedCacheRowId shared_cache_row_id,
+                         int body_size,
                          int offset,
                          scoped_refptr<net::IOBuffer> buffer);
 
@@ -166,6 +170,11 @@ class NET_EXPORT_PRIVATE SqlSharedCacheIsolatedDatabase {
     sqlite_vfs::SqliteSandboxedVfsDelegate::UnregisterRunner unregister_runner_;
     sql::Database db_;
   };
+
+  base::expected<sql::StreamingBlobHandle, Error> GetStreamingBlobHandle(
+      const CacheEntryKey& entry_key,
+      SqlSharedCacheRowId shared_cache_row_id,
+      int body_size);
 
   base::expected<void, Error> WriteBodyInternal(
       const CacheEntryKey& entry_key,

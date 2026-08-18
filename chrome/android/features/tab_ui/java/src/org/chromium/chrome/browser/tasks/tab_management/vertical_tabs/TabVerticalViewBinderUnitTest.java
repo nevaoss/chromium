@@ -33,6 +33,7 @@ import android.widget.TextView;
 
 import androidx.test.filters.SmallTest;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -44,12 +45,14 @@ import org.robolectric.Robolectric;
 import org.robolectric.shadows.ShadowLooper;
 
 import org.chromium.base.Callback;
+import org.chromium.base.DeviceInfo;
 import org.chromium.base.Token;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.chrome.R.string;
 import org.chromium.chrome.browser.actor.ui.ActorUiTabController.UiTabState;
 import org.chromium.chrome.browser.actor.ui.TabIndicatorStatus;
+import org.chromium.chrome.browser.incognito.IncognitoUtils;
 import org.chromium.chrome.browser.tab.MediaState;
 import org.chromium.chrome.browser.tab_ui.TabListFaviconProvider.TabFavicon;
 import org.chromium.chrome.browser.tab_ui.TabListFaviconProvider.TabFaviconFetcher;
@@ -60,6 +63,8 @@ import org.chromium.chrome.browser.tasks.tab_management.TabProperties;
 import org.chromium.chrome.browser.tasks.tab_management.TabUiThemeUtil;
 import org.chromium.chrome.browser.tasks.tab_management.vertical_tabs.VerticalTabListProperties.RailCollapseState;
 import org.chromium.chrome.tab_ui.R;
+import org.chromium.components.browser_ui.styles.ChromeColors;
+import org.chromium.components.browser_ui.styles.SemanticColorUtils;
 import org.chromium.components.browser_ui.util.TextResolver;
 import org.chromium.components.tab_groups.TabGroupColorId;
 import org.chromium.components.tab_groups.TabGroupColorPickerUtils;
@@ -133,10 +138,16 @@ public class TabVerticalViewBinderUnitTest {
                 .when(mFaviconFetcher)
                 .fetch(any());
 
+        IncognitoUtils.setShouldOpenIncognitoAsWindowForTesting(false);
         mModel =
                 new PropertyModel.Builder(TabProperties.ALL_KEYS_VERTICAL_TAB)
                         .with(TabProperties.IS_INCOGNITO, false)
                         .build();
+    }
+
+    @After
+    public void tearDown() {
+        DeviceInfo.setIsDesktopForTesting(false);
     }
 
     @Test
@@ -266,6 +277,70 @@ public class TabVerticalViewBinderUnitTest {
 
     @Test
     @SmallTest
+    public void testBindSelectionColors_Incognito_Selected() {
+        PropertyModel model =
+                new PropertyModel.Builder(TabProperties.ALL_KEYS_VERTICAL_TAB)
+                        .with(TabProperties.IS_INCOGNITO, true)
+                        .with(TabProperties.IS_SELECTED, true)
+                        .build();
+        TabVerticalViewBinder.bindTab(model, mItemView, TabProperties.IS_INCOGNITO);
+
+        ColorStateList bgTint = mItemView.getBackgroundTintList();
+        assertNotNull("Background tint should not be null when selected in incognito", bgTint);
+        assertEquals(mActivity.getColor(R.color.default_bg_color_dark), bgTint.getDefaultColor());
+        assertEquals(
+                mActivity.getColor(R.color.default_text_color_light),
+                mTitleView.getCurrentTextColor());
+        assertEquals(
+                ChromeColors.getPrimaryIconTint(mActivity, /* isIncognito= */ true)
+                        .getDefaultColor(),
+                mCloseButton.getImageTintList().getDefaultColor());
+    }
+
+    @Test
+    @SmallTest
+    public void testBindSelectionColors_Incognito_Unselected() {
+        PropertyModel model =
+                new PropertyModel.Builder(TabProperties.ALL_KEYS_VERTICAL_TAB)
+                        .with(TabProperties.IS_INCOGNITO, true)
+                        .with(TabProperties.IS_SELECTED, false)
+                        .build();
+        TabVerticalViewBinder.bindTab(model, mItemView, TabProperties.IS_INCOGNITO);
+
+        ColorStateList bgTint = mItemView.getBackgroundTintList();
+        assertNotNull(bgTint);
+        assertEquals(Color.TRANSPARENT, bgTint.getDefaultColor());
+        assertEquals(
+                mActivity.getColor(R.color.incognito_tab_title_color),
+                mTitleView.getCurrentTextColor());
+        assertEquals(
+                mActivity.getColor(R.color.incognito_tab_action_button_color),
+                mCloseButton.getImageTintList().getDefaultColor());
+    }
+
+    @Test
+    @SmallTest
+    public void testBindSelectionColors_Incognito_WhenShouldOpenIncognitoAsWindow() {
+        IncognitoUtils.setShouldOpenIncognitoAsWindowForTesting(true);
+        PropertyModel model =
+                new PropertyModel.Builder(TabProperties.ALL_KEYS_VERTICAL_TAB)
+                        .with(TabProperties.IS_INCOGNITO, true)
+                        .with(TabProperties.IS_SELECTED, true)
+                        .build();
+        TabVerticalViewBinder.bindTab(model, mItemView, TabProperties.IS_INCOGNITO);
+
+        ColorStateList bgTint = mItemView.getBackgroundTintList();
+        assertNotNull(bgTint);
+        assertEquals(SemanticColorUtils.getColorSurface(mActivity), bgTint.getDefaultColor());
+        assertEquals(
+                SemanticColorUtils.getColorOnSurface(mActivity), mTitleView.getCurrentTextColor());
+        assertEquals(
+                SemanticColorUtils.getDefaultIconColor(mActivity),
+                mCloseButton.getImageTintList().getDefaultColor());
+    }
+
+    @Test
+    @SmallTest
     public void testBindFavicon() {
         mModel.set(TabProperties.FAVICON_FETCHER, mFaviconFetcher);
         TabVerticalViewBinder.bindTab(mModel, mItemView, TabProperties.FAVICON_FETCHER);
@@ -347,6 +422,7 @@ public class TabVerticalViewBinderUnitTest {
     @Test
     @SmallTest
     public void testCloseButtonHover() {
+        DeviceInfo.setIsDesktopForTesting(true);
         TabActionButtonData actionButtonData =
                 new TabActionButtonData(TabActionButtonType.CLOSE, mCloseListener);
         mModel.set(TabProperties.TAB_ACTION_BUTTON_DATA, actionButtonData);
@@ -371,6 +447,7 @@ public class TabVerticalViewBinderUnitTest {
     @Test
     @SmallTest
     public void testCloseButtonHover_Selected() {
+        DeviceInfo.setIsDesktopForTesting(true);
         TabActionButtonData actionButtonData =
                 new TabActionButtonData(TabActionButtonType.CLOSE, mCloseListener);
         mModel.set(TabProperties.TAB_ACTION_BUTTON_DATA, actionButtonData);
@@ -390,6 +467,64 @@ public class TabVerticalViewBinderUnitTest {
         hoverExitEvent.setSource(InputDevice.SOURCE_MOUSE);
         mItemView.dispatchGenericMotionEvent(hoverExitEvent);
         assertEquals(View.VISIBLE, mCloseButton.getVisibility());
+    }
+
+    @Test
+    @SmallTest
+    public void testCloseButtonVisibility_TouchDevice() {
+        DeviceInfo.setIsDesktopForTesting(false);
+        TabActionButtonData actionButtonData =
+                new TabActionButtonData(TabActionButtonType.CLOSE, mCloseListener);
+        mModel.set(TabProperties.TAB_ACTION_BUTTON_DATA, actionButtonData);
+        mModel.set(TabProperties.IS_SELECTED, false);
+        TabVerticalViewBinder.bindTab(mModel, mItemView, TabProperties.IS_SELECTED);
+
+        // On touch device, close button is always visible even when unselected and unhovered.
+        assertEquals(View.VISIBLE, mCloseButton.getVisibility());
+    }
+
+    @Test
+    @SmallTest
+    public void testCloseButtonVisibility_TouchDevice_CollapsedRail_Selected() {
+        DeviceInfo.setIsDesktopForTesting(false);
+        TabActionButtonData actionButtonData =
+                new TabActionButtonData(TabActionButtonType.CLOSE, mCloseListener);
+        mModel.set(TabProperties.TAB_ACTION_BUTTON_DATA, actionButtonData);
+        mModel.set(TabProperties.RAIL_COLLAPSE_STATE, RailCollapseState.COLLAPSED);
+        mModel.set(TabProperties.IS_SELECTED, true);
+        mModel.set(TabProperties.FAVICON_FETCHER, mFaviconFetcher);
+
+        TabVerticalViewBinder.bindTab(mModel, mItemView, TabProperties.FAVICON_FETCHER);
+        TabVerticalViewBinder.bindTab(mModel, mItemView, TabProperties.TAB_ACTION_BUTTON_DATA);
+        TabVerticalViewBinder.bindTab(mModel, mItemView, TabProperties.RAIL_COLLAPSE_STATE);
+        TabVerticalViewBinder.bindTab(mModel, mItemView, TabProperties.IS_SELECTED);
+
+        // On touch device, when rail is collapsed and tab is selected, close button is visible.
+        assertEquals(View.VISIBLE, mCloseButton.getVisibility());
+        // Favicon should be hidden because close button has priority.
+        assertEquals(View.GONE, mFaviconView.getVisibility());
+    }
+
+    @Test
+    @SmallTest
+    public void testCloseButtonVisibility_TouchDevice_CollapsedRail_Unselected() {
+        DeviceInfo.setIsDesktopForTesting(false);
+        TabActionButtonData actionButtonData =
+                new TabActionButtonData(TabActionButtonType.CLOSE, mCloseListener);
+        mModel.set(TabProperties.TAB_ACTION_BUTTON_DATA, actionButtonData);
+        mModel.set(TabProperties.RAIL_COLLAPSE_STATE, RailCollapseState.COLLAPSED);
+        mModel.set(TabProperties.IS_SELECTED, false);
+        mModel.set(TabProperties.FAVICON_FETCHER, mFaviconFetcher);
+
+        TabVerticalViewBinder.bindTab(mModel, mItemView, TabProperties.FAVICON_FETCHER);
+        TabVerticalViewBinder.bindTab(mModel, mItemView, TabProperties.TAB_ACTION_BUTTON_DATA);
+        TabVerticalViewBinder.bindTab(mModel, mItemView, TabProperties.RAIL_COLLAPSE_STATE);
+        TabVerticalViewBinder.bindTab(mModel, mItemView, TabProperties.IS_SELECTED);
+
+        // On touch device, when rail is collapsed and tab is unselected, close button is GONE.
+        assertEquals(View.GONE, mCloseButton.getVisibility());
+        // Favicon should be VISIBLE.
+        assertEquals(View.VISIBLE, mFaviconView.getVisibility());
     }
 
     @Test
@@ -422,6 +557,29 @@ public class TabVerticalViewBinderUnitTest {
         bgTint = mItemView.getBackgroundTintList();
         assertNotNull(bgTint);
         assertEquals(Color.TRANSPARENT, bgTint.getDefaultColor());
+    }
+
+    @Test
+    @SmallTest
+    public void testTabHoverBackground_Incognito() {
+        PropertyModel model =
+                new PropertyModel.Builder(TabProperties.ALL_KEYS_VERTICAL_TAB)
+                        .with(TabProperties.IS_INCOGNITO, true)
+                        .with(TabProperties.IS_SELECTED, false)
+                        .build();
+        TabVerticalViewBinder.bindTab(model, mItemView, TabProperties.IS_SELECTED);
+
+        MotionEvent hoverEnterEvent =
+                MotionEvent.obtain(0, 0, MotionEvent.ACTION_HOVER_ENTER, 0f, 0f, 0);
+        hoverEnterEvent.setSource(InputDevice.SOURCE_MOUSE);
+        mItemView.dispatchGenericMotionEvent(hoverEnterEvent);
+
+        ColorStateList bgTint = mItemView.getBackgroundTintList();
+        assertNotNull(bgTint);
+        assertEquals(
+                TabUiThemeUtil.getHoveredTabContainerColor(
+                        mItemView.getContext(), /* isIncognito= */ true),
+                bgTint.getDefaultColor());
     }
 
     @Test
@@ -495,6 +653,7 @@ public class TabVerticalViewBinderUnitTest {
     @Test
     @SmallTest
     public void testActionButtonHover_ExitOutsideView_ClearsHover() {
+        DeviceInfo.setIsDesktopForTesting(true);
         // Lay out item view so width and height are known (> 0)
         mItemView.layout(0, 0, 100, 50);
         mCloseButton.layout(80, 10, 95, 40);
@@ -542,16 +701,18 @@ public class TabVerticalViewBinderUnitTest {
         ShadowLooper.idleMainLooper();
         assertNotNull(mItemView.getTouchDelegate());
 
-        // Touch delegate is cleared when action button is not wanted
+        // Touch delegate is cleared when action button is not wanted (e.g. collapsed rail
+        // unselected/unhovered)
+        mModel.set(TabProperties.RAIL_COLLAPSE_STATE, RailCollapseState.COLLAPSED);
         mModel.set(TabProperties.IS_SELECTED, false);
-        TabVerticalViewBinder.bindTab(mModel, mItemView, TabProperties.IS_SELECTED);
+        TabVerticalViewBinder.bindTab(mModel, mItemView, TabProperties.RAIL_COLLAPSE_STATE);
         ShadowLooper.idleMainLooper();
         assertNull(mItemView.getTouchDelegate());
     }
 
     @Test
     @SmallTest
-    public void testActionButtonTouchDelegate_SetOnHover() {
+    public void testActionButtonTouchDelegate_TouchDevice_ExpandedRail() {
         mItemView.layout(0, 0, 100, 32);
         mCloseButton.layout(80, 8, 96, 24);
 
@@ -562,23 +723,15 @@ public class TabVerticalViewBinderUnitTest {
         TabVerticalViewBinder.bindTab(mModel, mItemView, TabProperties.IS_SELECTED);
         ShadowLooper.idleMainLooper();
 
-        // Before hover, touch delegate is null
-        assertNull(mItemView.getTouchDelegate());
-
-        // Hover over the tab row
-        MotionEvent hoverEnterEvent =
-                MotionEvent.obtain(0, 0, MotionEvent.ACTION_HOVER_ENTER, 0f, 0f, 0);
-        hoverEnterEvent.setSource(InputDevice.SOURCE_MOUSE);
-        mItemView.dispatchGenericMotionEvent(hoverEnterEvent);
-        ShadowLooper.idleMainLooper();
-
-        // Touch delegate is set when hovered
+        // On a touch device in expanded rail mode, an unselected tab always shows the close button
+        // and gets a TouchDelegate immediately.
         assertNotNull(mItemView.getTouchDelegate());
     }
 
     @Test
     @SmallTest
     public void testActionButtonTouchDelegate_CollapsedRail() {
+        DeviceInfo.setIsDesktopForTesting(false);
         mItemView.layout(0, 0, 100, 32);
         mCloseButton.layout(80, 8, 96, 24);
 
@@ -588,18 +741,16 @@ public class TabVerticalViewBinderUnitTest {
         mModel.set(TabProperties.RAIL_COLLAPSE_STATE, RailCollapseState.COLLAPSED);
         mModel.set(TabProperties.IS_SELECTED, true);
 
-        // In collapsed rail mode, selected tab without hover does not show action button
+        // In collapsed rail mode on touch device, selected tab gets TouchDelegate immediately.
+        TabVerticalViewBinder.bindTab(mModel, mItemView, TabProperties.IS_SELECTED);
+        ShadowLooper.idleMainLooper();
+        assertNotNull(mItemView.getTouchDelegate());
+
+        // Unselecting the tab should clear the TouchDelegate.
+        mModel.set(TabProperties.IS_SELECTED, false);
         TabVerticalViewBinder.bindTab(mModel, mItemView, TabProperties.IS_SELECTED);
         ShadowLooper.idleMainLooper();
         assertNull(mItemView.getTouchDelegate());
-
-        // Hover over tab row while selected in collapsed mode shows action button
-        MotionEvent hoverEnterEvent =
-                MotionEvent.obtain(0, 0, MotionEvent.ACTION_HOVER_ENTER, 0f, 0f, 0);
-        hoverEnterEvent.setSource(InputDevice.SOURCE_MOUSE);
-        mItemView.dispatchGenericMotionEvent(hoverEnterEvent);
-        ShadowLooper.idleMainLooper();
-        assertNotNull(mItemView.getTouchDelegate());
     }
 
     @Test
@@ -719,6 +870,48 @@ public class TabVerticalViewBinderUnitTest {
 
     @Test
     @SmallTest
+    public void testBindPinnedTab_SelectionColors_Incognito() {
+        ViewGroup pinnedView =
+                (ViewGroup)
+                        LayoutInflater.from(mActivity)
+                                .inflate(R.layout.vertical_tab_pinned_item, null, false);
+
+        PropertyModel model =
+                new PropertyModel.Builder(TabProperties.ALL_KEYS_VERTICAL_TAB)
+                        .with(TabProperties.IS_INCOGNITO, true)
+                        .with(TabProperties.IS_SELECTED, true)
+                        .build();
+        TabVerticalViewBinder.bindPinnedTab(model, pinnedView, TabProperties.IS_INCOGNITO);
+        ColorStateList selectedTint = pinnedView.getBackgroundTintList();
+        assertNotNull(
+                "Background tint should not be null when selected in incognito", selectedTint);
+        assertEquals(
+                mActivity.getColor(R.color.default_bg_color_dark), selectedTint.getDefaultColor());
+    }
+
+    @Test
+    @SmallTest
+    public void testBindPinnedTab_Unselected_Incognito() {
+        ViewGroup pinnedView =
+                (ViewGroup)
+                        LayoutInflater.from(mActivity)
+                                .inflate(R.layout.vertical_tab_pinned_item, null, false);
+
+        PropertyModel model =
+                new PropertyModel.Builder(TabProperties.ALL_KEYS_VERTICAL_TAB)
+                        .with(TabProperties.IS_INCOGNITO, true)
+                        .with(TabProperties.IS_SELECTED, false)
+                        .build();
+        TabVerticalViewBinder.bindPinnedTab(model, pinnedView, TabProperties.IS_INCOGNITO);
+        ColorStateList bgTint = pinnedView.getBackgroundTintList();
+        assertNotNull("Background tint should not be null when unselected in incognito", bgTint);
+        assertEquals(
+                mActivity.getColor(R.color.gm3_baseline_surface_container_high_dark),
+                bgTint.getDefaultColor());
+    }
+
+    @Test
+    @SmallTest
     public void testBindPinnedTab_ContentDescription() {
         ViewGroup pinnedView = inflatePinnedTabView();
 
@@ -769,6 +962,73 @@ public class TabVerticalViewBinderUnitTest {
 
         Drawable bg = headerView.getBackground();
         assertNotNull("Background drawable should not be null", bg);
+
+        ColorStateList tintList = headerView.getBackgroundTintList();
+        assertNotNull("Background tint list should be set", tintList);
+
+        int expectedBackgroundColor =
+                TabGroupColorPickerUtils.getTabGroupColorPickerItemColor(
+                        mActivity, TabGroupColorId.RED, /* isIncognito= */ false);
+        assertEquals(expectedBackgroundColor, tintList.getDefaultColor());
+
+        int expectedForegroundColor =
+                TabGroupColorPickerUtils.getTabGroupColorPickerItemTextColor(
+                        mActivity, TabGroupColorId.RED, /* isIncognito= */ false);
+        assertEquals(expectedForegroundColor, titleView.getCurrentTextColor());
+        assertEquals(expectedForegroundColor, expandChevron.getImageTintList().getDefaultColor());
+    }
+
+    @Test
+    @SmallTest
+    @DisableFeatures({TabGroupsFeatureMap.UPDATE_TAB_GROUP_COLORS})
+    public void testBindTabGroupHeader_TitleAndColors_Incognito() {
+        ViewGroup headerView =
+                (ViewGroup)
+                        LayoutInflater.from(mActivity)
+                                .inflate(R.layout.vertical_tab_group_header, null, false);
+        TextView titleView = headerView.findViewById(R.id.group_title);
+        ImageView expandChevron = headerView.findViewById(R.id.expand_chevron);
+
+        PropertyModel model =
+                new PropertyModel.Builder(TabProperties.ALL_KEYS_VERTICAL_TAB)
+                        .with(TabProperties.IS_INCOGNITO, true)
+                        .with(TabProperties.TAB_GROUP_CARD_COLOR, TabGroupColorId.RED)
+                        .build();
+        TabVerticalViewBinder.bindTabGroupHeader(model, headerView, TabProperties.IS_INCOGNITO);
+
+        ColorStateList tintList = headerView.getBackgroundTintList();
+        assertNotNull("Background tint list should be set", tintList);
+
+        int expectedBackgroundColor =
+                TabGroupColorPickerUtils.getTabGroupColorPickerItemColor(
+                        mActivity, TabGroupColorId.RED, /* isIncognito= */ true);
+        assertEquals(expectedBackgroundColor, tintList.getDefaultColor());
+
+        int expectedForegroundColor =
+                TabGroupColorPickerUtils.getTabGroupColorPickerItemTextColor(
+                        mActivity, TabGroupColorId.RED, /* isIncognito= */ true);
+        assertEquals(expectedForegroundColor, titleView.getCurrentTextColor());
+        assertEquals(expectedForegroundColor, expandChevron.getImageTintList().getDefaultColor());
+    }
+
+    @Test
+    @SmallTest
+    @DisableFeatures({TabGroupsFeatureMap.UPDATE_TAB_GROUP_COLORS})
+    public void testBindTabGroupHeader_TitleAndColors_Incognito_WhenShouldOpenIncognitoAsWindow() {
+        IncognitoUtils.setShouldOpenIncognitoAsWindowForTesting(true);
+        ViewGroup headerView =
+                (ViewGroup)
+                        LayoutInflater.from(mActivity)
+                                .inflate(R.layout.vertical_tab_group_header, null, false);
+        TextView titleView = headerView.findViewById(R.id.group_title);
+        ImageView expandChevron = headerView.findViewById(R.id.expand_chevron);
+
+        PropertyModel model =
+                new PropertyModel.Builder(TabProperties.ALL_KEYS_VERTICAL_TAB)
+                        .with(TabProperties.IS_INCOGNITO, true)
+                        .with(TabProperties.TAB_GROUP_CARD_COLOR, TabGroupColorId.RED)
+                        .build();
+        TabVerticalViewBinder.bindTabGroupHeader(model, headerView, TabProperties.IS_INCOGNITO);
 
         ColorStateList tintList = headerView.getBackgroundTintList();
         assertNotNull("Background tint list should be set", tintList);
@@ -1002,6 +1262,47 @@ public class TabVerticalViewBinderUnitTest {
 
     @Test
     @SmallTest
+    public void testPinnedTabHoverBackground_Incognito() {
+        ViewGroup pinnedView = inflatePinnedTabView();
+
+        PropertyModel model =
+                new PropertyModel.Builder(TabProperties.ALL_KEYS_VERTICAL_TAB)
+                        .with(TabProperties.IS_INCOGNITO, true)
+                        .with(TabProperties.IS_SELECTED, false)
+                        .build();
+        TabVerticalViewBinder.bindPinnedTab(model, pinnedView, TabProperties.IS_INCOGNITO);
+
+        int unselectedColor = mActivity.getColor(R.color.gm3_baseline_surface_container_high_dark);
+        ColorStateList bgTint = pinnedView.getBackgroundTintList();
+        assertNotNull(bgTint);
+        assertEquals(unselectedColor, bgTint.getDefaultColor());
+
+        // Hover enter
+        MotionEvent hoverEnterEvent =
+                MotionEvent.obtain(0, 0, MotionEvent.ACTION_HOVER_ENTER, 0f, 0f, 0);
+        hoverEnterEvent.setSource(InputDevice.SOURCE_MOUSE);
+        pinnedView.dispatchGenericMotionEvent(hoverEnterEvent);
+
+        bgTint = pinnedView.getBackgroundTintList();
+        assertNotNull(bgTint);
+        assertEquals(
+                TabUiThemeUtil.getHoveredTabContainerColor(
+                        pinnedView.getContext(), /* isIncognito= */ true),
+                bgTint.getDefaultColor());
+
+        // Hover exit
+        MotionEvent hoverExitEvent =
+                MotionEvent.obtain(0, 0, MotionEvent.ACTION_HOVER_EXIT, 0f, 0f, 0);
+        hoverExitEvent.setSource(InputDevice.SOURCE_MOUSE);
+        pinnedView.dispatchGenericMotionEvent(hoverExitEvent);
+
+        bgTint = pinnedView.getBackgroundTintList();
+        assertNotNull(bgTint);
+        assertEquals(unselectedColor, bgTint.getDefaultColor());
+    }
+
+    @Test
+    @SmallTest
     public void testPinnedTabHoverBackground_Selected() {
         Activity activity = Robolectric.buildActivity(Activity.class).setup().get();
         activity.setTheme(R.style.Theme_BrowserUI_DayNight);
@@ -1220,6 +1521,7 @@ public class TabVerticalViewBinderUnitTest {
     @Test
     @SmallTest
     public void testIconPriorities_RailCollapsed() {
+        DeviceInfo.setIsDesktopForTesting(true);
         // Setup favicon fetcher
         mModel.set(TabProperties.FAVICON_FETCHER, mFaviconFetcher);
 

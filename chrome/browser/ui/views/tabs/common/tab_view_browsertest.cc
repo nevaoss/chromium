@@ -420,18 +420,15 @@ IN_PROC_BROWSER_TEST_F(TabViewTest, CloseButtonVisibilityActiveTab) {
       base::test::RunUntil([&]() { return !close_button->GetVisible(); }));
 }
 
-#if BUILDFLAG(IS_WIN)
-#define MAYBE_CloseButtonVisibilityHover DISABLED_CloseButtonVisibilityHover
-#else
-#define MAYBE_CloseButtonVisibilityHover CloseButtonVisibilityHover
-#endif
-IN_PROC_BROWSER_TEST_F(TabViewTest, MAYBE_CloseButtonVisibilityHover) {
+IN_PROC_BROWSER_TEST_F(TabViewTest, CloseButtonVisibilityHover) {
   TabCollectionNode* tab_node = unpinned_collection_node()->children()[0].get();
   TabView* tab_view = views::AsViewClass<TabView>(tab_node->view());
   TabCloseButton* close_button = tab_view->close_button_for_testing();
 
-  // Deactivate the tab.
+  // Deactivate the tab and explicitly reset hovered state so mouse cursor
+  // placement doesn't keep the close button visible.
   AppendTab();
+  tab_view->UpdateHovered(false);
   ASSERT_TRUE(
       base::test::RunUntil([&]() { return !close_button->GetVisible(); }));
 
@@ -796,9 +793,10 @@ IN_PROC_BROWSER_TEST_F(TabViewDataSharingEnabledTest, LogsTabSwitchMetrics) {
                    "TabGroups.Shared.SwitchGroupedTab"));
   ASSERT_EQ(0, user_action_tester.GetActionCount("SwitchTab_Click"));
 
+  BrowserView* browser_view = BrowserView::GetBrowserViewForBrowser(browser());
   ui::test::EventGenerator event_generator(
-      views::GetRootWindow(browser()->GetBrowserView().GetWidget()),
-      browser()->GetBrowserView().GetNativeWindow());
+      views::GetRootWindow(browser_view->GetWidget()),
+      browser_view->GetNativeWindow());
   event_generator.MoveMouseTo(tab_view->GetBoundsInScreen().CenterPoint());
   event_generator.ClickLeftButton();
 
@@ -817,7 +815,8 @@ IN_PROC_BROWSER_TEST_F(TabViewTest, AlertIndicatorDecorateOnCollapse) {
   // Wait for the collapse animation to finish and ensure the width reaches
   // kCollapsedWidth.
   VerticalTabStripRegionView* const region_view =
-      browser()->GetBrowserView().vertical_tab_strip_region_view_for_testing();
+      BrowserView::GetBrowserViewForBrowser(browser())
+          ->vertical_tab_strip_region_view_for_testing();
   ASSERT_TRUE(base::test::RunUntil([&]() {
     return !BrowserAnimationController::From(browser())->IsAnimating(
                TabStripAnimations::kVerticalTabStrip) &&

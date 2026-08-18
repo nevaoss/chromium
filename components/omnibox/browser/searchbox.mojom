@@ -103,14 +103,6 @@ struct AutocompleteMatch {
   // holes for sale in" is "hobbit holes for sale" and the match contents
   // would be the text following "sale".
   mojo_base.mojom.String16? tail_suggest_common_prefix;
-  // Used to determine if keyword visual treatment should be applied.
-  bool has_instant_keyword;
-  // Derived from `AutocompleteMatch::associated_keyword` and a few other
-  // fields. Determines the text shown in the keyword chip, which is shown if
-  // this is non-empty.
-  string keyword_chip_hint;
-  // Similar to `keyword_chip_text`, but the a11y label for the chip.
-  string keyword_chip_a11y;
   // Keyword UI state for this match. Empty if not a keyword suggestion.
   KeywordModel? keyword_model;
 };
@@ -445,7 +437,7 @@ interface PageHandler {
 
   // Returns configuration data leveraged when displaying cycling placeholder
   // texts on the searchbox UI.
-  GetPlaceholderConfig() => (PlaceholderConfig config);
+  GetCyclingPlaceholderConfig() => (PlaceholderConfig config);
 
   // Returns information about recent tabs.
   GetRecentTabs() => (array<TabInfo> tabs);
@@ -537,6 +529,9 @@ interface PageHandler {
   // Called when the user clicks the drive upload button.
   OnDriveUploadClicked() => (DriveUploadResponse response);
 
+  // Opens the profile picker for switching profiles.
+  OpenProfilePicker();
+
   // Gets the page classification for the current context.
   GetPageClassification() => (string metricSource);
 
@@ -575,6 +570,14 @@ interface Page {
   // TODO(crbug.com/483117840): This is driven by interaction with
   //  OmniboxViewViews and can be eliminated once we have full webui popup.
   SetAimButtonVisible(bool visible);
+
+  // Updates properties of the AIM button (label text, tooltip/title, a11y
+  // label, icon URL) based on the config provided by the AIM button service.
+  SetAimButtonConfig(
+      string text,
+      string tooltip,
+      string a11y_label,
+      url.mojom.Url icon_url);
 
   // Called to set searchbox input.
   SetInputText(string input);

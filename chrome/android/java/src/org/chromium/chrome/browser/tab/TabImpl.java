@@ -15,6 +15,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.SystemClock;
 import android.text.TextUtils;
+import android.util.LongSparseArray;
 import android.util.SparseArray;
 import android.view.View;
 import android.view.View.OnAttachStateChangeListener;
@@ -60,6 +61,7 @@ import org.chromium.chrome.browser.WarmupManager;
 import org.chromium.chrome.browser.app.ChromeActivity;
 import org.chromium.chrome.browser.app.tabwindow.TabWindowManagerSingleton;
 import org.chromium.chrome.browser.compositor.CompositorViewHolder;
+import org.chromium.chrome.browser.compositor.CompositorViewHolderSupplier;
 import org.chromium.chrome.browser.content.ContentUtils;
 import org.chromium.chrome.browser.content.WebContentsFactory;
 import org.chromium.chrome.browser.desktop_site.DesktopSiteUtils;
@@ -75,6 +77,7 @@ import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.rlz.RevenueStats;
 import org.chromium.chrome.browser.selection.CompositeSelectionActionMenuDelegate;
 import org.chromium.chrome.browser.selection.TextSelectionActionMenuDelegate;
+import org.chromium.chrome.browser.settings.SettingsInTab;
 import org.chromium.chrome.browser.settings.SettingsNavigationFactory;
 import org.chromium.chrome.browser.tab.Tab.LoadUrlResult;
 import org.chromium.chrome.browser.tab.Tab.SelectionStateSupplier;
@@ -128,8 +131,6 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -143,7 +144,7 @@ class TabImpl implements Tab, TabInternal {
 
     // Map from native tab pointer to TabImpl to allow scaling of unlimited tab objects.
     // ScopedGlobalRef tables are finite.
-    private static final Map<Long, TabImpl> sTabMap = new HashMap<>();
+    private static final LongSparseArray<TabImpl> sTabMap = new LongSparseArray<>();
 
     private static final String BACKGROUND_COLOR_CHANGE_PRE_OPTIMIZATION_HISTOGRAM =
             "Android.Tab.BackgroundColorChange.PreOptimization";
@@ -1791,7 +1792,7 @@ class TabImpl implements Tab, TabInternal {
                     // A transition is starting. Hide the Java view to present that.
                     // Wait until the content/ draws the transition.
                     CompositorViewHolder viewHolder =
-                            assumeNonNull(getActivity()).getCompositorViewHolderSupplier().get();
+                            CompositorViewHolderSupplier.getValueOrNullFrom(getWindowAndroid());
                     assumeNonNull(viewHolder);
                     viewHolder.requestRender(
                             () -> {
@@ -1920,7 +1921,7 @@ class TabImpl implements Tab, TabInternal {
         String host = url.getHost();
         if (!UrlConstants.SETTINGS_HOST.equals(host)) return false;
 
-        if (ChromeFeatureList.isEnabled(ChromeFeatureList.SETTINGS_IN_TAB)) return false;
+        if (SettingsInTab.isEnabled()) return false;
 
         // TODO(crbug.com/456164910): Use the URL path to open deeplinks into Settings.
         SettingsNavigationFactory.createSettingsNavigation().startSettings(getContext());
@@ -2181,7 +2182,8 @@ class TabImpl implements Tab, TabInternal {
     @CalledByNative
     void clearNativePtr() {
         assert mNativeTabAndroid != 0;
-        var oldValue = sTabMap.remove(mNativeTabAndroid);
+        var oldValue = sTabMap.get(mNativeTabAndroid);
+        sTabMap.remove(mNativeTabAndroid);
         assert oldValue == this;
         mNativeTabAndroid = 0;
     }
@@ -2190,8 +2192,8 @@ class TabImpl implements Tab, TabInternal {
     private void setNativePtr(long nativePtr) {
         assert nativePtr != 0;
         assert mNativeTabAndroid == 0;
-        var oldValue = sTabMap.put(nativePtr, this);
-        assert oldValue == null;
+        assert sTabMap.get(nativePtr) == null;
+        sTabMap.put(nativePtr, this);
         mNativeTabAndroid = nativePtr;
     }
 
@@ -2579,7 +2581,7 @@ class TabImpl implements Tab, TabInternal {
             }
 
             View compositorView =
-                    assumeNonNull(getActivity()).getCompositorViewHolderSupplier().get();
+                    CompositorViewHolderSupplier.getValueOrNullFrom(getWindowAndroid());
             if (compositorView != null) {
                 webContents.setSize(compositorView.getWidth(), compositorView.getHeight());
             }
@@ -3158,7 +3160,11 @@ class TabImpl implements Tab, TabInternal {
         mIsOffscreenRenderingSupplier.set(false);
         if (mWebContents != null && mNativeTabAndroid != 0) {
             TabImplJni.get().attachWebContentsToContentLayer(mNativeTabAndroid, mWebContents);
-            mWebContents.setTopLevelNativeWindow(mWindowAndroid);
+            WindowAndroid window =
+                    (mWindowAndroid != null && !mWindowAndroid.isDestroyed())
+                            ? mWindowAndroid
+                            : null;
+            mWebContents.setTopLevelNativeWindow(window);
         }
     }
 
@@ -3179,6 +3185,10 @@ class TabImpl implements Tab, TabInternal {
                 .closeTabs(
                         TabClosureParams.closeTab(tab).allowUndo(false).build(),
                         /* allowDialog= */ false);
+    }
+
+    public void setWebContentsForTesting(WebContents webContents) {
+        mWebContents = webContents;
     }
 
     private void clearCurrentTabSupplier(@DetachReason int detachReason) {

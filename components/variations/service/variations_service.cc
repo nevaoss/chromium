@@ -16,6 +16,7 @@
 
 #include "base/base64.h"
 #include "base/command_line.h"
+#include "base/containers/fixed_flat_set.h"
 #include "base/containers/flat_set.h"
 #include "base/debug/crash_logging.h"
 #include "base/debug/dump_without_crashing.h"
@@ -53,7 +54,8 @@
 #include "components/variations/seed_response.h"
 #include "components/variations/sticky_activation_manager.h"
 #include "components/variations/study_filtering.h"
-#include "components/variations/variations_safe_seed_store_local_state.h"
+#include "components/variations/variations_associated_data.h"
+#include "components/variations/variations_safe_seed_store.h"
 #include "components/variations/variations_seed_processor.h"
 #include "components/variations/variations_seed_simulator.h"
 #include "components/variations/variations_switches.h"
@@ -73,6 +75,21 @@
 
 namespace variations {
 namespace {
+
+// Returns true if the trial specified by `trial_name` has any Google web
+// experiment IDs.
+// Note: This iterates through all values of `IDCollectionKey`, which includes
+// `GOOGLE_APP`. Although `GOOGLE_APP` is not technically a Google web ID, for
+// simplicity, trials specifying `GOOGLE_APP` variation IDs are also excluded
+// from runtime mutability.
+bool TrialHasGoogleWebExperimentId(std::string_view trial_name) {
+  for (int i = 0; i < ID_COLLECTION_COUNT; ++i) {
+    if (HasGoogleVariationID(static_cast<IDCollectionKey>(i), trial_name)) {
+      return true;
+    }
+  }
+  return false;
+}
 
 // Constants used for encrypting the if-none-match header if we are retrieving a
 // seed over http.
@@ -100,6 +117,20 @@ bool g_should_fetch_for_testing = false;
 // Returns a string that will be used for the value of the 'osname' URL param
 // to the variations server.
 std::string GetPlatformString() {
+  const std::string forced_platform =
+      base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
+          switches::kFakeVariationsPlatform);
+  if (!forced_platform.empty()) {
+    static constexpr auto kPlatforms = base::MakeFixedFlatSet<std::string_view>(
+        {"android", "android_webview", "chromeos", "fuchsia", "ios", "linux",
+         "mac", "win"});
+    if (kPlatforms.contains(forced_platform)) {
+      return forced_platform;
+    } else {
+      DVLOG(1) << "Invalid platform provided: " << forced_platform;
+    }
+  }
+
 #if BUILDFLAG(IS_WIN)
   return "win";
 #elif BUILDFLAG(IS_IOS)
@@ -413,7 +444,7 @@ VariationsService::VariationsService(
               local_state,
               MaybeImportFirstRunSeed(client_.get(), local_state),
               /*signature_verification_enabled=*/true,
-              std::make_unique<VariationsSafeSeedStoreLocalState>(
+              std::make_unique<VariationsSafeSeedStore>(
                   local_state,
                   client_.get()->GetVariationsSeedFileDir(),
                   client_.get()->GetChannelForVariations(),
@@ -1148,6 +1179,13 @@ ApplyRuntimeMutableChangesResult VariationsService::ApplyRuntimeMutableChanges(
     return kNotPermanentConsistency;
   }
 
+  // TODO(crbug.com/482450020): Support runtime mutability for Google web
+  // studies. For now, disallow applying a runtime experiment if it has a
+  // Google web experiment ID.
+  if (VariationsSeedProcessor::HasGoogleWebExperimentId(experiment)) {
+    return kRuntimeExperimentHasGoogleWebId;
+  }
+
   // If the runtime mutable experiment has already been applied, don't need to
   // apply it again.
   if (RuntimeMutableExperimentAlreadyApplied(study, experiment)) {
@@ -1214,6 +1252,13 @@ ApplyRuntimeMutableChangesResult VariationsService::ApplyRuntimeMutableChanges(
 
     if (feature_names != associated_features) {
       return kControllingTrialHasOtherFeatures;
+    }
+
+    // TODO(crbug.com/482450020): Support runtime mutability for Google web
+    // studies. For now, disallow overriding a trial that has Google web
+    // experiment IDs.
+    if (TrialHasGoogleWebExperimentId(controlling_trial_name)) {
+      return kOverriddenTrialHasGoogleWebId;
     }
   }
 
@@ -1385,6 +1430,10 @@ std::string VariationsService::GetLatestCountry() const {
   return field_trial_creator_.GetLatestCountry();
 }
 
+std::string VariationsService::GetLatestGeoLevel1() const {
+  return field_trial_creator_.GetLatestGeoLevel1();
+}
+
 bool VariationsService::SetUpFieldTrials(
     const std::vector<std::string>& variation_ids,
     const std::vector<base::FeatureList::FeatureOverrideInfo>& extra_overrides,
@@ -1395,7 +1444,7 @@ bool VariationsService::SetUpFieldTrials(
   return field_trial_creator_.SetUpFieldTrials(
       variation_ids, extra_overrides, std::move(feature_list), state_manager_,
       platform_field_trials, &safe_seed_manager_,
-      /*add_entropy_source_to_variations_ids=*/true, *entropy_providers_);
+      /*add_entropy_source_to_variations_ids=*/false, *entropy_providers_);
 }
 
 void VariationsService::GetStudiesAvailableToForce(

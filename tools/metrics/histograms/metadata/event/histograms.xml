@@ -545,17 +545,6 @@ chromium-metrics-reviews@google.com.
   </token>
 </histogram>
 
-<histogram name="Event.PassiveListeners" enum="EventResultType"
-    expires_after="2025-02-10">
-  <owner>dtapuska@chromium.org</owner>
-  <summary>
-    The result of handling of MouseWheel, TouchStart, TouchMove, TouchEnd events
-    in the renderer.
-
-    Team: input-dev@chromium.org.
-  </summary>
-</histogram>
-
 <histogram name="Event.Scroll.{ScrollInputType}" units="ms"
     expires_after="2027-01-03">
   <owner>kraskevich@google.com</owner>
@@ -603,7 +592,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Event.ScrollJank.DelayedFramesPercentage.PerScroll" units="%"
-    expires_after="2026-11-29">
+    expires_after="2027-01-31">
   <owner>kartarsingh@google.com</owner>
   <owner>jonross@chromium.org</owner>
   <owner>woa-performance-team@google.com</owner>
@@ -624,7 +613,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Event.ScrollJank.DelayedFramesPercentage4.FixedWindow{Reason}"
-    units="%" expires_after="2026-11-29">
+    units="%" expires_after="2027-01-31">
   <owner>petrcermak@chromium.org</owner>
   <owner>kartarsingh@google.com</owner>
   <owner>jonross@chromium.org</owner>
@@ -827,7 +816,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Event.ScrollJank.MissedVsyncs{Operator}4.FixedWindow"
-    units="counts" expires_after="2026-11-29">
+    units="counts" expires_after="2027-01-31">
   <owner>petrcermak@chromium.org</owner>
   <owner>kartarsingh@google.com</owner>
   <owner>jonross@chromium.org</owner>
@@ -879,22 +868,6 @@ chromium-metrics-reviews@google.com.
     and removed it.
   </summary>
   <token key="Operator" variants="ScrollJankOperator"/>
-</histogram>
-
-<histogram name="Event.UserActivation.TriggerFor{ActivationGatedApiType}"
-    enum="UserActivationTriggerEnum" expires_after="2023-09-30">
-  <owner>mustaq@chromium.org</owner>
-  <owner>input-dev@chromium.org</owner>
-  <summary>
-    Tracks the notification-type for the user activation that resulted in a
-    successful call for an activation-gated API (of type sticky, transient or
-    consuming).
-  </summary>
-  <token key="ActivationGatedApiType">
-    <variant name="Consuming"/>
-    <variant name="Sticky"/>
-    <variant name="Transient"/>
-  </token>
 </histogram>
 
 <histogram name="EventLatency.GestureScrollUpdate.Touchscreen.TotalLatency"

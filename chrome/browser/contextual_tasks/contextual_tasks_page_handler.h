@@ -68,6 +68,7 @@ class ContextualTasksPageHandler
   void OpenMyActivityUi() override;
   void OpenFeedbackUi() override;
   void OpenOnboardingHelpUi() override;
+  void OpenOverflowMenuHelpUi() override;
   void OpenUrl(const GURL& url, WindowOpenDisposition disposition) override;
   void MoveTaskUiToNewTab() override;
   void OnTabClickedFromSourcesMenu(int32_t tab_id, const GURL& url) override;
@@ -94,7 +95,7 @@ class ContextualTasksPageHandler
   void MaybeTriggerPinningPromo() override;
   void ShowPageInfoBubble() override;
   void CreateNewThread() override;
-  void PostMessageToWebview(const lens::ClientToAimMessage& message);
+  void PostAimMessage(const lens::ClientToAimMessage& message);
 
   // contextual_tasks::ContextualTasksService::Observer:
   void OnTaskAdded(

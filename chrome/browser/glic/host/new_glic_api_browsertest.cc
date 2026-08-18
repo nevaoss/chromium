@@ -199,6 +199,7 @@ std::vector<std::string> GetTestSuiteNames() {
       "NewGlicApiTestWithProcessCounterAbuseVerdictDisabled",
       "GlicApiScrollToTest",
       "NewGlicApiTestWithExperimentalTriggeringScreenshot",
+      "NewGlicApiUnresponsiveTest",
 #if !BUILDFLAG(IS_ANDROID)
       "NewGlicApiTestWithFileUploadPolicyEnabled",
       "NewGlicApiTestWithSkills",
@@ -886,8 +887,7 @@ IN_PROC_BROWSER_TEST_P(NewGlicApiTest, MAYBE_testThereCanOnlyBeOneFloaty) {
             tab0_instance->GetPanelState().kind);
 }
 
-// TODO(crbug.com/536051726): Re-enable the test on Linux.
-#if defined(NOT_VETTED_ON_ANDROID) || BUILDFLAG(IS_LINUX)
+#if defined(NOT_VETTED_ON_ANDROID)
 #define MAYBE_testSwitchConversationWithEmptyId \
   DISABLED_testSwitchConversationWithEmptyId
 #else
@@ -904,7 +904,8 @@ IN_PROC_BROWSER_TEST_P(NewGlicApiTest,
   ASSERT_TRUE(base::test::RunUntil([&]() {
     return histogram_tester.GetBucketCount(
                "Glic.Interaction.SwitchConversationTarget",
-               GlicSwitchConversationTarget::kStartNewConversation) == 1;
+               GlicSwitchConversationTarget::kStartNewConversation) == 1 &&
+           coordinator().GetInstances().size() == 1u;
   }));
 
   // Verify that the active instance now has no conversation ID (std::nullopt)
@@ -954,12 +955,8 @@ IN_PROC_BROWSER_TEST_P(NewGlicApiTest,
 
   ExecuteJsTest({.params = base::Value("second"), .instance = tab1_instance});
 
-  auto* service = GlicKeyedServiceFactory::GetGlicKeyedService(GetProfile());
-  auto& coordinator = static_cast<GlicInstanceCoordinatorImpl&>(
-      service->instance_coordinator());
-
   ASSERT_TRUE(base::test::RunUntil(
-      [&]() { return coordinator.GetInstances().size() == 1u; }));
+      [&]() { return coordinator().GetInstances().size() == 1u; }));
   ASSERT_EQ("A", GetOnlyGlicInstance()->conversation_id());
 
   // Switch back to the first tab.
@@ -3133,6 +3130,10 @@ IN_PROC_BROWSER_TEST_P(NewGlicApiTestWithExperimentalTriggeringScreenshot,
   RegisterConversation(GetOnlyGlicInstance(), "test-conv-id");
   ASSERT_OK(CreateActorTaskObservingActiveTab(GetOnlyGlicInstance()));
 
+  ASSERT_TRUE(RunUntil(
+      [&]() { return GetOnlyGlicInstance()->host().IsWebClientConnected(); },
+      "waiting for web client connected"));
+
   base::test::TestFuture<const std::optional<std::string>&> future;
   ASSERT_NE(GetOnlyGlicInstance()->GetExperimentalTriggeringManager(), nullptr);
   GetOnlyGlicInstance()
@@ -3171,6 +3172,51 @@ IN_PROC_BROWSER_TEST_P(
 
   std::optional<std::string> file_token = future.Get();
   EXPECT_FALSE(file_token.has_value());
+}
+
+class NewGlicApiUnresponsiveTest : public NewGlicApiTest {
+ public:
+  NewGlicApiUnresponsiveTest() {
+    features_.InitAndEnableFeatureWithParameters(
+        features::kGlicClientResponsivenessCheck,
+        {
+            {features::kGlicClientResponsivenessCheckIntervalMs.name, "1000"},
+            {features::kGlicClientResponsivenessCheckTimeoutMs.name, "3000"},
+            {features::kGlicClientUnresponsiveUiMaxTimeMs.name, "1000"},
+            {features::kGlicClientResponsivenessCheckIgnoreWhenDebuggerAttached
+                 .name,
+             "false"},
+        });
+  }
+
+ private:
+  base::test::ScopedFeatureList features_;
+};
+
+#if defined(SLOW_BINARY)
+#define MAYBE_testUnresponsive DISABLED_testUnresponsive
+#else
+#define MAYBE_testUnresponsive testUnresponsive
+#endif
+IN_PROC_BROWSER_TEST_P(NewGlicApiUnresponsiveTest, MAYBE_testUnresponsive) {
+  GlicHistogramTester histogram_tester;
+  ASSERT_OK_AND_ASSIGN(auto* instance, OpenGlicForActiveTab());
+  GlicClientConnectionObserver connection_observer(instance);
+  // This web client does not respond to responsiveness checks, so the client
+  // will be declared unresponsive and disconnect.
+  ExecuteJsTest();
+  ASSERT_OK(connection_observer.WaitForDisconnected());
+
+  histogram_tester.ExpectBucketCount(
+      "Glic.Host.WebClientUnresponsiveState",
+      /*WebClientUnresponsiveState.ENTERED_FROM_CUSTOM_HEARTBEAT*/ 1, 1);
+  histogram_tester.ExpectBucketCount("Glic.Host.WebClientUnresponsiveState",
+                                     /*WebClientUnresponsiveState.EXITED*/ 4,
+                                     1);
+  histogram_tester.ExpectTotalCount(
+      "Glic.Host.WebClientUnresponsiveState.Duration", 1);
+  histogram_tester.ExpectBucketCount("Glic.PanelWebUiState.Error",
+                                     /*WebUiErrorReason.CLIENT_ERROR*/ 6, 1);
 }
 
 auto DefaultTestParamSet() {
@@ -3263,6 +3309,11 @@ INSTANTIATE_TEST_SUITE_P(,
                          DefaultTestParamSet(),
                          &WithTestParams::PrintTestVariant);
 
+INSTANTIATE_TEST_SUITE_P(,
+                         NewGlicApiUnresponsiveTest,
+                         DefaultTestParamSet(),
+                         &WithTestParams::PrintTestVariant);
+
 #if !BUILDFLAG(IS_ANDROID)
 INSTANTIATE_TEST_SUITE_P(,
                          NewGlicApiTestWithFileUploadPolicyEnabled,
@@ -3305,6 +3356,7 @@ GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(NewGlicApiTestForNoWebUiLoader);
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(GlicApiScrollToTest);
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(
     NewGlicApiTestWithExperimentalTriggeringScreenshot);
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(NewGlicApiUnresponsiveTest);
 #if !BUILDFLAG(IS_ANDROID)
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(
     NewGlicApiTestWithFileUploadPolicyEnabled);

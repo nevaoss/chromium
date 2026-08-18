@@ -57,9 +57,6 @@
 #include "ui/base/clipboard/clipboard_metadata.h"
 
 class ChromeContentBrowserClientParts;
-#if !BUILDFLAG(IS_ANDROID)
-class FetchKeepAliveProcessManager;
-#endif
 class PrefRegistrySimple;
 class ScopedKeepAlive;
 
@@ -254,9 +251,8 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
   void LogWebUIUsage(
       std::variant<content::WebUI*, GURL> webui_variant) override;
   bool IsWebUIAllowedToMakeNetworkRequests(const url::Origin& origin) override;
-  bool ShouldAllowMojoJsBindingsForSite(
-      content::BrowserContext* browser_context,
-      const GURL& site_url) override;
+  bool ShouldAllowMojoJsBindingsForFrame(
+      content::RenderFrameHost& render_frame_host) override;
   bool IsHandledURL(const GURL& url) override;
   bool HasCustomSchemeHandler(content::BrowserContext* browser_context,
                               const std::string& scheme) override;
@@ -719,7 +715,10 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
   content::ContentBrowserClient::URLLoaderRequestHandler
   CreateURLLoaderHandlerForServiceWorkerInitiatedNavigationRequest(
       content::FrameTreeNodeId frame_tree_node_id,
-      const network::ResourceRequest& resource_request) override;
+      const network::ResourceRequest& resource_request,
+      int64_t navigation_id,
+      scoped_refptr<base::SequencedTaskRunner> navigation_response_task_runner)
+      override;
   bool WillInterceptWebSocket(content::RenderFrameHost* frame) override;
   content::ContentBrowserClient::WebSocketOptions GetWebSocketOptions(
       content::RenderFrameHost* frame) override;
@@ -970,10 +969,6 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
   void OnKeepaliveRequestStarted(
       content::BrowserContext* browser_context) override;
   void OnKeepaliveRequestFinished() override;
-  void OnFetchKeepAliveRequestCreated(
-      content::BrowserContext& browser_context) override;
-  void OnFetchKeepAliveRequestDestroyed(
-      content::BrowserContext& browser_context) override;
 
 #if BUILDFLAG(IS_MAC)
   bool SetupEmbedderSandboxParameters(
@@ -1420,12 +1415,6 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
   uint64_t num_keepalive_requests_ = 0;
   base::OneShotTimer keepalive_timer_;
   base::TimeTicks keepalive_deadline_;
-
-  // Keeps the browser process and relevant profiles alive while browser-side
-  // fetch keepalive / fetchLater loaders are in flight. Lazily created on the
-  // first request when features::kKeepAliveBrowserProcessAlive is enabled.
-  std::unique_ptr<FetchKeepAliveProcessManager>
-      fetch_keepalive_process_manager_;
 #endif
 
 #if BUILDFLAG(IS_MAC)

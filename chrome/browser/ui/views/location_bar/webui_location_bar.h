@@ -84,6 +84,7 @@ class WebUILocationBar : public LocationBar,
   void Revert() override;
   OmniboxView* GetOmniboxView() override;
   OmniboxPopupView* GetOmniboxPopupView() override;
+  OmniboxPopupPresenterDelegate* GetPresenterDelegate() override;
   OmniboxController* GetOmniboxController() override;
   bool ShouldCloseOmniboxPopup(ui::MouseEvent* event) override;
   ChipController* GetChipController() override;
@@ -156,6 +157,7 @@ class WebUILocationBar : public LocationBar,
   views::Widget* GetLocationBarWidget() override;
   OmniboxPopupFileSelector* GetOmniboxPopupFileSelector() const override;
   OmniboxPopupAimPresenter* GetOmniboxPopupAimPresenter() const override;
+  const views::View* GetLocationBarFocusRestoreView() const override;
 
   void SetSuppressionThresholdForTesting(base::TimeDelta threshold);
 

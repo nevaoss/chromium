@@ -198,7 +198,7 @@ BASE_FEATURE(kOmniboxMultimodalInput, DISABLED);
 BASE_FEATURE(kAndroidDesktopAimGate, ENABLED);
 
 // Enables the AIM entrypoint for third party search engines.
-BASE_FEATURE(kAim3pEntrypoint, DISABLED);
+BASE_FEATURE(kAim3pEntrypoint, ENABLED);
 const base::FeatureParam<bool> kAim3pEntrypointDebug{
     &kAim3pEntrypoint, "Aim3pEntrypointDebug", false};
 
@@ -443,6 +443,8 @@ BASE_FEATURE(kOmniboxDebugLogs, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kVoiceSearchCoherenceComposeboxes,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+BASE_FEATURE(kDrivePickerV2Scope, base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Enables voice search coherence (as described above) only for cobrowsing.
 // Overrides the default (default was all surfaces enabled).
 const base::FeatureParam<bool> kVoiceSearchCoherenceComposeboxCobrowsingOnly{
@@ -498,6 +500,10 @@ BASE_FEATURE(kServeJavaCachedZeroSuggest, ENABLED);
 // of the Omnibox suggestion list to the top during any re-layout.
 BASE_FEATURE(kResetSuggestionsScroll, DISABLED);
 
+// Kill switch for special handling for session-less voice search queries
+// (e.g. from NTP fakebox). This special case was added to address b/541295247.
+BASE_FEATURE(kOmniboxSessionlessVoiceSearch, ENABLED);
+
 namespace android {
 static int64_t JNI_OmniboxFeatureMap_GetNativeMap(JNIEnv* env) {
   static const base::Feature* const kFeaturesExposedToJava[] = {
@@ -525,7 +531,8 @@ static int64_t JNI_OmniboxFeatureMap_GetNativeMap(JNIEnv* env) {
       &kExactMatchFavicons,
       &kStarterPackExpansion,
       &kOmniboxSearchPrefetchOnEnterKeyDown,
-      &kOmniboxAimImageDownscaling};
+      &kOmniboxAimImageDownscaling,
+      &kOmniboxSessionlessVoiceSearch};
   static base::NoDestructor<base::android::FeatureMap> kFeatureMap(
       kFeaturesExposedToJava);
   return reinterpret_cast<int64_t>(kFeatureMap.get());

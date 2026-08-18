@@ -278,6 +278,8 @@ public class LocationBarMediatorTest {
                     ObservableSuppliers.createNonNull(FuseboxLayoutMode.TOOLBAR);
     private final SettableNonNullObservableSupplier<Boolean> mActivationChipVisibilitySupplier =
             ObservableSuppliers.createNonNull(false);
+    private final SettableNonNullObservableSupplier<Boolean> mWindowHasFocusSupplier =
+            ObservableSuppliers.createNonNull(true);
     private final SettableNonNullObservableSupplier<Boolean> mHasAttachmentsSupplier =
             ObservableSuppliers.createNonNull(false);
     private final UserDataHost mTabUserDataHost = new UserDataHost();
@@ -396,6 +398,13 @@ public class LocationBarMediatorTest {
                 .when(mAppBannerManagerJni)
                 .getJavaBannerManagerForWebContents(mWebContents);
         doReturn(mScrimVisibilitySupplier).when(mScrimHandler).getScrimVisibilitySupplier();
+        doReturn(mUrlBar).when(mLocationBarLayout).getUrlBar();
+        doReturn(mDeleteButton).when(mLocationBarLayout).getDeleteButton();
+        doReturn(mActivationChip).when(mLocationBarLayout).getActivationChip();
+        doReturn(mPlusButton).when(mLocationBarLayout).findViewById(R.id.fusebox_plus_button);
+        doReturn(mMicButton).when(mLocationBarLayout).getMicButton();
+        doReturn(mNavigateButton).when(mLocationBarLayout).getNavigateButton();
+
         mMediator =
                 new LocationBarMediator(
                         mContext,
@@ -421,7 +430,8 @@ public class LocationBarMediatorTest {
                         mFuseboxCoordinator,
                         mLocationBarEmbedder,
                         /* omniboxChipManager= */ null,
-                        mScrimHandler);
+                        mScrimHandler,
+                        mWindowHasFocusSupplier);
         verify(mFuseboxCoordinator)
                 .setOnInteractionCompletedCallback(mOnInteractionCompletedCallbackCaptor.capture());
         mOnInteractionCompletedCallback = mOnInteractionCompletedCallbackCaptor.getValue();
@@ -430,14 +440,6 @@ public class LocationBarMediatorTest {
                 .when(mAutocompleteCoordinator)
                 .setupSuggestionsListShowAnimation();
 
-        doReturn(mUrlBar).when(mLocationBarLayout).getUrlBar();
-        doReturn(mDeleteButton).when(mLocationBarLayout).getDeleteButton();
-        doReturn(mActivationChip)
-                .when(mLocationBarLayout)
-                .findViewById(R.id.fusebox_activation_chip);
-        doReturn(mPlusButton).when(mLocationBarLayout).findViewById(R.id.fusebox_plus_button);
-        doReturn(mMicButton).when(mLocationBarLayout).getMicButton();
-        doReturn(mNavigateButton).when(mLocationBarLayout).getNavigateButton();
         mMediator.setCoordinators(mUrlCoordinator, mAutocompleteCoordinator, mStatusCoordinator);
         mMediator.setAddToHomescreenCoordinatorForTesting(mAddToHomescreenCoordinator);
         ObjectAnimatorShadow.setUrlAnimator(mUrlAnimator);
@@ -466,6 +468,13 @@ public class LocationBarMediatorTest {
     }
 
     private LocationBarMediator createTabletMediator() {
+        doReturn(mUrlBar).when(mLocationBarTablet).getUrlBar();
+        doReturn(mDeleteButton).when(mLocationBarTablet).getDeleteButton();
+        doReturn(mActivationChip).when(mLocationBarTablet).getActivationChip();
+        doReturn(mPlusButton).when(mLocationBarTablet).findViewById(R.id.fusebox_plus_button);
+        doReturn(mMicButton).when(mLocationBarTablet).getMicButton();
+        doReturn(mNavigateButton).when(mLocationBarTablet).getNavigateButton();
+
         var tabletMediator =
                 new LocationBarMediator(
                         mContext,
@@ -491,15 +500,8 @@ public class LocationBarMediatorTest {
                         mFuseboxCoordinator,
                         mLocationBarEmbedder,
                         /* omniboxChipManager= */ null,
-                        /* scrimHandler= */ null);
-        doReturn(mUrlBar).when(mLocationBarTablet).getUrlBar();
-        doReturn(mDeleteButton).when(mLocationBarTablet).getDeleteButton();
-        doReturn(mActivationChip)
-                .when(mLocationBarTablet)
-                .findViewById(R.id.fusebox_activation_chip);
-        doReturn(mPlusButton).when(mLocationBarTablet).findViewById(R.id.fusebox_plus_button);
-        doReturn(mMicButton).when(mLocationBarTablet).getMicButton();
-        doReturn(mNavigateButton).when(mLocationBarTablet).getNavigateButton();
+                        /* scrimHandler= */ null,
+                        mWindowHasFocusSupplier);
         tabletMediator.setCoordinators(
                 mUrlCoordinator, mAutocompleteCoordinator, mStatusCoordinator);
         return tabletMediator;
@@ -801,22 +803,6 @@ public class LocationBarMediatorTest {
 
         mMediator.onSuggestionsChanged(null, false);
         verify(mUrlCoordinator).setAutocompleteText("text", null, null, null);
-    }
-
-    @Test
-    public void testSuspendInput_clearsPreviewMatchUrlSupplier() {
-        mMediator.onFinishNativeInitialization();
-        mProfileSupplier.set(mProfile);
-
-        AutocompleteInput input = new AutocompleteInput();
-        input.setUserText("text");
-        input.setRequestType(AutocompleteRequestType.SEARCH);
-        mMediator.beginInput(input);
-        mSessionState.getAutocompleteInput().setPreviewMatchUrl(JUnitTestGURLs.RED_1);
-        assertNotNull(mSessionState.getAutocompleteInput().getPreviewMatchUrl());
-
-        mMediator.suspendInput();
-        assertNull(mSessionState.getAutocompleteInput().getPreviewMatchUrl());
     }
 
     @Test
@@ -1927,7 +1913,8 @@ public class LocationBarMediatorTest {
                         mFuseboxCoordinator,
                         mLocationBarEmbedder,
                         /* omniboxChipManager= */ null,
-                        mScrimHandler);
+                        mScrimHandler,
+                        mWindowHasFocusSupplier);
         mMediator.setCoordinators(mUrlCoordinator, mAutocompleteCoordinator, mStatusCoordinator);
         int primeCount = sGeoHeaderPrimeCount;
         mProfileSupplier.set(mProfile);
@@ -2094,6 +2081,8 @@ public class LocationBarMediatorTest {
         verify(mLocationBarLayout, never()).setMicButtonVisibility(true);
 
         reset(mLocationBarLayout);
+        doReturn(mDeleteButton).when(mLocationBarLayout).getDeleteButton();
+        doReturn(mUrlBar).when(mLocationBarLayout).getUrlBar();
         VoiceRecognitionHandler voiceRecognitionHandler = mock(VoiceRecognitionHandler.class);
         mMediator.setVoiceRecognitionHandlerForTesting(voiceRecognitionHandler);
         mMediator.onFinishNativeInitialization();
@@ -2168,6 +2157,8 @@ public class LocationBarMediatorTest {
         mMediator.setVoiceRecognitionHandlerForTesting(voiceRecognitionHandler);
         mMediator.onFinishNativeInitialization();
         reset(mLocationBarLayout);
+        doReturn(mDeleteButton).when(mLocationBarLayout).getDeleteButton();
+        doReturn(mUrlBar).when(mLocationBarLayout).getUrlBar();
 
         mMediator.updateButtonVisibility();
         verify(mLocationBarLayout).setDeleteButtonVisibility(false);
@@ -2207,6 +2198,8 @@ public class LocationBarMediatorTest {
         doReturn("").when(mUrlCoordinator).getTextWithAutocomplete();
         doReturn(true).when(voiceRecognitionHandler).isVoiceSearchEnabled();
         reset(mLocationBarTablet);
+        doReturn(mDeleteButton).when(mLocationBarTablet).getDeleteButton();
+        doReturn(mUrlBar).when(mLocationBarTablet).getUrlBar();
 
         mTabletMediator.updateButtonVisibility();
         updateTabletWidthConsumers(mTabletMediator);
@@ -2257,6 +2250,8 @@ public class LocationBarMediatorTest {
         mTabletMediator.onUrlFocusChange(true);
         doReturn(inputText).when(mUrlCoordinator).getTextWithAutocomplete();
         reset(mLocationBarTablet);
+        doReturn(mDeleteButton).when(mLocationBarTablet).getDeleteButton();
+        doReturn(mUrlBar).when(mLocationBarTablet).getUrlBar();
 
         mTabletMediator.updateButtonVisibility();
         updateTabletWidthConsumers(mTabletMediator);
@@ -2308,6 +2303,8 @@ public class LocationBarMediatorTest {
         mTabletMediator.setVoiceRecognitionHandlerForTesting(voiceRecognitionHandler);
         doReturn(true).when(voiceRecognitionHandler).isVoiceSearchEnabled();
         reset(mLocationBarTablet);
+        doReturn(mDeleteButton).when(mLocationBarTablet).getDeleteButton();
+        doReturn(mUrlBar).when(mLocationBarTablet).getUrlBar();
 
         mTabletMediator.updateButtonVisibility();
         updateTabletWidthConsumers(mTabletMediator);
@@ -2322,6 +2319,8 @@ public class LocationBarMediatorTest {
         doReturn(mTab).when(mLocationBarDataProvider).getTab();
         mTabletMediator.onFinishNativeInitialization();
         reset(mLocationBarTablet);
+        doReturn(mDeleteButton).when(mLocationBarTablet).getDeleteButton();
+        doReturn(mUrlBar).when(mLocationBarTablet).getUrlBar();
         int buttonWidth =
                 mContext.getResources()
                         .getDimensionPixelSize(R.dimen.location_bar_action_icon_width);
@@ -2341,6 +2340,8 @@ public class LocationBarMediatorTest {
         mTabletMediator.onFinishNativeInitialization();
         mTabletMediator.setShouldShowButtonsWhenUnfocusedForTablet(false);
         reset(mLocationBarTablet);
+        doReturn(mDeleteButton).when(mLocationBarTablet).getDeleteButton();
+        doReturn(mUrlBar).when(mLocationBarTablet).getUrlBar();
         mTabletMediator.updateButtonVisibility();
 
         verify(mLocationBarTablet).setMicButtonVisibility(false);
@@ -2751,7 +2752,7 @@ public class LocationBarMediatorTest {
         mMediator.onFinishNativeInitialization();
         doReturn(mWebContents).when(mTab).getWebContents();
         mMediator.zoomButtonClicked(null);
-        verify(mPageZoomIndicatorCoordinator).show(mWebContents);
+        verify(mPageZoomIndicatorCoordinator).show();
     }
 
     @Test
@@ -2793,6 +2794,14 @@ public class LocationBarMediatorTest {
         mMediator.updateZoomButtonVisibilityForTesting();
         verify(mLocationBarLayout).setZoomButtonVisibility(false);
         verify(mLocationBarEmbedder).onWidthConsumerVisibilityChanged();
+    }
+
+    @Test
+    public void testShouldShowZoomButton_defaultZoom_popupShowing() {
+        mTabletMediator.onFinishNativeInitialization();
+        when(mPageZoomIndicatorCoordinator.isZoomLevelDefault()).thenReturn(true);
+        when(mPageZoomIndicatorCoordinator.isPopupWindowShowing()).thenReturn(true);
+        assertTrue(mTabletMediator.shouldShowZoomButton());
     }
 
     @Test
@@ -3522,6 +3531,8 @@ public class LocationBarMediatorTest {
         input.setUserText("modified text").setInitialUserText("initial text");
         input.setRequestType(AutocompleteRequestType.AI_MODE);
         reset(mLocationBarLayout);
+        doReturn(mDeleteButton).when(mLocationBarLayout).getDeleteButton();
+        doReturn(mUrlBar).when(mLocationBarLayout).getUrlBar();
         mMediator.deleteButtonClicked(null);
         assertEquals("", input.getUserText());
         assertEquals(AutocompleteRequestType.AI_MODE, input.getRequestType());
@@ -3802,6 +3813,7 @@ public class LocationBarMediatorTest {
         LocationBarSelectionController selectionController =
                 mMediator.getSelectionControllerForTesting();
         assertEquals(1, selectionController.getPosition().intValue());
+        doReturn(true).when(mAutocompleteCoordinator).selectFirstItem();
         assertTrue(mMediator.handleKeyNavigationEvent(KeyEvent.KEYCODE_TAB, mKeyEvent));
         assertEquals(2, selectionController.getPosition().intValue());
         verify(mAutocompleteCoordinator).selectFirstItem();
@@ -3836,6 +3848,7 @@ public class LocationBarMediatorTest {
 
         doReturn(false).when(mKeyEvent).hasNoModifiers();
         doReturn(true).when(mKeyEvent).hasModifiers(KeyEvent.META_SHIFT_ON);
+        doReturn(true).when(mAutocompleteCoordinator).selectLastItem();
         assertTrue(mMediator.handleKeyNavigationEvent(KeyEvent.KEYCODE_TAB, mKeyEvent));
         assertEquals(2, selectionController.getPosition().intValue());
         verify(mAutocompleteCoordinator).selectFirstItem();
@@ -3934,6 +3947,25 @@ public class LocationBarMediatorTest {
     }
 
     @Test
+    public void testHandleKeyNavigationEvent_tabToActivationChipNotifiesFusebox() {
+        doReturn(KeyEvent.KEYCODE_TAB).when(mKeyEvent).getKeyCode();
+        doReturn(true).when(mKeyEvent).hasNoModifiers();
+        doReturn(KeyEvent.ACTION_DOWN).when(mKeyEvent).getAction();
+
+        doReturn(View.VISIBLE).when(mUrlBar).getVisibility();
+        doReturn(View.VISIBLE).when(mActivationChip).getVisibility();
+
+        var input = mSessionState.getAutocompleteInput();
+        input.setRequestType(AutocompleteRequestType.SEARCH);
+        mMediator.beginInput(input);
+
+        // Tab from UrlBar to ActivationChip.
+        assertTrue(mMediator.handleKeyNavigationEvent(KeyEvent.KEYCODE_TAB, mKeyEvent));
+        verify(mFuseboxCoordinator).onActivationChipSelectionChanged(true);
+        verify(mActivationChip).setSelected(true);
+    }
+
+    @Test
     public void testHandleKeyNavigationEvent_navigateToFirstItemInTypedState() {
         doReturn(KeyEvent.KEYCODE_TAB).when(mKeyEvent).getKeyCode();
         doReturn(true).when(mKeyEvent).hasNoModifiers();
@@ -3944,6 +3976,8 @@ public class LocationBarMediatorTest {
         doReturn(View.GONE).when(mDeleteButton).getVisibility();
         doReturn(View.VISIBLE).when(mActivationChip).getVisibility();
         doReturn(true).when(mAutocompleteCoordinator).isServingSuggestions();
+        doReturn(true).when(mAutocompleteCoordinator).selectFirstItem();
+        doReturn(true).when(mAutocompleteCoordinator).selectLastItem();
 
         var input = mSessionState.getAutocompleteInput();
         input.setRequestType(AutocompleteRequestType.SEARCH).setUserText("user text");
@@ -4207,6 +4241,38 @@ public class LocationBarMediatorTest {
     }
 
     @Test
+    public void testTabSwitch_maintainsPreviewMatchUrl() {
+        mMediator.onFinishNativeInitialization();
+        mProfileSupplier.set(mProfile);
+
+        AutocompleteInput input = new AutocompleteInput();
+        input.setRequestType(AutocompleteRequestType.SEARCH);
+        mMediator.beginInput(input);
+
+        mSessionState.getAutocompleteInput().setPreviewMatchUrl(JUnitTestGURLs.RED_1);
+
+        mMediator.suspendInput();
+
+        // Switch to a different tab with its own session state.
+        FuseboxSessionState nextTabSessionState = new FuseboxSessionState();
+        nextTabSessionState.getAutocompleteInput().setPreviewMatchUrl(JUnitTestGURLs.BLUE_1);
+        doReturn(nextTabSessionState).when(mLocationBarDataProvider).getFuseboxSessionState();
+        mMediator.onTabChanged(null);
+
+        assertEquals(
+                JUnitTestGURLs.BLUE_1,
+                nextTabSessionState.getAutocompleteInput().getPreviewMatchUrl());
+
+        // Switch back to the original tab.
+        mMediator.suspendInput();
+        doReturn(mSessionState).when(mLocationBarDataProvider).getFuseboxSessionState();
+        mMediator.onTabChanged(null);
+
+        assertEquals(
+                JUnitTestGURLs.RED_1, mSessionState.getAutocompleteInput().getPreviewMatchUrl());
+    }
+
+    @Test
     public void testEscPress_withPreviewText_upgradesToUserTextAndGoesToStandby() {
         mMediator.onFinishNativeInitialization();
         mProfileSupplier.set(mProfile);
@@ -4269,6 +4335,22 @@ public class LocationBarMediatorTest {
     }
 
     @Test
+    public void testUrlBarAccessibilityOrder() {
+        mActivationChipVisibilitySupplier.set(true);
+        verify(mUrlBar, atLeastOnce())
+                .setAccessibilityTraversalBefore(R.id.fusebox_activation_chip);
+
+        doReturn(View.VISIBLE).when(mDeleteButton).getVisibility();
+        mActivationChipVisibilitySupplier.set(false);
+        verify(mUrlBar, atLeastOnce()).setAccessibilityTraversalBefore(R.id.delete_button);
+
+        doReturn(View.GONE).when(mDeleteButton).getVisibility();
+        mMediator.updateButtonVisibility();
+        verify(mUrlBar, atLeastOnce())
+                .setAccessibilityTraversalBefore(R.id.omnibox_suggestions_dropdown);
+    }
+
+    @Test
     public void testOnWindowFocusChanged_updatesStandbyRing() {
         mMediator.onFinishNativeInitialization();
         mProfileSupplier.set(mProfile);
@@ -4283,11 +4365,11 @@ public class LocationBarMediatorTest {
         verify(mLocationBarLayout).setShowStandbyRing(true);
 
         // Lose window focus -> standby ring should be hidden.
-        mMediator.onWindowFocusChanged(false);
+        mWindowHasFocusSupplier.set(false);
         verify(mLocationBarLayout).setShowStandbyRing(false);
 
         // Regain window focus -> standby ring should be shown again.
-        mMediator.onWindowFocusChanged(true);
+        mWindowHasFocusSupplier.set(true);
         verify(mLocationBarLayout, times(2)).setShowStandbyRing(true);
     }
 }

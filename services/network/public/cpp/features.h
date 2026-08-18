@@ -291,6 +291,11 @@ BASE_DECLARE_FEATURE(kCSPScriptSrcHashesInV1);
 COMPONENT_EXPORT(NETWORK_CPP_FLAGS_AND_SWITCHES)
 BASE_DECLARE_FEATURE(kCacheSharingForPervasiveResources);
 
+// When enabled along with kCacheSharingForPervasiveResources, pervasive
+// shared dictionaries are supported via an unpartitioned, single-keyed store.
+COMPONENT_EXPORT(NETWORK_CPP_FLAGS_AND_SWITCHES)
+BASE_DECLARE_FEATURE(kPervasiveSharedDictionaries);
+
 // When enabled, sends SameSite=Lax cookies for FedCM requests in addition to
 // SameSite=None.
 COMPONENT_EXPORT(NETWORK_CPP_FLAGS_AND_SWITCHES)
@@ -429,6 +434,9 @@ BASE_DECLARE_FEATURE(kDirectSocketsUdpSendRequireMulticastPermissionPolicy);
 // service.
 COMPONENT_EXPORT(NETWORK_CPP_FLAGS_AND_SWITCHES)
 BASE_DECLARE_FEATURE(kBrowserInitiatedFileUploadValidation);
+
+COMPONENT_EXPORT(NETWORK_CPP_FLAGS_AND_SWITCHES)
+BASE_DECLARE_FEATURE(kSafeRevalidation);
 
 }  // namespace network::features
 

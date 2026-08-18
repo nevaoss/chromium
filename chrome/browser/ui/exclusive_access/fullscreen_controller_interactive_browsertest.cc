@@ -948,6 +948,18 @@ IN_PROC_BROWSER_TEST_F(FullscreenControllerInteractiveTest,
 }
 
 IN_PROC_BROWSER_TEST_F(FullscreenControllerInteractiveTest,
+                       ShowEmojiPanelExitsFullscreen) {
+  ASSERT_NO_FATAL_FAILURE(ToggleTabFullscreen(true));
+  ASSERT_TRUE(IsWindowFullscreenForTabOrPending());
+
+  ui_test_utils::FullscreenWaiter waiter(browser(), {.tab_fullscreen = false});
+  BrowserWindow::FromBrowser(browser()->GetBrowserForMigrationOnly())
+      ->ShowEmojiPanel();
+  waiter.Wait();
+  EXPECT_FALSE(IsWindowFullscreenForTabOrPending());
+}
+
+IN_PROC_BROWSER_TEST_F(FullscreenControllerInteractiveTest,
                        CapturedContentEntersFullscreenWithinTab) {
   SetDisableFullscreenWithinTab(false);
   // Simulate tab capture, as used by getDisplayMedia() content sharing.
@@ -1726,13 +1738,14 @@ IN_PROC_BROWSER_TEST_F(MAYBE_MultiScreenFullscreenControllerInteractiveTest,
 #endif
 }
 
+// TODO(crbug.com/542615039): Disabled on Mac.
 // TODO(crbug.com/40111905): Disabled on Windows, where views::FullscreenHandler
 // implements fullscreen by directly obtaining MONITORINFO, ignoring the mocked
 // display::Screen configuration used in this test. Disabled on Linux, where the
 // window server's async handling of the fullscreen window state may transition
 // the window into fullscreen on the actual (non-mocked) display bounds before
 // or after the window bounds checks, yielding flaky results.
-#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_CHROMEOS)
 #define MAYBE_BrowserFullscreenContentFullscreenSwapDisplay \
   BrowserFullscreenContentFullscreenSwapDisplay
 #else

@@ -360,6 +360,11 @@ void LogManualFallbackEntryThroughExpandIcon(ManualFillDataType data_type,
       self.formAccessoryVisible;
 }
 
+- (void)setIsContextMenuEnabled:(BOOL)isContextMenuEnabled {
+  _isContextMenuEnabled = isContextMenuEnabled;
+  _formSuggestionView.isContextMenuEnabled = isContextMenuEnabled;
+}
+
 #pragma mark - Actions
 
 - (void)tapInsideRecognized:(id)sender {
@@ -369,6 +374,29 @@ void LogManualFallbackEntryThroughExpandIcon(ManualFillDataType data_type,
 }
 
 #pragma mark - Private
+
+// Updates the gradient mask layout for the form suggestion view container.
+- (void)updateFormSuggestionViewMaskLayout {
+  CGFloat startPoint =
+      (ui::GetDeviceFormFactor() == ui::DEVICE_FORM_FACTOR_TABLET)
+          ? kFormSuggestionViewLayerMaskGradientStartPointForTablet
+          : kFormSuggestionViewLayerMaskGradientStartPoint;
+  if (base::i18n::IsRTL()) {
+    // Create a gradient in the reverse direction from the non RTL case below.
+    self.formSuggestionViewMask.startPoint =
+        CGPointMake(1.0 - kFormSuggestionViewLayerMaskGradientEndPoint, 0.0);
+    self.formSuggestionViewMask.endPoint = CGPointMake(1.0 - startPoint, 0.0);
+    self.formSuggestionViewMask.colors =
+        @[ (id)[UIColor clearColor].CGColor, (id)[UIColor whiteColor].CGColor ];
+  } else {
+    self.formSuggestionViewMask.startPoint = CGPointMake(startPoint, 0.0);
+    self.formSuggestionViewMask.endPoint =
+        CGPointMake(kFormSuggestionViewLayerMaskGradientEndPoint, 0.0);
+    self.formSuggestionViewMask.colors =
+        @[ (id)[UIColor whiteColor].CGColor, (id)[UIColor clearColor].CGColor ];
+  }
+  self.formSuggestionContainerView.layer.mask = self.formSuggestionViewMask;
+}
 
 // Returns whether to use the single manual fill button.
 - (BOOL)hasSingleManualFillButton:(BOOL)hasSuggestions {
@@ -512,6 +540,7 @@ UIImage* GetManualFillSymbol() {
 - (void)createFormSuggestionViewIfNeeded {
   if (!self.formSuggestionView) {
     self.formSuggestionView = [[FormSuggestionView alloc] init];
+    self.formSuggestionView.isContextMenuEnabled = _isContextMenuEnabled;
     self.formSuggestionView.formSuggestionViewDelegate = self;
     self.formSuggestionView.layoutGuideCenter = self.layoutGuideCenter;
     self.formSuggestionView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -523,27 +552,7 @@ UIImage* GetManualFillSymbol() {
     // Put a mask on the formSuggestionView's container view so that the mask
     // doesn't move along with the scroll view.
     self.formSuggestionViewMask = [CAGradientLayer layer];
-    CGFloat startPoint =
-        (ui::GetDeviceFormFactor() == ui::DEVICE_FORM_FACTOR_TABLET)
-            ? kFormSuggestionViewLayerMaskGradientStartPointForTablet
-            : kFormSuggestionViewLayerMaskGradientStartPoint;
-    if (base::i18n::IsRTL()) {
-      // Create a gradient in the reverse direction from the non RTL case below.
-      self.formSuggestionViewMask.startPoint =
-          CGPointMake(1.0 - kFormSuggestionViewLayerMaskGradientEndPoint, 0.0);
-      self.formSuggestionViewMask.endPoint = CGPointMake(1.0 - startPoint, 0.0);
-      self.formSuggestionViewMask.colors = @[
-        (id)[UIColor clearColor].CGColor, (id)[UIColor whiteColor].CGColor
-      ];
-    } else {
-      self.formSuggestionViewMask.startPoint = CGPointMake(startPoint, 0.0);
-      self.formSuggestionViewMask.endPoint =
-          CGPointMake(kFormSuggestionViewLayerMaskGradientEndPoint, 0.0);
-      self.formSuggestionViewMask.colors = @[
-        (id)[UIColor whiteColor].CGColor, (id)[UIColor clearColor].CGColor
-      ];
-    }
-    self.formSuggestionContainerView.layer.mask = self.formSuggestionViewMask;
+    [self updateFormSuggestionViewMaskLayout];
   }
 }
 

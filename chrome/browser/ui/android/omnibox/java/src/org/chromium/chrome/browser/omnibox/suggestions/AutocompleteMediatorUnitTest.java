@@ -114,6 +114,7 @@ import org.chromium.content_public.browser.NavigationHandle;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.insets.InsetObserver;
+import org.chromium.ui.modaldialog.DialogDismissalCause;
 import org.chromium.ui.modaldialog.ModalDialogManager;
 import org.chromium.ui.modelutil.MVCListAdapter.ModelList;
 import org.chromium.ui.modelutil.PropertyKey;
@@ -1137,6 +1138,33 @@ public class AutocompleteMediatorUnitTest {
 
     @Test
     @SmallTest
+    public void onSuggestionFocused_urlMatch_setsPreviewMatchUrl() {
+        var session = createSession(AutocompleteRequestType.SEARCH, SAMPLE_QUERY);
+        mMediator.beginInput(session);
+        mMediator.allowPendingItemSelection();
+        AutocompleteMatch match = createExactUrlMatch(JUnitTestGURLs.RED_1);
+
+        mMediator.onSuggestionFocused(match);
+
+        assertEquals(JUnitTestGURLs.RED_1, session.getAutocompleteInput().getPreviewMatchUrl());
+    }
+
+    @Test
+    @SmallTest
+    public void onSuggestionFocused_searchMatch_clearsPreviewMatchUrl() {
+        var session = createSession(AutocompleteRequestType.SEARCH, SAMPLE_QUERY);
+        session.getAutocompleteInput().setPreviewMatchUrl(JUnitTestGURLs.BLUE_1);
+        mMediator.beginInput(session);
+        mMediator.allowPendingItemSelection();
+        AutocompleteMatch match = createSearchSuggestMatch();
+
+        mMediator.onSuggestionFocused(match);
+
+        assertNull(session.getAutocompleteInput().getPreviewMatchUrl());
+    }
+
+    @Test
+    @SmallTest
     public void onSuggestionClicked_TabsStarterPack() {
         mMediator.onNativeInitialized();
         mMediator.beginInput(createEmptySession());
@@ -1965,10 +1993,45 @@ public class AutocompleteMediatorUnitTest {
     }
 
     @Test
+    public void propagateOmniboxSessionStateChange_tabSearchOverlayContainerVisible() {
+        var session =
+                createSession(
+                        new GURL("https://abc.xyz"),
+                        "title",
+                        PageClassification.ANDROID_TAB_SEARCH_OVERLAY_VALUE);
+
+        mMediator.beginInput(session);
+        assertTrue(mListModel.get(SuggestionListProperties.CONTAINER_ALWAYS_VISIBLE));
+
+        mMediator.endInput();
+
+        var session2 =
+                createSession(new GURL("https://abc.xyz"), "title", PageClassification.BLANK_VALUE);
+        mMediator.beginInput(session2);
+        assertFalse(mListModel.get(SuggestionListProperties.CONTAINER_ALWAYS_VISIBLE));
+    }
+
+    @Test
     public void onTopResumedActivityChanged_hubSearchContainerVisible() {
         var session =
                 createSession(
                         new GURL("https://abc.xyz"), "title", PageClassification.ANDROID_HUB_VALUE);
+
+        mMediator.beginInput(session);
+        mMediator.onTopResumedActivityChanged(true);
+        assertTrue(mListModel.get(SuggestionListProperties.ACTIVITY_WINDOW_FOCUSED));
+
+        mMediator.onTopResumedActivityChanged(false);
+        assertTrue(mListModel.get(SuggestionListProperties.ACTIVITY_WINDOW_FOCUSED));
+    }
+
+    @Test
+    public void onTopResumedActivityChanged_tabSearchOverlayContainerVisible() {
+        var session =
+                createSession(
+                        new GURL("https://abc.xyz"),
+                        "title",
+                        PageClassification.ANDROID_TAB_SEARCH_OVERLAY_VALUE);
 
         mMediator.beginInput(session);
         mMediator.onTopResumedActivityChanged(true);
@@ -2159,10 +2222,30 @@ public class AutocompleteMediatorUnitTest {
         mMediator.beginInput(createSession(AutocompleteRequestType.SEARCH));
         doReturn(JUnitTestGURLs.BLUE_1).when(mTemplateUrlService).getUrlForVoiceSearchQuery(any());
 
-        mMediator.loadUrlFromVoice("sample voice query");
+        mMediator.loadUrlFromVoice("sample voice query", /* fallbackProfile= */ null);
 
         verify(mAutocompleteDelegate).loadUrl(mOmniboxLoadUrlParamsCaptor.capture());
         assertEquals(JUnitTestGURLs.BLUE_1.getSpec(), mOmniboxLoadUrlParamsCaptor.getValue().url);
+    }
+
+    @Test
+    @SmallTest
+    public void loadUrlFromVoice_outsideInputSession_loadsUrl() {
+        doReturn(JUnitTestGURLs.BLUE_1).when(mTemplateUrlService).getUrlForVoiceSearchQuery(any());
+
+        mMediator.loadUrlFromVoice("sample voice query", mProfile);
+
+        verify(mAutocompleteDelegate).loadUrl(mOmniboxLoadUrlParamsCaptor.capture());
+        assertEquals(JUnitTestGURLs.BLUE_1.getSpec(), mOmniboxLoadUrlParamsCaptor.getValue().url);
+    }
+
+    @Test
+    @SmallTest
+    @DisableFeatures(OmniboxFeatureList.OMNIBOX_SESSIONLESS_VOICE_SEARCH)
+    public void loadUrlFromVoice_outsideInputSession_killswitchDisabled_doesNotLoadUrl() {
+        mMediator.loadUrlFromVoice("sample voice query", mProfile);
+
+        verify(mAutocompleteDelegate, never()).loadUrl(any());
     }
 
     @Test
@@ -2494,6 +2577,26 @@ public class AutocompleteMediatorUnitTest {
 
         mMediator.endInput();
         assertFalse(mMediator.isInInputSession());
+    }
+
+    @Test
+    public void onTopResumedActivityChanged_dismissesDeleteDialog() {
+        var session = createEmptySession();
+        mMediator.beginInput(session);
+
+        AutocompleteMatch match = mock(AutocompleteMatch.class);
+        doReturn(true).when(match).isDeletable();
+        doReturn(1L).when(match).getNativeObjectRef();
+
+        mMediator.showDeleteDialog(match, "Title", () -> {});
+
+        // Verify dialog is shown.
+        verify(mModalDialogManager).showDialog(any(), eq(ModalDialogManager.ModalDialogType.APP));
+
+        // Deactivate: should dismiss the dialog.
+        mMediator.onTopResumedActivityChanged(false);
+        verify(mModalDialogManager)
+                .dismissDialog(any(), eq(DialogDismissalCause.NAVIGATE_BACK_OR_TOUCH_OUTSIDE));
     }
 
     private void setUpSiteSearchSpaceTrigger(

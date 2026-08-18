@@ -576,6 +576,7 @@ Naujų žymių negalima išsaugoti paskyroje, kol ištrinsite kai kurias žymes.
 <translation id="7173822816570314652">Organizacija ištrina „Chromium“ duomenis, kai jie nenaudojami <ph name="TIMEOUT_DURATION" />. Tai gali būti istorija, automatinis pildymas ir atsisiuntimai.</translation>
 <translation id="718435575166326686">„Chromium“ reikalingas fotoaparato leidimas šioje svetainėje</translation>
 <translation id="7196312274710523067">Nepavyko paleisti „Chromium“. Bandykite dar kartą.</translation>
+<translation id="7204669035546236137">Klauskite bet ko, kad ir kur būtumėte, naudodami „Gemini“ naršyklėje „Chromium“</translation>
 <translation id="7213008767289637091">Palikite „Chromium“ doke, kad bet kada galėtumėte greitai ją pasiekti</translation>
 <translation id="7213407614656404070">Naudokite „Chromium“ bet kada spustelėję nuorodas pranešimuose, dokumentuose ir kitose programose</translation>
 <translation id="7216228761061470870">Kai naudojate vaizdų paiešką staliniame kompiuteryje, puslapio pavadinimas, URL ir turinys, įskaitant PDF failus, siunčiami į serverį</translation>
@@ -632,6 +633,7 @@ Naujų žymių negalima išsaugoti paskyroje, kol ištrinsite kai kurias žymes.
 <translation id="7745317241717453663">Atlikus šį veiksmą iš šio įrenginio bus ištrinti naršymo duomenys. Jei vėliau norėsite gauti duomenis, prisijunkite prie „Chromium“ kaip <ph name="USER_EMAIL" />.</translation>
 <translation id="7747138024166251722">Diegimo programai nepavyko sukurti laikino katalogo. Patikrinkite, ar yra laisvos vietos diske ir, ar leidžiama įdiegti programinę įrangą.</translation>
 <translation id="7750130090210923118">Iš naujo nustatyti numatytąją „Chromium“ temą</translation>
+<translation id="7752521946322750699">Kad apsaugotų jūsų darbą sistemoje „Chromium“, jūsų organizacija galės peržiūrėti arba tvarkyti tam tikrą informaciją, kai būsite prisijungę prie „Chromium“.</translation>
 <translation id="7781047659465034537">Nustatykite „Chromium“ kaip numatytąją naršyklę ir prisekite ją prie užduočių juostos</translation>
 <translation id="7786760609782648049">Paspartinkite „Chromium“</translation>
 <translation id="7790626492778995050">„<ph name="PAGE_TITLE" />“ – „Chromium Canary“</translation>

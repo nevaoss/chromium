@@ -29,7 +29,6 @@
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/common/features.h"
-#include "third_party/blink/public/mojom/browsing_topics/browsing_topics.mojom.h"
 #include "url/gurl.h"
 
 namespace content {
@@ -88,8 +87,7 @@ class PrivacySandboxAdsAPIsM1OverrideBrowserTest
   PrivacySandboxAdsAPIsM1OverrideBrowserTest() {
     feature_list_.InitWithFeatures(
         {features::kPrivacySandboxAdsAPIsM1Override,
-         network::features::kBrowsingTopics,
-         blink::features::kBrowsingTopicsDocumentAPI, blink::features::kFledge,
+         network::features::kBrowsingTopics, blink::features::kFledge,
          blink::features::kAdInterestGroupAPI, blink::features::kFencedFrames,
          network::features::kSharedStorageAPI},
         /*disabled_features=*/{});
@@ -127,7 +125,6 @@ class PrivacySandboxAdsAPIsM1OverrideNoFeatureBrowserTest
     feature_list_.InitWithFeatures(
         {features::kPrivacySandboxAdsAPIsM1Override},
         {network::features::kBrowsingTopics,
-         blink::features::kBrowsingTopicsDocumentAPI,
          blink::features::kAdInterestGroupAPI, blink::features::kFledge,
          blink::features::kFencedFrames, network::features::kSharedStorageAPI});
   }

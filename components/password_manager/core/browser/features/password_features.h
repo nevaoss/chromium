@@ -109,6 +109,9 @@ BASE_DECLARE_FEATURE(kEnablePasswordManagerMojoApi);
 // Enables Phase 2 of the Mojo JavaScript API migration for the password
 // manager, replacing the legacy passwordsPrivate extension API.
 BASE_DECLARE_FEATURE(kEnablePasswordManagerMojoApiPhase2);
+
+// Enables the Desktop Trusted Vault unlock UI flow.
+BASE_DECLARE_FEATURE(kTrustedVaultDesktopUnlock);
 #endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
 
 // Cross domain credential data is not previewed by the manual fallback
@@ -194,6 +197,10 @@ BASE_DECLARE_FEATURE(kPreventAPCOnFederatedLogin);
 // Prevents password manager from showing save/update UI on federated login.
 BASE_DECLARE_FEATURE(kPreventPasswordManagerOnFederatedLogin);
 
+// Enables publishing of the password readines metric for users with the trusted
+// vault passphrase type.
+BASE_DECLARE_FEATURE(kRecordPasswordReadiness);
+
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 // Enables "Needs access to keychain, restart chrome" bubble and banner.
 BASE_DECLARE_FEATURE(kRestartToGainAccessToKeychain);
@@ -221,6 +228,14 @@ BASE_DECLARE_FEATURE(kTriggerPasswordResyncWhenUndecryptablePasswordsDetected);
 // to which WebContents is attached. This helps to resolve the problem
 // that requestAnimationFrame() is not fired on a detached WebContents.
 BASE_DECLARE_FEATURE(kUseDetachedWidget);
+
+// Controls rollout of storing `PasswordString` password values encrypted in
+// memory via `crypto::ProcessBoundU16String`. When disabled, `PasswordString`
+// keeps the password as a plaintext `std::u16string`; when enabled, it uses
+// `crypto::ProcessBoundU16String`. The choice is captured at `PasswordString`
+// construction time.
+// TODO(crbug.com/513276101): Remove flag after rollout completes
+BASE_DECLARE_FEATURE(kUseProcessBoundPasswordString);
 
 // All features parameters in alphabetical order.
 

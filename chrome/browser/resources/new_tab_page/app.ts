@@ -39,6 +39,7 @@ import type {PropertyValues} from 'chrome://resources/lit/v3_0/lit.rollup.js';
 import type {PageCallbackRouter as SearchboxPageCallbackRouter} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import type {SkColor} from 'chrome://resources/mojo/skia/public/mojom/skcolor.mojom-webui.js';
 
+import type {ActionChipClickDetail} from './action_chips/action_chips.js';
 import {ActionChipsRetrievalState} from './action_chips/action_chips.js';
 import {getCss} from './app.css.js';
 import {getHtml} from './app.html.js';
@@ -378,6 +379,7 @@ export class AppElement extends AppElementBase {
 
       energyEffectEnabled_: {type: Boolean, reflect: true},
       energyEffectAnimationEnabled_: {type: Boolean, reflect: true},
+      energyEffectVariant_: {type: String, reflect: true},
       showCustomizeButton_: {type: Boolean},
     };
   }
@@ -495,6 +497,8 @@ export class AppElement extends AppElementBase {
       loadTimeData.getBoolean('energyEffectEnabled');
   protected accessor energyEffectAnimationEnabled_: boolean =
       loadTimeData.getBoolean('energyEffectAnimationEnabled');
+  protected accessor energyEffectVariant_: string =
+      loadTimeData.getString('energyEffectVariant');
   protected accessor showCustomizeButton_: boolean =
       loadTimeData.getBoolean('showCustomizeButton');
   protected contextMenuAnimationLimitingEnabled_: boolean =
@@ -970,9 +974,17 @@ export class AppElement extends AppElementBase {
     return false;
   }
 
-  protected onActionChipClick_(e: CustomEvent<ComposeboxState>) {
+  protected onActionChipClick_(e: CustomEvent<ActionChipClickDetail>) {
     this.pageHandler_.onContextualSearchIPHEngaged();
-    this.onOpenComposebox_(e);
+    const detail = e.detail;
+    this.composeboxState_ = {
+      text: detail.suggestion,
+      files: detail.files,
+      mode: detail.fuseboxAction?.preselectedTool,
+      model: detail.fuseboxAction?.preselectedModel,
+      suggestInventory: detail.fuseboxAction?.preferredInventory,
+    } as ComposeboxState;
+    this.toggleComposebox_();
   }
 
   protected onOpenComposebox_(e: CustomEvent<ComposeboxState>) {

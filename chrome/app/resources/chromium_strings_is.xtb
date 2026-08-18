@@ -576,6 +576,7 @@ Ekki er hægt að vista ný bókamerki á reikningnum þínum fyrr en þú eyði
 <translation id="7173822816570314652">Fyrirtækið þitt eyðir Chromium-gögnum þegar þau eru ekki notuð í <ph name="TIMEOUT_DURATION" />. Þetta getur falið í sér feril, sjálfvirka útfyllingu og niðurhal.</translation>
 <translation id="718435575166326686">Chromium verður að fá leyfi fyrir myndavél fyrir þetta vefsvæði</translation>
 <translation id="7196312274710523067">Ekki var hægt að ræsa Chromium. Reyndu aftur.</translation>
+<translation id="7204669035546236137">Spyrðu að hverju sem er, hvar sem er, með Gemini í Chromium</translation>
 <translation id="7213008767289637091">Hafðu Chromium í dokkunni þinni til að hafa það ávallt við höndina</translation>
 <translation id="7213407614656404070">Notaðu Chromium þegar þú smellir á tengla í skilaboðum, skjölum og öðrum forritum</translation>
 <translation id="7216228761061470870">Þegar þú notar myndaleit í tölvu verða titill síðu, vefslóð og innihald, að meðtöldum PDF-skjölum, send til þjónsins</translation>
@@ -631,6 +632,7 @@ Chromium getur ekki endurheimt stillingarnar þínar.</translation>
 <translation id="7745317241717453663">Þetta mun eyða vefskoðunargögnunum þínum úr þessu tæki. Skráðu þig inn í Chromium sem <ph name="USER_EMAIL" /> til að endurheimta gögnin síðar.</translation>
 <translation id="7747138024166251722">Uppsetningarforritið gat ekki búið til tímabundna möppu. Athugaðu laust diskpláss og heimildir fyrir uppsetningu hugbúnaðar.</translation>
 <translation id="7750130090210923118">Endurstilla á sjálfgefið Chromium</translation>
+<translation id="7752521946322750699">Til að tryggja öryggi vinnu þinnar í Chromium mun fyrirtækið þitt geta skoðað eða stjórnað tilteknum upplýsingum þegar þú ert skráð(ur) inn á Chromium.</translation>
 <translation id="7781047659465034537">Stilltu Chromium sem sjálfgefinn vafra og festu hann við forritastikuna</translation>
 <translation id="7786760609782648049">Láttu Chromium vinna hraðar</translation>
 <translation id="7790626492778995050"><ph name="PAGE_TITLE" /> - Chromium Canary</translation>

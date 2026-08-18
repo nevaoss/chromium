@@ -255,7 +255,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="NewTabPage.BackgroundImageSource"
-    enum="NTPBackgroundImageSource" expires_after="2026-11-29">
+    enum="NTPBackgroundImageSource" expires_after="2027-01-31">
   <owner>pauladedeji@google.com</owner>
   <owner>danpeng@google.com</owner>
   <owner>chrome-desktop-ntp@google.com</owner>
@@ -1111,7 +1111,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="NewTabPage.LoadTime{NewTabPageTimings}" units="ms"
-    expires_after="2026-11-29">
+    expires_after="2027-01-31">
   <owner>romanarora@chromium.org</owner>
   <owner>tiborg@chromium.org</owner>
   <owner>chrome-desktop-ntp@google.com</owner>
@@ -1122,7 +1122,11 @@ chromium-metrics-reviews@google.com.
   </summary>
   <token key="NewTabPageTimings">
     <variant name=""/>
-    <variant name=".FirstContentfulPaint" summary="First contentful paint."/>
+    <variant name=".FirstContentfulPaint"
+        summary="First contentful paint. Android desktop only. Its
+                 functionality is already covered by
+                 NewTabPage.LoadTime.FirstContentfulPaint2."/>
+    <variant name=".FirstContentfulPaint2" summary="First contentful paint."/>
     <variant name=".LargestContentfulPaint"
         summary="Largest contentful paint."/>
     <variant name=".MostVisited" summary="Loaded client-side suggestions."/>
@@ -2318,6 +2322,16 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="NewTabPage.Realbox.Paste" units="count"
+    expires_after="2027-08-01">
+  <owner>sophiechang@chromium.org</owner>
+  <owner>chrome-desktop-ntp@google.com</owner>
+  <summary>
+    Counts the number of paste actions performed in the New Tab Page realbox.
+    Recorded every time the user pastes into the realbox.
+  </summary>
+</histogram>
+
 <histogram name="NewTabPage.SuggestionsImpression{NewTabPageIconTypes}"
     enum="MostVisitedTileIndex" expires_after="2026-11-29">
   <owner>romanarora@chromium.org</owner>
@@ -2527,7 +2541,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="NewTabPage.TileTitleClicked{NewTabPageProviders}"
-    enum="NTPTileTitleSource" expires_after="2026-11-29">
+    enum="NTPTileTitleSource" expires_after="2027-01-31">
   <owner>romanarora@chromium.org</owner>
   <owner>tiborg@chromium.org</owner>
   <owner>ginnyhuang@chromium.org</owner>

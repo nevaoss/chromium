@@ -12,7 +12,8 @@
   display: block;
   background-color: var(--cr-card-background-color, #FFF);
   border-radius: var(--cr-card-border-radius, 16px);
-  border: 1px solid #F1F5F9;
+  border: none;
+  box-shadow: none;
   overflow: hidden;
 }
 
@@ -29,10 +30,17 @@ cr-expand-button {
   gap: 20px;
 }
 
+#check-circle {
+  margin-inline-start: 0;
+  --cr-icon-button-margin-start: 0;
+}
+
 .todo-info {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  flex: 1;
+  min-width: 0;
 }
 
 .todo-info h3 {
@@ -53,15 +61,14 @@ cr-expand-button {
   display: flex;
   align-items: center;
   gap: 12px;
-}
-
-cr-button cr-icon {
-  --cr-icon-size: 16px;
-  margin-inline-start: 4px;
+  flex-shrink: 0;
 }
 
 .expanded-content {
-  padding: 0 20px 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px 16px 20px;
   border-top: 1px solid #F1F5F9;
   font-size: 14px;
   color: #64748B;

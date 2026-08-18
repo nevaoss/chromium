@@ -443,6 +443,9 @@ class PartitionAllocTest
         ThreadCache::SwapForTesting(nullptr,
                                     root->settings_.thread_cache_index);
         root->settings_.with_thread_cache = false;
+        if (ThreadCache::IsTombstone()) {
+          ThreadCache::RemoveTombstoneForTesting();
+        }
       }
     }
   };
@@ -1681,6 +1684,42 @@ TEST_P(PartitionAllocTest, MTEProtectsFreedPtr) {
 
   // We don't check anything about ptr3, but we do clean it up to avoid DCHECKs.
   allocator.root()->Free(ptr3);
+}
+
+TEST_P(PartitionAllocTest, MTEProtectsFreedPtrViaSchedulerLoopQuarantine) {
+  base::CPU cpu;
+  if (!cpu.has_mte()) {
+    // This test won't pass on systems without MTE.
+    GTEST_SKIP();
+  }
+
+  ChangeMemoryTaggingModeForCurrentThread(
+      TagViolationReportingMode::kSynchronous);
+  ASSERT_TRUE(GetMemoryTaggingModeForCurrentThread() !=
+              TagViolationReportingMode::kDisabled)
+      << "Test was built with MTE enabled and the CPU supports it, but MTE is "
+         "currently disabled in the device.";
+
+  internal::ScopedSchedulerLoopQuarantineBranchAccessorForTesting branch(
+      allocator.root());
+
+  size_t alloc_size = 64 - ExtraAllocSize(allocator);
+  uint64_t* ptr1 =
+      static_cast<uint64_t*>(allocator.root()->Alloc(alloc_size, type_name));
+  EXPECT_TRUE(ptr1);
+
+  allocator.root()->Free<FreeFlags::kSchedulerLoopQuarantine>(ptr1);
+  EXPECT_TRUE(branch.IsQuarantined(ptr1));
+  branch.Purge();
+
+  // When we reallocate after purging from quarantine, we expect the same memory
+  // slot to be reused but with a different MTE tag.
+  uint64_t* ptr2 =
+      static_cast<uint64_t*>(allocator.root()->Alloc(alloc_size, type_name));
+  PA_EXPECT_PTR_EQ(ptr1, ptr2);
+  EXPECT_NE(ptr1, ptr2);
+
+  allocator.root()->Free(ptr2);
 }
 #endif  // PA_BUILDFLAG(HAS_MEMORY_TAGGING)
 
@@ -6641,6 +6680,65 @@ TEST_P(PartitionAllocTest, BoundsChecksDontCrash) {
   EXPECT_FALSE(IsExtentOutOfBounds(object, 0u, sizeof(char)));
   allocator.root()->Free(object);
 }
+
+#if PA_CONFIG(IN_SLOT_METADATA_STORE_REQUESTED_SIZE)
+
+TEST_P(PartitionAllocTest, RequestedSizeChangesOnReallocForNormalBuckets) {
+  // The requested size is stored inside the `InSlotMetadata`, which is
+  // not present if BackupRefPtr is not enabled.
+  if (!allocator.root()->brp_enabled()) {
+    return;
+  }
+
+  // 2049 and 2050 are chosen since powers of two (e.g. 2048) are
+  // usually also slot sizes.
+  //
+  // Note that without PartitionAlloc extras, 2048 and 2049 would lie in
+  // different buckets.
+  ASSERT_EQ(SizeToBucketSize(2049u), SizeToBucketSize(2050u));
+
+  void* object = allocator.root()->Alloc(2049u);
+
+  auto* in_slot_metadata =
+      allocator.root()->InSlotMetadataPointerFromObjectForTesting(object);
+  EXPECT_EQ(in_slot_metadata->requested_size(), 2049u);
+
+  void* new_object = allocator.root()->Realloc(object, 2050u, type_name);
+  ASSERT_EQ(new_object, object);
+
+  in_slot_metadata =
+      allocator.root()->InSlotMetadataPointerFromObjectForTesting(object);
+  EXPECT_EQ(in_slot_metadata->requested_size(), 2050u);
+
+  allocator.root()->Free(object);
+}
+
+TEST_P(PartitionAllocTest, RequestedSizeChangesOnReallocForDirectMap) {
+  // The requested size is stored inside the `InSlotMetadata`, which is
+  // not present if BackupRefPtr is not enabled.
+  if (!allocator.root()->brp_enabled()) {
+    return;
+  }
+
+  const size_t kArbitraryDirectMapSize = kMinDirectMappedDownsize + 5u;
+  void* object = allocator.root()->Alloc(kArbitraryDirectMapSize);
+
+  auto* in_slot_metadata =
+      allocator.root()->InSlotMetadataPointerFromObjectForTesting(object);
+  EXPECT_EQ(in_slot_metadata->requested_size(), kArbitraryDirectMapSize);
+
+  void* new_object =
+      allocator.root()->Realloc(object, kArbitraryDirectMapSize - 1, type_name);
+  ASSERT_EQ(new_object, object);
+
+  in_slot_metadata =
+      allocator.root()->InSlotMetadataPointerFromObjectForTesting(object);
+  EXPECT_EQ(in_slot_metadata->requested_size(), kArbitraryDirectMapSize - 1);
+
+  allocator.root()->Free(object);
+}
+
+#endif  // PA_CONFIG(IN_SLOT_METADATA_STORE_REQUESTED_SIZE)
 
 }  // namespace partition_alloc::internal
 

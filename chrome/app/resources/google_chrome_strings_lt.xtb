@@ -81,6 +81,7 @@ Kai kurios funkcijos gali būti nepasiekiamos ir nuostatų pakeitimai nebus išs
 <translation id="1698376642261615901">„Google Chrome“ yra žiniatinklio naršyklė, kuri akimirksniu paleidžia tinklalapius ir programas. Ji greita, stabili ir lengvai naudojama. Naršykite žiniatinklį saugiau – „Google Chrome“ įdiegta apsauga nuo kenkėjiškų programų ir sukčiavimo.</translation>
 <translation id="1713301662689114961">{0,plural, =1{„Chrome“ bus paleista iš naujo po valandos}one{„Chrome“ bus paleista iš naujo po # valandos}few{„Chrome“ bus paleista iš naujo po # valandų}many{„Chrome“ bus paleista iš naujo po # valandos}other{„Chrome“ bus paleista iš naujo po # valandų}}</translation>
 <translation id="1722488837206509557">Galėsite pasirinkti iš pasiekiamų įrenginių ir pateikti turinį juose.</translation>
+<translation id="1724094881572874997">Kad apsaugotų jūsų darbą sistemoje „Chrome“, jūsų organizacija galės peržiūrėti arba tvarkyti tam tikrą informaciją, kai būsite prisijungę prie „Chrome“.</translation>
 <translation id="177180974022074201">Išbandykite naudodami „Gemini“ naršyklėje „Chrome“</translation>
 <translation id="1786003790898721085">Įsitikinkite, kad esate prisijungę prie „Chrome“ naudodami „<ph name="TARGET_DEVICE_NAME" />“, ir bandykite siųsti iš naujo.</translation>
 <translation id="1786044937610313874">Spartieji klavišai atidaromi naršyklėje „Chrome“</translation>
@@ -419,6 +420,7 @@ Kai kurios funkcijos gali būti nepasiekiamos. Nurodykite kitą profilio katalog
 <translation id="521447420733633466">Jei bendrinate įrenginį, šeimos nariai ir draugai gali naršyti atskirai ir nustatyti „Chrome“ pagal savo poreikius</translation>
 <translation id="5234764350956374838">Atsisakyti</translation>
 <translation id="5239627039202700673">Naudokite „Chrome“ bet kada spustelėję nuorodas pranešimuose, dokumentuose ir kitose programose</translation>
+<translation id="524751727772074981">Klauskite bet ko, kad ir kur būtumėte, naudodami „Gemini“ naršyklėje „Chrome“</translation>
 <translation id="5251420635869119124">Svečiai gali naudoti „Chrome“ nepalikdami jokių duomenų.</translation>
 <translation id="5271833978500241046">Naudokite juos kartu su kitomis „Gemini“ funkcijomis naršyklėje „Chrome“</translation>
 <translation id="5286907366254680517">Aptikta</translation>

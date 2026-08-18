@@ -62,6 +62,7 @@ import org.chromium.base.test.util.HistogramWatcher;
 import org.chromium.cc.input.BrowserControlsState;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider;
 import org.chromium.chrome.browser.browser_controls.BrowserStateBrowserControlsVisibilityDelegate;
+import org.chromium.chrome.browser.browser_controls.TopControlsStacker;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.fullscreen.FullscreenManager;
 import org.chromium.chrome.browser.layouts.LayoutStateProvider;
@@ -146,6 +147,7 @@ public class ToolbarControlContainerTest {
     @Mock private ViewTreeObserver mViewTreeObserver;
     @Mock private WindowAndroid mWindowAndroid;
     @Mock private DesktopWindowStateManager mDesktopWindowStateManager;
+    @Mock private TopControlsStacker mTopControlsStacker;
     @Captor private ArgumentCaptor<CoordinatorLayout.LayoutParams> mToolbarLayoutParamsCaptor;
     @Captor private ArgumentCaptor<CoordinatorLayout.LayoutParams> mHairlineLayoutParamsCaptor;
     @Captor private ArgumentCaptor<ViewTreeObserver.OnPreDrawListener> mOnPreDrawCaptor;
@@ -201,7 +203,8 @@ public class ToolbarControlContainerTest {
                 mLayoutStateProviderSupplier,
                 mFullscreenManager,
                 mToolbarDataProvider,
-                mBrowserControlsStateProvider);
+                mBrowserControlsStateProvider,
+                mTopControlsStacker);
         // The adapter may observe some of these already, which will post events.
         RobolectricUtil.runAllBackgroundAndUi();
         // The initial addObserver triggers an event that we don't care about. Reset counts.
@@ -232,7 +235,8 @@ public class ToolbarControlContainerTest {
                 mFullscreenManager,
                 mToolbarDataProvider,
                 mBrowserControlsStateProvider,
-                mDesktopWindowStateManager);
+                mDesktopWindowStateManager,
+                mTopControlsStacker);
         ToolbarControlContainer.ToolbarViewResourceCoordinatorLayout toolbarContainer =
                 mControlContainer.findViewById(R.id.toolbar_container);
         toolbarContainer.setVisibility(View.GONE);
@@ -697,16 +701,29 @@ public class ToolbarControlContainerTest {
                 new AppHeaderState(new Rect(0, 0, 100, 100), new Rect(10, 0, 80, 100), true);
         when(mDesktopWindowStateManager.getAppHeaderState()).thenReturn(appHeaderState);
 
+        SettableNonNullObservableSupplier<Boolean> isVerticalTabsActiveSupplier =
+                ObservableSuppliers.createNonNull(true);
+        mControlContainer.setIsVerticalTabsActiveSupplier(isVerticalTabsActiveSupplier);
+
         // Initially, tab strip is visible (height 80). Margin should be 0.
         mControlContainer.onHeightChanged(80, 20, false);
         assertEquals(
                 "Toolbar right margin should be 0 when tab strip is visible.", 0, lp.rightMargin);
 
-        // Suppress tab strip (height 0). Margin should be right padding (20).
+        // Vertical tabs active and tab strip hidden (height 0). Margin should be right padding
+        // (20).
         mControlContainer.onHeightChanged(0, 20, false);
         assertEquals(
-                "Toolbar right margin should be equal to right padding when tab strip is hidden.",
+                "Toolbar right margin should be equal to right padding when vertical tabs is"
+                        + " active.",
                 20,
+                lp.rightMargin);
+
+        // Disable vertical tabs while tab strip height is 0. Margin should be reset to 0.
+        isVerticalTabsActiveSupplier.set(false);
+        assertEquals(
+                "Toolbar right margin should be reset to 0 when vertical tabs is inactive.",
+                0,
                 lp.rightMargin);
 
         // Exit desktop window. Margin should be reset to 0.
@@ -721,8 +738,37 @@ public class ToolbarControlContainerTest {
     }
 
     @Test
+    public void testToolbarRightOffset_StartupWithVerticalTabsOff() {
+        View tabletLayout = mock(View.class);
+        MarginLayoutParams lp = new MarginLayoutParams(100, 100);
+        when(tabletLayout.getLayoutParams()).thenReturn(lp);
+        when(mToolbarView.findViewById(R.id.toolbar_tablet_layout)).thenReturn(tabletLayout);
+
+        initControlContainer(R.layout.toolbar_tablet);
+
+        SettableNonNullObservableSupplier<Boolean> isVerticalTabsActiveSupplier =
+                ObservableSuppliers.createNonNull(false);
+        mControlContainer.setIsVerticalTabsActiveSupplier(isVerticalTabsActiveSupplier);
+
+        // On startup in desktop window, mTabStripHeight is still 0.
+        var appHeaderState =
+                new AppHeaderState(new Rect(0, 0, 100, 100), new Rect(10, 0, 80, 100), true);
+        when(mDesktopWindowStateManager.getAppHeaderState()).thenReturn(appHeaderState);
+        mControlContainer.onAppHeaderStateChanged(appHeaderState);
+
+        assertEquals(
+                "Toolbar right margin should remain 0 on startup when vertical tabs is off.",
+                0,
+                lp.rightMargin);
+    }
+
+    @Test
     public void testSystemGestureExclusionsInDesktopWindow() {
         initControlContainer(R.layout.toolbar_tablet);
+
+        SettableNonNullObservableSupplier<Boolean> isVerticalTabsActiveSupplier =
+                ObservableSuppliers.createNonNull(true);
+        mControlContainer.setIsVerticalTabsActiveSupplier(isVerticalTabsActiveSupplier);
 
         // Layout the control container to have a non-zero width.
         mControlContainer.layout(0, 0, 200, 100);
@@ -766,6 +812,10 @@ public class ToolbarControlContainerTest {
     public void testSystemGestureExclusions_WithVerticalTabsWidth() {
         initControlContainer(R.layout.toolbar_tablet);
 
+        SettableNonNullObservableSupplier<Boolean> isVerticalTabsActiveSupplier =
+                ObservableSuppliers.createNonNull(true);
+        mControlContainer.setIsVerticalTabsActiveSupplier(isVerticalTabsActiveSupplier);
+
         // Layout the control container to have width = 500px, height = 100px.
         mControlContainer.layout(0, 0, 500, 100);
 
@@ -794,10 +844,10 @@ public class ToolbarControlContainerTest {
                 ObservableSuppliers.createNonNull(150);
         mControlContainer.setVerticalTabsContainerWidthSupplier(widthSupplier);
 
-        // Left edge should now match the vertical tabs width 150px.
-        List<Rect> expectedWithRail = List.of(new Rect(150, 0, 480, 100));
+        // Left edge should still be 0 so toolbar buttons at top left receive clicks.
+        List<Rect> expectedWithRail = List.of(new Rect(0, 0, 480, 100));
         assertEquals(
-                "Exclusion left edge should match vertical tabs container width.",
+                "Exclusion left edge should remain 0 when vertical tabs are active.",
                 expectedWithRail,
                 mControlContainer.getSystemGestureExclusionRects());
     }
@@ -895,7 +945,8 @@ public class ToolbarControlContainerTest {
                 mFullscreenManager,
                 mToolbarDataProvider,
                 mBrowserControlsStateProvider,
-                null);
+                null,
+                mTopControlsStacker);
 
         ToolbarPhone toolbarPhone = controlContainer.findViewById(R.id.toolbar);
         doReturn(mLocationBarCoordinatorPhone).when(mLocationBarCoordinator).getPhoneCoordinator();
@@ -966,7 +1017,8 @@ public class ToolbarControlContainerTest {
                 mFullscreenManager,
                 mToolbarDataProvider,
                 mBrowserControlsStateProvider,
-                null);
+                null,
+                mTopControlsStacker);
         ToolbarControlContainer.ToolbarViewResourceCoordinatorLayout toolbarContainer =
                 controlContainer.findViewById(R.id.toolbar_container);
         toolbarContainer.setVisibility(View.GONE);

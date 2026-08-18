@@ -55,7 +55,9 @@ DawnControlClientHolder::DawnControlClientHolder(
                        ->GetAPIChannel()),
       shared_image_wrapper_cache_(GetContextProviderWeakPtr(), task_runner) {}
 
-DawnControlClientHolder::~DawnControlClientHolder() = default;
+DawnControlClientHolder::~DawnControlClientHolder() {
+  DestroyMappableBuffers();
+}
 
 void DawnControlClientHolder::Destroy() {
   // Dissociate all mailbox textures to ensure their scoped access objects are
@@ -65,6 +67,7 @@ void DawnControlClientHolder::Destroy() {
       mailbox_texture->Dissociate();
     }
   }
+  DestroyMappableBuffers();
   MarkContextLost();
 
   // Destroy the WebGPU context.
@@ -116,10 +119,9 @@ DawnControlClientHolder::LeaseWebGpuSharedImageWrapper(
     viz::SharedImageFormat format,
     gfx::Size size,
     const gfx::ColorSpace& color_space,
-    const gfx::HDRMetadata& hdr_metadata,
     SkAlphaType alpha_type) {
   return shared_image_wrapper_cache_.LeaseWebGpuSharedImageWrapper(
-      format, size, color_space, hdr_metadata, alpha_type);
+      format, size, color_space, alpha_type);
 }
 
 void DawnControlClientHolder::Flush() {
@@ -166,6 +168,22 @@ void DawnControlClientHolder::UntrackMailboxTexture(
       return;
     }
   }
+}
+
+void DawnControlClientHolder::TrackMappableBuffer(const wgpu::Buffer& buffer) {
+  mappable_buffers_.insert(buffer);
+}
+
+void DawnControlClientHolder::UntrackMappableBuffer(
+    const wgpu::Buffer& buffer) {
+  mappable_buffers_.erase(buffer);
+}
+
+void DawnControlClientHolder::DestroyMappableBuffers() {
+  for (const auto& buffer : mappable_buffers_) {
+    buffer.Destroy();
+  }
+  mappable_buffers_.clear();
 }
 
 std::vector<wgpu::WGSLLanguageFeatureName> GatherWGSLLanguageFeatures() {

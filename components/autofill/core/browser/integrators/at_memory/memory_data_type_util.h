@@ -11,6 +11,8 @@
 
 #include "base/containers/span.h"
 #include "components/autofill/core/browser/data_model/autofill_ai/entity_type.h"
+#include "components/autofill/core/browser/field_types.h"
+#include "components/autofill/core/browser/foundations/autofill_client.h"
 #include "components/autofill/core/browser/integrators/at_memory/memory_data_type.h"
 #include "components/autofill/core/browser/integrators/at_memory/memory_search_result.h"
 
@@ -22,6 +24,36 @@ enum MemoryDataType : int;
 }  // namespace personal_context::proto
 
 namespace autofill {
+
+// Groups MemoryDataType values into semantic categories.
+enum class MemoryDataTypeCategory {
+  kUnknown,
+  kContactInfo,  // Name, Address, Phone, Email, Company
+  kCreditCard,
+  kIban,
+  kPassport,
+  kDriversLicense,
+  kNationalIdCard,
+  kFlightReservation,
+  kKnownTravelerNumber,
+  kRedressNumber,
+  kVehicle,
+  kOrder,
+  kShipment,
+};
+
+// Returns the semantic category for a given `type`.
+MemoryDataTypeCategory GetMemoryDataTypeCategory(MemoryDataType type);
+
+// Translates a MemoryDataType to a FieldType, if applicable.
+std::optional<FieldType> ToFieldType(MemoryDataType type);
+
+// Translates a MemoryDataType to an AttributeType, if applicable.
+std::optional<AttributeType> ToAttributeType(MemoryDataType type);
+
+// Maps MemoryDataType to AutofillPolicyDataCategory directly.
+std::optional<AutofillClient::AutofillPolicyDataCategory>
+ToAutofillPolicyDataCategory(MemoryDataType type);
 
 // Returns true if the given `type` is considered sensitive personal
 // information.
@@ -71,6 +103,15 @@ MemorySearchResult ConvertToMemorySearchResult(
     const personal_context::proto::AtMemorySearchResult& proto_result,
     std::string_view app_locale);
 
+// Returns the formatted label representation for `value`. If `typed_value` is
+// provided, it's used to format the label (for example, flight dates).
+std::u16string FormatMemoryDataTypeLabelValue(
+    MemoryDataType type,
+    std::u16string_view value,
+    const std::optional<personal_context::proto::TypedValue>& typed_value);
+
+// Returns the primary attribute type for a given entity type.
+AttributeType GetPrimaryAttributeType(EntityType entity_type);
 }  // namespace autofill
 
 #endif  // COMPONENTS_AUTOFILL_CORE_BROWSER_INTEGRATORS_AT_MEMORY_MEMORY_DATA_TYPE_UTIL_H_

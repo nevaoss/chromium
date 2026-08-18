@@ -5,9 +5,8 @@ import {assert} from '//resources/js/assert.js';
 import {EventTracker} from '//resources/js/event_tracker.js';
 import {loadTimeData} from '//resources/js/load_time_data.js';
 
-import {ToastType} from '../skills.mojom-webui.js';
+import {getLoadingStageHistogramName, getPrimarySkillsOrigin, getSkillsApiAllowedOrigins, HANDSHAKE_PING_INTERVAL_MS, HANDSHAKE_TIMEOUT_MS, HISTOGRAM_HANDSHAKE_RESULT, HISTOGRAM_WRITE_LATENCY, LoadingStage, SKILLS_CLOSE_DIALOG, SKILLS_GEMINI_PROMPT_TYPE, SKILLS_HANDSHAKE_ACK, SKILLS_HANDSHAKE_TYPE, SKILLS_INVOKE_SKILL, SKILLS_LOG_METRIC, SKILLS_OPEN_URL, SKILLS_SEND_PROMPT, SKILLS_SHOW_TOAST, SKILLS_TOAST_CLOSED_TYPE, SKILLS_UNDO_TYPE} from './skills_webview_bridge_constants.js';
 
-import {getLoadingStageHistogramName, getPrimarySkillsOrigin, getSkillsApiAllowedOrigins, HANDSHAKE_PING_INTERVAL_MS, HANDSHAKE_TIMEOUT_MS, HISTOGRAM_HANDSHAKE_RESULT, HISTOGRAM_WRITE_LATENCY, LoadingStage, SKILLS_CLOSE_DIALOG, SKILLS_GEMINI_PROMPT_TYPE, SKILLS_HANDSHAKE_ACK, SKILLS_HANDSHAKE_TYPE, SKILLS_INVOKE_SKILL, SKILLS_LOG_METRIC, SKILLS_OPEN_URL, SKILLS_SHOW_TOAST} from './skills_webview_bridge_constants.js';
 /**
  * Returns a URLPattern given an origin pattern string that has the syntax:
  * <protocol>://<hostname>[:<port>]
@@ -29,7 +28,9 @@ export function matcherForOrigin(originPattern: string): URLPattern|null {
 
 function isInternalOnlyOrigin(origin: string): boolean {
   return origin === 'https://login.corp.google.com' ||
-      origin === 'https://accounts.googlers.com';
+      origin === 'https://accounts.googlers.com' ||
+      origin === 'https://gaiastaging.corp.google.com' ||
+      origin.endsWith('.proxy.googlers.com');
 }
 
 export function urlMatchesApiAllowedOrigin(url: URL): boolean {
@@ -57,11 +58,13 @@ export function urlMatchesApiAllowedOrigin(url: URL): boolean {
 // TODO(b/529400161): Consider moving to another file.
 export interface SkillsWebviewBridgeDelegate {
   onError(): void;
-  onShowToast(toastType: ToastType): void;
+  onShowSaveToast(): void;
+  onShowDeleteToast(skillId: string): Promise<{actionClicked: boolean}>;
   onInvokeSkill(skillId: string, skillName: string, skillIcon: string): void;
   onUrlChanged(url: URL): void;
   onCloseDialog(): void;
   onHandshakeComplete(): void;
+  onSendPrompt(prompt: string): void;
 }
 
 /**
@@ -217,6 +220,8 @@ export class SkillsWebviewBridge {
       this.handleLogMetricMessage(e.data);
     } else if (e.data.type === SKILLS_OPEN_URL) {
       this.handleOpenUrlMessage(e.data);
+    } else if (e.data.type === SKILLS_SEND_PROMPT) {
+      this.handleSendPromptMessage(e.data);
     }
   }
 
@@ -237,13 +242,42 @@ export class SkillsWebviewBridge {
     chrome.histograms.recordBoolean(HISTOGRAM_HANDSHAKE_RESULT, true);
   }
 
-  private handleShowToastMessage(data: {toastType: string}) {
+  private async handleShowToastMessage(
+      data: {toastType: string, skillId?: string}) {
     // TODO(b/529405584): Refactor toastType to be an enum & consider how we
     // want to surface errors to the user if skillId does not exist.
     if (data.toastType === 'save') {
-      this.delegate_.onShowToast(ToastType.kSave);
+      this.delegate_.onShowSaveToast();
     } else if (data.toastType === 'delete') {
-      this.delegate_.onShowToast(ToastType.kDelete);
+      const skillId = data.skillId ?? '';
+      const response = await this.delegate_.onShowDeleteToast(skillId);
+      if (response.actionClicked) {
+        this.sendUndo(skillId);
+      } else {
+        this.sendToastClosed(skillId);
+      }
+    }
+  }
+
+  private sendUndo(skillId: string) {
+    if (this.webview_.contentWindow && this.targetOrigin_) {
+      this.webview_.contentWindow.postMessage(
+          {
+            'type': SKILLS_UNDO_TYPE,
+            'skillId': skillId,
+          },
+          this.targetOrigin_);
+    }
+  }
+
+  private sendToastClosed(skillId: string) {
+    if (this.webview_.contentWindow && this.targetOrigin_) {
+      this.webview_.contentWindow.postMessage(
+          {
+            'type': SKILLS_TOAST_CLOSED_TYPE,
+            'skillId': skillId,
+          },
+          this.targetOrigin_);
     }
   }
 
@@ -283,6 +317,12 @@ export class SkillsWebviewBridge {
 
   private handleOpenUrlMessage(data: {url: string}) {
     window.open(data.url, '_blank');
+  }
+
+  private handleSendPromptMessage(data: {prompt: string}) {
+    if (data.prompt) {
+      this.delegate_.onSendPrompt(data.prompt);
+    }
   }
 
   sendGeminiPrompt(prompt: string) {

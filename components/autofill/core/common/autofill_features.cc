@@ -387,6 +387,11 @@ BASE_FEATURE(kAutofillAiWalletPrivatePassesCapability,
 BASE_FEATURE(kAutofillAiWalletPrivatePassesDeepLink,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+// When enabled, orders and shipments from Google Wallet become available in
+// Autofill for filling as read-only AutofillAi entities.
+// TODO(crbug.com/542022094): Clean up when launched.
+BASE_FEATURE(kAutofillAiWalletShopping, base::FEATURE_DISABLED_BY_DEFAULT);
+
 // If enabled, AutofillAi supports vehicle registration entities from Google
 // Wallet.
 DEFINE_FEATURE_WITH_MOBILE_COUNTRY_RESTRICTION(
@@ -448,13 +453,6 @@ BASE_FEATURE(kAutofillAndroidDesktopSuppressAccessoryOnEmpty,
 BASE_FEATURE(kAutofillAndroidDisableSuggestionsOnJSFocus,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-// If enabled, on Android, form fields are retrieved
-// by comparing FormFieldIds instead of the set of attributes. This flag affects
-// some of the logic in AndroidAutofillProvider.
-// TODO(crbug.com/456526604): Remove when launched.
-BASE_FEATURE(kAutofillAndroidFormDataCompareFieldGlobalId,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 // If enabled, on Android, the Autofill keyboard accessory will not be
 // displayed attached to the keyboard but will be placed below or above the
 // focused field. It works only for large form factor devices like tablets or
@@ -498,6 +496,10 @@ BASE_FEATURE(kAutofillAtMemoryInactivityNudge,
 // If enabled, AtMemory can be triggered with a keyboard shortcut like
 // Ctrl+Space.
 BASE_FEATURE(kAutofillAtMemoryTriggerShortcut,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Controls whether AtMemory uses the strongly-typed AutofillFetchPlan.
+BASE_FEATURE(kAutofillAtMemoryTypedFetchPlan,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // When enabled, the placeholder is not considered a label fallback on the
@@ -861,12 +863,6 @@ BASE_FEATURE(kAutofillServerQueryPredictionsEarly,
 // Enables uploading of more data to the Autofill server to use for computing
 // signatures: go/autofill-signatures-more-data.
 BASE_FEATURE(kAutofillServerUploadMoreData, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// When enabled, password manager and autofill bubbles will be shown based on
-// the priorities of the bubbles.
-// TODO(crbug.com/432429605): Remove when launched.
-BASE_FEATURE(kAutofillShowBubblesBasedOnPriorities,
-             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Kill switch: If enabled, the focus check in AutofillPopupControllerImpl and
 // AutofillKeyboardAccessoryControllerImpl is simplified.

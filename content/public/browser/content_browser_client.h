@@ -853,9 +853,10 @@ class CONTENT_EXPORT ContentBrowserClient {
   // false on platforms that do not support Top Chrome WebUIs, e.g., Android.
   virtual bool IsTopChromeWebUIURL(const GURL& url);
 
-  // Returns true if the given `site_url` is allowed to use MojoJS bindings.
-  virtual bool ShouldAllowMojoJsBindingsForSite(BrowserContext* browser_context,
-                                                const GURL& site_url);
+  // Returns true if the given `render_frame_host` is allowed to use MojoJS
+  // bindings.
+  virtual bool ShouldAllowMojoJsBindingsForFrame(
+      RenderFrameHost& render_frame_host);
 
   // Returns whether the application running in the |render_frame_host| is
   // allowed to automatically capture all screens by using the
@@ -1690,9 +1691,8 @@ class CONTENT_EXPORT ContentBrowserClient {
   // This may be called on the PROCESS_LAUNCHER thread before the child process
   // configuration is set. It gives the embedder a chance to modify the sandbox
   // configuration. Returns false if configuration is invalid and the child
-  // should not spawn. Only use this for embedder-specific policies, since the
-  // bulk of sandbox policies should go inside the relevant
-  // SandboxedProcessLauncherDelegate.
+  // should not spawn. Only use this for embedder-specific policies, as
+  // standard sandbox policies are configured by the content layer.
   virtual bool PreSpawnChild(sandbox::TargetConfig* config,
                              sandbox::mojom::Sandbox sandbox_type,
                              ChildSpawnFlags flags);
@@ -1702,7 +1702,7 @@ class CONTENT_EXPORT ContentBrowserClient {
   // not be compatible with Hardware-enforced Stack Protection (CET).
   // |utility_sub_type| should match that provided on the command line to the
   // child process. Only use this for embedder-specific processes, and prefer to
-  // key off Sandbox in the relevant SandboxedProcessLauncherDelegate.
+  // key off the sandbox where possible.
   virtual bool IsUtilityCetCompatible(const std::string& utility_sub_type);
 
   // Returns the AppContainer SID for the specified sandboxed process type, or
@@ -2149,7 +2149,9 @@ class CONTENT_EXPORT ContentBrowserClient {
   virtual URLLoaderRequestHandler
   CreateURLLoaderHandlerForServiceWorkerInitiatedNavigationRequest(
       FrameTreeNodeId frame_tree_node_id,
-      const network::ResourceRequest& resource_request);
+      const network::ResourceRequest& resource_request,
+      int64_t navigation_id,
+      scoped_refptr<base::SequencedTaskRunner> navigation_response_task_runner);
 
   // Called when the NetworkService, accessible through
   // content::GetNetworkService(), is created. Implementations should avoid
@@ -2785,15 +2787,6 @@ class CONTENT_EXPORT ContentBrowserClient {
   // Called when a keepalive request finishes either successfully or
   // unsuccessfully.
   virtual void OnKeepaliveRequestFinished();
-
-  // Called for the browser-side lifetime of a fetch keepalive URLLoader. Both
-  // methods receive the same `browser_context` for a given loader. The context
-  // passed to OnFetchKeepAliveRequestDestroyed() may be in destruction
-  // (loaders are torn down with its StoragePartition), so it must only be used
-  // as a lookup key.
-  virtual void OnFetchKeepAliveRequestCreated(BrowserContext& browser_context);
-  virtual void OnFetchKeepAliveRequestDestroyed(
-      BrowserContext& browser_context);
 
 #if BUILDFLAG(IS_MAC)
   // Sets up the embedder sandbox parameters for the given sandbox type. Returns

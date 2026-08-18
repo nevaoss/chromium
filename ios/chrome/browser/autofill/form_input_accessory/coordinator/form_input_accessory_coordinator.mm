@@ -206,9 +206,12 @@ AutofillSettingsPage SuggestionToAutofillSettingsPage(
 }
 
 - (void)start {
+  CHECK(self.profile);
   [_brandingCoordinator start];
   _formInputAccessoryViewController = [[FormInputAccessoryViewController alloc]
       initWithFormInputAccessoryViewControllerDelegate:self];
+  _formInputAccessoryViewController.isContextMenuEnabled =
+      autofill::IsAmbientAutofillEnabled(self.profile);
   _formInputAccessoryViewController.brandingViewController =
       _brandingCoordinator.viewController;
 
@@ -216,7 +219,6 @@ AutofillSettingsPage SuggestionToAutofillSettingsPage(
       LayoutGuideCenterForBrowser(self.browser);
   _formInputAccessoryViewController.layoutGuideCenter = layoutGuideCenter;
 
-  DCHECK(self.profile);
   auto profilePasswordStore =
       IOSChromeProfilePasswordStoreFactory::GetForProfile(
           self.profile, ServiceAccessType::EXPLICIT_ACCESS);
@@ -733,7 +735,8 @@ AutofillSettingsPage SuggestionToAutofillSettingsPage(
   }
   _atMemoryCoordinator = [[AtMemoryCoordinator alloc]
       initWithBaseViewController:self.baseViewController
-                         browser:self.browser];
+                         browser:self.browser
+                 contentInjector:self.injectionHandler];
 
   [self.childCoordinators addObject:_atMemoryCoordinator];
 
@@ -991,6 +994,8 @@ AutofillSettingsPage SuggestionToAutofillSettingsPage(
 // Resets `formInputAccessoryViewController` and `formInputViewController` to
 // their initial state.
 - (void)resetInputViews {
+  _formInputAccessoryViewController.isContextMenuEnabled =
+      autofill::IsAmbientAutofillEnabled(self.profile);
   _formInputAccessoryMediator.suggestionsEnabled = YES;
   [_formInputAccessoryViewController reset];
 

@@ -12,6 +12,7 @@
 #include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
 #include "chrome/browser/contextual_search/contextual_search_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/search_engines/ai_mode_button_service_factory.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/location_bar/location_bar.h"
 #include "chrome/browser/ui/omnibox/chrome_omnibox_client.h"
@@ -41,7 +42,10 @@
 #include "components/omnibox/browser/aim_eligibility_service.h"
 #include "components/omnibox/common/composebox_features.h"
 #include "components/omnibox/common/omnibox_features.h"
+#include "components/search_engines/ai_mode_button_service.h"
 #include "content/public/browser/web_ui_data_source.h"
+#include "net/base/url_util.h"
+#include "services/network/public/mojom/content_security_policy.mojom.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/pointer/touch_ui_controller.h"
 #include "ui/webui/webui_util.h"
@@ -60,6 +64,35 @@ std::string_view AddContextButtonVariantToSearchboxLayoutMode(
   }
 
   return "";
+}
+
+void PopulateAiModeButtonUiConfig(content::WebUIDataSource* source,
+                                  Profile* profile) {
+  // Use AIM button service to dynamically populate the various AIM button
+  // properties based on the current config, if present.
+  GURL compose_icon(
+      "chrome://resources/cr_components/searchbox/icons/search_spark.svg");
+  if (auto* service = AiModeButtonServiceFactory::GetForProfile(profile)) {
+    if (const auto* config = service->GetCurrentConfig()) {
+      source->AddString("searchboxComposeButtonText", config->text);
+      source->AddString("searchboxComposeButtonTitle", config->tooltip);
+      source->AddString("searchboxComposeButtonA11yLabel", config->a11y_label);
+      // For third-party DSE, use the favicon for the AIM button icon.
+      std::string favicon_url(config->favicon_url);
+      if (config->id != SearchEngineType::SEARCH_ENGINE_GOOGLE &&
+          !favicon_url.empty()) {
+        GURL chrome_favicon_url("chrome://favicon2/");
+        chrome_favicon_url = net::AppendQueryParameter(chrome_favicon_url,
+                                                       "iconUrl", favicon_url);
+        chrome_favicon_url =
+            net::AppendQueryParameter(chrome_favicon_url, "size", "32");
+        chrome_favicon_url =
+            net::AppendQueryParameter(chrome_favicon_url, "scaleFactor", "2x");
+        compose_icon = chrome_favicon_url;
+      }
+    }
+  }
+  source->AddString("searchboxComposeButtonIcon", compose_icon.spec());
 }
 
 }  // namespace
@@ -98,15 +131,15 @@ OmniboxPopupUI::OmniboxPopupUI(content::WebUI* web_ui)
        .enable_lens_search = false,
        .session_allows_drag_and_drop = session_allows_drag_and_drop}));
 
+  PopulateAiModeButtonUiConfig(source, profile_);
+
   source->AddBoolean("isTopChromeSearchbox", true);
   source->AddBoolean("isTouchUi", ui::TouchUiController::Get()->touch_ui());
   source->AddBoolean("omniboxAimPopupEnabled",
                      omnibox::IsAimPopupFeatureEnabled());
   // TODO(b/504670497): Replace this NTP-specific flag with a generic flag.
   // TODO(b/474406096): Replace this NTP-specific flag with a generic flag.
-  source->AddBoolean("ntpRealboxNextEnabled", false);
-  source->AddBoolean("searchboxShowComposeEntrypoint",
-                     omnibox::IsAimPopupEnabled(profile_));
+  source->AddBoolean("isFuseboxEnabled", false);
   source->AddBoolean("searchboxDynamicColorScheme",
                      omnibox::kWebUIOmniboxDynamicColorScheme.Get());
   source->AddBoolean("searchboxDynamicAnimation",
@@ -223,6 +256,9 @@ OmniboxPopupUI::OmniboxPopupUI(content::WebUI* web_ui)
   }
   webui::SetupWebUIDataSource(source, kOmniboxPopupResources, default_resource);
   webui::EnableTrustedTypesCSP(source);
+  source->OverrideContentSecurityPolicy(
+      network::mojom::CSPDirectiveName::MediaSrc,
+      "media-src blob: data: 'self';");
 
   // Add a handler to provide pluralized strings.
   auto plural_string_handler = std::make_unique<PluralStringHandler>();

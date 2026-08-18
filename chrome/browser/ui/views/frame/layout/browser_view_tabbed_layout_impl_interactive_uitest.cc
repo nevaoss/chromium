@@ -118,7 +118,7 @@ class BrowserViewTabbedLayoutImplUiTest : public InteractiveBrowserTest {
                 return content_view;
               }),
               /*default_content_width_callback=*/base::NullCallback())));
-          browser()->browser_window_features()->side_panel_ui()->Show(
+          browser()->GetFeatures().side_panel_ui()->Show(
               SidePanelEntry::Id::kCustomizeChrome);
         }),
         WaitForShow(kSidePanelElementId),
@@ -615,7 +615,8 @@ IN_PROC_BROWSER_TEST_F(BrowserViewTabbedLayoutImplUiTest, SmallSidePanelSize) {
 IN_PROC_BROWSER_TEST_F(BrowserViewTabbedLayoutImplUiTest,
                        LargeSidePanelPreferredSize) {
   RunScheduledLayouts();
-  const int large_width = browser()->GetBrowserView().width() - 20;
+  const int large_width =
+      BrowserView::GetBrowserViewForBrowser(browser())->width() - 20;
   RunTestSequence(SelectTab(kBrowserViewElementId, 0),
                   ReplaceAndShowSidePanel(SidePanelType::kToolbar, large_width),
                   VerifyLayout());
@@ -624,7 +625,8 @@ IN_PROC_BROWSER_TEST_F(BrowserViewTabbedLayoutImplUiTest,
 IN_PROC_BROWSER_TEST_F(BrowserViewTabbedLayoutImplUiTest,
                        VeryLargeSidePanelPreferredSize) {
   RunScheduledLayouts();
-  const int large_width = browser()->GetBrowserView().width() + 100;
+  const int large_width =
+      BrowserView::GetBrowserViewForBrowser(browser())->width() + 100;
   RunTestSequence(SelectTab(kBrowserViewElementId, 0),
                   ReplaceAndShowSidePanel(SidePanelType::kToolbar, large_width),
                   VerifyLayout());
@@ -659,7 +661,8 @@ IN_PROC_BROWSER_TEST_P(BrowserViewTabbedLayoutImplTopContainerBackgroundUiTest,
   }
   RunScheduledLayouts();
 
-  auto* const top_container = browser()->GetBrowserView().top_container();
+  auto* const top_container =
+      BrowserView::GetBrowserViewForBrowser(browser())->top_container();
   auto* const background =
       top_container->background()->AsA<CustomCornersBackground>();
   ASSERT_NE(nullptr, background);
@@ -793,9 +796,8 @@ class BrowserViewTabbedLayoutImplContentLayoutUiTest
  private:
   const std::vector<raw_ptr<ContentsContainerView, DanglingUntriaged>>&
   GetContentsContainers() {
-    return browser()
-        ->GetBrowserView()
-        .multi_contents_view()
+    return BrowserView::GetBrowserViewForBrowser(browser())
+        ->multi_contents_view()
         ->contents_container_views();
   }
 
@@ -918,9 +920,7 @@ IN_PROC_BROWSER_TEST_F(BrowserViewTabbedLayoutImplContentLayoutUiTest,
       ->SetVerticalTabsEnabled(true);
   RunScheduledLayouts();
   RunTestSequence(EnterSplitView(), ClearResizeCounts(), OpenSidePanel(),
-                  // There is a known issue where the elements can resize more
-                  // than once. See https://crbug.com/485909751.
-                  CheckResizeCounts(testing::_, testing::_));
+                  CheckResizeCounts(1U, 1U));
 }
 
 IN_PROC_BROWSER_TEST_F(BrowserViewTabbedLayoutImplContentLayoutUiTest,
@@ -932,10 +932,7 @@ IN_PROC_BROWSER_TEST_F(BrowserViewTabbedLayoutImplContentLayoutUiTest,
       ->SetVerticalTabsEnabled(true);
   RunScheduledLayouts();
   RunTestSequence(EnterSplitView(), OpenSidePanel(), ClearResizeCounts(),
-                  CloseSidePanel(),
-                  // There is a known issue where the elements can resize more
-                  // than once. See https://crbug.com/485909751.
-                  CheckResizeCounts(testing::_, testing::_));
+                  CloseSidePanel(), CheckResizeCounts(1U, 1U));
 }
 
 IN_PROC_BROWSER_TEST_F(BrowserViewTabbedLayoutImplContentLayoutUiTest,

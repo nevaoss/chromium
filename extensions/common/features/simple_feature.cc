@@ -506,7 +506,7 @@ bool SimpleFeature::IsIdInAllowlist(const HashedExtensionId& hashed_id) const {
 
 // static
 bool SimpleFeature::IsIdInList(const HashedExtensionId& hashed_id,
-                               const std::vector<std::string>& list) {
+                               base::span<const std::string_view> list) {
   if (!IsValidHashedExtensionId(hashed_id))
     return false;
 
@@ -593,9 +593,8 @@ bool SimpleFeature::IsValidHashedExtensionId(
   return hashed_id.value().length() == 40;
 }
 
-void SimpleFeature::set_blocklist(
-    std::initializer_list<const char* const> blocklist) {
-  blocklist_.assign(blocklist.begin(), blocklist.end());
+void SimpleFeature::set_blocklist(StaticSpan<std::string_view> blocklist) {
+  blocklist_ = blocklist.span();
 }
 
 void SimpleFeature::set_command_line_switch(
@@ -603,19 +602,17 @@ void SimpleFeature::set_command_line_switch(
   command_line_switch_ = std::string(command_line_switch);
 }
 
-void SimpleFeature::set_contexts(
-    std::initializer_list<mojom::ContextType> contexts) {
-  contexts_ = contexts;
+void SimpleFeature::set_contexts(StaticSpan<mojom::ContextType> contexts) {
+  contexts_.emplace(contexts.span());
 }
 
 void SimpleFeature::set_dependencies(
-    std::initializer_list<const char* const> dependencies) {
-  dependencies_.assign(dependencies.begin(), dependencies.end());
+    StaticSpan<std::string_view> dependencies) {
+  dependencies_ = dependencies.span();
 }
 
-void SimpleFeature::set_extension_types(
-    std::initializer_list<Manifest::Type> types) {
-  extension_types_ = types;
+void SimpleFeature::set_extension_types(StaticSpan<Manifest::Type> types) {
+  extension_types_ = types.span();
 }
 
 void SimpleFeature::set_feature_flag(std::string_view feature_flag) {
@@ -623,8 +620,8 @@ void SimpleFeature::set_feature_flag(std::string_view feature_flag) {
 }
 
 void SimpleFeature::set_session_types(
-    std::initializer_list<mojom::FeatureSessionType> types) {
-  session_types_ = types;
+    StaticSpan<mojom::FeatureSessionType> types) {
+  session_types_ = types.span();
 }
 
 void SimpleFeature::set_matches(StaticSpan<std::string_view> matches) {
@@ -639,13 +636,12 @@ bool SimpleFeature::MatchesURL(const GURL& url) const {
   });
 }
 
-void SimpleFeature::set_platforms(std::initializer_list<Platform> platforms) {
-  platforms_ = platforms;
+void SimpleFeature::set_platforms(StaticSpan<Platform> platforms) {
+  platforms_ = platforms.span();
 }
 
-void SimpleFeature::set_allowlist(
-    std::initializer_list<const char* const> allowlist) {
-  allowlist_.assign(allowlist.begin(), allowlist.end());
+void SimpleFeature::set_allowlist(StaticSpan<std::string_view> allowlist) {
+  allowlist_ = allowlist.span();
 }
 
 Feature::Availability SimpleFeature::GetEnvironmentAvailability(

@@ -26,6 +26,7 @@ class LocationBarModel;
 class LocationBarTesting;
 class OmniboxController;
 class OmniboxView;
+class OmniboxPopupPresenterDelegate;
 class OmniboxPopupView;
 class Profile;
 
@@ -66,6 +67,7 @@ class LocationBar {
     ~Observer() override;
 
     virtual void OnLocationBarBoundsChanged();
+    virtual void OnLocationBarFocusChanged();
   };
 
   explicit LocationBar(CommandUpdater* command_updater);
@@ -108,6 +110,8 @@ class LocationBar {
   virtual OmniboxView* GetOmniboxView() = 0;
 
   virtual OmniboxPopupView* GetOmniboxPopupView() = 0;
+
+  virtual OmniboxPopupPresenterDelegate* GetPresenterDelegate();
 
   // Returns the OmniboxController owned by this LocationBar.
   virtual OmniboxController* GetOmniboxController() = 0;
@@ -223,6 +227,7 @@ class LocationBar {
   virtual ~LocationBar();
 
   void NotifyBoundsChanged();
+  void NotifyFocusChanged();
 
  private:
   NavigationParams navigation_params_;

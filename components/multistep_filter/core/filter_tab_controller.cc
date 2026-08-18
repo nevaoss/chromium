@@ -246,6 +246,12 @@ void FilterTabController::OnNavigationFinished(
     return;
   }
 
+  if (!service_->IsSmartSuggestionsEnabled()) {
+    LogUrlEligibilityCheck(log_router_, metadata, /*eligible=*/false,
+                           "smart_suggestions_disabled");
+    return;
+  }
+
   if (!service_->HasUserProvidedConsent(metadata.navigation_id,
                                         metadata.url.GetHost())) {
     LogUrlEligibilityCheck(log_router_, metadata, /*eligible=*/false,
@@ -318,7 +324,7 @@ void FilterTabController::OnSupportedTasksFetched(
 void FilterTabController::OnSuggestionGenerated(
     std::optional<UrlFilterSuggestion> suggestion) {
   if (suggestion) {
-    delegate_->OnSuggestionGenerated(
+    delegate_->ShowSuggestion(
         suggestion,
         MultistepFilterUiDelegate::SuggestionUiCallbacks{
             .on_suggestion_shown =
@@ -330,7 +336,7 @@ void FilterTabController::OnSuggestionGenerated(
                 &FilterTabController::OnUserDecision, GetWeakPtr()),
         });
   } else {
-    delegate_->OnSuggestionGenerated(std::nullopt, {});
+    delegate_->ShowSuggestion(std::nullopt, {});
     metrics_tracker_.OnPreservedSuggestionCleared();
   }
   if (observer_for_test_) {

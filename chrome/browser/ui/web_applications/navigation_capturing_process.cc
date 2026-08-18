@@ -24,6 +24,7 @@
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
+#include "chrome/browser/ui/browser_window/public/create_browser_window.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
 #include "chrome/browser/ui/navigator/browser_navigator_params.h"
@@ -379,7 +380,7 @@ NavigationCapturingProcess::MaybeHandleAppNavigation(
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
   if (!AreWebAppsUserInstallable(profile) ||
-      Browser::GetCreationStatusForProfile(profile) !=
+      GetBrowserWindowCreationStatusForProfile(*profile) !=
           Browser::CreationStatus::kOk ||
       !params.url.is_valid()) {
     RecordInitialNavigationCapturingResult(
@@ -1056,7 +1057,8 @@ void NavigationCapturingProcess::MaybeNotifyIwaTabCounterService(
     }
 
     iwa_opener_app_id = provider->registrar_unsafe().FindBestAppWithUrlInScope(
-        initiator_origin->GetURL(), WebAppFilter::IsIsolatedApp());
+        initiator_origin->GetURL(), WebAppFilter::IsIsolatedApp(),
+        {.exclude_scope_extensions = true});
   }
 
   // If the "iwa_opener_app_id" is still not found, then there is a chance that
@@ -1715,7 +1717,8 @@ NavigationCapturingProcess::GetEffectiveClientModeAndBrowser(
       // For kBrowser apps, an explicitly specific browser to navigate in
       // should override what browser we might otherwise use for the profile.
       if (navigation_params_browser_ &&
-          navigation_params_browser_->is_type_normal()) {
+          navigation_params_browser_->GetType() ==
+              BrowserWindowInterface::Type::TYPE_NORMAL) {
         result.browser = navigation_params_browser_;
       } else {
         BrowserWindowInterface* browser = FindNormalBrowser(*profile_);

@@ -7,11 +7,13 @@ import '//resources/cr_components/searchbox/searchbox_input.js';
 import '//resources/cr_components/searchbox/searchbox_compose_button.js';
 
 import {SearchboxBrowserProxy} from '//resources/cr_components/searchbox/searchbox_browser_proxy.js';
+import type {ComposeClickEventDetail, SearchboxComposeButtonElement} from '//resources/cr_components/searchbox/searchbox_compose_button.js';
 import type {SearchboxDropdownElement} from '//resources/cr_components/searchbox/searchbox_dropdown.js';
 import type {SearchboxInputElement} from '//resources/cr_components/searchbox/searchbox_input.js';
 import {kDefaultSelection} from '//resources/cr_components/searchbox/searchbox_match.js';
 import type {SearchboxMixinInterface} from '//resources/cr_components/searchbox/searchbox_mixin.js';
 import {SearchboxMixin} from '//resources/cr_components/searchbox/searchbox_mixin.js';
+import {sanitizeTextForPaste} from '//resources/cr_components/searchbox/utils.js';
 import {I18nMixinLit} from '//resources/cr_elements/i18n_mixin_lit.js';
 import {WebUiListenerMixinLit} from '//resources/cr_elements/web_ui_listener_mixin_lit.js';
 import {EventTracker} from '//resources/js/event_tracker.js';
@@ -20,12 +22,12 @@ import type {PropertyValues} from '//resources/lit/v3_0/lit.rollup.js';
 import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
 import {SelectionLineState} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import type {AutocompleteResult, PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerInterface as SearchboxPageHandlerInterface} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import type {Url} from '//resources/mojo/url/mojom/url.mojom-webui.js';
 
 import {browserProxyFactory, OmniboxEscapeAction} from './omnibox_popup.mojom-webui.js';
 import type {OmniboxInputState, PageCallbackRouter as PopupPageCallbackRouter, PageHandlerInterface as PopupPageHandlerInterface} from './omnibox_popup.mojom-webui.js';
 import {getCss} from './omnibox_popup_searchbox.css.js';
 import {getHtml} from './omnibox_popup_searchbox.html.js';
-import {sanitizeTextForPaste} from './utils.js';
 
 /**
  * Focus actions deferred when `document.visibilityState` is hidden.
@@ -45,8 +47,16 @@ enum DeferredFocusAction {
 const canShowSecondarySideMediaQueryList =
     window.matchMedia('(min-width: 675px)');
 
+export interface AimButtonConfig {
+  text: string;
+  title: string;
+  a11yLabel: string;
+  icon: string;
+}
+
 export interface OmniboxPopupSearchboxElement {
   $: {
+    composeButton: SearchboxComposeButtonElement,
     input: SearchboxInputElement,
     inputWrapper: HTMLElement,
     matches: SearchboxDropdownElement,
@@ -108,9 +118,6 @@ export class OmniboxPopupSearchboxElement extends
         type: Boolean,
         reflect: true,
       },
-      aimButtonEnabled_: {
-        type: Boolean,
-      },
       searchboxDynamicColorScheme_: {
         type: Boolean,
         reflect: true,
@@ -123,6 +130,9 @@ export class OmniboxPopupSearchboxElement extends
       },
       aimButtonVisible_: {
         type: Boolean,
+      },
+      aimButtonConfig_: {
+        type: Object,
       },
       /**
        * Whether the secondary side can be shown based on the feature state and
@@ -163,14 +173,18 @@ export class OmniboxPopupSearchboxElement extends
   // TODO(b/519185419): Remove `isTouchUi_` property and from `loadTimeData` and
   // get layout constants and font sizes from a C++ layout helper instead.
   protected accessor isTouchUi_: boolean = loadTimeData.getBoolean('isTouchUi');
-  protected accessor aimButtonEnabled_: boolean =
-      loadTimeData.getBoolean('searchboxShowComposeEntrypoint');
   protected accessor searchboxDynamicColorScheme_: boolean =
       loadTimeData.getBoolean('searchboxDynamicColorScheme');
   protected accessor searchboxDynamicAnimation_: boolean =
       loadTimeData.getBoolean('searchboxDynamicAnimation');
   protected accessor hasUserInput_: boolean = false;
   protected accessor aimButtonVisible_: boolean = false;
+  protected accessor aimButtonConfig_: AimButtonConfig = {
+    text: '',
+    title: '',
+    a11yLabel: '',
+    icon: '',
+  };
 
   private eventTracker_ = new EventTracker();
   private searchboxPageHandler_: SearchboxPageHandlerInterface;
@@ -219,6 +233,15 @@ export class OmniboxPopupSearchboxElement extends
       this.searchboxCallbackRouter_.setAimButtonVisible.addListener(
           (visible: boolean) => {
             this.aimButtonVisible_ = visible;
+          }),
+      this.searchboxCallbackRouter_.setAimButtonConfig.addListener(
+          (text: string, tooltip: string, a11yLabel: string, iconUrl: Url) => {
+            this.aimButtonConfig_ = {
+              text,
+              title: tooltip,
+              a11yLabel,
+              icon: iconUrl,
+            };
           }),
     ];
     this.popupListenerIds_ = [
@@ -464,6 +487,9 @@ export class OmniboxPopupSearchboxElement extends
 
     e.preventDefault();
     const sanitizedText = sanitizeTextForPaste(text);
+    if (!sanitizedText) {
+      return;
+    }
 
     const input = this.getInputElement().inputElement;
     const start = input.selectionStart || 0;
@@ -471,16 +497,22 @@ export class OmniboxPopupSearchboxElement extends
     const newValue = input.value.substring(0, start) + sanitizedText +
         input.value.substring(end);
 
+    this.userInputInProgress_ = true;
+    this.hasUserInput_ = !!newValue.trim();
     this.getInputElement().setInput({text: newValue, inline: ''});
     const cursorPos = start + sanitizedText.length;
     this.getInputElement().setSelectionRange(cursorPos, cursorPos);
-    this.getInputElement().dispatchEvent(
-        new CustomEvent('searchbox-input-text-updated', {
-          detail: {
-            value: newValue,
-            isComposing: false,
-          },
-        }));
+
+    const selectionRange = {start: cursorPos, end: cursorPos};
+    this.popupPageHandler_.onPaste(
+        newValue, selectionRange, this.currentSequenceNum_);
+
+    if (newValue.trim()) {
+      this.queryAutocomplete(
+          newValue, /*preventInlineAutocomplete=*/ true, /*isOnFocus=*/ false);
+    } else {
+      this.clearAutocompleteMatches();
+    }
   }
 
   protected showFullUrlOnDeselect_() {
@@ -711,10 +743,9 @@ export class OmniboxPopupSearchboxElement extends
     this.dispatchEvent(new Event('open-lens-search'));
   }
 
-  protected onComposeClick_() {
-    // TODO(b/504670284): Open AIM popup on-click via Mojo IPC.
+  protected onComposeClick_(e: CustomEvent<ComposeClickEventDetail>) {
     this.dropdownIsVisible = false;
-    this.dispatchEvent(new Event('open-composebox'));
+    this.popupPageHandler_.openAimPopup(e.detail?.viaKeyboard || false);
   }
 
   protected onHasSecondarySideChanged_(e: CustomEvent<{value: boolean}>) {
@@ -726,6 +757,13 @@ export class OmniboxPopupSearchboxElement extends
   }
 
   override handleKeyNavigation(e: KeyboardEvent) {
+    // Ignore key navigation (including ESC) during active IME text composition
+    // (e.g. Japanese/Chinese/Korean) so the OS IME engine handles the key
+    // first.
+    if (e.isComposing) {
+      return;
+    }
+
     if (e.key === 'Escape') {
       e.preventDefault();
       this.handleEscapeKey_();
@@ -742,10 +780,7 @@ export class OmniboxPopupSearchboxElement extends
     // (selectedMatchIndex > 0 or non-default match/action highlighted),
     // restores typed query and resets match selection to index 0. Dropdown
     // stays open and focus stays in Omnibox.
-    const hasTemporaryText =
-        (this.lastQueriedInput !== null &&
-         inputEl.inputElement.value !== this.lastQueriedInput) ||
-        this.selectedMatchIndex > 0 ||
+    const hasTemporaryText = this.selectedMatchIndex > 0 ||
         (dropdown && dropdown.selection &&
          dropdown.selection.state !== SelectionLineState.kNormal);
     if (this.dropdownIsVisible && hasTemporaryText) {
@@ -779,12 +814,11 @@ export class OmniboxPopupSearchboxElement extends
     // selects all text (or closes UI if already empty on NTP). Focus stays in
     // Omnibox.
     const isInputDirty = this.userInputInProgress_ ||
-        (inputEl.inputElement.value !== this.permanentDisplayText_ &&
-         inputEl.inputElement.value !== this.fullUrl_);
+        inputEl.inputElement.value !== this.permanentDisplayText_;
     if (isInputDirty) {
       const wasAlreadyEmpty = inputEl.inputElement.value.length === 0;
-      const restoredText =
-          this.fullUrlShown_ ? this.fullUrl_ : this.permanentDisplayText_;
+      const restoredText = this.permanentDisplayText_;
+      this.fullUrlShown_ = false;
       inputEl.setInput({
         text: restoredText,
         inline: '',

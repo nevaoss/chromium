@@ -75,7 +75,6 @@
 #include "chrome/browser/ui/views/frame/toolbar_button_provider.h"
 #include "chrome/browser/ui/views/intent_picker_bubble_view.h"
 #include "chrome/browser/ui/views/location_bar/custom_tab_bar_view.h"
-#include "chrome/browser/ui/views/page_action/page_action_icon_view.h"
 #include "chrome/browser/ui/views/page_action/page_action_view.h"
 #include "chrome/browser/ui/views/page_action/test_support/page_action_test_support.h"
 #include "chrome/browser/ui/views/page_info/page_info_bubble_view.h"
@@ -126,7 +125,6 @@
 #include "chrome/browser/web_applications/web_app_filter.h"
 #include "chrome/browser/web_applications/web_app_helpers.h"
 #include "chrome/browser/web_applications/web_app_icon_generator.h"
-#include "chrome/browser/web_applications/web_app_install_finalizer.h"
 #include "chrome/browser/web_applications/web_app_management_type.h"
 #include "chrome/browser/web_applications/web_app_provider.h"
 #include "chrome/browser/web_applications/web_app_registrar.h"
@@ -814,11 +812,11 @@ bool ShouldLoadResponseFromDisk(const base::FilePath& root,
 
 void LoadFileFromDisk(const base::FilePath& path,
                       content::WebUIDataSource::GotDataCallback callback) {
-  std::string result;
-  CHECK(base::ReadFileToString(path, &result));
+  std::optional<std::vector<uint8_t>> result = base::ReadFileToBytes(path);
+  CHECK(result.has_value());
 
   std::move(callback).Run(
-      new base::RefCountedBytes(base::as_byte_span(result)));
+      base::MakeRefCounted<base::RefCountedBytes>(std::move(result.value())));
 }
 
 void LoadResponseFromDisk(const base::FilePath& root,
@@ -835,11 +833,12 @@ void LoadResponseFromDisk(const base::FilePath& root,
 class MenuButtonUpdateListener {
  public:
   MenuButtonUpdateListener(Browser& app_browser, bool should_expect_expanded) {
-    BrowserView& browser_view = app_browser.GetBrowserView();
+    BrowserView* browser_view =
+        BrowserView::GetBrowserViewForBrowser(&app_browser);
     WebAppMenuButton* menu_button = views::AsViewClass<WebAppMenuButton>(
         views::ElementTrackerViews::GetInstance()->GetFirstMatchingView(
             kToolbarAppMenuButtonElementId,
-            views::ElementTrackerViews::GetContextForView(&browser_view)));
+            views::ElementTrackerViews::GetContextForView(browser_view)));
     if (menu_button->IsLabelPresentAndVisible() == should_expect_expanded) {
       return;
     }
@@ -3091,8 +3090,8 @@ void WebAppIntegrationTestDriver::CheckUpdateDialogIsShowing() {
   WaitForAppIdentityUpdateDialogToShow();
   ASSERT_TRUE(active_update_dialog_widget_);
   ASSERT_TRUE(app_browser());
-  EXPECT_TRUE(app_browser()->GetBrowserView().GetProperty(
-      kIsPwaUpdateDialogShowingKey));
+  EXPECT_TRUE(BrowserView::GetBrowserViewForBrowser(app_browser())
+                  ->GetProperty(kIsPwaUpdateDialogShowingKey));
   AfterStateCheckAction();
 }
 
@@ -4286,11 +4285,12 @@ void WebAppIntegrationTestDriver::CheckMenuButtonPendingUpdate(
       state == MenuButtonState::kExpandedUpdateAvailable;
   MenuButtonUpdateListener(*app_browser(), should_expect_expanded).Await();
 
-  BrowserView& app_browser_view = app_browser()->GetBrowserView();
+  BrowserView* app_browser_view =
+      BrowserView::GetBrowserViewForBrowser(app_browser());
   WebAppMenuButton* const menu_button = views::AsViewClass<WebAppMenuButton>(
       views::ElementTrackerViews::GetInstance()->GetFirstMatchingView(
           kToolbarAppMenuButtonElementId,
-          views::ElementTrackerViews::GetContextForView(&app_browser_view)));
+          views::ElementTrackerViews::GetContextForView(app_browser_view)));
   EXPECT_EQ(should_expect_expanded, menu_button->IsLabelPresentAndVisible());
   AfterStateCheckAction();
 }

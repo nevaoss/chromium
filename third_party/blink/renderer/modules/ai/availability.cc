@@ -44,10 +44,14 @@ Availability ConvertModelAvailabilityCheckResult(
     case ModelAvailabilityCheckResult::kUnavailableValidationFailed:
     case ModelAvailabilityCheckResult::kUnavailableModelNotEligible:
     case ModelAvailabilityCheckResult::kUnavailableInsufficientDiskSpace:
+    case ModelAvailabilityCheckResult::
+        kUnavailableInsufficientDiskSpaceForCaches:
     case ModelAvailabilityCheckResult::kUnavailableTranslationNotEligible:
     case ModelAvailabilityCheckResult::kUnavailableEnterprisePolicyDisabled:
     case ModelAvailabilityCheckResult::
         kUnavailableIncompatiblePreferenceOptions:
+    case ModelAvailabilityCheckResult::
+        kUnavailableIncompatibleSpeculativeDecodingOptions:
       return Availability::kUnavailable;
   }
 }

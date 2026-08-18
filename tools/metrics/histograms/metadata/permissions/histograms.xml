@@ -1045,7 +1045,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Permissions.PredictionService.Action.{PermissionType}{Gesture}.{Prominence}"
-    enum="PermissionAction" expires_after="2026-11-29">
+    enum="PermissionAction" expires_after="2027-01-31">
   <owner>elklm@chromium.org</owner>
   <owner>src/components/permissions/PERMISSIONS_OWNERS</owner>
   <summary>
@@ -1650,7 +1650,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Permissions.Prompt.{PermissionType}.ElementAnchoredBubble.{OsScreen}.OsScreenAction"
-    enum="OsScreenAction" expires_after="2026-09-06">
+    enum="OsScreenAction" expires_after="2027-07-28">
   <owner>hkamila@chromium.org</owner>
   <owner>src/components/permissions/PERMISSIONS_OWNERS</owner>
   <summary>
@@ -1709,7 +1709,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Permissions.Prompt.{PermissionType}.{Disposition}.Action"
-    enum="PermissionAction" expires_after="2026-11-29">
+    enum="PermissionAction" expires_after="2027-01-31">
   <owner>elklm@chromium.org</owner>
   <owner>src/components/permissions/PERMISSIONS_OWNERS</owner>
   <summary>

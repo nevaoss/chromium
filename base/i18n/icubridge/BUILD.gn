@@ -4,11 +4,15 @@
 
 source_set("icubridge") {
   sources = [
+    "calendar.cc",
+    "calendar.h",
     "date_time_formatter.cc",
     "date_time_formatter.h",
     "icu_bridge.cc",
     "icu_bridge.h",
     "icu_bridge_helpers.h",
+    "supported_locales.cc",
+    "supported_locales.h",
   ]
 
   defines = [ "BASE_I18N_IMPLEMENTATION" ]
@@ -34,10 +38,15 @@ source_set("icubridge") {
 
 source_set("unittests") {
   testonly = true
-  sources = [ "date_time_formatter_unittest.cc" ]
+  sources = [
+    "calendar_unittest.cc",
+    "date_time_formatter_unittest.cc",
+    "supported_locales_unittest.cc",
+  ]
   deps = [
     "//base",
     "//base:i18n",
+    "//base/i18n/internal:canonical_language_tags",
     "//base/test:test_support",
     "//testing/gtest",
   ]

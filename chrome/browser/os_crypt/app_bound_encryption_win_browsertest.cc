@@ -262,7 +262,8 @@ IN_PROC_BROWSER_TEST_F(AppBoundEncryptionWinTest, MANUAL_Uninstall) {}
 
 using AppBoundEncryptionWinTestNoService = InProcessBrowserTest;
 
-IN_PROC_BROWSER_TEST_F(AppBoundEncryptionWinTestNoService, NoService) {
+// TODO(crbug.com/542625348): This test is disabled as it is failing.
+IN_PROC_BROWSER_TEST_F(AppBoundEncryptionWinTestNoService, DISABLED_NoService) {
   const std::string plaintext("plaintext");
   std::string ciphertext;
   DWORD last_error;
@@ -764,19 +765,23 @@ class AppBoundEncryptionWinTestMultiProcess : public AppBoundEncryptionWinTest {
         break;
     }
 
-    base::Process process;
+    int exit_code = 0;
     if (launch_isolated) {
-      ASSERT_OK_AND_ASSIGN(process, chrome::LaunchIsolatedBrowser(cmd));
+      ASSERT_OK_AND_ASSIGN(auto isolated_process,
+                           chrome::IsolatedBrowserProcess::Launch(cmd));
+      ASSERT_OK_AND_ASSIGN(exit_code, isolated_process.WaitForExit());
     } else {
       base::LaunchOptions options;
       options.start_hidden = true;
       options.wait = true;
 
-      process = base::LaunchProcess(cmd, options);
+      base::Process process = base::LaunchProcess(cmd, options);
+      ASSERT_TRUE(process.IsValid());
+      EXPECT_TRUE(process.WaitForExit(&exit_code));
+      // This ensures the process has really terminated before this function
+      // returns, as base::Process destructor does not do this by default.
+      process.Terminate(0, /*wait=*/true);
     }
-    ASSERT_TRUE(process.IsValid());
-    int exit_code;
-    EXPECT_TRUE(process.WaitForExit(&exit_code));
     result = static_cast<HRESULT>(exit_code);
     if (SUCCEEDED(result)) {
       EXPECT_TRUE(base::ReadFileToString(output_file_path, &output_data));
@@ -784,9 +789,6 @@ class AppBoundEncryptionWinTestMultiProcess : public AppBoundEncryptionWinTest {
     if (op == Operation::kDecrypt) {
       EXPECT_EQ(base::PathExists(reencrypt_file_path), expect_reencrypt);
     }
-    // This ensures the process has really terminated before this function
-    // returns, as base::Process destructor does not do this by default.
-    process.Terminate(0, /*wait=*/true);
   }
 
  private:

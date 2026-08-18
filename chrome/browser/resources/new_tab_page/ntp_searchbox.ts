@@ -368,7 +368,7 @@ export class NtpSearchboxElement extends NtpSearchboxElementBase implements
 
     if (this.cyclingPlaceholders) {
       waitForLazyRender().then(async () => {
-        const {config} = await this.pageHandler().getPlaceholderConfig();
+        const {config} = await this.pageHandler().getCyclingPlaceholderConfig();
         const texts = config.texts;
         if (texts.length < 2) {
           // Need at least 2 placeholders to cycle. If fewer, disable cycling
@@ -793,6 +793,11 @@ export class NtpSearchboxElement extends NtpSearchboxElementBase implements
       // </if>
     });
     this.setInputText('');
+  }
+
+  protected onSearchboxInputPasted_() {
+    chrome.histograms.recordCount('NewTabPage.Realbox.Paste', 1);
+    chrome.histograms.recordUserAction('NewTabPage.Realbox.Paste');
   }
 
   protected onSearchboxInputFilesPasted_(e: CustomEvent<{files: FileList}>) {

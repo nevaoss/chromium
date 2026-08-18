@@ -22,6 +22,7 @@
 #include "chrome/browser/ui/views/autofill/popup/mock_selection_delegate.h"
 #include "chrome/browser/ui/views/autofill/popup/password_favicon_loader.h"
 #include "chrome/browser/ui/views/autofill/popup/popup_row_view.h"
+#include "components/autofill/core/browser/at_memory/at_memory_manager.h"
 #include "components/autofill/core/browser/data_model/payments/bnpl_issuer.h"
 #include "components/autofill/core/browser/suggestions/suggestion.h"
 #include "components/autofill/core/browser/suggestions/suggestion_type.h"
@@ -170,6 +171,15 @@ const Suggestion kBnplSuggestions[] = {
                          /*linked=*/false,
                          /*deactivated=*/true)};
 
+struct AtMemoryTestParam {
+  std::string name;
+  Suggestion (*generator)();
+};
+
+const AtMemoryTestParam kAtMemorySuggestions[] = {
+    {"AtMemory_source_attribution",
+     &AtMemoryManager::CreateSourceAttributionSuggestion}};
+
 class MockPasswordFaviconLoader : public PasswordFaviconLoader {
  public:
   MOCK_METHOD(void,
@@ -185,25 +195,10 @@ class MockPasswordFaviconLoader : public PasswordFaviconLoader {
 using TestParams =
     std::tuple<Suggestion, std::optional<PopupRowView::CellType>>;
 
-class BaseCreatePopupRowViewTest
-    : public UiBrowserTest,
-      public ::testing::WithParamInterface<TestParams> {
+class PopupRowViewTestBase : public UiBrowserTest {
  public:
-  BaseCreatePopupRowViewTest() = default;
-  ~BaseCreatePopupRowViewTest() override = default;
-
-  static std::string GetTestName(
-      const testing::TestParamInfo<TestParams>& info) {
-    const std::string suggestion_part =
-        base::UTF16ToUTF8(std::get<Suggestion>(info.param).main_text.value);
-    const auto selection =
-        std::get<std::optional<PopupRowView::CellType>>(info.param);
-    const std::string selection_part =
-        !selection.has_value()                          ? "NotSelected"
-        : selection == PopupRowView::CellType::kContent ? "ContentSelected"
-                                                        : "ControlSelected";
-    return suggestion_part + "_" + selection_part;
-  }
+  PopupRowViewTestBase() = default;
+  ~PopupRowViewTestBase() override = default;
 
  protected:
   MockAutofillPopupController& controller() { return controller_; }
@@ -278,7 +273,28 @@ class BaseCreatePopupRowViewTest
   NiceMock<MockPasswordFaviconLoader> favicon_loader_;
 };
 
-class CreatePopupRowViewTest : public BaseCreatePopupRowViewTest {
+class ParameterizedPopupRowViewTestBase
+    : public PopupRowViewTestBase,
+      public ::testing::WithParamInterface<TestParams> {
+ public:
+  ParameterizedPopupRowViewTestBase() = default;
+  ~ParameterizedPopupRowViewTestBase() override = default;
+
+  static std::string GetTestName(
+      const testing::TestParamInfo<TestParams>& info) {
+    const std::string suggestion_part =
+        base::UTF16ToUTF8(std::get<Suggestion>(info.param).main_text.value);
+    const auto selection =
+        std::get<std::optional<PopupRowView::CellType>>(info.param);
+    const std::string selection_part =
+        !selection.has_value()                          ? "NotSelected"
+        : selection == PopupRowView::CellType::kContent ? "ContentSelected"
+                                                        : "ControlSelected";
+    return suggestion_part + "_" + selection_part;
+  }
+};
+
+class CreatePopupRowViewTest : public ParameterizedPopupRowViewTestBase {
  public:
   CreatePopupRowViewTest() = default;
   ~CreatePopupRowViewTest() override = default;
@@ -325,6 +341,40 @@ IN_PROC_BROWSER_TEST_F(CreatePopupRowViewTest, FilterMatchHighlighting) {
   ShowAndVerifyUi();
 }
 
+using AtMemoryTestParamType =
+    std::tuple<AtMemoryTestParam, std::optional<PopupRowView::CellType>>;
+
+class AtMemoryCreatePopupRowViewTest
+    : public PopupRowViewTestBase,
+      public ::testing::WithParamInterface<AtMemoryTestParamType> {
+ public:
+  static std::string GetTestName(
+      const testing::TestParamInfo<AtMemoryTestParamType>& info) {
+    const auto& [param, selection] = info.param;
+    const std::string selection_part =
+        !selection.has_value()                          ? "NotSelected"
+        : selection == PopupRowView::CellType::kContent ? "ContentSelected"
+                                                        : "ControlSelected";
+    return param.name + "_" + selection_part;
+  }
+};
+
+IN_PROC_BROWSER_TEST_P(AtMemoryCreatePopupRowViewTest, SuggestionRowUiTest) {
+  const auto& [param, selection] = GetParam();
+  CreateRowView(param.generator(), selection);
+  ShowAndVerifyUi();
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    AtMemorySuggestions,
+    AtMemoryCreatePopupRowViewTest,
+    ::testing::Combine(::testing::ValuesIn(kAtMemorySuggestions),
+                       ::testing::ValuesIn({
+                           std::optional<PopupRowView::CellType>(),
+                           std::optional(PopupRowView::CellType::kContent),
+                       })),
+    AtMemoryCreatePopupRowViewTest::GetTestName);
+
 IN_PROC_BROWSER_TEST_F(CreatePopupRowViewTest, FreeformFooter) {
   CreateRowView(CreateFreeformFooter(),
                 /*selected_cell=*/std::nullopt,
@@ -357,11 +407,12 @@ IN_PROC_BROWSER_TEST_F(CreatePopupRowViewTest, PasswordCustomIconLoader) {
   suggestion.custom_icon =
       Suggestion::FaviconDetails(/*domain_url=*/GURL("https://google.com"));
   CreateRowView(std::move(suggestion),
-                /*selected_cell=*/std::nullopt, /*filter_match=*/std::nullopt);
+                /*selected_cell=*/std::nullopt,
+                /*filter_match=*/std::nullopt);
   ShowAndVerifyUi();
 }
 
-class BnplCreatePopupRowViewTest : public BaseCreatePopupRowViewTest {
+class BnplCreatePopupRowViewTest : public ParameterizedPopupRowViewTestBase {
  public:
   BnplCreatePopupRowViewTest() {
     scoped_feature_list_.InitAndEnableFeature(
@@ -388,7 +439,7 @@ INSTANTIATE_TEST_SUITE_P(
     BnplCreatePopupRowViewTest::GetTestName);
 
 class CreatePopupRowViewWithNoUserEducationRateLimitTest
-    : public BaseCreatePopupRowViewTest {
+    : public PopupRowViewTestBase {
  public:
   CreatePopupRowViewWithNoUserEducationRateLimitTest() = default;
   ~CreatePopupRowViewWithNoUserEducationRateLimitTest() override = default;

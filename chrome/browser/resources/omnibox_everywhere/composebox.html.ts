@@ -27,7 +27,11 @@ export function getHtml(this: OmniboxEverywhereComposeboxElement) {
       </search-animated-glow>
     ` : ''}
     <div id="composebox" part="composebox" ?inert="${!!this.errorMessage}"
-      @keydown="${this.onKeydown}">
+      @keydown="${this.onKeydown}"
+      @dragenter="${this.dragAndDropHandler.handleDragEnter}"
+      @dragover="${this.dragAndDropHandler.handleDragOver}"
+      @dragleave="${this.dragAndDropHandler.handleDragLeave}"
+      @drop="${this.dragAndDropHandler.handleDrop}">
       <div id="inputContainer" part="input-container">
         <!-- Note: Copied from omnibox_composebox.html.ts. Cancel button title
              and cancel click handler may be needed if added to mixin in the
@@ -35,6 +39,7 @@ export function getHtml(this: OmniboxEverywhereComposeboxElement) {
         <cr-composebox-input id="composeboxInput"
             exportparts="text-container, icon-container, mirror, input,
                          smart-compose, cancel, action-icon, cancel-icon"
+            .composeboxSkillsEnabled="${this.composeboxSkillsEnabled}"
             .disableCaretColorAnimation="${this.disableCaretColorAnimation}"
             .showDropdown="${this.showDropdown}"
             .inputPlaceholder="${this.inputPlaceholder}"
@@ -45,8 +50,7 @@ export function getHtml(this: OmniboxEverywhereComposeboxElement) {
             @input-input="${this.onInputInput}"
             @input-focusin="${this.onInputFocusin}">
         </cr-composebox-input>
-        <img id="profileIcon" src="${this.profileAvatarUrl_}"
-            alt="${this.i18n('profileButtonLabel')}">
+        <omnibox-everywhere-profile-icon id="profileIcon"></omnibox-everywhere-profile-icon>
         <div id="context" part="context-entrypoint">
           <!-- Note: Copied from omnibox_composebox.html.ts. May need to re-add
                shouldDisableFileInputs_ when added to mixin. -->
@@ -142,12 +146,14 @@ export function getHtml(this: OmniboxEverywhereComposeboxElement) {
                 </div>
               ` : ''}
               <div id="actionButtons">
+                ${this.shouldShowVoiceSearch() ? html`
                 <div class="searchbox-icon-button-container voice">
                   <button id="voiceSearchButton" class="searchbox-icon-button"
-                      @click="${this.onVoiceSearchClick_}"
+                      @click="${this.onVoiceSearchButtonClick}"
                       title="${this.i18n('voiceSearchButtonLabel')}">
                   </button>
                 </div>
+                ` : ''}
                 <div class="searchbox-icon-button-container lens">
                   <button id="lensSearchButton" class="searchbox-icon-button"
                       @click="${this.onLensSearchClick_}"

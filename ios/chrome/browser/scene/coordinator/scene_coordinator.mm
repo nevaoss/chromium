@@ -46,6 +46,7 @@
 #import "ios/chrome/browser/authentication/ui_bundled/signin_notification_infobar_delegate.h"
 #import "ios/chrome/browser/authentication/ui_bundled/signout_action_sheet/undo_signout/coordinator/undo_signout_coordinator.h"
 #import "ios/chrome/browser/cobrowse/coordinator/assistant_aim_coordinator.h"
+#import "ios/chrome/browser/cobrowse/model/cobrowse_browser_agent.h"
 #import "ios/chrome/browser/cobrowse/model/cobrowse_context.h"
 #import "ios/chrome/browser/default_browser/model/utils.h"
 #import "ios/chrome/browser/feature_engagement/model/tracker_factory.h"
@@ -317,7 +318,18 @@ inline LayoutStateScenePassKey PassKey() {
     _viewController.delegate = self;
     _viewController.geminiHandler = HandlerForProtocol(
         _regularBrowser->GetCommandDispatcher(), GeminiCommands);
-    [_viewController setTabGrid:_tabGridCoordinator.viewController];
+    UIViewController* tabGridViewController =
+        _tabGridCoordinator.viewController;
+    [_viewController addChildViewController:tabGridViewController];
+    if (IsChromeNextIaEnabled() && !IsFullscreenRefactoringEnabled()) {
+      [_viewController.view addSubview:tabGridViewController.view];
+      [tabGridViewController.view addSubview:_viewController.appContainer];
+      tabGridViewController.view.frame = _viewController.view.bounds;
+    } else {
+      [_viewController.appContainer addSubview:tabGridViewController.view];
+      tabGridViewController.view.frame = _viewController.appContainer.bounds;
+    }
+    [tabGridViewController didMoveToParentViewController:_viewController];
     self.sceneState.window.rootViewController = _viewController;
 
     _sceneMediator = [[SceneMediator alloc]
@@ -366,20 +378,16 @@ inline LayoutStateScenePassKey PassKey() {
   // unregister observers and destroy C++ objects before the application is
   // shut down without depending on non-deterministic call to -dealloc.
   [self stopSettingsAnimated:NO completion:nil];
-  if (!IsAlertCrashFixKillSwitchEnabled()) {
-    // Ensure command dispatching is stopped across all non-nil browsers so that
-    // shutdown captures unregistered targets in silently failing targets.
-    if (_regularBrowser) {
-      [_regularBrowser->GetCommandDispatcher() stopDispatchingToTarget:self];
-    }
-    if (_incognitoBrowser) {
-      [_incognitoBrowser->GetCommandDispatcher() stopDispatchingToTarget:self];
-    }
-    if (_inactiveBrowser) {
-      [_inactiveBrowser->GetCommandDispatcher() stopDispatchingToTarget:self];
-    }
-  } else {
+  // Ensure command dispatching is stopped across all non-nil browsers so that
+  // shutdown captures unregistered targets in silently failing targets.
+  if (_regularBrowser) {
     [_regularBrowser->GetCommandDispatcher() stopDispatchingToTarget:self];
+  }
+  if (_incognitoBrowser) {
+    [_incognitoBrowser->GetCommandDispatcher() stopDispatchingToTarget:self];
+  }
+  if (_inactiveBrowser) {
+    [_inactiveBrowser->GetCommandDispatcher() stopDispatchingToTarget:self];
   }
   _policyWatcherObserver.reset();
   _policyWatcherObserverBridge.reset();
@@ -548,6 +556,14 @@ inline LayoutStateScenePassKey PassKey() {
     [snackbarHandler dismissAllSnackbars];
   }
 
+  if (IsAimCobrowseEnabled()) {
+    CobrowseBrowserAgent* agent =
+        CobrowseBrowserAgent::FromBrowser(_regularBrowser.get());
+    if (agent) {
+      agent->TerminateSession();
+    }
+  }
+
   // Exit fullscreen mode for web page when we re-enter app through external
   // intents.
   web::WebState* webState =
@@ -571,25 +587,18 @@ inline LayoutStateScenePassKey PassKey() {
 
   id<BrowserCoordinatorCommands> browserCoordinatorHandler = HandlerForProtocol(
       self.currentBrowser->GetCommandDispatcher(), BrowserCoordinatorCommands);
-  ProceduralBlock completionWithBVC = ^{
-    DCHECK(!self.isTabGridActive);
+  ProceduralBlock closePresentedViewsCompletion = ^{
     DCHECK(!self.isSigninInProgress);
-    [browserCoordinatorHandler
-        clearPresentedStateWithCompletion:completion
-                           dismissOmnibox:dismissOmnibox];
-  };
-  ProceduralBlock completionWithoutBVC = ^{
-    // The BVC may exist but tab switcher should be active.
-    DCHECK(self.isTabGridActive);
-    DCHECK(!self.isSigninInProgress);
-    [self stopChildCoordinatorsWithCompletion:completion];
+    if (self.isTabGridActive) {
+      [self stopChildCoordinatorsWithCompletion:completion];
+    } else {
+      [browserCoordinatorHandler
+          clearPresentedStateWithCompletion:completion
+                             dismissOmnibox:dismissOmnibox];
+    }
   };
 
-  // Select a completion based on whether the BVC is shown.
-  ProceduralBlock chosenCompletion =
-      self.isTabGridActive ? completionWithoutBVC : completionWithBVC;
-
-  [self closePresentedViews:NO completion:chosenCompletion];
+  [self closePresentedViews:NO completion:closePresentedViewsCompletion];
 
   [_geminiContainerCoordinator stop];
   _geminiContainerCoordinator = nil;
@@ -1655,7 +1664,7 @@ inline LayoutStateScenePassKey PassKey() {
 }
 
 - (void)setIncognitoBrowser:(Browser*)incognitoBrowser {
-  if (!IsAlertCrashFixKillSwitchEnabled() && _incognitoBrowser) {
+  if (_incognitoBrowser) {
     [_incognitoBrowser->GetCommandDispatcher() stopDispatchingToTarget:self];
   }
   _incognitoBrowser = incognitoBrowser;
@@ -2275,7 +2284,7 @@ inline LayoutStateScenePassKey PassKey() {
   SigninCoordinatorCompletionCallback signinCompletion =
       signinCoordinator.signinCompletion;
   signinCoordinator.signinCompletion = nil;
-  CHECK(signinCompletion, base::NotFatalUntil::M142);
+  CHECK(signinCompletion);
   // The `signinCoordinator` must be nil here, because `_signinCoordinator`
   // was set to `nil` above.
   signinCompletion(nil, SigninCoordinatorResultInterrupted, nil);

@@ -17,6 +17,7 @@
 #include "chrome/browser/sessions/session_common_utils.h"
 #include "chrome/browser/sessions/session_data_deleter.h"
 #include "chrome/browser/sessions/session_service_utils.h"
+#include "chrome/browser/ui/browser_init_state.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "components/sessions/content/content_serialized_navigation_builder.h"
 #include "components/sessions/content/session_tab_helper.h"
@@ -76,13 +77,14 @@ void AppSessionService::WindowOpened(Browser* browser) {
     return;
   }
 
-  SetWindowType(browser->session_id(), browser->type());
-  SetWindowAppName(browser->session_id(), browser->app_name());
+  SetWindowType(browser->GetSessionID(), browser->GetType());
+  SetWindowAppName(browser->GetSessionID(),
+                   BrowserInitState::From(browser)->create_params().app_name);
 
   // Save a browser workspace after window is created in `Browser()`.
   // Bento desks restore feature in ash requires this line to restore correctly
   // after creating a new browser window in a particular desk.
-  SetWindowWorkspace(browser->session_id(),
+  SetWindowWorkspace(browser->GetSessionID(),
                      BrowserWindow::FromBrowser(browser)->GetWorkspace());
 }
 

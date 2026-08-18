@@ -54,6 +54,7 @@ consoles.console_view(
     name = "chromium.gpu.fyi",
     branch_selector = [
         branches.selector.ANDROID_BRANCHES,
+        branches.selector.LINUX_BRANCHES,
         branches.selector.MAC_BRANCHES,
         branches.selector.WINDOWS_BRANCHES,
     ],
@@ -111,6 +112,8 @@ ci.thin_tester(
         android_config = builder_config.android_config(
             config = "base_config",
         ),
+        run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         targets = [
@@ -170,6 +173,8 @@ ci.thin_tester(
         android_config = builder_config.android_config(
             config = "base_config",
         ),
+        run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         targets = [
@@ -283,6 +288,7 @@ ci.thin_tester(
             config = "base_config",
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         targets = [
@@ -348,6 +354,7 @@ ci.thin_tester(
             config = "base_config",
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         # If the experimental configuration is the same as stable, this should
@@ -420,6 +427,7 @@ ci.thin_tester(
             config = "base_config",
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         targets = [
@@ -484,6 +492,7 @@ ci.thin_tester(
             config = "base_config",
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         targets = [
@@ -538,6 +547,7 @@ ci.thin_tester(
             config = "base_config",
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         targets = [
@@ -592,6 +602,7 @@ ci.thin_tester(
             config = "base_config",
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         targets = [
@@ -836,6 +847,7 @@ gpu.ci.linux_builder(
 
 gpu.ci.linux_builder(
     name = "GPU FYI Linux Builder",
+    branch_selector = branches.selector.LINUX_BRANCHES,
     description_html = "Builds release Linux x64 binaries for GPU testing",
     builder_spec = builder_config.builder_spec(
         gclient_config = builder_config.gclient_config(
@@ -1162,6 +1174,7 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.LINUX,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         targets = [
@@ -1201,6 +1214,7 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.LINUX,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         targets = [
@@ -1248,6 +1262,7 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.LINUX,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         targets = [
@@ -1287,6 +1302,7 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.LINUX,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         # When the experimental OS version is identical to the stable version,
@@ -1333,11 +1349,12 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.LINUX,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         targets = [
-            "gpu_fyi_linux_release_gtests",
-            "gpu_fyi_linux_release_telemetry_tests",
+            "gpu_all_linux_release_gtests",
+            "gpu_all_linux_release_telemetry_tests",
         ],
         mixins = [
             "very_limited_capacity_bot",
@@ -1373,6 +1390,7 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.LINUX,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         targets = [
@@ -1424,6 +1442,7 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.LINUX,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         # If the experimental configuration is the same as stable, this should
@@ -1468,11 +1487,12 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.LINUX,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         targets = [
-            "gpu_fyi_linux_release_gtests",
-            "gpu_fyi_linux_release_vulkan_telemetry_tests",
+            "gpu_all_linux_release_gtests",
+            "gpu_all_linux_release_vulkan_telemetry_tests",
         ],
         mixins = [
             "very_limited_capacity_bot",
@@ -1491,6 +1511,7 @@ ci.thin_tester(
 
 ci.thin_tester(
     name = "Linux FYI Release (NVIDIA)",
+    branch_selector = branches.selector.LINUX_BRANCHES,
     description_html = "Runs release GPU tests on stable Linux/NVIDIA GTX 1660 configs",
     parent = "GPU FYI Linux Builder",
     builder_spec = builder_config.builder_spec(
@@ -1508,6 +1529,7 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.LINUX,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         targets = [
@@ -1547,11 +1569,12 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.LINUX,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         targets = [
-            "gpu_fyi_linux_release_gtests",
-            "gpu_fyi_linux_release_vulkan_telemetry_tests",
+            "gpu_all_linux_release_gtests",
+            "gpu_all_linux_release_vulkan_telemetry_tests",
         ],
         mixins = [
             "linux_nvidia_rtx_4070_super_stable",
@@ -1586,11 +1609,12 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.LINUX,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         targets = [
-            "gpu_fyi_linux_release_gtests",
-            "gpu_fyi_linux_release_telemetry_tests",
+            "gpu_all_linux_release_gtests",
+            "gpu_all_linux_release_telemetry_tests",
         ],
         mixins = [
             "linux_amd_rx_5500_xt",
@@ -1625,11 +1649,12 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.LINUX,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         targets = [
-            "gpu_fyi_linux_release_gtests",
-            "gpu_fyi_linux_release_telemetry_tests",
+            "gpu_all_linux_release_gtests",
+            "gpu_all_linux_release_telemetry_tests",
         ],
         mixins = [
             "linux_amd_rx_7600_stable",
@@ -1664,6 +1689,7 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.LINUX,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         # When the experimental OS version is identical to the stable version,
@@ -1708,6 +1734,7 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.LINUX,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         # When the experimental OS version is identical to the stable version,
@@ -1735,6 +1762,7 @@ ci.thin_tester(
 
 ci.thin_tester(
     name = "Linux FYI Release (Intel UHD 630)",
+    branch_selector = branches.selector.LINUX_BRANCHES,
     description_html = "Runs release GPU tests on stable Linux/Intel UHD 630 configs",
     parent = "GPU FYI Linux Builder",
     builder_spec = builder_config.builder_spec(
@@ -1752,11 +1780,12 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.LINUX,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         targets = [
-            "gpu_fyi_linux_release_gtests",
-            "gpu_fyi_linux_release_telemetry_tests",
+            "gpu_all_linux_release_gtests",
+            "gpu_all_linux_release_telemetry_tests",
         ],
         mixins = [
             "linux_intel_uhd_630_stable",
@@ -1791,11 +1820,12 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.LINUX,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         targets = [
-            "gpu_fyi_linux_release_gtests",
-            "gpu_fyi_linux_release_telemetry_tests",
+            "gpu_all_linux_release_gtests",
+            "gpu_all_linux_release_telemetry_tests",
         ],
         mixins = [
             "linux_intel_uhd_770_stable",
@@ -1837,6 +1867,7 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.MAC,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         targets = [
@@ -1952,6 +1983,7 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.MAC,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         # When the experimental OS version is identical to the stable version,
@@ -1999,6 +2031,7 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.MAC,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         # When the experimental OS version is identical to the stable version,
@@ -2165,6 +2198,7 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.MAC,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         # Different targets than 'Mac FYI Retina Release (AMD)' since there is
@@ -2291,6 +2325,7 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.MAC,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         targets = [
@@ -2361,6 +2396,7 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.MAC,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         targets = [
@@ -2444,6 +2480,7 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.MAC,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         targets = [
@@ -2483,6 +2520,7 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.MAC,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         targets = [
@@ -2567,6 +2605,7 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.MAC,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         targets = [
@@ -2605,6 +2644,7 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.MAC,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         targets = [
@@ -2644,6 +2684,7 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.WIN,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         targets = [
@@ -2720,6 +2761,7 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.WIN,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         targets = [
@@ -2758,6 +2800,7 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.WIN,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         targets = [
@@ -2796,6 +2839,7 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.WIN,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         # When the experimental driver is identical to the stable driver, this
@@ -2919,6 +2963,7 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.WIN,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         # When the experimental driver is identical to the stable driver, this
@@ -2975,6 +3020,7 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.WIN,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         targets = [
@@ -3027,6 +3073,7 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.WIN,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         targets = [
@@ -3075,6 +3122,7 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.WIN,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         targets = [
@@ -3128,6 +3176,7 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.WIN,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         targets = [
@@ -3212,6 +3261,7 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.WIN,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         # When the experimental OS version is identical to the stable version,
@@ -3264,6 +3314,7 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.WIN,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         targets = [
@@ -3315,6 +3366,7 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.WIN,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         # When the experimental OS version is identical to the stable version,
@@ -3367,6 +3419,7 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.WIN,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         # When the experimental OS version is identical to the stable version,
@@ -3419,6 +3472,7 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.WIN,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         targets = [
@@ -3469,6 +3523,7 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.WIN,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         # When the experimental driver is identical to the stable driver, this
@@ -3514,6 +3569,7 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.WIN,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         targets = [
@@ -3555,6 +3611,7 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.WIN,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         targets = [
@@ -3596,6 +3653,7 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.WIN,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         targets = [
@@ -3634,6 +3692,7 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.WIN,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         targets = [
@@ -3719,6 +3778,7 @@ ci.thin_tester(
             target_platform = builder_config.target_platform.WIN,
         ),
         run_tests_serially = True,
+        use_test_trigger_cas = True,
     ),
     targets = targets.bundle(
         targets = [

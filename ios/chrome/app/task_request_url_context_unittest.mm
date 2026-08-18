@@ -83,9 +83,9 @@ TEST_F(TaskRequestForURLContextTest, TestStartupMobileSessionStartFromApps) {
   UIOpenURLContext* context = CreateMockURLContext(url);
 
   TaskRequestForURLContext* request =
-      [[TaskRequestForURLContext alloc] initWithURLContext:context
-                                                sceneState:scene_state_
-                                               isColdStart:YES];
+      [TaskRequestForURLContext taskRequestWithURLContext:context
+                                               sceneState:scene_state_
+                                              isColdStart:YES];
   EXPECT_NE(request, nil);
 
   histogram_tester.ExpectTotalCount("Startup.MobileSessionStartFromApps", 1);
@@ -100,9 +100,9 @@ TEST_F(TaskRequestForURLContextTest, TestStartupShowDefaultPromoFromApps) {
   UIOpenURLContext* context = CreateMockURLContext(url);
 
   TaskRequestForURLContext* request =
-      [[TaskRequestForURLContext alloc] initWithURLContext:context
-                                                sceneState:scene_state_
-                                               isColdStart:YES];
+      [TaskRequestForURLContext taskRequestWithURLContext:context
+                                               sceneState:scene_state_
+                                              isColdStart:YES];
   EXPECT_NE(request, nil);
 
   histogram_tester.ExpectTotalCount("Startup.ShowDefaultPromoFromApps", 1);
@@ -118,9 +118,9 @@ TEST_F(TaskRequestForURLContextTest, TestFirstRunLaunchSource) {
   UIOpenURLContext* context = CreateMockURLContext(url);
 
   TaskRequestForURLContext* request =
-      [[TaskRequestForURLContext alloc] initWithURLContext:context
-                                                sceneState:scene_state_
-                                               isColdStart:YES];
+      [TaskRequestForURLContext taskRequestWithURLContext:context
+                                               sceneState:scene_state_
+                                              isColdStart:YES];
   EXPECT_NE(request, nil);
 
   // ProfileState may be nil early during app startup, so these metrics should
@@ -156,9 +156,9 @@ TEST_F(TaskRequestForURLContextTest, TestWidgetKitActionMetrics) {
     UIOpenURLContext* context = CreateMockURLContext(url);
 
     TaskRequestForURLContext* request =
-        [[TaskRequestForURLContext alloc] initWithURLContext:context
-                                                  sceneState:scene_state_
-                                                 isColdStart:YES];
+        [TaskRequestForURLContext taskRequestWithURLContext:context
+                                                 sceneState:scene_state_
+                                                isColdStart:YES];
     EXPECT_NE(request, nil);
 
     histogram_tester.ExpectUniqueSample(kUMAMobileSessionStartActionHistogram,
@@ -167,5 +167,37 @@ TEST_F(TaskRequestForURLContextTest, TestWidgetKitActionMetrics) {
                                         AppLaunchSource::WIDGET, 1);
     histogram_tester.ExpectUniqueSample(kWidgetKitActionHistogram,
                                         test_case.expected_action, 1);
+  }
+}
+
+// Tests that X-Callback URLs log the launch source and X-Callback action
+// metrics.
+TEST_F(TaskRequestForURLContextTest, TestXCallbackURLMetrics) {
+  struct TestCase {
+    NSString* url_string;
+    MobileSessionStartAction expected_action;
+  } test_cases[] = {
+      {@"googlechrome://x-callback-url/open?url=https://www.example.com",
+       START_ACTION_XCALLBACK_OPEN},
+      {@"googlechrome://x-callback-url/app-group-command",
+       START_ACTION_XCALLBACK_APPGROUP_COMMAND},
+      {@"googlechrome://x-callback-url/other", START_ACTION_XCALLBACK_OTHER},
+  };
+
+  for (const auto& test_case : test_cases) {
+    base::HistogramTester histogram_tester;
+    NSURL* url = [NSURL URLWithString:test_case.url_string];
+    UIOpenURLContext* context = CreateMockURLContext(url);
+
+    TaskRequestForURLContext* request =
+        [TaskRequestForURLContext taskRequestWithURLContext:context
+                                                 sceneState:scene_state_
+                                                isColdStart:YES];
+    EXPECT_NE(request, nil);
+
+    histogram_tester.ExpectUniqueSample(kUMAMobileSessionStartActionHistogram,
+                                        test_case.expected_action, 1);
+    histogram_tester.ExpectUniqueSample(kAppLaunchSource,
+                                        AppLaunchSource::X_CALLBACK, 1);
   }
 }

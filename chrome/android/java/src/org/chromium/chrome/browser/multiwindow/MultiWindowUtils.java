@@ -73,11 +73,13 @@ import org.chromium.chrome.browser.ui.desktop_windowing.AppHeaderUtils;
 import org.chromium.chrome.browser.util.AndroidTaskUtils;
 import org.chromium.chrome.browser.util.MultiInstanceUtils;
 import org.chromium.components.browser_ui.desktop_windowing.DesktopWindowStateManager;
+import org.chromium.components.embedder_support.util.UrlUtilities;
 import org.chromium.components.messages.MessageBannerProperties;
 import org.chromium.components.messages.MessageDispatcher;
 import org.chromium.components.messages.MessageIdentifier;
 import org.chromium.components.messages.PrimaryActionClickBehavior;
 import org.chromium.components.ukm.UkmRecorder;
+import org.chromium.components.url_formatter.UrlFormatter;
 import org.chromium.ui.display.DisplayAndroid;
 import org.chromium.ui.display.DisplayUtil;
 import org.chromium.ui.modelutil.PropertyModel;
@@ -687,10 +689,20 @@ public class MultiWindowUtils implements ActivityStateListener {
         return inactiveInstanceCount > 0;
     }
 
-    static boolean isRestorableInstance(Set<Integer> appTaskIds, int index) {
+    /* package */ static boolean hasRestorableRegularTabs(int instanceId) {
+        int normalTabCount = ChromeMultiInstancePersistentStore.readNormalTabCount(instanceId);
+
+        if (normalTabCount > 1) return true;
+        if (normalTabCount == 0) return false;
+
+        String activeUrl = ChromeMultiInstancePersistentStore.readActiveTabUrl(instanceId);
+        return !UrlUtilities.isNtpUrl(UrlFormatter.fixupUrl(activeUrl));
+    }
+
+    /* package */ static boolean isRestorableInstance(Set<Integer> appTaskIds, int index) {
         int taskId = ChromeMultiInstancePersistentStore.readTaskId(index);
         boolean isActiveTask = appTaskIds.contains(taskId);
-        return ChromeMultiInstancePersistentStore.readNormalTabCount(index) != 0 || isActiveTask;
+        return hasRestorableRegularTabs(index) || isActiveTask;
     }
 
     @Override
@@ -1740,6 +1752,15 @@ public class MultiWindowUtils implements ActivityStateListener {
         return null;
     }
 
+    /**
+     * Returns whether the new startup window policy feature is enabled.
+     *
+     * @return {@code true} if the feature is enabled; {@code false} otherwise.
+     */
+    public static boolean isNewStartupWindowPolicyEnabled() {
+        return ChromeFeatureList.sOnStartupWindowPolicy.isEnabled() && DeviceInfo.isDesktop();
+    }
+
     /* package */ static int getRunningTabbedActivityCount() {
         int numActivities = 0;
         List<Activity> activities = ApplicationStatus.getRunningActivities();
@@ -1765,6 +1786,15 @@ public class MultiWindowUtils implements ActivityStateListener {
         return results;
     }
 
+    /* package */ static boolean hasNoNormalTabs(int windowId) {
+        return ChromeMultiInstancePersistentStore.readNormalTabCount(windowId) == 0;
+    }
+
+    /* package */ static boolean isTaskAlive(int windowId, Map<Integer, AppTask> appTasksById) {
+        int taskId = ChromeMultiInstancePersistentStore.readTaskId(windowId);
+        return appTasksById.containsKey(taskId);
+    }
+
     /* package */ static Map<Integer, AppTask> getAppTasksById(Context context) {
         ActivityManager activityManager =
                 (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
@@ -1775,10 +1805,6 @@ public class MultiWindowUtils implements ActivityStateListener {
             if (info != null) results.put(info.taskId, task);
         }
         return results;
-    }
-
-    /* package */ static boolean isNewStartupWindowPolicyEnabled() {
-        return ChromeFeatureList.sOnStartupWindowPolicy.isEnabled() && DeviceInfo.isDesktop();
     }
 
     /* package */ static void setAppTaskIdsForTesting(Set<Integer> appTaskIds) {

@@ -10,7 +10,9 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Intent;
+import android.graphics.Rect;
 import android.net.Uri;
+import android.os.Build;
 import android.provider.Browser;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -32,6 +34,7 @@ import org.chromium.base.supplier.MonotonicObservableSupplier;
 import org.chromium.base.supplier.NonNullObservableSupplier;
 import org.chromium.base.supplier.NullableObservableSupplier;
 import org.chromium.base.supplier.ObservableSuppliers;
+import org.chromium.base.supplier.OneshotSupplier;
 import org.chromium.base.supplier.SettableNonNullObservableSupplier;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
@@ -51,13 +54,21 @@ import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.searchwidget.SearchActivityUtils;
 import org.chromium.chrome.browser.searchwidget.SearchBoxDataProvider;
 import org.chromium.chrome.browser.searchwidget.SearchUiCoordinator;
+import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.tab.TabSelectionType;
+import org.chromium.chrome.browser.tab_group_sync.TabGroupSyncServiceFactory;
+import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
+import org.chromium.chrome.browser.tabmodel.TabModelUtils;
 import org.chromium.chrome.browser.tabwindow.TabWindowInfo;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.chrome.browser.ui.searchactivityutils.SearchActivityExtras.IntentOrigin;
 import org.chromium.chrome.browser.ui.searchactivityutils.SearchActivityExtras.SearchType;
 import org.chromium.components.browser_ui.widget.gesture.BackPressHandler;
 import org.chromium.components.metrics.OmniboxEventProtos.OmniboxEventProto.PageClassification;
+import org.chromium.components.tab_group_sync.SavedTabGroup;
+import org.chromium.components.tab_group_sync.TabGroupSyncService;
+import org.chromium.components.tab_group_sync.TabGroupUiActionHandler;
 import org.chromium.ui.AsyncViewStub;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.edge_to_edge.EdgeToEdgeSystemBarColorHelper;
@@ -66,6 +77,9 @@ import org.chromium.ui.modelutil.PropertyKey;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.ui.modelutil.PropertyModelChangeProcessor;
 import org.chromium.url.GURL;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Coordinator that hosts SearchUiCoordinator in a floating Tab Search panel positioned overlaying
@@ -84,6 +98,7 @@ public class TabSearchOverlayCoordinator implements BackPressHandler {
     private final @Nullable EdgeToEdgeSystemBarColorHelper mEdgeToEdgeSystemBarColorHelper;
     private final BackPressManager mBackPressManager;
     private final MonotonicObservableSupplier<CompositorViewHolder> mCompositorViewHolderSupplier;
+    private final OneshotSupplier<TabGroupUiActionHandler> mTabGroupUiActionHandlerSupplier;
     // Recursion guard to prevent event dispatch loops when forwarding scrim scroll/drag events
     // to the underlying compositor view hierarchy.
     private boolean mIsForwardingScroll;
@@ -126,7 +141,8 @@ public class TabSearchOverlayCoordinator implements BackPressHandler {
             MonotonicObservableSupplier<TabModelSelector> tabModelSelectorSupplier,
             @Nullable EdgeToEdgeSystemBarColorHelper edgeToEdgeSystemBarColorHelper,
             BackPressManager backPressManager,
-            MonotonicObservableSupplier<CompositorViewHolder> compositorViewHolderSupplier) {
+            MonotonicObservableSupplier<CompositorViewHolder> compositorViewHolderSupplier,
+            OneshotSupplier<TabGroupUiActionHandler> tabGroupUiActionHandlerSupplier) {
         mActivity = activity;
         mParentContainer = parentContainer;
         mWindowAndroid = windowAndroid;
@@ -138,15 +154,18 @@ public class TabSearchOverlayCoordinator implements BackPressHandler {
         mEdgeToEdgeSystemBarColorHelper = edgeToEdgeSystemBarColorHelper;
         mBackPressManager = backPressManager;
         mCompositorViewHolderSupplier = compositorViewHolderSupplier;
+        mTabGroupUiActionHandlerSupplier = tabGroupUiActionHandlerSupplier;
         mBackPressManager.addHandler(this, BackPressHandler.Type.TAB_SEARCH_OVERLAY);
 
         mModel = TabSearchOverlayProperties.createDefaultModel();
         mModel.set(TabSearchOverlayProperties.VISIBLE, false);
         mModel.set(TabSearchOverlayProperties.ON_SCRIM_CLICK, (v) -> hide());
         mModel.set(TabSearchOverlayProperties.ON_CLOSE_CLICK, (v) -> hide());
+        mModel.set(TabSearchOverlayProperties.ON_HIDE_FINISHED, this::onHideFinished);
 
         mSearchBoxDataProvider = new SearchBoxDataProvider();
-        mSearchBoxDataProvider.setPageClassification(PageClassification.ANDROID_HUB_VALUE);
+        mSearchBoxDataProvider.setPageClassification(
+                PageClassification.ANDROID_TAB_SEARCH_OVERLAY_VALUE);
 
         mProfileObserver = this::onProfileChanged;
         mProfileSupplier.addSyncObserverAndCallIfNonNull(mProfileObserver);
@@ -189,6 +208,10 @@ public class TabSearchOverlayCoordinator implements BackPressHandler {
                                         false);
         final LinearLayout panelContainer = mPanelContainer;
         View panelView = panelContainer.findViewById(R.id.tab_search_overlay_panel);
+        panelView.addOnLayoutChangeListener(
+                (v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
+                    updateExclusionRects();
+                });
         View searchActivityView = panelContainer.findViewById(R.id.search_activity_container);
         mParentContainer.addView(panelContainer);
 
@@ -217,7 +240,11 @@ public class TabSearchOverlayCoordinator implements BackPressHandler {
                         }
                         return forwardEvent(v, event, false);
                     }
-                    return false;
+                    // Consume non-scroll generic motion events (such as pointer clicks or hover)
+                    // to prevent them from falling through to the background web contents and
+                    // stealing focus from the UrlBar, which would cause the suggestions dropdown to
+                    // dismiss on focus loss and cause animation flicker during panel hide.
+                    return true;
                 });
 
         if (mSearchUiCoordinator == null) {
@@ -327,11 +354,11 @@ public class TabSearchOverlayCoordinator implements BackPressHandler {
     }
 
     private void onSuggestionsChanged(boolean hasSuggestions) {
-        String query =
-                assumeNonNull(mSearchUiCoordinator)
-                        .getLocationBarCoordinator()
-                        .getUrlBarCoordinator()
-                        .getTextWithoutAutocomplete();
+        // Guard against empty-state updates from input clearing during the hide animation.
+        if (!isVisible()) return;
+
+        var locationBar = assumeNonNull(mSearchUiCoordinator).getLocationBarCoordinator();
+        String query = locationBar.getUrlBarCoordinator().getTextWithoutAutocomplete();
         boolean showEmptyState = query != null && !query.isEmpty() && !hasSuggestions;
         mModel.set(TabSearchOverlayProperties.EMPTY_STATE_VISIBLE, showEmptyState);
     }
@@ -374,7 +401,41 @@ public class TabSearchOverlayCoordinator implements BackPressHandler {
     }
 
     private void bringTabGroupToFront(String tabGroupId) {
-        IntentHandler.bringTabGroupToFront(tabGroupId);
+        Profile profile = mProfileSupplier.get();
+        if (profile == null) return;
+
+        TabGroupSyncService syncService = TabGroupSyncServiceFactory.getForProfile(profile);
+        if (syncService == null) return;
+
+        SavedTabGroup syncGroup = syncService.getGroup(tabGroupId);
+        if (syncGroup == null || syncGroup.syncId == null) return;
+
+        // If the group is not yet open locally, materialize/open it first.
+        if (syncGroup.localId == null) {
+            TabGroupUiActionHandler handler = mTabGroupUiActionHandlerSupplier.get();
+            if (handler == null) return;
+
+            handler.openTabGroup(syncGroup.syncId);
+            // Re-fetch the synced group to obtain the newly mapped local group ID.
+            syncGroup = syncService.getGroup(tabGroupId);
+            if (syncGroup == null || syncGroup.localId == null) return;
+        }
+
+        TabModelSelector selector = mTabModelSelectorSupplier.get();
+        if (selector == null) return;
+
+        // Find the last active tab ID inside this local group (or the first tab if last active
+        // cannot be determined).
+        TabModel model = selector.getModel(mSearchBoxDataProvider.isIncognito());
+        int tabId = model.getGroupLastShownTabId(syncGroup.localId.tabGroupId);
+        if (tabId == Tab.INVALID_TAB_ID) return;
+
+        // Select the active tab inside the local TabModel to focus on the group.
+        int index = TabModelUtils.getTabIndexById(model, tabId);
+        if (index != TabModel.INVALID_TAB_INDEX) {
+            model.setIndex(index, TabSelectionType.FROM_USER);
+        }
+
         hide();
     }
 
@@ -386,25 +447,58 @@ public class TabSearchOverlayCoordinator implements BackPressHandler {
         ensureInitialized();
         if (mModel.get(TabSearchOverlayProperties.VISIBLE)) return;
 
+        // Ensure that transient properties (like empty state visibility) are reset to their
+        // default states before showing the search UI.
+        mModel.set(TabSearchOverlayProperties.EMPTY_STATE_VISIBLE, false);
         mModel.set(TabSearchOverlayProperties.VISIBLE, true);
         mBackPressStateSupplier.set(true);
         assumeNonNull(mSearchUiCoordinator)
                 .beginQuery(IntentOrigin.HUB, SearchType.TEXT, /* query= */ null, mWindowAndroid);
+        updateExclusionRects();
     }
 
     /** Hides the tab search overlay and clears the focus from the search box. */
     public void hide() {
         mModel.set(TabSearchOverlayProperties.VISIBLE, false);
         mBackPressStateSupplier.set(false);
-        if (mSearchUiCoordinator != null) {
-            var locationBar = mSearchUiCoordinator.getLocationBarCoordinator();
-            locationBar.clearOmniboxFocus();
-        }
+        updateExclusionRects();
     }
 
     /** Returns whether the tab search overlay is currently visible. */
     public boolean isVisible() {
         return mModel.get(TabSearchOverlayProperties.VISIBLE);
+    }
+
+    /**
+     * Updates the system gesture exclusion rects for the overlay panel.
+     *
+     * <p>#setSystemGestureExclusionRects allows Chrome to receive touch events on the header area
+     * of the panel when it is drawn under the system gesture area so that it remains accessible.
+     * The exclusion rect gets removed when the panel is no longer visible.
+     */
+    private void updateExclusionRects() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || mPanelContainer == null) {
+            return;
+        }
+
+        View panelView = mPanelContainer.findViewById(R.id.tab_search_overlay_panel);
+        if (panelView == null) return;
+
+        List<Rect> rects = new ArrayList<>();
+        if (mModel.get(TabSearchOverlayProperties.VISIBLE)) {
+            // Exclude the close button's interactive area to ensure it remains clickable even
+            // when under the system gesture area.
+            View closeButton = panelView.findViewById(R.id.tab_search_close_button);
+            if (closeButton != null && closeButton.getWidth() > 0) {
+                Rect rect = new Rect();
+                rect.left = closeButton.getLeft();
+                rect.top = closeButton.getTop();
+                rect.right = closeButton.getRight();
+                rect.bottom = closeButton.getBottom();
+                rects.add(rect);
+            }
+        }
+        panelView.setSystemGestureExclusionRects(rects);
     }
 
     /**
@@ -419,6 +513,14 @@ public class TabSearchOverlayCoordinator implements BackPressHandler {
         mSearchBoxDataProvider.initialize(mActivity, isIncognito);
         if (mSearchUiCoordinator != null) {
             mSearchUiCoordinator.setColorScheme(isIncognito);
+        }
+    }
+
+    private void onHideFinished() {
+        // Clear focus only after the hide animation finishes to prevent animation flicker.
+        if (mSearchUiCoordinator != null) {
+            var locationBar = mSearchUiCoordinator.getLocationBarCoordinator();
+            locationBar.clearOmniboxFocus();
         }
     }
 

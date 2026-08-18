@@ -98,6 +98,9 @@ class GlicInstanceCoordinatorImpl
   // per profile.
   void OnWillCreateFloaty() override;
   void UnbindTabFromAnyInstance(tabs::TabInterface* tab) override;
+  void UnbindTabGroupFromAnyInstance(
+      tab_groups::TabGroupId group_id,
+      GlicInstanceImpl* excluding_instance) override;
   // Sorts conversations by recency and returns the ConversationInfoPtr of each
   // conversation. Used by the web client to get recent conversations.
   std::vector<glic::mojom::ConversationInfoPtr> GetRecentlyActiveConversations(
@@ -141,7 +144,6 @@ class GlicInstanceCoordinatorImpl
 
   void UnpinTabsFromAllInstances(base::span<const tabs::TabHandle> tab_handles,
                                  GlicUnpinTrigger trigger) override;
-
 
   // Toggles the side panel for the active tab if `browser` is provided,
   // otherwise toggles the floating window for the instance. Focus is given
@@ -209,10 +211,13 @@ class GlicInstanceCoordinatorImpl
 
  private:
   void RemoveAllInstances();
-  base::WeakPtr<GlicInstance> InvokeInternal(
+  void TransferTabGroupBinding(GlicInstanceImpl& source_instance,
+                               GlicInstanceImpl& target_instance);
+  base::WeakPtr<GlicInstanceImpl> InvokeInternal(
       std::optional<InvokeWithAutoSubmitPasskey> auto_submit_passkey,
       GlicInvokeOptions options,
-      GlicInvokeWithAutoSubmitOptions auto_submit_options);
+      GlicInvokeWithAutoSubmitOptions auto_submit_options,
+      bool bypass_in_progress_check = false);
 
   void OnTabEvent(const GlicTabEvent& event);
   // Returns a pointer to an instance with the given conversation id or nullptr
@@ -248,6 +253,14 @@ class GlicInstanceCoordinatorImpl
       BrowserWindowInterface* browser,
       bool prevent_close,
       glic::mojom::InvocationSource source,
+      std::unique_ptr<GlicWindowInvocationTracker> invocation_tracker);
+  // Helper method for toggling the UI open. This should ONLY be used by the
+  // toggle flow (ToggleSidePanel, ToggleFloaty) as it bypasses the in-progress
+  // invocation check and sets fre_completion_wait_mode to kNever.
+  void InvokeAndLogToggle(
+      glic::mojom::InvocationSource source,
+      Target::Surface surface,
+      const EmbedderKey& key,
       std::unique_ptr<GlicWindowInvocationTracker> invocation_tracker);
 
   void CloseFloaty(const CloseOptions& options = {});

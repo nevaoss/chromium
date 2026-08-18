@@ -105,6 +105,9 @@ BASE_DECLARE_FEATURE(kContextualTasksPdfCitations);
 // When enabled, the back button can expand the side panel.
 BASE_DECLARE_FEATURE(kContextualTasksBackButtonExpandsSidePanel);
 
+// When enabled, close tab actions can expand the side panel.
+BASE_DECLARE_FEATURE(kContextualTasksCloseTabExpandsSidePanel);
+
 // Enables lazy fetching of cluster info for multimodal queries.
 BASE_DECLARE_FEATURE(kContextualTasksLazyFetchClusterInfo);
 
@@ -296,6 +299,10 @@ extern const base::FeatureParam<std::string> kContextualTasksHelpUrl;
 extern const base::FeatureParam<std::string>
     kContextualTasksOnboardingTooltipHelpUrl;
 
+// The URL for the help center article linked from the overflow menu.
+extern const base::FeatureParam<std::string>
+    kContextualTasksOverflowMenuHelpUrl;
+
 // Enables suggestions rendered on contextual tasks side, instead of from AIM
 // webpage.
 extern const base::FeatureParam<bool>
@@ -408,6 +415,9 @@ extern std::string GetContextualTasksOnboardingTooltipHelpUrl();
 // Returns the help URL for the help center article from the toolbar.
 extern std::string GetContextualTasksHelpUrl();
 
+// Returns the help URL for the overflow menu help center article.
+extern std::string GetContextualTasksOverflowMenuHelpUrl();
+
 // Returns whether smart compose is enabled for Contextual Tasks.
 extern bool GetEnableContextualTasksSmartCompose();
 
@@ -481,6 +491,8 @@ extern const char kContextualTasksJavaFuseboxName[];
 extern const char kContextualTasksJavaFuseboxDescription[];
 extern const char kContextualTasksBackButtonExpandsSidePanelName[];
 extern const char kContextualTasksBackButtonExpandsSidePanelDescription[];
+extern const char kContextualTasksCloseTabExpandsSidePanelName[];
+extern const char kContextualTasksCloseTabExpandsSidePanelDescription[];
 extern const char kContextualTasksOverrideShowBottomSheetOnLargeScreenName[];
 extern const char
     kContextualTasksOverrideShowBottomSheetOnLargeScreenDescription[];

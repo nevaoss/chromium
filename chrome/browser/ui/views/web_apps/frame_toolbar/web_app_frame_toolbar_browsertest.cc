@@ -76,6 +76,7 @@
 #include "chrome/browser/ui/web_applications/test/web_app_browsertest_util.h"
 #include "chrome/browser/ui/web_applications/web_app_browsertest_base.h"
 #include "chrome/browser/ui/web_applications/web_app_menu_model.h"
+#include "chrome/browser/ui/window_feature_controller/window_feature_controller.h"
 #include "chrome/browser/web_applications/isolated_web_apps/isolated_web_app_url_info.h"
 #include "chrome/browser/web_applications/isolated_web_apps/test/isolated_web_app_builder.h"
 #include "chrome/browser/web_applications/model/display_override.h"
@@ -1290,12 +1291,21 @@ class WebAppFrameToolbarBrowserTest_WindowControlsOverlay
   void ToggleWindowControlsOverlayAndWaitHelper(
       content::WebContents* web_contents,
       BrowserView* browser_view) {
+    const bool initial_visibility =
+        GetWindowControlOverlayVisibility(web_contents);
     helper()->SetupGeometryChangeCallback(web_contents);
     content::TitleWatcher title_watcher(web_contents, u"ongeometrychange");
     base::test::TestFuture<void> future;
     browser_view->ToggleWindowControlsOverlayEnabled(future.GetCallback());
     EXPECT_TRUE(future.Wait());
     std::ignore = title_watcher.WaitAndGetTitle();
+
+    ASSERT_TRUE(base::test::RunUntil([&]() {
+      return GetWindowControlOverlayBoundingClientRectFromEvent(web_contents) ==
+                 GetWindowControlOverlayBoundingClientRect(web_contents) &&
+             GetWindowControlOverlayVisibility(web_contents) !=
+                 initial_visibility;
+    })) << "Timeout waiting for WCO toggle to settle.";
   }
 
   // When toggling the WCO app initialized by the helper class.
@@ -1305,15 +1315,21 @@ class WebAppFrameToolbarBrowserTest_WindowControlsOverlay
         helper()->browser_view());
   }
 
-  bool GetWindowControlOverlayVisibility() {
-    auto* web_contents = helper()->browser_view()->GetActiveWebContents();
+  bool GetWindowControlOverlayVisibility(
+      content::WebContents* web_contents = nullptr) {
+    if (!web_contents) {
+      web_contents = helper()->browser_view()->GetActiveWebContents();
+    }
     return EvalJs(web_contents,
                   "window.navigator.windowControlsOverlay.visible")
         .ExtractBool();
   }
 
-  bool GetWindowControlOverlayVisibilityFromEvent() {
-    auto* web_contents = helper()->browser_view()->GetActiveWebContents();
+  bool GetWindowControlOverlayVisibilityFromEvent(
+      content::WebContents* web_contents = nullptr) {
+    if (!web_contents) {
+      web_contents = helper()->browser_view()->GetActiveWebContents();
+    }
     auto result = EvalJs(web_contents, "window.overlay_visible_from_event");
     if (!result.is_ok() || !result.is_bool()) {
       ADD_FAILURE() << "Failed to get overlay visibility from event: "
@@ -1336,16 +1352,18 @@ class WebAppFrameToolbarBrowserTest_WindowControlsOverlay
     std::ignore = title_watcher.WaitAndGetTitle();
   }
 
-  gfx::Rect GetWindowControlOverlayBoundingClientRect() {
+  gfx::Rect GetWindowControlOverlayBoundingClientRect(
+      content::WebContents* web_contents = nullptr) {
+    if (!web_contents) {
+      web_contents = helper()->browser_view()->GetActiveWebContents();
+    }
     const std::string kRectValueList =
         "var rect = "
         "[navigator.windowControlsOverlay.getTitlebarAreaRect().x, "
         "navigator.windowControlsOverlay.getTitlebarAreaRect().y, "
         "navigator.windowControlsOverlay.getTitlebarAreaRect().width, "
         "navigator.windowControlsOverlay.getTitlebarAreaRect().height];";
-    return helper()->GetXYWidthHeightRect(
-        helper()->browser_view()->GetActiveWebContents(), kRectValueList,
-        "rect");
+    return helper()->GetXYWidthHeightRect(web_contents, kRectValueList, "rect");
   }
 
   std::string GetCSSTitlebarRect() {
@@ -1372,21 +1390,32 @@ class WebAppFrameToolbarBrowserTest_WindowControlsOverlay
               helper()->browser_view()->GetLocalBounds().width());
 
     auto* web_contents = helper()->browser_view()->GetActiveWebContents();
+    const gfx::Rect initial_js_bounds =
+        GetWindowControlOverlayBoundingClientRect(web_contents);
+
     helper()->SetupGeometryChangeCallback(web_contents);
     content::TitleWatcher title_watcher(web_contents, u"ongeometrychange");
     helper()->browser_view()->GetWidget()->SetBounds(new_bounds);
     std::ignore = title_watcher.WaitAndGetTitle();
 
     ASSERT_TRUE(base::test::RunUntil([&]() {
-      return GetWindowControlOverlayBoundingClientRectFromEvent() ==
-             GetWindowControlOverlayBoundingClientRect();
+      const gfx::Rect event_bounds =
+          GetWindowControlOverlayBoundingClientRectFromEvent(web_contents);
+      const gfx::Rect dom_bounds =
+          GetWindowControlOverlayBoundingClientRect(web_contents);
+      return event_bounds == dom_bounds && dom_bounds != initial_js_bounds;
     })) << "Event bounds: "
-        << GetWindowControlOverlayBoundingClientRectFromEvent().ToString()
+        << GetWindowControlOverlayBoundingClientRectFromEvent(web_contents)
+               .ToString()
         << ", DOM bounds: "
-        << GetWindowControlOverlayBoundingClientRect().ToString();
+        << GetWindowControlOverlayBoundingClientRect(web_contents).ToString();
   }
 
-  gfx::Rect GetWindowControlOverlayBoundingClientRectFromEvent() {
+  gfx::Rect GetWindowControlOverlayBoundingClientRectFromEvent(
+      content::WebContents* web_contents = nullptr) {
+    if (!web_contents) {
+      web_contents = helper()->browser_view()->GetActiveWebContents();
+    }
     const std::string kRectValueList =
         "var rect = window.overlay_rect_from_event ? "
         "[window.overlay_rect_from_event.x, "
@@ -1394,9 +1423,7 @@ class WebAppFrameToolbarBrowserTest_WindowControlsOverlay
         "window.overlay_rect_from_event.width, "
         "window.overlay_rect_from_event.height] : [0, 0, 0, 0];";
 
-    return helper()->GetXYWidthHeightRect(
-        helper()->browser_view()->GetActiveWebContents(), kRectValueList,
-        "rect");
+    return helper()->GetXYWidthHeightRect(web_contents, kRectValueList, "rect");
   }
 
  protected:
@@ -2692,8 +2719,10 @@ class WebAppFrameToolbarBrowserTest_AdditionalWindowingControls
               "window.maximize() succeeded.");
     EXPECT_TRUE(helper()->browser_view()->IsMaximized());
     EXPECT_FALSE(helper()->browser_view()->IsFullscreen());
-    EXPECT_TRUE(helper()->browser_view()->browser()->SupportsWindowFeature(
-        Browser::WindowFeature::kFeatureTitleBar));
+    EXPECT_TRUE(
+        WindowFeatureController::From(helper()->browser_view()->browser())
+            ->SupportsWindowFeature(
+                WindowFeatureController::WindowFeature::kFeatureTitleBar));
   }
 
   void MinimizeAndVerify(content::WebContents* web_contents) {
@@ -2707,12 +2736,16 @@ class WebAppFrameToolbarBrowserTest_AdditionalWindowingControls
               "document.documentElement.requestFullscreen() succeeded.");
     EXPECT_TRUE(helper()->browser_view()->IsFullscreen());
 #if !BUILDFLAG(IS_MAC)
-    EXPECT_FALSE(helper()->browser_view()->browser()->SupportsWindowFeature(
-        Browser::WindowFeature::kFeatureTitleBar));
+    EXPECT_FALSE(
+        WindowFeatureController::From(helper()->browser_view()->browser())
+            ->SupportsWindowFeature(
+                WindowFeatureController::WindowFeature::kFeatureTitleBar));
 #else
     // On Mac the top bar is displayed for web apps even in fullscreen mode
-    EXPECT_TRUE(helper()->browser_view()->browser()->SupportsWindowFeature(
-        Browser::WindowFeature::kFeatureTitleBar));
+    EXPECT_TRUE(
+        WindowFeatureController::From(helper()->browser_view()->browser())
+            ->SupportsWindowFeature(
+                WindowFeatureController::WindowFeature::kFeatureTitleBar));
 #endif
   }
 
@@ -2721,8 +2754,10 @@ class WebAppFrameToolbarBrowserTest_AdditionalWindowingControls
     EXPECT_EQ(
         EvalDisplayStateChange(web_contents, "restore", expected_js_state),
         "window.restore() succeeded.");
-    EXPECT_TRUE(helper()->browser_view()->browser()->SupportsWindowFeature(
-        Browser::WindowFeature::kFeatureTitleBar));
+    EXPECT_TRUE(
+        WindowFeatureController::From(helper()->browser_view()->browser())
+            ->SupportsWindowFeature(
+                WindowFeatureController::WindowFeature::kFeatureTitleBar));
     EXPECT_FALSE(helper()->browser_view()->IsFullscreen());
     EXPECT_EQ(helper()->browser_view()->IsMaximized(),
               expected_js_state == "maximized");

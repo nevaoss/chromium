@@ -55,10 +55,12 @@ import org.chromium.components.content_settings.CookieControlsObserver;
 import org.chromium.components.embedder_support.util.UrlUtilities;
 import org.chromium.components.metrics.OmniboxEventProtos.OmniboxEventProto.PageClassification;
 import org.chromium.components.omnibox.AutocompleteInput;
+import org.chromium.components.omnibox.AutocompleteInput.AutocompleteState;
 import org.chromium.components.omnibox.AutocompleteInput.SiteSearchData;
 import org.chromium.components.omnibox.AutocompleteRequestType;
 import org.chromium.components.omnibox.OmniboxCapabilities;
 import org.chromium.components.omnibox.OmniboxFeatures;
+import org.chromium.components.omnibox.PageClassificationUtils;
 import org.chromium.components.omnibox.ToolModeUtils;
 import org.chromium.components.permissions.PermissionDialogController;
 import org.chromium.components.search_engines.TemplateUrl;
@@ -402,10 +404,7 @@ public class StatusMediator
             mInputSessionState
                     .getAutocompleteInput()
                     .getPreviewMatchUrlSupplier()
-                    .addSyncObserver(mOnPreviewMatchUrlChanged);
-
-            onPreviewMatchUrlChanged(
-                    mInputSessionState.getAutocompleteInput().getPreviewMatchUrl());
+                    .addSyncObserverAndCall(mOnPreviewMatchUrlChanged);
         }
     }
 
@@ -420,7 +419,11 @@ public class StatusMediator
 
         mModel.set(
                 StatusProperties.USE_WIDE_STATUS_ICON,
-                mUrlHasFocus || isRegularNtpUrl || isHubSearch());
+                mUrlHasFocus
+                        || isRegularNtpUrl
+                        || PageClassificationUtils.isHubOrTabSearch(
+                                mLocationBarDataProvider.getPageClassification(
+                                        /* prefetch= */ false)));
     }
 
     public void setUseSmallWidget(boolean useSmallWidget) {
@@ -584,8 +587,19 @@ public class StatusMediator
                 mInputSessionState == null
                         ? AutocompleteRequestType.SEARCH
                         : mInputSessionState.getAutocompleteInput().getRequestType();
+        @AutocompleteState
+        int autocompleteState =
+                mInputSessionState == null
+                        ? AutocompleteState.DISABLED
+                        : mInputSessionState.getAutocompleteInput().getAutocompleteState();
+        // TODO(b/542569045): Replace AutocompleteState check with DisplayState !=
+        // DisplayState.WEBSITE when DisplayState lands.
+        boolean isAutocompleteActive =
+                autocompleteState == AutocompleteState.ENABLED
+                        || autocompleteState == AutocompleteState.STANDBY;
 
-        if (isHubSearch()) {
+        if (PageClassificationUtils.isHubOrTabSearch(
+                mLocationBarDataProvider.getPageClassification(/* prefetch= */ false))) {
             mPermissionStatusHandler.reset(/* shouldDismissNativePrompt= */ false);
             updateStatusViewVisibility();
             boolean hasIconOverride = mStatusIconOverrideResId != Resources.ID_NULL;
@@ -598,11 +612,13 @@ public class StatusMediator
             applyStatusIconAndTooltipProperties(
                     mModel.get(StatusProperties.VERBOSE_STATUS_TEXT_VISIBLE));
             clickListener = hasIconOverride ? null : mOnStatusIconNavigateBackButtonPress;
-        } else if (previewMatchFaviconsEnabled && mShowPreviewMatchGlobe) {
+        } else if (isAutocompleteActive && previewMatchFaviconsEnabled && mShowPreviewMatchGlobe) {
             mPermissionStatusHandler.reset(/* shouldDismissNativePrompt= */ false);
             iconRes = R.drawable.ic_globe_24dp;
             tintRes = mNavigationIconTintRes;
-        } else if (previewMatchFaviconsEnabled && mPreviewMatchFavicon != null) {
+        } else if (isAutocompleteActive
+                && previewMatchFaviconsEnabled
+                && mPreviewMatchFavicon != null) {
             mPermissionStatusHandler.reset(/* shouldDismissNativePrompt= */ false);
             customDrawable = mPreviewMatchFavicon;
         } else if (OmniboxCapabilities.isDesktopPlatform()
@@ -715,7 +731,9 @@ public class StatusMediator
      * independent from alpha/visibility.
      */
     boolean shouldDisplaySearchEngineIcon() {
-        if (isHubSearch() || isContextualTasksFusebox()) {
+        if (PageClassificationUtils.isHubOrTabSearch(
+                        mLocationBarDataProvider.getPageClassification(/* prefetch= */ false))
+                || isContextualTasksFusebox()) {
             return false;
         }
 
@@ -797,7 +815,9 @@ public class StatusMediator
 
     /** Return the resource id for the accessibility description or 0 if none apply. */
     private int getAccessibilityDescriptionRes() {
-        if (isHubSearch() && mStatusIconOverrideResId == Resources.ID_NULL) {
+        if (PageClassificationUtils.isHubOrTabSearch(
+                        mLocationBarDataProvider.getPageClassification(/* prefetch= */ false))
+                && mStatusIconOverrideResId == Resources.ID_NULL) {
             return R.string.hub_search_status_view_back_button_icon_description;
         }
 
@@ -829,7 +849,8 @@ public class StatusMediator
         }
     }
 
-    private void onFaviconFetched(GURL url, @Nullable Drawable favicon) {
+    @VisibleForTesting
+    /* package */ void onFaviconFetched(GURL url, @Nullable Drawable favicon) {
         // If we're not the most recent fetch request, give up.
         if (!url.equals(mPreviewMatchFetchedUrl)) return;
 
@@ -983,7 +1004,8 @@ public class StatusMediator
     }
 
     private void applyStatusIconAndTooltipProperties(boolean verboseStatusTextVisible) {
-        if (!isHubSearch()) {
+        if (!PageClassificationUtils.isHubOrTabSearch(
+                mLocationBarDataProvider.getPageClassification(/* prefetch= */ false))) {
             Drawable background;
             if (isPageInfoMovedAndConnectionNotSecure()) {
                 background = null;
@@ -1044,7 +1066,9 @@ public class StatusMediator
 
         setShowStatusView(
                 mUrlHasFocus
-                        || isHubSearch()
+                        || PageClassificationUtils.isHubOrTabSearch(
+                                mLocationBarDataProvider.getPageClassification(
+                                        /* prefetch= */ false))
                         || mShowStatusIconForSecureOrigins
                         || mIsSecurityViewShown
                         || hasStatusIconResource()
@@ -1064,11 +1088,6 @@ public class StatusMediator
         if (UrlUtilities.isNtpUrl(mLocationBarDataProvider.getCurrentGurl())) return;
 
         openPageInfo(mLocationBarDataProvider.getTab());
-    }
-
-    private boolean isHubSearch() {
-        return mLocationBarDataProvider.getPageClassification(/* prefetch= */ false)
-                == PageClassification.ANDROID_HUB_VALUE;
     }
 
     private boolean isContextualTasksFusebox() {

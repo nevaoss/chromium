@@ -48,6 +48,10 @@ constexpr int maxResponseSizeInKiB = 1024;
 ParseStatus GetResponseError(base::optional_ref<std::string> response_body,
                              int response_code,
                              const std::string& mime_type) {
+  if (response_code == net::ERR_NETWORK_ACCESS_REVOKED) {
+    return ParseStatus::kBlockedByConnectionAllowlist;
+  }
+
   if (response_code == net::HTTP_NOT_FOUND) {
     return ParseStatus::kHttpNotFoundError;
   }
@@ -175,7 +179,7 @@ void NetworkRequestManager::DownloadUrl(
     DownloadCallback callback,
     size_t max_download_size,
     bool allow_http_error_results) {
-  const RenderFrameHost* render_frame_host =
+  RenderFrameHost* render_frame_host =
       initiator_document_.AsRenderFrameHostIfValid();
 
   if (!render_frame_host) {

@@ -79,6 +79,7 @@
 #include "components/strings/grit/components_strings.h"
 #include "components/tabs/public/tab_interface.h"
 #include "components/url_deduplication/url_deduplication_helper.h"
+#include "components/zoom/zoom_controller.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/invalidate_type.h"
 #include "content/public/browser/page_navigator.h"
@@ -112,7 +113,6 @@
 #include "chrome/grit/webui_toolbar_shared_resources.h"
 #include "chrome/grit/webui_toolbar_shared_resources_map.h"
 #include "components/omnibox/browser/searchbox.mojom-forward.h"
-#include "components/zoom/zoom_controller.h"  // nogncheck
 #include "ui/base/resource/resource_bundle.h"
 #include "ui/base/resource/resource_scale_factor.h"
 #endif
@@ -360,13 +360,10 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
                    profile, chrome::FaviconUrlFormat::kFavicon2));
 #endif
 
-#if !BUILDFLAG(IS_ANDROID)
   host_zoom_map_subscription_ =
       content::HostZoomMap::GetDefaultForBrowserContext(profile)
           ->AddZoomLevelChangedCallback(base::BindRepeating(
               &ContextualTasksUI::OnZoomLevelChanged, base::Unretained(this)));
-#endif
-
   content::WebUIDataSource* source = RegisterWebUIDataSource(profile);
 
   AddInitialTaskStateToDataSource(source,
@@ -1183,10 +1180,10 @@ void ContextualTasksUI::MoveTaskUiToNewTab() {
                                   GetInnerFrameUrl());
 }
 
-void ContextualTasksUI::PostMessageToWebview(
+void ContextualTasksUI::PostAimMessage(
     const lens::ClientToAimMessage& message) {
   CHECK(page_handler_);
-  page_handler_->PostMessageToWebview(message);
+  page_handler_->PostAimMessage(message);
 }
 
 void ContextualTasksUI::ShowOauthErrorDialog() {
@@ -1237,6 +1234,16 @@ void ContextualTasksUI::OnContextRetrievedForActiveTab(
   // nothing.
   if (!tab || tab->GetHandle().raw_value() != tab_id ||
       tab->GetContents()->GetLastCommittedURL() != last_committed_url) {
+    return;
+  }
+
+  // If not eligible for suggested tab context, clear any active suggestion and
+  // exit early.
+  if (!CanUpdateSuggestedTabContext(tab, last_committed_url)) {
+    auto_suggestion_manager_->SetCurrentSuggestion(nullptr);
+    if (composebox_handler_) {
+      composebox_handler_->UpdateSuggestedTabContext(nullptr);
+    }
     return;
   }
 
@@ -1330,11 +1337,9 @@ void ContextualTasksUI::OnSidePanelStateChanged() {
         lens::CobrowsingDisplayModeParams::COBROWSING_SIDEPANEL);
   }
 
-  PostMessageToWebview(message);
+  PostAimMessage(message);
 
-#if !BUILDFLAG(IS_ANDROID)
   UpdateZoom();
-#endif
 }
 
 void ContextualTasksUI::OnLensOverlayStateChanged(
@@ -1526,10 +1531,8 @@ void ContextualTasksUI::PushTaskDetailsToPage(std::optional<base::Uuid> id,
     page_->SetTaskDetails(id.value_or(base::Uuid()), url,
                           replace_navigation_entry);
   }
-#if !BUILDFLAG(IS_ANDROID)
   tracked_zoom_host_ = url.host();
   UpdateZoom();
-#endif
 }
 
 bool ContextualTasksUI::CanExpandToFullTab() const {
@@ -1700,11 +1703,19 @@ void ContextualTasksUI::FrameNavObserver::DidFinishNavigation(
     OMNIBOX_LOG("nav_trace")
         << "ContextualTasks navigation trace: "
            "FrameNavObserver::DidFinishNavigation zero state logic";
-    // Create a new task for zero state, since there's no thread to associate
-    // this with yet.
-    contextual_tasks::ContextualTask task =
-        contextual_tasks_service_->CreateTask();
-    base::Uuid new_task_id = task.GetTaskId();
+    base::Uuid new_task_id;
+    if (old_task_id && old_task_id->is_valid() &&
+        !task_info_delegate_->GetThreadId().has_value()) {
+      // Reuse the existing task ID if it is valid and has no thread ID yet
+      // (it represents an unassociated zero-state task).
+      new_task_id = *old_task_id;
+    } else {
+      // Create a new task for zero state, since there's no thread to associate
+      // this with yet (or the existing task already has a thread ID).
+      contextual_tasks::ContextualTask task =
+          contextual_tasks_service_->CreateTask();
+      new_task_id = task.GetTaskId();
+    }
     task_info_delegate_->SetTaskId(new_task_id);
     task_info_delegate_->SetThreadId(std::nullopt);
     // Replace state if last committed URL was empty (i.e. the page is
@@ -1715,12 +1726,16 @@ void ContextualTasksUI::FrameNavObserver::DidFinishNavigation(
             !has_zero_state_changed);
     task_info_delegate_->SetThreadTitle(std::nullopt);
 
-    task_info_delegate_->PrepareForTaskChange();
-    ui_service_->OnTaskChanged(task_info_delegate_->GetBrowser(),
-                               task_info_delegate_->GetWebUIWebContents(),
-                               old_task_id, new_task_id,
-                               task_info_delegate_->IsShownInTab());
-    task_info_delegate_->OnTaskChanged();
+    // If the task ID changed, notify the UI service and delegate of the task
+    // update.
+    if (old_task_id != new_task_id) {
+      task_info_delegate_->PrepareForTaskChange();
+      ui_service_->OnTaskChanged(task_info_delegate_->GetBrowser(),
+                                 task_info_delegate_->GetWebUIWebContents(),
+                                 old_task_id, new_task_id,
+                                 task_info_delegate_->IsShownInTab());
+      task_info_delegate_->OnTaskChanged();
+    }
     return;
   }
 
@@ -1770,7 +1785,8 @@ void ContextualTasksUI::FrameNavObserver::DidFinishNavigation(
     // threads while we were in a bad state,  so we must create a NEW task to
     // avoid leaking context.
     bool pending_task_title_mismatch =
-        is_pending_task && current_title.has_value() && !query_value.empty() &&
+        is_pending_task && current_title.has_value() &&
+        !current_title.value().empty() && !query_value.empty() &&
         current_title.value() != query_value;
 
     // We have no thread ID and no pending task, so this is a fresh start.
@@ -1971,6 +1987,7 @@ ContextualTasksUI::GetFaviconResourceBytes(
   return ui::ResourceBundle::GetSharedInstance().LoadDataResourceBytesForScale(
       kId, scale_factor);
 }
+#endif  // !BUILDFLAG(IS_ANDROID)
 
 void ContextualTasksUI::SyncZoom(bool site_to_webui) {
   if (tracked_zoom_host_.empty()) {
@@ -2010,11 +2027,36 @@ void ContextualTasksUI::UpdateZoom() {
     zoom_controller = zoom::ZoomController::FromWebContents(web_contents);
   }
 
+  // Set the zoom mode of the outer WebContents and the
+  // inner WebContents. Inner WebContents needs to update first to prevent the
+  // change of the outer WebContents affecting the inner one. Specifically
+  // when the outer WebContents zoom mode is set to ZOOM_MODE_DISABLED, it will
+  // reset the inner WebContents host zoom level to 0. If inner WebContents'
+  // zoom mode is not yet set to ZOOM_MODE_DISABLED, it will incorrectly affect
+  // other tab's inner WebContents zoom level.
+  const zoom::ZoomController::ZoomMode zoom_mode =
+      IsShownInTab() ? zoom::ZoomController::ZOOM_MODE_DEFAULT
+                     : zoom::ZoomController::ZOOM_MODE_DISABLED;
+
+  if (content::WebContents* inner_web_contents = GetInnerWebContents()) {
+    auto* inner_zoom_controller =
+        zoom::ZoomController::FromWebContents(inner_web_contents);
+    if (!inner_zoom_controller) {
+      zoom::ZoomController::CreateForWebContents(inner_web_contents);
+      inner_zoom_controller =
+          zoom::ZoomController::FromWebContents(inner_web_contents);
+    }
+    if (inner_zoom_controller) {
+      inner_zoom_controller->SetZoomMode(zoom_mode);
+    }
+  }
+
+  if (zoom_controller) {
+    zoom_controller->SetZoomMode(zoom_mode);
+  }
+
   if (IsShownInTab()) {
-    zoom_controller->SetZoomMode(zoom::ZoomController::ZOOM_MODE_DEFAULT);
     SyncZoom(/*site_to_webui=*/true);
-  } else {
-    zoom_controller->SetZoomMode(zoom::ZoomController::ZOOM_MODE_DISABLED);
   }
 }
 
@@ -2040,7 +2082,5 @@ void ContextualTasksUI::OnZoomLevelChanged(
     SyncZoom(/*site_to_webui=*/false);
   }
 }
-
-#endif  // !BUILDFLAG(IS_ANDROID)
 
 WEB_UI_CONTROLLER_TYPE_IMPL(ContextualTasksUI)

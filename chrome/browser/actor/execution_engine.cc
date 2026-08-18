@@ -121,6 +121,8 @@ namespace {
 
 constexpr char kSafetyListPredicateName[] = "actor_safety_list_check";
 constexpr char kSensitiveUrlPredicateName[] = "actor_sensitive_url_check";
+constexpr char kSensitiveUrlPromptsDisabledPredicateName[] =
+    "actor_sensitive_url_prompts_disabled_check";
 constexpr char kLookalikeUrlPredicateName[] = "actor_lookalike_url_check";
 constexpr char kActionAllowlistPredicateName[] = "actor_action_allowlist_check";
 constexpr char kSafeBrowsingPredicateName[] =
@@ -135,15 +137,14 @@ constexpr char kTabSafeBrowsingObserverPredicateName[] =
 constexpr GateableEventSet kRequestsAndPageActions = {
     GateableEvent::kNavigationRequest, GateableEvent::kPageAction};
 
-
-struct ActorGatingContext : public origin_gating::GatingDecisionContext {
-  ActorGatingContext(ukm::SourceId ukm_id,
-                     bool skip,
-                     base::ScopedUmaHistogramTimer gating_timer)
+struct NavigationResponseContext : public origin_gating::GatingDecisionContext {
+  NavigationResponseContext(ukm::SourceId ukm_id,
+                            bool skip,
+                            base::ScopedUmaHistogramTimer gating_timer)
       : ukm_source_id(ukm_id),
         skip_prompt(skip),
         timer(std::move(gating_timer)) {}
-  ~ActorGatingContext() override = default;
+  ~NavigationResponseContext() override = default;
 
   ukm::SourceId ukm_source_id;
   bool skip_prompt;
@@ -215,24 +216,32 @@ CustomPredicate CreateSafetyListPredicate() {
       kSafetyListPredicateName);
 }
 
+void IsNonSensitiveUrl(Profile* profile,
+                       const origin_gating::GatingDecisionContext* context,
+                       const GURL& source,
+                       const GURL& destination,
+                       base::OnceCallback<void(bool)> callback) {
+  base::expected<void, base::OnceCallback<void(bool)>> sensitive_check_result =
+      MaybeCheckOptimizationGuideForSensitiveUrl(destination, profile,
+                                                 std::move(callback));
+  if (!sensitive_check_result.has_value()) {
+    // Optimization guide is unavailable; assume the URL is non-sensitive.
+    std::move(sensitive_check_result).error().Run(/*not_sensitive=*/true);
+  }
+}
+
 void BlockSensitiveUrl(
     Profile* profile,
     const origin_gating::GatingDecisionContext* context,
     const GURL& source,
     const GURL& destination,
     base::OnceCallback<void(origin_gating::Decision)> callback) {
-  base::expected<void, base::OnceCallback<void(bool)>> sensitive_check_result =
-      MaybeCheckOptimizationGuideForSensitiveUrl(
-          destination, profile,
-          base::BindOnce([](bool not_sensitive) {
-            return not_sensitive ? origin_gating::Decision::kNoDecision
+  IsNonSensitiveUrl(profile, context, source, destination,
+                    base::BindOnce([](bool not_sensitive) {
+                      return not_sensitive
+                                 ? origin_gating::Decision::kNoDecision
                                  : origin_gating::Decision::kBlocked;
-          }).Then(std::move(callback)));
-  if (!sensitive_check_result.has_value()) {
-    // Optimization guide is unavailable; fail open by deferring to the
-    // no-verdict handler.
-    std::move(sensitive_check_result).error().Run(/*not_sensitive=*/true);
-  }
+                    }).Then(std::move(callback)));
 }
 
 void BlockSensitiveUrlWhenNavigationGatingDisabled(
@@ -242,6 +251,20 @@ void BlockSensitiveUrlWhenNavigationGatingDisabled(
     const GURL& destination,
     base::OnceCallback<void(origin_gating::Decision)> callback) {
   if (IsNavigationGatingEnabled()) {
+    std::move(callback).Run(origin_gating::Decision::kNoDecision);
+    return;
+  }
+
+  BlockSensitiveUrl(profile, context, source, destination, std::move(callback));
+}
+
+void BlockSensitiveUrlWhenPromptsDisabled(
+    Profile* profile,
+    const origin_gating::GatingDecisionContext* context,
+    const GURL& source,
+    const GURL& destination,
+    base::OnceCallback<void(origin_gating::Decision)> callback) {
+  if (kGlicPromptUserForSensitiveNavigations.Get()) {
     std::move(callback).Run(origin_gating::Decision::kNoDecision);
     return;
   }
@@ -429,6 +452,9 @@ ExecutionEngine::GatingDecision MapGatingDecisionToEngineDecision(
                    ? ExecutionEngine::GatingDecision::kAllowByStaticList
                    : ExecutionEngine::GatingDecision::kBlockByStaticList;
       }
+      if (decision.attribution == kSensitiveUrlPromptsDisabledPredicateName) {
+        return ExecutionEngine::GatingDecision::kNeedsAsyncCheck;
+      }
       NOTREACHED() << "Unrecognized custom predicate attribution: "
                    << decision.attribution.CustomPredicateName();
   }
@@ -454,6 +480,11 @@ MayActOnUrlBlockReason MapGatingDecisionToBlockReason(
                      : MayActOnUrlBlockReason::kExternalProtocol;
         case DecisionSource::kActorContainerConfig:
           return MayActOnUrlBlockReason::kBlockedByContainerConfig;
+        case DecisionSource::kNoVerdict:
+          // `OnNoVerdict` allows navigation requests to proceed, and only
+          // blocks actions if the URL was sensitive and the user refused the
+          // prompt.
+          return MayActOnUrlBlockReason::kOptimizationGuideBlock;
         default:
           NOTREACHED() << "Unexpected decision source: "
                        << static_cast<int>(decision.attribution.Source());
@@ -463,6 +494,9 @@ MayActOnUrlBlockReason MapGatingDecisionToBlockReason(
         return MayActOnUrlBlockReason::kBlockedByStaticList;
       }
       if (decision.attribution == kSensitiveUrlPredicateName) {
+        return MayActOnUrlBlockReason::kOptimizationGuideBlock;
+      }
+      if (decision.attribution == kSensitiveUrlPromptsDisabledPredicateName) {
         return MayActOnUrlBlockReason::kOptimizationGuideBlock;
       }
       if (decision.attribution == kLookalikeUrlPredicateName) {
@@ -641,12 +675,14 @@ ExecutionEngine::ExecutionEngine(
                            task_->GetProfile()),
                        kSensitiveUrlPredicateName),
                    {GateableEvent::kNavigationRequest}},
-                  {CustomPredicate(base::BindRepeating(&BlockSensitiveUrl,
-                                                       task_->GetProfile()),
-                                   kSensitiveUrlPredicateName),
-                   {GateableEvent::kPageAction}},
                   {DecisionSource::kCacheWithoutUserConfirmation,
                    {GateableEvent::kNavigationResponse}},
+                  {CustomPredicate(base::BindRepeating(
+                                       &BlockSensitiveUrlWhenPromptsDisabled,
+                                       task_->GetProfile()),
+                                   kSensitiveUrlPromptsDisabledPredicateName),
+                   {GateableEvent::kNavigationResponse,
+                    GateableEvent::kPageAction}},
               },
               kGlicNavigationGatingUseSiteNotOrigin.Get())),
       dark_launch_origin_gating_cache_(
@@ -748,7 +784,7 @@ ExecutionEngine::ShouldDeferNavigation(
 
   const url::Origin source_origin = OriginOrPrecursorIfOpaque(
       GetPrimaryMainFrame(navigation_handle)->GetLastCommittedOrigin());
-  auto context = std::make_unique<ActorGatingContext>(
+  auto context = std::make_unique<NavigationResponseContext>(
       GetPrimaryMainFrame(navigation_handle)->GetPageUkmSourceId(),
       navigation_handle.IsInPrerenderedMainFrame(), std::move(timer));
   auto event = GateableEvent::kNavigationResponse;
@@ -772,7 +808,8 @@ void ExecutionEngine::OnComputedGatingDecision(
     std::unique_ptr<origin_gating::GatingDecisionContext> context,
     origin_gating::GatingDecision decision) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  auto* actor_context = static_cast<ActorGatingContext*>(context.get());
+  auto* navigation_response_context =
+      static_cast<NavigationResponseContext*>(context.get());
   bool is_no_verdict = decision.attribution == DecisionSource::kNoVerdict;
   LogNavigationGating(source_origin, initiator, destination_origin,
                       /*applied_gate=*/!decision.is_allowed || is_no_verdict);
@@ -781,7 +818,8 @@ void ExecutionEngine::OnComputedGatingDecision(
 
   if (decision.attribution == DecisionSource::kCacheWithoutUserConfirmation ||
       decision.attribution == DecisionSource::kCacheWithUserConfirmation) {
-    ukm::builders::Actor_OriginGating builder(actor_context->ukm_source_id);
+    ukm::builders::Actor_OriginGating builder(
+        navigation_response_context->ukm_source_id);
     builder
         .SetServerConfirmationResult(static_cast<int64_t>(
             ExecutionEngine::ActorServerConfirmationResult::kNotRequired))
@@ -831,22 +869,16 @@ void ExecutionEngine::DoesOriginRequireUserConfirmation(
     const GURL& source,
     const GURL& destination,
     DoesOriginRequireUserConfirmationCallback callback) const {
-  // The navigation-request and page-action paths never prompt the user.
-  if (event == GateableEvent::kNavigationRequest ||
-      event == GateableEvent::kPageAction) {
+  // Navigation requests never prompt the user.
+  if (event == GateableEvent::kNavigationRequest) {
     std::move(callback).Run(/*requires_user_confirmation=*/false);
     return;
   }
 
-  base::expected<void, base::OnceCallback<void(bool)>> sensitive_check_result =
-      MaybeCheckOptimizationGuideForSensitiveUrl(
-          destination, task_->GetProfile(),
-          base::BindOnce([](bool not_sensitive) {
-            return !not_sensitive;
-          }).Then(std::move(callback)));
-  if (!sensitive_check_result.has_value()) {
-    std::move(sensitive_check_result).error().Run(/*not_sensitive=*/true);
-  }
+  IsNonSensitiveUrl(task_->GetProfile(), context, source, destination,
+                    base::BindOnce([](bool not_sensitive) {
+                      return !not_sensitive;
+                    }).Then(std::move(callback)));
 }
 
 void ExecutionEngine::EvaluateEnterprisePolicy(
@@ -876,37 +908,43 @@ void ExecutionEngine::OnNoVerdict(
     base::OnceCallback<void(NoVerdictResult)> callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-  // Fails open for navigation requests and page actions.
-  if (event == GateableEvent::kNavigationRequest ||
-      event == GateableEvent::kPageAction) {
+  // Navigation requests fail open.
+  if (event == GateableEvent::kNavigationRequest) {
     std::move(callback).Run(
         {.is_allowed = true, .did_prompt_user = false, .bypass_cache = true});
     return;
   }
 
-  auto* actor_context = static_cast<ActorGatingContext*>(context);
+  NavigationResponseContext* navigation_response_context =
+      event == GateableEvent::kNavigationResponse
+          ? static_cast<NavigationResponseContext*>(context)
+          : nullptr;
   url::Origin destination_origin = url::Origin::Create(destination);
-  if (actor_context->skip_prompt) {
+  if (navigation_response_context && navigation_response_context->skip_prompt) {
     std::move(callback).Run({.is_allowed = false, .did_prompt_user = false});
     return;
   }
 
   if (!requires_user_confirmation) {
+    if (event == GateableEvent::kPageAction) {
+      std::move(callback).Run(
+          {.is_allowed = true, .did_prompt_user = false, .bypass_cache = true});
+      return;
+    }
+    CHECK(navigation_response_context);
     HandleNavigationToNewOrigin(
-        destination_origin, actor_context->ukm_source_id,
-        std::move(actor_context->timer), std::move(callback));
+        destination_origin, navigation_response_context->ukm_source_id,
+        std::move(navigation_response_context->timer), std::move(callback));
     return;
   }
 
-  if (!kGlicPromptUserForSensitiveNavigations.Get()) {
-    std::move(callback).Run({.is_allowed = false, .did_prompt_user = false});
-    return;
-  }
-
-  SendUserConfirmationDialogRequest(destination_origin,
-                                    /*for_sensitive_origin=*/true,
-                                    std::move(actor_context->timer),
-                                    std::move(callback));
+  SendUserConfirmationDialogRequest(
+      destination_origin,
+      /*for_sensitive_origin=*/true,
+      navigation_response_context
+          ? std::optional(std::move(navigation_response_context->timer))
+          : std::nullopt,
+      std::move(callback));
 }
 
 void ExecutionEngine::HandleNavigationToNewOrigin(
@@ -1257,53 +1295,15 @@ void ExecutionEngine::SafetyChecksForNextAction() {
                          url, task_->id(), MakeBrowserTrackUUID(task_->id()),
                          "OriginGatingDecision", {}),
                      url, event)
-          .Then(base::BindOnce(&ExecutionEngine::OnMayActOnTabDecision,
+          .Then(base::BindOnce([](MayActOnUrlBlockReason block_reason) {
+            return BlockReasonToResultCode(block_reason,
+                                           /*for_navigation=*/false);
+          }))
+          .Then(base::BindOnce(&ExecutionEngine::DidFinishAsyncSafetyChecks,
                                GetActionSequenceWeakPtr(),
                                tab->GetContents()
                                    ->GetPrimaryMainFrame()
                                    ->GetLastCommittedOrigin())));
-}
-
-void ExecutionEngine::OnMayActOnTabDecision(
-    const url::Origin& evaluated_origin,
-    MayActOnUrlBlockReason block_reason) {
-  if (block_reason == MayActOnUrlBlockReason::kOptimizationGuideBlock &&
-      IsNavigationGatingEnabled() &&
-      kGlicPromptUserForSensitiveNavigations.Get()) {
-    auto response_to_result_code = base::BindOnce(
-        [](MayActOnUrlBlockReason block_reason, bool may_continue) {
-          return may_continue
-                     ? mojom::ActionResultCode::kOk
-                     : BlockReasonToResultCode(block_reason,
-                                               /*for_navigation=*/false);
-        },
-        block_reason);
-    SendUserConfirmationDialogRequest(
-        evaluated_origin,
-        /*for_sensitive_origin=*/true,
-        /*timer=*/std::nullopt,
-        // TODO: Integrate MayActOnTab with the origin_gating_checker_ so that
-        // we don't have to intercept and cache here.
-        base::BindOnce(
-            [](base::WeakPtr<ExecutionEngine> engine, const url::Origin& origin,
-               NoVerdictResult result) {
-              if (engine && result.is_allowed) {
-                engine->origin_gating_checker_.AllowNavigationTo(
-                    OriginOrPrecursorIfOpaque(origin), result.did_prompt_user);
-              }
-              return result.is_allowed;
-            },
-            GetActionSequenceWeakPtr(), evaluated_origin)
-            .Then(std::move(response_to_result_code)
-                      .Then(base::BindOnce(
-                          &ExecutionEngine::DidFinishAsyncSafetyChecks,
-                          GetActionSequenceWeakPtr(), evaluated_origin))));
-    return;
-  }
-
-  DidFinishAsyncSafetyChecks(
-      evaluated_origin,
-      BlockReasonToResultCode(block_reason, /*for_navigation=*/false));
 }
 
 void ExecutionEngine::DidFinishAsyncSafetyChecks(

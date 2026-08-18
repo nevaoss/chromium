@@ -50,6 +50,7 @@ public class LocationBarLayout extends ConstraintLayout {
     protected ImageButton mZoomButton;
     protected ImageButton mInstallButton;
     protected final View mNavigateButton;
+    protected final View mActivationChip;
     protected UrlBar mUrlBar;
     protected final View mLocationBarStatusView;
 
@@ -101,6 +102,7 @@ public class LocationBarLayout extends ConstraintLayout {
         mZoomButton = findViewById(R.id.zoom_button);
         mInstallButton = findViewById(R.id.install_button);
         mNavigateButton = findViewById(R.id.navigate_button);
+        mActivationChip = findViewById(R.id.fusebox_activation_chip);
         mMarginSpacer = findViewById(R.id.margin_spacer);
 
         Resources res = getResources();
@@ -125,7 +127,6 @@ public class LocationBarLayout extends ConstraintLayout {
     protected void onFinishInflate() {
         super.onFinishInflate();
 
-        mUrlBar.setAccessibilityTraversalBefore(R.id.omnibox_suggestions_dropdown);
         setLayoutTransition(null);
 
         StatusView statusView = findViewById(R.id.location_bar_status);
@@ -612,6 +613,10 @@ public class LocationBarLayout extends ConstraintLayout {
 
     View getNavigateButton() {
         return mNavigateButton;
+    }
+
+    View getActivationChip() {
+        return mActivationChip;
     }
 
     View getDeleteButton() {

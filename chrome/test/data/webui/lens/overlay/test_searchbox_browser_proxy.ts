@@ -34,10 +34,10 @@ class FakePageHandler extends TestBrowserProxy implements PageHandlerInterface {
       'deleteContext',
       'deleteTabContext',
       'executeAction',
+      'getCyclingPlaceholderConfig',
       'getDriveDisclaimerStatus',
       'getInputState',
       'getPageClassification',
-      'getPlaceholderConfig',
       'getRecentTabs',
       'getSmartTabSharingActive',
       'getTabPreview',
@@ -50,6 +50,7 @@ class FakePageHandler extends TestBrowserProxy implements PageHandlerInterface {
       'openAutocompleteMatch',
       'openLensSearch',
       'openPopupSelection',
+      'openProfilePicker',
       'queryAutocomplete',
       'recordModelSelectionAction',
       'recordToolSelectionAction',
@@ -164,8 +165,8 @@ class FakePageHandler extends TestBrowserProxy implements PageHandlerInterface {
     this.methodCalled('toggleSuggestionGroupIdVisibility', {suggestionGroupId});
   }
 
-  getPlaceholderConfig(): Promise<{config: PlaceholderConfig}> {
-    this.methodCalled('getPlaceholderConfig');
+  getCyclingPlaceholderConfig(): Promise<{config: PlaceholderConfig}> {
+    this.methodCalled('getCyclingPlaceholderConfig');
     return Promise.resolve({
       config: {
         texts: [],
@@ -240,6 +241,10 @@ class FakePageHandler extends TestBrowserProxy implements PageHandlerInterface {
 
   openLensSearch() {
     this.methodCalled('openLensSearch');
+  }
+
+  openProfilePicker() {
+    this.methodCalled('openProfilePicker');
   }
 
   setActiveToolMode(tool: ToolMode) {

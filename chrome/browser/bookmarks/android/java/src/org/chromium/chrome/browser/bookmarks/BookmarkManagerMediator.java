@@ -11,6 +11,7 @@ import static org.chromium.components.browser_ui.widget.ListItemBuilder.buildSim
 
 import android.app.Activity;
 import android.content.Context;
+import android.os.Bundle;
 import android.text.TextUtils;
 
 import androidx.annotation.DrawableRes;
@@ -30,6 +31,7 @@ import org.chromium.base.task.TaskTraits;
 import org.chromium.build.annotations.Initializer;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
+import org.chromium.chrome.browser.IntentHandler;
 import org.chromium.chrome.browser.bookmarks.BookmarkListEntry.ViewType;
 import org.chromium.chrome.browser.bookmarks.BookmarkMetrics.BookmarkManagerFilter;
 import org.chromium.chrome.browser.bookmarks.BookmarkUiPrefs.BookmarkRowDisplayPref;
@@ -765,6 +767,14 @@ class BookmarkManagerMediator
         RecordUserAction.record("MobileBookmarkManagerOpenFolder");
         setState(BookmarkUiState.createFolderState(folder, mBookmarkModel));
         mRecyclerView.scrollToPosition(0);
+    }
+
+    @Override
+    public void replaceFolder(BookmarkId folder) {
+        if (!mStateStack.isEmpty()) {
+            mStateStack.removeLast();
+        }
+        setState(BookmarkUiState.createFolderState(folder, mBookmarkModel));
     }
 
     @Override
@@ -1582,15 +1592,26 @@ class BookmarkManagerMediator
         ListMenu.Delegate delegate =
                 (item, view) -> {
                     int textId = item.get(ListMenuItemProperties.TITLE_ID);
+                    Bundle extras = new Bundle();
+                    extras.putBoolean(IntentHandler.EXTRA_DISABLE_INITIALIZE_RENDERER, true);
+
                     if (textId == R.string.contextmenu_open_in_new_tab) {
                         mBookmarkOpener.openBookmarksInNewTabs(
-                                Collections.singletonList(bookmarkId), mProfile.isOffTheRecord());
+                                Collections.singletonList(bookmarkId),
+                                mProfile.isOffTheRecord(),
+                                /* tabLaunchType= */ null,
+                                extras);
                     } else if (textId == R.string.contextmenu_open_in_incognito_tab) {
                         mBookmarkOpener.openBookmarksInNewTabs(
-                                Collections.singletonList(bookmarkId), /* incognito= */ true);
+                                Collections.singletonList(bookmarkId),
+                                /* incognito= */ true,
+                                /* tabLaunchType= */ null,
+                                extras);
                     } else if (textId == R.string.contextmenu_open_in_new_window) {
                         mBookmarkOpener.openBookmarksInNewWindow(
-                                Collections.singletonList(bookmarkId), mProfile.isOffTheRecord());
+                                Collections.singletonList(bookmarkId),
+                                mProfile.isOffTheRecord(),
+                                extras);
                     } else if (textId == R.string.bookmark_item_select) {
                         mSelectionDelegate.toggleSelectionForItem(bookmarkId);
                         RecordUserAction.record("Android.BookmarkPage.SelectFromMenu");
@@ -1635,7 +1656,7 @@ class BookmarkManagerMediator
                         RecordUserAction.record("MobileBookmarkManagerMoveToFolder");
                     } else if (textId == R.string.bookmark_item_delete) {
                         if (mBookmarkModel != null) {
-                            mBookmarkModel.deleteBookmarks(bookmarkId);
+                            mBookmarkModel.deleteBookmarks(mBookmarkUndoController, bookmarkId);
                             RecordUserAction.record("Android.BookmarkPage.RemoveItem");
                             if (bookmarkId.getType() == BookmarkType.READING_LIST) {
                                 RecordUserAction.record(
@@ -1830,7 +1851,8 @@ class BookmarkManagerMediator
         return mStateStack.peekLast();
     }
 
-    private @Nullable BookmarkId getCurrentFolderId() {
+    @Override
+    public @Nullable BookmarkId getCurrentFolderId() {
         BookmarkUiState state = mStateStack.peekLast();
         return state == null ? null : state.mFolder;
     }
@@ -1844,10 +1866,10 @@ class BookmarkManagerMediator
         if (startIndex < 0 || endIndex < 0) return;
 
         for (int i = startIndex; i <= endIndex; i++) {
-            // Section headers may be embedded in the list for reading list.
+            // Section headers and other promo/divider rows may be embedded in the list.
             // TODO(crbug.com/40278854): Consider using RecyclerView decorations for section
             // headers.
-            if (mModelList.get(i).type == ViewType.SECTION_HEADER) continue;
+            if (!isBookmarkRowType(mModelList.get(i).type)) continue;
             PropertyModel model = mModelList.get(i).model;
 
             BookmarkId id = model.get(BookmarkManagerProperties.BOOKMARK_ID);

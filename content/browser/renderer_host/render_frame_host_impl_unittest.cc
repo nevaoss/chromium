@@ -16,6 +16,7 @@
 #include "content/browser/bad_message.h"
 #include "content/browser/renderer_host/navigation_controller_impl.h"
 #include "content/browser/renderer_host/render_frame_host_manager.h"
+#include "content/browser/renderer_host/render_widget_host_impl.h"
 #include "content/browser/site_instance_impl.h"
 #include "content/common/content_navigation_policy.h"
 #include "content/common/features.h"
@@ -233,6 +234,32 @@ TEST_F(RenderFrameHostImplTest, InvalidURL) {
   EXPECT_EQ(GURL(url::kAboutBlankURL), main_rfh()->GetLastCommittedURL());
 }
 
+TEST_F(RenderFrameHostImplTest, DefaultToMainFrameWhenNoSubframeFocused) {
+  NavigateAndCommit(GURL("https://test.example.com"));
+
+  // Ensure top-level widget has OS focus.
+  RenderWidgetHostImpl* widget =
+      static_cast<RenderWidgetHostImpl*>(main_rfh()->GetRenderWidgetHost());
+  widget->Focus();
+  EXPECT_TRUE(widget->is_focused());
+
+  // In a unit test, FrameTree::GetFocusedFrame() starts as nullptr before any
+  // subframe focus IPC has been received.
+  EXPECT_EQ(nullptr, contents()->GetPrimaryFrameTree().GetFocusedFrame());
+
+  // By default (with killswitch kDefaultToMainFrameFocusWhenNoSubframeFocused
+  // enabled), the main frame is treated as focused when GetFocusedFrame() is
+  // null.
+  EXPECT_TRUE(main_test_rfh()->IsFocused());
+
+  // Disabling the killswitch falls back to returning false when
+  // GetFocusedFrame() is null.
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndDisableFeature(
+      features::kDefaultToMainFrameFocusWhenNoSubframeFocused);
+  EXPECT_FALSE(main_test_rfh()->IsFocused());
+}
+
 TEST_F(RenderFrameHostImplTest, ExitFullscreenDestruction) {
   class DestructionDelegate : public WebContentsDelegate {
    public:
@@ -423,11 +450,15 @@ TEST_F(RenderFrameHostImplTest, PolicyContainerLifecycle) {
   EXPECT_EQ(main_rfh->policy_container_host()->referrer_policy(),
             network::mojom::ReferrerPolicy::kDefault);
 
+  base::UnguessableToken initiator_state_token =
+      base::UnguessableToken::Create();
   static_cast<blink::mojom::PolicyContainerHost*>(
       main_rfh->policy_container_host())
-      ->SetReferrerPolicy(network::mojom::ReferrerPolicy::kAlways);
+      ->SetReferrerPolicy(network::mojom::ReferrerPolicy::kAlways,
+                          initiator_state_token);
   EXPECT_EQ(main_rfh->policy_container_host()->referrer_policy(),
             network::mojom::ReferrerPolicy::kAlways);
+  EXPECT_EQ(main_rfh->current_initiator_state_token(), initiator_state_token);
 
   // Create a child frame and check that it inherits the PolicyContainerHost
   // from the parent frame.
@@ -439,11 +470,18 @@ TEST_F(RenderFrameHostImplTest, PolicyContainerLifecycle) {
   EXPECT_EQ(child_frame->policy_container_host()->referrer_policy(),
             network::mojom::ReferrerPolicy::kAlways);
 
+  // The child frame's `initiator_state_token` should be different.
+  EXPECT_NE(child_frame->current_initiator_state_token(),
+            initiator_state_token);
+
   // Create a new WebContents with opener and test that the new main frame
   // inherits the PolicyContainerHost from the opener.
+  base::UnguessableToken child_initiator_state_token =
+      base::UnguessableToken::Create();
   static_cast<blink::mojom::PolicyContainerHost*>(
       child_frame->policy_container_host())
-      ->SetReferrerPolicy(network::mojom::ReferrerPolicy::kNever);
+      ->SetReferrerPolicy(network::mojom::ReferrerPolicy::kNever,
+                          child_initiator_state_token);
   WebContents::CreateParams params(browser_context());
   std::unique_ptr<WebContentsImpl> new_contents(
       WebContentsImpl::CreateWithOpener(params, child_frame));
@@ -453,6 +491,11 @@ TEST_F(RenderFrameHostImplTest, PolicyContainerLifecycle) {
   ASSERT_NE(new_frame->policy_container_host(), nullptr);
   EXPECT_EQ(new_frame->policy_container_host()->referrer_policy(),
             network::mojom::ReferrerPolicy::kNever);
+
+  // The new frame's `initiator_state_token` should be different.
+  EXPECT_NE(new_frame->current_initiator_state_token(), initiator_state_token);
+  EXPECT_NE(new_frame->current_initiator_state_token(),
+            child_initiator_state_token);
 }
 
 TEST_F(RenderFrameHostImplTest, FaviconURLsSet) {

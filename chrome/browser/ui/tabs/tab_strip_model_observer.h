@@ -532,21 +532,18 @@ class TabStripModelObserver {
   // TabStripModel, which allows an observer to react to an impending change to
   // the TabStripModel. The only use case of this signal that is currently
   // supported is the drag controller completing a drag before a tab is removed.
-  // TODO(crbug.com/40838330): Unify and generalize this and OnTabWillBeAdded,
-  // e.g. via OnTabStripModelWillChange().
   virtual void OnTabWillBeRemoved(tabs::TabInterface* tab, int index);
 
   // Called when a tab is attempted to be closed but the closure is not
   // permitted by the `TabStripModel::IsTabClosable` oracle.
   virtual void OnTabCloseCancelled(const tabs::TabInterface* tab);
 
-  // The specified Tab at |index| changed in some way. |tab|
+  // The specified Tab changed in some way. |tab|
   // may be an entirely different object and the old value is no longer
   // available by the time this message is delivered.
   //
   // See tab_change_type.h for a description of |change_type|.
   virtual void OnTabChangedAt(tabs::TabInterface* tab,
-                              int index,
                               TabChangeType change_type);
 
   // Invoked when the pinned state of a tab changes.

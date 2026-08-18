@@ -16,8 +16,6 @@
 #include "ui/base/class_property.h"
 #include "ui/color/color_id.h"
 
-class AppMenuProxyActionItem;
-
 // Represents a node in the block-style ChroMenu hierarchy.
 struct MenuEntry {
   enum class DisplayType {
@@ -64,7 +62,7 @@ class AppMenuActionManager : public actions::ActionManager {
       const MenuEntry& entry,
       std::optional<ui::ColorId> inherited_container_color = std::nullopt);
 
-  std::unique_ptr<AppMenuProxyActionItem> CreateAppMenuProxyActionItem(
+  std::unique_ptr<actions::IndirectActionItem> CreateAppMenuIndirectActionItem(
       actions::ActionId action_id);
 
   raw_ptr<actions::ActionItem> action_scope_ = nullptr;

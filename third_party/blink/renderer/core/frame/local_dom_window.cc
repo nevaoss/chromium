@@ -407,10 +407,6 @@ bool LocalDOMWindow::IsContextThread() const {
   return IsMainThread();
 }
 
-bool LocalDOMWindow::ShouldInstallV8Extensions() const {
-  return GetFrame()->Client()->AllowScriptExtensions();
-}
-
 ContentSecurityPolicy* LocalDOMWindow::GetContentSecurityPolicyForWorld(
     const DOMWrapperWorld* world) {
   if (!world || !world->IsIsolatedWorld()) {
@@ -608,6 +604,11 @@ KURL LocalDOMWindow::OutgoingReferrerUrl() const {
 
   // Step: 3.1.4: "Let referrerSource be document's URL."
   return referrer_document->OutgoingReferrerUrl();
+}
+
+void LocalDOMWindow::SetInitiatorStateToken(
+    const base::UnguessableToken& initiator_state_token) {
+  initiator_state_token_ = initiator_state_token;
 }
 
 CoreProbeSink* LocalDOMWindow::GetProbeSink() {

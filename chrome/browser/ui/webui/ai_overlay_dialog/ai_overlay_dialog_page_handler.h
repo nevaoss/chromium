@@ -37,6 +37,14 @@ class AiOverlayDialogPageHandler
   // overlay_dialog::mojom::PageHandler interface
   void GetMockAudioData(GetMockAudioDataCallback callback) override;
   void UpdateAudioEnergy(float energy) override;
+  void Close() override;
+  void GetCursorPosition(GetCursorPositionCallback callback) override;
+  void CaptureRawViewportRegion(
+      int32_t x,
+      int32_t y,
+      int32_t width,
+      int32_t height,
+      CaptureRawViewportRegionCallback callback) override;
 
   void DidChangePage(const GURL& url,
                      const std::optional<std::u16string>& title,

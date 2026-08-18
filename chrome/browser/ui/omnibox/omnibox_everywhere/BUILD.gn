@@ -35,6 +35,7 @@ source_set("omnibox_everywhere") {
     ":prefs",
     "//chrome/browser:file_select_helper",
     "//chrome/browser/background/omnibox_everywhere",
+    "//chrome/browser/media/webrtc",
     "//chrome/browser/profiles:profile_manager",
     "//chrome/browser/ui/omnibox",
     "//chrome/browser/ui/profiles",
@@ -48,6 +49,12 @@ source_set("omnibox_everywhere") {
     "//ui/views",
     "//ui/views/controls/webview",
   ]
+  if (use_aura) {
+    sources += [
+      "omnibox_everywhere_event_handler_aura.cc",
+      "omnibox_everywhere_event_handler_aura.h",
+    ]
+  }
   if (is_mac) {
     sources += [
       "omnibox_everywhere_mac_utils.h",
@@ -61,15 +68,20 @@ source_set("omnibox_everywhere") {
 source_set("unit_tests") {
   testonly = true
   sources = [
+    "//chrome/browser/background/omnibox_everywhere/omnibox_everywhere_background_mode_manager_unittest.cc",
     "omnibox_everywhere_controller_unittest.cc",
     "omnibox_everywhere_ui_manager_unittest.cc",
   ]
+  if (use_aura) {
+    sources += [ "omnibox_everywhere_event_handler_aura_unittest.cc" ]
+  }
   deps = [
     ":omnibox_everywhere",
     ":prefs",
     "//base",
     "//base/test:test_support",
     "//chrome/browser",
+    "//chrome/browser/background/omnibox_everywhere",
     "//chrome/browser/ui/omnibox",
     "//chrome/test:test_support",
     "//chrome/test/views",
@@ -92,7 +104,11 @@ source_set("interactive_ui_tests") {
     "//chrome/test:test_support_ui",
     "//content/test:test_support",
     "//testing/gtest",
+    "//ui/base:ozone_buildflags",
     "//ui/views",
     "//ui/views:test_support",
   ]
+  if (use_ozone) {
+    deps += [ "//ui/ozone" ]
+  }
 }

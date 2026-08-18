@@ -498,7 +498,7 @@ void HostResolverManagerTest::CreateResolverWithOptionsAndParams(
     bool is_async,
     bool ipv4_reachable) {
   // Use HostResolverManagerDnsTest if enabling DNS client.
-  DCHECK(!options.insecure_dns_client_enabled);
+  DCHECK_EQ(options.insecure_dns_mode, InsecureDnsMode::kDisabled);
 
   DestroyResolver();
 
@@ -4675,7 +4675,7 @@ void HostResolverManagerDnsTest::TearDown() {
 HostResolver::ManagerOptions HostResolverManagerDnsTest::DefaultOptions() {
   HostResolver::ManagerOptions options =
       HostResolverManagerTest::DefaultOptions();
-  options.insecure_dns_client_enabled = true;
+  options.insecure_dns_mode = InsecureDnsMode::kEnabledBuiltIn;
   options.additional_types_via_insecure_dns_enabled = true;
   return options;
 }
@@ -4695,17 +4695,9 @@ void HostResolverManagerDnsTest::CreateResolverWithOptionsAndParams(
       std::make_unique<MockDnsClient>(DnsConfig(), CreateDefaultDnsRules());
   mock_dns_client_ = dns_client.get();
   resolver_->SetDnsClientForTesting(std::move(dns_client));
-  InsecureDnsMode mode;
-  if (options.insecure_dns_client_enabled &&
-      options.insecure_dns_via_platform_apis_enabled) {
-    mode = InsecureDnsMode::kEnabledPlatform;
-  } else if (options.insecure_dns_client_enabled) {
-    mode = InsecureDnsMode::kEnabledBuiltIn;
-  } else {
-    mode = InsecureDnsMode::kDisabled;
-  }
   resolver_->SetInsecureDnsClientEnabled(
-      mode, options.additional_types_via_insecure_dns_enabled);
+      options.insecure_dns_mode,
+      options.additional_types_via_insecure_dns_enabled);
   resolver_->set_host_resolver_system_params_for_test(params);
   resolver_->RegisterResolveContext(resolve_context_.get());
 }
@@ -8043,7 +8035,7 @@ TEST_F(HostResolverManagerDnsTest, DnsCallsWithDisabledDnsClient) {
 TEST_F(HostResolverManagerDnsTest,
        DnsCallsWithDisabledDnsClient_DisabledAtConstruction) {
   HostResolver::ManagerOptions options = DefaultOptions();
-  options.insecure_dns_client_enabled = false;
+  options.insecure_dns_mode = InsecureDnsMode::kDisabled;
   CreateResolverWithOptionsAndParams(std::move(options), DefaultParams(proc_),
                                      true /* ipv6_reachable */);
   ChangeDnsConfig(CreateValidDnsConfig());
@@ -15723,6 +15715,11 @@ INSTANTIATE_TEST_SUITE_P(
             .secure_dns_mode = SecureDnsMode::kAutomatic,
             .insecure_dns_mode = InsecureDnsMode::kEnabledPlatform,
             .expected_tasks = {TaskType::SECURE_DNS, TaskType::DNS_PLATFORM}},
+        PushDnsTasksTestCase{
+            .description = "AutomaticMode_InsecurePlatformNoSystem",
+            .secure_dns_mode = SecureDnsMode::kAutomatic,
+            .insecure_dns_mode = InsecureDnsMode::kEnabledPlatformNoSystem,
+            .expected_tasks = {TaskType::SECURE_DNS, TaskType::DNS_PLATFORM}},
         PushDnsTasksTestCase{.description = "AutomaticMode_InsecureDisabled",
                              .secure_dns_mode = SecureDnsMode::kAutomatic,
                              .insecure_dns_mode = InsecureDnsMode::kDisabled,
@@ -15738,6 +15735,11 @@ INSTANTIATE_TEST_SUITE_P(
             .description = "OffMode_InsecurePlatform",
             .secure_dns_mode = SecureDnsMode::kOff,
             .insecure_dns_mode = InsecureDnsMode::kEnabledPlatform,
+            .expected_tasks = {TaskType::DNS_PLATFORM}},
+        PushDnsTasksTestCase{
+            .description = "OffMode_InsecurePlatformNoSystem",
+            .secure_dns_mode = SecureDnsMode::kOff,
+            .insecure_dns_mode = InsecureDnsMode::kEnabledPlatformNoSystem,
             .expected_tasks = {TaskType::DNS_PLATFORM}},
         PushDnsTasksTestCase{.description = "OffMode_InsecureDisabled",
                              .secure_dns_mode = SecureDnsMode::kOff,
@@ -15766,7 +15768,83 @@ INSTANTIATE_TEST_SUITE_P(
             .system_task_allowed = true,
             .secure_dns_mode = SecureDnsMode::kOff,
             .insecure_dns_mode = InsecureDnsMode::kDisabled,
-            .expected_tasks = {TaskType::SYSTEM}}),
+            .expected_tasks = {TaskType::SYSTEM}},
+        // All 8 combinations of (dns_tasks_allowed,
+        // allow_fallback_to_systemtask, system_task_allowed) for
+        // InsecureDnsMode::kEnabledPlatformNoSystem (System task fallback is
+        // ALWAYS disabled).
+        PushDnsTasksTestCase{
+            .description =
+                "PlatformNoSystem_DnsAllowed_FallbackTrue_SystemTrue",
+            .dns_tasks_allowed = true,
+            .allow_fallback_to_systemtask = true,
+            .system_task_allowed = true,
+            .secure_dns_mode = SecureDnsMode::kOff,
+            .insecure_dns_mode = InsecureDnsMode::kEnabledPlatformNoSystem,
+            .expected_tasks = {TaskType::DNS_PLATFORM}},
+        PushDnsTasksTestCase{
+            .description =
+                "PlatformNoSystem_DnsAllowed_FallbackTrue_SystemFalse",
+            .dns_tasks_allowed = true,
+            .allow_fallback_to_systemtask = true,
+            .system_task_allowed = false,
+            .secure_dns_mode = SecureDnsMode::kOff,
+            .insecure_dns_mode = InsecureDnsMode::kEnabledPlatformNoSystem,
+            .expected_tasks = {TaskType::DNS_PLATFORM}},
+        PushDnsTasksTestCase{
+            .description =
+                "PlatformNoSystem_DnsAllowed_FallbackFalse_SystemTrue",
+            .dns_tasks_allowed = true,
+            .allow_fallback_to_systemtask = false,
+            .system_task_allowed = true,
+            .secure_dns_mode = SecureDnsMode::kOff,
+            .insecure_dns_mode = InsecureDnsMode::kEnabledPlatformNoSystem,
+            .expected_tasks = {TaskType::DNS_PLATFORM}},
+        PushDnsTasksTestCase{
+            .description =
+                "PlatformNoSystem_DnsAllowed_FallbackFalse_SystemFalse",
+            .dns_tasks_allowed = true,
+            .allow_fallback_to_systemtask = false,
+            .system_task_allowed = false,
+            .secure_dns_mode = SecureDnsMode::kOff,
+            .insecure_dns_mode = InsecureDnsMode::kEnabledPlatformNoSystem,
+            .expected_tasks = {TaskType::DNS_PLATFORM}},
+        PushDnsTasksTestCase{
+            .description =
+                "PlatformNoSystem_DnsDisallowed_FallbackTrue_SystemTrue",
+            .dns_tasks_allowed = false,
+            .allow_fallback_to_systemtask = true,
+            .system_task_allowed = true,
+            .secure_dns_mode = SecureDnsMode::kOff,
+            .insecure_dns_mode = InsecureDnsMode::kEnabledPlatformNoSystem,
+            .expected_tasks = {}},
+        PushDnsTasksTestCase{
+            .description =
+                "PlatformNoSystem_DnsDisallowed_FallbackTrue_SystemFalse",
+            .dns_tasks_allowed = false,
+            .allow_fallback_to_systemtask = true,
+            .system_task_allowed = false,
+            .secure_dns_mode = SecureDnsMode::kOff,
+            .insecure_dns_mode = InsecureDnsMode::kEnabledPlatformNoSystem,
+            .expected_tasks = {}},
+        PushDnsTasksTestCase{
+            .description =
+                "PlatformNoSystem_DnsDisallowed_FallbackFalse_SystemTrue",
+            .dns_tasks_allowed = false,
+            .allow_fallback_to_systemtask = false,
+            .system_task_allowed = true,
+            .secure_dns_mode = SecureDnsMode::kOff,
+            .insecure_dns_mode = InsecureDnsMode::kEnabledPlatformNoSystem,
+            .expected_tasks = {}},
+        PushDnsTasksTestCase{
+            .description =
+                "PlatformNoSystem_DnsDisallowed_FallbackFalse_SystemFalse",
+            .dns_tasks_allowed = false,
+            .allow_fallback_to_systemtask = false,
+            .system_task_allowed = false,
+            .secure_dns_mode = SecureDnsMode::kOff,
+            .insecure_dns_mode = InsecureDnsMode::kEnabledPlatformNoSystem,
+            .expected_tasks = {}}),
     [](const testing::TestParamInfo<PushDnsTasksTestCase>& info) {
       return std::string(info.param.description);
     });

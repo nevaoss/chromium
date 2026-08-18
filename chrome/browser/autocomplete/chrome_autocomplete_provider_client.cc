@@ -43,6 +43,7 @@
 #include "chrome/browser/preloading/prefetch/search_prefetch/search_prefetch_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_key.h"
+#include "chrome/browser/search/search.h"
 #include "chrome/browser/search_engines/ai_mode_button_service_factory.h"
 #include "chrome/browser/search_engines/template_url_service_factory.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
@@ -147,9 +148,9 @@ namespace {
 // This list should be kept in sync with chrome/common/webui_url_constants.h.
 // Only include useful sub-pages, confirmation alerts are not useful.
 constexpr auto kChromeSettingsSubPages = std::to_array<base::cstring_view>({
-    chrome::kAddressesSubPage,
     chrome::kAutofillSubPage,
     chrome::kClearBrowserDataSubPage,
+    chrome::kContactInfoSubPage,
     chrome::kContentSettingsSubPage,
     chrome::kLanguageOptionsSubPage,
     chrome::kPasswordManagerSubPage,
@@ -244,7 +245,11 @@ ChromeAutocompleteProviderClient::ChromeAutocompleteProviderClient(
           unified_consent::UrlKeyedDataCollectionConsentHelper::
               NewPersonalizedDataCollectionConsentHelper(
                   SyncServiceFactory::GetForProfile(profile_))),
+#if BUILDFLAG(IS_ANDROID)
+      tab_matcher_(GetTemplateURLService(), profile_, web_contents_getter_),
+#else
       tab_matcher_(GetTemplateURLService(), profile_),
+#endif
       storage_partition_(nullptr),
       omnibox_triggered_feature_service_(
           std::make_unique<OmniboxTriggeredFeatureService>()) {
@@ -737,6 +742,11 @@ ChromeAutocompleteProviderClient::GetLensSuggestInputsWhenReady(
 base::WeakPtr<AutocompleteProviderClient>
 ChromeAutocompleteProviderClient::GetWeakPtr() {
   return weak_ptr_factory_.GetWeakPtr();
+}
+
+bool ChromeAutocompleteProviderClient::IsWebUiNtpEnabledForDesktopAndroid()
+    const {
+  return search::IsWebUiNtpEnabledForDesktopAndroid();
 }
 
 void ChromeAutocompleteProviderClient::OpenSharingHub() {

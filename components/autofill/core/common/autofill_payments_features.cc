@@ -260,7 +260,7 @@ BASE_FEATURE(kAutofillEnableSaveAndFill, base::FEATURE_DISABLED_BY_DEFAULT);
 // When enabled, show Pix settings as a separate preference menu item instead of
 // bundling them together with the non-card payment preference menu item.
 BASE_FEATURE(kAutofillEnableSeparatePixPreferenceItem,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_ANDROID)
 
 #if BUILDFLAG(IS_ANDROID)
@@ -315,6 +315,12 @@ BASE_FEATURE(kAutofillEnableWalletReminderNotice,
 // values.
 // TODO(crbug.com/526738761): Clean up after launch.
 BASE_FEATURE(kAutofillFixCvcImport, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// When enabled, card upload legal message lines are parsed for the word
+// "personalization" for feature launch metrics. This flag is temporary, is
+// enabled by default, and functions as a kill switch in case of unexpected
+// problems from the parsing logic.
+BASE_FEATURE(kAutofillParseLegalMessageLines, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // When enabled, Payments Autofill Buy Now Pay Later (BNPL) will use each
 // corresponding issuer's blocklist instead of allowlist to check for website

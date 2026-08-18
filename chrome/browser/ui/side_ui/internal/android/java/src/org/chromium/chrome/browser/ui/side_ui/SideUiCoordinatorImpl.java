@@ -42,7 +42,7 @@ import org.chromium.chrome.browser.layouts.LayoutType;
 import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
 import org.chromium.chrome.browser.lifecycle.ConfigurationChangedObserver;
 import org.chromium.chrome.browser.tab.Tab;
-import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.HeightType;
+import org.chromium.chrome.browser.tabmodel.IncognitoStateProvider;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.SideUiSpecs.SideUiSize;
 import org.chromium.ui.base.ViewUtils;
 
@@ -115,6 +115,7 @@ final class SideUiCoordinatorImpl
      *     container.
      * @param tabStripBottomPxSupplier The supplier for the Side UI's top margin added for tab
      *     strip.
+     * @param incognitoStateProvider The {@link IncognitoStateProvider} to observe incognito state.
      */
     /* package */ SideUiCoordinatorImpl(
             Activity parentActivity,
@@ -127,7 +128,8 @@ final class SideUiCoordinatorImpl
             ViewStub leftAnchorContainerStub,
             ViewStub rightAnchorContainerStub,
             ViewStub webContentHairlineContainerStub,
-            NonNullObservableSupplier<Integer> tabStripBottomPxSupplier) {
+            NonNullObservableSupplier<Integer> tabStripBottomPxSupplier,
+            IncognitoStateProvider incognitoStateProvider) {
         mParentActivity = parentActivity;
         mActivityLifecycleDispatcher = activityLifecycleDispatcher;
         mBrowserControlsStateProvider = browserControlsStateProvider;
@@ -154,7 +156,11 @@ final class SideUiCoordinatorImpl
                 new SideUiWebContentHairlineManager(
                         browserControlsStateProvider,
                         /* sideUiStateProvider= */ this,
-                        webContentHairlineContainer);
+                        webContentHairlineContainer,
+                        incognitoStateProvider);
+
+        // TODO(crbug.com/540566058): Investigate if we need to recolor the anchor containers when
+        //  toggling Incognito state.
 
         layoutStateProviderSupplier.onAvailable(
                 mCallbackController.makeCancelable(this::onLayoutStateProviderAvailable));
@@ -522,7 +528,7 @@ final class SideUiCoordinatorImpl
         for (var container : mSideUiContainers) {
             int showableWidth =
                     container.determineShowableSize(availableWidth, windowWidth, isFullscreen)
-                            .width;
+                            .mWidth;
             if (showableWidth > 0) {
                 showableSideUiIds.add(container.getSideUiId());
             } else {
@@ -563,7 +569,7 @@ final class SideUiCoordinatorImpl
                                     availableWidth, windowWidth, isFullscreen)
                             : new SideUiSize(0, HeightType.NOT_APPLICABLE);
             sideUiSpecs.put(container.getAnchorSide(), newSideUiSize);
-            availableWidth = Math.max(availableWidth - newSideUiSize.width, 0);
+            availableWidth = Math.max(availableWidth - newSideUiSize.mWidth, 0);
         }
         return new SideUiSpecs(sideUiSpecs);
     }
@@ -580,7 +586,7 @@ final class SideUiCoordinatorImpl
 
         for (Map.Entry<@AnchorSide Integer, SideUiSize> entry : sideUiSpecs.entrySet()) {
             @AnchorSide int anchorSide = entry.getKey();
-            @HeightType int heightType = entry.getValue().heightType;
+            @HeightType int heightType = entry.getValue().mHeightType;
             if (heightType == HeightType.NOT_APPLICABLE) continue;
 
             @Px
@@ -626,7 +632,7 @@ final class SideUiCoordinatorImpl
         for (Map.Entry<@AnchorSide Integer, SideUiSize> entry :
                 uiUpdateSpecs.mSpecsDiff.entrySet()) {
             int side = entry.getKey();
-            int newWidth = entry.getValue().width;
+            int newWidth = entry.getValue().mWidth;
             int oldWidth = uiUpdateSpecs.mCurrentSpecs.getWidth(side);
             // Add transitions for the side UI containers.
             ViewGroup anchorContainer = assumeNonNull(mAnchorContainers.get(side));
@@ -697,7 +703,7 @@ final class SideUiCoordinatorImpl
 
         for (Map.Entry<@AnchorSide Integer, SideUiSize> entry : sideUiSpecsDiff.entrySet()) {
             @AnchorSide int anchorSide = entry.getKey();
-            int newWidth = entry.getValue().width;
+            int newWidth = entry.getValue().mWidth;
             int oldWidth = currentSideUiSpecs.getWidth(anchorSide);
             SideUiContainer sideUiContainer = assumeNonNull(getSideUiContainerBySide(anchorSide));
             // Ensure side UI container is attached.
@@ -722,7 +728,7 @@ final class SideUiCoordinatorImpl
                         for (Map.Entry<@AnchorSide Integer, SideUiSize> entry :
                                 uiUpdateSpecs.mSpecsDiff.entrySet()) {
                             @AnchorSide int anchorSide = entry.getKey();
-                            @Px int newSideUiWidth = entry.getValue().width;
+                            @Px int newSideUiWidth = entry.getValue().mWidth;
                             SideUiContainer sideUiContainer =
                                     assumeNonNull(getSideUiContainerBySide(anchorSide));
                             if (newSideUiWidth == 0) {
@@ -750,7 +756,7 @@ final class SideUiCoordinatorImpl
         // capturing the starting state with beginDelayedTransition.
         for (Map.Entry<@AnchorSide Integer, SideUiSize> entry : sideUiSpecsDiff.entrySet()) {
             @AnchorSide int anchorSide = entry.getKey();
-            int newWidth = entry.getValue().width;
+            int newWidth = entry.getValue().mWidth;
             int oldWidth = currentSideUiSpecs.getWidth(anchorSide);
             ViewGroup anchorContainer = assumeNonNull(mAnchorContainers.get(anchorSide));
             SideUiContainer sideUiContainer = assumeNonNull(getSideUiContainerBySide(anchorSide));
@@ -773,7 +779,7 @@ final class SideUiCoordinatorImpl
 
         for (Map.Entry<@AnchorSide Integer, SideUiSize> entry : sideUiSpecsDiff.entrySet()) {
             @AnchorSide int anchorSide = entry.getKey();
-            int newSideUiWidth = entry.getValue().width;
+            int newSideUiWidth = entry.getValue().mWidth;
             SideUiContainer sideUiContainer = getSideUiContainerBySide(anchorSide);
             if (sideUiContainer == null) continue;
 

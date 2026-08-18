@@ -15,6 +15,7 @@
 #include "base/trace_event/trace_event.h"
 #include "build/build_config.h"
 #include "chrome/browser/ui/animation/browser_animation_controller.h"
+#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/immersive/immersive_mode_controller.h"
 #include "chrome/browser/ui/layout_constants.h"
@@ -140,7 +141,9 @@ struct BrowserViewTabbedLayoutImpl::VerticalTabStripAnimation {
   // The relative size of the bottom corner.
   double bottom_corner = 0.0;
   // How much of the expand-on-hover is shown.
-  double expand_on_hover = 0.0;
+  double expand_on_hover_width = 0.0;
+  // How opaque the expand-on-hover tabstrip is (transparent only).
+  double expand_on_hover_opacity = 0.0;
   // How much the tab strip is expanded, not on-hover.
   double tab_strip_width = 0.0;
 };
@@ -508,15 +511,18 @@ BrowserViewTabbedLayoutImpl::CalculateVerticalTabStripAnimation() {
       leading_exclusion_height *
       *controller->GetCurrentValue(TabStripAnimations::kVerticalTabStrip,
                                    TabStripAnimations::kTabStripTop));
-  animation.expand_on_hover =
+  animation.expand_on_hover_width =
       *controller->GetCurrentValue(TabStripAnimations::kVerticalTabStrip,
                                    TabStripAnimations::kTabStripHoverWidth);
+  animation.expand_on_hover_opacity =
+      *controller->GetCurrentValue(TabStripAnimations::kVerticalTabStrip,
+                                   TabStripAnimations::kTabStripHoverOpacity);
   animation.tab_strip_width =
       *controller->GetCurrentValue(TabStripAnimations::kVerticalTabStrip,
                                    TabStripAnimations::kTabStripWidth);
   animation.top_corner = *controller->GetCurrentValue(
       TabStripAnimations::kVerticalTabStrip, TabStripAnimations::kTopCorner);
-  if (animation.expand_on_hover == 0.0 && max_uncollapsed_top_corner) {
+  if (animation.expand_on_hover_width == 0.0 && max_uncollapsed_top_corner) {
     animation.top_corner =
         std::min(animation.top_corner, *max_uncollapsed_top_corner);
   }
@@ -527,14 +533,6 @@ BrowserViewTabbedLayoutImpl::CalculateVerticalTabStripAnimation() {
 }
 
 int BrowserViewTabbedLayoutImpl::GetMinimumGrabHandlePadding() const {
-  if (base::FeatureList::IsEnabled(features::kVerticalTabsGrabHandleRemoval)) {
-    if (features::kVerticalTabsGrabHandleRemovalAlways.Get() ||
-        GetVerticalTabStripCollapsedState() ==
-            VerticalTabStripCollapsedState::kExpanded) {
-      return 0;
-    }
-  }
-
   return kVerticalTabsGrabHandleSize -
          GetLayoutInsets(LayoutInset::TOOLBAR_INTERIOR_MARGIN).right();
 }
@@ -552,7 +550,7 @@ gfx::Size BrowserViewTabbedLayoutImpl::GetMinimumMainAreaSize(
           : gfx::Size();
   const gfx::Size infobar_container_size =
       views().infobar_container->GetMinimumSize();
-  const gfx::Size contents_size = views().contents_container->GetMinimumSize();
+  const gfx::Size contents_size = views().multi_contents_view->GetMinimumSize();
 
   int width = std::max({toolbar_size.width(), bookmark_bar_size.width(),
                         infobar_container_size.width(),
@@ -727,7 +725,7 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
       const int vertical_tab_strip_hover_width =
           std::max(0, tabs::kVerticalTabStripDefaultUncollapsedWidth -
                           horizontal_layout.vertical_tab_strip_width) *
-          vertical_tab_strip_animation.expand_on_hover;
+          vertical_tab_strip_animation.expand_on_hover_width;
 
       int vertical_tab_strip_width =
           horizontal_layout.vertical_tab_strip_width +
@@ -796,7 +794,8 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
         views().vertical_tab_strip_background_blur_backdrop,
         vertical_tab_strip_bounds,
         in_glass_mode() && features::kGlassExpandOnHoverOpacity.Get() < 1.0 &&
-            layout_data_->vertical_tab_strip_animation.expand_on_hover > 0.0f);
+            layout_data_->vertical_tab_strip_animation.expand_on_hover_width >
+                0.0f);
   }
 
   // Position the vertical tabstrip top corner.
@@ -1098,9 +1097,8 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
   // Lay out contents container. The contents container contains the multi-
   // contents view when multi-contents are enabled. The checks here are to
   // force the logic to be updated when multi-contents is fully rolled-out.
-  CHECK(
-      IsParentedToAndVisible(views().contents_container, views().browser_view));
-  CHECK(views().contents_container->Contains(views().multi_contents_view));
+  CHECK(IsParentedToAndVisible(views().multi_contents_view,
+                               views().browser_view));
 
   // Because side panels have minimum width, in a small browser, it is possible
   // for the combination of minimum-sized contents pane and minimum-sized side
@@ -1118,7 +1116,7 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
         std::min(content_right, browser_params.visual_client_area.right());
   }
   auto& contents_layout =
-      layout.AddChild(views().contents_container,
+      layout.AddChild(views().multi_contents_view,
                       gfx::Rect(content_left, params.visual_client_area.y(),
                                 content_right - content_left,
                                 params.visual_client_area.height()));
@@ -1224,7 +1222,7 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
 
     views().vertical_tab_strip_region_view->SetIsExitingExpandOnHoverForLayout(
         vertical_tab_strip_animation.current_motion &&
-        vertical_tab_strip_animation.expand_on_hover > 0.0 &&
+        vertical_tab_strip_animation.expand_on_hover_width > 0.0 &&
         vertical_tab_strip_animation.top_offset > 0);
 
     float transition_button_opacity = 1.0f;
@@ -1439,14 +1437,12 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
       // Use a curve that goes very close to 1 very quickly, but still has a
       // visible fade. This isn't perfect, but hopefully with glass
       // expand-on-hover it will improve.
-      const float scaled_percent =
-          std::powf(static_cast<float>(animation.expand_on_hover), 0.2f);
       auto vertical_tabs_background_color = frame_color;
-      static const float expand_on_hover_opacity =
-          static_cast<float>(features::kGlassExpandOnHoverOpacity.Get());
-      vertical_tabs_background_color.opacity =
-          (1.0f - scaled_percent) * frame_color.opacity +
-          scaled_percent * expand_on_hover_opacity;
+      static const double expand_on_hover_opacity =
+          features::kGlassExpandOnHoverOpacity.Get();
+      vertical_tabs_background_color.opacity = static_cast<float>(
+          (1.0 - animation.expand_on_hover_opacity) * frame_color.opacity +
+          animation.expand_on_hover_opacity * expand_on_hover_opacity);
       vertical_tabs_background->SetPrimaryColor(vertical_tabs_background_color);
     } else {
       vertical_tabs_background->SetPrimaryColor(frame_color);
@@ -1542,11 +1538,11 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
     vertical_tabs_outline.trailing = true;
     // Top edge is drawn when the tabstrip is not flush with the edge of the
     // screen, or with a visual element that provides a natural border.
-    if (animation.expand_on_hover || animation.top_corner < 0.0 ||
+    if (animation.expand_on_hover_width > 0.0 || animation.top_corner < 0.0 ||
         (animation.top_corner == 0.0 && !params.leading_exclusion.IsEmpty())) {
       vertical_tabs_outline.top = true;
     }
-    if (animation.expand_on_hover) {
+    if (animation.expand_on_hover_width > 0.0) {
       vertical_tabs_outline.bottom = true;
     }
     vertical_tabs_background->SetOutline(vertical_tabs_outline);
@@ -1583,8 +1579,12 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
           views().browser_view);
       vertical_tabs_background->SetUseBackgroundBlur(use_blur_background);
       if (use_blur_background) {
+        // The opacity of the backdrop needs to fade over the entire animation
+        // and much more slowly than the opacity of the foreground, or else
+        // there is a flash at the beginning/end. For now, scale with the width.
+        const double blur_background_opacity = animation.expand_on_hover_width;
         views().vertical_tab_strip_background_blur_backdrop->UpdateGeometry(
-            views().vertical_tab_strip_region_view, animation.expand_on_hover);
+            views().vertical_tab_strip_region_view, blur_background_opacity);
       }
     }
   } else if (layout_data_->tab_strip_type == TabStripType::kHorizontal &&

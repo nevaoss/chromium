@@ -8,6 +8,8 @@
 
 #include "base/i18n/time_formatting.h"
 #include "base/time/time.h"
+#include "components/autofill/core/browser/field_types.h"
+#include "components/autofill/core/browser/foundations/autofill_client.h"
 #include "components/autofill/core/browser/integrators/at_memory/memory_data_type.h"
 #include "components/autofill/core/browser/integrators/at_memory/memory_search_result.h"
 #include "components/personal_context/proto/features/at_memory.pb.h"
@@ -22,6 +24,7 @@ using ::testing::ElementsAre;
 using ::testing::Eq;
 using ::testing::Field;
 using ::testing::IsEmpty;
+using ::testing::Ne;
 
 // Tests that `ToPersonalContextEntity` correctly converts individual memory
 // entry attributes and metadata into the corresponding fields of the personal
@@ -122,6 +125,59 @@ TEST(MemoryDataTypeUtilTest, ToMemoryDataTypeMapping) {
       ToMemoryDataType(
           personal_context::proto::MEMORY_DATA_TYPE_DRIVERS_LICENSE_NUMBER),
       MemoryDataType::kDriversLicenseNumber);
+
+  // Entity types map to their primary attributes:
+  EXPECT_EQ(ToMemoryDataType(personal_context::proto::MEMORY_DATA_TYPE_VEHICLE),
+            MemoryDataType::kVehiclePlateNumber);
+  EXPECT_EQ(
+      ToMemoryDataType(personal_context::proto::MEMORY_DATA_TYPE_PASSPORT_FULL),
+      MemoryDataType::kPassportNumber);
+}
+
+TEST(MemoryDataTypeUtilTest, ToFieldType) {
+  EXPECT_EQ(ToFieldType(MemoryDataType::kNameFull), NAME_FULL);
+  EXPECT_EQ(ToFieldType(MemoryDataType::kIban), IBAN_VALUE);
+  EXPECT_EQ(ToFieldType(MemoryDataType::kPassportNumber), std::nullopt);
+}
+
+TEST(MemoryDataTypeUtilTest, ToAttributeType) {
+  EXPECT_EQ(ToAttributeType(MemoryDataType::kPassportNumber),
+            AttributeType(AttributeTypeName::kPassportNumber));
+  EXPECT_EQ(ToAttributeType(MemoryDataType::kIban), std::nullopt);
+}
+
+TEST(MemoryDataTypeUtilTest, GetMemoryDataTypeCategory) {
+  EXPECT_EQ(GetMemoryDataTypeCategory(MemoryDataType::kNameFull),
+            MemoryDataTypeCategory::kContactInfo);
+  EXPECT_EQ(GetMemoryDataTypeCategory(MemoryDataType::kCreditCardNumber),
+            MemoryDataTypeCategory::kCreditCard);
+  EXPECT_EQ(GetMemoryDataTypeCategory(MemoryDataType::kIban),
+            MemoryDataTypeCategory::kIban);
+  EXPECT_EQ(GetMemoryDataTypeCategory(MemoryDataType::kPassportNumber),
+            MemoryDataTypeCategory::kPassport);
+  EXPECT_EQ(GetMemoryDataTypeCategory(MemoryDataType::kVehicleMake),
+            MemoryDataTypeCategory::kVehicle);
+  EXPECT_EQ(GetMemoryDataTypeCategory(MemoryDataType::kOrderId),
+            MemoryDataTypeCategory::kOrder);
+  EXPECT_EQ(GetMemoryDataTypeCategory(MemoryDataType::kUnknown),
+            MemoryDataTypeCategory::kUnknown);
+}
+
+TEST(MemoryDataTypeUtilTest, ToAutofillPolicyDataCategory) {
+  EXPECT_EQ(ToAutofillPolicyDataCategory(MemoryDataType::kNameFull),
+            AutofillClient::AutofillPolicyDataCategory::kContactInfo);
+  EXPECT_EQ(ToAutofillPolicyDataCategory(MemoryDataType::kCreditCardNumber),
+            AutofillClient::AutofillPolicyDataCategory::kPayments);
+  EXPECT_EQ(ToAutofillPolicyDataCategory(MemoryDataType::kIban),
+            AutofillClient::AutofillPolicyDataCategory::kPayments);
+  EXPECT_EQ(ToAutofillPolicyDataCategory(MemoryDataType::kPassportNumber),
+            AutofillClient::AutofillPolicyDataCategory::kIdentityDocs);
+  EXPECT_EQ(ToAutofillPolicyDataCategory(MemoryDataType::kVehicleMake),
+            AutofillClient::AutofillPolicyDataCategory::kTravel);
+  EXPECT_EQ(ToAutofillPolicyDataCategory(MemoryDataType::kOrderId),
+            AutofillClient::AutofillPolicyDataCategory::kShopping);
+  EXPECT_EQ(ToAutofillPolicyDataCategory(MemoryDataType::kUnknown),
+            std::nullopt);
 }
 
 // Tests extraction of source references (Gmail, Photos) into MemoryEntrySource
@@ -368,8 +424,73 @@ TEST(MemoryDataTypeUtilTest, ConvertToMemorySearchResultFormatsTypedValue) {
   MemorySearchResult result =
       ConvertToMemorySearchResult(proto_result, "en-US");
   EXPECT_EQ(result.value, u"2030-05-20");
+  EXPECT_TRUE(result.typed_value.has_value());
   EXPECT_THAT(result.metadata_list,
               ElementsAre(Field(&EntryMetadata::value, u"France")));
+  EXPECT_THAT(
+      result.metadata_list,
+      ElementsAre(Field(&EntryMetadata::typed_value, Ne(std::nullopt))));
+}
+
+// Tests that `FormatMemoryDataTypeLabelValue` formats flight departure and
+// arrival dates into a short "MMM d" string (e.g. "Jun 7") when provided with a
+// Date or DateTime TypedValue or a string fallback.
+TEST(MemoryDataTypeUtilTest, FormatMemoryDataTypeLabelValueFlightDate) {
+  personal_context::proto::TypedValue date_typed;
+  date_typed.mutable_date()->set_year(2024);
+  date_typed.mutable_date()->set_month(6);
+  date_typed.mutable_date()->set_day(7);
+
+  // FormatMemoryDataTypeLabelValue formats flight dates as "MMM d" for labels
+  EXPECT_EQ(FormatMemoryDataTypeLabelValue(
+                MemoryDataType::kFlightReservationDepartureDate, u"2024-06-07",
+                date_typed),
+            u"Jun 7");
+
+  personal_context::proto::TypedValue datetime_typed;
+  datetime_typed.mutable_date_time()->set_year(2024);
+  datetime_typed.mutable_date_time()->set_month(6);
+  datetime_typed.mutable_date_time()->set_day(7);
+  datetime_typed.mutable_date_time()->set_hours(15);
+  datetime_typed.mutable_date_time()->set_minutes(30);
+
+  EXPECT_EQ(FormatMemoryDataTypeLabelValue(
+                MemoryDataType::kFlightReservationArrivalDate,
+                u"2024-06-07 3:30 PM", datetime_typed),
+            u"Jun 7");
+
+  // String fallback test with space separator
+  EXPECT_EQ(FormatMemoryDataTypeLabelValue(
+                MemoryDataType::kFlightReservationDepartureDate,
+                u"2024-06-07 3:30 PM", std::nullopt),
+            u"Jun 7");
+
+  // String fallback test with 'T' separator
+  EXPECT_EQ(FormatMemoryDataTypeLabelValue(
+                MemoryDataType::kFlightReservationArrivalDate,
+                u"2024-06-07T03:30:39", std::nullopt),
+            u"Jun 7");
+
+  // Non-flight date types should return the value untouched
+  EXPECT_EQ(FormatMemoryDataTypeLabelValue(
+                MemoryDataType::kFlightReservationPassengerName, u"John Doe",
+                std::nullopt),
+            u"John Doe");
+}
+
+// Tests equality comparison between TypedValue proto messages using operator==.
+TEST(MemoryDataTypeUtilTest, TypedValueEquality) {
+  personal_context::proto::TypedValue a;
+  a.mutable_date()->set_year(2024);
+  a.mutable_date()->set_month(6);
+  a.mutable_date()->set_day(7);
+
+  personal_context::proto::TypedValue b = a;
+  personal_context::proto::TypedValue c;
+  c.set_country_code("US");
+
+  EXPECT_EQ(a, b);
+  EXPECT_NE(a, c);
 }
 
 }  // namespace

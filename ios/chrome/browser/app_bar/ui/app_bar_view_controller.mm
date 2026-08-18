@@ -211,11 +211,7 @@ UIColor* AssistantHighlightBackgroundColor() {
   __weak UIButton* _previewedButton;
   // Whether the Gemini floaty is currently active/invoked.
   BOOL _geminiFloatyInvoked;
-  // Following next responder for ResponderChaining.
-  __weak UIResponder* _followingNextResponder;
 }
-
-#pragma mark - Public
 
 - (void)setLayoutState:(LayoutState*)layoutState {
   if (_layoutState == layoutState) {
@@ -227,26 +223,16 @@ UIColor* AssistantHighlightBackgroundColor() {
   _geminiFloatyInvoked = layoutState ? layoutState.geminiFloatyInvoked : NO;
 }
 
-#pragma mark - ResponderChaining
-
-- (void)respondBeforeResponder:(UIResponder*)nextResponder {
-  _followingNextResponder = nextResponder;
-}
-
-#pragma mark - UIResponder
-
-- (UIResponder*)nextResponder {
-  return _followingNextResponder ?: [super nextResponder];
-}
-
 #pragma mark - LayoutStateObserver
 
 - (void)layoutState:(LayoutState*)layoutState
     didChangeAppBarPosition:(AppBarPosition)appBarPosition {
   // Update the alpha with a duration of 0 as it is already in an animation
   // block.
-  CGFloat targetAlpha =
-      self.layoutState.appBarLockedInFullscreen ? 0.0 : _fullscreenProgress;
+  CGFloat targetAlpha = self.layoutState.assistantContainerInvoked &&
+                                !IsAppBarHiddenInFullscreen()
+                            ? 0.0
+                            : _fullscreenProgress;
   [self setButtonsTitleAlpha:targetAlpha animationDuration:0];
   [self updateTabSwitcherGuide];
   if (appBarPosition != AppBarPosition::kBottom) {
@@ -255,9 +241,38 @@ UIColor* AssistantHighlightBackgroundColor() {
 }
 
 - (void)layoutState:(LayoutState*)layoutState
-    didChangeAppBarLockedInFullscreen:(BOOL)appBarLockedInFullscreen {
-  CGFloat targetAlpha = appBarLockedInFullscreen ? 0.0 : _fullscreenProgress;
+    didChangeAssistantContainerInvoked:(BOOL)assistantContainerInvoked {
+  // Synchronize titles (which may set them to nil when labels are hidden).
+  // This replicates the behavior previously handled by
+  // didChangeGeminiFloatyInvoked:.
+  if (IsAppBarHiddenInFullscreen()) {
+    [self updateAssistantButtonTitleIfNeeded];
+    [self updateOpenNewTabButtonTitleIfNeeded];
+    [self updateTabGridButtonTitleIfNeeded];
+
+    // Trigger configurations update for all buttons so that vertical insets
+    // recalculate.
+    [_assistantButton setNeedsUpdateConfiguration];
+    [_openNewTabButton setNeedsUpdateConfiguration];
+    [_tabGridButton setNeedsUpdateConfiguration];
+  }
+
+  CGFloat targetAlpha =
+      assistantContainerInvoked && !IsAppBarHiddenInFullscreen()
+          ? 0.0
+          : _fullscreenProgress;
   [self setButtonsTitleAlpha:targetAlpha animationDuration:0];
+
+  if (IsAppBarHiddenInFullscreen()) {
+    __weak __typeof(self) weakSelf = self;
+    [UIView animateWithDuration:kAppBarAnimationDuration
+                     animations:^{
+                       [weakSelf updateHeightConstraintForCurrentOrientation];
+                     }];
+
+    [self.view setNeedsLayout];
+    [self.view layoutIfNeeded];
+  }
 }
 
 - (void)layoutState:(LayoutState*)layoutState
@@ -634,14 +649,16 @@ UIColor* AssistantHighlightBackgroundColor() {
 
 - (void)updateForFullscreenProgress:(CGFloat)progress {
   _fullscreenProgress = progress;
-  if (self.layoutState.appBarLockedInFullscreen) {
+  if (self.layoutState.assistantContainerInvoked &&
+      !IsAppBarHiddenInFullscreen()) {
     return;
   }
   [self setButtonsTitleAlpha:_fullscreenProgress animationDuration:0];
 }
 
 - (void)animateFullscreenWithAnimator:(FullscreenAnimator*)animator {
-  if (self.layoutState.appBarLockedInFullscreen) {
+  if (self.layoutState.assistantContainerInvoked &&
+      !IsAppBarHiddenInFullscreen()) {
     return;
   }
   [self setButtonsTitleAlpha:animator.finalProgress
@@ -652,7 +669,8 @@ UIColor* AssistantHighlightBackgroundColor() {
 
 - (void)fullscreenWillUpdateState:(FullscreenBrowserAgent*)agent {
   _fullscreenProgress = agent->bottom_progress();
-  if (self.layoutState.appBarLockedInFullscreen) {
+  if (self.layoutState.assistantContainerInvoked &&
+      !IsAppBarHiddenInFullscreen()) {
     return;
   }
   [self setButtonsTitleAlpha:_fullscreenProgress
@@ -1515,13 +1533,14 @@ UIColor* AssistantHighlightBackgroundColor() {
 }
 
 - (CGFloat)currentAppBarHeightPortrait {
-  return CurrentAppBarHeightPortrait(_geminiFloatyInvoked);
+  return CurrentAppBarHeightPortrait(
+      _geminiFloatyInvoked, self.layoutState.assistantContainerInvoked);
 }
 
 - (BOOL)shouldHideButtonLabels {
   return IsAppBarLabelsHidden() ||
          (_geminiFloatyInvoked && IsAppBarHiddenInFullscreen()) ||
-         self.layoutState.appBarLockedInFullscreen;
+         self.layoutState.assistantContainerInvoked;
 }
 
 @end

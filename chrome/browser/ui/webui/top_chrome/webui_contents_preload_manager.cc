@@ -313,7 +313,7 @@ WebUIContentsPreloadManager* WebUIContentsPreloadManager::GetInstance() {
 void WebUIContentsPreloadManager::WarmupForBrowser(Browser* browser) {
   // Most WebUIs, if not all, are hosted by a TYPE_NORMAL browser. This check
   // skips unnecessary preloading for the majority of WebUIs.
-  if (!browser->is_type_normal()) {
+  if (browser->GetType() != BrowserWindowInterface::Type::TYPE_NORMAL) {
     return;
   }
 
@@ -535,6 +535,10 @@ bool WebUIContentsPreloadManager::WasPreloaded(
 
 void WebUIContentsPreloadManager::DisableNavigationForTesting() {
   is_navigation_disabled_for_test_ = true;
+}
+
+void WebUIContentsPreloadManager::ReenableNavigationForTesting() {
+  is_navigation_disabled_for_test_ = false;
 }
 
 std::unique_ptr<content::WebContents>

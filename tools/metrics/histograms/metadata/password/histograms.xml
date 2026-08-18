@@ -409,7 +409,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PasswordGeneration.iOS.AcceptedGeneratedPasswordSource"
-    enum="AcceptedGeneratedPasswordSourceType" expires_after="2026-11-29">
+    enum="AcceptedGeneratedPasswordSourceType" expires_after="2027-01-31">
   <owner>cloutierc@google.com</owner>
   <owner>vincb@google.com</owner>
   <owner>bling-transactions@google.com</owner>
@@ -1657,7 +1657,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PasswordManager.FillingAssistanceForSingleUsername"
-    enum="SingleUsernameFillingAssistance" expires_after="2026-11-29">
+    enum="SingleUsernameFillingAssistance" expires_after="2027-01-31">
   <owner>vincb@google.com</owner>
   <owner>eic@google.com</owner>
   <owner>bling-transactions@google.com</owner>
@@ -1768,7 +1768,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PasswordManager.FillSuggestionsIncludeAndroidAppCredentials"
-    enum="PasswordManagerOfferedAndroidCredentials" expires_after="2026-08-30">
+    enum="PasswordManagerOfferedAndroidCredentials" expires_after="2027-02-28">
   <owner>kazinova@google.com</owner>
   <owner>chrome-password-manager-metrics-alerts@google.com</owner>
   <summary>
@@ -2108,7 +2108,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="PasswordManager.JavaScriptOnlyValueInSubmittedForm"
-    enum="JavaScriptOnlyValueInPasswordForm" expires_after="2026-08-23">
+    enum="JavaScriptOnlyValueInPasswordForm" expires_after="2027-02-28">
   <owner>kazinova@google.com</owner>
   <owner>battre@chromium.org</owner>
   <summary>
@@ -2401,7 +2401,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 
 <histogram
     name="PasswordManager.NewlySavedPasswordHasEmptyUsername.{PasswordType}"
-    enum="Boolean" expires_after="2026-11-29">
+    enum="Boolean" expires_after="2027-01-31">
   <owner>kazinova@google.com</owner>
   <owner>chrome-password-manager-metrics-alerts@google.com</owner>
   <summary>
@@ -2454,7 +2454,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="PasswordManager.ParserDetectedOtpFieldWithRegex"
-    enum="Boolean" expires_after="2026-08-02">
+    enum="Boolean" expires_after="2027-02-28">
   <owner>kazinova@google.com</owner>
   <owner>chrome-password-manager-metrics-alerts@google.com</owner>
   <summary>
@@ -3582,7 +3582,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="PasswordManager.PasswordStore{Backend}.{Function}.Success"
-    enum="BooleanSuccess" expires_after="2026-11-29">
+    enum="BooleanSuccess" expires_after="2027-01-31">
   <owner>ioanap@chromium.org</owner>
   <owner>friedrichh@chromium.org</owner>
   <owner>chrome-password-manager-metrics-alerts@google.com</owner>
@@ -3817,7 +3817,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="PasswordManager.SaveUIDismissalReason{UserSyncingType}"
-    enum="PasswordManagerUIDismissalReason" expires_after="2026-11-29">
+    enum="PasswordManagerUIDismissalReason" expires_after="2027-01-31">
   <owner>treib@chromium.org</owner>
   <owner>mamir@chromium.org</owner>
   <owner>chrome-password-manager-metrics-alerts@google.com</owner>
@@ -3908,7 +3908,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="PasswordManager.StoreDecryptionResult"
-    enum="PasswordDecryptionResult" expires_after="2026-09-06">
+    enum="PasswordDecryptionResult" expires_after="2027-02-28">
   <owner>mamir@chromium.org</owner>
   <owner>kazinova@google.com</owner>
   <summary>
@@ -4194,6 +4194,20 @@ useful for Chirp alerts (go/crca-alerts). -->
   </summary>
 </histogram>
 
+<histogram name="PasswordManager.TrustedVaultPasswordReadiness" enum="Boolean"
+    expires_after="2027-03-22">
+  <owner>ylahodiuk@google.com</owner>
+  <owner>markusheintz@google.com</owner>
+  <owner>anki-team@google.com</owner>
+  <summary>
+    Records the trusted vault readiness state of passwords (whether the trusted
+    vault encryption key is available) for Google Password Manager users with
+    trusted vault encryption. Currently it is recorded on desktop only, 30
+    seconds after Chrome startup when Sync engine is initialized and passwords
+    encryption type is trusted vault.
+  </summary>
+</histogram>
+
 <histogram name="PasswordManager.UI.OpenedPasswordDetailsWhileSearching"
     enum="BooleanSuccess" expires_after="2026-09-14">
   <owner>vsemeniuk@google.com</owner>
@@ -4396,7 +4410,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 
 <histogram
     name="PasswordManager.{Store}BlacklistedSitesHiRes3{CustomPassphraseStatus}"
-    units="sites" expires_after="2026-11-29">
+    units="sites" expires_after="2027-01-31">
   <owner>kazinova@google.com</owner>
   <owner>mamir@chromium.org</owner>
   <owner>treib@chromium.org</owner>

@@ -74,6 +74,8 @@ class WebUIToolbarControlDelegate {
   virtual BrowserWindowInterface* GetBrowser() = 0;
   virtual chrome::BrowserCommandController* GetCommandController() = 0;
   virtual views::View* GetView() = 0;
+  // Returns the internal view that's the actual WebView.
+  virtual views::View* GetInternalWebView() = 0;
   virtual content::WebContents* GetWebContents() = 0;
 
   // Announces an alert to accessibility screen readers.
@@ -193,8 +195,11 @@ class WebUIToolbarWebView
                          ui::mojom::MenuSourceType source) override;
   void ShowContentSettingsBubble(
       ::toolbar_ui_api::mojom::ContentSettingImageType type,
+      bool is_pointer_interaction,
       toolbar_ui_api::mojom::ToolbarUIService::ShowContentSettingsBubbleCallback
           callback) override;
+  void OnContentSettingImagePointerDown(
+      ::toolbar_ui_api::mojom::ContentSettingImageType type) override;
   void OnPageActionClick(
       ::toolbar_ui_api::mojom::PageActionId action_id,
       ::toolbar_ui_api::mojom::PageActionTrigger trigger,
@@ -383,12 +388,15 @@ class WebUIToolbarWebView
                            BackForwardButtonsModifierClick);
   FRIEND_TEST_ALL_PREFIXES(WebUIToolbarSurfaceSyncBrowserTest,
                            SetsDeadlineOnInit);
+  friend class WebUIToolbarWebViewTestBase;
   friend class WebUIToolbarWebViewBrowserTest;
+  friend class WebUIToolbarWebViewInteractiveUiTest;
 
   // WebUIToolbarControlDelegate:
   BrowserWindowInterface* GetBrowser() override;
   chrome::BrowserCommandController* GetCommandController() override;
   views::View* GetView() override;
+  views::View* GetInternalWebView() override;
   content::WebContents* GetWebContents() override;
   void AnnounceAlert(const std::u16string& announcement) override;
   webui_toolbar::IconTable& GetIconTable() override;

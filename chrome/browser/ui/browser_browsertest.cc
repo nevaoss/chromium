@@ -76,6 +76,7 @@
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/browser_window/public/create_browser_window.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
 #include "chrome/browser/ui/exclusive_access/exclusive_access_context.h"
@@ -95,6 +96,7 @@
 #include "chrome/browser/ui/unload_controller.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/web_applications/test/web_app_browsertest_util.h"
+#include "chrome/browser/ui/window_feature_controller/window_feature_controller.h"
 #include "chrome/browser/ui/window_metadata/window_metadata_controller.h"
 #include "chrome/browser/web_applications/policy/web_app_policy_constants.h"
 #include "chrome/browser/web_applications/policy/web_app_policy_manager.h"
@@ -1364,7 +1366,7 @@ IN_PROC_BROWSER_TEST_F(BrowserTest, MAYBE_AppIdSwitch) {
 // when a specific feature (OverscrollHistoryNavigation) is enabled.
 #if defined(USE_AURA)
 IN_PROC_BROWSER_TEST_F(BrowserTest, OverscrollEnabledInRegularWindows) {
-  ASSERT_TRUE(browser()->is_type_normal());
+  ASSERT_EQ(browser()->GetType(), BrowserWindowInterface::Type::TYPE_NORMAL);
   EXPECT_TRUE(
       BrowserWebContentsDelegate::From(browser())->CanOverscrollContent());
 }
@@ -1424,13 +1426,17 @@ IN_PROC_BROWSER_TEST_F(BrowserTest, ShouldShowLocationBar) {
   ASSERT_TRUE(app_browser);
   ASSERT_TRUE(app_browser != browser());
 
-  EXPECT_FALSE(dev_tools_browser->SupportsWindowFeature(
-      Browser::WindowFeature::kFeatureLocationBar));
+  EXPECT_FALSE(
+      WindowFeatureController::From(dev_tools_browser)
+          ->SupportsWindowFeature(
+              WindowFeatureController::WindowFeature::kFeatureLocationBar));
 
   // App windows can show location bars, for example when they navigate away
   // from their starting origin.
-  EXPECT_TRUE(app_browser->SupportsWindowFeature(
-      Browser::WindowFeature::kFeatureLocationBar));
+  EXPECT_TRUE(
+      WindowFeatureController::From(app_browser)
+          ->SupportsWindowFeature(
+              WindowFeatureController::WindowFeature::kFeatureLocationBar));
 
   DevToolsWindowTesting::CloseDevToolsWindowSync(devtools_window);
 }
@@ -1607,7 +1613,8 @@ IN_PROC_BROWSER_TEST_F(BrowserTest, OpenAppWindowLikeNtp) {
   EXPECT_EQ(new_browser->GetType(), BrowserWindowInterface::Type::TYPE_APP);
 
   // The browser's app name should include the extension's id.
-  std::string app_name = new_browser->app_name_;
+  std::string app_name =
+      BrowserInitState::From(new_browser)->create_params().app_name;
   EXPECT_NE(app_name.find(extension_app->id()), std::string::npos)
       << "Name " << app_name << " should contain id " << extension_app->id();
 }
@@ -1616,42 +1623,45 @@ IN_PROC_BROWSER_TEST_F(BrowserTest, OpenAppWindowLikeNtp) {
 // Makes sure the browser doesn't crash when
 // set_show_state(ui::mojom::WindowShowState::kMaximized) has been invoked.
 IN_PROC_BROWSER_TEST_F(BrowserTest, StartMaximized) {
-  auto params = std::to_array<Browser::CreateParams>({
-      Browser::CreateParams(Browser::TYPE_NORMAL, browser()->GetProfile(),
-                            true),
-      Browser::CreateParams(Browser::TYPE_POPUP, browser()->GetProfile(), true),
-      Browser::CreateParams::CreateForApp("app_name", true, gfx::Rect(),
-                                          browser()->GetProfile(), true),
-      Browser::CreateParams::CreateForDevTools(browser()->GetProfile()),
-      Browser::CreateParams::CreateForAppPopup("app_name", true, gfx::Rect(),
-                                               browser()->GetProfile(), true),
-      Browser::CreateParams(Browser::TYPE_PICTURE_IN_PICTURE,
-                            browser()->GetProfile(), true),
-  });
+  std::vector<Browser::CreateParams> params;
+  params.push_back(
+      Browser::CreateParams(Browser::TYPE_NORMAL, browser()->GetProfile(), true));
+  params.push_back(
+      Browser::CreateParams(Browser::TYPE_POPUP, browser()->GetProfile(), true));
+  params.push_back(Browser::CreateParams::CreateForApp(
+      "app_name", true, gfx::Rect(), browser()->GetProfile(), true));
+  params.push_back(
+      Browser::CreateParams::CreateForDevTools(browser()->GetProfile()));
+  params.push_back(Browser::CreateParams::CreateForAppPopup(
+      "app_name", true, gfx::Rect(), browser()->GetProfile(), true));
+  params.push_back(Browser::CreateParams(Browser::TYPE_PICTURE_IN_PICTURE,
+                                         browser()->GetProfile(), true));
   for (auto& param : params) {
     param.initial_show_state = ui::mojom::WindowShowState::kMaximized;
-    AddBlankTabAndShow(Browser::Create(param));
+    AddBlankTabAndShow(Browser::Create(std::move(param)));
   }
 }
 
 // Makes sure the browser doesn't crash when
 // set_show_state(ui::mojom::WindowShowState::kMinimized) has been invoked.
 IN_PROC_BROWSER_TEST_F(BrowserTest, StartMinimized) {
-  auto params = std::to_array<Browser::CreateParams>({
-      Browser::CreateParams(Browser::TYPE_NORMAL, browser()->GetProfile(),
-                            true),
-      Browser::CreateParams(Browser::TYPE_POPUP, browser()->GetProfile(), true),
-      Browser::CreateParams::CreateForApp("app_name", true, gfx::Rect(),
-                                          browser()->GetProfile(), true),
-      Browser::CreateParams::CreateForDevTools(browser()->GetProfile()),
-      Browser::CreateParams::CreateForAppPopup("app_name", true, gfx::Rect(),
-                                               browser()->GetProfile(), true),
-      Browser::CreateParams(Browser::TYPE_PICTURE_IN_PICTURE,
-                            browser()->GetProfile(), true),
-  });
+  std::vector<Browser::CreateParams> params;
+  params.push_back(
+      Browser::CreateParams(Browser::TYPE_NORMAL, browser()->GetProfile(), true));
+  params.push_back(
+      Browser::CreateParams(Browser::TYPE_POPUP, browser()->GetProfile(), true));
+  params.push_back(Browser::CreateParams::CreateForApp(
+      "app_name", true, gfx::Rect(), browser()->GetProfile(), true));
+  params.push_back(
+      Browser::CreateParams::CreateForDevTools(browser()->GetProfile()));
+  params.push_back(Browser::CreateParams::CreateForAppPopup(
+      "app_name", true, gfx::Rect(), browser()->GetProfile(), true));
+  params.push_back(Browser::CreateParams(Browser::TYPE_PICTURE_IN_PICTURE,
+                                         browser()->GetProfile(), true));
   for (auto& param : params) {
     param.initial_show_state = ui::mojom::WindowShowState::kMinimized;
-    AddBlankTabAndShow(Browser::Create(param), /*wait_for_activation=*/false);
+    AddBlankTabAndShow(Browser::Create(std::move(param)),
+                       /*wait_for_activation=*/false);
   }
 }
 
@@ -3436,8 +3446,8 @@ IN_PROC_BROWSER_TEST_F(GuestSessionBrowserTest, CreateGuestSessionBrowser) {
 
   // Try creating a browser in original non-OTR guest profile - it should fail.
   EXPECT_EQ(Browser::CreationStatus::kErrorProfileUnsuitable,
-            Browser::GetCreationStatusForProfile(
-                guest_profile->GetOriginalProfile()));
+            GetBrowserWindowCreationStatusForProfile(
+                *guest_profile->GetOriginalProfile()));
 }
 
 class MockBookmarkBarController : public BookmarkBarController {

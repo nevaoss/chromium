@@ -33,7 +33,7 @@ namespace enterprise_connectors {
 
 namespace {
 
-constexpr size_t kReadFileChunkSize = 4096;
+constexpr size_t kReadFileChunkSize = 1024 * 1024;
 constexpr size_t kMaxUploadSizeMetricsKB = 500 * 1024;
 constexpr uint64_t kMaxHashComputeSizeBytes = 25ull * 1024 * 1024 * 1024;
 
@@ -484,6 +484,15 @@ void FileAnalysisRequestBase::GetData(
                      base::OwnedRef(std::move(unused_hash_callback))),
       base::BindOnce(&FileAnalysisRequestBase::OnGotFileData,
                      weakptr_factory_.GetWeakPtr()));
+}
+
+// static
+bool FileAnalysisRequestBase::IsVirtualFile(const base::FilePath& path) {
+#if BUILDFLAG(IS_CHROMEOS)
+  return base::FilePath("/media/fuse").IsParent(path);
+#else
+  return false;
+#endif
 }
 
 }  // namespace enterprise_connectors

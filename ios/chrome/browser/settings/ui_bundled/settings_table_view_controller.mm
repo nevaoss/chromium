@@ -1807,7 +1807,8 @@ struct EnhancedSafeBrowsingActivePromoData
   return YES;
 #else
   return experimental_flags::IsMemoryDebuggingEnabled() ||
-         experimental_flags::ShouldShowCatalogItems();
+         experimental_flags::ShouldShowCatalogItems() ||
+         experimental_flags::ShouldShowBackendPromoDebugTools();
 #endif  // BUILDFLAG(CHROMIUM_BRANDING) && !defined(NDEBUG)
 }
 
@@ -2503,8 +2504,7 @@ struct EnhancedSafeBrowsingActivePromoData
 
 - (void)addressBarPreferenceCoordinatorViewControllerWasRemoved:
     (AddressBarPreferenceCoordinator*)coordinator {
-  CHECK_EQ(_addressBarPreferenceCoordinator, coordinator,
-           base::NotFatalUntil::M139);
+  CHECK_EQ(_addressBarPreferenceCoordinator, coordinator);
   [_addressBarPreferenceCoordinator stop];
   _addressBarPreferenceCoordinator.delegate = nil;
   _addressBarPreferenceCoordinator = nil;

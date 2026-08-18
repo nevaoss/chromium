@@ -44,6 +44,20 @@ public class VerticalTabUtilsUnitTest {
     @After
     public void tearDown() {
         ChromeSharedPreferences.getInstance().removeKey(ChromePreferenceKeys.VERTICAL_TABS_ENABLED);
+        ChromeSharedPreferences.getInstance()
+                .removeKey(ChromePreferenceKeys.VERTICAL_TABS_COLLAPSED);
+    }
+
+    @Test
+    @SmallTest
+    public void testVerticalTabRailCollapsedPreference() {
+        assertFalse(VerticalTabUtils.isRailCollapsedFromSharedPref());
+
+        VerticalTabUtils.setRailCollapsedInSharedPref(true);
+        assertTrue(VerticalTabUtils.isRailCollapsedFromSharedPref());
+
+        VerticalTabUtils.setRailCollapsedInSharedPref(false);
+        assertFalse(VerticalTabUtils.isRailCollapsedFromSharedPref());
     }
 
     @Test
@@ -105,6 +119,22 @@ public class VerticalTabUtilsUnitTest {
         FeatureOverrides.overrideParam(
                 ChromeFeatureList.ANDROID_VERTICAL_TABS, "expand_on_hover", true);
         assertTrue(VerticalTabUtils.isExpandOnHoverEnabled());
+    }
+
+    @Test
+    @SmallTest
+    public void testIsExternalDragEnabled_DefaultDisabled() {
+        assertFalse(VerticalTabUtils.isExternalDragEnabled());
+    }
+
+    @Test
+    @SmallTest
+    public void testIsExternalDragEnabled_EnabledViaOverride() {
+        FeatureOverrides.overrideParam(
+                ChromeFeatureList.ANDROID_VERTICAL_TABS,
+                VerticalTabUtils.EXTERNAL_DRAG_PARAM,
+                /* testValue= */ true);
+        assertTrue(VerticalTabUtils.isExternalDragEnabled());
     }
 
     @Test

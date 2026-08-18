@@ -30,6 +30,7 @@
 #import "components/enterprise/data_controls/core/browser/prefs.h"
 #import "components/enterprise/idle/idle_pref_names.h"
 #import "components/enterprise/isolated_mode/prefs.h"
+#import "components/enterprise/net/core/prefs.h"
 #import "components/feature_engagement/public/pref_names.h"
 #import "components/feed/core/v2/public/ios/pref_names.h"
 #import "components/handoff/handoff_manager.h"
@@ -477,6 +478,7 @@ void RegisterLocalStatePrefs(PrefRegistrySimple* registry) {
                                 0);
 
   registry->RegisterTimePref(prefs::kLastRecordedActiveDay, base::Time());
+  registry->RegisterIntegerPref(prefs::kLastRecordedActiveDaysInPast28Days, -1);
 
   // Deprecated 02/2025.
   registry->RegisterIntegerPref(
@@ -518,6 +520,7 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
   enterprise::RegisterIdentifiersProfilePrefs(registry);
   enterprise_connectors::RegisterProfilePrefs(registry);
   enterprise_data_protection::RegisterProfilePrefs(registry);
+  enterprise_net::RegisterProfilePrefs(registry);
   ios_feed::RegisterProfilePrefs(registry);
   FirstRun::RegisterProfilePrefs(registry);
   FontSizeTabHelper::RegisterProfilePrefs(registry);

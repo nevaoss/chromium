@@ -15,6 +15,9 @@
 #include "chrome/browser/actor/actor_script_tool_receiver.h"
 #include "chrome/browser/buildflags.h"
 #include "chrome/browser/dom_distiller/dom_distiller_service_factory.h"
+#include "chrome/browser/glic/host/glic_page_handler.h"
+#include "chrome/browser/glic/host/guest_util.h"
+#include "chrome/browser/glic/public/features.h"
 #include "chrome/browser/navigation_predictor/navigation_predictor.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
@@ -27,6 +30,7 @@
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/speech/on_device_speech_recognition_impl.h"
+#include "chrome/browser/ssl/chrome_security_state_util.h"
 #include "chrome/browser/translate/translate_frame_binder.h"
 #include "chrome/browser/ui/search_engines/search_engine_tab_helper.h"
 #include "chrome/common/buildflags.h"
@@ -49,7 +53,6 @@
 #include "components/performance_manager/embedder/performance_manager_registry.h"
 #include "components/prefs/pref_service.h"
 #include "components/security_state/content/content_utils.h"
-#include "components/security_state/content/security_state_tab_helper.h"
 #include "components/security_state/core/security_state.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
 #include "components/spellcheck/spellcheck_buildflags.h"
@@ -211,10 +214,9 @@ void BindDistillabilityService(
   }
   driver->SetIsSecureCallback(
       base::BindRepeating([](content::WebContents* contents) {
-        // SecurityStateTabHelper uses chrome-specific
-        // GetVisibleSecurityState to determine if a page is SECURE.
-        return SecurityStateTabHelper::FromWebContents(contents)
-                   ->GetSecurityLevel() ==
+        // Uses the chrome-specific visible security state to determine
+        // whether the page is SECURE.
+        return chrome_security_state::GetSecurityLevel(contents) ==
                security_state::SecurityLevel::SECURE;
       }));
   driver->CreateDistillabilityService(std::move(receiver));
@@ -451,6 +453,7 @@ void BindCredentialManager(
 void PopulateChromeFrameBinders(
     mojo::BinderMapWithContext<content::RenderFrameHost*>* map,
     content::RenderFrameHost* render_frame_host) {
+  map->Add<glic::mojom::WebClientHandler>(&glic::BindGlicWebClientHandler);
   map->Add<image_annotation::mojom::Annotator>(&BindImageAnnotator);
 
   map->Add<blink::mojom::ScriptToolHost>(

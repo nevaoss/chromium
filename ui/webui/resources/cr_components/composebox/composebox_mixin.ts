@@ -149,6 +149,7 @@ export const ComposeboxEmbedderMixin =
             clearAllInputsWhenSubmittingQuery: {type: Boolean},
             closeOnEscape: {type: Boolean},
             composeboxNoFlickerSuggestionsFix: {type: Boolean},
+            composeboxSkillsEnabled: {type: Boolean},
             queryZpsOnLoad: {type: Boolean},
             showFileCarousel: {
               reflect: true,
@@ -265,6 +266,8 @@ export const ComposeboxEmbedderMixin =
         accessor clearAllInputsWhenSubmittingQuery: boolean = false;
         accessor closeOnEscape: boolean = true;
         accessor composeboxNoFlickerSuggestionsFix: boolean = false;
+        accessor composeboxSkillsEnabled: boolean =
+            getLoadTimeBoolean('composeboxSkillsEnabled', false);
         accessor contextMenuEnabled: boolean =
             loadTimeData.getBoolean('composeboxShowContextMenu');
         accessor errorMessage: string = '';
@@ -748,13 +751,15 @@ export const ComposeboxEmbedderMixin =
               this.deleteFile(uuid);
             }
           });
+
+          if (this.tabSuggestionsState === TabSuggestionsState.LOADED) {
+            this.refreshTabSuggestions(/*forceRefresh=*/ true);
+          }
         }
 
         setAimThreadRestoredTabs(tabs: TabInfo[]) {
           this.aimThreadRestoredTabs = tabs;
-          if (tabs.length > 0) {
-            this.refreshTabSuggestions(/*forceRefresh=*/ true);
-          }
+          this.refreshTabSuggestions(/*forceRefresh=*/ true);
           this.requestUpdate();
         }
 
@@ -2712,6 +2717,7 @@ export interface ComposeboxEmbedderMixinInterface extends I18nMixinLitInterface,
   smartTabSharingActive: boolean;
   smartTabSharingVisible: boolean;
   contextManagementInComposeboxEnabled: boolean;
+  composeboxSkillsEnabled: boolean;
   contextMenuDescriptionEnabled: boolean;
   showContextMenuDescription: boolean;
   shouldShowGhostFiles: boolean;

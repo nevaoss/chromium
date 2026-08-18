@@ -2478,9 +2478,21 @@ const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
     prefs::kManagedLocalNetworkAccessRestrictionsTemporaryOptOut,
     base::Value::Type::BOOLEAN },
 
+  // For Local Network Access policies, device policies are added before user
+  // policies so that user policies override device policies.
+#if BUILDFLAG(IS_CHROMEOS)
+  { key::kDeviceLocalNetworkAccessAllowedForUrls,
+    prefs::kManagedLocalNetworkAccessAllowedForUrls,
+    base::Value::Type::LIST },
+#endif  // BUILDFLAG(IS_CHROMEOS)
   { key::kLocalNetworkAccessAllowedForUrls,
     prefs::kManagedLocalNetworkAccessAllowedForUrls,
     base::Value::Type::LIST },
+#if BUILDFLAG(IS_CHROMEOS)
+  { key::kDeviceLocalNetworkAccessBlockedForUrls,
+    prefs::kManagedLocalNetworkAccessBlockedForUrls,
+    base::Value::Type::LIST },
+#endif  // BUILDFLAG(IS_CHROMEOS)
   { key::kLocalNetworkAccessBlockedForUrls,
     prefs::kManagedLocalNetworkAccessBlockedForUrls,
     base::Value::Type::LIST },
@@ -2496,6 +2508,7 @@ const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
   { key::kLoopbackNetworkBlockedForUrls,
     prefs::kManagedLoopbackNetworkBlockedForUrls,
     base::Value::Type::LIST },
+
 #if !BUILDFLAG(IS_CHROMEOS)
   { key::kCAPlatformIntegrationEnabled,
     prefs::kCAPlatformIntegrationEnabled,
@@ -2655,9 +2668,18 @@ std::unique_ptr<ConfigurationPolicyHandlerList> BuildHandlerList(
   }
 
   // Policies for all platforms - Start
+
+  // For Local Network Access policies, device policies are added before user
+  // policies so that user policies override device policies.
+#if BUILDFLAG(IS_CHROMEOS)
   handlers->AddHandler(
-      std::make_unique<
-          LocalNetworkAccessIpAddressSpaceOverridesPolicyHandler>());
+      std::make_unique<LocalNetworkAccessIpAddressSpaceOverridesPolicyHandler>(
+          key::kDeviceLocalNetworkAccessIpAddressSpaceOverrides));
+#endif  // BUILDFLAG(IS_CHROMEOS)
+  handlers->AddHandler(
+      std::make_unique<LocalNetworkAccessIpAddressSpaceOverridesPolicyHandler>(
+          key::kLocalNetworkAccessIpAddressSpaceOverrides));
+
   handlers->AddHandler(std::make_unique<DefaultSensorsSettingPolicyHandler>());
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
   handlers->AddHandler(
@@ -2886,14 +2908,15 @@ std::unique_ptr<ConfigurationPolicyHandlerList> BuildHandlerList(
   handlers->AddHandler(
       std::make_unique<
           enterprise_connectors::EnterpriseConnectorsPolicyHandler>(
-          key::kOnFileAttachedEnterpriseConnector,
-          enterprise_connectors::kOnFileAttachedPref,
-          enterprise_connectors::kOnFileAttachedScopePref, chrome_schema));
+          key::kOnDataCopiedEnterpriseConnector,
+          enterprise_connectors::kOnDataCopiedPref,
+          enterprise_connectors::kOnDataCopiedScopePref, chrome_schema));
   handlers->AddHandler(
       std::make_unique<
           enterprise_connectors::EnterpriseConnectorsPolicyHandler>(
-          key::kOnPrintEnterpriseConnector, enterprise_connectors::kOnPrintPref,
-          enterprise_connectors::kOnPrintScopePref, chrome_schema));
+          key::kOnFileAttachedEnterpriseConnector,
+          enterprise_connectors::kOnFileAttachedPref,
+          enterprise_connectors::kOnFileAttachedScopePref, chrome_schema));
 #if BUILDFLAG(IS_CHROMEOS)
   handlers->AddHandler(
       std::make_unique<
@@ -2902,6 +2925,11 @@ std::unique_ptr<ConfigurationPolicyHandlerList> BuildHandlerList(
           enterprise_connectors::kOnFileTransferPref,
           enterprise_connectors::kOnFileTransferScopePref, chrome_schema));
 #endif  // BUILDFLAG(IS_CHROMEOS)
+  handlers->AddHandler(
+      std::make_unique<
+          enterprise_connectors::EnterpriseConnectorsPolicyHandler>(
+          key::kOnPrintEnterpriseConnector, enterprise_connectors::kOnPrintPref,
+          enterprise_connectors::kOnPrintScopePref, chrome_schema));
 
   handlers->AddHandler(
       std::make_unique<web_app::WebAppSettingsPolicyHandler>(chrome_schema));

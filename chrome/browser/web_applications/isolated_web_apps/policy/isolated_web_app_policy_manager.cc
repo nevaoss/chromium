@@ -187,13 +187,12 @@ BASE_FEATURE(kIwaPolicyManagerOnDemandComponentUpdate,
 void IsolatedWebAppPolicyManager::RegisterProfilePrefs(
     user_prefs::PrefRegistrySyncable* registry) {
   registry->RegisterListPref(prefs::kIsolatedWebAppInstallForceList);
+  // LINT.IfChange(WebAppPrefs)
   registry->RegisterIntegerPref(
       prefs::kIsolatedWebAppPendingInitializationCount, 0);
   registry->RegisterBooleanPref(prefs::kIsolatedWebAppUserInstallationEnabled,
                                 true);
-  // NOTE: If you add new prefs here that should be cleared during database
-  // corruption recovery, make sure to update
-  // `RemoveWebAppJob::RemoveForCorruptDatabase`.
+  // LINT.ThenChange(chrome/browser/web_applications/web_app_utils.cc:WebAppPrefs)
 }
 
 // static

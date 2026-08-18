@@ -43,6 +43,7 @@
 #include "base/test/task_environment.h"
 #include "base/time/time.h"
 #include "build/build_config.h"
+#include "components/autofill/core/browser/at_memory/at_memory_manager.h"
 #include "components/autofill/core/browser/autofill_field.h"
 #include "components/autofill/core/browser/autofill_format_string.h"
 #include "components/autofill/core/browser/crowdsourcing/mock_autofill_crowdsourcing_manager.h"
@@ -7122,6 +7123,44 @@ TEST_F(BrowserAutofillManagerOtpSuggestionsTest, OtpFilling) {
   ASSERT_EQ(1u, filled_fields.size());
   EXPECT_EQ(form.fields()[0].global_id(), filled_fields[0].global_id());
   EXPECT_EQ(otp_value, filled_fields[0].value());
+}
+
+// Test that OTP suggestions are silently suppressed on insecure contexts.
+TEST_F(BrowserAutofillManagerOtpSuggestionsTest,
+       OtpSuggestions_InsecureContext) {
+  autofill_client().set_last_committed_primary_main_frame_url(
+      GURL("http://example.com"));
+
+  FormData form =
+      test::GetFormData({.fields = {
+                             {.label = u"Enter one time code",
+                              .form_control_type = FormControlType::kInputText},
+                         }});
+
+  // Simulate form parsing results.
+  auto form_structure = std::make_unique<FormStructure>(form);
+  form_structure->field(0)->set_heuristic_type(
+      HeuristicSource::kPasswordManagerMachineLearning,
+      FieldType::ONE_TIME_CODE);
+  test_api(autofill_manager()).AddSeenFormStructure(std::move(form_structure));
+
+  // We should NOT call GetOtpSuggestions on the manager.
+  EXPECT_CALL(otp_manager(), GetOtpSuggestions).Times(0);
+
+  ON_CALL(autocomplete_history_manager(), OnGetSingleFieldSuggestions)
+      .WillByDefault(
+          [](const FormData& form, const FormStructure* form_structure,
+             const FormFieldData& field, const AutofillField* autofill_field,
+             const AutofillClient& client,
+             SingleFieldFillRouter::OnSuggestionsReturnedCallback
+                 on_suggestions_returned) {
+            std::move(on_suggestions_returned).Run(field.global_id(), {});
+          });
+
+  OnAskForValuesToFill(form, form.fields()[0]);
+
+  // We expect no suggestions.
+  external_delegate()->CheckNoSuggestions(form.fields()[0].global_id());
 }
 
 // Tests that FillOrPreviewForm correctly passes the blocked_fields to the

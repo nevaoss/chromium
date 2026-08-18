@@ -390,8 +390,16 @@ IN_PROC_BROWSER_TEST_F(JavaScriptDialogTest, DismissalCausePromptTabHidden) {
   EXPECT_EQ(DismissalCause::kTabHidden, tester.GetLastDismissalCause());
 }
 
+// TODO(crbug.com/541131636): Re-enable test after fixing flakiness on Mac.
+#if BUILDFLAG(IS_MAC)
+#define MAYBE_DismissalCausePromptBrowserSwitched \
+  DISABLED_DismissalCausePromptBrowserSwitched
+#else
+#define MAYBE_DismissalCausePromptBrowserSwitched \
+  DismissalCausePromptBrowserSwitched
+#endif
 IN_PROC_BROWSER_TEST_F(JavaScriptDialogTest,
-                       DismissalCausePromptBrowserSwitched) {
+                       MAYBE_DismissalCausePromptBrowserSwitched) {
   JavaScriptDialogDismissalCauseTester tester(this);
   tester.PopupDialog(content::JAVASCRIPT_DIALOG_TYPE_PROMPT);
   ui_test_utils::OpenNewEmptyWindowAndWaitUntilActivated(
@@ -565,9 +573,8 @@ IN_PROC_BROWSER_TEST_F(JavaScriptDialogTest,
   // Switch to the split view which should hide the dialog and show tab
   // attention indicator.
   tab_strip_model()->ActivateTabAt(0);
-  ASSERT_TRUE(browser()
-                  ->GetBrowserView()
-                  .horizontal_tab_strip_for_testing()
+  ASSERT_TRUE(BrowserView::GetBrowserViewForBrowser(browser())
+                  ->horizontal_tab_strip_for_testing()
                   ->tab_at(2)
                   ->GetTabIconForTesting()
                   ->GetShowingAttentionIndicator());

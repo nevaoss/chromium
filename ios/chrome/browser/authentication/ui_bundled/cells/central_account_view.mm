@@ -16,6 +16,7 @@
 #import "ios/chrome/browser/signin/ui/avatar/ai_tier_avatar_view.h"
 #import "ios/chrome/common/ui/colors/semantic_color_names.h"
 #import "ios/chrome/common/ui/table_view/table_view_cells_constants.h"
+#import "ios/chrome/common/ui/util/constraints_ui_util.h"
 #import "ios/chrome/grit/ios_strings.h"
 #import "ui/base/l10n/l10n_util.h"
 #import "ui/base/l10n/l10n_util_mac.h"
@@ -86,11 +87,11 @@ UIImage* GetEnterpriseIcon() {
     self.accessibilityIdentifier =
         CentralAccountViewAccessibilityIdentifier(email);
 
-    CGFloat outerSize =
+    CGFloat avatarDiameter =
         GetSizeForIdentityAvatarSize(IdentityAvatarSize::Large).width;
     _avatarView =
         [[AITierAvatarView alloc] initWithAvatarImage:_avatarImage
-                                            outerSize:outerSize
+                                       avatarDiameter:avatarDiameter
                                       showsAITierRing:showsAITierRing];
     [self addSubview:_avatarView];
 
@@ -123,7 +124,7 @@ UIImage* GetEnterpriseIcon() {
             : (kTableViewLargeVerticalSpacing + kTableViewVerticalSpacing);
 
     if (managementDescription) {
-      CHECK_GT(managementDescription.length, 0u, base::NotFatalUntil::M140);
+      CHECK_GT(managementDescription.length, 0u);
       UIImage* managementIcon = GetEnterpriseIcon();
       UIImageView* managementIconView =
           [[UIImageView alloc] initWithImage:managementIcon];
@@ -192,29 +193,17 @@ UIImage* GetEnterpriseIcon() {
                        constant:(_useLargeMargins
                                      ? kTableViewLargeVerticalSpacing
                                      : kTopLargePadding)];
+    AddSameConstraintsToSidesWithInsets(
+        nameLabel, self, LayoutSides::kLeading | LayoutSides::kTrailing,
+        NSDirectionalEdgeInsets{0, kTableViewHorizontalSpacing, 0,
+                                kTableViewHorizontalSpacing});
+    AddSameConstraintsToSides(emailLabel, nameLabel,
+                              LayoutSides::kLeading | LayoutSides::kTrailing);
     [NSLayoutConstraint activateConstraints:@[
       [_avatarView.centerXAnchor constraintEqualToAnchor:self.centerXAnchor],
       _topPaddingConstraint,
-      [_avatarView.widthAnchor
-          constraintEqualToConstant:GetSizeForIdentityAvatarSize(
-                                        IdentityAvatarSize::Large)
-                                        .width],
-      [_avatarView.heightAnchor
-          constraintEqualToAnchor:_avatarView.widthAnchor],
-
-      [nameLabel.leadingAnchor
-          constraintEqualToAnchor:self.leadingAnchor
-                         constant:kTableViewHorizontalSpacing],
-      [nameLabel.trailingAnchor
-          constraintEqualToAnchor:self.trailingAnchor
-                         constant:-kTableViewHorizontalSpacing],
-
       [emailLabel.topAnchor constraintEqualToAnchor:nameLabel.bottomAnchor
                                            constant:kLabelVerticalSpacing],
-      [emailLabel.leadingAnchor
-          constraintEqualToAnchor:nameLabel.leadingAnchor],
-      [emailLabel.trailingAnchor
-          constraintEqualToAnchor:nameLabel.trailingAnchor],
     ]];
 
     if (subscriptionChipView) {

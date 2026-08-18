@@ -102,6 +102,7 @@ class BookmarkBarMediator
     private final Supplier<ModalDialogManager> mModalDialogManagerSupplier;
     private final RecyclerView mItemsRecyclerView;
     private final BookmarkBar mBookmarkBarView;
+    private @Nullable BookmarkUndoController mBookmarkUndoController;
     private @StyleRes int mCurrentTextStyleRes = R.style.TextAppearance_TextMedium_Primary_Baseline;
     private @ColorRes int mCurrentIconTintRes = R.color.default_icon_color_tint_list;
     @DrawableRes private int mCurrentBackgroundId;
@@ -227,6 +228,11 @@ class BookmarkBarMediator
             mItemsProvider = null;
         }
 
+        if (mBookmarkUndoController != null) {
+            mBookmarkUndoController.destroy();
+            mBookmarkUndoController = null;
+        }
+
         mProfileSupplier.removeObserver(mProfileSupplierObserver);
     }
 
@@ -328,6 +334,10 @@ class BookmarkBarMediator
 
     // TODO(crbug.com/394614779): Open in popup window instead of bookmark manager.
     private void onAllBookmarksButtonClick(int metaState, int buttonState) {
+        if ((buttonState & MotionEvent.BUTTON_SECONDARY) != 0) {
+            return;
+        }
+
         // Open the manager iff the active profile and model are unchanged to prevent accidentally
         // opening the manager for the wrong profile/model. We will only record the click event if
         // this guard passes, so the data shows only actions that resulted in a change.
@@ -453,6 +463,11 @@ class BookmarkBarMediator
             mItemsProvider = null;
         }
 
+        if (mBookmarkUndoController != null) {
+            mBookmarkUndoController.destroy();
+            mBookmarkUndoController = null;
+        }
+
         mItemsModel.clear();
 
         mPopupCoordinator.dismiss();
@@ -477,6 +492,12 @@ class BookmarkBarMediator
                                     FaviconUtils.createCircularIconGenerator(mActivity));
 
                     mItemsProvider = new BookmarkBarItemsProvider(model, this);
+
+                    if (mSnackbarManagerSupplier.get() != null) {
+                        mBookmarkUndoController =
+                                new BookmarkUndoController(
+                                        mActivity, model, mSnackbarManagerSupplier.get());
+                    }
                 });
     }
 
@@ -585,22 +606,14 @@ class BookmarkBarMediator
                 });
     }
 
+    /**
+     * Deletes a bookmark from the Bookmarks Bar, passing this mediator's persistent 1:1 {@link
+     * BookmarkUndoController} as the originator to isolate snackbar display to this window.
+     */
     @Override
     public void deleteBookmark(BookmarkId id) {
         runIfStillRelevantAfterFinishLoadingBookmarkModel(
-                (profile, model) -> {
-                    // Instantiate a single-use BookmarkUndoController using this activity's
-                    // SnackbarManager. destroyAfterFirstAction prevents multi-window observers from
-                    // spawning multiple controllers and only undoing/dismissing one of them.
-                    if (mSnackbarManagerSupplier.get() != null) {
-                        new BookmarkUndoController(
-                                mActivity,
-                                model,
-                                mSnackbarManagerSupplier.get(),
-                                /* destroyAfterFirstAction= */ true);
-                    }
-                    model.deleteBookmarks(id);
-                });
+                (profile, model) -> model.deleteBookmarks(mBookmarkUndoController, id));
     }
 
     @Override

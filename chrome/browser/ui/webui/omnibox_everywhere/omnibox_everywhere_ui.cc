@@ -5,6 +5,7 @@
 #include "chrome/browser/ui/webui/omnibox_everywhere/omnibox_everywhere_ui.h"
 
 #include "base/feature_list.h"
+#include "base/strings/utf_string_conversions.h"
 #include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/contextual_search/contextual_search_service_factory.h"
@@ -18,6 +19,7 @@
 #include "chrome/browser/ui/webui/cr_components/searchbox/searchbox_handler.h"
 #include "chrome/browser/ui/webui/favicon_source.h"
 #include "chrome/browser/ui/webui/metrics_reporter/metrics_reporter_service.h"
+#include "chrome/browser/ui/webui/new_tab_page/composebox/variations/composebox_fieldtrial.h"
 #include "chrome/browser/ui/webui/omnibox_everywhere/composebox_everywhere_handler.h"
 #include "chrome/browser/ui/webui/omnibox_everywhere/omnibox_everywhere_handler.h"
 #include "chrome/browser/ui/webui/plural_string_handler.h"
@@ -35,6 +37,7 @@
 #include "components/omnibox/common/omnibox_features.h"
 #include "content/public/browser/web_ui.h"
 #include "content/public/browser/web_ui_data_source.h"
+#include "services/network/public/mojom/content_security_policy.mojom.h"
 #include "ui/webui/webui_util.h"
 
 namespace {
@@ -73,6 +76,9 @@ OmniboxEverywhereUI::OmniboxEverywhereUI(content::WebUI* web_ui)
 
   webui::SetupWebUIDataSource(source, kOmniboxEverywhereResources,
                               IDR_OMNIBOX_EVERYWHERE_OMNIBOX_EVERYWHERE_HTML);
+  source->OverrideContentSecurityPolicy(
+      network::mojom::CSPDirectiveName::MediaSrc,
+      "media-src blob: data: 'self';");
 
   std::string profile_avatar_url =
       "chrome://theme/IDR_PROFILE_AVATAR_PLACEHOLDER_LARGE";
@@ -83,11 +89,26 @@ OmniboxEverywhereUI::OmniboxEverywhereUI(content::WebUI* web_ui)
             .GetProfileAttributesWithPath(profile_->GetPath());
     if (entry) {
       gfx::Image icon =
-          profiles::GetSizedAvatarIcon(entry->GetAvatarIcon(), 40, 40);
+          profiles::GetSizedAvatarIcon(entry->GetAvatarIcon(), 48, 48);
       profile_avatar_url = webui::GetBitmapDataUrl(icon.AsBitmap());
+
+      std::u16string gaia_name = entry->GetGAIAName();
+      std::u16string profile_name = entry->GetName();
+      std::u16string display_name = profile_name;
+      if (!gaia_name.empty() && gaia_name != profile_name) {
+        display_name = gaia_name + u" • " + profile_name;
+      }
+      source->AddString("profileName", base::UTF16ToUTF8(display_name));
+      source->AddString("profileEmail",
+                        base::UTF16ToUTF8(entry->GetUserName()));
+    } else {
+      source->AddString("profileName", "");
+      source->AddString("profileEmail", "");
     }
   }
   source->AddString("profileAvatarUrl", profile_avatar_url);
+  source->AddBoolean("omniboxEverywhereProfilePickerEnabled",
+                     omnibox::kOmniboxEverywhereProfilePickerParam.Get());
   source->AddLocalizedString("profileButtonLabel",
                              IDS_OVERFLOW_MENU_ITEM_TEXT_PROFILE);
   source->AddLocalizedString("searchBoxHintAskOrType",
@@ -155,9 +176,11 @@ OmniboxEverywhereUI::OmniboxEverywhereUI(content::WebUI* web_ui)
                      omnibox::kShowComposeboxImageSuggestions.Get());
 
   source->AddBoolean("searchboxShowComposeEntrypoint", IsAimEligible(profile_));
-  source->AddBoolean("ntpRealboxNextEnabled", IsFuseboxEligible(profile_));
-  source->AddBoolean("searchboxLensSearch", true);
-
+  source->AddBoolean("isFuseboxEnabled", IsFuseboxEligible(profile_));
+  source->AddBoolean("ntpRealboxDynamicAiModeButton",
+                     IsFuseboxEligible(profile_) &&
+                         base::FeatureList::IsEnabled(
+                             ntp_realbox::kNtpRealboxDynamicAiModeButton));
   source->AddBoolean("composeboxShowTypedSuggest",
                      omnibox::kShowComposeboxTypedSuggest.Get());
   source->AddBoolean("composeboxShowZps", omnibox::kShowComposeboxZps.Get());
@@ -191,12 +214,11 @@ OmniboxEverywhereUI::OmniboxEverywhereUI(content::WebUI* web_ui)
   source->AddBoolean("composeboxAnimationDisabled",
                      base::FeatureList::IsEnabled(
                          omnibox::kWebUIOmniboxAimPopupDisableAnimation));
-  source->AddBoolean(
-      "energyEffectEnabled",
-      base::FeatureList::IsEnabled(omnibox::kEnergyEffectInOmnibox));
-  source->AddBoolean(
-      "energyEffectAnimationEnabled",
-      base::FeatureList::IsEnabled(omnibox::kEnergyEffectInOmnibox));
+  // Disable the energy effect in Omnibox Everywhere so the AIM compose button
+  // renders the outer conic rainbow glow animation instead of the subtle
+  // energy plate effect.
+  source->AddBoolean("energyEffectEnabled", false);
+  source->AddBoolean("energyEffectAnimationEnabled", false);
   source->AddBoolean("contextButtonShapeIsOblong",
                      omnibox::kContextButtonShapeIsOblong.Get());
 

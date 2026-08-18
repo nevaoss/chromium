@@ -38,8 +38,8 @@ inline constexpr char kBrowserLockdownModeEnabled[] =
 // (serverID) and creation timestamp.
 inline constexpr char kBwgSessionMap[] = "ios.bwg.session_map";
 
-// Map of scene session IDs to booleans which indicates if a cobrowse session is
-// active.
+// Map of scene session IDs to AIM thread IDs. The presence of a thread ID
+// indicates if a cobrowse session is active.
 inline constexpr char kCobrowseSessionActiveMap[] =
     "ios.cobrowse.session_active_map";
 
@@ -954,6 +954,11 @@ inline constexpr char kCrossPlatformPromosIOS16thActiveDay[] =
 // A time pref to remember the last time the "active day" feature engagement
 // tracker event was fired.
 inline constexpr char kLastRecordedActiveDay[] = "ios.last_recorded_active_day";
+
+// Integer preference holding the number of active days recorded in the past
+// 28-day window during session metrics logging.
+inline constexpr char kLastRecordedActiveDaysInPast28Days[] =
+    "ios.last_recorded_active_days_in_past_28_days";
 
 }  // namespace prefs
 

@@ -615,7 +615,7 @@ const std::map<int, int>& GetIdcToUmaMap(UmaEnumIdLookupType type) {
        {IDC_CONTENT_CONTEXT_SAVEVIDEOFRAMEAS, 141},
        {IDC_CONTENT_CONTEXT_SEARCHLENSFORVIDEOFRAME, 142},
        {IDC_CONTENT_CONTEXT_SEARCHWEBFORVIDEOFRAME, 143},
-       {IDC_CONTENT_CONTEXT_AUTOFILL_FALLBACK_PLUS_ADDRESS, 145},
+       // Removed: {IDC_CONTENT_CONTEXT_AUTOFILL_FALLBACK_PLUS_ADDRESS, 145},
        // Removed: {IDC_CONTENT_CONTEXT_AUTOFILL_FALLBACK_PASSWORDS, 146},
        {IDC_CONTENT_CONTEXT_AUTOFILL_FALLBACK_PASSWORDS_SELECT_PASSWORD, 147},
        {IDC_CONTENT_CONTEXT_AUTOFILL_FALLBACK_PASSWORDS_IMPORT_PASSWORDS, 148},
@@ -2719,11 +2719,15 @@ void RenderViewContextMenu::AppendPartialTranslateItem() {
   const std::u16string printable_selection_text = PrintableSelectionText();
   std::u16string label;
 
-  if (is_menu_simplification_enabled && !printable_selection_text.empty()) {
-    label = l10n_util::GetStringFUTF16(
-        IDS_CONTENT_CONTEXT_PARTIAL_TRANSLATE_SELECTION,
-        printable_selection_text,
-        GetTargetLanguageDisplayName(/*is_full_page_translation=*/false));
+  if (is_menu_simplification_enabled) {
+    if (printable_selection_text.empty()) {
+      label =
+          l10n_util::GetStringUTF16(IDS_CONTENT_CONTEXT_PARTIAL_TRANSLATE_V2);
+    } else {
+      label = l10n_util::GetStringFUTF16(
+          IDS_CONTENT_CONTEXT_PARTIAL_TRANSLATE_SELECTION_V2,
+          printable_selection_text);
+    }
   } else {
     label = l10n_util::GetStringFUTF16(
         IDS_CONTENT_CONTEXT_PARTIAL_TRANSLATE,

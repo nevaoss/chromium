@@ -196,6 +196,8 @@ class CORE_EXPORT LocalFrameClient : public FrameClient {
       base::TimeTicks actual_navigation_start,
       const String& href_translate,
       const LocalFrameToken* initiator_frame_token,
+      const base::UnguessableToken& initiator_state_token,
+      const DocumentToken& initiator_document_token,
       SourceLocation* source_location,
       mojo::PendingRemote<mojom::blink::NavigationStateKeepAliveHandle>
           initiator_navigation_state_keep_alive_handle,
@@ -313,7 +315,6 @@ class CORE_EXPORT LocalFrameClient : public FrameClient {
                                       int32_t world_id) = 0;
   virtual void WillReleaseScriptContext(v8::Local<v8::Context>,
                                         int32_t world_id) = 0;
-  virtual bool AllowScriptExtensions() = 0;
 
   virtual void DidChangeScrollOffset() {}
 

@@ -284,6 +284,7 @@ Per ulteriori informazioni sulla gestione dei dati per le funzionalità di AI ge
 <translation id="117059611145966538">Server di stampa esterni</translation>
 <translation id="117080706484659953">Consenti il rilevamento dell'ambito delle policy su <ph name="MAC_OS_NAME" /></translation>
 <translation id="1171106901454883937">Attiva i report sulle informazioni relative alla versione del dispositivo</translation>
+<translation id="1171286631068003605">L'URL che rimanda alla definizione della skill. Deve essere univoco.</translation>
 <translation id="1173493742686115032">Attiva <ph name="SEARCH_SIDE_PANEL_FEATURE_NAME" /> in tutte le pagine web</translation>
 <translation id="1176740714945046981">Abilita la funzionalità di downgrade per le IWA. Per impostazione predefinita, vengono installate solo le versioni più recenti delle IWA. Se la policy è impostata su <ph name="TRUE" />, puoi installare anche le versioni precedenti. Per consentire il downgrade, il valore della versione che vuoi deve essere specificato utilizzando il campo "pinned_version". Se il valore di "allow_downgrades" non viene specificato o è impostato su <ph name="FALSE" />, il downgrade è disabilitato per l'AIW.</translation>
 <translation id="1177624681620856105"> Questa policy consente di stabilire se mostrare o meno la casella di controllo "Apri sempre" nei messaggi di conferma di avvio di protocolli esterni.
@@ -445,6 +446,15 @@ Se la policy viene attivata, le finestre del browser e delle app verranno avviat
 Se la policy viene disattivata o se non viene configurata, gli elementi da avviare al momento dell'accesso verranno determinati dalle impostazioni di ripristino completo.</translation>
 <translation id="1327466551276625742">Attivazione richiesta di configurazione della rete offline</translation>
 <translation id="13356285923490863">Nome policy</translation>
+<translation id="1336231837510847759">Elenco di impostazioni per i servizi di <ph name="PRODUCT_NAME" /> Enterprise Connectors da applicare al connettore di <ph name="ON_NETWORK_REQUEST_ENTERPRISE_CONNECTOR" /> Enterprise, che si attiva quando viene effettuata una richiesta di rete da <ph name="PRODUCT_NAME" />. Questa policy valuta solo le richieste HTTP POST.
+
+Il campo <ph name="ENTERPRISE_CONNECTOR_AUDIT_FIELD" /> viene utilizzato per determinare quali richieste devono essere controllate. La richiesta e i relativi contenuti creeranno una richiesta di analisi, ma non verranno bloccati. Basta che una richiesta di rete corrisponda a una sola voce dell'elenco nella policy perché venga creata una richiesta di analisi di controllo.
+
+I campi dell'elenco <ph name="ENTERPRISE_CONNECTOR_REQUEST_DOMAIN_FIELD" /> e <ph name="ENTERPRISE_CONNECTOR_TAB_DOMAIN_FIELD" /> vengono confrontati rispettivamente con l'URL di una richiesta e con l'URL della scheda principale da cui la richiesta ha avuto origine. Se uno dei campi è assente, verrà considerato implicitamente come corrispondente.
+
+Il campo <ph name="ENTERPRISE_CONNECTOR_TAGS_FIELD" /> viene utilizzato per determinare quali tag includere nella richiesta di analisi se il campo <ph name="ENTERPRISE_CONNECTOR_AUDIT_FIELD" /> corrisponde.
+
+Questa policy richiede una configurazione aggiuntiva per essere applicata. Visita https://support.google.com/chrome/a?p=chrome_enterprise_connector_policies_setting per maggiori informazioni.</translation>
 <translation id="1338603603553894503">Consente di specificare se il selettore profilo è attivato, disattivato o forzato all'avvio del browser.
 
       Per impostazione predefinita, il selettore profilo non viene mostrato quando il browser si avvia in modalità ospite o Incognito, quando una directory e/o gli URL del profilo sono specificati da una riga di comando, quando è richiesta esplicitamente l'apertura di un'app, quando il browser è stato lanciato da una notifica nativa, quando c'è un solo profilo disponibile o quando la policy ForceBrowserSignin è impostata su True.
@@ -2388,8 +2398,24 @@ L'applicazione di questa policy sui dispositivi gestiti è influenzata dalla pol
 
           Se questa policy non viene impostata, inizialmente l'evidenziazione del cursore di testo è disattivata, ma l'utente può attivarla in qualsiasi momento.</translation>
 <translation id="2506865562891982662">Consenti agli utenti di selezionare i dispositivi di trasmissione con un codice di accesso o un codice QR dal menu di <ph name="PRODUCT_NAME" />.</translation>
+<translation id="2508800409212941632">Policy di configurazione per il connettore <ph name="ON_NETWORK_REQUEST_ENTERPRISE_CONNECTOR" /> <ph name="PRODUCT_NAME" /> Enterprise</translation>
 <translation id="2509748672176727116">L'utente potrà eseguire acquisizioni di pacchetti di rete</translation>
 <translation id="2509919237512982967">Usa i controlli modulo legacy fino alla versione M84.</translation>
+<translation id="2509947330677441695">La configurazione della policy consente di accedere in modalità Incognito agli URL elencati. Utilizzala per aprire le eccezioni di alcuni pattern URL definiti in <ph name="INCOGNITO_MODE_URL_BLOCKLIST_POLICY_NAME" /> utilizzando il formato specificato all'indirizzo https://support.google.com/chrome/a?p=url_blocklist_filter_format.
+
+Se vengono configurate sia questa policy sia <ph name="INCOGNITO_MODE_URL_BLOCKLIST_POLICY_NAME" />, la lista consentita ha la precedenza. Se un URL corrisponde a un pattern nella lista consentita, verrà consentito. Se corrisponde a un pattern nella lista bloccata (ma non nella lista consentita), verrà bloccato. Se un URL non corrisponde a nessuno dei due, verranno utilizzate le policy generali <ph name="URL_BLOCKLIST_POLICY_NAME" />/<ph name="URL_ALLOWLIST_POLICY_NAME" /> come riserva.
+
+Se questa policy viene impostata, ma <ph name="INCOGNITO_MODE_URL_BLOCKLIST_POLICY_NAME" /> no, tutti gli URL non presenti nella lista consentita verranno bloccati in modalità Incognito.
+
+Se <ph name="INCOGNITO_MODE_AVAILABILITY_POLICY_NAME" /> è impostata sulla negazione del consenso (valore 1), ma questa policy è configurata, la modalità Incognito sarà disponibile solo per gli URL corrispondenti alla lista consentita.
+
+Se la policy non viene configurata, non sono consentite eccezioni a <ph name="INCOGNITO_MODE_URL_BLOCKLIST_POLICY_NAME" /> e <ph name="INCOGNITO_MODE_AVAILABILITY_POLICY_NAME" />.
+
+Questa policy influisce solo sulla modalità Incognito. Per consentire gli URL per tutti i profili utente, utilizza la policy <ph name="URL_ALLOWLIST_POLICY_NAME" />.
+
+I caratteri jolly host onnicomprensivi (ad es. "*" o "[*]") non sono consentiti; utilizza la policy <ph name="INCOGNITO_MODE_AVAILABILITY_POLICY_NAME" /> per attivare la funzionalità a livello globale.
+
+Per questa policy è possibile definire al massimo 1000 voci.</translation>
 <translation id="2512531606818417084">Questa policy è temporanea e non sarà più valida a partire dalla versione M137.
 
 Questa funzionalità consente l'utilizzo di "zstd" nell'intestazione della richiesta Accept-Encoding e supporta la decompressione dei contenuti web <ph name="ZSTANDARD_SHORTNAME" />compressi.
@@ -6425,9 +6451,6 @@ Se la policy non viene configurata, il relativo comportamento viene determinato 
 Per ulteriori informazioni sulla gestione dei dati per le funzionalità di AI generativa, visita la pagina https://support.google.com/chrome/a?p=generative_ai_settings.</translation>
 <translation id="5070539335358964387">Consenti Trova e Completa con Gemini e migliora i modelli di AI.</translation>
 <translation id="5071303485174858500">Viene disattivata la sessione Ospite gestita limitata.</translation>
-<translation id="5073609397321802133">Se la policy viene impostata su false, gli utenti non possono personalizzare lo sfondo della pagina Nuova scheda. L'eventuale sfondo personalizzato esistente viene rimosso definitivamente anche se la policy viene impostata su true in un secondo momento.
-
-      Se la policy viene impostata su true o non viene impostata, gli utenti possono personalizzare lo sfondo della pagina Nuova scheda.</translation>
 <translation id="5073788301065423829">Questa policy attiva o disattiva la funzionalità "Aiutami a scrivere" per ChromeOS.
 
 Se viene attivata, la funzionalità "Aiutami a scrivere" verrà attivata.
@@ -6946,17 +6969,6 @@ Se il valore viene impostato su false, non potranno accedere alla funzionalità.
 <translation id="537786648513450280">Controlla l'utilizzo delle app Android di fonti non attendibili per il dispositivo</translation>
 <translation id="5378885577701865339">Disattiva la funzionalità Appunti condivisi</translation>
 <translation id="5385337904220716757">Consenti l'accesso alla geolocalizzazione del sistema solo per i servizi di sistema</translation>
-<translation id="538768040137709073">Consente di attivare la funzione Appunti condivisi che permette agli utenti di inviare testi tra computer desktop Chrome e un dispositivo Android quando la sincronizzazione è attivata e l'utente ha effettuato l'accesso.
-
-          Se la policy è impostata su true, la funzionalità di invio testi tra dispositivi è attivata per gli utenti Chrome.
-
-          Se la policy è impostata su false, la funzionalità di invio testi tra dispositivi è disattivata per gli utenti Chrome.
-
-          Se imposti questa policy, gli utenti non potranno modificarla o ignorarla.
-
-          Se questa policy non viene impostata, la funzione Appunti condivisi è attivata per impostazione predefinita.
-
-          Spetta agli amministratori scegliere se impostare le policy su tutte le piattaforme a cui sono interessati. Consigliamo di impostare questa policy su un valore unico per tutte le piattaforme.</translation>
 <translation id="5389708774452952523">Consenti l'esecuzione del processo audio con priorità sopra la norma su Windows</translation>
 <translation id="5390083518957894426">Consenti la riautenticazione online nella schermata di blocco per gli utenti SAML</translation>
 <translation id="5391388690191341203">Account locale del dispositivo per l'accesso automatico</translation>
@@ -7575,6 +7587,7 @@ Se questa policy viene impostata su 3 - <ph name="ASK_IDLE_DETECTION_VALUE_NAME"
 Se la policy viene attivata, verrà sempre utilizzato il buffering adattivo.
 
 Se la policy viene disattivata o se non viene configurata, il processo di lancio della funzionalità del browser deciderà se utilizzare il buffering adattivo.</translation>
+<translation id="579556027056000499">L'hash SHA-256 del contenuto dell'URL.</translation>
 <translation id="5800329278018669527">Disattiva la richiesta di configurazione di rete in modalità offline</translation>
 <translation id="5800627752428920394">Questa policy determina se le connessioni WebSocket attive debbano essere interrotte quando una pagina viene inserita nella cache back-forward. In precedenza, le connessioni WebSocket attive impedivano l'archiviazione di una pagina nella cache back-forward, ma <ph name="PRODUCT_NAME" /> ha modificato questo comportamento per disconnettere i WebSocket, consentendo di memorizzare la pagina nella cache e di ripristinarla in uno stato disconnesso.
 
@@ -9703,6 +9716,7 @@ l'ottimizzazione di JavaScript viene attivata per il sito.</translation>
 
       Questa policy richiede una configurazione aggiuntiva per essere applicata. Visita https://support.google.com/chrome/a?p=chrome_enterprise_connector_policies_setting per maggiori informazioni.</translation>
 <translation id="7032323070729112362">Non consente l'utilizzo dell'API Translator</translation>
+<translation id="7032734784894075746">Configura le skill in Chrome</translation>
 <translation id="7032813174556919004">Disattiva DNS over HTTPS</translation>
 <translation id="703672323011778742">Questa policy è deprecata in M88 e Flash non è più supportato da Chrome. Se la policy viene impostata su 1, puoi decidere se tutti i siti web possono eseguire automaticamente il plug-in <ph name="FLASH_PLUGIN_NAME" />. Se la policy viene impostata su 2, il plug-in viene negato per tutti i siti web. Click-to-play consente di eseguire il plug-in <ph name="FLASH_PLUGIN_NAME" />, ma gli utenti fanno clic sul segnaposto per avviarne l'esecuzione.
 
@@ -10604,6 +10618,21 @@ Se la policy viene lasciata vuota, non sono consentite eccezioni a <ph name="FLO
 <translation id="759957074386651883">Impostazioni di Navigazione sicura</translation>
 <translation id="7602621823177962064">Disattiva i report sulle informazioni relative alla memoria del dispositivo</translation>
 <translation id="7604169113182304895">Le app Android potrebbero decidere volontariamente se rispettare o meno questo elenco. Non è possibile imporre il rispetto dell'elenco.</translation>
+<translation id="7604302274842086162">Questa policy può essere usata per consentire <ph name="CHROME_DEVTOOLS_NAME" /> su URL specifici.
+
+I pattern URL vengono confrontati con l'URL di ogni frame nella pagina ispezionata. Il comportamento risultante dipende dal fatto che sia impostata anche la policy <ph name="DEVELOPER_TOOLS_AVAILABILITY_BLOCKLIST_POLICY_NAME" />.
+
+Se questa policy viene impostata, ma <ph name="DEVELOPER_TOOLS_AVAILABILITY_BLOCKLIST_POLICY_NAME" /> no, l'URL di ogni frame deve corrispondere a un pattern in questa lista consentita per consentire <ph name="CHROME_DEVTOOLS_NAME" />. Se l'URL di un frame non corrisponde, DevTools verrà bloccato per l'intera pagina. Per informazioni sul formato dell'URL, visita la pagina https://support.google.com/chrome/a?p=url_blocklist_filter_format.
+
+Se vengono impostate sia questa policy sia la policy <ph name="DEVELOPER_TOOLS_AVAILABILITY_BLOCKLIST_POLICY_NAME" />, questa lista consentita ha la precedenza. Se l'URL di un frame corrisponde a un pattern in questa lista consentita, verrà consentito, anche se corrisponde ugualmente a un pattern nella lista bloccata. Se un URL corrisponde a un pattern nella lista bloccata (ma non nella lista consentita), verrà bloccato. Se un URL non corrisponde a nessuno dei due, verrà utilizzata la policy<ph name="DEVELOPER_TOOLS_AVAILABILITY_POLICY_NAME" /> come riserva.
+
+Se questa policy non viene configurata, la disponibilità di <ph name="CHROME_DEVTOOLS_NAME" /> viene determinata dalle policy <ph name="DEVELOPER_TOOLS_AVAILABILITY_BLOCKLIST_POLICY_NAME" /> e <ph name="DEVELOPER_TOOLS_AVAILABILITY_POLICY_NAME" />.
+
+Questa policy si applica anche ai <ph name="CHROME_DEVTOOLS_NAME" /> aperti per le estensioni e le applicazioni web.
+
+I caratteri jolly host onnicomprensivi (ad es. "*" o "[*]") non sono consentiti; utilizza la policy <ph name="DEVELOPER_TOOLS_AVAILABILITY_POLICY_NAME" /> per attivare la funzionalità a livello globale.
+
+Per questa policy è possibile definire al massimo 1000 voci.</translation>
 <translation id="7607831126797434329">Blocca i download automatici su questi siti</translation>
 <translation id="7608186022704392724">La funzionalità di invio automatico del PIN modifica il modo in cui i PIN vengono inseriti in <ph name="PRODUCT_OS_NAME" />.
           Anziché mostrare lo stesso campo di testo utilizzato per l'inserimento della password, questa funzionalità mostra un'UI speciale che indica chiaramente all'utente da quante cifre deve essere formato il PIN. Di conseguenza, la lunghezza del PIN dell'utente viene memorizzata al di fuori dei dati criptati dell'utente. Sono supportati soltanto i PIN formati da 6-12 cifre.
@@ -11962,6 +11991,15 @@ La dimensione <ph name="ENTERPRISE_CONNECTOR_MINIMUM_DATA_SIZE" /> indica la qua
 <translation id="8471860377920321311">Consenti le funzionalità di GenAI e migliora i modelli di AI</translation>
 <translation id="8473107305327396242">Importa i certificati del server TLS aggiunti dagli utenti dagli archivi di attendibilità della piattaforma.</translation>
 <translation id="8473841363404590708">Esegui la migrazione dei file locali su Microsoft OneDrive e nascondi le cartelle locali</translation>
+<translation id="8476434719168701332">Configurando la policy, le skill di AI generativa vengono rese disponibili all'utente in <ph name="PRODUCT_NAME" />.
+
+Se configurata, gli utenti vedranno queste skill configurate per impostazione predefinita nella pagina chrome://skills, oltre alle proprie skill personali. Gli utenti possono visualizzare, modificare e salvare queste skill per uso personale.
+
+Ogni skill nell'elenco deve essere un oggetto contenente un <ph name="URL_NAME" /> da cui scaricare i contenuti della skill e un <ph name="HASH_NAME" /> (SHA-256) di questi contenuti per verificarne l'integrità prima dell'applicazione. Ogni URL della skill deve essere immutabile. Per aggiornare un file di skill sono necessari un nuovo URL e un nuovo hash.
+
+Se vengono fornite più di 10 skill, verrà mostrato un avviso e verranno pubblicate solo le prime 10.
+
+Se la policy non viene configurata o viene impostata su un elenco vuoto, all'utente non verrà pubblicata alcuna skill aziendale.</translation>
 <translation id="8477885780684655676">TLS 1.0</translation>
 <translation id="8479032202539686055">Quando cerca il percorso migliore, WebRTC utilizzerà tutte le interfacce disponibili.</translation>
 <translation id="8479496880635054740">Disattiva la tastiera virtuale di accessibilità nella schermata di accesso</translation>

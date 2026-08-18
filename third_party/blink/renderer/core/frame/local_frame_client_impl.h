@@ -81,9 +81,6 @@ class CORE_EXPORT LocalFrameClientImpl final : public LocalFrameClient {
   void WillReleaseScriptContext(v8::Local<v8::Context>,
                                 int32_t world_id) override;
 
-  // Returns true if we should allow register V8 extensions to be added.
-  bool AllowScriptExtensions() override;
-
   bool HasWebView() const override;
   bool IsForInitialWebUI() const override;
   bool InShadowTree() const override;
@@ -143,6 +140,8 @@ class CORE_EXPORT LocalFrameClientImpl final : public LocalFrameClient {
       base::TimeTicks actual_navigation_start,
       const String& href_translate,
       const LocalFrameToken* initiator_frame_token,
+      const base::UnguessableToken& initiator_state_token,
+      const DocumentToken& initiator_document_token,
       SourceLocation* source_location,
       mojo::PendingRemote<mojom::blink::NavigationStateKeepAliveHandle>
           initiator_navigation_state_keep_alive_handle,

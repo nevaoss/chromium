@@ -321,12 +321,6 @@ BASE_DECLARE_FEATURE(kGeminiBinaryMigration);
 // Returns true if the GeminiBinaryMigration feature is enabled.
 bool IsGeminiBinaryMigrationEnabled();
 
-// Enables the PersistTabContextRichExtraction feature.
-BASE_DECLARE_FEATURE(kPersistTabContextRichExtraction);
-
-// Returns true if the PersistTabContextRichExtraction feature is enabled.
-bool IsPersistTabContextRichExtractionEnabled();
-
 // Enables the PageContextIPCOptimization feature.
 BASE_DECLARE_FEATURE(kPageContextIPCOptimization);
 
@@ -448,5 +442,11 @@ BASE_DECLARE_FEATURE(kGeminiCoordinatorTeardownFix);
 
 // Returns true if the Gemini coordinator teardown crash fix is enabled.
 bool IsGeminiCoordinatorTeardownFixEnabled();
+
+// Feature flag to enable the Gemini Visual Rich FRE experiment.
+BASE_DECLARE_FEATURE(kGeminiVisualRichFRE);
+
+// Returns true if the Gemini Visual Rich FRE experiment is enabled.
+bool IsGeminiVisualRichFREEnabled();
 
 #endif  // IOS_CHROME_BROWSER_INTELLIGENCE_FEATURES_FEATURES_H_

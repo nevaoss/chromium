@@ -7,9 +7,14 @@
 LocationBar::Observer::~Observer() = default;
 
 void LocationBar::Observer::OnLocationBarBoundsChanged() {}
+void LocationBar::Observer::OnLocationBarFocusChanged() {}
 
 LocationBar::LocationBar(CommandUpdater* command_updater)
     : command_updater_(command_updater) {}
+
+OmniboxPopupPresenterDelegate* LocationBar::GetPresenterDelegate() {
+  return nullptr;
+}
 
 void LocationBar::AddLocationBarObserver(Observer* observer) {
   observers_.AddObserver(observer);
@@ -23,6 +28,10 @@ LocationBar::~LocationBar() = default;
 
 void LocationBar::NotifyBoundsChanged() {
   observers_.Notify(&Observer::OnLocationBarBoundsChanged);
+}
+
+void LocationBar::NotifyFocusChanged() {
+  observers_.Notify(&Observer::OnLocationBarFocusChanged);
 }
 
 bool LocationBar::in_popup_state_transition() const {

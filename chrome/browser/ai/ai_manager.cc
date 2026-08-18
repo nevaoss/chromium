@@ -169,6 +169,10 @@ ConvertModelNotSupportedReasonToModelAvailabilityCheckResult(
       return blink::mojom::ModelAvailabilityCheckResult::
           kUnavailableInsufficientDiskSpace;
     case optimization_guide::mojom::ModelNotSupportedDetailedReason::
+        kInsufficientDiskSpaceForCaches:
+      return blink::mojom::ModelAvailabilityCheckResult::
+          kUnavailableInsufficientDiskSpaceForCaches;
+    case optimization_guide::mojom::ModelNotSupportedDetailedReason::
         kModelAdaptationNotAvailable:
       return blink::mojom::ModelAvailabilityCheckResult::
           kUnavailableModelAdaptationNotAvailable;
@@ -233,6 +237,27 @@ bool HasInvalidOutputTypes(
     }
   }
   return false;
+}
+
+bool IsSpeculativeDecodingCompatibleWithSampling(
+    const blink::mojom::AILanguageModelCreateOptionsPtr& options) {
+  if (!base::FeatureList::IsEnabled(
+          on_device_model::features::kOnDeviceModelSpeculativeDecoding)) {
+    return true;
+  }
+  if (!options) {
+    return true;
+  }
+  if (options->sampling_params && options->sampling_params->top_k > 1 &&
+      options->sampling_params->temperature > 0.0f) {
+    return false;
+  }
+  if (options->sampling_mode.has_value() &&
+      options->sampling_mode.value() !=
+          blink::mojom::AILanguageModelSamplingMode::kMostPredictable) {
+    return false;
+  }
+  return true;
 }
 
 on_device_model::Capabilities GetExpectedInputCapabilities(
@@ -765,6 +790,12 @@ void AIManager::CanCreateLanguageModel(
       }
       input_capabilities.Put(on_device_model::CapabilityFlags::kToolUse);
     }
+    if (!IsSpeculativeDecodingCompatibleWithSampling(options)) {
+      std::move(callback).Run(
+          blink::mojom::ModelAvailabilityCheckResult::
+              kUnavailableIncompatibleSpeculativeDecodingOptions);
+      return;
+    }
   }
 
   if (!CheckAndFixLanguages(
@@ -806,11 +837,12 @@ void AIManager::CreateLanguageModel(
           options, "LanguageModel",
           AILanguageModel::GetEnabledLanguageBaseCodes(),
           AILanguageModel::GetDefaultSupportedLanguageBaseCodes())) {
-    mojo::Remote<blink::mojom::AIManagerCreateLanguageModelClient>
-        client_remote(std::move(client));
-    on_device_ai::SendClientRemoteError(
-        client_remote,
-        blink::mojom::AIManagerCreateClientError::kUnsupportedLanguage);
+    receivers_.ReportBadMessage("Unsupported language options");
+    return;
+  }
+
+  if (!IsSpeculativeDecodingCompatibleWithSampling(options)) {
+    receivers_.ReportBadMessage("Incompatible speculative decoding options");
     return;
   }
 
@@ -932,11 +964,7 @@ void AIManager::CreateLanguageModelInternal(
   // Models can generate text and tool calls, but not multimodal content or
   // tool responses.
   if (HasInvalidOutputTypes(options->expected_outputs)) {
-    mojo::Remote<blink::mojom::AIManagerCreateLanguageModelClient>
-        client_remote(std::move(client));
-    on_device_ai::SendClientRemoteError(
-        client_remote,
-        blink::mojom::AIManagerCreateClientError::kUnableToCreateSession);
+    receivers_.ReportBadMessage("Invalid output types");
     return;
   }
   if (!params->capabilities.empty()) {
@@ -1053,11 +1081,7 @@ void AIManager::CreateSummarizer(
   if (!CheckAndFixLanguages(
           options, "Summarizer", AISummarizer::GetEnabledLanguageBaseCodes(),
           AISummarizer::GetDefaultSupportedLanguageBaseCodes())) {
-    mojo::Remote<blink::mojom::AIManagerCreateSummarizerClient> client_remote(
-        std::move(client));
-    on_device_ai::SendClientRemoteError(
-        client_remote,
-        blink::mojom::AIManagerCreateClientError::kUnsupportedLanguage);
+    receivers_.ReportBadMessage("Unsupported language options");
     return;
   }
 
@@ -1071,11 +1095,7 @@ void AIManager::CreateSummarizer(
     }
     auto result = IsSpeedPreferenceCompatible(options);
     if (!result.has_value()) {
-      mojo::Remote<blink::mojom::AIManagerCreateSummarizerClient> client_remote(
-          std::move(client));
-      on_device_ai::SendClientRemoteError(
-          client_remote, blink::mojom::AIManagerCreateClientError::
-                             kIncompatiblePreferenceOptions);
+      receivers_.ReportBadMessage("Incompatible speed preference options");
       return;
     }
     if (options->format == blink::mojom::AISummarizerFormat::kMarkDown) {
@@ -1200,11 +1220,7 @@ void AIManager::CreateProofreader(
   if (!CheckAndFixLanguages(
           options, "Proofreader", AIProofreader::GetEnabledLanguageBaseCodes(),
           AIProofreader::GetDefaultSupportedLanguageBaseCodes())) {
-    mojo::Remote<blink::mojom::AIManagerCreateProofreaderClient> client_remote(
-        std::move(client));
-    on_device_ai::SendClientRemoteError(
-        client_remote,
-        blink::mojom::AIManagerCreateClientError::kUnsupportedLanguage);
+    receivers_.ReportBadMessage("Unsupported language options");
     return;
   }
 
@@ -1350,11 +1366,7 @@ void AIManager::CreateWriter(
   if (!CheckAndFixLanguages(options, "Writer",
                             AIWriter::GetEnabledLanguageBaseCodes(),
                             AIWriter::GetDefaultSupportedLanguageBaseCodes())) {
-    mojo::Remote<blink::mojom::AIManagerCreateWriterClient> client_remote(
-        std::move(client));
-    on_device_ai::SendClientRemoteError(
-        client_remote,
-        blink::mojom::AIManagerCreateClientError::kUnsupportedLanguage);
+    receivers_.ReportBadMessage("Unsupported language options");
     return;
   }
 
@@ -1461,11 +1473,7 @@ void AIManager::CreateRewriter(
   if (!CheckAndFixLanguages(
           options, "Rewriter", AIRewriter::GetEnabledLanguageBaseCodes(),
           AIRewriter::GetDefaultSupportedLanguageBaseCodes())) {
-    mojo::Remote<blink::mojom::AIManagerCreateRewriterClient> client_remote(
-        std::move(client));
-    on_device_ai::SendClientRemoteError(
-        client_remote,
-        blink::mojom::AIManagerCreateClientError::kUnsupportedLanguage);
+    receivers_.ReportBadMessage("Unsupported language options");
     return;
   }
 

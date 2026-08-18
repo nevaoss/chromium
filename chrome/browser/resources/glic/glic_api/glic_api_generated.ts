@@ -204,6 +204,10 @@ export enum SkillSource {
   USER_CREATED = 2,
   // Skill derived from a first party skill.
   DERIVED_FROM_FIRST_PARTY = 3,
+  // Skill sourced from the EnterprisePublishedSkills enterprise policy.
+  ENTERPRISE = 4,
+  // Skill derived from an enterprise skill.
+  DERIVED_FROM_ENTERPRISE = 5,
 }
 
 // Enum to specify the skills web client event for metrics recording.
@@ -1286,6 +1290,8 @@ export declare interface TaskOptions {
   duration?: TaskDuration;
   // The feature mode for the task.
   featureMode?: FeatureMode;
+  // The initial target tab to actuate on.
+  actuationTabId?: string;
 }
 
 // A credential used for the auto-login.

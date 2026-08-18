@@ -45,6 +45,7 @@
 #include "chrome/browser/themes/theme_service_factory.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
+#include "chrome/browser/ui/browser_init_state.h"
 #include "chrome/browser/ui/browser_tabstrip.h"
 #include "chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.h"
 #include "chrome/browser/ui/browser_window.h"
@@ -65,6 +66,7 @@
 #include "chrome/browser/ui/web_applications/web_app_launch_utils.h"
 #include "chrome/browser/ui/web_applications/web_app_menu_model.h"
 #include "chrome/browser/ui/web_applications/web_app_ui_utils.h"
+#include "chrome/browser/ui/window_feature_controller/window_feature_controller.h"
 #include "chrome/browser/ui/window_metadata/window_metadata_controller.h"
 #include "chrome/browser/ui/window_sizer/window_sizer.h"
 #include "chrome/browser/web_applications/external_install_options.h"
@@ -82,7 +84,6 @@
 #include "chrome/browser/web_applications/web_app_constants.h"
 #include "chrome/browser/web_applications/web_app_filter.h"
 #include "chrome/browser/web_applications/web_app_helpers.h"
-#include "chrome/browser/web_applications/web_app_install_finalizer.h"
 #include "chrome/browser/web_applications/web_app_install_info.h"
 #include "chrome/browser/web_applications/web_app_install_utils.h"
 #include "chrome/browser/web_applications/web_app_management_type.h"
@@ -502,7 +503,10 @@ IN_PROC_BROWSER_TEST_P(WebAppBrowserTest, ThemeColor) {
     webapps::AppId app_id = InstallWebApp(std::move(web_app_info));
     Browser* app_browser = LaunchWebAppBrowser(app_id);
 
-    EXPECT_EQ(GetAppIdFromApplicationName(app_browser->app_name()), app_id);
+    EXPECT_EQ(
+        GetAppIdFromApplicationName(
+            BrowserInitState::From(app_browser)->create_params().app_name),
+        app_id);
     EXPECT_EQ(
         SkColorSetA(theme_color, SK_AlphaOPAQUE),
         web_app::AppBrowserController::From(app_browser)->GetThemeColor());
@@ -515,7 +519,10 @@ IN_PROC_BROWSER_TEST_P(WebAppBrowserTest, ThemeColor) {
     webapps::AppId app_id = InstallWebApp(std::move(web_app_info));
     Browser* app_browser = LaunchWebAppBrowser(app_id);
 
-    EXPECT_EQ(GetAppIdFromApplicationName(app_browser->app_name()), app_id);
+    EXPECT_EQ(
+        GetAppIdFromApplicationName(
+            BrowserInitState::From(app_browser)->create_params().app_name),
+        app_id);
     EXPECT_EQ(
         std::nullopt,
         web_app::AppBrowserController::From(app_browser)->GetThemeColor());
@@ -1178,7 +1185,8 @@ IN_PROC_BROWSER_TEST_P(WebAppBrowserTest, AboutBlankPWAPopup) {
   EXPECT_TRUE(AppBrowserController::IsWebApp(popup_browser));
 
   // The popup browser's BrowserWindowInterface::Type should be TYPE_APP_POPUP.
-  EXPECT_TRUE(popup_browser->is_type_app_popup());
+  EXPECT_EQ(popup_browser->GetType(),
+            BrowserWindowInterface::Type::TYPE_APP_POPUP);
 
   // Toolbar should not be shown, as about:blank app popups are a special case.
   EXPECT_FALSE(web_app::AppBrowserController::From(popup_browser)
@@ -2449,15 +2457,21 @@ IN_PROC_BROWSER_TEST_P(WebAppBrowserTest, PopupLocationBar) {
   popup_browser->GetWindow()->Show();
   ui_test_utils::WaitUntilBrowserBecomeActive(popup_browser);
 
-  EXPECT_TRUE(popup_browser->CanSupportWindowFeature(
-      Browser::WindowFeature::kFeatureLocationBar));
-  EXPECT_TRUE(popup_browser->SupportsWindowFeature(
-      Browser::WindowFeature::kFeatureLocationBar));
+  EXPECT_TRUE(
+      WindowFeatureController::From(popup_browser)
+          ->CanSupportWindowFeature(
+              WindowFeatureController::WindowFeature::kFeatureLocationBar));
+  EXPECT_TRUE(
+      WindowFeatureController::From(popup_browser)
+          ->SupportsWindowFeature(
+              WindowFeatureController::WindowFeature::kFeatureLocationBar));
 
   ui_test_utils::ToggleFullscreenModeAndWait(popup_browser);
 
-  EXPECT_TRUE(popup_browser->CanSupportWindowFeature(
-      Browser::WindowFeature::kFeatureLocationBar));
+  EXPECT_TRUE(
+      WindowFeatureController::From(popup_browser)
+          ->CanSupportWindowFeature(
+              WindowFeatureController::WindowFeature::kFeatureLocationBar));
 }
 
 // Make sure chrome://web-app-internals page loads fine.

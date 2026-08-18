@@ -323,6 +323,13 @@ bool IsAccessibilityChromeVoxJapaneseBrailleEnabled() {
       ::features::kAccessibilityChromeVoxJapaneseBraille);
 }
 
+BASE_FEATURE(kAccessibilityGoogleTtsAutomaticReconnect,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+bool IsAccessibilityGoogleTtsAutomaticReconnectEnabled() {
+  return base::FeatureList::IsEnabled(
+      ::features::kAccessibilityGoogleTtsAutomaticReconnect);
+}
+
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
 #if BUILDFLAG(IS_ANDROID)
@@ -338,7 +345,7 @@ BASE_FEATURE(kAccessibilityMagnificationFollowsFocusKeyboardAttached,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kAccessibilityMagnificationFollowsFocusNoKeyboard,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kAccessibilityAndroidMath, base::FEATURE_DISABLED_BY_DEFAULT);
 bool IsAccessibilityAndroidMathEnabled() {

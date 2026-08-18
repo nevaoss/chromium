@@ -32,6 +32,7 @@ import static org.chromium.ui.test.util.MockitoHelper.doRunnable;
 import android.app.Activity;
 import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
+import android.os.Bundle;
 import android.util.Pair;
 
 import androidx.annotation.ColorInt;
@@ -1456,12 +1457,16 @@ public class BookmarkManagerMediatorTest {
 
         // Delete.
         clickChildAt(menu, 4);
-        verify(mBookmarkModel).deleteBookmarks(mBookmarkId21);
+        verify(mBookmarkModel).deleteBookmarks(mBookmarkUndoController, mBookmarkId21);
 
         // Open in new tab.
         clickChildAt(menu, 5);
         verify(mBookmarkOpener)
-                .openBookmarksInNewTabs(Collections.singletonList(mBookmarkId21), false);
+                .openBookmarksInNewTabs(
+                        eq(Collections.singletonList(mBookmarkId21)),
+                        eq(false),
+                        eq(null),
+                        any(Bundle.class));
     }
 
     @Test
@@ -1494,12 +1499,17 @@ public class BookmarkManagerMediatorTest {
         // Open in new tab.
         clickChildAt(menu, 5);
         verify(mBookmarkOpener)
-                .openBookmarksInNewTabs(Collections.singletonList(mBookmarkId21), true);
+                .openBookmarksInNewTabs(
+                        eq(Collections.singletonList(mBookmarkId21)),
+                        eq(true),
+                        eq(null),
+                        any(Bundle.class));
 
         // Open in other window.
         clickChildAt(menu, 6);
         verify(mBookmarkOpener)
-                .openBookmarksInNewWindow(Collections.singletonList(mBookmarkId21), true);
+                .openBookmarksInNewWindow(
+                        eq(Collections.singletonList(mBookmarkId21)), eq(true), any(Bundle.class));
     }
 
     @Test
@@ -2149,6 +2159,29 @@ public class BookmarkManagerMediatorTest {
         assertFalse(mModelList.get(1).model.get(ImprovedBookmarkRowProperties.SELECTION_ACTIVE));
         assertFalse(mModelList.get(2).model.get(ImprovedBookmarkRowProperties.SELECTED));
         assertFalse(mModelList.get(2).model.get(ImprovedBookmarkRowProperties.SELECTION_ACTIVE));
+    }
+
+    @Test
+    public void testChangeSelectionMode_SkipsNonBookmarkRows() {
+        finishLoading();
+        mMediator.openFolder(mFolderId1);
+
+        // Add a non-bookmark row (e.g. ViewType.DIVIDER) in the middle of bookmark list.
+        PropertyModel nonBookmarkModel = new PropertyModel();
+        mModelList.add(2, new ListItem(ViewType.DIVIDER, nonBookmarkModel));
+
+        // Now mModelList has:
+        // Index 0: SEARCH_BOX
+        // Index 1: Bookmark A (mFolderId2)
+        // Index 2: DIVIDER
+        // Index 3: Bookmark B (mFolderId3)
+
+        // This should not crash when iterating through the list.
+        mMediator.changeSelectionMode(true);
+
+        // Verify bookmark rows were updated successfully.
+        assertTrue(mModelList.get(1).model.get(ImprovedBookmarkRowProperties.SELECTION_ACTIVE));
+        assertTrue(mModelList.get(3).model.get(ImprovedBookmarkRowProperties.SELECTION_ACTIVE));
     }
 
     @Test

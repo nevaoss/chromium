@@ -10,6 +10,7 @@
 #include <memory>
 #include <optional>
 
+#include "base/android/jni_android.h"
 #include "base/android/scoped_java_ref.h"
 #include "base/memory/raw_ptr.h"
 #include "components/content_settings/core/common/content_settings.h"
@@ -36,13 +37,16 @@ class PageInfoControllerAndroid : public PageInfoUI {
   void RecordPageInfoAction(JNIEnv* env, int32_t action);
   void UpdatePermissions(JNIEnv* env);
 
+  void OnSuspiciousSiteBackToSafety(JNIEnv* env);
+  void OnSuspiciousSiteMarkAsSafe(JNIEnv* env);
+  void OpenSafeBrowsingHelpCenter(JNIEnv* env);
+  void SetIsSuspiciousSite(JNIEnv* env, bool is_suspicious_site);
+
   // PageInfoUI implementations.
   void SetPermissionInfo(const PermissionInfoList& permission_info_list,
                          ChosenObjectInfoList chosen_object_info_list) override;
   void SetIdentityInfo(const IdentityInfo& identity_info) override;
   void SetPageFeatureInfo(const PageFeatureInfo& info) override;
-  void SetAdPersonalizationInfo(
-      const AdPersonalizationInfo& ad_personalization_info) override;
 
  private:
   // Returns an optional value which is set if this permission should be
@@ -61,6 +65,8 @@ class PageInfoControllerAndroid : public PageInfoUI {
   GURL url_;
 
   raw_ptr<content::WebContents> web_contents_;
+
+  bool is_suspicious_site_ = false;
 };
 
 #endif  // COMPONENTS_PAGE_INFO_ANDROID_PAGE_INFO_CONTROLLER_ANDROID_H_

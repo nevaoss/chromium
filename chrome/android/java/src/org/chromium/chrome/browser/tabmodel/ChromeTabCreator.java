@@ -340,8 +340,17 @@ public class ChromeTabCreator implements TabCreator, NeedsTabModel, NeedsTabMode
             int assignedTabId = IntentHandler.getTabId(intent);
             boolean isReparenting = isReparenting(assignedTabId);
             AsyncTabParams asyncParams = mAsyncTabParamsManager.remove(assignedTabId);
+            if ((type == TabLaunchType.FROM_REPARENTING
+                            || type == TabLaunchType.FROM_REPARENTING_BACKGROUND)
+                    && asyncParams == null) {
+                return null;
+            }
 
             boolean openInForeground = mOrderController.willOpenInForeground(type, mIncognito);
+            boolean disableRenderer =
+                    intent != null
+                            && IntentUtils.safeGetBooleanExtra(
+                                    intent, IntentHandler.EXTRA_DISABLE_INITIALIZE_RENDERER, false);
             TabDelegateFactory delegateFactory =
                     parent == null ? createDefaultTabDelegateFactory() : null;
             Tab tab;
@@ -396,7 +405,8 @@ public class ChromeTabCreator implements TabCreator, NeedsTabModel, NeedsTabMode
                 TabParentIntent.from(tab).set(parentIntent).setCurrentTab(selector::getCurrentTab);
                 webContents.resumeLoadingCreatedWebContents();
             } else if ((!openInForeground && SysUtils.isLowEndDevice())
-                    || type == TabLaunchType.FROM_SYNC_BACKGROUND) {
+                    || type == TabLaunchType.FROM_SYNC_BACKGROUND
+                    || disableRenderer) {
                 // For tab group sync we don't want to trigger a navigation until the user opens the
                 // tab so use the lazy load mechanism for this.
 
@@ -406,7 +416,8 @@ public class ChromeTabCreator implements TabCreator, NeedsTabModel, NeedsTabMode
                 tab =
                         TabBuilder.createForLazyLoad(getProfile(), loadUrlParams, title)
                                 .setContentViewDeferred(
-                                        ChromeFeatureList.sLoadAllTabsAtStartup.isEnabled())
+                                        ChromeFeatureList.sLoadAllTabsAtStartup.isEnabled()
+                                                || disableRenderer)
                                 .setParent(parent)
                                 .setWindow(mNativeWindow)
                                 .setLaunchType(type)

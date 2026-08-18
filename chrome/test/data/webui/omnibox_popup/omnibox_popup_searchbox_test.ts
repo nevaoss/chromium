@@ -5,10 +5,10 @@
 import {OmniboxEscapeAction, omniboxPopupBrowserProxyFactory, OmniboxPopupPageHandlerRemote, sanitizeTextForPaste, SearchboxBrowserProxy, stripJavascriptSchemas} from 'chrome://omnibox-popup.top-chrome/omnibox_popup.js';
 import type {OmniboxInputState, OmniboxPopupPageRemote, OmniboxPopupSearchboxElement} from 'chrome://omnibox-popup.top-chrome/omnibox_popup.js';
 import {createAutocompleteResultForTesting, createSearchMatchForTesting} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
-import {SelectionLineState} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import {RenderType, SelectionLineState, SideType} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {TestMock} from 'chrome://webui-test/test_mock.js';
-import {microtasksFinished} from 'chrome://webui-test/test_util.js';
+import {$$, isVisible, microtasksFinished} from 'chrome://webui-test/test_util.js';
 
 import {TestSearchboxBrowserProxy} from './test_searchbox_browser_proxy.js';
 
@@ -645,9 +645,8 @@ suite('OmniboxPopupSearchboxTest', function() {
     assertTrue(searchbox.dropdownIsVisible);
 
     // Focus stays inside wrapper.
-    const matchesEl = searchbox.$.matches;
     searchbox.$.inputWrapper.dispatchEvent(new FocusEvent('focusout', {
-      relatedTarget: matchesEl,
+      relatedTarget: searchbox.$.matches,
       bubbles: true,
       composed: true,
     }));
@@ -883,14 +882,16 @@ suite('OmniboxPopupSearchboxTest', function() {
    testProxy.handler.reset();
 
    // Stage 3 (`kClearUserInput` - elided URL where showFullUrl is false):
+   const permanentDisplayText = 'example.com';
+   const fullUrl = 'https://example.com/';
    callbackRouter.setInputState(createDefaultOmniboxInputState({
      sequenceNumber: 5,
      text: 'dirty input',
      selection: {start: 1, end: 1},
      userInputInProgress: true,
-     fullUrl: 'https://example.com/',
+     fullUrl: fullUrl,
      isFocused: true,
-     permanentDisplayText: 'example.com',
+     permanentDisplayText: permanentDisplayText,
    }));
    await microtasksFinished();
 
@@ -900,10 +901,11 @@ suite('OmniboxPopupSearchboxTest', function() {
    }));
    await microtasksFinished();
 
-   assertEquals('example.com', searchbox.getInputElement().inputElement.value);
+   assertEquals(
+       permanentDisplayText, searchbox.getInputElement().inputElement.value);
    assertEquals(0, searchbox.getInputElement().inputElement.selectionStart);
    assertEquals(
-       'example.com'.length,
+       permanentDisplayText.length,
        searchbox.getInputElement().inputElement.selectionEnd);
    assertEquals(1, handler.getCallCount('revert'));
    assertEquals(5, handler.getArgs('revert')[0]);
@@ -921,9 +923,9 @@ suite('OmniboxPopupSearchboxTest', function() {
      text: 'dirty input',
      selection: {start: 1, end: 1},
      userInputInProgress: true,
-     fullUrl: 'https://example.com/',
+     fullUrl: fullUrl,
      isFocused: true,
-     permanentDisplayText: 'example.com',
+     permanentDisplayText: permanentDisplayText,
      showFullUrl: true,
    }));
    await microtasksFinished();
@@ -934,11 +936,10 @@ suite('OmniboxPopupSearchboxTest', function() {
    }));
    await microtasksFinished();
 
-   assertEquals(
-       'https://example.com/', searchbox.getInputElement().inputElement.value);
+   assertEquals('example.com', searchbox.getInputElement().inputElement.value);
    assertEquals(0, searchbox.getInputElement().inputElement.selectionStart);
    assertEquals(
-       'https://example.com/'.length,
+       permanentDisplayText.length,
        searchbox.getInputElement().inputElement.selectionEnd);
    assertEquals(1, handler.getCallCount('revert'));
    assertEquals(6, handler.getArgs('revert')[0]);
@@ -966,12 +967,13 @@ suite('OmniboxPopupSearchboxTest', function() {
  test('EscapeStagedUnwinding_ClearedInputNonEmptyUrl', async () => {
    // Input was manually cleared ('') on a page with a non-empty permanent URL.
    // ESC should restore the permanent URL ('example.com') without closing UI.
+   const permanentDisplayText = 'example.com';
    callbackRouter.setInputState(createDefaultOmniboxInputState({
      sequenceNumber: 8,
      userInputInProgress: true,
      fullUrl: 'https://example.com/',
      isFocused: true,
-     permanentDisplayText: 'example.com',
+     permanentDisplayText: permanentDisplayText,
    }));
    await microtasksFinished();
 
@@ -981,7 +983,8 @@ suite('OmniboxPopupSearchboxTest', function() {
    }));
    await microtasksFinished();
 
-   assertEquals('example.com', searchbox.getInputElement().inputElement.value);
+   assertEquals(
+       permanentDisplayText, searchbox.getInputElement().inputElement.value);
    assertEquals(0, handler.getCallCount('closeUI'));
    assertEquals(1, handler.getCallCount('revert'));
    assertEquals(1, handler.getCallCount('logEscapeAction'));
@@ -1046,25 +1049,155 @@ suite('OmniboxPopupSearchboxTest', function() {
        handler.getArgs('logEscapeAction')[0]);
  });
 
- test('SecondarySideAttributesPassedToDropdown', async () => {
-   const matchesEl = searchbox.$.matches;
-   assertTrue(!!matchesEl);
+ test('EscapeIgnoredDuringIMEComposition', async () => {
+   searchbox.lastQueriedInput = 'a';
+   searchbox.activeQueryId = 0;
+   testProxy.page.autocompleteResultChanged(createAutocompleteResultForTesting({
+     input: 'a',
+     matches: [
+       createSearchMatchForTesting({
+         allowedToBeDefaultMatch: true,
+         fillIntoEdit: 'autocomplete.com',
+         inlineAutocompletion: 'utocomplete.com',
+       }),
+     ],
+   }));
+   await microtasksFinished();
+   assertTrue(searchbox.dropdownIsVisible);
 
-   // Verify initial values.
-   assertEquals(
-       searchbox.canShowSecondarySide,
-       matchesEl.hasAttribute('can-show-secondary-side'));
-   assertFalse(matchesEl.hasAttribute('has-secondary-side'));
+   // Press Escape while IME composition is active (isComposing: true).
+   await searchbox.handleKeyNavigation(new KeyboardEvent('keydown', {
+     key: 'Escape',
+     isComposing: true,
+     cancelable: true,
+   }));
+   await microtasksFinished();
 
-   // Dispatch secondary side status change from dropdown.
-   matchesEl.dispatchEvent(new CustomEvent('has-secondary-side-changed', {
-     detail: {value: true},
-     bubbles: true,
-     composed: true,
+   // Escape should be ignored so the OS IME engine can handle it.
+   // Popup should remain open and logEscapeAction should not be called.
+   assertTrue(searchbox.dropdownIsVisible);
+   assertEquals(0, handler.getCallCount('logEscapeAction'));
+ });
+
+ test('SecondarySideShows', async () => {
+   // Ensure `canShowSecondarySide` is set to true.
+   searchbox.canShowSecondarySide = true;
+   await microtasksFinished();
+
+   const matches = [
+     createSearchMatchForTesting({suggestionGroupId: 1}),
+     createSearchMatchForTesting({suggestionGroupId: 100}),
+   ];
+   const suggestionGroupsMap = {
+     1: {
+       header: 'Primary',
+       renderType: RenderType.kDefaultVertical,
+       sideType: SideType.kDefaultPrimary,
+     },
+     100: {
+       header: 'Secondary',
+       renderType: RenderType.kDefaultVertical,
+       sideType: SideType.kSecondary,
+     },
+   };
+
+   searchbox.onAutocompleteResultChanged(createAutocompleteResultForTesting({
+     queryId: searchbox.activeQueryId,
+     sequenceId: 1001,
+     input: 'test',
+     matches: matches,
+     suggestionGroupsMap: suggestionGroupsMap,
    }));
    await microtasksFinished();
 
    assertTrue(searchbox.hasSecondarySide);
-   assertTrue(matchesEl.hasAttribute('has-secondary-side'));
+
+   // Verify `secondary-side` element is rendered and visible.
+   assertTrue(isVisible($$(searchbox.$.matches, '.secondary-side')));
+
+   // Verify secondary side is hidden when `canShowSecondarySide` is false.
+   searchbox.canShowSecondarySide = false;
+   await microtasksFinished();
+   assertFalse(isVisible($$(searchbox.$.matches, '.secondary-side')));
+ });
+
+ test('OpensAimPopupWhenComposeButtonClicked', async () => {
+   searchbox.onAutocompleteResultChanged(createAutocompleteResultForTesting({
+     queryId: searchbox.activeQueryId,
+     sequenceId: 456,
+     input: 'test',
+     matches: [createSearchMatchForTesting()],
+   }));
+   await microtasksFinished();
+   assertTrue(searchbox.dropdownIsVisible);
+
+   const composeButton = searchbox.$.composeButton;
+   assertTrue(!!composeButton);
+   composeButton.$.composeButton.dispatchEvent(new MouseEvent('click', {
+     bubbles: true,
+     composed: true,
+     detail: 1,
+   }));
+   await microtasksFinished();
+
+   assertFalse(searchbox.dropdownIsVisible);
+   const viaKeyboard = await handler.whenCalled('openAimPopup');
+   assertFalse(viaKeyboard);
+ });
+
+ test('OpensAimPopupWhenComposeButtonKeyboardActivated', async () => {
+   searchbox.onAutocompleteResultChanged(createAutocompleteResultForTesting({
+     queryId: searchbox.activeQueryId,
+     sequenceId: 789,
+     input: 'test',
+     matches: [createSearchMatchForTesting()],
+   }));
+   await microtasksFinished();
+   assertTrue(searchbox.dropdownIsVisible);
+
+   const composeButton = searchbox.$.composeButton;
+   assertTrue(!!composeButton);
+   composeButton.$.composeButton.dispatchEvent(new MouseEvent('click', {
+     bubbles: true,
+     composed: true,
+     detail: 0,
+   }));
+   await microtasksFinished();
+
+   assertFalse(searchbox.dropdownIsVisible);
+   const viaKeyboard = await handler.whenCalled('openAimPopup');
+   assertTrue(viaKeyboard);
+ });
+
+ test('OnPaste', async () => {
+   const input = searchbox.getInputElement().inputElement;
+   input.focus();
+
+   const dataTransfer = new DataTransfer();
+   dataTransfer.setData('text/plain', 'https://example.com');
+   const pasteEvent = new ClipboardEvent('paste', {
+     clipboardData: dataTransfer,
+     bubbles: true,
+     cancelable: true,
+     composed: true,
+   });
+
+   input.dispatchEvent(pasteEvent);
+   await microtasksFinished();
+
+   assertEquals('https://example.com', input.value);
+   assertEquals(1, handler.getCallCount('onPaste'));
+   const [pastedText, selection, sequenceNum] = handler.getArgs('onPaste')[0];
+   assertEquals('https://example.com', pastedText);
+   assertEquals(19, selection.start);
+   assertEquals(19, selection.end);
+   assertEquals(searchbox['currentSequenceNum_'], sequenceNum);
+
+   assertEquals(1, testProxy.handler.getCallCount('queryAutocomplete'));
+   const [_queryId, queryText, preventInline, _cursorPos, _inventory, isOnFocus] =
+       testProxy.handler.getArgs('queryAutocomplete')[0];
+   assertEquals('https://example.com', queryText);
+   assertTrue(preventInline);
+   assertFalse(isOnFocus);
  });
 });

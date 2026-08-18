@@ -1100,7 +1100,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Arc.EngagementTime.ArcTotal" units="ms"
-    expires_after="2026-11-29">
+    expires_after="2027-01-31">
   <owner>yhanada@google.com</owner>
   <owner>arc-framework@google.com</owner>
   <summary>
@@ -2223,6 +2223,16 @@ chromium-metrics-reviews@google.com.
       variants="ArcPerformanceAppCategories">
     <variant name=""/>
   </token>
+</histogram>
+
+<histogram name="Arc.ScreenCaptureSession.SharedImageFormat"
+    enum="SharedImageFormatUMA" expires_after="2027-07-30">
+  <owner>hitawala@chromium.org</owner>
+  <owner>chrome-gpu-metric-alerts@chromium.org</owner>
+  <summary>
+    Records the SharedImageFormat converted from arc.mojom.BufferFormat in
+    ArcScreenCaptureSession when an output buffer is set.
+  </summary>
 </histogram>
 
 <histogram name="Arc.SdkVersionUpgradeType" enum="ArcSdkVersionUpgradeType"

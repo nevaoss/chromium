@@ -110,6 +110,7 @@ import org.chromium.chrome.browser.bookmarks.TabBookmarker;
 import org.chromium.chrome.browser.bookmarks.bar.BookmarkBarUtils;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider;
 import org.chromium.chrome.browser.compositor.CompositorViewHolder;
+import org.chromium.chrome.browser.compositor.CompositorViewHolderSupplier;
 import org.chromium.chrome.browser.compositor.layouts.Layout;
 import org.chromium.chrome.browser.compositor.layouts.LayoutManagerImpl;
 import org.chromium.chrome.browser.compositor.layouts.SceneChangeObserver;
@@ -660,6 +661,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         ShareDelegateSupplier.attach(host, mShareDelegateSupplier);
         TabModelSelectorSupplier.attach(host, mTabModelSelectorSupplier);
         EphemeralTabCoordinatorSupplier.attach(host, mEphemeralTabCoordinatorSupplier);
+        CompositorViewHolderSupplier.attach(host, mCompositorViewHolderSupplier);
         ManualFillingComponentSupplier.attach(host, mManualFillingComponentSupplier);
         BrowserControlsManagerSupplier.attach(host, mBrowserControlsManagerSupplier);
         // BrowserControlsManager is ready immediately.
@@ -1466,7 +1468,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
                 || !GlicEnabling.isProfileEligible(
                         getProfileProviderSupplier().get().getOriginalProfile())
                 || DeviceFormFactor.isNonMultiDisplayContextOnTablet(this)
-                || ChromeFeatureList.isEnabled(ChromeFeatureList.GLIC_BACKGROUND_ACTUATION)) {
+                || ChromeFeatureList.sGlicBackgroundActuation.isEnabled()) {
             return null;
         }
 
@@ -1635,6 +1637,9 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
     @Override
     public void onStopWithNative() {
         super.onStopWithNative();
+        if (mFullscreenVideoPictureInPictureController != null) {
+            mFullscreenVideoPictureInPictureController.onStop();
+        }
         endUmaSession();
     }
 
@@ -1990,6 +1995,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
             }
             compositorViewHolder.shutDown();
         }
+        CompositorViewHolderSupplier.destroy(mCompositorViewHolderSupplier);
         mCompositorViewHolderSupplier.destroy();
 
         // crbug.com/352365937: Let the pip controller clear up to prevent a leak.
@@ -3285,18 +3291,14 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
 
     /**
      * Shows Help and Feedback and records the user action as well.
+     *
      * @param url The URL of the tab the user is currently on.
      * @param recordAction The user action to record.
      * @param profile The current {@link Profile}.
      */
     public void startHelpAndFeedback(String url, String recordAction, Profile profile) {
-        // Since reading back the compositor is asynchronous, we need to do the readback
-        // before starting the GoogleHelp.
-        String helpContextId =
-                HelpAndFeedbackLauncherImpl.getHelpContextIdFromUrl(
-                        this, url, getCurrentTabModel().isIncognito());
-        HelpAndFeedbackLauncherImpl.getForProfile(profile).show(this, helpContextId, url);
-        RecordUserAction.record(recordAction);
+        HelpAndFeedbackLauncherImpl.getForProfile(profile)
+                .showHelpAndFeedbackForUrl(this, url, recordAction);
     }
 
     protected void startUmaSession() {

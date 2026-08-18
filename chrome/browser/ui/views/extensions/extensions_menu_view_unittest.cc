@@ -231,14 +231,14 @@ TEST_F(ExtensionsMenuViewUnitTest, PinnedExtensionAppearsInAnotherWindow) {
   const std::string& extension_id =
       InstallExtensionAndLayout("Test Name")->id();
   const auto is_action_visible_on_toolbar = [&extension_id](Browser* browser) {
-    return browser->GetBrowserView()
-        .toolbar()
+    return BrowserView::GetBrowserViewForBrowser(browser)
+        ->toolbar()
         ->extensions_container()
         ->IsActionVisibleOnToolbar(extension_id);
   };
 
-  Browser* browser2 =
-      CreateBrowserWithBrowserView(browser()->GetProfile(), browser()->type());
+  Browser* browser2 = CreateBrowserWithBrowserView(browser()->GetProfile(),
+                                                   browser()->GetType());
 
   ExtensionMenuItemView* menu_item = GetOnlyMenuItem();
   ASSERT_TRUE(menu_item);
@@ -247,8 +247,8 @@ TEST_F(ExtensionsMenuViewUnitTest, PinnedExtensionAppearsInAnotherWindow) {
   // Window that was already open gets the pinned extension.
   EXPECT_TRUE(is_action_visible_on_toolbar(browser2));
 
-  Browser* browser3 =
-      CreateBrowserWithBrowserView(browser()->GetProfile(), browser()->type());
+  Browser* browser3 = CreateBrowserWithBrowserView(browser()->GetProfile(),
+                                                   browser()->GetType());
 
   // Brand-new window also gets the pinned extension.
   EXPECT_TRUE(is_action_visible_on_toolbar(browser3));

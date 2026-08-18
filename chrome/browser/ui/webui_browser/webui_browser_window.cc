@@ -813,19 +813,10 @@ void WebUIBrowserWindow::OnContentsElementShown(ui::TrackedElement* element) {
   }
 }
 
-void WebUIBrowserWindow::UpdatePageActionIcon(PageActionIconType type) {
-  NOTIMPLEMENTED_LOG_ONCE();
-}
-
 autofill::AutofillBubbleHandler*
 WebUIBrowserWindow::GetAutofillBubbleHandler() {
   NOTIMPLEMENTED_LOG_ONCE();
   return nullptr;
-}
-
-void WebUIBrowserWindow::ExecutePageActionIconForTesting(
-    PageActionIconType type) {
-  NOTIMPLEMENTED_LOG_ONCE();
 }
 
 LocationBar* WebUIBrowserWindow::GetLocationBar() const {
@@ -1019,7 +1010,7 @@ WebUIBrowserWindow::PreHandleKeyboardEvent(
   //   with the browser, and it is not a reserved one, do nothing.
 
   if (browser_->GetType() == BrowserWindowInterface::Type::TYPE_APP ||
-      browser_->is_type_app_popup()) {
+      browser_->GetType() == BrowserWindowInterface::Type::TYPE_APP_POPUP) {
     // Let all keys fall through to a v1 app's web content, even accelerators.
     // We don't use NOT_HANDLED_IS_SHORTCUT here. If we do that, the app
     // might not be able to see a subsequent Char event. See
@@ -1304,5 +1295,5 @@ void WebUIBrowserWindow::CloseSidePanel() {
 
 WebUIBrowserSidePanelUI* WebUIBrowserWindow::GetWebUIBrowserSidePanelUI() {
   return static_cast<WebUIBrowserSidePanelUI*>(
-      browser_->browser_window_features()->side_panel_ui());
+      browser_->GetFeatures().side_panel_ui());
 }

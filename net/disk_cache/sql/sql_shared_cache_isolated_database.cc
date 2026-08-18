@@ -354,24 +354,14 @@ SqlSharedCacheIsolatedDatabase::WriteBodyInternal(
   return base::ok();
 }
 
-SqlSharedCacheIsolatedDatabase::ReadResultOrError
-SqlSharedCacheIsolatedDatabase::Read(const CacheEntryKey& entry_key,
-                                     SqlSharedCacheRowId shared_cache_row_id,
-                                     int offset,
-                                     scoped_refptr<net::IOBuffer> buffer) {
-  if (ShouldSimulateFailure(OperationForTesting::kRead)) {
-    return base::unexpected(Error::kFailedForTesting);
-  }
+base::expected<sql::StreamingBlobHandle, SqlSharedCacheIsolatedDatabase::Error>
+SqlSharedCacheIsolatedDatabase::GetStreamingBlobHandle(
+    const CacheEntryKey& entry_key,
+    SqlSharedCacheRowId shared_cache_row_id,
+    int body_size) {
   if (!db_assets_ || !db_assets_->db().is_open()) {
     return base::unexpected(Error::kDatabaseNotOpen);
   }
-  CHECK(buffer);
-  const int buf_len = buffer->size();
-  CHECK_GE(buf_len, 0);
-  if (offset < 0 || buf_len > std::numeric_limits<int32_t>::max() - offset) {
-    return base::unexpected(Error::kInvalidReadRange);
-  }
-
   {
     sql::Statement statement(db_assets_->db().GetCachedStatement(
         SQL_FROM_HERE,
@@ -389,6 +379,36 @@ SqlSharedCacheIsolatedDatabase::Read(const CacheEntryKey& entry_key,
                        "resources", "body", shared_cache_row_id.value(),
                        /*readonly=*/true),
                    [] { return Error::kFailedToGetBlob; });
+  if (blob_handle.GetSize() != body_size) {
+    return base::unexpected(Error::kBodySizeMismatch);
+  }
+  return blob_handle;
+}
+
+SqlSharedCacheIsolatedDatabase::ReadResultOrError
+SqlSharedCacheIsolatedDatabase::Read(const CacheEntryKey& entry_key,
+                                     SqlSharedCacheRowId shared_cache_row_id,
+                                     int body_size,
+                                     int offset,
+                                     scoped_refptr<net::IOBuffer> buffer) {
+  if (ShouldSimulateFailure(OperationForTesting::kRead)) {
+    return base::unexpected(Error::kFailedForTesting);
+  }
+  if (!db_assets_ || !db_assets_->db().is_open()) {
+    return base::unexpected(Error::kDatabaseNotOpen);
+  }
+  CHECK(buffer);
+  const int buf_len = buffer->size();
+  CHECK_GE(buf_len, 0);
+  CHECK_GE(body_size, 0);
+  if (offset < 0 || buf_len > std::numeric_limits<int32_t>::max() - offset ||
+      offset + buf_len > body_size) {
+    return base::unexpected(Error::kInvalidReadRange);
+  }
+
+  ASSIGN_OR_RETURN(
+      auto blob_handle,
+      GetStreamingBlobHandle(entry_key, shared_cache_row_id, body_size));
 
   if (!blob_handle.Read(offset, buffer->span())) {
     return base::unexpected(Error::kFailedToReadBlob);

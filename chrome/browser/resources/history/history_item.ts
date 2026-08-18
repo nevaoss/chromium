@@ -30,6 +30,14 @@ import {BrowserProxyImpl} from './browser_proxy.js';
 import {getCss} from './history_item.css.js';
 import {getHtml} from './history_item.html.js';
 
+export interface CriticalActionItem {
+  id: string;
+  label: string;
+  tooltip: string;
+  url: string;
+  ariaLabel?: string;
+}
+
 export interface HistoryItemElement {
   $: {
     checkbox: CrCheckboxElement,
@@ -91,12 +99,19 @@ export class HistoryItemElement extends HistoryItemElementBase {
         type: Boolean,
         reflect: true,
       },
+
+      isCriticalActionsEnabled_: {
+        type: Boolean,
+        reflect: true,
+      },
     };
   }
 
   private isShiftKeyDown_: boolean = false;
   protected accessor selectionNotAllowed_: boolean =
       !loadTimeData.getBoolean('allowDeletingHistory');
+  protected accessor isCriticalActionsEnabled_: boolean =
+      loadTimeData.getBoolean('isCriticalActionsEnabled');
   private eventTracker_: EventTracker = new EventTracker();
   accessor item: HistoryEntry|undefined;
   accessor hasTimeGap: boolean = false;
@@ -157,7 +172,8 @@ export class HistoryItemElement extends HistoryItemElementBase {
     for (let i = 0; i < path.length; i++) {
       const elem = path[i] as HTMLElement;
       if (elem.id !== 'checkbox' &&
-          (elem.nodeName === 'A' || elem.nodeName === 'CR-ICON-BUTTON')) {
+          (elem.nodeName === 'A' || elem.nodeName === 'CR-ICON-BUTTON' ||
+           elem.id === 'collapse')) {
         return;
       }
 
@@ -175,6 +191,10 @@ export class HistoryItemElement extends HistoryItemElementBase {
       index: this.index,
       shiftKey: e.shiftKey,
     });
+  }
+
+  protected onCollapseClick_(e: Event) {
+    e.stopPropagation();
   }
 
   /**
@@ -241,25 +261,21 @@ export class HistoryItemElement extends HistoryItemElementBase {
   }
 
   protected shouldShowActorTooltip_(): boolean {
-    if (this.isCriticalActionsEnabled_()) {
+    if (this.isCriticalActionsEnabled_) {
       return false;
     }
     return !!this.item?.isActorVisit;
   }
 
   protected shouldShowActorIconNextToFavicon_(): boolean {
-    if (!this.isCriticalActionsEnabled_()) {
+    if (!this.isCriticalActionsEnabled_) {
       return false;
     }
     return !!this.item?.isActorVisit;
   }
 
-  private isCriticalActionsEnabled_(): boolean {
-    return loadTimeData.getBoolean('isCriticalActionsEnabled');
-  }
-
   protected isExpandable_(): boolean {
-    return this.isCriticalActionsEnabled_() && !!this.item?.isActorVisit;
+    return this.isCriticalActionsEnabled_ && !!this.item?.isActorVisit;
   }
 
   protected getExpandIcon_(): string {
@@ -269,6 +285,50 @@ export class HistoryItemElement extends HistoryItemElementBase {
   protected onExpandClick_(e: Event) {
     e.stopPropagation();
     this.isExpanded_ = !this.isExpanded_;
+  }
+
+  // TODO(b/531590118): Query critical actions dynamically from the database.
+  protected getCriticalActions_(): CriticalActionItem[] {
+    const url = this.item?.url || 'https://example.com';
+    return [
+      {
+        id: 'phone',
+        label: 'Phone number filled',
+        tooltip: 'Contact info',
+        url: url,
+        ariaLabel: 'Phone number filled, Contact info',
+      },
+      {
+        id: 'email',
+        label: 'Email filled',
+        tooltip: 'Contact info',
+        url: url,
+        ariaLabel: 'Email filled, Contact info',
+      },
+      {
+        id: 'payment',
+        label: 'Payment method filled',
+        tooltip: 'Payment methods',
+        url: url,
+        ariaLabel: 'Payment method filled, Payment methods',
+      },
+    ];
+  }
+
+  protected onCriticalActionClick_(e: Event) {
+    e.stopPropagation();
+    const index = Number((e.currentTarget as HTMLElement).dataset['index']);
+    const action = this.getCriticalActions_()[index];
+    if (action?.url) {
+      window.open(action.url, '_blank', 'noopener,noreferrer');
+    }
+  }
+
+  protected onCriticalActionKeydown_(e: KeyboardEvent) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      this.onCriticalActionClick_(e);
+    }
   }
 
   /**

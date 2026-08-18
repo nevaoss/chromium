@@ -5,10 +5,12 @@
 #include "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_handler.h"
 
 #include "base/metrics/histogram_functions.h"
+#include "base/strings/utf_string_conversions.h"
 #include "chrome/browser/ui/omnibox/omnibox_controller.h"
 #include "chrome/browser/ui/omnibox/omnibox_edit_model.h"
 #include "chrome/browser/ui/omnibox/omnibox_popup_view.h"
 #include "chrome/browser/ui/omnibox/omnibox_view.h"
+#include "components/omnibox/browser/omnibox_popup_selection.h"
 #include "ui/base/models/menu_model.h"
 
 OmniboxPopupHandler::OmniboxPopupHandler(
@@ -86,6 +88,52 @@ void OmniboxPopupHandler::OnInputCleared(uint32_t sequence_number) {
   }
 }
 
+void OmniboxPopupHandler::OnPaste(const std::string& text,
+                                  const gfx::Range& selection,
+                                  uint32_t sequence_number) {
+  if (sequence_number < current_sequence_number_) {
+    return;
+  }
+  gfx::Range prev_selection = latest_selection_;
+  latest_selection_ = selection;
+  show_full_url_ = false;
+
+  if (controller_ && controller_->edit_model()) {
+    OmniboxEditModel* model = controller_->edit_model();
+    model->OnPaste();
+
+    // The old text is deliberately set to the "empty string" in order to align
+    // with the logic in `OmniboxViewViews::OnOmniboxPasteComplete()`.
+    std::u16string u16_old_text;
+    std::u16string u16_new_text = base::UTF8ToUTF16(text);
+
+    OmniboxView::StateChanges state_changes;
+    state_changes.old_text = &u16_old_text;
+    state_changes.new_text = &u16_new_text;
+    state_changes.new_selection = selection;
+    state_changes.selection_differs =
+        (!prev_selection.is_empty() || !selection.is_empty()) &&
+        !prev_selection.EqualsIgnoringDirection(selection);
+    state_changes.text_differs = u16_old_text != u16_new_text;
+    // By definition, a PASTE operation cannot enter/exit keyword mode, so
+    // `keyword_differs` is always set to `false`.
+    state_changes.keyword_differs = false;
+    // Since "old text" is an empty string and "new text" is a (potentially)
+    // non-empty string, a PASTE operation is never going to be a deletion, so
+    // `just_deleted_text` is always set to `false`.
+    state_changes.just_deleted_text = false;
+
+    bool something_changed = model->OnAfterPossibleChange(
+        state_changes, /*allow_keyword_ui_change=*/true);
+
+    if (something_changed &&
+        (state_changes.text_differs || state_changes.keyword_differs)) {
+      // TODO(b/514811525): Trigger URL component emphasis in WebUI.
+      model->OnChanged();
+    }
+  }
+}
+
 void OmniboxPopupHandler::RequestInputState() {
   auto* edit_model = controller_ ? controller_->edit_model() : nullptr;
   auto* popup_view = edit_model ? edit_model->popup_view() : nullptr;
@@ -135,4 +183,13 @@ void OmniboxPopupHandler::SetFocus(bool is_focused) {
 void OmniboxPopupHandler::LogEscapeAction(
     omnibox_popup::mojom::OmniboxEscapeAction action) {
   base::UmaHistogramEnumeration("Omnibox.Escape", action);
+}
+
+void OmniboxPopupHandler::OpenAimPopup(bool via_keyboard) {
+  if (controller_) {
+    controller_->edit_model()->OpenSelection(
+        OmniboxPopupSelection(OmniboxPopupSelection::kNoMatch,
+                              OmniboxPopupSelection::FOCUSED_BUTTON_AIM),
+        via_keyboard);
+  }
 }

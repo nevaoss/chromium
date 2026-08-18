@@ -5,6 +5,7 @@
 #import "ios/chrome/browser/cobrowse/model/cobrowse_browser_agent.h"
 
 #import "base/functional/bind.h"
+#import "base/memory/raw_ptr.h"
 #import "base/strings/sys_string_conversions.h"
 #import "base/values.h"
 #import "components/omnibox/browser/aim_eligibility_service.h"
@@ -43,8 +44,7 @@ CobrowseBrowserAgent::CobrowseBrowserAgent(Browser* browser)
   if (scene_state && !scene_state.sceneSessionID.empty()) {
     const auto& map = browser_->GetProfile()->GetPrefs()->GetDict(
         prefs::kCobrowseSessionActiveMap);
-    is_session_active_ =
-        map.FindBool(scene_state.sceneSessionID).value_or(false);
+    is_session_active_ = map.FindString(scene_state.sceneSessionID) != nullptr;
     if (is_session_active_ && !IsAimCobrowseEligible(browser_->GetProfile())) {
       SetSessionActive(false);
     }
@@ -61,6 +61,19 @@ CobrowseContext* CobrowseBrowserAgent::GetCobrowseContext() {
 
 void CobrowseBrowserAgent::SetCobrowseContext(CobrowseContext* context) {
   context_ = context;
+  if (is_session_active_) {
+    SceneState* scene_state = browser_->GetSceneState();
+    if (scene_state && !scene_state.sceneSessionID.empty()) {
+      ScopedDictPrefUpdate update(browser_->GetProfile()->GetPrefs(),
+                                  prefs::kCobrowseSessionActiveMap);
+      std::string server_id = "";
+      if (context_) {
+        server_id = base::SysNSStringToUTF8(context_.serverID);
+      }
+      update->Set(scene_state.sceneSessionID, server_id);
+      browser_->GetProfile()->GetPrefs()->CommitPendingWrite();
+    }
+  }
 }
 
 void CobrowseBrowserAgent::SetUIStateProvider(UIStateProvider* provider) {
@@ -77,8 +90,8 @@ bool CobrowseBrowserAgent::CanShowAssistantForWebState(
   // A WebState is loaded when it becomes the active WebState while the Tab
   // Grid is visible, which triggers DidStartNavigation. To avoid UI conflicts
   // or crashes, do not show the assistant if the Tab Grid is currently
-  // displayed.
-  if (ui_state_provider_ && ui_state_provider_->IsTabGridVisible()) {
+  // displayed. We also check if the Start Surface is visible.
+  if (ShouldHideAssistantForWebState(web_state)) {
     return false;
   }
 
@@ -119,24 +132,41 @@ void CobrowseBrowserAgent::SetSessionActive(bool active) {
   if (scene_state && !scene_state.sceneSessionID.empty()) {
     ScopedDictPrefUpdate update(browser_->GetProfile()->GetPrefs(),
                                 prefs::kCobrowseSessionActiveMap);
-    update->Set(scene_state.sceneSessionID, active);
+    if (active) {
+      std::string server_id = "";
+      if (context_) {
+        server_id = base::SysNSStringToUTF8(context_.serverID);
+      }
+      update->Set(scene_state.sceneSessionID, server_id);
+    } else {
+      update->Remove(scene_state.sceneSessionID);
+    }
     browser_->GetProfile()->GetPrefs()->CommitPendingWrite();
+  }
+}
+
+void CobrowseBrowserAgent::TerminateSession() {
+  if (is_session_active_) {
+    id<SceneCommands> scene_commands_handler =
+        HandlerForProtocol(browser_->GetCommandDispatcher(), SceneCommands);
+    [scene_commands_handler hideAssistant];
+    SetSessionActive(false);
   }
 }
 
 void CobrowseBrowserAgent::OnEligibilityChanged() {
   if (!IsAimCobrowseEligible(browser_->GetProfile())) {
-    if (is_session_active_) {
-      id<SceneCommands> scene_commands_handler =
-          HandlerForProtocol(browser_->GetCommandDispatcher(), SceneCommands);
-      [scene_commands_handler hideAssistant];
-      SetSessionActive(false);
-    }
+    TerminateSession();
   }
 }
 
-bool CobrowseBrowserAgent::IsTabGridVisible() {
-  return ui_state_provider_ && ui_state_provider_->IsTabGridVisible();
+bool CobrowseBrowserAgent::ShouldHideAssistantForWebState(
+    web::WebState* web_state) {
+  if (ui_state_provider_ &&
+      ui_state_provider_->IsAssistantHiddenByUIState(web_state)) {
+    return true;
+  }
+  return false;
 }
 
 #pragma mark - TabsDependencyInstaller

@@ -101,8 +101,6 @@
 #include "components/feature_engagement/public/feature_constants.h"
 #include "components/lens/lens_features.h"
 #include "components/pdf/browser/pdf_document_helper.h"
-#include "components/plus_addresses/core/browser/grit/plus_addresses_strings.h"
-#include "components/plus_addresses/core/common/features.h"
 #include "components/safe_browsing/core/common/safebrowsing_referral_methods.h"
 #include "components/saved_tab_groups/public/features.h"
 #include "components/send_tab_to_self/features.h"
@@ -141,10 +139,6 @@
 #include "ui/views/interaction/element_tracker_views.h"
 #include "ui/views/vector_icons.h"
 #include "ui/views/view_utils.h"
-
-#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
-#include "components/plus_addresses/core/browser/resources/vector_icons.h"
-#endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
 
 #if BUILDFLAG(IS_CHROMEOS)
 #include "ash/user_education/views/help_bubble_factory_views_ash.h"
@@ -829,12 +823,6 @@ void MaybeRegisterChromeFeaturePromos(
       break;
   }
 #endif
-
-  // kIPHLiveCaptionFeature:
-  registry.RegisterFeature(FeaturePromoSpecification::CreateForToastPromo(
-      feature_engagement::kIPHLiveCaptionFeature, kToolbarMediaButtonElementId,
-      IDS_LIVE_CAPTION_PROMO, IDS_LIVE_CAPTION_PROMO_SCREENREADER,
-      FeaturePromoSpecification::AcceleratorInfo()));
 
   // kIPHTabAudioMutingFeature:
   registry.RegisterFeature(std::move(
@@ -2003,6 +1991,22 @@ void MaybeRegisterChromeFeaturePromos(
                        "Triggered when user performs Google searches and is "
                        "eligible for the promo.")));
 #endif  // BUILDFLAG(IS_WIN)
+
+  // kIPHSplitViewHorizontalIndirectAccessFeature:
+  if (tabs::IsSplitViewHorizontalIndirectAccessEnabled()) {
+    registry.RegisterFeature(std::move(
+        FeaturePromoSpecification::CreateForSnoozePromo(
+            feature_engagement::kIPHSplitViewHorizontalIndirectAccessFeature,
+            kToolbarSplitTabsToolbarButtonElementId,
+            IDS_SPLIT_VIEW_HORIZONTAL_INDIRECT_ACCESS_IPH_BODY)
+            .SetBubbleTitleText(
+                IDS_SPLIT_VIEW_HORIZONTAL_INDIRECT_ACCESS_IPH_TITLE)
+            .SetBubbleArrow(HelpBubbleArrow::kTopLeft)
+            .SetMetadata(152, "charlesmeng@chromium.org",
+                         "Triggered when the split view horizontal feature is "
+                         "enabled with the direct access feature param off, "
+                         "and the user creates a side by side split.")));
+  }
 }
 
 void MaybeRegisterChromeFeaturePromos(
@@ -2435,19 +2439,6 @@ void MaybeRegisterChromeNewBadges(user_education::NewBadgeRegistry& registry) {
       lens::features::kLensOverlay,
       user_education::Metadata(126, "jdonnelly@google.com, dfried@google.com",
                                "Shown in app and web context menus.")));
-
-  registry.RegisterFeature(user_education::NewBadgeSpecification(
-      plus_addresses::features::kPlusAddressFallbackFromContextMenu,
-      user_education::Metadata(
-          128, "jkeitel@google.com",
-          "Shown in the autofill section of the context menu where manual "
-          "fallback for plus addresses is offered.")));
-
-  registry.RegisterFeature(user_education::NewBadgeSpecification(
-      plus_addresses::features::kPlusAddressesEnabled,
-      user_education::Metadata(128, "jkeitel@google.com",
-                               "Shown in the autofill popup for suggestions to "
-                               "create a new plus address.")));
 
   // This is a custom UI new badge that uses a small help bubble to annotate the
   // element instead of a badge.

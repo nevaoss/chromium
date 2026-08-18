@@ -164,6 +164,10 @@ public final class ProductionSupportedFlagList {
                 "Use SurfaceControl. Requires WebViewThreadSafeMedia and Android device and OS "
                         + "support. Only supported on TV."),
         Flag.baseFeature(
+                "AndroidYuvOverlayEvenAlignment",
+                "Enforces 2-pixel even boundary alignment for YUV hardware video overlays in"
+                        + " SurfaceControl to prevent odd-coordinate display scaling rejections."),
+        Flag.baseFeature(
                 GpuFeatures.LIMIT_A_IMAGE_READER_MAX_SIZE_TO_ONE,
                 "If disabled allows acquiring more than one image from the AImageReader"),
         Flag.baseFeature(
@@ -323,10 +327,6 @@ public final class ProductionSupportedFlagList {
                         + "MergeMode::kMergeChildrenAndReformatIfNeeded will be also added to all"
                         + "the nodes where required."),
         Flag.baseFeature(
-                AutofillFeatures.AUTOFILL_ANDROID_FORM_DATA_COMPARE_FIELD_GLOBAL_ID,
-                "If enabled, form fields are retrieved by comparing FormFieldIds"
-                        + "instead of the set of attributes."),
-        Flag.baseFeature(
                 FeatureConstants.KEYBOARD_ACCESSORY_PAYMENT_VIRTUAL_CARD_FEATURE,
                 "When enabled, merchant bound virtual cards will be offered in the keyboard "
                         + "accessory."),
@@ -440,9 +440,6 @@ public final class ProductionSupportedFlagList {
                 "WebRtcEncodedTransformsPerStreamCreation",
                 "Allows creating WebRTC Encoded Transforms without the "
                         + "encodedInsertableStreams RTCPeerConnection Parameter."),
-        Flag.baseFeature(
-                "IdbSqliteBackingStoreInMemoryContexts",
-                "Enables the SQLite backing store for in-memory contexts."),
         Flag.baseFeature(
                 "WebRtcEncodedTransformDirectCallback",
                 "Directly invoke WebRTC Encoded Transform callbacks in a worker."),
@@ -718,9 +715,6 @@ public final class ProductionSupportedFlagList {
                 "BatteryStatusManagerBroadcastReceiverInBackground",
                 "Register, unregister Battery Status Manager broadcast receiver on a background"
                         + " thread."),
-        Flag.baseFeature(
-                BaseFeatures.PARTITION_ALLOC_WITH_ADVANCED_CHECKS,
-                "Enables PartitionAlloc with advanced safety checks"),
         Flag.baseFeature(
                 BaseFeatures.PARTITION_ALLOC_SCHEDULER_LOOP_QUARANTINE,
                 "Enables PartitionAlloc's FreeFlags::kSchedulerLoopQuarantine"),
@@ -1400,6 +1394,9 @@ public final class ProductionSupportedFlagList {
                 "PrefetchCancelUnrelatedPrefetch",
                 "Cancels unrelated prefetch when a navigation is started."),
         Flag.baseFeature(
+                "PrefetchMatchResolverUnblockAsync",
+                "Making PrefetchMatchResolver::UnblockInternal() async."),
+        Flag.baseFeature(
                 BlinkFeatures.ANDROID_SYSTEM_FONT_PREWARMING,
                 "Prewarms system fonts on Android to improve initial rendering latency."),
         Flag.baseFeature(
@@ -1433,10 +1430,17 @@ public final class ProductionSupportedFlagList {
                 "ConversionMeasurement",
                 "Controls whether the Attribution Reporting API stub is enabled."),
         Flag.baseFeature(
+                AwFeatures.WEBVIEW_USE_WVLES_FOR_LAYERED_STUDY,
+                "When enabled, WebView uses the nonembedded low entropy source for layered studies."
+                        + " This requires 2 restarts of the WebView-based app to take effect."),
+        Flag.baseFeature(
                 PaymentFeatureList.PAYMENT_HANDLER_DIALOG_USE_INITIATOR_IN_URL_LOAD,
                 "When enabled, the merchant site is set as the initiator for the web payment"
                         + " handler modal dialog popup."),
         Flag.baseFeature("EnableUdpGro", "Utilizes GRO over recvmmsg for readMultiple."),
+        Flag.baseFeature(
+                "StructuredHeadersInRust",
+                "Enables the Rust-based structured headers parser instead of C++."),
         // Add new commandline switches and features above. The final entry should have a
         // trailing comma for cleaner diffs.
     };

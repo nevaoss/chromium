@@ -520,6 +520,7 @@ chromium-metrics-reviews@google.com.
   <variant name=".omnibox-popup.top-chrome"/>
   <variant name=".on-device-translation-internals"/>
   <variant name=".oobe"/>
+  <variant name=".organizer-panel.top-chrome"/>
   <variant name=".os-credits"/>
   <variant name=".os-feedback"/>
   <variant name=".os-print"/>
@@ -528,7 +529,6 @@ chromium-metrics-reviews@google.com.
   <variant name=".password-change"/>
   <variant name=".password-manager"/>
   <variant name=".password-manager-internals"/>
-  <variant name=".personal-context-internals"/>
   <variant name=".personalization"/>
   <variant name=".policy"/>
   <variant name=".power"/>
@@ -653,7 +653,7 @@ chromium-metrics-reviews@google.com.
 </variants>
 
 <histogram name="PageActionController.ActionTypeShown2"
-    enum="PageActionIconType" expires_after="2026-12-01">
+    enum="PageActionIconType" expires_after="2027-01-31">
   <owner>emshack@chromium.org</owner>
   <owner>koretadaniel@chromium.org</owner>
   <owner>top-chrome-desktop-ui@google.com</owner>
@@ -710,7 +710,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageActionController.ChipTypeShown" enum="PageActionIconType"
-    expires_after="2026-12-01">
+    expires_after="2027-01-31">
   <owner>emshack@chromium.org</owner>
   <owner>koretadaniel@chromium.org</owner>
   <owner>top-chrome-desktop-ui@google.com</owner>
@@ -723,7 +723,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageActionController.NumberActionsShown2" units="actions"
-    expires_after="2026-12-01">
+    expires_after="2027-01-31">
   <owner>emshack@chromium.org</owner>
   <owner>koretadaniel@chromium.org</owner>
   <owner>top-chrome-desktop-ui@google.com</owner>
@@ -747,7 +747,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageActionController.PagesWithActionsShown2"
-    enum="PageActionPageEvent" expires_after="2026-12-01">
+    enum="PageActionPageEvent" expires_after="2027-01-31">
   <owner>emshack@chromium.org</owner>
   <owner>top-chrome-desktop-ui@google.com</owner>
   <summary>
@@ -766,7 +766,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageActionController.PagesWithActionsShown3"
-    enum="PageActionPageEvent" expires_after="2026-12-01">
+    enum="PageActionPageEvent" expires_after="2027-01-31">
   <owner>koretadaniel@chromium.org</owner>
   <owner>alsan@chromium.org</owner>
   <owner>top-chrome-desktop-ui@google.com</owner>
@@ -798,7 +798,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageActionController.{PageActionType}.{State}.CTR2"
-    enum="PageActionCTREvent" expires_after="2026-12-01">
+    enum="PageActionCTREvent" expires_after="2027-01-31">
   <owner>koretadaniel@chromium.org</owner>
   <owner>emshack@chromium.org</owner>
   <owner>top-chrome-desktop-ui@google.com</owner>
@@ -817,7 +817,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageActionController.{State}.CTR2" enum="PageActionCTREvent"
-    expires_after="2026-12-01">
+    expires_after="2027-01-31">
   <owner>emshack@chromium.org</owner>
   <owner>koretadaniel@chromium.org</owner>
   <owner>top-chrome-desktop-ui@google.com</owner>
@@ -835,7 +835,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageActionController.{State}.NumberActionsShownWhenClicked"
-    units="actions" expires_after="2026-12-01">
+    units="actions" expires_after="2027-01-31">
   <owner>emshack@chromium.org</owner>
   <owner>koretadaniel@chromium.org</owner>
   <owner>top-chrome-desktop-ui@google.com</owner>
@@ -1282,7 +1282,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.Clients.CaptchaFrameActivation"
-    enum="CaptchaFrameAgentContext" expires_after="2026-12-01">
+    enum="CaptchaFrameAgentContext" expires_after="2027-01-31">
   <owner>ryankalla@google.com</owner>
   <owner>potassium-anti-fraud-team@google.com</owner>
   <summary>
@@ -1319,7 +1319,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.Clients.CaptchaFrameLoad"
-    enum="CaptchaFrameAgentContext" expires_after="2026-12-01">
+    enum="CaptchaFrameAgentContext" expires_after="2027-01-31">
   <owner>ryankalla@google.com</owner>
   <owner>potassium-anti-fraud-team@google.com</owner>
   <summary>
@@ -1926,7 +1926,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.Clients.GoogleSearch.CSI.{Event}" units="ms"
-    expires_after="2026-11-29">
+    expires_after="2027-01-31">
   <owner>sisidovski@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
   <improvement direction="LOWER_IS_BETTER"/>
@@ -2758,7 +2758,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="PageLoad.Clients.GoogleSearch.ParseTiming.NavigationToParseStart{SyntheticResponseSuffix}"
-    units="ms" expires_after="2026-11-29">
+    units="ms" expires_after="2027-01-31">
   <owner>kouhei@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
   <improvement direction="LOWER_IS_BETTER"/>
@@ -3438,7 +3438,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.Clients.Prerender.HostReused{PreloadingTriggerType}"
-    enum="Boolean" expires_after="2026-11-29">
+    enum="Boolean" expires_after="2027-01-31">
   <owner>suzukikeita@chromium.org</owner>
   <owner>src/content/browser/preloading/prerender/OWNERS</owner>
   <summary>
@@ -3450,7 +3450,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="PageLoad.Clients.Prerender.InteractiveTiming.FirstInputDelay4{PreloadingTriggerType}"
-    units="ms" expires_after="2026-11-29">
+    units="ms" expires_after="2027-01-31">
   <owner>nhiroki@chromium.org</owner>
   <owner>src/content/browser/preloading/prerender/OWNERS</owner>
   <summary>
@@ -3477,7 +3477,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="PageLoad.Clients.Prerender.LayoutInstability.CumulativeShiftScore{PreloadingTriggerType}"
-    units="scorex10" expires_after="2026-11-29">
+    units="scorex10" expires_after="2027-01-31">
   <owner>nhiroki@chromium.org</owner>
   <owner>src/content/browser/preloading/prerender/OWNERS</owner>
   <summary>
@@ -3504,7 +3504,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="PageLoad.Clients.Prerender.PaintTiming.ActivationToFirstContentfulPaint{PreloadingTriggerType}"
-    units="ms" expires_after="2026-11-29">
+    units="ms" expires_after="2027-01-31">
   <owner>nhiroki@chromium.org</owner>
   <owner>src/content/browser/preloading/prerender/OWNERS</owner>
   <summary>
@@ -3519,7 +3519,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="PageLoad.Clients.Prerender.PaintTiming.ActivationToFirstPaint{PreloadingTriggerType}"
-    units="ms" expires_after="2026-11-29">
+    units="ms" expires_after="2027-01-31">
   <owner>nhiroki@chromium.org</owner>
   <owner>src/content/browser/preloading/prerender/OWNERS</owner>
   <summary>
@@ -3533,7 +3533,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="PageLoad.Clients.Prerender.PaintTiming.ActivationToLargestContentfulPaint2{PreloadingTriggerType}"
-    units="ms" expires_after="2026-11-29">
+    units="ms" expires_after="2027-01-31">
   <owner>nhiroki@chromium.org</owner>
   <owner>src/content/browser/preloading/prerender/OWNERS</owner>
   <summary>
@@ -4311,7 +4311,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="PageLoad.Experimental.PageTiming.CachedResourceLoadTime.{RequestDestination}"
-    units="ms" expires_after="2026-11-29">
+    units="ms" expires_after="2027-01-31">
   <owner>horo@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
   <summary>
@@ -5314,7 +5314,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.PaintTiming.NavigationToLargestContentfulPaint2"
-    units="ms" expires_after="2026-11-29">
+    units="ms" expires_after="2027-01-31">
   <owner>iclelland@chromium.org</owner>
   <owner>sullivan@chromium.org</owner>
   <owner>speed-metrics-dev@chromium.org</owner>

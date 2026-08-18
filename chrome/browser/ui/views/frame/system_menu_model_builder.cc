@@ -29,6 +29,7 @@
 #include "components/user_education/common/new_badge/new_badge_controller.h"
 #include "ui/base/accelerators/accelerator.h"
 #include "ui/base/models/menu_model.h"
+#include "ui/base/ui_base_features.h"
 #include "ui/menus/simple_menu_model.h"
 #include "ui/views/window/vector_icons/vector_icons.h"
 
@@ -105,7 +106,7 @@ void SystemMenuModelBuilder::Init() {
 void SystemMenuModelBuilder::BuildMenu(ui::SimpleMenuModel* model) {
   // We add the menu items in reverse order so that insertion_index never needs
   // to change.
-  if (browser()->is_type_normal()) {
+  if (browser()->GetType() == BrowserWindowInterface::Type::TYPE_NORMAL) {
     BuildSystemMenuForBrowserWindow(model);
   } else {
     BuildSystemMenuForAppOrPopupWindow(model);
@@ -231,7 +232,12 @@ void SystemMenuModelBuilder::BuildSystemMenuForBrowserWindow(
 
   if (chrome::CanOpenTaskManager()) {
     model->AddSeparator(ui::NORMAL_SEPARATOR);
-    model->AddItemWithStringId(IDC_TASK_MANAGER_CONTEXT_MENU, IDS_TASK_MANAGER);
+    model->AddItemWithStringIdAndIcon(
+        IDC_TASK_MANAGER_CONTEXT_MENU, IDS_TASK_MANAGER,
+        ui::ImageModel::FromVectorIcon(
+            features::IsRoundedIconsEnabled() ? kTableChartIcon
+                                              : kTaskManagerOldIcon,
+            ui::kColorMenuIcon, ui::SimpleMenuModel::kDefaultIconSize));
   }
 #if BUILDFLAG(IS_LINUX)
   model->AddSeparator(ui::NORMAL_SEPARATOR);
@@ -281,7 +287,8 @@ void SystemMenuModelBuilder::BuildSystemMenuForAppOrPopupWindow(
     if (!is_captive_portal_signin) {
       model->AddSeparator(ui::NORMAL_SEPARATOR);
       if (browser()->GetType() == BrowserWindowInterface::Type::TYPE_APP ||
-          browser()->is_type_app_popup()) {
+          browser()->GetType() ==
+              BrowserWindowInterface::Type::TYPE_APP_POPUP) {
         model->AddItemWithStringId(IDC_NEW_TAB, IDS_APP_MENU_NEW_WEB_PAGE);
       } else {
         model->AddItemWithStringId(IDC_SHOW_AS_TAB, IDS_SHOW_AS_TAB);
@@ -305,7 +312,7 @@ void SystemMenuModelBuilder::BuildSystemMenuForAppOrPopupWindow(
 
   bool should_show_task_manager =
       (browser()->GetType() == BrowserWindowInterface::Type::TYPE_APP ||
-       browser()->is_type_app_popup()) &&
+       browser()->GetType() == BrowserWindowInterface::Type::TYPE_APP_POPUP) &&
       chrome::CanOpenTaskManager();
 #if BUILDFLAG(IS_CHROMEOS)
   // Hide TaskManager option for the app if it is locked for OnTask. Only
@@ -317,7 +324,12 @@ void SystemMenuModelBuilder::BuildSystemMenuForAppOrPopupWindow(
 #endif
   if (should_show_task_manager) {
     model->AddSeparator(ui::NORMAL_SEPARATOR);
-    model->AddItemWithStringId(IDC_TASK_MANAGER, IDS_TASK_MANAGER);
+    model->AddItemWithStringIdAndIcon(
+        IDC_TASK_MANAGER, IDS_TASK_MANAGER,
+        ui::ImageModel::FromVectorIcon(
+            features::IsRoundedIconsEnabled() ? kTableChartIcon
+                                              : kTaskManagerOldIcon,
+            ui::kColorMenuIcon, ui::SimpleMenuModel::kDefaultIconSize));
   }
 #if BUILDFLAG(IS_LINUX)
   model->AddSeparator(ui::NORMAL_SEPARATOR);

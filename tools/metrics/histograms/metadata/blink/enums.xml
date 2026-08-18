@@ -6728,6 +6728,12 @@ Called by update_use_counter_feature_enum.py.-->
   <int value="5975" label="SingleAxisScrollerPositionSticky"/>
   <int value="5976" label="SingleAxisScrollerOverscrollBehavior"/>
   <int value="5977" label="SingleAxisScrollerAutoMinSize"/>
+  <int value="5978"
+      label="V8HTMLImageElement_ReplacedByUserAgent_AttributeGetter"/>
+  <int value="5979" label="UAReplaceStartAddListener"/>
+  <int value="5980" label="UAReplaceEndAddListener"/>
+  <int value="5981" label="AdImageHDR"/>
+  <int value="5982" label="AdVideoHDR"/>
 </enum>
 
 <!-- LINT.ThenChange(//third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom:WebFeature) -->
@@ -7071,6 +7077,9 @@ Called by update_permissions_policy_enum.py.-->
   <int value="17" label="WellKnownInvalidContentType"/>
   <int value="18" label="ConfigInvalidContentType"/>
   <int value="19" label="IdpNotPotentiallyTrustworthy"/>
+  <int value="20" label="WellKnownBlockedByConnectionAllowlist"/>
+  <int value="21" label="ConfigBlockedByConnectionAllowlist"/>
+  <int value="22" label="DisconnectBlockedByConnectionAllowlist"/>
 </enum>
 
 <!-- LINT.ThenChange(//content/browser/webid/metrics.h:DisconnectStatus) -->
@@ -7149,6 +7158,9 @@ Called by update_permissions_policy_enum.py.-->
   <int value="7"
       label="Browser has signed-out IDP status, accounts endpoint returned
              accounts."/>
+  <int value="8"
+      label="Browser has signed-in IDP status, accounts endpoint was blocked
+             by connection allowlist."/>
 </enum>
 
 <!-- LINT.ThenChange(//content/browser/webid/metrics.h:IdpSigninMatchStatus) -->
@@ -7335,6 +7347,10 @@ Called by update_permissions_policy_enum.py.-->
   <int value="51" label="LoginPopupClosedWithoutSignin"/>
   <int value="52" label="SuppressedBySegmentationPlatform"/>
   <int value="53" label="SuccessUsingRedirectTo"/>
+  <int value="54" label="WellKnownBlockedByConnectionAllowlist"/>
+  <int value="55" label="ConfigBlockedByConnectionAllowlist"/>
+  <int value="56" label="AccountsBlockedByConnectionAllowlist"/>
+  <int value="57" label="IdTokenBlockedByConnectionAllowlist"/>
 </enum>
 
 <!-- LINT.ThenChange(//content/browser/webid/metrics.h:RequestIdTokenStatus) -->
@@ -7368,16 +7384,6 @@ Called by update_permissions_policy_enum.py.-->
 </enum>
 
 <!-- LINT.ThenChange(//content/browser/webid/metrics.h:RpParameters) -->
-
-<!-- LINT.IfChange(FedCmSetLoginStatusIgnoredReason) -->
-
-<enum name="FedCmSetLoginStatusIgnoredReason">
-  <int value="0" label="Looking up the FrameTreeNode by ID failed"/>
-  <int value="1" label="Request came from within a fenced frame tree"/>
-  <int value="2" label="Request came from a cross-origin context"/>
-</enum>
-
-<!-- LINT.ThenChange(//content/browser/webid/metrics.h:SetLoginStatusIgnoredReason) -->
 
 <!-- LINT.IfChange(FedCmSheetType) -->
 
@@ -8626,6 +8632,7 @@ Called by update_use_counter_css.py.-->
   <int value="960" label="corner-inline-start"/>
   <int value="961" label="corner-inline-end"/>
   <int value="962" label="window-drag"/>
+  <int value="963" label="max-content-sizing"/>
 </enum>
 
 <!-- LINT.ThenChange(//third_party/blink/public/mojom/use_counter/metrics/css_property_id.mojom:CSSSampleId) -->
@@ -8689,17 +8696,6 @@ Called by update_use_counter_css.py.-->
 <enum name="RaceTaskPriority">
   <int value="0" label="LowerPriority"/>
   <int value="1" label="NormalPriority"/>
-</enum>
-
-<enum name="RequestedImageMimeType">
-  <int value="0" label="Png"/>
-  <int value="1" label="Jpeg"/>
-  <int value="2" label="Webp"/>
-  <int value="3" label="Gif"/>
-  <int value="4" label="Bmp"/>
-  <int value="5" label="Ico"/>
-  <int value="6" label="Tiff"/>
-  <int value="7" label="Unknown"/>
 </enum>
 
 <enum name="RevalidationPolicy">
@@ -9203,6 +9199,7 @@ Called by update_use_counter_feature_enum.py.-->
   <int value="443" label="DRAFT_HTMLSetterMethods"/>
   <int value="444" label="DRAFT_HTMLStreamMethods"/>
   <int value="445" label="CanvasHtml"/>
+  <int value="446" label="DRAFT_Symbols"/>
 </enum>
 
 <!-- LINT.ThenChange(//third_party/blink/public/mojom/use_counter/metrics/webdx_feature.mojom:WebDXFeature) -->

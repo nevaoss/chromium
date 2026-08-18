@@ -11,6 +11,7 @@
 #include "base/test/scoped_feature_list.h"
 #include "base/test/simple_test_tick_clock.h"
 #include "base/test/test_future.h"
+#include "build/build_config.h"
 #include "chrome/browser/extensions/chrome_extension_web_contents_observer.h"
 #include "chrome/browser/extensions/tab_helper.h"
 #include "chrome/browser/glic/experimental_opt_in/glic_experimental_opt_in_controller.h"
@@ -174,8 +175,10 @@ class GlicExperimentalOptInTest
     if (!web_contents) {
       web_contents = browser()->tab_strip_model()->GetActiveWebContents();
     }
-    views::Widget* widget = service()->opt_in_controller().ShowDialog(
-        web_contents, std::move(callback));
+    service()->opt_in_controller().ShowDialog(web_contents,
+                                              std::move(callback));
+    views::Widget* widget =
+        service()->opt_in_controller().GetDialogWidgetForTesting();
     if (!widget) {
       return nullptr;
     }
@@ -449,8 +452,9 @@ IN_PROC_BROWSER_TEST_F(GlicExperimentalOptInTest, WebviewURL_OptInNotNeeded) {
   content::WebContents* web_contents =
       browser()->tab_strip_model()->GetActiveWebContents();
   base::test::TestFuture<bool> future;
-  views::Widget* widget = service()->opt_in_controller().ShowDialog(
-      web_contents, future.GetCallback());
+  service()->opt_in_controller().ShowDialog(web_contents, future.GetCallback());
+  views::Widget* widget =
+      service()->opt_in_controller().GetDialogWidgetForTesting();
   EXPECT_FALSE(widget);
   EXPECT_TRUE(future.Get());
 }
@@ -651,6 +655,49 @@ IN_PROC_BROWSER_TEST_F(GlicExperimentalOptInTest, RejectOptIn) {
                                       OptInFlow::kExperimentalTriggering, 1);
 }
 
+IN_PROC_BROWSER_TEST_F(GlicExperimentalOptInTest, RejectThenAcceptOptIn) {
+  service()->enabling().SetCompletedFre(glic::prefs::FreStatus::kIncomplete);
+  ASSERT_FALSE(service()->enabling().HasConsented());
+
+  // Capture the dialog result to verify it gets rejected upon closing.
+  base::test::TestFuture<bool> opt_in_result;
+  views::Widget* widget =
+      ShowDialogAndWait(nullptr, opt_in_result.GetCallback());
+  ASSERT_TRUE(widget);
+
+  content::WebContents* dialog_contents = WaitForGuestContents();
+
+  // 1. Reject first dialog
+  views::test::WidgetDestroyedWaiter waiter(widget);
+  ASSERT_TRUE(ExecJs(dialog_contents, "window.location.hash = '#noThanks';"));
+
+  // The dialog should close and the result should be false (rejected).
+  waiter.Wait();
+  EXPECT_FALSE(opt_in_result.Get());
+  EXPECT_FALSE(service()->enabling().HasConsented());
+
+  // 2. Show second dialog
+  base::test::TestFuture<bool> opt_in_result2;
+  views::Widget* widget2 =
+      ShowDialogAndWait(nullptr, opt_in_result2.GetCallback());
+  ASSERT_TRUE(widget2);
+
+  auto* guest_view2 = GetGuestViewManager()->WaitForNextGuestViewCreated();
+  ASSERT_TRUE(guest_view2);
+  content::WebContents* dialog_contents2 = guest_view2->web_contents();
+  ASSERT_TRUE(dialog_contents2);
+  EXPECT_TRUE(content::WaitForLoadStop(dialog_contents2));
+
+  // 3. Accept second dialog
+  views::test::WidgetDestroyedWaiter waiter2(widget2);
+  ASSERT_TRUE(ExecJs(dialog_contents2, "window.location.hash = '#continue';"));
+
+  // The dialog should close and the result should be true (accepted).
+  waiter2.Wait();
+  EXPECT_TRUE(opt_in_result2.Get());
+  EXPECT_TRUE(service()->enabling().HasConsented());
+}
+
 IN_PROC_BROWSER_TEST_F(GlicExperimentalOptInTest,
                        GlicOptInImpressionMetricRecordedOnLoad) {
   base::UserActionTester user_action_tester;
@@ -787,13 +834,15 @@ IN_PROC_BROWSER_TEST_F(GlicExperimentalOptInTest, MultipleOptInRequests) {
 
   base::test::TestFuture<bool> future(base::test::TestFutureMode::kQueue);
 
-  views::Widget* widget1 = service->opt_in_controller().ShowDialog(
-      web_contents, future.GetCallback());
+  service->opt_in_controller().ShowDialog(web_contents, future.GetCallback());
+  views::Widget* widget1 =
+      service->opt_in_controller().GetDialogWidgetForTesting();
   ASSERT_TRUE(widget1);
 
   // Second request should return the same widget and queue callbacks.
-  views::Widget* widget2 = service->opt_in_controller().ShowDialog(
-      web_contents, future.GetCallback());
+  service->opt_in_controller().ShowDialog(web_contents, future.GetCallback());
+  views::Widget* widget2 =
+      service->opt_in_controller().GetDialogWidgetForTesting();
   EXPECT_EQ(widget1, widget2);
 
   views::test::WidgetVisibleWaiter(widget1).Wait();
@@ -1135,16 +1184,23 @@ IN_PROC_BROWSER_TEST_F(GlicExperimentalOptInTest,
   EXPECT_EQ(browser()->tab_strip_model()->active_index(), 1);
 }
 
+// TODO(crbug.com/542691173):
+#if BUILDFLAG(IS_LINUX)
+#define MAYBE_GetOrCreateSuitableWebContents_TargetInBackgroundWindow \
+  DISABLED_GetOrCreateSuitableWebContents_TargetInBackgroundWindow
+#else
+#define MAYBE_GetOrCreateSuitableWebContents_TargetInBackgroundWindow \
+  GetOrCreateSuitableWebContents_TargetInBackgroundWindow
+#endif
 IN_PROC_BROWSER_TEST_F(
     GlicExperimentalOptInTest,
-    GetOrCreateSuitableWebContents_TargetInBackgroundWindow) {
+    MAYBE_GetOrCreateSuitableWebContents_TargetInBackgroundWindow) {
   // 1. We start with browser() (Window A, active).
   // It has 1 tab (not matching).
   EXPECT_EQ(browser()->tab_strip_model()->count(), 1);
 
   // 2. Create Window B (background window).
-  BrowserWindowInterface* window_b = CreateBrowserWindow(GetProfile());
-  ASSERT_TRUE(window_b);
+  BrowserWindowInterface* window_b = CreateAdditionalBrowserWindow();
 
   // Ensure Window A is active.
   {

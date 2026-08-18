@@ -103,6 +103,80 @@ if (is_chrome_branded && (is_mac || is_win || is_linux)) {
   }
 }
 
+if (!is_android) {
+  source_set("platform_browser_test") {
+    testonly = true
+    sources = [ "platform_browser_test.h" ]
+    public_deps = [ "//chrome/test/base:in_process_browser_test" ]
+  }
+}
+
+# Thin header-only target that exposes chrome_test_utils.h for gn check. The
+# implementation (chrome_test_utils.cc) still lives in
+# //chrome/test:test_support until the TestingBrowserProcessDeathTestMixin
+# dependency cycle is resolved.
+#
+# TODO(crbug.com/353332589): Add chrome_test_utils.cc as a source and remove
+# from //chrome/test:test_support once testing_browser_process is split into a
+# thin header + impl target (Pattern A), breaking the dep cycle through
+# //chrome/browser/extensions:test_support.
+source_set("chrome_test_utils") {
+  testonly = true
+  sources = [ "chrome_test_utils.h" ]
+  public_deps = [
+    "//components/tabs:public",
+    "//content/public/browser",
+  ]
+  if (is_android) {
+    # TODO(crbug.com/353332589): Remove once android_browser_test.cc no longer
+    # includes chrome_test_utils.h, or the android_browser_test functions it
+    # calls are moved to a dep-graph-safe separate target.
+    allow_circular_includes_from = [ "//chrome/test:test_support_ui_android" ]
+    public_deps += [ "//chrome/test:test_support_ui_android" ]
+  } else {
+    public_deps += [ "//chrome/test/base:platform_browser_test" ]
+  }
+}
+
+source_set("chrome_render_view_host_test_harness") {
+  testonly = true
+  sources = [
+    "chrome_render_view_host_test_harness.cc",
+    "chrome_render_view_host_test_harness.h",
+  ]
+  public_deps = [
+    "//chrome/test/base:testing_profile",
+    "//content/test:test_support",
+  ]
+  deps = [
+    "//base",
+    "//chrome/browser:browser_process",
+    "//chrome/browser/signin",
+  ]
+  if (is_chromeos) {
+    deps += [ "//ash" ]
+  }
+}
+
+source_set("scoped_metrics_service_for_synthetic_trials") {
+  testonly = true
+  sources = [
+    "scoped_metrics_service_for_synthetic_trials.cc",
+    "scoped_metrics_service_for_synthetic_trials.h",
+  ]
+  public_deps = [
+    "//base",
+    "//chrome/test/base:testing_browser_process",
+    "//chrome/test/base:testing_profile",
+    "//components/metrics",
+    "//components/metrics:test_support",
+    "//components/prefs",
+    "//components/variations",
+    "//components/variations:test_support",
+    "//content/test:test_support",
+  ]
+}
+
 source_set("in_process_browser_test_mixin") {
   testonly = true
   sources = [
@@ -526,5 +600,26 @@ if (!is_android) {
     if (toolkit_views) {
       public_deps += [ "//ui/views:test_support" ]
     }
+  }
+}
+
+if (!is_android) {
+  source_set("devtools_coverage") {
+    testonly = true
+    sources = [
+      "devtools_agent_coverage_observer.cc",
+      "devtools_agent_coverage_observer.h",
+      "devtools_listener.cc",
+      "devtools_listener.h",
+    ]
+    public_deps = [
+      "//base",
+      "//content/public/browser",
+    ]
+    deps = [
+      "//content/test:test_support",
+      "//crypto",
+      "//url",
+    ]
   }
 }

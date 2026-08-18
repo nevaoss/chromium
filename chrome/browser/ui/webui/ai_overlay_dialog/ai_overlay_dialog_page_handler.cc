@@ -8,6 +8,7 @@
 #include <optional>
 #include <vector>
 
+#include "base/base64.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/logging.h"
@@ -17,7 +18,13 @@
 #include "chrome/browser/ui/ai_overlay_dialog/ai_overlay_dialog_controller.h"
 #include "chrome/browser/ui/browser_actions.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/ui_features.h"
+#include "components/viz/common/frame_sinks/copy_output_result.h"
+#include "content/public/browser/render_widget_host_view.h"
+#include "content/public/browser/web_contents.h"
+#include "ui/display/screen.h"
+#include "ui/gfx/codec/jpeg_codec.h"
 #include "components/vector_icons/vector_icons.h"
 #include "ui/actions/actions.h"
 #include "ui/base/models/image_model.h"
@@ -162,6 +169,14 @@ void AiOverlayDialogPageHandler::UpdateAudioEnergy(float energy) {
   }
 }
 
+void AiOverlayDialogPageHandler::Close() {
+  if (auto* controller = AiOverlayDialogController::From(browser_)) {
+    // HideOverlay() turns off listening and closes the overlay WebUI dialog interface.
+    // TODO(crbug.com/540858790): Rename HideOverlay() to CloseOverlay() for clarity.
+    controller->HideOverlay();
+  }
+}
+
 void AiOverlayDialogPageHandler::DidChangePage(
     const GURL& url,
     const std::optional<std::u16string>& title,
@@ -202,6 +217,92 @@ void AiOverlayDialogPageHandler::OnOutputCaptionsVisibleChanged(bool visible) {
 
 void AiOverlayDialogPageHandler::OnUsePersonaChanged(bool use_persona) {
   page_->SetUsePersona(use_persona);
+}
+
+void AiOverlayDialogPageHandler::GetCursorPosition(
+    GetCursorPositionCallback callback) {
+  display::Screen* screen = display::Screen::Get();
+  if (!screen) {
+    std::move(callback).Run(std::nullopt);
+    return;
+  }
+  gfx::Point cursor_screen = screen->GetCursorScreenPoint();
+
+  content::WebContents* web_contents =
+      browser_ ? browser_->GetTabStripModel()->GetActiveWebContents()
+               : nullptr;
+
+  if (!web_contents) {
+    std::move(callback).Run(std::nullopt);
+    return;
+  }
+
+  gfx::Rect tab_bounds = web_contents->GetContainerBounds();
+  if (!tab_bounds.Contains(cursor_screen)) {
+    std::move(callback).Run(std::nullopt);
+    return;
+  }
+
+  gfx::Point cursor_local = cursor_screen - tab_bounds.OffsetFromOrigin();
+  std::move(callback).Run(cursor_local);
+}
+
+void AiOverlayDialogPageHandler::CaptureRawViewportRegion(
+    int32_t x,
+    int32_t y,
+    int32_t width,
+    int32_t height,
+    CaptureRawViewportRegionCallback callback) {
+  content::WebContents* web_contents =
+      browser_ ? browser_->GetTabStripModel()->GetActiveWebContents()
+               : nullptr;
+
+  if (!web_contents) {
+    std::move(callback).Run(nullptr);
+    return;
+  }
+
+  content::RenderWidgetHostView* view =
+      web_contents->GetRenderWidgetHostView();
+  if (!view) {
+    std::move(callback).Run(nullptr);
+    return;
+  }
+
+  gfx::Rect tab_bounds = web_contents->GetContainerBounds();
+  gfx::Rect crop_rect_logical(x, y, width, height);
+  crop_rect_logical.Intersect(
+      gfx::Rect(0, 0, tab_bounds.width(), tab_bounds.height()));
+
+  float scale = view->GetDeviceScaleFactor();
+
+  view->CopyFromSurface(
+      crop_rect_logical, gfx::Size(), base::TimeDelta(),
+      base::BindOnce(
+          [](float scale, CaptureRawViewportRegionCallback cb,
+             const content::CopyFromSurfaceResult& result) {
+            if (!result.has_value() || result->bitmap.drawsNothing()) {
+              std::move(cb).Run(nullptr);
+              return;
+            }
+
+            const SkBitmap& bitmap = result->bitmap;
+            std::optional<std::vector<uint8_t>> jpeg_bytes =
+                gfx::JPEGCodec::Encode(bitmap.pixmap(), 85);
+            if (!jpeg_bytes.has_value()) {
+              std::move(cb).Run(nullptr);
+              return;
+            }
+
+            std::string b64_data = base::Base64Encode(*jpeg_bytes);
+            auto res = ai_overlay_dialog::mojom::RawViewportRegionResult::New();
+            res->jpeg_data_b64 = b64_data;
+            res->width = bitmap.width();
+            res->height = bitmap.height();
+            res->scale_factor = scale;
+            std::move(cb).Run(std::move(res));
+          },
+          scale, std::move(callback)));
 }
 
 }  // namespace ttc

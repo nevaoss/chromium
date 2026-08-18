@@ -13,6 +13,7 @@
 #import "base/metrics/user_metrics_action.h"
 #import "base/strings/sys_string_conversions.h"
 #import "components/prefs/pref_service.h"
+#import "components/signin/public/base/signin_switches.h"
 #import "components/signin/public/identity_manager/objc/identity_manager_observer_bridge.h"
 #import "components/subscription_eligibility/objc/subscription_eligibility_observer_bridge.h"
 #import "components/subscription_eligibility/subscription_eligibility_service.h"
@@ -209,7 +210,7 @@
 
 - (BOOL)isGaiaIDManaged:(const GaiaId&)gaiaID {
   id<SystemIdentity> identity = [self identityForGaiaID:gaiaID];
-  CHECK(identity, base::NotFatalUntil::M147);
+  CHECK(identity);
   if (std::optional<BOOL> managed = IsIdentityManaged(identity);
       managed.has_value()) {
     return managed.value();
@@ -238,27 +239,23 @@
 }
 
 - (BOOL)primaryAccountAvatarNeedsRing {
-  if (!IsAiAvatarRingIosEnabled()) {
-    return NO;
-  }
-
-  return _subscriptionEligibilityService->GetAiSubscriptionTier() > 0;
+  return self.AITier > 0;
 }
 
 - (NSString*)primaryAccountAITierFullName {
-  if (!IsAiAvatarRingIosEnabled()) {
+  NSInteger AITier = self.AITier;
+  if (AITier <= 0) {
     return nil;
   }
-  int aiTier = _subscriptionEligibilityService->GetAiSubscriptionTier();
-  return ios::provider::GetAITierFullName(aiTier);
+  return ios::provider::GetAITierFullName(AITier);
 }
 
 - (NSString*)primaryAccountAITierName {
-  if (!IsAiAvatarRingIosEnabled()) {
+  NSInteger AITier = self.AITier;
+  if (AITier <= 0) {
     return nil;
   }
-  int tier = _subscriptionEligibilityService->GetAiSubscriptionTier();
-  return ios::provider::GetAITierName(tier);
+  return ios::provider::GetAITierName(AITier);
 }
 
 - (NSString*)managementDescription {
@@ -316,6 +313,11 @@
   }
   _error = newError;
   [self.consumer updateErrorSection:_error];
+  if (_subscriptionEligibilityService->GetAiSubscriptionTier() > 0 &&
+      IsAiSubscriptionAvatarRingIOSEnabled()) {
+    // We may need to add/remove the AI Tier rings and chip.
+    [self.consumer updatePrimaryAccount];
+  }
 }
 
 #pragma mark - AccountMenuMutator
@@ -376,18 +378,30 @@
   }
   switch (_error.errorType) {
     case syncer::SyncService::UserActionableError::kSignInNeedsUpdate: {
-      if (_authenticationService->HasCachedMDMErrorForIdentity(
-              _primaryIdentityBeforeSignin)) {
-        base::RecordAction(
-            base::UserMetricsAction("Signin_AccountMenu_ErrorButton_MDM"));
-        [self.syncErrorSettingsCommandHandler
-            openMDMErrodDialogWithSystemIdentity:_primaryIdentityBeforeSignin];
-      } else {
+      BOOL isMDMError = NO;
+      if (!base::FeatureList::IsEnabled(
+              switches::kHandleMdmErrorsForDasherAccounts)) {
+        isMDMError = _authenticationService->HasCachedMDMErrorForIdentity(
+            _primaryIdentityBeforeSignin);
+      }
+      if (!isMDMError) {
         base::RecordAction(
             base::UserMetricsAction("Signin_AccountMenu_ErrorButton_Reauth"));
         self.userInteractionsBlocked = YES;
         [self.syncErrorSettingsCommandHandler openPrimaryAccountReauthDialog];
+      } else {
+        base::RecordAction(
+            base::UserMetricsAction("Signin_AccountMenu_ErrorButton_MDM"));
+        [self.syncErrorSettingsCommandHandler
+            openMDMErrodDialogWithSystemIdentity:_primaryIdentityBeforeSignin];
       }
+      break;
+    }
+    case syncer::SyncService::UserActionableError::kDeviceManagementError: {
+      base::RecordAction(
+          base::UserMetricsAction("Signin_AccountMenu_ErrorButton_MDM"));
+      [self.syncErrorSettingsCommandHandler
+          openMDMErrodDialogWithSystemIdentity:_primaryIdentityBeforeSignin];
       break;
     }
     case syncer::SyncService::UserActionableError::kNeedsPassphrase:
@@ -510,10 +524,10 @@
     // The mediator was disconnected. No need to update it.
     return;
   }
-  CHECK(_primaryIdentityBeforeSignin, base::NotFatalUntil::M140);
+  CHECK(_primaryIdentityBeforeSignin);
   _authenticationFlow = nil;
   if (success) {
-    CHECK(identity, base::NotFatalUntil::M145);
+    CHECK(identity);
     [_delegate mediatorWantsToBeDismissed:self
                     withCancelationReason:cancelationReason
                            signedIdentity:identity
@@ -586,6 +600,16 @@
 }
 
 #pragma mark - Private
+
+- (NSInteger)AITier {
+  if (_error || !IsAiSubscriptionAvatarRingIOSEnabled()) {
+    // In case of error, we do not want to display any AI Tier information. Even
+    // in the case where the error does not impact the tier feature access. That
+    // ensures the Account Menu and the NTP displays are consistent.
+    return 0;
+  }
+  return _subscriptionEligibilityService->GetAiSubscriptionTier();
+}
 
 // Updates the identity list in `_identities`, and sends an notification to
 // the consumer.

@@ -47,7 +47,6 @@ source_set("coordinator") {
     "//ios/chrome/browser/intelligence/bwg/utils:prefs",
     "//ios/chrome/browser/intelligence/features",
     "//ios/chrome/browser/intents/model:model_donation_helper",
-    "//ios/chrome/browser/keyboard/ui_bundled",
     "//ios/chrome/browser/lens/ui_bundled:lens_availability",
     "//ios/chrome/browser/lens/ui_bundled:lens_entrypoint",
     "//ios/chrome/browser/lens_overlay/model",
@@ -80,6 +79,7 @@ source_set("coordinator") {
     "//ios/chrome/browser/url_loading/model",
     "//ios/chrome/browser/web/model",
     "//ios/web/public",
+    "//net",
   ]
 }
 
@@ -151,6 +151,8 @@ source_set("unit_tests") {
     "//ios/chrome/test:test_support",
     "//ios/web/public/test",
     "//ios/web/public/test/fakes",
+    "//net",
+    "//net:test_support",
     "//testing/gtest",
     "//third_party/ocmock",
     "//third_party/omnibox_proto",

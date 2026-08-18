@@ -23,6 +23,7 @@
 #include "net/disk_cache/sql/sql_persistent_store.h"
 #include "net/disk_cache/sql/sql_shared_cache_handle.h"
 #include "net/disk_cache/sql/sql_shared_cache_isolated_database.h"
+#include "net/disk_cache/sql/sql_shared_cache_manager.h"
 #include "net/http/http_response_headers.h"
 #include "net/http/http_response_info.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -30,6 +31,8 @@
 namespace disk_cache {
 
 namespace {
+
+constexpr SqlSharedCacheDbId kTestDbId(42);
 
 scoped_refptr<net::IOBufferWithSize> CreateHeadBuffer(
     const net::HttpResponseInfo& response_info,
@@ -147,28 +150,24 @@ class SqlSharedCacheTest : public testing::TestWithParam<bool> {
     }
   }
 
-  std::unique_ptr<SqlSharedCache> CreateAndInitStoreAndCache() {
-    auto cache = std::make_unique<SqlSharedCache>(
-        "test_nik", *store_, temp_dir_.GetPath(), base::DoNothing(),
-        base::ThreadPool::CreateSequencedTaskRunner(
-            {base::MayBlock(), base::TaskPriority::USER_BLOCKING,
-             base::TaskShutdownBehavior::BLOCK_SHUTDOWN}),
-        cleanup_tracker_);
-
-    SqlSharedCacheDbId db_id(42);
-    bool init_success = false;
-    cache->InitIsolatedDatabase(
-        db_id, base::BindLambdaForTesting(
-                   [&](bool success) { init_success = success; }));
-    async_task_manager_.RunUntilAllTasksCompleteForTest();
-    EXPECT_TRUE(init_success);
-
+  scoped_refptr<SqlSharedCacheHandle> CreateAndInitStoreAndCache() {
     base::test::TestFuture<SqlPersistentStore::Error> store_init_future;
     store_->Initialize(store_init_future.GetCallback());
     async_task_manager_.RunUntilAllTasksCompleteForTest();
     EXPECT_EQ(store_init_future.Get(), SqlPersistentStore::Error::kOk);
 
-    return cache;
+    auto* manager = store_->shared_cache_manager_for_testing();
+    EXPECT_TRUE(manager);
+
+    net::NetworkIsolationKey nik(net::SchemefulSite(GURL("https://foo.test")),
+                                 net::SchemefulSite(GURL("https://bar.test")));
+    base::test::TestFuture<scoped_refptr<SqlSharedCacheHandle>> handle_future;
+    manager->GetCacheByNik(nik, /*require_shared_cache_db_id=*/true,
+                           handle_future.GetCallback());
+    async_task_manager_.RunUntilAllTasksCompleteForTest();
+    scoped_refptr<SqlSharedCacheHandle> handle = handle_future.Take();
+    EXPECT_TRUE(handle);
+    return handle;
   }
 
   SqlPersistentStore::SharedCacheEligibleEntry CreateEligibleEntry(
@@ -193,7 +192,8 @@ class SqlSharedCacheTest : public testing::TestWithParam<bool> {
         read_future;
     cache.isolated_database_for_testing()
         .AsyncCall(&SqlSharedCacheIsolatedDatabase::Read)
-        .WithArgs(key, row_id, /*offset=*/0, read_buffer)
+        .WithArgs(key, row_id, static_cast<int>(expected_data.size()),
+                  /*offset=*/0, read_buffer)
         .Then(read_future.GetCallback());
     async_task_manager_.RunUntilAllTasksCompleteForTest();
     auto read_result = read_future.Take();
@@ -214,13 +214,35 @@ class SqlSharedCacheTest : public testing::TestWithParam<bool> {
         read_future;
     cache.isolated_database_for_testing()
         .AsyncCall(&SqlSharedCacheIsolatedDatabase::Read)
-        .WithArgs(key, row_id, /*offset=*/0, read_buffer)
+        .WithArgs(key, row_id, /*body_size=*/100, /*offset=*/0, read_buffer)
         .Then(read_future.GetCallback());
     async_task_manager_.RunUntilAllTasksCompleteForTest();
     auto read_result = read_future.Take();
     EXPECT_FALSE(read_result.has_value());
     EXPECT_EQ(read_result.error(),
               SqlSharedCacheIsolatedDatabase::Error::kEntryNotFound);
+  }
+
+  SqlPersistentStore::OptionalEntryInfoOrError OpenStoreEntry(
+      const CacheEntryKey& key) {
+    base::test::TestFuture<SqlPersistentStore::OptionalEntryInfoOrError> future;
+    store_->OpenEntry(key, future.GetCallback());
+    async_task_manager_.RunUntilAllTasksCompleteForTest();
+    return future.Take();
+  }
+
+  void VerifyStoreEntrySharedCacheResourceId(
+      const CacheEntryKey& key,
+      SqlSharedCacheDbId expected_db_id,
+      SqlSharedCacheRowId expected_row_id) {
+    auto open_result = OpenStoreEntry(key);
+    ASSERT_TRUE(open_result.has_value());
+    ASSERT_TRUE(open_result.value().has_value());
+    ASSERT_TRUE(open_result.value()->shared_cache_resource_id.has_value());
+    EXPECT_EQ(open_result.value()->shared_cache_resource_id->db_id,
+              expected_db_id);
+    EXPECT_EQ(open_result.value()->shared_cache_resource_id->row_id,
+              expected_row_id);
   }
 
   base::test::ScopedFeatureList feature_list_;
@@ -284,16 +306,15 @@ TEST_P(SqlSharedCacheTest, InitIsolatedDatabaseAndCleanup) {
            base::TaskShutdownBehavior::BLOCK_SHUTDOWN}),
       cleanup_tracker_);
 
-  SqlSharedCacheDbId db_id(42);
   bool init_success = false;
 
   cache->InitIsolatedDatabase(
-      db_id, base::BindLambdaForTesting(
-                 [&](bool success) { init_success = success; }));
+      kTestDbId, base::BindLambdaForTesting(
+                     [&](bool success) { init_success = success; }));
 
   async_task_manager_.RunUntilAllTasksCompleteForTest();
 
-  EXPECT_EQ(cache->shared_cache_db_id(), db_id);
+  EXPECT_EQ(cache->shared_cache_db_id(), kTestDbId);
   EXPECT_TRUE(init_success);
 
   bool cleanup_done = false;
@@ -319,7 +340,6 @@ TEST_P(SqlSharedCacheTest, CleanupWithoutIsolatedDatabase) {
 }
 
 TEST_P(SqlSharedCacheTest, DestructionTriggersCleanup) {
-  SqlSharedCacheDbId db_id(42);
   {
     auto cache = std::make_unique<SqlSharedCache>(
         "test_nik", *store_, temp_dir_.GetPath(), base::DoNothing(),
@@ -330,8 +350,8 @@ TEST_P(SqlSharedCacheTest, DestructionTriggersCleanup) {
 
     bool init_success = false;
     cache->InitIsolatedDatabase(
-        db_id, base::BindLambdaForTesting(
-                   [&](bool success) { init_success = success; }));
+        kTestDbId, base::BindLambdaForTesting(
+                       [&](bool success) { init_success = success; }));
     async_task_manager_.RunUntilAllTasksCompleteForTest();
     EXPECT_TRUE(init_success);
     // `cache` goes out of scope here. Its destruction triggers the destruction
@@ -354,14 +374,15 @@ TEST_P(SqlSharedCacheTest, DestructionTriggersCleanup) {
 
   bool reinit_success = false;
   new_cache->InitIsolatedDatabase(
-      db_id, base::BindLambdaForTesting(
-                 [&](bool success) { reinit_success = success; }));
+      kTestDbId, base::BindLambdaForTesting(
+                     [&](bool success) { reinit_success = success; }));
   async_task_manager_.RunUntilAllTasksCompleteForTest();
   EXPECT_TRUE(reinit_success);
 }
 
 TEST_P(SqlSharedCacheTest, CopyEntries) {
-  auto cache = CreateAndInitStoreAndCache();
+  auto handle = CreateAndInitStoreAndCache();
+  auto* cache = handle->get();
 
   const CacheEntryKey kKey("credential_key/post_key/https://www.example.com/");
   const std::string kData = "example data";
@@ -386,10 +407,13 @@ TEST_P(SqlSharedCacheTest, CopyEntries) {
   EXPECT_TRUE(unprocessed.empty());
 
   VerifyIsolatedDatabaseEntryData(*cache, kKey, SqlSharedCacheRowId(1), kData);
+  VerifyStoreEntrySharedCacheResourceId(kKey, *cache->shared_cache_db_id(),
+                                        SqlSharedCacheRowId(1));
 }
 
 TEST_P(SqlSharedCacheTest, CopyEntriesMultiple) {
-  auto cache = CreateAndInitStoreAndCache();
+  auto handle = CreateAndInitStoreAndCache();
+  auto* cache = handle->get();
 
   const CacheEntryKey kKey1(
       "credential_key/post_key/https://example.com/1.png");
@@ -436,6 +460,56 @@ TEST_P(SqlSharedCacheTest, CopyEntriesMultiple) {
                                   kData2);
   VerifyIsolatedDatabaseEntryData(*cache, kKey3, SqlSharedCacheRowId(3),
                                   kData3);
+  VerifyStoreEntrySharedCacheResourceId(kKey1, *cache->shared_cache_db_id(),
+                                        SqlSharedCacheRowId(1));
+  VerifyStoreEntrySharedCacheResourceId(kKey2, *cache->shared_cache_db_id(),
+                                        SqlSharedCacheRowId(2));
+  VerifyStoreEntrySharedCacheResourceId(kKey3, *cache->shared_cache_db_id(),
+                                        SqlSharedCacheRowId(3));
+}
+
+TEST_P(SqlSharedCacheTest,
+       CopyEntriesMoveBlobsToSharedCacheFailureCleansUpPartialEntry) {
+  auto handle = CreateAndInitStoreAndCache();
+  auto* cache = handle->get();
+
+  const CacheEntryKey kKey(
+      "credential_key/post_key/https://example.com/fail_move");
+  std::string kData = "payload for move blobs failure test";
+  auto response_info = CreateTestHttpResponseInfo();
+
+  PopulateStoreEntry(kKey, response_info, kData);
+
+  base::queue<SqlPersistentStore::SharedCacheEligibleEntry> entries;
+  entries.push(CreateEligibleEntry(kKey, GURL("https://example.com/fail_move"),
+                                   response_info));
+
+  auto abort_flag =
+      base::MakeRefCounted<base::RefCountedData<std::atomic_bool>>(
+          std::in_place, false);
+  base::test::TestFuture<
+      base::queue<SqlPersistentStore::SharedCacheEligibleEntry>>
+      copy_future;
+
+  cache->CopyEntries(std::move(entries), abort_flag, copy_future.GetCallback());
+  // OpenEntry task is already enqueued on store runner. Enabling simulate
+  // failure now will cause MoveBlobsToSharedCache (which is enqueued later) to
+  // fail.
+  store_->SetSimulateDbFailureForTesting(true);
+
+  async_task_manager_.RunUntilAllTasksCompleteForTest();
+  auto unprocessed = copy_future.Take();
+  EXPECT_TRUE(unprocessed.empty());
+
+  // Verify that row 1 was cleaned up (deleted) from isolated database upon
+  // failure.
+  base::test::TestFuture<bool> has_row_future;
+  cache->isolated_database_for_testing()
+      .AsyncCall(&SqlSharedCacheIsolatedDatabase::HasRowForTesting)
+      .WithArgs(SqlSharedCacheRowId(1))
+      .Then(has_row_future.GetCallback());
+  async_task_manager_.RunUntilAllTasksCompleteForTest();
+  EXPECT_FALSE(has_row_future.Get());
 }
 
 TEST_P(SqlSharedCacheTest, CopyEntriesExceedingMaxCopySizeSkipped) {
@@ -444,7 +518,8 @@ TEST_P(SqlSharedCacheTest, CopyEntriesExceedingMaxCopySizeSkipped) {
       net::features::kDiskCacheBackendExperiment,
       {{net::features::kSqlDiskCacheMaxSharedCacheCopyEntrySize.name, "100"}});
 
-  auto cache = CreateAndInitStoreAndCache();
+  auto handle = CreateAndInitStoreAndCache();
+  auto* cache = handle->get();
 
   const CacheEntryKey kKeySmall(
       "credential_key/post_key/https://example.com/small");
@@ -486,7 +561,8 @@ TEST_P(SqlSharedCacheTest, CopyEntriesExceedingMaxCopySizeSkipped) {
 }
 
 TEST_P(SqlSharedCacheTest, CopyEntriesOpenEntryFailed) {
-  auto cache = CreateAndInitStoreAndCache();
+  auto handle = CreateAndInitStoreAndCache();
+  auto* cache = handle->get();
 
   const CacheEntryKey kNonExistentKey(
       "credential_key/post_key/https://example.com/non_existent");
@@ -514,7 +590,8 @@ TEST_P(SqlSharedCacheTest, CopyEntriesOpenEntryFailed) {
 }
 
 TEST_P(SqlSharedCacheTest, CopyEntriesParseResponseInfoMismatch) {
-  auto cache = CreateAndInitStoreAndCache();
+  auto handle = CreateAndInitStoreAndCache();
+  auto* cache = handle->get();
 
   const CacheEntryKey kKey(
       "credential_key/post_key/https://example.com/mismatch");
@@ -546,7 +623,8 @@ TEST_P(SqlSharedCacheTest, CopyEntriesParseResponseInfoMismatch) {
 }
 
 TEST_P(SqlSharedCacheTest, CopyEntriesResponseTruncatedSkipped) {
-  auto cache = CreateAndInitStoreAndCache();
+  auto handle = CreateAndInitStoreAndCache();
+  auto* cache = handle->get();
 
   const CacheEntryKey kKey(
       "credential_key/post_key/https://example.com/truncated");
@@ -579,7 +657,8 @@ TEST_P(SqlSharedCacheTest, CopyEntriesReadSuccessAndFailure) {
       net::features::kDiskCacheBackendExperiment,
       {{net::features::kSqlDiskCacheMaxSharedCacheCopyEntrySize.name, "100"}});
 
-  auto cache = CreateAndInitStoreAndCache();
+  auto handle = CreateAndInitStoreAndCache();
+  auto* cache = handle->get();
 
   const CacheEntryKey kSuccessKey(
       "credential_key/post_key/https://example.com/success");
@@ -629,7 +708,8 @@ TEST_P(SqlSharedCacheTest, CopyEntriesExceedingReadBufferSize) {
       net::features::kDiskCacheBackendExperiment,
       {{net::features::kSqlDiskCacheSharedCacheReadBufferSize.name, "50"}});
 
-  auto cache = CreateAndInitStoreAndCache();
+  auto handle = CreateAndInitStoreAndCache();
+  auto* cache = handle->get();
 
   const CacheEntryKey kKey(
       "credential_key/post_key/https://example.com/chunked");
@@ -664,7 +744,8 @@ TEST_P(SqlSharedCacheTest, CopyEntriesExceedingReadBufferSize) {
 }
 
 TEST_P(SqlSharedCacheTest, CopyEntriesAborted) {
-  auto cache = CreateAndInitStoreAndCache();
+  auto handle = CreateAndInitStoreAndCache();
+  auto* cache = handle->get();
 
   base::queue<SqlPersistentStore::SharedCacheEligibleEntry> entries;
   entries.push(CreateEligibleEntry(
@@ -690,7 +771,8 @@ TEST_P(SqlSharedCacheTest, CopyEntriesWriteBodyFailureCleansUpPartialEntry) {
       net::features::kDiskCacheBackendExperiment,
       {{net::features::kSqlDiskCacheSharedCacheReadBufferSize.name, "50"}});
 
-  auto cache = CreateAndInitStoreAndCache();
+  auto handle = CreateAndInitStoreAndCache();
+  auto* cache = handle->get();
 
   const CacheEntryKey kKey(
       "credential_key/post_key/https://example.com/fail_write");
@@ -739,7 +821,8 @@ TEST_P(SqlSharedCacheTest, CopyEntriesWriteBodyFailureCleansUpPartialEntry) {
 }
 
 TEST_P(SqlSharedCacheTest, DeleteEntries) {
-  auto cache = CreateAndInitStoreAndCache();
+  auto handle = CreateAndInitStoreAndCache();
+  auto* cache = handle->get();
 
   const CacheEntryKey kKey1("credential_key/post_key/https://example.com/1");
   const CacheEntryKey kKey2("credential_key/post_key/https://example.com/2");
@@ -787,7 +870,8 @@ TEST_P(SqlSharedCacheTest, DeleteEntries) {
 }
 
 TEST_P(SqlSharedCacheTest, DeleteMultipleEntriesAtOnce) {
-  auto cache = CreateAndInitStoreAndCache();
+  auto handle = CreateAndInitStoreAndCache();
+  auto* cache = handle->get();
 
   const CacheEntryKey kKey1("credential_key/post_key/https://example.com/1");
   const CacheEntryKey kKey2("credential_key/post_key/https://example.com/2");
@@ -836,7 +920,8 @@ TEST_P(SqlSharedCacheTest, DeleteMultipleEntriesAtOnce) {
 }
 
 TEST_P(SqlSharedCacheTest, DeleteNonExistentEntries) {
-  auto cache = CreateAndInitStoreAndCache();
+  auto handle = CreateAndInitStoreAndCache();
+  auto* cache = handle->get();
 
   const CacheEntryKey kKey1("credential_key/post_key/https://example.com/1");
   std::string kData = "test_data";

@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//components/enterprise/buildflags/buildflags.gni")
+
 static_library("core") {
   public = [
     "features.h",
@@ -18,10 +20,11 @@ static_library("core") {
     "//components/prefs",
   ]
 
-  if (is_android) {
+  if (enterprise_proxy) {
     public += [
       "enterprise_network_auth_service.h",
       "enterprise_proxy_service.h",
+      "flag_descriptions.h",
       "provisioning_domain_client.h",
       "provisioning_domain_fetcher.h",
       "proxy_provisioning_domain_manager.h",
@@ -31,6 +34,7 @@ static_library("core") {
     sources += [
       "enterprise_network_auth_service.cc",
       "enterprise_proxy_service.cc",
+      "flag_descriptions.cc",
       "provisioning_domain_client.cc",
       "provisioning_domain_fetcher.cc",
       "proxy_provisioning_domain_manager.cc",
@@ -39,6 +43,7 @@ static_library("core") {
     ]
     deps = [
       "//components/enterprise/browser/identifiers",
+      "//components/policy/core/common",
       "//components/signin/public/identity_manager",
       "//net",
       "//services/network/public/cpp",

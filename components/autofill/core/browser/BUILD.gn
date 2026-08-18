@@ -132,16 +132,12 @@ static_library("browser") {
   configs = []
   configs = [ "//third_party/tflite:tflite_shim_config" ] + _configs
   sources = [
-    "at_memory/at_memory_data_type.cc",
-    "at_memory/at_memory_data_type.h",
     "at_memory/at_memory_enablement_utils.cc",
     "at_memory/at_memory_enablement_utils.h",
     "at_memory/at_memory_manager.cc",
     "at_memory/at_memory_manager.h",
     "at_memory/at_memory_metrics_recorder.cc",
     "at_memory/at_memory_metrics_recorder.h",
-    "at_memory/at_memory_utils.cc",
-    "at_memory/at_memory_utils.h",
     "at_memory/autofill_data_provider.cc",
     "at_memory/autofill_data_provider.h",
     "autofill_ai_form_rationalization.cc",
@@ -1043,6 +1039,7 @@ static_library("browser") {
     "//components/autofill/core/common",
     "//components/autofill/core/common/mojom:mojo_types",
     "//components/leveldb_proto",
+    "//components/personal_context/proto:personal_context_proto_extras",
     "//components/resources",
     "//components/security_interstitials/core",
     "//components/security_state/core",
@@ -1097,6 +1094,7 @@ static_library("browser") {
     "//components/password_manager/core/browser/features:password_features",
     "//components/payments/core:currency_formatter",
     "//components/personal_context/core",
+    "//components/personal_context/first_run",
     "//components/personal_context/proto:personal_context_proto",
     "//components/policy:generated",
     "//components/policy/core/browser",
@@ -1465,6 +1463,8 @@ static_library("test_support") {
     "//components/optimization_guide/core:features",
     "//components/optimization_guide/core:model_execution",
     "//components/personal_context/core",
+    "//components/personal_context/first_run",
+    "//components/personal_context/first_run:test_support",
     "//components/strike_database:proto",
     "//components/strike_database:test_support",
     "//components/subscription_eligibility",
@@ -1578,7 +1578,6 @@ bundle_data("unit_tests_bundle_data") {
 source_set("unit_tests") {
   testonly = true
   sources = [
-    "at_memory/at_memory_data_type_unittest.cc",
     "at_memory/at_memory_enablement_utils_unittest.cc",
     "at_memory/at_memory_manager_unittest.cc",
     "at_memory/at_memory_metrics_recorder_unittest.cc",
@@ -1822,6 +1821,7 @@ source_set("unit_tests") {
     "suggestions/payments/iban_suggestion_generator_unittest.cc",
     "suggestions/payments/merchant_promo_code_suggestion_generator_unittest.cc",
     "suggestions/suggestion_unittest.cc",
+    "suggestions/suggestion_util_unittest.cc",
     "suggestions/valuables/valuable_suggestion_generator_unittest.cc",
     "ui/addresses/autofill_address_util_unittest.cc",
     "ui/autofill_external_delegate_unittest.cc",

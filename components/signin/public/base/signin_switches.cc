@@ -55,7 +55,7 @@ constexpr char kHatsSurveyProbabilityName[] = "probability";
 
 #if BUILDFLAG(IS_IOS)
 BASE_FEATURE(kAccountRetrievalWaitsForRestoration,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 #endif
 
 // Convenient testing flag for `kAvatarButtonSyncPromo` on all platforms.
@@ -321,6 +321,9 @@ BASE_FEATURE(kEnableAccountPreviewEntityPreviews,
 // This flag has no effect if `kEnableAccountPreviewData` is not enabled.
 BASE_FEATURE(kEnableAccountPreviewPreferredAccount,
              base::FEATURE_DISABLED_BY_DEFAULT);
+// Controls whether fetched accounts are stored to reduce redundant fetches.
+const base::FeatureParam<bool> kAccountPreviewDataPersistAccounts{
+    &kEnableAccountPreviewData, "persist_accounts", true};
 
 #if BUILDFLAG(IS_ANDROID)
 // This flag controls whether the CCT captures the account name of the 1p app
@@ -708,9 +711,10 @@ BASE_FEATURE(kNonDefaultGaiaOriginCheck, base::FEATURE_ENABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 BASE_FEATURE(kPreFirstRunDesktopRefresh, base::FEATURE_DISABLED_BY_DEFAULT);
-bool IsPreFirstRunDesktopRefreshEnabled(
-    bool is_in_search_engine_choice_region) {
-  return IsFirstRunDesktopRevampEnabled(is_in_search_engine_choice_region) &&
+bool IsPreFirstRunDesktopRefreshEnabled() {
+  return base::FeatureList::IsEnabled(kFirstRunDesktopRefresh) &&
+         base::FeatureList::IsEnabled(kFirstRunDesktopChoiceScreenRefresh) &&
+         base::FeatureList::IsEnabled(kFirstRunDesktopRevamp) &&
          base::FeatureList::IsEnabled(kPreFirstRunDesktopRefresh);
 }
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)

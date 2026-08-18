@@ -498,28 +498,6 @@
     ]
   },
   {
-    "prefix": "computed-width-values-depend-on-style-values",
-    "platforms": ["Linux"],
-    "bases": [
-      "external/wpt/css/css-typed-om/the-stylepropertymap/properties/border-width.html",
-      "external/wpt/css/css-typed-om/the-stylepropertymap/properties/outline-width.html",
-      "fast/replaced/no-focus-ring-object.html",
-      "fast/replaced/no-focus-ring-embed.html",
-      "external/wpt/css/css-gaps/parsing",
-      "fast/css/getComputedStyle/getComputedStyle-column-rule.html",
-      "fast/css/getComputedStyle/getComputedStyle-outline-shorthand.html",
-      "external/wpt/css/css-multicol/animation/column-rule-width-interpolation.html",
-      "external/wpt/css/css-multicol/parsing/",
-      "external/wpt/css/css-ui/parsing/canonical-order-outline-sub-properties-001.html",
-      "external/wpt/css/css-ui/parsing/outline-width-computed.html",
-      "external/wpt/css/cssom/cssom-getPropertyValue-common-checks.html"
-    ],
-    "args": ["--disable-blink-features=DecoupleComputedBorderWidthFromStyle",
-             "--disable-blink-features=DecoupleResolvedColumnRuleWidthFromStyle"],
-    "expires": "Nov 30, 2026",
-    "owners": ["samomekarajr@microsoft.com", "kbabbitt@microsoft.com"]
-  },
-  {
     "prefix": "disable-css-line-clamp-line-breaking-ellipsis",
     "platforms": [
       "Linux"
@@ -779,6 +757,28 @@
     "exclusive_tests": "ALL",
     "args": [
       "--isolated-context-origins=https://web-platform.test"
+    ],
+    "expires": "never"
+  },
+  {
+    "prefix": "subapps",
+    "owners": [
+      "vkrot@google.com",
+      "iwa-team@google.com"
+    ],
+    "platforms": [
+      "Linux",
+      "Mac",
+      "Win",
+      "ChromeOS"
+    ],
+    "bases": [
+      "external/wpt/subapps"
+    ],
+    "exclusive_tests": "ALL",
+    "args": [
+      "--isolated-context-origins=https://web-platform.test",
+      "--enable-blink-features=SubApps"
     ],
     "expires": "never"
   },
@@ -2758,6 +2758,10 @@
       "external/wpt/element-timing",
       "external/wpt/css/filter-effects",
       "external/wpt/css/css-grid/animation",
+      "external/wpt/css/css-masking/clip-path/animations/clip-path-animation-mixed-interpolation.html",
+      "external/wpt/css/css-masking/clip-path/animations/clip-path-animation-polygon-mixed-change.html",
+      "external/wpt/css/css-masking/clip-path/animations/clip-path-animation-view-transition-mixed-change.html",
+      "external/wpt/css/css-masking/clip-path/animations/clip-path-transition.html",
       "external/wpt/css/css-sizing/responsive-iframe/responsive-iframe.html",
       "external/wpt/css/css-sizing/responsive-iframe/responsive-iframe-dom-content-loaded.html",
       "external/wpt/css/css-sizing/responsive-iframe/responsive-iframe-navigation.html",
@@ -2786,6 +2790,10 @@
       "external/wpt/css/css-overflow/scroll-axis-lock.html"
     ],
     "exclusive_tests": [
+      "external/wpt/css/css-masking/clip-path/animations/clip-path-animation-mixed-interpolation.html",
+      "external/wpt/css/css-masking/clip-path/animations/clip-path-animation-polygon-mixed-change.html",
+      "external/wpt/css/css-masking/clip-path/animations/clip-path-animation-view-transition-mixed-change.html",
+      "external/wpt/css/css-masking/clip-path/animations/clip-path-transition.html",
       "fast/hidpi/static"
     ],
     "args": [
@@ -3018,7 +3026,8 @@
     ],
     "bases": [
       "external/wpt/speculation-rules/prefetch",
-      "external/wpt/speculation-rules/speculation-tags"
+      "external/wpt/speculation-rules/speculation-tags",
+      "external/wpt/speculation-rules/speculation-measurement"
     ],
     "exclusive_tests": [],
     "args": [
@@ -3444,6 +3453,8 @@
       "compositing/visibility",
       "compositing/webgl",
       "external/wpt/animation-worklet",
+      "external/wpt/container-timing/tentative/iframe-isolation-cross-origin.sub.html",
+      "external/wpt/container-timing/tentative/iframe-isolation-same-origin.html",
       "external/wpt/css/css-anchor-position/transform-010.html",
       "external/wpt/css/css-anchor-position/transform-011.html",
       "external/wpt/css/css-anchor-position/transform-012.html",
@@ -3502,6 +3513,8 @@
       "external/wpt/trusted-types/trusted-types-reporting.html"
     ],
     "exclusive_tests": [
+      "external/wpt/container-timing/tentative/iframe-isolation-cross-origin.sub.html",
+      "external/wpt/container-timing/tentative/iframe-isolation-same-origin.html",
       "external/wpt/fetch/compression-dictionary/dictionary-fetch-timing-001.tentative.https.html",
       "external/wpt/fetch/compression-dictionary/dictionary-fetch-timing-002.tentative.https.html",
       "external/wpt/fetch/compression-dictionary/dictionary-fetch-with-link-element.tentative.https.html",
@@ -4654,6 +4667,17 @@
       "reillyg@chromium.org"
     ]
   },
+  {
+    "prefix": "webtransport-headers",
+    "owners": ["aran.donohue@gmail.com"],
+    "platforms": ["Linux", "Mac", "Win"],
+    "bases": [
+      "wpt_internal/webtransport/headers.https.any.js"
+    ],
+    "exclusive_tests": "ALL",
+    "args": ["--enable-blink-features=WebTransportHeaders"],
+    "expires": "Dec 1, 2026"
+  },
   "Run selected WPTs with webui browser.",
   {
     "prefix": "webui-browser",
@@ -4999,6 +5023,15 @@
     ],
     "args": ["--use-gpu-in-tests", "--enable-threaded-compositing"],
     "expires": "never"
+  },
+  {
+    "prefix": "disable-tcp-port-randomization-mac",
+    "owners": ["arichiv@chromium.org", "awillia@chromium.org"],
+    "platforms": ["Mac"],
+    "bases": ["external/wpt/resource-timing/response-status-code.html"],
+    "exclusive_tests": "ALL",
+    "args": ["--disable-features=TcpPortRandomizationMac"],
+    "expires": "Oct 31, 2026"
   },
   {
     "prefix": "disable-css-line-clamp-longhands",

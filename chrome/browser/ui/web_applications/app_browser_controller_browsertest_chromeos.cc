@@ -28,6 +28,7 @@
 #include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
 #include "chrome/browser/ui/web_applications/test/web_app_browsertest_util.h"
+#include "chrome/browser/ui/window_feature_controller/window_feature_controller.h"
 #include "chrome/browser/ui/window_sizer/window_sizer.h"
 #include "chrome/browser/web_applications/web_app_constants.h"
 #include "chrome/browser/web_applications/web_app_install_info.h"
@@ -191,8 +192,10 @@ class AppBrowserControllerBrowserTestCrOs : public InProcessBrowserTest {
 IN_PROC_BROWSER_TEST_F(AppBrowserControllerBrowserTestCrOs, TabsTest) {
   InstallAndLaunchMockApp();
 
-  EXPECT_TRUE(app_browser_->SupportsWindowFeature(
-      Browser::WindowFeature::kFeatureTabStrip));
+  EXPECT_TRUE(
+      WindowFeatureController::From(app_browser_.get())
+          ->SupportsWindowFeature(
+              WindowFeatureController::WindowFeature::kFeatureTabStrip));
 
   // No favicons shown for web apps.
   tabs::TabInterface* const tab_interface =
@@ -239,8 +242,10 @@ IN_PROC_BROWSER_TEST_F(AppBrowserControllerBrowserTestCrOs, TabsTest) {
                                       ->GetActiveWebContents()
                                       ->GetPrimaryMainFrame(),
                                   {});
-  EXPECT_FALSE(app_browser_->SupportsWindowFeature(
-      Browser::WindowFeature::kFeatureTabStrip));
+  EXPECT_FALSE(
+      WindowFeatureController::From(app_browser_.get())
+          ->SupportsWindowFeature(
+              WindowFeatureController::WindowFeature::kFeatureTabStrip));
 }
 
 IN_PROC_BROWSER_TEST_F(AppBrowserControllerBrowserTestCrOs, NonAppUrl) {
@@ -249,7 +254,7 @@ IN_PROC_BROWSER_TEST_F(AppBrowserControllerBrowserTestCrOs, NonAppUrl) {
   // Check we have 2 browsers: |browser()| and |app_browser_|.
   EXPECT_EQ(GlobalBrowserCollection::GetInstance()->GetSize(), 2u);
   EXPECT_NE(browser(), app_browser_);
-  EXPECT_TRUE(browser()->is_type_normal());
+  EXPECT_EQ(browser()->GetType(), BrowserWindowInterface::Type::TYPE_NORMAL);
   EXPECT_EQ(browser()->tab_strip_model()->count(), 1);
   EXPECT_EQ(
       browser()->tab_strip_model()->GetActiveWebContents()->GetVisibleURL(),
@@ -262,7 +267,7 @@ IN_PROC_BROWSER_TEST_F(AppBrowserControllerBrowserTestCrOs, NonAppUrl) {
   chrome::AddTabAt(app_browser_, chrome::ChromeUINewTabURLAsGURL(), -1, true);
   EXPECT_EQ(GlobalBrowserCollection::GetInstance()->GetSize(), 2u);
   EXPECT_NE(browser(), app_browser_);
-  EXPECT_TRUE(browser()->is_type_normal());
+  EXPECT_EQ(browser()->GetType(), BrowserWindowInterface::Type::TYPE_NORMAL);
   EXPECT_EQ(browser()->tab_strip_model()->count(), 2);
   EXPECT_EQ(
       browser()->tab_strip_model()->GetActiveWebContents()->GetVisibleURL(),

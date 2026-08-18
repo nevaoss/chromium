@@ -53,6 +53,7 @@
 #include "chrome/browser/ui/tabs/tab_strip_prefs.h"
 #include "chrome/browser/ui/toasts/toast_features.h"
 #include "chrome/browser/ui/ui_features.h"
+#include "chrome/browser/ui/views/tabs/organizer/organizer_panel_utils.h"
 #include "chrome/browser/ui/webui/management/management_ui.h"
 #include "chrome/browser/ui/webui/policy_indicator_localized_strings_provider.h"
 #include "chrome/browser/ui/webui/settings/glic_handler.h"
@@ -665,7 +666,7 @@ void AddAppearanceStrings(content::WebUIDataSource* html_source,
   html_source->AddBoolean("showVerticalTabsExpandOnHoverEnabled",
                           tabs::IsVerticalTabsExpandOnHoverFeatureEnabled());
   html_source->AddBoolean("showOrganizerPanelEnabled",
-                          tab_groups::IsOrganizerPanelFeatureEnabled());
+                          organizer_panel::IsOrganizerPanelFeatureEnabled());
   html_source->AddBoolean(
       "showEverythingMenuEnabled",
       tab_groups::SavedTabGroupUtils::IsEnabledForProfile(profile));
@@ -1801,7 +1802,6 @@ void AddAutofillStrings(content::WebUIDataSource* html_source,
        IDS_SETTINGS_AUTOFILL_AI_AUTHENTICATION_TOGGLE_TITLE},
       {"autofillAiAuthenticationToggleSubtitle",
        IDS_SETTINGS_AUTOFILL_AI_AUTHENTICATION_TOGGLE_SUBTITLE},
-      {"autofillAiDescription", IDS_SETTINGS_AUTOFILL_AI_DESCRIPTION},
       {"autofillAiManageYourInfo", IDS_AUTOFILL_MANAGE_YOUR_INFO_LINK},
       {"autofillAiToggleSubLabel", IDS_SETTINGS_AUTOFILL_AI_TOGGLE_SUB_LABEL},
       {"suggestionsFromGeminiQualityLoggingTitle",

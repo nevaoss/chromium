@@ -146,10 +146,17 @@ std::unique_ptr<content::WebContents> CreateWebContents(
       browser_window->GetProfile());
   std::unique_ptr<content::WebContents> web_contents =
       content::WebContents::Create(create_params);
+  webui::SetBrowserWindowInterface(web_contents.get(), browser_window);
+
+  // Add the side panel params to the url being loaded into the WebContents.
+  // This is important since loading begins before the WebContents is
+  // attached to a side panel and therefore the navigation handler won't
+  // trigger.
+  url = contextual_tasks::ContextualTasksUiService::AddCommonSidePanelParams(
+      url, web_contents.get());
   web_contents->GetController().LoadURL(url, content::Referrer(),
                                         ui::PAGE_TRANSITION_AUTO_TOPLEVEL,
                                         std::string());
-  webui::SetBrowserWindowInterface(web_contents.get(), browser_window);
 
   // Create PermissionRequestManager explicitly for this WebContents.
   // The permission bubble will anchor to the browser window via
@@ -393,6 +400,12 @@ void ContextualTasksSidePanelCoordinator::Close() {
 
   RecordSessionEndMetrics();
 
+  // Disassociate all tabs associated with the current task on close so that
+  // re-opening the panel always starts a fresh zero-state thread regardless of
+  // which associated tab is active.
+  DisassociateAllTabsFromCurrentTask();
+  CleanUpUnusedWebContents();
+
   if (kShowEntryPoint.Get() == EntryPointOption::kNoEntryPoint) {
     if (content::WebContents* active_web_contents = GetActiveWebContents()) {
       MaybeDetachWebContents(active_web_contents);
@@ -408,11 +421,7 @@ void ContextualTasksSidePanelCoordinator::Close() {
 }
 
 void ContextualTasksSidePanelCoordinator::OpenInZeroState() {
-  tabs::TabInterface* active_tab_interface =
-      TabListInterface::From(browser_window_)->GetActiveTab();
-  if (active_tab_interface) {
-    DisassociateTabFromTask(active_tab_interface->GetContents());
-  }
+  DisassociateAllTabsFromCurrentTask();
 
   if (content::WebContents* active_contents = GetActiveWebContents()) {
     MaybeDetachWebContents(active_contents);
@@ -1051,12 +1060,45 @@ void ContextualTasksSidePanelCoordinator::MaybeDetachWebContents(
 
 void ContextualTasksSidePanelCoordinator::DisassociateTabFromTask(
     content::WebContents* web_contents) {
+  if (!contextual_tasks_service_) {
+    return;
+  }
   SessionID tab_id = sessions::SessionTabHelper::IdForTab(web_contents);
   std::optional<ContextualTask> task =
       contextual_tasks_service_->GetContextualTaskForTab(tab_id);
   if (task) {
     contextual_tasks_service_->DisassociateTabFromTask(task->GetTaskId(),
                                                        tab_id);
+  }
+}
+
+void ContextualTasksSidePanelCoordinator::DisassociateAllTabsFromCurrentTask() {
+  if (!contextual_tasks_service_) {
+    return;
+  }
+  std::optional<ContextualTask> current_task = GetCurrentTask();
+  if (current_task) {
+    if (contextual_tasks::kShowEntryPoint.Get() ==
+            contextual_tasks::EntryPointOption::kToolbarEphemeralBranded &&
+        current_task->GetThread().has_value()) {
+      return;
+    }
+
+    std::vector<SessionID> associated_tab_ids =
+        contextual_tasks_service_->GetTabsAssociatedWithTask(
+            current_task->GetTaskId());
+    for (SessionID tab_id : associated_tab_ids) {
+      contextual_tasks_service_->DisassociateTabFromTask(
+          current_task->GetTaskId(), tab_id);
+    }
+  } else {
+    TabListInterface* tab_list = TabListInterface::From(browser_window_);
+    if (tab_list) {
+      tabs::TabInterface* active_tab_interface = tab_list->GetActiveTab();
+      if (active_tab_interface && active_tab_interface->GetContents()) {
+        DisassociateTabFromTask(active_tab_interface->GetContents());
+      }
+    }
   }
 }
 

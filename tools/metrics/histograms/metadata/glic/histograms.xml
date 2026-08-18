@@ -147,6 +147,7 @@ chromium-metrics-reviews@google.com.
 <variants name="EmbedderType">
   <variant name="Floaty" summary="a floating embedder"/>
   <variant name="SidePanel" summary="a side panel embedder"/>
+  <variant name="Tab" summary="a tab embedder"/>
 </variants>
 
 <!-- LINT.IfChange(GlicInvocationSource) -->
@@ -652,7 +653,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Glic.EntryPoint.Status" enum="GlicEntryPointStatus"
-    expires_after="2026-11-29">
+    expires_after="2027-01-31">
   <owner>sanaakbani@google.com</owner>
   <owner>iwells@google.com</owner>
   <summary>
@@ -943,30 +944,8 @@ chromium-metrics-reviews@google.com.
   <token key="Suffix" variants="ProfileEnablementSuffix"/>
 </histogram>
 
-<histogram name="Glic.Host.ClientSendMessageQueueLength" units="message count"
-    expires_after="2027-02-06">
-  <owner>harringtond@chromium.org</owner>
-  <owner>carlosk@chromium.org</owner>
-  <summary>
-    Records the number of messages in flight or queued, sent from the glic
-    client at the time of the responsiveness check. Not recorded if the number
-    is less then 50.
-  </summary>
-</histogram>
-
-<histogram name="Glic.Host.HostSendMessageQueueLength" units="message count"
-    expires_after="2027-02-06">
-  <owner>harringtond@chromium.org</owner>
-  <owner>carlosk@chromium.org</owner>
-  <summary>
-    Records the number of messages in flight or queued, sent from the glic host
-    at the time of the responsiveness check. Not recorded if the number is less
-    then 50.
-  </summary>
-</histogram>
-
 <histogram name="Glic.Host.LoadingStageDuration.{LoadingStage}" units="ms"
-    expires_after="2026-11-29">
+    expires_after="2027-01-31">
   <owner>iwells@chromium.org</owner>
   <owner>harringtond@chromium.org</owner>
   <summary>
@@ -1326,7 +1305,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Glic.Instance.PanelPresentationTime.{EmbedderType}" units="ms"
-    expires_after="2027-01-03">
+    expires_after="2027-01-31">
   <owner>birnie@google.com</owner>
   <owner>perrier@google.com</owner>
   <summary>
@@ -1829,6 +1808,39 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram
+    name="Glic.InvocationSource.{InvocationSource}.SidePanelFirstOpenDuration.{PromptStatus}"
+    units="ms" expires_after="2026-12-06">
+  <owner>sanaakbani@google.com</owner>
+  <owner>basiaz@google.com</owner>
+  <summary>
+    Records the duration that a Glic Side Panel was open when opened via
+    {InvocationSource}, split by whether any user prompts were submitted while
+    open. Recorded when the side panel is closed or tab is switched for the
+    first time.
+  </summary>
+  <token key="InvocationSource" variants="GlicInvocationSource"/>
+  <token key="PromptStatus">
+    <variant name="NoPrompts"
+        summary="Recorded when 0 prompts were submitted while open."/>
+    <variant name="WithPrompts"
+        summary="Recorded when 1 or more prompts were submitted while open."/>
+  </token>
+</histogram>
+
+<histogram
+    name="Glic.InvocationSource.{InvocationSource}.SidePanelFirstOpenPromptCount"
+    units="prompts" expires_after="2026-12-06">
+  <owner>sanaakbani@google.com</owner>
+  <owner>basiaz@google.com</owner>
+  <summary>
+    Records the total number of user prompts submitted while the Glic Side Panel
+    is initially open when opened via {InvocationSource}. Recorded when the side
+    panel is closed or tab is switched for the first time.
+  </summary>
+  <token key="InvocationSource" variants="GlicInvocationSource"/>
+</histogram>
+
+<histogram
     name="Glic.InvocationSource.{InvocationSource}.WebUiLoadTime.{Visibility}"
     units="ms" expires_after="2027-01-03">
   <owner>birnie@google.com</owner>
@@ -2194,7 +2206,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Glic.PanelPresentationTime2.{InputMode}" units="ms"
-    expires_after="2026-11-29">
+    expires_after="2027-01-31">
   <owner>dewittj@google.com</owner>
   <owner>iwells@google.com</owner>
   <summary>
@@ -2376,7 +2388,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Glic.Prewarming.ChecksResult"
-    enum="GlicPrewarmingChecksResult" expires_after="2026-11-29">
+    enum="GlicPrewarmingChecksResult" expires_after="2027-01-31">
   <owner>dullweber@chromium.org</owner>
   <owner>vollick@chromium.org</owner>
   <owner>jbroman@chromium.org</owner>
@@ -2794,7 +2806,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Glic.Session.ResponseCount{Profile}" units="count"
-    expires_after="2026-11-29">
+    expires_after="2027-01-31">
   <owner>carlosk@chromium.org</owner>
   <owner>harringtond@chromium.org</owner>
   <owner>erikchen@chromium.org</owner>
@@ -2814,6 +2826,20 @@ chromium-metrics-reviews@google.com.
   <summary>
     Records the browser active state when a Glic response starts rendering.
   </summary>
+</histogram>
+
+<histogram
+    name="Glic.Session.WasTurnSubmitted.{EmbedderType}.{InvocationSource}"
+    enum="Boolean" expires_after="2027-07-31">
+  <owner>andreaxg@google.com</owner>
+  <owner>glic-dev@google.com</owner>
+  <summary>
+    Whether at least one turn was submitted during the Glic session that was
+    opened via {InvocationSource} in {EmbedderType}. Logged when the session
+    (panel or floaty window) is closed.
+  </summary>
+  <token key="EmbedderType" variants="EmbedderType"/>
+  <token key="InvocationSource" variants="GlicInvocationSource"/>
 </histogram>
 
 <histogram name="Glic.Session.WebClientCrash.ExitReason"
@@ -2943,7 +2969,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Glic.TabContext.PdfContentsRequested" enum="PdfRequestStates"
-    expires_after="2026-11-29">
+    expires_after="2027-01-31">
   <owner>carlosk@chromium.org</owner>
   <owner>harringtond@chromium.org</owner>
   <summary>
@@ -3313,7 +3339,7 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Glic.ZoomLevel.{Suffix}" units="%" expires_after="2026-11-29">
+<histogram name="Glic.ZoomLevel.{Suffix}" units="%" expires_after="2027-01-31">
   <owner>cuianthony@chromium.org</owner>
   <owner>glic-dev@google.com</owner>
   <summary>

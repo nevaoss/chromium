@@ -8,7 +8,9 @@
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
+#include "chrome/browser/ui/browser_tabstrip.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+#include "chrome/browser/ui/tabs/tab_group_deletion_dialog_controller.h"
 #include "chrome/browser/ui/tabs/tab_group_model.h"
 #include "chrome/browser/ui/tabs/tab_menu_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
@@ -74,7 +76,7 @@ class TabStripCollectionControllerInteractiveUiTest
 
   TabStripView* GetTabStripView() {
     auto* base_region = views::AsViewClass<BaseTabStripRegionView>(
-        browser()->GetBrowserView().tab_strip_view());
+        BrowserView::GetBrowserViewForBrowser(browser())->tab_strip_view());
     return base_region ? views::AsViewClass<TabStripView>(
                              base_region->GetTabStripView())
                        : nullptr;
@@ -445,7 +447,6 @@ IN_PROC_BROWSER_TEST_P(TabStripCollectionControllerInteractiveUiTest,
 IN_PROC_BROWSER_TEST_P(TabStripCollectionControllerInteractiveUiTest,
                        MAYBE_TabOpenedWhileUsingTabContextMenu) {
   DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSecondTabId);
-  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kThirdTabId);
   RunTestSequence(
       // Verify Vertical Tabs is showing.
       WaitForShow(kNewTabButtonElementId),
@@ -458,8 +459,13 @@ IN_PROC_BROWSER_TEST_P(TabStripCollectionControllerInteractiveUiTest,
       // context menu could be opened on that third tab.
       WaitForShow(TabMenuModel::kDuplicateMenuItem),
       // Add a third tab at the index of the second tab, while the context menu
-      // is still open.
-      AddInstrumentedTab(kThirdTabId, chrome::ChromeUINewTabPageURLAsGURL(), 1),
+      // is still open. Use chrome::AddTabAt instead of AddInstrumentedTab so
+      // that the tab is added in the background and the resulting focus change
+      // does not cause the context menu to close.
+      Do([this]() {
+        chrome::AddTabAt(browser(), chrome::ChromeUINewTabPageURLAsGURL(), 1,
+                         /*foreground=*/false);
+      }),
       // Select the duplicate tab menu item.
       WaitForShow(TabMenuModel::kDuplicateMenuItem),
       SelectMenuItem(TabMenuModel::kDuplicateMenuItem),
@@ -639,6 +645,35 @@ IN_PROC_BROWSER_TEST_P(TabStripCollectionControllerInteractiveUiTest,
       WaitForShow(TabHoverCardBubbleView::kHoverCardBubbleElementId),
       ClickMouse(ui_controls::MouseButton::LEFT, /*release=*/false),
       WaitForHide(TabHoverCardBubbleView::kHoverCardBubbleElementId));
+}
+
+IN_PROC_BROWSER_TEST_P(TabStripCollectionControllerInteractiveUiTest,
+                       CloseLastGroupedTabCreatesNewTab) {
+  RunTestSequence(
+      WaitForShow(kNewTabButtonElementId), Do([this]() {
+        TabStripModel* model = browser()->tab_strip_model();
+        model->AddToNewGroup({0});
+        ASSERT_TRUE(model->GetTabAtIndex(0)->GetGroup().has_value());
+
+        auto* base_region = views::AsViewClass<BaseTabStripRegionView>(
+            browser()->GetBrowserView().tab_strip_view());
+        ASSERT_NE(base_region, nullptr);
+        auto* controller = base_region->GetTabStripCollectionController();
+        ASSERT_NE(controller, nullptr);
+
+        controller->CloseTab(model->GetTabAtIndex(0),
+                             CloseTabSource::kFromMouse);
+
+        tab_groups::DeletionDialogController* deletion_dialog_controller =
+            browser()->GetFeatures().tab_group_deletion_dialog_controller();
+        if (deletion_dialog_controller &&
+            deletion_dialog_controller->IsShowingDialog()) {
+          deletion_dialog_controller->SimulateOkButtonForTesting();
+        }
+
+        EXPECT_EQ(model->count(), 1);
+        EXPECT_FALSE(model->GetActiveTab()->GetGroup().has_value());
+      }));
 }
 
 }  // namespace

@@ -120,11 +120,11 @@ TEST_F(GtkUtilInterceptorTest, CursorThemeNamesSanitizedAtWriteTime) {
   EXPECT_EQ(observed_theme_name, "Adwaita");
 }
 
-TEST_F(GtkUtilInterceptorTest, CursorThemeSizeSanitizedAtWriteTime) {
+TEST_F(GtkUtilInterceptorTest, CursorThemeSizesSanitizedAtWriteTime) {
   GtkSettings* settings = GetDefaultGtkSettings();
   ASSERT_TRUE(settings);
 
-  int observed_size = 0;
+  int observed_size = -1;
   auto callback = base::BindRepeating(
       [](int* out_size, GtkSettings* settings, GParamSpec* pspec) {
         gint size = 0;
@@ -135,11 +135,16 @@ TEST_F(GtkUtilInterceptorTest, CursorThemeSizeSanitizedAtWriteTime) {
 
   ScopedGSignal signal(settings, "notify::gtk-cursor-theme-size", callback);
 
-  // Set to an invalid value (-1)
+  // Set to an invalid value (negative)
   g_object_set(settings, "gtk-cursor-theme-size", -1, nullptr);
 
-  // The interceptor should have triggered and sanitized the cursor size to 24.
+  // The interceptor should have triggered and sanitized the cursor theme size
+  // to 24 before the notify callback ran!
   EXPECT_EQ(observed_size, 24);
+
+  // Set to a valid value of 0 (unspecified/default)
+  g_object_set(settings, "gtk-cursor-theme-size", 0, nullptr);
+  EXPECT_EQ(observed_size, 0);
 }
 
 }  // namespace gtk

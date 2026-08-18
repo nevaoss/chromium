@@ -55,4 +55,10 @@ public interface PageInfoMainController {
 
     /** Dismiss the page info dialog. */
     void dismiss();
+
+    /** Opens the Safe Browsing help center page. */
+    void openSafeBrowsingHelpCenter();
+
+    /** Updates the connection section wrapper visibility. */
+    void updateConnectionWrapperVisibility();
 }

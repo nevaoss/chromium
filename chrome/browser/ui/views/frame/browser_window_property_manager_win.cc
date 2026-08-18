@@ -13,6 +13,7 @@
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/profiles/profile_shortcut_manager_win.h"
 #include "chrome/browser/shell_integration_win.h"
+#include "chrome/browser/ui/browser_init_state.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/web_applications/extensions/web_app_extension_shortcut.h"
 #include "chrome/browser/web_applications/web_app_helpers.h"
@@ -54,20 +55,28 @@ void BrowserWindowPropertyManager::UpdateWindowProperties() {
   // name. See http://crbug.com/41308099.
   std::wstring app_id =
       browser->GetType() == BrowserWindowInterface::Type::TYPE_APP ||
-              browser->is_type_app_popup() || browser->is_type_devtools() ||
+              browser->GetType() ==
+                  BrowserWindowInterface::Type::TYPE_APP_POPUP ||
+              browser->GetType() ==
+                  BrowserWindowInterface::Type::TYPE_DEVTOOLS ||
               (browser->GetType() ==
                    BrowserWindowInterface::Type::TYPE_PICTURE_IN_PICTURE &&
-               !browser->app_name().empty())
+               !BrowserInitState::From(browser)
+                    ->create_params()
+                    .app_name.empty())
           ? shell_integration::win::GetAppUserModelIdForApp(
-                base::UTF8ToWide(browser->app_name()), profile->GetPath())
+                base::UTF8ToWide(
+                    BrowserInitState::From(browser)->create_params().app_name),
+                profile->GetPath())
           : shell_integration::win::GetAppUserModelIdForBrowser(
                 profile->GetPath());
   // Apps set their relaunch details based on app's details.
   if (browser->GetType() == BrowserWindowInterface::Type::TYPE_APP ||
-      browser->is_type_app_popup()) {
+      browser->GetType() == BrowserWindowInterface::Type::TYPE_APP_POPUP) {
     ExtensionRegistry* registry = ExtensionRegistry::Get(profile);
     const extensions::Extension* extension = registry->GetExtensionById(
-        web_app::GetAppIdFromApplicationName(browser->app_name()),
+        web_app::GetAppIdFromApplicationName(
+            BrowserInitState::From(browser)->create_params().app_name),
         ExtensionRegistry::EVERYTHING);
     if (extension) {
       ui::win::SetAppIdForWindow(app_id, hwnd_);
@@ -84,7 +93,7 @@ void BrowserWindowPropertyManager::UpdateWindowProperties() {
   base::FilePath icon_path;
   std::wstring command_line_string;
   std::wstring pinned_name;
-  if ((browser->is_type_normal() ||
+  if ((browser->GetType() == BrowserWindowInterface::Type::TYPE_NORMAL ||
        browser->GetType() == BrowserWindowInterface::Type::TYPE_POPUP) &&
       shortcut_manager &&
       profile->GetPrefs()->HasPrefPath(prefs::kProfileIconVersion)) {

@@ -195,6 +195,12 @@ void SkillsUiTabController::InvokeSkill(std::string_view skill_id,
       case sync_pb::SkillSource::SKILL_SOURCE_DERIVED_FROM_FIRST_PARTY:
         RecordSkillsInvokeAction(SkillsInvokeAction::kDerivedFromFirstParty);
         break;
+      case sync_pb::SkillSource::SKILL_SOURCE_ENTERPRISE:
+        RecordSkillsInvokeAction(SkillsInvokeAction::kEnterprise);
+        break;
+      case sync_pb::SkillSource::SKILL_SOURCE_DERIVED_FROM_ENTERPRISE:
+        RecordSkillsInvokeAction(SkillsInvokeAction::kDerivedFromEnterprise);
+        break;
       // This is an edge case. It occurs when there is an update that introduces
       // a new SkillSource, but the user is using an older version of Chrome
       // that isn't updated to support the new SkillSource.
@@ -229,6 +235,22 @@ void SkillsUiTabController::InvokeSkill(std::string_view skill_id,
         glic::mojom::InvocationPayload::NewSkillsPayload(
             std::move(mojo_skills_payload));
 
+    if (target_) {
+      options.target = std::move(*target_);
+      target_.reset();
+    }
+    service->InvokeWithAutoSubmit(
+        glic::InvokeWithAutoSubmitPasskeyProvider::GetPassKey(),
+        std::move(options));
+  }
+}
+
+void SkillsUiTabController::SendPrompt(std::string_view prompt) {
+  if (auto* service = GetGlicService()) {
+    glic::GlicInvokeOptions options(
+        glic::Target(tab_.get(), glic::DefaultConversation()),
+        glic::mojom::InvocationSource::kSkills);
+    options.prompts.emplace_back(prompt);
     if (target_) {
       options.target = std::move(*target_);
       target_.reset();

@@ -13,7 +13,6 @@
 #include <utility>
 #include <vector>
 
-#include "base/debug/stack_trace.h"
 #include "base/functional/bind.h"
 #include "base/memory/raw_ptr.h"
 #include "base/run_loop.h"
@@ -166,15 +165,17 @@ class TestTabSearchPageHandler : public TabSearchPageHandler {
             web_ui,
             webui_controller,
             &metrics_reporter_) {
-    mock_debounce_timer_ = new base::MockRetainingOneShotTimer();
-    SetTimerForTesting(base::WrapUnique(mock_debounce_timer_.get()));
+    auto timer = std::make_unique<base::MockRetainingOneShotTimer>();
+    mock_debounce_timer_ = timer.get();
+    SetTimerForTesting(std::move(timer));
   }
+
   base::MockRetainingOneShotTimer* mock_debounce_timer() {
     return mock_debounce_timer_;
   }
 
  private:
-  raw_ptr<base::MockRetainingOneShotTimer> mock_debounce_timer_;
+  raw_ptr<base::MockRetainingOneShotTimer> mock_debounce_timer_ = nullptr;
   testing::NiceMock<MockMetricsReporter> metrics_reporter_;
 };
 
@@ -870,7 +871,13 @@ IN_PROC_BROWSER_TEST_F(TabSearchPageHandlerTest, MAYBE_TabsNotChanged) {
 }
 
 // Verify tab update event is called correctly with data
-IN_PROC_BROWSER_TEST_F(TabSearchPageHandlerTest, TabUpdated) {
+// TODO(https://crbug.com/537538766): Fails on Linux MSan Tests.
+#if BUILDFLAG(IS_LINUX) && defined(MEMORY_SANITIZER)
+#define MAYBE_TabUpdated DISABLED_TabUpdated
+#else
+#define MAYBE_TabUpdated TabUpdated
+#endif
+IN_PROC_BROWSER_TEST_F(TabSearchPageHandlerTest, MAYBE_TabUpdated) {
   AddTabWithTitle(browser1(), tab_url1_, kTabName1);
 
   ClearSetupExpectations();

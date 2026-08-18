@@ -47,6 +47,7 @@
 #include "net/first_party_sets/first_party_set_metadata.h"
 #include "net/http/http_auth_preferences.h"
 #include "net/http/http_cache.h"
+#include "net/http/http_request_headers.h"
 #include "net/net_buildflags.h"
 #include "net/reporting/reporting_target_type.h"
 #include "net/storage_access_api/status.h"
@@ -445,6 +446,8 @@ class COMPONENT_EXPORT(NETWORK_SERVICE) NetworkContext
           anticipated_concurrent_incoming_unidirectional_streams,
       std::optional<uint16_t>
           anticipated_concurrent_incoming_bidirectional_streams,
+      std::vector<net::HttpRequestHeaders::HeaderKeyValuePair>
+          additional_headers,
       mojo::PendingRemote<mojom::WebTransportHandshakeClient> handshake_client,
       mojo::PendingRemote<mojom::URLLoaderNetworkServiceObserver>
           url_loader_network_observer,
@@ -708,6 +711,7 @@ class COMPONENT_EXPORT(NETWORK_SERVICE) NetworkContext
       const net::ConnectionChangeNotifier::Observer* observer);
 
   size_t NumOpenWebTransports() const;
+  WebTransport* GetWebTransportForTesting();
 
   size_t num_url_loader_factories_for_testing() const {
     return url_loader_factories_.size();

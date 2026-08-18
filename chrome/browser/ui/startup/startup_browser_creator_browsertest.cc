@@ -800,7 +800,7 @@ class StartupBrowserCreatorChromeAppShortcutTest
     TabStripModel* tab_strip = browser()->tab_strip_model();
     EXPECT_EQ(1, tab_strip->count());
     EXPECT_NE(browser()->GetType(), BrowserWindowInterface::Type::TYPE_APP);
-    EXPECT_TRUE(browser()->is_type_normal());
+    EXPECT_EQ(browser()->GetType(), BrowserWindowInterface::Type::TYPE_NORMAL);
     EXPECT_EQ(GURL(url::kAboutBlankURL),
               tab_strip->GetWebContentsAt(0)->GetLastCommittedURL());
     // Should have opened the chrome://apps unsupported app flow in 2nd window.
@@ -841,7 +841,7 @@ class StartupBrowserCreatorChromeAppShortcutTest
     TabStripModel* tab_strip = browser()->tab_strip_model();
     EXPECT_EQ(1, tab_strip->count());
     EXPECT_NE(browser()->GetType(), BrowserWindowInterface::Type::TYPE_APP);
-    EXPECT_TRUE(browser()->is_type_normal());
+    EXPECT_EQ(browser()->GetType(), BrowserWindowInterface::Type::TYPE_NORMAL);
     EXPECT_EQ(GURL(url::kAboutBlankURL),
               tab_strip->GetWebContentsAt(0)->GetLastCommittedURL());
     // Should have opened the chrome://apps unsupported app flow in 2nd window.
@@ -937,7 +937,7 @@ IN_PROC_BROWSER_TEST_P(StartupBrowserCreatorChromeAppShortcutTest,
 
     // It should be a standard tabbed window, not an app window.
     EXPECT_NE(browser()->GetType(), BrowserWindowInterface::Type::TYPE_APP);
-    EXPECT_TRUE(browser()->is_type_normal());
+    EXPECT_EQ(browser()->GetType(), BrowserWindowInterface::Type::TYPE_NORMAL);
 
     // It should have loaded the requested app.
     const std::u16string expected_title(
@@ -977,9 +977,11 @@ IN_PROC_BROWSER_TEST_P(StartupBrowserCreatorChromeAppShortcutTest,
     EXPECT_EQ(new_browser->GetType(), BrowserWindowInterface::Type::TYPE_APP);
 
     // The browser's app_name should include the app's ID.
-    EXPECT_NE(new_browser->app_name().find(extension_app->id()),
+    EXPECT_NE(BrowserInitState::From(new_browser)
+                  ->create_params()
+                  .app_name.find(extension_app->id()),
               std::string::npos)
-        << new_browser->app_name();
+        << BrowserInitState::From(new_browser)->create_params().app_name;
   } else {
     ExpectBlockLaunch(extension_app->id(), /*force_install_dialog=*/false);
   }
@@ -1018,9 +1020,10 @@ IN_PROC_BROWSER_TEST_P(StartupBrowserCreatorChromeAppShortcutTest,
 
     // The browser's app_name should not include the app's ID: it is in a normal
     // tabbed browser.
-    EXPECT_EQ(browser()->app_name().find(extension_app->id()),
+    EXPECT_EQ(BrowserInitState::From(browser())->create_params().app_name.find(
+                  extension_app->id()),
               std::string::npos)
-        << browser()->app_name();
+        << BrowserInitState::From(browser())->create_params().app_name;
 
     // It should have loaded the requested app.
     const std::u16string expected_title(
@@ -1076,7 +1079,7 @@ IN_PROC_BROWSER_TEST_P(StartupBrowserCreatorChromeAppShortcutTest,
 
     // It should be a standard tabbed window, not an app window.
     EXPECT_NE(browser()->GetType(), BrowserWindowInterface::Type::TYPE_APP);
-    EXPECT_TRUE(browser()->is_type_normal());
+    EXPECT_EQ(browser()->GetType(), BrowserWindowInterface::Type::TYPE_NORMAL);
 
     // It should have loaded the requested app.
     const std::u16string expected_title(
@@ -2312,7 +2315,7 @@ IN_PROC_BROWSER_TEST_F(StartupBrowserCreatorRestartTest,
       web_app::LaunchWebAppBrowserAndWait(test_profile, app_id);
 
   ASSERT_NE(app_browser, nullptr);
-  ASSERT_EQ(app_browser->type(), Browser::Type::TYPE_APP);
+  ASSERT_EQ(app_browser->GetType(), Browser::Type::TYPE_APP);
   ASSERT_TRUE(web_app::AppBrowserController::IsForWebApp(app_browser, app_id));
 
   chrome::AttemptRestart();
@@ -3280,6 +3283,9 @@ class StartupBrowserCreatorFirstRunTest : public InProcessBrowserTest {
  protected:
   void SetUpCommandLine(base::CommandLine* command_line) override;
   void SetUpInProcessBrowserTestFixture() override;
+#if BUILDFLAG(IS_LINUX)
+  bool SetUpUserDataDirectory() override;
+#endif
 
   testing::NiceMock<policy::MockConfigurationPolicyProvider> provider_;
   policy::PolicyMap policy_map_;
@@ -3289,6 +3295,18 @@ void StartupBrowserCreatorFirstRunTest::SetUpCommandLine(
     base::CommandLine* command_line) {
   command_line->AppendSwitch(switches::kForceFirstRun);
 }
+
+#if BUILDFLAG(IS_LINUX)
+bool StartupBrowserCreatorFirstRunTest::SetUpUserDataDirectory() {
+  if (!InProcessBrowserTest::SetUpUserDataDirectory()) {
+    return false;
+  }
+  base::FilePath user_data_dir;
+  base::PathService::Get(chrome::DIR_USER_DATA, &user_data_dir);
+  base::WriteFile(user_data_dir.Append("EULA Accepted"), "");
+  return true;
+}
+#endif
 
 void StartupBrowserCreatorFirstRunTest::SetUpInProcessBrowserTestFixture() {
   // TODO(crbug.com/382086296): Confirm IS_CHROMEOS is needed here.

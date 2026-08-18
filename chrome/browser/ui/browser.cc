@@ -108,6 +108,7 @@
 #include "chrome/browser/ui/tabs/tab_enums.h"
 #include "chrome/browser/ui/tabs/tab_group_model.h"
 #include "chrome/browser/ui/tabs/tab_menu_model.h"
+#include "chrome/browser/ui/tabs/tab_strip_model_selection_state.h"
 #include "chrome/browser/ui/tabs/tab_utils.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
@@ -322,17 +323,12 @@ Browser::CreateParams Browser::CreateParams::CreateForDevTools(
 // Browser, Constructors, Creation, Showing:
 
 // static
-BrowserWindowInterface::CreationStatus Browser::GetCreationStatusForProfile(
-    Profile* profile) {
-  return GetBrowserWindowCreationStatusForProfile(*profile);
-}
-
-// static
 Browser* Browser::Create(const CreateParams& params) {
   // If this is failing, a caller is trying to create a browser when creation is
   // not possible, e.g. using the wrong profile or during shutdown. The caller
   // should handle this; see e.g. crbug.com/40154317 and crbug.com/40798999.
-  CHECK_EQ(CreationStatus::kOk, GetCreationStatusForProfile(params.profile));
+  CHECK_EQ(CreationStatus::kOk,
+           GetBrowserWindowCreationStatusForProfile(*params.profile));
 
   std::unique_ptr<Browser> browser = base::WrapUnique(new Browser(params));
   Browser* const browser_ptr = browser.get();
@@ -348,7 +344,8 @@ std::unique_ptr<Browser> Browser::DeprecatedCreateOwnedForTesting(
   // If this is failing, a caller is trying to create a browser when creation is
   // not possible, e.g. using the wrong profile or during shutdown. The caller
   // should handle this; see e.g. crbug.com/40154317 and crbug.com/40798999.
-  CHECK_EQ(CreationStatus::kOk, GetCreationStatusForProfile(params.profile));
+  CHECK_EQ(CreationStatus::kOk,
+           GetBrowserWindowCreationStatusForProfile(*params.profile));
 
   std::unique_ptr<Browser> browser = base::WrapUnique(new Browser(params));
   BrowserManagerServiceFactory::GetForProfile(params.profile)
@@ -369,9 +366,7 @@ Browser::Browser(const CreateParams& params)
           (type_ == TYPE_APP || type_ == TYPE_APP_POPUP)
               ? nullptr
               : TabGroupModelFactory::GetInstance())),
-      app_name_(params.app_name),
       session_id_(SessionID::NewUnique()),
-      window_has_shown_(false),
       keep_alive_(
           std::make_unique<ScopedKeepAlive>(KeepAliveOrigin::BROWSER,
                                             KeepAliveRestartOption::DISABLED)) {
@@ -792,8 +787,8 @@ void Browser::OnWindowCloseComplete() {
 // Browser, Tab adding/showing functions:
 
 void Browser::WindowFullscreenStateChanged() {
-  browser_window_features()
-      ->exclusive_access_manager()
+  GetFeatures()
+      .exclusive_access_manager()
       ->fullscreen_controller()
       ->WindowFullscreenStateChanged();
   chrome::BrowserCommandController::From(this)->FullscreenStateChanged();
@@ -812,19 +807,6 @@ void Browser::OnFindBarVisibilityChanged() {
 
   chrome::BrowserCommandController::From(this)->FindBarVisibilityChanged();
 }
-
-///////////////////////////////////////////////////////////////////////////////
-// Browser, Assorted browser commands:
-
-bool Browser::SupportsWindowFeature(WindowFeature feature) const {
-  return WindowFeatureController::From(this)->SupportsWindowFeature(feature);
-}
-
-bool Browser::CanSupportWindowFeature(WindowFeature feature) const {
-  return WindowFeatureController::From(this)->CanSupportWindowFeature(feature);
-}
-
-///////////////////////////////////////////////////////////////////////////////
 
 void Browser::UpdateUIForNavigationInTab(WebContents* contents,
                                          ui::PageTransition transition,
@@ -947,26 +929,19 @@ void Browser::TabStripEmpty() {
   window_->Close();
 }
 
-void Browser::OnWindowDidShow() {
-  if (window_has_shown_) {
+void Browser::OnTabGroupFocusChanged(
+    std::optional<tab_groups::TabGroupId> new_focused_group,
+    std::optional<tab_groups::TabGroupId> old_focused_group) {
+  if (!base::FeatureList::IsEnabled(features::kTabGroupsFocusing) ||
+      tab_strip_model_->closing_all() || IsDeleteScheduled()) {
     return;
   }
-  window_has_shown_ = true;
-
-  startup_metric_utils::GetBrowser().RecordBrowserWindowDisplay(
-      base::TimeTicks::Now());
-
-  // Nothing to do for non-tabbed windows.
-  if (!is_type_normal()) {
-    return;
-  }
-
-  // Show any pending global error bubble.
-  GlobalErrorService* service =
-      GlobalErrorServiceFactory::GetForProfile(profile_);
-  GlobalError* error = service->GetFirstGlobalErrorWithBubbleView();
-  if (error) {
-    error->ShowBubbleView(this);
+  SessionService* service = SessionServiceFactory::GetForProfile(profile_);
+  if (service) {
+    service->AddWindowExtraData(
+        session_id_, tabs::TabStripModelSelectionState::kFocusedTabGroupIdKey,
+        new_focused_group.has_value() ? new_focused_group->ToString()
+                                      : std::string());
   }
 }
 
@@ -985,7 +960,8 @@ void Browser::OnTabInsertedAt(WebContents* contents, int index) {
   SetAsDelegate(contents, true);
 
   // Disable pinch zooming in undocked dev tools window due to poor UX.
-  if (app_name() == DevToolsWindow::kDevToolsApp) {
+  if (BrowserInitState::From(this)->create_params().app_name ==
+      DevToolsWindow::kDevToolsApp) {
     contents->SetIgnoreZoomGestures(true);
   }
 
@@ -1021,7 +997,7 @@ void Browser::OnTabClosing(tabs::TabInterface* tab,
       page_load_metrics::MetricsWebContentsObserver::FromWebContents(contents);
   metrics_observer->WebContentsWillSoonBeDestroyed();
 
-  browser_window_features()->exclusive_access_manager()->OnTabClosing(contents);
+  GetFeatures().exclusive_access_manager()->OnTabClosing(contents);
 }
 
 void Browser::OnTabDetached(tabs::TabInterface* tab,
@@ -1063,8 +1039,7 @@ void Browser::RestoreFocusAfterTabModalPopupClose(
 }
 
 void Browser::OnTabDeactivated(WebContents* contents) {
-  browser_window_features()->exclusive_access_manager()->OnTabDeactivated(
-      contents);
+  GetFeatures().exclusive_access_manager()->OnTabDeactivated(contents);
   SearchTabHelper::FromWebContents(contents)->OnTabDeactivated();
 
   // Save what the user's currently typing, so it can be restored when we
@@ -1080,7 +1055,7 @@ void Browser::OnActiveTabChanged(const TabStripModelChange& change,
   // even if the tab strip is empty.
   if (change.type() != TabStripModelChange::kReplaced &&
       !tab_strip_model_->closing_all()) {
-    SidePanelUI* side_panel_ui = browser_window_features()->side_panel_ui();
+    SidePanelUI* side_panel_ui = GetFeatures().side_panel_ui();
     if (side_panel_ui) {
       side_panel_ui->OnActiveTabChanged(
           selection.old_contents, selection.new_contents,
@@ -1137,7 +1112,7 @@ void Browser::OnActiveTabChanged(const TabStripModelChange& change,
   window_->OnActiveTabChanged(selection.old_contents, selection.new_contents,
                               index, selection.reason);
 
-  browser_window_features()->exclusive_access_manager()->OnTabDetachedFromView(
+  GetFeatures().exclusive_access_manager()->OnTabDetachedFromView(
       selection.old_contents);
 
   // If we have any update pending, do it now.
@@ -1189,8 +1164,7 @@ void Browser::OnTabReplacedAt(WebContents* old_contents,
     did_active_tab_change_callback_list_.Notify(this);
   }
   TabDetachedAtImpl(old_contents, was_active, DetachType::kReplace);
-  browser_window_features()->exclusive_access_manager()->OnTabClosing(
-      old_contents);
+  GetFeatures().exclusive_access_manager()->OnTabClosing(old_contents);
   OnTabInsertedAt(new_contents, index);
 
   if (!new_contents->GetController().IsInitialBlankNavigation()) {
@@ -1233,8 +1207,8 @@ void Browser::ScheduleUIUpdate(WebContents* source, unsigned changed_flags) {
   // TODO(crbug.com/40100269) Figure out a safe way to detach browser delegate
   // from WebContents when it's removed so this doesn't happen - then put a
   // DCHECK back here.
-  if (tab_strip_model_->GetIndexOfWebContents(source) ==
-      TabStripModel::kNoTab) {
+  tabs::TabInterface* tab = tabs::TabInterface::MaybeGetFromContents(source);
+  if (!tab || tab->GetBrowserWindowInterface() != this) {
     return;
   }
 
@@ -1258,8 +1232,7 @@ void Browser::ScheduleUIUpdate(WebContents* source, unsigned changed_flags) {
     // Update the loading state synchronously. This is so the throbber will
     // immediately start/stop, which gives a more snappy feel. We want to do
     // this for any tab so they start & stop quickly.
-    NotifyTabUIChanged(tab_strip_model_->GetIndexOfWebContents(source),
-                       TabChangeType::kLoadingOnly);
+    NotifyTabUIChanged(tab, TabChangeType::kLoadingOnly);
     // The status bubble needs to be updated during INVALIDATE_TYPE_LOAD too,
     // but we do that asynchronously by not stripping INVALIDATE_TYPE_LOAD from
     // changed_flags.
@@ -1271,7 +1244,7 @@ void Browser::ScheduleUIUpdate(WebContents* source, unsigned changed_flags) {
   }
 
   // Save the dirty bits.
-  scheduled_updates_[source] |= changed_flags;
+  scheduled_updates_[tab] |= changed_flags;
 
   if (!chrome_updater_factory_.HasWeakPtrs()) {
     base::TimeDelta delay = update_ui_immediately_for_testing_
@@ -1291,28 +1264,19 @@ void Browser::ProcessPendingUIUpdates() {
   // Validate that all tabs we have pending updates for exist. This is scary
   // because the pending list must be kept in sync with any detached or
   // deleted tabs.
-  for (UpdateMap::const_iterator i = scheduled_updates_.begin();
-       i != scheduled_updates_.end(); ++i) {
-    bool found = false;
-    for (int tab = 0; tab < tab_strip_model_->count(); tab++) {
-      if (tab_strip_model_->GetWebContentsAt(tab) == i->first) {
-        found = true;
-        break;
-      }
+  size_t processed_count = 0;
+  for (tabs::TabInterface* tab : *tab_strip_model_) {
+    if (scheduled_updates_.find(tab) != scheduled_updates_.end()) {
+      processed_count++;
     }
-    DCHECK(found);
   }
+  DCHECK_EQ(processed_count, scheduled_updates_.size());
 #endif
 
   chrome_updater_factory_.InvalidateWeakPtrs();
 
-  for (UpdateMap::const_iterator i = scheduled_updates_.begin();
-       i != scheduled_updates_.end(); ++i) {
-    // Do not dereference |contents|, it may be out-of-date!
-    const WebContents* contents = i->first;
-    unsigned flags = i->second;
-
-    if (contents == tab_strip_model_->GetActiveWebContents()) {
+  for (const auto& [tab, flags] : scheduled_updates_) {
+    if (tab->IsActivated()) {
       // Updates that only matter when the tab is selected go here.
 
       // Updating the URL happens synchronously in ScheduleUIUpdate.
@@ -1320,8 +1284,7 @@ void Browser::ProcessPendingUIUpdates() {
       if (flags & content::INVALIDATE_TYPE_LOAD && status_bubbles.size() > 0) {
         status_bubbles.front()->SetStatus(
             CoreTabHelper::FromWebContents(
-                tab_strip_model_->GetActiveWebContents())
-                ->GetStatusText());
+                tab->GetContents())->GetStatusText());
       }
 
       if (flags &
@@ -1333,8 +1296,7 @@ void Browser::ProcessPendingUIUpdates() {
     // Updates that don't depend upon the selected state go here.
     if (flags & (content::INVALIDATE_TYPE_TAB | content::INVALIDATE_TYPE_TITLE |
                  content::INVALIDATE_TYPE_AUDIO)) {
-      NotifyTabUIChanged(tab_strip_model_->GetIndexOfWebContents(contents),
-                         TabChangeType::kAll);
+      NotifyTabUIChanged(tab, TabChangeType::kAll);
     }
 
     // Update the bookmark bar and PWA install icon. It may happen that the tab
@@ -1346,10 +1308,6 @@ void Browser::ProcessPendingUIUpdates() {
       // handled in Browser::OnActiveTabChanged().
       BookmarkBarController::From(this)->UpdateBookmarkBarState(
           BookmarkBarController::StateChangeReason::kTabState);
-
-      // TODO(crbug.com/40122780): Ideally, we should simply ask the state to
-      // update, and doing that in an appropriate and efficient manner.
-      window_->UpdatePageActionIcon(PageActionIconType::kPwaInstall);
     }
 
     // We don't need to process INVALIDATE_STATE, since that's not visible.
@@ -1363,9 +1321,9 @@ void Browser::RemoveScheduledUpdatesFor(WebContents* contents) {
     return;
   }
 
-  auto i = scheduled_updates_.find(contents);
-  if (i != scheduled_updates_.end()) {
-    scheduled_updates_.erase(i);
+  tabs::TabInterface* tab = tabs::TabInterface::MaybeGetFromContents(contents);
+  if (tab) {
+    scheduled_updates_.erase(tab);
   }
 }
 
@@ -1575,10 +1533,8 @@ bool Browser::HasFindBarController() {
   return GetFeatures().HasFindBarController();
 }
 
-void Browser::NotifyTabUIChanged(int tab_index, TabChangeType change_type) {
-  tab_strip_model_->UpdateWebContentsStateAt(tab_index, change_type);
-  tabs::TabInterface* const tab_interface =
-      tab_strip_model_->GetTabAtIndex(tab_index);
-  TabUIHelper::From(tab_interface)
-      ->NotifyTabUIChanged(base::PassKey<Browser>());
+void Browser::NotifyTabUIChanged(tabs::TabInterface* tab,
+                                 TabChangeType change_type) {
+  tab_strip_model_->NotifyTabChanged(tab, change_type);
+  TabUIHelper::From(tab)->NotifyTabUIChanged(base::PassKey<Browser>());
 }

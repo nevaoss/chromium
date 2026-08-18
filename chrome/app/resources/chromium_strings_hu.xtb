@@ -572,6 +572,7 @@ Ha ez az oldal nem a várt módon működik, próbálkozzon az optimalizálás e
 <translation id="7173822816570314652">Szervezete törli a Chromium-adatokat, ha nem használja a böngészőt ennyi ideig: <ph name="TIMEOUT_DURATION" />. A böngészési adatok közé tartozhatnak az előzmények, az automatikus kitöltés adatai és a letöltött tartalom is.</translation>
 <translation id="718435575166326686">A Chromiumnak kamerahasználati engedélyre van szüksége ehhez a webhelyhez</translation>
 <translation id="7196312274710523067">Nem sikerült a Chromium elindítása. Próbálkozzon újra.</translation>
+<translation id="7204669035546236137">Bármit megkérdezhet, közvetlenül a Gemini a Chromiumban segítségével</translation>
 <translation id="7213008767289637091">Tartsa a Chromiumot a Dockban, hogy bármikor gyorsan hozzáférhessen</translation>
 <translation id="7213407614656404070">Mostantól bármikor használhatja a Chromiumot, amikor üzenetekben, dokumentumokban és más alkalmazásokban található linkekre kattint</translation>
 <translation id="7216228761061470870">Amikor számítógépen használja a Képkeresőt, a rendszer elküldi az oldal címét, URL-jét és tartalmát (beleértve a PDF-eket is) a szervernek.</translation>
@@ -628,6 +629,7 @@ A Chromium nem tudja visszaállítani a beállításait.</translation>
 <translation id="7745317241717453663">Ezzel az eszközön lévő összes böngészési adat törlődik. Az adatok későbbi lekéréséhez jelentkezzen be a Chromiumba a következő e-mail-címmel: <ph name="USER_EMAIL" />.</translation>
 <translation id="7747138024166251722">A telepítőnek nem sikerült létrehoznia az ideiglenes könyvtárat. Kérjük ellenőrizze, hogy van-e elegendő hely a lemezen, és rendelkezik-e engedéllyel a szoftvertelepítésre.</translation>
 <translation id="7750130090210923118">Visszaállítás az alapértelmezett Chromiumra</translation>
+<translation id="7752521946322750699">A Chromiumban végzett munka biztonsága érdekében a szervezete képes lehet bizonyos információk megtekintésére vagy kezelésére, amikor Ön be van jelentkezve a Chromiumba.</translation>
 <translation id="7781047659465034537">Állítsa be a Chromiumot alapértelmezettként, és tűzze ki a tálcára</translation>
 <translation id="7786760609782648049">A Chromium felgyorsítása</translation>
 <translation id="7790626492778995050"><ph name="PAGE_TITLE" /> – Chromium Canary</translation>

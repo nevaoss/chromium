@@ -216,7 +216,7 @@ BASE_FEATURE(kWebViewInvokeZoomPickerOnGSU, base::FEATURE_DISABLED_BY_DEFAULT);
 // When enabled, cookie policy settings are captured at RestrictedCookieManager
 // creation time and used throughout its lifetime. This enables shared memory
 // cookie versioning to reduce IPC overhead.
-BASE_FEATURE(kWebViewLatchedCookiePolicy, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kWebViewLatchedCookiePolicy, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Install the profiling client with memory_system::Initializer. If this is
 // enabled the profiler MAY be started by
@@ -389,6 +389,11 @@ BASE_FEATURE(kWebViewUnreducedProductVersion, base::FEATURE_ENABLED_BY_DEFAULT);
 // Use WebView's nonembedded MetricsUploadService to upload UMA metrics instead
 // of sending it directly to GMS-core when running within the SDK Runtime.
 BASE_FEATURE(kWebViewUseMetricsUploadServiceOnlySdkRuntime,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+// If enabled, all the layered studies in WebView will use WebView low entropy
+// source instead of the app's low entropy source.
+BASE_FEATURE(kWebViewUseWVLESForLayeredStudy,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // When enabled, binds FrameSinkManager as a DirectReceiver, allowing IPCs

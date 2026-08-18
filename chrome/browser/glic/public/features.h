@@ -45,6 +45,7 @@ inline constexpr char kGlicSelectionPromptCtaExplain[] = "explain";
 extern const base::FeatureParam<bool> kGlicSelectionPromptInlineFulfillment;
 extern const base::FeatureParam<std::string>
     kGlicSelectionPromptInlinePromptTemplate;
+extern const base::FeatureParam<bool> kGlicSelectionPromptSkills;
 
 BASE_DECLARE_FEATURE(kGlicCreateTabAdjacent);
 
@@ -61,6 +62,8 @@ BASE_DECLARE_FEATURE(kGlicFixTimeToFirstQueryKillSwitch);
 BASE_DECLARE_FEATURE(kGlicContextMenu);
 extern const base::FeatureParam<std::string> kGlicContextMenuArm;
 extern const base::FeatureParam<bool> kGlicContextMenuWithOnboarding;
+
+BASE_DECLARE_FEATURE(kGlicContextMenuBelowSearch);
 
 BASE_DECLARE_FEATURE(kGlicTextSelectionContextMenu);
 
@@ -136,6 +139,11 @@ BASE_DECLARE_FEATURE(kGlicSparkSettingsAccessibleLabels);
 
 BASE_DECLARE_FEATURE(kGlicOptInDialogA11yFix);
 BASE_DECLARE_FEATURE(kGlicStructuredYieldMetadata);
+
+BASE_DECLARE_FEATURE(kGlicEnableMojoJs);
+
+BASE_DECLARE_FEATURE(kGlicNoWebview);
+
 }  // namespace features
 
 #endif  // CHROME_BROWSER_GLIC_PUBLIC_FEATURES_H_

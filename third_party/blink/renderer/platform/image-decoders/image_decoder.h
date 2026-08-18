@@ -50,7 +50,10 @@
 #include "third_party/blink/renderer/platform/wtf/forward.h"
 #include "third_party/blink/renderer/platform/wtf/shared_buffer.h"
 #include "third_party/blink/renderer/platform/wtf/vector.h"
+#include "third_party/skia/include/core/SkAlphaType.h"
+#include "third_party/skia/include/core/SkColorType.h"
 #include "third_party/skia/include/core/SkImageInfo.h"
+#include "third_party/skia/include/core/SkRect.h"
 #include "third_party/skia/modules/skcms/skcms.h"
 #include "ui/gfx/hdr_metadata.h"
 
@@ -62,16 +65,6 @@ class ICCProfileChromium;
 }
 
 namespace blink {
-
-#if SK_B32_SHIFT
-inline skcms_PixelFormat XformColorFormat() {
-  return skcms_PixelFormat_RGBA_8888;
-}
-#else
-inline skcms_PixelFormat XformColorFormat() {
-  return skcms_PixelFormat_BGRA_8888;
-}
-#endif
 
 // ImagePlanes can be used to decode color components into provided buffers
 // instead of using an ImageFrame.
@@ -409,7 +402,9 @@ class PLATFORM_EXPORT ImageDecoder {
   // This returns the color space that will be included in the SkImageInfo of
   // SkImages created from this decoder. This will be nullptr unless the
   // decoder was created with the option ColorSpaceTagged.
-  sk_sp<SkColorSpace> ColorSpaceForSkImages();
+  sk_sp<SkColorSpace> ColorSpaceForSkImages() const {
+    return sk_image_color_space_;
+  }
 
   // This returns whether or not the image included a not-ignored embedded
   // color profile. This is independent of whether or not that profile's
@@ -422,7 +417,25 @@ class PLATFORM_EXPORT ImageDecoder {
   void SetEmbeddedColorProfile(std::unique_ptr<ColorProfile> profile);
 
   // Transformation from embedded color space to target color space.
-  ColorProfileTransform* ColorTransform();
+  ColorProfileTransform* ColorTransform() const {
+    return embedded_to_sk_image_transform_.get();
+  }
+
+  bool NeedsDecodeTimeColorTransform() const {
+    return embedded_to_sk_image_transform_ != nullptr;
+  }
+
+  // Performs color transformation on the specified rect of buffer if needed.
+  // The WebP decoder fuses pixel format and alpha conversion with color space
+  // conversion. To accommodate this, the optional `src_color_type` and
+  // `src_alpha_type` parameters can be provided to indicate the input format
+  // of the data in `buffer` (the conversion will convert to the expected
+  // format).
+  void DoDecodeTimeColorTransformIfNeeded(
+      ImageFrame& buffer,
+      const SkIRect& rect,
+      std::optional<SkColorType> src_color_type = std::nullopt,
+      std::optional<SkAlphaType> src_alpha_type = std::nullopt);
 
   AlphaOption GetAlphaOption() const {
     return premultiply_alpha_ ? kAlphaPremultiplied : kAlphaNotPremultiplied;
@@ -621,10 +634,6 @@ class PLATFORM_EXPORT ImageDecoder {
   }
 
   bool purge_aggressively_;
-
-  // Update `sk_image_color_space_` and `embedded_to_sk_image_transform_`, if
-  // needed.
-  void UpdateSkImageColorSpaceAndTransform();
 
   // This methods gets called at the end of InitFrameBuffer. Subclasses can do
   // format specific initialization, for e.g. alpha settings, here.

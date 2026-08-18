@@ -395,7 +395,7 @@ void ContextualTasksPageHandler::ShowThreadHistory() {
   // Send a message to AIM to open the threads view.
   lens::ClientToAimMessage message;
   message.mutable_open_threads_view()->mutable_payload();
-  PostMessageToWebview(message);
+  PostAimMessage(message);
 }
 
 void ContextualTasksPageHandler::IsShownInTab(IsShownInTabCallback callback) {
@@ -441,6 +441,17 @@ void ContextualTasksPageHandler::OpenOnboardingHelpUi() {
   OpenUrlWithDisposition(
       web_ui_controller_->GetProfile(),
       GURL(contextual_tasks::GetContextualTasksOnboardingTooltipHelpUrl()),
+      WindowOpenDisposition::NEW_FOREGROUND_TAB, browser);
+}
+
+void ContextualTasksPageHandler::OpenOverflowMenuHelpUi() {
+  BrowserWindowInterface* browser = web_ui_controller_->GetBrowser();
+  if (!browser) {
+    return;
+  }
+  OpenUrlWithDisposition(
+      web_ui_controller_->GetProfile(),
+      GURL(contextual_tasks::GetContextualTasksOverflowMenuHelpUrl()),
       WindowOpenDisposition::NEW_FOREGROUND_TAB, browser);
 }
 
@@ -608,7 +619,7 @@ void ContextualTasksPageHandler::ReopenTabs() {
   // TODO(crbug.com/489832161): Implement tab restoration logic.
 }
 
-void ContextualTasksPageHandler::PostMessageToWebview(
+void ContextualTasksPageHandler::PostAimMessage(
     const lens::ClientToAimMessage& message) {
   DCHECK(web_ui_controller_->GetPageRemote());
   if (!web_ui_controller_->GetPageRemote()) {
@@ -617,7 +628,7 @@ void ContextualTasksPageHandler::PostMessageToWebview(
 
   const size_t size = message.ByteSizeLong();
   if (size == 0) {
-    LOG(WARNING) << "PostMessageToWebview called with an empty message.";
+    LOG(WARNING) << "PostAimMessage called with an empty message.";
     return;
   }
   std::vector<uint8_t> serialized_message(size);
@@ -626,10 +637,10 @@ void ContextualTasksPageHandler::PostMessageToWebview(
     return;
   }
 
-  OMNIBOX_LOG_WITH_PROTO("PostMessageToWebview", message,
+  OMNIBOX_LOG_WITH_PROTO("PostAimMessage", message,
                          std::string("lens.chrome.ClientToAimMessage"));
 
-  web_ui_controller_->GetPageRemote()->PostMessageToWebview(serialized_message);
+  web_ui_controller_->GetPageRemote()->PostAimMessage(serialized_message);
 }
 
 void ContextualTasksPageHandler::OnTaskAdded(

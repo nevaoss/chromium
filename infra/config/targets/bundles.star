@@ -2034,7 +2034,7 @@ targets.bundle(
         "mac_specific_chromium_gtests",
     ],
     mixins = [
-        "mac_15_vm_optional",
+        "mac_26_vm_optional",
     ],
 )
 
@@ -3112,6 +3112,27 @@ targets.bundle(
 )
 
 targets.bundle(
+    name = "gpu_all_linux_release_gtests",
+    targets = [
+        "gpu_linux_release_gtests",
+        "gpu_fyi_linux_release_gtests",
+    ],
+)
+
+targets.bundle(
+    name = "gpu_all_linux_release_telemetry_tests",
+    targets = [
+        "gpu_linux_release_telemetry_tests",
+        "gpu_fyi_linux_release_telemetry_tests",
+    ],
+    per_test_modifications = {
+        "webgl_conformance_tests": targets.remove(
+            reason = "Only run default behavior tests on the non-FYI testers",
+        ),
+    },
+)
+
+targets.bundle(
     name = "gpu_angle_fuchsia_unittests_isolated_scripts",
     targets = [
         "angle_unittests",
@@ -4074,7 +4095,7 @@ targets.bundle(
 )
 
 # TODO(crbug.com/40130073): Merge with an existing set of tests such as
-# gpu_fyi_linux_release_gtests once all CrOS tests have been enabled.
+# gpu_all_linux_release_gtests once all CrOS tests have been enabled.
 targets.bundle(
     name = "gpu_fyi_chromeos_release_gtests",
     targets = [
@@ -4136,8 +4157,6 @@ targets.bundle(
 targets.bundle(
     name = "gpu_fyi_linux_release_gtests",
     targets = [
-        "gpu_angle_unit_gtests",
-        "gpu_common_gtests_passthrough",
         "mappable_buffer_tests_suite",
         "gpu_vulkan_gtests",
     ],
@@ -4146,11 +4165,19 @@ targets.bundle(
 targets.bundle(
     name = "gpu_fyi_linux_release_telemetry_tests",
     targets = [
-        "gpu_common_and_optional_telemetry_tests",
-        "gpu_passthrough_telemetry_tests",
+        "gpu_webcodecs_telemetry_test",
+        "gpu_webgl_conformance_gl_passthrough_telemetry_tests",
+        "gpu_webgl2_conformance_gl_passthrough_telemetry_tests",
+        "webrtc_tests",
+    ],
+)
+
+targets.bundle(
+    name = "gpu_fyi_linux_release_vulkan_telemetry_tests",
+    targets = [
         "gpu_webcodecs_telemetry_test",
         "gpu_webgl2_conformance_gl_passthrough_telemetry_tests",
-        "gpu_webgl_conformance_gl_passthrough_telemetry_tests",
+        "gpu_skia_renderer_vulkan_passthrough_telemetry_tests",
     ],
 )
 
@@ -4298,6 +4325,23 @@ targets.bundle(
             "gpu_integration_test_common_args",
         ],
     },
+)
+
+targets.bundle(
+    name = "gpu_linux_release_gtests",
+    targets = [
+        "gpu_angle_unit_gtests",
+        "gpu_common_gtests_passthrough",
+    ],
+)
+
+targets.bundle(
+    name = "gpu_linux_release_telemetry_tests",
+    targets = [
+        "gpu_common_and_optional_telemetry_tests",
+        "gpu_passthrough_telemetry_tests",
+        "gpu_webgl_conformance_telemetry_tests",
+    ],
 )
 
 # Copy of gpu_passthrough_telemetry_tests that forces running with Skia/Ganesh.
@@ -5264,7 +5308,7 @@ targets.bundle(
         targets.bundle(
             targets = "ios_common_tests",
             mixins = [
-                "mac_15_vm_optional",
+                "mac_26_vm_optional",
             ],
             variants = [
                 "SIM_IPHONE_14_PLUS_18_2",
@@ -5280,7 +5324,7 @@ targets.bundle(
             targets = "ios_eg2_cq_tests",
             mixins = [
                 "xcodebuild_sim_runner",
-                "mac_15_vm_optional",
+                "mac_26_vm_optional",
             ],
             variants = [
                 "SIM_IPAD_PRO_7TH_GEN_18_2",
@@ -5301,7 +5345,7 @@ targets.bundle(
             targets = "ios_eg2_tests",
             mixins = [
                 "xcodebuild_sim_runner",
-                "mac_15_vm_optional",
+                "mac_26_vm_optional",
             ],
             variants = [
                 "SIM_IPHONE_15_18_2",
@@ -5320,7 +5364,7 @@ targets.bundle(
         targets.bundle(
             targets = "ios_screen_size_dependent_tests",
             mixins = [
-                "mac_15_vm_optional",
+                "mac_26_vm_optional",
             ],
             variants = [
                 "SIM_IPAD_PRO_7TH_GEN_18_2",
@@ -5357,7 +5401,7 @@ targets.bundle(
             mixins = [
                 "xcodebuild_sim_runner",
                 "record_failed_tests",
-                "mac_15_vm_optional",
+                "mac_26_vm_optional",
             ],
             variants = [
                 "SIM_IPAD_AIR_6TH_GEN_18_2",
@@ -5409,7 +5453,7 @@ targets.bundle(
         targets.bundle(
             targets = "ios_common_tests",
             mixins = [
-                "mac_15_vm_optional",
+                "mac_26_vm_optional",
             ],
             variants = [
                 "SIM_IPHONE_15_18_2",
@@ -5425,7 +5469,7 @@ targets.bundle(
             targets = "ios_vm_eg2_cq_tests",
             mixins = [
                 "xcodebuild_sim_runner",
-                "mac_15_vm_optional",
+                "mac_26_vm_optional",
             ],
             variants = [
                 "SIM_IPHONE_15_18_2",
@@ -5443,7 +5487,7 @@ targets.bundle(
         targets.bundle(
             targets = "ios_screen_size_dependent_tests",
             mixins = [
-                "mac_15_vm_optional",
+                "mac_26_vm_optional",
             ],
             variants = [
                 "SIM_IPHONE_15_18_2",

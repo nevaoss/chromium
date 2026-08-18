@@ -37,20 +37,18 @@ namespace extensions {
 class FeatureProviderTest;
 class ExtensionAPITest;
 
-// A view whose backing array is required to have static storage duration.
-// SimpleFeature retains these views for its lifetime.
+// A retained view of a statically stored array. Its consteval constructors
+// enforce the lifetime without changing base::span's representation.
 template <typename T>
 class StaticSpan {
  public:
   template <size_t N>
-  explicit consteval StaticSpan(const T (&arr LIFETIME_BOUND)[N])
-      : span_(arr) {}
+  explicit consteval StaticSpan(const T (&arr)[N]) : span_(arr) {}
   template <size_t N>
-  explicit consteval StaticSpan(const std::array<T, N>& arr LIFETIME_BOUND)
-      : span_(arr) {}
+  explicit consteval StaticSpan(const std::array<T, N>& arr) : span_(arr) {}
   consteval StaticSpan() = default;
 
-  constexpr base::span<const T> span() const LIFETIME_BOUND { return span_; }
+  constexpr base::span<const T> span() const { return span_; }
 
  private:
   RAW_PTR_EXCLUSION base::span<const T> span_;
@@ -148,23 +146,27 @@ class SimpleFeature : public Feature {
     kUnpacked,
   };
 
-  // Setters used by generated code to create the feature.
-  // NOTE: These setters use std::string_view and std::initalizer_list rather
-  // than std::string and std::vector for binary size reasons. Using STL types
-  // directly in the header means that code that doesn't already have that exact
-  // type ends up triggering many implicit conversions which are all inlined.
-  void set_blocklist(std::initializer_list<const char* const> blocklist);
+  void set_blocklist(StaticSpan<std::string_view> blocklist);
+  void set_blocklist(std::initializer_list<std::string_view> blocklist) =
+      delete;
   void set_channel(version_info::Channel channel) { channel_ = channel; }
   void set_command_line_switch(std::string_view command_line_switch);
   void set_component_extensions_auto_granted(bool granted) {
     component_extensions_auto_granted_ = granted;
   }
-  void set_contexts(std::initializer_list<mojom::ContextType> contexts);
-  void set_dependencies(std::initializer_list<const char* const> dependencies);
-  void set_extension_types(std::initializer_list<Manifest::Type> types);
+  void set_contexts(StaticSpan<mojom::ContextType> contexts);
+  void set_contexts(std::initializer_list<mojom::ContextType> contexts) =
+      delete;
+  void set_dependencies(StaticSpan<std::string_view> dependencies);
+  void set_dependencies(std::initializer_list<std::string_view> dependencies) =
+      delete;
+  void set_extension_types(StaticSpan<Manifest::Type> types);
+  void set_extension_types(std::initializer_list<Manifest::Type> types) =
+      delete;
   void set_feature_flag(std::string_view feature_flag);
+  void set_session_types(StaticSpan<mojom::FeatureSessionType> types);
   void set_session_types(
-      std::initializer_list<mojom::FeatureSessionType> types);
+      std::initializer_list<mojom::FeatureSessionType> types) = delete;
   void set_internal(bool is_internal) { is_internal_ = is_internal; }
   void set_requires_delegated_availability_check(
       bool requires_delegated_availability_check) {
@@ -187,21 +189,26 @@ class SimpleFeature : public Feature {
     min_manifest_version_ = min_manifest_version;
   }
   void set_noparent(bool no_parent) { no_parent_ = no_parent; }
-  void set_platforms(std::initializer_list<Platform> platforms);
-  void set_allowlist(std::initializer_list<const char* const> allowlist);
+  void set_platforms(StaticSpan<Platform> platforms);
+  void set_platforms(std::initializer_list<Platform> platforms) = delete;
+  void set_allowlist(StaticSpan<std::string_view> allowlist);
+  void set_allowlist(std::initializer_list<std::string_view> allowlist) =
+      delete;
 
  protected:
   // Accessors used by subclasses in feature verification.
-  const std::vector<std::string>& blocklist() const { return blocklist_; }
-  const std::vector<std::string>& allowlist() const { return allowlist_; }
-  const std::vector<Manifest::Type>& extension_types() const {
+  base::span<const std::string_view> blocklist() const { return blocklist_; }
+  base::span<const std::string_view> allowlist() const { return allowlist_; }
+  base::span<const Manifest::Type> extension_types() const {
     return extension_types_;
   }
-  const std::vector<Platform>& platforms() const { return platforms_; }
-  const std::optional<std::vector<mojom::ContextType>>& contexts() const {
+  base::span<const Platform> platforms() const { return platforms_; }
+  std::optional<base::span<const mojom::ContextType>> contexts() const {
     return contexts_;
   }
-  const std::vector<std::string>& dependencies() const { return dependencies_; }
+  base::span<const std::string_view> dependencies() const {
+    return dependencies_;
+  }
   const std::optional<version_info::Channel> channel() const {
     return channel_;
   }
@@ -272,7 +279,7 @@ class SimpleFeature : public Feature {
       const Feature* feature);
 
   static bool IsIdInList(const HashedExtensionId& hashed_id,
-                         const std::vector<std::string>& list);
+                         base::span<const std::string_view> list);
 
   bool MatchesManifestLocation(mojom::ManifestLocation manifest_location) const;
 
@@ -326,13 +333,13 @@ class SimpleFeature : public Feature {
   // members the same way: it matches everything. It is up to the higher level
   // code that reads Features out of static data to validate that data and set
   // sensible defaults.
-  std::vector<std::string> blocklist_;
-  std::vector<std::string> allowlist_;
-  std::vector<std::string> dependencies_;
-  std::vector<Manifest::Type> extension_types_;
-  std::vector<mojom::FeatureSessionType> session_types_;
-  std::optional<std::vector<mojom::ContextType>> contexts_;
-  std::vector<Platform> platforms_;
+  base::raw_span<const std::string_view> blocklist_;
+  base::raw_span<const std::string_view> allowlist_;
+  base::raw_span<const std::string_view> dependencies_;
+  base::raw_span<const Manifest::Type> extension_types_;
+  base::raw_span<const mojom::FeatureSessionType> session_types_;
+  std::optional<base::raw_span<const mojom::ContextType>> contexts_;
+  base::raw_span<const Platform> platforms_;
   // The feature's URL match patterns, parsed into a transient URLPattern on
   // demand. Generated features provide statically allocated strings.
   base::raw_span<const std::string_view> match_patterns_;

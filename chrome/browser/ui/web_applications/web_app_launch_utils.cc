@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "base/check.h"
+#include "base/check_deref.h"
 #include "base/check_op.h"
 #include "base/command_line.h"
 #include "base/debug/dump_without_crashing.h"
@@ -43,9 +44,11 @@
 #include "chrome/browser/sessions/session_service_lookup.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
+#include "chrome/browser/ui/browser_init_state.h"
 #include "chrome/browser/ui/browser_tabstrip.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/browser_window/public/create_browser_window.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/browser/ui/intent_picker_tab_helper.h"
 #include "chrome/browser/ui/navigator/browser_navigator.h"
@@ -185,7 +188,7 @@ std::unique_ptr<AppBrowserController> CreateWebAppBrowserController(
       system_app && system_app->ShouldHaveTabStrip();
 #endif  // BUILDFLAG(IS_CHROMEOS)
   const bool has_tab_strip =
-      !browser->is_type_app_popup() &&
+      browser->GetType() != BrowserWindowInterface::Type::TYPE_APP_POPUP &&
       (should_have_tab_strip_for_swa ||
        provider->registrar_unsafe().IsTabbedWindowModeEnabled(app_id));
   return std::make_unique<WebAppBrowserController>(*provider, browser, app_id,
@@ -652,8 +655,8 @@ std::unique_ptr<AppBrowserController> MaybeCreateAppBrowserController(
     BrowserWindowInterface* bwi) {
   Browser* const browser = bwi->GetBrowserForMigrationOnly();
   std::unique_ptr<AppBrowserController> controller;
-  const webapps::AppId app_id =
-      GetAppIdFromApplicationName(browser->app_name());
+  const webapps::AppId app_id = GetAppIdFromApplicationName(
+      BrowserInitState::From(browser)->create_params().app_name);
   auto* const provider =
       WebAppProvider::GetForLocalAppsUnchecked(browser->GetProfile());
   if (provider && provider->registrar_unsafe().AppMatches(
@@ -733,7 +736,8 @@ Browser* CreateWebAppWindowMaybeWithHomeTab(
   CHECK(params.type == Browser::Type::TYPE_APP_POPUP ||
         params.type == Browser::Type::TYPE_APP);
   Browser* browser = Browser::Create(params);
-  CHECK(GenerateApplicationNameFromAppId(app_id) == browser->app_name());
+  CHECK(GenerateApplicationNameFromAppId(app_id) ==
+        BrowserInitState::From(browser)->create_params().app_name);
   if (params.type != Browser::Type::TYPE_APP_POPUP) {
     MaybeAddPinnedHomeTab(browser, app_id);
   }
@@ -872,7 +876,7 @@ void LaunchWebApp(apps::AppLaunchParams params,
   BrowserWindowInterface* browser = nullptr;
   content::WebContents* web_contents = nullptr;
   // Do not launch anything if the profile is being deleted.
-  if (Browser::GetCreationStatusForProfile(&profile) ==
+  if (GetBrowserWindowCreationStatusForProfile(profile) ==
       Browser::CreationStatus::kOk) {
     // TODO(crbug.com/379136842): This is likely too 'permissive' of a check,
     // and different more restrictive filter should likely be used instead.
@@ -901,7 +905,7 @@ void LaunchWebApp(apps::AppLaunchParams params,
     std::string error_str = base::StringPrintf(
         "Cannot launch app %s without profile creation: %d",
         params.app_id.c_str(),
-        static_cast<int>(Browser::GetCreationStatusForProfile(&profile)));
+        static_cast<int>(GetBrowserWindowCreationStatusForProfile(profile)));
     debug_value.Set("error", error_str);
     DVLOG(1) << error_str;
   }
@@ -930,7 +934,7 @@ void FocusAppContainer(BrowserWindowInterface* browser, int tab_index) {
     tab_strip_model->ActivateTabAt(tab_index);
   }
   // This call will un-minimize the window.
-  browser->GetBrowserForMigrationOnly()->GetBrowserView().Activate();
+  CHECK_DEREF(BrowserView::GetBrowserViewForBrowser(browser)).Activate();
 }
 
 }  // namespace web_app

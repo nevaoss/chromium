@@ -52,9 +52,7 @@
 #include "ui/webui/resources/cr_components/composebox/composebox.mojom.h"
 #include "ui/webui/resources/cr_components/help_bubble/help_bubble.mojom.h"  // nogncheck
 
-#if !BUILDFLAG(IS_ANDROID)
 #include "content/public/browser/host_zoom_map.h"
-#endif
 
 #if !BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 #include "components/guest_view/browser/slim_web_view/slim_web_view_page_handler_factory.h"  // nogncheck
@@ -205,7 +203,7 @@ class ContextualTasksUI
   bool IsActiveTabContextSuggestionShowing() const override;
   void MoveTaskUiToNewTab() override;
   bool CanExpandToFullTab() const override;
-  void PostMessageToWebview(const lens::ClientToAimMessage& message) override;
+  void PostAimMessage(const lens::ClientToAimMessage& message) override;
   contextual_search::ContextualSearchSessionHandle*
   GetOrCreateContextualSessionHandle() override;
   GURL GetWebUiUrl() override;
@@ -440,7 +438,6 @@ class ContextualTasksUI
                           contextual_tasks::ContextualTasksService::Observer>
       contextual_tasks_service_observation_{this};
 
-#if !BUILDFLAG(IS_ANDROID)
   // Updates zoom level for the WebUI
   void UpdateZoom();
 
@@ -458,7 +455,6 @@ class ContextualTasksUI
 
   // Observer for zoom changes for all hosts.
   base::CallbackListSubscription host_zoom_map_subscription_;
-#endif
 
   WEB_UI_CONTROLLER_TYPE_DECL();
 

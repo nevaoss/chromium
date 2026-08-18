@@ -164,7 +164,6 @@
 #include "google_apis/gaia/gaia_id.h"
 #include "google_apis/gaia/gaia_urls.h"
 #include "google_apis/gaia/google_service_auth_error.h"
-#include "net/base/url_util.h"
 #include "services/network/test/test_url_loader_factory.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "ui/base/accelerators/accelerator.h"
@@ -557,12 +556,9 @@ void WaitForBrowserUrl(const GURL& url, content::WebContents* target) {
 }
 
 GURL GetManagedUserProfileNoticeUrl() {
-  if (base::FeatureList::IsEnabled(switches::kFirstRunDesktopRefresh)) {
-    const ManagedUserProfileNoticeUI::ScreenType default_type =
-        ManagedUserProfileNoticeUI::ScreenType::kProfilePicker;
-    return ManagedUserProfileNoticeUI::GetURLForType(default_type);
-  }
-  return GURL(chrome::kChromeUIManagedUserProfileNoticeUrl);
+  return base::FeatureList::IsEnabled(switches::kFirstRunDesktopRefresh)
+             ? GURL(chrome::kChromeUIManagedUserProfileNoticeRefreshURL)
+             : GURL(chrome::kChromeUIManagedUserProfileNoticeUrl);
 }
 
 // Browser extra part used to be notified early enough to track the
@@ -4458,6 +4454,29 @@ IN_PROC_BROWSER_TEST_F(ProfilePickerDeviceSignalsDisclaimerBrowserTest,
   histogram_tester().ExpectUniqueSample(
       kEnterpriseSignalsDisclaimerProfilePickerResult,
       EnterpriseSignalsDisclaimerProfilePickerResult::kDeclined, 1);
+}
+
+IN_PROC_BROWSER_TEST_F(ProfilePickerDeviceSignalsDisclaimerBrowserTest,
+                       OpenProfileFromPickerCancelAndReopen) {
+  ASSERT_EQ(1u, GlobalBrowserCollection::GetInstance()->GetSize());
+
+  ProfilePicker::Show(ProfilePicker::Params::FromEntryPoint(
+      ProfilePicker::EntryPoint::kProfileMenuManageProfiles));
+  WaitForLoadStop(GURL(chrome::kChromeUIProfilePickerUrl));
+  EXPECT_TRUE(ProfilePicker::IsOpen());
+
+  OpenProfileFromPicker(managed_profile_path(), /*open_settings=*/false);
+
+  WaitForLoadStop(GURL(chrome::kChromeUIManagedUserProfileNoticeUrl));
+  ClickDisclaimerButton("cancel-button");
+
+  WaitForLoadStop(GURL(chrome::kChromeUIProfilePickerUrl));
+  EXPECT_TRUE(ProfilePicker::IsOpen());
+
+  // Picking the profile again should re-show the disclaimer without crashing.
+  OpenProfileFromPicker(managed_profile_path(), /*open_settings=*/false);
+  WaitForLoadStop(GURL(chrome::kChromeUIManagedUserProfileNoticeUrl));
+  EXPECT_TRUE(ProfilePicker::IsOpen());
 }
 
 IN_PROC_BROWSER_TEST_F(ProfilePickerDeviceSignalsDisclaimerBrowserTest,

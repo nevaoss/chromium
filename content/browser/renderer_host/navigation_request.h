@@ -139,7 +139,8 @@ class CONTENT_EXPORT NavigationRequest
       private RenderProcessHostObserver,
       private network::mojom::TrustTokenAccessObserver,
       private network::mojom::SharedDictionaryAccessObserver,
-      public network::mojom::DeviceBoundSessionAccessObserver {
+      public network::mojom::DeviceBoundSessionAccessObserver,
+      public PolicyContainerHost::Client {
  public:
   // Keeps track of the various stages of a NavigationRequest.
   // To see what state transitions are allowed, see |SetState|.
@@ -1894,8 +1895,18 @@ class CONTENT_EXPORT NavigationRequest
     before_unload_execution_mode_ = mode;
   }
 
+  // Returns a token that will be used to retrieve the InitiatorNavigationState
+  // of the document created by this navigation at commit time (if any). Note
+  // that this does not identify the initiator of this navigation.
+  const base::UnguessableToken& initiator_state_token_to_commit() const {
+    return initiator_state_token_to_commit_;
+  }
+
  private:
   friend class NavigationRequestTest;
+  FRIEND_TEST_ALL_PREFIXES(
+      NavigationRequestDownloadBrowserTest,
+      OpenerCrossOrigin_BrowserOverridesCompromisedRenderer);
   FRIEND_TEST_ALL_PREFIXES(NavigationRequestTest, SanitizeRedirectsForCommit);
   FRIEND_TEST_ALL_PREFIXES(NavigationRequestTest,
                            SanitizeRedirectsForCommitRelativeLocation);
@@ -2525,6 +2536,12 @@ class CONTENT_EXPORT NavigationRequest
   // response.
   void ComputePoliciesToCommitForError();
 
+  // PolicyContainerHost::Client:
+  void DidChangeReferrerPolicy(
+      network::mojom::ReferrerPolicy referrer_policy) final {}
+  void DidUpdateInitiatorStateToken(
+      const base::UnguessableToken& new_initiator_state_token) final;
+
   // CHECK that transitioning from the current state to |state| valid. This
   // does nothing in non-debug builds.
   void CheckStateTransition(NavigationState state) const;
@@ -2561,6 +2578,14 @@ class CONTENT_EXPORT NavigationRequest
   // Whether a failed navigation should replace the current entry or not. Called
   // when an error page is about to be committed.
   bool ShouldReplaceCurrentEntryForFailedNavigation() const;
+
+  // Whether the initiator of this navigation should be allowed to observe that
+  // a same-URL navigation of the target frame was converted to a replacement.
+  // Used by ShouldReplaceCurrentEntryForSameUrlNavigation() and
+  // ShouldReplaceCurrentEntryForFailedNavigation() to ensure the replacement
+  // decision does not depend on the target frame's URL when the initiator is
+  // cross-origin to it.
+  bool InitiatorMayObserveSameUrlReplacement() const;
 
   // Calculates the origin that this NavigationRequest may commit. See also the
   // comment of GetOriginToCommit(). Performs calculation without information
@@ -2703,6 +2728,10 @@ class CONTENT_EXPORT NavigationRequest
   // This is also used in `MaybeRecordTraceEventsAndHistograms()`, which should
   // eventually be replaced with the navigation timeline metrics.
   bool ShouldRecordNavigationTimelineUkm() const;
+
+  // Returns true if early navigation failure can be safely recorded without
+  // risking cross-StoragePartition information leakage.
+  bool CanRecordEarlyNavigationFailure() const;
 
   // Given the known destination origin, this updates the view transition state
   // and resources. Namely, it clears it if the view transition state and
@@ -3193,6 +3222,10 @@ class CONTENT_EXPORT NavigationRequest
   // the navigation is not in a new window. Can only be true for renderer
   // initiated navigations which use `CreateBrowserInitiated()`.
   const bool was_opener_suppressed_ = false;
+
+  // Indicates whether the initiator is navigating its opener frame at the time
+  // of request creation.
+  bool is_opener_navigation_ = false;
 
   // This tracks a connection between the current pending entry and this
   // request, such that the pending entry can be discarded if no requests are
@@ -3791,6 +3824,12 @@ class CONTENT_EXPORT NavigationRequest
   // Set to true if an early navigation failure has already been recorded
   // for this navigation, preventing duplicate recordings in the destructor.
   bool early_navigation_failure_recorded_ = false;
+
+  // A token that will be used to retrieve the InitiatorNavigationState of the
+  // document created by this navigation at commit time (if any). Note that this
+  // does not identify the initiator of this navigation. See
+  // `initiator_navigation_state` for this.
+  base::UnguessableToken initiator_state_token_to_commit_;
 
   base::WeakPtrFactory<NavigationRequest> weak_factory_{this};
 };

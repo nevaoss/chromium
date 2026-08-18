@@ -227,6 +227,7 @@ public class PdfCoordinator
             if (reuseFragment) {
                 mChromePdfViewerFragment = (ChromePdfViewerFragment) fragment;
                 mChromePdfViewerFragment.setDelegate(this);
+                mChromePdfViewerFragment.setPagesPerRow(false);
                 if (mPdfFilePath == null) mPdfFilePath = mChromePdfViewerFragment.getFilePath();
                 String restoredFileName = mChromePdfViewerFragment.getFileName();
                 if (mTitle == null && restoredFileName != null) mTitle = restoredFileName;
@@ -798,8 +799,18 @@ public class PdfCoordinator
             }
         }
 
+        @VisibleForTesting
+        static int getSafePageIndex(int pageIndex, int pageCount) {
+            return pageCount > 0
+                    ? Math.min(Math.max(0, pageIndex), pageCount - 1)
+                    : Math.max(0, pageIndex);
+        }
+
         void scrollToPage(int pageIndex) {
             if (mPdfView != null) {
+                PdfDocument pdfDocument = mPdfView.getPdfDocument();
+                int pageCount = pdfDocument != null ? pdfDocument.getPageCount() : 0;
+                int safePageIndex = getSafePageIndex(pageIndex, pageCount);
                 // 1. Get the current height of the view in pixels.
                 float viewHeightPx = mPdfView.getHeight();
 
@@ -814,7 +825,7 @@ public class PdfCoordinator
 
                 // 4. Use the single-argument scrollToPosition.
                 // The internal logic will center this offset, resulting in a top-aligned page.
-                mPdfView.scrollToPosition(new PdfPoint(pageIndex, 0f, yOffsetPoints));
+                mPdfView.scrollToPosition(new PdfPoint(safePageIndex, 0f, yOffsetPoints));
             }
         }
 
@@ -885,8 +896,11 @@ public class PdfCoordinator
             PdfDocument pdfDocument = pdfView.getPdfDocument();
             assert pdfDocument != null;
 
+            int pageCount = pdfDocument.getPageCount();
+            int safePageIndex = getSafePageIndex(pageIndex, pageCount);
+
             pdfDocument.getPageInfo(
-                    pageIndex,
+                    safePageIndex,
                     new Continuation<PageInfo>() {
                         @Override
                         public CoroutineContext getContext() {
@@ -1034,6 +1048,15 @@ public class PdfCoordinator
     @Override
     public void resetLoadState() {
         mIsPdfLoaded = false;
+        if (mChromePdfViewerFragment != null) {
+            mChromePdfViewerFragment.setPagesPerRow(false);
+        }
+        // Reset two-pages-per-row state early so the overflow menu doesn't show a stale label while
+        // loading, and to prevent permanent out-of-sync state if loading fails or is aborted before
+        // onDocumentLoaded() is invoked.
+        if (mToolbarCoordinator != null) {
+            mToolbarCoordinator.resetTwoPagesPerRow();
+        }
     }
 
     private void loadPdfFile() {
@@ -1055,6 +1078,12 @@ public class PdfCoordinator
     public void reload() {
         if (mUri == null) {
             return;
+        }
+        // Reset two-pages-per-row state early so the overflow menu doesn't show a stale label while
+        // reloading, and to prevent permanent out-of-sync state if the reload fails or is aborted
+        // before onDocumentLoaded() is invoked.
+        if (mToolbarCoordinator != null) {
+            mToolbarCoordinator.resetTwoPagesPerRow();
         }
         int page = -1;
         float zoom = -1f;
@@ -1087,6 +1116,10 @@ public class PdfCoordinator
         args.putFloat(ChromePdfViewerFragment.KEY_SAVED_ZOOM, zoom);
         args.putBoolean(ChromePdfViewerFragment.KEY_RESTORE_POSITION_PENDING, pending);
         mChromePdfViewerFragment.setArguments(args);
+
+        if (mView.getParent() == null) {
+            return;
+        }
 
         // Add new fragment and load document again.
         loadPdfInternal();

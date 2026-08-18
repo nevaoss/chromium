@@ -9,6 +9,7 @@
 #include "base/byte_size.h"
 #include "base/check.h"
 #include "base/command_line.h"
+#include "base/files/file_util.h"
 #include "base/functional/callback_helpers.h"
 #include "base/memory/weak_ptr.h"
 #include "base/run_loop.h"
@@ -30,6 +31,7 @@
 #include "components/optimization_guide/core/model_execution/test/fake_model_assets.h"
 #include "components/optimization_guide/core/model_execution/test/fake_model_broker.h"
 #include "components/optimization_guide/core/model_execution/test/test_on_device_model_component_state_manager.h"
+#include "components/optimization_guide/core/optimization_guide_constants.h"
 #include "components/optimization_guide/core/optimization_guide_enums.h"
 #include "components/optimization_guide/core/optimization_guide_features.h"
 #include "components/optimization_guide/core/optimization_guide_switches.h"
@@ -55,6 +57,7 @@ using model_execution::prefs::localstate::
     kLastTimeEligibleForOnDeviceModelDownload;
 using model_execution::prefs::localstate::kLastUsageByFeature;
 using model_execution::prefs::localstate::kOnDeviceAiUserSettingsEnabled;
+using model_execution::prefs::localstate::kOnDevicePerformanceClassGPUId;
 using model_execution::prefs::localstate::kOnDevicePerformanceClassVersion;
 using ::on_device_model::mojom::PerformanceClass;
 
@@ -454,6 +457,57 @@ TEST_F(OnDeviceModelComponentTest, UninstallNeededDueToDiskSpace) {
       1);
 }
 
+TEST_F(OnDeviceModelComponentTest, InsufficientDiskSpaceForCaches) {
+  DoStartup();
+  EnsurePerformanceClassAvailable();
+  EXPECT_TRUE(WaitUntilInstallerRegistered());
+
+  auto asset = std::make_unique<FakeBaseModelAsset>(AllHints());
+  broker_.component_state().Install(std::move(asset));
+  task_environment_.RunUntilIdle();
+
+  EXPECT_EQ(manager().GetDebugState().status_, OnDeviceModelStatus::kReady);
+
+  // Set free space below 10 GiB requirement for building caches.
+  broker_.component_state().SetFreeDiskSpace(base::GiBU(8));
+  SimulateShutdown();
+  DoStartup();
+  EnsurePerformanceClassAvailable();
+  EXPECT_TRUE(WaitUntilInstallerRegistered());
+  task_environment_.RunUntilIdle();
+
+  // Without existing cache files, status should be
+  // kInsufficientDiskSpaceForCaches.
+  EXPECT_EQ(manager().GetDebugState().status_,
+            OnDeviceModelStatus::kInsufficientDiskSpaceForCaches);
+}
+
+TEST_F(OnDeviceModelComponentTest, CachesAlreadyExistWithLowDiskSpace) {
+  DoStartup();
+  EnsurePerformanceClassAvailable();
+  EXPECT_TRUE(WaitUntilInstallerRegistered());
+
+  auto asset = std::make_unique<FakeBaseModelAsset>(AllHints());
+  // Create a non-empty cache file in the install directory.
+  ASSERT_TRUE(
+      base::WriteFile(asset->path().Append(kWeightCacheFile), "cache_data"));
+
+  broker_.component_state().Install(std::move(asset));
+  task_environment_.RunUntilIdle();
+
+  // Set free space below 10 GiB requirement for building caches.
+  broker_.component_state().SetFreeDiskSpace(base::GiBU(8));
+  SimulateShutdown();
+  DoStartup();
+  EnsurePerformanceClassAvailable();
+  EXPECT_TRUE(WaitUntilInstallerRegistered());
+  task_environment_.RunUntilIdle();
+
+  // Since caches already exist on disk, model should be kReady despite low disk
+  // space.
+  EXPECT_EQ(manager().GetDebugState().status_, OnDeviceModelStatus::kReady);
+}
+
 TEST_F(OnDeviceModelComponentTest, KeepInstalledWhileNotEligible) {
   // If the model is already installed, we don't uninstall right away.
 
@@ -492,6 +546,8 @@ TEST_F(OnDeviceModelComponentTest, KeepInstalledWhileNotAllowed) {
   SimulateShutdown();
 
   broker_.local_state().SetString(kOnDevicePerformanceClassVersion, "0.0.0.1");
+  broker_.local_state().SetString(kOnDevicePerformanceClassGPUId,
+                                  "abcd:5678:1.0.0");
   // This performance class is not supported with `hints`.
   broker_.service_settings().performance_class = PerformanceClass::kVeryLow;
   DoStartup();
@@ -519,6 +575,8 @@ TEST_F(OnDeviceModelComponentTest, NeedsPerformanceClassUpdateEveryStartup) {
 
   broker_.launcher().clear_did_launch_service();
   broker_.service_settings().performance_class = PerformanceClass::kLow;
+  broker_.local_state().SetString(kOnDevicePerformanceClassGPUId,
+                                  "abcd:5678:1.0.0");
   DoStartup();
   EXPECT_FALSE(classifier().IsPerformanceClassAvailable());
   base::RunLoop run_loop2;

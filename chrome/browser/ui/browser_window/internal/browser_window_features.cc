@@ -576,7 +576,7 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
               profile, browser->GetTabStripModel(), browser->GetSessionID());
     }
 
-    if (organizer_panel::IsOrganizerPanelVisibleForProfile(profile)) {
+    if (organizer_panel::IsOrganizerPanelFeatureEnabled()) {
       organizer_panel_state_controller_ =
           GetUserDataFactory().CreateInstance<OrganizerPanelStateController>(
               *browser, browser, browser_actions_->root_action_item());
@@ -804,7 +804,9 @@ void BrowserWindowFeatures::InitPostWindowConstruction(Browser* browser) {
 
   live_tab_context_ = std::make_unique<BrowserLiveTabContext>(
       browser, browser->GetTabStripModel(), profile, browser->GetWindow(),
-      browser->GetType(), browser->app_name(), browser->GetSessionID());
+      browser->GetType(),
+      BrowserInitState::From(browser)->create_params().app_name,
+      browser->GetSessionID());
 
   if (browser_view) {
     if (base::FeatureList::IsEnabled(ntp_features::kNtpFooter)) {
@@ -851,7 +853,7 @@ void BrowserWindowFeatures::InitPostWindowConstruction(Browser* browser) {
       browser, browser->GetTabStripModel(), browser->GetSessionID(),
       browser->GetType());
 
-  if (browser->is_type_normal() ||
+  if (browser->GetType() == BrowserWindowInterface::Type::TYPE_NORMAL ||
       browser->GetType() == BrowserWindowInterface::Type::TYPE_APP) {
     toast_service_ = std::make_unique<ToastService>(browser);
   }
@@ -890,7 +892,7 @@ void BrowserWindowFeatures::InitPostWindowConstruction(Browser* browser) {
   // omnibox and a tab strip). By default most new features should be
   // instantiated in this block (please keep this list ordered without taking
   // into consideration buildflags, repeating buildflags is ok):
-  if (browser->is_type_normal()) {
+  if (browser->GetType() == BrowserWindowInterface::Type::TYPE_NORMAL) {
     if (browser_view) {
       if (base::FeatureList::IsEnabled(features::kGlicActorUi)) {
         std::vector<std::pair<views::WebView*, ActorOverlayWebView*>>
@@ -944,13 +946,13 @@ void BrowserWindowFeatures::InitPostWindowConstruction(Browser* browser) {
     // Cannot be in Init since needs to listen to the fullscreen controller
     // and location bar view which are initialized after Init.
     if (lens::features::IsLensOverlayEnabled()) {
-      views::View* location_bar = nullptr;
+      LocationBar* location_bar = nullptr;
       // TODO(crbug.com/360163254): We should really be using
       // Browser::GetBrowserView, which always returns a non-null BrowserView
       // in production, but this crashes during unittests using
       // BrowserWithTestWindowTest; these should eventually be refactored.
       if (browser_view) {
-        location_bar = browser_view->GetLocationBarView();
+        location_bar = browser_view->GetLocationBar();
       }
       lens_overlay_entry_point_controller_->Initialize(
           browser, browser_command_controller_.get(), location_bar);

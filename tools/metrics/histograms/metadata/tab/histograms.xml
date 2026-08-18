@@ -45,6 +45,7 @@ chromium-metrics-reviews@google.com.
   <variant name="KeyboardShortcut" summary="created via keyboard shortcut"/>
   <variant name="LinkClick" summary="created via link click"/>
   <variant name="LinkContextMenu" summary="created via link context menu"/>
+  <variant name="MacMenuBar" summary="created via Mac menu bar"/>
   <variant name="NewTabButton" summary="created via new tab button"/>
   <variant name="TabContextMenu" summary="created via tab context menu"/>
   <variant name="ToolbarButton" summary="created via toolbar button"/>
@@ -2324,7 +2325,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Tabs.PageLoad.TimeSinceCreated2" units="ms"
-    expires_after="2026-09-13">
+    expires_after="2027-01-17">
   <owner>emshack@chromium.org</owner>
   <owner>top-chrome-desktop-ui@google.com</owner>
   <summary>
@@ -2640,7 +2641,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Tabs.Startup.TabCount2.{TabModelSelectorType}.DuplicateTabIds"
-    units="count" expires_after="2026-09-06">
+    units="count" expires_after="2027-09-06">
   <owner>wylieb@google.com</owner>
   <owner>clank-tab-dev@google.com</owner>
   <summary>
@@ -2741,7 +2742,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Tabs.TabCount.{TabStripMode}" units="tabs"
-    expires_after="2026-11-29">
+    expires_after="2027-01-31">
   <owner>agale@chromium.org</owner>
   <owner>top-chrome-desktop-ui@google.com</owner>
   <summary>
@@ -2946,22 +2947,6 @@ chromium-metrics-reviews@google.com.
     We also have metrics measuring time for widget construction. Please refer to
     Tabs.TabSearch.WindowTimeToShowUncachedWebView and
     Tabs.TabSearch.WindowTimeToShowCachedWebView.
-  </summary>
-</histogram>
-
-<histogram name="Tabs.TabSearch.CloseAction" enum="TabSearchCloseActions"
-    expires_after="2027-01-17">
-  <owner>tluk@chromium.org</owner>
-  <owner>robliao@chromium.org</owner>
-  <summary>
-    Tab Search is a feature that allows users to better search for and switch to
-    their desired tabs. The Tab Search UI is shown in a bubble anchored to an
-    element of the UI in the browser window.
-
-    The bubble is dismissed when it loses focus or the escape key is pressed.
-    This metric tracks if the UI bubble was dismissed as a result of an action
-    taken from within the UI (such as switching to an open tab) or dismissed
-    without direct interaction with the Tab Search UI.
   </summary>
 </histogram>
 
@@ -3855,7 +3840,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="TabStrip.SplitView.Created" enum="SplitTabCreatedSource"
-    expires_after="2026-11-29">
+    expires_after="2027-01-31">
   <owner>agale@chromium.org</owner>
   <owner>top-chrome-desktop-ui@google.com</owner>
   <summary>
@@ -4033,7 +4018,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="TabStrip.{TabStripMode}.TabDragDestination"
-    enum="TabDragDestination" expires_after="2026-11-29">
+    enum="TabDragDestination" expires_after="2027-01-31">
   <owner>kunaldaftari@google.com</owner>
   <owner>top-chrome-desktop-ui@google.com</owner>
   <summary>
@@ -4051,7 +4036,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="TabStrip.{TabStripMode}.TabDragDuration" units="ms"
-    expires_after="2026-11-29">
+    expires_after="2027-01-31">
   <owner>kunaldaftari@google.com</owner>
   <owner>top-chrome-desktop-ui@google.com</owner>
   <summary>

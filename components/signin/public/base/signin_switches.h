@@ -292,6 +292,8 @@ COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kEnableAccountPreviewEntityPreviews);
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kEnableAccountPreviewPreferredAccount);
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+extern const base::FeatureParam<bool> kAccountPreviewDataPersistAccounts;
 
 #if BUILDFLAG(IS_ANDROID)
 // Enables the use of 1P app account information on Android in preferred account
@@ -682,7 +684,7 @@ BASE_DECLARE_FEATURE(kPreFirstRunDesktopRefresh);
 // enabled (see `kPreFirstRunDesktopRefresh`, `kFirstRunDesktopRevamp`,
 // `kFirstRunDesktopRefresh` and `kFirstRunDesktopChoiceScreenRefresh` flags).
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
-bool IsPreFirstRunDesktopRefreshEnabled(bool is_in_search_engine_choice_region);
+bool IsPreFirstRunDesktopRefreshEnabled();
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)

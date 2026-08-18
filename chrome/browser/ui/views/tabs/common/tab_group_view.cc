@@ -262,7 +262,7 @@ void TabGroupView::UpdateChildVisibilityForCollapseState(bool collapsed) {
   if (!collection_node_) {
     return;
   }
-  group_line_->SetVisible(!collapsed);
+  group_line_->SetVisible(!collapsed && !IsGroupFocused());
   for (auto* child : collection_node_->GetDirectChildren()) {
     child->SetVisible(!collapsed);
   }
@@ -446,6 +446,14 @@ void TabGroupView::ShiftGroupDown() {
   }
   const TabGroup* group = GetTabGroupFromNode(collection_node_);
   collection_node_->GetController()->ShiftGroupDown(group->id());
+}
+
+bool TabGroupView::IsGroupFocused() const {
+  if (!collection_node_ || !collection_node_->GetController()) {
+    return false;
+  }
+  return collection_node_->GetController()->GetFocusedGroup() ==
+         GetTabGroup().id();
 }
 
 BEGIN_METADATA(TabGroupView)

@@ -79,6 +79,7 @@ Niektoré funkcie nemusia byť k dispozícii a zmeny vykonané v predvoľbách s
 <translation id="1698376642261615901">Google Chrome je webový prehliadač, ktorý spúšťa webové stránky a aplikácie rýchlosťou blesku. Je rýchly, stabilný a jednoduchý. Má v sebe vstavanú ochranu pred škodlivým softvérom a neoprávneným získavaním údajov, vďaka ktorej je prehliadanie webu bezpečnejšie.</translation>
 <translation id="1713301662689114961">{0,plural, =1{Chrome sa znova spustí o 1 hodinu}few{Chrome sa znova spustí o # hodiny}many{Chrome sa znova spustí o # hodiny}other{Chrome sa znova spustí o # hodín}}</translation>
 <translation id="1722488837206509557">Budete si môcť vybrať z dostupných zariadení a zobraziť v nich obsah.</translation>
+<translation id="1724094881572874997">Keď budete Chrome používať s prihláseným účtom, vaša organizácia si bude môcť prezerať alebo spravovať určité informácie, aby zabezpečila vašu prácu v tomto prehliadači.</translation>
 <translation id="177180974022074201">Vyskúšať s Gemini v Chrome</translation>
 <translation id="1786003790898721085">Skontrolujte, či ste sa v zariadení <ph name="TARGET_DEVICE_NAME" /> prihlásili do Chromu, a potom to skúste odoslať znova.</translation>
 <translation id="1786044937610313874">Odkazy sa otvárajú v Chrome</translation>
@@ -416,6 +417,7 @@ Niektoré funkcie môžu byť nedostupné. Zadajte iný adresár profilu alebo p
 <translation id="521447420733633466">Ak zdieľate zariadenie s rodinou a priateľmi, môžu v Chrome prehliadať samostatne a tiež si ho nastaviť podľa vlastných požiadaviek</translation>
 <translation id="5234764350956374838">Ignorovať</translation>
 <translation id="5239627039202700673">Chrome môžete kedykoľvek použiť kliknutím na odkazy v správach, dokumentoch a ďalších aplikáciách</translation>
+<translation id="524751727772074981">S Gemini v Chrome sa môžete pýtať na čokoľvek a kdekoľvek</translation>
 <translation id="5251420635869119124">Hostia môžu používať prehliadač Chrome bez toho, aby po sebe zanechali akékoľvek informácie.</translation>
 <translation id="5271833978500241046">Používajte ich spolu s ďalšími funkciami Gemini v Chrome</translation>
 <translation id="5286907366254680517">Rozpoznané</translation>

@@ -8,7 +8,6 @@
 #import <UIKit/UIKit.h>
 
 #import "ios/chrome/browser/keyboard/ui_bundled/key_command_actions.h"
-#import "ios/chrome/browser/keyboard/ui_bundled/responder_chaining.h"
 #import "ios/chrome/browser/shared/ui/util/ui_view_controller_with_display_tracing.h"
 #import "ios/chrome/browser/shared/ui/util/uikit_ui_util.h"
 #import "ios/chrome/browser/tab_switcher/ui_bundled/tab_grid/grid/disabled_grid_view_controller.h"
@@ -108,7 +107,6 @@ enum class TabGridPageConfiguration {
                                           DisabledGridViewControllerDelegate,
                                           GridConsumer,
                                           KeyCommandActions,
-                                          ResponderChaining,
                                           TabGridConsumer,
                                           TabGridIdleStatusHandler,
                                           TabGridToolbarsMainTabGridDelegate,
@@ -168,6 +166,9 @@ enum class TabGridPageConfiguration {
 // Whether the primary signed-in account is subject to parental controls.
 @property(nonatomic, assign) BOOL isSubjectToParentalControls;
 
+// Whether the Swipe to Incognito IPH should be presented when the view appears.
+@property(nonatomic, assign) BOOL shouldShowSwipeToIncognitoIPH;
+
 // Disabled tab view controllers only available when a certain browser mode is
 // disabled.
 @property(nonatomic, weak) UIViewController* regularDisabledGridViewController;
@@ -222,6 +223,10 @@ enum class TabGridPageConfiguration {
 // while the active browser is being displayed, which prevents any visual
 // glitches or TabGrid leakage when the grid should not be visible.
 - (void)setContentVisible:(BOOL)visible;
+
+// Presents the Swipe to Incognito IPH if the user is eligible.
+- (void)maybeShowSwipeToIncognitoIPH;
+
 @end
 
 #endif  // IOS_CHROME_BROWSER_TAB_SWITCHER_UI_BUNDLED_TAB_GRID_TAB_GRID_VIEW_CONTROLLER_H_

@@ -219,11 +219,6 @@ chromium-metrics-reviews@google.com.
 
 <!-- LINT.ThenChange(//net/socket/stream_socket_close_reason.h:StreamSocketCloseReason) -->
 
-<variants name="StructuredHeaderBackend">
-  <variant name="Cpp" summary="the legacy C++ parser"/>
-  <variant name="Rust" summary="the new Rust parser"/>
-</variants>
-
 <variants name="StructuredHeaderType">
   <variant name="Dictionary" summary="a Dictionary"/>
   <variant name="Item" summary="an Item"/>
@@ -885,7 +880,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="HttpCache.AccessToDone2{HttpCacheAccessToDoneCases}"
-    units="ms" expires_after="2026-11-29">
+    units="ms" expires_after="2027-01-31">
   <owner>morlovich@chromium.org</owner>
   <owner>olivierli@chromium.org</owner>
   <summary>
@@ -915,7 +910,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="HttpCache.BeforeSend{HttpCacheBeforeSendCases}" units="ms"
-    expires_after="2026-11-29">
+    expires_after="2027-01-31">
   <owner>morlovich@chromium.org</owner>
   <owner>yhirano@chromium.org</owner>
   <summary>
@@ -1651,7 +1646,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="HttpCache.TotalDiskCacheTimePerTransaction.{AccessType}"
-    units="ms" expires_after="2026-11-29">
+    units="ms" expires_after="2027-01-31">
   <owner>bashi@chromium.org</owner>
   <owner>blink-network-stack@google.com</owner>
   <summary>
@@ -1976,7 +1971,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Net.CertVerifier.DoVerifyOnWorkerThreadTime{HostType}"
-    units="ms" expires_after="2026-11-29">
+    units="ms" expires_after="2027-01-31">
   <owner>nidhijaju@chromium.org</owner>
   <owner>chrome-network-stack@google.com</owner>
   <summary>
@@ -2960,7 +2955,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Net.DNS.DnsTransaction.SecureValidated.{DohProviderId}FailureError"
-    enum="NetErrorCodes" expires_after="2026-11-29">
+    enum="NetErrorCodes" expires_after="2027-01-31">
   <owner>awillia@chromium.org</owner>
   <owner>src/net/dns/OWNERS</owner>
   <summary>
@@ -3012,7 +3007,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Net.DNS.DnsTransaction.{DohProviderId}{Protocol}.SessionSource"
-    enum="NetworkSessionSource" expires_after="2026-11-29">
+    enum="NetworkSessionSource" expires_after="2027-01-31">
   <owner>bashi@chromium.org</owner>
   <owner>blink-network-stack@google.com</owner>
   <summary>
@@ -3054,7 +3049,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Net.DNS.DnsTransaction.{DohProviderId}{Protocol}.{SessionSource}.{EarlyDataStatus}.Time"
-    units="ms" expires_after="2026-11-29">
+    units="ms" expires_after="2027-01-31">
   <owner>bashi@chromium.org</owner>
   <owner>blink-network-stack@google.com</owner>
   <summary>
@@ -3073,7 +3068,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Net.DNS.DnsTransaction.{DohProviderId}{Protocol}.{SessionSource}.{Outcome}Time"
-    units="ms" expires_after="2026-11-29">
+    units="ms" expires_after="2027-01-31">
   <owner>bashi@chromium.org</owner>
   <owner>blink-network-stack@google.com</owner>
   <summary>
@@ -4787,7 +4782,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Net.NetworkTransaction.Create{StreamType}Time3{HostType}.{Protocol}{AddressFamily}"
-    units="ms" expires_after="2026-11-29">
+    units="ms" expires_after="2027-01-31">
   <owner>bashi@chromium.org</owner>
   <owner>blink-network-stack@google.com</owner>
   <summary>Deprecated. Replaced by Create{StreamType}Time4.</summary>
@@ -4810,7 +4805,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Net.NetworkTransaction.Create{StreamType}Time4{HostType}.{Protocol}{AddressFamily}"
-    units="ms" expires_after="2026-11-29">
+    units="ms" expires_after="2027-01-31">
   <owner>bashi@chromium.org</owner>
   <owner>blink-network-stack@google.com</owner>
   <summary>
@@ -7049,8 +7044,8 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Net.QuicSession.PathValidationSuccess{ConnectionMigrationCause}"
-    enum="BooleanSuccess" expires_after="2026-08-09">
-  <owner>renjietang@chromium.org</owner>
+    enum="BooleanSuccess" expires_after="2027-08-09">
+  <owner>martinduke@google.com</owner>
   <owner>src/net/quic/OWNERS</owner>
   <summary>
     The result of path validation according to different migration causes.
@@ -8131,9 +8126,9 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Net.RestrictedCookieManager.GetCookiesString.Duration.Subsampled"
-    units="microseconds" expires_after="2026-08-16">
-  <owner>acondor@chromium.org</owner>
-  <owner>clank-performance-team@google.com</owner>
+    units="microseconds" expires_after="2027-07-07">
+  <owner>victorvianna@google.com</owner>
+  <owner>woa-performance-team+alerts@google.com</owner>
   <summary>
     Records the time spent executing RestrictedCookieManager::GetCookiesString,
     plus its callback if the callback is invoked synchronously.
@@ -8147,7 +8142,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Net.RestrictedCookieManager.PartitionedCookiesInScript.Subsampled"
-    units="cookies" expires_after="2026-07-22">
+    units="cookies" expires_after="2026-10-26">
   <owner>dylancutler@google.com</owner>
   <owner>src/net/cookies/OWNERS</owner>
   <summary>
@@ -8156,6 +8151,9 @@ chromium-metrics-reviews@google.com.
 
     Subsampled to 1/1000. See kHistogramSampleProbability in
     net/cookies/cookie_constants.h for details.
+
+    Warning: this histogram was expired from 2026-07-22 to 2026-08-25; data may
+    be missing.
   </summary>
 </histogram>
 
@@ -9685,30 +9683,28 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Net.StructuredHeaders.Parse{Type}.{Backend}Success"
+<histogram name="Net.StructuredHeaders.Parse{Type}.Success"
     enum="BooleanSuccess" expires_after="2027-05-28">
   <owner>apaseltiner@chromium.org</owner>
   <owner>net-dev@chromium.org</owner>
   <summary>
-    The result (success or failure) of parsing a structured-header {Type} using
-    {Backend}. See crbug.com/377941140 for more details.
+    The result (success or failure) of parsing a structured-header {Type}. See
+    crbug.com/377941140 for more details.
   </summary>
   <token key="Type" variants="StructuredHeaderType"/>
-  <token key="Backend" variants="StructuredHeaderBackend"/>
 </histogram>
 
-<histogram name="Net.StructuredHeaders.Parse{Type}.{Backend}Time"
-    units="microseconds" expires_after="2027-05-28">
+<histogram name="Net.StructuredHeaders.Parse{Type}.Time" units="microseconds"
+    expires_after="2027-05-28">
   <owner>apaseltiner@chromium.org</owner>
   <owner>net-dev@chromium.org</owner>
   <summary>
-    The time taken to parse a structured-header {Type} using {Backend} via the
+    The time taken to parse a structured-header {Type} via the
     net::structured_headers::Parse{Type} function. Recorded for all clients, not
     just ones with high-resolution time, and recorded regardless of whether
     parsing succeeds or fails. See crbug.com/377941140 for more details.
   </summary>
   <token key="Type" variants="StructuredHeaderType"/>
-  <token key="Backend" variants="StructuredHeaderBackend"/>
 </histogram>
 
 <histogram name="Net.TaskRunner.RequestPriority" enum="RequestPriority"
@@ -9758,7 +9754,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Net.TcpConnectAttempt.Latency.Success" units="ms"
-    expires_after="2026-11-29">
+    expires_after="2027-01-31">
   <owner>bashi@chromium.org</owner>
   <owner>src/net/OWNERS</owner>
   <summary>
@@ -9890,7 +9886,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Net.TrustTokens.OperationOutcome.{TrustTokenOperationType}"
-    enum="TrustTokenOperationStatus" expires_after="2026-11-29">
+    enum="TrustTokenOperationStatus" expires_after="2027-01-31">
   <owner>svaldez@chromium.org</owner>
   <owner>timhuber@google.com</owner>
   <summary>
@@ -10584,7 +10580,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="SimpleCache.{CacheInstance}IndexInitializeMethod"
-    enum="SimpleCacheIndexInitializeMethod" expires_after="2026-11-29">
+    enum="SimpleCacheIndexInitializeMethod" expires_after="2027-01-31">
   <owner>wanderview@chromium.org</owner>
   <owner>morlovich@chromium.org</owner>
   <summary>

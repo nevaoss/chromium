@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include "base/android/device_info.h"
 #include "base/test/scoped_feature_list.h"
 #include "build/build_config.h"
 #include "content/browser/accessibility/ax_style_data.h"
@@ -1603,7 +1604,10 @@ TEST_F(BrowserAccessibilityAndroidTest, TestJavaNodeCache_NodeDeleted) {
   EXPECT_TRUE(actual.contains(2));
 }
 
-TEST_F(BrowserAccessibilityAndroidTest, TestJavaNodeCache_NodeUnignored) {
+TEST_F(BrowserAccessibilityAndroidTest, DISABLED_TestJavaNodeCache_NodeUnignored) {
+  if (base::android::device_info::is_automotive()) {
+    GTEST_SKIP() << "This test fails on automotive, see crbug.com/542087826.";
+  }
   ui::AXTreeUpdate tree;
   tree.root_id = 1;
   tree.nodes.resize(3);

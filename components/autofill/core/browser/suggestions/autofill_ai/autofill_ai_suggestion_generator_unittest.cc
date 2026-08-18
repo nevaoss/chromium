@@ -31,6 +31,7 @@
 #include "components/autofill/core/browser/test_utils/entity_data_test_utils.h"
 #include "components/autofill/core/browser/webdata/autofill_ai/entity_table.h"
 #include "components/autofill/core/common/autofill_features.h"
+#include "components/autofill/core/common/autofill_prefs.h"
 #include "components/feature_engagement/public/feature_constants.h"
 #include "components/strings/grit/components_strings.h"
 #include "testing/gmock/include/gmock/gmock.h"
@@ -1205,7 +1206,9 @@ TEST_F(AutofillAiSuggestionGeneratorTest,
       {.record_type = EntityInstance::RecordType::kPersonalContext})});
   SetForm({FLIGHT_RESERVATION_FLIGHT_NUMBER});
 
-  client().set_should_show_personal_context_ambient_autofill_notice(true);
+  client()
+      .GetPersonalContextFirstRunService()
+      ->set_should_show_ambient_autofill_notice(true);
 #if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
   EXPECT_THAT(
       CreateAutofillAiFillingSuggestions(field(0)),
@@ -1226,7 +1229,9 @@ TEST_F(AutofillAiSuggestionGeneratorTest,
       {.record_type = EntityInstance::RecordType::kLocal})});
   SetForm({FLIGHT_RESERVATION_FLIGHT_NUMBER});
 
-  client().set_should_show_personal_context_ambient_autofill_notice(true);
+  client()
+      .GetPersonalContextFirstRunService()
+      ->set_should_show_ambient_autofill_notice(true);
 
   EXPECT_THAT(
       CreateAutofillAiFillingSuggestions(field(0)),
@@ -1242,7 +1247,9 @@ TEST_F(AutofillAiSuggestionGeneratorTest,
       {.record_type = EntityInstance::RecordType::kPersonalContext})});
   SetForm({FLIGHT_RESERVATION_FLIGHT_NUMBER});
 
-  client().set_should_show_personal_context_ambient_autofill_notice(false);
+  client()
+      .GetPersonalContextFirstRunService()
+      ->set_should_show_ambient_autofill_notice(false);
 
   EXPECT_THAT(
       CreateAutofillAiFillingSuggestions(field(0)),
@@ -1882,17 +1889,17 @@ TEST_F(AutofillAiSuggestionGeneratorOrderShipmentTest,
       {.id = u"123",
        .merchant_domain = u"example.com",
        .record_type = EntityInstance::RecordType::kServerWallet});
-  EntityInstance order_local = test::GetOrderEntityInstanceWithRandomGuid(
+  EntityInstance pcontext = test::GetOrderEntityInstanceWithRandomGuid(
       {.id = u"123",
        .merchant_domain = u"example.com",
-       .record_type = EntityInstance::RecordType::kLocal});
+       .record_type = EntityInstance::RecordType::kPersonalContext});
 
-  SetEntities({order_local, order_server});
+  SetEntities({pcontext, order_server});
   SetForm({ORDER_ID});
 
   std::vector<Suggestion> res = CreateAutofillAiFillingSuggestions(field(0));
-  // Since `order_local` is a subset/duplicate of `order_server`, only one child
-  // suggestion should be generated in the fallback menu.
+  // Since `order_pcontext` is a subset/duplicate of `order_server`, only one
+  // child suggestion should be generated in the fallback menu.
   EXPECT_THAT(res,
               ShoppingSuggestionsAre(AllOf(
                   SuggestionTypeHasTextAndAcceptability(
@@ -2288,6 +2295,128 @@ TEST_F(AutofillAiSuggestionGeneratorTest,
               SuggestionTypeHasTextAndAcceptability(
                   SuggestionType::kFillAutofillAi, u"TR789",
                   Suggestion::Acceptability::kSelectableAndAcceptable)))));
+}
+
+TEST_F(AutofillAiSuggestionGeneratorTest,
+       PrivateInferenceNoticeShownWhenambientAutofillNoticeNeverShown) {
+  base::test::ScopedFeatureList scoped_feature_list(
+      features::kAutofillAiUsePrivateAi);
+  SetEntities({GetPassportEntityInstanceWithRandomGuid()});
+  SetForm({PASSPORT_NUMBER});
+
+  std::vector<Suggestion> suggestions =
+      CreateAutofillAiFillingSuggestions(field(0));
+  EXPECT_THAT(suggestions,
+              Contains(EqualsSuggestion(
+                  SuggestionType::kAutofillAiPrivateInferenceNotice)));
+}
+
+TEST_F(AutofillAiSuggestionGeneratorTest,
+       PrivateInferenceNoticeShownWhenGeminiAckedLongEnoughAgo) {
+  base::test::ScopedFeatureList scoped_feature_list(
+      features::kAutofillAiUsePrivateAi);
+  client().GetPrefs()->SetTime(
+      prefs::kAutofillAiPrivateInferenceNoticeFirstShownTimestamp,
+      base::Time::Now() - base::Days(10));
+  // Because the acked was done 7 days ago, creating private inference notice
+  // suggestion is allowed.
+  client().GetPrefs()->SetTime(
+      prefs::kAmbientAutofillNoticeAcknowledgedTimestamp,
+      base::Time::Now() - base::Days(7));
+
+  SetEntities({GetPassportEntityInstanceWithRandomGuid()});
+  SetForm({PASSPORT_NUMBER});
+
+  std::vector<Suggestion> suggestions =
+      CreateAutofillAiFillingSuggestions(field(0));
+  EXPECT_THAT(suggestions,
+              Contains(EqualsSuggestion(
+                  SuggestionType::kAutofillAiPrivateInferenceNotice)));
+}
+
+TEST_F(AutofillAiSuggestionGeneratorTest,
+       PrivateInferenceNoticeNotShownWhenAmbientAutofillShownButNotAcked) {
+  base::test::ScopedFeatureList scoped_feature_list(
+      features::kAutofillAiUsePrivateAi);
+  client().GetPrefs()->SetTime(
+      prefs::kAutofillAiPrivateInferenceNoticeFirstShownTimestamp,
+      base::Time::Now());
+
+  SetEntities({GetPassportEntityInstanceWithRandomGuid()});
+  SetForm({PASSPORT_NUMBER});
+
+  std::vector<Suggestion> suggestions =
+      CreateAutofillAiFillingSuggestions(field(0));
+  EXPECT_THAT(suggestions,
+              Not(Contains(EqualsSuggestion(
+                  SuggestionType::kAutofillAiPrivateInferenceNotice))));
+}
+
+TEST_F(AutofillAiSuggestionGeneratorTest,
+       PrivateInferenceNoticeNotShownWhenAmbientAutofillAckedTooRecently) {
+  base::test::ScopedFeatureList scoped_feature_list(
+      features::kAutofillAiUsePrivateAi);
+  client().GetPrefs()->SetTime(
+      prefs::kAutofillAiPrivateInferenceNoticeFirstShownTimestamp,
+      base::Time::Now() - base::Days(2));
+  // Because the acked was done 1 day ago, creating private inference notice
+  // suggestion is not allowed.
+  client().GetPrefs()->SetTime(
+      prefs::kAmbientAutofillNoticeAcknowledgedTimestamp,
+      base::Time::Now() - base::Days(1));
+
+  SetEntities({GetPassportEntityInstanceWithRandomGuid()});
+  SetForm({PASSPORT_NUMBER});
+
+  std::vector<Suggestion> suggestions =
+      CreateAutofillAiFillingSuggestions(field(0));
+  EXPECT_THAT(suggestions,
+              Not(Contains(EqualsSuggestion(
+                  SuggestionType::kAutofillAiPrivateInferenceNotice))));
+}
+
+TEST_F(AutofillAiSuggestionGeneratorTest,
+       PrivateInferenceNoticeNotShownWhenPrivateInferenceNoticeAcked) {
+  base::test::ScopedFeatureList scoped_feature_list(
+      features::kAutofillAiUsePrivateAi);
+  client().GetPrefs()->SetTime(
+      prefs::kAutofillAiPrivateInferenceNoticeAcknowledgedTimestamp,
+      base::Time::Now());
+
+  SetEntities({GetPassportEntityInstanceWithRandomGuid()});
+  SetForm({PASSPORT_NUMBER});
+
+  std::vector<Suggestion> suggestions =
+      CreateAutofillAiFillingSuggestions(field(0));
+  EXPECT_THAT(suggestions,
+              Not(Contains(EqualsSuggestion(
+                  SuggestionType::kAutofillAiPrivateInferenceNotice))));
+}
+
+TEST_F(AutofillAiSuggestionGeneratorTest,
+       PrivateInferenceNoticeNotShownWhenFeatureDisabled) {
+  SetEntities({GetPassportEntityInstanceWithRandomGuid()});
+  SetForm({PASSPORT_NUMBER});
+
+  std::vector<Suggestion> suggestions =
+      CreateAutofillAiFillingSuggestions(field(0));
+  EXPECT_THAT(suggestions,
+              Not(Contains(EqualsSuggestion(
+                  SuggestionType::kAutofillAiPrivateInferenceNotice))));
+}
+
+TEST_F(AutofillAiSuggestionGeneratorTest,
+       PrivateInferenceNoticeShownEvenWhenNoEntitiesExist) {
+  base::test::ScopedFeatureList scoped_feature_list(
+      features::kAutofillAiUsePrivateAi);
+  SetEntities({});
+  SetForm({PASSPORT_NUMBER});
+
+  std::vector<Suggestion> suggestions =
+      CreateAutofillAiFillingSuggestions(field(0));
+  EXPECT_THAT(suggestions,
+              Contains(EqualsSuggestion(
+                  SuggestionType::kAutofillAiPrivateInferenceNotice)));
 }
 
 }  // namespace

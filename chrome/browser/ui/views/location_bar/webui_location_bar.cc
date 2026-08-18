@@ -18,10 +18,12 @@
 #include "chrome/browser/ui/browser_command_controller.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/interaction/browser_elements.h"
+#include "chrome/browser/ui/layout_constants.h"
 #include "chrome/browser/ui/omnibox/ai_mode_page_action_controller.h"
 #include "chrome/browser/ui/omnibox/chrome_omnibox_client.h"
 #include "chrome/browser/ui/omnibox/omnibox_controller.h"
 #include "chrome/browser/ui/views/bubble_anchor_util_views.h"
+#include "chrome/browser/ui/views/location_bar/location_bar_actions.h"
 #include "chrome/browser/ui/views/location_bar/location_icon_state_helper.h"
 #include "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.h"
 #include "chrome/browser/ui/views/location_bar/selected_keyword_view.h"
@@ -30,6 +32,7 @@
 #include "chrome/browser/ui/views/omnibox/omnibox_popup_closer.h"
 #include "chrome/browser/ui/views/omnibox/omnibox_popup_presenter.h"
 #include "chrome/browser/ui/views/omnibox/omnibox_popup_view_webui.h"
+#include "chrome/browser/ui/views/omnibox/omnibox_popup_webui_base_content.h"
 #include "chrome/browser/ui/views/omnibox/webui_readonly_omnibox.h"
 #include "chrome/browser/ui/views/page_info/page_info_bubble_specification.h"
 #include "chrome/browser/ui/views/page_info/page_info_bubble_view.h"
@@ -40,6 +43,7 @@
 #include "chrome/browser/ui/views/toolbar/webui_toolbar_web_view.h"
 #include "chrome/browser/ui/views/user_education/browser_help_bubble.h"
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
+#include "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_ui.h"
 #include "chrome/common/chrome_features.h"
 #include "components/browser_apis/ui_controllers/toolbar/toolbar_ui_api_data_model.mojom.h"
 #include "components/favicon/content/content_favicon_driver.h"
@@ -159,6 +163,8 @@ void WebUILocationBar::Init(WebUIToolbarControlDelegate* delegate) {
           base::BindRepeating(&WebUILocationBar::OnPopupStateChanged,
                               base::Unretained(this)));
 
+  RegisterOmniboxActions(browser_);
+
   is_initialized_ = true;
 }
 
@@ -221,6 +227,8 @@ void WebUILocationBar::SetFocusWithin(bool focused) {
 
   // Focus state affects whether AI mode button is visible or not.
   RefreshAiModePageAction();
+
+  NotifyFocusChanged();
 }
 
 void WebUILocationBar::FocusLocation(bool is_user_initiated,
@@ -300,6 +308,10 @@ void WebUILocationBar::Revert() {
 
 OmniboxView* WebUILocationBar::GetOmniboxView() {
   return omnibox_view_.get();
+}
+
+OmniboxPopupPresenterDelegate* WebUILocationBar::GetPresenterDelegate() {
+  return this;
 }
 
 OmniboxPopupView* WebUILocationBar::GetOmniboxPopupView() {
@@ -794,6 +806,10 @@ OmniboxPopupFileSelector* WebUILocationBar::GetOmniboxPopupFileSelector()
 OmniboxPopupAimPresenter* WebUILocationBar::GetOmniboxPopupAimPresenter()
     const {
   return omnibox_popup_aim_presenter_.get();
+}
+
+const views::View* WebUILocationBar::GetLocationBarFocusRestoreView() const {
+  return toolbar_delegate_ ? toolbar_delegate_->GetInternalWebView() : nullptr;
 }
 
 bool WebUILocationBar::ShouldChipOverrideLocationIcon() {

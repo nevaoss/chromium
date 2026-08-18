@@ -28,6 +28,8 @@
 #include "ui/base/cocoa/remote_accessibility_api.h"
 
 using base::apple::CFToNSPtrCast;
+using base::apple::ObjCCast;
+using base::apple::ObjCCastStrict;
 
 namespace {
 
@@ -148,7 +150,7 @@ void BrowserAccessibilityManagerMac::FireGeneratedEvent(
   BrowserAccessibility* wrapper = GetFromAXNode(node);
   DCHECK(wrapper);
   BrowserAccessibilityCocoa* native_node =
-      base::apple::ObjCCastStrict<BrowserAccessibilityCocoa>(
+      ObjCCastStrict<BrowserAccessibilityCocoa>(
           wrapper->GetNativeViewAccessible().Get());
 
   // Refer to |AXObjectCache::postPlatformNotification| in WebKit source code.
@@ -215,14 +217,8 @@ void BrowserAccessibilityManagerMac::FireGeneratedEvent(
 
       NSAccessibilityPostNotificationWithUserInfo(
           focus->GetNativeViewAccessible().Get(), mac_notification, user_info);
-
-      NSDictionary* root_user_info =
-          GetUserInfoForSelectedTextChangedNotification(
-              /*omit_keys=*/{NSAccessibilityTextChangeElement});
-
       NSAccessibilityPostNotificationWithUserInfo(
-          root->GetNativeViewAccessible().Get(), mac_notification,
-          root_user_info);
+          root->GetNativeViewAccessible().Get(), mac_notification, user_info);
       return;
     }
     case AXEventGenerator::Event::EXPANDED:
@@ -504,7 +500,7 @@ void BrowserAccessibilityManagerMac::FireNativeMacNotification(
     BrowserAccessibility& node) {
   DCHECK(mac_notification);
   BrowserAccessibilityCocoa* native_node =
-      base::apple::ObjCCastStrict<BrowserAccessibilityCocoa>(
+      ObjCCastStrict<BrowserAccessibilityCocoa>(
           node.GetNativeViewAccessible().Get());
   // The native node should not be null, but could theoretically be null if
   // events fire during tree mutations before platform nodes are fully
@@ -546,7 +542,7 @@ void BrowserAccessibilityManagerMac::OnAtomicUpdateFinished(
       if (ancestor) {
         BrowserAccessibility* obj = GetFromAXNode(ancestor);
         const BrowserAccessibilityCocoa* editable_root =
-            base::apple::ObjCCastStrict<BrowserAccessibilityCocoa>(
+            ObjCCastStrict<BrowserAccessibilityCocoa>(
                 obj->GetNativeViewAccessible().Get());
         if ([editable_root instanceActive]) {
           changed_editable_roots.insert(editable_root);
@@ -619,26 +615,26 @@ void BrowserAccessibilityManagerMac::OnSubtreeWillBeReparented(AXTree* tree,
   }
 }
 
-NSDictionary*
-BrowserAccessibilityManagerMac::GetUserInfoForSelectedTextChangedNotification(
-    std::initializer_list<NSString*> omit_keys) {
+NSDictionary* BrowserAccessibilityManagerMac::
+    GetUserInfoForSelectedTextChangedNotification() {
   NSMutableDictionary* user_info = [NSMutableDictionary dictionary];
   user_info[NSAccessibilityTextStateSyncKey] = @YES;
   user_info[NSAccessibilityTextSelectionDirection] =
       @(AXTextSelectionDirectionUnknown);
   user_info[NSAccessibilityTextSelectionGranularity] =
       @(AXTextSelectionGranularityUnknown);
+  user_info[NSAccessibilityTextSelectionChangedFocus] = @YES;
+
+  // Try to detect when the text selection changes due to a focus change.
+  // This is necessary so that VoiceOver also announces information about the
+  // element that contains this selection.
+  // TODO(mrobinson): Determine definitively what the type of this text
+  // selection change is. This requires passing this information here from
+  // blink.
   BrowserAccessibility* focus_object = GetFocus();
   DCHECK(focus_object);
 
-  // Detect when the text selection changes due to a focus change.
-  // This ensures VoiceOver announces element information when focus moves,
-  // but avoids redundant announcements when only the caret moves within the
-  // same field.
-  bool focus_changed = (focus_object != GetFromAXNode(GetLastFocusedNode()));
-  user_info[NSAccessibilityTextSelectionChangedFocus] = @(focus_changed);
-
-  if (focus_changed) {
+  if (focus_object != GetFromAXNode(GetLastFocusedNode())) {
     user_info[NSAccessibilityTextStateChangeTypeKey] =
         @(AXTextStateChangeTypeSelectionMove);
   } else {
@@ -648,7 +644,7 @@ BrowserAccessibilityManagerMac::GetUserInfoForSelectedTextChangedNotification(
 
   focus_object = focus_object->PlatformGetLowestPlatformAncestor();
   BrowserAccessibilityCocoa* native_focus_object =
-      base::apple::ObjCCast<BrowserAccessibilityCocoa>(
+      ObjCCast<BrowserAccessibilityCocoa>(
           focus_object->GetNativeViewAccessible().Get());
   if (native_focus_object && [native_focus_object instanceActive]) {
     user_info[NSAccessibilityTextChangeElement] = native_focus_object;
@@ -658,10 +654,6 @@ BrowserAccessibilityManagerMac::GetUserInfoForSelectedTextChangedNotification(
       user_info[CFToNSPtrCast(kAXSelectedTextMarkerRangeAttribute)] =
           selected_text;
     }
-  }
-
-  for (NSString* key : omit_keys) {
-    [user_info removeObjectForKey:key];
   }
 
   return user_info;
@@ -710,7 +702,6 @@ BrowserAccessibilityManagerMac::GetUserInfoForValueChangedNotification(
   }
 
   return @{
-    NSAccessibilityTextStateSyncKey : @YES,
     NSAccessibilityTextStateChangeTypeKey : @(AXTextStateChangeTypeEdit),
     NSAccessibilityTextChangeValues : changes,
     NSAccessibilityTextChangeElement : native_node

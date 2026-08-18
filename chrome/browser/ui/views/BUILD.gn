@@ -194,3 +194,68 @@ if (is_win) {
     ]
   }
 }
+
+source_set("hung_renderer_view") {
+  public = [ "hung_renderer_view.h" ]
+  sources = [ "hung_renderer_view.cc" ]
+  public_deps = [
+    "//content/public/browser",
+    "//ui/base",
+    "//ui/views",
+  ]
+  deps = [
+    ":layout_provider",
+    "//base",
+    "//chrome/app:generated_resources",
+    "//chrome/app/theme:theme_resources",
+    "//chrome/browser:browser_process",
+    "//chrome/browser:primitives",
+    "//chrome/browser/hang_monitor",
+    "//chrome/browser/ui:chrome_web_modal_dialog_manager_delegate",
+    "//chrome/browser/ui/browser_window",
+    "//chrome/browser/ui/dialogs:browser_dialogs",
+    "//chrome/browser/ui/hung_renderer",
+    "//chrome/browser/ui/tab_contents",
+    "//chrome/common",
+    "//chrome/common:constants",
+    "//components/constrained_window",
+    "//components/favicon/content",
+    "//components/web_modal",
+    "//ui/gfx",
+  ]
+}
+
+source_set("tab_dialogs_impl") {
+  public = [ "tab_dialogs_views.h" ]
+  sources = [ "tab_dialogs_views.cc" ]
+  public_deps = [
+    "//chrome/browser/ui:tab_dialogs",
+    "//content/public/browser",
+  ]
+  deps = [
+    ":hung_renderer_view",
+    "//chrome/browser/ui/views/passwords:password_bubble_view_base",
+    "//chrome/browser/ui/views/site_data",
+    "//chrome/browser/ui/views/web_apps",
+    "//ui/views",
+  ]
+}
+
+source_set("device_chooser_content_view") {
+  public = [ "device_chooser_content_view.h" ]
+  sources = [ "device_chooser_content_view.cc" ]
+  public_deps = [
+    "//components/permissions",
+    "//ui/views",
+  ]
+  deps = [
+    ":layout_provider",
+    "//base",
+    "//chrome/app:generated_resources",
+    "//components/strings:components_strings",
+    "//components/vector_icons",
+    "//ui/base",
+    "//ui/gfx",
+    "//ui/resources",
+  ]
+}

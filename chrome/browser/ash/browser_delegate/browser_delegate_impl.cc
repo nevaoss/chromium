@@ -45,11 +45,11 @@ BrowserWindowInterface& BrowserDelegateImpl::GetBrowser() const {
 }
 
 BrowserType BrowserDelegateImpl::GetType() const {
-  return FromInternalBrowserType(browser_->type());
+  return FromInternalBrowserType(browser_->GetType());
 }
 
 SessionID BrowserDelegateImpl::GetSessionID() const {
-  return browser_->session_id();
+  return browser_->GetSessionID();
 }
 
 const AccountId& BrowserDelegateImpl::GetAccountId() const {
@@ -123,8 +123,8 @@ aura::Window* BrowserDelegateImpl::GetNativeWindow() const {
 std::optional<webapps::AppId> BrowserDelegateImpl::GetAppId() const {
   // The implementation of `GetAppIdFromApplicationName()` isn't specific to
   // WebApps, although the function resides in web_app_helpers.cc|h.
-  std::string app_id =
-      web_app::GetAppIdFromApplicationName(browser_->app_name());
+  std::string app_id = web_app::GetAppIdFromApplicationName(
+      BrowserInitState::From(&*browser_)->create_params().app_name);
   return app_id.empty() ? std::nullopt : std::optional<webapps::AppId>(app_id);
 }
 
@@ -199,7 +199,7 @@ content::WebContents* BrowserDelegateImpl::NavigateWebApp(
     std::optional<webapps::LaunchParams> launch_params) {
   CHECK(GetType() == BrowserType::kApp || GetType() == BrowserType::kAppPopup)
       << "Unexpected browser type " << static_cast<int>(GetType()) << "("
-      << browser_->type() << ")";
+      << browser_->GetType() << ")";
 
   NavigateParams nav_params(&browser_.get(), url,
                             ui::PAGE_TRANSITION_AUTO_BOOKMARK);
@@ -292,20 +292,8 @@ void BrowserDelegateImpl::SetDevToolsCommandsEnabled(bool enabled) {
 }
 
 void BrowserDelegateImpl::SetTabSwitchCommandsEnabled(bool enabled) {
-  chrome::BrowserCommandController* const command_controller =
-      chrome::BrowserCommandController::From(&browser_.get());
-  command_controller->UpdateCommandEnabled(IDC_SELECT_NEXT_TAB, enabled);
-  command_controller->UpdateCommandEnabled(IDC_SELECT_PREVIOUS_TAB, enabled);
-  command_controller->UpdateCommandEnabled(IDC_CYCLE_TO_NEXT_TAB, enabled);
-  command_controller->UpdateCommandEnabled(IDC_CYCLE_TO_PREV_TAB, enabled);
-  command_controller->UpdateCommandEnabled(IDC_SELECT_TAB_0, enabled);
-  command_controller->UpdateCommandEnabled(IDC_SELECT_TAB_1, enabled);
-  command_controller->UpdateCommandEnabled(IDC_SELECT_TAB_2, enabled);
-  command_controller->UpdateCommandEnabled(IDC_SELECT_TAB_3, enabled);
-  command_controller->UpdateCommandEnabled(IDC_SELECT_TAB_4, enabled);
-  command_controller->UpdateCommandEnabled(IDC_SELECT_TAB_5, enabled);
-  command_controller->UpdateCommandEnabled(IDC_SELECT_TAB_6, enabled);
-  command_controller->UpdateCommandEnabled(IDC_SELECT_TAB_7, enabled);
+  chrome::BrowserCommandController::From(&browser_.get())
+      ->SetTabSwitchCommandsEnabled(enabled);
 }
 
 void BrowserDelegateImpl::ActivateWebContentsAt(size_t index) {

@@ -2196,6 +2196,7 @@ void NetworkContext::CreateWebTransport(
         anticipated_concurrent_incoming_unidirectional_streams,
     std::optional<uint16_t>
         anticipated_concurrent_incoming_bidirectional_streams,
+    std::vector<net::HttpRequestHeaders::HeaderKeyValuePair> additional_headers,
     mojo::PendingRemote<mojom::WebTransportHandshakeClient>
         pending_handshake_client,
     mojo::PendingRemote<mojom::URLLoaderNetworkServiceObserver>
@@ -2213,8 +2214,8 @@ void NetworkContext::CreateWebTransport(
   web_transports_.insert(std::make_unique<WebTransport>(
       url, origin, key, fingerprints, application_protocols, congestion_control,
       anticipated_concurrent_incoming_unidirectional_streams,
-      anticipated_concurrent_incoming_bidirectional_streams, this,
-      std::move(pending_handshake_client),
+      anticipated_concurrent_incoming_bidirectional_streams,
+      std::move(additional_headers), this, std::move(pending_handshake_client),
       std::move(url_loader_network_observer),
       std::move(client_security_state)));
 }
@@ -2293,7 +2294,7 @@ void NetworkContext::CreateHostResolver(
     // different overrides.  But since this is only used for special cases for
     // now, much easier to create entirely separate net::HostResolver instances.
     net::HostResolver::ManagerOptions options;
-    options.insecure_dns_client_enabled = true;
+    options.insecure_dns_mode = net::InsecureDnsMode::kEnabledBuiltIn;
     // Assume additional types are unnecessary for these special cases.
     options.additional_types_via_insecure_dns_enabled = false;
     options.dns_config_overrides = config_overrides.value();
@@ -2841,6 +2842,11 @@ const net::HttpAuthPreferences* NetworkContext::GetHttpAuthPreferences() const {
 
 size_t NetworkContext::NumOpenWebTransports() const {
   return std::ranges::count(web_transports_, false, &WebTransport::torn_down);
+}
+
+WebTransport* NetworkContext::GetWebTransportForTesting() {
+  CHECK_EQ(web_transports_.size(), 1u);
+  return web_transports_.begin()->get();
 }
 
 bool NetworkContext::AllURLLoaderFactoriesAreBoundToNetworkForTesting(

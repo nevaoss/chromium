@@ -113,7 +113,6 @@ test("components_unittests") {
       "test/data/ad_tagging/",
       "test/data/autofill/",
       "test/data/bookmarks/",
-      "test/data/browsing_topics/",
       "test/data/contextual_tasks/",
       "test/data/crx_file/",
       "test/data/custom_handlers/",
@@ -769,7 +768,6 @@ test("components_unittests") {
       "//components/feedback/redaction_tool:unit_tests",
       "//components/keep_alive_registry:unit_tests",
       "//components/manta:unit_tests",
-      "//components/trusted_vault:unit_tests",
     ]
   }
 
@@ -784,6 +782,7 @@ test("components_unittests") {
       # TODO(crbug.com/470475787): Enable this test on Android.
       "//components/soda:unit_tests",
       "//components/storage_monitor:unit_tests",
+      "//components/trusted_vault:unit_tests",
       "//components/web_modal:unit_tests",
       "//components/zoom:unit_tests",
     ]
@@ -1041,7 +1040,6 @@ repack("components_tests_pak") {
     "$root_gen_dir/components/components_resources_100_percent.pak",
     "$root_gen_dir/components/metrics/metrics_server_urls.pak",
     "$root_gen_dir/components/omnibox/resources/omnibox_pedal_synonyms_en-US.pak",
-    "$root_gen_dir/components/plus_addresses/core/browser/resources/strings/plus_addresses_strings_en-US.pak",
     "$root_gen_dir/components/strings/components_branded_strings_en-US.pak",
     "$root_gen_dir/components/strings/components_locale_settings_en-US.pak",
     "$root_gen_dir/components/strings/components_strings_en-US.pak",
@@ -1058,7 +1056,6 @@ repack("components_tests_pak") {
     "//components/autofill/core/browser:autofill_alternative_state_name_map_resources",
     "//components/metrics:server_urls_grd",
     "//components/omnibox/resources:omnibox_pedal_synonyms",
-    "//components/plus_addresses/core/browser/resources/strings",
     "//components/resources",
     "//components/strings",
     "//components/strings:components_variant_strings",
@@ -1508,6 +1505,7 @@ if (is_android) {
       "//components/saved_tab_groups:junit",
       "//components/sensitive_content:junit",
       "//components/signin/public/android:junit",
+      "//components/spellcheck/browser/android:components_spellcheck_junit_tests",
       "//components/stylus_handwriting/android:stylus_handwriting_junit_tests",
       "//components/subresource_filter/android:junit",
       "//components/ukm/android:ukm_junit_tests",

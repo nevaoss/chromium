@@ -111,6 +111,7 @@ source_set("browser_tests") {
   sources = []
   if (!is_android) {
     sources += [
+      "enterprise_skills_provider_browsertest.cc",
       "skills_api_functional_browsertest.cc",
       "skills_dialog_launcher_browsertest.cc",
       "skills_functional_browsertest.cc",
@@ -128,6 +129,7 @@ source_set("browser_tests") {
     "//chrome/browser/ui",
     "//chrome/test:test_support",
     "//components/skills:features",
+    "//components/skills/internal",
     "//components/skills/public",
     "//components/skills/public:mojo_bindings",
   ]
@@ -137,6 +139,12 @@ source_set("browser_tests") {
       "//chrome/browser/ui/toasts/api:toasts",
       "//chrome/browser/ui/webui",
       "//chrome/browser/ui/webui/skills",
+    ]
+  }
+  if (is_chromeos) {
+    deps += [
+      "//chrome/browser/chromeos/policy/dlp",
+      "//chrome/browser/chromeos/policy/dlp/test:test_support",
     ]
   }
 }

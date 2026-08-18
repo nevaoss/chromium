@@ -164,7 +164,8 @@ bool IsSupportedSuggestion(FormSuggestion* suggestion) {
 
 - (void)userDidPickContent:(NSString*)content
              passwordField:(BOOL)passwordField
-             requiresHTTPS:(BOOL)requiresHTTPS {
+             requiresHTTPS:(BOOL)requiresHTTPS
+           jumpToNextField:(BOOL)jumpToNextField {
   if (passwordField) {
     UmaHistogramEnumeration("IOS.Reauth.Password.ManualFallback",
                             ReauthenticationEvent::kAttempt);
@@ -179,7 +180,9 @@ bool IsSupportedSuggestion(FormSuggestion* suggestion) {
         .field_id = [self lastFocusedElementUniqueID],
         .form_id = [self lastFocusedElementFormIdentifier]};
     if (!passwordField) {
-      [self fillLastSelectedFieldWithString:content context:context];
+      [self fillLastSelectedFieldWithString:content
+                                    context:context
+                            jumpToNextField:jumpToNextField];
       return;
     }
 
@@ -190,7 +193,9 @@ bool IsSupportedSuggestion(FormSuggestion* suggestion) {
         if (result != ReauthenticationResult::kFailure) {
           UmaHistogramEnumeration("IOS.Reauth.Password.ManualFallback",
                                   ReauthenticationEvent::kSuccess);
-          [weakSelf fillLastSelectedFieldWithString:content context:context];
+          [weakSelf fillLastSelectedFieldWithString:content
+                                            context:context
+                                    jumpToNextField:jumpToNextField];
         } else {
           UmaHistogramEnumeration("IOS.Reauth.Password.ManualFallback",
                                   ReauthenticationEvent::kFailure);
@@ -204,7 +209,9 @@ bool IsSupportedSuggestion(FormSuggestion* suggestion) {
     } else {
       UmaHistogramEnumeration("IOS.Reauth.Password.ManualFallback",
                               ReauthenticationEvent::kMissingPasscode);
-      [self fillLastSelectedFieldWithString:content context:context];
+      [self fillLastSelectedFieldWithString:content
+                                    context:context
+                            jumpToNextField:jumpToNextField];
     }
   }
 }
@@ -317,13 +324,15 @@ bool IsSupportedSuggestion(FormSuggestion* suggestion) {
                     inFrame:(web::WebFrame*)frame {
   // Ignore non-user triggered events so page JS can't control which fields
   // receive data.
-  if (params.type != "focus" || !params.has_user_gesture) {
+  if (params.type != autofill::FormActivityParams::ActivityType::kFocus ||
+      !params.has_user_gesture) {
     return;
   }
   _lastFocusedElementParams = params;
   self.lastFocusedElementSecure =
       autofill::IsContextSecureForWebState(webState);
-  self.lastFocusedElementPasswordField = params.field_type == "password";
+  self.lastFocusedElementPasswordField =
+      params.field_type == autofill::FormActivityParams::FieldType::kObfuscated;
   DCHECK(frame);
   self.lastFocusedElementFrameIdentifier = frame->GetFrameId();
   if (!GURL::SchemeIsCryptographic(frame->GetSecurityOrigin().scheme())) {
@@ -342,9 +351,11 @@ bool IsSupportedSuggestion(FormSuggestion* suggestion) {
   return feature->GetWebFramesManager(webState)->GetFrameWithId(frameId);
 }
 
-// Injects the passed string to the active field and jumps to the next field.
+// Injects the passed `string` to the active field and optionally jumps to the
+// next field.
 - (void)fillLastSelectedFieldWithString:(NSString*)string
-                                context:(const AutofillTargetContext&)context {
+                                context:(const AutofillTargetContext&)context
+                        jumpToNextField:(BOOL)jumpToNextField {
   if (!_webStateList) {
     return;
   }
@@ -366,7 +377,9 @@ bool IsSupportedSuggestion(FormSuggestion* suggestion) {
   NSString* frameID = base::SysUTF8ToNSString(context.frame_id);
   autofill::AutofillJavaScriptFeature::GetInstance()->FillActiveFormField(
       activeWebFrame, std::move(data), base::BindOnce(^(BOOL success) {
-        [weakSelf jumpToNextFieldWithFrameId:frameID];
+        if (jumpToNextField) {
+          [weakSelf jumpToNextFieldWithFrameId:frameID];
+        }
       }));
 }
 

@@ -66,6 +66,7 @@
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/signin/signin_promo_util.h"
+#include "chrome/browser/ssl/chrome_security_state_util.h"
 #include "chrome/browser/strike_database/strike_database_factory.h"
 #include "chrome/browser/subscription_eligibility/subscription_eligibility_service_factory.h"
 #include "chrome/browser/sync/sync_service_factory.h"
@@ -155,7 +156,6 @@
 #include "components/personal_context/first_run/personal_context_first_run_service.h"
 #include "components/prefs/pref_service.h"
 #include "components/profile_metrics/browser_profile_type.h"
-#include "components/security_state/content/security_state_tab_helper.h"
 #include "components/security_state/core/security_state.h"
 #include "components/sessions/content/session_tab_helper.h"
 #include "components/signin/public/base/signin_metrics.h"
@@ -266,7 +266,6 @@ ui::ElementIdentifier GetElementId(AutofillClient::IphFeature iph_feature) {
   }
   NOTREACHED();
 }
-
 
 #endif  // !BUILDFLAG(IS_ANDROID)
 
@@ -494,38 +493,10 @@ WalletPassAccessManager* ChromeAutofillClient::GetWalletPassAccessManager() {
   return WalletPassAccessManagerFactory::GetForProfile(profile);
 }
 
-bool ChromeAutofillClient::ShouldShowPersonalContextAmbientAutofillNotice()
-    const {
+personal_context::PersonalContextFirstRunService*
+ChromeAutofillClient::GetPersonalContextFirstRunService() {
   Profile* profile = GetProfile();
-  personal_context::PersonalContextFirstRunService* service =
-      PersonalContextFirstRunServiceFactory::GetForProfile(profile);
-  return service && service->ShouldShowPersonalContextAmbientAutofillNotice();
-}
-
-void ChromeAutofillClient::
-    MarkPersonalContextAmbientAutofillNoticeAsAcknowledged() {
-  Profile* profile = GetProfile();
-  personal_context::PersonalContextFirstRunService* service =
-      PersonalContextFirstRunServiceFactory::GetForProfile(profile);
-  if (service) {
-    service->MarkPersonalContextAmbientAutofillNoticeAsAcknowledged();
-  }
-}
-
-bool ChromeAutofillClient::ShouldShowPersonalContextAtMemoryNotice() const {
-  Profile* profile = GetProfile();
-  personal_context::PersonalContextFirstRunService* service =
-      PersonalContextFirstRunServiceFactory::GetForProfile(profile);
-  return service && service->ShouldShowPersonalContextAtMemoryNotice();
-}
-
-void ChromeAutofillClient::MarkPersonalContextAtMemoryNoticeAsAcknowledged() {
-  Profile* profile = GetProfile();
-  personal_context::PersonalContextFirstRunService* service =
-      PersonalContextFirstRunServiceFactory::GetForProfile(profile);
-  if (service) {
-    service->MarkPersonalContextInAtMemoryNoticeAsAcknowledged();
-  }
+  return PersonalContextFirstRunServiceFactory::GetForProfile(profile);
 }
 
 SingleFieldFillRouter& ChromeAutofillClient::GetSingleFieldFillRouter() {
@@ -736,17 +707,7 @@ url::Origin ChromeAutofillClient::GetLastCommittedPrimaryMainFrameOrigin()
 
 security_state::SecurityLevel
 ChromeAutofillClient::GetSecurityLevelForUmaHistograms() {
-  SecurityStateTabHelper* helper =
-      ::SecurityStateTabHelper::FromWebContents(web_contents());
-
-  // If there is no helper, it means we are not in a "web" state (for example
-  // the file picker on CrOS). Return SECURITY_LEVEL_COUNT which will not be
-  // logged.
-  if (!helper) {
-    return security_state::SecurityLevel::SECURITY_LEVEL_COUNT;
-  }
-
-  return helper->GetSecurityLevel();
+  return chrome_security_state::GetSecurityLevel(web_contents());
 }
 
 const translate::LanguageState* ChromeAutofillClient::GetLanguageState() {
@@ -792,16 +753,10 @@ void ChromeAutofillClient::ShowAutofillSettings(
 #if BUILDFLAG(IS_ANDROID)
   switch (suggestion_type) {
     case SuggestionType::kManageAddress:
-      base::UmaHistogramEnumeration(
-          "Autofill.AddressesSettingsPage.VisitReferrer",
-          autofill_metrics::AutofillSettingsReferrer::kFillingFlowDropdown);
       ShowAutofillProfileSettings(web_contents());
       return;
     case SuggestionType::kManageCreditCard:
     case SuggestionType::kManageIban:
-      base::UmaHistogramEnumeration(
-          "Autofill.PaymentMethodsSettingsPage.VisitReferrer",
-          autofill_metrics::AutofillSettingsReferrer::kFillingFlowDropdown);
       ShowAutofillCreditCardSettings(web_contents());
       return;
     case SuggestionType::kManageAutofillAi:
@@ -821,9 +776,9 @@ void ChromeAutofillClient::ShowAutofillSettings(
     switch (suggestion_type) {
       case SuggestionType::kManageAddress:
         base::UmaHistogramEnumeration(
-            "Autofill.AddressesSettingsPage.VisitReferrer",
+            "Autofill.YourSavedInfoSettingsPage.VisitReferrer",
             autofill_metrics::AutofillSettingsReferrer::kFillingFlowDropdown);
-        chrome::ShowSettingsSubPage(browser, chrome::kAddressesSubPage);
+        chrome::ShowSettingsSubPage(browser, chrome::kContactInfoSubPage);
         return;
       case SuggestionType::kManageAutofillAi:
         base::UmaHistogramEnumeration(
@@ -852,7 +807,7 @@ void ChromeAutofillClient::ShowAutofillSettings(
       case SuggestionType::kManageCreditCard:
       case SuggestionType::kManageIban:
         base::UmaHistogramEnumeration(
-            "Autofill.PaymentMethodsSettingsPage.VisitReferrer",
+            "Autofill.YourSavedInfoSettingsPage.VisitReferrer",
             autofill_metrics::AutofillSettingsReferrer::kFillingFlowDropdown);
         chrome::ShowSettingsSubPage(browser, chrome::kPaymentsSubPage);
         return;
@@ -864,6 +819,9 @@ void ChromeAutofillClient::ShowAutofillSettings(
         ShowSingletonTab(browser, GURL(kValuableManagementUrl));
         return;
       case SuggestionType::kManageEnhancedAutofill:
+        base::UmaHistogramEnumeration(
+            "Autofill.YourSavedInfoSettingsPage.VisitReferrer",
+            autofill_metrics::AutofillSettingsReferrer::kFillingFlowDropdown);
         chrome::ShowSettingsSubPage(browser,
                                     chrome::kSuggestionsFromGeminiSubPage);
         return;
@@ -1037,7 +995,6 @@ void ChromeAutofillClient::TriggerAutofillAiFillingJourneySurvey(
         GetStringRepresentatioOfSavedEntitiesTypes(saved_entities)}});
 }
 
-
 bool ChromeAutofillClient::IsTabInActorMode() const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (base::FeatureList::IsEnabled(features::debug::kAutofillForceActorMode)) {
@@ -1118,13 +1075,8 @@ bool ChromeAutofillClient::UsesPlatformAutofill() const {
 }
 
 bool ChromeAutofillClient::IsContextSecure() const {
-  SecurityStateTabHelper* helper =
-      SecurityStateTabHelper::FromWebContents(web_contents());
-  if (!helper) {
-    return false;
-  }
-
-  const auto security_level = helper->GetSecurityLevel();
+  const auto security_level =
+      chrome_security_state::GetSecurityLevel(web_contents());
   content::NavigationEntry* entry =
       web_contents()->GetController().GetVisibleEntry();
 
@@ -1570,6 +1522,17 @@ void ChromeAutofillClient::ShowAutofillAiFetchEntityFailureNotification() {
 #else
   if (ToastController* toast_controller = GetToastController()) {
     ToastParams params(ToastId::kAutofillAiFetchEntityErrorMessage);
+    toast_controller->MaybeShowToast(std::move(params));
+  }
+#endif  // BUILDFLAG(IS_ANDROID)
+}
+
+void ChromeAutofillClient::ShowAtMemoryFetchFailureNotification() {
+#if BUILDFLAG(IS_ANDROID)
+  // TODO(crbug.com/540713368): Implement support on Android.
+#else
+  if (ToastController* toast_controller = GetToastController()) {
+    ToastParams params(ToastId::kAtMemorySpiiFetchErrorMessage);
     toast_controller->MaybeShowToast(std::move(params));
   }
 #endif  // BUILDFLAG(IS_ANDROID)

@@ -184,6 +184,34 @@ TEST_F(SkillsUiTabControllerTest, InvokeSkill_LogsFirstPartyInvokeMetrics) {
                                        SkillsInvokeResult::kSuccess, 1);
 }
 
+// Verifies that invoking an enterprise or enterprise-derived skill logs
+// explicit enterprise invoke metrics (kEnterprise and kDerivedFromEnterprise).
+TEST_F(SkillsUiTabControllerTest, InvokeSkill_LogsEnterpriseInvokeMetrics) {
+  controller_->test_skill_.id = kTestSkillId;
+  controller_->test_skill_.source =
+      sync_pb::SkillSource::SKILL_SOURCE_ENTERPRISE;
+  controller_->test_skill_.prompt = "Test Prompt";
+
+  auto* mock_glic_keyed_service =
+      static_cast<glic::MockGlicKeyedService*>(controller_->GetGlicService());
+  EXPECT_CALL(*mock_glic_keyed_service,
+              InvokeWithAutoSubmit(testing::_, testing::_))
+      .Times(2);
+
+  controller_->InvokeSkill(kTestSkillId, "", "");
+
+  controller_->test_skill_.source =
+      sync_pb::SkillSource::SKILL_SOURCE_DERIVED_FROM_ENTERPRISE;
+  controller_->InvokeSkill(kTestSkillId, "", "");
+
+  histogram_tester_.ExpectBucketCount("Skills.Invoke.Action",
+                                      SkillsInvokeAction::kEnterprise, 1);
+  histogram_tester_.ExpectBucketCount(
+      "Skills.Invoke.Action", SkillsInvokeAction::kDerivedFromEnterprise, 1);
+  histogram_tester_.ExpectUniqueSample("Skills.Invoke.Result",
+                                       SkillsInvokeResult::kSuccess, 2);
+}
+
 TEST_F(SkillsUiTabControllerTest, InvokeSkill_SkillNotFound_LogsMetric) {
   auto* mock_glic_keyed_service =
       static_cast<glic::MockGlicKeyedService*>(controller_->GetGlicService());
@@ -195,6 +223,24 @@ TEST_F(SkillsUiTabControllerTest, InvokeSkill_SkillNotFound_LogsMetric) {
 
   histogram_tester_.ExpectUniqueSample(
       "Skills.Invoke.Result", skills::SkillsInvokeResult::kSkillNotFound, 1);
+}
+
+TEST_F(SkillsUiTabControllerTest, SendPrompt_CallsInvokeWithAutoSubmit) {
+  auto* mock_glic_keyed_service =
+      static_cast<glic::MockGlicKeyedService*>(controller_->GetGlicService());
+  EXPECT_CALL(*mock_glic_keyed_service,
+              InvokeWithAutoSubmit(testing::_, testing::_))
+      .WillOnce([](glic::InvokeWithAutoSubmitPasskey,
+                   const glic::GlicInvokeOptions& options)
+                    -> base::WeakPtr<glic::GlicInstance> {
+        EXPECT_EQ(options.prompts.size(), 1u);
+        EXPECT_EQ(options.prompts[0], "Test Prompt");
+        EXPECT_EQ(options.GetInvocationSource(),
+                  glic::mojom::InvocationSource::kSkills);
+        return base::WeakPtr<glic::GlicInstance>();
+      });
+
+  controller_->SendPrompt("Test Prompt");
 }
 
 class SkillsUiTabControllerV2Test : public SkillsUiTabControllerTest {
@@ -224,6 +270,24 @@ TEST_F(SkillsUiTabControllerV2Test, InvokeSkill_SkipsPrompt) {
       });
 
   controller_->InvokeSkill(kTestSkillId, "", "");
+}
+
+TEST_F(SkillsUiTabControllerV2Test, SendPrompt_CallsInvokeWithAutoSubmit) {
+  auto* mock_glic_keyed_service =
+      static_cast<glic::MockGlicKeyedService*>(controller_->GetGlicService());
+  EXPECT_CALL(*mock_glic_keyed_service,
+              InvokeWithAutoSubmit(testing::_, testing::_))
+      .WillOnce([](glic::InvokeWithAutoSubmitPasskey,
+                   const glic::GlicInvokeOptions& options)
+                    -> base::WeakPtr<glic::GlicInstance> {
+        EXPECT_EQ(options.prompts.size(), 1u);
+        EXPECT_EQ(options.prompts[0], "Test Prompt");
+        EXPECT_EQ(options.GetInvocationSource(),
+                  glic::mojom::InvocationSource::kSkills);
+        return base::WeakPtr<glic::GlicInstance>();
+      });
+
+  controller_->SendPrompt("Test Prompt");
 }
 
 }  // namespace skills

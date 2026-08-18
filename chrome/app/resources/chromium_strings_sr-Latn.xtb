@@ -576,6 +576,7 @@ Ne možete da sačuvate nove obeleživače na nalogu dok ne izbrišete neke. Ako
 <translation id="7173822816570314652">Organizacija briše Chromium podatke kada se ne koriste <ph name="TIMEOUT_DURATION" />. To može da obuhvata istoriju, automatsko popunjavanje i preuzimanja.</translation>
 <translation id="718435575166326686">Chromium-u treba dozvola za kameru za ovaj sajt</translation>
 <translation id="7196312274710523067">Nije moguće pokrenuti Chromium. Pokušajte ponovo.</translation>
+<translation id="7204669035546236137">Pitajte bilo šta gde god da ste pomoću Gemini-ja u Chromium-u</translation>
 <translation id="7213008767289637091">Zadržite Chromium na traci da biste mu brzo pristupali u svakom trenutku</translation>
 <translation id="7213407614656404070">Koristite Chromium svaki put kada kliknete na linkove u porukama, dokumentima i drugim aplikacijama</translation>
 <translation id="7216228761061470870">Kada koristite pretragu slika na računaru, naslov, URL i sadržaj stranice, uključujući PDF-ove, šalju se na server</translation>
@@ -632,6 +633,7 @@ Chromium ne može da vrati podešavanja.</translation>
 <translation id="7745317241717453663">Ovim ćete izbrisati podatke pregledanja sa ovog uređaja. Da biste kasnije vratili podatke, prijavite se u Chromium kao <ph name="USER_EMAIL" />.</translation>
 <translation id="7747138024166251722">Program za instalaciju nije mogao da napravi privremeni direktorijum. Proverite da li imate slobodnog prostora na disku, kao i dozvolu da instalirate softver.</translation>
 <translation id="7750130090210923118">Resetuj na podrazumevani Chromium</translation>
+<translation id="7752521946322750699">Da bi zaštitila vaš rad u Chromium-u, organizacija će moći da pregleda određene informacije ili upravlja njima ako ste prijavljeni u Chromium.</translation>
 <translation id="7781047659465034537">Podesite Chromium kao podrazumevani pregledač i zakačite ga na traku zadataka</translation>
 <translation id="7786760609782648049">Ubrzajte Chromium</translation>
 <translation id="7790626492778995050"><ph name="PAGE_TITLE" /> – Chromium Canary</translation>

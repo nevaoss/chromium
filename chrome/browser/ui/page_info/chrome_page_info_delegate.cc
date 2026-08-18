@@ -22,10 +22,15 @@
 #include "chrome/browser/privacy_sandbox/privacy_sandbox_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/safe_browsing/chrome_password_protection_service.h"
-#include "chrome/browser/ssl/chrome_security_state_tab_helper.h"
+#include "chrome/browser/serial/serial_chooser_context.h"
+#include "chrome/browser/serial/serial_chooser_context_factory.h"
+#include "chrome/browser/ssl/chrome_security_state_util.h"
 #include "chrome/browser/ssl/https_upgrades_util.h"
 #include "chrome/browser/ssl/stateful_ssl_host_state_delegate_factory.h"
 #include "chrome/browser/subresource_filter/subresource_filter_profile_context_factory.h"
+#if BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/safe_browsing/android/suspicious_site_controller_android.h"
+#endif
 #include "chrome/browser/ui/url_identity.h"
 #include "chrome/browser/usb/usb_chooser_context.h"
 #include "chrome/browser/usb/usb_chooser_context_factory.h"
@@ -52,7 +57,9 @@
 #include "services/network/public/cpp/features.h"
 #include "third_party/blink/public/common/features.h"
 #include "ui/base/window_open_disposition_utils.h"
+#include "ui/events/event.h"
 #include "url/origin.h"
+#include "url/url_constants.h"
 
 #if BUILDFLAG(IS_ANDROID)
 #include "chrome/grit/branded_strings.h"
@@ -63,8 +70,6 @@
 #include "chrome/browser/hid/hid_chooser_context_factory.h"
 #include "chrome/browser/infobars/infobar_spec.h"
 #include "chrome/browser/lookalikes/safety_tip_ui_helper.h"
-#include "chrome/browser/serial/serial_chooser_context.h"
-#include "chrome/browser/serial/serial_chooser_context_factory.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
@@ -137,11 +142,7 @@ ChromePageInfoDelegate::GetChooserContext(ContentSettingsType type) {
       }
       return nullptr;
     case ContentSettingsType::SERIAL_CHOOSER_DATA:
-#if !BUILDFLAG(IS_ANDROID)
       return SerialChooserContextFactory::GetForProfile(GetProfile());
-#else
-      NOTREACHED();
-#endif
     case ContentSettingsType::HID_CHOOSER_DATA:
 #if !BUILDFLAG(IS_ANDROID)
       return HidChooserContextFactory::GetForProfile(GetProfile());
@@ -394,17 +395,6 @@ void ChromePageInfoDelegate::OpenSafetyTipHelpCenterPage() {
   OpenHelpCenterFromSafetyTip(web_contents_);
 }
 
-void ChromePageInfoDelegate::OpenSafeBrowsingHelpCenterPage(
-    const ui::Event& event) {
-  web_contents_->OpenURL(
-      content::OpenURLParams(
-          GURL(chrome::kSafeBrowsingHelpCenterURL), content::Referrer(),
-          ui::DispositionFromEventFlags(
-              event.flags(), WindowOpenDisposition::NEW_FOREGROUND_TAB),
-          ui::PAGE_TRANSITION_LINK, false),
-      /*navigation_handle_callback=*/{});
-}
-
 void ChromePageInfoDelegate::OpenContentSettingsExceptions(
     ContentSettingsType content_settings_type) {
   if (content_settings_type == ContentSettingsType::FILE_SYSTEM_WRITE_GUARD) {
@@ -433,6 +423,42 @@ void ChromePageInfoDelegate::OnUIClosing() {
   }
 }
 #endif
+
+void ChromePageInfoDelegate::OpenSafeBrowsingHelpCenterPage(
+    const ui::Event* event,
+    bool is_suspicious_site) {
+  int event_flags = event ? event->flags() : 0;
+  const char* const url = is_suspicious_site
+                              ? chrome::kUnsafeSiteWarningHelpCenterURL
+                              : chrome::kSafeBrowsingHelpCenterURL;
+  web_contents_->OpenURL(
+      content::OpenURLParams(
+          GURL(url), content::Referrer(),
+          ui::DispositionFromEventFlags(
+              event_flags, WindowOpenDisposition::NEW_FOREGROUND_TAB),
+          ui::PAGE_TRANSITION_LINK, false),
+      /*navigation_handle_callback=*/{});
+}
+
+void ChromePageInfoDelegate::OnSuspiciousSiteBackToSafety() {
+#if BUILDFLAG(IS_ANDROID)
+  if (auto* ssc =
+          safe_browsing::SuspiciousSiteControllerAndroid::FromWebContents(
+              web_contents_)) {
+    ssc->OnGoBackButtonClicked();
+  }
+#endif
+}
+
+void ChromePageInfoDelegate::OnSuspiciousSiteMarkAsSafe() {
+#if BUILDFLAG(IS_ANDROID)
+  if (auto* ssc =
+          safe_browsing::SuspiciousSiteControllerAndroid::FromWebContents(
+              web_contents_)) {
+    ssc->OnContinueButtonClicked();
+  }
+#endif
+}
 
 std::u16string ChromePageInfoDelegate::GetSubjectName(const GURL& url) {
   CHECK(web_contents_);
@@ -491,13 +517,7 @@ security_state::SecurityLevel ChromePageInfoDelegate::GetSecurityLevel() {
     return security_level_for_tests_;
   }
 
-  // This is a no-op if a SecurityStateTabHelper already exists for
-  // |web_contents|.
-  ChromeSecurityStateTabHelper::CreateForWebContents(web_contents_);
-
-  auto* helper = SecurityStateTabHelper::FromWebContents(web_contents_);
-  DCHECK(helper);
-  return helper->GetSecurityLevel();
+  return chrome_security_state::GetSecurityLevel(web_contents_);
 }
 
 security_state::VisibleSecurityState
@@ -506,13 +526,7 @@ ChromePageInfoDelegate::GetVisibleSecurityState() {
     return visible_security_state_for_tests_;
   }
 
-  // This is a no-op if a SecurityStateTabHelper already exists for
-  // |web_contents|.
-  ChromeSecurityStateTabHelper::CreateForWebContents(web_contents_);
-
-  auto* helper = SecurityStateTabHelper::FromWebContents(web_contents_);
-  DCHECK(helper);
-  return *helper->GetVisibleSecurityState();
+  return *chrome_security_state::GetVisibleSecurityState(web_contents_);
 }
 
 void ChromePageInfoDelegate::OnCookiesPageOpened() {

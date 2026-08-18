@@ -64,6 +64,7 @@ public class PdfToolbarCoordinator implements View.OnClickListener, View.OnKeyLi
                         .with(
                                 PdfToolbarProperties.PAGE_NUMBER_EDIT_LISTENER,
                                 this::onPageNumberSubmitted)
+                        .with(PdfToolbarProperties.CURRENT_PAGE_NUMBER, 1)
                         .with(PdfToolbarProperties.ZOOM_LEVEL, 1.0f)
                         .with(PdfToolbarProperties.SHOW_FIT_TO_HEIGHT_ICON, true)
                         .with(PdfToolbarProperties.TWO_PAGES_PER_ROW_ACTIVE, false)
@@ -101,7 +102,7 @@ public class PdfToolbarCoordinator implements View.OnClickListener, View.OnKeyLi
                     showFitToHeight
                             ? PdfUtils.PdfToolbarAction.FIT_TO_PAGE_VERTICAL
                             : PdfUtils.PdfToolbarAction.FIT_TO_PAGE_HORIZONTAL);
-            mDelegate.toggleFitToPage(showFitToHeight, currentPageNumber - 1);
+            mDelegate.toggleFitToPage(showFitToHeight, Math.max(0, currentPageNumber - 1));
             mModel.set(PdfToolbarProperties.SHOW_FIT_TO_HEIGHT_ICON, !showFitToHeight);
         } else if (actionId == R.id.download_button) {
             mDelegate.download();
@@ -129,7 +130,22 @@ public class PdfToolbarCoordinator implements View.OnClickListener, View.OnKeyLi
             PdfUtils.recordToolbarAction(PdfUtils.PdfToolbarAction.SINGLE_PAGE_VIEW);
         }
         mModel.set(PdfToolbarProperties.TWO_PAGES_PER_ROW_ACTIVE, newState);
-        mDelegate.toggleTwoPagesPerRow(newState, currentZoomFactor, currentPageNumber - 1);
+        mDelegate.toggleTwoPagesPerRow(
+                newState, currentZoomFactor, Math.max(0, currentPageNumber - 1));
+    }
+
+    /**
+     * Resets TWO_PAGES_PER_ROW_ACTIVE to false.
+     *
+     * <p>Unlike ZOOM_LEVEL (automatically reset via PdfView's viewport change listener) and
+     * EDIT_MODE_ACTIVE (automatically reset via EditablePdfViewerFragment's edit mode callbacks),
+     * AndroidX PdfView does not provide a callback when the pages-per-row state changes or resets.
+     * Since PdfView defaults to single-page view when a document is loaded, reloaded, or reset,
+     * two-pages-per-row uniquely requires manual resets in all these places to keep the toolbar
+     * state in sync.
+     */
+    void resetTwoPagesPerRow() {
+        mModel.set(PdfToolbarProperties.TWO_PAGES_PER_ROW_ACTIVE, false);
     }
 
     private void showMenu(View anchorView) {
@@ -166,7 +182,8 @@ public class PdfToolbarCoordinator implements View.OnClickListener, View.OnKeyLi
                                                         : PdfUtils.PdfToolbarAction
                                                                 .FIT_TO_PAGE_HORIZONTAL);
                                         mDelegate.toggleFitToPage(
-                                                showFitToHeight, currentPageNumber - 1);
+                                                showFitToHeight,
+                                                Math.max(0, currentPageNumber - 1));
                                         mModel.set(
                                                 PdfToolbarProperties.SHOW_FIT_TO_HEIGHT_ICON,
                                                 !showFitToHeight);
@@ -280,6 +297,9 @@ public class PdfToolbarCoordinator implements View.OnClickListener, View.OnKeyLi
     public void onDocumentLoaded(int pageCount, String title) {
         mModel.set(PdfToolbarProperties.TOTAL_PAGE_COUNT, pageCount);
         mModel.set(PdfToolbarProperties.TITLE, title);
+        // Manually reset two-pages-per-row state since PdfView defaults to single-page view
+        // on load and does not provide a callback when pages-per-row resets.
+        resetTwoPagesPerRow();
     }
 
     /**

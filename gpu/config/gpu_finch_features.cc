@@ -697,13 +697,6 @@ bool ShouldEnableDrDc() {
                       kDrDcBlockListByAndroidBuildFP.Get())) {
     return false;
   }
-
-  // Chrome on Android desktop aims to be Vulkan-only, which can result
-  // in crashes when enabled together with DrDc. Re-enable DrDc after
-  // crbug.com/380295059 is fixed if it is shown beneficial on desktop.
-  if (base::android::device_info::is_desktop()) {
-    return false;
-  }
 #endif
 
   return base::FeatureList::IsEnabled(kEnableDrDc);
@@ -868,10 +861,6 @@ bool IsSyncPointGraphValidationEnabled() {
 }
 
 BASE_FEATURE(kANGLEPerContextBlobCache, base::FEATURE_DISABLED_BY_DEFAULT);
-
-#if BUILDFLAG(IS_APPLE)
-BASE_FEATURE(kIOSurfaceMultiThreading, base::FEATURE_ENABLED_BY_DEFAULT);
-#endif
 
 // Support thread safety for graphite::context by sharing the same
 // graphite::context as well as its wrapper class GraphiteSharedContext between

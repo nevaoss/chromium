@@ -12,7 +12,7 @@ import {$$, BackgroundManager, BrowserCommandProxy, CONTEXTUAL_ENTRYPOINT_ELEMEN
 import type {AppElement, CustomizeButtonsElement, NtpSearchboxElement, PageRemote} from 'chrome://new-tab-page/new_tab_page.js';
 import {NtpBackgroundImageSource, PageCallbackRouter, PageHandlerRemote} from 'chrome://new-tab-page/new_tab_page.js';
 import {PageHandlerRemote as ComposeboxPageHandlerRemote} from 'chrome://resources/cr_components/composebox/composebox.mojom-webui.js';
-import {ToolMode} from 'chrome://resources/cr_components/composebox/composebox_query.mojom-webui.js';
+import {ModelMode, ToolMode} from 'chrome://resources/cr_components/composebox/composebox_query.mojom-webui.js';
 import type {ComposeboxVoiceSearchElement} from 'chrome://resources/cr_components/composebox/composebox_voice_search.js';
 import {WindowProxy as ComposeboxWindowProxy} from 'chrome://resources/cr_components/composebox/window_proxy.js';
 import type {CrButtonElement} from 'chrome://resources/cr_elements/cr_button/cr_button.js';
@@ -2536,9 +2536,11 @@ suite('NewTabPageAppTest', () => {
               typeIcon: IconType.kFavicon,
               primaryText: {text: 'TabContext', a11yText: null},
               secondaryText: {text: 'tab-subtitle', a11yText: null},
-              preselectedTool: ToolMode.kUnspecified,
-              preferredInventory: null,
-              clickAction: null,
+              fuseboxAction: {
+                preselectedTool: ToolMode.kUnspecified,
+                preferredInventory: null,
+                preselectedModel: ModelMode.kUnspecified,
+              },
             },
             tab: fakeTab,
           },
@@ -2548,9 +2550,11 @@ suite('NewTabPageAppTest', () => {
               typeIcon: IconType.kBanana,
               primaryText: {text: 'Nano Banana', a11yText: null},
               secondaryText: {text: 'image-subtitle', a11yText: null},
-              preselectedTool: ToolMode.kImageGen,
-              preferredInventory: null,
-              clickAction: null,
+              fuseboxAction: {
+                preselectedTool: ToolMode.kImageGen,
+                preferredInventory: null,
+                preselectedModel: ModelMode.kUnspecified,
+              },
             },
             tab: null,
           },
@@ -2560,9 +2564,11 @@ suite('NewTabPageAppTest', () => {
               typeIcon: IconType.kGlobeWithSearchLoop,
               primaryText: {text: 'DeepSearch', a11yText: null},
               secondaryText: {text: 'ds-subtitle', a11yText: null},
-              preselectedTool: ToolMode.kDeepSearch,
-              preferredInventory: null,
-              clickAction: null,
+              fuseboxAction: {
+                preselectedTool: ToolMode.kDeepSearch,
+                preferredInventory: null,
+                preselectedModel: ModelMode.kUnspecified,
+              },
             },
             tab: null,
           },
@@ -2724,9 +2730,11 @@ suite('NewTabPageAppTest', () => {
               typeIcon: IconType.kSubArrowRight,
               primaryText: {text: 'Deep dive', a11yText: null},
               secondaryText: {text: subtitle, a11yText: null},
-              preselectedTool: ToolMode.kUnspecified,
-              preferredInventory: null,
-              clickAction: null,
+              fuseboxAction: {
+                preselectedTool: ToolMode.kUnspecified,
+                preferredInventory: null,
+                preselectedModel: ModelMode.kUnspecified,
+              },
             },
             tab: {
               tabId: 1,
@@ -2765,6 +2773,41 @@ suite('NewTabPageAppTest', () => {
           assertEquals(true, delayUpload);
           assertTrue(!!composebox.getInputElement().$.input);
           assertEquals(suggestion, composebox.getInputElement().$.input.value);
+        });
+    test(
+        'Action chip click sets preselected model in composebox state',
+        async () => {
+          actionChipsPageRemote.onActionChipsChanged([{
+            suggestion: 'test suggestion',
+            suggestTemplateInfo: {
+              typeIcon: IconType.kSubArrowRight,
+              primaryText: {text: 'Model test', a11yText: null},
+              secondaryText: {text: 'subtitle', a11yText: null},
+              fuseboxAction: {
+                preselectedTool: ToolMode.kUnspecified,
+                preferredInventory: null,
+                preselectedModel: ModelMode.kGeminiPro,
+              },
+            },
+            tab: null,
+          }]);
+          await microtasksFinished();
+          const actionChipsElement =
+              app.shadowRoot.querySelector('ntp-action-chips');
+          assertTrue(!!actionChipsElement);
+          const button =
+              actionChipsElement.shadowRoot.querySelector<HTMLButtonElement>(
+                  'button');
+          assertTrue(!!button);
+
+          button.click();
+          await microtasksFinished();
+
+          assertTrue(!!app.$.composebox);
+          assertEquals(1, searchboxHandler.getCallCount('setActiveModelMode'));
+          assertEquals(
+              ModelMode.kGeminiPro,
+              searchboxHandler.getArgs('setActiveModelMode')[0]);
         });
   });
 
@@ -2985,7 +3028,7 @@ suite('NewTabPageAppTest', () => {
           assertFalse(searchbox.isListening);
 
           voiceSearch.hasErrorTimer = true;
-          voiceSearch.detailedError_ = 5; // VoiceSearchError.NO_MATCH
+          voiceSearch.detailedError = 5; // VoiceSearchError.NO_MATCH
           voiceSearch.setErrorMessageForTesting('Didn\'t get that.');
           await microtasksFinished();
           const tryAgainLink =
@@ -4152,6 +4195,22 @@ suite('NewTabPageAppTest', () => {
           assertEquals(0, metrics.count('VoiceSearch.Action'));
           assertEquals(0, metrics.count('VoiceSearch.Action.NTP_REALBOX'));
         });
+  });
+
+  suite('EnergyEffectVariant', () => {
+    ['energy-effect-original',
+     'energy-effect-darker-shadow',
+     'pre-energy-effect-with-border',
+     'energy-effect-fusebox',
+    ]
+        .forEach(
+            (variant) => test(`reflects ${variant} to attribute`, async () => {
+              loadTimeData.overrideValues({
+                energyEffectVariant: variant,
+              });
+              await recreateApp();
+              assertEquals(variant, app.getAttribute('energy-effect-variant_'));
+            }));
   });
 });
 

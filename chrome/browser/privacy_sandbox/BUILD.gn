@@ -21,7 +21,6 @@ source_set("headers") {
 
   public_deps = [
     ":countries",
-    "notice:notice_definitions",
     "//base",
     "//chrome/browser/first_party_sets",
     "//chrome/browser/profiles:profile",
@@ -40,7 +39,6 @@ source_set("headers") {
 
 source_set("impl") {
   sources = [
-    "notice/notice_service_factory.cc",
     "privacy_sandbox_notice_confirmation.cc",
     "privacy_sandbox_policy_handler.cc",
     "privacy_sandbox_service_factory.cc",
@@ -57,15 +55,11 @@ source_set("impl") {
   ]
 
   deps = [
-    "notice",
-    "notice:catalog",
-    "notice:core",
     "//chrome/browser:browser_process",
     "//chrome/browser/content_settings:content_settings_factory",
     "//chrome/browser/profiles:profile_manager",
     "//chrome/browser/profiles:profile_util",
     "//chrome/browser/signin",
-    "//components/browsing_topics",
     "//components/browsing_topics/common",
     "//components/content_settings/core/browser:cookie_settings",
     "//components/content_settings/core/common",
@@ -104,15 +98,7 @@ source_set("impl") {
 }
 
 group("privacy_sandbox") {
-  public_deps = [
-    ":countries",
-    "notice",
-  ]
-
-  # (Desktop Only)
-  if (!is_android) {
-    public_deps += [ "notice:desktop_view_manager" ]
-  }
+  public_deps = [ ":countries" ]
 }
 
 source_set("countries") {
@@ -235,10 +221,7 @@ if (!is_android) {
 
 group("browser_tests") {
   testonly = true
-  deps = [
-    ":countries_browser_test",
-    "notice:browser_tests",
-  ]
+  deps = [ ":countries_browser_test" ]
 
   if (!is_android) {
     deps += [
@@ -280,10 +263,8 @@ source_set("service_impl_unittest") {
     "//chrome/browser:browser_process",
     "//chrome/browser/content_settings:content_settings_factory",
     "//chrome/browser/first_party_sets",
-    "//chrome/browser/privacy_sandbox/notice:notice_mojom",
     "//chrome/browser/signin",
     "//chrome/test:test_support",
-    "//components/browsing_topics:test_support",
     "//components/content_settings/core/browser",
     "//components/content_settings/core/browser:cookie_settings",
     "//components/content_settings/core/common",
@@ -358,9 +339,7 @@ group("unit_tests") {
     ":service_impl_unittest",
     ":settings_delegate_unittest",
     ":utils_unittest",
-    "notice:unit_tests",
   ]
-  public_deps = [ "notice:test_support" ]
 }
 
 if (!is_android) {

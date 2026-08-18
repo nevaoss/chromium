@@ -24,6 +24,7 @@
 #include "chrome/browser/ui/ash/system_web_apps/system_web_app_ui_utils.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
+#include "chrome/browser/ui/browser_init_state.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
@@ -112,7 +113,9 @@ class NavigationWaiter : public content::WebContentsObserver,
       Observe(GetActiveWebContents(browser));
       // Observe the browser's widget visibility changes if someone wants to
       // show it in between.
-      widget_observation_.Observe(browser->GetBrowserView().GetWidget());
+      widget_observation_.Observe(
+          CHECK_DEREF(BrowserView::GetBrowserViewForBrowser(browser))
+              .GetWidget());
     } else {
       RunCallback();
     }
@@ -260,7 +263,7 @@ void KioskBrowserWindowHandler::HandleNewSettingsWindow(
 
   bool app_browser =
       browser->GetType() == BrowserWindowInterface::Type::TYPE_APP ||
-      browser->is_type_app_popup() ||
+      browser->GetType() == BrowserWindowInterface::Type::TYPE_APP_POPUP ||
       browser->GetType() == BrowserWindowInterface::Type::TYPE_POPUP;
   if (!app_browser) {
     // If this browser is not an app browser, create a new app browser if none
@@ -294,9 +297,9 @@ void KioskBrowserWindowHandler::CloseAllUnexpectedBrowserWindows() {
         // Do not close the main web app window (if any).
         bool is_web_app = web_app_name.has_value();
         bool is_web_app_window =
-            is_web_app &&
-            (browser_window_interface.GetBrowserForMigrationOnly()
-                 ->app_name() == web_app_name);
+            is_web_app && (BrowserInitState::From(&browser_window_interface)
+                               ->create_params()
+                               .app_name == web_app_name);
         return !is_web_app_window;
       });
 }
@@ -363,20 +366,22 @@ void KioskBrowserWindowHandler::OnBrowserClosed(
 bool KioskBrowserWindowHandler::IsNewBrowserWindowAllowed(
     Browser* browser) const {
   return kiosk_policies_.IsWindowCreationAllowed() &&
-         browser->is_type_app_popup() && web_app_name_.has_value() &&
-         browser->app_name() == web_app_name_.value();
+         browser->GetType() == BrowserWindowInterface::Type::TYPE_APP_POPUP &&
+         web_app_name_.has_value() &&
+         BrowserInitState::From(browser)->create_params().app_name ==
+             web_app_name_.value();
 }
 
 bool KioskBrowserWindowHandler::IsDevToolsAllowedBrowser(
     Browser* browser) const {
-  return browser->is_type_devtools() &&
+  return browser->GetType() == BrowserWindowInterface::Type::TYPE_DEVTOOLS &&
          kiosk_troubleshooting_controller_
              ->AreKioskTroubleshootingToolsEnabled();
 }
 
 bool KioskBrowserWindowHandler::IsNormalTroubleshootingBrowserAllowed(
     Browser* browser) const {
-  return browser->is_type_normal() &&
+  return browser->GetType() == BrowserWindowInterface::Type::TYPE_NORMAL &&
          kiosk_troubleshooting_controller_
              ->AreKioskTroubleshootingToolsEnabled();
 }
@@ -405,8 +410,9 @@ void KioskBrowserWindowHandler::CloseBrowserWindowsIf(
           LOG(WARNING) << "kiosk: Closing unexpected browser window with url "
                        << GetUrlOfActiveTab(browser_window_interface)
                        << " of app "
-                       << browser_window_interface->GetBrowserForMigrationOnly()
-                              ->app_name();
+                       << BrowserInitState::From(browser_window_interface)
+                              ->create_params()
+                              .app_name;
           CloseBrowserAndSetTimer(browser_window_interface);
         }
         return true;

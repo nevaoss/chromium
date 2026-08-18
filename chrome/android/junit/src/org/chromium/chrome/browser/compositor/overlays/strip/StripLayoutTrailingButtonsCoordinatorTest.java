@@ -60,10 +60,10 @@ import org.chromium.chrome.browser.glic.GlicButtonStateController.ButtonState;
 import org.chromium.chrome.browser.glic.GlicEnabling;
 import org.chromium.chrome.browser.glic.GlicKeyedService;
 import org.chromium.chrome.browser.glic.GlicKeyedServiceFactory;
-import org.chromium.chrome.browser.glic.GlicNudgeDelegate;
-import org.chromium.chrome.browser.glic.GlicNudgeDelegateBridge;
-import org.chromium.chrome.browser.glic.GlicNudgeDelegateBridgeJni;
 import org.chromium.chrome.browser.glic.GlicPrefNames;
+import org.chromium.chrome.browser.glic.GlicSplitButtonDelegate;
+import org.chromium.chrome.browser.glic.GlicSplitButtonDelegateBridge;
+import org.chromium.chrome.browser.glic.GlicSplitButtonDelegateBridgeJni;
 import org.chromium.chrome.browser.layouts.animation.CompositorAnimationHandler;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.tabmodel.TabModel;
@@ -74,8 +74,6 @@ import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.SideUiId;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.SideUiShowability;
 import org.chromium.chrome.browser.ui.side_ui.SideUiObserver;
 import org.chromium.chrome.browser.ui.side_ui.SideUiStateProvider;
-import org.chromium.components.prefs.PrefChangeRegistrar;
-import org.chromium.components.prefs.PrefChangeRegistrarJni;
 import org.chromium.components.prefs.PrefService;
 import org.chromium.components.user_prefs.UserPrefs;
 import org.chromium.components.user_prefs.UserPrefsJni;
@@ -101,7 +99,6 @@ public class StripLayoutTrailingButtonsCoordinatorTest {
     @Mock private ActivityWindowAndroid mWindowAndroid;
     @Mock private Profile mProfile;
     @Mock private UserPrefs.Natives mUserPrefsJniMock;
-    @Mock private PrefChangeRegistrar.Natives mPrefChangeRegistrarJniMock;
     @Mock private PrefService mPrefService;
     @Mock private StripLayoutTrailingButtonsObserver mObserver;
     @Mock private ChromeAndroidTaskTracker mTaskTracker;
@@ -110,7 +107,7 @@ public class StripLayoutTrailingButtonsCoordinatorTest {
     @Mock private ActorTask mActorTask;
     @Mock private TabModelSelector mTabModelSelector;
     @Mock private TabModel mIncognitoTabModel;
-    @Mock private GlicNudgeDelegateBridge.Natives mGlicNudgeDelegateBridgeJniMock;
+    @Mock private GlicSplitButtonDelegateBridge.Natives mGlicSplitButtonDelegateBridgeJniMock;
     @Mock private SideUiStateProvider mSideUiStateProvider;
 
     @Captor private ArgumentCaptor<List<Animator>> mAnimatorsListCaptor;
@@ -131,7 +128,8 @@ public class StripLayoutTrailingButtonsCoordinatorTest {
     @Before
     public void setUp() {
         GlicEnabling.setEnabledForTesting(ChromeFeatureList.isEnabled(ChromeFeatureList.GLIC));
-        GlicNudgeDelegateBridgeJni.setInstanceForTesting(mGlicNudgeDelegateBridgeJniMock);
+        GlicSplitButtonDelegateBridgeJni.setInstanceForTesting(
+                mGlicSplitButtonDelegateBridgeJniMock);
         CompositorAnimationHandler.setTestingMode(true);
         when(mUpdateHost.getAnimationHandler())
                 .thenReturn(new CompositorAnimationHandler(CallbackUtils.emptyRunnable()));
@@ -139,8 +137,6 @@ public class StripLayoutTrailingButtonsCoordinatorTest {
         UserPrefsJni.setInstanceForTesting(mUserPrefsJniMock);
         when(mUserPrefsJniMock.get(mProfile)).thenReturn(mPrefService);
         when(mPrefService.getBoolean(GlicPrefNames.GLIC_PINNED_TO_TABSTRIP)).thenReturn(true);
-        PrefChangeRegistrarJni.setInstanceForTesting(mPrefChangeRegistrarJniMock);
-        when(mPrefChangeRegistrarJniMock.init(any(), any())).thenReturn(1L);
 
         ActorKeyedServiceFactory.setForTesting(mActorKeyedService);
         when(mActorKeyedService.getActiveTasks()).thenReturn(Collections.emptyList());
@@ -182,6 +178,7 @@ public class StripLayoutTrailingButtonsCoordinatorTest {
                         mObserver);
         ShadowLooper.idleMainLooper();
         mCoordinator.onProfileAvailable(mProfile);
+        mCoordinator.getGlicSplitButtonDelegateForTesting().setGlicShowState(true);
         mCoordinator.setLayerTitleCache(mLayerTitleCache);
         mCoordinator.onSizeChanged(1000.f, 0.f, 0.f, 0.f);
         mGlicButton = mCoordinator.getGlicButton();
@@ -450,7 +447,7 @@ public class StripLayoutTrailingButtonsCoordinatorTest {
 
     @Test
     public void testGlicDismissNudgeButton() {
-        GlicNudgeDelegate delegate = mCoordinator.getGlicNudgeDelegateForTesting();
+        GlicSplitButtonDelegate delegate = mCoordinator.getGlicSplitButtonDelegateForTesting();
         assertNotNull("Glic nudge delegate should be created.", delegate);
         assertFalse("Nudge should not be showing initially.", delegate.getIsShowingGlicNudge());
 
@@ -812,7 +809,7 @@ public class StripLayoutTrailingButtonsCoordinatorTest {
     public void testOnTabModelSwitched() {
         // 1. Trigger the nudge in normal mode.
         mCoordinator
-                .getGlicNudgeDelegateForTesting()
+                .getGlicSplitButtonDelegateForTesting()
                 .onTriggerGlicNudgeUi("Glic Nudge Text", "", "");
 
         // Verify initial state.

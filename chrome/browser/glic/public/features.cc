@@ -46,6 +46,8 @@ const base::FeatureParam<bool> kGlicSelectionPromptInlineFulfillment{
     &kGlicSelectionPrompt, "inline_fulfillment", false};
 const base::FeatureParam<std::string> kGlicSelectionPromptInlinePromptTemplate{
     &kGlicSelectionPrompt, "inline_prompt_template", ""};
+const base::FeatureParam<bool> kGlicSelectionPromptSkills{
+    &kGlicSelectionPrompt, "skills", true};
 
 BASE_FEATURE(kGlicClearTurnIdOnPanelWillOpen,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -100,6 +102,8 @@ const base::FeatureParam<std::string> kGlicContextMenuArm{&kGlicContextMenu,
                                                           "variant", "arm1"};
 const base::FeatureParam<bool> kGlicContextMenuWithOnboarding{
     &kGlicContextMenu, "WithOnboarding", false};
+
+BASE_FEATURE(kGlicContextMenuBelowSearch, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicTextSelectionContextMenu, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -230,7 +234,7 @@ BASE_FEATURE(kGlicWebPasteEligibilityCheck,
 
 BASE_FEATURE(kGlicTabGroups, base::FEATURE_DISABLED_BY_DEFAULT);
 const base::FeatureParam<bool> kGlicTabGroupsUseFullTabEmbedder{
-    &kGlicTabGroups, "use_full_tab_embedder", true};
+    &kGlicTabGroups, "use_full_tab_embedder", false};
 BASE_FEATURE(kGlicSparkSettingsAccessibleLabels,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -238,4 +242,10 @@ BASE_FEATURE(kGlicOptInDialogLinkA11yFix, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicOptInDialogA11yFix, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicStructuredYieldMetadata, base::FEATURE_DISABLED_BY_DEFAULT);
+// Whether to allow Mojo in the glic guest frame.
+BASE_FEATURE(kGlicEnableMojoJs, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Runs the glic client in a PrivilegedWebContents instead of a webview.
+// This is a work in progress. See b/534807813.
+BASE_FEATURE(kGlicNoWebview, base::FEATURE_DISABLED_BY_DEFAULT);
 }  // namespace features

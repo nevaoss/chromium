@@ -500,6 +500,10 @@ const AttributeTriggers* HTMLElement::TriggersForAttributeName(
        &HTMLElement::OnPopoverChanged},
       {html_names::kContainertimingAttr, kNoWebFeature, kNoEvent,
        &HTMLElement::OnContainerTimingAttrChanged},
+      {html_names::kContainertimingignoreAttr, kNoWebFeature, kNoEvent,
+       &HTMLElement::OnContainerTimingIgnoreAttrChanged},
+      // Deprecated dashed spelling: still functional, but warns. Remove once
+      // the origin trial ends.
       {html_names::kContainertimingIgnoreAttr, kNoWebFeature, kNoEvent,
        &HTMLElement::OnContainerTimingIgnoreAttrChanged},
 
@@ -897,6 +901,26 @@ void HTMLElement::AttributeChanged(const AttributeModificationParams& params) {
 
   if (params.reason != AttributeModificationReason::kDirectly) {
     return;
+  }
+
+  if (params.name == html_names::kCommandAttr) {
+    bool old_is_overscroll = IsOverscrollCommand(
+        GetCommandEventType(params.old_value, GetExecutionContext()));
+    bool new_is_overscroll = IsOverscrollCommand(
+        GetCommandEventType(params.new_value, GetExecutionContext()));
+    if (isConnected() && old_is_overscroll != new_is_overscroll) {
+      if (new_is_overscroll) {
+        GetDocument().AddOverscrollCommandInvoker(*this);
+      } else {
+        GetDocument().RemoveOverscrollCommandInvoker(*this);
+      }
+    }
+  } else if (params.name == html_names::kCommandforAttr) {
+    if (isConnected() && IsOverscrollCommand(GetCommandEventType(
+                             FastGetAttribute(html_names::kCommandAttr),
+                             GetExecutionContext()))) {
+      GetDocument().MarkOverscrollCommandTargetsDirty();
+    }
   }
 
   // adjustedFocusedElementInTreeScope() is not trivial. We should check
@@ -2437,8 +2461,6 @@ PopoverHideResult HTMLElement::HidePopoverInternal(
   probe::WillHidePopover(this, &force_open);
   // DevTools may force a popover to stay open, even if hidePopover is called.
   if (force_open) {
-    DCHECK(
-        base::FeatureList::IsEnabled(features::kDevToolsAllowPopoverForcing));
     return PopoverHideResult::kForcedOpenByInspector;
   }
   if (!IsPopoverReady(PopoverTriggerAction::kHide, exception_state,
@@ -3867,6 +3889,12 @@ Node::InsertionNotificationRequest HTMLElement::InsertedInto(
   if (IsFormAssociatedCustomElement())
     EnsureElementInternals().InsertedInto(insertion_point);
 
+  if (insertion_point.isConnected() &&
+      IsOverscrollCommand(GetCommandEventType(
+          FastGetAttribute(html_names::kCommandAttr), GetExecutionContext()))) {
+    GetDocument().AddOverscrollCommandInvoker(*this);
+  }
+
   return kInsertionDone;
 }
 
@@ -3893,6 +3921,12 @@ void HTMLElement::RemovedFrom(ContainerNode& insertion_point) {
   Element::RemovedFrom(insertion_point);
   if (IsFormAssociatedCustomElement())
     EnsureElementInternals().RemovedFrom(insertion_point);
+
+  if (was_in_document &&
+      IsOverscrollCommand(GetCommandEventType(
+          FastGetAttribute(html_names::kCommandAttr), GetExecutionContext()))) {
+    GetDocument().RemoveOverscrollCommandInvoker(*this);
+  }
 }
 
 void HTMLElement::DidMoveToNewDocument(Document& old_document) {
@@ -4221,8 +4255,8 @@ int HTMLElement::AdjustedOffsetForZoom(LayoutUnit offset) {
 }
 
 int HTMLElement::OffsetTopOrLeft(bool top) {
-  GetDocument().EnsurePaintLocationDataValidForNode(
-      this, DocumentUpdateReason::kJavaScript);
+  GetDocument().UpdateStyleAndLayoutForNode(this,
+                                            DocumentUpdateReason::kJavaScript);
   const auto* layout_object = GetLayoutBoxModelObject();
   if (!layout_object)
     return 0;
@@ -4259,8 +4293,8 @@ int HTMLElement::offsetTopForBinding() {
 }
 
 int HTMLElement::offsetWidthForBinding() {
-  GetDocument().EnsurePaintLocationDataValidForNode(
-      this, DocumentUpdateReason::kJavaScript);
+  GetDocument().UpdateStyleAndLayoutForNode(this,
+                                            DocumentUpdateReason::kJavaScript);
   int result = 0;
   if (const auto* layout_object = GetLayoutBoxModelObject()) {
     result = AdjustedOffsetForZoom(layout_object->OffsetWidth());
@@ -4270,8 +4304,8 @@ int HTMLElement::offsetWidthForBinding() {
 
 DISABLE_CFI_PERF
 int HTMLElement::offsetHeightForBinding() {
-  GetDocument().EnsurePaintLocationDataValidForNode(
-      this, DocumentUpdateReason::kJavaScript);
+  GetDocument().UpdateStyleAndLayoutForNode(this,
+                                            DocumentUpdateReason::kJavaScript);
   int result = 0;
   if (const auto* layout_object = GetLayoutBoxModelObject()) {
     result = AdjustedOffsetForZoom(layout_object->OffsetHeight());
@@ -4432,14 +4466,32 @@ void HTMLElement::OnContainerTimingAttrChanged(
 
 void HTMLElement::OnContainerTimingIgnoreAttrChanged(
     const AttributeModificationParams& params) {
+  // Both spellings are handled here and share the same use counter. The dashed
+  // `containertiming-ignore` one is deprecated in favor of
+  // `containertimingignore`: it stays functional for the remainder of the
+  // origin trial, but warns. The warning fires on every occurrence on purpose:
+  // measured usage is negligible and the spelling goes away when the trial
+  // ends, so it is not worth tracking per-page state to suppress repeats.
   if (!params.new_value.IsNull() && !IsInUserAgentShadowRoot()) {
     UseCounter::Count(GetDocument(),
                       WebFeature::kContainerTimingIgnoreAttribute);
+    if (params.name == html_names::kContainertimingIgnoreAttr) {
+      AddConsoleMessage(
+          mojom::blink::ConsoleMessageSource::kDeprecation,
+          mojom::blink::ConsoleMessageLevel::kWarning,
+          "The 'containertiming-ignore' attribute is deprecated and will be "
+          "removed. Use 'containertimingignore' instead.");
+    }
   }
 
   if (!RuntimeEnabledFeatures::ContainerTimingEnabled(GetExecutionContext())) {
     return;
   }
+  // Only this spelling's presence is tracked here. That is still correct when
+  // the element carries both spellings: the branches below either consult
+  // RecalcSelfOrAncestorHasContainerTiming(), which sees the other spelling
+  // through HasContainerTimingIgnoreAttribute(), or re-clear an already cleared
+  // subtree.
   bool had_container_timing_ignore = !params.old_value.IsNull();
   bool has_container_timing_ignore = !params.new_value.IsNull();
   if (had_container_timing_ignore == has_container_timing_ignore) {
@@ -4453,7 +4505,7 @@ void HTMLElement::OnContainerTimingIgnoreAttrChanged(
     }
   } else if (!had_container_timing_ignore && has_container_timing_ignore &&
              !FastHasAttribute(html_names::kContainertimingAttr)) {
-    // containertiming has precedence over containertiming-ignore, only unset
+    // containertiming has precedence over containertimingignore, only unset
     // the tree if the node has ignore only
     ClearSelfOrAncestorHasContainerTiming();
     UpdateDescendantHasContainerTiming(false /* has_container_timing */);

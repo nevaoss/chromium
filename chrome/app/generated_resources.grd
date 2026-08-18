@@ -937,8 +937,14 @@ are declared in tools/grit/grit_args.gni.
           <message name="IDS_CONTENT_CONTEXT_PARTIAL_TRANSLATE" desc="The name of the Partial Translate command in the content area context menu">
             &amp;Translate selection to <ph name="LANGUAGE">$1<ex>English</ex></ph>
           </message>
+          <message name="IDS_CONTENT_CONTEXT_PARTIAL_TRANSLATE_V2" desc="The name of the Partial Translate command in the content area context menu when simplified menu is enabled and there is no specific selection text to display.">
+            &amp;Translate selection
+          </message>
           <message name="IDS_CONTENT_CONTEXT_PARTIAL_TRANSLATE_SELECTION" desc="The name of the Translate command in the content area context menu when there is a text selection.">
             &amp;Translate “<ph name="SELECTION">$1<ex>text</ex></ph>” to <ph name="LANGUAGE">$2<ex>English</ex></ph>
+          </message>
+          <message name="IDS_CONTENT_CONTEXT_PARTIAL_TRANSLATE_SELECTION_V2" desc="The name of the Translate command in the content area context menu when there is a text selection and menu simplification is enabled.">
+            &amp;Translate “<ph name="SELECTION">$1<ex>text</ex></ph>”
           </message>
           <message name="IDS_CONTENT_CONTEXT_SEARCHWEBFOR" desc="The name of the Search the Web for “string” command in the content area context menu">
             &amp;Search <ph name="SEARCH_ENGINE">$1<ex>Google</ex></ph> for “<ph name="SEARCH_TERMS">$2<ex>flowers</ex></ph>”
@@ -1293,8 +1299,11 @@ are declared in tools/grit/grit_args.gni.
           <message name="IDS_CONTENT_CONTEXT_PARTIAL_TRANSLATE" desc="In Title Case: The name of the Partial Translate command in the content area context menu">
             &amp;Translate Selection to <ph name="LANGUAGE">$1<ex>English</ex></ph>
           </message>
-          <message name="IDS_CONTENT_CONTEXT_PARTIAL_TRANSLATE_SELECTION" desc="In Title Case: The name of the Translate command in the content area context menu when there is a text selection.">
-            &amp;Translate “<ph name="SELECTION">$1<ex>text</ex></ph>” to <ph name="LANGUAGE">$2<ex>English</ex></ph>
+          <message name="IDS_CONTENT_CONTEXT_PARTIAL_TRANSLATE_V2" desc="In Title Case: The name of the Partial Translate command in the content area context menu when simplified menu is enabled and there is no specific selection text to display.">
+            &amp;Translate Selection
+          </message>
+          <message name="IDS_CONTENT_CONTEXT_PARTIAL_TRANSLATE_SELECTION_V2" desc="In Title Case: The name of the Translate command in the content area context menu when there is a text selection and menu simplification is enabled.">
+            &amp;Translate “<ph name="SELECTION">$1<ex>text</ex></ph>”
           </message>
           <message name="IDS_CONTENT_CONTEXT_SEARCHWEBFOR" desc="In Title Case: The name of the Search the Web for “string” command in the content area context menu">
             &amp;Search <ph name="SEARCH_ENGINE">$1<ex>Google</ex></ph> for “<ph name="SEARCH_TERMS">$2<ex>flowers</ex></ph>”
@@ -1432,6 +1441,9 @@ are declared in tools/grit/grit_args.gni.
           </message>
           <message name="IDS_NEW_INCOGNITO_WINDOW" desc="The text label of a menu item for opening a new Incognito window">
             New &amp;Incognito window
+          </message>
+          <message name="IDS_NEW_ISOLATED_WINDOW" desc="The text label of a menu item for opening a new Isolated window">
+            New &amp;Isolated window
           </message>
           <message name="IDS_PROFILE_ROW_SIGNED_IN_MESSAGE_WITH_EMAIL" desc="Label that lets the user know what email they are signed into their profile as.">
             Signed in as <ph name="EMAIL">$1<ex>user@gmail.com</ex></ph>
@@ -1574,6 +1586,9 @@ are declared in tools/grit/grit_args.gni.
           </message>
           <message name="IDS_NEW_INCOGNITO_WINDOW" desc="In Title Case: The text label of a menu item for opening a new Incognito window">
             New &amp;Incognito Window
+          </message>
+          <message name="IDS_NEW_ISOLATED_WINDOW" desc="In Title Case: The text label of a menu item for opening a new Isolated window">
+            New &amp;Isolated Window
           </message>
           <message name="IDS_PROFILE_ROW_SIGNED_IN_MESSAGE_WITH_EMAIL" desc="In Title Case: Label that lets the user know what email they are signed into their profile as.">
             Signed in as <ph name="EMAIL">$1<ex>user@gmail.com</ex></ph>
@@ -7415,6 +7430,12 @@ Keep your key file in a safe place. You will need it to create new versions of y
         desc="Label for a button that guides the user to composebox's context menu using a suggestion like label.">
         Ask about your tabs
       </message>
+      <message name="IDS_OMNIBOX_EVERYWHERE_STATUS_ICON_TOOLTIP" desc="Tooltip text for the Omnibox Everywhere status tray icon." translateable="false">
+        Omnibox Everywhere
+      </message>
+      <message name="IDS_OMNIBOX_EVERYWHERE_STATUS_ICON_MENU_EXIT" desc="Label for the exit item in the Omnibox Everywhere status tray context menu." translateable="false">
+        Exit
+      </message>
 
 
       <!-- NTP -->
@@ -7505,6 +7526,15 @@ Keep your key file in a safe place. You will need it to create new versions of y
       </message>
       <message name="IDS_NTP_SEARCH_BOX_DYNAMIC_PLACEHOLDER_CANVAS" desc="One of the dynamically changing placeholder texts for the NTP searchbox">
         Create anything
+      </message>
+      <message name="IDS_NTP_SEARCH_BOX_DYNAMIC_PLACEHOLDER_RESEARCH_TOPIC" desc="One of the dynamically changing placeholder texts for the NTP searchbox. Only shown to users eligible for AI Mode.">
+        Research a topic
+      </message>
+      <message name="IDS_NTP_SEARCH_BOX_DYNAMIC_PLACEHOLDER_LEARN_SKILL" desc="One of the dynamically changing placeholder texts for the NTP searchbox. Only shown to users eligible for AI Mode.">
+        Learn a new skill
+      </message>
+      <message name="IDS_NTP_SEARCH_BOX_DYNAMIC_PLACEHOLDER_GET_ADVICE" desc="One of the dynamically changing placeholder texts for the NTP searchbox. Only shown to users eligible for AI Mode.">
+        Get advice
       </message>
       <message name="IDS_NTP_CUSTOM_LINKS_ADD_SHORTCUT_TOOLTIP" desc="The tooltip for adding a custom link shortcut. (On the New Tab Page)">
         Add shortcut
@@ -10482,6 +10512,12 @@ Keep your key file in a safe place. You will need it to create new versions of y
                desc="Accessible alert text used in IDS_SPLIT_VIEW_RESIZE_ACCESSIBLE_ALERT for which side the window/pane is seen on.">
                Bottom
       </message>
+      <message name="IDS_SPLIT_VIEW_HORIZONTAL_INDIRECT_ACCESS_IPH_TITLE" desc="The title for horizontal split view indirect access snooze IPH.">
+        Try stacked split view
+      </message>
+      <message name="IDS_SPLIT_VIEW_HORIZONTAL_INDIRECT_ACCESS_IPH_BODY" desc="The body for horizontal split view indirect access snooze IPH.">
+        Use the split view menu to switch between side by side and stacked layouts.
+      </message>
 
       <!-- Vertical Tab Strings -->
       <if expr="use_titlecase">
@@ -10630,12 +10666,6 @@ Keep your key file in a safe place. You will need it to create new versions of y
         Unpin
       </message>
       <message name="IDS_TAB_SEARCH_BUTTON_CXMENU_PIN" desc="Name of the tab search button context menu item for pinning tab search.">
-        Pin
-      </message>
-      <message name="IDS_ORGANIZER_PANEL_BUTTON_CXMENU_UNPIN" desc="Name of the organizer panel button context menu item for unpinning the organizer panel.">
-        Unpin
-      </message>
-      <message name="IDS_ORGANIZER_PANEL_BUTTON_CXMENU_PIN" desc="Name of the organizer panel button context menu item for pinning the organizer panel.">
         Pin
       </message>
       <message name="IDS_EVERYTHING_MENU_BUTTON_CXMENU_UNPIN" desc="Name of the everything menu button context menu item for unpinning the everything menu.">
@@ -15805,6 +15835,9 @@ Please help our engineers fix this problem. Tell us what happened right before y
         <message name="IDS_NEW_INCOGNITO_WINDOW_MAC" desc="In Title Case: The Mac menu item for opening a new Incognito window in the file menu.">
           New Incognito Window
         </message>
+        <message name="IDS_NEW_ISOLATED_WINDOW_MAC" desc="In Title Case: The Mac menu item for opening a new Isolated window in the file menu.">
+          New Isolated Window
+        </message>
         <message name="IDS_REOPEN_CLOSED_TABS_MAC" desc="In Title Case: The Mac menu item reopen recently closed tabs in the file menu.">
           Reopen Closed Tab
         </message>
@@ -16567,9 +16600,6 @@ Please help our engineers fix this problem. Tell us what happened right before y
       </if>
 
       <!-- Live caption. -->
-      <message name="IDS_LIVE_CAPTION_PROMO" desc="Text shown on promotional UI appearing next to the global media controls button">
-        Get captions for your audio and video
-      </message>
       <message name="IDS_LIVE_CAPTION_PROMO_SCREENREADER" desc="Text announced encouraging users to open live caption">
         Get captions for your audio and video by enabling Live Caption in settings
       </message>

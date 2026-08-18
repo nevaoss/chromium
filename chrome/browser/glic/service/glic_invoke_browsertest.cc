@@ -619,6 +619,55 @@ IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest, InvokeWithSkillIdSmokeTest) {
   ASSERT_OK(WaitForGlicClient(instance));
 }
 
+// Verifies that invoking with an InvocationPayloadPtr doesn't cause crashes or
+// failures during the mapping of source_or_payload.
+IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest,
+                       InvokeWithUniversalCartPayloadSmokeTest) {
+  tabs::TabInterface* tab = GetTabListInterface()->GetActiveTab();
+
+  base::test::TestFuture<void> success_future;
+  // Construct options via payload branch instead of just InvocationSource enum.
+  GlicInvokeOptions options(glic::Target(*tab),
+                            mojom::InvocationPayload::NewUniversalCart(
+                                mojom::UniversalCartPayload::New()));
+  options.on_success = success_future.GetCallback();
+
+  EXPECT_FALSE(GetInstanceForTab(tab));
+
+  coordinator().Invoke(std::move(options));
+
+  EXPECT_TRUE(success_future.Wait());
+
+  GlicInstanceImpl* instance = GetInstanceForTab(tab);
+  ASSERT_TRUE(instance);
+
+  ASSERT_OK(WaitForGlicClient(instance));
+}
+
+// Verifies that invoking with an explicit TargetSurface actuation target
+// successfully configures and pipes through.
+IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest,
+                       InvokeWithTargetSurfaceActuationTargetSmokeTest) {
+  tabs::TabInterface* tab = GetTabListInterface()->GetActiveTab();
+
+  base::test::TestFuture<void> success_future;
+  GlicInvokeOptions options(glic::Target(*tab),
+                            mojom::InvocationSource::kOsButton);
+  options.target.actuation_target = mojom::ActuationTarget::kTargetSurface;
+  options.on_success = success_future.GetCallback();
+
+  EXPECT_FALSE(GetInstanceForTab(tab));
+
+  coordinator().Invoke(std::move(options));
+
+  EXPECT_TRUE(success_future.Wait());
+
+  GlicInstanceImpl* instance = GetInstanceForTab(tab);
+  ASSERT_TRUE(instance);
+
+  ASSERT_OK(WaitForGlicClient(instance));
+}
+
 // TODO(crbug.com/528472503): Re-enable this test on Android once flakiness is
 // fixed.
 #if !BUILDFLAG(IS_ANDROID)
@@ -822,11 +871,8 @@ IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTestWithoutActor,
   EXPECT_EQ(error_future.Get(), GlicInvokeError::kInvalidConfiguration);
 }
 
-// TODO(crbug.com/529441715): Re-enable this test on Android once flakiness is
-// fixed.
-#if !BUILDFLAG(IS_ANDROID)
 IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest, InvokeWithInvalidContextData) {
-  tabs::TabInterface* tab = CreateAndActivateTab(GURL("about:blank"));
+  tabs::TabInterface* tab = CreateUserInitiatedTab(GURL("about:blank"));
   ASSERT_TRUE(content::NavigateToURL(tab->GetContents(), GURL("about:blank")));
 
   // Create mock AdditionalContext with an invalid mime_type.
@@ -856,7 +902,7 @@ IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest, InvokeWithInvalidContextData) {
 
 IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest,
                        InvokeHiddenClientRevertsVisibilityOnFailure) {
-  tabs::TabInterface* tab = CreateAndActivateTab(GURL("about:blank"));
+  tabs::TabInterface* tab = CreateUserInitiatedTab(GURL("about:blank"));
   ASSERT_TRUE(content::NavigateToURL(tab->GetContents(), GURL("about:blank")));
 
   // Set up invocation that we know will fail (PastePolicyCheck).
@@ -894,7 +940,7 @@ IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest,
 
 IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest,
                        InvokeWithInvalidContextMultipleFormats) {
-  tabs::TabInterface* tab = CreateAndActivateTab(GURL("about:blank"));
+  tabs::TabInterface* tab = CreateUserInitiatedTab(GURL("about:blank"));
   ASSERT_TRUE(content::NavigateToURL(tab->GetContents(), GURL("about:blank")));
 
   // Create mock AdditionalContext with both image/png and text formats.
@@ -926,7 +972,6 @@ IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest,
   EXPECT_EQ(error_future.Get(), GlicInvokeError::kInvalidConfiguration);
   EXPECT_FALSE(GetInstanceForTab(tab));
 }
-#endif  // !BUILDFLAG(IS_ANDROID)
 IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest, InvokeWithTabsToPin) {
   tabs::TabInterface* tab1 = GetTabListInterface()->GetActiveTab();
   tabs::TabInterface* tab2 = CreateUserInitiatedTab(GURL("about:blank"));

@@ -6,11 +6,12 @@
 
 #include <algorithm>
 
-#include "base/metrics/histogram_functions.h"
+#include "base/metrics/histogram_macros.h"
 #include "base/trace_event/typed_macros.h"
 #include "base/tracing/protos/chrome_track_event.pbzero.h"
 #include "build/build_config.h"
 #include "components/viz/common/features.h"
+#include "third_party/perfetto/include/perfetto/tracing/track_event_args.h"
 
 namespace viz {
 
@@ -36,6 +37,11 @@ FrameDeadlineDecider::FrameDeadlineDecider(
 
 FrameDeadlineDecider::~FrameDeadlineDecider() = default;
 
+void FrameDeadlineDecider::NotifyMinSupportedVsyncInterval(
+    base::TimeDelta min_vsync_interval) {
+  min_supported_vsync_interval_ = min_vsync_interval;
+}
+
 bool FrameDeadlineDecider::IsPartOfOngoingFrameSequence(
     base::TimeTicks frame_time,
     bool is_handling_interaction) const {
@@ -54,7 +60,7 @@ bool FrameDeadlineDecider::IsPartOfOngoingFrameSequence(
   return time_since_last_frame <= timeout;
 }
 
-size_t FrameDeadlineDecider::QueryDeadline(
+FrameDeadlineDecider::QueryResult FrameDeadlineDecider::QueryDeadline(
     const PossibleDeadlines& possible_deadlines,
     base::TimeDelta vsync_interval,
     int max_allowed_buffers,
@@ -64,11 +70,13 @@ size_t FrameDeadlineDecider::QueryDeadline(
   CHECK(!possible_deadlines.deadlines.empty());
 
   if (use_platform_preferred_deadlines_) {
-    return possible_deadlines.os_preferred_index;
+    return {possible_deadlines.os_preferred_index,
+            SelectionReason::kPlatformPreferred};
   }
 
   if (IsPartOfOngoingFrameSequence(frame_time, is_handling_interaction)) {
-    return FindClosestDeadlineByPresentation(possible_deadlines);
+    return {FindClosestDeadlineByPresentation(possible_deadlines),
+            SelectionReason::kOngoingSequence};
   }
 
   int presentation_offset = 0;
@@ -85,6 +93,16 @@ size_t FrameDeadlineDecider::QueryDeadline(
   CHECK_GT(target_present_multiplier, 0);
   base::TimeDelta target_present_delta =
       target_present_multiplier * vsync_interval;
+
+  // Always cap custom presentation deltas so that an imminent switch to
+  // higher refresh rates never exceeds the display's maximum sustainable
+  // presentation delta.
+  base::TimeDelta min_interval_presentation_cap =
+      min_supported_vsync_interval_.has_value()
+          ? max_allowed_buffers * (*min_supported_vsync_interval_)
+          : base::TimeDelta::Max();
+  target_present_delta =
+      std::min(target_present_delta, min_interval_presentation_cap);
 
   if (earliest_input_time.has_value()) {
     // The earliest input time can be in the future relative to frame_time
@@ -120,17 +138,19 @@ size_t FrameDeadlineDecider::QueryDeadline(
   const PossibleDeadline& chrome_preferred_deadline = *it;
 
   if (chrome_preferred_deadline.present_delta > target_present_delta) {
-    return possible_deadlines.os_preferred_index;
+    return {possible_deadlines.os_preferred_index,
+            SelectionReason::kOsPreferredNoDeadlineWithinTarget};
   }
 
   if (chrome_preferred_deadline.present_delta <
       possible_deadlines.GetOSPreferredDeadline().present_delta) {
     // Fallback to os preferred deadline instead of reducing the preferred
     // deadline. We are not sure if this would actually happen in field.
-    return possible_deadlines.os_preferred_index;
+    return {possible_deadlines.os_preferred_index,
+            SelectionReason::kOsPreferredChromePreferredSooner};
   }
 
-  return chrome_preferred_index;
+  return {chrome_preferred_index, SelectionReason::kChromePreferredNewSequence};
 }
 
 size_t FrameDeadlineDecider::SelectDeadline(
@@ -141,16 +161,21 @@ size_t FrameDeadlineDecider::SelectDeadline(
     std::optional<base::TimeTicks> earliest_input_time,
     bool is_handling_interaction) {
   TRACE_EVENT_BEGIN("toplevel,graphics.pipeline,viz",
-                    "FrameDeadlineDecider::SelectDeadline");
+                    "FrameDeadlineDecider::SelectDeadline",
+                    perfetto::TerminatingFlow::ProcessScoped(
+                        GetTraceFlowId(frame_time.since_origin())));
 
-  size_t result_index =
+  QueryResult result =
       QueryDeadline(possible_deadlines, vsync_interval, max_allowed_buffers,
                     frame_time, earliest_input_time, is_handling_interaction);
-  const auto& selected_deadline = possible_deadlines.deadlines[result_index];
+  const auto& selected_deadline =
+      possible_deadlines.deadlines[result.deadline_index];
+  UMA_HISTOGRAM_ENUMERATION("Viz.FrameDeadlineDecider.SelectionReason",
+                            result.reason);
 
   frame_sequence_state_ = FrameSequenceState{
       .present_delta = selected_deadline.present_delta,
-      .deadline_index = result_index,
+      .deadline_index = result.deadline_index,
       .last_frame_time = frame_time,
       .is_interaction_active = is_handling_interaction,
   };
@@ -159,14 +184,19 @@ size_t FrameDeadlineDecider::SelectDeadline(
   TRACE_EVENT_END(
       "toplevel,graphics.pipeline,viz", [&](perfetto::EventContext ctx) {
         auto* data = ctx.event<perfetto::protos::pbzero::ChromeTrackEvent>()
-                         ->set_android_choreographer_frame_callback_data();
-        auto frame_time_us = frame_time.since_origin().InMicroseconds();
-        data->set_frame_time_us(frame_time_us);
+                         ->set_frame_deadline_decider();
+        // Increment the C++ SelectionReason enum value by 1 to map to the proto
+        // enum, because the proto enum reserves 0 for
+        // SELECTION_REASON_UNSPECIFIED.
+        data->set_selection_reason(
+            static_cast<
+                perfetto::protos::pbzero::FrameDeadlineDecider_SelectionReason>(
+                static_cast<int>(result.reason) + 1));
         auto* timeline = data->set_chrome_preferred_frame_timeline();
         selected_deadline.SetTraceTimelineData(*timeline);
       });
 
-  return result_index;
+  return result.deadline_index;
 }
 
 void FrameDeadlineDecider::OnDisplayInvisible() {
@@ -221,8 +251,8 @@ void FrameDeadlineDecider::RecordSelectedSustainableDeadlineHistogram(
   const base::TimeDelta max_sustainable_delta =
       (max_allowed_buffers * vsync_interval) + base::Milliseconds(1);
   const bool is_sustainable = selected_present_delta <= max_sustainable_delta;
-  base::UmaHistogramBoolean(
-      "Viz.FrameDeadlineDecider.SelectedSustainableDeadline", is_sustainable);
+  UMA_HISTOGRAM_BOOLEAN("Viz.FrameDeadlineDecider.SelectedSustainableDeadline",
+                        is_sustainable);
 }
 
 }  // namespace viz

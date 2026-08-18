@@ -236,8 +236,6 @@ inline constexpr char kTabHoverCardImagesCrossfadePreviewAtParameterName[] =
 inline constexpr char kTabHoverCardAdditionalMaxWidthDelay[] =
     "additional_max_width_delay";
 
-BASE_DECLARE_FEATURE(kTabStripNewTabButtonFlickerFix);
-
 // If enabled, use desktop widget to show tab modal dialogs.
 BASE_DECLARE_FEATURE(kTabModalUsesDesktopWidget);
 
@@ -286,10 +284,6 @@ BASE_DECLARE_FEATURE(kPageSpecificDataDialogRelatedInstalledAppsSection);
 
 // Feature for the promotion banner on the top of chrome://management page
 BASE_DECLARE_FEATURE(kEnableManagementPromotionBanner);
-
-// Gates the optimization to cache LocationBarView in
-// LensOverlayHomeworkPageActionController.
-BASE_DECLARE_FEATURE(kLensOverlayHomeworkPageActionFocusOptimization);
 
 // Enables the anchored message bubble to close when deactivated (e.g. when
 // losing focus).
@@ -383,8 +377,8 @@ BASE_DECLARE_FEATURE_PARAM(std::string, kAiOverlayDialogMockJsonPath);
 BASE_DECLARE_FEATURE(kTabGroupsFocusing);
 BASE_DECLARE_FEATURE_PARAM(bool, kTabGroupsFocusingPinnedTabs);
 
-BASE_DECLARE_FEATURE(kVerticalTabsGrabHandleRemoval);
-BASE_DECLARE_FEATURE_PARAM(bool, kVerticalTabsGrabHandleRemovalAlways);
+BASE_DECLARE_FEATURE(kTabGroupRibbon);
+bool IsTabGroupRibbonEnabled();
 
 BASE_DECLARE_FEATURE(kOmniboxResizingPrioritization);
 

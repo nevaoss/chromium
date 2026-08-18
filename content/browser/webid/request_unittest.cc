@@ -1207,7 +1207,7 @@ class RequestTest : public RenderViewHostImplTestHarness {
                            /*delay_token_response=*/false,
                            AccountsDialogAction::kSelectFirstAccount,
                            IdpSigninStatusMismatchDialogAction::kNone,
-                           ErrorDialogAction::kClose,
+                           ErrorDialogAction::kNone,
                            LoadingDialogAction::kNone};
     kConfigurationMultiIdpValid = {
         kToken,
@@ -1825,9 +1825,6 @@ class RequestTest : public RenderViewHostImplTestHarness {
     histogram_tester_.ExpectUniqueSample(
         "Blink.FedCm.AutoReauthn.BlockedByEmbargo",
         expected_auto_reauthn_embargoed, 1);
-    histogram_tester_.ExpectTotalCount(
-        "Blink.FedCm.AutoReauthn.TimeFromEmbargoWhenBlocked",
-        expected_auto_reauthn_embargoed ? 1 : 0);
     histogram_tester_.ExpectUniqueSample(
         "Blink.FedCm.AutoReauthn.BlockedByPreventSilentAccess",
         expected_prevent_silent_access, 1);
@@ -1854,8 +1851,6 @@ class RequestTest : public RenderViewHostImplTestHarness {
             entry, "AutoReauthn.BlockedByContentSettings"));
         EXPECT_FALSE(ukm_recorder()->GetEntryMetric(
             entry, "AutoReauthn.BlockedByEmbargo"));
-        EXPECT_FALSE(ukm_recorder()->GetEntryMetric(
-            entry, "AutoReauthn.TimeFromEmbargoWhenBlocked"));
         EXPECT_FALSE(ukm_recorder()->GetEntryMetric(
             entry, "AutoReauthn.BlockedByPreventSilentAccess"));
         continue;
@@ -1884,10 +1879,6 @@ class RequestTest : public RenderViewHostImplTestHarness {
           ukm_recorder()->GetEntryMetric(entry, "AutoReauthn.BlockedByEmbargo");
       ASSERT_TRUE(metric) << "AutoReauthn.BlockedByEmbargo was not found";
       EXPECT_EQ(expected_auto_reauthn_embargoed, *metric);
-
-      metric = ukm_recorder()->GetEntryMetric(
-          entry, "AutoReauthn.TimeFromEmbargoWhenBlocked");
-      EXPECT_EQ(expected_auto_reauthn_embargoed, !!metric);
 
       metric = ukm_recorder()->GetEntryMetric(
           entry, "AutoReauthn.BlockedByPreventSilentAccess");
@@ -4566,8 +4557,8 @@ TEST_F(RequestTest, FailureUiThenSuccessfulSignin) {
   EXPECT_TRUE(did_show_accounts_dialog());
 
   // After the IdP sign-in status was updated, the endpoints should have been
-  // fetched a 2nd time.
-  EXPECT_EQ(NumFetched(FetchedEndpoint::WELL_KNOWN), 2u);
+  // fetched a 2nd time, but well-known is cached so it is only fetched 1 time.
+  EXPECT_EQ(NumFetched(FetchedEndpoint::WELL_KNOWN), 1u);
   EXPECT_EQ(NumFetched(FetchedEndpoint::ACCOUNTS), 2u);
 
   histogram_tester_.ExpectTotalCount(
@@ -4740,9 +4731,9 @@ TEST_F(RequestTest, FailureUiAccountEndpointKeepsFailing) {
   EXPECT_EQ(2u, dialog_controller_state_
                     .num_show_idp_signin_status_mismatch_dialog_requests);
 
-  // After the IdP sign-in status was updated, the endpoints should have been
-  // fetched a 2nd time.
-  EXPECT_EQ(NumFetched(FetchedEndpoint::WELL_KNOWN), 2u);
+  // After the IdP sign-in status was updated, accounts are fetched a 2nd time,
+  // but well-known is cached so it is only fetched 1 time.
+  EXPECT_EQ(NumFetched(FetchedEndpoint::WELL_KNOWN), 1u);
   EXPECT_EQ(NumFetched(FetchedEndpoint::ACCOUNTS), 2u);
 
   histogram_tester_.ExpectTotalCount(
@@ -4753,71 +4744,6 @@ TEST_F(RequestTest, FailureUiAccountEndpointKeepsFailing) {
   ExpectNoUKMPresence("AccountsDialogShown2");
   ExpectUKMPresence("MismatchDialogShown2");
   ExpectNoUKMPresence("Timing.AccountsDialogShownDuration");
-  ExpectUKMPresence("Timing.MismatchDialogShownDuration");
-}
-
-// Test that for the following sequence of events:
-// 1) Failure dialog is shown due to IdP sign-in status mismatch
-// 2) IdP sign-in status is updated
-// 3) A different endpoint fails during the fetch initiated by the IdP sign-in
-// status update.
-// That user is shown IdP-sign-in-failure dialog.
-TEST_F(RequestTest, FailureUiThenFailDifferentEndpoint) {
-  SetNetworkRequestManager(
-      std::make_unique<ParseStatusOverrideIdpNetworkRequestManager>());
-  auto* network_manager =
-      static_cast<ParseStatusOverrideIdpNetworkRequestManager*>(
-          test_network_request_manager_.get());
-
-  url::Origin kIdpOrigin = OriginFromString(kProviderUrlFull);
-
-  // Setup IdP sign-in status mismatch.
-  network_manager->accounts_parse_status_ = ParseStatus::kInvalidResponseError;
-  test_permission_delegate_->idp_signin_statuses_[kIdpOrigin] = true;
-
-  RunDontWaitForCallback(kDefaultRequestParameters, kConfigurationValid);
-  EXPECT_TRUE(did_show_idp_signin_status_mismatch_dialog());
-  EXPECT_FALSE(did_show_accounts_dialog());
-
-  EXPECT_EQ(NumFetched(FetchedEndpoint::ACCOUNTS), 1u);
-
-  // Make the fetch triggered by the IdP sign-in status changing fail for a
-  // different endpoint.
-  network_manager->config_parse_status_ = ParseStatus::kInvalidResponseError;
-
-  // Simulate user signing into IdP by updating the IdP signin status and
-  // calling the observer.
-  test_permission_delegate_->idp_signin_statuses_[kIdpOrigin] = true;
-  network_manager->accounts_parse_status_ = ParseStatus::kSuccess;
-  request_->OnIdpSigninStatusReceived(kIdpOrigin, /*idp_signin_status=*/true);
-
-  WaitForCurrentRequest();
-  RequestExpectations expectations = {
-      RequestTokenStatus::kError,
-      FederatedRequestResult::kConfigInvalidResponse,
-      /*standalone_console_message=*/std::nullopt,
-      /*selected_idp_config_url=*/std::nullopt};
-  CheckExpectations(kConfigurationValid, expectations);
-
-  // The user should be shown IdP-sign-in-failure dialog.
-  EXPECT_FALSE(did_show_accounts_dialog());
-  EXPECT_EQ(1u, dialog_controller_state_
-                    .num_show_idp_signin_status_mismatch_dialog_requests);
-
-  // After the IdP sign-in status was updated, the endpoints should have been
-  // fetched a 2nd time.
-  EXPECT_EQ(NumFetched(FetchedEndpoint::WELL_KNOWN), 2u);
-  EXPECT_EQ(NumFetched(FetchedEndpoint::ACCOUNTS), 1u);
-
-  histogram_tester_.ExpectTotalCount(
-      "Blink.FedCm.Timing.AccountsDialogShownDuration2", 0);
-  histogram_tester_.ExpectTotalCount(
-      "Blink.FedCm.Timing.MismatchDialogShownDuration", 1);
-
-  ExpectNoUKMPresence("AccountsDialogShown2");
-  ExpectUKMPresence("MismatchDialogShown2");
-  ExpectNoUKMPresence("Timing.AccountsDialogShownDuration");
-  ExpectUKMPresence("Timing.MismatchDialogShownDuration");
 }
 
 // Test that when IdpSigninStatus API does not have any state for an IDP, that
@@ -6533,6 +6459,7 @@ TEST_F(RequestTest, IdTokenInvalidContentType) {
   MockConfiguration configuration = kConfigurationValid;
   configuration.token_response.parse_status =
       ParseStatus::kInvalidContentTypeError;
+  configuration.error_dialog_action = ErrorDialogAction::kClose;
   RequestExpectations expectations = {
       RequestTokenStatus::kError,
       FederatedRequestResult::kIdTokenInvalidContentType,
@@ -7258,6 +7185,7 @@ TEST_F(RequestTest, InvalidResponseErrorDialogShown) {
       ParseStatus::kInvalidResponseError;
   configuration.error_dialog_type = error_dialog_type;
   configuration.token_response_type = token_response_type;
+  configuration.error_dialog_action = ErrorDialogAction::kClose;
 
   RequestExpectations expectations = {
       RequestTokenStatus::kError,
@@ -7293,6 +7221,7 @@ TEST_F(RequestTest, NoResponseErrorDialogShown) {
   configuration.token_response.parse_status = ParseStatus::kNoResponseError;
   configuration.error_dialog_type = error_dialog_type;
   configuration.token_response_type = token_response_type;
+  configuration.error_dialog_action = ErrorDialogAction::kClose;
 
   RequestExpectations expectations = {
       RequestTokenStatus::kError, FederatedRequestResult::kIdTokenNoResponse,
@@ -7330,6 +7259,7 @@ TEST_F(RequestTest, ErrorUrlDisplayedWithProperUrl) {
   configuration.error_dialog_type = error_dialog_type;
   configuration.token_response_type = token_response_type;
   configuration.error_url_type = error_url_type;
+  configuration.error_dialog_action = ErrorDialogAction::kClose;
 
   RequestExpectations expectations = {
       RequestTokenStatus::kError,
@@ -7540,6 +7470,7 @@ TEST_F(RequestTest, ErrorDialogTypeMetrics) {
   configuration.token_error = TokenError(/*code=*/"invalid_request",
                                          GURL("https://foo.idp.example/error"));
   configuration.error_dialog_type = error_dialog_type;
+  configuration.error_dialog_action = ErrorDialogAction::kClose;
 
   RequestExpectations expectations = {
       RequestTokenStatus::kError,
@@ -7593,6 +7524,7 @@ TEST_F(RequestTest, TokenResponseTypeMetrics) {
   configuration.token_error = TokenError(/*code=*/"invalid_request",
                                          GURL("https://foo.idp.example/error"));
   configuration.token_response_type = token_response_type;
+  configuration.error_dialog_action = ErrorDialogAction::kClose;
 
   RequestExpectations expectations = {
       RequestTokenStatus::kError,
@@ -7619,6 +7551,7 @@ TEST_F(RequestTest, ErrorUrlTypeMetrics) {
   configuration.token_error = TokenError(/*code=*/"invalid_request",
                                          GURL("https://foo.idp.example/error"));
   configuration.error_url_type = error_url_type;
+  configuration.error_dialog_action = ErrorDialogAction::kClose;
 
   RequestExpectations expectations = {
       RequestTokenStatus::kError,
@@ -7646,6 +7579,7 @@ TEST_F(RequestTest, CrossSiteErrorDialogDevtoolsIssue) {
   configuration.token_error = TokenError(
       /*code=*/"invalid_request", GURL("https://cross-site.example/error"));
   configuration.error_url_type = error_url_type;
+  configuration.error_dialog_action = ErrorDialogAction::kClose;
 
   RequestExpectations expectations = {
       RequestTokenStatus::kError,

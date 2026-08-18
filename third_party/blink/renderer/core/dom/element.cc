@@ -2015,6 +2015,11 @@ bool Element::InterestGained(Element* target, InterestState state) {
 bool Element::InterestLost(Element* target,
                            InterestLostCancelable cancelable,
                            InterestLostPopoverBehavior behavior) {
+  bool force_interest = false;
+  probe::WillLoseInterest(this, &force_interest);
+  if (force_interest) {
+    return false;
+  }
   if (!ShouldContinueWithInterest(*this, target, InterestState::kNoInterest)) {
     return false;
   }
@@ -2278,8 +2283,8 @@ ScriptPromise<ScrollResult> Element::scrollIntoView(
 void Element::scrollIntoViewWithOptions(const ScrollIntoViewOptions* options,
                                         ScrollPromiseResolver* resolver) {
   ActivateDisplayLockIfNeeded(DisplayLockActivationReason::kScrollIntoView);
-  GetDocument().EnsurePaintLocationDataValidForNode(
-      this, DocumentUpdateReason::kJavaScript);
+  GetDocument().UpdateStyleAndLayoutForNode(this,
+                                            DocumentUpdateReason::kJavaScript);
 
   if (!GetLayoutObject() || !GetDocument().GetPage()) {
     return;
@@ -2343,8 +2348,8 @@ void Element::ScrollIntoViewNoVisualUpdate(
 }
 
 void Element::scrollIntoViewIfNeeded(bool center_if_needed) {
-  GetDocument().EnsurePaintLocationDataValidForNode(
-      this, DocumentUpdateReason::kJavaScript);
+  GetDocument().UpdateStyleAndLayoutForNode(this,
+                                            DocumentUpdateReason::kJavaScript);
 
   if (!GetLayoutObject()) {
     return;
@@ -2367,8 +2372,8 @@ void Element::scrollIntoViewIfNeeded(bool center_if_needed) {
 }
 
 int Element::OffsetLeft() {
-  GetDocument().EnsurePaintLocationDataValidForNode(
-      this, DocumentUpdateReason::kJavaScript);
+  GetDocument().UpdateStyleAndLayoutForNode(this,
+                                            DocumentUpdateReason::kJavaScript);
   if (const auto* layout_object = GetLayoutBoxModelObject()) {
     return AdjustForAbsoluteZoom::AdjustLayoutUnit(
                layout_object->OffsetPoint(OffsetParent()).left,
@@ -2379,8 +2384,8 @@ int Element::OffsetLeft() {
 }
 
 int Element::OffsetTop() {
-  GetDocument().EnsurePaintLocationDataValidForNode(
-      this, DocumentUpdateReason::kJavaScript);
+  GetDocument().UpdateStyleAndLayoutForNode(this,
+                                            DocumentUpdateReason::kJavaScript);
   if (const auto* layout_object = GetLayoutBoxModelObject()) {
     return AdjustForAbsoluteZoom::AdjustLayoutUnit(
                layout_object->OffsetPoint(OffsetParent()).top,
@@ -2391,8 +2396,8 @@ int Element::OffsetTop() {
 }
 
 int Element::OffsetWidth() {
-  GetDocument().EnsurePaintLocationDataValidForNode(
-      this, DocumentUpdateReason::kJavaScript);
+  GetDocument().UpdateStyleAndLayoutForNode(this,
+                                            DocumentUpdateReason::kJavaScript);
   if (const auto* layout_object = GetLayoutBoxModelObject()) {
     return AdjustForAbsoluteZoom::AdjustLayoutUnit(layout_object->OffsetWidth(),
                                                    layout_object->StyleRef())
@@ -2402,8 +2407,8 @@ int Element::OffsetWidth() {
 }
 
 int Element::OffsetHeight() {
-  GetDocument().EnsurePaintLocationDataValidForNode(
-      this, DocumentUpdateReason::kJavaScript);
+  GetDocument().UpdateStyleAndLayoutForNode(this,
+                                            DocumentUpdateReason::kJavaScript);
   if (const auto* layout_object = GetLayoutBoxModelObject()) {
     return AdjustForAbsoluteZoom::AdjustLayoutUnit(
                layout_object->OffsetHeight(), layout_object->StyleRef())
@@ -3177,8 +3182,8 @@ bool Element::HandleScrollByPageCommand(CommandEventType command) {
 }
 
 gfx::Rect Element::BoundsInWidget() const {
-  GetDocument().EnsurePaintLocationDataValidForNode(
-      this, DocumentUpdateReason::kUnknown);
+  GetDocument().UpdateStyleAndLayoutForNode(this,
+                                            DocumentUpdateReason::kUnknown);
 
   LocalFrameView* view = GetDocument().View();
   if (!view) {
@@ -3230,7 +3235,7 @@ Vector<gfx::Rect> Element::OutlineRectsInWidget(
     return rects;
   }
 
-  GetDocument().EnsurePaintLocationDataValidForNode(this, reason);
+  GetDocument().UpdateStyleAndLayoutForNode(this, reason);
 
   LayoutBoxModelObject* layout_object = GetLayoutBoxModelObject();
   if (!layout_object) {
@@ -3366,8 +3371,8 @@ Vector<gfx::RectF> Element::GetClientRectsNoAdjustment() {
   // TODO(crbug.com/1499981): This should be removed once synchronized scrolling
   // impact is understood.
   SyncScrollAttemptHeuristic::DidAccessScrollOffset();
-  GetDocument().EnsurePaintLocationDataValidForNode(
-      this, DocumentUpdateReason::kJavaScript);
+  GetDocument().UpdateStyleAndLayoutForNode(this,
+                                            DocumentUpdateReason::kJavaScript);
 
   Vector<gfx::QuadF> quads;
   ClientQuads(quads);
@@ -3409,8 +3414,8 @@ gfx::RectF Element::GetBoundingClientRectNoLifecycleUpdate() const {
 }
 
 DOMRect* Element::GetBoundingClientRect() {
-  GetDocument().EnsurePaintLocationDataValidForNode(
-      this, DocumentUpdateReason::kJavaScript);
+  GetDocument().UpdateStyleAndLayoutForNode(this,
+                                            DocumentUpdateReason::kJavaScript);
   return DOMRect::FromRectF(GetBoundingClientRectNoLifecycleUpdate());
 }
 
@@ -3716,6 +3721,9 @@ void Element::AttributeChanged(const AttributeModificationParams& params) {
     if (new_id != GetElementData()->IdForStyleResolution()) {
       AtomicString old_id = GetElementData()->SetIdForStyleResolution(new_id);
       GetDocument().GetStyleEngine().IdChangedForElement(old_id, new_id, *this);
+      if (isConnected()) {
+        GetDocument().MarkOverscrollCommandTargetsDirty();
+      }
     }
 
     ProcessElementRenderBlocking(new_id);
@@ -4265,6 +4273,10 @@ Node::InsertionNotificationRequest Element::InsertedInto(
     }
   }
 
+  if (insertion_point.isConnected() && !GetIdAttribute().empty()) {
+    GetDocument().MarkOverscrollCommandTargetsDirty();
+  }
+
   return kInsertionDone;
 }
 
@@ -4570,6 +4582,9 @@ void Element::RemovedFrom(ContainerNode& insertion_point) {
     tracker->RemoveAllOverscroll();
   }
 
+  if (was_in_document && !GetIdAttribute().empty()) {
+    document.MarkOverscrollCommandTargetsDirty();
+  }
 }
 
 void Element::AttachColumnPseudoElements(AttachContext& context) {
@@ -5596,7 +5611,8 @@ StyleRecalcChange Element::RecalcOwnStyle(
   // also clear GetOverscrollContainer() on `this`).
   bool is_valid_overscroll_area =
       new_style && new_style->IsInternalOverscrollPositionAuto() &&
-      style_recalc_context.parent_is_overscroll_container;
+      style_recalc_context.parent_is_overscroll_container &&
+      GetDocument().IsOverscrollCommandTarget(*this);
   Element* parent = parentElement();
 
   if (GetOverscrollContainer() && (!new_style || !is_valid_overscroll_area ||
@@ -6869,33 +6885,32 @@ void Element::SetTargetedSnapAreaIdsForSnapContainers() {
   std::optional<cc::ElementId> targeted_area_id = std::nullopt;
   const LayoutBox* box = GetLayoutBox();
   while (box) {
-    if (const ComputedStyle* style = box->Style()) {
-      // If this is a snap area, associate it with the first snap area we
-      // encountered, if any, since the previous snap container.
-      if (box->IsScrollContainer() && !style->GetScrollSnapType().is_none) {
-        if (auto* scrollable_area = box->GetScrollableArea()) {
-          scrollable_area->SetTargetedSnapAreaId(targeted_area_id);
-          GetDocument().View()->AddPendingSnapUpdate(scrollable_area);
-        }
-        targeted_area_id.reset();
+    const ComputedStyle& style = box->StyleRef();
+    // If this is a snap area, associate it with the first snap area we
+    // encountered, if any, since the previous snap container.
+    if (box->IsScrollContainer() && !style.GetScrollSnapType().is_none) {
+      if (auto* scrollable_area = box->GetScrollableArea()) {
+        scrollable_area->SetTargetedSnapAreaId(targeted_area_id);
+        GetDocument().View()->AddPendingSnapUpdate(scrollable_area);
       }
-      // Only update |targeted_area_id| if we don't already have one so that we
-      // prefer associating snap containers with their innermost snap targets.
-      const auto& snap_align = style->GetScrollSnapAlign();
-      if (!targeted_area_id &&
-          (snap_align.alignment_block != cc::SnapAlignment::kNone ||
-           snap_align.alignment_inline != cc::SnapAlignment::kNone)) {
-        if (Node* node = box->GetNode()) {
-          targeted_area_id =
-              CompositorElementIdFromDOMNodeId(node->GetDomNodeId());
-        }
-        // Though not spec'd, we should prefer associating snap containers with
-        // their innermost (in DOM hierarchy) snap areas.
-        // This means we can skip any snap areas between this area and its snap
-        // container.
-        box = box->ContainingScrollContainer();
-        continue;
+      targeted_area_id.reset();
+    }
+    // Only update |targeted_area_id| if we don't already have one so that we
+    // prefer associating snap containers with their innermost snap targets.
+    const auto& snap_align = style.GetScrollSnapAlign();
+    if (!targeted_area_id &&
+        (snap_align.alignment_block != cc::SnapAlignment::kNone ||
+         snap_align.alignment_inline != cc::SnapAlignment::kNone)) {
+      if (Node* node = box->GetNode()) {
+        targeted_area_id =
+            CompositorElementIdFromDOMNodeId(node->GetDomNodeId());
       }
+      // Though not spec'd, we should prefer associating snap containers with
+      // their innermost (in DOM hierarchy) snap areas.
+      // This means we can skip any snap areas between this area and its snap
+      // container.
+      box = box->ContainingScrollContainer();
+      continue;
     }
     box = box->ContainingBlock();
   }
@@ -6904,11 +6919,10 @@ void Element::SetTargetedSnapAreaIdsForSnapContainers() {
 void Element::ClearTargetedSnapAreaIdsForSnapContainers() {
   const LayoutBox* box = GetLayoutBox();
   while (box) {
-    if (const ComputedStyle* style = box->Style()) {
-      if (box->IsScrollContainer() && !style->GetScrollSnapType().is_none) {
-        if (auto* scrollable_area = box->GetScrollableArea()) {
-          scrollable_area->SetTargetedSnapAreaId(std::nullopt);
-        }
+    if (box->IsScrollContainer() &&
+        !box->StyleRef().GetScrollSnapType().is_none) {
+      if (auto* scrollable_area = box->GetScrollableArea()) {
+        scrollable_area->SetTargetedSnapAreaId(std::nullopt);
       }
     }
     box = box->ContainingBlock();
@@ -8981,6 +8995,11 @@ void Element::ActiveViewTransitionTypeStateChanged() {
   PseudoStateChanged(CSSSelector::kPseudoActiveViewTransitionType);
 }
 
+void Element::OverscrollTargetStateChanged() {
+  SetNeedsStyleRecalc(kLocalStyleChange, StyleChangeReasonForTracing::Create(
+                                             style_change_reason::kOverscroll));
+}
+
 bool Element::MatchesOverscrollOpen() const {
   if (!RuntimeEnabledFeatures::OverscrollGesturesEnabled()) {
     return false;
@@ -9026,7 +9045,7 @@ void Element::SetHasFocusWithinUpToAncestor(bool has_focus_within,
     // focus even if its own HasFocusWithin state has not changed.
     if (element != this && need_snap_container_search) {
       if (const LayoutBox* box = element->GetLayoutBoxForScrolling()) {
-        if (box->Style() && !box->StyleRef().GetScrollSnapType().is_none) {
+        if (!box->StyleRef().GetScrollSnapType().is_none) {
           // TODO(crbug.com/340983092): We should be able to just call
           // LocalFrameView::AddPendingSnapUpdate, but that results in a snap
           // which cancels ongoing scroll animations.
@@ -13877,7 +13896,7 @@ bool Element::RecalcSelfOrAncestorHasContainerTiming() const {
   if (IsHTMLElement()) {
     if (FastHasAttribute(html_names::kContainertimingAttr)) {
       return true;
-    } else if (FastHasAttribute(html_names::kContainertimingIgnoreAttr)) {
+    } else if (HasContainerTimingIgnoreAttribute()) {
       return false;
     }
   }
@@ -13894,7 +13913,7 @@ void Element::UpdateDescendantHasContainerTiming(bool has_container_timing) {
   while (element) {
     if (element->IsHTMLElement()) {
       if (element->FastHasAttribute(html_names::kContainertimingAttr) ||
-          element->FastHasAttribute(html_names::kContainertimingIgnoreAttr)) {
+          element->HasContainerTimingIgnoreAttribute()) {
         element = ElementTraversal::NextSkippingChildren(*element, this);
         continue;
       }
@@ -13918,11 +13937,16 @@ void Element::UpdateDescendantHasContainerTiming(bool has_container_timing) {
   }
 }
 
+bool Element::HasContainerTimingIgnoreAttribute() const {
+  return FastHasAttribute(html_names::kContainertimingignoreAttr) ||
+         FastHasAttribute(html_names::kContainertimingIgnoreAttr);
+}
+
 bool Element::DoesChildContainerTimingNeedChange(const Node& node) const {
   auto* element = DynamicTo<Element>(node);
   if (element && element->IsHTMLElement() &&
       (element->FastHasAttribute(html_names::kContainertimingAttr) ||
-       element->FastHasAttribute(html_names::kContainertimingIgnoreAttr))) {
+       element->HasContainerTimingIgnoreAttribute())) {
     return false;
   }
   return SelfOrAncestorHasContainerTiming() !=

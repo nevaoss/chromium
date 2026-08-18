@@ -343,7 +343,9 @@ IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTestLockedFullscreen,
       IDC_RELOAD_CLEARING_CACHE, IDC_STOP,
       // Tab navigation commands.
       IDC_SELECT_NEXT_TAB, IDC_SELECT_PREVIOUS_TAB, IDC_CYCLE_TO_NEXT_TAB,
-      IDC_CYCLE_TO_PREV_TAB,
+      IDC_CYCLE_TO_PREV_TAB, IDC_SELECT_TAB_0, IDC_SELECT_TAB_1,
+      IDC_SELECT_TAB_2, IDC_SELECT_TAB_3, IDC_SELECT_TAB_4, IDC_SELECT_TAB_5,
+      IDC_SELECT_TAB_6, IDC_SELECT_TAB_7, IDC_SELECT_LAST_TAB,
       // Find content commands.
       IDC_FIND, IDC_FIND_NEXT, IDC_FIND_PREVIOUS, IDC_CLOSE_FIND_OR_STOP};
 
@@ -424,6 +426,19 @@ IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTest,
   chrome::BrowserCommandController* commandController =
       chrome::BrowserCommandController::From(browser);
   ASSERT_EQ(false, commandController->IsCommandEnabled(IDC_OPEN_FILE));
+}
+
+IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTest,
+                       NewTabEnabledForAppBrowser) {
+  auto params = Browser::CreateParams::CreateForApp(
+      "abcdefghaghpphfffooibmlghaeopach", true /* trusted_source */,
+      gfx::Rect(), /* window_bounts */
+      browser()->GetProfile(), true /* user_gesture */);
+  Browser* app_browser = Browser::Create(params);
+
+  chrome::BrowserCommandController* commandController =
+      app_browser->GetFeatures().browser_command_controller();
+  EXPECT_TRUE(commandController->IsCommandEnabled(IDC_NEW_TAB));
 }
 
 IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTest,
@@ -701,6 +716,16 @@ IN_PROC_BROWSER_TEST_F(CreateShortcutBrowserCommandControllerNavTest,
 #endif  // BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN)
 
 // Tests for Your saved info submenu.
+IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTest,
+                       ExecuteShowContactInfo) {
+  EXPECT_TRUE(chrome::ExecuteCommand(browser(), IDC_SHOW_CONTACT_INFO));
+  content::WebContents* web_contents =
+      browser()->tab_strip_model()->GetActiveWebContents();
+  content::WaitForLoadStop(web_contents);
+  EXPECT_EQ(web_contents->GetURL().possibly_invalid_spec(),
+            "chrome://settings/contactInfo");
+}
+
 IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTest,
                        ExecuteShowIdentityDocs) {
   EXPECT_TRUE(chrome::ExecuteCommand(browser(), IDC_SHOW_IDENTITY_DOCS));

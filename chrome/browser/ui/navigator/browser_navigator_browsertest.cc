@@ -494,7 +494,8 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
   EXPECT_EQ(
       1,
       params.browser->GetBrowserForMigrationOnly()->tab_strip_model()->count());
-  EXPECT_TRUE(params.browser->GetBrowserForMigrationOnly()->is_type_normal());
+  EXPECT_EQ(params.browser->GetType(),
+            BrowserWindowInterface::Type::TYPE_NORMAL);
   EXPECT_TRUE(BrowserWindow::FromBrowser(params.browser)->IsToolbarVisible());
 }
 
@@ -539,8 +540,8 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, Disposition_NewPopup_ExtensionId) {
   // Navigate() should have opened a new, focused TYPE_APP_POPUP window with no
   // toolbar.
   EXPECT_NE(browser(), params.browser);
-  EXPECT_TRUE(
-      params.browser->GetBrowserForMigrationOnly()->is_type_app_popup());
+  EXPECT_EQ(params.browser->GetType(),
+            BrowserWindowInterface::Type::TYPE_APP_POPUP);
   EXPECT_FALSE(BrowserWindow::FromBrowser(params.browser)->IsToolbarVisible());
 
   // We should have two windows, the browser() provided by the framework and the
@@ -597,8 +598,8 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
   // Navigate() should have opened a new TYPE_APP_POPUP window with no toolbar.
   EXPECT_NE(app_browser, params.browser);
   EXPECT_NE(browser(), params.browser);
-  EXPECT_TRUE(
-      params.browser->GetBrowserForMigrationOnly()->is_type_app_popup());
+  EXPECT_EQ(params.browser->GetType(),
+            BrowserWindowInterface::Type::TYPE_APP_POPUP);
   EXPECT_FALSE(BrowserWindow::FromBrowser(params.browser)->IsToolbarVisible());
 
   // We should now have three windows, the app window, the app popup it created,
@@ -630,8 +631,8 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, Disposition_NewPopupFromAppPopup) {
   // Navigate() should have opened a new popup app window.
   EXPECT_NE(browser(), params1.browser);
   EXPECT_NE(params1.browser, params2.browser);
-  EXPECT_TRUE(
-      params2.browser->GetBrowserForMigrationOnly()->is_type_app_popup());
+  EXPECT_EQ(params2.browser->GetType(),
+            BrowserWindowInterface::Type::TYPE_APP_POPUP);
   EXPECT_FALSE(BrowserWindow::FromBrowser(params2.browser)->IsToolbarVisible());
 
   // We should now have four windows, the app window, the first app popup,
@@ -767,7 +768,8 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, Disposition_NewWindow) {
 
   // Navigate() should have opened a new toplevel window.
   EXPECT_NE(browser(), params.browser);
-  EXPECT_TRUE(params.browser->GetBrowserForMigrationOnly()->is_type_normal());
+  EXPECT_EQ(params.browser->GetType(),
+            BrowserWindowInterface::Type::TYPE_NORMAL);
   EXPECT_TRUE(BrowserWindow::FromBrowser(params.browser)->IsToolbarVisible());
 
   // We should now have two windows, the browser() provided by the framework and
@@ -2116,7 +2118,7 @@ IN_PROC_BROWSER_TEST_P(BrowserNavigatorPictureInPictureTest,
   EXPECT_NE(browser(), params.browser);
   EXPECT_EQ(params.browser->GetType(),
             BrowserWindowInterface::Type::TYPE_PICTURE_IN_PICTURE);
-  EXPECT_EQ(params.browser->GetBrowserForMigrationOnly()->app_name(),
+  EXPECT_EQ(BrowserInitState::From(params.browser)->create_params().app_name,
             std::string());
 
   // The window should have respected the initial aspect ratio.
@@ -2250,7 +2252,7 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
   // Should be PiP, with an app name.
   EXPECT_EQ(params.browser->GetType(),
             BrowserWindowInterface::Type::TYPE_PICTURE_IN_PICTURE);
-  EXPECT_NE(params.browser->GetBrowserForMigrationOnly()->app_name(),
+  EXPECT_NE(BrowserInitState::From(params.browser)->create_params().app_name,
             std::string());
 }
 

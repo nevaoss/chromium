@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "base/compiler_specific.h"
+#include "base/containers/circular_deque.h"
 #include "base/functional/callback_helpers.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/raw_ref.h"
@@ -26,7 +27,7 @@
 #include "components/autofill/content/common/mojom/autofill_driver.mojom.h"
 #include "components/autofill/content/renderer/form_autofill_util.h"
 #include "components/autofill/content/renderer/form_cache.h"
-#include "components/autofill/content/renderer/form_tracker.h"
+#include "components/autofill/content/renderer/form_submission_tracker.h"
 #include "components/autofill/content/renderer/javascript_autofill_tracker.h"
 #include "components/autofill/content/renderer/timing.h"
 #include "components/autofill/core/common/autofill_features.h"
@@ -101,7 +102,8 @@ class AutofillAgent : public content::RenderFrameObserver,
       base::StrongAlias<class QueryPasswordSuggestionsTag, bool>;
   using SecureContextRequired =
       base::StrongAlias<class SecureContextRequiredTag, bool>;
-  using UserGestureRequired = FormTracker::UserGestureRequired;
+  using UserGestureRequired =
+      base::StrongAlias<class UserGestureRequiredTag, bool>;
   using UsesKeyboardAccessoryForSuggestions =
       base::StrongAlias<class UsesKeyboardAccessoryForSuggestionsTag, bool>;
 
@@ -329,6 +331,18 @@ class AutofillAgent : public content::RenderFrameObserver,
   class DeferringAutofillDriver;
   friend class AutofillAgentTestApi;
 
+  // The state for AskForValuesToFill() events fired by AtMemory.
+  //
+  // We need to maintain this state because AtMemory
+  // - inserts text into specific locations in a field, rather than overwriting
+  //   the entire value, and
+  // - has high unmasking latency, so the focus or caret may have moved by the
+  //   time AtMemory fills an actual value into a field.
+  struct AtMemoryAskForValuesToFillInfo {
+    FieldRendererId field_id{};
+    bool caused_by_trigger_string = false;
+  };
+
   // The RenderFrame* is nullptr while the AutofillAgent is pending deletion,
   // between OnDestruct() and ~AutofillAgent().
   content::RenderFrame* unsafe_render_frame() const {
@@ -481,6 +495,10 @@ class AutofillAgent : public content::RenderFrameObserver,
       blink::WebFormControlElement trigger_field,
       std::vector<mojom::JavaScriptFieldModificationPtr> field_modifications);
 
+  void MaybeUpdateLastAtMemoryAskForValuesToFills(
+      FieldRendererId field_id,
+      AutofillSuggestionTriggerSource trigger_source);
+
   // Stores immutable configuration this agent was created with. It contains
   // features and settings that are specific to the client using this agent.
   const Config config_;
@@ -508,7 +526,7 @@ class AutofillAgent : public content::RenderFrameObserver,
 
   // This is never null, it is created at construction time and is not changed
   // until destruction time.
-  std::unique_ptr<FormTracker> form_tracker_;
+  std::unique_ptr<FormSubmissionTracker> form_tracker_;
 
   mojo::AssociatedReceiver<mojom::AutofillAgent> receiver_{this};
 
@@ -636,6 +654,9 @@ class AutofillAgent : public content::RenderFrameObserver,
   JavaScriptAutofillTracker javascript_autofill_tracker_;
 
   base::ScopedClosureRunner form_element_intersection_observer_;
+
+  base::circular_deque<AtMemoryAskForValuesToFillInfo>
+      last_at_memory_ask_for_values_to_fills_;
 
   base::WeakPtrFactory<AutofillAgent> weak_ptr_factory_{this};
 };

@@ -44,7 +44,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="OSCrypt.AppBoundProvider.Decrypt.ResultCode" enum="Hresult"
-    expires_after="2026-11-29">
+    expires_after="2027-01-31">
   <owner>wfh@chromium.org</owner>
   <owner>nparker@chromium.org</owner>
   <summary>
@@ -114,16 +114,6 @@ chromium-metrics-reviews@google.com.
     attempt to initialize the keyring during browser process initialization.
     Recorded once per browser start, if the OSCrypt Async completes the
     initialization attempt before the browser shuts down.
-  </summary>
-</histogram>
-
-<histogram name="OSCrypt.BackendUsage" enum="LinuxPasswordStoreUsage"
-    expires_after="2026-08-09">
-  <owner>mamir@chromium.org</owner>
-  <owner>chrome-password-manager-metrics-alerts@google.com</owner>
-  <summary>
-    The backend selected for this user and whether it was initialised
-    successfully.
   </summary>
 </histogram>
 
@@ -657,16 +647,6 @@ chromium-metrics-reviews@google.com.
   <summary>
     Tracks status of AboutThisSite queries. Recorded every time PageInfo is
     opened and information about a site is requested.
-  </summary>
-</histogram>
-
-<histogram name="Security.PageInfo.AdPersonalizationRowShown" enum="Boolean"
-    expires_after="2026-04-26">
-  <owner>dullweber@chromium.org</owner>
-  <owner>sauski@google.com</owner>
-  <summary>
-    Tracks whether the Ads Personalization section was shown. Recorded every
-    time PageInfo is opened.
   </summary>
 </histogram>
 

@@ -860,8 +860,7 @@ void OmniboxEditModel::OpenAiMode(AimActivation activation) {
         "ContextualSearch.UserAction.SubmitQueryV2.WithoutContext.Omnibox"));
     base::UmaHistogramEnumeration(
         "ContextualSearch.UserAction.SubmitQueryV2.Omnibox",
-        contextual_search::ContextualSearchContextState::kWithoutContext,
-        contextual_search::ContextualSearchContextState::kMaxValue);
+        contextual_search::ContextualSearchContextState::kWithoutContext);
   }
 
   InitializeQueryContextualizerIfNeeded();
@@ -890,6 +889,12 @@ void OmniboxEditModel::OpenLensSearch() {
         WindowOpenDisposition::CURRENT_TAB, GURL(), std::u16string(),
         base::TimeTicks::Now());
   }
+}
+
+void OmniboxEditModel::OpenSelection(OmniboxPopupSelection selection,
+                                     bool via_keyboard) {
+  OpenSelection(selection, base::TimeTicks(),
+                WindowOpenDisposition::CURRENT_TAB, via_keyboard);
 }
 
 void OmniboxEditModel::OpenSelection(OmniboxPopupSelection selection,
@@ -2291,12 +2296,18 @@ std::u16string OmniboxEditModel::GetPopupAccessibilityLabelForCurrentSelection(
   size_t total_matches =
       include_positional_info ? autocomplete_controller()->result().size() : 0;
 
+  // For informational matches, the relevant text is in contents.
+  std::u16string announcement_text =
+      match.type == AutocompleteMatchType::NULL_RESULT_MESSAGE ? match.contents
+                                                               : match_text;
   // If there's a button focused, we don't want the "n of m" message announced.
-  return AutocompleteMatchType::ToAccessibilityLabel(
+  std::u16string label = AutocompleteMatchType::ToAccessibilityLabel(
       match,
       autocomplete_controller()->GetSuggestionGroupHeaderText(
           match.suggestion_group_id),
-      match_text, line, total_matches, additional_message, label_prefix_length);
+      announcement_text, line, total_matches, additional_message,
+      label_prefix_length);
+  return label;
 }
 
 std::u16string OmniboxEditModel::GetPopupAccessibilityLabelForAimButton() {
@@ -2317,7 +2328,10 @@ OmniboxEditModel::MaybeGetPopupAccessibilityLabelForIPHSuggestion() {
   if (next_line < autocomplete_controller()->result().size()) {
     const AutocompleteMatch& next_match =
         autocomplete_controller()->result().match_at(next_line);
-    if (next_match.IsIphSuggestion()) {
+    // Only append lookahead suffixes for non-interactive (no link) IPH tips.
+    // Interactive IPH suggestions (disclaimers/promos with links) are focusable
+    // and will be read directly when they receive selection focus.
+    if (next_match.IsIphSuggestion() && next_match.iph_link_url.is_empty()) {
       label =
           l10n_util::GetStringFUTF16(IDS_ACC_CHROME_TIP, next_match.contents);
 

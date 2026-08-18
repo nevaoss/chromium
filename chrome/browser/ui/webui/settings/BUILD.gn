@@ -70,7 +70,6 @@ source_set("settings") {
     "//chrome/browser/upgrade_detector",
     "//chrome/browser/web_applications",
     "//chrome/common",
-    "//components/browsing_topics",
     "//components/content_settings/core/browser",
     "//components/content_settings/core/common",
     "//components/custom_handlers",
@@ -246,6 +245,7 @@ source_set("impl") {
     "//chrome/browser/themes",
     "//chrome/browser/ui:chrome_pages",
     "//chrome/browser/ui:confirm_bubble",
+    "//chrome/browser/ui:managed_ui",
     "//chrome/browser/ui:ui_features",
     "//chrome/browser/ui:url_identity",
     "//chrome/browser/ui/desktop_to_mobile_promos:service",
@@ -265,6 +265,7 @@ source_set("impl") {
     "//chrome/browser/ui/toasts/api:toasts",
     "//chrome/browser/ui/toolbar/pinned_toolbar",
     "//chrome/browser/ui/views/side_panel",
+    "//chrome/browser/ui/views/tabs/organizer",
     "//chrome/browser/ui/webui:extension_control_handler",
     "//chrome/browser/ui/webui:favicon_source",
     "//chrome/browser/ui/webui:managed_ui_handler",
@@ -287,7 +288,6 @@ source_set("impl") {
     "//components/browsing_data/content",
     "//components/browsing_data/core",
     "//components/browsing_data/core:cookie_or_cache_deletion_choice",
-    "//components/browsing_topics",
     "//components/content_settings/core/browser",
     "//components/custom_handlers",
     "//components/desktop_to_mobile_promos",
@@ -301,7 +301,6 @@ source_set("impl") {
     "//components/permissions:permissions_common",
     "//components/personal_context/core",
     "//components/plus_addresses/core/browser",
-    "//components/plus_addresses/core/browser/resources/strings",
     "//components/plus_addresses/core/common:features",
     "//components/prefs",
     "//components/privacy_sandbox",
@@ -583,8 +582,6 @@ if (!is_android) {
       "//components/browsing_data/content",
       "//components/browsing_data/content:test_support",
       "//components/browsing_data/core",
-      "//components/browsing_topics",
-      "//components/browsing_topics:test_support",
       "//components/client_hints/common",
       "//components/content_settings/core/browser",
       "//components/content_settings/core/common",
@@ -688,5 +685,64 @@ if (!is_android) {
         "//components/user_manager",
       ]
     }
+  }
+}
+
+source_set("interactive_ui_tests") {
+  testonly = true
+  defines = [ "HAS_OUT_OF_PROC_TEST_RUNNER" ]
+  configs += [ "//build/config/compiler:no_exit_time_destructors" ]
+  sources = [
+    "performance_settings_interactive_uitest.cc",
+    "settings_interactive_uitest.cc",
+  ]
+  deps = [
+    ":settings",
+    "//chrome/browser/performance_manager",
+    "//chrome/browser/profiles:profile",
+    "//chrome/browser/themes",
+    "//chrome/browser/ui",
+    "//chrome/browser/ui:chrome_pages",
+    "//chrome/browser/ui/performance_controls/test_support",
+    "//chrome/browser/ui/webui/feedback",
+    "//chrome/browser/ui/webui/test_support",
+    "//chrome/common",
+    "//chrome/test:test_support",
+    "//components/content_settings/core/common",
+    "//components/performance_manager",
+    "//components/prefs",
+    "//components/privacy_sandbox:features",
+    "//content/test:test_support",
+    "//ui/base/interaction",
+  ]
+
+  if (is_win) {
+    deps += [
+      "//chrome/browser/win:isolated_browser_support",
+      "//chrome/install_static/test:test_support",
+    ]
+  }
+
+  if (is_chromeos) {
+    deps += [ "//chrome/test/base/ash/interactive:test_support" ]
+  }
+
+  if ((is_mac || is_linux || is_win) && enable_dice_support) {
+    sources += [ "sync_settings_interactive_uitest.cc" ]
+    deps += [
+      "//chrome/browser/signin",
+      "//chrome/browser/signin:signin_browser_test_base",
+      "//chrome/browser/sync",
+      "//chrome/browser/ui/signin",
+      "//chrome/browser/ui/webui/signin/signout_confirmation",
+      "//components/signin/public/base",
+      "//components/signin/public/identity_manager",
+      "//components/signin/public/identity_manager:test_support",
+      "//components/sync:test_support",
+      "//components/sync/base",
+      "//content/test:test_support",
+      "//device/bluetooth:mocks",
+      "//ui/views",
+    ]
   }
 }

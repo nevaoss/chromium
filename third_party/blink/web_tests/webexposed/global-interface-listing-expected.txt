@@ -3889,6 +3889,18 @@ interface HTMLButtonElement : HTMLElement
     setter popoverTargetElement
     setter type
     setter value
+interface HTMLCameraElement : HTMLElement
+    attribute @@toStringTag
+    getter error
+    getter oncancel
+    getter onerror
+    getter ontrack
+    getter track
+    method constructor
+    method setConstraints
+    setter oncancel
+    setter onerror
+    setter ontrack
 interface HTMLCanvasElement : HTMLElement
     attribute @@toStringTag
     getter height
@@ -4977,6 +4989,18 @@ interface HTMLMeterElement : HTMLElement
     setter min
     setter optimum
     setter value
+interface HTMLMicrophoneElement : HTMLElement
+    attribute @@toStringTag
+    getter error
+    getter oncancel
+    getter onerror
+    getter ontrack
+    getter track
+    method constructor
+    method setConstraints
+    setter oncancel
+    setter onerror
+    setter ontrack
 interface HTMLModElement : HTMLElement
     attribute @@toStringTag
     getter cite
@@ -7033,7 +7057,6 @@ interface Navigator
     getter cookieEnabled
     getter cpuPerformance
     getter credentials
-    getter deprecatedRunAdAuctionEnforcesKAnonymity
     getter deviceMemory
     getter devicePosture
     getter doNotTrack
@@ -7063,7 +7086,6 @@ interface Navigator
     getter presentation
     getter product
     getter productSub
-    getter protectedAudience
     getter rtc
     getter scheduling
     getter serial
@@ -7083,35 +7105,24 @@ interface Navigator
     getter webkitTemporaryStorage
     getter windowControlsOverlay
     getter xr
-    method adAuctionComponents
-    method canLoadAdAuctionFencedFrame
     method canShare
     method clearAppBadge
-    method clearOriginJoinedAdInterestGroups
     method constructor
-    method createAuctionNonce
     method createHandwritingRecognizer
-    method deprecatedReplaceInURN
-    method deprecatedURNToURL
     method getBattery
     method getGamepads
     method getInstalledRelatedApps
-    method getInterestGroupAdAuctionData
     method getUserMedia
     method install
     method javaEnabled
-    method joinAdInterestGroup
-    method leaveAdInterestGroup
     method queryHandwritingRecognizer
     method registerProtocolHandler
     method requestMIDIAccess
     method requestMediaKeySystemAccess
-    method runAdAuction
     method sendBeacon
     method setAppBadge
     method share
     method unregisterProtocolHandler
-    method updateAdInterestGroups
     method vibrate
     method webkitGetUserMedia
 interface NavigatorLogin
@@ -12699,10 +12710,12 @@ interface WebTransport
     getter closed
     getter congestionControl
     getter datagrams
+    getter draining
     getter incomingBidirectionalStreams
     getter incomingUnidirectionalStreams
     getter protocol
     getter ready
+    getter responseHeaders
     method close
     method constructor
     method createBidirectionalStream

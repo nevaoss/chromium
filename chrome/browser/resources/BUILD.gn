@@ -10,7 +10,6 @@ import("//components/safe_browsing/buildflags.gni")
 import("//content/browser/devtools/features.gni")
 import("//pdf/features.gni")
 import("//printing/buildflags/buildflags.gni")
-import("//third_party/closure_compiler/compile_js.gni")
 import("//tools/grit/grit_rule.gni")
 import("//tools/grit/repack.gni")
 import("//ui/webui/webui_features.gni")
@@ -76,6 +75,7 @@ group("resources") {
       "new_tab_footer:resources",
       "omnibox_everywhere:resources",
       "omnibox_popup:resources",
+      "organizer_panel:resources",
       "password_manager:resources",
       "profile_internals:resources",
       "search_engine_choice:resources",
@@ -236,15 +236,6 @@ if (enable_webui_generate_code_cache) {
   }
 }
 
-if (is_chromeos && enable_js_type_check) {
-  group("closure_compile") {
-    deps = [
-      "chromeos:closure_compile",
-      "gaia_auth_host:closure_compile",
-    ]
-  }
-}
-
 if (enable_extensions_core) {
   grit("component_extension_resources") {
     source = "component_extension_resources.grd"
@@ -333,7 +324,6 @@ group("dev_ui_resources") {
     "memory_internals:resources",
     "net_internals:resources",
     "omnibox:resources",
-    "personal_context_internals:resources",
     "predictors:resources",
     "subresource_filter:resources",
     "usb_internals:resources",
@@ -414,7 +404,6 @@ repack("dev_ui_paks") {
     "$root_gen_dir/chrome/memory_internals_resources.pak",
     "$root_gen_dir/chrome/net_internals_resources.pak",
     "$root_gen_dir/chrome/omnibox_resources.pak",
-    "$root_gen_dir/chrome/personal_context_internals_resources.pak",
     "$root_gen_dir/chrome/predictors_resources.pak",
     "$root_gen_dir/chrome/subresource_filter_internals_resources.pak",
     "$root_gen_dir/chrome/usb_internals_resources.pak",

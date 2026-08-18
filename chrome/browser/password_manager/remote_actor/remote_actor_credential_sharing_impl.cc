@@ -24,6 +24,7 @@
 #include "components/device_reauth/device_authenticator.h"
 #include "components/password_manager/core/browser/features/password_manager_features_util.h"
 #include "components/password_manager/core/browser/password_form.h"
+#include "components/password_manager/core/browser/password_manager_util.h"
 #include "components/password_manager/core/browser/password_store/password_form_converters.h"
 #include "components/password_manager/core/browser/password_sync_util.h"
 #include "components/password_manager/core/browser/password_ui_utils.h"
@@ -34,6 +35,7 @@
 #include "components/sync/base/data_type.h"
 #include "components/sync/protocol/password_specifics.pb.h"
 #include "components/sync/service/sync_service.h"
+#include "components/sync/service/sync_user_settings.h"
 #include "content/public/browser/child_process_security_policy.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/render_process_host.h"
@@ -158,6 +160,14 @@ void RemoteActorCredentialSharingImpl::OnGetPasswordStoreResultsOrErrorFrom(
         sync_util::IsSyncFeatureActiveIncludingPasswords(sync_service);
 
     for (StoredCredential& login : logins) {
+      password_manager_util::GetLoginMatchType match_type =
+          password_manager_util::GetMatchType(login);
+      if (match_type !=
+              password_manager_util::GetLoginMatchType::kExact &&
+          match_type !=
+              password_manager_util::GetLoginMatchType::kAffiliated) {
+        continue;
+      }
       PasswordForm form = ToPasswordForm(std::move(login));
       if (form.IsUsingAccountStore() ||
           (form.IsUsingProfileStore() && is_sync_active)) {
@@ -253,8 +263,7 @@ void RemoteActorCredentialSharingImpl::ProceedWithCredential(
           GURL(base::StrCat({"https://", pending_request_->domain})))
           .Serialize();
   params.password_client_tag_hash = client_tag_hash;
-  params.username = credential.username_value;
-  params.password = credential.password_value;
+  params.password_data = std::move(specifics_data);
   params.time_to_live = kShareTimeToLive;
   params.agent_oauth_client_id = pending_request_->remote_actor_id;
 
@@ -317,8 +326,14 @@ bool RemoteActorCredentialSharingImpl::VerifyUserIdentityAndSyncState(
   }
 
   auto* sync_service = SyncServiceFactory::GetForProfile(profile);
-  if (sync_service && sync_service->GetAuthError().IsPersistentError()) {
-    return false;
+  if (sync_service) {
+    if (sync_service->GetAuthError().IsPersistentError()) {
+      return false;
+    }
+    if (sync_service->GetUserSettings()
+            ->IsTrustedVaultKeyRequiredForPreferredDataTypes()) {
+      return false;
+    }
   }
 
   return true;

@@ -146,8 +146,6 @@
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/tabs/public/tab_features.h"
 #include "chrome/browser/ui/webui/new_tab_page/ntp_promo/ntp_promo_handler.h"
-#else
-#include "chrome/browser/flags/android/chrome_feature_list.h"
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 #if !BUILDFLAG(OPTIMIZE_WEBUI)
@@ -260,6 +258,11 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
 
   source->AddBoolean("energyEffectEnabled",
                      base::FeatureList::IsEnabled(ntp_features::kEnergyEffect));
+  source->AddString("energyEffectVariant",
+                    base::FeatureList::IsEnabled(ntp_features::kEnergyEffect)
+                        ? ntp_features::kEnergyEffectVariantParam.GetName(
+                              ntp_features::kEnergyEffectVariantParam.Get())
+                        : std::string());
   source->AddBoolean(
       "energyEffectAnimationEnabled",
       base::FeatureList::IsEnabled(ntp_features::kEnergyEffectAnimation));
@@ -330,6 +333,11 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
           !BUILDFLAG(IS_ANDROID));
 
   source->AddBoolean("ntpRealboxNextEnabled",
+                     ntp_realbox::IsNtpRealboxNextEnabled(profile));
+  // Fusebox being enabled on the NTP is the same as realbox next being
+  // enabled. Add this param for reusable components that shouldn't rely on NTP
+  // specific booleans.
+  source->AddBoolean("isFuseboxEnabled",
                      ntp_realbox::IsNtpRealboxNextEnabled(profile));
   source->AddBoolean("searchboxCyclingPlaceholders",
                      ntp_realbox::IsNtpRealboxNextEnabled(profile) &&
@@ -754,15 +762,6 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
   source->AddBoolean("enableThreadsRail", base::FeatureList::IsEnabled(
                                               ntp_features::kNtpThreadsRail));
 
-#if BUILDFLAG(IS_ANDROID)
-  source->AddBoolean(
-      "enableAndroidTheming",
-      base::FeatureList::IsEnabled(chrome::android::kUseWebUiNtpAndroid) &&
-      base::FeatureList::IsEnabled(chrome::android::kWebUiNtpAndroidTheming));
-#else
-  source->AddBoolean("enableAndroidTheming", false);
-#endif
-
   source->AddBoolean("useNtpComposeboxFork",
                      ntp_composebox::kUseNtpComposeboxFork.Get());
 
@@ -854,6 +853,9 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
                          google_util::CommandLineGoogleBaseURL().spec().c_str(),
                          chrome::kChromeUIUntrustedNewTabPageUrl,
                          chrome::kChromeUIUntrustedNtpMicrosoftAuthURL));
+  source->OverrideContentSecurityPolicy(
+      network::mojom::CSPDirectiveName::MediaSrc,
+      "media-src blob: data: 'self';");
 
   return source;
 }
@@ -1032,6 +1034,10 @@ NewTabPageUI::NewTabPageUI(content::WebUI* web_ui)
   ui::TrackedElementHandlerDocumentSingleton::Register(
       this, std::vector<ui::ElementIdentifier>{
                 CustomizeButtonsHandler::kCustomizeChromeButtonElementId,
+                NewTabPageUI::kRealboxContextualEntrypointElementId});
+#else
+  ui::TrackedElementHandlerDocumentSingleton::Register(
+      this, std::vector<ui::ElementIdentifier>{
                 NewTabPageUI::kRealboxContextualEntrypointElementId});
 #endif
 }

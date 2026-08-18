@@ -240,6 +240,10 @@ inline constexpr char kChromeUIOmniboxPopupURL[] =
 inline constexpr char kChromeUIOmniboxPopupAimURL[] =
     "chrome://omnibox-popup.top-chrome/omnibox_popup_aim.html";
 inline constexpr char kChromeUIOmniboxURL[] = "chrome://omnibox/";
+inline constexpr char kChromeUIOrganizerPanelHost[] =
+    "organizer-panel.top-chrome";
+inline constexpr char kChromeUIOrganizerPanelURL[] =
+    "chrome://organizer-panel.top-chrome/";
 inline constexpr char kChromeUIOnDeviceTranslationInternalsHost[] =
     "on-device-translation-internals";
 inline constexpr char kChromeUIPasswordManagerCheckupURL[] =
@@ -252,8 +256,6 @@ inline constexpr char kChromeUIPasswordManagerURL[] =
     "chrome://password-manager";
 inline constexpr char kChromeUiPasswordChangeUrl[] =
     "chrome://password-manager/settings/password-change";
-inline constexpr char kChromeUIPersonalContextInternalsHost[] =
-    "personal-context-internals";
 inline constexpr char kChromeUIPolicyHost[] = "policy";
 inline constexpr char kChromeUIPolicyLogsURL[] = "chrome://policy/logs";
 inline constexpr char kChromeUIPolicyTestURL[] = "chrome://policy/test";

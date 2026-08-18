@@ -40,8 +40,8 @@ class TabStripInteractiveUiTest
  public:
   TabStripInteractiveUiTest() {
     scoped_feature_list_.InitWithFeatures(
-        {features::kTabStripNewTabButtonFlickerFix},
-        {tabs::kTabStripUnification});
+        /*enabled_features=*/{},
+        /*disabled_features=*/{tabs::kTabStripUnification});
   }
   ~TabStripInteractiveUiTest() override = default;
 
@@ -99,7 +99,8 @@ class TestNewTabButtonContextMenu : public TabStripInteractiveUiTest {
 
   TabStrip* tabstrip() {
     return views::AsViewClass<HorizontalTabStripRegionView>(
-               browser()->GetBrowserView().tab_strip_view())
+               BrowserView::GetBrowserViewForBrowser(browser())
+                   ->tab_strip_view())
         ->tab_strip();
   }
   TabStripController* controller() { return tabstrip()->controller(); }

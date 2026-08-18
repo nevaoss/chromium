@@ -16,6 +16,7 @@
 #include "base/android/jni_array.h"
 #include "base/android/jni_string.h"
 #include "base/compiler_specific.h"
+#include "base/containers/to_vector.h"
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
@@ -171,12 +172,11 @@ class KeySystemManager {
 
 KeySystemManager::KeySystemManager() {
   // Widevine is always supported in Android.
-  key_system_uuid_map_[kWidevineKeySystem] = UUID(
-      kWidevineUuid, UNSAFE_TODO(kWidevineUuid + std::size(kWidevineUuid)));
+  key_system_uuid_map_[kWidevineKeySystem] = base::ToVector(kWidevineUuid);
   // External Clear Key is supported only for testing.
   if (base::FeatureList::IsEnabled(kExternalClearKeyForTesting)) {
-    key_system_uuid_map_[kExternalClearKeyKeySystem] = UUID(
-        kClearKeyUuid, UNSAFE_TODO(kClearKeyUuid + std::size(kClearKeyUuid)));
+    key_system_uuid_map_[kExternalClearKeyKeySystem] =
+        base::ToVector(kClearKeyUuid);
   }
   MediaDrmBridgeClient* client = GetMediaDrmBridgeClient();
   if (client) {
@@ -407,6 +407,33 @@ bool MediaDrmBridge::IsKeySystemSupportedWithType(
   DCHECK(!container_mime_type.empty()) << "Call IsKeySystemSupported instead";
 
   return IsKeySystemSupportedWithTypeImpl(key_system, container_mime_type);
+}
+
+// static
+MediaDrmBridge::SupportedContainers MediaDrmBridge::GetSupportedContainers(
+    const std::string& key_system) {
+  CHECK(!key_system.empty());
+
+  UUID scheme_uuid = GetKeySystemManager()->GetUUID(key_system);
+  if (scheme_uuid.empty()) {
+    DVLOG(1) << "Cannot get UUID for key system " << key_system;
+    return {};
+  }
+
+  JNIEnv* env = AttachCurrentThread();
+  ScopedJavaLocalRef<jbyteArray> j_scheme_uuid =
+      base::android::ToJavaByteArray(env, scheme_uuid);
+
+  base::android::ScopedJavaLocalRef<jobjectArray> j_containers =
+      Java_MediaDrmBridge_getSupportedContainers(env, j_scheme_uuid);
+
+  std::vector<std::string> containers;
+  if (!j_containers.is_null()) {
+    base::android::AppendJavaStringArrayToStringVector(env, j_containers,
+                                                       &containers);
+  }
+
+  return MediaDrmBridge::SupportedContainers(std::move(containers));
 }
 
 // static

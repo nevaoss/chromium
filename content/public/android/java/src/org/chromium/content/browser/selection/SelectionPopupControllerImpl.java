@@ -19,6 +19,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.SystemClock;
 import android.text.TextUtils;
+import android.util.LongSparseArray;
 import android.view.ActionMode;
 import android.view.HapticFeedbackConstants;
 import android.view.Menu;
@@ -97,9 +98,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /** Implementation of the interface {@link SelectionPopupController}. */
 @JNINamespace("content")
@@ -127,7 +126,8 @@ public class SelectionPopupControllerImpl extends ActionModeCallbackHelper
 
     // A flag to determine if we should get readback view from WindowAndroid.
     // The readback view could be the ContainerView, which WindowAndroid has no control on that.
-    // Embedders should set this properly to use the correct view for readback.
+    // Embedders should set this properly to use the correct view for readback. To override this
+    // per-instance (e.g. for embedded WebContents in ThinWebView), use setUseWindowReadbackView.
     private static boolean sShouldGetReadbackViewFromWindowAndroid;
 
     // Allow using magnifer built using surface control instead of the system-proivded one.
@@ -140,8 +140,8 @@ public class SelectionPopupControllerImpl extends ActionModeCallbackHelper
 
     // A map of native controller objects to their Java counterparts allows unlimited scaling in
     // number of tabs. Another class owns the SelectionPopupControllerImpl objects.
-    private static final Map<Long, WeakReference<SelectionPopupControllerImpl>> sNativeHelperMap =
-            new HashMap<>();
+    private static final LongSparseArray<WeakReference<SelectionPopupControllerImpl>>
+            sNativeHelperMap = new LongSparseArray<>();
 
     private static final class UserDataFactoryLazyHolder {
         private static final UserDataFactory<SelectionPopupControllerImpl> INSTANCE =
@@ -243,6 +243,7 @@ public class SelectionPopupControllerImpl extends ActionModeCallbackHelper
 
     /** Menu model bridge used to display extra items. */
     private @Nullable MenuModelBridge mMenuModelBridge;
+    private @Nullable Boolean mUseWindowReadbackViewOverride;
 
     /** An interface for getting {@link View} for readback. */
     public interface ReadbackViewCallback {
@@ -254,6 +255,26 @@ public class SelectionPopupControllerImpl extends ActionModeCallbackHelper
     /** Sets to use the readback view from {@link WindowAndroid}. */
     public static void setShouldGetReadbackViewFromWindowAndroid() {
         sShouldGetReadbackViewFromWindowAndroid = true;
+    }
+
+    @Override
+    public void setUseWindowReadbackView(boolean useWindow) {
+        mUseWindowReadbackViewOverride = useWindow;
+    }
+
+    @VisibleForTesting
+    ReadbackViewCallback getReadbackViewCallback() {
+        return () -> {
+            boolean useWindow =
+                    mUseWindowReadbackViewOverride != null
+                            ? mUseWindowReadbackViewOverride
+                            : sShouldGetReadbackViewFromWindowAndroid;
+            if (useWindow) {
+                return mWindowAndroid == null ? null : mWindowAndroid.getReadbackView();
+            } else {
+                return mView;
+            }
+        };
     }
 
     public static void setAllowSurfaceControlMagnifier() {
@@ -1819,14 +1840,7 @@ public class SelectionPopupControllerImpl extends ActionModeCallbackHelper
         if (sDisableMagnifierForTesting || Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
             return null;
         }
-        ReadbackViewCallback callback =
-                () -> {
-                    if (sShouldGetReadbackViewFromWindowAndroid) {
-                        return mWindowAndroid == null ? null : mWindowAndroid.getReadbackView();
-                    } else {
-                        return mView;
-                    }
-                };
+        ReadbackViewCallback callback = getReadbackViewCallback();
         MagnifierWrapper magnifier;
         if (isMagnifierWithSurfaceControlSupported()) {
             magnifier = new MagnifierSurfaceControl(mWebContents, callback);
@@ -2074,7 +2088,8 @@ public class SelectionPopupControllerImpl extends ActionModeCallbackHelper
     private void destroyFromNative() {
         if (mNativeSelectionPopupController == 0) return;
         WeakReference<SelectionPopupControllerImpl> oldValue =
-                sNativeHelperMap.remove(mNativeSelectionPopupController);
+                sNativeHelperMap.get(mNativeSelectionPopupController);
+        sNativeHelperMap.remove(mNativeSelectionPopupController);
         assert oldValue != null;
         assert oldValue.get() == this;
         mNativeSelectionPopupController = 0;

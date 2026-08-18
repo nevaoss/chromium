@@ -7,6 +7,7 @@
 #include "base/functional/bind.h"
 #include "base/notimplemented.h"
 #include "base/run_loop.h"
+#include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/run_until.h"
 #include "chrome/browser/headless/headless_command_processor.h"
@@ -25,6 +26,7 @@
 #include "chrome/browser/ui/views/toolbar/webui_avatar_toolbar_button.h"
 #include "chrome/browser/ui/views/toolbar/webui_toolbar_web_view.h"
 #include "chrome/browser/ui/waap/initial_web_ui_manager.h"
+#include "chrome/browser/ui/window_feature_controller/window_feature_controller.h"
 #include "chrome/common/chrome_features.h"
 #include "components/browser_apis/ui_controllers/toolbar/toolbar_ui_api_data_model.mojom.h"
 #include "components/metrics/content/subprocess_metrics_provider.h"
@@ -80,6 +82,25 @@ namespace {
       return ::AvatarToolbarButtonState::kNormal;
   }
 }
+
+// JavaScript template for locating an extension button in the WebUI toolbar
+// and performing an action on it. Expects two format arguments:
+// 1. (const char*): The extension ID (or empty string for the puzzle piece
+//    extensions menu button) to locate the button element `btn`.
+// 2. (const char*): The JavaScript statement(s) to execute on `btn` (e.g.
+//    "btn.click();" or dispatching an event).
+constexpr char kClickExtensionButtonScript[] = R"(
+  (() => {
+    const app = document.querySelector('toolbar-app');
+    const extensionsContainer = app.shadowRoot.querySelector('#extensions');
+    const extensionElements = extensionsContainer.shadowRoot
+        .querySelectorAll('webui-toolbar-extension');
+    const el = Array.from(extensionElements)
+        .find(el => el.state.id === '%s');
+    const btn = el.shadowRoot.querySelector('cr-button');
+    %s
+  })();
+)";
 
 }  // namespace
 
@@ -223,9 +244,9 @@ void AvatarToolbarButtonTestAccessor::WaitForAvatarButton() {
 #if !BUILDFLAG(IS_ANDROID)
   // The avatar button is only added to normal browsers (those with a tab
   // strip).
-  if (Browser* const browser_ptr = browser_->GetBrowserForMigrationOnly();
-      !browser_ptr || !browser_ptr->SupportsWindowFeature(
-                          Browser::WindowFeature::kFeatureTabStrip)) {
+  if (!browser_ ||
+      !WindowFeatureController::From(browser_)->SupportsWindowFeature(
+          WindowFeatureController::WindowFeature::kFeatureTabStrip)) {
     return;
   }
 #endif
@@ -748,4 +769,31 @@ std::u16string AvatarToolbarButtonTestAccessor::GetAccessibilityDescription() {
           },
       },
       GetButton());
+}
+
+void LeftClickExtensionButton(content::WebContents* web_contents,
+                              const std::string& id) {
+  EXPECT_TRUE(content::ExecJs(
+      web_contents, base::StringPrintf(kClickExtensionButtonScript, id.c_str(),
+                                       "btn.click();")));
+}
+
+void RightClickExtensionButton(content::WebContents* web_contents,
+                               const std::string& id) {
+  EXPECT_TRUE(content::ExecJs(
+      web_contents,
+      base::StringPrintf(kClickExtensionButtonScript, id.c_str(), R"(
+        btn.dispatchEvent(new MouseEvent('contextmenu', {
+          bubbles: true,
+          cancelable: true,
+          view: window,
+          button: 2
+        }));
+      )")));
+}
+
+std::string GetButtonAppJS(const std::string& selector) {
+  return base::StringPrintf(
+      "document.querySelector('toolbar-app')?.shadowRoot?.querySelector('%s')",
+      selector.c_str());
 }

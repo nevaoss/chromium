@@ -18,9 +18,11 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/autofill/chrome_autofill_client.h"
 #include "chrome/browser/ui/browser.h"
+#include "chrome/browser/ui/browser_init_state.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
+#include "chrome/browser/ui/browser_window/public/create_browser_window.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
 #include "chrome/browser/ui/navigator/browser_navigator.h"
@@ -50,7 +52,8 @@ bool BrowserMatches(BrowserWindowInterface* browser,
                     const GURL& url) {
   return browser->GetProfile() == profile && browser->GetType() == type &&
          web_app::GetAppIdFromApplicationName(
-             browser->GetBrowserForMigrationOnly()->app_name()) == app_id &&
+             BrowserInitState::From(browser)->create_params().app_name) ==
+             app_id &&
          (url.is_empty() || BrowserMatchesURL(browser, url));
 }
 
@@ -231,7 +234,7 @@ BrowserDelegate* BrowserControllerImpl::NewTabWithPostData(
 
   navigate_params.browser = FindTabbedBrowserOnCurrentWorkspace(profile);
   if (!navigate_params.browser &&
-      Browser::GetCreationStatusForProfile(profile) ==
+      GetBrowserWindowCreationStatusForProfile(*profile) ==
           Browser::CreationStatus::kOk) {
     Browser::CreateParams create_params(profile, navigate_params.user_gesture);
     create_params.should_trigger_session_restore = false;
@@ -256,7 +259,7 @@ BrowserDelegate* BrowserControllerImpl::CreateWebApp(
       BrowserContextHelper::Get()->GetBrowserContextByAccountId(account_id));
   CHECK(profile);
 
-  if (Browser::GetCreationStatusForProfile(profile) !=
+  if (GetBrowserWindowCreationStatusForProfile(*profile) !=
       Browser::CreationStatus::kOk) {
     LOG(WARNING) << "Cannot create browser for given profile";
     return nullptr;

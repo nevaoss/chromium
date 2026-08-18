@@ -1159,7 +1159,9 @@ public class ChromeAndroidTaskIntegrationTest {
                 () ->
                         newTask.getState() != ChromeAndroidTaskImpl.State.PENDING_CREATE
                                 && !newTask.isActive()
-                                && existingTask.isActive());
+                                && existingTask.isActive(),
+                /* maxTimeoutMs= */ 10_000L,
+                /* checkIntervalMs= */ 1000L);
 
         // Cleanup.
         ThreadUtils.runOnUiThreadBlocking(newTask::close);
@@ -1274,7 +1276,9 @@ public class ChromeAndroidTaskIntegrationTest {
                 () -> {
                     Set<Integer> newTaskIds = getTabbedActivityTaskIds();
                     Criteria.checkThat(newTaskIds.size(), Matchers.is(currentTaskIds.size()));
-                });
+                },
+                /* maxTimeoutMs= */ 10_000L,
+                /* checkIntervalMs= */ 1000L);
     }
 
     private static void assertBoundsCloseEnoughInDp(Rect expected, Rect actual) {

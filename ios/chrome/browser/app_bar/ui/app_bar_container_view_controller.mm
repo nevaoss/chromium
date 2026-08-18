@@ -26,8 +26,6 @@
   AppBarViewController* _appBar;
   // The last fullscreen progress value received.
   CGFloat _fullscreenProgress;
-  // Following next responder for ResponderChaining.
-  __weak UIResponder* _followingNextResponder;
 }
 
 - (void)setLayoutState:(LayoutState*)layoutState {
@@ -54,7 +52,7 @@
 }
 
 - (void)layoutState:(LayoutState*)layoutState
-    didChangeAppBarLockedInFullscreen:(BOOL)appBarLockedInFullscreen {
+    didChangeAssistantContainerInvoked:(BOOL)assistantContainerInvoked {
   [self updateAndApplyLayout];
 }
 
@@ -88,34 +86,17 @@
   _fullscreenProgress = 1;
 }
 
-#pragma mark - ResponderChaining
-
-- (void)respondBeforeResponder:(UIResponder*)nextResponder {
-  _followingNextResponder = nextResponder;
-}
-
 #pragma mark - AppBarContainerViewDelegate
 
 - (void)appBarContainerDidMoveToWindow:(AppBarContainerView*)appBarContainer {
   [self updateLayout];
 }
 
-#pragma mark - UIResponder
-
-- (UIResponder*)nextResponder {
-  UIResponder* nextResponder = _followingNextResponder ?: [super nextResponder];
-  if (_appBar) {
-    [_appBar respondBeforeResponder:nextResponder];
-    nextResponder = _appBar;
-  }
-  return nextResponder;
-}
-
 #pragma mark - FullscreenUIElement
 
 - (void)updateForFullscreenProgress:(CGFloat)progress {
   _fullscreenProgress = progress;
-  if (self.layoutState.appBarLockedInFullscreen) {
+  if (self.layoutState.assistantContainerInvoked) {
     return;
   }
   [self updateAndApplyLayout];
@@ -147,7 +128,8 @@
 }
 
 - (void)fullscreenWillUpdateState:(FullscreenBrowserAgent*)agent {
-  if (self.layoutState.appBarLockedInFullscreen) {
+  if (self.layoutState.assistantContainerInvoked &&
+      !IsAppBarHiddenInFullscreen()) {
     _fullscreenProgress = agent->bottom_progress();
     agent->AddObscuredInset(UIRectEdgeBottom, kAppBarHeightFullscreen);
     return;
@@ -214,11 +196,12 @@
 
   self.view.transform = CGAffineTransformMakeRotation(angle);
   CGFloat progress = _fullscreenProgress;
-  if (self.layoutState.appBarLockedInFullscreen) {
+  if (self.layoutState.assistantContainerInvoked &&
+      !IsAppBarHiddenInFullscreen()) {
     progress = 0.0;
   }
-  self.view.appBarLockedInFullscreen =
-      self.layoutState.appBarLockedInFullscreen;
+  self.view.assistantContainerInvoked =
+      self.layoutState.assistantContainerInvoked;
   self.view.fullscreenProgress = progress;
   self.view.appBarPosition = position;
   [_appBar updateForAngle:-angle];

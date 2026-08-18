@@ -123,6 +123,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &autofill::features::kAutofillAiShowDialogInSettingsWhenUpstreamingFails,
     &autofill::features::kAutofillAiShowWalletDisabledBanner,
     &autofill::features::kAutofillAiWalletPrivatePassesDeepLink,
+    &autofill::features::kAutofillAiWalletShopping,
     &autofill::features::kAutofillAiWithDataSchema,
     &autofill::features::kAutofillAmbientAutofill,
     &autofill::features::kAutofillAndroidDesktopKeyboardAccessoryRevamp,
@@ -238,6 +239,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kAndroidFreLayoutUpdate,
     &kAndroidHistoryClustering,
     &kAndroidNewMediaPicker,
+    &kAndroidNoCaptureWhenScrollingDisabledOnDesktop,
     &kAndroidNoVisibleHintForDifferentTLD,
     &kAndroidOmniboxFocusedNewTabPage,
     &kAndroidOpenIncognitoAsWindowRestrictions,
@@ -352,6 +354,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kDisableScrollbarOfFadingEdgeScrollView,
     &kDontAutoHideBrowserControls,
     &kDrawChromePagesEdgeToEdge,
+    &kEdgeToEdgeAutomotive,
     &kEdgeToEdgeBottomChin,
     &kEdgeToEdgeEverywhere,
     &kEdgeToEdgeExtraLogs,
@@ -360,6 +363,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kEdgeToEdgeUseBackupNavbarInsets,
     &kEdgelessTopInset,
     &kEducationalTipDefaultBrowserPromoCard,
+    &kEmailVerificationAndroid,
     &kEmptyTabListAnimationKillSwitch,
     &kEnableAndroidSidePanel,
     &kEnableAndroidSidePanelDevFeature,
@@ -397,7 +401,6 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kLoadAllTabsAtStartup,
     &kLoadNativeEarly,
     &kLockTopControlsOnLargeTabletsV2,
-    &kLogoViewRefactor,
     &kLongScreenshotsLenientMemoryCheck,
     &kLongScreenshotsNoMemoryCheck,
     &kMayLaunchUrlUsesSeparateStoragePartition,
@@ -406,6 +409,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kMoveToFrontInLaunchIntentDispatcher,
     &kMultiInstanceSharedPrefsMigration,
     &kMvcUpdateViewWhenModelChanged,
+    &kNavigationListMenu,
     &kNotificationPermissionVariant,
     &kNotificationTrampoline,
     &kNotificationTrampolineNoNewTask,
@@ -448,6 +452,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kSearchInCCTIfEnabledByEmbedder,
     &kSessionRestoreAfterCrash,
     &kSettingsInTab,
+    &kSettingsInTabUrlNav,
     &kSettingsMultiColumn,
     &kSettingsSingleActivity,
     &kShareCustomActionsInCCT,
@@ -501,7 +506,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kWebApkMinShellVersion,
     &kWebAppShortEdgesCutoutMode,
     &kWebOtpCrossDeviceSimpleString,
-    &kWebUiNtpAndroidTheming,
+    &kWebUiAndroidTheming,
     &kXplatSyncedSetup,
     &kYourSavedInfoSettingsPageAndroid,
     &language::kCctAutoTranslate,
@@ -622,6 +627,7 @@ BASE_FEATURE(kAndroidFirstRunLaunchBounds, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidFreLayoutUpdate, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidHistoryClustering, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidNewMediaPicker, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kAndroidNoCaptureWhenScrollingDisabledOnDesktop, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidNoVisibleHintForDifferentTLD, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidOmniboxFocusedNewTabPage, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidOpenIncognitoAsWindowRestrictions, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -739,6 +745,7 @@ BASE_FEATURE(kDisableScrollbarOfFadingEdgeScrollView, base::FEATURE_ENABLED_BY_D
 BASE_FEATURE(kDiscardPageWithCrashedSubframePolicy, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kDontAutoHideBrowserControls, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kDrawChromePagesEdgeToEdge, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kEdgeToEdgeAutomotive, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kEdgeToEdgeBottomChin, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kEdgeToEdgeEverywhere, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kEdgeToEdgeExtraLogs, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -747,6 +754,7 @@ BASE_FEATURE(kEdgeToEdgeTablet, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kEdgeToEdgeUseBackupNavbarInsets, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kEdgelessTopInset, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kEducationalTipDefaultBrowserPromoCard, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kEmailVerificationAndroid, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kEmptyTabListAnimationKillSwitch, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kEnableAndroidSidePanel, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kEnableAndroidSidePanelDevFeature, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -784,7 +792,6 @@ BASE_FEATURE(kLinkHoverStatusBar, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kLoadAllTabsAtStartup, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kLoadNativeEarly, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kLockTopControlsOnLargeTabletsV2, base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kLogoViewRefactor, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kLongScreenshotsLenientMemoryCheck, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kLongScreenshotsNoMemoryCheck, base::FEATURE_DISABLED_BY_DEFAULT);
 // Enables an experimental feature which forces mayLaunchUrl to use a different
@@ -796,6 +803,7 @@ BASE_FEATURE(kMostVisitedTilesReselect, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kMoveToFrontInLaunchIntentDispatcher, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kMultiInstanceSharedPrefsMigration, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kMvcUpdateViewWhenModelChanged, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kNavigationListMenu, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kNotificationPermissionVariant, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kNotificationTrampoline, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kNotificationTrampolineNoNewTask, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -841,7 +849,8 @@ BASE_FEATURE(kSearchInCCTAlternateTapHandling, base::FEATURE_DISABLED_BY_DEFAULT
 BASE_FEATURE(kSearchInCCTAlternateTapHandlingIfEnabledByEmbedder, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kSearchInCCTIfEnabledByEmbedder, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kSessionRestoreAfterCrash, base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kSettingsInTab, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kSettingsInTab, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kSettingsInTabUrlNav, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kSettingsMultiColumn, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kSettingsSingleActivity, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kShareCustomActionsInCCT, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -905,7 +914,7 @@ BASE_FEATURE(kWebAppShortEdgesCutoutMode, base::FEATURE_DISABLED_BY_DEFAULT);
 // Shows only the remote device name on the Android notification instead of
 // a descriptive text.
 BASE_FEATURE(kWebOtpCrossDeviceSimpleString, base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kWebUiNtpAndroidTheming, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kWebUiAndroidTheming, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kXplatSyncedSetup, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kYourSavedInfoSettingsPageAndroid, base::FEATURE_DISABLED_BY_DEFAULT);
 // go/keep-sorted end

@@ -194,8 +194,8 @@ class TabStripModel {
  public:
   using TabIterator = tabs::TabCollection::TabIterator;
 
-  // TODO(crbug.com/40881446): Remove this, and use std::optional<size_t> (or at
-  // least std::optional<int>) in its place.
+  // TODO(crbug.com/540829277): Remove this, and use std::optional<size_t> (or
+  // at least std::optional<int>) in its place.
   static constexpr int kNoTab = -1;
 
   TabStripModel() = delete;
@@ -319,7 +319,7 @@ class TabStripModel {
   // Closes the WebContents at the specified index. This causes the
   // WebContents to be destroyed, but it may not happen immediately.
   // |close_types| is a bitmask of CloseTypes.
-  // TODO(crbug.com/392950857): Currently many call sites of CloseWebContentsAt
+  // TODO(crbug.com/540843679): Currently many call sites of CloseWebContentsAt
   // convert a tab/webcontents to an index, which gets converted back to a
   // webcontents within this function. Provide a CloseWebContents function that
   // directly closes a web contents so that we don't have to convert back and
@@ -446,8 +446,9 @@ class TabStripModel {
   int GetIndexOfWebContents(const content::WebContents* contents) const;
 
   // Notify any observers that the tab has changed in some way. See
-  // TabChangeType for details of |change_type|.'
-  void NotifyTabChanged(tabs::TabInterface* tab, TabChangeType change_type);
+  // TabChangeType for details of |change_type|.
+  void NotifyTabChanged(tabs::TabInterface* tab,
+                        TabChangeType change_type);
 
   // Notify any observers that the WebContents at the specified index has
   // changed in some way. See TabChangeType for details of |change_type|.
@@ -899,8 +900,6 @@ class TabStripModel {
   std::vector<tabs::TabInterface*> GetTabsAtIndices(
       const std::vector<int>& indices) const;
 
-  // TODO(349161508) remove this method once tabs dont need to be converted
-  // into webcontents.
   tabs::TabInterface* GetTabForWebContents(
       const content::WebContents* contents) const;
 

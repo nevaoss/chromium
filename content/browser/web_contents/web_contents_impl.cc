@@ -113,6 +113,7 @@
 #include "content/browser/renderer_host/navigation_request.h"
 #include "content/browser/renderer_host/page_impl.h"
 #include "content/browser/renderer_host/render_frame_host_impl.h"
+#include "content/browser/renderer_host/render_frame_host_manager.h"
 #include "content/browser/renderer_host/render_frame_proxy_host.h"
 #include "content/browser/renderer_host/render_process_host_impl.h"
 #include "content/browser/renderer_host/render_view_host_delegate_view.h"
@@ -3423,6 +3424,14 @@ void WebContentsImpl::AttachInnerWebContentsImpl(
     inner_web_contents_impl->SetAsFocusedWebContentsIfNecessary();
   }
 
+  // Synchronize visual properties so that the inner main frame's renderer
+  // process immediately receives initial throttling status upon being attached
+  // as an embedded main frame.
+  if (auto* rwh = inner_web_contents_impl->GetPrimaryMainFrame()
+                      ->GetRenderWidgetHost()) {
+    rwh->SynchronizeVisualProperties();
+  }
+
   observers_.NotifyObservers(&WebContentsObserver::InnerWebContentsAttached,
                              inner_web_contents_impl, render_frame_host);
 
@@ -3717,6 +3726,14 @@ void WebContentsImpl::AttachGuestPage(
 
   outer_render_manager->set_attach_inner_delegate_complete();
   inner_main_frame->PropagateEmbeddingTokenToParentFrame();
+
+  // Synchronize visual properties so that the guest main frame's renderer
+  // process immediately receives initial throttling status upon being attached
+  // as an embedded main frame.
+  if (auto* rwh = inner_main_frame->GetRenderWidgetHost()) {
+    rwh->SynchronizeVisualProperties();
+  }
+
   // TODO(crbug.com/40202416): Determine if anything else is needed here.
 }
 
@@ -4336,6 +4353,8 @@ void WebContentsImpl::Init(const WebContents::CreateParams& params,
       params.initially_use_platform_autofill;
 
   is_never_composited_ = params.is_never_composited;
+
+  privileged_params_ = params.privileged_params;
 
   creator_location_ = params.creator_location;
 #if BUILDFLAG(IS_ANDROID)
@@ -7342,6 +7361,11 @@ bool WebContentsImpl::GotResponseToPointerLockRequest(
     if (pointer_lock_widget_->GotResponseToPointerLockRequest(result)) {
       return true;
     }
+
+    if (pointer_lock_widget_ && pointer_lock_widget_->GetView() &&
+        pointer_lock_widget_->GetView()->IsPointerLocked()) {
+      return true;
+    }
   }
 
   SetPointerLockWidgetInParentChain(nullptr);
@@ -8093,11 +8117,22 @@ void WebContentsImpl::NotifyChangedNavigationState(
 }
 
 bool WebContentsImpl::ShouldAllowRendererInitiatedCrossProcessNavigation(
+    RenderFrameHostImpl* render_frame_host,
     bool is_outermost_main_frame_navigation) {
   OPTIONAL_TRACE_EVENT1(
       "content",
       "WebContentsImpl::ShouldAllowRendererInitiatedCrossProcessNavigation",
       "is_outermost_main_frame_navigation", is_outermost_main_frame_navigation);
+  if (render_frame_host->frame_tree()->is_guest()) {
+    GuestPageHolderImpl* guest =
+        GuestPageHolderImpl::FromRenderFrameHost(*render_frame_host);
+    if (guest && guest->delegate()) {
+      return guest->delegate()
+          ->GuestShouldAllowRendererInitiatedCrossProcessNavigation(
+              is_outermost_main_frame_navigation);
+    }
+    return true;
+  }
   if (!delegate_) {
     return true;
   }
@@ -10836,6 +10871,13 @@ FrameTree* WebContentsImpl::GetDocumentPictureInPictureOpenerFrameTree() {
   return nullptr;
 }
 
+std::optional<int64_t> WebContentsImpl::GetPrivilegedContentsFeatureId() {
+  if (privileged_params_) {
+    return privileged_params_->feature_id;
+  }
+  return std::nullopt;
+}
+
 WebContents* WebContentsImpl::GetDocumentPictureInPictureOpener() {
   return picture_in_picture_opener_.get();
 }
@@ -10996,7 +11038,6 @@ bool WebContentsImpl::ShouldIgnoreInputEvents() {
   }
   return web_contents->ShouldIgnoreInputEvents();
 }
-
 
 void WebContentsImpl::FocusOwningWebContents(
     RenderWidgetHostImpl* render_widget_host) {
@@ -12687,8 +12728,6 @@ void WebContentsImpl::NotifyPageBecamePrimary(PageImpl& page) {
 
   observers_.NotifyObservers(&WebContentsObserver::PrimaryPageChanged, page);
 }
-
-
 
 FrameTreeNodeId WebContentsImpl::GetOuterDelegateFrameTreeNodeId() {
   return node_.outer_contents_frame_tree_node_id();

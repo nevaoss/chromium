@@ -1167,13 +1167,6 @@ android_library("chrome_test_java_org.chromium.chrome.browser.payments") {
     "src/org/chromium/chrome/browser/payments/WebPaymentIntentHelperTest.java",
   ]
 
-  # This test can be broken by R8 and isn't testing functionality.
-  if (is_java_debug) {
-    sources += [
-      "src/org/chromium/chrome/browser/payments/PaymentErrorStringsTest.java",
-    ]
-  }
-
   deps = [
     ":chrome_test_java_helper",
     "//components/payments/content/android:service_impl_java",
@@ -1406,6 +1399,7 @@ android_library("chrome_test_java_org.chromium.chrome.browser.sync") {
     "src/org/chromium/chrome/browser/sync/BookmarksTest.java",
     "src/org/chromium/chrome/browser/sync/ExplicitPassphrasePlatformClientTest.java",
     "src/org/chromium/chrome/browser/sync/OpenTabsTest.java",
+    "src/org/chromium/chrome/browser/sync/OtherDevicesShortcutControllerIntegrationTest.java",
     "src/org/chromium/chrome/browser/sync/SendTabToSelfReceiverTest.java",
     "src/org/chromium/chrome/browser/sync/SyncTest.java",
     "src/org/chromium/chrome/browser/sync/UkmTest.java",
@@ -1577,6 +1571,7 @@ android_library("chrome_test_java_org.chromium.chrome.browser.tasks") {
     "//chrome/android/features/tab_ui/javatests/src/org/chromium/chrome/browser/tasks/tab_management/TabSwitcherThumbnailTest.java",
     "//chrome/android/features/tab_ui/javatests/src/org/chromium/chrome/browser/tasks/tab_management/TabThumbnailViewRenderTest.java",
     "//chrome/android/features/tab_ui/javatests/src/org/chromium/chrome/browser/tasks/tab_management/TestRecyclerViewSimpleViewBinder.java",
+    "//chrome/android/features/tab_ui/javatests/src/org/chromium/chrome/browser/tasks/tab_management/VerticalTabsTest.java",
     "//chrome/android/java/src/org/chromium/chrome/browser/hub/HubGarbageCollectionTest.java",
   ]
 

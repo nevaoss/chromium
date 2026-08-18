@@ -213,7 +213,7 @@ chromium-metrics-reviews@google.com.
       summary="User chose to fill a form or field with password credentials."/>
 </variants>
 
-<!-- LINT.ThenChange(/components/autofill/core/browser/filling/filling_product.cc:FillingProductToString) -->
+<!-- LINT.ThenChange(//components/autofill/core/browser/filling/filling_product.cc:FillingProductToString) -->
 
 <variants name="Autofill.FormEventWithMetadata">
   <variant name="FilledWithMetadata" summary="A card with metadata was filled"/>
@@ -799,6 +799,8 @@ Called by update_autofill_enums.py. This is a manual comment.-->
 </variants>
 
 <variants name="AutofillServerSaveCardSituation">
+  <variant name="LegalMessageLinesMentionPersonalization"
+      summary="has a legal message that mentions personalization"/>
   <variant name="WithMultipleLegalLines"
       summary="has a legal message with multiple lines"/>
   <variant name="WithSameLastFourButDifferentExpiration"
@@ -1594,6 +1596,16 @@ Called by update_autofill_enums.py. This is a manual comment.-->
   <token key="RecordType" variants="Autofill.Ai.EntityRecordType">
     <variant name="" summary="Emitted for all entity record types."/>
   </token>
+</histogram>
+
+<histogram name="Autofill.Ai.EntityEditor.OpenedFromSaveUpdatePrompt"
+    enum="Boolean" expires_after="2026-12-12">
+  <owner>tchudakov@google.com</owner>
+  <owner>chrome-autofill-alerts@google.com</owner>
+  <summary>
+    Emitted once per save/update prompt. It logs whether the user has clicked on
+    the edit button in the prompt to edit the entity or not.
+  </summary>
 </histogram>
 
 <histogram name="Autofill.Ai.EntityTable.DecryptStatus2"
@@ -4594,6 +4606,38 @@ Called by update_autofill_enums.py. This is a manual comment.-->
   </summary>
 </histogram>
 
+<histogram name="Autofill.Filling.TriggerFieldType" enum="AutofillFieldType"
+    expires_after="2027-08-08">
+  <owner>taminob@chromium.org</owner>
+  <owner>jihadghanna@google.com</owner>
+  <owner>chrome-autofill-alerts@google.com</owner>
+  <summary>
+    Records the type of the field that was used to trigger Autofill filling.
+    This is logged every time a form is filled using the `FieldType` stored in
+    `AutofillField::autofilled_type()`. The histogram is not triggered for
+    field-by-field or other non-form filling.
+
+    This is the aggregated histogram across all filling products for
+    `Autofill.Filling.TriggerFieldType.{FillingProduct}`.
+  </summary>
+</histogram>
+
+<histogram name="Autofill.Filling.TriggerFieldType.{FillingProduct}"
+    enum="AutofillFieldType" expires_after="2027-08-08">
+  <owner>taminob@chromium.org</owner>
+  <owner>jihadghanna@google.com</owner>
+  <owner>chrome-autofill-alerts@google.com</owner>
+  <summary>
+    Records the type of the field that was used to trigger Autofill filling.
+    This is logged every time a form is filled using the `FieldType` stored in
+    `AutofillField::autofilled_type()`. The histogram is not triggered for
+    field-by-field or other non-form filling.
+
+    {FillingProduct}
+  </summary>
+  <token key="FillingProduct" variants="Autofill.FillingProduct"/>
+</histogram>
+
 <histogram name="Autofill.FocusedField.FieldType{Origin}"
     enum="AutofillFieldType" expires_after="2026-11-29">
   <owner>schwering@google.com</owner>
@@ -5289,6 +5333,30 @@ Called by update_autofill_enums.py. This is a manual comment.-->
       variants="Autofill.PaymentsSigninState"/>
 </histogram>
 
+<histogram name="Autofill.IdentityDocs.DisabledReason.PageLoad"
+    enum="AutofillPreferenceSetter" expires_after="2026-12-12">
+  <owner>battre@chromium.org</owner>
+  <owner>luchenpeng@google.com</owner>
+  <owner>chrome-autofill-alerts@google.com</owner>
+  <summary>
+    If the pref autofill.ai.identity_entities_enabled is disabled, or blocked by
+    the AutofillSettings enterprise policy, this metric records the source.
+    Emitted on page load for a page containing forms.
+  </summary>
+</histogram>
+
+<histogram name="Autofill.IdentityDocs.DisabledReason.Startup"
+    enum="AutofillPreferenceSetter" expires_after="2026-12-12">
+  <owner>battre@chromium.org</owner>
+  <owner>luchenpeng@google.com</owner>
+  <owner>chrome-autofill-alerts@google.com</owner>
+  <summary>
+    If the pref autofill.ai.identity_entities_enabled is disabled, or blocked by
+    the AutofillSettings enterprise policy, this metric records the source.
+    Emitted on startup.
+  </summary>
+</histogram>
+
 <histogram
     name="Autofill.ImageFetcher.{AutofillImage}.OverallResultOnBrowserStart"
     enum="BooleanSuccess" expires_after="2027-04-30">
@@ -5632,7 +5700,7 @@ Called by update_autofill_enums.py. This is a manual comment.-->
 </histogram>
 
 <histogram name="Autofill.Leipzig.FillingAssistanceCategory"
-    enum="AutofillCategoryResolvedFillingAssistance" expires_after="2026-11-29">
+    enum="AutofillCategoryResolvedFillingAssistance" expires_after="2027-01-31">
   <owner>koerber@chromium.org</owner>
   <owner>fleimgruber@chromium.org</owner>
   <owner>chrome-autofill-alerts@google.com</owner>
@@ -8439,6 +8507,30 @@ Called by update_autofill_enums.py. This is a manual comment.-->
   </summary>
 </histogram>
 
+<histogram name="Autofill.Shopping.DisabledReason.PageLoad"
+    enum="AutofillPreferenceSetter" expires_after="2026-12-12">
+  <owner>battre@chromium.org</owner>
+  <owner>luchenpeng@google.com</owner>
+  <owner>chrome-autofill-alerts@google.com</owner>
+  <summary>
+    If the pref autofill.ai.shopping_entities_enabled is disabled, or blocked by
+    the AutofillSettings enterprise policy, this metric records the source.
+    Emitted on page load for a page containing forms.
+  </summary>
+</histogram>
+
+<histogram name="Autofill.Shopping.DisabledReason.Startup"
+    enum="AutofillPreferenceSetter" expires_after="2026-12-12">
+  <owner>battre@chromium.org</owner>
+  <owner>luchenpeng@google.com</owner>
+  <owner>chrome-autofill-alerts@google.com</owner>
+  <summary>
+    If the pref autofill.ai.shopping_entities_enabled is disabled, or blocked by
+    the AutofillSettings enterprise policy, this metric records the source.
+    Emitted on startup.
+  </summary>
+</histogram>
+
 <histogram name="Autofill.SmsOtp.UnrecognizedGmsCoreErrorCode"
     units="error code" expires_after="2027-01-03">
   <owner>koerber@google.com</owner>
@@ -9121,7 +9213,7 @@ Called by update_autofill_enums.py. This is a manual comment.-->
 </histogram>
 
 <histogram name="Autofill.Timing.SuggestionGeneration2" units="ms"
-    expires_after="2026-11-29">
+    expires_after="2027-01-31">
   <owner>jihadghanna@google.com</owner>
   <owner>kuchyn@google.com</owner>
   <owner>chrome-autofill-alerts@google.com</owner>
@@ -9463,6 +9555,30 @@ Called by update_autofill_enums.py. This is a manual comment.-->
     Records the outcome of the attempt to trigger Touch To Fill for loyalty
     cards. It is recorded only when the form is parsed as a loyalty card by
     Autofill on Chrome Android and the user clicks on the form field.
+  </summary>
+</histogram>
+
+<histogram name="Autofill.Travel.DisabledReason.PageLoad"
+    enum="AutofillPreferenceSetter" expires_after="2026-12-12">
+  <owner>battre@chromium.org</owner>
+  <owner>luchenpeng@google.com</owner>
+  <owner>chrome-autofill-alerts@google.com</owner>
+  <summary>
+    If the pref autofill.ai.travel_entities_enabled is disabled, or blocked by
+    the AutofillSettings enterprise policy, this metric records the source.
+    Emitted on page load for a page containing forms.
+  </summary>
+</histogram>
+
+<histogram name="Autofill.Travel.DisabledReason.Startup"
+    enum="AutofillPreferenceSetter" expires_after="2026-12-12">
+  <owner>battre@chromium.org</owner>
+  <owner>luchenpeng@google.com</owner>
+  <owner>chrome-autofill-alerts@google.com</owner>
+  <summary>
+    If the pref autofill.ai.travel_entities_enabled is disabled, or blocked by
+    the AutofillSettings enterprise policy, this metric records the source.
+    Emitted on startup.
   </summary>
 </histogram>
 

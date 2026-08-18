@@ -198,6 +198,7 @@
 #include "services/network/public/mojom/device_bound_sessions.mojom.h"
 #include "services/network/public/mojom/fetch_api.mojom.h"
 #include "services/network/public/mojom/link_header.mojom.h"
+#include "services/network/public/mojom/network_context.mojom.h"
 #include "services/network/public/mojom/permissions_policy/permissions_policy_feature.mojom-shared.h"
 #include "services/network/public/mojom/supports_loading_mode.mojom.h"
 #include "services/network/public/mojom/url_response_head.mojom.h"
@@ -1099,19 +1100,45 @@ EmbedderIsolationInfo ResolveEmbedderIsolationInfo(
     FrameTreeNode* frame_tree_node,
     EmbedderIsolationInfo::Mode mode,
     int64_t navigation_id) {
+  // Resolve kPdf and kUniqueInstance first, before the privileged mode below.
+  // If content that needs one of these modes (e.g. an embedded PDF) is hosted
+  // in a privileged WebContents, it must keep its own process and mitigations
+  // rather than becoming privileged -- the two imply opposite things (e.g. PDF
+  // requires a JIT-less process, privileged does not), and PDF's must win.
   if (mode == EmbedderIsolationInfo::Mode::kPdf) {
     return EmbedderIsolationInfo::CreateForPdf();
   }
   if (mode == EmbedderIsolationInfo::Mode::kUniqueInstance) {
     return EmbedderIsolationInfo::CreateForUniqueInstance(navigation_id);
   }
-  // Inherit a unique-instance ancestor's id when present so that a descendant
-  // frame stays in its parent's isolation domain.
+
+  // A privileged WebContents (see //chrome's PrivilegedWebContents) marks every
+  // frame it hosts as privileged, keyed on its constant feature id. Derive this
+  // from the WebContents' immutable creation-time marker (reached via the
+  // FrameTree delegate) rather than the passed-in `mode`. This prevents a
+  // security downgrade: a renderer-initiated navigation requests `kNone` by
+  // default, so keying off `mode` would let a privileged frame silently drop
+  // its privileged isolation and be placed into an ordinary renderer process
+  // shared with a normal tab, exposing its elevated browser capabilities to
+  // untrusted code or extensions. Same-site frames then resolve to the same
+  // SiteInfo and may share a process; cross-site frames get their own
+  // privileged process and never share with ordinary (kNone) content.
+  if (std::optional<int64_t> feature_id =
+          frame_tree_node->frame_tree()
+              .delegate()
+              ->GetPrivilegedContentsFeatureId()) {
+    return EmbedderIsolationInfo::CreateForPrivileged(*feature_id);
+  }
+
+  // Inherit a unique-instance or privileged ancestor's info when present so
+  // that a descendant frame -- including the root of an inner frame tree such
+  // as a fenced frame, reached via GetParentOrOuterDocument() -- stays in its
+  // outer document's isolation domain.
   if (RenderFrameHostImpl* parent =
           frame_tree_node->GetParentOrOuterDocument()) {
     const EmbedderIsolationInfo& parent_info =
         parent->GetSiteInstance()->GetSiteInfo().embedder_isolation_info();
-    if (parent_info.is_unique_instance()) {
+    if (parent_info.is_unique_instance() || parent_info.is_privileged()) {
       return parent_info;
     }
   }
@@ -1188,9 +1215,13 @@ std::unique_ptr<NavigationRequest> NavigationRequest::Create(
   common_params->request_destination =
       GetDestinationFromFrameTreeNode(frame_tree_node);
 
+  // Note: we pass std::nullopt as `initiator_state_token` and
+  // `initiator_document_token` below as all initiator relevant data has already
+  // been retrieved and is in the `initiator_navigation_state`.
   auto navigation_params = blink::mojom::BeginNavigationParams::New(
-      initiator_frame_token, extra_headers, net::LOAD_NORMAL,
-      false /* skip_service_worker */,
+      initiator_frame_token, std::nullopt /* initiator_state_token */,
+      std::nullopt /* initiator_document_token*/, extra_headers,
+      net::LOAD_NORMAL, false /* skip_service_worker */,
       blink::mojom::RequestContextType::LOCATION,
       blink::mojom::MixedContentContextType::kBlockable, is_form_submission,
       false /* was_initiated_by_link_click */,
@@ -1709,7 +1740,8 @@ NavigationRequest::NavigationRequest(
           GetPrerenderHostRegistry().GetPrerenderHostIdForNavigation(this)),
       initiator_navigation_state_(initiator_navigation_state),
       should_ignore_initiator_policies_for_inheritance_(
-          should_ignore_initiator_policies_for_inheritance) {
+          should_ignore_initiator_policies_for_inheritance),
+      initiator_state_token_to_commit_(base::UnguessableToken::Create()) {
   TRACE_EVENT("navigation", "NavigationRequest::NavigationRequest",
               perfetto::Flow::FromPointer(this),
               perfetto::protos::pbzero::ChromeTrackEvent::kNavigation, this);
@@ -1804,6 +1836,15 @@ NavigationRequest::NavigationRequest(
   }
 #endif
 
+  if (GetInitiatorFrameToken().has_value()) {
+    RenderFrameHostImpl* initiator_rfh = RenderFrameHostImpl::FromFrameToken(
+        GetInitiatorProcessId(), GetInitiatorFrameToken().value());
+    if (initiator_rfh) {
+      initiator_document_token_ = initiator_rfh->GetDocumentToken();
+      is_opener_navigation_ =
+          (initiator_rfh->frame_tree_node()->opener() == frame_tree_node_);
+    }
+  }
 
   ComputeDownloadPolicy();
 
@@ -1814,13 +1855,6 @@ NavigationRequest::NavigationRequest(
       "navigation", "NavigationRequest", GetNavigationTracingTrack(),
       perfetto::protos::pbzero::ChromeTrackEvent::kNavigation, this);
   TRACE_EVENT_BEGIN("navigation", "Initializing", GetNavigationTracingTrack());
-
-  if (GetInitiatorFrameToken().has_value()) {
-    RenderFrameHostImpl* initiator_rfh = RenderFrameHostImpl::FromFrameToken(
-        GetInitiatorProcessId(), GetInitiatorFrameToken().value());
-    if (initiator_rfh)
-      initiator_document_token_ = initiator_rfh->GetDocumentToken();
-  }
 
   // Spec: https://github.com/whatwg/html/issues/8846
   // We only allow the parent to access a subframe resource timing if the
@@ -2245,7 +2279,8 @@ NavigationRequest::~NavigationRequest() {
   }
 
   if (!early_navigation_failure_recorded_ && !response() &&
-      IsInPrimaryMainFrame() && net_error_ == net::ERR_ABORTED) {
+      IsInPrimaryMainFrame() && net_error_ == net::ERR_ABORTED &&
+      CanRecordEarlyNavigationFailure()) {
     DeclarativePerformanceObserver::RecordEarlyNavigationFailure(
         this, GetStoragePartitionWithCurrentSiteInfo(), net::ERR_ABORTED);
   }
@@ -3649,6 +3684,12 @@ blink::mojom::PolicyContainerPtr
 NavigationRequest::CreatePolicyContainerForBlink() {
   CHECK_GE(state_, READY_TO_COMMIT);
 
+  // From here on, the PolicyContainer in Blink might attempt to modify the
+  // policies and update the `initiator_state_token`. Register the
+  // NavigationRequest as client of the PolicyContainerHost to be notified about
+  // such changes and update the `initiator_state_token_to_commit`.
+  policy_container_builder_->GetPolicyContainerHost()->SetClient(this);
+
   return policy_container_builder_->CreatePolicyContainerForBlink();
 }
 scoped_refptr<PolicyContainerHost> NavigationRequest::GetPolicyContainerHost() {
@@ -3667,6 +3708,10 @@ NavigationRequest::TakePolicyContainerHost() {
   scoped_refptr<PolicyContainerHost> host =
       std::move(*policy_container_builder_).TakePolicyContainerHost();
   policy_container_builder_ = std::nullopt;
+
+  // Ensure the NavigationRequest is no longer the client of the
+  // PolicyContainerHost.
+  host->SetClient(nullptr);
 
   return host;
 }
@@ -5296,6 +5341,7 @@ void NavigationRequest::SelectFrameHostForOnResponseStarted(
     if (!frame_tree_node_->navigator()
              .GetDelegate()
              ->ShouldAllowRendererInitiatedCrossProcessNavigation(
+                 GetRenderFrameHost(),
                  frame_tree_node_->IsOutermostMainFrame())) {
       net_error_ = net::ERR_ABORTED;
       error_navigation_trigger_ = ErrorNavigationTrigger::
@@ -5624,7 +5670,8 @@ void NavigationRequest::OnRequestFailedInternal(
     fast_fetch_manager_->OnRequestFailed(*this, status, skip_throttles);
   }
 
-  if (!response() && IsInPrimaryMainFrame() && status.error_code != net::OK) {
+  if (!response() && IsInPrimaryMainFrame() && status.error_code != net::OK &&
+      CanRecordEarlyNavigationFailure()) {
     DeclarativePerformanceObserver::RecordEarlyNavigationFailure(
         this, GetStoragePartitionWithCurrentSiteInfo(), status.error_code);
     early_navigation_failure_recorded_ = true;
@@ -7755,8 +7802,21 @@ bool NavigationRequest::IsAllowedByConnectionAllowlist(bool is_redirect) {
     return true;
   }
 
-  if (!EnforcesConnectionAllowlist(*policies)) {
+  if (!HasActiveConnectionAllowlists(*policies)) {
     return true;
+  }
+
+  network::mojom::NetworkContext* network_context = nullptr;
+  net::NetworkAnonymizationKey network_anonymization_key;
+  std::optional<base::UnguessableToken> reporting_source;
+
+  RenderFrameHostImpl* initiator_rfh = GetInitiatorDocumentRenderFrameHost();
+  if (initiator_rfh) {
+    network_context =
+        initiator_rfh->GetProcess()->GetStoragePartition()->GetNetworkContext();
+    network_anonymization_key = initiator_rfh->GetIsolationInfoForSubresources()
+                                    .network_anonymization_key();
+    reporting_source = initiator_rfh->GetReportingSource();
   }
 
   // Perform functional checks (redirects, same-document, local URLs) only after
@@ -7764,7 +7824,9 @@ bool NavigationRequest::IsAllowedByConnectionAllowlist(bool is_redirect) {
   // redirect_behavior defaults to kBlock if not explicitly set in the
   // Connection-Allowlist header.
   if (is_redirect) {
-    return IsRedirectAllowedByConnectionAllowlist(*policies);
+    return IsRedirectAllowedByConnectionAllowlist(
+        *policies, GetOriginalRequestURL(), network_context,
+        network_anonymization_key, reporting_source);
   }
 
   // For same-document navigation, the connection allowlist is not checked. For
@@ -7785,8 +7847,6 @@ bool NavigationRequest::IsAllowedByConnectionAllowlist(bool is_redirect) {
   // It's possible that the initiator frame has been deleted by the time this is
   // reached. If so, we can't complete the fenced frame check below, and will
   // fail closed.
-  RenderFrameHostImpl* initiator_rfh = RenderFrameHostImpl::FromFrameToken(
-      initiator_process_id_, *initiator_frame_token_);
   // The feature currently does not impact fenced frames.
   // TODO(crbug.com/447954811): Revisit this if the feature needs to be
   // enabled and fenced frames need to be supported.
@@ -7794,8 +7854,9 @@ bool NavigationRequest::IsAllowedByConnectionAllowlist(bool is_redirect) {
     return true;
   }
 
-  return ConnectionAllowlistAllowsUrlAndReportIfNeeded(*policies,
-                                                       common_params_->url);
+  return ConnectionAllowlistAllowsUrlAndReportIfNeeded(
+      *policies, common_params_->url, network_context,
+      network_anonymization_key, reporting_source);
 }
 
 bool NavigationRequest::IsAllowedByCSPDirective(
@@ -8622,7 +8683,7 @@ void NavigationRequest::RecordDownloadUseCountersPrePolicyCheck() {
             "Navigating a cross-origin opener to a download (%s) is "
             "deprecated, see "
             "https://www.chromestatus.com/feature/5742188281462784.",
-            common_params_->url.spec().c_str()));
+            common_params_->url.DeprecatedGetOriginAsURL().spec().c_str()));
     GetContentClient()->browser()->LogWebFeatureForCurrentPage(
         rfh, blink::mojom::WebFeature::kOpenerNavigationDownloadCrossOrigin);
   }
@@ -11455,6 +11516,10 @@ void NavigationRequest::ComputePoliciesToCommitForError() {
   policy_container_builder_->ComputePoliciesForError();
 }
 
+void NavigationRequest::DidUpdateInitiatorStateToken(
+    const base::UnguessableToken& new_initiator_state_token) {
+  initiator_state_token_to_commit_ = new_initiator_state_token;
+}
 void NavigationRequest::CheckStateTransition(NavigationState state) const {
 #if DCHECK_IS_ON()
   // See
@@ -11662,15 +11727,9 @@ bool NavigationRequest::ShouldReplaceCurrentEntryForSameUrlNavigation() const {
     return false;
 
   // If the initiating frame is cross-origin to the target frame, do not
-  // replace. Replacing in this case can be used to guess the exact current url
-  // of a cross-origin frame, see https://crbug.com/1208614. Exempt error pages
-  // from this rule so that we don't leave an error page in the back/forward
-  // list if a cross-origin iframe happens to successfully re-naivgate a frame
-  // that had previously failed.
-  if (!frame_tree_node_->current_frame_host()->IsErrorDocument() &&
-      common_params_->initiator_origin &&
-      !common_params_->initiator_origin->IsSameOriginWith(
-          frame_tree_node_->current_origin())) {
+  // replace the history entry for same-URL navigations to prevent observable
+  // differences in session history length.
+  if (!InitiatorMayObserveSameUrlReplacement()) {
     return false;
   }
 
@@ -11748,13 +11807,42 @@ bool NavigationRequest::ShouldReplaceCurrentEntryForFailedNavigation() const {
   //   navigations to reload or replacement), those compare against the initial
   //   URL instead of the final URL, which is what we're using here. Also, this
   //   is using the "loading URL", since that is the URL that was used in the
-  //   renderer before we moved the replacement conversion here.
+  //   renderer before we moved the replacement conversion here. As in
+  //   ShouldReplaceCurrentEntryForSameUrlNavigation(), only replace for the
+  //   same-URL case when the initiator is same-origin to the target frame.
   // TODO(crbug.com/40755155): Reconsider whether these two cases should
   // do replacement or not, since we're just preserving old behavior here.
   return is_reload_or_history ||
          (common_params_->url ==
-          GetLastLoadingURLInRendererForNavigationReplacement(
-              frame_tree_node_->current_frame_host()));
+              GetLastLoadingURLInRendererForNavigationReplacement(
+                  frame_tree_node_->current_frame_host()) &&
+          InitiatorMayObserveSameUrlReplacement());
+}
+
+bool NavigationRequest::InitiatorMayObserveSameUrlReplacement() const {
+  if (!common_params_->initiator_origin) {
+    return true;
+  }
+
+  RenderFrameHostImpl* current_rfh = frame_tree_node_->current_frame_host();
+  if (common_params_->initiator_origin->IsSameOriginWith(
+          current_rfh->GetLastCommittedOrigin())) {
+    return true;
+  }
+
+  // If the current document is an error page, its origin is opaque, so the
+  // comparison above will fail even when the initiator would have been
+  // same-origin to the document had it loaded successfully. To allow such an
+  // initiator to retry the failed load without leaving the error page in the
+  // back/forward list, also compare against the origin derived from the URL
+  // that failed to load.
+  if (current_rfh->IsErrorDocument() &&
+      common_params_->initiator_origin->IsSameOriginWith(
+          url::Origin::Create(current_rfh->GetLastCommittedURL()))) {
+    return true;
+  }
+
+  return false;
 }
 
 const std::optional<FencedFrameProperties>&
@@ -12204,12 +12292,21 @@ void NavigationRequest::ComputeDownloadPolicy() {
     download_policy().SetDisallowed(blink::NavigationDownloadType::kSandbox);
   }
 
+  // [OpenerCrossOrigin]
+  bool is_cross_origin =
+      GetInitiatorOrigin() && !GetInitiatorOrigin()->IsSameOriginWith(
+                                  frame_tree_node_->current_origin());
+
+  if (is_opener_navigation_ && is_cross_origin) {
+    download_policy().SetDisallowed(
+        blink::NavigationDownloadType::kOpenerCrossOrigin);
+  }
+
   // TODO(arthursonzogni): Check if the following fields from the
   // NavigationDownloadPolicy could be computed here from the browser process
   // instead:
   //
   // [NoGesture]
-  // [OpenerCrossOrigin]
   // [AdFrameNoGesture]
   // [AdFrame]
   // [Interstitial]
@@ -12602,6 +12699,21 @@ bool NavigationRequest::ShouldRecordNavigationTimelineUkm() const {
          (common_params_->url.SchemeIsHTTPOrHTTPS() ||
           common_params_->url.SchemeIs(content::kChromeUIScheme)) &&
          !IsPrerenderedPageActivation();
+}
+
+bool NavigationRequest::CanRecordEarlyNavigationFailure() const {
+  // `site_info_` reflects the target frame's StoragePartition only after
+  // StartNavigation() has run; before that it holds a default configuration.
+  // To prevent cross-partition leaks from non-default partitions (e.g., guest
+  // <webview>) while keeping metrics for standard primary main frames, require
+  // that StartNavigation() has run (`state_ >= WILL_START_REQUEST`) or that
+  // the current frame already belongs to the default StoragePartition.
+  return state_ >= WILL_START_REQUEST ||
+         frame_tree_node_->current_frame_host()
+             ->GetSiteInstance()
+             ->GetSecurityPrincipal()
+             .GetStoragePartitionConfig()
+             .is_default();
 }
 
 void NavigationRequest::MaybeRecordTraceEventsAndHistograms() {

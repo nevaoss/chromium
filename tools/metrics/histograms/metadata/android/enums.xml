@@ -864,6 +864,8 @@ chromium-metrics-reviews@google.com.
   <int value="203" label="Profile.enqueuePreconnect"/>
   <int value="204" label="Profile.setCrossOriginIsolatedAllowList"/>
   <int value="205" label="Profile.getCrossOriginIsolatedAllowList"/>
+  <int value="206" label="Navigation.getResponseHeaders"/>
+  <int value="207" label="WebViewProviderFactory.buildWebContent"/>
 <!-- LINT.ThenChange(/android_webview/support_library/java/src/org/chromium/support_lib_glue/SupportLibWebViewChromiumFactory.java:ApiCall) -->
 
 </enum>
@@ -1089,22 +1091,6 @@ chromium-metrics-reviews@google.com.
   <int value="23" label="Icons, Names, Emails, and Telephone numbers"/>
   <int value="31"
       label="Icons, Addresses, Names, Emails, and Telephone numbers"/>
-</enum>
-
-<enum name="CookieManagerThreadingCondition">
-  <int value="0" label="Not called before UI thread is set"/>
-  <int value="1" label="Called on a non-looper thread"/>
-  <int value="2"
-      label="Called from background looper and UI thread is main looper"/>
-  <int value="3"
-      label="Called from background looper and UI thread is the same
-             background looper"/>
-  <int value="4"
-      label="Called from background looper and UI thread is a different
-             background looper"/>
-  <int value="5" label="Called from main looper and UI thread is main looper"/>
-  <int value="6"
-      label="Called from main looper and UI thread is a background looper"/>
 </enum>
 
 <enum name="CpuAbiBitnessSupport">
@@ -1637,6 +1623,7 @@ chromium-metrics-reviews@google.com.
       label="Browser window creation from native feature (eg. extensions)"/>
   <int value="11" label="Upgrade to Android S multi-instance support"/>
   <int value="12" label="Crash recovery"/>
+  <int value="13" label="Relaunch"/>
 </enum>
 
 <enum name="NTPImpressionType">

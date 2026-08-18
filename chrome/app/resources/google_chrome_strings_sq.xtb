@@ -81,6 +81,7 @@ Disa funksione mund të mos ofrohen dhe ndryshimet në preferenca nuk do të ruh
 <translation id="1698376642261615901">Google Chrome është një shfletues uebi që ekzekuton faqe uebi dhe aplikacione me një shpejtësi jashtëzakonisht të lartë. Është i shpejtë, i qëndrueshëm dhe i lehtë në përdorim. Shfleto në ueb në mënyrë më të sigurt, me mbrojtje të integruar në Google Chrome kundër mashtrimeve dhe softuerëve keqdashës.</translation>
 <translation id="1713301662689114961">{0,plural, =1{Chrome do të hapet përsëri për një orë}other{Chrome do të hapet përsëri për # orë}}</translation>
 <translation id="1722488837206509557">Kjo do të të lejojë që të zgjedhësh nga pajisjet e disponueshme dhe të shfaqësh përmbajtjet në to.</translation>
+<translation id="1724094881572874997">Për të siguruar punën tënde në Chrome, organizata jote do të mund të shikojë ose të menaxhojë informacione të caktuara kur je identifikuar në Chrome.</translation>
 <translation id="177180974022074201">Provo me Gemini në Chrome</translation>
 <translation id="1786003790898721085">Sigurohu që të jesh i identifikuar në Chrome në pajisjen tënde <ph name="TARGET_DEVICE_NAME" /> dhe më pas provo ta dërgosh përsëri.</translation>
 <translation id="1786044937610313874">Shkurtoret hapen në Chrome</translation>
@@ -418,6 +419,7 @@ Disa funksione mund të mos ofrohen. Specifiko një direktori tjetër të profil
 <translation id="521447420733633466">Nëse e ndan një pajisje, miqtë dhe familja mund të shfletojnë veçmas dhe ta konfigurojnë Chrome pikërisht ashtu si dëshirojnë.</translation>
 <translation id="5234764350956374838">Hiq</translation>
 <translation id="5239627039202700673">Përdor Chrome sa herë që klikon te lidhjet në mesazhe, dokumente dhe aplikacione të tjera</translation>
+<translation id="524751727772074981">Pyet për çdo gjë, pikërisht aty ku je, me Gemini në Chrome</translation>
 <translation id="5251420635869119124">Vizitorët mund të përdorin Chrome pa lënë asgjë prapa.</translation>
 <translation id="5271833978500241046">Përdori ato bashkë me veçoritë e tjera të Gemini në Chrome</translation>
 <translation id="5286907366254680517">Zbuluar</translation>

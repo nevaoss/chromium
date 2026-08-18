@@ -271,6 +271,9 @@ namespace features {
 
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kDoNotEvictOnAXLocationChange);
 
+CONTENT_EXPORT BASE_DECLARE_FEATURE(
+    kDefaultToMainFrameFocusWhenNoSubframeFocused);
+
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kEnforceUserActivationForBeforeUnload);
 }  // namespace features
 
@@ -649,6 +652,10 @@ class CONTENT_EXPORT RenderFrameHostImpl
   // - the RenderFrameHost is speculative
   const blink::DocumentToken& GetDocumentToken() const;
 
+  const base::UnguessableToken& current_initiator_state_token() const {
+    return current_initiator_state_token_;
+  }
+
   // Retrieving the document token is disallowed during times when the result
   // might be misleading / confusing (kPendingCommit or kSpeculative).
   // Internally, the content implementation may still need to retrieve the
@@ -792,6 +799,15 @@ class CONTENT_EXPORT RenderFrameHostImpl
   // ui::AXActionHandlerBase:
   void PerformAction(const ui::AXActionData& data) override;
   bool RequiresPerformActionPointInPixels() const override;
+
+  // Returns whether or not this RenderFrameHost is a descendant of |ancestor|.
+  // This is equivalent to check that |ancestor| is reached by iterating on
+  // GetParent().
+  // This is a strict relationship, a RenderFrameHost is never an ancestor of
+  // itself.
+  // This does not consider inner frame trees (i.e. not accounting for fenced
+  // frames or GuestView).
+  bool IsDescendantOfWithinFrameTree(RenderFrameHostImpl* ancestor);
 
   // Creates a RenderFrame in the renderer process.
   bool CreateRenderFrame(
@@ -1701,10 +1717,7 @@ class CONTENT_EXPORT RenderFrameHostImpl
 
   // END IPC REVIEW BOUNDARY
 
-  // Returns whether the frame is focused. A frame is considered focused when it
-  // is the parent chain of the focused frame within the frame tree. In
-  // addition, its associated RenderWidgetHost has to be focused.
-  bool IsFocused();
+  bool IsFocused() override;
 
   // Sets the WebUI owned by `request` as the WebUI for this RenderFrameHost,
   // which is based on the provided `request`'s URL.
@@ -3671,14 +3684,6 @@ class CONTENT_EXPORT RenderFrameHostImpl
       bool is_credentialless,
       std::optional<base::UnguessableToken> fenced_frame_nonce_for_navigation);
 
-  // Returns whether or not this RenderFrameHost is a descendant of |ancestor|.
-  // This is equivalent to check that |ancestor| is reached by iterating on
-  // GetParent().
-  // This is a strict relationship, a RenderFrameHost is never an ancestor of
-  // itself.
-  // This does not consider inner frame trees (i.e. not accounting for fenced
-  // frames or GuestView).
-  bool IsDescendantOfWithinFrameTree(RenderFrameHostImpl* ancestor);
 
   // mojom::FrameHost:
   void CreateNewWindow(mojom::CreateNewWindowParamsPtr params,
@@ -4014,8 +4019,7 @@ class CONTENT_EXPORT RenderFrameHostImpl
   // Update this frame's last committed origin. This will also update the origin
   // and the "has_potentially_trustworthy_unique_origin" bit in the
   // FrameReplicationState.
-  void SetLastCommittedOrigin(const url::Origin& origin,
-                              bool is_potentially_trustworthy_unique_origin);
+  void SetLastCommittedOrigin(const url::Origin& origin);
 
   // Stores a snapshot of the inherited base URL from the initiator's
   // FrameLoadRequest, if this document inherited one (e.g., about:srcdoc).
@@ -4327,12 +4331,18 @@ class CONTENT_EXPORT RenderFrameHostImpl
 
   // Sets |policy_container_host_| and associates it with the current frame.
   // |policy_container_host| must not be nullptr.
+  // `current_initiator_state_token_` will also be set to
+  // `new_initiator_state_token` to reflect the update of policies in the
+  // RenderFrameHost.
   void SetPolicyContainerHost(
-      scoped_refptr<PolicyContainerHost> policy_container_host);
+      scoped_refptr<PolicyContainerHost> policy_container_host,
+      const base::UnguessableToken& new_initiator_state_token);
 
   // PolicyContainerHost::Client:
   void DidChangeReferrerPolicy(
       network::mojom::ReferrerPolicy referrer_policy) final;
+  void DidUpdateInitiatorStateToken(
+      const base::UnguessableToken& new_initiator_state_token) final;
 
   // Initializes |local_network_access_request_policy_|. Constructor helper.
   void InitializeLocalNetworkAccessRequestPolicy();
@@ -5465,6 +5475,17 @@ class CONTENT_EXPORT RenderFrameHostImpl
   // PolicyContainer. Cf. the documentation string of the PolicyContainerHost
   // class for more information.
   scoped_refptr<PolicyContainerHost> policy_container_host_;
+
+  // Used to identify the current state of the RenderFrameHost and retrieve an
+  // InitiatorNavigationState to pass to navigations started from this
+  // RenderFrameHost in this state. Note that this doesn't always correspond to
+  // the InitiatorNavigationState set at the time this document was created,
+  // because it could've changed with dynamic CSP policies set via meta tags,
+  // or the referrer policy being updated in the renderer process.
+  // TODO(crbug.com/510258191): Actually have the InitiatorNavigationState be
+  // indexed on an initiator state token, once the initiator state token is
+  // properly set in the browser and renderer processes.
+  base::UnguessableToken current_initiator_state_token_;
 
   // The current document's HTTP response head. This is used by back-forward
   // cache, for navigating a second time toward the same document.

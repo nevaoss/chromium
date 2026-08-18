@@ -116,6 +116,7 @@ class MockActorLoginFlowVerifier : public ActorLoginFlowVerifier {
               VerifyIsActorLoginFlow,
               (content::FrameTreeNodeId otp_frame_id,
                const url::Origin& otp_frame_origin,
+               const url::Origin& main_frame_origin,
                const std::optional<autofill::ActorLoginContext>& context,
                base::OnceCallback<void(bool)> callback),
               (override));
@@ -766,7 +767,7 @@ TEST_F(AttemptOtpFillingToolTest, Invoke_ActorLoginVerificationFailed) {
       std::make_unique<testing::NiceMock<MockActorLoginFlowVerifier>>(
           fake_affiliation_service_);
   EXPECT_CALL(*verifier, VerifyIsActorLoginFlow)
-      .WillOnce(base::test::RunOnceCallback<3>(false));
+      .WillOnce(base::test::RunOnceCallback<4>(false));
   PageTarget target(gfx::Point(10, 10));
   AttemptOtpFillingTool tool = CreateTool(
       {target}, /*for_signin=*/true,
@@ -778,9 +779,9 @@ TEST_F(AttemptOtpFillingToolTest, Invoke_ActorLoginVerificationFailed) {
 
   EXPECT_EQ(mojom::ActionResultCode::kOtpUserDeclinedOptingIntoFilling,
             future.Take()->code);
-  histogram_tester_.ExpectBucketCount(kAttemptOtpFillingToolHistogram,
-                                      AttemptOtpFillingToolEvent::kNoActorLogin,
-                                      1);
+  histogram_tester_.ExpectBucketCount(
+      kAttemptOtpFillingToolHistogram,
+      AttemptOtpFillingToolEvent::kGmailOtpConfirmationDeclinedByUser, 1);
 }
 
 TEST_F(AttemptOtpFillingToolTest,
@@ -794,11 +795,12 @@ TEST_F(AttemptOtpFillingToolTest,
       .WillOnce(RunOnceCallback<4>("123456"));
   EXPECT_CALL(delegate().mock_otp_service(), FillOtp(_, _, "123456", _))
       .WillOnce(RunOnceCallback<3>(true));
+  EXPECT_CALL(delegate(), RequestToShowGmailOtpConfirmationDialog).Times(0);
   auto verifier =
       std::make_unique<testing::NiceMock<MockActorLoginFlowVerifier>>(
           fake_affiliation_service_);
   EXPECT_CALL(*verifier, VerifyIsActorLoginFlow)
-      .WillOnce(base::test::RunOnceCallback<3>(false));
+      .WillOnce(base::test::RunOnceCallback<4>(false));
   PageTarget target(gfx::Point(10, 10));
   AttemptOtpFillingTool tool = CreateTool(
       {target}, /*for_signin=*/true,
@@ -809,9 +811,9 @@ TEST_F(AttemptOtpFillingToolTest,
   tool.Invoke(future.GetCallback());
 
   EXPECT_EQ(kOk, future.Take()->code);
-  histogram_tester_.ExpectBucketCount(kAttemptOtpFillingToolHistogram,
-                                      AttemptOtpFillingToolEvent::kNoActorLogin,
-                                      0);
+  histogram_tester_.ExpectBucketCount(
+      kAttemptOtpFillingToolHistogram,
+      AttemptOtpFillingToolEvent::kFillingOtpSuccess, 1);
 }
 
 TEST_F(AttemptOtpFillingToolTest, Invoke_InsecureBeforeFilling) {
@@ -894,9 +896,6 @@ TEST_F(AttemptOtpFillingToolTest, Invoke_NoLoginContextAvailable_Approved) {
   tool.Invoke(future.GetCallback());
 
   EXPECT_EQ(kOk, future.Take()->code);
-  histogram_tester_.ExpectBucketCount(kAttemptOtpFillingToolHistogram,
-                                      AttemptOtpFillingToolEvent::kNoActorLogin,
-                                      1);
   histogram_tester_.ExpectBucketCount(
       kAttemptOtpFillingToolHistogram,
       AttemptOtpFillingToolEvent::kFillingOtpSuccess, 1);
@@ -929,9 +928,9 @@ TEST_F(AttemptOtpFillingToolTest, Invoke_NoLoginContextAvailable_Declined) {
 
   EXPECT_EQ(mojom::ActionResultCode::kOtpUserDeclinedOptingIntoFilling,
             future.Take()->code);
-  histogram_tester_.ExpectBucketCount(kAttemptOtpFillingToolHistogram,
-                                      AttemptOtpFillingToolEvent::kNoActorLogin,
-                                      1);
+  histogram_tester_.ExpectBucketCount(
+      kAttemptOtpFillingToolHistogram,
+      AttemptOtpFillingToolEvent::kGmailOtpConfirmationDeclinedByUser, 1);
 }
 
 TEST_F(AttemptOtpFillingToolTest,
@@ -958,9 +957,9 @@ TEST_F(AttemptOtpFillingToolTest,
   tool.Invoke(future.GetCallback());
 
   EXPECT_EQ(mojom::ActionResultCode::kOtpUnableToFill, future.Take()->code);
-  histogram_tester_.ExpectBucketCount(kAttemptOtpFillingToolHistogram,
-                                      AttemptOtpFillingToolEvent::kNoActorLogin,
-                                      1);
+  histogram_tester_.ExpectBucketCount(
+      kAttemptOtpFillingToolHistogram,
+      AttemptOtpFillingToolEvent::kGmailOtpConfirmationResponseNotValid, 1);
 }
 
 TEST_F(AttemptOtpFillingToolTest, Invoke_FrameLostDuringVerification) {
@@ -974,6 +973,7 @@ TEST_F(AttemptOtpFillingToolTest, Invoke_FrameLostDuringVerification) {
       .WillOnce([this](
                     content::FrameTreeNodeId otp_frame_id,
                     const url::Origin& otp_frame_origin,
+                    const url::Origin& main_frame_origin,
                     const std::optional<autofill::ActorLoginContext>& context,
                     base::OnceCallback<void(bool)> callback) {
         // Simulate tab/contents going away during verification.
@@ -1023,9 +1023,9 @@ TEST_F(AttemptOtpFillingToolTest,
   tool.Invoke(future.GetCallback());
 
   EXPECT_EQ(mojom::ActionResultCode::kOtpUnableToFill, future.Take()->code);
-  histogram_tester_.ExpectBucketCount(kAttemptOtpFillingToolHistogram,
-                                      AttemptOtpFillingToolEvent::kNoActorLogin,
-                                      1);
+  histogram_tester_.ExpectBucketCount(
+      kAttemptOtpFillingToolHistogram,
+      AttemptOtpFillingToolEvent::kGmailOtpConfirmationResponseNotValid, 1);
 }
 
 }  // namespace actor

@@ -359,8 +359,6 @@ source_set("web_applications") {
     "web_app_icon_manager.h",
     "web_app_icon_operations.cc",
     "web_app_icon_operations.h",
-    "web_app_install_finalizer.cc",
-    "web_app_install_finalizer.h",
     "web_app_install_info.cc",
     "web_app_install_info.h",
     "web_app_install_manager.cc",
@@ -458,6 +456,8 @@ source_set("web_applications") {
   if (is_linux) {
     # Desktop linux, doesn't count ChromeOS.
     sources += [
+      "os_integration/dynamic_launcher_portal.cc",
+      "os_integration/dynamic_launcher_portal.h",
       "os_integration/web_app_file_handler_registration_linux.cc",
       "os_integration/web_app_run_on_os_login_linux.cc",
       "os_integration/web_app_shortcut_linux.cc",
@@ -677,7 +677,10 @@ source_set("web_applications") {
   }
 
   if (is_linux) {
-    deps += [ "//chrome/browser:shell_integration_linux" ]
+    deps += [
+      "//chrome/browser:shell_integration_linux",
+      "//components/dbus",
+    ]
   }
 
   if (is_chromeos) {
@@ -777,6 +780,8 @@ source_set("iwa_types") {
     "model/integrity_block_data.h",
     "model/isolation_data.cc",
     "model/isolation_data.h",
+    "model/iwa_update_info.cc",
+    "model/iwa_update_info.h",
   ]
   public_deps = [
     "//base",
@@ -1067,7 +1072,6 @@ source_set("web_applications_unit_tests") {
     "web_app_helpers_unittest.cc",
     "web_app_icon_generator_unittest.cc",
     "web_app_icon_manager_unittest.cc",
-    "web_app_install_finalizer_unittest.cc",
     "web_app_install_utils_unittest.cc",
     "web_app_logging_unittest.cc",
     "web_app_management_type_unittest.cc",
@@ -1112,6 +1116,7 @@ source_set("web_applications_unit_tests") {
   if (is_linux) {
     # Desktop linux, doesn't count ChromeOS.
     sources += [
+      "os_integration/dynamic_launcher_portal_unittest.cc",
       "os_integration/web_app_run_on_os_login_linux_unittest.cc",
       "os_integration/web_app_shortcut_linux_unittest.cc",
     ]
@@ -1226,7 +1231,10 @@ source_set("web_applications_unit_tests") {
   }
 
   if (is_linux) {
-    deps += [ "//chrome/browser:shell_integration_linux" ]
+    deps += [
+      "//chrome/browser:shell_integration_linux",
+      "//dbus:test_support",
+    ]
   }
 
   # TODO(crbug.com/40031409): Fix code that adds exit-time destructors and
@@ -1391,6 +1399,7 @@ source_set("web_applications_browser_tests") {
     "//chrome/browser/ui/profiles",
     "//chrome/browser/ui/views/location_bar",
     "//chrome/browser/ui/views/toolbar",
+    "//chrome/browser/ui/views/web_apps/sub_apps",
     "//chrome/browser/ui/web_applications",
     "//chrome/browser/ui/web_applications:launch_utils",
     "//chrome/browser/ui/webui/web_app_internals",

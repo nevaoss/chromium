@@ -17,7 +17,6 @@
 #include "components/autofill/core/common/autofill_features.h"
 #include "components/data_sharing/public/features.h"
 #include "components/multistep_filter/core/features.h"
-#include "components/plus_addresses/core/common/features.h"
 #include "components/safe_browsing/core/common/features.h"
 #include "content/public/test/browser_test.h"
 
@@ -30,7 +29,7 @@ using ToastIdEnumSet = base::EnumSet<ToastId>;
 constexpr auto kDeprecatedToastIds =
     std::to_array<std::underlying_type_t<ToastId>>(
         {/*kLensOverlay=*/4, /*kAddedToComparisonTable=*/6,
-         /*kMultistepFilterSuggestion=*/31,
+         /*kPlusAddressOverride=*/8, /*kMultistepFilterSuggestion=*/31,
          /*kMultistepFilterSuggestionRecent=*/32});
 
 ToastIdEnumSet GetActiveToastIds() {
@@ -49,7 +48,6 @@ class ToastServiceBrowserTest : public InProcessBrowserTest {
   void SetUp() override {
     feature_list_.InitWithFeaturesAndParameters(
         {{autofill::features::kAutofillAiWalletPrivatePasses, {}},
-         {plus_addresses::features::kPlusAddressesEnabled, {}},
          {safe_browsing::kEsbAsASyncedSetting, {}},
          {data_sharing::features::kDataSharingFeature, {}},
          {toast_features::kTranslateToast, {}},
@@ -57,6 +55,7 @@ class ToastServiceBrowserTest : public InProcessBrowserTest {
          {multistep_filter::kMultistepFilter, {}},
          {features::kIndigo, {}},
          {autofill::features::kAutofillAmbientAutofill, {}},
+         {autofill::features::kAutofillAtMemory, {}},
          {dictation::kDictation, {}}},
         /*disabled_features*/ {});
     InProcessBrowserTest::SetUp();
@@ -69,8 +68,7 @@ class ToastServiceBrowserTest : public InProcessBrowserTest {
 // Verifies that all ToastIds are registered with the toast registry owned by
 // the toast service.
 IN_PROC_BROWSER_TEST_F(ToastServiceBrowserTest, RegisterAllToastIds) {
-  ToastService* const toast_service =
-      browser()->browser_window_features()->toast_service();
+  ToastService* const toast_service = browser()->GetFeatures().toast_service();
   const ToastRegistry* const toast_registry = toast_service->toast_registry();
 
   for (ToastId id : GetActiveToastIds()) {
@@ -83,18 +81,18 @@ IN_PROC_BROWSER_TEST_F(ToastServiceBrowserTest, RegisterAllToastIds) {
 // null for other browser types since toasts are not supported on them.
 IN_PROC_BROWSER_TEST_F(ToastServiceBrowserTest, ServiceExistForBrowserTypes) {
   BrowserWindowFeatures* const normal_window_features =
-      browser()->browser_window_features();
+      &browser()->GetFeatures();
   EXPECT_TRUE(normal_window_features->toast_service());
   EXPECT_TRUE(normal_window_features->toast_controller());
   Profile* const profile = browser()->GetProfile();
 
   BrowserWindowFeatures* const popup_window_features =
-      CreateBrowserForPopup(profile)->browser_window_features();
+      &CreateBrowserForPopup(profile)->GetFeatures();
   EXPECT_FALSE(popup_window_features->toast_service());
   EXPECT_FALSE(popup_window_features->toast_controller());
 
   BrowserWindowFeatures* const app_window_features =
-      CreateBrowserForApp("test_app_name", profile)->browser_window_features();
+      &CreateBrowserForApp("test_app_name", profile)->GetFeatures();
   EXPECT_TRUE(app_window_features->toast_service());
   EXPECT_TRUE(app_window_features->toast_controller());
 
@@ -103,7 +101,7 @@ IN_PROC_BROWSER_TEST_F(ToastServiceBrowserTest, ServiceExistForBrowserTypes) {
           "test_app_name", false, profile, false));
   AddBlankTabAndShow(pip_browser);
   BrowserWindowFeatures* const pip_window_features =
-      pip_browser->browser_window_features();
+      &pip_browser->GetFeatures();
   EXPECT_FALSE(pip_window_features->toast_service());
   EXPECT_FALSE(pip_window_features->toast_controller());
 
@@ -111,7 +109,7 @@ IN_PROC_BROWSER_TEST_F(ToastServiceBrowserTest, ServiceExistForBrowserTypes) {
       Browser::Create(Browser::CreateParams::CreateForDevTools(profile));
   AddBlankTabAndShow(devtools_browser);
   BrowserWindowFeatures* const devtools_window_features =
-      devtools_browser->browser_window_features();
+      &devtools_browser->GetFeatures();
   EXPECT_FALSE(devtools_window_features->toast_service());
   EXPECT_FALSE(devtools_window_features->toast_controller());
 }

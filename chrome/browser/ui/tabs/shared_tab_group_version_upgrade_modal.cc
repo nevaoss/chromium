@@ -88,8 +88,7 @@ void ShowSharedTabGroupVersionUpToDateToast(
     return;
   }
 
-  ToastController* toast_controller =
-      browser->browser_window_features()->toast_controller();
+  ToastController* toast_controller = browser->GetFeatures().toast_controller();
   if (!toast_controller) {
     return;
   }
@@ -106,7 +105,8 @@ void ShowSharedTabGroupVersionUpToDateToast(
 
 void MaybeShowSharedTabGroupVersionOutOfDateModal(Browser* browser) {
   // Only show on normal browser.
-  if (!browser || !browser->is_type_normal()) {
+  if (!browser ||
+      browser->GetType() != BrowserWindowInterface::Type::TYPE_NORMAL) {
     return;
   }
 
@@ -132,7 +132,8 @@ void MaybeShowSharedTabGroupVersionOutOfDateModal(Browser* browser) {
 
 void MaybeShowSharedTabGroupVersionUpToDateToast(Browser* browser) {
   // Only show on normal browser.
-  if (!browser || !browser->is_type_normal()) {
+  if (!browser ||
+      browser->GetType() != BrowserWindowInterface::Type::TYPE_NORMAL) {
     return;
   }
 

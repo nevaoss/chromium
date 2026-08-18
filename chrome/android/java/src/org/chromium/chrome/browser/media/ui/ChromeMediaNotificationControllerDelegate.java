@@ -26,6 +26,7 @@ import org.chromium.chrome.browser.notifications.NotificationUmaTracker;
 import org.chromium.chrome.browser.notifications.NotificationWrapperBuilderFactory;
 import org.chromium.chrome.browser.notifications.channels.ChromeChannelDefinitions;
 import org.chromium.components.browser_ui.media.MediaNotificationController;
+import org.chromium.components.browser_ui.media.MediaNotificationInfo;
 import org.chromium.components.browser_ui.media.MediaNotificationManager;
 import org.chromium.components.browser_ui.media.MediaNotificationManager.MediaTypeId;
 import org.chromium.components.browser_ui.notifications.ForegroundServiceUtils;
@@ -108,12 +109,6 @@ class ChromeMediaNotificationControllerDelegate implements MediaNotificationCont
         }
 
         @Override
-        public void onTaskRemoved(Intent rootIntent) {
-            super.onTaskRemoved(rootIntent);
-            MediaNotificationManager.hideForAllTabs(mMediaTypeId);
-        }
-
-        @Override
         public int onStartCommand(@Nullable Intent intent, int flags, int startId) {
             if (!processIntent(intent)) {
                 // The service has been started with startForegroundService() but the
@@ -147,13 +142,16 @@ class ChromeMediaNotificationControllerDelegate implements MediaNotificationCont
         }
 
         private @Nullable MediaNotificationController getController(@Nullable Intent intent) {
-            int id = mMediaTypeId;
-            if (intent != null) {
-                id =
+            if (intent != null
+                    && intent.hasExtra(MediaNotificationController.EXTRA_NOTIFICATION_ID)) {
+                int id =
                         intent.getIntExtra(
-                                MediaNotificationController.EXTRA_NOTIFICATION_ID, mMediaTypeId);
+                                MediaNotificationController.EXTRA_NOTIFICATION_ID,
+                                MediaNotificationInfo.INVALID_ID);
+                return MediaNotificationManager.getControllerByNotificationId(id);
             }
-            return MediaNotificationManager.getController(id);
+            return MediaNotificationManager.getActiveOrFallbackControllerByMediaTypeId(
+                    mMediaTypeId);
         }
     }
 

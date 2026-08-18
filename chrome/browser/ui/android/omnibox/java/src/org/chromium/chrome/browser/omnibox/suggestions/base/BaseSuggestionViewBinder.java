@@ -4,6 +4,8 @@
 
 package org.chromium.chrome.browser.omnibox.suggestions.base;
 
+import static org.chromium.build.NullUtil.assumeNonNull;
+
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.ColorStateList;
@@ -76,20 +78,29 @@ public abstract class BaseSuggestionViewBinder<T extends View>
     private static @Px int sSideSpacing;
     private static @Px int sLargeIconRoundingRadius;
     private static @Px int sSmallIconRoundingRadius;
+    private static @Px int sDecorationIconWidth;
+    private static @Px int sContentHeight;
+    private static @Px int sCompactContentHeight;
+    private static @Px int sContentVerticalPadding;
 
-    private final OmniboxResourceProvider mResourceProvider;
-
-    public BaseSuggestionViewBinder(OmniboxResourceProvider resourceProvider) {
-        mResourceProvider = resourceProvider;
+    protected OmniboxResourceProvider getResourceProvider(PropertyModel model) {
+        OmniboxResourceProvider provider = model.get(SuggestionCommonProperties.RESOURCE_PROVIDER);
+        return assumeNonNull(provider);
     }
 
     @Override
     @SuppressLint("ClickableViewAccessibility")
     public void bind(PropertyModel model, BaseSuggestionView<T> view, PropertyKey propertyKey) {
         if (!sDimensionsInitialized) {
-            initializeDimensions(view.getContext(), mResourceProvider);
+            initializeDimensions(view.getContext(), getResourceProvider(model));
             sDimensionsInitialized = true;
         }
+
+        view.setSuggestionDimensions(
+                sDecorationIconWidth,
+                sContentHeight,
+                sCompactContentHeight,
+                sContentVerticalPadding);
 
         bindContent(model, view.contentView, propertyKey);
         ActionChipsBinder.bind(model, view.actionChipsView, propertyKey);
@@ -203,7 +214,7 @@ public abstract class BaseSuggestionViewBinder<T extends View>
     private void updateColorScheme(PropertyModel model, BaseSuggestionView<T> view) {
         maybeResetCachedFocusableDrawableState(model, view);
         updateSuggestionIcon(model, view);
-        applySelectableBackground(model, view, mResourceProvider);
+        applySelectableBackground(model, view, getResourceProvider(model));
 
         final List<Action> actions = model.get(BaseSuggestionViewProperties.ACTION_BUTTONS);
         // Setting ACTION_BUTTONS and updating actionViews can happen later. Appropriate color
@@ -391,6 +402,10 @@ public abstract class BaseSuggestionViewBinder<T extends View>
                 resources.getDimensionPixelSize(R.dimen.omnibox_large_icon_rounding_radius);
         sSmallIconRoundingRadius =
                 resources.getDimensionPixelSize(R.dimen.omnibox_small_icon_rounding_radius);
+        sDecorationIconWidth = resourceProvider.getSuggestionDecorationIconSizeWidth();
+        sCompactContentHeight = resourceProvider.getSuggestionCompactContentHeight();
+        sContentHeight = resourceProvider.getSuggestionContentHeight();
+        sContentVerticalPadding = resourceProvider.getSuggestionContentVerticalPadding();
     }
 
     /**

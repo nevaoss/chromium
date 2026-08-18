@@ -60,6 +60,10 @@ namespace optimization_guide {
 class RemoteModelExecutor;
 }
 
+namespace personal_context {
+class PersonalContextFirstRunService;
+}
+
 namespace tabs {
 class TabInterface;
 }
@@ -152,10 +156,8 @@ class ChromeAutofillClient : public ContentAutofillClient {
   EntityDataManager* GetEntityDataManager() final;
   WalletPassAccessManager* GetWalletPassAccessManager() final;
   SingleFieldFillRouter& GetSingleFieldFillRouter() final;
-  bool ShouldShowPersonalContextAmbientAutofillNotice() const override;
-  void MarkPersonalContextAmbientAutofillNoticeAsAcknowledged() override;
-  bool ShouldShowPersonalContextAtMemoryNotice() const override;
-  void MarkPersonalContextAtMemoryNoticeAsAcknowledged() override;
+  personal_context::PersonalContextFirstRunService*
+  GetPersonalContextFirstRunService() override;
   AutocompleteHistoryManager* GetAutocompleteHistoryManager() final;
   AutofillComposeDelegate* GetComposeDelegate() final;
   AtMemoryQueryService* GetAtMemoryQueryService() override;
@@ -290,6 +292,7 @@ class ChromeAutofillClient : public ContentAutofillClient {
   void ShowAutofillAiLocalSaveNotification() final;
   void ShowAutofillAiSaveToWalletFailureNotification() final;
   void ShowAutofillAiFetchEntityFailureNotification() final;
+  void ShowAtMemoryFetchFailureNotification() final;
   void ShowAutofillAiPreFetchFailureNotification() final;
   void ShowAutofillAiPrivateInferenceNotice() final;
   void ShowEmailVerifiedToast(const GURL& issuer) final;

@@ -542,8 +542,7 @@ void HTMLVideoElement::RequestSaveVideoFrame() {
   }
 
   ImageEncodingMimeType encoding_mime_type =
-      ImageEncoderUtils::ToEncodingMimeType(
-          "image/png", ImageEncoderUtils::kEncodeReasonToDataURL);
+      ImageEncoderUtils::ToEncodingMimeType("image/png");
 
   Vector<unsigned char> png_bytes;
   if (!data_buffer->EncodeImage(encoding_mime_type, /*quality=*/0,
@@ -785,6 +784,12 @@ void HTMLVideoElement::OnFirstFrame(base::TimeTicks frame_time,
 
   MaybeEnterImmersivePictureInPicture();
   UpdateVideoFrameAvailability();
+
+  LocalFrame* frame = GetDocument().GetFrame();
+  bool is_ad = IsAdRelated() || (frame && frame->IsAdFrame());
+  if (is_ad && GetWebMediaPlayer() && GetWebMediaPlayer()->IsHDR()) {
+    UseCounter::Count(GetDocument(), WebFeature::kAdVideoHDR);
+  }
 }
 
 void HTMLVideoElement::EnterFullscreen() {

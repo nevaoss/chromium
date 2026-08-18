@@ -123,17 +123,10 @@ AutofillClient::GetPasswordManagerFieldClassificationModelHandler() {
   return nullptr;
 }
 
-bool AutofillClient::ShouldShowPersonalContextAmbientAutofillNotice() const {
-  return false;
+personal_context::PersonalContextFirstRunService*
+AutofillClient::GetPersonalContextFirstRunService() {
+  return nullptr;
 }
-
-void AutofillClient::MarkPersonalContextAmbientAutofillNoticeAsAcknowledged() {}
-
-bool AutofillClient::ShouldShowPersonalContextAtMemoryNotice() const {
-  return false;
-}
-
-void AutofillClient::MarkPersonalContextAtMemoryNoticeAsAcknowledged() {}
 
 AutofillComposeDelegate* AutofillClient::GetComposeDelegate() {
   return nullptr;
@@ -404,6 +397,10 @@ void AutofillClient::ShowAutofillAiSaveToWalletFailureNotification() {
 }
 
 void AutofillClient::ShowAutofillAiFetchEntityFailureNotification() {
+  NOTIMPLEMENTED();
+}
+
+void AutofillClient::ShowAtMemoryFetchFailureNotification() {
   NOTIMPLEMENTED();
 }
 

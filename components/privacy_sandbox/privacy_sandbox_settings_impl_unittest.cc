@@ -17,7 +17,6 @@
 #include "base/test/scoped_feature_list.h"
 #include "base/test/with_feature_override.h"
 #include "base/values.h"
-#include "components/browsing_topics/test_util.h"
 #include "components/content_settings/core/browser/cookie_settings.h"
 #include "components/content_settings/core/browser/host_content_settings_map.h"
 #include "components/content_settings/core/common/features.h"
@@ -138,25 +137,8 @@ class PrivacySandboxSettingsTest : public testing::Test {
     return PrivacySandboxSettingsTestPeer(privacy_sandbox_settings_impl())
         .IsFledgeJoiningAllowed(url::Origin::Create(GURL(url)));
   }
-  void ResetDisabledTopicsFeature(const std::string& topics_to_disable) {
-    // Recreate the service to reset the cache of topics blocked via Finch.
-    auto mock_delegate = std::make_unique<
-        testing::NiceMock<MockPrivacySandboxSettingsDelegate>>();
-    mock_delegate_ = mock_delegate.get();
-    privacy_sandbox_settings_ = std::make_unique<PrivacySandboxSettingsImpl>(
-        std::move(mock_delegate), host_content_settings_map(), cookie_settings_,
-        prefs());
-
-    disabled_topics_feature_list_.Reset();
-    disabled_topics_feature_list_.InitAndEnableFeatureWithParameters(
-        blink::features::kBrowsingTopicsParameters,
-        {{"disabled_topics_list", topics_to_disable}});
-  }
   content::BrowserTaskEnvironment* task_environment() {
     return &browser_task_environment_;
-  }
-  browsing_topics::MockBrowsingTopicsService* mock_browsing_topics_service() {
-    return &mock_browsing_topics_service_;
   }
 
  protected:
@@ -167,7 +149,6 @@ class PrivacySandboxSettingsTest : public testing::Test {
   content::BrowserTaskEnvironment browser_task_environment_;
   raw_ptr<MockPrivacySandboxSettingsDelegate, DanglingUntriaged> mock_delegate_;
   sync_preferences::TestingPrefServiceSyncable prefs_;
-  browsing_topics::MockBrowsingTopicsService mock_browsing_topics_service_;
   scoped_refptr<HostContentSettingsMap> host_content_settings_map_;
   scoped_refptr<content_settings::CookieSettings> cookie_settings_;
   ScopedPrivacySandboxAttestations scoped_attestations_;
@@ -352,59 +333,6 @@ TEST_F(PrivacySandboxSettingsTest, IsTopicAllowed) {
   EXPECT_FALSE(privacy_sandbox_settings()->IsTopicAllowed(child_topic));
   EXPECT_FALSE(privacy_sandbox_settings()->IsTopicAllowed(grandchild_topic));
   EXPECT_FALSE(privacy_sandbox_settings()->IsTopicAllowed(unrelated_topic));
-}
-
-TEST_F(PrivacySandboxSettingsTest, IsTopicAllowed_ByFinchSettings) {
-  // Confirm that blocking topics in Finch is correctly reflected by
-  // IsTopicAllowed().
-  CanonicalTopic topic(Topic(1), kTestTaxonomyVersion);
-  CanonicalTopic child_topic(Topic(7), kTestTaxonomyVersion);
-
-  // Check that not setting the Finch setting does not cause an error or block a
-  // topic.
-  EXPECT_TRUE(privacy_sandbox_settings()->IsTopicAllowed(topic));
-
-  // Check that setting an empty list does not cause an error or block a topic.
-  ResetDisabledTopicsFeature("");
-  EXPECT_TRUE(privacy_sandbox_settings()->IsTopicAllowed(topic));
-
-  // Check that blocking a topic does not block its parent.
-  ResetDisabledTopicsFeature("7");
-  EXPECT_TRUE(privacy_sandbox_settings()->IsTopicAllowed(topic));
-  EXPECT_FALSE(privacy_sandbox_settings()->IsTopicAllowed(child_topic));
-
-  // Check that blocking a parent topic blocks the child topic.
-  ResetDisabledTopicsFeature("1");
-  EXPECT_FALSE(privacy_sandbox_settings()->IsTopicAllowed(topic));
-  EXPECT_FALSE(privacy_sandbox_settings()->IsTopicAllowed(child_topic));
-
-  // Try blocking a list of topics.
-  ResetDisabledTopicsFeature("1,9,44,330");
-  for (int topic_id : {1, 9, 44, 330}) {
-    CanonicalTopic canonical_topic =
-        CanonicalTopic(Topic(topic_id), kTestTaxonomyVersion);
-    EXPECT_FALSE(privacy_sandbox_settings()->IsTopicAllowed(canonical_topic));
-  }
-
-  // Try blocking a list of topics with extra whitespace.
-  ResetDisabledTopicsFeature(" 1  , 9,44, 330  ");
-  for (int topic_id : {1, 9, 44, 330}) {
-    CanonicalTopic canonical_topic =
-        CanonicalTopic(Topic(topic_id), kTestTaxonomyVersion);
-    EXPECT_FALSE(privacy_sandbox_settings()->IsTopicAllowed(canonical_topic));
-  }
-
-  // Try blocking a list of topics where some aren't real topics.
-  ResetDisabledTopicsFeature(" 0,1,9,44,330,2920");
-  for (int topic_id : {1, 9, 44, 330}) {
-    CanonicalTopic canonical_topic =
-        CanonicalTopic(Topic(topic_id), kTestTaxonomyVersion);
-    EXPECT_FALSE(privacy_sandbox_settings()->IsTopicAllowed(canonical_topic));
-  }
-
-  // Try blocking an invalid string. It should cause a CHECK to fail.
-  ResetDisabledTopicsFeature("Arts");
-  EXPECT_CHECK_DEATH(privacy_sandbox_settings()->IsTopicAllowed(topic));
 }
 
 TEST_F(PrivacySandboxSettingsTest, ClearingTopicSettings) {
@@ -611,8 +539,7 @@ class PrivacySandboxSettingsM1Test : public PrivacySandboxSettingsTest {
 
     privacy_sandbox_test_util::RunTestCase(
         task_environment(), prefs(), host_content_settings_map(),
-        mock_delegate(), mock_browsing_topics_service(),
-        privacy_sandbox_settings(), nullptr, user_provider_raw,
+        mock_delegate(), privacy_sandbox_settings(), nullptr, user_provider_raw,
         managed_provider_raw, TestCase(test_state, test_input, test_output));
   }
 

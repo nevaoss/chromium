@@ -82,7 +82,6 @@
 #include "chrome/browser/ui/views/global_media_controls/media_toolbar_button_view.h"
 #include "chrome/browser/ui/views/location_bar/webui_location_bar.h"
 #include "chrome/browser/ui/views/page_action/page_action_container_view.h"
-#include "chrome/browser/ui/views/page_action/page_action_icon_container.h"
 #include "chrome/browser/ui/views/page_action/page_action_view.h"
 #include "chrome/browser/ui/views/page_action/page_action_view_interface.h"
 #include "chrome/browser/ui/views/performance_controls/battery_saver_button.h"
@@ -112,6 +111,7 @@
 #include "chrome/browser/ui/views/zoom/zoom_view_controller.h"
 #include "chrome/browser/ui/waap/initial_webui_window_metrics_manager.h"
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
+#include "chrome/browser/ui/window_feature_controller/window_feature_controller.h"
 #include "chrome/browser/web_applications/link_capturing_features.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/common/pref_names.h"
@@ -186,8 +186,8 @@ ToolbarView::DisplayMode GetDisplayMode(Browser* browser) {
     return ToolbarView::DisplayMode::kCustomTab;
   }
 
-  if (browser->SupportsWindowFeature(
-          Browser::WindowFeature::kFeatureTabStrip)) {
+  if (WindowFeatureController::From(browser)->SupportsWindowFeature(
+          WindowFeatureController::WindowFeature::kFeatureTabStrip)) {
     return ToolbarView::DisplayMode::kNormal;
   }
 
@@ -400,8 +400,8 @@ void ToolbarView::Init() {
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
   if (!features::IsWebUIMediaButtonEnabled()) {
     media_button = std::make_unique<MediaToolbarButtonView>(
-        browser_view_,
-        std::make_unique<MediaToolbarButtonContextualMenu>(browser_));
+        browser_view_, std::make_unique<MediaToolbarButtonContextualMenu>(
+                           browser_->GetProfile()));
   }
 #endif
 
@@ -547,9 +547,8 @@ void ToolbarView::Init() {
         ttc::AiOverlayDialogController::From(browser_)) {
       actions::ActionItem* action_item =
           actions::ActionManager::Get().FindAction(
-              kActionShowAiOverlayDialog, browser_->browser_window_features()
-                                              ->browser_actions()
-                                              ->root_action_item());
+              kActionShowAiOverlayDialog,
+              browser_->GetFeatures().browser_actions()->root_action_item());
       if (action_item) {
         action_item->SetVisible(true);
         action_item->SetEnabled(true);
@@ -1387,7 +1386,8 @@ gfx::Size ToolbarView::GetMinimumSize() const {
         size.SetToMin({size.width(), max_height});
       }
       // Overflow button must be part of minimum size calculation.
-      if (overflow_button_ && browser_->is_type_normal() &&
+      if (overflow_button_ &&
+          browser_->GetType() == BrowserWindowInterface::Type::TYPE_NORMAL &&
           !overflow_button_->GetVisible()) {
         const int default_margin =
             GetLayoutConstant(LayoutConstant::kToolbarIconDefaultMargin);
@@ -1773,11 +1773,6 @@ views::BubbleAnchor ToolbarView::GetDefaultExtensionDialogAnchor() {
   return control ? control->GetAnchor() : views::BubbleAnchor();
 }
 
-PageActionIconView* ToolbarView::GetPageActionIconView(
-    PageActionIconType type) {
-  return nullptr;
-}
-
 page_actions::PageActionViewInterface* ToolbarView::GetPageActionViewInterface(
     actions::ActionId action_id) {
   if (features::IsWebUILocationBarEnabled()) {
@@ -1810,8 +1805,8 @@ const AppMenuControl* ToolbarView::GetAppMenuControl() const {
 }
 
 gfx::Rect ToolbarView::GetFindBarBoundingBox(int contents_bottom) {
-  if (!browser_->SupportsWindowFeature(
-          Browser::WindowFeature::kFeatureLocationBar)) {
+  if (!WindowFeatureController::From(browser_)->SupportsWindowFeature(
+          WindowFeatureController::WindowFeature::kFeatureLocationBar)) {
     return gfx::Rect();
   }
 

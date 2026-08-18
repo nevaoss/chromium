@@ -598,7 +598,7 @@
     "includes": [4110],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/iwa_dev/resources.grd": {
-    "META": {"sizes": {"includes": [10]}},
+    "META": {"sizes": {"includes": [20]}},
     "includes": [4150],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/key_value_pair_viewer_shared/resources.grd": {
@@ -697,6 +697,10 @@
     "META": {"sizes": {"includes": [5]}},
     "includes": [4510],
   },
+  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/organizer_panel/resources.grd": {
+    "META": {"sizes": {"includes": [10]}},
+    "includes": [4515],
+  },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/password_manager/resources.grd": {
     "META": {"sizes": {"includes": [200]}},
     "includes": [4520],
@@ -704,10 +708,6 @@
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/pdf/resources.grd": {
     "META": {"sizes": {"includes": [200]}},
     "includes": [4540],
-  },
-  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/personal_context_internals/resources.grd": {
-    "META": {"sizes": {"includes": [10]}},
-    "includes": [4555],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/predictors/resources.grd": {
     "META": {"sizes": {"includes": [5],}},
@@ -1295,17 +1295,6 @@
   "components/omnibox/resources/omnibox_pedal_synonyms.grd": {
     "META": {"join": 2},
     "messages": [7140],
-  },
-  # plus_addresses_internal_strings.grd and plus_addresses_strings.grd must
-  # share the same id because they define the same strings, but only one of them
-  # is built depending on whether src_internal is available.
-  "components/plus_addresses/core/browser/resources/internal/strings/plus_addresses_internal_strings.grd": {
-    "META": {"sizes": {"messages": [130]}},
-    "messages": [7160],
-  },
-  "components/plus_addresses/core/browser/resources/strings/plus_addresses_strings.grd": {
-    "META": {"sizes": {"messages": [130]}},
-    "messages": [7160],
   },
   # components/policy/resources/policy_templates.grd and
   # components/policy/resources/policy_templates.build.grd must share the same

@@ -17,7 +17,6 @@
 #include "base/task/single_thread_task_runner.h"
 #include "base/task/task_traits.h"
 #include "base/task/thread_pool.h"
-#include "base/win/default_apps_util.h"
 #include "chrome/browser/default_browser/default_browser_features.h"
 #include "chrome/browser/ui/webui/default_browser/guided_setter_overlay_window_win.h"
 #include "chrome/browser/ui/webui/default_browser/visual_guided_setter_layout_utils.h"
@@ -65,9 +64,6 @@ void VisualGuidedSetterControllerWin::Start() {
   }
 
   CHECK(parent_widget_ && chrome_hwnd_);
-  if (!has_anchor_rect_) {
-    return;
-  }
 
   is_running_ = true;
   is_degraded_ = false;
@@ -232,6 +228,8 @@ void VisualGuidedSetterControllerWin::PrimaryPageChanged(content::Page& page) {
   }
   if (!web_contents() ||
       !IsDefaultBrowserWebUiUrl(web_contents()->GetLastCommittedURL())) {
+    outcome_ = Outcome::kSuccess;
+    CloseSettingsWindow();
     Stop();
     return;
   }
@@ -279,6 +277,7 @@ void VisualGuidedSetterControllerWin::OnSettingsWindowFound(HWND hwnd) {
   }
 
   settings_hwnd_ = hwnd;
+  ::GetWindowThreadProcessId(hwnd, &settings_pid_);
 
   if ((web_contents() &&
        web_contents()->GetVisibility() != content::Visibility::VISIBLE) ||
@@ -589,6 +588,24 @@ bool VisualGuidedSetterControllerWin::IsChromeWindowActive() const {
   return last_known_chrome_active_;
 }
 
+void VisualGuidedSetterControllerWin::CloseSettingsWindow() {
+  if (IsSettingsWindowAlive() && IsValidSettingsProcess(settings_hwnd_)) {
+    ::SetWindowPos(
+        settings_hwnd_, HWND_NOTOPMOST, 0, 0, 0, 0,
+        SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS);
+    ::PostMessage(settings_hwnd_, WM_CLOSE, 0, 0);
+  }
+}
+
+bool VisualGuidedSetterControllerWin::IsValidSettingsProcess(HWND hwnd) const {
+  if (!hwnd) {
+    return false;
+  }
+  DWORD pid = 0;
+  ::GetWindowThreadProcessId(hwnd, &pid);
+  return pid != 0 && (settings_pid_ == 0 || pid == settings_pid_);
+}
+
 std::unique_ptr<SettingsWindowFinderWin>
 VisualGuidedSetterControllerWin::CreateSettingsWindowFinder() {
   return std::make_unique<SettingsWindowFinderWin>();
@@ -617,10 +634,12 @@ void VisualGuidedSetterControllerWin::TearDownInternal() {
   }
 
   settings_hwnd_ = nullptr;
+  settings_pid_ = 0;
 
   if (is_running_) {
-    base::UmaHistogramEnumeration("DefaultBrowser.VisualGuide.Outcome",
-                                  outcome_.value_or(Outcome::kSuccess));
+    base::UmaHistogramEnumeration(
+        "DefaultBrowser.VisualGuide.Outcome",
+        outcome_.value_or(Outcome::kSettingsWindowClosed));
   }
 
   if (outcome_.has_value() && outcome_.value() != Outcome::kSuccess) {

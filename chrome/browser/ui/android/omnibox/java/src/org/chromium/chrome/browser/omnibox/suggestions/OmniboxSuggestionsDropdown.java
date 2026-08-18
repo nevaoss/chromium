@@ -16,6 +16,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityEvent;
 
+import androidx.annotation.Px;
 import androidx.annotation.StringRes;
 import androidx.annotation.VisibleForTesting;
 import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
@@ -66,18 +67,19 @@ public class OmniboxSuggestionsDropdown extends RecyclerView {
     private final SuggestionLayoutScrollListener mLayoutScrollListener;
     private final RecyclerViewSelectionController mSelectionController;
     private final Handler mHandler;
-    private final OmniboxResourceProvider mResourceProvider;
     private final OmniboxViewHolderFactory mViewHolderFactory;
     private @Nullable PreWarmingRecycledViewPool mRecycledViewPool;
 
     private @Nullable OmniboxSuggestionsDropdownAdapter mAdapter;
     private @Nullable GestureObserver mGestureObserver;
     private @Nullable NavigationListener mNavigationListener;
+    private @Nullable OmniboxResourceProvider mResourceProvider;
     private float mChildVerticalTranslation;
     private float mChildAlpha = 1.0f;
 
-    private final int mBaseBottomPadding;
-    private final int mBaseTopPadding;
+    private @Px int mBaseBottomPadding;
+    private @Px int mBaseTopPadding;
+    private final HeaderDecoration mHeaderDecoration;
     private @SelectionController.Mode int mSelectionMode;
 
     /**
@@ -322,7 +324,8 @@ public class OmniboxSuggestionsDropdown extends RecyclerView {
             addItemDecoration(new SuggestionHorizontalDivider(context));
 
             addItemDecoration(new GroupSeparatorDecoration(context));
-            addItemDecoration(new HeaderDecoration(context));
+            mHeaderDecoration = new HeaderDecoration(context);
+            addItemDecoration(mHeaderDecoration);
 
             mLayoutScrollListener = suggestionLayoutScrollListener;
             setLayoutManager(mLayoutScrollListener);
@@ -331,22 +334,32 @@ public class OmniboxSuggestionsDropdown extends RecyclerView {
             mSelectionController =
                     new RecyclerViewSelectionController(mLayoutScrollListener, mSelectionMode);
             addOnChildAttachStateChangeListener(mSelectionController);
-            mResourceProvider =
-                    new OmniboxResourceProvider(context, BrandedColorScheme.APP_DEFAULT);
-
-            mBaseBottomPadding = mResourceProvider.getDropdownBottomPadding();
-            mBaseTopPadding = mResourceProvider.getDropdownTopPadding();
-            this.setPaddingRelative(0, mBaseTopPadding, 0, mBaseBottomPadding);
 
             // Disable the scrollbar since it causes the hover events happening near the
             // scrollbar not dispatched to the underlying views.
             setVerticalScrollBarEnabled(false);
 
-            mViewHolderFactory = new OmniboxViewHolderFactory(mResourceProvider);
+            mViewHolderFactory = new OmniboxViewHolderFactory();
             if (OmniboxFeatures.sAsyncViewInflation.isEnabled()) {
                 mRecycledViewPool = new PreWarmingRecycledViewPool(mViewHolderFactory, context);
             }
         }
+    }
+
+    /**
+     * Sets the resource provider. This is primarily called during binding which occurs on the UI
+     * thread post inflation.
+     *
+     * @param resourceProvider Provider for omnibox resources.
+     */
+    public void setResourceProvider(OmniboxResourceProvider resourceProvider) {
+        if (mResourceProvider == resourceProvider || resourceProvider == null) return;
+        mResourceProvider = resourceProvider;
+
+        setVerticalPadding(
+                mResourceProvider.getDropdownTopPadding(),
+                mResourceProvider.getDropdownBottomPadding());
+        mHeaderDecoration.setHeaderStartPadding(mResourceProvider.getHeaderStartPadding());
     }
 
     /**
@@ -355,7 +368,9 @@ public class OmniboxSuggestionsDropdown extends RecyclerView {
      * @param scheme The {@link BrandedColorScheme} to use.
      */
     public void setBrandedColorScheme(@BrandedColorScheme int scheme) {
+        assert mResourceProvider != null;
         mResourceProvider.setBrandedColorScheme(scheme);
+        mHeaderDecoration.setIsIncognito(scheme == BrandedColorScheme.INCOGNITO);
     }
 
     /**
@@ -433,16 +448,22 @@ public class OmniboxSuggestionsDropdown extends RecyclerView {
         mSelectionController.reset();
     }
 
-    /** Keyboard select the first item in the suggestions list. */
-    public void selectFirstItem() {
-        if (mSelectionController.getItemCount() == 0) return;
-        mSelectionController.setPosition(0);
+    /**
+     * Keyboard select the first item in the suggestions list. Returns true if this selected an
+     * item, false if no item was selected.
+     */
+    public boolean selectFirstItem() {
+        if (mSelectionController.getItemCount() == 0) return false;
+        return mSelectionController.setPosition(0);
     }
 
-    /** Keyboard select the last item in the suggestions list. */
-    public void selectLastItem() {
-        if (mSelectionController.getItemCount() == 0) return;
-        mSelectionController.setPosition(mSelectionController.getItemCount() - 1);
+    /**
+     * Keyboard select the last item in the suggestions list. Returns true if this selected an item,
+     * false if no item was selected.
+     */
+    public boolean selectLastItem() {
+        if (mSelectionController.getItemCount() == 0) return false;
+        return mSelectionController.setPosition(mSelectionController.getItemCount() - 1);
     }
 
     /**
@@ -669,6 +690,18 @@ public class OmniboxSuggestionsDropdown extends RecyclerView {
     @VisibleForTesting
     int getBaseTopPadding() {
         return mBaseTopPadding;
+    }
+
+    /**
+     * Sets the top and bottom padding for the dropdown list.
+     *
+     * @param topPadding Top padding in pixels.
+     * @param bottomPadding Bottom padding in pixels.
+     */
+    public void setVerticalPadding(int topPadding, int bottomPadding) {
+        mBaseTopPadding = topPadding;
+        mBaseBottomPadding = bottomPadding;
+        this.setPaddingRelative(0, mBaseTopPadding, 0, mBaseBottomPadding);
     }
 
     @VisibleForTesting

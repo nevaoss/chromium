@@ -118,6 +118,9 @@ extern const base::FeatureParam<bool>
 // Specifies whether to enable triggering on detection of a credit card form.
 extern const base::FeatureParam<bool> kCsdCreditCardFormEnableDetectionTrigger;
 
+// Enables the creation of the ClientSideDetectionService on iOS.
+BASE_DECLARE_FEATURE(kClientSideDetectionEnabledIos);
+
 // Killswitch for Llama forced trigger info redirect chain check.
 BASE_DECLARE_FEATURE(kClientSideDetectionForcedLlamaRedirectChainKillswitch);
 
@@ -469,6 +472,15 @@ BASE_DECLARE_FEATURE(kSkipImageClassificationScoringForNonPageLoadTriggers);
 
 // Controls the daily quota for the suspicious site trigger.
 BASE_DECLARE_FEATURE(kSuspiciousSiteTriggerQuotaFeature);
+
+// Enables HaTS surveys for users encountering suspicious site warnings.
+BASE_DECLARE_FEATURE(kSuspiciousSiteWarningSurvey);
+extern const base::FeatureParam<std::string>
+    kSuspiciousSiteWarningSurveyTriggerId;
+extern const base::FeatureParam<std::string>
+    kSuspiciousSiteWarningSurveyProceedTriggerId;
+extern const base::FeatureParam<std::string>
+    kSuspiciousSiteWarningSurveyHeedTriggerId;
 
 // Enables warnings on sites that Safe Browsing deems suspicious.
 BASE_DECLARE_FEATURE(kSuspiciousSiteWarnings);

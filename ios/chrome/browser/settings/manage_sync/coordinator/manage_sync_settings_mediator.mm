@@ -17,6 +17,7 @@
 #import "base/strings/sys_string_conversions.h"
 #import "components/prefs/pref_service.h"
 #import "components/signin/public/base/signin_metrics.h"
+#import "components/signin/public/base/signin_switches.h"
 #import "components/signin/public/identity_manager/account_info.h"
 #import "components/signin/public/identity_manager/objc/identity_manager_observer_bridge.h"
 #import "components/strings/grit/components_strings.h"
@@ -141,7 +142,7 @@ constexpr CGFloat kBatchUploadSymbolPointSize = 22.;
   if (self) {
     CHECK(syncService, base::NotFatalUntil::M155);
     CHECK(authenticationService, base::NotFatalUntil::M155);
-    CHECK(authenticationService->SigninEnabled(), base::NotFatalUntil::M144);
+    CHECK(authenticationService->SigninEnabled());
     _syncService = syncService;
     _syncObserver = std::make_unique<SyncObserverBridge>(self, syncService);
     _identityManager = identityManager;
@@ -344,7 +345,7 @@ constexpr CGFloat kBatchUploadSymbolPointSize = 22.;
   if (hasDisclosureIndicator) {
     self.encryptionItem.accessoryView = [[UIImageView alloc]
         initWithImage:DefaultAccessorySymbolConfigurationWithRegularWeight(
-                          kChevronForwardSymbol)];
+                          SymbolChevronForward)];
     self.encryptionItem.accessoryView.tintColor =
         [UIColor colorNamed:kTextQuaternaryColor];
   } else {
@@ -364,13 +365,13 @@ constexpr CGFloat kBatchUploadSymbolPointSize = 22.;
         GetNSString(IDS_IOS_MANAGE_SYNC_PERSONALIZE_GOOGLE_SERVICES_TITLE_EEA);
     personalizeGoogleServicesItem.accessoryView = [[UIImageView alloc]
         initWithImage:DefaultAccessorySymbolConfigurationWithRegularWeight(
-                          kChevronForwardSymbol)];
+                          SymbolChevronForward)];
   } else {
     personalizeGoogleServicesItem.title =
         GetNSString(IDS_IOS_MANAGE_SYNC_PERSONALIZE_GOOGLE_SERVICES_TITLE);
     personalizeGoogleServicesItem.accessoryView = [[UIImageView alloc]
         initWithImage:DefaultAccessorySymbolConfigurationWithRegularWeight(
-                          kExternalLinkSymbol)];
+                          SymbolExternalLink)];
   }
   personalizeGoogleServicesItem.accessoryView.tintColor =
       [UIColor colorNamed:kTextQuaternaryColor];
@@ -388,7 +389,7 @@ constexpr CGFloat kBatchUploadSymbolPointSize = 22.;
       [[TableViewImageItem alloc] initWithType:DataFromChromeSync];
   dataFromChromeSyncItem.accessoryView = [[UIImageView alloc]
       initWithImage:DefaultAccessorySymbolConfigurationWithRegularWeight(
-                        kExternalLinkSymbol)];
+                        SymbolExternalLink)];
   dataFromChromeSyncItem.accessoryView.tintColor =
       [UIColor colorNamed:kTextQuaternaryColor];
   dataFromChromeSyncItem.accessibilityIdentifier =
@@ -407,7 +408,7 @@ constexpr CGFloat kBatchUploadSymbolPointSize = 22.;
         [[TableViewImageItem alloc] initWithType:ConnectedAppsItemType];
     connectedAppsItem.accessoryView = [[UIImageView alloc]
         initWithImage:DefaultAccessorySymbolConfigurationWithRegularWeight(
-                          kExternalLinkSymbol)];
+                          SymbolExternalLink)];
     connectedAppsItem.accessoryView.tintColor =
         [UIColor colorNamed:kTextQuaternaryColor];
     connectedAppsItem.accessibilityIdentifier =
@@ -950,6 +951,7 @@ constexpr CGFloat kBatchUploadSymbolPointSize = 22.;
     case DataFromChromeSync:
     case ConnectedAppsItemType:
     case PersonalizeGoogleServicesItemType:
+    case PrimaryAccountMdmErrorItemType:
     case PrimaryAccountReauthErrorItemType:
     case ShowPassphraseDialogErrorItemType:
     case SyncNeedsTrustedVaultKeyErrorItemType:
@@ -1125,14 +1127,14 @@ constexpr CGFloat kBatchUploadSymbolPointSize = 22.;
         [self.commandHandler openWebAppActivityDialog];
       }
       break;
-    case PrimaryAccountReauthErrorItemType: {
+    case PrimaryAccountMdmErrorItemType: {
       id<SystemIdentity> identity =
           _authenticationService->GetPrimaryIdentity();
-      if (_authenticationService->HasCachedMDMErrorForIdentity(identity)) {
-        [self.syncErrorHandler openMDMErrodDialogWithSystemIdentity:identity];
-      } else {
-        [self.syncErrorHandler openPrimaryAccountReauthDialog];
-      }
+      [self.syncErrorHandler openMDMErrodDialogWithSystemIdentity:identity];
+      break;
+    }
+    case PrimaryAccountReauthErrorItemType: {
+      [self.syncErrorHandler openPrimaryAccountReauthDialog];
       break;
     }
     case ShowPassphraseDialogErrorItemType:
@@ -1205,7 +1207,8 @@ constexpr CGFloat kBatchUploadSymbolPointSize = 22.;
 - (TableViewItem*)createSyncErrorButtonItemWithItemType:(NSInteger)itemType
                                           buttonLabelID:(int)buttonLabelID
                                               messageID:(int)messageID {
-  CHECK((itemType == PrimaryAccountReauthErrorItemType) ||
+  CHECK((itemType == PrimaryAccountMdmErrorItemType) ||
+        (itemType == PrimaryAccountReauthErrorItemType) ||
         (itemType == ShowPassphraseDialogErrorItemType) ||
         (itemType == SyncNeedsTrustedVaultKeyErrorItemType) ||
         (itemType == SyncTrustedVaultRecoverabilityDegradedErrorItemType) ||
@@ -1328,8 +1331,22 @@ constexpr CGFloat kBatchUploadSymbolPointSize = 22.;
     return SyncDisabledByAdministratorErrorItemType;
   }
   switch (_syncService->GetUserActionableError()) {
-    case syncer::SyncService::UserActionableError::kSignInNeedsUpdate:
-      return PrimaryAccountReauthErrorItemType;
+    case syncer::SyncService::UserActionableError::kSignInNeedsUpdate: {
+      BOOL isMDMError = NO;
+      if (!base::FeatureList::IsEnabled(
+              switches::kHandleMdmErrorsForDasherAccounts)) {
+        id<SystemIdentity> identity =
+            _authenticationService->GetPrimaryIdentity();
+        if (identity) {
+          isMDMError =
+              _authenticationService->HasCachedMDMErrorForIdentity(identity);
+        }
+      }
+      return isMDMError ? PrimaryAccountMdmErrorItemType
+                        : PrimaryAccountReauthErrorItemType;
+    }
+    case syncer::SyncService::UserActionableError::kDeviceManagementError:
+      return PrimaryAccountMdmErrorItemType;
     case syncer::SyncService::UserActionableError::kNeedsPassphrase:
       return ShowPassphraseDialogErrorItemType;
     case syncer::SyncService::UserActionableError::

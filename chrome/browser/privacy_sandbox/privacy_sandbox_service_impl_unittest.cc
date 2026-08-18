@@ -20,7 +20,6 @@
 #include "chrome/browser/content_settings/host_content_settings_map_factory.h"
 #include "chrome/browser/first_party_sets/first_party_sets_policy_service.h"
 #include "chrome/browser/first_party_sets/scoped_mock_first_party_sets_handler.h"
-#include "chrome/browser/privacy_sandbox/notice/notice.mojom.h"
 #include "chrome/browser/privacy_sandbox/privacy_sandbox_countries.h"
 #include "chrome/browser/privacy_sandbox/privacy_sandbox_service_factory.h"
 #include "chrome/browser/privacy_sandbox/profile_bucket_metrics.h"
@@ -28,7 +27,6 @@
 #include "chrome/test/base/testing_browser_process.h"
 #include "chrome/test/base/testing_profile.h"
 #include "chrome/test/base/testing_profile_manager.h"
-#include "components/browsing_topics/test_util.h"
 #include "components/content_settings/core/browser/cookie_settings.h"
 #include "components/content_settings/core/browser/host_content_settings_map.h"
 #include "components/content_settings/core/common/content_settings.h"
@@ -65,7 +63,6 @@ namespace {
 using ::browsing_topics::Topic;
 using ::privacy_sandbox::CanonicalTopic;
 
-using EligibilityLevel = ::privacy_sandbox::EligibilityLevel;
 using ::testing::Combine;
 using ::testing::ElementsAre;
 using ::testing::Eq;
@@ -98,8 +95,6 @@ const base::Version& GetRelatedWebsiteSetsVersion() {
   return *kVersion;
 }
 
-constexpr int kTestTaxonomyVersion = 1;
-
 class TestPrivacySandboxService
     : public privacy_sandbox_test_util::PrivacySandboxServiceTestInterface {
  public:
@@ -107,26 +102,6 @@ class TestPrivacySandboxService
       : service_(service) {}
 
   // PrivacySandboxServiceTestInterface
-  void TopicsToggleChanged(bool new_value) const override {
-    service_->TopicsToggleChanged(new_value);
-  }
-  void SetTopicAllowed(privacy_sandbox::CanonicalTopic topic,
-                       bool allowed) override {
-    service_->SetTopicAllowed(topic, allowed);
-  }
-  bool TopicsHasActiveConsent() const override {
-    return service_->TopicsHasActiveConsent();
-  }
-  privacy_sandbox::TopicsConsentUpdateSource TopicsConsentLastUpdateSource()
-      const override {
-    return service_->TopicsConsentLastUpdateSource();
-  }
-  base::Time TopicsConsentLastUpdateTime() const override {
-    return service_->TopicsConsentLastUpdateTime();
-  }
-  std::string TopicsConsentLastUpdateText() const override {
-    return service_->TopicsConsentLastUpdateText();
-  }
   void ForceChromeBuildForTests(bool force_chrome_build) const override {
     service_->ForceChromeBuildForTests(force_chrome_build);
   }
@@ -317,9 +292,9 @@ class PrivacySandboxServiceTest : public testing::Test {
 
     privacy_sandbox_test_util::RunTestCase(
         browser_task_environment(), prefs(), host_content_settings_map(),
-        mock_delegate(), mock_browsing_topics_service(),
-        privacy_sandbox_settings(), &service_wrapper, user_provider_raw,
-        managed_provider_raw, TestCase(test_state, test_input, test_output));
+        mock_delegate(), privacy_sandbox_settings(), &service_wrapper,
+        user_provider_raw, managed_provider_raw,
+        TestCase(test_state, test_input, test_output));
   }
 
   PrefService* local_state() {
@@ -344,9 +319,6 @@ class PrivacySandboxServiceTest : public testing::Test {
   }
   content::BrowsingDataRemover* browsing_data_remover() {
     return profile()->GetBrowsingDataRemover();
-  }
-  browsing_topics::MockBrowsingTopicsService* mock_browsing_topics_service() {
-    return &mock_browsing_topics_service_;
   }
   privacy_sandbox_test_util::MockPrivacySandboxSettingsDelegate*
   mock_delegate() {
@@ -411,7 +383,6 @@ class PrivacySandboxServiceTest : public testing::Test {
 
   base::test::ScopedFeatureList outer_feature_list_;
   base::test::ScopedFeatureList inner_feature_list_;
-  browsing_topics::MockBrowsingTopicsService mock_browsing_topics_service_;
 
   first_party_sets::ScopedMockFirstPartySetsHandler
       mock_first_party_sets_handler_;
@@ -426,86 +397,6 @@ class PrivacySandboxServiceTest : public testing::Test {
 
   raw_ptr<PrivacySandboxServiceImpl> privacy_sandbox_service_ = nullptr;
 };
-
-class PrivacySandboxServiceAdPrivacyUxDeprecationTest
-    : public PrivacySandboxServiceTest {
- public:
-  void InitializeFeaturesBeforeStart() override {
-    feature_list_.InitAndEnableFeature(
-        privacy_sandbox::kPrivacySandboxAdPrivacyUxDeprecation);
-  }
-
- private:
-  base::test::ScopedFeatureList feature_list_;
-};
-
-TEST_F(PrivacySandboxServiceAdPrivacyUxDeprecationTest, FledgeDataCleared) {
-  prefs()->SetBoolean(prefs::kPrivacySandboxM1FledgeEnabled, true);
-  ASSERT_EQ(browsing_data_remover()->GetLastUsedRemovalMaskForTesting(),
-            uint64_t(-1));
-  CreateService();
-  EXPECT_FALSE(prefs()->GetBoolean(prefs::kPrivacySandboxM1FledgeEnabled));
-  uint64_t expected_fledge_mask =
-      content::BrowsingDataRemover::DATA_TYPE_INTEREST_GROUPS |
-      content::BrowsingDataRemover::DATA_TYPE_SHARED_STORAGE |
-      content::BrowsingDataRemover::DATA_TYPE_INTEREST_GROUPS_INTERNAL;
-  EXPECT_EQ(browsing_data_remover()->GetLastUsedRemovalMaskForTesting(),
-            expected_fledge_mask);
-}
-
-TEST_F(PrivacySandboxServiceAdPrivacyUxDeprecationTest,
-       AdMeasurementDataCleared) {
-  prefs()->SetBoolean(prefs::kPrivacySandboxM1AdMeasurementEnabled, true);
-  ASSERT_EQ(browsing_data_remover()->GetLastUsedRemovalMaskForTesting(),
-            uint64_t(-1));
-  CreateService();
-  EXPECT_FALSE(
-      prefs()->GetBoolean(prefs::kPrivacySandboxM1AdMeasurementEnabled));
-  uint64_t expected_measurement_mask =
-      content::BrowsingDataRemover::DATA_TYPE_AGGREGATION_SERVICE |
-      content::BrowsingDataRemover::DATA_TYPE_PRIVATE_AGGREGATION_INTERNAL;
-  EXPECT_EQ(browsing_data_remover()->GetLastUsedRemovalMaskForTesting(),
-            expected_measurement_mask);
-}
-
-class PrivacySandboxServiceAdPrivacyUxDeprecationDisabledTest
-    : public PrivacySandboxServiceTest {
- public:
-  void InitializeFeaturesBeforeStart() override {
-    feature_list_.InitAndDisableFeature(
-        privacy_sandbox::kPrivacySandboxAdPrivacyUxDeprecation);
-  }
-
- private:
-  base::test::ScopedFeatureList feature_list_;
-};
-
-TEST_F(PrivacySandboxServiceAdPrivacyUxDeprecationDisabledTest,
-       TopicsDataNotCleared) {
-  prefs()->SetBoolean(prefs::kPrivacySandboxM1TopicsEnabled, true);
-  EXPECT_CALL(*mock_browsing_topics_service(), ClearAllTopicsData()).Times(0);
-  CreateService();
-  EXPECT_TRUE(prefs()->GetBoolean(prefs::kPrivacySandboxM1TopicsEnabled));
-}
-
-TEST_F(PrivacySandboxServiceAdPrivacyUxDeprecationDisabledTest,
-       FledgeDataNotCleared) {
-  prefs()->SetBoolean(prefs::kPrivacySandboxM1FledgeEnabled, true);
-  CreateService();
-  EXPECT_TRUE(prefs()->GetBoolean(prefs::kPrivacySandboxM1FledgeEnabled));
-  EXPECT_EQ(browsing_data_remover()->GetLastUsedRemovalMaskForTesting(),
-            uint64_t(-1));
-}
-
-TEST_F(PrivacySandboxServiceAdPrivacyUxDeprecationDisabledTest,
-       AdMeasurementDataNotCleared) {
-  prefs()->SetBoolean(prefs::kPrivacySandboxM1AdMeasurementEnabled, true);
-  CreateService();
-  EXPECT_TRUE(
-      prefs()->GetBoolean(prefs::kPrivacySandboxM1AdMeasurementEnabled));
-  EXPECT_EQ(browsing_data_remover()->GetLastUsedRemovalMaskForTesting(),
-            uint64_t(-1));
-}
 
 class PrivacySandboxShouldUsePrivacyPolicyChinaDomain
     : public PrivacySandboxServiceTest {};
@@ -527,188 +418,6 @@ TEST_F(PrivacySandboxShouldUsePrivacyPolicyChinaDomain,
   bool should_use_china_domain =
       privacy_sandbox_service()->ShouldUsePrivacyPolicyChinaDomain();
   ASSERT_EQ(should_use_china_domain, false);
-}
-
-TEST_F(PrivacySandboxServiceTest, GetFledgeBlockedEtldPlusOne) {
-  // Confirm that blocked FLEDGE top frame eTLD+1's are correctly produced
-  // for display.
-  const std::vector<std::string> sites = {"google.com", "example.com",
-                                          "google.com.au"};
-  for (const auto& site : sites) {
-    privacy_sandbox_settings()->SetFledgeJoiningAllowed(site, false);
-  }
-
-  // Sites should be returned in lexographical order.
-  auto returned_sites =
-      privacy_sandbox_service()->GetBlockedFledgeJoiningTopFramesForDisplay();
-  ASSERT_EQ(returned_sites.size(), 3u);
-  EXPECT_EQ(returned_sites[0], sites[1]);
-  EXPECT_EQ(returned_sites[1], sites[0]);
-  EXPECT_EQ(returned_sites[2], sites[2]);
-
-  // Settings a site back to allowed should appropriately remove it from the
-  // display list.
-  privacy_sandbox_settings()->SetFledgeJoiningAllowed("google.com", true);
-  returned_sites =
-      privacy_sandbox_service()->GetBlockedFledgeJoiningTopFramesForDisplay();
-  ASSERT_EQ(returned_sites.size(), 2u);
-  EXPECT_EQ(returned_sites[0], sites[1]);
-  EXPECT_EQ(returned_sites[1], sites[2]);
-}
-
-TEST_F(PrivacySandboxServiceTest, FledgeBlockDeletesData) {
-  // Allowing FLEDGE joining should not start a removal task.
-  privacy_sandbox_service()->SetFledgeJoiningAllowed("example.com", true);
-  EXPECT_EQ(browsing_data_remover()->GetLastUsedRemovalMaskForTesting(),
-            0xffffffffffffffffull);  // -1, indicates no last removal task.
-
-  // When FLEDGE joining is blocked, a removal task should be started.
-  privacy_sandbox_service()->SetFledgeJoiningAllowed("example.com", false);
-  EXPECT_EQ(browsing_data_remover()->GetLastUsedRemovalMaskForTesting(),
-            content::BrowsingDataRemover::DATA_TYPE_INTEREST_GROUPS);
-  EXPECT_EQ(browsing_data_remover()->GetLastUsedBeginTimeForTesting(),
-            base::Time::Min());
-  EXPECT_EQ(browsing_data_remover()->GetLastUsedOriginTypeMaskForTesting(),
-            content::BrowsingDataRemover::ORIGIN_TYPE_UNPROTECTED_WEB);
-}
-
-TEST_F(PrivacySandboxServiceTest, DisablingFledgePrefClearsData) {
-  // Confirm that when the fledge preference is disabled, a browsing data
-  // remover task is started. Topics data isn't deleted.
-  EXPECT_CALL(*mock_browsing_topics_service(), ClearAllTopicsData()).Times(0);
-  // Enabling should not cause a removal task.
-  prefs()->SetBoolean(prefs::kPrivacySandboxM1FledgeEnabled, true);
-  constexpr uint64_t kNoRemovalTask = -1ull;
-  EXPECT_EQ(browsing_data_remover()->GetLastUsedRemovalMaskForTesting(),
-            kNoRemovalTask);
-
-  // Disabling should start a task clearing all related information.
-  prefs()->SetBoolean(prefs::kPrivacySandboxM1FledgeEnabled, false);
-  EXPECT_EQ(
-      browsing_data_remover()->GetLastUsedRemovalMaskForTesting(),
-      content::BrowsingDataRemover::DATA_TYPE_INTEREST_GROUPS |
-          content::BrowsingDataRemover::DATA_TYPE_SHARED_STORAGE |
-          content::BrowsingDataRemover::DATA_TYPE_INTEREST_GROUPS_INTERNAL);
-  EXPECT_EQ(browsing_data_remover()->GetLastUsedBeginTimeForTesting(),
-            base::Time::Min());
-  EXPECT_EQ(browsing_data_remover()->GetLastUsedOriginTypeMaskForTesting(),
-            content::BrowsingDataRemover::ORIGIN_TYPE_UNPROTECTED_WEB);
-}
-
-TEST_F(PrivacySandboxServiceTest, DisablingAdMeasurementePrefClearsData) {
-  // Confirm that when the ad measurement preference is disabled, a browsing
-  // data remover task is started. Topics data isn't deleted.
-  EXPECT_CALL(*mock_browsing_topics_service(), ClearAllTopicsData()).Times(0);
-  // Enabling should not cause a removal task.
-  prefs()->SetBoolean(prefs::kPrivacySandboxM1AdMeasurementEnabled, true);
-  constexpr uint64_t kNoRemovalTask = -1ull;
-  EXPECT_EQ(browsing_data_remover()->GetLastUsedRemovalMaskForTesting(),
-            kNoRemovalTask);
-
-  // Disabling should start a task clearing all related information.
-  prefs()->SetBoolean(prefs::kPrivacySandboxM1AdMeasurementEnabled, false);
-  EXPECT_EQ(
-      browsing_data_remover()->GetLastUsedRemovalMaskForTesting(),
-          content::BrowsingDataRemover::DATA_TYPE_AGGREGATION_SERVICE |
-          content::BrowsingDataRemover::DATA_TYPE_PRIVATE_AGGREGATION_INTERNAL);
-  EXPECT_EQ(browsing_data_remover()->GetLastUsedBeginTimeForTesting(),
-            base::Time::Min());
-  EXPECT_EQ(browsing_data_remover()->GetLastUsedOriginTypeMaskForTesting(),
-            content::BrowsingDataRemover::ORIGIN_TYPE_UNPROTECTED_WEB);
-}
-
-TEST_F(PrivacySandboxServiceTest, GetBlockedTopics) {
-  // Check that blocked topics are correctly alphabetically sorted and returned.
-  const privacy_sandbox::CanonicalTopic kFirstTopic =
-      privacy_sandbox::CanonicalTopic(browsing_topics::Topic(24),  // "Blues"
-                                      kTestTaxonomyVersion);
-  const privacy_sandbox::CanonicalTopic kSecondTopic =
-      privacy_sandbox::CanonicalTopic(
-          browsing_topics::Topic(23),  // "Music & audio"
-          kTestTaxonomyVersion);
-
-  // The PrivacySandboxService assumes that the PrivacySandboxSettings service
-  // dedupes blocked topics. Check that assumption here.
-  privacy_sandbox_settings()->SetTopicAllowed(kSecondTopic, false);
-  privacy_sandbox_settings()->SetTopicAllowed(kSecondTopic, false);
-  privacy_sandbox_settings()->SetTopicAllowed(kFirstTopic, false);
-  privacy_sandbox_settings()->SetTopicAllowed(kFirstTopic, false);
-
-  auto blocked_topics = privacy_sandbox_service()->GetBlockedTopics();
-
-  ASSERT_EQ(blocked_topics.size(), 2u);
-  EXPECT_EQ(blocked_topics[0], kFirstTopic);
-  EXPECT_EQ(blocked_topics[1], kSecondTopic);
-}
-
-TEST_F(PrivacySandboxServiceTest, TestNoFakeTopics) {
-  auto* service = privacy_sandbox_service();
-  EXPECT_THAT(service->GetCurrentTopTopics(), testing::IsEmpty());
-  EXPECT_THAT(service->GetBlockedTopics(), testing::IsEmpty());
-}
-
-TEST_F(PrivacySandboxServiceTest, TestNoFakeTopicsPrefOff) {
-  // Sample data won't be returned for current topics when the pref is off, only
-  // the blocked list.
-  prefs()->SetUserPref(prefs::kPrivacySandboxM1TopicsEnabled,
-                       std::make_unique<base::Value>(false));
-
-  feature_list()->InitWithFeaturesAndParameters(
-      {{privacy_sandbox::kPrivacySandboxSettings4,
-        {{privacy_sandbox::kPrivacySandboxSettings4ShowSampleDataForTesting
-              .name,
-          "true"}}}},
-      {});
-
-  CanonicalTopic topic3(Topic(3), kTestTaxonomyVersion);
-  CanonicalTopic topic4(Topic(4), kTestTaxonomyVersion);
-
-  auto* service = privacy_sandbox_service();
-  EXPECT_THAT(service->GetCurrentTopTopics(), testing::IsEmpty());
-  EXPECT_THAT(service->GetBlockedTopics(), ElementsAre(topic3, topic4));
-}
-
-TEST_F(PrivacySandboxServiceTest, TestFakeTopics) {
-  std::vector<base::test::FeatureRefAndParams> test_features = {
-      {privacy_sandbox::kPrivacySandboxSettings4,
-       {{privacy_sandbox::kPrivacySandboxSettings4ShowSampleDataForTesting.name,
-         "true"}}}};
-
-  // Sample data for current topics is only returned when the pref is on.
-  prefs()->SetUserPref(prefs::kPrivacySandboxM1TopicsEnabled,
-                       std::make_unique<base::Value>(true));
-
-  for (const auto& feature : test_features) {
-    feature_list()->Reset();
-    feature_list()->InitWithFeaturesAndParameters({feature}, {});
-    CanonicalTopic topic1(Topic(1), kTestTaxonomyVersion);
-    CanonicalTopic topic2(Topic(2), kTestTaxonomyVersion);
-    CanonicalTopic topic3(Topic(3), kTestTaxonomyVersion);
-    CanonicalTopic topic4(Topic(4), kTestTaxonomyVersion);
-    // Duplicate a topic to test that it doesn't appear in the results in
-    // addition to topic4.
-    CanonicalTopic topic4_duplicate(Topic(4), kTestTaxonomyVersion - 1);
-
-    auto* service = privacy_sandbox_service();
-    EXPECT_THAT(service->GetCurrentTopTopics(), ElementsAre(topic1, topic2));
-    EXPECT_THAT(service->GetBlockedTopics(), ElementsAre(topic3, topic4));
-
-    service->SetTopicAllowed(topic1, false);
-    EXPECT_THAT(service->GetCurrentTopTopics(), ElementsAre(topic2));
-    EXPECT_THAT(service->GetBlockedTopics(),
-                ElementsAre(topic1, topic3, topic4));
-
-    service->SetTopicAllowed(topic4, true);
-    service->SetTopicAllowed(topic4_duplicate, true);
-    EXPECT_THAT(service->GetCurrentTopTopics(), ElementsAre(topic2, topic4));
-    EXPECT_THAT(service->GetBlockedTopics(), ElementsAre(topic1, topic3));
-
-    service->SetTopicAllowed(topic1, true);
-    service->SetTopicAllowed(topic4, false);
-    service->SetTopicAllowed(topic4_duplicate, false);
-    EXPECT_THAT(service->GetCurrentTopTopics(), ElementsAre(topic1, topic2));
-    EXPECT_THAT(service->GetBlockedTopics(), ElementsAre(topic3, topic4));
-  }
 }
 
 
@@ -1113,16 +822,6 @@ TEST_F(PrivacySandboxServiceTest, UsesConfiguredRelatedWebsiteSets) {
       net::SchemefulSite(GURL("https://google.de"))));
 }
 
-TEST_F(PrivacySandboxServiceTest, TopicsConsentDefault) {
-  RunTestCase(
-      TestState{}, TestInput{},
-      TestOutput{{kTopicsConsentGiven, false},
-                 {kTopicsConsentLastUpdateReason,
-                  privacy_sandbox::TopicsConsentUpdateSource::kDefaultValue},
-                 {kTopicsConsentLastUpdateTime, base::Time()},
-                 {kTopicsConsentStringIdentifiers, std::vector<int>()}});
-}
-
 TEST_F(PrivacySandboxServiceTest, LogPrivacySandboxState_APIs) {
   // Each test for the APIs are scoped below to ensure we start with a clean
   // HistogramTester as each call to `LogPrivacySandboxState` emits
@@ -1434,47 +1133,4 @@ TEST_F(PrivacySandboxServiceTest, DisablePrivacySandboxAdMeasurementPolicy) {
                         {kAdMeasurementReportingOrigin,
                          url::Origin::Create(GURL("https://embedded.com"))}},
               TestOutput{{kIsPrivateAggregationAllowed, false}});
-}
-
-class PrivacySandboxNoticeFrameworkResultCallbackUnitTest
-    : public PrivacySandboxServiceTest,
-      public testing::WithParamInterface<bool> {};
-
-TEST_P(PrivacySandboxNoticeFrameworkResultCallbackUnitTest,
-       UpdateTopicsApiResult_UpdatesCorrectly) {
-  privacy_sandbox_service()->UpdateTopicsApiResult(GetParam());
-  EXPECT_EQ(GetParam(),
-            prefs()->GetBoolean(prefs::kPrivacySandboxM1TopicsEnabled));
-}
-
-TEST_P(PrivacySandboxNoticeFrameworkResultCallbackUnitTest,
-       UpdateProtectedAudienceApiResult_UpdatesCorrectly) {
-  privacy_sandbox_service()->UpdateProtectedAudienceApiResult(GetParam());
-  EXPECT_EQ(GetParam(),
-            prefs()->GetBoolean(prefs::kPrivacySandboxM1FledgeEnabled));
-}
-
-TEST_P(PrivacySandboxNoticeFrameworkResultCallbackUnitTest,
-       UpdateMeasurementApiResult_UpdatesCorrectly) {
-  privacy_sandbox_service()->UpdateMeasurementApiResult(GetParam());
-  EXPECT_EQ(GetParam(),
-            prefs()->GetBoolean(prefs::kPrivacySandboxM1AdMeasurementEnabled));
-}
-
-INSTANTIATE_TEST_SUITE_P(PrivacySandboxNoticeFrameworkResultCallbackUnitTest,
-                         PrivacySandboxNoticeFrameworkResultCallbackUnitTest,
-                         testing::Bool());
-
-class PrivacySandboxNoticeFrameworkEligibilityTest
-    : public PrivacySandboxServiceTest {};
-
-TEST_F(PrivacySandboxNoticeFrameworkEligibilityTest, EligibilityCallbacks) {
-  // TODO(crbug.com/408017260): These are currently placeholders. Update tests
-  // when real eligibility logic is implemented.
-  EXPECT_EQ(privacy_sandbox_service()->GetTopicsApiEligibility(),
-            EligibilityLevel::kNotEligible);
-  EXPECT_EQ(privacy_sandbox_service()->GetProtectedAudienceApiEligibility(),
-            EligibilityLevel::kNotEligible);
-  EXPECT_EQ(privacy_sandbox_service()->GetAdMeasurementApiEligibility(),
-            EligibilityLevel::kNotEligible);
 }

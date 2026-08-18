@@ -843,6 +843,7 @@ WebView focusable actions:[FOCUS, AX_FOCUS] bundle:[chromeRole="rootWebArea"]
     @Test
     @SmallTest
     @DisabledTest(message = "crbug.com/533174018")
+    @Restriction(DeviceRestriction.RESTRICTION_TYPE_NON_AUTO) // crbug.com/542055199
     @MinAndroidSdkLevel(Build.VERSION_CODES.KITKAT) // API Level 19
     public void fireGeneratedEvent_ariaLabelChange_firesTextChangeType() throws Throwable {
         // Create an HTML document where there is a div tag with aria-label attribute set.
@@ -1000,6 +1001,7 @@ WebView focusable actions:[FOCUS, AX_FOCUS] bundle:[chromeRole="rootWebArea"]
     @Test
     @SmallTest
     @DisabledTest(message = "https://crbug.com/532305631")
+    @Restriction(DeviceRestriction.RESTRICTION_TYPE_NON_AUTO) // crbug.com/542071685
     public void fireGeneratedEvent_defaultActionVerbChanged_firesContentChanged() throws Throwable {
         // Create an HTML document with a disabled button (default action verb of NONE).
         String html =

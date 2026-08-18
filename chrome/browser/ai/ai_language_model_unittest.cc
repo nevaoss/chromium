@@ -43,7 +43,6 @@
 #include "components/optimization_guide/core/model_execution/test/feature_config_builder.h"
 #include "components/optimization_guide/core/model_execution/test/mock_download_progress_observer.h"
 #include "components/optimization_guide/core/model_execution/test/mock_on_device_capability.h"
-#include "components/optimization_guide/core/optimization_guide_constants.h"
 #include "components/optimization_guide/core/optimization_guide_features.h"
 #include "components/optimization_guide/core/optimization_guide_proto_util.h"
 #include "components/optimization_guide/proto/common_types.pb.h"
@@ -989,18 +988,15 @@ TEST_P(AILanguageModelTestWithLanguageParams, PromptWithEnabledLanguages) {
   options->expected_inputs->push_back(std::move(expected_input));
 
   TestCreateLanguageModelClient language_model_client;
+  mojo::test::BadMessageObserver observer;
   GetAIManagerRemote()->CreateLanguageModel(
       language_model_client.BindNewPipeAndPassRemote(), std::move(options),
       /*monitor=*/mojo::NullRemote());
-
-  auto result = language_model_client.result().Take();
   if (GetParam().expect_error) {
-    EXPECT_FALSE(result.has_value());
-    EXPECT_EQ(result.error().error,
-              blink::mojom::AIManagerCreateClientError::kUnsupportedLanguage);
-  } else {
-    EXPECT_OK(result);
+    EXPECT_EQ(observer.WaitForBadMessage(), "Unsupported language options");
+    return;
   }
+  EXPECT_OK(language_model_client.result().Take());
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -1044,14 +1040,12 @@ TEST_F(AILanguageModelTest, UnsupportedOutputCapability) {
   options->expected_outputs.emplace();
   options->expected_outputs->push_back(std::move(expected_output));
   TestCreateLanguageModelClient language_model_client;
+  mojo::test::BadMessageObserver observer;
   GetAIManagerRemote()->CreateLanguageModel(
       language_model_client.BindNewPipeAndPassRemote(), std::move(options),
       /*monitor=*/mojo::NullRemote());
 
-  auto result = language_model_client.result().Take();
-  EXPECT_FALSE(result.has_value());
-  EXPECT_EQ(result.error().error,
-            blink::mojom::AIManagerCreateClientError::kUnableToCreateSession);
+  EXPECT_EQ(observer.WaitForBadMessage(), "Invalid output types");
 }
 
 TEST_F(AILanguageModelTest, MultimodalInputImageNotSpecified) {
@@ -1604,7 +1598,7 @@ TEST_F(AILanguageModelTest, CanCreate_DeviceCapabilities) {
 
 TEST_F(AILanguageModelTest, CanCreate_DeviceAudioCapabilities) {
   fake_broker_->service_settings().vram_mb =
-      optimization_guide::kOnDeviceModelAudioVramMinMb - 1;
+      on_device_model::kAudioVramMinMb - 1;
 
   auto options = blink::mojom::AILanguageModelCreateOptions::New();
   {

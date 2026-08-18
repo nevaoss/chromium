@@ -38,6 +38,8 @@
 #include "components/omnibox/browser/autocomplete_match_type.h"
 #include "components/omnibox/browser/autocomplete_provider.h"
 #include "components/omnibox/browser/autocomplete_provider_client.h"
+#include "components/omnibox/browser/fusebox_action.mojom.h"
+#include "components/omnibox/browser/fusebox_action_mojo_utils.h"
 #include "components/omnibox/browser/remote_suggestions_service.h"
 #include "components/omnibox/browser/search_suggestion_parser.h"
 #include "components/search/ntp_features.h"
@@ -62,7 +64,6 @@ using ::action_chips::mojom::SuggestTemplateInfo;
 using ::action_chips::mojom::SuggestTemplateInfoPtr;
 using ::action_chips::mojom::TabInfo;
 using ::action_chips::mojom::TabInfoPtr;
-using ::action_chips::mojom::ToolMode;
 using ::tabs::TabInterface;
 
 const size_t kMaxActionChips = 3;
@@ -153,12 +154,9 @@ void SyncProtoToMojo<omnibox::SuggestTemplateInfo,
   if (a.has_secondary_text()) {
     AssignMojoField(a.secondary_text(), b->secondary_text);
   }
-  if (a.has_fusebox_action() && a.fusebox_action().has_preselected_tool()) {
-    AssignMojoField(a.fusebox_action().preselected_tool(), b->preselected_tool);
-  }
-  if (a.has_fusebox_action() && a.fusebox_action().has_preferred_inventory()) {
-    AssignMojoField(a.fusebox_action().preferred_inventory(),
-                    b->preferred_inventory);
+  if (a.has_fusebox_action()) {
+    b->fusebox_action =
+        fusebox_action::SyncFuseboxActionProtoToMojo(a.fusebox_action());
   }
 }
 
@@ -212,7 +210,6 @@ ActionChipPtr CreateRecentTabChip(TabInfoPtr tab, std::string_view suggestion) {
   chip->suggest_template_info->secondary_text =
       action_chips::mojom::FormattedString::New();
   chip->suggest_template_info->secondary_text->text = chip->tab->title;
-  chip->suggest_template_info->preselected_tool = ToolMode::kUnspecified;
   return chip;
 }
 
@@ -231,7 +228,10 @@ ActionChipPtr CreateDeepSearchChip(std::string_view suggestion) {
       !suggestion.empty()
           ? std::string(suggestion)
           : l10n_util::GetStringUTF8(IDS_NTP_ACTION_CHIP_DEEP_SEARCH_BODY);
-  chip->suggest_template_info->preselected_tool = ToolMode::kDeepSearch;
+  chip->suggest_template_info->fusebox_action =
+      fusebox_action::mojom::FuseboxAction::New();
+  chip->suggest_template_info->fusebox_action->preselected_tool =
+      omnibox::TOOL_MODE_DEEP_SEARCH;
   return chip;
 }
 
@@ -260,7 +260,10 @@ ActionChipPtr CreateImageCreationChip(std::string_view suggestion) {
       !suggestion.empty()
           ? std::string(suggestion)
           : l10n_util::GetStringUTF8(IDS_NTP_ACTION_CHIP_CREATE_IMAGE_BODY_1);
-  chip->suggest_template_info->preselected_tool = ToolMode::kImageGen;
+  chip->suggest_template_info->fusebox_action =
+      fusebox_action::mojom::FuseboxAction::New();
+  chip->suggest_template_info->fusebox_action->preselected_tool =
+      omnibox::TOOL_MODE_IMAGE_GEN;
   return chip;
 }
 
@@ -287,7 +290,9 @@ ActionChipPtr CreateStarterChip() {
       action_chips::mojom::FormattedString::New();
   chip->suggest_template_info->secondary_text->text =
       l10n_util::GetStringUTF8(IDS_NTP_ACTION_CHIP_STARTER_BODY);
-  chip->suggest_template_info->preferred_inventory =
+  chip->suggest_template_info->fusebox_action =
+      fusebox_action::mojom::FuseboxAction::New();
+  chip->suggest_template_info->fusebox_action->preferred_inventory =
       omnibox::SUGGEST_INVENTORY_AIM_CONVERSATION_STARTERS;
   return chip;
 }
@@ -318,7 +323,10 @@ ActionChipPtr CreateCanvasChip(std::string_view suggestion) {
       !suggestion.empty()
           ? std::string(suggestion)
           : l10n_util::GetStringUTF8(IDS_NTP_ACTION_CHIP_CANVAS_BODY);
-  chip->suggest_template_info->preselected_tool = ToolMode::kCanvas;
+  chip->suggest_template_info->fusebox_action =
+      fusebox_action::mojom::FuseboxAction::New();
+  chip->suggest_template_info->fusebox_action->preselected_tool =
+      omnibox::TOOL_MODE_CANVAS;
   return chip;
 }
 

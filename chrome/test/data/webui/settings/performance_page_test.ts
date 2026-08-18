@@ -6,7 +6,7 @@ import 'chrome://settings/settings.js';
 
 import {flush} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 import type {CrIconButtonElement} from 'chrome://settings/lazy_load.js';
-import type {ExceptionEditDialogElement, ExceptionEntryElement, ExceptionListElement, ExceptionTabbedAddDialogElement, SettingsCheckboxListEntryElement, SettingsPerformancePageElement, SettingsToggleButtonElement} from 'chrome://settings/settings.js';
+import type {ExceptionEditDialogElement, ExceptionEntryElement, ExceptionListElement, ExceptionTabbedAddDialogElement, SettingsPerformancePageElement, SettingsToggleButtonElement} from 'chrome://settings/settings.js';
 import {convertDateToWindowsEpoch, DISCARD_RING_PREF, MemorySaverModeExceptionListAction, PERFORMANCE_INTERVENTION_NOTIFICATION_PREF, PerformanceBrowserProxyImpl, PerformanceMetricsProxyImpl, PrefsBrowserProxy, PrefService, TAB_DISCARD_EXCEPTIONS_MANAGED_PREF, TAB_DISCARD_EXCEPTIONS_OVERFLOW_SIZE, TAB_DISCARD_EXCEPTIONS_PREF} from 'chrome://settings/settings.js';
 import {assertDeepEquals, assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {eventToPromise, microtasksFinished} from 'chrome://webui-test/test_util.js';
@@ -53,7 +53,7 @@ suite('DiscardIndicator', function() {
    */
   function getPerformancePageElement<T extends HTMLElement = HTMLElement>(
       id: string): T {
-    const el = performancePage.shadowRoot!.querySelector<T>(`#${id}`);
+    const el = performancePage.shadowRoot.querySelector<T>(`#${id}`);
     assertTrue(!!el);
     assertTrue(el instanceof HTMLElement);
     return el;
@@ -115,7 +115,7 @@ suite('PerformanceIntervention', function() {
   test('PerformanceInterventionChangeState', async function() {
     await prefService.setPrefValue(
         PERFORMANCE_INTERVENTION_NOTIFICATION_PREF, false);
-    const toggle = performancePage.shadowRoot!.querySelector<HTMLElement>(
+    const toggle = performancePage.shadowRoot.querySelector<HTMLElement>(
         '#performanceInterventionToggleButton');
     assertTrue(!!toggle);
     toggle.click();
@@ -173,6 +173,7 @@ suite('TabDiscardExceptionList', function() {
   });
 
   function assertExceptionListEquals(rules: string[], message?: string) {
+    flush();
     const actual =
         exceptionList.$.list.items!.concat(exceptionList.$.overflowList.items!)
             .map(entry => entry.site)
@@ -193,7 +194,7 @@ suite('TabDiscardExceptionList', function() {
     await prefService.setPrefValue(
         TAB_DISCARD_EXCEPTIONS_PREF,
         Object.fromEntries(rules.map(r => [r, convertDateToWindowsEpoch()])));
-    flush();
+    await microtasksFinished();
     assertExceptionListEquals([...managedRules ?? [], ...rules]);
   }
 
@@ -208,7 +209,7 @@ suite('TabDiscardExceptionList', function() {
 
   function clickMoreActionsButton(entry: ExceptionEntryElement) {
     const button: CrIconButtonElement|null =
-        entry.shadowRoot!.querySelector('cr-icon-button');
+        entry.shadowRoot.querySelector('cr-icon-button');
     assertTrue(!!button);
     button.click();
   }
@@ -247,9 +248,9 @@ suite('TabDiscardExceptionList', function() {
     const managedRule = getExceptionListEntry(0);
     assertTrue(managedRule.entry.managed);
     const indicator =
-        managedRule.shadowRoot!.querySelector('cr-policy-pref-indicator');
+        managedRule.shadowRoot.querySelector('cr-policy-pref-indicator');
     assertTrue(!!indicator);
-    assertFalse(!!managedRule.shadowRoot!.querySelector('cr-icon-button'));
+    assertFalse(!!managedRule.shadowRoot.querySelector('cr-icon-button'));
 
     const tooltip = exceptionList.$.tooltip.$.tooltip;
     assertTrue(!!tooltip);
@@ -266,8 +267,8 @@ suite('TabDiscardExceptionList', function() {
     const userRule = getExceptionListEntry(managedRules);
     assertFalse(userRule.entry.managed);
     assertFalse(
-        !!userRule.shadowRoot!.querySelector('cr-policy-pref-indicator'));
-    assertTrue(!!userRule.shadowRoot!.querySelector('cr-icon-button'));
+        !!userRule.shadowRoot.querySelector('cr-policy-pref-indicator'));
+    assertTrue(!!userRule.shadowRoot.querySelector('cr-icon-button'));
   });
 
   test('ExceptionListDelete', async function() {
@@ -275,7 +276,7 @@ suite('TabDiscardExceptionList', function() {
 
     clickMoreActionsButton(getExceptionListEntry(0));
     clickDeleteMenuItem();
-    flush();
+    await microtasksFinished();
     assertExceptionListEquals(['bar']);
     assertEquals(
         MemorySaverModeExceptionListAction.REMOVE,
@@ -283,7 +284,7 @@ suite('TabDiscardExceptionList', function() {
 
     clickMoreActionsButton(getExceptionListEntry(0));
     clickDeleteMenuItem();
-    flush();
+    await microtasksFinished();
     assertExceptionListEquals([]);
   });
 
@@ -325,6 +326,9 @@ suite('TabDiscardExceptionList', function() {
     await dialog.$.input.$.input.updateComplete;
     dialog.$.input.$.input.dispatchEvent(new CustomEvent('input'));
     await inputEvent;
+    await performanceBrowserProxy.whenCalled('validateTabDiscardExceptionRule');
+    performanceBrowserProxy.resetResolver('validateTabDiscardExceptionRule');
+    await microtasksFinished();
     dialog.$.actionButton.click();
   }
 
@@ -352,7 +356,7 @@ suite('TabDiscardExceptionList', function() {
 
     clickMoreActionsButton(entry);
     clickEditMenuItem();
-    flush();
+    await microtasksFinished();
 
     const editDialog = getEditDialog();
     assertTrue(editDialog.$.dialog.open);
@@ -368,7 +372,7 @@ suite('TabDiscardExceptionList', function() {
     await setupExceptionListEntries(['foo']);
     clickMoreActionsButton(getExceptionListEntry(0));
     exceptionList.$.addButton.click();
-    flush();
+    await microtasksFinished();
 
     const addDialog = await getTabbedAddDialog();
     assertEquals('', addDialog.$.input.$.input.value);
@@ -393,7 +397,7 @@ suite('TabDiscardExceptionList', function() {
     assertFalse(exceptionList.$.collapse.opened);
 
     exceptionList.$.addButton.click();
-    flush();
+    await microtasksFinished();
 
     const newRule = `rule${TAB_DISCARD_EXCEPTIONS_OVERFLOW_SIZE + 1}`;
     const addDialog = await getTabbedAddDialog();
@@ -410,23 +414,22 @@ suite('TabDiscardExceptionList', function() {
     ].map(index => `rule${index}`);
     performanceBrowserProxy.setCurrentOpenSites(entries);
     exceptionList.$.addButton.click();
-    flush();
+    await microtasksFinished();
 
     const addDialog = await getTabbedAddDialog();
-    await eventToPromise('iron-resize', addDialog);
-    flush();
+    await microtasksFinished();
 
-    const listEntries = addDialog.$.list.$.list
-                            .querySelectorAll<SettingsCheckboxListEntryElement>(
-                                'settings-checkbox-list-entry:not([hidden])');
+    const listEntries = addDialog.$.list.$.list.querySelectorAll<HTMLElement>(
+        'cr-checkbox:not([hidden])');
     for (const entry of listEntries) {
-      entry.$.checkbox.click();
-      await entry.$.checkbox.updateComplete;
+      entry.click();
+      await microtasksFinished();
     }
 
     assertFalse(addDialog.$.actionButton.disabled);
     addDialog.$.actionButton.click();
     flush();
+    await microtasksFinished();
 
     assertFalse(exceptionList.$.collapse.opened);
     assertExceptionListEquals([existingEntry, ...entries]);
@@ -441,16 +444,18 @@ suite('TabDiscardExceptionList', function() {
     const entry = getExceptionListEntry(TAB_DISCARD_EXCEPTIONS_OVERFLOW_SIZE);
     clickMoreActionsButton(entry);
     clickEditMenuItem();
-    flush();
+    await microtasksFinished();
     const editDialog = getEditDialog();
     assertEquals(entry.entry.site, editDialog.$.input.$.input.value);
     await inputDialog(editDialog, 'foo');
+    await microtasksFinished();
     assertExceptionListEquals([...entries.slice(0, -1), 'foo']);
 
     clickMoreActionsButton(entry);
     clickEditMenuItem();
-    flush();
-    await inputDialog(editDialog, getExceptionListEntry(0).entry.site);
+    await microtasksFinished();
+    await inputDialog(getEditDialog(), getExceptionListEntry(0).entry.site);
+    await microtasksFinished();
     assertExceptionListEquals(entries.slice(0, -1));
   });
 
@@ -464,13 +469,13 @@ suite('TabDiscardExceptionList', function() {
         getExceptionListEntry(TAB_DISCARD_EXCEPTIONS_OVERFLOW_SIZE + 1);
     clickMoreActionsButton(entry);
     clickDeleteMenuItem();
-    flush();
+    await microtasksFinished();
     assertExceptionListEquals(entries.slice(0, -1));
 
     entry = getExceptionListEntry(TAB_DISCARD_EXCEPTIONS_OVERFLOW_SIZE);
     clickMoreActionsButton(entry);
     clickDeleteMenuItem();
-    flush();
+    await microtasksFinished();
     assertExceptionListEquals(entries.slice(0, -2));
   });
 });

@@ -39,7 +39,6 @@
 #include "components/optimization_guide/core/model_execution/safety_config.h"
 #include "components/optimization_guide/core/model_execution/safety_model_info.h"
 #include "components/optimization_guide/core/model_execution/session_impl.h"
-#include "components/optimization_guide/core/optimization_guide_constants.h"
 #include "components/optimization_guide/core/optimization_guide_enums.h"
 #include "components/optimization_guide/core/optimization_guide_features.h"
 #include "components/optimization_guide/core/optimization_guide_switches.h"
@@ -100,6 +99,8 @@ OnDeviceModelEligibilityReason GetBaseModelError(
       return OnDeviceModelEligibilityReason::kModelNotEligible;
     case OnDeviceModelStatus::kInsufficientDiskSpace:
       return OnDeviceModelEligibilityReason::kInsufficientDiskSpace;
+    case OnDeviceModelStatus::kInsufficientDiskSpaceForCaches:
+      return OnDeviceModelEligibilityReason::kInsufficientDiskSpaceForCaches;
     case OnDeviceModelStatus::kInstallNotComplete:
     case OnDeviceModelStatus::kModelInstallerNotRegisteredForUnknownReason:
     case OnDeviceModelStatus::kModelInstalledTooLate:

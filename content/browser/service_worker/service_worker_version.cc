@@ -69,10 +69,12 @@
 #include "net/cookies/site_for_cookies.h"
 #include "net/http/http_response_headers.h"
 #include "services/network/public/mojom/cross_origin_embedder_policy.mojom.h"
+#include "services/network/public/mojom/network_context.mojom.h"
 #include "third_party/blink/public/common/origin_trials/trial_token_validator.h"
 #include "third_party/blink/public/common/service_worker/service_worker_type_converters.h"
 #include "third_party/blink/public/common/storage_key/storage_key.h"
 #include "third_party/blink/public/mojom/service_worker/service_worker.mojom.h"
+#include "third_party/blink/public/mojom/service_worker/service_worker_ancestor_frame_type.mojom.h"
 #include "third_party/perfetto/include/perfetto/tracing/track.h"
 
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
@@ -1840,12 +1842,10 @@ void ServiceWorkerVersion::GetClient(const std::string& client_uuid,
   ServiceWorkerClient* service_worker_client =
       context_->service_worker_client_owner().GetServiceWorkerClientByClientID(
           client_uuid);
-  if (!service_worker_client ||
-      service_worker_client->GetUrlForScopeMatch().DeprecatedGetOriginAsURL() !=
-          script_url_.DeprecatedGetOriginAsURL()) {
+  if (!service_worker_client || service_worker_client->key() != key_) {
     // The promise will be resolved to 'undefined'.
     // Note that we don't BadMessage here since Clients#get() can be passed an
-    // arbitrary UUID. The BadMessages for the origin mismatches below are
+    // arbitrary UUID. The BadMessages for the storage key mismatches below are
     // appropriate because the UUID is taken directly from a Client object so we
     // expect it to be valid.
     std::move(callback).Run(nullptr);
@@ -1872,7 +1872,8 @@ void ServiceWorkerVersion::GetClientInternal(const std::string& client_uuid,
   ServiceWorkerClient* service_worker_client =
       context_->service_worker_client_owner().GetServiceWorkerClientByClientID(
           client_uuid);
-  if (!service_worker_client || !service_worker_client->is_execution_ready()) {
+  if (!service_worker_client || service_worker_client->key() != key_ ||
+      !service_worker_client->is_execution_ready()) {
     std::move(callback).Run(nullptr);
     return;
   }
@@ -1882,6 +1883,12 @@ void ServiceWorkerVersion::GetClientInternal(const std::string& client_uuid,
 
 void ServiceWorkerVersion::OpenNewTab(const GURL& url,
                                       OpenNewTabCallback callback) {
+  if (ancestor_frame_type_ == blink::mojom::AncestorFrameType::kFencedFrame) {
+    associated_interface_receiver_.ReportBadMessage(
+        "Received Clients#openWindow() request from a fenced frame.");
+    receiver_.reset();
+    return;
+  }
   // TODO(crbug.com/40177656): After StorageKey implements partitioning update
   // this to reject with InvalidAccessError if key_ is partitioned.
   OpenWindow(url, service_worker_client_utils::WindowType::NEW_TAB_WINDOW,
@@ -1896,6 +1903,14 @@ void ServiceWorkerVersion::OpenPaymentHandlerWindow(
     std::move(callback).Run(
         false /* success */, nullptr /* client */,
         std::string("The service worker system is shutting down."));
+    return;
+  }
+
+  if (ancestor_frame_type_ == blink::mojom::AncestorFrameType::kFencedFrame) {
+    associated_interface_receiver_.ReportBadMessage(
+        "Received PaymentRequestEvent#openWindow() request from a fenced "
+        "frame.");
+    receiver_.reset();
     return;
   }
 
@@ -1927,9 +1942,18 @@ void ServiceWorkerVersion::OpenPaymentHandlerWindow(
   // fallback case, the allowlist check might run twice. This redundancy does
   // not impact performance. It is necessary to have the check here for
   // covering the main path.
+  network::mojom::NetworkContext* network_context = nullptr;
+  if (context_ && context_->wrapper() &&
+      context_->wrapper()->storage_partition()) {
+    network_context =
+        context_->wrapper()->storage_partition()->GetNetworkContext();
+  }
+
   if (policy_container_host() &&
       !ConnectionAllowlistAllowsUrlAndReportIfNeeded(
-          policy_container_host()->policies(), url)) {
+          policy_container_host()->policies(), url, network_context,
+          key().ToPartialNetIsolationInfo().network_anonymization_key(),
+          reporting_source())) {
     // The request URL is not allowed by the Service Worker's Connection
     // Allowlist. See: https://github.com/WICG/connection-allowlists.
     std::move(callback).Run(
@@ -2041,8 +2065,7 @@ void ServiceWorkerVersion::PostMessageToClient(
     }
   }
 
-  if (service_worker_client->GetUrlForScopeMatch().DeprecatedGetOriginAsURL() !=
-      script_url_.DeprecatedGetOriginAsURL()) {
+  if (service_worker_client->key() != key_) {
     associated_interface_receiver_.ReportBadMessage(
         "Received Client#postMessage() request for a cross-origin client.");
     receiver_.reset();
@@ -2091,6 +2114,12 @@ void ServiceWorkerVersion::FocusClient(const std::string& client_uuid,
     std::move(callback).Run(std::move(result));
     return;
   }
+  if (ancestor_frame_type_ == blink::mojom::AncestorFrameType::kFencedFrame) {
+    associated_interface_receiver_.ReportBadMessage(
+        "Received WindowClient#focus() request from a fenced frame.");
+    receiver_.reset();
+    return;
+  }
   ServiceWorkerClient* service_worker_client =
       context_->service_worker_client_owner().GetServiceWorkerClientByClientID(
           client_uuid);
@@ -2101,8 +2130,7 @@ void ServiceWorkerVersion::FocusClient(const std::string& client_uuid,
     std::move(callback).Run(std::move(result));
     return;
   }
-  if (service_worker_client->GetUrlForScopeMatch().DeprecatedGetOriginAsURL() !=
-      script_url_.DeprecatedGetOriginAsURL()) {
+  if (service_worker_client->key() != key_) {
     associated_interface_receiver_.ReportBadMessage(
         "Received WindowClient#focus() request for a cross-origin client.");
     receiver_.reset();
@@ -2159,8 +2187,7 @@ void ServiceWorkerVersion::NavigateClient(const std::string& client_uuid,
                             std::string("The client was not found."));
     return;
   }
-  if (service_worker_client->GetUrlForScopeMatch().DeprecatedGetOriginAsURL() !=
-      script_url_.DeprecatedGetOriginAsURL()) {
+  if (service_worker_client->key() != key_) {
     associated_interface_receiver_.ReportBadMessage(
         "Received WindowClient#navigate() request for a cross-origin client.");
     receiver_.reset();

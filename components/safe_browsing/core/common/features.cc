@@ -143,6 +143,8 @@ const base::FeatureParam<bool> kCsdCreditCardFormEnableDetectionTrigger{
     &kClientSideDetectionCreditCardForm, "EnableDetectionTrigger",
     /*default_value=*/false};
 
+BASE_FEATURE(kClientSideDetectionEnabledIos, base::FEATURE_DISABLED_BY_DEFAULT);
+
 BASE_FEATURE(kClientSideDetectionForcedLlamaRedirectChainKillswitch,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -474,6 +476,21 @@ BASE_FEATURE(kSkipImageClassificationScoringForNonPageLoadTriggers,
 BASE_FEATURE(kSuspiciousSiteTriggerQuotaFeature,
              "SafeBrowsingSuspiciousSiteTriggerQuota",
              base::FEATURE_ENABLED_BY_DEFAULT);
+
+BASE_FEATURE(kSuspiciousSiteWarningSurvey, base::FEATURE_DISABLED_BY_DEFAULT);
+constexpr base::FeatureParam<std::string> kSuspiciousSiteWarningSurveyTriggerId{
+    &kSuspiciousSiteWarningSurvey, "SuspiciousSiteWarningSurveyTriggerId",
+    /*default_value=*/""};
+constexpr base::FeatureParam<std::string>
+    kSuspiciousSiteWarningSurveyProceedTriggerId{
+        &kSuspiciousSiteWarningSurvey,
+        "SuspiciousSiteWarningSurveyProceedTriggerId",
+        /*default_value=*/"HguD8vrc50tK1KeaPYj0R37AzmWa"};
+constexpr base::FeatureParam<std::string>
+    kSuspiciousSiteWarningSurveyHeedTriggerId{
+        &kSuspiciousSiteWarningSurvey,
+        "SuspiciousSiteWarningSurveyHeedTriggerId",
+        /*default_value=*/"LZD24fmuf0tK1KeaPYj0Z79hw2qC"};
 
 BASE_FEATURE(kSuspiciousSiteWarnings, base::FEATURE_DISABLED_BY_DEFAULT);
 

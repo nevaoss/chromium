@@ -375,15 +375,19 @@ public class NtpCustomizationMediatorUnitTest {
         mMediator.onNewColorSelected(/* isDifferentColor= */ true);
         observer.onSheetClosed(2);
         verify(ntpThemeStateProvider).notifyApplyThemeChanges();
+        verify(mConfigManager).maybeSaveUserSelectedBackgroundTypeToSharedPreference(eq(mContext));
         assertTrue(NtpCustomizationUtils.getLastApplyThemeTimestampFromSharedPreference() > 0);
 
         clearInvocations(ntpThemeStateProvider);
+        clearInvocations(mConfigManager);
         NtpCustomizationUtils.setLastApplyThemeTimestampToSharedPreference(0);
 
         // Verifies notifyApplyThemeChanges() is NOT called when theme color isn't changed.
         mMediator.onNewColorSelected(/* isDifferentColor= */ false);
         observer.onSheetClosed(2);
         verify(ntpThemeStateProvider, never()).notifyApplyThemeChanges();
+        verify(mConfigManager, never())
+                .maybeSaveUserSelectedBackgroundTypeToSharedPreference(any());
         assertEquals(0, NtpCustomizationUtils.getLastApplyThemeTimestampFromSharedPreference());
 
         NtpThemeStateProvider.setInstanceForTesting(null);
@@ -536,6 +540,7 @@ public class NtpCustomizationMediatorUnitTest {
     @Test
     @EnableFeatures(ChromeFeatureList.USE_WEB_UI_NTP_ANDROID)
     public void testBuildListContent_ExcludesThemeWhenWebUiNtpEnabled() {
+        DeviceInfo.setIsDesktopForTesting(true);
         List<Integer> listContent = mMediator.buildListContent(mContext);
         assertFalse(listContent.contains(THEME));
     }
@@ -625,6 +630,8 @@ public class NtpCustomizationMediatorUnitTest {
         assertEquals(
                 themeCollectionDataPrimaryColor,
                 NtpCustomizationUtils.getCustomizedPrimaryColorFromSharedPreference());
+        verify(mConfigManager, never())
+                .maybeSaveUserSelectedBackgroundTypeToSharedPreference(any());
 
         // Sets the current theme type is NtpBackgroundType.IMAGE_FROM_DISK.
         NtpCustomizationUtils.resetSharedPreferenceForTesting();
@@ -637,6 +644,8 @@ public class NtpCustomizationMediatorUnitTest {
         assertEquals(
                 NtpThemeColorInfo.COLOR_NOT_SET,
                 NtpCustomizationUtils.getCustomizedPrimaryColorFromSharedPreference());
+        verify(mConfigManager, never())
+                .maybeSaveUserSelectedBackgroundTypeToSharedPreference(any());
 
         // Clean up shared preference for the test.
         NtpCustomizationUtils.resetSharedPreferenceForTesting();
@@ -652,6 +661,23 @@ public class NtpCustomizationMediatorUnitTest {
         assertEquals(
                 NtpThemeColorInfo.COLOR_NOT_SET,
                 NtpCustomizationUtils.getCustomizedPrimaryColorFromSharedPreference());
+        verify(mConfigManager, never())
+                .maybeSaveUserSelectedBackgroundTypeToSharedPreference(any());
+
+        // Case 4: Valid theme collection, recreating.
+        NtpCustomizationUtils.resetSharedPreferenceForTesting();
+        mMediator.onNewThemeCollectionImageSelected(bitmap);
+        mMediator.onNewColorSelected(/* isDifferentColor= */ true);
+        observer.onSheetClosed(0);
+
+        // Verifies pickAndSavePrimaryColor() is called.
+        assertEquals(
+                themeCollectionDataPrimaryColor,
+                NtpCustomizationUtils.getCustomizedPrimaryColorFromSharedPreference());
+
+        // Verifies maybeSaveUserSelectedBackgroundTypeToSharedPreference() is called because
+        // mShouldRecreate is true.
+        verify(mConfigManager).maybeSaveUserSelectedBackgroundTypeToSharedPreference(eq(mContext));
     }
 
     @Test
@@ -887,10 +913,13 @@ public class NtpCustomizationMediatorUnitTest {
             // Verify snackbar is shown
             verify(mSnackbarManager).showSnackbar(any(Snackbar.class));
             assertTrue(NtpCustomizationUtils.isThemeSnackbarShownFromSharedPreference());
+            verify(mConfigManager, never())
+                    .maybeSaveUserSelectedBackgroundTypeToSharedPreference(any());
         } else {
             // Verify snackbar isn't shown.
             verify(mSnackbarManager, never()).showSnackbar(any(Snackbar.class));
             assertFalse(NtpCustomizationUtils.isThemeSnackbarShownFromSharedPreference());
+            verify(mConfigManager).maybeSaveUserSelectedBackgroundTypeToSharedPreference(any());
         }
 
         assertEquals(expectedState, NtpCustomizationPromoManager.getStateForTesting());

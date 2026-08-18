@@ -41,6 +41,7 @@
 #include "chrome/browser/ui/views/tabs/tab_strip.h"
 #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
+#include "chrome/browser/ui/window_feature_controller/window_feature_controller.h"
 #include "chrome/browser/ui/window_metadata/window_metadata_controller.h"
 #include "chromeos/ash/experiences/system_web_apps/types/system_web_app_delegate.h"
 #include "chromeos/components/kiosk/kiosk_utils.h"
@@ -97,14 +98,14 @@ DEFINE_UI_CLASS_PROPERTY_KEY(BrowserFrameViewChromeOS*,
 // Returns true if the header should be painted so that it looks the same as
 // the header used for packaged apps.
 bool UsePackagedAppHeaderStyle(const Browser* browser) {
-  if (browser->is_type_normal() ||
+  if (browser->GetType() == BrowserWindowInterface::Type::TYPE_NORMAL ||
       (browser->GetType() == BrowserWindowInterface::Type::TYPE_POPUP &&
        !WindowFeatureController::From(browser)->IsTrustedSource())) {
     return false;
   }
 
-  return !browser->SupportsWindowFeature(
-      Browser::WindowFeature::kFeatureTabStrip);
+  return !WindowFeatureController::From(browser)->SupportsWindowFeature(
+      WindowFeatureController::WindowFeature::kFeatureTabStrip);
 }
 
 // Whether or not the window's title should show the avatar. Practically,

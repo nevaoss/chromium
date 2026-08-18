@@ -44,6 +44,7 @@ import org.chromium.base.test.util.DisableIf;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.base.test.util.HistogramWatcher;
 import org.chromium.base.test.util.Restriction;
+import org.chromium.chrome.browser.ChromeTabbedActivity;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.flags.ChromeSwitches;
 import org.chromium.chrome.browser.media.MediaCapturePickerDelegate;
@@ -137,6 +138,7 @@ public class TabMediaIndicatorTest {
 
     @Before
     public void setUp() throws Exception {
+        ChromeTabbedActivity.interceptMoveTaskToBackForTesting();
         mPage = mActivityTestRule.startOnBlankPage();
         mTabModel = mActivityTestRule.getActivity().getTabModelSelector().getModel(false);
         mTabRemover = mTabModel.getTabRemover();

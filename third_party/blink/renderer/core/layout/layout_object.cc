@@ -36,7 +36,6 @@
 #include "base/auto_reset.h"
 #include "base/debug/crash_logging.h"
 #include "base/debug/dump_without_crashing.h"
-#include "base/feature_list.h"
 #include "partition_alloc/partition_alloc.h"
 #include "third_party/blink/public/mojom/scroll/scroll_into_view_params.mojom-blink.h"
 #include "third_party/blink/renderer/core/accessibility/ax_object_cache.h"
@@ -161,10 +160,6 @@
 namespace blink {
 
 namespace {
-
-// Kill switch for the new GeneratingNode() algorithm traversing ancestors
-BASE_FEATURE(kGeneratingNodeTraversesAncestorsKillSwitch,
-             base::FEATURE_ENABLED_BY_DEFAULT);
 
 LayoutObject* FindColumnSpannerContainer(
     const LayoutObject* spanner,
@@ -2854,22 +2849,22 @@ StyleDifference LayoutObject::AdjustStyleDifference(
 void LayoutObject::SetPseudoElementStyle(const LayoutObject& owner,
                                          bool match_parent_size) {
   NOT_DESTROYED();
-  const ComputedStyle* pseudo_style = owner.Style();
-  DCHECK(pseudo_style->StyleType() == kPseudoIdCheckMark ||
-         pseudo_style->StyleType() == kPseudoIdBefore ||
-         pseudo_style->StyleType() == kPseudoIdAfter ||
-         pseudo_style->StyleType() == kPseudoIdExpandIcon ||
-         pseudo_style->StyleType() == kPseudoIdPickerIcon ||
-         pseudo_style->StyleType() == kPseudoIdInterestButton ||
-         pseudo_style->StyleType() == kPseudoIdMarker ||
-         pseudo_style->StyleType() == kPseudoIdFirstLetter ||
-         pseudo_style->StyleType() == kPseudoIdScrollMarkerGroup ||
-         pseudo_style->IsPageMarginBox() ||
-         pseudo_style->StyleType() == kPseudoIdScrollMarker ||
-         pseudo_style->StyleType() == kPseudoIdScrollButtonBlockStart ||
-         pseudo_style->StyleType() == kPseudoIdScrollButtonInlineStart ||
-         pseudo_style->StyleType() == kPseudoIdScrollButtonInlineEnd ||
-         pseudo_style->StyleType() == kPseudoIdScrollButtonBlockEnd);
+  const ComputedStyle& pseudo_style = owner.StyleRef();
+  DCHECK(pseudo_style.StyleType() == kPseudoIdCheckMark ||
+         pseudo_style.StyleType() == kPseudoIdBefore ||
+         pseudo_style.StyleType() == kPseudoIdAfter ||
+         pseudo_style.StyleType() == kPseudoIdExpandIcon ||
+         pseudo_style.StyleType() == kPseudoIdPickerIcon ||
+         pseudo_style.StyleType() == kPseudoIdInterestButton ||
+         pseudo_style.StyleType() == kPseudoIdMarker ||
+         pseudo_style.StyleType() == kPseudoIdFirstLetter ||
+         pseudo_style.StyleType() == kPseudoIdScrollMarkerGroup ||
+         pseudo_style.IsPageMarginBox() ||
+         pseudo_style.StyleType() == kPseudoIdScrollMarker ||
+         pseudo_style.StyleType() == kPseudoIdScrollButtonBlockStart ||
+         pseudo_style.StyleType() == kPseudoIdScrollButtonInlineStart ||
+         pseudo_style.StyleType() == kPseudoIdScrollButtonInlineEnd ||
+         pseudo_style.StyleType() == kPseudoIdScrollButtonBlockEnd);
 
   InheritIsInDetachedNonDomTree(owner);
 
@@ -2887,7 +2882,7 @@ void LayoutObject::SetPseudoElementStyle(const LayoutObject& owner,
     ComputedStyleBuilder builder =
         GetDocument()
             .GetStyleResolver()
-            .CreateComputedStyleBuilderInheritingFrom(*pseudo_style);
+            .CreateComputedStyleBuilderInheritingFrom(pseudo_style);
     if (match_parent_size) {
       DCHECK(IsImage());
       builder.SetWidth(Length::Percent(100));
@@ -2902,7 +2897,7 @@ void LayoutObject::SetPseudoElementStyle(const LayoutObject& owner,
     // See "accessibility/css-generated-content.html"
     const ComputedStyle* initial_letter_text_style =
         GetDocument().GetStyleResolver().StyleForInitialLetterText(
-            *pseudo_style, Parent()->ContainingBlock()->StyleRef());
+            pseudo_style, Parent()->ContainingBlock()->StyleRef());
     SetStyle(std::move(initial_letter_text_style));
     return;
   }
@@ -2912,13 +2907,13 @@ void LayoutObject::SetPseudoElementStyle(const LayoutObject& owner,
     ComputedStyleBuilder combined_text_style_builder =
         GetDocument()
             .GetStyleResolver()
-            .CreateComputedStyleBuilderInheritingFrom(*pseudo_style);
+            .CreateComputedStyleBuilderInheritingFrom(pseudo_style);
     StyleAdjuster::AdjustStyleForCombinedText(combined_text_style_builder);
     SetStyle(combined_text_style_builder.TakeStyle());
     return;
   }
 
-  SetStyle(std::move(pseudo_style));
+  SetStyle(&pseudo_style);
 }
 
 DISABLE_CFI_PERF
@@ -3925,19 +3920,14 @@ bool LayoutObject::IsRooted() const {
 
 Node* LayoutObject::GeneratingNode() const {
   NOT_DESTROYED();
-  if (base::FeatureList::IsEnabled(
-          kGeneratingNodeTraversesAncestorsKillSwitch)) {
-    Node* node = GetNode();
-    if (!node) {
-      return Parent() ? Parent()->GeneratingNode() : nullptr;
-    }
-    if (node->IsPseudoElement()) {
-      return &To<PseudoElement>(node)->UltimateOriginatingElement();
-    }
-    return node;
-  } else {
-    return IsPseudoElement() ? GetNode()->ParentOrShadowHostNode() : GetNode();
+  Node* node = GetNode();
+  if (!node) {
+    return Parent() ? Parent()->GeneratingNode() : nullptr;
   }
+  if (node->IsPseudoElement()) {
+    return &To<PseudoElement>(node)->UltimateOriginatingElement();
+  }
+  return node;
 }
 
 Node* LayoutObject::EnclosingNode() const {
@@ -4566,10 +4556,27 @@ void LayoutObject::ImageNotifyFinished(ImageResourceContent* image) {
   }
 
   if (!image->ErrorOccurred()) {
+    Element* element = DynamicTo<Element>(GetNode());
     if (const std::optional<AdProvenance>& ad_provenance =
             image->GetAdProvenance()) {
-      if (auto* element = DynamicTo<Element>(GetNode())) {
+      if (element) {
         element->SetIsAdRelated(*ad_provenance);
+      }
+    }
+
+    LocalFrame* frame = GetDocument().GetFrame();
+    bool is_ad = image->GetAdProvenance().has_value() ||
+                 (element && element->IsAdRelated()) ||
+                 (frame && frame->IsAdFrame());
+
+    if (is_ad) {
+      if (Image* img = image->GetImage()) {
+        // Headroom is on a log2 scale. 0.5f corresponds to 2^0.5 ~= 1.41x SDR
+        // white.
+        if (img->PaintImageForCurrentFrame().GetMaximumRenderedHdrHeadroom() >=
+            0.5f) {
+          UseCounter::Count(GetDocument(), WebFeature::kAdImageHDR);
+        }
       }
     }
   }

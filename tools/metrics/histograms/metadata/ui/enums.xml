@@ -341,7 +341,8 @@ chromium-metrics-reviews@google.com.
   <int value="141" label="IDC_CONTENT_CONTEXT_SAVEVIDEOFRAMEAS"/>
   <int value="142" label="IDC_CONTENT_CONTEXT_SEARCHLENSFORVIDEOFRAME"/>
   <int value="143" label="IDC_CONTENT_CONTEXT_SEARCHWEBFORVIDEOFRAME"/>
-  <int value="145" label="IDC_CONTENT_CONTEXT_AUTOFILL_FALLBACK_PLUS_ADDRESS"/>
+  <int value="145"
+      label="(Obsolete) IDC_CONTENT_CONTEXT_AUTOFILL_FALLBACK_PLUS_ADDRESS"/>
   <int value="146"
       label="(Obsolete) IDC_CONTENT_CONTEXT_AUTOFILL_FALLBACK_PASSWORDS"/>
   <int value="147"
@@ -450,7 +451,7 @@ chromium-metrics-reviews@google.com.
   <int value="34" label="UMA_HOMEPAGE_PROMO_CHANGED_UNDO"/>
   <int value="35" label="UMA_CONDITIONAL_TAB_STRIP_DISMISS_UNDO"/>
   <int value="37" label="UMA_READING_LIST_BOOKMARK_ADDED"/>
-  <int value="38" label="UMA_PRIVACY_SANDBOX_PAGE_OPEN"/>
+  <int value="38" label="(Obsolete) UMA_PRIVACY_SANDBOX_PAGE_OPEN"/>
   <int value="39" label="(Obsolete) UMA_WEB_FEED_FOLLOW_SUCCESS"/>
   <int value="40" label="(Obsolete) UMA_WEB_FEED_FOLLOW_FAILURE"/>
   <int value="41" label="(Obsolete) UMA_WEB_FEED_UNFOLLOW_SUCCESS"/>
@@ -942,7 +943,8 @@ chromium-metrics-reviews@google.com.
   <int value="483244151" label="chrome://notebooks-internals/"/>
   <int value="502364118" label="chrome://default-browser/"/>
   <int value="507734656" label="chrome://profile-customization/"/>
-  <int value="519565566" label="chrome://personal-context-internals/"/>
+  <int value="519565566"
+      label="(Obsolete) chrome://personal-context-internals/"/>
   <int value="520299179" label="chrome://media-engagement/"/>
   <int value="543723090" label="chrome://traces-internals/"/>
   <int value="554090510" label="chrome://first-run/"/>
@@ -1080,6 +1082,7 @@ chromium-metrics-reviews@google.com.
   <int value="1797107942" label="chrome://md-settings/"/>
   <int value="1834776370" label="chrome://password-change/"/>
   <int value="1846714330" label="chrome://sanitize/"/>
+  <int value="1866843116" label="chrome://organizer-panel.top-chrome/"/>
   <int value="1878438412" label="chrome://tabs-from-other-devices.top-chrome/"/>
   <int value="1887784693" label="chrome://policy/"/>
   <int value="1914132589" label="chrome-untrusted://boca-app/"/>
@@ -1208,6 +1211,7 @@ chromium-metrics-reviews@google.com.
   <int value="101" label="Contact info"/>
   <int value="102"
       label="(Obsolete) Show contextual tasks side panel. Removed 12/18/25"/>
+  <int value="103" label="New isolated window"/>
 </enum>
 
 <!-- LINT.ThenChange(/chrome/browser/ui/toolbar/app_menu_model.h:AppMenuAction) -->

@@ -689,8 +689,6 @@ BASE_FEATURE(kTLSTrustAnchorIDs, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kNonMtcTrustAnchorIDs, base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kTlsMldsaSignatures, base::FEATURE_ENABLED_BY_DEFAULT);
-
 #if BUILDFLAG(CHROME_ROOT_STORE_SUPPORTED)
 BASE_FEATURE(kVerifyMTCs, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif
@@ -989,5 +987,22 @@ BASE_FEATURE(kEnableBackendCleanupTrackerOnHttpCache,
 
 BASE_FEATURE(kPartitionWebSocketEndpointLocksByNetworkAnonymizationKey,
              base::FEATURE_ENABLED_BY_DEFAULT);
+
+BASE_FEATURE(kInitialDelayForBrokenAlternativeService,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE_PARAM(base::TimeDelta,
+                   kInitialDelayForBrokenAlternativeServiceParam,
+                   &kInitialDelayForBrokenAlternativeService,
+                   base::Seconds(300));
+
+BASE_FEATURE(kPersistBrokenAlternativeServices,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
+BASE_FEATURE(kMaxDelayForBrokenAlternativeService,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE_PARAM(base::TimeDelta,
+                   kMaxDelayForBrokenAlternativeServiceParam,
+                   &kMaxDelayForBrokenAlternativeService,
+                   base::Days(2));
 
 }  // namespace net::features

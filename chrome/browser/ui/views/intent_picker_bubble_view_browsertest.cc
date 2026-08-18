@@ -21,7 +21,6 @@
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/toolbar_button_provider.h"
 #include "chrome/browser/ui/views/location_bar/intent_chip_button_test_base.h"
-#include "chrome/browser/ui/views/page_action/page_action_icon_view.h"
 #include "chrome/browser/ui/views/page_action/page_action_view.h"
 #include "chrome/browser/ui/views/web_apps/web_app_link_capturing_test_utils.h"
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
@@ -662,3 +661,44 @@ INSTANTIATE_TEST_SUITE_P(
         testing::Values(LinkCapturingFeatureVersion::kV2DefaultOff,
                         LinkCapturingFeatureVersion::kV2DefaultOn)),
     GetLinkCapturingTestName);
+
+class IntentPickerCrashTest : public IntentPickerBrowserTest {
+ public:
+  IntentPickerCrashTest() {
+    feature_list_.InitWithFeaturesAndParameters(
+        apps::test::GetFeaturesToEnableLinkCapturingUX(
+            LinkCapturingFeatureVersion::kV2DefaultOn),
+        {});
+  }
+
+ private:
+  base::test::ScopedFeatureList feature_list_;
+};
+
+IN_PROC_BROWSER_TEST_F(IntentPickerCrashTest, DoubleClickDoesNotCrash) {
+  InstallTestWebApp();
+  const GURL in_scope_url =
+      embedded_https_test_server().GetURL(GetAppUrlHost(), GetInScopeUrlPath());
+
+  NavigateToLaunchingPage(browser());
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), in_scope_url));
+
+  auto* tab_helper = IntentPickerTabHelper::FromWebContents(GetWebContents());
+  ASSERT_TRUE(tab_helper);
+
+  base::test::TestFuture<bool> future1;
+  base::test::TestFuture<bool> future2;
+
+  tab_helper->ShowIntentPickerBubbleOrLaunchApp(in_scope_url,
+                                                /*always_show=*/false,
+                                                future1.GetCallback());
+  tab_helper->ShowIntentPickerBubbleOrLaunchApp(in_scope_url,
+                                                /*always_show=*/false,
+                                                future2.GetCallback());
+
+  bool r1 = future1.Get();
+  bool r2 = future2.Get();
+
+  EXPECT_TRUE(r1 || r2);
+  EXPECT_FALSE(r1 && r2);
+}

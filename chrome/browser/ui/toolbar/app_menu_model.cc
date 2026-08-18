@@ -103,6 +103,7 @@
 #include "chrome/browser/web_applications/web_app_provider.h"
 #include "chrome/browser/web_applications/web_app_registrar.h"
 #include "chrome/browser/web_applications/web_app_tab_helper.h"
+#include "chrome/common/channel_info.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/common/chrome_paths.h"
 #include "chrome/common/chrome_switches.h"
@@ -117,6 +118,7 @@
 #include "components/dom_distiller/content/browser/uma_helper.h"
 #include "components/dom_distiller/core/dom_distiller_features.h"
 #include "components/dom_distiller/core/url_utils.h"
+#include "components/enterprise/isolated_mode/settings.h"
 #include "components/feature_engagement/public/event_constants.h"
 #include "components/feature_engagement/public/feature_constants.h"
 #include "components/lens/lens_features.h"
@@ -1189,18 +1191,10 @@ void ToolsMenuModel::Build(Browser* browser) {
       features::IsRoundedIconsEnabled() ? kWebAssetIcon : kNameWindowOldIcon);
 
   if (auto* controller = tabs::VerticalTabStripStateController::From(browser)) {
-    if (controller->ShouldDisplayVerticalTabs()) {
-      AddItemWithStringIdAndVectorIcon(
-          this, IDC_TOGGLE_VERTICAL_TABS, IDS_SWITCH_TO_HORIZONTAL_TAB,
-          features::IsRoundedIconsEnabled() ? kToolbarIcon : kToolbarOldIcon);
-    } else {
-      AddItemWithStringIdAndVectorIcon(
-          this, IDC_TOGGLE_VERTICAL_TABS, IDS_SWITCH_TO_VERTICAL_TAB,
-          base::i18n::IsRTL() ? features::IsRoundedIconsEnabled()
-                                    ? kDockToLeftIcon
-                                    : kDockToRightOldIcon
-          : features::IsRoundedIconsEnabled() ? kDockToRightIcon
-                                              : kDockToLeftOldIcon);
+    AddItemWithStringIdAndVectorIcon(this, IDC_TOGGLE_VERTICAL_TABS,
+                                     controller->GetToggleStringId(),
+                                     controller->GetToggleVectorIcon());
+    if (!controller->ShouldDisplayVerticalTabs()) {
       const bool use_preview_badge =
           base::FeatureList::IsEnabled(tabs::kVerticalTabsPreviewBadge);
       const ui::NewBadgeType badge_type = use_preview_badge
@@ -1390,14 +1384,29 @@ void AppMenuModel::ExecuteCommand(int command_id, int event_flags) {
   }
 
   LogMenuMetrics(command_id);
-  actions::ActionInvocationContext context =
-      actions::ActionInvocationContext::Builder()
-          .SetProperty(
-              kSidePanelOpenTriggerKey,
-              static_cast<std::underlying_type_t<SidePanelOpenTrigger>>(
-                  SidePanelOpenTrigger::kAppMenu))
-          .Build();
-  chrome::ExecuteCommandWithContext(browser_, command_id, std::move(context));
+
+  switch (command_id) {
+    case IDC_SHOW_BOOKMARK_SIDE_PANEL:
+    case IDC_SHOW_HISTORY_CLUSTERS_SIDE_PANEL:
+    case IDC_SHOW_READING_MODE_SIDE_PANEL:
+    case IDC_READING_LIST_MENU_SHOW_UI:
+    case IDC_SHOW_CUSTOMIZE_CHROME_SIDE_PANEL: {
+      actions::ActionInvocationContext context =
+          actions::ActionInvocationContext::Builder()
+              .SetProperty(
+                  kSidePanelOpenTriggerKey,
+                  static_cast<std::underlying_type_t<SidePanelOpenTrigger>>(
+                      SidePanelOpenTrigger::kAppMenu))
+              .Build();
+      chrome::ExecuteCommandWithContext(browser_, command_id,
+                                        std::move(context));
+      break;
+    }
+
+    default:
+      chrome::ExecuteCommand(browser_, command_id);
+      break;
+  }
 }
 
 void AppMenuModel::LogSafetyHubInteractionMetrics(
@@ -1443,6 +1452,9 @@ void AppMenuModel::LogMenuMetrics(int command_id) {
             "WrenchMenu.TimeToAction.NewIncognitoWindow", delta);
       }
       LogMenuAction(MENU_ACTION_NEW_INCOGNITO_WINDOW);
+      break;
+    case IDC_NEW_ISOLATED_WINDOW:
+      LogMenuAction(MENU_ACTION_NEW_ISOLATED_WINDOW);
       break;
 
     // Bookmarks sub menu.
@@ -2134,6 +2146,17 @@ bool AppMenuModel::IsCommandIdAlerted(int command_id) const {
 bool AppMenuModel::GetAcceleratorForCommandId(
     int command_id,
     ui::Accelerator* accelerator) const {
+  if (command_id == IDC_NEW_ISOLATED_WINDOW) {
+    return provider_->GetAcceleratorForCommandId(IDC_NEW_INCOGNITO_WINDOW,
+                                                 accelerator);
+  }
+
+  if (command_id == IDC_NEW_INCOGNITO_WINDOW) {
+    if (!IncognitoModePrefs::IsIncognitoAllowed(browser_->GetProfile())) {
+      return false;
+    }
+  }
+
   return provider_->GetAcceleratorForCommandId(command_id, accelerator);
 }
 
@@ -2198,6 +2221,18 @@ void AppMenuModel::Build() {
     SetElementIdentifierAt(
         GetIndexOfCommandId(IDC_NEW_INCOGNITO_WINDOW).value(),
         kIncognitoMenuItem);
+
+    bool isolated_mode_enabled =
+        enterprise_isolated_mode::IsolatedModeReplacesIncognito(
+            *browser_->GetProfile()->GetPrefs(), chrome::GetChannel());
+
+    if (isolated_mode_enabled) {
+      AddItemWithStringIdAndVectorIcon(
+          this, IDC_NEW_ISOLATED_WINDOW, IDS_NEW_ISOLATED_WINDOW,
+          features::IsRoundedIconsEnabled()
+              ? vector_icons::kDomainIcon
+              : vector_icons::kBusinessChromeRefreshOldIcon);
+    }
   }
 
   AddSeparator(ui::NORMAL_SEPARATOR);

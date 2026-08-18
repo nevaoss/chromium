@@ -151,6 +151,10 @@ BASE_FEATURE(kContextualTasksCustomNlmUi, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kContextualTasksBackButtonExpandsSidePanel,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+// When enabled, close tab actions can expand the side panel.
+BASE_FEATURE(kContextualTasksCloseTabExpandsSidePanel,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Enables the use of APC comparison for webpages in the recontextualization
 // flow.
 BASE_FEATURE(kContextualTasksWebpageApcComparison,
@@ -464,6 +468,11 @@ const base::FeatureParam<std::string> kContextualTasksHelpUrl(
     "ContextualTasksHelpUrl",
     "https://support.google.com/websearch/");
 
+const base::FeatureParam<std::string> kContextualTasksOverflowMenuHelpUrl(
+    &kContextualTasks,
+    "ContextualTasksOverflowMenuHelpUrl",
+    "https://support.google.com/chrome/answer/17025061");
+
 const base::FeatureParam<bool> kEnableProtectedPageError(
     &kContextualTasks,
     "ContextualTasksEnableProtectedPageError",
@@ -743,6 +752,10 @@ std::string GetContextualTasksHelpUrl() {
   return kContextualTasksHelpUrl.Get();
 }
 
+std::string GetContextualTasksOverflowMenuHelpUrl() {
+  return kContextualTasksOverflowMenuHelpUrl.Get();
+}
+
 bool GetEnableContextualTasksSmartCompose() {
   return base::FeatureList::IsEnabled(kContextualTasks) &&
          kEnableContextualTasksSmartCompose.Get();
@@ -816,7 +829,8 @@ bool IsContextualTasksSidePanelRearchitectureEnabled() {
 
 bool IsContextualTasksUIEnabled() {
   return base::FeatureList::IsEnabled(kContextualTasksSidePanel) ||
-         base::FeatureList::IsEnabled(kContextualTasks);
+         base::FeatureList::IsEnabled(kContextualTasks) ||
+         base::FeatureList::IsEnabled(kContextualTasksRearchitecture);
 }
 
 namespace flag_descriptions {
@@ -862,6 +876,11 @@ const char kContextualTasksBackButtonExpandsSidePanelName[] =
     "Contextual Tasks Back Button Expands Side Panel";
 const char kContextualTasksBackButtonExpandsSidePanelDescription[] =
     "Enables expanding the side panel on back navigations.";
+
+const char kContextualTasksCloseTabExpandsSidePanelName[] =
+    "Contextual Tasks Close Tab Expands Side Panel";
+const char kContextualTasksCloseTabExpandsSidePanelDescription[] =
+    "Enables expanding the contextual tasks side panel on close tab actions.";
 
 const char kContextualTasksOverrideShowBottomSheetOnLargeScreenName[] =
     "Override Show Bottom Sheet On Large Screen for Contextual Tasks";

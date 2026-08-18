@@ -7,6 +7,7 @@
 #include "base/functional/bind.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/shell_integration_linux.h"
+#include "chrome/browser/ui/browser_init_state.h"
 #include "chrome/browser/ui/views/frame/browser_desktop_window_tree_host_linux.h"
 #include "chrome/browser/ui/views/frame/browser_native_widget_factory.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
@@ -45,8 +46,9 @@ views::Widget::InitParams BrowserNativeWidgetAuraLinux::GetWidgetParams(
   const Browser& browser = *browser_view()->browser();
   params.wm_class_name =
       (browser.GetType() == BrowserWindowInterface::Type::TYPE_APP ||
-       browser.is_type_app_popup())
-          ? shell_integration_linux::GetWMClassFromAppName(browser.app_name())
+       browser.GetType() == BrowserWindowInterface::Type::TYPE_APP_POPUP)
+          ? shell_integration_linux::GetWMClassFromAppName(
+                BrowserInitState::From(&browser)->create_params().app_name)
           // This window is a hosted app or v1 packaged app.
           // NOTE: v2 packaged app windows are created by
           // ChromeNativeAppWindowViews.
@@ -54,17 +56,19 @@ views::Widget::InitParams BrowserNativeWidgetAuraLinux::GetWidgetParams(
   params.wm_class_class = shell_integration_linux::GetProgramClassClass();
   const char kX11WindowRoleBrowser[] = "browser";
   const char kX11WindowRolePopup[] = "pop-up";
-  params.wm_role_name = browser_view()->browser()->is_type_normal()
+  params.wm_role_name = browser_view()->browser()->GetType() ==
+                                BrowserWindowInterface::Type::TYPE_NORMAL
                             ? std::string(kX11WindowRoleBrowser)
                             : std::string(kX11WindowRolePopup);
   params.remove_standard_frame = UseCustomFrame();
   params.opacity = views::Widget::InitParams::WindowOpacity::kTranslucent;
 
   if ((browser.GetType() == BrowserWindowInterface::Type::TYPE_APP ||
-       browser.is_type_app_popup()) &&
+       browser.GetType() == BrowserWindowInterface::Type::TYPE_APP_POPUP) &&
       browser.GetProfile()) {
     params.wayland_app_id = shell_integration_linux::GetXdgAppIdForWebApp(
-        browser.app_name(), browser.GetProfile()->GetPath());
+        BrowserInitState::From(&browser)->create_params().app_name,
+        browser.GetProfile()->GetPath());
   } else {
     params.wayland_app_id = params.wm_class_class;
   }

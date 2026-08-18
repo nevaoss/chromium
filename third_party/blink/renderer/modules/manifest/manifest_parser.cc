@@ -1701,13 +1701,6 @@ ManifestParser::ParseFileHandler(const JSONObject* file_handler) {
   }
 
   entry->name = ParseString(file_handler, "name", Trim(true)).value_or("");
-  const bool feature_enabled =
-      base::FeatureList::IsEnabled(blink::features::kFileHandlingIcons) ||
-      RuntimeEnabledFeatures::FileHandlingIconsEnabled(execution_context_);
-  if (feature_enabled) {
-    entry->icons = ParseIcons(file_handler);
-  }
-
   entry->accept = ParseFileHandlerAccept(file_handler->GetJSONObject("accept"));
   if (entry->accept.empty()) {
     AddErrorInfo("FileHandler ignored. Property 'accept' is invalid.");
@@ -1911,7 +1904,7 @@ ManifestParser::ParseProtocolHandler(const JSONObject* object) {
     const char kToken[] = "%s";
     String user_url = protocol_handler->url.GetString();
     String tokenless_url = protocol_handler->url.GetString();
-    string_size_t token_position = user_url.find(kToken);
+    wtf_size_t token_position = user_url.find(kToken);
     if (token_position != String::npos) {
       tokenless_url.erase(token_position, std::size(kToken) - 1);
     }
