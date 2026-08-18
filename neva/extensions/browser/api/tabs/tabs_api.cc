@@ -20,6 +20,7 @@
 
 #include "base/check_op.h"
 #include "base/functional/bind.h"
+#include "base/i18n/language_tag.h"
 #include "base/strings/pattern.h"
 #include "base/task/bind_post_task.h"
 #include "base/task/sequenced_task_runner.h"
@@ -814,11 +815,12 @@ void TabsDetectLanguageFunction::DetectLanguage(base::Value result) {
   std::string text = result.GetString();
   bool is_model_reliable = false;
   float model_reliability_score = 0.0;
-  std::string detected_language = translate::DetermineTextLanguage(
-      text, &is_model_reliable, model_reliability_score);
+  base::i18n::LanguageTag detected_language_tag = translate::DetermineTextLanguage(
+      text, &is_model_reliable, model_reliability_score)
+      .value_or(base::i18n::GetKnownLanguageTag("und"));;
 
   translate::LanguageDetectionDetails details;
-  details.adopted_language = detected_language;
+  details.adopted_language = std::string(detected_language_tag.tag_string());
   OnLanguageDetermined(details);
 }
 
