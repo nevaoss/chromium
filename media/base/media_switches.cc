@@ -1594,22 +1594,6 @@ BASE_FEATURE(kD3D12VideoEncodeAcceleratorL1T3,
 BASE_FEATURE(kD3D12VideoEncodeAcceleratorSharedHandleCaching,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
-<<<<<<< HEAD
-#if defined(USE_WEBOS_CODEC)
-// Enable VDA based webOS video decoder.
-BASE_FEATURE(kWebOSVideoDecodeAccelerator,
-             "WebOSVideoDecodeAccelerator",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Enable VEA based webOS video encoder.
-BASE_FEATURE(kWebOSVideoEncodeAccelerator,
-             "WebOSVideoEncodeAccelerator",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-#endif
-
-#if BUILDFLAG(IS_WIN)
-BASE_FEATURE(kD3D12SharedImageEncode, base::FEATURE_DISABLED_BY_DEFAULT);
-=======
 // Enables DirectShow GetPhotoState implementation
 // Created to act as a kill switch by disabling it, in the case of the
 // resurgence of https://crbug.com/722038
@@ -1643,7 +1627,6 @@ BASE_FEATURE(kMediaFoundationD3D11VideoCapture,
 // Enable zero-copy based on MediaFoundation video capture with D3D11.
 BASE_FEATURE(kMediaFoundationD3D11VideoCaptureZeroCopy,
              base::FEATURE_DISABLED_BY_DEFAULT);
->>>>>>> 153.0.7992.0~1
 
 BASE_FEATURE(kMediaFoundationD3DVideoProcessing,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -1674,6 +1657,18 @@ BASE_FEATURE(kProtectedMediaIdentifierIndicator,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 #endif  // BUILDFLAG(IS_WIN)
+
+#if defined(USE_WEBOS_CODEC)
+// Enable VDA based webOS video decoder.
+BASE_FEATURE(kWebOSVideoDecodeAccelerator,
+             "WebOSVideoDecodeAccelerator",
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Enable VEA based webOS video encoder.
+BASE_FEATURE(kWebOSVideoEncodeAccelerator,
+             "WebOSVideoEncodeAccelerator",
+             base::FEATURE_DISABLED_BY_DEFAULT);
+#endif
 
 #if BUILDFLAG(SYSTEM_LOOPBACK_AS_AEC_REFERENCE)
 // If echo cancellation for a mic signal is requested, use system loopback

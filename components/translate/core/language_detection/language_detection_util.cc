@@ -29,29 +29,9 @@
 namespace translate {
 namespace {
 
-<<<<<<< HEAD
-// Similar language code list. Some languages are very similar and difficult
-// for CLD to distinguish.
-struct SimilarLanguageCode {
-  // TODO(neva): Not allowed for GCC 12.4, 13.3, 14.1.
-  // For GCC 11.4, 12.1/2/3, 13.1/2 and 14.2 it is Ok.
-  // The error is: "non-static const member '<member-name>',
-  // cannot use default assignment operator".
-#if defined(__GNUC__) && !defined(__clang__) && \
-    ((__GNUC__ == 12 && __GNUC_MINOR__ == 4) || \
-     (__GNUC__ == 13 && __GNUC_MINOR__ == 3) || \
-     (__GNUC__ == 14 && __GNUC_MINOR__ == 1))
-  const char* code;
-#else
-  const char* const code;
-#endif
-  int group;
-};
-=======
 using ::base::i18n::GetKnownLanguageTag;
 using ::base::i18n::LanguageTag;
 using ::base::i18n::LanguageTagConverter;
->>>>>>> 153.0.7992.0~1
 
 constexpr auto kBosnianCroatian = base::MakeFixedFlatSet<LanguageTag>(
     {GetKnownLanguageTag("bs"), GetKnownLanguageTag("hr")});
