@@ -357,7 +357,7 @@ PageDiscardingHelper::CanDiscardResult PageDiscardingHelper::CanDiscard(
   // two frames marked "current". In that case GetMainFrameNode() returns an
   // arbitrary one, which may not have the url set correctly. As a workaround
   // ignore the returned frame and use GetMainFrameUrl() for the url.
-  if (!page_node->GetMainFrameNode()) {
+  if (!page_node->GetPrimaryMainFrameNode()) {
     return CanDiscardResult::kProtected;
   }
 
