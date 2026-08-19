@@ -36,7 +36,7 @@ class WebosResourceDelegate : public ui::ResourceBundle::Delegate {
       ui::ResourceScaleFactor scale_factor) override;
   gfx::Image GetImageNamed(int resource_id) override;
   gfx::Image GetNativeImageNamed(int resource_id) override;
-  base::RefCountedStaticMemory* LoadDataResourceBytes(
+  scoped_refptr<base::RefCountedMemory> LoadDataResourceBytes(
       int resource_id,
       ui::ResourceScaleFactor scale_factor) override;
   bool GetRawDataResource(int resource_id,
