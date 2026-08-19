@@ -5,6 +5,7 @@
 import("//build/config/cast.gni")
 import("//build/config/chrome_build.gni")
 import("//build/config/gclient_args.gni")
+import("//neva/neva.gni")
 
 # This is the default set of Android configurations for which we support
 # WebXR. This flag should not be checked directly and is instead intended to
@@ -35,6 +36,7 @@ declare_args() {
       checkout_openxr &&
       (is_win || is_linux || (_is_xr_supported_android &&
                               (current_cpu == "arm" || current_cpu == "arm64")))
+                              && !is_webos
 }
 
 # The OpenXR platforms where the runtime is an externally-installed desktop
