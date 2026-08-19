@@ -229,20 +229,8 @@ RendererBlinkPlatformImpl::RendererBlinkPlatformImpl(
     if (::features::IsFontDataServiceEnabled() && sandboxEnabled()) {
 #else   // !BUILDFLAG(IS_NEVA_APPRUNTIME)
     if (features::IsFontDataServiceEnabled() && sandboxEnabled()) {
-<<<<<<< HEAD
 #endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
-      sk_sp<font_data_service::FontDataManager> font_data_manager =
-          sk_make_sp<font_data_service::FontDataManager>();
-
-      skia::OverrideDefaultSkFontMgr(font_data_manager);
-||||||| d1f7bb78c95b1
-      sk_sp<font_data_service::FontDataManager> font_data_manager =
-          sk_make_sp<font_data_service::FontDataManager>();
-
-      skia::OverrideDefaultSkFontMgr(font_data_manager);
-=======
       font_data_service::FontDataManager::CreateAndInitialize();
->>>>>>> 153.0.7996.0~1
     }
 #endif
   }

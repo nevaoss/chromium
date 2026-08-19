@@ -3769,13 +3769,6 @@ bool WebMediaPlayerImpl::ShouldPausePlaybackWhenHidden() const {
     return true;
   }
 
-<<<<<<< HEAD
-  const bool preserve_audio = HasUnmutedAudio() || audio_source_provider_->IsAudioBeingCaptured();
-
-#if !BUILDFLAG(IS_WEBOS)
-||||||| d1f7bb78c95b1
-  const bool preserve_audio = HasUnmutedAudio() || audio_source_provider_->IsAudioBeingCaptured();
-=======
   const bool is_background_suspend_enabled = IsBackgroundSuspendEnabled(this);
   const bool is_muted_background_audio_paused =
       (!HasVideo() || is_background_suspend_enabled) &&
@@ -3785,7 +3778,7 @@ bool WebMediaPlayerImpl::ShouldPausePlaybackWhenHidden() const {
       (HasUnmutedAudio() && !is_muted_background_audio_paused) ||
       audio_source_provider_->IsAudioBeingCaptured();
 
->>>>>>> 153.0.7996.0~1
+#if !BUILDFLAG(IS_WEBOS)
   // Audio only stream is allowed to play when in background.
   if (!HasVideo() && preserve_audio)
     return false;
