@@ -85,7 +85,8 @@ packager_builder(
     triggered_by = [],
     builderless = True,
     cores = None,
-    os = os.MAC_DEFAULT,
+    # TODO(crbug.com/543006750): Revert to MAC_DEFAULT after arm migration.
+    os = os.MAC_15,
     console_view_entry = consoles.console_view_entry(
         category = "packager|3pp|mac",
         short_name = "amd64",
@@ -230,7 +231,12 @@ packager_builder(
             },
             {
                 "sdk_package_name": "build-tools;37.0.0",
-                "cipd_yaml": "third_party/android_sdk/cipd/build-tools/37.0.0.yaml",
+                "cipd_yaml": "third_party/android_sdk/cipd/build-tools/37.0.0/linux.yaml",
+            },
+            {
+                "sdk_package_name": "build-tools;37.0.0",
+                "cipd_yaml": "third_party/android_sdk/cipd/build-tools/37.0.0/mac.yaml",
+                "target_os": "mac",
             },
             {
                 "sdk_package_name": "cmdline-tools;latest",
@@ -283,7 +289,12 @@ packager_builder(
             },
             {
                 "sdk_package_name": "platform-tools",
-                "cipd_yaml": "third_party/android_sdk/cipd/platform-tools.yaml",
+                "cipd_yaml": "third_party/android_sdk/cipd/platform-tools/linux.yaml",
+            },
+            {
+                "sdk_package_name": "platform-tools",
+                "cipd_yaml": "third_party/android_sdk/cipd/platform-tools/mac.yaml",
+                "target_os": "mac",
             },
             {
                 "sdk_package_name": "system-images;android-19;google_apis;x86",

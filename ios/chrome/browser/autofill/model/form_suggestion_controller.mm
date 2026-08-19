@@ -20,7 +20,6 @@
 #import "components/autofill/ios/browser/autofill_java_script_feature.h"
 #import "components/autofill/ios/browser/form_suggestion.h"
 #import "components/autofill/ios/browser/form_suggestion_provider.h"
-#import "components/autofill/ios/common/features.h"
 #import "components/autofill/ios/form_util/form_activity_params.h"
 #import "components/prefs/pref_service.h"
 #import "ios/chrome/browser/autofill/autofill_ai/public/autofill_ai_ui_util.h"
@@ -102,17 +101,12 @@ void RunSearchPipeline(NSArray<PipelineBlock>* blocks,
 UIImage* DefaultIconForType(FormSuggestion* suggestion,
                             web::WebState* web_state) {
   switch (suggestion.type) {
-    case autofill::SuggestionType::kUndoOrClear:
-      if (suggestion.suggestionIconType == SuggestionIconType::kUndoAutofill &&
-          base::FeatureList::IsEnabled(kAutofillUndoIos)) {
-        return SymbolWithPalette(SymbolWithPointSize(SymbolArrowUTurnBackward,
-                                                     kSymbolActionPointSize),
-                                 @[
-                                   [UIColor colorNamed:kTextPrimaryColor],
-                                 ]);
-      } else {
-        return nil;
-      }
+    case autofill::SuggestionType::kUndo:
+      return SymbolWithPalette(
+          SymbolWithPointSize(SymbolArrowUTurnBackward, kSymbolActionPointSize),
+          @[
+            [UIColor colorNamed:kTextPrimaryColor],
+          ]);
     case autofill::SuggestionType::kGeneratePasswordEntry:
       return MakeSymbolMulticolor(
           SymbolWithPointSize(SymbolPasswordManager, kSymbolPointSize));

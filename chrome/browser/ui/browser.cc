@@ -72,6 +72,7 @@
 #include "chrome/browser/tab_contents/tab_util.h"
 #include "chrome/browser/ui/bookmarks/bookmark_bar_controller.h"
 #include "chrome/browser/ui/bookmarks/bookmark_utils.h"
+#include "chrome/browser/ui/browser_active_state_manager/browser_active_state_manager.h"
 #include "chrome/browser/ui/browser_command_controller.h"
 #include "chrome/browser/ui/browser_init_state.h"
 #include "chrome/browser/ui/browser_manager_service.h"
@@ -195,10 +196,6 @@
 
 #if BUILDFLAG(ENABLE_CAPTIVE_PORTAL_DETECTION)
 #include "components/captive_portal/content/captive_portal_tab_helper.h"
-#endif
-
-#if BUILDFLAG(IS_OZONE)
-#include "ui/ozone/public/platform_session_manager.h"
 #endif
 
 using base::UserMetricsAction;
@@ -398,19 +395,6 @@ Browser::Browser(const CreateParams& params)
   features_ = std::make_unique<BrowserWindowFeatures>();
   features_->Init(this);
 
-  SessionServiceBase* session_service =
-      GetAppropriateSessionServiceForSessionRestore(this);
-#if BUILDFLAG(IS_OZONE)
-  if (session_service && session_service->GetPlatformSessionId()) {
-    platform_session_data_ = ui::PlatformSessionWindowData{
-        .session_id = session_service->GetPlatformSessionId().value(),
-        .window_id = session_id_.id(),
-        .restore_id = params.restore_id > Browser::kDefaultRestoreId
-                          ? std::optional<int32_t>(params.restore_id)
-                          : std::nullopt};
-  }
-#endif  // BUILDFLAG(IS_OZONE)
-
   if (params.window) {
     CHECK_IS_TEST() << "Browser::CreateParams::window is a test-only param";
   }
@@ -425,6 +409,8 @@ Browser::Browser(const CreateParams& params)
     app_browser_controller->UpdateCustomTabBarVisibility(false);
   }
 
+  SessionServiceBase* const session_service =
+      GetAppropriateSessionServiceForSessionRestore(profile_, type_);
   if (session_service) {
     session_service->WindowOpened(this);
   }
@@ -500,9 +486,6 @@ Browser::~Browser() {
 ///////////////////////////////////////////////////////////////////////////////
 // Getters & Setters
 
-BrowserView& Browser::GetBrowserView() {
-  return CHECK_DEREF(window_->AsBrowserView());
-}
 
 base::WeakPtr<Browser> Browser::AsWeakPtr() {
   return weak_factory_.GetWeakPtr();
@@ -513,44 +496,11 @@ base::WeakPtr<const Browser> Browser::AsWeakPtr() const {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// Browser, Creation and initial parameters (forwarded to BrowserInitState):
-
-///////////////////////////////////////////////////////////////////////////////
-// Browser, State Storage and Retrieval for UI:
-
-GURL Browser::GetNewTabURL() const {
-  if (auto* const app_browser_controller =
-          web_app::AppBrowserController::From(this)) {
-    return app_browser_controller->GetAppNewTabUrl();
-  }
-  return chrome::ChromeUINewTabURLAsGURL();
-}
-
-///////////////////////////////////////////////////////////////////////////////
 // Browser, OnBeforeUnload handling:
 
 void Browser::NotifyWindowCloseCancelled(
     BrowserWindowInterface::ClosingStatus status) {
   browser_close_cancelled_callback_list_.Notify(this, status);
-}
-
-BrowserWindowInterface* Browser::GetBrowserForOpeningWebUi() {
-  if (GetType() != BrowserWindowInterface::Type::TYPE_PICTURE_IN_PICTURE) {
-    return this;
-  }
-
-  if (!opener_browser_) {
-    auto* opener_web_contents =
-        PictureInPictureWindowManager::GetInstance()->GetWebContents();
-    // We should always have an opener web contents if the current browser is a
-    // picture-in-picture type.
-    DCHECK(opener_web_contents);
-    opener_browser_ =
-        GlobalBrowserCollection::GetInstance()->FindBrowserWithTab(
-            opener_web_contents);
-  }
-
-  return opener_browser_;
 }
 
 std::vector<StatusBubble*> Browser::GetStatusBubblesForTesting() {
@@ -644,28 +594,19 @@ Browser::GetWebContentsModalDialogHostForTab(
 }
 
 bool Browser::IsActive() const {
-// TODO(https://crbug.com/376306245): This is a temporary workaround for the
-// fact that window_->IsActive() does not return the right result for macOS
-// standalone PWA windows. This new behavior is still not technically correct,
-// since it's checking that the last active window is `this`, as opposed to
-// whether `this` is active.
-#if BUILDFLAG(IS_MAC)
-  // If this is a standalone PWA window, check BrowserList instead.
-  if (web_app::AppBrowserController::From(this)) {
-    return GetLastActiveBrowserWindowInterfaceWithAnyProfile() == this;
-  }
-#endif
-  return is_active_;
+  return BrowserActiveStateManager::From(this)->IsActive();
 }
 
 base::CallbackListSubscription Browser::RegisterDidBecomeActive(
     DidBecomeActiveCallback callback) {
-  return did_become_active_callback_list_.Add(std::move(callback));
+  return BrowserActiveStateManager::From(this)->RegisterDidBecomeActive(
+      std::move(callback));
 }
 
 base::CallbackListSubscription Browser::RegisterDidBecomeInactive(
     DidBecomeInactiveCallback callback) {
-  return did_become_inactive_callback_list_.Add(std::move(callback));
+  return BrowserActiveStateManager::From(this)->RegisterDidBecomeInactive(
+      std::move(callback));
 }
 
 void Browser::SynchronouslyDestroyBrowser() {
@@ -726,21 +667,6 @@ const DesktopBrowserWindowCapabilities* Browser::capabilities() const {
   return DesktopBrowserWindowCapabilities::From(this);
 }
 
-void Browser::DidBecomeActive() {
-  if (!is_active_) {
-    is_active_ = true;
-    did_become_active_callback_list_.Notify(this);
-    base::RecordAction(base::UserMetricsAction("ActiveBrowserChanged"));
-  }
-}
-
-void Browser::DidBecomeInactive() {
-  if (is_active_) {
-    is_active_ = false;
-    did_become_inactive_callback_list_.Notify(this);
-  }
-}
-
 void Browser::OnWindowCloseComplete() {
   // If there are no tabs, then a task will be scheduled (by views) to delete
   // this Browser.
@@ -785,28 +711,6 @@ void Browser::OnWindowCloseComplete() {
 
 ////////////////////////////////////////////////////////////////////////////////
 // Browser, Tab adding/showing functions:
-
-void Browser::WindowFullscreenStateChanged() {
-  GetFeatures()
-      .exclusive_access_manager()
-      ->fullscreen_controller()
-      ->WindowFullscreenStateChanged();
-  chrome::BrowserCommandController::From(this)->FullscreenStateChanged();
-  BookmarkBarController::From(this)->UpdateBookmarkBarState(
-      BookmarkBarController::StateChangeReason::kToggleFullscreen);
-}
-
-void Browser::FullscreenTopUIStateChanged() {
-  chrome::BrowserCommandController::From(this)->FullscreenStateChanged();
-  BookmarkBarController::From(this)->UpdateBookmarkBarState(
-      BookmarkBarController::StateChangeReason::kToolbarOptionChange);
-}
-
-void Browser::OnFindBarVisibilityChanged() {
-  GetFeatures().GetFindBarController()->UpdatePageAction();
-
-  chrome::BrowserCommandController::From(this)->FindBarVisibilityChanged();
-}
 
 void Browser::UpdateUIForNavigationInTab(WebContents* contents,
                                          ui::PageTransition transition,

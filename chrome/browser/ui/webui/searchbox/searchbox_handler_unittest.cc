@@ -361,7 +361,8 @@ TEST_F(RealboxHandlerTest, AutocompleteController_Start) {
     handler_->QueryAutocomplete(
         0, u"", /*prevent_inline_autocomplete=*/false, 0,
         omnibox::SuggestInventory::SUGGEST_INVENTORY_DEFAULT,
-        /*is_on_focus=*/true);
+        /*is_on_focus=*/true, /*keyword=*/"",
+        searchbox::mojom::InputMethod::kKeyboard);
 
     EXPECT_EQ(input_text, u"");
     EXPECT_EQ(input.text(), u"");
@@ -390,7 +391,8 @@ TEST_F(RealboxHandlerTest, AutocompleteController_Start) {
     handler_->QueryAutocomplete(
         0, u"a", /*prevent_inline_autocomplete=*/false, 0,
         omnibox::SuggestInventory::SUGGEST_INVENTORY_DEFAULT,
-        /*is_on_focus=*/false);
+        /*is_on_focus=*/false, /*keyword=*/"",
+        searchbox::mojom::InputMethod::kKeyboard);
 
     EXPECT_EQ(input_text, u"a");
     EXPECT_EQ(input.text(), u"a");
@@ -438,7 +440,8 @@ TEST_F(RealboxHandlerTest, AutocompleteController_StartWithSuggestInventory) {
     handler_->QueryAutocomplete(
         0, u"a", /*prevent_inline_autocomplete=*/false, 0,
         omnibox::SuggestInventory::SUGGEST_INVENTORY_TRAVEL,
-        /*is_on_focus=*/false);
+        /*is_on_focus=*/false, /*keyword=*/"",
+        searchbox::mojom::InputMethod::kKeyboard);
 
     EXPECT_EQ(input_text, u"a");
     EXPECT_EQ(input.text(), u"a");
@@ -455,7 +458,7 @@ TEST_F(RealboxHandlerTest, AutocompleteController_StartWithSuggestInventory) {
   }
 }
 
-TEST_F(RealboxHandlerTest, SetInputMethodTest) {
+TEST_F(RealboxHandlerTest, InputMethodTest) {
   // Stop observing the `AutocompleteController` instance which will be
   // destroyed.
   handler_->autocomplete_controller_observation_.Reset();
@@ -486,12 +489,11 @@ TEST_F(RealboxHandlerTest, SetInputMethodTest) {
         .Times(1)
         .WillOnce(SaveArg<0>(&input));
 
-    handler_->SetInputMethod(searchbox::mojom::InputMethod::kSmartCompose);
-
     handler_->QueryAutocomplete(
         0, u"test query", /*prevent_inline_autocomplete=*/false, 10,
         omnibox::SuggestInventory::SUGGEST_INVENTORY_TRAVEL,
-        /*is_on_focus=*/false);
+        /*is_on_focus=*/false, /*keyword=*/"",
+        searchbox::mojom::InputMethod::kSmartCompose);
 
     EXPECT_EQ(input_text, u"test query");
     EXPECT_EQ(input.text(), u"test query");
@@ -514,12 +516,11 @@ TEST_F(RealboxHandlerTest, SetInputMethodTest) {
         .Times(1)
         .WillOnce(SaveArg<0>(&input));
 
-    // No SetInputMethod call - should default to KEYBOARD.
-
     handler_->QueryAutocomplete(
         0, u"another query", /*prevent_inline_autocomplete=*/false, 13,
         omnibox::SuggestInventory::SUGGEST_INVENTORY_TRAVEL,
-        /*is_on_focus=*/false);
+        /*is_on_focus=*/false, /*keyword=*/"",
+        searchbox::mojom::InputMethod::kKeyboard);
 
     EXPECT_EQ(input_text, u"another query");
     EXPECT_EQ(input.text(), u"another query");
@@ -730,7 +731,8 @@ TEST_F(LensSearchboxHandlerTest, Lens_AutocompleteController_Start) {
     handler_->QueryAutocomplete(
         0, u"", /*prevent_inline_autocomplete=*/false, 0,
         omnibox::SuggestInventory::SUGGEST_INVENTORY_DEFAULT,
-        /*is_on_focus=*/true);
+        /*is_on_focus=*/true, /*keyword=*/"",
+        searchbox::mojom::InputMethod::kKeyboard);
 
     EXPECT_EQ(input_text, u"");
     EXPECT_EQ(input.text(), u"");
@@ -785,7 +787,8 @@ TEST_F(LensSearchboxHandlerTest, Lens_AutocompleteController_Start) {
     handler_->QueryAutocomplete(
         0, u"a", /*prevent_inline_autocomplete=*/false, 0,
         omnibox::SuggestInventory::SUGGEST_INVENTORY_DEFAULT,
-        /*is_on_focus=*/false);
+        /*is_on_focus=*/false, /*keyword=*/"",
+        searchbox::mojom::InputMethod::kKeyboard);
 
     EXPECT_EQ(input_text, u"a");
     EXPECT_EQ(input.text(), u"a");
@@ -994,7 +997,31 @@ TEST_F(WebuiOmniboxHandlerTest,
 }
 
 TEST_F(WebuiOmniboxHandlerTest,
-       CreateAutocompleteMatch_ContextualSearchIconOverride_AskGSwapIconEnabled) {
+       CreateAutocompleteMatch_ContextualSearchIconOverride_AskGSwapSuggestionIconEnabled) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeatureWithParameters(
+      omnibox::kWebUIOmniboxAskGAboutThisPage,
+      {{"Omnibox_AskGSwapSuggestionIcon", "true"}});
+
+  AutocompleteMatch match;
+  match.suggestion_group_id = omnibox::GroupId::GROUP_CONTEXTUAL_SEARCH;
+  match.destination_url = GURL("https://example.com");
+
+  bookmarks::BookmarkModel* bookmark_model =
+      BookmarkModelFactory::GetForBrowserContext(profile());
+  bookmark_model->LoadEmptyForTest();
+
+  auto mojom_match = handler_->CreateAutocompleteMatch(
+      match, 0, bookmark_model, omnibox::GroupConfigMap(),
+      omnibox_controller_->client()->GetTemplateURLService());
+
+  ASSERT_TRUE(mojom_match.has_value());
+  EXPECT_EQ(mojom_match.value()->icon_path,
+            searchbox_internal::kSearchSparkIconResourceName);
+}
+
+TEST_F(WebuiOmniboxHandlerTest,
+       CreateAutocompleteMatch_ContextualSearchIconOverride_AskGSwapIconEnabledOnly) {
   base::test::ScopedFeatureList feature_list;
   feature_list.InitAndEnableFeatureWithParameters(
       omnibox::kWebUIOmniboxAskGAboutThisPage,
@@ -1014,7 +1041,7 @@ TEST_F(WebuiOmniboxHandlerTest,
 
   ASSERT_TRUE(mojom_match.has_value());
   EXPECT_EQ(mojom_match.value()->icon_path,
-            searchbox_internal::kSearchSparkIconResourceName);
+            searchbox_internal::kReplyRotated180IconResourceName);
 }
 
 TEST_F(WebuiOmniboxHandlerTest, OpenAutocompleteMatch_KeyboardModifiers) {

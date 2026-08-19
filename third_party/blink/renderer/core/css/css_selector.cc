@@ -34,7 +34,6 @@
 #include "base/containers/span.h"
 #include "base/strings/string_view_util.h"
 #include "style_rule.h"
-#include "third_party/blink/renderer/core/css/active_navigation_condition.h"
 #include "third_party/blink/renderer/core/css/css_markup.h"
 #include "third_party/blink/renderer/core/css/css_selector_list.h"
 #include "third_party/blink/renderer/core/css/navigation_query.h"
@@ -426,7 +425,6 @@ PseudoId CSSSelector::GetPseudoId(PseudoType type) {
       return kPseudoIdOverscrollBackdrop;
     case kPseudoAnimatedImage:
     case kPseudoActive:
-    case kPseudoActiveNavigation:
     case kPseudoActiveOption:
     case kPseudoActiveViewTransition:
     case kPseudoActiveViewTransitionType:
@@ -753,7 +751,6 @@ constexpr static NameToPseudoStruct kPseudoTypeWithArgumentsMap[] = {
     {"-internal-overscroll-area-parent",
      CSSSelector::kPseudoOverscrollAreaParent},
     {"-webkit-any", CSSSelector::kPseudoAny},
-    {"active-navigation", CSSSelector::kPseudoActiveNavigation},
     {"active-view-transition-type",
      CSSSelector::kPseudoActiveViewTransitionType},
     {"cue", CSSSelector::kPseudoCue},
@@ -1071,7 +1068,6 @@ void CSSSelector::UpdatePseudoType(const AtomicString& value,
       [[fallthrough]];
     // For pseudo-classes
     case kPseudoActive:
-    case kPseudoActiveNavigation:
     case kPseudoActiveOption:
     case kPseudoActiveViewTransition:
     case kPseudoActiveViewTransitionType:
@@ -1408,16 +1404,9 @@ void CSSSelector::SerializeSimpleSelector(StringBuilder& builder,
         break;
       }
       case kPseudoLinkTo: {
-        DCHECK(GetRouteLocation());
+        DCHECK(GetNavigationLocation());
         builder.Append("(");
-        GetRouteLocation()->SerializeTo(builder);
-        builder.Append(")");
-        break;
-      }
-      case kPseudoActiveNavigation: {
-        DCHECK(GetActiveNavigationCondition());
-        builder.Append("(");
-        GetActiveNavigationCondition()->SerializeTo(builder);
+        GetNavigationLocation()->SerializeTo(builder);
         builder.Append(")");
         break;
       }
@@ -1631,15 +1620,9 @@ void CSSSelector::SetSelectorList(CSSSelectorList* selector_list) {
   data_.rare_data_->selector_list_ = selector_list;
 }
 
-void CSSSelector::SetRouteLocation(RouteLocation* location) {
+void CSSSelector::SetNavigationLocation(NavigationLocation* location) {
   CreateRareData();
-  data_.rare_data_->route_location_ = location;
-}
-
-void CSSSelector::SetActiveNavigationCondition(
-    ActiveNavigationCondition* condition) {
-  CreateRareData();
-  data_.rare_data_->active_navigation_condition_ = condition;
+  data_.rare_data_->navigation_location_ = location;
 }
 
 void CSSSelector::SetContainsPseudoInsideHasPseudoClass() {
@@ -1896,7 +1879,6 @@ bool CSSSelector::IsAllowedAfterPart() const {
     case kPseudoAutofillSelected:
     case kPseudoWebKitAutofill:
     case kPseudoActive:
-    case kPseudoActiveNavigation:
     case kPseudoActiveOption:
     case kPseudoActiveViewTransition:
     case kPseudoActiveViewTransitionType:
@@ -2148,30 +2130,7 @@ CSSSelector::RareData::~RareData() = default;
 
 // a helper function for checking nth-arguments
 bool CSSSelector::RareData::MatchNth(unsigned unsigned_count) {
-  // These very large values for aN + B or count can't ever match, so
-  // give up immediately if we see them.
-  int max_value = std::numeric_limits<int>::max() / 2;
-  int min_value = std::numeric_limits<int>::min() / 2;
-  if (unsigned_count > static_cast<unsigned>(max_value) ||
-      NthAValue() > max_value || NthAValue() < min_value ||
-      NthBValue() > max_value || NthBValue() < min_value) [[unlikely]] {
-    return false;
-  }
-
-  int count = static_cast<int>(unsigned_count);
-  if (!NthAValue()) {
-    return count == NthBValue();
-  }
-  if (NthAValue() > 0) {
-    if (count < NthBValue()) {
-      return false;
-    }
-    return (count - NthBValue()) % NthAValue() == 0;
-  }
-  if (count > NthBValue()) {
-    return false;
-  }
-  return (NthBValue() - count) % (-NthAValue()) == 0;
+  return CSSSelector::MatchNth(NthAValue(), NthBValue(), unsigned_count);
 }
 
 CSSSelector::RareData* CSSSelector::RareData::Renest(StyleRule* new_parent) {
@@ -2201,8 +2160,7 @@ void CSSSelector::Trace(Visitor* visitor) const {
 
 void CSSSelector::RareData::Trace(Visitor* visitor) const {
   visitor->Trace(selector_list_);
-  visitor->Trace(route_location_);
-  visitor->Trace(active_navigation_condition_);
+  visitor->Trace(navigation_location_);
 }
 
 const CSSSelector* CSSSelector::SelectorListOrParent() const {
@@ -2259,7 +2217,6 @@ bool CSSSelector::SupportsPseudoStateChange(PseudoType type) {
   switch (type) {
     case CSSSelector::kPseudoAnimatedImage:
     case CSSSelector::kPseudoActive:
-    case CSSSelector::kPseudoActiveNavigation:
     case CSSSelector::kPseudoActiveOption:
     case CSSSelector::kPseudoActiveViewTransition:
     case CSSSelector::kPseudoActiveViewTransitionType:

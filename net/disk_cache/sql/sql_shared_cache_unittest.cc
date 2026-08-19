@@ -223,9 +223,9 @@ class SqlSharedCacheTest : public testing::TestWithParam<bool> {
               SqlSharedCacheIsolatedDatabase::Error::kEntryNotFound);
   }
 
-  SqlPersistentStore::OptionalEntryInfoOrError OpenStoreEntry(
+  SqlPersistentStore::EntryInfoOrError OpenStoreEntry(
       const CacheEntryKey& key) {
-    base::test::TestFuture<SqlPersistentStore::OptionalEntryInfoOrError> future;
+    base::test::TestFuture<SqlPersistentStore::EntryInfoOrError> future;
     store_->OpenEntry(key, future.GetCallback());
     async_task_manager_.RunUntilAllTasksCompleteForTest();
     return future.Take();
@@ -237,12 +237,9 @@ class SqlSharedCacheTest : public testing::TestWithParam<bool> {
       SqlSharedCacheRowId expected_row_id) {
     auto open_result = OpenStoreEntry(key);
     ASSERT_TRUE(open_result.has_value());
-    ASSERT_TRUE(open_result.value().has_value());
-    ASSERT_TRUE(open_result.value()->shared_cache_resource_id.has_value());
-    EXPECT_EQ(open_result.value()->shared_cache_resource_id->db_id,
-              expected_db_id);
-    EXPECT_EQ(open_result.value()->shared_cache_resource_id->row_id,
-              expected_row_id);
+    ASSERT_TRUE(open_result->shared_cache_resource_id.has_value());
+    EXPECT_EQ(open_result->shared_cache_resource_id->db_id, expected_db_id);
+    EXPECT_EQ(open_result->shared_cache_resource_id->row_id, expected_row_id);
   }
 
   base::test::ScopedFeatureList feature_list_;
@@ -272,7 +269,7 @@ TEST_P(SqlSharedCacheTest, BasicLifecycleAndHandleCount) {
       base::ThreadPool::CreateSequencedTaskRunner(
           {base::MayBlock(), base::TaskPriority::USER_BLOCKING,
            base::TaskShutdownBehavior::BLOCK_SHUTDOWN}),
-      cleanup_tracker_);
+      /*read_cache_memory_monitor=*/nullptr, cleanup_tracker_);
 
   EXPECT_EQ(cache->nik_string(), "test_nik");
   EXPECT_FALSE(cache->shared_cache_db_id().has_value());
@@ -304,7 +301,7 @@ TEST_P(SqlSharedCacheTest, InitIsolatedDatabaseAndCleanup) {
       base::ThreadPool::CreateSequencedTaskRunner(
           {base::MayBlock(), base::TaskPriority::USER_BLOCKING,
            base::TaskShutdownBehavior::BLOCK_SHUTDOWN}),
-      cleanup_tracker_);
+      /*read_cache_memory_monitor=*/nullptr, cleanup_tracker_);
 
   bool init_success = false;
 
@@ -331,7 +328,7 @@ TEST_P(SqlSharedCacheTest, CleanupWithoutIsolatedDatabase) {
       base::ThreadPool::CreateSequencedTaskRunner(
           {base::MayBlock(), base::TaskPriority::USER_BLOCKING,
            base::TaskShutdownBehavior::BLOCK_SHUTDOWN}),
-      cleanup_tracker_);
+      /*read_cache_memory_monitor=*/nullptr, cleanup_tracker_);
 
   bool cleanup_done = false;
   cache->Cleanup(base::BindLambdaForTesting([&]() { cleanup_done = true; }));
@@ -346,7 +343,7 @@ TEST_P(SqlSharedCacheTest, DestructionTriggersCleanup) {
         base::ThreadPool::CreateSequencedTaskRunner(
             {base::MayBlock(), base::TaskPriority::USER_BLOCKING,
              base::TaskShutdownBehavior::BLOCK_SHUTDOWN}),
-        cleanup_tracker_);
+        /*read_cache_memory_monitor=*/nullptr, cleanup_tracker_);
 
     bool init_success = false;
     cache->InitIsolatedDatabase(
@@ -370,7 +367,7 @@ TEST_P(SqlSharedCacheTest, DestructionTriggersCleanup) {
       base::ThreadPool::CreateSequencedTaskRunner(
           {base::MayBlock(), base::TaskPriority::USER_BLOCKING,
            base::TaskShutdownBehavior::BLOCK_SHUTDOWN}),
-      cleanup_tracker_);
+      /*read_cache_memory_monitor=*/nullptr, cleanup_tracker_);
 
   bool reinit_success = false;
   new_cache->InitIsolatedDatabase(
@@ -968,7 +965,7 @@ TEST_P(SqlSharedCacheTest, DeleteEntriesWithoutIsolatedDatabase) {
       base::ThreadPool::CreateSequencedTaskRunner(
           {base::MayBlock(), base::TaskPriority::USER_BLOCKING,
            base::TaskShutdownBehavior::BLOCK_SHUTDOWN}),
-      cleanup_tracker_);
+      /*read_cache_memory_monitor=*/nullptr, cleanup_tracker_);
 
   base::test::TestFuture<
       base::expected<void, SqlSharedCacheIsolatedDatabase::Error>>
@@ -980,6 +977,195 @@ TEST_P(SqlSharedCacheTest, DeleteEntriesWithoutIsolatedDatabase) {
   EXPECT_EQ(
       result.error(),
       SqlSharedCacheIsolatedDatabase::Error::kIsolatedDatabaseNotAvailable);
+}
+
+TEST_P(SqlSharedCacheTest, GetBlobHandleSuccess) {
+  auto handle = CreateAndInitStoreAndCache();
+  auto* cache = handle->get();
+
+  const CacheEntryKey kKey(
+      "credential_key/post_key/https://example.com/blob_test");
+  auto response_info = CreateTestHttpResponseInfo();
+  std::string body_data = "Blob data test";
+  PopulateStoreEntry(kKey, response_info, body_data);
+
+  base::queue<SqlPersistentStore::SharedCacheEligibleEntry> entries;
+  entries.push(CreateEligibleEntry(kKey, GURL("https://example.com/blob_test"),
+                                   response_info));
+
+  auto abort_flag =
+      base::MakeRefCounted<base::RefCountedData<std::atomic_bool>>(
+          std::in_place, false);
+  base::test::TestFuture<
+      base::queue<SqlPersistentStore::SharedCacheEligibleEntry>>
+      copy_future;
+  cache->CopyEntries(std::move(entries), abort_flag, copy_future.GetCallback());
+
+  async_task_manager_.RunUntilAllTasksCompleteForTest();
+  auto unprocessed = copy_future.Take();
+  EXPECT_TRUE(unprocessed.empty());
+
+  base::test::TestFuture<base::expected<scoped_refptr<SqlSharedCacheBlobHandle>,
+                                        SqlSharedCacheIsolatedDatabase::Error>>
+      blob_future;
+  cache->GetBlobHandle(kKey, SqlSharedCacheRowId(1), body_data.size(),
+                       blob_future.GetCallback());
+  async_task_manager_.RunUntilAllTasksCompleteForTest();
+  auto result = blob_future.Take();
+  ASSERT_TRUE(result.has_value());
+  EXPECT_TRUE(result.value());
+}
+
+TEST_P(SqlSharedCacheTest, GetBlobHandleWithoutIsolatedDatabase) {
+  auto cache = std::make_unique<SqlSharedCache>(
+      "test_nik", *store_, temp_dir_.GetPath(), base::DoNothing(),
+      base::ThreadPool::CreateSequencedTaskRunner(
+          {base::MayBlock(), base::TaskPriority::USER_BLOCKING,
+           base::TaskShutdownBehavior::BLOCK_SHUTDOWN}),
+      /*read_cache_memory_monitor=*/nullptr, cleanup_tracker_);
+
+  const CacheEntryKey kKey("https://example.com/blob_test");
+  base::test::TestFuture<base::expected<scoped_refptr<SqlSharedCacheBlobHandle>,
+                                        SqlSharedCacheIsolatedDatabase::Error>>
+      blob_future;
+  cache->GetBlobHandle(kKey, SqlSharedCacheRowId(1), 10,
+                       blob_future.GetCallback());
+  auto result = blob_future.Take();
+  ASSERT_FALSE(result.has_value());
+  EXPECT_EQ(
+      result.error(),
+      SqlSharedCacheIsolatedDatabase::Error::kIsolatedDatabaseNotAvailable);
+}
+
+TEST_P(SqlSharedCacheTest, ReadSuccess) {
+  auto handle = CreateAndInitStoreAndCache();
+  auto* cache = handle->get();
+
+  const CacheEntryKey kKey(
+      "credential_key/post_key/https://example.com/read_test");
+  auto response_info = CreateTestHttpResponseInfo();
+  std::string body_data = "Read data test";
+  PopulateStoreEntry(kKey, response_info, body_data);
+
+  base::queue<SqlPersistentStore::SharedCacheEligibleEntry> entries;
+  entries.push(CreateEligibleEntry(kKey, GURL("https://example.com/read_test"),
+                                   response_info));
+
+  auto abort_flag =
+      base::MakeRefCounted<base::RefCountedData<std::atomic_bool>>(
+          std::in_place, false);
+  base::test::TestFuture<
+      base::queue<SqlPersistentStore::SharedCacheEligibleEntry>>
+      copy_future;
+  cache->CopyEntries(std::move(entries), abort_flag, copy_future.GetCallback());
+
+  async_task_manager_.RunUntilAllTasksCompleteForTest();
+  auto unprocessed = copy_future.Take();
+  EXPECT_TRUE(unprocessed.empty());
+
+  auto read_buf = base::MakeRefCounted<net::IOBufferWithSize>(body_data.size());
+  base::test::TestFuture<SqlPersistentStore::ReadResultOrError> read_future;
+  cache->Read(kKey, SqlSharedCacheRowId(1), body_data.size(), /*offset=*/0,
+              read_buf, read_future.GetCallback());
+  async_task_manager_.RunUntilAllTasksCompleteForTest();
+
+  auto result = read_future.Take();
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ(result->read_bytes, static_cast<int>(body_data.size()));
+  EXPECT_EQ(std::string_view(read_buf->data(), body_data.size()), body_data);
+}
+
+TEST_P(SqlSharedCacheTest, ReadWithoutIsolatedDatabase) {
+  auto cache = std::make_unique<SqlSharedCache>(
+      "test_nik", *store_, temp_dir_.GetPath(), base::DoNothing(),
+      base::ThreadPool::CreateSequencedTaskRunner(
+          {base::MayBlock(), base::TaskPriority::USER_BLOCKING,
+           base::TaskShutdownBehavior::BLOCK_SHUTDOWN}),
+      /*read_cache_memory_monitor=*/nullptr, cleanup_tracker_);
+
+  const CacheEntryKey kKey("https://example.com/read_test");
+  auto read_buf = base::MakeRefCounted<net::IOBufferWithSize>(10);
+  base::test::TestFuture<SqlPersistentStore::ReadResultOrError> read_future;
+  cache->Read(kKey, SqlSharedCacheRowId(1), /*body_size=*/10, /*offset=*/0,
+              read_buf, read_future.GetCallback());
+
+  auto result = read_future.Take();
+  ASSERT_FALSE(result.has_value());
+  EXPECT_EQ(result.error(), SqlPersistentStore::Error::kNotFound);
+}
+
+TEST_P(SqlSharedCacheTest, ReadOffsetExceedsIntMax) {
+  auto handle = CreateAndInitStoreAndCache();
+  auto* cache = handle->get();
+
+  const CacheEntryKey kKey("https://example.com/read_test");
+  auto read_buf = base::MakeRefCounted<net::IOBufferWithSize>(10);
+  base::test::TestFuture<SqlPersistentStore::ReadResultOrError> read_future;
+  cache->Read(
+      kKey, SqlSharedCacheRowId(1), /*body_size=*/10,
+      /*offset=*/static_cast<int64_t>(std::numeric_limits<int>::max()) + 1,
+      read_buf, read_future.GetCallback());
+
+  async_task_manager_.RunUntilAllTasksCompleteForTest();
+  auto result = read_future.Take();
+  ASSERT_FALSE(result.has_value());
+  EXPECT_EQ(result.error(), SqlPersistentStore::Error::kFailedToExecute);
+}
+
+TEST_P(SqlSharedCacheTest, ReadEntryNotFound) {
+  auto handle = CreateAndInitStoreAndCache();
+  auto* cache = handle->get();
+
+  const CacheEntryKey kKey("https://example.com/read_test");
+  auto read_buf = base::MakeRefCounted<net::IOBufferWithSize>(10);
+  base::test::TestFuture<SqlPersistentStore::ReadResultOrError> read_future;
+  cache->Read(kKey, SqlSharedCacheRowId(9999), /*body_size=*/10, /*offset=*/0,
+              read_buf, read_future.GetCallback());
+
+  async_task_manager_.RunUntilAllTasksCompleteForTest();
+  auto result = read_future.Take();
+  ASSERT_FALSE(result.has_value());
+  EXPECT_EQ(result.error(), SqlPersistentStore::Error::kNotFound);
+}
+
+TEST_P(SqlSharedCacheTest, ReadOtherError) {
+  auto handle = CreateAndInitStoreAndCache();
+  auto* cache = handle->get();
+
+  const CacheEntryKey kKey(
+      "credential_key/post_key/https://example.com/read_other_error");
+  auto response_info = CreateTestHttpResponseInfo();
+  std::string body_data = "Read error data";
+  PopulateStoreEntry(kKey, response_info, body_data);
+
+  base::queue<SqlPersistentStore::SharedCacheEligibleEntry> entries;
+  entries.push(CreateEligibleEntry(
+      kKey, GURL("https://example.com/read_other_error"), response_info));
+
+  auto abort_flag =
+      base::MakeRefCounted<base::RefCountedData<std::atomic_bool>>(
+          std::in_place, false);
+  base::test::TestFuture<
+      base::queue<SqlPersistentStore::SharedCacheEligibleEntry>>
+      copy_future;
+  cache->CopyEntries(std::move(entries), abort_flag, copy_future.GetCallback());
+
+  async_task_manager_.RunUntilAllTasksCompleteForTest();
+  auto unprocessed = copy_future.Take();
+  EXPECT_TRUE(unprocessed.empty());
+
+  // Pass a buffer larger than body_data.size() (100 > 15) so offset + buf_len >
+  // body_size, triggering Error::kInvalidReadRange in
+  // SqlSharedCacheIsolatedDatabase::Read.
+  auto invalid_buf = base::MakeRefCounted<net::IOBufferWithSize>(100);
+  base::test::TestFuture<SqlPersistentStore::ReadResultOrError> read_future;
+  cache->Read(kKey, SqlSharedCacheRowId(1), body_data.size(), /*offset=*/0,
+              invalid_buf, read_future.GetCallback());
+
+  async_task_manager_.RunUntilAllTasksCompleteForTest();
+  auto result = read_future.Take();
+  ASSERT_FALSE(result.has_value());
+  EXPECT_EQ(result.error(), SqlPersistentStore::Error::kFailedToExecute);
 }
 
 }  // namespace disk_cache

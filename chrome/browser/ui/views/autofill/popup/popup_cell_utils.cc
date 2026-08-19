@@ -68,10 +68,6 @@
 #include "ui/views/view.h"
 #include "ui/views/view_class_properties.h"
 
-#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
-#include "components/plus_addresses/core/browser/resources/vector_icons.h"
-#endif
-
 namespace autofill::popup_cell_utils {
 
 namespace {
@@ -153,7 +149,6 @@ std::u16string GetIconAccessibleName(Suggestion::Icon icon) {
     // Generic icons start
     case Suggestion::Icon::kAccount:
     case Suggestion::Icon::kAndroidMessages:
-    case Suggestion::Icon::kClear:
     case Suggestion::Icon::kCode:
     case Suggestion::Icon::kDelete:
     case Suggestion::Icon::kDevice:
@@ -418,7 +413,7 @@ bool IsPaymentMethodSuggestion(const Suggestion& suggestion) {
     case SuggestionType::kSeparator:
     case SuggestionType::kTitle:
     case SuggestionType::kTroubleSigningInEntry:
-    case SuggestionType::kUndoOrClear:
+    case SuggestionType::kUndo:
     case SuggestionType::kViewPasswordDetails:
     case SuggestionType::kWebauthnCredential:
     case SuggestionType::kWebauthnPasskeyQrCode:
@@ -459,11 +454,6 @@ std::optional<ui::ImageModel> GetIconImageModelFromIcon(Suggestion::Icon icon) {
       return ImageModelFromVectorIcon(::features::IsRoundedIconsEnabled()
                                           ? kCreditCardIcon
                                           : kCreditCardOldIcon,
-                                      kIconSize);
-    case Suggestion::Icon::kClear:
-      return ImageModelFromVectorIcon(::features::IsRoundedIconsEnabled()
-                                          ? kBackspaceFilledIcon
-                                          : kBackspaceOldIcon,
                                       kIconSize);
     case Suggestion::Icon::kCode:
       return ImageModelFromVectorIcon(::features::IsRoundedIconsEnabled()

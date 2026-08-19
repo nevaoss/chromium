@@ -73,6 +73,7 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/task/thread_pool/thread_pool_instance.h"
+#include "base/timer/elapsed_timer.h"
 #include "base/trace_event/trace_event.h"
 #include "build/build_config.h"
 #include "components/crash/content/browser/crash_handler_host_linux.h"
@@ -81,6 +82,7 @@
 #include "components/embedder_support/user_agent_utils.h"
 #include "components/heap_profiling/in_process/heap_profiler_controller.h"
 #include "components/navigation_interception/intercept_navigation_delegate.h"
+#include "components/network_session_configurator/common/network_switches.h"
 #include "components/page_load_metrics/browser/metrics_navigation_throttle.h"
 #include "components/page_load_metrics/browser/metrics_web_contents_observer.h"
 #include "components/policy/content/policy_blocklist_navigation_throttle.h"
@@ -93,6 +95,8 @@
 #include "components/safe_browsing/core/common/features.h"
 #include "components/safe_browsing/core/common/hashprefix_realtime/hash_realtime_utils.h"
 #include "components/sampling_profiler/process_type.h"
+#include "components/security_state/content/content_utils.h"
+#include "components/security_state/core/security_state.h"
 #include "components/url_matcher/url_matcher.h"
 #include "components/url_matcher/url_util.h"
 #include "components/user_prefs/user_prefs.h"
@@ -125,6 +129,7 @@
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "net/android/network_library.h"
 #include "net/base/features.h"
+#include "net/base/url_util.h"
 #include "net/cookies/cookie_setting_override.h"
 #include "net/cookies/site_for_cookies.h"
 #include "net/http/http_util.h"
@@ -295,11 +300,16 @@ void AwContentBrowserClient::OnNetworkServiceCreated(
       base::FeatureList::IsEnabled(features::kWebViewEnableDnsPlatform)) {
     // Using the platform DNS APIs requires:
     // 1. Enabling the built-in DNS in platform mode
-    // (net::InsecureDnsMode::kEnabledPlatform)
+    // (net::InsecureDnsMode::kEnabledPlatform or
+    // net::InsecureDnsMode::kEnabledPlatformNoSystem)
     // 2. Disabling DoH queries, these do not yet use the platform DNS APIs
     //    (net::SecureDnsMode::kOff)
+    net::InsecureDnsMode insecure_dns_mode =
+        features::kWebViewEnableDnsPlatformNoSystem.Get()
+            ? net::InsecureDnsMode::kEnabledPlatformNoSystem
+            : net::InsecureDnsMode::kEnabledPlatform;
     network_service->ConfigureStubHostResolver(
-        net::InsecureDnsMode::kEnabledPlatform,
+        insecure_dns_mode,
         /*happy_eyeballs_v3_enabled=*/false, net::SecureDnsMode::kOff,
         net::DnsOverHttpsConfig(),
         /*additional_dns_types_enabled=*/true,
@@ -581,6 +591,32 @@ void AwContentBrowserClient::AllowCertificateError(
     std::move(split_callback.second)
         .Run(content::CERTIFICATE_REQUEST_RESULT_TYPE_DENY);
   }
+}
+
+bool AwContentBrowserClient::IsSecurityLevelAcceptableForWebAuthn(
+    content::RenderFrameHost* rfh,
+    const url::Origin& caller_origin) {
+  if (!base::FeatureList::IsEnabled(
+          android_webview::features::kWebViewWebAuthnRequiresSecureOrigin)) {
+    return true;
+  }
+  content::WebContents* web_contents =
+      content::WebContents::FromRenderFrameHost(rfh);
+  if (!web_contents) {
+    return false;
+  }
+  if (net::IsLocalhost(caller_origin.GetURL())) {
+    return true;
+  }
+  auto state = security_state::GetVisibleSecurityState(web_contents);
+  if (!state) {
+    return false;
+  }
+  security_state::SecurityLevel security_level =
+      security_state::GetSecurityLevel(*state);
+  return security_level == security_state::SecurityLevel::SECURE ||
+         base::CommandLine::ForCurrentProcess()->HasSwitch(
+             switches::kIgnoreCertificateErrors);
 }
 
 base::OnceClosure AwContentBrowserClient::SelectClientCertificate(
@@ -1163,7 +1199,8 @@ void AwContentBrowserClient::WillCreateURLLoaderFactory(
     bool* bypass_redirect_checks,
     bool* disable_secure_dns,
     network::mojom::URLLoaderFactoryOverridePtr* factory_override,
-    scoped_refptr<base::SequencedTaskRunner> navigation_response_task_runner) {
+    scoped_refptr<base::SequencedTaskRunner> navigation_response_task_runner,
+    bool is_for_network_service) {
   TRACE_EVENT0("android_webview",
                "AwContentBrowserClient::WillCreateURLLoaderFactory");
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
@@ -1194,6 +1231,10 @@ void AwContentBrowserClient::WillCreateURLLoaderFactory(
       base::MakeRefCounted<AwBrowserContextIoThreadHandle>(
           static_cast<AwBrowserContext*>(browser_context));
 
+  bool was_blocked = !browser_context->GetDefaultStoragePartition()
+                          ->IsNetworkContextInitialized();
+  base::ElapsedTimer timer;
+
   mojo::PendingRemote<network::mojom::CookieManager> cookie_manager;
   browser_context->GetDefaultStoragePartition()
       ->GetNetworkContext()
@@ -1201,6 +1242,9 @@ void AwContentBrowserClient::WillCreateURLLoaderFactory(
 
   AwBrowserContext* aw_browser_context =
       static_cast<AwBrowserContext*>(browser_context);
+  AwBrowserContext::RecordNetworkContextInitializationBlocking(
+      "Navigation", timer.Elapsed(), was_blocked);
+
   AwCookieAccessPolicy* cookie_access_policy =
       aw_browser_context->GetCookieManager()->cookie_access_policy();
 

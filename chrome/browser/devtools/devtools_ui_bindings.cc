@@ -1992,6 +1992,11 @@ base::DictValue DevToolsUIBindings::GetHostConfigDictionary(Profile* profile) {
                         "enabled", base::FeatureList::IsEnabled(
                                        ::features::kDevToolsAiV2Architecture)));
 
+  response_dict.Set(
+      "devToolsComments",
+      base::DictValue().Set("enabled", base::FeatureList::IsEnabled(
+                                           ::features::kDevToolsComments)));
+
   if (base::FeatureList::IsEnabled(::features::kDevToolsAiCodeCompletion)) {
     base::DictValue ai_code_completion_dict;
     ai_code_completion_dict.Set(
@@ -2229,6 +2234,14 @@ base::DictValue DevToolsUIBindings::GetHostConfigDictionary(Profile* profile) {
           "enabled", GetFeatureStateForDevTools(
                          ::features::kDevToolsInstrumentationBreakpoints,
                          enabled_by_flags, disabled_by_flags)));
+
+  response_dict.Set(
+      "devToolsSourceMapScopesInSourcesPanel",
+      base::DictValue().Set(
+          "enabled",
+          GetFeatureStateForDevTools(
+              ::features::kDevToolsSourceMapScopesInSourcesPanel,
+              enabled_by_flags, disabled_by_flags)));
 
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
   // We check AreExtensionsOnExtensionURLsAllowed() here because this is used to

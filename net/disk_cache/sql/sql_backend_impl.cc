@@ -5,6 +5,7 @@
 #include "net/disk_cache/sql/sql_backend_impl.h"
 
 #include <algorithm>
+#include <map>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -12,7 +13,9 @@
 #include "base/barrier_callback.h"
 #include "base/barrier_closure.h"
 #include "base/byte_size.h"
+#include "base/containers/flat_map.h"
 #include "base/containers/flat_set.h"
+#include "base/containers/queue.h"
 #include "base/containers/span.h"
 #include "base/feature_list.h"
 #include "base/files/file.h"
@@ -41,6 +44,9 @@
 #include "net/disk_cache/sql/sql_async_task_token.h"
 #include "net/disk_cache/sql/sql_entry_impl.h"
 #include "net/disk_cache/sql/sql_persistent_store.h"
+#include "net/disk_cache/sql/sql_shared_cache.h"
+#include "net/disk_cache/sql/sql_shared_cache_manager.h"
+#include "net/http/http_response_info.h"
 #include "sql_backend_constants.h"
 
 namespace disk_cache {
@@ -380,9 +386,15 @@ class SqlBackendImpl::IteratorImpl : public Backend::Iterator {
     backend_->ApplyInFlightEntryModifications(entry_info.key, entry_info.info);
 
     // If the entry is not active, create a new `SqlEntryImpl`.
+    auto db_handle =
+        base::MakeRefCounted<EntryDbHandle>(entry_info.info.res_id);
+    if (entry_info.info.shared_cache_resource_id.has_value()) {
+      db_handle->set_shared_cache_resource_id(
+          *entry_info.info.shared_cache_resource_id);
+      // For faster entry iteration, we don't retrieve shared_cache_blob_handle.
+    }
     scoped_refptr<SqlEntryImpl> new_entry = base::MakeRefCounted<SqlEntryImpl>(
-        backend_, entry_info.key,
-        base::MakeRefCounted<EntryDbHandle>(entry_info.info.res_id),
+        backend_, entry_info.key, std::move(db_handle),
         entry_info.info.last_used, entry_info.info.body_end,
         entry_info.info.head);
     new_entry->AddRef();
@@ -622,10 +634,9 @@ void SqlBackendImpl::HandleOpenOrCreateEntryOperation(
       break;
     case OpenOrCreateEntryOperationType::kOpenEntry:
       store_->OpenEntry(
-          entry_key,
-          base::BindOnce(&SqlBackendImpl::OnOptionalEntryOperationFinished,
-                         base::Unretained(this), entry_key, std::move(callback),
-                         std::move(handle)));
+          entry_key, base::BindOnce(&SqlBackendImpl::OnEntryOperationFinished,
+                                    base::Unretained(this), entry_key,
+                                    std::move(callback), std::move(handle)));
       break;
     case OpenOrCreateEntryOperationType::kCreateEntry:
       store_->CreateEntry(
@@ -1010,26 +1021,152 @@ void SqlBackendImpl::OnBrowserIdle() {
       exclusive_operation_coordinator_.GetHasPendingTaskFlag(),
       base::DoNothing());
   MaybeTriggerEviction(/*is_idle_time_eviction=*/true);
+  ProcessSharedCacheEligibleEntries(
+      base::ScopedClosureRunner(),
+      /*on_entry_copied_callback=*/base::NullCallback());
 }
 
-void SqlBackendImpl::OnOptionalEntryOperationFinished(
+bool SqlBackendImpl::SupportsSharedCache() const {
+  return !!store_->GetSharedCacheManager();
+}
+
+void SqlBackendImpl::OnEntryEligibleForSharedCache(
+    const std::string& key,
+    const GURL& url,
+    std::unique_ptr<net::HttpResponseInfo> response_info,
+    const net::NetworkIsolationKey& nik) {
+  CHECK(SupportsSharedCache());
+  CHECK(response_info);
+  CacheEntryKey entry_key(key);
+  auto [it, inserted] = shared_cache_eligible_entries_.try_emplace(
+      entry_key, entry_key, url, std::move(response_info), nik);
+  // If an entry for `entry_key` was already registered, update it only if the
+  // new `response_info` has a strictly newer `response_time`.
+  if (!inserted &&
+      response_info->response_time > it->second.response_info->response_time) {
+    it->second = SqlPersistentStore::SharedCacheEligibleEntry(
+        entry_key, url, std::move(response_info), nik);
+  }
+}
+
+void SqlBackendImpl::ProcessSharedCacheEligibleEntriesForTest(  // IN-TEST
+    base::ScopedClosureRunner scoped_closure_runner,
+    base::RepeatingCallback<void(const CacheEntryKey&)>
+        on_entry_copied_callback) {
+  ProcessSharedCacheEligibleEntries(std::move(scoped_closure_runner),
+                                    std::move(on_entry_copied_callback));
+}
+
+void SqlBackendImpl::ProcessAllSharedCacheEligibleEntriesForTest(  // IN-TEST
+    base::ScopedClosureRunner scoped_closure_runner,
+    base::RepeatingCallback<void(const CacheEntryKey&)>
+        on_entry_copied_callback) {
+  if (!SupportsSharedCache() || shared_cache_eligible_entries_.empty()) {
+    return;
+  }
+  ProcessSharedCacheEligibleEntries(
+      base::ScopedClosureRunner(base::BindOnce(
+          &SqlBackendImpl::ProcessAllSharedCacheEligibleEntriesForTest,
+          weak_factory_.GetWeakPtr(), std::move(scoped_closure_runner),
+          on_entry_copied_callback)),
+      on_entry_copied_callback);
+}
+
+void SqlBackendImpl::ProcessSharedCacheEligibleEntries(
+    base::ScopedClosureRunner scoped_closure_runner,
+    base::RepeatingCallback<void(const CacheEntryKey&)>
+        on_entry_copied_callback) {
+  if (!SupportsSharedCache()) {
+    return;
+  }
+  exclusive_operation_coordinator_.PostOrRunExclusiveOperation(base::BindOnce(
+      &SqlBackendImpl::HandleProcessSharedCacheEligibleEntries,
+      weak_factory_.GetWeakPtr(), std::move(scoped_closure_runner),
+      std::move(on_entry_copied_callback)));
+}
+
+void SqlBackendImpl::HandleProcessSharedCacheEligibleEntries(
+    base::ScopedClosureRunner scoped_closure_runner,
+    base::RepeatingCallback<void(const CacheEntryKey&)>
+        on_entry_copied_callback,
+    std::unique_ptr<ExclusiveOperationCoordinator::OperationHandle> handle) {
+  // `std::map` is intentionally used here to ensure deterministic processing
+  // order (via ordered iterators) and because the map is not guaranteed to be
+  // small and could potentially grow large, making `base::flat_map` unsuitable.
+  std::map<net::NetworkIsolationKey,
+           base::queue<SqlPersistentStore::SharedCacheEligibleEntry>>
+      entries_to_process;
+  for (auto it = shared_cache_eligible_entries_.begin();
+       it != shared_cache_eligible_entries_.end();) {
+    if (active_entries_.find(it->first) == active_entries_.end()) {
+      entries_to_process[it->second.nik].push(std::move(it->second));
+      shared_cache_eligible_entries_.erase(it++);
+    } else {
+      ++it;
+    }
+  }
+
+  if (entries_to_process.empty()) {
+    return;
+  }
+
+  store_->GetSharedCacheManager()->ProcessSharedCacheEligibleEntries(
+      std::move(entries_to_process),
+      exclusive_operation_coordinator_.GetHasPendingTaskFlag(),
+      base::BindOnce(
+          &SqlBackendImpl::OnProcessSharedCacheEligibleEntriesComplete,
+          weak_factory_.GetWeakPtr(), std::move(scoped_closure_runner),
+          std::move(handle)),
+      std::move(on_entry_copied_callback));
+}
+
+void SqlBackendImpl::OnProcessSharedCacheEligibleEntriesComplete(
+    base::ScopedClosureRunner scoped_closure_runner,
+    std::unique_ptr<ExclusiveOperationCoordinator::OperationHandle> handle,
+    std::vector<SqlPersistentStore::SharedCacheEligibleEntry>
+        unprocessed_entries) {
+  // Put back any entries that could not be processed into
+  // `shared_cache_eligible_entries_`. If an entry for the same key was newly
+  // registered while processing was in flight, update it only if the
+  // unprocessed entry has a strictly newer response_time.
+  for (auto& entry : unprocessed_entries) {
+    auto [it, inserted] =
+        shared_cache_eligible_entries_.try_emplace(entry.key, std::move(entry));
+    if (!inserted && entry.response_info->response_time >
+                         it->second.response_info->response_time) {
+      it->second = std::move(entry);
+    }
+  }
+}
+
+void SqlBackendImpl::OnEntryOperationFinished(
     const CacheEntryKey& key,
     EntryResultCallback callback,
     std::unique_ptr<ExclusiveOperationCoordinator::OperationHandle> handle,
-    SqlPersistentStore::OptionalEntryInfoOrError result) {
-  // If the store operation failed or the entry was not found (for OpenEntry).
-  if (!result.has_value() || !result->has_value()) {
+    SqlPersistentStore::EntryInfoOrError result) {
+  // If the store operation failed or the entry was not found.
+  if (!result.has_value()) {
     std::move(callback).Run(EntryResult::MakeError(net::ERR_FAILED));
     return;
   }
 
-  SqlPersistentStore::EntryInfo& entry_info = *(*result);
+  SqlPersistentStore::EntryInfo& entry_info = *result;
   ApplyInFlightEntryModifications(key, entry_info);
+
+  auto db_handle = base::MakeRefCounted<EntryDbHandle>(entry_info.res_id);
+  if (entry_info.shared_cache_resource_id.has_value()) {
+    CHECK(entry_info.shared_cache_handle);
+    CHECK(entry_info.shared_cache_blob_handle);
+    db_handle->set_shared_cache_resource_id(
+        *entry_info.shared_cache_resource_id);
+    db_handle->SetSharedCacheHandle(std::move(entry_info.shared_cache_handle));
+    db_handle->SetSharedCacheBlobHandle(
+        std::move(entry_info.shared_cache_blob_handle));
+  }
 
   // Create a new SqlEntryImpl instance.
   scoped_refptr<SqlEntryImpl> new_entry = base::MakeRefCounted<SqlEntryImpl>(
-      weak_factory_.GetWeakPtr(), key,
-      base::MakeRefCounted<EntryDbHandle>(entry_info.res_id),
+      weak_factory_.GetWeakPtr(), key, std::move(db_handle),
       entry_info.last_used, entry_info.body_end, entry_info.head);
 
   // Add a reference for passing to the `callback`.
@@ -1040,28 +1177,11 @@ void SqlBackendImpl::OnOptionalEntryOperationFinished(
   CHECK(insert_result.second);
 
   // Run the original callback with the newly created/opened entry.
-  std::move(callback).Run((*result)->opened
+  std::move(callback).Run(entry_info.opened
                               ? EntryResult::MakeOpened(new_entry.get())
                               : EntryResult::MakeCreated(new_entry.get()));
 
   MaybeTriggerEviction(/*is_idle_time_eviction=*/false);
-}
-
-void SqlBackendImpl::OnEntryOperationFinished(
-    const CacheEntryKey& key,
-    EntryResultCallback callback,
-    std::unique_ptr<ExclusiveOperationCoordinator::OperationHandle> handle,
-    SqlPersistentStore::EntryInfoOrError result) {
-  // This is a helper to adapt EntryInfoOrError to
-  // OnOptionalEntryOperationFinished which expects OptionalEntryInfoOrError.
-  if (result.has_value()) {
-    OnOptionalEntryOperationFinished(key, std::move(callback),
-                                     std::move(handle), std::move(*result));
-  } else {
-    OnOptionalEntryOperationFinished(key, std::move(callback),
-                                     std::move(handle),
-                                     base::unexpected(result.error()));
-  }
 }
 
 EntryResult SqlBackendImpl::SpeculativeCreateEntry(
@@ -1435,10 +1555,44 @@ void SqlBackendImpl::HandleReadEntryDataOperation(
     std::move(callback).Run(base::unexpected(*db_handle->GetError()));
     return;
   }
-  store_->ReadEntryData(
-      key, *db_handle->GetResId(), offset, buffer, buf_len, body_end,
-      sparse_reading,
-      std::move(callback).Then(OnceClosureWithBoundArgs(std::move(handle))));
+  if (!db_handle->shared_cache_resource_id().has_value()) {
+    store_->ReadEntryData(
+        key, *db_handle->GetResId(), offset, buffer, buf_len, body_end,
+        sparse_reading,
+        std::move(callback).Then(OnceClosureWithBoundArgs(std::move(handle))));
+    return;
+  }
+  int bytes_to_read = std::max(
+      int64_t{0}, std::min(static_cast<int64_t>(buf_len), body_end - offset));
+  CHECK_GE(buffer->size(), bytes_to_read);
+  if (buffer->size() != bytes_to_read) {
+    buffer = base::MakeRefCounted<net::DrainableIOBuffer>(std::move(buffer),
+                                                          bytes_to_read);
+  }
+
+  store_->GetSharedCacheManager()->GetCacheByDbId(
+      db_handle->shared_cache_resource_id()->db_id,
+      base::BindOnce(
+          [](const CacheEntryKey& key, SqlSharedCacheRowId shared_cache_row_id,
+             int64_t body_end, int64_t offset,
+             scoped_refptr<net::IOBuffer> buffer,
+             SqlPersistentStore::ReadResultOrErrorCallback callback,
+             scoped_refptr<SqlSharedCacheHandle> shared_cache) {
+            if (!shared_cache || !*shared_cache) {
+              std::move(callback).Run(
+                  base::unexpected(SqlPersistentStore::Error::kNotFound));
+              return;
+            }
+            (*shared_cache)
+                ->Read(key, shared_cache_row_id,
+                       base::checked_cast<int>(body_end), offset, buffer,
+                       std::move(callback).Then(base::OnceClosure(
+                           base::DoNothingWithBoundArgs(shared_cache))));
+          },
+          key, db_handle->shared_cache_resource_id()->row_id, body_end, offset,
+          std::move(buffer),
+          std::move(callback).Then(
+              OnceClosureWithBoundArgs(std::move(handle)))));
 }
 
 RangeResult SqlBackendImpl::GetEntryAvailableRange(

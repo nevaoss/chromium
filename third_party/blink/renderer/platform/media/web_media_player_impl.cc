@@ -3769,9 +3769,23 @@ bool WebMediaPlayerImpl::ShouldPausePlaybackWhenHidden() const {
     return true;
   }
 
+<<<<<<< HEAD
   const bool preserve_audio = HasUnmutedAudio() || audio_source_provider_->IsAudioBeingCaptured();
 
 #if !BUILDFLAG(IS_WEBOS)
+||||||| d1f7bb78c95b1
+  const bool preserve_audio = HasUnmutedAudio() || audio_source_provider_->IsAudioBeingCaptured();
+=======
+  const bool is_background_suspend_enabled = IsBackgroundSuspendEnabled(this);
+  const bool is_muted_background_audio_paused =
+      (!HasVideo() || is_background_suspend_enabled) &&
+      base::FeatureList::IsEnabled(media::kPauseMutedBackgroundAudio) &&
+      volume_ == 0.;
+  const bool preserve_audio =
+      (HasUnmutedAudio() && !is_muted_background_audio_paused) ||
+      audio_source_provider_->IsAudioBeingCaptured();
+
+>>>>>>> 153.0.7996.0~1
   // Audio only stream is allowed to play when in background.
   if (!HasVideo() && preserve_audio)
     return false;
@@ -3791,7 +3805,7 @@ bool WebMediaPlayerImpl::ShouldPausePlaybackWhenHidden() const {
 
   // If suspending background video, pause any video that's not unlocked to play
   // in the background.
-  if (IsBackgroundSuspendEnabled(this)) {
+  if (is_background_suspend_enabled) {
     return !preserve_audio || (IsResumeBackgroundVideosEnabled() &&
                                !allow_background_video_playback_);
   }
@@ -4151,11 +4165,6 @@ bool WebMediaPlayerImpl::HasUnmutedAudio() const {
   // not apply if a media was audible so the system states do not flicker
   // depending on whether the user muted the player.
   const bool has_been_audible = !client_->WasAlwaysMuted();
-
-  if (base::FeatureList::IsEnabled(
-          media::kPauseMutedBackgroundAudio)) {
-    return HasAudio() && has_been_audible && volume_ > 0.;
-  }
   return HasAudio() && has_been_audible;
 }
 

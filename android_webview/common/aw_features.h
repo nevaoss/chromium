@@ -39,6 +39,7 @@ BASE_DECLARE_FEATURE(kWebViewEarlyTracingInit);
 BASE_DECLARE_FEATURE(kWebViewEnableApiCallUserActions);
 BASE_DECLARE_FEATURE(kWebViewEnableCrash);
 BASE_DECLARE_FEATURE(kWebViewEnableDnsPlatform);
+extern const base::FeatureParam<bool> kWebViewEnableDnsPlatformNoSystem;
 BASE_DECLARE_FEATURE(kWebViewFasterGetDefaultUserAgent);
 BASE_DECLARE_FEATURE(kWebViewFileSystemAccess);
 BASE_DECLARE_FEATURE(kWebViewForceWebAuthn);
@@ -99,6 +100,7 @@ BASE_DECLARE_FEATURE(kWebViewUseMetricsUploadServiceOnlySdkRuntime);
 BASE_DECLARE_FEATURE(kWebViewUseWVLESForLayeredStudy);
 BASE_DECLARE_FEATURE(kWebViewVizDirectCompositorThreadIpcFrameSinkManager);
 BASE_DECLARE_FEATURE(kWebViewWarmupNetworkService);
+BASE_DECLARE_FEATURE(kWebViewWebAuthnRequiresSecureOrigin);
 BASE_DECLARE_FEATURE(kWebViewWebPerformanceMetricsReporting);
 // Don't add new features to the end! Insert them in alphabetical order to
 // reduce conflicts.

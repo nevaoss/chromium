@@ -1624,6 +1624,15 @@ class CONTENT_EXPORT ContentBrowserClient {
   virtual void CreateThrottlesForNavigation(
       NavigationThrottleRegistry& registry);
 
+  // Allows the embedder to register NavigationThrottles for a navigation that
+  // commits without a URL loader (e.g. about:blank, about:srcdoc, other
+  // empty-document schemes, and same-document navigations). Such navigations
+  // do not go through CreateThrottlesForNavigation(); a throttle that wants to
+  // observe them (via NavigationThrottle::WillCommitWithoutUrlLoader()) must be
+  // registered here. The default implementation adds nothing.
+  virtual void CreateThrottlesForCommitWithoutUrlLoader(
+      NavigationThrottleRegistry& registry);
+
   // Allows the embedder to register one or more CommitDeferringConditions for
   // the navigation indicated by |navigation_handle|. A
   // CommitDeferringCondition is used to delay committing a navigation until an
@@ -1993,6 +2002,9 @@ class CONTENT_EXPORT ContentBrowserClient {
   // navigation request blocking tasks. Null when the URLLoaderFactory is not
   // being created for a navigation request.
   //
+  // |is_for_network_service| is true when the URLLoaderFactory is being
+  // created for the network service.
+  //
   // Always called on the UI thread.
   virtual void WillCreateURLLoaderFactory(
       BrowserContext* browser_context,
@@ -2009,7 +2021,8 @@ class CONTENT_EXPORT ContentBrowserClient {
       bool* bypass_redirect_checks,
       bool* disable_secure_dns,
       network::mojom::URLLoaderFactoryOverridePtr* factory_override,
-      scoped_refptr<base::SequencedTaskRunner> navigation_response_task_runner);
+      scoped_refptr<base::SequencedTaskRunner> navigation_response_task_runner,
+      bool is_for_network_service);
 
   // Returns true when the embedder wants to intercept a websocket connection.
   virtual bool WillInterceptWebSocket(RenderFrameHost* frame);
@@ -2787,6 +2800,15 @@ class CONTENT_EXPORT ContentBrowserClient {
   // Called when a keepalive request finishes either successfully or
   // unsuccessfully.
   virtual void OnKeepaliveRequestFinished();
+
+  // Called for the browser-side lifetime of a fetch keepalive URLLoader. Both
+  // methods receive the same `browser_context` for a given loader. The context
+  // passed to OnFetchKeepAliveRequestDestroyed() may be in destruction
+  // (loaders are torn down with its StoragePartition), so it must only be used
+  // as a lookup key.
+  virtual void OnFetchKeepAliveRequestCreated(BrowserContext& browser_context);
+  virtual void OnFetchKeepAliveRequestDestroyed(
+      BrowserContext& browser_context);
 
 #if BUILDFLAG(IS_MAC)
   // Sets up the embedder sandbox parameters for the given sandbox type. Returns

@@ -269,32 +269,6 @@ bool IsLosslessImageMIMEType(const String& mime_type) {
          EqualIgnoringAsciiCase(mime_type, "image/x-png");
 }
 
-skcms_PixelFormat SkColorTypeToSkcmsPixelFormat(SkColorType color_type) {
-  switch (color_type) {
-    case kRGBA_8888_SkColorType:
-      return skcms_PixelFormat_RGBA_8888;
-    case kBGRA_8888_SkColorType:
-      return skcms_PixelFormat_BGRA_8888;
-    case kRGBA_F16_SkColorType:
-      return skcms_PixelFormat_RGBA_hhhh;
-    default:
-      NOTREACHED();
-  }
-}
-
-skcms_AlphaFormat SkAlphaTypeToSkcmsAlphaFormat(SkAlphaType alpha_type) {
-  switch (alpha_type) {
-    case kOpaque_SkAlphaType:
-      return skcms_AlphaFormat_Opaque;
-    case kPremul_SkAlphaType:
-      return skcms_AlphaFormat_PremulAsEncoded;
-    case kUnpremul_SkAlphaType:
-      return skcms_AlphaFormat_Unpremul;
-    default:
-      NOTREACHED();
-  }
-}
-
 }  // namespace
 
 ImageDecoder::ImageDecoder(
@@ -1094,172 +1068,42 @@ wtf_size_t ImagePlanes::RowBytes(cc::YUVIndex index) const {
   return row_bytes_[static_cast<wtf_size_t>(index)];
 }
 
-ColorProfile::ColorProfile(const skcms_ICCProfile& profile)
-    : profile_(profile) {}
-
-ColorProfile::ColorProfile(
-    std::unique_ptr<SkCodecs::ICCProfileChromium> skia_profile)
-    : profile_(skia_profile->GetProfile()),
-      skia_profile_(std::move(skia_profile)) {}
-
-ColorProfile::~ColorProfile() = default;
-
-std::unique_ptr<ColorProfile> ColorProfile::Create(
-    base::span<const uint8_t> buffer) {
-  auto owned_data = gfx::MakeSkDataFromSpanWithCopy(buffer);
-  auto skia_profile = SkCodecs::ICCProfileChromium::Make(std::move(owned_data));
-  if (!skia_profile) {
-    return nullptr;
-  }
-  return std::make_unique<ColorProfile>(std::move(skia_profile));
-}
-
-ColorProfileTransform::ColorProfileTransform(
-    const skcms_ICCProfile* src_profile,
-    const skcms_ICCProfile* dst_profile) {
-  DCHECK(src_profile);
-  DCHECK(dst_profile);
-  src_profile_ = src_profile;
-  dst_profile_ = *dst_profile;
-}
-
-const skcms_ICCProfile* ColorProfileTransform::SrcProfile() const {
-  return src_profile_;
-}
-
-const skcms_ICCProfile* ColorProfileTransform::DstProfile() const {
-  return &dst_profile_;
-}
-
-void ImageDecoder::SetEmbeddedColorProfile(
-    std::unique_ptr<ColorProfile> profile) {
+void ImageDecoder::SetEmbeddedColorProfile(sk_sp<skia::ColorProfile> profile) {
   DCHECK(!IgnoresColorSpace());
 
   embedded_color_profile_ = std::move(profile);
-  sk_image_color_space_ = nullptr;
-  embedded_to_sk_image_transform_.reset();
 
-  if (color_behavior_ == ColorBehavior::kTag) {
-    // Set `sk_image_color_space_` to the best SkColorSpace approximation
-    // of `embedded_color_profile_`.
-    if (embedded_color_profile_) {
-      const skcms_ICCProfile* icc_profile =
-          embedded_color_profile_->GetProfile();
-
-      // If the ICC profile has CICP data, prefer to use that.
-      if (icc_profile->has_CICP) {
-        sk_image_color_space_ = skia::CICPGetSkColorSpace(
-            icc_profile->CICP.color_primaries,
-            icc_profile->CICP.transfer_characteristics,
-            icc_profile->CICP.matrix_coefficients,
-            icc_profile->CICP.video_full_range_flag,
-            /*prefer_srgb_trfn=*/true);
-        // A CICP profile's SkColorSpace is considered an exact representation
-        // of `profile`, so don't create `embedded_to_sk_image_transform_`.
-        if (sk_image_color_space_) {
-          return;
-        }
-      }
-
-      // If there was not CICP data, then use the ICC profile.
-      DCHECK(!sk_image_color_space_);
-      sk_image_color_space_ = SkColorSpace::Make(*icc_profile);
-
-      // If the embedded color space isn't supported by Skia, we will transform
-      // to a supported color space using `embedded_to_sk_image_transform_` at
-      // decode time.
-      if (!sk_image_color_space_ && icc_profile->has_toXYZD50) {
-        // Preserve the gamut, but convert to a standard transfer function.
-        skcms_ICCProfile with_srgb = *icc_profile;
-        skcms_SetTransferFunction(&with_srgb, skcms_sRGB_TransferFunction());
-        sk_image_color_space_ = SkColorSpace::Make(with_srgb);
-      }
-
-      // For color spaces without an identifiable gamut, just default to sRGB.
-      if (!sk_image_color_space_) {
-        sk_image_color_space_ = SkColorSpace::MakeSRGB();
-      }
-    } else {
-      // If there is no `embedded_color_profile_`, then assume that the content
-      // was sRGB (and `embedded_to_sk_image_transform_` is not needed).
-      sk_image_color_space_ = SkColorSpace::MakeSRGB();
-      return;
-    }
+  if (color_behavior_ == ColorBehavior::kTag && embedded_color_profile_) {
+    sk_image_color_space_ = embedded_color_profile_->GetSkColorSpace();
   } else {
-    DCHECK(color_behavior_ == ColorBehavior::kTransformToSRGB);
     sk_image_color_space_ = SkColorSpace::MakeSRGB();
-
-    // If there is no `embedded_color_profile_`, then assume the content was
-    // sRGB  (and, as above, `embedded_to_sk_image_transform_` is not needed).
-    if (!embedded_color_profile_) {
-      return;
-    }
   }
 
-  // If we arrive here then we may need to create a transform from
-  // `embedded_color_profile_` to `sk_image_color_space_`.
-  DCHECK(embedded_color_profile_);
-  DCHECK(sk_image_color_space_);
-
-  const skcms_ICCProfile* src_profile = embedded_color_profile_->GetProfile();
-  skcms_ICCProfile dst_profile;
-  sk_image_color_space_->toProfile(&dst_profile);
-  if (skcms_ApproximatelyEqualProfiles(src_profile, &dst_profile)) {
-    return;
+  needs_decode_time_color_transform_ = false;
+  if (embedded_color_profile_) {
+    needs_decode_time_color_transform_ =
+        !embedded_color_profile_->IsSkColorSpaceExact() ||
+        !SkColorSpace::Equals(embedded_color_profile_->GetSkColorSpace().get(),
+                              sk_image_color_space_.get());
   }
-
-  embedded_to_sk_image_transform_ =
-      std::make_unique<ColorProfileTransform>(src_profile, &dst_profile);
 }
-
-ColorProfileTransform::~ColorProfileTransform() = default;
 
 void ImageDecoder::DoDecodeTimeColorTransformIfNeeded(
     ImageFrame& buffer,
     const SkIRect& rect,
     std::optional<SkColorType> override_src_color_type,
     std::optional<SkAlphaType> override_src_alpha_type) {
-  if (!NeedsDecodeTimeColorTransform()) {
+  if (!needs_decode_time_color_transform_) {
     return;
   }
-  const ColorProfileTransform* transform = ColorTransform();
-
-  const skcms_AlphaFormat dst_alpha_format =
-      (buffer.HasAlpha() && buffer.PremultiplyAlpha())
-          ? skcms_AlphaFormat_PremulAsEncoded
-          : skcms_AlphaFormat_Unpremul;
-  const skcms_AlphaFormat src_alpha_format =
-      override_src_alpha_type.has_value()
-          ? SkAlphaTypeToSkcmsAlphaFormat(*override_src_alpha_type)
-          : dst_alpha_format;
-
-  if (buffer.GetPixelFormat() == ImageFrame::kRGBA_F16) {
-    CHECK(!override_src_color_type.has_value());
-    const skcms_PixelFormat color_format = skcms_PixelFormat_RGBA_hhhh;
-    for (int y = rect.top(); y < rect.bottom(); ++y) {
-      ImageFrame::PixelDataF16* const row = buffer.GetAddrF16(rect.left(), y);
-      const bool success = skcms_Transform(
-          row, color_format, src_alpha_format, transform->SrcProfile(), row,
-          color_format, dst_alpha_format, transform->DstProfile(),
-          rect.width());
-      DCHECK(success);
-    }
-  } else {
-    const skcms_PixelFormat dst_pixel_format =
-        SkColorTypeToSkcmsPixelFormat(kN32_SkColorType);
-    const skcms_PixelFormat src_pixel_format =
-        override_src_color_type.has_value()
-            ? SkColorTypeToSkcmsPixelFormat(*override_src_color_type)
-            : dst_pixel_format;
-    for (int y = rect.top(); y < rect.bottom(); ++y) {
-      ImageFrame::PixelData* const row = buffer.GetAddr(rect.left(), y);
-      const bool success = skcms_Transform(
-          row, src_pixel_format, src_alpha_format, transform->SrcProfile(), row,
-          dst_pixel_format, dst_alpha_format, transform->DstProfile(),
-          rect.width());
-      DCHECK(success);
-    }
+  DCHECK(embedded_color_profile_);
+  DCHECK(sk_image_color_space_);
+  SkPixmap pixmap;
+  if (!buffer.Bitmap().peekPixels(&pixmap)) {
+    return;
   }
+  embedded_color_profile_->TransformInPlace(
+      pixmap, rect, override_src_color_type, override_src_alpha_type);
 }
 
 bool ImageDecoder::CanReusePreviousFrameBuffer(wtf_size_t) const {

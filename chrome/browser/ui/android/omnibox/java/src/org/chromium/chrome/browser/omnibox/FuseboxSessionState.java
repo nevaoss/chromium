@@ -39,8 +39,9 @@ import java.util.Optional;
  * Fusebox / Omnibox session state object. Captures controllers and state details needed to fulfill
  * or reconstruct the user input. This object is associated with a specific {@link Profile}.
  *
- * <p>Unlike the AutocompleteInput - this class is permitted to hold external controllers required
- * to fulfill navigation request.
+ * <p>Unlike {@link AutocompleteInput} - this class is permitted to hold heavier-weight,
+ * non-serializable objects and external controllers required to fulfill navigation requests, in
+ * addition to {@link AutocompleteInput}.
  *
  * <ul>
  *   <li>All FuseboxSessionState members should be considered `final` from the moment the session is
@@ -282,10 +283,16 @@ public class FuseboxSessionState implements UserData {
 
     @Override
     public void destroy() {
-        if (mIsActive) {
-            deactivate();
-        }
+        // Do not `deactivate()` from here - if TabModel is destroyed before LocationBar is,
+        // deactivate() resets AutocompleteInput, triggering Autocomplete refresh, causing a crash.
+        // When destroying - there's no point in clearing up AutocompleteInput.
         tearDownSessionControllers();
+        if (mProfileSupplier != null && mPendingProfileCallback != null) {
+            mProfileSupplier.removeObserver(mPendingProfileCallback);
+            mPendingProfileCallback = null;
+        }
+        mWebContents = null;
+        mIsActive = false;
         if (OmniboxFeatures.sShowModelPicker.getValue()) {
             mAutocompleteInput.getRequestTypeSupplier().removeObserver(mOnRequestTypeChanged);
         }

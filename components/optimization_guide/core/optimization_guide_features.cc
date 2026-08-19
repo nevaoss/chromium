@@ -107,9 +107,6 @@ BASE_FEATURE(kOptimizationGuideOnDeviceModel,
 // metrics.
 BASE_FEATURE(kLogOnDeviceMetricsOnStartup, base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Whether to download the text safety classifier model.
-BASE_FEATURE(kTextSafetyClassifier, base::FEATURE_ENABLED_BY_DEFAULT);
-
 // Whether to scan the full text when running the language detection in the text
 // safety classifier.
 BASE_FEATURE(kTextSafetyScanLanguageDetection,
@@ -531,13 +528,17 @@ bool IsFreeDiskSpaceSufficientForOnDeviceModelInstall(
   return GetDiskSpaceRequiredForOnDeviceModelInstall() <= free_disk_space_bytes;
 }
 
+base::ByteSize GetDiskSpaceRequiredForOnDeviceModelRetain() {
+  return base::MiBU(
+      base::saturated_cast<uint64_t>(base::GetFieldTrialParamByFeatureAsInt(
+          kOptimizationGuideOnDeviceModel,
+          "on_device_model_free_space_mb_required_to_retain",
+          base::GiBU(5).InMiB())));
+}
+
 bool IsFreeDiskSpaceTooLowForOnDeviceModelInstall(
     base::ByteSize free_disk_space_bytes) {
-  return base::MiBU(base::saturated_cast<uint64_t>(
-             base::GetFieldTrialParamByFeatureAsInt(
-                 kOptimizationGuideOnDeviceModel,
-                 "on_device_model_free_space_mb_required_to_retain",
-                 base::GiBU(5).InMiB()))) >= free_disk_space_bytes;
+  return GetDiskSpaceRequiredForOnDeviceModelRetain() >= free_disk_space_bytes;
 }
 
 BASE_FEATURE(kOnDeviceModelCachesDiskSpaceCheck,
@@ -568,25 +569,6 @@ bool IsFreeDiskSpaceSufficientForBackgroundOnDeviceModelInstall(
     base::ByteSize free_disk_space_bytes) {
   return GetDiskSpaceRequiredForBackgroundOnDeviceModelInstall() <=
          free_disk_space_bytes;
-}
-
-bool GetOnDeviceModelRetractUnsafeContent() {
-  static const base::FeatureParam<bool>
-      kOnDeviceModelShouldRetractUnsafeContent{
-          &kTextSafetyClassifier, "on_device_retract_unsafe_content", true};
-  return kOnDeviceModelShouldRetractUnsafeContent.Get();
-}
-
-bool ShouldUseTextSafetyClassifierModel() {
-  return base::FeatureList::IsEnabled(kTextSafetyClassifier);
-}
-
-double GetOnDeviceModelLanguageDetectionMinimumReliability() {
-  static const base::FeatureParam<double>
-      kOnDeviceModelLanguageDetectionMinimumReliability{
-          &kTextSafetyClassifier,
-          "on_device_language_detection_minimum_reliability", 0.8};
-  return kOnDeviceModelLanguageDetectionMinimumReliability.Get();
 }
 
 int GetOnDeviceModelNumRepeats() {

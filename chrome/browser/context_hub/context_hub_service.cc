@@ -23,6 +23,7 @@
 #include "chrome/browser/context_hub/memory_bank/memory_bank.h"
 #include "chrome/browser/context_hub/storage/context_hub_backend.h"
 #include "chrome/browser/context_hub/tab_group_store/tab_group_entry.h"
+#include "chrome/browser/context_hub/tab_group_store/tab_group_entry_conversions.h"
 #include "chrome/browser/context_hub/tab_group_store/tab_group_store.h"
 #include "components/optimization_guide/core/model_execution/feature_keys.h"
 #include "components/optimization_guide/core/model_execution/remote_model_executor.h"
@@ -31,6 +32,9 @@
 #include "components/optimization_guide/proto/features/context_hub.pb.h"
 #include "components/personal_context/core/personal_context_service.h"
 #include "components/personal_context/proto/features/auto_todos.pb.h"
+#include "components/saved_tab_groups/public/saved_tab_group.h"
+#include "components/saved_tab_groups/public/tab_group_sync_service.h"
+#include "components/saved_tab_groups/public/types.h"
 
 namespace context_hub {
 
@@ -67,6 +71,7 @@ ContextHubService::ContextHubService(
     personal_context::PersonalContextService* personal_context_service,
     optimization_guide::RemoteModelExecutor*
         optimization_guide_remote_model_executor,
+    tab_groups::TabGroupSyncService* tab_group_sync_service,
     std::unique_ptr<MemoryBank> memory_bank,
     std::unique_ptr<TabGroupStore> tab_group_store,
     std::unique_ptr<ContextHubBackend> context_hub_backend,
@@ -74,6 +79,7 @@ ContextHubService::ContextHubService(
     : personal_context_service_(CHECK_DEREF(personal_context_service)),
       optimization_guide_remote_model_executor_(
           CHECK_DEREF(optimization_guide_remote_model_executor)),
+      tab_group_sync_service_(CHECK_DEREF(tab_group_sync_service)),
       tab_group_chat_history_cache_(
           features::kMaxTabGroupChatHistoryTurns.Get()),
       todo_feedback_cache_(features::kMaxTodoFeedbackCacheSize.Get()),
@@ -107,9 +113,9 @@ void ContextHubService::OnAutoTodosChanged(
 }
 
 void ContextHubService::GenerateFirstPartyAutoTodos(
-    AutoTodosCallback callback) {
+    AutoTodosStore::OperationCallback callback) {
   if (!auto_todos_store_) {
-    std::move(callback).Run(std::nullopt);
+    std::move(callback).Run(false);
     return;
   }
 
@@ -124,17 +130,27 @@ void ContextHubService::GenerateFirstPartyAutoTodos(
                      weak_factory_.GetWeakPtr(), std::move(callback)));
 }
 
+void ContextHubService::GenerateTabBasedTodos(
+    std::vector<TabData> tabs,
+    AutoTodosStore::OperationCallback callback) {
+  // TODO(crbug.com/539697847): Implement call to MES to generate tab-based
+  // todos with fetched APC.
+  if (callback) {
+    std::move(callback).Run(false);
+  }
+}
+
 void ContextHubService::OnFirstPartyAutoTodosFetched(
-    AutoTodosCallback callback,
+    AutoTodosStore::OperationCallback callback,
     personal_context::FetchContextResult result) {
   if (!result.response.has_value()) {
-    std::move(callback).Run(std::nullopt);
+    std::move(callback).Run(false);
     return;
   }
 
   personal_context::proto::AutoTodosResponse response;
   if (!response.ParseFromString(result.response.value().value())) {
-    std::move(callback).Run(std::nullopt);
+    std::move(callback).Run(false);
     return;
   }
 
@@ -157,15 +173,17 @@ void ContextHubService::OnFirstPartyAutoTodosFetched(
     first_party.actionable_url = GURL(todo.actionable_url());
     for (const auto& ref : todo.source_references()) {
       if (ref.has_gmail()) {
-        first_party.source_references.emplace_back(ref.gmail().message_url());
+        first_party.source_references.push_back(
+            SourceReference{.url = GURL(ref.gmail().message_url()),
+                            .subject = std::string(ref.gmail().subject())});
       }
     }
     entry.data = std::move(first_party);
     entries.push_back(std::move(entry));
   }
 
-  auto_todos_store_->AddAllTodos(entries, base::DoNothing());
-  std::move(callback).Run(std::move(entries));
+  auto_todos_store_->AddAllTodos(std::move(entries), base::DoNothing());
+  std::move(callback).Run(true);
 }
 
 void ContextHubService::GetAutoTodos(GetAutoTodosCallback callback) const {
@@ -294,7 +312,100 @@ void ContextHubService::DeleteAllTabGroups(base::OnceClosure callback) {
   }
 }
 
+void ContextHubService::ConfirmAllTabGroups(
+    ConfirmAllTabGroupsCallback callback) {
+  if (!tab_group_store_) {
+    std::move(callback).Run(false, {});
+    return;
+  }
+  tab_group_store_->GetAllGroups(
+      base::BindOnce(&ContextHubService::OnAllTabGroupsFetchedForConfirmation,
+                     weak_factory_.GetWeakPtr(), std::move(callback)));
+}
+
+std::optional<base::Uuid> ContextHubService::AddTabGroupToSyncService(
+    const TabGroupEntry& entry) {
+  auto saved_group = ToSavedTabGroup(entry);
+  if (!saved_group) {
+    return std::nullopt;
+  }
+  base::Uuid guid = saved_group->saved_guid();
+  tab_group_sync_service_->AddGroup(*std::move(saved_group));
+  return guid;
+}
+
+std::vector<base::Uuid> ContextHubService::AddTabGroupsToSyncService(
+    base::span<const TabGroupEntry> entries) {
+  std::vector<base::Uuid> added_group_guids;
+  for (const TabGroupEntry& entry : entries) {
+    if (auto guid = AddTabGroupToSyncService(entry)) {
+      added_group_guids.push_back(*guid);
+    }
+  }
+  return added_group_guids;
+}
+
+void ContextHubService::OnAllTabGroupsFetchedForConfirmation(
+    ConfirmAllTabGroupsCallback callback,
+    std::vector<TabGroupEntry> groups) {
+  std::vector<base::Uuid> added_group_guids =
+      AddTabGroupsToSyncService(groups);
+  DeleteAllTabGroups(base::BindOnce(
+      std::move(callback), true, std::move(added_group_guids)));
+}
+
+std::vector<TabGroupEntry>
+ContextHubService::GetConfirmedTabGroups() const {
+  return FromSavedTabGroups(tab_group_sync_service_->GetAllGroups());
+}
+
+std::optional<TabGroupEntry>
+ContextHubService::GetConfirmedTabGroup(const base::Uuid& group_guid) const {
+  std::optional<tab_groups::SavedTabGroup> group =
+      tab_group_sync_service_->GetGroup(group_guid);
+  if (!group.has_value()) {
+    return std::nullopt;
+  }
+  return FromSavedTabGroup(*group);
+}
+
+std::optional<tab_groups::LocalTabGroupID>
+ContextHubService::GetLocalGroupIdForConfirmedGroup(
+    const base::Uuid& group_guid) const {
+  std::optional<tab_groups::SavedTabGroup> group =
+      tab_group_sync_service_->GetGroup(group_guid);
+  return group.has_value() ? group->local_group_id() : std::nullopt;
+}
+
+bool ContextHubService::RemoveConfirmedTabGroup(const base::Uuid& group_guid) {
+  std::optional<tab_groups::SavedTabGroup> group =
+      tab_group_sync_service_->GetGroup(group_guid);
+  if (!group.has_value()) {
+    return false;
+  }
+  tab_group_sync_service_->RemoveGroup(group_guid);
+  return true;
+}
+
+bool ContextHubService::RemoveAllConfirmedTabGroups() {
+  std::vector<tab_groups::SavedTabGroup> all_groups =
+      tab_group_sync_service_->GetAllGroups();
+  for (const tab_groups::SavedTabGroup& group : all_groups) {
+    tab_group_sync_service_->RemoveGroup(group.saved_guid());
+  }
+  return true;
+}
+
+void ContextHubService::ConnectLocalTabGroup(
+    const base::Uuid& group_guid,
+    const tab_groups::LocalTabGroupID& local_id) {
+  tab_group_sync_service_->ConnectLocalTabGroup(
+      group_guid, local_id, tab_groups::OpeningSource::kOpenedFromRevisitUi);
+}
+
 // TODO(crbug.com/531938478): Update to handle APC ingestion.
+// TODO(crbug.com/542642727): Include confirmed tab groups in the request
+// payload for model execution workflow for regrouping.
 void ContextHubService::GenerateTabGroups(std::vector<TabData> tabs,
                                           const std::string& user_command,
                                           GroupTabsCallback callback) {

@@ -50,7 +50,9 @@ class ContextHubPageHandler : public browser::context_hub::mojom::PageHandler,
       base::span<const context_hub::AutoTodoEntry> entries) override;
 
   // browser::context_hub::mojom::PageHandler:
-  void GenerateAutoTodos(GenerateAutoTodosCallback callback) override;
+  void GenerateFirstPartyAutoTodos(
+      GenerateFirstPartyAutoTodosCallback callback) override;
+  void GenerateTabBasedTodos(GenerateTabBasedTodosCallback callback) override;
   void GetAutoTodos(GetAutoTodosCallback callback) override;
   void UpdateAutoTodo(const context_hub::AutoTodoEntry& todo,
                       UpdateAutoTodoCallback callback) override;

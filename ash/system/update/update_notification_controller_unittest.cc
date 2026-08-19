@@ -25,6 +25,7 @@
 #include "build/branding_buildflags.h"
 #include "chromeos/constants/chromeos_features.h"
 #include "components/vector_icons/vector_icons.h"
+#include "testing/gmock/include/gmock/gmock.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/ui_base_features.h"
@@ -129,7 +130,7 @@ class UpdateNotificationControllerTest : public AshTestBase {
   }
 
   void ExpectNotificationIcon(const gfx::VectorIcon& expected_icon) {
-    EXPECT_EQ(&expected_icon, &GetNotificationIcon());
+    EXPECT_THAT(GetNotificationIcon().name, testing::StrEq(expected_icon.name));
   }
 
   bool GetNotificationNeverTimeout() {

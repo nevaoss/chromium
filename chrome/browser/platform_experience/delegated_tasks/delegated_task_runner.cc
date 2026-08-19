@@ -7,6 +7,7 @@
 #include <windows.h>
 
 #include <memory>
+#include <string_view>
 #include <utility>
 
 #include "base/check.h"
@@ -64,12 +65,19 @@ DelegatedTaskRunner::~DelegatedTaskRunner() {
 }
 
 void DelegatedTaskRunner::Run(std::unique_ptr<DelegatedTask> task,
+                              std::string_view min_version,
                               DelegatedTaskCompletionCallback callback) {
   CHECK(task_start_time_.is_null());
 
   task_ = std::move(task);
   task_start_time_ = base::TimeTicks::Now();
   completion_callback_ = std::move(callback);
+  min_version_ = base::Version(min_version);
+  if (!min_version_.IsValid()) {
+    CleanupAndReturnResult(
+        base::unexpected(DelegatedTaskStatus::kUnsupportedVersion));
+    return;
+  }
 
   // Start the timeout timer from task initialization so the timeout duration
   // and recorded `execution_time` track the same time slice from task start.
@@ -80,7 +88,6 @@ void DelegatedTaskRunner::Run(std::unique_ptr<DelegatedTask> task,
                      base::unexpected(DelegatedTaskStatus::kTaskTimeout)),
       task_->GetTimeout());
 
-  // TODO(b/525018453): Verify the binary after fetching the path.
   peh_launcher_.AsyncCall(&PehLauncher::GetBinaryPath)
       .Then(base::BindOnce(&DelegatedTaskRunner::OnBinaryPathRetrieved,
                            weak_factory_.GetWeakPtr()));
@@ -90,6 +97,36 @@ void DelegatedTaskRunner::OnBinaryPathRetrieved(
     const base::FilePath& peh_binary_path) {
   if (peh_binary_path.empty()) {
     CleanupAndReturnResult(base::unexpected(DelegatedTaskStatus::kPehNotFound));
+    return;
+  }
+
+  peh_launcher_.AsyncCall(&PehLauncher::IsBinaryVerified)
+      .WithArgs(peh_binary_path)
+      .Then(base::BindOnce(&DelegatedTaskRunner::OnBinaryVerificationComplete,
+                           weak_factory_.GetWeakPtr(), peh_binary_path));
+}
+
+void DelegatedTaskRunner::OnBinaryVerificationComplete(
+    const base::FilePath& peh_binary_path,
+    bool is_verified) {
+  if (!is_verified) {
+    CleanupAndReturnResult(
+        base::unexpected(DelegatedTaskStatus::kPehValidationFailure));
+    return;
+  }
+
+  peh_launcher_.AsyncCall(&PehLauncher::GetBinaryVersion)
+      .WithArgs(peh_binary_path)
+      .Then(base::BindOnce(&DelegatedTaskRunner::OnBinaryVersionRetrieved,
+                           weak_factory_.GetWeakPtr(), peh_binary_path));
+}
+
+void DelegatedTaskRunner::OnBinaryVersionRetrieved(
+    const base::FilePath& peh_binary_path,
+    const base::Version& version) {
+  if (!version.IsValid() || version < min_version_) {
+    CleanupAndReturnResult(
+        base::unexpected(DelegatedTaskStatus::kUnsupportedVersion));
     return;
   }
 

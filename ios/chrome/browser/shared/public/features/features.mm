@@ -576,7 +576,7 @@ constexpr base::FeatureParam<double>
         /*name=*/kIOSOneTapMiniMapRestrictionMinAlphanumProportionParamName,
         /*default_value=*/0.8};
 
-BASE_FEATURE(kIOSMiniMapUniversalLink, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kIOSMiniMapUniversalLink, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kIOSMiniMapUniversalLinkCounterfactual,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -999,13 +999,6 @@ BASE_FEATURE(kDisableComposeboxFromAIMNTP, base::FEATURE_ENABLED_BY_DEFAULT);
 bool IsDisableComposeboxFromAIMNTPEnabled() {
   return base::FeatureList::IsEnabled(kDisableComposeboxFromAIMNTP);
 }
-const char kAIMCobrowseHeaderParam[] = "kNTPMIAEntrypointParam";
-const char kAIMCobrowseHeaderParamOptionA[] = "kAIMCobrowseHeaderParamOptionA";
-const char kAIMCobrowseHeaderParamOptionB[] = "kAIMCobrowseHeaderParamOptionB";
-const char kAIMCobrowseHeaderParamOptionC[] = "kAIMCobrowseHeaderParamOptionC";
-
-// Feature flag to change the cobrowse header design.
-BASE_FEATURE(kAIMCobrowseHeader, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kRecordRecentActiveDays, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -1028,6 +1021,9 @@ const base::FeatureParam<base::TimeDelta> kIOSSoftLockBackgroundThreshold{
 BASE_FEATURE(kAimCobrowse, base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool IsAimCobrowseEnabled() {
+  if (GetChannel() == version_info::Channel::STABLE) {
+    return false;
+  }
   return base::FeatureList::IsEnabled(kAimCobrowse);
 }
 

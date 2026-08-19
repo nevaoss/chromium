@@ -22,6 +22,7 @@
 
 namespace browser_actuator {
 
+class ActuatorDownstreamMessage;
 class TransportChannel;
 class TransportHandler;
 
@@ -49,7 +50,7 @@ class TransportSessionImpl : public TransportSession {
 
   base::expected<void, SendMessageError> SendMessage(
       PayloadType payload_type,
-      std::string_view payload) override;
+      const google::protobuf::MessageLite& message) override;
 
   // Routes a downstream message payload of a given `payload_type` to all active
   // handlers registered to receive it. Handlers are lazily instantiated from
@@ -57,6 +58,10 @@ class TransportSessionImpl : public TransportSession {
   base::expected<void, ProcessPayloadError> ProcessPayload(
       PayloadType payload_type,
       std::string_view payload);
+
+  // Processes a downstream message from the server by checking sequence numbers
+  // and routing payloads to registered handlers.
+  void ProcessDownstreamMessage(const ActuatorDownstreamMessage& message);
 
   // Last sequence number for the session received from the server, used for
   // message ordering

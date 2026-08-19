@@ -2086,6 +2086,25 @@ TEST_F(WebContentsImplTest, UpdateWebContentsVisibility) {
   EXPECT_EQ(Visibility::HIDDEN, contents()->GetVisibility());
 }
 
+TEST_F(WebContentsImplTest, InitiallyHiddenButPainting) {
+  WebContents::CreateParams params(browser_context());
+  params.initially_hidden_but_painting = true;
+  std::unique_ptr<TestWebContents> web_contents(
+      TestWebContents::Create(params));
+
+  EXPECT_EQ(Visibility::HIDDEN, web_contents->GetVisibility());
+  EXPECT_EQ(PageVisibilityState::kHiddenButPainting,
+            web_contents->GetPageVisibilityState());
+
+  web_contents->UpdateWebContentsVisibility(Visibility::VISIBLE);
+  EXPECT_EQ(PageVisibilityState::kVisible,
+            web_contents->GetPageVisibilityState());
+
+  web_contents->UpdateWebContentsVisibility(Visibility::HIDDEN);
+  EXPECT_EQ(PageVisibilityState::kHidden,
+            web_contents->GetPageVisibilityState());
+}
+
 TEST_F(WebContentsImplTest, VideoPictureInPictureStaysVisibleIfHidden) {
   // Entering video Picture in Picture then hiding keeps the view visible.
   TestRenderWidgetHostView* view = static_cast<TestRenderWidgetHostView*>(
@@ -3990,6 +4009,27 @@ TEST_F(WebContentsImplTest, OnKeepAliveRequestCreated) {
   EXPECT_EQ(request.keepalive, observer.fetch_keepalive_request().keepalive);
   EXPECT_EQ(request.keepalive_token,
             observer.fetch_keepalive_request().keepalive_token);
+}
+
+TEST_F(WebContentsImplTest, RegisterFocusSelectionBoundsChanged) {
+  TextInputManager* text_input_manager = contents()->GetTextInputManager();
+  ASSERT_TRUE(text_input_manager);
+  EXPECT_FALSE(text_input_manager->HasObserver(contents()));
+
+  int call_count = 0;
+  base::CallbackListSubscription subscription =
+      contents()->RegisterFocusSelectionBoundsChanged(
+          base::BindLambdaForTesting(
+              [&call_count](RenderWidgetHostView* view) { call_count++; }));
+
+  EXPECT_TRUE(text_input_manager->HasObserver(contents()));
+  EXPECT_EQ(0, call_count);
+
+  contents()->OnSelectionBoundsChanged(text_input_manager, nullptr);
+  EXPECT_EQ(1, call_count);
+
+  subscription = base::CallbackListSubscription();
+  EXPECT_FALSE(text_input_manager->HasObserver(contents()));
 }
 
 class WebContentsImplTestKeyboardEvents

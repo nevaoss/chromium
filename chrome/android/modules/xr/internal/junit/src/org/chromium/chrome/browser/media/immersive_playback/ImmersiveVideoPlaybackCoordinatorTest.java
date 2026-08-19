@@ -71,6 +71,7 @@ import java.util.function.Consumer;
 /** Tests for {@link ImmersiveVideoPlaybackCoordinator}. */
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(manifest = Config.NONE)
+@SuppressWarnings("unchecked")
 public class ImmersiveVideoPlaybackCoordinatorTest {
     @Mock private ImmersiveVideoControlCoordinator.Delegate mVideoControlDelegate;
     @Mock private WindowAndroid mWindowAndroid;
@@ -236,13 +237,37 @@ public class ImmersiveVideoPlaybackCoordinatorTest {
     @UiThreadTest
     public void testControlPanelAutoHide() {
         clearInvocations(mControlPanelHolder);
+        ImmersiveVideoControlView panel =
+                mCoordinator.getControlCoordinatorForTesting().getControlPanelForTesting();
+        mCoordinator.updateMediaPosition(
+                /* durationMs= */ 60_000, /* positionMs= */ 1_000, /* playbackRate= */ 1.0);
+        mCoordinator.updatePlaybackState(true);
 
-        // Warp time forward by 5 seconds (AUTO_HIDE_DELAY_MS)
         ShadowLooper.idleMainLooper(
                 ImmersiveVideoControlAutoHideManager.AUTO_HIDE_DELAY_MS, TimeUnit.MILLISECONDS);
 
-        // Verify control panel autohides
         verify(mControlPanelHolder).setEntityEnabled(false);
+        int hiddenProgress = (int) panel.getSeekBarForTesting().getValue();
+        ShadowLooper.idleMainLooper(1_000, TimeUnit.MILLISECONDS);
+        assertEquals(hiddenProgress, (int) panel.getSeekBarForTesting().getValue());
+    }
+
+    /** Tests that disposal stops an active seekbar loop. */
+    @Test
+    @UiThreadTest
+    public void testDisposeStopsSeekbarUpdates() {
+        ImmersiveVideoControlView panel =
+                mCoordinator.getControlCoordinatorForTesting().getControlPanelForTesting();
+        mCoordinator.updateMediaPosition(
+                /* durationMs= */ 60_000, /* positionMs= */ 1_000, /* playbackRate= */ 1.0);
+        mCoordinator.updatePlaybackState(true);
+        ShadowLooper.idleMainLooper(100, TimeUnit.MILLISECONDS);
+
+        mCoordinator.dispose();
+        int disposedProgress = (int) panel.getSeekBarForTesting().getValue();
+        ShadowLooper.idleMainLooper(1_000, TimeUnit.MILLISECONDS);
+
+        assertEquals(disposedProgress, (int) panel.getSeekBarForTesting().getValue());
     }
 
     /** Tests that hovering/pointing at the panel prevents the autohide timer from firing. */
@@ -324,6 +349,25 @@ public class ImmersiveVideoPlaybackCoordinatorTest {
 
         verify(mControlPanelHolder).setEntityEnabled(false);
         assertFalse(panel.isFormatButtonSelectedForTesting());
+    }
+
+    @Test
+    @UiThreadTest
+    public void testFormatPanelAccessibilityFocusLoss_DismissesPanel() {
+        XrPanelEntityHolder formatPanelHolder = mock(XrPanelEntityHolder.class);
+        when(formatPanelHolder.getEntitySize()).thenReturn(new SizeF(1f, 1f));
+        when(mControlPanelHolder.getParent()).thenReturn(mControlPanelHolder);
+        when(formatPanelHolder.getParent()).thenReturn(formatPanelHolder);
+        when(mXrSceneCoreSessionManager.createPanelEntity(any(), any()))
+                .thenReturn(formatPanelHolder);
+
+        mCoordinator.onFormatClicked();
+        assertTrue(mCoordinator.getFormatCoordinatorForTesting().isShowing());
+
+        mCoordinator.onFormatPanelAccessibilityFocusChanged(false);
+
+        verify(formatPanelHolder).setEntityEnabled(false);
+        verify(formatPanelHolder).setParent(null);
     }
 
     /**

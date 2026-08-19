@@ -21,6 +21,7 @@
 #include "base/memory/scoped_refptr.h"
 #include "base/run_loop.h"
 #include "base/strings/string_split.h"
+#include "base/task/thread_pool/thread_pool_instance.h"
 #include "base/test/run_until.h"
 #include "base/test/task_environment.h"
 #include "base/test/test_future.h"
@@ -156,7 +157,7 @@ class MockPeerSessionEventHandler : public PeerSession::EventHandler {
   MOCK_METHOD(void,
               OnSessionClosed,
               (protocol::ErrorCode error,
-               std::string_view error_details,
+               const std::string& error_details,
                const SourceLocation& error_location),
               (override));
   MOCK_METHOD(void,
@@ -843,6 +844,8 @@ TEST_F(PeerSessionImplTest, ControlTerminal_CreateTerminal) {
   protocol::Capabilities capabilities;
   capabilities.set_capabilities(protocol::kTerminalModeCapability);
   peer_session_->SetCapabilities(capabilities);
+  base::ThreadPoolInstance::Get()->FlushForTesting();
+  task_environment_.RunUntilIdle();
 
   // Expect client_stub to receive the create response.
   protocol::TerminalControl create_response;
@@ -870,6 +873,8 @@ TEST_F(PeerSessionImplTest, ControlTerminal_InputAndResize) {
   protocol::Capabilities capabilities;
   capabilities.set_capabilities(protocol::kTerminalModeCapability);
   peer_session_->SetCapabilities(capabilities);
+  base::ThreadPoolInstance::Get()->FlushForTesting();
+  task_environment_.RunUntilIdle();
 
   // Create a terminal
   EXPECT_CALL(client_stub_, DeliverTerminalControl(_)).Times(1);
@@ -915,6 +920,8 @@ TEST_F(PeerSessionImplTest, ControlTerminal_OutputAndExit) {
   protocol::Capabilities capabilities;
   capabilities.set_capabilities(protocol::kTerminalModeCapability);
   peer_session_->SetCapabilities(capabilities);
+  base::ThreadPoolInstance::Get()->FlushForTesting();
+  task_environment_.RunUntilIdle();
 
   // Create a terminal
   EXPECT_CALL(client_stub_, DeliverTerminalControl(_)).Times(1);
@@ -973,6 +980,8 @@ TEST_F(PeerSessionImplTest, ControlTerminal_RemoveRequest) {
   protocol::Capabilities capabilities;
   capabilities.set_capabilities(protocol::kTerminalModeCapability);
   peer_session_->SetCapabilities(capabilities);
+  base::ThreadPoolInstance::Get()->FlushForTesting();
+  task_environment_.RunUntilIdle();
 
   // Create two terminals
   EXPECT_CALL(client_stub_, DeliverTerminalControl(_)).Times(2);

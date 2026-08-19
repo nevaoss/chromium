@@ -12,6 +12,7 @@ import android.content.Context;
 import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.graphics.Rect;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityEvent;
@@ -264,6 +265,7 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
                                 dynamicRectProvider)
                         .addOnDismissListener(this::onContextPopupDismissed)
                         .setOutsideTouchable(true)
+                        .setFocusable(true)
                         .setAnimateFromAnchor(true)
                         .setPreferredHorizontalOrientation(HorizontalOrientation.LAYOUT_DIRECTION)
                         .setViewportRectProvider(mViewportRectProvider)
@@ -471,6 +473,26 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
         mModel.get(FuseboxProperties.ACTIVATION_CHIP_CLICKED).run();
     }
 
+    /**
+     * Handle a key event by activating it or changing the currently keyboard-selected view; returns
+     * true if a view was selected or activated.
+     */
+    public boolean handleKeyEvent(int keyCode, KeyEvent event) {
+        return mMediator != null && mMediator.handleKeyEvent(keyCode, event);
+    }
+
+    /** Set the first attachment as selected. Does nothing if there are not attachments. */
+    public void selectFirstAttachment() {
+        if (mMediator == null) return;
+        mMediator.selectFirstAttachment();
+    }
+
+    /** Set the last attachment as selected. Does nothing if there are not attachments. */
+    public void selectLastAttachment() {
+        if (mMediator == null) return;
+        mMediator.selectLastAttachment();
+    }
+
     // TemplateUrlServiceObserver
     @Override
     public void onTemplateURLServiceChanged() {
@@ -503,11 +525,13 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
     @VisibleForTesting
     void onContextPopupDismissed() {
         if (mViewHolder == null || mViewHolder.plusButton == null) return;
-        mViewHolder.plusButton.requestFocus();
-        mViewHolder.plusButton.sendAccessibilityEvent(AccessibilityEvent.TYPE_VIEW_FOCUSED);
+        boolean actionTaken = mMediator != null && mMediator.wasActionTaken();
+        if (!actionTaken) {
+            mViewHolder.plusButton.requestFocus();
+            mViewHolder.plusButton.sendAccessibilityEvent(AccessibilityEvent.TYPE_VIEW_FOCUSED);
+        }
         if (mOnInteractionCompletedCallback != null) {
-            mOnInteractionCompletedCallback.onResult(
-                    mMediator != null && mMediator.wasActionTaken());
+            mOnInteractionCompletedCallback.onResult(actionTaken);
         }
     }
 

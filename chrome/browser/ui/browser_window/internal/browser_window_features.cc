@@ -49,6 +49,7 @@
 #include "chrome/browser/ui/breadcrumb_manager_browser_agent.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_actions.h"
+#include "chrome/browser/ui/browser_active_state_manager/browser_active_state_manager.h"
 #include "chrome/browser/ui/browser_command_controller.h"
 #include "chrome/browser/ui/browser_content_setting_bubble_model_delegate.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
@@ -267,6 +268,10 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
       GetUserDataFactory().CreateInstanceWithFactoryMethod(
           *browser, &web_app::MaybeCreateAppBrowserController, browser);
 
+  browser_active_state_manager_ =
+      GetUserDataFactory().CreateInstance<BrowserActiveStateManager>(
+          *browser, *browser, app_browser_controller_.get());
+
   {
     auto* merged_bookmarks_service =
         BookmarkMergedSurfaceServiceFactory::GetForProfile(profile);
@@ -482,7 +487,8 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
   session_service_browser_helper_ =
       std::make_unique<SessionServiceBrowserHelper>(
           browser->GetTabStripModel(), browser->GetSessionID(),
-          browser->GetType(), browser->GetProfile());
+          browser->GetType(), browser->GetProfile(),
+          &BrowserInitState::From(browser)->create_params());
 
   // Must be after session_service_browser_helper_:
   //   tab_list_bridge_ depends on initialized session tab/window state.
@@ -746,8 +752,8 @@ void BrowserWindowFeatures::InitPostWindowConstruction(Browser* browser) {
   }
 
   exclusive_access_manager_ = std::make_unique<ExclusiveAccessManager>(
-      browser,
-      BrowserWindow::FromBrowser(browser)->GetExclusiveAccessContext());
+      browser, BrowserWindow::FromBrowser(browser)->GetExclusiveAccessContext(),
+      browser_command_controller_.get(), bookmark_bar_controller_.get());
 
   // Must be after exclusive_access_manager_ and
   // desktop_browser_window_capabilities_.
@@ -1218,7 +1224,8 @@ FindBarController* BrowserWindowFeatures::GetFindBarController() {
   if (!find_bar_controller_.get()) {
     CHECK(browser_);
     find_bar_controller_ = std::make_unique<FindBarController>(
-        BrowserWindow::FromBrowser(browser_)->CreateFindBar());
+        BrowserWindow::FromBrowser(browser_)->CreateFindBar(),
+        browser_command_controller_.get());
     find_bar_controller_->find_bar()->SetFindBarController(
         find_bar_controller_.get());
     find_bar_controller_->ChangeWebContents(

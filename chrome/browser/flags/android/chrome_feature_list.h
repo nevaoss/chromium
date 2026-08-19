@@ -40,7 +40,7 @@ BASE_DECLARE_FEATURE(kAndroidAtomsLogging);
 BASE_DECLARE_FEATURE(kAndroidBottomBar);
 BASE_DECLARE_FEATURE(kAndroidBricksNativePage);
 BASE_DECLARE_FEATURE(kAndroidContextMenuDisabledMenuItems);
-BASE_DECLARE_FEATURE(kAndroidContextMenuNewActions);
+BASE_DECLARE_FEATURE(kAndroidDesktopBookmarkLayout);
 BASE_DECLARE_FEATURE(kAndroidDesktopBookmarkPopup);
 BASE_DECLARE_FEATURE(kAndroidDeviceSignalsDisclaimer);
 BASE_DECLARE_FEATURE(kAndroidElegantTextHeight);
@@ -89,12 +89,12 @@ BASE_DECLARE_FEATURE(kAutomotiveBackButtonBarStreamline);
 BASE_DECLARE_FEATURE(kAuxiliarySearchDonation);
 BASE_DECLARE_FEATURE(kAuxiliarySearchHistoryDonation);
 BASE_DECLARE_FEATURE(kAvoidDoubleMultiwindowChanges);
+BASE_DECLARE_FEATURE(kBackGestureReflectsDesktopBehavior);
 BASE_DECLARE_FEATURE(kBackgroundThreadPool);
 BASE_DECLARE_FEATURE(kBlockIntentsWhileLocked);
 BASE_DECLARE_FEATURE(kBookmarkPaneAndroid);
 BASE_DECLARE_FEATURE(kBookmarksBarContextMenu);
 BASE_DECLARE_FEATURE(kBookmarksBarNTP);
-BASE_DECLARE_FEATURE(kBookmarksDesktopLayout);
 BASE_DECLARE_FEATURE(kBottomSheetAsBrowserControls);
 BASE_DECLARE_FEATURE(kBottomSheetOnDesktopWindowing);
 BASE_DECLARE_FEATURE(kBrowserControlsDebugging);
@@ -218,7 +218,6 @@ BASE_DECLARE_FEATURE(kLaunchCauseScreenOffFix);
 BASE_DECLARE_FEATURE(kLensOnQuickActionSearchWidget);
 BASE_DECLARE_FEATURE(kLinkHoverStatusBar);
 BASE_DECLARE_FEATURE(kLoadAllTabsAtStartup);
-BASE_DECLARE_FEATURE(kLoadNativeEarly);
 BASE_DECLARE_FEATURE(kLocationBarModelOptimizations);
 BASE_DECLARE_FEATURE(kLockTopControlsOnLargeTabletsV2);
 BASE_DECLARE_FEATURE(kLongScreenshotsLenientMemoryCheck);
@@ -253,7 +252,6 @@ BASE_DECLARE_FEATURE(kPreconnectOnTabCreation);
 BASE_DECLARE_FEATURE(kPriceChangeModule);
 BASE_DECLARE_FEATURE(kPrintSelectionMenu);
 BASE_DECLARE_FEATURE(kProtectRecentlyVisibleTab);
-BASE_DECLARE_FEATURE(kProtectedTabsAndroid);
 BASE_DECLARE_FEATURE(kPwaRestoreUi);
 BASE_DECLARE_FEATURE(kPwaRestoreUiAtStartup);
 BASE_DECLARE_FEATURE(kReadAloudAudioOverviews);
@@ -286,8 +284,11 @@ BASE_DECLARE_FEATURE(kSmallerTabStripTitleLimit);
 BASE_DECLARE_FEATURE(kStartSurfaceReturnTime);
 BASE_DECLARE_FEATURE(kSubmenusInAppMenu);
 BASE_DECLARE_FEATURE(kSubmenusInAppMenuLff);
+BASE_DECLARE_FEATURE(kSyncRestoreOnStartupPref);
 BASE_DECLARE_FEATURE(kTabAndroidGracefulShutdown);
 BASE_DECLARE_FEATURE(kTabBottomSheet);
+BASE_DECLARE_FEATURE(kTabBottomSheetFullHeight);
+BASE_DECLARE_FEATURE(kTabBottomSheetHalfHeight);
 BASE_DECLARE_FEATURE(kTabBottomSheetResizeWebview);
 BASE_DECLARE_FEATURE(kTabClosureMethodRefactor);
 BASE_DECLARE_FEATURE(kTabSearchForDesktop);
@@ -325,7 +326,12 @@ BASE_DECLARE_FEATURE(kUsePLinkInHelp);
 BASE_DECLARE_FEATURE(kUseWebUiNtpAndroid);
 BASE_DECLARE_FEATURE(kUserFeedbackAllowedPolicy);
 BASE_DECLARE_FEATURE(kVerifyStartupSigninState);
+BASE_DECLARE_FEATURE(kVirtualKeyboardResizesContentTransientOvershootFix);
 BASE_DECLARE_FEATURE(kVirtualKeyboardTransientInnerHeightFix);
+// TODO(crbug.com/543076349): When removing this flag, move navigation bar color
+// setup to BaseCustomTabActivity#performPreInflationStartup() and remove the
+// calls from CustomTabActivity and finishNativeInitialization().
+BASE_DECLARE_FEATURE(kWebAppNavigationBarThemeColor);
 BASE_DECLARE_FEATURE(kWebAppShortEdgesCutoutMode);
 BASE_DECLARE_FEATURE(kWebOtpCrossDeviceSimpleString);
 BASE_DECLARE_FEATURE(kWebUiAndroidTheming);
@@ -384,14 +390,6 @@ inline constexpr base::FeatureParam<bool>
                                              "disable_animations",
                                              false);
 
-// If it does not support PERCEPTIBLE importance (e.g. Android Q- does not
-// support not-perceptible binding), protected tabs have MODERATE importance as
-// fallback.
-inline constexpr base::FeatureParam<bool> kFallbackToModerateParam(
-    &kProtectedTabsAndroid,
-    "fallback_to_moderate",
-    /*default_value=*/false);
-
 inline constexpr base::FeatureParam<int> kGestureUserEducationPageDelay(
     &kGestureUserEducationBackSwipe,
     "gesture-user-education-page-delay",
@@ -401,11 +399,6 @@ inline constexpr base::FeatureParam<int> kProtectRecentlyVisibleTabDuration(
     &kProtectRecentlyVisibleTab,
     "duration_in_seconds",
     /*default_value=*/base::Minutes(10).InSeconds());
-
-inline constexpr base::FeatureParam<bool> kInitFeatureListEarly(
-    &kLoadNativeEarly,
-    "init_feature_list_early",
-    /*default_value=*/true);
 
 inline constexpr base::FeatureParam<int>
     kReadAloudAudioOverviewsSpeedAdditionPercentage(

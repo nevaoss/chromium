@@ -22,6 +22,8 @@ source_set("ui_bundled") {
     "browser_coordinator+Testing.h",
     "browser_coordinator.h",
     "browser_coordinator.mm",
+    "browser_modal_host.h",
+    "browser_modal_host.mm",
     "browser_omnibox_state_provider.h",
     "browser_omnibox_state_provider.mm",
     "browser_view_controller+private.h",
@@ -110,6 +112,7 @@ source_set("ui_bundled") {
     "//ios/chrome/browser/autofill/ui_bundled/bottom_sheet:virtual_card_enrollment_bottom_sheet_coordinator",
     "//ios/chrome/browser/autofill/ui_bundled/error_dialog",
     "//ios/chrome/browser/autofill/ui_bundled/progress_dialog",
+    "//ios/chrome/browser/autofill/wallet_reminder_notice/coordinator",
     "//ios/chrome/browser/bookmarks/model",
     "//ios/chrome/browser/bookmarks/ui_bundled/home",
     "//ios/chrome/browser/browser_content/model",
@@ -195,7 +198,6 @@ source_set("ui_bundled") {
     "//ios/chrome/browser/link_to_text/model",
     "//ios/chrome/browser/location_bar/ui_bundled",
     "//ios/chrome/browser/main/coordinator",
-    "//ios/chrome/browser/main/model",
     "//ios/chrome/browser/main/ui",
     "//ios/chrome/browser/main/ui_bundled:default_browser_scene_agent",
     "//ios/chrome/browser/main_content/ui_bundled:ui",
@@ -223,7 +225,6 @@ source_set("ui_bundled") {
     "//ios/chrome/browser/overscroll_actions/model",
     "//ios/chrome/browser/overscroll_actions/ui_bundled",
     "//ios/chrome/browser/page_info/coordinator",
-    "//ios/chrome/browser/page_info/requirements",
     "//ios/chrome/browser/passwords/bottom_sheet/coordinator",
     "//ios/chrome/browser/passwords/model",
     "//ios/chrome/browser/passwords/password_breach/coordinator",
@@ -275,6 +276,7 @@ source_set("ui_bundled") {
     "//ios/chrome/browser/shared/coordinator/scene:scene_state_header",
     "//ios/chrome/browser/shared/coordinator/scene/state",
     "//ios/chrome/browser/shared/model/application_context",
+    "//ios/chrome/browser/shared/model/browser",
     "//ios/chrome/browser/shared/model/prefs:pref_names",
     "//ios/chrome/browser/shared/model/profile",
     "//ios/chrome/browser/shared/model/url:constants",
@@ -411,6 +413,7 @@ source_set("unit_tests") {
   testonly = true
   sources = [
     "browser_coordinator_unittest.mm",
+    "browser_modal_host_unittest.mm",
     "browser_view_controller_unittest.mm",
     "key_commands_provider_unittest.mm",
   ]

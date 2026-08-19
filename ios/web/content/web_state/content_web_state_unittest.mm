@@ -11,6 +11,7 @@
 #import "ios/web/public/test/fakes/fake_web_client.h"
 #import "ios/web/public/test/fakes/fake_web_state_delegate.h"
 #import "ios/web/public/test/fakes/fake_web_state_observer.h"
+#import "ios/web/public/test/fakes/fake_web_state_policy_decider.h"
 #import "ios/web/public/web_client.h"
 #import "testing/gmock/include/gmock/gmock.h"
 #import "testing/gtest_mac.h"
@@ -103,6 +104,18 @@ TEST_F(ContentWebStateTest, SetHasOpener) {
   EXPECT_TRUE(content_web_state()->HasOpener());
 }
 
+// Tests that a WebStatePolicyDecider is detached (web_state() becomes null)
+// when the ContentWebState it's attached to is destroyed.
+TEST_F(ContentWebStateTest, PolicyDecider) {
+  auto policy_decider =
+      std::make_unique<FakeWebStatePolicyDecider>(content_web_state());
+  EXPECT_EQ(content_web_state(), policy_decider->web_state());
+
+  content_web_state_.reset();
+
+  EXPECT_FALSE(policy_decider->web_state());
+}
+
 // Tests that GetCreationTime()/GetLastActiveTime() start out equal, and that
 // WasShown() advances only the last active time.
 TEST_F(ContentWebStateTest, CreationAndLastActiveTime) {
@@ -149,6 +162,25 @@ TEST_F(ContentWebStateTest,
   int initial_item_count = navigation_manager->GetItemCount();
 
   navigation_manager->Reload(web::ReloadType::NORMAL,
+                             /*check_for_repost=*/false);
+
+  EXPECT_FALSE(navigation_manager->GetPendingItem());
+  EXPECT_EQ(initial_item_count, navigation_manager->GetItemCount());
+}
+
+// Tests that reload with web::ReloadType::ORIGINAL_REQUEST_URL is a no-op
+// (falls back to a normal reload) when navigation manager only has the
+// initial NavigationEntry that content::WebContents is created with (i.e. no
+// real navigation has happened yet).
+TEST_F(ContentWebStateTest,
+       ReloadWithOriginalTypeWithInitialNavigationEntryOnly) {
+  NavigationManager* navigation_manager =
+      content_web_state()->GetNavigationManager();
+  ASSERT_FALSE(navigation_manager->GetPendingItem());
+  ASSERT_TRUE(navigation_manager->GetLastCommittedItem());
+  int initial_item_count = navigation_manager->GetItemCount();
+
+  navigation_manager->Reload(web::ReloadType::ORIGINAL_REQUEST_URL,
                              /*check_for_repost=*/false);
 
   EXPECT_FALSE(navigation_manager->GetPendingItem());

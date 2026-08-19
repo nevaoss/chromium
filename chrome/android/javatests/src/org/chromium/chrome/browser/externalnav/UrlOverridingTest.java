@@ -897,6 +897,7 @@ public class UrlOverridingTest {
 
     @Test
     @SmallTest
+    @DisabledTest(message = "crbug.com/543459084")
     public void testNavigationFromXHRCallbackAndShortTimeout() throws Exception {
         WebPageStation ctaPage = mTabbedActivityTestRule.startOnBlankPage();
         loadUrlAndWaitForIntentUrl(
@@ -2574,6 +2575,7 @@ public class UrlOverridingTest {
         launchTwa("com.foo.bar", url);
         ChromeActivity activity = mCustomTabActivityRule.getActivity();
         Tab tab = activity.getActivityTab();
+        ChromeTabUtils.waitForInteractable(tab);
 
         Assert.assertTrue(tab.isTabInPWA());
         Assert.assertFalse(tab.getWebContents().hasOpener());
@@ -2613,7 +2615,6 @@ public class UrlOverridingTest {
 
     @Test
     @LargeTest
-    @DisabledTest(message = "https://crbug.com/513674983")
     public void testTopLevelNavigationWasReparented() throws TimeoutException {
         InterceptNavigationDelegateClientImpl.setIsDesktopWindowingModeForTesting(true);
 

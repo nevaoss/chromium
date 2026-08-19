@@ -177,7 +177,7 @@ class TabStyleViewDelegateImpl : public TabStyleViewDelegate {
   std::optional<SkColor> GetGroupColor() const override {
     return tab_->GetGroupColor();
   }
-  bool IsGroupFocused() const override {
+  bool IsInFocusedGroup() const override {
     const std::optional<tab_groups::TabGroupId> group = tab_->group();
     return group.has_value() && tab_->controller()->GetFocusedGroup() == group;
   }
@@ -1090,15 +1090,13 @@ void Tab::ReleaseFreezingVote() {
 }
 
 void Tab::ShowHover(TabStyle::ShowHoverStyle style) {
-  if (!hover_controller_) {
-    return;
+  if (hover_controller_) {
+    if (style == TabStyle::ShowHoverStyle::kSubtle) {
+      hover_controller_->SetSubtleOpacityScale(
+          controller()->GetHoverOpacityForRadialHighlight());
+    }
+    hover_controller_->Show(style);
   }
-
-  if (style == TabStyle::ShowHoverStyle::kSubtle) {
-    hover_controller_->SetSubtleOpacityScale(
-        controller()->GetHoverOpacityForRadialHighlight());
-  }
-  hover_controller_->Show(style);
   UpdateForegroundColors();
   DeprecatedLayoutImmediately();
 }

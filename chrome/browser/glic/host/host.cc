@@ -103,7 +103,7 @@ Host::~Host() {
   VLOG(1) << "Glic [Host] Destructor";
   // Destroying the web contents results in calls back to the host, so do that
   // first.
-  Shutdown();
+  Hibernate();
 }
 
 void Host::SetDelegate(EmbedderDelegate* new_delegate) {
@@ -111,14 +111,18 @@ void Host::SetDelegate(EmbedderDelegate* new_delegate) {
   delegate_ = new_delegate;
 }
 
-void Host::Shutdown() {
-  TRACE_EVENT("glic", "Host::Shutdown");
-  VLOG(1) << "Glic [Host] Shutdown";
+void Host::Hibernate() {
+  TRACE_EVENT("glic", "Host::Hibernate");
+  VLOG(1) << "Glic [Host] Hibernate";
 
   web_client_ = nullptr;
   web_client_access_.reset();
   handler_info_.reset();
   contents_.reset();
+}
+
+bool Host::IsAwake() const {
+  return contents_ != nullptr;
 }
 
 bool Host::IsWebContentPresentAndMatches(
@@ -171,8 +175,8 @@ void Host::Reload() {
 
   if (base::FeatureList::IsEnabled(kGlicReloadUsesFreshWebContents)) {
     UnsetWebClient();
-    Shutdown();
-    CreateContents();
+    Hibernate();
+    Awaken();
     delegate_->OnReload();
   } else {
     contents->GetController().Reload(content::ReloadType::BYPASSING_CACHE,
@@ -186,7 +190,7 @@ void Host::OnWebContentsNavigated() {
   }
 }
 
-void Host::CreateContents() {
+void Host::Awaken() {
   if (contents_) {
     return;
   }
@@ -203,6 +207,11 @@ Host::PanelWillOpenOptions::PanelWillOpenOptions(PanelWillOpenOptions&&) =
     default;
 Host::PanelWillOpenOptions& Host::PanelWillOpenOptions::operator=(
     PanelWillOpenOptions&&) = default;
+
+void Host::SetDebouncedVisibility(bool is_visible) {
+  debounced_visibility_ = is_visible;
+  UpdateVisibility();
+}
 
 void Host::PanelWillOpen(mojom::InvocationSource invocation_source,
                          PanelWillOpenOptions options) {
@@ -497,10 +506,37 @@ content::WebContents* Host::webui_contents() const {
   return contents_ ? contents_->web_contents() : nullptr;
 }
 
-void Host::SetWebContentsVisibility(content::Visibility visibility) {
-  if (contents_ && contents_->web_contents()) {
+void Host::SetWebContentsVisibilityOverride(
+    std::optional<content::Visibility> visibility_override) {
+  visibility_override_ = visibility_override;
+  UpdateVisibility();
+}
+
+void Host::UpdateVisibility() {
+  content::Visibility visibility = GetExpectedVisibility();
+  if (web_contents_visibility_ == visibility) {
+    return;
+  }
+  web_contents_visibility_ = visibility;
+  if (contents_) {
     contents_->SetVisibility(visibility);
   }
+  if (content::WebContents* client_contents = web_client_contents()) {
+    client_contents->UpdateWebContentsVisibility(visibility);
+  }
+}
+
+content::Visibility Host::GetExpectedVisibility() const {
+  if (visibility_override_.has_value()) {
+    return visibility_override_.value();
+  }
+  if (!contents_) {
+    return content::Visibility::HIDDEN;
+  }
+  if (debounced_visibility_) {
+    return content::Visibility::VISIBLE;
+  }
+  return content::Visibility::HIDDEN;
 }
 
 content::WebContents* Host::web_client_contents() const {

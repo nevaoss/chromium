@@ -45,6 +45,7 @@
 #include "chrome/browser/ui/tabs/tab_model.h"
 #include "chrome/browser/ui/views/drive_picker_host/drive_picker_host_controller.h"
 #include "chrome/browser/ui/views/drive_picker_host/drive_picker_sanitizer.h"
+#include "components/lens/lens_features.h"
 #include "chrome/browser/ui/webui/cr_components/composebox/composebox_handler.h"
 #include "chrome/browser/ui/webui/drive_picker_host/drive_picker_host_request.h"
 #include "chrome/browser/ui/webui/new_tab_page/composebox/variations/composebox_fieldtrial.h"
@@ -923,6 +924,10 @@ TEST_F(ContextualSearchboxHandlerTest, AddFileFromBrowser_FileTooLarge) {
 }
 
 TEST_F(ContextualSearchboxHandlerTest, AddFileFromBrowser_UnsupportedType) {
+  base::test::ScopedFeatureList local_feature_list;
+  local_feature_list.InitAndDisableFeature(
+      lens::features::kLensSendRawFileMediaTypes);
+
   profile()->GetPrefs()->SetInteger(
       contextual_search::kSearchContentSharingSettings,
       static_cast<int>(
@@ -2301,7 +2306,8 @@ TEST_F(ContextualSearchboxHandlerTest, QueryAutocomplete_SetsLensInputs) {
   handler().QueryAutocomplete(
       0, u"test", /*prevent_inline_autocomplete=*/false, 0,
       omnibox::SuggestInventory::SUGGEST_INVENTORY_DEFAULT,
-      /*is_on_focus=*/false);
+      /*is_on_focus=*/false, /*keyword=*/"",
+      searchbox::mojom::InputMethod::kKeyboard);
 
   EXPECT_TRUE(input.lens_overlay_suggest_inputs().has_value());
   EXPECT_EQ(input.lens_overlay_suggest_inputs()->encoded_image_signals(),
@@ -2336,7 +2342,8 @@ TEST_F(ContextualSearchboxHandlerTest,
     handler().QueryAutocomplete(
         0, u"test", /*prevent_inline_autocomplete=*/false, 0,
         omnibox::SuggestInventory::SUGGEST_INVENTORY_DEFAULT,
-        /*is_on_focus=*/false);
+        /*is_on_focus=*/false, /*keyword=*/"",
+        searchbox::mojom::InputMethod::kKeyboard);
     EXPECT_TRUE(input.lens_overlay_suggest_inputs().has_value());
     EXPECT_EQ(input.lens_overlay_suggest_inputs()->encoded_image_signals(),
               "xyz");
@@ -2362,7 +2369,8 @@ TEST_F(ContextualSearchboxHandlerTest,
     handler().QueryAutocomplete(
         0, u"test", /*prevent_inline_autocomplete=*/false, 0,
         omnibox::SuggestInventory::SUGGEST_INVENTORY_DEFAULT,
-        /*is_on_focus=*/false);
+        /*is_on_focus=*/false, /*keyword=*/"",
+        searchbox::mojom::InputMethod::kKeyboard);
     EXPECT_TRUE(input.lens_overlay_suggest_inputs().has_value());
     EXPECT_EQ(input.lens_overlay_suggest_inputs()->encoded_image_signals(),
               "xyz");
@@ -2378,6 +2386,7 @@ class ContextualSearchboxHandlerTestTabsTest
 
   void SetUp() override {
     ContextualSearchboxHandlerTest::SetUp();
+    last_active_time_ticks_ = base::TimeTicks::Now();
     contextual_tasks::ContextualTasksServiceFactory::GetInstance()
         ->SetTestingFactory(
             profile(),
@@ -2516,6 +2525,7 @@ TEST_F(ContextualSearchboxHandlerTestTabsTest, AddTabContext) {
       std::make_unique<lens::ContextualInputData>();
   sample_contextual_input_data->page_url = sample_url;
   handler().AddTabContext(sample_tab_id, /*delay_upload=*/false,
+                          searchbox::mojom::TabAttachmentSource::kContextMenu,
                           callback.Get());
 
   // Flush the mojo pipe to ensure the callback is run.
@@ -2582,6 +2592,7 @@ TEST_F(ContextualSearchboxHandlerTestTabsTest, ClearFiles_KeepTabs) {
   base::MockCallback<ComposeboxHandler::AddTabContextCallback> tab_callback;
   EXPECT_CALL(tab_callback, Run).Times(1);
   handler().AddTabContext(sample_tab_id, /*delay_upload=*/false,
+                          searchbox::mojom::TabAttachmentSource::kContextMenu,
                           tab_callback.Get());
 
   // Verify both tokens are uploaded:
@@ -2658,6 +2669,7 @@ TEST_F(ContextualSearchboxHandlerTestTabsTest,
   base::MockCallback<ComposeboxHandler::AddTabContextCallback> tab_callback;
   EXPECT_CALL(tab_callback, Run).Times(1);
   handler().AddTabContext(sample_tab_id, /*delay_upload=*/false,
+                          searchbox::mojom::TabAttachmentSource::kContextMenu,
                           tab_callback.Get());
 
   // Verify both tokens are uploaded:
@@ -2680,7 +2692,9 @@ TEST_F(ContextualSearchboxHandlerTestTabsTest, AddTabContextNotFound) {
 
   EXPECT_CALL(callback, Run).WillOnce(testing::SaveArg<0>(&callback_result));
 
-  handler().AddTabContext(0, false, callback.Get());
+  handler().AddTabContext(0, false,
+                          searchbox::mojom::TabAttachmentSource::kContextMenu,
+                          callback.Get());
 
   // Flush the mojo pipe to ensure the callback is run.
   mock_searchbox_page_.FlushForTesting();
@@ -2710,6 +2724,7 @@ TEST_F(ContextualSearchboxHandlerTestTabsTest, AddTabContext_PolicyDisabled) {
   EXPECT_CALL(callback, Run).WillOnce(testing::SaveArg<0>(&callback_result));
 
   handler().AddTabContext(sample_tab_id, /*delay_upload=*/false,
+                          searchbox::mojom::TabAttachmentSource::kContextMenu,
                           callback.Get());
 
   // Flush the mojo pipe to ensure the callback is run.
@@ -2767,7 +2782,9 @@ TEST_F(ContextualSearchboxHandlerTestTabsTest, AddTabContext_DelayUpload) {
   sample_contextual_input_data->page_url = sample_url;
 
   // Act
-  handler().AddTabContext(sample_tab_id, /*delay_upload=*/true, callback.Get());
+  handler().AddTabContext(sample_tab_id, /*delay_upload=*/true,
+                          searchbox::mojom::TabAttachmentSource::kContextMenu,
+                          callback.Get());
   // Flush the mojo pipe to ensure the callback is run and captures the status.
   mock_searchbox_page_.FlushForTesting();
 
@@ -2806,6 +2823,7 @@ TEST_F(ContextualSearchboxHandlerTestTabsTest, AddTabContext_RecentTab) {
   EXPECT_CALL(callback, Run);
 
   handler().AddTabContext(sample_tab_id_1, /*delay_upload=*/false,
+                          searchbox::mojom::TabAttachmentSource::kContextMenu,
                           callback.Get());
 
   // Flush the mojo pipe to ensure the callback is run.
@@ -2847,6 +2865,7 @@ TEST_F(ContextualSearchboxHandlerTestTabsTest, DeleteContext_DelayUpload) {
       std::make_unique<lens::ContextualInputData>();
   sample_contextual_input_data->page_url = sample_url;
   handler().AddTabContext(sample_tab_id, /*delay_upload=*/true,
+                          searchbox::mojom::TabAttachmentSource::kContextMenu,
                           future.GetCallback());
   // Flush the mojo pipe to ensure the callback is run.
   mock_searchbox_page_.FlushForTesting();
@@ -2887,7 +2906,9 @@ TEST_F(ContextualSearchboxHandlerTestTabsTest,
   EXPECT_CALL(mock_searchbox_page_, OnInputStateChanged).Times(3);
 
   base::MockCallback<ComposeboxHandler::AddTabContextCallback> callback;
-  handler().AddTabContext(tab_id1, /*delay_upload=*/true, callback.Get());
+  handler().AddTabContext(tab_id1, /*delay_upload=*/true,
+                          searchbox::mojom::TabAttachmentSource::kContextMenu,
+                          callback.Get());
   // Flush the mojo pipe to ensure the callback is run.
   mock_searchbox_page_.FlushForTesting();
   ASSERT_TRUE(handler().context_input_data().has_value());
@@ -2912,6 +2933,7 @@ TEST_F(ContextualSearchboxHandlerTestTabsTest,
       base::UnguessableToken, contextual_search::ContextUploadErrorType>>
       future;
   handler().AddTabContext(tab_id2, /*delay_upload=*/false,
+                          searchbox::mojom::TabAttachmentSource::kContextMenu,
                           future.GetCallback());
   mock_searchbox_page_.FlushForTesting();
   ASSERT_FALSE(handler().context_input_data().has_value());
@@ -2955,7 +2977,9 @@ TEST_F(ContextualSearchboxHandlerTestTabsTest, TabContextAddedMetric) {
       base::UnguessableToken, contextual_search::ContextUploadErrorType>>
       future;
   handler().NotifySessionStarted();
-  handler().AddTabContext(tab_id, false, future.GetCallback());
+  handler().AddTabContext(tab_id, false,
+                          searchbox::mojom::TabAttachmentSource::kContextMenu,
+                          future.GetCallback());
   ASSERT_TRUE(future.Wait());
   EXPECT_TRUE(future.Get().has_value());
 
@@ -3289,6 +3313,7 @@ TEST_F(ContextualSearchboxHandlerTestTabsTest,
       future1;
   handler().NotifySessionStarted();
   handler().AddTabContext(tab_a1->GetHandle().raw_value(), false,
+                          searchbox::mojom::TabAttachmentSource::kContextMenu,
                           future1.GetCallback());
   ASSERT_TRUE(future1.Wait());
   EXPECT_TRUE(future1.Get().has_value());
@@ -3298,6 +3323,7 @@ TEST_F(ContextualSearchboxHandlerTestTabsTest,
       base::UnguessableToken, contextual_search::ContextUploadErrorType>>
       future2;
   handler().AddTabContext(tab_b1->GetHandle().raw_value(), false,
+                          searchbox::mojom::TabAttachmentSource::kContextMenu,
                           future2.GetCallback());
   ASSERT_TRUE(future2.Wait());
 
@@ -3345,6 +3371,7 @@ TEST_F(ContextualSearchboxHandlerTestTabsTest,
       future;
   handler().NotifySessionStarted();
   handler().AddTabContext(tab_a1->GetHandle().raw_value(), false,
+                          searchbox::mojom::TabAttachmentSource::kContextMenu,
                           future.GetCallback());
   ASSERT_TRUE(future.Wait());
   EXPECT_TRUE(future.Get().has_value());
@@ -3390,6 +3417,7 @@ TEST_F(ContextualSearchboxHandlerTestTabsTest, TabContextRecencyRankingMetric) {
       base::UnguessableToken, contextual_search::ContextUploadErrorType>>
       future;
   handler().AddTabContext(tab_a1->GetHandle().raw_value(), false,
+                          searchbox::mojom::TabAttachmentSource::kContextMenu,
                           future.GetCallback());
   ASSERT_TRUE(future.Wait());
   histogram_tester().ExpectUniqueSample(

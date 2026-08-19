@@ -554,6 +554,8 @@
 #include "chrome/browser/direct_sockets/chrome_direct_sockets_delegate.h"
 #include "chrome/browser/glic/public/features.h"
 #include "chrome/browser/indigo/onboarding/indigo_onboarding_dialog.h"
+#include "chrome/browser/loader/features.h"
+#include "chrome/browser/loader/fetch_keepalive_process_manager.h"
 #include "chrome/browser/metrics/usage_scenario/chrome_responsiveness_calculator_delegate.h"
 #include "chrome/browser/new_tab_page/new_tab_page_util.h"
 #include "chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.h"
@@ -863,14 +865,21 @@ GURL ReplaceURLHostAndPath(const GURL& url,
   return url.ReplaceComponents(replacements);
 }
 
-bool IsIsolatedWebAppUrl(const GURL& url) {
+bool IsIsolatedWebAppOrigin(const url::Origin& origin) {
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
     BUILDFLAG(IS_CHROMEOS)
-  return url.SchemeIs(webapps::kIsolatedAppScheme);
+  return origin.scheme() == webapps::kIsolatedAppScheme;
 #else
   return false;
 #endif
 }
+
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
+    BUILDFLAG(IS_CHROMEOS)
+bool IsIsolatedWebAppUrl(const GURL& url) {
+  return url.SchemeIs(webapps::kIsolatedAppScheme);
+}
+#endif
 
 // Handles the rewriting of the new tab page URL based on group policy.
 bool HandleNewTabPageLocationOverride(
@@ -1729,74 +1738,15 @@ void ChromeContentBrowserClient::DisableAdvancedProtectionCachingForTests() {
   g_disable_advanced_protection_caching_for_tests = true;
 }
 
-void ChromeContentBrowserClient::MaybeProxyNetworkBoundRequest(
-    content::BrowserContext* browser_context,
+void ChromeContentBrowserClient::MaybeSetTargetNetwork(
     net::handles::NetworkHandle bound_network,
     network::URLLoaderFactoryBuilder& factory_builder,
-    network::mojom::URLLoaderFactoryOverridePtr* factory_override,
-    const net::IsolationInfo& isolation_info) {
-  if (bound_network == net::handles::kInvalidNetworkHandle) {
+    bool is_for_network_service) {
+  if (bound_network == net::handles::kInvalidNetworkHandle ||
+      !is_for_network_service) {
     return;
   }
-
-  // We support one network-bound NetworkContext at most. If a new one is
-  // needed, make sure to clean up the previous one first.
-  if (bound_network != target_network_for_network_bound_network_context_) {
-    network_bound_network_context_ =
-        mojo::Remote<network::mojom::NetworkContext>();
-    network::mojom::NetworkContextParamsPtr context_params =
-        network::mojom::NetworkContextParams::New();
-    context_params->bound_network = bound_network;
-    context_params->cert_verifier_params = content::GetCertVerifierParams(
-        cert_verifier::mojom::CertVerifierCreationParams::New());
-    context_params->enable_domain_reliability = false;
-    ConfigureNetworkContextParams(
-        browser_context, true, base::FilePath(), context_params.get(),
-        cert_verifier::mojom::CertVerifierCreationParams::New().get());
-    content::CreateNetworkContextInNetworkService(
-        network_bound_network_context_.BindNewPipeAndPassReceiver(),
-        std::move(context_params));
-    target_network_for_network_bound_network_context_ = bound_network;
-  }
-
-  // TLDR; if `factory_override` != nullptr, this is being called for the
-  // creation of a 2-layer URLLoaderFactory (see
-  // network.mojom.URLLoaderFactoryOverride documentation). In this case, we
-  // want to substitute the internal (defined by
-  // factory_override->overriding_factory, with a URLLoaderFactory that targets
-  // `bound_network`. If `factory_override` == nullptr, this is a single-layer
-  // URLLoaderFactory. In this case, we want the last URLLoaderFactory in the
-  // `factory_builder` chain to be a URLLoaderFactory that targets
-  // `bound_network`.
-  mojo::PendingReceiver<network::mojom::URLLoaderFactory> proxied_receiver;
-  mojo::PendingRemote<network::mojom::URLLoaderFactory> bypassed_remote;
-  if (!factory_override) {
-    // Hijack the receiver end returned by network::URLLoaderFactoryBuilder.
-    // This will be then redirected to a network-bound URLLoaderFactory.
-    std::tie(proxied_receiver, bypassed_remote) = factory_builder.Append();
-  } else {
-    // Hijack the remote end stored in network::mojom::URLLoaderFactoryOverride.
-    // This will be then redirected to a network-bound URLLoaderFactory.
-    *factory_override = network::mojom::URLLoaderFactoryOverride::New();
-    proxied_receiver =
-        (*factory_override)
-            ->overriding_factory.InitWithNewPipeAndPassReceiver();
-    (*factory_override)->overridden_factory_receiver =
-        bypassed_remote.InitWithNewPipeAndPassReceiver();
-    (*factory_override)->skip_cors_enabled_scheme_check = true;
-  }
-
-  // Create a network-bound URLLoaderFactory and redirect the receiver end of
-  // the hijacked remote to this.
-  network::mojom::URLLoaderFactoryParamsPtr params =
-      network::mojom::URLLoaderFactoryParams::New();
-  params->process_id = network::OriginatingProcessId::browser();
-  params->is_trusted = true;
-  params->isolation_info = isolation_info;
-  // Disable CORS wrapping, this is already handled by the caller.
-  params->disable_web_security = true;
-  network_bound_network_context_->CreateURLLoaderFactory(
-      std::move(proxied_receiver), std::move(params));
+  factory_builder.SetTargetNetwork(bound_network);
 }
 
 std::unique_ptr<content::BrowserMainParts>
@@ -1862,9 +1812,10 @@ ChromeContentBrowserClient::GetStoragePartitionConfigForSite(
     BUILDFLAG(IS_CHROMEOS)
   if (content::SiteIsolationPolicy::ShouldUrlUseApplicationIsolationLevel(
           browser_context, site)) {
-    CHECK(url::Origin::Create(site).scheme() == webapps::kIsolatedAppScheme);
+    CHECK(IsIsolatedWebAppUrl(site));
     ASSIGN_OR_RETURN(const auto iwa_url_info,
-                     web_app::IsolatedWebAppUrlInfo::Create(site), [&](auto) {
+                     web_app::IsolatedWebAppUrlInfo::Create(site),
+                     [&](const auto&) {
                        LOG(ERROR) << "Invalid isolated-app URL: " << site;
                        return default_storage_partition_config;
                      });
@@ -2810,7 +2761,7 @@ bool ChromeContentBrowserClient::ShouldUrlUseApplicationIsolationLevel(
 
   // Convert |url| to an origin to resolve blob: URLs.
   auto origin = url::Origin::Create(url);
-  if (origin.scheme() == webapps::kIsolatedAppScheme) {
+  if (IsIsolatedWebAppOrigin(origin)) {
     return true;
   }
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) ||
@@ -5623,6 +5574,11 @@ void ChromeContentBrowserClient::CreateThrottlesForNavigation(
   CreateAndAddChromeThrottlesForNavigation(registry);
 }
 
+void ChromeContentBrowserClient::CreateThrottlesForCommitWithoutUrlLoader(
+    content::NavigationThrottleRegistry& registry) {
+  CreateAndAddChromeThrottlesForCommitWithoutUrlLoader(registry);
+}
+
 std::vector<std::unique_ptr<content::CommitDeferringCondition>>
 ChromeContentBrowserClient::CreateCommitDeferringConditionsForNavigation(
     content::NavigationHandle* navigation_handle,
@@ -6263,8 +6219,7 @@ void ChromeContentBrowserClient::
     // origin if it is set. We only care about enforcing same-origin checks
     // for IWA-to-IWA cross-origin requests (to prevent asset exfiltration),
     // so we only set app_origin if the initiator is an IWA.
-    if (request_initiator &&
-        request_initiator->scheme() == webapps::kIsolatedAppScheme) {
+    if (request_initiator && IsIsolatedWebAppOrigin(*request_initiator)) {
       app_origin = request_initiator;
     }
     bool enforce_same_origin = false;
@@ -6580,9 +6535,8 @@ void ChromeContentBrowserClient::
     auto* rph = content::RenderProcessHost::FromID(render_process_id);
     content::BrowserContext* browser_context = rph->GetBrowserContext();
     DCHECK(browser_context);
-    bool is_initiator_iwa =
-        request_initiator_origin.has_value() &&
-        request_initiator_origin->scheme() == webapps::kIsolatedAppScheme;
+    bool is_initiator_iwa = request_initiator_origin.has_value() &&
+                            IsIsolatedWebAppOrigin(*request_initiator_origin);
     if (content::AreIsolatedWebAppsEnabled(browser_context) &&
         !browser_context->ShutdownStarted() && is_initiator_iwa) {
       if (frame_host != nullptr) {
@@ -6666,7 +6620,8 @@ void ChromeContentBrowserClient::WillCreateURLLoaderFactory(
     bool* bypass_redirect_checks,
     bool* disable_secure_dns,
     network::mojom::URLLoaderFactoryOverridePtr* factory_override,
-    scoped_refptr<base::SequencedTaskRunner> navigation_response_task_runner) {
+    scoped_refptr<base::SequencedTaskRunner> navigation_response_task_runner,
+    bool is_for_network_service) {
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
   auto* web_request_api =
       extensions::BrowserContextKeyedAPIFactory<extensions::WebRequestAPI>::Get(
@@ -6729,12 +6684,8 @@ void ChromeContentBrowserClient::WillCreateURLLoaderFactory(
 #endif  // BUILDFLAG (ENABLE_EXTENSIONS_CORE)
 #endif  // BUILDFLAG(ENABLE_GUEST_VIEW)
 
-  // WARNING: This must be the last interceptor in the chain as the proxying
-  // URLLoaderFactory installed by this needs to be the one actually sending
-  // packets over the network (to effectively target `bound_network`).
-  MaybeProxyNetworkBoundRequest(
-      browser_context, GetBoundNetworkFromRenderFrameHost(frame),
-      factory_builder, factory_override, isolation_info);
+  MaybeSetTargetNetwork(GetBoundNetworkFromRenderFrameHost(frame),
+                        factory_builder, is_for_network_service);
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
     BUILDFLAG(IS_CHROMEOS)
@@ -7098,7 +7049,7 @@ bool ChromeContentBrowserClient::IsSecurityLevelAcceptableForWebAuthn(
 #if !BUILDFLAG(IS_ANDROID)
   // For IWAs, WebAuthn is only enabled together with the remote
   // desktop client override enterprise policy.
-  if (caller_origin.scheme() == webapps::kIsolatedAppScheme) {
+  if (IsIsolatedWebAppOrigin(caller_origin)) {
     return base::FeatureList::IsEnabled(
         device::kWebAuthnIWARemoteDesktopAllowedOriginsPolicy);
   }
@@ -7929,6 +7880,8 @@ bool ChromeContentBrowserClient::IsClipboardPasteAllowed(
   // (2) granted web permission, ...
   content::BrowserContext* browser_context =
       render_frame_host->GetBrowserContext();
+  const url::Origin& main_frame_origin =
+      render_frame_host->GetMainFrame()->GetLastCommittedOrigin();
   content::PermissionController* permission_controller =
       browser_context->GetPermissionController();
   blink::mojom::PermissionStatus status =
@@ -7946,14 +7899,13 @@ bool ChromeContentBrowserClient::IsClipboardPasteAllowed(
     // via context menus, background UIs, or standalone windows where the page
     // lacks focus (including in automated browser tests).
     //
-    // We check the main frame's committed origin URL (rather than
+    // We check the main frame's committed origin directly (rather than
     // GetLastCommittedURL) to preserve origin inheritance for initial empty
     // documents (e.g., about:blank popups created by trusted system apps),
     // while ensuring sandboxed frames with opaque origins evaluate to an empty
-    // GURL and are safely excluded (see docs/security/origin-vs-url.md).
-    const GURL& url =
-        render_frame_host->GetMainFrame()->GetLastCommittedOrigin().GetURL();
-    if (content::HasWebUIScheme(url) || IsIsolatedWebAppUrl(url) ||
+    // scheme and are safely excluded (see docs/security/origin-vs-url.md).
+    if (content::HasWebUIOrigin(main_frame_origin) ||
+        IsIsolatedWebAppOrigin(main_frame_origin) ||
         render_frame_host->IsFocused()) {
       return true;
     }
@@ -7963,12 +7915,10 @@ bool ChromeContentBrowserClient::IsClipboardPasteAllowed(
   // (3) origination directly from a Chrome extension, ...
   Profile* profile = Profile::FromBrowserContext(browser_context);
   DCHECK(profile);
-  const GURL& url =
-      render_frame_host->GetMainFrame()->GetLastCommittedOrigin().GetURL();
   auto* registry = extensions::ExtensionRegistry::Get(profile);
-  if (url.SchemeIs(extensions::kExtensionScheme)) {
+  if (main_frame_origin.scheme() == extensions::kExtensionScheme) {
     return URLHasExtensionPermission(extensions::ProcessMap::Get(profile),
-                                     registry, url,
+                                     registry, main_frame_origin.GetURL(),
                                      render_frame_host->GetProcess()->GetID(),
                                      APIPermissionID::kClipboardRead);
   }
@@ -8128,7 +8078,7 @@ void ChromeContentBrowserClient::
   // IWA Service Workers need to be explicitly granted access to their origin
   // because isolated-app: isn't a web-safe scheme that can be accessed by
   // default.
-  if (script_url.SchemeIs(webapps::kIsolatedAppScheme)) {
+  if (IsIsolatedWebAppUrl(script_url)) {
     ChildProcessSecurityPolicy::GetInstance()->GrantRequestOrigin(
         child_id, url::Origin::Create(script_url));
   }
@@ -8374,6 +8324,33 @@ void ChromeContentBrowserClient::OnKeepaliveRequestFinished() {
 #endif  // !BUILDFLAG(IS_ANDROID)
 }
 
+void ChromeContentBrowserClient::OnFetchKeepAliveRequestCreated(
+    content::BrowserContext& browser_context) {
+#if !BUILDFLAG(IS_ANDROID)
+  if (!base::FeatureList::IsEnabled(features::kKeepAliveBrowserProcessAlive)) {
+    return;
+  }
+  if (!fetch_keepalive_process_manager_) {
+    fetch_keepalive_process_manager_ =
+        std::make_unique<FetchKeepAliveProcessManager>();
+  }
+  fetch_keepalive_process_manager_->OnRequestCreated(
+      *Profile::FromBrowserContext(&browser_context));
+#endif  // !BUILDFLAG(IS_ANDROID)
+}
+
+void ChromeContentBrowserClient::OnFetchKeepAliveRequestDestroyed(
+    content::BrowserContext& browser_context) {
+#if !BUILDFLAG(IS_ANDROID)
+  if (!base::FeatureList::IsEnabled(features::kKeepAliveBrowserProcessAlive)) {
+    return;
+  }
+  CHECK(fetch_keepalive_process_manager_);
+  fetch_keepalive_process_manager_->OnRequestDestroyed(
+      *Profile::FromBrowserContext(&browser_context));
+#endif  // !BUILDFLAG(IS_ANDROID)
+}
+
 #if BUILDFLAG(IS_MAC)
 bool ChromeContentBrowserClient::SetupEmbedderSandboxParameters(
     sandbox::mojom::Sandbox sandbox_type,
@@ -8603,7 +8580,7 @@ ChromeContentBrowserClient::GetAlternativeErrorPageOverrideInfo(
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
     BUILDFLAG(IS_CHROMEOS)
   if (content::AreIsolatedWebAppsEnabled(browser_context) &&
-      url.SchemeIs(webapps::kIsolatedAppScheme)) {
+      IsIsolatedWebAppUrl(url)) {
     content::mojom::AlternativeErrorPageOverrideInfoPtr
         alternative_error_page_override_info =
             web_app::MaybeGetIsolatedWebAppErrorPageInfo(

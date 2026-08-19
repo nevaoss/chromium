@@ -275,7 +275,7 @@ void MaybeOutputReason(std::string* out, std::string_view message) {
     case AutofillAiAction::kLogToMqls:
       return !is_enabled(features::kAutofillAiUsePrivateAi);
     case AutofillAiAction::kEnableOrDisable:
-      return is_enabled(features::kAutofillAiAvailableByDefault);
+      return IsAutofillAiDefaultAvailabilityEnabled();
     case AutofillAiAction::kAmbientAutofill:
     case AutofillAiAction::kShowAmbientAutofillInSettings:
     case AutofillAiAction::kTypeSupportsAmbientAutofillData:
@@ -352,10 +352,10 @@ void MaybeOutputReason(std::string* out, std::string_view message) {
       personal_context::prefs::kPersonalContextInAutofillSettingsToggleStatus);
   const bool autofill_ai_available =
       GetAutofillAiOptInStatus(prefs, identity_manager) ||
-      base::FeatureList::IsEnabled(features::kAutofillAiAvailableByDefault);
+      IsAutofillAiDefaultAvailabilityEnabled();
   // Note that the policy can become disabled even after a user has opted in.
   const bool is_allowed_by_opt_in_or_default =
-      base::FeatureList::IsEnabled(features::kAutofillAiAvailableByDefault) ||
+      IsAutofillAiDefaultAvailabilityEnabled() ||
       (policy_pref_enabled && autofill_ai_available);
   switch (action) {
     case AutofillAiAction::kLogToMqls:
@@ -422,9 +422,7 @@ void MaybeOutputReason(std::string* out, std::string_view message) {
       return policy_pref_enabled;
     case AutofillAiAction::kWalletDataSharingPromotion:
       return !is_wallet_public_pass_storage_enabled &&
-             (policy_pref_enabled ||
-              base::FeatureList::IsEnabled(
-                  features::kAutofillAiAvailableByDefault));
+             (policy_pref_enabled || IsAutofillAiDefaultAvailabilityEnabled());
     case AutofillAiAction::kEnableOrDisable:
     case AutofillAiAction::kListEntityInstancesInSettings:
       return true;
@@ -477,23 +475,25 @@ void MaybeOutputReason(std::string* out, std::string_view message) {
       const AccountCapabilities& capabilities =
           account_info.GetAccountCapabilities();
       if (base::FeatureList::IsEnabled(
-              features::kAutofillAiWalletPrivatePassesCapability) &&
-          capabilities.supports_wallet_private_passes_in_autofill() !=
-              signin::Tribool::kTrue) {
-        MaybeOutputReason(
-            debug_message,
-            "Account doesn't support private passes in Autofill.");
-        return false;
-      }
-      // For private passes, underaged users are not allowed to save.
-      // TODO(crbug.com/495779639): Using can_use_model_execution_features() is
-      // a very hacky way to check whether the user is underaged. Instead, the
-      // minor check should be integrated into
-      // supports_wallet_private_passes_in_autofill().
-      if (capabilities.can_use_model_execution_features() !=
-          signin::Tribool::kTrue) {
-        MaybeOutputReason(debug_message, "User is underaged.");
-        return false;
+              features::kAutofillAiWalletPrivatePassesCapability)) {
+        if (capabilities.supports_wallet_private_passes_in_autofill() !=
+            signin::Tribool::kTrue) {
+          MaybeOutputReason(
+              debug_message,
+              "Account doesn't support private passes in Autofill.");
+          return false;
+        }
+      } else {
+        // For private passes, underaged users are not allowed to save. When
+        // AutofillAiWalletPrivatePassesCapability is enabled, the
+        // supports_wallet_private_passes_in_autofill() capability covers this
+        // requirement. Before, it was hackily implemented by relying on another
+        // capability.
+        if (capabilities.can_use_model_execution_features() !=
+            signin::Tribool::kTrue) {
+          MaybeOutputReason(debug_message, "User is underaged.");
+          return false;
+        }
       }
       break;
     }
@@ -918,6 +918,14 @@ bool IsAutofillAiEntityTypeBlockedByPolicy(const AutofillClient& client,
              optimization_guide::prefs::
                  kAutofillPredictionImprovementsEnterprisePolicyAllowed) ==
          kAutofillPredictionSettingsAllow;
+}
+
+bool IsAutofillAiDefaultAvailabilityEnabled() {
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
+  return base::FeatureList::IsEnabled(features::kAutofillAiAvailableByDefault);
+#else
+  return true;
+#endif
 }
 
 }  // namespace autofill

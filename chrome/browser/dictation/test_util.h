@@ -19,6 +19,7 @@
 #include "chrome/browser/dictation/stream_provider.h"
 #include "chrome/browser/dictation/target.h"
 #include "chrome/common/extensions/api/dictation_private.h"
+#include "content/public/browser/global_dom_node_id.h"
 #include "testing/gmock/include/gmock/gmock.h"
 
 class Profile;
@@ -130,6 +131,10 @@ class MockSessionUi : public SessionUi {
   MOCK_METHOD(void, OnError, (StreamType stream_type), (override));
   MOCK_METHOD(void, OnStopped, (), (override));
   MOCK_METHOD(void, UpdateAudioLevel, (float audio_level), (override));
+  MOCK_METHOD(void,
+              OnStartedStream,
+              (content::GlobalDOMNodeId target_id),
+              (override));
 };
 
 class MockSessionControllerDelegate : public SessionControllerDelegate {
@@ -159,7 +164,7 @@ class MockDictationKeyedService : public DictationKeyedService {
   std::unique_ptr<SessionUi> CreateUi(
       SessionController& controller) const override;
 
-  MOCK_METHOD(void, OnDictationHotkeyPressed, (), (override));
+  MOCK_METHOD(void, ToggleHotkeyHandler, (), (override));
 };
 
 }  // namespace dictation

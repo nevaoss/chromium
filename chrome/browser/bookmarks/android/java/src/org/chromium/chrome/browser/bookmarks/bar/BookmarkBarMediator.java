@@ -314,7 +314,7 @@ class BookmarkBarMediator
     // Private methods.
 
     private void showContextMenu(
-            ModelList menuModel, View anchorView, @Nullable Point offset, boolean isIncognito) {
+            ModelList menuModel, View anchorView, Point offset, boolean isIncognito) {
         if (!ChromeFeatureList.sBookmarksBarContextMenu.isEnabled()) {
             return;
         }
@@ -322,7 +322,7 @@ class BookmarkBarMediator
     }
 
     private void showContextMenuForListItem(
-            BookmarkItem item, @Nullable View anchorView, @Nullable Point offset) {
+            BookmarkItem item, @Nullable View anchorView, Point offset) {
         if (anchorView == null) return;
         runIfStillRelevantAfterFinishLoadingBookmarkModel(
                 (profile, model) -> {
@@ -377,31 +377,33 @@ class BookmarkBarMediator
             return;
         }
 
+        final Profile profile = assertNonNull(mProfileSupplier.get());
+        final boolean isCtrlPressed = (metaState & KeyEvent.META_CTRL_ON) != 0;
+        final boolean isMiddleClick = (buttonState & MotionEvent.BUTTON_TERTIARY) != 0;
+
         if (item.isFolder()) {
-            // Get the view of the folder that was clicked.
-            View anchorView = getAnchorViewForBookmark(item);
-            if (anchorView == null) return;
-            runIfStillRelevantAfterFinishLoadingBookmarkModel(
-                    (profile, model) -> {
-                        // Build the entire model list for this folder. The grandchildren are stored
-                        // in SUBMENU_PROVIDER.
-                        ModelList menuModel = buildMenuModelListForFolder(model, item.getId());
-                        BookmarkBarUtils.recordClick(BookmarkBarClickType.BOOKMARK_BAR_FOLDER);
-                        mPopupCoordinator.showFolderItemsPopup(
-                                anchorView, menuModel, profile.isOffTheRecord());
-                    });
+            if (isCtrlPressed || isMiddleClick) {
+                openBookmarkItemInNewTabs(item, profile.isOffTheRecord());
+            } else {
+                // Get the view of the folder that was clicked.
+                View anchorView = getAnchorViewForBookmark(item);
+                if (anchorView == null) return;
+                runIfStillRelevantAfterFinishLoadingBookmarkModel(
+                        (profileAfterLoading, model) -> {
+                            // Build the entire model list for this folder. The grandchildren are
+                            // stored in SUBMENU_PROVIDER.
+                            ModelList menuModel = buildMenuModelListForFolder(model, item.getId());
+                            BookmarkBarUtils.recordClick(BookmarkBarClickType.BOOKMARK_BAR_FOLDER);
+                            mPopupCoordinator.showFolderItemsPopup(
+                                    anchorView, menuModel, profileAfterLoading.isOffTheRecord());
+                        });
+            }
             return;
         }
 
-        final Profile profile = assertNonNull(mProfileSupplier.get());
         BookmarkBarUtils.recordClick(BookmarkBarClickType.BOOKMARK_BAR_URL);
-        final boolean isCtrlPressed = (metaState & KeyEvent.META_CTRL_ON) != 0;
-        final boolean isMiddleClick = (buttonState & MotionEvent.BUTTON_TERTIARY) != 0;
         if (isCtrlPressed || isMiddleClick) {
-            mBookmarkOpener.openBookmarksInNewTabs(
-                    List.of(item.getId()),
-                    profile.isOffTheRecord(),
-                    TabLaunchType.FROM_BOOKMARK_BAR_BACKGROUND);
+            openBookmarkItemInNewTabs(item, profile.isOffTheRecord());
             return;
         }
 
@@ -528,82 +530,73 @@ class BookmarkBarMediator
     @Override
     public void openInNewTab(BookmarkId id) {
         runIfStillRelevantAfterFinishLoadingBookmarkModel(
-                (profile, model) -> {
-                    mBookmarkOpener.openBookmarksInNewTabs(
-                            List.of(id),
-                            profile.isOffTheRecord(),
-                            TabLaunchType.FROM_BOOKMARK_BAR_BACKGROUND);
-                });
+                (Profile profile, BookmarkModel model) ->
+                        mBookmarkOpener.openBookmarksInNewTabs(
+                                List.of(id),
+                                profile.isOffTheRecord(),
+                                TabLaunchType.FROM_BOOKMARK_BAR_BACKGROUND));
     }
 
     @Override
     public void openInNewWindow(BookmarkId id) {
         runIfStillRelevantAfterFinishLoadingBookmarkModel(
-                (profile, model) -> {
-                    mBookmarkOpener.openBookmarksInNewWindow(List.of(id), /* incognito= */ false);
-                });
+                (_, _) ->
+                        mBookmarkOpener.openBookmarksInNewWindow(
+                                List.of(id), /* incognito= */ false));
     }
 
     @Override
     public void openInIncognitoWindow(BookmarkId id) {
         runIfStillRelevantAfterFinishLoadingBookmarkModel(
-                (profile, model) -> {
-                    mBookmarkOpener.openBookmarksInNewWindow(List.of(id), /* incognito= */ true);
-                });
+                (_, _) ->
+                        mBookmarkOpener.openBookmarksInNewWindow(
+                                List.of(id), /* incognito= */ true));
     }
 
     @Override
     public void openAll(List<BookmarkId> ids) {
         runIfStillRelevantAfterFinishLoadingBookmarkModel(
-                (profile, model) -> {
-                    mBookmarkOpener.openBookmarksInNewTabs(
-                            ids,
-                            profile.isOffTheRecord(),
-                            TabLaunchType.FROM_BOOKMARK_BAR_BACKGROUND);
-                });
+                (Profile profile, BookmarkModel _) ->
+                        mBookmarkOpener.openBookmarksInNewTabs(
+                                ids,
+                                profile.isOffTheRecord(),
+                                TabLaunchType.FROM_BOOKMARK_BAR_BACKGROUND));
     }
 
     @Override
     public void openAllInNewWindow(List<BookmarkId> ids) {
         runIfStillRelevantAfterFinishLoadingBookmarkModel(
-                (profile, model) -> {
-                    mBookmarkOpener.openBookmarksInNewWindow(ids, /* incognito= */ false);
-                });
+                (_, _) -> mBookmarkOpener.openBookmarksInNewWindow(ids, /* incognito= */ false));
     }
 
     @Override
     public void openAllInIncognitoWindow(List<BookmarkId> ids) {
         runIfStillRelevantAfterFinishLoadingBookmarkModel(
-                (profile, model) -> {
-                    mBookmarkOpener.openBookmarksInNewWindow(ids, /* incognito= */ true);
-                });
+                (_, _) -> mBookmarkOpener.openBookmarksInNewWindow(ids, /* incognito= */ true));
     }
 
     @Override
     public void openAllInNewTabGroup(List<BookmarkId> ids, @Nullable String title) {
         runIfStillRelevantAfterFinishLoadingBookmarkModel(
-                (profile, model) -> {
-                    mBookmarkOpener.openBookmarksInNewTabGroup(
-                            ids, profile.isOffTheRecord(), title);
-                });
+                (Profile profile, BookmarkModel _) ->
+                        mBookmarkOpener.openBookmarksInNewTabGroup(
+                                ids, profile.isOffTheRecord(), title));
     }
 
     @Override
     public void editBookmark(BookmarkId id) {
         runIfStillRelevantAfterFinishLoadingBookmarkModel(
-                (profile, model) -> {
-                    assertNonNull(mBookmarkManagerOpenerSupplier.get())
-                            .startEditActivity(mActivity, profile, id);
-                });
+                (Profile profile, BookmarkModel _) ->
+                        assertNonNull(mBookmarkManagerOpenerSupplier.get())
+                                .startEditActivity(mActivity, profile, id));
     }
 
     @Override
     public void moveBookmark(BookmarkId id) {
         runIfStillRelevantAfterFinishLoadingBookmarkModel(
-                (profile, model) -> {
-                    assertNonNull(mBookmarkManagerOpenerSupplier.get())
-                            .startFolderPickerActivity(mActivity, profile, id);
-                });
+                (Profile profile, BookmarkModel _) ->
+                        assertNonNull(mBookmarkManagerOpenerSupplier.get())
+                                .startFolderPickerActivity(mActivity, profile, id));
     }
 
     /**
@@ -649,20 +642,18 @@ class BookmarkBarMediator
     @Override
     public void openBookmarksManager(BookmarkId folderId) {
         runIfStillRelevantAfterFinishLoadingBookmarkModel(
-                (profile, model) -> {
-                    assertNonNull(mBookmarkManagerOpenerSupplier.get())
-                            .showBookmarkManager(
-                                    mActivity, mCurrentTabSupplier.get(), profile, folderId);
-                });
+                (Profile profile, BookmarkModel _) ->
+                        assertNonNull(mBookmarkManagerOpenerSupplier.get())
+                                .showBookmarkManager(
+                                        mActivity, mCurrentTabSupplier.get(), profile, folderId));
     }
 
     @Override
     public void toggleBookmarksBar() {
         runIfStillRelevantAfterFinishLoadingBookmarkModel(
-                (profile, model) -> {
-                    BookmarkBarUtils.toggleShowBookmarksBar(
-                            profile, /* fromKeyboardShortcut= */ false);
-                });
+                (Profile profile, BookmarkModel _) ->
+                        BookmarkBarUtils.toggleShowBookmarksBar(
+                                profile, /* fromKeyboardShortcut= */ false));
     }
 
     public void setVisibility(boolean isVisible) {
@@ -739,6 +730,9 @@ class BookmarkBarMediator
                         ListMenuItemProperties.TOUCH_LISTENER,
                         (v, event) -> handlePopupItemTouch(bookmarkItem, v, event))
                 .with(
+                        ListMenuItemProperties.GENERIC_MOTION_LISTENER,
+                        (v, event) -> handlePopupItemGenericMotion(bookmarkItem, event))
+                .with(
                         ListMenuItemProperties.TEXT_APPEARANCE_ID,
                         isIncognito ? R.style.TextAppearance_TextLarge_Primary_Baseline_Light : 0);
     }
@@ -767,8 +761,7 @@ class BookmarkBarMediator
             childrenList.add(item);
         }
 
-        View.OnClickListener clickListener =
-                (v) -> BookmarkBarUtils.recordClick(BookmarkBarClickType.POP_UP_FOLDER);
+        View.OnClickListener clickListener = (v) -> handlePopupItemClick(bookmarkItem);
 
         final Profile profile = mProfileSupplier.get();
         final boolean isIncognito = profile != null && profile.isOffTheRecord();
@@ -813,24 +806,7 @@ class BookmarkBarMediator
                                 Resources.ID_NULL)
                         .with(
                                 ListMenuItemProperties.CLICK_LISTENER,
-                                (v) -> {
-                                    // Open url.
-                                    BookmarkBarUtils.recordClick(BookmarkBarClickType.POP_UP_URL);
-                                    boolean isOffTheRecord =
-                                            assertNonNull(mProfileSupplier.get()).isOffTheRecord();
-                                    boolean isCtrlPressed =
-                                            (mLastTouchMetaState & KeyEvent.META_CTRL_ON) != 0;
-                                    if (isCtrlPressed) {
-                                        mBookmarkOpener.openBookmarksInNewTabs(
-                                                List.of(bookmarkItem.getId()),
-                                                isOffTheRecord,
-                                                TabLaunchType.FROM_BOOKMARK_BAR_BACKGROUND);
-                                    } else {
-                                        mBookmarkOpener.openBookmarkInCurrentTab(
-                                                bookmarkItem.getId(), isOffTheRecord);
-                                    }
-                                    mPopupCoordinator.dismiss();
-                                })
+                                (v) -> handlePopupItemClick(bookmarkItem))
                         .build();
         if (mImageFetcher != null) {
             mImageFetcher.fetchFaviconForBookmark(
@@ -848,6 +824,12 @@ class BookmarkBarMediator
         return listItem;
     }
 
+    // Start of popup event handlers
+
+    /**
+     * Handles the beginning of physical taps/touches and consumes synthetic callbacks (via
+     * OnTouchListener).
+     */
     private boolean handlePopupItemTouch(BookmarkItem bookmarkItem, View v, MotionEvent event) {
         int action = event.getActionMasked();
         int buttonState = event.getButtonState();
@@ -874,16 +856,9 @@ class BookmarkBarMediator
         if (action == MotionEvent.ACTION_UP
                 || action == MotionEvent.ACTION_CANCEL
                 || action == MotionEvent.ACTION_BUTTON_RELEASE) {
-            // Handle middle click on release if it started as tertiary.
-            if ((action == MotionEvent.ACTION_BUTTON_RELEASE
-                            && event.getActionButton() == MotionEvent.BUTTON_TERTIARY)
-                    || (mLastTouchButtonState & MotionEvent.BUTTON_TERTIARY) != 0) {
-                boolean isOffTheRecord = assertNonNull(mProfileSupplier.get()).isOffTheRecord();
-                mBookmarkOpener.openBookmarksInNewTabs(
-                        List.of(bookmarkItem.getId()),
-                        isOffTheRecord,
-                        TabLaunchType.FROM_BOOKMARK_BAR_BACKGROUND);
-                mPopupCoordinator.dismiss();
+            if ((mLastTouchButtonState & MotionEvent.BUTTON_TERTIARY) != 0) {
+                // Consume middle-click touch events to prevent accidental primary triggers.
+                // Execution of these actions is safely deferred to handlePopupItemGenericMotion.
                 mLastTouchButtonState = 0;
                 return true;
             }
@@ -893,8 +868,60 @@ class BookmarkBarMediator
                 return true;
             }
         }
-
         return false;
+    }
+
+    /** Handles successfully completed taps and standard click releases (via OnClickListener). */
+    private void handlePopupItemClick(BookmarkItem bookmarkItem) {
+        BookmarkBarUtils.recordClick(
+                bookmarkItem.isFolder()
+                        ? BookmarkBarClickType.POP_UP_FOLDER
+                        : BookmarkBarClickType.POP_UP_URL);
+
+        boolean isCtrlPressed = (mLastTouchMetaState & KeyEvent.META_CTRL_ON) != 0;
+        boolean isOffTheRecord = assertNonNull(mProfileSupplier.get()).isOffTheRecord();
+
+        if (isCtrlPressed) {
+            openBookmarkItemInNewTabs(bookmarkItem, isOffTheRecord);
+            mPopupCoordinator.dismiss();
+        } else if (!bookmarkItem.isFolder()) {
+            mBookmarkOpener.openBookmarkInCurrentTab(bookmarkItem.getId(), isOffTheRecord);
+            mPopupCoordinator.dismiss();
+        }
+    }
+
+    /** Handles pure hardware pointer events like middle-clicks (via OnGenericMotionListener). */
+    private boolean handlePopupItemGenericMotion(BookmarkItem bookmarkItem, MotionEvent event) {
+        if (event.getActionMasked() == MotionEvent.ACTION_BUTTON_RELEASE
+                && event.getActionButton() == MotionEvent.BUTTON_TERTIARY) {
+            BookmarkBarUtils.recordClick(
+                    bookmarkItem.isFolder()
+                            ? BookmarkBarClickType.POP_UP_FOLDER
+                            : BookmarkBarClickType.POP_UP_URL);
+            boolean isOffTheRecord = assertNonNull(mProfileSupplier.get()).isOffTheRecord();
+            openBookmarkItemInNewTabs(bookmarkItem, isOffTheRecord);
+            mPopupCoordinator.dismiss();
+            return true;
+        }
+        return false;
+    }
+
+    // End of popup event handlers
+
+    private void openBookmarkItemInNewTabs(BookmarkItem item, boolean isOffTheRecord) {
+        if (item.isFolder()) {
+            runIfStillRelevantAfterFinishLoadingBookmarkModel(
+                    (profile, model) ->
+                            mBookmarkOpener.openFolderBookmarksInNewTabs(
+                                    item.getId(),
+                                    isOffTheRecord,
+                                    TabLaunchType.FROM_BOOKMARK_BAR_BACKGROUND));
+        } else {
+            mBookmarkOpener.openBookmarksInNewTabs(
+                    List.of(item.getId()),
+                    isOffTheRecord,
+                    TabLaunchType.FROM_BOOKMARK_BAR_BACKGROUND);
+        }
     }
 
     private static Bitmap drawableToBitmap(Drawable drawable) {

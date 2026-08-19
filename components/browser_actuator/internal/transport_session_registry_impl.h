@@ -13,14 +13,15 @@
 
 #include "base/containers/flat_map.h"
 #include "base/memory/weak_ptr.h"
+#include "base/observer_list.h"
 #include "base/sequence_checker.h"
 #include "base/thread_annotations.h"
+#include "components/browser_actuator/internal/transport_session_impl.h"
 #include "components/browser_actuator/public/transport_session_registry.h"
 
 namespace browser_actuator {
 
 class TransportChannel;
-class TransportSessionImpl;
 
 // Manages the lifecycle of active transport sessions. Owned by the
 // TransportChannel.
@@ -38,10 +39,13 @@ class TransportSessionRegistryImpl : public TransportSessionRegistry {
 
   // TransportSessionRegistry implementation.
   TransportSession* GetSession(std::string_view session_id) override;
+  void AddObserver(Observer* observer) override;
+  void RemoveObserver(Observer* observer) override;
+  TransportSessionImpl* GetOrCreateSession(
+      std::string_view session_id) override;
 
   // Concrete methods for session lookup and management.
   TransportSessionImpl* GetSessionImpl(std::string_view session_id);
-  TransportSessionImpl* GetOrCreateSession(std::string_view session_id);
   void DestroySession(std::string_view session_id);
   std::vector<TransportSessionImpl*> GetAllSessionImpls();
 
@@ -58,6 +62,8 @@ class TransportSessionRegistryImpl : public TransportSessionRegistry {
 
   base::WeakPtr<TransportChannel> channel_;
   const size_t max_concurrent_sessions_;
+
+  base::ObserverList<Observer> observers_ GUARDED_BY_CONTEXT(sequence_checker_);
 
   using SessionMap =
       base::flat_map<std::string,                            // Session ID

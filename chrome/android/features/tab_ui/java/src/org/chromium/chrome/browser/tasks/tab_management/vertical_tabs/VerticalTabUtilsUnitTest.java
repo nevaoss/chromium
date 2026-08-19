@@ -25,8 +25,6 @@ import org.chromium.base.FeatureOverrides;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.HistogramWatcher;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
-import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
-import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
 import org.chromium.chrome.browser.ui.vertical_tabs.VerticalTabUtils;
 
 /** Unit tests for {@link VerticalTabUtils}. */
@@ -43,9 +41,7 @@ public class VerticalTabUtilsUnitTest {
 
     @After
     public void tearDown() {
-        ChromeSharedPreferences.getInstance().removeKey(ChromePreferenceKeys.VERTICAL_TABS_ENABLED);
-        ChromeSharedPreferences.getInstance()
-                .removeKey(ChromePreferenceKeys.VERTICAL_TABS_COLLAPSED);
+        VerticalTabUtils.resetSharedPrefsForTesting();
     }
 
     @Test
@@ -135,6 +131,22 @@ public class VerticalTabUtilsUnitTest {
                 VerticalTabUtils.EXTERNAL_DRAG_PARAM,
                 /* testValue= */ true);
         assertTrue(VerticalTabUtils.isExternalDragEnabled());
+    }
+
+    @Test
+    @SmallTest
+    public void testIsAutoResizeEnabled_DefaultDisabled() {
+        assertFalse(VerticalTabUtils.isAutoResizeEnabled());
+    }
+
+    @Test
+    @SmallTest
+    public void testIsAutoResizeEnabled_EnabledViaOverride() {
+        FeatureOverrides.overrideParam(
+                ChromeFeatureList.ANDROID_VERTICAL_TABS,
+                VerticalTabUtils.AUTO_RESIZE_PARAM,
+                /* testValue= */ true);
+        assertTrue(VerticalTabUtils.isAutoResizeEnabled());
     }
 
     @Test

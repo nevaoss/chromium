@@ -102,6 +102,11 @@ public class FragmentDependencyProvider extends FragmentManager.FragmentLifecycl
     @Override
     public void onFragmentAttached(
             FragmentManager fragmentManager, Fragment fragment, Context unusedContext) {
+        attachDependencies(fragmentManager, fragment);
+    }
+
+    /** Attaches dependencies to a fragment. */
+    public void attachDependencies(FragmentManager fragmentManager, Fragment fragment) {
         // Common dependencies attachments.
         if (fragment instanceof ProfileDependentSetting) {
             ((ProfileDependentSetting) fragment).setProfile(mProfile);
@@ -117,13 +122,17 @@ public class FragmentDependencyProvider extends FragmentManager.FragmentLifecycl
                     .setCustomTabLauncher(new SettingsCustomTabLauncherImpl());
         }
 
-        if (fragment instanceof SearchViewProvider f) {
-            f.setSearchViewObserver(
-                    (open) -> {
-                        if (mSearchCoordinatorSupplier.get() != null) {
-                            mSearchCoordinatorSupplier.get().showSearchBar(!open);
-                        }
-                    });
+        if (!SettingsInTab.isEnabled()) {
+            // SettingsInTab always keeps the main search bar visible, even when fragments are
+            // searching.
+            if (fragment instanceof SearchViewProvider f) {
+                f.setSearchViewObserver(
+                        (open) -> {
+                            if (mSearchCoordinatorSupplier.get() != null) {
+                                mSearchCoordinatorSupplier.get().showSearchBar(!open);
+                            }
+                        });
+            }
         }
 
         // Settings screen specific attachments.

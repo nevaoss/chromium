@@ -528,7 +528,6 @@ LensQueryFlowRouter::GetViewportEncodingOptions() {
   const auto& image_upload_config =
       ntp_composebox::FeatureConfig::Get().config.composebox().image_upload();
   return lens::ImageEncodingOptions{
-      .enable_webp_encoding = image_upload_config.enable_webp_encoding(),
       .max_size = image_upload_config.downscale_max_image_size(),
       .max_height = image_upload_config.downscale_max_image_height(),
       .max_width = image_upload_config.downscale_max_image_width(),
@@ -790,7 +789,6 @@ void LensQueryFlowRouter::UploadContextualInputData(
   auto image_upload_config =
       ntp_composebox::FeatureConfig::Get().config.composebox().image_upload();
   auto image_options = lens::ImageEncodingOptions{
-      .enable_webp_encoding = image_upload_config.enable_webp_encoding(),
       .max_size = image_upload_config.downscale_max_image_size(),
       .max_height = image_upload_config.downscale_max_image_height(),
       .max_width = image_upload_config.downscale_max_image_width(),
@@ -883,26 +881,20 @@ LensQueryFlowRouter::CreateContextualInputData(
       lens_search_contextualization_controller()
           ->GetCurrentPageContextEligibility();
 
-  if (upload_mode == ContextUploadMode::kViewportOnly) {
+  if (upload_mode == ContextUploadMode::kViewportOnly ||
+      !ShouldPopulateFullPageContext()) {
+    contextual_input_data->primary_content_type = lens::MimeType::kImage;
     contextual_input_data->tab_session_id = std::nullopt;
     contextual_input_data->page_url = GURL();
     contextual_input_data->page_title = std::nullopt;
     contextual_input_data->context_input = std::vector<lens::ContextualInput>();
   } else {
-    if (ShouldPopulateFullPageContext()) {
-      contextual_input_data->tab_session_id =
-          sessions::SessionTabHelper::IdForTab(web_contents());
-      contextual_input_data->page_url = page_url;
-      contextual_input_data->page_title = page_title;
-      contextual_input_data->context_input =
-          ConvertPageContentToContextualInput(underlying_page_contents);
-    } else {
-      contextual_input_data->tab_session_id = std::nullopt;
-      contextual_input_data->page_url = GURL();
-      contextual_input_data->page_title = std::nullopt;
-      contextual_input_data->context_input =
-          std::vector<lens::ContextualInput>();
-    }
+    contextual_input_data->tab_session_id =
+        sessions::SessionTabHelper::IdForTab(web_contents());
+    contextual_input_data->page_url = page_url;
+    contextual_input_data->page_title = page_title;
+    contextual_input_data->context_input =
+        ConvertPageContentToContextualInput(underlying_page_contents);
   }
 
   return contextual_input_data;

@@ -15,7 +15,7 @@
 #import "ios/chrome/browser/composebox/public/composebox_entrypoint.h"
 #import "ios/chrome/browser/intents/model/intents_donation_helper.h"
 #import "ios/chrome/browser/ntp/shared/metrics/home_metrics.h"
-#import "ios/chrome/browser/shared/coordinator/scene/state/layout_state.h"
+#import "ios/chrome/browser/shared/coordinator/scene/state/scene_layout_state.h"
 #import "ios/chrome/browser/shared/public/commands/activity_service_commands.h"
 #import "ios/chrome/browser/shared/public/commands/browser_coordinator_commands.h"
 #import "ios/chrome/browser/shared/public/commands/popup_menu_commands.h"
@@ -47,7 +47,6 @@
 #import "ios/chrome/grit/ios_strings.h"
 #import "ui/base/device_form_factor.h"
 #import "ui/base/l10n/l10n_util.h"
-#import "ui/gfx/ios/uikit_util.h"
 
 namespace {
 
@@ -1535,7 +1534,7 @@ constexpr CGFloat kGlassContainerDarkBackgroundAlpha = 0.25;
     [_innerSeparator.trailingAnchor
         constraintEqualToAnchor:self.view.trailingAnchor],
     [_innerSeparator.heightAnchor
-        constraintEqualToConstant:ui::AlignValueToUpperPixel(
+        constraintEqualToConstant:AlignValueToUpperPixel(
                                       kToolbarSeparatorHeight)],
     innerSeparatorEdgeConstraint
   ]];
@@ -1548,7 +1547,7 @@ constexpr CGFloat kGlassContainerDarkBackgroundAlpha = 0.25;
       [_outerSeparator.trailingAnchor
           constraintEqualToAnchor:self.view.trailingAnchor],
       [_outerSeparator.heightAnchor
-          constraintEqualToConstant:ui::AlignValueToUpperPixel(
+          constraintEqualToConstant:AlignValueToUpperPixel(
                                         kToolbarSeparatorHeight)],
       [_outerSeparator.topAnchor
           constraintEqualToAnchor:_locationBarContainer.bottomAnchor

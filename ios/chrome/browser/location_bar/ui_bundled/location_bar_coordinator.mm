@@ -78,9 +78,11 @@
 #import "ios/chrome/browser/reader_mode/model/features.h"
 #import "ios/chrome/browser/reader_mode/model/reader_mode_web_state_utils.h"
 #import "ios/chrome/browser/search_engines/model/template_url_service_factory.h"
+#import "ios/chrome/browser/send_tab_to_self/model/send_tab_to_self_util.h"
 #import "ios/chrome/browser/shared/coordinator/layout_guide/layout_guide_util.h"
 #import "ios/chrome/browser/shared/coordinator/scene/scene_state.h"
-#import "ios/chrome/browser/shared/coordinator/scene/state/layout_state.h"
+#import "ios/chrome/browser/shared/coordinator/scene/state/browser_layout_state.h"
+#import "ios/chrome/browser/shared/coordinator/scene/state/scene_layout_state.h"
 #import "ios/chrome/browser/shared/model/browser/browser.h"
 #import "ios/chrome/browser/shared/model/prefs/pref_names.h"
 #import "ios/chrome/browser/shared/model/profile/profile_ios.h"
@@ -95,6 +97,7 @@
 #import "ios/chrome/browser/shared/public/commands/page_action_menu_commands.h"
 #import "ios/chrome/browser/shared/public/commands/page_action_menu_entry_point_commands.h"
 #import "ios/chrome/browser/shared/public/commands/search_image_with_lens_command.h"
+#import "ios/chrome/browser/shared/public/commands/send_tab_to_self_commands.h"
 #import "ios/chrome/browser/shared/public/features/features.h"
 #import "ios/chrome/browser/shared/ui/util/layout_guide_names.h"
 #import "ios/chrome/browser/shared/ui/util/pasteboard_util.h"
@@ -442,7 +445,7 @@ struct AIHubBadgeActiveWindowsData : public base::SupportsUserData::Data {
   self.steadyViewMediator.tracker = _tracker;
 
   if (IsFullscreenRefactoringEnabled()) {
-    self.mediator.layoutState = self.browser->GetSceneState().layoutState;
+    self.mediator.browserLayoutState = self.browser->GetBrowserLayoutState();
     _fullscreenBrowserAgentObserver =
         std::make_unique<FullscreenBrowserAgentObserverBridge>(
             self.mediator, FullscreenBrowserAgent::FromBrowser(self.browser));
@@ -740,19 +743,8 @@ struct AIHubBadgeActiveWindowsData : public base::SupportsUserData::Data {
 }
 
 - (BOOL)locationBarCanSendTabToSelf {
-  if (!base::FeatureList::IsEnabled(
-          send_tab_to_self::kSendTabToSelfExtraEntryPoints)) {
-    return NO;
-  }
-  if (!self.webState) {
-    return NO;
-  }
-  send_tab_to_self::SendTabToSelfSyncService* send_tab_to_self_service =
-      SendTabToSelfSyncServiceFactory::GetForProfile(self.profile);
-  return send_tab_to_self_service &&
-         send_tab_to_self_service
-             ->GetEntryPointDisplayReason(self.webState->GetVisibleURL())
-             .has_value();
+  return send_tab_to_self::IsOmniboxEntryPointEligible(self.webState,
+                                                       self.profile);
 }
 
 - (void)locationBarSendTabToSelfTapped {
@@ -761,12 +753,12 @@ struct AIHubBadgeActiveWindowsData : public base::SupportsUserData::Data {
   }
   GURL url = self.webState->GetVisibleURL();
   NSString* title = base::SysUTF16ToNSString(self.webState->GetTitle());
-  id<BrowserCoordinatorCommands> browserCoordinatorHandler = HandlerForProtocol(
-      self.browser->GetCommandDispatcher(), BrowserCoordinatorCommands);
+  id<SendTabToSelfCommands> sendTabToSelfHandler = HandlerForProtocol(
+      self.browser->GetCommandDispatcher(), SendTabToSelfCommands);
 
   ExecuteWhenTransitionsComplete(
       ^{
-        [browserCoordinatorHandler
+        [sendTabToSelfHandler
             showSendTabToSelfUI:url
                           title:title
                      entryPoint:send_tab_to_self::ShareEntryPoint::

@@ -134,6 +134,7 @@
 #include "chrome/browser/ui/tabs/public/tab_features.h"
 #include "chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_utils.h"
 #include "chrome/browser/ui/tabs/split_tab_metrics.h"
+#include "chrome/browser/ui/tabs/tab_enums.h"
 #include "chrome/browser/ui/tabs/tab_strip_prefs.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
 #include "chrome/browser/ui/toolbar/cast/cast_toolbar_button_util.h"
@@ -170,6 +171,7 @@
 #include "chrome/browser/ui/webid/account_selection_view.h"
 #include "chrome/browser/ui/webui/inspect/inspect_ui.h"
 #include "chrome/browser/ui/webui/side_panel/customize_chrome/customize_chrome_section.h"
+#include "chrome/browser/ui/webui/util/webui_util_desktop.h"
 #include "chrome/browser/web_applications/web_app_install_params.h"
 #include "chrome/browser/web_applications/web_app_utils.h"
 #include "chrome/common/chrome_features.h"
@@ -634,6 +636,21 @@ void BrowserActions::InitializeSidePanelActions() {
                    actions::ActionInvocationContext context) {
                   if (!bwi) {
                     return;
+                  }
+                  auto* controller =
+                      contextual_tasks::ContextualTasksPanelController::From(
+                          bwi);
+                  if (controller) {
+                    bool is_open = controller->IsPanelOpenForContextualTask();
+                    const char* user_action =
+                        is_open ? "ContextualTasks.PermanentToolbarButton."
+                                  "UserAction."
+                                  "CloseSidePanel"
+                                : "ContextualTasks.PermanentToolbarButton."
+                                  "UserAction."
+                                  "OpenSidePanel";
+                    base::RecordAction(base::UserMetricsAction(user_action));
+                    base::UmaHistogramBoolean(user_action, true);
                   }
                   if (contextual_tasks::
                           IsContextualTasksPinButtonInToolbarEnabled() &&
@@ -1221,8 +1238,7 @@ void BrowserActions::InitializeChromeMenuActions() {
                  actions::ActionItem* item,
                  actions::ActionInvocationContext context) {
                 BrowserWindowInterface* const browser_for_opening_webui =
-                    bwi->GetBrowserForMigrationOnly()
-                        ->GetBrowserForOpeningWebUi();
+                    webui::GetBrowserForOpeningWebUi(bwi);
                 if (is_incognito) {
                   chrome::ShowIncognitoClearBrowsingDataDialog(
                       browser_for_opening_webui);
@@ -2103,10 +2119,8 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
             base::BindRepeating(
                 [](BrowserWindowInterface* bwi, actions::ActionItem* item,
                    actions::ActionInvocationContext context) {
-                  if (!bwi || !bwi->GetTabStripModel()) {
-                    return;
-                  }
-                  bwi->GetTabStripModel()->SetFocusedGroup(std::nullopt);
+                  chrome::UnfocusTabGroup(
+                      bwi, TabGroupFocusExitReason::kTabStripButton);
                 },
                 bwi))
             .SetActionId(kActionUnfocusTabGroup)

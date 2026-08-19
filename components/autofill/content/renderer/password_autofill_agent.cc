@@ -357,7 +357,7 @@ bool HasPasswordField(const WebLocalFrame& frame) {
   };
 
   WebDocument doc = frame.GetDocument();
-  return std::ranges::any_of(doc.GetTopLevelForms(), ContainsPasswordField,
+  return std::ranges::any_of(doc.GetOutermostForms(), ContainsPasswordField,
                              &WebFormElement::GetFormControlElements) ||
          ContainsPasswordField(doc.UnassociatedFormControls());
 }
@@ -622,14 +622,28 @@ void PasswordAutofillAgent::FocusStateNotifier::FocusedElementChanged(
 std::pair<mojom::FocusedFieldType, FieldRendererId>
 PasswordAutofillAgent::FocusStateNotifier::GetFocusedFieldInfo(
     const WebElement& element) {
-  mojom::FocusedFieldType new_focused_field_type =
-      mojom::FocusedFieldType::kUnknown;
-  FieldRendererId new_focused_field_id = FieldRendererId();
   if (auto form_control_element = element.DynamicTo<WebFormControlElement>()) {
-    new_focused_field_type = GetFieldType(form_control_element);
-    new_focused_field_id = form_util::GetFieldRendererId(form_control_element);
+    return {GetFieldType(form_control_element),
+            form_util::GetFieldRendererId(form_control_element)};
   }
-  return {new_focused_field_type, new_focused_field_id};
+  // Contenteditable focus notifications are only needed on Android to show
+  // the Keyboard Accessory via `ManualFillingController` and
+  // `ChromePasswordManagerClient::FocusedInputChanged`.
+  // On Desktop, contenteditable focus and suggestions are driven entirely by
+  // `AutofillAgent`.
+#if BUILDFLAG(IS_ANDROID)
+  if (base::FeatureList::IsEnabled(
+          features::kAutofillAtMemorySupportContenteditableOnAndroid) &&
+      element && element.IsContentEditable()) {
+    if (std::optional<FormData> form =
+            form_util::FindFormForContentEditable(element)) {
+      CHECK_EQ(form->fields().size(), 1u);
+      return {mojom::FocusedFieldType::kContenteditableField,
+              form->fields().front().renderer_id()};
+    }
+  }
+#endif
+  return {mojom::FocusedFieldType::kUnknown, FieldRendererId()};
 }
 
 mojom::FocusedFieldType PasswordAutofillAgent::FocusStateNotifier::GetFieldType(
@@ -1442,7 +1456,7 @@ void PasswordAutofillAgent::SendPasswordForms(
     return;
   }
 
-  std::vector<WebFormElement> forms = doc.GetTopLevelForms();
+  std::vector<WebFormElement> forms = doc.GetOutermostForms();
 
   if (IsShowAutofillSignaturesEnabled())
     AnnotateFormsAndFieldsWithSignatures(forms, form_cache);

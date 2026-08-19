@@ -1063,7 +1063,8 @@ chromium-metrics-reviews@google.com.
   <owner>chrome-a11y-core@google.com</owner>
   <summary>
     The bounce keys delay duration in milliseconds set by the user if Bounce
-    Keys is turned on. Logged once after startup.
+    Keys is turned on. Logged once per profile load (signin screen or user
+    profile).
   </summary>
 </histogram>
 
@@ -1074,8 +1075,8 @@ chromium-metrics-reviews@google.com.
   <summary>
     The caret blink interval rate, in milliseconds, chosen by the user, from 12
     possible values in chrome os settings. 0ms means &quot;do not blink&quot;,
-    and the default value is 500ms. Logged once after startup. For how users
-    adjust the setting from settings, see
+    and the default value is 500ms. Logged once per profile load (signin screen
+    or user profile). For how users adjust the setting from settings, see
     ChromeOS.Settings.Accessibility.CaretBlinkInterval, which logs each time the
     setting changes.
   </summary>
@@ -1086,8 +1087,9 @@ chromium-metrics-reviews@google.com.
   <owner>katie@chromium.org</owner>
   <owner>chrome-a11y-core@google.com</owner>
   <summary>
-    The color correction filter intensity chosen by the user. Logged once after
-    startup. For how users adjust the setting from settings, see
+    The color correction filter intensity chosen by the user. Logged once per
+    profile load (signin screen or user profile). For how users adjust the
+    setting from settings, see
     ChromeOS.Settings.Accessibility.ColorCorrection.FilterAmount, which logs
     each time the setting changes.
   </summary>
@@ -1098,10 +1100,10 @@ chromium-metrics-reviews@google.com.
   <owner>katie@chromium.org</owner>
   <owner>chrome-a11y-core@google.com</owner>
   <summary>
-    The color correction filter type chosen by the user. Logged once seconds
-    after startup. For how users adjust the setting from settings, see
-    ChromeOS.Settings.Accessibility.ColorCorrection.FilterType, which logs each
-    time the setting changes.
+    The color correction filter type chosen by the user. Logged once per profile
+    load (signin screen or user profile). For how users adjust the setting from
+    settings, see ChromeOS.Settings.Accessibility.ColorCorrection.FilterType,
+    which logs each time the setting changes.
   </summary>
 </histogram>
 
@@ -1112,7 +1114,8 @@ chromium-metrics-reviews@google.com.
   <summary>
     The color of the Chrome OS accessibility cursor.
 
-    Note: This metric is logged once after startup.
+    Note: This metric is logged once per profile load (signin screen or user
+    profile).
   </summary>
 </histogram>
 
@@ -1239,8 +1242,9 @@ chromium-metrics-reviews@google.com.
   <owner>dtseng@chromium.org</owner>
   <owner>chrome-a11y-core@google.com</owner>
   <summary>
-    Cursor size of the Chrome OS Large Cursor (logged once after startup). This
-    replaced Accessibility.CrosLargeCursorSize in M124.
+    Cursor size of the Chrome OS Large Cursor (logged once per profile load
+    (signin screen or user profile)). This replaced
+    Accessibility.CrosLargeCursorSize in M124.
   </summary>
 </histogram>
 
@@ -1415,7 +1419,7 @@ chromium-metrics-reviews@google.com.
   <owner>chrome-a11y-core@google.com</owner>
   <summary>
     The slow keys delay duration in milliseconds set by the user if Slow Keys is
-    turned on. Logged once after startup.
+    turned on. Logged once per profile load (signin screen or user profile).
   </summary>
 </histogram>
 
@@ -1576,9 +1580,9 @@ chromium-metrics-reviews@google.com.
   </token>
 </histogram>
 
-<!-- This set of histograms is recorded once after startup.
-Do not add new variants to this histogram unless they are recorded in the same way,
-even if they fit the naming pattern. -->
+<!-- This set of histograms is recorded once per profile load (signin screen or
+user profile). Do not add new variants to this histogram unless they are
+recorded in the same way, even if they fit the naming pattern. -->
 
 <histogram name="Accessibility.Cros{SettingType}" enum="BooleanEnabled"
     expires_after="2027-06-01">
@@ -1586,7 +1590,8 @@ even if they fit the naming pattern. -->
   <owner>katie@chromium.org</owner>
   <owner>chrome-a11y-core@google.com</owner>
   <summary>
-    Note: This metric is logged once after startup.
+    Note: This metric is logged once per profile load (signin screen or user
+    profile).
 
     Whether the user has enabled the Chrome OS feature: {SettingType}
   </summary>
@@ -2389,8 +2394,8 @@ even if they fit the naming pattern. -->
   <owner>katie@chromium.org</owner>
   <owner>chrome-a11y-core@google.com</owner>
   <summary>
-    Whether the Chrome OS OOBE startup sound is enabled (logged once after
-    startup).
+    Whether the Chrome OS OOBE startup sound is enabled (logged once per profile
+    load (signin screen or user profile)).
   </summary>
 </histogram>
 
@@ -3784,6 +3789,27 @@ even if they fit the naming pattern. -->
   </summary>
 </histogram>
 
+<histogram
+    name="Accessibility.ReadAnything.TimeFromTreeChangedToDistillationComplete"
+    units="ms" expires_after="2027-03-01">
+  <owner>gusmartin@google.com</owner>
+  <owner>chrome-irm-devs@google.com</owner>
+  <summary>
+    Measures the latency of successful distillations via the readability engine
+    triggered by active accessibility tree ID changes.
+
+    The interval starts when Reading Mode detects that the active accessibility
+    tree ID has changed and ends when the readability engine successfully
+    finishes extracting the distilled article content.
+
+    This metric is only recorded for successful distillations resulting from
+    initial active tree changes. It explicitly excludes background updates,
+    failed distillations, or sub-document navigations (such as Single Page
+    Application updates) to ensure a clean baseline for evaluating distillation
+    pipeline performance.
+  </summary>
+</histogram>
+
 <histogram name="Accessibility.ReadAnything.TimeFrom{Flow}StartedTo{Method}"
     units="ms" expires_after="2026-12-06">
   <owner>lwinston@google.com</owner>
@@ -4461,8 +4487,8 @@ even if they fit the naming pattern. -->
   </summary>
 </histogram>
 
-<histogram name="Accessibility.WinUIA.ClientDisconnected" units="hash"
-    expires_after="2027-04-28">
+<histogram name="Accessibility.WinUIA.ClientDisconnected"
+    enum="UiaClientProcess" expires_after="2027-04-28">
   <owner>lucasradaelli@google.com</owner>
   <owner>benjamin.beaudry@microsoft.com</owner>
   <owner>chrome-a11y-core@google.com</owner>
@@ -4470,15 +4496,13 @@ even if they fit the naming pattern. -->
     Records the base::PersistentHash of the lowercased process name of a UIA
     client when it disconnects from Chrome's UI Automation provider. Helps
     measure how often Chrome receives disconnect signals. This exploratory
-    metric may be replaced by richer disconnect telemetry. Common client hash
-    values are listed in
-    docs/accessibility/browser/uia_client_process_hashes.md. Only available on
+    metric may be replaced by richer disconnect telemetry. Only available on
     Windows build 26100 (24H2) or later.
   </summary>
 </histogram>
 
-<histogram name="Accessibility.WinUIA.ClientProcess.{AXModeFlag}" units="hash"
-    expires_after="2027-04-28">
+<histogram name="Accessibility.WinUIA.ClientProcess.{AXModeFlag}"
+    enum="UiaClientProcess" expires_after="2027-04-28">
   <owner>lucasradaelli@google.com</owner>
   <owner>benjamin.beaudry@microsoft.com</owner>
   <owner>chrome-a11y-core@google.com</owner>
@@ -4487,10 +4511,8 @@ even if they fit the naming pattern. -->
     process basename connected when the existing AXMode metrics record
     {AXModeFlag}. Use the corresponding Accessibility.ModeFlag count as the
     denominator. Multiple different clients can be recorded for the same AXMode
-    snapshot, but duplicate process basenames are recorded once. Common client
-    hash values are listed in
-    docs/accessibility/browser/uia_client_process_hashes.md. Only available on
-    Windows build 26100 (24H2) or later.
+    snapshot, but duplicate process basenames are recorded once. Only available
+    on Windows build 26100 (24H2) or later.
   </summary>
   <token key="AXModeFlag">
     <variant name="NativeAPIs"

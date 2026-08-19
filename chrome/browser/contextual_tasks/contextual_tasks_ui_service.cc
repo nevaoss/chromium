@@ -4,10 +4,10 @@
 
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service.h"
 
+#include <algorithm>
 #include <optional>
 
 #include "base/command_line.h"
-#include "base/containers/adapters.h"
 #include "base/feature_list.h"
 #include "base/logging.h"
 #include "base/metrics/histogram_functions.h"
@@ -367,8 +367,8 @@ void ContextualTasksUiService::OnNavigationToAiPageIntercepted(
   // mode preference. This prevents UI flicker.
   std::optional<bool> is_dark_mode = contextual_tasks::GetDarkModeFromUrl(url);
   if (is_dark_mode.has_value()) {
-    ui_url = net::AppendQueryParameter(ui_url, "cs",
-                                       is_dark_mode.value() ? "1" : "0");
+    ui_url = net::AppendOrReplaceQueryParameter(
+        ui_url, "cs", is_dark_mode.value() ? "1" : "0");
   }
 
   content::WebContents* contextual_task_web_contents = nullptr;
@@ -415,7 +415,6 @@ void ContextualTasksUiService::OnNavigationToAiPageIntercepted(
   // Associate the web contents with the task and set the session handle if
   // provided.
   if (contextual_task_web_contents) {
-    AssociateWebContentsToTask(contextual_task_web_contents, task.GetTaskId());
     if (session_handle) {
       auto* helper =
           ContextualSearchWebContentsHelper::GetOrCreateForWebContents(
@@ -423,6 +422,7 @@ void ContextualTasksUiService::OnNavigationToAiPageIntercepted(
       helper->SetTaskSession(task.GetTaskId(), std::move(session_handle),
                              helper->TakeInputStateModel());
     }
+    AssociateWebContentsToTask(contextual_task_web_contents, task.GetTaskId());
   }
 }
 
@@ -1045,7 +1045,6 @@ void ContextualTasksUiService::InitializeTaskInSidePanel(
     const base::Uuid& task_id,
     std::unique_ptr<contextual_search::ContextualSearchSessionHandle>
         session_handle) {
-  AssociateWebContentsToTask(web_contents, task_id);
   // Retrieve the session handle from pending session handles if it was stored
   // early to prevent race conditions where the NavigationThrottle checks
   // eligibility before the handle is associated with the WebContents.
@@ -1061,6 +1060,7 @@ void ContextualTasksUiService::InitializeTaskInSidePanel(
         ->SetTaskSession(task_id, std::move(session_handle),
                          /*input_state_model=*/nullptr);
   }
+  AssociateWebContentsToTask(web_contents, task_id);
 }
 
 void ContextualTasksUiService::OnNonThreadNavigationInTab(
@@ -2394,6 +2394,19 @@ GURL ContextualTasksUiService::GetContextualTaskUrlForTask(
   url = net::AppendQueryParameter(url, kTaskQueryParam,
                                   task_id.AsLowercaseString());
 
+  // Copy the 'cs' parameter, if it exists, from the task's creation URL to
+  // the WebUI host URL so that the WebUI theme matches the target page theme
+  // immediately.
+  std::optional<GURL> creation_url = GetCreationUrlForTask(task_id);
+  if (creation_url) {
+    std::optional<bool> is_dark_mode =
+        contextual_tasks::GetDarkModeFromUrl(*creation_url);
+    if (is_dark_mode.has_value()) {
+      url = net::AppendOrReplaceQueryParameter(
+          url, "cs", is_dark_mode.value() ? "1" : "0");
+    }
+  }
+
   omnibox::ChromeAimEntryPoint entry_point =
       GetInitialEntryPointForTask(task_id);
   return AppendAimEntryPointParams(url, entry_point);
@@ -2809,7 +2822,7 @@ void ContextualTasksUiService::StartTaskUiInSidePanelImpl(
       pending_session_handles_.emplace(task_id, std::move(session_handle));
     }
     controller->Show(/*transition_from_tab=*/false, options.entry_point,
-                     options.use_no_animation);
+                     options.use_no_animation, options.open_time_ticks);
 
     InitializeTaskInSidePanel(controller->GetActiveWebContents(), task_id,
                               nullptr);
@@ -2957,6 +2970,24 @@ void ContextualTasksUiService::StartTaskUiInSidePanelWithErrorPage(
 
 bool ContextualTasksUiService::IsAiUrl(const GURL& url) {
   return aim_eligibility_service_->IsAimUrl(url, GetForcedEmbeddedPageHost());
+}
+
+bool ContextualTasksUiService::IsSidePanelOpenAndRequestInSidePanel(
+    content::WebContents* web_contents) {
+  if (!web_contents) {
+    return false;
+  }
+  BrowserWindowInterface* browser =
+      webui::GetBrowserWindowInterface(web_contents);
+  if (!browser) {
+    return false;
+  }
+  auto* controller = ContextualTasksPanelController::From(browser);
+  if (!controller || !controller->IsPanelOpenForContextualTask()) {
+    return false;
+  }
+  return std::ranges::contains(controller->GetPanelWebContentsList(),
+                               web_contents);
 }
 
 bool ContextualTasksUiService::IsPendingErrorPage(const base::Uuid& task_id) {

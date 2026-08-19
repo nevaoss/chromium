@@ -988,7 +988,7 @@ TEST_F(AutofillAgentTest, SelectFieldOptionsChangedAfterFillUsesFieldId) {
       "<form><select id=select_id><option value=one>One</option><option "
       "value=two>Two</option></select></form>");
 
-  std::vector<WebFormElement> forms = GetDocument().GetTopLevelForms();
+  std::vector<WebFormElement> forms = GetDocument().GetOutermostForms();
   ASSERT_EQ(forms.size(), 1u);
 
   std::optional<FormData> form = ExtractFormData(forms.front());
@@ -1039,7 +1039,7 @@ TEST_F(AutofillAgentTest, PreviewThenClear) {
     </form>
   )");
 
-  std::vector<blink::WebFormElement> forms = GetDocument().GetTopLevelForms();
+  std::vector<blink::WebFormElement> forms = GetDocument().GetOutermostForms();
   ASSERT_EQ(1U, forms.size());
   std::optional<FormData> form = ExtractFormData(forms.front());
   ASSERT_TRUE(form);
@@ -1179,7 +1179,7 @@ TEST_P(AutofillAgentSelectFillingTest, FillingSelectElements) {
   const auto& param = GetParam();
   LoadHTML(("<form>" + param.html_select + "</form>").c_str());
 
-  std::vector<WebFormElement> forms = GetDocument().GetTopLevelForms();
+  std::vector<WebFormElement> forms = GetDocument().GetOutermostForms();
   ASSERT_EQ(forms.size(), 1u);
 
   std::optional<FormData> form = ExtractFormData(forms.front());
@@ -1923,11 +1923,12 @@ class AutofillAgentTest_AtMemory : public AutofillAgentTest {
           if (IsAtMemoryTriggerSource(trigger_source)) {
             base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
                 FROM_HERE,
-                base::BindOnce(&AutofillAgent::ApplyFieldAction,
-                               test_api(autofill_agent()).GetWeakPtr(),
-                               mojom::FieldActionType::kReplaceAtMemoryTrigger,
-                               action_persistence_to_respond_, field_id,
-                               fill_value_to_respond_)
+                base::BindOnce(
+                    &AutofillAgent::ApplyFieldAction,
+                    test_api(autofill_agent()).GetWeakPtr(),
+                    mojom::FieldActionType::kReplaceSelectionForAtMemory,
+                    action_persistence_to_respond_, field_id,
+                    fill_value_to_respond_)
                     .Then(run_loop_->QuitClosure()));
           }
         });
@@ -2350,7 +2351,7 @@ TEST_F(AutofillAgentTest_AtMemory,
   EXPECT_EQ(input.Value().Utf16(), u"hello result");
 }
 
-// Tests that ApplyFieldAction() with kReplaceAtMemoryTrigger aborts if no
+// Tests that ApplyFieldAction() with kReplaceSelectionForAtMemory aborts if no
 // matching entry is found in last_at_memory_ask_for_values_to_fills_.
 TEST_F(AutofillAgentTest_AtMemory,
        AtMemoryReplaceTriggerAbortsIfNoHistoryEntryFound) {
@@ -2363,10 +2364,25 @@ TEST_F(AutofillAgentTest_AtMemory,
   input.SetValue(blink::WebString::FromUtf16(u"hello @@"));
   input.SetSelectionRange(8, 8);
   autofill_agent().ApplyFieldAction(
-      mojom::FieldActionType::kReplaceAtMemoryTrigger,
+      mojom::FieldActionType::kReplaceSelectionForAtMemory,
       mojom::ActionPersistence::kFill, field_id, u"result");
   // Filling should be aborted; value remains unchanged.
   EXPECT_EQ(input.Value().Utf16(), u"hello @@");
+}
+
+// Tests that ApplyFieldAction() with kReplaceSelectionForAtMemory aborts if the
+// value changed after AskForValuesToFill().
+TEST_F(AutofillAgentTest_AtMemory, AtMemoryReplaceTriggerAbortsIfValueChanged) {
+  LoadHTML(R"(<input id="f">)");
+  WaitForFormsSeen();
+  blink::WebInputElement input = GetInputElementById("f");
+  Focus("f");
+
+  SimulateSlowTyping("hello @@");
+  input.SetValue(blink::WebString::FromUtf16(u"hello @@ changed"));
+  WaitForApplyFieldAction();
+  // Filling should be aborted; value remains unchanged.
+  EXPECT_EQ(input.Value().Utf16(), u"hello @@ changed");
 }
 
 // Tests that a non-standard trigger string works in <input> fields.
@@ -2527,8 +2543,8 @@ TEST_F(AutofillAgentTest_AtMemoryContentEditable, MultipleTriggers) {
   SimulateSlowTyping("abc@@");
 }
 
-// Tests that kReplaceAtMemoryTrigger correctly replaces the "@@" trigger in a
-// contenteditable element and places the cursor after the filled value.
+// Tests that kReplaceSelectionForAtMemory correctly replaces the "@@" trigger
+// in a contenteditable element and places the cursor after the filled value.
 TEST_F(AutofillAgentTest_AtMemoryContentEditable,
        ReplaceAtMemoryTriggerInContentEditable) {
   blink::WebElement ce = GetWebElementById("ce");
@@ -2548,7 +2564,7 @@ TEST_F(AutofillAgentTest_AtMemoryContentEditable,
   EXPECT_EQ(selection.EndOffset(), 13);
 }
 
-// Tests that kReplaceAtMemoryTrigger inserts a value at the current cursor
+// Tests that kReplaceSelectionForAtMemory inserts a value at the current cursor
 // position if the trigger string ("@@") is not found immediately before the
 // cursor (for example, during context menu invocation).
 TEST_F(AutofillAgentTest_AtMemoryContentEditable,
@@ -2586,7 +2602,7 @@ TEST_F(AutofillAgentTest_AtMemoryContentEditable,
   EXPECT_EQ(selection.StartOffset(), 14);
 }
 
-// Tests that kReplaceAtMemoryTrigger replaces a pre-existing selection.
+// Tests that kReplaceSelectionForAtMemory replaces a pre-existing selection.
 TEST_F(AutofillAgentTest_AtMemoryContentEditable,
        ReplaceAtMemoryTriggerWithSelection) {
   blink::WebElement ce = GetWebElementById("ce");
@@ -2622,6 +2638,22 @@ TEST_F(AutofillAgentTest_AtMemoryContentEditable,
   blink::WebRange selection =
       GetMainFrame()->GetInputMethodController()->GetSelectionOffsets();
   EXPECT_EQ(selection.StartOffset(), 14);
+}
+
+// Tests that ApplyFieldAction() with kReplaceSelectionForAtMemory aborts if the
+// value changed after AskForValuesToFill().
+TEST_F(AutofillAgentTest_AtMemoryContentEditable,
+       AtMemoryReplaceTriggerAbortsIfValueChanged) {
+  blink::WebElement ce = GetWebElementById("ce");
+
+  SimulateSlowTyping("hello @@");
+  ExecuteJavaScriptForTests(R"(
+    document.getElementById('ce').innerText = 'hello @@ changed';
+  )");
+  test_api(autofill_agent()).ContentEditableDidChange(ce);
+  WaitForApplyFieldAction();
+  // Filling should be aborted; value remains unchanged.
+  EXPECT_EQ(ce.TextContent().Utf16(), u"hello @@ changed");
 }
 
 // Tests that a non-standard trigger string works in <div contenteditable>

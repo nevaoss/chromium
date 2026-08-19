@@ -1007,7 +1007,8 @@ function getAriaFormControlData(element: HTMLElement):
 
   if (formControlType === FormControlType.INPUT_TEXT ||
       formControlType === FormControlType.INPUT_SEARCH) {
-    const placeholder = safeGetAttribute(element, 'aria-placeholder');
+    const placeholder = safeGetAttribute(element, 'placeholder') ||
+        safeGetAttribute(element, 'aria-placeholder');
     if (placeholder) {
       formControlData.placeholder = placeholder;
     }
@@ -2481,15 +2482,11 @@ function getFormControlData(
   }
 
   // Placeholder.
-  const placeholder = (domNode as HTMLInputElement).placeholder;
+  const placeholder = (domNode as HTMLInputElement).placeholder ||
+      safeGetAttribute(domNode as Element, 'placeholder') ||
+      safeGetAttribute(domNode as Element, 'aria-placeholder');
   if (placeholder) {
     formControlData.placeholder = placeholder;
-  } else {
-    const ariaPlaceholder =
-        safeGetAttribute(domNode as Element, 'aria-placeholder');
-    if (ariaPlaceholder) {
-      formControlData.placeholder = ariaPlaceholder;
-    }
   }
 
   // Select Options.
@@ -3152,14 +3149,24 @@ function addNodeGeometry(
 
   attributes.geometry = geometry;
 
+  // Match Blink's IsAnchoredOffscreen logic: if an interactive node is
+  // clipped completely offscreen inside an overflow container, drop
+  // nodeInteractionInfo so offscreen carousel items are not retained.
+  if (!geometry.visibleBoundingBox && attributes.nodeInteractionInfo &&
+      context.hasOverflowClip) {
+    delete attributes.nodeInteractionInfo;
+  }
+
   // Determine the new clip context to pass down to children.
   let newNormalClip = context.normalClip;
   let newAbsoluteClip = context.absoluteClip;
+  let newHasOverflowClip = context.hasOverflowClip;
 
   const overflowX = style?.overflowX || '';
   const overflowY = style?.overflowY || '';
 
   if (isClippedStyle(overflowX) || isClippedStyle(overflowY)) {
+    newHasOverflowClip = true;
     const visibleRectForClip = visibleRect;
 
     // If the element actively clips its children, its own visible bounds become
@@ -3177,7 +3184,11 @@ function addNodeGeometry(
     newAbsoluteClip = context.normalClip;
   }
 
-  return {normalClip: newNormalClip, absoluteClip: newAbsoluteClip};
+  return {
+    normalClip: newNormalClip,
+    absoluteClip: newAbsoluteClip,
+    hasOverflowClip: newHasOverflowClip,
+  };
 }
 
 // TODO(crbug.com/476341187): Carry status information when the max depth is
@@ -3316,6 +3327,8 @@ interface ClippingContext {
   normalClip: Rect|null;
   /** Clipping rectangle applied to absolute positioned elements. */
   absoluteClip: Rect|null;
+  /** Whether an ancestor element has an overflow clipping style. */
+  hasOverflowClip?: boolean;
 }
 
 // Item in the ancestor stack.

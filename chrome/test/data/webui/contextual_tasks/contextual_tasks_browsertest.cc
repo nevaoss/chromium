@@ -54,6 +54,8 @@ class ContextualTasksBrowserTest : public WebUIMochaBrowserTest {
         .WillByDefault(testing::Return(true));
     ON_CALL(*aim_eligibility_service, IsCobrowseEligible())
         .WillByDefault(testing::Return(true));
+    ON_CALL(*aim_eligibility_service, IsAimUrl(testing::_, testing::_))
+        .WillByDefault(testing::Return(true));
     return aim_eligibility_service;
   }
 
@@ -237,8 +239,8 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest, OnboardingTooltip) {
 }
 
 #if !BUILDFLAG(IS_ANDROID)
-IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest, LensSearchTooltip) {
-  RunTest("contextual_tasks/lens_search_tooltip_test.js", "mocha.run();");
+IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest, InfoTooltip) {
+  RunTest("contextual_tasks/info_tooltip_test.js", "mocha.run();");
 }
 // TODO(crbug.com/529817776): Re-enable when the timeouts get fixed.
 #if BUILDFLAG(IS_LINUX) && !defined(NDEBUG)
@@ -261,3 +263,7 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest, WindowManager) {
   RunTest("contextual_tasks/window_manager_test.js", "mocha.run();");
 }
 #endif
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest, Utils) {
+  RunTest("contextual_tasks/utils_test.js", "mocha.run();");
+}

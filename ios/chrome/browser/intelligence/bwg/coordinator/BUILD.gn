@@ -6,6 +6,7 @@ source_set("container_mediator") {
   sources = [
     "gemini_container_mediator.h",
     "gemini_container_mediator.mm",
+    "gemini_container_mediator_event_handler.h",
   ]
   public_deps = [
     "//ios/chrome/browser/intelligence/bwg/model",
@@ -18,6 +19,7 @@ source_set("container_mediator") {
     "//ios/chrome/app/strings",
     "//ios/chrome/browser/feature_engagement/model",
     "//ios/chrome/browser/intelligence/actor/model",
+    "//ios/chrome/browser/intelligence/bwg/metrics",
     "//ios/chrome/browser/intelligence/bwg/model:config",
     "//ios/chrome/browser/intelligence/bwg/model:gemini_service",
     "//ios/chrome/browser/intelligence/bwg/model:gemini_service_factory",
@@ -127,6 +129,7 @@ source_set("unit_tests") {
     "//ios/chrome/app/application_delegate:test_support",
     "//ios/chrome/browser/feature_engagement/model",
     "//ios/chrome/browser/fullscreen/ui_bundled/test",
+    "//ios/chrome/browser/intelligence/bwg/metrics",
     "//ios/chrome/browser/intelligence/bwg/model",
     "//ios/chrome/browser/intelligence/bwg/model:browser_agent",
     "//ios/chrome/browser/intelligence/bwg/model:config",

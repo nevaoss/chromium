@@ -291,7 +291,8 @@ class FormAutofillUtilsTest : public content::RenderViewTest {
   FormAutofillUtilsTest() {
     scoped_feature_list_.InitWithFeatures(
         /*enabled_features=*/
-        {features::kAutofillIgnoreCheckableElements},
+        {features::kAutofillFixIframeOwnership,
+         features::kAutofillIgnoreCheckableElements},
         /*disabled_features=*/{});
   }
   ~FormAutofillUtilsTest() override = default;
@@ -1610,8 +1611,8 @@ TEST_F(FormAutofillUtilsTest, IsWebElementVisibleTest) {
   }
 }
 
-// Tests `GetClosestAncestorFormElement(element)`.
-TEST_F(FormAutofillUtilsTest, GetClosestAncestorFormElement) {
+// Tests `GetOutermostAncestorFormElement(element)`.
+TEST_F(FormAutofillUtilsTest, GetOutermostAncestorFormElement) {
   LoadHTML(R"(
       <body>
         <iframe id=unowned></iframe>
@@ -1636,16 +1637,16 @@ TEST_F(FormAutofillUtilsTest, GetClosestAncestorFormElement) {
 
   WebDocument doc = GetDocument();
   EXPECT_EQ(
-      GetClosestAncestorFormElementForTesting(GetElementById(doc, "unowned")),
+      GetOutermostAncestorFormElementForTesting(GetElementById(doc, "unowned")),
       WebFormElement());
   EXPECT_EQ(
-      GetClosestAncestorFormElementForTesting(GetElementById(doc, "owned1")),
+      GetOutermostAncestorFormElementForTesting(GetElementById(doc, "owned1")),
       GetFormElementById(doc, "outer_form"));
   EXPECT_EQ(
-      GetClosestAncestorFormElementForTesting(GetElementById(doc, "owned2")),
-      GetFormElementById(doc, "inner_form"));
+      GetOutermostAncestorFormElementForTesting(GetElementById(doc, "owned2")),
+      GetFormElementById(doc, "outer_form"));
   EXPECT_EQ(
-      GetClosestAncestorFormElementForTesting(GetElementById(doc, "owned3")),
+      GetOutermostAncestorFormElementForTesting(GetElementById(doc, "owned3")),
       GetFormElementById(doc, "outer_form"));
   EXPECT_EQ(WebFormControlElement(),
             GetFormElementById(doc, "non_existent_form", AllowNull(true)));
@@ -2410,10 +2411,40 @@ TEST_F(FormAutofillUtilsTest, FindFormForContentEditableFailures) {
          <textarea id=ce4 contenteditable><div contenteditable></textarea>
          </body>)");
   WebDocument doc = GetDocument();
-  ASSERT_FALSE(FindFormForContentEditable(doc.GetElementById("ce1")));
-  ASSERT_FALSE(FindFormForContentEditable(doc.GetElementById("ce2")));
-  ASSERT_FALSE(FindFormForContentEditable(doc.GetElementById("ce3")));
-  ASSERT_FALSE(FindFormForContentEditable(doc.GetElementById("ce4")));
+  EXPECT_FALSE(FindFormForContentEditable(doc.GetElementById("ce1")));
+  EXPECT_FALSE(FindFormForContentEditable(doc.GetElementById("ce2")));
+  EXPECT_FALSE(FindFormForContentEditable(doc.GetElementById("ce3")));
+  EXPECT_FALSE(FindFormForContentEditable(doc.GetElementById("ce4")));
+}
+
+// Tests that GetFieldRendererId() returns valid and unique `FieldRendererId`s
+// for contenteditable elements based on their DOM node ID, and that the
+// returned ID matches the `FormFieldData` renderer ID extracted by
+// FindFormForContentEditable().
+TEST_F(FormAutofillUtilsTest, GetFieldRendererId_ContentEditable) {
+  LoadHTML(
+      R"(<body>
+         <div id=editable1 contenteditable>First</div>
+         <p id=editable2 contenteditable>Second</p>
+         </body>)");
+  WebElement ce1 = GetDocument().GetElementById("editable1");
+  WebElement ce2 = GetDocument().GetElementById("editable2");
+  ASSERT_TRUE(ce1);
+  ASSERT_TRUE(ce2);
+
+  FieldRendererId id1 = GetFieldRendererId(ce1);
+  FieldRendererId id2 = GetFieldRendererId(ce2);
+
+  EXPECT_FALSE(id1.is_null());
+  EXPECT_FALSE(id2.is_null());
+  EXPECT_NE(id1, id2);
+  EXPECT_EQ(id1, FieldRendererId(ce1.GetDomNodeId()));
+  EXPECT_EQ(id2, FieldRendererId(ce2.GetDomNodeId()));
+
+  EXPECT_THAT(FindFormForContentEditable(ce1),
+              Optional(Property(
+                  &FormData::fields,
+                  ElementsAre(Property(&FormFieldData::renderer_id, id1)))));
 }
 
 TEST_F(FormAutofillUtilsTest, ExtractFormData_OwnedForm) {
@@ -4830,7 +4861,7 @@ TEST_F(FormDataConversionTest, WebFormElementToFormData) {
              <input type=hidden id=notvisible value=apple>
          </form>)");
 
-  std::vector<WebFormElement> forms = GetDocument().GetTopLevelForms();
+  std::vector<WebFormElement> forms = GetDocument().GetOutermostForms();
   ASSERT_EQ(1U, forms.size());
 
   WebInputElement input_element = GetInputElementById("firstname");
@@ -4924,7 +4955,7 @@ TEST_F(FormDataConversionTest, WebFormElementToFormData_TooManyFields) {
   html += "</form>";
   LoadHTML(html.c_str());
 
-  std::vector<WebFormElement> forms = GetDocument().GetTopLevelForms();
+  std::vector<WebFormElement> forms = GetDocument().GetOutermostForms();
   ASSERT_EQ(1U, forms.size());
   std::vector<WebFormControlElement> form_controls =
       form_util::GetOwnedAutofillableFormControls(GetDocument(), forms.front());
@@ -5233,7 +5264,7 @@ TEST_F(FormDataConversionTest, WebFormElementToFormData_Autocomplete) {
              <input type=submit name='reply-send' value=Send>
            </form>)");
 
-  std::vector<WebFormElement> web_forms = GetDocument().GetTopLevelForms();
+  std::vector<WebFormElement> web_forms = GetDocument().GetOutermostForms();
   ASSERT_EQ(1U, web_forms.size());
   WebFormElement web_form = web_forms[0];
 
@@ -5257,7 +5288,7 @@ TEST_F(FormDataConversionTest, SelectOneAsText) {
       GetDocument().GetElementById("country").To<WebSelectElement>();
   select_element.SetValue(WebString("AL"));
 
-  std::vector<WebFormElement> forms = GetDocument().GetTopLevelForms();
+  std::vector<WebFormElement> forms = GetDocument().GetOutermostForms();
   ASSERT_EQ(1U, forms.size());
 
   std::optional<FormData> form = ExtractFormData(forms.front());
@@ -6165,7 +6196,7 @@ TEST_F(FormAutofillWithConstraintsTest, ThreePartPhone) {
   WebLocalFrame* frame = GetMainFrame();
   ASSERT_NE(nullptr, frame);
 
-  std::vector<WebFormElement> forms = frame->GetDocument().GetTopLevelForms();
+  std::vector<WebFormElement> forms = frame->GetDocument().GetOutermostForms();
   ASSERT_EQ(1U, forms.size());
 
   std::optional<FormData> form = ExtractFormData(forms.front());
@@ -6211,7 +6242,7 @@ TEST_F(FormAutofillWithConstraintsTest, MaxLengthFields) {
   WebLocalFrame* frame = GetMainFrame();
   ASSERT_NE(nullptr, frame);
 
-  std::vector<WebFormElement> forms = frame->GetDocument().GetTopLevelForms();
+  std::vector<WebFormElement> forms = frame->GetDocument().GetOutermostForms();
   ASSERT_EQ(1U, forms.size());
 
   std::optional<FormData> form = ExtractFormData(forms.front());
@@ -6658,7 +6689,7 @@ TEST_F(FormAutofillWithConstraintsTest, UndoAutofill) {
                                WebAutofillState::kAutofilled));
 
   std::vector<WebFormElement> forms =
-      GetMainFrame()->GetDocument().GetTopLevelForms();
+      GetMainFrame()->GetDocument().GetOutermostForms();
   EXPECT_EQ(1U, forms.size());
 
   std::optional<FormData> form = ExtractFormData(forms.front());

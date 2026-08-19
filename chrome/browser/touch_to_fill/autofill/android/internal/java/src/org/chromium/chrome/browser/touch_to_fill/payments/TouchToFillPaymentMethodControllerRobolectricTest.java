@@ -45,6 +45,7 @@ import static org.chromium.chrome.browser.touch_to_fill.payments.TouchToFillPaym
 import static org.chromium.chrome.browser.touch_to_fill.payments.TouchToFillPaymentMethodMediator.SCREEN_ACCEPTED;
 import static org.chromium.chrome.browser.touch_to_fill.payments.TouchToFillPaymentMethodMediator.SCREEN_DISMISSED;
 import static org.chromium.chrome.browser.touch_to_fill.payments.TouchToFillPaymentMethodMediator.SCREEN_SHOWN;
+import static org.chromium.chrome.browser.touch_to_fill.payments.TouchToFillPaymentMethodMediator.TABBED_HOME_SCREEN_DISMISSED;
 import static org.chromium.chrome.browser.touch_to_fill.payments.TouchToFillPaymentMethodMediator.TOUCH_TO_FILL_AFFILIATED_LOYALTY_CARDS_SCREEN_INDEX_SELECTED;
 import static org.chromium.chrome.browser.touch_to_fill.payments.TouchToFillPaymentMethodMediator.TOUCH_TO_FILL_ALL_LOYALTY_CARDS_SCREEN_INDEX_SELECTED;
 import static org.chromium.chrome.browser.touch_to_fill.payments.TouchToFillPaymentMethodMediator.TOUCH_TO_FILL_BNPL_SELECT_ISSUER_NUMBER_OF_ISSUERS_SHOWN;
@@ -3389,6 +3390,14 @@ public class TouchToFillPaymentMethodControllerRobolectricTest {
         ModelList itemList = mTouchToFillPaymentMethodModel.get(SHEET_ITEMS);
         assertThat(getModelsOfType(itemList, CREDIT_CARD).size(), is(1));
         assertThat(getModelsOfType(itemList, BNPL).size(), is(0));
+
+        assertModelHasCorrectAccessibilityStringIds(
+                mTouchToFillPaymentMethodModel,
+                R.string.autofill_payment_method_bottom_sheet_content_description,
+                R.string.autofill_payment_method_bottom_sheet_half_height,
+                R.string.autofill_payment_method_bottom_sheet_full_height,
+                R.string.autofill_payment_method_bottom_sheet_closed,
+                R.id.touch_to_fill_payment_method_tabbed_home_screen);
     }
 
     @Test
@@ -3504,6 +3513,17 @@ public class TouchToFillPaymentMethodControllerRobolectricTest {
         itemList = mTouchToFillPaymentMethodModel.get(SHEET_ITEMS);
         assertThat(getModelsOfType(itemList, PROGRESS_ICON).size(), is(1));
         assertThat(getModelsOfType(itemList, BNPL_ISSUER).size(), is(0));
+    }
+
+    @Test
+    @EnableFeatures({AutofillFeatures.AUTOFILL_ENABLE_PAY_NOW_PAY_LATER_TABS})
+    public void testDismissTabbedHomeScreenRecordsUserAction() {
+        mCoordinator.showPaymentMethods(
+                List.of(VISA_SUGGESTION, BNPL_SUGGESTION), new TouchToFillDisplayOptions());
+
+        mTouchToFillPaymentMethodModel.get(DISMISS_HANDLER).onResult(StateChangeReason.SWIPE);
+
+        assertEquals(1, getUserActionCount(TABBED_HOME_SCREEN_DISMISSED));
     }
 
     private static List<PropertyModel> getModelsOfType(ModelList items, int type) {

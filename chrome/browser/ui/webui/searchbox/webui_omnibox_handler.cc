@@ -209,14 +209,22 @@ void WebuiOmniboxHandler::OpenLensSearch() {
   edit_model()->OpenLensSearch();
 }
 
-void WebuiOmniboxHandler::AddTabContext(int32_t tab_id,
-                                        bool delay_upload,
-                                        AddTabContextCallback callback) {
+void WebuiOmniboxHandler::AddTabContext(
+    int32_t tab_id,
+    bool delay_upload,
+    searchbox::mojom::TabAttachmentSource source,
+    AddTabContextCallback callback) {
+  if (!contextual_search::ContextualSearchService::IsContextSharingEnabled(
+          profile_->GetPrefs())) {
+    std::move(callback).Run(base::unexpected(
+        contextual_search::ContextUploadErrorType::kBrowserProcessingError));
+    return;
+  }
   auto* browser_window_interface =
       webui::GetBrowserWindowInterface(web_contents_.get());
   const tabs::TabHandle handle = tabs::TabHandle(tab_id);
   tabs::TabInterface* const tab = handle.Get();
-  if (!tab) {
+  if (!tab || tab->GetProfile() != profile_) {
     std::move(callback).Run(base::unexpected(
         contextual_search::ContextUploadErrorType::kBrowserProcessingError));
     return;
@@ -238,6 +246,7 @@ void WebuiOmniboxHandler::AddTabContext(int32_t tab_id,
   tab_attachment->tab_id = tab_id;
   tab_attachment->title = base::UTF16ToUTF8(TabUIHelper::From(tab)->GetTitle());
   tab_attachment->url = tab->GetContents()->GetLastCommittedURL();
+  tab_attachment->source = source;
   context->file_infos.push_back(
       searchbox::mojom::SearchContextAttachment::NewTabAttachment(
           std::move(tab_attachment)));
@@ -331,7 +340,7 @@ WebuiOmniboxHandler::CreateAutocompleteMatch(
   if (mojom_match &&
       match.suggestion_group_id == omnibox::GroupId::GROUP_CONTEXTUAL_SEARCH) {
     mojom_match.value()->icon_path =
-        omnibox::kAskGSwapIcon.Get()
+        omnibox::kAskGSwapSuggestionIcon.Get()
             ? searchbox_internal::kSearchSparkIconResourceName
             : searchbox_internal::kReplyRotated180IconResourceName;
   }

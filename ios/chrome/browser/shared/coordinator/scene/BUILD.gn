@@ -43,7 +43,6 @@ source_set("scene_state_header") {
     ":url_context",
     "//ios/chrome/app/application_delegate:tab_opening",
     "//ios/chrome/browser/scoped_ui_blocker/ui_bundled:protocols",
-    "//ios/chrome/browser/shared/model/browser",
     "//ios/chrome/browser/shared/model/web_state_list",
     "//ios/chrome/browser/shared/public/commands",
     "//ios/chrome/browser/window_activities/model",
@@ -62,6 +61,7 @@ source_set("scene_state_header_for_otr_profile_deletion") {
 source_set("scene_testing") {
   sources = [ "scene_controller_testing.h" ]
   frameworks = [ "UIKit.framework" ]
+  deps = [ ":scene_state_header" ]
 }
 
 source_set("task_updater_scene_agent") {
@@ -92,6 +92,7 @@ source_set("scene") {
 
   deps = [
     ":scene_state_header_for_otr_profile_deletion",
+    ":scene_testing",
     ":tab_activity_utils",
     ":task_updater_scene_agent",
     "//base",
@@ -173,7 +174,6 @@ source_set("scene") {
     "//ios/chrome/browser/lens/ui_bundled:lens_entrypoint",
     "//ios/chrome/browser/lens_overlay/model",
     "//ios/chrome/browser/level_up/model",
-    "//ios/chrome/browser/main/model",
     "//ios/chrome/browser/main/ui_bundled",
     "//ios/chrome/browser/main/ui_bundled:default_browser_scene_agent",
     "//ios/chrome/browser/main/ui_bundled:incognito_blocker_scene_agent",
@@ -285,7 +285,8 @@ source_set("unit_tests") {
     "scene_delegate_unittests.mm",
     "scene_state_prefs_unittest.mm",
     "scene_util_unittest.mm",
-    "state/layout_state_unittest.mm",
+    "state/browser_layout_state_unittest.mm",
+    "state/scene_layout_state_unittest.mm",
     "task_updater_scene_agent_unittest.mm",
   ]
   deps = [

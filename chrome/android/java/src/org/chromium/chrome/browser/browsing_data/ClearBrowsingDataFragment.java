@@ -741,6 +741,7 @@ public class ClearBrowsingDataFragment extends ChromeBaseSettingsFragment
 
         mPasswordManagerLinkOut.setOnPreferenceClickListener(
                 preference -> {
+                    RecordUserAction.record("Settings.DeleteBrowsingData.PasswordManagerLinkClick");
                     PasswordManagerLauncher.showPasswordSettings(
                             getContext(),
                             getProfile(),
@@ -752,6 +753,7 @@ public class ClearBrowsingDataFragment extends ChromeBaseSettingsFragment
 
         mMyActivityLinkOut.setOnPreferenceClickListener(
                 preference -> {
+                    RecordUserAction.record("Settings.DeleteBrowsingData.MyActivityLinkClick");
                     getCustomTabLauncher()
                             .openUrlInCct(getContext(), UrlConstants.MY_ACTIVITY_URL_IN_CBD);
                     return true;
@@ -759,6 +761,8 @@ public class ClearBrowsingDataFragment extends ChromeBaseSettingsFragment
 
         mSearchHistoryLinkOut.setOnPreferenceClickListener(
                 preference -> {
+                    RecordUserAction.record(
+                            "Settings.DeleteBrowsingData.GoogleSearchHistoryLinkClick");
                     getCustomTabLauncher()
                             .openUrlInCct(
                                     getContext(), UrlConstants.GOOGLE_SEARCH_HISTORY_URL_IN_CBD);
@@ -1122,6 +1126,10 @@ public class ClearBrowsingDataFragment extends ChromeBaseSettingsFragment
                     }
 
                     indexData.removeEntry(getUniqueId(PREF_SIGN_OUT_OF_CHROME_TEXT));
+                    indexData.removeEntry(getUniqueId(PREF_MY_ACTIVITY_LINK_OUT));
+                    indexData.removeEntry(getUniqueId(PREF_SEARCH_HISTORY_LINK_OUT));
+                    indexData.removeEntry(getUniqueId(PREF_PASSWORD_MANAGER_LINK_OUT));
+                    indexData.removeEntry(getUniqueId(PREF_MANAGE_OTHER_GOOGLE_DATA_EXPANDABLE));
                 }
             };
 }

@@ -28,7 +28,6 @@
 #import "ios/components/ui_util/dynamic_type_util.h"
 #import "ui/base/device_form_factor.h"
 #import "ui/base/l10n/l10n_util.h"
-#import "ui/gfx/ios/uikit_util.h"
 
 namespace {
 
@@ -164,6 +163,34 @@ namespace content_suggestions {
 const CGFloat kHintTextScale = 0.15;
 const CGFloat kReturnToRecentTabSectionBottomMargin = 25;
 
+// Tight Padding Arm.
+const CGFloat kLogoTopPaddingTight = 24.0;
+const CGFloat kLogoToFakeboxPaddingTight = 32.0;
+const CGFloat kFakeboxToQuickActionsPaddingTight = 12.0;
+const CGFloat kQuickActionsToMostVisitedPaddingTight = 32.0;
+
+// Medium Padding Arm.
+const CGFloat kLogoTopPaddingMedium = 36.0;
+const CGFloat kLogoToFakeboxPaddingMedium = 36.0;
+const CGFloat kFakeboxToQuickActionsPaddingMedium = 12.0;
+const CGFloat kQuickActionsToMostVisitedPaddingMedium = 36.0;
+
+// Preferred Padding Arm.
+const CGFloat kLogoTopPaddingPreferred = 48.0;
+const CGFloat kLogoToFakeboxPaddingPreferred = 36.0;
+const CGFloat kFakeboxToQuickActionsPaddingPreferred = 12.0;
+const CGFloat kQuickActionsToMostVisitedPaddingPreferred = 36.0;
+
+// Control Padding.
+const CGFloat kLogoToFakeboxPaddingControl = 26.0;
+const CGFloat kFakeboxToQuickActionsPaddingControl = 8.0;
+const CGFloat kQuickActionsToMostVisitedPaddingControl = 20.0;
+const CGFloat kReducedModuleSpacingControl = 14.0;
+
+// Shared spacing constants.
+const CGFloat kReducedModuleSpacing = 12.0;
+const CGFloat kReducedModuleSpacingRegularXRegular = 14.0;
+
 CGFloat DoodleHeight(SearchEngineLogoState logo_state,
                      UITraitCollection* trait_collection) {
   // For users with non-Google default search engine, there is no doodle.
@@ -204,14 +231,14 @@ CGFloat DoodleTopMargin(SearchEngineLogoState logo_state,
   }
   CGFloat top_margin =
       top_inset +
-      AlignValueToPixel(kDoodleScaledTopMarginOther *
-                        ui_util::SystemSuggestedFontSizeMultiplier());
+      AlignValueToLowerPixel(kDoodleScaledTopMarginOther *
+                             ui_util::SystemSuggestedFontSizeMultiplier());
   top_margin += kDoodleTopMarginOther;
   return top_margin;
 }
 
 CGFloat HeaderSeparatorHeight() {
-  return ui::AlignValueToUpperPixel(kToolbarSeparatorHeight);
+  return AlignValueToUpperPixel(kToolbarSeparatorHeight);
 }
 
 CGFloat SearchFieldTopMargin(SearchEngineLogoState logo_state) {
@@ -244,9 +271,9 @@ CGFloat SearchFieldWidth(CGFloat width, UITraitCollection* trait_collection) {
 CGFloat FakeOmniboxHeight() {
   if (IsAimEnabledInNtp()) {
     CGFloat multiplier = ui_util::SystemSuggestedFontSizeMultiplier();
-    return AlignValueToPixel((kFakeboxHeight - kFakeboxHeightNonDynamic) *
-                                 multiplier +
-                             kFakeboxHeightNonDynamic);
+    return AlignValueToLowerPixel((kFakeboxHeight - kFakeboxHeightNonDynamic) *
+                                      multiplier +
+                                  kFakeboxHeightNonDynamic);
   }
   return ToolbarExpandedHeight(
       [UIApplication sharedApplication].preferredContentSizeCategory);
@@ -255,7 +282,7 @@ CGFloat FakeOmniboxHeight() {
 CGFloat PinnedFakeOmniboxHeight() {
   if (IsAimEnabledInNtp()) {
     CGFloat multiplier = ui_util::SystemSuggestedFontSizeMultiplier();
-    return AlignValueToPixel(
+    return AlignValueToLowerPixel(
         (kPinnedFakeboxHeight - kPinnedFakeboxHeightNonDynamic) * multiplier +
         kPinnedFakeboxHeightNonDynamic);
   }
@@ -301,6 +328,75 @@ CGFloat HeaderBottomPadding(UITraitCollection* trait_collection) {
   return IsSplitToolbarMode(trait_collection)
              ? 0
              : kNTPShrunkLogoSearchFieldBottomPadding;
+}
+
+CGFloat LogoTopPadding(UITraitCollection* trait_collection) {
+  if (IsRegularXRegularSizeClass(trait_collection)) {
+    return kDoodleTopMarginRegularXRegular;
+  }
+  switch (GetNTPPaddingUpdateVariation()) {
+    case NTPPaddingUpdateVariation::kTightPadding:
+      return kLogoTopPaddingTight;
+    case NTPPaddingUpdateVariation::kMediumPadding:
+      return kLogoTopPaddingMedium;
+    case NTPPaddingUpdateVariation::kPreferredPadding:
+      return kLogoTopPaddingPreferred;
+    case NTPPaddingUpdateVariation::kDisabled:
+      return DoodleTopMargin(SearchEngineLogoState::kLogo, trait_collection);
+  }
+}
+
+CGFloat LogoToFakeboxPadding() {
+  switch (GetNTPPaddingUpdateVariation()) {
+    case NTPPaddingUpdateVariation::kTightPadding:
+      return kLogoToFakeboxPaddingTight;
+    case NTPPaddingUpdateVariation::kMediumPadding:
+      return kLogoToFakeboxPaddingMedium;
+    case NTPPaddingUpdateVariation::kPreferredPadding:
+      return kLogoToFakeboxPaddingPreferred;
+    case NTPPaddingUpdateVariation::kDisabled:
+      return kLogoToFakeboxPaddingControl;
+  }
+}
+
+CGFloat FakeboxToQuickActionsPadding() {
+  switch (GetNTPPaddingUpdateVariation()) {
+    case NTPPaddingUpdateVariation::kTightPadding:
+      return kFakeboxToQuickActionsPaddingTight;
+    case NTPPaddingUpdateVariation::kMediumPadding:
+      return kFakeboxToQuickActionsPaddingMedium;
+    case NTPPaddingUpdateVariation::kPreferredPadding:
+      return kFakeboxToQuickActionsPaddingPreferred;
+    case NTPPaddingUpdateVariation::kDisabled:
+      return kFakeboxToQuickActionsPaddingControl;
+  }
+}
+
+CGFloat QuickActionsToMostVisitedPadding() {
+  switch (GetNTPPaddingUpdateVariation()) {
+    case NTPPaddingUpdateVariation::kTightPadding:
+      return kQuickActionsToMostVisitedPaddingTight;
+    case NTPPaddingUpdateVariation::kMediumPadding:
+      return kQuickActionsToMostVisitedPaddingMedium;
+    case NTPPaddingUpdateVariation::kPreferredPadding:
+      return kQuickActionsToMostVisitedPaddingPreferred;
+    case NTPPaddingUpdateVariation::kDisabled:
+      return kQuickActionsToMostVisitedPaddingControl;
+  }
+}
+
+CGFloat ReducedModuleSpacing(UITraitCollection* trait_collection) {
+  if (IsRegularXRegularSizeClass(trait_collection)) {
+    return kReducedModuleSpacingRegularXRegular;
+  }
+  switch (GetNTPPaddingUpdateVariation()) {
+    case NTPPaddingUpdateVariation::kTightPadding:
+    case NTPPaddingUpdateVariation::kMediumPadding:
+    case NTPPaddingUpdateVariation::kPreferredPadding:
+      return kReducedModuleSpacing;
+    case NTPPaddingUpdateVariation::kDisabled:
+      return kReducedModuleSpacingControl;
+  }
 }
 
 void ConfigureSearchHintLabel(UILabel* search_hint_label,

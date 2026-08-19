@@ -563,6 +563,11 @@ void ReadAnythingUntrustedPageHandler::TreeRemoved(ui::AXTreeID ax_tree_id) {
 
 void ReadAnythingUntrustedPageHandler::GetDependencyParserModel(
     GetDependencyParserModelCallback callback) {
+  if (!features::IsReadAnythingReadAloudPhraseHighlightingEnabled()) {
+    std::move(callback).Run(base::File());
+    return;
+  }
+
   DependencyParserModelLoader* loader =
       DependencyParserModelLoaderFactory::GetForProfile(profile_);
   if (!loader) {
@@ -1207,6 +1212,7 @@ void ReadAnythingUntrustedPageHandler::RequestReadabilityDistillation() {
   if (!features::IsReadAnythingWithReadabilityEnabled()) {
     return;
   }
+  readability_distillation_tree_change_start_time_ = base::TimeTicks();
   RequestDomDistillerDistillation(tab_->GetContents());
 }
 
@@ -1539,6 +1545,7 @@ void ReadAnythingUntrustedPageHandler::OnActiveAXTreeIDChanged() {
       !features::IsReadAnythingReadAloudPhraseHighlightingEnabled();
 
   if (use_readability) {
+    readability_distillation_tree_change_start_time_ = base::TimeTicks::Now();
     // We must emit `kDistillationInProgress` before sending the new tree ID
     // to the renderer with page_->OnActiveAXTreeIDChanged. This ensures the
     // renderer pauses its update processing
@@ -1656,6 +1663,13 @@ void ReadAnythingUntrustedPageHandler::ProcessDistilledArticle(
       if (features::IsReadAnythingDistillationQualityEvaluationEnabled()) {
         EvaluateDistillationQuality(dom_distiller_content().value());
       }
+      if (!readability_distillation_tree_change_start_time_.is_null()) {
+        base::UmaHistogramMediumTimes(
+            "Accessibility.ReadAnything."
+            "TimeFromTreeChangedToDistillationComplete",
+            base::TimeTicks::Now() -
+                readability_distillation_tree_change_start_time_);
+      }
     }
   } else {
     page_->OnReadabilityDistillationStateChanged(
@@ -1663,6 +1677,9 @@ void ReadAnythingUntrustedPageHandler::ProcessDistilledArticle(
             kDistillationEmpty);
     page_->UpdateContent(/*title=*/"", /*content=*/"");
   }
+  // Reset the tree-change start time once distillation has finished,
+  // regardless of whether content was successfully produced.
+  readability_distillation_tree_change_start_time_ = base::TimeTicks();
 }
 
 void ReadAnythingUntrustedPageHandler::EvaluateDistillationQuality(

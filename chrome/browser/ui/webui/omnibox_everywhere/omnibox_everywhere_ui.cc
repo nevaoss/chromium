@@ -21,6 +21,7 @@
 #include "chrome/browser/ui/webui/metrics_reporter/metrics_reporter_service.h"
 #include "chrome/browser/ui/webui/new_tab_page/composebox/variations/composebox_fieldtrial.h"
 #include "chrome/browser/ui/webui/omnibox_everywhere/composebox_everywhere_handler.h"
+#include "chrome/browser/ui/webui/omnibox_everywhere/debug/omnibox_everywhere_debug_page_handler.h"
 #include "chrome/browser/ui/webui/omnibox_everywhere/omnibox_everywhere_handler.h"
 #include "chrome/browser/ui/webui/plural_string_handler.h"
 #include "chrome/browser/ui/webui/sanitized_image/sanitized_image_source.h"
@@ -58,7 +59,8 @@ bool IsFuseboxEligible(Profile* profile) {
 
 bool OmniboxEverywhereUIConfig::IsWebUIEnabled(
     content::BrowserContext* browser_context) {
-  return base::FeatureList::IsEnabled(omnibox::kOmniboxEverywhere);
+  Profile* profile = Profile::FromBrowserContext(browser_context);
+  return omnibox::IsOmniboxEverywhereEnabled(profile);
 }
 
 bool OmniboxEverywhereUIConfig::ShouldCrashOnJavascriptErrorInDevelopmentBuild()
@@ -233,7 +235,7 @@ OmniboxEverywhereUI::~OmniboxEverywhereUI() = default;
 
 void OmniboxEverywhereUI::BindInterface(
     mojo::PendingReceiver<composebox::mojom::PageHandlerFactory> receiver) {
-  if (!base::FeatureList::IsEnabled(omnibox::kOmniboxEverywhere)) {
+  if (!omnibox::IsOmniboxEverywhereEnabled(profile_)) {
     return;
   }
   if (composebox_page_factory_receiver_.is_bound()) {
@@ -263,6 +265,9 @@ void OmniboxEverywhereUI::BindInterface(
     content::RenderFrameHost* host,
     mojo::PendingReceiver<searchbox::mojom::PageHandlerFactory>
         pending_page_handler) {
+  if (!omnibox::IsOmniboxEverywhereEnabled(profile_)) {
+    return;
+  }
   if (searchbox_page_factory_receiver_.is_bound()) {
     searchbox_page_factory_receiver_.reset();
   }
@@ -283,6 +288,24 @@ void OmniboxEverywhereUI::CreatePageHandler(
       base::BindRepeating(
           &OmniboxEverywhereUI::GetOrCreateContextualSessionHandle,
           base::Unretained(this)));
+}
+
+void OmniboxEverywhereUI::BindInterface(
+    mojo::PendingReceiver<omnibox_everywhere_debug::mojom::PageHandlerFactory>
+        receiver) {
+  if (debug_page_factory_receiver_.is_bound()) {
+    debug_page_factory_receiver_.reset();
+  }
+  debug_page_factory_receiver_.Bind(std::move(receiver));
+}
+
+void OmniboxEverywhereUI::CreatePageHandler(
+    mojo::PendingRemote<omnibox_everywhere_debug::mojom::Page> page,
+    mojo::PendingReceiver<omnibox_everywhere_debug::mojom::PageHandler>
+        handler) {
+  debug_page_handler_ = std::make_unique<
+      omnibox_everywhere_debug::OmniboxEverywhereDebugPageHandler>(
+      profile_, std::move(page), std::move(handler));
 }
 
 contextual_search::ContextualSearchSessionHandle*

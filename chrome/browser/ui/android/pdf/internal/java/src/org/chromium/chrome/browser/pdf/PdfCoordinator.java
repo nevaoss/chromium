@@ -226,11 +226,16 @@ public class PdfCoordinator
         if (fragment != null) {
             if (reuseFragment) {
                 mChromePdfViewerFragment = (ChromePdfViewerFragment) fragment;
-                mChromePdfViewerFragment.setDelegate(this);
                 mChromePdfViewerFragment.setPagesPerRow(false);
-                if (mPdfFilePath == null) mPdfFilePath = mChromePdfViewerFragment.getFilePath();
+                if (mPdfFilePath == null) {
+                    mPdfFilePath =
+                            filepath != null ? filepath : mChromePdfViewerFragment.getFilePath();
+                }
                 String restoredFileName = mChromePdfViewerFragment.getFileName();
                 if (mTitle == null && restoredFileName != null) mTitle = restoredFileName;
+                if (mUri == null && mPdfFilePath != null) {
+                    mUri = PdfUtils.getContentUri(mPdfFilePath, mTitle, mTabId, mIsIncognito);
+                }
             } else {
                 mFragmentManager.beginTransaction().remove(fragment).commitAllowingStateLoss();
             }
@@ -254,6 +259,10 @@ public class PdfCoordinator
             mToolbarCoordinator = new PdfToolbarCoordinator(mView, this);
         } else {
             mToolbarCoordinator = null;
+        }
+
+        if (reuseFragment && fragment != null) {
+            mChromePdfViewerFragment.setDelegate(this);
         }
     }
 
@@ -285,7 +294,8 @@ public class PdfCoordinator
         private static final String KEY_FILE_PATH = "file_path";
         private static final String KEY_FILE_NAME = "file_name";
         private @Nullable PdfActionsDelegate mDelegate;
-        private @Nullable PdfView mPdfView;
+        @VisibleForTesting @Nullable PdfView mPdfView;
+        @VisibleForTesting boolean mIsPdfViewSetup;
 
         @Nullable private String mViewTag;
         private int mSavedPageIndex = -1;
@@ -300,47 +310,78 @@ public class PdfCoordinator
 
         public void setPdfViewForTesting(PdfView pdfView) {
             this.mPdfView = pdfView;
+            mIsPdfViewSetup = false;
+            maybeSetupPdfView();
         }
 
         @Override
         public void onPdfViewCreated(PdfView pdfView) {
             super.onPdfViewCreated(pdfView);
             mPdfView = pdfView;
+            mIsPdfViewSetup = false;
 
             if (getView() != null && mViewTag != null) getView().setTag(mViewTag);
             if (PdfUtils.isInlinePdfV2Enabled()) {
-                pdfView.setFormFillingEnabled(!isEditModeEnabled());
+                pdfView.setFormFillingEnabled(
+                        PdfUtils.isInlinePdfV2FormFillingEnabled() && !isEditModeEnabled());
             }
-            // TODO(crbug.com/498644542): call getPageCount() within onLoadDocumentSuccess()
-            if (!PdfUtils.isInlinePdfV2Enabled() || mDelegate == null) {
+            maybeSetupPdfView();
+        }
+
+        private void maybeSetupPdfView() {
+            if (!PdfUtils.isInlinePdfV2Enabled()
+                    || mDelegate == null
+                    || mPdfView == null
+                    || mIsPdfViewSetup) {
                 return;
             }
-            mDelegate.loadPdfSelectionCoordinator(pdfView);
-            final PdfView capturedView = pdfView;
+            mIsPdfViewSetup = true;
+            // TODO(crbug.com/498644542): call getPageCount() within onLoadDocumentSuccess()
+            mDelegate.loadPdfSelectionCoordinator(mPdfView);
+            final PdfView capturedView = mPdfView;
             final PdfActionsDelegate delegate = mDelegate;
 
-            // Add a one-time listener to track total page count and remove itself afterwards.
-            // This listener is necessary because getPdfDocument() can return null up until the
-            // viewport is changed.
-            capturedView.addOnViewportChangedListener(
-                    new PdfView.OnViewportChangedListener() {
-                        @Override
-                        public void onViewportChanged(
-                                int firstVisiblePage,
-                                int visiblePagesCount,
-                                SparseArray pageLocations,
-                                float zoomLevel) {
-                            if (capturedView.getPdfDocument() != null) {
-                                // Post to the UI thread to avoid removing the listener while
-                                // androidx.pdf.view.PdfView is notifying its listeners, which can
-                                // throw an IndexOutOfBoundsException error.
-                                ThreadUtils.postOnUiThread(
-                                        () -> capturedView.removeOnViewportChangedListener(this));
-                                delegate.onDocumentLoaded(
-                                        capturedView.getPdfDocument().getPageCount());
+            // When the delegate is attached after the fragment was restored by FragmentManager,
+            // the PDF document may already be loaded. Trigger the callbacks immediately if so.
+            if (capturedView.getPdfDocument() != null) {
+                try {
+                    delegate.onDocumentLoaded(capturedView.getPdfDocument().getPageCount());
+                } catch (PdfDocument.DocumentClosedException e) {
+                    Log.w(TAG, "Failed to get page count", e);
+                }
+                delegate.onViewportChanged(
+                        capturedView.getFirstVisiblePage(), capturedView.getZoom());
+            } else {
+                // Add a one-time listener to track total page count and remove itself afterwards.
+                // This listener is necessary because getPdfDocument() can return null up until the
+                // viewport is changed.
+                capturedView.addOnViewportChangedListener(
+                        new PdfView.OnViewportChangedListener() {
+                            @Override
+                            public void onViewportChanged(
+                                    int firstVisiblePage,
+                                    int visiblePagesCount,
+                                    SparseArray pageLocations,
+                                    float zoomLevel) {
+                                if (capturedView.getPdfDocument() != null) {
+                                    // Post to the UI thread to avoid removing the listener while
+                                    // androidx.pdf.view.PdfView is notifying its listeners, which
+                                    // can throw an IndexOutOfBoundsException error.
+                                    ThreadUtils.postOnUiThread(
+                                            () ->
+                                                    capturedView.removeOnViewportChangedListener(
+                                                            this));
+                                    try {
+                                        delegate.onDocumentLoaded(
+                                                capturedView.getPdfDocument().getPageCount());
+                                    } catch (PdfDocument.DocumentClosedException e) {
+                                        Log.w(TAG, "Failed to get page count", e);
+                                    }
+                                }
                             }
-                        }
-                    });
+                        });
+            }
+
             // Add a persistent listener to track page changes.
             capturedView.addOnViewportChangedListener(
                     (firstVisiblePage, visiblePagesCount, pageLocations, zoomLevel) ->
@@ -359,7 +400,10 @@ public class PdfCoordinator
         }
 
         public void setDelegate(PdfActionsDelegate delegate) {
-            if (mDelegate != delegate) mDelegate = delegate;
+            if (mDelegate != delegate) {
+                mDelegate = delegate;
+                maybeSetupPdfView();
+            }
         }
 
         /** Whether the pdf has been loaded successfully. */
@@ -431,6 +475,13 @@ public class PdfCoordinator
                 mFileName = savedInstanceState.getString(KEY_FILE_NAME, null);
             }
             setUpToolBoxView(view);
+        }
+
+        @Override
+        public void onDestroyView() {
+            super.onDestroyView();
+            mIsPdfViewSetup = false;
+            mPdfView = null;
         }
 
         @VisibleForTesting
@@ -535,7 +586,11 @@ public class PdfCoordinator
                             fileName = cursor.getString(index);
                         }
                     }
-                } catch (Exception e) {
+                } catch (SecurityException
+                        | IllegalArgumentException
+                        | NullPointerException
+                        | IllegalStateException
+                        | android.database.SQLException e) {
                     // Ignore
                 }
             }
@@ -579,9 +634,6 @@ public class PdfCoordinator
         @Override
         public void onEnterEditMode() {
             super.onEnterEditMode();
-            if (PdfUtils.isInlinePdfV2Enabled() && mPdfView != null) {
-                mPdfView.setFormFillingEnabled(false);
-            }
             if (mDelegate != null) {
                 mDelegate.onEditModeChanged(true);
             }
@@ -590,9 +642,6 @@ public class PdfCoordinator
         @Override
         public void onExitEditMode() {
             super.onExitEditMode();
-            if (PdfUtils.isInlinePdfV2Enabled() && mPdfView != null) {
-                mPdfView.setFormFillingEnabled(true);
-            }
             if (mDelegate != null) {
                 mDelegate.onEditModeChanged(false);
             }
@@ -741,7 +790,8 @@ public class PdfCoordinator
             super.onLoadDocumentSuccess(pdfDocument);
             maybeHideToolBoxForUnsupportedEdit();
             if (PdfUtils.isInlinePdfV2Enabled() && mPdfView != null) {
-                mPdfView.setFormFillingEnabled(!isEditModeEnabled());
+                mPdfView.setFormFillingEnabled(
+                        PdfUtils.isInlinePdfV2FormFillingEnabled() && !isEditModeEnabled());
             }
             if (mRestorePositionPending && mPdfView != null) {
                 mRestorePositionPending = false;
@@ -893,28 +943,34 @@ public class PdfCoordinator
             PdfView pdfView = mPdfView;
             if (pdfView == null) return;
 
+            // pdfDocument can legitimately be null during tab teardown or concurrent switches.
             PdfDocument pdfDocument = pdfView.getPdfDocument();
-            assert pdfDocument != null;
+            if (pdfDocument == null) return;
 
             int pageCount = pdfDocument.getPageCount();
             int safePageIndex = getSafePageIndex(pageIndex, pageCount);
 
-            pdfDocument.getPageInfo(
-                    safePageIndex,
-                    new Continuation<PageInfo>() {
-                        @Override
-                        public CoroutineContext getContext() {
-                            return EmptyCoroutineContext.INSTANCE;
-                        }
+            try {
+                pdfDocument.getPageInfo(
+                        safePageIndex,
+                        new Continuation<PageInfo>() {
+                            @Override
+                            public CoroutineContext getContext() {
+                                return EmptyCoroutineContext.INSTANCE;
+                            }
 
-                        @Override
-                        public void resumeWith(Object result) {
-                            PageInfo pageInfo =
-                                    result instanceof PageInfo ? (PageInfo) result : null;
-                            assert pageInfo != null;
-                            action.accept(pageInfo);
-                        }
-                    });
+                            @Override
+                            public void resumeWith(Object result) {
+                                if (result instanceof PageInfo) {
+                                    action.accept((PageInfo) result);
+                                } else {
+                                    Log.w(TAG, "Failed to get page info. Result: " + result);
+                                }
+                            }
+                        });
+            } catch (PdfDocument.DocumentClosedException e) {
+                Log.w(TAG, "Failed to get page info", e);
+            }
         }
 
         void fitToPage(boolean fitToPageHeight, int pageIndex) {
@@ -1441,6 +1497,7 @@ public class PdfCoordinator
     public void showDocumentProperties() {
         if (mChromePdfViewerFragment == null) return;
         PdfView pdfView = mChromePdfViewerFragment.mPdfView;
+        // pdfDocument can legitimately be null during tab teardown or concurrent switches.
         if (pdfView == null || pdfView.getPdfDocument() == null) return;
 
         Context appContext = mActivity.getApplicationContext();
@@ -1486,7 +1543,11 @@ public class PdfCoordinator
         if (mChromePdfViewerFragment != null
                 && mChromePdfViewerFragment.mPdfView != null
                 && mChromePdfViewerFragment.mPdfView.getPdfDocument() != null) {
-            pageCount = mChromePdfViewerFragment.mPdfView.getPdfDocument().getPageCount();
+            try {
+                pageCount = mChromePdfViewerFragment.mPdfView.getPdfDocument().getPageCount();
+            } catch (PdfDocument.DocumentClosedException e) {
+                Log.w(TAG, "Failed to get page count for properties dialog", e);
+            }
         }
         String pageCountStr = String.valueOf(pageCount);
         String pageSizeStr = formatPageSize(pageInfo);

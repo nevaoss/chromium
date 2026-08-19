@@ -399,23 +399,24 @@ class BookmarkManagerMediator
                     TaskTraits.UI_DEFAULT, mCallbackController.makeCancelable(this::refresh));
     private final BookmarkManagerOpener mBookmarkManagerOpener;
     private final PriceDropNotificationManager mPriceDropNotificationManager;
-
     private final BatchUploadCardCoordinator mBatchUploadCardCoordinator;
-    // Whether this instance has been destroyed.
-    private boolean mIsDestroyed;
-    private boolean mIsExitingSearch;
+    private final Clipboard mClipboard;
     private @Nullable String mInitialUrl;
-    private boolean mFaviconsNeedRefresh;
     private @Nullable BasicNativePage mNativePage;
     // Keep track of the currently highlighted bookmark - used for "show in folder" action.
     private @Nullable BookmarkId mHighlightedBookmark;
+    private @Nullable PropertyModel mSearchBoxPropertyModel;
+
+    // Whether this instance has been destroyed.
+    private boolean mIsDestroyed;
+    private boolean mIsExitingSearch;
+    private boolean mFaviconsNeedRefresh;
     // If selection is currently enabled in the bookmarks manager.
     private boolean mIsSelectionEnabled;
     // Track if we're the source of bookmark model reordering so the event can be ignored.
     private boolean mIsBookmarkModelReorderingInProgress;
     // Whether the shopping feature is available and there are price-tracked bookmarks.
     private boolean mShoppingFilterAvailable;
-    private final Clipboard mClipboard;
 
     BookmarkManagerMediator(
             Activity activity,
@@ -961,7 +962,15 @@ class BookmarkManagerMediator
             mStateStack.removeLast();
         }
 
-        mStateStack.addLast(state);
+        // If the state is already in the stack, this is a back-navigation.
+        // Pop the forward history to keep our stack synced with tab history.
+        if (mStateStack.contains(state)) {
+            while (!mStateStack.isEmpty() && !mStateStack.peekLast().equals(state)) {
+                mStateStack.removeLast();
+            }
+        } else {
+            mStateStack.addLast(state);
+        }
         notifyUi(state, preserveFolderBookmarksOnEmptySearch);
     }
 
@@ -1062,7 +1071,9 @@ class BookmarkManagerMediator
         setSearchBoxFocusAndHideKeyboardIfNeeded(false);
     }
 
-    private @Nullable PropertyModel getSearchBoxPropertyModel() {
+    public @Nullable PropertyModel getSearchBoxPropertyModel() {
+        if (mSearchBoxPropertyModel != null) return mSearchBoxPropertyModel;
+
         int index = getCurrentSearchBoxIndex();
         return index < 0 ? null : mModelList.get(index).model;
     }
@@ -1078,13 +1089,17 @@ class BookmarkManagerMediator
         int index = 0;
 
         // Don't replace if it already exists. The text box is stateful.
-        if (getCurrentSearchBoxIndex() < 0) {
-            updateOrAdd(index, buildSearchBoxRow());
+        if (BookmarkUtils.isDesktopBookmarksLayoutEnabled()) {
+            getOrCreateSearchBoxPropertyModel();
         } else {
-            // Update the filter visibility if the search box is already built.
-            updateSearchBoxShoppingFilterVisibility(assumeNonNull(getSearchBoxPropertyModel()));
+            if (getCurrentSearchBoxIndex() < 0) {
+                updateOrAdd(index, buildSearchBoxRow());
+            } else {
+                // Update the filter visibility if the search box is already built.
+                updateSearchBoxShoppingFilterVisibility(assumeNonNull(getSearchBoxPropertyModel()));
+            }
+            index++;
         }
-        index++;
 
         // Restore the header, if it exists, then update it.
         final @ViewType int targetPromoHeaderType = calculatePromoHeaderType();
@@ -1097,7 +1112,8 @@ class BookmarkManagerMediator
         }
 
         // Only show the empty state if there's only a searchbox.
-        boolean listIsEmpty = index == 1;
+        int emptyListThreshold = BookmarkUtils.isDesktopBookmarksLayoutEnabled() ? 0 : 1;
+        boolean listIsEmpty = index == emptyListThreshold;
         if (listIsEmpty) {
             updateOrAdd(index++, buildEmptyStateListItem());
         }
@@ -1161,10 +1177,9 @@ class BookmarkManagerMediator
 
     private void updateAllLocations() {
         Predicate<ListItem> locationPredicate =
-                (listItem) -> {
-                    return isBookmarkRowType(listItem.type)
-                            && isMovable(mBookmarkModel, listItem.model);
-                };
+                (ListItem listItem) ->
+                        isBookmarkRowType(listItem.type)
+                                && isMovable(mBookmarkModel, listItem.model);
         int startIndex = firstIndexWithPredicate(0, mModelList.size(), 1, locationPredicate);
         int lastIndex = firstIndexWithPredicate(mModelList.size() - 1, -1, -1, locationPredicate);
         if (startIndex < 0 || lastIndex < 0) {
@@ -1317,12 +1332,7 @@ class BookmarkManagerMediator
 
     int getBookmarkItemStartIndex() {
         return firstIndexWithPredicate(
-                0,
-                mModelList.size(),
-                1,
-                (listItem) -> {
-                    return isBookmarkRowType(listItem.type);
-                });
+                0, mModelList.size(), 1, (ListItem listItem) -> isBookmarkRowType(listItem.type));
     }
 
     int getBookmarkItemEndIndex() {
@@ -1330,9 +1340,7 @@ class BookmarkManagerMediator
                 mModelList.size() - 1,
                 -1,
                 -1,
-                (listItem) -> {
-                    return isBookmarkRowType(listItem.type);
-                });
+                (ListItem listItem) -> isBookmarkRowType(listItem.type));
     }
 
     /**
@@ -1381,30 +1389,38 @@ class BookmarkManagerMediator
         return new ListItem(bookmarkListEntry.getViewType(), builder.build());
     }
 
+    public PropertyModel getOrCreateSearchBoxPropertyModel() {
+        if (mSearchBoxPropertyModel == null) {
+            mSearchBoxPropertyModel =
+                    new PropertyModel.Builder(BookmarkSearchBoxRowProperties.ALL_KEYS)
+                            .with(
+                                    BookmarkSearchBoxRowProperties.SEARCH_TEXT_CHANGE_CALLBACK,
+                                    this::onSearchTextChangeCallback)
+                            .with(
+                                    BookmarkSearchBoxRowProperties.CLEAR_SEARCH_TEXT_RUNNABLE,
+                                    this::onClearSearchTextRunnable)
+                            .with(
+                                    BookmarkSearchBoxRowProperties.FOCUS_CHANGE_CALLBACK,
+                                    this::onSearchBoxFocusChange)
+                            .with(
+                                    BookmarkSearchBoxRowProperties.SHOPPING_CHIP_START_ICON_RES,
+                                    R.drawable.notifications_active)
+                            .with(
+                                    BookmarkSearchBoxRowProperties.SHOPPING_CHIP_TEXT_RES,
+                                    R.string.price_tracking_bookmarks_filter_title)
+                            .with(
+                                    BookmarkSearchBoxRowProperties.SHOPPING_CHIP_TOGGLE_CALLBACK,
+                                    this::onShoppingFilterToggle)
+                            .build();
+            updateSearchBoxShoppingFilterVisibility(mSearchBoxPropertyModel);
+        } else {
+            updateSearchBoxShoppingFilterVisibility(mSearchBoxPropertyModel);
+        }
+        return mSearchBoxPropertyModel;
+    }
+
     private ListItem buildSearchBoxRow() {
-        PropertyModel propertyModel =
-                new PropertyModel.Builder(BookmarkSearchBoxRowProperties.ALL_KEYS)
-                        .with(
-                                BookmarkSearchBoxRowProperties.SEARCH_TEXT_CHANGE_CALLBACK,
-                                this::onSearchTextChangeCallback)
-                        .with(
-                                BookmarkSearchBoxRowProperties.CLEAR_SEARCH_TEXT_RUNNABLE,
-                                this::onClearSearchTextRunnable)
-                        .with(
-                                BookmarkSearchBoxRowProperties.FOCUS_CHANGE_CALLBACK,
-                                this::onSearchBoxFocusChange)
-                        .with(
-                                BookmarkSearchBoxRowProperties.SHOPPING_CHIP_START_ICON_RES,
-                                R.drawable.notifications_active)
-                        .with(
-                                BookmarkSearchBoxRowProperties.SHOPPING_CHIP_TEXT_RES,
-                                R.string.price_tracking_bookmarks_filter_title)
-                        .with(
-                                BookmarkSearchBoxRowProperties.SHOPPING_CHIP_TOGGLE_CALLBACK,
-                                this::onShoppingFilterToggle)
-                        .build();
-        updateSearchBoxShoppingFilterVisibility(propertyModel);
-        return new ListItem(ViewType.SEARCH_BOX, propertyModel);
+        return new ListItem(ViewType.SEARCH_BOX, getOrCreateSearchBoxPropertyModel());
     }
 
     private ListItem buildEmptyStateListItem() {
@@ -1889,9 +1905,7 @@ class BookmarkManagerMediator
         }
 
         mShoppingService.getAllPriceTrackedBookmarks(
-                (bookmarks) -> {
-                    updateFilterAvailability(!bookmarks.isEmpty());
-                });
+                (List<BookmarkId> bookmarks) -> updateFilterAvailability(!bookmarks.isEmpty()));
     }
 
     private void updateFilterAvailability(boolean shoppingFilterAvailable) {

@@ -545,7 +545,7 @@ BASE_FEATURE(kDocumentPictureInPictureReparenting,
 );
 
 // Enables support for >8 audio channel layouts (i.e., 5.1.4 and 7.1.4).
-BASE_FEATURE(kEnableHighChannelLayouts, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kEnableHighChannelLayouts, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Controls whether the Mirroring Service will fetch, analyze, and store
 // information on the quality of the session using RTCP logs.
@@ -1228,6 +1228,12 @@ BASE_FEATURE(kPlatformHEVCDecoderSupport, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kPlatformHEVCEncoderSupport, base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_APPLE) || BUILDFLAG(IS_ANDROID)
 
+#if BUILDFLAG(IS_APPLE)
+// Enables HEVC Main10 (10-bit) hardware accelerated encoding on macOS.
+BASE_FEATURE(kPlatformHEVCMain10EncoderSupport,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+#endif  // BUILDFLAG(IS_APPLE)
+
 #endif  // BUILDFLAG(ENABLE_PLATFORM_HEVC)
 
 #if BUILDFLAG(ENABLE_SYMPHONIA)
@@ -1397,6 +1403,11 @@ BASE_FEATURE(kUseSecurityLevelWhenCheckingMediaDrmVersion,
 #if BUILDFLAG(IS_APPLE)
 // Enables VideoToolbox Quality Metrics (MSE / PSNR) generation.
 BASE_FEATURE(kVTVideoEncodeAcceleratorCalculatePSNR,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Enables VideoToolbox zero-copy encode of opaque SharedImage-backed
+// VideoFrames.
+BASE_FEATURE(kVTVideoEncodeAcceleratorOpaqueSharedImageEncode,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 #endif  // BUILDFLAG(IS_APPLE)

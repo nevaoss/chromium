@@ -17,6 +17,7 @@
 #include "base/types/pass_key.h"
 #include "build/build_config.h"
 #include "build/buildflag.h"
+#include "chrome/browser/actor/actor_critical_action_logger.h"
 #include "chrome/browser/actor/actor_keyed_service_factory.h"
 #include "chrome/browser/actor/actor_metrics.h"
 #include "chrome/browser/actor/actor_proto_conversion.h"
@@ -50,11 +51,13 @@
 #include "components/optimization_guide/proto/features/common_quality_data.pb.h"
 #include "components/origin_gating/core/actor_container_config_slot.h"
 #include "components/tabs/public/tab_interface.h"
+#include "content/public/browser/browser_thread.h"
 #include "content/public/browser/download_item_utils.h"
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_contents_observer.h"
 #include "content/public/common/content_switches.h"
+#include "services/metrics/public/cpp/ukm_source_id.h"
 #include "third_party/abseil-cpp/absl/strings/str_format.h"
 #include "ui/base/window_open_disposition.h"
 
@@ -445,6 +448,18 @@ void ActorKeyedService::NotifyTaskStateChanged(ActorTask& task) {
   task_state_change_callback_list_.Notify(task);
 }
 
+base::CallbackListSubscription
+ActorKeyedService::AddTaskVisibilityChangedCallback(
+    TaskVisibilityChangedCallback callback) {
+  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+  return task_visibility_change_callback_list_.Add(std::move(callback));
+}
+
+void ActorKeyedService::NotifyTaskVisibilityChanged(ActorTask& task) {
+  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+  task_visibility_change_callback_list_.Notify(task);
+}
+
 void ActorKeyedService::RequestTabObservation(
     tabs::TabInterface& tab,
     TaskId task_id,
@@ -724,8 +739,18 @@ void ActorKeyedService::OnDownloadCreated(content::DownloadManager* manager,
                                           download::DownloadItem* item) {
   if (content::WebContents* web_contents =
           content::DownloadItemUtils::GetWebContents(item)) {
-    if (GetActingActorTaskForWebContents(web_contents)) {
+    if (const ActorTask* task =
+            GetActingActorTaskForWebContents(web_contents)) {
       RecordDirectDownloadTriggered(true);
+      ukm::SourceId navigation_id = ukm::kInvalidSourceId;
+      if (web_contents->GetPrimaryMainFrame()) {
+        navigation_id =
+            web_contents->GetPrimaryMainFrame()->GetPageUkmSourceId();
+      }
+      ActorCriticalActionLogger::LogAgentSelfReportedAction(
+          profile_, task->source_info().id.value_or(""),
+          critical_actions::ActionType::kDownload, item->GetURL(),
+          navigation_id, task->id());
     }
   }
 }

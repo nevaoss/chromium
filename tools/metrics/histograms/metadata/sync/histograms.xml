@@ -823,7 +823,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.CryptographerPendingKeys"
-    enum="SyncCryptographerPendingKeysState" expires_after="2026-08-23">
+    enum="SyncCryptographerPendingKeysState" expires_after="2027-08-23">
   <owner>mastiz@chromium.org</owner>
   <owner>treib@chromium.org</owner>
   <summary>
@@ -3277,18 +3277,6 @@ chromium-metrics-reviews@google.com.
     Records the theme pref migrated from the syncing version to the non-syncing
     replacement. Recorded once per browser startup during pref migration iff the
     theme pref has not already been migrated.
-  </summary>
-</histogram>
-
-<histogram name="Theme.ThemePrefMigration.PrefRegistered" enum="Boolean"
-    expires_after="2026-07-05">
-  <owner>ankushkush@google.com</owner>
-  <owner>src/components/sync/OWNERS</owner>
-  <summary>
-    Records whether the pref, that saves whether or not the theme prefs have
-    already been migrated, is registered. This histogram has been added to
-    investigate crbug.com/476288050. Recorded once per browser startup for all
-    users.
   </summary>
 </histogram>
 

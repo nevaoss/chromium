@@ -217,8 +217,7 @@ class MockAutofillDriver : public TestAutofillDriver {
                const FillId& fill_id,
                bool supports_refill,
                const url::Origin& triggered_origin,
-               (const absl::flat_hash_map<FieldGlobalId, FieldType>&),
-               (const Section&)),
+               (const absl::flat_hash_map<FieldGlobalId, FieldType>&)),
               (override));
   MOCK_METHOD(void,
               ApplyFieldAction,
@@ -709,9 +708,8 @@ TEST_F(AutofillExternalDelegateTest, GetMainFillingProduct) {
             FillingProduct::kDataList);
 
   // Show auxiliary helper suggestion in the popup.
-  OnSuggestionsReturned(
-      queried_field(),
-      {CreateAutofillSuggestion(SuggestionType::kUndoOrClear, u"undo")});
+  OnSuggestionsReturned(queried_field(), {CreateAutofillSuggestion(
+                                             SuggestionType::kUndo, u"undo")});
   EXPECT_EQ(external_delegate().GetMainFillingProduct(), FillingProduct::kNone);
 
   // Show auxiliary helper suggestion in the popup.
@@ -3628,7 +3626,7 @@ TEST_F(AutofillExternalDelegateTest, ExternalDelegateUndoForm) {
   IssueOnQuery();
   EXPECT_CALL(autofill_manager(), UndoAutofill);
   external_delegate().DidAcceptSuggestion(
-      Suggestion(SuggestionType::kUndoOrClear),
+      Suggestion(SuggestionType::kUndo),
       SuggestionPosition{.multi_index = {0}});
 }
 
@@ -3637,8 +3635,7 @@ TEST_F(AutofillExternalDelegateTest, ExternalDelegateUndoForm) {
 TEST_F(AutofillExternalDelegateTest, ExternalDelegateUndoPreviewForm) {
   IssueOnQuery();
   EXPECT_CALL(autofill_manager(), UndoAutofill);
-  external_delegate().DidSelectSuggestion(
-      Suggestion(SuggestionType::kUndoOrClear));
+  external_delegate().DidSelectSuggestion(Suggestion(SuggestionType::kUndo));
 }
 #endif
 
@@ -4258,7 +4255,8 @@ TEST_F(AutofillExternalDelegateTest, ShouldDiscardOutdatedSuggestions) {
 }
 #endif
 
-// Tests that @memory search results use the kReplaceAtMemoryTrigger action.
+// Tests that @memory search results use the kReplaceSelectionForAtMemory
+// action.
 TEST_F(AutofillExternalDelegateTest, AtMemorySearchResult_UsesSpecialAction) {
   StartAtMemorySession();
   Suggestion suggestion(u"some result", SuggestionType::kAtMemorySearchResult);
@@ -4269,8 +4267,8 @@ TEST_F(AutofillExternalDelegateTest, AtMemorySearchResult_UsesSpecialAction) {
   EXPECT_CALL(
       autofill_manager(),
       FillOrPreviewField(mojom::ActionPersistence::kPreview,
-                         mojom::FieldActionType::kReplaceAtMemoryTrigger, _, _,
-                         std::u16string(u"pasted text"),
+                         mojom::FieldActionType::kReplaceSelectionForAtMemory,
+                         _, _, std::u16string(u"pasted text"),
                          FillingProduct::kAtMemory, _));
   external_delegate().DidSelectSuggestion(suggestion);
 
@@ -4278,8 +4276,8 @@ TEST_F(AutofillExternalDelegateTest, AtMemorySearchResult_UsesSpecialAction) {
   EXPECT_CALL(
       autofill_manager(),
       FillOrPreviewField(mojom::ActionPersistence::kFill,
-                         mojom::FieldActionType::kReplaceAtMemoryTrigger, _, _,
-                         std::u16string(u"pasted text"),
+                         mojom::FieldActionType::kReplaceSelectionForAtMemory,
+                         _, _, std::u16string(u"pasted text"),
                          FillingProduct::kAtMemory, _));
   external_delegate().DidAcceptSuggestion(
       suggestion, SuggestionPosition{.multi_index = {0}});
@@ -4346,8 +4344,8 @@ TEST_F(AutofillExternalDelegateTest, AtMemorySearchResult_RevealsIban) {
   EXPECT_CALL(
       autofill_manager(),
       FillOrPreviewField(mojom::ActionPersistence::kFill,
-                         mojom::FieldActionType::kReplaceAtMemoryTrigger, _, _,
-                         iban.value(), FillingProduct::kAtMemory, _));
+                         mojom::FieldActionType::kReplaceSelectionForAtMemory,
+                         _, _, iban.value(), FillingProduct::kAtMemory, _));
 
   external_delegate().DidAcceptSuggestion(
       suggestion, SuggestionPosition{.multi_index = {0}});
@@ -4384,8 +4382,8 @@ TEST_F(AutofillExternalDelegateTest, AtMemorySearchResult_RevealsCreditCard) {
   EXPECT_CALL(
       autofill_manager(),
       FillOrPreviewField(mojom::ActionPersistence::kFill,
-                         mojom::FieldActionType::kReplaceAtMemoryTrigger, _, _,
-                         card.number(), FillingProduct::kAtMemory, _));
+                         mojom::FieldActionType::kReplaceSelectionForAtMemory,
+                         _, _, card.number(), FillingProduct::kAtMemory, _));
 
   external_delegate().DidAcceptSuggestion(
       suggestion, SuggestionPosition{.multi_index = {0}});
@@ -4418,8 +4416,8 @@ TEST_F(AutofillExternalDelegateTest, AtMemorySearchResult_RevealsAutofillAi) {
   EXPECT_CALL(
       autofill_manager(),
       FillOrPreviewField(mojom::ActionPersistence::kFill,
-                         mojom::FieldActionType::kReplaceAtMemoryTrigger, _, _,
-                         passport_attribute->GetCompleteRawInfo(),
+                         mojom::FieldActionType::kReplaceSelectionForAtMemory,
+                         _, _, passport_attribute->GetCompleteRawInfo(),
                          FillingProduct::kAtMemory, _));
 
   external_delegate().DidAcceptSuggestion(
@@ -4464,8 +4462,8 @@ TEST_F(AutofillExternalDelegateWithWalletPrivatePassesTest,
   EXPECT_CALL(
       autofill_manager(),
       FillOrPreviewField(mojom::ActionPersistence::kFill,
-                         mojom::FieldActionType::kReplaceAtMemoryTrigger, _, _,
-                         passport_attribute->GetCompleteRawInfo(),
+                         mojom::FieldActionType::kReplaceSelectionForAtMemory,
+                         _, _, passport_attribute->GetCompleteRawInfo(),
                          FillingProduct::kAtMemory, _));
 
   external_delegate().DidAcceptSuggestion(

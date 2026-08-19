@@ -22,7 +22,7 @@
 #import "ios/chrome/browser/intelligence/features/features.h"
 #import "ios/chrome/browser/keyboard/ui_bundled/UIKeyCommand+Chrome.h"
 #import "ios/chrome/browser/menu/ui_bundled/action_factory.h"
-#import "ios/chrome/browser/shared/coordinator/scene/state/layout_state.h"
+#import "ios/chrome/browser/shared/coordinator/scene/state/scene_layout_state.h"
 #import "ios/chrome/browser/shared/coordinator/scene/state/tab_grid_state.h"
 #import "ios/chrome/browser/shared/model/web_state_list/tab_utils.h"
 #import "ios/chrome/browser/shared/public/commands/gemini_commands.h"
@@ -105,8 +105,8 @@ NSUInteger GetPageIndexFromPage(TabGridPage page) {
 
 @interface TabGridViewController () <GestureInProductHelpViewDelegate,
                                      GridViewControllerDelegate,
-                                     LayoutStateObserver,
                                      PinnedTabsViewControllerDelegate,
+                                     SceneLayoutStateObserver,
                                      TabGridStateObserving,
                                      TabGroupsPanelViewControllerUIDelegate,
                                      UIGestureRecognizerDelegate,
@@ -199,7 +199,7 @@ NSUInteger GetPageIndexFromPage(TabGridPage page) {
   return self;
 }
 
-- (void)setLayoutState:(LayoutState*)layoutState {
+- (void)setLayoutState:(SceneLayoutState*)layoutState {
   if (_layoutState == layoutState) {
     return;
   }
@@ -816,9 +816,6 @@ NSUInteger GetPageIndexFromPage(TabGridPage page) {
     [self.pinnedTabsViewController pinnedTabsAvailable:pinnedTabsAvailable];
   }
   [self updateToolbarsAppearance];
-  // Make sure the current page becomes the first responder, so that it can
-  // register and handle key commands.
-  [self.currentPageViewController becomeFirstResponder];
   [self.delegate tabGridViewController:self didChangeCurrentPage:currentPage];
 }
 
@@ -1888,33 +1885,49 @@ NSUInteger GetPageIndexFromPage(TabGridPage page) {
   return YES;
 }
 
-- (UIResponder*)nextResponder {
-  UIResponder* nextResponder = [super nextResponder];
-  if (self.viewVisible) {
-    // Add toolbars to the responder chain.
-    // TODO(crbug.com/40273478): Transform toolbars in view controller directly
-    // have it in the chain by default instead of adding it manually.
-    [self.bottomToolbar respondBeforeResponder:nextResponder];
-    [self.topToolbar respondBeforeResponder:self.bottomToolbar];
-    return self.topToolbar;
-  } else {
-    return nextResponder;
+- (NSArray<UIKeyCommand*>*)keyCommands {
+  // As they are siblings, expose key commands of child toolbars (topToolbar and
+  // bottomToolbar) along with TabGrid key commands.
+  if (!self.tabGridState.tabGridVisible) {
+    return nil;
   }
+  NSMutableArray<UIKeyCommand*>* commands = [NSMutableArray array];
+  if (self.topToolbar.keyCommands) {
+    [commands addObjectsFromArray:self.topToolbar.keyCommands];
+  }
+  if (self.bottomToolbar.keyCommands) {
+    [commands addObjectsFromArray:self.bottomToolbar.keyCommands];
+  }
+  [commands addObject:UIKeyCommand.cr_openNewRegularTab];
+  [commands addObjectsFromArray:[super keyCommands]];
+  return commands;
 }
 
-- (NSArray<UIKeyCommand*>*)keyCommands {
-  // On iOS 15+, key commands visible in the app's menu are created in
-  // MenuBuilder. Return the key commands that are not already present in the
-  // menu.
-  return @[
-    UIKeyCommand.cr_openNewRegularTab,
-  ];
+- (id)targetForAction:(SEL)action withSender:(id)sender {
+  if ([self.topToolbar canPerformAction:action withSender:sender]) {
+    return self.topToolbar;
+  }
+  if ([self.bottomToolbar canPerformAction:action withSender:sender]) {
+    return self.bottomToolbar;
+  }
+  if ([self canPerformAction:action withSender:sender]) {
+    return self;
+  }
+  return nil;
 }
 
 - (BOOL)canPerformAction:(SEL)action withSender:(id)sender {
-  if (self.presentedViewController) {
+  if (self.presentedViewController || !self.tabGridState.tabGridVisible) {
     return NO;
   }
+
+  if ([self.topToolbar canPerformAction:action withSender:sender]) {
+    return YES;
+  }
+  if ([self.bottomToolbar canPerformAction:action withSender:sender]) {
+    return YES;
+  }
+
   if (sel_isEqual(action, @selector(keyCommand_closeTab))) {
     return [self canPerformCloseTab];
   }
@@ -2126,9 +2139,9 @@ NSUInteger GetPageIndexFromPage(TabGridPage page) {
   }
 }
 
-#pragma mark - LayoutStateObserver
+#pragma mark - SceneLayoutStateObserver
 
-- (void)layoutState:(LayoutState*)layoutState
+- (void)layoutState:(SceneLayoutState*)layoutState
     didChangeAppBarPosition:(AppBarPosition)appBarPosition {
   if (IsPinnedTabsEnabled()) {
     [self updatePinnedTabsViewControllerConstraints];

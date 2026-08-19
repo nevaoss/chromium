@@ -19,6 +19,7 @@ import './icons.js';
 
 import {assert} from '//resources/js/assert.js';
 import {loadTimeData} from '//resources/js/load_time_data.js';
+import {MetricsReporterImpl} from '//resources/js/metrics_reporter/metrics_reporter.js';
 import {TrackedElementManager} from '//resources/js/tracked_element/tracked_element_manager.js';
 import {CrLitElement, nothing} from '//resources/lit/v3_0/lit.rollup.js';
 import type {PropertyValues} from '//resources/lit/v3_0/lit.rollup.js';
@@ -148,6 +149,12 @@ export type {
   ToolbarFlatStateSchema,
 };
 // clang-format on
+
+// LINT.IfChange(InitialWebUIRendererMilestones)
+const MARK_JS_RESOURCES_LOADED = 'JsResourcesLoaded';
+const MARK_LOAD_TIME_DATA_READ = 'LoadTimeDataRead';
+const MARK_JS_COMPOSITION_COMPLETE = 'JsCompositionComplete';
+// LINT.ThenChange(//chrome/browser/page_load_metrics/observers/initial_webui_page_load_metrics_observer.cc:InitialWebUIRendererMilestones)
 
 const TRACKED_ELEMENTS: Array<{selector: string, id: string}> = [
   {selector: '#back', id: 'kToolbarBackButtonElementId'},
@@ -454,6 +461,7 @@ export class ToolbarAppElement extends AppElementBase {
           INVALID_NAVIGATION_CONTROLS_STATE_LISTENER_HANDLE;
   private iconTable_: IconTable;
   private isPageInitialized_: boolean = false;
+  private hasReadState_ = false;
   private initializeSessionId_: number = 0;
   private resizeObserver_?: ResizeObserver;
   private dragOverListener_ = (e: DragEvent) => this.onDragOver_(e);
@@ -501,6 +509,7 @@ export class ToolbarAppElement extends AppElementBase {
     this.browserProxy_ = BrowserProxyImpl.getInstance();
     this.iconTable_ = IconTable.getInstance();
     ColorChangeUpdater.forDocument().start();
+    MetricsReporterImpl.getInstance().mark(MARK_JS_RESOURCES_LOADED);
   }
 
   /**
@@ -546,11 +555,19 @@ export class ToolbarAppElement extends AppElementBase {
               this.iconTable_.applyUpdates(iconUpdates);
               this.navigationControlsState_ = state;
 
+              if (!this.hasReadState_) {
+                this.hasReadState_ = true;
+                MetricsReporterImpl.getInstance().mark(
+                    MARK_LOAD_TIME_DATA_READ);
+              }
+
               // Defer notifying the browser that the page is ready until after
               // the first Mojo-populated update has completed its render cycle.
               if (!this.isInitialized_) {
                 this.isInitialized_ = true;
                 this.updateComplete.then(() => {
+                  MetricsReporterImpl.getInstance().mark(
+                      MARK_JS_COMPOSITION_COMPLETE);
                   this.initializePage_(sessionId);
                 });
               }
@@ -558,6 +575,7 @@ export class ToolbarAppElement extends AppElementBase {
 
     if (this.isInitialized_) {
       this.updateComplete.then(() => {
+        MetricsReporterImpl.getInstance().mark(MARK_JS_COMPOSITION_COMPLETE);
         this.initializePage_(sessionId);
       });
     }
@@ -758,6 +776,26 @@ export class ToolbarAppElement extends AppElementBase {
       chrome.histograms.recordTime(
           'InitialWebUI.Toolbar.ParseFinishedToFirstUpdate',
           Math.round(performance.now() - entry.domInteractive));
+    }
+  }
+
+  override updated(changedProperties: PropertyValues<this>) {
+    super.updated(changedProperties);
+
+    // Check if a new layout is needed and if so, do it now. Checking only after
+    // all controls have been updated ensures that there's only one update if
+    // multiple controls are updated at once. ResizeObserver could theoretically
+    // trigger another notification, but since the entire toolbar should end up
+    // the same size after laying out all controls, there should hopefully only
+    // be a single call to layoutResponsiveControls().
+    let needsLayout = false;
+    for (const control of this.getResponsiveControls()) {
+      if (control.consumeNeedsLayout()) {
+        needsLayout = true;
+      }
+    }
+    if (needsLayout) {
+      this.layoutResponsiveControls();
     }
   }
 

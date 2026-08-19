@@ -1103,12 +1103,32 @@ void SearchboxHandler::QueryAutocomplete(
     bool prevent_inline_autocomplete,
     uint32_t cursor_position,
     omnibox::SuggestInventory suggest_inventory,
-    bool is_on_focus) {
+    bool is_on_focus,
+    const std::string& keyword,
+    searchbox::mojom::InputMethod input_method) {
   current_query_id_ = query_id;
+
+  std::u16string input_with_keyword = input;
+  bool is_keyword_selected = false;
+  if (!keyword.empty()) {
+    TemplateURLService* service =
+        client() ? client()->GetTemplateURLService() : nullptr;
+    if (service) {
+      std::u16string keyword16 = base::UTF8ToUTF16(keyword);
+      const TemplateURL* template_url =
+          service->GetTemplateURLForKeyword(keyword16);
+      if (template_url) {
+        is_keyword_selected = true;
+        input_with_keyword = keyword16 + u" " + input;
+        cursor_position += keyword16.length() + 1;
+      }
+    }
+  }
+
   // This shouldn't happen, but, e.g., users may do unintended actions in the
   // developer console and crashing with a `CHECK()` doesn't seem warranted.
-  cursor_position =
-      std::min(static_cast<size_t>(cursor_position), input.length());
+  cursor_position = std::min(
+      cursor_position, static_cast<uint32_t>(input_with_keyword.length()));
 
   // Early exit if a query is already in progress for on focus inputs.
   if (!autocomplete_controller()->done() && is_on_focus) {
@@ -1130,16 +1150,18 @@ void SearchboxHandler::QueryAutocomplete(
   const auto page_classification =
       client()->GetPageClassification(/*is_prefetch=*/false);
   AutocompleteInput autocomplete_input(
-      input, page_classification, ChromeAutocompleteSchemeClassifier(profile_));
+      input_with_keyword, cursor_position, page_classification,
+      ChromeAutocompleteSchemeClassifier(profile_));
   autocomplete_input.set_current_url(client()->GetURL());
   autocomplete_input.set_focus_type(
       is_on_focus ? metrics::OmniboxFocusType::INTERACTION_FOCUS
                   : metrics::OmniboxFocusType::INTERACTION_DEFAULT);
   autocomplete_input.set_prevent_inline_autocomplete(
       prevent_inline_autocomplete);
-  // Disable keyword matches as NTP realbox has no UI affordance for it.
-  autocomplete_input.set_in_keyword_mode(false);
-  autocomplete_input.set_allow_exact_keyword_match(false);
+  // TODO(b/504669216): `set_allow_exact_keyword_match()` should be true even
+  //   when not in keyword mode.
+  autocomplete_input.set_allow_exact_keyword_match(is_keyword_selected);
+  autocomplete_input.set_in_keyword_mode(is_keyword_selected);
   // Set the lens overlay suggest inputs, if available.
   if (std::optional<lens::proto::LensOverlaySuggestInputs> suggest_inputs =
           client()->GetLensOverlaySuggestInputs()) {
@@ -1161,10 +1183,14 @@ void SearchboxHandler::QueryAutocomplete(
   autocomplete_input.set_input_state(GetInputState());
   autocomplete_input.set_previous_query(GetPreviousQuery());
   autocomplete_input.set_suggest_inventory(suggest_inventory);
-  // Reset input method on browser so the UI doesn't have to send another
-  // mojom request to clear it.
-  autocomplete_input.set_input_method(input_method_);
-  input_method_ = omnibox::metrics::ChromeSearchboxStats::KEYBOARD;
+  // TODO(crbug.com/543112749): Support other input methods for Smart Compose.
+  autocomplete_input.set_input_method(
+      static_cast<omnibox::metrics::ChromeSearchboxStats::InputMethod>(
+          input_method));
+  autocomplete_input.set_has_previous_submitted_thread_context(
+      client()->HasPreviousSubmittedThreadContext());
+  autocomplete_input.set_has_auto_suggested_tab(
+      client()->HasAutoSuggestedTab());
 
   if (base::FeatureList::IsEnabled(
           omnibox::kWebUISearchboxWithoutModelController)) {
@@ -1175,15 +1201,7 @@ void SearchboxHandler::QueryAutocomplete(
   }
 }
 
-void SearchboxHandler::SetInputMethod(
-    searchbox::mojom::InputMethod input_method) {
-  input_method_ =
-      static_cast<omnibox::metrics::ChromeSearchboxStats::InputMethod>(
-          input_method);
-}
-
 void SearchboxHandler::StopAutocomplete(bool clear_result) {
-  input_method_ = omnibox::metrics::ChromeSearchboxStats::KEYBOARD;
   if (base::FeatureList::IsEnabled(
           omnibox::kWebUISearchboxWithoutModelController)) {
     autocomplete_controller()->Stop(clear_result
@@ -1522,21 +1540,23 @@ void SearchboxHandler::GetInputState(GetInputStateCallback callback) {
 
 void SearchboxHandler::OnResultChanged(AutocompleteController* controller,
                                        bool default_match_changed) {
-  if (base::FeatureList::IsEnabled(
-          omnibox::kWebUISearchboxWithoutModelController)) {
-    page_->AutocompleteResultChanged(CreateAutocompleteResult(
-        current_query_id_, autocomplete_controller()->input().text(),
-        autocomplete_controller()->result(),
-        BookmarkModelFactory::GetForBrowserContext(profile_),
-        profile_->GetPrefs(), client()->GetTemplateURLService()));
-  } else {
-    page_->AutocompleteResultChanged(CreateAutocompleteResult(
-        current_query_id_, autocomplete_controller()->input().text(),
-        autocomplete_controller()->result(),
-        BookmarkModelFactory::GetForBrowserContext(profile_),
-        profile_->GetPrefs(),
-        omnibox_controller()->client()->GetTemplateURLService()));
+  TemplateURLService* template_url_service =
+      client() ? client()->GetTemplateURLService() : nullptr;
+
+  std::u16string input_text = controller->input().text();
+  if (controller->input().in_keyword_mode() && template_url_service) {
+    std::u16string keyword;
+    std::u16string query;
+    if (AutocompleteInput::ExtractKeywordFromInput(
+            controller->input(), template_url_service, &keyword, &query)) {
+      input_text = query;
+    }
   }
+
+  page_->AutocompleteResultChanged(CreateAutocompleteResult(
+      current_query_id_, input_text, autocomplete_controller()->result(),
+      BookmarkModelFactory::GetForBrowserContext(profile_),
+      profile_->GetPrefs(), template_url_service));
 
   // If the AutocompleteController is owned by the handler, notify the prerender
   // here to start preloading if the results are ready.

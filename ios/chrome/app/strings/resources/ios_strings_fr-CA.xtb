@@ -33,8 +33,8 @@
 <translation id="108485301461714610">Mode IA de Recherche Google et applis connectées</translation>
 <translation id="1085677983426914530"><ph name="FILENAME" /> n'a pas pu être ouvert</translation>
 <translation id="1086486568852410168">Rechercher avec Lentille Google</translation>
+<translation id="1095093219235104018">Trouver et remplir avec Gemini</translation>
 <translation id="1096992026380844478">Vos paramètres de synchronisation seront restaurés en fonction de votre dernière sauvegarde. <ph name="BEGIN_LINK" />Voir ce que vous pouvez synchroniser<ph name="END_LINK" /></translation>
-<translation id="1097049112094133492">{count,plural, =1{1 recherche manuelle ignorée}one{# recherche manuelle ignorée}other{# recherches manuelles ignorées}}</translation>
 <translation id="1097807529207545420">{count,plural, =1{1 mot de passe vérifié instantanément}one{# mot de passe vérifié instantanément}other{# mots de passe vérifiés instantanément}}</translation>
 <translation id="1103523840287552314">Toujours traduire les pages rédigées en <ph name="LANGUAGE" /></translation>
 <translation id="1110772719190051587">Déverrouillez avec Face ID</translation>
@@ -184,7 +184,6 @@
 <translation id="1554043146674176775">Désactiver le mode IA</translation>
 <translation id="1554477036522844996">Nouvelle fenêtre</translation>
 <translation id="1558391695376153246">Fermer onglets navig. privée</translation>
-<translation id="1559263013367304065">depuis l'utilisation de Lentille Google</translation>
 <translation id="1560153516220021659">Bouton de la barre d'outils secondaire réduit</translation>
 <translation id="1562601408588733317">Gérez la recherche et le remplissage d'informations avec Gemini</translation>
 <translation id="1565371473877914088">Nouvel onglet de navigation privée</translation>
@@ -305,6 +304,7 @@
 <translation id="1909201414196501151">Site ajouté et épinglé</translation>
 <translation id="1911619930368729126">Télév. vers Google Disque</translation>
 <translation id="1925706052394657380">Ouvrez les réglages des <ph name="BEGIN_BOLD" />applis par défaut<ph name="END_BOLD" /> dans iOS</translation>
+<translation id="1938871630297275912">{count,plural, =1{Lien reçu}one{{count} lien reçu}other{{count} liens reçus}}</translation>
 <translation id="1941314575388338491">Appuyez deux fois pour copier.</translation>
 <translation id="1943478190258551035">Menu → Paramètres</translation>
 <translation id="1952728750904661634">Se connecter avec un compte géré</translation>
@@ -411,6 +411,7 @@
 <translation id="2268044343513325586">Affiner</translation>
 <translation id="2271452184061378400">Vos groupes d'onglets sont enregistrés ici</translation>
 <translation id="2273327106802955778">Menu Plus</translation>
+<translation id="2274179746480077483">Remplissez automatiquement des informations à partir d'applis telles que Gmail et Photos. Propulsé par l'Intelligence personnalisée.</translation>
 <translation id="2287614783861766820">{count,plural, =1{Cette adresse sera supprimée de cet appareil.}one{Ces adresses seront supprimées de cet appareil.}other{Ces adresses seront supprimées de cet appareil.}}</translation>
 <translation id="2295236662082735391">Maintenez le doigt sur une image sur le Web pour la modifier avec Gemini</translation>
 <translation id="2296360194694387941">L'utilisation de Gemini dans Chrome a bien été terminée!</translation>
@@ -724,6 +725,7 @@
 <translation id="340669334496430859">Dernière modification</translation>
 <translation id="3409785640040772790">Google Maps</translation>
 <translation id="3416023309465857378">25 octobre 2023</translation>
+<translation id="3419787211763835342">Nous aider à améliorer le remplissage automatique amélioré</translation>
 <translation id="3426715535827854458">Masquer l'option Masquer la barre d'outils</translation>
 <translation id="3435738964857648380">Sécurité</translation>
 <translation id="3441673211568148613">Gardez votre navigation privée</translation>
@@ -1007,6 +1009,7 @@
 <translation id="4378154925671717803">Numéro de téléphone</translation>
 <translation id="4380677808580146413">Sélectionner</translation>
 <translation id="4389019817280890563">Toucher pour changer la langue.</translation>
+<translation id="4390649422783033958">Connecté en tant que <ph name="USER_NAME" />. <ph name="USER_EMAIL" />, avec abonnement à Google. Ouvrez le menu du compte.</translation>
 <translation id="4393294364304621138">{COUNT,plural, =1{Après 1 jour}one{Après {COUNT} jour}other{Après {COUNT} jours}}</translation>
 <translation id="4402672425188312225">{COUNT,plural, =1{1 onglet}one{# onglet}other{# onglets}}</translation>
 <translation id="4404790787924017676">Recevez des alertes de baisse de prix pour les produits que vous suivez</translation>
@@ -1364,6 +1367,7 @@ La fonction de transfert doit également être activée dans la section Généra
 <translation id="5559567453458728487">Convertir les unités de mesure trouvées sur le Web</translation>
 <translation id="5560088892362098740">Date d'expiration</translation>
 <translation id="556042886152191864">Bouton</translation>
+<translation id="5563910365456880646">depuis que vous avez terminé la tâche « Utiliser une photo pour effectuer une recherche avec Lentille Google »</translation>
 <translation id="5565871407246142825">Cartes de crédit</translation>
 <translation id="5567439033041178034">EN SAVOIR PLUS</translation>
 <translation id="5578795271662203820">Rechercher cette image avec <ph name="SEARCH_ENGINE" /></translation>
@@ -1576,6 +1580,7 @@ La fonction de transfert doit également être activée dans la section Généra
 <translation id="6232329973559504466">Rechercher en mode de navigation privée</translation>
 <translation id="6234310016144827337">Vérifiez votre connexion et réessayez</translation>
 <translation id="6236952928980352967">Restaurer l'avertissement</translation>
+<translation id="623755660902014047">Mode de lecture</translation>
 <translation id="6240553182907836376">Mettez à jour la carte d'identité</translation>
 <translation id="6240601837375010619">Enregistrez le passeport</translation>
 <translation id="6241132809279377987">Débloquez plus de fonctionnalités pour votre iPhone avec les applis Google</translation>
@@ -1813,6 +1818,7 @@ Pour continuer à partir de votre ordinateur, passez à <ph name="OTHER_EMAIL" /
 <translation id="6930162026494574854">Réinitialiser les paramètres de Traduction</translation>
 <translation id="6930799952781667037">Toucher pour changer la langue en celle-ci.</translation>
 <translation id="6932739965694346873"><ph name="USER_NAME" />, <ph name="EMAIL" />. <ph name="MANAGED_STATUS" />.</translation>
+<translation id="6937083164784433305">{count,plural, =1{Vous avez utilisé 1 photo pour effectuer une recherche}one{Vous avez utilisé # photo pour effectuer une recherche}other{Vous avez utilisé # photos pour effectuer une recherche}}</translation>
 <translation id="693761253105515415">Définir un code d'accès</translation>
 <translation id="6945221475159498467">Sélectionner</translation>
 <translation id="6946722113367118030">Pensif</translation>
@@ -2018,6 +2024,7 @@ Pour continuer à partir de votre ordinateur, passez à <ph name="OTHER_EMAIL" /
 <translation id="7662316065255305764">Renseignements sur le site</translation>
 <translation id="7665369617277396874">Ajouter un compte</translation>
 <translation id="7666861622396822790">Vous pouvez gérer cela dans les <ph name="BEGIN_LINK" />paramètres de contenu<ph name="END_LINK" />.</translation>
+<translation id="7669448795744969014">Connecté en tant que <ph name="USER_EMAIL" />, avec abonnement à Google. Ouvrez le menu du compte.</translation>
 <translation id="7669493687462784703">Continuer à télécharger un profil de configuration à partir de <ph name="WEBSITE" />?</translation>
 <translation id="7673346542062368520">Vous pouvez balayer l'écran vers la gauche pour naviguer en mode Navigation privée.</translation>
 <translation id="7679915578945954324">Adresses de site copiées</translation>
@@ -2110,6 +2117,7 @@ Pour continuer à partir de votre ordinateur, passez à <ph name="OTHER_EMAIL" /
 <translation id="7972837668077967426">Canvas</translation>
 <translation id="7975036700432177008">Essayer</translation>
 <translation id="797588153137233716">Menu → Historique → Supprimer les données de navigation</translation>
+<translation id="7977029776654598145">Lorsqu'elle est utilisée</translation>
 <translation id="7977451675950311423">Vous avertit si vous utilisez un mot de passe qui a été compromis à la suite d'une violation de données.</translation>
 <translation id="797824194429476746">Les onglets resteront ouverts sur cet appareil, mais le groupe sera définitivement supprimé.</translation>
 <translation id="7982789257301363584">Réseau</translation>
@@ -2521,6 +2529,7 @@ Pour continuer à partir de votre ordinateur, passez à <ph name="OTHER_EMAIL" /
 <translation id="954667170699278022">Liste de lecture</translation>
 <translation id="956066588046842680">L'importation de ces données n'est pas autorisée par la politique de votre organisation.</translation>
 <translation id="956218893102219091">Utilisez votre position exacte plutôt qu'une position estimée en fonction de votre adresse IP pour optimiser la précision des résultats de Gemini. <ph name="BEGIN_LINK" />En savoir plus<ph name="END_LINK" /></translation>
+<translation id="960590623979248167">Afficher les liens hypertextes</translation>
 <translation id="961856697154696964">Supp. données de navigation</translation>
 <translation id="963102227019621224">Activité sur le Web et dans les applis</translation>
 <translation id="965259330007686240">Créer une image avec Gemini</translation>

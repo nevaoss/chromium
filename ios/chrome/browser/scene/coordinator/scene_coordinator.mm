@@ -85,8 +85,8 @@
 #import "ios/chrome/browser/shared/coordinator/layout_guide/layout_guide_util.h"
 #import "ios/chrome/browser/shared/coordinator/scene/scene_state.h"
 #import "ios/chrome/browser/shared/coordinator/scene/state/incognito_state.h"
-#import "ios/chrome/browser/shared/coordinator/scene/state/layout_state.h"
 #import "ios/chrome/browser/shared/coordinator/scene/state/layout_state_passkey.h"
+#import "ios/chrome/browser/shared/coordinator/scene/state/scene_layout_state.h"
 #import "ios/chrome/browser/shared/coordinator/scene/state/tab_grid_state.h"
 #import "ios/chrome/browser/shared/model/application_context/application_context.h"
 #import "ios/chrome/browser/shared/model/browser/browser.h"
@@ -265,7 +265,7 @@ inline LayoutStateScenePassKey PassKey() {
   // window.
   SceneViewController* _viewController;
   // The layout state for this scene.
-  LayoutState* _layoutState;
+  SceneLayoutState* _layoutState;
   // Fetches the Family Link member role asynchronously from KidsManagement API.
   std::unique_ptr<supervised_user::ListFamilyMembersFetcher>
       _familyMembersFetcher;
@@ -318,18 +318,7 @@ inline LayoutStateScenePassKey PassKey() {
     _viewController.delegate = self;
     _viewController.geminiHandler = HandlerForProtocol(
         _regularBrowser->GetCommandDispatcher(), GeminiCommands);
-    UIViewController* tabGridViewController =
-        _tabGridCoordinator.viewController;
-    [_viewController addChildViewController:tabGridViewController];
-    if (IsChromeNextIaEnabled() && !IsFullscreenRefactoringEnabled()) {
-      [_viewController.view addSubview:tabGridViewController.view];
-      [tabGridViewController.view addSubview:_viewController.appContainer];
-      tabGridViewController.view.frame = _viewController.view.bounds;
-    } else {
-      [_viewController.appContainer addSubview:tabGridViewController.view];
-      tabGridViewController.view.frame = _viewController.appContainer.bounds;
-    }
-    [tabGridViewController didMoveToParentViewController:_viewController];
+    [_viewController setTabGrid:_tabGridCoordinator.viewController];
     self.sceneState.window.rootViewController = _viewController;
 
     _sceneMediator = [[SceneMediator alloc]

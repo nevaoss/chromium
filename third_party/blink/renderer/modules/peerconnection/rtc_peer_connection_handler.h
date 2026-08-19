@@ -7,7 +7,6 @@
 
 #include <stddef.h>
 
-#include <array>
 #include <memory>
 #include <string>
 #include <vector>
@@ -303,11 +302,6 @@ class MODULES_EXPORT RTCPeerConnectionHandler {
     bool rtcp_mux = false;
   };
 
-  // Report to UMA whether an IceConnectionState has occurred. It only records
-  // the first occurrence of a given state.
-  void ReportICEState(
-      webrtc::PeerConnectionInterface::IceConnectionState new_state);
-
   void ReportFirstSessionDescriptions(const FirstSessionDescription& local,
                                       const FirstSessionDescription& remote);
 
@@ -438,10 +432,6 @@ class MODULES_EXPORT RTCPeerConnectionHandler {
   // unit tests) are ignored.
   std::unique_ptr<FirstSessionDescription> first_local_description_;
   std::unique_ptr<FirstSessionDescription> first_remote_description_;
-
-  // Track which ICE Connection state that this PeerConnection has gone through.
-  std::array<bool, webrtc::PeerConnectionInterface::kIceConnectionMax>
-      ice_state_seen_ = {};
 
   scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
 

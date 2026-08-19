@@ -184,7 +184,7 @@ void ChromeBrowserMainExtraPartsViews::PostProfileInit(
   auto* service = BookmarkMergedSurfaceServiceFactory::GetForProfile(profile);
   if (service) {
     service->SetShowMoveStorageDialogCallback(base::BindRepeating(
-        [](Browser* browser, const bookmarks::BookmarkNode* node,
+        [](BrowserWindowInterface* browser, const bookmarks::BookmarkNode* node,
            const bookmarks::BookmarkNode* target_folder, size_t index) {
           ShowBookmarkAccountStorageMoveDialog(browser, node, target_folder,
                                                index);

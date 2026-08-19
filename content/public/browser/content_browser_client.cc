@@ -988,6 +988,9 @@ void ContentBrowserClient::OpenURL(
 void ContentBrowserClient::CreateThrottlesForNavigation(
     NavigationThrottleRegistry& registry) {}
 
+void ContentBrowserClient::CreateThrottlesForCommitWithoutUrlLoader(
+    NavigationThrottleRegistry& registry) {}
+
 std::vector<std::unique_ptr<CommitDeferringCondition>>
 ContentBrowserClient::CreateCommitDeferringConditionsForNavigation(
     NavigationHandle* navigation_handle,
@@ -1120,7 +1123,8 @@ void ContentBrowserClient::WillCreateURLLoaderFactory(
     bool* bypass_redirect_checks,
     bool* disable_secure_dns,
     network::mojom::URLLoaderFactoryOverridePtr* factory_override,
-    scoped_refptr<base::SequencedTaskRunner> navigation_response_task_runner) {
+    scoped_refptr<base::SequencedTaskRunner> navigation_response_task_runner,
+    bool is_for_network_service) {
   DCHECK(browser_context);
 }
 
@@ -1647,6 +1651,10 @@ ContentBrowserClient::GetOriginTrialsSettings() {
 void ContentBrowserClient::OnKeepaliveRequestStarted(BrowserContext*) {}
 
 void ContentBrowserClient::OnKeepaliveRequestFinished() {}
+
+void ContentBrowserClient::OnFetchKeepAliveRequestCreated(BrowserContext&) {}
+
+void ContentBrowserClient::OnFetchKeepAliveRequestDestroyed(BrowserContext&) {}
 
 #if BUILDFLAG(IS_MAC)
 bool ContentBrowserClient::SetupEmbedderSandboxParameters(

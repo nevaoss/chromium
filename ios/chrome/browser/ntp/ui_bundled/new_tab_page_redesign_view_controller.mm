@@ -7,6 +7,8 @@
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_redesign_view_controller.h"
 
 #import "components/strings/grit/components_strings.h"
+#import "ios/chrome/browser/content_suggestions/magic_stack/ui/magic_stack_module_container.h"
+#import "ios/chrome/browser/content_suggestions/most_visited_tiles/ui/most_visited_tiles_config.h"
 #import "ios/chrome/browser/content_suggestions/ui/content_suggestions_collection_utils.h"
 #import "ios/chrome/browser/home_customization/ui/home_customization_framing_coordinates.h"
 #import "ios/chrome/browser/home_customization/ui/home_customization_image_view.h"
@@ -21,6 +23,7 @@
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_header_view.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_image_background_trait.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_mutator.h"
+#import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_quick_actions_view_controller.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_shortcuts_handler.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_trait.h"
 #import "ios/chrome/browser/ntp/ui_bundled/ntp_identity_disc_button.h"
@@ -40,6 +43,12 @@ constexpr CGFloat kBackgroundImageAnimationDuration = 0.25;
 
 // Spacing between fake omnibox and most visited tiles (MVTs) container.
 constexpr CGFloat kOmniboxToMVTSpacing = 16.0;
+
+// Spacing between fake omnibox and quick actions row.
+constexpr CGFloat kQuickActionSpacingTop = 3.0;
+
+// Spacing between quick actions row and the content below it.
+constexpr CGFloat kQuickActionSpacingBottom = 19.0;
 
 // Spacing between the Google logo and the fake location bar.
 constexpr CGFloat kLogoToOmniboxSpacing = 24.0;
@@ -103,6 +112,9 @@ constexpr CGFloat kHintLabelYOffset = -1.0;
 @property(nonatomic, assign, readwrite) CGFloat collectionShiftingOffset;
 @property(nonatomic, assign, readwrite) BOOL scrolledToMinimumHeight;
 
+// The Most Visited Tiles (MVTs) view.
+@property(nonatomic, strong) UIView* mostVisitedView;
+
 // Private helpers
 - (void)handleTraitChanges;
 
@@ -127,6 +139,11 @@ constexpr CGFloat kHintLabelYOffset = -1.0;
   NSString* _avatarName;
   NSString* _avatarEmail;
   BOOL _avatarImageLoaded;
+
+  // Layout constraints for top content.
+  NSLayoutConstraint* _mvtTopConstraint;
+  NSLayoutConstraint* _qaTopConstraint;
+  NewTabPageQuickActionsViewController* _quickActionsViewController;
 
   // Fake omnibox subviews and state
   NTPRedesignTouchAreaOverflowStackView* _buttonStack;
@@ -174,7 +191,7 @@ constexpr CGFloat kHintLabelYOffset = -1.0;
   _defaultSearchEngineName = @"Google";
   _isGoogleDefaultSearchEngine = YES;
 
-  // Add fake location bar.
+  // Add fake location bar ON TOP of the sheet.
   _fakeLocationBar = [[FakeLocationBarView alloc] init];
   _fakeLocationBar.translatesAutoresizingMaskIntoConstraints = NO;
   [_fakeLocationBar addTarget:self
@@ -211,13 +228,30 @@ constexpr CGFloat kHintLabelYOffset = -1.0;
   [_fakeLocationBar applyBackgroundTheme];
   [_fakeLocationBar updateColorsWithProgress:0.0 colorPalette:nil];
 
+  if (IsAimEnabledInNtp()) {
+    _quickActionsViewController =
+        [[NewTabPageQuickActionsViewController alloc] init];
+    _quickActionsViewController.layoutGuideCenter = self.layoutGuideCenter;
+    _quickActionsViewController.NTPShortcutsHandler = self.NTPShortcutsHandler;
+    [self addChildViewController:_quickActionsViewController];
+
+    // Insert BELOW the sheet.
+    _quickActionsViewController.view.translatesAutoresizingMaskIntoConstraints =
+        NO;
+    [self.view insertSubview:_quickActionsViewController.view
+                belowSubview:_bottomSheetViewController.view];
+    [_quickActionsViewController didMoveToParentViewController:self];
+    _quickActionsViewController.view.hidden = !self.quickActionsVisible;
+  }
+
   // Add Most Visited Tiles (MVTs) container.
   _mostVisitedContainerView = [[UIView alloc] init];
   _mostVisitedContainerView.translatesAutoresizingMaskIntoConstraints = NO;
+  // Insert BELOW the sheet.
   [self.view insertSubview:_mostVisitedContainerView
               belowSubview:_bottomSheetViewController.view];
 
-  // Configure layout constraints for fake location bar and MVTs.
+  // Configure layout constraints
   _fakeLocationBarTopConstraint = [_fakeLocationBar.topAnchor
       constraintEqualToAnchor:self.view.topAnchor
                      constant:[self centeredFakeOmniboxTop]];
@@ -238,21 +272,44 @@ constexpr CGFloat kHintLabelYOffset = -1.0;
     [_buttonStack.centerYAnchor
         constraintEqualToAnchor:_fakeLocationBar.centerYAnchor],
 
-    [_mostVisitedContainerView.topAnchor
-        constraintEqualToAnchor:_fakeLocationBar.bottomAnchor
-                       constant:kOmniboxToMVTSpacing],
-    [_mostVisitedContainerView.centerXAnchor
-        constraintEqualToAnchor:self.view.centerXAnchor],
     [_mostVisitedContainerView.widthAnchor
         constraintEqualToAnchor:_fakeLocationBar.widthAnchor],
+    [_mostVisitedContainerView.centerXAnchor
+        constraintEqualToAnchor:_fakeLocationBar.centerXAnchor],
   ]];
+
+  if (IsAimEnabledInNtp()) {
+    _qaTopConstraint = [_quickActionsViewController.view.topAnchor
+        constraintEqualToAnchor:_fakeLocationBar.bottomAnchor
+                       constant:kQuickActionSpacingTop];
+
+    [NSLayoutConstraint activateConstraints:@[
+      _qaTopConstraint,
+      [_quickActionsViewController.view.widthAnchor
+          constraintEqualToAnchor:_fakeLocationBar.widthAnchor],
+      [_quickActionsViewController.view.centerXAnchor
+          constraintEqualToAnchor:_fakeLocationBar.centerXAnchor],
+    ]];
+  }
+
+  UIView* anchorView = self.quickActionsVisible
+                           ? _quickActionsViewController.view
+                           : _fakeLocationBar;
+  CGFloat constant = self.quickActionsVisible ? kQuickActionSpacingBottom
+                                              : kOmniboxToMVTSpacing;
+
+  _mvtTopConstraint = [_mostVisitedContainerView.topAnchor
+      constraintEqualToAnchor:anchorView.bottomAnchor
+                     constant:constant];
+  _mvtTopConstraint.active = YES;
+
   _fakeLocationBar.layer.cornerRadius =
       _fakeLocationBarHeightConstraint.constant / 2.0;
 
   [self refreshFakeboxContent];
 
-  if (_mostVisitedViewController) {
-    [self embedMostVisitedViewController];
+  if (self.mostVisitedView) {
+    [self embedMostVisitedView];
   }
 
   if (_searchEngineLogoView) {
@@ -348,7 +405,7 @@ constexpr CGFloat kHintLabelYOffset = -1.0;
   self.searchEngineLogoView = nil;
   self.NTPContentDelegate = nil;
   self.NTPShortcutsHandler = nil;
-  self.mostVisitedViewController = nil;
+  self.mostVisitedView = nil;
   self.magicStackViewController = nil;
   [self setFeedViewController:nil];
   [_bottomSheetViewController invalidate];
@@ -375,13 +432,8 @@ constexpr CGFloat kHintLabelYOffset = -1.0;
 
 - (CGFloat)restingOffsetForBottomSheetViewController:
     (NewTabPageBottomSheetViewController*)viewController {
-  CGFloat mvtHeight = CGRectGetHeight(_mostVisitedContainerView.bounds);
-  if (mvtHeight <= 0) {
-    mvtHeight = kDefaultMVTHeightFallback;
-  }
-  return [self centeredFakeOmniboxTop] +
-         content_suggestions::FakeOmniboxHeight() + kOmniboxToMVTSpacing +
-         mvtHeight + kRestingSheetMVTTopMargin;
+  return [self centeredFakeOmniboxTop] + [self topContentHeight] +
+         kRestingSheetMVTTopMargin;
 }
 
 - (CGFloat)collapsedOffsetForBottomSheetViewController:
@@ -405,15 +457,8 @@ constexpr CGFloat kHintLabelYOffset = -1.0;
     progress = MIN(1.0, MAX(0.0, progress));
   }
 
-  // Read height dynamically from bounds, falling back to
-  // kDefaultMVTHeightFallback if not laid out yet.
-  CGFloat mvtHeight = CGRectGetHeight(_mostVisitedContainerView.bounds);
-  if (mvtHeight <= 0) {
-    mvtHeight = kDefaultMVTHeightFallback;
-  }
   CGFloat restingOffsetFromSheet =
-      -(content_suggestions::FakeOmniboxHeight() + kOmniboxToMVTSpacing +
-        mvtHeight + kRestingSheetMVTTopMargin);
+      -([self topContentHeight] + kRestingSheetMVTTopMargin);
 
   // Spacing offset from sheet top: restingOffsetFromSheet when
   // resting/collapsed (above sheet), +16 pt when expanded (inside sheet)
@@ -425,6 +470,9 @@ constexpr CGFloat kHintLabelYOffset = -1.0;
   _searchEngineLogoView.alpha = progress;
   _mostVisitedContainerView.alpha = progress;
   _identityDiscButton.alpha = progress;
+  if (_quickActionsViewController) {
+    _quickActionsViewController.view.alpha = progress;
+  }
 
   [self.view layoutIfNeeded];
 }
@@ -520,36 +568,30 @@ constexpr CGFloat kHintLabelYOffset = -1.0;
   }
 }
 
-- (void)setMostVisitedViewController:
-    (UIViewController*)mostVisitedViewController {
-  if (_mostVisitedViewController == mostVisitedViewController) {
+- (void)setMostVisitedView:(UIView*)mostVisitedView {
+  if (_mostVisitedView == mostVisitedView) {
     return;
   }
-  if (_mostVisitedViewController) {
-    [_mostVisitedViewController willMoveToParentViewController:nil];
-    [_mostVisitedViewController.view removeFromSuperview];
-    [_mostVisitedViewController removeFromParentViewController];
+  if (_mostVisitedView) {
+    [_mostVisitedView removeFromSuperview];
   }
-  _mostVisitedViewController = mostVisitedViewController;
-  if (self.isViewLoaded && _mostVisitedViewController) {
-    [self embedMostVisitedViewController];
+  _mostVisitedView = mostVisitedView;
+  if (self.isViewLoaded && _mostVisitedView) {
+    [self embedMostVisitedView];
   }
-}
-
-- (void)embedMostVisitedViewController {
-  if (!_mostVisitedViewController || !_mostVisitedContainerView) {
-    return;
-  }
-  [self addChildViewController:_mostVisitedViewController];
-  _mostVisitedViewController.view.translatesAutoresizingMaskIntoConstraints =
-      NO;
-  [_mostVisitedContainerView addSubview:_mostVisitedViewController.view];
-  AddSameConstraints(_mostVisitedViewController.view,
-                     _mostVisitedContainerView);
-  [_mostVisitedViewController didMoveToParentViewController:self];
 }
 
 #pragma mark - Private
+
+// Add _mostVisitedView to the view hierarchy.
+- (void)embedMostVisitedView {
+  if (!_mostVisitedView || !_mostVisitedContainerView) {
+    return;
+  }
+  _mostVisitedView.translatesAutoresizingMaskIntoConstraints = NO;
+  [_mostVisitedContainerView addSubview:_mostVisitedView];
+  AddSameConstraints(_mostVisitedView, _mostVisitedContainerView);
+}
 
 - (void)addSearchEngineLogoView {
   if (!_searchEngineLogoView || !_bottomSheetViewController.view) {
@@ -587,6 +629,25 @@ constexpr CGFloat kHintLabelYOffset = -1.0;
   [NSLayoutConstraint activateConstraints:_logoConstraints];
 }
 
+- (CGFloat)topContentHeight {
+  CGFloat height = content_suggestions::FakeOmniboxHeight();
+
+  if (self.quickActionsVisible && _quickActionsViewController) {
+    height += kQuickActionSpacingTop;
+    height += _quickActionsViewController.preferredContentSize.height;
+    height += kQuickActionSpacingBottom;
+  } else {
+    height += kOmniboxToMVTSpacing;
+  }
+
+  CGFloat mvtHeight = CGRectGetHeight(_mostVisitedContainerView.bounds);
+  if (mvtHeight <= 0) {
+    mvtHeight = kDefaultMVTHeightFallback;
+  }
+  height += mvtHeight;
+
+  return height;
+}
 - (CGFloat)centeredFakeOmniboxTop {
   CGFloat screenHeight = self.view.bounds.size.height;
   // During the initial view loading sequence (e.g. before initial layout pass
@@ -600,6 +661,16 @@ constexpr CGFloat kHintLabelYOffset = -1.0;
     return safeAreaTop + kLogoTopMargin + logoHeight + kLogoToOmniboxSpacing;
   }
   return screenHeight * 0.35;
+}
+
+#pragma mark - ContentSuggestionsConsumer
+
+- (void)setMostVisitedTilesConfig:(MostVisitedTilesConfig*)config {
+  MagicStackModuleContainer* container =
+      [[MagicStackModuleContainer alloc] initWithFrame:CGRectZero noInset:YES];
+  [container configureWithConfig:config];
+
+  self.mostVisitedView = container;
 }
 
 #pragma mark - SearchEngineLogoConsumer
@@ -680,11 +751,34 @@ constexpr CGFloat kHintLabelYOffset = -1.0;
   [self refreshFakeboxContent];
 }
 
+// Whether the quick actions button row is visible.
+- (BOOL)quickActionsVisible {
+  return _isAIMAllowed && IsAimEnabledInNtp();
+}
+
 - (void)setAIMAllowed:(BOOL)allowed {
   if (_isAIMAllowed == allowed) {
     return;
   }
   _isAIMAllowed = allowed;
+  if (_quickActionsViewController) {
+    BOOL isVisible = self.quickActionsVisible;
+    _quickActionsViewController.view.hidden = !isVisible;
+
+    _mvtTopConstraint.active = NO;
+
+    UIView* anchorView =
+        isVisible ? _quickActionsViewController.view : _fakeLocationBar;
+    CGFloat constant =
+        isVisible ? kQuickActionSpacingBottom : kOmniboxToMVTSpacing;
+
+    _mvtTopConstraint = [_mostVisitedContainerView.topAnchor
+        constraintEqualToAnchor:anchorView.bottomAnchor
+                       constant:constant];
+    _mvtTopConstraint.active = YES;
+
+    [self.view layoutIfNeeded];
+  }
   [self refreshFakeboxContent];
 }
 

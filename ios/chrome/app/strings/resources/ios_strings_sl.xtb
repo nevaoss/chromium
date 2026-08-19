@@ -33,8 +33,8 @@
 <translation id="108485301461714610">Način umetne inteligence v Iskanju Google in povezane aplikacije</translation>
 <translation id="1085677983426914530">Datoteke <ph name="FILENAME" /> ni bilo mogoče odpreti</translation>
 <translation id="1086486568852410168">Iskanje z Googlom Lens</translation>
+<translation id="1095093219235104018">Iskanje in izpolnjevanje z Geminijem</translation>
 <translation id="1096992026380844478">Nastavitve sinhronizacije bodo obnovljene na podlagi zadnjega varnostnega kopiranja. <ph name="BEGIN_LINK" />Oglejte si, kaj lahko sinhronizirate<ph name="END_LINK" /></translation>
-<translation id="1097049112094133492">{count,plural, =1{1 ročno iskanje je preskočeno}one{# ročno iskanje je preskočeno}two{# ročni iskanji sta preskočeni}few{# ročna iskanja so preskočena}other{# ročnih iskanj je preskočenih}}</translation>
 <translation id="1097807529207545420">{count,plural, =1{1 geslo je bilo takoj preverjeno}one{# geslo je bilo takoj preverjeno}two{# gesli sta bili takoj preverjeni}few{# gesla so bila takoj preverjena}other{# gesel je bilo takoj preverjenih}}</translation>
 <translation id="1103523840287552314">Vedno prevedi ta jezik: <ph name="LANGUAGE" /></translation>
 <translation id="1110772719190051587">Odkleni s funkcijo Face ID</translation>
@@ -184,7 +184,6 @@
 <translation id="1554043146674176775">Izklop načina umetne inteligence</translation>
 <translation id="1554477036522844996">Novo okno</translation>
 <translation id="1558391695376153246">Zapri anonimne zavihke</translation>
-<translation id="1559263013367304065">od uporabe Googla Lens</translation>
 <translation id="1560153516220021659">Strnjen sekundarni gumb orodne vrstice</translation>
 <translation id="1562601408588733317">Upravljanje iskanja in izpolnjevanja podatkov z Geminijem</translation>
 <translation id="1565371473877914088">Nov anonimni zavihek</translation>
@@ -305,6 +304,7 @@
 <translation id="1909201414196501151">Spletno mesto je dodano in pripeto</translation>
 <translation id="1911619930368729126">Prenos v Google Drive</translation>
 <translation id="1925706052394657380">Odprite nastavitve <ph name="BEGIN_BOLD" />privzetih aplikacij<ph name="END_BOLD" /> v sistemu iOS</translation>
+<translation id="1938871630297275912">{count,plural, =1{Povezava je bila prejeta}one{{count} povezava je bila prejeta}two{{count} povezavi sta bili prejeti}few{{count} povezave so bile prejete}other{{count} povezav je bilo prejetih}}</translation>
 <translation id="1941314575388338491">Dvakrat se dotaknite, če želite kopirati.</translation>
 <translation id="1943478190258551035">Meni → Nastavitve</translation>
 <translation id="1952728750904661634">Prijava z upravljanim računom</translation>
@@ -411,6 +411,7 @@
 <translation id="2268044343513325586">Izboljšaj iskanje</translation>
 <translation id="2271452184061378400">Skupine zavihkov so shranjene tukaj</translation>
 <translation id="2273327106802955778">More menu</translation>
+<translation id="2274179746480077483">Samodejno izpolnjevanje podatkov iz aplikacij, kot sta Gmail in Google Foto. Uporablja tehnologijo osebne inteligence.</translation>
 <translation id="2287614783861766820">{count,plural, =1{Ta naslov bo izbrisan iz te naprave.}one{Ti naslovi bodo izbrisani iz te naprave.}two{Ti naslovi bodo izbrisani iz te naprave.}few{Ti naslovi bodo izbrisani iz te naprave.}other{Ti naslovi bodo izbrisani iz te naprave.}}</translation>
 <translation id="2295236662082735391">Pridržite sliko v spletu, če jo želite urediti z Geminijem</translation>
 <translation id="2296360194694387941">Uporaba Geminija v Chromu je končana.</translation>
@@ -724,6 +725,7 @@
 <translation id="340669334496430859">Zadnja sprememba</translation>
 <translation id="3409785640040772790">Zemljevidi</translation>
 <translation id="3416023309465857378">25. okt 2023</translation>
+<translation id="3419787211763835342">Pomagajte izboljšati izboljšano samodejno izpolnjevanje</translation>
 <translation id="3426715535827854458">Skrij »Skrij orodno vrstico«</translation>
 <translation id="3435738964857648380">Varnost</translation>
 <translation id="3441673211568148613">Poskrbite za zasebno brskanje</translation>
@@ -1007,6 +1009,7 @@
 <translation id="4378154925671717803">Telefon</translation>
 <translation id="4380677808580146413">Izberi</translation>
 <translation id="4389019817280890563">Dotaknite se, če želite spremeniti jezik.</translation>
+<translation id="4390649422783033958">Prijavljeni ste kot <ph name="USER_NAME" />. <ph name="USER_EMAIL" />, Googlova naročnina. Odprite meni računa.</translation>
 <translation id="4393294364304621138">{COUNT,plural, =1{Po 1 dnevu}one{Po {COUNT} dnevu}two{Po {COUNT} dneh}few{Po {COUNT} dneh}other{Po {COUNT} dneh}}</translation>
 <translation id="4402672425188312225">{COUNT,plural, =1{1 zavihek}one{# zavihek}two{# zavihka}few{# zavihki}other{# zavihkov}}</translation>
 <translation id="4404790787924017676">Prejemanje opozoril o znižanju cen za izdelke, ki jih spremljate</translation>
@@ -1364,6 +1367,7 @@ Handoff must also be enabled in the General section of Settings, and your device
 <translation id="5559567453458728487">Pretvorba merskih enot, najdenih v spletu</translation>
 <translation id="5560088892362098740">Datum poteka</translation>
 <translation id="556042886152191864">Gumb</translation>
+<translation id="5563910365456880646">od dokončanja dejanja »Iskanje s fotografijo z Googlom Lens«</translation>
 <translation id="5565871407246142825">Kreditne kartice</translation>
 <translation id="5567439033041178034">VEČ O TEM</translation>
 <translation id="5578795271662203820">Za iskanje te slike uporabi <ph name="SEARCH_ENGINE" /></translation>
@@ -1576,6 +1580,7 @@ Handoff must also be enabled in the General section of Settings, and your device
 <translation id="6232329973559504466">Anonimno iskanje</translation>
 <translation id="6234310016144827337">Preverite povezavo in poskusite znova.</translation>
 <translation id="6236952928980352967">Obnovi opozorilo</translation>
+<translation id="623755660902014047">Način za branje</translation>
 <translation id="6240553182907836376">Posodobite osebno izkaznico</translation>
 <translation id="6240601837375010619">Shranite potni list</translation>
 <translation id="6241132809279377987">Odklenite več funkcij za iPhone z Googlovimi aplikacijami</translation>
@@ -1813,6 +1818,7 @@ Handoff must also be enabled in the General section of Settings, and your device
 <translation id="6930162026494574854">Ponastavi nastavitve za prevajanje</translation>
 <translation id="6930799952781667037">Dotaknite se, če želite spremeniti ta jezik.</translation>
 <translation id="6932739965694346873"><ph name="USER_NAME" />, <ph name="EMAIL" />. <ph name="MANAGED_STATUS" />.</translation>
+<translation id="6937083164784433305">{count,plural, =1{Za iskanje ste uporabili 1 fotografijo}one{Za iskanje ste uporabili # fotografijo}two{Za iskanje ste uporabili # fotografiji}few{Za iskanje ste uporabili # fotografije}other{Za iskanje ste uporabili # fotografij}}</translation>
 <translation id="693761253105515415">Nastavitev gesla</translation>
 <translation id="6945221475159498467">Izberi</translation>
 <translation id="6946722113367118030">Razmišljanje</translation>
@@ -2018,6 +2024,7 @@ Handoff must also be enabled in the General section of Settings, and your device
 <translation id="7662316065255305764">Podatki o spletnem mestu</translation>
 <translation id="7665369617277396874">Dodaj račun</translation>
 <translation id="7666861622396822790">To lahko upravljate v <ph name="BEGIN_LINK" />nastavitvah vsebine<ph name="END_LINK" />.</translation>
+<translation id="7669448795744969014">Prijavljeni ste kot <ph name="USER_EMAIL" />, naročnina Google. Odprite meni računa.</translation>
 <translation id="7669493687462784703">Želite nadaljevati prenos profila konfiguracije z naslova <ph name="WEBSITE" />?</translation>
 <translation id="7673346542062368520">Če želite brskati v anonimnem načinu, povlecite levo.</translation>
 <translation id="7679915578945954324">Kopirani naslovi spletnih mest</translation>
@@ -2110,6 +2117,7 @@ Handoff must also be enabled in the General section of Settings, and your device
 <translation id="7972837668077967426">Canvas</translation>
 <translation id="7975036700432177008">Preskus</translation>
 <translation id="797588153137233716">Meni → Zgodovina → Brisanje podatkov brskanja</translation>
+<translation id="7977029776654598145">Med uporabo</translation>
 <translation id="7977451675950311423">Opozori vas, če uporabite geslo, ki je ogroženo zaradi podatkovne kršitve.</translation>
 <translation id="797824194429476746">Zavihki bodo ostali odprti v tej napravi, vendar bo skupina trajno izbrisana.</translation>
 <translation id="7982789257301363584">Omrežje</translation>
@@ -2521,6 +2529,7 @@ Handoff must also be enabled in the General section of Settings, and your device
 <translation id="954667170699278022">Bralni seznam</translation>
 <translation id="956066588046842680">Pravilnik organizacije ne dovoljuje uvoza teh podatkov.</translation>
 <translation id="956218893102219091">Uporabite natančno lokacijo za najnatančnejše rezultate Geminija namesto ocenjene lokacije na podlagi naslova IP. <ph name="BEGIN_LINK" />Več o tem<ph name="END_LINK" /></translation>
+<translation id="960590623979248167">Pokaži hiperpovezave</translation>
 <translation id="961856697154696964">Brisanje podatkov brskanja</translation>
 <translation id="963102227019621224">Dejavnost v spletu in aplikacijah</translation>
 <translation id="965259330007686240">Ustvarite sliko z Geminijem</translation>

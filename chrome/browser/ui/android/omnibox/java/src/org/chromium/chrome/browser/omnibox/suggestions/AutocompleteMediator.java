@@ -11,7 +11,6 @@ import android.animation.AnimatorListenerAdapter;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
-import android.content.res.Resources;
 import android.os.Handler;
 import android.os.SystemClock;
 import android.text.TextUtils;
@@ -407,8 +406,7 @@ class AutocompleteMediator
         mDropdownViewInfoListManager.setFuseboxLayoutMode(fuseboxLayoutMode);
         if (mOmniboxSuggestionsVisualStateObserver != null) {
             mOmniboxSuggestionsVisualStateObserver.onOmniboxSuggestionsBackgroundColorChanged(
-                    OmniboxResourceProvider.getSuggestionsDropdownBackgroundColor(
-                            mContext, brandedColorScheme));
+                    mResourceProvider.getSuggestionsDropdownBackgroundColor());
         }
     }
 
@@ -726,7 +724,8 @@ class AutocompleteMediator
                         keyword,
                         name,
                         /* enteredViaSpace= */ false,
-                        suggestion.getStarterPackId()));
+                        suggestion.getStarterPackId(),
+                        /* isStarterPackPreview= */ true));
         return true;
     }
 
@@ -986,7 +985,6 @@ class AutocompleteMediator
                     }
                 };
 
-        Resources resources = mContext.getResources();
         @StringRes int dialogMessageId = R.string.omnibox_confirm_delete;
         if (isSuggestionFromClipboard(suggestion)) {
             dialogMessageId = R.string.omnibox_confirm_delete_from_clipboard;
@@ -999,12 +997,13 @@ class AutocompleteMediator
                         .with(ModalDialogProperties.TITLE_MAX_LINES, 1)
                         .with(
                                 ModalDialogProperties.MESSAGE_PARAGRAPH_1,
-                                resources.getString(dialogMessageId))
-                        .with(ModalDialogProperties.POSITIVE_BUTTON_TEXT, resources, R.string.ok)
+                                mResourceProvider.getString(dialogMessageId))
+                        .with(
+                                ModalDialogProperties.POSITIVE_BUTTON_TEXT,
+                                mResourceProvider.getString(R.string.ok))
                         .with(
                                 ModalDialogProperties.NEGATIVE_BUTTON_TEXT,
-                                resources,
-                                R.string.cancel)
+                                mResourceProvider.getString(R.string.cancel))
                         .with(ModalDialogProperties.CANCEL_ON_TOUCH_OUTSIDE, true)
                         .build();
 
@@ -1054,13 +1053,14 @@ class AutocompleteMediator
     @Override
     public void onSuggestionFocused(AutocompleteMatch suggestion) {
         if (!isInInputSession()) return;
+        if (mIgnoreOmniboxItemSelection) return;
 
         if (!maybeEnterKeywordMode(suggestion)) {
             // Clear keyword mode only if it was a temporary preview triggered by highlighting
-            // a starter pack. hasPreviewText() prevents clearing explicitly typed keyword modes.
+            // a starter pack.
             if (mAutocompleteInput != null
                     && mAutocompleteInput.getSiteSearchData() != null
-                    && mAutocompleteInput.hasPreviewText()) {
+                    && mAutocompleteInput.getSiteSearchData().isStarterPackPreview) {
                 onKeywordModeEntered(null);
             }
             setOmniboxEditingText(suggestion.getFillIntoEdit(), suggestion);
@@ -1118,11 +1118,20 @@ class AutocompleteMediator
         mListPropertyModel.set(SuggestionListProperties.LIST_IS_FINAL, false);
         mIgnoreOmniboxItemSelection = true;
         boolean isInZeroPrefixContext = mAutocompleteInput.isInZeroPrefixContext();
-        boolean allowParking =
-                isInZeroPrefixContext
-                        || !mAutocompleteInput.isConventionalRequestType()
-                        || !OmniboxCapabilities.hasDesktopExperience(mContext);
-        mListPropertyModel.set(SuggestionListProperties.ALLOW_PARKING_AT_SENTINEL, allowParking);
+        boolean isUnconventional =
+                isInZeroPrefixContext || !mAutocompleteInput.isConventionalRequestType();
+        @SelectionController.Mode int selectionMode;
+        if (isUnconventional || !OmniboxCapabilities.hasDesktopExperience(mContext)) {
+            // In desktop experiences, we use SENTINEL_THEN_WRAPPING to match the behavior of the
+            // desktop browser.
+            selectionMode =
+                    OmniboxCapabilities.hasDesktopExperience(mContext)
+                            ? SelectionController.Mode.SENTINEL_THEN_WRAPPING
+                            : SelectionController.Mode.WRAPPING_WITH_SENTINEL;
+        } else {
+            selectionMode = SelectionController.Mode.WRAPPING;
+        }
+        mListPropertyModel.set(SuggestionListProperties.SELECTION_MODE, selectionMode);
         mListPropertyModel.set(SuggestionListProperties.RESET_SELECTION, null);
         cancelAutocompleteRequests();
 
@@ -1226,6 +1235,11 @@ class AutocompleteMediator
         }
 
         mListPropertyModel.set(SuggestionListProperties.LIST_IS_FINAL, isFinal);
+        boolean shouldApplyVerticalPadding =
+                input.getRequestType() != AutocompleteRequestType.AI_MODE
+                        || getFuseboxLayoutMode() != FuseboxLayoutMode.SUGGESTIONS_POPOVER;
+        mListPropertyModel.set(
+                SuggestionListProperties.APPLY_VERTICAL_PADDING, shouldApplyVerticalPadding);
         measureSuggestionRequestToUiModelTime(isFinal);
     }
 
@@ -1460,6 +1474,35 @@ class AutocompleteMediator
             } else {
                 findMatchAndLoadUrl(urlText, eventTime, openInNewTab, openInNewWindow);
             }
+        }
+    }
+
+    /**
+     * Navigate using the pasted omnibox text, disabling inline autocompletion.
+     *
+     * @param text The pasted text to load.
+     * @param eventTime The timestamp when the navigation was triggered (e.g., uptimeMillis).
+     * @param target The target destination for the navigation (current tab, new tab, new window).
+     */
+    void loadPastedText(
+            String text, long eventTime, @AutocompleteCoordinator.NavigationTarget int target) {
+        try (TraceEvent e = TraceEvent.scoped("AutocompleteMediator.loadPastedText")) {
+            if (!isInInputSession() || TextUtils.isEmpty(text)) return;
+            boolean openInNewTab = target == AutocompleteCoordinator.NavigationTarget.NEW_TAB;
+            boolean openInNewWindow = target == AutocompleteCoordinator.NavigationTarget.NEW_WINDOW;
+
+            cancelAutocompleteRequests();
+
+            AutocompleteMatch suggestionMatch =
+                    mAutocomplete != null ? mAutocomplete.classify(text) : null;
+            if (suggestionMatch == null) return;
+            loadUrlForOmniboxMatch(
+                    0,
+                    suggestionMatch,
+                    suggestionMatch.getUrl(),
+                    eventTime,
+                    openInNewTab,
+                    openInNewWindow);
         }
     }
 
@@ -1892,8 +1935,7 @@ class AutocompleteMediator
         // called the keyboard back after we hid it.
         if (mDelegate.isKeyboardActive()) {
             int suggestionHeight =
-                    mContext.getResources()
-                            .getDimensionPixelSize(R.dimen.omnibox_suggestion_content_height);
+                    mResourceProvider.getDimen(R.dimen.omnibox_suggestion_content_height);
             if (!isInInputSession()) return;
             mAutocomplete.onSuggestionDropdownHeightChanged(newHeight, suggestionHeight);
         }

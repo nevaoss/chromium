@@ -29,6 +29,7 @@
 #include "content/browser/renderer_host/frame_tree_node.h"
 #include "content/browser/renderer_host/local_network_access_util.h"
 #include "content/browser/renderer_host/render_frame_host_impl.h"
+#include "content/browser/security/cpsp/child_process_security_policy_impl.h"
 #include "content/browser/service_worker/service_worker_client.h"
 #include "content/browser/service_worker/service_worker_context_core.h"
 #include "content/browser/service_worker/service_worker_main_resource_handle.h"
@@ -454,8 +455,25 @@ void DedicatedWorkerHost::DidStartScriptLoad(
     return;
   }
 
-  // TODO(crbug.com/41471904): Check if the main script's final response
-  // URL is committable.
+  // The final response URL is derived from data that may have been supplied by
+  // a renderer (e.g., via the URL list of a service worker provided response),
+  // so make sure the worker process is allowed to commit it before adopting it
+  // as this worker's URL.
+  //
+  // Only grant commit permissions if the URL is same-origin with the worker's
+  // expected origin (e.g. for Isolated Web Apps or extensions).
+  if (url::Origin::Create(result->final_response_url)
+          .IsSameOriginWith(worker_storage_key_.origin())) {
+    ChildProcessSecurityPolicyImpl::GetInstance()->GrantCommitURL(
+        worker_process_host_->GetDeprecatedID(), result->final_response_url);
+  }
+  if (!ChildProcessSecurityPolicyImpl::GetInstance()->CanCommitURL(
+          worker_process_host_->GetDeprecatedID(),
+          result->final_response_url)) {
+    ScriptLoadStartFailed(network::URLLoaderCompletionStatus(net::ERR_ABORTED));
+    return;
+  }
+
   final_response_url_ = result->final_response_url;
   service_->NotifyWorkerFinalResponseURLDetermined(token_,
                                                    result->final_response_url);
@@ -497,18 +515,11 @@ void DedicatedWorkerHost::DidStartScriptLoad(
     worker_client_security_state_->is_web_secure_context =
         network::IsUrlPotentiallyTrustworthy(result->final_response_url) &&
         creator_client_security_state_->is_web_secure_context;
-    // Deprecation trial status allowing LNA requests on non-http
-    bool allow_non_secure_local_network_access =
-        ancestor_render_frame_host->policy_container_host() &&
-        ancestor_render_frame_host->policy_container_host()
-            ->policies()
-            .allow_non_secure_local_network_access;
 
     worker_client_security_state_->local_network_access_request_policy =
         DeriveLocalNetworkAccessRequestPolicy(
             worker_client_security_state_->ip_address_space,
             worker_client_security_state_->is_web_secure_context,
-            allow_non_secure_local_network_access,
             LocalNetworkAccessRequestContext::kWorker);
 
     // Check for policy overrides on LNA. For dedicated workers, we apply

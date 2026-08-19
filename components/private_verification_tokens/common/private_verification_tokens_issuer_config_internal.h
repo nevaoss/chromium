@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -19,6 +20,9 @@ namespace private_verification_tokens::internal {
 std::optional<int> GetValidVersion(const base::DictValue& dict);
 
 std::optional<std::vector<uint8_t>> GetDecodedPublicKey(
+    const base::DictValue& dict);
+
+std::optional<std::vector<uint8_t>> GetDecodedPublicKeyProof(
     const base::DictValue& dict);
 
 std::optional<int> GetValidBatchSize(
@@ -40,6 +44,8 @@ std::optional<std::vector<url::Origin>> GetValidRedeemers(
     const base::DictValue& dict,
     std::string_view issuer_etld_plus_one,
     const PrivateVerificationTokensParameters& params);
+
+std::optional<std::string> GetValidDeploymentId(const base::DictValue& dict);
 
 std::optional<IssuerConfig> ParseEntry(const base::DictValue& entry);
 

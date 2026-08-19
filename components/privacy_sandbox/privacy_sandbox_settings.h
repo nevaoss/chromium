@@ -6,7 +6,6 @@
 #define COMPONENTS_PRIVACY_SANDBOX_PRIVACY_SANDBOX_SETTINGS_H_
 
 #include "base/time/time.h"
-#include "components/browsing_topics/common/common_types.h"
 #include "components/keyed_service/core/keyed_service.h"
 
 class GURL;
@@ -84,19 +83,6 @@ class PrivacySandboxSettings : public KeyedService {
     // Whether the current profile is Incognito or not. For Incognito, the
     // privacy sandbox APIs are restricted.
     virtual bool IsIncognitoProfile() const = 0;
-
-    // Whether there is an appropriate level of consent for the Topics API.
-    // When this returns false, access control functions for Topics will
-    // return as not allowed.
-    virtual bool HasAppropriateTopicsConsent() const = 0;
-
-    // Whether the profile is subject to being given notice of restrictions to
-    // the standard set of Privacy Sandbox APIs.
-    virtual bool IsSubjectToM1NoticeRestricted() const = 0;
-
-    // Whether the Privacy Sandbox is partially enabled based on
-    // restrictions.
-    virtual bool IsRestrictedNoticeEnabled() const = 0;
   };
 
   // Returns whether the Topics API is allowed at all. If false, Topics API
@@ -115,13 +101,10 @@ class PrivacySandboxSettings : public KeyedService {
       const GURL& url,
       content::RenderFrameHost* console_frame = nullptr) const = 0;
 
-  // Returns whether |topic| can be either considered as a top topic for the
-  // current epoch, or provided to a website as a previous / current epochs
-  // site assigned topic.
-  virtual bool IsTopicAllowed(const CanonicalTopic& topic) = 0;
-
-  // Sets |topic| to |allowed|. Whether a topic is allowed or not is made
-  // available through IsTopicAllowed().
+  // Sets |topic| to |allowed|.
+  //
+  // NOTE: This function has no observable effect because the Topics API is
+  // deprecated and its underlying data is hidden. This will be removed soon.
   virtual void SetTopicAllowed(const CanonicalTopic& topic, bool allowed) = 0;
 
   // Removes all Topic settings with creation times between |start_time|
@@ -253,16 +236,6 @@ class PrivacySandboxSettings : public KeyedService {
   // Virtual to allow mocking in tests. Unlike IsPrivacySandboxRestricted
   // this method always return the current restriction status.
   virtual bool IsPrivacySandboxCurrentlyUnrestricted() const = 0;
-
-  // Returns whether the privacy sandbox restricted notice should be shown,
-  // based on account characteristics. Forwards to the delegate. Virtual for
-  // mocking in tests.
-  virtual bool IsSubjectToM1NoticeRestricted() const = 0;
-
-  // Returns whether the Privacy Sandbox is partially enabled based on
-  // restrictions. Forwards to the delegate. Virtual for
-  // mocking in tests.
-  virtual bool IsRestrictedNoticeEnabled() const = 0;
 
   // Called when there's a broad cookies clearing action. For example, this
   // should be called on "Clear browsing data", but shouldn't be called on the

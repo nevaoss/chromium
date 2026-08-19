@@ -106,6 +106,15 @@ class ContextualSearchSessionHandle {
     smart_tab_sharing_toggled_since_last_turn_ = toggled;
   }
 
+  const std::vector<lens::LensOverlayRequestId>&
+  sts_toggled_removed_contexts() const {
+    return sts_toggled_removed_contexts_;
+  }
+  void set_sts_toggled_removed_contexts(
+      std::vector<lens::LensOverlayRequestId> contexts) {
+    sts_toggled_removed_contexts_ = std::move(contexts);
+  }
+
   std::optional<lens::LensOverlayInvocationSource> invocation_source() const {
     return invocation_source_;
   }
@@ -279,6 +288,10 @@ class ContextualSearchSessionHandle {
   // confirmation that they are available on the server.
   std::vector<base::UnguessableToken> GetSubmittedContextTokens() const;
 
+  // Returns true if any context tokens were submitted in any query in this
+  // session.
+  bool has_submitted_context() const { return has_submitted_context_; }
+
   // Clears the list of submitted context tokens for this particular instance of
   // the session. This is intended to be invoked when the server has responded
   // that it has received the submitted context.
@@ -357,6 +370,9 @@ class ContextualSearchSessionHandle {
   // the contextual tasks ui.
   std::vector<base::UnguessableToken> submitted_context_tokens_;
 
+  // Whether any context tokens were submitted in a query in this session.
+  bool has_submitted_context_ = false;
+
   // Map of tab session IDs to their latest submitted token and request ID.
   // Tracks active tabs in the session to detect their deletion or removal.
   std::map<SessionID,
@@ -398,6 +414,11 @@ class ContextualSearchSessionHandle {
   // need to clear the context on next query submission.
   // This is reset after the next query submission.
   bool smart_tab_sharing_toggled_since_last_turn_ = false;
+
+  // Request IDs of submitted and uploaded contexts collected when Smart Tab
+  // Sharing was toggled, to be sent to AIM via `removed_contexts` on the next
+  // query submission turn.
+  std::vector<lens::LensOverlayRequestId> sts_toggled_removed_contexts_;
 
   // This needs to be the last member to ensure all outstanding WeakPtrs are
   // invalidated before the rest of the members.

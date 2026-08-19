@@ -238,6 +238,14 @@ enum class GeminiFirstRunType {
 // An optional text prompt to prepopulate the input field.
 @property(nonatomic, copy) NSString* prepopulatedPrompt;
 
+// Whether the signed-in active account does not match the target account
+// specified by the triggering entry point (e.g. App Switcher AI
+// Summarization). Entry points targeting a specific user identity generally
+// compare two identities communicated between applications on startup and set
+// this to YES to inform the user via a snackbar that they are on a different
+// account.
+@property(nonatomic, assign) BOOL isMismatchedAccount;
+
 // Initializes with the given entry point.
 - (instancetype)initWithEntryPoint:(gemini::EntryPoint)entryPoint;
 
@@ -257,9 +265,8 @@ extern const char kURLOnLastInteractionDictKey[];
 
 // Consent row links for the new Gemini First Run.
 extern const char kDataGovernanceManagedLinkURL[];
-extern const char kDataGovernanceStrictLinkURL[];
-extern const char kDataGovernanceNormalLocationLinkURL[];
-extern const char kDataGovernanceNormalChoicesLinkURL[];
+extern const char kActivityLinkURL[];
+extern const char kChoicesLinkURL[];
 extern const char kConnectedServicesLinkURL[];
 
 // Consent row links for the old First Run experience.
@@ -282,9 +289,8 @@ extern const char kWatchLinkURL[];
 
 // Action identifiers for links in the new Gemini First Run consent rows.
 extern NSString* const kGeminiDataGovernanceManagedLinkAction;
-extern NSString* const kGeminiDataGovernanceStrictLinkAction;
-extern NSString* const kGeminiDataGovernanceNormalLocationLinkAction;
-extern NSString* const kGeminiDataGovernanceNormalChoicesLinkAction;
+extern NSString* const kGeminiActivityLinkAction;
+extern NSString* const kGeminiChoicesLinkAction;
 extern NSString* const kGeminiConnectedServicesLinkAction;
 
 // TODO(crbug.com/393204662): Remove these links once the old FRE is removed.

@@ -102,6 +102,7 @@ TabAlertController::TabAlertController(TabInterface& tab)
               &TabAlertController::OnRecentlyAudibleStateChanged,
               base::Unretained(this)));
 
+#if !BUILDFLAG(IS_ANDROID)
   if (auto* actor_ui_tab_controller =
           actor::ui::ActorUiTabController::From(&tab)) {
     actor_tab_indicator_callback_runner_ =
@@ -110,6 +111,7 @@ TabAlertController::TabAlertController(TabInterface& tab)
                 &TabAlertController::OnActorTabIndicatorStateChanged,
                 base::Unretained(this)));
   }
+#endif
 
   glic::GlicTabIndicatorHelper* const glic_tab_indicator_helper =
       glic::GlicTabIndicatorHelper::From(&tab);

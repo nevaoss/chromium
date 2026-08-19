@@ -36,6 +36,8 @@ enum ActuatorUpstreamPayloadType {
   ACTUATOR_UPSTREAM_PAYLOAD_TYPE_UNSPECIFIED = 0;
   // Channel control command, e.g. destroy channel or close session.
   ACTUATOR_UPSTREAM_PAYLOAD_TYPE_CONTROL_COMMAND = 1;
+  // Legacy experimental triggering message.
+  ACTUATOR_UPSTREAM_PAYLOAD_TYPE_EXPERIMENTAL_TRIGGERING = 2;
 }
 
 // Wrapper that pairs a payload with its routing type.
@@ -127,4 +129,9 @@ message WatchSessionsRequest {
     // The sequence number of the last seen downstream message.
     int64 last_seen_sequence_number = 2;
   }
+}
+// Response messages streamed by WatchSessions RPC.
+message WatchSessionsResponse {
+  // The downstream message payload sent from the server to the Chrome client.
+  ActuatorDownstreamMessage actuator_downstream_message = 1;
 }

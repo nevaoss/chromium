@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <ranges>
 #include <utility>
 
 #include "ash/public/cpp/window_properties.h"
@@ -19,6 +20,7 @@
 #include "ash/wm/desks/desk_name_view.h"
 #include "ash/wm/desks/desks_controller.h"
 #include "ash/wm/desks/desks_util.h"
+#include "ash/wm/desks/legacy_window_occlusion_calculator.h"
 #include "ash/wm/float/float_controller.h"
 #include "ash/wm/mru_window_tracker.h"
 #include "ash/wm/overview/overview_utils.h"
@@ -27,7 +29,6 @@
 #include "ash/wm/workspace/backdrop_controller.h"
 #include "ash/wm/workspace/workspace_layout_manager.h"
 #include "ash/wm/workspace_controller.h"
-#include "base/containers/adapters.h"
 #include "base/containers/flat_map.h"
 #include "base/containers/flat_set.h"
 #include "base/memory/raw_ptr.h"
@@ -258,7 +259,7 @@ void MirrorLayerTree(
 
     // Step 2: Populate child layers from `source_layer` with their orders.
     size_t order = 0;
-    for (ui::Layer* it : base::Reversed(source_layer->children())) {
+    for (ui::Layer* it : std::views::reverse(source_layer->children())) {
       while (primary_key_taken.contains(order)) {
         order++;
       }
@@ -437,7 +438,9 @@ DeskPreviewView::DeskPreviewView(
 
 DeskPreviewView::~DeskPreviewView() {
   if (window_occlusion_calculator_) {
-    window_occlusion_calculator_->RemoveObserver(this);
+    static_cast<legacy::WindowOcclusionCalculator*>(
+        window_occlusion_calculator_.get())
+        ->RemoveObserver(this);
   }
 }
 
@@ -472,7 +475,9 @@ void DeskPreviewView::RecreateDeskContentsMirrorLayers() {
 
   // For simplicity, clear occlusion observation state and set it up again.
   if (window_occlusion_calculator_) {
-    window_occlusion_calculator_->RemoveObserver(this);
+    static_cast<legacy::WindowOcclusionCalculator*>(
+        window_occlusion_calculator_.get())
+        ->RemoveObserver(this);
   }
   aura::Window::Windows parent_windows_to_mirror = {desk_container};
   // If there is a floated window that belongs to this desk, since it doesn't
@@ -490,7 +495,9 @@ void DeskPreviewView::RecreateDeskContentsMirrorLayers() {
     force_float_occlusion_tracker_visible_.reset();
   }
   if (window_occlusion_calculator_) {
-    window_occlusion_calculator_->AddObserver(parent_windows_to_mirror, this);
+    static_cast<legacy::WindowOcclusionCalculator*>(
+        window_occlusion_calculator_.get())
+        ->AddObserver(parent_windows_to_mirror, this);
   }
 
   // Mirror the layer tree of the desk container.

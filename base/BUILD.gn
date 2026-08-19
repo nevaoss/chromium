@@ -665,6 +665,8 @@ component("base") {
     "sampling_heap_profiler/lock_free_bloom_filter.h",
     "sampling_heap_profiler/poisson_allocation_sampler.cc",
     "sampling_heap_profiler/poisson_allocation_sampler.h",
+    "sampling_heap_profiler/sampling_heap_churn_profiler.cc",
+    "sampling_heap_profiler/sampling_heap_churn_profiler.h",
     "sampling_heap_profiler/sampling_heap_profiler.cc",
     "sampling_heap_profiler/sampling_heap_profiler.h",
     "scoped_add_feature_flags.cc",
@@ -2377,6 +2379,8 @@ component("base") {
       sources -= [
         "sampling_heap_profiler/poisson_allocation_sampler.cc",
         "sampling_heap_profiler/poisson_allocation_sampler.h",
+        "sampling_heap_profiler/sampling_heap_churn_profiler.cc",
+        "sampling_heap_profiler/sampling_heap_churn_profiler.h",
         "sampling_heap_profiler/sampling_heap_profiler.cc",
         "sampling_heap_profiler/sampling_heap_profiler.h",
       ]
@@ -4089,6 +4093,12 @@ test("base_unittests") {
     "Base64UrlTest.FuzzBase64UrlDecode",
     "Base64UrlTest.FuzzBase64UrlEncode",
     "JSONReaderTest.CanParseAnythingWithoutCrashing",
+    "UTFStringConversionsTest.UTF16ToUTF8FastPathMatchesLegacy",
+    "UTFStringConversionsTest.UTF16ToWideFastPathMatchesLegacy",
+    "UTFStringConversionsTest.UTF8ToUTF16FastPathMatchesLegacy",
+    "UTFStringConversionsTest.UTF8ToWideFastPathMatchesLegacy",
+    "UTFStringConversionsTest.WideToUTF8FastPathMatchesLegacy",
+    "UTFStringConversionsTest.WideToUTF16FastPathMatchesLegacy",
   ]
 
   defines = []
@@ -4131,6 +4141,23 @@ test("base_unittests") {
     # TODO(crbug.com/40158212): Move partition_alloc tests into its repository.
     "allocator/partition_allocator/src/partition_alloc:test_support",
   ]
+
+  # TODO(https://crbug.com/532647976): Add test coverage to ChromeOS and Fuchsia
+  # after fixing linking errors found by
+  # https://ci.chromium.org/ui/p/chrome/builders/try/chromeos-betty-chrome-gtest/80753/overview
+  # (can be fixed by disabling remote linking in `build/config/siso/rust.star`
+  # and by
+  # https://ci.chromium.org/ui/p/chromium/builders/try/fuchsia-x64-cast-receiver-rel/1591660/overview
+  # (not diagnosed yet).
+  if (!is_chromeos && !is_fuchsia) {
+    deps += [ "//build/rust/tests" ]
+  }
+
+  # TODO(https://crbug.com/405379314): This fails to build on some iOS ASAN
+  # builders.
+  if (!is_ios || !is_asan) {
+    deps += [ "//testing/rust_gtest_interop:unittests" ]
+  }
 
   # TODO(crbug.com/40158212): Move partition_alloc tests into its repository.
   #
@@ -4641,6 +4668,7 @@ test("base_unittests") {
   if (use_allocator_shim) {
     sources += [
       "sampling_heap_profiler/poisson_allocation_sampler_unittest.cc",
+      "sampling_heap_profiler/sampling_heap_churn_profiler_unittest.cc",
       "sampling_heap_profiler/sampling_heap_profiler_unittest.cc",
 
       # TODO(crbug.com/40158212): Move partition_alloc tests into its

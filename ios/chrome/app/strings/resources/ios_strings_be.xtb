@@ -33,8 +33,8 @@
 <translation id="108485301461714610">Рэжым AI ў Google Пошуку і падключаныя праграмы</translation>
 <translation id="1085677983426914530">Не ўдалося адкрыць файл "<ph name="FILENAME" />"</translation>
 <translation id="1086486568852410168">Пошук праз Google Аб’ектыў</translation>
+<translation id="1095093219235104018">Выконваць пошук і запаўняць інфармацыю з дапамогай Gemini</translation>
 <translation id="1096992026380844478">Налады сінхранізацыі будуць адноўлены з апошняй рэзервовай копіі. <ph name="BEGIN_LINK" />Якія даныя можна сінхранізаваць<ph name="END_LINK" /></translation>
-<translation id="1097049112094133492">{count,plural, =1{1 пошук уручную прапушчаны}one{# пошук уручную прапушчаны}few{# пошукі ўручную прапушчаны}many{# пошукаў уручную прапушчаны}other{# пошуку ўручную прапушчаны}}</translation>
 <translation id="1097807529207545420">{count,plural, =1{1 пароль імгненна спраўджаны}one{# пароль імгненна спраўджаны}few{# паролі імгненна спраўджаны}many{# пароляў імгненна спраўджаны}other{# пароля імгненна спраўджаны}}</translation>
 <translation id="1103523840287552314">Заўсёды перакладаць з мовы: <ph name="LANGUAGE" /></translation>
 <translation id="1110772719190051587">Выкарыстайце разблакіроўку з дапамогай Face ID</translation>
@@ -184,7 +184,6 @@
 <translation id="1554043146674176775">Выключыць рэжым AI</translation>
 <translation id="1554477036522844996">Новае акно</translation>
 <translation id="1558391695376153246">Закрыць укладкі інкогніта</translation>
-<translation id="1559263013367304065">з моманту, як вы пачалі выкарыстоўваць Google Аб’ектыў</translation>
 <translation id="1560153516220021659">Кнопка згорнутай дадатковай панэлі інструментаў</translation>
 <translation id="1562601408588733317">Кіруйце пошукам і запаўненнем інфармацыі з дапамогай Gemini</translation>
 <translation id="1565371473877914088">Новая ўкладка ў рэжыме інкогніта</translation>
@@ -305,6 +304,7 @@
 <translation id="1909201414196501151">Сайт дададзены і замацаваны</translation>
 <translation id="1911619930368729126">Запампаваць на Google Дыск</translation>
 <translation id="1925706052394657380">Адкрыйце налады <ph name="BEGIN_BOLD" />Default Apps<ph name="END_BOLD" /> (Стандартныя праграмы) у iOS.</translation>
+<translation id="1938871630297275912">{count,plural, =1{Спасылка атрымана}one{Атрымана {count} спасылка}few{Атрыманы {count} спасылкі}many{Атрыманы {count} спасылак}other{Атрыманы {count} спасылкі}}</translation>
 <translation id="1941314575388338491">Каб скапіраваць, націсніце двойчы.</translation>
 <translation id="1943478190258551035">Меню → Налады</translation>
 <translation id="1952728750904661634">Увайсці праз уліковы запіс пад кіраваннем</translation>
@@ -411,6 +411,7 @@
 <translation id="2268044343513325586">Удакладніць</translation>
 <translation id="2271452184061378400">Тут захоўваюцца групы ўкладак</translation>
 <translation id="2273327106802955778">Меню "Дадаткова"</translation>
+<translation id="2274179746480077483">Аўтаматычна запаўняць інфармацыю з такіх праграм, як Gmail і Фота. Функцыя працуе на аснове персаналізаванага інтэлекту.</translation>
 <translation id="2287614783861766820">{count,plural, =1{Гэты адрас будзе выдалены з прылады.}one{Гэтыя адрасы будуць выдалены з прылады.}few{Гэтыя адрасы будуць выдалены з прылады.}many{Гэтыя адрасы будуць выдалены з прылады.}other{Гэтыя адрасы будуць выдалены з прылады.}}</translation>
 <translation id="2295236662082735391">Каб змяніць відарыс з дапамогай Gemini, націсніце і ўтрымлівайце яго на вэб-старонцы</translation>
 <translation id="2296360194694387941">Выкарыстанне Gemini ў Chrome: завершана</translation>
@@ -724,6 +725,7 @@
 <translation id="340669334496430859">Час апошняга змянення</translation>
 <translation id="3409785640040772790">Карты</translation>
 <translation id="3416023309465857378">25 кастрычніка 2023 года</translation>
+<translation id="3419787211763835342">Удасканаленне палепшанага аўтазапаўнення</translation>
 <translation id="3426715535827854458">Схаваць панэль інструментаў</translation>
 <translation id="3435738964857648380">Бяспека</translation>
 <translation id="3441673211568148613">Захоўвайце прыватнасць пры праглядзе інтэрнэту</translation>
@@ -1007,6 +1009,7 @@
 <translation id="4378154925671717803">Тэлефон</translation>
 <translation id="4380677808580146413">Выбраць</translation>
 <translation id="4389019817280890563">Каб змяніць мову, націсніце.</translation>
+<translation id="4390649422783033958">Вы ўвайшлі як <ph name="USER_NAME" />. <ph name="USER_EMAIL" /> (падпіска Google). Адкрыць меню ўліковага запісу.</translation>
 <translation id="4393294364304621138">{COUNT,plural, =1{Праз 1 дзень}one{Праз {COUNT} дзень}few{Праз {COUNT} дні}many{Праз {COUNT} дзён}other{Праз {COUNT} дня}}</translation>
 <translation id="4402672425188312225">{COUNT,plural, =1{1 укладка}one{# укладка}few{# укладкі}many{# укладак}other{# укладкі}}</translation>
 <translation id="4404790787924017676">Атрымлівайце абвесткі пра зніжэнне цаны на тавары, якія вы адсочваеце</translation>
@@ -1364,6 +1367,7 @@
 <translation id="5559567453458728487">Пераўтвараць адзінкі вымярэння, знойдзеныя ў інтэрнэце</translation>
 <translation id="5560088892362098740">Заканчэнне тэрміну дзеяння</translation>
 <translation id="556042886152191864">Кнопка</translation>
+<translation id="5563910365456880646">з моманту, калі вы прайшлі навучанне "Пошук па фота з дапамогай Google Аб’ектыва"</translation>
 <translation id="5565871407246142825">Крэдытныя карткі</translation>
 <translation id="5567439033041178034">ДАВЕДАЦЦА БОЛЬШ</translation>
 <translation id="5578795271662203820">Шукаць гэты відарыс праз <ph name="SEARCH_ENGINE" /></translation>
@@ -1576,6 +1580,7 @@
 <translation id="6232329973559504466">Пошук у рэжыме інкогніта</translation>
 <translation id="6234310016144827337">Праверце падключэнне і паўтарыце спробу</translation>
 <translation id="6236952928980352967">Аднавіць папярэджанне</translation>
+<translation id="623755660902014047">Рэжым чытання</translation>
 <translation id="6240553182907836376">Змяніце даныя пасведчання асобы</translation>
 <translation id="6240601837375010619">Захавайце пашпартныя даныя</translation>
 <translation id="6241132809279377987">Атрымайце доступ да большай колькасці функцый iPhone з дапамогай праграм Google</translation>
@@ -1813,6 +1818,7 @@
 <translation id="6930162026494574854">Скінуць налады перакладу</translation>
 <translation id="6930799952781667037">Націсніце, каб пераключыцца на гэту мову.</translation>
 <translation id="6932739965694346873"><ph name="USER_NAME" />: <ph name="EMAIL" />. <ph name="MANAGED_STATUS" />.</translation>
+<translation id="6937083164784433305">{count,plural, =1{Вы выкарысталі 1 фота для пошуку}one{Вы выкарысталі # фота для пошуку}few{Вы выкарысталі # фота для пошуку}many{Вы выкарысталі # фота для пошуку}other{Вы выкарысталі # фота для пошуку}}</translation>
 <translation id="693761253105515415">Задайце код доступу</translation>
 <translation id="6945221475159498467">Выбраць</translation>
 <translation id="6946722113367118030">У задуменні</translation>
@@ -2018,6 +2024,7 @@
 <translation id="7662316065255305764">Звесткі пра сайт</translation>
 <translation id="7665369617277396874">Дадаць уліковы запіс</translation>
 <translation id="7666861622396822790">Гэтай функцыяй можна кіраваць у <ph name="BEGIN_LINK" />наладах змесціва<ph name="END_LINK" />.</translation>
+<translation id="7669448795744969014">Вы ўвайшлі як <ph name="USER_EMAIL" /> (падпіска Google). Адкрыць меню ўліковага запісу.</translation>
 <translation id="7669493687462784703">Спампаваць профіль канфігурацыі з вэб-сайта <ph name="WEBSITE" />?</translation>
 <translation id="7673346542062368520">Каб праглядаць сайты ў рэжыме інкогніта, правядзіце пальцам па экране ўлева.</translation>
 <translation id="7679915578945954324">Адрасы сайтаў скапіраваны</translation>
@@ -2110,6 +2117,7 @@
 <translation id="7972837668077967426">Палатно</translation>
 <translation id="7975036700432177008">Паспрабаваць</translation>
 <translation id="797588153137233716">Меню → Гісторыя → Выдаліць даныя пра работу ў браўзеры</translation>
+<translation id="7977029776654598145">Калі функцыя выкарыстоўваецца</translation>
 <translation id="7977451675950311423">Папярэджвае, калі вы выкарыстоўваеце пароль, які быў раскрыты ў выніку ўцечкі даных.</translation>
 <translation id="797824194429476746">Укладкі застануцца адкрытымі на гэтай прыладзе, але група будзе выдалена назаўсёды.</translation>
 <translation id="7982789257301363584">Сетка</translation>
@@ -2521,6 +2529,7 @@
 <translation id="954667170699278022">Спіс на прагляд</translation>
 <translation id="956066588046842680">Палітыка вашай арганізацыі забараняе імпарт гэтых даных.</translation>
 <translation id="956218893102219091">Каб атрымліваць найбольш дакладныя вынікі ад Gemini, выкарыстоўвайце дакладнае месцазнаходжанне замест прыблізнага месцазнаходжання на аснове вашага IP-адраса. <ph name="BEGIN_LINK" />Даведацца больш.<ph name="END_LINK" /></translation>
+<translation id="960590623979248167">Паказваць гіперспасылкі</translation>
 <translation id="961856697154696964">Выдаліць даныя пра работу ў браўзеры</translation>
 <translation id="963102227019621224">Дзеянні ў інтэрнэце і праграмах</translation>
 <translation id="965259330007686240">Стварыць відарыс з дапамогай Gemini</translation>

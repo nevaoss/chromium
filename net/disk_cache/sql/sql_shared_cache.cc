@@ -28,12 +28,14 @@ SqlSharedCache::SqlSharedCache(
     const base::FilePath& directory,
     base::RepeatingCallback<void(SqlSharedCache&)> on_unreferenced_callback,
     scoped_refptr<base::SequencedTaskRunner> db_task_runner,
+    scoped_refptr<SqlReadCacheMemoryMonitor> read_cache_memory_monitor,
     scoped_refptr<BackendCleanupTracker> cleanup_tracker)
     : nik_string_(std::move(nik_string)),
       store_(store),
       directory_(directory),
       on_unreferenced_callback_(std::move(on_unreferenced_callback)),
       db_task_runner_(std::move(db_task_runner)),
+      read_cache_memory_monitor_(std::move(read_cache_memory_monitor)),
       cleanup_tracker_(std::move(cleanup_tracker)) {}
 
 SqlSharedCache::~SqlSharedCache() {
@@ -63,7 +65,7 @@ void SqlSharedCache::InitIsolatedDatabase(
   shared_cache_db_id_ = shared_cache_db_id;
   isolated_database_ = SqlTrackedSequenceBound<SqlSharedCacheIsolatedDatabase>(
       db_task_runner_, store_->GetAsyncTaskManager(), nik_string_, directory_,
-      shared_cache_db_id);
+      shared_cache_db_id, db_task_runner_, read_cache_memory_monitor_);
   isolated_database_.AsyncCall(&SqlSharedCacheIsolatedDatabase::Init)
       .Then(base::BindOnce(
           [](base::OnceCallback<void(bool)> callback,
@@ -92,16 +94,20 @@ void SqlSharedCache::CopyEntries(
     base::queue<SqlPersistentStore::SharedCacheEligibleEntry> entries,
     scoped_refptr<base::RefCountedData<std::atomic_bool>> abort_flag,
     base::OnceCallback<void(
-        base::queue<SqlPersistentStore::SharedCacheEligibleEntry>)> callback) {
+        base::queue<SqlPersistentStore::SharedCacheEligibleEntry>)> callback,
+    base::RepeatingCallback<void(const CacheEntryKey&)>
+        on_entry_copied_callback) {
   CHECK(pending_copy_entries_.empty());
   CHECK(!copy_callback_);
   CHECK(!current_copy_row_id_);
+  CHECK(!on_entry_copied_callback_);
   CHECK(!entries.empty());
   CHECK(shared_cache_db_id_);
   CHECK(isolated_database_);
   pending_copy_entries_ = std::move(entries);
   copy_abort_flag_ = std::move(abort_flag);
   copy_callback_ = std::move(callback);
+  on_entry_copied_callback_ = std::move(on_entry_copied_callback);
   CopyNextEntry();
 }
 
@@ -121,14 +127,12 @@ void SqlSharedCache::CopyNextEntry() {
 
 void SqlSharedCache::OnEntryOpenedForSharedCache(
     SqlPersistentStore::SharedCacheEligibleEntry entry,
-    base::expected<std::optional<SqlPersistentStore::EntryInfo>,
-                   SqlPersistentStore::Error> result) {
-  if (!result.has_value() || !result.value().has_value() ||
-      !result.value()->head) {
+    SqlPersistentStore::EntryInfoOrError result) {
+  if (!result.has_value() || !result->head) {
     OnCopyEntryFailed();
     return;
   }
-  auto info = std::move(result.value().value());
+  auto info = std::move(*result);
   if (info.body_end >
       net::features::kSqlDiskCacheMaxSharedCacheCopyEntrySize.Get()) {
     OnCopyEntryFailed();
@@ -279,23 +283,26 @@ void SqlSharedCache::MoveBlobsToSharedCache(
   store_->MoveBlobsToSharedCache(
       key, res_id, {*shared_cache_db_id_, shared_cache_row_id},
       base::BindOnce(
-          [](base::WeakPtr<SqlSharedCache> self,
+          [](base::WeakPtr<SqlSharedCache> self, CacheEntryKey key,
              SqlPersistentStore::Error error) {
             if (self) {
               if (error == SqlPersistentStore::Error::kOk) {
-                self->OnCopyEntryComplete();
+                self->OnCopyEntryComplete(key);
               } else {
                 self->OnCopyEntryFailed();
               }
             }
           },
-          weak_factory_.GetWeakPtr()));
+          weak_factory_.GetWeakPtr(), key));
 }
 
-void SqlSharedCache::OnCopyEntryComplete() {
+void SqlSharedCache::OnCopyEntryComplete(const CacheEntryKey& key) {
   // Resource redirection via SqlPersistentStore::MoveBlobsToSharedCache and
   // Mojo client notifications will be hooked up in a follow-up CL.
   current_copy_row_id_ = std::nullopt;
+  if (on_entry_copied_callback_) {
+    on_entry_copied_callback_.Run(key);
+  }
   CopyNextEntry();
 }
 
@@ -311,6 +318,7 @@ void SqlSharedCache::OnCopyEntryFailed() {
 void SqlSharedCache::FinishCopy() {
   CHECK(copy_callback_);
   CHECK(!current_copy_row_id_);
+  on_entry_copied_callback_.Reset();
   auto unprocessed_entries = std::move(pending_copy_entries_);
   CHECK(pending_copy_entries_.empty());
   copy_abort_flag_ = nullptr;
@@ -331,6 +339,66 @@ void SqlSharedCache::DeleteEntries(
   }
   isolated_database_.AsyncCall(&SqlSharedCacheIsolatedDatabase::DeleteEntries)
       .WithArgs(shared_cache_row_ids)
+      .Then(std::move(callback));
+}
+
+void SqlSharedCache::Read(
+    const CacheEntryKey& entry_key,
+    SqlSharedCacheRowId shared_cache_row_id,
+    int body_size,
+    int64_t offset,
+    scoped_refptr<net::IOBuffer> buffer,
+    SqlPersistentStore::ReadResultOrErrorCallback callback) {
+  if (!isolated_database_) {
+    std::move(callback).Run(
+        base::unexpected(SqlPersistentStore::Error::kNotFound));
+    return;
+  }
+  if (offset > std::numeric_limits<int>::max()) {
+    std::move(callback).Run(
+        base::unexpected(SqlPersistentStore::Error::kFailedToExecute));
+    return;
+  }
+  int offset_int = static_cast<int>(offset);
+  isolated_database_.AsyncCall(&SqlSharedCacheIsolatedDatabase::Read)
+      .WithArgs(entry_key, shared_cache_row_id, body_size, offset_int, buffer)
+      .Then(base::BindOnce(&SqlSharedCache::OnIsolatedDatabaseRead,
+                           weak_factory_.GetWeakPtr(), std::move(callback)));
+}
+
+void SqlSharedCache::OnIsolatedDatabaseRead(
+    SqlPersistentStore::ReadResultOrErrorCallback callback,
+    SqlSharedCacheIsolatedDatabase::ReadResultOrError result) {
+  if (result.has_value()) {
+    std::move(callback).Run(result.value());
+  } else {
+    SqlPersistentStore::Error store_error;
+    switch (result.error()) {
+      case SqlSharedCacheIsolatedDatabase::Error::kEntryNotFound:
+        store_error = SqlPersistentStore::Error::kNotFound;
+        break;
+      default:
+        store_error = SqlPersistentStore::Error::kFailedToExecute;
+        break;
+    }
+    std::move(callback).Run(base::unexpected(store_error));
+  }
+}
+
+void SqlSharedCache::GetBlobHandle(
+    const CacheEntryKey& entry_key,
+    SqlSharedCacheRowId shared_cache_row_id,
+    int body_size,
+    base::OnceCallback<
+        void(base::expected<scoped_refptr<SqlSharedCacheBlobHandle>,
+                            SqlSharedCacheIsolatedDatabase::Error>)> callback) {
+  if (!isolated_database_) {
+    std::move(callback).Run(base::unexpected(
+        SqlSharedCacheIsolatedDatabase::Error::kIsolatedDatabaseNotAvailable));
+    return;
+  }
+  isolated_database_.AsyncCall(&SqlSharedCacheIsolatedDatabase::GetBlobHandle)
+      .WithArgs(entry_key, shared_cache_row_id, body_size)
       .Then(std::move(callback));
 }
 

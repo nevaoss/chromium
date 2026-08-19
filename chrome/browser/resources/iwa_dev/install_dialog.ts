@@ -4,6 +4,7 @@
 
 import './install_dev_proxy_tab.js';
 import './install_local_bundle_tab.js';
+import './install_update_manifest_tab.js';
 import '//resources/cr_elements/cr_button/cr_button.js';
 import '//resources/cr_elements/cr_dialog/cr_dialog.js';
 import '//resources/cr_elements/cr_tabs/cr_tabs.js';
@@ -119,6 +120,7 @@ export class IwaDevInstallDialogElement extends CrLitElement {
 
   protected onTabValidChanged_(e: CustomEvent<{isValid: boolean}>) {
     this.isCurrentTabValid_ = e.detail.isValid;
+    this.installationError_ = '';
   }
 }
 

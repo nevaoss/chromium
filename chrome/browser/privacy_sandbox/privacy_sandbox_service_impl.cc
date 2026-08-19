@@ -12,8 +12,6 @@
 #include "base/metrics/histogram_functions.h"
 #include "base/strings/string_util.h"
 #include "base/time/time.h"
-#include "chrome/browser/privacy_sandbox/privacy_sandbox_countries.h"
-#include "chrome/browser/privacy_sandbox/privacy_sandbox_notice_confirmation.h"
 #include "chrome/browser/privacy_sandbox/profile_bucket_metrics.h"
 #include "chrome/browser/profiles/profile.h"
 #include "components/content_settings/core/browser/cookie_settings.h"
@@ -121,8 +119,7 @@ PrivacySandboxServiceImpl::PrivacySandboxServiceImpl(
     profile_metrics::BrowserProfileType profile_type,
     content::BrowsingDataRemover* browsing_data_remover,
     HostContentSettingsMap* host_content_settings_map,
-    first_party_sets::FirstPartySetsPolicyService* first_party_sets_service,
-    PrivacySandboxCountries* privacy_sandbox_countries)
+    first_party_sets::FirstPartySetsPolicyService* first_party_sets_service)
     : profile_(profile),
       privacy_sandbox_settings_(privacy_sandbox_settings),
       cookie_settings_(cookie_settings),
@@ -130,35 +127,12 @@ PrivacySandboxServiceImpl::PrivacySandboxServiceImpl(
       profile_type_(profile_type),
       browsing_data_remover_(browsing_data_remover),
       host_content_settings_map_(host_content_settings_map),
-      first_party_sets_policy_service_(first_party_sets_service),
-      privacy_sandbox_countries_(privacy_sandbox_countries) {
+      first_party_sets_policy_service_(first_party_sets_service) {
   DCHECK(privacy_sandbox_settings_);
   DCHECK(pref_service_);
   DCHECK(cookie_settings_);
   // Register observers for the Privacy Sandbox preferences.
   user_prefs_registrar_.Init(pref_service_);
-
-  // If the Sandbox is currently restricted, disable it and reset any consent
-  // information. The user must manually enable the sandbox if they stop being
-  // restricted.
-  if (IsPrivacySandboxRestricted()) {
-    // Disable M1 prefs. Measurement pref should not be reset when restricted
-    // notice feature is enabled.
-    pref_service_->SetBoolean(prefs::kPrivacySandboxM1TopicsEnabled, false);
-    pref_service_->SetBoolean(prefs::kPrivacySandboxM1FledgeEnabled, false);
-    if (!IsRestrictedNoticeRequired()) {
-      pref_service_->SetBoolean(prefs::kPrivacySandboxM1AdMeasurementEnabled,
-                                false);
-    }
-
-    // Clear any recorded consent information.
-    pref_service_->ClearPref(prefs::kPrivacySandboxTopicsConsentGiven);
-    pref_service_->ClearPref(prefs::kPrivacySandboxTopicsConsentLastUpdateTime);
-    pref_service_->ClearPref(
-        prefs::kPrivacySandboxTopicsConsentLastUpdateReason);
-    pref_service_->ClearPref(
-        prefs::kPrivacySandboxTopicsConsentTextAtLastUpdate);
-  }
 
   // Clears the Topics, Fledge, and Measurement Privacy Sandbox API Prefs, if
   // the PrivacySandboxAdPrivacyUxDeprecation feature is enabled.
@@ -176,7 +150,6 @@ PrivacySandboxServiceImpl::~PrivacySandboxServiceImpl() = default;
 
 void PrivacySandboxServiceImpl::Shutdown() {
   user_prefs_registrar_.RemoveAll();
-  privacy_sandbox_countries_ = nullptr;
   first_party_sets_policy_service_ = nullptr;
   host_content_settings_map_ = nullptr;
   browsing_data_remover_ = nullptr;
@@ -189,14 +162,6 @@ void PrivacySandboxServiceImpl::Shutdown() {
 void PrivacySandboxServiceImpl::ForceChromeBuildForTests(
     bool force_chrome_build) {
   force_chrome_build_for_tests_ = force_chrome_build;
-}
-
-bool PrivacySandboxServiceImpl::IsPrivacySandboxRestricted() {
-  return privacy_sandbox_settings_->IsPrivacySandboxRestricted();
-}
-
-bool PrivacySandboxServiceImpl::IsRestrictedNoticeEnabled() {
-  return privacy_sandbox_settings_->IsRestrictedNoticeEnabled();
 }
 
 void PrivacySandboxServiceImpl::SetRelatedWebsiteSetsDataAccessEnabled(
@@ -289,15 +254,6 @@ void PrivacySandboxServiceImpl::LogPrivacySandboxState() {
   RecordAdMeasurementEnabledHistograms(profile_, ad_measurement_enabled);
 }
 
-PrivacySandboxCountries*
-PrivacySandboxServiceImpl::GetPrivacySandboxCountries() {
-  return privacy_sandbox_countries_;
-}
-
-bool PrivacySandboxServiceImpl::ShouldUsePrivacyPolicyChinaDomain() {
-  return GetPrivacySandboxCountries()->IsLatestCountryChina();
-}
-
 void PrivacySandboxServiceImpl::MaybeInitializeRelatedWebsiteSetsPref() {
   // If initialization has already run, it is not required.
   if (pref_service_->GetBoolean(
@@ -322,17 +278,4 @@ void PrivacySandboxServiceImpl::MaybeInitializeRelatedWebsiteSetsPref() {
       true);
 }
 
-
-bool PrivacySandboxServiceImpl::IsConsentRequired() {
-  return privacy_sandbox::IsConsentRequired(privacy_sandbox_countries_);
-}
-
-bool PrivacySandboxServiceImpl::IsNoticeRequired() {
-  return privacy_sandbox::IsNoticeRequired(privacy_sandbox_countries_);
-}
-
-bool PrivacySandboxServiceImpl::IsRestrictedNoticeRequired() {
-  return privacy_sandbox::IsRestrictedNoticeRequired(
-      privacy_sandbox_countries_);
-}
 

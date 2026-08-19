@@ -4505,7 +4505,7 @@ Called by update_autofill_enums.py.-->
   <int value="16" label="Compose delayed proactive nudge"/>
   <int value="17" label="Password manager processed focused field"/>
   <int value="18" label="Autofill AI"/>
-  <int value="19" label="Plus address update in browser process"/>
+  <int value="19" label="(Obsolete) Plus address update in browser process"/>
   <int value="20" label="Proactive password recovery"/>
   <int value="21" label="Glic"/>
   <int value="22" label="AtMemory trigger string"/>
@@ -5666,6 +5666,16 @@ Called by update_autofill_enums.py.-->
   <int value="2" label="Not Phishing"/>
 </enum>
 
+<!-- LINT.IfChange(OtpFillingSafeBrowsingCheckResult) -->
+
+<enum name="OtpFillingSafeBrowsingCheckResult">
+  <int value="0" label="Safe"/>
+  <int value="1" label="Unsafe"/>
+  <int value="2" label="Timeout"/>
+</enum>
+
+<!-- LINT.ThenChange(//chrome/browser/autofill/otp_filling_safe_browsing_checker_client.h:OtpFillingSafeBrowsingCheckResult) -->
+
 <!-- LINT.IfChange(PayLaterTabsFormEvent) -->
 
 <enum name="PayLaterTabsFormEvent">
@@ -6018,7 +6028,7 @@ Called by update_autofill_enums.py.-->
   <int value="44" label="Webauthn sign-in with another device"/>
   <int value="45" label="Title"/>
   <int value="46" label="Separator"/>
-  <int value="47" label="Undo or clear"/>
+  <int value="47" label="Undo"/>
   <int value="48" label="Mixed form message"/>
   <int value="49" label="Devtools test addresses"/>
   <int value="50" label="Devtools test address entry"/>

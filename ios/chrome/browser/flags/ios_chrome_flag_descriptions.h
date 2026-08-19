@@ -52,14 +52,6 @@ inline constexpr char kAiAvatarRingIosName[] = "AiAvatarRing";
 inline constexpr char kAiAvatarRingIosDescription[] =
     "Display a ring around the avatar if the primary account has a AI Tier";
 
-inline constexpr char kAimCobrowseHeaderName[] = "AimCobrowseHeader";
-inline constexpr char kAimCobrowseHeaderDescription[] =
-    "Changes the design of the AIM cobrowse header.";
-
-inline constexpr char kAimCobrowseName[] = "AimCobrowse";
-inline constexpr char kAimCobrowseDescription[] =
-    "Enables the AimCobrowse feature.";
-
 inline constexpr char kAimUrlNavigationFetchEnabledName[] =
     "AimUrlNavigationFetchEnabled";
 inline constexpr char kAimUrlNavigationFetchEnabledDescription[] =
@@ -405,6 +397,11 @@ inline constexpr char kComposeboxAdditionalAdvancedToolsName[] =
 inline constexpr char kComposeboxAdditionalAdvancedToolsDescription[] =
     "When enabled, the additional tools in the input plate are shown, such as "
     "canvas and the model picker";
+
+inline constexpr char kComposeboxAimRichAPCExtractionName[] =
+    "Composebox AIM Rich APC Extraction";
+inline constexpr char kComposeboxAimRichAPCExtractionDescription[] =
+    "Enables rich APC (v2) extraction when attaching tabs in Composebox (AIM).";
 
 inline constexpr char kComposeboxAttachmentsTypedStateName[] =
     "Enable contextual suggestions for typed state";
@@ -1594,6 +1591,12 @@ inline constexpr char kOmniboxOnDeviceTailSuggestionsDescription[] =
     "Google tail non personalized search suggestions provided by a compact on "
     "device model.";
 
+inline constexpr char kOmniboxPastePromoExperimentName[] =
+    "Omnibox Paste Flow Default Browser Promo Experiment";
+inline constexpr char kOmniboxPastePromoExperimentDescription[] =
+    "Enables non-modal default browser promo experiment arms for Omnibox "
+    "navigation.";
+
 inline constexpr char kOmniboxSuggestionAnswerMigrationName[] =
     "Omnibox suggestion answer migration";
 inline constexpr char kOmniboxSuggestionAnswerMigrationDescription[] =
@@ -1867,22 +1870,6 @@ inline constexpr char kSupervisedUserEmitLogRecordSeparatelyDescription[] =
     "Emit supervised user log record separately for Family Link and device "
     "parental controls users (no user-visible effect).";
 
-inline constexpr char
-    kSupervisedUserMergeDeviceParentalControlsAndFamilyLinkPrefsName[] =
-        "Merge device parental controls and Family Link prefs";
-inline constexpr char
-    kSupervisedUserMergeDeviceParentalControlsAndFamilyLinkPrefsDescription[] =
-        "Merges non-web filtering device parental controls settings with "
-        "Family Link settings in the SupervisedUserPrefStore (no user-visible "
-        "effect).";
-
-inline constexpr char kSupervisedUserUseUrlFilteringServiceName[] =
-    "Use URL filtering service";
-inline constexpr char kSupervisedUserUseUrlFilteringServiceDescription[] =
-    "Use the SupervisedUserUrlFilteringService to get URL filtering settings "
-    "directly from supervision services instead of using PrefService (no "
-    "user-visible effect).";
-
 inline constexpr char kSupportGoogleOneDeepLinkName[] =
     "Support Google One Deep Link";
 inline constexpr char kSupportGoogleOneDeepLinkDescription[] =
@@ -2026,6 +2013,11 @@ inline constexpr char kWalletServiceUseSandboxName[] =
     "Use Google Payments sandbox";
 inline constexpr char kWalletServiceUseSandboxDescription[] =
     "Uses the sandbox service for Google Payments API calls.";
+
+inline constexpr char kWebFrameTreeName[] = "WebFrame Tree Structure";
+inline constexpr char kWebFrameTreeDescription[] =
+    "Enables building a tree structure of WebFrames using isolated world "
+    "messaging.";
 
 inline constexpr char kWelcomeBackName[] = "Enable Welcome Back screen";
 inline constexpr char kWelcomeBackDescription[] =

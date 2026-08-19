@@ -10,6 +10,7 @@ import org.jni_zero.CalledByNative;
 import org.jni_zero.JNINamespace;
 import org.jni_zero.NativeMethods;
 
+import org.chromium.base.ThreadUtils;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 
@@ -262,9 +263,14 @@ public class AccessibilityState {
         return sDelegate;
     }
 
-    /** Not thread safe. */
+    /** Should be called on UI thread. */
     public static void addListener(Listener listener) {
+        assert ThreadUtils.runningOnUiThread();
         sListeners.add(listener);
+    }
+
+    public static Set<Listener> getListeners() {
+        return sListeners;
     }
 
     public static boolean isComplexUserInteractionServiceEnabled() {

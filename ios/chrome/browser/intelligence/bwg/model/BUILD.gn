@@ -30,8 +30,6 @@ source_set("model") {
     "gemini_tab_picker_delegate.h",
     "gemini_tab_picker_handler.h",
     "gemini_tab_picker_handler.mm",
-    "gemini_view_state_change_handler.h",
-    "gemini_view_state_change_handler.mm",
     "gemini_view_state_delegate.h",
   ]
   deps = [
@@ -50,7 +48,6 @@ source_set("model") {
     "//ios/chrome/browser/intelligence/bwg/utils:constants",
     "//ios/chrome/browser/intelligence/bwg/utils:prefs",
     "//ios/chrome/browser/intelligence/features",
-    "//ios/chrome/browser/shared/model/browser",
     "//ios/chrome/browser/shared/model/prefs:pref_names",
     "//ios/chrome/browser/shared/model/profile",
     "//ios/chrome/browser/shared/model/web_state_list",
@@ -58,8 +55,10 @@ source_set("model") {
     "//ios/chrome/browser/shared/public/commands",
     "//ios/chrome/browser/shared/public/snackbar",
     "//ios/chrome/browser/shared/ui/util",
+    "//ios/chrome/browser/snackbar/ui_bundled/ui",
     "//ios/chrome/browser/tab_picker/public",
     "//ios/chrome/browser/url_loading/model",
+    "//ios/chrome/common/ui/util",
     "//ios/public/provider/chrome/browser/bwg:gemini_api",
     "//ios/web/public",
   ]
@@ -372,7 +371,6 @@ source_set("unit_tests") {
     "gemini_suggestion_handler_unittest.mm",
     "gemini_tab_helper_unittest.mm",
     "gemini_tab_picker_handler_unittest.mm",
-    "gemini_view_state_change_handler_unittest.mm",
   ]
   deps = [
     ":browser_agent",

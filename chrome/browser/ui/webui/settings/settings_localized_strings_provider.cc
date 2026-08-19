@@ -114,6 +114,7 @@
 #include "components/sync/service/sync_service.h"
 #include "components/sync/service/sync_service_utils.h"
 #include "components/sync/service/sync_user_settings.h"
+#include "components/translate/core/common/translate_features.h"
 #include "components/wallet/core/browser/walletable_permission_utils.h"
 #include "components/wallet/core/common/wallet_features.h"
 #include "components/zoom/page_zoom_constants.h"
@@ -1435,8 +1436,6 @@ void AddLanguagesStrings(content::WebUIDataSource* html_source,
 #endif
       {"offerToEnableTranslate",
        IDS_SETTINGS_LANGUAGES_OFFER_TO_ENABLE_TRANSLATE},
-      {"offerToEnableTranslateSublabel",
-       IDS_SETTINGS_LANGUAGES_OFFER_TO_ENABLE_TRANSLATE_SUBLABEL},
       {"noLanguagesAdded", IDS_SETTINGS_LANGUAGES_NO_LANGUAGES_ADDED},
       {"addLanguageAriaLabel", IDS_SETTINGS_LANGUAGES_ADD_ARIA_LABEL},
       {"removeAutomaticLanguageAriaLabel",
@@ -1496,6 +1495,13 @@ void AddLanguagesStrings(content::WebUIDataSource* html_source,
 #endif
   };
   html_source->AddLocalizedStrings(kLocalizedStrings);
+#if !BUILDFLAG(IS_CHROMEOS)
+  html_source->AddLocalizedString(
+      "offerToEnableTranslateSublabel",
+      base::FeatureList::IsEnabled(translate::kEnableTranslatePdf)
+          ? IDS_SETTINGS_LANGUAGES_OFFER_TO_ENABLE_TRANSLATE_SUBLABEL_WITH_PDF
+          : IDS_SETTINGS_LANGUAGES_OFFER_TO_ENABLE_TRANSLATE_SUBLABEL);
+#endif  // !BUILDFLAG(IS_CHROMEOS)
 #if BUILDFLAG(IS_CHROMEOS)
   html_source->AddString("osSettingsLanguagesPageUrl",
                          chromeos::settings::GetOSSettingsUrl(
@@ -1803,7 +1809,6 @@ void AddAutofillStrings(content::WebUIDataSource* html_source,
       {"autofillAiAuthenticationToggleSubtitle",
        IDS_SETTINGS_AUTOFILL_AI_AUTHENTICATION_TOGGLE_SUBTITLE},
       {"autofillAiManageYourInfo", IDS_AUTOFILL_MANAGE_YOUR_INFO_LINK},
-      {"autofillAiToggleSubLabel", IDS_SETTINGS_AUTOFILL_AI_TOGGLE_SUB_LABEL},
       {"suggestionsFromGeminiQualityLoggingTitle",
        IDS_SETTINGS_SUGGESTIONS_FROM_GEMINI_QUALITY_LOGGING_TITLE},
       {"suggestionsFromGeminiQualityLoggingSubtitle",
@@ -1824,10 +1829,7 @@ void AddAutofillStrings(content::WebUIDataSource* html_source,
        IDS_SETTINGS_AUTOFILL_AI_WHEN_ON_CAN_FILL_DIFFICULT_FIELDS},
       {"autofillAiWhenOnUseToFill",
        IDS_SETTINGS_AUTOFILL_AI_WHEN_ON_USE_TO_FILL},
-      {"autofillAiToConsiderDataUsage",
-       IDS_SETTINGS_AUTOFILL_AI_TO_CONSIDER_DATA_USAGE},
-      {"autofillAiEntityInstancesHeader",
-       IDS_SETTINGS_AUTOFILL_AI_ENTITY_INSTANCES_HEADER},
+
       {"autofillAiEntityInstancesNone",
        IDS_SETTINGS_AUTOFILL_AI_ENTITY_INSTANCES_NONE},
       {"autofillAiMoreActionsForEntityInstance",
@@ -2002,6 +2004,16 @@ void AddAutofillStrings(content::WebUIDataSource* html_source,
           autofill::features::kAutofillAiOnlineModelToggleNewTitle)
           ? IDS_SETTINGS_AUTOFILL_AI_PAGE_TITLE_V2
           : IDS_SETTINGS_AUTOFILL_AI_PAGE_TITLE);
+  html_source->AddLocalizedString(
+      "autofillAiToggleSubLabel",
+      base::FeatureList::IsEnabled(autofill::features::kAutofillAiUsePrivateAi)
+          ? IDS_SETTINGS_AUTOFILL_AI_TOGGLE_SUB_LABEL_V2
+          : IDS_SETTINGS_AUTOFILL_AI_TOGGLE_SUB_LABEL);
+  html_source->AddLocalizedString(
+      "autofillAiToConsiderDataUsage",
+      base::FeatureList::IsEnabled(autofill::features::kAutofillAiUsePrivateAi)
+          ? IDS_SETTINGS_AUTOFILL_AI_TO_CONSIDER_DATA_USAGE_V2
+          : IDS_SETTINGS_AUTOFILL_AI_TO_CONSIDER_DATA_USAGE);
 
   html_source->AddBoolean(
       "emailVerificationProtocolEnabled",
@@ -2032,10 +2044,6 @@ void AddAutofillStrings(content::WebUIDataSource* html_source,
       autofill_client &&
           (autofill::MayPerformAutofillAiAction(
               *autofill_client, autofill::AutofillAiAction::kEnableOrDisable)));
-  html_source->AddBoolean(
-      "autofillAiAvailableByDefault",
-      base::FeatureList::IsEnabled(
-          autofill::features::kAutofillAiAvailableByDefault));
   html_source->AddBoolean(
       "isAutofillAiWalletPassBranding2026Enabled",
       base::FeatureList::IsEnabled(

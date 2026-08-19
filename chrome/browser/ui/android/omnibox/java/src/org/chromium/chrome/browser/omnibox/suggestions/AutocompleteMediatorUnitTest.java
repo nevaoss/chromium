@@ -78,6 +78,7 @@ import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxLayoutMode;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxState;
 import org.chromium.chrome.browser.omnibox.styles.OmniboxResourceProvider;
+import org.chromium.chrome.browser.omnibox.suggestions.SelectionController.Mode;
 import org.chromium.chrome.browser.omnibox.suggestions.SuggestionCommonProperties.RoundSides;
 import org.chromium.chrome.browser.omnibox.suggestions.action.OmniboxActionDelegateImpl;
 import org.chromium.chrome.browser.omnibox.suggestions.action.OmniboxActionInSuggest;
@@ -1088,11 +1089,16 @@ public class AutocompleteMediatorUnitTest {
         var session = createEmptySession();
         mMediator.beginInput(session);
         assertTrue("Session should be active", mMediator.isInInputSession());
-        mMediator.allowPendingItemSelection();
 
         session.getAutocompleteInput().setPreviewText("preview");
         session.getAutocompleteInput()
-                .setSiteSearchData(new SiteSearchData("kw", "name", false, StarterPackId.NONE));
+                .setSiteSearchData(
+                        new SiteSearchData(
+                                "kw",
+                                "name",
+                                false,
+                                StarterPackId.NONE,
+                                /* isStarterPackPreview= */ true));
 
         AutocompleteMatch match =
                 new AutocompleteMatchBuilder()
@@ -1100,12 +1106,70 @@ public class AutocompleteMediatorUnitTest {
                         .setFillIntoEdit("something")
                         .build();
 
+        mMediator.allowPendingItemSelection();
         mMediator.onSuggestionFocused(match);
 
         ShadowLooper.runUiThreadTasksIncludingDelayedTasks();
 
         assertTrue(session.getAutocompleteInput().getSiteSearchData() == null);
         verify(mAutocompleteDelegate).setOmniboxEditingText("something");
+    }
+
+    @Test
+    @SmallTest
+    public void onSuggestionFocused_whileTypingInKeywordMode_doesNotClearKeywordMode() {
+        mMediator.onNativeInitialized();
+        FuseboxSessionState session = createEmptySession();
+        mMediator.beginInput(session);
+        assertTrue("Session should be active", mMediator.isInInputSession());
+
+        SiteSearchData siteSearchData =
+                new SiteSearchData("bing.com", "Search Microsoft Bing", false, StarterPackId.NONE);
+        session.getAutocompleteInput().setSiteSearchData(siteSearchData);
+
+        session.getAutocompleteInput().setPreviewText("test");
+
+        AutocompleteMatch match =
+                new AutocompleteMatchBuilder()
+                        .setType(OmniboxSuggestionType.SEARCH_WHAT_YOU_TYPED)
+                        .setFillIntoEdit("bing.com test")
+                        .build();
+
+        mMediator.onSuggestionFocused(match);
+
+        ShadowLooper.runUiThreadTasksIncludingDelayedTasks();
+
+        assertEquals(siteSearchData, session.getAutocompleteInput().getSiteSearchData());
+    }
+
+    @Test
+    @SmallTest
+    public void onSuggestionFocused_arrowDownInKeywordMode_doesNotClearKeywordMode() {
+        mMediator.onNativeInitialized();
+        FuseboxSessionState session = createEmptySession();
+        mMediator.beginInput(session);
+        assertTrue("Session should be active", mMediator.isInInputSession());
+
+        SiteSearchData siteSearchData =
+                new SiteSearchData("bing.com", "Search Microsoft Bing", false, StarterPackId.NONE);
+        session.getAutocompleteInput().setSiteSearchData(siteSearchData);
+        session.getAutocompleteInput().setPreviewText("test");
+
+        // Simulate user pressing Down Arrow to navigate items
+        mMediator.allowPendingItemSelection();
+
+        AutocompleteMatch match1 =
+                new AutocompleteMatchBuilder()
+                        .setType(OmniboxSuggestionType.SEARCH_WHAT_YOU_TYPED)
+                        .setFillIntoEdit("t")
+                        .build();
+
+        mMediator.onSuggestionFocused(match1);
+
+        ShadowLooper.runUiThreadTasksIncludingDelayedTasks();
+
+        assertEquals(siteSearchData, session.getAutocompleteInput().getSiteSearchData());
+        verify(mAutocompleteDelegate).setOmniboxEditingText("t");
     }
 
     @Test
@@ -1945,19 +2009,17 @@ public class AutocompleteMediatorUnitTest {
 
     @Test
     public void updateVisualsForState_informsVisualStateObserver() {
+        mResourceProvider.setBrandedColorScheme(BrandedColorScheme.LIGHT_BRANDED_THEME);
         mMediator.updateVisualsForState(BrandedColorScheme.LIGHT_BRANDED_THEME);
         verify(mVisualStateObserver)
                 .onOmniboxSuggestionsBackgroundColorChanged(
-                        eq(
-                                OmniboxResourceProvider.getSuggestionsDropdownBackgroundColor(
-                                        mContext, BrandedColorScheme.LIGHT_BRANDED_THEME)));
+                        eq(mResourceProvider.getSuggestionsDropdownBackgroundColor()));
 
+        mResourceProvider.setBrandedColorScheme(BrandedColorScheme.INCOGNITO);
         mMediator.updateVisualsForState(BrandedColorScheme.INCOGNITO);
         verify(mVisualStateObserver)
                 .onOmniboxSuggestionsBackgroundColorChanged(
-                        eq(
-                                OmniboxResourceProvider.getSuggestionsDropdownBackgroundColor(
-                                        mContext, BrandedColorScheme.INCOGNITO)));
+                        eq(mResourceProvider.getSuggestionsDropdownBackgroundColor()));
     }
 
     @Test
@@ -2713,35 +2775,41 @@ public class AutocompleteMediatorUnitTest {
         var input = session.getAutocompleteInput();
         OmniboxCapabilities.setHasDesktopExperienceForTesting(false);
 
-        // ZPS -- allow parking.
+        // ZPS -- use WRAPPING_WITH_SENTINEL mode on mobile.
         input.setUserText("");
         mMediator.onInputChanged();
-        assertTrue(mListModel.get(SuggestionListProperties.ALLOW_PARKING_AT_SENTINEL));
+        assertEquals(
+                Mode.WRAPPING_WITH_SENTINEL,
+                mListModel.get(SuggestionListProperties.SELECTION_MODE));
 
-        // Prefixed -- allow parking.
+        // Prefixed -- use WRAPPING_WITH_SENTINEL mode on mobile.
         input.setUserText("test");
         mMediator.onInputChanged();
-        assertTrue(mListModel.get(SuggestionListProperties.ALLOW_PARKING_AT_SENTINEL));
+        assertEquals(
+                Mode.WRAPPING_WITH_SENTINEL,
+                mListModel.get(SuggestionListProperties.SELECTION_MODE));
     }
 
     @Test
     @SmallTest
-    public void onInputChanged_setsAllowParkingAtSentinelProperty_desktop() {
+    public void onInputChanged_setsSelectionModeProperty_desktop() {
         var session = createEmptySession();
         mMediator.beginInput(session);
 
         var input = session.getAutocompleteInput();
         OmniboxCapabilities.setHasDesktopExperienceForTesting(true);
 
-        // ZPS -- allow parking.
+        // ZPS -- use SENTINEL_THEN_WRAPPING mode.
         input.setUserText("");
         mMediator.onInputChanged();
-        assertTrue(mListModel.get(SuggestionListProperties.ALLOW_PARKING_AT_SENTINEL));
+        assertEquals(
+                Mode.SENTINEL_THEN_WRAPPING,
+                mListModel.get(SuggestionListProperties.SELECTION_MODE));
 
-        // Prefixed -- Don't allow parking.
+        // Prefixed -- use WRAPPING mode on desktop.
         input.setUserText("test");
         mMediator.onInputChanged();
-        assertFalse(mListModel.get(SuggestionListProperties.ALLOW_PARKING_AT_SENTINEL));
+        assertEquals(Mode.WRAPPING, mListModel.get(SuggestionListProperties.SELECTION_MODE));
     }
 
     @Test
@@ -3074,5 +3142,29 @@ public class AutocompleteMediatorUnitTest {
         session.getAutocompleteInput().setAutocompleteState(AutocompleteState.STANDBY);
 
         verify(mAutocompleteController).stop(AutocompleteStopReason.CLOBBERED);
+    }
+
+    @Test
+    @SmallTest
+    public void testApplyVerticalSpacing() {
+        mFuseboxLayoutModeSupplier.set(FuseboxLayoutMode.SUGGESTIONS_POPOVER);
+        FuseboxSessionState session = createSession(AutocompleteRequestType.AI_MODE, SAMPLE_QUERY);
+        mMediator.beginInput(session);
+
+        mMediator.onSuggestionsReceived(createAutocompleteResult(), /* isFinal= */ true);
+        assertFalse(mListModel.get(SuggestionListProperties.APPLY_VERTICAL_PADDING));
+
+        mFuseboxLayoutModeSupplier.set(FuseboxLayoutMode.TOOLBAR);
+        session.getAutocompleteInput().setRequestType(AutocompleteRequestType.AI_MODE);
+        mMediator.onSuggestionsReceived(createAutocompleteResult(), /* isFinal= */ true);
+        assertTrue(mListModel.get(SuggestionListProperties.APPLY_VERTICAL_PADDING));
+
+        session.getAutocompleteInput().setRequestType(AutocompleteRequestType.SEARCH);
+        mMediator.onSuggestionsReceived(createAutocompleteResult(), /* isFinal= */ true);
+        assertTrue(mListModel.get(SuggestionListProperties.APPLY_VERTICAL_PADDING));
+
+        mFuseboxLayoutModeSupplier.set(FuseboxLayoutMode.SUGGESTIONS_POPOVER);
+        mMediator.onSuggestionsReceived(createAutocompleteResult(), /* isFinal= */ true);
+        assertTrue(mListModel.get(SuggestionListProperties.APPLY_VERTICAL_PADDING));
     }
 }

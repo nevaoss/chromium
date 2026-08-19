@@ -198,19 +198,17 @@ const FeatureEntry::FeatureVariation kActorToolsPageStabilityVariations[] = {
     {"PageStabilityEnabled", kActorToolsPageStabilityEnabled, nullptr},
 };
 
+const FeatureEntry::FeatureParam kAutofillAiWalletPassBranding2026Variant1[] = {
+    {"string_variant", "1"}};
+const FeatureEntry::FeatureParam kAutofillAiWalletPassBranding2026Variant2[] = {
+    {"string_variant", "2"}};
 
-const FeatureEntry::FeatureParam kAIMCobrowseHeaderOptionA[] = {
-    {kAIMCobrowseHeaderParam, kAIMCobrowseHeaderParamOptionA}};
-const FeatureEntry::FeatureParam kAIMCobrowseHeaderOptionB[] = {
-    {kAIMCobrowseHeaderParam, kAIMCobrowseHeaderParamOptionB}};
-const FeatureEntry::FeatureParam kAIMCobrowseHeaderOptionC[] = {
-    {kAIMCobrowseHeaderParam, kAIMCobrowseHeaderParamOptionC}};
-
-const FeatureEntry::FeatureVariation kAIMCobrowseHeaderVariations[] = {
-    {"A: Center logo, overflow menu leading", kAIMCobrowseHeaderOptionA,
-     nullptr},
-    {"B: Left logo with histroy button", kAIMCobrowseHeaderOptionB, nullptr},
-    {"C: Left logo with overflow button", kAIMCobrowseHeaderOptionC, nullptr},
+const FeatureEntry::FeatureVariation
+    kAutofillAiWalletPassBranding2026Variations[] = {
+        {"Variant 1 (Securely + Wallet)",
+         kAutofillAiWalletPassBranding2026Variant1, nullptr},
+        {"Variant 2 (Securely only)", kAutofillAiWalletPassBranding2026Variant2,
+         nullptr},
 };
 
 const FeatureEntry::FeatureParam kDisableKeyboardAccessoryOnlySymbolsParam[] = {
@@ -397,6 +395,41 @@ const FeatureEntry::FeatureVariation
          kDefaultBrowserPictureInPictureArm2, nullptr},
         {"Picture-in-picture instructions, default apps destination.",
          kDefaultBrowserPictureInPictureArm3, nullptr},
+};
+
+const FeatureEntry::FeatureParam kOmniboxPastePromoExperimentArm1[] = {
+    {"arm", "1"}};
+const FeatureEntry::FeatureParam kOmniboxPastePromoExperimentArm2[] = {
+    {"arm", "2"}};
+const FeatureEntry::FeatureParam kOmniboxPastePromoExperimentArm3[] = {
+    {"arm", "3"}};
+const FeatureEntry::FeatureParam kOmniboxPastePromoExperimentArm4[] = {
+    {"arm", "4"}};
+const FeatureEntry::FeatureParam kOmniboxPastePromoExperimentArm5[] = {
+    {"arm", "5"}};
+const FeatureEntry::FeatureParam kOmniboxPastePromoExperimentArm6[] = {
+    {"arm", "6"}};
+const FeatureEntry::FeatureParam kOmniboxPastePromoExperimentArm7[] = {
+    {"arm", "7"}};
+const FeatureEntry::FeatureParam kOmniboxPastePromoExperimentArm8[] = {
+    {"arm", "8"}};
+const FeatureEntry::FeatureParam kOmniboxPastePromoExperimentArm9[] = {
+    {"arm", "9"}};
+const FeatureEntry::FeatureParam kOmniboxPastePromoExperimentArm10[] = {
+    {"arm", "10"}};
+
+const FeatureEntry::FeatureVariation kOmniboxPastePromoExperimentVariations[] =
+    {
+        {"Arm 1", kOmniboxPastePromoExperimentArm1, nullptr},
+        {"Arm 2", kOmniboxPastePromoExperimentArm2, nullptr},
+        {"Arm 3", kOmniboxPastePromoExperimentArm3, nullptr},
+        {"Arm 4", kOmniboxPastePromoExperimentArm4, nullptr},
+        {"Arm 5", kOmniboxPastePromoExperimentArm5, nullptr},
+        {"Arm 6", kOmniboxPastePromoExperimentArm6, nullptr},
+        {"Arm 7", kOmniboxPastePromoExperimentArm7, nullptr},
+        {"Arm 8", kOmniboxPastePromoExperimentArm8, nullptr},
+        {"Arm 9", kOmniboxPastePromoExperimentArm9, nullptr},
+        {"Arm 10", kOmniboxPastePromoExperimentArm10, nullptr},
 };
 
 const FeatureEntry::FeatureParam kIOSDockingPromoV2Header1[] = {
@@ -1627,6 +1660,13 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      FEATURE_WITH_PARAMS_VALUE_TYPE(kDefaultBrowserPictureInPicture,
                                     kDefaultBrowserPictureInPictureVariations,
                                     "DefaultBrowserPictureInPicture")},
+    {"omnibox-paste-promo-experiment",
+     flag_descriptions::kOmniboxPastePromoExperimentName,
+     flag_descriptions::kOmniboxPastePromoExperimentDescription,
+     flags_ui::kOsIos,
+     FEATURE_WITH_PARAMS_VALUE_TYPE(kOmniboxPastePromoExperiment,
+                                    kOmniboxPastePromoExperimentVariations,
+                                    "OmniboxPastePromoExperiment")},
 #if BUILDFLAG(IOS_BACKGROUND_MODE_ENABLED)
     {"feed-background-refresh-ios",
      flag_descriptions::kFeedBackgroundRefreshName,
@@ -1961,21 +2001,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(
          supervised_user::kSupervisedUserEmitLogRecordSeparately)},
-    {"supervised-user-merge-device-parental-controls-and-family-link-prefs",
-     flag_descriptions::
-         kSupervisedUserMergeDeviceParentalControlsAndFamilyLinkPrefsName,
-     flag_descriptions::
-         kSupervisedUserMergeDeviceParentalControlsAndFamilyLinkPrefsDescription,
-     flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(
-         supervised_user::
-             kSupervisedUserMergeDeviceParentalControlsAndFamilyLinkPrefs)},
-    {"supervised-user-use-url-filtering-service",
-     flag_descriptions::kSupervisedUserUseUrlFilteringServiceName,
-     flag_descriptions::kSupervisedUserUseUrlFilteringServiceDescription,
-     flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(
-         supervised_user::kSupervisedUserUseUrlFilteringService)},
     {"lens-fetch-srp-api-enabled",
      flag_descriptions::kLensFetchSrpApiEnabledName,
      flag_descriptions::kLensFetchSrpApiEnabledDescription, flags_ui::kOsIos,
@@ -2332,6 +2357,10 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
     {"composebox-aim-nudge", flag_descriptions::kComposeboxAIMNudgeName,
      flag_descriptions::kComposeboxAIMNudgeDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kComposeboxAIMNudge)},
+    {"composebox-aim-rich-apc-extraction",
+     flag_descriptions::kComposeboxAimRichAPCExtractionName,
+     flag_descriptions::kComposeboxAimRichAPCExtractionDescription,
+     flags_ui::kOsIos, FEATURE_VALUE_TYPE(kComposeboxAimRichAPCExtraction)},
     {"gemini-navigation-promo", flag_descriptions::kGeminiNavigationPromoName,
      flag_descriptions::kGeminiNavigationPromoDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kGeminiNavigationPromo)},
@@ -2495,14 +2524,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kIOSSaveToPhotosSignedOutName,
      flag_descriptions::kIOSSaveToPhotosSignedOutDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kIOSSaveToPhotosSignedOut)},
-    {"aim-cobrowse", flag_descriptions::kAimCobrowseName,
-     flag_descriptions::kAimCobrowseDescription, flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(kAimCobrowse)},
-    {"aim-cobrowse-header", flag_descriptions::kAimCobrowseHeaderName,
-     flag_descriptions::kAimCobrowseHeaderDescription, flags_ui::kOsIos,
-     FEATURE_WITH_PARAMS_VALUE_TYPE(kAIMCobrowseHeader,
-                                    kAIMCobrowseHeaderVariations,
-                                    "kAIMCobrowseHeader")},
     {"ios-date-to-calendar-signed-out",
      flag_descriptions::kIOSDateToCalendarSignedOutName,
      flag_descriptions::kIOSDateToCalendarSignedOutDescription,
@@ -2798,7 +2819,10 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kAutofillAiWalletPassBranding2026Name,
      flag_descriptions::kAutofillAiWalletPassBranding2026Description,
      flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(autofill::features::kAutofillAiWalletPassBranding2026)},
+     FEATURE_WITH_PARAMS_VALUE_TYPE(
+         autofill::features::kAutofillAiWalletPassBranding2026,
+         kAutofillAiWalletPassBranding2026Variations,
+         "AutofillAiWalletPassBranding2026")},
     {"ios-mini-map-linkified-address",
      flag_descriptions::kIOSMiniMapLinkifiedAddressName,
      flag_descriptions::kIOSMiniMapLinkifiedAddressDescription,
@@ -2894,6 +2918,9 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      FEATURE_WITH_PARAMS_VALUE_TYPE(kNewTabPagePaddingUpdate,
                                     kNewTabPagePaddingUpdateVariations,
                                     "NewTabPagePaddingUpdate")},
+    {"web-frame-tree", flag_descriptions::kWebFrameTreeName,
+     flag_descriptions::kWebFrameTreeDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(web::features::kWebFrameTree)},
 });
 
 bool SkipConditionalFeatureEntry(const flags_ui::FeatureEntry& entry) {

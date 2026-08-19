@@ -15,6 +15,7 @@ build_webui_tests("build") {
     "app_test.ts",
     "contextual_tasks_webview_browsertest.ts",
     "post_message_handler_test.ts",
+    "utils_test.ts",
     "test_contextual_tasks_browser_proxy.ts",
     "contextual_tasks_test_utils.ts",
     "top_toolbar_test.ts",
@@ -42,7 +43,7 @@ build_webui_tests("build") {
 
   if (!is_android) {
     files += [
-      "lens_search_tooltip_test.ts",
+      "info_tooltip_test.ts",
       "unbounded_menu_test.ts",
     ]
   }
@@ -70,6 +71,13 @@ build_webui_tests("build") {
     "//ui/webui/resources/js:build_ts",
     "//ui/webui/resources/mojo:build_ts",
   ]
+
+  if (!is_android) {
+    ts_deps += [ "//chrome/browser/resources/webui_toolbar_shared:build_ts" ]
+    ts_path_mappings += [ "chrome://resources/webui_toolbar_shared/*|" + rebase_path(
+                              "$root_gen_dir/chrome/browser/resources/webui_toolbar_shared/tsc/*",
+                              target_gen_dir) ]
+  }
 
   if (!is_android || is_desktop_android) {
     ts_deps += [ "//chrome/test/data/webui/cr_components/searchbox:build_ts" ]

@@ -977,34 +977,38 @@ export class AppElement extends AppElementBase {
   protected onActionChipClick_(e: CustomEvent<ActionChipClickDetail>) {
     this.pageHandler_.onContextualSearchIPHEngaged();
     const detail = e.detail;
-    this.composeboxState_ = {
+    this.openComposebox_({
       text: detail.suggestion,
       files: detail.files,
       mode: detail.fuseboxAction?.preselectedTool,
       model: detail.fuseboxAction?.preselectedModel,
       suggestInventory: detail.fuseboxAction?.preferredInventory,
-    } as ComposeboxState;
-    this.toggleComposebox_();
+    } as ComposeboxState);
   }
 
   protected onOpenComposebox_(e: CustomEvent<ComposeboxState>) {
-    this.composeboxState_ = e.detail;
-
-    this.toggleComposebox_();
+    this.openComposebox_(e.detail);
   }
 
   protected onContextMenuEntrypointClick_() {
     this.pageHandler_.onContextualSearchIPHEngaged();
   }
 
-  protected toggleComposebox_() {
-    this.showComposebox_ = !this.showComposebox_;
+  protected openComposebox_(state: ComposeboxState) {
+    this.composeboxState_ = state;
+    if (!this.showComposebox_) {
+      this.showComposebox_ = true;
+    }
     if (!this.wasComposeboxOpened_) {
       recordLoadDuration(
           'NewTabPage.Composebox.FromNTPLoadToSessionStart',
           WindowProxy.getInstance().now());
       this.wasComposeboxOpened_ = true;
     }
+  }
+
+  protected closeComposebox_() {
+    this.showComposebox_ = false;
   }
 
   protected onScrimClick_() {
@@ -1038,11 +1042,9 @@ export class AppElement extends AppElementBase {
   }
 
   protected onCloseComposebox_(e: CustomEvent<{composeboxText?: string}>) {
-    const composeboxDialog =
-        this.shadowRoot.querySelector<HTMLDialogElement>('#composeboxDialog');
-    assert(composeboxDialog);
-    composeboxDialog.close();
-
+    if (!this.showComposebox_) {
+      return;
+    }
     const composeboxText = e.detail.composeboxText;
 
     if (composeboxText && composeboxText.trim()) {
@@ -1056,7 +1058,7 @@ export class AppElement extends AppElementBase {
     if (this.ntpRealboxNextEnabled_) {
       composebox.closeDropdown();
     }
-    this.toggleComposebox_();
+    this.closeComposebox_();
     this.logoColor_ = this.computeLogoColor_();
     this.singleColoredLogo_ = this.computeSingleColoredLogo_();
     this.updateOneGoogleBarAppearance_();
@@ -1812,13 +1814,6 @@ export class AppElement extends AppElementBase {
   }
 
   private onShowComposeboxChange_() {
-    if (this.showComposebox_) {
-      const composeboxDialog =
-          this.shadowRoot.querySelector<HTMLDialogElement>('#composeboxDialog');
-      assert(composeboxDialog);
-      composeboxDialog.show();
-    }
-
     const notSelector =
         COMPOSEBOX_INERT_ALLOWLIST.map(s => `:not(${s})`).join('');
     const blockedElements = this.shadowRoot.querySelectorAll<HTMLElement>(
@@ -1830,18 +1825,6 @@ export class AppElement extends AppElementBase {
         element.removeAttribute('inert');
       }
     });
-  }
-
-  getVoiceSearchListeningForTesting(): boolean {
-    return this.voiceSearchListening_;
-  }
-
-  getVoiceSearchReceivedSpeechForTesting(): boolean {
-    return this.voiceSearchReceivedSpeech_;
-  }
-
-  getVoiceSearchTranscriptForTesting(): string {
-    return this.voiceSearchTranscript_;
   }
 }
 

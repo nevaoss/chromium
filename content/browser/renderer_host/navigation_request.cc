@@ -5966,6 +5966,19 @@ void NavigationRequest::OnStartChecksComplete(
   StoragePartition* partition = GetStoragePartitionWithCurrentSiteInfo();
   CHECK(partition);
 
+  // A WebContents that disallows service worker control (see
+  // WebContents::PrivilegedParams) skips the service worker for the main
+  // resource of every navigation it hosts -- across all frame trees, and for
+  // both renderer-initiated and browser-initiated navigations -- so no document
+  // it commits is ever controlled by a ServiceWorker. This is defense in depth
+  // alongside the per-client service-worker ineligibility bit (see
+  // ServiceWorkerClient::IsEligibleForServiceWorkerController).
+  if (frame_tree_node_->frame_tree()
+          .delegate()
+          ->DoesWebContentsDisallowServiceWorkerControl()) {
+    begin_params_->skip_service_worker = true;
+  }
+
   // |loader_| should not exist if the service worker handle
   // will be destroyed, since it holds raw pointers to it. See the
   // comment in the header for |loader_|.
@@ -9516,21 +9529,6 @@ void NavigationRequest::UpdateLocalNetworkAccessRequestPolicy() {
   const PolicyContainerPolicies& policies =
       policy_container_builder_->FinalPolicies();
 
-  // Deprecation trial is to allow http sites to run LNA requests assuming the
-  // user grants the permission to the web site.
-  //
-  // Support for origin trial tokens in <meta> tags or programmatically are not
-  // supported, for the same reasons as in the previous PNA trial:
-  // https://developer.chrome.com/blog/private-network-access-update#register-deprecation-trial
-  if (!policies.is_web_secure_context &&
-      policies.allow_non_secure_local_network_access &&
-      base::FeatureList::IsEnabled(
-          network::features::kLocalNetworkAccessChecks)) {
-    web_features_to_log_.push_back(
-        blink::mojom::WebFeature::
-            kLocalNetworkAccessNonSecureContextAllowedDeprecationTrial);
-  }
-
   // TODO(crbug.com/433300380): The lna_secure_context_overide check needs to be
   // done in all other policy derivation points. This boolean should probably be
   // put into PolicyContainerPolicies.
@@ -11171,7 +11169,7 @@ NavigationRequest::BuildClientSecurityStateForNavigationFetch() {
       client_security_state->local_network_access_request_policy =
           DeriveLocalNetworkAccessRequestPolicy(
               client_security_state->ip_address_space,
-              client_security_state->is_web_secure_context, false,
+              client_security_state->is_web_secure_context,
               LocalNetworkAccessRequestContext::kFencedFrameNavigation);
 
       return client_security_state;
@@ -11410,24 +11408,6 @@ void NavigationRequest::ComputePoliciesToCommit() {
       CalculateIPAddressSpace(url, response_head_.get(),
                               GetContentClient()->browser());
   policy_container_builder_->SetIPAddressSpace(response_address_space);
-
-  // Deprecation trial is to allow http sites to run LNA requests assuming the
-  // user grants the permission to the web site.
-  //
-  // We don't set the use counter here yet because we only want to count the
-  // number of times this is actually included on a non-secure context, and
-  // whether a context is secure or not is computed later.
-  if (base::FeatureList::IsEnabled(
-          network::features::kLocalNetworkAccessChecks) &&
-      // If there is no response or no headers in the response, there are
-      // definitely no trial token headers.
-      response_head_ && response_head_->headers &&
-      blink::TrialTokenValidator().RequestEnablesDeprecatedFeature(
-          common_params_->url, response_head_->headers.get(),
-          "LocalNetworkAccessNonSecureContextAllowed", base::Time::Now())) {
-    policy_container_builder_->SetLocalNetworkAccessNonSecureContextAllowed(
-        true);
-  }
 
   network::ConnectionAllowlists connection_allowlists_to_commit;
   bool has_connection_allowlists = false;

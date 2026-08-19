@@ -22,6 +22,9 @@
 #include "components/enterprise/net/core/types.h"
 #include "components/keyed_service/core/keyed_service.h"
 #include "components/prefs/pref_change_registrar.h"
+#include "net/base/auth.h"
+#include "net/http/http_response_headers.h"
+#include "url/gurl.h"
 
 class PrefService;
 
@@ -45,13 +48,14 @@ class EnterpriseProxyService : public KeyedService,
  public:
   class Observer : public base::CheckedObserver {
    public:
-    // Called when dynamic proxy route configurations have been resolved.
-    virtual void OnAllDynamicProxyConfigsResolved(
-        const std::vector<ProvisioningDomainProxyConfig>& configs) = 0;
+    // Called when dynamic proxy route status changes (e.g. refresh starts or
+    // completes, or dynamic routing rules update).
+    virtual void OnDynamicProxyConfigsStatusChanged() = 0;
 
-    // Called when dynamic proxy route updates start and no refresh was
-    // previously in progress.
-    virtual void OnDynamicProxyConfigsUpdateInProgress() = 0;
+    // Called during Shutdown(), used by non-keyed service classes (e.g.
+    // PrefProxyConfigTrackerImpl) to maintain lifetime and reset their
+    // ScopedObservation before the service is destroyed.
+    virtual void OnEnterpriseProxyServiceDestroyed() {}
   };
 
   using GetURLLoaderFactoryCallback =
@@ -68,8 +72,8 @@ class EnterpriseProxyService : public KeyedService,
 
   ~EnterpriseProxyService() override;
 
-  void AddObserver(Observer* observer);
-  void RemoveObserver(Observer* observer);
+  virtual void AddObserver(Observer* observer);
+  virtual void RemoveObserver(Observer* observer);
 
   // Returns the list of current PvD configs with their states.
   std::vector<ProvisioningDomainProxyConfig> GetProvisioningDomainConfigs()
@@ -88,7 +92,41 @@ class EnterpriseProxyService : public KeyedService,
   // Returns the `net::ProxyConfig::DynamicRoutingConfig` concatenated
   // from all valid active Provisioning Domain configs, with ordering strictly
   // preserved and all browser-side PvD metadata removed.
-  net::ProxyConfig::DynamicRoutingConfig GetDynamicRoutingConfig() const;
+  virtual net::ProxyConfig::DynamicRoutingConfig GetDynamicRoutingConfig()
+      const;
+
+ protected:
+  // Protected constructor for test doubles (e.g. MockEnterpriseProxyService).
+  EnterpriseProxyService();
+
+ public:
+  // LINT.IfChange(ProxyAuthChallengeResult)
+  enum class ProxyAuthChallengeResult {
+    // No applicable rule for the destination URL & proxy pair
+    kNotApplicable = 0,
+    // The response contains a disguised error from the proxy
+    kDisguisedError,
+    // A matching rule explicitly specifies no auth or non-bearer auth
+    kNoCredentialsNeeded,
+    // Token fetch succeeded and credentials have been returned
+    kCredentialFetchSuccess,
+    // Token fetch failed
+    kCredentialFetchFailure,
+    kMaxValue = kCredentialFetchFailure,
+  };
+  // LINT.ThenChange(//tools/metrics/histograms/enums.xml:EnterpriseProxyAuthChallengeResult)
+
+  // Evaluates a 407 Proxy Authentication challenge against managed dynamic
+  // routes and initiates credential fetching if applicable.
+  // Note that in-flight auth requests will not adjust for any config changes
+  // that occurred after endpoint-matching is finished.
+  void HandleProxyAuthChallenge(
+      const net::AuthChallengeInfo& auth_info,
+      const GURL& destination_url,
+      const scoped_refptr<net::HttpResponseHeaders>& response_headers,
+      base::OnceCallback<void(ProxyAuthChallengeResult,
+                              const std::optional<net::AuthCredentials>&)>
+          callback);
 
   // KeyedService:
   void Shutdown() override;
@@ -119,6 +157,19 @@ class EnterpriseProxyService : public KeyedService,
   void RecreateProvisioningDomainManagers(
       const base::ListValue& policy_domains);
 
+  // Represents an in-flight OAuth token fetch for a proxy authentication
+  // challenge, grouping callbacks for duplicate requests to the same proxy.
+  struct PendingAuthRequest;
+
+  // Resolves variable placeholders (e.g. `${profile_id}`, `${accept_language}`)
+  // in the proxy endpoint extra headers and formats them as URL-escaped query
+  // parameters to be used as the Basic Auth username.
+  std::string BuildBasicAuthUsername(
+      const std::vector<ProxyExtraHeader>& proxy_headers) const;
+
+  void OnProxyAuthTokenFetched(PendingAuthRequest* request,
+                               AccessTokenResult token_result);
+
   const raw_ptr<PrefService> pref_service_;
   const raw_ptr<EnterpriseNetworkAuthService> auth_service_;
 
@@ -144,6 +195,9 @@ class EnterpriseProxyService : public KeyedService,
 
   // Set of managers currently executing a background fetch.
   base::flat_set<raw_ptr<ProxyProvisioningDomainManager>> refreshing_managers_;
+
+  // List of pending proxy auth requests.
+  std::vector<std::unique_ptr<PendingAuthRequest>> pending_auth_requests_;
 
   base::WeakPtrFactory<EnterpriseProxyService> weak_ptr_factory_{this};
 };

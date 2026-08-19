@@ -162,9 +162,9 @@ class CONTENT_EXPORT WebContentsViewAura
                            Drop_DropZone_DelegateBlocks);
   FRIEND_TEST_ALL_PREFIXES(WebContentsViewAuraTest, StartDragging);
   FRIEND_TEST_ALL_PREFIXES(WebContentsViewAuraTest,
-                           DragEnterFromNonprivilegedToPrivileged);
+                           DragEnterFilesAppCustomTypesFromWebSource);
   FRIEND_TEST_ALL_PREFIXES(WebContentsViewAuraTest,
-                           DragEnterFromNonprivilegedToNonprivileged);
+                           DragEnterFilesAppCustomTypesFromWebUISource);
   FRIEND_TEST_ALL_PREFIXES(WebContentsViewAuraTest, GetDropCallback_Run);
   FRIEND_TEST_ALL_PREFIXES(WebContentsViewAuraTest,
                            DragInProgressFinishesAfterDrop);

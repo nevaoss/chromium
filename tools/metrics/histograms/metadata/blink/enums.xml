@@ -105,27 +105,6 @@ chromium-metrics-reviews@google.com.
 
 <!-- LINT.ThenChange(//third_party/blink/renderer/platform/graphics/canvas_hibernation_handler.h:CanvasHibernationEvent) -->
 
-<enum name="CanvasOverdrawOp">
-  <int value="0" label="None (should have 0 counts)"/>
-  <int value="1" label="Total ops"/>
-  <int value="2" label="ClearRect op"/>
-  <int value="3" label="(Obsolete) FillRect op. Deprecated as of 2021-10."/>
-  <int value="4" label="(Obsolete) PutImageData op. Deprecated as of 2021-10."/>
-  <int value="5" label="DrawImage op"/>
-  <int value="6" label="ContextReset op"/>
-  <int value="7"
-      label="(Obsolete) ClearForSrcBlendMode op. Deprecated as of 2021-10."/>
-  <int value="8"
-      label="(Obsolete) Has opaque shader. Deprecated as of 2021-10."/>
-  <int value="9" label="Has transform"/>
-  <int value="10"
-      label="(Obsolete) Has source-over blend mode. Deprecated as of 2021-10."/>
-  <int value="11"
-      label="(Obsolete) Has clear blend mode. Deprecated as of 2021-10."/>
-  <int value="13" label="Has clip"/>
-  <int value="14" label="Has transform and clip"/>
-</enum>
-
 <enum name="CanvasResourceProviderType">
   <int value="0" label="Texture"/>
   <int value="1" label="Bitmap"/>
@@ -6344,7 +6323,7 @@ Called by update_use_counter_feature_enum.py.-->
   <int value="5615" label="MessageEventDataBeforeCrossSiteOrigin"/>
   <int value="5616" label="MessageEventDataBeforeOpaqueOrigin"/>
   <int value="5617"
-      label="LocalNetworkAccessNonSecureContextAllowedDeprecationTrial"/>
+      label="OBSOLETE_LocalNetworkAccessNonSecureContextAllowedDeprecationTrial"/>
   <int value="5618" label="CSPUrlHashes"/>
   <int value="5619" label="CSPEvalHashes"/>
   <int value="5620" label="OBSOLETE_WebAppManifestNameLocalized"/>
@@ -6734,6 +6713,7 @@ Called by update_use_counter_feature_enum.py.-->
   <int value="5980" label="UAReplaceEndAddListener"/>
   <int value="5981" label="AdImageHDR"/>
   <int value="5982" label="AdVideoHDR"/>
+  <int value="5983" label="LocalNetworkAccessShouldTreatAsPublicAddressCsp"/>
 </enum>
 
 <!-- LINT.ThenChange(//third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom:WebFeature) -->
@@ -8633,6 +8613,7 @@ Called by update_use_counter_css.py.-->
   <int value="961" label="corner-inline-end"/>
   <int value="962" label="window-drag"/>
   <int value="963" label="max-content-sizing"/>
+  <int value="964" label="text-decoration-inset"/>
 </enum>
 
 <!-- LINT.ThenChange(//third_party/blink/public/mojom/use_counter/metrics/css_property_id.mojom:CSSSampleId) -->
@@ -8745,6 +8726,28 @@ Called by update_use_counter_css.py.-->
   <int value="7" label="Fetched speculation rules failed parsing"/>
   <int value="8" label="Inline speculation rules failed parsing"/>
   <int value="9" label="Browser injected speculation rules failed parsing"/>
+</enum>
+
+<enum name="ViewTransitionSkipReason">
+  <int value="0" label="Expected"/>
+  <int value="1" label="UserSkipped"/>
+  <int value="2" label="NewTransitionStarted"/>
+  <int value="3" label="DocumentHidden"/>
+  <int value="4" label="NoView"/>
+  <int value="5" label="Timeout"/>
+  <int value="6" label="UnsupportedCapture"/>
+  <int value="7" label="CaptureFailed"/>
+  <int value="8" label="StartFailed"/>
+  <int value="9" label="SnapshotRootChangedSize"/>
+  <int value="10" label="ContextDestroyed"/>
+  <int value="11" label="CompositorCommit"/>
+  <int value="12" label="NavigationAborted"/>
+  <int value="13" label="OptInDisabled"/>
+  <int value="14" label="PageAlreadyRevealed"/>
+  <int value="15" label="IncompatibleStyle"/>
+  <int value="16" label="PostPrePaintFailed"/>
+  <int value="17" label="DuplicateTag"/>
+  <int value="18" label="NavigationTransitionActive"/>
 </enum>
 
 <!-- LINT.IfChange(WebDXFeatureObserver) -->

@@ -386,6 +386,9 @@ BASE_FEATURE(kCellularBypassESimInstallationConnectivityCheck,
 // and Settings.
 BASE_FEATURE(kCellularUseSecondEuicc, base::FEATURE_DISABLED_BY_DEFAULT);
 
+// Enables Enterprise Policy controls for Clipboard History.
+BASE_FEATURE(kClipboardHistoryPolicy, base::FEATURE_DISABLED_BY_DEFAULT);
+
 // When enabled alongside the keyboard auto-repeat setting, holding down Ctrl+V
 // will cause the clipboard history menu to show. From there, the user can
 // select a clipboard history item to replace the initially pasted content.
@@ -594,10 +597,6 @@ BASE_FEATURE(kEnableRFC8925, base::FEATURE_ENABLED_BY_DEFAULT);
 // Enable the DNS proxy service running in root network namespace for ChromeOS.
 BASE_FEATURE(kEnableRootNsDnsProxy, base::FEATURE_ENABLED_BY_DEFAULT);
 
-// Enable the shortcut to toggle whether the camera is enabled/disabled in
-// Settings > Privacy controls.
-BASE_FEATURE(kEnableToggleCameraShortcut, base::FEATURE_ENABLED_BY_DEFAULT);
-
 // If enabled, touchscreen mapping experience is visible in settings.
 BASE_FEATURE(kEnableTouchscreenMappingExperience,
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -644,10 +643,6 @@ BASE_FEATURE(kESimEmptyActivationCodeSupported,
 
 // Enable or disable use of ordinal (unaccelerated) motion by Exo clients.
 BASE_FEATURE(kExoOrdinalMotion, base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Allows RGB Keyboard to test new animations/patterns.
-BASE_FEATURE(kExperimentalRgbKeyboardPatterns,
-             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables extended updates opt-in functionality.
 BASE_FEATURE(kExtendedUpdatesOptInFeature, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -2415,6 +2410,10 @@ bool IsCaptureModeOnDeviceOcrEnabled() {
          base::FeatureList::IsEnabled(kCaptureModeOnDeviceOcr);
 }
 
+bool IsClipboardHistoryPolicyEnabled() {
+  return base::FeatureList::IsEnabled(kClipboardHistoryPolicy);
+}
+
 bool IsContinuousOverviewScrollAnimationEnabled() {
   return base::FeatureList::IsEnabled(kContinuousOverviewScrollAnimation);
 }
@@ -2546,10 +2545,6 @@ bool IsEcheSWAMeasureLatencyEnabled() {
 
 bool IsESimEmptyActivationCodeSupportEnabled() {
   return base::FeatureList::IsEnabled(kESimEmptyActivationCodeSupported);
-}
-
-bool IsExperimentalRgbKeyboardPatternsEnabled() {
-  return base::FeatureList::IsEnabled(kExperimentalRgbKeyboardPatterns);
 }
 
 bool IsExtendedUpdatesOptInFeatureEnabled() {
@@ -3195,10 +3190,6 @@ bool IsTimeOfDayScreenSaverEnabled() {
 
 bool IsTimeOfDayWallpaperEnabled() {
   return base::FeatureList::IsEnabled(kFeatureManagementTimeOfDayWallpaper);
-}
-
-bool IsToggleCameraShortcutEnabled() {
-  return base::FeatureList::IsEnabled(kEnableToggleCameraShortcut);
 }
 
 bool IsTouchscreenMappingExperienceEnabled() {

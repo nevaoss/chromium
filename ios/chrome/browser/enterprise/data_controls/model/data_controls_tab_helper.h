@@ -23,6 +23,7 @@
 
 namespace enterprise_connectors {
 struct RequestHandlerResult;
+class PasteboardContentHandlerIOS;
 }
 
 namespace web {
@@ -92,15 +93,17 @@ class DataControlsTabHelper
   explicit DataControlsTabHelper(web::WebState* web_state);
 
   // An enum class that keeps track of the state of the current paste event for
-  // each tab. More event states will be added in the future for the Pasted
-  // Content DLP Rules feature.
-  //
-  // TODO(crbug.com/531672160): Add event states for pasted content DLP Rules.
+  // each tab.
   enum class PasteEventState {
     // No ongoing paste event.
     kIdle,
     // Waiting for users to make a decision from Warning Dialog.
     kDisplayingWarningDialog,
+    // Waiting for scan result from WebProtect.
+    kWaitingScanDecision,
+    // User initiated a new copy action while waiting for the scan result for
+    // the paste, making the paste event stale.
+    kPasteEventStale,
   };
 
   // Returns true if clipboard data controls are enabled.
@@ -184,6 +187,10 @@ class DataControlsTabHelper
 
   // The snackbar command handler.
   __weak id<SnackbarCommands> snackbar_handler_ = nil;
+
+  // The handler for pasteboard content analysis.
+  std::unique_ptr<enterprise_connectors::PasteboardContentHandlerIOS>
+      pasteboard_content_handler_;
 
   PasteEventState paste_event_state_ = PasteEventState::kIdle;
 

@@ -151,6 +151,12 @@ void ViewAccessibility::AddVirtualChildViewAt(
   DCHECK(!virtual_view->virtual_parent_view()) << "This |view| already has an "
                                                   "AXVirtualView parent. Call "
                                                   "RemoveChildView first.";
+  // The first virtual child hides the real children. Notify before the insert,
+  // while GetChildren still returns them.
+  if (virtual_children_.empty()) {
+    NotifyChildrenRemoved();
+  }
+
   virtual_view->set_parent_view(this);
   auto insert_iterator =
       virtual_children_.begin() + static_cast<ptrdiff_t>(index);
@@ -196,6 +202,11 @@ std::unique_ptr<AXVirtualView> ViewAccessibility::RemoveVirtualChildView(
   }
 
   AXUpdateNotifier::Get()->NotifyChildRemoved(child.get(), this);
+
+  // Removing the last virtual child exposes the real children again.
+  if (virtual_children_.empty()) {
+    NotifyChildrenAdded();
+  }
 
   return child;
 }
@@ -333,13 +344,17 @@ void ViewAccessibility::SetIsLeaf(bool value) {
     return;
   }
 
+  // GetChildren returns nothing for a leaf, so notify while it still returns
+  // the children being hidden, and only once it returns the ones being shown.
   if (value) {
+    NotifyChildrenRemoved();
     PruneSubtree();
+    is_leaf_ = value;
   } else {
+    is_leaf_ = value;
     UnpruneSubtree();
+    NotifyChildrenAdded();
   }
-
-  is_leaf_ = value;
 }
 
 bool ViewAccessibility::IsLeaf() const {
@@ -1123,6 +1138,20 @@ void ViewAccessibility::OnVirtualViewRemovedFromWidget() {
   }
 }
 
+void ViewAccessibility::NotifyChildrenAdded() {
+  for (ViewAccessibility* child : GetChildren()) {
+    AXUpdateNotifier::Get()->NotifyChildAdded(child, this);
+    child->NotifyChildrenAdded();
+  }
+}
+
+void ViewAccessibility::NotifyChildrenRemoved() {
+  for (ViewAccessibility* child : GetChildren()) {
+    child->NotifyChildrenRemoved();
+    AXUpdateNotifier::Get()->NotifyChildRemoved(child, this);
+  }
+}
+
 void ViewAccessibility::SetPlaceholder(const std::string& placeholder) {
   data_.AddStringAttribute(ax::mojom::StringAttribute::kPlaceholder,
                            placeholder);
@@ -1772,29 +1801,34 @@ void ViewAccessibility::UpdateInvisibleState() {
 
 void ViewAccessibility::SetChildTreeID(ui::AXTreeID tree_id) {
   CHECK(view_);
-  if (tree_id != ui::AXTreeIDUnknown()) {
-    data_.AddChildTreeId(tree_id);
+  CHECK_NE(tree_id, ui::AXTreeIDUnknown())
+      << "Call RemoveChildTreeID to remove the bridge to a child tree.";
 
-    const views::Widget* widget = GetWidget();
-    if (widget && widget->GetNativeView() && display::Screen::Get()) {
-      // TODO(accessibility): There potentially could be an issue where the
-      // device scale factor changes from the time the tree ID is set to the
-      // time `GetAccessibleNodeData` is queried. If this ever pops up, a
-      // potential solution could be to make ViewAccessibility a DisplayObserver
-      // and add `this` as an observer when the tree ID is set. Then, when the
-      // display changes, we can update the scale factor in the cache, probably
-      // by implementing `OnDisplayMetricsChanged`.
-      const float scale_factor =
-          display::Screen::Get()
-              ->GetDisplayNearestView(widget->GetNativeView())
-              .device_scale_factor();
-      SetChildTreeScaleFactor(scale_factor);
-    }
+  // The child tree hides the children. Notify before the attribute changes,
+  // while GetChildren still returns them.
+  NotifyChildrenRemoved();
 
-    OnStringAttributeChanged(ax::mojom::StringAttribute::kChildTreeId,
-                             tree_id.ToString());
-    NotifyDataChanged();
+  data_.AddChildTreeId(tree_id);
+
+  const views::Widget* widget = GetWidget();
+  if (widget && widget->GetNativeView() && display::Screen::Get()) {
+    // TODO(accessibility): There potentially could be an issue where the
+    // device scale factor changes from the time the tree ID is set to the
+    // time `GetAccessibleNodeData` is queried. If this ever pops up, a
+    // potential solution could be to make ViewAccessibility a DisplayObserver
+    // and add `this` as an observer when the tree ID is set. Then, when the
+    // display changes, we can update the scale factor in the cache, probably
+    // by implementing `OnDisplayMetricsChanged`.
+    const float scale_factor =
+        display::Screen::Get()
+            ->GetDisplayNearestView(widget->GetNativeView())
+            .device_scale_factor();
+    SetChildTreeScaleFactor(scale_factor);
   }
+
+  OnStringAttributeChanged(ax::mojom::StringAttribute::kChildTreeId,
+                           tree_id.ToString());
+  NotifyDataChanged();
 }
 
 ui::AXTreeID ViewAccessibility::GetChildTreeID() const {
@@ -1803,7 +1837,15 @@ ui::AXTreeID ViewAccessibility::GetChildTreeID() const {
 }
 
 void ViewAccessibility::RemoveChildTreeID() {
+  const bool had_child_tree_id = data_.HasChildTreeID();
+
   data_.RemoveStringAttribute(ax::mojom::StringAttribute::kChildTreeId);
+
+  // Callers remove the child tree id repeatedly, so only notify when this call
+  // is the one that exposes the children again.
+  if (had_child_tree_id) {
+    NotifyChildrenAdded();
+  }
 
   OnStringAttributeChanged(ax::mojom::StringAttribute::kChildTreeId,
                            std::string());

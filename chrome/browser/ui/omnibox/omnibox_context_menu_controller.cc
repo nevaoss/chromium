@@ -335,7 +335,7 @@ void OmniboxContextMenuController::AddRecentTabItems() {
                          GetSmartTabSharingMegaplusMenuLabel());
     menu_model_->SetIconForCommandId(
         IDC_OMNIBOX_CONTEXT_SMART_TAB_SHARING,
-        ui::ImageModel::FromVectorIcon(kTabOldIcon, ui::kColorMenuIcon,
+        ui::ImageModel::FromVectorIcon(kScreensaverAutoIcon, ui::kColorMenuIcon,
                                        ui::SimpleMenuModel::kDefaultIconSize));
     menu_model_->SetMinorIcon(
         index,
@@ -800,6 +800,8 @@ void OmniboxContextMenuController::UpdateSearchboxContext(
     tab_attachment->tab_id = tab_info->tab_id;
     tab_attachment->title = base::UTF16ToUTF8(tab_info->title);
     tab_attachment->url = tab_info->url;
+    tab_attachment->source =
+        searchbox::mojom::TabAttachmentSource::kContextMenu;
     context->file_infos.push_back(
         searchbox::mojom::SearchContextAttachment::NewTabAttachment(
             std::move(tab_attachment)));

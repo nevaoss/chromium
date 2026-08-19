@@ -62,6 +62,7 @@ import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.SettableNonNullObservableSupplier;
 import org.chromium.base.test.BaseRobolectricTestRule;
 import org.chromium.base.test.RobolectricUtil;
+import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.base.test.util.HistogramWatcher;
 import org.chromium.base.test.util.UserActionTester;
@@ -162,6 +163,7 @@ import java.util.function.Consumer;
  */
 @RunWith(ParameterizedRobolectricTestRunner.class)
 @EnableFeatures(ChromeFeatureList.ENABLE_ESCAPE_HANDLING_FOR_SECONDARY_ACTIVITIES)
+@DisableFeatures(ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_LAYOUT)
 public class BookmarkManagerMediatorTest {
 
     @Rule(order = Rule.DEFAULT_ORDER - 1)
@@ -1622,6 +1624,28 @@ public class BookmarkManagerMediatorTest {
     }
 
     @Test
+    @EnableFeatures(ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_LAYOUT)
+    public void testSearchBox_Desktop() {
+        when(mBookmarkModel.searchBookmarks(eq("3"), anyInt()))
+                .thenReturn(Collections.singletonList(mFolderId3));
+        finishLoading();
+        mMediator.openFolder(mFolderId1);
+        verifyCurrentViewTypes(
+                ViewType.SEARCH_BOX,
+                ViewType.IMPROVED_BOOKMARK_COMPACT,
+                ViewType.IMPROVED_BOOKMARK_COMPACT);
+
+        PropertyModel searchBoxModel = mMediator.getOrCreateSearchBoxPropertyModel();
+        assertNotNull(searchBoxModel);
+
+        mModelList.addObserver(mListObserver);
+        searchBoxModel
+                .get(BookmarkSearchBoxRowProperties.SEARCH_TEXT_CHANGE_CALLBACK)
+                .onResult("3");
+        verifyCurrentViewTypes(ViewType.SEARCH_BOX, ViewType.IMPROVED_BOOKMARK_COMPACT);
+    }
+
+    @Test
     public void testDeleteDuringSelection() {
         // Inspired by https://crbug.com/40064906 where the search row didn't have a property and
         // we crashed when trying to handle deletion during selection.
@@ -2776,6 +2800,24 @@ public class BookmarkManagerMediatorTest {
         doReturn("chrome://bookmarks/").when(mNativePage).getUrl();
         mMediator.openFolder(mFolderId2);
         verify(mNativePage).onStateChange("chrome-native://bookmarks/folder/6", true);
+    }
+
+    @Test
+    public void testUpdateForUrl_popsStateStack() {
+        finishLoading();
+        mMediator.openFolder(mMobileFolderId);
+        mMediator.openFolder(mFolderId1);
+        mMediator.openFolder(mFolderId2);
+        // Initially, the stack should contain root folder (MobileBookmarks), Folder1, and Folder2.
+        assertEquals(3, mMediator.getStateStackForTesting().size());
+
+        // Simulate tab back navigation to Folder1 by calling updateForUrl.
+        mMediator.updateForUrl("chrome-native://bookmarks/folder/" + mFolderId1.getId());
+
+        // The stack should now contain root folder and Folder1. Folder2 should be popped.
+        assertEquals(2, mMediator.getStateStackForTesting().size());
+        assertEquals(BookmarkUiMode.FOLDER, mMediator.getCurrentUiMode());
+        assertEquals(mFolderId1, mMediator.getStateStackForTesting().peekLast().mFolder);
     }
 
     private void verifyMenuListItemTitles(ModelList modelList, int... expectedTitleIds) {
