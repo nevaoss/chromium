@@ -36,6 +36,7 @@ import org.chromium.chrome.browser.compositor.layouts.components.TintedComposito
 import org.chromium.chrome.browser.compositor.layouts.components.TintedCompositorTextButton;
 import org.chromium.chrome.browser.compositor.overlays.strip.StripLayoutView.StripLayoutViewOnClickHandler;
 import org.chromium.chrome.browser.compositor.overlays.strip.StripLayoutView.StripLayoutViewOnKeyboardFocusHandler;
+import org.chromium.chrome.browser.compositor.overlays.strip.TabContextMenuCoordinator.TabStripLayoutType;
 import org.chromium.chrome.browser.glic.GlicButtonDelegate;
 import org.chromium.chrome.browser.glic.GlicButtonStateController;
 import org.chromium.chrome.browser.glic.GlicButtonStateController.ButtonState;
@@ -46,9 +47,9 @@ import org.chromium.chrome.browser.glic.GlicKeyedService.GlicInvocationSource;
 import org.chromium.chrome.browser.glic.GlicKeyedService.GlobalShowHideObserver;
 import org.chromium.chrome.browser.glic.GlicKeyedServiceFactory;
 import org.chromium.chrome.browser.glic.GlicNudgeActivity;
-import org.chromium.chrome.browser.glic.GlicNudgeDelegate;
-import org.chromium.chrome.browser.glic.GlicNudgeDelegateBridge;
 import org.chromium.chrome.browser.glic.GlicPrefNames;
+import org.chromium.chrome.browser.glic.GlicSplitButtonDelegate;
+import org.chromium.chrome.browser.glic.GlicSplitButtonDelegateBridge;
 import org.chromium.chrome.browser.glic.GlicTaskMenuCoordinator;
 import org.chromium.chrome.browser.glic.GlicUtils;
 import org.chromium.chrome.browser.incognito.IncognitoUtils;
@@ -168,13 +169,13 @@ public class StripLayoutTrailingButtonsCoordinator {
     private @Nullable GlicButtonStateController mStateController;
     private final View mToolbarControlContainer;
 
-    private final GlicNudgeDelegate mGlicNudgeDelegate =
-            new GlicNudgeDelegate() {
+    private final GlicSplitButtonDelegate mGlicSplitButtonDelegate =
+            new GlicSplitButtonDelegate() {
                 @Override
                 public void onTriggerGlicNudgeUi(
                         String label, String anchoredMessageText, String promptSuggestion) {
                     if (mGlicIphShowingSupplier.getAsBoolean()) {
-                        mGlicNudgeDelegateBridge.onNudgeActivity(
+                        mGlicSplitButtonDelegateBridge.onNudgeActivity(
                                 GlicNudgeActivity.NUDGE_NOT_SHOWN_WINDOW_CALL_TO_ACTION_UI);
                         return;
                     }
@@ -195,8 +196,8 @@ public class StripLayoutTrailingButtonsCoordinator {
                     return mNudgeLabel != null;
                 }
             };
-    private final GlicNudgeDelegateBridge mGlicNudgeDelegateBridge =
-            new GlicNudgeDelegateBridge(mGlicNudgeDelegate);
+    private final GlicSplitButtonDelegateBridge mGlicSplitButtonDelegateBridge =
+            new GlicSplitButtonDelegateBridge(mGlicSplitButtonDelegate);
 
     // Layout & State Parameters
     private float mWidth;
@@ -441,7 +442,8 @@ public class StripLayoutTrailingButtonsCoordinator {
                         }
                     });
 
-            mGlicButtonContextMenuCoordinator = new GlicButtonContextMenuCoordinator(mContext);
+            mGlicButtonContextMenuCoordinator =
+                    new GlicButtonContextMenuCoordinator(mContext, TabStripLayoutType.HORIZONTAL);
 
             mGlicButton.setDrawY(getDimensionDp(R.dimen.tab_strip_button_y_offset));
             mGlicButton.setVisible(false);
@@ -530,8 +532,8 @@ public class StripLayoutTrailingButtonsCoordinator {
             if (task != null) {
                 task.addFeature(
                         new ChromeAndroidTaskFeatureKey(
-                                GlicNudgeDelegateBridge.class, profile, mWindowAndroid),
-                        () -> mGlicNudgeDelegateBridge);
+                                GlicSplitButtonDelegateBridge.class, profile, mWindowAndroid),
+                        () -> mGlicSplitButtonDelegateBridge);
             }
         }
 
@@ -1780,21 +1782,21 @@ public class StripLayoutTrailingButtonsCoordinator {
             return;
         }
         @GlicInvocationSource int invocationSource = GlicInvocationSource.TOP_CHROME_BUTTON;
-        if (mGlicNudgeDelegate.getIsShowingGlicNudge()) {
+        if (mGlicSplitButtonDelegate.getIsShowingGlicNudge()) {
             invocationSource = GlicInvocationSource.NUDGE;
-            mGlicNudgeDelegateBridge.onNudgeActivity(GlicNudgeActivity.NUDGE_CLICKED);
-            mGlicNudgeDelegate.onHideGlicNudgeUi();
+            mGlicSplitButtonDelegateBridge.onNudgeActivity(GlicNudgeActivity.NUDGE_CLICKED);
+            mGlicSplitButtonDelegate.onHideGlicNudgeUi();
         }
         mGlicClickHandler.onClick(preventClose, invocationSource);
     }
 
     private void handleDismissButtonClick() {
-        mGlicNudgeDelegateBridge.onNudgeActivity(GlicNudgeActivity.NUDGE_DISMISSED);
-        mGlicNudgeDelegate.onHideGlicNudgeUi();
+        mGlicSplitButtonDelegateBridge.onNudgeActivity(GlicNudgeActivity.NUDGE_DISMISSED);
+        mGlicSplitButtonDelegate.onHideGlicNudgeUi();
     }
 
-    /* package */ GlicNudgeDelegate getGlicNudgeDelegateForTesting() {
-        return mGlicNudgeDelegate;
+    /* package */ GlicSplitButtonDelegate getGlicSplitButtonDelegateForTesting() {
+        return mGlicSplitButtonDelegate;
     }
 
     /* package */ void setNudgeLabelForTesting(@Nullable String label) {

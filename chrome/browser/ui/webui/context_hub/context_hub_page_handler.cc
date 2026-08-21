@@ -7,6 +7,8 @@
 #include <array>
 #include <vector>
 
+#include "base/check.h"
+#include "base/containers/flat_set.h"
 #include "base/functional/bind.h"
 #include "base/rand_util.h"
 #include "base/strings/strcat.h"
@@ -118,7 +120,7 @@ void ContextHubPageHandler::GenerateAutoTodos(
     return;
   }
 
-  service->GenerateAutoTodos(
+  service->GenerateFirstPartyAutoTodos(
       base::BindOnce(&ContextHubPageHandler::OnAutoTodosGenerated,
                      weak_factory_.GetWeakPtr(), std::move(callback)));
 }
@@ -134,6 +136,8 @@ void ContextHubPageHandler::OnAutoTodosGenerated(
          result.value().todos()) {
       browser::context_hub::mojom::AutoTodoItemPtr mojo_todo =
           browser::context_hub::mojom::AutoTodoItem::New();
+      // TODO(b/540562062): Use the ID from the response.
+      mojo_todo->id = todo.title();
       mojo_todo->title = todo.title();
       mojo_todo->description = todo.description();
       mojo_todo->actionable_url = GURL(todo.actionable_url());
@@ -161,6 +165,50 @@ void ContextHubPageHandler::OnAutoTodosGenerated(
     }
   }
   std::move(callback).Run(std::move(mojo_todos));
+}
+
+void ContextHubPageHandler::SetTodoFeedback(
+    browser::context_hub::mojom::AutoTodoItemFeedbackPtr feedback,
+    SetTodoFeedbackCallback callback) {
+  CHECK(feedback);
+  context_hub::ContextHubService* service =
+      ContextHubServiceFactory::GetForProfile(profile_);
+  if (service) {
+    service->SetTodoFeedback(std::move(feedback));
+  }
+  std::move(callback).Run();
+}
+
+void ContextHubPageHandler::DeleteTodoFeedback(
+    const std::string& id,
+    DeleteTodoFeedbackCallback callback) {
+  context_hub::ContextHubService* service =
+      ContextHubServiceFactory::GetForProfile(profile_);
+  if (service) {
+    service->DeleteTodoFeedback(id);
+  }
+  std::move(callback).Run();
+}
+
+void ContextHubPageHandler::ClearTodoFeedbacks(
+    ClearTodoFeedbacksCallback callback) {
+  context_hub::ContextHubService* service =
+      ContextHubServiceFactory::GetForProfile(profile_);
+  if (service) {
+    service->ClearTodoFeedbacks();
+  }
+  std::move(callback).Run();
+}
+
+void ContextHubPageHandler::GetTodoFeedbacks(
+    GetTodoFeedbacksCallback callback) {
+  context_hub::ContextHubService* service =
+      ContextHubServiceFactory::GetForProfile(profile_);
+  if (service) {
+    std::move(callback).Run(service->GetTodoFeedbacks());
+    return;
+  }
+  std::move(callback).Run({});
 }
 
 void ContextHubPageHandler::GetAllMemoryBankEntries(
@@ -401,18 +449,24 @@ void ContextHubPageHandler::AskGeminiWithContext(
     AskGeminiWithContextCallback callback) {
   context_hub::ContextHubService* service =
       ContextHubServiceFactory::GetForProfile(profile_);
-  auto response = browser::context_hub::mojom::ChatMessage::New();
-  response->role = browser::context_hub::mojom::ChatRole::kAssistant;
-
   if (!service) {
+    auto response = browser::context_hub::mojom::ChatMessage::New();
+    response->role = browser::context_hub::mojom::ChatRole::kAssistant;
     response->content = "Service unavailable.";
     std::move(callback).Run(std::move(response));
     return;
   }
 
-  // TODO(crbug.com/537894637): Integrate with llm service.
-  response->content = base::StringPrintf(
-      "Gemini response for prompt: \"%s\"\n\nUsing %zu selected memory ID(s).",
-      user_command.c_str(), memory_bank_entry_ids.size());
-  std::move(callback).Run(std::move(response));
+  service->ExecuteMemoryBankChat(
+      memory_bank_entry_ids, user_command,
+      base::BindOnce(
+          [](AskGeminiWithContextCallback callback,
+             std::optional<std::string> response_text) {
+            auto response = browser::context_hub::mojom::ChatMessage::New();
+            response->role = browser::context_hub::mojom::ChatRole::kAssistant;
+            response->content =
+                response_text.value_or("Failed to generate response.");
+            std::move(callback).Run(std::move(response));
+          },
+          std::move(callback)));
 }

@@ -860,8 +860,7 @@ void OmniboxEditModel::OpenAiMode(AimActivation activation) {
         "ContextualSearch.UserAction.SubmitQueryV2.WithoutContext.Omnibox"));
     base::UmaHistogramEnumeration(
         "ContextualSearch.UserAction.SubmitQueryV2.Omnibox",
-        contextual_search::ContextualSearchContextState::kWithoutContext,
-        contextual_search::ContextualSearchContextState::kMaxValue);
+        contextual_search::ContextualSearchContextState::kWithoutContext);
   }
 
   InitializeQueryContextualizerIfNeeded();
@@ -890,6 +889,12 @@ void OmniboxEditModel::OpenLensSearch() {
         WindowOpenDisposition::CURRENT_TAB, GURL(), std::u16string(),
         base::TimeTicks::Now());
   }
+}
+
+void OmniboxEditModel::OpenSelection(OmniboxPopupSelection selection,
+                                     bool via_keyboard) {
+  OpenSelection(selection, base::TimeTicks(),
+                WindowOpenDisposition::CURRENT_TAB, via_keyboard);
 }
 
 void OmniboxEditModel::OpenSelection(OmniboxPopupSelection selection,

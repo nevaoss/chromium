@@ -11,7 +11,6 @@ import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.Rect;
 import android.graphics.drawable.GradientDrawable;
-import android.graphics.drawable.InsetDrawable;
 import android.graphics.drawable.LayerDrawable;
 import android.os.Handler;
 import android.util.AttributeSet;
@@ -30,6 +29,7 @@ import androidx.appcompat.content.res.AppCompatResources;
 import org.chromium.build.annotations.Initializer;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
+import org.chromium.chrome.browser.omnibox.LocationBarBackgroundDrawable.HairlineBehavior;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxLayoutMode;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxState;
 import org.chromium.chrome.browser.omnibox.status.StatusCoordinator;
@@ -55,8 +55,7 @@ class LocationBarTablet extends LocationBarLayout implements OnLongClickListener
     private final LayerDrawable mFocusedPopupDrawable;
     private final GradientDrawable mOuterRect;
     private final GradientDrawable mInnerRect;
-    private final InsetDrawable mInsetStandbyBorder;
-    private LayerDrawable mUnfocusedDrawable;
+    private final LocationBarBackgroundDrawable mLocationBarBackground;
     private final LayerDrawable mHoverDrawable;
 
     private View mLocationBarIcon;
@@ -152,21 +151,26 @@ class LocationBarTablet extends LocationBarLayout implements OnLongClickListener
                                         getContext(),
                                         R.drawable.modern_toolbar_text_box_background_highlight));
         mHoverDrawable.mutate();
-        mInsetStandbyBorder =
-                (InsetDrawable)
-                        assumeNonNull(
-                                AppCompatResources.getDrawable(
-                                        getContext(),
-                                        R.drawable.modern_toolbar_text_box_standby_border));
-        mInsetStandbyBorder.mutate();
+
+        float strokeWidth = resources.getDimension(R.dimen.fusebox_glif_stroke_width);
+        float blurStrokeWidth = resources.getDimension(R.dimen.fusebox_glif_blur_stroke_width);
+        mLocationBarBackground =
+                new LocationBarBackgroundDrawable(
+                        context,
+                        mModernToolbarBackgroundCornerRadius,
+                        strokeWidth,
+                        blurStrokeWidth);
+        int verticalInset =
+                resources.getDimensionPixelSize(R.dimen.modern_toolbar_background_vertical_offset);
+        mLocationBarBackground.setInsets(0, verticalInset, 0, verticalInset);
+
         mHandler = new Handler();
     }
 
     @Override
     protected void onFinishInflate() {
         super.onFinishInflate();
-        mUnfocusedDrawable = (LayerDrawable) getBackground();
-        mUnfocusedDrawable.mutate();
+        setBackground(mLocationBarBackground);
 
         mLocationBarIcon = findViewById(R.id.location_bar_status_icon);
         mBookmarkButton = findViewById(R.id.bookmark_button);
@@ -498,23 +502,29 @@ class LocationBarTablet extends LocationBarLayout implements OnLongClickListener
                             context, mBrandedColorScheme));
         }
 
-        GradientDrawable unfocusedRect =
-                (GradientDrawable) mUnfocusedDrawable.findDrawableByLayerId(R.id.unfocused_bg);
-        if (unfocusedRect != null) {
-            if (mShowStandbyRing) {
-                unfocusedRect.setColor(
-                        OmniboxResourceProvider.getTabletToolbarTextBoxStandbyBackgroundColor(
-                                context, mBrandedColorScheme));
-            } else {
-                final @ColorInt int color = mLocationBarDataProvider.getPrimaryColor();
-                final @ColorInt int textBoxColor =
-                        ThemeUtils.getTextBoxColorForToolbarBackgroundInNonNativePage(
-                                context,
-                                color,
-                                mBrandedColorScheme == BrandedColorScheme.INCOGNITO,
-                                /* isCustomTab= */ false);
-                unfocusedRect.setColor(textBoxColor);
-            }
+        updateBackgroundColor();
+    }
+
+    private void updateBackgroundColor() {
+        Context context = getContext();
+        if (mShowStandbyRing) {
+            mLocationBarBackground.setBackgroundColor(
+                    OmniboxResourceProvider.getTabletToolbarTextBoxStandbyBackgroundColor(
+                            context, mBrandedColorScheme));
+            @ColorInt
+            int standbyBorderColor =
+                    OmniboxResourceProvider.getColorPrimary(context, mBrandedColorScheme);
+            mLocationBarBackground.setStandbyColor(standbyBorderColor);
+        } else {
+            @ColorInt int color = mLocationBarDataProvider.getPrimaryColor();
+            @ColorInt
+            int textBoxColor =
+                    ThemeUtils.getTextBoxColorForToolbarBackgroundInNonNativePage(
+                            context,
+                            color,
+                            mBrandedColorScheme == BrandedColorScheme.INCOGNITO,
+                            /* isCustomTab= */ false);
+            mLocationBarBackground.setBackgroundColor(textBoxColor);
         }
     }
 
@@ -606,15 +616,15 @@ class LocationBarTablet extends LocationBarLayout implements OnLongClickListener
     void setShowStandbyRing(boolean showStandbyRing) {
         if (showStandbyRing == mShowStandbyRing) return;
         mShowStandbyRing = showStandbyRing;
+        mLocationBarBackground.setHairlineBehavior(
+                showStandbyRing ? HairlineBehavior.SOLID : HairlineBehavior.NONE);
         updateLayoutAndBackground();
         updateForeground();
-        updateVisualsForState(mBrandedColorScheme);
+        updateBackgroundColor();
     }
 
     private void updateForeground() {
-        if (mShowStandbyRing) {
-            setForeground(mInsetStandbyBorder);
-        } else if (mIsGlifActive) {
+        if (mIsGlifActive) {
             setForeground(mGlifBorderDrawable);
         } else if (mIsHovered
                 && (mLayoutMode != FuseboxLayoutMode.SUGGESTIONS_POPOVER
@@ -681,7 +691,7 @@ class LocationBarTablet extends LocationBarLayout implements OnLongClickListener
             updateForeground();
             // Reset our background to reflect non-zero suggestion count, which is the typical
             // state. Not setting this risks visual glitches when returning to the fusebox.
-            setBackground(mUnfocusedDrawable);
+            setBackground(mLocationBarBackground);
         }
 
         adjustBackgroundForSuggestions();

@@ -192,6 +192,10 @@ FederatedRequestResultToProtocol(blink::mojom::FederatedRequestResult result) {
     case FederatedRequestResult::kWellKnownHttpNotFound: {
       return FederatedAuthRequestIssueReasonEnum::WellKnownHttpNotFound;
     }
+    // TODO(crbug.com/535664990): When request is blocked by connection
+    // allowlist, surface a separate devtools issue, rather than reusing the
+    // general no response one.
+    case FederatedRequestResult::kWellKnownBlockedByConnectionAllowlist:
     case FederatedRequestResult::kWellKnownNoResponse: {
       return FederatedAuthRequestIssueReasonEnum::WellKnownNoResponse;
     }
@@ -213,6 +217,10 @@ FederatedRequestResultToProtocol(blink::mojom::FederatedRequestResult result) {
     case FederatedRequestResult::kConfigHttpNotFound: {
       return FederatedAuthRequestIssueReasonEnum::ConfigHttpNotFound;
     }
+    // TODO(crbug.com/535664990): When request is blocked by connection
+    // allowlist, surface a separate devtools issue, rather than reusing the
+    // general no response one.
+    case FederatedRequestResult::kConfigBlockedByConnectionAllowlist:
     case FederatedRequestResult::kConfigNoResponse: {
       return FederatedAuthRequestIssueReasonEnum::ConfigNoResponse;
     }
@@ -225,6 +233,10 @@ FederatedRequestResultToProtocol(blink::mojom::FederatedRequestResult result) {
     case FederatedRequestResult::kAccountsHttpNotFound: {
       return FederatedAuthRequestIssueReasonEnum::AccountsHttpNotFound;
     }
+    // TODO(crbug.com/535664990): When request is blocked by connection
+    // allowlist, surface a separate devtools issue, rather than reusing the
+    // general no response one.
+    case FederatedRequestResult::kAccountsBlockedByConnectionAllowlist:
     case FederatedRequestResult::kAccountsNoResponse: {
       return FederatedAuthRequestIssueReasonEnum::AccountsNoResponse;
     }
@@ -240,6 +252,10 @@ FederatedRequestResultToProtocol(blink::mojom::FederatedRequestResult result) {
     case FederatedRequestResult::kIdTokenHttpNotFound: {
       return FederatedAuthRequestIssueReasonEnum::IdTokenHttpNotFound;
     }
+    // TODO(crbug.com/535664990): When request is blocked by connection
+    // allowlist, surface a separate devtools issue, rather than reusing the
+    // general no response one.
+    case FederatedRequestResult::kIdTokenBlockedByConnectionAllowlist:
     case FederatedRequestResult::kIdTokenNoResponse: {
       return FederatedAuthRequestIssueReasonEnum::IdTokenNoResponse;
     }
@@ -1765,18 +1781,14 @@ bool WillCreateURLLoaderFactoryParams::Run(
       factory_override && *factory_override ? factory_override->get()
                                             : &devtools_override;
 
-  // Order of targets and sessions matters -- the latter proxy is created,
-  // the closer it is to the network. So start with frame's NetworkHandler,
-  // then process frame's FetchHandler and then browser's FetchHandler.
+  // Order of targets and sessions matters -- the later proxy is created,
+  // the closer it is to the network. So process frame's FetchHandler
+  // and then browser's FetchHandler.
   // Within the target, the agents added earlier are closer to network.
   bool had_interceptors =
-      MaybeCreateProxyForInterception<protocol::NetworkHandler>(
+      MaybeCreateProxyForInterception<protocol::FetchHandler>(
           agent_host_, process_id_, storage_partition_, devtools_token_,
           is_navigation, is_download, handler_override, header_client);
-
-  had_interceptors |= MaybeCreateProxyForInterception<protocol::FetchHandler>(
-      agent_host_, process_id_, storage_partition_, devtools_token_,
-      is_navigation, is_download, handler_override, header_client);
 
   // TODO(caseq): assure deterministic order of browser agents (or sessions).
   for (auto* browser_agent_host : BrowserDevToolsAgentHost::Instances()) {

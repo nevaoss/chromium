@@ -21,7 +21,7 @@
 #include "chrome/browser/ui/tabs/organizer/organizer_panel_state_controller.h"
 #include "chrome/browser/ui/views/tabs/organizer/layout_constants.h"
 #include "chrome/browser/ui/views/tabs/organizer/organizer_panel_controls_view.h"
-#include "chrome/browser/ui/views/tabs/organizer/organizer_panel_view_layout.h"
+#include "chrome/common/webui_url_constants.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/saved_tab_groups/public/features.h"
 #include "ui/actions/actions.h"
@@ -32,11 +32,15 @@
 #include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/actions/action_view_controller.h"
 #include "ui/views/background.h"
+#include "ui/views/controls/webview/webview.h"
 #include "ui/views/event_monitor.h"
 #include "ui/views/focus/focus_search.h"
+#include "ui/views/layout/flex_layout.h"
+#include "ui/views/layout/flex_layout_types.h"
 #include "ui/views/view_class_properties.h"
 #include "ui/views/view_shadow.h"
 #include "ui/views/widget/widget.h"
+#include "url/gurl.h"
 
 namespace {
 
@@ -77,11 +81,24 @@ OrganizerPanelView::OrganizerPanelView(
 
   SetIsElevated(true);
 
+  content_container_->SetLayoutManager(std::make_unique<views::FlexLayout>())
+      ->SetOrientation(views::LayoutOrientation::kVertical)
+      .SetCrossAxisAlignment(views::LayoutAlignment::kStretch);
+
   controls_view_ = content_container_->AddChildView(
       std::make_unique<OrganizerPanelControlsView>(root_action_item_.get()));
+  controls_view_->SetProperty(views::kMarginsKey,
+                              organizer_panel::kOrganizerPanelControlsMargins);
 
-  content_container_->SetLayoutManager(
-      std::make_unique<OrganizerPanelViewLayout>(controls_view_));
+  if (browser_ && browser_->GetProfile()) {
+    auto web_view = std::make_unique<views::WebView>(browser_->GetProfile());
+    web_view->LoadInitialURL(GURL(chrome::kChromeUIOrganizerPanelURL));
+    web_view->SetProperty(
+        views::kFlexBehaviorKey,
+        views::FlexSpecification(views::MinimumFlexSizeRule::kScaleToZero,
+                                 views::MaximumFlexSizeRule::kUnbounded));
+    web_view_ = content_container_->AddChildView(std::move(web_view));
+  }
 
   resize_animation_.SetTweenType(gfx::Tween::Type::EASE_IN_OUT_EMPHASIZED);
 
@@ -290,6 +307,10 @@ void OrganizerPanelView::AnimationCanceled(const gfx::Animation* animation) {
 }
 
 // static
+views::View* OrganizerPanelView::web_view_for_testing() {
+  return web_view_;
+}
+
 void OrganizerPanelView::disable_animations_for_testing() {
   disable_animations_for_testing_ = true;
 }

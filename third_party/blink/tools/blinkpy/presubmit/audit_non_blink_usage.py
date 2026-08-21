@@ -145,7 +145,6 @@ _CONFIG = [
             'base::PowerMonitor',
             'base::Process',
             'base::RadToDeg',
-            'base::RangeAsRvalues',
             'base::raw_span',
             'base::RefCountedData',
             'base::RefCountedMemory',
@@ -205,9 +204,6 @@ _CONFIG = [
             'base::expected',
             'base::ok',
             'base::unexpected',
-
-            # //base/types/zip.h
-            'base::zip',
 
             # //base/functional/bind.h
             'base::IgnoreResult',
@@ -1428,10 +1424,14 @@ _CONFIG = [
     },
     {
         'paths': [
-            'third_party/blink/renderer/core/loader/alternate_signed_exchange_resource_info.cc'
+            'third_party/blink/renderer/core/loader/alternate_signed_exchange_resource_info.cc',
+            'third_party/blink/renderer/modules/webtransport/test_utils.cc',
+            'third_party/blink/renderer/modules/webtransport/test_utils.h',
+            'third_party/blink/renderer/modules/webtransport/web_transport.cc',
         ],
         'allowed': [
             # Used by WebPackageRequestMatcher in //third_party/blink/common.
+            # Used by WebTransport in //third_party/blink/renderer/modules/webtransport.
             'net::HttpRequestHeaders',
         ],
     },

@@ -258,6 +258,76 @@ id<GREYMatcher> CloseButton() {
   [ChromeEarlGrey waitForUIElementToAppearWithMatcher:composeboxMatcher];
 }
 
+// Tests that opening an external URL from the launcher while the app is in the
+// background dismisses an active Co-browse session that is in minimized state.
+- (void)testOpenExternalURLWithActiveCoBrowse {
+  if ([ComposeboxAppInterface isServerSideStateEnabled]) {
+    EARL_GREY_TEST_SKIPPED(
+        @"Skipped when kComposeboxServerSideState is enabled.");
+  }
+
+  // Open Co-browse session on an eligible search page.
+  OpenCoBrowse(_defaultURL);
+
+  // Wait for the assistant container to appear in Medium state.
+  [ChromeEarlGrey waitForUIElementToAppearWithMatcher:CloseButton()];
+
+  // Background the app.
+  [[AppLaunchManager sharedManager] backgroundApplication];
+
+  // Trigger opening an external URL via user activity (e.g. Universal Link /
+  // Handoff) while backgrounded.
+  GURL destinationURL = self.testServer->GetURL("/pony.html");
+  [ChromeEarlGrey
+      sceneContinueUserActivityWithType:NSUserActivityTypeBrowsingWeb
+                                    url:base::SysUTF8ToNSString(
+                                            destinationURL.spec())];
+
+  // Re-activate the application to bring it back to the foreground so the scene
+  // processes the user activity.
+  [[[XCUIApplication alloc] init] activate];
+
+  // Verify the assistant is dismissed after handling the external URL.
+  [[EarlGrey selectElementWithMatcher:CloseButton()]
+      assertWithMatcher:grey_nil()];
+}
+
+// Tests that opening a WidgetKit URL scheme while the app is in the background
+// dismisses an active Co-browse session that is in minimized state.
+- (void)testWidgetKitInvocationWithActiveCoBrowse {
+  if ([ComposeboxAppInterface isServerSideStateEnabled]) {
+    EARL_GREY_TEST_SKIPPED(
+        @"Skipped when kComposeboxServerSideState is enabled.");
+  }
+
+  // Open Co-browse session on an eligible search page.
+  OpenCoBrowse(_defaultURL);
+
+  // Wait for the assistant container to appear in Medium state.
+  [ChromeEarlGrey waitForUIElementToAppearWithMatcher:CloseButton()];
+  WaitForDetent(AssistantContainerDetent::kMedium);
+
+  // Swipe down to transition to Minimized state.
+  [[EarlGrey
+      selectElementWithMatcher:grey_accessibilityID(
+                                   kAssistantContainerDetentMediumIdentifier)]
+      performAction:grey_swipeFastInDirection(kGREYDirectionDown)];
+  WaitForDetent(AssistantContainerDetent::kMinimized);
+
+  // Background the app.
+  [[AppLaunchManager sharedManager] backgroundApplication];
+
+  // Trigger opening a WidgetKit URL scheme (e.g. Search Widget).
+  [ChromeEarlGrey sceneOpenURL:GURL("chromewidgetkit://search-widget/search")];
+
+  // Re-activate the application to bring it back to the foreground.
+  [[[XCUIApplication alloc] init] activate];
+
+  // Verify the assistant is dismissed after handling the WidgetKit invocation.
+  [[EarlGrey selectElementWithMatcher:CloseButton()]
+      assertWithMatcher:grey_nil()];
+}
+
 // Tests that the assistant can be dismissed and reopened multiple times.
 - (void)testOpenCloseAndReopenAssistant {
   if ([ComposeboxAppInterface isServerSideStateEnabled]) {
@@ -683,16 +753,33 @@ id<GREYMatcher> CloseButton() {
       assertWithMatcher:grey_nil()];
 }
 
+// Tests that the Co-browse session (including its specific context and thread
+// ID) is persisted across cold starts.
 - (void)testAssistantPersistsOnColdStart {
-  OpenCoBrowse(_defaultURL);
+  if ([ComposeboxAppInterface isServerSideStateEnabled]) {
+    EARL_GREY_TEST_SKIPPED(
+        @"Skipped when kComposeboxServerSideState is enabled.");
+  }
 
-  // Wait for the assistant to appear.
+  // 1. Setup a specific context by navigating to a simulated AIM URL.
+  [ChromeEarlGrey loadURL:self.testServer->GetURL(
+                              "localhost", "/search?udm=50&q=persisted_query")];
+  [ChromeEarlGrey waitForPageToFinishLoading];
+
+  // 2. Open cobrowse by tapping on a link in the fake aim page.
+  // This opens a new non-AIM tab (pony.html), which will display the sheet.
+  [ChromeEarlGrey tapWebStateElementWithID:@"my_link"];
+  [ChromeEarlGrey waitForMainTabCount:2];
+
+  // Wait for cobrowse to appear and verify the specific query context.
   [ChromeEarlGrey waitForUIElementToAppearWithMatcher:CloseButton()];
+  [ChromeEarlGrey waitForUIElementToAppearWithMatcher:grey_accessibilityLabel(
+                                                          @"persisted_query")];
 
-  // Ensure session is saved before clean shutdown so it can be restored.
+  // 3. Ensure session is saved before clean shutdown so it can be restored.
   [ChromeEarlGrey saveSessionImmediately];
 
-  // Relaunch the app.
+  // 4. Relaunch the app.
   AppLaunchConfiguration config = [self appConfigurationForTestCase];
   config.relaunch_policy = ForceRelaunchByKilling;
   [[AppLaunchManager sharedManager] ensureAppLaunchedWithConfiguration:config];
@@ -709,11 +796,14 @@ id<GREYMatcher> CloseButton() {
         performAction:grey_tap()];
   }
 
-  // Wait for the app to be ready and the page to be restored.
-  [ChromeEarlGrey waitForWebStateContainingText:"Echo"];
+  // 5. Verify the active non-AIM tab (pony.html) is properly restored.
+  [ChromeEarlGrey waitForWebStateContainingText:"pony jokes"];
 
-  // Verify the assistant is still visible.
+  // 6. Verify the assistant is still visible AND the context was successfully
+  // restored on the active non-AIM tab.
   [ChromeEarlGrey waitForUIElementToAppearWithMatcher:CloseButton()];
+  [ChromeEarlGrey waitForUIElementToAppearWithMatcher:grey_accessibilityLabel(
+                                                          @"persisted_query")];
 }
 
 // Tests that the CoBrowse assistant is only shown in the window where it was

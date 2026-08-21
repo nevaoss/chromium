@@ -13,6 +13,7 @@
 #include "chrome/browser/ui/actions/chrome_actions.h"
 #include "chrome/browser/ui/browser_actions.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
+#include "chrome/browser/ui/layout_constants.h"
 #include "chrome/browser/ui/tabs/tab_strip_prefs.h"
 #include "chrome/browser/ui/toolbar/pinned_toolbar/pinned_toolbar_actions_model.h"
 #include "chrome/browser/ui/toolbar/pinned_toolbar/pinned_toolbar_actions_model_factory.h"
@@ -135,8 +136,7 @@ class PinnedToolbarActionsContainerTest : public TestWithBrowserView {
 
   void UpdateActionItem(const actions::ActionId& id) {
     auto* action = actions::ActionManager::Get().FindAction(
-        id,
-        BrowserActions::From(browser_view()->browser())->root_action_item());
+        id, browser_view()->browser()->browser_actions()->root_action_item());
     action->SetText(u"Test Action");
     action->SetTooltipText(u"Test Action");
     action->SetImage(ui::ImageModel::FromVectorIcon(
@@ -709,7 +709,7 @@ TEST_F(PinnedToolbarActionsContainerTest, MetricsRecordedForPinnableActions) {
   actions::ActionItemVector action_items;
   actions::ActionManager::Get().GetActions(
       action_items,
-      BrowserActions::From(browser_view()->browser())->root_action_item());
+      browser_view()->browser()->GetActions()->root_action_item());
   size_t pinnable_count =
       std::ranges::count_if(action_items, [](actions::ActionItem* action) {
         return action->GetProperty(actions::kActionItemPinnableKey) ==

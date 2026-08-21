@@ -79,6 +79,7 @@
 #include "third_party/blink/renderer/core/sanitizer/sanitizer.h"
 #include "third_party/blink/renderer/core/script/ignore_destructive_write_count_incrementer.h"
 #include "third_party/blink/renderer/core/svg/svg_script_element.h"
+#include "third_party/blink/renderer/core/svg_names.h"
 #include "third_party/blink/renderer/platform/bindings/v8_per_isolate_data.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
@@ -1173,9 +1174,7 @@ void HTMLConstructionSite::InsertScriptElement(AtomicHTMLToken* token) {
       // elements since scripts can never see those flags or effects thereof.
       .SetCreatedByParser(should_be_parser_inserted,
                           should_be_parser_inserted ? document_ : nullptr)
-      .SetAlreadyStarted(is_parsing_fragment_ && flags.IsCreatedByParser() &&
-                         parser_content_policy_ !=
-                             kAllowScriptingContentAndMarkAsParserInserted);
+      .SetAlreadyStarted(ShouldMarkScriptAlreadyStarted());
   HTMLScriptElement* element = nullptr;
   const auto* is_attribute = token->GetAttributeItem(html_names::kIsAttr);
   bool sanitizer_allows_is_attribute =
@@ -1287,6 +1286,14 @@ CreateElementFlags HTMLConstructionSite::GetCreateElementFlags() const {
                               : CreateElementFlags::ByParser(document_);
 }
 
+bool HTMLConstructionSite::ShouldMarkScriptAlreadyStarted() const {
+  return is_parsing_fragment_ &&
+         parser_content_policy_ !=
+             kAllowScriptingContentAndDoNotMarkAlreadyStarted &&
+         parser_content_policy_ !=
+             kAllowScriptingContentAndMarkAsParserInserted;
+}
+
 Document& HTMLConstructionSite::OwnerDocumentForCurrentNode() {
   // TODO(crbug.com/1070667): For <template> elements, many operations need to
   // be re-targeted to the .content() document of the template. This function is
@@ -1359,6 +1366,13 @@ Element* HTMLConstructionSite::CreateElement(
            ? static_cast<const QualifiedName&>(
                  html_names::TagToQualifiedName(token->GetHTMLTag()))
            : QualifiedName(g_null_atom, token->GetName(), namespace_uri));
+
+  // TODO(nrosenthal): make this explicit in the HTML standard.
+  Document& creation_document = (sanitizer_ && document.IsActive() &&
+                                 !sanitizer_->IsElementAllowed(tag_name))
+                                    ? document.EnsureTemplateDocument()
+                                    : document;
+
   // "5. Let is be the value of the "is" attribute in the given token ..." etc.
   const Attribute* is_attribute = token->GetAttributeItem(html_names::kIsAttr);
   // If sanitizer_ is set and if santizer_ would not allow the "is" attribute,
@@ -1455,7 +1469,7 @@ Element* HTMLConstructionSite::CreateElement(
     // only partially construct themselves when created by the parser, but since
     // this is a custom element, we need a fully-constructed element here.
     element = definition->CreateElement(
-        document, tag_name,
+        creation_document, tag_name,
         GetCreateElementFlags().SetCreatedByParser(false, nullptr));
 
     // "8. Append each attribute in the given token to element." We don't use
@@ -1471,11 +1485,20 @@ Element* HTMLConstructionSite::CreateElement(
   } else {
     if (definition) {
       DCHECK(GetCreateElementFlags().IsAsyncCustomElements());
-      element = definition->CreateElement(document, tag_name,
+      element = definition->CreateElement(creation_document, tag_name,
                                           GetCreateElementFlags());
     } else {
+      CreateElementFlags flags = GetCreateElementFlags();
+      // SVG <script> in foreign content is created here, not in
+      // InsertScriptElement(). Mark fragment-parsed ones "already started" too,
+      // so an innerHTML-injected SVG script can't run when later cloned.
+      if (RuntimeEnabledFeatures::SvgScriptFragmentAlreadyStartedEnabled() &&
+          tag_name == svg_names::kScriptTag &&
+          ShouldMarkScriptAlreadyStarted()) {
+        flags.SetAlreadyStarted(true);
+      }
       element = CustomElement::CreateUncustomizedOrUndefinedElement(
-          document, tag_name, GetCreateElementFlags(), is,
+          creation_document, tag_name, flags, is,
           CustomElementRegistryAssignment::ResolveNullableRegistry(
               registry,
               CustomElementRegistryAssignment::NullRegistryFallback::kWait));

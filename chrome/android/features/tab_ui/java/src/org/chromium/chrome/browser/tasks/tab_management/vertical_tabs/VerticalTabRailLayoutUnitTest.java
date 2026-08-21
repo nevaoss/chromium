@@ -8,9 +8,13 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import android.app.Activity;
+import android.view.DragEvent;
 import android.view.InputDevice;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -160,24 +164,21 @@ public class VerticalTabRailLayoutUnitTest {
     }
 
     @Test
-    @SmallTest
-    public void testButtonTooltips() {
-        View collapseButton = mRailLayout.findViewById(R.id.collapse_button);
-        View gridButton = mRailLayout.findViewById(R.id.grid_button);
-        View searchButton = mRailLayout.findViewById(R.id.tab_search_button);
-        View newTabButton = mRailLayout.findViewById(R.id.new_tab_button);
+    public void testOnWindowFocusChanged_CollapsesRailOnFocusLost() {
+        mRailLayout.onWindowFocusChanged(false);
+        verify(mMockHoverListener).onResult(RailCollapseState.COLLAPSED);
+    }
 
-        assertEquals(collapseButton.getContentDescription(), collapseButton.getTooltipText());
-        assertEquals(
-                mRailLayout.getContext().getString(R.string.accessibility_tab_groups),
-                gridButton.getTooltipText());
-        assertEquals(
-                mRailLayout
-                        .getContext()
-                        .getString(R.string.accessibility_search_loupe_tooltip_text),
-                searchButton.getTooltipText());
-        assertEquals(
-                mRailLayout.getContext().getString(R.string.accessibility_toolbar_btn_new_tab),
-                newTabButton.getTooltipText());
+    @Test
+    public void testOnDragEvent_CollapsesRailOnDragExitedOrEnded() {
+        DragEvent exitEvent = mock(DragEvent.class);
+        when(exitEvent.getAction()).thenReturn(DragEvent.ACTION_DRAG_EXITED);
+        mRailLayout.onDragEvent(exitEvent);
+        verify(mMockHoverListener).onResult(RailCollapseState.COLLAPSED);
+
+        DragEvent endEvent = mock(DragEvent.class);
+        when(endEvent.getAction()).thenReturn(DragEvent.ACTION_DRAG_ENDED);
+        mRailLayout.onDragEvent(endEvent);
+        verify(mMockHoverListener, times(2)).onResult(RailCollapseState.COLLAPSED);
     }
 }

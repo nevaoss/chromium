@@ -5,6 +5,7 @@
 module ai_overlay_dialog.mojom;
 
 import "chrome/browser/ui/webui/ai_overlay_dialog/tools/tools.mojom";
+import "ui/gfx/geometry/mojom/geometry.mojom";
 import "url/mojom/url.mojom";
 
 // Represents a structured node in the document tree for active page context.
@@ -35,6 +36,16 @@ interface PageHandler {
 
   // Sends the current audio volume (0.0 to 1.0) to animate the toolbar button.
   UpdateAudioEnergy(float energy);
+
+  // Closes and dismisses the overlay WebUI dialog widget. Calling this is
+  // equivalent to the user clicking the toolbar microphone button to deactivate
+  // listening, tearing down the active audio listener and session via HideOverlay().
+  // TODO(crbug.com/540858790): Rename HideOverlay() to CloseOverlay() for clarity.
+  Close();
+
+  // Returns current mouse pointer coordinates relative to the tab viewport,
+  // or null if the cursor is outside the target web contents.
+  GetCursorPosition() => (gfx.mojom.Point? position);
 };
 
 // Implemented by the WebUI (TypeScript/JS). Called by the Browser C++.

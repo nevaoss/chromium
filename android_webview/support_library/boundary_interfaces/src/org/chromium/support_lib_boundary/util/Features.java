@@ -267,6 +267,9 @@ public class Features {
     @Deprecated
     public static final String RESTRICT_SENSITIVE_WEB_CONTENT = "RESTRICT_SENSITIVE_WEB_CONTENT";
 
+    // WebContentBuilder
+    public static final String WEB_CONTENT = "WEB_CONTENT";
+
     // WebSettingsCompat.setUserAgentMetadataFromMap
     // WebSettingsCompat.getUserAgentMetadataMap
     public static final String USER_AGENT_METADATA = "USER_AGENT_METADATA";
@@ -505,4 +508,7 @@ public class Features {
     // Profile.getCrossOriginIsolatedAllowList
     public static final String CROSS_ORIGIN_ISOLATED_ALLOW_LIST =
             "CROSS_ORIGIN_ISOLATED_ALLOW_LIST";
+
+    // Navigation.getResponseHeaders
+    public static final String NAVIGATION_GET_RESPONSE_HEADERS = "NAVIGATION_GET_RESPONSE_HEADERS";
 }

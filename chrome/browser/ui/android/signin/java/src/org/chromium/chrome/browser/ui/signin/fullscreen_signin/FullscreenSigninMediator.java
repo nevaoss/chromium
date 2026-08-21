@@ -348,6 +348,7 @@ public class FullscreenSigninMediator
         // Directly start the flow to add a selected account if it is specified in the config for
         // signin and does not already exist on the device.
         maybeStartAddingSelectedAccount();
+        mDelegate.onInitialLoadCompleted();
     }
 
     private void initializeProfileDataCache(Profile profile) {
@@ -948,7 +949,11 @@ public class FullscreenSigninMediator
         if (!isMetricsReportingDisabled) {
             footerString += " " + mContext.getString(R.string.signin_fre_footer_metrics_reporting);
             final ChromeClickableSpan clickableUMADialogSpan =
-                    new ChromeClickableSpan(mContext, view -> openUmaDialog());
+                    new ChromeClickableSpan(
+                            mContext,
+                            view -> openUmaDialog(),
+                            mContext.getString(
+                                    R.string.signin_fre_footer_metrics_reporting_settings));
             spans.add(
                     new SpanApplier.SpanInfo("<UMA_LINK>", "</UMA_LINK>", clickableUMADialogSpan));
         }

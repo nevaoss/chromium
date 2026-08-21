@@ -41,6 +41,7 @@ class CollaborationMessagingPageActionController;
 class CommitLimitOOMRecoveryTracker;
 class CookieControlsPageActionController;
 class FileSystemAccessPageActionController;
+class FocusTabAfterNavigationHelper;
 class FromGWSNavigationAndKeepAliveRequestObserver;
 class HttpAuthCacheStatus;
 class IntentPickerViewPageActionController;
@@ -130,6 +131,7 @@ class ExtensionSidePanelManager;
 }  // namespace extensions
 
 namespace glic {
+class ContextualCueingHelper;
 class GlicCueTabState;
 class GlicInstanceHelper;
 class GlicTabIndicatorHelper;
@@ -533,6 +535,9 @@ class TabFeatures {
 
   std::unique_ptr<glic::GlicPageFeaturesManager> glic_page_features_manager_;
 
+  // Observes page loads to decide when to offer glic contextual cueing.
+  std::unique_ptr<glic::ContextualCueingHelper> contextual_cueing_helper_;
+
   // Per-tab eligibility state for the glic contextual cue.
   std::unique_ptr<glic::GlicCueTabState> glic_cue_tab_state_;
 
@@ -541,6 +546,11 @@ class TabFeatures {
 
   std::unique_ptr<InactiveWindowMouseEventController>
       inactive_window_mouse_event_controller_;
+
+  // Focuses the tab contents after browser-initiated and NTP-leaving
+  // navigations.
+  std::unique_ptr<FocusTabAfterNavigationHelper>
+      focus_tab_after_navigation_helper_;
 
   std::unique_ptr<FromGWSNavigationAndKeepAliveRequestObserver>
       from_gws_navigation_and_keep_alive_request_observer_;

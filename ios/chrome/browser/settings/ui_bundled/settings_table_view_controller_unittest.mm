@@ -87,7 +87,7 @@ class SettingsTableViewControllerTest
                               PhotosServiceFactory::GetDefaultFactory());
     builder.AddTestingFactory(
         AuthenticationServiceFactory::GetInstance(),
-        AuthenticationServiceFactory::GetFactoryWithDelegate(
+        AuthenticationServiceFactory::GetFactoryWithDelegateForTesting(
             std::make_unique<FakeAuthenticationServiceDelegate>()));
     builder.AddTestingFactory(
         IOSChromeProfilePasswordStoreFactory::GetInstance(),
@@ -387,6 +387,23 @@ TEST_F(SettingsTableViewControllerTest, HasDownloadsMenuItem) {
   EXPECT_TRUE([controller().tableViewModel
       hasItemForItemType:SettingsItemTypeDownloadsSettings
        sectionIdentifier:SettingsSectionIdentifierInfo]);
+}
+
+// Verifies that Backend Promo Debug Tools item is in the Debug section when
+// enabled.
+TEST_F(SettingsTableViewControllerTest, HasBackendPromoDebugToolsItem) {
+  [[NSUserDefaults standardUserDefaults] setBool:YES
+                                          forKey:@"ShowBackendPromoDebugTools"];
+
+  CreateController();
+  CheckController();
+
+  EXPECT_TRUE([controller().tableViewModel
+      hasItemForItemType:SettingsItemTypeBackendPromoDebugTools
+       sectionIdentifier:SettingsSectionIdentifierDebug]);
+
+  [[NSUserDefaults standardUserDefaults]
+      removeObjectForKey:@"ShowBackendPromoDebugTools"];
 }
 
 // Verifies that the Level Up walkthrough target item (Autofill and Passwords)

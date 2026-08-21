@@ -17,6 +17,7 @@
 #include "chrome/browser/ui/autofill/payments/omnibox_autofill_bubble_controller.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_actions.h"
+#include "chrome/browser/ui/views/autofill/payments/omnibox_autofill_suggestion_view.h"
 #include "chrome/browser/ui/views/autofill/payments/payments_view_util.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "components/autofill/core/browser/data_manager/personal_data_manager.h"
@@ -38,16 +39,18 @@ namespace autofill {
 namespace {
 
 std::vector<views::Button*> GetSuggestions(views::View* view) {
-  std::vector<views::Button*> buttons;
+  std::vector<views::Button*> suggestions;
   for (views::View* child : view->children()) {
-    if (auto* button = views::AsViewClass<views::Button>(child)) {
-      buttons.push_back(button);
+    if (auto* suggestion =
+            views::AsViewClass<OmniboxAutofillSuggestion>(child)) {
+      suggestions.push_back(suggestion);
     } else {
-      auto child_buttons = GetSuggestions(child);
-      buttons.insert(buttons.end(), child_buttons.begin(), child_buttons.end());
+      auto child_suggestions = GetSuggestions(child);
+      suggestions.insert(suggestions.end(), child_suggestions.begin(),
+                         child_suggestions.end());
     }
   }
-  return buttons;
+  return suggestions;
 }
 
 class OmniboxAutofillBubbleViewBrowserTest : public InProcessBrowserTest {
@@ -249,8 +252,7 @@ IN_PROC_BROWSER_TEST_F(OmniboxAutofillBubbleViewBrowserTest,
   ASSERT_TRUE(controller);
 
   actions::ActionItem* action = actions::ActionManager::Get().FindAction(
-      kActionAutofillPayment,
-      BrowserActions::From(browser())->root_action_item());
+      kActionAutofillPayment, browser()->GetActions()->root_action_item());
   ASSERT_NE(action, nullptr);
   EXPECT_FALSE(action->GetIsShowingBubble());
 

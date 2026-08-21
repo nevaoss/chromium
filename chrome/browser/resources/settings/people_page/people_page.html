@@ -141,7 +141,8 @@
 </if>
 
         <!-- Shared Elements -->
-        <cr-link-row id="account-subpage-row" on-click="onAccountClick_"
+        <cr-link-row id="account-subpage-row" class="cr-row first"
+            on-click="onAccountClick_"
             label="[[primaryAccountName_]]"
             sub-label="[[getAccountRowSubtitle_(primaryAccountEmail_, syncStatus)]]"
             role-description="$i18n{subpageArrowRoleDescription}"
@@ -187,7 +188,7 @@
 
         <template is="dom-if" if="[[isDasherlessProfile_]]">
           <div id="sync-not-allowed" class="cr-row continuation">
-            <cr-icon id="info-icon" icon="cr:info-outline"></cr-icon>
+            <cr-icon id="info-icon" icon="cr:info"></cr-icon>
             <div id="sync-not-allowed-text" class="flex cr-padded-text">
               $i18n{syncUnavailableForNonGoogleAccount}
             </div>

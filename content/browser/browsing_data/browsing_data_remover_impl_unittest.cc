@@ -335,6 +335,15 @@ class RemoveDownloadsTester {
     browser_context->SetDownloadManagerForTesting(
         base::WrapUnique(download_manager_.get()));
     EXPECT_EQ(download_manager_, browser_context->GetDownloadManager());
+    ON_CALL(*download_manager_, RemoveDownloadsByURLAndTime(_, _, _, _))
+        .WillByDefault(
+            [](const base::RepeatingCallback<bool(const GURL&)>& url_filter,
+               base::Time remove_begin, base::Time remove_end,
+               base::OnceClosure callback) {
+              if (callback) {
+                std::move(callback).Run();
+              }
+            });
     EXPECT_CALL(*download_manager_, Shutdown());
   }
 
@@ -717,7 +726,7 @@ TEST_F(BrowsingDataRemoverImplTest, RemoveMultipleTypes) {
   // be called.
   RemoveDownloadsTester downloads_tester(GetBrowserContext());
   EXPECT_CALL(*downloads_tester.download_manager(),
-              RemoveDownloadsByURLAndTime(_, _, _));
+              RemoveDownloadsByURLAndTime(_, _, _, _));
 
   uint64_t removal_mask = BrowsingDataRemover::DATA_TYPE_DOWNLOADS |
                           BrowsingDataRemover::DATA_TYPE_COOKIES;
@@ -736,6 +745,31 @@ TEST_F(BrowsingDataRemoverImplTest, RemoveMultipleTypes) {
             StoragePartition::REMOVE_DATA_MASK_COOKIES |
                 StoragePartition::REMOVE_DATA_MASK_INTEREST_GROUPS |
                 StoragePartition::REMOVE_KEEPALIVE_LOADS_ATTEMPTING_RETRY);
+}
+
+TEST_F(BrowsingDataRemoverImplTest,
+       RemoveDownloadsUninitializedDownloadManager) {
+  RemoveDownloadsTester tester(GetBrowserContext());
+  base::OnceClosure download_callback;
+  EXPECT_CALL(*tester.download_manager(),
+              RemoveDownloadsByURLAndTime(_, _, _, _))
+      .WillOnce([&download_callback](
+                    const base::RepeatingCallback<bool(const GURL&)>& filter,
+                    base::Time begin, base::Time end,
+                    base::OnceClosure callback) {
+        download_callback = std::move(callback);
+      });
+
+  BrowsingDataRemoverImpl* remover = static_cast<BrowsingDataRemoverImpl*>(
+      GetBrowserContext()->GetBrowsingDataRemover());
+  BrowsingDataRemoverCompletionObserver completion_observer(remover);
+  remover->RemoveAndReply(
+      base::Time(), base::Time::Max(), BrowsingDataRemover::DATA_TYPE_DOWNLOADS,
+      BrowsingDataRemover::ORIGIN_TYPE_UNPROTECTED_WEB, &completion_observer);
+
+  EXPECT_TRUE(download_callback);
+  std::move(download_callback).Run();
+  completion_observer.BlockUntilCompletion();
 }
 
 TEST_F(BrowsingDataRemoverImplTest, RemoveQuotaManagedDataForeverBoth) {
@@ -1277,9 +1311,9 @@ TEST_F(BrowsingDataRemoverImplTest, RemoveDownloadsByTimeOnly) {
   base::RepeatingCallback<bool(const GURL&)> filter =
       BrowsingDataFilterBuilder::BuildNoopFilter();
 
-  EXPECT_CALL(
-      *tester.download_manager(),
-      RemoveDownloadsByURLAndTime(ProbablySameFilter(std::move(filter)), _, _));
+  EXPECT_CALL(*tester.download_manager(),
+              RemoveDownloadsByURLAndTime(ProbablySameFilter(std::move(filter)),
+                                          _, _, _));
 
   BlockUntilBrowsingDataRemoved(base::Time(), base::Time::Max(),
                                 BrowsingDataRemover::DATA_TYPE_DOWNLOADS,
@@ -1294,9 +1328,9 @@ TEST_F(BrowsingDataRemoverImplTest, RemoveDownloadsByOrigin) {
   builder->AddRegisterableDomain("host1.com");
   base::RepeatingCallback<bool(const GURL&)> filter = builder->BuildUrlFilter();
 
-  EXPECT_CALL(
-      *tester.download_manager(),
-      RemoveDownloadsByURLAndTime(ProbablySameFilter(std::move(filter)), _, _));
+  EXPECT_CALL(*tester.download_manager(),
+              RemoveDownloadsByURLAndTime(ProbablySameFilter(std::move(filter)),
+                                          _, _, _));
 
   BlockUntilOriginDataRemoved(base::Time(), base::Time::Max(),
                               BrowsingDataRemover::DATA_TYPE_DOWNLOADS,
@@ -1407,6 +1441,10 @@ TEST_F(BrowsingDataRemoverImplTest, MultipleTasks) {
   filter_builder_1->AddRegisterableDomain("example.com");
 
   MultipleTasksObserver observer(remover);
+  RemoveDownloadsTester downloads_tester(GetBrowserContext());
+  EXPECT_CALL(*downloads_tester.download_manager(),
+              RemoveDownloadsByURLAndTime(_, _, _, _))
+      .Times(testing::AnyNumber());
   BrowsingDataRemoverCompletionInhibitor completion_inhibitor(remover);
 
   // Test several tasks with various configuration of masks, filters, and target
@@ -1536,6 +1574,10 @@ TEST_F(BrowsingDataRemoverImplTest, MultipleIdenticalTasks) {
 // This test demonstrates that even running the tasks without inhibition is
 // executed correctly and doesn't crash.
 TEST_F(BrowsingDataRemoverImplTest, MultipleTasksInQuickSuccession) {
+  RemoveDownloadsTester downloads_tester(GetBrowserContext());
+  EXPECT_CALL(*downloads_tester.download_manager(),
+              RemoveDownloadsByURLAndTime(_, _, _, _))
+      .Times(testing::AnyNumber());
   BrowsingDataRemoverImpl* remover = static_cast<BrowsingDataRemoverImpl*>(
       GetBrowserContext()->GetBrowsingDataRemover());
   EXPECT_FALSE(remover->IsRemovingForTesting());
@@ -1582,8 +1624,47 @@ class MockNetworkContext : public network::TestNetworkContext {
       ClearTrustTokenData,
       void(network::mojom::ClearDataFilterPtr,
            network::mojom::NetworkContext::ClearTrustTokenDataCallback));
+  MOCK_METHOD4(ClearHttpCache,
+               void(base::Time,
+                    base::Time,
+                    network::mojom::ClearDataFilterPtr,
+                    network::mojom::NetworkContext::ClearHttpCacheCallback));
+  MOCK_METHOD4(
+      ClearHttpCacheLogically,
+      void(base::Time,
+           base::Time,
+           network::mojom::ClearDataFilterPtr,
+           network::mojom::NetworkContext::ClearHttpCacheLogicallyCallback));
 };
 }  // namespace
+
+TEST_F(BrowsingDataRemoverImplTest, ClearsHttpCacheLogically) {
+  MockNetworkContext context;
+  set_network_context_override(&context);
+
+  EXPECT_CALL(context, ClearHttpCacheLogically(_, _, _, _))
+      .WillOnce(RunOnceClosure<3>());
+
+  BlockUntilBrowsingDataRemoved(
+      base::Time(), base::Time::Max(),
+      BrowsingDataRemover::DATA_TYPE_CACHE |
+          BrowsingDataRemover::DATA_TYPE_LOGICAL_CLEAR,
+      /*include_protected_origins=*/false);
+  set_network_context_override(nullptr);
+}
+
+TEST_F(BrowsingDataRemoverImplTest, ClearsHttpCachePhysicallyByDefault) {
+  MockNetworkContext context;
+  set_network_context_override(&context);
+
+  EXPECT_CALL(context, ClearHttpCache(_, _, _, _))
+      .WillOnce(RunOnceClosure<3>());
+
+  BlockUntilBrowsingDataRemoved(base::Time(), base::Time::Max(),
+                                BrowsingDataRemover::DATA_TYPE_CACHE,
+                                /*include_protected_origins=*/false);
+  set_network_context_override(nullptr);
+}
 
 TEST_F(BrowsingDataRemoverImplTest, ClearsTrustTokens) {
   MockNetworkContext context;
@@ -1604,7 +1685,8 @@ TEST_F(BrowsingDataRemoverImplTest, PreservesTrustTokens) {
   // When DATA_TYPE_TRUST_TOKENS isn't cleared, Trust Tokens state shouldn't be.
   BlockUntilBrowsingDataRemoved(
       base::Time(), base::Time::Max(),
-      BrowsingDataRemover::DATA_TYPE_CACHE,  // arbitrary non-Trust Tokens type
+      BrowsingDataRemover::DATA_TYPE_DOWNLOADS,  // arbitrary non-Trust Tokens
+                                                 // type
       /*include_protected_origins=*/false);
 
   // (The strict mock will fail the test if its mocked method is called.)

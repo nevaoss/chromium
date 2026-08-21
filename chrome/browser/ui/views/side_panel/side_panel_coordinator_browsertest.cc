@@ -35,6 +35,7 @@
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_actions.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+#include "chrome/browser/ui/layout_constants.h"
 #include "chrome/browser/ui/side_panel/side_panel_content_proxy.h"
 #include "chrome/browser/ui/side_panel/side_panel_entry.h"
 #include "chrome/browser/ui/side_panel/side_panel_entry_id.h"
@@ -805,7 +806,7 @@ IN_PROC_BROWSER_TEST_F(SidePanelCoordinatorTest,
 
   actions::ActionItem* action_item = actions::ActionManager::Get().FindAction(
       kActionSidePanelShowBookmarks,
-      BrowserActions::From(browser())->root_action_item());
+      browser()->GetActions()->root_action_item());
 
   // Update the action item text.
   const std::u16string new_title = u"New Bookmarks title";

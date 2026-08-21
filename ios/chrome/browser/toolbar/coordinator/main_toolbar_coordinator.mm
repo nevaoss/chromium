@@ -97,6 +97,73 @@ namespace {
 // Extra vertical spacing when the banner promo is active on split mode.
 constexpr CGFloat kBannerPromoVerticalSpacing = 8;
 
+// Helper function to extract a slice from `cgImage` at `pixelRect`
+// and stretch it to fill `drawRect` in the current graphics context.
+void StretchImageEdge(CGImageRef cgImage,
+                      CGRect pixelRect,
+                      CGRect drawRect,
+                      CGFloat scale) {
+  CGImageRef slice = CGImageCreateWithImageInRect(cgImage, pixelRect);
+  if (slice) {
+    // Orientation is generally Up for view snapshots; scale ensures correct
+    // point sizing.
+    UIImage* edgeImage = [UIImage imageWithCGImage:slice
+                                             scale:scale
+                                       orientation:UIImageOrientationUp];
+    [edgeImage drawInRect:drawRect];
+    CGImageRelease(slice);
+  }
+}
+
+// Returns a new image created by stretching the left and right edges of the
+// provided `snapshot` to fill `targetWidth`. The original `snapshot` is drawn
+// at the given `xOffset`.
+UIImage* PadImageWithEdgeStretching(UIImage* snapshot,
+                                    CGFloat xOffset,
+                                    CGFloat targetWidth) {
+  CGFloat height = snapshot.size.height;
+  if (height <= 0 || targetWidth <= snapshot.size.width) {
+    return snapshot;
+  }
+
+  UIGraphicsImageRendererFormat* format =
+      [UIGraphicsImageRendererFormat defaultFormat];
+  format.scale = snapshot.scale;
+  format.opaque = NO;
+
+  UIGraphicsImageRenderer* renderer = [[UIGraphicsImageRenderer alloc]
+      initWithSize:CGSizeMake(targetWidth, height)
+            format:format];
+
+  return [renderer imageWithActions:^(
+                       UIGraphicsImageRendererContext* UIContext) {
+    [snapshot drawAtPoint:CGPointMake(xOffset, 0)];
+
+    CGImageRef cgImage = snapshot.CGImage;
+    if (!cgImage || CGImageGetWidth(cgImage) == 0) {
+      return;
+    }
+    size_t pixelWidth = CGImageGetWidth(cgImage);
+    size_t pixelHeight = CGImageGetHeight(cgImage);
+
+    // Stretch left edge.
+    if (xOffset > 0) {
+      CGRect leftPixelRect = CGRectMake(0, 0, 1, pixelHeight);
+      CGRect leftDrawRect = CGRectMake(0, 0, xOffset, height);
+      StretchImageEdge(cgImage, leftPixelRect, leftDrawRect, snapshot.scale);
+    }
+
+    // Stretch right edge.
+    CGFloat rightEdge = xOffset + snapshot.size.width;
+    if (rightEdge < targetWidth) {
+      CGRect rightPixelRect = CGRectMake(pixelWidth - 1, 0, 1, pixelHeight);
+      CGRect rightDrawRect =
+          CGRectMake(rightEdge, 0, targetWidth - rightEdge, height);
+      StretchImageEdge(cgImage, rightPixelRect, rightDrawRect, snapshot.scale);
+    }
+  }];
+}
+
 // Helper function to return the domain passkey used to mutate the layout state.
 inline LayoutStateToolbarPassKey PassKey() {
   return layout_state::MainToolbarCoordinatorPassKeyFactory::CreateKey();
@@ -467,6 +534,13 @@ inline LayoutStateToolbarPassKey PassKey() {
   }
 }
 
+- (void)updateToolbarPositionForActiveBrowser {
+  if (IsChromeNextIaEnabled()) {
+    return;
+  }
+  [self.legacyToolbarMediator setInitialOmniboxPosition];
+}
+
 - (BOOL)isLoadingPrerenderer {
   if (!_started) {
     return NO;
@@ -550,6 +624,9 @@ inline LayoutStateToolbarPassKey PassKey() {
     if (CanShowTabStrip(self.traitEnvironment)) {
       return kTopToolbarIPadHeightFullscreen;
     }
+    if (IsGlassToolbarEnabled()) {
+      return kGlassCollapsedHeight + 2 * kGlassFullscreenMargin;
+    }
     if (!IsSplitToolbarMode(self.traitEnvironment)) {
       return kToolbarHeightFullscreen;
     }
@@ -596,6 +673,9 @@ inline LayoutStateToolbarPassKey PassKey() {
         return height > 0 ? height : 1;
       }
     }
+    if (IsGlassToolbarEnabled()) {
+      return height + kGlassExpandedHeight + 2 * kGlassToolbarMargin;
+    }
     if (ShouldHaveFullHeightTopToolbar(self.traitEnvironment)) {
       return height + kToolbarHeight;
     }
@@ -629,6 +709,9 @@ inline LayoutStateToolbarPassKey PassKey() {
                                           .preferredContentSizeCategory) +
                safeAreaBottom;
       }
+      if (IsGlassToolbarEnabled()) {
+        return kGlassCollapsedHeight + 2 * kGlassFullscreenMargin;
+      }
       return kToolbarHeightFullscreen;
     }
     return 0.0;
@@ -646,6 +729,9 @@ inline LayoutStateToolbarPassKey PassKey() {
       return 0.0;
     }
     if ([self isToolbarPositionBottom]) {
+      if (IsGlassToolbarEnabled()) {
+        return kGlassExpandedHeight + 2 * kGlassToolbarMargin;
+      }
       return kToolbarHeight;
     }
     return 0.0;
@@ -833,6 +919,19 @@ inline LayoutStateToolbarPassKey PassKey() {
     }
     UIImage* toolbarSnapshot = CaptureViewWithOption(
         toolbarView, toolbarView.window.screen.scale, kClientSideRendering);
+
+    // If the toolbar doesn't span the full width of the window (e.g. because of
+    // the App Bar in landscape), pad the snapshot so it matches the full screen
+    // width.
+    CGFloat windowWidth = toolbarView.window.bounds.size.width;
+    CGFloat toolbarHeight = toolbarView.bounds.size.height;
+    if (toolbarSnapshot && toolbarView.bounds.size.width < windowWidth &&
+        toolbarHeight > 0) {
+      CGRect imageRect = [toolbarView convertRect:toolbarView.bounds
+                                           toView:toolbarView.window];
+      toolbarSnapshot = PadImageWithEdgeStretching(
+          toolbarSnapshot, imageRect.origin.x, windowWidth);
+    }
 
     [mediator updateConsumerWithWebState:self.browser->GetWebStateList()
                                              ->GetActiveWebState()

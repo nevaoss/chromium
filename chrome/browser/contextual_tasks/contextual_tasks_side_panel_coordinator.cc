@@ -146,10 +146,17 @@ std::unique_ptr<content::WebContents> CreateWebContents(
       browser_window->GetProfile());
   std::unique_ptr<content::WebContents> web_contents =
       content::WebContents::Create(create_params);
+  webui::SetBrowserWindowInterface(web_contents.get(), browser_window);
+
+  // Add the side panel params to the url being loaded into the WebContents.
+  // This is important since loading begins before the WebContents is
+  // attached to a side panel and therefore the navigation handler won't
+  // trigger.
+  url = contextual_tasks::ContextualTasksUiService::AddCommonSidePanelParams(
+      url, web_contents.get());
   web_contents->GetController().LoadURL(url, content::Referrer(),
                                         ui::PAGE_TRANSITION_AUTO_TOPLEVEL,
                                         std::string());
-  webui::SetBrowserWindowInterface(web_contents.get(), browser_window);
 
   // Create PermissionRequestManager explicitly for this WebContents.
   // The permission bubble will anchor to the browser window via
@@ -1256,10 +1263,10 @@ void ContextualTasksSidePanelCoordinator::OnEligibilityChange(
     task_id_to_web_contents_cache_.clear();
   }
 #if !BUILDFLAG(IS_ANDROID)
-  if (browser_window_ && BrowserActions::From(browser_window_)) {
+  if (browser_window_ && browser_window_->GetActions()) {
     if (auto* action_item = actions::ActionManager::Get().FindAction(
             kActionSidePanelShowContextualTasks,
-            BrowserActions::From(browser_window_)->root_action_item())) {
+            browser_window_->GetActions()->root_action_item())) {
       action_item->SetVisible(is_eligible);
     }
   }

@@ -105,7 +105,8 @@ bool ShouldSaveWindowPlacement(const Browser* browser) {
   // spawned by an app).  See similar code in
   // SessionServiceBase::ShouldTrackBrowser().
   return !(browser->GetType() == BrowserWindowInterface::Type::TYPE_APP ||
-           browser->is_type_app_popup()) ||
+           browser->GetType() ==
+               BrowserWindowInterface::Type::TYPE_APP_POPUP) ||
          WindowFeatureController::From(browser)->IsTrustedSource();
 }
 
@@ -113,7 +114,8 @@ bool SavedBoundsAreContentBounds(const Browser* browser) {
   // Applications other than web apps (such as devtools) save their window size.
   // Web apps, on the other hand, have the same behavior as popups, and save
   // their content bounds.
-  return !browser->is_type_normal() && !browser->is_type_devtools() &&
+  return browser->GetType() != BrowserWindowInterface::Type::TYPE_NORMAL &&
+         browser->GetType() != BrowserWindowInterface::Type::TYPE_DEVTOOLS &&
          !WindowFeatureController::From(browser)->IsTrustedSource();
 }
 

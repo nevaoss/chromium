@@ -18,9 +18,11 @@
 #include "chrome/browser/extensions/extension_ui_util.h"
 #include "chrome/browser/ui/extensions/extensions_toolbar_view_model.h"
 #include "chrome/browser/ui/toolbar/toolbar_action_view_model.h"
+#include "chrome/browser/ui/views/extensions/browser_action_drag_data.h"
 #include "chrome/browser/ui/views/extensions/extension_view_utils.h"
 #include "chrome/browser/ui/views/extensions/extensions_toolbar_button.h"
 #include "chrome/browser/ui/views/extensions/extensions_toolbar_unittest.h"
+#include "chrome/browser/ui/views/permissions/chip/permission_chip_constants.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/sync_preferences/testing_pref_service_syncable.h"
 #include "components/vector_icons/vector_icons.h"
@@ -42,10 +44,6 @@ namespace {
 
 using SitePermissionsHelper = extensions::SitePermissionsHelper;
 using PermissionsManager = extensions::PermissionsManager;
-
-// TODO(crbug.com/40916158): Same as permission's ChipController. Pull out to a
-// shared location.
-constexpr base::TimeDelta kConfirmationDisplayDuration = base::Seconds(4);
 
 }  // namespace
 
@@ -126,6 +124,20 @@ void ExtensionsToolbarDesktopUnitTest::SetUp() {
 void ExtensionsToolbarDesktopUnitTest::TearDown() {
   web_contents_tester_ = nullptr;
   ExtensionsToolbarUnitTest::TearDown();
+}
+
+TEST_F(ExtensionsToolbarDesktopUnitTest, BrowserActionDragDataPickleRoundTrip) {
+  BrowserActionDragData source_data("extension-id", 7);
+  ui::OSExchangeData exchange_data;
+  source_data.Write(profile(), &exchange_data);
+
+  EXPECT_TRUE(BrowserActionDragData::CanDrop(exchange_data, profile()));
+
+  BrowserActionDragData restored_data;
+  ASSERT_TRUE(restored_data.Read(exchange_data));
+  EXPECT_EQ("extension-id", restored_data.id());
+  EXPECT_EQ(7u, restored_data.index());
+  EXPECT_TRUE(restored_data.IsFromProfile(profile()));
 }
 
 TEST_F(ExtensionsToolbarDesktopUnitTest, ReorderPinnedExtensions) {
@@ -1134,7 +1146,7 @@ TEST_F(ExtensionsToolbarDesktopUnitTest,
                 IDS_EXTENSIONS_REQUEST_ACCESS_BUTTON_DISMISSED_TEXT));
 
   // Force the confirmation to be collapsed.
-  task_environment()->AdvanceClock(kConfirmationDisplayDuration);
+  task_environment()->AdvanceClock(kPermissionConfirmationDisplayDuration);
   base::RunLoop().RunUntilIdle();
   WaitForAnimation();
 
@@ -1195,7 +1207,7 @@ TEST_F(ExtensionsToolbarDesktopUnitTest,
                 IDS_EXTENSIONS_REQUEST_ACCESS_BUTTON_DISMISSED_TEXT));
 
   // Force the confirmation to be collapsed.
-  task_environment()->AdvanceClock(kConfirmationDisplayDuration);
+  task_environment()->AdvanceClock(kPermissionConfirmationDisplayDuration);
   base::RunLoop().RunUntilIdle();
 
   // Verify the request access button is visible since extension C is now

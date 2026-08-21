@@ -62,6 +62,7 @@
 #endif
 
 class BackgroundContents;
+class BrowserActions;
 class BrowserInitState;
 class BrowserView;
 class BrowserWindow;
@@ -306,9 +307,6 @@ class Browser : public TabStripModelObserver,
   static std::unique_ptr<Browser> DeprecatedCreateOwnedForTesting(
       const CreateParams& params);
 
-  // Refer to `GetCreationStatusForProfile()`.
-  static CreationStatus GetCreationStatusForProfile(Profile* profile);
-
   Browser(const Browser&) = delete;
   Browser& operator=(const Browser&) = delete;
 
@@ -330,6 +328,7 @@ class Browser : public TabStripModelObserver,
   // avoided.
   BrowserView& GetBrowserView();
 
+  BrowserActions* browser_actions() { return GetActions(); }
 
   SessionID session_id() const { return session_id_; }
   BrowserWindowFeatures* browser_window_features() const {
@@ -395,9 +394,7 @@ class Browser : public TabStripModelObserver,
       const TabStripSelectionChange& selection) override;
   void TabStripEmpty() override;
 
-  bool is_type_normal() const { return type_ == TYPE_NORMAL; }
-  bool is_type_app_popup() const { return type_ == TYPE_APP_POPUP; }
-  bool is_type_devtools() const { return type_ == TYPE_DEVTOOLS; }
+  bool is_type_popup() const { return type_ == TYPE_POPUP; }
 
   // Called each time the browser window is shown.
   void OnWindowDidShow();
@@ -446,6 +443,7 @@ class Browser : public TabStripModelObserver,
       DidBecomeActiveCallback callback) override;
   base::CallbackListSubscription RegisterDidBecomeInactive(
       DidBecomeInactiveCallback callback) override;
+  BrowserActions* GetActions() override;
   Type GetType() const override;
   std::vector<tabs::TabInterface*> GetAllTabInterfaces() override;
   Browser* GetBrowserForMigrationOnly() override;
@@ -663,9 +661,9 @@ class Browser : public TabStripModelObserver,
 
   // UI update coalescing and handling ////////////////////////////////////////
 
-  typedef std::map<const content::WebContents*, int> UpdateMap;
+  typedef std::map<tabs::TabInterface*, int> UpdateMap;
 
-  // Maps from WebContents to pending UI updates that need to be processed.
+  // Maps from TabInterface to pending UI updates that need to be processed.
   // We don't update things like the URL or tab title right away to avoid
   // flickering and extra painting.
   // See ScheduleUIUpdate and ProcessPendingUIUpdates.

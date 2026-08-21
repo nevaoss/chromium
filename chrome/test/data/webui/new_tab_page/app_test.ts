@@ -2536,9 +2536,10 @@ suite('NewTabPageAppTest', () => {
               typeIcon: IconType.kFavicon,
               primaryText: {text: 'TabContext', a11yText: null},
               secondaryText: {text: 'tab-subtitle', a11yText: null},
-              preselectedTool: ToolMode.kUnspecified,
-              preferredInventory: null,
-              clickAction: null,
+              fuseboxAction: {
+                preselectedTool: ToolMode.kUnspecified,
+                preferredInventory: null,
+              },
             },
             tab: fakeTab,
           },
@@ -2548,9 +2549,10 @@ suite('NewTabPageAppTest', () => {
               typeIcon: IconType.kBanana,
               primaryText: {text: 'Nano Banana', a11yText: null},
               secondaryText: {text: 'image-subtitle', a11yText: null},
-              preselectedTool: ToolMode.kImageGen,
-              preferredInventory: null,
-              clickAction: null,
+              fuseboxAction: {
+                preselectedTool: ToolMode.kImageGen,
+                preferredInventory: null,
+              },
             },
             tab: null,
           },
@@ -2560,9 +2562,10 @@ suite('NewTabPageAppTest', () => {
               typeIcon: IconType.kGlobeWithSearchLoop,
               primaryText: {text: 'DeepSearch', a11yText: null},
               secondaryText: {text: 'ds-subtitle', a11yText: null},
-              preselectedTool: ToolMode.kDeepSearch,
-              preferredInventory: null,
-              clickAction: null,
+              fuseboxAction: {
+                preselectedTool: ToolMode.kDeepSearch,
+                preferredInventory: null,
+              },
             },
             tab: null,
           },
@@ -2724,9 +2727,10 @@ suite('NewTabPageAppTest', () => {
               typeIcon: IconType.kSubArrowRight,
               primaryText: {text: 'Deep dive', a11yText: null},
               secondaryText: {text: subtitle, a11yText: null},
-              preselectedTool: ToolMode.kUnspecified,
-              preferredInventory: null,
-              clickAction: null,
+              fuseboxAction: {
+                preselectedTool: ToolMode.kUnspecified,
+                preferredInventory: null,
+              },
             },
             tab: {
               tabId: 1,
@@ -2985,7 +2989,7 @@ suite('NewTabPageAppTest', () => {
           assertFalse(searchbox.isListening);
 
           voiceSearch.hasErrorTimer = true;
-          voiceSearch.detailedError_ = 5; // VoiceSearchError.NO_MATCH
+          voiceSearch.detailedError = 5; // VoiceSearchError.NO_MATCH
           voiceSearch.setErrorMessageForTesting('Didn\'t get that.');
           await microtasksFinished();
           const tryAgainLink =

@@ -366,20 +366,16 @@ inline LayoutStateScenePassKey PassKey() {
   // unregister observers and destroy C++ objects before the application is
   // shut down without depending on non-deterministic call to -dealloc.
   [self stopSettingsAnimated:NO completion:nil];
-  if (!IsAlertCrashFixKillSwitchEnabled()) {
-    // Ensure command dispatching is stopped across all non-nil browsers so that
-    // shutdown captures unregistered targets in silently failing targets.
-    if (_regularBrowser) {
-      [_regularBrowser->GetCommandDispatcher() stopDispatchingToTarget:self];
-    }
-    if (_incognitoBrowser) {
-      [_incognitoBrowser->GetCommandDispatcher() stopDispatchingToTarget:self];
-    }
-    if (_inactiveBrowser) {
-      [_inactiveBrowser->GetCommandDispatcher() stopDispatchingToTarget:self];
-    }
-  } else {
+  // Ensure command dispatching is stopped across all non-nil browsers so that
+  // shutdown captures unregistered targets in silently failing targets.
+  if (_regularBrowser) {
     [_regularBrowser->GetCommandDispatcher() stopDispatchingToTarget:self];
+  }
+  if (_incognitoBrowser) {
+    [_incognitoBrowser->GetCommandDispatcher() stopDispatchingToTarget:self];
+  }
+  if (_inactiveBrowser) {
+    [_inactiveBrowser->GetCommandDispatcher() stopDispatchingToTarget:self];
   }
   _policyWatcherObserver.reset();
   _policyWatcherObserverBridge.reset();
@@ -571,25 +567,18 @@ inline LayoutStateScenePassKey PassKey() {
 
   id<BrowserCoordinatorCommands> browserCoordinatorHandler = HandlerForProtocol(
       self.currentBrowser->GetCommandDispatcher(), BrowserCoordinatorCommands);
-  ProceduralBlock completionWithBVC = ^{
-    DCHECK(!self.isTabGridActive);
+  ProceduralBlock closePresentedViewsCompletion = ^{
     DCHECK(!self.isSigninInProgress);
-    [browserCoordinatorHandler
-        clearPresentedStateWithCompletion:completion
-                           dismissOmnibox:dismissOmnibox];
-  };
-  ProceduralBlock completionWithoutBVC = ^{
-    // The BVC may exist but tab switcher should be active.
-    DCHECK(self.isTabGridActive);
-    DCHECK(!self.isSigninInProgress);
-    [self stopChildCoordinatorsWithCompletion:completion];
+    if (self.isTabGridActive) {
+      [self stopChildCoordinatorsWithCompletion:completion];
+    } else {
+      [browserCoordinatorHandler
+          clearPresentedStateWithCompletion:completion
+                             dismissOmnibox:dismissOmnibox];
+    }
   };
 
-  // Select a completion based on whether the BVC is shown.
-  ProceduralBlock chosenCompletion =
-      self.isTabGridActive ? completionWithoutBVC : completionWithBVC;
-
-  [self closePresentedViews:NO completion:chosenCompletion];
+  [self closePresentedViews:NO completion:closePresentedViewsCompletion];
 
   [_geminiContainerCoordinator stop];
   _geminiContainerCoordinator = nil;
@@ -1655,7 +1644,7 @@ inline LayoutStateScenePassKey PassKey() {
 }
 
 - (void)setIncognitoBrowser:(Browser*)incognitoBrowser {
-  if (!IsAlertCrashFixKillSwitchEnabled() && _incognitoBrowser) {
+  if (_incognitoBrowser) {
     [_incognitoBrowser->GetCommandDispatcher() stopDispatchingToTarget:self];
   }
   _incognitoBrowser = incognitoBrowser;
@@ -2275,7 +2264,7 @@ inline LayoutStateScenePassKey PassKey() {
   SigninCoordinatorCompletionCallback signinCompletion =
       signinCoordinator.signinCompletion;
   signinCoordinator.signinCompletion = nil;
-  CHECK(signinCompletion, base::NotFatalUntil::M142);
+  CHECK(signinCompletion);
   // The `signinCoordinator` must be nil here, because `_signinCoordinator`
   // was set to `nil` above.
   signinCompletion(nil, SigninCoordinatorResultInterrupted, nil);

@@ -28,6 +28,7 @@
 #include "chrome/common/chrome_features.h"
 #include "chrome/common/password_manager/remote_actor_credential_sharing_policy.h"
 #include "chrome/test/base/chrome_render_view_host_test_harness.h"
+#include "components/sync/protocol/password_specifics.pb.h"
 #include "components/device_reauth/mock_device_authenticator.h"
 #include "components/keyed_service/core/keyed_service.h"
 #include "components/password_manager/core/browser/password_form.h"
@@ -650,11 +651,17 @@ TEST_F(RemoteActorCredentialSharingImplTest, SuccessFlow_SelectCredential) {
   EXPECT_CALL(
       *mock_sharing_service_,
       SharePassword(AllOf(Field(&RemoteActorCredentialSharingService::
-                                    ShareParameters::username,
-                                u"user"),
+                                    ShareParameters::password_data,
+                                ::testing::Property(
+                                    &sync_pb::PasswordSpecificsData::
+                                        username_value,
+                                    "user")),
                           Field(&RemoteActorCredentialSharingService::
-                                    ShareParameters::password,
-                                u"pass"),
+                                    ShareParameters::password_data,
+                                ::testing::Property(
+                                    &sync_pb::PasswordSpecificsData::
+                                        password_value,
+                                    "pass")),
                           Field(&RemoteActorCredentialSharingService::
                                     ShareParameters::web_origin,
                                 "https://google.com"),
@@ -898,5 +905,23 @@ TEST_F(RemoteActorCredentialSharingImplTest, ReauthDisabled_NoPrompt) {
   EXPECT_TRUE(RunSharingFlowAndSelect(remote));
 }
 #endif
+
+TEST_F(RemoteActorCredentialSharingImplTest,
+       RequestFailsWhenTrustedVaultKeyRequired) {
+  mojo::AssociatedRemote<chrome::mojom::RemoteActorCredentialSharing> remote =
+      SetUpAndBindFlow();
+
+  // Set trusted vault key required.
+  ON_CALL(*mock_sync_service_->GetMockUserSettings(),
+          IsTrustedVaultKeyRequiredForPreferredDataTypes())
+      .WillByDefault(testing::Return(true));
+
+  content::RenderFrameHostTester::For(main_rfh())->SimulateUserActivation();
+  base::test::TestFuture<bool> result;
+  remote->RequestAgentAuthentication(account_info_.gaia.ToString(),
+                                     "google.com", "actor_id",
+                                     result.GetCallback());
+  EXPECT_FALSE(result.Get());
+}
 
 }  // namespace password_manager

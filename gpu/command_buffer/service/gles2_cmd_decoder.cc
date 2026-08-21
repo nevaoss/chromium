@@ -726,7 +726,7 @@ class GLES2DecoderImpl : public GLES2Decoder,
   friend class ScopedFramebufferCopyBinder;
   friend class BackFramebuffer;
   friend class BackTexture;
-  friend class ScopedDepthStencilReattacher;
+  friend class ScopedBufferReattacher;
 
   enum FramebufferOperation {
     kFramebufferDiscard,
@@ -2554,13 +2554,11 @@ ScopedGLErrorSuppressor::~ScopedGLErrorSuppressor() {
   ERRORSTATE_CLEAR_REAL_GL_ERRORS(error_state_, function_name_);
 }
 
-class ScopedDepthStencilReattacher {
+class ScopedBufferReattacher {
  public:
-  ScopedDepthStencilReattacher(GLES2DecoderImpl* decoder,
-                               TextureRef* texture_ref);
-  ScopedDepthStencilReattacher(GLES2DecoderImpl* decoder,
-                               Renderbuffer* renderbuffer);
-  ~ScopedDepthStencilReattacher();
+  ScopedBufferReattacher(GLES2DecoderImpl* decoder, TextureRef* texture_ref);
+  ScopedBufferReattacher(GLES2DecoderImpl* decoder, Renderbuffer* renderbuffer);
+  ~ScopedBufferReattacher();
 
  private:
   struct SavedAttachmentInfo {
@@ -2584,22 +2582,25 @@ class ScopedDepthStencilReattacher {
   scoped_refptr<Framebuffer> old_draw_fbo_;
 };
 
-ScopedDepthStencilReattacher::ScopedDepthStencilReattacher(
-    GLES2DecoderImpl* decoder,
-    TextureRef* texture_ref)
+ScopedBufferReattacher::ScopedBufferReattacher(GLES2DecoderImpl* decoder,
+                                               TextureRef* texture_ref)
     : decoder_(decoder), texture_ref_(texture_ref) {
   Initialize();
 }
 
-ScopedDepthStencilReattacher::ScopedDepthStencilReattacher(
-    GLES2DecoderImpl* decoder,
-    Renderbuffer* renderbuffer)
+ScopedBufferReattacher::ScopedBufferReattacher(GLES2DecoderImpl* decoder,
+                                               Renderbuffer* renderbuffer)
     : decoder_(decoder), renderbuffer_(renderbuffer) {
   Initialize();
 }
 
-void ScopedDepthStencilReattacher::Initialize() {
-  if (!decoder_->workarounds().reattach_fbo_depth_stencil_on_reallocation) {
+void ScopedBufferReattacher::Initialize() {
+  const bool reattach_depth_stencil =
+      decoder_->workarounds().reattach_fbo_depth_stencil_on_reallocation;
+  const bool reattach_layer_increase =
+      decoder_->workarounds().reattach_texture_to_fbo_after_layer_increase &&
+      texture_ref_ && texture_ref_->texture()->target() == GL_TEXTURE_2D_ARRAY;
+  if (!reattach_depth_stencil && !reattach_layer_increase) {
     return;
   }
 
@@ -2607,7 +2608,7 @@ void ScopedDepthStencilReattacher::Initialize() {
   if (texture_ref_) {
     detached_fbos =
         decoder_->framebuffer_manager()->GetBindingFramebuffersForTexture(
-            texture_ref_);
+            texture_ref_, reattach_layer_increase);
   } else if (renderbuffer_) {
     detached_fbos =
         decoder_->framebuffer_manager()->GetBindingFramebuffersForRenderbuffer(
@@ -2651,8 +2652,14 @@ void ScopedDepthStencilReattacher::Initialize() {
     // Detach in driver.
     decoder_->api()->glBindFramebufferEXTFn(GL_FRAMEBUFFER, fbo->service_id());
     if (info.is_texture) {
-      decoder_->api()->glFramebufferTexture2DEXTFn(
-          GL_FRAMEBUFFER, attachment_point, info.texture_target, 0, 0);
+      if (info.texture_target == GL_TEXTURE_2D_ARRAY ||
+          info.texture_target == GL_TEXTURE_3D) {
+        decoder_->api()->glFramebufferTextureLayerFn(GL_FRAMEBUFFER,
+                                                     attachment_point, 0, 0, 0);
+      } else {
+        decoder_->api()->glFramebufferTexture2DEXTFn(
+            GL_FRAMEBUFFER, attachment_point, info.texture_target, 0, 0);
+      }
     } else if (info.is_renderbuffer) {
       decoder_->api()->glFramebufferRenderbufferEXTFn(
           GL_FRAMEBUFFER, attachment_point, GL_RENDERBUFFER, 0);
@@ -2660,7 +2667,7 @@ void ScopedDepthStencilReattacher::Initialize() {
   }
 }
 
-ScopedDepthStencilReattacher::~ScopedDepthStencilReattacher() {
+ScopedBufferReattacher::~ScopedBufferReattacher() {
   if (saved_attachments_.empty()) {
     return;
   }
@@ -2670,7 +2677,8 @@ ScopedDepthStencilReattacher::~ScopedDepthStencilReattacher() {
     Framebuffer* fbo = info.framebuffer.get();
     decoder_->api()->glBindFramebufferEXTFn(GL_FRAMEBUFFER, fbo->service_id());
     if (info.is_texture) {
-      if (info.texture_layer == 0) {
+      if (info.texture_target != GL_TEXTURE_2D_ARRAY &&
+          info.texture_target != GL_TEXTURE_3D) {
         if (info.texture_samples == 0) {
           decoder_->api()->glFramebufferTexture2DEXTFn(
               GL_FRAMEBUFFER, info.attachment_point, info.texture_target,
@@ -8178,8 +8186,7 @@ void GLES2DecoderImpl::RenderbufferStorageMultisampleWithWorkaround(
     GLsizei width,
     GLsizei height,
     ForcedMultisampleMode mode) {
-  ScopedDepthStencilReattacher reattacher(this,
-                                          state_.bound_renderbuffer.get());
+  ScopedBufferReattacher reattacher(this, state_.bound_renderbuffer.get());
   RegenerateRenderbufferIfNeeded(state_.bound_renderbuffer.get());
   EnsureRenderbufferBound();
   RenderbufferStorageMultisampleHelper(target, samples, internal_format, width,
@@ -13231,7 +13238,7 @@ error::Error GLES2DecoderImpl::HandleTexImage2D(uint32_t immediate_data_size,
   }
   TextureRef* texture_ref =
       texture_manager()->GetTextureInfoForTarget(&state_, target);
-  ScopedDepthStencilReattacher reattacher(this, texture_ref);
+  ScopedBufferReattacher reattacher(this, texture_ref);
   GLint level = static_cast<GLint>(c.level);
   GLenum internal_format = static_cast<GLenum>(c.internalformat);
   GLsizei width = static_cast<GLsizei>(c.width);
@@ -13331,7 +13338,7 @@ error::Error GLES2DecoderImpl::HandleTexImage3D(uint32_t immediate_data_size,
   }
   TextureRef* texture_ref =
       texture_manager()->GetTextureInfoForTarget(&state_, target);
-  ScopedDepthStencilReattacher reattacher(this, texture_ref);
+  ScopedBufferReattacher reattacher(this, texture_ref);
   GLint level = static_cast<GLint>(c.level);
   GLenum internal_format = static_cast<GLenum>(c.internalformat);
   GLsizei width = static_cast<GLsizei>(c.width);
@@ -13654,7 +13661,7 @@ void GLES2DecoderImpl::DoCopyTexImage2D(
         GL_INVALID_OPERATION, func_name, "unknown texture for target");
     return;
   }
-  ScopedDepthStencilReattacher reattacher(this, texture_ref);
+  ScopedBufferReattacher reattacher(this, texture_ref);
   Texture* texture = texture_ref->texture();
   if (texture->IsImmutable()) {
     LOCAL_SET_GL_ERROR(
@@ -16250,7 +16257,7 @@ void GLES2DecoderImpl::TexStorageImpl(GLenum target,
                        "unknown texture for target");
     return;
   }
-  ScopedDepthStencilReattacher reattacher(this, texture_ref);
+  ScopedBufferReattacher reattacher(this, texture_ref);
   Texture* texture = texture_ref->texture();
   // The glTexStorage entry points require width, height, and depth to be
   // at least 1, but the other texture entry points (those which use

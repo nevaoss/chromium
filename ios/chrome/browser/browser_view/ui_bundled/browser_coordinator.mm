@@ -2005,9 +2005,7 @@ const char kChromeAppStoreUrl[] =
   [_passkeyIncognitoCoordinator stop];
   _passkeyIncognitoCoordinator = nil;
 
-  if (IsSyncedSetUpEnabled()) {
-    [self stopSyncedSetUpCoordinator];
-  }
+  [self stopSyncedSetUpCoordinator];
 
   [self hideDriveFilePicker];
   [self hideCobalt];
@@ -3286,9 +3284,7 @@ const char kChromeAppStoreUrl[] =
   [_passkeyIncognitoCoordinator stop];
   _passkeyIncognitoCoordinator = nil;
 
-  if (IsSyncedSetUpEnabled()) {
-    [self stopSyncedSetUpCoordinator];
-  }
+  [self stopSyncedSetUpCoordinator];
 
   [self hideGoogleOne];
   [self updateLensUIForBackground];
@@ -4452,7 +4448,6 @@ const char kChromeAppStoreUrl[] =
 
 - (void)syncedSetUpCoordinatorWantsToBeDismissed:
     (SyncedSetUpCoordinator*)coordinator {
-  CHECK(IsSyncedSetUpEnabled());
   CHECK_EQ(_syncedSetUpCoordinator, coordinator);
   [self stopSyncedSetUpCoordinator];
 }
@@ -4460,7 +4455,6 @@ const char kChromeAppStoreUrl[] =
 #pragma mark - SyncedSetUpCommands
 
 - (void)showSyncedSetUpWithDismissalCompletion:(ProceduralBlock)completion {
-  CHECK(IsSyncedSetUpEnabled());
   CHECK(CanShowSyncedSetUp(self.profile->GetPrefs()));
 
   _runAfterSyncedSetUpDismissal = [completion copy];
@@ -5034,6 +5028,11 @@ const char kChromeAppStoreUrl[] =
   } else {
     viewportInsets = _fullscreenController->GetCurrentViewportInsets();
   }
+
+  // The snapshot should always span the full width of the screen, so do not
+  // crop the side safe areas.
+  viewportInsets.left = 0;
+  viewportInsets.right = 0;
 
   if (IsVisibleURLNewTabPage(webState)) {
     const BOOL canShowTabStrip = CanShowTabStrip(self.viewController);

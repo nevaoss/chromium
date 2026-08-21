@@ -482,18 +482,14 @@ HostResolverManager::HostResolverManager(
   UpdateConnectionType(connection_type);
 
 #if defined(ENABLE_BUILT_IN_DNS)
-  InsecureDnsMode initial_insecure_dns_mode = InsecureDnsMode::kDisabled;
-  if (options.insecure_dns_client_enabled) {
-    initial_insecure_dns_mode = options.insecure_dns_via_platform_apis_enabled
-                                    ? InsecureDnsMode::kEnabledPlatform
-                                    : InsecureDnsMode::kEnabledBuiltIn;
-  }
-  CHECK(initial_insecure_dns_mode != InsecureDnsMode::kEnabledPlatform ||
+  CHECK((options.insecure_dns_mode != InsecureDnsMode::kEnabledPlatform &&
+         options.insecure_dns_mode !=
+             InsecureDnsMode::kEnabledPlatformNoSystem) ||
         features::IsDnsPlatformSupported());
 
   dns_client_ = DnsClient::CreateClient(net_log_);
   dns_client_->SetInsecureEnabled(
-      initial_insecure_dns_mode,
+      options.insecure_dns_mode,
       options.additional_types_via_insecure_dns_enabled);
   dns_client_->SetConfigOverrides(options.dns_config_overrides);
 #else
@@ -646,7 +642,8 @@ void HostResolverManager::SetInsecureDnsClientEnabled(
     InsecureDnsMode mode,
     bool additional_dns_types_enabled) {
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
-  CHECK(mode != InsecureDnsMode::kEnabledPlatform ||
+  CHECK((mode != InsecureDnsMode::kEnabledPlatform &&
+         mode != InsecureDnsMode::kEnabledPlatformNoSystem) ||
         features::IsDnsPlatformSupported());
 
   if (!dns_client_)
@@ -1346,7 +1343,8 @@ void HostResolverManager::PushDnsTasks(const DnsClient& dns_client,
   const bool insecure_tasks_allowed =
       (insecure_dns_mode != InsecureDnsMode::kDisabled);
   const TaskType dns_task_type =
-      (insecure_dns_mode == InsecureDnsMode::kEnabledPlatform)
+      (insecure_dns_mode == InsecureDnsMode::kEnabledPlatform ||
+       insecure_dns_mode == InsecureDnsMode::kEnabledPlatformNoSystem)
           ? TaskType::DNS_PLATFORM
           : TaskType::DNS;
   // Upgrade the insecure DnsTask depending on the secure dns mode.
@@ -1406,6 +1404,7 @@ void HostResolverManager::PushDnsTasks(const DnsClient& dns_client,
   // The system resolver can be used as a fallback for a non-existent or
   // failing builtin resolver task, if allowed by the request parameters.
   if (system_task_allowed &&
+      insecure_dns_mode != InsecureDnsMode::kEnabledPlatformNoSystem &&
       (no_builtin_tasks || allow_fallback_to_systemtask)) {
     out_tasks->push_back(TaskType::SYSTEM);
   }

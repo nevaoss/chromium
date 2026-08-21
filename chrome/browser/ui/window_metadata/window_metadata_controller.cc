@@ -110,8 +110,8 @@ std::u16string WindowMetadataController::GetWindowTitleForTab(
   }
 
   if (title.empty() &&
-      (browser_->is_type_normal() ||
-       browser_->GetType() == BrowserWindowInterface::Type::TYPE_POPUP)) {
+      (browser_->GetType() == BrowserWindowInterface::Type::TYPE_NORMAL ||
+       browser_->is_type_popup())) {
     title = CoreTabHelper::GetDefaultTitle();
   }
 
@@ -170,8 +170,8 @@ std::u16string WindowMetadataController::GetWindowTitleForMaxWidth(
 
   // If there is no title, leave it empty for apps.
   if (title.empty() &&
-      (browser_->is_type_normal() ||
-       browser_->GetType() == BrowserWindowInterface::Type::TYPE_POPUP)) {
+      (browser_->GetType() == BrowserWindowInterface::Type::TYPE_NORMAL ||
+       browser_->is_type_popup())) {
     title = CoreTabHelper::GetDefaultTitle();
   }
 
@@ -222,8 +222,8 @@ std::u16string WindowMetadataController::GetWindowTitleFromWebContents(
 
   // If there is no title, leave it empty for apps.
   if (title.empty() &&
-      (browser_->is_type_normal() ||
-       browser_->GetType() == BrowserWindowInterface::Type::TYPE_POPUP)) {
+      (browser_->GetType() == BrowserWindowInterface::Type::TYPE_NORMAL ||
+       browser_->is_type_popup())) {
     title = CoreTabHelper::GetDefaultTitle();
   }
 
@@ -236,7 +236,8 @@ std::u16string WindowMetadataController::GetWindowTitleFromWebContents(
   // for example the window selector uses the Aura window title.
   if (title.empty() &&
       (browser_->GetType() == BrowserWindowInterface::Type::TYPE_APP ||
-       browser_->is_type_app_popup() || browser_->is_type_devtools()) &&
+       browser_->GetType() == BrowserWindowInterface::Type::TYPE_APP_POPUP ||
+       browser_->GetType() == BrowserWindowInterface::Type::TYPE_DEVTOOLS) &&
       include_app_name) {
     auto* const app_browser_controller =
         web_app::AppBrowserController::From(browser_);
@@ -245,8 +246,8 @@ std::u16string WindowMetadataController::GetWindowTitleFromWebContents(
   }
   // Include the app name in window titles for tabbed browser windows when
   // requested with |include_app_name|.
-  return ((browser_->is_type_normal() ||
-           browser_->GetType() == BrowserWindowInterface::Type::TYPE_POPUP) &&
+  return ((browser_->GetType() == BrowserWindowInterface::Type::TYPE_NORMAL ||
+           browser_->is_type_popup()) &&
           include_app_name)
              ? l10n_util::GetStringFUTF16(IDS_BROWSER_WINDOW_TITLE_FORMAT,
                                           title)

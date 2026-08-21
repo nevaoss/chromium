@@ -6,8 +6,4 @@
 
 @implementation AtMemoryGranularFillViewController
 
-- (void)viewDidLoad {
-  [super viewDidLoad];
-}
-
 @end

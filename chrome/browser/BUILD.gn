@@ -1291,8 +1291,11 @@ source_set("core") {
       "//chrome/browser/error_reporting",
       "//chrome/browser/ui:browser_actions_impl",
       "//chrome/browser/ui:chrome_pages",
+      "//chrome/browser/ui:uma_browsing_activity_observer",
       "//chrome/browser/ui/lens",
       "//chrome/browser/ui/tabs/tab_drag_api/desktop_tab_drag_impl",
+      "//chrome/browser/ui/views/frame:glass_frame_service",
+      "//chrome/browser/ui/views/tabs/organizer",
       "//chrome/browser/ui/waap:waap_utils",
       "//chrome/browser/ui/webui:chrome_content_browser_client_webui_part",
       "//chrome/browser/ui/webui/history",
@@ -1526,6 +1529,7 @@ source_set("core") {
       "//chrome/browser/renderer_host:delegate_impl",
       "//chrome/browser/renderer_host:history_swiper",
       "//chrome/browser/shortcuts",
+      "//chrome/browser/ui/browser_window:create_browser_window",
       "//chrome/browser/ui/cocoa",
       "//chrome/browser/web_applications/os_integration/mac:web_app_shortcut_copier_lib",
       "//chrome/browser/webshare",
@@ -2913,6 +2917,7 @@ source_set("browser") {
     "//components/webapps/common",
     "//components/webapps/common:mojo_bindings",
     "//components/webauthn/core/browser:passkey_model",
+    "//components/webauthn/core/browser:signal_api_utils",
     "//components/webdata/common",
     "//components/webdata_services",
     "//components/webid",
@@ -3250,6 +3255,7 @@ source_set("browser") {
       "//chrome/browser/ui/views/new_tab_footer",
       "//chrome/browser/ui/views/page_action:impl",
       "//chrome/browser/ui/views/side_panel",
+      "//chrome/browser/ui/views/tabs/organizer",
       "//chrome/browser/ui/views/tabs/organizer:impl",
       "//chrome/browser/ui/views/toolbar",
       "//chrome/browser/ui/views/toolbar:impl",
@@ -3374,6 +3380,7 @@ source_set("browser") {
       "//components/webauthn/content/browser",
       "//components/webauthn/core/browser",
       "//components/webauthn/core/browser:passkey_model",
+      "//components/webauthn/core/browser:signal_api_utils",
       "//services/device/public/cpp/hid",
       "//services/screen_ai",
       "//services/screen_ai/public/cpp:utilities",
@@ -4032,6 +4039,7 @@ source_set("browser") {
       "//components/user_manager:multi_user",
       "//components/webapk:proto",
       "//components/webauthn/core/browser:passkey_model",
+      "//components/webauthn/core/browser:signal_api_utils",
       "//device/fido",
       "//device/vr/public/mojom:isolated_xr_service",
 
@@ -4277,7 +4285,7 @@ source_set("browser") {
 
   if (is_win || is_mac || is_linux || is_chromeos) {
     deps += [
-      "//chrome/browser/ui/webui/ai_overlay_dialog",
+      "//chrome/browser/ui/webui/ai_overlay_dialog:impl",
       "//chrome/browser/ui/webui/ai_overlay_dialog:mojo_bindings",
     ]
   }
@@ -5445,6 +5453,7 @@ if (!is_android) {
       "//content/test:browsertest_support",
       "//content/test:test_support",
       "//pdf:features",
+      "//services/network/public/cpp:ip_address_space_overrides_test_utils",
       "//storage/browser:test_support",
       "//testing/gtest",
       "//ui/shell_dialogs:test_support",

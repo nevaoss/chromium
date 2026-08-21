@@ -5,16 +5,18 @@
 #include "chrome/browser/context_hub/context_hub_service.h"
 
 #include <optional>
-#include <tuple>
 
+#include "base/functional/callback_helpers.h"
+#include "base/scoped_observation.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/test/gmock_callback_support.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/task_environment.h"
 #include "base/test/test_future.h"
+#include "chrome/browser/context_hub/auto_todos/auto_todo_entry.h"
+#include "chrome/browser/context_hub/auto_todos/in_memory_auto_todos_store.h"
 #include "chrome/browser/context_hub/features.h"
 #include "chrome/browser/context_hub/memory_bank/in_memory_memory_bank.h"
-#include "chrome/browser/context_hub/memory_bank/noop_memory_bank.h"
 #include "chrome/browser/context_hub/storage/context_hub_backend.h"
 #include "chrome/browser/context_hub/tab_group_store/in_memory_tab_group_store.h"
 #include "chrome/browser/ui/webui/context_hub/context_hub.mojom-features.h"
@@ -33,8 +35,24 @@ namespace {
 
 using ::base::test::RunOnceCallback;
 using ::testing::_;
+using ::testing::AllOf;
 using ::testing::ElementsAre;
+using ::testing::Field;
 using ::testing::FieldsAre;
+using ::testing::IsEmpty;
+
+class MockServiceObserver : public ContextHubService::Observer {
+ public:
+  MockServiceObserver() = default;
+  MockServiceObserver(const MockServiceObserver&) = delete;
+  MockServiceObserver& operator=(const MockServiceObserver&) = delete;
+  ~MockServiceObserver() override = default;
+
+  MOCK_METHOD(void,
+              OnAutoTodosChanged,
+              (base::span<const AutoTodoEntry>),
+              (override));
+};
 
 class ContextHubServiceTest : public testing::Test {
  public:
@@ -43,7 +61,8 @@ class ContextHubServiceTest : public testing::Test {
                  &mock_remote_model_executor_,
                  std::make_unique<InMemoryMemoryBank>(),
                  std::make_unique<InMemoryTabGroupStore>(),
-                 /*context_hub_backend=*/nullptr) {
+                 /*context_hub_backend=*/nullptr,
+                 std::make_unique<InMemoryAutoTodosStore>()) {
     scoped_feature_list_.InitWithFeatures(
         /*enabled_features=*/
         {
@@ -63,7 +82,7 @@ class ContextHubServiceTest : public testing::Test {
   ContextHubService service_;
 };
 
-TEST_F(ContextHubServiceTest, GenerateAutoTodos_ServiceSuccess) {
+TEST_F(ContextHubServiceTest, GenerateFirstPartyAutoTodos_ServiceSuccess) {
   personal_context::proto::AutoTodosResponse expected_response;
   auto* todo = expected_response.add_todos();
   todo->set_title("Test Todo");
@@ -79,10 +98,23 @@ TEST_F(ContextHubServiceTest, GenerateAutoTodos_ServiceSuccess) {
       .WillOnce(RunOnceCallback<3>(personal_context::FetchContextResult(
           base::ok(std::move(any_response)))));
 
+  MockServiceObserver observer;
+  base::ScopedObservation<ContextHubService, ContextHubService::Observer>
+      observation(&observer);
+  observation.Observe(&service_);
+
+  // Initial clearing of the store.
+  EXPECT_CALL(observer, OnAutoTodosChanged(IsEmpty()));
+  // Notification after adding the todos.
+  EXPECT_CALL(observer,
+              OnAutoTodosChanged(ElementsAre(AllOf(
+                  Field(&AutoTodoEntry::title, "Test Todo"),
+                  Field(&AutoTodoEntry::description, "Test Description")))));
+
   base::test::TestFuture<
       std::optional<personal_context::proto::AutoTodosResponse>>
       future;
-  service_.GenerateAutoTodos(future.GetCallback());
+  service_.GenerateFirstPartyAutoTodos(future.GetCallback());
 
   auto result = future.Get();
   ASSERT_TRUE(result.has_value());
@@ -91,7 +123,7 @@ TEST_F(ContextHubServiceTest, GenerateAutoTodos_ServiceSuccess) {
   EXPECT_EQ(result.value().todos(0).description(), "Test Description");
 }
 
-TEST_F(ContextHubServiceTest, GenerateAutoTodos_ServiceError) {
+TEST_F(ContextHubServiceTest, GenerateFirstPartyAutoTodos_ServiceError) {
   personal_context::ContextMemoryError expected_error =
       personal_context::ContextMemoryError::FromExecutionError(
           personal_context::ContextMemoryError::ExecutionError::
@@ -104,15 +136,22 @@ TEST_F(ContextHubServiceTest, GenerateAutoTodos_ServiceError) {
       .WillOnce(RunOnceCallback<3>(personal_context::FetchContextResult(
           base::unexpected(expected_error))));
 
+  MockServiceObserver observer;
+  base::ScopedObservation<ContextHubService, ContextHubService::Observer>
+      observation(&observer);
+  observation.Observe(&service_);
+
+  EXPECT_CALL(observer, OnAutoTodosChanged(_)).Times(0);
+
   base::test::TestFuture<
       std::optional<personal_context::proto::AutoTodosResponse>>
       future;
-  service_.GenerateAutoTodos(future.GetCallback());
+  service_.GenerateFirstPartyAutoTodos(future.GetCallback());
 
   EXPECT_FALSE(future.Get().has_value());
 }
 
-TEST_F(ContextHubServiceTest, GenerateAutoTodos_ParseError) {
+TEST_F(ContextHubServiceTest, GenerateFirstPartyAutoTodos_ParseError) {
   personal_context::proto::Any any_response;
   any_response.set_value("corrupted proto data");
 
@@ -123,10 +162,17 @@ TEST_F(ContextHubServiceTest, GenerateAutoTodos_ParseError) {
       .WillOnce(RunOnceCallback<3>(personal_context::FetchContextResult(
           base::ok(std::move(any_response)))));
 
+  MockServiceObserver observer;
+  base::ScopedObservation<ContextHubService, ContextHubService::Observer>
+      observation(&observer);
+  observation.Observe(&service_);
+
+  EXPECT_CALL(observer, OnAutoTodosChanged(_)).Times(0);
+
   base::test::TestFuture<
       std::optional<personal_context::proto::AutoTodosResponse>>
       future;
-  service_.GenerateAutoTodos(future.GetCallback());
+  service_.GenerateFirstPartyAutoTodos(future.GetCallback());
 
   EXPECT_FALSE(future.Get().has_value());
 }
@@ -353,7 +399,8 @@ TEST_F(ContextHubServiceTest, ChatHistory_LRUEviction) {
                             &mock_remote_model_executor_,
                             std::make_unique<InMemoryMemoryBank>(),
                             std::make_unique<InMemoryTabGroupStore>(),
-                            /*context_hub_backend=*/nullptr);
+                            /*context_hub_backend=*/nullptr,
+                            std::make_unique<InMemoryAutoTodosStore>());
 
   for (size_t i = 0; i < 4; ++i) {
     service.AddTabGroupChatHistoryTurn(
@@ -430,6 +477,127 @@ TEST_F(ContextHubServiceTest, DeleteAllTabGroups) {
   base::test::TestFuture<std::vector<TabGroupEntry>> stored_groups_future2;
   service_.GetTabGroups(stored_groups_future2.GetCallback());
   EXPECT_TRUE(stored_groups_future2.Get().empty());
+}
+
+TEST_F(ContextHubServiceTest, ClearTodoFeedbacks) {
+  auto feedback = browser::context_hub::mojom::AutoTodoItemFeedback::New();
+  feedback->todo_id = "todo_1";
+  feedback->liked = true;
+
+  // Add a feedback item.
+  service_.SetTodoFeedback(std::move(feedback));
+  EXPECT_EQ(1u, service_.GetTodoFeedbacks().size());
+
+  // Clear all feedback items and verify that they are cleared.
+  service_.ClearTodoFeedbacks();
+  EXPECT_TRUE(service_.GetTodoFeedbacks().empty());
+}
+
+TEST_F(ContextHubServiceTest, DeleteTodoFeedback) {
+  auto feedback1 = browser::context_hub::mojom::AutoTodoItemFeedback::New();
+  feedback1->todo_id = "todo_1";
+  feedback1->liked = true;
+
+  auto feedback2 = browser::context_hub::mojom::AutoTodoItemFeedback::New();
+  feedback2->todo_id = "todo_2";
+  feedback2->liked = false;
+
+  // Add two feedback items.
+  service_.SetTodoFeedback(std::move(feedback1));
+  service_.SetTodoFeedback(std::move(feedback2));
+  EXPECT_EQ(2u, service_.GetTodoFeedbacks().size());
+
+  // Clear one feedback item and verify that it is cleared.
+  service_.DeleteTodoFeedback("todo_1");
+
+  auto feedbacks = service_.GetTodoFeedbacks();
+  ASSERT_EQ(1u, feedbacks.size());
+  EXPECT_EQ("todo_2", feedbacks[0]->todo_id);
+  EXPECT_FALSE(feedbacks[0]->liked);
+}
+
+TEST_F(ContextHubServiceTest, ExecuteMemoryBankChat_Success) {
+  base::test::TestFuture<void> save_tab_future1;
+  service_.SaveTab(GURL("https://example.com/1"), "Title 1", "Page text 1",
+                   save_tab_future1.GetCallback());
+  ASSERT_TRUE(save_tab_future1.Wait());
+
+  base::test::TestFuture<void> save_tab_future2;
+  service_.SaveTextSelection(GURL("https://example.com/2"), "Title 2",
+                             "Some selected text",
+                             save_tab_future2.GetCallback());
+  ASSERT_TRUE(save_tab_future2.Wait());
+
+  base::test::TestFuture<std::vector<MemoryBankEntry>> entries_future;
+  service_.GetAllEntries(entries_future.GetCallback());
+  auto entries = entries_future.Take();
+  ASSERT_EQ(entries.size(), 2u);
+
+  std::vector<int64_t> ids = {entries[0].id, entries[1].id};
+
+  EXPECT_CALL(
+      mock_remote_model_executor_,
+      ExecuteModel(optimization_guide::ModelBasedCapabilityKey::kContextHub, _,
+                   _, _))
+      .WillOnce([](optimization_guide::ModelBasedCapabilityKey feature,
+                   const google::protobuf::MessageLite& request_metadata,
+                   const optimization_guide::ModelExecutionOptions& options,
+                   optimization_guide::
+                       OptimizationGuideModelExecutionResultCallback callback) {
+        const auto& request =
+            static_cast<const optimization_guide::proto::ContextHubRequest&>(
+                request_metadata);
+        EXPECT_EQ(request.request_type(),
+                  optimization_guide::proto::
+                      CONTEXT_HUB_REQUEST_TYPE_MEMORY_BANK_CHAT);
+        EXPECT_EQ(request.user_command(), "summarize these");
+        ASSERT_EQ(request.entry_items_size(), 2);
+
+        EXPECT_TRUE(request.entry_items(0).has_memory_bank_entry());
+        EXPECT_TRUE(request.entry_items(1).has_memory_bank_entry());
+
+        optimization_guide::proto::ContextHubResponse response;
+        response.mutable_memory_bank_chat_response()->set_text_response(
+            "This is the LLM summary.");
+
+        optimization_guide::proto::Any any_response;
+        any_response.set_type_url(
+            "type.googleapis.com/optimization_guide.proto.ContextHubResponse");
+        response.SerializeToString(any_response.mutable_value());
+
+        std::move(callback).Run(
+            optimization_guide::OptimizationGuideModelExecutionResult(
+                base::ok(std::move(any_response)), nullptr),
+            nullptr);
+      });
+
+  base::test::TestFuture<std::optional<std::string>> future;
+  service_.ExecuteMemoryBankChat(ids, "summarize these", future.GetCallback());
+  auto result = future.Get();
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ(result.value(), "This is the LLM summary.");
+}
+
+TEST_F(ContextHubServiceTest, ExecuteMemoryBankChat_Error) {
+  EXPECT_CALL(
+      mock_remote_model_executor_,
+      ExecuteModel(optimization_guide::ModelBasedCapabilityKey::kContextHub, _,
+                   _, _))
+      .WillOnce(
+          [](optimization_guide::ModelBasedCapabilityKey feature,
+             const google::protobuf::MessageLite& request_metadata,
+             const optimization_guide::ModelExecutionOptions& options,
+             optimization_guide::OptimizationGuideModelExecutionResultCallback
+                 callback) {
+            std::move(callback).Run(
+                optimization_guide::OptimizationGuideModelExecutionResult(),
+                nullptr);
+          });
+
+  base::test::TestFuture<std::optional<std::string>> future;
+  std::vector<int64_t> ids = {100};
+  service_.ExecuteMemoryBankChat(ids, "hello", future.GetCallback());
+  EXPECT_FALSE(future.Get().has_value());
 }
 
 }  // namespace

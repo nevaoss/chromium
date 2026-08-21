@@ -146,8 +146,6 @@
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/tabs/public/tab_features.h"
 #include "chrome/browser/ui/webui/new_tab_page/ntp_promo/ntp_promo_handler.h"
-#else
-#include "chrome/browser/flags/android/chrome_feature_list.h"
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 #if !BUILDFLAG(OPTIMIZE_WEBUI)
@@ -754,15 +752,6 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
   source->AddBoolean("enableThreadsRail", base::FeatureList::IsEnabled(
                                               ntp_features::kNtpThreadsRail));
 
-#if BUILDFLAG(IS_ANDROID)
-  source->AddBoolean(
-      "enableAndroidTheming",
-      base::FeatureList::IsEnabled(chrome::android::kUseWebUiNtpAndroid) &&
-      base::FeatureList::IsEnabled(chrome::android::kWebUiNtpAndroidTheming));
-#else
-  source->AddBoolean("enableAndroidTheming", false);
-#endif
-
   source->AddBoolean("useNtpComposeboxFork",
                      ntp_composebox::kUseNtpComposeboxFork.Get());
 
@@ -1032,6 +1021,10 @@ NewTabPageUI::NewTabPageUI(content::WebUI* web_ui)
   ui::TrackedElementHandlerDocumentSingleton::Register(
       this, std::vector<ui::ElementIdentifier>{
                 CustomizeButtonsHandler::kCustomizeChromeButtonElementId,
+                NewTabPageUI::kRealboxContextualEntrypointElementId});
+#else
+  ui::TrackedElementHandlerDocumentSingleton::Register(
+      this, std::vector<ui::ElementIdentifier>{
                 NewTabPageUI::kRealboxContextualEntrypointElementId});
 #endif
 }

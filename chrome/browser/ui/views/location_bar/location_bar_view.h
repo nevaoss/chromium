@@ -24,7 +24,6 @@
 #include "chrome/browser/ui/views/location_bar/content_setting_image_view.h"
 #include "chrome/browser/ui/views/location_bar/location_icon_view.h"
 #include "chrome/browser/ui/views/omnibox/omnibox_popup_presenter_delegate.h"
-#include "chrome/browser/ui/views/page_action/page_action_icon_view.h"
 #include "chrome/browser/ui/views/permissions/chip/chip_controller.h"
 #include "chrome/browser/ui/views/permissions/chip/permission_dashboard_controller.h"
 #include "components/permissions/permission_prompt.h"
@@ -53,16 +52,6 @@
 #include "services/device/public/cpp/geolocation/geolocation_system_permission_manager.h"
 #endif  // BUILDFLAG(OS_LEVEL_GEOLOCATION_PERMISSION_SUPPORTED)
 
-namespace actions {
-class ActionItem;
-class ActionInvocationContext;
-}  // namespace actions
-
-namespace omnibox {
-enum ToolMode : int;
-enum ModelMode : int;
-}  // namespace omnibox
-
 class Browser;
 class BrowserWindowInterface;
 class CommandUpdater;
@@ -75,7 +64,6 @@ class OmniboxPopupFileSelector;
 class OmniboxPopupUI;
 class OmniboxPopupView;
 class OmniboxViewViews;
-class PageActionIconContainerView;
 class PermissionChipView;
 class PermissionDashboardView;
 class Profile;
@@ -116,7 +104,6 @@ class LocationBarView
 #if BUILDFLAG(OS_LEVEL_GEOLOCATION_PERMISSION_SUPPORTED)
       public device::GeolocationSystemPermissionManager::PermissionObserver,
 #endif  // BUILDFLAG(OS_LEVEL_GEOLOCATION_PERMISSION_SUPPORTED)
-      public PageActionIconView::Delegate,
       public OmniboxPopupPresenterDelegate {
   METADATA_HEADER(LocationBarView, views::View)
 
@@ -452,14 +439,7 @@ class LocationBarView
                            const gfx::Point& press_pt,
                            const gfx::Point& p) override;
 
-  // PageActionIconView::Delegate:
-  content::WebContents* GetWebContentsForPageActionIconView() override;
-  bool ShouldHidePageActionIcons() const override;
-  bool ShouldHidePageActionIcon(
-      const PageActionIconView* icon_view) const override;
-  bool ShouldHidePageActionIconForContext(
-      const PageActionIconView* icon_view,
-      metrics::OmniboxEventProto::PageClassification page_context) const;
+  bool ShouldHidePageActionIcons() const;
 
   struct PageActionInfo {
     // Is the AIM page action the right-most visible page action?
@@ -517,6 +497,9 @@ class LocationBarView
   bool HasAllowedInputs();
 
   content::WebContents* GetWrappedWebContents();
+
+  static OmniboxPopupPresenterDelegate* GetPresenterDelegate(
+      LocationBar* location_bar);
 
 #if BUILDFLAG(IS_MAC)
   // Called when app shims change.
@@ -603,7 +586,6 @@ class LocationBarView
   ContentSettingViews content_setting_views_;
 
   // The container for page action icons.
-  raw_ptr<PageActionIconContainerView> page_action_icon_container_ = nullptr;
   raw_ptr<page_actions::PageActionContainerView> page_action_container_ =
       nullptr;
 
@@ -648,27 +630,6 @@ class LocationBarView
   bool in_popup_state_transition_ = false;
 
   void OnMiddleClickPaste(base::TimeTicks event_timestamp, std::u16string text);
-
-  void RegisterOmniboxActions();
-
-  // Helper functions for omnibox actions.
-  static void AddFileOrImageToOmnibox(Browser* browser,
-                                      bool is_image,
-                                      actions::ActionItem* item,
-                                      actions::ActionInvocationContext context);
-  static void SetOmniboxToolModeAndOpenAi(
-      Browser* browser,
-      omnibox::ToolMode tool_mode,
-      actions::ActionItem* item,
-      actions::ActionInvocationContext context);
-  static void SetOmniboxModelModeAndOpenAi(
-      Browser* browser,
-      omnibox::ModelMode model_mode,
-      actions::ActionItem* item,
-      actions::ActionInvocationContext context);
-  static void ExecutePasteAndGo(Browser* browser,
-                                actions::ActionItem* item,
-                                actions::ActionInvocationContext context);
 
   base::WeakPtrFactory<LocationBarView> weak_factory_{this};
 };

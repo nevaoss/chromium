@@ -1183,10 +1183,10 @@ void ContextualTasksUI::MoveTaskUiToNewTab() {
                                   GetInnerFrameUrl());
 }
 
-void ContextualTasksUI::PostMessageToWebview(
+void ContextualTasksUI::PostAimMessage(
     const lens::ClientToAimMessage& message) {
   CHECK(page_handler_);
-  page_handler_->PostMessageToWebview(message);
+  page_handler_->PostAimMessage(message);
 }
 
 void ContextualTasksUI::ShowOauthErrorDialog() {
@@ -1237,6 +1237,16 @@ void ContextualTasksUI::OnContextRetrievedForActiveTab(
   // nothing.
   if (!tab || tab->GetHandle().raw_value() != tab_id ||
       tab->GetContents()->GetLastCommittedURL() != last_committed_url) {
+    return;
+  }
+
+  // If not eligible for suggested tab context, clear any active suggestion and
+  // exit early.
+  if (!CanUpdateSuggestedTabContext(tab, last_committed_url)) {
+    auto_suggestion_manager_->SetCurrentSuggestion(nullptr);
+    if (composebox_handler_) {
+      composebox_handler_->UpdateSuggestedTabContext(nullptr);
+    }
     return;
   }
 
@@ -1330,7 +1340,7 @@ void ContextualTasksUI::OnSidePanelStateChanged() {
         lens::CobrowsingDisplayModeParams::COBROWSING_SIDEPANEL);
   }
 
-  PostMessageToWebview(message);
+  PostAimMessage(message);
 
 #if !BUILDFLAG(IS_ANDROID)
   UpdateZoom();

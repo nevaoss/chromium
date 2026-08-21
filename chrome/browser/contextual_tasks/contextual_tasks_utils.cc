@@ -236,7 +236,7 @@ void FinalizeAndSendAimQuery(
   lens::ClientToAimMessage client_to_page_message =
       session_handle->CreateClientToAimRequest(std::move(request_info));
 
-  web_ui_interface->PostMessageToWebview(client_to_page_message);
+  web_ui_interface->PostAimMessage(client_to_page_message);
 }
 
 void SendInjectedInputRemovedUpdate(
@@ -252,7 +252,7 @@ void SendInjectedInputRemovedUpdate(
       lens::InjectedInputUpdatePayload::UpdateType::
           InjectedInputUpdatePayload_UpdateType_REMOVED);
 
-  web_ui_interface->PostMessageToWebview(client_to_aim_message);
+  web_ui_interface->PostAimMessage(client_to_aim_message);
 }
 
 bool ShouldShowSidePanel() {
@@ -316,12 +316,12 @@ bool GetEffectivePinState(Profile* profile) {
 #if !BUILDFLAG(IS_ANDROID)
 void UpdatePinButtonVisibilityState(BrowserWindowInterface* browser_window,
                                     bool eligible) {
-  if (!browser_window || !BrowserActions::From(browser_window)) {
+  if (!browser_window || !browser_window->GetActions()) {
     return;
   }
 
   actions::ActionItem* const scope_action =
-      BrowserActions::From(browser_window)->root_action_item();
+      browser_window->GetActions()->root_action_item();
   if (!scope_action) {
     return;
   }

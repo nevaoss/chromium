@@ -65,11 +65,6 @@ inline constexpr char kAimUrlNavigationFetchEnabledName[] =
 inline constexpr char kAimUrlNavigationFetchEnabledDescription[] =
     "Enables the AimUrlNavigationFetchEnabled feature.";
 
-inline constexpr char kAlertCrashFixKillSwitchName[] =
-    "AlertCrashFixKillSwitch";
-inline constexpr char kAlertCrashFixKillSwitchDescription[] =
-    "Enables the AlertCrashFixKillSwitch feature.";
-
 inline constexpr char kAnimatedDefaultBrowserPromoInFREName[] =
     "Enable the animated Default Browser Promo in the FRE";
 inline constexpr char kAnimatedDefaultBrowserPromoInFREDescription[] =
@@ -759,12 +754,6 @@ inline constexpr char kEnableReadingListSignInPromoName[] =
 inline constexpr char kEnableReadingListSignInPromoDescription[] =
     "Enable the sign-in promo view in the reading list screen.";
 
-inline constexpr char kEnableScreenshotProtectionIOSName[] =
-    "Enable Screenshot Protection on iOS";
-inline constexpr char kEnableScreenshotProtectionIOSDescription[] =
-    "Prevents the content of the app from appearing in screenshots and screen "
-    "recordings.";
-
 inline constexpr char kEnableTraitCollectionRegistrationName[] =
     "Enable Customizable Trait Registration";
 inline constexpr char kEnableTraitCollectionRegistrationDescription[] =
@@ -1147,11 +1136,6 @@ inline constexpr char kIOSSoftLockName[] = "Soft Lock on iOS";
 inline constexpr char kIOSSoftLockDescription[] =
     "Enables experimental Soft Lock on iOS.";
 
-inline constexpr char kIOSSyncedSetUpName[] = "Synced Set Up";
-inline constexpr char kIOSSyncedSetUpDescription[] =
-    "Enables the Synced Set Up experience, allowing the user to locally apply "
-    "settings from their synced devices.";
-
 inline constexpr char kIOSTabRemindersName[] = "Tab Reminders";
 inline constexpr char kIOSTabRemindersDescription[] =
     "Enables the Tab Reminder notifications feature on iOS.";
@@ -1462,6 +1446,10 @@ inline constexpr char kNewTabPageRedesignName[] = "New Tab Page Redesign";
 inline constexpr char kNewTabPageRedesignDescription[] =
     "Enables the redesigned New Tab Page on iOS (iPhone only).";
 
+inline constexpr char kNextOldDesignName[] = "NextOldDesign";
+inline constexpr char kNextOldDesignDescription[] =
+    "Enables the NextOldDesign feature.";
+
 inline constexpr char kNoAccountWebSigninName[] =
     "Enable no account web sigin bottom sheet";
 inline constexpr char kNoAccountWebSigninDescription[] =
@@ -1742,12 +1730,6 @@ inline constexpr char kProactiveSuggestionsFrameworkPopupBlockerName[] =
 inline constexpr char kProactiveSuggestionsFrameworkPopupBlockerDescription[] =
     "Enables the popup blocker feature row in the Page Action Menu.";
 
-inline constexpr char kProvisionalNotificationAlertName[] =
-    "Provisional notifiation alert on iOS";
-inline constexpr char kProvisionalNotificationAlertDescription[] =
-    "Shows an alert to the user when app notification settings are changed but "
-    "only provisonal notifications are enabled";
-
 inline constexpr char kReaderModeContentSettingsForLinksName[] =
     "Enables Content Settings options for Reading Mode";
 inline constexpr char kReaderModeContentSettingsForLinksDescription[] =
@@ -1763,16 +1745,6 @@ inline constexpr char kReaderModeOmniboxEntrypointInUSName[] =
     "Reader Mode Omnibox Entrypoint In US";
 inline constexpr char kReaderModeOmniboxEntrypointInUSDescription[] =
     "Enables the omnibox entrypoint for Reader Mode for users in the US.";
-
-inline constexpr char kReaderModeOptimizationGuideEligibilityName[] =
-    "Enables Reader Mode Optimization Guide Eligibility";
-inline constexpr char kReaderModeOptimizationGuideEligibilityDescription[] =
-    "Enables the optimization guide eligibility check for Reader Mode.";
-
-inline constexpr char kReaderModeReadabilityHeuristicName[] =
-    "Enables Readability heuristic for Reader Mode";
-inline constexpr char kReaderModeReadabilityHeuristicDescription[] =
-    "Enables Readability heuristic for Reader Mode UI.";
 
 inline constexpr char kReaderModeSupportNewFontsName[] =
     "Reader Mode support new fonts";
@@ -1826,12 +1798,6 @@ inline constexpr char kSegmentationPlatformEphemeralCardRankerName[] =
 inline constexpr char kSegmentationPlatformEphemeralCardRankerDescription[] =
     "Enables the segmentation platform to rank ephemeral cards in the Magic "
     "Stack";
-
-inline constexpr char kSegmentationPlatformIosModuleRankerCachingName[] =
-    "Enabled Magic Stack Segmentation Ranking Caching";
-inline constexpr char kSegmentationPlatformIosModuleRankerCachingDescription[] =
-    "Enables the Segmentation platform to cache the Magic Stack module rank "
-    "for Start";
 
 inline constexpr char kSendTabToSelfEnhancedHandoffName[] =
     "Send Tab To Self enhanced handoff";

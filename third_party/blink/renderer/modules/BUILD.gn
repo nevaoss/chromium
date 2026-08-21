@@ -637,6 +637,7 @@ source_set("unit_tests") {
     "wake_lock/wake_lock_test.cc",
     "wake_lock/wake_lock_test_utils.cc",
     "wake_lock/wake_lock_test_utils.h",
+    "webaudio/audio_buffer_source_handler_test.cc",
     "webaudio/audio_context_autoplay_test.cc",
     "webaudio/audio_context_test.cc",
     "webaudio/audio_node_input_test.cc",
@@ -856,6 +857,7 @@ blink_fuzzer_test("webcodecs_video_frame_copy_to_fuzzer") {
     ":modules",
     "//third_party/blink/renderer/core:testing",
     "//third_party/blink/renderer/modules/webcodecs:fuzzer_protos",
+    "//third_party/blink/renderer/modules/webcodecs:fuzzer_protos_fuzzable",
     "//third_party/libprotobuf-mutator",
     "//third_party/protobuf:protobuf_lite",
   ]
@@ -874,6 +876,7 @@ blink_fuzzer_test("webcodecs_audio_data_copy_to_fuzzer") {
     ":modules",
     "//third_party/blink/renderer/core:testing",
     "//third_party/blink/renderer/modules/webcodecs:fuzzer_protos",
+    "//third_party/blink/renderer/modules/webcodecs:fuzzer_protos_fuzzable",
     "//third_party/libprotobuf-mutator",
     "//third_party/protobuf:protobuf_lite",
   ]
@@ -892,6 +895,7 @@ blink_fuzzer_test("webcodecs_video_decoder_fuzzer") {
     ":modules",
     "//third_party/blink/renderer/core:testing",
     "//third_party/blink/renderer/modules/webcodecs:fuzzer_protos",
+    "//third_party/blink/renderer/modules/webcodecs:fuzzer_protos_fuzzable",
     "//third_party/libprotobuf-mutator",
     "//third_party/protobuf:protobuf_lite",
   ]
@@ -944,6 +948,7 @@ blink_fuzzer_test("webcodecs_image_decoder_fuzzer") {
     ":modules",
     "//third_party/blink/renderer/core:testing",
     "//third_party/blink/renderer/modules/webcodecs:fuzzer_protos",
+    "//third_party/blink/renderer/modules/webcodecs:fuzzer_protos_fuzzable",
     "//third_party/libprotobuf-mutator",
     "//third_party/protobuf:protobuf_lite",
   ]
@@ -962,6 +967,7 @@ blink_fuzzer_test("webcodecs_audio_decoder_fuzzer") {
     ":modules",
     "//third_party/blink/renderer/core:testing",
     "//third_party/blink/renderer/modules/webcodecs:fuzzer_protos",
+    "//third_party/blink/renderer/modules/webcodecs:fuzzer_protos_fuzzable",
     "//third_party/libprotobuf-mutator",
     "//third_party/protobuf:protobuf_lite",
   ]
@@ -981,6 +987,7 @@ blink_fuzzer_test("webcodecs_video_encoder_fuzzer") {
     "//third_party/blink/renderer/controller:blink_bindings_test_sources",
     "//third_party/blink/renderer/core:testing",
     "//third_party/blink/renderer/modules/webcodecs:fuzzer_protos",
+    "//third_party/blink/renderer/modules/webcodecs:fuzzer_protos_fuzzable",
     "//third_party/libprotobuf-mutator",
     "//third_party/protobuf:protobuf_lite",
   ]
@@ -1000,6 +1007,7 @@ blink_fuzzer_test("webcodecs_audio_encoder_fuzzer") {
     "//media/mojo/services",
     "//third_party/blink/renderer/core:testing",
     "//third_party/blink/renderer/modules/webcodecs:fuzzer_protos",
+    "//third_party/blink/renderer/modules/webcodecs:fuzzer_protos_fuzzable",
     "//third_party/libprotobuf-mutator",
     "//third_party/protobuf:protobuf_lite",
   ]

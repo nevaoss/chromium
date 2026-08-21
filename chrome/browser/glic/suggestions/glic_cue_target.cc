@@ -142,11 +142,7 @@ bool GlicCueTarget::IsEligible() const {
   return GlicEnabling::IsEnabledForProfile(tab_->GetProfile()) &&
          tab_->GetProfile()->GetPrefs()->GetBoolean(
              prefs::kGlicPinnedToTabstrip) &&
-         !glic_keyed_service_->IsPanelShowingForBrowser(*window) &&
-         // TODO(crbug.com/507551989): Default tab context sharing check won't
-         // be needed once tab sharing UI is implemented.
-         tab_->GetProfile()->GetPrefs()->GetBoolean(
-             glic::prefs::kGlicDefaultTabContextEnabled);
+         !glic_keyed_service_->IsPanelShowingForBrowser(*window);
 }
 
 void GlicCueTarget::OnClick(contextual_cueing::CueActionData data) {
@@ -208,6 +204,10 @@ contextual_cueing::CueActionData GlicCueTarget::CueActionDataFromResponse(
   contextual_cueing::GlicCueActionData data;
   if (!cue.has_gemini_in_chrome_surface()) {
     CUEING_LOG("Missing Gemini surface data.");
+    return data;
+  }
+  if (cue.gemini_in_chrome_surface().prompt().empty()) {
+    CUEING_LOG("Missing prompt in Gemini surface data.");
     return data;
   }
   data.prompt = cue.gemini_in_chrome_surface().prompt();

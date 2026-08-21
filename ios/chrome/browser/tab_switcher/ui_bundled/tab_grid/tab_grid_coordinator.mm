@@ -286,6 +286,9 @@ bool FindNavigatorShouldBePresentedInBrowser(Browser* browser) {
   // The presenter for the pin tab IPH bubble.
   BubbleViewControllerPresenter* _pinTabBubblePresenter;
 
+  // The presenter for the create tab group IPH bubble.
+  BubbleViewControllerPresenter* _createTabGroupBubblePresenter;
+
   // The view controller for the Tab Grid, defined manually so that the type can
   // be specified.
   TabGridViewController* _viewController;
@@ -1197,6 +1200,9 @@ bool FindNavigatorShouldBePresentedInBrowser(Browser* browser) {
   [_pinTabBubblePresenter dismissAnimated:NO];
   _pinTabBubblePresenter = nil;
 
+  [_createTabGroupBubblePresenter dismissAnimated:NO];
+  _createTabGroupBubblePresenter = nil;
+
   [_toolbarsCoordinator stop];
   _toolbarsCoordinator = nil;
 
@@ -1393,8 +1399,13 @@ bool FindNavigatorShouldBePresentedInBrowser(Browser* browser) {
 }
 
 - (BOOL)tabGridIsUserEligibleForSwipeToIncognitoIPH {
-  return _pageConfiguration == TabGridPageConfiguration::kAllPagesEnabled &&
-         IsFirstRunRecent(base::Days(60)) &&
+  if (_pageConfiguration != TabGridPageConfiguration::kAllPagesEnabled) {
+    return NO;
+  }
+  if (IsLevelUpEnabled() && _viewController.shouldShowSwipeToIncognitoIPH) {
+    return YES;
+  }
+  return IsFirstRunRecent(base::Days(60)) &&
          feature_engagement::TrackerFactory::GetForProfile(
              self.regularBrowser->GetProfile())
              ->WouldTriggerHelpUI(
@@ -1402,6 +1413,9 @@ bool FindNavigatorShouldBePresentedInBrowser(Browser* browser) {
 }
 
 - (BOOL)tabGridShouldPresentSwipeToIncognitoIPH {
+  if (IsLevelUpEnabled() && _viewController.shouldShowSwipeToIncognitoIPH) {
+    return YES;
+  }
   return feature_engagement::TrackerFactory::GetForProfile(
              self.regularBrowser->GetProfile())
       ->ShouldTriggerHelpUI(
@@ -1733,13 +1747,12 @@ bool FindNavigatorShouldBePresentedInBrowser(Browser* browser) {
 }
 
 - (void)removeSessionAtTableSectionWithIdentifier:(NSInteger)sectionIdentifier {
-  NOTREACHED(base::NotFatalUntil::M142);
+  NOTREACHED();
 }
 
 - (synced_sessions::DistantSession const*)sessionForTableSectionWithIdentifier:
     (NSInteger)sectionIdentifier {
-  NOTREACHED(base::NotFatalUntil::M142);
-  return nullptr;
+  NOTREACHED();
 }
 
 #pragma mark - SceneStateObserver
@@ -1955,6 +1968,64 @@ bool FindNavigatorShouldBePresentedInBrowser(Browser* browser) {
   }
   [presenter presentInViewController:_viewController anchorPoint:anchorPoint];
   _pinTabBubblePresenter = presenter;
+}
+
+- (void)presentCreateTabGroupBubble {
+  if (!IsLevelUpEnabled()) {
+    return;
+  }
+
+  NSString* title = l10n_util::GetNSString(
+      IDS_IOS_FIRST_RUN_GUIDED_TOUR_TAB_GRID_LONG_PRESS_IPH_TITLE);
+  NSString* text = l10n_util::GetNSString(
+      IDS_IOS_FIRST_RUN_GUIDED_TOUR_TAB_GRID_LONG_PRESS_IPH_TEXT);
+  UIView* anchorView = [LayoutGuideCenterForBrowser(self.regularBrowser)
+      referencedViewUnderName:kSelectedRegularCellGuide];
+  if (!anchorView) {
+    return;
+  }
+
+  CGFloat anchorPointX = CGRectGetMidX(anchorView.frame);
+  CGFloat anchorPointY = 0.0;
+  BubbleArrowDirection direction = BubbleArrowDirectionUp;
+
+  CGRect anchorFrameInViewController =
+      [anchorView convertRect:[anchorView bounds] toView:_viewController.view];
+  if (CGRectGetMidY(anchorFrameInViewController) >
+      CGRectGetMidY(_viewController.view.bounds)) {
+    direction = BubbleArrowDirectionDown;
+    anchorPointY = CGRectGetMinY(anchorView.frame);
+  } else {
+    direction = BubbleArrowDirectionUp;
+    anchorPointY = CGRectGetMaxY(anchorView.frame);
+  }
+
+  CGPoint anchorPoint = CGPointMake(anchorPointX, anchorPointY);
+  anchorPoint = [anchorView.superview convertPoint:anchorPoint toView:nil];
+
+  BubbleViewControllerPresenter* presenter =
+      [[BubbleViewControllerPresenter alloc]
+               initWithText:text
+                      title:title
+             arrowDirection:direction
+                  alignment:BubbleAlignmentCenter
+                 bubbleType:BubbleViewTypeDefault
+            pageControlPage:BubblePageControlPageNone
+          dismissalCallback:nil];
+  if (![presenter canPresentInView:_viewController.view
+                       anchorPoint:anchorPoint]) {
+    return;
+  }
+  [presenter presentInViewController:_viewController anchorPoint:anchorPoint];
+  _createTabGroupBubblePresenter = presenter;
+}
+
+- (void)showSwipeToIncognitoIPH {
+  if (!IsLevelUpEnabled()) {
+    return;
+  }
+  _viewController.shouldShowSwipeToIncognitoIPH = YES;
+  [_viewController maybeShowSwipeToIncognitoIPH];
 }
 
 - (void)showPageActionMenuFromTabGrid {

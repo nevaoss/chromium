@@ -76,6 +76,7 @@ export function getHtml(this: NtpComposeboxElement) {
         <cr-composebox-input id="composeboxInput"
             class="${this.hasTabs() ? 'has-tabs' : ''}"
             exportparts="text-container, icon-container, mirror, input, smart-compose, cancel, action-icon, cancel-icon"
+            .composeboxSkillsEnabled="${this.composeboxSkillsEnabled}"
             .disableCaretColorAnimation="${this.disableCaretColorAnimation}"
             .showDropdown="${this.showDropdown}"
             .inputPlaceholder="${this.inputPlaceholder}"
@@ -91,7 +92,7 @@ export function getHtml(this: NtpComposeboxElement) {
           ${this.shouldShowVoiceSearch() ? html`
             <cr-icon-button id="voiceSearchButton" class="voice-icon"
                 slot="action-buttons"
-                part="voice-icon" iron-icon="cr:mic"
+                part="voice-icon" iron-icon="cr:mic-filled"
                 @click="${this.onVoiceSearchButtonClick}"
                 title="${this.i18n('voiceSearchButtonLabel')}">
             </cr-icon-button>

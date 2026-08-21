@@ -54,6 +54,12 @@ namespace {
 // Spacing between buttons in the toolbar's horizontal stack view.
 constexpr CGFloat kStackViewSpacing = 9;
 
+// Spacing between buttons for the legacy toolbar button design.
+constexpr CGFloat kLegacyStackViewSpacing = 14;
+
+// Outside margin for the legacy toolbar layout.
+constexpr CGFloat kLegacyOutsideMargin = 10;
+
 // Duration of the banner promo slide animation.
 const base::TimeDelta kBannerPromoAnimationDuration = base::Seconds(0.5);
 
@@ -73,12 +79,14 @@ constexpr CGFloat kStackViewMarginRegularRegular = 16;
 constexpr CGFloat kStackViewMarginLandscape = 46;
 // iPhone portrait margin.
 constexpr CGFloat kStackViewMarginPortrait = 9;
+constexpr CGFloat kGlassStackViewMarginPortrait = 10;
 
 // The margin between the stack views and the location bar.
 // Regular-Regular (iPad) size class margin.
 constexpr CGFloat kLocationBarStackViewMarginRegularRegular = 40;
 // iPhone portrait margin.
 constexpr CGFloat kLocationBarStackViewMarginPortrait = 9;
+constexpr CGFloat kGlassLocationBarStackViewMarginPortrait = 8;
 // iPhone landscape margin.
 constexpr CGFloat kLocationBarStackViewMarginLandscape = 18;
 
@@ -96,15 +104,8 @@ constexpr CGFloat kFullscreenProgressThreshold = 0.99;
 const base::TimeDelta kProgressBarEndAnimationDuration =
     base::Milliseconds(250);
 
-// Margin for the glass effect background.
-constexpr CGFloat kGlassToolbarMargin = 5;
-constexpr CGFloat kGlassFullscreenMargin = 2;
-
-// Expanded height for the glass effect view.
-constexpr CGFloat kGlassExpandedHeight = 60;
-
-// Collapsed height for the glass effect view.
-constexpr CGFloat kGlassCollapsedHeight = 38;
+// Location bar expanded height for the glass effect view.
+constexpr CGFloat kGlassLocationBarExpandedHeight = 44;
 
 // Shadow radius for the glass effect container.
 constexpr CGFloat kGlassShadowRadius = 7;
@@ -179,6 +180,9 @@ constexpr CGFloat kGlassContainerDarkBackgroundAlpha = 0.25;
   UIView* _locationBarContainer;
   // The background for the location bar, which is a pill-shaped view.
   UIView* _locationBarBackground;
+  // Content view for the location bar that clips subviews to the pill shape
+  // without clipping the shadow on `_locationBarBackground`.
+  UIView* _locationBarContentView;
   // The target for the fake omnibox, which replaces the location bar when the
   // location bar is not visible.
   UIView* _fakeOmniboxTarget;
@@ -375,8 +379,13 @@ constexpr CGFloat kGlassContainerDarkBackgroundAlpha = 0.25;
                                      forAxis:UILayoutConstraintAxisHorizontal];
 
   [self addChildViewController:_locationBarViewController];
-  [_locationBarContainer addSubview:locationBarView];
-  AddSameConstraints(locationBarView, _locationBarContainer);
+  if (IsGlassToolbarEnabled()) {
+    [_locationBarContentView addSubview:locationBarView];
+    AddSameConstraints(locationBarView, _locationBarContentView);
+  } else {
+    [_locationBarContainer addSubview:locationBarView];
+    AddSameConstraints(locationBarView, _locationBarContainer);
+  }
   [_locationBarViewController didMoveToParentViewController:self];
 }
 
@@ -496,6 +505,19 @@ constexpr CGFloat kGlassContainerDarkBackgroundAlpha = 0.25;
 
 - (void)setCanGoForward:(BOOL)canGoForward animated:(BOOL)animated {
   if (_forwardButton.enabled == canGoForward) {
+    return;
+  }
+
+  if (IsNextOldDesignEnabled()) {
+    _forwardButton.enabled = canGoForward;
+    if (IsRegularXRegularSizeClass(self)) {
+      _forwardButton.hidden = NO;
+    } else {
+      _forwardButton.hidden = !canGoForward;
+    }
+    [self updateButtons:@[ _forwardButton ]
+        forFullscreenProgress:_fullscreenProgress];
+    [self.view layoutIfNeeded];
     return;
   }
 
@@ -750,7 +772,9 @@ constexpr CGFloat kGlassContainerDarkBackgroundAlpha = 0.25;
 - (void)updateForFullscreenProgress:(CGFloat)progress {
   _fullscreenProgress = progress;
   CGFloat locationBarExpandedHeight;
-  if (ShouldHaveCompactLocationBar(self.traitCollection)) {
+  if (IsGlassToolbarEnabled()) {
+    locationBarExpandedHeight = kGlassLocationBarExpandedHeight;
+  } else if (ShouldHaveCompactLocationBar(self.traitCollection)) {
     locationBarExpandedHeight = kLocationBarHeight;
   } else {
     locationBarExpandedHeight = kTopLocationBarIPhonePortraitHeight;
@@ -765,6 +789,7 @@ constexpr CGFloat kGlassContainerDarkBackgroundAlpha = 0.25;
   _locationBarHeightConstraint.constant = locationBarHeight;
   _locationBarBackground.layer.cornerRadius = locationBarHeight / 2.0;
   _locationBarContainer.layer.cornerRadius = locationBarHeight / 2.0;
+  _locationBarContentView.layer.cornerRadius = locationBarHeight / 2.0;
 
   if (IsGlassToolbarEnabled()) {
     CGFloat glassHeight = progress * kGlassExpandedHeight +
@@ -961,7 +986,7 @@ constexpr CGFloat kGlassContainerDarkBackgroundAlpha = 0.25;
   } else {
     if (IsGlassToolbarEnabled()) {
       _glassBackgroundTopConstraint.constant =
-          -[self glassBackgroundTopPaddingForFullscreenProgress:progress];
+          [self glassBackgroundTopPaddingForFullscreenProgress:progress];
     } else {
       _locationBarTopConstraint.constant =
           [self locationBarTopPaddingForFullscreenProgress:progress];
@@ -1159,6 +1184,15 @@ constexpr CGFloat kGlassContainerDarkBackgroundAlpha = 0.25;
   [locationBarContainer addSubview:locationBarBackground];
   AddSameConstraints(locationBarContainer, locationBarBackground);
 
+  if (IsGlassToolbarEnabled()) {
+    _locationBarContentView = [[UIView alloc] init];
+    _locationBarContentView.translatesAutoresizingMaskIntoConstraints = NO;
+    _locationBarContentView.layer.cornerRadius = kLocationBarHeight / 2.0;
+    _locationBarContentView.clipsToBounds = YES;
+    [locationBarContainer addSubview:_locationBarContentView];
+    AddSameConstraints(locationBarContainer, _locationBarContentView);
+  }
+
   [locationBarContainer
       setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
                                       forAxis:UILayoutConstraintAxisHorizontal];
@@ -1250,9 +1284,11 @@ constexpr CGFloat kGlassContainerDarkBackgroundAlpha = 0.25;
                     TriggerHapticFeedbackForImpact(UIImpactFeedbackStyleHeavy);
                   }]
            forControlEvents:UIControlEventMenuActionTriggered];
-  _navigationButtonsContainer =
-      [self.buttonFactory makeConjoinedBackButton:_backButton
-                                    forwardButton:_forwardButton];
+  if (!IsNextOldDesignEnabled()) {
+    _navigationButtonsContainer =
+        [self.buttonFactory makeConjoinedBackButton:_backButton
+                                      forwardButton:_forwardButton];
+  }
   _reloadButton = [self.buttonFactory makeReloadButton];
   [_reloadButton addTarget:self
                     action:@selector(reloadButtonTapped)
@@ -1339,6 +1375,11 @@ constexpr CGFloat kGlassContainerDarkBackgroundAlpha = 0.25;
   ]];
 }
 
+// Returns the stack view spacing depending on feature flags.
+- (CGFloat)stackViewSpacing {
+  return IsNextOldDesignEnabled() ? kLegacyStackViewSpacing : kStackViewSpacing;
+}
+
 - (UIStackView*)makeStackViewWithButtons:(NSArray<UIView*>*)buttons {
   UIStackView* stackView =
       [[UIStackView alloc] initWithArrangedSubviews:buttons];
@@ -1346,7 +1387,7 @@ constexpr CGFloat kGlassContainerDarkBackgroundAlpha = 0.25;
   stackView.axis = UILayoutConstraintAxisHorizontal;
   stackView.distribution = UIStackViewDistributionFill;
   stackView.alignment = UIStackViewAlignmentCenter;
-  stackView.spacing = kStackViewSpacing;
+  stackView.spacing = [self stackViewSpacing];
   return stackView;
 }
 
@@ -1420,11 +1461,20 @@ constexpr CGFloat kGlassContainerDarkBackgroundAlpha = 0.25;
 
 // Sets up the hierarchy of the buttons.
 - (void)setUpHierarchy {
-  _leadingStackView = [self makeStackViewWithButtons:@[
-    _navigationButtonsContainer,
-    _reloadButton,
-    _stopButton,
-  ]];
+  if (IsNextOldDesignEnabled()) {
+    _leadingStackView = [self makeStackViewWithButtons:@[
+      _backButton,
+      _forwardButton,
+      _reloadButton,
+      _stopButton,
+    ]];
+  } else {
+    _leadingStackView = [self makeStackViewWithButtons:@[
+      _navigationButtonsContainer,
+      _reloadButton,
+      _stopButton,
+    ]];
+  }
   _trailingStackView = [self makeStackViewWithButtons:@[
     _shareButton, _assistantButton, _tabGridButton, _toolsMenuButton
   ]];
@@ -1443,27 +1493,40 @@ constexpr CGFloat kGlassContainerDarkBackgroundAlpha = 0.25;
   }
 
   [containerView addSubview:_trailingStackView];
-  [self.view addSubview:_progressBarContainer];
-  [self.view addSubview:_innerSeparator];
+  if (IsGlassToolbarEnabled()) {
+    [_locationBarContentView addSubview:_progressBarContainer];
+    [NSLayoutConstraint activateConstraints:@[
+      [_progressBarContainer.leadingAnchor
+          constraintEqualToAnchor:_locationBarContentView.leadingAnchor],
+      [_progressBarContainer.trailingAnchor
+          constraintEqualToAnchor:_locationBarContentView.trailingAnchor],
+      [_progressBarContainer.bottomAnchor
+          constraintEqualToAnchor:_locationBarContentView.bottomAnchor],
+      [_progressBarContainer.heightAnchor
+          constraintEqualToConstant:kProgressBarHeight],
+    ]];
+  } else {
+    [self.view addSubview:_progressBarContainer];
+    NSLayoutConstraint* progressBarEdgeConstraint =
+        _topPosition ? [_progressBarContainer.bottomAnchor
+                           constraintEqualToAnchor:self.view.bottomAnchor]
+                     : [_progressBarContainer.topAnchor
+                           constraintEqualToAnchor:self.view.topAnchor];
+
+    [NSLayoutConstraint activateConstraints:@[
+      [_progressBarContainer.leadingAnchor
+          constraintEqualToAnchor:self.view.leadingAnchor],
+      [_progressBarContainer.trailingAnchor
+          constraintEqualToAnchor:self.view.trailingAnchor],
+      [_progressBarContainer.heightAnchor
+          constraintEqualToConstant:kProgressBarHeight],
+      progressBarEdgeConstraint
+    ]];
+  }
   [self.view addSubview:_collapsedToolbarButton];
   AddSameConstraints(self.view, _collapsedToolbarButton);
 
-  NSLayoutConstraint* progressBarEdgeConstraint =
-      _topPosition ? [_progressBarContainer.bottomAnchor
-                         constraintEqualToAnchor:self.view.bottomAnchor]
-                   : [_progressBarContainer.topAnchor
-                         constraintEqualToAnchor:self.view.topAnchor];
-
-  [NSLayoutConstraint activateConstraints:@[
-    [_progressBarContainer.leadingAnchor
-        constraintEqualToAnchor:self.view.leadingAnchor],
-    [_progressBarContainer.trailingAnchor
-        constraintEqualToAnchor:self.view.trailingAnchor],
-    [_progressBarContainer.heightAnchor
-        constraintEqualToConstant:kProgressBarHeight],
-    progressBarEdgeConstraint
-  ]];
-
+  [self.view addSubview:_innerSeparator];
   NSLayoutConstraint* innerSeparatorEdgeConstraint =
       _topPosition ? [_innerSeparator.bottomAnchor
                          constraintEqualToAnchor:self.view.bottomAnchor]
@@ -1536,20 +1599,31 @@ constexpr CGFloat kGlassContainerDarkBackgroundAlpha = 0.25;
       constraintLessThanOrEqualToConstant:kLocationBarMaxWidth]
       .active = YES;
 
-  _leadingStackLeadingConstraint = [_leadingStackView.leadingAnchor
-      constraintEqualToAnchor:self.view.leadingAnchor];
+  if (IsNextOldDesignEnabled()) {
+    _leadingStackLeadingConstraint = [_leadingStackView.leadingAnchor
+        constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor];
+    _trailingStackTrailingConstraint =
+        [self.view.safeAreaLayoutGuide.trailingAnchor
+            constraintEqualToAnchor:_trailingStackView.trailingAnchor];
+  } else {
+    _leadingStackLeadingConstraint = [_leadingStackView.leadingAnchor
+        constraintEqualToAnchor:self.view.leadingAnchor];
+    _trailingStackTrailingConstraint = [self.view.trailingAnchor
+        constraintEqualToAnchor:_trailingStackView.trailingAnchor];
+  }
   _leadingStackLeadingConstraint.active = YES;
-  _trailingStackTrailingConstraint = [self.view.trailingAnchor
-      constraintEqualToAnchor:_trailingStackView.trailingAnchor];
   _trailingStackTrailingConstraint.active = YES;
 
+  CGFloat locationBarMargin = IsGlassToolbarEnabled()
+                                  ? kGlassLocationBarStackViewMarginPortrait
+                                  : kLocationBarStackViewMarginPortrait;
   _portraitOrientationConstraints = @[
     [_locationBarContainer.leadingAnchor
         constraintEqualToAnchor:_leadingStackView.trailingAnchor
-                       constant:kLocationBarStackViewMarginPortrait],
+                       constant:locationBarMargin],
     [_locationBarContainer.trailingAnchor
         constraintEqualToAnchor:_trailingStackView.leadingAnchor
-                       constant:-kLocationBarStackViewMarginPortrait],
+                       constant:-locationBarMargin],
   ];
 
   CGFloat regularMargin = kLocationBarStackViewMarginRegularRegular;
@@ -1572,8 +1646,8 @@ constexpr CGFloat kGlassContainerDarkBackgroundAlpha = 0.25;
   // make sure the width of the leading stack view is enough to contain 3
   // buttons and one spacing.
   CGFloat minimalLeadingMargin = kLocationBarStackViewMarginLandscape +
-                                 2 * kToolbarButtonSize + kStackViewSpacing +
-                                 kToolbarButtonSize;
+                                 2 * kToolbarButtonSize +
+                                 [self stackViewSpacing] + kToolbarButtonSize;
   _landscapeOrientationConstraints = @[
     [_locationBarContainer.leadingAnchor
         constraintGreaterThanOrEqualToAnchor:_leadingStackView.trailingAnchor
@@ -1605,7 +1679,20 @@ constexpr CGFloat kGlassContainerDarkBackgroundAlpha = 0.25;
   [NSLayoutConstraint deactivateConstraints:_landscapeOrientationConstraints];
   [NSLayoutConstraint deactivateConstraints:_regularRegularConstraints];
 
-  if (IsRegularXRegularSizeClass(self)) {
+  if (IsNextOldDesignEnabled()) {
+    _leadingStackLeadingConstraint.constant = kLegacyOutsideMargin;
+    _trailingStackTrailingConstraint.constant = kLegacyOutsideMargin;
+    if (IsRegularXRegularSizeClass(self)) {
+      _forwardButton.hidden = NO;
+      [NSLayoutConstraint activateConstraints:_regularRegularConstraints];
+    } else if (IsIPhoneLandscape(self)) {
+      _forwardButton.hidden = !_forwardButton.enabled;
+      [NSLayoutConstraint activateConstraints:_landscapeOrientationConstraints];
+    } else {
+      _forwardButton.hidden = !_forwardButton.enabled;
+      [NSLayoutConstraint activateConstraints:_portraitOrientationConstraints];
+    }
+  } else if (IsRegularXRegularSizeClass(self)) {
     _leadingStackLeadingConstraint.constant = kStackViewMarginRegularRegular;
     _trailingStackTrailingConstraint.constant = kStackViewMarginRegularRegular;
     [NSLayoutConstraint activateConstraints:_regularRegularConstraints];
@@ -1614,8 +1701,11 @@ constexpr CGFloat kGlassContainerDarkBackgroundAlpha = 0.25;
     _trailingStackTrailingConstraint.constant = kStackViewMarginLandscape;
     [NSLayoutConstraint activateConstraints:_landscapeOrientationConstraints];
   } else {
-    _leadingStackLeadingConstraint.constant = kStackViewMarginPortrait;
-    _trailingStackTrailingConstraint.constant = kStackViewMarginPortrait;
+    CGFloat margin = IsGlassToolbarEnabled()
+                         ? kGlassStackViewMarginPortrait + kGlassToolbarMargin
+                         : kStackViewMarginPortrait;
+    _leadingStackLeadingConstraint.constant = margin;
+    _trailingStackTrailingConstraint.constant = margin;
     [NSLayoutConstraint activateConstraints:_portraitOrientationConstraints];
   }
 }

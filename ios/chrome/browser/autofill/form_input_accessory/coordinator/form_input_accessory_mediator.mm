@@ -70,6 +70,7 @@
 #import "ui/base/device_form_factor.h"
 #import "ui/base/l10n/l10n_util_mac.h"
 
+using ActivityType = autofill::FormActivityParams::ActivityType;
 using autofill::Suggestion;
 using autofill::SuggestionType;
 using base::UmaHistogramEnumeration;
@@ -78,13 +79,36 @@ namespace {
 
 // Returns whether the input field type triggers the keyboard to open. If the
 // field type isn't recognized, it returns the provided default value.
-bool InputTriggersKeyboard(std::string field_type, bool default_value) {
-  static const auto triggers_keyboard = base::MakeFixedFlatSet<std::string>(
-      {"email", "number", "password", "search", "tel", "text", "url", "week"});
-  static const auto no_keyboard = base::MakeFixedFlatSet<std::string>(
-      {"button", "checkbox", "color", "date", "datetime-local", "file",
-       "hidden", "image", "month", "radio", "range", "reset", "submit",
-       "time"});
+bool InputTriggersKeyboard(autofill::FormActivityParams::FieldType field_type,
+                           bool default_value) {
+  static const auto triggers_keyboard =
+      base::MakeFixedFlatSet<autofill::FormActivityParams::FieldType>({
+          autofill::FormActivityParams::FieldType::kEmail,
+          autofill::FormActivityParams::FieldType::kNumber,
+          autofill::FormActivityParams::FieldType::kObfuscated,
+          autofill::FormActivityParams::FieldType::kSearch,
+          autofill::FormActivityParams::FieldType::kTel,
+          autofill::FormActivityParams::FieldType::kText,
+          autofill::FormActivityParams::FieldType::kUrl,
+          autofill::FormActivityParams::FieldType::kWeek,
+      });
+  static const auto no_keyboard =
+      base::MakeFixedFlatSet<autofill::FormActivityParams::FieldType>({
+          autofill::FormActivityParams::FieldType::kButton,
+          autofill::FormActivityParams::FieldType::kCheckbox,
+          autofill::FormActivityParams::FieldType::kColor,
+          autofill::FormActivityParams::FieldType::kDate,
+          autofill::FormActivityParams::FieldType::kDateTimeLocal,
+          autofill::FormActivityParams::FieldType::kFile,
+          autofill::FormActivityParams::FieldType::kHidden,
+          autofill::FormActivityParams::FieldType::kImage,
+          autofill::FormActivityParams::FieldType::kMonth,
+          autofill::FormActivityParams::FieldType::kRadio,
+          autofill::FormActivityParams::FieldType::kRange,
+          autofill::FormActivityParams::FieldType::kReset,
+          autofill::FormActivityParams::FieldType::kSubmit,
+          autofill::FormActivityParams::FieldType::kTime,
+      });
 
   if (triggers_keyboard.contains(field_type)) {
     return true;
@@ -382,7 +406,8 @@ bool IsStateless() {
 }
 
 - (BOOL)lastFocusedFieldWasObfuscated {
-  return _lastSeenParams.field_type == autofill::kObfuscatedFieldType;
+  return _lastSeenParams.field_type ==
+         autofill::FormActivityParams::FieldType::kObfuscated;
 }
 
 - (autofill::FillingProduct)currentProviderMainFillingProduct {
@@ -507,14 +532,15 @@ bool IsStateless() {
 
   // Ignore form_changed events to prevent gestureless form changes from
   // overwriting the active keyboard accessory's target web frame ID.
-  if (params.type == "form_changed") {
+  if (params.type == ActivityType::kFormChanged) {
     return;
   }
 
   BOOL isDefaultViewEnabled =
       IsIOSKeyboardAccessoryDefaultViewEnabled() &&
       ui::GetDeviceFormFactor() == ui::DEVICE_FORM_FACTOR_PHONE;
-  BOOL isSelectOne = params.field_type == "select-one";
+  BOOL isSelectOne =
+      params.field_type == autofill::FormActivityParams::FieldType::kSelectOne;
 
   // Return early and reset if element is a picker.
   if (isSelectOne && !isDefaultViewEnabled) {
@@ -531,7 +557,8 @@ bool IsStateless() {
   }
 
   // Skip retrieving suggestions for blur or change events.
-  if (params.type == "blur" || params.type == "change") {
+  if (params.type == ActivityType::kBlur ||
+      params.type == ActivityType::kChange) {
     return;
   }
 
@@ -805,7 +832,7 @@ bool IsStateless() {
   if (!self.suggestionsEnabled) {
     if (self.formInputInteractionDelegate) {
       [self.formInputInteractionDelegate
-          focusDidChangedWithFillingProduct:mainFillingProduct];
+          focusDidChangeWithFillingProduct:mainFillingProduct];
     }
     return;
   }

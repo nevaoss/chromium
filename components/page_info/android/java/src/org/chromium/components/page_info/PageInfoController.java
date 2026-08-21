@@ -36,6 +36,7 @@ import org.chromium.components.dom_distiller.core.DomDistillerUrlUtils;
 import org.chromium.components.embedder_support.util.UrlUtilities;
 import org.chromium.components.omnibox.AutocompleteSchemeClassifier;
 import org.chromium.components.omnibox.OmniboxUrlEmphasizer;
+import org.chromium.components.security_state.ConnectionMaliciousContentStatus;
 import org.chromium.components.security_state.ConnectionSecurityLevel;
 import org.chromium.components.security_state.SecurityStateModel;
 import org.chromium.components.url_formatter.UrlFormatter;
@@ -128,6 +129,14 @@ public class PageInfoController
     // Reference to last created PageInfoController for testing.
     private static @Nullable WeakReference<PageInfoController> sLastPageInfoControllerForTesting;
 
+    /**
+     * Whether the current site is displaying a suspicious site warning. Unlike phishing or malware
+     * sites (which present full-page interstitials), suspicious sites use PageInfo to display
+     * warnings and action buttons. When true, PageInfo uses a static warning icon
+     * (ic_public_off_24dp) and suppresses replacing it with the site's fetched favicon.
+     */
+    private boolean mIsSuspiciousSite;
+
     // Used to show Site settings from Page Info UI.
     private final PermissionParamsListBuilder mPermissionParamsListBuilder;
 
@@ -212,6 +221,10 @@ public class PageInfoController
             }
         }
 
+        mIsSuspiciousSite =
+                SecurityStateModel.getMaliciousContentStatusForWebContents(mWebContents)
+                        == ConnectionMaliciousContentStatus.WARNABLE_SUSPICIOUS_SITE;
+
         // Setup Container.
         mContainer = new PageInfoContainer(mContext);
         boolean useDarkText = !ColorUtils.inNightMode(mContext);
@@ -244,6 +257,13 @@ public class PageInfoController
                         /* showCloseButton= */ !isSheet() || mDelegate.isAccessibilityEnabled(),
                         /* closeButtonClickCallback= */ this::dismiss);
         mContainer.setParams(containerParams);
+        if (mIsSuspiciousSite) {
+            mContainer.setFavicon(
+                    SettingsUtils.getTintedIcon(
+                            mContext,
+                            org.chromium.components.browser_ui.styles.R.drawable
+                                    .ic_public_off_24dp));
+        }
 
         // Setup View.
         PageInfoView.Params viewParams = new PageInfoView.Params();
@@ -254,8 +274,8 @@ public class PageInfoController
         mDelegate.getFavicon(
                 mFullUrl,
                 favicon -> {
-                    // Return early if PageInfo has been dismissed.
-                    if (mDialog == null) return;
+                    // Return early if PageInfo has been dismissed or site is suspicious.
+                    if (mDialog == null || mIsSuspiciousSite) return;
 
                     if (favicon != null) {
                         mContainer.setFavicon(favicon);
@@ -400,12 +420,51 @@ public class PageInfoController
     }
 
     /**
-     * Sets the connection security summary and detailed description strings. These strings may be
-     * overridden based on the state of the Android UI.
+     * Sets the connection security summary and detailed description strings, and configures UI for
+     * suspicious site warnings.
      */
+    // TODO(crbug.com/532598590): Refactor suspicious site UI configuration out of
+    // setSecurityDescription into a dedicated method (e.g. configureSuspiciousSiteUi).
     @CalledByNative
-    private void setSecurityDescription(String summary, String details) {
-        mConnectionController.setSecurityDescription(summary, details);
+    public void setSecurityDescription(String summary, String details, boolean isSuspiciousSite) {
+        mIsSuspiciousSite = isSuspiciousSite;
+        mConnectionController.setSecurityDescription(summary, details, isSuspiciousSite);
+        // Synchronize suspicious site state to native controller. In production this is set by
+        // SetIdentityInfo, but is required for testing environments where setSecurityDescription
+        // is invoked directly from Java tests without going through SetIdentityInfo.
+        if (mNativePageInfoController != 0) {
+            PageInfoControllerJni.get()
+                    .setIsSuspiciousSite(mNativePageInfoController, isSuspiciousSite);
+        }
+        if (isSuspiciousSite) {
+            mContainer.setFavicon(
+                    SettingsUtils.getTintedIcon(
+                            mContext,
+                            org.chromium.components.browser_ui.styles.R.drawable
+                                    .ic_public_off_24dp));
+            mView.getBackToSafetyButton()
+                    .setOnClickListener(
+                            v -> {
+                                if (mNativePageInfoController != 0) {
+                                    PageInfoControllerJni.get()
+                                            .onSuspiciousSiteBackToSafety(
+                                                    mNativePageInfoController);
+                                }
+                                dismiss();
+                            });
+            mView.getMarkAsSafeButton()
+                    .setOnClickListener(
+                            v -> {
+                                if (mNativePageInfoController != 0) {
+                                    PageInfoControllerJni.get()
+                                            .onSuspiciousSiteMarkAsSafe(mNativePageInfoController);
+                                }
+                                dismiss();
+                            });
+            mView.setSuspiciousSiteButtonsVisible(true);
+        } else {
+            mView.setSuspiciousSiteButtonsVisible(false);
+        }
     }
 
     /**
@@ -599,6 +658,26 @@ public class PageInfoController
         void recordPageInfoAction(long nativePageInfoControllerAndroid, int action);
 
         void updatePermissions(long nativePageInfoControllerAndroid);
+
+        void onSuspiciousSiteBackToSafety(long nativePageInfoControllerAndroid);
+
+        void onSuspiciousSiteMarkAsSafe(long nativePageInfoControllerAndroid);
+
+        void openSafeBrowsingHelpCenter(long nativePageInfoControllerAndroid);
+
+        void setIsSuspiciousSite(long nativePageInfoControllerAndroid, boolean isSuspiciousSite);
+    }
+
+    @Override
+    public void openSafeBrowsingHelpCenter() {
+        if (mNativePageInfoController != 0) {
+            PageInfoControllerJni.get().openSafeBrowsingHelpCenter(mNativePageInfoController);
+        }
+    }
+
+    @Override
+    public void updateConnectionWrapperVisibility() {
+        mView.updateConnectionWrapperVisibility();
     }
 
     @Override

@@ -75,7 +75,6 @@
 #include "chrome/browser/ui/views/frame/toolbar_button_provider.h"
 #include "chrome/browser/ui/views/intent_picker_bubble_view.h"
 #include "chrome/browser/ui/views/location_bar/custom_tab_bar_view.h"
-#include "chrome/browser/ui/views/page_action/page_action_icon_view.h"
 #include "chrome/browser/ui/views/page_action/page_action_view.h"
 #include "chrome/browser/ui/views/page_action/test_support/page_action_test_support.h"
 #include "chrome/browser/ui/views/page_info/page_info_bubble_view.h"
@@ -814,11 +813,11 @@ bool ShouldLoadResponseFromDisk(const base::FilePath& root,
 
 void LoadFileFromDisk(const base::FilePath& path,
                       content::WebUIDataSource::GotDataCallback callback) {
-  std::string result;
-  CHECK(base::ReadFileToString(path, &result));
+  std::optional<std::vector<uint8_t>> result = base::ReadFileToBytes(path);
+  CHECK(result.has_value());
 
   std::move(callback).Run(
-      new base::RefCountedBytes(base::as_byte_span(result)));
+      base::MakeRefCounted<base::RefCountedBytes>(std::move(result.value())));
 }
 
 void LoadResponseFromDisk(const base::FilePath& root,
@@ -1544,7 +1543,7 @@ void WebAppIntegrationTestDriver::InstallOmniboxIcon(InstallableSite site) {
   install_observer.BeginListening();
   actions::ActionManager::Get()
       .FindAction(kActionInstallPwa,
-                  BrowserActions::From(browser())->root_action_item())
+                  browser()->GetActions()->root_action_item())
       ->InvokeAction();
 
   WaitForAndAcceptInstallDialogForSite(InstallableSiteToSite(site));

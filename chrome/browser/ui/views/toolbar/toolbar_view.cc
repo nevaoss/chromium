@@ -82,7 +82,6 @@
 #include "chrome/browser/ui/views/global_media_controls/media_toolbar_button_view.h"
 #include "chrome/browser/ui/views/location_bar/webui_location_bar.h"
 #include "chrome/browser/ui/views/page_action/page_action_container_view.h"
-#include "chrome/browser/ui/views/page_action/page_action_icon_container.h"
 #include "chrome/browser/ui/views/page_action/page_action_view.h"
 #include "chrome/browser/ui/views/page_action/page_action_view_interface.h"
 #include "chrome/browser/ui/views/performance_controls/battery_saver_button.h"
@@ -1387,7 +1386,8 @@ gfx::Size ToolbarView::GetMinimumSize() const {
         size.SetToMin({size.width(), max_height});
       }
       // Overflow button must be part of minimum size calculation.
-      if (overflow_button_ && browser_->is_type_normal() &&
+      if (overflow_button_ &&
+          browser_->GetType() == BrowserWindowInterface::Type::TYPE_NORMAL &&
           !overflow_button_->GetVisible()) {
         const int default_margin =
             GetLayoutConstant(LayoutConstant::kToolbarIconDefaultMargin);
@@ -1771,11 +1771,6 @@ views::BubbleAnchor ToolbarView::GetDefaultExtensionDialogAnchor() {
   }
   auto* control = GetAppMenuControl();
   return control ? control->GetAnchor() : views::BubbleAnchor();
-}
-
-PageActionIconView* ToolbarView::GetPageActionIconView(
-    PageActionIconType type) {
-  return nullptr;
 }
 
 page_actions::PageActionViewInterface* ToolbarView::GetPageActionViewInterface(

@@ -1122,7 +1122,11 @@ chromium-metrics-reviews@google.com.
   </summary>
   <token key="NewTabPageTimings">
     <variant name=""/>
-    <variant name=".FirstContentfulPaint" summary="First contentful paint."/>
+    <variant name=".FirstContentfulPaint"
+        summary="First contentful paint. Android desktop only. Its
+                 functionality is already covered by
+                 NewTabPage.LoadTime.FirstContentfulPaint2."/>
+    <variant name=".FirstContentfulPaint2" summary="First contentful paint."/>
     <variant name=".LargestContentfulPaint"
         summary="Largest contentful paint."/>
     <variant name=".MostVisited" summary="Loaded client-side suggestions."/>
@@ -2315,6 +2319,16 @@ chromium-metrics-reviews@google.com.
     Histogram of the time, in milliseconds since navigation start, it took until
     a middle slot promo showed up on the NTP. Recorded on the local and WebUI
     NTP.
+  </summary>
+</histogram>
+
+<histogram name="NewTabPage.Realbox.Paste" units="count"
+    expires_after="2027-08-01">
+  <owner>sophiechang@chromium.org</owner>
+  <owner>chrome-desktop-ntp@google.com</owner>
+  <summary>
+    Counts the number of paste actions performed in the New Tab Page realbox.
+    Recorded every time the user pastes into the realbox.
   </summary>
 </histogram>
 

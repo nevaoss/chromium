@@ -373,7 +373,7 @@ BASE_FEATURE(kOverlayFullscreenVideo,
 BASE_FEATURE(kPauseBackgroundTimer, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Adds a mute/unmute button to the Video Picture-in-Picture overlay window.
-BASE_FEATURE(kPictureInPictureMuteControl, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kPictureInPictureMuteControl, base::FEATURE_ENABLED_BY_DEFAULT);
 
 #if !BUILDFLAG(IS_ANDROID)
 // Enables tracking the position of picture-in-picture windows to know when they
@@ -630,15 +630,7 @@ BASE_FEATURE(kEnableRtcpReporting, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Controls whether the OpusAudioDecoder is used for Opus audio decoding
 // (instead of the FFmpegAudioDecoder).
-BASE_FEATURE(kDirectOpusAudioDecoding,
-// Android / Fuchsia are expected to launch in M150.
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
-    BUILDFLAG(IS_CHROMEOS)
-             base::FEATURE_ENABLED_BY_DEFAULT
-#else
-             base::FEATURE_DISABLED_BY_DEFAULT
-#endif
-);
+BASE_FEATURE(kDirectOpusAudioDecoding, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Approach original pre-REC MSE object URL autorevoking behavior, though await
 // actual attempt to use the object URL for attachment to perform revocation.
@@ -1227,6 +1219,9 @@ BASE_FEATURE(kAndroidZeroCopyVideoCapture, base::FEATURE_DISABLED_BY_DEFAULT);
 // TODO(crbug.com/327625558): Currently block model is buggy and can't be
 // enabled, we need to test it again when Android 17 is released.
 BASE_FEATURE(kMediaCodecBlockModel, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Enables output-side block model (OutputFrame) on supported devices.
+BASE_FEATURE(kMediaCodecBlockModelOutput, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Allow selection of low latency decoders in low delay mode.
 BASE_FEATURE(kMediaCodecLowDelayMode, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -1969,6 +1964,16 @@ bool IsDedicatedMediaServiceThreadEnabled(gl::ANGLEImplementation impl) {
 
 bool IsHardwareSecureDecryptionEnabled() {
   return base::FeatureList::IsEnabled(kHardwareSecureDecryption);
+}
+
+bool IsIamfAudioDecodingSupported() {
+#if BUILDFLAG(ENABLE_PLATFORM_IAMF_AUDIO)
+  return true;
+#elif BUILDFLAG(ENABLE_IAMF_TOOLS)
+  return base::FeatureList::IsEnabled(kIamfAudioDecoding);
+#else
+  return false;
+#endif
 }
 
 bool IsLiveTranslateEnabled() {

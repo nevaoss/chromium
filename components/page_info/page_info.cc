@@ -629,6 +629,10 @@ void PageInfo::RecordPageInfoAction(page_info::PageInfoAction action) {
       base::RecordAction(
           base::UserMetricsAction("PageInfo.SafeBrowsing.HelpOpened"));
       break;
+    case page_info::PAGE_INFO_UNSAFE_SITE_HELP_OPENED:
+      base::RecordAction(
+          base::UserMetricsAction("PageInfo.UnsafeSite.HelpOpened"));
+      break;
     case page_info::PAGE_INFO_SYNC_SETTINGS_OPENED:
       base::RecordAction(base::UserMetricsAction(
           "PageInfo.CookiesSubpage.SyncSettingsLinkClicked"));
@@ -974,13 +978,22 @@ void PageInfo::OpenConnectionHelpCenterPage(const ui::Event& event) {
 #endif
 }
 
-void PageInfo::OpenSafeBrowsingHelpCenterPage(const ui::Event& event) {
-#if BUILDFLAG(IS_ANDROID)
-  NOTREACHED();
-#else
-  RecordPageInfoAction(page_info::PAGE_INFO_SAFE_BROWSING_HELP_OPENED);
-  delegate_->OpenSafeBrowsingHelpCenterPage(event);
-#endif
+void PageInfo::OpenSafeBrowsingHelpCenterPage(const ui::Event* event,
+                                              bool is_suspicious_site) {
+  if (is_suspicious_site) {
+    RecordPageInfoAction(page_info::PAGE_INFO_UNSAFE_SITE_HELP_OPENED);
+  } else {
+    RecordPageInfoAction(page_info::PAGE_INFO_SAFE_BROWSING_HELP_OPENED);
+  }
+  delegate_->OpenSafeBrowsingHelpCenterPage(event, is_suspicious_site);
+}
+
+void PageInfo::OnSuspiciousSiteBackToSafety() {
+  delegate_->OnSuspiciousSiteBackToSafety();
+}
+
+void PageInfo::OnSuspiciousSiteMarkAsSafe() {
+  delegate_->OnSuspiciousSiteMarkAsSafe();
 }
 
 void PageInfo::OpenContentSettingsExceptions(
@@ -1858,6 +1871,11 @@ void PageInfo::GetSafeBrowsingStatusByMaliciousContentStatus(
       *status = PageInfo::SAFE_BROWSING_STATUS_MANAGED_POLICY_WARN;
       *details =
           l10n_util::GetStringUTF16(IDS_PAGE_INFO_ENTERPRISE_WARN_DETAILS);
+      break;
+    case security_state::MALICIOUS_CONTENT_STATUS_WARNABLE_SUSPICIOUS_SITE:
+      *status = PageInfo::SAFE_BROWSING_STATUS_WARNABLE_SUSPICIOUS_SITE;
+      *details =
+          l10n_util::GetStringUTF16(IDS_PAGE_INFO_SUSPICIOUS_SITE_DETAILS);
       break;
   }
 }

@@ -364,8 +364,10 @@ suite('SettingsMenuElement', () => {
   });
 
   test('forward arrow is ignored when focus is on previewplaybutton', () => {
-    // Pretend we are in Voice Selection submenu.
-    settingsMenu['currentOpenId_'] = SettingsOption.VOICE_SELECTION;
+    // Open Voice Selection submenu.
+    const voiceItem = settingsMenu.$.lazyMenu.get().querySelector<HTMLButtonElement>(
+        `#${SettingsOption.VOICE_SELECTION}`)!;
+    voiceItem.click();
 
     // Move focus away from settings menu row.
     const dummySubmenuElement = document.createElement('button');
@@ -513,6 +515,22 @@ suite('SettingsMenuElement', () => {
         assertTrue(
             !menuItems.find(item => item.id === SettingsOption.APPEARANCE));
         assertTrue(!!menuItems.find(item => item.id === SettingsOption.COLOR));
+      });
+
+  test(
+      'LINE_FOCUS is not in top level menu when isReadAnythingImprovedUiEnabled is true',
+      async () => {
+        chrome.readingMode.isReadAnythingImprovedUiEnabled = true;
+        chrome.readingMode.isImmersiveEnabled = true;
+        chrome.readingMode.isLineFocusEnabled = true;
+        settingsMenu.settingsPrefs = {...settingsMenu.settingsPrefs};
+        await microtasksFinished();
+
+        const actionMenu = settingsMenu.$.lazyMenu.get();
+        const menuItems = Array.from(
+            actionMenu.querySelectorAll<HTMLButtonElement>('.menu-row'));
+        assertFalse(
+            !!menuItems.find(item => item.id === SettingsOption.LINE_FOCUS));
       });
 
   test('translate action fires event when clicked', async () => {

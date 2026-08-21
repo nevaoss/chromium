@@ -63,7 +63,7 @@ class DownloadManagerMediatorTest : public PlatformTest {
     TestProfileIOS::Builder builder;
     builder.AddTestingFactory(
         AuthenticationServiceFactory::GetInstance(),
-        AuthenticationServiceFactory::GetFactoryWithDelegate(
+        AuthenticationServiceFactory::GetFactoryWithDelegateForTesting(
             std::make_unique<FakeAuthenticationServiceDelegate>()));
     builder.AddTestingFactory(SyncServiceFactory::GetInstance(),
                               base::BindRepeating(&CreateTestSyncService));
@@ -383,6 +383,23 @@ TEST_F(DownloadManagerMediatorTest, SetGoogleDriveAppInstalled) {
   // Set Google Drive app installed again.
   mediator_.SetGoogleDriveAppInstalled(true);
   mediator_.UpdateConsumer();
+  EXPECT_FALSE(consumer_.installDriveButtonVisible);
+}
+
+// Tests that calling `UpdateConsumer()` rechecks whether Google Drive app is
+// installed.
+TEST_F(DownloadManagerMediatorTest,
+       UpdateConsumerRechecksGoogleDriveAppInstalled) {
+  mediator_.SetDownloadTask(task());
+  mediator_.SetConsumer(consumer_);
+
+  mediator_.SetGoogleDriveAppInstalled(YES);
+  EXPECT_FALSE(consumer_.installDriveButtonVisible);
+
+  mediator_.SetGoogleDriveAppInstalled(NO);
+  EXPECT_TRUE(consumer_.installDriveButtonVisible);
+
+  mediator_.SetGoogleDriveAppInstalled(YES);
   EXPECT_FALSE(consumer_.installDriveButtonVisible);
 }
 

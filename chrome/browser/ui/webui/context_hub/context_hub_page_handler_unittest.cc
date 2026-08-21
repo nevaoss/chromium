@@ -146,6 +146,7 @@ TEST_F(ContextHubPageHandlerTest, GenerateAutoTodos_Success) {
       result = future.Take();
   ASSERT_TRUE(result.has_value());
   ASSERT_EQ(result->size(), 1u);
+  EXPECT_EQ(result->at(0)->id, "Test Title");
   EXPECT_EQ(result->at(0)->title, "Test Title");
   EXPECT_EQ(result->at(0)->description, "Test Description");
   EXPECT_EQ(result->at(0)->actionable_url, GURL("https://example.com/action"));
@@ -618,6 +619,38 @@ TEST_F(ContextHubPageHandlerTest, ClearTabGroups) {
 }
 
 TEST_F(ContextHubPageHandlerTest, AskGeminiWithContext_Success) {
+  EXPECT_CALL(
+      *GetMockOptimizationGuideService(),
+      ExecuteModel(optimization_guide::ModelBasedCapabilityKey::kContextHub, _,
+                   _, _))
+      .WillOnce([](optimization_guide::ModelBasedCapabilityKey feature,
+                   const google::protobuf::MessageLite& request_metadata,
+                   const optimization_guide::ModelExecutionOptions& options,
+                   optimization_guide::
+                       OptimizationGuideModelExecutionResultCallback callback) {
+        const auto& request =
+            static_cast<const optimization_guide::proto::ContextHubRequest&>(
+                request_metadata);
+        EXPECT_EQ(request.request_type(),
+                  optimization_guide::proto::
+                      CONTEXT_HUB_REQUEST_TYPE_MEMORY_BANK_CHAT);
+        EXPECT_EQ(request.user_command(), "Summarize memories");
+
+        optimization_guide::proto::ContextHubResponse response;
+        response.mutable_memory_bank_chat_response()->set_text_response(
+            "Gemini response for prompt.");
+
+        optimization_guide::proto::Any any_response;
+        any_response.set_type_url(
+            "type.googleapis.com/optimization_guide.proto.ContextHubResponse");
+        response.SerializeToString(any_response.mutable_value());
+
+        std::move(callback).Run(
+            optimization_guide::OptimizationGuideModelExecutionResult(
+                base::ok(std::move(any_response)), nullptr),
+            nullptr);
+      });
+
   base::test::TestFuture<browser::context_hub::mojom::ChatMessagePtr> future;
   handler_->AskGeminiWithContext("Summarize memories", {1, 2},
                                  future.GetCallback());
@@ -625,11 +658,141 @@ TEST_F(ContextHubPageHandlerTest, AskGeminiWithContext_Success) {
   browser::context_hub::mojom::ChatMessagePtr response = future.Take();
   ASSERT_TRUE(response);
   EXPECT_EQ(response->role, browser::context_hub::mojom::ChatRole::kAssistant);
-  EXPECT_TRUE(response->content.find(
-                  "Gemini response for prompt: \"Summarize memories\"") !=
-              std::string::npos);
-  EXPECT_TRUE(response->content.find("2 selected memory ID(s)") !=
-              std::string::npos);
+  EXPECT_EQ(response->content, "Gemini response for prompt.");
+}
+
+TEST_F(ContextHubPageHandlerTest, AskGeminiWithContext_WithSelectedEntries) {
+  ContextHubService* service =
+      ContextHubServiceFactory::GetForProfile(&profile_);
+  ASSERT_TRUE(service);
+
+  base::test::TestFuture<void> save_future;
+  service->SaveTab(GURL("https://example.com/test"), "Test Page",
+                   "Page content", save_future.GetCallback());
+  ASSERT_TRUE(save_future.Wait());
+
+  base::test::TestFuture<
+      std::vector<browser::context_hub::mojom::MemoryBankEntryPtr>>
+      all_entries_future;
+  handler_->GetAllMemoryBankEntries(all_entries_future.GetCallback());
+  auto entries = all_entries_future.Take();
+  ASSERT_EQ(entries.size(), 1u);
+  int64_t entry_id = entries[0]->id;
+
+  EXPECT_CALL(
+      *GetMockOptimizationGuideService(),
+      ExecuteModel(optimization_guide::ModelBasedCapabilityKey::kContextHub, _,
+                   _, _))
+      .WillOnce([entry_id](
+                    optimization_guide::ModelBasedCapabilityKey feature,
+                    const google::protobuf::MessageLite& request_metadata,
+                    const optimization_guide::ModelExecutionOptions& options,
+                    optimization_guide::
+                        OptimizationGuideModelExecutionResultCallback
+                            callback) {
+        const auto& request =
+            static_cast<const optimization_guide::proto::ContextHubRequest&>(
+                request_metadata);
+        EXPECT_EQ(request.request_type(),
+                  optimization_guide::proto::
+                      CONTEXT_HUB_REQUEST_TYPE_MEMORY_BANK_CHAT);
+        EXPECT_EQ(request.user_command(), "Summarize");
+        ASSERT_EQ(request.entry_items_size(), 1);
+        EXPECT_TRUE(request.entry_items(0).has_memory_bank_entry());
+        EXPECT_EQ(request.entry_items(0).memory_bank_entry().id(), entry_id);
+        EXPECT_EQ(request.entry_items(0).memory_bank_entry().tab_title(),
+                  "Test Page");
+        EXPECT_EQ(request.entry_items(0).memory_bank_entry().url(),
+                  "https://example.com/test");
+
+        optimization_guide::proto::ContextHubResponse response;
+        response.mutable_memory_bank_chat_response()->set_text_response(
+            "Summary of Test Page.");
+
+        optimization_guide::proto::Any any_response;
+        any_response.set_type_url(
+            "type.googleapis.com/optimization_guide.proto.ContextHubResponse");
+        response.SerializeToString(any_response.mutable_value());
+
+        std::move(callback).Run(
+            optimization_guide::OptimizationGuideModelExecutionResult(
+                base::ok(std::move(any_response)), nullptr),
+            nullptr);
+      });
+
+  base::test::TestFuture<browser::context_hub::mojom::ChatMessagePtr>
+      ask_future;
+  handler_->AskGeminiWithContext("Summarize", {entry_id},
+                                 ask_future.GetCallback());
+
+  browser::context_hub::mojom::ChatMessagePtr response = ask_future.Take();
+  ASSERT_TRUE(response);
+  EXPECT_EQ(response->role, browser::context_hub::mojom::ChatRole::kAssistant);
+  EXPECT_EQ(response->content, "Summary of Test Page.");
+}
+
+TEST_F(ContextHubPageHandlerTest, ClearTodoFeedbacks) {
+  ContextHubService* service =
+      ContextHubServiceFactory::GetForProfile(&profile_);
+  ASSERT_TRUE(service);
+
+  // Add a feedback item.
+  auto feedback = browser::context_hub::mojom::AutoTodoItemFeedback::New();
+  feedback->todo_id = "todo_1";
+  feedback->liked = true;
+
+  base::test::TestFuture<void> set_future;
+  handler_->SetTodoFeedback(std::move(feedback), set_future.GetCallback());
+  EXPECT_TRUE(set_future.Wait());
+  // Verify that the feedback item was added.
+  EXPECT_EQ(1u, service->GetTodoFeedbacks().size());
+
+  base::test::TestFuture<void> clear_future;
+  handler_->ClearTodoFeedbacks(clear_future.GetCallback());
+  EXPECT_TRUE(clear_future.Wait());
+  // Verify that the feedback item was cleared.
+  EXPECT_TRUE(service->GetTodoFeedbacks().empty());
+}
+
+TEST_F(ContextHubPageHandlerTest, DeleteTodoFeedback) {
+  ContextHubService* service =
+      ContextHubServiceFactory::GetForProfile(&profile_);
+  ASSERT_TRUE(service);
+
+  auto feedback1 = browser::context_hub::mojom::AutoTodoItemFeedback::New();
+  feedback1->todo_id = "todo_1";
+  feedback1->liked = true;
+
+  auto feedback2 = browser::context_hub::mojom::AutoTodoItemFeedback::New();
+  feedback2->todo_id = "todo_2";
+  feedback2->liked = false;
+
+  // Add two feedback items.
+  base::test::TestFuture<void> set_future1;
+  handler_->SetTodoFeedback(std::move(feedback1), set_future1.GetCallback());
+  EXPECT_TRUE(set_future1.Wait());
+
+  base::test::TestFuture<void> set_future2;
+  handler_->SetTodoFeedback(std::move(feedback2), set_future2.GetCallback());
+  EXPECT_TRUE(set_future2.Wait());
+
+  // Verify that the feedback items were added.
+  EXPECT_EQ(2u, service->GetTodoFeedbacks().size());
+
+  base::test::TestFuture<void> clear_future;
+  handler_->DeleteTodoFeedback("todo_1", clear_future.GetCallback());
+  EXPECT_TRUE(clear_future.Wait());
+
+  // Verify that the feedback item for todo_1 was cleared.
+  base::test::TestFuture<
+      std::vector<browser::context_hub::mojom::AutoTodoItemFeedbackPtr>>
+      get_future;
+  handler_->GetTodoFeedbacks(get_future.GetCallback());
+  std::vector<browser::context_hub::mojom::AutoTodoItemFeedbackPtr> feedbacks =
+      get_future.Take();
+  ASSERT_EQ(1u, feedbacks.size());
+  EXPECT_EQ("todo_2", feedbacks[0]->todo_id);
+  EXPECT_FALSE(feedbacks[0]->liked);
 }
 
 }  // namespace

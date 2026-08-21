@@ -261,7 +261,8 @@ void PinnedActionToolbarButtonMenuModel::AddActionSpecificItems() {
         // Adding all ActionItems as Command types here, if the ActionItem
         // should be displayed as Checked that is handled in `GetTypeAt` which
         // will evaluated the ActionItem's checked state when the menu is run.
-        items_.emplace_back(*child_item->GetActionId(), TYPE_COMMAND);
+        auto* child_action_item = child_item->GetActionItem();
+        items_.emplace_back(*child_action_item->GetActionId(), TYPE_COMMAND);
       }
       items_.emplace_back(TYPE_SEPARATOR);
     }
@@ -271,7 +272,7 @@ void PinnedActionToolbarButtonMenuModel::AddActionSpecificItems() {
 actions::ActionItem* PinnedActionToolbarButtonMenuModel::GetActionItemFor(
     actions::ActionId id) const {
   return actions::ActionManager::Get().FindAction(
-      id, BrowserActions::From(browser_)->root_action_item());
+      id, browser_->GetActions()->root_action_item());
 }
 
 bool PinnedActionToolbarButtonMenuModel::IsPinnable() const {

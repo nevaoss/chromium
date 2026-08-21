@@ -8,6 +8,7 @@ import '//resources/cr_components/searchbox/searchbox_compose_button.js';
 import '//resources/cr_components/search/animated_glow.js';
 import '//resources/cr_components/composebox/composebox_file_inputs.js';
 import '//resources/cr_components/composebox/contextual_entrypoint_and_menu.js';
+import './profile_icon.js';
 
 import {ContextType, GlifAnimationState, recordContextAdditionMethod, recordContextualElementClickedMetric, TabSuggestionsState} from '//resources/cr_components/composebox/common.js';
 import type {ComposeboxState, ContextualUpload, DriveUpload, TabUpload, TabUploadOrigin} from '//resources/cr_components/composebox/common.js';
@@ -89,9 +90,12 @@ export class OmniboxEverywhereOmniboxElement extends
         reflect: true,
       },
       animationState_: {type: String},
+      inVoiceSearchMode: {
+        type: Boolean,
+        reflect: true,
+      },
       composeButtonEnabled: {type: Boolean, reflect: true},
       ntpRealboxNextEnabled: {type: Boolean, reflect: true},
-      profileAvatarUrl_: {type: String},
       contextMenuGlifAnimationState: {
         type: String,
         reflect: true,
@@ -119,12 +123,11 @@ export class OmniboxEverywhereOmniboxElement extends
   protected accessor useWebkitSearchIcons_: boolean = true;
   protected accessor animationState_: GlowAnimationState =
       GlowAnimationState.NONE;
+  accessor inVoiceSearchMode: boolean = false;
   protected accessor composeButtonEnabled: boolean =
       loadTimeData.getBoolean('searchboxShowComposeEntrypoint');
   protected accessor ntpRealboxNextEnabled: boolean =
       loadTimeData.getBoolean('ntpRealboxNextEnabled');
-  protected accessor profileAvatarUrl_: string =
-      loadTimeData.getString('profileAvatarUrl');
   accessor contextMenuGlifAnimationState: GlifAnimationState =
       GlifAnimationState.STARTED;
   protected accessor inputState_: InputState|null = null;
@@ -191,6 +194,10 @@ export class OmniboxEverywhereOmniboxElement extends
     this.$.input.focus();
   }
 
+  setInputText(text: string) {
+    this.$.input.setInputText(text);
+  }
+
   //========================================================================
   // SearchboxMixin abstract method implementations
   //========================================================================
@@ -219,6 +226,19 @@ export class OmniboxEverywhereOmniboxElement extends
     this.pageHandler_.onFocusChanged(true);
   }
 
+  isInputEmpty(): boolean {
+    // If this is called before first render, the input element will not exist.
+    if (!this.shadowRoot?.querySelector('#input') || !this.$.input) {
+      return true;
+    }
+    return !this.$.input.getInputValue().trim();
+  }
+
+  protected showVoiceAndLensButtons_(isEnabled: boolean): boolean {
+    return isEnabled && this.isInputEmpty() &&
+        !(this.dropdownIsVisible && this.composeButtonEnabled);
+  }
+
   protected computePlaceholderText_(): string {
     if (this.placeholderText) {
       return this.placeholderText;
@@ -234,13 +254,18 @@ export class OmniboxEverywhereOmniboxElement extends
     this.onSearchboxInputTextUpdated(e);
   }
 
-  protected onVoiceSearchClick_() {
-    this.dispatchEvent(new Event('open-voice-search'));
+  protected async onVoiceSearchButtonClick_() {
+    this.animationState_ = GlowAnimationState.NONE;
+    await this.updateComplete;
+    this.animationState_ = GlowAnimationState.LISTENING;
+    this.dispatchEvent(
+        new Event('open-voice-search', {bubbles: true, composed: true}));
   }
 
   protected onLensSearchClick_() {
     this.dropdownIsVisible = false;
-    this.dispatchEvent(new Event('open-lens-search'));
+    this.dispatchEvent(
+        new Event('open-lens-search', {bubbles: true, composed: true}));
   }
 
   protected async onOpenDriveUpload_() {

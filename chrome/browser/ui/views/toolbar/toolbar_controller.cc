@@ -273,14 +273,15 @@ ToolbarController::GetDefaultResponsiveElements(Browser* browser) {
   };
 
   // Support actions items.
-  const auto* const browser_actions = BrowserActions::From(browser);
+  const auto* const browser_actions = browser->browser_actions();
   if (browser_actions) {
     auto* root_item = browser_actions->root_action_item();
     if (root_item) {
       PinnedToolbarActionsModel* const pinned_actions_model =
           PinnedToolbarActionsModel::Get(browser->GetProfile());
       for (const auto& item : root_item->GetChildren().children()) {
-        auto id = item->GetActionId();
+        auto* action_item = item->GetActionItem();
+        auto id = action_item->GetActionId();
         // Add an item if it is pinnable and/or pinned. The tab search item may
         // be pinned but not pinnable in the event of a race condition after
         // action item initialization but before the bubble host has been

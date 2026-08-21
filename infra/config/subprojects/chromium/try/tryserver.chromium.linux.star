@@ -722,6 +722,7 @@ try_.orchestrator_builder(
         "chromium.enable_cleandead": 100,
         # go/rts-project-proposal
         "chromium_rts.filter_file_analysis": 100,
+        "luci.buildbucket.run_in_turboci": 2,
     },
     main_list_view = "try",
 )
@@ -974,6 +975,7 @@ try_.orchestrator_builder(
         "chromium.enable_cleandead": 100,
         # go/rts-project-proposal
         "chromium_rts.filter_file_analysis": 100,
+        "luci.buildbucket.run_in_turboci": 2,
     },
     main_list_view = "try",
 )
@@ -1170,7 +1172,7 @@ gpu.try_.optional_tests_builder(
         location_filters = gpu.try_.optional_trybot_location_filters.LINUX,
     ),
     experiments = {
-        "luci.buildbucket.run_in_turboci": 50,
+        "luci.buildbucket.run_in_turboci": 100,
     },
     main_list_view = "try",
     max_concurrent_builds = 7,
@@ -1222,7 +1224,7 @@ try_.builder(
         ],
     ),
     experiments = {
-        "luci.buildbucket.run_in_turboci": 25,
+        "luci.buildbucket.run_in_turboci": 100,
     },
     main_list_view = "try",
     use_javascript_coverage = True,
@@ -1282,4 +1284,22 @@ try_.builder(
     ],
     gn_args = "ci/linux-tsgo-rel",
     contact_team_email = "chrome-webui@google.com",
+)
+
+try_.builder(
+    name = "linux-separate-renderer-rel",
+    description_html = "Runs separate renderer tests on Linux, mirroring linux-separate-renderer-fyi-rel.",
+    mirrors = [
+        "ci/linux-separate-renderer-fyi-rel",
+    ],
+    gn_args = gn_args.config(
+        configs = [
+            "ci/linux-separate-renderer-fyi-rel",
+            "dcheck_always_on",
+        ],
+    ),
+    contact_team_email = "toyoshim@chromium.org",
+    cq_settings = try_.cq_settings(
+        includable_only = True,
+    ),
 )

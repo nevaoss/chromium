@@ -20,6 +20,7 @@ import static org.mockito.Mockito.when;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.graphics.Rect;
 import android.os.Build;
 import android.view.MotionEvent;
 import android.view.View;
@@ -43,7 +44,9 @@ import org.robolectric.annotation.Config;
 import org.robolectric.shadows.ShadowLooper;
 
 import org.chromium.base.Callback;
+import org.chromium.base.Token;
 import org.chromium.base.supplier.ObservableSuppliers;
+import org.chromium.base.supplier.OneshotSupplierImpl;
 import org.chromium.base.supplier.SettableMonotonicObservableSupplier;
 import org.chromium.base.supplier.SettableNonNullObservableSupplier;
 import org.chromium.base.test.BaseRobolectricTestRunner;
@@ -62,12 +65,20 @@ import org.chromium.chrome.browser.omnibox.suggestions.OmniboxLoadUrlParams;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.searchwidget.SearchActivityLocationBarLayout;
 import org.chromium.chrome.browser.searchwidget.SearchUiCoordinator;
+import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.tab.TabSelectionType;
+import org.chromium.chrome.browser.tab_group_sync.TabGroupSyncServiceFactory;
+import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.chrome.browser.ui.searchactivityutils.SearchActivityExtras.IntentOrigin;
 import org.chromium.chrome.browser.ui.searchactivityutils.SearchActivityExtras.SearchType;
 import org.chromium.components.browser_ui.widget.gesture.BackPressHandler;
 import org.chromium.components.browser_ui.widget.gesture.BackPressHandler.BackPressResult;
+import org.chromium.components.tab_group_sync.LocalTabGroupId;
+import org.chromium.components.tab_group_sync.SavedTabGroup;
+import org.chromium.components.tab_group_sync.TabGroupSyncService;
+import org.chromium.components.tab_group_sync.TabGroupUiActionHandler;
 import org.chromium.ui.base.PageTransition;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.modaldialog.ModalDialogManager;
@@ -100,6 +111,13 @@ public class TabSearchOverlayCoordinatorUnitTest {
     @Mock private ModalDialogManager mModalDialogManager;
     @Mock private BackPressManager mBackPressManager;
     @Mock private CompositorViewHolder mCompositorViewHolder;
+    @Mock private TabGroupSyncService mTabGroupSyncService;
+    @Mock private TabGroupUiActionHandler mTabGroupUiActionHandler;
+    @Mock private TabModel mTabModel;
+    @Mock private Tab mTab;
+
+    private final OneshotSupplierImpl<TabGroupUiActionHandler> mTabGroupUiActionHandlerSupplier =
+            new OneshotSupplierImpl<>();
 
     private final SettableNonNullObservableSupplier<Boolean> mSuggestionsListNonEmptySupplier =
             ObservableSuppliers.createNonNull(false);
@@ -124,6 +142,10 @@ public class TabSearchOverlayCoordinatorUnitTest {
 
         mTabModelSelectorSupplier.set(mTabModelSelector);
         mProfileSupplier.set(mProfile);
+        TabGroupSyncServiceFactory.setForTesting(mTabGroupSyncService);
+        mTabGroupUiActionHandlerSupplier.set(mTabGroupUiActionHandler);
+        when(mTabModelSelector.getModel(false)).thenReturn(mTabModel);
+        when(mTabModelSelector.getModel(true)).thenReturn(mTabModel);
 
         when(mSearchUiCoordinator.getLocationBarCoordinator()).thenReturn(mLocationBarCoordinator);
         when(mLocationBarCoordinator.getUrlBarCoordinator()).thenReturn(mUrlBarCoordinator);
@@ -143,7 +165,8 @@ public class TabSearchOverlayCoordinatorUnitTest {
                         mTabModelSelectorSupplier,
                         /* edgeToEdgeSystemBarColorHelper= */ null,
                         mBackPressManager,
-                        ObservableSuppliers.createNonNull(mCompositorViewHolder));
+                        ObservableSuppliers.createNonNull(mCompositorViewHolder),
+                        mTabGroupUiActionHandlerSupplier);
         mCoordinator.setSearchUiCoordinatorForTesting(mSearchUiCoordinator);
 
         // Inflate the overlay and initialize member views.
@@ -291,9 +314,19 @@ public class TabSearchOverlayCoordinatorUnitTest {
     }
 
     @Test
-    public void testBringTabGroupToFront() {
+    public void testBringTabGroupToFront_AlreadyLocal() {
         showOverlay();
         verifySearchUiCoordinatorInitialized();
+
+        Token groupId = new Token(1, 2);
+        SavedTabGroup syncGroup = new SavedTabGroup();
+        syncGroup.syncId = "sync_id_1";
+        syncGroup.localId = new LocalTabGroupId(groupId);
+
+        when(mTabGroupSyncService.getGroup("group_id_1")).thenReturn(syncGroup);
+        when(mTabModel.getGroupLastShownTabId(groupId)).thenReturn(42);
+        when(mTabModel.getTabById(42)).thenReturn(mTab);
+        when(mTabModel.indexOf(mTab)).thenReturn(2);
 
         Callback<String> callback = mBringTabGroupToFrontCallbackCaptor.getValue();
         assertNotNull(callback);
@@ -301,14 +334,39 @@ public class TabSearchOverlayCoordinatorUnitTest {
         callback.onResult("group_id_1");
         assertFalse(mCoordinator.isVisible());
 
-        Intent intent =
-                Shadows.shadowOf(org.robolectric.RuntimeEnvironment.getApplication())
-                        .getNextStartedActivity();
-        assertNotNull(intent);
-        assertEquals(ChromeLauncherActivity.class.getName(), intent.getComponent().getClassName());
-        assertEquals("group_id_1", IntentHandler.getBringTabGroupToFrontId(intent));
-        assertEquals(
-                2, intent.getIntExtra(IntentHandler.BRING_TAB_GROUP_TO_FRONT_SOURCE_EXTRA, -1));
+        verify(mTabGroupUiActionHandler, never()).openTabGroup(any());
+        verify(mTabModel).setIndex(2, TabSelectionType.FROM_USER);
+    }
+
+    @Test
+    public void testBringTabGroupToFront_NotLocalOpenFirst() {
+        showOverlay();
+        verifySearchUiCoordinatorInitialized();
+
+        Token groupId = new Token(1, 2);
+        SavedTabGroup syncGroupBefore = new SavedTabGroup();
+        syncGroupBefore.syncId = "sync_id_1";
+        syncGroupBefore.localId = null;
+
+        SavedTabGroup syncGroupAfter = new SavedTabGroup();
+        syncGroupAfter.syncId = "sync_id_1";
+        syncGroupAfter.localId = new LocalTabGroupId(groupId);
+
+        when(mTabGroupSyncService.getGroup("group_id_1"))
+                .thenReturn(syncGroupBefore)
+                .thenReturn(syncGroupAfter);
+        when(mTabModel.getGroupLastShownTabId(groupId)).thenReturn(42);
+        when(mTabModel.getTabById(42)).thenReturn(mTab);
+        when(mTabModel.indexOf(mTab)).thenReturn(2);
+
+        Callback<String> callback = mBringTabGroupToFrontCallbackCaptor.getValue();
+        assertNotNull(callback);
+
+        callback.onResult("group_id_1");
+        assertFalse(mCoordinator.isVisible());
+
+        verify(mTabGroupUiActionHandler).openTabGroup("sync_id_1");
+        verify(mTabModel).setIndex(2, TabSelectionType.FROM_USER);
     }
 
     private void showOverlay() {
@@ -581,5 +639,31 @@ public class TabSearchOverlayCoordinatorUnitTest {
 
         downEvent.recycle();
         cancelEvent.recycle();
+    }
+
+    @Test
+    @Config(sdk = Build.VERSION_CODES.Q)
+    public void testSystemGestureExclusionRects_ShowAndHide() {
+        showOverlay();
+        View panelView = mPanelContainer.findViewById(R.id.tab_search_overlay_panel);
+        View closeButton = panelView.findViewById(R.id.tab_search_close_button);
+
+        // Mock layout bounds for close button.
+        closeButton.setLeft(228);
+        closeButton.setTop(4);
+        closeButton.setRight(260);
+        closeButton.setBottom(36);
+
+        // Trigger layout pass on panelView.
+        panelView.layout(0, 0, 264, 500);
+
+        // Verify exclusion rect matches close button bounds.
+        List<Rect> exclusionRects = panelView.getSystemGestureExclusionRects();
+        assertEquals(1, exclusionRects.size());
+        assertEquals(new Rect(228, 4, 260, 36), exclusionRects.get(0));
+
+        // Hide overlay and verify exclusion rect is cleared.
+        mCoordinator.hide();
+        assertTrue(panelView.getSystemGestureExclusionRects().isEmpty());
     }
 }

@@ -86,6 +86,7 @@ import org.chromium.chrome.browser.compositor.layouts.LayoutManagerImpl;
 import org.chromium.chrome.browser.compositor.overlays.strip.GlicButtonContextMenuCoordinator;
 import org.chromium.chrome.browser.compositor.overlays.strip.StripLayoutHelper.LeadingButtonDelegate;
 import org.chromium.chrome.browser.compositor.overlays.strip.StripLayoutHelperManager;
+import org.chromium.chrome.browser.compositor.overlays.strip.TabContextMenuCoordinator.TabStripLayoutType;
 import org.chromium.chrome.browser.contextmenu.ChromeContextMenuPopulator;
 import org.chromium.chrome.browser.contextmenu.ChromeContextMenuPopulatorFactory;
 import org.chromium.chrome.browser.contextual_tasks.ContextualTasksBridge;
@@ -2280,6 +2281,27 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
             stripBottomPxSupplier = stripLayoutHelperManager.getStripBottomPxSupplier();
         }
 
+        if (ChromeFeatureList.sTabSearchForDesktop.isEnabled()) {
+            ViewGroup tabSearchParent =
+                    anchorContainerParent != null
+                            ? anchorContainerParent
+                            : assumeNonNull(mCoordinator);
+            mTabSearchOverlayCoordinator =
+                    new TabSearchOverlayCoordinator(
+                            mActivity,
+                            tabSearchParent,
+                            mWindowAndroid,
+                            mProfileSupplier,
+                            assumeNonNull(mSnackbarManagerSupplier.get()),
+                            mModalDialogManagerSupplier,
+                            mActivityLifecycleDispatcher,
+                            mTabModelSelectorSupplier,
+                            mEdgeToEdgeManager.getEdgeToEdgeSystemBarColorHelper(),
+                            mBackPressManager,
+                            mCompositorViewHolderSupplier,
+                            mTabGroupUiActionHandlerSupplier);
+        }
+
         mSideUiCoordinator =
                 SideUiCoordinatorFactory.create(
                         mActivity,
@@ -2388,22 +2410,6 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         View secondaryUiContainer = mActivity.findViewById(R.id.secondary_ui_container);
         mSecondaryUiContainerMarginAdjuster = new ViewMarginAdjusterForSideUi(secondaryUiContainer);
         mSideUiCoordinator.addObserver(mSecondaryUiContainerMarginAdjuster);
-
-        if (ChromeFeatureList.sTabSearchForDesktop.isEnabled()) {
-            mTabSearchOverlayCoordinator =
-                    new TabSearchOverlayCoordinator(
-                            mActivity,
-                            anchorContainerParent,
-                            mWindowAndroid,
-                            mProfileSupplier,
-                            assumeNonNull(mSnackbarManagerSupplier.get()),
-                            mModalDialogManagerSupplier,
-                            mActivityLifecycleDispatcher,
-                            mTabModelSelectorSupplier,
-                            mEdgeToEdgeManager.getEdgeToEdgeSystemBarColorHelper(),
-                            mBackPressManager,
-                            mCompositorViewHolderSupplier);
-        }
     }
 
     @SuppressWarnings("UseSharedPreferencesManagerFromChromeCheck")
@@ -2480,7 +2486,8 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
 
                     if (mGlicButtonContextMenuCoordinator == null) {
                         mGlicButtonContextMenuCoordinator =
-                                new GlicButtonContextMenuCoordinator(mActivity);
+                                new GlicButtonContextMenuCoordinator(
+                                        mActivity, TabStripLayoutType.VERTICAL);
                     }
 
                     // Build and show the "Unpin" context menu for the VT toolbar Gemini button.

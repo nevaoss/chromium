@@ -6,14 +6,12 @@ package org.chromium.chrome.browser.omnibox;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doReturn;
 
 import android.app.Activity;
 import android.graphics.drawable.GradientDrawable;
-import android.graphics.drawable.InsetDrawable;
 import android.graphics.drawable.LayerDrawable;
 import android.view.Gravity;
 import android.view.InputDevice;
@@ -46,6 +44,7 @@ import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.base.test.util.Restriction;
 import org.chromium.chrome.R;
+import org.chromium.chrome.browser.omnibox.LocationBarBackgroundDrawable.HairlineBehavior;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxLayoutMode;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxState;
 import org.chromium.chrome.browser.omnibox.status.StatusCoordinator;
@@ -580,9 +579,9 @@ public class LocationBarTabletUnitTest {
         // TODO(https://crbug.com/495794043): Replace with a render test.
         mLocationBarTablet.updateVisualsForState(BrandedColorScheme.INCOGNITO);
 
-        LayerDrawable background = (LayerDrawable) mLocationBarTablet.getBackground();
-        GradientDrawable unfocusedRect =
-                (GradientDrawable) background.findDrawableByLayerId(R.id.unfocused_bg);
+        LocationBarBackgroundDrawable background =
+                (LocationBarBackgroundDrawable) mLocationBarTablet.getBackground();
+        GradientDrawable unfocusedRect = background.getBackgroundGradient();
 
         @ColorInt
         int expectedIncognitoColor =
@@ -591,8 +590,8 @@ public class LocationBarTabletUnitTest {
         assertEquals(expectedIncognitoColor, unfocusedRect.getColor().getDefaultColor());
 
         mLocationBarTablet.updateVisualsForState(BrandedColorScheme.APP_DEFAULT);
-        background = (LayerDrawable) mLocationBarTablet.getBackground();
-        unfocusedRect = (GradientDrawable) background.findDrawableByLayerId(R.id.unfocused_bg);
+        background = (LocationBarBackgroundDrawable) mLocationBarTablet.getBackground();
+        unfocusedRect = background.getBackgroundGradient();
         @ColorInt
         int expectedAppDefaultColor =
                 OmniboxResourceProvider.getTabletToolbarTextBoxBackgroundColor(
@@ -644,15 +643,15 @@ public class LocationBarTabletUnitTest {
     public void testSetIsInStandby() {
         assertNull(mLocationBarTablet.getForeground());
         mLocationBarTablet.updateVisualsForState(BrandedColorScheme.APP_DEFAULT);
-        LayerDrawable background = (LayerDrawable) mLocationBarTablet.getBackground();
-        GradientDrawable unfocusedRect =
-                (GradientDrawable) background.findDrawableByLayerId(R.id.unfocused_bg);
+        LocationBarBackgroundDrawable background =
+                (LocationBarBackgroundDrawable) mLocationBarTablet.getBackground();
+        GradientDrawable unfocusedRect = background.getBackgroundGradient();
 
         mLocationBarTablet.setShowStandbyRing(true);
 
-        // Verify the InsetDrawable border was applied to the foreground.
-        assertNotNull(mLocationBarTablet.getForeground());
-        assertTrue(mLocationBarTablet.getForeground() instanceof InsetDrawable);
+        // Verify the background hairline is in standby mode.
+        assertEquals(HairlineBehavior.SOLID, background.getHairlineBehaviorForTesting());
+        assertNull(mLocationBarTablet.getForeground());
 
         @ColorInt
         int expectedStandbyColor =
@@ -661,8 +660,10 @@ public class LocationBarTabletUnitTest {
         assertEquals(expectedStandbyColor, unfocusedRect.getColor().getDefaultColor());
 
         mLocationBarTablet.setShowStandbyRing(false);
+        assertEquals(HairlineBehavior.NONE, background.getHairlineBehaviorForTesting());
         mLocationBarTablet.updateVisualsForState(BrandedColorScheme.INCOGNITO);
         mLocationBarTablet.setShowStandbyRing(true);
+        assertEquals(HairlineBehavior.SOLID, background.getHairlineBehaviorForTesting());
         @ColorInt
         int expectedIncognitoStandbyColor =
                 OmniboxResourceProvider.getTabletToolbarTextBoxStandbyBackgroundColor(

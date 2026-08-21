@@ -2751,7 +2751,7 @@ public class LocationBarMediatorTest {
         mMediator.onFinishNativeInitialization();
         doReturn(mWebContents).when(mTab).getWebContents();
         mMediator.zoomButtonClicked(null);
-        verify(mPageZoomIndicatorCoordinator).show(mWebContents);
+        verify(mPageZoomIndicatorCoordinator).show();
     }
 
     @Test
@@ -4266,6 +4266,17 @@ public class LocationBarMediatorTest {
         assertEquals("w", mSessionState.getAutocompleteInput().getUserText());
         assertEquals("wikipedia.org", mSessionState.getAutocompleteInput().getPreviewText());
         assertTrue(mSessionState.getAutocompleteInput().hasPreviewText());
+    }
+
+    @Test
+    public void testUrlBarAccessibilityOrder() {
+        mActivationChipVisibilitySupplier.set(true);
+        verify(mUrlBar, atLeastOnce())
+            .setAccessibilityTraversalBefore(R.id.fusebox_activation_chip);
+
+        mActivationChipVisibilitySupplier.set(false);
+        verify(mUrlBar, atLeastOnce())
+            .setAccessibilityTraversalBefore(R.id.omnibox_suggestions_dropdown);
     }
 
     @Test

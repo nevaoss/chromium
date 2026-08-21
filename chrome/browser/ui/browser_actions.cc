@@ -162,6 +162,7 @@
 #include "chrome/browser/ui/views/side_panel/history_clusters/history_clusters_side_panel_utils.h"
 #include "chrome/browser/ui/views/side_panel/tabs_from_other_devices/tabs_from_other_devices_side_panel_coordinator.h"
 #include "chrome/browser/ui/views/tabs/groups/recent_activity_bubble_dialog_view.h"
+#include "chrome/browser/ui/views/tabs/organizer/organizer_panel_utils.h"
 #include "chrome/browser/ui/views/toolbar/ai_overlay_toolbar_button.h"
 #include "chrome/browser/ui/views/toolbar/chrome_labs/chrome_labs_coordinator.h"
 #include "chrome/browser/ui/views/toolbar/pinned_action_toolbar_button.h"
@@ -327,7 +328,7 @@ bool IsInProgressiveWebApp(BrowserWindowInterface* bwi) {
   const Browser* const browser = bwi->GetBrowserForMigrationOnly();
   return browser &&
          (browser->GetType() == BrowserWindowInterface::Type::TYPE_APP ||
-          browser->is_type_app_popup());
+          browser->GetType() == BrowserWindowInterface::Type::TYPE_APP_POPUP);
 }
 
 BrowserWindowInterface* FindNormalBrowser(const Profile* profile) {
@@ -400,23 +401,8 @@ void ExecOpenLink(BrowserWindowInterface* bwi,
 
 }  // namespace
 
-DEFINE_USER_DATA(BrowserActions);
-
-// static
-BrowserActions* BrowserActions::From(BrowserWindowInterface* browser) {
-  return Get(browser->GetUnownedUserDataHost());
-}
-
-// static
-const BrowserActions* BrowserActions::From(
-    const BrowserWindowInterface* browser) {
-  return Get(browser->GetUnownedUserDataHost());
-}
-
 BrowserActions::BrowserActions(BrowserWindowInterface* bwi)
-    : bwi_(CHECK_DEREF(bwi)),
-      profile_(CHECK_DEREF(bwi->GetProfile())),
-      scoped_unowned_user_data_(bwi->GetUnownedUserDataHost(), *this) {}
+    : bwi_(CHECK_DEREF(bwi)), profile_(CHECK_DEREF(bwi->GetProfile())) {}
 
 BrowserActions::~BrowserActions() {
   browser_action_prefs_listener_.reset();
@@ -1207,7 +1193,7 @@ void BrowserActions::InitializeChromeMenuActions() {
             .Build());
   }
 
-  if (tab_groups::IsOrganizerPanelFeatureEnabled()) {
+  if (organizer_panel::IsOrganizerPanelFeatureEnabled()) {
     root_action_item_->AddChild(
         actions::ActionItem::Builder(
             base::BindRepeating(

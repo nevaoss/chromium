@@ -256,6 +256,7 @@ try_.orchestrator_builder(
         "chromium.enable_cleandead": 100,
         # go/rts-project-proposal
         "chromium_rts.filter_file_analysis": 100,
+        "luci.buildbucket.run_in_turboci": 2,
     },
     main_list_view = "try",
     use_clang_coverage = True,
@@ -427,6 +428,11 @@ try_.builder(
         ],
     ),
     cpu = cpu.ARM64,
+    properties = {
+        "$build/test_utils": {
+            "min_failed_suites_to_skip_retry": 10,
+        },
+    },
 )
 
 try_.builder(
@@ -743,6 +749,7 @@ try_.orchestrator_builder(
         "chromium.add_one_test_shard": 10,
         # go/rts-project-proposal
         "chromium_rts.filter_file_analysis": 100,
+        "luci.buildbucket.run_in_turboci": 2,
     },
     main_list_view = "try",
     use_clang_coverage = True,
@@ -964,7 +971,7 @@ gpu.try_.optional_tests_builder(
         location_filters = gpu.try_.optional_trybot_location_filters.MAC,
     ),
     experiments = {
-        "luci.buildbucket.run_in_turboci": 50,
+        "luci.buildbucket.run_in_turboci": 100,
     },
     main_list_view = "try",
     max_concurrent_builds = 7,
@@ -994,8 +1001,26 @@ gpu.try_.optional_tests_builder(
         location_filters = gpu.try_.optional_trybot_location_filters.MAC,
     ),
     experiments = {
-        "luci.buildbucket.run_in_turboci": 50,
+        "luci.buildbucket.run_in_turboci": 100,
     },
     main_list_view = "try",
     max_concurrent_builds = 7,
+)
+
+try_.builder(
+    name = "mac-separate-renderer-rel",
+    description_html = "Runs separate renderer tests on Mac, mirroring mac-separate-renderer-fyi-rel.",
+    mirrors = [
+        "ci/mac-separate-renderer-fyi-rel",
+    ],
+    gn_args = gn_args.config(
+        configs = [
+            "ci/mac-separate-renderer-fyi-rel",
+            "dcheck_always_on",
+        ],
+    ),
+    contact_team_email = "toyoshim@chromium.org",
+    cq_settings = try_.cq_settings(
+        includable_only = True,
+    ),
 )

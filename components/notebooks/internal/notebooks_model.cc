@@ -13,6 +13,13 @@
 
 namespace notebooks {
 
+NotebooksModelObserver::~NotebooksModelObserver() = default;
+
+void NotebooksModelObserver::OnNotebooksModelLoaded() {}
+void NotebooksModelObserver::OnNotebookAdded(const Notebook& notebook) {}
+void NotebooksModelObserver::OnNotebookUpdated(const Notebook& notebook) {}
+void NotebooksModelObserver::OnNotebookRemoved(const NotebookId& id) {}
+
 NotebooksModel::NotebooksModel() = default;
 
 NotebooksModel::~NotebooksModel() {
@@ -90,6 +97,15 @@ void NotebooksModel::UpdateNotebook(Notebook notebook) {
   }
 }
 
+void NotebooksModel::AddOrUpdateNotebook(Notebook notebook) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (Contains(notebook.id())) {
+    UpdateNotebook(std::move(notebook));
+  } else {
+    AddNotebook(std::move(notebook));
+  }
+}
+
 void NotebooksModel::RemoveNotebook(NotebookId id) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   CHECK(!is_notifying_);
@@ -101,6 +117,19 @@ void NotebooksModel::RemoveNotebook(NotebookId id) {
   base::AutoReset<bool> notifying(&is_notifying_, true);
   for (auto& observer : observers_) {
     observer.OnNotebookRemoved(id);
+  }
+}
+
+void NotebooksModel::Clear() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  CHECK(!is_notifying_);
+  std::vector<NotebookId> ids;
+  ids.reserve(notebooks_.size());
+  for (const auto& [id, notebook] : notebooks_) {
+    ids.push_back(id);
+  }
+  for (const NotebookId& id : ids) {
+    RemoveNotebook(id);
   }
 }
 

@@ -291,6 +291,7 @@ source_set("impl") {
       "nss_service.cc",
       "nss_service_factory.cc",
     ]
+    deps += [ "//chrome/browser/ui:crypto_module_password_dialog" ]
     if (is_chromeos) {
       sources += [
         "nss_service_chromeos.cc",
@@ -491,6 +492,7 @@ if (!is_android) {
       "//net:extras",
       "//net:test_support",
       "//services/network:test_support",
+      "//services/network/public/cpp:ip_address_space_overrides_test_utils",
     ]
     if (is_chromeos) {
       sources += [

@@ -429,7 +429,6 @@
 #include "third_party/blink/public/common/navigation/navigation_policy.h"
 #include "third_party/blink/public/common/permissions/permission_utils.h"
 #include "third_party/blink/public/common/switches.h"
-#include "third_party/blink/public/mojom/browsing_topics/browsing_topics.mojom.h"
 #include "third_party/blink/public/mojom/navigation/navigation_params.mojom-forward.h"
 #include "third_party/blink/public/mojom/navigation/navigation_params.mojom.h"
 #include "third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom.h"
@@ -555,8 +554,6 @@
 #include "chrome/browser/direct_sockets/chrome_direct_sockets_delegate.h"
 #include "chrome/browser/glic/host/guest_util.h"
 #include "chrome/browser/indigo/onboarding/indigo_onboarding_dialog.h"
-#include "chrome/browser/loader/features.h"
-#include "chrome/browser/loader/fetch_keepalive_process_manager.h"
 #include "chrome/browser/metrics/usage_scenario/chrome_responsiveness_calculator_delegate.h"
 #include "chrome/browser/new_tab_page/new_tab_page_util.h"
 #include "chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.h"
@@ -4518,9 +4515,11 @@ bool ChromeContentBrowserClient::CanCreateWindow(
     if (extension && !extensions::BackgroundInfo::AllowJSAccess(extension)) {
       *no_javascript_access = true;
     }
-#endif
 
     return true;
+#else
+    return false;
+#endif
   }
 
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE) && BUILDFLAG(ENABLE_GUEST_VIEW)
@@ -8323,33 +8322,6 @@ void ChromeContentBrowserClient::OnKeepaliveRequestFinished() {
     // This deletes the keep alive handle attached to the timer function and
     // unblock the shutdown sequence.
   }
-#endif  // !BUILDFLAG(IS_ANDROID)
-}
-
-void ChromeContentBrowserClient::OnFetchKeepAliveRequestCreated(
-    content::BrowserContext& browser_context) {
-#if !BUILDFLAG(IS_ANDROID)
-  if (!base::FeatureList::IsEnabled(features::kKeepAliveBrowserProcessAlive)) {
-    return;
-  }
-  if (!fetch_keepalive_process_manager_) {
-    fetch_keepalive_process_manager_ =
-        std::make_unique<FetchKeepAliveProcessManager>();
-  }
-  fetch_keepalive_process_manager_->OnRequestCreated(
-      *Profile::FromBrowserContext(&browser_context));
-#endif  // !BUILDFLAG(IS_ANDROID)
-}
-
-void ChromeContentBrowserClient::OnFetchKeepAliveRequestDestroyed(
-    content::BrowserContext& browser_context) {
-#if !BUILDFLAG(IS_ANDROID)
-  if (!base::FeatureList::IsEnabled(features::kKeepAliveBrowserProcessAlive)) {
-    return;
-  }
-  CHECK(fetch_keepalive_process_manager_);
-  fetch_keepalive_process_manager_->OnRequestDestroyed(
-      *Profile::FromBrowserContext(&browser_context));
 #endif  // !BUILDFLAG(IS_ANDROID)
 }
 

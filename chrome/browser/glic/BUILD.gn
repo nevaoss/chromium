@@ -52,7 +52,6 @@ source_set("glic") {
     "host/glic_web_client_access.h",
     "host/guest_util.h",
     "host/host.h",
-    "public/glic_actuation_tracker.h",
     "public/glic_close_options.h",
     "public/glic_context_menu_invocation_helper.cc",
     "public/glic_context_menu_invocation_helper.h",
@@ -67,6 +66,7 @@ source_set("glic") {
     "public/glic_keyed_service.h",
     "public/glic_keyed_service_factory.h",
     "public/glic_passkeys.h",
+    "public/glic_perf_traits_tracker.h",
     "public/glic_side_panel_coordinator.cc",
     "public/glic_side_panel_coordinator.h",
     "public/glic_submit_query_cui_tracker.cc",
@@ -384,11 +384,11 @@ source_set("impl") {
     "host/webui_contents_container.cc",
     "host/webui_contents_container.h",
     "public/context/glic_sharing_manager.cc",
-    "public/glic_actuation_tracker.cc",
     "public/glic_enabling.cc",
     "public/glic_invoke_options.cc",
     "public/glic_keyed_service.cc",
     "public/glic_keyed_service_factory.cc",
+    "public/glic_perf_traits_tracker.cc",
     "service/glic_instance_coordinator_impl.cc",
     "service/glic_instance_coordinator_impl.h",
     "service/glic_instance_helper.cc",
@@ -795,12 +795,16 @@ source_set("browser_tests") {
   testonly = true
   defines = [ "HAS_OUT_OF_PROC_TEST_RUNNER" ]
   sources = [
+    "common/instance_independent_hotkey_manager_browsertest.cc",
+    "common/panel_focus_dependent_hotkey_manager_browsertest.cc",
+    "common/panel_visibility_dependent_hotkey_manager_browsertest.cc",
     "glic_tab_restore_helper_browsertest.cc",
     "host/context/glic_delegating_sharing_manager_browsertest.cc",
     "host/context/glic_pinned_tab_manager_browsertest.cc",
     "host/glic_web_contents_warming_pool_browsertest.cc",
     "host/new_glic_api_browsertest.cc",
     "service/glic_instance_coordinator_browsertest.cc",
+    "service/glic_instance_helper_browsertest.cc",
     "service/glic_invoke_browsertest.cc",
     "service/glic_tab_group_browsertest.cc",
     "service/metrics/glic_instance_coordinator_metrics_browsertest.cc",
@@ -821,6 +825,7 @@ source_set("browser_tests") {
     "//chrome/browser/glic/common",
     "//chrome/browser/glic/common:browser_tests",
     "//chrome/browser/glic/test_support",
+    "//chrome/browser/performance_manager",
     "//chrome/browser/profiles:profile",
     "//chrome/browser/skills",
     "//chrome/browser/skills:public",
@@ -849,9 +854,6 @@ source_set("browser_tests") {
   if (!is_android) {
     sources += [
       "actor/glic_actor_policy_checker_browsertest.cc",
-      "common/instance_independent_hotkey_manager_browsertest.cc",
-      "common/panel_focus_dependent_hotkey_manager_browsertest.cc",
-      "common/panel_visibility_dependent_hotkey_manager_browsertest.cc",
       "experimental_opt_in/glic_experimental_opt_in_dialog_browsertest.cc",
       "glic_browsertest.cc",
       "glic_context_menu_browsertest.cc",
@@ -941,7 +943,7 @@ source_set("browser_tests") {
   if (is_android) {
     sources += [
       "browser_ui/glic_nudge_controller_android_browsertest.cc",
-      "widget/glic_side_panel_coordinator_android_browsertest.cc",
+      "widget/glic_side_panel_coordinator_desktop_android_browsertest.cc",
     ]
     deps += [
       "//chrome/browser/glic/browser_ui",

@@ -378,6 +378,13 @@ class CONTENT_EXPORT WebContentsImpl
   // See docs/frame_trees.md for more details.
   FrameTree& GetPrimaryFrameTree() { return primary_frame_tree_; }
 
+  // The privileged-contents declaration this WebContents was created with,
+  // or nullopt for ordinary WebContents. Immutable for the lifetime of the
+  // WebContents. See WebContents::PrivilegedParams.
+  const std::optional<PrivilegedParams>& privileged_params() const {
+    return privileged_params_;
+  }
+
   // Whether the initial empty page of this view has been accessed by another
   // page, making it unsafe to show the pending URL. Always false after the
   // first commit.
@@ -1339,6 +1346,7 @@ class CONTENT_EXPORT WebContentsImpl
   void SetFocusedFrame(FrameTreeNode* node, SiteInstanceGroup* source) override;
   FrameTree* GetOwnedDocumentPictureInPictureFrameTree() override;
   FrameTree* GetDocumentPictureInPictureOpenerFrameTree() override;
+  std::optional<int64_t> GetPrivilegedContentsFeatureId() override;
 
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
   // content::RenderProcessHostCreationObserver
@@ -2648,6 +2656,11 @@ class CONTENT_EXPORT WebContentsImpl
   std::unique_ptr<WakeLockContextHost> wake_lock_context_host_;
   bool enable_wake_locks_ = true;
 
+  // Set at creation from CreateParams::privileged_params and never
+  // mutated afterwards; unset for ordinary WebContents. See
+  // WebContents::PrivilegedParams.
+  std::optional<PrivilegedParams> privileged_params_;
+
   // The last set/computed value of WebPreferences for this WebContents, either
   // set directly through SetWebPreferences, or set after recomputing values
   // from ComputeWebPreferences.
@@ -2846,7 +2859,6 @@ class CONTENT_EXPORT WebContentsImpl
   base::TimeTicks last_back_navigation_hint_time_ = base::TimeTicks::Min();
 
   viz::FrameSinkId xr_render_target_;
-
 
   // Background color of the page set by the embedder to be passed to all
   // renderers attached to this WebContents, for use in the main frame.

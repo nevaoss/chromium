@@ -86,11 +86,11 @@ UIImage* GetEnterpriseIcon() {
     self.accessibilityIdentifier =
         CentralAccountViewAccessibilityIdentifier(email);
 
-    CGFloat outerSize =
+    CGFloat avatarDiameter =
         GetSizeForIdentityAvatarSize(IdentityAvatarSize::Large).width;
     _avatarView =
         [[AITierAvatarView alloc] initWithAvatarImage:_avatarImage
-                                            outerSize:outerSize
+                                       avatarDiameter:avatarDiameter
                                       showsAITierRing:showsAITierRing];
     [self addSubview:_avatarView];
 
@@ -123,7 +123,7 @@ UIImage* GetEnterpriseIcon() {
             : (kTableViewLargeVerticalSpacing + kTableViewVerticalSpacing);
 
     if (managementDescription) {
-      CHECK_GT(managementDescription.length, 0u, base::NotFatalUntil::M140);
+      CHECK_GT(managementDescription.length, 0u);
       UIImage* managementIcon = GetEnterpriseIcon();
       UIImageView* managementIconView =
           [[UIImageView alloc] initWithImage:managementIcon];
@@ -195,12 +195,6 @@ UIImage* GetEnterpriseIcon() {
     [NSLayoutConstraint activateConstraints:@[
       [_avatarView.centerXAnchor constraintEqualToAnchor:self.centerXAnchor],
       _topPaddingConstraint,
-      [_avatarView.widthAnchor
-          constraintEqualToConstant:GetSizeForIdentityAvatarSize(
-                                        IdentityAvatarSize::Large)
-                                        .width],
-      [_avatarView.heightAnchor
-          constraintEqualToAnchor:_avatarView.widthAnchor],
 
       [nameLabel.leadingAnchor
           constraintEqualToAnchor:self.leadingAnchor

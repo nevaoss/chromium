@@ -841,6 +841,8 @@ should be able to be added at any place in this file.
       summary="For Smart Tab Sharing feature."/>
   <variant name="_SmartTabSharingTryItFeature"
       summary="For Smart Tab Sharing Try It custom UI feature."/>
+  <variant name="_SplitViewHorizontalIndirectAccessFeature"
+      summary="For the indirect access branch for top/bottom splits."/>
   <variant name="_SupervisedUserProfileSignin"
       summary="For displaying the supervised user sign-in IPH."/>
   <variant name="_TabAudioMuting" summary="For TabAudioMuting feature."/>
@@ -11918,7 +11920,6 @@ should be able to be added at any place in this file.
 <action name="CookieControls.Bubble.CookiesInUse">
   <obsolete>Obsolete as of 2024</obsolete>
   <owner>dullweber@chromium.org</owner>
-  <owner>huanzhong@chromium.org</owner>
   <description>
     &quot;Cookies in use&quot; dialog was opened from the cookie controls UI.
   </description>
@@ -11927,7 +11928,6 @@ should be able to be added at any place in this file.
 <action name="CookieControls.Bubble.NotWorking">
   <obsolete>Obsolete as of 2024</obsolete>
   <owner>dullweber@chromium.org</owner>
-  <owner>huanzhong@chromium.org</owner>
   <description>
     &quot;Site not working&quot; button was clicked in the cookie controls UI.
   </description>
@@ -11936,7 +11936,6 @@ should be able to be added at any place in this file.
 <action name="CookieControls.Bubble.Opened">
   <obsolete>Obsolete as of 2024</obsolete>
   <owner>dullweber@chromium.org</owner>
-  <owner>huanzhong@chromium.org</owner>
   <description>The cookie controls UI was opened.</description>
 </action>
 
@@ -11964,7 +11963,6 @@ should be able to be added at any place in this file.
 <action name="CookieControls.Bubble.TooltipShown">
   <obsolete>Obsolete as of 2024</obsolete>
   <owner>dullweber@chromium.org</owner>
-  <owner>huanzhong@chromium.org</owner>
   <description>
     The user looked at the tooltip inside the cookie controls bubble.
   </description>
@@ -11972,7 +11970,6 @@ should be able to be added at any place in this file.
 
 <action name="CookieControls.Bubble.TurnOff">
   <owner>dullweber@chromium.org</owner>
-  <owner>huanzhong@chromium.org</owner>
   <description>
     Cookie blocking was disabled for a site through the cookie controls UI.
   </description>
@@ -11980,7 +11977,6 @@ should be able to be added at any place in this file.
 
 <action name="CookieControls.Bubble.TurnOn">
   <owner>dullweber@chromium.org</owner>
-  <owner>huanzhong@chromium.org</owner>
   <description>
     Cookie blocking was enabled for a site through the cookie controls UI.
   </description>
@@ -12062,7 +12058,6 @@ should be able to be added at any place in this file.
 
 <action name="CookieControls.NTP.Disabled">
   <owner>dullweber@chromium.org</owner>
-  <owner>huanzhong@chromium.org</owner>
   <description>
     Third-party cookie blocking was disabled on the incognito NTP.
   </description>
@@ -12070,7 +12065,6 @@ should be able to be added at any place in this file.
 
 <action name="CookieControls.NTP.Enabled">
   <owner>dullweber@chromium.org</owner>
-  <owner>huanzhong@chromium.org</owner>
   <description>
     Third-party cookie blocking was enabled on the incognito NTP.
   </description>
@@ -16239,6 +16233,14 @@ should be able to be added at any place in this file.
   <description>
     User tapped 'Unpin' on the Glic button context menu to unpin the Glic button
     from the tab strip.
+  </description>
+</action>
+
+<action name="Glic.Interaction.VerticalTabsToolbarButton.UnpinnedInContextMenu">
+  <owner>eleanorlee@google.com</owner>
+  <description>
+    When vertical tabs is enabled, user tapped 'Unpin' on the Glic button
+    context menu to unpin the Glic button from the toolbar.
   </description>
 </action>
 
@@ -26742,6 +26744,13 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="Mobile.LensOverlay.CameraSearch.Performed">
+  <owner>rkgibson@google.com</owner>
+  <description>
+    Recorded when a camera or photo search is performed via Lens Overlay.
+  </description>
+</action>
+
 <action name="Mobile.LensOverlay.Closed">
   <owner>christianxu@google.com</owner>
   <owner>stkhapugin@google.com</owner>
@@ -28716,6 +28725,104 @@ should be able to be added at any place in this file.
   <owner>bling-alchemy-eng@google.com</owner>
   <description>
     The user tapped one of the attachment options in the input plate in Gemini.
+  </description>
+</action>
+
+<action name="MobileGeminiLiveButtonTapped">
+  <owner>tarekmakkouk@google.com</owner>
+  <owner>bling-alchemy-eng@google.com</owner>
+  <description>
+    Reported when the user taps the Live button on the UI to initiate/switch to
+    the Gemini Live voice flow on iOS.
+  </description>
+</action>
+
+<action name="MobileGeminiLiveChromeMicPromptAllowed">
+  <owner>tarekmakkouk@google.com</owner>
+  <owner>bling-alchemy-eng@google.com</owner>
+  <description>
+    Reported when the user grants mic permission on the Chrome-side permission
+    alert for Gemini Live on iOS.
+  </description>
+</action>
+
+<action name="MobileGeminiLiveChromeMicPromptDenied">
+  <owner>tarekmakkouk@google.com</owner>
+  <owner>bling-alchemy-eng@google.com</owner>
+  <description>
+    Reported when the user denies mic permission on the Chrome-side permission
+    alert for Gemini Live on iOS.
+  </description>
+</action>
+
+<action name="MobileGeminiLiveChromeMicPromptShown">
+  <owner>tarekmakkouk@google.com</owner>
+  <owner>bling-alchemy-eng@google.com</owner>
+  <description>
+    Reported when the Chrome-side microphone permission alert is shown to the
+    user for Gemini Live on iOS.
+  </description>
+</action>
+
+<action name="MobileGeminiLiveOSMicPromptAllowed">
+  <owner>tarekmakkouk@google.com</owner>
+  <owner>bling-alchemy-eng@google.com</owner>
+  <description>
+    Reported when the user grants native OS mic permission for Gemini Live on
+    iOS.
+  </description>
+</action>
+
+<action name="MobileGeminiLiveOSMicPromptDenied">
+  <owner>tarekmakkouk@google.com</owner>
+  <owner>bling-alchemy-eng@google.com</owner>
+  <description>
+    Reported when the user denies native OS mic permission for Gemini Live on
+    iOS.
+  </description>
+</action>
+
+<action name="MobileGeminiLiveOSMicPromptShown">
+  <owner>tarekmakkouk@google.com</owner>
+  <owner>bling-alchemy-eng@google.com</owner>
+  <description>
+    Reported when the native OS microphone permission alert is shown to the user
+    for Gemini Live on iOS.
+  </description>
+</action>
+
+<action name="MobileGeminiLiveSessionStarted">
+  <owner>tarekmakkouk@google.com</owner>
+  <owner>bling-alchemy-eng@google.com</owner>
+  <description>
+    Reported when a Gemini Live voice session has successfully started on iOS.
+  </description>
+</action>
+
+<action name="MobileGeminiLiveSettingsRedirectCancel">
+  <owner>tarekmakkouk@google.com</owner>
+  <owner>bling-alchemy-eng@google.com</owner>
+  <description>
+    Reported when the user chooses 'No Thanks' on the microphone settings
+    redirect alert for Gemini Live on iOS.
+  </description>
+</action>
+
+<action name="MobileGeminiLiveSettingsRedirectOpenSettings">
+  <owner>tarekmakkouk@google.com</owner>
+  <owner>bling-alchemy-eng@google.com</owner>
+  <description>
+    Reported when the user chooses 'Go to Settings' on the microphone settings
+    redirect alert for Gemini Live on iOS.
+  </description>
+</action>
+
+<action name="MobileGeminiLiveSettingsRedirectShown">
+  <owner>tarekmakkouk@google.com</owner>
+  <owner>bling-alchemy-eng@google.com</owner>
+  <description>
+    Reported when the microphone settings redirect alert is shown to the user
+    for Gemini Live on iOS.
   </description>
 </action>
 
@@ -35540,6 +35647,15 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="NewTabPage.Realbox.Paste">
+  <owner>sophiechang@chromium.org</owner>
+  <owner>chrome-desktop-ntp@google.com</owner>
+  <description>
+    Recorded when the user pastes clipboard contents into the New Tab Page
+    realbox.
+  </description>
+</action>
+
 <action name="NewTabPage.SearchBox.Lens">
   <owner>yusuyoutube@google.com</owner>
   <owner>benwgold@google.com</owner>
@@ -38956,6 +39072,12 @@ should be able to be added at any place in this file.
   <owner>olesiamarukhno@google.com</owner>
   <owner>dullweber@chromium.org</owner>
   <description>Store info subpage opened from PageInfo.</description>
+</action>
+
+<action name="PageInfo.UnsafeSite.HelpOpened">
+  <owner>olesiamarukhno@google.com</owner>
+  <owner>dullweber@chromium.org</owner>
+  <description>Help opened from Unsafe Site PageInfo warning.</description>
 </action>
 
 <action name="PageLoad" not_user_triggered="true">
@@ -44877,6 +44999,20 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="SettingsMenu_AboutClicked">
+  <owner>mickeyburks@google.com</owner>
+  <description>
+    The user clicked the &quot;About Chrome&quot; item in the settings menu.
+  </description>
+</action>
+
+<action name="SettingsMenu_AccessibilityClicked">
+  <owner>mickeyburks@google.com</owner>
+  <description>
+    The user clicked the &quot;Accessibility&quot; item in the settings menu.
+  </description>
+</action>
+
 <action name="SettingsMenu_AiPageEntryPointClicked">
   <owner>zalmashni@google.com</owner>
   <owner>rainhard@chromium.org</owner>
@@ -44887,11 +45023,97 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="SettingsMenu_AppearanceClicked">
+  <owner>mickeyburks@google.com</owner>
+  <description>
+    The user clicked the &quot;Appearance&quot; item in the settings menu.
+  </description>
+</action>
+
+<action name="SettingsMenu_AutofillClicked">
+  <owner>mickeyburks@google.com</owner>
+  <description>
+    The user clicked the &quot;Autofill and passwords&quot; item in the settings
+    menu.
+  </description>
+</action>
+
+<action name="SettingsMenu_DefaultBrowserClicked">
+  <owner>mickeyburks@google.com</owner>
+  <description>
+    The user clicked the &quot;Default browser&quot; item in the settings menu.
+  </description>
+</action>
+
+<action name="SettingsMenu_DownloadsClicked">
+  <owner>mickeyburks@google.com</owner>
+  <description>
+    The user clicked the &quot;Downloads&quot; item in the settings menu.
+  </description>
+</action>
+
 <action name="SettingsMenu_ExtensionsLinkClicked">
   <owner>aee@chromium.org</owner>
   <description>
     The user clicked the &quot;Extensions&quot; external link in the settings
     menu (drawer).
+  </description>
+</action>
+
+<action name="SettingsMenu_LanguagesClicked">
+  <owner>mickeyburks@google.com</owner>
+  <description>
+    The user clicked the &quot;Languages&quot; item in the settings menu.
+  </description>
+</action>
+
+<action name="SettingsMenu_OnStartupClicked">
+  <owner>mickeyburks@google.com</owner>
+  <description>
+    The user clicked the &quot;On startup&quot; item in the settings menu.
+  </description>
+</action>
+
+<action name="SettingsMenu_PeopleClicked">
+  <owner>mickeyburks@google.com</owner>
+  <description>
+    The user clicked the &quot;You and Google&quot; item in the settings menu.
+  </description>
+</action>
+
+<action name="SettingsMenu_PerformanceClicked">
+  <owner>mickeyburks@google.com</owner>
+  <description>
+    The user clicked the &quot;Performance&quot; item in the settings menu.
+  </description>
+</action>
+
+<action name="SettingsMenu_PrivacyClicked">
+  <owner>mickeyburks@google.com</owner>
+  <description>
+    The user clicked the &quot;Privacy and security&quot; item in the settings
+    menu.
+  </description>
+</action>
+
+<action name="SettingsMenu_ResetClicked">
+  <owner>mickeyburks@google.com</owner>
+  <description>
+    The user clicked the &quot;Reset settings&quot; item in the settings menu.
+  </description>
+</action>
+
+<action name="SettingsMenu_SearchClicked">
+  <owner>mickeyburks@google.com</owner>
+  <description>
+    The user clicked the &quot;Search engine&quot; item in the settings menu.
+  </description>
+</action>
+
+<action name="SettingsMenu_SystemClicked">
+  <owner>mickeyburks@google.com</owner>
+  <description>
+    The user clicked the &quot;System&quot; item in the settings menu.
   </description>
 </action>
 

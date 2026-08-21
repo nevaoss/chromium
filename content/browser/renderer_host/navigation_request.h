@@ -2562,6 +2562,14 @@ class CONTENT_EXPORT NavigationRequest
   // when an error page is about to be committed.
   bool ShouldReplaceCurrentEntryForFailedNavigation() const;
 
+  // Whether the initiator of this navigation should be allowed to observe that
+  // a same-URL navigation of the target frame was converted to a replacement.
+  // Used by ShouldReplaceCurrentEntryForSameUrlNavigation() and
+  // ShouldReplaceCurrentEntryForFailedNavigation() to ensure the replacement
+  // decision does not depend on the target frame's URL when the initiator is
+  // cross-origin to it.
+  bool InitiatorMayObserveSameUrlReplacement() const;
+
   // Calculates the origin that this NavigationRequest may commit. See also the
   // comment of GetOriginToCommit(). Performs calculation without information
   // from RenderFrameHostImpl (e.g. CSPs are ignored). Should be used only in
@@ -2703,6 +2711,10 @@ class CONTENT_EXPORT NavigationRequest
   // This is also used in `MaybeRecordTraceEventsAndHistograms()`, which should
   // eventually be replaced with the navigation timeline metrics.
   bool ShouldRecordNavigationTimelineUkm() const;
+
+  // Returns true if early navigation failure can be safely recorded without
+  // risking cross-StoragePartition information leakage.
+  bool CanRecordEarlyNavigationFailure() const;
 
   // Given the known destination origin, this updates the view transition state
   // and resources. Namely, it clears it if the view transition state and

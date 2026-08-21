@@ -440,9 +440,6 @@ bool RenderFrameDevToolsAgentHost::AttachSession(DevToolsSession* session) {
       frame_host_ ? frame_host_->devtools_frame_token()
                   : base::UnguessableToken(),
       GetIOContext(), session, /*maybe_storage_partition=*/nullptr,
-      base::BindRepeating(
-          &RenderFrameDevToolsAgentHost::UpdateResourceLoaderFactories,
-          base::Unretained(this)),
       session->GetClient());
   session->CreateAndAddHandler<protocol::FetchHandler>(
       GetIOContext(), session->GetRootSession()->GetClient(),

@@ -12,6 +12,7 @@
  * #css_wrapper_metadata_end */
 
 :host {
+  -webkit-app-region: drag;
   /* Embedders should define --cr-searchbox-min-width. */
   --cr-searchbox-width: var(--cr-searchbox-min-width);
   --cr-searchbox-border-radius: calc(0.5 * var(--cr-searchbox-height));
@@ -99,6 +100,10 @@
   width: 100%;
 }
 
+:host([in-voice-search-mode]) #inputWrapper {
+  display: none;
+}
+
 :host([ntp-realbox-next-enabled]) #inputWrapper {
   /* Elements like the IPH must overflow. */
   overflow: visible;
@@ -129,7 +134,8 @@ cr-searchbox-input::part(searchbox-input) {
 }
 
 :host([ntp-realbox-next-enabled]) cr-searchbox-input::part(searchbox-input) {
-  padding-inline-start: 24px;
+  margin-inline-start: 24px;
+  padding-inline-start: 0;
   padding-inline-end: 64px;
 }
 
@@ -367,4 +373,23 @@ cr-searchbox-dropdown::part(dropdown-content) {
 #bottomControls .searchbox-icon-button-container {
   inset-inline-end: unset;
   top: 0;
+}
+
+/* TODO(crbug.com/532200145): Refine the selectors. New interactive elements
+ * must be added to this list because the root container has
+ * '-webkit-app-region: drag' enabled; otherwise, clicks will be swallowed by
+ * the window drag handler. */
+cr-searchbox-input::part(searchbox-input),
+cr-searchbox-dropdown::part(dropdown-content),
+cr-searchbox-compose-button::part(compose-button),
+#composeButton,
+#context,
+#contextEntrypoint,
+cr-composebox-contextual-entrypoint-and-menu,
+cr-composebox-contextual-entrypoint-button,
+.searchbox-icon-button,
+#voiceSearchButton,
+#lensSearchButton,
+#profileIcon {
+  -webkit-app-region: no-drag;
 }
