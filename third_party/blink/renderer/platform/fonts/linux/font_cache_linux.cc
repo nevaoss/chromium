@@ -76,6 +76,12 @@ static const char* GuessLangFromChar(UChar32 ch) {
 #endif
 
 // static
+static AtomicString& MutableSystemFontFamily() {
+  static AtomicString family;
+  return family;
+}
+
+// static
 const AtomicString& FontCache::SystemFontFamily() {
   return MutableSystemFontFamily();
 }
