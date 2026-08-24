@@ -15980,8 +15980,15 @@ bool RenderFrameHostImpl::ValidateURLAndOrigin(
   // In case of multiple same-document navigations, the last_committed_origin_
   // is kept as the original file: origin, so each same-document navigation can
   // still pass this check.
+// TODO(neva): Workaround to fix crash in browser-shell on webOS/OSE after
+// upgrade up to 153.0.7992.0~1. It partially reverts logic added in upstream CL
+// http://crrev.com/c/8158742. Needs further investigation.
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  if (origin.scheme() == url::kFileScheme) {
+#else  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
   if (origin.scheme() == url::kFileScheme &&
       last_committed_origin_.scheme() == url::kFileScheme) {
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
     auto prefs = GetOrCreateWebPreferences();
     if (prefs.allow_universal_access_from_file_urls) {
       return true;
@@ -16313,6 +16320,10 @@ bool RenderFrameHostImpl::DidCommitNavigationInternal(
     return false;
   }
 
+// TODO(neva): Workaround to fix crash in browser-shell on webOS/OSE after
+// upgrade up to 153.0.7992.0~1. It partially reverts logic added in upstream CL
+// http://crrev.com/c/8158742. Needs further investigation.
+#if !BUILDFLAG(IS_NEVA_APPRUNTIME)
   if (!ValidateDidCommitParams(navigation_request.get(), params.get(),
                                is_same_document_navigation)) {
     if (navigation_request) {
@@ -16321,6 +16332,7 @@ bool RenderFrameHostImpl::DidCommitNavigationInternal(
     }
     return false;
   }
+#endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
 
   // Any opaque origin loaded with LoadDataWithBaseURL can bypass some of the
   // URL and origin validation checks in unlocked processes, including both the
