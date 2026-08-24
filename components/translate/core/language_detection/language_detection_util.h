@@ -9,9 +9,7 @@
 #include <string>
 #include <string_view>
 
-namespace base::i18n {
-class LanguageTag;
-}
+#include "base/i18n/language_tag.h"
 
 namespace translate {
 enum class LanguageVerificationType;

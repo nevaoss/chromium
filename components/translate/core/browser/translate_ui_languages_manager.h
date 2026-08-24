@@ -13,9 +13,7 @@
 
 #include "third_party/icu/source/i18n/unicode/coll.h"
 
-namespace base::i18n {
-class LanguageTag;
-}
+#include "base/i18n/language_tag.h"
 
 namespace translate {
 
