@@ -26,6 +26,7 @@
 #include "base/task/thread_pool.h"
 #include "base/types/optional_util.h"
 #include "components/translate/core/common/language_detection_details.h"
+#include "base/i18n/language_tag.h"
 #include "components/translate/core/language_detection/language_detection_util.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/navigation_controller.h"
@@ -814,11 +815,11 @@ void TabsDetectLanguageFunction::DetectLanguage(base::Value result) {
   std::string text = result.GetString();
   bool is_model_reliable = false;
   float model_reliability_score = 0.0;
-  std::string detected_language = translate::DetermineTextLanguage(
+  std::optional<base::i18n::LanguageTag> detected_language = translate::DetermineTextLanguage(
       text, &is_model_reliable, model_reliability_score);
 
   translate::LanguageDetectionDetails details;
-  details.adopted_language = detected_language;
+  details.adopted_language = detected_language ? detected_language->tag_string() : std::string();
   OnLanguageDetermined(details);
 }
 
