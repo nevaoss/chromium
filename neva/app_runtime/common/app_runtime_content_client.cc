@@ -47,7 +47,7 @@ std::string_view AppRuntimeContentClient::GetDataResource(
       resource_id, scale_factor);
 }
 
-base::RefCountedMemory* AppRuntimeContentClient::GetDataResourceBytes(
+scoped_refptr<base::RefCountedMemory> AppRuntimeContentClient::GetDataResourceBytes(
     int resource_id) {
   return ui::ResourceBundle::GetSharedInstance().LoadDataResourceBytes(
       resource_id);
