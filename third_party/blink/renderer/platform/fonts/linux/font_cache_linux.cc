@@ -33,20 +33,39 @@
 #include "ui/gfx/font_fallback_linux.h"
 
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
-#include "third_party/blink/renderer/platform/text/unicode_range.h"
+#include <unicode/uscript.h>
 #endif
 
 namespace blink {
-
-static AtomicString& MutableSystemFontFamily() {
-  DEFINE_THREAD_SAFE_STATIC_LOCAL(AtomicString, system_font_family, ());
-  return system_font_family;
-}
 
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
 static const char* const kUnicodeRangeToLangTable[] = {
     0,    "el", "tr", "he", "ar", 0, "th", "ko", "ja", "zh-CN", "zh-TW",
     "hi", "ta", "hy", "bn", 0,    0, "ka", "gu", "pa", "km",    "ml"};
+
+// Map ICU script codes to our lang table indices.
+static unsigned char ScriptToRange(UScriptCode script) {
+  switch (script) {
+    case USCRIPT_GREEK: return 1;
+    case USCRIPT_LATIN: return 2; // tr is Latin-based but commonly mapped here
+    case USCRIPT_HEBREW: return 3;
+    case USCRIPT_ARABIC: return 4;
+    case USCRIPT_THAI: return 6;
+    case USCRIPT_HANGUL: return 7;
+    case USCRIPT_HIRAGANA:
+    case USCRIPT_KATAKANA: return 8;
+    case USCRIPT_HAN: return 9; // zh-CN (simplified Chinese)
+    default: return 0;
+  }
+}
+
+static const unsigned char kCRangeSpecificItemNum =
+    sizeof(kUnicodeRangeToLangTable) / sizeof(kUnicodeRangeToLangTable[0]);
+
+static unsigned char FindCharUnicodeRange(UChar32 ch) {
+  UScriptCode script = uscript_getScript(ch, nullptr);
+  return ScriptToRange(script);
+}
 
 static const char* GuessLangFromChar(UChar32 ch) {
   unsigned char unicode_range = FindCharUnicodeRange(ch);
