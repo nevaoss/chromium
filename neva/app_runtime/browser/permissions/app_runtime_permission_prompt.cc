@@ -56,10 +56,6 @@ std::optional<gfx::Rect> AppRuntimePermissionPrompt::GetViewBoundsInScreen()
   return std::nullopt;
 }
 
-bool AppRuntimePermissionPrompt::ShouldFinalizeRequestAfterDecided() const {
-  return true;
-}
-
 std::vector<permissions::ElementAnchoredBubbleVariant>
 AppRuntimePermissionPrompt::GetPromptVariants() const {
   return {};
