@@ -11705,10 +11705,17 @@ void RenderFrameHostImpl::BeginNavigation(
   }
 
   GetProcess()->FilterURL(true, &begin_params->searchable_form_url);
+// TODO(neva): Workaround to fix NEVA-2474 TC failure after upgrade up to
+// 153.0.7992.0~1. It partially reverts logic added in upstream CL
+// http://crrev.com/c/8162305. Needs further investigation.
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  GetProcess()->FilterURL(true, &begin_params->client_side_redirect_url);
+#else  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
   if (!VerifyClientSideRedirectUrl(*this,
                                    &begin_params->client_side_redirect_url)) {
     return;
   }
+#endif  //  BUILDFLAG(IS_NEVA_APPRUNTIME)
 
   // If the request was for a blob URL, but the validated URL is no longer a
   // blob URL, reset the blob_url_token to prevent hitting the ReportBadMessage
