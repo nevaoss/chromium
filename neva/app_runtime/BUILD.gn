@@ -452,6 +452,7 @@ repack("app_runtime_resources") {
   if (enable_extensions) {
     sources += [
       "$root_gen_dir/extensions/extensions_browser_resources_100_percent.pak",
+      "$root_gen_dir/extensions/extensions_renderer_generated_resources.pak",
       "$root_gen_dir/extensions/extensions_renderer_resources.pak",
       "$root_gen_dir/extensions/extensions_resources.pak",
       "$root_gen_dir/extensions/strings/extensions_strings_en-US.pak",
