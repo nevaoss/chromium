@@ -1336,7 +1336,6 @@ source_set("extensions") {
         "//chrome/browser/ash/net",
         "//chrome/browser/ash/ownership",
         "//chrome/browser/ash/platform_keys",
-        "//chrome/browser/ash/plugin_vm",
         "//chrome/browser/ash/policy/core",
         "//chrome/browser/ash/policy/handlers",
         "//chrome/browser/ash/printing",
@@ -2021,6 +2020,7 @@ source_set("unit_tests") {
     "extension_special_storage_policy_unittest.cc",
     "extension_tab_util_unittest.cc",
     "extension_telemetry_service_verdict_handler_unittest.cc",
+    "extension_ui_util_unittest.cc",
     "extension_url_overrides_unittest.cc",
     "extension_user_script_loader_unittest.cc",
     "extension_util_unittest.cc",
@@ -2542,6 +2542,7 @@ source_set("browser_tests") {
     "//chrome/browser/ui/extensions",
     "//chrome/browser/ui/extensions:test_support",
     "//chrome/browser/ui/navigator",
+    "//chrome/browser/ui/tabs/alert:tab_alert",
     "//chrome/browser/ui/toolbar",
     "//chrome/browser/ui/webui:theme_source",
     "//chrome/browser/ui/webui/extensions:browser_tests",
@@ -2582,6 +2583,9 @@ source_set("browser_tests") {
     "//ui/webui:buildflags",
     "//ui/webui:test_support",
   ]
+  if (enable_extensions) {
+    deps += [ "//chrome/browser/ui/views/supervised_user" ]
+  }
 
   public_deps = []
 

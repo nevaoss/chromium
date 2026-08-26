@@ -1483,7 +1483,6 @@ void AutofillAgent::TriggerSuggestions(
       case kiOS:
       case kManualFallbackPasswords:
       case kPasswordManagerProcessedFocusedField:
-      case kPlusAddressUpdatedInBrowserProcess:
       case kProactivePasswordRecovery:
       case kGlic:
       case kAtMemoryInactivityNudge:
@@ -1509,23 +1508,30 @@ void AutofillAgent::ApplyFieldAction(
     return;
   }
 
-  WebFormControlElement form_control =
-      form_util::GetFormControlByRendererId(field_id);
-  if (form_control && form_util::IsTextAreaElementOrTextInput(form_control)) {
+  if (WebFormControlElement form_control =
+          form_util::GetFormControlByRendererId(field_id);
+      form_control && form_util::IsTextAreaElementOrTextInput(form_control)) {
     DCHECK(
         form_util::MaybeWasOwnedByFrame(form_control, unsafe_render_frame()));
     ClearPreviewedForm();
     switch (action_persistence) {
       case mojom::ActionPersistence::kPreview:
         switch (action_type) {
-          case mojom::FieldActionType::kReplaceAtMemoryTrigger: {
-            auto it = std::ranges::find(
-                last_at_memory_ask_for_values_to_fills_, field_id,
-                &AtMemoryAskForValuesToFillInfo::field_id);
-            if (it == last_at_memory_ask_for_values_to_fills_.end()) {
+          case mojom::FieldActionType::kReplaceAll:
+            previewed_elements_.emplace_back(field_id,
+                                             form_control.GetAutofillState());
+            form_control.SetSuggestedValue(WebString::FromUtf16(value));
+            break;
+          case mojom::FieldActionType::kReplaceSelection:
+            NOTIMPLEMENTED()
+                << "Previewing replacement of selection is not implemented";
+            break;
+          case mojom::FieldActionType::kReplaceSelectionForAtMemory: {
+            const std::optional<AtMemoryState::AskForValuesToFillInfo> info =
+                at_memory_.FindAskForValuesToFill(form_control, /*pop=*/false);
+            if (!info) {
               return;
             }
-            const AtMemoryAskForValuesToFillInfo info = *it;
 
             const blink::RendererPreferences* prefs = GetRendererPreferences();
             WebString trigger = WebString::FromUtf8(
@@ -1537,7 +1543,7 @@ void AutofillAgent::ApplyFieldAction(
             // by the trigger string, we replace the trigger. Otherwise (e.g. if
             // the user has already selected text or triggered via the context
             // menu), we replace the current selection or insert at the cursor.
-            if (info.caused_by_trigger_string && !trigger.IsEmpty() &&
+            if (info->caused_by_trigger_string && !trigger.IsEmpty() &&
                 sel_start == sel_end && sel_start >= trigger.length() &&
                 form_control.EditingValue()
                     .Substring(sel_start - trigger.length(), trigger.length())
@@ -1552,15 +1558,6 @@ void AutofillAgent::ApplyFieldAction(
             form_control.SetSuggestedValue(WebString::FromUtf16(preview_value));
             break;
           }
-          case mojom::FieldActionType::kReplaceSelection:
-            NOTIMPLEMENTED()
-                << "Previewing replacement of selection is not implemented";
-            break;
-          case mojom::FieldActionType::kReplaceAll:
-            previewed_elements_.emplace_back(field_id,
-                                             form_control.GetAutofillState());
-            form_control.SetSuggestedValue(WebString::FromUtf16(value));
-            break;
           case mojom::FieldActionType::kSelectAll:
             NOTIMPLEMENTED() << "Previewing select all is not implemented";
             break;
@@ -1568,15 +1565,23 @@ void AutofillAgent::ApplyFieldAction(
         break;
       case mojom::ActionPersistence::kFill:
         switch (action_type) {
-          case mojom::FieldActionType::kReplaceAtMemoryTrigger: {
-            auto it = std::ranges::find(
-                last_at_memory_ask_for_values_to_fills_, field_id,
-                &AtMemoryAskForValuesToFillInfo::field_id);
-            if (it == last_at_memory_ask_for_values_to_fills_.end()) {
+          case mojom::FieldActionType::kReplaceAll: {
+            DoFillFieldWithValue(value, form_control,
+                                 WebAutofillState::kAutofilled);
+            break;
+          }
+          case mojom::FieldActionType::kReplaceSelection: {
+            form_control.PasteText(WebString::FromUtf16(value),
+                                   /*replace_all=*/false,
+                                   /*smart_replace=*/true);
+            break;
+          }
+          case mojom::FieldActionType::kReplaceSelectionForAtMemory: {
+            const std::optional<AtMemoryState::AskForValuesToFillInfo> info =
+                at_memory_.FindAskForValuesToFill(form_control, /*pop=*/true);
+            if (!info) {
               return;
             }
-            const AtMemoryAskForValuesToFillInfo info = *it;
-            last_at_memory_ask_for_values_to_fills_.erase(it);
 
             const blink::RendererPreferences* prefs = GetRendererPreferences();
             WebString trigger = WebString::FromUtf8(
@@ -1588,7 +1593,7 @@ void AutofillAgent::ApplyFieldAction(
             // by `PasteText` below. Otherwise (e.g. if the user has already
             // selected text or triggered via context menu), we just perform
             // a regular insertion/replacement at the current position.
-            if (info.caused_by_trigger_string && !trigger.IsEmpty() &&
+            if (info->caused_by_trigger_string && !trigger.IsEmpty() &&
                 sel_start == sel_end && sel_start >= trigger.length() &&
                 form_control.EditingValue()
                     .Substring(sel_start - trigger.length(), trigger.length())
@@ -1597,17 +1602,8 @@ void AutofillAgent::ApplyFieldAction(
                                              sel_start);
             }
             form_control.PasteText(WebString::FromUtf16(value),
-                                   /*replace_all=*/false);
-            break;
-          }
-          case mojom::FieldActionType::kReplaceSelection: {
-            form_control.PasteText(WebString::FromUtf16(value),
-                                   /*replace_all=*/false);
-            break;
-          }
-          case mojom::FieldActionType::kReplaceAll: {
-            DoFillFieldWithValue(value, form_control,
-                                 WebAutofillState::kAutofilled);
+                                   /*replace_all=*/false,
+                                   /*smart_replace=*/true);
             break;
           }
           case mojom::FieldActionType::kSelectAll:
@@ -1645,21 +1641,25 @@ void AutofillAgent::ApplyFieldAction(
         break;
       case mojom::ActionPersistence::kFill:
         switch (action_type) {
-          case mojom::FieldActionType::kSelectAll:
-            DCHECK(value.empty());
-            content_editable.SelectText(/*select_all=*/true);
+          case mojom::FieldActionType::kReplaceAll:
+            content_editable.PasteText(WebString::FromUtf16(value),
+                                       /*replace_all=*/true,
+                                       /*smart_replace=*/true);
             break;
-          case mojom::FieldActionType::kReplaceAtMemoryTrigger: {
-            auto it = std::ranges::find(
-                last_at_memory_ask_for_values_to_fills_, field_id,
-                &AtMemoryAskForValuesToFillInfo::field_id);
-            if (it == last_at_memory_ask_for_values_to_fills_.end()) {
+          case mojom::FieldActionType::kReplaceSelection:
+            content_editable.PasteText(WebString::FromUtf16(value),
+                                       /*replace_all=*/false,
+                                       /*smart_replace=*/true);
+            break;
+          case mojom::FieldActionType::kReplaceSelectionForAtMemory: {
+            const std::optional<AtMemoryState::AskForValuesToFillInfo> info =
+                at_memory_.FindAskForValuesToFill(content_editable,
+                                                  /*pop=*/true);
+            if (!info) {
               return;
             }
-            const AtMemoryAskForValuesToFillInfo info = *it;
-            last_at_memory_ask_for_values_to_fills_.erase(it);
 
-            if (info.caused_by_trigger_string) {
+            if (info->caused_by_trigger_string) {
               if (auto* frame = unsafe_render_frame()) {
                 WebRange selection = frame->GetWebFrame()
                                          ->GetInputMethodController()
@@ -1679,15 +1679,14 @@ void AutofillAgent::ApplyFieldAction(
                 }
               }
             }
-            [[fallthrough]];
+            content_editable.PasteText(WebString::FromUtf16(value),
+                                       /*replace_all=*/false,
+                                       /*smart_replace=*/true);
+            break;
           }
-          case mojom::FieldActionType::kReplaceAll:
-            [[fallthrough]];
-          case mojom::FieldActionType::kReplaceSelection:
-            content_editable.PasteText(
-                WebString::FromUtf16(value),
-                /*replace_all=*/
-                (action_type == mojom::FieldActionType::kReplaceAll));
+          case mojom::FieldActionType::kSelectAll:
+            DCHECK(value.empty());
+            content_editable.SelectText(/*select_all=*/true);
             break;
         }
     }
@@ -1829,29 +1828,72 @@ bool AutofillAgent::ShouldThrottleAskForValuesToFill(FieldRendererId field) {
   return false;
 }
 
-void AutofillAgent::MaybeUpdateLastAtMemoryAskForValuesToFills(
-    FieldRendererId field_id,
+std::optional<AutofillAgent::AtMemoryState::AskForValuesToFillInfo>
+AutofillAgent::AtMemoryState::FindAskForValuesToFill(const WebElement& element,
+                                                     bool pop) {
+  // This function is intended only for WebFormControlElements and for
+  // contenteditables that aren't WebFormElement. See
+  // form_util::GetFieldRendererId().
+  CHECK(!element.DynamicTo<WebFormElement>());
+  auto it = std::ranges::find(last_at_memory_ask_for_values_to_fills_,
+                              form_util::GetFieldRendererId(element),
+                              &AskForValuesToFillInfo::field_id);
+  if (it == last_at_memory_ask_for_values_to_fills_.end()) {
+    return std::nullopt;
+  }
+  AskForValuesToFillInfo info = *it;
+  if (pop) {
+    last_at_memory_ask_for_values_to_fills_.erase(it);
+  }
+
+  WebString value = [&] {
+    if (auto form_control = element.DynamicTo<WebFormControlElement>()) {
+      return form_control.Value();
+    }
+    return element.TextContent();
+  }();
+  if (info.value_hash != base::FastHash(base::as_byte_span(value.Utf16()))) {
+    return std::nullopt;
+  }
+
+  return info;
+}
+
+AutofillAgent::AtMemoryState::AtMemoryState() = default;
+
+AutofillAgent::AtMemoryState::~AtMemoryState() = default;
+
+void AutofillAgent::AtMemoryState::MaybeUpdateAskForValuesToFill(
+    const WebElement& element,
     AutofillSuggestionTriggerSource trigger_source) {
+  // This function is intended only for WebFormControlElements and for
+  // contenteditables that aren't WebFormElement. See
+  // form_util::GetFieldRendererId().
+  CHECK(!element.DynamicTo<WebFormElement>());
   if (!IsAtMemoryTriggerSource(trigger_source)) {
     return;
   }
 
+  FindAskForValuesToFill(element, /*pop=*/true);
+
   static constexpr size_t kMaxSize = 10;
-  auto it = std::ranges::find(last_at_memory_ask_for_values_to_fills_, field_id,
-                              &AtMemoryAskForValuesToFillInfo::field_id);
-  if (it != last_at_memory_ask_for_values_to_fills_.end()) {
-    last_at_memory_ask_for_values_to_fills_.erase(it);
-  } else if (last_at_memory_ask_for_values_to_fills_.size() >= kMaxSize) {
+  while (last_at_memory_ask_for_values_to_fills_.size() >= kMaxSize) {
     last_at_memory_ask_for_values_to_fills_.pop_front();
   }
-  CHECK_LT(last_at_memory_ask_for_values_to_fills_.size(), kMaxSize);
 
-  last_at_memory_ask_for_values_to_fills_.push_back(
-      AtMemoryAskForValuesToFillInfo{
-          .field_id = field_id,
-          .caused_by_trigger_string =
-              (trigger_source ==
-               AutofillSuggestionTriggerSource::kAtMemoryTriggerString)});
+  WebString value = [&] {
+    if (auto form_control = element.DynamicTo<WebFormControlElement>()) {
+      return form_control.Value();
+    }
+    return element.TextContent();
+  }();
+
+  last_at_memory_ask_for_values_to_fills_.push_back(AskForValuesToFillInfo{
+      .field_id = form_util::GetFieldRendererId(element),
+      .caused_by_trigger_string =
+          trigger_source ==
+          AutofillSuggestionTriggerSource::kAtMemoryTriggerString,
+      .value_hash = base::FastHash(base::as_byte_span(value.Utf16()))});
 }
 
 void AutofillAgent::ShowSuggestions(
@@ -1948,8 +1990,7 @@ void AutofillAgent::ShowSuggestions(
       autofill_driver->AskForValuesToFill(form, field->renderer_id(),
                                           GetCaretBounds(*render_frame),
                                           trigger_source, password_request);
-      MaybeUpdateLastAtMemoryAskForValuesToFills(field->renderer_id(),
-                                                 trigger_source);
+      at_memory_.MaybeUpdateAskForValuesToFill(element, trigger_source);
     }
   }
 }
@@ -1975,8 +2016,7 @@ void AutofillAgent::ShowSuggestionsForContentEditable(
       autofill_driver->AskForValuesToFill(*form, field.renderer_id(),
                                           GetCaretBounds(*render_frame),
                                           trigger_source, std::nullopt);
-      MaybeUpdateLastAtMemoryAskForValuesToFills(field.renderer_id(),
-                                                 trigger_source);
+      at_memory_.MaybeUpdateAskForValuesToFill(element, trigger_source);
     }
   }
 }

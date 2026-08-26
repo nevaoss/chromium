@@ -236,6 +236,25 @@
     "expires": "Sep 1, 2024"
   },
   {
+    "prefix": "capability-element-usermedia-legacy",
+    "platforms": [
+      "Linux",
+      "Mac",
+      "Win"
+    ],
+    "bases": [
+      "external/wpt/html/semantics/permission-element/usermedia/legacy-mode"
+    ],
+    "exclusive_tests": "ALL",
+    "args": [
+      "--enable-blink-features=UserMediaElement,UserMediaElementLegacy"
+    ],
+    "expires": "Jan 1, 2027",
+    "owners": [
+      "permissions-core@google.com"
+    ]
+  },
+  {
     "prefix": "content-extraction",
     "platforms": [
       "Linux",
@@ -1081,7 +1100,7 @@
     "args": [
       "--enable-features=FedCmLightweightMode"
     ],
-    "expires": "Aug 1, 2026"
+    "expires": "Feb 1, 2027"
   },
   {
     "prefix": "fedcm-navigation-interception",
@@ -1103,27 +1122,6 @@
       "goto@chromium.org"
     ],
     "expires": "Dec 1, 2026"
-  },
-  {
-    "prefix": "fedcm-flexible-tokens",
-    "platforms": [
-      "Linux",
-      "Mac",
-      "Win"
-    ],
-    "bases": [
-      "external/wpt/fedcm/fedcm-flexible-token/"
-    ],
-    "exclusive_tests": "ALL",
-    "args": [
-      "--enable-features=FedCmNonStringToken"
-    ],
-    "owners": [
-      "npm@chromium.org",
-      "cbiesinger@chromium.org",
-      "goto@chromium.org"
-    ],
-    "expires": "Aug 1, 2026"
   },
   {
     "prefix": "fedcm-well-known-validation",
@@ -1186,7 +1184,7 @@
       "cbiesinger@chromium.org",
       "goto@chromium.org"
     ],
-    "expires": "Aug 1, 2026"
+    "expires": "Feb 1, 2027"
   },
   {
     "prefix": "fedcm-error-attribute",
@@ -1721,9 +1719,9 @@
       "external/wpt/html/semantics/forms/the-select-element/customizable-select/select-parsing.html"
     ],
     "args": [
-      "--enable-features=InputClosesSelect,SelectParserRelaxation"
+      "--enable-features=InputClosesSelect"
     ],
-    "expires": "Aug 1, 2026",
+    "expires": "Aug 1, 2027",
     "owners": [
       "jarhar@chromium.org",
       "dom-dev@google.com"
@@ -2414,38 +2412,6 @@
     ]
   },
   {
-    "prefix": "permission-element",
-    "platforms": [
-      "Linux",
-      "Mac",
-      "Win"
-    ],
-    "bases": [
-      "external/wpt/html/semantics/permission-element"
-    ],
-    "args": [
-      "--enable-blink-features=UserMediaElement,InstallElement,UserMediaElementLegacy"
-    ],
-    "owners": [
-      "permissions-core@google.com"
-    ],
-    "expires": "Jul 1, 2025"
-  },
-  {
-    "prefix": "permission-element-disabled",
-    "platforms": [
-      "Linux"
-    ],
-    "bases": [],
-    "args": [
-      "--disable-blink-features=UserMediaElement,GeolocationElement,InstallElement"
-    ],
-    "owners": [
-      "permissions-core@google.com"
-    ],
-    "expires": "Jul 1, 2026"
-  },
-  {
     "prefix": "port-bound-cookies",
     "platforms": [
       "Linux",
@@ -3005,11 +2971,12 @@
       "Win"
     ],
     "bases": [
-      "external/wpt/speculation-rules/prerender/cross-origin-iframe-prerender.https.html"
+      "external/wpt/speculation-rules/prerender/cross-origin-iframe-prerender.https.html",
+      "external/wpt/speculation-rules/prerender/cross-origin-iframe-prerender-nesting.https.html"
     ],
     "exclusive_tests": "ALL",
     "args": [
-      "--enable-features=Prerender2CrossOriginIframes"
+      "--enable-features=Prerender2CrossOriginIframes:nesting/true"
     ],
     "owners": [
       "nhiroki@chromium.org",
@@ -5003,6 +4970,19 @@
     "args": [
       "--enable-features=UnboundedElement,UnboundedElementOnTheOpenWeb",
       "--disable-features=TreesInViz",
+      "--force-device-scale-factor=1.5"
+    ],
+    "owners": [
+      "masonf@chromium.org"
+    ],
+    "expires": "Jan 1, 2027"
+  },
+  {
+    "prefix": "unbounded-element-with-treesinviz",
+    "platforms": ["Linux", "Mac", "Win"],
+    "bases": ["wpt_internal/html/rendering/unbounded-element"],
+    "args": [
+      "--enable-features=UnboundedElement,UnboundedElementOnTheOpenWeb,TreesInViz",
       "--force-device-scale-factor=1.5"
     ],
     "owners": [

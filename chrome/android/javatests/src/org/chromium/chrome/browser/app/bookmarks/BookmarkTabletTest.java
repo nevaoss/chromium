@@ -64,7 +64,7 @@ import org.chromium.ui.base.DeviceInput;
 @Restriction(DeviceFormFactor.TABLET_OR_DESKTOP)
 // TODO(crbug.com/40899175): Investigate batching.
 @DoNotBatch(reason = "Test has side-effects (bookmarks, pageloads) and thus can't be batched.")
-@DisableFeatures({ChromeFeatureList.BOOKMARKS_DESKTOP_LAYOUT})
+@DisableFeatures({ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_LAYOUT})
 public class BookmarkTabletTest {
     @Rule
     public FreshCtaTransitTestRule mActivityTestRule =
@@ -206,7 +206,7 @@ public class BookmarkTabletTest {
         onView(allOf(isDescendantOfA(withId(R.id.action_bar)), withText("Mobile bookmarks")))
                 .check(matches(isDisplayed()));
 
-        // After navigating to a new folder, the search bar should be focused again.
+        // After navigating to a new folder, the search bar should not be focused.
         BookmarkTestUtil.getSearchBoxViewInteraction().check(matches(not(isFocused())));
         // And the search text should be cleared.
         BookmarkTestUtil.getSearchBoxViewInteraction().check(matches(withText("")));

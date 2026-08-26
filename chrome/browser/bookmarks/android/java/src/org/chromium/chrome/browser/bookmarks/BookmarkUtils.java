@@ -306,6 +306,8 @@ public class BookmarkUtils {
             return;
         }
 
+        ShoppingService shoppingService = ShoppingServiceFactory.getForProfile(profile);
+
         if (ChromeFeatureList.isEnabled(ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_POPUP)
                 && DeviceInfo.isDesktop()) {
             View anchor = activity.findViewById(R.id.bookmark_button);
@@ -322,12 +324,16 @@ public class BookmarkUtils {
             assert anchor != null && anchor.isShown() : "Unable to find anchor for bookmark popup.";
 
             BookmarkPopupCoordinator popupCoordinator =
-                    new BookmarkPopupCoordinator(activity, profile, anchor, bookmarkManagerOpener);
+                    new BookmarkPopupCoordinator(
+                            activity,
+                            profile,
+                            anchor,
+                            bookmarkManagerOpener,
+                            shoppingService,
+                            priceDropNotificationManager);
             popupCoordinator.show(bookmarkId, isNewBookmark);
             return;
         }
-
-        ShoppingService shoppingService = ShoppingServiceFactory.getForProfile(profile);
         UserEducationHelper userEducationHelper =
                 new UserEducationHelper(
                         activity, profile, new Handler(assumeNonNull(Looper.myLooper())));
@@ -938,7 +944,7 @@ public class BookmarkUtils {
      * @return Whether the desktop bookmarks layout is enabled.
      */
     public static boolean isDesktopBookmarksLayoutEnabled() {
-        return ChromeFeatureList.isEnabled(ChromeFeatureList.BOOKMARKS_DESKTOP_LAYOUT)
+        return ChromeFeatureList.isEnabled(ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_LAYOUT)
                 && DeviceInfo.isDesktop();
     }
 

@@ -33,8 +33,8 @@
 <translation id="108485301461714610">AI-tilstand i Google Søgning og tilknyttede apps</translation>
 <translation id="1085677983426914530"><ph name="FILENAME" /> kunne ikke åbnes</translation>
 <translation id="1086486568852410168">Søg med Google Lens</translation>
+<translation id="1095093219235104018">Find og udfyld med Gemini</translation>
 <translation id="1096992026380844478">Dine indstillinger for synkronisering gendannes på baggrund af din seneste sikkerhedskopi. <ph name="BEGIN_LINK" />Se, hvad du kan synkronisere<ph name="END_LINK" /></translation>
-<translation id="1097049112094133492">{count,plural, =1{1 manuel søgning blev sprunget over}one{# manuel søgning blev sprunget over}other{# manuelle søgninger blev sprunget over}}</translation>
 <translation id="1097807529207545420">{count,plural, =1{1 adgangskode er verificeret med det samme}one{# adgangskode er verificeret med det samme}other{# adgangskoder er verificeret med det samme}}</translation>
 <translation id="1103523840287552314">Oversæt altid <ph name="LANGUAGE" /></translation>
 <translation id="1110772719190051587">Lås op med Face ID</translation>
@@ -184,7 +184,6 @@
 <translation id="1554043146674176775">Deaktiver AI-tilstand</translation>
 <translation id="1554477036522844996">Nyt vindue</translation>
 <translation id="1558391695376153246">Luk inkognitofaner</translation>
-<translation id="1559263013367304065">siden anvendelsen af Google Lens</translation>
 <translation id="1560153516220021659">Den sekundære knap til værktøjslinjen er skjult</translation>
 <translation id="1562601408588733317">Administrer, hvordan du finder og udfylder oplysninger med Gemini</translation>
 <translation id="1565371473877914088">Ny inkognitofane</translation>
@@ -305,6 +304,7 @@
 <translation id="1909201414196501151">Websitet er tilføjet og fastgjort</translation>
 <translation id="1911619930368729126">Upload til Google Drev</translation>
 <translation id="1925706052394657380">Åbn indstillingerne for <ph name="BEGIN_BOLD" />Standardapps<ph name="END_BOLD" /> i iOS</translation>
+<translation id="1938871630297275912">{count,plural, =1{Linket er modtaget}one{{count} link er modtaget}other{{count} links er modtaget}}</translation>
 <translation id="1941314575388338491">Tryk to gange for at kopiere.</translation>
 <translation id="1943478190258551035">Menu → Indstillinger</translation>
 <translation id="1952728750904661634">Log ind med en managerstyret konto</translation>
@@ -411,6 +411,7 @@
 <translation id="2268044343513325586">Juster</translation>
 <translation id="2271452184061378400">Dine fanegrupper gemmes her</translation>
 <translation id="2273327106802955778">Menuen Mere</translation>
+<translation id="2274179746480077483">Autofyld oplysninger fra apps som f.eks. Gmail og Fotos. Baseret på Personlig intelligens.</translation>
 <translation id="2287614783861766820">{count,plural, =1{Adressen slettes fra denne enhed.}one{Adressen slettes fra denne enhed.}other{Adresserne slettes fra denne enhed.}}</translation>
 <translation id="2295236662082735391">Tryk længe på et billede på nettet for at redigere det med Gemini</translation>
 <translation id="2296360194694387941">Brug af Gemini i Chrome er fuldført.</translation>
@@ -724,6 +725,7 @@
 <translation id="340669334496430859">Senest ændret</translation>
 <translation id="3409785640040772790">Maps</translation>
 <translation id="3416023309465857378">25. okt. 2023</translation>
+<translation id="3419787211763835342">Hjælp med at forbedre forbedret autofyld</translation>
 <translation id="3426715535827854458">Skjul Skjul værktøjslinje</translation>
 <translation id="3435738964857648380">Sikkerhed</translation>
 <translation id="3441673211568148613">Hold din browsing privat</translation>
@@ -1007,6 +1009,7 @@
 <translation id="4378154925671717803">Telefon</translation>
 <translation id="4380677808580146413">Vælg</translation>
 <translation id="4389019817280890563">Tryk for at skifte sprog.</translation>
+<translation id="4390649422783033958">Logget ind som <ph name="USER_NAME" />. <ph name="USER_EMAIL" />, Google-medlemskab. Åbn kontomenu.</translation>
 <translation id="4393294364304621138">{COUNT,plural, =1{Efter 1 dag}one{Efter {COUNT} dag}other{Efter {COUNT} dage}}</translation>
 <translation id="4402672425188312225">{COUNT,plural, =1{1 fane}one{# fane}other{# faner}}</translation>
 <translation id="4404790787924017676">Få notifikationer om prisfald på de produkter, du holder øje med</translation>
@@ -1364,6 +1367,7 @@ Handoff skal være aktiveret i afsnittet Generelt i Indstillinger, og dine enhed
 <translation id="5559567453458728487">Konvertér måleenheder, du finder på nettet</translation>
 <translation id="5560088892362098740">Udløbsdato</translation>
 <translation id="556042886152191864">Knap</translation>
+<translation id="5563910365456880646">siden du gennemførte "Brug et billede til at søge med Google Lens"</translation>
 <translation id="5565871407246142825">Kreditkort</translation>
 <translation id="5567439033041178034">FÅ FLERE OPLYSNINGER</translation>
 <translation id="5578795271662203820">Søg efter billedet på <ph name="SEARCH_ENGINE" /></translation>
@@ -1576,6 +1580,7 @@ Handoff skal være aktiveret i afsnittet Generelt i Indstillinger, og dine enhed
 <translation id="6232329973559504466">Søgning i inkognitotilstand</translation>
 <translation id="6234310016144827337">Tjek din forbindelse, og prøv igen</translation>
 <translation id="6236952928980352967">Gendan advarsel</translation>
+<translation id="623755660902014047">Læsetilstand</translation>
 <translation id="6240553182907836376">Opdater identitetskort</translation>
 <translation id="6240601837375010619">Gem pas</translation>
 <translation id="6241132809279377987">Få adgang til flere iPhone-funktioner med Google-apps</translation>
@@ -1813,6 +1818,7 @@ Skift til <ph name="OTHER_EMAIL" /> for at fortsætte på din computer. Du får 
 <translation id="6930162026494574854">Nulstil oversættelsesindstillinger</translation>
 <translation id="6930799952781667037">Tryk for at skifte til dette sprog.</translation>
 <translation id="6932739965694346873"><ph name="USER_NAME" />, <ph name="EMAIL" />. <ph name="MANAGED_STATUS" />.</translation>
+<translation id="6937083164784433305">{count,plural, =1{Du brugte 1 billede til at søge}one{Du brugte # billede til at søge}other{Du brugte # billeder til at søge}}</translation>
 <translation id="693761253105515415">Angiv en adgangskode</translation>
 <translation id="6945221475159498467">Vælg</translation>
 <translation id="6946722113367118030">Tænker</translation>
@@ -2018,6 +2024,7 @@ Skift til <ph name="OTHER_EMAIL" /> for at fortsætte på din computer. Du får 
 <translation id="7662316065255305764">Websiteoplysninger</translation>
 <translation id="7665369617277396874">Tilføj konto</translation>
 <translation id="7666861622396822790">Du kan administrere dette i <ph name="BEGIN_LINK" />indstillingerne for indhold<ph name="END_LINK" />.</translation>
+<translation id="7669448795744969014">Logget ind som <ph name="USER_EMAIL" />, Google-medlemskab. Åbn kontomenu.</translation>
 <translation id="7669493687462784703">Vil du fortsætte med at downloade en konfigurationsprofil fra <ph name="WEBSITE" />?</translation>
 <translation id="7673346542062368520">Du kan stryge til venstre for at browse i inkognitotilstand.</translation>
 <translation id="7679915578945954324">Websiteadresserne er kopieret</translation>
@@ -2110,6 +2117,7 @@ Skift til <ph name="OTHER_EMAIL" /> for at fortsætte på din computer. Du får 
 <translation id="7972837668077967426">Canvas</translation>
 <translation id="7975036700432177008">Prøv</translation>
 <translation id="797588153137233716">Menu → Historik → Slet browserdata</translation>
+<translation id="7977029776654598145">Under brug</translation>
 <translation id="7977451675950311423">Advarer dig, hvis du bruger en adgangskode, der er blevet kompromitteret som følge af et brud på datasikkerheden.</translation>
 <translation id="797824194429476746">Fanerne forbliver åbne på denne enhed, men gruppen slettes permanent.</translation>
 <translation id="7982789257301363584">Netværk</translation>
@@ -2521,6 +2529,7 @@ Skift til <ph name="OTHER_EMAIL" /> for at fortsætte på din computer. Du får 
 <translation id="954667170699278022">Læseliste</translation>
 <translation id="956066588046842680">Import af disse data er ikke tilladt i henhold til din organisations politik.</translation>
 <translation id="956218893102219091">Brug din præcise lokation for at få de mest nøjagtige Gemini-resultater i stedet for en estimeret lokation baseret på din IP-adresse. <ph name="BEGIN_LINK" />Få flere oplysninger<ph name="END_LINK" /></translation>
+<translation id="960590623979248167">Vis hyperlinks</translation>
 <translation id="961856697154696964">Slet browserdata</translation>
 <translation id="963102227019621224">Web- og appaktivitet</translation>
 <translation id="965259330007686240">Opret et billede med Gemini</translation>

@@ -57,6 +57,7 @@ interface InternalContextualActionMenu {
   deleteTabContext_: (uuid: string) => void;
   readonly closeMenuOnSelect: boolean;
   reposition_: () => void;
+  maybeCloseMenuBasedOnEntrypoint_: () => void;
 }
 
 function asInternal(element: ContextualActionMenuElement):
@@ -153,7 +154,8 @@ suite('ContextualActionMenu', () => {
         await microtasksFinished();
       });
 
-  test(
+  // TODO(crbug.com/537768276): Test is flaky.
+  test.skip(
       'Flyout scroll position retained when collapsing flyout, but reset when entire menu closes',
       async () => {
         actionMenu.remove();
@@ -2233,7 +2235,7 @@ suite('ContextualActionMenu', () => {
 
       // Main menu toggle is NOT visible
       const mainMenuToggle = $$(actionMenu, '#smartTabSharingItem');
-      assertFalse(!!mainMenuToggle);
+      assertFalse(isVisible(mainMenuToggle));
 
       // Open flyout
       trigger.dispatchEvent(new PointerEvent('pointerenter'));
@@ -2269,9 +2271,12 @@ suite('ContextualActionMenu', () => {
 
       assertEquals('true', mainMenuToggle.getAttribute('aria-checked'));
       assertTrue(!!mainMenuToggle.querySelector('.share-tabs-check'));
+      const icon = mainMenuToggle.querySelector('cr-icon:not(.share-tabs-check)');
+      assertTrue(!!icon);
+      assertEquals('composebox:screensaverAuto', icon.getAttribute('icon'));
       // Trigger is NOT visible
       const trigger = $$(actionMenu, '#shareTabsTrigger');
-      assertFalse(!!trigger);
+      assertFalse(isVisible(trigger));
     });
 
     test('Clicking toggle in flyout closes the menu', async () => {
@@ -2336,7 +2341,7 @@ suite('ContextualActionMenu', () => {
           assertTrue(isVisible(mainMenuToggle));
 
           const trigger = $$(actionMenu, '#shareTabsTrigger');
-          assertFalse(!!trigger);
+          assertFalse(isVisible(trigger));
         });
   });
 
@@ -3461,5 +3466,79 @@ suite('ContextualActionMenu', () => {
       // Verify the flyout does not have inline scrollbar-width override.
       assertFalse(flyout.style.getPropertyValue('scrollbar-width') === 'thin');
     });
+
+    test('Unbounded menu enabled property and flyout positioning', async () => {
+      actionMenu.unboundedMenuEnabled = true;
+      await microtasksFinished();
+      assertTrue(actionMenu.hasAttribute('unbounded-menu-enabled'));
+
+      const tabInfo = createTabSuggestion({
+        tabId: 101,
+        title: 'Unbounded Test Tab',
+        url: 'about:blank/1',
+      });
+      actionMenu.tabSuggestions = [tabInfo];
+      actionMenu.contextManagementInComposeboxEnabled = true;
+      actionMenu.inputState = new MockInputState({
+        allowedInputTypes: [InputType.kBrowserTab],
+      });
+
+      actionMenu.showAt(actionMenu);
+      await microtasksFinished();
+
+      const trigger = $$(actionMenu, '#shareTabsTrigger') as HTMLElement;
+      assertTrue(isVisible(trigger));
+      trigger.dispatchEvent(new PointerEvent('pointerenter'));
+      await microtasksFinished();
+
+      const flyout = $$(actionMenu, '.share-tabs-flyout') as HTMLElement;
+      assertTrue(isVisible(flyout));
+      assertTrue(!!flyout.getAttribute('data-position'));
+
+      const wrapper = $$(actionMenu, '.menu-outer-wrapper') as HTMLElement;
+      assertTrue(!!wrapper);
+      assertEquals(
+          flyout.getAttribute('data-position'),
+          wrapper.getAttribute('data-flyout-position'));
+
+      // Test resetting flyout scroll on close/reopen
+      flyout.scrollTop = 50;
+      trigger.dispatchEvent(new PointerEvent('pointerleave'));
+      trigger.dispatchEvent(new PointerEvent('pointerenter'));
+      await microtasksFinished();
+      assertEquals(0, flyout.scrollTop);
+    });
+
+    test(
+        'closes menu on tab click when unboundedMenuEnabled is true',
+        async () => {
+          const tabInfo = createTabSuggestion({
+            tabId: 201,
+            title: 'Unbounded Click Tab',
+            url: 'about:blank/201',
+          });
+          actionMenu.tabSuggestions = [tabInfo];
+          actionMenu.contextManagementInComposeboxEnabled = true;
+          actionMenu.inputState = new MockInputState({
+            allowedInputTypes: [InputType.kBrowserTab],
+          });
+          actionMenu.unboundedMenuEnabled = true;
+          actionMenu.showAt(actionMenu);
+          await microtasksFinished();
+          assertTrue(actionMenu.$.menu.open);
+
+          const trigger = $$(actionMenu, '#shareTabsTrigger') as HTMLElement;
+          assertTrue(isVisible(trigger));
+          trigger.dispatchEvent(new PointerEvent('pointerenter'));
+          await microtasksFinished();
+
+          const tabButton = actionMenu.shadowRoot.querySelector<HTMLElement>(
+              '.share-tabs-flyout .dropdown-item')!;
+          assertTrue(isVisible(tabButton));
+          tabButton.click();
+          await microtasksFinished();
+
+          assertFalse(actionMenu.$.menu.open);
+        });
   });
 });

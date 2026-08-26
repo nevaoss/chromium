@@ -40,6 +40,7 @@
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
+#include "chrome/browser/ui/chrome_pages.h"
 #include "chrome/browser/ui/passwords/ui_utils.h"
 #include "chrome/browser/ui/views/autofill/popup/popup_at_memory_ai_disclosure_view.h"
 #include "chrome/browser/ui/views/autofill/popup/popup_base_view.h"
@@ -47,7 +48,7 @@
 #include "chrome/browser/ui/views/autofill/popup/popup_centered_text_view.h"
 #include "chrome/browser/ui/views/autofill/popup/popup_interactive_row_view.h"
 #include "chrome/browser/ui/views/autofill/popup/popup_loading_view.h"
-#include "chrome/browser/ui/views/autofill/popup/popup_personal_context_notice_view.h"
+#include "chrome/browser/ui/views/autofill/popup/popup_notice_view.h"
 #include "chrome/browser/ui/views/autofill/popup/popup_row_factory_utils.h"
 #include "chrome/browser/ui/views/autofill/popup/popup_row_view.h"
 #include "chrome/browser/ui/views/autofill/popup/popup_search_bar_view.h"
@@ -57,7 +58,9 @@
 #include "chrome/browser/ui/views/autofill/popup/popup_warning_view.h"
 #include "chrome/browser/ui/views/chrome_layout_provider.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
+#include "chrome/common/webui_url_constants.h"
 #include "components/autofill/core/browser/data_model/payments/credit_card.h"
+#include "components/autofill/core/browser/filling/filling_product.h"
 #include "components/autofill/core/browser/metrics/autofill_metrics.h"
 #include "components/autofill/core/browser/studies/autofill_experiments.h"
 #include "components/autofill/core/browser/suggestions/suggestion.h"
@@ -71,7 +74,10 @@
 #include "components/favicon/core/large_icon_service.h"
 #include "components/image_fetcher/core/image_fetcher_service.h"
 #include "components/input/native_web_keyboard_event.h"
+#include "components/optimization_guide/core/feature_registry/feature_registration.h"
+#include "components/optimization_guide/core/model_execution/model_execution_prefs.h"
 #include "components/password_manager/core/browser/password_sync_util.h"
+#include "components/prefs/pref_service.h"
 #include "components/strings/grit/components_strings.h"
 #include "components/sync/service/sync_service.h"
 #include "components/user_education/common/feature_promo/feature_promo_controller.h"
@@ -113,6 +119,70 @@ using views::BubbleBorder;
 namespace autofill {
 
 namespace {
+
+// TODO(b/524157152): Refactor AutofillPopupController to provide this.
+bool IsLoggingDisabledByPolicy(const AutofillPopupController* controller) {
+  if (!controller || !controller->GetWebContents()) {
+    return false;
+  }
+  Profile* profile = Profile::FromBrowserContext(
+      controller->GetWebContents()->GetBrowserContext());
+  if (!profile || !profile->GetPrefs()) {
+    return false;
+  }
+  const int policy_value = profile->GetPrefs()->GetInteger(
+      optimization_guide::prefs::kFindAndFillWithGeminiSettings);
+  return policy_value ==
+         std::to_underlying(
+             optimization_guide::model_execution::prefs::
+                 ModelExecutionEnterprisePolicyValue::kAllowWithoutLogging);
+}
+
+std::unique_ptr<PopupNoticeView> GetPersonalContextNoticeView(
+    PopupRowView::AccessibilitySelectionDelegate& a11y_selection_delegate,
+    base::RepeatingCallback<void(const std::u16string&, bool)>
+        announce_callback,
+    base::WeakPtr<AutofillPopupController> controller,
+    int line_number) {
+  std::string histogram_name =
+      controller &&
+              controller->GetMainFillingProduct() == FillingProduct::kAtMemory
+          ? "PersonalContext.AtMemory.NoticeInteractions"
+          : "PersonalContext.AmbientAutofill.NoticeInteractions";
+  std::u16string title_text = l10n_util::GetStringUTF16(
+      IDS_AUTOFILL_POPUP_PERSONAL_CONTEXT_NOTICE_TITLE);
+  std::u16string subtitle_text = l10n_util::GetStringUTF16(
+      IDS_AUTOFILL_POPUP_PERSONAL_CONTEXT_NOTICE_CONTEXT);
+  std::u16string link_text = l10n_util::GetStringUTF16(
+      IDS_AUTOFILL_POPUP_PERSONAL_CONTEXT_NOTICE_LINK_TEXT);
+  std::u16string accept_button_text = l10n_util::GetStringUTF16(
+      IDS_AUTOFILL_POPUP_PERSONAL_CONTEXT_NOTICE_OK_BUTTON);
+  if (controller) {
+    if (controller->GetMainFillingProduct() == FillingProduct::kAtMemory &&
+        !IsLoggingDisabledByPolicy(controller.get())) {
+      subtitle_text = l10n_util::GetStringUTF16(
+          IDS_AUTOFILL_POPUP_PERSONAL_CONTEXT_NOTICE_CONTEXT_WITH_LOGGING);
+    }
+  }
+  auto on_link_clicked = base::BindRepeating(
+      [](base::WeakPtr<AutofillPopupController> controller) {
+        if (!controller || !controller->GetWebContents()) {
+          return;
+        }
+        Profile* profile = Profile::FromBrowserContext(
+            controller->GetWebContents()->GetBrowserContext());
+        if (!profile) {
+          return;
+        }
+        chrome::ShowSettingsSubPageForProfile(
+            profile, chrome::kSuggestionsFromGeminiSubPage);
+      },
+      controller);
+  return std::make_unique<PopupNoticeView>(
+      a11y_selection_delegate, announce_callback, std::move(controller),
+      line_number, title_text, subtitle_text, link_text, accept_button_text,
+      std::move(on_link_clicked), histogram_name);
+}
 
 // The minimum width should exceed the maximum size of a cursor, which is 128
 // (see crbug.com/40064089).
@@ -260,7 +330,9 @@ PopupViewViews::PopupViewViews(
 PopupViewViews::~PopupViewViews() = default;
 
 void PopupViewViews::OnMouseEntered(const ui::MouseEvent& event) {
-  OnMouseEnteredInChildren();
+  if (parent_ && parent_->get()) {
+    parent_->get()->OnMouseEnteredInChildren();
+  }
 }
 
 void PopupViewViews::OnMouseExited(const ui::MouseEvent& event) {
@@ -362,7 +434,7 @@ void PopupViewViews::MaybeAutoSelectSuggestion(
 
 void PopupViewViews::Hide() {
   open_sub_popup_timer_.Stop();
-  no_selection_sub_popup_close_timer_.Stop();
+  StopSubPopupClosing();
 
   // The controller is no longer valid after it hides us.
   controller_ = nullptr;
@@ -971,7 +1043,7 @@ void PopupViewViews::SetSelectedCell(
     has_keyboard_focus_ = true;
     // The sub-popup hiding is canceled because the newly selected cell will
     // rule the sub-pupop visibility from now.
-    no_selection_sub_popup_close_timer_.Stop();
+    OnMouseEnteredInChildren();
 
     row_with_selected_cell_ = cell_index->first;
     PopupInteractiveRowView& new_selected_row =
@@ -1010,6 +1082,7 @@ void PopupViewViews::SetSelectedCell(
                        autoselect_first_suggestion));
   } else {
     row_with_selected_cell_ = std::nullopt;
+    ScheduleSubPopupClosing();
   }
 }
 
@@ -1249,10 +1322,9 @@ void PopupViewViews::CreateSuggestionViews() {
           break;
         }
         case SuggestionType::kPersonalContextNotice: {
-          rows_.push_back(body_container->AddChildView(
-              std::make_unique<PopupPersonalContextNoticeView>(
-                  /*a11y_selection_delegate=*/*this, a11y_announcer_,
-                  controller(), current_line_number)));
+          rows_.push_back(
+              body_container->AddChildView(GetPersonalContextNoticeView(
+                  *this, a11y_announcer_, controller(), current_line_number)));
           break;
         }
         // The default section contains all selectable rows and includes
@@ -1579,12 +1651,12 @@ void PopupViewViews::OnMouseEnteredInChildren() {
     parent_->get()->OnMouseEnteredInChildren();
   }
 
-  // Cancel scheluled sub-popup closing.
-  no_selection_sub_popup_close_timer_.Stop();
+  // Cancel scheduled sub-popup closing.
+  StopSubPopupClosing();
 }
 
 void PopupViewViews::OnMouseExitedInChildren() {
-  if (GetSelectedCell()) {
+  if (GetSelectedCell() && !row_with_open_sub_popup_) {
     return;
   }
 
@@ -1592,7 +1664,15 @@ void PopupViewViews::OnMouseExitedInChildren() {
     parent_->get()->OnMouseExitedInChildren();
   }
 
-  // Schedule sub-popup closing.
+  ScheduleSubPopupClosing();
+}
+
+void PopupViewViews::ScheduleSubPopupClosing() {
+  if (!row_with_open_sub_popup_ ||
+      no_selection_sub_popup_close_timer_.IsRunning()) {
+    return;
+  }
+
   const base::TimeDelta hide_delay =
       sub_popup_config_ ? sub_popup_config_->no_selection_hide_delay
                         : kNoSelectionHideSubPopupDelay;
@@ -1602,6 +1682,10 @@ void PopupViewViews::OnMouseExitedInChildren() {
       base::BindRepeating(&PopupViewViews::SetRowWithOpenSubPopup,
                           weak_ptr_factory_.GetWeakPtr(), std::nullopt,
                           AutoselectFirstSuggestion(false)));
+}
+
+void PopupViewViews::StopSubPopupClosing() {
+  no_selection_sub_popup_close_timer_.Stop();
 }
 
 bool PopupViewViews::IsFooterScrollable() const {

@@ -457,19 +457,24 @@ export class OmniboxPopupSearchboxElement extends
     }
   }
 
-  protected onInputKeydown_(e: CustomEvent<{key: string}>) {
-    if (e.detail.key === 'ArrowLeft' || e.detail.key === 'ArrowRight') {
+  override async onInputWrapperKeydown(e: KeyboardEvent) {
+    // If the input is already selected, 'ArrowLeft', 'ArrowRight', 'Home',
+    // 'End' should collapse the selection. If `Shift` is held, skip this
+    // behavior and let Blink handle it.
+    if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key) &&
+        !e.shiftKey) {
       const input = this.getInputElement().inputElement;
       if (input.selectionStart === 0 &&
           input.selectionEnd === input.value.length) {
         this.showFullUrlOnDeselect_();
-        if (e.detail.key === 'ArrowLeft') {
+        if (e.key === 'ArrowLeft' || e.key === 'Home') {
           input.setSelectionRange(0, 0);
         } else {
           input.setSelectionRange(input.value.length, input.value.length);
         }
       }
     }
+    await super.onInputWrapperKeydown(e);
   }
 
   protected onInputPaste_(e: ClipboardEvent) {

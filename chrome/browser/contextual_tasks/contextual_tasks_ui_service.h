@@ -79,6 +79,7 @@ struct StartTaskUiOptions {
       omnibox::ChromeAimEntryPoint::UNKNOWN_AIM_ENTRY_POINT;
   bool use_mstk_for_task_association = false;
   bool use_no_animation = false;
+  std::optional<base::TimeTicks> open_time_ticks = std::nullopt;
 };
 
 // A service used to coordinate all of the side panel instances showing an AI
@@ -293,6 +294,11 @@ class ContextualTasksUiService : public KeyedService {
 
   // Returns whether the provided URL is to an AI page.
   virtual bool IsAiUrl(const GURL& url);
+
+  // Returns whether the contextual tasks side panel is open and the given
+  // WebContents is inside the side panel.
+  virtual bool IsSidePanelOpenAndRequestInSidePanel(
+      content::WebContents* web_contents);
 
   // Returns whether the provided task ID is for a task that should show the
   // error page on load.

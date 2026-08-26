@@ -44,7 +44,6 @@
 #include "components/optimization_guide/core/model_execution/test/request_builder.h"
 #include "components/optimization_guide/core/model_execution/test/response_holder.h"
 #include "components/optimization_guide/core/model_execution/test/test_on_device_model_component_state_manager.h"
-#include "components/optimization_guide/core/optimization_guide_constants.h"
 #include "components/optimization_guide/core/optimization_guide_enums.h"
 #include "components/optimization_guide/core/optimization_guide_features.h"
 #include "components/optimization_guide/core/optimization_guide_logger.h"
@@ -155,7 +154,6 @@ class OnDeviceModelServiceControllerTest : public testing::Test {
          {features::kOnDeviceModelPerformanceParams,
           {{"compatible_on_device_performance_classes", "3,4,5,6"},
            {"compatible_low_tier_on_device_performance_classes", "3"}}},
-         {features::kTextSafetyClassifier, {}},
          {features::kOnDeviceModelValidation,
           {{"on_device_model_validation_delay", "0"}}}},
         {});
@@ -747,14 +745,6 @@ TEST_F(OnDeviceModelServiceControllerTest, SessionFailsForInvalidFeature) {
 TEST_F(OnDeviceModelServiceControllerTest, UpdatingSafetyModelEnablesModels) {
   // Verifies that when we start a session before safety is available, that
   // future session that require a safety model still get one.
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitWithFeaturesAndParameters(
-      {
-          {features::kTextSafetyClassifier,
-           {{"on_device_retract_unsafe_content", "true"}}},
-      },
-      {});
-
   FakeAdaptationAsset compose_asset({.config = SimpleComposeConfig()});
   FakeAdaptationAsset test_asset({.config = UnsafeTestConfig()});
   Initialize({
@@ -840,10 +830,6 @@ TEST_F(OnDeviceModelServiceControllerTest, SessionRequiresSafetyModel) {
     EXPECT_FALSE(CreateSession(SessionConfigParams{}));
 
     histogram_tester.ExpectUniqueSample(
-        "OptimizationGuide.ModelExecution."
-        "OnDeviceTextSafetyModelMetadataValidity",
-        TextSafetyModelMetadataValidity::kValid, 1);
-    histogram_tester.ExpectUniqueSample(
         "OptimizationGuide.ModelExecution.OnDeviceModelEligibilityReason."
         "Compose",
         OnDeviceModelEligibilityReason::kSafetyConfigNotAvailableForFeature, 1);
@@ -861,10 +847,6 @@ TEST_F(OnDeviceModelServiceControllerTest, SessionRequiresSafetyModel) {
     task_environment_.RunUntilIdle();  // Wait for assets to be read from disk.
     EXPECT_TRUE(CreateSession(SessionConfigParams{}));
 
-    histogram_tester.ExpectUniqueSample(
-        "OptimizationGuide.ModelExecution."
-        "OnDeviceTextSafetyModelMetadataValidity",
-        TextSafetyModelMetadataValidity::kValid, 1);
     histogram_tester.ExpectUniqueSample(
         "OptimizationGuide.ModelExecution.OnDeviceModelEligibilityReason."
         "Compose",
@@ -889,10 +871,6 @@ TEST_F(OnDeviceModelServiceControllerTest, SessionRequiresSafetyModel) {
 
     EXPECT_FALSE(CreateSession(SessionConfigParams{}));
 
-    histogram_tester.ExpectUniqueSample(
-        "OptimizationGuide.ModelExecution."
-        "OnDeviceTextSafetyModelMetadataValidity",
-        TextSafetyModelMetadataValidity::kValid, 1);
     histogram_tester.ExpectUniqueSample(
         "OptimizationGuide.ModelExecution.OnDeviceModelEligibilityReason."
         "Compose",
@@ -919,26 +897,6 @@ TEST_F(OnDeviceModelServiceControllerTest, SessionRequiresSafetyModel) {
     EXPECT_TRUE(CreateSession(SessionConfigParams{}));
 
     histogram_tester.ExpectUniqueSample(
-        "OptimizationGuide.ModelExecution."
-        "OnDeviceTextSafetyModelMetadataValidity",
-        TextSafetyModelMetadataValidity::kValid, 1);
-    histogram_tester.ExpectUniqueSample(
-        "OptimizationGuide.ModelExecution.OnDeviceModelEligibilityReason."
-        "Compose",
-        OnDeviceModelEligibilityReason::kSuccess, 1);
-  }
-
-  // No safety model received yet but feature flag should disable safety check.
-  {
-    base::test::ScopedFeatureList feature_list;
-    feature_list.InitAndDisableFeature(features::kTextSafetyClassifier);
-    base::HistogramTester histogram_tester;
-
-    broker_.model_provider().RemoveModel(
-        proto::OPTIMIZATION_TARGET_GENERALIZED_SAFETY);
-    EXPECT_TRUE(CreateSession(SessionConfigParams{}));
-
-    histogram_tester.ExpectUniqueSample(
         "OptimizationGuide.ModelExecution.OnDeviceModelEligibilityReason."
         "Compose",
         OnDeviceModelEligibilityReason::kSuccess, 1);
@@ -946,11 +904,6 @@ TEST_F(OnDeviceModelServiceControllerTest, SessionRequiresSafetyModel) {
 }
 
 TEST_F(SessionImplTest, SucceedsWithPassingSafetyChecks) {
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndEnableFeatureWithParameters(
-      features::kTextSafetyClassifier,
-      {{"on_device_retract_unsafe_content", "true"}});
-
   FakeSafetyModelAsset safety_asset([]() {
     auto safety_config = ComposeSafetyConfig();
     safety_config.mutable_safety_category_thresholds()->Add(ForbidUnsafe());
@@ -993,11 +946,6 @@ TEST_F(SessionImplTest, SucceedsWithPassingSafetyChecks) {
 }
 
 TEST_F(SessionImplTest, FailsWithFailingRequestSafetyChecks) {
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndEnableFeatureWithParameters(
-      features::kTextSafetyClassifier,
-      {{"on_device_retract_unsafe_content", "true"}});
-
   FakeSafetyModelAsset safety_asset([]() {
     auto safety_config = ComposeSafetyConfig();
     safety_config.mutable_safety_category_thresholds()->Add(ForbidUnsafe());
@@ -1042,11 +990,6 @@ TEST_F(SessionImplTest, FailsWithFailingRequestSafetyChecks) {
 }
 
 TEST_F(SessionImplTest, FailsWithInvalidRequestSafetyChecks) {
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndEnableFeatureWithParameters(
-      features::kTextSafetyClassifier,
-      {{"on_device_retract_unsafe_content", "true"}});
-
   FakeSafetyModelAsset safety_asset([]() {
     auto safety_config = ComposeSafetyConfig();
     safety_config.mutable_safety_category_thresholds()->Add(ForbidUnsafe());
@@ -1080,11 +1023,6 @@ TEST_F(SessionImplTest, FailsWithInvalidRequestSafetyChecks) {
 }
 
 TEST_F(SessionImplTest, FailsWithFailingRawOutputSafetyChecks) {
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndEnableFeatureWithParameters(
-      features::kTextSafetyClassifier,
-      {{"on_device_retract_unsafe_content", "true"}});
-
   FakeSafetyModelAsset safety_asset([]() {
     auto safety_config = ComposeSafetyConfig();
     safety_config.mutable_safety_category_thresholds()->Add(ForbidUnsafe());
@@ -1129,11 +1067,6 @@ TEST_F(SessionImplTest, FailsWithFailingRawOutputSafetyChecks) {
 }
 
 TEST_F(SessionImplTest, FailsWithInvalidRawOutputChecks) {
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndEnableFeatureWithParameters(
-      features::kTextSafetyClassifier,
-      {{"on_device_retract_unsafe_content", "true"}});
-
   FakeSafetyModelAsset safety_asset([]() {
     auto safety_config = ComposeSafetyConfig();
     safety_config.mutable_safety_category_thresholds()->Add(ForbidUnsafe());
@@ -1168,11 +1101,6 @@ TEST_F(SessionImplTest, FailsWithInvalidRawOutputChecks) {
 }
 
 TEST_F(SessionImplTest, SucceedsWithPassingResponseSafetyCheck) {
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndEnableFeatureWithParameters(
-      features::kTextSafetyClassifier,
-      {{"on_device_retract_unsafe_content", "true"}});
-
   FakeSafetyModelAsset safety_asset([]() {
     auto safety_config = ComposeSafetyConfig();
     {
@@ -1214,11 +1142,6 @@ TEST_F(SessionImplTest, SucceedsWithPassingResponseSafetyCheck) {
 }
 
 TEST_F(SessionImplTest, FailsWithFailingResponseSafetyCheck) {
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndEnableFeatureWithParameters(
-      features::kTextSafetyClassifier,
-      {{"on_device_retract_unsafe_content", "true"}});
-
   FakeSafetyModelAsset safety_asset([]() {
     auto safety_config = ComposeSafetyConfig();
     {
@@ -1261,11 +1184,6 @@ TEST_F(SessionImplTest, FailsWithFailingResponseSafetyCheck) {
 }
 
 TEST_F(SessionImplTest, FailsWithInvalidResponseSafetyCheck) {
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndEnableFeatureWithParameters(
-      features::kTextSafetyClassifier,
-      {{"on_device_retract_unsafe_content", "true"}});
-
   FakeSafetyModelAsset safety_asset([]() {
     auto safety_config = ComposeSafetyConfig();
     {
@@ -1300,57 +1218,7 @@ TEST_F(SessionImplTest, FailsWithInvalidResponseSafetyCheck) {
   ASSERT_FALSE(response_.GetFinalStatus());
 }
 
-TEST_F(SessionImplTest, NoRetractUnsafeContent) {
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndEnableFeatureWithParameters(
-      features::kTextSafetyClassifier,
-      {{"on_device_retract_unsafe_content", "false"}});
 
-  FakeSafetyModelAsset safety_asset([]() {
-    auto safety_config = ComposeSafetyConfig();
-    safety_config.mutable_safety_category_thresholds()->Add(ForbidUnsafe());
-    {
-      auto* check = safety_config.add_request_check();
-      check->mutable_input_template()->Add(
-          FieldSubstitution("request_check: %s", PageUrlField()));
-    }
-    {
-      auto* check = safety_config.mutable_raw_output_check();
-      check->mutable_input_template()->Add(
-          FieldSubstitution("raw_output_check: %s", StringValueField()));
-    }
-    return safety_config;
-  }());
-
-  Initialize({
-      .base_model_content = standard_assets_.base_model_content,
-      .safety = &safety_asset,
-      .language = &standard_assets_.language,
-      .adaptations = {&standard_assets_.compose},
-  });
-
-  auto session = CreateSession(SessionConfigParams{});
-  ASSERT_TRUE(session);
-
-  // Should fail the configured checks, but not not be retracted.
-  broker_.service_settings().set_execute_result({"unsafe_output"});
-  session->ExecuteModel(PageUrlRequest("unsafe_url"),
-                        response_.GetStreamingCallback());
-  ASSERT_TRUE(response_.GetFinalStatus());
-  // Make sure T&S logged.
-  ASSERT_TRUE(response_.model_execution_info());
-  EXPECT_THAT(
-      response_.model_execution_info()
-          ->on_device_model_execution_info()
-          .execution_infos(),
-      ElementsAre(
-          testing::_,  // Base Model Execution
-          ResultOf("check text", &GetCheckText, "request_check: unsafe_url"),
-          ResultOf("check text", &GetCheckText,  // partial check
-                   "raw_output_check: unsafe_output"),
-          ResultOf("check text", &GetCheckText,  // complete check
-                   "raw_output_check: unsafe_output")));
-}
 
 TEST_F(SessionImplTest, ReturnsErrorOnServiceDisconnect) {
   base::test::ScopedFeatureList feature_list;
@@ -2431,12 +2299,9 @@ TEST_P(OnDeviceModelServiceControllerTsIntervalTest,
        DetectsRepeatsWithSafetyModel) {
   base::HistogramTester histogram_tester;
   base::test::ScopedFeatureList feature_list;
-  feature_list.InitWithFeaturesAndParameters(
-      {{features::kOptimizationGuideOnDeviceModel,
-        {{"on_device_model_retract_repeats", "false"}}},
-       {features::kTextSafetyClassifier,
-        {{"on_device_retract_unsafe_content", "true"}}}},
-      {});
+  feature_list.InitAndEnableFeatureWithParameters(
+      features::kOptimizationGuideOnDeviceModel,
+      {{"on_device_model_retract_repeats", "false"}});
 
   FakeSafetyModelAsset safety_asset([]() {
     auto safety_config = ComposeSafetyConfig();
@@ -3270,11 +3135,6 @@ TEST_F(SessionImplTest, CloneUsesSessionTopKAndTemperature) {
 }
 
 TEST_F(SessionImplTest, CloneFailsWithFailingRequestSafetyChecks) {
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndEnableFeatureWithParameters(
-      features::kTextSafetyClassifier,
-      {{"on_device_retract_unsafe_content", "true"}});
-
   FakeSafetyModelAsset safety_asset([]() {
     auto safety_config = ComposeSafetyConfig();
     safety_config.mutable_safety_category_thresholds()->Add(ForbidUnsafe());

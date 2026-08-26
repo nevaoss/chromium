@@ -28,6 +28,7 @@
 #include "chrome/browser/ui/bookmarks/bookmark_bar.h"
 #include "chrome/browser/ui/bookmarks/bookmark_bar_controller.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/browser_window/public/create_browser_window.h"
 #include "chrome/browser/ui/browser_window_deleter.h"
 #include "chrome/browser/ui/navigator/browser_navigator_params.h"
 #include "chrome/browser/ui/tabs/tab_change_type.h"
@@ -58,13 +59,8 @@
 #error This file should only be included on desktop.
 #endif
 
-#if BUILDFLAG(IS_OZONE)
-#include "ui/ozone/public/platform_session_manager.h"
-#endif
-
 class BackgroundContents;
 class BrowserInitState;
-class BrowserView;
 class BrowserWindow;
 class BrowserWindowFeatures;
 class FindBarController;
@@ -285,23 +281,8 @@ class Browser : public TabStripModelObserver,
 
   // Constructors, Creation, Showing //////////////////////////////////////////
 
-  // Creates a browser instance with the provided params. Returns an unowned
-  // pointer to the created browser.
-  // Crashes if the requested browser creation is not allowed.
-  // For example, browser creation will not be allowed for profiles that
-  // disallow browsing (like sign-in profile on Chrome OS).
-  //
-  // Unless |params->window| is specified, a new BrowserWindow will be created
-  // for the browser - the created BrowserWindow will take the ownership of the
-  // created Browser instance.
-  //
-  // If |params.window| is set, the caller is expected to take the ownership
-  // of the created Browser instance.
-  static Browser* Create(const CreateParams& params);
-
   // WARNING: Use of this is DEPRECATED and exists only to support pre-existing
-  // browser unittests. Similar to Create() above, however the created browser
-  // is owned by the caller.
+  // browser unittests.
   // TODO(crbug.com/417766643): Remove this once all use of Browser in unittests
   // has been eliminated.
   static std::unique_ptr<Browser> DeprecatedCreateOwnedForTesting(
@@ -320,18 +301,8 @@ class Browser : public TabStripModelObserver,
 
   // Accessors ////////////////////////////////////////////////////////////////
 
-  // In production code, each instance of Browser will always instantiate an
-  // instance of BrowserView in the constructor. Some tests instantiate a
-  // Browser without a BrowserView: this is an anti-pattern and should be
-  // avoided.
-  BrowserView& GetBrowserView();
-
   base::WeakPtr<Browser> AsWeakPtr();
   base::WeakPtr<const Browser> AsWeakPtr() const;
-
-  // State Storage and Retrieval for UI ///////////////////////////////////////
-
-  GURL GetNewTabURL() const;
 
   // OnBeforeUnload handling //////////////////////////////////////////////////
 
@@ -346,15 +317,6 @@ class Browser : public TabStripModelObserver,
 
 
   // External state change handling ////////////////////////////////////////////
-
-  // Invoked at the end of a fullscreen transition.
-  void WindowFullscreenStateChanged();
-
-  // Only used on Mac. Called when the top ui style has been changed since this
-  // may trigger bookmark bar state change.
-  void FullscreenTopUIStateChanged();
-
-  void OnFindBarVisibilityChanged();
 
   // Called by Navigate() when a navigation has occurred in a tab in
   // this Browser. Updates the UI for the start of this navigation.
@@ -374,11 +336,6 @@ class Browser : public TabStripModelObserver,
   void OnTabGroupFocusChanged(
       std::optional<tab_groups::TabGroupId> new_focused_group,
       std::optional<tab_groups::TabGroupId> old_focused_group) override;
-
-  // Gets the browser for opening chrome:// pages. This will return the opener
-  // browser if the current browser is in picture-in-picture mode, otherwise
-  // returns the current browser.
-  BrowserWindowInterface* GetBrowserForOpeningWebUi();
 
   std::vector<StatusBubble*> GetStatusBubblesForTesting();
   UnloadController* GetUnloadControllerForTesting() {
@@ -433,10 +390,6 @@ class Browser : public TabStripModelObserver,
   DesktopBrowserWindowCapabilities* capabilities() override;
   const DesktopBrowserWindowCapabilities* capabilities() const override;
 
-  // Called by BrowserView on active change for the browser.
-  void DidBecomeActive();
-  void DidBecomeInactive();
-
   // Synchronously destroys the browser, `this` is no longer valid after the
   // operation completes.
   // WARNING: Clients should generally not use this and instead prefer
@@ -444,18 +397,13 @@ class Browser : public TabStripModelObserver,
   // async and allows graceful teardown of the tab strip and associated data.
   void SynchronouslyDestroyBrowser();
 
-#if BUILDFLAG(IS_OZONE)
-  const std::optional<ui::PlatformSessionWindowData>& platform_session_data()
-      const {
-    return platform_session_data_;
-  }
-#endif
-
  private:
   friend class BrowserTest;
   friend class BrowserWebContentsDelegate;
   friend class ExclusiveAccessTest;
   friend class FullscreenControllerInteractiveTest;
+  friend BrowserWindowInterface* CreateBrowserWindow(
+      BrowserWindowCreateParams create_params);
   FRIEND_TEST_ALL_PREFIXES(AppModeTest, EnableAppModeTest);
   FRIEND_TEST_ALL_PREFIXES(BrowserCloseTest, LastIncognito);
   FRIEND_TEST_ALL_PREFIXES(BrowserCloseTest, LastRegular);
@@ -479,6 +427,20 @@ class Browser : public TabStripModelObserver,
     // Result of the tab strip not having any significant tabs.
     kEmpty
   };
+
+  // Creates a browser instance with the provided params. Returns an unowned
+  // pointer to the created browser.
+  // Crashes if the requested browser creation is not allowed.
+  // For example, browser creation will not be allowed for profiles that
+  // disallow browsing (like sign-in profile on Chrome OS).
+  //
+  // Unless |params->window| is specified, a new BrowserWindow will be created
+  // for the browser - the created BrowserWindow will take the ownership of the
+  // created Browser instance.
+  //
+  // If |params.window| is set, the caller is expected to take the ownership
+  // of the created Browser instance.
+  static Browser* Create(const CreateParams& params);
 
   explicit Browser(const CreateParams& params);
 
@@ -617,9 +579,6 @@ class Browser : public TabStripModelObserver,
   // This Browser's window.
   std::unique_ptr<BrowserWindow, BrowserWindowDeleter> window_;
 
-  // The active state of this browser.
-  bool is_active_ = false;
-
   std::unique_ptr<TabStripModelDelegate> const tab_strip_model_delegate_;
   std::unique_ptr<TabStripModel> const tab_strip_model_;
 
@@ -647,10 +606,6 @@ class Browser : public TabStripModelObserver,
   // If true, immediately updates the UI when scheduled.
   bool update_ui_immediately_for_testing_ = false;
 
-  // The opener browser of the document picture-in-picture browser. Null if the
-  // current browser is a regular browser.
-  raw_ptr<BrowserWindowInterface> opener_browser_ = nullptr;
-
   WebContentsCollection web_contents_collection_{this};
 
   // If true, the Browser window has been closed and this will be deleted
@@ -673,14 +628,6 @@ class Browser : public TabStripModelObserver,
       base::RepeatingCallbackList<void(BrowserWindowInterface*)>;
   DidActiveTabChangeCallbackList did_active_tab_change_callback_list_;
 
-  using DidBecomeActiveCallbackList =
-      base::RepeatingCallbackList<void(BrowserWindowInterface*)>;
-  DidBecomeActiveCallbackList did_become_active_callback_list_;
-
-  using DidBecomeInactiveCallbackList =
-      base::RepeatingCallbackList<void(BrowserWindowInterface*)>;
-  DidBecomeInactiveCallbackList did_become_inactive_callback_list_;
-
   ui::UnownedUserDataHost unowned_user_data_host_;
 
   // Creation and initial parameters of this browser window. Constructed early
@@ -690,14 +637,6 @@ class Browser : public TabStripModelObserver,
   std::unique_ptr<BrowserInitState> init_state_;
 
   std::unique_ptr<BrowserWindowFeatures> features_;
-
-#if BUILDFLAG(IS_OZONE)
-  // If supported by the platform, this stores stores data related to the
-  // windowing system level session. E.g: session and window IDs. See
-  // ui/ozone/public/platform_session_manager.h for more details.
-  std::optional<ui::PlatformSessionWindowData> platform_session_data_ =
-      std::nullopt;
-#endif
 
   // Tracks whether the browser object is fully initialized.
   bool is_initialized_ = false;

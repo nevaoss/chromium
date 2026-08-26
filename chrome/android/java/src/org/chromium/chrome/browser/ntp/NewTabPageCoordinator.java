@@ -369,7 +369,9 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
         mContextMenuStartPosition =
                 ReturnToChromeUtil.calculateContextMenuStartPosition(mActivity.getResources());
 
-        if (mIsLff) {
+        if (mIsLff
+                || NewTabPageUtils.getPaddingStyleForAurora()
+                        != NewTabPageUtils.PaddingStyle.DEFAULT) {
             mDisplayStyleObserver = this::onDisplayStyleChanged;
             mUiConfig.addObserver(mDisplayStyleObserver);
         } else {
@@ -560,11 +562,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
         mComposeplateCoordinator.setComposeplateButtonClickListener(
                 this::onComposeplateButtonClicked);
 
-        if (shouldApplyWhiteBackgroundOnSearchBox()) {
-            // It is safe to call mComposeplateCoordinator.applyWhiteBackground() again since it is
-            // no-op if the white background has been applied.
-            mComposeplateCoordinator.applyWhiteBackground(/* apply= */ true);
-        }
+        updateComposeplateBackground();
     }
 
     private void onComposeplateButtonClicked(View view) {
@@ -976,6 +974,10 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
             mNtpSearchBox.setTopMargin(topMargin);
         }
 
+        setLogoTopMargin();
+    }
+
+    void setLogoTopMargin() {
         if (mLogoCoordinator != null) {
             mLogoCoordinator.setTopMargin(getLogoTopMargin());
         }
@@ -1453,7 +1455,12 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
     }
 
     private void onDisplayStyleChanged(UiConfig.DisplayStyle newDisplayStyle) {
-        if (!mIsLff) return;
+        if (!mIsLff) {
+            // Logo and Doodle have different top margin on landscape and portrait modes on phones,
+            // update when the screen rotates.
+            setLogoTopMargin();
+            return;
+        }
 
         updateDoodleOnTablet();
         updateSearchBoxTwoSideMargin();

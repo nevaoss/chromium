@@ -7,7 +7,6 @@
 #include <memory>
 
 #include "base/run_loop.h"
-#include "base/task/single_thread_task_runner.h"
 #include "base/test/bind.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/tabs/tab_strip_api/controllers/tab_strip_ui_controller_injector_impl.h"
@@ -21,41 +20,40 @@
 #include "mojo/public/cpp/bindings/remote.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/gfx/geometry/point.h"
-#include "ui/views/controls/menu/menu_controller.h"
 #include "url/gurl.h"
 
 namespace tabs_api {
 
-class TestContextMenuAdapter : public ContextMenuAdapter {
+class ToyContextMenuAdapter : public ContextMenuAdapter {
  public:
-  explicit TestContextMenuAdapter(ContextMenuAdapter* real_adapter)
-      : real_adapter_(real_adapter) {}
+  ToyContextMenuAdapter() = default;
+  ~ToyContextMenuAdapter() override = default;
 
   base::expected<void, mojo_base::mojom::ErrorPtr> ShowTabContextMenu(
       tabs::TabHandle handle,
       const gfx::Point& location) override {
-    // Post a task to verify the menu is shown and then close it.
-    // This runs inside the nested run loop started by ShowTabContextMenu.
-    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE, base::BindOnce([]() {
-          auto* menu_controller = views::MenuController::GetActiveInstance();
-          EXPECT_NE(menu_controller, nullptr);
-          if (menu_controller) {
-            menu_controller->Cancel(views::MenuController::ExitType::kAll);
-          }
-        }));
-    return real_adapter_->ShowTabContextMenu(handle, location);
+    called_ = true;
+    last_handle_ = handle;
+    last_location_ = location;
+    return base::ok();
   }
 
+  bool called() const { return called_; }
+  tabs::TabHandle last_handle() const { return last_handle_; }
+  gfx::Point last_location() const { return last_location_; }
+
  private:
-  raw_ptr<ContextMenuAdapter> real_adapter_;
+  bool called_ = false;
+  tabs::TabHandle last_handle_;
+  gfx::Point last_location_;
 };
 
 class TestTabStripUIControllerInjector : public TabStripUIControllerInjector {
  public:
-  explicit TestTabStripUIControllerInjector(
-      std::unique_ptr<TabStripUIControllerInjectorImpl> impl)
-      : impl_(std::move(impl)) {}
+  TestTabStripUIControllerInjector(
+      std::unique_ptr<TabStripUIControllerInjectorImpl> impl,
+      ContextMenuAdapter* toy_adapter)
+      : impl_(std::move(impl)), toy_adapter_(toy_adapter) {}
 
   BrowserAdapter& browser_adapter() override {
     return impl_->browser_adapter();
@@ -63,17 +61,11 @@ class TestTabStripUIControllerInjector : public TabStripUIControllerInjector {
   TabStripModelAdapter& tab_strip_model_adapter() override {
     return impl_->tab_strip_model_adapter();
   }
-  ContextMenuAdapter& context_menu_adapter() override {
-    if (!test_context_menu_adapter_) {
-      test_context_menu_adapter_ = std::make_unique<TestContextMenuAdapter>(
-          &impl_->context_menu_adapter());
-    }
-    return *test_context_menu_adapter_;
-  }
+  ContextMenuAdapter& context_menu_adapter() override { return *toy_adapter_; }
 
  private:
   std::unique_ptr<TabStripUIControllerInjectorImpl> impl_;
-  std::unique_ptr<TestContextMenuAdapter> test_context_menu_adapter_;
+  raw_ptr<ContextMenuAdapter> toy_adapter_;
 };
 
 class TabStripUIControllerImplBrowserTest : public InProcessBrowserTest {
@@ -83,19 +75,23 @@ class TabStripUIControllerImplBrowserTest : public InProcessBrowserTest {
 
   void SetUpOnMainThread() override {
     InProcessBrowserTest::SetUpOnMainThread();
+    toy_context_menu_adapter_ = std::make_unique<ToyContextMenuAdapter>();
     ui_controller_ = std::make_unique<TabStripUIControllerImpl>(
         std::make_unique<TestTabStripUIControllerInjector>(
             std::make_unique<TabStripUIControllerInjectorImpl>(
-                browser(), browser()->tab_strip_model())));
+                browser(), browser()->tab_strip_model()),
+            toy_context_menu_adapter_.get()));
   }
 
   void TearDownOnMainThread() override {
     ui_controller_.reset();
+    toy_context_menu_adapter_.reset();
     InProcessBrowserTest::TearDownOnMainThread();
   }
 
  protected:
   std::unique_ptr<TabStripUIControllerImpl> ui_controller_;
+  std::unique_ptr<ToyContextMenuAdapter> toy_context_menu_adapter_;
 };
 
 IN_PROC_BROWSER_TEST_F(TabStripUIControllerImplBrowserTest,
@@ -120,6 +116,10 @@ IN_PROC_BROWSER_TEST_F(TabStripUIControllerImplBrowserTest,
             run_loop.Quit();
           }));
   run_loop.Run();
+
+  EXPECT_TRUE(toy_context_menu_adapter_->called());
+  EXPECT_EQ(toy_context_menu_adapter_->last_location(), gfx::Point(100, 100));
+  EXPECT_EQ(toy_context_menu_adapter_->last_handle(), tab_handle);
 }
 
 }  // namespace tabs_api

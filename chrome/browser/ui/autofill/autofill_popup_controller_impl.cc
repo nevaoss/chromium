@@ -78,7 +78,6 @@ namespace {
 // enforces these paint checks.
 bool ShouldEnforcePaintChecks(AutofillSuggestionTriggerSource trigger_source) {
   switch (trigger_source) {
-    case AutofillSuggestionTriggerSource::kPlusAddressUpdatedInBrowserProcess:
     case AutofillSuggestionTriggerSource::kAtMemoryContextMenu:
     case AutofillSuggestionTriggerSource::kAtMemoryInactivityNudge:
     case AutofillSuggestionTriggerSource::kAtMemoryKeyboardShortcut:
@@ -108,7 +107,6 @@ bool ShouldEnforcePaintChecks(AutofillSuggestionTriggerSource trigger_source) {
 // lockout.
 bool ShouldResetIdleBarrier(AutofillSuggestionTriggerSource trigger_source) {
   switch (trigger_source) {
-    case AutofillSuggestionTriggerSource::kPlusAddressUpdatedInBrowserProcess:
     case AutofillSuggestionTriggerSource::kAtMemoryContextMenu:
     case AutofillSuggestionTriggerSource::kAtMemoryInactivityNudge:
     case AutofillSuggestionTriggerSource::kAtMemoryKeyboardShortcut:
@@ -237,7 +235,6 @@ std::optional<AutofillPopupView::SubPopupConfig> GetSubPopupConfig(
     case AutofillSuggestionTriggerSource::kComposeDialogLostFocus:
     case AutofillSuggestionTriggerSource::kComposeDelayedProactiveNudge:
     case AutofillSuggestionTriggerSource::kPasswordManagerProcessedFocusedField:
-    case AutofillSuggestionTriggerSource::kPlusAddressUpdatedInBrowserProcess:
     case AutofillSuggestionTriggerSource::kProactivePasswordRecovery:
     case AutofillSuggestionTriggerSource::kGlic:
     case AutofillSuggestionTriggerSource::kUnspecified:
@@ -484,7 +481,8 @@ void AutofillPopupControllerImpl::UpdateDataListValues(
 
 bool AutofillPopupControllerImpl::IsViewVisibilityAcceptingThresholdEnabled()
     const {
-  return !disable_threshold_for_testing_;
+  return !disable_threshold_for_testing_ &&
+         ShouldResetIdleBarrier(trigger_source_);
 }
 
 bool AutofillPopupControllerImpl::IsSearching() const {
@@ -669,7 +667,6 @@ AutofillPopupControllerImpl::GetSearchBarConfig(
     case AutofillSuggestionTriggerSource::kComposeDialogLostFocus:
     case AutofillSuggestionTriggerSource::kComposeDelayedProactiveNudge:
     case AutofillSuggestionTriggerSource::kPasswordManagerProcessedFocusedField:
-    case AutofillSuggestionTriggerSource::kPlusAddressUpdatedInBrowserProcess:
     case AutofillSuggestionTriggerSource::kProactivePasswordRecovery:
     case AutofillSuggestionTriggerSource::kGlic:
     case AutofillSuggestionTriggerSource::kUnspecified:

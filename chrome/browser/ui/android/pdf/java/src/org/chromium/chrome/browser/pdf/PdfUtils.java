@@ -354,7 +354,7 @@ public class PdfUtils {
                 File file = new File(pdfFilePath);
                 return ChromeFileProvider.generateUri(file);
             }
-        } catch (Exception e) {
+        } catch (IllegalArgumentException | NullPointerException e) {
             Log.e(TAG, "Couldn't generate Uri: " + e);
             return null;
         }
@@ -414,7 +414,7 @@ public class PdfUtils {
             String decodedUrl = uri.getQueryParameter(UrlConstants.PDF_URL_QUERY_PARAM);
             recordIsPdfDownloadUrlDecoded(true);
             return decodedUrl;
-        } catch (Exception e) {
+        } catch (UnsupportedOperationException | NullPointerException e) {
             recordIsPdfDownloadUrlDecoded(false);
             Log.e(TAG, "Unsupported encoding: " + e.getMessage());
             return null;
@@ -490,6 +490,16 @@ public class PdfUtils {
      */
     public static boolean isInlinePdfV2DownloadEnabled() {
         return isInlinePdfV2Enabled() && ChromeFeatureList.sInlinePdfV2Download.isEnabled();
+    }
+
+    /**
+     * Checks whether form filling for inline PDF V2 feature is enabled.
+     *
+     * @return {@code true} if form filling for inline PDF V2 feature is enabled, {@code false}
+     *     otherwise.
+     */
+    public static boolean isInlinePdfV2FormFillingEnabled() {
+        return isInlinePdfV2Enabled() && ChromeFeatureList.sInlinePdfV2EnableFormFilling.getValue();
     }
 
     /** Returns {@code true} if {@link PdfViewFragment} is reused on activity restart. */

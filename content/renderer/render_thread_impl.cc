@@ -708,7 +708,7 @@ bool RenderThreadImpl::ShouldBeDestroyed() {
   return false;
 }
 
-IPC::SyncChannel* RenderThreadImpl::GetChannel() {
+IPC::ChannelProxy* RenderThreadImpl::GetChannel() {
   return channel();
 }
 

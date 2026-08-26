@@ -34,8 +34,6 @@ class Route : public GarbageCollected<Route> {
         return matches_from_;
       case NavigationPreposition::kTo:
         return matches_to_;
-      case NavigationPreposition::kWith:
-        return matches_with_;
     }
   }
 
@@ -47,16 +45,12 @@ class Route : public GarbageCollected<Route> {
   // current state.
   void UpdateMatchStatus(const NavigationState*);
 
-  bool URLPatternMatchesURLAndHref(const KURL& active_navigation_url,
-                                   const KURL& href_url) const;
-
  private:
   Member<Document> document_;
   HeapVector<Member<URLPattern>> patterns_;
   bool matches_at_ = false;
   bool matches_from_ = false;
   bool matches_to_ = false;
-  bool matches_with_ = false;
 };
 
 }  // namespace blink

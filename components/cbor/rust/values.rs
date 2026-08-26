@@ -7,7 +7,6 @@
 // `MapKey`), remove all manual inspection (`kind()`) and payload extraction
 // (`as_int()`, `as_string()`, `as_array()`, etc.) methods below, as well as the
 // `MapKeyKind` and `ValueKind` proxy enums.
-use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 use core::cmp::Ordering;
 
@@ -40,7 +39,7 @@ pub enum Value<'a> {
     Bytestring(&'a [u8]),
     String(&'a str),
     Array(Vec<Value<'a>>),
-    Map(BTreeMap<MapKey<'a>, Value<'a>>),
+    Map(Map<'a>),
     Boolean(bool),
     Float(f64),
     Null,
@@ -125,11 +124,9 @@ impl<'a> Value<'a> {
         }
     }
 
-    pub fn map_entries(&self) -> Option<Vec<MapEntryRef<'a, '_>>> {
+    pub fn map_entries(&self) -> Option<&[MapEntry<'a>]> {
         match self {
-            Value::Map(m) => {
-                Some(m.iter().map(|(k, v)| MapEntryRef { key: k, value: v }).collect())
-            }
+            Value::Map(m) => Some(m.as_slice()),
             _ => None,
         }
     }
@@ -147,9 +144,75 @@ impl<'a> From<MapKey<'a>> for Value<'a> {
 
 #[repr(C)]
 #[derive(Debug, PartialEq, Clone)]
-pub struct MapEntryRef<'a, 'b> {
-    pub key: &'b MapKey<'a>,
-    pub value: &'b Value<'a>,
+pub struct MapEntry<'a> {
+    pub key: MapKey<'a>,
+    pub value: Value<'a>,
+}
+
+impl<'a> From<(MapKey<'a>, Value<'a>)> for MapEntry<'a> {
+    fn from((key, value): (MapKey<'a>, Value<'a>)) -> Self {
+        Self { key, value }
+    }
+}
+
+/// A wrapper around `Vec<MapEntry<'a>>` that represents a collection whose
+/// elements are guaranteed to be sorted by key and unique.
+#[derive(Debug, PartialEq, Clone, Default)]
+pub struct Map<'a>(Vec<MapEntry<'a>>);
+
+impl<'a> Map<'a> {
+    pub fn new() -> Self {
+        Self(Vec::new())
+    }
+
+    /// Creates a new `Map` from a `Vec` without checking if the elements
+    /// are sorted or unique in release builds.
+    ///
+    /// Caller must ensure that `vec` is sorted by key and unique.
+    pub fn from_sorted_vec_unchecked(vec: Vec<MapEntry<'a>>) -> Self {
+        debug_assert!(
+            vec.is_sorted_by(|a, b| a.key < b.key),
+            "CBOR map entries must be sorted by key and unique"
+        );
+        Self(vec)
+    }
+
+    pub fn as_slice(&self) -> &[MapEntry<'a>] {
+        self.0.as_slice()
+    }
+}
+
+impl<'a> From<Vec<MapEntry<'a>>> for Map<'a> {
+    fn from(mut vec: Vec<MapEntry<'a>>) -> Self {
+        vec.sort_by(|a, b| a.key.cmp(&b.key));
+        Self(vec)
+    }
+}
+
+impl<'a> core::ops::Deref for Map<'a> {
+    type Target = [MapEntry<'a>];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<'a> IntoIterator for Map<'a> {
+    type Item = MapEntry<'a>;
+    type IntoIter = alloc::vec::IntoIter<MapEntry<'a>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
+impl<'a, 'b> IntoIterator for &'b Map<'a> {
+    type Item = &'b MapEntry<'a>;
+    type IntoIter = core::slice::Iter<'b, MapEntry<'a>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.iter()
+    }
 }
 
 #[repr(C)]

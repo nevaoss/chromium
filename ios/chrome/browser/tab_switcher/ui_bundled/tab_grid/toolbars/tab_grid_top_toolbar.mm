@@ -97,9 +97,6 @@ CGFloat HorizontalMargin() {
   TabGridToolbarBackground* _backgroundView;
   TabGridToolbarScrollingBackground* _scrollBackgroundView;
 
-  // Configures the responder following the receiver in the responder chain.
-  UIResponder* _followingNextResponder;
-
   // The button to access the page action menu.
   PageActionMenuEntrypointView* _pageActionMenuEntrypointView;
 
@@ -792,10 +789,6 @@ CGFloat HorizontalMargin() {
   [_searchBar resignFirstResponder];
 }
 
-- (void)respondBeforeResponder:(UIResponder*)nextResponder {
-  _followingNextResponder = nextResponder;
-}
-
 - (void)setBackgroundContentOffset:(CGPoint)backgroundContentOffset
                           animated:(BOOL)animated {
   [_scrollBackgroundView setContentOffset:backgroundContentOffset
@@ -808,16 +801,13 @@ CGFloat HorizontalMargin() {
   return @[ UIKeyCommand.cr_closeAll, UIKeyCommand.cr_close ];
 }
 
-- (UIResponder*)nextResponder {
-  return _followingNextResponder;
-}
-
 - (BOOL)canPerformAction:(SEL)action withSender:(id)sender {
   if (sel_isEqual(action, @selector(keyCommand_closeAll))) {
     return _closeAllActionEnabled;
   }
   if (sel_isEqual(action, @selector(keyCommand_close))) {
-    return _exitTabGridButton.enabled || _mode == TabGridMode::kSearch;
+    return _exitTabGridButton.enabled || _mode == TabGridMode::kSearch ||
+           _mode == TabGridMode::kSelection;
   }
   if (sel_isEqual(action, @selector(keyCommand_find))) {
     return _searchButton.enabled;

@@ -573,6 +573,7 @@ Du kannst erst neue Lesezeichen in deinem Konto speichern, wenn du einige gelös
 <translation id="7173822816570314652">In deiner Organisation werden Chromium-Daten nach <ph name="TIMEOUT_DURATION" /> Inaktivität gelöscht. Dazu können der Verlauf, Autofill-Daten und Downloads gehören.</translation>
 <translation id="718435575166326686">Chromium benötigt die Kameraberechtigung für diese Website</translation>
 <translation id="7196312274710523067">Chromium konnte nicht gestartet werden. Versuche es noch einmal.</translation>
+<translation id="7204669035546236137">Mit Gemini in Chromium zu allem, was du siehst, Fragen stellen</translation>
 <translation id="7213008767289637091">Du kannst Chromium im Dock behalten, um jederzeit schnell darauf zugreifen zu können</translation>
 <translation id="7213407614656404070">Chromium immer verwenden, wenn du auf Links in Nachrichten, Dokumenten und anderen Apps klickst</translation>
 <translation id="7216228761061470870">Wenn du die Bildersuche auf dem Computer verwendest, werden der Seitentitel, die URL und der Inhalt, einschließlich PDFs, an den Server gesendet</translation>
@@ -582,7 +583,6 @@ Du kannst erst neue Lesezeichen in deinem Konto speichern, wenn du einige gelös
 <translation id="7288567540154601580">Tabs und Erweiterungen</translation>
 <translation id="7295544978856094497">{NUM_EXTENSIONS,plural, =1{Chromium empfiehlt, sie zu entfernen}other{Chromium empfiehlt, sie zu entfernen}}</translation>
 <translation id="7296334833518879294">Wenn du Systemaudio teilen möchtest, öffne die Systemeinstellungen und aktiviere die Option „Nur Systemaudio aufzeichnen“ für Chromium. Du musst Chromium dann neu starten.</translation>
-<translation id="7309928523159922338">Mithilfe der Anzeigenanalyse können von dir besuchte Websites Informationen von Chromium anfordern, mit denen sie die Leistung ihrer Werbung analysieren können. Durch die Anzeigenanalyse wird das websiteübergreifende Tracking eingeschränkt, indem so wenig Informationen wie möglich zwischen Websites ausgetauscht werden.</translation>
 <translation id="731795002583552498">Chromium wird aktualisiert</translation>
 <translation id="7318036098707714271">Deine Einstellungsdatei ist beschädigt oder ungültig.
 

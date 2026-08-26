@@ -156,7 +156,7 @@ found in the LICENSE file.
     <dimen name="tile_view_monogram_size_modern">26dp</dimen>
     <dimen name="tile_view_icon_margin_top_modern">19dp</dimen>
     <dimen name="tile_view_monogram_margin_top_modern">18dp</dimen>
-    <dimen name="tile_view_icon_background_margin_top_modern">7dp</dimen>
+    <dimen name="tile_view_icon_background_margin_top_modern">8dp</dimen>
     <dimen name="tile_view_offline_badge_size_modern">16dp</dimen>
     <dimen name="tile_view_offline_badge_margin_top_modern">7dp</dimen>
     <dimen name="tile_view_offline_badge_margin_end_modern">9dp</dimen>
@@ -165,7 +165,7 @@ found in the LICENSE file.
     <dimen name="tile_view_padding">4dp</dimen>
     <dimen name="tile_view_padding_edge_portrait">12dp</dimen>
     <dimen name="tile_view_padding_landscape">16dp</dimen>
-    <dimen name="tile_view_title_margin_top_modern">63dp</dimen>
+    <dimen name="tile_view_title_margin_top_modern">64dp</dimen>
     <dimen name="tile_view_padding_edge_tablet">20dp</dimen>
     <dimen name="tile_view_padding_interval_tablet">16dp</dimen>
     <dimen name="tile_view_divider_thickness">1dp</dimen>
@@ -227,6 +227,10 @@ found in the LICENSE file.
     <item name="home_surface_search_box_background_alpha" format="float" type="dimen">0.15</item>
     <dimen name="home_surface_ui_background_radius">24dp</dimen>
     <dimen name="home_surface_search_box_background_radius">100dp</dimen>
+    <!-- Spacing between sections. -->
+    <dimen name="ntp_section_top_margin">12dp</dimen>
+    <dimen name="ntp_section_top_margin_small">8dp</dimen>
+    <dimen name="ntp_section_bottom_margin">4dp</dimen>
 
     <!-- Single Tab module -->
     <dimen name="single_tab_module_tab_thumbnail_size_big">114dp</dimen>

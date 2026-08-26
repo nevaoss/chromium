@@ -12,7 +12,6 @@
 #include "chrome/browser/glic/public/glic_keyed_service_factory.h"
 #include "chrome/browser/glic/test_support/glic_browser_test.h"
 #include "chrome/browser/glic/test_support/glic_test_util.h"
-#include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/common/chrome_features.h"
 #include "content/public/test/browser_test.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -59,7 +58,6 @@ IN_PROC_BROWSER_TEST_F(GlicActiveInstanceSharingManagerBrowserTest,
   // 6. Verify another browser window doesn't see it (delegation follows active
   // window). Create another browser.
   BrowserWindowInterface* browser2 = CreateAdditionalBrowserWindow();
-  browser2->GetWindow()->Activate();
 
   // Now `active_instance` for the sharing manager should be null (or whatever
   // is on browser2, which is nothing yet). Note:
@@ -67,7 +65,7 @@ IN_PROC_BROWSER_TEST_F(GlicActiveInstanceSharingManagerBrowserTest,
   // instance. The active instance is determined by the active browser's active
   // tab's instance. Since browser2 has no instance, delegate should be null.
 
-  EXPECT_FALSE(manager.IsTabPinned(tab->GetHandle()));
+  ASSERT_OK(WaitForPinnedTabs({}));
 
   // Pin a NEW tab on browser2.
   tabs::TabInterface* tab2 =
@@ -90,6 +88,7 @@ IN_PROC_BROWSER_TEST_F(GlicActiveInstanceSharingManagerBrowserTest,
 
   // Switch back to browser1.
   GetBrowser()->GetWindow()->Activate();
+  ASSERT_OK(WaitForWindowActive(GetBrowser()));
 
   // Verify delegation to instance1: tab1 pinned, tab2 NOT pinned.
   ASSERT_OK(WaitForPinnedTabs({tab}));

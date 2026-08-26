@@ -264,6 +264,8 @@ extern const base::FeatureParam<bool> kAskGComposeBox;
 extern const base::FeatureParam<bool> kAskGLensChipRoute;
 // Whether to swap the icon to spark loupe for the AskG button.
 extern const base::FeatureParam<bool> kAskGSwapIcon;
+// Whether to swap the icon to spark loupe for the contextual suggestions.
+extern const base::FeatureParam<bool> kAskGSwapSuggestionIcon;
 // Whether to show the current tab chip.
 extern const base::FeatureParam<bool> kAskGCurrentTabChip;
 // Whether to show the Lens icon.
@@ -272,6 +274,8 @@ extern const base::FeatureParam<bool> kAskGLensIcon;
 extern const base::FeatureParam<bool> kAskGLensSearchHintText;
 // Whether to show the lens chip in omnibox composebox.
 extern const base::FeatureParam<bool> kAskGComposeboxLensChip;
+// Whether to block initial zero state suggestions in omnibox composebox.
+extern const base::FeatureParam<bool> kAskGBlockZeroStateSuggestions;
 // Note: no new flags beyond this point.
 
 namespace flag_descriptions {

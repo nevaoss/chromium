@@ -858,6 +858,13 @@ inline constexpr char
         "field is not a username/password field and does not have any autofill "
         "suggestions. ";
 
+inline constexpr char kAutofillEnableAutofillSettingsEnterprisePolicyName[] =
+    "Enable Autofill settings enterprise policy";
+inline constexpr char
+    kAutofillEnableAutofillSettingsEnterprisePolicyDescription[] =
+        "When enabled, the Autofill settings enterprise policy takes effect, "
+        "and forms ai settings are decoupled from Autofill profile settings. ";
+
 inline constexpr char kAutofillAmbientAutofillName[] =
     "Autofill Ambient Autofill";
 inline constexpr char kAutofillAmbientAutofillDescription[] =
@@ -1067,6 +1074,12 @@ inline constexpr char kAutofillEnableEwalletNewAccountLinkingDescription[] =
     "When enabled, Chrome will sync eWallet creation options for unlinked "
     "ewallets.";
 
+inline constexpr char kAutofillEnableExpandIbanRegexPatternName[] =
+    "Enable Expand IBAN Regex Pattern";
+inline constexpr char kAutofillEnableExpandIbanRegexPatternDescription[] =
+    "When enabled, IBAN regex pattern matching is expanded to support more "
+    "formats.";
+
 inline constexpr char kAutofillEnableGradientGoogleLogosName[] =
     "Enable gradient-style GPay and Wallet logos";
 inline constexpr char kAutofillEnableGradientGoogleLogosDescription[] =
@@ -1178,12 +1191,6 @@ inline constexpr char kAutofillPreferBuyNowPayLaterBlocklistsDescription[] =
     "corresponding issuer's blocklist instead of allowlist to check for "
     "website eligibility.";
 
-inline constexpr char kAutofillPrioritizeSaveCardOverMandatoryReauthName[] =
-    "Prioritize save card bubble over mandatory re-auth";
-inline constexpr char
-    kAutofillPrioritizeSaveCardOverMandatoryReauthDescription[] =
-        "When enabled, this flag prioritizes showing the save card bubble over "
-        "the mandatory re-auth bubble when both are applicable.";
 inline constexpr char kAutofillTouchToFillShowManualFillForVcnFixName[] =
     "Ensures showing of the BNPL VCN on manual fallback sheet in the Touch To "
     "Fill flow";
@@ -1384,6 +1391,11 @@ inline constexpr char kOnStartupWindowPolicyName[] = "On Startup Window Policy";
 inline constexpr char kOnStartupWindowPolicyDescription[] =
     "Enables updated on-startup window default behavior and settings on "
     "Android.";
+
+inline constexpr char kSyncRestoreOnStartupPrefName[] =
+    "Sync Restore On Startup Pref";
+inline constexpr char kSyncRestoreOnStartupPrefDescription[] =
+    "Enables syncing of the session restore-on-startup preference on Android.";
 
 inline constexpr char kSettingsInTabName[] = "Settings in Tab";
 inline constexpr char kSettingsInTabDescription[] =
@@ -2020,6 +2032,11 @@ inline constexpr char kDevToolsProtocolMonitorDescription[] =
     "Enables the protocol monitor panel, which displays the Chrome DevTools "
     "Protocol (CDP) traffic between DevTools and the browser.";
 
+inline constexpr char kDevToolsSourceMapScopesInSourcesPanelName[] =
+    "Source map scopes in the Sources panel";
+inline constexpr char kDevToolsSourceMapScopesInSourcesPanelDescription[] =
+    "Enables source map scopes in the DevTools Sources panel.";
+
 inline constexpr char kDevToolsWebMCPSupportName[] =
     "WebMCP support in DevTools";
 inline constexpr char kDevToolsWebMCPSupportDescription[] =
@@ -2219,11 +2236,6 @@ inline constexpr char kEnablePeripheralsLoggingName[] =
     "Enable peripherals logging";
 inline constexpr char kEnablePeripheralsLoggingDescription[] =
     "Enable peripherals logging to get detailed logs of peripherals";
-
-inline constexpr char kExperimentalRgbKeyboardPatternsName[] =
-    "Enable experimental RGB Keyboard patterns support";
-inline constexpr char kExperimentalRgbKeyboardPatternsDescription[] =
-    "Enable experimental RGB Keyboard patterns support on supported devices.";
 
 inline constexpr char kEnableNetworkLoggingToFileName[] =
     "Enable network logging to file";
@@ -4047,6 +4059,12 @@ inline constexpr char kPaymentHandlerCameraAccessName[] =
 inline constexpr char kPaymentHandlerCameraAccessDescription[] =
     "Enables camera access in web-based Payment Handlers on desktop.";
 
+inline constexpr char kPaymentHandlerCameraAccessUxName[] =
+    "Payment Handler Camera Access UX";
+inline constexpr char kPaymentHandlerCameraAccessUxDescription[] =
+    "Enables camera access with integrated permission prompt and "
+    "capture indicator in web-based Payment Handlers on desktop.";
+
 inline constexpr char kDeduplicateNativePaymentAppsName[] =
     "Enables de-duplication of Payment Request native payment apps";
 inline constexpr char kDeduplicateNativePaymentAppsDescription[] =
@@ -4687,10 +4705,6 @@ inline constexpr char kTabGroupHoverCardsName[] =
 inline constexpr char kTabGroupHoverCardsDescription[] =
     "Enables hover cards for tab group headers in the tab strip.";
 
-inline constexpr char kTextSafetyClassifierName[] = "Text Safety Classifier";
-inline constexpr char kTextSafetyClassifierDescription[] =
-    "Enables text safety classifier for on-device models";
-
 inline constexpr char kThreeButtonPasswordSaveDialogName[] =
     "Three Button Password Save Dialog";
 inline constexpr char kThreeButtonPasswordSaveDialogDescription[] =
@@ -5300,6 +5314,12 @@ inline constexpr char kOnDeviceModelLitertLmBackendName[] =
 inline constexpr char kOnDeviceModelLitertLmBackendDescription[] =
     "Use LiteRT-LM runtime for on-device model service inference.";
 
+inline constexpr char kOnDeviceWebSpeechSmallExpertModelName[] =
+    "Web Speech API On-Device Small Expert Model";
+inline constexpr char kOnDeviceWebSpeechSmallExpertModelDescription[] =
+    "Enables the small expert model for on-device Web Speech API "
+    "recognition.";
+
 // Android ---------------------------------------------------------------------
 // FLAG_DESCRIPTIONS_ANDROID_START
 
@@ -5435,11 +5455,6 @@ inline constexpr char kAndroidContextMenuDisabledMenuItemsName[] =
     "Android context menu disabled menu items";
 inline constexpr char kAndroidContextMenuDisabledMenuItemsDescription[] =
     "Disables specific context menu items.";
-
-inline constexpr char kAndroidContextMenuNewActionsName[] =
-    "Android context menu new actions";
-inline constexpr char kAndroidContextMenuNewActionsDescription[] =
-    "Adds new context menu actions.";
 
 inline constexpr char kAndroidDesktopBookmarkPopupName[] =
     "Android Desktop Bookmark Popup";
@@ -6261,12 +6276,6 @@ inline constexpr char kPCCTMinimumHeightDescription[] =
     "When enabled, this sets the minimum "
     "height to 30% or 220dp, whichever is greater, for ephemeral pCCTs.";
 
-inline constexpr char kProtectedTabsAndroidName[] =
-    "Enable protected tab for Android";
-inline constexpr char kProtectedTabsAndroidDescription[] =
-    "Ensures that renderer processes for protected tabs will be killed after "
-    "other discard-eligible tabs.";
-
 inline constexpr char kReadAloudNativeName[] =
     "Read Aloud Native C++ Implementation";
 inline constexpr char kReadAloudNativeDescription[] =
@@ -6430,6 +6439,18 @@ inline constexpr char kSubmenusInAppMenuLffDescription[] =
 inline constexpr char kTabBottomSheetName[] = "Tab bottom sheet";
 inline constexpr char kTabBottomSheetDescription[] =
     "Enables the tab bottom sheet feature.";
+
+inline constexpr char kTabBottomSheetFullHeightName[] =
+    "Tab bottom sheet - Full height ratio";
+inline constexpr char kTabBottomSheetFullHeightDescription[] =
+    "Allows configuring the full height ratio of the tab bottom sheet. "
+    "Disabling this flag will use the pre-existing default value.";
+
+inline constexpr char kTabBottomSheetHalfHeightName[] =
+    "Tab bottom sheet - Half height ratio";
+inline constexpr char kTabBottomSheetHalfHeightDescription[] =
+    "Allows configuring the half height ratio of the tab bottom sheet. "
+    "Disabling this flag will use the pre-existing default value.";
 
 inline constexpr char kTabAndroidGracefulShutdownName[] =
     "Tab Android Graceful Shutdown";
@@ -7244,10 +7265,6 @@ inline constexpr char kAshEnableUnifiedDesktopDescription[] =
     "Enable unified desktop mode which allows a window to span multiple "
     "displays.";
 
-inline constexpr char kAshModifierSplitName[] = "Modifier split feature";
-inline constexpr char kAshModifierSplitDescription[] =
-    "Enable new modifier split feature on ChromeOS.";
-
 inline constexpr char kAshPickerGifsName[] = "Picker GIFs search";
 inline constexpr char kAshPickerGifsDescription[] =
     "Enable GIf search for Picker.";
@@ -7629,12 +7646,6 @@ inline constexpr char kEnableSeamlessRefreshRateSwitchingName[] =
 inline constexpr char kEnableSeamlessRefreshRateSwitchingDescription[] =
     "This option enables seamlessly changing the refresh rate based on power "
     "state on devices with supported hardware and drivers.";
-
-inline constexpr char kEnableToggleCameraShortcutName[] =
-    "Enable shortcut to toggle camera access";
-inline constexpr char kEnableToggleCameraShortcutDescription[] =
-    "Adds a shortcut to toggle the value of the top level 'Camera access' "
-    "setting in the privacy controls section of the Settings app.";
 
 inline constexpr char kEnableTouchpadsInDiagnosticsAppName[] =
     "Enable touchpad cards in the Diagnostics App";
@@ -8762,22 +8773,6 @@ inline constexpr char kSupervisedUserEmitLogRecordSeparatelyName[] =
 inline constexpr char kSupervisedUserEmitLogRecordSeparatelyDescription[] =
     "Emits one log record per each supervision type, instead of a single "
     "combined value. No user-visible effect on other platforms than Android.";
-
-inline constexpr char
-    kSupervisedUserMergeDeviceParentalControlsAndFamilyLinkPrefsName[] =
-        "Merge device parental controls and Family Link prefs";
-inline constexpr char
-    kSupervisedUserMergeDeviceParentalControlsAndFamilyLinkPrefsDescription[] =
-        "Merges non-web filtering device parental controls settings with "
-        "Family Link settings in the SupervisedUserPrefStore. No user-visible "
-        "effect on other platforms than Android.";
-
-inline constexpr char kSupervisedUserUseUrlFilteringServiceName[] =
-    "Use URL filtering service";
-inline constexpr char kSupervisedUserUseUrlFilteringServiceDescription[] =
-    "Use the SupervisedUserUrlFilteringService to get URL filtering settings "
-    "directly from supervision services instead of using PrefService. No "
-    "user-visible effect on other platforms than Android.";
 
 inline constexpr char kVariationsSeedCorpusName[] = "Variations seed corpus";
 inline constexpr char kVariationsSeedCorpusDescription[] =

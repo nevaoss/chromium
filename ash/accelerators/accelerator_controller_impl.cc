@@ -278,7 +278,6 @@ bool CanHandleLockButton(const ui::Accelerator& accelerator) {
   if (accelerator.key_code() == ui::VKEY_F13 &&
       Shell::Get()->keyboard_capability()->HasFunctionKey(
           accelerator.source_device_id())) {
-    CHECK(features::IsModifierSplitEnabled());
     return false;
   }
   return true;
@@ -298,7 +297,6 @@ bool CanHandleToggleCapsLock(
     // Check if from modifier split keyboard. if not, show notification.
     if (Shell::Get()->keyboard_capability()->HasFunctionKey(
             accelerator.source_device_id())) {
-      CHECK(features::IsModifierSplitEnabled());
       notification_controller->ShowCapsLockRewritingNudge();
       return false;
     }
@@ -722,11 +720,9 @@ void AcceleratorControllerImpl::Init() {
     }
   }
 
-  if (features::IsModifierSplitEnabled()) {
-    notification_controller_ =
-        std::make_unique<InputDeviceSettingsNotificationController>(
-            message_center::MessageCenter::Get());
-  }
+  notification_controller_ =
+      std::make_unique<InputDeviceSettingsNotificationController>(
+          message_center::MessageCenter::Get());
 }
 
 void AcceleratorControllerImpl::RegisterAccelerators(
@@ -879,7 +875,7 @@ bool AcceleratorControllerImpl::CanPerformAction(
     case AcceleratorAction::kToggleCalendar:
       return true;
     case AcceleratorAction::kToggleCameraAllowed:
-      return features::IsToggleCameraShortcutEnabled();
+      return true;
     case AcceleratorAction::kToggleCapsLock:
       return CanHandleToggleCapsLock(accelerator, *capslock_state_machine_,
                                      notification_controller_.get());

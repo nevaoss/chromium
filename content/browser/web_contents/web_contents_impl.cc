@@ -1422,6 +1422,10 @@ WebContentsImpl::~WebContentsImpl() {
 
   rwh_input_event_router_.reset();
 
+  if (text_input_manager_ && text_input_manager_->HasObserver(this)) {
+    text_input_manager_->RemoveObserver(this);
+  }
+
   WebContentsImpl* outermost = GetOutermostWebContents();
   if (this != outermost && ContainsOrIsFocusedWebContents()) {
     // If the current WebContents is in focus, unset it.
@@ -4369,13 +4373,16 @@ void WebContentsImpl::Init(const WebContents::CreateParams& params,
     }
   }
 
+  CHECK(!(params.initially_hidden && params.initially_hidden_but_painting));
+  initially_hidden_but_painting_ = params.initially_hidden_but_painting;
   // This is set before initializing the render manager since
   // RenderFrameHostManager::Init calls back into us via its delegate to ask if
   // it should be hidden.
-  visibility_ =
-      params.initially_hidden ? Visibility::HIDDEN : Visibility::VISIBLE;
-
-  GetController().SetActive(visibility_ == Visibility::VISIBLE);
+  visibility_ = params.initially_hidden || initially_hidden_but_painting_
+                    ? Visibility::HIDDEN
+                    : Visibility::VISIBLE;
+  GetController().SetActive(GetPageVisibilityState() !=
+                            PageVisibilityState::kHidden);
 
   enable_wake_locks_ = params.enable_wake_locks;
 
@@ -5138,7 +5145,8 @@ PageVisibilityState WebContentsImpl::CalculatePageVisibilityState(
   if (visibility == Visibility::VISIBLE || visible_capturer_count_ > 0 ||
       web_contents_visible_in_vr) {
     return PageVisibilityState::kVisible;
-  } else if (hidden_capturer_count_ > 0 || has_picture_in_picture_video_ ||
+  } else if ((!did_first_set_visible_ && initially_hidden_but_painting_) ||
+             hidden_capturer_count_ > 0 || has_picture_in_picture_video_ ||
              has_picture_in_picture_document_) {
     return PageVisibilityState::kHiddenButPainting;
   }
@@ -6640,6 +6648,62 @@ const std::optional<gfx::Rect> WebContentsImpl::GetTextSelectionBounds(
     }
   }
   return std::nullopt;
+}
+
+const std::optional<gfx::Point> WebContentsImpl::GetFocusSelectionPoint(
+    RenderFrameHost* render_frame_host) const {
+  if (text_input_manager_ && render_frame_host) {
+    auto* view =
+        static_cast<RenderWidgetHostViewBase*>(render_frame_host->GetView());
+    RenderWidgetHostViewBase* root_view = view->GetRootView();
+    if (view && root_view) {
+      const auto* region = text_input_manager_->GetSelectionRegion(view);
+      if (region && region->focus.type() != gfx::SelectionBound::EMPTY) {
+        gfx::Point start = region->focus.edge_start_rounded();
+        gfx::Point end = region->focus.edge_end_rounded();
+        gfx::Rect bounds = gfx::BoundingRect(start, end);
+        gfx::Point origin = bounds.origin();
+        origin += root_view->GetViewBounds().OffsetFromOrigin();
+        origin += gfx::Vector2d(bounds.width(), bounds.height());
+        return origin;
+      }
+    }
+  }
+  return std::nullopt;
+}
+
+base::CallbackListSubscription
+WebContentsImpl::RegisterFocusSelectionBoundsChanged(
+    FocusSelectionBoundsChangedCallback callback) {
+  if (!text_input_manager_) {
+    // Although we could use `GetTextInputManager()`, we'd also need a lookup
+    // that only returns any existing manager during destruction, and current
+    // callers don't need this.
+    NOTIMPLEMENTED();
+    return {};
+  }
+  if (!text_input_manager_->HasObserver(this)) {
+    text_input_manager_->AddObserver(this);
+  }
+  focus_selection_bounds_changed_callback_list_.set_removal_callback(
+      base::BindRepeating(
+          &WebContentsImpl::OnFocusSelectionBoundsChangedSubscriptionRemoved,
+          base::Unretained(this)));
+
+  return focus_selection_bounds_changed_callback_list_.Add(std::move(callback));
+}
+
+void WebContentsImpl::OnFocusSelectionBoundsChangedSubscriptionRemoved() {
+  if (focus_selection_bounds_changed_callback_list_.empty() &&
+      text_input_manager_ && text_input_manager_->HasObserver(this)) {
+    text_input_manager_->RemoveObserver(this);
+  }
+}
+
+void WebContentsImpl::OnSelectionBoundsChanged(
+    TextInputManager* text_input_manager,
+    RenderWidgetHostViewBase* updated_view) {
+  focus_selection_bounds_changed_callback_list_.Notify(updated_view);
 }
 
 void WebContentsImpl::ResizeDueToAutoResize(
@@ -10427,6 +10491,15 @@ void WebContentsImpl::CreateThrottlesForNavigation(
   GetContentClient()->browser()->CreateThrottlesForNavigation(registry);
 }
 
+void WebContentsImpl::CreateThrottlesForCommitWithoutUrlLoader(
+    NavigationThrottleRegistry& registry) {
+  OPTIONAL_TRACE_EVENT1(
+      "content", "WebContentsImpl::CreateThrottlesForCommitWithoutUrlLoader",
+      "navigation", registry.GetNavigationHandle());
+  GetContentClient()->browser()->CreateThrottlesForCommitWithoutUrlLoader(
+      registry);
+}
+
 std::vector<std::unique_ptr<CommitDeferringCondition>>
 WebContentsImpl::CreateDeferringConditionsForNavigationCommit(
     NavigationHandle& navigation_handle,
@@ -10876,6 +10949,15 @@ std::optional<int64_t> WebContentsImpl::GetPrivilegedContentsFeatureId() {
     return privileged_params_->feature_id;
   }
   return std::nullopt;
+}
+
+bool WebContentsImpl::IsPrivileged() {
+  return privileged_params_.has_value();
+}
+
+bool WebContentsImpl::DoesWebContentsDisallowServiceWorkerControl() {
+  return privileged_params_ &&
+         privileged_params_->disallow_service_worker_control;
 }
 
 WebContents* WebContentsImpl::GetDocumentPictureInPictureOpener() {
@@ -11331,6 +11413,11 @@ bool WebContentsImpl::CreateRenderViewForRenderManager(
                                   opened_by_another_window_,
                                   navigation_metrics_token)) {
     return false;
+  }
+  // `CreateRenderView` initializes visibility from `IsHidden`, which cannot
+  // represent `kHiddenButPainting`. Set the full visibility state explicitly.
+  if (!did_first_set_visible_ && initially_hidden_but_painting_) {
+    rvh_impl->SetFrameTreeVisibility(PageVisibilityState::kHiddenButPainting);
   }
 
   // If `render_view_host` is for an inner WebContents, ensure that its

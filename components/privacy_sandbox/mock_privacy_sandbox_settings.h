@@ -22,10 +22,6 @@ class MockPrivacySandboxSettings
               IsTopicsAllowedForContext,
               (const url::Origin&, const GURL&, content::RenderFrameHost*),
               (override, const));
-  MOCK_METHOD(bool,
-              IsTopicAllowed,
-              (const privacy_sandbox::CanonicalTopic&),
-              (override));
   MOCK_METHOD(void,
               SetTopicAllowed,
               (const privacy_sandbox::CanonicalTopic&, bool),
@@ -80,8 +76,6 @@ class MockPrivacySandboxSettings
               IsPrivacySandboxCurrentlyUnrestricted,
               (),
               (override, const));
-  MOCK_METHOD(bool, IsSubjectToM1NoticeRestricted, (), (override, const));
-  MOCK_METHOD(bool, IsRestrictedNoticeEnabled, (), (override, const));
   MOCK_METHOD(void, OnCookiesCleared, (), (override));
   MOCK_METHOD(void, AddObserver, (Observer*), (override));
   MOCK_METHOD(void, RemoveObserver, (Observer*), (override));

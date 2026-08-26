@@ -85,6 +85,8 @@ class QuicSessionPoolPeer {
   static bool IsLiveSession(QuicSessionPool* pool,
                             QuicChromiumClientSession* session);
 
+  static size_t GetNumLiveSessions(QuicSessionPool* pool);
+
   static void SetTickClock(QuicSessionPool* pool,
                            const base::TickClock* tick_clock);
 
@@ -111,6 +113,12 @@ class QuicSessionPoolPeer {
       QuicSessionPool::QuicCryptoClientConfigKey key);
 
   static size_t GetNumDegradingSessions(QuicSessionPool* pool);
+
+  // Returns the session establishment reason for a given key. For testing only.
+  static QuicSessionEstablishmentReason
+  DetermineQuicSessionEstablishmentReasonForTesting(
+      QuicSessionPool* pool,
+      const QuicSessionKey& session_key);
 
   static void SetAlarmFactory(
       QuicSessionPool* pool,

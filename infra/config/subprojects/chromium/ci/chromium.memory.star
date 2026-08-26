@@ -167,6 +167,8 @@ linux_memory_builder(
             "browser_tests": targets.mixin(
                 args = [
                     "--test-launcher-filter-file=../../testing/buildbot/filters/linux.asan.browser_tests.filter",
+                    # TODO(crbug.com/542347163): Re-enable when the runtime regression is fixed.
+                    "--disable-features=WebUIOmniboxPopup,WebUIOmniboxAimPopup",
                 ],
                 ci_only = True,
                 # These are very slow on the ASAN trybot for some reason.
@@ -213,8 +215,20 @@ linux_memory_builder(
                 "linux_nvidia_gtx_1660_stable",
             ],
             "interactive_ui_tests": targets.mixin(
+                args = [
+                    # TODO(crbug.com/542347163): Re-enable when the runtime regression is fixed.
+                    "--disable-features=WebUIOmniboxPopup,WebUIOmniboxAimPopup",
+                ],
                 # These are slow on the ASan trybot for some reason, crbug.com/1257927
                 swarming = targets.swarming(
+                    # Move to faster machine types to reduce capacity impact.
+                    # TODO(crbug.com/541675870): Can remove this if/when
+                    # everything's been migrated.
+                    optional_dimensions = {
+                        30: {
+                            "cpu": "x86-64-e4",
+                        },
+                    },
                     shards = 12,
                 ),
             ),
@@ -226,6 +240,10 @@ linux_memory_builder(
                 ),
             ),
             "sync_integration_tests": targets.mixin(
+                args = [
+                    # TODO(crbug.com/542347163): Re-enable when the runtime regression is fixed.
+                    "--disable-features=WebUIOmniboxPopup,WebUIOmniboxAimPopup",
+                ],
                 swarming = targets.swarming(
                     shards = 8,
                 ),
@@ -781,7 +799,8 @@ ci.builder(
     ),
     builderless = False,
     cores = None,  # Swapping between 8 and 24
-    os = os.MAC_DEFAULT,
+    # TODO(crbug.com/543006750): Revert to MAC_DEFAULT after arm migration.
+    os = os.MAC_15,
     console_view_entry = consoles.console_view_entry(
         category = "mac",
         short_name = "bld",
@@ -864,6 +883,10 @@ linux_memory_builder(
                 ),
             ],
             "interactive_ui_tests": targets.mixin(
+                args = [
+                    # TODO(crbug.com/542347163): Re-enable when the runtime regression is fixed.
+                    "--disable-features=WebUIOmniboxPopup,WebUIOmniboxAimPopup",
+                ],
                 # https://crbug.com/1498240
                 ci_only = True,
                 # These are slow on the TSan bots for some reason, crbug.com/1257927
@@ -878,6 +901,10 @@ linux_memory_builder(
                 ),
             ),
             "sync_integration_tests": targets.mixin(
+                args = [
+                    # TODO(crbug.com/542347163): Re-enable when the runtime regression is fixed.
+                    "--disable-features=WebUIOmniboxPopup,WebUIOmniboxAimPopup",
+                ],
                 # https://crbug.com/1498240
                 ci_only = True,
                 swarming = targets.swarming(
@@ -1065,7 +1092,8 @@ ci.builder(
     ),
     builderless = False,
     cores = 12,
-    os = os.MAC_DEFAULT,
+    # TODO(crbug.com/543006750): Revert to MAC_DEFAULT after arm migration.
+    os = os.MAC_15,
     console_view_entry = consoles.console_view_entry(
         category = "mac",
         short_name = "tst",

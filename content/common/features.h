@@ -6,6 +6,7 @@
 #define CONTENT_COMMON_FEATURES_H_
 
 #include "base/compiler_specific.h"
+#include "base/feature.h"
 #include "base/feature_list.h"
 #include "base/metrics/field_trial_params.h"
 #include "content/common/content_export.h"
@@ -93,7 +94,6 @@ CONTENT_EXPORT BASE_DECLARE_FEATURE(kEnforceGamepadPermissionsPolicy);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kEnforceSameDocumentOriginInvariants);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kEmbeddingRequiresOptIn);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kExperimentalContentSecurityPolicyFeatures);
-CONTENT_EXPORT BASE_DECLARE_FEATURE(kFedCmNonStringToken);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kFedCmWellKnownEndpointValidation);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kFedCmPreservePortsForTesting);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kFedCmErrorAttribute);
@@ -130,6 +130,7 @@ CONTENT_EXPORT BASE_DECLARE_FEATURE_PARAM(FontDataServiceTypefaceType,
                                           kFontDataServiceTypefaceType);
 #endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
 
+CONTENT_EXPORT BASE_DECLARE_FEATURE(kFontDataManagerPrewarming);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kFontDataServiceForCSSLocalFonts);
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
@@ -240,6 +241,8 @@ CONTENT_EXPORT BASE_DECLARE_FEATURE(
     kServiceWorkerStaticRouterConsolidateMainScriptResponse);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(
     kServiceWorkerStaticRouterStartServiceWorker);
+CONTENT_EXPORT BASE_DECLARE_FEATURE(
+    kServiceWorkerStaticRouterTypedRulesForDevTools);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(
     kServiceWorkerSuppressTimeoutWhenPaymentWindowOpen);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kServiceWorkerClientUrlIsCreationUrl);

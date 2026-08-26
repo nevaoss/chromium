@@ -180,6 +180,12 @@ BASE_FEATURE(kAutofillEnableDownstreamCardAwarenessIph,
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) ||
         // BUILDFLAG(IS_CHROMEOS)
 
+// When enabled, IBAN regex pattern matching is expanded to support more
+// formats.
+BASE_FEATURE(kAutofillEnableExpandIbanRegexPattern,
+             "AutofillEnableExpandIbanRegexPattern",
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // When enabled, card flat rate benefit will not be shown on merchants in the
 // blocklist.
 BASE_FEATURE(kAutofillEnableFlatRateCardBenefitsBlocklist,
@@ -316,6 +322,13 @@ BASE_FEATURE(kAutofillEnableWalletReminderNotice,
 // TODO(crbug.com/526738761): Clean up after launch.
 BASE_FEATURE(kAutofillFixCvcImport, base::FEATURE_DISABLED_BY_DEFAULT);
 
+#if BUILDFLAG(IS_IOS)
+// When enabled, skips empty CVCs in AutofillWalletCredentialSyncBridge instead
+// of failing a CHECK.
+BASE_FEATURE(kAutofillIgnoreEmptyCvcsInSyncBridge,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+#endif
+
 // When enabled, card upload legal message lines are parsed for the word
 // "personalization" for feature launch metrics. This flag is temporary, is
 // enabled by default, and functions as a kill switch in case of unexpected
@@ -333,11 +346,6 @@ BASE_FEATURE(kAutofillPreferBuyNowPayLaterBlocklists,
              base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) ||
         // BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID)
-
-// When enabled, this feature prioritizes showing the save card bubble over the
-// mandatory re-auth bubble when both are applicable.
-BASE_FEATURE(kAutofillPrioritizeSaveCardOverMandatoryReauth,
-             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // When enabled, Chrome will try to fetch payment account image resources again
 // upon failure. The number of attempts is a controllable parameter. This is a

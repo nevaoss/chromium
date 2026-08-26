@@ -183,7 +183,7 @@ public class BasicSuggestionProcessor extends BaseSuggestionViewProcessor {
 
         return icon == 0
                 ? super.getFallbackIcon(suggestion)
-                : OmniboxDrawableState.forSmallIcon(mContext, icon, allowTint);
+                : OmniboxDrawableState.forSmallIcon(mUiContext.resourceProvider, icon, allowTint);
     }
 
     @Override
@@ -241,12 +241,6 @@ public class BasicSuggestionProcessor extends BaseSuggestionViewProcessor {
                                     .append(separator)
                                     .append(textLine2));
             textLine2 = null;
-        }
-
-        if (OmniboxCapabilities.isDesktopPlatform()) {
-            model.set(
-                    SuggestionViewProperties.TEXT_LINE_1_TEXT_APPEARANCE,
-                    R.style.TextAppearance_TextMedium);
         }
 
         model.set(SuggestionViewProperties.IS_SEARCH_SUGGESTION, isSearchSuggestion);

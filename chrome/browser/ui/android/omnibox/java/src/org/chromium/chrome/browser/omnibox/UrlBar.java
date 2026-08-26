@@ -224,6 +224,13 @@ public class UrlBar extends AutocompleteEditText {
         }
 
         /**
+         * Called when the 'Paste and go' action is performed.
+         *
+         * @param text The pasted text to be loaded.
+         */
+        default void onPerformPasteAndGo(String text) {}
+
+        /**
          * Called when the share action is selected from the text context menu.
          *
          * @param text The text to be shared.
@@ -890,6 +897,22 @@ public class UrlBar extends AutocompleteEditText {
         int selEnd = isFocused() ? getSelectionEnd() : getText().length();
         TextSelection selection = new TextSelection(selStart, selEnd);
 
+        if (id == R.id.url_bar_paste_and_go) {
+            String pasteString =
+                    mTextContextMenuDelegate != null
+                            ? mTextContextMenuDelegate.getTextToPaste()
+                            : null;
+            if (pasteString != null && isFocused()) {
+                getText().replace(0, getText().length(), pasteString);
+                Selection.setSelection(getText(), pasteString.length());
+                RecordUserAction.record("Omnibox.LongPress.PasteAndGo");
+                if (mUrlBarDelegate != null) {
+                    mUrlBarDelegate.onPerformPasteAndGo(pasteString);
+                }
+            }
+            return true;
+        }
+
         switch (id) {
             case android.R.id.paste:
                 String pasteString = mTextContextMenuDelegate.getTextToPaste();
@@ -992,14 +1015,26 @@ public class UrlBar extends AutocompleteEditText {
             }
         }
 
+        MenuItem pasteItem = menu.findItem(android.R.id.paste);
+        if (pasteItem != null && isFocused() && menu.findItem(R.id.url_bar_paste_and_go) == null) {
+            menu.add(
+                    pasteItem.getGroupId(),
+                    R.id.url_bar_paste_and_go,
+                    pasteItem.getOrder(),
+                    R.string.omnibox_context_menu_paste_and_go_to_copied_text);
+        }
+
         if (mManageSearchEnginesCallback != null
-                && OmniboxFeatures.sOmniboxSiteSearch.isEnabled()
                 && menu.findItem(R.id.url_bar_manage_search_engines) == null) {
+            int titleRes =
+                    OmniboxFeatures.sOmniboxSiteSearch.isEnabled()
+                            ? R.string.manage_search_engines_and_site_search
+                            : R.string.manage_search_engines;
             menu.add(
                     Menu.NONE,
                     R.id.url_bar_manage_search_engines,
                     Menu.CATEGORY_SECONDARY,
-                    getContext().getString(R.string.manage_search_engines_and_site_search));
+                    titleRes);
         }
 
         if (mContextMenuHelper != null) {
@@ -1524,7 +1559,7 @@ public class UrlBar extends AutocompleteEditText {
         // CAUTION: Avoid returning `null` from this method.
         // IMF lifecycle is different from android focus. IMF keeps an InputConnection alive
         // even after the View it is connected to loses focus.
-        // Returning `null` from here will force IMF to bind a "Dummy" input connection
+        // Returning `null` from here will force IMF to bind a no-op input connection
         // (see https://crbug.com/512199013), which may result in users in select locales
         // be unable to work with locale-appropriate keyboards.
 

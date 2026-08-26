@@ -14177,8 +14177,9 @@ TEST_F(WebFrameTest, RemoteViewportAndMainframeIntersections) {
 
   // The viewport intersection should be applied by the layout geometry mapping
   // code when these flags are used.
-  int viewport_intersection_flags =
-      kTraverseDocumentBoundaries | kApplyRemoteMainFrameTransform;
+  MapCoordinatesFlags viewport_intersection_flags = {
+      MapCoordinatesMode::kTraverseDocumentBoundaries,
+      MapCoordinatesMode::kApplyRemoteMainFrameTransform};
 
   // Expectation is: (target location) + (viewport offset) = (20, 10) + (7, -11)
   PhysicalOffset offset = target->GetLayoutObject()->LocalToAbsolutePoint(
@@ -14198,13 +14199,15 @@ TEST_F(WebFrameTest, RemoteViewportAndMainframeIntersections) {
   local_frame->GetFrame()
       ->GetDocument()
       ->GetLayoutView()
-      ->MapToVisualRectInAncestorSpace(nullptr, mainframe_rect,
-                                       kDontApplyMainFrameOverflowClip);
+      ->MapToVisualRectInAncestorSpace(
+          nullptr, mainframe_rect,
+          {VisualRectFlag::kDontApplyMainFrameOverflowClip});
   EXPECT_EQ(PhysicalRect(7, -11, 25, 35), mainframe_rect);
 
-  constexpr auto kGeometryMapperFlags = static_cast<VisualRectFlags>(
-      kUseGeometryMapper | kVisualRectApplyRemoteViewportTransform |
-      kIgnoreFilters);
+  constexpr VisualRectFlags kGeometryMapperFlags = {
+      VisualRectFlag::kUseGeometryMapper,
+      VisualRectFlag::kApplyRemoteViewportTransform,
+      VisualRectFlag::kIgnoreFilters};
 
   // Translate (0,0) by (7, -11) => (7, -11)
   // Clip against parent viewport (0, 0, 200, 140):

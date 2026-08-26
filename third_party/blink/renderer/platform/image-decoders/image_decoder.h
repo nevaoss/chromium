@@ -39,6 +39,7 @@
 #include "base/numerics/safe_conversions.h"
 #include "base/strings/strcat.h"
 #include "base/time/time.h"
+#include "skia/ext/color_profile.h"
 #include "third_party/blink/renderer/platform/graphics/color_behavior.h"
 #include "third_party/blink/renderer/platform/graphics/image_orientation_enum.h"
 #include "third_party/blink/renderer/platform/graphics/paint/paint_image.h"
@@ -53,16 +54,14 @@
 #include "third_party/skia/include/core/SkAlphaType.h"
 #include "third_party/skia/include/core/SkColorType.h"
 #include "third_party/skia/include/core/SkImageInfo.h"
+#include "third_party/skia/include/core/SkPixmap.h"
 #include "third_party/skia/include/core/SkRect.h"
+#include "third_party/skia/include/core/SkRefCnt.h"
 #include "third_party/skia/modules/skcms/skcms.h"
 #include "ui/gfx/hdr_metadata.h"
 
 class SkColorSpace;
 class SkData;
-
-namespace SkCodecs {
-class ICCProfileChromium;
-}
 
 namespace blink {
 
@@ -109,43 +108,6 @@ class PLATFORM_EXPORT ImagePlanes final {
   bool has_complete_scan_ = false;
   HighBitDepthOutputType hbd_output_type_ =
       HighBitDepthOutputType::kScaledTo16Bits;
-};
-
-class PLATFORM_EXPORT ColorProfile final {
-  USING_FAST_MALLOC(ColorProfile);
-
- public:
-  explicit ColorProfile(const skcms_ICCProfile&);
-  explicit ColorProfile(std::unique_ptr<SkCodecs::ICCProfileChromium>);
-  ColorProfile(const ColorProfile&) = delete;
-  ColorProfile& operator=(const ColorProfile&) = delete;
-  static std::unique_ptr<ColorProfile> Create(base::span<const uint8_t> buffer);
-  ~ColorProfile();
-
-  const skcms_ICCProfile* GetProfile() const { return &profile_; }
-
- private:
-  skcms_ICCProfile profile_;
-  // Retains the parsed profile data so that pointers in profile_ remain valid.
-  std::unique_ptr<SkCodecs::ICCProfileChromium> skia_profile_;
-};
-
-class PLATFORM_EXPORT ColorProfileTransform final {
-  USING_FAST_MALLOC(ColorProfileTransform);
-
- public:
-  ColorProfileTransform(const skcms_ICCProfile* src_profile,
-                        const skcms_ICCProfile* dst_profile);
-  ColorProfileTransform(const ColorProfileTransform&) = delete;
-  ColorProfileTransform& operator=(const ColorProfileTransform&) = delete;
-  ~ColorProfileTransform();
-
-  const skcms_ICCProfile* SrcProfile() const;
-  const skcms_ICCProfile* DstProfile() const;
-
- private:
-  raw_ptr<const skcms_ICCProfile> src_profile_;
-  skcms_ICCProfile dst_profile_;
 };
 
 // ImageDecoder is a base for all format-specific decoders
@@ -414,15 +376,9 @@ class PLATFORM_EXPORT ImageDecoder {
   // Return the HDR metadata from the image and its color profile.
   const gfx::HDRMetadata& GetHDRMetadata() const { return hdr_metadata_; }
 
-  void SetEmbeddedColorProfile(std::unique_ptr<ColorProfile> profile);
-
-  // Transformation from embedded color space to target color space.
-  ColorProfileTransform* ColorTransform() const {
-    return embedded_to_sk_image_transform_.get();
-  }
-
+  void SetEmbeddedColorProfile(sk_sp<skia::ColorProfile> profile);
   bool NeedsDecodeTimeColorTransform() const {
-    return embedded_to_sk_image_transform_ != nullptr;
+    return needs_decode_time_color_transform_;
   }
 
   // Performs color transformation on the specified rect of buffer if needed.
@@ -649,7 +605,7 @@ class PLATFORM_EXPORT ImageDecoder {
   bool failed_ = false;
 
   // The precise color profile of the image.
-  std::unique_ptr<ColorProfile> embedded_color_profile_;
+  sk_sp<skia::ColorProfile> embedded_color_profile_;
 
   // The color space for the SkImage that will be produced.  If
   // `color_behavior_` is tag, then this is the SkColorSpace representation of
@@ -657,10 +613,9 @@ class PLATFORM_EXPORT ImageDecoder {
   // this is sRGB.
   sk_sp<SkColorSpace> sk_image_color_space_;
 
-  // Transforms `embedded_color_profile_` to `sk_image_color_space_`. This
-  // is needed if `sk_image_color_space_` is not an exact representation of
-  // `embedded_color_profile_`.
-  std::unique_ptr<ColorProfileTransform> embedded_to_sk_image_transform_;
+  // Set if decode-time color space conversion from `embedded_color_profile_`
+  // to `sk_image_color_space_` is needed.
+  bool needs_decode_time_color_transform_ = false;
 };
 
 // static

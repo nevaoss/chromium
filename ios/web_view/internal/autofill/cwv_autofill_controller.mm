@@ -339,24 +339,6 @@ CWVAutofillProgressDialogType ToCWVAutofillProgressDialogType(
       ->SetForceSubmittedByUserForTesting(force);  // IN-TEST
 }
 
-- (void)clearFormWithName:(NSString*)formName
-          fieldIdentifier:(NSString*)fieldIdentifier
-                  frameID:(NSString*)frameID
-        completionHandler:(nullable void (^)(void))completionHandler {
-  autofill::AutofillJavaScriptFeature* feature =
-      autofill::AutofillJavaScriptFeature::GetInstance();
-  web::WebFrame* frame =
-      feature->GetWebFramesManager(_webState)->GetFrameWithId(
-          base::SysNSStringToUTF8(frameID));
-  feature->ClearAutofilledFieldsForForm(frame, _lastFormActivityFormRendererID,
-                                        _lastFormActivityFieldRendererID,
-                                        base::BindOnce(^(NSString*) {
-                                          if (completionHandler) {
-                                            completionHandler();
-                                          }
-                                        }));
-}
-
 - (void)fetchSuggestionsForFormWithName:(NSString*)formName
                         fieldIdentifier:(NSString*)fieldIdentifier
                               fieldType:(NSInteger)fieldType
@@ -923,11 +905,9 @@ CWVAutofillProgressDialogType ToCWVAutofillProgressDialogType(
 #pragma mark - AutofillDriverIOSBridge
 
 - (void)fillData:(const std::vector<autofill::FormFieldData::FillData>&)fields
-           section:(const autofill::Section&)section
            inFrame:(web::WebFrame*)frame
     withActionType:(autofill::mojom::FormActionType)actionType {
   [_autofillAgent fillData:fields
-                   section:section
                    inFrame:frame
             withActionType:(autofill::mojom::FormActionType::kFill)];
 }

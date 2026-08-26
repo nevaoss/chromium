@@ -194,7 +194,6 @@ ContextualSearchboxHandler::CreateImageEncodingOptions() {
   const auto& image_upload_config =
       ntp_composebox::FeatureConfig::Get().config.composebox().image_upload();
   return lens::ImageEncodingOptions{
-      .enable_webp_encoding = image_upload_config.enable_webp_encoding(),
       .max_size = image_upload_config.downscale_max_image_size(),
       .max_height = image_upload_config.downscale_max_image_height(),
       .max_width = image_upload_config.downscale_max_image_width(),
@@ -212,6 +211,18 @@ std::optional<lens::proto::LensOverlaySuggestInputs>
 ContextualOmniboxClient::GetLensOverlaySuggestInputs() const {
   return suggest_inputs_callback_ ? suggest_inputs_callback_.Run()
                                   : std::nullopt;
+}
+
+bool ContextualOmniboxClient::HasPreviousSubmittedThreadContext() const {
+  return has_previous_submitted_thread_context_callback_
+             ? has_previous_submitted_thread_context_callback_.Run()
+             : false;
+}
+
+bool ContextualOmniboxClient::HasAutoSuggestedTab() const {
+  return has_auto_suggested_tab_callback_
+             ? has_auto_suggested_tab_callback_.Run()
+             : false;
 }
 
 int ContextualSearchboxHandler::GetContextMenuMaxTabSuggestions() {
@@ -677,6 +688,15 @@ ContextualSearchboxHandler::GetSuggestInputs() {
              : std::nullopt;
 }
 
+bool ContextualSearchboxHandler::
+    SessionHandleHasPreviousSubmittedThreadContext() {
+  auto* contextual_session_handle = GetContextualSessionHandle();
+  if (!contextual_session_handle) {
+    return false;
+  }
+  return contextual_session_handle->has_submitted_context();
+}
+
 omnibox::InputState ContextualSearchboxHandler::GetInputState() const {
   if (input_state_model_) {
     return input_state_model_->GetInputState();
@@ -751,9 +771,20 @@ void ContextualSearchboxHandler::SetSmartTabSharingActive(bool active) {
   if (session_handle) {
     session_handle->set_smart_tab_sharing_active(active);
   }
+  if (!active) {
+    ClearFiles(/*should_block_auto_suggested_tabs=*/true);
+  }
   if (input_state_model_) {
     input_state_model_->SetSmartTabSharingActive(active);
+    input_state_model_->OnContextChanged();
   }
+  if (auto* active_task_context_provider = GetActiveTaskContextProvider()) {
+    if (base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox)) {
+      active_task_context_provider->ClearAllLocalTabUnderlines();
+    }
+    active_task_context_provider->RefreshContext();
+  }
+  selected_tabs.clear();
   bool computed_active = IsSmartTabSharingActive();
   if (!last_sent_smart_tab_sharing_active_.has_value() ||
       *last_sent_smart_tab_sharing_active_ != computed_active) {
@@ -1022,9 +1053,14 @@ void ContextualSearchboxHandler::ContinueAddTabContext(
   std::move(callback).Run(base::ok(context_token));
 }
 
-void ContextualSearchboxHandler::AddTabContext(int32_t tab_id,
-                                               bool delay_upload,
-                                               AddTabContextCallback callback) {
+void ContextualSearchboxHandler::AddTabContext(
+    int32_t tab_id,
+    bool delay_upload,
+    searchbox::mojom::TabAttachmentSource source,
+    AddTabContextCallback callback) {
+  // `source` is currently only used by subclasses (like WebuiOmniboxHandler)
+  // that override this method to store the origin in pending context for
+  // session restoration.
   if (!IsContextualSearchTabSharingEligible()) {
     std::move(callback).Run(base::unexpected(
         contextual_search::ContextUploadErrorType::kBrowserProcessingError));
@@ -1803,14 +1839,16 @@ void ContextualSearchboxHandler::QueryAutocomplete(
     bool prevent_inline_autocomplete,
     uint32_t cursor_position,
     omnibox::SuggestInventory suggest_inventory,
-    bool is_on_focus) {
+    bool is_on_focus,
+    const std::string& keyword,
+    searchbox::mojom::InputMethod input_method) {
   if (contextual_tasks_context_service_) {
     contextual_tasks_context_service_->OnTypedQuery();
   }
 
   SearchboxHandler::QueryAutocomplete(
       query_id, input, prevent_inline_autocomplete, cursor_position,
-      suggest_inventory, is_on_focus);
+      suggest_inventory, is_on_focus, keyword, input_method);
 }
 
 void ContextualSearchboxHandler::OnContextUploadStatusChanged(
@@ -2125,16 +2163,18 @@ void ContextualSearchboxHandler::OpenUrl(
       new_contextual_session_handle = contextual_session_service->GetSession(
           contextual_session_handle->session_id(),
           contextual_session_handle->invocation_source());
+  new_contextual_session_handle->set_smart_tab_sharing_active(
+      contextual_session_handle->smart_tab_sharing_active());
+  new_contextual_session_handle->set_smart_tab_sharing_toggled_since_last_turn(
+      contextual_session_handle->smart_tab_sharing_toggled_since_last_turn());
+  new_contextual_session_handle->set_sts_toggled_removed_contexts(
+      contextual_session_handle->sts_toggled_removed_contexts());
   new_contextual_session_handle->set_submitted_context_tokens(
       contextual_session_handle->GetSubmittedContextTokens());
   new_contextual_session_handle->set_persisted_tabs(
       contextual_session_handle->persisted_tabs());
   new_contextual_session_handle->set_deselected_tabs_urls(
       contextual_session_handle->deselected_tabs_urls());
-  new_contextual_session_handle->set_smart_tab_sharing_active(
-      contextual_session_handle->smart_tab_sharing_active());
-  new_contextual_session_handle->set_smart_tab_sharing_toggled_since_last_turn(
-      contextual_session_handle->smart_tab_sharing_toggled_since_last_turn());
 
   // TODO(crbug.com/470404040): Determine what to do with the return
   // value of this call, or move this call to a different location.

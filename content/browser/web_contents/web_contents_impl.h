@@ -49,6 +49,7 @@
 #include "content/browser/renderer_host/render_view_host_delegate.h"
 #include "content/browser/renderer_host/render_view_host_impl.h"
 #include "content/browser/renderer_host/render_widget_host_delegate.h"
+#include "content/browser/renderer_host/text_input_manager.h"
 #include "content/browser/renderer_host/visible_time_request_trigger.h"
 #include "content/browser/web_contents/file_chooser_impl.h"
 #include "content/browser/web_contents/slow_web_preference_cache.h"
@@ -228,6 +229,7 @@ class CONTENT_EXPORT WebContentsImpl
       public ui::NativeThemeObserver,
       public ui::ColorProviderSourceObserver,
       public SlowWebPreferenceCacheObserver,
+      public TextInputManager::Observer,
       public input::RenderWidgetHostInputEventRouter::Delegate,
       public base::trace_event::TraceSessionObserver {
  public:
@@ -530,6 +532,7 @@ class CONTENT_EXPORT WebContentsImpl
   base::TerminationStatus GetCrashedStatus() override;
   int GetCrashedErrorCode() override;
   bool IsBeingDestroyed() override;
+  bool IsPrivileged() override;
   void NotifyNavigationStateChanged(InvalidateTypes changed_flags) override;
   void OnAudioStateChanged() override;
   base::TimeTicks GetLastActiveTimeTicks() override;
@@ -1136,6 +1139,8 @@ class CONTENT_EXPORT WebContentsImpl
       FrameTree& frame_tree) override;
   void CreateThrottlesForNavigation(
       NavigationThrottleRegistry& registry) override;
+  void CreateThrottlesForCommitWithoutUrlLoader(
+      NavigationThrottleRegistry& registry) override;
   std::vector<std::unique_ptr<CommitDeferringCondition>>
   CreateDeferringConditionsForNavigationCommit(
       NavigationHandle& navigation_handle,
@@ -1227,6 +1232,10 @@ class CONTENT_EXPORT WebContentsImpl
                                         bool show_selection_menu) override;
   const std::optional<gfx::Rect> GetTextSelectionBounds(
       RenderFrameHost* render_frame_host) const override;
+  const std::optional<gfx::Point> GetFocusSelectionPoint(
+      RenderFrameHost* render_frame_host) const override;
+  base::CallbackListSubscription RegisterFocusSelectionBoundsChanged(
+      FocusSelectionBoundsChangedCallback callback) override;
   input::RenderWidgetHostInputEventRouter* GetInputEventRouter() override;
   void GetRenderWidgetHostAtPointAsynchronously(
       RenderWidgetHostViewBase* root_view,
@@ -1348,6 +1357,7 @@ class CONTENT_EXPORT WebContentsImpl
   FrameTree* GetOwnedDocumentPictureInPictureFrameTree() override;
   FrameTree* GetDocumentPictureInPictureOpenerFrameTree() override;
   std::optional<int64_t> GetPrivilegedContentsFeatureId() override;
+  bool DoesWebContentsDisallowServiceWorkerControl() override;
 
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
   // content::RenderProcessHostCreationObserver
@@ -1377,6 +1387,11 @@ class CONTENT_EXPORT WebContentsImpl
   gfx::ColorSpace GetOutputColorSpace(gfx::ContentColorUsage color_usage,
                                       bool needs_alpha) override;
 #endif  // BUILDFLAG(IS_ANDROID)
+
+  // TextInputManager::Observer implementation:
+  void OnSelectionBoundsChanged(
+      TextInputManager* text_input_manager,
+      RenderWidgetHostViewBase* updated_view) override;
 
   //  RenderWidgetHostInputEventRouter::Delegate -------------------------------
   input::TouchEmulator* GetTouchEmulator(bool create_if_necessary) override;
@@ -1689,6 +1704,10 @@ class CONTENT_EXPORT WebContentsImpl
 
   GlobalRenderFrameHostId current_fullscreen_frame_id_for_testing() const {
     return current_fullscreen_frame_id_;
+  }
+
+  void set_target_network_for_testing(net::handles::NetworkHandle network) {
+    target_network_ = network;
   }
 
   ui::mojom::VirtualKeyboardMode GetVirtualKeyboardMode() const;
@@ -2352,6 +2371,8 @@ class CONTENT_EXPORT WebContentsImpl
   void ApplyPrimaryPageSubframeImportance();
 #endif
 
+  void OnFocusSelectionBoundsChangedSubscriptionRemoved();
+
   // Data for core operation ---------------------------------------------------
 
   // Delegate for notifying our owner about stuff. Not owned by us.
@@ -2523,9 +2544,14 @@ class CONTENT_EXPORT WebContentsImpl
       delegated_ink_point_renderer_;
 
   // The visibility of the WebContents. Initialized from
-  // |CreateParams::initially_hidden|. Updated from
+  // `CreateParams::initially_hidden` and
+  // `CreateParams::initially_hidden_but_painting`. Updated from
   // UpdateWebContentsVisibility(), WasShown(), WasHidden(), WasOccluded().
   Visibility visibility_ = Visibility::VISIBLE;
+
+  // Whether this WebContents was created with
+  // `CreateParams::initially_hidden_but_painting`.
+  bool initially_hidden_but_painting_ = false;
 
   // Whether there has been a call to UpdateWebContentsVisibility(VISIBLE).
   bool did_first_set_visible_ = false;
@@ -2722,6 +2748,9 @@ class CONTENT_EXPORT WebContentsImpl
   // IME-related state for RenderWidgetHosts on the inner WebContents is tracked
   // by the TextInputManager in the outer WebContents.
   std::unique_ptr<TextInputManager> text_input_manager_;
+
+  base::RepeatingCallbackList<void(RenderWidgetHostView*)>
+      focus_selection_bounds_changed_callback_list_;
 
   // Tests can set this to true in order to force this web contents to always
   // return nullptr for the above `text_input_manager_`, effectively blocking

@@ -1065,8 +1065,7 @@
       'filepath': 'cicerone'\
                   '|concierge'\
                   '|crostini'\
-                  '|guest_os'\
-                  '|plugin_vm',
+                  '|guest_os',
     },
     'cups_printing' : {
       'filepath': 'chrome/browser/resources/ash/settings/os_printing_page/'\
@@ -1866,6 +1865,12 @@
     },
     'ozone_fuchsia': {
       'filepath': 'ui/ozone/platform/flatland/',
+    },
+    'page_content_extraction': {
+      'filepath': 'components/optimization_guide/content/browser/page_content_|' \
+                  'components/optimization_guide/proto/features/common_quality_data\.proto|' \
+                  'ios/chrome/browser/intelligence/proto_wrappers/|' \
+                  'ios/chrome/browser/intelligence/persist_tab_context/'
     },
     'page_info' : {
       'filepath': 'chrome/browser/ui/page_info/'\
@@ -2728,7 +2733,9 @@
                         'odejesush+watch@chromium.org'],
     'blink_clipboard': ['dcheng+clipboard@chromium.org'],
     'blink_common': ['kinuko+watch@chromium.org'],
-    'blink_content_extraction': ['mfoltz+watch-actor@chromium.org', 'aleventhal+watch@chromium.org'],
+    'blink_content_extraction': ['mfoltz+watch-actor@chromium.org',
+                                 'aleventhal+watch@chromium.org',
+                                 'liu+watch-apc@chromium.org'],
     'blink_controller': [],
     'blink_css': ['alexis.menard@intel.com',
                   'apavlov+blink@chromium.org',
@@ -3244,6 +3251,7 @@
                       'fuchsia-reviews@chromium.org',
                       'rjkroege@chromium.org',
                       'spang+watch@chromium.org'],
+    'page_content_extraction': ['liu+watch-apc@chromium.org'],
     'page_info' : ['permissions-reviews@chromium.org'],
     'page_load_metrics' : ['bmcquade+watch@chromium.org',
                            'csharrison+watch@chromium.org',

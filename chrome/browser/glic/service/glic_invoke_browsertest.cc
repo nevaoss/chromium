@@ -23,6 +23,7 @@
 #include "chrome/browser/glic/test_support/glic_test_util.h"
 #include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/browser_window/public/create_browser_window.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
 #include "chrome/common/webui_url_constants.h"
@@ -34,6 +35,7 @@
 #include "testing/gtest/include/gtest/gtest.h"
 
 #if !BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/test/base/ui_test_utils.h"
 #endif
@@ -138,6 +140,43 @@ IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest, InvokeWithEmptyConversationId) {
   coordinator().Invoke(std::move(options));
 
   EXPECT_EQ(error_future.Get(), GlicInvokeError::kInvalidConversationId);
+}
+
+IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest,
+                       InvokeWithValidConversationIdSmokeTest) {
+  tabs::TabInterface* tab = GetTabListInterface()->GetActiveTab();
+  base::test::TestFuture<void> success_future;
+  GlicInvokeOptions options(
+      glic::Target(*tab, glic::ConversationId("test-conversation-id")),
+      mojom::InvocationSource::kOsButton);
+  options.on_success = success_future.GetCallback();
+
+  EXPECT_FALSE(GetInstanceForTab(tab));
+
+  coordinator().Invoke(std::move(options));
+
+  EXPECT_TRUE(success_future.Wait());
+  EXPECT_TRUE(GetInstanceForTab(tab));
+}
+
+IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest,
+                       InvokeWithNewConversationSpawnsNewInstance) {
+  tabs::TabInterface* tab = GetTabListInterface()->GetActiveTab();
+  ASSERT_OK_AND_ASSIGN(auto* instance1, OpenGlicForActiveTab());
+  EXPECT_EQ(GetInstanceForTab(tab), instance1);
+
+  base::test::TestFuture<void> success_future;
+  GlicInvokeOptions options(glic::Target(*tab, glic::NewConversation{}),
+                            mojom::InvocationSource::kOsButton);
+  options.on_success = success_future.GetCallback();
+
+  coordinator().Invoke(std::move(options));
+
+  EXPECT_TRUE(success_future.Wait());
+
+  auto* instance2 = GetInstanceForTab(tab);
+  ASSERT_TRUE(instance2);
+  EXPECT_NE(instance1, instance2);
 }
 
 IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest,
@@ -1034,6 +1073,52 @@ IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest,
 
   // Clean up the new window.
   CloseBrowserSynchronously(new_browser);
+}
+
+IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest,
+                       ResolveTargetSurfaceSkipsAppWindow) {
+  Browser* app_browser =
+      CreateBrowserWindow(BrowserWindowCreateParams::CreateForApp(
+                              "test_app", /*trusted_source=*/true, gfx::Rect(),
+                              GetProfile(), /*user_gesture=*/true))
+          ->GetBrowserForMigrationOnly();
+  app_browser->GetWindow()->Show();
+
+  // 1. DefaultSurface targeting app_browser falls back to a normal browser.
+  {
+    BrowserWindowInterface* fallback_browser = nullptr;
+    {
+      Target target;
+      target.surface = DefaultSurface{app_browser};
+      auto resolved =
+          GlicInvokeHandler::ResolveTargetSurface(GetProfile(), target);
+      ASSERT_TRUE(
+          std::holds_alternative<GlicInvokeHandler::TabSurface>(resolved));
+      auto tab_surface = std::get<GlicInvokeHandler::TabSurface>(resolved);
+      fallback_browser = tab_surface.tab->GetBrowserWindowInterface();
+      EXPECT_NE(fallback_browser, app_browser);
+    }
+    CloseBrowserSynchronously(fallback_browser);
+  }
+
+  // 2. NewTab targeting app_browser falls back to a normal browser.
+  {
+    BrowserWindowInterface* fallback_browser = nullptr;
+    {
+      Target target;
+      target.surface = NewTab{app_browser};
+      auto resolved =
+          GlicInvokeHandler::ResolveTargetSurface(GetProfile(), target);
+      ASSERT_TRUE(
+          std::holds_alternative<GlicInvokeHandler::TabSurface>(resolved));
+      auto tab_surface = std::get<GlicInvokeHandler::TabSurface>(resolved);
+      fallback_browser = tab_surface.tab->GetBrowserWindowInterface();
+      EXPECT_NE(fallback_browser, app_browser);
+    }
+    CloseBrowserSynchronously(fallback_browser);
+  }
+
+  CloseBrowserSynchronously(app_browser);
 }
 
 IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest, ResolveTargetSurfaceFloating) {

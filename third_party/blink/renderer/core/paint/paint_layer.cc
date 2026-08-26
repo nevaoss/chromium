@@ -1243,7 +1243,7 @@ static bool IsHitCandidateForDepthOrder(
           child_z_offset = pt3.z();
         }
       }
-      if (child_z_offset < 0) {
+      if (child_z_offset < *z_offset) {
         return false;
       }
     } else {
@@ -2220,7 +2220,8 @@ void PaintLayer::ExpandRectForSelfPaintingDescendants(
     }
 
     PhysicalOffset delta = child_layer->GetLayoutObject().LocalToAncestorPoint(
-        PhysicalOffset(), &GetLayoutObject(), kIgnoreTransforms);
+        PhysicalOffset(), &GetLayoutObject(),
+        {MapCoordinatesMode::kIgnoreTransforms});
     added_rect.Move(delta);
 
     result.Unite(added_rect);

@@ -558,6 +558,27 @@ IN_PROC_BROWSER_TEST_P(PopupViewViewsBrowsertest, InvokeUi_AtMemoryFetching) {
                                          .no_results_message = u""});
 }
 
+IN_PROC_BROWSER_TEST_P(PopupViewViewsBrowsertest,
+                       InvokeUi_MultiSuggestionNotice) {
+  ON_CALL(controller(), GetMainFillingProduct())
+      .WillByDefault(Return(FillingProduct::kAutofillAi));
+  Suggestion fill_suggestion(u"John Doe", u"Passport",
+                             Suggestion::Icon::kPassport,
+                             SuggestionType::kFillAutofillAi);
+  Suggestion notice_suggestion(SuggestionType::kPersonalContextNotice);
+  PrepareSuggestions({fill_suggestion, notice_suggestion});
+  ShowAndVerifyUi();
+}
+
+IN_PROC_BROWSER_TEST_P(PopupViewViewsBrowsertest,
+                       InvokeUi_SuggestionNoticeIsTheOnlySuggestion) {
+  ON_CALL(controller(), GetMainFillingProduct())
+      .WillByDefault(Return(FillingProduct::kAutofillAi));
+  Suggestion notice_suggestion(SuggestionType::kPersonalContextNotice);
+  PrepareSuggestions({notice_suggestion});
+  ShowAndVerifyUi();
+}
+
 INSTANTIATE_TEST_SUITE_P(All,
                          PopupViewViewsBrowsertest,
                          Combine(Bool(), Bool()),

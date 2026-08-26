@@ -25,7 +25,9 @@ enum class DelegatedTaskStatus {
   kTaskTimeout = 6,
   kInvalidTaskType = 7,
   kInvalidArgs = 8,
-  kMaxValue = kInvalidArgs,
+  kPehValidationFailure = 9,
+  kUnsupportedVersion = 10,
+  kMaxValue = kUnsupportedVersion,
 };
 // LINT.ThenChange(//tools/metrics/histograms/metadata/windows/enums.xml:DelegatedTaskStatus)
 

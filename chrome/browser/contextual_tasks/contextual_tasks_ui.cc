@@ -108,6 +108,7 @@
 #else
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/lens/lens_search_controller.h"
+#include "chrome/browser/ui/views/permissions/chip/permission_chip_view.h"
 #include "chrome/browser/ui/views/user_education/browser_help_bubble.h"
 #include "chrome/browser/ui/webui/webui_toolbar/webui_toolbar_layout_css_helper.h"
 #include "chrome/grit/webui_toolbar_shared_resources.h"
@@ -165,28 +166,7 @@ bool IsUserFeedbackAllowed(Profile* profile) {
 }
 
 std::string GetEncodedHandshakeMessage() {
-  lens::ClientToAimMessage message;
-  lens::HandshakePing* ping = message.mutable_handshake_ping();
-  ping->add_capabilities(lens::FeatureCapability::DEFAULT);
-  ping->add_capabilities(lens::FeatureCapability::OPEN_THREADS_VIEW);
-  ping->add_capabilities(lens::FeatureCapability::COBROWSING_DISPLAY_CONTROL);
-  if (base::FeatureList::IsEnabled(
-          contextual_tasks::kContextualTasksContextLibrary)) {
-    ping->add_capabilities(lens::FeatureCapability::THREAD_CONTEXT_LIBRARY);
-  }
-  if (base::FeatureList::IsEnabled(
-          contextual_tasks::kEnableNotifyZeroStateRenderedCapability)) {
-    ping->add_capabilities(lens::FeatureCapability::NOTIFY_ZERO_STATE_RENDERED);
-  }
-  if (contextual_tasks::ShouldEnableLockAndUnlockInputCapability()) {
-    ping->add_capabilities(lens::FeatureCapability::UNLOCK_INPUT);
-    ping->add_capabilities(lens::FeatureCapability::LOCK_INPUT);
-  }
-
-  const size_t size = message.ByteSizeLong();
-  std::vector<uint8_t> serialized_message(size);
-  message.SerializeToArray(&serialized_message[0], size);
-  return base::Base64Encode(serialized_message);
+  return base::Base64Encode(contextual_tasks::GetSerializedHandshakeMessage());
 }
 
 void AddDefaultZeroStateStrings(base::DictValue& dict) {
@@ -426,14 +406,20 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
 
   contextual_tasks_service_observation_.Observe(contextual_tasks_service_);
 
+  std::vector<ui::ElementIdentifier> tracked_element_ids = {
+      kSmartTabSharingMenuItemElementId,
+      kContextualTasksWebUIPinButtonElementId,
+      kContextualTasksWebUIToolbarElementId,
+      kContextualTasksWebUIOverflowMenuElementId,
+      kContextualTasksWebUIOverflowMenuPinButtonElementId,
+      kContextualTasksSuperGButtonElementId};
+#if !BUILDFLAG(IS_ANDROID)
+  tracked_element_ids.push_back(
+      PermissionChipView::kPermissionRequestChipElementId);
+  tracked_element_ids.push_back(PermissionChipView::kIndicatorChipElementId);
+#endif
   ui::TrackedElementHandlerDocumentSingleton::Register(
-      this, std::vector<ui::ElementIdentifier>{
-                kSmartTabSharingMenuItemElementId,
-                kContextualTasksWebUIPinButtonElementId,
-                kContextualTasksWebUIToolbarElementId,
-                kContextualTasksWebUIOverflowMenuElementId,
-                kContextualTasksWebUIOverflowMenuPinButtonElementId,
-                kContextualTasksSuperGButtonElementId});
+      this, std::move(tracked_element_ids));
 }
 
 ContextualTasksUI::~ContextualTasksUI() {
@@ -456,6 +442,10 @@ base::DictValue ContextualTasksUI::GetContextualTasksLoadTimeData(
   base::DictValue dict;
 
   static constexpr webui::LocalizedString kLocalizedStrings[] = {
+      {"askGFirstRunTitle",
+       IDS_CONTEXTUAL_TASKS_FIRST_RUN_EXPERIENCE_SHORT_TITLE},
+      {"askGFirstRunBody", IDS_LENS_COBROWSE_CURRENT_TAB_IPH_DESCRIPTION},
+      {"close", IDS_CLOSE},
       {"closeTooltip", IDS_CONTEXTUAL_TASKS_SIDE_PANEL_CLOSE_TOOL_TIP},
       {"contextTooltip", IDS_CONTEXTUAL_TASKS_SIDE_PANEL_CONTEXT_TOOL_TIP},
       {"continueThread", IDS_CONTEXTUAL_TASKS_CONTINUE_THREAD_MESSAGE},
@@ -473,14 +463,13 @@ base::DictValue ContextualTasksUI::GetContextualTasksLoadTimeData(
        IDS_CONTEXTUAL_TASKS_SIDE_PANEL_HISTORY_TOOL_TIP},
       {"title", IDS_CONTEXTUAL_TASKS_AI_MODE_TITLE},
       {"unpinTooltip", IDS_SIDE_PANEL_HEADER_UNPIN_BUTTON_TOOLTIP},
+      {"onboardingTitle", IDS_CONTEXTUAL_TASKS_FIRST_RUN_EXPERIENCE_TITLE},
       {"onboardingBody", IDS_CONTEXTUAL_TASKS_FIRST_RUN_EXPERIENCE_DESCRIPTION},
       {"onboardingLink", IDS_CONTEXTUAL_TASKS_FIRST_RUN_EXPERIENCE_LEARN_MORE},
       {"onboardingAcceptButton",
        IDS_CONTEXTUAL_TASKS_FIRST_RUN_EXPERIENCE_ACCEPT_BUTTON},
       {"lensSearchTooltipTitle", IDS_LENS_COBROWSE_IPH_HEADER},
       {"lensSearchTooltipBody", IDS_LENS_COBROWSE_IPH_DESCRIPTION},
-      {"lensSearchTooltipAcceptButton",
-       IDS_CONTEXTUAL_TASKS_FIRST_RUN_EXPERIENCE_ACCEPT_BUTTON},
       {"oauthErrorDialogTitle", IDS_CONTEXTUAL_TASKS_OAUTH_ERROR_DIALOG_TITLE},
       {"oauthErrorDialogBody", IDS_CONTEXTUAL_TASKS_OAUTH_ERROR_DIALOG_BODY},
       {"oauthErrorDialogReloadButton",
@@ -508,12 +497,6 @@ base::DictValue ContextualTasksUI::GetContextualTasksLoadTimeData(
       profile, {.enable_voice_search = true,
                 .session_allows_drag_and_drop = session_allows_drag_and_drop}));
 #endif  // BUILDFLAG(ENABLE_WEBUI_CONTEXTUAL_TASKS_COMPOSEBOX)
-
-  int onboarding_title_id = IDS_CONTEXTUAL_TASKS_FIRST_RUN_EXPERIENCE_TITLE;
-  if (base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxAskGAboutThisPage)) {
-    onboarding_title_id = IDS_CONTEXTUAL_TASKS_FIRST_RUN_EXPERIENCE_SHORT_TITLE;
-  }
-  dict.Set("onboardingTitle", l10n_util::GetStringUTF16(onboarding_title_id));
 
   int stsDefaultOnHeaderId = IDS_STS_IPH_DEFAULT_ON_HEADER;
   int stsDefaultOnBodyId = IDS_STS_IPH_DEFAULT_ON_BODY;
@@ -619,6 +602,14 @@ base::DictValue ContextualTasksUI::GetContextualTasksLoadTimeData(
   dict.Set("lensSearchTooltipSessionImpressionCap",
            contextual_tasks::
                GetContextualTasksLensSearchTooltipSessionImpressionCap());
+  dict.Set(
+      "isAskGTooltipDismissCountBelowCap",
+      profile->GetPrefs()->GetInteger(
+          contextual_tasks::kContextualTasksAskGTooltipDismissedCount) <
+          contextual_tasks::GetContextualTasksAskGTooltipDismissedCap());
+  dict.Set("askGTooltipSessionImpressionCap",
+           contextual_tasks::
+               GetContextualTasksAskGTooltipSessionImpressionCap());
   dict.Set("askGCoBrowseEnabled", omnibox::kAskGCoBrowse.Get());
   dict.Set("contextualTasksSidePanelRearchitectureEnabled",
            contextual_tasks::IsContextualTasksSidePanelRearchitectureEnabled());
@@ -1705,7 +1696,8 @@ void ContextualTasksUI::FrameNavObserver::DidFinishNavigation(
            "FrameNavObserver::DidFinishNavigation zero state logic";
     base::Uuid new_task_id;
     if (old_task_id && old_task_id->is_valid() &&
-        !task_info_delegate_->GetThreadId().has_value()) {
+        !task_info_delegate_->GetThreadId().has_value() &&
+        !has_zero_state_changed) {
       // Reuse the existing task ID if it is valid and has no thread ID yet
       // (it represents an unassociated zero-state task).
       new_task_id = *old_task_id;
@@ -1797,13 +1789,13 @@ void ContextualTasksUI::FrameNavObserver::DidFinishNavigation(
     bool is_thread_switch =
         webui_thread_id && webui_thread_id.value() != url_thread_id;
 
-    bool should_create_new_task =
-        (pending_task_title_mismatch || is_new_conversation ||
-         is_thread_switch) &&
-        (!base::FeatureList::IsEnabled(
-             omnibox::kContextManagementInComposebox) ||
-         !task_info_delegate_->GetTaskId().has_value());
+    bool has_reusable_task =
+        base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox) &&
+        task_info_delegate_->GetTaskId().has_value();
 
+    bool should_create_new_task = pending_task_title_mismatch ||
+                                  is_thread_switch ||
+                                  (is_new_conversation && !has_reusable_task);
     if (should_create_new_task) {
       OMNIBOX_LOG("nav_trace") << "ContextualTasks navigation trace: "
                                   "FrameNavObserver::DidFinishNavigation "
@@ -1860,21 +1852,23 @@ bool ContextualTasksUI::IsZeroState(
   std::string smstk_value;
   std::string vsrid_value;
   std::string cinpts_value;
+  std::string mtid_value;
   net::GetValueForKeyInQuery(url, "q", &query_value);
   net::GetValueForKeyInQuery(url, "mstk", &mstk_value);
   net::GetValueForKeyInQuery(url, "smstk", &smstk_value);
   net::GetValueForKeyInQuery(url, "vsrid", &vsrid_value);
   net::GetValueForKeyInQuery(url, "cinpts", &cinpts_value);
+  net::GetValueForKeyInQuery(url, "mtid", &mtid_value);
 
-  // If the URL is an AI URL and there's no query or (s)mstk, it's zero state.
-  // If there is either a query or (s)mstk, assume it's not zero state. If there
-  // is a vsrid/cinpts, assume it's not zero state since there will soon be an
-  // mstk.
+  // If the URL is an AI URL and there's no query or (s)mstk/mtid, it's zero
+  // state. If there is either a query or (s)mstk/mtid, assume it's not zero
+  // state. If there is a vsrid/cinpts, assume it's not zero state since there
+  // will soon be an mstk.
   // TODO(crbug.com/472336339): Find a more robust way to determine if the page
   // is zero state instead of query params.
   return ui_service->IsAiUrl(url) && query_value.empty() &&
          mstk_value.empty() && smstk_value.empty() && vsrid_value.empty() &&
-         cinpts_value.empty();
+         cinpts_value.empty() && mtid_value.empty();
 }
 
 ContextualTasksUI::InnerFrameCreationObvserver::InnerFrameCreationObvserver(

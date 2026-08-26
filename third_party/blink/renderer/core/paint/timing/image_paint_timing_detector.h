@@ -109,8 +109,26 @@ class CORE_EXPORT ImagePaintTimingDetector final
   void Trace(Visitor*) const;
 
  private:
-  friend class ImagePaintTimingDetectorTest;
+  friend class ImagePaintTimingDetectorTestBase;
   friend class LargestContentfulPaintCalculatorTest;
+
+  enum class PresentationReason : uint8_t {
+    kFirstAnimatedFrame,
+    kSufficientlyLoaded,
+  };
+
+  struct QueuedImageRecordInfo
+      : public GarbageCollected<QueuedImageRecordInfo> {
+    QueuedImageRecordInfo(ImageRecord*,
+                          uint32_t frame_index,
+                          PresentationReason);
+
+    void Trace(Visitor*) const;
+
+    const Member<ImageRecord> image_record;
+    const uint32_t frame_index;
+    const PresentationReason presentation_reason;
+  };
 
   void SendRectsToHud();
 
@@ -129,9 +147,14 @@ class CORE_EXPORT ImagePaintTimingDetector final
     return it == pending_images_.end() ? nullptr : it->value.Get();
   }
 
-  void OnFirstAnimatedFramePainted(MediaRecordIdHash);
+  // Sets the first animated frame time for the given `ImageRecord` based on the
+  // record's `MediaTiming`, which must be a VideoTiming.
+  void SetVideoFirstAnimatedFrameTime(ImageRecord*);
 
-  void OnImageLoaded(ImageRecord*, const StyleImage*);
+  // Sets the load time on the given `ImageRecord`. If the `StyleImage` is
+  // non-null, the background image load time is used, otherwise the timestamp
+  // from `image_finished_times_` is used.
+  void SetLoadTime(ImageRecord*, const StyleImage*);
 
   void AssignPaintTimeToRegisteredQueuedRecords(
       uint32_t last_queued_frame_index,
@@ -139,12 +162,7 @@ class CORE_EXPORT ImagePaintTimingDetector final
       const DOMPaintTimingInfo&,
       HeapVector<Member<ImageRecord>>& settled_records);
 
-  inline void QueueToMeasurePaintTime(ImageRecord* record) {
-    CHECK(record);
-    record->SetFrameIndex(frame_index_);
-    images_queued_for_paint_time_.push_back(record);
-    added_entry_in_latest_frame_ = true;
-  }
+  void QueueToMeasurePaintTime(ImageRecord*, PresentationReason);
 
   // Used to decide which frame a record belongs to, monotonically increasing.
   uint32_t frame_index_ = 1;
@@ -169,7 +187,7 @@ class CORE_EXPORT ImagePaintTimingDetector final
 
   // |ImageRecord|s waiting for paint time are stored in this map
   // until they get a presentation time.
-  HeapDeque<Member<ImageRecord>> images_queued_for_paint_time_;
+  HeapDeque<Member<QueuedImageRecordInfo>> images_queued_for_paint_time_;
 
   // Map containing timestamps of when LayoutObject::ImageNotifyFinished is
   // first called.

@@ -477,9 +477,9 @@ void ServiceWorkerVersion::RegisterStatusChangeCallback(
 
 ServiceWorkerVersionInfo ServiceWorkerVersion::GetInfo() {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
-  std::optional<std::string> router_rules;
+  RouterRulesForDevTools router_rules;
   if (router_evaluator_) {
-    router_rules = router_evaluator_->ToString();
+    router_rules = CalculateRouterRulesForDevTools();
   }
   ServiceWorkerVersionInfo info(
       running_status(), status(), fetch_handler_type_,
@@ -487,7 +487,8 @@ ServiceWorkerVersionInfo ServiceWorkerVersion::GetInfo() {
       registration_id(), version_id(), embedded_worker()->process_id(),
       embedded_worker()->thread_id(),
       embedded_worker()->worker_devtools_agent_route_id(), ukm_source_id(),
-      ancestor_frame_type_, router_rules);
+      ancestor_frame_type_, std::move(router_rules.legacy_rules),
+      std::move(router_rules.typed_rules));
   for (const auto& controllee : controllee_map_) {
     ServiceWorkerClient* service_worker_client = controllee.second.get();
     info.clients.emplace(service_worker_client->client_uuid(),
@@ -1889,6 +1890,13 @@ void ServiceWorkerVersion::OpenNewTab(const GURL& url,
     receiver_.reset();
     return;
   }
+  if (!HasPendingWindowInteractionEvent()) {
+    associated_interface_receiver_.ReportBadMessage(
+        "Received Clients#openWindow() request without a pending event that "
+        "allows window interaction.");
+    receiver_.reset();
+    return;
+  }
   // TODO(crbug.com/40177656): After StorageKey implements partitioning update
   // this to reject with InvalidAccessError if key_ is partitioned.
   OpenWindow(url, service_worker_client_utils::WindowType::NEW_TAB_WINDOW,
@@ -1982,6 +1990,55 @@ bool ServiceWorkerVersion::HasPendingPaymentRequestEvent() {
     if (iter.GetCurrentValue()->event_type ==
         ServiceWorkerMetrics::EventType::PAYMENT_REQUEST) {
       return true;
+    }
+    iter.Advance();
+  }
+  return false;
+}
+
+bool ServiceWorkerVersion::HasPendingWindowInteractionEvent() {
+  // Despite using a const_iterator, this method cannot be const because
+  // base::IDMap::Iterator always modifies the Map object it is iterating
+  // over (to update bookkeeping state).
+  base::IDMap<std::unique_ptr<InflightRequest>>::const_iterator iter(
+      &inflight_requests_);
+  while (!iter.IsAtEnd()) {
+    switch (iter.GetCurrentValue()->event_type) {
+      case ServiceWorkerMetrics::EventType::NOTIFICATION_CLICK:
+      case ServiceWorkerMetrics::EventType::PAYMENT_REQUEST:
+      case ServiceWorkerMetrics::EventType::BACKGROUND_FETCH_CLICK:
+        return true;
+      case ServiceWorkerMetrics::EventType::ACTIVATE:
+      case ServiceWorkerMetrics::EventType::INSTALL:
+      case ServiceWorkerMetrics::EventType::SYNC:
+      case ServiceWorkerMetrics::EventType::PUSH:
+      case ServiceWorkerMetrics::EventType::MESSAGE:
+      case ServiceWorkerMetrics::EventType::NOTIFICATION_CLOSE:
+      case ServiceWorkerMetrics::EventType::FETCH_MAIN_FRAME:
+      case ServiceWorkerMetrics::EventType::FETCH_SUB_FRAME:
+      case ServiceWorkerMetrics::EventType::FETCH_SHARED_WORKER:
+      case ServiceWorkerMetrics::EventType::FETCH_SUB_RESOURCE:
+      case ServiceWorkerMetrics::EventType::UNKNOWN:
+      case ServiceWorkerMetrics::EventType::FETCH_WAITUNTIL:
+      case ServiceWorkerMetrics::EventType::EXTERNAL_REQUEST:
+      case ServiceWorkerMetrics::EventType::BACKGROUND_FETCH_ABORT:
+      case ServiceWorkerMetrics::EventType::BACKGROUND_FETCH_FAIL:
+      case ServiceWorkerMetrics::EventType::NAVIGATION_HINT:
+      case ServiceWorkerMetrics::EventType::CAN_MAKE_PAYMENT:
+      case ServiceWorkerMetrics::EventType::ABORT_PAYMENT:
+      case ServiceWorkerMetrics::EventType::COOKIE_CHANGE:
+      case ServiceWorkerMetrics::EventType::BACKGROUND_FETCH_SUCCESS:
+      case ServiceWorkerMetrics::EventType::PERIODIC_SYNC:
+      case ServiceWorkerMetrics::EventType::CONTENT_DELETE:
+      case ServiceWorkerMetrics::EventType::PUSH_SUBSCRIPTION_CHANGE:
+      case ServiceWorkerMetrics::EventType::FETCH_FENCED_FRAME:
+      case ServiceWorkerMetrics::EventType::BYPASS_MAIN_RESOURCE:
+      case ServiceWorkerMetrics::EventType::SKIP_EMPTY_FETCH_HANDLER:
+      case ServiceWorkerMetrics::EventType::
+          BYPASS_ONLY_IF_SERVICE_WORKER_NOT_STARTED:
+      case ServiceWorkerMetrics::EventType::WARM_UP:
+      case ServiceWorkerMetrics::EventType::STATIC_ROUTER:
+        break;
     }
     iter.Advance();
   }
@@ -2117,6 +2174,13 @@ void ServiceWorkerVersion::FocusClient(const std::string& client_uuid,
   if (ancestor_frame_type_ == blink::mojom::AncestorFrameType::kFencedFrame) {
     associated_interface_receiver_.ReportBadMessage(
         "Received WindowClient#focus() request from a fenced frame.");
+    receiver_.reset();
+    return;
+  }
+  if (!HasPendingWindowInteractionEvent()) {
+    associated_interface_receiver_.ReportBadMessage(
+        "Received WindowClient#focus() request without a pending event that "
+        "allows window interaction.");
     receiver_.reset();
     return;
   }
@@ -2415,6 +2479,22 @@ void ServiceWorkerVersion::CountFeature(blink::mojom::WebFeature feature) {
   }
 }
 
+ServiceWorkerVersion::RouterRulesForDevTools
+ServiceWorkerVersion::CalculateRouterRulesForDevTools() const {
+  RouterRulesForDevTools rules;
+  // Router rules that have nested conditions are currently unsupported. Use
+  // the legacy field for them even if the flag is enabled.
+  // TODO(crbug.com/540469610): support them.
+  if (base::FeatureList::IsEnabled(
+          features::kServiceWorkerStaticRouterTypedRulesForDevTools) &&
+      !router_evaluator()->has_nested_conditions()) {
+    rules.typed_rules = router_evaluator()->CalculateRouterRulesForDevTools();
+  } else {
+    rules.legacy_rules = router_evaluator()->ToString();
+  }
+  return rules;
+}
+
 network::mojom::CrossOriginEmbedderPolicyValue
 ServiceWorkerVersion::cross_origin_embedder_policy_value() const {
   return policy_container_host_
@@ -2448,7 +2528,6 @@ ServiceWorkerVersion::BuildClientSecurityState() const {
       local_network_access_request_policy =
           DeriveLocalNetworkAccessRequestPolicy(
               policies.ip_address_space, policies.is_web_secure_context,
-              policies.allow_non_secure_local_network_access,
               LocalNetworkAccessRequestContext::kWorker);
 
   // Check for policy overrides on LNA. For service workers, we apply

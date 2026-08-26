@@ -49,6 +49,14 @@ NET_EXPORT extern const base::FeatureParam<bool>
 
 // Caches UDP connect() results in AddressSorterPosix.
 NET_EXPORT BASE_DECLARE_FEATURE(kAddressSorterConnectCache);
+NET_EXPORT BASE_DECLARE_FEATURE_PARAM(size_t,
+                                      kAddressSorterConnectCacheMaxNetworks);
+NET_EXPORT BASE_DECLARE_FEATURE_PARAM(
+    size_t,
+    kAddressSorterConnectCacheMaxNaksPerNetwork);
+NET_EXPORT BASE_DECLARE_FEATURE_PARAM(
+    size_t,
+    kAddressSorterConnectCacheMaxPredictionsPerPartition);
 
 // Support for altering the parameters used for DNS transaction timeout. See
 // ResolveContext::SecureTransactionTimeout().
@@ -422,6 +430,10 @@ NET_EXPORT extern const base::FeatureParam<int>
 // A flag to use asynchronous session creation for new QUIC sessions.
 NET_EXPORT BASE_DECLARE_FEATURE(kAsyncQuicSession);
 
+// A flag to use QuicSessionPool::AsyncDnsJob, which resolves hostnames with
+// HostResolver::ServiceEndpointRequest, for direct QUIC sessions.
+NET_EXPORT BASE_DECLARE_FEATURE(kAsyncDnsQuicJob);
+
 // A flag to make multiport context creation asynchronous.
 NET_EXPORT BASE_DECLARE_FEATURE(kAsyncMultiPortPath);
 
@@ -696,6 +708,13 @@ NET_EXPORT BASE_DECLARE_FEATURE(kHttpCacheNoVarySearch);
 NET_EXPORT BASE_DECLARE_FEATURE_PARAM(size_t,
                                       kHttpCacheNoVarySearchCacheMaxEntries);
 
+NET_EXPORT BASE_DECLARE_FEATURE_PARAM(
+    size_t,
+    kHttpCacheNoVarySearchCacheMaxPartitionEntries);
+
+NET_EXPORT BASE_DECLARE_FEATURE_PARAM(size_t,
+                                      kHttpCacheNoVarySearchCacheMaxPartitions);
+
 // Whether persistence is enabled in on-the-record profiles. True by default.
 NET_EXPORT BASE_DECLARE_FEATURE_PARAM(bool,
                                       kHttpCacheNoVarySearchPersistenceEnabled);
@@ -952,6 +971,8 @@ NET_EXPORT BASE_DECLARE_FEATURE(kIgnoreMemoryPressureForSslClientSessionCache);
 NET_EXPORT BASE_DECLARE_FEATURE(kCookieParseRejectEmptyNameAmbiguous);
 
 NET_EXPORT BASE_DECLARE_FEATURE(kEnablePrivateVerificationTokens);
+NET_EXPORT BASE_DECLARE_FEATURE_PARAM(std::string,
+                                      kPrivateVerificationTokensCustomIssuer);
 
 // If enabled, request servers to add additional padding to TLS handshakes. The
 // amount requested is configurable by the parameter
@@ -1019,6 +1040,11 @@ NET_EXPORT BASE_DECLARE_FEATURE(kMaxDelayForBrokenAlternativeService);
 NET_EXPORT BASE_DECLARE_FEATURE_PARAM(
     base::TimeDelta,
     kMaxDelayForBrokenAlternativeServiceParam);
+
+#if BUILDFLAG(IS_WIN)
+// Disables SYN retransmissions for TCP loopback connections on Windows.
+NET_EXPORT BASE_DECLARE_FEATURE(kEnableWindowsTcpLoopbackFastFail);
+#endif
 
 }  // namespace net::features
 

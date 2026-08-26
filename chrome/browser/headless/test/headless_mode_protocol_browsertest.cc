@@ -380,9 +380,13 @@ HEADLESS_MODE_PROTOCOL_TEST(OzoneScreenSizeOverride,
 HEADLESS_MODE_PROTOCOL_TEST(MultipleScreenDetails,
                             "shared/multiple-screen-details.js")
 
-// TODO(crbug.com/40283476): MoveWindowBetweenScreens is failing on Mac
-// TODO(crbug.com/484218769): Failing/flaky on other platforms as well
-HEADLESS_MODE_PROTOCOL_TEST(DISABLED_MoveWindowBetweenScreens,
+// TODO(crbug.com/543203215): Re-enable this test.
+#if BUILDFLAG(IS_MAC)
+#define MAYBE_MoveWindowBetweenScreens DISABLED_MoveWindowBetweenScreens
+#else
+#define MAYBE_MoveWindowBetweenScreens MoveWindowBetweenScreens
+#endif
+HEADLESS_MODE_PROTOCOL_TEST(MAYBE_MoveWindowBetweenScreens,
                             "shared/move-window-between-screens.js")
 
 HEADLESS_MODE_PROTOCOL_TEST(WindowOpenOnSecondaryScreen,
@@ -397,13 +401,7 @@ HEADLESS_MODE_PROTOCOL_TEST(WindowOpenNoopenerClickOpenerId,
 HEADLESS_MODE_PROTOCOL_TEST(WindowOpenShiftClickOpenerId,
                             "shared/window-open-shift-click-opener-id.js")
 
-// TODO(crbug.com/40283476): CreateTargetSecondaryScreen is failing on Mac
-#if !BUILDFLAG(IS_MAC)
-#define MAYBE_CreateTargetSecondaryScreen CreateTargetSecondaryScreen
-#else
-#define MAYBE_CreateTargetSecondaryScreen DISABLED_CreateTargetSecondaryScreen
-#endif
-HEADLESS_MODE_PROTOCOL_TEST(MAYBE_CreateTargetSecondaryScreen,
+HEADLESS_MODE_PROTOCOL_TEST(CreateTargetSecondaryScreen,
                             "shared/create-target-secondary-screen.js")
 
 HEADLESS_MODE_PROTOCOL_TEST(WindowOpenPopupPlacement,
@@ -422,25 +420,26 @@ HEADLESS_MODE_PROTOCOL_TEST(StartFullscreenSwitch,
 HEADLESS_MODE_PROTOCOL_TEST(StartFullscreenSwitchScaled,
                             "sanity/start-fullscreen-switch-scaled.js")
 
-// TODO(crbug.com/430156442): This fails on macOS where fullscreen uses display
-// bounds rather than work area
+// TODO(crbug.com/543040219): flaky on macOS.
 #if BUILDFLAG(IS_MAC)
 #define MAYBE_WindowStateTransitions DISABLED_WindowStateTransitions
-#define MAYBE_WindowZoomSizeMatchesWorkArea \
-  DISABLED_WindowZoomSizeMatchesWorkArea
 #else
 #define MAYBE_WindowStateTransitions WindowStateTransitions
-#define MAYBE_WindowZoomSizeMatchesWorkArea WindowZoomSizeMatchesWorkArea
 #endif
-
 HEADLESS_MODE_PROTOCOL_TEST(MAYBE_WindowStateTransitions,
                             "shared/window-state-transitions.js")
 
 HEADLESS_MODE_PROTOCOL_TEST(WindowZoomOnSecondaryScreen,
                             "shared/window-zoom-on-secondary-screen.js")
 
-HEADLESS_MODE_PROTOCOL_TEST(MAYBE_WindowZoomSizeMatchesWorkArea,
+// On macOS fullscreen uses display bounds rather than work area.
+#if BUILDFLAG(IS_MAC)
+HEADLESS_MODE_PROTOCOL_TEST(WindowZoomSizeMatchesScreen,
+                            "shared/window-zoom-size-matches-screen.js")
+#else
+HEADLESS_MODE_PROTOCOL_TEST(WindowZoomSizeMatchesWorkArea,
                             "shared/window-zoom-size-matches-work-area.js")
+#endif
 
 HEADLESS_MODE_PROTOCOL_TEST(WindowScreenScaleFactor,
                             "shared/window-screen-scale-factor.js")

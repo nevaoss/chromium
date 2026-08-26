@@ -61,20 +61,6 @@ using ::testing::SizeIs;
 constexpr char kAddressesSuppressedHistogramName[] =
     "Autofill.AddressesSuppressedForDisuse";
 
-#if !BUILDFLAG(IS_IOS)
-Matcher<Suggestion> EqualsUndoAutofillSuggestion() {
-  return EqualsSuggestion(SuggestionType::kUndoOrClear,
-#if BUILDFLAG(IS_ANDROID)
-                          base::i18n::ToUpper(l10n_util::GetStringUTF16(
-                              IDS_AUTOFILL_UNDO_MENU_ITEM)),
-#else
-                          l10n_util::GetStringUTF16(
-                              IDS_AUTOFILL_UNDO_MENU_ITEM),
-#endif
-                          Suggestion::Icon::kUndo);
-}
-#endif
-
 Matcher<Suggestion> EqualsManageAddressesSuggestion() {
   return EqualsSuggestion(
       SuggestionType::kManageAddress,
@@ -1195,7 +1181,7 @@ TEST_F(AddressSuggestionGeneratorTest,
       ElementsAre(EqualsSuggestion(SuggestionType::kAddressFieldByFieldFilling,
                                    profile2.GetRawInfo(NAME_FULL)),
                   EqualsSuggestion(SuggestionType::kSeparator),
-                  EqualsSuggestion(SuggestionType::kUndoOrClear),
+                  EqualsSuggestion(SuggestionType::kUndo),
                   EqualsSuggestion(SuggestionType::kManageAddress)));
 
   // Remove the second address so that the used-for-filling address becomes the
@@ -1210,7 +1196,7 @@ TEST_F(AddressSuggestionGeneratorTest,
       ElementsAre(EqualsSuggestion(SuggestionType::kAddressFieldByFieldFilling,
                                    profile1.GetRawInfo(NAME_FULL)),
                   EqualsSuggestion(SuggestionType::kSeparator),
-                  EqualsSuggestion(SuggestionType::kUndoOrClear),
+                  EqualsSuggestion(SuggestionType::kUndo),
                   EqualsSuggestion(SuggestionType::kManageAddress)));
 }
 
@@ -1239,7 +1225,7 @@ TEST_F(
       ElementsAre(EqualsSuggestion(SuggestionType::kAddressFieldByFieldFilling,
                                    u"Tést Name"),
                   EqualsSuggestion(SuggestionType::kSeparator),
-                  EqualsSuggestion(SuggestionType::kUndoOrClear),
+                  EqualsSuggestion(SuggestionType::kUndo),
                   EqualsSuggestion(SuggestionType::kManageAddress)));
 }
 
@@ -1316,7 +1302,7 @@ TEST_F(AddressSuggestionGeneratorTest,
   EXPECT_THAT(suggestions, ElementsAre(HasIphFeature(kIphFeature)));
 }
 
-#if !BUILDFLAG(IS_IOS)
+#if !BUILDFLAG(IS_IOS) && !BUILDFLAG(IS_ANDROID)
 TEST_F(AddressSuggestionGeneratorTest, UndoAutofillOnAddressForm) {
   address_data().AddProfile(test::GetFullProfile());
   FormFieldData field;
@@ -1327,7 +1313,10 @@ TEST_F(AddressSuggestionGeneratorTest, UndoAutofillOnAddressForm) {
       suggestions,
       ElementsAre(EqualsSuggestion(SuggestionType::kAddressFieldByFieldFilling),
                   EqualsSuggestion(SuggestionType::kSeparator),
-                  EqualsUndoAutofillSuggestion(),
+                  EqualsSuggestion(
+                      SuggestionType::kUndo,
+                      l10n_util::GetStringUTF16(IDS_AUTOFILL_UNDO_MENU_ITEM),
+                      Suggestion::Icon::kUndo),
                   EqualsManageAddressesSuggestion()));
 }
 #endif
@@ -1819,7 +1808,7 @@ TEST_F(AddressSuggestionGeneratorTest, FieldSwapping) {
                   EqualsSuggestion(SuggestionType::kAddressFieldByFieldFilling,
                                    p1.GetRawInfo(NAME_FULL)),
                   EqualsSuggestion(SuggestionType::kSeparator),
-                  EqualsSuggestion(SuggestionType::kUndoOrClear),
+                  EqualsSuggestion(SuggestionType::kUndo),
                   EqualsManageAddressesSuggestion()));
 }
 
@@ -1849,7 +1838,7 @@ TEST_F(AddressSuggestionGeneratorTest, AlreadyAutofilledNoLabels) {
                                  Suggestion::Icon::kAccount),
                 Field(&Suggestion::labels, testing::IsEmpty())),
           EqualsSuggestion(SuggestionType::kSeparator),
-          EqualsSuggestion(SuggestionType::kUndoOrClear),
+          EqualsSuggestion(SuggestionType::kUndo),
           EqualsManageAddressesSuggestion()));
 }
 

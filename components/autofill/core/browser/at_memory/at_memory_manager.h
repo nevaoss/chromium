@@ -6,6 +6,7 @@
 #define COMPONENTS_AUTOFILL_CORE_BROWSER_AT_MEMORY_AT_MEMORY_MANAGER_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <variant>
 #include <vector>
@@ -115,6 +116,27 @@ class AtMemoryManager : public CreditCardAccessManager::Observer {
   void MaybeAppendPersonalContextNotice(
       std::vector<Suggestion>& suggestions) const;
 
+  // Creates the AI disclosure suggestion.
+  static Suggestion CreateAiDisclosureSuggestion();
+
+  // Creates the fetching / loading throbber suggestion.
+  static Suggestion CreateFetchingSuggestion();
+
+  // Creates a catch-all suggestion to display when AtMemory search fails due to
+  // an unexpected or generic error.
+  static Suggestion CreateGenericErrorSuggestion();
+
+  // Creates a suggestion to display when AtMemory search fails to connect to
+  // the server.
+  static Suggestion CreateNoConnectionSuggestion(std::u16string query);
+
+  // Creates the search affordance suggestion.
+  static Suggestion CreateSearchAffordanceSuggestion(std::u16string query);
+
+  void set_target_field_origin(const url::Origin& origin) {
+    target_field_origin_ = origin;
+  }
+
   // Creates a source attribution suggestion ("Suggested by Gemini").
   static Suggestion CreateSourceAttributionSuggestion();
 
@@ -131,12 +153,6 @@ class AtMemoryManager : public CreditCardAccessManager::Observer {
 
   // Creates a suggestion to display when the query is not supported.
   Suggestion CreateUnsupportedQuerySuggestion(const std::u16string& query);
-
-  // Creates the search affordance suggestion.
-  Suggestion CreateSearchAffordanceSuggestion(std::u16string query);
-
-  // Creates the AI disclosure suggestion.
-  Suggestion CreateAiDisclosureSuggestion() const;
 
   // Cancels any pending search queries and resets searching states.
   void CancelPendingQueries();
@@ -225,14 +241,24 @@ class AtMemoryManager : public CreditCardAccessManager::Observer {
       std::unique_ptr<AtMemoryMetricsRecorder> metrics,
       base::expected<EntityInstance, AutofillAiAccessManager::FailureReason>
           result,
-      bool reauth_attempted);
+      bool reauth_attempted,
+      bool did_fetch_from_server);
+
+  // Encapsulates active session state for an AtMemory UI interaction.
+  struct SessionState {
+    AutofillSuggestionTriggerSource trigger_source =
+        AutofillSuggestionTriggerSource::kUnspecified;
+    UpdateSuggestionsCallback update_callback;
+    std::unique_ptr<AtMemoryMetricsRecorder> metrics_recorder;
+    // Indicates whether the current tab and the form uses a secure connection.
+    bool is_context_secure = false;
+    // Flag indicating that a search query is in progress.
+    bool is_searching = false;
+  };
 
   const raw_ptr<BrowserAutofillManager> owner_;
 
-  AutofillSuggestionTriggerSource trigger_source_ =
-      AutofillSuggestionTriggerSource::kUnspecified;
-
-  UpdateSuggestionsCallback update_callback_;
+  std::optional<SessionState> session_state_;
 
   base::ScopedObservation<CreditCardAccessManager,
                           CreditCardAccessManager::Observer>
@@ -240,13 +266,8 @@ class AtMemoryManager : public CreditCardAccessManager::Observer {
 
   bool credit_card_fetch_in_progress_ = false;
 
-  std::unique_ptr<AtMemoryMetricsRecorder> at_memory_metrics_recorder_;
-
-  // Indicates whether the current tab and the form uses a secure connection.
-  bool is_context_secure_ = false;
-  // Flag indicating that a search query is in progress.
-  bool is_searching_ = false;
-
+  // Origin of the target field for the active search session.
+  url::Origin target_field_origin_;
   // Factory for search queries, used to identify currently active query and
   // discard the old ones.
   base::WeakPtrFactory<AtMemoryManager> query_weak_ptr_factory_{this};

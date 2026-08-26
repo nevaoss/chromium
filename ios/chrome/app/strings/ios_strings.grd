@@ -194,6 +194,9 @@
       <message name="IDS_AUTOFILL_SCAN_SAVE_AND_FILL_BOTTOM_SHEET_TITLE" desc="Title for the `Scan, Save and Fill` suggestion shown in the Autofill bottom sheet for users who don't have any cards saved in Autofill. When the suggestion is clicked, users are offered to scan, save and fill a credit card with a single click.">
         Check out faster with autofill across your devices
       </message>
+      <message name="IDS_AUTOFILL_SETTINGS_GOOGLE_WALLET_LEGAL_NOTICE" desc="Footer text in Payment Methods settings page informing users where to manage Google Wallet data and privacy preferences. [iOS only]">
+        Visit Google Wallet to manage <ph name="BEGIN_LINK">BEGIN_LINK</ph>data and privacy preferences<ph name="END_LINK">END_LINK</ph>.
+      </message>
       <message name="IDS_IOS_ACCNAME_CLEAR_TEXT" desc="The accessibility label for the clear text button in the location bar [Length: unlimited].">
         Clear text
       </message>
@@ -300,7 +303,7 @@
        <ph name="EMAIL">$1<ex>jessica@gmail.com</ex></ph>. <ph name="MANAGED_STATUS">$2<ex>Your account is managed</ex></ph>. <ph name="AI_TIER">$3<ex>Google AI Foo membership</ex></ph>.
       </message>
       <message name="IDS_IOS_ACCOUNT_VIEW_ACCESSIBILITY_LABEL_MEMBERSHIPS_AI_TIER" desc="Part of the accessibility label letting the user know which membership tier they have. Used in strings such as IDS_IOS_ACCOUNT_VIEW_ACCESSIBILITY_LABEL_MANAGED_STATUS_AI_TIER. [iOS only]">
-        <ph name="AI_TIER_NAME">$1<ex>Tier name</ex> membership</ph>
+        <ph name="AI_TIER_NAME">$1<ex>Tier name</ex></ph> membership
       </message>
       <message name="IDS_IOS_ACCOUNT_VIEW_ACCESSIBILITY_LABEL_NAME" desc="The accessibility label for the cell containing user’s name and email. [iOS only]">
         <ph name="USER_NAME">$1<ex>Jessica</ex></ph>, <ph name="EMAIL">$2<ex>jessica@gmail.com</ex></ph>.
@@ -2383,6 +2386,36 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
       <message name="IDS_IOS_DEFAULT_BROWSER_NON_MODAL_1P_APP_TITLE" desc="Title for the non-modal default browser promotion banner when Chrome is opened from a first-party app.">
         Better browsing by default
       </message>
+      <message name="IDS_IOS_DEFAULT_BROWSER_NON_MODAL_OMNIBOX_NAVIGATION_TITLE_EXP1" desc="Title for the non-modal default browser promotion banner after Omnibox URL copy/paste and navigation (Copy/Paste Friction experiment) [iOS only].">
+        Skip the Copy &amp; Paste
+      </message>
+      <message name="IDS_IOS_DEFAULT_BROWSER_NON_MODAL_OMNIBOX_NAVIGATION_TITLE_EXP10" desc="Title for the non-modal default browser promotion banner after Omnibox URL copy/paste and navigation (Experience Upgrade experiment) [iOS only].">
+        Better link opening
+      </message>
+      <message name="IDS_IOS_DEFAULT_BROWSER_NON_MODAL_OMNIBOX_NAVIGATION_TITLE_EXP2" desc="Title for the non-modal default browser promotion banner after Omnibox URL copy/paste and navigation (One-Tap Open experiment) [iOS only].">
+        One-Tap Open
+      </message>
+      <message name="IDS_IOS_DEFAULT_BROWSER_NON_MODAL_OMNIBOX_NAVIGATION_TITLE_EXP3" desc="Title for the non-modal default browser promotion banner after Omnibox URL copy/paste and navigation (Smooth Transitions experiment) [iOS only].">
+        Tired of copying links?
+      </message>
+      <message name="IDS_IOS_DEFAULT_BROWSER_NON_MODAL_OMNIBOX_NAVIGATION_TITLE_EXP4" desc="Title for the non-modal default browser promotion banner after Omnibox URL copy/paste and navigation (Time Saving experiment) [iOS only].">
+        Save time on every link
+      </message>
+      <message name="IDS_IOS_DEFAULT_BROWSER_NON_MODAL_OMNIBOX_NAVIGATION_TITLE_EXP5" desc="Title for the non-modal default browser promotion banner after Omnibox URL copy/paste and navigation (Direct Loading experiment) [iOS only].">
+        Launch links directly here
+      </message>
+      <message name="IDS_IOS_DEFAULT_BROWSER_NON_MODAL_OMNIBOX_NAVIGATION_TITLE_EXP6" desc="Title for the non-modal default browser promotion banner after Omnibox URL copy/paste and navigation (Convenience experiment) [iOS only].">
+        Paste less, browse more
+      </message>
+      <message name="IDS_IOS_DEFAULT_BROWSER_NON_MODAL_OMNIBOX_NAVIGATION_TITLE_EXP7" desc="Title for the non-modal default browser promotion banner after Omnibox URL copy/paste and navigation (Speed experiment) [iOS only].">
+        Get here in one tap
+      </message>
+      <message name="IDS_IOS_DEFAULT_BROWSER_NON_MODAL_OMNIBOX_NAVIGATION_TITLE_EXP8" desc="Title for the non-modal default browser promotion banner after Omnibox URL copy/paste and navigation (Seamless Web Flow experiment) [iOS only].">
+        Fluid cross-app browsing
+      </message>
+      <message name="IDS_IOS_DEFAULT_BROWSER_NON_MODAL_OMNIBOX_NAVIGATION_TITLE_EXP9" desc="Title for the non-modal default browser promotion banner after Omnibox URL copy/paste and navigation (Direct Action experiment) [iOS only].">
+        Open links here next time
+      </message>
       <message name="IDS_IOS_DEFAULT_BROWSER_PROMO_PRIMARY_BUTTON_TEXT" desc="Text of button that will take users to iOS settings, where they can change the default browser. Used in the default browser promos [iOS only]">
         Go to Settings…
       </message>
@@ -3347,14 +3380,26 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
       <message name="IDS_IOS_GEMINI_CONSENT_FOOTNOTE_TEXT_SOUTH_KOREA" desc="Format string for the Gemini consent footnote for accounts in South Korea.">
           Our <ph name="BEGIN_LINK">BEGIN_LINK</ph>Terms<ph name="END_LINK">END_LINK</ph>, <ph name="BEGIN_LINK">BEGIN_LINK</ph>Korean Location Terms<ph name="END_LINK">END_LINK</ph>, and <ph name="BEGIN_LINK">BEGIN_LINK</ph>Privacy Notice<ph name="END_LINK">END_LINK</ph> apply. Gemini is AI and can make mistakes, including about people.
       </message>
+      <message name="IDS_IOS_GEMINI_CONSENT_FOOTNOTE_TEXT_SOUTH_KOREA_STRICT" desc="Format string for the Gemini consent footnote for accounts in South Korea for strict mode.">
+        Our <ph name="BEGIN_LINK">BEGIN_LINK</ph>Terms<ph name="END_LINK">END_LINK</ph>, <ph name="BEGIN_LINK">BEGIN_LINK</ph>Korean Location Terms<ph name="END_LINK">END_LINK</ph>, and <ph name="BEGIN_LINK">BEGIN_LINK</ph>Privacy Notice<ph name="END_LINK">END_LINK</ph> apply. Chats are reviewed and used to improve Google AI. Gemini is AI and can make mistakes, including about people. Some content may not be suitable for everyone. You can <ph name="BEGIN_LINK">BEGIN_LINK</ph>manage your activity<ph name="END_LINK">END_LINK</ph>, including info about your location. <ph name="BEGIN_LINK">BEGIN_LINK</ph>Learn more about your choices<ph name="END_LINK">END_LINK</ph>
+      </message>
+      <message name="IDS_IOS_GEMINI_CONSENT_FOOTNOTE_TEXT_STRICT" desc="Format string for the Gemini consent footnote for strict mode.">
+        Gemini is AI and can make mistakes, including about people. Some content may not be suitable for everyone. Chats are reviewed and used to improve Google AI. <ph name="BEGIN_LINK">BEGIN_LINK</ph>Learn about your choices<ph name="END_LINK">END_LINK</ph>. Our <ph name="BEGIN_LINK">BEGIN_LINK</ph>Terms<ph name="END_LINK">END_LINK</ph> and <ph name="BEGIN_LINK">BEGIN_LINK</ph>Privacy Notice<ph name="END_LINK">END_LINK</ph> apply.
+      </message>
       <message name="IDS_IOS_GEMINI_CONSENT_FOOTNOTE_US_ONLY_ADDITION" desc="US-only footer addition message.">
           Some content may not be suitable for everyone.
       </message>
       <message name="IDS_IOS_GEMINI_CONSENT_FOOTNOTE_WATCH_LABEL" desc="Footer label for watch video.">
           Watch: <ph name="BEGIN_LINK">BEGIN_LINK</ph>5 must-knows for generative AI<ph name="END_LINK">END_LINK</ph>
       </message>
+      <message name="IDS_IOS_GEMINI_CONSENT_PRIMARY_BUTTON_STRICT" desc="Primary button text for the Gemini Consent page for strict mode.">
+          Use Gemini
+      </message>
       <message name="IDS_IOS_GEMINI_CONSENT_SHARE_TAB_BODY" desc="Share tab body text for the Gemini Consent page.">
         Google uses the content and URL of shared tabs. Your current tab is shared in new chats. You can change this setting anytime.
+      </message>
+      <message name="IDS_IOS_GEMINI_CONSENT_SHARE_TAB_BODY_STRICT" desc="Share tab body text for the Gemini Consent page for strict mode.">
+        By default, your current tab is shared when you start a new chat. When tabs are shared, their contents and URLs are sent to Google. You can change this setting anytime.
       </message>
       <message name="IDS_IOS_GEMINI_CONSENT_SHARE_TAB_TITLE" desc="Share tab title text for the Gemini Consent page.">
           Tabs are shared for more relevant answers
@@ -3368,11 +3413,17 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
       <message name="IDS_IOS_GEMINI_CONSENT_STRICT_DATA_GOVERNANCE_BODY_2" desc="Body of part 2 for the strict data governance row.">
         Your <ph name="BEGIN_LINK">BEGIN_LINK</ph>Keep Activity<ph name="END_LINK">END_LINK</ph> setting is off by default. When it’s off, Google saves your chats for 3 days. It uses them to make Gemini Apps work correctly, help keep them safe, and use your feedback to fix problems. You can turn on Keep Activity to help improve Google AI for everyone.
       </message>
+      <message name="IDS_IOS_GEMINI_CONSENT_STRICT_DATA_GOVERNANCE_BODY_3" desc="Body of part 3 for the strict data governance row.">
+        When it’s on, your activity is saved in Gemini Apps Activity for 18 months, which you can change to 3 or 36 months. Google uses your activity to develop and improve its services (including Gemini models) as well as to protect Google, its users, and the public with the help of human reviewers. Data reviewed by service providers is disconnected from your account and saved for 3 years.
+      </message>
       <message name="IDS_IOS_GEMINI_CONSENT_STRICT_DATA_GOVERNANCE_SUBTITLE_1" desc="Title of part 1 for the strict data governance row.">
         What activity is collected
       </message>
       <message name="IDS_IOS_GEMINI_CONSENT_STRICT_DATA_GOVERNANCE_SUBTITLE_2" desc="Title of part 2 for the strict data governance row.">
         If you’re under 18
+      </message>
+      <message name="IDS_IOS_GEMINI_CONSENT_STRICT_DATA_GOVERNANCE_TITLE" desc="Title text for the strict data governance row.">
+        Your data improves Google AI
       </message>
       <message name="IDS_IOS_GEMINI_IMAGE_CONTEXT_MENU_ENTRY_POINT" desc="The entry point for Gemini when the user long-presses an image. Invites the user to create an image using Gemini in Chrome.">
         Edit Image with Gemini
@@ -3505,6 +3556,17 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
       </message>
       <message name="IDS_IOS_GEMINI_SUMMARIZE_PAGE_PROMPT" desc="The prepopulated prompt text when initiating Gemini summarization from the App Switcher.">
         Give me a short summary of this page
+      </message>
+      <message name="IDS_IOS_GEMINI_TAB_PICKER_CANNOT_RELOAD_TAB_ERROR" desc="Message displayed in a snackbar when reloading a tab fails. [iOS only].">
+        Can’t reload tabs
+      </message>
+      <message name="IDS_IOS_GEMINI_TAB_PICKER_CANT_BE_SHARED" desc="Message displayed in a snackbar when the user selects an ineligible tab to share. [iOS only].">
+        This tab can't be shared
+      </message>
+      <message name="IDS_IOS_GEMINI_TAB_PICKER_MAXIMUM_TABS_REACHED" desc="Message displayed in a snackbar when the user tries to attach more than the maximum allowed number of tabs. [iOS only].">
+        {COUNT, plural,
+        =1 {Only 1 tab can be shared.}
+        other {Only {COUNT} tabs can be shared.}}
       </message>
       <message name="IDS_IOS_GENERIC_PASSKIT_ERROR" desc="Generic error message on failure reading a PassKit object. [Length: 60em] [iOS only]">
         Sorry, your Pass cannot be installed to Passbook at this time.
@@ -7220,6 +7282,9 @@ Handoff must also be enabled in the General section of Settings, and your device
       </message>
       <message name="IDS_IOS_SEND_TAB_TO_SELF_NO_TARGET_DEVICE_LABEL_WITH_EMAIL" desc="Label shown when a user with no available target devices attempts to use send-tab-to-self, displaying the email they should sign in with. [iOS only]">
         To send this link, sign in to your other device using <ph name="USER_EMAIL">$1<ex>user@email.com</ex></ph>
+      </message>
+      <message name="IDS_IOS_SEND_TAB_TO_SELF_SHARE_SHEET_DEVICE_NAME_WITH_OWNER" desc="Title for dynamic target device in iOS share sheet, displaying the user's name and device name. [iOS only]">
+        <ph name="OWNER_NAME">$1<ex>John</ex></ph> • <ph name="DEVICE_NAME">$2<ex>Pixel 7 Pro</ex></ph>
       </message>
       <message name="IDS_IOS_SEND_TAB_TO_SELF_SNACKBAR_MESSAGE" desc="Message briefly displayed at the bottom of the screen to the user to inform that the tab is being sent to the target device. [Length: 35em]" meaning="The is being sent to the target device. [Length: 35em]">
         Sending to <ph name="DEVICE_NAME">$1<ex>IPhone</ex></ph>…

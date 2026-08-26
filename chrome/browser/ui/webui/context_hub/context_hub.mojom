@@ -23,8 +23,16 @@ enum AutoTodoStatus {
   kDismissed,
 };
 
+enum AutoTodoGroup {
+  kNoMatch,
+  kNudgeToClose,
+  kReadingList,
+  kUnfinishedAction,
+};
+
 struct GmailReference {
   url.mojom.Url message_url;
+  string subject;
 };
 
 struct PhotosReference {
@@ -50,6 +58,8 @@ struct ThirdPartyData {
   int64 tab_id;
   // Timestamp when the associated tab was last active.
   mojo_base.mojom.Time last_active_timestamp;
+  // The group that this Tab-Todo belongs to.
+  AutoTodoGroup group_type;
 };
 
 union AutoTodoData {
@@ -138,11 +148,9 @@ interface PageHandlerFactory {
 // The WebUI page (caller) uses this to interact with the browser
 // process (callee).
 interface PageHandler {
-  // Generates and returns a list of Auto Todos. Gated by kAutoTodos flag.
-  // TODO(crbug.com/540562062): Update this to GenerateFirstPartyAutoTodos and
-  // allow the cache change notification to return the updated Todos.
+  // Generates and saves 1P Auto Todos to the cache. Gated by kAutoTodos flag.
   [RuntimeFeature=kAutoTodos]
-  GenerateAutoTodos() => (array<AutoTodoItem>? todos);
+  GenerateFirstPartyAutoTodos() => (bool success);
 
   // Returns stored Auto Todos from the cache, differentiated by whether they
   // are first party or third party.
@@ -154,6 +162,10 @@ interface PageHandler {
   // successful.
   [RuntimeFeature=kAutoTodos]
   UpdateAutoTodo(AutoTodoItem todo) => (bool success);
+
+  // Generates Tab-based Todos and stores them in the cache. Gated by kAutoTodos flag.
+  [RuntimeFeature=kAutoTodos]
+  GenerateTabBasedTodos() => (bool success);
 
   // Stores or updates feedback on an Auto Todo item in the cache.
   [RuntimeFeature=kAutoTodos]

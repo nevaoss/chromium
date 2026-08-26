@@ -33,6 +33,7 @@
 #include "components/autofill/core/browser/integrators/at_memory/memory_data_type.h"
 #include "components/autofill/core/browser/integrators/at_memory/memory_data_type_util.h"
 #include "components/autofill/core/common/autofill_features.h"
+#include "components/autofill/core/common/dense_set.h"
 #include "components/device_reauth/device_authenticator.h"
 #include "components/personal_context/core/personal_context_debug_features.h"
 #include "components/personal_context/core/personal_context_service.h"
@@ -48,6 +49,9 @@ namespace autofill {
 namespace {
 
 using ::personal_context::proto::AtMemoryQueryResponse;
+using ::personal_context::proto::TypedValue;
+using TypedValueFilter =
+    ::personal_context::proto::AutofillFetchSpecification::TypedValueFilter;
 
 std::vector<personal_context::proto::MemoryDataType>
 GetSupportedLocalDataTypes() {
@@ -116,32 +120,39 @@ std::u16string_view TrimObfuscatingDots(std::u16string_view value) {
   return base::TrimString(value, kMidlineEllipsisDot, base::TRIM_LEADING);
 }
 
-// Returns whether two values are equivalent for deduplication, ignoring
-// case, diacritics, and obfuscation.
-bool AreValuesEquivalent(std::u16string_view a,
-                         std::u16string_view b,
-                         bool is_obfuscated) {
-  std::u16string_view clean_a = is_obfuscated ? TrimObfuscatingDots(a) : a;
-  std::u16string_view clean_b = is_obfuscated ? TrimObfuscatingDots(b) : b;
+// Returns whether two values are equivalent for deduplication, comparing typed
+// values if both are present, or comparing normalized strings otherwise.
+bool AreValuesEquivalent(
+    MemoryDataType type,
+    std::u16string_view a_value,
+    const std::optional<personal_context::proto::TypedValue>& a_typed_value,
+    std::u16string_view b_value,
+    const std::optional<personal_context::proto::TypedValue>& b_typed_value) {
+  if (a_typed_value && b_typed_value) {
+    return *a_typed_value == *b_typed_value;
+  }
+  bool is_obfuscated = IsSpiiMemoryDataType(type);
+  std::u16string_view clean_a =
+      is_obfuscated ? TrimObfuscatingDots(a_value) : a_value;
+  std::u16string_view clean_b =
+      is_obfuscated ? TrimObfuscatingDots(b_value) : b_value;
   return normalization::NormalizeForComparison(clean_a) ==
          normalization::NormalizeForComparison(clean_b);
 }
 
-// Returns a string_view to the value of the given `type` in the `result`, or
+// Returns an `EntryMetadata` for the given `type` in `result`, or
 // `std::nullopt` if it doesn't exist. This checks both the primary result type
-// and the `metadata_list`. If the attribute was the primary attribute when
-// creating the result from an entity, it might have been omitted from the
-// `metadata_list`. In that case, we can use `result.type`
-// to identify it.
-std::optional<std::u16string_view> GetValueForMemoryDataType(
+// and the `metadata_list`.
+std::optional<EntryMetadata> GetMetadataForMemoryDataType(
     const MemorySearchResult& result,
     MemoryDataType type) {
   if (result.type == type) {
-    return result.value;
+    return EntryMetadata(result.type, result.type_name, result.value,
+                         result.typed_value);
   }
   auto it = std::ranges::find(result.metadata_list, type, &EntryMetadata::type);
   if (it != result.metadata_list.end()) {
-    return it->value;
+    return *it;
   }
   return std::nullopt;
 }
@@ -171,7 +182,8 @@ bool AreResultsDuplicates(const MemorySearchResult& a,
       (a.type_name != b.type_name || a.type_name.empty())) {
     return false;
   }
-  if (!AreValuesEquivalent(a.value, b.value, IsSpiiMemoryDataType(a.type))) {
+  if (!AreValuesEquivalent(a.type, a.value, a.typed_value, b.value,
+                           b.typed_value)) {
     return false;
   }
 
@@ -187,13 +199,14 @@ bool AreResultsDuplicates(const MemorySearchResult& a,
          entity_type->merge_constraints()) {
       if (std::ranges::all_of(constraint, [&](AttributeType attr_type) {
             MemoryDataType mem_type = AttributeTypeToMemoryDataType(attr_type);
-            std::optional<std::u16string_view> val_a =
-                GetValueForMemoryDataType(a, mem_type);
-            std::optional<std::u16string_view> val_b =
-                GetValueForMemoryDataType(b, mem_type);
-            return val_a && val_b &&
-                   AreValuesEquivalent(*val_a, *val_b,
-                                       IsSpiiMemoryDataType(mem_type));
+            std::optional<EntryMetadata> meta_a =
+                GetMetadataForMemoryDataType(a, mem_type);
+            std::optional<EntryMetadata> meta_b =
+                GetMetadataForMemoryDataType(b, mem_type);
+            return meta_a && meta_b &&
+                   AreValuesEquivalent(mem_type, meta_a->value,
+                                       meta_a->typed_value, meta_b->value,
+                                       meta_b->typed_value);
           })) {
         return true;
       }
@@ -203,11 +216,12 @@ bool AreResultsDuplicates(const MemorySearchResult& a,
   auto has_contradicting_metadata = [](const MemorySearchResult& result,
                                        const EntryMetadata& meta) {
     return std::ranges::any_of(
-        result.metadata_list, [&meta](const EntryMetadata& result_meta) {
+        result.metadata_list, [&](const EntryMetadata& result_meta) {
           return result_meta.type == meta.type &&
                  result_meta.type_name == meta.type_name &&
-                 !AreValuesEquivalent(result_meta.value, meta.value,
-                                      IsSpiiMemoryDataType(result_meta.type));
+                 !AreValuesEquivalent(meta.type, result_meta.value,
+                                      result_meta.typed_value, meta.value,
+                                      meta.typed_value);
         });
   };
 
@@ -366,83 +380,6 @@ MemorySearchStatus MapContextMemoryError(
   }
 }
 
-// Returns true if `data_type` represents a dynamic transaction type (e.g.
-// Shipment or Order).
-bool IsDynamicTransactionType(MemoryDataType data_type) {
-  switch (data_type) {
-    case MemoryDataType::kOrderId:
-    case MemoryDataType::kOrderAccount:
-    case MemoryDataType::kOrderDate:
-    case MemoryDataType::kOrderMerchantName:
-    case MemoryDataType::kOrderMerchantDomain:
-    case MemoryDataType::kOrderProductNames:
-    case MemoryDataType::kOrderGrandTotal:
-    case MemoryDataType::kShipmentTrackingNumber:
-    case MemoryDataType::kShipmentAssociatedOrderId:
-    case MemoryDataType::kShipmentDeliveryAddress:
-    case MemoryDataType::kShipmentDeliveryZipCode:
-    case MemoryDataType::kShipmentCarrierName:
-    case MemoryDataType::kShipmentCarrierDomain:
-    case MemoryDataType::kShipmentEstimatedDeliveryDate:
-    case MemoryDataType::kShipmentShippedDate:
-      return true;
-    case MemoryDataType::kNameFull:
-    case MemoryDataType::kAddressFull:
-    case MemoryDataType::kAddressStreetAddress:
-    case MemoryDataType::kAddressCity:
-    case MemoryDataType::kAddressState:
-    case MemoryDataType::kAddressZip:
-    case MemoryDataType::kAddressCountry:
-    case MemoryDataType::kPhone:
-    case MemoryDataType::kEmail:
-    case MemoryDataType::kCompanyName:
-    case MemoryDataType::kIban:
-    case MemoryDataType::kIbanNickname:
-    case MemoryDataType::kVehicleMake:
-    case MemoryDataType::kVehicleModel:
-    case MemoryDataType::kVehicleYear:
-    case MemoryDataType::kVehicleOwner:
-    case MemoryDataType::kVehiclePlateNumber:
-    case MemoryDataType::kVehiclePlateState:
-    case MemoryDataType::kVehicleVin:
-    case MemoryDataType::kPassportName:
-    case MemoryDataType::kPassportCountry:
-    case MemoryDataType::kPassportNumber:
-    case MemoryDataType::kPassportIssueDate:
-    case MemoryDataType::kPassportExpirationDate:
-    case MemoryDataType::kFlightReservationFlightNumber:
-    case MemoryDataType::kFlightReservationTicketNumber:
-    case MemoryDataType::kFlightReservationConfirmationCode:
-    case MemoryDataType::kFlightReservationPassengerName:
-    case MemoryDataType::kFlightReservationDepartureAirport:
-    case MemoryDataType::kFlightReservationArrivalAirport:
-    case MemoryDataType::kFlightReservationDepartureDate:
-    case MemoryDataType::kFlightReservationArrivalDate:
-    case MemoryDataType::kNationalIdCardName:
-    case MemoryDataType::kNationalIdCardCountry:
-    case MemoryDataType::kNationalIdCardNumber:
-    case MemoryDataType::kNationalIdCardIssueDate:
-    case MemoryDataType::kNationalIdCardExpirationDate:
-    case MemoryDataType::kRedressNumberName:
-    case MemoryDataType::kRedressNumberNumber:
-    case MemoryDataType::kKnownTravelerNumberName:
-    case MemoryDataType::kKnownTravelerNumberNumber:
-    case MemoryDataType::kKnownTravelerNumberExpirationDate:
-    case MemoryDataType::kDriversLicenseName:
-    case MemoryDataType::kDriversLicenseState:
-    case MemoryDataType::kDriversLicenseNumber:
-    case MemoryDataType::kDriversLicenseIssueDate:
-    case MemoryDataType::kDriversLicenseExpirationDate:
-    case MemoryDataType::kCreditCardNumber:
-    case MemoryDataType::kCreditCardExpirationDate:
-    case MemoryDataType::kCreditCardSecurityCode:
-    case MemoryDataType::kCreditCardNameOnCard:
-    case MemoryDataType::kCreditCardNickname:
-    case MemoryDataType::kUnknown:
-      return false;
-  }
-}
-
 // Ranks `local_results` and `remote_results` search results.
 // - Local and remote results are sorted by confidence score descending.
 // - If all results are dynamic transaction types, remote
@@ -482,23 +419,21 @@ std::vector<MemorySearchResult> RankResults(
 // their corresponding primary attribute is present in the set.
 std::vector<MemoryDataType> RationalizeFetchPlanDataTypes(
     const std::vector<MemoryDataType>& data_types) {
-  base::flat_set<MemoryDataType> present_types(data_types);
+  DenseSet<MemoryDataType> present_types(data_types);
+
   std::vector<MemoryDataType> rationalized;
-  base::flat_set<MemoryDataType> seen;
+  DenseSet<MemoryDataType> seen;
   for (MemoryDataType type : data_types) {
     if (type == MemoryDataType::kUnknown) {
       continue;
     }
 
     if (std::optional<AttributeType> attribute_type = ToAttributeType(type)) {
-      AttributeType primary_type =
+      const AttributeType primary_type =
           GetPrimaryAttributeType(attribute_type->entity_type());
-      if (attribute_type != primary_type) {
-        MemoryDataType primary_memory_type =
-            AttributeTypeToMemoryDataType(primary_type);
-        if (present_types.contains(primary_memory_type)) {
-          continue;
-        }
+      if (attribute_type != primary_type &&
+          present_types.contains(AttributeTypeToMemoryDataType(primary_type))) {
+        continue;
       }
     }
 
@@ -533,101 +468,6 @@ void QueryPersonalContextDebug(
                 MemorySearchStatus::kFinalResponseSuccess, std::move(results)));
           },
           std::move(update_callback)));
-}
-
-// Extracts the unmasked PII value from `entity` based on the requested
-// `data_type`.
-std::optional<std::u16string> GetUnmaskedPiiFromEntity(
-    const personal_context::proto::Entity& entity,
-    MemoryDataType data_type) {
-  switch (data_type) {
-    case MemoryDataType::kPassportNumber:
-      if (entity.has_passport()) {
-        return base::UTF8ToUTF16(entity.passport().number());
-      }
-      break;
-    case MemoryDataType::kDriversLicenseNumber:
-      if (entity.has_drivers_license()) {
-        return base::UTF8ToUTF16(entity.drivers_license().number());
-      }
-      break;
-    case MemoryDataType::kNationalIdCardNumber:
-      if (entity.has_national_id()) {
-        return base::UTF8ToUTF16(entity.national_id().number());
-      }
-      break;
-    case MemoryDataType::kKnownTravelerNumberNumber:
-      if (entity.has_known_traveler_number()) {
-        return base::UTF8ToUTF16(entity.known_traveler_number().number());
-      }
-      break;
-    case MemoryDataType::kUnknown:
-    case MemoryDataType::kNameFull:
-    case MemoryDataType::kAddressFull:
-    case MemoryDataType::kAddressStreetAddress:
-    case MemoryDataType::kAddressCity:
-    case MemoryDataType::kAddressState:
-    case MemoryDataType::kAddressZip:
-    case MemoryDataType::kAddressCountry:
-    case MemoryDataType::kPhone:
-    case MemoryDataType::kEmail:
-    case MemoryDataType::kCompanyName:
-    case MemoryDataType::kIban:
-    case MemoryDataType::kIbanNickname:
-    case MemoryDataType::kVehicleMake:
-    case MemoryDataType::kVehicleModel:
-    case MemoryDataType::kVehicleYear:
-    case MemoryDataType::kVehicleOwner:
-    case MemoryDataType::kVehiclePlateNumber:
-    case MemoryDataType::kVehiclePlateState:
-    case MemoryDataType::kVehicleVin:
-    case MemoryDataType::kPassportName:
-    case MemoryDataType::kPassportCountry:
-    case MemoryDataType::kPassportIssueDate:
-    case MemoryDataType::kPassportExpirationDate:
-    case MemoryDataType::kFlightReservationFlightNumber:
-    case MemoryDataType::kFlightReservationTicketNumber:
-    case MemoryDataType::kFlightReservationConfirmationCode:
-    case MemoryDataType::kFlightReservationPassengerName:
-    case MemoryDataType::kFlightReservationDepartureAirport:
-    case MemoryDataType::kFlightReservationArrivalAirport:
-    case MemoryDataType::kFlightReservationDepartureDate:
-    case MemoryDataType::kFlightReservationArrivalDate:
-    case MemoryDataType::kShipmentTrackingNumber:
-    case MemoryDataType::kShipmentAssociatedOrderId:
-    case MemoryDataType::kShipmentDeliveryAddress:
-    case MemoryDataType::kShipmentDeliveryZipCode:
-    case MemoryDataType::kShipmentCarrierName:
-    case MemoryDataType::kShipmentCarrierDomain:
-    case MemoryDataType::kShipmentEstimatedDeliveryDate:
-    case MemoryDataType::kShipmentShippedDate:
-    case MemoryDataType::kNationalIdCardName:
-    case MemoryDataType::kNationalIdCardCountry:
-    case MemoryDataType::kNationalIdCardIssueDate:
-    case MemoryDataType::kNationalIdCardExpirationDate:
-    case MemoryDataType::kRedressNumberName:
-    case MemoryDataType::kRedressNumberNumber:
-    case MemoryDataType::kKnownTravelerNumberName:
-    case MemoryDataType::kKnownTravelerNumberExpirationDate:
-    case MemoryDataType::kDriversLicenseName:
-    case MemoryDataType::kDriversLicenseState:
-    case MemoryDataType::kDriversLicenseIssueDate:
-    case MemoryDataType::kDriversLicenseExpirationDate:
-    case MemoryDataType::kOrderId:
-    case MemoryDataType::kOrderAccount:
-    case MemoryDataType::kOrderDate:
-    case MemoryDataType::kOrderMerchantName:
-    case MemoryDataType::kOrderMerchantDomain:
-    case MemoryDataType::kOrderProductNames:
-    case MemoryDataType::kOrderGrandTotal:
-    case MemoryDataType::kCreditCardNumber:
-    case MemoryDataType::kCreditCardExpirationDate:
-    case MemoryDataType::kCreditCardSecurityCode:
-    case MemoryDataType::kCreditCardNameOnCard:
-    case MemoryDataType::kCreditCardNickname:
-      return std::nullopt;
-  }
-  return std::nullopt;
 }
 
 // Runs the callback asynchronously on the current sequenced task runner.
@@ -669,6 +509,132 @@ void OnFetchPiiEntityCompleted(
 }
 
 }  // namespace
+
+namespace internal {
+
+bool MatchesStringFilter(
+    std::u16string_view entry_string,
+    const personal_context::proto::AutofillFetchSpecification::StringFilter&
+        filter) {
+  if (filter.value().empty() &&
+      filter.mode() != personal_context::proto::AutofillFetchSpecification::
+                           StringFilter::STRING_FILTER_MODE_EXACT) {
+    return true;
+  }
+  std::u16string normalized_entry =
+      normalization::NormalizeForComparison(entry_string);
+  std::u16string normalized_filter =
+      normalization::NormalizeForComparison(base::UTF8ToUTF16(filter.value()));
+  switch (filter.mode()) {
+    case personal_context::proto::AutofillFetchSpecification::StringFilter::
+        STRING_FILTER_MODE_EXACT:
+      return normalized_entry == normalized_filter;
+    case personal_context::proto::AutofillFetchSpecification::StringFilter::
+        STRING_FILTER_MODE_FUZZY:
+      // TODO(crbug.com/542022101): The current implementation is not fuzzy
+      // mode - fuzzy mode should also handle mistyped or missed characters.
+      [[fallthrough]];
+    case personal_context::proto::AutofillFetchSpecification::StringFilter::
+        STRING_FILTER_MODE_SUBSTRING:
+    case personal_context::proto::AutofillFetchSpecification::StringFilter::
+        STRING_FILTER_MODE_UNSPECIFIED:
+    default:
+      return normalized_entry.contains(normalized_filter);
+  }
+}
+
+bool MatchesTypedFilter(const TypedValue& entry_typed_val,
+                        const TypedValueFilter& filter) {
+  if (!filter.has_typed_value()) {
+    return true;
+  }
+  switch (filter.typed_value().value_case()) {
+    case TypedValue::kCountryCode:
+      return entry_typed_val.has_country_code() &&
+             base::EqualsCaseInsensitiveASCII(
+                 entry_typed_val.country_code(),
+                 filter.typed_value().country_code());
+    case TypedValue::kDate: {
+      if (!entry_typed_val.has_date()) {
+        return false;
+      }
+
+      using ::personal_context::proto::Date;
+      const Date& entry_date = entry_typed_val.date();
+      const Date& filter_date = filter.typed_value().date();
+      if (filter_date.year() != 0 && entry_date.year() != filter_date.year()) {
+        return false;
+      }
+      if (filter_date.month() != 0 &&
+          entry_date.month() != filter_date.month()) {
+        return false;
+      }
+      if (filter_date.day() != 0 && entry_date.day() != filter_date.day()) {
+        return false;
+      }
+      return true;
+    }
+    case personal_context::proto::TypedValue::kDateTime:
+    case personal_context::proto::TypedValue::kStringList:
+    case personal_context::proto::TypedValue::VALUE_NOT_SET:
+      return false;
+  }
+  return false;
+}
+
+bool MatchesFilter(
+    const MemorySearchResult& entry,
+    const personal_context::proto::AutofillFetchSpecification::Filter& filter) {
+  const bool has_readable_typed_filter =
+      filter.has_typed_value_filter() &&
+      filter.typed_value_filter().typed_value().value_case() !=
+          TypedValue::VALUE_NOT_SET;
+
+  auto allowed_data_types =
+      DenseSet<MemoryDataType>(filter.data_types(), [](int proto_type_int) {
+        // The static cast is needed because the repeated field contains ints,
+        // not enums.
+        return ToMemoryDataType(
+            static_cast<personal_context::proto::MemoryDataType>(
+                proto_type_int));
+      });
+  allowed_data_types.erase(MemoryDataType::kUnknown);
+
+  auto matches_item = [&](MemoryDataType type, std::u16string_view value,
+                          const std::optional<TypedValue>& typed_value) {
+    // If `filter` specifies `data_types`, we restrict matching to those data
+    // types.
+    if (!allowed_data_types.empty() && !allowed_data_types.contains(type)) {
+      return false;
+    }
+    if (has_readable_typed_filter) {
+      return typed_value &&
+             MatchesTypedFilter(*typed_value, filter.typed_value_filter());
+    }
+    return MatchesStringFilter(value, filter.string_filter());
+  };
+
+  return matches_item(entry.type, entry.value, entry.typed_value) ||
+         std::ranges::any_of(
+             entry.metadata_list, [&](const EntryMetadata& meta) {
+               return matches_item(meta.type, meta.value, meta.typed_value);
+             });
+}
+
+bool MatchesFetchSpecification(
+    const MemorySearchResult& entry,
+    const personal_context::proto::AutofillFetchSpecification& spec) {
+  if (MemoryDataType target_type = ToMemoryDataType(spec.data_type());
+      target_type == MemoryDataType::kUnknown || target_type != entry.type) {
+    return false;
+  }
+
+  return std::ranges::all_of(spec.filters(), [&](const auto& filter) {
+    return MatchesFilter(entry, filter);
+  });
+}
+
+}  // namespace internal
 
 AtMemoryQueryService::AtMemoryQueryService(
     std::unique_ptr<AutofillDataProvider> data_provider,
@@ -893,7 +859,8 @@ void AtMemoryQueryService::OnAuthenticationCompleted(
   request.set_feature(
       personal_context::proto::CONTEXT_MEMORY_FEATURE_AT_MEMORY);
   *request.add_masked_entities() =
-      ToPersonalContextEntity(masked_value, data_type, metadata_list);
+      ToPersonalContextEntity(masked_value, /*typed_value=*/std::nullopt,
+                              data_type, metadata_list);
 
   personal_context::ContextMemoryRequestOptions options;
   options.request_timeout = features::kAutofillAtMemoryRequestTimeout.Get();

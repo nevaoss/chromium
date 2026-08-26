@@ -260,6 +260,10 @@ public class CompositorViewHolder extends FrameLayout
     // that outset WebContents height. Used to clamp transient oversized innerHeight values while
     // keyboard insets and Android layout are still catching up.
     private @Nullable Integer mLastStableOutsetModeWebContentsHeight;
+    // Stable WebContents height in RESIZES_CONTENT mode while the virtual keyboard is closed.
+    private @Nullable Integer mKeyboardClosedStableWebContentsHeight;
+    // Stable WebContents height in RESIZES_CONTENT mode while the virtual keyboard is open.
+    private @Nullable Integer mKeyboardOpenStableWebContentsHeight;
 
     /**
      * Tracks whether geometrychange event is fired for the active tab when the keyboard is
@@ -716,6 +720,8 @@ public class CompositorViewHolder extends FrameLayout
         mDeferredWebContentsHeightInsetUpdate = null;
         mLastViewportHeightForWebContentsSizing = null;
         mLastStableOutsetModeWebContentsHeight = null;
+        mKeyboardClosedStableWebContentsHeight = null;
+        mKeyboardOpenStableWebContentsHeight = null;
 
         mOnViewportInsetsChanged = _ -> handleWindowInsetChanged();
         mApplicationBottomInsetSupplier
@@ -726,6 +732,10 @@ public class CompositorViewHolder extends FrameLayout
     private boolean virtualKeyboardModeOutsetsWebContentsHeight() {
         return mVirtualKeyboardMode == VirtualKeyboardMode.OVERLAYS_CONTENT
                 || mVirtualKeyboardMode == VirtualKeyboardMode.RESIZES_VISUAL;
+    }
+
+    private boolean virtualKeyboardModeInsetsWebContentsHeight() {
+        return mVirtualKeyboardMode == VirtualKeyboardMode.RESIZES_CONTENT;
     }
 
     private void updateDeferredWebContentsHeightInset(int newWebContentsHeightInset) {
@@ -1082,6 +1092,20 @@ public class CompositorViewHolder extends FrameLayout
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
 
+        // Clear cached RESIZES_CONTENT stable heights when the view dimensions change for reasons
+        // unrelated to the virtual keyboard (e.g., orientation changes, split-screen resizing, or
+        // desktop window resizing). During active virtual keyboard transitions, width is invariant
+        // (w == oldw) and either isKeyboardShowing() or webContentsHeightInset is non-zero.
+        if (w != oldw
+                || (!KeyboardVisibilityDelegate.getInstance().isKeyboardShowing(this)
+                        && (mApplicationBottomInsetSupplier == null
+                                || mApplicationBottomInsetSupplier.getInsets()
+                                                .webContentsHeightInset
+                                        == 0))) {
+            mKeyboardClosedStableWebContentsHeight = null;
+            mKeyboardOpenStableWebContentsHeight = null;
+        }
+
         if (mTabModelSelector == null) return;
 
         for (TabModel tabModel : mTabModelSelector.getModels()) {
@@ -1096,15 +1120,7 @@ public class CompositorViewHolder extends FrameLayout
      * @see #updateWebContentsSize(Tab, Integer)
      */
     void updateWebContentsSize() {
-        updateWebContentsSize(getCurrentTab(), /* widthOverride= */ null);
-    }
-
-    /**
-     * @see #updateWebContentsSize(Tab, Integer)
-     */
-    @VisibleForTesting
-    void updateWebContentsSize(@Nullable Tab tab) {
-        updateWebContentsSize(tab, /* widthOverride= */ null);
+        updateWebContentsSize(getCurrentTab());
     }
 
     /**
@@ -1116,11 +1132,9 @@ public class CompositorViewHolder extends FrameLayout
      * the Window, this method will force it to layout and use that size.
      *
      * @param tab {@link Tab} for which the size of the view is set.
-     * @param widthOverride The width that should be used for the web contents, regardless of
-     *     viewport size.
      */
     @VisibleForTesting
-    void updateWebContentsSize(@Nullable Tab tab, @Nullable Integer widthOverride) {
+    void updateWebContentsSize(@Nullable Tab tab) {
         if (tab == null) return;
 
         WebContents webContents = tab.getWebContents();
@@ -1128,7 +1142,7 @@ public class CompositorViewHolder extends FrameLayout
         if (webContents == null || view == null) return;
 
         Point viewportSize = getViewportSize();
-        int width = widthOverride != null ? widthOverride : viewportSize.x;
+        int width = viewportSize.x;
         int height = viewportSize.y;
 
         if (ChromeFeatureList.sVirtualKeyboardTransientInnerHeightFix.isEnabled()
@@ -1141,14 +1155,10 @@ public class CompositorViewHolder extends FrameLayout
 
         // The view size takes into account side-anchored UI whose width should be subtracted from
         // the view if they are visible, therefore shrinking the Blink-side view size.
-        //
-        // Note that a non-null widthOverride already considered side-anchored UI (see callers of
-        // this method), so we only need to consider side-anchored UI when widthOverride is null.
         int horizontalViewportInsets = 0;
         if ((AndroidSidePanelEnabledFn.isEnabled()
                         || VerticalTabUtils.isVerticalTabsEligible(mActivity))
-                && mSideUiStateProvider != null
-                && widthOverride == null) {
+                && mSideUiStateProvider != null) {
             SideUiSpecs sideUiSpecs = mSideUiStateProvider.getCurrentSideUiSpecs();
             horizontalViewportInsets =
                     sideUiSpecs.getWidth(AnchorSide.LEFT) + sideUiSpecs.getWidth(AnchorSide.RIGHT);
@@ -1201,6 +1211,45 @@ public class CompositorViewHolder extends FrameLayout
             }
         }
 
+        if (ChromeFeatureList.sVirtualKeyboardResizesContentTransientOvershootFix.isEnabled()
+                && virtualKeyboardModeInsetsWebContentsHeight()
+                && mApplicationBottomInsetSupplier != null) {
+            boolean keyboardVisible =
+                    KeyboardVisibilityDelegate.getInstance().isKeyboardShowing(this);
+
+            if (keyboardVisible) {
+                // Clamp transient height increases caused by browser controls hiding before the
+                // WindowAndroid layout has resized the view hierarchy for the opening keyboard.
+                if (mKeyboardClosedStableWebContentsHeight != null) {
+                    webContentsHeight =
+                            Math.min(webContentsHeight, mKeyboardClosedStableWebContentsHeight);
+                }
+                // Track the open keyboard height. Using (< mKeyboardClosedStableWebContentsHeight)
+                // as an upper bound ensures that intermediate IME animation frames are accommodated
+                // while rejecting transient spikes above the closed baseline.
+                if (webContentsHeight > 0
+                        && (mKeyboardClosedStableWebContentsHeight == null
+                                || webContentsHeight < mKeyboardClosedStableWebContentsHeight)) {
+                    mKeyboardOpenStableWebContentsHeight = webContentsHeight;
+                }
+            } else {
+                // Clamp transient height decreases caused by browser controls showing before the
+                // WindowAndroid layout has restored the view hierarchy for the closing keyboard.
+                if (mKeyboardOpenStableWebContentsHeight != null) {
+                    webContentsHeight =
+                            Math.max(webContentsHeight, mKeyboardOpenStableWebContentsHeight);
+                }
+                // Track the closed page height. Using (> mKeyboardOpenStableWebContentsHeight) as a
+                // lower bound ensures the baseline is updated only after window layout restoration
+                // completes.
+                if (webContentsHeight > 0
+                        && (mKeyboardOpenStableWebContentsHeight == null
+                                || webContentsHeight > mKeyboardOpenStableWebContentsHeight)) {
+                    mKeyboardClosedStableWebContentsHeight = webContentsHeight;
+                }
+            }
+        }
+
         if (isAttachedToWindow(view)) {
             webContents.setSize(webContentsWidth, webContentsHeight);
 
@@ -1247,7 +1296,6 @@ public class CompositorViewHolder extends FrameLayout
      *
      * @param viewportWidth Width of the viewport in px.
      * @param viewportHeight Height of the viewport in px.
-     * @param keyboardHeight Height of the keyboard in px.
      * @param webContents Active WebContent for which this event needs to be fired.
      */
     private void notifyVirtualKeyboardOverlayGeometryChangeEvent(
@@ -2088,6 +2136,8 @@ public class CompositorViewHolder extends FrameLayout
 
         mVirtualKeyboardMode = newMode;
         mLastStableOutsetModeWebContentsHeight = null;
+        mKeyboardClosedStableWebContentsHeight = null;
+        mKeyboardOpenStableWebContentsHeight = null;
 
         if (mApplicationBottomInsetSupplier != null) {
             mApplicationBottomInsetSupplier.setVirtualKeyboardMode(mVirtualKeyboardMode);

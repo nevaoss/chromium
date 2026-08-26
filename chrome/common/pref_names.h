@@ -744,6 +744,11 @@ inline constexpr char kPinExtensionsMenuButton[] =
 // extension + named command pair.
 inline constexpr char kExtensionCommands[] = "extensions.commands";
 
+// Boolean pref indicating whether native UI extension review prompts are
+// allowed by enterprise policy.
+inline constexpr char kExtensionReviewPromptsAllowed[] =
+    "extensions.review_prompts_allowed";
+
 // Whether Chrome should use its internal PDF viewer or not.
 inline constexpr char kPluginsAlwaysOpenPdfExternally[] =
     "plugins.always_open_pdf_externally";
@@ -2074,6 +2079,11 @@ inline constexpr char kIsolatedWebAppInstallForceList[] =
 // Isolated Web Apps is permitted.
 inline constexpr char kIsolatedWebAppUserInstallationEnabled[] =
     "profile.isolated_web_app.install.user_install_enabled";
+
+// Dictionary pref storing policy metadata for Kiosk Isolated Web Apps (IWAs) in
+// bundle cache.
+inline constexpr char kKioskIwaCachePolicyState[] =
+    "kiosk.isolated_web_app_cache_policy_state";
 
 // An integer pref that remembers how many force install initializations are
 // pending. If more than `kIsolatedWebAppForceInstallMaxRetryTreshold`

@@ -41,6 +41,7 @@
 #include "components/autofill/core/browser/suggestions/payments/payments_suggestion_generator_util.h"
 #include "components/autofill/core/browser/suggestions/suggestion.h"
 #include "components/autofill/core/browser/suggestions/suggestion_generator.h"
+#include "components/autofill/core/browser/suggestions/suggestion_util.h"
 #include "components/autofill/core/common/autofill_payments_features.h"
 #include "components/autofill/core/common/autofill_util.h"
 #include "components/autofill/core/common/form_data.h"
@@ -94,28 +95,6 @@ Suggestion CreateMaximizeCreditCardBenefitsSuggestion() {
   suggestion.labels = {{Suggestion::Text(l10n_util::GetStringUTF16(
       IDS_AUTOFILL_MAXIMIZE_CREDIT_CARD_BENEFITS_SUGGESTION_SECONDARY_TEXT))}};
 
-  return suggestion;
-}
-
-Suggestion CreateUndoOrClearFormSuggestion() {
-#if BUILDFLAG(IS_IOS)
-  std::u16string value =
-      l10n_util::GetStringUTF16(IDS_AUTOFILL_CLEAR_FORM_MENU_ITEM);
-  // TODO(crbug.com/40266549): iOS still uses Clear Form logic, replace with
-  // Undo.
-  Suggestion suggestion(value, SuggestionType::kUndoOrClear);
-  suggestion.icon = Suggestion::Icon::kClear;
-#else
-  std::u16string value = l10n_util::GetStringUTF16(IDS_AUTOFILL_UNDO_MENU_ITEM);
-  if constexpr (BUILDFLAG(IS_ANDROID)) {
-    value = base::i18n::ToUpper(value);
-  }
-  Suggestion suggestion(value, SuggestionType::kUndoOrClear);
-  suggestion.icon = Suggestion::Icon::kUndo;
-#endif
-  // TODO(crbug.com/40266549): update "Clear Form" a11y announcement to "Undo"
-  suggestion.acceptance_a11y_announcement =
-      l10n_util::GetStringUTF16(IDS_AUTOFILL_A11Y_ANNOUNCE_CLEARED_FORM);
   return suggestion;
 }
 
@@ -201,7 +180,7 @@ std::vector<Suggestion> GetCreditCardFooterSuggestions(
 
   footer_suggestions.emplace_back(SuggestionType::kSeparator);
   if (is_autofilled) {
-    footer_suggestions.push_back(CreateUndoOrClearFormSuggestion());
+    footer_suggestions.push_back(CreateUndoSuggestion());
   }
   footer_suggestions.push_back(
       CreateManageCreditCardsSuggestion(with_gpay_logo));

@@ -42,6 +42,8 @@ namespace {
 
 using ::base::test::RunOnceCallback;
 using ::testing::_;
+using ::testing::IsEmpty;
+using ::testing::Not;
 
 #if !BUILDFLAG(IS_ANDROID)
 class MockTabProvider : public ContextHubPageHandler::TabProvider {
@@ -146,7 +148,7 @@ class ContextHubPageHandlerTest : public testing::Test {
   std::unique_ptr<ContextHubPageHandler> handler_;
 };
 
-TEST_F(ContextHubPageHandlerTest, GenerateAutoTodos_Success) {
+TEST_F(ContextHubPageHandlerTest, GenerateFirstPartyAutoTodos_Success) {
   personal_context::proto::AutoTodosResponse response;
   personal_context::proto::AutoTodoItem* todo = response.add_todos();
   todo->set_title("Test Title");
@@ -164,28 +166,31 @@ TEST_F(ContextHubPageHandlerTest, GenerateAutoTodos_Success) {
       .WillOnce(RunOnceCallback<3>(personal_context::FetchContextResult(
           base::ok(std::move(any_response)))));
 
-  base::test::TestFuture<
-      const std::optional<std::vector<context_hub::AutoTodoEntry>>&>
-      future;
-  handler_->GenerateAutoTodos(future.GetCallback());
+  // Initial clearing of the store.
+  EXPECT_CALL(mock_page_, OnAutoTodosChanged(IsEmpty()));
+  // Notification after adding the todos.
+  EXPECT_CALL(mock_page_, OnAutoTodosChanged(Not(IsEmpty())))
+      .WillOnce([](const std::vector<context_hub::AutoTodoEntry>& todos) {
+        ASSERT_EQ(todos.size(), 1u);
+        EXPECT_EQ(todos[0].title, "Test Title");
+        EXPECT_EQ(todos[0].description, "Test Description");
+        EXPECT_FLOAT_EQ(todos[0].importance_score, 0.85f);
+        ASSERT_TRUE(todos[0].is_first_party());
+        const auto& first_party =
+            std::get<context_hub::FirstPartyData>(todos[0].data);
+        EXPECT_EQ(first_party.actionable_url,
+                  GURL("https://example.com/action"));
+        EXPECT_TRUE(first_party.source_references.empty());
+      });
 
-  std::optional<std::vector<context_hub::AutoTodoEntry>> result = future.Take();
-  ASSERT_TRUE(result.has_value());
-  ASSERT_EQ(result->size(), 1u);
-  EXPECT_EQ(result->at(0).id, "Test Title");
-  EXPECT_EQ(result->at(0).title, "Test Title");
-  EXPECT_EQ(result->at(0).description, "Test Description");
-  EXPECT_EQ(result->at(0).importance_score, 0.85f);
-  EXPECT_EQ(result->at(0).status, context_hub::AutoTodoEntry::Status::kActive);
-  ASSERT_TRUE(result->at(0).is_first_party());
-  EXPECT_EQ(
-      std::get<context_hub::FirstPartyData>(result->at(0).data).actionable_url,
-      GURL("https://example.com/action"));
-  EXPECT_TRUE(std::get<context_hub::FirstPartyData>(result->at(0).data)
-                  .source_references.empty());
+  base::test::TestFuture<bool> future;
+  handler_->GenerateFirstPartyAutoTodos(future.GetCallback());
+  EXPECT_TRUE(future.Get());
+  mock_page_.Flush();
 }
 
-TEST_F(ContextHubPageHandlerTest, GenerateAutoTodos_WithSourceReferences) {
+TEST_F(ContextHubPageHandlerTest,
+       GenerateFirstPartyAutoTodos_WithSourceReferences) {
   personal_context::proto::AutoTodosResponse response;
   personal_context::proto::AutoTodoItem* todo = response.add_todos();
   todo->set_title("Test Title");
@@ -196,11 +201,13 @@ TEST_F(ContextHubPageHandlerTest, GenerateAutoTodos_WithSourceReferences) {
       todo->add_source_references();
   ref_gmail1->mutable_gmail()->set_message_url(
       "https://mail.google.com/mail/u/0/#inbox/123");
+  ref_gmail1->mutable_gmail()->set_subject("Subject 1");
 
   personal_context::proto::SourceReference* ref_gmail2 =
       todo->add_source_references();
   ref_gmail2->mutable_gmail()->set_message_url(
       "https://mail.google.com/mail/u/0/#inbox/456");
+  ref_gmail2->mutable_gmail()->set_subject("Subject 2");
 
   personal_context::proto::Any any_response;
   response.SerializeToString(any_response.mutable_value());
@@ -212,29 +219,35 @@ TEST_F(ContextHubPageHandlerTest, GenerateAutoTodos_WithSourceReferences) {
       .WillOnce(RunOnceCallback<3>(personal_context::FetchContextResult(
           base::ok(std::move(any_response)))));
 
-  base::test::TestFuture<
-      const std::optional<std::vector<context_hub::AutoTodoEntry>>&>
-      future;
-  handler_->GenerateAutoTodos(future.GetCallback());
+  // Initial clearing of the store.
+  EXPECT_CALL(mock_page_, OnAutoTodosChanged(IsEmpty()));
+  // Notification after adding the todos.
+  EXPECT_CALL(mock_page_, OnAutoTodosChanged(Not(IsEmpty())))
+      .WillOnce([](const std::vector<context_hub::AutoTodoEntry>& todos) {
+        ASSERT_EQ(todos.size(), 1u);
+        EXPECT_EQ(todos[0].title, "Test Title");
+        EXPECT_EQ(todos[0].description, "Test Description");
+        ASSERT_TRUE(todos[0].is_first_party());
+        const auto& first_party =
+            std::get<context_hub::FirstPartyData>(todos[0].data);
+        EXPECT_EQ(first_party.actionable_url,
+                  GURL("https://example.com/action2"));
+        ASSERT_EQ(first_party.source_references.size(), 2u);
+        EXPECT_EQ(first_party.source_references[0].url,
+                  GURL("https://mail.google.com/mail/u/0/#inbox/123"));
+        EXPECT_EQ(first_party.source_references[0].subject, "Subject 1");
+        EXPECT_EQ(first_party.source_references[1].url,
+                  GURL("https://mail.google.com/mail/u/0/#inbox/456"));
+        EXPECT_EQ(first_party.source_references[1].subject, "Subject 2");
+      });
 
-  std::optional<std::vector<context_hub::AutoTodoEntry>> result = future.Take();
-  ASSERT_TRUE(result.has_value());
-  ASSERT_EQ(result->size(), 1u);
-  EXPECT_EQ(result->at(0).title, "Test Title");
-  EXPECT_EQ(result->at(0).description, "Test Description");
-  EXPECT_EQ(result->at(0).status, context_hub::AutoTodoEntry::Status::kActive);
-  ASSERT_TRUE(result->at(0).is_first_party());
-  const auto& first_party =
-      std::get<context_hub::FirstPartyData>(result->at(0).data);
-  EXPECT_EQ(first_party.actionable_url, GURL("https://example.com/action2"));
-  ASSERT_EQ(first_party.source_references.size(), 2u);
-  EXPECT_EQ(first_party.source_references[0],
-            GURL("https://mail.google.com/mail/u/0/#inbox/123"));
-  EXPECT_EQ(first_party.source_references[1],
-            GURL("https://mail.google.com/mail/u/0/#inbox/456"));
+  base::test::TestFuture<bool> future;
+  handler_->GenerateFirstPartyAutoTodos(future.GetCallback());
+  EXPECT_TRUE(future.Get());
+  mock_page_.Flush();
 }
 
-TEST_F(ContextHubPageHandlerTest, GenerateAutoTodos_Failure) {
+TEST_F(ContextHubPageHandlerTest, GenerateFirstPartyAutoTodos_Failure) {
   EXPECT_CALL(
       *GetMockService(),
       FetchContext(personal_context::proto::CONTEXT_MEMORY_FEATURE_AUTO_TODOS,
@@ -245,13 +258,33 @@ TEST_F(ContextHubPageHandlerTest, GenerateAutoTodos_Failure) {
                   personal_context::ContextMemoryError::ExecutionError::
                       kUnknown)))));
 
-  base::test::TestFuture<
-      const std::optional<std::vector<context_hub::AutoTodoEntry>>&>
-      future;
-  handler_->GenerateAutoTodos(future.GetCallback());
+  EXPECT_CALL(mock_page_, OnAutoTodosChanged(_)).Times(0);
 
-  std::optional<std::vector<context_hub::AutoTodoEntry>> result = future.Take();
-  EXPECT_FALSE(result.has_value());
+  base::test::TestFuture<bool> future;
+  handler_->GenerateFirstPartyAutoTodos(future.GetCallback());
+  EXPECT_FALSE(future.Get());
+  mock_page_.Flush();
+}
+
+TEST_F(ContextHubPageHandlerTest, GenerateFirstPartyAutoTodos_Empty) {
+  personal_context::proto::AutoTodosResponse response;
+
+  personal_context::proto::Any any_response;
+  response.SerializeToString(any_response.mutable_value());
+
+  EXPECT_CALL(
+      *GetMockService(),
+      FetchContext(personal_context::proto::CONTEXT_MEMORY_FEATURE_AUTO_TODOS,
+                   _, _, _))
+      .WillOnce(RunOnceCallback<3>(personal_context::FetchContextResult(
+          base::ok(std::move(any_response)))));
+
+  EXPECT_CALL(mock_page_, OnAutoTodosChanged(IsEmpty())).Times(2);
+
+  base::test::TestFuture<bool> future;
+  handler_->GenerateFirstPartyAutoTodos(future.GetCallback());
+  EXPECT_TRUE(future.Get());
+  mock_page_.Flush();
 }
 
 TEST(ContextHubMojomTraitsTest, StatusSerialization) {
@@ -265,13 +298,51 @@ TEST(ContextHubMojomTraitsTest, StatusSerialization) {
   }
 }
 
+TEST(ContextHubMojomTraitsTest, GroupTypeSerialization) {
+  for (auto group_type :
+       {context_hub::ThirdPartyData::GroupType::kNoMatch,
+        context_hub::ThirdPartyData::GroupType::kNudgeToClose,
+        context_hub::ThirdPartyData::GroupType::kReadingList,
+        context_hub::ThirdPartyData::GroupType::kUnfinishedAction}) {
+    context_hub::ThirdPartyData::GroupType output;
+    ASSERT_TRUE(
+        mojo::test::SerializeAndDeserialize<
+            browser::context_hub::mojom::AutoTodoGroup>(group_type, output));
+    EXPECT_EQ(output, group_type);
+  }
+}
+
+TEST(ContextHubMojomTraitsTest, GmailReferenceSerialization) {
+  context_hub::SourceReference input{
+      .url = GURL("https://mail.google.com/mail/u/0/#inbox/123"),
+      .subject = "Test Subject",
+  };
+  context_hub::SourceReference output;
+  ASSERT_TRUE(mojo::test::SerializeAndDeserialize<
+              browser::context_hub::mojom::GmailReference>(input, output));
+  EXPECT_EQ(output.url, GURL("https://mail.google.com/mail/u/0/#inbox/123"));
+  EXPECT_EQ(output.subject, "Test Subject");
+}
+
+TEST(ContextHubMojomTraitsTest, SourceReferenceSerialization) {
+  context_hub::SourceReference input{
+      .url = GURL("https://mail.google.com/mail/u/0/#inbox/123"),
+      .subject = "Test Subject",
+  };
+  context_hub::SourceReference output;
+  ASSERT_TRUE(mojo::test::SerializeAndDeserialize<
+              browser::context_hub::mojom::SourceReference>(input, output));
+  EXPECT_EQ(output.url, GURL("https://mail.google.com/mail/u/0/#inbox/123"));
+  EXPECT_EQ(output.subject, "Test Subject");
+}
+
 TEST(ContextHubMojomTraitsTest, FirstPartyDataSerialization) {
   context_hub::FirstPartyData input;
   input.actionable_url = GURL("https://docs.google.com/doc/123");
-  input.source_references.emplace_back(
-      "https://mail.google.com/mail/u/0/#inbox/123");
-  input.source_references.emplace_back(
-      "https://mail.google.com/mail/u/0/#inbox/456");
+  input.source_references.push_back(
+      {GURL("https://mail.google.com/mail/u/0/#inbox/123"), "Email Subject 1"});
+  input.source_references.push_back(
+      {GURL("https://mail.google.com/mail/u/0/#inbox/456"), "Email Subject 2"});
 
   context_hub::FirstPartyData output;
   ASSERT_TRUE(mojo::test::SerializeAndDeserialize<
@@ -279,10 +350,12 @@ TEST(ContextHubMojomTraitsTest, FirstPartyDataSerialization) {
 
   EXPECT_EQ(output.actionable_url, GURL("https://docs.google.com/doc/123"));
   ASSERT_EQ(output.source_references.size(), 2u);
-  EXPECT_EQ(output.source_references[0],
+  EXPECT_EQ(output.source_references[0].url,
             GURL("https://mail.google.com/mail/u/0/#inbox/123"));
-  EXPECT_EQ(output.source_references[1],
+  EXPECT_EQ(output.source_references[0].subject, "Email Subject 1");
+  EXPECT_EQ(output.source_references[1].url,
             GURL("https://mail.google.com/mail/u/0/#inbox/456"));
+  EXPECT_EQ(output.source_references[1].subject, "Email Subject 2");
 }
 
 TEST(ContextHubMojomTraitsTest, ThirdPartyDataSerialization) {
@@ -290,6 +363,7 @@ TEST(ContextHubMojomTraitsTest, ThirdPartyDataSerialization) {
   input.tab_id = 98765;
   input.last_active_timestamp =
       base::Time::FromMillisecondsSinceUnixEpoch(1700000000000);
+  input.group_type = context_hub::ThirdPartyData::GroupType::kNudgeToClose;
 
   context_hub::ThirdPartyData output;
   ASSERT_TRUE(mojo::test::SerializeAndDeserialize<
@@ -298,13 +372,15 @@ TEST(ContextHubMojomTraitsTest, ThirdPartyDataSerialization) {
   EXPECT_EQ(output.tab_id, 98765);
   EXPECT_EQ(output.last_active_timestamp,
             base::Time::FromMillisecondsSinceUnixEpoch(1700000000000));
+  EXPECT_EQ(output.group_type,
+            context_hub::ThirdPartyData::GroupType::kNudgeToClose);
 }
 
 TEST(ContextHubMojomTraitsTest, AutoTodoDataSerialization_FirstParty) {
   context_hub::FirstPartyData first_party;
   first_party.actionable_url = GURL("https://docs.google.com/doc/123");
-  first_party.source_references.emplace_back(
-      "https://mail.google.com/mail/u/0/#inbox/123");
+  first_party.source_references.push_back(
+      {GURL("https://mail.google.com/mail/u/0/#inbox/123"), "Email Subject"});
   std::variant<context_hub::FirstPartyData, context_hub::ThirdPartyData> input =
       std::move(first_party);
 
@@ -317,8 +393,9 @@ TEST(ContextHubMojomTraitsTest, AutoTodoDataSerialization_FirstParty) {
   EXPECT_EQ(out_first_party.actionable_url,
             GURL("https://docs.google.com/doc/123"));
   ASSERT_EQ(out_first_party.source_references.size(), 1u);
-  EXPECT_EQ(out_first_party.source_references[0],
+  EXPECT_EQ(out_first_party.source_references[0].url,
             GURL("https://mail.google.com/mail/u/0/#inbox/123"));
+  EXPECT_EQ(out_first_party.source_references[0].subject, "Email Subject");
 }
 
 TEST(ContextHubMojomTraitsTest, AutoTodoDataSerialization_ThirdParty) {
@@ -326,6 +403,7 @@ TEST(ContextHubMojomTraitsTest, AutoTodoDataSerialization_ThirdParty) {
   third_party.tab_id = 54321;
   third_party.last_active_timestamp =
       base::Time::FromMillisecondsSinceUnixEpoch(1700000000000);
+  third_party.group_type = context_hub::ThirdPartyData::GroupType::kReadingList;
   std::variant<context_hub::FirstPartyData, context_hub::ThirdPartyData> input =
       std::move(third_party);
 
@@ -338,6 +416,8 @@ TEST(ContextHubMojomTraitsTest, AutoTodoDataSerialization_ThirdParty) {
   EXPECT_EQ(out_third_party.tab_id, 54321);
   EXPECT_EQ(out_third_party.last_active_timestamp,
             base::Time::FromMillisecondsSinceUnixEpoch(1700000000000));
+  EXPECT_EQ(out_third_party.group_type,
+            context_hub::ThirdPartyData::GroupType::kReadingList);
 }
 
 TEST(ContextHubMojomTraitsTest, AutoTodoItemSerialization_FirstPartyData) {
@@ -350,8 +430,8 @@ TEST(ContextHubMojomTraitsTest, AutoTodoItemSerialization_FirstPartyData) {
 
   context_hub::FirstPartyData first_party;
   first_party.actionable_url = GURL("https://docs.google.com/doc/123");
-  first_party.source_references.emplace_back(
-      "https://mail.google.com/mail/u/0/#inbox/123");
+  first_party.source_references.push_back(
+      {GURL("https://mail.google.com/mail/u/0/#inbox/123"), "Review Request"});
   input.data = std::move(first_party);
 
   context_hub::AutoTodoEntry output;
@@ -369,9 +449,14 @@ TEST(ContextHubMojomTraitsTest, AutoTodoItemSerialization_FirstPartyData) {
   ASSERT_EQ(std::get<context_hub::FirstPartyData>(output.data)
                 .source_references.size(),
             1u);
-  EXPECT_EQ(
-      std::get<context_hub::FirstPartyData>(output.data).source_references[0],
-      GURL("https://mail.google.com/mail/u/0/#inbox/123"));
+  EXPECT_EQ(std::get<context_hub::FirstPartyData>(output.data)
+                .source_references[0]
+                .url,
+            GURL("https://mail.google.com/mail/u/0/#inbox/123"));
+  EXPECT_EQ(std::get<context_hub::FirstPartyData>(output.data)
+                .source_references[0]
+                .subject,
+            "Review Request");
 }
 
 TEST(ContextHubMojomTraitsTest, AutoTodoItemSerialization_ThirdPartyData) {
@@ -386,6 +471,8 @@ TEST(ContextHubMojomTraitsTest, AutoTodoItemSerialization_ThirdPartyData) {
   third_party.tab_id = 12345;
   third_party.last_active_timestamp =
       base::Time::FromMillisecondsSinceUnixEpoch(1700000000000);
+  third_party.group_type =
+      context_hub::ThirdPartyData::GroupType::kUnfinishedAction;
   input.data = std::move(third_party);
 
   context_hub::AutoTodoEntry output;
@@ -399,9 +486,13 @@ TEST(ContextHubMojomTraitsTest, AutoTodoItemSerialization_ThirdPartyData) {
   EXPECT_FLOAT_EQ(output.importance_score, 0.75f);
   ASSERT_TRUE(output.is_third_party());
   EXPECT_EQ(output.tab_id(), 12345);
+  EXPECT_EQ(output.group_type(),
+            context_hub::ThirdPartyData::GroupType::kUnfinishedAction);
   EXPECT_EQ(
       std::get<context_hub::ThirdPartyData>(output.data).last_active_timestamp,
       base::Time::FromMillisecondsSinceUnixEpoch(1700000000000));
+  EXPECT_EQ(std::get<context_hub::ThirdPartyData>(output.data).group_type,
+            context_hub::ThirdPartyData::GroupType::kUnfinishedAction);
 }
 
 TEST_F(ContextHubPageHandlerTest, GetAutoTodos_Empty) {
@@ -427,7 +518,8 @@ TEST_F(ContextHubPageHandlerTest, GetAutoTodos_WithTodos) {
   fp_entry.importance_score = 0.9f;
   FirstPartyData fp_data;
   fp_data.actionable_url = GURL("https://example.com/action");
-  fp_data.source_references = {GURL("https://mail.google.com/123")};
+  fp_data.source_references = {
+      {GURL("https://mail.google.com/123"), "Email Subject 1"}};
   fp_entry.data = std::move(fp_data);
 
   base::test::TestFuture<bool> fp_future;
@@ -439,7 +531,10 @@ TEST_F(ContextHubPageHandlerTest, GetAutoTodos_WithTodos) {
   tp_entry.title = "Third Party Todo";
   tp_entry.description = "TP Description";
   tp_entry.importance_score = 0.5f;
-  tp_entry.data = ThirdPartyData{.tab_id = 42};
+  tp_entry.data = ThirdPartyData{
+      .tab_id = 42,
+      .group_type = ThirdPartyData::GroupType::kNudgeToClose,
+  };
 
   base::test::TestFuture<bool> tp_future;
   service->UpdateAutoTodo(std::move(tp_entry), tp_future.GetCallback());
@@ -460,8 +555,9 @@ TEST_F(ContextHubPageHandlerTest, GetAutoTodos_WithTodos) {
   const auto& fp_res_data = std::get<FirstPartyData>(first_party.at(0).data);
   EXPECT_EQ(fp_res_data.actionable_url, GURL("https://example.com/action"));
   ASSERT_EQ(fp_res_data.source_references.size(), 1u);
-  EXPECT_EQ(fp_res_data.source_references[0],
+  EXPECT_EQ(fp_res_data.source_references[0].url,
             GURL("https://mail.google.com/123"));
+  EXPECT_EQ(fp_res_data.source_references[0].subject, "Email Subject 1");
 
   ASSERT_EQ(third_party.size(), 1u);
   EXPECT_EQ(third_party.at(0).id, "tp_1");
@@ -470,6 +566,8 @@ TEST_F(ContextHubPageHandlerTest, GetAutoTodos_WithTodos) {
   EXPECT_EQ(third_party.at(0).importance_score, 0.5f);
   EXPECT_TRUE(third_party.at(0).is_third_party());
   EXPECT_EQ(third_party.at(0).tab_id(), 42);
+  EXPECT_EQ(third_party.at(0).group_type(),
+            ThirdPartyData::GroupType::kNudgeToClose);
 }
 
 TEST_F(ContextHubPageHandlerTest, UpdateAutoTodo_Success) {
@@ -485,7 +583,7 @@ TEST_F(ContextHubPageHandlerTest, UpdateAutoTodo_Success) {
   FirstPartyData fp_data;
   fp_data.actionable_url = GURL("https://example.com/start");
   fp_data.source_references = {
-      GURL("https://mail.google.com/mail/u/0/#inbox/abc")};
+      {GURL("https://mail.google.com/mail/u/0/#inbox/abc"), "ABC Subject"}};
   todo.data = std::move(fp_data);
 
   base::test::TestFuture<bool> update_future;
@@ -504,8 +602,9 @@ TEST_F(ContextHubPageHandlerTest, UpdateAutoTodo_Success) {
   const auto& stored_fp_data = std::get<FirstPartyData>(entries[0].data);
   EXPECT_EQ(stored_fp_data.actionable_url, GURL("https://example.com/start"));
   ASSERT_EQ(stored_fp_data.source_references.size(), 1u);
-  EXPECT_EQ(stored_fp_data.source_references[0],
+  EXPECT_EQ(stored_fp_data.source_references[0].url,
             GURL("https://mail.google.com/mail/u/0/#inbox/abc"));
+  EXPECT_EQ(stored_fp_data.source_references[0].subject, "ABC Subject");
 }
 
 TEST_F(ContextHubPageHandlerTest, OnAutoTodosChanged) {
@@ -890,6 +989,26 @@ TEST_F(ContextHubPageHandlerTest, GetExistingTabGroupsAndChats_NoGroups) {
   EXPECT_TRUE(groups.empty());
   EXPECT_TRUE(ungrouped_tabs.empty());
   EXPECT_TRUE(chat_history.empty());
+}
+
+TEST_F(ContextHubPageHandlerTest, GenerateTabBasedTodos) {
+  std::vector<std::unique_ptr<content::WebContents>> test_tabs;
+  std::vector<content::WebContents*> raw_test_tabs;
+  auto tab =
+      content::WebContentsTester::CreateTestWebContents(&profile_, nullptr);
+  sessions::SessionTabHelper::CreateForWebContents(
+      tab.get(), sessions::SessionTabHelper::DelegateLookup());
+  raw_test_tabs.push_back(tab.get());
+  test_tabs.push_back(std::move(tab));
+
+  EXPECT_CALL(*mock_tab_provider_, GetTabs(_))
+      .WillOnce(testing::Return(raw_test_tabs));
+
+  EXPECT_CALL(mock_page_, OnAutoTodosChanged(_)).Times(0);
+
+  base::test::TestFuture<bool> future;
+  handler_->GenerateTabBasedTodos(future.GetCallback());
+  EXPECT_FALSE(future.Get());
 }
 #endif
 

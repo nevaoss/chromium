@@ -13,6 +13,7 @@
 #include <string>
 #include <vector>
 
+#include "base/callback_list.h"
 #include "base/functional/callback_forward.h"
 #include "base/functional/callback_helpers.h"
 #include "base/functional/function_ref.h"
@@ -121,6 +122,7 @@ class ColorProviderSource;
 }  // namespace ui
 
 namespace gfx {
+class Point;
 class PointF;
 class Rect;
 }  // namespace gfx
@@ -254,6 +256,10 @@ class WebContents : public PageNavigator, public base::SupportsUserData {
 
     // True if the contents should be initially hidden.
     bool initially_hidden = false;
+
+    // True if the contents should initially be hidden but continue painting
+    // until shown. Mutually exclusive with `initially_hidden`.
+    bool initially_hidden_but_painting = false;
 
     // Returns true if the WebContents is never user-visible, thus the renderer
     // need never produce pixels for display.
@@ -989,6 +995,14 @@ class WebContents : public PageNavigator, public base::SupportsUserData {
   // Whether the tab is in the process of being destroyed.
   virtual bool IsBeingDestroyed() = 0;
 
+  // Returns true if this WebContents was created with PrivilegedParams, i.e. it
+  // is a privileged-contents host (see PrivilegedParams). Immutable for the
+  // lifetime of the WebContents. Unlike RenderProcessHost::IsPrivileged(), this
+  // is available even when no renderer process exists yet -- e.g. when deciding
+  // whether a browser-initiated main-frame navigation request should be exempt
+  // from the extensions webRequest/DNR APIs.
+  virtual bool IsPrivileged() = 0;
+
   // Convenience method for notifying the delegate of a navigation state
   // change.
   virtual void NotifyNavigationStateChanged(InvalidateTypes changed_flags) = 0;
@@ -1196,6 +1210,19 @@ class WebContents : public PageNavigator, public base::SupportsUserData {
   // DIPs.
   virtual const std::optional<gfx::Rect> GetTextSelectionBounds(
       RenderFrameHost* render_frame_host) const = 0;
+
+  // Returns the point of the focus selection in global screen coordinates in
+  // DIPs.
+  virtual const std::optional<gfx::Point> GetFocusSelectionPoint(
+      RenderFrameHost* render_frame_host) const = 0;
+
+  // Notifies when the selection bounds change. This is provided using a
+  // callback list instead of using WebContentsObserver due to performance
+  // concerns.
+  using FocusSelectionBoundsChangedCallback =
+      base::RepeatingCallback<void(RenderWidgetHostView*)>;
+  virtual base::CallbackListSubscription RegisterFocusSelectionBoundsChanged(
+      FocusSelectionBoundsChangedCallback callback) = 0;
 
   // Replaces the currently selected word or a word around the cursor.
   virtual void Replace(const std::u16string& word) = 0;

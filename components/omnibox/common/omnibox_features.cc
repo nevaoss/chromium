@@ -588,6 +588,8 @@ const base::FeatureParam<bool> kAskGLensChipRoute{
     &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGLensChipRoute", false};
 const base::FeatureParam<bool> kAskGSwapIcon{
     &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGSwapIcon", false};
+const base::FeatureParam<bool> kAskGSwapSuggestionIcon{
+    &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGSwapSuggestionIcon", false};
 const base::FeatureParam<bool> kAskGCurrentTabChip{
     &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGCurrentTabChip", false};
 const base::FeatureParam<bool> kAskGLensIcon{
@@ -596,6 +598,9 @@ const base::FeatureParam<bool> kAskGLensSearchHintText{
     &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGLensSearchHintText", false};
 const base::FeatureParam<bool> kAskGComposeboxLensChip{
     &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGComposeboxLensChip", false};
+const base::FeatureParam<bool> kAskGBlockZeroStateSuggestions{
+    &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGBlockZeroStateSuggestions",
+    false};
 // Note: no new flags beyond this point.
 
 namespace flag_descriptions {

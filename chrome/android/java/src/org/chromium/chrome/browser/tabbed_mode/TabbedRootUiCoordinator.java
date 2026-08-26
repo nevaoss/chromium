@@ -2387,6 +2387,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                                     assumeNonNull(mProfileSupplier.get()),
                                     mVerticalTabsActionDelegate,
                                     mWindowAndroid,
+                                    mActivityResultTracker,
                                     assumeNonNull(mMultiInstanceManager),
                                     assumeNonNull(mSnackbarManagerSupplier.get()),
                                     getDesktopWindowStateManager(),
@@ -2401,6 +2402,10 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                                     mUndoGroupSnackbarController),
                             mIsVerticalTabsActiveSupplier);
             mSideUiCoordinator.registerSideUiContainer(mVerticalTabsSideUiCoordinator);
+            if (mToolbarManager != null) {
+                mToolbarManager.setVerticalTabsAutoHiddenSupplier(
+                        mVerticalTabsSideUiCoordinator.getIsAutoHiddenSupplier());
+            }
         }
 
         mSideUiStateProviderSupplier.onAvailable(

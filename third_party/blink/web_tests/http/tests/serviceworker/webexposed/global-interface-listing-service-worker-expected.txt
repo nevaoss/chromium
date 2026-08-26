@@ -2126,7 +2126,6 @@ interface TrustedTypePolicy
     getter name
     method constructor
     method createHTML
-    method createParserOptions
     method createScript
     method createScriptURL
 interface TrustedTypePolicyFactory
@@ -3689,6 +3688,7 @@ interface WorkerNavigator
     getter appVersion
     getter connection
     getter deviceMemory
+    getter globalPrivacyControl
     getter gpu
     getter hardwareConcurrency
     getter language

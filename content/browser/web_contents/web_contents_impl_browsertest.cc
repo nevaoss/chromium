@@ -72,8 +72,10 @@
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/render_frame_host.h"
+#include "content/public/browser/render_process_host.h"
 #include "content/public/browser/render_view_host.h"
 #include "content/public/browser/render_widget_host_view.h"
+#include "content/public/browser/site_instance.h"
 #include "content/public/browser/site_isolation_policy.h"
 #include "content/public/browser/unowned_inner_web_contents_client.h"
 #include "content/public/browser/web_contents.h"
@@ -2288,6 +2290,34 @@ IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest,
             ordinary_main_frame->GetProcess());
 }
 
+// The privileged bit is reachable through the public
+// RenderProcessHost::IsPrivileged() helper; it is false for ordinary content.
+IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest,
+                       PrivilegedExposedViaPublicApis) {
+  ASSERT_TRUE(embedded_test_server()->Start());
+  const GURL url = embedded_test_server()->GetURL("/title1.html");
+  BrowserContext* browser_context =
+      shell()->web_contents()->GetBrowserContext();
+
+  WebContents::CreateParams privileged_create_params(browser_context);
+  WebContents::PrivilegedParams marker;
+  marker.feature_id = 42;
+  privileged_create_params.privileged_params = marker;
+  std::unique_ptr<WebContents> privileged(
+      WebContents::Create(privileged_create_params));
+  ASSERT_TRUE(NavigateToURL(privileged.get(), url));
+  EXPECT_TRUE(privileged->IsPrivileged());
+  EXPECT_TRUE(privileged->GetPrimaryMainFrame()->GetProcess()->IsPrivileged());
+
+  ASSERT_TRUE(NavigateToURL(shell(), url));
+  EXPECT_FALSE(shell()->web_contents()->IsPrivileged());
+  EXPECT_FALSE(shell()
+                   ->web_contents()
+                   ->GetPrimaryMainFrame()
+                   ->GetProcess()
+                   ->IsPrivileged());
+}
+
 // A WebContents created with PrivilegedParams marks every frame it hosts
 // as privileged, not just the main frame: a subframe (including a
 // cross-site one) also commits with a privileged SiteInfo.
@@ -2384,6 +2414,46 @@ IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest,
   } else {
     EXPECT_EQ(privileged_main->GetProcess(), privileged_subframe->GetProcess());
   }
+}
+
+// Two privileged WebContents of the same feature coalesce into a single shared
+// renderer process (process-per-site), while a privileged WebContents of a
+// different feature and an ordinary WebContents at the same URL each stay in
+// their own process.
+IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest,
+                       PrivilegedWebContentsCoalesceIntoSharedProcess) {
+  ASSERT_TRUE(embedded_test_server()->Start());
+  const GURL url = embedded_test_server()->GetURL("/title1.html");
+  BrowserContext* browser_context =
+      shell()->web_contents()->GetBrowserContext();
+
+  auto make_privileged = [&](int32_t feature_id) {
+    WebContents::CreateParams params(browser_context);
+    WebContents::PrivilegedParams privileged_params;
+    privileged_params.feature_id = feature_id;
+    params.privileged_params = privileged_params;
+    std::unique_ptr<WebContents> web_contents = WebContents::Create(params);
+    EXPECT_TRUE(NavigateToURL(web_contents.get(), url));
+    return web_contents;
+  };
+
+  std::unique_ptr<WebContents> privileged1 = make_privileged(42);
+  std::unique_ptr<WebContents> privileged2 = make_privileged(42);
+  std::unique_ptr<WebContents> other_feature = make_privileged(99);
+
+  // Same feature -> shared process.
+  EXPECT_EQ(privileged1->GetPrimaryMainFrame()->GetProcess(),
+            privileged2->GetPrimaryMainFrame()->GetProcess());
+
+  // A different feature id produces a distinct SiteInfo, so it does not join
+  // the shared process.
+  EXPECT_NE(privileged1->GetPrimaryMainFrame()->GetProcess(),
+            other_feature->GetPrimaryMainFrame()->GetProcess());
+
+  // An ordinary WebContents at the same URL stays in its own process.
+  ASSERT_TRUE(NavigateToURL(shell(), url));
+  EXPECT_NE(privileged1->GetPrimaryMainFrame()->GetProcess(),
+            shell()->web_contents()->GetPrimaryMainFrame()->GetProcess());
 }
 
 namespace {

@@ -28,7 +28,6 @@
 #include "build/build_config.h"
 #include "chrome/browser/glic/common/local_hotkey_manager.h"
 #include "chrome/browser/glic/host/glic.mojom-shared.h"
-#include "chrome/browser/glic/host/guest_util.h"
 #include "chrome/browser/glic/public/features.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/glic/public/glic_instance.h"
@@ -66,7 +65,6 @@
 #include "base/android/device_info.h"
 #include "chrome/browser/flags/android/chrome_feature_list.h"
 #include "chrome/browser/ui/android/tab_model/tab_model.h"
-#include "chrome/browser/ui/browser_window/public/create_browser_window.h"
 #include "ui/android/accelerator_manager_android.h"
 #include "ui/android/window_android.h"
 #else
@@ -177,6 +175,12 @@ template <typename Trigger>
   return false;
 }
 
+[[nodiscard]] inline TestResult<> WaitForWindowActive(
+    BrowserWindowInterface* browser) {
+  return RunUntilEqual([&]() { return browser->GetWindow()->IsActive(); }, true,
+                       "Window did not become active");
+}
+
 [[nodiscard]] inline TestResult<> WaitForSidePanelState(
     tabs::TabInterface* tab,
     GlicSidePanelCoordinator::State expected_state) {
@@ -248,15 +252,22 @@ class GlicBrowserTestMixin : public T {
     if (!glic::GlicEnabling::IsOsVersionSupported()) {
       GTEST_SKIP() << "OS version not supported by Glic";
     }
+#if defined(USE_MOCK_ACTIVATION_CONTROLLER)
+    // Instantiate the MockActivationController early before calling T::SetUp().
+    // During T::SetUp(), InProcessBrowserTest creates and shows the default
+    // startup browser window. If the mock controller is already active at that
+    // time, DesktopWindowTreeHostPlatform skips acquiring its native
+    // paint-as-active lock. This prevents the default window from being
+    // permanently locked active, allowing mock deactivation to work correctly
+    // during the test.
+    activation_controller_ =
+        std::make_unique<views::test::MockActivationController>();
+#endif
     T::SetUp();
   }
 
   void SetUpOnMainThread() override {
     T::SetUpOnMainThread();
-#if defined(USE_MOCK_ACTIVATION_CONTROLLER)
-    activation_controller_ =
-        std::make_unique<views::test::MockActivationController>();
-#endif
 
     // Disable side panel animations on supported platforms.
     if (IsSidePanelEnabled()) {
@@ -273,7 +284,6 @@ class GlicBrowserTestMixin : public T {
         ->GetBrowserWindowInterface()
         ->GetWindow()
         ->Activate();
-    LOG(INFO) << "GlicBrowserTest: done setting up";
   }
 
   void TearDownOnMainThread() override {
@@ -496,12 +506,8 @@ class GlicBrowserTestMixin : public T {
   }
 
   double GetZoomLevel(GlicInstanceImpl* instance) {
-    content::WebContents* webui_contents = instance->host().webui_contents();
-    if (!webui_contents) {
-      return 1.0;
-    }
     content::WebContents* guest_contents =
-        GetGlicGuestWebContents(webui_contents);
+        instance->host().web_client_contents();
     if (!guest_contents) {
       return 1.0;
     }
@@ -606,6 +612,7 @@ class GlicBrowserTestMixin : public T {
     browser = T::CreateBrowser(T::GetProfile());
 #endif
     CHECK(browser);
+    CHECK(WaitForWindowActive(browser).has_value());
     CHECK(TabListInterface::From(browser)->GetActiveTab());
     return browser;
   }

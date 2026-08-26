@@ -382,7 +382,9 @@ void SyncServiceImpl::Initialize(DataTypeController::TypeVector controllers) {
   const bool is_sync_feature_requested_for_metrics =
       IsLocalSyncEnabled() ||
 #if BUILDFLAG(IS_CHROMEOS)
-      !user_settings_->IsSyncFeatureDisabledViaDashboard();
+      (!user_settings_->IsSyncFeatureDisabledViaDashboard() &&
+       (!base::FeatureList::IsEnabled(kReplaceSyncPromosWithSignInPromos) ||
+        HasSyncConsent()));
 #else
       HasSyncConsent();
 #endif  // BUILDFLAG(IS_CHROMEOS)
@@ -1243,6 +1245,23 @@ void SyncServiceImpl::OnNewInvalidatedDataTypes() {
   NotifyObservers();
 }
 
+void SyncServiceImpl::FetchAccessToken(
+    base::OnceCallback<void(signin::AccessTokenInfo)> callback) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  if (!auth_manager_) {
+    std::move(callback).Run(signin::AccessTokenInfo());
+    return;
+  }
+
+  // TODO(crbug.com/539471945): Actually request an access token here in
+  // follow-up CLs instead of relying on the cached credentials from
+  // SyncAuthManager. For now, this step uses the same token as before, but
+  // propagates it from a different source (SyncCycle instead of
+  // ServerConnectionManager's cache).
+  std::move(callback).Run(auth_manager_->GetCredentials().access_token_info);
+}
+
 void SyncServiceImpl::OnConfigureDone(
     const DataTypeManager::ConfigureResult& result) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -1362,7 +1381,10 @@ void SyncServiceImpl::SyncAuthCredentialsChanged() {
 
   if (!engine_) {
     TryStart();
-  } else {
+  } else if (!base::FeatureList::IsEnabled(kSyncUsePropagatedAccessToken)) {
+    // When kSyncUsePropagatedAccessToken is enabled, access tokens are fetched
+    // on demand and propagated via SyncCycle when needed rather than cached in
+    // the network sync layer.
     // If the engine already exists, just propagate the new credentials.
     SyncCredentials credentials = auth_manager_->GetCredentials();
     if (credentials.access_token_info.token.empty()) {

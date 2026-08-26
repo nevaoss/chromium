@@ -331,7 +331,7 @@ FillDataType GetEventTypeFromSingleFieldSuggestionType(SuggestionType type) {
     case SuggestionType::kSeparator:
     case SuggestionType::kTitle:
     case SuggestionType::kTroubleSigningInEntry:
-    case SuggestionType::kUndoOrClear:
+    case SuggestionType::kUndo:
     case SuggestionType::kViewPasswordDetails:
     case SuggestionType::kVirtualCreditCardEntry:
     case SuggestionType::kWebauthnCredential:
@@ -433,7 +433,6 @@ bool IsTriggerSourceOnlyRelevantForCompose(
     case AutofillSuggestionTriggerSource::kiOS:
     case AutofillSuggestionTriggerSource::kManualFallbackPasswords:
     case AutofillSuggestionTriggerSource::kPasswordManagerProcessedFocusedField:
-    case AutofillSuggestionTriggerSource::kPlusAddressUpdatedInBrowserProcess:
     case AutofillSuggestionTriggerSource::kProactivePasswordRecovery:
     case AutofillSuggestionTriggerSource::kGlic:
     case AutofillSuggestionTriggerSource::kAtMemoryContextMenu:
@@ -463,8 +462,6 @@ bool CanReplaceCurrentSuggestions(AutofillSuggestionTriggerSource source) {
     case mojom::AutofillSuggestionTriggerSource::kComposeDialogLostFocus:
     case mojom::AutofillSuggestionTriggerSource::
         kPasswordManagerProcessedFocusedField:
-    case mojom::AutofillSuggestionTriggerSource::
-        kPlusAddressUpdatedInBrowserProcess:
     case mojom::AutofillSuggestionTriggerSource::kProactivePasswordRecovery:
     case mojom::AutofillSuggestionTriggerSource::kGlic:
     case mojom::AutofillSuggestionTriggerSource::kAtMemoryContextMenu:
@@ -565,7 +562,6 @@ FillingProductSet GetFillingProductsToSuggest(
     case kPasswordManagerProcessedFocusedField:
     case kManualFallbackPasswords:
       return {FillingProduct::kPassword, FillingProduct::kPasskey};
-    case kPlusAddressUpdatedInBrowserProcess:
     case kOpenTextDataListChooser:
     case kFormControlElementClicked:
     case kTextFieldValueChanged:
@@ -766,7 +762,7 @@ bool IsManagementFooterOption(const Suggestion& suggestion) {
     case SuggestionType::kSeparator:
     case SuggestionType::kTitle:
     case SuggestionType::kTroubleSigningInEntry:
-    case SuggestionType::kUndoOrClear:
+    case SuggestionType::kUndo:
     case SuggestionType::kViewPasswordDetails:
     case SuggestionType::kVirtualCreditCardEntry:
     case SuggestionType::kWebauthnCredential:
@@ -1248,6 +1244,7 @@ void BrowserAutofillManager::OnAskForValuesToFillImpl(
   external_delegate_->OnQuery(form, field, caret_bounds, trigger_source);
 
   if (IsAtMemoryTriggerSource(trigger_source)) {
+    GetAtMemoryManager().set_target_field_origin(field.origin());
     std::vector<Suggestion> suggestions;
     GetAtMemoryManager().MaybeAppendPersonalContextNotice(suggestions);
 
@@ -1511,6 +1508,7 @@ void BrowserAutofillManager::GenerateSuggestionsAndMaybeShowUIPhase1(
       return;
     }
     otp_manager_->GetOtpSuggestions(
+        field.origin(),
         std::move(generate_suggestions_and_maybe_show_ui_phase2));
     return;
   }

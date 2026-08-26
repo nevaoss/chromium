@@ -27,13 +27,13 @@
 #include "third_party/blink/renderer/core/url/dom_url.h"
 
 #include "base/auto_reset.h"
+#include "base/check.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/fileapi/public_url_manager.h"
 #include "third_party/blink/renderer/core/url/dom_origin.h"
 #include "third_party/blink/renderer/core/url/url_search_params.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
-#include "third_party/blink/renderer/platform/loader/fetch/memory_cache.h"
-#include "third_party/blink/renderer/platform/weborigin/kurl.h"
+#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/weborigin/security_origin.h"
 
 namespace blink {
@@ -125,7 +125,7 @@ void DOMURL::setHref(const String& value, ExceptionState& exception_state) {
 }
 
 void DOMURL::setSearch(const String& value) {
-  DOMURLUtils::setSearch(value);
+  UrlUtils::setSearch(value);
   if (value.starts_with('?')) {
     UpdateSearchParams(value.substr(1));
   } else {
@@ -134,8 +134,13 @@ void DOMURL::setSearch(const String& value) {
 }
 
 String DOMURL::CreatePublicURL(ExecutionContext* execution_context,
+                               Blob* blob) {
+  return execution_context->GetPublicURLManager().RegisterUrl(blob);
+}
+
+String DOMURL::CreatePublicURL(ExecutionContext* execution_context,
                                URLRegistrable* registrable) {
-  return execution_context->GetPublicURLManager().RegisterURL(registrable);
+  return execution_context->GetPublicURLManager().RegisterUrl(registrable);
 }
 
 URLSearchParams* DOMURL::searchParams() {

@@ -4,10 +4,10 @@
 
 #include <initializer_list>
 #include <memory>
+#include <ranges>
 #include <string_view>
 
 #include "base/cfi_buildflags.h"
-#include "base/containers/adapters.h"
 #include "base/containers/map_util.h"
 #include "base/containers/span.h"
 #include "base/feature_list.h"
@@ -31,6 +31,7 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/storage_access_api/storage_access_grant_permission_context.h"
 #include "chrome/browser/ui/browser.h"
+#include "chrome/browser/ui/browser_window/public/create_browser_window.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/webid/federated_identity_permission_context.h"
@@ -515,7 +516,7 @@ class StorageAccessAPIBaseBrowserTest : public policy::PolicyTest {
                         const GURL& destination) {
     GURL url = destination;
 
-    for (const auto& host : base::Reversed(hosts)) {
+    for (const auto& host : std::views::reverse(hosts)) {
       url = https_server().GetURL(host, ServerRedirectPath(url));
     }
     return url;
@@ -1071,9 +1072,10 @@ IN_PROC_BROWSER_TEST_F(StorageAccessAPIBrowserTest,
   EXPECT_FALSE(content::ExecJs(nested_frame, fetch_blob_url_js));
 }
 
-// TODO(https://crbug.com/540611509): Fails on Linux CFI.
+// TODO(https://crbug.com/540611509): Fails on Linux CFI and Linux debug builds.
 #if BUILDFLAG(IS_LINUX) &&                                      \
-    (BUILDFLAG(CFI_CAST_CHECK) || BUILDFLAG(CFI_ICALL_CHECK) || \
+    (!defined(NDEBUG) ||                                        \
+     BUILDFLAG(CFI_CAST_CHECK) || BUILDFLAG(CFI_ICALL_CHECK) || \
      BUILDFLAG(CFI_ENFORCEMENT_TRAP) || BUILDFLAG(CFI_ENFORCEMENT_DIAGNOSTIC))
 #define MAYBE_AccessGranted_DoesNotConsumeUserInteraction \
   DISABLED_AccessGranted_DoesNotConsumeUserInteraction
@@ -2996,9 +2998,12 @@ IN_PROC_BROWSER_TEST_F(StorageAccessAPIBrowserTest,
   // Even though there was previous interaction in the regular profile, requests
   // made by incognito profiles should be denied, due to the top-level user
   // interaction requirement.
-  Browser* incognito_browser = Browser::Create(Browser::CreateParams(
-      browser()->GetProfile()->GetPrimaryOTRProfile(/*create_if_needed=*/true),
-      /*user_gesture=*/true));
+  Browser* incognito_browser =
+      CreateBrowserWindow(BrowserWindowCreateParams(
+                              browser()->GetProfile()->GetPrimaryOTRProfile(
+                                  /*create_if_needed=*/true),
+                              /*from_user_gesture=*/true))
+          ->GetBrowserForMigrationOnly();
 
   NavigateToURLWithDisposition(incognito_browser,
                                https_server().GetURL(kHostA, "/iframe.html"),
@@ -3011,9 +3016,12 @@ IN_PROC_BROWSER_TEST_F(StorageAccessAPIBrowserTest,
 }
 
 IN_PROC_BROWSER_TEST_F(StorageAccessAPIBrowserTest, IncognitoCanUseAPI) {
-  Browser* incognito_browser = Browser::Create(Browser::CreateParams(
-      browser()->GetProfile()->GetPrimaryOTRProfile(/*create_if_needed=*/true),
-      /*user_gesture=*/true));
+  Browser* incognito_browser =
+      CreateBrowserWindow(BrowserWindowCreateParams(
+                              browser()->GetProfile()->GetPrimaryOTRProfile(
+                                  /*create_if_needed=*/true),
+                              /*from_user_gesture=*/true))
+          ->GetBrowserForMigrationOnly();
 
   NavigateToURLWithDisposition(incognito_browser,
                                https_server().GetURL(kHostA, "/empty.html"),

@@ -158,6 +158,7 @@
 #include "third_party/blink/renderer/core/timing/dom_window_performance.h"
 #include "third_party/blink/renderer/core/timing/window_performance.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition.h"
+#include "third_party/blink/renderer/core/view_transition/view_transition_skip_reason.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition_utils.h"
 #include "third_party/blink/renderer/platform/graphics/animation_worklet_mutator_dispatcher_impl.h"
 #include "third_party/blink/renderer/platform/graphics/color_space_gamut.h"
@@ -887,7 +888,9 @@ void WebFrameWidgetImpl::NotifyClearedDisplayedGraphics() {
   // Skip any incoming cross document transitions here.
   if (ViewTransition* transition =
           ViewTransitionUtils::GetIncomingCrossDocumentTransition(document)) {
-    transition->SkipTransition();
+    transition->SkipTransition(
+        ViewTransition::PromiseResponse::kRejectInvalidState,
+        ViewTransitionSkipReason::kPageAlreadyRevealed);
   }
 }
 
@@ -2857,9 +2860,6 @@ void WebFrameWidgetImpl::RegisterActiveUnboundedElement(
         host_remote,
     ScriptPromiseResolver<IDLUndefined>* resolver) {
   CHECK(RuntimeEnabledFeatures::UnboundedElementEnabled());
-  // TODO(crbug.com/508672616): Add support for unbounded element when
-  // TreesInViz is enabled.
-  CHECK(!base::FeatureList::IsEnabled(::features::kTreesInViz));
   // Dismiss any existing active unbounded element to ensure only one is
   // active at a time.
   if (unbounded_surface_state_) {
@@ -2899,43 +2899,59 @@ void WebFrameWidgetImpl::OnSurfaceAllocated(
     state->frame_sink_id_ = frame_sink_id;
     state->local_surface_id_ = local_surface_id;
 
-    mojo::PendingRemote<viz::mojom::blink::CompositorFrameSink>
-        blink_sink_remote;
-    auto blink_sink_receiver =
-        blink_sink_remote.InitWithNewPipeAndPassReceiver();
-
-    mojo::PendingReceiver<viz::mojom::blink::CompositorFrameSinkClient>
-        blink_client_receiver;
-    auto blink_client_remote =
-        blink_client_receiver.InitWithNewPipeAndPassRemote();
-
-    if (state->host_.is_bound()) {
-      state->host_->GetCompositorFrameSink(std::move(blink_sink_receiver),
-                                           std::move(blink_client_remote));
-    }
-
-    bool success = false;
-    if (auto* host = LayerTreeHost()) {
-      std::unique_ptr<cc::LayerTreeFrameSink> unbounded_frame_sink =
-          widget_base_->CreateUnboundedFrameSink(
-              std::move(blink_sink_remote), std::move(blink_client_receiver));
-      if (unbounded_frame_sink) {
-        host->SetUnboundedFrameSink(std::move(unbounded_frame_sink),
-                                    local_surface_id);
+    if (base::FeatureList::IsEnabled(::features::kTreesInViz)) {
+      if (auto* host = LayerTreeHost()) {
+        host->SetUnboundedFrameSinkId(frame_sink_id, local_surface_id);
         host->SetNeedsCommitWithForcedRedraw();
         if (state->unbounded_element_resolver_) {
           state->unbounded_element_resolver_->Resolve();
           state->unbounded_element_resolver_ = nullptr;
         }
-        success = true;
+      } else if (state->unbounded_element_resolver_) {
+        state->unbounded_element_resolver_->Reject(
+            MakeGarbageCollected<DOMException>(
+                DOMExceptionCode::kInvalidStateError,
+                "Failed to initialize unbounded element frame sink."));
+        state->unbounded_element_resolver_ = nullptr;
       }
-    }
-    if (!success && state->unbounded_element_resolver_) {
-      state->unbounded_element_resolver_->Reject(
-          MakeGarbageCollected<DOMException>(
-              DOMExceptionCode::kInvalidStateError,
-              "Failed to initialize unbounded element frame sink."));
-      state->unbounded_element_resolver_ = nullptr;
+    } else {
+      mojo::PendingRemote<viz::mojom::blink::CompositorFrameSink>
+          blink_sink_remote;
+      auto blink_sink_receiver =
+          blink_sink_remote.InitWithNewPipeAndPassReceiver();
+
+      mojo::PendingReceiver<viz::mojom::blink::CompositorFrameSinkClient>
+          blink_client_receiver;
+      auto blink_client_remote =
+          blink_client_receiver.InitWithNewPipeAndPassRemote();
+
+      if (state->host_.is_bound()) {
+        state->host_->GetCompositorFrameSink(std::move(blink_sink_receiver),
+                                             std::move(blink_client_remote));
+      }
+
+      bool success = false;
+      if (auto* host = LayerTreeHost()) {
+        auto unbounded_frame_sink = widget_base_->CreateUnboundedFrameSink(
+            std::move(blink_sink_remote), std::move(blink_client_receiver));
+        if (unbounded_frame_sink) {
+          host->SetUnboundedFrameSink(std::move(unbounded_frame_sink),
+                                      local_surface_id);
+          host->SetNeedsCommitWithForcedRedraw();
+          if (state->unbounded_element_resolver_) {
+            state->unbounded_element_resolver_->Resolve();
+            state->unbounded_element_resolver_ = nullptr;
+          }
+          success = true;
+        }
+      }
+      if (!success && state->unbounded_element_resolver_) {
+        state->unbounded_element_resolver_->Reject(
+            MakeGarbageCollected<DOMException>(
+                DOMExceptionCode::kInvalidStateError,
+                "Failed to initialize unbounded element frame sink."));
+        state->unbounded_element_resolver_ = nullptr;
+      }
     }
   } else if (state->local_surface_id_ != local_surface_id) {
     state->local_surface_id_ = local_surface_id;
@@ -3579,7 +3595,7 @@ void WebFrameWidgetImpl::RequestMouseLock(
     bool has_transient_user_activation,
     bool request_unadjusted_movement,
     mojom::blink::WidgetInputHandlerHost::RequestMouseLockCallback callback) {
-  mojom::blink::WidgetInputHandlerHost* host =
+  auto host =
       widget_base_->widget_input_handler_manager()->GetWidgetInputHandlerHost();
 
   // If we don't have a host just leave the callback uncalled. This simulates
@@ -4344,7 +4360,8 @@ void WebFrameWidgetImpl::PasteIntoNode(const String& text,
     return;
   }
 
-  WebElement(target_element).PasteText(text, /*replace_all=*/false);
+  WebElement(target_element)
+      .PasteText(text, /*replace_all=*/false, /*smart_replace=*/true);
 }
 
 void WebFrameWidgetImpl::FinishComposingText(bool keep_selection) {
@@ -4403,7 +4420,7 @@ void WebFrameWidgetImpl::ProcessTouchAction(WebTouchAction touch_action) {
 void WebFrameWidgetImpl::SetPanAction(mojom::blink::PanAction pan_action) {
   if (!widget_base_->widget_input_handler_manager())
     return;
-  mojom::blink::WidgetInputHandlerHost* host =
+  auto host =
       widget_base_->widget_input_handler_manager()->GetWidgetInputHandlerHost();
   if (!host)
     return;
@@ -4469,18 +4486,16 @@ void WebFrameWidgetImpl::FlushInputForTesting(base::OnceClosure done_callback) {
 }
 
 void WebFrameWidgetImpl::SetMouseCapture(bool capture) {
-  if (mojom::blink::WidgetInputHandlerHost* host =
-          widget_base_->widget_input_handler_manager()
-              ->GetWidgetInputHandlerHost()) {
+  if (auto host = widget_base_->widget_input_handler_manager()
+                      ->GetWidgetInputHandlerHost()) {
     host->SetMouseCapture(capture);
   }
 }
 
 void WebFrameWidgetImpl::NotifyAutoscrollForSelectionInMainFrame(
     bool autoscroll_selection) {
-  if (mojom::blink::WidgetInputHandlerHost* host =
-          widget_base_->widget_input_handler_manager()
-              ->GetWidgetInputHandlerHost()) {
+  if (auto host = widget_base_->widget_input_handler_manager()
+                      ->GetWidgetInputHandlerHost()) {
     host->SetAutoscrollSelectionActiveInMainFrame(autoscroll_selection);
   }
 
@@ -4532,8 +4547,8 @@ void GetLineBounds(Vector<gfx::QuadF>& line_quads, Node* editor_node) {
     if (!node.GetLayoutObject() || !node.GetLayoutObject()->IsText()) {
       continue;
     }
-    node.GetLayoutObject()->AbsoluteQuads(line_quads,
-                                          kApplyRemoteMainFrameTransform);
+    node.GetLayoutObject()->AbsoluteQuads(
+        line_quads, {MapCoordinatesMode::kApplyRemoteMainFrameTransform});
   }
 }
 

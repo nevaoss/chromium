@@ -80,6 +80,7 @@
 #include "third_party/blink/renderer/core/style/style_border_shape.h"
 #include "third_party/blink/renderer/core/style/style_overflow_clip_margin.h"
 #include "third_party/blink/renderer/core/style/style_svg_resource.h"
+#include "third_party/blink/renderer/core/style/text_decoration_inset.h"
 #include "third_party/blink/renderer/core/style/text_indent_flags.h"
 #include "third_party/blink/renderer/core/style_property_shorthand.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition_style_tracker.h"
@@ -2973,7 +2974,7 @@ CSSValue* ConsumeCounterContent(CSSParserTokenStream& stream,
                                 CSSParserLocalContext& local_context,
                                 bool counters) {
   CSSCustomIdentValue* identifier;
-  CSSCustomIdentValue* list_style = nullptr;
+  CSSValue* list_style = nullptr;
   CSSStringValue* separator = nullptr;
 
   {
@@ -3005,6 +3006,11 @@ CSSValue* ConsumeCounterContent(CSSParserTokenStream& stream,
         list_style =
             MakeGarbageCollected<CSSCustomIdentValue>(AtomicString("none"));
         stream.ConsumeIncludingWhitespace();
+      } else if (CSSValue* symbols =
+                     css_parsing_utils::ConsumeCounterStyleSymbolsFunction(
+                         stream)) {
+        context.Count(WebDXFeature::kDRAFT_Symbols);
+        list_style = symbols;
       } else {
         list_style =
             css_parsing_utils::ConsumeCounterStyleName(stream, context);
@@ -3188,9 +3194,15 @@ void Content::ApplyValue(StyleResolverState& state,
     } else if (const auto* counter_value =
                    DynamicTo<cssvalue::CSSCounterContentValue>(item.Get())) {
       next_content = MakeGarbageCollected<CounterContentData>(
-          AtomicString(counter_value->Identifier()), counter_value->ListStyle(),
+          AtomicString(counter_value->Identifier()),
+          counter_value->ListStyleIsSymbolsFunction()
+              ? g_empty_atom
+              : counter_value->ListStyleName(),
           AtomicString(counter_value->Separator()),
-          counter_value->GetTreeScope());
+          counter_value->GetTreeScope(),
+          counter_value->ListStyleIsSymbolsFunction()
+              ? &counter_value->ListStyleSymbolsFunction()
+              : nullptr);
     } else if (auto* item_identifier_value =
                    DynamicTo<CSSIdentifierValue>(item.Get())) {
       QuoteType quote_type;
@@ -3239,9 +3251,14 @@ void Content::ApplyValue(StyleResolverState& state,
               DynamicTo<cssvalue::CSSCounterContentValue>(item.Get())) {
         alt_content = MakeGarbageCollected<AltCounterContentData>(
             AtomicString(counter_value->Identifier()),
-            counter_value->ListStyle(),
+            counter_value->ListStyleIsSymbolsFunction()
+                ? g_empty_atom
+                : counter_value->ListStyleName(),
             AtomicString(counter_value->Separator()),
-            counter_value->GetTreeScope());
+            counter_value->GetTreeScope(),
+            counter_value->ListStyleIsSymbolsFunction()
+                ? &counter_value->ListStyleSymbolsFunction()
+                : nullptr);
       } else {
         alt_content = MakeGarbageCollected<AltTextContentData>(
             GetStringFromCSSStringValue(*item, state, builder));
@@ -9871,6 +9888,50 @@ const CSSValue* TextDecorationLine::CSSValueFromComputedStyleInternal(
     CSSValuePhase value_phase) const {
   return ComputedStyleUtils::RenderTextDecorationFlagsToCSSValue(
       style.GetTextDecorationLine());
+}
+
+const CSSValue* TextDecorationInset::ParseSingleValue(
+    CSSParserTokenStream& stream,
+    const CSSParserContext& context,
+    CSSParserLocalContext& local_context) const {
+  if (const CSSValue* auto_ident =
+          css_parsing_utils::ConsumeIdent<CSSValueID::kAuto>(stream)) {
+    return auto_ident;
+  }
+
+  CSSValue* start = css_parsing_utils::ConsumeLengthOrPercent(
+      stream, context, local_context, CSSPrimitiveValue::ValueRange::kAll);
+  if (!start) {
+    return nullptr;
+  }
+
+  CSSValue* end = css_parsing_utils::ConsumeLengthOrPercent(
+      stream, context, local_context, CSSPrimitiveValue::ValueRange::kAll);
+  if (!end) {
+    end = start;
+  }
+
+  return MakeGarbageCollected<CSSValuePair>(start, end,
+                                            CSSValuePair::kDropIdenticalValues);
+}
+
+const CSSValue* TextDecorationInset::CSSValueFromComputedStyleInternal(
+    const ComputedStyle& style,
+    const LayoutObject*,
+    bool allow_visited_style,
+    CSSValuePhase value_phase) const {
+  const blink::TextDecorationInset& inset = style.GetTextDecorationInset();
+  if (inset.GetStart().IsAuto()) {
+    DCHECK(inset.GetEnd().IsAuto());
+    return CSSIdentifierValue::Create(CSSValueID::kAuto);
+  }
+
+  return MakeGarbageCollected<CSSValuePair>(
+      ComputedStyleUtils::ZoomAdjustedPixelValueForLength(inset.GetStart(),
+                                                          style),
+      ComputedStyleUtils::ZoomAdjustedPixelValueForLength(inset.GetEnd(),
+                                                          style),
+      CSSValuePair::kDropIdenticalValues);
 }
 
 const CSSValue* TextDecorationSkipInk::CSSValueFromComputedStyleInternal(

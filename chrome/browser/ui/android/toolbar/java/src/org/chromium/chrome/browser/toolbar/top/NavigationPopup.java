@@ -13,7 +13,6 @@ import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.view.View.OnLayoutChangeListener;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.BaseAdapter;
@@ -47,6 +46,7 @@ import org.chromium.content_public.browser.NavigationController;
 import org.chromium.content_public.browser.NavigationEntry;
 import org.chromium.content_public.browser.NavigationHistory;
 import org.chromium.ui.UiUtils;
+import org.chromium.ui.listmenu.BasicListMenu;
 import org.chromium.ui.listmenu.ListItemType;
 import org.chromium.ui.listmenu.ListMenu;
 import org.chromium.ui.listmenu.ListMenuDelegate;
@@ -55,6 +55,7 @@ import org.chromium.ui.listmenu.ListMenuItemProperties;
 import org.chromium.ui.modelutil.MVCListAdapter.ListItem;
 import org.chromium.ui.modelutil.MVCListAdapter.ModelList;
 import org.chromium.ui.modelutil.PropertyModel;
+import org.chromium.ui.util.AttrUtils;
 import org.chromium.ui.widget.RectProvider;
 import org.chromium.ui.widget.ViewRectProvider;
 import org.chromium.url.GURL;
@@ -72,12 +73,11 @@ public class NavigationPopup implements AdapterView.OnItemClickListener {
     private static final int FULL_HISTORY_ENTRY_INDEX = -1;
 
     /** Specifies the type of navigation popup being shown */
-    @IntDef({Type.ANDROID_SYSTEM_BACK, Type.TABLET_BACK, Type.TABLET_FORWARD})
+    @IntDef({Type.TABLET_BACK, Type.TABLET_FORWARD})
     @Retention(RetentionPolicy.SOURCE)
     public @interface Type {
-        int ANDROID_SYSTEM_BACK = 0;
-        int TABLET_BACK = 1;
-        int TABLET_FORWARD = 2;
+        int TABLET_BACK = 0;
+        int TABLET_FORWARD = 1;
     }
 
     /** Delegate to display navigation history. */
@@ -98,7 +98,6 @@ public class NavigationPopup implements AdapterView.OnItemClickListener {
     private final NavigationAdapter mAdapter;
     private final @Type int mType;
     private final int mFaviconSize;
-    private final @Nullable OnLayoutChangeListener mAnchorViewLayoutChangeListener;
     private final Supplier<@Nullable Tab> mCurrentTabSupplier;
     private final HistoryDelegate mHistoryDelegate;
     private final ModelList mListItems = new ModelList();
@@ -141,7 +140,6 @@ public class NavigationPopup implements AdapterView.OnItemClickListener {
         mHistoryDelegate = historyDelegate;
 
         boolean isForward = type == Type.TABLET_FORWARD;
-        boolean anchorToBottom = type == Type.ANDROID_SYSTEM_BACK;
 
         mHistory =
                 mNavigationController.getDirectedNavigationHistory(
@@ -167,36 +165,31 @@ public class NavigationPopup implements AdapterView.OnItemClickListener {
         mPopup = new ListPopupWindow(context, null, 0, R.style.NavigationPopupDialog);
         mPopup.setOnDismissListener(this::onDismiss);
         mPopup.setBackgroundDrawable(
-                AppCompatResources.getDrawable(
-                        context,
-                        anchorToBottom
-                                ? R.drawable.menu_bg_bottom_tinted
-                                : R.drawable.menu_bg_tinted));
+                AppCompatResources.getDrawable(context, R.drawable.menu_bg_tinted));
         mPopup.setModal(true);
         mPopup.setInputMethodMode(PopupWindow.INPUT_METHOD_NOT_NEEDED);
         mPopup.setHeight(ViewGroup.LayoutParams.WRAP_CONTENT);
         mPopup.setOnItemClickListener(this);
         mPopup.setAdapter(mAdapter);
 
-        if (anchorToBottom) {
-            // By default ListPopupWindow uses the top & bottom padding of the background to
-            // determine the vertical offset applied to the window.  This causes the popup to be
-            // shifted up by the top padding, and thus we forcibly need to specify a vertical offset
-            // of 0 to prevent that.
-            mPopup.setVerticalOffset(0);
-            mAnchorViewLayoutChangeListener =
-                    (v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
-                        centerPopupOverAnchorViewAndShow();
-                    };
+        if (ToolbarFeatures.isNavigationListMenuEnabled()) {
+            mFaviconSize = AttrUtils.getDimensionPixelSize(mContext, R.attr.listItemIconSize);
         } else {
-            mAnchorViewLayoutChangeListener = null;
+            mFaviconSize = resources.getDimensionPixelSize(R.dimen.default_favicon_size);
         }
-
-        mFaviconSize = resources.getDimensionPixelSize(R.dimen.default_favicon_size);
     }
 
     ListPopupWindow getPopupForTesting() {
         return mPopup;
+    }
+
+    ModelList getListItemsForTesting() {
+        return mListItems;
+    }
+
+    void handleItemClickForTesting(int index, int position) {
+        handleItemClick(index, position);
+        if (mListMenuHost != null) mListMenuHost.dismiss();
     }
 
     private String buildComputedAction(String action) {
@@ -206,7 +199,7 @@ public class NavigationPopup implements AdapterView.OnItemClickListener {
     /** Shows the popup attached to the specified anchor view. */
     public void show(View anchorView) {
         if (!mInitialized) initialize();
-        if (mType != Type.ANDROID_SYSTEM_BACK && ToolbarFeatures.isNavigationListMenuEnabled()) {
+        if (ToolbarFeatures.isNavigationListMenuEnabled()) {
             showListMenu(anchorView);
             return;
         }
@@ -215,12 +208,8 @@ public class NavigationPopup implements AdapterView.OnItemClickListener {
 
     private void showListPopupWindow(View anchorView) {
         if (!mPopup.isShowing()) RecordUserAction.record(buildComputedAction("Popup"));
-        if (mPopup.getAnchorView() != null && mAnchorViewLayoutChangeListener != null) {
-            mPopup.getAnchorView().removeOnLayoutChangeListener(mAnchorViewLayoutChangeListener);
-        }
         mPopup.setAnchorView(anchorView);
         Resources resources = mContext.getResources();
-        boolean isAndroidSystemBack = mType == Type.ANDROID_SYSTEM_BACK;
         int contentWidth = UiUtils.computeListAdapterContentDimensions(mAdapter, null)[0];
         int minWidth = resources.getDimensionPixelSize(R.dimen.navigation_popup_tablet_min_width);
         int maxWidth =
@@ -232,16 +221,8 @@ public class NavigationPopup implements AdapterView.OnItemClickListener {
                         resources.getDisplayMetrics().widthPixels
                                 - resources.getDimensionPixelSize(
                                         R.dimen.navigation_popup_tablet_width_margin));
-        mPopup.setWidth(
-                isAndroidSystemBack
-                        ? resources.getDimensionPixelSize(R.dimen.navigation_popup_width)
-                        : MathUtils.clamp(contentWidth, minWidth, maxWidth));
-        if (isAndroidSystemBack) {
-            anchorView.addOnLayoutChangeListener(mAnchorViewLayoutChangeListener);
-            centerPopupOverAnchorViewAndShow();
-        } else {
-            mPopup.show();
-        }
+        mPopup.setWidth(MathUtils.clamp(contentWidth, minWidth, maxWidth));
+        mPopup.show();
 
         // Set clipToOutline to true to contain the mouse hover effect inside the
         // popup's outline. Also set the background of the list view to popup_bg_shape
@@ -295,6 +276,9 @@ public class NavigationPopup implements AdapterView.OnItemClickListener {
                             .with(ListMenuItemProperties.IS_TEXT_ELLIPSIZED_AT_END, true)
                             .build();
             updateIconForModel(model, entry.getFavicon(), entry.getIndex());
+            if (entry.getIndex() == FULL_HISTORY_ENTRY_INDEX) {
+                mListItems.add(BasicListMenu.buildMenuDivider(shouldUseIncognitoResources()));
+            }
             mListItems.add(new ListItem(ListItemType.MENU_ITEM, model));
         }
         initListMenuHost(anchorView);
@@ -321,6 +305,8 @@ public class NavigationPopup implements AdapterView.OnItemClickListener {
 
     private void initListMenuHost(View anchorView) {
         mListMenuHost = new ListMenuHost(anchorView, null);
+        mListMenuHost.setMenuMaxWidth(calculateMaxWidthPx(anchorView.getRootView()));
+        mListMenuHost.tryToFitLargestItem(true);
         mListMenuHost.setDelegate(createListMenuDelegate(), false);
         mListMenuHost.addPopupListener(
                 new ListMenuHost.PopupMenuShownListener() {
@@ -332,6 +318,14 @@ public class NavigationPopup implements AdapterView.OnItemClickListener {
                         onDismiss();
                     }
                 });
+    }
+
+    private int calculateMaxWidthPx(View rootView) {
+        Resources res = mContext.getResources();
+        int viewportWidthPx = rootView.getWidth();
+        int maxWidthPx = res.getDimensionPixelSize(R.dimen.navigation_popup_tablet_max_width);
+        int gutterPx = res.getDimensionPixelSize(R.dimen.navigation_popup_tablet_width_margin);
+        return Math.min(viewportWidthPx - 2 * gutterPx, maxWidthPx);
     }
 
     private ListMenuDelegate createListMenuDelegate() {
@@ -356,22 +350,10 @@ public class NavigationPopup implements AdapterView.OnItemClickListener {
         };
     }
 
-    private void centerPopupOverAnchorViewAndShow() {
-        assert mInitialized;
-        assumeNonNull(mPopup.getAnchorView());
-        int horizontalOffset = (mPopup.getAnchorView().getWidth() - mPopup.getWidth()) / 2;
-        if (horizontalOffset > 0) mPopup.setHorizontalOffset(horizontalOffset);
-        mPopup.show();
-    }
-
     private void onDismiss() {
         if (mInitialized) mFaviconHelper.destroy();
         mInitialized = false;
         if (mDefaultFaviconHelper != null) mDefaultFaviconHelper.clearCache();
-        if (mAnchorViewLayoutChangeListener != null) {
-            assumeNonNull(mPopup.getAnchorView());
-            mPopup.getAnchorView().removeOnLayoutChangeListener(mAnchorViewLayoutChangeListener);
-        }
         if (mOnDismissCallback != null) mOnDismissCallback.run();
     }
 
@@ -421,7 +403,9 @@ public class NavigationPopup implements AdapterView.OnItemClickListener {
             if (pageUrl.equals(entry.getUrl())) {
                 entry.updateFavicon(favicon);
 
-                if (!mListItems.isEmpty() && i < mListItems.size()) {
+                if (!mListItems.isEmpty()
+                        && i < mListItems.size()
+                        && entry.getIndex() != FULL_HISTORY_ENTRY_INDEX) {
                     PropertyModel model = mListItems.get(i).model;
                     updateIconForModel(model, favicon, entry.getIndex());
                 }
@@ -454,7 +438,6 @@ public class NavigationPopup implements AdapterView.OnItemClickListener {
     }
 
     private class NavigationAdapter extends BaseAdapter {
-        private @Nullable Integer mTopPadding;
 
         @Override
         public int getCount() {
@@ -479,7 +462,6 @@ public class NavigationPopup implements AdapterView.OnItemClickListener {
                 convertView = inflater.inflate(R.layout.navigation_popup_item, parent, false);
                 viewHolder =
                         new EntryViewHolder(
-                                /* container= */ convertView,
                                 /* imageView= */ convertView.findViewById(R.id.favicon_img),
                                 /* textView= */ convertView.findViewById(R.id.entry_title));
                 convertView.setTag(viewHolder);
@@ -499,21 +481,6 @@ public class NavigationPopup implements AdapterView.OnItemClickListener {
                 ImageViewCompat.setImageTintList(viewHolder.mImageView, null);
             }
 
-            if (mType == Type.ANDROID_SYSTEM_BACK) {
-                View container = viewHolder.mContainer;
-                if (mTopPadding == null) {
-                    mTopPadding =
-                            container
-                                    .getResources()
-                                    .getDimensionPixelSize(R.dimen.navigation_popup_top_padding);
-                }
-                viewHolder.mContainer.setPadding(
-                        container.getPaddingLeft(),
-                        position == 0 ? mTopPadding : 0,
-                        container.getPaddingRight(),
-                        container.getPaddingBottom());
-            }
-
             return convertView;
         }
 
@@ -527,13 +494,11 @@ public class NavigationPopup implements AdapterView.OnItemClickListener {
     }
 
     private static class EntryViewHolder {
-        private EntryViewHolder(View container, ImageView imageView, TextView textView) {
-            mContainer = container;
+        private EntryViewHolder(ImageView imageView, TextView textView) {
             mImageView = imageView;
             mTextView = textView;
         }
 
-        final View mContainer;
         final ImageView mImageView;
         final TextView mTextView;
     }

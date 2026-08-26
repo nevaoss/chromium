@@ -254,19 +254,18 @@ TEST_F(AutofillAgentTest,
   fill_data.push_back(autofill::FormFieldData::FillData(field));
 
   [autofill_agent_ fillData:fill_data
-                    section:Section()
                     inFrame:fake_web_frames_manager_->GetMainWebFrame()
              withActionType:autofill::mojom::FormActionType::kFill];
   fake_web_state_.WasShown();
 
   EXPECT_EQ(u"__gCrWeb.callFunctionInGcrWeb('autofill', 'fillForm', "
             u"[{\"fields\":{\"2\":{\"hostFormId\":0,\"isAutofilled\":true,"
-            u"\"section\":\"-default\",\"value\":\"number_value\"},"
-            u"\"3\":{\"hostFormId\":0,\"isAutofilled\":true,\"section\":"
-            u"\"-default\",\"value\":\"name_value\"},\"4\":{\"hostFormId\":0,"
-            u"\"isAutofilled\":false,\"section\":\"-default\","
+            u"\"value\":\"number_value\"},"
+            u"\"3\":{\"hostFormId\":0,\"isAutofilled\":true,"
+            u"\"value\":\"name_value\"},\"4\":{\"hostFormId\":0,"
+            u"\"isAutofilled\":false,"
             u"\"value\":\"01\"},\"5\":{\"hostFormId\":0,\"isAutofilled\":true,"
-            u"\"section\":\"-default\",\"value\":\"\"}}}]);",
+            u"\"value\":\"\"}}}]);",
             fake_main_frame_->GetLastJavaScriptCall());
 }
 
@@ -654,10 +653,10 @@ TEST_F(AutofillAgentTest,
                                              custom_icon.ToUIImage()));
 }
 
-// Tests that when Autofill suggestions are made available to AutofillAgent
-// "Clear Form" is moved to the start of the list and the order of other
+// Tests that, when Autofill suggestions are made available to AutofillAgent,
+// the Undo suggestion is moved to the start of the list and the order of other
 // suggestions remains unchanged.
-TEST_F(AutofillAgentTest, onSuggestionsReady_ClearForm) {
+TEST_F(AutofillAgentTest, onSuggestionsReady_Undo) {
   __block NSArray<FormSuggestion*>* completion_handler_suggestions = nil;
   __block BOOL completion_handler_called = NO;
 
@@ -669,9 +668,8 @@ TEST_F(AutofillAgentTest, onSuggestionsReady_ClearForm) {
   autofillSuggestions.push_back(
       autofill::Suggestion(u"", u"", autofill::Suggestion::Icon::kNoIcon,
                            autofill::SuggestionType::kAddressEntry));
-  autofillSuggestions.push_back(
-      autofill::Suggestion(u"", u"", autofill::Suggestion::Icon::kClear,
-                           SuggestionType::kUndoOrClear));
+  autofillSuggestions.push_back(autofill::Suggestion(
+      u"", u"", autofill::Suggestion::Icon::kUndo, SuggestionType::kUndo));
   [autofill_agent_
        showAutofillPopup:autofillSuggestions
       suggestionDelegate:base::WeakPtr<autofill::AutofillSuggestionDelegate>()];
@@ -703,11 +701,10 @@ TEST_F(AutofillAgentTest, onSuggestionsReady_ClearForm) {
         return completion_handler_called;
       }));
 
-  // "Clear Form" should appear as the first suggestion. Otherwise, the order of
+  // Undo should appear as the first suggestion. Otherwise, the order of
   // suggestions should not change.
   EXPECT_EQ(3U, completion_handler_suggestions.count);
-  EXPECT_EQ(SuggestionType::kUndoOrClear,
-            completion_handler_suggestions[0].type);
+  EXPECT_EQ(SuggestionType::kUndo, completion_handler_suggestions[0].type);
   EXPECT_EQ(autofill::SuggestionType::kAddressEntry,
             completion_handler_suggestions[1].type);
   EXPECT_EQ(autofill::SuggestionType::kAddressEntry,
@@ -716,7 +713,7 @@ TEST_F(AutofillAgentTest, onSuggestionsReady_ClearForm) {
 
 // Tests that when Autofill suggestions are made available to AutofillAgent
 // GPay icon remains as the first suggestion.
-TEST_F(AutofillAgentTest, onSuggestionsReady_ClearFormWithGPay) {
+TEST_F(AutofillAgentTest, onSuggestionsReady_UndoWithGPay) {
   __block NSArray<FormSuggestion*>* completion_handler_suggestions = nil;
   __block BOOL completion_handler_called = NO;
 
@@ -728,9 +725,8 @@ TEST_F(AutofillAgentTest, onSuggestionsReady_ClearFormWithGPay) {
   autofillSuggestions.push_back(
       autofill::Suggestion(u"", u"", autofill::Suggestion::Icon::kNoIcon,
                            autofill::SuggestionType::kCreditCardEntry));
-  autofillSuggestions.push_back(
-      autofill::Suggestion(u"", u"", autofill::Suggestion::Icon::kClear,
-                           SuggestionType::kUndoOrClear));
+  autofillSuggestions.push_back(autofill::Suggestion(
+      u"", u"", autofill::Suggestion::Icon::kUndo, SuggestionType::kUndo));
   [autofill_agent_
        showAutofillPopup:autofillSuggestions
       suggestionDelegate:base::WeakPtr<autofill::AutofillSuggestionDelegate>()];
@@ -763,8 +759,7 @@ TEST_F(AutofillAgentTest, onSuggestionsReady_ClearFormWithGPay) {
       }));
 
   EXPECT_EQ(3U, completion_handler_suggestions.count);
-  EXPECT_EQ(SuggestionType::kUndoOrClear,
-            completion_handler_suggestions[0].type);
+  EXPECT_EQ(SuggestionType::kUndo, completion_handler_suggestions[0].type);
   EXPECT_EQ(autofill::SuggestionType::kCreditCardEntry,
             completion_handler_suggestions[1].type);
   EXPECT_EQ(autofill::SuggestionType::kCreditCardEntry,
@@ -938,7 +933,6 @@ TEST_F(AutofillAgentTest, FillData_UpdateWithResults) {
 
   // Fill form data.
   [autofill_agent_ fillData:fields
-                    section:Section()
                     inFrame:fake_main_frame_
              withActionType:autofill::mojom::FormActionType::kFill];
 
@@ -982,7 +976,6 @@ TEST_F(AutofillAgentTest, FillData_UnknowFieldIdInResults) {
 
   // Fill form data.
   [autofill_agent_ fillData:fields
-                    section:Section()
                     inFrame:fake_main_frame_
              withActionType:autofill::mojom::FormActionType::kFill];
 
@@ -1083,66 +1076,6 @@ TEST_F(AutofillAgentTest, DidSelectSuggestion_AutocompleteEntry) {
   EXPECT_TRUE(completion_handler_called);
 }
 
-TEST_F(AutofillAgentTest, DidSelectSuggestion_ClearFormEntry) {
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitAndDisableFeature(kAutofillUndoIos);
-
-  FormRendererId form_id(1);
-  FieldRendererId field1_id(2);
-  FieldRendererId field2_id(3);
-
-  // Set the result returned from filling.
-  std::string serializedResult;
-  ASSERT_TRUE(base::JSONWriter::Write(
-      base::ListValue()
-          .Append(base::Value(base::NumberToString(field1_id.value())))
-          .Append(base::Value(base::NumberToString(field2_id.value()))),
-      &serializedResult));
-  base::Value result(serializedResult);
-  fake_main_frame_->AddJsResultForFunctionCall(
-      &result, "autofill.clearAutofilledFields");
-
-  // Declare the page as shown to allow field filling.
-  fake_web_state_.WasShown();
-
-  // Select suggestion to trigger field filling.
-  __block BOOL completion_handler_called = NO;
-  FormSuggestion* form_suggestion =
-      SimpleFormSuggestion(u"", autofill::SuggestionType::kUndoOrClear);
-  [autofill_agent_ didSelectSuggestion:form_suggestion
-                               atIndex:0
-                                  form:@"single-username-form"
-                        formRendererID:form_id
-                       fieldIdentifier:@"username-field-1"
-                       fieldRendererID:field1_id
-                               frameID:base::SysUTF8ToNSString(kTestFrameId)
-                     completionHandler:^() {
-                       completion_handler_called = YES;
-                     }];
-
-  EXPECT_CALL(delegate_mock_,
-              DidFillField(fake_main_frame_.get(),
-                           std::make_optional<FormRendererId>(form_id),
-                           field1_id, ::testing::IsEmpty()));
-  EXPECT_CALL(delegate_mock_,
-              DidFillField(fake_main_frame_.get(),
-                           std::make_optional<FormRendererId>(form_id),
-                           field2_id, ::testing::IsEmpty()));
-
-  // Run queues to yield the field filling results from the JS call.
-  web::test::WaitForBackgroundTasks();
-
-  // Check that the cleared field IDs aren't labeled as filled.
-  FieldDataManager* fieldDataManager =
-      autofill::FieldDataManagerFactoryIOS::FromWebFrame(fake_main_frame_);
-  EXPECT_FALSE(fieldDataManager->WasAutofilledOnUserTrigger(field1_id));
-  EXPECT_FALSE(fieldDataManager->WasAutofilledOnUserTrigger(field2_id));
-
-  // Check that the completion handler was called after handling the results
-  // from the JS call.
-  EXPECT_TRUE(completion_handler_called);
-}
-
 // Tests that a suggestion is correctly routed to its bound delegate, even
 // if focus has shifted or multiple delegates were involved.
 TEST_F(AutofillAgentTest, DidSelectSuggestion_RoutesToSuggestionBoundDelegate) {
@@ -1181,20 +1114,18 @@ TEST_F(AutofillAgentTest, DidSelectSuggestion_RoutesToSuggestionBoundDelegate) {
 
 // Tests selecting the Undo autofill suggestion.
 TEST_F(AutofillAgentTest, DidSelectSuggestion_Undo) {
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitAndEnableFeature(kAutofillUndoIos);
 
   // Mock the suggestion delegate that will be called by the "Undo" action
   autofill::MockAutofillSuggestionDelegate mock_delegate;
-  EXPECT_CALL(mock_delegate,
-              DidAcceptSuggestion(
-                  ::testing::Field(&autofill::Suggestion::type,
-                                   autofill::SuggestionType::kUndoOrClear),
-                  ::testing::_));
+  EXPECT_CALL(
+      mock_delegate,
+      DidAcceptSuggestion(::testing::Field(&autofill::Suggestion::type,
+                                           autofill::SuggestionType::kUndo),
+                          ::testing::_));
 
   // Show the popup to set the delegate used by didSelectSuggestion.
   std::vector<autofill::Suggestion> suggestions;
-  suggestions.emplace_back(u"", autofill::SuggestionType::kUndoOrClear);
+  suggestions.emplace_back(u"", autofill::SuggestionType::kUndo);
   [autofill_agent_ showAutofillPopup:suggestions
                   suggestionDelegate:mock_delegate.GetWeakPtr()];
 
@@ -1202,7 +1133,7 @@ TEST_F(AutofillAgentTest, DidSelectSuggestion_Undo) {
   FormRendererId form_id(1);
   FieldRendererId field1_id(2);
   FormSuggestion* form_suggestion = SimpleFormSuggestion(
-      u"", autofill::SuggestionType::kUndoOrClear, mock_delegate.GetWeakPtr());
+      u"", autofill::SuggestionType::kUndo, mock_delegate.GetWeakPtr());
   [autofill_agent_ didSelectSuggestion:form_suggestion
                                atIndex:0
                                   form:@"single-username-form"

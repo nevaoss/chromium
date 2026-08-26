@@ -19,6 +19,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.view.View;
+import android.view.ViewGroup.MarginLayoutParams;
 import android.view.ViewStub;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -127,6 +128,7 @@ import org.chromium.chrome.browser.toolbar.optional_button.ButtonDataProvider.Bu
 import org.chromium.chrome.browser.toolbar.settings.AddressBarPreference;
 import org.chromium.chrome.browser.toolbar.top.ToolbarActionModeCallback;
 import org.chromium.chrome.browser.toolbar.top.ToolbarControlContainer;
+import org.chromium.chrome.browser.toolbar.top.TopToolbarCoordinator;
 import org.chromium.chrome.browser.toolbar.top.TopToolbarSceneLayer;
 import org.chromium.chrome.browser.toolbar.top.TopToolbarSceneLayerJni;
 import org.chromium.chrome.browser.ui.actions.ActionId;
@@ -173,6 +175,7 @@ import org.chromium.url.JUnitTestGURLs;
 
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.function.Supplier;
 
@@ -259,6 +262,7 @@ public class ToolbarManagerUnitTest {
     @Mock private PropertyModel mActionPropertyModel;
     @Mock private ActorKeyedService mActorKeyedService;
     @Mock private GlicKeyedService mGlicKeyedService;
+    @Mock private TopToolbarCoordinator mMockToolbar;
     @Mock private TabBottomSheetManager mTabBottomSheetManager;
     @Mock private PrefService mPrefService;
     @Mock private TabModel mIncognitoTabModel;
@@ -1144,5 +1148,68 @@ public class ToolbarManagerUnitTest {
         IncognitoNewTabPage incognitoNtpPage = mock(IncognitoNewTabPage.class);
         when(incognitoNtpTab.getNativePage()).thenReturn(incognitoNtpPage);
         assertTrue(delegate.isIncognitoNewTabPageCurrentlyVisible());
+    }
+
+    @Test
+    public void testSetToolbarTabletMarginsForAutoHiddenVerticalTab() throws Exception {
+        ToolbarControlContainer controlContainer = mock(ToolbarControlContainer.class);
+        View tabletLayout = new View(mActivityController.get());
+        MarginLayoutParams params = new MarginLayoutParams(100, 100);
+        params.rightMargin = 20;
+        params.topMargin = 0;
+        params.leftMargin = 0;
+        tabletLayout.setLayoutParams(params);
+
+        when(controlContainer.findViewById(R.id.toolbar_tablet_layout)).thenReturn(tabletLayout);
+        when(controlContainer.getContext()).thenReturn(mActivityController.get());
+
+        Field controlContainerField = ToolbarManager.class.getDeclaredField("mControlContainer");
+        controlContainerField.setAccessible(true);
+        controlContainerField.set(mToolbarManager, controlContainer);
+
+        SettableNonNullObservableSupplier<Boolean> isAutoHiddenSupplier =
+                ObservableSuppliers.createNonNull(false);
+        mToolbarManager.setVerticalTabsAutoHiddenSupplier(isAutoHiddenSupplier);
+
+        int tabStripHeight =
+                mActivityController
+                        .get()
+                        .getResources()
+                        .getDimensionPixelSize(R.dimen.tab_strip_height);
+
+        // When Vertical Tabs is hidden due to narrow window width
+        isAutoHiddenSupplier.set(true);
+        verify(controlContainer).setToolbarContainerTopMarginForAutoHiddenVerticalTab(true);
+        assertEquals(0, params.rightMargin);
+        assertEquals(0, params.leftMargin);
+
+        // When Vertical Tabs gets shown again or turned off
+        isAutoHiddenSupplier.set(false);
+        verify(controlContainer).setToolbarContainerTopMarginForAutoHiddenVerticalTab(false);
+        assertEquals(20, params.rightMargin);
+        assertEquals(0, params.leftMargin);
+    }
+
+    @Test
+    public void testMaybeShowGlicIph_nullGlicActionChipView() throws Exception {
+        // Setup Glic eligibility conditions.
+        when(mTab.isIncognitoBranded()).thenReturn(false);
+        when(mTab.isOffTheRecord()).thenReturn(false);
+        when(mTab.getUrl()).thenReturn(JUnitTestGURLs.SEARCH_URL);
+
+        when(mMockToolbar.shouldShowGlicToolbarButton()).thenReturn(true);
+        when(mMockToolbar.getGlicActionChipView()).thenReturn(null);
+
+        // Inject the mock toolbar into ToolbarManager
+        Field toolbarField = ToolbarManager.class.getDeclaredField("mToolbar");
+        toolbarField.setAccessible(true);
+        toolbarField.set(mToolbarManager, mMockToolbar);
+
+        // Trigger the code path.
+        Method maybeShowGlicIphMethod =
+                ToolbarManager.class.getDeclaredMethod("maybeShowGlicIph", Tab.class);
+        maybeShowGlicIphMethod.setAccessible(true);
+
+        maybeShowGlicIphMethod.invoke(mToolbarManager, mTab);
     }
 }

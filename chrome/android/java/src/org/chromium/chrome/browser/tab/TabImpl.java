@@ -106,6 +106,7 @@ import org.chromium.components.security_state.SecurityStateModel;
 import org.chromium.components.sensitive_content.SensitiveContentClient;
 import org.chromium.components.sensitive_content.SensitiveContentFeatures;
 import org.chromium.components.tabs.DetachReason;
+import org.chromium.components.tabs.TabAlert;
 import org.chromium.components.url_formatter.UrlFormatter;
 import org.chromium.components.user_prefs.UserPrefs;
 import org.chromium.content_public.browser.LoadUrlParams;
@@ -326,6 +327,7 @@ class TabImpl implements Tab, TabInternal {
     private @Nullable Token mTabGroupId;
     private boolean mTabHasSensitiveContent;
     private boolean mIsPinned;
+    private @Nullable @TabAlert Integer mAlertState;
     private @MediaState int mMediaState;
     private @TabUserAgent int mUserAgent = TabUserAgent.DEFAULT;
 
@@ -1921,7 +1923,9 @@ class TabImpl implements Tab, TabInternal {
         String host = url.getHost();
         if (!UrlConstants.SETTINGS_HOST.equals(host)) return false;
 
-        if (SettingsInTab.isEnabled()) return false;
+        // For incognito we fall through to startSettings(), which will redirect to the original
+        // profile's window, similar to Win/Mac/Linux.
+        if (SettingsInTab.isEnabled() && !isIncognito()) return false;
 
         // TODO(crbug.com/456164910): Use the URL path to open deeplinks into Settings.
         SettingsNavigationFactory.createSettingsNavigation().startSettings(getContext());
@@ -3059,6 +3063,21 @@ class TabImpl implements Tab, TabInternal {
         // This may be called before the native tab is initialized.
         if (mNativeTabAndroid != 0) {
             TabImplJni.get().notifyPinnedStateChanged(mNativeTabAndroid, isPinned);
+        }
+    }
+
+    @Override
+    public @Nullable @TabAlert Integer getAlertState() {
+        return mAlertState;
+    }
+
+    @CalledByNative
+    public void onAlertStateChanged(
+            @JniType("std::optional<int32_t>") @Nullable @TabAlert Integer alertState) {
+        if (Objects.equals(mAlertState, alertState)) return;
+        mAlertState = alertState;
+        for (TabObserver observer : mObservers) {
+            observer.onAlertStateChanged(this, alertState);
         }
     }
 

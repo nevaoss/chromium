@@ -64,6 +64,8 @@ BASE_DECLARE_FEATURE(
 COMPONENT_EXPORT(AUTOFILL)
 BASE_DECLARE_FEATURE(kAutofillEnableDownstreamCardAwarenessIph);
 COMPONENT_EXPORT(AUTOFILL)
+BASE_DECLARE_FEATURE(kAutofillEnableExpandIbanRegexPattern);
+COMPONENT_EXPORT(AUTOFILL)
 BASE_DECLARE_FEATURE(kAutofillEnableFlatRateCardBenefitsBlocklist);
 COMPONENT_EXPORT(AUTOFILL)
 BASE_DECLARE_FEATURE(kAutofillEnableFlatRateCardBenefitsFromCurinos);
@@ -118,14 +120,18 @@ BASE_DECLARE_FEATURE(kAutofillEnableWalletBrandingV2);
 COMPONENT_EXPORT(AUTOFILL)
 BASE_DECLARE_FEATURE(kAutofillEnableWalletReminderNotice);
 COMPONENT_EXPORT(AUTOFILL) BASE_DECLARE_FEATURE(kAutofillFixCvcImport);
+#if BUILDFLAG(IS_IOS)
+// When enabled, skips empty CVCs in AutofillWalletCredentialSyncBridge instead
+// of failing a CHECK.
+COMPONENT_EXPORT(AUTOFILL)
+BASE_DECLARE_FEATURE(kAutofillIgnoreEmptyCvcsInSyncBridge);
+#endif
 COMPONENT_EXPORT(AUTOFILL)
 BASE_DECLARE_FEATURE(kAutofillParseLegalMessageLines);
 COMPONENT_EXPORT(AUTOFILL)
 BASE_DECLARE_FEATURE(kAutofillParseVcnCardOnFileStandaloneCvcFields);
 COMPONENT_EXPORT(AUTOFILL)
 BASE_DECLARE_FEATURE(kAutofillPreferBuyNowPayLaterBlocklists);
-COMPONENT_EXPORT(AUTOFILL)
-BASE_DECLARE_FEATURE(kAutofillPrioritizeSaveCardOverMandatoryReauth);
 COMPONENT_EXPORT(AUTOFILL)
 BASE_DECLARE_FEATURE(kAutofillRetryImageFetchOnFailure);
 #if BUILDFLAG(IS_IOS)

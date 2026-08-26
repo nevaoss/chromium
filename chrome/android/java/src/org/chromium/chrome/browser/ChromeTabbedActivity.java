@@ -217,6 +217,7 @@ import org.chromium.chrome.browser.ntp_customization.NtpCustomizationUtils;
 import org.chromium.chrome.browser.ntp_customization.policy.NtpCustomizationPolicyManager;
 import org.chromium.chrome.browser.ntp_customization.theme.NtpCustomizationPromoManager;
 import org.chromium.chrome.browser.ntp_customization.theme.daily_refresh.NtpThemeDailyRefreshManager;
+import org.chromium.chrome.browser.ntp_customization.theme_sync.CrossDeviceThemeTracker;
 import org.chromium.chrome.browser.offlinepages.OfflinePageUtils;
 import org.chromium.chrome.browser.paint_preview.StartupPaintPreviewHelper;
 import org.chromium.chrome.browser.paint_preview.StartupPaintPreviewHelperSupplier;
@@ -680,7 +681,8 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
     private CallbackController mCallbackController = new CallbackController();
     private TabbedModeTabDelegateFactory mTabDelegateFactory;
     private ReadingListBackPressHandler mReadingListBackPressHandler;
-    private MinimizeAppAndCloseTabBackPressHandler mMinimizeAppAndCloseTabBackPressHandler;
+    private @Nullable MinimizeAppAndCloseTabBackPressHandler
+            mMinimizeAppAndCloseTabBackPressHandler;
     private HomeSurfaceTracker mHomeSurfaceTracker;
     private final TabSwitcherBackPressHandlerManager mDragHandlerManager =
             new TabSwitcherBackPressHandlerManager();
@@ -773,10 +775,13 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                                 mRootUiCoordinator != null
                                         ? mRootUiCoordinator.getDesktopWindowStateManager()
                                         : null);
-        mBackPressManager.setFallbackOnBackPressed(
-                () -> {
-                    minimizeAppAndCloseTabOnBackPress(getActivityTab());
-                });
+        // On desktop Android, OS back presses should not close tabs or minimize the Chrome app.
+        if (!shouldUseDesktopBackConventions()) {
+            mBackPressManager.setFallbackOnBackPressed(
+                    () -> {
+                        minimizeAppAndCloseTabOnBackPress(getActivityTab());
+                    });
+        }
 
         if (IncognitoUtils.shouldOpenIncognitoAsWindow() && !mHasIncognitoExtra) {
             // Ensure that Incognito extras have been checked.
@@ -1170,11 +1175,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                     assertNonNull(getCompositorViewHolderSupplier().get());
 
             ViewStub tabHoverCardViewStub = findViewById(R.id.tab_hover_card_holder_stub);
-            View controlContainerView =
-                    findViewById(
-                            ChromeFeatureList.isEnabled(ChromeFeatureList.TOOLBAR_SNAPSHOT_REFACTOR)
-                                    ? R.id.control_container
-                                    : R.id.toolbar_container);
+            View controlContainerView = findViewById(R.id.control_container);
             mDragDropDelegate = new DragAndDropDelegateImpl();
             mDragDropDelegate.setDragAndDropBrowserDelegate(
                     new ChromeDragAndDropBrowserDelegate(() -> this));
@@ -1631,6 +1632,15 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                     getProfileProviderSupplier().get().getOriginalProfile(),
                     getLifecycleDispatcher(),
                     this::isWarmOnResume);
+
+            if (NtpCustomizationUtils.isNtpThemeCustomizationEnabled() && !isIncognitoWindow()) {
+                CrossDeviceThemeTracker themeTracker =
+                        CrossDeviceThemeTracker.getForProfile(
+                                getProfileProviderSupplier().get().getOriginalProfile());
+                if (themeTracker != null) {
+                    themeTracker.setActivity(this);
+                }
+            }
 
             super.finishNativeInitialization();
 
@@ -4847,6 +4857,11 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
         return false;
     }
 
+    private boolean shouldUseDesktopBackConventions() {
+        return ChromeFeatureList.sBackGestureReflectsDesktopBehavior.isEnabled()
+                && DeviceInfo.isDesktop();
+    }
+
     private void initializeBackPressHandlers() {
         // Initialize some back press handlers early to reduce code duplication.
         mReadingListBackPressHandler =
@@ -4861,7 +4876,9 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
             mBackPressManager.addHandler(
                     mReadingListBackPressHandler, BackPressHandler.Type.SHOW_READING_LIST);
         }
-        if (mMinimizeAppAndCloseTabBackPressHandler == null) {
+        // On desktop Android, OS back presses should not close tabs or minimize the Chrome app,
+        // so we skip creating and registering this handler.
+        if (!shouldUseDesktopBackConventions() && mMinimizeAppAndCloseTabBackPressHandler == null) {
             mMinimizeAppAndCloseTabBackPressHandler =
                     new MinimizeAppAndCloseTabBackPressHandler(
                             getActivityTabProvider().asObservable(),
@@ -5046,28 +5063,21 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                 }
             }
 
-            Tab firstTab = tabCreator.createNewTab(loadUrlParams, launchType, parentTab, intent);
-
             List<String> additionalUrls =
                     IntentUtils.safeGetSerializableExtra(
                             intent, IntentHandler.EXTRA_ADDITIONAL_URLS);
             boolean openAdditionalUrlsInTabGroup =
                     IntentUtils.safeGetBooleanExtra(
                             intent, IntentHandler.EXTRA_OPEN_ADDITIONAL_URLS_IN_TAB_GROUP, false);
-            if (additionalUrls != null) {
-                final Tab parent = openAdditionalUrlsInTabGroup ? firstTab : null;
-                @TabLaunchType
-                int additionalUrlLaunchType =
-                        openAdditionalUrlsInTabGroup
-                                ? TabLaunchType.FROM_LONGPRESS_BACKGROUND_IN_GROUP
-                                : TabLaunchType.FROM_RESTORE;
-                for (int i = 0; i < additionalUrls.size(); i++) {
-                    String url = additionalUrls.get(i);
-                    LoadUrlParams copy = LoadUrlParams.copy(loadUrlParams);
-                    copy.setUrl(url);
-                    tabCreator.createNewTab(copy, additionalUrlLaunchType, parent);
-                }
-            }
+
+            Tab firstTab =
+                    tabCreator.createNewTabs(
+                            loadUrlParams,
+                            additionalUrls,
+                            launchType,
+                            parentTab,
+                            openAdditionalUrlsInTabGroup,
+                            intent);
 
             TabModel tabModel =
                     mTabModelSelector != null && firstTab != null

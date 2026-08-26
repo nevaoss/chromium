@@ -33,8 +33,8 @@
 <translation id="108485301461714610">Google 搜索 AI 模式和关联的应用</translation>
 <translation id="1085677983426914530">无法打开“<ph name="FILENAME" />”</translation>
 <translation id="1086486568852410168">使用 Google 智能镜头搜索</translation>
+<translation id="1095093219235104018">Gemini 智能查找和填充</translation>
 <translation id="1096992026380844478">系统将根据上次备份来恢复您的同步设置。<ph name="BEGIN_LINK" />查看您可同步的内容<ph name="END_LINK" /></translation>
-<translation id="1097049112094133492">{count,plural, =1{已跳过 1 次手动搜索}other{已跳过 # 次手动搜索}}</translation>
 <translation id="1097807529207545420">{count,plural, =1{已即时验证 1 个密码}other{已即时验证 # 个密码}}</translation>
 <translation id="1103523840287552314">一律翻译<ph name="LANGUAGE" /></translation>
 <translation id="1110772719190051587">使用面容 ID 解锁</translation>
@@ -184,7 +184,6 @@
 <translation id="1554043146674176775">关闭 AI 模式</translation>
 <translation id="1554477036522844996">打开新的窗口</translation>
 <translation id="1558391695376153246">关闭无痕式标签页</translation>
-<translation id="1559263013367304065">使用 Google 智能镜头以来</translation>
 <translation id="1560153516220021659">已收起辅助工具栏按钮</translation>
 <translation id="1562601408588733317">管理 Gemini 如何查找和填充信息</translation>
 <translation id="1565371473877914088">打开新的无痕式标签页</translation>
@@ -305,6 +304,7 @@
 <translation id="1909201414196501151">已添加并固定网站</translation>
 <translation id="1911619930368729126">上传到Google云端硬盘</translation>
 <translation id="1925706052394657380">在 iOS 中打开<ph name="BEGIN_BOLD" />默认 App<ph name="END_BOLD" /> 设置</translation>
+<translation id="1938871630297275912">{count,plural, =1{已收到链接}other{已收到 {count} 个链接}}</translation>
 <translation id="1941314575388338491">点按两次即可复制。</translation>
 <translation id="1943478190258551035">菜单 → 设置</translation>
 <translation id="1952728750904661634">登录受管理的账号</translation>
@@ -411,6 +411,7 @@
 <translation id="2268044343513325586">优化</translation>
 <translation id="2271452184061378400">您的标签页分组会保存在此处</translation>
 <translation id="2273327106802955778">“更多”菜单</translation>
+<translation id="2274179746480077483">根据 Gmail 和 Google 相册等应用中的信息自动填充。此功能由个性化智能服务提供支持。</translation>
 <translation id="2287614783861766820">{count,plural, =1{这个地址将被从此设备中删除。}other{这些地址将被从此设备中删除。}}</translation>
 <translation id="2295236662082735391">长按网页上的图片，即可使用 Gemini 进行编辑</translation>
 <translation id="2296360194694387941">“使用 Chrome 中的 Gemini”任务已完成！</translation>
@@ -724,6 +725,7 @@
 <translation id="340669334496430859">上次修改时间</translation>
 <translation id="3409785640040772790">地图</translation>
 <translation id="3416023309465857378">2023 年 10 月 25 日</translation>
+<translation id="3419787211763835342">帮助改进增强型自动填充功能</translation>
 <translation id="3426715535827854458">隐藏“隐藏工具栏”</translation>
 <translation id="3435738964857648380">安全</translation>
 <translation id="3441673211568148613">让浏览记录不留痕迹</translation>
@@ -1007,6 +1009,7 @@
 <translation id="4378154925671717803">电话</translation>
 <translation id="4380677808580146413">选择</translation>
 <translation id="4389019817280890563">点按此行即可更改语言。</translation>
+<translation id="4390649422783033958">登录身份为：<ph name="USER_NAME" />。<ph name="USER_EMAIL" />，Google 会员。打开账号菜单。</translation>
 <translation id="4393294364304621138">{COUNT,plural, =1{1 天后}other{{COUNT} 天后}}</translation>
 <translation id="4402672425188312225">{COUNT,plural, =1{1 个标签页}other{# 个标签页}}</translation>
 <translation id="4404790787924017676">获取所跟踪商品的降价提醒</translation>
@@ -1364,6 +1367,7 @@
 <translation id="5559567453458728487">转换在网上找到的计量单位</translation>
 <translation id="5560088892362098740">到期日期</translation>
 <translation id="556042886152191864">按钮</translation>
+<translation id="5563910365456880646">自完成“使用照片通过 Google 智能镜头进行搜索”以来</translation>
 <translation id="5565871407246142825">信用卡</translation>
 <translation id="5567439033041178034">了解详情</translation>
 <translation id="5578795271662203820">在<ph name="SEARCH_ENGINE" />中搜索此图片</translation>
@@ -1576,6 +1580,7 @@
 <translation id="6232329973559504466">无痕搜索</translation>
 <translation id="6234310016144827337">请检查网络连接，然后重试</translation>
 <translation id="6236952928980352967">恢复警告</translation>
+<translation id="623755660902014047">朗读模式</translation>
 <translation id="6240553182907836376">更新身份证件</translation>
 <translation id="6240601837375010619">保存护照信息</translation>
 <translation id="6241132809279377987">在 iPhone 上使用 Google 应用，解锁更多精彩功能</translation>
@@ -1813,6 +1818,7 @@
 <translation id="6930162026494574854">重置翻译设置</translation>
 <translation id="6930799952781667037">点按此行即可更改为对应的语言。</translation>
 <translation id="6932739965694346873"><ph name="USER_NAME" />，<ph name="EMAIL" />。<ph name="MANAGED_STATUS" />。</translation>
+<translation id="6937083164784433305">{count,plural, =1{您使用了 1 张照片进行搜索}other{您使用了 # 张照片进行搜索}}</translation>
 <translation id="693761253105515415">设置密码</translation>
 <translation id="6945221475159498467">选择</translation>
 <translation id="6946722113367118030">做思考状</translation>
@@ -2018,6 +2024,7 @@
 <translation id="7662316065255305764">网站信息</translation>
 <translation id="7665369617277396874">添加账号</translation>
 <translation id="7666861622396822790">您可在<ph name="BEGIN_LINK" />内容设置<ph name="END_LINK" />中进行管理。</translation>
+<translation id="7669448795744969014">登录身份为：<ph name="USER_EMAIL" />，Google 会员。打开账号菜单。</translation>
 <translation id="7669493687462784703">要继续从 <ph name="WEBSITE" /> 下载配置文件吗？</translation>
 <translation id="7673346542062368520">向左滑动即可在无痕模式下浏览内容。</translation>
 <translation id="7679915578945954324">已复制网址</translation>
@@ -2110,6 +2117,7 @@
 <translation id="7972837668077967426">Canvas</translation>
 <translation id="7975036700432177008">试用</translation>
 <translation id="797588153137233716">菜单 → 历史记录 → 删除浏览数据</translation>
+<translation id="7977029776654598145">用途</translation>
 <translation id="7977451675950311423">若您使用的密码遭遇了数据泄露，向您发出警告。</translation>
 <translation id="797824194429476746">相应标签页将在此设备上保持打开状态，但分组将被永久删除。</translation>
 <translation id="7982789257301363584">网络</translation>
@@ -2521,6 +2529,7 @@
 <translation id="954667170699278022">阅读清单</translation>
 <translation id="956066588046842680">您所属组织的政策不允许导入此数据。</translation>
 <translation id="956218893102219091">使用您的精确位置信息，而非基于 IP 地址的估计位置信息，以便获得最准确的 Gemini 结果。<ph name="BEGIN_LINK" />了解详情<ph name="END_LINK" /></translation>
+<translation id="960590623979248167">显示超链接</translation>
 <translation id="961856697154696964">删除浏览数据</translation>
 <translation id="963102227019621224">网络与应用活动记录</translation>
 <translation id="965259330007686240">用 Gemini 制作图片</translation>

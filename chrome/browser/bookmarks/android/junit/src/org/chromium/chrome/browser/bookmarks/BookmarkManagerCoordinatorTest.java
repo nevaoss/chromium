@@ -12,6 +12,7 @@ import static org.mockito.Mockito.doReturn;
 
 import android.app.Activity;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.FrameLayout;
 
 import androidx.recyclerview.widget.RecyclerView;
@@ -81,7 +82,7 @@ import java.util.Collection;
     ChromeFeatureList.ENABLE_ESCAPE_HANDLING_FOR_SECONDARY_ACTIVITIES,
     SigninFeatures.ENABLE_SEAMLESS_SIGNIN
 })
-@Features.DisableFeatures({ChromeFeatureList.BOOKMARKS_DESKTOP_LAYOUT})
+@Features.DisableFeatures({ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_LAYOUT})
 public class BookmarkManagerCoordinatorTest {
 
     @Rule(order = Rule.DEFAULT_ORDER - 1)
@@ -227,7 +228,7 @@ public class BookmarkManagerCoordinatorTest {
     }
 
     @Test
-    @Features.EnableFeatures({ChromeFeatureList.BOOKMARKS_DESKTOP_LAYOUT})
+    @Features.EnableFeatures({ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_LAYOUT})
     public void testDesktopLayoutEnabled() {
         mCoordinator.onDestroyed();
         DeviceInfo.setIsDesktopForTesting(true);
@@ -280,11 +281,29 @@ public class BookmarkManagerCoordinatorTest {
         int expectedPx = Math.round(expectedDp * density);
         assertEquals("Padding start mismatch", expectedPx, recyclerView.getPaddingStart());
         assertEquals("Padding end mismatch", expectedPx, recyclerView.getPaddingEnd());
+
+        View searchBoxView = mCoordinator.getView().findViewById(R.id.desktop_search_box_row);
+        if (searchBoxView != null) {
+            int originalMarginPx =
+                    mActivity
+                            .getResources()
+                            .getDimensionPixelSize(R.dimen.search_box_embedder_margin_horizontal);
+            ViewGroup.MarginLayoutParams params =
+                    (ViewGroup.MarginLayoutParams) searchBoxView.getLayoutParams();
+            assertEquals(
+                    "Search box margin start mismatch",
+                    expectedPx + originalMarginPx,
+                    params.getMarginStart());
+            assertEquals(
+                    "Search box margin end mismatch",
+                    expectedPx + originalMarginPx,
+                    params.getMarginEnd());
+        }
     }
 
     @Test
     @Config(qualifiers = "w700dp-h1000dp")
-    @Features.EnableFeatures({ChromeFeatureList.BOOKMARKS_DESKTOP_LAYOUT})
+    @Features.EnableFeatures({ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_LAYOUT})
     public void testDesktopPadding_small() {
         recreateCoordinatorForDesktop();
         assertPaddingDp(24);
@@ -292,7 +311,7 @@ public class BookmarkManagerCoordinatorTest {
 
     @Test
     @Config(qualifiers = "w800dp-h1000dp")
-    @Features.EnableFeatures({ChromeFeatureList.BOOKMARKS_DESKTOP_LAYOUT})
+    @Features.EnableFeatures({ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_LAYOUT})
     public void testDesktopPadding_medium() {
         recreateCoordinatorForDesktop();
         assertPaddingDp(48);
@@ -300,7 +319,7 @@ public class BookmarkManagerCoordinatorTest {
 
     @Test
     @Config(qualifiers = "w1000dp-h1000dp")
-    @Features.EnableFeatures({ChromeFeatureList.BOOKMARKS_DESKTOP_LAYOUT})
+    @Features.EnableFeatures({ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_LAYOUT})
     public void testDesktopPadding_large() {
         recreateCoordinatorForDesktop();
         assertPaddingDp(72);
@@ -308,7 +327,7 @@ public class BookmarkManagerCoordinatorTest {
 
     @Test
     @Config(qualifiers = "w1200dp-h1000dp")
-    @Features.EnableFeatures({ChromeFeatureList.BOOKMARKS_DESKTOP_LAYOUT})
+    @Features.EnableFeatures({ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_LAYOUT})
     public void testDesktopPadding_extraLarge() {
         recreateCoordinatorForDesktop();
         assertPaddingDp(90);
@@ -316,7 +335,7 @@ public class BookmarkManagerCoordinatorTest {
 
     @Test
     @Config(qualifiers = "w800dp-h1000dp")
-    @Features.EnableFeatures({ChromeFeatureList.BOOKMARKS_DESKTOP_LAYOUT})
+    @Features.EnableFeatures({ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_LAYOUT})
     public void testDesktopPadding_resize() {
         recreateCoordinatorForDesktop();
 

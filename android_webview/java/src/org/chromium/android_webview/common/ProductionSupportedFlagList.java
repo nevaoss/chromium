@@ -198,6 +198,10 @@ public final class ProductionSupportedFlagList {
                         + " contention, but should regularize the timing of client rendering."),
         Flag.baseFeature(NetFeatures.TRY_QUIC_BY_DEFAULT, "Allow sending QUIC connection options."),
         Flag.baseFeature(
+                "PqcCupSigning",
+                "Controls whether Client Update Protocol (CUP) signing uses the Post-Quantum "
+                        + "Cryptography (PQC) ML-DSA44 key instead of ECDSA."),
+        Flag.baseFeature(
                 NetFeatures.USE_NEW_ALPS_CODEPOINT_QUIC,
                 "Enables using the new ALPS codepoint to negotiate application settings for QUIC."),
         Flag.baseFeature(
@@ -259,6 +263,9 @@ public final class ProductionSupportedFlagList {
                 AutofillFeatures.SHOW_SUGESSTIONS_ON_ALREADY_AUTOFILLED_UNRECOGNIZED,
                 "Allows autofill to offer filling again on fields that were autofilled and now hold"
                         + " autocomplete=unrecognized value."),
+        Flag.baseFeature(
+                AutofillFeatures.AUTOFILL_FIX_IFRAME_OWNERSHIP,
+                "Make Autofill's iframe ownership consistent with form control ownership."),
         Flag.baseFeature(
                 AutofillFeatures.AUTOFILL_FIX_STATE_COUNTRY_MISCLASSIFICATION,
                 "When enabled, the rationalization engine will fix misclassifications where"
@@ -1441,6 +1448,16 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(
                 "StructuredHeadersInRust",
                 "Enables the Rust-based structured headers parser instead of C++."),
+        Flag.baseFeature(
+                NetFeatures.INITIAL_DELAY_FOR_BROKEN_ALTERNATIVE_SERVICE,
+                "Controls initial delay for broken alternative services."),
+        Flag.baseFeature(
+                NetFeatures.MAX_DELAY_FOR_BROKEN_ALTERNATIVE_SERVICE,
+                "Controls maximum delay for broken alternative services."),
+        Flag.baseFeature(
+                NetFeatures.PERSIST_BROKEN_ALTERNATIVE_SERVICES,
+                "Controls whether broken alternative services should be persisted to disk"
+                        + " cache."),
         // Add new commandline switches and features above. The final entry should have a
         // trailing comma for cleaner diffs.
     };

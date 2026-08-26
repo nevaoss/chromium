@@ -26,7 +26,6 @@
 #include "content/public/browser/context_factory.h"
 #include "content/public/common/content_switches.h"
 #include "third_party/blink/public/common/features.h"
-#include "third_party/skia/include/core/SkColor.h"
 #include "ui/accelerated_widget_mac/display_ca_layer_tree.h"
 #include "ui/base/cocoa/remote_layer_api.h"
 #include "ui/compositor/recyclable_compositor_mac.h"
@@ -126,6 +125,10 @@ gfx::NativeWindow UnboundedSurfaceWindowMac::GetNativeWindow() const {
 }
 
 UnboundedSurfaceWindowMac::~UnboundedSurfaceWindowMac() {
+  if (parent_view_ && parent_view_->host()) {
+    GetHostFrameSinkManager()->UnregisterFrameSinkHierarchy(
+        parent_view_->host()->GetFrameSinkId(), frame_sink_id_);
+  }
   if (recyclable_compositor_) {
     GetHostFrameSinkManager()->UnregisterFrameSinkHierarchy(
         recyclable_compositor_->compositor()->frame_sink_id(), frame_sink_id_);
@@ -214,8 +217,8 @@ void UnboundedSurfaceWindowMac::InitWindow(const gfx::Rect& bounds_in_screen) {
   recyclable_compositor_ = std::make_unique<ui::RecyclableCompositorMac>(
       content::GetContextFactory());
 
-  root_layer_ = std::make_unique<ui::LayerSurface>();
-  root_layer_->SetBackgroundColor(SkColors::kTransparent);
+  root_layer_ = std::make_unique<ui::LayerSolidColor>();
+  root_layer_->SetColor(SkColors::kTransparent);
   root_layer_->SetBounds(gfx::Rect(bounds_in_screen.size()));
 
   DisplayInfo display_info = GetDisplayInfo();
@@ -234,15 +237,21 @@ void UnboundedSurfaceWindowMac::InitWindow(const gfx::Rect& bounds_in_screen) {
 
   GetHostFrameSinkManager()->RegisterFrameSinkHierarchy(
       recyclable_compositor_->compositor()->frame_sink_id(), frame_sink_id_);
+  if (parent_view_ && parent_view_->host()) {
+    GetHostFrameSinkManager()->RegisterFrameSinkHierarchy(
+        parent_view_->host()->GetFrameSinkId(), frame_sink_id_);
+  }
 
   root_layer_->SetShowSurface(
       viz::SurfaceId(frame_sink_id_, GetLocalSurfaceId()),
-      bounds_in_screen.size(), cc::DeadlinePolicy::UseDefaultDeadline(),
+      bounds_in_screen.size(), SkColors::kTransparent,
+      cc::DeadlinePolicy::UseDefaultDeadline(),
       /*stretch_content_to_fill_bounds=*/false);
 
   if (parent_view_ && parent_view_->GetInProcessNSView()) {
     if (NSWindow* parent_window = [parent_view_->GetInProcessNSView() window]) {
       [parent_window addChildWindow:window_ ordered:NSWindowAbove];
+      [window_ setLevel:[parent_window level] + 1];
     }
   }
   [window_ orderFront:nil];
@@ -278,7 +287,8 @@ void UnboundedSurfaceWindowMac::SetBounds(const gfx::Rect& bounds_in_screen) {
     if (root_layer_) {
       root_layer_->SetShowSurface(
           viz::SurfaceId(frame_sink_id_, GetLocalSurfaceId()),
-          bounds_in_screen.size(), cc::DeadlinePolicy::UseDefaultDeadline(),
+          bounds_in_screen.size(), SkColors::kTransparent,
+          cc::DeadlinePolicy::UseDefaultDeadline(),
           /*stretch_content_to_fill_bounds=*/false);
     }
   }
@@ -341,7 +351,8 @@ void UnboundedSurfaceWindowMac::EnsureSurfaceSynchronizedForWebTest() {
   if (root_layer_) {
     root_layer_->SetShowSurface(
         viz::SurfaceId(frame_sink_id_, GetLocalSurfaceId()),
-        root_layer_->bounds().size(), cc::DeadlinePolicy::UseDefaultDeadline(),
+        root_layer_->bounds().size(), SkColors::kTransparent,
+        cc::DeadlinePolicy::UseDefaultDeadline(),
         /*stretch_content_to_fill_bounds=*/false);
   }
   if (recyclable_compositor_ && recyclable_compositor_->compositor()) {

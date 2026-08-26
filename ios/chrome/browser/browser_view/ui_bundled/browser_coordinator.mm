@@ -44,9 +44,6 @@
 #import "components/send_tab_to_self/features.h"
 #import "components/send_tab_to_self/metrics_util.h"
 #import "components/signin/public/base/signin_metrics.h"
-#import "components/supervised_user/core/browser/supervised_user_utils.h"
-#import "components/supervised_user/core/common/features.h"
-#import "components/supervised_user/core/common/supervised_user_constants.h"
 #import "components/sync/service/sync_service.h"
 #import "components/translate/core/browser/translate_manager.h"
 #import "components/trusted_vault/trusted_vault_server_constants.h"
@@ -83,6 +80,7 @@
 #import "ios/chrome/browser/autofill/ui_bundled/bottom_sheet/virtual_card_enrollment_bottom_sheet_coordinator.h"
 #import "ios/chrome/browser/autofill/ui_bundled/error_dialog/autofill_error_dialog_coordinator.h"
 #import "ios/chrome/browser/autofill/ui_bundled/progress_dialog/autofill_progress_dialog_coordinator.h"
+#import "ios/chrome/browser/autofill/wallet_reminder_notice/coordinator/wallet_reminder_notice_coordinator.h"
 #import "ios/chrome/browser/bookmarks/ui_bundled/home/bookmarks_coordinator.h"
 #import "ios/chrome/browser/browser_content/model/edit_menu_builder.h"
 #import "ios/chrome/browser/browser_content/ui_bundled/browser_content_coordinator.h"
@@ -90,6 +88,7 @@
 #import "ios/chrome/browser/browser_view/model/browser_view_visibility_notifier_browser_agent.h"
 #import "ios/chrome/browser/browser_view/public/browser_view_visibility_state.h"
 #import "ios/chrome/browser/browser_view/ui_bundled/browser_coordinator+Testing.h"
+#import "ios/chrome/browser/browser_view/ui_bundled/browser_modal_host.h"
 #import "ios/chrome/browser/browser_view/ui_bundled/browser_omnibox_state_provider.h"
 #import "ios/chrome/browser/browser_view/ui_bundled/browser_view_controller+private.h"
 #import "ios/chrome/browser/browser_view/ui_bundled/browser_view_controller.h"
@@ -109,7 +108,6 @@
 #import "ios/chrome/browser/composebox/public/composebox_entrypoint.h"
 #import "ios/chrome/browser/composebox/public/composebox_focus_params.h"
 #import "ios/chrome/browser/content_settings/model/host_content_settings_map_factory.h"
-#import "ios/chrome/browser/content_suggestions/tips/coordinator/tips_passwords_coordinator.h"
 #import "ios/chrome/browser/context_menu/ui_bundled/context_menu_configuration_provider.h"
 #import "ios/chrome/browser/contextual_panel/coordinator/contextual_sheet_coordinator.h"
 #import "ios/chrome/browser/contextual_panel/entrypoint/coordinator/contextual_panel_entrypoint_constants.h"
@@ -134,11 +132,9 @@
 #import "ios/chrome/browser/download/model/external_app_util.h"
 #import "ios/chrome/browser/download/model/pass_kit_tab_helper.h"
 #import "ios/chrome/browser/download/ui/features.h"
-#import "ios/chrome/browser/drive_file_picker/coordinator/root_drive_file_picker_coordinator.h"
 #import "ios/chrome/browser/enterprise/enterprise_dialog/coordinator/enterprise_dialog_coordinator.h"
 #import "ios/chrome/browser/feature_engagement/model/tracker_factory.h"
 #import "ios/chrome/browser/feature_engagement/model/tracker_util.h"
-#import "ios/chrome/browser/file_upload_panel/coordinator/file_upload_panel_coordinator.h"
 #import "ios/chrome/browser/find_in_page/model/find_tab_helper.h"
 #import "ios/chrome/browser/first_run/omnibox_position/coordinator/omnibox_position_choice_coordinator.h"
 #import "ios/chrome/browser/fullscreen/coordinator/fullscreen_coordinator.h"
@@ -150,17 +146,12 @@
 #import "ios/chrome/browser/incognito_reauth/ui_bundled/incognito_reauth_scene_agent.h"
 #import "ios/chrome/browser/infobars/model/infobar_ios.h"
 #import "ios/chrome/browser/infobars/model/infobar_manager_impl.h"
-#import "ios/chrome/browser/intelligence/actor/coordinator/actor_overlay_coordinator.h"
-#import "ios/chrome/browser/intelligence/enhanced_calendar/coordinator/enhanced_calendar_coordinator.h"
-#import "ios/chrome/browser/intelligence/enhanced_calendar/model/enhanced_calendar_configuration.h"
 #import "ios/chrome/browser/intelligence/features/features.h"
-#import "ios/chrome/browser/intelligence/page_action_menu/coordinator/page_action_menu_coordinator.h"
 #import "ios/chrome/browser/intents/model/intents_donation_helper.h"
 #import "ios/chrome/browser/lens_overlay/coordinator/lens_overlay_coordinator.h"
 #import "ios/chrome/browser/lens_overlay/coordinator/lens_view_finder_coordinator.h"
 #import "ios/chrome/browser/lens_overlay/model/lens_overlay_tab_helper.h"
 #import "ios/chrome/browser/lens_overlay/public/lens_overlay_availability.h"
-#import "ios/chrome/browser/level_up/coordinator/level_up_coordinator.h"
 #import "ios/chrome/browser/main/coordinator/browser_layout_coordinator.h"
 #import "ios/chrome/browser/main/ui/browser_layout_view_controller.h"
 #import "ios/chrome/browser/metrics/model/tab_usage_recorder_browser_agent.h"
@@ -174,8 +165,6 @@
 #import "ios/chrome/browser/overlays/model/public/overlay_presenter.h"
 #import "ios/chrome/browser/overscroll_actions/model/overscroll_actions_tab_helper.h"
 #import "ios/chrome/browser/overscroll_actions/ui_bundled/overscroll_actions_controller.h"
-#import "ios/chrome/browser/page_info/coordinator/page_info_coordinator.h"
-#import "ios/chrome/browser/page_info/requirements/page_info_presentation.h"
 #import "ios/chrome/browser/passwords/bottom_sheet/coordinator/credential_suggestion_bottom_sheet_coordinator.h"
 #import "ios/chrome/browser/passwords/bottom_sheet/coordinator/passkey_creation_bottom_sheet_coordinator.h"
 #import "ios/chrome/browser/passwords/model/password_controller_delegate.h"
@@ -183,8 +172,6 @@
 #import "ios/chrome/browser/passwords/password_breach/coordinator/password_protection_coordinator.h"
 #import "ios/chrome/browser/passwords/password_breach/coordinator/password_protection_coordinator_delegate.h"
 #import "ios/chrome/browser/passwords/password_suggestion/coordinator/password_suggestion_coordinator.h"
-#import "ios/chrome/browser/phone_number/ui_bundled/add_contacts_coordinator.h"
-#import "ios/chrome/browser/phone_number/ui_bundled/country_code_picker_coordinator.h"
 #import "ios/chrome/browser/picture_in_picture/coordinator/picture_in_picture_coordinator.h"
 #import "ios/chrome/browser/picture_in_picture/public/picture_in_picture_configuration.h"
 #import "ios/chrome/browser/popup_menu/coordinator/popup_menu_coordinator.h"
@@ -216,13 +203,10 @@
 #import "ios/chrome/browser/reminder_notifications/coordinator/reminder_notifications_coordinator.h"
 #import "ios/chrome/browser/sad_tab/ui_bundled/sad_tab_coordinator.h"
 #import "ios/chrome/browser/safe_browsing/ui_bundled/safe_browsing_coordinator.h"
-#import "ios/chrome/browser/save_to_drive/ui_bundled/save_to_drive_coordinator.h"
-#import "ios/chrome/browser/save_to_photos/ui_bundled/save_to_photos_coordinator.h"
 #import "ios/chrome/browser/saved_tab_groups/model/ios_tab_group_sync_util.h"
 #import "ios/chrome/browser/saved_tab_groups/model/tab_group_service.h"
 #import "ios/chrome/browser/saved_tab_groups/model/tab_group_service_factory.h"
 #import "ios/chrome/browser/saved_tab_groups/model/tab_group_sync_service_factory.h"
-#import "ios/chrome/browser/search_engine_choice/coordinator/search_engine_choice_coordinator.h"
 #import "ios/chrome/browser/send_tab_to_self/coordinator/send_tab_to_self_coordinator.h"
 #import "ios/chrome/browser/send_tab_to_self/coordinator/send_tab_to_self_coordinator_delegate.h"
 #import "ios/chrome/browser/settings/clear_browsing_data/coordinator/quick_delete_coordinator.h"
@@ -236,7 +220,8 @@
 #import "ios/chrome/browser/shared/coordinator/layout_guide/layout_guide_util.h"
 #import "ios/chrome/browser/shared/coordinator/scene/scene_controller.h"
 #import "ios/chrome/browser/shared/coordinator/scene/scene_ui_provider.h"
-#import "ios/chrome/browser/shared/coordinator/scene/state/layout_state.h"
+#import "ios/chrome/browser/shared/coordinator/scene/state/browser_layout_state.h"
+#import "ios/chrome/browser/shared/coordinator/scene/state/scene_layout_state.h"
 #import "ios/chrome/browser/shared/model/browser/browser.h"
 #import "ios/chrome/browser/shared/model/browser/browser_provider.h"
 #import "ios/chrome/browser/shared/model/browser/browser_provider_interface.h"
@@ -247,8 +232,6 @@
 #import "ios/chrome/browser/shared/model/web_state_list/tab_utils.h"
 #import "ios/chrome/browser/shared/public/commands/activity_service_commands.h"
 #import "ios/chrome/browser/shared/public/commands/activity_service_share_url_command.h"
-#import "ios/chrome/browser/shared/public/commands/actor_overlay_commands.h"
-#import "ios/chrome/browser/shared/public/commands/add_contacts_commands.h"
 #import "ios/chrome/browser/shared/public/commands/auto_deletion_commands.h"
 #import "ios/chrome/browser/shared/public/commands/autofill_commands.h"
 #import "ios/chrome/browser/shared/public/commands/browser_coordinator_commands.h"
@@ -258,28 +241,20 @@
 #import "ios/chrome/browser/shared/public/commands/contextual_panel_entrypoint_commands.h"
 #import "ios/chrome/browser/shared/public/commands/contextual_panel_entrypoint_iph_commands.h"
 #import "ios/chrome/browser/shared/public/commands/contextual_sheet_commands.h"
-#import "ios/chrome/browser/shared/public/commands/country_code_picker_commands.h"
 #import "ios/chrome/browser/shared/public/commands/docking_promo_commands.h"
 #import "ios/chrome/browser/shared/public/commands/download_list_commands.h"
-#import "ios/chrome/browser/shared/public/commands/drive_file_picker_commands.h"
-#import "ios/chrome/browser/shared/public/commands/enhanced_calendar_commands.h"
 #import "ios/chrome/browser/shared/public/commands/enterprise_commands.h"
-#import "ios/chrome/browser/shared/public/commands/file_upload_panel_commands.h"
 #import "ios/chrome/browser/shared/public/commands/find_in_page_commands.h"
 #import "ios/chrome/browser/shared/public/commands/fullscreen_commands.h"
 #import "ios/chrome/browser/shared/public/commands/gemini_commands.h"
 #import "ios/chrome/browser/shared/public/commands/google_one_commands.h"
 #import "ios/chrome/browser/shared/public/commands/help_commands.h"
 #import "ios/chrome/browser/shared/public/commands/lens_overlay_commands.h"
-#import "ios/chrome/browser/shared/public/commands/level_up_commands.h"
 #import "ios/chrome/browser/shared/public/commands/mini_map_commands.h"
 #import "ios/chrome/browser/shared/public/commands/new_tab_page_commands.h"
 #import "ios/chrome/browser/shared/public/commands/non_modal_signin_promo_commands.h"
 #import "ios/chrome/browser/shared/public/commands/omnibox_commands.h"
 #import "ios/chrome/browser/shared/public/commands/open_new_tab_command.h"
-#import "ios/chrome/browser/shared/public/commands/page_action_menu_commands.h"
-#import "ios/chrome/browser/shared/public/commands/page_info_commands.h"
-#import "ios/chrome/browser/shared/public/commands/parent_access_commands.h"
 #import "ios/chrome/browser/shared/public/commands/password_breach_commands.h"
 #import "ios/chrome/browser/shared/public/commands/password_protection_commands.h"
 #import "ios/chrome/browser/shared/public/commands/password_suggestion_commands.h"
@@ -294,10 +269,8 @@
 #import "ios/chrome/browser/shared/public/commands/reader_mode_commands.h"
 #import "ios/chrome/browser/shared/public/commands/reminder_notifications_commands.h"
 #import "ios/chrome/browser/shared/public/commands/save_image_to_photos_command.h"
-#import "ios/chrome/browser/shared/public/commands/save_to_drive_commands.h"
-#import "ios/chrome/browser/shared/public/commands/save_to_photos_commands.h"
 #import "ios/chrome/browser/shared/public/commands/scene_commands.h"
-#import "ios/chrome/browser/shared/public/commands/search_engine_choice_commands.h"
+#import "ios/chrome/browser/shared/public/commands/send_tab_to_self_commands.h"
 #import "ios/chrome/browser/shared/public/commands/settings_commands.h"
 #import "ios/chrome/browser/shared/public/commands/share_highlight_command.h"
 #import "ios/chrome/browser/shared/public/commands/shared_tab_group_last_tab_closed_alert_command.h"
@@ -308,9 +281,7 @@
 #import "ios/chrome/browser/shared/public/commands/synced_set_up_commands.h"
 #import "ios/chrome/browser/shared/public/commands/tab_picker_commands.h"
 #import "ios/chrome/browser/shared/public/commands/text_zoom_commands.h"
-#import "ios/chrome/browser/shared/public/commands/tips_passwords_commands.h"
 #import "ios/chrome/browser/shared/public/commands/toolbar_commands.h"
-#import "ios/chrome/browser/shared/public/commands/unit_conversion_commands.h"
 #import "ios/chrome/browser/shared/public/commands/web_content_commands.h"
 #import "ios/chrome/browser/shared/public/commands/welcome_back_promo_commands.h"
 #import "ios/chrome/browser/shared/public/commands/whats_new_commands.h"
@@ -340,12 +311,8 @@
 #import "ios/chrome/browser/spotlight_debugger/ui_bundled/spotlight_debugger_coordinator.h"
 #import "ios/chrome/browser/store_kit/model/store_kit_coordinator.h"
 #import "ios/chrome/browser/store_kit/model/store_kit_coordinator_delegate.h"
-#import "ios/chrome/browser/supervised_user/coordinator/parent_access_coordinator.h"
 #import "ios/chrome/browser/sync/model/sync_error_browser_agent.h"
 #import "ios/chrome/browser/sync/model/sync_service_factory.h"
-#import "ios/chrome/browser/synced_set_up/coordinator/synced_set_up_coordinator.h"
-#import "ios/chrome/browser/synced_set_up/coordinator/synced_set_up_coordinator_delegate.h"
-#import "ios/chrome/browser/synced_set_up/utils/utils.h"
 #import "ios/chrome/browser/tab_insertion/model/tab_insertion_browser_agent.h"
 #import "ios/chrome/browser/tab_picker/coordinator/tab_picker_coordinator.h"
 #import "ios/chrome/browser/tab_switcher/ui_bundled/tab_group_action_type.h"
@@ -362,7 +329,6 @@
 #import "ios/chrome/browser/toolbar/coordinator/main_toolbar_coordinator.h"
 #import "ios/chrome/browser/toolbar/legacy/ui_bundled/accessory/toolbar_accessory_presenter.h"
 #import "ios/chrome/browser/translate/model/chrome_ios_translate_client.h"
-#import "ios/chrome/browser/unit_conversion/ui_bundled/unit_conversion_coordinator.h"
 #import "ios/chrome/browser/url_loading/model/url_loading_browser_agent.h"
 #import "ios/chrome/browser/url_loading/model/url_loading_notifier_browser_agent.h"
 #import "ios/chrome/browser/url_loading/model/url_loading_params.h"
@@ -386,7 +352,6 @@
 #import "ios/chrome/browser/webui/model/net_export_tab_helper_delegate.h"
 #import "ios/chrome/browser/webui/ui_bundled/net_export_coordinator.h"
 #import "ios/chrome/browser/welcome_back/coordinator/welcome_back_coordinator.h"
-#import "ios/chrome/browser/whats_new/coordinator/whats_new_coordinator.h"
 #import "ios/chrome/common/ui/util/ui_util.h"
 #import "ios/chrome/grit/ios_branded_strings.h"
 #import "ios/chrome/grit/ios_strings.h"
@@ -416,8 +381,6 @@ const char kChromeAppStoreUrl[] =
 
 @interface BrowserCoordinator () <
     ActivityServiceCommands,
-    ActorOverlayCommands,
-    AddContactsCommands,
     AppLauncherTabHelperBrowserPresentationProvider,
     AutoDeletionCommands,
     AutofillAddCreditCardCoordinatorDelegate,
@@ -429,22 +392,17 @@ const char kChromeAppStoreUrl[] =
     CollaborationGroupCommands,
     ContextualPanelEntrypointIPHCommands,
     ContextualSheetCommands,
-    CountryCodePickerCommands,
     DefaultBrowserGenericPromoCommands,
     DefaultBrowserPromoNonModalCommands,
     DefaultPromoNonModalPresentationDelegate,
     DockingPromoCommands,
     DownloadListCommands,
-    DriveFilePickerCommands,
     EditMenuBuilder,
-    EnhancedCalendarCommands,
     EnterpriseCommands,
     EnterprisePromptCoordinatorDelegate,
-    FileUploadPanelCommands,
     FindInPageCommands,
     GoogleOneCommands,
     IOSPasskeyClientCommands,
-    LevelUpCommands,
     MiniMapCommands,
     NetExportTabHelperDelegate,
     NewTabPageCommands,
@@ -452,10 +410,6 @@ const char kChromeAppStoreUrl[] =
     NonModalSignInPromoCoordinatorDelegate,
     NotificationsOptInCoordinatorDelegate,
     OverscrollActionsControllerDelegate,
-    PageActionMenuCommands,
-    PageInfoCommands,
-    PageInfoPresentation,
-    ParentAccessCommands,
     PasskeyWelcomeScreenCoordinatorDelegate,
     PasswordBreachCommands,
     PasswordControllerDelegate,
@@ -470,6 +424,7 @@ const char kChromeAppStoreUrl[] =
     PriceTrackedItemsCommands,
     PromosManagerCommands,
     QuickDeleteCommands,
+    ReSigninPresenter,
     ReaderModeBrowserAgentDelegate,
     ReaderModeCommands,
     ReaderModeCoordinatorDelegate,
@@ -479,32 +434,22 @@ const char kChromeAppStoreUrl[] =
     ReminderNotificationsCoordinatorDelegate,
     RepostFormCoordinatorDelegate,
     RepostFormTabHelperDelegate,
-    ReSigninPresenter,
-    SaveToDriveCommands,
-    SaveToPhotosCommands,
-    SearchEngineChoiceCommands,
-    SearchEngineChoiceCoordinatorDelegate,
+    SendTabToSelfCommands,
     SendTabToSelfCoordinatorDelegate,
     SharedTabGroupLastTabAlertCommands,
     SigninPresenter,
     SnackbarCoordinatorDelegate,
     SnapshotGeneratorDelegate,
     StoreKitCoordinatorDelegate,
-    SyncedSetUpCommands,
-    SyncedSetUpCoordinatorDelegate,
     SyncPresenterCommands,
     TabPickerCommands,
     TextZoomCommands,
-    TipsPasswordsCommands,
-    TipsPasswordsCoordinatorDelegate,
     TrustedVaultReauthenticationCoordinatorDelegate,
-    UnitConversionCommands,
     URLLoadingDelegate,
     WebContentCommands,
     WebNavigationNTPDelegate,
     WebUsageEnablerBrowserAgentObserving,
-    WelcomeBackPromoCommands,
-    WhatsNewCommands>
+    WelcomeBackPromoCommands>
 
 // Whether the coordinator is started.
 @property(nonatomic, assign, getter=isStarted) BOOL started;
@@ -583,6 +528,9 @@ const char kChromeAppStoreUrl[] =
 @property(nonatomic, strong) VirtualCardEnrollmentBottomSheetCoordinator*
     virtualCardEnrollmentBottomSheetCoordinator;
 
+@property(nonatomic, strong)
+    WalletReminderNoticeCoordinator* walletReminderNoticeCoordinator;
+
 // Coordinator for the choice screen.
 @property(nonatomic, strong) ChromeCoordinator* choiceCoordinator;
 
@@ -626,13 +574,6 @@ const char kChromeAppStoreUrl[] =
 
 // Coordinator for new tab pages.
 @property(nonatomic, strong) NewTabPageCoordinator* NTPCoordinator;
-
-// Coordinator for Page Info UI.
-@property(nonatomic, strong) ChromeCoordinator* pageInfoCoordinator;
-
-// Coordinator to display local web approvals parent access UI in a bottom
-// sheet.
-@property(nonatomic, strong) ParentAccessCoordinator* parentAccessCoordinator;
 
 // Coordinator for the PassKit UI presentation.
 @property(nonatomic, strong) PassKitCoordinator* passKitCoordinator;
@@ -688,12 +629,6 @@ const char kChromeAppStoreUrl[] =
 // Coordinator for Safe Browsing.
 @property(nonatomic, strong) SafeBrowsingCoordinator* safeBrowsingCoordinator;
 
-// Coordinator for displaying the Save to Drive UI.
-@property(nonatomic, strong) SaveToDriveCoordinator* saveToDriveCoordinator;
-
-// Coordinator for displaying the Save to Photos UI.
-@property(nonatomic, strong) SaveToPhotosCoordinator* saveToPhotosCoordinator;
-
 // Coordinator for sharing scenarios.
 @property(nonatomic, strong) SharingCoordinator* sharingCoordinator;
 
@@ -713,18 +648,8 @@ const char kChromeAppStoreUrl[] =
 // Coordinator for Text Zoom.
 @property(nonatomic, strong) TextZoomCoordinator* textZoomCoordinator;
 
-// Coordinator in charge of presenting a unit converter.
-@property(nonatomic, strong)
-    UnitConversionCoordinator* unitConversionCoordinator;
-
 // Opens downloaded Vcard.
 @property(nonatomic, strong) VcardCoordinator* vcardCoordinator;
-
-// The coordinator used for What's New feature.
-@property(nonatomic, strong) WhatsNewCoordinator* whatsNewCoordinator;
-
-// The coordinator used for Level Up feature.
-@property(nonatomic, strong) LevelUpCoordinator* levelUpCoordinator;
 
 // The manager used to display a default browser promo.
 @property(nonatomic, strong) DefaultBrowserGenericPromoCoordinator*
@@ -750,6 +675,8 @@ const char kChromeAppStoreUrl[] =
 @end
 
 @implementation BrowserCoordinator {
+  // Host for all the modal features.
+  BrowserModalHost* _modalHost;
   // Coordinator for Fullscreen.
   FullscreenCoordinator* _fullscreenCoordinator;
   SigninCoordinator* _signinCoordinator;
@@ -776,15 +703,10 @@ const char kChromeAppStoreUrl[] =
   LayoutGuideCenter* _layoutGuideCenter;
   raw_ptr<WebNavigationBrowserAgent> _webNavigationBrowserAgent;
   raw_ptr<UrlLoadingBrowserAgent> _urlLoadingBrowserAgent;
-  AddContactsCoordinator* _addContactsCoordinator;
-  CountryCodePickerCoordinator* _countryCodePickerCoordinator;
   OmniboxPositionChoiceCoordinator* _omniboxPositionChoiceCoordinator;
   std::unique_ptr<WebUsageEnablerBrowserAgentObserverBridge>
       _webUsageEnablerObserver;
   ContextualSheetCoordinator* _contextualSheetCoordinator;
-  API_AVAILABLE(ios(18.4))
-  FileUploadPanelCoordinator* _fileUploadPanelCoordinator;
-  RootDriveFilePickerCoordinator* _driveFilePickerCoordinator;
   GoogleOneCoordinator* _googleOneCoordinator;
 
   // The coordinator that manages the BrowserLayoutViewController.
@@ -812,18 +734,11 @@ const char kChromeAppStoreUrl[] =
   EnhancedSafeBrowsingPromoCoordinator* _enhancedSafeBrowsingPromoCoordinator;
   PriceTrackingPromoCoordinator* _priceTrackingPromoCoordinator;
   TabGroupsPromoCoordinator* _tabGroupsPromoCoordinator;
-  TipsPasswordsCoordinator* _tipsPasswordsCoordinator;
   AutoDeletionCoordinator* _autoDeletionCoordinator;
   TrustedVaultReauthenticationCoordinator*
       _trustedVaultReauthenticationCoordinator;
   SyncPresenterCompletionCallback
       _trustedVaultReauthenticationCoordinatorCompletion;
-
-  // The coordinator for the Enhanced Calendar feature UI (bottom sheet).
-  EnhancedCalendarCoordinator* _enhancedCalendarCoordinator;
-
-  // The coordinator for the page action menu.
-  PageActionMenuCoordinator* _pageActionMenuCoordinator;
 
   // Coordinator that handles confirmation dialog when the last tab of a shared
   // group is closed.
@@ -844,24 +759,14 @@ const char kChromeAppStoreUrl[] =
   // The coordinator for the Picture-in-Picture promo.
   PictureInPictureCoordinator* _pictureInPictureCoordinator;
 
-  // The coordinator for managing the Synced Set Up flow.
-  SyncedSetUpCoordinator* _syncedSetUpCoordinator;
-
   // The coordinator for the passkey creation bottom sheet.
   PasskeyCreationBottomSheetCoordinator* _passkeyCreationBottomSheetCoordinator;
 
   // The coordinator for the passkey welcome screen.
   PasskeyWelcomeScreenCoordinator* _passkeyWelcomeScreenCoordinator;
 
-  // Block to run after the Synced Set Up UI has finished dismissing.
-  ProceduralBlock _runAfterSyncedSetUpDismissal;
-
   // The coordinator for the passkey incognito interstitial.
   PasskeyIncognitoInterstitialCoordinator* _passkeyIncognitoCoordinator;
-
-  // The coordinator and block for the SearchEngineChoiceCommands.
-  SearchEngineChoiceCoordinator* _searchEngineChoiceCoordinator;
-  ProceduralBlock _searchEngineChoiceClosedBlock;
 
   // The coordinator for Cobalt.
   ChromeCoordinator* _cobaltCoordinator;
@@ -875,8 +780,6 @@ const char kChromeAppStoreUrl[] =
   // The coordinator showing the multimodal composebox menu.
   ComposeboxMenuCoordinator* _composeboxMenuCoordinator;
 
-  // The coordinator showing the Actor overlay.
-  ActorOverlayCoordinator* _actorOverlayCoordinator;
 }
 
 #pragma mark - SnackbarCoordinatorDelegate
@@ -1008,12 +911,13 @@ const char kChromeAppStoreUrl[] =
   [self startTabLifeCycleMediator];
 
   [self startDispatchingToProtocols];
+  [self startModalDispatching];
 
   [self createViewControllerDependencies];
 
   [self createViewController];
 
-  [self updateViewControllerDependencies];
+  [self postViewControllerCreationSetup];
 
   // Force the view load at a specific time.
   // TODO(crbug.com/40263730): This should ideally go in createViewController,
@@ -1061,8 +965,15 @@ const char kChromeAppStoreUrl[] =
   // Copresence is cleaned up (to reduce risk).
   _viewController.geminiHandler = nil;
   [self stopChildCoordinators];
+  [_modalHost clearPresentedState];
   [self destroyViewController];
   [self destroyViewControllerDependencies];
+
+  // The modal host is mostly handling commands, so it must be stopped at the
+  // same time.
+  [_modalHost stopHostingCommandProtocols];
+  _modalHost = nil;
+
   [self.dispatcher stopDispatchingToTarget:self];
   _webUsageEnablerObserver.reset();
   _activityOverlayCallback.RunAndReset();
@@ -1140,19 +1051,6 @@ const char kChromeAppStoreUrl[] =
   [_sendTabToSelfCoordinator stop];
   _sendTabToSelfCoordinator.delegate = nil;
   _sendTabToSelfCoordinator = nil;
-}
-
-// Stops the Synced Set Up coordinator.
-- (void)stopSyncedSetUpCoordinator {
-  [_syncedSetUpCoordinator stop];
-  _syncedSetUpCoordinator.delegate = nil;
-  _syncedSetUpCoordinator = nil;
-
-  if (_runAfterSyncedSetUpDismissal) {
-    ProceduralBlock completion = [_runAfterSyncedSetUpDismissal copy];
-    _runAfterSyncedSetUpDismissal = nil;
-    completion();
-  }
 }
 
 - (void)signinCoordinatorCompletionWithCoordinator:
@@ -1362,7 +1260,6 @@ const char kChromeAppStoreUrl[] =
   // handlers.
   NSArray<Protocol*>* protocols = @[
     @protocol(ActivityServiceCommands),
-    @protocol(ActorOverlayCommands),
     @protocol(AutoDeletionCommands),
     @protocol(AutofillCommands),
     @protocol(BrowserCoordinatorCommands),
@@ -1371,44 +1268,29 @@ const char kChromeAppStoreUrl[] =
     @protocol(ContextualSheetCommands),
     @protocol(DefaultBrowserPromoNonModalCommands),
     @protocol(DownloadListCommands),
-    @protocol(DriveFilePickerCommands),
-    @protocol(EnhancedCalendarCommands),
     @protocol(PromosManagerCommands),
-    @protocol(FileUploadPanelCommands),
     @protocol(FindInPageCommands),
     @protocol(IOSPasskeyClientCommands),
     @protocol(CobaltCommands),
     @protocol(ReaderModeCommands),
     @protocol(NewTabPageCommands),
     @protocol(NonModalSignInPromoCommands),
-    @protocol(PageActionMenuCommands),
-    @protocol(PageInfoCommands),
     @protocol(PasswordBreachCommands),
     @protocol(PasswordProtectionCommands),
     @protocol(PasswordSuggestionCommands),
     @protocol(PolicyChangeCommands),
     @protocol(PriceTrackedItemsCommands),
     @protocol(QuickDeleteCommands),
-    @protocol(SaveToDriveCommands),
-    @protocol(SaveToPhotosCommands),
-    @protocol(SearchEngineChoiceCommands),
+    @protocol(SendTabToSelfCommands),
     @protocol(SharedTabGroupLastTabAlertCommands),
-    @protocol(SyncedSetUpCommands),
     @protocol(SyncPresenterCommands),
     @protocol(TabPickerCommands),
     @protocol(TextZoomCommands),
-    @protocol(TipsPasswordsCommands),
     @protocol(WebContentCommands),
     @protocol(DefaultBrowserGenericPromoCommands),
     @protocol(MiniMapCommands),
-    @protocol(ParentAccessCommands),
     @protocol(ReminderNotificationsCommands),
-    @protocol(UnitConversionCommands),
-    @protocol(AddContactsCommands),
-    @protocol(CountryCodePickerCommands),
-    @protocol(WhatsNewCommands),
     @protocol(GoogleOneCommands),
-    @protocol(LevelUpCommands),
     @protocol(WelcomeBackPromoCommands),
     @protocol(DockingPromoCommands),
     @protocol(EnterpriseCommands),
@@ -1418,6 +1300,12 @@ const char kChromeAppStoreUrl[] =
   for (Protocol* protocol in protocols) {
     [_dispatcher startDispatchingToTarget:self forProtocol:protocol];
   }
+}
+
+// Starts the dispatching to the command protocols related to modal handling.
+- (void)startModalDispatching {
+  _modalHost = [[BrowserModalHost alloc] initWithBrowser:self.browser];
+  [_modalHost startHostingCommandProtocols];
 }
 
 // Creates the browser view controller dependencies.
@@ -1486,7 +1374,7 @@ const char kChromeAppStoreUrl[] =
 
   _toolbarAccessoryPresenter = [[ToolbarAccessoryPresenter alloc]
       initWithIsIncognito:profile->IsOffTheRecord()
-              layoutState:browser->GetSceneState().layoutState];
+       browserLayoutState:browser->GetBrowserLayoutState()];
   _toolbarAccessoryPresenter.topToolbarLayoutGuide =
       [_layoutGuideCenter makeLayoutGuideNamed:kPrimaryToolbarGuide];
   _toolbarAccessoryPresenter.bottomToolbarLayoutGuide =
@@ -1583,9 +1471,12 @@ const char kChromeAppStoreUrl[] =
   _viewControllerDependencies.safeAreaProvider = _safeAreaProvider;
 }
 
-- (void)updateViewControllerDependencies {
+// Setup step executed after the view controller has been created.
+- (void)postViewControllerCreationSetup {
   TRACE_EVENT("ui", "-[BrowserCoordinator updateViewControllerDependencies]");
   BrowserViewController* viewController = self.viewController;
+  [_modalHost setBaseViewControllerForModals:self.viewController];
+
   _bookmarksCoordinator.baseViewController = viewController;
 
   _toolbarAccessoryPresenter.baseViewController = viewController;
@@ -1801,8 +1692,6 @@ const char kChromeAppStoreUrl[] =
 
   /* RepostFormCoordinator is created and started by a delegate method */
 
-  /* WhatsNewCoordinator is created and started by a BrowserCommand */
-
   /* NonModalSignInPromoCoordinator is created and started by a BrowserCommand
    */
 
@@ -1845,9 +1734,6 @@ const char kChromeAppStoreUrl[] =
 
 // Stops child coordinators.
 - (void)stopChildCoordinators {
-  [_actorOverlayCoordinator stop];
-  _actorOverlayCoordinator = nil;
-
   [self.ARQuickLookCoordinator stop];
   self.ARQuickLookCoordinator = nil;
 
@@ -1859,8 +1745,6 @@ const char kChromeAppStoreUrl[] =
 
   [self.vcardCoordinator stop];
   self.vcardCoordinator = nil;
-
-  [self hidePageInfo];
 
   [self.passKitCoordinator stop];
   self.passKitCoordinator = nil;
@@ -1886,6 +1770,7 @@ const char kChromeAppStoreUrl[] =
   self.cardUnmaskAuthenticationCoordinator = nil;
 
   [self dismissSaveCardBottomSheet];
+  [self dismissWalletReminderNotice];
 
   [self.virtualCardEnrollmentBottomSheetCoordinator stop];
   self.virtualCardEnrollmentBottomSheetCoordinator = nil;
@@ -1938,12 +1823,6 @@ const char kChromeAppStoreUrl[] =
 
   [self stopSendTabToSelf];
 
-  [self.whatsNewCoordinator stop];
-  self.whatsNewCoordinator = nil;
-
-  [self.levelUpCoordinator stop];
-  self.levelUpCoordinator = nil;
-
   [_pictureInPictureCoordinator stop];
   _pictureInPictureCoordinator = nil;
 
@@ -1966,29 +1845,11 @@ const char kChromeAppStoreUrl[] =
   [self.miniMapCoordinator stop];
   self.miniMapCoordinator = nil;
 
-  [self.saveToDriveCoordinator stop];
-  self.saveToDriveCoordinator = nil;
-
-  [self.saveToPhotosCoordinator stop];
-  self.saveToPhotosCoordinator = nil;
-
-  [self.unitConversionCoordinator stop];
-  self.unitConversionCoordinator = nil;
-
   [self.nonModalSignInPromoCoordinator stop];
   self.nonModalSignInPromoCoordinator = nil;
 
-  [_tipsPasswordsCoordinator stop];
-  _tipsPasswordsCoordinator = nil;
-
-  [_addContactsCoordinator stop];
-  _addContactsCoordinator = nil;
-
   [_quickDeleteCoordinator stop];
   _quickDeleteCoordinator = nil;
-
-  [_enhancedCalendarCoordinator stop];
-  _enhancedCalendarCoordinator = nil;
 
   [_lastTabClosingAlert stop];
   _lastTabClosingAlert = nil;
@@ -2005,15 +1866,9 @@ const char kChromeAppStoreUrl[] =
   [_passkeyIncognitoCoordinator stop];
   _passkeyIncognitoCoordinator = nil;
 
-  [self stopSyncedSetUpCoordinator];
-
-  [self hideDriveFilePicker];
   [self hideCobalt];
   [self hideCobaltAlert];
   [self hideCobaltPopup];
-  if (@available(iOS 18.4, *)) {
-    [self hideFileUploadPanel];
-  }
   [self hideContextualSheet];
   [self dismissEditAddressBottomSheet];
   [self dismissLensPromo];
@@ -2428,6 +2283,30 @@ const char kChromeAppStoreUrl[] =
   self.saveCardBottomSheetCoordinator = nil;
 }
 
+- (void)showWalletReminderNoticeOnOriginWebState:(web::WebState*)originWebState
+                               legalMessageLines:(autofill::LegalMessageLines)
+                                                     legalMessageLines {
+  if (self.walletReminderNoticeCoordinator) {
+    [self.walletReminderNoticeCoordinator stop];
+  }
+
+  if (self.activeWebState != originWebState) {
+    return;
+  }
+
+  self.walletReminderNoticeCoordinator =
+      [[WalletReminderNoticeCoordinator alloc]
+          initWithBaseViewController:self.viewController
+                             browser:self.browser
+                   legalMessageLines:legalMessageLines];
+  [self.walletReminderNoticeCoordinator start];
+}
+
+- (void)dismissWalletReminderNotice {
+  [self.walletReminderNoticeCoordinator stop];
+  self.walletReminderNoticeCoordinator = nil;
+}
+
 - (void)showVirtualCardEnrollmentBottomSheet:
             (std::unique_ptr<autofill::VirtualCardEnrollUiModel>)model
                               originWebState:(web::WebState*)originWebState {
@@ -2812,11 +2691,24 @@ const char kChromeAppStoreUrl[] =
   [self.addCreditCardCoordinator start];
 }
 
+#pragma mark - SendTabToSelfCommands
+
 - (void)showSendTabToSelfUI:(const GURL&)url
                       title:(NSString*)title
                  entryPoint:(send_tab_to_self::ShareEntryPoint)entryPoint {
-  // According to crbug.com/472243358 a second coordinator can be opened while
-  // the first one is not stopped. In doubt, let’s stop the first one.
+  [self sendTabToSelfToDeviceWithURL:url
+                               title:title
+                            deviceID:nil
+                          deviceName:nil
+                          entryPoint:entryPoint];
+}
+
+- (void)sendTabToSelfToDeviceWithURL:(const GURL&)url
+                               title:(NSString*)title
+                            deviceID:(NSString*)deviceID
+                          deviceName:(NSString*)deviceName
+                          entryPoint:
+                              (send_tab_to_self::ShareEntryPoint)entryPoint {
   [_sendTabToSelfCoordinator stop];
   _sendTabToSelfCoordinator = [[SendTabToSelfCoordinator alloc]
       initWithBaseViewController:self.viewController
@@ -2824,13 +2716,11 @@ const char kChromeAppStoreUrl[] =
                  signinPresenter:self
                              url:url
                            title:title
+           targetDeviceCacheGUID:deviceID
+                targetDeviceName:deviceName
                       entryPoint:entryPoint];
   _sendTabToSelfCoordinator.delegate = self;
 
-  // If there is another transition going on (e.g. dismissal of the context
-  // menu from which the Send-tab-to-self action was triggered), postpone the
-  // start of the coordinator to allow the other transition to complete first.
-  // This is necessary to prevent a UIKit transition deadlock.
   __weak SendTabToSelfCoordinator* weakSendTabToSelfCoordinator =
       _sendTabToSelfCoordinator;
   ExecuteWhenTransitionsComplete(
@@ -3187,15 +3077,11 @@ const char kChromeAppStoreUrl[] =
 
 - (void)clearPresentedStateWithCompletion:(ProceduralBlock)completion
                            dismissOmnibox:(BOOL)dismissOmnibox {
-  [self stopSaveToPhotos];
-  [self hideSaveToDrive];
-  [self hideDriveFilePicker];
+  [_modalHost clearPresentedState];
+
   [self hideCobalt];
   [self hideCobaltAlert];
   [self hideCobaltPopup];
-  if (@available(iOS 18.4, *)) {
-    [self hideFileUploadPanel];
-  }
   if (IsDownloadListEnabled()) {
     [self hideDownloadList];
   }
@@ -3225,8 +3111,6 @@ const char kChromeAppStoreUrl[] =
   [self.passwordSuggestionCoordinator stop];
   self.passwordSuggestionCoordinator = nil;
 
-  [self hidePageInfo];
-
   [self.paymentsScanCoordinator stop];
   self.paymentsScanCoordinator = nil;
 
@@ -3250,21 +3134,12 @@ const char kChromeAppStoreUrl[] =
 
   [self hidePriceTrackedItems];
 
-  [self.unitConversionCoordinator stop];
-  self.unitConversionCoordinator = nil;
-
   [self stopRepostFormCoordinator];
 
   [_formInputAccessoryCoordinator clearPresentedState];
 
   [_quickDeleteCoordinator stop];
   _quickDeleteCoordinator = nil;
-
-  [_addContactsCoordinator stop];
-  _addContactsCoordinator = nil;
-
-  [_countryCodePickerCoordinator stop];
-  _countryCodePickerCoordinator = nil;
 
   [_lastTabClosingAlert stop];
   _lastTabClosingAlert = nil;
@@ -3283,8 +3158,6 @@ const char kChromeAppStoreUrl[] =
 
   [_passkeyIncognitoCoordinator stop];
   _passkeyIncognitoCoordinator = nil;
-
-  [self stopSyncedSetUpCoordinator];
 
   [self hideGoogleOne];
   [self updateLensUIForBackground];
@@ -3509,121 +3382,6 @@ const char kChromeAppStoreUrl[] =
   self.defaultBrowserGenericPromoCoordinator = nil;
 }
 
-#pragma mark - DriveFilePickerCommands
-
-- (void)showDriveFilePicker {
-  if (!base::FeatureList::IsEnabled(kIOSChooseFromDrive)) {
-    return;
-  }
-  // If there is a coordinator, stop it before showing it again.
-  [self hideDriveFilePicker];
-  // Return early if the current WebState is not choosing files.
-  web::WebState* activeWebState = self.activeWebState;
-  if (!activeWebState || activeWebState->IsBeingDestroyed()) {
-    // If there is no active WebState or it is being destroyed, do nothing.
-    return;
-  }
-  ChooseFileTabHelper* tab_helper =
-      ChooseFileTabHelper::FromWebState(activeWebState);
-  if (!tab_helper || !tab_helper->IsChoosingFiles()) {
-    return;
-  }
-  if (!(base::FeatureList::IsEnabled(kIOSChooseFromDriveSignedOut) ||
-        AuthenticationServiceFactory::GetForProfile(self.profile)
-            ->HasPrimaryIdentity())) {
-    // Drive can be accessed if either:
-    //   - The user has a primary identity, or
-    //   - The kIOSChooseFromDriveSignedOut flag is enabled.
-    // Since neither of these are true, the file picker is not presented.
-    tab_helper->SetIsPresentingFilePicker(false);
-    return;
-  }
-  // The user should not have been offered to use the drive if they are in
-  // incognito.
-  CHECK_EQ(self.browser->type(), Browser::Type::kRegular);
-  _driveFilePickerCoordinator = [[RootDriveFilePickerCoordinator alloc]
-      initWithBaseViewController:self.viewController
-                         browser:self.browser
-                        webState:activeWebState
-                   forComposebox:NO];
-  [_driveFilePickerCoordinator start];
-}
-
-- (void)hideDriveFilePicker {
-  [_driveFilePickerCoordinator stop];
-  _driveFilePickerCoordinator = nil;
-}
-
-- (void)setDriveFilePickerSelectedIdentity:
-    (id<SystemIdentity>)selectedIdentity {
-  CHECK(selectedIdentity);
-  [_driveFilePickerCoordinator setSelectedIdentity:selectedIdentity];
-}
-
-- (void)showDriveFilePickerWithComposeboxDelegate:
-            (id<ComposeboxPickerPresenterDelegate>)delegate
-                               baseViewController:
-                                   (UIViewController*)baseViewController {
-  // In the context of the compose box the user should not have been offered to
-  // use the drive if they are not signed-in.
-  CHECK(AuthenticationServiceFactory::GetForProfile(self.profile)
-            ->HasPrimaryIdentity());
-  // The user should not have been offered to use the drive if they are in
-  // incognito.
-  CHECK_EQ(self.browser->type(), Browser::Type::kRegular);
-
-  if (!base::FeatureList::IsEnabled(kIOSChooseFromDrive)) {
-    return;
-  }
-  // If there is a coordinator, stop it before showing it again.
-  [self hideDriveFilePicker];
-  web::WebState* activeWebState = self.activeWebState;
-  if (!activeWebState || activeWebState->IsBeingDestroyed()) {
-    return;
-  }
-
-  _driveFilePickerCoordinator = [[RootDriveFilePickerCoordinator alloc]
-      initWithBaseViewController:baseViewController
-                         browser:self.browser
-                        webState:activeWebState
-                   forComposebox:YES];
-  _driveFilePickerCoordinator.composeboxDelegate = delegate;
-  [_driveFilePickerCoordinator start];
-}
-
-#pragma mark - ActorOverlayCommands
-
-- (void)showActorOverlayForWebState:(web::WebState*)webState {
-  if (_actorOverlayCoordinator) {
-    [self hideActorOverlay];
-  }
-  _actorOverlayCoordinator = [[ActorOverlayCoordinator alloc]
-      initWithBaseViewController:self.viewController
-                         browser:self.browser
-                        webState:webState];
-  [_actorOverlayCoordinator start];
-}
-
-- (void)hideActorOverlay {
-  [_actorOverlayCoordinator stop];
-  _actorOverlayCoordinator = nil;
-}
-
-#pragma mark - EnhancedCalendarCommands
-
-- (void)showEnhancedCalendarWithConfig:
-    (EnhancedCalendarConfiguration*)enhancedCalendarConfig {
-  _enhancedCalendarCoordinator = [[EnhancedCalendarCoordinator alloc]
-      initWithBaseViewController:self.viewController
-                         browser:self.browser
-          enhancedCalendarConfig:enhancedCalendarConfig];
-  [_enhancedCalendarCoordinator start];
-}
-
-- (void)hideEnhancedCalendarBottomSheet {
-  [_enhancedCalendarCoordinator stop];
-  _enhancedCalendarCoordinator = nil;
-}
 #pragma mark - ReaderModeCommands
 
 - (void)showReaderModeFromAccessPoint:(ReaderModeAccessPoint)accessPoint {
@@ -3698,28 +3456,6 @@ const char kChromeAppStoreUrl[] =
 - (void)hideReaderModeBlurOverlay {
   [_readerModeBlurOverlayCoordinator stop];
   _readerModeBlurOverlayCoordinator = nil;
-}
-
-#pragma mark - FileUploadPanelCommands
-
-- (void)showFileUploadPanel API_AVAILABLE(ios(18.4)) {
-  ChooseFileTabHelper* tabHelper =
-      ChooseFileTabHelper::FromWebState(self.activeWebState);
-  if (!tabHelper || !tabHelper->IsChoosingFiles()) {
-    return;
-  }
-  if (_fileUploadPanelCoordinator) {
-    return;
-  }
-  _fileUploadPanelCoordinator = [[FileUploadPanelCoordinator alloc]
-      initWithBaseViewController:self.viewController
-                         browser:self.browser];
-  [_fileUploadPanelCoordinator start];
-}
-
-- (void)hideFileUploadPanel API_AVAILABLE(ios(18.4)) {
-  [_fileUploadPanelCoordinator stop];
-  _fileUploadPanelCoordinator = nil;
 }
 
 #pragma mark - FindInPageCommands
@@ -3821,36 +3557,6 @@ const char kChromeAppStoreUrl[] =
   helper->StartFinding(@"");
 }
 
-#pragma mark - AddContactsCommands
-
-- (void)presentAddContactsForPhoneNumber:(NSString*)phoneNumber {
-  _addContactsCoordinator = [[AddContactsCoordinator alloc]
-      initWithBaseViewController:self.viewController
-                         browser:self.browser
-                     phoneNumber:phoneNumber];
-  [_addContactsCoordinator start];
-}
-
-- (void)hideAddContacts {
-  [_addContactsCoordinator stop];
-  _addContactsCoordinator = nil;
-}
-
-#pragma mark - CountryCodePickerCommands
-
-- (void)presentCountryCodePickerForPhoneNumber:(NSString*)phoneNumber {
-  _countryCodePickerCoordinator = [[CountryCodePickerCoordinator alloc]
-      initWithBaseViewController:self.viewController
-                         browser:self.browser];
-  _countryCodePickerCoordinator.phoneNumber = phoneNumber;
-  [_countryCodePickerCoordinator start];
-}
-
-- (void)hideCountryCodePicker {
-  [_countryCodePickerCoordinator stop];
-  _countryCodePickerCoordinator = nil;
-}
-
 #pragma mark - PromosManagerCommands
 
 - (void)showPromo {
@@ -3895,9 +3601,10 @@ const char kChromeAppStoreUrl[] =
 }
 
 - (void)showWhatsNewPromo {
-  [self showWhatsNew];
-  self.whatsNewCoordinator.promosUIHandler = self.promosManagerCoordinator;
-  self.whatsNewCoordinator.shouldShowBubblePromoOnDismiss = YES;
+  id<WhatsNewCommands> whatsNewHandler = HandlerForProtocol(
+      self.browser->GetCommandDispatcher(), WhatsNewCommands);
+  [whatsNewHandler
+      showWhatsNewWithPromosUIHandler:self.promosManagerCoordinator];
 }
 
 - (void)showDefaultBrowserPromo {
@@ -3980,46 +3687,6 @@ const char kChromeAppStoreUrl[] =
   [_dockingPromoCoordinator start];
 }
 
-#pragma mark - PageActionMenuCommands
-
-- (void)showPageActionMenu {
-  if (!self.activeWebState) {
-    // The page action menu requires an active tab. Return early if there is
-    // none.
-    return;
-  }
-  // TODO(crbug.com/465505528) Propagate page action menu entry point source to
-  // page action menu coordinator.
-  _pageActionMenuCoordinator = [[PageActionMenuCoordinator alloc]
-      initWithBaseViewController:self.viewController
-                         browser:self.browser];
-  _pageActionMenuCoordinator.pageActionMenuHandler =
-      HandlerForProtocol(self.dispatcher, PageActionMenuCommands);
-  [_pageActionMenuCoordinator start];
-}
-
-- (void)dismissPageActionMenuWithCompletion:(ProceduralBlock)completion {
-  [_pageActionMenuCoordinator stopWithCompletion:completion];
-  _pageActionMenuCoordinator = nil;
-}
-
-#pragma mark - PageInfoCommands
-
-- (void)showPageInfo {
-  PageInfoCoordinator* pageInfoCoordinator = [[PageInfoCoordinator alloc]
-      initWithBaseViewController:self.viewController
-                         browser:self.browser];
-  pageInfoCoordinator.presentationProvider = self;
-  [self.pageInfoCoordinator stop];
-  self.pageInfoCoordinator = pageInfoCoordinator;
-  [self.pageInfoCoordinator start];
-}
-
-- (void)hidePageInfo {
-  [self.pageInfoCoordinator stop];
-  self.pageInfoCoordinator = nil;
-}
-
 #pragma mark - AutofillSettingsNavigator
 
 - (void)openSettingsForPage:(AutofillSettingsPage)page {
@@ -4100,24 +3767,6 @@ const char kChromeAppStoreUrl[] =
   [self stopTabPickerCoordinator];
 }
 
-#pragma mark - TipsPasswordsCommands
-
-- (void)showPasswordsTipForIdentifier:
-    (segmentation_platform::TipIdentifier)identifier {
-  [_tipsPasswordsCoordinator stop];
-  _tipsPasswordsCoordinator = [[TipsPasswordsCoordinator alloc]
-      initWithBaseViewController:self.viewController
-                         browser:self.browser
-                      identifier:identifier];
-  _tipsPasswordsCoordinator.delegate = self;
-  [_tipsPasswordsCoordinator start];
-}
-
-- (void)dismissPasswordsTip {
-  [_tipsPasswordsCoordinator stop];
-  _tipsPasswordsCoordinator = nil;
-}
-
 #pragma mark - TextZoomCommands
 
 - (void)openTextZoom {
@@ -4166,25 +3815,6 @@ const char kChromeAppStoreUrl[] =
   textZoomCoordinator.presenter = _toolbarAccessoryPresenter;
 
   return textZoomCoordinator;
-}
-
-#pragma mark - UnitConversionCommands
-
-- (void)presentUnitConversionForSourceUnit:(NSUnit*)sourceUnit
-                           sourceUnitValue:(double)sourceUnitValue
-                                  location:(CGPoint)location {
-  self.unitConversionCoordinator = [[UnitConversionCoordinator alloc]
-      initWithBaseViewController:self.viewController
-                         browser:self.browser
-                      sourceUnit:sourceUnit
-                 sourceUnitValue:sourceUnitValue
-                        location:location];
-  [self.unitConversionCoordinator start];
-}
-
-- (void)hideUnitConversion {
-  [self.unitConversionCoordinator stop];
-  self.unitConversionCoordinator = nil;
 }
 
 #pragma mark - URLLoadingDelegate
@@ -4275,50 +3905,6 @@ const char kChromeAppStoreUrl[] =
   // Disconnect the presenter from the context to cancel active overlays.
   OverlayPresenter::FromBrowser(self.browser, OverlayModality::kInfobarBanner)
       ->SetPresentationContext(nullptr);
-}
-
-#pragma mark - ParentAccessCommands
-
-- (void)
-    showParentAccessBottomSheetForWebState:(web::WebState*)webState
-                                 targetURL:(const GURL&)targetURL
-                   filteringBehaviorReason:
-                       (supervised_user::FilteringBehaviorReason)
-                           filteringBehaviorReason
-                                completion:
-                                    (void (^)(
-                                        supervised_user::LocalApprovalResult,
-                                        std::optional<
-                                            supervised_user::
-                                                LocalWebApprovalErrorType>))
-                                        completion {
-  if (!supervised_user::IsLocalWebApprovalsEnabled()) {
-    return;
-  }
-
-  if (self.activeWebState != webState) {
-    // Do not show the sheet if the current tab is not the one where the
-    // user initiated parent local web approvals.
-    return;
-  }
-  // Close parent access local web approval if it was already opened for another
-  // URL.
-  if (self.parentAccessCoordinator) {
-    [self.parentAccessCoordinator stop];
-  }
-
-  self.parentAccessCoordinator = [[ParentAccessCoordinator alloc]
-      initWithBaseViewController:self.viewController
-                         browser:self.browser
-                       targetURL:targetURL
-         filteringBehaviorReason:filteringBehaviorReason
-                      completion:completion];
-  [self.parentAccessCoordinator start];
-}
-
-- (void)hideParentAccessBottomSheet {
-  [self.parentAccessCoordinator stop];
-  self.parentAccessCoordinator = nil;
 }
 
 #pragma mark - PasswordBreachCommands
@@ -4437,113 +4023,6 @@ const char kChromeAppStoreUrl[] =
                    dispatch_get_main_queue(), ^{
                      [weakSelf showRestrictAccountSignedOutPrompt];
                    });
-  }
-}
-
-#pragma mark - SyncedSetUpCoordinatorDelegate
-
-- (void)syncedSetUpCoordinatorWantsToBeDismissed:
-    (SyncedSetUpCoordinator*)coordinator {
-  CHECK_EQ(_syncedSetUpCoordinator, coordinator);
-  [self stopSyncedSetUpCoordinator];
-}
-
-#pragma mark - SyncedSetUpCommands
-
-- (void)showSyncedSetUpWithDismissalCompletion:(ProceduralBlock)completion {
-  CHECK(CanShowSyncedSetUp(self.profile->GetPrefs()));
-
-  _runAfterSyncedSetUpDismissal = [completion copy];
-
-  if (_syncedSetUpCoordinator) {
-    // The UI is already active; the stored `completion` will run when it stops.
-    return;
-  }
-
-  _syncedSetUpCoordinator = [[SyncedSetUpCoordinator alloc]
-      initWithBaseViewController:self.viewController
-                         browser:self.browser];
-  _syncedSetUpCoordinator.delegate = self;
-  [_syncedSetUpCoordinator start];
-}
-
-#pragma mark - SaveToDriveCommands
-
-- (void)showSaveToDriveForDownload:(web::DownloadTask*)downloadTask {
-  // If the Save to Drive coordinator is not nil, stop it.
-  [self hideSaveToDrive];
-
-  _saveToDriveCoordinator = [[SaveToDriveCoordinator alloc]
-      initWithBaseViewController:self.viewController
-                         browser:self.browser
-                    downloadTask:downloadTask];
-  [_saveToDriveCoordinator start];
-}
-
-- (void)hideSaveToDrive {
-  [_saveToDriveCoordinator stop];
-  _saveToDriveCoordinator = nil;
-}
-
-#pragma mark - SaveToPhotosCommands
-
-- (void)saveImageToPhotos:(SaveImageToPhotosCommand*)command {
-  if (!command.webState) {
-    // If the web state does not exist anymore, don't do anything.
-    return;
-  }
-
-  // If the Save to Photos coordinator is not nil, stop it.
-  [self stopSaveToPhotos];
-
-  self.saveToPhotosCoordinator = [[SaveToPhotosCoordinator alloc]
-      initWithBaseViewController:self.viewController
-                         browser:self.browser
-                        imageURL:command.imageURL
-                        referrer:command.referrer
-                        webState:command.webState.get()
-                         frameID:command.frameID
-                     frameOrigin:command.frameOrigin];
-  [self.saveToPhotosCoordinator start];
-}
-
-- (void)stopSaveToPhotos {
-  [self.saveToPhotosCoordinator stop];
-  self.saveToPhotosCoordinator = nil;
-}
-
-#pragma mark - SearchEngineChoiceCommands
-
-- (void)showSearchEngineChoiceScreenWithCompletion:(ProceduralBlock)completion {
-  if (_searchEngineChoiceCoordinator) {
-    [_searchEngineChoiceCoordinator stop];
-    _searchEngineChoiceCoordinator = nil;
-  }
-
-  _searchEngineChoiceClosedBlock = completion;
-  _searchEngineChoiceCoordinator = [[SearchEngineChoiceCoordinator alloc]
-      initWithBaseViewController:self.viewController
-                         browser:self.browser];
-  _searchEngineChoiceCoordinator.delegate = self;
-  [_searchEngineChoiceCoordinator start];
-}
-
-- (void)stopSearchEngineChoiceScreen {
-  if (_searchEngineChoiceCoordinator) {
-    [_searchEngineChoiceCoordinator stop];
-    _searchEngineChoiceCoordinator = nil;
-    _searchEngineChoiceClosedBlock = nil;
-  }
-}
-
-#pragma mark - SearchEngineChoiceCoordinatorDelegate
-
-- (void)choiceScreenWasDismissed:(SearchEngineChoiceCoordinator*)coordinator {
-  if (_searchEngineChoiceCoordinator == coordinator) {
-    if (ProceduralBlock block =
-            std::exchange(_searchEngineChoiceClosedBlock, nil)) {
-      block();
-    }
   }
 }
 
@@ -5222,23 +4701,6 @@ const char kChromeAppStoreUrl[] =
   [_NTPCoordinator reload];
 }
 
-#pragma mark - PageInfoPresentation
-
-- (void)presentPageInfoView:(UIView*)pageInfoView {
-  [pageInfoView setFrame:self.viewController.view.bounds];
-  [self.viewController.view addSubview:pageInfoView];
-}
-
-- (void)prepareForPageInfoPresentation {
-  id<BrowserCoordinatorCommands> browserCoordinatorHandler =
-      HandlerForProtocol(self.dispatcher, BrowserCoordinatorCommands);
-  [browserCoordinatorHandler hideComposebox];
-}
-
-- (CGPoint)convertToPresentationCoordinatesForOrigin:(CGPoint)origin {
-  return [self.viewController.view convertPoint:origin fromView:nil];
-}
-
 #pragma mark - PasswordSettingsCoordinatorDelegate
 
 - (void)passwordSettingsCoordinatorDidRemove:
@@ -5635,41 +5097,6 @@ const char kChromeAppStoreUrl[] =
                                           completion:dismissalCompletion];
 }
 
-#pragma mark - WhatsNewCommands
-
-- (void)showWhatsNew {
-  self.whatsNewCoordinator = [[WhatsNewCoordinator alloc]
-      initWithBaseViewController:self.viewController
-                         browser:self.browser];
-  [self.whatsNewCoordinator start];
-}
-
-- (void)dismissWhatsNew {
-  if (self.whatsNewCoordinator) {
-    [self.whatsNewCoordinator stop];
-    self.whatsNewCoordinator = nil;
-  }
-}
-
-#pragma mark - LevelUpCommands
-
-- (void)showLevelUp {
-  self.levelUpCoordinator =
-      [[LevelUpCoordinator alloc] initWithBaseViewController:self.viewController
-                                                     browser:self.browser];
-  [self.levelUpCoordinator start];
-}
-
-- (void)dismissLevelUp {
-  [self.levelUpCoordinator stop];
-  self.levelUpCoordinator = nil;
-}
-
-- (void)showWhatsNewIPH {
-  [HandlerForProtocol(_dispatcher, HelpCommands)
-      presentInProductHelpWithType:InProductHelpType::kWhatsNew];
-}
-
 #pragma mark - DockingPromoCommands
 
 - (void)dismissDockingPromo {
@@ -5809,14 +5236,6 @@ const char kChromeAppStoreUrl[] =
     (PasskeyWelcomeScreenCoordinator*)coordinator {
   CHECK_EQ(coordinator, _passkeyWelcomeScreenCoordinator);
   [self stopPasskeyWelcomeScreenCoordinator];
-}
-
-#pragma mark - TipsPasswordsCoordinatorDelegate
-
-- (void)tipsPasswordsCoordinatorDidFinish:
-    (TipsPasswordsCoordinator*)coordinator {
-  CHECK_EQ(coordinator, _tipsPasswordsCoordinator);
-  [self dismissPasswordsTip];
 }
 
 #pragma mark - DownloadListCommands

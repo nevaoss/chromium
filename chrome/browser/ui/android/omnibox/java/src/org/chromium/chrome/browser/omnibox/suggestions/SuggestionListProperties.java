@@ -23,7 +23,7 @@ import org.chromium.ui.modelutil.PropertyModel.WritableObjectPropertyKey;
      */
     WritableBooleanPropertyKey ACTIVITY_WINDOW_FOCUSED = new WritableBooleanPropertyKey();
 
-    WritableBooleanPropertyKey ALLOW_PARKING_AT_SENTINEL = new WritableBooleanPropertyKey();
+    WritableIntPropertyKey SELECTION_MODE = new WritableIntPropertyKey();
 
     WritableFloatPropertyKey ALPHA = new WritableFloatPropertyKey();
 
@@ -107,13 +107,16 @@ import org.chromium.ui.modelutil.PropertyModel.WritableObjectPropertyKey;
     /** Whether to apply a left margin offset to the suggestions container. */
     WritableBooleanPropertyKey APPLY_MARGIN_FOR_LEFT_SIDE_BAR = new WritableBooleanPropertyKey();
 
+    /** Whether to apply standard vertical spacing to the dropdown. */
+    WritableBooleanPropertyKey APPLY_VERTICAL_PADDING = new WritableBooleanPropertyKey();
+
     PropertyKey[] ALL_KEYS =
             new PropertyKey[] {
                 // keep-sorted start
                 ACTIVITY_WINDOW_FOCUSED,
-                ALLOW_PARKING_AT_SENTINEL,
                 ALPHA,
                 APPLY_MARGIN_FOR_LEFT_SIDE_BAR,
+                APPLY_VERTICAL_PADDING,
                 CHILD_TRANSLATION_Y,
                 COLOR_SCHEME,
                 CONTAINER_ALWAYS_VISIBLE,
@@ -132,6 +135,7 @@ import org.chromium.ui.modelutil.PropertyModel.WritableObjectPropertyKey;
                 RESET_SELECTION,
                 RESOURCE_PROVIDER,
                 ROUND_TOP_CORNERS,
+                SELECTION_MODE,
                 SUGGESTION_MODELS,
                 TOOLBAR_POSITION,
                 // keep-sorted end

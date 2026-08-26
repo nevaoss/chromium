@@ -738,6 +738,9 @@ interface CSSLayerStatementRule : CSSRule
     attribute @@toStringTag
     getter nameList
     method constructor
+interface CSSLocationRule : CSSRule
+    attribute @@toStringTag
+    method constructor
 interface CSSMarginRule : CSSRule
     attribute @@toStringTag
     getter name
@@ -1045,9 +1048,6 @@ interface CSSRotate : CSSTransformComponent
     setter x
     setter y
     setter z
-interface CSSRouteRule : CSSRule
-    attribute @@toStringTag
-    method constructor
 interface CSSRule
     attribute @@toStringTag
     attribute CHARSET_RULE
@@ -2178,13 +2178,15 @@ interface Document : Node
     method adoptNode
     method append
     method ariaNotify
-    method browsingTopics
     method captureEvents
     method caretPositionFromPoint
     method caretRangeFromPoint
     method clear
     method close
     method constructor
+    method convertPointFromNode
+    method convertQuadFromNode
+    method convertRectFromNode
     method createAttribute
     method createAttributeNS
     method createCDATASection
@@ -2208,6 +2210,7 @@ interface Document : Node
     method exitPictureInPicture
     method exitPointerLock
     method getAnimations
+    method getBoxQuads
     method getElementById
     method getElementsByClassName
     method getElementsByName
@@ -2592,6 +2595,9 @@ interface Element : Node
     method closest
     method computedStyleMap
     method constructor
+    method convertPointFromNode
+    method convertQuadFromNode
+    method convertRectFromNode
     method getAnimations
     method getAttribute
     method getAttributeNS
@@ -2599,6 +2605,7 @@ interface Element : Node
     method getAttributeNode
     method getAttributeNodeNS
     method getBoundingClientRect
+    method getBoxQuads
     method getClientRects
     method getElementsByClassName
     method getElementsByTagName
@@ -4524,7 +4531,6 @@ interface HTMLIFrameElement : HTMLElement
     getter allow
     getter allowFullscreen
     getter allowPaymentRequest
-    getter browsingTopics
     getter connectionAllowlist
     getter contentDocument
     getter contentWindow
@@ -4554,7 +4560,6 @@ interface HTMLIFrameElement : HTMLElement
     setter allow
     setter allowFullscreen
     setter allowPaymentRequest
-    setter browsingTopics
     setter connectionAllowlist
     setter credentialless
     setter csp
@@ -4578,7 +4583,6 @@ interface HTMLImageElement : HTMLElement
     getter align
     getter alt
     getter border
-    getter browsingTopics
     getter complete
     getter crossOrigin
     getter currentSrc
@@ -4607,7 +4611,6 @@ interface HTMLImageElement : HTMLElement
     setter align
     setter alt
     setter border
-    setter browsingTopics
     setter crossOrigin
     setter decoding
     setter fetchPriority
@@ -5430,6 +5433,7 @@ interface HTMLTemplateElement : HTMLElement
     getter buffer
     getter content
     getter htmlFor
+    getter sanitize
     getter shadowRootAdoptedStyleSheets
     getter shadowRootClonable
     getter shadowRootCustomElementRegistry
@@ -5441,6 +5445,7 @@ interface HTMLTemplateElement : HTMLElement
     method constructor
     setter buffer
     setter htmlFor
+    setter sanitize
     setter shadowRootAdoptedStyleSheets
     setter shadowRootClonable
     setter shadowRootCustomElementRegistry
@@ -5540,30 +5545,17 @@ interface HTMLUnknownElement : HTMLElement
     attribute @@toStringTag
     method constructor
 interface HTMLUserMediaElement : HTMLElement
-    static method isTypeSupported
     attribute @@toStringTag
     getter error
-    getter initialPermissionStatus
-    getter invalidReason
-    getter isValid
     getter oncancel
     getter onerror
-    getter onpromptaction
-    getter onpromptdismiss
     getter onstream
-    getter onvalidationstatuschange
-    getter permissionStatus
     getter stream
-    getter type
     method constructor
     method setConstraints
     setter oncancel
     setter onerror
-    setter onpromptaction
-    setter onpromptdismiss
     setter onstream
-    setter onvalidationstatuschange
-    setter type
 interface HTMLVideoElement : HTMLMediaElement
     attribute @@toStringTag
     getter disablePictureInPicture
@@ -5846,7 +5838,6 @@ interface Image
     getter align
     getter alt
     getter border
-    getter browsingTopics
     getter complete
     getter crossOrigin
     getter currentSrc
@@ -5875,7 +5866,6 @@ interface Image
     setter align
     setter alt
     setter border
-    setter browsingTopics
     setter crossOrigin
     setter decoding
     setter fetchPriority
@@ -7061,6 +7051,7 @@ interface Navigator
     getter devicePosture
     getter doNotTrack
     getter geolocation
+    getter globalPrivacyControl
     getter gpu
     getter hardwareConcurrency
     getter hid
@@ -10554,6 +10545,10 @@ interface Text : CharacterData
     getter assignedSlot
     getter wholeText
     method constructor
+    method convertPointFromNode
+    method convertQuadFromNode
+    method convertRectFromNode
+    method getBoxQuads
     method splitText
 interface TextCluster
     attribute @@toStringTag

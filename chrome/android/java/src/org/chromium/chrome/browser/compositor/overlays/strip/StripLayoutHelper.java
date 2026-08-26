@@ -413,19 +413,6 @@ public class StripLayoutHelper
                                     /* animate= */ true, /* deferAnimations= */ true);
                     assumeNonNull(pinnedAnimations);
 
-                    // Center tab favicon if pinned.
-                    float targetFaviconOffsetX = calculateTabFaviconOffsetX(stripTab);
-                    if (stripTab.getPinnedTabFaviconOffsetX() != targetFaviconOffsetX) {
-                        pinnedAnimations.add(
-                                CompositorAnimator.ofFloatProperty(
-                                        mUpdateHost.getAnimationHandler(),
-                                        stripTab,
-                                        StripLayoutTab.PINNED_TAB_FAVICON_OFFSET,
-                                        stripTab.getPinnedTabFaviconOffsetX(),
-                                        targetFaviconOffsetX,
-                                        ANIM_TAB_RESIZE_MS));
-                    }
-
                     // Animate the moving tab to the pinned boundary. Normally we animate from drawX
                     // to idealX, but if the first unpinned slot is off-screen, a newly unpinned tab
                     // would “fly” toward the strip start. To make it appear to fly into the
@@ -713,8 +700,8 @@ public class StripLayoutHelper
     private final List<QueuedIph> mQueuedIphList = new ArrayList<>();
 
     private final StripLayoutTabDelegate mTabDelegate;
-    private @Nullable StripTabUnderlineManager mStripTabUnderlineManager;
-    private StripTabUnderlineManager.@Nullable Observer mTabUnderlineObserver;
+    private @Nullable TabUnderlineManager mTabUnderlineManager;
+    private TabUnderlineManager.@Nullable Observer mTabUnderlineObserver;
 
     // Pinned tabs.
     private boolean mIsPinnedOnlyStripRecorded;
@@ -877,12 +864,12 @@ public class StripLayoutHelper
         if (!mIncognito
                 && (GlicEnabling.isEnabledByFlags()
                         || ChromeFeatureList.sContextualTasks.isEnabled())) {
-            mStripTabUnderlineManager = new StripTabUnderlineManager(windowAndroid);
+            mTabUnderlineManager = new TabUnderlineManager(windowAndroid);
             mTabUnderlineObserver =
-                    new StripTabUnderlineManager.Observer() {
+                    new TabUnderlineManager.Observer() {
                         @Override
-                        public void onIndicatorStateChanged(int tabId, boolean isUnderlined) {
-                            setTabUnderline(tabId, isUnderlined);
+                        public void onIndicatorStateChanged(int tabId, boolean isActive) {
+                            setTabUnderline(tabId, isActive);
                         }
 
                         @Override
@@ -890,7 +877,7 @@ public class StripLayoutHelper
                             resetTabUnderlineAnimationCycle(tabId);
                         }
                     };
-            mStripTabUnderlineManager.addObserver(mTabUnderlineObserver);
+            mTabUnderlineManager.addObserver(mTabUnderlineObserver);
         }
 
         mIsFirstLayoutPass = true;
@@ -936,13 +923,13 @@ public class StripLayoutHelper
             mTabStripContextMenuCoordinator.destroy();
             mTabStripContextMenuCoordinator = null;
         }
-        if (mStripTabUnderlineManager != null) {
+        if (mTabUnderlineManager != null) {
             if (mTabUnderlineObserver != null) {
-                mStripTabUnderlineManager.removeObserver(mTabUnderlineObserver);
+                mTabUnderlineManager.removeObserver(mTabUnderlineObserver);
                 mTabUnderlineObserver = null;
             }
-            mStripTabUnderlineManager.destroy();
-            mStripTabUnderlineManager = null;
+            mTabUnderlineManager.destroy();
+            mTabUnderlineManager = null;
         }
     }
 
@@ -950,7 +937,7 @@ public class StripLayoutHelper
             Context context, boolean incognito, Resources res) {
         float width =
                 ChromeFeatureList.sTabSearchForDesktop.isEnabled()
-                        ? BUTTON_TOUCH_TARGET_SIZE_DP
+                        ? BUTTON_BACKGROUND_SIZE_DP
                         : 0.f;
         TintedCompositorButton button =
                 new TintedCompositorButton(
@@ -1258,7 +1245,12 @@ public class StripLayoutHelper
 
     private void updateMargins(boolean recalculateTabWidth) {
         // Reserve space for tab search button if it is visible at the start of the strip.
-        mReservedStartMargin = mTabSearchButton.isVisible() ? mTabSearchButton.getWidth() : 0.f;
+        // Subtracting 10dp from BUTTON_TOUCH_TARGET_SIZE_DP guarantees a touch target gap of
+        // exactly 6dp between the button and the first tab on both desktop and non-desktop:
+        // (BUTTON_TOUCH_TARGET_SIZE_DP - 10dp) + FOLIO_FOOT_LENGTH_DP (16dp tab start touch target
+        // inset) - BUTTON_TOUCH_TARGET_SIZE_DP = 6dp.
+        mReservedStartMargin =
+                mTabSearchButton.isVisible() ? BUTTON_TOUCH_TARGET_SIZE_DP - 10.f : 0.f;
         if (LocalizationUtils.isLayoutRtl()) {
             mLeftMargin = mReservedEndMargin + mLeftPadding;
             mRightMargin = mReservedStartMargin + mRightPadding;
@@ -1526,12 +1518,7 @@ public class StripLayoutHelper
                 if (stripTab.getIsPlaceholder()) numLeftoverPlaceholders++;
                 Tab tab = mModel.getTabById(stripTab.getTabId());
                 if (tab != null) {
-                    boolean isPinned = tab.getIsPinned();
-                    if (isPinned) {
-                        stripTab.setIsPinned(true);
-                        float targetFaviconOffsetX = calculateTabFaviconOffsetX(stripTab);
-                        stripTab.setPinnedTabFaviconOffsetX(targetFaviconOffsetX);
-                    }
+                    stripTab.setIsPinned(tab.getIsPinned());
                 }
             }
             mPinnedTabsBoundarySupplier.set(getPinnedTabsBoundary());
@@ -1563,11 +1550,11 @@ public class StripLayoutHelper
     }
 
     private void registerTabsWithUnderlineManager() {
-        if (mStripTabUnderlineManager == null || mModel == null) return;
+        if (mTabUnderlineManager == null || mModel == null) return;
         for (int i = 0; i < mModel.getCount(); i++) {
             Tab tab = mModel.getTabAt(i);
             if (tab != null) {
-                mStripTabUnderlineManager.registerTab(tab);
+                mTabUnderlineManager.registerTab(tab);
             }
         }
     }
@@ -1949,8 +1936,8 @@ public class StripLayoutHelper
             if (stripTab != null && !stripTab.isDying()) {
                 mClosingTabs.add(stripTab);
             }
-            if (mStripTabUnderlineManager != null) {
-                mStripTabUnderlineManager.unregisterTab(tab.getId());
+            if (mTabUnderlineManager != null) {
+                mTabUnderlineManager.unregisterTab(tab.getId());
             }
         }
         if (!mClosingTabs.isEmpty()) {
@@ -2009,8 +1996,8 @@ public class StripLayoutHelper
         Tab tab = getTabById(id);
         boolean collapsed = false;
         if (tab != null) {
-            if (mStripTabUnderlineManager != null) {
-                mStripTabUnderlineManager.registerTab(tab);
+            if (mTabUnderlineManager != null) {
+                mTabUnderlineManager.registerTab(tab);
             }
             Token tabGroupId = tab.getTabGroupId();
             updateGroupTextAndSharedState(tabGroupId);
@@ -6021,20 +6008,12 @@ public class StripLayoutHelper
         return null;
     }
 
-    private float calculateTabFaviconOffsetX(StripLayoutTab stripTab) {
-        if (!stripTab.getIsPinned()) {
-            return 0.f;
-        }
-        return ((getCachedTabWidth(true) - stripTab.getFaviconSize()) / 2.f
-                - stripTab.getFaviconPadding());
-    }
-
     void startDragAndDropTabForTesting(StripLayoutTab clickedTab, PointF dragStartPointF) {
         startReorderMode(
                 dragStartPointF.x, dragStartPointF.y, clickedTab, ReorderType.START_DRAG_DROP);
     }
 
-    @Nullable StripTabUnderlineManager getStripTabUnderlineManagerForTesting() {
-        return mStripTabUnderlineManager;
+    @Nullable TabUnderlineManager getTabUnderlineManagerForTesting() {
+        return mTabUnderlineManager;
     }
 }

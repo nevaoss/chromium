@@ -57,4 +57,23 @@ public class NewTabPageUtils {
     public static @PaddingStyle int getPaddingStyleForAurora() {
         return ChromeFeatureList.sNtpAuroraPaddingStyle.getValue();
     }
+
+    /** Returns the space in pixels for NTP sections based on the Aurora padding style. */
+    public static int getNtpSectionPaddingPx(Resources resources) {
+        if (NewTabPageUtils.getPaddingStyleForAurora() == PaddingStyle.DEFAULT) {
+            return resources.getDimensionPixelSize(R.dimen.ntp_section_top_margin);
+        } else {
+            return resources.getDimensionPixelSize(R.dimen.ntp_section_top_margin_small);
+        }
+    }
+
+    /** Returns whether the Aurora layout is enabled. */
+    public static boolean isNtpAuroraEnabled() {
+        return ChromeFeatureList.sNtpAurora.isEnabled();
+    }
+
+    /** Returns whether the Aurora layout with updated button colors is enabled. */
+    public static boolean isNtpAuroraButtonColorEnabled() {
+        return isNtpAuroraEnabled() && ChromeFeatureList.sNtpAuroraChangeButtonColor.getValue();
+    }
 }

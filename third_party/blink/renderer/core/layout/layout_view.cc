@@ -68,6 +68,7 @@
 #include "third_party/blink/renderer/core/paint/view_painter.h"
 #include "third_party/blink/renderer/core/svg/svg_document_extensions.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition.h"
+#include "third_party/blink/renderer/core/view_transition/view_transition_skip_reason.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition_utils.h"
 #include "third_party/blink/renderer/platform/graphics/paint/paint_controller.h"
 #include "third_party/blink/renderer/platform/instrumentation/histogram.h"
@@ -320,7 +321,7 @@ void LayoutView::MapLocalToAncestor(const LayoutBoxModelObject* ancestor,
                                     TransformState& transform_state,
                                     MapCoordinatesFlags mode) const {
   NOT_DESTROYED();
-  if (!ancestor && !(mode & kIgnoreTransforms) &&
+  if (!ancestor && !mode.Has(MapCoordinatesMode::kIgnoreTransforms) &&
       ShouldUseTransformFromContainer(nullptr)) {
     gfx::Transform t;
     GetTransformFromContainer(nullptr, PhysicalOffset(), t);
@@ -330,7 +331,7 @@ void LayoutView::MapLocalToAncestor(const LayoutBoxModelObject* ancestor,
   if (ancestor == this)
     return;
 
-  if (mode & kTraverseDocumentBoundaries) {
+  if (mode.Has(MapCoordinatesMode::kTraverseDocumentBoundaries)) {
     auto* parent_doc_layout_object = GetFrame()->OwnerLayoutObject();
     if (parent_doc_layout_object) {
       transform_state.Move(
@@ -339,10 +340,11 @@ void LayoutView::MapLocalToAncestor(const LayoutBoxModelObject* ancestor,
                                                    mode);
     } else {
       DCHECK(!ancestor);
-      if (mode &
-          (kApplyRemoteMainFrameTransform | kApplyRemoteViewportTransform)) {
+      if (mode.HasAny({MapCoordinatesMode::kApplyRemoteMainFrameTransform,
+                       MapCoordinatesMode::kApplyRemoteViewportTransform})) {
         GetFrameView()->MapLocalToRemoteMainFrame(
-            transform_state, mode & kApplyRemoteViewportTransform);
+            transform_state,
+            mode.Has(MapCoordinatesMode::kApplyRemoteViewportTransform));
       }
     }
   }
@@ -352,7 +354,8 @@ void LayoutView::MapAncestorToLocal(const LayoutBoxModelObject* ancestor,
                                     TransformState& transform_state,
                                     MapCoordinatesFlags mode) const {
   NOT_DESTROYED();
-  if (this != ancestor && (mode & kTraverseDocumentBoundaries)) {
+  if (this != ancestor &&
+      mode.Has(MapCoordinatesMode::kTraverseDocumentBoundaries)) {
     if (auto* parent_doc_layout_object = GetFrame()->OwnerLayoutObject()) {
       // A LayoutView is a containing block for fixed-position elements, so
       // don't carry this state across frames.
@@ -365,11 +368,12 @@ void LayoutView::MapAncestorToLocal(const LayoutBoxModelObject* ancestor,
       DCHECK(!ancestor);
       // Note that MapLocalToRemoteMainFrame is correct here because
       // transform_state will be set to kUnapplyInverseTransformDirection.
-      if ((mode &
-           (kApplyRemoteMainFrameTransform | kApplyRemoteViewportTransform)) &&
+      if (mode.HasAny({MapCoordinatesMode::kApplyRemoteMainFrameTransform,
+                       MapCoordinatesMode::kApplyRemoteViewportTransform}) &&
           GetFrame()->IsLocalRoot()) {
         GetFrameView()->MapLocalToRemoteMainFrame(
-            transform_state, mode & kApplyRemoteViewportTransform);
+            transform_state,
+            mode.Has(MapCoordinatesMode::kApplyRemoteViewportTransform));
       }
     }
   } else {
@@ -432,7 +436,7 @@ bool LayoutView::MapToVisualRectInAncestorSpaceInternal(
     return true;
 
   const bool apply_viewport_clip =
-      !(visual_rect_flags & VisualRectFlags::kSkipAncestorAndViewportClips);
+      !visual_rect_flags.Has(VisualRectFlag::kSkipAncestorAndViewportClips);
 
   Element* owner = GetDocument().LocalOwner();
   if (!owner) {
@@ -440,9 +444,9 @@ bool LayoutView::MapToVisualRectInAncestorSpaceInternal(
         transform_state.LastPlanarQuad().BoundingBox());
     const bool apply_overflow_clip =
         apply_viewport_clip &&
-        !(visual_rect_flags & kDontApplyMainFrameOverflowClip);
+        !visual_rect_flags.Has(VisualRectFlag::kDontApplyMainFrameOverflowClip);
     const bool apply_viewport_transform =
-        visual_rect_flags & kVisualRectApplyRemoteViewportTransform;
+        visual_rect_flags.Has(VisualRectFlag::kApplyRemoteViewportTransform);
 
     // When mapping into the viewport space (ancestor == nullptr) for the
     // outermost main frame, apply the local visual viewport transform (page
@@ -472,7 +476,7 @@ bool LayoutView::MapToVisualRectInAncestorSpaceInternal(
       // apply LayoutView::ViewRect() clipping for ancestor == nullptr.
       if (apply_overflow_clip) {
         PhysicalRect view_rectangle = ViewRect();
-        if (visual_rect_flags & kEdgeInclusive) {
+        if (visual_rect_flags.Has(VisualRectFlag::kEdgeInclusive)) {
           if (!rect.InclusiveIntersect(view_rectangle)) {
             transform_state.SetQuad(gfx::QuadF(gfx::RectF(rect)));
             return false;
@@ -495,7 +499,7 @@ bool LayoutView::MapToVisualRectInAncestorSpaceInternal(
         transform_state.LastPlanarQuad().BoundingBox());
     PhysicalRect view_rectangle = ViewRect();
     if (apply_viewport_clip) {
-      if (visual_rect_flags & kEdgeInclusive) {
+      if (visual_rect_flags.Has(VisualRectFlag::kEdgeInclusive)) {
         if (!rect.InclusiveIntersect(view_rectangle)) {
           transform_state.SetQuad(gfx::QuadF(gfx::RectF(rect)));
           return false;
@@ -530,7 +534,8 @@ PhysicalOffset LayoutView::OffsetForFixedPosition() const {
 
 void LayoutView::QuadsInAncestorInternal(Vector<gfx::QuadF>& quads,
                                          const LayoutBoxModelObject* ancestor,
-                                         MapCoordinatesFlags mode) const {
+                                         MapCoordinatesFlags mode,
+                                         BoxQuadType) const {
   NOT_DESTROYED();
   quads.push_back(LocalRectToAncestorQuad(
       PhysicalRect(PhysicalOffset(), GetScrollableArea()->Size()), ancestor,
@@ -581,7 +586,9 @@ PhysicalRect LayoutView::ViewRect() const {
         // layout is deferred during a resize or rotation, causing a temporary
         // mismatch. We need skip the transition which would have happened later
         // anyway.
-        transition->SkipTransitionSoon();
+        transition->SkipTransitionSoon(
+            ViewTransition::PromiseResponse::kRejectInvalidState,
+            ViewTransitionSkipReason::kSnapshotRootChangedSize);
         return PhysicalRect(PhysicalOffset(),
                             PhysicalSize(frame_view_->Size()));
       }
@@ -1048,9 +1055,11 @@ void LayoutView::CacheScrollDimensions() {
 void LayoutView::StyleDidChange(
     StyleDifference diff,
     const ComputedStyle* old_style,
+    const ComputedStyle& new_style,
     const StyleChangeContext& style_change_context) {
   NOT_DESTROYED();
-  LayoutBlockFlow::StyleDidChange(diff, old_style, style_change_context);
+  LayoutBlockFlow::StyleDidChange(diff, old_style, new_style,
+                                  style_change_context);
 
   LocalFrame& frame = GetFrameView()->GetFrame();
   VisualViewport& visual_viewport = frame.GetPage()->GetVisualViewport();

@@ -21,6 +21,7 @@
 #include "chrome/browser/glic/public/glic_passkeys.h"
 #include "components/autofill/core/browser/integrators/actor/actor_form_filling_types.h"
 #include "components/tabs/public/tab_interface.h"
+#include "content/public/browser/visibility.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 
 class Profile;
@@ -193,6 +194,11 @@ class Host : public GlicSharingManagerProvider {
     // An override for the First Run Experience.
     mojom::FreOverride fre_override = mojom::FreOverride::kUnspecified;
   };
+
+  // Sets whether the host is visible in an embedder. This signal is debounced
+  // on hide, so it will receive a slightly delayed off signal.
+  void SetDebouncedVisibility(bool is_visible);
+
   void PanelWillOpen(mojom::InvocationSource invocation_source,
                      PanelWillOpenOptions options);
 
@@ -205,8 +211,12 @@ class Host : public GlicSharingManagerProvider {
       glic::mojom::ConversationInfoPtr info,
       mojom::WebClientHandler::SwitchConversationCallback callback);
 
-  // Delete the owned web contents and prepare for destruction.
-  void Shutdown();
+  // Wakes up the host. When awake, the host will maintain a web client.
+  void Awaken();
+  // Frees resources, no longer maintaining the web client.
+  void Hibernate();
+  // Returns true if the host should maintain the web client.
+  bool IsAwake() const;
 
   // Request panel closing.
   void Close();
@@ -215,9 +225,6 @@ class Host : public GlicSharingManagerProvider {
 
   // Called when the WebUI web contents has navigated.
   void OnWebContentsNavigated();
-
-  // Creates the web contents that will own the Glic WebUI.
-  void CreateContents();
 
   // Signals the glic WebUI that the glic window will be shown soon.
   void NotifyWindowIntentToShow();
@@ -251,8 +258,9 @@ class Host : public GlicSharingManagerProvider {
   // Returns the WebUI web contents. May be null.
   content::WebContents* webui_contents() const;
 
-  // Sets the visibility of the WebUI web contents.
-  void SetWebContentsVisibility(content::Visibility visibility);
+  // Sets the visibility override of the WebUI web contents.
+  void SetWebContentsVisibilityOverride(
+      std::optional<content::Visibility> visibility_override);
 
   // Returns the WebClient web contents. May be null.
   content::WebContents* web_client_contents() const;
@@ -452,6 +460,8 @@ class Host : public GlicSharingManagerProvider {
   // after the panel is closed.
   std::optional<mojom::InvocationSource> invocation_source_;
   bool panel_open_ = false;
+  // Whether the host is (or was recently) showing on an embedder.
+  bool debounced_visibility_ = false;
   bool is_manually_resizing_ = false;
   std::optional<PanelWillOpenOptions> pending_panel_open_options_;
   base::flat_map<mojom::AdditionalContextSource, mojom::AdditionalContextPtr>
@@ -476,6 +486,13 @@ class Host : public GlicSharingManagerProvider {
 
   mojom::MicrophoneStatus microphone_status_ =
       mojom::MicrophoneStatus::kUnknown;
+
+  content::Visibility GetExpectedVisibility() const;
+  void UpdateVisibility();
+
+  std::optional<content::Visibility> visibility_override_;
+
+  content::Visibility web_contents_visibility_ = content::Visibility::HIDDEN;
 
   base::WeakPtrFactory<Host> weak_ptr_factory_{this};
 };

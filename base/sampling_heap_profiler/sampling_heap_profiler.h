@@ -25,6 +25,8 @@
 
 namespace base {
 
+class SamplingHeapChurnProfiler;
+
 // The class implements sampling profiling of native memory heap.
 // It uses PoissonAllocationSampler to aggregate the heap allocations and
 // record samples.
@@ -35,15 +37,19 @@ class BASE_EXPORT SamplingHeapProfiler
  public:
   class BASE_EXPORT Sample {
    public:
-    Sample(const Sample&);
+    explicit Sample(size_t size = 0, size_t total = 0);
     ~Sample();
+
+    Sample(const Sample&);
+    Sample& operator=(const Sample&);
 
     // Allocation size.
     size_t size;
     // Total size attributed to the sample.
     size_t total;
     // Type of the allocator.
-    base::allocator::dispatcher::AllocationSubsystem allocator;
+    base::allocator::dispatcher::AllocationSubsystem allocator =
+        base::allocator::dispatcher::AllocationSubsystem::kPartitionAllocator;
     // Context as provided by the allocation hook.
     const char* context = nullptr;
     // Name of the thread that made the sampled allocation.
@@ -51,14 +57,6 @@ class BASE_EXPORT SamplingHeapProfiler
     // Call stack of PC addresses responsible for the allocation.
     // RAW_PTR_EXCLUSION: executable addresses are never in PA partitions
     RAW_PTR_EXCLUSION std::vector<const void*> stack;
-
-    // Public for testing.
-    Sample(size_t size, size_t total, uint32_t ordinal);
-
-   private:
-    friend class SamplingHeapProfiler;
-
-    uint32_t ordinal;
   };
 
   enum class StackUnwinder {
@@ -110,6 +108,8 @@ class BASE_EXPORT SamplingHeapProfiler
   // frame is at the front of the returned span.
   span<const void*> CaptureStackTrace(span<const void*> frames);
 
+  SamplingHeapChurnProfiler& churn_profiler() { return *churn_profiler_; }
+
   static void Init();
   static SamplingHeapProfiler* Get();
 
@@ -144,8 +144,13 @@ class BASE_EXPORT SamplingHeapProfiler
   // Mutex to access |samples_| and |strings_|.
   Lock mutex_;
 
+  struct OrderedSample {
+    Sample sample;
+    uint32_t ordinal = 0;
+  };
+
   // Samples of the currently live allocations.
-  std::unordered_map<void*, Sample> samples_ GUARDED_BY(mutex_);
+  std::unordered_map<void*, OrderedSample> samples_ GUARDED_BY(mutex_);
 
   // Contains pointers to static sample context strings that are never deleted.
   std::unordered_set<const char*> strings_ GUARDED_BY(mutex_);
@@ -172,6 +177,8 @@ class BASE_EXPORT SamplingHeapProfiler
 
   // Which unwinder to use.
   std::atomic<StackUnwinder> unwinder_{StackUnwinder::kDefault};
+
+  std::unique_ptr<SamplingHeapChurnProfiler> churn_profiler_;
 
   friend class NoDestructor<SamplingHeapProfiler>;
   friend class SamplingHeapProfilerTest;

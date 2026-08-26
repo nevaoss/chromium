@@ -22,6 +22,7 @@
 #include "chrome/browser/profiles/keep_alive/scoped_profile_keep_alive.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/ui/browser.h"
+#include "chrome/browser/ui/browser_active_state_manager/browser_active_state_manager.h"
 #include "chrome/browser/ui/browser_window/public/browser_collection_observer.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
@@ -90,7 +91,7 @@ namespace {
       const interval = setInterval(() => {
         const link = document.querySelector('managed-user-profile-notice-app')
                          ?.shadowRoot?.querySelector('signals-disclaimer')
-                         ?.shadowRoot?.querySelector('.subtitle a');
+                         ?.shadowRoot?.querySelector('#learnMoreLink');
         if (link && !link.hidden) {
           clearInterval(interval);
           link.click();
@@ -450,8 +451,8 @@ class DeviceSignalsDisclaimerStartupInteractiveTest
   }
 
   void SimulateBrowserFocus(Browser* browser) {
-    browser->DidBecomeInactive();
-    browser->DidBecomeActive();
+    BrowserActiveStateManager::From(browser)->DidBecomeInactive();
+    BrowserActiveStateManager::From(browser)->DidBecomeActive();
   }
 
   std::unique_ptr<ScopedProfileKeepAlive> profile_keep_alive_;
@@ -732,7 +733,7 @@ IN_PROC_BROWSER_TEST_F(DeviceSignalsDisclaimerStartupInteractiveTest,
       ProfileBrowserCollection::GetForProfile(browser()->GetProfile());
   EXPECT_EQ(browser_collection->GetSize(), 2u);
 
-  popup_browser->DidBecomeInactive();
+  BrowserActiveStateManager::From(popup_browser)->DidBecomeInactive();
   SimulateBrowserFocus(browser());
 
   // Click `Learn More` again.

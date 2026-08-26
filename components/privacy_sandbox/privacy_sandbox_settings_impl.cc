@@ -20,8 +20,6 @@
 #include "base/strings/string_util.h"
 #include "base/time/time.h"
 #include "base/values.h"
-#include "components/browsing_topics/common/common_types.h"
-#include "components/browsing_topics/common/semantic_tree.h"
 #include "components/content_settings/core/browser/cookie_settings.h"
 #include "components/content_settings/core/browser/host_content_settings_map.h"
 #include "components/content_settings/core/common/pref_names.h"
@@ -183,21 +181,7 @@ void PrivacySandboxSettingsImpl::Shutdown() {
 
 PrivacySandboxSettingsImpl::Status
 PrivacySandboxSettingsImpl::GetM1TopicAllowedStatus() const {
-  auto control_status = GetM1PrivacySandboxApiEnabledStatus(
-      prefs::kPrivacySandboxM1TopicsEnabled);
-  auto has_appropriate_consent = delegate_->HasAppropriateTopicsConsent();
-
-  // If `control_status` indicates that Topics is allowed, then
-  // `has_appropriate_consent` should be true, as there is no pathway for a user
-  // to enable Topics controls without also granting consent. The inverse does
-  // not hold, as an extension or policy may disable Topics, without necessarily
-  // revoking user consent.
-  if (control_status == Status::kAllowed && !has_appropriate_consent) {
-    // This status will be recorded via UMA, and is indicative of an error.
-    return Status::kMismatchedConsent;
-  }
-
-  return control_status;
+  return Status::kApisDisabled;
 }
 
 bool PrivacySandboxSettingsImpl::IsTopicsAllowed() const {
@@ -230,28 +214,6 @@ bool PrivacySandboxSettingsImpl::IsTopicsAllowedForContext(
   }
   JoinHistogram(kIsTopicsAllowedForContextHistogram, status);
   return IsAllowed(status);
-}
-
-bool PrivacySandboxSettingsImpl::IsTopicAllowed(const CanonicalTopic& topic) {
-  const auto& blocked_topics =
-      pref_service_->GetList(prefs::kPrivacySandboxBlockedTopics);
-
-  std::vector<browsing_topics::Topic> ancestor_topics =
-      browsing_topics::SemanticTree().GetAncestorTopics(topic.topic_id());
-  for (const base::Value& item : blocked_topics) {
-    auto blocked_topic =
-        CanonicalTopic::FromValue(*item.GetDict().Find(kBlockedTopicsTopicKey));
-    if (!blocked_topic) {
-      continue;
-    }
-
-    if ((topic.topic_id() == blocked_topic->topic_id()) ||
-        (std::ranges::contains(ancestor_topics, blocked_topic->topic_id()))) {
-      return false;
-    }
-  }
-
-  return true;
 }
 
 void PrivacySandboxSettingsImpl::SetTopicAllowed(const CanonicalTopic& topic,
@@ -645,14 +607,6 @@ bool PrivacySandboxSettingsImpl::IsPrivacySandboxCurrentlyUnrestricted() const {
   return delegate_->IsPrivacySandboxCurrentlyUnrestricted();
 }
 
-bool PrivacySandboxSettingsImpl::IsSubjectToM1NoticeRestricted() const {
-  return delegate_->IsSubjectToM1NoticeRestricted();
-}
-
-bool PrivacySandboxSettingsImpl::IsRestrictedNoticeEnabled() const {
-  return delegate_->IsRestrictedNoticeEnabled();
-}
-
 void PrivacySandboxSettingsImpl::OnCookiesCleared() {
   SetTopicsDataAccessibleFromNow();
 }
@@ -717,23 +671,7 @@ PrivacySandboxSettingsImpl::GetPrivacySandboxAllowedStatus(
 PrivacySandboxSettingsImpl::Status
 PrivacySandboxSettingsImpl::GetM1PrivacySandboxApiEnabledStatus(
     const std::string& pref_name) const {
-  DCHECK(pref_name == prefs::kPrivacySandboxM1TopicsEnabled ||
-         pref_name == prefs::kPrivacySandboxM1FledgeEnabled ||
-         pref_name == prefs::kPrivacySandboxM1AdMeasurementEnabled);
-
-  bool should_ignore_restriction =
-      pref_name == prefs::kPrivacySandboxM1AdMeasurementEnabled &&
-      IsRestrictedNoticeEnabled();
-  PrivacySandboxSettingsImpl::Status status =
-      GetPrivacySandboxAllowedStatus(should_ignore_restriction);
-  if (!IsAllowed(status)) {
-    return status;
-  }
-
-
-  status = (pref_service_->GetBoolean(pref_name)) ? Status::kAllowed
-                                                  : Status::kApisDisabled;
-  return status;
+  return Status::kApisDisabled;
 }
 
 bool PrivacySandboxSettingsImpl::AreRelatedWebsiteSetsEnabled() const {

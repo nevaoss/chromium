@@ -21,6 +21,7 @@ import android.view.ViewStub;
 
 import androidx.annotation.VisibleForTesting;
 import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import org.chromium.base.Callback;
@@ -88,6 +89,7 @@ import org.chromium.components.browser_ui.desktop_windowing.DesktopWindowStateMa
 import org.chromium.components.browser_ui.desktop_windowing.DesktopWindowStateManager.AppHeaderObserver;
 import org.chromium.components.browser_ui.util.motion.MotionEventInfo;
 import org.chromium.components.browser_ui.widget.gesture.BackPressHandler;
+import org.chromium.ui.base.ActivityResultTracker;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.dragdrop.DragAndDropDelegate;
 import org.chromium.ui.dragdrop.DragAndDropDelegateImpl;
@@ -115,7 +117,7 @@ public class VerticalTabListCoordinator {
     private final TabListFaviconProvider mTabListFaviconProvider;
     private final TabListModel mModelList;
     private final TabListMediator mMediator;
-    private final TabListRecyclerView mRecyclerView;
+    private final VerticalTabListRecyclerView mRecyclerView;
     private final TabListModel mPinnedTabsModelList;
     private final StaticPinnedTabsMediator mPinnedTabsMediator;
     private final TabListRecyclerView mPinnedTabsRecyclerView;
@@ -123,6 +125,7 @@ public class VerticalTabListCoordinator {
     private final GridLayoutManager mPinnedLayoutManager;
     private final TabModelSelector mTabModelSelector;
     private final WindowAndroid mWindowAndroid;
+    private final ActivityResultTracker mActivityResultTracker;
     private final MultiInstanceManager mMultiInstanceManager;
     private final SnackbarManager mSnackbarManager;
     private final TabModelSelectorObserver mTabModelSelectorObserver;
@@ -160,6 +163,37 @@ public class VerticalTabListCoordinator {
                     public void run(
                             View view, int tabId, @Nullable MotionEventInfo triggeringMotion) {
                         toggleTabGroupExpansion(tabId);
+
+                        int headerIndex = mMediator.getGroupHeaderIndexForTabId(tabId);
+                        if (headerIndex == TabModel.INVALID_TAB_INDEX) {
+                            return;
+                        }
+                        PropertyModel headerModel = mModelList.get(headerIndex).model;
+                        if (headerModel.get(TabProperties.IS_COLLAPSED)) {
+                            return;
+                        }
+                        // Scroll the header to the top only if the last child is off-screen.
+                        // This brings child tabs into view while keeping the header anchored at the
+                        // top for context.
+                        Token groupId = headerModel.get(TabProperties.TAB_GROUP_HEADER_ID);
+                        int childCount =
+                                mTabModelSelector.getCurrentModel().getTabCountForGroup(groupId);
+                        if (childCount > 0) {
+                            int lastChildIndex = headerIndex + childCount;
+                            mRecyclerView.post(
+                                    () -> {
+                                        RecyclerView.LayoutManager layoutManager =
+                                                mRecyclerView.getLayoutManager();
+                                        if (layoutManager instanceof LinearLayoutManager lm) {
+                                            int lastVisible =
+                                                    lm.findLastCompletelyVisibleItemPosition();
+                                            if (lastChildIndex > lastVisible) {
+                                                lm.scrollToPositionWithOffset(
+                                                        headerIndex, /* offset= */ 0);
+                                            }
+                                        }
+                                    });
+                        }
                     }
 
                     @Override
@@ -212,6 +246,7 @@ public class VerticalTabListCoordinator {
             Profile profile,
             VerticalTabsActionDelegate verticalTabsActionDelegate,
             WindowAndroid windowAndroid,
+            ActivityResultTracker activityResultTracker,
             MultiInstanceManager multiInstanceManager,
             SnackbarManager snackbarManager,
             @Nullable DesktopWindowStateManager desktopWindowStateManager,
@@ -227,6 +262,7 @@ public class VerticalTabListCoordinator {
         mVerticalTabsActiveSupplier = verticalTabsActiveSupplier;
         mTabModelSelector = tabModelSelector;
         mWindowAndroid = windowAndroid;
+        mActivityResultTracker = activityResultTracker;
         mMultiInstanceManager = multiInstanceManager;
         mSnackbarManager = snackbarManager;
         mShareDelegateSupplier = shareDelegateSupplier;
@@ -306,9 +342,9 @@ public class VerticalTabListCoordinator {
                         nullableSupplier,
                         this::isAnyContextMenuShowing);
 
-        TabListRecyclerView recyclerView = mContainerView.getRecyclerView();
+        VerticalTabListRecyclerView recyclerView = mContainerView.getRecyclerView();
         mRecyclerView = recyclerView;
-        mContainerView.initRecyclerView(adapter);
+        mRecyclerView.initialize(adapter);
         mOnScrollListener =
                 new RecyclerView.OnScrollListener() {
                     @Override
@@ -620,6 +656,15 @@ public class VerticalTabListCoordinator {
                     }
 
                     @Override
+                    public void didChangePinState(Tab tab) {
+                        // Scroll the newly unpinned active tab into view.
+                        if (!tab.getIsPinned()
+                                && tab.getId() == mTabModelSelector.getCurrentTabId()) {
+                            mRecyclerView.post(() -> scrollActiveTabIntoView());
+                        }
+                    }
+
+                    @Override
                     public void willCloseTab(Tab tab, boolean didCloseAlone) {
                         mTabHoverCardController.hideHoverCard();
                     }
@@ -749,7 +794,7 @@ public class VerticalTabListCoordinator {
         int uiIndex = getIndexForTabScroll(activeTabId);
 
         if (uiIndex != TabModel.INVALID_TAB_INDEX) {
-            mContainerView.scrollToPositionWithOffset(uiIndex);
+            mRecyclerView.scrollToPositionWithOffset(uiIndex);
         }
     }
 
@@ -1232,7 +1277,7 @@ public class VerticalTabListCoordinator {
                                 // TODO(crbug.com/521982129): Implement tab reordering for a11y.
                             },
                             mSnackbarManager,
-                            /* activityResultTracker= */ null,
+                            mActivityResultTracker,
                             /* modalDialogManager= */ mWindowAndroid.getModalDialogManager(),
                             TabClosingSource.VERTICAL_TAB_STRIP,
                             mCanActivateTabLayoutToggleMenuSupplier,

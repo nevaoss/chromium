@@ -58,11 +58,6 @@
 #include "chromeos/ash/services/multidevice_setup/public/cpp/first_run_field_trial.h"
 #endif
 
-#if BUILDFLAG(IS_LINUX)
-#include "base/nix/xdg_util.h"
-#include "ui/base/ui_base_features.h"
-#endif  // BUILDFLAG(IS_LINUX)
-
 ChromeBrowserFieldTrials::ChromeBrowserFieldTrials(PrefService* local_state)
     : local_state_(local_state) {
   DCHECK(local_state_);
@@ -114,23 +109,7 @@ void ChromeBrowserFieldTrials::RegisterFeatureOverrides(
     base::FeatureList* feature_list) {
   variations::FeatureOverrides feature_overrides(*feature_list);
 
-#if BUILDFLAG(IS_LINUX)
-  // On Linux/Desktop platform variants, such as ozone/wayland, some features
-  // might need to be disabled as per OzonePlatform's runtime properties.
-  // OzonePlatform selection and initialization, in turn, depend on Chrome flags
-  // processing, namely 'ozone-platform', so do it here.
-  //
-  // TODO(nickdiego): Move it back to
-  // ChromeMainDelegate::PostEarlyInitialization.
-
-  std::unique_ptr<base::Environment> env = base::Environment::Create();
-  std::string xdg_session_type =
-      env->GetVar(base::nix::kXdgSessionTypeEnvVar).value_or(std::string());
-
-  if (xdg_session_type == "wayland") {
-    feature_overrides.DisableFeature(features::kEyeDropper);
-  }
-#elif BUILDFLAG(IS_ANDROID)  // BUILDFLAG(IS_LINUX)
+#if BUILDFLAG(IS_ANDROID)
 #if BUILDFLAG(IS_DESKTOP_ANDROID)
   // Nota bene: Anything here is expected to be short-lived, unless deemed too
   // risky to launch to non-desktop platforms. New features being added here
@@ -201,6 +180,31 @@ void ChromeBrowserFieldTrials::RegisterFeatureOverrides(
   // Disables the enhanced pip transition and uses the default animation.
   // TODO(crbug.com/440384447): Remove when enhanced pip transition is fixed.
   feature_overrides.DisableFeature(media::kAllowEnhancedPipTransition);
+
+  // Enables Document Picture-in-Picture on desktop Android; disabled on other
+  // Android form factors until system fullscreen support is available
+  // (crbug.com/534397738).
+  feature_overrides.EnableFeature(
+      blink::features::kDocumentPictureInPictureAPI);
+
+  // Enables SVC bitrate layering for NdkVideoEncodeAccelerator on desktop
+  // Android ahead of NDK r30 rollout across the rest of Android.
+  feature_overrides.EnableFeature(
+      media::kNdkVideoEncodeAcceleratorBitrateLayering);
+
+  // Enables native SVC temporal layer retrieval for NdkVideoEncodeAccelerator
+  // on desktop Android ahead of NDK r30 rollout across the rest of Android.
+  feature_overrides.EnableFeature(media::kNdkVideoEncodeAcceleratorNativeSvc);
+
+  // Enables uninterrupted audio on headphone unplug for desktop Android; other
+  // Android form factors retain pause-on-unplug for privacy considerations.
+  feature_overrides.EnableFeature(media::kNoPauseMediaOnHeadphoneUnplug);
+
+  // Pauses media on system sleep on desktop Android as a workaround for missing
+  // lid-close/suspend detection APIs (crbug.com/505630217); not needed on other
+  // form factors.
+  feature_overrides.EnableFeature(media::kPauseMediaOnSystemSleepAndroid);
+
   // Enable by default for desktop platforms, pending a phone / foldable /
   // tablet rollout using the same flag.
   // TODO(crbug.com/442327273): Remove when rollout is complete to all form

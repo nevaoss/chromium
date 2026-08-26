@@ -500,7 +500,7 @@ void BookmarksPageHandler::DropBookmarks(const std::string& folder_id,
                      /*index=*/parent_node->children().size(),
                      /*copy=*/false,
                      chrome::BookmarkReorderDropTarget::kBookmarkSidePanel,
-                     browser_window_interface_->GetBrowserForMigrationOnly());
+                     browser_window_interface_);
 }
 
 void BookmarksPageHandler::ExecuteOpenInNewTabCommand(
@@ -648,9 +648,8 @@ void BookmarksPageHandler::OpenBookmark(
       click_modifiers->middle_button, click_modifiers->alt_key,
       click_modifiers->ctrl_key, click_modifiers->meta_key,
       click_modifiers->shift_key);
-  bookmarks::OpenAllIfAllowed(
-      browser_window_interface_->GetBrowserForMigrationOnly(), {bookmark_node},
-      open_location);
+  bookmarks::OpenAllIfAllowed(browser_window_interface_, {bookmark_node},
+                              open_location);
   if (source == side_panel::mojom::ActionSource::kPriceTracking) {
     return;
   }

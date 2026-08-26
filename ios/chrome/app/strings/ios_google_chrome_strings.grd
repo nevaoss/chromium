@@ -279,9 +279,6 @@
       <message name="IDS_IOS_CREDENTIAL_EXCHANGE_EXPORTER_DISPLAY_NAME" desc="Display name of Google Password Manager used in credential export feature. [iOS only]">
         Google Password Manager
       </message>
-      <message name="IDS_IOS_PASSWORD_SAVED_INFOBAR_MESSAGE" desc="Message displayed on an infobar confirming that the password was saved to the specified account. [iOS only]">
-        To Google Password Manager for <ph name="EMAIL">$1<ex>johndoe@gmail.com</ex></ph>
-      </message>
       <message name="IDS_IOS_CREDENTIAL_EXCHANGE_IMPORT_DISCLAIMER" desc="The bottom text displayed on Credential Exchange import screen to declare that the data will be saved to the user's password manager. [iOS only]">
         Your data will be saved to Google Password Manager for <ph name="USER_EMAIL">$1<ex>elisa.g.beckett@gmail.com</ex></ph>
       </message>
@@ -318,6 +315,36 @@ Try waiting a few minutes before switching accounts. If you switch accounts now,
       </message>
       <message name="IDS_IOS_DEFAULT_BROWSER_NON_MODAL_OMNIBOX_NAVIGATION_DESCRIPTION" desc="Description for the non-modal default browser promotion banner after Omnibox URL copy/paste and navigation.">
         Open Chrome anytime you tap on links in other apps
+      </message>
+      <message name="IDS_IOS_DEFAULT_BROWSER_NON_MODAL_OMNIBOX_NAVIGATION_DESCRIPTION_EXP1" desc="Description for the non-modal default browser promotion banner after Omnibox URL copy/paste and navigation (Copy/Paste Friction experiment) [iOS only].">
+        Set Chrome as default to open links in one tap instead of copying them.
+      </message>
+      <message name="IDS_IOS_DEFAULT_BROWSER_NON_MODAL_OMNIBOX_NAVIGATION_DESCRIPTION_EXP10" desc="Description for the non-modal default browser promotion banner after Omnibox URL copy/paste and navigation (Experience Upgrade experiment) [iOS only].">
+        Make Chrome your default to stop copying links from other apps.
+      </message>
+      <message name="IDS_IOS_DEFAULT_BROWSER_NON_MODAL_OMNIBOX_NAVIGATION_DESCRIPTION_EXP2" desc="Description for the non-modal default browser promotion banner after Omnibox URL copy/paste and navigation (One-Tap Open experiment) [iOS only].">
+        Open links directly in Chrome next time without copying URLs first.
+      </message>
+      <message name="IDS_IOS_DEFAULT_BROWSER_NON_MODAL_OMNIBOX_NAVIGATION_DESCRIPTION_EXP3" desc="Description for the non-modal default browser promotion banner after Omnibox URL copy/paste and navigation (Smooth Transitions experiment) [iOS only].">
+        Make Chrome your default browser to launch links here instantly.
+      </message>
+      <message name="IDS_IOS_DEFAULT_BROWSER_NON_MODAL_OMNIBOX_NAVIGATION_DESCRIPTION_EXP4" desc="Description for the non-modal default browser promotion banner after Omnibox URL copy/paste and navigation (Time Saving experiment) [iOS only].">
+        Avoid the hassle of copying. Launch links straight into Chrome.
+      </message>
+      <message name="IDS_IOS_DEFAULT_BROWSER_NON_MODAL_OMNIBOX_NAVIGATION_DESCRIPTION_EXP5" desc="Description for the non-modal default browser promotion banner after Omnibox URL copy/paste and navigation (Direct Loading experiment) [iOS only].">
+        Make Chrome your default and open web content automatically.
+      </message>
+      <message name="IDS_IOS_DEFAULT_BROWSER_NON_MODAL_OMNIBOX_NAVIGATION_DESCRIPTION_EXP6" desc="Description for the non-modal default browser promotion banner after Omnibox URL copy/paste and navigation (Convenience experiment) [iOS only].">
+        Set Chrome as default to open links instantly from other apps.
+      </message>
+      <message name="IDS_IOS_DEFAULT_BROWSER_NON_MODAL_OMNIBOX_NAVIGATION_DESCRIPTION_EXP7" desc="Description for the non-modal default browser promotion banner after Omnibox URL copy/paste and navigation (Speed experiment) [iOS only].">
+        Stop copying URLs. Set Chrome as default to load pages directly.
+      </message>
+      <message name="IDS_IOS_DEFAULT_BROWSER_NON_MODAL_OMNIBOX_NAVIGATION_DESCRIPTION_EXP8" desc="Description for the non-modal default browser promotion banner after Omnibox URL copy/paste and navigation (Seamless Web Flow experiment) [iOS only].">
+        Open links from messages and documents directly in Chrome.
+      </message>
+      <message name="IDS_IOS_DEFAULT_BROWSER_NON_MODAL_OMNIBOX_NAVIGATION_DESCRIPTION_EXP9" desc="Description for the non-modal default browser promotion banner after Omnibox URL copy/paste and navigation (Direct Action experiment) [iOS only].">
+        Avoid copying. Set Chrome as your default iOS browser.
       </message>
       <message name="IDS_IOS_DEFAULT_BROWSER_NON_MODAL_OMNIBOX_NAVIGATION_TITLE" desc="Title for the non-modal default browser promotion banner after Omnibox URL copy/paste and navigation.">
         Set Chrome as default?
@@ -951,6 +978,9 @@ Only someone with your passphrase can read your encrypted data. The passphrase i
       </message>
       <message name="IDS_IOS_PASSWORD_MANAGER_SIGN_IN_ERROR_INFOBAR_SUBTITLE" desc="Infobar subtitle for fixing sign-in error before saving a password on the account.">
         Verify it's you to save this password and get Chrome data on all your devices
+      </message>
+      <message name="IDS_IOS_PASSWORD_SAVED_INFOBAR_MESSAGE" desc="Message displayed on an infobar confirming that the password was saved to the specified account. [iOS only]">
+        To Google Password Manager for <ph name="EMAIL">$1<ex>johndoe@gmail.com</ex></ph>
       </message>
       <message name="IDS_IOS_PASSWORD_SETTINGS_PASSWORDS_IN_OTHER_APPS_DESCRIPTION" desc="Help text explaining the benefits of having Chrome set as a credential provider for other apps. [iOS Only]">
         Sign in quickly to apps and sites by autofilling your passwords &amp; passkeys from Chrome

@@ -722,7 +722,7 @@ TEST_F(ContentAutofillDriverTestWithAddressForm,
   driver().browser_events().ApplyFormAction(
       mojom::FormActionType::kFill, mojom::ActionPersistence::kFill,
       address_form().fields(), FillId::Create(),
-      /*supports_refill=*/false, triggered_origin, field_type_map(), Section());
+      /*supports_refill=*/false, triggered_origin, field_type_map());
 
   run_loop.RunUntilIdle();
 
@@ -749,7 +749,7 @@ TEST_F(ContentAutofillDriverTestWithAddressForm,
   driver().browser_events().ApplyFormAction(
       mojom::FormActionType::kFill, mojom::ActionPersistence::kPreview,
       address_form().fields(), FillId::Create(),
-      /*supports_refill=*/false, triggered_origin, field_type_map(), Section());
+      /*supports_refill=*/false, triggered_origin, field_type_map());
 
   run_loop.RunUntilIdle();
 
@@ -950,20 +950,6 @@ TEST_F(ContentAutofillDriverTest,
       }));
   run_loop.Run();
   EXPECT_EQ(expected_matches, actual_matches);
-}
-
-// Tests that calls from the renderer with trigger source
-// kPlusAddressUpdatedInBrowserProcess are classified as bad messages.
-TEST_F(ContentAutofillDriverTest, AskForValuesToFillChecksTriggerSource) {
-  BadMessageHelper bad_message_helper;
-  EXPECT_CALL(manager(), OnAskForValuesToFill).Times(0);
-  EXPECT_CALL(bad_message_helper.callback(),
-              Run("PlusAddressUpdatedInBrowserProcess is not a permitted "
-                  "trigger source in the renderer"));
-  driver().renderer_events().AskForValuesToFill(
-      FormData(), FieldRendererId(), gfx::Rect(),
-      AutofillSuggestionTriggerSource::kPlusAddressUpdatedInBrowserProcess,
-      std::nullopt);
 }
 
 // Test that the inactive render frame does not trigger the DOM search and

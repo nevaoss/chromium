@@ -747,6 +747,25 @@ TEST_F(AILanguageModelTest, CreateResolvesAfterInitialPromptsAreAppended) {
   EXPECT_TRUE(language_model_client.result().IsReady());
 }
 
+TEST_F(AILanguageModelTest, CreateResolvesAfterEmptyInitialPromptsAreAppended) {
+  auto options = blink::mojom::AILanguageModelCreateOptions::New();
+
+  fake_broker_->settings().set_append_delay(base::Seconds(5));
+
+  TestCreateLanguageModelClient language_model_client;
+  GetAIManagerRemote()->CreateLanguageModel(
+      language_model_client.BindNewPipeAndPassRemote(), std::move(options),
+      /*monitor=*/mojo::NullRemote());
+
+  // Creation will not be complete yet, because Append is delayed.
+  task_environment()->FastForwardBy(base::Seconds(1));
+  EXPECT_FALSE(language_model_client.result().IsReady());
+
+  // Fast forward time to allow Append to complete.
+  task_environment()->FastForwardBy(base::Seconds(5));
+  EXPECT_TRUE(language_model_client.result().IsReady());
+}
+
 TEST_F(AILanguageModelTest, InputTooLarge) {
   auto session = CreateSession();
 
@@ -2536,13 +2555,14 @@ TEST_F(AILanguageModelManifestTest, CanCreateAndCreateWithManifestGemma4) {
       kAIApiFoundationalModel, {{"model_version", "v4"}});
 
   fake_manifest_broker_->client().RequestAssetsFor("prompt_api_gemma4");
-
-  // Verify CanCreateLanguageModel check passes successfully.
-  base::test::TestFuture<blink::mojom::ModelAvailabilityCheckResult> future;
-  ai_manager_->CanCreateLanguageModel(
-      blink::mojom::AILanguageModelCreateOptions::New(), future.GetCallback());
-  EXPECT_EQ(future.Get(),
-            blink::mojom::ModelAvailabilityCheckResult::kAvailable);
+  ASSERT_TRUE(base::test::RunUntil([&] {
+    base::test::TestFuture<blink::mojom::ModelAvailabilityCheckResult> future;
+    ai_manager_->CanCreateLanguageModel(
+        blink::mojom::AILanguageModelCreateOptions::New(),
+        future.GetCallback());
+    return future.Get() ==
+           blink::mojom::ModelAvailabilityCheckResult::kAvailable;
+  }));
 
   // Verify CreateLanguageModel can retrieve the model successfully.
   TestCreateLanguageModelClient language_model_client;
