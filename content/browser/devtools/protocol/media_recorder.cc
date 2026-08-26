@@ -78,6 +78,11 @@ class LoopbackAudioInputIPC : public media::AudioInputIPC,
                        weak_factory_.GetWeakPtr()));
   }
 
+#if defined(USE_NEVA_SUSPEND_MEDIA_CAPTURE)
+  void PauseStream() override {}
+  void ResumeStream() override {}
+#endif
+
   void RecordStream() override {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
     if (stream_.is_bound()) {
