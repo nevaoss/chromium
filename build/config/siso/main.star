@@ -24,10 +24,6 @@ load("./simple.star", "simple")
 load("./typescript_all.star", "typescript_all")
 load("./windows.star", chromium_windows = "chromium")
 
-<<<<<<< HEAD
-# NOTE(neva): Add a starlack file for Yocto build
-load("./yocto.star", "yocto")
-=======
 def __setup_python(ctx, step_config):
     for rule in step_config["rules"]:
         if rule.get("remote_command") == platform.remote_python_bin:
@@ -36,7 +32,9 @@ def __setup_python(ctx, step_config):
                 inputs.append("third_party/cpython3/linux-amd64:cpython3")
                 rule["inputs"] = inputs
     return step_config
->>>>>>> 153.0.8010.0~1
+
+# NOTE(neva): Add a starlack file for Yocto build
+load("./yocto.star", "yocto")
 
 def __disable_remote(ctx, step_config):
     gn_logs_data = gn_logs.read(ctx)
