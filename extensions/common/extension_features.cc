@@ -105,6 +105,9 @@ BASE_FEATURE(kApiDesktopAndroidNativeMessaging,
 BASE_FEATURE(kAllowWithholdingExtensionPermissionsOnInstall,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+BASE_FEATURE(kBlockBackgroundContentsOffExtentNavigation,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 BASE_FEATURE(kCheckingNoExtensionIdInExtensionIpcs,
              "EMF_NO_EXTENSION_ID_FOR_EXTENSION_SOURCE",
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -117,11 +120,6 @@ BASE_FEATURE(kCWSReviewPromptingNativeUI,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kEnableWebHidInWebView, base::FEATURE_ENABLED_BY_DEFAULT);
-
-#if BUILDFLAG(ENABLE_DESKTOP_ANDROID_EXTENSIONS)
-BASE_FEATURE(kEnableExtensionsForCorpDesktopAndroid,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-#endif
 
 BASE_FEATURE(kExtensionAutoRejectIncognitoConnectability,
              base::FEATURE_ENABLED_BY_DEFAULT);

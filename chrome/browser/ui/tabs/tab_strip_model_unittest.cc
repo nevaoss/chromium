@@ -48,7 +48,6 @@
 #include "chrome/browser/ui/tabs/test_tab_strip_model_delegate.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/common/chrome_features.h"
-#include "chrome/test/base/browser_with_test_window_test.h"
 #include "chrome/test/base/testing_profile.h"
 #include "components/commerce/core/commerce_utils.h"
 #include "components/content_settings/core/browser/host_content_settings_map.h"
@@ -760,7 +759,7 @@ TEST_F(TabStripModelTest, TestBasicAPI) {
   // Test CloseSelectedTabs
   {
     tabstrip()->CloseSelectedTabs();
-    // |CloseSelectedTabs| calls CloseWebContentsAt, we already tested that, now
+    // `CloseSelectedTabs` calls CloseWebContentsAt, we already tested that, now
     // just verify that the count and selected index have changed
     // appropriately...
     EXPECT_EQ(1, tabstrip()->count());
@@ -1199,7 +1198,7 @@ TEST_F(TabStripModelTest, TestBasicOpenerAPI) {
   std::unique_ptr<WebContents> contents5 = CreateWebContents();
   WebContents* raw_contents5 = contents5.get();
 
-  // We use |InsertWebContentsAt| here instead of |AppendWebContents| so that
+  // We use `InsertWebContentsAt` here instead of `AppendWebContents` so that
   // openership relationships are preserved.
   tabstrip()->InsertWebContentsAt(tabstrip()->count(), std::move(contents1),
                                   AddTabTypes::ADD_INHERIT_OPENER);
@@ -2905,6 +2904,26 @@ TEST_F(TabStripModelTest, RotateFocusedGroup) {
   EXPECT_EQ(group2, tabstrip()->GetFocusedGroup());
 }
 
+TEST_F(TabStripModelTest, AddToNewSplit_MultipleIndices_Active) {
+  PrepareTabs(tabstrip(), 5);
+  tabstrip()->ActivateTabAt(2);
+  ASSERT_EQ(2, tabstrip()->active_index());
+  tabstrip()->AddToNewSplit({2, 3}, split_tabs::SplitTabVisualData(),
+                            split_tabs::SplitTabCreatedSource::kExtensionsApi);
+  EXPECT_EQ(2, tabstrip()->active_index());
+  EXPECT_EQ("0 1 2s 3s 4", GetTabStripStateString(tabstrip()));
+}
+
+TEST_F(TabStripModelTest, AddToNewSplit_MultipleIndices_Background) {
+  PrepareTabs(tabstrip(), 5);
+  tabstrip()->ActivateTabAt(0);
+  ASSERT_EQ(0, tabstrip()->active_index());
+  tabstrip()->AddToNewSplit({2, 3}, split_tabs::SplitTabVisualData(),
+                            split_tabs::SplitTabCreatedSource::kExtensionsApi);
+  EXPECT_EQ(0, tabstrip()->active_index());
+  EXPECT_EQ("0 1 2s 3s 4", GetTabStripStateString(tabstrip()));
+}
+
 TEST_F(TabStripModelTest, SplitTabPinning) {
   for (bool split_is_selected : {true, false}) {
     for (bool use_left_tab : {true, false}) {
@@ -3015,6 +3034,31 @@ TEST_F(TabStripModelTest, AddToSplitInGroup) {
   EXPECT_TRUE(tabstrip()->empty());
 }
 
+TEST_F(TabStripModelTest, AddToSplitInGroup_MultipleIndices) {
+  for (bool use_grouped_tab_as_pivot : {true, false}) {
+    // Create five tabs with two pinned.
+    ASSERT_NO_FATAL_FAILURE(
+        PrepareTabstripForSelectionTest(tabstrip(), 5, 2, {2}));
+
+    // Add tab at index 4 to a group.
+    tabstrip()->AddToNewGroup({4});
+
+    const std::vector<int> split_indices =
+        use_grouped_tab_as_pivot ? std::vector{4, 2} : std::vector{2, 4};
+    tabstrip()->AddToNewSplit(
+        split_indices, split_tabs::SplitTabVisualData(),
+        split_tabs::SplitTabCreatedSource::kExtensionsApi);
+
+    const std::string expected_tab_strip =
+        use_grouped_tab_as_pivot ? "0p 1p 3 2g0s 4g0s" : "0p 1p 2s 4s 3";
+    EXPECT_EQ(expected_tab_strip,
+              GetTabStripStateString(tabstrip(), /*annotate_groups=*/true));
+
+    tabstrip()->CloseAllTabs();
+    EXPECT_TRUE(tabstrip()->empty());
+  }
+}
+
 TEST_F(TabStripModelTest, AddToSplitInPinned) {
   // Create five tabs with two pinned.
   ASSERT_NO_FATAL_FAILURE(
@@ -3033,6 +3077,29 @@ TEST_F(TabStripModelTest, AddToSplitInPinned) {
 
   tabstrip()->CloseAllTabs();
   EXPECT_TRUE(tabstrip()->empty());
+}
+
+TEST_F(TabStripModelTest, AddToSplitInPinned_MultipleIndices) {
+  for (bool use_pinned_tab_as_pivot : {true, false}) {
+    // Create five tabs with one pinned.
+    ASSERT_NO_FATAL_FAILURE(
+        PrepareTabstripForSelectionTest(tabstrip(), 5, 1, {2}));
+
+    const std::vector<int> split_indices =
+        use_pinned_tab_as_pivot ? std::vector{0, 1} : std::vector{1, 0};
+    tabstrip()->AddToNewSplit(
+        split_indices, split_tabs::SplitTabVisualData(),
+        split_tabs::SplitTabCreatedSource::kExtensionsApi);
+
+    const std::string expected_tab_strip =
+        use_pinned_tab_as_pivot ? "0ps 1ps 2 3 4" : "0s 1s 2 3 4";
+    EXPECT_EQ(use_pinned_tab_as_pivot, tabstrip()->IsTabPinned(0));
+    EXPECT_EQ(use_pinned_tab_as_pivot, tabstrip()->IsTabPinned(1));
+    EXPECT_EQ(expected_tab_strip, GetTabStripStateString(tabstrip()));
+
+    tabstrip()->CloseAllTabs();
+    EXPECT_TRUE(tabstrip()->empty());
+  }
 }
 
 TEST_F(TabStripModelTest, AddToSplitInSelected) {
@@ -4631,7 +4698,7 @@ TEST_F(TabStripModelTest, ReplaceSendsSelected) {
 
   std::unique_ptr<WebContents> new_contents = CreateWebContents();
   WebContents* raw_new_contents = new_contents.get();
-  tabstrip()->DiscardWebContentsAt(0, std::move(new_contents));
+  tabstrip()->DiscardWebContents(raw_first_contents, std::move(new_contents));
 
   ASSERT_EQ(2, observer()->GetStateCount());
 
@@ -4658,7 +4725,7 @@ TEST_F(TabStripModelTest, ReplaceSendsSelected) {
   // And replace it.
   new_contents = CreateWebContents();
   raw_new_contents = new_contents.get();
-  tabstrip()->DiscardWebContentsAt(1, std::move(new_contents));
+  tabstrip()->DiscardWebContents(raw_third_contents, std::move(new_contents));
 
   ASSERT_EQ(1, observer()->GetStateCount());
 
@@ -5646,11 +5713,11 @@ TEST_F(TabStripModelTest, TabBlockedState) {
   TabStripModel strip_dst(&dummy_tab_strip_delegate, profile());
   TabBlockedStateTestBrowser browser_dst(&strip_dst);
 
-  // Setup a SingleWebContentsDialogManager for tab |contents2|.
+  // Setup a SingleWebContentsDialogManager for tab `contents2`.
   web_modal::WebContentsModalDialogManager* modal_dialog_manager =
       web_modal::WebContentsModalDialogManager::FromWebContents(raw_contents2);
 
-  // Show a dialog that blocks tab |contents2|.
+  // Show a dialog that blocks tab `contents2`.
   // DummySingleWebContentsDialogManager doesn't care about the
   // dialog window value, so any dummy value works.
   DummySingleWebContentsDialogManager* native_manager =
@@ -5708,8 +5775,8 @@ TEST_F(TabStripModelTest, LinkClicksWithPinnedTabOrdering) {
 }
 
 // This test covers a bug in TabStripModel::MoveWebContentsAt(). Specifically
-// if |select_after_move| was true it checked if the index
-// select_after_move (as an int) was selected rather than |to_position|.
+// if `select_after_move` was true it checked if the index
+// select_after_move (as an int) was selected rather than `to_position`.
 TEST_F(TabStripModelTest, MoveWebContentsAt) {
   tabstrip()->AppendWebContents(CreateWebContents(), false);
   tabstrip()->AppendWebContents(CreateWebContents(), false);
@@ -6732,7 +6799,7 @@ TEST_F(TabStripModelTest, DanglingOpener) {
 
   // Replace the WebContents at index 0 with a new WebContents.
   std::unique_ptr<WebContents> replaced_contents =
-      tabstrip()->DiscardWebContentsAt(0, CreateWebContentsWithID(5));
+      tabstrip()->DiscardWebContents(contents_2, CreateWebContentsWithID(5));
   EXPECT_EQ(contents_2, replaced_contents.get());
   replaced_contents.reset();
   EXPECT_EQ("5 0", GetTabStripStateString(tabstrip()));
@@ -7746,6 +7813,30 @@ TEST_F(TabStripModelTest, IteratorTestGroupOnlyTabs) {
     it++;
   }
   EXPECT_EQ(i, tabstrip()->count());
+}
+
+TEST_F(TabStripModelTest, IteratorTestAt) {
+  PrepareTabstripForSelectionTest(tabstrip(), 10, 2, {0});
+  tabstrip()->AddToNewGroup({4, 5, 6});
+
+  for (int start_index = 0; start_index < tabstrip()->count(); ++start_index) {
+    tabs::TabInterface* start_tab = tabstrip()->GetTabAtIndex(start_index);
+    TabStripModel::TabIterator it = tabstrip()->at(start_tab);
+    int current_index = start_index;
+    while (it != tabstrip()->end()) {
+      EXPECT_EQ(*it, tabstrip()->GetTabAtIndex(current_index++));
+      ++it;
+    }
+    EXPECT_EQ(current_index, tabstrip()->count());
+  }
+
+  // Iterate backwards from end() to begin().
+  auto it = tabstrip()->end();
+  for (int i = tabstrip()->count() - 1; i >= 0; --i) {
+    --it;
+    EXPECT_EQ(*it, tabstrip()->GetTabAtIndex(i));
+  }
+  EXPECT_EQ(it, tabstrip()->begin());
 }
 
 TEST_F(TabStripModelTest, GetTabsAtIndices) {

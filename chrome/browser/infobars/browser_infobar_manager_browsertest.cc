@@ -4,12 +4,16 @@
 
 #include "chrome/browser/infobars/browser_infobar_manager.h"
 
+#include <optional>
+#include <vector>
+
 #include "base/test/bind.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/infobars/infobar_features.h"
 #include "chrome/browser/infobars/infobar_spec.h"
+#include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_tabstrip.h"
 #include "chrome/browser/ui/tabs/tab_model.h"
@@ -22,9 +26,33 @@
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/test/browser_test.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "ui/base/window_open_disposition.h"
+#include "ui/gfx/vector_icon_types.h"
 #include "url/gurl.h"
 
 namespace infobars {
+
+namespace {
+
+InfoBarSpec BuildGlobalSpecSkippingIncognito() {
+  return InfoBarSpec::Builder(InfoBarDelegate::TEST_INFOBAR)
+      .SetMessageText(u"Test Message")
+      .SetScope(InfoBarScope::kGlobal)
+      .SetBrowserFilter(
+          base::BindRepeating([](BrowserWindowInterface* browser) {
+            return !browser->GetProfile()->IsOffTheRecord();
+          }))
+      .Build();
+}
+
+size_t InfoBarCountIn(Browser* browser) {
+  return ContentInfoBarManager::FromWebContents(
+             browser->tab_strip_model()->GetActiveWebContents())
+      ->infobars()
+      .size();
+}
+
+}  // namespace
 
 class BrowserInfoBarManagerBrowserTest : public InProcessBrowserTest {
  public:
@@ -307,6 +335,27 @@ IN_PROC_BROWSER_TEST_F(BrowserInfoBarManagerBrowserTest,
   EXPECT_TRUE(has_test_infobar(infobar_manager1));
 }
 
+IN_PROC_BROWSER_TEST_F(BrowserInfoBarManagerBrowserTest,
+                       ShowGloballyRespectsBrowserFilter) {
+  Browser* incognito_browser = CreateIncognitoBrowser();
+  manager()->Register(BuildGlobalSpecSkippingIncognito());
+
+  manager()->ShowGlobally(InfoBarDelegate::TEST_INFOBAR);
+
+  EXPECT_EQ(1u, InfoBarCountIn(browser()));
+  EXPECT_EQ(0u, InfoBarCountIn(incognito_browser));
+}
+
+IN_PROC_BROWSER_TEST_F(BrowserInfoBarManagerBrowserTest,
+                       GlobalPropagationRespectsBrowserFilter) {
+  manager()->Register(BuildGlobalSpecSkippingIncognito());
+
+  manager()->ShowGlobally(InfoBarDelegate::TEST_INFOBAR);
+  EXPECT_EQ(1u, InfoBarCountIn(browser()));
+
+  EXPECT_EQ(0u, InfoBarCountIn(CreateIncognitoBrowser()));
+}
+
 IN_PROC_BROWSER_TEST_F(BrowserInfoBarManagerBrowserTest, FullscreenHiding) {
   // 1. Register a spec with should_hide_in_fullscreen = true.
   auto spec_hide = InfoBarSpec::Builder(InfoBarDelegate::TEST_INFOBAR)
@@ -350,6 +399,90 @@ IN_PROC_BROWSER_TEST_F(BrowserInfoBarManagerBrowserTest, FullscreenHiding) {
   // 4. Verify their ShouldHideInFullscreen() implementation.
   EXPECT_TRUE(ib_hide->delegate()->ShouldHideInFullscreen());
   EXPECT_FALSE(ib_show->delegate()->ShouldHideInFullscreen());
+}
+
+IN_PROC_BROWSER_TEST_F(BrowserInfoBarManagerBrowserTest,
+                       TemplateSubstitutionsAndInlineLink) {
+  const auto identifier = InfoBarDelegate::TEST_INFOBAR;
+  tabs::TabInterface* tab = browser()->tab_strip_model()->GetActiveTab();
+  content::WebContents* web_contents = tab->GetContents();
+  content::WebContents* substitution_contents = nullptr;
+  content::WebContents* link_contents = nullptr;
+  size_t clicked_index = 0u;
+
+  auto spec =
+      InfoBarSpec::Builder(identifier)
+          .SetMessageTextTemplate(u"Open $1 to continue")
+          .SetSubstitutionsCallback(
+              base::BindLambdaForTesting([&](content::WebContents* contents) {
+                substitution_contents = contents;
+                std::vector<MessageSubstitution> substitutions;
+                substitutions.emplace_back(u"the settings page",
+                                           /*is_link=*/true,
+                                           /*accessible_name=*/std::nullopt);
+                return substitutions;
+              }))
+          .SetInlineLinkCallback(base::BindLambdaForTesting(
+              [&](content::WebContents* contents, size_t index,
+                  WindowOpenDisposition) {
+                link_contents = contents;
+                clicked_index = index;
+              }))
+          .SetScope(InfoBarScope::kTab)
+          .Build();
+
+  manager()->Register(std::move(spec));
+  manager()->Show(tab, identifier);
+
+  auto* infobar_manager = ContentInfoBarManager::FromWebContents(web_contents);
+  ASSERT_EQ(1u, infobar_manager->infobars().size());
+  auto* delegate =
+      infobar_manager->infobars()[0]->delegate()->AsConfirmInfoBarDelegate();
+  ASSERT_TRUE(delegate);
+
+  // The template and its substitutions should be exposed to the view layer,
+  // with the substitutions computed against the WebContents shown in.
+  EXPECT_EQ(u"Open $1 to continue", delegate->GetMessageTextTemplate());
+  ASSERT_EQ(1u, delegate->GetMessageSubstitutions().size());
+  EXPECT_EQ(u"the settings page", delegate->GetMessageSubstitutions()[0].text);
+  EXPECT_TRUE(delegate->GetMessageSubstitutions()[0].is_link);
+  EXPECT_EQ(web_contents, substitution_contents);
+
+  // GetMessageText() composes the final string for a11y and dupe-checks.
+  EXPECT_EQ(u"Open the settings page to continue", delegate->GetMessageText());
+
+  // Clicking the inline link routes to the spec's callback.
+  EXPECT_FALSE(delegate->InlineSubstitutionLinkClicked(
+      0u, WindowOpenDisposition::CURRENT_TAB));
+  EXPECT_EQ(web_contents, link_contents);
+  EXPECT_EQ(0u, clicked_index);
+}
+
+IN_PROC_BROWSER_TEST_F(BrowserInfoBarManagerBrowserTest, DarkModeIcon) {
+  const auto identifier = InfoBarDelegate::TEST_INFOBAR;
+  static constexpr gfx::VectorIcon kLightIcon(nullptr, 0u, "light");
+  static constexpr gfx::VectorIcon kDarkIcon(nullptr, 0u, "dark");
+  auto spec = InfoBarSpec::Builder(identifier)
+                  .SetMessageText(u"Test Message")
+                  .SetIcon(kLightIcon)
+                  .SetDarkModeIcon(kDarkIcon)
+                  .SetScope(InfoBarScope::kTab)
+                  .Build();
+
+  manager()->Register(std::move(spec));
+  tabs::TabInterface* tab = browser()->tab_strip_model()->GetActiveTab();
+  content::WebContents* web_contents = tab->GetContents();
+  manager()->Show(tab, identifier);
+
+  auto* infobar_manager = ContentInfoBarManager::FromWebContents(web_contents);
+  ASSERT_EQ(1u, infobar_manager->infobars().size());
+  auto* delegate = infobar_manager->infobars()[0]->delegate();
+
+  delegate->set_dark_mode(false);
+  EXPECT_EQ(&kLightIcon, &delegate->GetVectorIcon());
+
+  delegate->set_dark_mode(true);
+  EXPECT_EQ(&kDarkIcon, &delegate->GetVectorIcon());
 }
 
 IN_PROC_BROWSER_TEST_F(BrowserInfoBarManagerBrowserTest, CentralizedMetrics) {

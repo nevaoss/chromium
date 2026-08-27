@@ -20,7 +20,7 @@ import type {BigBuffer} from '//resources/mojo/mojo/public/mojom/base/big_buffer
 import type {UnguessableToken} from '//resources/mojo/mojo/public/mojom/base/unguessable_token.mojom-webui.js';
 import type {Url} from '//resources/mojo/url/mojom/url.mojom-webui.js';
 
-import {ComposeboxFile, ComposeboxFileValidationError, ContextType, ContextualSearchInputStateDeletionType, FILE_VALIDATION_ERRORS_MAP, getLoadTimeBoolean, hasOnlySuggestedTabs, isContextUploadStatusTerminal, mapOriginToMojoSource, ProcessFilesError, recordBoolean, recordContextAdditionMethod, recordContextualElementClickedMetric, recordEnumerationValue, recordInputTypeShown, recordModelModeSelection, recordModelModeShown, recordToolModeSelection, recordToolModeShown, recordUserAction, TabSuggestionsState, TabUploadOrigin} from './common.js';
+import {ComposeboxFile, ComposeboxFileValidationError, ContextType, ContextualSearchInputStateDeletionType, FILE_VALIDATION_ERRORS_MAP, getLoadTimeBoolean, hasOnlyAutoAddedTabs, isContextUploadStatusTerminal, mapOriginToMojoSource, ProcessFilesError, recordBoolean, recordContextAdditionMethod, recordContextualElementClickedMetric, recordEnumerationValue, recordInputTypeShown, recordModelModeSelection, recordModelModeShown, recordToolModeSelection, recordToolModeShown, recordUserAction, TabSuggestionsState, TabUploadOrigin} from './common.js';
 import type {ComposeboxState, DriveUpload, TabUpload} from './common.js';
 import type {PageHandlerRemote} from './composebox.mojom-webui.js';
 import type {ComposeboxDropdownElement} from './composebox_dropdown.js';
@@ -1170,7 +1170,8 @@ export const ComposeboxEmbedderMixin =
           recordModelModeSelection(
               e.detail.model, this.composeboxSource, 'AimPopup');
           this.getSearchboxHandler().recordModelSelectionAction(e.detail.model);
-          this.getSearchboxHandler().setActiveModelMode(e.detail.model);
+          this.getSearchboxHandler().setActiveModelMode(
+              e.detail.model, /*isSetByAim=*/ false);
           this.updateInputPlaceholder();
         }
 
@@ -1428,7 +1429,8 @@ export const ComposeboxEmbedderMixin =
               this.inputState.allowedModels.length > 0) {
             model = this.inputState.allowedModels[0]!;
           }
-          this.getSearchboxHandler().setActiveModelMode(model);
+          this.getSearchboxHandler().setActiveModelMode(
+              model, /*isSetByAim=*/ false);
           this.updateInputPlaceholder();
 
           await this.updateComplete;
@@ -1672,9 +1674,9 @@ export const ComposeboxEmbedderMixin =
           this.getInputElement().inputElement.focus();
         }
 
-        hasContent(ignoreSuggestedTab: boolean = false): boolean {
+        hasContent(ignoreAutoAddedTabs: boolean = false): boolean {
           const hasFiles = this.files.size > 0 &&
-              !(ignoreSuggestedTab && hasOnlySuggestedTabs(this.files));
+              !(ignoreAutoAddedTabs && hasOnlyAutoAddedTabs(this.files));
           return this.inputState?.activeTool !== ToolMode.kUnspecified ||
               this.input.trim().length > 0 || hasFiles;
         }
@@ -1856,12 +1858,12 @@ export const ComposeboxEmbedderMixin =
               (this.inputState.activeModel as ModelMode) !==
                   ModelMode.kUnspecified) {
             this.getSearchboxHandler().setActiveModelMode(
-                this.inputState.activeModel);
+                this.inputState.activeModel, /*isSetByAim=*/ false);
           } else if (
               this.inputState?.allowedModels &&
               this.inputState.allowedModels.length > 0) {
             this.getSearchboxHandler().setActiveModelMode(
-                this.inputState.allowedModels[0]!);
+                this.inputState.allowedModels[0]!, /*isSetByAim=*/ false);
           }
         }
 
@@ -1870,7 +1872,7 @@ export const ComposeboxEmbedderMixin =
             this.getSearchboxHandler().setActiveToolMode(
                 ToolMode.kUnspecified, /*isSetByServer=*/ false);
             this.getSearchboxHandler().setActiveModelMode(
-                ModelMode.kUnspecified);
+                ModelMode.kUnspecified, /*isSetByServer=*/ false);
           }
         }
 

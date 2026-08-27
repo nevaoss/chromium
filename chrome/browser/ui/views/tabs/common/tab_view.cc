@@ -7,7 +7,6 @@
 #include <optional>
 #include <string>
 
-#include "base/check_is_test.h"
 #include "base/functional/callback_helpers.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/user_metrics.h"
@@ -24,19 +23,16 @@
 #include "chrome/browser/ui/tabs/alert/tab_alert_controller.h"
 #include "chrome/browser/ui/tabs/tab_change_type.h"
 #include "chrome/browser/ui/tabs/tab_data.h"
-#include "chrome/browser/ui/tabs/tab_group_model.h"
-#include "chrome/browser/ui/tabs/tab_group_theme.h"
 #include "chrome/browser/ui/tabs/tab_muted_utils.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/tabs/tab_style.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
+#include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/event_utils.h"
 #include "chrome/browser/ui/views/frame/base_tab_strip_region_view.h"
 #include "chrome/browser/ui/views/frame/browser_frame_view.h"
-#include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/themed_background.h"
 #include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
-#include "chrome/browser/ui/views/tabs/common/root_tab_collection_node.h"
 #include "chrome/browser/ui/views/tabs/common/split_tab_view.h"
 #include "chrome/browser/ui/views/tabs/common/tab_collection_node.h"
 #include "chrome/browser/ui/views/tabs/common/tab_drag_handler.h"
@@ -44,6 +40,9 @@
 #include "chrome/browser/ui/views/tabs/common/tab_strip_collection_controller.h"
 #include "chrome/browser/ui/views/tabs/common/tab_strip_utils.h"
 #include "chrome/browser/ui/views/tabs/common/tab_strip_view.h"
+#include "chrome/browser/ui/views/tabs/common/tab_view_horizontal_layout.h"
+#include "chrome/browser/ui/views/tabs/common/tab_view_vertical_layout.h"
+#include "chrome/browser/ui/views/tabs/shared/tab_strip_types.h"
 #include "chrome/browser/ui/views/tabs/tab/alert_indicator_button.h"
 #include "chrome/browser/ui/views/tabs/tab/glow_hover_controller.h"
 #include "chrome/browser/ui/views/tabs/tab/tab_accessibility.h"
@@ -58,7 +57,7 @@
 #include "chrome/grit/theme_resources.h"
 #include "components/contextual_tasks/public/features.h"
 #include "components/tabs/public/tab_alert.h"
-#include "components/tabs/public/tab_group.h"
+#include "components/tabs/public/tab_collection_types.h"
 #include "components/tabs/public/tab_interface.h"
 #include "third_party/skia/include/core/SkPath.h"
 #include "third_party/skia/include/core/SkPathBuilder.h"
@@ -92,10 +91,6 @@
 #include "ui/views/view_utils.h"
 
 namespace {
-constexpr int kIconDesignWidth = 16;
-constexpr int kTitleMinWidth = 10;
-constexpr int kHorizontalInset = 8;
-constexpr int kDefaultPadding = 4;
 constexpr int kFocusRingInset = 0.0f;
 
 class TabHighlightPathGenerator : public views::HighlightPathGenerator {
@@ -132,6 +127,14 @@ TabStripUserGestureDetails GetGestureDetail(const ui::Event& event) {
   gesture_detail.type = type;
   return gesture_detail;
 }
+
+std::unique_ptr<TabView::LayoutManager> CreateTabViewLayout(
+    TabStripOrientation orientation) {
+  if (orientation == TabStripOrientation::kVertical) {
+    return std::make_unique<TabViewVerticalLayout>();
+  }
+  return std::make_unique<TabViewHorizontalLayout>();
+}
 }  // namespace
 
 class TabStyleViewDelegateImpl : public TabStyleViewDelegate {
@@ -161,7 +164,11 @@ class TabStyleViewDelegateImpl : public TabStyleViewDelegate {
   }
 
   std::optional<SkColor> GetGroupColor() const override {
-    return tab_view_->GetGroupColor();
+    const auto* controller = tab_view_->collection_node()
+                                 ? tab_view_->collection_node()->GetController()
+                                 : nullptr;
+    return controller ? controller->GetGroupColor(tab_view_->GetTabInterface())
+                      : std::nullopt;
   }
 
   bool IsInFocusedGroup() const override {
@@ -212,10 +219,17 @@ class TabStyleViewDelegateImpl : public TabStyleViewDelegate {
   }
 
   const TabStyleViewDelegate* GetAdjacentTab(bool leading) const override {
-    const TabView* adjacent = tab_view_->GetAdjacentTab(leading);
-    return (adjacent && adjacent->tab_styling())
-               ? adjacent->tab_styling()->delegate()
-               : nullptr;
+    const auto* controller = tab_view_->collection_node()
+                                 ? tab_view_->collection_node()->GetController()
+                                 : nullptr;
+    const TabCollectionNode* adjacent_node =
+        controller
+            ? controller->GetAdjacentTab(tab_view_->GetTabInterface(), leading)
+            : nullptr;
+    const TabView* adjacent_view =
+        adjacent_node ? views::AsViewClass<TabView>(adjacent_node->view())
+                      : nullptr;
+    return adjacent_view ? adjacent_view->tab_styling()->delegate() : nullptr;
   }
 
   float GetHoverAnimationValue() const override {
@@ -236,19 +250,10 @@ class TabStyleViewDelegateImpl : public TabStyleViewDelegate {
   }
 
   BrowserFrameView* GetBrowserFrameView() const override {
-    tabs::TabInterface* tab_interface =
-        const_cast<tabs::TabInterface*>(tab_view_->GetTabInterface());
-    BrowserWindowInterface* browser_window_interface =
-        tab_interface ? tab_interface->GetBrowserWindowInterface() : nullptr;
-    if (!browser_window_interface) {
-      return nullptr;
-    }
-    BrowserView* browser_view =
-        BrowserView::GetBrowserViewForBrowser(browser_window_interface);
-    if (!browser_view || !browser_view->browser_widget()) {
-      return nullptr;
-    }
-    return browser_view->browser_widget()->GetFrameView();
+    const auto* controller = tab_view_->collection_node()
+                                 ? tab_view_->collection_node()->GetController()
+                                 : nullptr;
+    return controller ? controller->GetBrowserFrameView() : nullptr;
   }
 
   BrowserWindowInterface* GetBrowserWindowInterface() const override {
@@ -292,6 +297,9 @@ TabView::TabView(TabCollectionNode* collection_node)
     : HoverCardAnchorTarget(this),
       collection_node_(collection_node),
       orientation_(collection_node->orientation()),
+      tab_styling_(TabStyleViews::Create(
+          std::make_unique<TabStyleViewDelegateImpl>(this),
+          orientation_)),
       icon_(AddChildView(std::make_unique<TabIcon>())),
       title_(AddChildView(std::make_unique<TabTitle>())),
       alert_indicator_(
@@ -306,7 +314,6 @@ TabView::TabView(TabCollectionNode* collection_node)
                                   this,
                                   kGlowHoverAnimationDuration)
                             : nullptr) {
-  tab_styling_ = TabStyleViews::Create(CreateStyleDelegate(this), orientation_);
   tabs::TabInterface* tab = const_cast<tabs::TabInterface*>(GetTabInterface());
   BrowserWindowInterface* browser_window = tab->GetBrowserWindowInterface();
   if (browser_window &&
@@ -319,32 +326,20 @@ TabView::TabView(TabCollectionNode* collection_node)
                                  tab->GetHandle()),
                              browser_window, tab->GetHandle()))
                          .Build());
+    const bool is_horizontal = orientation_ == TabStripOrientation::kHorizontal;
     glic_tab_underline_view_->SetOrientation(
-        glic::TabUnderlineView::Orientation::kVertical);
-    glic_tab_underline_view_->SetProperty(views::kViewIgnoredByLayoutKey, true);
-    glic_tab_underline_view_->SetBoundsRect(
-        gfx::Rect(0, 0, 2 * glic::TabUnderlineView::kEffectThickness,
-                  GetLayoutConstant(LayoutConstant::kVerticalTabHeight)));
+        is_horizontal ? glic::TabUnderlineView::Orientation::kHorizontal
+                      : glic::TabUnderlineView::Orientation::kVertical);
+    if (is_horizontal) {
+      glic_tab_underline_view_->SetInsets(tab_styling_->GetContentsInsets());
+    }
   }
-
-  // Ordered vector of children to be rendered in the tab.
-  tab_children_configs_ = {
-      TabChildConfig(close_button_, kIconDesignWidth, kDefaultPadding,
-                     /*align_leading=*/false,
-                     /*expand=*/false),
-      TabChildConfig(alert_indicator_, kIconDesignWidth, kDefaultPadding,
-                     /*align_leading=*/false,
-                     /*expand=*/false, /*decorate_on_collapse=*/true),
-      TabChildConfig(icon_, kIconDesignWidth, kHorizontalInset,
-                     /*align_leading=*/true,
-                     /*expand=*/false),
-      TabChildConfig(title_, kTitleMinWidth, kDefaultPadding,
-                     /*align_leading=*/true,
-                     /*expand=*/true)};
 
   title_->SetProperty(views::kElementIdentifierKey, kVerticalTabTitleElementId);
   SetProperty(views::kElementIdentifierKey, kTabElementId);
-  SetLayoutManager(std::make_unique<views::DelegatingLayoutManager>(this));
+  // Layout manager must be set after child views are created because the
+  // vertical layout stores pointers to those children.
+  SetLayoutManager(CreateTabViewLayout(orientation_));
   SetEventTargeter(std::make_unique<views::ViewTargeter>(this));
 
   // So we get don't get enter/exit on children and don't prematurely stop the
@@ -396,8 +391,12 @@ TabView::TabView(TabCollectionNode* collection_node)
 
 TabView::~TabView() = default;
 
-bool TabView::IsClosing() const {
-  return !collection_node_;
+void TabView::LayoutManager::OnInstalled(views::View* host) {
+  CHECK(IsViewClass<class TabView>(host));
+}
+
+const TabView& TabView::LayoutManager::TabView() const {
+  return static_cast<const class TabView&>(*host_view());
 }
 
 void TabView::StepLoadingAnimation(const base::TimeDelta& elapsed_time) {
@@ -432,6 +431,29 @@ bool TabView::HasFreezingVote(FreezingVoteReason reason) const {
 bool TabView::HasFreezingVote() const {
   return collapsed_freezing_vote_.has_value() ||
          focus_mode_freezing_vote_.has_value();
+}
+
+void TabView::UpdateFocusFreezing() {
+  if (!features::IsTabGroupsFocusFreezingEnabled()) {
+    return;
+  }
+  const tabs::TabInterface* tab = GetTabInterface();
+  if (!tab) {
+    return;
+  }
+  const auto* controller =
+      collection_node_ ? collection_node_->GetController() : nullptr;
+  if (!controller) {
+    return;
+  }
+  const std::optional<tab_groups::TabGroupId> focused_group =
+      controller->GetFocusedGroup();
+  if (focused_group.has_value() && !tab->IsPinned() &&
+      tab->GetGroup() != focused_group.value()) {
+    CreateFreezingVote(FreezingVoteReason::kFocusedGroup);
+  } else {
+    ReleaseFreezingVote(FreezingVoteReason::kFocusedGroup);
+  }
 }
 
 void TabView::UpdateHovered(bool hovered) {
@@ -481,6 +503,10 @@ SkPath TabView::GetPath() const {
 void TabView::Layout(PassKey) {
   LayoutSuperclass<views::View>(this);
   alert_indicator_->UpdateAlertIndicatorAnimation();
+  if (orientation_ == TabStripOrientation::kHorizontal) {
+    icon_->ResizeDiscardIndicatorRadiusForWidth(
+        width() - 2 * tab_styling()->tab_style()->GetBottomCornerRadius());
+  }
 }
 
 bool TabView::OnKeyPressed(const ui::KeyEvent& event) {
@@ -695,9 +721,8 @@ void TabView::OnGestureEvent(ui::GestureEvent* event) {
 
     case ui::EventType::kGestureLongTap: {
       // Show context menu on release after long press.
-      controller->ShowContextMenuForNode(collection_node_, this,
-                                         event->location(),
-                                         ui::mojom::MenuSourceType::kTouch);
+      controller->ShowTabContextMenu(collection_node_, event->location(),
+                                     ui::mojom::MenuSourceType::kTouch);
       event->SetHandled();
       break;
     }
@@ -823,156 +848,6 @@ void TabView::OnThemeChanged() {
   UpdateColors();
 }
 
-gfx::Rect TabView::GetChildBounds(const gfx::Rect& container,
-                                  const TabChildConfig& config,
-                                  const bool center) const {
-  int preferred_width;
-  int preferred_height;
-  if (config.expand) {
-    preferred_width = container.width() - config.padding;
-    // The only expandable view is the views::Label. Just get the line height to
-    // make calculating bounds cheaper.
-    views::Label* label = views::AsViewClass<views::Label>(config.view);
-    CHECK(label);
-    preferred_height = label->GetLineHeight();
-  } else {
-    const gfx::Size preferred_size = config.view->GetPreferredSize();
-    preferred_width = preferred_size.width();
-    preferred_height = preferred_size.height();
-  }
-
-  // Some icons have larger sizes to account for decoration. Make a distinction
-  // between the design width and the actual width.
-  const int design_width =
-      config.expand ? container.width() - config.padding : config.min_width;
-
-  int x = container.x();
-  if (center) {
-    x += 0.5 * (container.width() - preferred_width);
-  } else if (config.align_leading) {
-    x += 0.5 * (design_width - preferred_width);
-  } else {
-    x += container.width() - 0.5 * (design_width + preferred_width);
-  }
-  const int y = container.y() + 0.5 * (container.height() - preferred_height);
-
-  return gfx::Rect(x, y, preferred_width, preferred_height);
-}
-
-bool TabView::IsChildVisible(const views::View* child_view,
-                             const int width) const {
-  if (child_view == title_) {
-    // Pinned titles should be visible in the expand on hover state when the
-    // width is sufficient to show the title.
-    return !pinned_ || IsInExpandOnHover(width);
-  }
-
-  if (child_view == alert_indicator_) {
-    if (glic_tab_underline_view_ && (alert_indicator_->showing_alert_state() ==
-                                         tabs::TabAlert::kGlicAccessing ||
-                                     alert_indicator_->showing_alert_state() ==
-                                         tabs::TabAlert::kGlicSharing)) {
-      return false;
-    }
-    return alert_indicator_->showing_alert_state().has_value();
-  }
-
-  if (child_view == icon_) {
-    return !pinned_ || !IsChildVisible(alert_indicator_, width);
-  }
-
-  if (child_view == close_button_) {
-    if (pinned_) {
-      return false;
-    }
-
-    // When uncollapsing the tabstrip, intentionally start showing the close
-    // button on active non-hovered tabs a little bit sooner than reaching the
-    // uncollapsed min width, because otherwise the close buttons in a grouped
-    // split tab will visibly show up at different times due to rounding.
-    constexpr int kUncollapsedMinWidthThreshold = 3;
-
-    if (width < UncollapsedMinWidth() - kUncollapsedMinWidthThreshold) {
-      return active_ && (hovered_ || HasFocus() ||
-                         (close_button_ && close_button_->HasFocus()));
-    }
-
-    return active_ || hovered_ || HasFocus() ||
-           (close_button_ && close_button_->HasFocus());
-  }
-
-  NOTREACHED() << "Unknown tab child view";
-}
-
-views::ProposedLayout TabView::CalculateProposedLayout(
-    const views::SizeBounds& size_bounds) const {
-  int width;
-  if (orientation_ == TabStripOrientation::kHorizontal) {
-    if (pinned_) {
-      width = tab_styling()->tab_style()->GetPinnedWidth(split_);
-    } else {
-      const int preferred_width =
-          tab_styling()->tab_style()->GetStandardWidth(split_);
-      const int minimum_width =
-          active_ ? tab_styling()->tab_style()->GetMinimumActiveWidth(split_)
-                  : tab_styling()->tab_style()->GetMinimumInactiveWidth();
-      width = std::clamp(size_bounds.width().value_or(preferred_width),
-                         minimum_width, preferred_width);
-    }
-  } else {
-    width = size_bounds.width().value_or(
-        VerticalTabStripRegionView::kUncollapsedMaxWidth);
-  }
-  const int height =
-      (orientation_ == TabStripOrientation::kHorizontal)
-          ? tab_styling()->tab_style()->GetStandardHeight()
-          : GetLayoutConstant(pinned_ ? LayoutConstant::kVerticalTabPinnedHeight
-                                      : LayoutConstant::kVerticalTabHeight);
-  views::ProposedLayout layouts;
-  layouts.host_size = gfx::Size(width, height);
-
-  gfx::Rect bounds_remaining = gfx::Rect(0, 0, width, height);
-  bounds_remaining.Inset(tab_styling()->GetContentsInsets());
-
-  // If the tab is collapsed but animating with a wider width then we shouldn't
-  // center the contents.
-  const bool is_centered = (pinned_ || collapsed_) && !IsInExpandOnHover(width);
-
-  int placed_children = 0;
-  for (const auto& child : tab_children_configs_) {
-    const bool can_render_child =
-        is_centered
-            ? (placed_children == 0)
-            : (child.min_width + child.padding < bounds_remaining.width() ||
-               placed_children < 2);
-    const bool is_child_visible = IsChildVisible(child.view, width);
-    if (is_child_visible && can_render_child) {
-      layouts.child_layouts.emplace_back(
-          child.view.get(), is_child_visible,
-          GetChildBounds(bounds_remaining, child, is_centered));
-
-      if (!is_centered) {
-        bounds_remaining.Inset(
-            child.align_leading
-                ? gfx::Insets().set_left(child.padding + child.min_width)
-                : gfx::Insets().set_right(child.padding + child.min_width));
-      }
-
-      placed_children += 1;
-    } else if (child.decorate_on_collapse) {
-      layouts.child_layouts.emplace_back(
-          child.view.get(), is_child_visible,
-          gfx::Rect(width / 2, height / 2, 0, 0));
-    } else {
-      layouts.child_layouts.emplace_back(
-          child.view.get(), is_child_visible,
-          gfx::Rect(bounds_remaining.x(), bounds_remaining.y(), 0, 0));
-    }
-  }
-
-  return layouts;
-}
-
 bool TabView::GetHitTestMask(SkPath* mask) const {
   *mask = GetPath();
   return true;
@@ -1025,8 +900,7 @@ void TabView::ShowContextMenuForViewImpl(
     ui::mojom::MenuSourceType source_type) {
   if (collection_node_) {
     if (auto* controller = collection_node_->GetController()) {
-      controller->ShowContextMenuForNode(collection_node_, source, point,
-                                         source_type);
+      controller->ShowTabContextMenu(collection_node_, point, source_type);
     }
   }
 }
@@ -1136,6 +1010,8 @@ void TabView::OnTabStateChanged() {
   SetSelection(tab->IsSelected());
   UpdateTabData(tab);
 
+  UpdateFocusFreezing();
+
   UpdateColors();
   InvalidateLayout();
 }
@@ -1214,7 +1090,12 @@ void TabView::UpdateTitle(std::u16string title,
 }
 
 void TabView::UpdateBorder() {
-  if (pinned_ && orientation_ == TabStripOrientation::kVertical) {
+  if (orientation_ == TabStripOrientation::kHorizontal) {
+    SetBorder(views::CreateEmptyBorder(tab_styling()->GetContentsInsets()));
+    return;
+  }
+
+  if (pinned_) {
     if (split_) {
       // Insets for border handled by the `SplitTabView`.
       SetBorder(views::CreateEmptyBorder(gfx::Insets(GetLayoutConstant(
@@ -1367,7 +1248,8 @@ const tabs::TabInterface* TabView::GetTabInterface() const {
   if (!collection_node_) {
     return nullptr;
   }
-  return std::get<const tabs::TabInterface*>(collection_node_->GetNodeData());
+  return std::get<tabs::ConstDanglingUntriagedTabInterface>(
+      collection_node_->GetNodeData());
 }
 
 void TabView::UpdateHoverCard(HoverCardAnchorTarget* target,
@@ -1386,85 +1268,6 @@ SkScalar TabView::GetCornerRadius() const {
   return SkIntToScalar(
       GetLayoutConstant(LayoutConstant::kVerticalTabCornerRadius) +
       (split_ ? GetInsets().height() : 0));
-}
-
-const TabView* TabView::GetAdjacentTab(bool leading) const {
-  const tabs::TabInterface* tab = GetTabInterface();
-  const BrowserWindowInterface* browser_window =
-      tab ? tab->GetBrowserWindowInterface() : nullptr;
-  const TabStripModel* model =
-      browser_window ? browser_window->GetTabStripModel() : nullptr;
-  if (!model) {
-    return nullptr;
-  }
-
-  std::optional<int> maybe_index = model->GetIndexOfTab(tab);
-  if (!maybe_index.has_value()) {
-    return nullptr;
-  }
-
-  int adjacent_index =
-      leading ? maybe_index.value() - 1 : maybe_index.value() + 1;
-  if (!model->ContainsIndex(adjacent_index)) {
-    return nullptr;
-  }
-
-  const tabs::TabInterface* adjacent_tab = model->GetTabAtIndex(adjacent_index);
-  BrowserView* browser_view =
-      BrowserView::GetBrowserViewForBrowser(browser_window);
-  BaseTabStripRegionView* region_view =
-      browser_view ? views::AsViewClass<BaseTabStripRegionView>(
-                         browser_view->tab_strip_view())
-                   : nullptr;
-  RootTabCollectionNode* root_node =
-      region_view ? region_view->root_node() : nullptr;
-  TabCollectionNode* adjacent_node =
-      (root_node && adjacent_tab)
-          ? root_node->GetNodeForHandle(adjacent_tab->GetHandle())
-          : nullptr;
-
-  return adjacent_node ? views::AsViewClass<TabView>(adjacent_node->view())
-                       : nullptr;
-}
-
-std::optional<SkColor> TabView::GetGroupColor() const {
-  const tabs::TabInterface* tab_interface = GetTabInterface();
-  std::optional<tab_groups::TabGroupId> group_id =
-      tab_interface ? tab_interface->GetGroup() : std::nullopt;
-  if (!group_id.has_value()) {
-    return std::nullopt;
-  }
-
-  const BrowserWindowInterface* browser_window =
-      tab_interface->GetBrowserWindowInterface();
-  const TabStripModel* model =
-      browser_window ? browser_window->GetTabStripModel() : nullptr;
-  if (!model || !model->SupportsTabGroups()) {
-    return std::nullopt;
-  }
-
-  const TabGroupModel* group_model = model->group_model();
-  const TabGroup* group = (group_model->ContainsTabGroup(group_id.value()))
-                              ? group_model->GetTabGroup(group_id.value())
-                              : nullptr;
-  if (!group || !group->visual_data()) {
-    return std::nullopt;
-  }
-
-  const auto* cp = GetColorProvider();
-  if (!cp) {
-    return std::nullopt;
-  }
-
-  return cp->GetColor(GetTabGroupTabStripColorId(
-      group->visual_data()->color(),
-      GetWidget() ? GetWidget()->ShouldPaintAsActive() : true));
-}
-
-// static
-std::unique_ptr<TabStyleViewDelegate> TabView::CreateStyleDelegate(
-    const TabView* tab_view) {
-  return std::make_unique<TabStyleViewDelegateImpl>(tab_view);
 }
 
 std::optional<performance_manager::freezing::FreezingVote>&

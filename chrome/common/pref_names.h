@@ -1106,15 +1106,6 @@ inline constexpr char kGCMProductCategoryForSubtypes[] =
 // Whether a user is allowed to use Easy Unlock.
 inline constexpr char kEasyUnlockAllowed[] = "easy_unlock.allowed";
 
-#if BUILDFLAG(ENABLE_EXTENSIONS)
-// Used to indicate whether or not the toolbar redesign bubble has been shown
-// and acknowledged, and the last time the bubble was shown.
-inline constexpr char kToolbarIconSurfacingBubbleAcknowledged[] =
-    "toolbar_icon_surfacing_bubble_acknowledged";
-inline constexpr char kToolbarIconSurfacingBubbleLastShowTime[] =
-    "toolbar_icon_surfacing_bubble_show_time";
-#endif
-
 // Define the IP handling policy override that WebRTC should follow. When not
 // set, it defaults to "default".
 inline constexpr char kWebRTCIPHandlingPolicy[] = "webrtc.ip_handling_policy";
@@ -2494,6 +2485,11 @@ inline constexpr char kAppShortcutsVersion[] = "apps.shortcuts_version";
 // from an Intel mac to an ARM mac), then this will cause all shortcuts to be
 // re-created.
 inline constexpr char kAppShortcutsArch[] = "apps.shortcuts_arch";
+
+// A string indicating the OS version under which app shortcuts have been
+// created. If this changes (e.g., due to updating macOS version), then all
+// app shortcuts will be re-created.
+inline constexpr char kAppShortcutsOsVersion[] = "apps.shortcuts_os_version";
 
 // This references a default content setting value which we expose through the
 // preferences extensions API and also used for migration of the old

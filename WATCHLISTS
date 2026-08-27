@@ -124,6 +124,9 @@
                   '|components/crash/android/' \
                   '|components/minidump_uploader/'
     },
+    'android_extensions_windowing': {
+      'filepath': 'chrome/browser/ui/android/extensions/windowing/',
+    },
     'android_flags': {
       'filepath': 'chrome/android/java/src/org/chromium/chrome/browser/flags/'
     },
@@ -163,13 +166,6 @@
     },
     'android_side_panel': {
       'filepath': 'chrome/browser/ui/side_panel/'\
-                  '|chrome/browser/ui/side_panel_container/'\
-                  '|chrome/browser/ui/side_ui/'\
-                  '|.*SidePanel.*\.java'\
-                  '|.*SideUi.*\.java'
-    },
-    'android_side_panel_ui': {
-      'filepath': 'chrome/browser/ui/side_panel_container/'\
                   '|chrome/browser/ui/side_ui/'\
                   '|.*SidePanel.*\.java'\
                   '|.*SideUi.*\.java'
@@ -730,6 +726,9 @@
     },
     'browser_scheduler': {
       'filepath': 'content/browser/scheduler'
+    },
+    'browser_window': {
+      'filepath': 'chrome/browser/ui/browser_window/',
     },
     'browsing_data': {
       'filepath': 'browsing_data|BrowsingData',
@@ -2608,13 +2607,14 @@
                                'chikamune+watch@chromium.org'],
     'ai_page_content': ['mfoltz+watch-actor@chromium.org'],
     'ai_settings_page_desktop': ['rainhard+watch@chromium.org'],
-    'android_accessibility_ui': ['mschillaci@google.com'],
+    'android_accessibility_ui': ['mschillaci+watcha11y@google.com'],
     'android_accessibility_web': ['yongshun+watcha11y@google.com'],
     'android_bookmark_bar': ['eleanorlee@google.com',
-                             'mschillaci@google.com'],
+                             'mschillaci+watchbookmarkbar@google.com'],
     'android_browser_controls': ['peilinwang+watch@google.com'],
     'android_crash_reporting': ['asvitkine+watch@chromium.org',
                                 'wnwen+watch@chromium.org'],
+    'android_extensions_windowing': ['linyuh+watch@google.com'],
     'android_flags': ['hnakashima+watch@chromium.org'],
     'android_infobars': ['dfalcantara+watch@chromium.org'],
     'android_infra': ['agrieve+watch@chromium.org'],
@@ -2626,10 +2626,10 @@
     'android_omnibox': ['ender+watch@chromium.org'],
     'android_search_widget': ['yusufo+watch@chromium.org'],
     'android_side_panel': ['clhager@google.com',
-                           'linyuh@google.com',
-                           'mschillaci@google.com',
+                           'linyuh+watch@google.com',
+                           'mschillaci+watchsidepanel@google.com',
+                           'nemco+watch@google.com',
                            'shuyng@google.com'],
-    'android_side_panel_ui': ['nemco+watch@google.com'],
     'android_startup_metrics': ['pasko+watch@chromium.org'],
     'android_studio': ['wnwen+watch@chromium.org',
                        'nyquist+watch@chromium.org'],
@@ -2864,6 +2864,7 @@
     'browser_components': ['browser-components-watch@chromium.org'],
     'browser_compositor': ['vollick@chromium.org'],
     'browser_scheduler': ['scheduler-bugs+browser@chromium.org'],
+    'browser_window': ['linyuh+watch@google.com'],
     'browsing_data': ['dullweber+watch@chromium.org',
                       'msramek+watch@chromium.org'],
     'cast_2_class': ['cros-edu-eng+cl@google.com'],
@@ -3051,7 +3052,7 @@
                       'freedjm+watch@chromium.org'],
     'extension': ['chromium-apps-reviews@chromium.org',
                   'extensions-reviews@chromium.org'],
-    'feature_engagement': ['mschillaci@google.com'],
+    'feature_engagement': ['mschillaci+watchfet@google.com'],
     'feed': ['harringtond+watch@chromium.org',
              'petewil+watch@chromium.org',
              'iwells+watch@chromium.org'],

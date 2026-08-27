@@ -1867,6 +1867,12 @@
         },
         'telemetry_test_name': 'webgl2_conformance',
         'swarming': {
+          'shards': 5,
+        },
+        'android_swarming': {
+          'shards': 20,
+        },
+        'chromeos_swarming': {
           'shards': 20,
         },
         'skylab': {
@@ -1952,6 +1958,12 @@
         },
         'telemetry_test_name': 'webgl1_conformance',
         'swarming': {
+          'shards': 2,
+        },
+        'android_swarming': {
+          'shards': 6,
+        },
+        'chromeos_swarming': {
           'shards': 6,
         },
         'skylab': {
@@ -2364,17 +2376,6 @@
         ],
       },
       'ondevice_stability_tests_light': {
-        'mixins': [
-          'has_native_resultdb_integration',
-        ],
-        'linux_args': [
-          '--no-xvfb',
-        ],
-      },
-    },
-
-    'opt_target_coverage_test_suite': {
-      'opt_target_coverage_test': {
         'mixins': [
           'has_native_resultdb_integration',
         ],
@@ -3462,11 +3463,6 @@
       'ondevice_stability_tests_suite': {
         'variants': [
           'NVIDIA_GEFORCE_GTX_1660',
-        ],
-      },
-      'opt_target_coverage_test_suite': {
-        'mixins': [
-          'gce',
         ],
       },
     },

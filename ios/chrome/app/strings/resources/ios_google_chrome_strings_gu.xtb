@@ -110,6 +110,7 @@
 <translation id="322254490661677575">તમારા Google એકાઉન્ટમાં Chrome ડેટાનો ઉપયોગ કરવા અને તેને સાચવવા માટે, તમારો પાસફ્રેઝ દાખલ કરો.</translation>
 <translation id="3303503998967553377">iOS પર Chrome ઍક્શનનો ઉપયોગ કરો</translation>
 <translation id="3348862487678490430">Chromeમાં વાંચન સૂચિની આઇટમ ઉમેરો</translation>
+<translation id="3350281376951945723">જ્યારે તમે Chromeને ડિફૉલ્ટ તરીકે સેટ કરો, ત્યારે લિંક વધુ ઝડપથી ખોલો</translation>
 <translation id="3357827134511189025">ઑટોમૅટિક રીતે ભરવાની સુવિધા માટે Chromeનો ઉપયોગ કરીને કોઈપણ ઍપમાંથી તમારા સાચવેલા પાસવર્ડ અને પાસકી વડે સાઇન ઇન કરો</translation>
 <translation id="3360031466389132716">{THRESHOLD,plural, =1{જ્યારે {THRESHOLD} મિનિટ સુધી Chromeનો ઉપયોગ ન કરવામાં આવે, ત્યારે આવું થાય છે}one{જ્યારે {THRESHOLD} મિનિટ સુધી Chromeનો ઉપયોગ ન કરવામાં આવે, ત્યારે આવું થાય છે}other{જ્યારે {THRESHOLD} મિનિટ સુધી Chromeનો ઉપયોગ ન કરવામાં આવે, ત્યારે આવું થાય છે}}</translation>
 <translation id="3367797402528056312">Chromeનું સેટઅપ કરવાનું પૂર્ણ કરો</translation>
@@ -168,6 +169,7 @@
 <translation id="5030102366287574140">ડેટા ઉલ્લંઘનો, અસુરક્ષિત વેબસાઇટ જેવી બીજી ઘણી બાબતોથી તમને સુરક્ષિત રાખવામાં Chrome તમારી સહાય કરી શકે છે.</translation>
 <translation id="5109169629909011627">Chrome Bookmarks જુઓ</translation>
 <translation id="5112925986883715005">Chrome વાંચન સૂચિ જુઓ</translation>
+<translation id="5116239826668864748">તમે મેસેજ, દસ્તાવેજો અને અન્ય ઍપમાં લિંક પર કોઈપણ સમયે ટૅપ કરીને Chromeનો ઉપયોગ કરી શકશો</translation>
 <translation id="5119391094379141756">Chrome પસંદ કરો</translation>
 <translation id="5123188916260706415">Chromeમાં વૉઇસની સુવિધા વડે શોધો.</translation>
 <translation id="5162467219239570114">Chrome જૂનું થઈ ગયું છે. જો <ph name="BEGIN_LINK" />ઍપ સ્ટોર<ph name="END_LINK" />માં કોઈ અપડેટ ઉપલબ્ધ ન હોય, તો એવું બની શકે છે કે તમારું ડિવાઇસ હવેથી Chromeના નવા વર્ઝનને સપોર્ટ ન કરતું હોય.</translation>
@@ -378,6 +380,7 @@
 <translation id="9122931302567044771">આનો અર્થ છે કે Chrome દરેક વખતે ડેસ્કટૉપ સાઇટની વિનંતી કરશે.</translation>
 <translation id="9176561303811134420">Chromeમાં ચુકવણી પદ્ધતિઓ મેનેજ કરો</translation>
 <translation id="9181628561061032322">Chromeના તાજેતરના ટૅબ ખોલે છે.</translation>
+<translation id="924447568950697217">Chrome ને તમારું ડિફૉલ્ટ બ્રાઉઝર બનાવો</translation>
 <translation id="948597495737267756">તમારા Chrome ઇતિહાસનું પેજ ખોલે છે.</translation>
 <translation id="954347330803595209">Chromeમાં તમારા પાસવર્ડ, ઇતિહાસ, બુકમાર્ક અને ક્રેડિટ કાર્ડનો ઉપયોગ કરવા માટે તમારા ડેટાની આયાત કરો</translation>
 <translation id="97300214378190234">જ્યારે પણ તમે અન્ય ઍપમાં લિંક પર ટૅપ કરો, ત્યારે Chromeનો ઉપયોગ કરો.</translation>

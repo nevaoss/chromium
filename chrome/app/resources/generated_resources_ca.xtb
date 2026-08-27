@@ -292,7 +292,6 @@ Comprova les contrasenyes sempre que vulguis al <ph name="GOOGLE_PASSWORD_MANAGE
 <translation id="1202116106683864634">Confirmes que vols suprimir aquesta clau d'accés?</translation>
 <translation id="1202892408424955784">Productes que segueixes</translation>
 <translation id="1203247227716551969">Verifica el compte</translation>
-<translation id="1203559206734265703">La depuració de públics protegits està activada.</translation>
 <translation id="120368089816228251">Nota musical</translation>
 <translation id="1203942045716040624">Shared Worker: <ph name="SCRIPT_URL" /></translation>
 <translation id="1206832039833782423">El codi de seguretat és al revers de la targeta</translation>
@@ -1873,6 +1872,7 @@ Pots gestionar la configuració d'aquest compte instal·lant l'aplicació Family
 <translation id="2458379781610688953">Actualitza el compte, <ph name="EMAIL" /></translation>
 <translation id="2459703812219683497">S'ha detectat un codi d'activació</translation>
 <translation id="2459706890611560967">Reprèn l'emissió de la pestanya a <ph name="DEVICE_NAME" /></translation>
+<translation id="245979889539926662">Comparteix una captura de pantalla</translation>
 <translation id="2460150227008936698">{COUNT,plural, =0{Caduca avui}=1{Caduca demà}other{Caduca d'aquí a # dies}}</translation>
 <translation id="2460482211073772897">En altres carpetes</translation>
 <translation id="2460826998961521840">Per usar claus d'accés del Compte de Google</translation>
@@ -2832,6 +2832,7 @@ Pots gestionar la configuració d'aquest compte instal·lant l'aplicació Family
 <translation id="3175862692832442091">Bosc</translation>
 <translation id="3176347586396987181">Utilitza la tecla Z per mantenir premut un botó del ratolí</translation>
 <translation id="3176984568033229317">Porta la Cerca de Google a Edge</translation>
+<translation id="3177338796769255211">Inicia la sessió per obtenir les teves adreces d'interès i més en tots els teus dispositius</translation>
 <translation id="3177430966804511955">Gestiona les aplicacions web aïllades (beta)</translation>
 <translation id="31774765611822736">Pestanya nova a l'esquerra</translation>
 <translation id="3177909033752230686">Idioma de la pàgina:</translation>
@@ -4082,7 +4083,6 @@ Pots gestionar la configuració d'aquest compte instal·lant l'aplicació Family
 <translation id="4110485659976215879">Restaura l'advertiment</translation>
 <translation id="4112194537011183136"><ph name="DEVICE_NAME" /> (sense connexió)</translation>
 <translation id="4113743276555482284">Contrasenya del fitxer</translation>
-<translation id="4114391251600134209">{COUNT,plural, =0{No hi ha cap contrasenya desada}=1{1 contrasenya comprovada}other{{COUNT} contrasenyes comprovades}}</translation>
 <translation id="4114524937989710624">Veus suggeriments de fitxers per ajudar-te a trobar fàcilment la teva activitat més recent a Google Drive.
         <ph name="BREAK" />
         <ph name="BREAK" />
@@ -6984,7 +6984,6 @@ Assegureu-vos que no es pugui accedir a informació sensible.</translation>
 <translation id="6425556984042222041">Velocitat de text a parla</translation>
 <translation id="642729974267661262">Sense permís per reproduir so</translation>
 <translation id="6427752304227226701">Informa d'un lloc web no segur...</translation>
-<translation id="6427938854876261655">{COUNT,plural, =0{No hi ha cap contrasenya desada.}=1{S'està comprovant {COUNT} contrasenya...}other{S'estan comprovant {COUNT} contrasenyes…}}</translation>
 <translation id="6429384232893414837">Error d'actualització</translation>
 <translation id="6430202563517028640">Afegeix l'enllaç a la llista de lectura</translation>
 <translation id="6430814529589430811">ASCII codificat en Base64, certificat únic</translation>

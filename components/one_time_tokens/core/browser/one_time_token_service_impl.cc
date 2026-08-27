@@ -121,16 +121,24 @@ void OneTimeTokenServiceImpl::RequestOneTimeToken(
   }
 }
 
+void OneTimeTokenServiceImpl::FetchUserDataProcessingConsent(
+    FetchUserDataProcessingConsentCallback callback) {
+  if (gmail_.backend) {
+    gmail_.backend->FetchUserDataProcessingConsent(std::move(callback));
+  } else {
+    std::move(callback).Run(std::nullopt);
+  }
+}
+
 void OneTimeTokenServiceImpl::RetrieveSmsOtpIfNeeded() {
   if (!sms_.backend || sms_.has_pending_request ||
       !sms_subscription_manager_.GetNumberSubscribers()) {
     return;
   }
+  sms_.has_pending_request = true;
   sms_.backend->RetrieveSmsOtp(
       base::BindOnce(&OneTimeTokenServiceImpl::OnResponseFromSmsOtpBackend,
                      weakptr_factory_.GetWeakPtr()));
-
-  sms_.has_pending_request = true;
 }
 
 void OneTimeTokenServiceImpl::OnResponseFromSmsOtpBackend(

@@ -17,6 +17,7 @@
 #include "chrome/browser/context_hub/context_hub_service.h"
 #include "chrome/browser/context_hub/context_hub_service_factory.h"
 #include "chrome/browser/context_hub/features.h"
+#include "chrome/browser/context_hub/prefs.h"
 #include "chrome/browser/optimization_guide/mock_optimization_guide_keyed_service.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
 #include "chrome/browser/personal_context/personal_context_service_factory.h"
@@ -87,6 +88,14 @@ class MockPage : public browser::context_hub::mojom::Page {
               OnAutoTodosChanged,
               (const std::vector<context_hub::AutoTodoEntry>&),
               (override));
+  MOCK_METHOD(void,
+              OnFirstPartyAutoTodosGenerationStateChanged,
+              (bool),
+              (override));
+  MOCK_METHOD(void,
+              OnThirdPartyAutoTodosGenerationStateChanged,
+              (bool),
+              (override));
 
  private:
   mojo::Receiver<browser::context_hub::mojom::Page> receiver_{this};
@@ -105,6 +114,10 @@ class ContextHubPageHandlerTest : public testing::Test {
 
   void OnWillCreateBrowserContextKeyedServices(
       content::BrowserContext* browser_context) {
+    Profile* profile = Profile::FromBrowserContext(browser_context);
+    profile->GetPrefs()->SetTime(prefs::kContextHubLastAutoTodosGenerationTime,
+                                 base::Time::Now());
+
     PersonalContextServiceFactory::GetInstance()->SetTestingFactoryAndUse(
         browser_context,
         base::BindRepeating([](content::BrowserContext* context)
@@ -123,6 +136,9 @@ class ContextHubPageHandlerTest : public testing::Test {
 
   void SetUp() override {
     testing::Test::SetUp();
+
+    profile_.GetPrefs()->SetTime(prefs::kContextHubLastAutoTodosGenerationTime,
+                                 base::Time::Now());
 
 #if !BUILDFLAG(IS_ANDROID)
     auto mock_tab_provider = std::make_unique<MockTabProvider>();
@@ -199,6 +215,7 @@ TEST_F(ContextHubPageHandlerTest, GenerateFirstPartyAutoTodos_Success) {
       .WillOnce(RunOnceCallback<3>(personal_context::FetchContextResult(
           base::ok(std::move(any_response)))));
 
+  EXPECT_CALL(mock_page_, OnFirstPartyAutoTodosGenerationStateChanged(true));
   // Initial clearing of the store.
   EXPECT_CALL(mock_page_, OnAutoTodosChanged(IsEmpty()));
   // Notification after adding the todos.
@@ -215,6 +232,7 @@ TEST_F(ContextHubPageHandlerTest, GenerateFirstPartyAutoTodos_Success) {
                   GURL("https://example.com/action"));
         EXPECT_TRUE(first_party.source_references.empty());
       });
+  EXPECT_CALL(mock_page_, OnFirstPartyAutoTodosGenerationStateChanged(false));
 
   base::test::TestFuture<bool> future;
   handler_->GenerateFirstPartyAutoTodos(future.GetCallback());
@@ -252,6 +270,7 @@ TEST_F(ContextHubPageHandlerTest,
       .WillOnce(RunOnceCallback<3>(personal_context::FetchContextResult(
           base::ok(std::move(any_response)))));
 
+  EXPECT_CALL(mock_page_, OnFirstPartyAutoTodosGenerationStateChanged(true));
   // Initial clearing of the store.
   EXPECT_CALL(mock_page_, OnAutoTodosChanged(IsEmpty()));
   // Notification after adding the todos.
@@ -273,6 +292,7 @@ TEST_F(ContextHubPageHandlerTest,
                   GURL("https://mail.google.com/mail/u/0/#inbox/456"));
         EXPECT_EQ(first_party.source_references[1].subject, "Subject 2");
       });
+  EXPECT_CALL(mock_page_, OnFirstPartyAutoTodosGenerationStateChanged(false));
 
   base::test::TestFuture<bool> future;
   handler_->GenerateFirstPartyAutoTodos(future.GetCallback());
@@ -291,7 +311,9 @@ TEST_F(ContextHubPageHandlerTest, GenerateFirstPartyAutoTodos_Failure) {
                   personal_context::ContextMemoryError::ExecutionError::
                       kUnknown)))));
 
+  EXPECT_CALL(mock_page_, OnFirstPartyAutoTodosGenerationStateChanged(true));
   EXPECT_CALL(mock_page_, OnAutoTodosChanged(_)).Times(0);
+  EXPECT_CALL(mock_page_, OnFirstPartyAutoTodosGenerationStateChanged(false));
 
   base::test::TestFuture<bool> future;
   handler_->GenerateFirstPartyAutoTodos(future.GetCallback());
@@ -312,12 +334,61 @@ TEST_F(ContextHubPageHandlerTest, GenerateFirstPartyAutoTodos_Empty) {
       .WillOnce(RunOnceCallback<3>(personal_context::FetchContextResult(
           base::ok(std::move(any_response)))));
 
+  EXPECT_CALL(mock_page_, OnFirstPartyAutoTodosGenerationStateChanged(true));
   EXPECT_CALL(mock_page_, OnAutoTodosChanged(IsEmpty())).Times(2);
+  EXPECT_CALL(mock_page_, OnFirstPartyAutoTodosGenerationStateChanged(false));
 
   base::test::TestFuture<bool> future;
   handler_->GenerateFirstPartyAutoTodos(future.GetCallback());
   EXPECT_TRUE(future.Get());
   mock_page_.Flush();
+}
+
+TEST_F(ContextHubPageHandlerTest, InitialStatePushedIfGenerationInFlight) {
+  ContextHubService* service =
+      ContextHubServiceFactory::GetForProfile(&profile_);
+  ASSERT_TRUE(service);
+
+  EXPECT_CALL(mock_page_, OnFirstPartyAutoTodosGenerationStateChanged(true));
+  personal_context::FetchContextCallback saved_callback;
+  EXPECT_CALL(
+      *GetMockService(),
+      FetchContext(personal_context::proto::CONTEXT_MEMORY_FEATURE_AUTO_TODOS,
+                   _, _, _))
+      .WillOnce([&](personal_context::proto::ContextMemoryFeature,
+                    const google::protobuf::MessageLite&,
+                    const personal_context::ContextMemoryRequestOptions&,
+                    personal_context::FetchContextCallback callback) {
+        saved_callback = std::move(callback);
+      });
+
+  // Start generation in the background service directly.
+  service->GenerateFirstPartyAutoTodos(base::DoNothing());
+  EXPECT_TRUE(service->IsGeneratingFirstPartyAutoTodos());
+
+  // Create a new handler as if opening a new WebUI tab while generation is in
+  // flight.
+  MockPage new_mock_page;
+  EXPECT_CALL(new_mock_page, OnFirstPartyAutoTodosGenerationStateChanged(true));
+
+  auto new_handler = std::make_unique<ContextHubPageHandler>(
+      new_mock_page.BindAndGetRemote(),
+      mojo::PendingReceiver<browser::context_hub::mojom::PageHandler>(),
+      &profile_, nullptr, nullptr);
+  new_mock_page.Flush();
+
+  // Complete generation to ensure all observers receive the false event and
+  // state is cleaned up.
+  EXPECT_CALL(mock_page_, OnFirstPartyAutoTodosGenerationStateChanged(false));
+  EXPECT_CALL(new_mock_page,
+              OnFirstPartyAutoTodosGenerationStateChanged(false));
+  std::move(saved_callback)
+      .Run(personal_context::FetchContextResult(base::unexpected(
+          personal_context::ContextMemoryError::FromExecutionError(
+              personal_context::ContextMemoryError::ExecutionError::
+                  kUnknown))));
+  mock_page_.Flush();
+  new_mock_page.Flush();
 }
 
 TEST(ContextHubMojomTraitsTest, StatusSerialization) {
@@ -817,14 +888,18 @@ TEST_F(ContextHubPageHandlerTest, GetAllMemoryBankEntries_Success) {
   ASSERT_TRUE(service);
 
   base::test::TestFuture<void> save_tab_future;
-  service->SaveTab(GURL("https://example.com/tab"), "Tab Title", "Page text",
-                   save_tab_future.GetCallback());
+  service->SaveMemoryBankEntry(
+      MemoryBankEntry(MemoryBankType::kTab, GURL("https://example.com/tab"),
+                      "Tab Title", "Page text"),
+      save_tab_future.GetCallback());
   ASSERT_TRUE(save_tab_future.Wait());
 
   base::test::TestFuture<void> save_selection_future;
-  service->SaveTextSelection(GURL("https://example.com/select"),
-                             "Selection Title", "Selected Text Detail",
-                             save_selection_future.GetCallback());
+  service->SaveMemoryBankEntry(
+      MemoryBankEntry(MemoryBankType::kTextSelection,
+                      GURL("https://example.com/select"), "Selection Title",
+                      "Selected Text Detail"),
+      save_selection_future.GetCallback());
   ASSERT_TRUE(save_selection_future.Wait());
 
   base::test::TestFuture<
@@ -866,13 +941,17 @@ TEST_F(ContextHubPageHandlerTest, DeleteMemoryBankEntries_Success) {
   ASSERT_TRUE(service);
 
   base::test::TestFuture<void> save_tab_future1;
-  service->SaveTab(GURL("https://example.com/tab1"), "Tab Title 1",
-                   "Page text 1", save_tab_future1.GetCallback());
+  service->SaveMemoryBankEntry(
+      MemoryBankEntry(MemoryBankType::kTab, GURL("https://example.com/tab1"),
+                      "Tab Title 1", "Page text 1"),
+      save_tab_future1.GetCallback());
   ASSERT_TRUE(save_tab_future1.Wait());
 
   base::test::TestFuture<void> save_tab_future2;
-  service->SaveTab(GURL("https://example.com/tab2"), "Tab Title 2",
-                   "Page text 2", save_tab_future2.GetCallback());
+  service->SaveMemoryBankEntry(
+      MemoryBankEntry(MemoryBankType::kTab, GURL("https://example.com/tab2"),
+                      "Tab Title 2", "Page text 2"),
+      save_tab_future2.GetCallback());
   ASSERT_TRUE(save_tab_future2.Wait());
 
   base::test::TestFuture<
@@ -1210,6 +1289,8 @@ TEST_F(ContextHubPageHandlerTest, GenerateTabBasedTodos) {
       .WillOnce(testing::Return(raw_test_tabs));
 
   EXPECT_CALL(mock_page_, OnAutoTodosChanged(_)).Times(0);
+  EXPECT_CALL(mock_page_, OnThirdPartyAutoTodosGenerationStateChanged(_))
+      .Times(0);
 
   base::test::TestFuture<bool> future;
   handler_->GenerateTabBasedTodos(future.GetCallback());
@@ -1296,8 +1377,10 @@ TEST_F(ContextHubPageHandlerTest, AskGeminiWithContext_WithSelectedEntries) {
   ASSERT_TRUE(service);
 
   base::test::TestFuture<void> save_future;
-  service->SaveTab(GURL("https://example.com/test"), "Test Page",
-                   "Page content", save_future.GetCallback());
+  service->SaveMemoryBankEntry(
+      MemoryBankEntry(MemoryBankType::kTab, GURL("https://example.com/test"),
+                      "Test Page", "Page content"),
+      save_future.GetCallback());
   ASSERT_TRUE(save_future.Wait());
 
   base::test::TestFuture<

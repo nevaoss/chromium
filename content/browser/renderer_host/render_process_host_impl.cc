@@ -306,17 +306,6 @@
 #define MAYBEVLOG DVLOG
 #endif
 
-namespace features {
-
-#if BUILDFLAG(IS_ANDROID)
-// The feature flag is added for a holdback experiment to estimate
-// the performance impace of the first spare renderer not using the warm-up
-// process in webview.
-BASE_FEATURE(kSpareRendererUseWarmupConnection,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-#endif
-
-}  // namespace features
 
 namespace content {
 
@@ -3904,6 +3893,7 @@ void RenderProcessHostImpl::PropagateBrowserCommandLineToRenderer(
       switches::kEnableExperimentalAccessibilityLabelsDebugging,
       switches::kEnableExperimentalWebPlatformFeatures,
       switches::kEnableBlinkTestFeatures,
+      switches::kExposeInternalsForTesting,
       switches::kEnableGPUClientLogging,
       switches::kEnableGpuClientTracing,
       switches::kEnableGpuMemoryBufferVideoFrames,
@@ -4371,13 +4361,6 @@ void RenderProcessHostImpl::OnChannelError() {
   ProcessDied(info);
 }
 
-void RenderProcessHostImpl::OnBadMessageReceived() {
-  // Message de-serialization failed. We consider this a capital crime. Kill
-  // the renderer if we have one.
-  LOG(ERROR) << "bad message, terminating renderer.";
-  bad_message::ReceivedBadMessage(this,
-                                  bad_message::RPH_DESERIALIZATION_FAILED);
-}
 
 BrowserContext* RenderProcessHostImpl::GetBrowserContext() {
   return browser_context_;
@@ -6285,14 +6268,6 @@ void RenderProcessHostImpl::OnProcessLaunchFailed(int error_code) {
 }
 
 #if BUILDFLAG(IS_ANDROID)
-bool RenderProcessHostImpl::CanUseWarmUpConnection() {
-  // TODO(crbug.com/455620851): Remove the function after finishing the
-  // holdback experiment.
-  return base::FeatureList::IsEnabled(
-             features::kSpareRendererUseWarmupConnection) ||
-         !HasSpareRendererPriority();
-}
-
 bool RenderProcessHostImpl::HasSpareRendererPriority() {
   return spare_renderer_priority_status_ !=
          SpareRendererPriorityStatus::kNormal;

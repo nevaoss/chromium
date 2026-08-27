@@ -144,6 +144,13 @@ if (is_win) {
 }
 
 if (is_android) {
+  # Weak definitions needed because standalone tools (e.g. device_forwarder,
+  # devil_utils, sandbox_linux_unittests) depend on various //base libraries.
+  # As non-Java-using binaries, it doesn't really make sense for them to have
+  # a generate_final_jni() step. These binaries link JNI calls, but don't
+  # actually execute them (since doing so would crash).
+  use_weak_called_by_natives = true
+
   config("android_system_libs") {
     libs = [
       "android",
@@ -489,6 +496,8 @@ component("base") {
     "memory/writable_shared_memory_region.h",
     "memory_coordinator/async_memory_consumer_registration.cc",
     "memory_coordinator/async_memory_consumer_registration.h",
+    "memory_coordinator/dummy_memory_consumer_registry.cc",
+    "memory_coordinator/dummy_memory_consumer_registry.h",
     "memory_coordinator/memory_consumer.cc",
     "memory_coordinator/memory_consumer.h",
     "memory_coordinator/memory_consumer_registry.cc",
@@ -1934,6 +1943,7 @@ component("base") {
       "win/dark_mode_support.h",
       "win/default_apps_util.cc",
       "win/default_apps_util.h",
+      "win/delayload_helpers.cc",
       "win/delayload_helpers.h",
       "win/elevation_util.cc",
       "win/elevation_util.h",
@@ -5424,6 +5434,17 @@ if (is_android) {
     ]
   }
 
+  android_library("tristate_java") {
+    sources = [
+      "android/java/src/org/chromium/base/TriState.java",
+      "android/java/src/org/chromium/base/TriStateUtils.java",
+    ]
+    deps = [
+      "//build/android:build_java",
+      "//third_party/androidx:androidx_annotation_annotation_java",
+    ]
+  }
+
   android_library("supplier_java") {
     sources = [
       "android/java/src/org/chromium/base/supplier/BaseObservableSupplierImpl.java",
@@ -6215,6 +6236,7 @@ if (is_android) {
       "android/junit/src/org/chromium/base/TimeUtilsTest.java",
       "android/junit/src/org/chromium/base/TokenUnitTest.java",
       "android/junit/src/org/chromium/base/TraceEventTest.java",
+      "android/junit/src/org/chromium/base/TriStateUtilsTest.java",
       "android/junit/src/org/chromium/base/UnownedUserDataHostTest.java",
       "android/junit/src/org/chromium/base/UnownedUserDataKeyTest.java",
       "android/junit/src/org/chromium/base/ValueChangedCallbackTest.java",
@@ -6274,6 +6296,7 @@ if (is_android) {
       ":jni_callbacks_junit_tests_java",
       ":location_junit_tests",
       ":task_executor_java",
+      ":tristate_java",
       "//base/test:leak_canary_java",
       "//base/test:public_transit_robolectric_tests_java",
       "//base/test:test_support_java",

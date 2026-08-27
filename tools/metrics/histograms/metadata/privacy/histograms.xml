@@ -86,36 +86,6 @@ Regular profiles start at bucket 1, we don't consider non-regular profiles. -->
 
 <!-- LINT.ThenChange(//tools/metrics/histograms/metadata/settings/histograms.xml:Profile) -->
 
-<histogram name="Privacy.3PCD.RollbackNotice.Action"
-    enum="RollBack3pcdNoticeAction" expires_after="2026-12-27">
-  <owner>fmacintosh@google.com</owner>
-  <owner>koilos@google.com</owner>
-  <summary>
-    Records the user action, if any, taken on the 3PCD rollback notice.
-  </summary>
-</histogram>
-
-<histogram name="Privacy.3PCD.RollbackNotice.AutomaticallyDismissed"
-    enum="Boolean" expires_after="2026-11-01">
-  <owner>fmacintosh@google.com</owner>
-  <owner>koilos@google.com</owner>
-  <summary>
-    Logged when the 3PCD rollback notice is dismissed. Records whether this
-    dismissal was automatic or the result of a user action.
-  </summary>
-</histogram>
-
-<histogram name="Privacy.3PCD.RollbackNotice.ShouldShow" enum="Boolean"
-    expires_after="2026-11-01">
-  <owner>fmacintosh@google.com</owner>
-  <owner>koilos@google.com</owner>
-  <summary>
-    Logged at startup after the user is removed from the 3PCD 1% experiment.
-    Records whether or not the user should be notified of this rollback via a
-    rollback notice.
-  </summary>
-</histogram>
-
 <histogram name="Privacy.AFP.BlockList.CheckResult"
     enum="AntiFingerprintingBlockListResult" expires_after="2024-04-01">
   <owner>thesalsa@google.com</owner>
@@ -506,6 +476,38 @@ Regular profiles start at bucket 1, we don't consider non-regular profiles. -->
     <variant name=".RegularProfile"
         summary="from version M-109. It is recorded only for regular profiles"/>
   </token>
+</histogram>
+
+<histogram name="Privacy.UniversalOptOut.EligibilityChanged"
+    enum="UniversalOptOutEligibilityTransition" expires_after="2027-08-01">
+  <owner>zalmashni@google.com</owner>
+  <owner>chrome-browser-privacy-team@google.com</owner>
+  <summary>
+    Recorded when background eligibility evaluation determines that a user's
+    feature eligibility status has changed, capturing the transition direction
+    (Ineligible to Eligible, or Eligible to Ineligible).
+  </summary>
+</histogram>
+
+<histogram name="Privacy.UniversalOptOut.EligibilitySystem.Startup"
+    enum="UniversalOptOutEligibilitySystem" expires_after="2027-08-01">
+  <owner>zalmashni@google.com</owner>
+  <owner>chrome-browser-privacy-team@google.com</owner>
+  <summary>
+    Records which underlying system determined profile eligibility at startup
+    (Account Capabilities or Finch/Variations) and whether the profile is
+    eligible or ineligible. Recorded when UniversalOptOutService is initialized.
+  </summary>
+</histogram>
+
+<histogram name="Privacy.UniversalOptOut.ProfileEligibility.Startup"
+    enum="BooleanEligible" expires_after="2027-08-01">
+  <owner>zalmashni@google.com</owner>
+  <owner>chrome-browser-privacy-team@google.com</owner>
+  <summary>
+    Tracks whether a profile is eligible for Universal Opt-Out at profile
+    startup. Recorded when UniversalOptOutService is initialized.
+  </summary>
 </histogram>
 
 <histogram name="PrivacyGuide.CanShowNTPPromo" enum="Boolean"

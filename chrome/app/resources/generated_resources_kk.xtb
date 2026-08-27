@@ -292,7 +292,6 @@
 <translation id="1202116106683864634">Бұл кіру кілтін жойғыңыз келетінін растайсыз ба?</translation>
 <translation id="1202892408424955784">Бақыланатын өнімдер</translation>
 <translation id="1203247227716551969">Аккаунтыңызды растаңыз</translation>
-<translation id="1203559206734265703">"Қорғалған аудиторияларды түзету" мүмкіндігі қосулы.</translation>
 <translation id="120368089816228251">Музыка ноталары</translation>
 <translation id="1203942045716040624">Shared Worker: <ph name="SCRIPT_URL" /></translation>
 <translation id="1206832039833782423">Қауіпсіздік коды картаңыздың артқы жағында</translation>
@@ -2832,6 +2831,7 @@
 <translation id="3175862692832442091">Орман</translation>
 <translation id="3176347586396987181">Тінтуір түймесін басып тұру үшін "z" пернесін басыңыз.</translation>
 <translation id="3176984568033229317">Google Search-ті Edge-ге қосыңыз</translation>
+<translation id="3177338796769255211">Барлық құрылғыда бетбелгілер және т.б. ақпарат алу үшін аккаунтқа кіріңіз.</translation>
 <translation id="3177430966804511955">Оқшау веб-қолданбаларды (бета) басқару</translation>
 <translation id="31774765611822736">Сол жақтан жаңа қойынды ашу</translation>
 <translation id="3177909033752230686">Бет тілі:</translation>
@@ -4083,7 +4083,6 @@
 <translation id="4110485659976215879">Ескертуді қалпына келтіру</translation>
 <translation id="4112194537011183136"><ph name="DEVICE_NAME" /> (офлайн)</translation>
 <translation id="4113743276555482284">Файл құпия сөзі</translation>
-<translation id="4114391251600134209">{COUNT,plural, =0{Ешқандай құпия сөз сақталмаған}=1{1 құпия сөз тексерілді}other{{COUNT} құпия сөз тексерілді}}</translation>
 <translation id="4114524937989710624">Google Drive қызметіндегі соңғы іс-әрекеттерге оңай оралуға көмектесетін файлдарды көріп тұрсыз.
         <ph name="BREAK" />
         <ph name="BREAK" />
@@ -6983,7 +6982,6 @@
 <translation id="6425556984042222041">Мәтінді дыбыстау жылдамдығы</translation>
 <translation id="642729974267661262">Дыбысты ойнатуға рұқсаты жоқтар</translation>
 <translation id="6427752304227226701">Қауіпті сайт туралы шағымдану...</translation>
-<translation id="6427938854876261655">{COUNT,plural, =0{Ешқандай құпия сөз сақталмаған.}=1{{COUNT} құпия сөз тексерілуде...}other{{COUNT} құпия сөз тексерілуде...}}</translation>
 <translation id="6429384232893414837">Жаңарту кезінде қате шықты</translation>
 <translation id="6430202563517028640">Сілтемені оқу тізіміне қосу</translation>
 <translation id="6430814529589430811">Base64 кодталған ASCII, бір сертификат</translation>

@@ -16,8 +16,6 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/search_engines/ai_mode_button_service_factory.h"
 #include "chrome/browser/ui/bookmarks/bookmark_stats.h"
-#include "chrome/browser/ui/browser.h"
-#include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/contextual_search/searchbox_context_data.h"
@@ -76,6 +74,7 @@
 #include "third_party/metrics_proto/omnibox_focus_type.pb.h"
 #include "third_party/omnibox_proto/types.pb.h"
 #include "ui/base/l10n/l10n_util.h"
+#include "ui/base/ui_base_features.h"
 #include "ui/base/webui/resource_path.h"
 #include "ui/base/window_open_disposition_utils.h"
 #include "ui/views/widget/widget.h"
@@ -328,6 +327,10 @@ void WebuiOmniboxHandler::OpenCurrentSelection(
   page_->OpenCurrentSelection(disposition);
 }
 
+void WebuiOmniboxHandler::ResetPopupToInitialState() {
+  page_->ResetPopupToInitialState();
+}
+
 void WebuiOmniboxHandler::SetAimButtonVisible(bool visible) {
   page_->SetAimButtonVisible(visible);
 }
@@ -411,6 +414,15 @@ WebuiOmniboxHandler::CreateAutocompleteMatch(
   }
 
   return mojom_match;
+}
+
+bool WebuiOmniboxHandler::ShouldShowFirstContextualDescription() const {
+  return omnibox::kAskGShowFirstDescription.Get() &&
+         autocomplete_controller() &&
+         autocomplete_controller()
+             ->GetSuggestionGroupHeaderText(
+                 omnibox::GroupId::GROUP_CONTEXTUAL_SEARCH)
+             .empty();
 }
 
 void WebuiOmniboxHandler::OnFocusChanged(bool focused) {
@@ -582,7 +594,10 @@ void WebuiOmniboxHandler::OnAiModeButtonConfigChanged(
     return;
   }
   GURL compose_icon(
-      "chrome://resources/cr_components/searchbox/icons/search_spark.svg");
+      features::IsWebUIRoundedIconsEnabled()
+          ? "chrome://resources/cr_components/searchbox/icons/search_spark.svg"
+          : "chrome://resources/cr_components/searchbox/icons/"
+            "search_spark_old.svg");
   std::string favicon_url(config->favicon_url);
   if (config->id != SearchEngineType::SEARCH_ENGINE_GOOGLE &&
       !favicon_url.empty()) {

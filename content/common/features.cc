@@ -246,7 +246,7 @@ BASE_FEATURE(kEnforceGamepadPermissionsPolicy,
 // Note: This feature remains disabled if
 // blink::features::kTreatMhtmlInitialDocumentLoadsAsCrossDocument is disabled.
 BASE_FEATURE(kEnforceSameDocumentOriginInvariants,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Content counterpart of ExperimentalContentSecurityPolicyFeatures in
 // third_party/blink/renderer/platform/runtime_enabled_features.json5. Enables
@@ -579,6 +579,9 @@ BASE_FEATURE(kPreloadActivationReportWithExtensionInterception,
 // See content/browser/preloading/preloading_config.cc to see how to use this
 // feature.
 BASE_FEATURE(kPreloadingConfig, base::FEATURE_ENABLED_BY_DEFAULT);
+
+BASE_FEATURE(kPrioritizeResizeTaskRunnerOnStartup,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // A misunderstanding when fixing crbug.com/40076091 meant that non-speculative
 // RFHs were being created with a provisional RenderFrame in the renderer. This

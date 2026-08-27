@@ -15,7 +15,6 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -79,7 +78,7 @@ import org.chromium.components.favicon.LargeIconBridgeJni;
 import org.chromium.components.feature_engagement.Tracker;
 import org.chromium.components.metrics.OmniboxEventProtosIntDef.PageClassification;
 import org.chromium.components.omnibox.AutocompleteInput;
-import org.chromium.components.omnibox.AutocompleteInput.AutocompleteState;
+import org.chromium.components.omnibox.AutocompleteInput.DisplayState;
 import org.chromium.components.omnibox.AutocompleteInput.SiteSearchData;
 import org.chromium.components.omnibox.AutocompleteRequestType;
 import org.chromium.components.omnibox.OmniboxCapabilities;
@@ -135,6 +134,8 @@ public final class StatusMediatorUnitTest {
     @Mock private LargeIconBridge.Natives mLargeIconBridgeNatives;
     @Mock private Drawable mMockFaviconDrawable;
     @Mock private TemplateUrl mTemplateUrl;
+    @Mock private TemplateUrl mWikiTemplate;
+    @Mock private TemplateUrl mGeminiTemplate;
 
     @Captor private ArgumentCaptor<PermissionDialogController.Observer> mPermissionObserverCaptor;
 
@@ -177,6 +178,7 @@ public final class StatusMediatorUnitTest {
                 .when(mAutocompleteInput)
                 .getPreviewMatchUrl();
         doReturn(mRequestTypeSupplier).when(mAutocompleteInput).getRequestTypeSupplier();
+        doReturn(DisplayState.WEBSITE).when(mAutocompleteInput).getDisplayState();
         doReturn(AutocompleteInput.AutocompleteState.ENABLED)
                 .when(mAutocompleteInput)
                 .getAutocompleteState();
@@ -246,20 +248,6 @@ public final class StatusMediatorUnitTest {
         assertEquals(
                 R.drawable.ic_logo_googleg_20dp,
                 mModel.get(StatusProperties.STATUS_ICON_RESOURCE).getIconRes());
-    }
-
-    @Test
-    @SmallTest
-    public void searchEngineLogo_contextualTasksFusebox_evenWhenNtp() {
-        doReturn(PageClassification.CO_BROWSING_COMPOSEBOX)
-                .when(mLocationBarDataProvider)
-                .getPageClassification(/* prefetch= */ false);
-        doReturn(true).when(mNewTabPageDelegate).isCurrentlyVisible();
-
-        mMediator.beginInput(mFuseboxSessionState);
-
-        // It should NOT show the status view at all (to avoid the gap).
-        assertFalse(mModel.get(StatusProperties.SHOW_STATUS_VIEW));
     }
 
     @Test
@@ -337,8 +325,8 @@ public final class StatusMediatorUnitTest {
     @Test
     @SmallTest
     @EnableFeatures(OmniboxFeatureList.EXACT_MATCH_FAVICONS)
-    public void previewUrlChanged_autocompleteEnabled_showFavicon() {
-        setAutocompleteState(AutocompleteInput.AutocompleteState.ENABLED);
+    public void previewUrlChanged_displayStateSuggestions_showFavicon() {
+        setDisplayState(DisplayState.SUGGESTIONS);
 
         mPreviewMatchUrlSupplier.set(JUnitTestGURLs.BLUE_1);
         mMediator.onFaviconFetched(JUnitTestGURLs.BLUE_1, mMockFaviconDrawable);
@@ -351,8 +339,8 @@ public final class StatusMediatorUnitTest {
     @Test
     @SmallTest
     @EnableFeatures(OmniboxFeatureList.EXACT_MATCH_FAVICONS)
-    public void previewUrlChanged_autocompleteStandby_showFavicon() {
-        setAutocompleteState(AutocompleteInput.AutocompleteState.STANDBY);
+    public void previewUrlChanged_displayStateDrafting_showFavicon() {
+        setDisplayState(DisplayState.DRAFTING);
 
         mPreviewMatchUrlSupplier.set(JUnitTestGURLs.BLUE_1);
         mMediator.onFaviconFetched(JUnitTestGURLs.BLUE_1, mMockFaviconDrawable);
@@ -365,8 +353,22 @@ public final class StatusMediatorUnitTest {
     @Test
     @SmallTest
     @EnableFeatures(OmniboxFeatureList.EXACT_MATCH_FAVICONS)
-    public void previewUrlChanged_autocompleteDisabled_noFavicon() {
-        setAutocompleteState(AutocompleteInput.AutocompleteState.DISABLED);
+    public void previewUrlChanged_displayStateDraftingNoFocus_showFavicon() {
+        setDisplayState(DisplayState.DRAFTING_NO_FOCUS);
+
+        mPreviewMatchUrlSupplier.set(JUnitTestGURLs.BLUE_1);
+        mMediator.onFaviconFetched(JUnitTestGURLs.BLUE_1, mMockFaviconDrawable);
+
+        assertEquals(
+                mMockFaviconDrawable,
+                mModel.get(StatusProperties.STATUS_ICON_RESOURCE).getDrawable(mContext));
+    }
+
+    @Test
+    @SmallTest
+    @EnableFeatures(OmniboxFeatureList.EXACT_MATCH_FAVICONS)
+    public void previewUrlChanged_displayStateWebsite_noFavicon() {
+        setDisplayState(DisplayState.WEBSITE);
 
         mPreviewMatchUrlSupplier.set(JUnitTestGURLs.BLUE_1);
         mMediator.onFaviconFetched(JUnitTestGURLs.BLUE_1, mMockFaviconDrawable);
@@ -1332,19 +1334,17 @@ public final class StatusMediatorUnitTest {
         Shadows.shadowOf(Looper.getMainLooper()).idle();
 
         // 1. User triggers @wiki first
-        TemplateUrl wikiTemplate = mock(TemplateUrl.class);
-        doReturn(wikiTemplate).when(mTemplateUrlService).getTemplateUrlForKeyword("wiki");
+        doReturn(mWikiTemplate).when(mTemplateUrlService).getTemplateUrlForKeyword("wiki");
 
         SiteSearchData wikiData = new SiteSearchData("wiki", "Wikipedia");
         siteSearchDataSupplier.set(wikiData);
         Shadows.shadowOf(Looper.getMainLooper()).idle();
 
         verify(mSearchEngineService)
-                .retrieveFavicon(eq(wikiTemplate), mFaviconCallbackCaptor.capture());
+                .retrieveFavicon(eq(mWikiTemplate), mFaviconCallbackCaptor.capture());
 
         // 2. User changes suggestion from @wiki to @gemini
-        TemplateUrl geminiTemplate = mock(TemplateUrl.class);
-        doReturn(geminiTemplate).when(mTemplateUrlService).getTemplateUrlForKeyword("gemini");
+        doReturn(mGeminiTemplate).when(mTemplateUrlService).getTemplateUrlForKeyword("gemini");
 
         SiteSearchData geminiData = new SiteSearchData("gemini", "Gemini");
         siteSearchDataSupplier.set(geminiData);
@@ -1411,8 +1411,8 @@ public final class StatusMediatorUnitTest {
         assertFalse(mModel.get(StatusProperties.STATUS_VIEW_HOVER_ENABLED));
     }
 
-    private void setAutocompleteState(@AutocompleteState int state) {
-        doReturn(state).when(mAutocompleteInput).getAutocompleteState();
+    private void setDisplayState(@DisplayState int state) {
+        doReturn(state).when(mAutocompleteInput).getDisplayState();
         mMediator.beginInput(mFuseboxSessionState);
     }
 

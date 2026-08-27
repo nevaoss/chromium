@@ -567,6 +567,7 @@ class CORE_EXPORT WebFrameWidgetImpl
   bool HasActiveUnboundedElements() const {
     return active_unbounded_element_count_ > 0;
   }
+  HTMLElement* GetActiveUnboundedElement() const;
 
   // mojom::blink::FrameWidgetInputHandler overrides:
   void HandleStylusWritingGestureAction(
@@ -1492,7 +1493,6 @@ class CORE_EXPORT WebFrameWidgetImpl
     return unbounded_surface_state_.Get();
   }
   void UnboundedContextDestroyed();
-  HTMLElement* GetActiveUnboundedElement() const;
 
   // Used during unbounded element show/hide to keep track of whether there is
   // an active unbounded element in this widget.

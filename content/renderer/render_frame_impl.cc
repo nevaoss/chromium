@@ -4836,12 +4836,13 @@ void RenderFrameImpl::DidObserveUserInteraction(
     base::TimeTicks max_event_processing_start,
     base::TimeTicks max_event_commit_finish,
     base::TimeTicks max_event_end,
-    uint64_t interaction_offset) {
+    uint64_t interaction_offset,
+    uint64_t performance_timeline_navigation_id) {
   for (auto& observer : observers_) {
     observer.DidObserveUserInteraction(
         max_event_start, max_event_queued_main_thread,
         max_event_processing_start, max_event_commit_finish, max_event_end,
-        interaction_offset);
+        interaction_offset, performance_timeline_navigation_id);
   }
 }
 
@@ -4933,10 +4934,13 @@ void RenderFrameImpl::DidObserveSoftLargestContentfulPaint(
   }
 }
 
-void RenderFrameImpl::DidObserveLayoutShift(double score,
-                                            bool after_input_or_scroll) {
+void RenderFrameImpl::DidObserveLayoutShift(
+    double score,
+    bool after_input_or_scroll,
+    uint64_t performance_timeline_navigation_id) {
   for (auto& observer : observers_) {
-    observer.DidObserveLayoutShift(score, after_input_or_scroll);
+    observer.DidObserveLayoutShift(score, after_input_or_scroll,
+                                   performance_timeline_navigation_id);
   }
 }
 

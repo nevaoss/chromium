@@ -3181,6 +3181,11 @@ ci.builder(
             "panther_on_14",
         ],
         per_test_modifications = {
+            "android_webview_unittests": targets.mixin(
+                # TODO(crbug.com/546581718): Re-enable on CQ once the high
+                # pending time is gone.
+                ci_only = True,
+            ),
             "android_browsertests": targets.mixin(
                 # TODO Re-enable on CQ once the high
                 # pending time is gone
@@ -3188,6 +3193,11 @@ ci.builder(
                 swarming = targets.swarming(
                     shards = 7,
                 ),
+            ),
+            "blink_platform_unittests": targets.mixin(
+                # TODO(crbug.com/546581718): Re-enable on CQ once the high
+                # pending time is gone.
+                ci_only = True,
             ),
             "cc_unittests": targets.mixin(
                 args = [
@@ -3198,6 +3208,21 @@ ci.builder(
                 args = [
                     "--test-launcher-filter-file=../../testing/buildbot/filters/android.device_14.chrome_public_test_apk.filter",
                 ],
+                ci_only = True,
+            ),
+            "chrome_public_unit_test_apk": targets.mixin(
+                # TODO(crbug.com/546581718): Re-enable on CQ once the high
+                # pending time is gone.
+                ci_only = True,
+            ),
+            "chrome_public_smoke_test": targets.mixin(
+                # TODO(crbug.com/546581718): Re-enable on CQ once the high
+                # pending time is gone.
+                ci_only = True,
+            ),
+            "chrome_public_bundle_smoke_test": targets.mixin(
+                # TODO(crbug.com/546581718): Re-enable on CQ once the high
+                # pending time is gone.
                 ci_only = True,
             ),
             "content_browsertests": targets.mixin(

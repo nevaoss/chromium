@@ -8,26 +8,21 @@
 
 #include "base/command_line.h"
 #include "base/memory/raw_ptr.h"
-#include "base/test/metrics/user_action_tester.h"
-#include "base/test/run_until.h"
 #include "base/test/scoped_feature_list.h"
 #include "build/branding_buildflags.h"
 #include "build/build_config.h"
 #include "chrome/app/chrome_command_ids.h"
-#include "chrome/browser/bookmarks/bookmark_model_factory.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/command_updater.h"
 #include "chrome/browser/prefs/incognito_mode_prefs.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/profiles/profiles_state.h"
-#include "chrome/browser/tab_group_sync/tab_group_sync_service_factory.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_window/public/create_browser_window.h"
 #include "chrome/browser/ui/browser_window_state.h"
 #include "chrome/browser/ui/exclusive_access/exclusive_access_context.h"
 #include "chrome/browser/ui/fullscreen/browser_window_fullscreen_controller.h"
-#include "chrome/browser/ui/tabs/saved_tab_groups/tab_group_sync_service_initialized_observer.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/common/chrome_switches.h"
 #include "chrome/common/pref_names.h"
@@ -35,40 +30,17 @@
 #include "chrome/test/base/test_browser_window.h"
 #include "chrome/test/base/testing_browser_process.h"
 #include "chrome/test/base/testing_profile_manager.h"
-#include "components/bookmarks/browser/bookmark_model.h"
-#include "components/bookmarks/common/bookmark_bar_visibility_state.h"
-#include "components/bookmarks/common/bookmark_pref_names.h"
-#include "components/bookmarks/test/bookmark_test_helpers.h"
 #include "components/input/native_web_keyboard_event.h"
 #include "components/performance_manager/public/features.h"
 #include "components/policy/core/common/policy_pref_names.h"
 #include "components/signin/public/base/signin_pref_names.h"
-#include "content/public/test/web_contents_tester.h"
 #include "extensions/buildflags/buildflags.h"
 #include "ui/events/keycodes/dom/dom_code.h"
 #include "ui/events/keycodes/keyboard_codes.h"
 
-#if ((BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN)) && \
-     BUILDFLAG(ENABLE_EXTENSIONS))
-#include "base/memory/scoped_refptr.h"
-#include "chrome/browser/extensions/test_extension_system.h"
-#include "extensions/browser/extension_registrar.h"
-#include "extensions/browser/extension_system.h"
-#include "extensions/common/extension_builder.h"
-#endif  // ((BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN)) &&
-        // BUILDFLAG(ENABLE_EXTENSIONS))
-
 class BrowserCommandControllerTest : public BrowserWithTestWindowTest {
  public:
   BrowserCommandControllerTest() = default;
-
-  void WaitForTabGroupSyncServiceInitialized() {
-    auto observer =
-        std::make_unique<tab_groups::TabGroupSyncServiceInitializedObserver>(
-            tab_groups::TabGroupSyncServiceFactory::GetForProfile(
-                browser()->GetProfile()));
-    observer->Wait();
-  }
 };
 
 TEST_F(BrowserCommandControllerTest, IsReservedCommandOrKey) {
@@ -620,264 +592,6 @@ TEST_F(BrowserWithTestWindowTest, ClearBrowsingDataIsEnabledInIncognito) {
             command_controller->IsCommandEnabled(IDC_CLEAR_BROWSING_DATA));
 }
 
-class BrowserCommandControllerWithBookmarksTest
-    : public BrowserCommandControllerTest {
- public:
-  BrowserCommandControllerWithBookmarksTest() = default;
 
-  // BrowserWithTestWindowTest overrides:
-  TestingProfile::TestingFactories GetTestingFactories() override {
-    return {TestingProfile::TestingFactory{
-        BookmarkModelFactory::GetInstance(),
-        BookmarkModelFactory::GetDefaultFactory()}};
-  }
 
-  void AddTab() {
-    std::unique_ptr<content::WebContents> contents(
-        content::WebContentsTester::CreateTestWebContents(profile(), nullptr));
-    browser()->tab_strip_model()->AppendWebContents(std::move(contents),
-                                                    /*foreground=*/false);
-  }
-};
 
-// Adding and removing background tabs should update the bookmark all tab
-// command.
-TEST_F(BrowserCommandControllerWithBookmarksTest,
-       BookmarkAllTabsUpdatesOnTabStripChanges) {
-  bookmarks::test::WaitForBookmarkModelToLoad(
-      BookmarkModelFactory::GetForBrowserContext(profile()));
-
-  chrome::BrowserCommandController* command_controller =
-      chrome::BrowserCommandController::From(browser());
-  EXPECT_FALSE(command_controller->IsCommandEnabled(IDC_BOOKMARK_ALL_TABS));
-
-  AddTab();
-  ASSERT_EQ(1, browser()->tab_strip_model()->count());
-  browser()->tab_strip_model()->ActivateTabAt(/*index=*/0);
-  EXPECT_FALSE(command_controller->IsCommandEnabled(IDC_BOOKMARK_ALL_TABS));
-
-  AddTab();
-  ASSERT_EQ(2, browser()->tab_strip_model()->count());
-  EXPECT_TRUE(command_controller->IsCommandEnabled(IDC_BOOKMARK_ALL_TABS));
-
-  browser()->tab_strip_model()->CloseWebContentsAt(/*index=*/1,
-                                                   TabCloseTypes::CLOSE_NONE);
-  EXPECT_FALSE(command_controller->IsCommandEnabled(IDC_BOOKMARK_ALL_TABS));
-}
-
-TEST_F(BrowserCommandControllerWithBookmarksTest,
-       BookmarkTabEnabledWhenBookmarkModelIsAlreadyLoaded) {
-  bookmarks::test::WaitForBookmarkModelToLoad(
-      BookmarkModelFactory::GetForBrowserContext(profile()));
-
-  chrome::BrowserCommandController* command_controller =
-      chrome::BrowserCommandController::From(browser());
-  EXPECT_TRUE(command_controller->IsCommandEnabled(IDC_BOOKMARK_THIS_TAB));
-}
-
-TEST_F(BrowserCommandControllerWithBookmarksTest,
-       BookmarkTabUpdateWhenBookmarkLoadingCompletes) {
-  // Create a command controller before the bookmark model is loaded.
-  chrome::BrowserCommandController* command_controller =
-      chrome::BrowserCommandController::From(browser());
-  EXPECT_FALSE(command_controller->IsCommandEnabled(IDC_BOOKMARK_THIS_TAB));
-
-  bookmarks::test::WaitForBookmarkModelToLoad(
-      BookmarkModelFactory::GetForBrowserContext(profile()));
-  // Command should be enabled after the bookmark model is loaded.
-  EXPECT_TRUE(command_controller->IsCommandEnabled(IDC_BOOKMARK_THIS_TAB));
-}
-
-TEST_F(BrowserCommandControllerWithBookmarksTest,
-       BookmarkBarSubmenuCommandsExecuteCorrectly) {
-  bookmarks::test::WaitForBookmarkModelToLoad(
-      BookmarkModelFactory::GetForBrowserContext(profile()));
-  AddTab();
-  browser()->tab_strip_model()->ActivateTabAt(/*index=*/0);
-
-  chrome::BrowserCommandController* command_controller =
-      chrome::BrowserCommandController::From(browser());
-  EXPECT_TRUE(command_controller->IsCommandEnabled(IDC_BOOKMARK_BAR_SUBMENU));
-  EXPECT_TRUE(command_controller->IsCommandEnabled(
-      IDC_BOOKMARK_BAR_SUBMENU_ALWAYS_SHOW));
-  EXPECT_TRUE(command_controller->IsCommandEnabled(
-      IDC_BOOKMARK_BAR_SUBMENU_ALWAYS_HIDE));
-  EXPECT_TRUE(command_controller->IsCommandEnabled(
-      IDC_BOOKMARK_BAR_SUBMENU_ONLY_ON_NTP));
-
-  base::UserActionTester user_action_tester;
-
-  // Test executing visibility commands updates the pref correctly.
-  EXPECT_EQ(0, user_action_tester.GetActionCount(
-                   "WrenchMenu_Bookmarks_AlwaysShowBookmarkBar"));
-  command_controller->ExecuteCommand(
-      IDC_BOOKMARK_BAR_SUBMENU_ALWAYS_SHOW,
-      blink::WebInputEvent::GetStaticTimeStampForTests());
-  EXPECT_EQ(
-      profile()->GetPrefs()->GetInteger(
-          bookmarks::prefs::kBookmarkBarVisibilityState),
-      static_cast<int>(bookmarks::BookmarkBarVisibilityState::kAlwaysShow));
-  EXPECT_EQ(1, user_action_tester.GetActionCount(
-                   "WrenchMenu_Bookmarks_AlwaysShowBookmarkBar"));
-
-  EXPECT_EQ(0, user_action_tester.GetActionCount(
-                   "WrenchMenu_Bookmarks_AlwaysHideBookmarkBar"));
-  command_controller->ExecuteCommand(
-      IDC_BOOKMARK_BAR_SUBMENU_ALWAYS_HIDE,
-      blink::WebInputEvent::GetStaticTimeStampForTests());
-  EXPECT_EQ(
-      profile()->GetPrefs()->GetInteger(
-          bookmarks::prefs::kBookmarkBarVisibilityState),
-      static_cast<int>(bookmarks::BookmarkBarVisibilityState::kAlwaysHide));
-  EXPECT_EQ(1, user_action_tester.GetActionCount(
-                   "WrenchMenu_Bookmarks_AlwaysHideBookmarkBar"));
-
-  EXPECT_EQ(0, user_action_tester.GetActionCount(
-                   "WrenchMenu_Bookmarks_OnlyShowBookmarkBarOnNtp"));
-  command_controller->ExecuteCommand(
-      IDC_BOOKMARK_BAR_SUBMENU_ONLY_ON_NTP,
-      blink::WebInputEvent::GetStaticTimeStampForTests());
-  EXPECT_EQ(
-      profile()->GetPrefs()->GetInteger(
-          bookmarks::prefs::kBookmarkBarVisibilityState),
-      static_cast<int>(bookmarks::BookmarkBarVisibilityState::kOnlyShowOnNtp));
-  EXPECT_EQ(1, user_action_tester.GetActionCount(
-                   "WrenchMenu_Bookmarks_OnlyShowBookmarkBarOnNtp"));
-}
-
-TEST_F(BrowserCommandControllerTest,
-       GroupAllUngroupedTabsUserMetricActionEmitted) {
-  base::UserActionTester user_action_tester;
-  chrome::BrowserCommandController* command_controller =
-      chrome::BrowserCommandController::From(browser());
-  // We need at least one active tab before we can group all ungrouped tabs.
-  AddTab(browser(), GURL("https://google.com"));
-
-  ASSERT_TRUE(command_controller->IsCommandEnabled(IDC_GROUP_UNGROUPED_TABS));
-
-  command_controller->ExecuteCommand(
-      IDC_GROUP_UNGROUPED_TABS,
-      blink::WebInputEvent::GetStaticTimeStampForTests());
-
-  EXPECT_EQ(
-      1, user_action_tester.GetActionCount("TabGroups_GroupAllUngroupedTabs"));
-}
-
-TEST_F(BrowserCommandControllerTest,
-       GroupAllUngroupedTabsDisabledWhenNoUngroupedTabs) {
-  chrome::BrowserCommandController* command_controller =
-      chrome::BrowserCommandController::From(browser());
-  TabStripModel* tab_strip_model = browser()->tab_strip_model();
-  ASSERT_TRUE(tab_strip_model->SupportsTabGroups());
-  const GURL url("https://google.com");
-
-  // Ensure the service is initialized before making any changes to tab groups.
-  WaitForTabGroupSyncServiceInitialized();
-
-  AddTab(browser(), url);
-  EXPECT_TRUE(command_controller->IsCommandEnabled(IDC_GROUP_UNGROUPED_TABS));
-
-  tab_strip_model->SetTabPinned(0, true);
-  EXPECT_FALSE(command_controller->IsCommandEnabled(IDC_GROUP_UNGROUPED_TABS));
-
-  tab_strip_model->SetTabPinned(0, false);
-  EXPECT_TRUE(command_controller->IsCommandEnabled(IDC_GROUP_UNGROUPED_TABS));
-
-  tab_strip_model->AddToNewGroup({0});
-  EXPECT_FALSE(command_controller->IsCommandEnabled(IDC_GROUP_UNGROUPED_TABS));
-
-  AddTab(browser(), url);
-  tab_strip_model->SetTabPinned(0, true);
-  EXPECT_FALSE(command_controller->IsCommandEnabled(IDC_GROUP_UNGROUPED_TABS));
-
-  AddTab(browser(), url);
-  EXPECT_TRUE(command_controller->IsCommandEnabled(IDC_GROUP_UNGROUPED_TABS));
-
-  tab_strip_model->SetTabPinned(1, true);
-  EXPECT_FALSE(command_controller->IsCommandEnabled(IDC_GROUP_UNGROUPED_TABS));
-}
-
-#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN)
-class CreateShortcutBrowserCommandControllerTest
-    : public BrowserCommandControllerTest {
- public:
-  CreateShortcutBrowserCommandControllerTest() = default;
-
-#if BUILDFLAG(ENABLE_EXTENSIONS)
-  scoped_refptr<const extensions::Extension> CreateAndInstallExtension() {
-    scoped_refptr<const extensions::Extension> extension =
-        extensions::ExtensionBuilder("ext").Build();
-    CHECK(extension);
-
-    // Simulate installing the extension.
-    extensions::TestExtensionSystem* extension_system =
-        static_cast<extensions::TestExtensionSystem*>(
-            extensions::ExtensionSystem::Get(browser()->GetProfile()));
-    extension_system->CreateExtensionService(
-        base::CommandLine::ForCurrentProcess(),
-        /*install_directory=*/base::FilePath(), /*autoupdate_enabled=*/false);
-    extensions::ExtensionRegistrar::Get(browser()->GetProfile())
-        ->AddExtension(extension);
-
-    return extension;
-  }
-#endif  // BUILDFLAG(ENABLE_EXTENSIONS)
-};
-
-TEST_F(CreateShortcutBrowserCommandControllerTest, BrowserNoSiteNotEnabled) {
-  EXPECT_FALSE(chrome::IsCommandEnabled(browser(), IDC_CREATE_SHORTCUT));
-}
-
-TEST_F(CreateShortcutBrowserCommandControllerTest, DisabledForOTRProfile) {
-  // Set up a profile with an off the record profile.
-  std::unique_ptr<TestingProfile> profile1 = TestingProfile::Builder().Build();
-  Profile* incognito_profile =
-      profile1->GetPrimaryOTRProfile(/*create_if_needed=*/true);
-  EXPECT_EQ(incognito_profile->GetOriginalProfile(), profile1.get());
-
-  // Create a new browser based on the off the record profile.
-  BrowserWindowCreateParams profile_params(incognito_profile, true);
-  std::unique_ptr<Browser> incognito_browser =
-      CreateBrowserWithTestWindowForParams(std::move(profile_params));
-
-  EXPECT_FALSE(
-      chrome::IsCommandEnabled(incognito_browser.get(), IDC_CREATE_SHORTCUT));
-}
-
-TEST_F(CreateShortcutBrowserCommandControllerTest, DisabledForGuestProfile) {
-  TestingProfile* test_profile = browser()->GetProfile()->AsTestingProfile();
-  EXPECT_TRUE(test_profile);
-  test_profile->SetGuestSession(true);
-
-  EXPECT_FALSE(chrome::IsCommandEnabled(browser(), IDC_CREATE_SHORTCUT));
-}
-
-TEST_F(CreateShortcutBrowserCommandControllerTest, DisabledForSystemProfile) {
-  TestingProfile* test_profile = browser()->GetProfile()->AsTestingProfile();
-  EXPECT_TRUE(test_profile);
-
-  EXPECT_FALSE(chrome::IsCommandEnabled(browser(), IDC_CREATE_SHORTCUT));
-}
-
-TEST_F(CreateShortcutBrowserCommandControllerTest, EnabledValidUrl) {
-  AddTab(browser(), GURL("https://example.com"));
-  EXPECT_TRUE(chrome::IsCommandEnabled(browser(), IDC_CREATE_SHORTCUT));
-}
-
-TEST_F(CreateShortcutBrowserCommandControllerTest, InvalidSchemeDisabled) {
-  AddTab(browser(), GURL("abc://apps"));
-  EXPECT_FALSE(chrome::IsCommandEnabled(browser(), IDC_CREATE_SHORTCUT));
-}
-
-#if BUILDFLAG(ENABLE_EXTENSIONS)
-TEST_F(CreateShortcutBrowserCommandControllerTest,
-       ChromeExtensionSchemeEnabled) {
-  const char kResource[] = "resource.html";
-  scoped_refptr<const extensions::Extension> extension =
-      CreateAndInstallExtension();
-  AddTab(browser(), extension->GetResourceURL(kResource));
-  EXPECT_TRUE(chrome::IsCommandEnabled(browser(), IDC_CREATE_SHORTCUT));
-}
-#endif  // BUILDFLAG(ENABLE_EXTENSIONS)
-
-#endif  // BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN)

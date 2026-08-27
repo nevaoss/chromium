@@ -717,6 +717,9 @@ Things to consider:
       <message name="IDS_IOS_INTENTS_VIEW_CHROME_HISTORY_TITLE" desc="Siri Shortcut for view chromium history title [iOS only]">
         View Your Chromium History
       </message>
+      <message name="IDS_IOS_INTERACTIVE_LENS_OVERLAY_PROMO_SUBTITLE" desc="The subtitle for the interactive lens overlay promo in the First Run Experience.">
+        You can use Google Lens in Chromium to search anything you see
+      </message>
       <message name="IDS_IOS_LENS_PROMO_IPH_TEXT" desc="The text of an iph bubble that points to the Fakebox's Lens icon">
         You can open Lens here.
       </message>
@@ -1089,6 +1092,12 @@ For more settings that use data to improve your Chromium experience, go to <ph n
       </message>
       <message name="IDS_IOS_SETTINGS_ADD_PASSWORD_FOOTER_BRANDED" desc="Disclaimer telling users what will happen to their passwords">
         Your password will be saved to Password Manager for <ph name="EMAIL">$1<ex>example@gmail.com</ex></ph>.
+      </message>
+      <message name="IDS_IOS_SETTINGS_DEFAULT_BROWSER_PASSIVE_CARD_SUBTITLE" desc="Subtitle of the passive Default Browser card settings row. [iOS only]">
+        You can use Chromium any time you tap links in messages, documents and other apps
+      </message>
+      <message name="IDS_IOS_SETTINGS_DEFAULT_BROWSER_PASSIVE_CARD_TITLE" desc="Title of the passive Default Browser card settings row. [iOS only]">
+        Make Chromium your default browser
       </message>
       <message name="IDS_IOS_SETTINGS_DEFAULT_BROWSER_PASSIVE_CELL_SUBTITLE" desc="Subtitle of the passive Default Browser cell settings row. [iOS only]">
         Open links faster when you set Chromium as default

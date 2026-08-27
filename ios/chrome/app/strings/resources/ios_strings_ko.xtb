@@ -51,6 +51,7 @@
 <translation id="1147031633655575115"><ph name="USER" />님의 계정으로 로그인됨</translation>
 <translation id="1149401351239820326">유효기간 월</translation>
 <translation id="1150989369772528668">캘린더</translation>
+<translation id="1158134713295836892">Chrome의 Gemini</translation>
 <translation id="1161444134753003495">로그인</translation>
 <translation id="1161663161838091892">계속하려면 탭과 방문 기록을 동기화하세요</translation>
 <translation id="1162834932051545794">{count,plural, =1{신용카드 {count}개}other{신용카드 {count}개}}</translation>
@@ -225,7 +226,6 @@
 <translation id="1674504678466460478">출발어: <ph name="SOURCE_LANGUAGE" />, 도착어: <ph name="TARGET_LANGUAGE" /></translation>
 <translation id="1678855624321223424">조직의 정책에 따라 이 파일에는 민감한 정보가 포함되어 있을 수 있습니다.</translation>
 <translation id="1683276189281028863">비밀번호 진단</translation>
-<translation id="168389590065701766">이제 주소 표시줄에서 Google 렌즈를 열고 눈앞에 있는 사물을 검색할 수 있습니다</translation>
 <translation id="1689333818294560261">닉네임</translation>
 <translation id="169048873465870056">탭 및 그룹을 삭제하시겠습니까?</translation>
 <translation id="1692115862433274081">다른 계정 사용</translation>
@@ -520,7 +520,7 @@
 <translation id="2640733327287333451">사용자 이름 없음 ••••••</translation>
 <translation id="264215785133931186">조금 전에 확인됨</translation>
 <translation id="2647434099613338025">언어 추가</translation>
-<translation id="2648812801228676606"><ph name="NAME_OR_EMAIL" /> 계정으로 로그인된 상태를 유지했습니다</translation>
+<translation id="2648812801228676606"><ph name="NAME_OR_EMAIL" /> 계정으로 로그인한 상태입니다.</translation>
 <translation id="2649592894792404568">Google 비밀번호 관리자 데이터를 삭제하려고 합니다</translation>
 <translation id="2652129567809778422">비밀번호 선택</translation>
 <translation id="2658056020748144467">파일을 열 수 없음</translation>
@@ -702,7 +702,7 @@
 <translation id="3280562213547448728">음성 검색</translation>
 <translation id="3289505634533552500">음성 검색</translation>
 <translation id="3295904109373959849">탭 그룹 그리드</translation>
-<translation id="3301639354590628973">계정을 전환하시겠습니까?</translation>
+<translation id="3301639354590628973">계정을 전환하시겠어요?</translation>
 <translation id="3302837541200840455"><ph name="TAB_TITLE" />, 새 활동</translation>
 <translation id="3305294846493618482">더보기</translation>
 <translation id="3311748811247479259">사용 안함</translation>
@@ -2527,6 +2527,7 @@ Handoff는 설정의 일반 섹션에서도 사용 설정할 수 있으며, 이�
 <translation id="9203951165704618409">주소 표시줄을 상단에서 하단으로 전환하여 탐색 환경을 맞춤설정하세요</translation>
 <translation id="9205189991633470489">시크릿 탭 잠금</translation>
 <translation id="9206887540681440657">속도</translation>
+<translation id="9218430445555521422">기본값으로 설정</translation>
 <translation id="9219103736887031265">이미지</translation>
 <translation id="9219154867334666734">탭 검색…</translation>
 <translation id="9223358826628549784">비정상 종료 보고서 전송 완료</translation>

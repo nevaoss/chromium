@@ -132,6 +132,11 @@ BASE_DECLARE_FEATURE(kApiDesktopAndroidNativeMessaging);
 // requested host permissions by default.
 BASE_DECLARE_FEATURE(kAllowWithholdingExtensionPermissionsOnInstall);
 
+// If enabled, navigations and window.open calls to URLs outside a hosted app's
+// web extent in background contents are blocked and not persisted to prefs.
+// TODO(crbug.com/511824746): Clean up in M156.
+BASE_DECLARE_FEATURE(kBlockBackgroundContentsOffExtentNavigation);
+
 // When enabled, then bad_message::ReceivedBadMessage will be called when
 // browser receives an IPC from a content script and the IPC that unexpectedly
 // claims to act on behalf of a given extension id, (i.e. even if the browser
@@ -150,12 +155,6 @@ BASE_DECLARE_FEATURE(kCWSReviewPromptingNativeUI);
 // If enabled, <webview>s will be allowed to request permission from an
 // embedding Chrome App to request access to Human Interface Devices.
 BASE_DECLARE_FEATURE(kEnableWebHidInWebView);
-
-#if BUILDFLAG(ENABLE_DESKTOP_ANDROID_EXTENSIONS)
-// If enabled, extensions will be enabled for @google.com and @managedchrome.com
-// users on desktop Android. Otherwise they will be blocked.
-BASE_DECLARE_FEATURE(kEnableExtensionsForCorpDesktopAndroid);
-#endif
 
 // If enabled, JS content scripts injected at document start will be compiled
 // in a background thread.

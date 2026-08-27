@@ -42,7 +42,6 @@ import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.back_press.BackPressManager;
 import org.chromium.chrome.browser.omnibox.FuseboxSessionState;
 import org.chromium.chrome.browser.omnibox.R;
-import org.chromium.chrome.browser.omnibox.fusebox.FuseboxProperties.BackgroundStyle;
 import org.chromium.chrome.browser.omnibox.styles.OmniboxResourceProvider;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
@@ -51,7 +50,6 @@ import org.chromium.components.browser_ui.widget.scrim.ScrimManager;
 import org.chromium.components.browser_ui.widget.scrim.ScrimManager.ScrimClient;
 import org.chromium.components.metrics.OmniboxEventProtosIntDef.PageClassification;
 import org.chromium.components.omnibox.AutocompleteInput;
-import org.chromium.components.omnibox.AutocompleteRequestType;
 import org.chromium.components.omnibox.OmniboxCapabilities;
 import org.chromium.components.omnibox.OmniboxFeatures;
 import org.chromium.components.search_engines.TemplateUrlService;
@@ -133,7 +131,6 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
     private final Supplier<@Nullable View> mScrimAnchorViewSupplier;
     private final ScrimManager mScrimManager;
     private final BackPressManager mBackPressManager;
-    private boolean mHasContextualTasksFocus;
 
     // Mediator is scoped to a particular profile. Can reuse as long as the profile does not change.
     private @Nullable FuseboxMediator mMediator;
@@ -215,26 +212,13 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
         mModel =
                 new PropertyModel.Builder(FuseboxProperties.ALL_KEYS)
                         .with(FuseboxProperties.FUSEBOX_LAYOUT_MODE, getFuseboxLayoutMode())
-                        .with(FuseboxProperties.FUSEBOX_STATE, FuseboxState.DISABLED)
-                        .with(FuseboxProperties.REQUEST_TYPE, AutocompleteRequestType.SEARCH)
-                        .with(
-                                FuseboxProperties.PLUS_BUTTON_BACKGROUND_STYLE,
-                                BackgroundStyle.INTERACT_ONLY_SMALL)
-                        // May not be correct, but the view side struggles to deal with a null here.
-                        // Init with a default, and it will be corrected by the mediator before it
-                        // matters.
-                        .with(FuseboxProperties.COLOR_SCHEME, BrandedColorScheme.APP_DEFAULT)
-                        .with(FuseboxProperties.POPUP_STATE, PopupState.HIDDEN)
                         .with(
                                 FuseboxProperties.POPUP_IS_BOTTOM_SHEET,
                                 OmniboxFeatures.shouldShowBottomSheetPopup())
                         .build();
 
         new AsyncLayoutInflater(mActivity)
-                .inflate(
-                        R.layout.fusebox_context_popup,
-                        /* parent= */ null,
-                        this::finishDeferredInitialization);
+                .inflate(R.layout.fusebox_context_popup, this::finishDeferredInitialization);
     }
 
     private void finishDeferredInitialization(View popupView) {
@@ -331,7 +315,6 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
                         mUrlBarTextSupplier,
                         mHasAttachmentsSupplier,
                         mWindowHasFocusSupplier);
-        mMediator.onContextualTaskFocusChanged(mHasContextualTasksFocus);
         if (mLastBrandedColorScheme != null) {
             mMediator.updateVisualsForState(mLastBrandedColorScheme);
         }
@@ -390,7 +373,6 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
                     // LINT.IfChange(FuseboxSupportedPageClassifications)
                     case PageClassification.INSTANT_NTP_WITH_OMNIBOX_AS_STARTING_FOCUS,
                             PageClassification.SEARCH_RESULT_PAGE_NO_SEARCH_TERM_REPLACEMENT,
-                            PageClassification.CO_BROWSING_COMPOSEBOX,
                             PageClassification.OTHER ->
                             true;
                     // LINT.ThenChange(/components/omnibox/browser/android/java/src/org/chromium/components/omnibox/AutocompleteInput.java:FuseboxSupportedPageClassifications)
@@ -446,18 +428,6 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
         mInput = null;
         mMetrics = null;
         mPendingSession = null;
-    }
-
-    /**
-     * Called when focus is lost or gained while in a Contextual Tasks session.
-     *
-     * @param hasFocus Whether the omnibox has focus.
-     */
-    public void onContextualTaskFocusChanged(boolean hasFocus) {
-        mHasContextualTasksFocus = hasFocus;
-        if (mMediator != null) {
-            mMediator.onContextualTaskFocusChanged(hasFocus);
-        }
     }
 
     /** Returns a supplier that is notified of visibility changes of the activation chip. */

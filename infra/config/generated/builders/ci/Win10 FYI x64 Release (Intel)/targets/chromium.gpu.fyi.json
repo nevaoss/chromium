@@ -197,6 +197,7 @@
           "--enforce-browser-version",
           "--jobs=4"
         ],
+        "ci_only": true,
         "merge": {
           "script": "//testing/merge_scripts/standard_isolated_script_merge.py"
         },
@@ -239,6 +240,7 @@
           "${buildername}",
           "--jobs=4"
         ],
+        "ci_only": true,
         "merge": {
           "script": "//testing/merge_scripts/standard_isolated_script_merge.py"
         },
@@ -282,6 +284,7 @@
           "--enforce-browser-version",
           "--jobs=4"
         ],
+        "ci_only": true,
         "merge": {
           "script": "//testing/merge_scripts/standard_isolated_script_merge.py"
         },
@@ -320,6 +323,7 @@
           "--enforce-browser-version",
           "--jobs=4"
         ],
+        "ci_only": true,
         "merge": {
           "script": "//testing/merge_scripts/standard_isolated_script_merge.py"
         },
@@ -404,6 +408,7 @@
           "${buildername}",
           "--jobs=4"
         ],
+        "ci_only": true,
         "merge": {
           "script": "//testing/merge_scripts/standard_isolated_script_merge.py"
         },
@@ -448,6 +453,7 @@
           "--dont-restore-color-profile-after-test",
           "--jobs=4"
         ],
+        "ci_only": true,
         "merge": {
           "script": "//testing/merge_scripts/standard_isolated_script_merge.py"
         },
@@ -486,6 +492,7 @@
           "--enforce-browser-version",
           "--jobs=4"
         ],
+        "ci_only": true,
         "merge": {
           "script": "//testing/merge_scripts/standard_isolated_script_merge.py"
         },
@@ -564,6 +571,7 @@
           "--read-abbreviated-json-results-from=../../content/test/data/gpu/webgl2_conformance_win_runtimes.json",
           "--jobs=1"
         ],
+        "ci_only": true,
         "merge": {
           "script": "//testing/merge_scripts/standard_isolated_script_merge.py"
         },

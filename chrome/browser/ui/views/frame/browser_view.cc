@@ -193,7 +193,6 @@
 #include "chrome/browser/ui/views/page_action/page_action_view.h"
 #include "chrome/browser/ui/views/permissions/chip/permission_dashboard_view.h"
 #include "chrome/browser/ui/views/profiles/avatar_toolbar_button.h"
-#include "chrome/browser/ui/views/profiles/profile_indicator_icon.h"
 #include "chrome/browser/ui/views/profiles/profile_menu_coordinator.h"
 #include "chrome/browser/ui/views/qrcode_generator/qrcode_generator_bubble.h"
 #include "chrome/browser/ui/views/send_tab_to_self/send_tab_to_self_bubble_view.h"
@@ -1619,7 +1618,13 @@ void BrowserView::Show() {
   if (base::FeatureList::IsEnabled(features::kArtificialUIDelay)) {
     base::PlatformThread::Sleep(features::kViewsUIDelayDuration.Get());
   }
+
+  // Guard against destruction by platform event handlers called during Show().
+  auto weak_ptr = weak_ptr_factory_.GetWeakPtr();
   browser_widget_->Show();
+  if (!weak_ptr) {
+    return;
+  }
 
   OnWindowDidShow();
 
@@ -6032,9 +6037,12 @@ void BrowserView::UpdateAccessibleNameForAllTabs() {
 // TODO(crbug.com/529834985): See if we can consolidate the logic here and in
 // TabView::UpdateAccessibleName/TabView::UpdateAccessibleName.
 void BrowserView::UpdateAccessibleNameForTabAt(int index) {
-  std::u16string accessible_title = tabs::GetAccessibleTabLabel(
-      browser()->tab_strip_model()->GetTabAtIndex(index), /*is_for_tab=*/true);
-  views::View* tab = tab_strip_view()->GetTabAnchorViewAt(index);
+  tabs::TabInterface* tab_interface =
+      browser()->tab_strip_model()->GetTabAtIndex(index);
+  std::u16string accessible_title =
+      tabs::GetAccessibleTabLabel(tab_interface, /*is_for_tab=*/true);
+  views::View* tab =
+      tab_strip_view()->GetTabAnchorView(tab_interface->GetHandle());
   CHECK(tab);
   if (accessible_title.empty()) {
     // Under the right conditions GetAccessibleTabLabel can return an empty

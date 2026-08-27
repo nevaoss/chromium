@@ -682,6 +682,9 @@ class CORE_EXPORT Document : public ContainerNode,
 
   StyleResolver& GetStyleResolver() const;
 
+  bool IsCAPAlert() const { return is_cap_alert_; }
+  void SetIsCAPAlert(bool is_cap_alert) { is_cap_alert_ = is_cap_alert; }
+
   bool IsViewSource() const { return is_view_source_; }
   void SetIsViewSource(bool is_view_source) {
     is_view_source_ = is_view_source;
@@ -1953,10 +1956,6 @@ class CORE_EXPORT Document : public ContainerNode,
   ukm::UkmRecorder* UkmRecorder();
   ukm::SourceId UkmSourceID() const;
 
-  void MaybeRecordSvgImageProcessingTime(
-      int data_change_count,
-      base::TimeDelta data_change_elapsed_time) const;
-
   scoped_refptr<base::SingleThreadTaskRunner> GetTaskRunner(TaskType);
 
   StylePropertyMapReadOnly* ComputedStyleMap(Element*);
@@ -2988,6 +2987,7 @@ class CORE_EXPORT Document : public ContainerNode,
   bool is_dom_parser_document_ = false;
   bool is_xhr_document_ = false;
   bool is_mobile_document_ = false;
+  bool is_cap_alert_ = false;
 
   Member<LayoutView> layout_view_;
 

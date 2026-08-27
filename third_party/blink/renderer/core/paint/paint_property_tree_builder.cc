@@ -282,6 +282,7 @@ class FragmentPaintPropertyTreeBuilder {
   ALWAYS_INLINE void UpdateStickyTranslation(
       const PhysicalOffset& sticky_offset);
   ALWAYS_INLINE void UpdateAnchorPositionScrollTranslation();
+  ALWAYS_INLINE void UpdateElementCanvasTransform();
 
   void UpdateIndividualTransform(
       bool (*needs_property)(const LayoutObject&, CompositingReasons),
@@ -588,6 +589,21 @@ static bool NeedsAnchorPositionScrollTranslation(const LayoutObject& object) {
   return false;
 }
 
+static bool NeedsElementCanvasTransform(const LayoutObject& object) {
+  // TODO(crbug.com/532229486): Support element canvas transform for SVG.
+  if (object.IsText() || object.IsSVGChild() || !object.IsBox()) {
+    return false;
+  }
+  const auto* element = DynamicTo<Element>(object.GetNode());
+  if (!element || !element->IsInCanvasSubtree()) {
+    return false;
+  }
+  if (!RuntimeEnabledFeatures::ElementCanvasTransformEnabled(
+          object.GetDocument().GetExecutionContext())) {
+    return false;
+  }
+  return element->CanvasForDrawing() != nullptr;
+}
 static bool NeedsPaintOffsetTranslation(
     const LayoutObject& object,
     CompositingReasons direct_compositing_reasons,
@@ -1093,6 +1109,40 @@ void FragmentPaintPropertyTreeBuilder::UpdateAnchorPositionScrollTranslation() {
   }
 }
 
+void FragmentPaintPropertyTreeBuilder::UpdateElementCanvasTransform() {
+  DCHECK(properties_);
+  if (NeedsPaintPropertyUpdate()) {
+    if (NeedsElementCanvasTransform(object_)) {
+      const auto& element = *To<Element>(object_.GetNode());
+      const auto* canvas_transform = element.GetCanvasTransformInternal();
+      TransformPaintPropertyNode::State state{
+          {canvas_transform ? *canvas_transform : gfx::Transform()}};
+      state.flattens_inherited_transform =
+          context_.should_flatten_inherited_transform;
+      state.rendering_context_id = context_.rendering_context_id;
+      state.compositor_element_id = GetCompositorElementId(
+          CompositorElementIdNamespace::kElementCanvasTransform);
+      auto change = properties_->UpdateElementCanvasTransform(
+          *context_.current.transform, std::move(state));
+      // Do not call `OnUpdateTransform()` here because canvas transform changes
+      // do not affect the element's rendering and should not trigger a paint
+      // invalidation.
+      if (change >= PaintPropertyChangeType::kChangedOnlySimpleValues) {
+        object_.GetFrameView()->SetPaintArtifactCompositorNeedsUpdate();
+      }
+    } else {
+      // Do not call `OnClearTransform()` here to avoid a paint invalidation.
+      if (properties_->ClearElementCanvasTransform()) {
+        object_.GetFrameView()->SetPaintArtifactCompositorNeedsUpdate();
+      }
+    }
+  }
+
+  if (properties_->ElementCanvasTransform()) {
+    context_.current.transform = properties_->ElementCanvasTransform();
+  }
+}
+
 // Directly updates the associated cc transform node if possible, and
 // downgrades the |PaintPropertyChangeType| if successful.
 static void DirectlyUpdateCcTransform(
@@ -1196,6 +1246,7 @@ FragmentPaintPropertyTreeBuilder::TransformAndOriginForSVGChild() const {
 // SVG does not use the general transform update of |UpdateTransform|, instead
 // creating a transform node for SVG-specific transforms without 3D.
 // TODO(crbug.com/1278452): Merge SVG handling into the primary codepath.
+// TODO(crbug.com/532229486): Support element canvas transform for SVG.
 void FragmentPaintPropertyTreeBuilder::UpdateTransformForSVGChild(
     CompositingReasons direct_compositing_reasons) {
   DCHECK(properties_);
@@ -1948,8 +1999,10 @@ static void PopulateCanvasChildPaintState(HTMLCanvasElement* canvas,
       canvas->GetDocument().View()->GetAnimatedImageFrameIndexes();
 }
 
-static void PopulateCanvasChildState(const LayoutObject& object,
-                                     EffectPaintPropertyNode::State& state) {
+static void PopulateCanvasChildState(
+    const LayoutObject& object,
+    EffectPaintPropertyNode::State& state,
+    const TransformPaintPropertyNodeOrAlias& current_transform) {
   CHECK(IsA<LayoutBox>(object));
   CHECK(object.GetNode());
   HTMLCanvasElement* canvas = To<Element>(object.GetNode())->CanvasForDrawing();
@@ -1976,6 +2029,12 @@ static void PopulateCanvasChildState(const LayoutObject& object,
   PopulateCanvasChildPaintState(canvas, state.canvas_child_state->paint_state);
   state.canvas_child_state->content_effect = canvas_fragment.ContentsEffect();
   state.canvas_child_state->content_clip = canvas_fragment.ContentsClip();
+  const auto* properties = object.FirstFragment().PaintProperties();
+  DCHECK(properties);
+  state.canvas_child_state->content_transform =
+      properties->ElementCanvasTransform()
+          ? properties->ElementCanvasTransform()
+          : &current_transform;
 }
 
 static bool NeedsUnboundedWrapperNodes(const LayoutObject& object) {
@@ -2169,7 +2228,7 @@ void FragmentPaintPropertyTreeBuilder::UpdateEffect() {
 
         if (state.direct_compositing_reasons.Has(
                 CompositingReason::kCanvasChild)) {
-          PopulateCanvasChildState(object_, state);
+          PopulateCanvasChildState(object_, state, *context_.current.transform);
         }
       } else {
         // The effect node CompositorElementId is used to uniquely identify
@@ -3248,8 +3307,8 @@ void FragmentPaintPropertyTreeBuilder::UpdateOverflowClip() {
             pseudo_element->UltimateOriginatingElement()
                     .GetOverscrollContainer()
                     ->GetComputedStyle()
-                    ->InternalOverscrollArea() ==
-                EInternalOverscrollArea::kOverlay);
+                    ->EffectiveOverscrollContainerType() ==
+                EOverscrollContainerType::kOverlay);
       }
     } else {
       OnClearClip(properties_->ClearOverflowClip());
@@ -3392,8 +3451,8 @@ void FragmentPaintPropertyTreeBuilder::UpdateContentTranslation() {
     OverscrollAreaTracker* overscroll_area_tracker =
         overscroll_container->GetOverscrollAreaTracker();
     if (!overscroll_area_tracker ||
-        overscroll_container->GetLayoutBox()->InternalOverscrollArea() !=
-            EInternalOverscrollArea::kAuto) {
+        !overscroll_container->GetLayoutBox()
+             ->IsContentMovingOverscrollContainer()) {
       OnClearTransform(properties_->ClearContentTranslation());
       return;
     }
@@ -3452,8 +3511,8 @@ void FragmentPaintPropertyTreeBuilder::UpdateScrollAndScrollTranslation() {
             pseudo_element->UltimateOriginatingElement()
                     .GetOverscrollContainer()
                     ->GetComputedStyle()
-                    ->InternalOverscrollArea() ==
-                EInternalOverscrollArea::kOverlay);
+                    ->EffectiveOverscrollContainerType() ==
+                EOverscrollContainerType::kOverlay);
       }
       object_.GetFrameView()->AddScrollableAreaWithScrollNode(
           *To<LayoutBox>(object_).GetScrollableArea());
@@ -4204,6 +4263,7 @@ void FragmentPaintPropertyTreeBuilder::UpdateForSelf() {
       // TODO(crbug.com/1278452): Merge SVG handling into the primary codepath.
       UpdateTransformForSVGChild(full_context_.direct_compositing_reasons);
     } else {
+      UpdateElementCanvasTransform();
       UpdateTranslate();
       UpdateRotate();
       UpdateScale();
@@ -4360,6 +4420,7 @@ void PaintPropertyTreeBuilder::InitPaintProperties() {
                                    context_.painting_layer) ||
        NeedsStickyTranslation(object_) ||
        NeedsAnchorPositionScrollTranslation(object_) ||
+       NeedsElementCanvasTransform(object_) ||
        NeedsTranslate(object_, context_.direct_compositing_reasons) ||
        NeedsRotate(object_, context_.direct_compositing_reasons) ||
        NeedsScale(object_, context_.direct_compositing_reasons) ||

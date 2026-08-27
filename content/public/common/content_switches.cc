@@ -324,6 +324,9 @@ const char kEnableExperimentalWebPlatformFeatures[] =
 // status:"experimental", which are enabled when running web tests.
 const char kEnableBlinkTestFeatures[] = "enable-blink-test-features";
 
+// Exposes the window.internals object in JavaScript for testing.
+const char kExposeInternalsForTesting[] = "expose-internals-for-testing";
+
 // Disables all RuntimeEnabledFeatures that can be enabled via OriginTrials.
 const char kDisableOriginTrialControlledBlinkFeatures[] =
     "disable-origin-trial-controlled-blink-features";
@@ -562,12 +565,6 @@ const char kProcessPerTab[]                 = "process-per-tab";
 // The value of this switch determines whether the process is started as a
 // renderer or plugin host.  If it's empty, it's the browser.
 const char kProcessType[]                   = "type";
-
-// Causes Protected Audiences Bidding and Auction API to supply the provided
-// debugging key to the trusted auction server. This tells the server that it
-// okay to log information about this user's auction to help with debugging.
-const char kProtectedAudiencesConsentedDebugToken[] =
-    "protected-audiences-consented-debug-token";
 
 // Handle to shared memory containing the pseudonymization salt, passed to
 // child processes at launch. See https://crbug.com/40850085.

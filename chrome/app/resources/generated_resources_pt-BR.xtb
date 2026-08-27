@@ -292,7 +292,6 @@ Verifique suas senhas a qualquer momento no <ph name="GOOGLE_PASSWORD_MANAGER" /
 <translation id="1202116106683864634">Você quer mesmo excluir essa chave de acesso?</translation>
 <translation id="1202892408424955784">Produtos monitorados</translation>
 <translation id="1203247227716551969">Verificar sua conta</translation>
-<translation id="1203559206734265703">A depuração de públicos protegidos está ativada.</translation>
 <translation id="120368089816228251">Nota musical</translation>
 <translation id="1203942045716040624">Worker compartilhado: <ph name="SCRIPT_URL" /></translation>
 <translation id="1206832039833782423">O código de segurança está no verso do cartão</translation>
@@ -1886,6 +1885,7 @@ Para gerenciar as configurações dessa conta, instale o app Family Link no seu 
 <translation id="2458379781610688953">Atualize a conta, <ph name="EMAIL" /></translation>
 <translation id="2459703812219683497">Código de ativação detectado</translation>
 <translation id="2459706890611560967">Retomar transmissão da guia para <ph name="DEVICE_NAME" /></translation>
+<translation id="245979889539926662">Compartilhar uma captura de tela</translation>
 <translation id="2460150227008936698">{COUNT,plural, =0{Expira hoje}=1{Expira amanhã}one{Expira em # dia}other{Expira em # dias}}</translation>
 <translation id="2460482211073772897">Em outras pastas</translation>
 <translation id="2460826998961521840">Para usar as chaves de acesso salvas na sua Conta do Google</translation>
@@ -2822,7 +2822,7 @@ Para gerenciar as configurações dessa conta, instale o app Family Link no seu 
 <translation id="3157387275655328056">Adicionar à lista de leitura</translation>
 <translation id="3157931365184549694">Restaurar</translation>
 <translation id="3158033540161634471">Configurar impressão digital</translation>
-<translation id="3158203338449343164">Liberar A Pesquisa Em Todas As Guias</translation>
+<translation id="3158203338449343164">Liberar a pesquisa em todas as guias</translation>
 <translation id="3158770568048368350">Isso pode fazer com que a rede móvel seja momentaneamente desconectada</translation>
 <translation id="3159335509547415276">Saiba mais sobre contas bloqueadas.</translation>
 <translation id="3159493096109238499">Bege</translation>
@@ -2844,6 +2844,7 @@ Para gerenciar as configurações dessa conta, instale o app Family Link no seu 
 <translation id="3175862692832442091">Floresta</translation>
 <translation id="3176347586396987181">Use a tecla “z” para tocar em um botão do mouse e pressionar</translation>
 <translation id="3176984568033229317">Use a Pesquisa Google no Edge</translation>
+<translation id="3177338796769255211">Faça login para ter acesso a favoritos e muito mais em todos os seus dispositivos</translation>
 <translation id="3177430966804511955">Gerenciar apps isolados da Web (Beta)</translation>
 <translation id="31774765611822736">Nova guia à esquerda</translation>
 <translation id="3177909033752230686">Idioma da página:</translation>
@@ -4098,7 +4099,6 @@ Para gerenciar as configurações dessa conta, instale o app Family Link no seu 
 <translation id="4110485659976215879">Restaurar aviso</translation>
 <translation id="4112194537011183136"><ph name="DEVICE_NAME" /> (off-line)</translation>
 <translation id="4113743276555482284">Senha do arquivo</translation>
-<translation id="4114391251600134209">{COUNT,plural, =0{Nenhuma senha salva}=1{1 senha verificada}one{{COUNT} senha verificada}other{{COUNT} senhas verificadas}}</translation>
 <translation id="4114524937989710624">Você está vendo arquivos sugeridos para voltar de forma simples à sua atividade mais recente no Google Drive.
         <ph name="BREAK" />
         <ph name="BREAK" />
@@ -4532,7 +4532,7 @@ Para gerenciar as configurações dessa conta, instale o app Family Link no seu 
 <translation id="4446933390699670756">Espelhada</translation>
 <translation id="4449247303975391730">Gerenciar permissões</translation>
 <translation id="4452898361839215358">ou selecione um. <ph name="LINK_BEGIN" />Saiba mais<ph name="LINK_END" /></translation>
-<translation id="4453946976636652378">Pesquisar no <ph name="SEARCH_ENGINE_NAME" /> ou digitar URL</translation>
+<translation id="4453946976636652378">Pesquise no <ph name="SEARCH_ENGINE_NAME" /> ou digite o URL</translation>
 <translation id="4457472090507035117">Selecione a voz atual:</translation>
 <translation id="4460014764210899310">Desagrupar</translation>
 <translation id="4461483878391246134">Adicione idiomas para nunca oferecer tradução</translation>
@@ -7004,7 +7004,6 @@ Não exponha nenhuma informação confidencial.</translation>
 <translation id="6425556984042222041">Velocidade de conversão de texto em voz</translation>
 <translation id="642729974267661262">Bloquear a reprodução de sons</translation>
 <translation id="6427752304227226701">Denunciar site não seguro…</translation>
-<translation id="6427938854876261655">{COUNT,plural, =0{Nenhuma senha salva.}=1{Verificando {COUNT} senha…}one{Verificando {COUNT} senha…}other{Verificando {COUNT} senhas…}}</translation>
 <translation id="6429384232893414837">Erro de atualização</translation>
 <translation id="6430202563517028640">Adicionar link à lista de leitura</translation>
 <translation id="6430814529589430811">ASCII codificado na Base64, certificado único</translation>
@@ -7848,7 +7847,7 @@ Há # outras senhas comprometidas. O Gerenciador de senhas do Google recomenda q
 <translation id="7056526158851679338">&amp;Inspecionar dispositivos</translation>
 <translation id="7057567173736333354">Descreva sua imagem</translation>
 <translation id="7058024590501568315">Rede oculta</translation>
-<translation id="7058325593717863084">Enviar Feedback Sobre a Barra de Guias</translation>
+<translation id="7058325593717863084">Enviar feedback sobre a barra de guias</translation>
 <translation id="7059858479264779982">Definir para abertura automática</translation>
 <translation id="7063129466199351735">Processando atalhos...</translation>
 <translation id="7063311912041006059">URL com <ph name="SPECIAL_SYMBOL" /> no lugar da consulta</translation>

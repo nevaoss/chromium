@@ -12,8 +12,8 @@
 #include "base/strings/utf_string_conversions.h"
 #include "build/build_config.h"
 #include "chrome/browser/platform_util.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_window.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/bubble_anchor_util.h"
 #include "chrome/browser/ui/global_error/global_error.h"
 #include "chrome/browser/ui/global_error/global_error_service.h"
@@ -40,7 +40,7 @@
 
 // static
 GlobalErrorBubbleViewBase* GlobalErrorBubbleViewBase::ShowStandardBubbleView(
-    Browser* browser,
+    BrowserWindowInterface* browser,
     const base::WeakPtr<GlobalErrorWithStandardBubble>& error) {
   auto* control = BrowserView::GetBrowserViewForBrowser(browser)
                       ->toolbar_button_provider()
@@ -59,7 +59,7 @@ GlobalErrorBubbleViewBase* GlobalErrorBubbleViewBase::ShowStandardBubbleView(
 GlobalErrorBubbleView::GlobalErrorBubbleView(
     views::BubbleAnchor anchor,
     views::BubbleBorder::Arrow arrow,
-    Browser* browser,
+    BrowserWindowInterface* browser,
     const base::WeakPtr<GlobalErrorWithStandardBubble>& error)
     : BubbleDialogDelegateView(anchor,
                                arrow,
@@ -80,8 +80,7 @@ GlobalErrorBubbleView::GlobalErrorBubbleView(
           // so the error can clear its `bubble_view_` pointer.
           // This is different from the button callbacks below, which require a
           // valid browser to perform their actions.
-          error->BubbleViewDidClose(
-              browser ? browser->GetBrowserForMigrationOnly() : nullptr);
+          error->BubbleViewDidClose(browser.get());
         }
       },
       error_, browser->GetWeakPtr()));
@@ -103,8 +102,7 @@ GlobalErrorBubbleView::GlobalErrorBubbleView(
       [](base::WeakPtr<GlobalErrorWithStandardBubble> error,
          base::WeakPtr<BrowserWindowInterface> browser) {
         if (error && browser) {
-          error->BubbleViewAcceptButtonPressed(
-              browser->GetBrowserForMigrationOnly());
+          error->BubbleViewAcceptButtonPressed(browser.get());
         }
       },
       error, browser->GetWeakPtr()));
@@ -112,8 +110,7 @@ GlobalErrorBubbleView::GlobalErrorBubbleView(
       [](base::WeakPtr<GlobalErrorWithStandardBubble> error,
          base::WeakPtr<BrowserWindowInterface> browser) {
         if (error && browser) {
-          error->BubbleViewCancelButtonPressed(
-              browser->GetBrowserForMigrationOnly());
+          error->BubbleViewCancelButtonPressed(browser.get());
         }
       },
       error, browser->GetWeakPtr()));
@@ -124,8 +121,7 @@ GlobalErrorBubbleView::GlobalErrorBubbleView(
             [](base::WeakPtr<GlobalErrorWithStandardBubble> error,
                base::WeakPtr<BrowserWindowInterface> browser) {
               if (error && browser) {
-                error->BubbleViewDetailsButtonPressed(
-                    browser->GetBrowserForMigrationOnly());
+                error->BubbleViewDetailsButtonPressed(browser.get());
               }
             },
             error_, browser->GetWeakPtr()),

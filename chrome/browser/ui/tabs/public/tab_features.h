@@ -59,8 +59,9 @@ class QwacWebContentsObserver;
 class ReadAnythingController;
 class ReadAnythingSidePanelController;
 class RecordReplayPageActionController;
-class RollBackModeBInfoBarController;
+class SearchEngineChoiceTabHelper;
 class SearchPromotionNavigationObserver;
+class SecurityStateEventObserver;
 class SidePanelRegistry;
 class TabResourceUsageTabHelper;
 class TabUIHelper;
@@ -243,11 +244,6 @@ class TabFeatures {
 
   permissions::PermissionIndicatorsTabData* permission_indicators_tab_data() {
     return permission_indicators_tab_data_.get();
-  }
-
-  customize_chrome::SidePanelController*
-  customize_chrome_side_panel_controller() {
-    return customize_chrome_side_panel_controller_.get();
   }
 
   // Note: Temporary until there is a more uniform way to swap out features for
@@ -436,6 +432,10 @@ class TabFeatures {
   // window-scoped extension side-panel manager.
   std::unique_ptr<extensions::ExtensionSidePanelManager>
       extension_side_panel_manager_;
+
+  // Security-state-driven side effects (known-interception disclosure,
+  // form-submission UKM).
+  std::unique_ptr<SecurityStateEventObserver> security_state_event_observer_;
 
   // Forwards tab-related events to sync.
   std::unique_ptr<sync_sessions::SyncSessionsRouterTabHelper>
@@ -627,8 +627,9 @@ class TabFeatures {
   std::unique_ptr<lens::TabContextualizationController>
       tab_contextualization_controller_;
 
-  std::unique_ptr<RollBackModeBInfoBarController>
-      roll_back_mode_b_infobar_controller_;
+  // Watches for an opportunity to show the search engine choice dialog.
+  // Only created when SearchEngineChoiceTabHelper::IsHelperNeeded().
+  std::unique_ptr<SearchEngineChoiceTabHelper> search_engine_choice_tab_helper_;
 
   std::unique_ptr<BookmarkBarPreloadPipelineManager>
       bookmarkbar_preload_pipeline_manager_;

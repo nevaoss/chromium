@@ -33,6 +33,7 @@ enum WebviewExitReason {
   FAILED_TO_LAUNCH = 6,
   INTEGRITY_FAILURE = 7,
   UNKNOWN = 8,
+  COUNT = UNKNOWN + 1,
 }
 // LINT.ThenChange(//tools/metrics/histograms/metadata/glic/enums.xml:GlicWebviewExitReason)
 
@@ -88,6 +89,14 @@ function findNextZoomInFactor(currentZoom: number): number|undefined {
  */
 function findNextZoomOutFactor(currentZoom: number): number|undefined {
   return ZOOM_FACTORS.findLast(f => currentZoom - f >= ZOOM_DELTA_THRESHOLD);
+}
+
+interface ZoomChangeEventData {
+  newZoomFactor: number;
+}
+
+function isZoomChangeEvent(e: Event): e is Event&ZoomChangeEventData {
+  return 'newZoomFactor' in e && typeof e.newZoomFactor === 'number';
 }
 
 export type PageType =
@@ -253,23 +262,21 @@ export class WebviewController {
     this.eventTracker.add(
         this.webview, 'unresponsive', this.onUnresponsive.bind(this));
     this.eventTracker.add(this.webview, 'exit', this.onExit.bind(this));
-    if (isFullWebView(this.webview)) {
-      this.eventTracker.add(
-          this.webview, 'zoomchange',
-          (e: chrome.webviewTag.ZoomChangeEvent) => {
-            const percentage = Math.round(e.newZoomFactor * 100);
-            const message =
-                loadTimeData.getStringF('zoomLabel', percentage + '%');
-            getAnnouncerInstance().announce(message);
-            if (e.newZoomFactor > 0) {
-              this.webview.getZoom((reportedZoom: number) => {
-                this.displayScaleMultiplier = reportedZoom / e.newZoomFactor;
-              });
-            }
-            this.browserProxy.pageHandler.onZoomLevelChange(e.newZoomFactor);
-            this.host?.onZoomLevelChanged(e.newZoomFactor);
-          });
-    }
+    this.eventTracker.add(this.webview, 'zoomchange', (e: Event) => {
+      if (!isZoomChangeEvent(e)) {
+        return;
+      }
+      const percentage = Math.round(e.newZoomFactor * 100);
+      const message = loadTimeData.getStringF('zoomLabel', percentage + '%');
+      getAnnouncerInstance().announce(message);
+      if (e.newZoomFactor > 0) {
+        this.webview.getZoom((reportedZoom: number) => {
+          this.displayScaleMultiplier = reportedZoom / e.newZoomFactor;
+        });
+      }
+      this.browserProxy.pageHandler.onZoomLevelChange(e.newZoomFactor);
+      this.host?.onZoomLevelChanged(e.newZoomFactor);
+    });
     this.eventTracker.add(
         this.webview, 'loadstart', this.onLoadStart.bind(this));
     this.eventTracker.add(
@@ -451,7 +458,7 @@ export class WebviewController {
     chrome.histograms.recordEnumerationValue(
         'Glic.Session.WebClientCrash.ExitReason',
         webviewExitReasonStringToEnum(event.reason),
-        Object.keys(WEBVIEW_EXIT_REASON_MAP).length);
+        WebviewExitReason.COUNT);
     if (event.reason !== 'normal') {
       this.destroyHost(WebClientState.ERROR);
       chrome.histograms.recordUserAction('GlicSessionWebClientCrash');

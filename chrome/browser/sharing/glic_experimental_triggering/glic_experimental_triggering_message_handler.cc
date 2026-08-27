@@ -14,14 +14,14 @@
 #include "base/time/time.h"
 #include "base/uuid.h"
 #include "chrome/browser/actor/actor_keyed_service.h"
+#include "chrome/browser/glic/experimental_triggering/actor_log.h"
+#include "chrome/browser/glic/experimental_triggering/glic_experimental_triggering_converters.h"
 #include "chrome/browser/glic/experimental_triggering/glic_experimental_triggering_coordinator.h"
 #include "chrome/browser/glic/experimental_triggering/glic_experimental_triggering_metrics.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/glic/public/glic_keyed_service.h"
 #include "chrome/browser/glic/public/glic_keyed_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/sharing/glic_experimental_triggering/actor_log.h"
-#include "chrome/browser/sharing/glic_experimental_triggering/glic_experimental_triggering_converters.h"
 #include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
 #include "chrome/common/chrome_features.h"
@@ -257,7 +257,7 @@ void GlicExperimentalTriggeringMessageHandler::OnMessage(
     if (profile_) {
       actor::ActorKeyedService* actor_service =
           actor::ActorKeyedService::Get(profile_);
-      LogGlicExperimentalTriggeringProto(
+      glic::LogGlicExperimentalTriggeringProto(
           actor_service, "GlicExperimentalTriggering", "", request);
     }
 
@@ -320,24 +320,10 @@ void GlicExperimentalTriggeringMessageHandler::ProcessValidatedMessage(
   const auto& request = message.glic_experimental_triggering();
   CHECK(!context_id.empty());
 
-  if (profile_) {
-    actor::ActorKeyedService* actor_service =
-        actor::ActorKeyedService::Get(profile_);
-    LogGlicExperimentalTriggeringProto(
-        actor_service, "GlicExperimentalTriggering", context_id, request);
-  }
-
-  glic::ExperimentalTriggeringRequest domain_request =
-      glic::ProtoToRequest(request);
-  domain_request.context_id = context_id;
-
-  glic::GlicExperimentalTriggeringUpdateCallback update_callback =
-      GetUpdateCallback(message);
-
   std::optional<glic::ExperimentalTriggeringResponse> domain_response =
-      coordinator_->OnRequest(context_id, domain_request,
-                              std::move(result_logger),
-                              std::move(update_callback), prepared_tab);
+      coordinator_->OnProtoMessage(context_id, request,
+                                   std::move(result_logger),
+                                   GetUpdateCallback(message), prepared_tab);
 
   if (domain_response.has_value()) {
     std::move(done_callback)
@@ -367,7 +353,7 @@ GlicExperimentalTriggeringMessageHandler::GetUpdateCallback(
         if (weak_message_handler->profile_) {
           actor::ActorKeyedService* actor_service =
               actor::ActorKeyedService::Get(weak_message_handler->profile_);
-          LogGlicExperimentalTriggeringProto(
+          glic::LogGlicExperimentalTriggeringProto(
               actor_service, "GlicExperimentalTriggering", response.context_id,
               outgoing_message.glic_experimental_triggering());
         }

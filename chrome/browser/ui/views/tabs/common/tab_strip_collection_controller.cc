@@ -11,11 +11,11 @@
 #include "base/metrics/user_metrics.h"
 #include "base/metrics/user_metrics_action.h"
 #include "chrome/browser/tab_group_sync/tab_group_sync_service_factory.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_command_controller.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_utils.h"
 #include "chrome/browser/ui/tabs/split_tab_util.h"
 #include "chrome/browser/ui/tabs/tab_group_model.h"
@@ -25,6 +25,7 @@
 #include "chrome/browser/ui/tabs/tab_strip_model_delegate.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
 #include "chrome/browser/ui/ui_features.h"
+#include "chrome/browser/ui/views/frame/browser_frame_view.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/glass_frame_service.h"
 #include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
@@ -45,6 +46,7 @@
 #include "ui/views/view_utils.h"
 
 #if BUILDFLAG(IS_CHROMEOS)
+#include "chrome/browser/ash/boca/on_task/on_task_locked_controller.h"
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
 #include "chromeos/ash/experiences/system_web_apps/types/system_web_app_delegate.h"
 #endif  // BUILDFLAG(IS_CHROMEOS)
@@ -85,46 +87,73 @@ TabStripCollectionController::~TabStripCollectionController() {
   }
 }
 
-void TabStripCollectionController::ShowContextMenuForNode(
-    TabCollectionNode* collection_node,
-    views::View* source,
-    const gfx::Point& point,
-    ui::mojom::MenuSourceType source_type) {
-  tabs::ConstChildPtr node_data = collection_node->GetNodeData();
-  CHECK(std::holds_alternative<const tabs::TabInterface*>(node_data));
-  const tabs::TabInterface* tab =
-      std::get<const tabs::TabInterface*>(node_data);
-  std::optional<int> tab_index =
-      tab->GetBrowserWindowInterface()->GetTabStripModel()->GetIndexOfTab(tab);
+int TabStripCollectionController::GetTabCount() const {
+  return model_->count();
+}
 
-  if (!tab_index.has_value()) {
-    return;
+const tabs::TabInterface* TabStripCollectionController::GetActiveTab() const {
+  return model_->GetActiveTab();
+}
+
+const TabCollectionNode* TabStripCollectionController::GetAdjacentTab(
+    const tabs::TabInterface* tab,
+    bool leading) const {
+  std::optional<int> maybe_index = model_->GetIndexOfTab(tab);
+  if (!maybe_index.has_value()) {
+    return nullptr;
   }
 
-  context_menu_controller_ =
-      std::make_unique<TabContextMenuController>(tab->GetHandle(), this);
+  int adjacent_index =
+      leading ? maybe_index.value() - 1 : maybe_index.value() + 1;
+  if (!model_->ContainsIndex(adjacent_index)) {
+    return nullptr;
+  }
 
-  auto model = menu_model_factory_->Create(
-      context_menu_controller_.get(),
-      browser_view_->browser()->GetFeatures().tab_menu_model_delegate(), model_,
-      tab_index.value());
+  const tabs::TabInterface* adjacent_tab =
+      model_->GetTabAtIndex(adjacent_index);
+  BaseTabStripRegionView* region_view =
+      views::AsViewClass<BaseTabStripRegionView>(
+          browser_view_->tab_strip_view());
+  RootTabCollectionNode* root_node =
+      region_view ? region_view->root_node() : nullptr;
 
-  CHECK(browser_view_->tab_strip_view());
-  expand_on_hover_lock_ = browser_view_->tab_strip_view()->GetExpandOnHoverLock(
-      ExpandOnHoverLockType::kKeepCurrentState);
+  TabCollectionNode* adjacent_node =
+      (root_node && adjacent_tab)
+          ? root_node->GetNodeForHandle(adjacent_tab->GetHandle())
+          : nullptr;
+  return adjacent_node;
+}
 
-  // `base::Unretained(this)` is safe because `context_menu_controller_` is
-  // owned by `this`, ensuring the callback cannot outlive `this`.
-  auto on_menu_closed =
-      base::BindRepeating(&TabStripCollectionController::OnTabContextMenuClosed,
-                          base::Unretained(this));
+std::optional<tab_groups::TabGroupId>
+TabStripCollectionController::GetFocusedGroup() const {
+  return model_->GetFocusedGroup();
+}
 
-  ui::SimpleMenuModel* model_ptr = model.get();
-  context_menu_controller_->LoadModel(
-      std::move(model), menu_model_factory_->AsTabMenuModel(model_ptr),
-      std::move(on_menu_closed));
+std::optional<SkColor> TabStripCollectionController::GetGroupColor(
+    const tabs::TabInterface* tab_interface) const {
+  std::optional<tab_groups::TabGroupId> group_id = tab_interface->GetGroup();
+  if (!group_id.has_value() || !model_->SupportsTabGroups()) {
+    return std::nullopt;
+  }
 
-  context_menu_controller_->RunMenuAt(point, source_type, source->GetWidget());
+  const TabGroupModel* group_model = model_->group_model();
+  const TabGroup* group = (group_model->ContainsTabGroup(group_id.value()))
+                              ? group_model->GetTabGroup(group_id.value())
+                              : nullptr;
+  if (!group || !group->visual_data()) {
+    return std::nullopt;
+  }
+
+  const auto* color_provider = browser_view_->GetColorProvider();
+  if (!color_provider) {
+    return std::nullopt;
+  }
+
+  return color_provider->GetColor(GetTabGroupTabStripColorId(
+      group->visual_data()->color(),
+      browser_view_->GetWidget()
+          ? browser_view_->GetWidget()->ShouldPaintAsActive()
+          : true));
 }
 
 void TabStripCollectionController::ShiftTabNext(
@@ -367,16 +396,21 @@ void TabStripCollectionController::ToggleTabGroupCollapsedState(
   }
 
   if (should_toggle_group) {
-    gfx::Range tabs_in_group = group->ListTabs();
-    for (uint32_t i = tabs_in_group.start(); i < tabs_in_group.end(); ++i) {
-      views::View* const view =
-          browser_view_->tab_strip_view()->GetTabAnchorViewAt(i);
-      CHECK(views::IsViewClass<TabView>(view));
-      TabView* const tab_view = views::AsViewClass<TabView>(view);
-      if (is_currently_collapsed) {
-        tab_view->ReleaseFreezingVote(FreezingVoteReason::kCollapsedGroup);
-      } else {
-        tab_view->CreateFreezingVote(FreezingVoteReason::kCollapsedGroup);
+    auto* const base_region_view = views::AsViewClass<BaseTabStripRegionView>(
+        browser_view_->tab_strip_view());
+    CHECK(base_region_view);
+    const TabCollectionNode* group_node =
+        base_region_view->root_node()->GetNodeForHandle(
+            group->GetCollectionHandle());
+    if (group_node) {
+      for (const auto& child_node : group_node->children()) {
+        if (auto* tab_view = views::AsViewClass<TabView>(child_node->view())) {
+          if (is_currently_collapsed) {
+            tab_view->ReleaseFreezingVote(FreezingVoteReason::kCollapsedGroup);
+          } else {
+            tab_view->CreateFreezingVote(FreezingVoteReason::kCollapsedGroup);
+          }
+        }
       }
     }
   }
@@ -393,6 +427,48 @@ void TabStripCollectionController::ToggleTabGroupCollapsedState(
           base::UserMetricsAction("TabGroups_TabGroupHeader_Collapsed"));
     }
   }
+}
+
+void TabStripCollectionController::ShowTabContextMenu(
+    TabCollectionNode* collection_node,
+    const gfx::Point& point,
+    ui::mojom::MenuSourceType source_type) {
+  tabs::ConstChildPtr node_data = collection_node->GetNodeData();
+  CHECK(std::holds_alternative<tabs::ConstDanglingUntriagedTabInterface>(
+      node_data));
+  const tabs::TabInterface* tab =
+      std::get<tabs::ConstDanglingUntriagedTabInterface>(node_data);
+
+  std::optional<int> tab_index = model_->GetIndexOfTab(tab);
+  if (!tab_index.has_value()) {
+    return;
+  }
+
+  context_menu_controller_ =
+      std::make_unique<TabContextMenuController>(tab->GetHandle(), this);
+
+  auto model = menu_model_factory_->Create(
+      context_menu_controller_.get(),
+      browser_view_->browser()->GetFeatures().tab_menu_model_delegate(), model_,
+      tab_index.value());
+
+  CHECK(browser_view_->tab_strip_view());
+  expand_on_hover_lock_ = browser_view_->tab_strip_view()->GetExpandOnHoverLock(
+      ExpandOnHoverLockType::kKeepCurrentState);
+
+  // `base::Unretained(this)` is safe because `context_menu_controller_` is
+  // owned by `this`, ensuring the callback cannot outlive `this`.
+  auto on_menu_closed =
+      base::BindRepeating(&TabStripCollectionController::OnTabContextMenuClosed,
+                          base::Unretained(this));
+
+  ui::SimpleMenuModel* model_ptr = model.get();
+  context_menu_controller_->LoadModel(
+      std::move(model), menu_model_factory_->AsTabMenuModel(model_ptr),
+      std::move(on_menu_closed));
+
+  context_menu_controller_->RunMenuAt(point, source_type,
+                                      collection_node->view()->GetWidget());
 }
 
 void TabStripCollectionController::ShowGroupEditorBubble(
@@ -429,10 +505,6 @@ TabStripCollectionController::GetStateController() {
 const tabs::VerticalTabStripStateController*
 TabStripCollectionController::GetStateController() const {
   return tabs::VerticalTabStripStateController::From(browser_view_->browser());
-}
-
-const tabs::TabInterface* TabStripCollectionController::GetActiveTab() const {
-  return model_->GetActiveTab();
 }
 
 bool TabStripCollectionController::IsContextMenuCommandChecked(
@@ -484,11 +556,6 @@ void TabStripCollectionController::OnTabContextMenuClosed() {
   expand_on_hover_lock_.reset();
 }
 
-std::optional<tab_groups::TabGroupId>
-TabStripCollectionController::GetFocusedGroup() const {
-  return model_->GetFocusedGroup();
-}
-
 void TabStripCollectionController::TabGroupFocusChanged(
     std::optional<tab_groups::TabGroupId> new_focused_group_id,
     std::optional<tab_groups::TabGroupId> old_focused_group_id) {
@@ -498,6 +565,24 @@ void TabStripCollectionController::TabGroupFocusChanged(
   UpdateFocusModeTheme(new_focused_group_id);
   browser_view_->browser_widget()->ThemeChanged();
   browser_view_->GetWidget()->non_client_view()->frame_view()->SchedulePaint();
+
+  UpdateAllTabsFocusFreezing();
+}
+
+void TabStripCollectionController::UpdateAllTabsFocusFreezing() {
+  if (!features::IsTabGroupsFocusFreezingEnabled()) {
+    return;
+  }
+  if (!model_ || !browser_view_ || !browser_view_->tab_strip_view()) {
+    return;
+  }
+  for (tabs::TabInterface* tab : *model_) {
+    views::View* const view =
+        browser_view_->tab_strip_view()->GetTabAnchorView(tab->GetHandle());
+    if (auto* tab_view = views::AsViewClass<TabView>(view)) {
+      tab_view->UpdateFocusFreezing();
+    }
+  }
 }
 
 void TabStripCollectionController::UpdateFocusModeTheme(
@@ -521,6 +606,13 @@ void TabStripCollectionController::UpdateFocusModeTheme(
     browser_view_->browser_widget()->SetUserColorOverride(color);
   }
 }
+
+#if BUILDFLAG(IS_CHROMEOS)
+bool TabStripCollectionController::IsLockedForOnTask() const {
+  return ash::boca::OnTaskLockedController::From(browser_view_->browser())
+      ->is_locked_for_on_task();
+}
+#endif  // BUILDFLAG(IS_CHROMEOS)
 
 void TabStripCollectionController::TabKeyboardFocusChangedTo(
     const tabs::TabInterface* tab) {
@@ -624,14 +716,19 @@ void TabStripCollectionController::ShiftTabRelative(
           target_index = offset < 0 ? 0 : model_->count() - 1;
         }
       } else {
+        tabs::TabInterface* tab = model_->GetTabAtIndex(start_index);
         views::View* tab_view =
-            browser_view_->tab_strip_view()->GetTabAnchorViewAt(start_index);
+            tab ? browser_view_->tab_strip_view()->GetTabAnchorView(
+                      tab->GetHandle())
+                : nullptr;
         // Read before adding the tab to the group so that the group description
         // isn't the tab we just added.
         AnnounceTabAddedToGroup(target_group.value());
         model_->AddToExistingGroup({start_index}, target_group.value());
-        views::ElementTrackerViews::GetInstance()->NotifyCustomEvent(
-            kTabGroupedCustomEventId, tab_view);
+        if (tab_view) {
+          views::ElementTrackerViews::GetInstance()->NotifyCustomEvent(
+              kTabGroupedCustomEventId, tab_view);
+        }
         return;
       }
     }
@@ -722,14 +819,16 @@ void TabStripCollectionController::AnnounceTabRemovedFromGroup(
                 contents_string));
 }
 
-void TabStripCollectionController::OnGlassFrameEligibilityChanged(
-    bool is_eligible) {
-  is_glass_ = is_eligible;
-  browser_view_->tab_strip_view()->OnGlassFrameEligibilityChanged(is_eligible);
+BrowserFrameView* TabStripCollectionController::GetBrowserFrameView() const {
+  return browser_view_->browser_widget()
+             ? browser_view_->browser_widget()->GetFrameView()
+             : nullptr;
 }
 
-int TabStripCollectionController::GetTabCount() const {
-  return model_->count();
+void TabStripCollectionController::OnGlassFrameEligibilityChanged(
+    bool is_eligible) {
+  is_glass_frame_ = is_eligible;
+  browser_view_->tab_strip_view()->OnGlassFrameEligibilityChanged(is_eligible);
 }
 
 int TabStripCollectionController::GetStrokeThickness() const {

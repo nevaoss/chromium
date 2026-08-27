@@ -57,6 +57,7 @@ import org.junit.Test;
 import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
@@ -142,6 +143,7 @@ public class UrlBarUnitTest {
     @Mock private AutocompleteEditTextModelBase mAutocompleteEditTextModelBase;
     @Mock private Runnable mRunnable;
     @Mock private KeyboardVisibilityDelegate mKeyboardVisibilityDelegate;
+    @Captor private ArgumentCaptor<SpannableStringBuilder> mHaveUrlCaptor;
 
     private ActivityController<TestActivity> mController;
     private Activity mActivity;
@@ -308,10 +310,8 @@ public class UrlBarUnitTest {
         mUrlBar.setText("www.google.com");
         mUrlBar.onProvideAutofillStructure(mViewStructure, 0);
 
-        ArgumentCaptor<SpannableStringBuilder> haveUrl =
-                ArgumentCaptor.forClass(SpannableStringBuilder.class);
-        verify(mViewStructure).setText(haveUrl.capture());
-        assertEquals("https://www.google.com", haveUrl.getValue().toString());
+        verify(mViewStructure).setText(mHaveUrlCaptor.capture());
+        assertEquals("https://www.google.com", mHaveUrlCaptor.getValue().toString());
     }
 
     @Test
@@ -1248,11 +1248,7 @@ public class UrlBarUnitTest {
     }
 
     @Test
-    @EnableFeatures(OmniboxFeatureList.MULTILINE_EDIT_FIELD)
     public void setInputIsMultilineEligible() {
-        // Permit line wrapping.
-        mUrlBar.setAllowMultilineInput(true);
-
         // Mark current input as wrapping eligible.
         mUrlBar.setInputIsMultilineEligible(true);
         mUrlBar.onFocusChanged(true, View.LAYOUT_DIRECTION_LTR, new Rect());
@@ -1265,14 +1261,6 @@ public class UrlBarUnitTest {
         // Defocused omnibox - never multiline
         mUrlBar.onFocusChanged(false, View.LAYOUT_DIRECTION_LTR, new Rect());
         mUrlBar.setInputIsMultilineEligible(true);
-        assertTrue(mUrlBar.isHorizontallyScrollable());
-
-        // Suppress line wrapping.
-        mUrlBar.setAllowMultilineInput(false);
-
-        // Mark current input as wrapping eligible.
-        mUrlBar.setInputIsMultilineEligible(true);
-        mUrlBar.onFocusChanged(true, View.LAYOUT_DIRECTION_LTR, new Rect());
         assertTrue(mUrlBar.isHorizontallyScrollable());
     }
 
@@ -1330,16 +1318,11 @@ public class UrlBarUnitTest {
     }
 
     @Test
-    @EnableFeatures(OmniboxFeatureList.MULTILINE_EDIT_FIELD)
     public void onFocusChanged_MultilineEligibility() {
-        mUrlBar.setAllowMultilineInput(true);
         mUrlBar.onFocusChanged(false, View.FOCUS_DOWN, null);
         assertTrue(mUrlBar.isHorizontallyScrollable());
 
         mUrlBar.onFocusChanged(true, View.FOCUS_DOWN, null);
-        assertTrue(mUrlBar.isHorizontallyScrollable());
-
-        mUrlBar.setAllowMultilineInput(true);
         assertTrue(mUrlBar.isHorizontallyScrollable());
 
         mUrlBar.setInputIsMultilineEligible(true);

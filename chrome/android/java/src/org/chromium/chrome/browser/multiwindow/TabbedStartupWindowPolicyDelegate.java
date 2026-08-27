@@ -9,7 +9,9 @@ import static org.chromium.build.NullUtil.assertNonNull;
 import android.app.ActivityManager.AppTask;
 import android.content.Intent;
 
-import androidx.annotation.VisibleForTesting;
+import org.jni_zero.JNINamespace;
+import org.jni_zero.JniType;
+import org.jni_zero.NativeMethods;
 
 import org.chromium.base.ApiCompatibilityUtils;
 import org.chromium.base.ResettersForTesting;
@@ -23,6 +25,7 @@ import org.chromium.chrome.browser.preferences.Pref;
 import org.chromium.components.prefs.PrefChangeRegistrar;
 import org.chromium.components.prefs.PrefService;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -30,12 +33,20 @@ import java.util.Set;
  * Delegate to manage startup window policies and relaunch session restoration for {@link
  * ChromeTabbedActivity} windows.
  */
+@JNINamespace("chrome::android")
 @NullMarked
 public class TabbedStartupWindowPolicyDelegate {
+    /* package */ static final int PREF_UNSET = -1;
+
     private static @Nullable TabbedStartupWindowPolicyDelegate sInstance;
 
     private @Nullable PrefChangeRegistrar mPrefChangeRegistrar;
     private @Nullable PrefService mPrefService;
+
+    /**
+     * Tracks whether the startup window policy has been claimed for the current browser process.
+     */
+    private boolean mStartupPolicyClaimed;
 
     private TabbedStartupWindowPolicyDelegate() {}
 
@@ -61,7 +72,10 @@ public class TabbedStartupWindowPolicyDelegate {
         mPrefChangeRegistrar = new PrefChangeRegistrar(prefService);
         mPrefChangeRegistrar.addObserver(
                 Pref.RESTORE_ON_STARTUP, this::onRestoreOnStartupPrefChanged);
+        mPrefChangeRegistrar.addObserver(
+                Pref.URLS_TO_RESTORE_ON_STARTUP, this::onRestoreOnStartupUrlsPrefChanged);
         onRestoreOnStartupPrefChanged();
+        onRestoreOnStartupUrlsPrefChanged();
     }
 
     /**
@@ -71,6 +85,15 @@ public class TabbedStartupWindowPolicyDelegate {
      */
     public void maybeSaveWindowStateOnSessionTermination(@LastSessionExitType int exitType) {
         if (!MultiWindowUtils.isNewStartupWindowPolicyEnabled()) {
+            return;
+        }
+
+        // Only persist the QUIT session type to restore previous session windows if the startup
+        // preference is unset or set to LAST.
+        int startupPref = ChromeMultiInstancePersistentStore.readRestoreOnStartupPrefValue();
+        if (exitType == LastSessionExitType.QUIT
+                && startupPref != PREF_UNSET
+                && startupPref != SessionStartupPref.LAST) {
             return;
         }
 
@@ -85,26 +108,82 @@ public class TabbedStartupWindowPolicyDelegate {
         ChromeMultiInstancePersistentStore.writeLastSessionExitType(exitType);
     }
 
-    /* package */ int getCachedStartupPolicy() {
-        if (!MultiWindowUtils.isRestoreOnStartupPrefSyncEnabled()) return 0;
-        return ChromeMultiInstancePersistentStore.readRestoreOnStartupPrefValue();
+    /**
+     * Claims and evaluates whether default instance ID allocation should force allocating a
+     * brand-new instance ID instead of adopting an existing persisted instance.
+     *
+     * <p>This occurs when:
+     *
+     * <ul>
+     *   <li>The previous session was closed by the application (clean shutdown with single window)
+     *       and the on-startup user preference is unset or configured to restore the last session
+     *       (LAST).
+     *   <li>The on-startup user preference is configured to open the New Tab page (NEW_TAB).
+     * </ul>
+     *
+     * @param isIncognito Whether the launch intent is incognito.
+     * @return {@code true} if a fresh window instance ID should be forced on startup; {@code false}
+     *     otherwise.
+     */
+    /* package */ boolean claimForceNewInstancePolicy(boolean isIncognito) {
+        assert MultiWindowUtils.isMultiInstanceApi31Enabled();
+
+        boolean isStartupPolicyEnabled = MultiWindowUtils.isNewStartupWindowPolicyEnabled();
+        boolean isPrefSyncEnabled = MultiWindowUtils.isRestoreOnStartupPrefSyncEnabled();
+        if (!isStartupPolicyEnabled && !isPrefSyncEnabled) {
+            return false;
+        }
+
+        if (mStartupPolicyClaimed) {
+            return false;
+        }
+        mStartupPolicyClaimed = true;
+
+        // Incognito windows do not apply startup policies or evaluate user preferences, but
+        // a cold-started incognito window marks the browser session as active and claims the
+        // startup policy for the current process.
+        if (isIncognito) {
+            return false;
+        }
+
+        int startupPref = ChromeMultiInstancePersistentStore.readRestoreOnStartupPrefValue();
+        boolean isLastSessionCleanExit =
+                isStartupPolicyEnabled
+                        && ChromeMultiInstancePersistentStore.readLastSessionExitType()
+                                == LastSessionExitType.LAST_WINDOW_CLOSED_BY_APP;
+        if (isLastSessionCleanExit
+                && (startupPref == PREF_UNSET || startupPref == SessionStartupPref.LAST)) {
+            return true;
+        }
+
+        return isPrefSyncEnabled && startupPref == SessionStartupPref.NEW_TAB;
     }
 
-    /* package */ void maybeRestoreWindowsAfterLaunch(ChromeTabbedActivity activity) {
-        if (!MultiWindowUtils.isNewStartupWindowPolicyEnabled()
-                || !MultiWindowUtils.isMultiInstanceApi31Enabled()) {
+    /* package */ void applyPolicy(ChromeTabbedActivity activity) {
+        if (!MultiWindowUtils.isMultiInstanceApi31Enabled()
+                || !MultiWindowUtils.isNewStartupWindowPolicyEnabled()) {
             return;
         }
 
-        if (ChromeMultiInstancePersistentStore.readLastSessionExitType()
-                != LastSessionExitType.QUIT) {
-            return;
-        }
-
-        // Clear the non-default session type after it has been first processed during an app launch
-        // to prevent it from being incorrectly used subsequently.
+        int exitType = ChromeMultiInstancePersistentStore.readLastSessionExitType();
         ChromeMultiInstancePersistentStore.clearLastSessionExitType();
 
+        // Guard: Do not attempt to restore previous session windows onto an Incognito host
+        // activity.
+        if (activity.isIncognitoWindow()) {
+            return;
+        }
+
+        if (exitType == LastSessionExitType.QUIT) {
+            maybeRestoreWindowsAfterLaunch(activity);
+        }
+    }
+
+    /* package */ void resetPolicy() {
+        mStartupPolicyClaimed = false;
+    }
+
+    private void maybeRestoreWindowsAfterLaunch(ChromeTabbedActivity activity) {
         int currentInstanceId = activity.getWindowId();
         Set<Integer> allIds = ChromeMultiInstancePersistentStore.readAllInstanceIds();
         Map<Integer, AppTask> appTasksById = MultiWindowUtils.getAppTasksById(activity);
@@ -156,23 +235,36 @@ public class TabbedStartupWindowPolicyDelegate {
         }
     }
 
-    @VisibleForTesting
-    /* package */ void destroy() {
+    private void onRestoreOnStartupPrefChanged() {
+        int type = assertNonNull(mPrefService).getInteger(Pref.RESTORE_ON_STARTUP);
+        ChromeMultiInstancePersistentStore.writeRestoreOnStartupPrefValue(type);
+    }
+
+    private void onRestoreOnStartupUrlsPrefChanged() {
+        assertNonNull(mPrefService);
+        List<String> urls =
+                TabbedStartupWindowPolicyDelegateJni.get().getSessionStartupUrls(mPrefService);
+        ChromeMultiInstancePersistentStore.writeRestoreOnStartupUrls(urls);
+    }
+
+    /* package */ void resetForTesting() {
         if (mPrefChangeRegistrar != null) {
             mPrefChangeRegistrar.destroy();
             mPrefChangeRegistrar = null;
         }
         mPrefService = null;
-    }
-
-    private void onRestoreOnStartupPrefChanged() {
-        int type = assertNonNull(mPrefService).getInteger(Pref.RESTORE_ON_STARTUP);
-        ChromeMultiInstancePersistentStore.writeRestoreOnStartupPrefValue(type);
+        mStartupPolicyClaimed = false;
     }
 
     /* package */ static void setInstanceForTesting(
             @Nullable TabbedStartupWindowPolicyDelegate delegate) {
         sInstance = delegate;
         ResettersForTesting.register(() -> sInstance = null);
+    }
+
+    @NativeMethods
+    public interface Natives {
+        @JniType("std::vector<std::string>")
+        List<String> getSessionStartupUrls(@JniType("PrefService*") PrefService prefService);
     }
 }

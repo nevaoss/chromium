@@ -532,6 +532,7 @@
 <translation id="3161699713309727585"><ph name="BUTTON_TEXT" />, പുതിയ ടാബിൽ തുറക്കുന്നു</translation>
 <translation id="3166827708714933426">ടാബ്, വിൻഡോ കുറുക്കുവഴികൾ</translation>
 <translation id="3167258285411721858">നിങ്ങൾക്ക് <ph name="HOST_NAME" /> എന്നതിനുള്ള മൊബൈൽ സൈറ്റ് അഭ്യർത്ഥിക്കാം</translation>
+<translation id="3177338796769255211">ബുക്ക്‌മാർക്കുകളും മറ്റും നിങ്ങളുടെ എല്ലാ ഉപകരണങ്ങളിലും നേടുന്നതിന് സൈൻ ഇൻ ചെയ്യുക</translation>
 <translation id="3181145110929454111"><ph name="TAB_TITLE" />, മൾട്ടിസെലക്റ്റ് ചെയ്ത, പിൻ ചെയ്ത, മ്യൂട്ട് ചെയ്ത അദൃശ്യ ടാബ്</translation>
 <translation id="3189635831478931757"><ph name="GROUP_TITLE" /> ടാബ് ഗ്രൂപ്പ്</translation>
 <translation id="3200536777393523575">നിങ്ങളുടെ നിലവിലെ വിൻഡോ അടയ്ക്കണോ?</translation>
@@ -764,6 +765,7 @@
 <translation id="4180726336228139707">ഈ ഉപകരണത്തിൽ മാത്രം</translation>
 <translation id="4181841719683918333">ഭാഷകൾ‌</translation>
 <translation id="4188221736490993796">റ മുതൽ അ വരെയുള്ള ക്രമം</translation>
+<translation id="4188638484665452040">Gemini അൺപിൻ ചെയ്തു</translation>
 <translation id="4189344235004694858">{NUM_REVOKED_PERMISSIONS,plural, =1{സ്പാം അല്ലെങ്കിൽ വഞ്ചനാപരമായ ഉള്ളടക്കം കാരണം അറിയിപ്പുകൾ അയയ്ക്കുന്നതിൽ നിന്ന് ഈ സൈറ്റിനെ Chrome തടഞ്ഞു}other{സ്പാം അല്ലെങ്കിൽ വഞ്ചനാപരമായ ഉള്ളടക്കം കാരണം അറിയിപ്പുകൾ അയയ്ക്കുന്നതിൽ നിന്ന് ഈ സൈറ്റുകളെ Chrome തടഞ്ഞു}}</translation>
 <translation id="4195643157523330669">പുതിയ ടാബില്‍ തുറക്കുക</translation>
 <translation id="4197828496439691735">{NUM_TABS,plural, =1{ഈ ഉപകരണത്തിലെ ഒരു ടാബ്}other{ഈ ഉപകരണത്തിലെ # ടാബ്}}</translation>
@@ -928,13 +930,13 @@
 <translation id="4794291718671962615">(<ph name="MEGABYTES" />) <ph name="URL" /></translation>
 <translation id="4807098396393229769">കാര്‍‌ഡിലെ നാമം</translation>
 <translation id="480990236307250886">ഹോംപേജ് തുറക്കുക</translation>
+<translation id="4816492930507672669">പേജിന് യുക്തമാക്കുക</translation>
 <translation id="4822710610088666676"><ph name="TAB_GROUP_TITLE" /> ഒരു ടാബ് ഗ്രൂപ്പ് അടയ്‌ക്കുകയും സംരക്ഷിക്കുകയും ചെയ്‌തു</translation>
 <translation id="4834250788637067901">Google Pay ഉപയോഗിക്കുന്ന പേയ്മെന്റ് രീതികളും ഓഫറുകളും വിലാസങ്ങളും</translation>
 <translation id="4835385943915508971">അഭ്യർത്ഥിച്ച ഉറവിടത്തിലേക്ക് Chrome-ന് ആക്‌സസ് ഇല്ല.</translation>
 <translation id="483742037940503070">{TAB_COUNT,plural, =1{<ph name="COLOR_NAME" /> നിറത്തിലുള്ള <ph name="TAB_COUNT_ONE" /> ടാബുള്ള ടാബ് ഗ്രൂപ്പ്, പശ്ചാത്തലത്തിലുള്ള പുതിയ ടാബ് ഗ്രൂപ്പായി പുനഃസ്ഥാപിക്കുക.}other{<ph name="COLOR_NAME" /> നിറത്തിലുള്ള <ph name="TAB_COUNT_MANY" /> ടാബുകളുള്ള ടാബ് ഗ്രൂപ്പ്, പശ്ചാത്തലത്തിലുള്ള പുതിയ ടാബ് ഗ്രൂപ്പായി പുനഃസ്ഥാപിക്കുക.}}</translation>
 <translation id="4849731766219625109">നിങ്ങളുടെ <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> അക്കൗണ്ട് ഉപയോഗിക്കുക</translation>
 <translation id="4850886885716139402">കാണുക</translation>
-<translation id="4852014461738377247">സൈൻ ഇൻ ചെയ്യുന്നു\u2026</translation>
 <translation id="4860895144060829044">വിളിക്കുക</translation>
 <translation id="4864369630010738180">സൈൻ ഇൻ ചെയ്യുന്നു...</translation>
 <translation id="4866368707455379617">Chrome-നായി <ph name="MODULE" /> ഇൻസ്‌റ്റാൾ ചെയ്യാനായില്ല</translation>
@@ -1314,7 +1316,6 @@
 <translation id="6411219469806822692">മുകളിലേക്ക് പോകാനാകില്ല. പേജിന്റെ കുറച്ച് കൂടെ മുകളിൽ നിന്ന് ആരംഭിക്കാൻ ശ്രമിക്കൂ.</translation>
 <translation id="6412215853589222273"><ph name="TAB_TITLE" />, മൾട്ടിസെലക്റ്റ് ചെയ്ത ടാബ്</translation>
 <translation id="641643625718530986">പ്രിന്‍റ് ചെയ്യുക…</translation>
-<translation id="6427723330233512782">ഉയരത്തിന് അനുയോജ്യമാക്കുക</translation>
 <translation id="6433501201775827830">നിങ്ങളുടെ തിരയൽ യന്ത്രം തിരഞ്ഞെടുക്കുക</translation>
 <translation id="6434309073475700221">നിരാകരിക്കുക</translation>
 <translation id="6435307030888827407">സൈൻ ഔട്ട് ചെയ്‌ത നിലയിൽ തുടരുക</translation>
@@ -1838,6 +1839,7 @@
 <translation id="8393700583063109961">സന്ദേശം അയയ്ക്കുക</translation>
 <translation id="8396098434728053815">ടാബിൽ നിന്നുള്ള ഓഡിയോയും പങ്കിടുക</translation>
 <translation id="8398389123831319859">അദൃശ്യ മോഡിലേക്ക് മാറാൻ ഡബിൾ ടാപ്പ് ചെയ്ത് പിടിക്കുക</translation>
+<translation id="8412037385861858490">Chrome-ലെ നിങ്ങളുടെ പ്രവർത്തനങ്ങൾ സുരക്ഷിതമാക്കാൻ, നിങ്ങൾ Chrome-ലേക്ക് സൈൻ ഇൻ ചെയ്തിരിക്കുമ്പോൾ ചില വിവരങ്ങൾ കാണാനോ മാനേജ് ചെയ്യാനോ നിങ്ങളുടെ സ്ഥാപനത്തിന് കഴിയും. <ph name="BEGIN_LINK" />കൂടുതലറിയുക<ph name="END_LINK" /></translation>
 <translation id="8413126021676339697">മുഴുവന്‍ ചരിത്രവും കാണിക്കുക</translation>
 <translation id="8413795581997394485">അപകടകരമെന്ന് തിരിച്ചറിഞ്ഞ സൈറ്റുകൾ, ഡൗൺലോഡുകൾ, വിപുലീകരണങ്ങൾ എന്നിവയിൽ നിന്ന് പരിരക്ഷിക്കുന്നു. ഒരു സൈറ്റ് സന്ദർശിക്കുമ്പോൾ, നിങ്ങളുടെ IP വിലാസം മറയ്ക്കുന്ന ഒരു സ്വകാര്യതാ സെർവർ വഴി, URL-ന്റെ സ്‌പഷ്‌ടമല്ലാത്ത ഭാഗം Google-ലേക്ക് Chrome അയയ്ക്കുന്നു. ഒരു സൈറ്റ് സംശയാസ്പദമായ എന്തെങ്കിലും ചെയ്താൽ, മുഴുവൻ URL-കളും പേജ് ഉള്ളടക്കത്തിന്റെ ബിറ്റുകളും അയയ്ക്കും.</translation>
 <translation id="8414396119627470038"><ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> ഉപയോഗിച്ച് <ph name="SITE_ETLD_PLUS_ONE" /> എന്നതിലേക്ക് സൈൻ ഇൻ ചെയ്യുക</translation>

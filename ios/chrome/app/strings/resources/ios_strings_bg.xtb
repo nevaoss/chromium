@@ -51,6 +51,7 @@
 <translation id="1147031633655575115">Влезли сте като <ph name="USER" /></translation>
 <translation id="1149401351239820326">Месец на валидност</translation>
 <translation id="1150989369772528668">Календар</translation>
+<translation id="1158134713295836892">Gemini в Chrome</translation>
 <translation id="1161444134753003495">Вход</translation>
 <translation id="1161663161838091892">Синхронизирайте разделите и историята, за да продължите</translation>
 <translation id="1162834932051545794">{count,plural, =1{{count} кредитна карта}other{{count} кредитни карти}}</translation>
@@ -225,7 +226,6 @@
 <translation id="1674504678466460478"><ph name="SOURCE_LANGUAGE" /> на <ph name="TARGET_LANGUAGE" /></translation>
 <translation id="1678855624321223424">Въз основа на правилата на организацията ви този файл може да съдържа поверителна информация</translation>
 <translation id="1683276189281028863">Проверка на паролите</translation>
-<translation id="168389590065701766">Вече можете да отваряте Google Обектив от адресната лента и да търсите всичко, което виждате</translation>
 <translation id="1689333818294560261">Псевдоним</translation>
 <translation id="169048873465870056">Искате ли да премахнете раздела и да изтриете групата?</translation>
 <translation id="1692115862433274081">Използване на друг профил</translation>
@@ -2527,6 +2527,7 @@
 <translation id="9203951165704618409">Превключете адресната лента от горната към долната част за персонализирано сърфиране.</translation>
 <translation id="9205189991633470489">Заключване на режима „инкогнито“</translation>
 <translation id="9206887540681440657">Скорост</translation>
+<translation id="9218430445555521422">Задаване като основен избор</translation>
 <translation id="9219103736887031265">Изображения</translation>
 <translation id="9219154867334666734">Търсене на раздели…</translation>
 <translation id="9223358826628549784">Сигналите за сривове са изпратени.</translation>

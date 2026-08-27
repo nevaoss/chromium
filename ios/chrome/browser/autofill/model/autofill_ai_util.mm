@@ -6,11 +6,14 @@
 
 #import "base/strings/string_util.h"
 #import "components/account_settings/account_setting_service.h"
+#import "components/autofill/core/browser/at_memory/at_memory_enablement_utils.h"
 #import "components/autofill/core/browser/data_manager/autofill_ai/entity_data_manager.h"
 #import "components/autofill/core/browser/data_model/autofill_ai/entity_type_names.h"
+#import "components/autofill/core/browser/foundations/autofill_client.h"
 #import "components/autofill/core/browser/integrators/personal_context/personal_context_autofill_util.h"
 #import "components/autofill/core/browser/permissions/autofill_ai/autofill_ai_permission_utils.h"
 #import "components/autofill/core/common/autofill_features.h"
+#import "components/autofill/core/common/autofill_prefs.h"
 #import "components/personal_context/core/personal_context_eligibility_service.h"
 #import "components/personal_context/core/personal_context_types.h"
 #import "components/personal_context/first_run/personal_context_first_run_service.h"
@@ -137,11 +140,24 @@ bool IsAutofillAtMemoryEnabled() {
   return base::FeatureList::IsEnabled(features::kAutofillAtMemory);
 }
 
+bool IsAutofillAtMemorySearchUIEnabled(const AutofillClient* client) {
+  if (!client) {
+    return false;
+  }
+  return MayPerformAtMemoryAction(AtMemoryAction::kTriggerSearchUI, *client);
+}
+
 bool IsEnhancedAutofillEnabled(ProfileIOS* profile) {
   ProfileIOS* original_profile = profile->GetOriginalProfile();
   return GetAutofillAiOptInStatus(
       original_profile->GetPrefs(),
       IdentityManagerFactory::GetForProfile(original_profile));
+}
+
+const char* GetAutofillAiOptInPreferenceKeyName() {
+  return base::FeatureList::IsEnabled(features::kAutofillAiUsePrivateAi)
+             ? prefs::kAutofillAiPrivateInferenceOptInStatus
+             : prefs::kAutofillAiOptInStatus;
 }
 
 void SetEnhancedAutofillEnabled(ProfileIOS* profile, bool enabled) {

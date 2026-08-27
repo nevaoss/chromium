@@ -46,7 +46,6 @@
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/sync/sync_service_factory.h"
 #include "chrome/browser/sync/test/integration/committed_all_nudged_changes_checker.h"
-#include "chrome/browser/sync/test/integration/device_info_helper.h"
 #include "chrome/browser/sync/test/integration/fake_sync_gcm_driver_for_instance_id.h"
 #include "chrome/browser/sync/test/integration/session_hierarchy_match_checker.h"
 #include "chrome/browser/sync/test/integration/sync_datatype_helper.h"
@@ -468,9 +467,6 @@ Profile* SyncTest::GetProfile(int index) const {
 
 std::vector<raw_ptr<Profile, VectorExperimental>> SyncTest::GetAllProfiles() {
   std::vector<raw_ptr<Profile, VectorExperimental>> profiles;
-  if (UseVerifier()) {
-    profiles.push_back(verifier());
-  }
   for (int i = 0; i < num_clients(); ++i) {
     profiles.push_back(GetProfile(i));
   }
@@ -559,11 +555,6 @@ SyncTest::SetupSyncMode SyncTest::GetSetupSyncMode() const {
   return SetupSyncMode::kSyncTheFeature;
 }
 
-bool SyncTest::TestReliesOnSharingMessage() const {
-  // Temporarily fix on macOS (crbug.com/501729852).
-  return !BUILDFLAG(IS_MAC);
-}
-
 GURL SyncTest::GetInitialURL() const {
   return GURL(url::kAboutBlankURL);
 }
@@ -575,16 +566,6 @@ SyncTest::GetSyncServices() {
     services.push_back(GetSyncService(i));
   }
   return services;
-}
-
-Profile* SyncTest::verifier() {
-  CHECK(UseVerifier()) << "Verifier account is disabled.";
-  CHECK(verifier_ != nullptr) << "SetupClients() has not yet been called.";
-  return verifier_;
-}
-
-bool SyncTest::UseVerifier() {
-  return false;
 }
 
 bool SyncTest::SetupClients() {
@@ -642,24 +623,6 @@ bool SyncTest::SetupClients() {
     LOG(INFO) << "SyncTest::SetupClients() created profile " << i
               << "; elapsed time since construction: "
               << (base::Time::Now() - test_construction_time_);
-  }
-
-  // Verifier account is not useful when running against external servers.
-  CHECK(server_type_ != EXTERNAL_LIVE_SERVER || !UseVerifier());
-
-// Verifier needs to create a test profile. But Clank doesn't support multiple
-// profiles.
-#if BUILDFLAG(IS_ANDROID)
-  CHECK(!UseVerifier());
-#endif
-
-  // Create the verifier profile.
-  if (UseVerifier()) {
-    base::FilePath user_data_dir;
-    base::PathService::Get(chrome::DIR_USER_DATA, &user_data_dir);
-    verifier_ = g_browser_process->profile_manager()->GetProfile(
-        user_data_dir.Append(FILE_PATH_LITERAL("Verifier")));
-    WaitForDataModels(verifier());
   }
 
 #if BUILDFLAG(IS_CHROMEOS)
@@ -1226,17 +1189,6 @@ bool SyncTest::WaitForAsyncChangesToBeCommitted(size_t profile_index) const {
   // CommittedAllNudgedChangesChecker will wait for all the local changes to be
   // committed, it doesn't cover all the cases.
   if (server_type_ != EXTERNAL_LIVE_SERVER) {
-    // Wait for committing DeviceInfo with sharing_fields, it may happen
-    // asynchronously due to FCM token registration.
-    if (TestReliesOnSharingMessage() && GetSyncService(profile_index)
-                                            ->GetPreferredDataTypes()
-                                            .Has(syncer::SHARING_MESSAGE)) {
-      if (!device_info_helper::WaitForFullDeviceInfoCommitted(
-              GetCacheGuid(profile_index))) {
-        return false;
-      }
-    }
-
 #if BUILDFLAG(IS_ANDROID)
     // On Android, default about:blank page is loaded by default. Wait for
     // Session to be committed to prevent unexpected commit requests during

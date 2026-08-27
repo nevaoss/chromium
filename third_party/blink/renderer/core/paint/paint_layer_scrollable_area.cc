@@ -2069,12 +2069,12 @@ void PaintLayerScrollableArea::UpdateFocusDataForSnapAreas() {
   }
 
   for (auto& fragment : layout_box->PhysicalFragments()) {
-    if (auto* snap_areas = fragment.SnapAreas()) {
-      for (Element* snap_area : *snap_areas) {
+    for (const auto& item : fragment.SnapAreas()) {
+      if (auto* element = item.GetElementIfConsumed()) {
         cc::ElementId element_id =
-            CompositorElementIdFromDOMNodeId(snap_area->GetDomNodeId());
+            CompositorElementIdFromDOMNodeId(element->GetDomNodeId());
         container_data->UpdateSnapAreaFocus(id_to_index.at(element_id),
-                                            snap_area->HasFocusWithin());
+                                            element->HasFocusWithin());
       }
     }
   }
@@ -2217,8 +2217,8 @@ void PaintLayerScrollableArea::UpdateScrollCornerStyle() {
       style_source.StyleRef().UsesStandardScrollbarStyle();
   const ComputedStyle* corner =
       (GetLayoutBox()->IsScrollContainer() && !uses_standard_scrollbar_style)
-          ? style_source.GetUncachedPseudoElementStyle(
-                StyleRequest(kPseudoIdScrollbarCorner, style_source.Style()))
+          ? style_source.GetUncachedPseudoElementStyle(StyleRequest(
+                kPseudoIdScrollbarCorner, &style_source.StyleRef()))
           : nullptr;
   if (corner) {
     if (!scroll_corner_) {
@@ -2343,7 +2343,7 @@ void PaintLayerScrollableArea::UpdateResizerStyle(
   const ComputedStyle* resizer =
       GetLayoutBox()->IsScrollContainer()
           ? style_source.GetUncachedPseudoElementStyle(
-                StyleRequest(kPseudoIdResizer, style_source.Style()))
+                StyleRequest(kPseudoIdResizer, &style_source.StyleRef()))
           : nullptr;
   if (resizer) {
     if (!resizer_) {
@@ -2372,7 +2372,7 @@ void PaintLayerScrollableArea::EnqueueForSnapUpdateIfNeeded() {
     // Enqueue ourselves for a snap update if we have any snap-areas, or if we
     // currently have snap-data (and it needs to be cleared).
     for (const auto& fragment : box->PhysicalFragments()) {
-      if (fragment.SnapAreas() || GetSnapContainerData()) {
+      if (!fragment.SnapAreas().empty() || GetSnapContainerData()) {
         box->GetFrameView()->AddPendingSnapUpdate(this);
         break;
       }

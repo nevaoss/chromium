@@ -780,6 +780,14 @@ std::optional<tab_groups::TabGroupId> TabModelJniBridge::CreateTabGroup(
   return tab_groups::TabGroupId::FromOptionalToken(group_id_token);
 }
 
+std::optional<split_tabs::SplitTabId> TabModelJniBridge::CreateSplit(
+    const std::vector<tabs::TabHandle>& tabs) {
+  // TODO(https://crbug.com/480192698): Implement this once split tabs are
+  // supported on Desktop Android.
+  NOTIMPLEMENTED();
+  return std::nullopt;
+}
+
 void TabModelJniBridge::SetTabGroupVisualData(
     tab_groups::TabGroupId group_id,
     const tab_groups::TabGroupVisualData& visual_data) {
@@ -822,6 +830,12 @@ void TabModelJniBridge::Ungroup(const std::set<tabs::TabHandle>& tabs) {
   JNIEnv* env = AttachCurrentThread();
   ScopedJavaLocalRef<jobject> jobj = java_object_.get(env);
   Java_TabModelJniBridge_ungroup(env, jobj, tabs_to_ungroup);
+}
+
+void TabModelJniBridge::Unsplit(split_tabs::SplitTabId split_id) {
+  // TODO(https://crbug.com/480192698): Implement this once split tabs are
+  // supported on Desktop Android.
+  NOTIMPLEMENTED();
 }
 
 void TabModelJniBridge::MoveGroupTo(tab_groups::TabGroupId group_id,

@@ -7,7 +7,6 @@ package org.chromium.chrome.browser.tasks.tab_management;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -19,7 +18,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.robolectric.Robolectric.buildActivity;
-import static org.robolectric.Shadows.shadowOf;
 
 import android.app.Activity;
 import android.content.Context;
@@ -416,11 +414,10 @@ public class TabHoverCardViewUnitTest {
         // Test incognito colors.
         mTabHoverCardView.updateHoverCardColors(true);
         int backgroundColor = R.color.gm3_baseline_surface_container_highest_dark;
-        verify(mTabHoverCardView)
-                .setBackgroundTintList(
-                        eq(
-                                ColorStateList.valueOf(
-                                        ContextCompat.getColor(mContext, backgroundColor))));
+        assertEquals(
+                "Incognito background tint is incorrect.",
+                ColorStateList.valueOf(ContextCompat.getColor(mContext, backgroundColor)),
+                mTabHoverCardView.getBackgroundTintList());
         assertEquals(
                 "Title text color is incorrect.",
                 mContext.getColor(R.color.default_text_color_light),
@@ -436,13 +433,11 @@ public class TabHoverCardViewUnitTest {
 
         // Test standard colors.
         mTabHoverCardView.updateHoverCardColors(false);
-        // Invoked in #updateHoverCardColors() in #initialize() in setup and in test.
-        verify(mTabHoverCardView, times(2))
-                .setBackgroundTintList(
-                        eq(
-                                ColorStateList.valueOf(
-                                        ContextCompat.getColor(
-                                                mContext, R.color.tab_hover_card_bg_color))));
+        assertEquals(
+                "Standard background tint is incorrect.",
+                ColorStateList.valueOf(
+                        ContextCompat.getColor(mContext, R.color.tab_hover_card_bg_color)),
+                mTabHoverCardView.getBackgroundTintList());
         assertEquals(
                 "Title text color is incorrect.",
                 SemanticColorUtils.getDefaultTextColor(mContext),
@@ -489,18 +484,6 @@ public class TabHoverCardViewUnitTest {
         mTabModelSupplier.set(standardTabModel);
         // Invoked in #initialize() in setup and in test.
         verify(mTabHoverCardView, times(2)).updateHoverCardColors(false);
-    }
-
-    @Test
-    public void maybeUpdateBackgroundOnLowEndDevice() {
-        SysUtils.setIsLowEndDeviceForTesting(true);
-        mTabHoverCardView.maybeUpdateBackgroundOnLowEndDevice();
-
-        assertEquals(
-                "Content view background resource is incorrect.",
-                R.drawable.popup_bg_8dp,
-                shadowOf(mContentView.getBackground()).getCreatedFromResId());
-        assertNull("Container background should be null.", mTabHoverCardView.getBackground());
     }
 
     @Test
@@ -565,5 +548,36 @@ public class TabHoverCardViewUnitTest {
         // Hide card should remove observer.
         mTabHoverCardView.hide();
         verify(mHoveredTab).removeObserver(observer);
+    }
+
+    @Test
+    public void getHoverCardWidthPx() {
+        // Window is large enough: returns default width.
+        mContext.getResources().getDisplayMetrics().widthPixels = mHoverCardWidth * 2;
+        assertEquals(
+                "Hover card width should be default dimen when window is large.",
+                mHoverCardWidth,
+                TabHoverCardView.getHoverCardWidthPx(mContext));
+
+        // Window is narrow: returns 90% of window width.
+        int narrowWindowWidth = mHoverCardWidth - 10;
+        mContext.getResources().getDisplayMetrics().widthPixels = narrowWindowWidth;
+        int expectedNarrowWidth = Math.round(0.9f * narrowWindowWidth);
+        assertEquals(
+                "Hover card width should be bounded by window width percent when window is narrow.",
+                expectedNarrowWidth,
+                TabHoverCardView.getHoverCardWidthPx(mContext));
+    }
+
+    @Test
+    public void onMeasure_EnforcesBoundedWidth() {
+        mContext.getResources().getDisplayMetrics().widthPixels = mHoverCardWidth * 2;
+        mTabHoverCardView.measure(
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+        assertEquals(
+                "Measured width should match getHoverCardWidth.",
+                mHoverCardWidth,
+                mTabHoverCardView.getMeasuredWidth());
     }
 }

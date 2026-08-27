@@ -11,6 +11,7 @@
 #include "base/strings/utf_string_conversions.h"
 #include "chrome/browser/dom_distiller/dom_distiller_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/readaloud/audio_generation/speech_synthesis_broker.h"
 #include "chrome/browser/readaloud/read_aloud_playback_session.h"
 #include "components/dom_distiller/content/browser/distiller_page_web_contents.h"
 #include "components/dom_distiller/core/dom_distiller_service.h"
@@ -20,11 +21,11 @@
 
 namespace readaloud {
 
-ReadAloudService::ReadAloudService(
-    Profile* profile,
-    PlaybackControllerBinder controller_binder)
+ReadAloudService::ReadAloudService(Profile* profile,
+                                   PlaybackControllerBinder controller_binder)
     : profile_(profile),
-      controller_binder_(std::move(controller_binder)) {}
+      controller_binder_(std::move(controller_binder)),
+      speech_synthesis_broker_(std::make_unique<SpeechSynthesisBroker>()) {}
 
 ReadAloudService::~ReadAloudService() = default;
 
@@ -37,13 +38,8 @@ void ReadAloudService::Play(content::WebContents* new_web_contents) {
     return;
   }
 
-  // If a new WebContents is available, stop active playback, start
-  // observing the new WebContents, and create a new playback session.
   if (new_web_contents != web_contents()) {
-    Stop();
-    Observe(new_web_contents);
-    active_session_ =
-        std::make_unique<ReadAloudPlaybackSession>(new_web_contents, this);
+    Initialize(new_web_contents);
   }
 
   PlaybackState previous_state = GetCurrentPlaybackState();
@@ -87,6 +83,9 @@ void ReadAloudService::Stop() {
   viewer_handle_.reset();
   distillation_start_time_ = base::TimeTicks();
 
+  // Stopping the Utility Process and any of their connections.
+  ResetUtilityConnection();
+
   // Notify the UI/client delegate if the playback state transitioned.
   PlaybackState current_state = GetCurrentPlaybackState();
   if (current_state != previous_state && delegate_) {
@@ -97,7 +96,17 @@ void ReadAloudService::SeekToWordIndex(int word_index) {}
 void ReadAloudService::Seek(base::TimeDelta absolute_time) {}
 void ReadAloudService::SeekRelative(base::TimeDelta offset) {}
 void ReadAloudService::SetPlaybackRate(float rate) {}
-void ReadAloudService::SetVoice(std::string_view voice_id) {}
+void ReadAloudService::SetVoice(std::string_view voice_id) {
+  if (speech_synthesis_broker_) {
+    speech_synthesis_broker_->SetVoice(voice_id);
+  }
+}
+
+void ReadAloudService::SetLanguageCode(std::string_view language_code) {
+  if (speech_synthesis_broker_) {
+    speech_synthesis_broker_->SetLanguageCode(language_code);
+  }
+}
 void ReadAloudService::PreviewVoice(std::string_view voice_id) {
   // Pause active article playback while previewing a voice.
   Pause();
@@ -170,9 +179,6 @@ void ReadAloudService::Shutdown() {
     delegate_->OnNativeDestroyed();
     delegate_.reset();
   }
-  utility_observer_receiver_.reset();
-  utility_player_.reset();
-  player_factory_.reset();
 }
 
 void ReadAloudService::DistillPage(content::WebContents* web_contents) {
@@ -218,7 +224,6 @@ void ReadAloudService::OnArticleReady(
     return;
   }
 
-  EnsurePlaybackControllerConnected();
   if (!utility_player_.is_bound()) {
     return;
   }
@@ -242,7 +247,15 @@ void ReadAloudService::OnArticleReady(
 void ReadAloudService::OnArticleUpdated(
     dom_distiller::ArticleDistillationUpdate article_update) {}
 
-void ReadAloudService::Initialize() {
+void ReadAloudService::Initialize(content::WebContents* new_web_contents) {
+  if (!new_web_contents) {
+    return;
+  }
+  Stop();
+  Observe(new_web_contents);
+  active_session_ =
+      std::make_unique<ReadAloudPlaybackSession>(new_web_contents, this);
+  DistillPage(new_web_contents);
   EnsurePlaybackControllerConnected();
 }
 
@@ -288,13 +301,16 @@ void ReadAloudService::EnsurePlaybackControllerConnected() {
 }
 
 void ReadAloudService::OnUtilityDisconnect() {
-  utility_observer_receiver_.reset();
-  utility_player_.reset();
-  player_factory_.reset();
   Stop();
   if (delegate_) {
     delegate_->OnPlaybackError("Utility process disconnected");
   }
+}
+
+void ReadAloudService::ResetUtilityConnection() {
+  utility_observer_receiver_.reset();
+  utility_player_.reset();
+  player_factory_.reset();
 }
 
 void ReadAloudService::OnDistillationFailed(

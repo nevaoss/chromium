@@ -127,6 +127,7 @@
 #include "chrome/browser/browser_process_platform_part.h"
 #include "chrome/browser/component_updater/smart_dim_component_installer.h"
 #include "chrome/browser/extensions/component_loader.h"
+#include "chrome/browser/global_features.h"
 #include "chrome/browser/policy/chrome_policy_conversions_client.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/ash/holding_space/holding_space_keyed_service.h"
@@ -360,8 +361,6 @@ api::autotest_private::ShelfItemType GetShelfItemType(ash::ShelfItemType type) {
       return api::autotest_private::ShelfItemType::kBrowserShortcut;
     case ash::TYPE_APP:
       return api::autotest_private::ShelfItemType::kApp;
-    case ash::TYPE_UNPINNED_BROWSER_SHORTCUT:
-      return api::autotest_private::ShelfItemType::kUnpinnedBrowserShortcut;
     case ash::TYPE_DIALOG:
       return api::autotest_private::ShelfItemType::kDialog;
     case ash::TYPE_UNDEFINED:
@@ -2477,7 +2476,7 @@ AutotestPrivateRunCrostiniInstallerFunction::Run() {
   // we call RestartCrostini and we will be put in the pending restarters
   // queue and be notified on success/otherwise of installation.
   ash::CrostiniInstallerDialog::Show(
-      profile,
+      profile, /*ui_surface=*/std::nullopt,
       base::BindOnce([](base::WeakPtr<ash::CrostiniInstallerUI> installer_ui) {
         installer_ui->ClickInstallForTesting();
       }));
@@ -2862,7 +2861,8 @@ ExtensionFunction::ResponseAction AutotestPrivateGetPrinterListFunction::Run() {
 
   Profile* profile = Profile::FromBrowserContext(browser_context());
   printers_manager_ = ash::CupsPrintersManager::Create(
-      CHECK_DEREF(g_browser_process->local_state()), profile);
+      CHECK_DEREF(g_browser_process->local_state()),
+      g_browser_process->GetFeatures()->application_locale_storage(), profile);
   printers_manager_->AddObserver(this);
 
   // Set up a timer to finish waiting after 10 seconds

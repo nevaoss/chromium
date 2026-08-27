@@ -147,7 +147,7 @@ public class OmniboxFeatures {
                     FeatureState.ENABLED_IN_PROD);
 
     private static final CachedFlag sOmniboxMultimodalInput =
-            newFlag(OmniboxFeatureList.OMNIBOX_MULTIMODAL_INPUT, FeatureState.ENABLED_IN_TEST);
+            newFlag(OmniboxFeatureList.OMNIBOX_MULTIMODAL_INPUT, FeatureState.ENABLED_IN_PROD);
 
     public static final BooleanCachedFeatureParam sMultiattachmentFusebox =
             newBooleanParam(sOmniboxMultimodalInput, "multi_context", true);
@@ -182,12 +182,6 @@ public class OmniboxFeatures {
 
     public static final CachedFlag sAndroidDesktopAimGate =
             newFlag(OmniboxFeatureList.ANDROID_DESKTOP_AIM_GATE, FeatureState.ENABLED_IN_PROD);
-
-    public static final CachedFlag sMultilineEditField =
-            newFlag(OmniboxFeatureList.MULTILINE_EDIT_FIELD, FeatureState.ENABLED_IN_PROD);
-
-    public static final BooleanCachedFeatureParam sWrapAutocompleteText =
-            newBooleanParam(sOmniboxMultimodalInput, "wrap_autocomplete_text", false);
 
     public static final CachedFlag sAIMSuppressVerbatimMatch =
             newFlag(OmniboxFeatureList.AIM_SUPPRESS_VERBATIM_MATCH, FeatureState.ENABLED_IN_PROD);
@@ -379,6 +373,9 @@ public class OmniboxFeatures {
      * flag state, disabling the fusebox on unsupported device and experience configurations.
      */
     public static boolean isMultimodalInputEnabled(Context context) {
+        if (!OmniboxCapabilities.isFuseboxSupportedDeviceType()) {
+            return false;
+        }
         if (OmniboxCapabilities.isDesktopPlatform()
                 || OmniboxCapabilities.hasDesktopExperience(context)) {
             return sAndroidDesktopAimGate.isEnabled() && sOmniboxMultimodalInput.isEnabled();

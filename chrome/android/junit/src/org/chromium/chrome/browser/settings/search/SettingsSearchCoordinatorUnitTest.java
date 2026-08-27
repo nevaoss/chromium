@@ -5,8 +5,12 @@
 package org.chromium.chrome.browser.settings.search;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.view.View;
@@ -255,5 +259,70 @@ public class SettingsSearchCoordinatorUnitTest {
         assertEquals(expectedMargin, lp.getMarginStart());
         assertEquals(expectedMargin, lp.getMarginEnd());
         assertEquals(ViewGroup.LayoutParams.MATCH_PARENT, lp.width);
+    }
+
+    /** Regression test for https://crbug.com/545872336. */
+    @Test
+    public void testUpdateHelpMenuVisibility_whenDestroyed_doesNotCrash() {
+        mUseMultiColumn = false;
+        mCoordinator.updateHelpMenuVisibility();
+
+        // Destroy the coordinator before the posted Runnable executes on the Looper (e.g. during
+        // theme change / Activity recreation).
+        mCoordinator.destroy();
+
+        // Flush the looper. The posted task should exit early without calling isLayoutOpen(),
+        // which could cause a crash due to MultiColumnSettings not yet having a view.
+        ShadowLooper.idleMainLooper();
+
+        verify(mMultiColumnSettings, never()).isLayoutOpen();
+    }
+
+    /** Regression test for https://crbug.com/545907093. */
+    @Test
+    public void testOnConfigurationChangedInternal_whenDestroyed_doesNotCrash() {
+        // Switch to single-column mode and trigger configuration change handling.
+        mUseMultiColumn = false;
+        mCoordinator.onConfigurationChangedInternal();
+
+        // Destroy the coordinator before the posted Runnable executes on the Looper (for example,
+        // language switch / Activity recreation).
+        mCoordinator.destroy();
+
+        // Flush the looper. The posted task should exit early without crashing on methods that
+        // require views that are no longer present.
+        ShadowLooper.idleMainLooper();
+    }
+
+    @Test
+    public void testShouldShowNavigationIcon_multiColumn() {
+        mCoordinator.setUseMultiColumnForTesting(true);
+
+        // In multi-column mode, navigation icon should always be shown regardless of state.
+        mCoordinator.setFragmentState(SettingsSearchCoordinator.FS_SETTINGS);
+        assertTrue(mCoordinator.shouldShowNavigationIcon());
+
+        mCoordinator.setFragmentState(SettingsSearchCoordinator.FS_SEARCH);
+        assertTrue(mCoordinator.shouldShowNavigationIcon());
+
+        mCoordinator.setFragmentState(SettingsSearchCoordinator.FS_RESULTS);
+        assertTrue(mCoordinator.shouldShowNavigationIcon());
+    }
+
+    @Test
+    public void testShouldShowNavigationIcon_singleColumn() {
+        mCoordinator.setUseMultiColumnForTesting(false);
+
+        // In default state (FS_SETTINGS), navigation icon should be shown.
+        mCoordinator.setFragmentState(SettingsSearchCoordinator.FS_SETTINGS);
+        assertTrue(mCoordinator.shouldShowNavigationIcon());
+
+        // In search state (FS_SEARCH), navigation icon should be hidden.
+        mCoordinator.setFragmentState(SettingsSearchCoordinator.FS_SEARCH);
+        assertFalse(mCoordinator.shouldShowNavigationIcon());
+
+        // In results state (FS_RESULTS), navigation icon should be shown (as a back button).
+        mCoordinator.setFragmentState(SettingsSearchCoordinator.FS_RESULTS);
+        assertTrue(mCoordinator.shouldShowNavigationIcon());
     }
 }

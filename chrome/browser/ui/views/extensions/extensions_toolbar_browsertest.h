@@ -38,6 +38,9 @@ class ToolbarActionView;
 class ExtensionsToolbarBrowserTest : public InProcessBrowserTest {
  public:
   ExtensionsToolbarBrowserTest();
+  ExtensionsToolbarBrowserTest(
+      const std::vector<base::test::FeatureRef>& enabled_features,
+      const std::vector<base::test::FeatureRef>& disabled_features);
   ~ExtensionsToolbarBrowserTest() override;
   ExtensionsToolbarBrowserTest(const ExtensionsToolbarBrowserTest&) = delete;
   const ExtensionsToolbarBrowserTest& operator=(
@@ -71,6 +74,10 @@ class ExtensionsToolbarBrowserTest : public InProcessBrowserTest {
 
   ExtensionsMenuCoordinator* menu_coordinator() {
     return extensions_container()->GetExtensionsMenuCoordinatorForTesting();
+  }
+
+  content::WebContents* web_contents() const {
+    return browser()->tab_strip_model()->GetActiveWebContents();
   }
 
   // Adds the specified `extension`.
@@ -169,6 +176,9 @@ class ExtensionsToolbarBrowserTest : public InProcessBrowserTest {
   // etc.)
   void WaitForAnimation();
 
+  // Navigates the active tab to `url` and waits for animation.
+  void NavigateAndCommit(const GURL& url);
+
   // Since this is a test, the ExtensionsToolbarDesktop sometimes needs a
   // nudge to re-layout the views.
   void LayoutContainerIfNecessary();
@@ -183,6 +193,8 @@ class ExtensionsToolbarBrowserTest : public InProcessBrowserTest {
   raw_ptr<extensions::PermissionsManager> permissions_manager_ = nullptr;
   std::unique_ptr<extensions::SitePermissionsHelper> permissions_helper_;
   std::optional<base::AutoReset<base::TimeDelta>> cooldown_reset_;
+  std::optional<base::AutoReset<std::optional<bool>>>
+      accept_reload_dialog_reset_;
 };
 
 #endif  // CHROME_BROWSER_UI_VIEWS_EXTENSIONS_EXTENSIONS_TOOLBAR_BROWSERTEST_H_

@@ -626,6 +626,9 @@
       <message name="IDS_IOS_ASSISTANT_SHEET_GRABBER_ACCESSIBILITY_LABEL" desc="Accessibility label for the bottom sheet grabber in Assistant. Read by Text To Speech [iOS only]." meaning="Voice Over will read this to the user followed by 'Button' when the grabber is focused.">
         Sheet grabber
       </message>
+      <message name="IDS_IOS_AT_MEMORY_AI_DISCLOSURE" desc="The text shown at the bottom of the @memory bottom sheet to set user expectations regarding potential incorrect suggestions. [iOS only]">
+        Gemini is AI and can make mistakes. <ph name="BEGIN_LINK">BEGIN_LINK</ph>More about relevant data sent to Google<ph name="END_LINK">END_LINK</ph>
+      </message>
       <message name="IDS_IOS_AUTH_REASON" desc="A description that appears when the user needs to authenticate to use a suggestion.">
       Chrome keeps your sensitive data secure with Face ID
       </message>
@@ -1806,6 +1809,9 @@
       </message>
       <message name="IDS_IOS_COMPOSEBOX_MODEL_SELECTOR_OPTION_AUTO" desc="Title for the contextual menu option where the system automatically selects the optimal model per query. [iOS only].">
         Auto
+      </message>
+      <message name="IDS_IOS_COMPOSEBOX_MODEL_SELECTOR_OPTION_FLASH" desc="Title for the contextual menu option for the flash reasoning model. [iOS only].">
+        Flash
       </message>
       <message name="IDS_IOS_COMPOSEBOX_MODEL_SELECTOR_OPTION_THINKING" desc="Title for the contextual menu option for the advanced thinking reasoning model. [iOS only].">
         Thinking
@@ -4239,9 +4245,6 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
       </message>
       <message name="IDS_IOS_INTERACTIVE_LENS_OVERLAY_PROMO_START_BROWSING_BUTTON" desc="The text for the button that allows users to start browsing after the interactive lens overlay promo in the First Run Experience.">
         Start browsing
-      </message>
-      <message name="IDS_IOS_INTERACTIVE_LENS_OVERLAY_PROMO_SUBTITLE" desc="The subtitle for the interactive lens overlay promo in the First Run Experience.">
-        You can now open Google Lens from your address bar and search anything you see
       </message>
       <message name="IDS_IOS_INTERACTIVE_LENS_OVERLAY_PROMO_TITLE" desc="The title for the interactive lens overlay promo in the First Run Experience.">
         Search anything on your screen
@@ -7365,8 +7368,14 @@ Handoff must also be enabled in the General section of Settings, and your device
       <message name="IDS_IOS_SETTINGS_AUTOMATICALLY_OPEN_SYNCED_TAB_GROUPS_TITLE" desc="Title for the setting to automatically open tab groups from other devices. [iOS only]">
           Automatically open tab groups from other devices
       </message>
+      <message name="IDS_IOS_SETTINGS_CLOSE_DEFAULT_BROWSER_PROMO_ACCESSIBILITY_LABEL" desc="Close button accessibility label for the Default Browser promo in settings. [iOS only]" is_accessibility_with_no_ui="true">
+        Close default browser promo
+      </message>
       <message name="IDS_IOS_SETTINGS_DATE_PICKER_CLEAR" desc="Button title to clear the selected date in a date picker. [iOS only]">
         Clear
+      </message>
+      <message name="IDS_IOS_SETTINGS_DEFAULT_BROWSER_PASSIVE_CARD_BUTTON_TITLE" desc="Title of the passive Default Browser card primary button in settings. [iOS only]">
+        Set as default
       </message>
       <message name="IDS_IOS_SETTINGS_DELETE_ALL_CREDENTIALS" desc="Title for the authentication page when the user tries to delete all saved credentials. [iOS only]">
           To delete all passwords manager data

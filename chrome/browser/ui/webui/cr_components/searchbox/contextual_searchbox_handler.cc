@@ -18,6 +18,7 @@
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/sequenced_task_runner.h"
+#include "base/task/thread_pool.h"
 #include "base/types/expected.h"
 #include "build/build_config.h"
 #include "build/buildflag.h"
@@ -25,6 +26,7 @@
 #include "chrome/browser/contextual_search/contextual_search_service_factory.h"
 #include "chrome/browser/contextual_search/contextual_search_web_contents_helper.h"
 #include "chrome/browser/contextual_tasks/active_task_context_provider.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks.mojom.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_context_service.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_context_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_service_factory.h"
@@ -45,11 +47,25 @@
 #include "chrome/browser/ui/contextual_search/tab_contextualization_controller.h"
 #include "chrome/browser/ui/omnibox/omnibox_controller.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
+#include "media/base/media_switches.h"
+#include "skia/ext/image_operations.h"
+#include "ui/base/base_window.h"
+#include "ui/base/mojom/ui_base_types.mojom-shared.h"
+#include "ui/gfx/geometry/size.h"
 
 #if !BUILDFLAG(IS_ANDROID)
+#include "base/task/bind_post_task.h"
+#include "chrome/browser/media/webrtc/desktop_media_picker.h"
+#include "chrome/browser/media/webrtc/desktop_media_picker_controller.h"
+#include "chrome/browser/media/webrtc/desktop_media_picker_factory_impl.h"
 #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
 #include "chrome/browser/ui/omnibox/omnibox_everywhere_service.h"
 #include "chrome/browser/ui/omnibox/omnibox_everywhere_service_factory.h"
+#include "chrome/grit/branded_strings.h"
+#include "content/public/browser/browser_thread.h"
+#include "content/public/browser/desktop_capture.h"
+#include "ui/base/l10n/l10n_util.h"
+#include "ui/gfx/codec/png_codec.h"
 #endif
 #include "chrome/browser/ui/webui/cr_components/searchbox/contextual_searchbox_tab_favicon_helper.h"
 #include "chrome/browser/ui/webui/cr_components/searchbox/searchbox_utils.h"
@@ -93,7 +109,6 @@
 #include "ui/base/window_open_disposition_utils.h"
 
 #if !BUILDFLAG(IS_ANDROID)
-#include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/lens/lens_overlay_entry_point_controller.h"
 #include "chrome/browser/ui/lens/lens_search_controller.h"
@@ -186,6 +201,25 @@ content::WebContents* GetActiveTabWebContents(
   }
   return web_contents;
 }
+
+#if !BUILDFLAG(IS_ANDROID)
+constexpr char kScreenshotFileName[] = "Screenshot.png";
+constexpr char kScreenshotMimeType[] = "image/png";
+
+ContextualSearchboxHandler::ProcessedScreenshot ProcessScreenshotInBackground(
+    const SkBitmap& bitmap) {
+  ContextualSearchboxHandler::ProcessedScreenshot result;
+  std::optional<std::vector<uint8_t>> png_bytes =
+      gfx::PNGCodec::EncodeBGRASkBitmap(bitmap,
+                                        /*discard_transparency=*/false);
+  if (png_bytes) {
+    result.png_bytes = std::move(*png_bytes);
+  }
+  // TODO(crbug.com/532197177): Populate result.thumbnail_data_url with the
+  // optimized base64 thumbnail URL.
+  return result;
+}
+#endif
 
 }  // namespace
 
@@ -1291,23 +1325,23 @@ void ContextualSearchboxHandler::OnDriveUploadClicked(
       base::BindOnce(&ContextualSearchboxHandler::OnCancel,
                      weak_ptr_factory_.GetWeakPtr()));
 
-  drive_picker_result_handler_receiver_.reset();
+  if (base::FeatureList::IsEnabled(omnibox::kForceDriveDisclaimerAccepted)) {
+    ShowDrivePicker(
+        drive_picker::DriveDisclaimerController::DisclaimerStatus::kAccepted);
+    return;
+  }
 
-  bool accepted =
-      profile_->GetPrefs()->GetInteger(contextual_search::kDriveConsentState) ==
-      static_cast<int>(contextual_search::DriveConsentState::kConsent);
+  auto* disclaimer_controller = GetDriveDisclaimerController();
+  if (!disclaimer_controller) {
+    if (!drive_upload_click_callback_.is_null()) {
+      std::move(drive_upload_click_callback_)
+          .Run(searchbox::mojom::DriveUploadResponse::New());
+    }
+    return;
+  }
 
-  auto request = std::make_unique<drive_picker_host::DrivePickerHostRequest>(
-      accepted
-          ? drive_picker_host::DrivePickerHostRequest::RequestType::kPickerUi
-          : drive_picker_host::DrivePickerHostRequest::RequestType::
-                kConsentDialog,
-      drive_picker_result_handler_receiver_.BindNewPipeAndPassRemote());
-
-  drive_picker_controller_->ShowDrivePickerHost(std::move(request));
-
-  drive_picker_result_handler_receiver_.set_disconnect_handler(
-      base::BindOnce(&ContextualSearchboxHandler::OnDrivePickerDisconnected,
+  disclaimer_controller->CheckDisclaimerStatusAsync(
+      base::BindOnce(&ContextualSearchboxHandler::ShowDrivePicker,
                      weak_ptr_factory_.GetWeakPtr()));
 #endif
 }
@@ -1355,7 +1389,8 @@ void ContextualSearchboxHandler::RecordModelSelectionAction(
   }
 }
 
-void ContextualSearchboxHandler::SetActiveModelMode(omnibox::ModelMode model) {
+void ContextualSearchboxHandler::SetActiveModelMode(omnibox::ModelMode model,
+                                                    bool is_set_by_aim) {
   if (!input_state_model_) {
     return;
   }
@@ -1442,23 +1477,6 @@ void ContextualSearchboxHandler::InitializeInputStateModel() {
       base::BindRepeating(&ContextualSearchboxHandler::OnInputStateChanged,
                           weak_ptr_factory_.GetWeakPtr()));
   input_state_model_->Initialize();
-
-#if !BUILDFLAG(IS_ANDROID)
-  if (base::FeatureList::IsEnabled(
-          omnibox::kComposeboxDriveContextMenuOption)) {
-    if (base::FeatureList::IsEnabled(omnibox::kForceDriveDisclaimerAccepted)) {
-      OnDriveDisclaimerChecked(
-          drive_picker::DriveDisclaimerController::DisclaimerStatus::kAccepted);
-    } else if (auto* controller = GetDriveDisclaimerController()) {
-      controller->CheckDisclaimerStatusAsync(
-          base::BindOnce(&ContextualSearchboxHandler::OnDriveDisclaimerChecked,
-                         weak_ptr_factory_.GetWeakPtr()));
-    } else {
-      OnDriveDisclaimerChecked(drive_picker::DriveDisclaimerController::
-                                   DisclaimerStatus::kRestricted);
-    }
-  }
-#endif
 }
 
 bool ContextualSearchboxHandler::IsContextualSearchTabSharingEligible() const {
@@ -1556,32 +1574,35 @@ void ContextualSearchboxHandler::RecordTabAddedMetric(
 bool ContextualSearchboxHandler::ShouldOpenInLensSidePanel(
     content::WebContents* active_web_contents,
     contextual_search::ContextualSearchSessionHandle* session_handle) {
-  // In order to open in the lens side panel the following must be
-  // true:
-  // 1) User is not eligible for contextual tasks
-  // 2) Lens M3 is enabled
-  // 3) There is only one submitted context token
-  // 4) The submitted context token is the active tab
-  // 5) Lens Overlay is enabled.
+  if (!active_web_contents ||
+      session_handle->GetSubmittedContextTokens().size() != 1 ||
+      !session_handle->IsTabInContext(
+          sessions::SessionTabHelper::IdForTab(active_web_contents))) {
+    return false;
+  }
+
+  // If Contextual Tasks CoBrowse is enabled and eligible, do not route to the
+  // side panel here so the navigation can be intercepted and handled by
+  // CoBrowse.
+  if (base::FeatureList::IsEnabled(contextual_tasks::kContextualTasks) &&
+      contextual_tasks::EntryPointEligibilityManager::IsEligible(profile_)) {
+    return false;
+  }
+
+  // If Contextual Tasks UI / Nexus (e.g. kContextualTasksSidePanel) is enabled,
+  // route to the side panel.
+  if (contextual_tasks::IsContextualTasksUIEnabled()) {
+    return true;
+  }
+
+  // Otherwise, fallback to the Lens side panel if Lens Overlay and AIM M3 are
+  // enabled.
   auto* browser_window_interface =
       webui::GetBrowserWindowInterface(web_contents_);
-  auto* eligibility_manager =
-      browser_window_interface
-          ? contextual_tasks::EntryPointEligibilityManager::From(
-                browser_window_interface)
-          : nullptr;
-
   auto* entry_point_controller =
       lens::LensOverlayEntryPointController::From(browser_window_interface);
-
-  return active_web_contents &&
-         (!eligibility_manager ||
-          !eligibility_manager->AreEntryPointsEligible()) &&
-         entry_point_controller && entry_point_controller->IsEnabled() &&
-         lens::IsAimM3Enabled(profile_) &&
-         session_handle->GetSubmittedContextTokens().size() == 1 &&
-         session_handle->IsTabInContext(
-             sessions::SessionTabHelper::IdForTab(active_web_contents));
+  return entry_point_controller && entry_point_controller->IsEnabled() &&
+         lens::IsAimM3Enabled(profile_);
 }
 #endif  // !BUILDFLAG(IS_ANDROID)
 
@@ -1709,19 +1730,18 @@ void ContextualSearchboxHandler::ClearFiles(
     tab_context_snapshot_.reset();
   }
 
-  // Clear all tab underlines related to only this surface:
-  if (base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox)) {
-    if (auto* active_task_context_provider = GetActiveTaskContextProvider()) {
-      for (const auto& [token, handle] : selected_tabs) {
-        active_task_context_provider->RemoveLocalTabUnderline(
-            tabs::TabHandle(handle));
+  // Clear token-to-tab id pairs and local tab underlines if this function is
+  // due to the 'clear all' or close button being clicked (not on query
+  // submission).
+  if (!query_submitted) {
+    if (base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox)) {
+      if (auto* active_task_context_provider = GetActiveTaskContextProvider()) {
+        for (const auto& [token, handle] : selected_tabs) {
+          active_task_context_provider->RemoveLocalTabUnderline(
+              tabs::TabHandle(handle));
+        }
       }
     }
-  }
-
-  // Clear token-to-tab id pairs if this function is due to the
-  // 'clear all' button being clicked.
-  if (!query_submitted) {
     selected_tabs.clear();
   }
 
@@ -1801,8 +1821,12 @@ void ContextualSearchboxHandler::GetDriveDisclaimerStatus(
     return;
   }
   controller->CheckDisclaimerStatusAsync(base::BindOnce(
-      [](GetDriveDisclaimerStatusCallback callback,
+      [](base::WeakPtr<ContextualSearchboxHandler> handler,
+         GetDriveDisclaimerStatusCallback callback,
          drive_picker::DriveDisclaimerController::DisclaimerStatus status) {
+        if (handler) {
+          handler->UpdateDriveConsentPref(status);
+        }
         DVLOG(1) << "ContextualSearchboxHandler::GetDriveDisclaimerStatus "
                     "callback: disclaimer status is "
                  << drive_picker::DriveDisclaimerController::
@@ -1825,7 +1849,7 @@ void ContextualSearchboxHandler::GetDriveDisclaimerStatus(
             break;
         }
       },
-      std::move(callback)));
+      weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
 #endif
 }
 
@@ -2167,7 +2191,7 @@ void ContextualSearchboxHandler::OpenUrl(
           contextual_session_handle->session_id(),
           contextual_session_handle->invocation_source());
   new_contextual_session_handle->set_smart_tab_sharing_active(
-      contextual_session_handle->smart_tab_sharing_active());
+      IsSmartTabSharingActive());
   new_contextual_session_handle->set_smart_tab_sharing_toggled_since_last_turn(
       contextual_session_handle->smart_tab_sharing_toggled_since_last_turn());
   new_contextual_session_handle->set_sts_toggled_removed_contexts(
@@ -2308,9 +2332,33 @@ ContextualSearchboxHandler::GetActiveTaskContextProvider() {
 }
 
 #if !BUILDFLAG(IS_ANDROID)
-void ContextualSearchboxHandler::OnDriveDisclaimerChecked(
+void ContextualSearchboxHandler::ShowDrivePicker(
     drive_picker::DriveDisclaimerController::DisclaimerStatus status) {
-  DVLOG(1) << "ContextualSearchboxHandler::OnDriveDisclaimerChecked: status is "
+  // Sync the authoritative backend Consent state into the profile's
+  // `kDriveConsentState` Preference Cache.
+  UpdateDriveConsentPref(status);
+
+  bool accepted =
+      status ==
+      drive_picker::DriveDisclaimerController::DisclaimerStatus::kAccepted;
+
+  auto request = std::make_unique<drive_picker_host::DrivePickerHostRequest>(
+      accepted
+          ? drive_picker_host::DrivePickerHostRequest::RequestType::kPickerUi
+          : drive_picker_host::DrivePickerHostRequest::RequestType::
+                kConsentDialog,
+      drive_picker_result_handler_receiver_.BindNewPipeAndPassRemote());
+
+  drive_picker_controller_->ShowDrivePickerHost(std::move(request));
+
+  drive_picker_result_handler_receiver_.set_disconnect_handler(
+      base::BindOnce(&ContextualSearchboxHandler::OnDrivePickerDisconnected,
+                     weak_ptr_factory_.GetWeakPtr()));
+}
+
+void ContextualSearchboxHandler::UpdateDriveConsentPref(
+    drive_picker::DriveDisclaimerController::DisclaimerStatus status) {
+  DVLOG(1) << "ContextualSearchboxHandler::UpdateDriveConsentPref: status is "
            << drive_picker::DriveDisclaimerController::DisclaimerStatusToString(
                   status);
 
@@ -2352,5 +2400,154 @@ ContextualSearchboxHandler::GetDriveDisclaimerController() {
             std::move(fpop_service));
   }
   return drive_disclaimer_controller_.get();
+}
+#endif  // !BUILDFLAG(IS_ANDROID)
+
+void ContextualSearchboxHandler::StartScreenshare(
+    bool prefer_entire_screen,
+    StartScreenshareCallback callback) {
+#if !BUILDFLAG(IS_ANDROID)
+  if (screenshare_picker_controller_ || is_capturing_) {
+    std::move(callback).Run(std::nullopt);
+    return;
+  }
+  FallbackToChromeDefaultPicker(prefer_entire_screen, std::move(callback));
+#else
+  std::move(callback).Run(std::nullopt);
+#endif
+}
+
+#if !BUILDFLAG(IS_ANDROID)
+void ContextualSearchboxHandler::FallbackToChromeDefaultPicker(
+    bool prefer_entire_screen,
+    StartScreenshareCallback callback) {
+  if (screenshare_picker_controller_ || is_capturing_) {
+    std::move(callback).Run(std::nullopt);
+    return;
+  }
+  screenshare_picker_controller_ =
+      std::make_unique<DesktopMediaPickerController>(picker_factory_);
+
+  DesktopMediaPicker::Params picker_params(
+      DesktopMediaPicker::Params::RequestSource::kGlic);
+  picker_params.web_contents = nullptr;
+  picker_params.includable_web_contents_filter =
+      base::BindRepeating([](content::WebContents*) { return true; });
+
+  gfx::NativeWindow parent_window = gfx::NativeWindow();
+  auto* browser_window = webui::GetBrowserWindowInterface(web_contents_);
+  if (browser_window && browser_window->GetWindow()) {
+    parent_window = browser_window->GetWindow()->GetNativeWindow();
+  } else {
+    parent_window = web_contents_->GetTopLevelNativeWindow();
+  }
+
+  picker_params.context = parent_window;
+  picker_params.parent = parent_window;
+  picker_params.app_name = l10n_util::GetStringUTF16(IDS_PRODUCT_NAME);
+  picker_params.target_name = picker_params.app_name;
+  picker_params.modality = ui::mojom::ModalType::kWindow;
+
+  std::vector<DesktopMediaList::Type> sources = {
+      DesktopMediaList::Type::kScreen, DesktopMediaList::Type::kWindow};
+  picker_params.preferred_display_surface =
+      prefer_entire_screen ? blink::mojom::PreferredDisplaySurface::MONITOR
+                           : blink::mojom::PreferredDisplaySurface::WINDOW;
+
+  screenshare_picker_controller_->Show(
+      picker_params, sources,
+      base::BindOnce(&ContextualSearchboxHandler::OnChromeDefaultPickerResults,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
+}
+
+void ContextualSearchboxHandler::OnChromeDefaultPickerResults(
+    StartScreenshareCallback callback,
+    const std::string& err,
+    content::DesktopMediaID source) {
+  screenshare_picker_controller_.reset();
+  if (source.is_null()) {
+    std::move(callback).Run(std::nullopt);
+    return;
+  }
+  CaptureAndUploadScreenshot(source, std::move(callback));
+}
+
+void ContextualSearchboxHandler::CaptureAndUploadScreenshot(
+    content::DesktopMediaID source,
+    StartScreenshareCallback callback) {
+  is_capturing_ = true;
+  auto captured_callback = base::BindPostTask(
+      content::GetUIThreadTaskRunner({}),
+      base::BindOnce(&ContextualSearchboxHandler::OnScreenshotCaptured,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
+
+  content::GetIOThreadTaskRunner({})->PostTaskAndReplyWithResult(
+      FROM_HERE,
+      base::BindOnce(&content::desktop_capture::CaptureScreenshot, source,
+                     std::move(captured_callback)),
+      base::BindOnce(&ContextualSearchboxHandler::OnScreenshotRequestCreated,
+                     weak_ptr_factory_.GetWeakPtr()));
+}
+
+void ContextualSearchboxHandler::OnScreenshotCaptured(
+    StartScreenshareCallback callback,
+    const SkBitmap& bitmap) {
+  is_capturing_ = false;
+  active_screenshot_request_.reset();
+  if (bitmap.empty()) {
+    std::move(callback).Run(std::nullopt);
+    return;
+  }
+
+  base::ThreadPool::PostTaskAndReplyWithResult(
+      FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
+      base::BindOnce(&ProcessScreenshotInBackground, bitmap),
+      base::BindOnce(&ContextualSearchboxHandler::OnScreenshotProcessed,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
+}
+
+void ContextualSearchboxHandler::OnScreenshotRequestCreated(
+    std::unique_ptr<content::desktop_capture::ScreenshotCaptureRequest>
+        request) {
+  if (is_capturing_) {
+    active_screenshot_request_ = std::move(request);
+  }
+}
+
+void ContextualSearchboxHandler::OnScreenshotProcessed(
+    StartScreenshareCallback callback,
+    ProcessedScreenshot result) {
+  if (result.png_bytes.empty()) {
+    std::move(callback).Run(std::nullopt);
+    return;
+  }
+
+  auto file_info_mojom = searchbox::mojom::SelectedFileInfo::New();
+  file_info_mojom->file_name = kScreenshotFileName;
+  file_info_mojom->mime_type = kScreenshotMimeType;
+  file_info_mojom->is_deletable = true;
+  file_info_mojom->selection_time = base::Time::Now();
+  file_info_mojom->image_data_url = result.thumbnail_data_url;
+
+  mojo_base::BigBuffer file_bytes(std::move(result.png_bytes));
+  AddFileContextFromBrowser(
+      kScreenshotFileName, kScreenshotMimeType, std::move(file_bytes),
+      /*image_encoding_options=*/CreateImageEncodingOptions(),
+      base::BindOnce(
+          [](StartScreenshareCallback callback,
+             base::WeakPtr<ContextualSearchboxHandler> handler,
+             searchbox::mojom::SelectedFileInfoPtr file_info_mojom,
+             base::expected<base::UnguessableToken,
+                            contextual_search::ContextUploadErrorType> result) {
+            std::optional<base::UnguessableToken> token = std::nullopt;
+            if (result.has_value() && handler) {
+              token = result.value();
+              handler->SearchboxHandler::AddFileContextFromBrowser(
+                  result.value(), std::move(file_info_mojom));
+            }
+            std::move(callback).Run(token);
+          },
+          std::move(callback), weak_ptr_factory_.GetWeakPtr(),
+          std::move(file_info_mojom)));
 }
 #endif

@@ -405,6 +405,12 @@ BASE_FEATURE(kUseDynamicBackingAllocations, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kUseStrongRefToSharedImageInterface,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+// When enabled, this feature lets ClientSharedImage handle all SyncToken
+// management (i.e. generation, waiting and storing) internally. All SyncTokens
+// that clients obtain from ClientSharedImage will be empty in this situation.
+BASE_FEATURE(kUseAutomaticSyncTokenManagement,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Enable atlasing of small paths on Skia Graphite. Only meaningful if
 // SkiaGraphite is also enabled.
 BASE_FEATURE(kSkiaGraphiteSmallPathAtlas, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -460,10 +466,6 @@ void InitSkiaGraphiteDefaultParamsForTesting() {
 
 const base::FeatureParam<int> kSkiaGraphiteMinPathSizeForMsaa{
     &kSkiaGraphiteSmallPathAtlas, "min_path_size_for_msaa", 0};
-
-#if BUILDFLAG(IS_WIN)
-BASE_FEATURE(kSkiaGraphiteDawnUseD3D12, base::FEATURE_DISABLED_BY_DEFAULT);
-#endif
 
 // Whether to use the GpuPersistentCache for caching GPU process shader blobs.
 // Usage for Graphite is controlled independently with

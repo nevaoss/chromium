@@ -51,6 +51,7 @@
 <translation id="1147031633655575115">შესული ხართ, როგორც <ph name="USER" /></translation>
 <translation id="1149401351239820326">ვადის გასვლის თვე</translation>
 <translation id="1150989369772528668">კალენდარი</translation>
+<translation id="1158134713295836892">Gemini Chrome-ში</translation>
 <translation id="1161444134753003495">შესვლა</translation>
 <translation id="1161663161838091892">გასაგრძელებლად დაასინქრონეთ ჩანართები და ისტორია</translation>
 <translation id="1162834932051545794">{count,plural, =1{{count} საკრედიტო ბარათი}other{{count} საკრედიტო ბარათი}}</translation>
@@ -225,7 +226,6 @@
 <translation id="1674504678466460478"><ph name="SOURCE_LANGUAGE" /> — <ph name="TARGET_LANGUAGE" /></translation>
 <translation id="1678855624321223424">თქვენი ორგანიზაციის წესების მიხედვით, ეს ფაილი შეიძლება შეიცავდეს სენსიტიურ ინფორმაციას</translation>
 <translation id="1683276189281028863">პაროლების შემოწმება</translation>
-<translation id="168389590065701766">უკვე შეგიძლიათ გახსნათ Google Lens მისამართთა ზოლიდან და მოიძიოთ ნებისმიერი რამ, რასაც ხედავთ</translation>
 <translation id="1689333818294560261">მეტსახელი</translation>
 <translation id="169048873465870056">ამოიშალოს ჩანართი და წაიშალოს ჯგუფი?</translation>
 <translation id="1692115862433274081">სხვა ანგარიშის გამოყენება</translation>
@@ -2527,6 +2527,7 @@ Handoff ასევე უნდა იყოს ჩართული პა�
 <translation id="9203951165704618409">გადაიტანეთ მისამართთა ზოლი ზემოდან ქვემოთ, თუ თქვენთვის ასე უფრო მოსახერხებელი იქნება ვების დათვალიერება.</translation>
 <translation id="9205189991633470489">ინკოგნიტოს ჩაკეტვა</translation>
 <translation id="9206887540681440657">სიჩქარე</translation>
+<translation id="9218430445555521422">ნაგულისხმევის დაყენება</translation>
 <translation id="9219103736887031265">გამოსახულებები</translation>
 <translation id="9219154867334666734">ჩანართებში ძიება…</translation>
 <translation id="9223358826628549784">მოხსენება შეცდომების შესახებ გაიგზავნა.</translation>

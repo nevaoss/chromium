@@ -27,7 +27,6 @@ import org.chromium.base.ObserverList;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.R;
-import org.chromium.chrome.browser.actor.ui.TabIndicatorStatus;
 import org.chromium.chrome.browser.compositor.layouts.LayoutUpdateHost;
 import org.chromium.chrome.browser.compositor.layouts.components.CompositorButton;
 import org.chromium.chrome.browser.compositor.layouts.components.CompositorButton.ButtonType;
@@ -36,12 +35,11 @@ import org.chromium.chrome.browser.compositor.overlays.strip.StripLayoutTabDeleg
 import org.chromium.chrome.browser.compositor.overlays.strip.TabLoadTracker.TabLoadTrackerCallback;
 import org.chromium.chrome.browser.layouts.animation.CompositorAnimator;
 import org.chromium.chrome.browser.layouts.components.VirtualView;
-import org.chromium.chrome.browser.tab.MediaState;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabUtils;
 import org.chromium.chrome.browser.tasks.tab_management.TabUiThemeUtil;
 import org.chromium.components.browser_ui.styles.ChromeColors;
-import org.chromium.components.browser_ui.styles.SemanticColorUtils;
+import org.chromium.components.tabs.TabAlert;
 import org.chromium.ui.accessibility.AccessibilityState;
 import org.chromium.ui.base.LocalizationUtils;
 import org.chromium.ui.util.MotionEventUtils;
@@ -167,8 +165,8 @@ public class StripLayoutTab extends StripLayoutView {
     private static final float WIDTH_TO_HIDE_ICON = 86.f;
 
     // Media Indicator Constants.
-    private static final float MEDIA_INDICATOR_WIDTH = 16.f;
-    private static final float DYNAMIC_GLIC_ACTUATION_INDICATOR_WIDTH = 14.f;
+    @VisibleForTesting static final float MEDIA_INDICATOR_WIDTH = 16.f;
+    @VisibleForTesting static final float DYNAMIC_GLIC_ACTUATION_INDICATOR_WIDTH = 14.f;
     private static final float TAB_INDICATOR_OVERLAY_WIDTH = 24.f;
     // Spacing between the media indicator and the close button.
     private static final float MEDIA_INDICATOR_TO_CLOSE_BUTTON_SPACING_DP = 12.f;
@@ -214,8 +212,7 @@ public class StripLayoutTab extends StripLayoutView {
     private boolean mForceHideEndDivider;
     private float mBottomMargin;
     private float mContainerOpacity;
-    private @MediaState int mMediaState;
-    private @TabIndicatorStatus int mTabIndicatorStatus;
+    private @Nullable @TabAlert Integer mAlertState;
     private float mTabIndicatorOverlayRotation;
     private boolean mIsUnderlined;
     // The offset of the left-to-right wave/shimmer effect on the tab underline (from 0.f to 1.f).
@@ -259,7 +256,7 @@ public class StripLayoutTab extends StripLayoutView {
      * @param updateHost The {@link LayoutUpdateHost}.
      * @param incognito Whether or not this layout tab is incognito.
      * @param isPinned Whether or not this tab is pinned.
-     * @param mediaState The media state of the tab.
+     * @param alertState The {@link TabAlert} state of the tab.
      */
     public StripLayoutTab(
             Context context,
@@ -272,7 +269,7 @@ public class StripLayoutTab extends StripLayoutView {
             LayoutUpdateHost updateHost,
             boolean incognito,
             boolean isPinned,
-            @MediaState int mediaState) {
+            @Nullable @TabAlert Integer alertState) {
         super(
                 incognito,
                 clickHandler,
@@ -281,7 +278,7 @@ public class StripLayoutTab extends StripLayoutView {
                 accessibilityFocusHandler,
                 context);
         mTabId = id;
-        mMediaState = mediaState;
+        mAlertState = alertState;
         mIsPinned = isPinned;
         mLoadTracker = new TabLoadTracker(id, loadTrackerCallback);
         mUpdateHost = updateHost;
@@ -387,22 +384,13 @@ public class StripLayoutTab extends StripLayoutView {
         return mIsPinned;
     }
 
-    /* package */ void setMediaState(@MediaState int mediaState) {
-        mMediaState = mediaState;
+    /* package */ void setAlertState(@Nullable @TabAlert Integer alertState) {
+        mAlertState = alertState;
     }
 
-    public @MediaState int getMediaState() {
-        return mMediaState;
-    }
-
-    /**
-     * Sets the status of the tab's indicator. This is only used for Glic actuation indicators and
-     * is separate from media indicators.
-     *
-     * @param status The {@link TabIndicatorStatus} to set.
-     */
-    /* package */ void setTabIndicatorStatus(@TabIndicatorStatus int status) {
-        mTabIndicatorStatus = status;
+    /** Returns the {@link TabAlert} state of this tab, or null if no alert is active. */
+    public @Nullable @TabAlert Integer getAlertState() {
+        return mAlertState;
     }
 
     /** Returns the width of the tab indicator overlay. */
@@ -424,68 +412,28 @@ public class StripLayoutTab extends StripLayoutView {
         mTabIndicatorOverlayRotation = (mTabIndicatorOverlayRotation + degrees) % 1080;
     }
 
-    /**
-     * @return The {@link TabIndicatorStatus} representing the actuation state of the tab.
-     */
-    public @TabIndicatorStatus int getTabIndicatorStatus() {
-        return mTabIndicatorStatus;
-    }
-
-    /**
-     * @return Whether some tab indicator (actuation or media) should be shown.
-     */
+    /** Returns whether a tab indicator (actuation or media alert) should be shown. */
     public boolean shouldShowIndicator() {
-        return getTabIndicatorStatus() != TabIndicatorStatus.NONE
-                || (mMediaState != MediaState.NONE && !shouldHideMediaIndicator());
+        return TabUtils.getTabAlertDrawable(mAlertState) != Resources.ID_NULL
+                && !shouldHideMediaIndicator();
     }
 
-    private boolean isRecordingOrSharingMedia() {
-        return mMediaState == MediaState.RECORDING || mMediaState == MediaState.SHARING;
-    }
-
-    /**
-     * @return The resource ID of the indicator to show, prioritizing active media recording, then
-     *     actuation, then other media indicators. For desktop counterpart, see tab alert priority
-     *     in {@code chrome/browser/ui/tabs/alert/tab_alert_controller.cc}.
-     */
+    /** Returns the resource ID of the indicator to show. */
     public @DrawableRes int getIndicatorRes() {
-        if (isRecordingOrSharingMedia() && shouldShowIndicator()) {
-            return TabUtils.getMediaIndicatorDrawable(mMediaState);
-        }
-        if (getTabIndicatorStatus() == TabIndicatorStatus.DYNAMIC) {
-            return R.drawable.ic_arrow_selector_spark_14dp;
-        } else if (getTabIndicatorStatus() == TabIndicatorStatus.STATIC) {
-            return R.drawable.ic_arrow_selector_spark_16dp;
-        }
-        if (shouldShowIndicator()) {
-            return TabUtils.getMediaIndicatorDrawable(mMediaState);
-        }
-        return Resources.ID_NULL;
-    }
-
-    /**
-     * @return The tint color for the active indicator.
-     */
-    public @ColorInt int getIndicatorTint() {
-        if (isRecordingOrSharingMedia()) {
-            return TabUtils.getMediaIndicatorTintColor(
-                    mContext, mMediaState, getCloseButton().getTint());
-        }
-        if (getTabIndicatorStatus() != TabIndicatorStatus.NONE) {
-            return SemanticColorUtils.getColorPrimary(mContext);
-        }
-        return TabUtils.getMediaIndicatorTintColor(
-                mContext, mMediaState, getCloseButton().getTint());
-    }
-
-    /**
-     * @return The resource ID of the indicator overlay to show.
-     */
-    public @DrawableRes int getIndicatorOverlayRes() {
-        if (isRecordingOrSharingMedia()) {
+        if (!shouldShowIndicator()) {
             return Resources.ID_NULL;
         }
-        if (getTabIndicatorStatus() == TabIndicatorStatus.DYNAMIC) {
+        return TabUtils.getTabAlertDrawable(mAlertState);
+    }
+
+    /** Returns the tint color for the active indicator. */
+    public @ColorInt int getIndicatorTint() {
+        return TabUtils.getTabAlertTintColor(mContext, mAlertState, getCloseButton().getTint());
+    }
+
+    /** Returns the resource ID of the indicator overlay to show. */
+    public @DrawableRes int getIndicatorOverlayRes() {
+        if (mAlertState != null && mAlertState == TabAlert.ACTOR_ACCESSING) {
             return R.drawable.tab_indicator_spinner;
         }
         return Resources.ID_NULL;
@@ -1135,11 +1083,9 @@ public class StripLayoutTab extends StripLayoutView {
         return closeButtonVisible && getWidth() <= WIDTH_TO_HIDE_ICON;
     }
 
+    /** Returns the width of the media or actuation indicator. */
     public float getMediaIndicatorWidth() {
-        if (isRecordingOrSharingMedia()) {
-            return MEDIA_INDICATOR_WIDTH;
-        }
-        if (getTabIndicatorStatus() == TabIndicatorStatus.DYNAMIC) {
+        if (mAlertState != null && mAlertState == TabAlert.ACTOR_ACCESSING) {
             return DYNAMIC_GLIC_ACTUATION_INDICATOR_WIDTH;
         }
         return MEDIA_INDICATOR_WIDTH;

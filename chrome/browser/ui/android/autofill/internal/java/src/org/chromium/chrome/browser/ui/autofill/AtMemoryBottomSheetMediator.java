@@ -115,6 +115,7 @@ class AtMemoryBottomSheetMediator implements AtMemorySearchBarView.Delegate {
 
     private void applyScreenState(
             AtMemoryScreenState screenState, List<AutofillSuggestion> suggestions) {
+        mModel.set(CURRENT_SCREEN, ScreenId.HOME_SCREEN);
         mHomeModel.set(HomeProperties.IS_LOADING, screenState.isLoading);
 
         ModelList sheetItems = mHomeModel.get(HomeProperties.SHEET_ITEMS);
@@ -135,7 +136,6 @@ class AtMemoryBottomSheetMediator implements AtMemorySearchBarView.Delegate {
         }
         if (screenState == AtMemoryScreenState.HIDDEN) {
             mModel.set(VISIBLE, false);
-            mModel.set(CURRENT_SCREEN, ScreenId.HOME_SCREEN);
             mFlyoutModel.set(FlyoutProperties.TITLE, "");
             mFlyoutModel.set(FlyoutProperties.SUGGESTIONS, List.of());
             sheetItems.clear();
@@ -322,9 +322,12 @@ class AtMemoryBottomSheetMediator implements AtMemorySearchBarView.Delegate {
                 .with(
                         SuggestionItemProperties.TRAILING_ICON_ID,
                         getResIdForSuggestionType(suggestion.getSuggestionType()))
+                // Loading suggestions should be deactivated as well.
+                // TODO(crbug.com/536814322) - Apply deactivate style to all unacceptable
+                // suggestions?
                 .with(
                         SuggestionItemProperties.APPLY_DEACTIVATED_STYLE,
-                        suggestion.applyDeactivatedStyle())
+                        suggestion.applyDeactivatedStyle() || suggestion.isLoading())
                 .with(SuggestionItemProperties.IS_LOADING, suggestion.isLoading())
                 .with(
                         SuggestionItemProperties.ON_SUGGESTION_CLICKED,

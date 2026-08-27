@@ -532,6 +532,7 @@
 <translation id="3161699713309727585"><ph name="BUTTON_TEXT" />၊ တဘ်အသစ်တွင် ဖွင့်သည်</translation>
 <translation id="3166827708714933426">တဘ်နှင့် ဝင်းဒိုးဖြတ်လမ်းလင့်ခ်များ</translation>
 <translation id="3167258285411721858"><ph name="HOST_NAME" /> အတွက် မိုဘိုင်းဝဘ်ဆိုက်ကို တောင်းဆိုနိုင်သည်</translation>
+<translation id="3177338796769255211">သင့်စက်အားလုံးတွင် လိပ်စာနှင့် အခြားအရာများရယူရန် လက်မှတ်ထိုးဝင်ပါ</translation>
 <translation id="3181145110929454111"><ph name="TAB_TITLE" />၊ တစ်ခုထက်ပိုရွေးထားပြီး ပင်ထိုးထားသည့် အသံပိတ်ထားသော ရုပ်ဖျက်တဘ်</translation>
 <translation id="3189635831478931757"><ph name="GROUP_TITLE" /> တဘ်အုပ်စု</translation>
 <translation id="3200536777393523575">သင့်လက်ရှိဝင်းဒိုးကို ပိတ်မလား။</translation>
@@ -764,6 +765,7 @@
 <translation id="4180726336228139707">ဤစက်တွင်သာ</translation>
 <translation id="4181841719683918333">ဘာသာစကားများ</translation>
 <translation id="4188221736490993796">Z မှ A သို့ စီရန်</translation>
+<translation id="4188638484665452040">Gemini ကို ပင်ဖြုတ်လိုက်သည်</translation>
 <translation id="4189344235004694858">{NUM_REVOKED_PERMISSIONS,plural, =1{စပမ်း (သို့) လှည့်ဖြားသည့် အကြောင်းအရာကြောင့် Chrome သည် ဤဝဘ်ဆိုက်ထံမှ အကြောင်းကြားချက် ပို့ခြင်းကို ပိတ်ပင်ထားသည်}other{စပမ်း (သို့) လှည့်ဖြားသည့် အကြောင်းအရာကြောင့် Chrome သည် ဤဝဘ်ဆိုက်များထံမှ အကြောင်းကြားချက် ပို့ခြင်းကို ပိတ်ပင်ထားသည်}}</translation>
 <translation id="4195643157523330669">တဘ်အသစ်တွင် ဖွင့်ရန်</translation>
 <translation id="4197828496439691735">{NUM_TABS,plural, =1{ဤစက်ပေါ်ရှိ တဘ် ၁ ခု}other{ဤစက်ပေါ်ရှိ တဘ် # ခု}}</translation>
@@ -928,13 +930,13 @@
 <translation id="4794291718671962615">(<ph name="MEGABYTES" />) <ph name="URL" /></translation>
 <translation id="4807098396393229769">ကတ် အပေါ်က အမည်</translation>
 <translation id="480990236307250886">ပင်မ စာမျက်နှာဖွင့်</translation>
+<translation id="4816492930507672669">စာမျက်နှာ ကွက်တိ လုပ်ပေးရန်</translation>
 <translation id="4822710610088666676"><ph name="TAB_GROUP_TITLE" /> တဘ်အုပ်စုကို ပိတ်ပြီး သိမ်းလိုက်သည်</translation>
 <translation id="4834250788637067901">Google Pay ကို သုံးထားသော ငွေပေးချေနည်းလမ်း၊ ကမ်းလှမ်းချက်နှင့် လိပ်စာများ</translation>
 <translation id="4835385943915508971">တောင်းဆိုထားသည့် အရင်းမြစ်ကို Chrome သည် အသုံးပြုခွင့်မရှိပါ။</translation>
 <translation id="483742037940503070">{TAB_COUNT,plural, =1{တဘ် <ph name="TAB_COUNT_ONE" /> ခုပါသော <ph name="COLOR_NAME" /> ရောင် တဘ်အုပ်စုကို နောက်ခံတဘ်အုပ်စုအသစ်အဖြစ် ပြန်ပြောင်းနိုင်သည်။}other{တဘ် <ph name="TAB_COUNT_MANY" /> ခုပါသော <ph name="COLOR_NAME" /> ရောင် တဘ်အုပ်စုကို နောက်ခံတဘ်အုပ်စုအသစ်အဖြစ် ပြန်ပြောင်းနိုင်သည်။}}</translation>
 <translation id="4849731766219625109">သင်၏ <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> အကောင့် သုံးရန်</translation>
 <translation id="4850886885716139402">မြင်ကွင်း</translation>
-<translation id="4852014461738377247">လက်မှတ်ထိုးဝင်နေသည်\u2026</translation>
 <translation id="4860895144060829044">ဖုန်းခေါ်ရန်</translation>
 <translation id="4864369630010738180">လက်မှတ်ထိုးဝင်နေသည်...</translation>
 <translation id="4866368707455379617">Chrome အတွက် <ph name="MODULE" /> ကို စနစ်ထည့်သွင်း၍ မရပါ</translation>
@@ -1313,7 +1315,6 @@
 <translation id="6411219469806822692">အပေါ်သို့ထပ်မြှင့်၍ မရပါ။ စာမျက်နှာ၏ အပေါ်ဘက်ခပ်ဝေးဝေးမှ စကြည့်ပါ။</translation>
 <translation id="6412215853589222273"><ph name="TAB_TITLE" />၊ တစ်ခုထက်ပိုရွေးထားသည့် တဘ်</translation>
 <translation id="641643625718530986">ပရင့်…</translation>
-<translation id="6427723330233512782">အမြင့်အတိုင်း အံကိုက်</translation>
 <translation id="6433501201775827830">သင်၏ ရှာဖွေရေး အင်ဂျင်ကို ရွေးပါ</translation>
 <translation id="6434309073475700221">စွန့်ပစ်ရန်</translation>
 <translation id="6435307030888827407">ထွက်ထားရန်</translation>
@@ -1837,6 +1838,7 @@
 <translation id="8393700583063109961">မက်ဆေ့ဂျ်ပို့ရန်</translation>
 <translation id="8396098434728053815">တဘ်အသံကိုလည်း မျှဝေရန်</translation>
 <translation id="8398389123831319859">‘ရုပ်ဖျက်’ သို့ ပြောင်းရန် နှစ်ချက်တို့ပြီး ဖိထားပါ</translation>
+<translation id="8412037385861858490">Chrome တွင် သင့်အလုပ်ကို လုံခြုံစေရန်အတွက် Chrome သို့ လက်မှတ်ထိုးဝင်ထားသည့်အခါ သင့်အဖွဲ့အစည်းသည် အချို့သောအချက်အလက်များကို ကြည့်ရှုနိုင် သို့မဟုတ် စီမံနိုင်ပါမည်။ <ph name="BEGIN_LINK" />ပိုလေ့လာရန်<ph name="END_LINK" /></translation>
 <translation id="8413126021676339697">မှတ်တမ်း အပြည့် ပြရန်</translation>
 <translation id="8413795581997394485">အန္တရာယ်ရှိသည်ဟု သိထားသော ဝဘ်ဆိုက်၊ ဒေါင်းလုဒ်နှင့် နောက်ဆက်တွဲများမှ ကာကွယ်ပေးသည်။ ဝဘ်ဆိုက်တစ်ခုသို့ ဝင်ကြည့်သောအခါ Chrome သည် သင့် IP လိပ်စာ ဖျောက်ထားသော သီးသန့်ဆာဗာမှတစ်ဆင့် URL ၏ ရှုပ်ထွေးသောအပိုင်းကို Google သို့ ပို့သည်။ ဝဘ်ဆိုက်သည် သံသယဖြစ်ဖွယ်တစ်ခုခု ဆောင်ရွက်ပါက URL အပြည့်အစုံနှင့် စာမျက်နှာပါ အကြောင်းအရာအချို့ကိုလည်း ပို့သည်။</translation>
 <translation id="8414396119627470038"><ph name="SITE_ETLD_PLUS_ONE" /> ကို <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> ဖြင့် လက်မှတ်ထိုးဝင်ပါ</translation>

@@ -41,6 +41,13 @@ extern NSString* const kAtMemorySearchCellAccessibilityIdentifier;
 // Accessibility identifier for the AtMemory fetching cell.
 extern NSString* const kAtMemoryFetchingCellAccessibilityIdentifier;
 
+// Accessibility identifier for the AtMemory "Manage Enhanced Autofill" item.
+extern NSString* const
+    kAtMemoryManageEnhancedAutofillItemAccessibilityIdentifier;
+
+// Accessibility identifier prefix for the AtMemory granular fill cell.
+extern NSString* const kAtMemoryGranularFillCellAccessibilityIdentifierPrefix;
+
 // Accessibility identifier prefix for the AtMemory granular fill attribute
 // label.
 extern NSString* const
@@ -49,5 +56,12 @@ extern NSString* const
 // Accessibility identifier prefix for the AtMemory granular fill chip button.
 extern NSString* const
     kAtMemoryGranularFillChipButtonAccessibilityIdentifierPrefix;
+
+// Accessibility identifier prefix for the AtMemory search result cell.
+extern NSString* const kAtMemorySearchResultCellAccessibilityIdentifierPrefix;
+
+// Accessibility identifier prefix for the AtMemory search result info button.
+extern NSString* const
+    kAtMemorySearchResultInfoButtonAccessibilityIdentifierPrefix;
 
 #endif  // IOS_CHROME_BROWSER_AUTOFILL_ATMEMORY_PUBLIC_AT_MEMORY_CONSTANTS_H_

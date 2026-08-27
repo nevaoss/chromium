@@ -48,6 +48,7 @@
 #include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
+#include "third_party/blink/renderer/core/ad_tracker/extension_script_tracker.h"
 #include "third_party/blink/renderer/core/animation/document_timeline.h"
 #include "third_party/blink/renderer/core/css/css_property_names.h"
 #include "third_party/blink/renderer/core/css/parser/css_property_parser.h"
@@ -197,6 +198,7 @@
 #include "third_party/blink/renderer/platform/wtf/cross_thread_copier_base.h"
 #include "third_party/blink/renderer/platform/wtf/cross_thread_copier_std.h"
 #include "third_party/blink/renderer/platform/wtf/dtoa.h"
+#include "third_party/blink/renderer/platform/wtf/text/format.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_buffer.h"
 #include "third_party/blink/renderer/platform/wtf/text/text_encoding_registry.h"
 #include "third_party/blink/renderer/platform/wtf/threading.h"
@@ -1007,9 +1009,8 @@ uint16_t Internals::compareTreeScopePosition(
   if (!tree_scope1 || !tree_scope2) {
     exception_state.ThrowDOMException(
         DOMExceptionCode::kInvalidAccessError,
-        UNSAFE_TODO(String::Format(
-            "The %s node is neither a document node, nor a shadow root.",
-            tree_scope1 ? "second" : "first")));
+        Format("The {} node is neither a document node, nor a shadow root.",
+               tree_scope1 ? "second" : "first"));
     return 0;
   }
   return tree_scope1->ComparePosition(*tree_scope2);
@@ -3906,6 +3907,23 @@ ScriptPromise<IDLString> Internals::LCPPrediction(ScriptState* script_state,
   lcpp->AddLCPPredictedCallback(
       BindOnce(&OnLCPPredicted, WrapPersistent(resolver)));
   return promise;
+}
+
+bool Internals::isExtensionScriptInStack() const {
+  if (!GetFrame()) {
+    return false;
+  }
+  return GetFrame()->GetExtensionScriptTracker() &&
+         GetFrame()->GetExtensionScriptTracker()->IsExtensionScriptInStack();
+}
+
+bool Internals::isExtensionScriptUrl(const String& url) const {
+  if (!GetFrame()) {
+    return false;
+  }
+  return GetFrame()->GetExtensionScriptTracker() &&
+         GetFrame()->GetExtensionScriptTracker()->IsExtensionScriptUrlMarked(
+             url);
 }
 
 }  // namespace blink

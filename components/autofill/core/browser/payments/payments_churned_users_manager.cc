@@ -74,7 +74,7 @@ void PaymentsChurnedUsersManager::OnFieldTypesDetermined(
   if (!is_visible_credit_card_form) {
     autofill_metrics::LogPaymentsChurnedUsersBubbleShowResult(
         autofill_metrics::PaymentsChurnedUsersBubbleShowResult::
-            kFormNotVisible);
+            kNoVisibleCreditCardForm);
     return;
   }
 
@@ -131,7 +131,7 @@ void PaymentsChurnedUsersManager::OnUiClosed(
     }
 
     if (strike_database_) {
-      strike_database_->ClearStrikes();
+      strike_database_->AddStrikes(strike_database_->GetMaxStrikesLimit());
     }
   } else if (closed_reason == PaymentsUiClosedReason::kCancelled) {
     if (strike_database_) {

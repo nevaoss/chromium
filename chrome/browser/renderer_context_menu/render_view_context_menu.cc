@@ -824,7 +824,7 @@ void AddAvatarToLastMenuItem(const gfx::Image& icon,
 
 void OnBrowserCreated(const GURL& link_url,
                       url::Origin initiator_origin,
-                      Browser* browser) {
+                      BrowserWindowInterface* browser) {
   if (!browser) {
     // TODO(crbug.com/40242414): Make sure we do something or log an error if
     // opening a browser window was not possible.
@@ -4871,8 +4871,7 @@ void RenderViewContextMenu::ExecOpenLinkInProfile(int profile_index) {
   base::FilePath profile_path = profile_link_paths_[profile_index];
   profiles::SwitchToProfile(
       profile_path, false,
-      base::BindRepeating(OnBrowserCreated, params_.link_url,
-                          params_.frame_origin));
+      base::BindOnce(OnBrowserCreated, params_.link_url, params_.frame_origin));
 }
 
 #if BUILDFLAG(ENABLE_COMPOSE)
@@ -4930,8 +4929,11 @@ void RenderViewContextMenu::ExecSaveToMemoryBanks() {
   std::string selected_text = base::UTF16ToUTF8(params_.selection_text);
 
   if (!selected_text.empty()) {
-    context_hub_service->SaveTextSelection(params_.page_url, tab_title,
-                                           selected_text, base::DoNothing());
+    context_hub_service->SaveMemoryBankEntry(
+        context_hub::MemoryBankEntry(
+            context_hub::MemoryBankType::kTextSelection, params_.page_url,
+            std::move(tab_title), std::move(selected_text)),
+        base::DoNothing());
     return;
   }
 
@@ -4947,8 +4949,11 @@ void RenderViewContextMenu::ExecSaveToMemoryBanks() {
              std::string title,
              std::unique_ptr<content_extraction::InnerTextResult> result) {
             if (service && result && !result->inner_text.empty()) {
-              service->SaveTab(url, title, result->inner_text,
-                               base::DoNothing());
+              service->SaveMemoryBankEntry(
+                  context_hub::MemoryBankEntry(
+                      context_hub::MemoryBankType::kTab, std::move(url),
+                      std::move(title), std::move(result->inner_text)),
+                  base::DoNothing());
             }
           },
           context_hub_service->GetWeakPtr(), params_.page_url, tab_title));
@@ -5516,11 +5521,6 @@ void RenderViewContextMenu::MaybeAppendOpenGlicItem(bool add_separator) {
 
   // Append an item for opening Glic
   if (!IsNormalBrowser()) {
-    return;
-  }
-  if (content_type_->SupportsGroup(
-          ContextMenuContentType::ITEM_GROUP_GLICSHAREIMAGE) &&
-      CanAppendGlicShareImageItem()) {
     return;
   }
 

@@ -27,6 +27,7 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_URL_URL_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_URL_URL_H_
 
+#include "base/memory/scoped_refptr.h"
 #include "base/notreached.h"
 #include "base/types/pass_key.h"
 #include "third_party/blink/renderer/core/core_export.h"
@@ -42,7 +43,7 @@ namespace blink {
 class Blob;
 class ExceptionState;
 class ExecutionContext;
-class URLRegistrable;
+class MediaSourceAttachment;
 class URLSearchParams;
 
 class CORE_EXPORT URL final : public ScriptWrappable,
@@ -72,7 +73,8 @@ class CORE_EXPORT URL final : public ScriptWrappable,
   static bool canParse(const String& url, const String& base);
 
   static String CreatePublicURL(ExecutionContext*, Blob*);
-  static String CreatePublicURL(ExecutionContext*, URLRegistrable*);
+  static String CreatePublicURL(ExecutionContext*,
+                                scoped_refptr<MediaSourceAttachment>);
 
   KURL Url() const override { return url_; }
   void SetUrl(const KURL& url) override { url_ = url; }

@@ -2172,6 +2172,9 @@ Your Google account may have other forms of browsing history like searches and a
       <message name="IDS_ACCOUNT_MANAGEMENT_SIGN_OUT" desc="Button text for signing out of Chrome">
         Sign out of Chrome
       </message>
+      <message name="IDS_MANAGE_SYNC_SETTINGS_SIGN_OUT_OF_CHROME" desc="Button text for signing out of Chrome on the manage sync settings screen">
+        Sign out of Chrome
+      </message>
 
       <!-- Child accounts -->
       <message name="IDS_ACCOUNT_MANAGEMENT_HEADER_NO_PARENTAL_DATA" desc="String saying that child should go to parent for help for child account.">
@@ -3587,10 +3590,7 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       <message name="IDS_SIGNIN_FRE_SUBTITLE_SIGNIN_FORCED_BY_POLICY" desc="Subtitle of a dialog to sign in to Chrome when sign-in is required because of an enterprise policy.">
         Your organization requires you to sign in to use Chrome.
       </message>
-      <message name="IDS_FRE_SIGNING_IN" desc="Text to show below a progress spinner in the signin FRE to notify the user that signing in is in progress.">
-        Signing in\u2026
-      </message>
-      <message name="IDS_FRE_SIGNING_IN_2" desc="Text to show below a progress spinner in the signin FRE to notify the user that signing in is in progress and that the user's data is being fetched.">
+      <message name="IDS_FRE_SIGNING_IN" desc="Text to show below a progress spinner in the signin FRE to notify the user that signing in is in progress and that the user's data is being fetched.">
         Getting your stuff\u2026
       </message>
 
@@ -6369,6 +6369,20 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
         Sharing to <ph name="DEVICE_NAME">%1$s<ex>Pixel 3</ex></ph>
       </message>
 
+      <!-- Tab sharing toolbar -->
+      <message name="IDS_TAB_SHARING_TOOLBAR_SHARING_CURRENT_TAB_LABEL" desc="Text displayed on a toolbar when current tab is being shared.">
+        Sharing this tab to <ph name="APP_NAME">%1$s<ex>meet.google.com</ex></ph>
+      </message>
+      <message name="IDS_TAB_SHARING_TOOLBAR_SHARING_ANOTHER_TAB_LABEL" desc="Text displayed on a toolbar when another (non-current) tab is being shared.">
+        Sharing <ph name="TAB_NAME">%1$s<ex>youtube.com</ex></ph> to <ph name="APP_NAME">%2$s<ex>meet.google.com</ex></ph>
+      </message>
+      <message name="IDS_TAB_SHARING_TOOLBAR_SHARING_ANOTHER_TAB_TO_THIS_TAB_LABEL" desc="Text displayed on the toolbar when a tab is being shared to the current tab.">
+        Sharing <ph name="TAB_NAME">%1$s<ex>youtube.com</ex></ph> to this tab
+      </message>
+      <message name="IDS_TAB_SHARING_TOOLBAR_STOP_SHARING" desc="Text displayed on the button to stop tab sharing.">
+        Stop sharing
+      </message>
+
       <!-- Sharing Hub -->
       <message name="IDS_SHARING_HUB_STORAGE_DISABLED_TEXT" desc="Text to show when storage permission is disabled.">
         You have disabled Storage access, please go to Settings to enable it.
@@ -7853,6 +7867,9 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       </message>
       <message name="IDS_GLIC_BUTTON_UNPINNED" desc="Snackbar message shown after the user unpins the Glic button from the tab strip.">
         Gemini unpinned
+      </message>
+      <message name="IDS_GLIC_MIC_DISABLED_SNACKBAR" desc="Snackbar message shown when the microphone is disabled and unable to prompt user for permission.">
+        Enable mic to use voice
       </message>
 
       <!-- Immersive Playback Confirmation strings -->

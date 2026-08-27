@@ -22,6 +22,7 @@
 #include "base/supports_user_data.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/time/time.h"
+#include "base/timer/elapsed_timer.h"
 #include "base/timer/timer.h"
 #include "chrome/app/vector_icons/vector_icons.h"
 #include "chrome/browser/browser_process.h"
@@ -31,18 +32,17 @@
 #include "chrome/browser/profiles/profile_attributes_entry.h"
 #include "chrome/browser/profiles/profile_attributes_storage.h"
 #include "chrome/browser/profiles/profile_avatar_icon_util.h"
+#include "chrome/browser/profiles/profile_keyed_service_factory.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/profiles/profiles_state.h"
 #include "chrome/browser/signin/account_consistency_mode_manager.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/signin/signin_promo_util.h"
 #include "chrome/browser/signin/signin_ui_util.h"
-#include "chrome/browser/signin/signin_util.h"
 #include "chrome/browser/subscription_eligibility/subscription_eligibility_service_factory.h"
 #include "chrome/browser/sync/sync_service_factory.h"
 #include "chrome/browser/sync/sync_ui_util.h"
 #include "chrome/browser/themes/theme_service_factory.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_window/public/browser_collection_observer.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
@@ -67,7 +67,6 @@
 #include "components/feature_engagement/public/feature_constants.h"
 #include "components/password_manager/content/common/web_ui_constants.h"
 #include "components/policy/core/common/management/management_service.h"
-#include "components/prefs/pref_change_registrar.h"
 #include "components/prefs/pref_service.h"
 #include "components/signin/public/base/consent_level.h"
 #include "components/signin/public/base/signin_metrics.h"
@@ -79,6 +78,7 @@
 #include "components/signin/public/identity_manager/primary_account_change_event.h"
 #include "components/sync/base/features.h"
 #include "components/sync/service/sync_service.h"
+#include "components/sync/service/sync_service_observer.h"
 #include "components/user_education/common/feature_promo/feature_promo_controller.h"
 #include "content/public/common/url_utils.h"
 #include "google_apis/gaia/gaia_id.h"
@@ -87,8 +87,6 @@
 #include "ui/base/resource/resource_bundle.h"
 #include "ui/base/ui_base_features.h"
 #include "ui/gfx/image/image_skia.h"
-#include "ui/gfx/image/image_skia_operations.h"
-#include "ui/gfx/text_elider.h"
 
 namespace {
 
@@ -141,7 +139,8 @@ gfx::Image GetGaiaAccountImage(Profile* profile) {
         ->FindExtendedAccountInfoByAccountId(
             identity_manager->GetPrimaryAccountId(
                 signin::ConsentLevel::kSignin))
-        .account_image;
+        .GetAvatarImage()
+        .value_or(gfx::Image());
   }
   return gfx::Image();
 }
@@ -606,7 +605,7 @@ SigninDetectionServiceFactory::BuildServiceInstanceForBrowserContext(
 
 class OnSigninStateProvider : public StateProvider {
  public:
-  explicit OnSigninStateProvider(Browser* browser,
+  explicit OnSigninStateProvider(BrowserWindowInterface* browser,
                                  StateObserver* state_observer)
       : StateProvider(browser->GetProfile(),
                       state_observer,
@@ -650,7 +649,7 @@ class OnSigninStateProvider : public StateProvider {
     coordinator_->Collapse();
   }
 
-  const raw_ref<Browser> browser_;
+  const raw_ref<BrowserWindowInterface> browser_;
   const raw_ref<OnSigninCoordinator> coordinator_;
 
   // On signin coordinator state change callback subscription.
@@ -1304,7 +1303,8 @@ class PromoStateProviderCoordinator
 // `signin::ProfileMenuAvatarButtonPromoInfo::Type`.
 class PromoStateProvider : public StateProvider {
  public:
-  explicit PromoStateProvider(Browser* browser, StateObserver* state_observer)
+  explicit PromoStateProvider(BrowserWindowInterface* browser,
+                              StateObserver* state_observer)
       : StateProvider(browser->GetProfile(),
                       state_observer,
                       /*should_consider_avatar_ring=*/true),
@@ -1382,7 +1382,7 @@ class PromoStateProvider : public StateProvider {
   raw_ref<PromoStateProviderCoordinator> coordinator_;
 
   // This is needed to delay the creation of `ProfileMenuCoordinator`.
-  const raw_ref<Browser> browser_;
+  const raw_ref<BrowserWindowInterface> browser_;
 };
 #endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
 
@@ -1688,7 +1688,7 @@ class PassphraseErrorStateProvider : public SyncErrorBaseStateProvider {
 
 class BookmarksLimitExceededStateProvider : public SyncErrorBaseStateProvider {
  public:
-  explicit BookmarksLimitExceededStateProvider(Browser* browser,
+  explicit BookmarksLimitExceededStateProvider(BrowserWindowInterface* browser,
                                                StateObserver* state_observer)
       : SyncErrorBaseStateProvider(
             browser->GetProfile(),
@@ -2091,8 +2091,6 @@ std::pair<ui::ImageModel, AvatarIconType> StateProvider::GetAvatarIcon(
       ui::ImageModel::FromImage(profiles::GetSizedAvatarIcon(
           image, icon_size, icon_size, profiles::SHAPE_CIRCLE));
 
-  // TODO(crbug.com/516795763): Ensure this is is triggered every time the ai
-  // subscription level changes (via listening for changes).
   if (ShouldShowGradientAvatarRing()) {
     gfx::ImageSkia avatar_with_ai_ring =
         AddLinearGradientRingToAvatar(avatar_model, color_provider, icon_size);
@@ -2177,7 +2175,7 @@ void StateProvider::RequestUpdate() {
 
 AvatarToolbarButtonStateManager::AvatarToolbarButtonStateManager(
     AvatarToolbarButtonInterface& avatar_control,
-    Browser* browser)
+    BrowserWindowInterface* browser)
     : avatar_control_(avatar_control),
       browser_(browser),
       profile_(*browser->GetProfile()),
@@ -2402,7 +2400,7 @@ void AvatarToolbarButtonStateManager::NotifyIPHPromoChanged(bool has_promo) {
 }
 
 void AvatarToolbarButtonStateManager::CreateStatesAndListeners(
-    Browser* browser) {
+    BrowserWindowInterface* browser) {
   // Add each possible state for each Profile type or browser configuration,
   // since this structure is tied to Browser, in which a Profile cannot
   // change, it is correct to initialize the possible fixed states once.

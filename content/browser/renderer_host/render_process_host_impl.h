@@ -389,13 +389,11 @@ class CONTENT_EXPORT RenderProcessHostImpl
       mojo::ScopedInterfaceEndpointHandle handle) override;
   void OnChannelConnected(int32_t peer_pid) override;
   void OnChannelError() override;
-  void OnBadMessageReceived() override;
 
   // ChildProcessLauncher::Client implementation.
   void OnProcessLaunched() override;
   void OnProcessLaunchFailed(int error_code) override;
 #if BUILDFLAG(IS_ANDROID)
-  bool CanUseWarmUpConnection() override;
   bool HasSpareRendererPriority() override;
   void OnSpareRendererPriorityGraduated(bool is_alive) override;
   bool IsForOutermostMainFrame() override;

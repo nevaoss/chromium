@@ -151,6 +151,22 @@ public class VerticalTabUtilsUnitTest {
 
     @Test
     @SmallTest
+    public void testIsGroupHoverCardEnabled_DefaultDisabled() {
+        assertFalse(VerticalTabUtils.isGroupHoverCardEnabled());
+    }
+
+    @Test
+    @SmallTest
+    public void testIsGroupHoverCardEnabled_EnabledViaOverride() {
+        FeatureOverrides.overrideParam(
+                ChromeFeatureList.ANDROID_VERTICAL_TABS,
+                VerticalTabUtils.GROUP_HOVER_CARD_PARAM,
+                /* testValue= */ true);
+        assertTrue(VerticalTabUtils.isGroupHoverCardEnabled());
+    }
+
+    @Test
+    @SmallTest
     public void testIsMultiSelectEnabled_DefaultDisabled() {
         assertFalse(VerticalTabUtils.isMultiSelectEnabled());
     }
@@ -163,6 +179,22 @@ public class VerticalTabUtilsUnitTest {
                 VerticalTabUtils.MULTI_SELECT_PARAM,
                 /* testValue= */ true);
         assertTrue(VerticalTabUtils.isMultiSelectEnabled());
+    }
+
+    @Test
+    @SmallTest
+    public void testIsIncognitoButtonEnabled_DefaultDisabled() {
+        assertFalse(VerticalTabUtils.isIncognitoButtonEnabled());
+    }
+
+    @Test
+    @SmallTest
+    public void testIsIncognitoButtonEnabled_EnabledViaOverride() {
+        FeatureOverrides.overrideParam(
+                ChromeFeatureList.ANDROID_VERTICAL_TABS,
+                VerticalTabUtils.INCOGNITO_BUTTON_PARAM,
+                /* testValue= */ true);
+        assertTrue(VerticalTabUtils.isIncognitoButtonEnabled());
     }
 
     @Test

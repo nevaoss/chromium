@@ -86,16 +86,6 @@ external/wpt/css/CSS2/text/text-transform-bicameral-021.xht
 external/wpt/css/CSS2/text/text-transform-bicameral-022.xht
 external/wpt/css/CSS2/text/white-space-008.xht
 external/wpt/css/CSS2/text/white-space-collapsing-breaks-001.xht
-external/wpt/css/css-anchor-position/anchor-getComputedStyle-002.html
-external/wpt/css/css-anchor-position/anchor-scroll-004.html
-external/wpt/css/css-anchor-position/anchor-scroll-position-try-014.html
-external/wpt/css/css-anchor-position/anchor-scroll-to-sticky-003.html
-external/wpt/css/css-anchor-position/position-try-switch-from-fixed-anchor.html
-external/wpt/css/css-anchor-position/position-visibility-anchors-visible-after-scroll-in.html
-external/wpt/css/css-anchor-position/position-visibility-anchors-visible-chained-004.html
-external/wpt/css/css-anchor-position/position-visibility-anchors-visible-change-anchor.html
-external/wpt/css/css-anchor-position/position-visibility-anchors-visible-non-intervening-container.html
-external/wpt/css/css-anchor-position/position-visibility-remove-anchors-visible.html
 external/wpt/css/css-backgrounds/background-attachment-fixed-block-002.html
 external/wpt/css/css-backgrounds/background-clip/clip-text-ellipsis.html
 external/wpt/css/css-backgrounds/background-clip/clip-text-flex.html
@@ -839,6 +829,8 @@ virtual/webnn-service-on-cpu/*
 virtual/webnn-service-on-npu/*
 virtual/webnn-service-with-gpu/*
 virtual/lna-webrtc/wpt_internal/*
+# BG fetch requires a custom testing delegate that is currently only implemented for Content Shell.
+virtual/lna-bg-fetch/external/wpt/fetch/local-network-access/service-worker-background-fetch.tentative.https.html
 
 # Requires content plugin, see crbug.com/476646486:
 external/wpt/svg/styling/svg-filter-render-web-plugin.tentative.https.html

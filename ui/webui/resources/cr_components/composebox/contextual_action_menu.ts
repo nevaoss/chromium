@@ -233,7 +233,7 @@ export class ContextualActionMenuElement extends
       [
         ModelMode.kGeminiRegular,
         {
-          icon: 'composebox:bolt',
+          icon: 'composebox:acute',
         },
       ],
       [
@@ -252,6 +252,12 @@ export class ContextualActionMenuElement extends
         ModelMode.kGeminiProNoGenUi,
         {
           icon: 'composebox:timer',
+        },
+      ],
+      [
+        ModelMode.kGeminiFlashLatest,
+        {
+          icon: 'composebox:bolt',
         },
       ],
     ]);

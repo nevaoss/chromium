@@ -1572,10 +1572,12 @@ public class CompositorViewHolder extends FrameLayout
         // Delay #updateWebContentsSize to the end of the task queue. Some side panel instances
         // rapidly close and re-open the side panel, which can cause a flicker if the web contents
         // are updated synchronously.
-        post(this::updateWebContentsSize);
-
-        // TODO(crbug.com/514774842): Account for offset X for animations.
-        mLayoutManager.setContentOffsetX(sideUiSpecs.getWidth(AnchorSide.LEFT));
+        post(
+                () -> {
+                    updateWebContentsSize();
+                    // TODO(crbug.com/514774842): Account for offset X for animations.
+                    mLayoutManager.setContentOffsetX(sideUiSpecs.getWidth(AnchorSide.LEFT));
+                });
 
         repositionTabViewForSideUi(sideUiSpecs);
         onViewportChanged();
@@ -1854,8 +1856,19 @@ public class CompositorViewHolder extends FrameLayout
         return mBrowserControlsManager.getFullscreenManager();
     }
 
+    /** Add a callback to be run on the next didSwapBuffers. */
+    public void addDidSwapBuffersCallback(Runnable runnable) {
+        if (mHasDrawnOnce) {
+            runnable.run();
+            return;
+        }
+        mDidSwapBuffersCallbacks.add(runnable);
+        updateNeedsSwapBuffersCallback();
+    }
+
     /**
      * Sets a browser controls manager.
+     *
      * @param manager A browser controls manager.
      */
     public void setBrowserControlsManager(BrowserControlsManager manager) {
@@ -2256,11 +2269,7 @@ public class CompositorViewHolder extends FrameLayout
 
     @Override
     public void updateObscured(boolean obscureTabContent, boolean obscureToolbar) {
-        if (ChromeFeatureList.sCompositorViewHolderObscuring.isEnabled()) {
-            updateFocusability(!obscureTabContent, /* blockDescendants= */ true);
-        } else {
-            updateFocusability(!obscureTabContent, /* blockDescendants= */ false);
-        }
+        updateFocusability(!obscureTabContent, /* blockDescendants= */ true);
     }
 
     // KeyListener and VirtualView management.

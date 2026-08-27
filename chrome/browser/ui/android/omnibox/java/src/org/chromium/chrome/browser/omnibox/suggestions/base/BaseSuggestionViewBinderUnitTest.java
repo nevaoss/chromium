@@ -33,6 +33,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
@@ -67,6 +68,7 @@ public class BaseSuggestionViewBinderUnitTest {
     @Rule public final MockitoRule mMockitoRule = MockitoJUnit.rule();
     @Mock private Runnable mRunnable;
     @Mock private View mView;
+    @Captor private ArgumentCaptor<Drawable> mBackgroundCaptor;
     private Context mBareContext;
     private Context mContext;
     private Resources mResources;
@@ -91,13 +93,11 @@ public class BaseSuggestionViewBinderUnitTest {
         mModel.set(SuggestionCommonProperties.RESOURCE_PROVIDER, mResourceProvider);
         mBinder =
                 new TestBaseSuggestionViewBinder<>(
-                        mResourceProvider,
                         (m, v, p) -> {
                             assertEquals(mBaseView.contentView, v);
                         });
 
         PropertyModelChangeProcessor.create(mModel, mBaseView, mBinder);
-        BaseSuggestionViewBinder.initializeDimensions(mContext, mResourceProvider);
 
         ResettersForTesting.register(() -> BaseSuggestionViewBinder.sFocusableDrawableState = null);
     }
@@ -383,12 +383,10 @@ public class BaseSuggestionViewBinderUnitTest {
         BaseSuggestionViewBinder.sFocusableDrawableState =
                 new ColorDrawable(Color.MAGENTA).getConstantState();
 
-        var bgCaptor = ArgumentCaptor.forClass(Drawable.class);
-
         BaseSuggestionViewBinder.applySelectableBackground(mModel, mView, mResourceProvider);
-        verify(mView).setBackground(bgCaptor.capture());
+        verify(mView).setBackground(mBackgroundCaptor.capture());
 
-        var color = ((ColorDrawable) bgCaptor.getValue()).getColor();
+        var color = ((ColorDrawable) mBackgroundCaptor.getValue()).getColor();
 
         assertEquals(Color.MAGENTA, color);
     }
@@ -432,10 +430,11 @@ public class BaseSuggestionViewBinderUnitTest {
         var viewWithNoContext = spy(new BaseSuggestionView<>(new ImageView(mBareContext)));
         OmniboxResourceProvider bareResourceProvider =
                 new OmniboxResourceProvider(mBareContext, BrandedColorScheme.APP_DEFAULT);
+        newModel.set(SuggestionCommonProperties.RESOURCE_PROVIDER, bareResourceProvider);
         PropertyModelChangeProcessor.create(
                 newModel,
                 viewWithNoContext,
-                new TestBaseSuggestionViewBinder<>(bareResourceProvider, (m, v, p) -> {}));
+                new TestBaseSuggestionViewBinder<>((m, v, p) -> {}));
 
         // Apply the same color scheme to the new model.
         // Observe that we don't crash.
@@ -483,8 +482,6 @@ public class BaseSuggestionViewBinderUnitTest {
     }
 
     private void runDecorationIconPaddingTest() {
-        BaseSuggestionViewBinder.initializeDimensions(mContext, mResourceProvider);
-
         int smallRoundingRadius =
                 mResources.getDimensionPixelSize(R.dimen.omnibox_small_icon_rounding_radius);
         int largeRoundingRadius =
@@ -536,7 +533,6 @@ public class BaseSuggestionViewBinderUnitTest {
     public void decorIcon_desktopDevice() {
         OmniboxCapabilities.setIsDesktopPlatformForTesting(true);
         BaseSuggestionViewBinder.resetCachedResources();
-        BaseSuggestionViewBinder.initializeDimensions(mContext, mResourceProvider);
 
         int smallDesktopEdge =
                 mResources.getDimensionPixelSize(
@@ -578,7 +574,6 @@ public class BaseSuggestionViewBinderUnitTest {
         private final ViewBinder<PropertyModel, T, PropertyKey> mContentBinder;
 
         public TestBaseSuggestionViewBinder(
-                OmniboxResourceProvider resourceProvider,
                 ViewBinder<PropertyModel, T, PropertyKey> contentBinder) {
             super();
             mContentBinder = contentBinder;

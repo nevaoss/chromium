@@ -37,7 +37,6 @@ include_rules = [
   "+chrome/browser/tab_contents",
   "+chrome/browser/ui/ash",
   "+chrome/browser/ui/browser.h",
-  "+chrome/browser/ui/browser_window.h",
   "+chrome/browser/ui/chrome_pages.h",
   "+chrome/browser/ui/select_file_policy/chrome_select_file_policy.h",
   "+chrome/browser/ui/simple_message_box.h",
@@ -64,6 +63,7 @@ include_rules = [
   "+chromeos/ash/services/keymint/public",
   "+services/tracing/public",
   "+third_party/boringssl/src/pki",
+  "+ui/message_center/message_center.h",
 
   # Unsafe to use from //chrome. See //chrome/browser/DEPS.
   "-components/user_prefs/test/test_browser_context_with_prefs.h",

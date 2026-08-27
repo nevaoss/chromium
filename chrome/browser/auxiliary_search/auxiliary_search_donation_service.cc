@@ -131,10 +131,14 @@ AuxiliarySearchDonationService::AuxiliarySearchDonationService(
               // Listener is destroyed at destructor, and
               // object will be alive for any callback.
               base::Unretained(this)))) {
+  is_browsing_data_donation_enabled_.Init(
+      prefs::kAuxiliarySearchBrowsingDataDonationEnabled, &pref_service_.get(),
+      base::BindRepeating(
+          &AuxiliarySearchDonationService::OnBrowsingDataDonationPrefChanged,
+          weak_factory_.GetWeakPtr()));
   if (!testing_delegate) {
     testing_delegate = std::make_unique<AuxiliarySearchDonationServiceBridge>(
-        pref_service_->GetBoolean(
-            prefs::kAuxiliarySearchBrowsingDataDonationEnabled));
+        is_browsing_data_donation_enabled_.GetValue());
   }
   delegate_ = std::move(testing_delegate);
   page_content_annotations_service_->AddObserver(
@@ -157,10 +161,12 @@ void AuxiliarySearchDonationService::RegisterProfilePrefs(
 void AuxiliarySearchDonationService::OnPageContentAnnotated(
     const page_content_annotations::HistoryVisit& visit,
     const page_content_annotations::PageContentAnnotationsResult& result) {
-  // Ignore annotations from remote visits (navigation ID is 0).
+  // Ignore annotations from remote visits (navigation ID is 0) or if browsing
+  // data donation is disabled.
   if (result.GetType() !=
           page_content_annotations::AnnotationType::kContentVisibility ||
-      visit.navigation_id == 0) {
+      visit.navigation_id == 0 ||
+      !is_browsing_data_donation_enabled_.GetValue()) {
     return;
   }
 
@@ -271,5 +277,13 @@ void AuxiliarySearchDonationService::OnApplicationStateChanged(
   if (state == base::android::APPLICATION_STATE_HAS_PAUSED_ACTIVITIES &&
       donation_timer_.IsRunning()) {
     donation_timer_.FireNow();
+  }
+}
+
+void AuxiliarySearchDonationService::OnBrowsingDataDonationPrefChanged() {
+  delegate_->SetBrowsingDataDonationEnabled(
+      is_browsing_data_donation_enabled_.GetValue());
+  if (!is_browsing_data_donation_enabled_.GetValue()) {
+    donation_timer_.Stop();
   }
 }

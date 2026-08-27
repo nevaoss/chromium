@@ -428,7 +428,16 @@ void ContextualTasksSidePanelCoordinator::Close() {
 }
 
 void ContextualTasksSidePanelCoordinator::OpenInZeroState() {
-  DisassociateAllTabsFromCurrentTask();
+  // Disassociate only the active tab from its current task so that Show()
+  // creates a fresh zero-state task for this tab, without affecting any
+  // background tabs that may still be associated with the previous task.
+  TabListInterface* tab_list = TabListInterface::From(browser_window_);
+  if (tab_list) {
+    tabs::TabInterface* active_tab_interface = tab_list->GetActiveTab();
+    if (active_tab_interface && active_tab_interface->GetContents()) {
+      DisassociateTabFromTask(active_tab_interface->GetContents());
+    }
+  }
 
   if (content::WebContents* active_contents = GetActiveWebContents()) {
     MaybeDetachWebContents(active_contents);
@@ -1095,8 +1104,7 @@ void ContextualTasksSidePanelCoordinator::DisassociateAllTabsFromCurrentTask() {
   std::optional<ContextualTask> current_task = GetCurrentTask();
   if (current_task) {
     if (contextual_tasks::kShowEntryPoint.Get() ==
-            contextual_tasks::EntryPointOption::kToolbarEphemeralBranded &&
-        current_task->GetThread().has_value()) {
+        contextual_tasks::EntryPointOption::kToolbarEphemeralBranded) {
       return;
     }
 
@@ -1366,9 +1374,11 @@ bool ContextualTasksSidePanelCoordinator::CanExpandToFullTab() const {
   return web_ui_interface ? web_ui_interface->CanExpandToFullTab() : false;
 }
 
-void ContextualTasksSidePanelCoordinator::ShowPageInfoBubble() {
+void ContextualTasksSidePanelCoordinator::ShowPageInfoBubble(
+    bool is_pointer_interaction) {
 #if !BUILDFLAG(IS_ANDROID)
-  if (page_info_bubble_suppressor_.ShouldSuppress()) {
+  if (page_info_bubble_suppressor_.ShouldSuppressBubbleShow(
+          is_pointer_interaction)) {
     return;
   }
 
@@ -1424,6 +1434,12 @@ void ContextualTasksSidePanelCoordinator::ShowPageInfoBubble() {
 #else
   // TODO(crbug.com/536100150): Add support to trigger this menu on Android
   // Desktop
+#endif
+}
+
+void ContextualTasksSidePanelCoordinator::OnLogoPointerDown() {
+#if !BUILDFLAG(IS_ANDROID)
+  page_info_bubble_suppressor_.OnMousePressed();
 #endif
 }
 

@@ -94,7 +94,6 @@ import org.chromium.components.metrics.OmniboxEventProtosIntDef.PageClassificati
 import org.chromium.components.omnibox.AutocompleteInput;
 import org.chromium.components.omnibox.AutocompleteInput.AutocompleteState;
 import org.chromium.components.omnibox.AutocompleteMatch;
-import org.chromium.components.omnibox.OmniboxFeatures;
 import org.chromium.components.omnibox.OmniboxFocusReason;
 import org.chromium.components.omnibox.TextSelection;
 import org.chromium.components.search_engines.TemplateUrlService;
@@ -1032,11 +1031,6 @@ public class LocationBarCoordinator
         return mUrlCoordinator;
     }
 
-    /** Returns the {@link FuseboxCoordinator} for the LocationBar. */
-    public FuseboxCoordinator getFuseboxCoordinator() {
-        return mFuseboxCoordinator;
-    }
-
     /**
      * @param focusable Whether the url bar should be focusable.
      */
@@ -1049,20 +1043,6 @@ public class LocationBarCoordinator
             mFuseboxCoordinator.onFuseboxTextWrappingChanged(isWrapping);
         }
         mLocationBarMediator.updateButtonVisibility();
-    }
-
-    /**
-     * Decide if the UrlBar should permit text wrapping.
-     *
-     * <p>This method instructs the UrlBar to permit text wrapping feature on or off. Not all input
-     * is wrapped. The state computed here only decides whether wrapping should be permitted, not
-     * whether it will be applied.
-     */
-    private void updateUrlBarForMultilineInput() {
-        boolean allowMultilineInput = OmniboxFeatures.sMultilineEditField.isEnabled();
-        // Disable multiline input on Tablets if Fusebox state is "off".
-        allowMultilineInput &= !(isTabletLayout() && mCurrentFuseboxState == FuseboxState.DISABLED);
-        mUrlCoordinator.setAllowMultilineInput(allowMultilineInput);
     }
 
     /* package */ void onFuseboxStateChange(@FuseboxState int newState) {
@@ -1079,7 +1059,6 @@ public class LocationBarCoordinator
                 getFuseboxLayoutModeSupplier().get() == FuseboxLayoutMode.SUGGESTIONS_POPOVER;
 
         mCurrentFuseboxState = newState;
-        updateUrlBarForMultilineInput();
 
         if (transitioningFromOrToDisabledState || isPopover) return;
 

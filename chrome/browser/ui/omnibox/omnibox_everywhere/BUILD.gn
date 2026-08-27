@@ -10,7 +10,10 @@ source_set("prefs") {
   sources = [ "omnibox_everywhere_prefs.cc" ]
   public = [ "omnibox_everywhere_prefs.h" ]
   public_deps = [ "//base" ]
-  deps = [ "//components/prefs" ]
+  deps = [
+    "//components/prefs",
+    "//ui/base",
+  ]
 }
 
 # Omnibox Everywhere public interface headers.
@@ -54,6 +57,7 @@ source_set("impl") {
     "//chrome/browser/ui/webui/omnibox_popup",
     "//components/omnibox/common:features",
     "//components/prefs",
+    "//components/vector_icons",
     "//ui/base",
     "//ui/base/accelerators/global_accelerator_listener",
     "//ui/gfx",
@@ -66,6 +70,11 @@ source_set("impl") {
     sources += [
       "omnibox_everywhere_event_handler_aura.cc",
       "omnibox_everywhere_event_handler_aura.h",
+    ]
+    deps += [
+      "//ui/aura",
+      "//ui/events",
+      "//ui/wm",
     ]
   }
 }

@@ -31,6 +31,7 @@ import org.chromium.base.supplier.NullableObservableSupplier;
 import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.OneshotSupplier;
 import org.chromium.base.supplier.SettableNonNullObservableSupplier;
+import org.chromium.base.supplier.SupplierUtils;
 import org.chromium.blink.mojom.DisplayMode;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
@@ -194,6 +195,11 @@ public class WebAppHeaderLayoutCoordinator extends EmptyTabObserver
 
         mTabSupplier = tabSupplier;
         mThemeColorProvider = themeColorProvider;
+        mThemeColorProvider.addTintObserver(this);
+        onTintChanged(
+                mThemeColorProvider.getTint(),
+                mThemeColorProvider.getActivityFocusTint(),
+                mThemeColorProvider.getBrandedColorScheme());
         mIncognitoStateProvider = new IncognitoStateProvider();
 
         mOnUnoccludedWidthCallback = this::onUnoccludedWidthChanged;
@@ -411,7 +417,7 @@ public class WebAppHeaderLayoutCoordinator extends EmptyTabObserver
                             /* clearOmniboxFocus= */ CallbackUtils.emptyRunnable(),
                             mRequestRenderRunnable,
                             /* canShowAppUpdateBadge= */ false,
-                            /* isInOverviewModeSupplier= */ () -> false,
+                            /* isInOverviewModeSupplier= */ SupplierUtils.alwaysFalse(),
                             mThemeColorProvider,
                             mIncognitoStateProvider,
                             (Supplier<@Nullable MenuButtonState>) mMenuButtonStateSupplier,
@@ -635,6 +641,7 @@ public class WebAppHeaderLayoutCoordinator extends EmptyTabObserver
 
         mDesktopWindowStateManager.removeObserver(this);
         mBrowserControlsStateProvider.removeObserver(this);
+        mThemeColorProvider.removeTintObserver(this);
 
         if (mView != null) {
             mView.destroy();

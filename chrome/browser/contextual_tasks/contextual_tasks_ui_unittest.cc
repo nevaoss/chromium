@@ -9,6 +9,7 @@
 #include "base/uuid.h"
 #include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_cookie_synchronizer.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_eligibility_manager.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service_factory.h"
@@ -1275,6 +1276,9 @@ TEST_F(ContextualTasksUiTest, DidFinishNavigation_UpdatesThemeFromCsParam) {
 }
 
 TEST_F(ContextualTasksUiTest, CanExpandToFullTab_CobrowseEligible) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndEnableFeature(contextual_tasks::kContextualTasks);
+
   FakeContextualTasksEligibilityManager eligibility_manager;
   eligibility_manager.SetIsEligible(true);
   EXPECT_CALL(*service_for_nav_, GetEligibilityManager())
@@ -1289,6 +1293,9 @@ TEST_F(ContextualTasksUiTest, CanExpandToFullTab_CobrowseEligible) {
 }
 
 TEST_F(ContextualTasksUiTest, CanExpandToFullTab_NotCobrowseEligible) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndEnableFeature(contextual_tasks::kContextualTasks);
+
   FakeContextualTasksEligibilityManager eligibility_manager;
   eligibility_manager.SetIsEligible(false);
   EXPECT_CALL(*service_for_nav_, GetEligibilityManager())
@@ -1303,6 +1310,9 @@ TEST_F(ContextualTasksUiTest, CanExpandToFullTab_NotCobrowseEligible) {
 }
 
 TEST_F(ContextualTasksUiTest, CanExpandToFullTab_BecomesEligibleMidSession) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndEnableFeature(contextual_tasks::kContextualTasks);
+
   FakeContextualTasksEligibilityManager eligibility_manager;
   eligibility_manager.SetIsEligible(false);
   EXPECT_CALL(*service_for_nav_, GetEligibilityManager())
@@ -1321,6 +1331,23 @@ TEST_F(ContextualTasksUiTest, CanExpandToFullTab_BecomesEligibleMidSession) {
 
   // The cached eligibility value should remain false, keeping the button
   // hidden.
+  EXPECT_FALSE(controller.CanExpandToFullTab());
+}
+
+TEST_F(ContextualTasksUiTest, CanExpandToFullTab_FeatureDisabled) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndDisableFeature(contextual_tasks::kContextualTasks);
+
+  FakeContextualTasksEligibilityManager eligibility_manager;
+  eligibility_manager.SetIsEligible(true);
+  EXPECT_CALL(*service_for_nav_, GetEligibilityManager())
+      .WillRepeatedly(Return(&eligibility_manager));
+
+  content::TestWebUI web_ui;
+  web_ui.set_web_contents(embedded_web_contents_.get());
+  ContextualTasksUI controller(&web_ui);
+
+  controller.SetIsAiPage(true);
   EXPECT_FALSE(controller.CanExpandToFullTab());
 }
 
@@ -1659,6 +1686,101 @@ TEST_F(ContextualTasksUiTest, OnPageContextEligibilityChecked) {
   controller.OnPageContextEligibilityChecked(
       /*is_page_context_eligible=*/true);
   run_loop2.Run();
+}
+
+// Ensure that when kContextManagementInComposebox is enabled, a pending task
+// with an existing title (e.g. page title) is reused and not replaced by a new
+// task even if the navigation URL's query differs from the initial title.
+TEST_F(ContextualTasksUiTest,
+       PendingTaskWithTitleMismatch_ContextManagementEnabled_ReusesTask) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(omnibox::kContextManagementInComposebox);
+
+  MockTaskInfoDelegate delegate;
+  base::Uuid task_id = base::Uuid::ParseCaseInsensitive(kUuid);
+  const std::string initial_title = "Wikipedia Page Title";
+  const std::string new_query = "melbourne cricket ground";
+  const std::string thread_id = "5678";
+  const std::string turn_id = "1234";
+
+  // Simulate a pending task created for this session with an initial title.
+  SetupMockDelegate(&delegate, task_id, std::nullopt, initial_title);
+
+  auto observer = std::make_unique<ContextualTasksUI::FrameNavObserver>(
+      embedded_web_contents_.get(), service_for_nav_.get(),
+      contextual_tasks_service_.get(), &delegate);
+
+  GURL url(kAiPageUrl);
+  url = net::AppendQueryParameter(url, "q", new_query);
+  url = net::AppendQueryParameter(url, "mtid", thread_id);
+  url = net::AppendQueryParameter(url, "mstk", turn_id);
+
+  // A new task should NOT be created; the existing task should be reused.
+  EXPECT_CALL(*contextual_tasks_service_, CreateTaskFromUrl(_)).Times(0);
+  EXPECT_CALL(*service_for_nav_, OnTaskChanged(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(*contextual_tasks_service_,
+              UpdateThreadForTask(task_id, _, thread_id, Optional(turn_id),
+                                  Optional(new_query)))
+      .Times(1);
+
+  std::unique_ptr<content::MockNavigationHandle> nav_handle =
+      CreateMockNavigationHandle(url);
+
+  observer->DidFinishNavigation(nav_handle.get());
+
+  EXPECT_EQ(delegate.GetTaskId(), task_id);
+  EXPECT_EQ(delegate.GetThreadId(), thread_id);
+
+  observer.reset();
+}
+
+// Ensure that when kContextManagementInComposebox is disabled, a pending task
+// with a title mismatch creates a new task as before.
+TEST_F(ContextualTasksUiTest,
+       PendingTaskWithTitleMismatch_ContextManagementDisabled_CreatesNewTask) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndDisableFeature(omnibox::kContextManagementInComposebox);
+
+  MockTaskInfoDelegate delegate;
+  base::Uuid old_task_id = base::Uuid::ParseCaseInsensitive(kUuid);
+  base::Uuid new_task_id =
+      base::Uuid::ParseCaseInsensitive("11111111-1111-1111-1111-111111111111");
+  const std::string initial_title = "Wikipedia Page Title";
+  const std::string new_query = "melbourne cricket ground";
+  const std::string thread_id = "5678";
+
+  SetupMockDelegate(&delegate, old_task_id, std::nullopt, initial_title);
+
+  auto observer = std::make_unique<ContextualTasksUI::FrameNavObserver>(
+      embedded_web_contents_.get(), service_for_nav_.get(),
+      contextual_tasks_service_.get(), &delegate);
+
+  GURL url(kAiPageUrl);
+  url = net::AppendQueryParameter(url, "q", new_query);
+  url = net::AppendQueryParameter(url, "mtid", thread_id);
+
+  ContextualTask new_task(new_task_id);
+  ON_CALL(*contextual_tasks_service_, CreateTaskFromUrl(url))
+      .WillByDefault(Return(new_task));
+  ON_CALL(*contextual_tasks_service_, GetTaskFromServerId(_, thread_id))
+      .WillByDefault(Return(std::nullopt));
+
+  // Verify that a new task is created due to title mismatch when feature is
+  // off.
+  EXPECT_CALL(*contextual_tasks_service_, CreateTaskFromUrl(url)).Times(1);
+  EXPECT_CALL(delegate, PrepareForTaskChange()).Times(1);
+  EXPECT_CALL(*service_for_nav_,
+              OnTaskChanged(_, _, _, Optional(new_task_id), _))
+      .Times(1);
+
+  std::unique_ptr<content::MockNavigationHandle> nav_handle =
+      CreateMockNavigationHandle(url);
+
+  observer->DidFinishNavigation(nav_handle.get());
+
+  EXPECT_EQ(delegate.GetTaskId(), new_task_id);
+
+  observer.reset();
 }
 
 }  // namespace contextual_tasks

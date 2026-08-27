@@ -170,7 +170,7 @@ class WebUIToolbarWebView
     return &app_menu_control_;
   }
 
-  void SetBackButtonLeadingMargin(int margin);
+  void SetIsMaximizedOrFullscreen(bool maximized_or_fullscreen);
   void SetBackForwardEnabled(int command_id, bool enabled);
   void SetForwardVisible(bool visible);
 
@@ -604,8 +604,8 @@ class WebUIToolbarWebView
 
   base::CallbackListSubscription touch_ui_subscription_;
 
-  // Extra space to put before the back button, which is the first button.
-  int back_button_leading_margin_ = 0;
+  // True if the window is maximized or fullscreen.
+  bool window_is_maximized_or_fullscreen_ = false;
 
   // Tracks if synchronous sub-controls have been initialized once.
   bool sub_controls_initialized_ = false;
@@ -622,6 +622,11 @@ class WebUIToolbarWebView
   //
   // See GetFlexSpecification() for more information.
   bool location_bar_takes_priority_ = false;
+
+  // Pending focus request when focus is requested before WebUI page is
+  // initialized.
+  std::optional<toolbar_ui_api::mojom::FocusRequestTarget>
+      pending_focus_request_;
 
   base::WeakPtrFactory<DependencyProvider> weak_factory_{this};
 

@@ -28,9 +28,21 @@ NSString* const kAtMemorySearchCellAccessibilityIdentifier =
 NSString* const kAtMemoryFetchingCellAccessibilityIdentifier =
     @"AtMemoryFetchingCell";
 
+NSString* const kAtMemoryManageEnhancedAutofillItemAccessibilityIdentifier =
+    @"AtMemoryManageEnhancedAutofillItem";
+
+NSString* const kAtMemoryGranularFillCellAccessibilityIdentifierPrefix =
+    @"AtMemoryGranularFillCell_";
+
 NSString* const
     kAtMemoryGranularFillAttributeLabelAccessibilityIdentifierPrefix =
         @"AtMemoryGranularFillAttributeLabel_";
 
 NSString* const kAtMemoryGranularFillChipButtonAccessibilityIdentifierPrefix =
     @"AtMemoryGranularFillChipButton_";
+
+NSString* const kAtMemorySearchResultCellAccessibilityIdentifierPrefix =
+    @"AtMemorySearchResultCell_";
+
+NSString* const kAtMemorySearchResultInfoButtonAccessibilityIdentifierPrefix =
+    @"AtMemorySearchResultInfoButton_";

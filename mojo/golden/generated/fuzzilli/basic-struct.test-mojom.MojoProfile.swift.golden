@@ -10,7 +10,7 @@
 //     basic-struct.test-mojom
 //
 
-private static let mojoPrefix = "golden."
+private let mojoPrefix = "golden."
 
 ///
 /// Interfaces
@@ -45,7 +45,7 @@ extension ObjectGroup {
             ] => .undefined,
             "getStruct": [
                 .plain(.string),
-            ] => .jsPromise,
+            ] => .jsPromise(resolvingTo: .jsGoldenPrimary_GetStructResponse),
             "syncGetStruct": [
                 .plain(.string),
             ] => .jsGoldenPrimary_SyncGetStructResponse,
@@ -82,12 +82,14 @@ extension ILType {
             "value",
             "residence",
             "valid",
+            "data",
         ])
     fileprivate static let jsGoldenLargeStructConstructor: ILType = .constructor([
         .plain(.integer),
         .plain(.string),
         .plain(.jsGoldenSimpleStruct),
         .plain(.boolean),
+        .plain(.jsGoldenSimpleUnion),
     ] => .jsGoldenLargeStruct)
     fileprivate static let jsGoldenSimpleStruct: ILType = .object(
         ofGroup: "golden.SimpleStruct",
@@ -97,6 +99,11 @@ extension ILType {
     fileprivate static let jsGoldenSimpleStructConstructor: ILType = .constructor([
         .plain(.string),
     ] => .jsGoldenSimpleStruct)
+    fileprivate static let jsGoldenPrimary_GetStructResponse: ILType = .object(
+        ofGroup: "golden.Primary_GetStructResponse",
+        withProperties: [
+            "result",
+        ])
     fileprivate static let jsGoldenPrimary_SyncGetStructResponse: ILType = .object(
         ofGroup: "golden.Primary_SyncGetStructResponse",
         withProperties: [
@@ -113,6 +120,7 @@ extension ObjectGroup {
             "value": .string,
             "residence": .jsGoldenSimpleStruct,
             "valid": .boolean,
+            "data": .jsGoldenSimpleUnion,
         ],
         methods: [:]
     )
@@ -124,6 +132,14 @@ extension ObjectGroup {
         ],
         methods: [:]
     )
+    fileprivate static let goldenPrimaryGetStructResponse = ObjectGroup(
+        name: "golden.Primary_GetStructResponse",
+        instanceType: .jsGoldenPrimary_GetStructResponse,
+        properties: [
+            "result": .jsGoldenSimpleStruct,
+        ],
+        methods: [:]
+    )
     fileprivate static let goldenPrimarySyncGetStructResponse = ObjectGroup(
         name: "golden.Primary_SyncGetStructResponse",
         instanceType: .jsGoldenPrimary_SyncGetStructResponse,
@@ -131,6 +147,48 @@ extension ObjectGroup {
             "result": .jsGoldenSimpleStruct,
         ],
         methods: [:]
+    )
+}
+
+///
+/// Arrays
+///
+extension ILType {
+    fileprivate static let jsIntegerArray: ILType =
+        .createJsArrayType(ofElementType: .jsIntegerElement)
+}
+
+/// Generate an array with only one element. As Fuzzilli runs, the
+/// OperationMutator and VariadicInputReducer will modify the
+/// `CreateArray` operation to increase  or decrease the element count.
+private let MojoIntegerArrayGenerator = CodeGenerator(
+    "MojoIntegerArrayGenerator",
+    inputs: .required(.integer),
+    produces: [.jsIntegerArray]
+) { b, elem in
+    b.createArray(
+        with: [elem],
+        elementGroupName:
+            ObjectGroup.integerElement.name)
+}
+
+///
+/// Unions
+///
+extension ILType {
+    fileprivate static let jsGoldenSimpleUnion: ILType =
+        OptionsBag.goldenSimpleUnion.group.instanceType
+}
+
+extension OptionsBag {
+    fileprivate static let goldenSimpleUnion = OptionsBag(
+        name: "golden.SimpleUnion",
+        properties: [
+            "arr": .jsIntegerArray,
+            "val": .integer,
+            "flag": .boolean,
+        ],
+        selectionMode: .exactlyOne,
     )
 }
 
@@ -238,10 +296,13 @@ let mojoPrimaryProfile = Profile(
     additionalCodeGenerators: [
         (MojoMethodCallGenerator, 10000),
         (MojoPropertyRetrievalGenerator, 10000),
+        (MojoIntegerArrayGenerator, 1),
     ] + commonMojoCodeGenerators,
     additionalProgramTemplates: WeightedList([]),
     disabledCodeGenerators: mojoDisabledGenerators,
-    disabledMutators: v8Profile.disabledMutators,
+    disabledMutators: [
+        "ExplorationMutator", "ProbingMutator", "PropertyAccessorMutator"
+    ],
     additionalBuiltins: mojoBuiltins.merging(commonMojoBuiltins) { (existing, _) in existing },
     additionalObjectGroups: [
         .goldenPrimaryRemote,
@@ -249,6 +310,7 @@ let mojoPrimaryProfile = Profile(
         .goldenPrimaryPendingReceiver,
         .goldenLargeStruct,
         .goldenSimpleStruct,
+        .goldenPrimaryGetStructResponse,
         .goldenPrimarySyncGetStructResponse,
     ] + commonMojoObjectGroups,
     additionalEnumerations: [

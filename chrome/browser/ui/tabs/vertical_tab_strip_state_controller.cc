@@ -36,7 +36,6 @@
 #include "ui/actions/actions.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/ui_base_features.h"
-#include "ui/color/color_id.h"
 #include "ui/views/vector_icons.h"
 
 namespace tabs {
@@ -183,31 +182,15 @@ bool VerticalTabStripStateController::ShouldDisplayVerticalTabs() const {
 }
 
 void VerticalTabStripStateController::SetVerticalTabsEnabled(bool enabled) {
+  // If the user already has a pending mode switch, but tries to change tab
+  // strip mode again, ensure the toast is displayed.
+  if (enable_state_lock_count_ > 0 && enabled != is_vertical_tabs_enabled_ &&
+      pref_service_->GetBoolean(prefs::kVerticalTabsEnabled) == enabled) {
+    MaybeShowDelayedToast(enabled);
+    return;
+  }
   NotifyModeWillChange();
   pref_service_->SetBoolean(prefs::kVerticalTabsEnabled, enabled);
-}
-
-const gfx::VectorIcon& VerticalTabStripStateController::GetToggleVectorIcon()
-    const {
-  if (ShouldDisplayVerticalTabs()) {
-    return features::IsRoundedIconsEnabled() ? kToolbarIcon : kToolbarOldIcon;
-  }
-  return base::i18n::IsRTL()
-             ? (features::IsRoundedIconsEnabled() ? kDockToLeftIcon
-                                                  : kDockToRightOldIcon)
-             : (features::IsRoundedIconsEnabled() ? kDockToRightIcon
-                                                  : kDockToLeftOldIcon);
-}
-
-int VerticalTabStripStateController::GetToggleStringId() const {
-  return ShouldDisplayVerticalTabs() ? IDS_SWITCH_TO_HORIZONTAL_TAB
-                                     : IDS_SWITCH_TO_VERTICAL_TAB;
-}
-
-ui::ImageModel VerticalTabStripStateController::GetToggleIcon(
-    int icon_size) const {
-  return ui::ImageModel::FromVectorIcon(GetToggleVectorIcon(),
-                                        ui::kColorMenuIcon, icon_size);
 }
 
 bool VerticalTabStripStateController::IsCollapsed() const {
@@ -336,13 +319,7 @@ void VerticalTabStripStateController::OnModeChanged() {
   }
   if (enable_state_lock_count_ > 0) {
     if (new_enabled != is_vertical_tabs_enabled_) {
-      ToastController* const toast_controller =
-          ToastController::From(browser_window_);
-      if (toast_controller) {
-        toast_controller->MaybeShowToast(ToastParams(
-            new_enabled ? ToastId::kTabStripSwitchDelayedVertical
-                        : ToastId::kTabStripSwitchDelayedHorizontal));
-      }
+      MaybeShowDelayedToast(new_enabled);
     }
     return;
   }
@@ -473,6 +450,16 @@ void VerticalTabStripStateController::MaybeShowExpandOnHoverIPH() {
     BrowserUserEducationInterface::From(browser_window_)
         ->MaybeShowFeaturePromo(
             feature_engagement::kIPHVerticalTabsExpandOnHoverFeature);
+  }
+}
+
+void VerticalTabStripStateController::MaybeShowDelayedToast(bool new_enabled) {
+  ToastController* const toast_controller =
+      ToastController::From(browser_window_);
+  if (toast_controller) {
+    toast_controller->MaybeShowToast(
+        ToastParams(new_enabled ? ToastId::kTabStripSwitchDelayedVertical
+                                : ToastId::kTabStripSwitchDelayedHorizontal));
   }
 }
 

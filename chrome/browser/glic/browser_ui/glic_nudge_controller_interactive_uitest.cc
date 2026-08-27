@@ -12,7 +12,6 @@
 #include "chrome/browser/glic/test_support/interactive_glic_test.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/page_action/page_action_controller.h"
@@ -40,7 +39,7 @@ class GlicNudgeControllerInteractiveUiTest : public test::InteractiveGlicTest {
 
   void SetUpOnMainThread() override {
     InteractiveBrowserTest::SetUpOnMainThread();
-    GlicEnabling::SetBypassEnablementChecksForTesting(true);
+    scoped_glic_bypass_.emplace();
     browser()->GetProfile()->GetPrefs()->SetBoolean(
         prefs::kGlicPinnedToTabstrip, true);
 
@@ -48,7 +47,8 @@ class GlicNudgeControllerInteractiveUiTest : public test::InteractiveGlicTest {
   }
 
   void TearDownOnMainThread() override {
-    GlicEnabling::SetBypassEnablementChecksForTesting(false);
+    scoped_glic_bypass_.reset();
+    InteractiveBrowserTest::TearDownOnMainThread();
   }
 
   GlicNudgeController* nudge_controller() {
@@ -61,6 +61,8 @@ class GlicNudgeControllerInteractiveUiTest : public test::InteractiveGlicTest {
   }
 
  private:
+  std::optional<GlicEnabling::ScopedBypassEnablementChecksForTesting>
+      scoped_glic_bypass_;
   base::test::ScopedFeatureList feature_list_;
 };
 

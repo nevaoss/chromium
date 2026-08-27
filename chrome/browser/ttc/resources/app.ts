@@ -56,6 +56,7 @@ class Conversation {
   onTranscription(..._args: any[]): void {}
   onTurnComplete(): void {}
   interrupt(): void {}
+  recordOnDeviceSpeechTranscript(..._args: any[]): void {}
   start(): Promise<void> { return Promise.resolve(); }
   stop(): void {}
 }
@@ -653,7 +654,10 @@ export class AppElement extends CrLitElement {
     this.initializationState = InitializationState.CONNECTING;
 
     try {
-      const ttcBundleUrl = loadTimeData.getString('ttcBundleUrl') ||
+      const ttcBundleUrl =
+          (loadTimeData.valueExists('ttcBundleUrl') ?
+               loadTimeData.getString('ttcBundleUrl') :
+               '') ||
           DEFAULT_TTC_BUNDLE_URL;
       const bundle = await this.initializeResourceBundle(ttcBundleUrl);
 
@@ -775,6 +779,10 @@ export class AppElement extends CrLitElement {
     this.inputTranscription = text;
     this.isLocalTranscription = true;
     this.activeType = 'input';
+
+    if (this.conversation) {
+      this.conversation.recordOnDeviceSpeechTranscript(text);
+    }
 
     clearTimeout(this.transcriptionTimeout);
     this.transcriptionTimeout = window.setTimeout(() => {

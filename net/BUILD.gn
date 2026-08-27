@@ -983,6 +983,8 @@ component("net") {
     "socket/datagram_client_socket.h",
     "socket/datagram_server_socket.h",
     "socket/datagram_socket.h",
+    "socket/delayed_datagram_socket.cc",
+    "socket/delayed_datagram_socket.h",
     "socket/delayed_socket_config.h",
     "socket/delayed_stream_socket.cc",
     "socket/delayed_stream_socket.h",
@@ -1887,6 +1889,7 @@ component("net") {
       "disk_cache/sql/exclusive_operation_coordinator.cc",
       "disk_cache/sql/exclusive_operation_coordinator.h",
       "disk_cache/sql/indexed_pair_set.h",
+      "disk_cache/sql/shared_cache_client_remote.h",
       "disk_cache/sql/sql_async_task_manager.cc",
       "disk_cache/sql/sql_async_task_manager.h",
       "disk_cache/sql/sql_async_task_token.cc",
@@ -2630,6 +2633,8 @@ if (is_linux || is_chromeos || is_mac) {
 
 if (is_android) {
   generate_jni("net_jni_headers") {
+    # quic_server links this code.
+    use_weak_called_by_natives = true
     sources = [
       "android/java/src/org/chromium/net/AndroidCertVerifyResult.java",
       "android/java/src/org/chromium/net/AndroidKeyStore.java",
@@ -3119,6 +3124,7 @@ target(_test_target_type, "net_unittests") {
     "socket/connect_job_test_util.cc",
     "socket/connect_job_test_util.h",
     "socket/connect_job_unittest.cc",
+    "socket/delayed_datagram_socket_unittest.cc",
     "socket/delayed_stream_socket_unittest.cc",
     "socket/mock_client_socket_pool_manager.cc",
     "socket/mock_client_socket_pool_manager.h",
@@ -3301,6 +3307,7 @@ target(_test_target_type, "net_unittests") {
     "ParseProxyListFuzzer.TestOneInput",
     "QuicheHostnameUtilsFuzzTest.FuzzPropertyNormalizationIsIdempotentForValidSni",
     "QuicVersionsFuzzTest.ParseSerializeParseIdentityProperty",
+    "SchemefulSiteTest.FuzzSchemefulSite",
     "SocketPoolAdditionalCapacityTest.ValidateRandomizedInputs",
     "StructuredHeadersTest.ParseDictionaryParity",
     "StructuredHeadersTest.ParseItemParity",
@@ -3338,6 +3345,8 @@ target(_test_target_type, "net_unittests") {
     "//net/tools/huffman_trie:huffman_trie_generator_sources",
     "//testing/gmock",
     "//testing/gtest",
+    "//testing/libfuzzer/proto:url_proto",
+    "//testing/libfuzzer/proto:url_proto_converter",
     "//third_party/abseil-cpp:absl",
     "//third_party/abseil-cpp:test_support",
     "//third_party/anonymous_tokens:anonymous_tokens_tests",
@@ -3706,6 +3715,8 @@ target(_test_target_type, "net_unittests") {
       "disk_cache/sql/eviction_candidate_aggregator_unittest.cc",
       "disk_cache/sql/exclusive_operation_coordinator_unittest.cc",
       "disk_cache/sql/indexed_pair_set_unittest.cc",
+      "disk_cache/sql/mock_shared_cache_client_remote.cc",
+      "disk_cache/sql/mock_shared_cache_client_remote.h",
       "disk_cache/sql/sql_async_task_manager_unittest.cc",
       "disk_cache/sql/sql_backend_impl_unittest.cc",
       "disk_cache/sql/sql_persistent_store_in_memory_index_unittest.cc",
@@ -3996,21 +4007,6 @@ fuzzer_test("net_lookup_string_in_fixed_set_fuzzer") {
     "//net/base/registry_controlled_domains:lookup_strings_test_sets",
   ]
   dict = "data/fuzzer_dictionaries/net_get_domain_and_registry_fuzzer.dict"
-}
-
-fuzzer_test("net_base_schemeful_site_fuzzer") {
-  sources = [ "base/schemeful_site_fuzzer.cc" ]
-  deps = [
-    ":net_fuzzer_test_support",
-    "//base",
-    "//net",
-    "//testing/libfuzzer/proto:url_proto",
-    "//testing/libfuzzer/proto:url_proto_converter",
-    "//third_party/libprotobuf-mutator",
-  ]
-
-  # TODO(crbug.com/505034799): Migrate to FUZZ_TEST.
-  is_fuzztest_compatible = false
 }
 
 fuzzer_test("net_cert_ct_decode_signed_certificate_timestamp_fuzzer") {

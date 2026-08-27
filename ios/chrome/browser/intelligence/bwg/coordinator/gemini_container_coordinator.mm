@@ -5,7 +5,6 @@
 #import "ios/chrome/browser/intelligence/bwg/coordinator/gemini_container_coordinator.h"
 
 #import "ios/chrome/browser/assistant/coordinator/assistant_container_commands.h"
-#import "ios/chrome/browser/assistant/ui/assistant_container_delegate.h"
 #import "ios/chrome/browser/assistant/ui/assistant_container_detent.h"
 #import "ios/chrome/browser/assistant/ui/assistant_container_view_controller.h"
 #import "ios/chrome/browser/intelligence/bwg/coordinator/gemini_container_mediator.h"
@@ -20,8 +19,7 @@
 #import "ios/chrome/browser/shared/public/commands/settings_commands.h"
 #import "ios/public/provider/chrome/browser/bwg/gemini_api.h"
 
-@interface GeminiContainerCoordinator () <AssistantContainerDelegate,
-                                          GeminiContainerViewControllerDelegate>
+@interface GeminiContainerCoordinator () <GeminiContainerViewControllerDelegate>
 @end
 
 @implementation GeminiContainerCoordinator {
@@ -51,6 +49,9 @@
   _mediator = [[GeminiContainerMediator alloc]
       initWithBrowser:self.browser
          eventHandler:GeminiBrowserAgent::FromBrowser(self.browser)];
+  _containerHandler = HandlerForProtocol(self.browser->GetCommandDispatcher(),
+                                         AssistantContainerCommands);
+  _mediator.containerHandler = _containerHandler;
 
   [self setSessionCommandHandlers];
 
@@ -68,10 +69,10 @@
       initWithGeminiViewController:geminiViewController];
   _viewController.delegate = self;
 
-  _containerHandler = HandlerForProtocol(self.browser->GetCommandDispatcher(),
-                                         AssistantContainerCommands);
   [_containerHandler showAssistantContainerWithContent:_viewController
-                                              delegate:self];
+                                              delegate:_mediator];
+  // Set the consumer only after the bottom sheet is presenting.
+  _mediator.consumer = _viewController;
 }
 
 - (void)dismissWithCompletion:(void (^)(void))completion {
@@ -84,20 +85,6 @@
   _mediator = nil;
   _viewController = nil;
   _containerHandler = nil;
-}
-
-#pragma mark - AssistantContainerDelegate
-
-- (void)assistantContainerDidUpdateDetentHeights:
-    (AssistantContainerViewController*)container {
-  NSInteger collapsedHeight =
-      [container heightForDetent:AssistantContainerDetent::kMinimized];
-  NSInteger extendedHeight =
-      [container heightForDetent:AssistantContainerDetent::kMedium];
-
-  if (collapsedHeight > 0 && extendedHeight > 0) {
-    ios::provider::UpdateDetentHeights(collapsedHeight, extendedHeight);
-  }
 }
 
 #pragma mark - GeminiContainerViewControllerDelegate
@@ -118,8 +105,10 @@
   CommandDispatcher* dispatcher = self.browser->GetCommandDispatcher();
   _mediator.gatewayManager.sessionHandler.settingsHandler =
       HandlerForProtocol(dispatcher, SettingsCommands);
-  _mediator.gatewayManager.sessionHandler.geminiHandler =
+  id<GeminiCommands> geminiHandler =
       HandlerForProtocol(dispatcher, GeminiCommands);
+  _mediator.gatewayManager.sessionHandler.geminiHandler = geminiHandler;
+  _mediator.geminiHandler = geminiHandler;
 }
 
 @end

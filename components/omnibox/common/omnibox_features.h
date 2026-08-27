@@ -75,9 +75,16 @@ inline constexpr base::FeatureParam<int>
     kOmniboxWebUIDeferShowUntilVisualStateReadyTimeoutMs{
         &kOmniboxWebUIDeferShowUntilVisualStateReady,
         "omnibox_webui_defer_show_until_visual_state_ready_timeout_ms", 250};
+BASE_DECLARE_FEATURE(kOmniboxFullWebUIDeferShowUntilVisualStateReady);
+inline constexpr base::FeatureParam<int>
+    kOmniboxFullWebUIDeferShowUntilVisualStateReadyTimeoutMs{
+        &kOmniboxFullWebUIDeferShowUntilVisualStateReady,
+        "omnibox_full_webui_defer_show_until_visual_state_ready_timeout_ms",
+        250};
 BASE_DECLARE_FEATURE(kOmniboxWebUIPopupStabilizeStartupShow);
 BASE_DECLARE_FEATURE(kOmniboxAimDetachWebContentsOnHide);
 BASE_DECLARE_FEATURE(kOmniboxWebUIDetachWebContentsOnHide);
+BASE_DECLARE_FEATURE(kOmniboxFullWebUIDetachWebContentsOnHide);
 BASE_DECLARE_FEATURE(kOmniboxWebUIPopupMarkAsHidden);
 BASE_DECLARE_FEATURE(kWebUISearchboxWithoutModelController);
 
@@ -159,10 +166,6 @@ BASE_DECLARE_FEATURE(kEnableSiteSearchAllowUserOverridePolicy);
 
 // Preconnect/prerender behavior for suggestions
 BASE_DECLARE_FEATURE(kPreconnectNonSearchOmniboxSuggestions);
-
-// When enabled, unblocks omnibox height on small form factor devices, allowing
-// users to type in multiline / longer text.
-BASE_DECLARE_FEATURE(kMultilineEditField);
 
 // Whether the composebox should use the new `chrome-compose` client.
 BASE_DECLARE_FEATURE(kComposeboxUsesChromeComposeClient);
@@ -275,10 +278,15 @@ extern const base::FeatureParam<bool> kAskGCurrentTabChip;
 extern const base::FeatureParam<bool> kAskGLensIcon;
 // Whether to use alternate text for Lens chip.
 extern const base::FeatureParam<bool> kAskGLensSearchHintText;
+// Whether to show the description for the first contextual suggestion when
+// header is hidden.
+extern const base::FeatureParam<bool> kAskGShowFirstDescription;
 // Whether to show the lens chip in omnibox composebox.
 extern const base::FeatureParam<bool> kAskGComposeboxLensChip;
-// Whether to block initial zero state suggestions in omnibox composebox.
-extern const base::FeatureParam<bool> kAskGBlockZeroStateSuggestions;
+// Whether to block initial zero state suggestions in omnibox composebox
+// when we have auto added tabs so we can show the user contextual suggestions
+// from the auto added tabs instead.
+extern const base::FeatureParam<bool> kAskGBlockAutoTabZeroStateSuggestions;
 // Note: no new flags beyond this point.
 
 namespace flag_descriptions {

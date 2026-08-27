@@ -157,8 +157,7 @@ void OmniboxEverywhereController::UpdateHotkeyRegistration() {
   const bool is_enabled =
       hotkey_pref_member_.prefs() && hotkey_pref_member_.GetValue();
   if (is_enabled) {
-    listener_->RegisterAccelerator(
-        ui::Accelerator(ui::VKEY_SPACE, ui::EF_ALT_DOWN), this);
+    listener_->RegisterAccelerator(GetHotkey(), this);
   }
 }
 
@@ -236,6 +235,12 @@ void OmniboxEverywhereController::ShutdownForProfile(Profile* profile) {
 
 Profile* OmniboxEverywhereController::GetTargetProfile() const {
   return target_profile_;
+}
+
+void OmniboxEverywhereController::ExitBackgroundMode() {
+  if (background_mode_manager_) {
+    background_mode_manager_->ExitBackgroundMode();
+  }
 }
 
 void OmniboxEverywhereController::OnKeyPressed(

@@ -345,6 +345,11 @@ ChipController* WebUILocationBar::GetChipController() {
   return permission_dashboard_controller_->request_chip_controller();
 }
 
+PermissionDashboardController*
+WebUILocationBar::GetPermissionDashboardController() {
+  return permission_dashboard_controller_.get();
+}
+
 content::WebContents* WebUILocationBar::GetWebContents() {
   return delegate_->GetWebContents();
 }
@@ -552,6 +557,7 @@ void WebUILocationBar::UpdateLhsChipsState(bool icon_known) {
   auto lhs_chips_state = toolbar_ui_api::mojom::LhsChipsState::New(
       toolbar_ui_api::mojom::SecurityChipState::New(
           location_icon_, mojo_security_level, security_chip_text,
+          location_bar::GetSecurityChipTooltipText(is_editing_or_empty),
           toolbar_ui_api::mojom::SecurityChipAccessibilityState::New(
               accessibility_state.name, accessibility_state.description),
           is_clickable, is_text_dangerous, !ShouldChipOverrideLocationIcon()),
@@ -667,13 +673,16 @@ void WebUILocationBar::ShowPageInfoBubble() {
     return;
   }
 
-  ui::TrackedElement* location_bar_element = GetAnchorOrNull();
+  ui::TrackedElement* anchor_element =
+      BrowserElements::From(browser_)->GetElement(kLocationIconElementId);
+  if (!anchor_element) {
+    anchor_element = GetAnchorOrNull();
+  }
 
   std::unique_ptr<PageInfoBubbleSpecification> specification =
       PageInfoBubbleSpecification::Builder(
-          location_bar_element
-              ? views::BubbleAnchor(location_bar_element)
-              : views::BubbleAnchor(toolbar_delegate_->GetView()),
+          anchor_element ? views::BubbleAnchor(anchor_element)
+                         : views::BubbleAnchor(toolbar_delegate_->GetView()),
           toolbar_delegate_->GetView()->GetWidget()->GetNativeWindow(),
           contents, entry->GetVirtualURL())
           // TODO(crbug.com/495419742): We currently don't handle refocusing the

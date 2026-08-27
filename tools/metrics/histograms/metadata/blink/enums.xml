@@ -271,7 +271,7 @@ Called by update_document_policy_enum.py.-->
   <int value="8" label="ViewDestroyedDirectly"/>
 </enum>
 
-<!-- LINT.ThenChange(//chrome/browser/ui/autofill/email_verification_popup_controller.h:EvpPermissionUiStatus) -->
+<!-- LINT.ThenChange(//components/autofill/core/browser/foundations/autofill_client.h:EvpPermissionUiStatus) -->
 
 <!-- LINT.IfChange(EvpRequestStatus) -->
 
@@ -6717,6 +6717,7 @@ Called by update_use_counter_feature_enum.py.-->
   <int value="5984" label="CreateBytesModuleScript"/>
   <int value="5985" label="V8ModuleNamespaceMissingDefaultWithStarExport"/>
   <int value="5986" label="V8WasmGCAllocation"/>
+  <int value="5987" label="OffscreenCanvasTransferToWorker"/>
 </enum>
 
 <!-- LINT.ThenChange(//third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom:WebFeature) -->
@@ -6818,8 +6819,8 @@ Called by update_permissions_policy_enum.py.-->
   <int value="88" label="ClientHintUAReduced"/>
   <int value="89" label="ClientHintViewportHeight"/>
   <int value="90" label="KeyboardMap"/>
-  <int value="91" label="RunAdAuction"/>
-  <int value="92" label="JoinAdInterestGroup"/>
+  <int value="91" label="Deprecated: RunAdAuction"/>
+  <int value="92" label="Deprecated: JoinAdInterestGroup"/>
   <int value="93" label="ClientHintUAFullVersionList"/>
   <int value="94" label="ClientHintUAFull"/>
   <int value="95" label="ClientHintUAWoW64"/>
@@ -6864,7 +6865,7 @@ Called by update_permissions_policy_enum.py.-->
   <int value="134" label="LanguageDetector"/>
   <int value="135" label="DeviceAttributes"/>
   <int value="136" label="LocalNetworkAccess"/>
-  <int value="137" label="RecordAdAuctionEvents"/>
+  <int value="137" label="Deprecated: RecordAdAuctionEvents"/>
   <int value="138" label="OnDeviceSpeechRecognition"/>
   <int value="139" label="LanguageModel"/>
   <int value="140" label="AriaNotify"/>
@@ -8617,6 +8618,7 @@ Called by update_use_counter_css.py.-->
   <int value="962" label="window-drag"/>
   <int value="963" label="max-content-sizing"/>
   <int value="964" label="text-decoration-inset"/>
+  <int value="965" label="overscroll-container-type"/>
 </enum>
 
 <!-- LINT.ThenChange(//third_party/blink/public/mojom/use_counter/metrics/css_property_id.mojom:CSSSampleId) -->

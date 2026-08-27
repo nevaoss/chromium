@@ -639,7 +639,7 @@ input::-internal-input-suggested {
     textarea::-internal-input-suggested {
         font: -webkit-small-control !important;
     }
-    select:-internal-autofill-previewed,
+    select:not(:-internal-list-box):-internal-autofill-previewed,
     input::-internal-input-suggested,
     textarea::-internal-input-suggested {
         /* font: -webkit-small-control resolves to Arial on every platform. Ideally
@@ -665,7 +665,7 @@ input::-internal-input-suggested {
     }
     input::-internal-input-suggested,
     textarea::-internal-input-suggested,
-    select:-internal-autofill-previewed,
+    select:not(:-internal-list-box):-internal-autofill-previewed,
     input:-internal-autofill-previewed::-webkit-datetime-edit,
     input:-internal-autofill-previewed::-webkit-datetime-edit-ampm-field,
     input:-internal-autofill-previewed::-webkit-datetime-edit-day-field,
@@ -1041,9 +1041,10 @@ input[type="image" i] {
 }
 
 /* https://html.spec.whatwg.org/multipage/rendering.html#hidden-elements */
-/* TODO(crbug.com/1231263): <area> should be display:none. */
-area {
-  display: inline;
+@supports blink-feature(HTMLAreaElementDisplayNone) {
+  area {
+    display: none;
+  }
 }
 base, basefont, datalist, head, link, meta, noembed,
 noframes, param, rp, script, style, template, title {
@@ -1398,7 +1399,7 @@ input:-internal-autofill-previewed,
 input:-internal-autofill-selected,
 textarea:-internal-autofill-previewed,
 textarea:-internal-autofill-selected,
-select:-internal-autofill-previewed,
+select:not(:-internal-list-box):-internal-autofill-previewed,
 select:-internal-autofill-selected {
   appearance: menulist-button;
   background-image:none !important;
@@ -2597,11 +2598,9 @@ select optgroup optgroup {
 }
 
 [overscrollcontainer] {
-  -internal-overscroll-area: auto;
+  -internal-overscroll-container: auto;
 }
-[overscrollcontainer="overlay"] {
-  -internal-overscroll-area: overlay;
-}
+
 [overscrollcontainer] > [overscrollarea] {
   -internal-overscroll-position: auto;
 }

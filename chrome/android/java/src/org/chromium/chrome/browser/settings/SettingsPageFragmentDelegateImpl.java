@@ -18,6 +18,7 @@ import android.view.ContextThemeWrapper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewGroup.LayoutParams;
 import android.widget.LinearLayout;
 
 import androidx.appcompat.widget.Toolbar;
@@ -211,15 +212,6 @@ public class SettingsPageFragmentDelegateImpl
         mToolbar.setOnMenuItemClickListener(
                 item -> SettingsMenuHelper.onOptionsItemSelected(item, mActivity, this));
 
-        mSettingsHostFragment =
-                (SettingsHostFragment) fragmentManager.findFragmentByTag(mFragmentTag);
-        if (mSettingsHostFragment == null) {
-            mSettingsHostFragment = new SettingsHostFragment();
-            fragmentManager
-                    .beginTransaction()
-                    .add(fragmentContainer.getId(), mSettingsHostFragment, mFragmentTag)
-                    .commitAllowingStateLoss();
-        }
         var dependencyProvider =
                 new FragmentDependencyProvider(
                         mActivity,
@@ -230,7 +222,38 @@ public class SettingsPageFragmentDelegateImpl
                         bottomSheetSupplier,
                         mModalDialogSupplier,
                         () -> mSearchCoordinator);
-        mSettingsHostFragment.setDependencyProvider(dependencyProvider);
+
+        mSettingsHostFragment =
+                (SettingsHostFragment) fragmentManager.findFragmentByTag(mFragmentTag);
+        if (mSettingsHostFragment == null) {
+            mSettingsHostFragment = new SettingsHostFragment();
+            // Set the dependency provider before executing the transaction so child fragments
+            // created during attachment (e.g. MainSettings) have their dependencies attached
+            // before creating their preferences.
+            mSettingsHostFragment.setDependencyProvider(dependencyProvider);
+            // Add the fragment without a container using two-parameter add() to prevent multiple
+            // settings tabs from colliding on the same container ID during activity recreation.
+            fragmentManager
+                    .beginTransaction()
+                    .add(mSettingsHostFragment, mFragmentTag)
+                    .commitAllowingStateLoss();
+            // Execute the transaction so mSettingsHostFragment creates its view and getView() is
+            // non-null below.
+            fragmentManager.executePendingTransactions();
+        } else {
+            mSettingsHostFragment.setDependencyProvider(dependencyProvider);
+        }
+
+        // If the host fragment view was attached to a different tab's container, attach it to this
+        // tab's container instead.
+        View hostView = mSettingsHostFragment.getView();
+        if (hostView != null && hostView.getParent() != fragmentContainer) {
+            UiUtils.removeViewFromParent(hostView);
+            LayoutParams layoutParams =
+                    new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT);
+            fragmentContainer.addView(hostView, layoutParams);
+        }
+
         if (mSettingsHostFragment.isAdded()) {
             mSettingsHostFragment
                     .getChildFragmentManager()
@@ -409,6 +432,10 @@ public class SettingsPageFragmentDelegateImpl
         return mSearchCoordinator;
     }
 
+    void setSearchCoordinatorForTesting(@Nullable SettingsSearchCoordinator searchCoordinator) {
+        mSearchCoordinator = searchCoordinator;
+    }
+
     @Override
     public HelpAndFeedbackLauncher getHelpAndFeedbackLauncher() {
         return HelpAndFeedbackLauncherFactory.getForProfile(mProfile);
@@ -530,10 +557,14 @@ public class SettingsPageFragmentDelegateImpl
             SettingsMenuHelper.updateNavigationIcon(
                     mToolbar,
                     mActivity,
-                    /* show= */ true,
+                    /* show= */ shouldShowNavigationIcon(),
                     isTwoColumnSettingsVisible(),
                     isMainSettingsVisible());
         }
+    }
+
+    private boolean shouldShowNavigationIcon() {
+        return mSearchCoordinator == null || mSearchCoordinator.shouldShowNavigationIcon();
     }
 
     private boolean isMainSettingsVisible() {
@@ -606,7 +637,12 @@ public class SettingsPageFragmentDelegateImpl
         @Override
         public void onFragmentViewCreated(
                 FragmentManager fm, Fragment f, View v, @Nullable Bundle savedFragmentState) {
-            if (f instanceof MultiColumnSettings multiColumnSettings) {
+            if (!(f instanceof MultiColumnSettings multiColumnSettings)) return;
+
+            // Ensure the MultiColumnSettings instance belongs to this tab's SettingsHostFragment
+            // so we don't bind to fragments created for other settings tabs.
+            if (mSettingsHostFragment == null
+                    || mSettingsHostFragment.containsChild(multiColumnSettings)) {
                 Bundle savedInstanceState = getSavedInstanceState();
                 createMultiColumnTitleUpdater(multiColumnSettings, v, savedInstanceState);
                 createSearchCoordinator(multiColumnSettings, savedInstanceState);

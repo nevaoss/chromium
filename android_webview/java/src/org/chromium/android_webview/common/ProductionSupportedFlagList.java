@@ -261,10 +261,6 @@ public final class ProductionSupportedFlagList {
                 "Allows autofill to ignore suppressing predicitons on fields with"
                         + " autocomplete=unrecognized."),
         Flag.baseFeature(
-                AutofillFeatures.SHOW_SUGESSTIONS_ON_ALREADY_AUTOFILLED_UNRECOGNIZED,
-                "Allows autofill to offer filling again on fields that were autofilled and now hold"
-                        + " autocomplete=unrecognized value."),
-        Flag.baseFeature(
                 AutofillFeatures.AUTOFILL_FIX_IFRAME_OWNERSHIP,
                 "Make Autofill's iframe ownership consistent with form control ownership."),
         Flag.baseFeature(
@@ -841,9 +837,6 @@ public final class ProductionSupportedFlagList {
                 "Enable conformance to the new HTML specification for CSS zoom."),
         Flag.baseFeature("UseContextSnapshot"),
         Flag.baseFeature(
-                "SpareRendererUseWarmupConnection",
-                "Allow spare renderer to use warmed up child process connection"),
-        Flag.baseFeature(
                 CcFeatures.WAIT_FOR_LATE_SCROLL_EVENTS,
                 "While scrolling, attempts to wait for late arriving input events before"
                         + " rendering."),
@@ -1117,12 +1110,6 @@ public final class ProductionSupportedFlagList {
                 "When enabled, accessing multi-profile APIs skips automatic initialization of the"
                         + " Default profile during startup."),
         Flag.baseFeature(
-                AwFeatures.WEBVIEW_BYPASS_PROVISIONAL_COOKIE_MANAGER,
-                "When enabled, the temporary cookie manager used before WebView startup is"
-                        + " bypassed. If WebView isn't already started up, calling"
-                        + " `CookieManager.getInstance()` will trigger WebView startup on the main"
-                        + " looper and wait for startup to complete."),
-        Flag.baseFeature(
                 AwFeatures.WEBVIEW_FASTER_GET_DEFAULT_USER_AGENT,
                 "When enabled, the default user agent string is fetched more quickly without"
                         + " waiting for chromium startup to complete."),
@@ -1204,9 +1191,6 @@ public final class ProductionSupportedFlagList {
                 ContentFeatures.ANDROID_BLOCK_MISSPELLING_SUGGESTION_SPAN_IN_COMPOSITION_MODE,
                 "When enabled, misspelling suggestion span will be blocked from showing in"
                         + " composition mode."),
-        Flag.baseFeature(
-                BaseFeatures.PARTITION_ALLOC_FREE_WITH_SIZE,
-                "Enables PartitionAlloc with the optimization of sized deallocation"),
         Flag.baseFeature(
                 ContentFeatures.ACCESSIBILITY_ATOMIC_LIVE_REGIONS,
                 "When enabled, supports atomic announcements, meaning that when aria-atomic=true,"
@@ -1448,6 +1432,10 @@ public final class ProductionSupportedFlagList {
                 "StructuredHeadersInRust",
                 "Enables the Rust-based structured headers parser instead of C++."),
         Flag.baseFeature(
+                AwFeatures.WEBVIEW_INIT_IN_CONSTRUCTOR,
+                "When enabled, WebView initialization runs during the WebViewChromium constructor"
+                        + " instead of waiting for init() to be called."),
+        Flag.baseFeature(
                 NetFeatures.INITIAL_DELAY_FOR_BROKEN_ALTERNATIVE_SERVICE,
                 "Controls initial delay for broken alternative services."),
         Flag.baseFeature(
@@ -1468,6 +1456,10 @@ public final class ProductionSupportedFlagList {
                 AwFeatures.WEBVIEW_NAVIGATE_DRAIN_PREFETCH,
                 "Enables draining the prefetch queue before loading the URL in the WebView"
                         + " navigate method"),
+        Flag.baseFeature(
+                AwFeatures.WEBVIEW_SINGLE_SHARED_CONTEXT_STATE,
+                "Allows Webview to allocate and share a single shared context for all the"
+                        + " webview instances."),
         // Add new commandline switches and features above. The final entry should have a
         // trailing comma for cleaner diffs.
     };

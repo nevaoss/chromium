@@ -527,7 +527,7 @@ BASE_FEATURE(kDoNotDisturbShortcut, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kDeskTemplateSync, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables or disables the new window occlusion calculator.
-BASE_FEATURE(kNewWindowOcclusionCalculator, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kNewWindowOcclusionCalculator, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kDesksTemplates, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -1602,10 +1602,6 @@ BASE_FEATURE(kReleaseNotesNotificationAlwaysEligible,
 BASE_FEATURE(kRenderArcNotificationsByChrome,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Reset audio I/O selection improvement pref, used for testing purpose.
-BASE_FEATURE(kResetAudioSelectionImprovementPref,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
 // If enabled, will reset all shortcut customizations on startup.
 BASE_FEATURE(kResetShortcutCustomizations, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -1803,10 +1799,6 @@ BASE_FEATURE(kTrafficCountersForWiFiTesting, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables trilinear filtering.
 BASE_FEATURE(kTrilinearFiltering, base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Enables the Device Trust connector client code on unmanaged devices
-BASE_FEATURE(kUnmanagedDeviceDeviceTrustConnectorEnabled,
-             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Use the Android staging SM-DS server when fetching pending eSIM profiles.
 BASE_FEATURE(kUseAndroidStagingSmds, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -3066,10 +3058,6 @@ bool IsRenderArcNotificationsByChromeEnabled() {
   return base::FeatureList::IsEnabled(kRenderArcNotificationsByChrome);
 }
 
-bool IsResetAudioSelectionImprovementPrefEnabled() {
-  return base::FeatureList::IsEnabled(kResetAudioSelectionImprovementPref);
-}
-
 bool IsResetShortcutCustomizationsEnabled() {
   return base::FeatureList::IsEnabled(kResetShortcutCustomizations);
 }
@@ -3207,11 +3195,6 @@ bool IsTrilinearFilteringEnabled() {
   static bool use_trilinear_filtering =
       base::FeatureList::IsEnabled(kTrilinearFiltering);
   return use_trilinear_filtering;
-}
-
-bool IsUnmanagedDeviceDeviceTrustConnectorFeatureEnabled() {
-  return base::FeatureList::IsEnabled(
-      kUnmanagedDeviceDeviceTrustConnectorEnabled);
 }
 
 bool ShouldUseAndroidStagingSmds() {

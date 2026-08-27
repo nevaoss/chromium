@@ -292,7 +292,6 @@
 <translation id="1202116106683864634">Сапраўды выдаліць гэты ключ доступу?</translation>
 <translation id="1202892408424955784">Адсочванне тавараў</translation>
 <translation id="1203247227716551969">Спраўдзіце ўліковы запіс</translation>
-<translation id="1203559206734265703">Адладка для Protected Audiences уключана.</translation>
 <translation id="120368089816228251">Музычная нота</translation>
 <translation id="1203942045716040624">Агульны рабочы працэс: <ph name="SCRIPT_URL" /></translation>
 <translation id="1206832039833782423">Код бяспекі знаходзіцца на адваротным баку вашай карткі</translation>
@@ -1870,6 +1869,7 @@
 <translation id="2458379781610688953">Абнавіць уліковы запіс, <ph name="EMAIL" /></translation>
 <translation id="2459703812219683497">Код актывацыі выяўлены</translation>
 <translation id="2459706890611560967">Узнавіць трансляцыю ўкладкі на прыладу "<ph name="DEVICE_NAME" />"</translation>
+<translation id="245979889539926662">Абагуліць здымак экрана</translation>
 <translation id="2460150227008936698">{COUNT,plural, =0{Тэрмін дзеяння заканчваецца сёння}=1{Тэрмін дзеяння заканчваецца заўтра}one{Тэрмін дзеяння закончыцца праз # дзень}few{Тэрмін дзеяння закончыцца праз # дні}many{Тэрмін дзеяння закончыцца праз # дзён}other{Тэрмін дзеяння закончыцца праз # дня}}</translation>
 <translation id="2460482211073772897">У іншых папках</translation>
 <translation id="2460826998961521840">Каб выкарыстоўваць ключы доступу, захаваныя ва Уліковым запісе Google</translation>
@@ -2829,6 +2829,7 @@
 <translation id="3175862692832442091">Лес</translation>
 <translation id="3176347586396987181">Каб націснуць і ўтрымліваць кнопку мышы, выкарыстайце "z"</translation>
 <translation id="3176984568033229317">Выкарыстоўвайце Google Пошук у Edge</translation>
+<translation id="3177338796769255211">Увайдзіце, каб атрымаць доступ да закладак і іншых даных на ўсіх сваіх прыладах</translation>
 <translation id="3177430966804511955">Кіраваць ізаляванымі вэб-праграмамі (бэта-версія)</translation>
 <translation id="31774765611822736">Новая ўкладка злева</translation>
 <translation id="3177909033752230686">Мова старонкі:</translation>
@@ -4082,7 +4083,6 @@
 <translation id="4110485659976215879">Аднавіць адпраўку заўваг</translation>
 <translation id="4112194537011183136"><ph name="DEVICE_NAME" /> (па-за сеткай)</translation>
 <translation id="4113743276555482284">Пароль файла</translation>
-<translation id="4114391251600134209">{COUNT,plural, =0{Няма захаваных пароляў}=1{1 пароль правераны}one{{COUNT} пароль правераны}few{{COUNT} паролі правераны}many{{COUNT} пароляў правераны}other{{COUNT} пароля правераны}}</translation>
 <translation id="4114524937989710624">Вы бачыце прапанаваныя вам файлы, выкарыстоўваючы якія, можна з лёгкасцю пераходзіць да сваіх апошніх дзеянняў на Google Дыску.
         <ph name="BREAK" />
         <ph name="BREAK" />
@@ -6986,7 +6986,6 @@
 <translation id="6425556984042222041">Хуткасць сінтэзу маўлення</translation>
 <translation id="642729974267661262">Не дазволена прайграваць гук</translation>
 <translation id="6427752304227226701">Паскардзіцца на небяспечны сайт…</translation>
-<translation id="6427938854876261655">{COUNT,plural, =0{Няма захаваных пароляў.}=1{Ідзе праверка {COUNT} пароля...}one{Ідзе праверка {COUNT} пароля...}few{Ідзе праверка {COUNT} пароляў...}many{Ідзе праверка {COUNT} пароляў...}other{Ідзе праверка {COUNT} пароля...}}</translation>
 <translation id="6429384232893414837">Памылка абнаўлення</translation>
 <translation id="6430202563517028640">Дадаць спасылку ў Спіс на прагляд</translation>
 <translation id="6430814529589430811">ASCII з шыфраваннем Base64, адзін сертыфікат</translation>

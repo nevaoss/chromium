@@ -292,7 +292,6 @@ Bet kuriuo metu patikrinkite slaptažodžius skiltyje „<ph name="GOOGLE_PASSWO
 <translation id="1202116106683864634">Ar tikrai norite ištrinti šį prieigos raktą?</translation>
 <translation id="1202892408424955784">Stebimi produktai</translation>
 <translation id="1203247227716551969">Patvirtinkite paskyrą</translation>
-<translation id="1203559206734265703">Saugomų auditorijų derinimas įgalintas.</translation>
 <translation id="120368089816228251">Muzikos nata</translation>
 <translation id="1203942045716040624">Bendrinamas elementas: <ph name="SCRIPT_URL" /></translation>
 <translation id="1206832039833782423">Jūsų saugos kodas yra užpakalinėje kortelės pusėje</translation>
@@ -1886,6 +1885,7 @@ Jei nenorite, dabar atsijunkite, kad šios paskyros pakeitimai būtų matomi ši
 <translation id="2458379781610688953">Atnaujinti paskyrą, <ph name="EMAIL" /></translation>
 <translation id="2459703812219683497">Aptiktas aktyvinimo kodas</translation>
 <translation id="2459706890611560967">Tęsti skirtuko perdavimą į „<ph name="DEVICE_NAME" />“</translation>
+<translation id="245979889539926662">Bendrinti ekrano kopiją</translation>
 <translation id="2460150227008936698">{COUNT,plural, =0{Galiojimo laikas baigsis šiandien}=1{Galiojimo laikas baigsis rytoj}one{Galiojimo laikas baigsis po # dienos}few{Galiojimo laikas baigsis po # dienų}many{Galiojimo laikas baigsis po # dienos}other{Galiojimo laikas baigsis po # dienų}}</translation>
 <translation id="2460482211073772897">Kituose aplankuose</translation>
 <translation id="2460826998961521840">Jei norite naudoti „Google“ paskyroje išsaugotus prieigos raktus</translation>
@@ -2845,6 +2845,7 @@ Jei nenorite, dabar atsijunkite, kad šios paskyros pakeitimai būtų matomi ši
 <translation id="3175862692832442091">Miškas</translation>
 <translation id="3176347586396987181">Naudokite „z“, kad paspaustumėte pelės mygtuką ir palaikytumėte</translation>
 <translation id="3176984568033229317">Naudokitės „Google“ paieška naršyklėje „Edge“</translation>
+<translation id="3177338796769255211">Prisijunkite, kad visuose įrenginiuose gautumėte žymes ir kt.</translation>
 <translation id="3177430966804511955">Tvarkyti izoliuotas žiniatinklio programas (beta versija)</translation>
 <translation id="31774765611822736">Naujas skirtukas kairėje</translation>
 <translation id="3177909033752230686">Puslapio kalba:</translation>
@@ -4098,7 +4099,6 @@ Ar norite paleisti „<ph name="CONTROL_PANEL_APPLET_NAME" />“?</translation>
 <translation id="4110485659976215879">Atkurti perspėjimą</translation>
 <translation id="4112194537011183136">„<ph name="DEVICE_NAME" />“ (neprisijungta)</translation>
 <translation id="4113743276555482284">Failo slaptažodis</translation>
-<translation id="4114391251600134209">{COUNT,plural, =0{Nėra išsaugotų slaptažodžių}=1{Patikrintas 1 slaptažodis}one{Patikrintas {COUNT} slaptažodis}few{Patikrinti {COUNT} slaptažodžiai}many{Patikrinta {COUNT} slaptažodžio}other{Patikrinta {COUNT} slaptažodžių}}</translation>
 <translation id="4114524937989710624">Rodomi siūlomi failai, skirti padėti jums lengvai grįžti prie pastarosios veiklos „Google“ diske.
         <ph name="BREAK" />
         <ph name="BREAK" />
@@ -7004,7 +7004,6 @@ Jei norite nutolinti, naudokite „Ctrl“ + „Alt“ + šviesumo mažinimo kla
 <translation id="6425556984042222041">Teksto į kalbą sparta</translation>
 <translation id="642729974267661262">Neleidžiama leisti garso</translation>
 <translation id="6427752304227226701">Pranešti apie &amp;nesaugią svetainę...</translation>
-<translation id="6427938854876261655">{COUNT,plural, =0{Nėra išsaugotų slaptažodžių.}=1{Tikrinamas {COUNT} slaptažodis...}one{Tikrinamas {COUNT} slaptažodis…}few{Tikrinami {COUNT} slaptažodžiai…}many{Tikrinama {COUNT} slaptažodžio…}other{Tikrinama {COUNT} slaptažodžių…}}</translation>
 <translation id="6429384232893414837">Atnaujinimo klaida</translation>
 <translation id="6430202563517028640">Pridėti nuorodą prie skaitymo sąrašo</translation>
 <translation id="6430814529589430811">„Base64“ užkoduotas ASCII, vienas sertifikatas</translation>

@@ -192,7 +192,7 @@ BASE_FEATURE(kHideAimEntrypointOnUserInput,
 BASE_FEATURE(kHideAimEntrypointForUrlSuggestions, DISABLED);
 
 // When enabled, the multimodal input button is shown in the Omnibox.
-BASE_FEATURE(kOmniboxMultimodalInput, DISABLED);
+BASE_FEATURE(kOmniboxMultimodalInput, ENABLED);
 
 // An additional gate to the behavior of OmniboxMultimodalInput on desktop.
 BASE_FEATURE(kAndroidDesktopAimGate, ENABLED);
@@ -214,6 +214,10 @@ BASE_FEATURE(kOmniboxAimDeferShowUntilVisualStateReady, ENABLED);
 // painted a clean frame, avoiding the issue of the popup being shown with a
 // stale frame.
 BASE_FEATURE(kOmniboxWebUIDeferShowUntilVisualStateReady, DISABLED);
+// When enabled, the Omnibox Full WebUI popup will defer showing until the
+// WebUI has painted a clean frame, avoiding the issue of the popup being shown
+// with a stale frame.
+BASE_FEATURE(kOmniboxFullWebUIDeferShowUntilVisualStateReady, ENABLED);
 // If enabled, stabilizes the popup showing behavior on startup by forcing
 // layout with a 1px height and hiding it initially to avoid visual artifacts.
 BASE_FEATURE(kOmniboxWebUIPopupStabilizeStartupShow, ENABLED);
@@ -222,6 +226,9 @@ BASE_FEATURE(kOmniboxAimDetachWebContentsOnHide, ENABLED);
 // When enabled, the Omnibox WebUI popup will detach its web contents when
 // hidden.
 BASE_FEATURE(kOmniboxWebUIDetachWebContentsOnHide, ENABLED);
+// When enabled, the Omnibox Full WebUI popup will detach its web contents
+// when hidden.
+BASE_FEATURE(kOmniboxFullWebUIDetachWebContentsOnHide, ENABLED);
 
 // When enabled, the Omnibox WebUI popup will mark its web contents as hidden
 // when hidden, to unlock frames from compositor cache.
@@ -385,10 +392,6 @@ BASE_FEATURE(kEnableSiteSearchAllowUserOverridePolicy, ENABLED);
 // Enables preconnecting to omnibox suggestions that are not only Search types.
 BASE_FEATURE(kPreconnectNonSearchOmniboxSuggestions, ENABLED);
 
-// When enabled, unblocks omnibox height on small form factor devices, allowing
-// users to type in multiline / longer text.
-BASE_FEATURE(kMultilineEditField, "OmniboxMultilineEditField", ENABLED);
-
 // Controls whether the composebox
 BASE_FEATURE(kComposeboxUsesChromeComposeClient, ENABLED);
 
@@ -527,7 +530,6 @@ static int64_t JNI_OmniboxFeatureMap_GetNativeMap(JNIEnv* env) {
       &kOmniboxSiteSearch,
       &kOmniboxMultimodalInput,
       &kAndroidDesktopAimGate,
-      &kMultilineEditField,
       &kServeJavaCachedZeroSuggest,
       &kAIMSuppressVerbatimMatch,
       &kResetSuggestionsScroll,
@@ -599,11 +601,13 @@ const base::FeatureParam<bool> kAskGLensIcon{
     &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGLensIcon", false};
 const base::FeatureParam<bool> kAskGLensSearchHintText{
     &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGLensSearchHintText", false};
+const base::FeatureParam<bool> kAskGShowFirstDescription{
+    &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGShowFirstDescription", false};
 const base::FeatureParam<bool> kAskGComposeboxLensChip{
     &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGComposeboxLensChip", false};
-const base::FeatureParam<bool> kAskGBlockZeroStateSuggestions{
-    &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGBlockZeroStateSuggestions",
-    false};
+const base::FeatureParam<bool> kAskGBlockAutoTabZeroStateSuggestions{
+    &kWebUIOmniboxAskGAboutThisPage,
+    "Omnibox_AskGBlockAutoTabZeroStateSuggestions", false};
 // Note: no new flags beyond this point.
 
 namespace flag_descriptions {

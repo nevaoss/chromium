@@ -974,6 +974,7 @@ should be able to be added at any place in this file.
   <variant name="CustomizeChrome" summary="customize chrome"/>
   <variant name="Extension" summary="extension"/>
   <variant name="Feed" summary="feed"/>
+  <variant name="Geic" summary="geic"/>
   <variant name="Glic" summary="glic"/>
   <variant name="History" summary="history"/>
   <variant name="HistoryClusters" summary="history clusters"/>
@@ -987,6 +988,7 @@ should be able to be added at any place in this file.
   <variant name="SidePanelDev" summary="side panel dev feature"/>
   <variant name="SideSearch" summary="side search"/>
   <variant name="TabsFromOtherDevices" summary="tabs from other devices"/>
+  <variant name="TestTabScopedEntry" summary="test tab scoped entry"/>
   <variant name="WebView" summary="web view"/>
 </variants>
 
@@ -27802,6 +27804,15 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="MobileBottomBar.Aim.Clicked">
+  <owner>madhavpruthi@google.com</owner>
+  <owner>ckitagawa@chromium.org</owner>
+  <owner>polardz@google.com</owner>
+  <description>
+    Recorded when the AI Mode button in the Android Bottom Bar is clicked.
+  </description>
+</action>
+
 <action name="MobileBottomToolbarHomeButton">
   <obsolete>Removed as of 2020/09/09.</obsolete>
   <owner>mdjones@chromium.org</owner>
@@ -43062,6 +43073,33 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="Settings.AiPage.InlineCueMenu.AddSiteClicked">
+  <owner>wusirui@google.com</owner>
+  <owner>naai-xfn@google.com</owner>
+  <description>
+    Recorded when the user clicks 'Add site' to add a site block exception on
+    the inline cue settings subpage.
+  </description>
+</action>
+
+<action name="Settings.AiPage.InlineCueMenu.Disabled">
+  <owner>wusirui@google.com</owner>
+  <owner>naai-xfn@google.com</owner>
+  <description>
+    Recorded when the user toggles off the inline cue feature on the settings
+    subpage.
+  </description>
+</action>
+
+<action name="Settings.AiPage.InlineCueMenu.Enabled">
+  <owner>wusirui@google.com</owner>
+  <owner>naai-xfn@google.com</owner>
+  <description>
+    Recorded when the user toggles on the inline cue feature on the settings
+    subpage.
+  </description>
+</action>
+
 <action name="Settings.AiPage.PasswordChangeEntryPointClick">
   <owner>vsemeniuk@google.com</owner>
   <owner>rainhard@chromium.org</owner>
@@ -53902,11 +53940,15 @@ should be able to be added at any place in this file.
     <variant name=".SharedTabsListAsTextList"
         summary="Users tapped on the share button for multiple tabs in
                  TabSelectionEditorV2."/>
+    <variant name=".TabSelected"
+        summary="Users selected a tab in TabSelectionEditorV2."/>
     <variant name=".TabsPinned"
         summary="Users tapped on the pin tabs button in TabSelectionEditorV2."/>
     <variant name=".TabsUnpinned"
         summary="Users tapped on the unpin tabs button in
                  TabSelectionEditorV2."/>
+    <variant name=".TabUnselected"
+        summary="Users un-selected a tab in TabSelectionEditorV2."/>
     <variant name=".UngroupTabs"
         summary="Users tapped on the ungroup tabs button in
                  TabSelectionEditorV2."/>

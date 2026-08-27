@@ -6,6 +6,7 @@ package org.chromium.chrome.browser.multiwindow;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
@@ -60,12 +61,15 @@ public class TabbedStartupWindowPolicyDelegateUnitTest {
     @Mock private ChromeTabbedActivity mTabbedActivity;
     @Mock private PrefService mPrefService;
     @Mock private PrefChangeRegistrar.Natives mMockPrefChangeRegistrarNatives;
+    @Mock private TabbedStartupWindowPolicyDelegate.Natives mMockDelegateNatives;
 
     private TabbedStartupWindowPolicyDelegate mDelegate;
 
     @Before
     public void setUp() {
         TabbedStartupWindowPolicyDelegate.setInstanceForTesting(null);
+        TabbedStartupWindowPolicyDelegateJni.setInstanceForTesting(mMockDelegateNatives);
+        when(mMockDelegateNatives.getSessionStartupUrls(any())).thenReturn(List.of());
         PrefChangeRegistrarJni.setInstanceForTesting(mMockPrefChangeRegistrarNatives);
         when(mMockPrefChangeRegistrarNatives.init(any(), any())).thenReturn(117L);
         ChromeMultiInstancePersistentStore.ensureInitialized();
@@ -80,18 +84,18 @@ public class TabbedStartupWindowPolicyDelegateUnitTest {
 
     @After
     public void tearDown() {
-        mDelegate.destroy();
+        mDelegate.resetForTesting();
         ChromeMultiInstancePersistentStore.resetForTesting();
         TabbedStartupWindowPolicyDelegate.setInstanceForTesting(null);
     }
 
     @Test
-    public void testMaybeRestoreWindowsAfterLaunch_quit_restoresWindows() {
+    public void testApplyPolicy_quit_restoresWindows() {
         // Setup.
         setupRecoverableInstances(LastSessionExitType.QUIT);
 
         // Act.
-        mDelegate.maybeRestoreWindowsAfterLaunch(mTabbedActivity);
+        mDelegate.applyPolicy(mTabbedActivity);
 
         // Verify.
         verify(mTabbedActivity).startActivity(any());
@@ -104,12 +108,12 @@ public class TabbedStartupWindowPolicyDelegateUnitTest {
     }
 
     @Test
-    public void testMaybeRestoreWindowsAfterLaunch_defaultExitType_doesNotRestoreWindows() {
+    public void testApplyPolicy_defaultExitType_doesNotRestoreWindows() {
         // Setup.
         setupRecoverableInstances(LastSessionExitType.DEFAULT);
 
         // Act.
-        mDelegate.maybeRestoreWindowsAfterLaunch(mTabbedActivity);
+        mDelegate.applyPolicy(mTabbedActivity);
 
         // Verify.
         verify(mTabbedActivity, never()).startActivity(any());
@@ -120,12 +124,12 @@ public class TabbedStartupWindowPolicyDelegateUnitTest {
 
     @Test
     @DisableFeatures(ChromeFeatureList.ON_STARTUP_WINDOW_POLICY)
-    public void testMaybeRestoreWindowsAfterLaunch_featureDisabled_doesNotRestoreWindows() {
+    public void testApplyPolicy_featureDisabled_doesNotRestoreWindows() {
         // Setup.
         setupRecoverableInstances(LastSessionExitType.QUIT);
 
         // Act.
-        mDelegate.maybeRestoreWindowsAfterLaunch(mTabbedActivity);
+        mDelegate.applyPolicy(mTabbedActivity);
 
         // Verify.
         verify(mTabbedActivity, never()).startActivity(any());
@@ -135,15 +139,14 @@ public class TabbedStartupWindowPolicyDelegateUnitTest {
     }
 
     @Test
-    public void
-            testMaybeRestoreWindowsAfterLaunch_quit_aliveTaskNonMultiWindowMode_doesNotRestoreWindow() {
+    public void testApplyPolicy_quit_aliveTaskNonMultiWindowMode_doesNotRestoreWindow() {
         // Setup.
         setupRecoverableInstances(LastSessionExitType.QUIT);
         setupAppTasks(1);
         doReturn(false).when(mTabbedActivity).isInMultiWindowMode();
 
         // Act.
-        mDelegate.maybeRestoreWindowsAfterLaunch(mTabbedActivity);
+        mDelegate.applyPolicy(mTabbedActivity);
 
         // Verify.
         verify(mTabbedActivity, never()).startActivity(any());
@@ -153,14 +156,14 @@ public class TabbedStartupWindowPolicyDelegateUnitTest {
     }
 
     @Test
-    public void testMaybeRestoreWindowsAfterLaunch_quit_aliveTaskMultiWindowMode_restoresWindow() {
+    public void testApplyPolicy_quit_aliveTaskMultiWindowMode_restoresWindow() {
         // Setup.
         setupRecoverableInstances(LastSessionExitType.QUIT);
         List<AppTask> appTasks = setupAppTasks(1);
         doReturn(true).when(mTabbedActivity).isInMultiWindowMode();
 
         // Act.
-        mDelegate.maybeRestoreWindowsAfterLaunch(mTabbedActivity);
+        mDelegate.applyPolicy(mTabbedActivity);
 
         // Verify.
         verify(appTasks.get(0)).finishAndRemoveTask();
@@ -171,14 +174,14 @@ public class TabbedStartupWindowPolicyDelegateUnitTest {
     }
 
     @Test
-    public void testMaybeRestoreWindowsAfterLaunch_quit_killedTask_restoresWindow() {
+    public void testApplyPolicy_quit_killedTask_restoresWindow() {
         // Setup.
         setupRecoverableInstances(LastSessionExitType.QUIT);
         // Do not add app task ID 1 so it is treated as killed/not alive.
         doReturn(false).when(mTabbedActivity).isInMultiWindowMode();
 
         // Act.
-        mDelegate.maybeRestoreWindowsAfterLaunch(mTabbedActivity);
+        mDelegate.applyPolicy(mTabbedActivity);
 
         // Verify.
         verify(mTabbedActivity).startActivity(any());
@@ -188,7 +191,7 @@ public class TabbedStartupWindowPolicyDelegateUnitTest {
     }
 
     @Test
-    public void testMaybeRestoreWindowsAfterLaunch_quit_notRecoverable_doesNotRestoreWindow() {
+    public void testApplyPolicy_quit_notRecoverable_doesNotRestoreWindow() {
         // Setup.
         MultiWindowTestUtils.createInstance(
                 /* instanceId= */ 0, "https://www.google.com", /* tabCount= */ 1, /* taskId= */ 0);
@@ -199,12 +202,46 @@ public class TabbedStartupWindowPolicyDelegateUnitTest {
         doReturn(0).when(mTabbedActivity).getWindowId();
 
         // Act.
-        mDelegate.maybeRestoreWindowsAfterLaunch(mTabbedActivity);
+        mDelegate.applyPolicy(mTabbedActivity);
 
         // Verify.
         verify(mTabbedActivity, never()).startActivity(any());
         assertFalse(
                 "isRecoverable should remain false for unrecoverable window.",
+                ChromeMultiInstancePersistentStore.readIsRecoverable(1));
+    }
+
+    @Test
+    public void testApplyPolicy_lastWindowClosedByApp_clearsExitType() {
+        // Setup.
+        ChromeMultiInstancePersistentStore.writeLastSessionExitType(
+                LastSessionExitType.LAST_WINDOW_CLOSED_BY_APP);
+
+        // Act.
+        mDelegate.applyPolicy(mTabbedActivity);
+
+        // Verify.
+        assertEquals(
+                LastSessionExitType.DEFAULT,
+                ChromeMultiInstancePersistentStore.readLastSessionExitType());
+    }
+
+    @Test
+    public void testApplyPolicy_incognitoWindow_clearsExitTypeWithoutRestoration() {
+        // Setup.
+        setupRecoverableInstances(LastSessionExitType.QUIT);
+        doReturn(true).when(mTabbedActivity).isIncognitoWindow();
+
+        // Act.
+        mDelegate.applyPolicy(mTabbedActivity);
+
+        // Verify: Window restoration is skipped on the incognito host, and exit type is cleared.
+        verify(mTabbedActivity, never()).startActivity(any());
+        assertEquals(
+                LastSessionExitType.DEFAULT,
+                ChromeMultiInstancePersistentStore.readLastSessionExitType());
+        assertTrue(
+                "isRecoverable should remain true when incognito window initializes.",
                 ChromeMultiInstancePersistentStore.readIsRecoverable(1));
     }
 
@@ -277,9 +314,79 @@ public class TabbedStartupWindowPolicyDelegateUnitTest {
     }
 
     @Test
-    public void testGetCachedStartupPolicy_returnsCachedValue() {
+    public void
+            testMaybeSaveWindowStateOnSessionTermination_quit_startupPrefIsNewTab_doesNotSaveState() {
+        // Setup 2 active instances.
+        MultiWindowTestUtils.createInstance(
+                /* instanceId= */ 1, "https://www.google.com", /* tabCount= */ 1, /* taskId= */ 1);
+        MultiWindowTestUtils.createInstance(
+                /* instanceId= */ 2, "https://www.google.com", /* tabCount= */ 1, /* taskId= */ 2);
+        ChromeMultiInstancePersistentStore.writeRestoreOnStartupPrefValue(
+                SessionStartupPref.NEW_TAB);
+
+        // Act.
+        mDelegate.maybeSaveWindowStateOnSessionTermination(LastSessionExitType.QUIT);
+
+        // Verify exit type is not updated when startup pref is NEW_TAB.
+        assertEquals(
+                LastSessionExitType.DEFAULT,
+                ChromeMultiInstancePersistentStore.readLastSessionExitType());
+    }
+
+    @Test
+    public void
+            testMaybeSaveWindowStateOnSessionTermination_quit_startupPrefIsUrls_doesNotSaveState() {
+        // Setup 2 active instances.
+        MultiWindowTestUtils.createInstance(
+                /* instanceId= */ 1, "https://www.google.com", /* tabCount= */ 1, /* taskId= */ 1);
+        MultiWindowTestUtils.createInstance(
+                /* instanceId= */ 2, "https://www.google.com", /* tabCount= */ 1, /* taskId= */ 2);
+        ChromeMultiInstancePersistentStore.writeRestoreOnStartupPrefValue(SessionStartupPref.URLS);
+
+        // Act.
+        mDelegate.maybeSaveWindowStateOnSessionTermination(LastSessionExitType.QUIT);
+
+        // Verify exit type is not updated when startup pref is URLS.
+        assertEquals(
+                LastSessionExitType.DEFAULT,
+                ChromeMultiInstancePersistentStore.readLastSessionExitType());
+    }
+
+    @Test
+    public void testMaybeSaveWindowStateOnSessionTermination_quit_startupPrefIsLast_savesState() {
+        // Setup 2 active instances.
+        MultiWindowTestUtils.createInstance(
+                /* instanceId= */ 1, "https://www.google.com", /* tabCount= */ 1, /* taskId= */ 1);
+        MultiWindowTestUtils.createInstance(
+                /* instanceId= */ 2, "https://www.google.com", /* tabCount= */ 1, /* taskId= */ 2);
         ChromeMultiInstancePersistentStore.writeRestoreOnStartupPrefValue(SessionStartupPref.LAST);
-        assertEquals(SessionStartupPref.LAST, mDelegate.getCachedStartupPolicy());
+
+        // Act.
+        mDelegate.maybeSaveWindowStateOnSessionTermination(LastSessionExitType.QUIT);
+
+        // Verify exit type is updated when startup pref is LAST.
+        assertEquals(
+                LastSessionExitType.QUIT,
+                ChromeMultiInstancePersistentStore.readLastSessionExitType());
+    }
+
+    @Test
+    public void testMaybeSaveWindowStateOnSessionTermination_quit_startupPrefIsUnset_savesState() {
+        // Setup 2 active instances.
+        MultiWindowTestUtils.createInstance(
+                /* instanceId= */ 1, "https://www.google.com", /* tabCount= */ 1, /* taskId= */ 1);
+        MultiWindowTestUtils.createInstance(
+                /* instanceId= */ 2, "https://www.google.com", /* tabCount= */ 1, /* taskId= */ 2);
+        ChromeMultiInstancePersistentStore.writeRestoreOnStartupPrefValue(
+                TabbedStartupWindowPolicyDelegate.PREF_UNSET);
+
+        // Act.
+        mDelegate.maybeSaveWindowStateOnSessionTermination(LastSessionExitType.QUIT);
+
+        // Verify exit type is updated when startup pref is UNSET.
+        assertEquals(
+                LastSessionExitType.QUIT,
+                ChromeMultiInstancePersistentStore.readLastSessionExitType());
     }
 
     @Test
@@ -287,12 +394,33 @@ public class TabbedStartupWindowPolicyDelegateUnitTest {
         // Setup mock native preferences.
         when(mPrefService.getInteger(Pref.RESTORE_ON_STARTUP))
                 .thenReturn(SessionStartupPref.NEW_TAB);
+        when(mMockDelegateNatives.getSessionStartupUrls(mPrefService))
+                .thenReturn(List.of("https://www.google.com"));
 
         // Act.
         mDelegate.initializeWithNative(mPrefService);
 
         // Verify.
-        assertEquals(SessionStartupPref.NEW_TAB, mDelegate.getCachedStartupPolicy());
+        assertEquals(
+                SessionStartupPref.NEW_TAB,
+                ChromeMultiInstancePersistentStore.readRestoreOnStartupPrefValue());
+        assertEquals(
+                List.of("https://www.google.com"),
+                ChromeMultiInstancePersistentStore.readRestoreOnStartupUrls());
+    }
+
+    @Test
+    public void testPreferenceChange_emptyUrls_storesNull() {
+        // Setup mock native preferences with empty URLs list.
+        when(mPrefService.getInteger(Pref.RESTORE_ON_STARTUP))
+                .thenReturn(SessionStartupPref.NEW_TAB);
+        when(mMockDelegateNatives.getSessionStartupUrls(mPrefService)).thenReturn(List.of());
+
+        // Act.
+        mDelegate.initializeWithNative(mPrefService);
+
+        // Verify.
+        assertNull(ChromeMultiInstancePersistentStore.readRestoreOnStartupUrls());
     }
 
     @Test
@@ -305,11 +433,150 @@ public class TabbedStartupWindowPolicyDelegateUnitTest {
         // Act.
         mDelegate.initializeWithNative(mPrefService);
 
-        // Verify that cached getters return default values.
-        assertEquals(0, mDelegate.getCachedStartupPolicy());
+        // Verify that persistent store returns default values.
+        assertEquals(
+                TabbedStartupWindowPolicyDelegate.PREF_UNSET,
+                ChromeMultiInstancePersistentStore.readRestoreOnStartupPrefValue());
+        assertNull(ChromeMultiInstancePersistentStore.readRestoreOnStartupUrls());
 
         // Verify that we never register preference observer.
         verify(mMockPrefChangeRegistrarNatives, never()).init(any(), any());
+        verify(mMockDelegateNatives, never()).getSessionStartupUrls(any());
+    }
+
+    @Test
+    public void
+            testClaimForceNewInstancePolicy_lastWindowClosedByApp_startupPrefIsUnset_returnsTrue() {
+        // Setup.
+        ChromeMultiInstancePersistentStore.writeLastSessionExitType(
+                LastSessionExitType.LAST_WINDOW_CLOSED_BY_APP);
+
+        // Act & Verify.
+        assertTrue(mDelegate.claimForceNewInstancePolicy(false));
+        // Verify exit type is preserved until onTabbedActivityInitialized is called.
+        assertEquals(
+                LastSessionExitType.LAST_WINDOW_CLOSED_BY_APP,
+                ChromeMultiInstancePersistentStore.readLastSessionExitType());
+    }
+
+    @Test
+    @DisableFeatures(ChromeFeatureList.ON_STARTUP_WINDOW_POLICY)
+    public void
+            testClaimForceNewInstancePolicy_lastWindowClosedByApp_featureDisabled_returnsFalse() {
+        // Setup.
+        ChromeMultiInstancePersistentStore.writeLastSessionExitType(
+                LastSessionExitType.LAST_WINDOW_CLOSED_BY_APP);
+
+        // Act & Verify.
+        assertFalse(mDelegate.claimForceNewInstancePolicy(false));
+    }
+
+    @Test
+    public void testClaimForceNewInstancePolicy_newTab_returnsTrueOnce() {
+        // Setup.
+        ChromeMultiInstancePersistentStore.writeRestoreOnStartupPrefValue(
+                SessionStartupPref.NEW_TAB);
+
+        // Act & Verify.
+        // First allocation in browser process should honor NEW_TAB startup policy.
+        assertTrue(mDelegate.claimForceNewInstancePolicy(false));
+
+        // Subsequent allocations in the same browser process should not honor startup policy.
+        assertFalse(mDelegate.claimForceNewInstancePolicy(false));
+    }
+
+    @Test
+    public void testClaimForceNewInstancePolicy_isIncognito_returnsFalseAndClaimsPolicy() {
+        // Setup.
+        ChromeMultiInstancePersistentStore.writeRestoreOnStartupPrefValue(
+                SessionStartupPref.NEW_TAB);
+
+        // Act & Verify: Incognito returns false.
+        assertFalse(mDelegate.claimForceNewInstancePolicy(true));
+
+        // Subsequent allocations in the same browser process should observe claimed policy.
+        assertFalse(mDelegate.claimForceNewInstancePolicy(false));
+    }
+
+    @Test
+    public void testClaimForceNewInstancePolicy_otherPolicy_returnsFalse() {
+        // Setup.
+        ChromeMultiInstancePersistentStore.writeRestoreOnStartupPrefValue(SessionStartupPref.LAST);
+
+        // Act & Verify.
+        assertFalse(mDelegate.claimForceNewInstancePolicy(false));
+    }
+
+    @Test
+    @DisableFeatures(ChromeFeatureList.SYNC_RESTORE_ON_STARTUP_PREF)
+    public void testClaimForceNewInstancePolicy_restoreOnStartupFeatureDisabled_returnsFalse() {
+        // Setup.
+        ChromeMultiInstancePersistentStore.writeRestoreOnStartupPrefValue(
+                SessionStartupPref.NEW_TAB);
+
+        // Act & Verify.
+        assertFalse(mDelegate.claimForceNewInstancePolicy(false));
+    }
+
+    @Test
+    public void
+            testClaimForceNewInstancePolicy_lastWindowClosedByApp_startupPrefIsLast_returnsTrue() {
+        // Setup.
+        ChromeMultiInstancePersistentStore.writeLastSessionExitType(
+                LastSessionExitType.LAST_WINDOW_CLOSED_BY_APP);
+        ChromeMultiInstancePersistentStore.writeRestoreOnStartupPrefValue(SessionStartupPref.LAST);
+
+        // Act & Verify.
+        assertTrue(mDelegate.claimForceNewInstancePolicy(false));
+        assertEquals(
+                LastSessionExitType.LAST_WINDOW_CLOSED_BY_APP,
+                ChromeMultiInstancePersistentStore.readLastSessionExitType());
+    }
+
+    @Test
+    public void
+            testClaimForceNewInstancePolicy_lastWindowClosedByApp_startupPrefIsUrls_returnsFalse() {
+        // Setup.
+        ChromeMultiInstancePersistentStore.writeLastSessionExitType(
+                LastSessionExitType.LAST_WINDOW_CLOSED_BY_APP);
+        ChromeMultiInstancePersistentStore.writeRestoreOnStartupPrefValue(SessionStartupPref.URLS);
+
+        // Act & Verify.
+        assertFalse(mDelegate.claimForceNewInstancePolicy(false));
+        assertEquals(
+                LastSessionExitType.LAST_WINDOW_CLOSED_BY_APP,
+                ChromeMultiInstancePersistentStore.readLastSessionExitType());
+    }
+
+    @Test
+    public void
+            testClaimForceNewInstancePolicy_lastWindowClosedByApp_startupPrefIsNewTab_returnsTrue() {
+        // Setup.
+        ChromeMultiInstancePersistentStore.writeLastSessionExitType(
+                LastSessionExitType.LAST_WINDOW_CLOSED_BY_APP);
+        ChromeMultiInstancePersistentStore.writeRestoreOnStartupPrefValue(
+                SessionStartupPref.NEW_TAB);
+
+        // Act & Verify.
+        assertTrue(mDelegate.claimForceNewInstancePolicy(false));
+        assertEquals(
+                LastSessionExitType.LAST_WINDOW_CLOSED_BY_APP,
+                ChromeMultiInstancePersistentStore.readLastSessionExitType());
+    }
+
+    @Test
+    public void testResetPolicy_resetsStartupPolicyClaimed() {
+        // Setup.
+        ChromeMultiInstancePersistentStore.writeRestoreOnStartupPrefValue(
+                SessionStartupPref.NEW_TAB);
+        assertTrue(mDelegate.claimForceNewInstancePolicy(false));
+        assertFalse(mDelegate.claimForceNewInstancePolicy(false));
+
+        // Act.
+        mDelegate.resetPolicy();
+
+        // Verify.
+        assertTrue(mDelegate.claimForceNewInstancePolicy(false));
     }
 
     private void setupRecoverableInstances(@LastSessionExitType int exitType) {

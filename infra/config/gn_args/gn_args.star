@@ -908,6 +908,20 @@ gn_args.config(
 )
 
 gn_args.config(
+    name = "linux_native_wayland",
+    configs = [
+        "linux",
+    ],
+    args = {
+        "ozone_auto_platforms": False,
+        "ozone_platform_wayland": True,
+        "ozone_platform": "wayland",
+        "use_bundled_weston": False,
+        "use_bundled_mutter": False,
+    },
+)
+
+gn_args.config(
     name = "linux_wayland",
     configs = [
         "linux",
@@ -1326,6 +1340,14 @@ gn_args.config(
     name = "thin_lto",
     args = {
         "use_thin_lto": True,
+    },
+)
+
+gn_args.config(
+    name = "tint_mesa_fuzz",
+    args = {
+        "tint_build_mesa": True,
+        "tint_build_fuzzer_vulkan_support": True,
     },
 )
 

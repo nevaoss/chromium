@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include "base/functional/callback_helpers.h"
 #include "chrome/browser/ui/autofill/autofill_bubble_base.h"
 #include "chrome/browser/ui/autofill/autofill_bubble_handler.h"
 #include "components/autofill/core/browser/payments/payments_churned_users_metrics.h"
@@ -82,7 +83,7 @@ void PaymentsChurnedUsersBubbleController::OnBubbleClosed(
   autofill_metrics::LogPaymentsChurnedUsersBubbleResult(
       is_accepted_ ? PaymentsUiClosedReason::kAccepted : closed_reason);
 
-  if (is_accepted_ || closed_reason == PaymentsUiClosedReason::kCancelled ||
+  if (closed_reason == PaymentsUiClosedReason::kCancelled ||
       closed_reason == PaymentsUiClosedReason::kClosed) {
     should_show_icon_ = false;
   }
@@ -173,9 +174,17 @@ PaymentsChurnedUsersBubbleController::GetConfirmationUiParams() const {
 }
 
 base::OnceCallback<void(PaymentsUiClosedReason)>
-PaymentsChurnedUsersBubbleController::GetOnBubbleClosedCallback() {
-  return base::BindOnce(&PaymentsChurnedUsersBubbleController::OnBubbleClosed,
-                        weak_ptr_factory_.GetWeakPtr());
+PaymentsChurnedUsersBubbleController::GetConfirmationBubbleClosedCallback() {
+  return base::BindOnce(
+      &PaymentsChurnedUsersBubbleController::OnConfirmationBubbleClosed,
+      weak_ptr_factory_.GetWeakPtr());
+}
+
+void PaymentsChurnedUsersBubbleController::PrimaryPageChanged(
+    content::Page& page) {
+  should_show_icon_ = false;
+  UpdatePageActionIcon();
+  HideBubble(/*initiated_by_bubble_manager=*/false);
 }
 
 bool PaymentsChurnedUsersBubbleController::CanBeReshown() const {
@@ -227,5 +236,12 @@ bool PaymentsChurnedUsersBubbleController::ShouldShowPageAction() {
   return should_show_icon_;
 }
 #endif  // !BUILDFLAG(IS_ANDROID)
+
+void PaymentsChurnedUsersBubbleController::OnConfirmationBubbleClosed(
+    PaymentsUiClosedReason closed_reason) {
+  should_show_icon_ = false;
+  UpdatePageActionIcon();
+  ResetBubbleViewAndInformBubbleManager();
+}
 
 }  // namespace autofill

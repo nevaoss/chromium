@@ -5,13 +5,17 @@
 #include "base/test/run_until.h"
 #include "base/test/scoped_feature_list.h"
 #include "build/build_config.h"
+#include "chrome/app/chrome_command_ids.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/global_features.h"
+#include "chrome/browser/lifetime/application_lifetime_desktop.h"
+#include "chrome/browser/lifetime/browser_shutdown.h"
 #include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/profiles/profile_test_util.h"
 #include "chrome/browser/status_icons/status_tray.h"
 #include "chrome/browser/ui/browser.h"
+#include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/omnibox/omnibox_everywhere/omnibox_everywhere_controller.h"
@@ -214,6 +218,60 @@ IN_PROC_BROWSER_TEST_F(OmniboxEverywhereBrowserTest,
                   InvokeViaHotkey(), CheckWidgetVisible(false));
 }
 
+#if BUILDFLAG(IS_CHROMEOS)
+#define MAYBE_CopyPasteSupportInQueryBox DISABLED_CopyPasteSupportInQueryBox
+#else
+#define MAYBE_CopyPasteSupportInQueryBox CopyPasteSupportInQueryBox
+#endif
+IN_PROC_BROWSER_TEST_F(OmniboxEverywhereBrowserTest,
+                       MAYBE_CopyPasteSupportInQueryBox) {
+  OmniboxEverywhereController* controller =
+      g_browser_process->GetFeatures()->omnibox_everywhere_controller();
+  ASSERT_TRUE(controller);
+
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kOmniboxWebContentsId);
+  const DeepQuery kSearchInputElement = {
+      "omnibox-everywhere-app",
+      "omnibox-everywhere-omnibox",
+      "cr-searchbox-input",
+      "#input",
+  };
+
+  RunTestSequence(
+      InvokeViaHotkey(), CheckWidgetVisible(true),
+      WaitForOmniboxWebUIReady(kOmniboxWebContentsId),
+      // Enter initial text into search input and verify.
+      ExecuteJsAt(kOmniboxWebContentsId, kSearchInputElement,
+                  "el => { el.focus(); el.value = 'initial query'; "
+                  "el.dispatchEvent(new "
+                  "Event('input', {bubbles: true})); }"),
+      CheckJsResultAt(kOmniboxWebContentsId, kSearchInputElement,
+                      "el => el.value", "initial query"),
+      // Simulate paste into the query input element.
+      ExecuteJsAt(
+          kOmniboxWebContentsId, kSearchInputElement,
+          "el => { "
+          "  el.focus(); "
+          "  el.select(); "
+          "  const dataTransfer = new DataTransfer(); "
+          "  dataTransfer.setData('text/plain', 'pasted search query'); "
+          "  const pasteEvent = new ClipboardEvent('paste', { "
+          "    clipboardData: dataTransfer, "
+          "    bubbles: true, "
+          "    cancelable: true "
+          "  }); "
+          "  el.dispatchEvent(pasteEvent); "
+          "  if (!pasteEvent.defaultPrevented) { "
+          "    el.value = 'pasted search query'; "
+          "    el.dispatchEvent(new Event('input', {bubbles: true})); "
+          "  } "
+          "}"),
+      // Verify query box value has updated to the pasted text.
+      CheckJsResultAt(kOmniboxWebContentsId, kSearchInputElement,
+                      "el => el.value", "pasted search query"),
+      InvokeViaHotkey(), CheckWidgetVisible(false));
+}
+
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX)
 #define MAYBE_IgnoreDragToMoveInNoDragRegion IgnoreDragToMoveInNoDragRegion
 #else
@@ -291,8 +349,7 @@ IN_PROC_BROWSER_TEST_F(OmniboxEverywhereBrowserTest,
                              .origin();
       }),
       NameOmniboxContentsView(kContentsView),
-      // Drag background area (draggable region at 10, 10).
-      DragMouseInView(kContentsView, gfx::Point(10, 10), gfx::Point(110, 110)),
+      DragMouseInView(kContentsView, gfx::Point(10, 5), gfx::Point(110, 5)),
       Check([&]() {
         views::Widget* widget = controller->ui_manager()->widget();
         return widget->GetWindowBoundsInScreen().origin() != initial_origin;
@@ -358,7 +415,7 @@ IN_PROC_BROWSER_TEST_F(OmniboxEverywhereBrowserTest,
   const char kContentsView[] = "OmniboxContentsView";
   auto reposition_step = Steps(
       NameOmniboxContentsView(kContentsView),
-      DragMouseInView(kContentsView, gfx::Point(10, 10), gfx::Point(110, 110)),
+      DragMouseInView(kContentsView, gfx::Point(10, 5), gfx::Point(110, 5)),
       Do([&]() {
         dragged_origin = controller->ui_manager()
                              ->widget()
@@ -571,6 +628,27 @@ IN_PROC_BROWSER_TEST_F(OmniboxEverywhereBrowserTest,
 
   // Verify controller restored profile1 as target profile on startup.
   EXPECT_EQ(profile, controller->target_profile());
+}
+
+IN_PROC_BROWSER_TEST_F(OmniboxEverywhereBrowserTest,
+                       ShutdownWithBackgroundModeEnabled) {
+  PrefService* local_state = g_browser_process->local_state();
+  ASSERT_TRUE(local_state);
+
+  set_exit_when_last_browser_closes(false);
+
+  // Enable background mode pref.
+  local_state->SetBoolean(prefs::kOmniboxEverywhereBackgroundMode, true);
+
+  // Close the browser window synchronously first. Since background mode is
+  // enabled, this should not shut down the browser process.
+  CloseBrowserSynchronously(browser());
+
+  // Post a task to quit the browser once the main message loop starts.
+  // This ensures that the quit flow executes while the main RunLoop is running,
+  // preventing CHECK failures in BrowserProcessImpl::StartTearDown.
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE, base::BindOnce(&chrome::CloseAllBrowsersAndQuit));
 }
 
 }  // namespace omnibox_everywhere

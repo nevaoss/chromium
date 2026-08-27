@@ -51,6 +51,7 @@
 <translation id="1147031633655575115">Ви ввійшли як <ph name="USER" /></translation>
 <translation id="1149401351239820326">Місяць закінчення терміну дії</translation>
 <translation id="1150989369772528668">Календар</translation>
+<translation id="1158134713295836892">Gemini у Chrome</translation>
 <translation id="1161444134753003495">Увійти</translation>
 <translation id="1161663161838091892">Щоб продовжити, синхронізуйте вкладки й історію</translation>
 <translation id="1162834932051545794">{count,plural, =1{{count} кредитна картка}one{{count} кредитна картка}few{{count} кредитні картки}many{{count} кредитних карток}other{{count} кредитної картки}}</translation>
@@ -225,7 +226,6 @@
 <translation id="1674504678466460478"><ph name="SOURCE_LANGUAGE" /> – <ph name="TARGET_LANGUAGE" /></translation>
 <translation id="1678855624321223424">Згідно з правилами вашої організації, цей файл може містити чутливу інформацію</translation>
 <translation id="1683276189281028863">Перевірка паролів</translation>
-<translation id="168389590065701766">Тепер ви можете відкривати Google Об’єктив в адресному рядку й шукати все, що бачите</translation>
 <translation id="1689333818294560261">Псевдонім</translation>
 <translation id="169048873465870056">Вилучити вкладку й видалити групу?</translation>
 <translation id="1692115862433274081">Інший обліковий запис</translation>
@@ -1375,7 +1375,7 @@
 <translation id="5559567453458728487">Конвертувати одиниці вимірювання на веб-сторінках</translation>
 <translation id="5560088892362098740">Термін дії</translation>
 <translation id="556042886152191864">Кнопка</translation>
-<translation id="5563910365456880646">після завершення завдання "Виконайте пошук за фотографією за допомогою Google Об’єктива"</translation>
+<translation id="5563910365456880646">після завершення завдання "Використати фото, щоб шукати через Google Об’єктив"</translation>
 <translation id="5565871407246142825">Кредитні картки</translation>
 <translation id="5567439033041178034">ДОКЛАДНІШЕ</translation>
 <translation id="5578795271662203820">Шукати зображення в <ph name="SEARCH_ENGINE" /></translation>
@@ -2527,6 +2527,7 @@
 <translation id="9203951165704618409">Щоб налаштувати веб-перегляд, ви можете перемістити адресний рядок згори вниз.</translation>
 <translation id="9205189991633470489">Блокування анонімних вкладок</translation>
 <translation id="9206887540681440657">Швидкість</translation>
+<translation id="9218430445555521422">Використовувати за умовчанням</translation>
 <translation id="9219103736887031265">Зображення</translation>
 <translation id="9219154867334666734">Шукати вкладки…</translation>
 <translation id="9223358826628549784">Звіт про аварійне завершення роботи надіслано.</translation>

@@ -2939,6 +2939,7 @@ targets.bundle(
         "component_storage_test",
         "content_shell_crash_test",
         "gpu_angle_fuchsia_unittests_isolated_scripts",
+        "views_perftests_fuchsia",
     ],
     per_test_modifications = {
         "content_shell_crash_test": targets.mixin(
@@ -2946,6 +2947,9 @@ targets.bundle(
                 "--platform=fuchsia",
             ],
             # TODO(crbug.com/40821367): Remove once it's stable.
+            ci_only = True,
+        ),
+        "views_perftests_fuchsia": targets.mixin(
             ci_only = True,
         ),
     },
@@ -3112,6 +3116,48 @@ targets.bundle(
 )
 
 targets.bundle(
+    name = "gpu_all_android_arm64_release_gtests",
+    targets = [
+        "gpu_android_arm64_release_gtests",
+        "gpu_fyi_android_arm64_release_gtests",
+    ],
+)
+
+targets.bundle(
+    name = "gpu_all_android_arm64_release_telemetry_tests",
+    targets = [
+        "gpu_android_arm64_release_telemetry_tests",
+        "gpu_fyi_android_arm64_release_telemetry_tests",
+    ],
+    per_test_modifications = {
+        "webgl_conformance_validating_tests": targets.remove(
+            reason = "Only run default behavior tests on non-FYI.",
+        ),
+    },
+)
+
+targets.bundle(
+    name = "gpu_all_android_arm_release_gtests",
+    targets = [
+        "gpu_android_arm_release_gtests",
+        "gpu_fyi_android_arm_release_gtests",
+    ],
+)
+
+targets.bundle(
+    name = "gpu_all_android_arm_release_telemetry_tests",
+    targets = [
+        "gpu_android_arm_release_telemetry_tests",
+        "gpu_fyi_android_arm_release_telemetry_tests",
+    ],
+    per_test_modifications = {
+        "webgl_conformance_validating_tests": targets.remove(
+            reason = "Only run default behavior tests on non-FYI.",
+        ),
+    },
+)
+
+targets.bundle(
     name = "gpu_all_linux_release_gtests",
     targets = [
         "gpu_linux_release_gtests",
@@ -3128,6 +3174,19 @@ targets.bundle(
     per_test_modifications = {
         "webgl_conformance_tests": targets.remove(
             reason = "Only run default behavior tests on the non-FYI testers",
+        ),
+    },
+)
+
+targets.bundle(
+    name = "gpu_all_linux_wayland_release_telemetry_tests",
+    targets = [
+        "gpu_linux_wayland_release_telemetry_tests",
+        "gpu_fyi_linux_wayland_release_telemetry_tests",
+    ],
+    per_test_modifications = {
+        "webgl_conformance_tests": targets.remove(
+            reason = "Only run the default behavior tests on non-FYI testers",
         ),
     },
 )
@@ -3201,6 +3260,39 @@ targets.bundle(
     targets = [
         "gpu_win_release_telemetry_tests",
         "gpu_fyi_win_release_telemetry_tests",
+    ],
+)
+
+targets.bundle(
+    name = "gpu_android_arm64_release_gtests",
+    targets = [
+        # Identical to the arm tests at the moment.
+        "gpu_android_arm_release_gtests",
+    ],
+)
+
+targets.bundle(
+    name = "gpu_android_arm64_release_telemetry_tests",
+    targets = [
+        # Same as the arm tests for now, although there technically aren't any
+        # arm64 non-FYI testers at the moment.
+        "gpu_android_arm_release_telemetry_tests",
+    ],
+)
+
+targets.bundle(
+    name = "gpu_android_arm_release_gtests",
+    targets = [
+        # No non-FYI gtests at this time.
+    ],
+)
+
+targets.bundle(
+    name = "gpu_android_arm_release_telemetry_tests",
+    targets = [
+        "gpu_common_and_optional_telemetry_tests",
+        "gpu_validating_telemetry_tests",
+        "gpu_webgl_conformance_validating_telemetry_tests",
     ],
 )
 
@@ -3335,15 +3427,6 @@ targets.bundle(
             ],
         ),
     },
-)
-
-targets.bundle(
-    name = "gpu_common_android_telemetry_tests",
-    targets = [
-        "gpu_common_and_optional_telemetry_tests",
-        "gpu_validating_telemetry_tests",
-        "gpu_webgl_conformance_validating_telemetry_tests",
-    ],
 )
 
 # GPU gtests which run on both the main and FYI waterfalls.
@@ -4181,7 +4264,77 @@ targets.bundle(
 )
 
 targets.bundle(
+    name = "gpu_fyi_android_arm64_release_gtests",
+    targets = [
+        # Identical to the arm tests at the moment.
+        "gpu_fyi_android_arm_release_gtests",
+    ],
+)
+
+targets.bundle(
+    name = "gpu_fyi_android_arm64_release_telemetry_tests",
+    targets = [
+        # arm64 tests are the arm tests + Graphite equivalents.
+        "gpu_fyi_android_arm_release_telemetry_tests",
+        "gpu_passthrough_graphite_telemetry_tests",
+        "gpu_webcodecs_validating_graphite_telemetry_test",
+        "gpu_webgl_conformance_gles_passthrough_graphite_telemetry_tests",
+        "gpu_webgl_conformance_validating_graphite_telemetry_tests",
+        "gpu_webrtc_validating_graphite_telemetry_test",
+    ],
+)
+
+targets.bundle(
+    name = "gpu_fyi_android_arm_release_gtests",
+    targets = [
+        "gpu_angle_unit_gtests",
+        "gpu_common_gtests_passthrough",
+        "gpu_common_gtests_validating",
+        "gpu_fyi_and_optional_non_linux_gtests",
+    ],
+)
+
+targets.bundle(
+    name = "gpu_fyi_android_arm_release_telemetry_tests",
+    targets = [
+        # Android/ARM only runs Ganesh tests since older devices that we
+        # typically use for 32-bit testing do not have good Vulkan support
+        # for Graphite.
+        "android_webview_gpu_telemetry_tests",
+        "gpu_passthrough_ganesh_telemetry_tests",
+        "gpu_passthrough_telemetry_tests",
+        "gpu_webcodecs_validating_ganesh_telemetry_test",
+        "gpu_webgl2_conformance_gles_passthrough_telemetry_tests",
+        "gpu_webgl2_conformance_validating_telemetry_tests",
+        "gpu_webgl_conformance_gles_passthrough_ganesh_telemetry_tests",
+        "gpu_webgl_conformance_gles_passthrough_telemetry_tests",
+        "gpu_webgl_conformance_validating_ganesh_telemetry_tests",
+        "gpu_webrtc_validating_ganesh_telemetry_test",
+    ],
+    per_test_modifications = {
+        "gpu_process_launch_tests": targets.remove(
+            reason = ("TODO(crbug.com/541312843): Remove this once the test bundles are updated to use the underlying tests. " +
+                      "Currently, both gpu_validating_telemetry_tests and gpu_passthrough_telemetry_tests include this."),
+        ),
+        "hardware_accelerated_feature_tests": targets.remove(
+            reason = ("TODO(crbug.com/541312843): Remove this once the test bundles are updated to use the underlying tests. " +
+                      "Currently, both gpu_validating_telemetry_tests and gpu_passthrough_telemetry_tests include this."),
+        ),
+    },
+)
+
+targets.bundle(
     name = "gpu_fyi_android_gtests",
+    targets = [
+        "gpu_angle_unit_gtests",
+        "gpu_common_gtests_passthrough",
+        "gpu_common_gtests_validating",
+        "gpu_fyi_and_optional_non_linux_gtests",
+    ],
+)
+
+targets.bundle(
+    name = "gpu_fyi_android_release_gtests",
     targets = [
         "gpu_angle_unit_gtests",
         "gpu_common_gtests_passthrough",
@@ -4201,29 +4354,6 @@ targets.bundle(
 
 targets.bundle(
     name = "gpu_fyi_chromeos_release_telemetry_tests",
-    targets = [
-        "gpu_common_and_optional_telemetry_tests",
-        "gpu_passthrough_telemetry_tests",
-        "gpu_webrtc_telemetry_test",
-        "gpu_webcodecs_telemetry_test",
-        "gpu_webgl2_conformance_gles_passthrough_telemetry_tests",
-        "gpu_webgl_conformance_gles_passthrough_telemetry_tests",
-    ],
-)
-
-targets.bundle(
-    name = "gpu_fyi_lacros_release_gtests",
-    targets = [
-        "mappable_buffer_tests_suite",
-    ],
-)
-
-# The same as gpu_fyi_chromeos_release_telemetry_tests, but using
-# passthrough instead of validating since the Lacros bots are actually
-# Lacros-like Linux bots, and Linux uses the passthrough decoder.
-# Additionally, we use GLES instead of GL since that's what is supported.
-targets.bundle(
-    name = "gpu_fyi_lacros_release_telemetry_tests",
     targets = [
         "gpu_common_and_optional_telemetry_tests",
         "gpu_passthrough_telemetry_tests",
@@ -4275,6 +4405,25 @@ targets.bundle(
         "gpu_webgl2_conformance_gl_passthrough_telemetry_tests",
         "gpu_skia_renderer_vulkan_passthrough_telemetry_tests",
     ],
+)
+
+# Wayland tests use GLES instead of GL due to how ANGLE interfaces with
+# Wayland vs. X11.
+targets.bundle(
+    name = "gpu_fyi_linux_wayland_release_telemetry_tests",
+    targets = [
+        "gpu_fyi_linux_release_telemetry_tests",
+        "gpu_webgl2_conformance_gles_passthrough_telemetry_tests",
+        "gpu_webgl_conformance_gles_passthrough_telemetry_tests",
+    ],
+    per_test_modifications = {
+        "webgl_conformance_gl_passthrough_tests": targets.remove(
+            reason = "Wayland requires running tests with GLES, not GL",
+        ),
+        "webgl2_conformance_gl_passthrough_tests": targets.remove(
+            reason = "Wayland requires running tests with GLES, not GL",
+        ),
+    },
 )
 
 targets.bundle(
@@ -4431,6 +4580,13 @@ targets.bundle(
 )
 
 targets.bundle(
+    name = "gpu_linux_wayland_release_telemetry_tests",
+    targets = [
+        "gpu_linux_release_telemetry_tests",
+    ],
+)
+
+targets.bundle(
     name = "gpu_mac_debug_gtests",
     targets = [
         "gpu_mac_release_gtests",
@@ -4482,63 +4638,6 @@ targets.bundle(
 )
 
 targets.bundle(
-    name = "gpu_pixel_02_telemetry_tests",
-    targets = [
-        "gpu_validating_telemetry_tests",
-        "gpu_webgl_conformance_gles_passthrough_telemetry_tests",
-        "gpu_webgl2_conformance_gles_passthrough_telemetry_tests",
-        "gpu_webgl2_conformance_validating_telemetry_tests",
-    ],
-)
-
-targets.bundle(
-    name = "gpu_pixel_04_telemetry_tests",
-    targets = [
-        "gpu_common_and_optional_telemetry_tests",
-        "gpu_passthrough_ganesh_telemetry_tests",
-        "gpu_validating_telemetry_tests",
-        "gpu_webrtc_validating_ganesh_telemetry_test",
-        "gpu_webcodecs_validating_ganesh_telemetry_test",
-        "gpu_webgl2_conformance_gles_passthrough_telemetry_tests",
-        "gpu_webgl2_conformance_validating_telemetry_tests",
-        "gpu_webgl_conformance_gles_passthrough_ganesh_telemetry_tests",
-        "gpu_webgl_conformance_validating_ganesh_telemetry_tests",
-    ],
-)
-
-targets.bundle(
-    name = "gpu_pixel_06_telemetry_tests",
-    targets = [
-        "gpu_common_and_optional_telemetry_tests",
-        "gpu_passthrough_ganesh_telemetry_tests",
-        "gpu_passthrough_graphite_telemetry_tests",
-        "gpu_validating_telemetry_tests",
-        "gpu_webrtc_validating_ganesh_telemetry_test",
-        "gpu_webcodecs_validating_ganesh_telemetry_test",
-        "gpu_webrtc_validating_graphite_telemetry_test",
-        "gpu_webcodecs_validating_graphite_telemetry_test",
-        "gpu_webgl2_conformance_gles_passthrough_telemetry_tests",
-        "gpu_webgl2_conformance_validating_telemetry_tests",
-        "gpu_webgl_conformance_gles_passthrough_ganesh_telemetry_tests",
-        "gpu_webgl_conformance_gles_passthrough_graphite_telemetry_tests",
-        "gpu_webgl_conformance_validating_ganesh_telemetry_tests",
-        "gpu_webgl_conformance_validating_graphite_telemetry_tests",
-    ],
-)
-
-targets.bundle(
-    name = "gpu_pixel_10_telemetry_tests",
-    targets = [
-        "gpu_common_and_optional_telemetry_tests",
-        "gpu_passthrough_telemetry_tests",
-        "gpu_webrtc_telemetry_test",
-        "gpu_webcodecs_telemetry_test",
-        "gpu_webgl2_conformance_gles_passthrough_telemetry_tests",
-        "gpu_webgl_conformance_gles_passthrough_telemetry_tests",
-    ],
-)
-
-targets.bundle(
     name = "gpu_swangle_telemetry_tests",
     targets = [
         "gpu_webgl_conformance_swangle_passthrough_telemetry_tests",
@@ -4562,6 +4661,8 @@ targets.bundle(
     },
 )
 
+# TODO(crbug.com/541312843): Update this to properly include validating/ganesh
+# in the suite name.
 targets.bundle(
     name = "gpu_webcodecs_validating_ganesh_telemetry_test",
     targets = [
@@ -4714,6 +4815,8 @@ targets.bundle(
     },
 )
 
+# TODO(crbug.com/541312843): Actually include validating/ganesh in the suite
+# name.
 targets.bundle(
     name = "gpu_webrtc_validating_ganesh_telemetry_test",
     targets = [
@@ -7158,105 +7261,6 @@ targets.bundle(
     name = "webview_ui_instrumentation_tests_no_field_trial",
     targets = [
         "webview_ui_test_app_test_apk_no_field_trial",
-    ],
-)
-
-targets.bundle(
-    name = "win_optional_gpu_tests_rel_gpu_telemetry_tests",
-    targets = [
-        targets.bundle(
-            targets = "gpu_common_and_optional_telemetry_tests",
-            variants = [
-                "WIN10_INTEL_UHD_630_STABLE",
-                "WIN10_NVIDIA_GTX_1660_STABLE",
-            ],
-        ),
-        targets.bundle(
-            targets = "gpu_passthrough_graphite_telemetry_tests",
-            variants = [
-                "WIN10_NVIDIA_GTX_1660_STABLE",
-            ],
-        ),
-        targets.bundle(
-            targets = "gpu_webcodecs_telemetry_test",
-            variants = [
-                "WIN10_INTEL_UHD_630_STABLE",
-                "WIN10_NVIDIA_GTX_1660_STABLE",
-            ],
-        ),
-        targets.bundle(
-            targets = "gpu_webrtc_telemetry_test",
-            variants = [
-                "WIN10_INTEL_UHD_630_STABLE",
-                "WIN10_NVIDIA_GTX_1660_STABLE",
-            ],
-        ),
-        targets.bundle(
-            targets = "gpu_webgl2_conformance_d3d11_passthrough_telemetry_tests",
-            variants = [
-                "WIN10_INTEL_UHD_630_STABLE",
-                "WIN10_NVIDIA_GTX_1660_STABLE",
-            ],
-        ),
-        targets.bundle(
-            targets = "gpu_webgl_conformance_d3d11_passthrough_telemetry_tests",
-            variants = [
-                "WIN10_INTEL_UHD_630_STABLE",
-                "WIN10_NVIDIA_GTX_1660_STABLE",
-            ],
-        ),
-        targets.bundle(
-            targets = "gpu_webgl_conformance_vulkan_passthrough_telemetry_tests",
-            variants = [
-                "WIN10_INTEL_UHD_630_STABLE",
-                "WIN10_NVIDIA_GTX_1660_STABLE",
-            ],
-        ),
-    ],
-)
-
-targets.bundle(
-    name = "win_optional_gpu_tests_rel_gtests",
-    targets = [
-        targets.bundle(
-            targets = "gpu_default_and_optional_win_media_foundation_specific_gtests",
-            variants = [
-                "WIN10_INTEL_UHD_630_STABLE",
-            ],
-        ),
-        targets.bundle(
-            targets = "gpu_default_and_optional_win_specific_gtests",
-            variants = [
-                "WIN10_INTEL_UHD_630_STABLE",
-                "WIN10_NVIDIA_GTX_1660_STABLE",
-            ],
-        ),
-        targets.bundle(
-            targets = "gpu_fyi_and_optional_non_linux_gtests",
-            variants = [
-                "WIN10_INTEL_UHD_630_STABLE",
-                "WIN10_NVIDIA_GTX_1660_STABLE",
-            ],
-        ),
-        targets.bundle(
-            targets = "gpu_fyi_and_optional_win_specific_gtests",
-            variants = [
-                "WIN10_INTEL_UHD_630_STABLE",
-                "WIN10_NVIDIA_GTX_1660_STABLE",
-            ],
-        ),
-    ],
-)
-
-targets.bundle(
-    name = "win_optional_gpu_tests_rel_isolated_scripts",
-    targets = [
-        targets.bundle(
-            targets = "gpu_command_buffer_perf_passthrough_isolated_scripts",
-            variants = [
-                "WIN10_NVIDIA_GTX_1660_STABLE",
-            ],
-        ),
     ],
 )
 

@@ -249,6 +249,20 @@ BASE_FEATURE(kAllowMultipleSwapsPerVsync, base::FEATURE_DISABLED_BY_DEFAULT);
 // dynamically select VSync deadlines based on input timestamps.
 BASE_FEATURE(kUseAndroidCustomFrameDeadlines,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+constexpr base::FeatureParam<FrameDeadlineDeciderSequenceStrategy>::Option
+    kFrameDeadlineDeciderSequenceStrategyOptions[] = {
+        {FrameDeadlineDeciderSequenceStrategy::kPresentationDeltaLocking,
+         "presentation_delta_locking"},
+        {FrameDeadlineDeciderSequenceStrategy::kOsPreferredDeltaLocking,
+         "os_preferred_delta_locking"},
+};
+const base::FeatureParam<FrameDeadlineDeciderSequenceStrategy>
+    kAndroidCustomFrameDeadlineSequenceStrategy{
+        &kUseAndroidCustomFrameDeadlines, "sequence_strategy",
+        FrameDeadlineDeciderSequenceStrategy::kOsPreferredDeltaLocking,
+        &kFrameDeadlineDeciderSequenceStrategyOptions};
+
 const base::FeatureParam<int> kAndroidCustomFrameDeadlinePresentationOffset{
     &kUseAndroidCustomFrameDeadlines, "presentation_offset", 0};
 const base::FeatureParam<base::TimeDelta>
@@ -349,11 +363,6 @@ BASE_FEATURE(kNoCompositorFrameAcks, base::FEATURE_DISABLED_BY_DEFAULT);
 const base::FeatureParam<int> kNumberPendingFramesUntilThrottle{
     &kNoCompositorFrameAcks, "pending_frames", 1};
 BASE_FEATURE(kDisplaySchedulerAsClient, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Enables prioritization of the BeginFrame InputClient (like
-// FlingSchedulerAndroid) so it can dispatch events before the renderer
-// receives its BeginFrame.
-BASE_FEATURE(kFlingSchedulingImprovements, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables optimizations in `DirectRenderer` and `OcclusionCuller` that reuses
 // pre-existing loops to access filter data from `AggregatedRenderPassDrawQuad`.

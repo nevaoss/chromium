@@ -532,6 +532,7 @@
 <translation id="3161699713309727585"><ph name="BUTTON_TEXT" /> (відкриється в новій вкладці)</translation>
 <translation id="3166827708714933426">Комбінації клавіш для роботи з вкладками та вікнами</translation>
 <translation id="3167258285411721858">Ви можете переключитися на мобільний сайт <ph name="HOST_NAME" /></translation>
+<translation id="3177338796769255211">Увійдіть в обліковий запис, щоб отримати доступ до закладок і інших даних на всіх пристроях</translation>
 <translation id="3181145110929454111"><ph name="TAB_TITLE" /> (одна з вибраних анонімних вкладок, яку закріплено й на якій вимкнено звук)</translation>
 <translation id="3189635831478931757"><ph name="GROUP_TITLE" /> (група вкладок)</translation>
 <translation id="3200536777393523575">Закрити поточне вікно?</translation>
@@ -928,13 +929,13 @@
 <translation id="4794291718671962615">(<ph name="MEGABYTES" />) <ph name="URL" /></translation>
 <translation id="4807098396393229769">Ім'я на картці</translation>
 <translation id="480990236307250886">Перейти на головну сторінку</translation>
+<translation id="4816492930507672669">За розміром сторінки</translation>
 <translation id="4822710610088666676">Групу вкладок "<ph name="TAB_GROUP_TITLE" />" закрито й збережено</translation>
 <translation id="4834250788637067901">Способи оплати, пропозиції і адреси з Google Pay</translation>
 <translation id="4835385943915508971">Chrome не має доступу до потрібного ресурсу.</translation>
 <translation id="483742037940503070">{TAB_COUNT,plural, =1{Відновити групу (колір: <ph name="COLOR_NAME" />), що містить <ph name="TAB_COUNT_ONE" /> вкладку, як нову фонову групу вкладок.}one{Відновити групу (колір: <ph name="COLOR_NAME" />), що містить <ph name="TAB_COUNT_MANY" /> вкладку, як нову фонову групу вкладок.}few{Відновити групу (колір: <ph name="COLOR_NAME" />), що містить <ph name="TAB_COUNT_MANY" /> вкладки, як нову фонову групу вкладок.}many{Відновити групу (колір: <ph name="COLOR_NAME" />), що містить <ph name="TAB_COUNT_MANY" /> вкладок, як нову фонову групу вкладок.}other{Відновити групу (колір: <ph name="COLOR_NAME" />), що містить <ph name="TAB_COUNT_MANY" /> вкладки, як нову фонову групу вкладок.}}</translation>
 <translation id="4849731766219625109">Використовувати обліковий запис <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /></translation>
 <translation id="4850886885716139402">Перегляд</translation>
-<translation id="4852014461738377247">Вхід\u2026</translation>
 <translation id="4860895144060829044">Зателефонувати</translation>
 <translation id="4864369630010738180">Вхід…</translation>
 <translation id="4866368707455379617">Не вдалося встановити модуль <ph name="MODULE" /> для Chrome</translation>
@@ -1171,7 +1172,7 @@
 <translation id="5869522115854928033">Збережені паролі</translation>
 <translation id="5870416898561279542">Повторювані або неактивні протягом <ph name="DAYS_INACTIVE" /> дн. вкладки й групи переміщуються сюди <ph name="AUTODELETE_SECTION" /> Це можна будь-коли змінити в розділі "<ph name="DECLUTTER_SETTINGS_TITLE" />".</translation>
 <translation id="5885378508678660271">Сповіщення <ph name="SEPARATOR" /> Chrome скасував ці дозволи, оскільки сайт небезпечний</translation>
-<translation id="5896944002928653773">Нижній екран із застереженням щодо корпоративних сигналів закрито</translation>
+<translation id="5896944002928653773">Нижню панель із застереженням щодо корпоративних сигналів закрито</translation>
 <translation id="5899667542927581604">Екран "Немає ключів доступу" закрито</translation>
 <translation id="5907542076239273525">Закладку збережено в папці "<ph name="FOLDER_NAME" />"</translation>
 <translation id="5911301511366365629"><ph name="TAB_TITLE" /> (вибрана анонімна вкладка, на якій увімкнено звук)</translation>
@@ -1262,7 +1263,7 @@
 <translation id="6251449557817521191">Тут можна переглянути історію Chrome</translation>
 <translation id="6254139308321626268">Ви переглядаєте PDF-файл</translation>
 <translation id="6255809143828972562">Безпечно переглядайте вебсторінки й керуйте налаштуваннями завдяки інструментам від Chrome</translation>
-<translation id="6259107733340311168">Нижній екран із застереженням щодо корпоративних сигналів відкрито на всю висоту</translation>
+<translation id="6259107733340311168">Нижню панель із застереженням щодо корпоративних сигналів відкрито на всю висоту</translation>
 <translation id="6260260490042862943">Налаштування сайтів</translation>
 <translation id="6264376385120300461">Усе одно завантажити</translation>
 <translation id="6264485186158353794">Назад на безпечну сторінку</translation>
@@ -1314,7 +1315,6 @@
 <translation id="6411219469806822692">Не вдається прокрутити далі вгору. Спробуйте почати вище на сторінці.</translation>
 <translation id="6412215853589222273"><ph name="TAB_TITLE" /> (вибрана вкладка)</translation>
 <translation id="641643625718530986">Друк…</translation>
-<translation id="6427723330233512782">За висотою</translation>
 <translation id="6433501201775827830">Виберіть пошукову систему</translation>
 <translation id="6434309073475700221">Відхилити</translation>
 <translation id="6435307030888827407">Не входити</translation>

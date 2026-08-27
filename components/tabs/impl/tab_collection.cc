@@ -15,6 +15,7 @@
 #include "components/tabs/public/supports_handles.h"
 #include "components/tabs/public/tab_collection_observer.h"
 #include "components/tabs/public/tab_collection_storage.h"
+#include "components/tabs/public/tab_collection_types.h"
 #include "components/tabs/public/tab_interface.h"
 
 namespace tabs {
@@ -48,15 +49,19 @@ TabCollection::TabIterator::TabIterator(TabInterface* tab)
 
     for (; it != frame_children.cend(); ++it) {
       const Child& p = *it;
-      if (std::holds_alternative<TabInterface*>(last_child_ptr)) {
+      if (std::holds_alternative<DanglingUntriagedTabInterface>(
+              last_child_ptr)) {
         if (auto* tab_ptr = std::get_if<ScopedTab>(&p)) {
-          if (tab_ptr->get() == std::get<TabInterface*>(last_child_ptr)) {
+          if (tab_ptr->get() ==
+              std::get<DanglingUntriagedTabInterface>(last_child_ptr)) {
             break;
           }
         }
-      } else if (std::holds_alternative<TabCollection*>(last_child_ptr)) {
-        if (auto* col_ptr = std::get_if<std::unique_ptr<TabCollection>>(&p)) {
-          if (col_ptr->get() == std::get<TabCollection*>(last_child_ptr)) {
+      } else if (std::holds_alternative<DanglingUntriagedTabCollection>(
+                     last_child_ptr)) {
+        if (auto col_ptr = std::get_if<std::unique_ptr<TabCollection>>(&p)) {
+          if (col_ptr->get() ==
+              std::get<DanglingUntriagedTabCollection>(last_child_ptr)) {
             break;
           }
         }
@@ -74,6 +79,12 @@ TabCollection::TabIterator::TabIterator(TabInterface* tab)
   } while (current_parent != nullptr);
 
   stack_ = {tmp_stack.rbegin(), tmp_stack.rend()};
+  // Store the root collection (the topmost frame in stack_) so that
+  // bidirectional operations like decrementing end() back to the last tab can
+  // find the root tree.
+  if (!stack_.empty()) {
+    root_ = stack_.front().collection;
+  }
 }
 
 TabCollection::TabIterator::TabIterator(base::PassKey<TabCollection>,
@@ -121,6 +132,53 @@ void TabCollection::TabIterator::Next() {
       }
     } else {
       stack_.pop_back();
+    }
+  }
+}
+
+void TabCollection::TabIterator::Prev() {
+  DCHECK(cur_ || root_) << "Cannot decrement an uninitialized iterator";
+
+  // If at end(), start from the root collection and descend to the rightmost
+  // tab.
+  if (!cur_) {
+    if (!root_ || root_->ChildCount() == 0) {
+      return;
+    }
+    stack_.clear();
+    stack_.push_back({root_, root_->GetChildren().size()});
+  } else if (!stack_.empty()) {
+    // When pointing to `cur_`, `stack_.back().index` is one past `cur_`.
+    // Decrement once to move past `cur_` so we can search for preceding
+    // siblings.
+    --stack_.back().index;
+  }
+
+  cur_ = nullptr;
+  while (!stack_.empty()) {
+    Frame& frame = stack_.back();
+    const auto& children = frame.collection->GetChildren();
+
+    if (frame.index > 0) {
+      const auto& child = children[--frame.index];
+      if (std::holds_alternative<ScopedTab>(child)) {
+        cur_ = std::get<ScopedTab>(child).get();
+        frame.index++;
+        return;
+      } else {
+        TabCollection* child_collection =
+            std::get<std::unique_ptr<TabCollection>>(child).get();
+        if (child_collection->ChildCount() > 0) {
+          frame.index++;
+          stack_.push_back(
+              {child_collection, child_collection->GetChildren().size()});
+        }
+      }
+    } else {
+      stack_.pop_back();
+      if (!stack_.empty()) {
+        --stack_.back().index;
+      }
     }
   }
 }

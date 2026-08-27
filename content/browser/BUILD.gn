@@ -825,8 +825,6 @@ source_set("browser") {
     "devtools/forwarding_agent_host.h",
     "devtools/frame_auto_attacher.cc",
     "devtools/frame_auto_attacher.h",
-    "devtools/mojom_devtools_agent_host.cc",
-    "devtools/mojom_devtools_agent_host.h",
     "devtools/network_service_devtools_observer.cc",
     "devtools/network_service_devtools_observer.h",
     "devtools/protocol/audits_handler.cc",
@@ -2865,6 +2863,8 @@ source_set("browser") {
         "media/capture/desktop_capture_device.h",
         "media/capture/mouse_cursor_overlay_controller.cc",
         "media/capture/mouse_cursor_overlay_controller.h",
+        "media/capture/screenshot_capture_request_impl.cc",
+        "media/capture/screenshot_capture_request_impl.h",
       ]
       public_deps += [ "//ui/base/cursor" ]
 
@@ -2882,6 +2882,11 @@ source_set("browser") {
           "media/captured_surface_controller.h",
         ]
       }
+    } else {
+      sources += [
+        "media/capture/screenshot_capture_request_impl.h",
+        "media/capture/screenshot_capture_request_impl_ios.cc",
+      ]
     }
     if (use_aura) {
       sources += [
@@ -3632,6 +3637,7 @@ if (is_android) {
 group("for_content_tests") {
   visibility = [
     "//content/browser/btm:unit_tests",
+    "//content/browser/indexed_db:idb_factory_mojolpm_fuzzer",
     "//content/browser/indexed_db:unit_tests",
     "//content/public/test/android/*",
     "//content/test/*",

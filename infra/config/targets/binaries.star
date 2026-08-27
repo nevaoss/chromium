@@ -1830,12 +1830,6 @@ targets.binaries.generated_script(
 )
 
 targets.binaries.generated_script(
-    name = "opt_target_coverage_test",
-    label = "//components/optimization_guide/internal/testing:opt_target_coverage_test",
-    module_scheme = "flat",
-)
-
-targets.binaries.generated_script(
     name = "chrome_ai_wpt_tests",
     label = "//components/optimization_guide/internal/testing:chrome_ai_wpt_tests",
     results_handler = "layout tests",
@@ -2567,6 +2561,29 @@ targets.binaries.script(
         ],
     ),
     module_scheme = "single",
+)
+
+targets.binaries.script(
+    name = "views_perftests_fuchsia",
+    label = "//ui/views:views_perftests_fuchsia",
+    script = "//build/fuchsia/test/run_test.py",
+    # All references have been moved to starlark
+    skip_usage_check = True,
+    args = [
+        "perf_gtest",
+        "bin/run_views_perftests_fuchsia",
+        "--out-dir",
+        ".",
+        "--non-telemetry=true",
+        "--gtest-benchmark-name=views_perftests",
+    ],
+    merge = targets.merge(
+        script = "//tools/perf/process_perf_results.py",
+        args = [
+            "--smoke-test-mode",
+        ],
+    ),
+    module_scheme = "gtest",
 )
 
 targets.binaries.windowed_test_launcher(

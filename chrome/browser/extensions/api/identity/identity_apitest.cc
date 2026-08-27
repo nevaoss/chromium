@@ -114,8 +114,8 @@
 #include "url/gurl.h"
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_window.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "components/guest_view/browser/guest_view_base.h"
 #include "components/guest_view/browser/guest_view_manager_delegate.h"
@@ -3921,6 +3921,31 @@ IN_PROC_BROWSER_TEST_F(LaunchWebAuthFlowFunctionTest, DestroyProfile) {
   EXPECT_EQ(std::string(errors::kBrowserContextShutDown),
             func_runner.WaitForError(function.get()));
 }
+
+IN_PROC_BROWSER_TEST_F(LaunchWebAuthFlowFunctionTest, RunAfterShutdownStarted) {
+  ProfileManager* profile_manager = g_browser_process->profile_manager();
+  base::FilePath path_profile2 =
+      profile_manager->GenerateNextProfileDirectoryPath();
+  Profile& profile2 =
+      profiles::testing::CreateProfileSync(profile_manager, path_profile2);
+
+  profile2.NotifyWillBeDestroyed();
+  ASSERT_TRUE(profile2.ShutdownStarted());
+
+  scoped_refptr<IdentityLaunchWebAuthFlowFunction> function =
+      CreateLaunchWebAuthFlowFunction();
+
+  std::string args =
+      "[{\"interactive\": true, \"url\": \"https://example.com\"}]";
+
+  std::string error =
+      utils::RunFunctionAndReturnError(function.get(), args, &profile2);
+
+  EXPECT_EQ(std::string(errors::kBrowserContextShutDown), error);
+  histogram_tester()->ExpectUniqueSample(
+      kLaunchWebAuthFlowResultHistogramName,
+      IdentityLaunchWebAuthFlowFunction::Error::kBrowserContextShutDown, 1);
+}
 #endif  // !BUILDFLAG(IS_CHROMEOS) && BUILDFLAG(ENABLE_EXTENSIONS)
 
 // Regression test for http://b/290733700.
@@ -4017,7 +4042,7 @@ IN_PROC_BROWSER_TEST_F(LaunchWebAuthFlowFunctionTestWithPopupWindow,
 
   gfx::Rect bounds;
 #if BUILDFLAG(ENABLE_EXTENSIONS)
-  Browser* popup_browser = browser_opened.Wait();
+  BrowserWindowInterface* popup_browser = browser_opened.Wait();
   bounds = popup_browser->GetWindow()->GetBounds();
 #else
   // On Android, wait for the window to be created.

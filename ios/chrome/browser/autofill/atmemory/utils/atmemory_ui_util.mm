@@ -39,15 +39,6 @@ NSArray<AtMemoryGranularFillItem*>* AtMemoryGranularFillItemsForSearchResult(
   NSMutableArray<AtMemoryGranularFillItem*>* items =
       [[NSMutableArray alloc] init];
 
-  if (!result.value.empty()) {
-    [items
-        addObject:[[AtMemoryGranularFillItem alloc]
-                      initWithAttributeName:GetAttributeName(result.type_name,
-                                                             result.type)
-                             attributeValue:base::SysUTF16ToNSString(
-                                                result.value)]];
-  }
-
   for (const auto& metadata : result.metadata_list) {
     if (!metadata.value.empty()) {
       [items addObject:[[AtMemoryGranularFillItem alloc]
@@ -60,6 +51,14 @@ NSArray<AtMemoryGranularFillItem*>* AtMemoryGranularFillItemsForSearchResult(
   }
 
   return [items copy];
+}
+
+NSString* GetAtMemoryGranularFillCellAccessibilityIdentifier(
+    NSString* attribute_name) {
+  return [NSString
+      stringWithFormat:@"%@%@",
+                       kAtMemoryGranularFillCellAccessibilityIdentifierPrefix,
+                       attribute_name];
 }
 
 NSString* GetAtMemoryGranularFillAttributeLabelAccessibilityIdentifier(
@@ -77,4 +76,19 @@ NSString* GetAtMemoryGranularFillChipButtonAccessibilityIdentifier(
       stringWithFormat:
           @"%@%@", kAtMemoryGranularFillChipButtonAccessibilityIdentifierPrefix,
           attribute_name];
+}
+
+NSString* GetAtMemorySearchResultCellAccessibilityIdentifier(NSString* title) {
+  return [NSString
+      stringWithFormat:@"%@%@",
+                       kAtMemorySearchResultCellAccessibilityIdentifierPrefix,
+                       title];
+}
+
+NSString* GetAtMemorySearchResultInfoButtonAccessibilityIdentifier(
+    NSString* title) {
+  return [NSString
+      stringWithFormat:
+          @"%@%@", kAtMemorySearchResultInfoButtonAccessibilityIdentifierPrefix,
+          title];
 }

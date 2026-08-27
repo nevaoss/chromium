@@ -71,7 +71,8 @@ namespace {
 // Duration between advances of the fetching suggestion message.
 constexpr base::TimeDelta kFetchingMessageInterval = base::Seconds(3);
 
-constexpr auto kFetchingStringIds = std::to_array<int>({
+constexpr std::array<int, 3> kFetchingStringIds = std::to_array<int>({
+    IDS_AUTOFILL_AT_MEMORY_FETCHING_FINDING_INFO_WITH_GEMINI,
     IDS_AUTOFILL_AT_MEMORY_FETCHING_REVIEWING_CONNECTED_APPS,
     IDS_AUTOFILL_AT_MEMORY_FETCHING_PUTTING_IT_TOGETHER,
 });
@@ -747,6 +748,23 @@ void AtMemoryManager::MaybeAppendPersonalContextNotice(
   suggestions.insert(suggestions.begin(), std::move(notice));
 }
 
+// static
+void AtMemoryManager::MaybeAppendPreviouslyFilledSuggestions(
+    std::vector<Suggestion>& suggestions) {
+  if (!base::FeatureList::IsEnabled(
+          features::kAutofillAtMemoryPreviouslyFilled)) {
+    return;
+  }
+  Suggestion suggestion(
+      l10n_util::GetStringUTF16(IDS_AUTOFILL_AT_MEMORY_PREVIOUSLY_FILLED),
+      SuggestionType::kTitle);
+  suggestion.filtration_policy = Suggestion::FiltrationPolicy::kStatic;
+  suggestion.acceptability =
+      Suggestion::Acceptability::kUnselectableAndUnacceptable;
+  // TODO(crbug.com/494559543): Add the actual suggestions.
+  suggestions.push_back(std::move(suggestion));
+}
+
 void AtMemoryManager::ExecuteQuery(const std::u16string& filter) {
   AtMemoryQueryService* query_service = client_->GetAtMemoryQueryService();
   if (!query_service || !session_state_ ||
@@ -886,9 +904,15 @@ void AtMemoryManager::ShowFetchingStateSuggestions() {
   SendSuggestions(std::move(suggestions));
 }
 
-void AtMemoryManager::ShowEmptyQuerySuggestions() {
+std::vector<Suggestion> AtMemoryManager::GetEmptyQuerySuggestions() const {
   std::vector<Suggestion> suggestions;
   MaybeAppendPersonalContextNotice(suggestions);
+  MaybeAppendPreviouslyFilledSuggestions(suggestions);
+  return suggestions;
+}
+
+void AtMemoryManager::ShowEmptyQuerySuggestions() {
+  std::vector<Suggestion> suggestions = GetEmptyQuerySuggestions();
   SendSuggestions(std::move(suggestions));
 }
 

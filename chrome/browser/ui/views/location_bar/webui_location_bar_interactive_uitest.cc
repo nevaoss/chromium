@@ -224,7 +224,7 @@ class WebUILocationBarInteractiveUiTest : public TestBase {
     // OS.
     ASSERT_TRUE(base::test::RunUntil([browser = browser()]() {
       InitialWebUIManager* manager = InitialWebUIManager::From(browser);
-      return !manager || !manager->IsShowPending();
+      return !manager || !manager->IsInitialWebUIPending();
     }));
   }
 
@@ -686,7 +686,8 @@ IN_PROC_BROWSER_TEST_F(WebUILocationBarInteractiveUiTest, ShowHideAIPopup) {
 // one.
 IN_PROC_BROWSER_TEST_F(WebUILocationBarInteractiveUiTest, TabAIButton) {
   const char kCheckForceFocusRing[] =
-      "(el) => el.classList.contains('force-focus-ring')";
+      "(el) => "
+      "el.shadowRoot.querySelector('#button').hasAttribute('force-focus-ring')";
 
   RunTestSequence(
       InstrumentTab(kTabId), WaitForWebContentsReady(kTabId),

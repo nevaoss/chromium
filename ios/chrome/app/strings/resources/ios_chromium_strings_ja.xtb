@@ -24,6 +24,7 @@
 <translation id="1472013873724362412">このアカウントは Chromium では使用できません。ドメイン管理者に問い合わせるか、通常の Google アカウントでログインしてください。</translation>
 <translation id="148576268809812097">パスワードを Chromium に保存</translation>
 <translation id="1501302548410882220">Chromium をどこでも使用</translation>
+<translation id="1502360822835740515">Chromium をデフォルトのブラウザにする</translation>
 <translation id="1503199973012840174">お使いの Chromium は最新ではありません。安全性を確保するため更新してください。</translation>
 <translation id="1515748263297244785">iPad 版 Chromium をデフォルトで使用する</translation>
 <translation id="1530961174488670696">Chromium でアップデートを確認できませんでした。しばらくしてからもう一度お試しください。</translation>
@@ -331,6 +332,7 @@ Chromium を使いやすくするためにデータを使用するその他の�
 <translation id="8014091604604659473">Chromium はログアウト状態です</translation>
 <translation id="8104697640054703121">Chromium の最高水準のセキュリティで危険なサイトから身を守りましょう</translation>
 <translation id="8119542592987737574">iPhone のホーム画面ドックから Chromium にすばやくアクセス。</translation>
+<translation id="8119553494985516751">Chromium をデフォルトに設定すると、リンクをすばやく開けます</translation>
 <translation id="8164086860209325020">Chromium 設定に移動します</translation>
 <translation id="8197822717502700527">お使いのデバイスで Chromium を最大限に活用できるようになりました。</translation>
 <translation id="8236210361418193126">パスワード マネージャーにインポート</translation>

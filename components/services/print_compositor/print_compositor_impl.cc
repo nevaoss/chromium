@@ -38,6 +38,10 @@
 #include "third_party/blink/public/platform/platform.h"
 #endif
 
+#if BUILDFLAG(ENTERPRISE_WATERMARK)
+#include "components/services/print_compositor/print_watermark.h"
+#endif
+
 using MojoDiscardableSharedMemoryManager =
     discardable_memory::mojom::DiscardableSharedMemoryManager;
 
@@ -111,6 +115,10 @@ PrintCompositorImpl::~PrintCompositorImpl() {
 #if BUILDFLAG(IS_WIN)
   content::UninitializeFontIntegration();
 #endif
+}
+
+void PrintCompositorImpl::SetAddonForTesting(std::unique_ptr<Addon> addon) {
+  addon_ = std::move(addon);
 }
 
 void PrintCompositorImpl::NotifyUnavailableSubframe(uint64_t frame_guid) {
@@ -462,9 +470,9 @@ void PrintCompositorImpl::DrawPage(SkDocument* doc,
                                    const SkDocumentPage& page) {
   SkCanvas* canvas = doc->beginPage(page.fSize.width(), page.fSize.height());
   canvas->drawPicture(page.fPicture);
-#if BUILDFLAG(ENTERPRISE_WATERMARK)
-  watermark_.Draw(canvas, page.fSize);
-#endif
+  if (addon_) {
+    addon_->OnDrawPage(canvas, page.fSize);
+  }
   doc->endPage();
 }
 
@@ -539,7 +547,15 @@ void PrintCompositorImpl::SetTitle(const std::string& title) {
 #if BUILDFLAG(ENTERPRISE_WATERMARK)
 void PrintCompositorImpl::SetWatermarkBlock(
     watermark::mojom::WatermarkBlockPtr watermark_block) {
-  watermark_.SetBlock(std::move(watermark_block));
+  if (watermark_block) {
+    auto watermark =
+        std::make_unique<PrintWatermark>(std::move(watermark_block));
+    watermark_for_testing_ = watermark.get();
+    addon_ = std::move(watermark);
+  } else {
+    watermark_for_testing_ = nullptr;
+    addon_.reset();
+  }
 }
 #endif
 

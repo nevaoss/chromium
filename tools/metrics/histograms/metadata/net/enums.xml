@@ -1094,19 +1094,6 @@ historical analysis. -->
 
 <!-- LINT.ThenChange(//net/proxy_resolution/mac/mac_proxy_resolution_status.h:MacProxyResolutionStatus) -->
 
-<!-- LINT.IfChange(MTCResult) -->
-
-<enum name="MTCResult">
-  <int value="0" label="kValidMTC"/>
-  <int value="1" label="kInvalidMTC"/>
-  <int value="2" label="kClassicalCertExpectedMTC"/>
-  <int value="3" label="kClassicalCertOldClient"/>
-  <int value="4" label="kClassicalCertUnknownLandmarkDelta"/>
-  <int value="5" label="Reserved (was kResumption)"/>
-</enum>
-
-<!-- LINT.ThenChange(//net/quic/quic_chromium_client_session.h:MTCResult) -->
-
 <!-- LINT.IfChange(MultiplexedSessionCreationInitiator) -->
 
 <enum name="MultiplexedSessionCreationInitiator">
@@ -3220,6 +3207,19 @@ Called by update_net_trust_anchors.py.-->
 </enum>
 
 <!-- LINT.ThenChange(//net/quic/quic_session_pool.cc:QuicSessionKeyPartialMatchResult) -->
+
+<!-- LINT.IfChange(QuicSessionPoolAsyncDnsJobSuccessSource) -->
+
+<enum name="QuicSessionPoolAsyncDnsJobSuccessSource">
+  <int value="0" label="kNone"/>
+  <int value="1" label="kActiveSession"/>
+  <int value="2" label="kIpPooling"/>
+  <int value="3" label="kInitialConnectorFirstAttempt"/>
+  <int value="4" label="kInitialConnectorLaterAttempt"/>
+  <int value="5" label="kSlowTimerConnector"/>
+</enum>
+
+<!-- LINT.ThenChange(//net/quic/quic_session_pool_async_dns_job.h:QuicSessionPoolAsyncDnsJobSuccessSource) -->
 
 <enum name="QuicTransportErrorCodes">
   <int value="0" label="NO_ERROR"/>

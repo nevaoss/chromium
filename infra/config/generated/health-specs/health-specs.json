@@ -2789,27 +2789,6 @@
           }
         ]
       },
-      "Libfuzzer Upload Linux ASan Schema v1": {
-        "contact_team_email": "chrome-fuzzing-core@google.com",
-        "problem_specs": [
-          {
-            "name": "Unhealthy",
-            "period_days": 7,
-            "score": 5,
-            "thresholds": {
-              "_default": "_default"
-            }
-          },
-          {
-            "name": "Low Value",
-            "period_days": 90,
-            "score": 1,
-            "thresholds": {
-              "_default": "_default"
-            }
-          }
-        ]
-      },
       "Libfuzzer Upload Linux ASanBrpV2": {
         "contact_team_email": "chrome-fuzzing-core@google.com",
         "problem_specs": [
@@ -3797,27 +3776,6 @@
         ]
       },
       "Linux Wayland FYI Release (AMD)": {
-        "contact_team_email": "chrome-gpu-infra@google.com",
-        "problem_specs": [
-          {
-            "name": "Unhealthy",
-            "period_days": 7,
-            "score": 5,
-            "thresholds": {
-              "_default": "_default"
-            }
-          },
-          {
-            "name": "Low Value",
-            "period_days": 90,
-            "score": 1,
-            "thresholds": {
-              "_default": "_default"
-            }
-          }
-        ]
-      },
-      "Linux Wayland FYI Release (Intel)": {
         "contact_team_email": "chrome-gpu-infra@google.com",
         "problem_specs": [
           {
