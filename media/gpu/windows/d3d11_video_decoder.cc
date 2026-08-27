@@ -175,12 +175,12 @@ bool D3D11VideoDecoder::InitializeAcceleratedDecoder(
   profile_ = config.profile();
   if (config.codec() == VideoCodec::kVP9) {
     accelerated_video_decoder_ = std::make_unique<VP9Decoder>(
-        std::make_unique<D3D11VP9Accelerator>(this, media_log_.get()), profile_,
+        std::make_unique<D3DVP9Accelerator>(this, media_log_.get()), profile_,
         config.color_space_info());
   } else if (config.codec() == VideoCodec::kH264) {
     accelerated_video_decoder_ = std::make_unique<H264Decoder>(
-        std::make_unique<D3D11H264Accelerator>(this, media_log_.get()),
-        profile_, config.color_space_info());
+        std::make_unique<D3DH264Accelerator>(this, media_log_.get()), profile_,
+        config.color_space_info());
   } else if (config.codec() == VideoCodec::kAV1) {
     accelerated_video_decoder_ = std::make_unique<AV1Decoder>(
         std::make_unique<D3D11AV1Accelerator>(
@@ -944,8 +944,6 @@ bool D3D11VideoDecoder::OutputResult(const CodecPicture* picture,
                      scoped_refptr<D3D11PictureBuffer>(picture_buffer)));
   frame->SetReleaseMailboxCB(
       base::BindOnce(release_mailbox_cb_, std::move(wait_complete_cb)));
-  frame->metadata().allow_overlay =
-      shared_image->usage().Has(gpu::SHARED_IMAGE_USAGE_SCANOUT);
   frame->metadata().power_efficient = true;
 
   // If the output texture is in RGB pixel format, then the color space needs to

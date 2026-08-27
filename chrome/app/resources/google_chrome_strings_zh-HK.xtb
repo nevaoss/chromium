@@ -381,7 +381,6 @@
 <translation id="4885446229353981848">總是顯示 Google 智能鏡頭捷徑</translation>
 <translation id="4891791193823137474">讓 Google Chrome 在背景執行</translation>
 <translation id="4895437082222824641">在 Chrome 新分頁中開啟連結(&amp;T)</translation>
-<translation id="4896867431081882115">將 Chrome 設定為預設瀏覽器，即可輕鬆存取你熟悉、喜愛和信任的功能。Chrome 會固定在工作列，方便你快速取用。</translation>
 <translation id="4904953848704395458">使用鍵盤快速鍵開啟 Chrome 版 Gemini。</translation>
 <translation id="4918086044614829423">接受</translation>
 <translation id="4918844574251943176">已複製圖片</translation>
@@ -747,6 +746,7 @@ Google Chrome 無法復原您的設定。</translation>
 <translation id="8367705492654390392">發問</translation>
 <translation id="8367950957770994118">需要時快速開啟 Chrome 版 Gemini</translation>
 <translation id="8370517070665726704">版權所有 <ph name="YEAR" /> Google LLC。保留所有權利。</translation>
+<translation id="8370748943308169953">用嚟以 <ph name="USER_NAME" /> 登入 Chrome 嘅二維碼</translation>
 <translation id="8377158135256176353">切換 Chrome Canary 版 Gemini</translation>
 <translation id="8387459386171870978">繼續使用 Chrome</translation>
 <translation id="8394720698884623075">使用儲存在 Chrome 中的不安全網站清單來檢查網址</translation>

@@ -19,7 +19,9 @@
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
+#include "base/functional/callback_helpers.h"
 #include "base/logging.h"
+#include "base/memory/ref_counted.h"
 #include "base/memory/weak_ptr.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/no_destructor.h"
@@ -138,6 +140,44 @@ constexpr char kTabSafeBrowsingObserverPredicateName[] =
 constexpr GateableEventSet kRequestsAndPageActions = {
     GateableEvent::kNavigationRequest, GateableEvent::kPageAction};
 
+// Splits a navigation gating callback, storing one split in
+// `pending_cancellations` (to invoke `arg_for_cancel_callback` when pending
+// navigations are cancelled) and another in a ScopedClosureRunner (to invoke
+// `arg_for_cancel_callback` if the callback is dropped before execution).
+// Returns a wrapped callback that disarms both upon normal invocation.
+ExecutionEngine::NavigationDecisionCallback TrackPendingNavigation(
+    base::OnceCallbackList<void()>& pending_cancellations,
+    ExecutionEngine::NavigationDecisionCallback callback,
+    bool arg_for_cancel_callback) {
+  auto [cancel_1, temp] = base::SplitOnceCallback(std::move(callback));
+  auto [cancel_2, wrapped] = base::SplitOnceCallback(std::move(temp));
+
+  auto runner =
+      base::MakeRefCounted<base::RefCountedData<base::ScopedClosureRunner>>(
+          base::ScopedClosureRunner(
+              base::BindOnce(std::move(cancel_2), arg_for_cancel_callback)));
+
+  base::CallbackListSubscription subscription =
+      pending_cancellations.Add(base::BindOnce(
+          [](scoped_refptr<base::RefCountedData<base::ScopedClosureRunner>>
+                 runner,
+             base::OnceCallback<void(bool)> cancel_cb, bool arg) {
+            runner->data.ReplaceClosure(base::DoNothing());
+            std::move(cancel_cb).Run(arg);
+          },
+          runner, std::move(cancel_1), arg_for_cancel_callback));
+
+  return base::BindOnce(
+             [](scoped_refptr<base::RefCountedData<base::ScopedClosureRunner>>
+                    runner,
+                base::CallbackListSubscription sub, bool arg) {
+               runner->data.ReplaceClosure(base::DoNothing());
+               return arg;
+             },
+             std::move(runner), std::move(subscription))
+      .Then(std::move(wrapped));
+}
+
 struct NavigationResponseContext : public origin_gating::GatingDecisionContext {
   NavigationResponseContext(ukm::SourceId ukm_id,
                             bool skip,
@@ -165,7 +205,7 @@ struct PageActionGatingContext : public origin_gating::GatingDecisionContext {
 };
 
 // Blocks acting on a tab whose primary main frame is showing an error document.
-origin_gating::Decision EvaluateTabErrorDocument(
+origin_gating::Decision BlockTabErrorDocument(
     const origin_gating::GatingDecisionContext* context,
     const GURL& source,
     const GURL& destination) {
@@ -180,7 +220,7 @@ origin_gating::Decision EvaluateTabErrorDocument(
 // Blocks acting on a tab that has a pending SafeBrowsing delayed warning. The
 // SafeBrowsing Delayed Warnings experiment can delay some SafeBrowsing warnings
 // until user interaction; such a page has a user interaction observer attached.
-origin_gating::Decision EvaluateTabSafeBrowsingObserver(
+origin_gating::Decision BlockSafeBrowsingWarningIfSafetyChecksEnabled(
     const origin_gating::GatingDecisionContext* context,
     const GURL& source,
     const GURL& destination) {
@@ -273,7 +313,7 @@ void BlockSensitiveUrlWhenPromptsDisabled(
   BlockSensitiveUrl(profile, context, source, destination, std::move(callback));
 }
 
-origin_gating::Decision EvaluateLookalikeUrl(
+origin_gating::Decision BlockLookalikeUrl(
     Profile* profile,
     const origin_gating::GatingDecisionContext* context,
     const GURL& source,
@@ -298,7 +338,7 @@ origin_gating::Decision EvaluateLookalikeUrl(
   return origin_gating::Decision::kNoDecision;
 }
 
-origin_gating::Decision EvaluateSafeBrowsingEnabled(
+origin_gating::Decision BlockIfSafeBrowsingDisabled(
     Profile* profile,
     const origin_gating::GatingDecisionContext* context,
     const GURL& source,
@@ -314,7 +354,7 @@ origin_gating::Decision EvaluateSafeBrowsingEnabled(
                                   : origin_gating::Decision::kBlocked;
 }
 
-origin_gating::Decision EvaluateSafetyChecksDisabled(
+origin_gating::Decision AllowIfSafetyChecksDisabled(
     const origin_gating::GatingDecisionContext* context,
     const GURL& source,
     const GURL& destination) {
@@ -624,15 +664,12 @@ ExecutionEngine::ExecutionEngine(
           *this,
           origin_gating::OriginGatingConfiguration(
               {
-                  {DecisionSource::kActorContainerConfig,
-                   {GateableEvent::kPageAction}},
-                  {CreateSafetyListPredicate(), {GateableEvent::kPageAction}},
-                  {CustomPredicate(
-                       base::BindRepeating(&EvaluateTabErrorDocument),
-                       kTabErrorDocumentPredicateName),
+                  {CustomPredicate(base::BindRepeating(&BlockTabErrorDocument),
+                                   kTabErrorDocumentPredicateName),
                    {GateableEvent::kPageAction}},
                   {CustomPredicate(
-                       base::BindRepeating(&EvaluateTabSafeBrowsingObserver),
+                       base::BindRepeating(
+                           &BlockSafeBrowsingWarningIfSafetyChecksEnabled),
                        kTabSafeBrowsingObserverPredicateName),
                    {GateableEvent::kPageAction}},
                   {DecisionSource::kAllowHttpLocalhost,
@@ -647,11 +684,11 @@ ExecutionEngine::ExecutionEngine(
                   {DecisionSource::kRequireHttps, {GateableEvent::kPageAction}},
                   {DecisionSource::kForbidIpAddress, kRequestsAndPageActions},
                   {CustomPredicate(
-                       base::BindRepeating(&EvaluateSafetyChecksDisabled),
+                       base::BindRepeating(&AllowIfSafetyChecksDisabled),
                        kSafetyChecksDisabledPredicateName),
                    kRequestsAndPageActions},
                   {CustomPredicate(
-                       base::BindRepeating(&EvaluateSafeBrowsingEnabled,
+                       base::BindRepeating(&BlockIfSafeBrowsingDisabled,
                                            task_->GetProfile()),
                        kSafeBrowsingPredicateName),
                    kRequestsAndPageActions},
@@ -660,14 +697,16 @@ ExecutionEngine::ExecutionEngine(
                        kActionAllowlistPredicateName),
                    kRequestsAndPageActions},
                   {DecisionSource::kEnterprisePolicy, GateableEventSet::All()},
-                  {CustomPredicate(base::BindRepeating(&EvaluateLookalikeUrl,
+                  {CustomPredicate(base::BindRepeating(&BlockLookalikeUrl,
                                                        task_->GetProfile()),
                                    kLookalikeUrlPredicateName),
                    kRequestsAndPageActions},
                   {DecisionSource::kActorContainerConfig,
-                   {GateableEvent::kNavigationResponse}},
+                   {GateableEvent::kNavigationResponse,
+                    GateableEvent::kPageAction}},
                   {CreateSafetyListPredicate(),
-                   {GateableEvent::kNavigationResponse}},
+                   {GateableEvent::kNavigationResponse,
+                    GateableEvent::kPageAction}},
                   {DecisionSource::kCacheWithUserConfirmation,
                    GateableEventSet::All()},
                   {DecisionSource::kAllowSameOrigin,
@@ -720,6 +759,7 @@ ExecutionEngine::~ExecutionEngine() {
                                       metrics.confirmed_list_size);
 
   RunUserTakeoverCallbackIfExists(/*should_cancel=*/true);
+  CancelPendingNavigations();
 }
 
 void ExecutionEngine::SetState(State state) {
@@ -791,14 +831,22 @@ ExecutionEngine::ShouldDeferNavigation(
       GetPrimaryMainFrame(navigation_handle)->GetPageUkmSourceId(),
       navigation_handle.IsInPrerenderedMainFrame(), std::move(timer));
   auto event = GateableEvent::kNavigationResponse;
+  auto wrapped_callback = TrackPendingNavigation(
+      pending_navigation_cancellations_, std::move(callback),
+      /*arg_for_cancel_callback=*/false);
   origin_gating_checker_.ComputeGatingDecision(
       std::move(context), event, source_origin.GetURL(),
       navigation_handle.GetURL(),
       base::BindOnce(&ExecutionEngine::OnComputedGatingDecision, GetWeakPtr(),
-                     std::move(callback), source_origin,
+                     std::move(wrapped_callback), source_origin,
                      url::Origin::Create(navigation_handle.GetURL()), state_,
                      navigation_handle.GetInitiatorOrigin(), event));
   return content::NavigationThrottle::DEFER;
+}
+
+void ExecutionEngine::CancelPendingNavigations() {
+  TRACE_EVENT0("actor", "ExecutionEngine::CancelPendingNavigations");
+  pending_navigation_cancellations_.Notify();
 }
 
 void ExecutionEngine::OnComputedGatingDecision(
@@ -1415,12 +1463,12 @@ void ExecutionEngine::FinishedUiPreInvoke(mojom::ActionResultPtr result) {
 
   // Cache the navigation ID before invoking the tool to ensure we log the
   // critical action under the correct pre-navigation page context.
-  pre_invoke_navigation_id_ = ukm::kInvalidSourceId;
+  pre_invoke_navigation_id_ = 0;
   const ToolRequest& current_action = GetInProgressAction();
   tabs::TabInterface* tab = current_action.GetTabForValidation().Get();
   if (tab && tab->GetContents() && tab->GetContents()->GetPrimaryMainFrame()) {
     pre_invoke_navigation_id_ =
-        tab->GetContents()->GetPrimaryMainFrame()->GetPageUkmSourceId();
+        tab->GetContents()->GetPrimaryMainFrame()->GetNavigationId();
   }
 
   SetState(State::kToolInvoke);
@@ -1467,7 +1515,7 @@ void ExecutionEngine::FinishedToolInvoke(mojom::ActionResultPtr result) {
   ActorCriticalActionLogger::MaybeLogAction(*task_, &GetProfile(),
                                             current_action, *result,
                                             pre_invoke_navigation_id_);
-  pre_invoke_navigation_id_ = ukm::kInvalidSourceId;
+  pre_invoke_navigation_id_ = 0;
 
   // TODO(bokan): If tool completion is deferred due to interruption (e.g.
   // waiting on a user to confirm an action) the recorded tool metrics will look

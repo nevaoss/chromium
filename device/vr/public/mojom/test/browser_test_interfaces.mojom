@@ -4,18 +4,13 @@
 
 module device_test.mojom;
 
+import "device/gamepad/public/mojom/gamepad.mojom";
 import "device/vr/public/mojom/openxr_interaction_profile_type.mojom";
 import "device/vr/public/mojom/vr_service.mojom";
 import "device/vr/public/mojom/xr_hand_tracking_data.mojom";
+import "skia/public/mojom/skcolor.mojom";
 import "ui/gfx/geometry/mojom/geometry.mojom";
 import "ui/gfx/mojom/transform.mojom";
-
-struct Color {
-  uint8 r;
-  uint8 g;
-  uint8 b;
-  uint8 a;
-};
 
 enum LayerType {
   NONE = 0,
@@ -28,11 +23,11 @@ enum LayerType {
 struct LayerData {
   LayerType type;
   // Color of first pixel on every face. Cube layers have 6 faces.
-  array<Color> face_colors;
+  array<skia.mojom.SkColor> face_colors;
 };
 
 struct ViewData {
-  Color color;
+  skia.mojom.SkColor color;
   device.mojom.XREye eye;
   gfx.mojom.Rect viewport;
 };
@@ -41,29 +36,17 @@ struct DeviceConfig {
   float interpupillary_distance; // Distance between the eyes.
 };
 
-struct ControllerAxisData {
-  float x;
-  float y;
-  uint8 axis_type; // Corresponds to OpenVR's EVRControllerAxisType
-};
-
-enum ControllerRole {
-  kControllerRoleInvalid, // Test hook should ignore this controller.
-  kControllerRoleLeft,
-  kControllerRoleRight,
-  kControllerRoleVoice // Simulates voice input such as saying "select" in WMR.
-};
-
 struct ControllerFrameData {
-  uint32 packet_number;
-  uint64 buttons_pressed;
-  uint64 buttons_touched;
-  uint64 supported_buttons;
-  array<ControllerAxisData, 5> axis_data;
+  device.mojom.XRHandedness handedness = NONE;
+  device.mojom.Gamepad? gamepad;
   gfx.mojom.Transform? pose_data;
-  ControllerRole role = kControllerRoleInvalid;
   device.mojom.XRHandTrackingData? hand_data;
-  bool is_valid;
+  bool is_valid = false;
+};
+
+struct XRTestFrameData {
+  gfx.mojom.Transform? head_pose;
+  array<ControllerFrameData> controllers;
 };
 
 // Event type is used by test to simulate runtime events.
@@ -100,24 +83,9 @@ interface XRTestHook {
   // the test.
   [Sync] WaitGetDeviceConfig() => (DeviceConfig config);
 
-  // Called by the XR runtime to retrieve the XR device's pose while in a
-  // presenting/exclusive session.
-  [Sync] WaitGetPresentingPose() => (gfx.mojom.Transform? data);
-
-  // Called by the XR runtime to retrieve the XR device's pose while in a
-  // magic window/non-exclusive session.
-  [Sync] WaitGetMagicWindowPose() => (gfx.mojom.Transform? data);
-
-  // Called by the XR runtime to retrieve the ControllerRole of the device
-  // that the test has registered at the given index, i.e. which hand the
-  // controller is mapped to.
-  [Sync] WaitGetControllerRoleForTrackedDeviceIndex(uint32 index) =>
-      (ControllerRole role);
-
-  // Called by the XR runtime anytime it updates its controller data to retrieve
-  // the controller data of the device that the test has registered at the
-  // given index, e.g. its current position and pressed buttons.
-  [Sync] WaitGetControllerData(uint32 index) => (ControllerFrameData data);
+  // Called by the XR runtime to get data that is only expected to update once
+  // per frame (e.g. head and controller poses).
+  [Sync] WaitGetFrameData() => (XRTestFrameData data);
 
   // Called by the OpenXR test to simulate runtime events.
   [Sync] WaitGetEventData() => (EventData data);
@@ -125,7 +93,10 @@ interface XRTestHook {
   // Used to indicate if the Fake Runtime would allow creating any session.
   [Sync] WaitGetCanCreateSession() => (bool can_create_session);
 
-  // Called by the OpenXR test to get visibility mask data.
+  // Called by the OpenXR test to get visibility mask data. While this is queried
+  // as part of the per-frame view configuration data, OpenXR also supports
+  // updating it asynchronously via an event, and so we leave it as a separate
+  // method from WaitGetFrameData.
   [Sync] WaitGetVisibilityMask(uint32 view_index)
       => (device.mojom.XRVisibilityMask? mask);
 };
@@ -144,9 +115,4 @@ interface XRServiceTestHook {
   // debuggable manner, rather than relying on waiting for the async callback to
   // continue with the test.
   [Sync] SetTestHook(pending_remote<XRTestHook>? hook) => ();
-
-  // Called by tests to trigger a termination of the Device Service Process
-  // To test that the product can properly handle the service either crashing
-  // or (more expectedly) being terminated by some other running process.
-  [Sync] TerminateDeviceServiceProcessForTesting() => ();
 };

@@ -12,6 +12,7 @@
 #include "chrome/browser/vr/test/multi_class_browser_test.h"
 #include "chrome/browser/vr/test/ui_utils.h"
 #include "chrome/browser/vr/test/webxr_vr_browser_test.h"
+#include "third_party/skia/include/core/SkColor.h"
 
 namespace vr {
 namespace {
@@ -26,20 +27,12 @@ struct Frame {
 
 class MyXRMock : public MockXRDeviceHookBase {
  public:
+  MyXRMock() { SetDeviceConfig({.interpupillary_distance = kIPD}); }
+
   void ProcessSubmittedFrameUnlocked(
       const std::vector<device::ViewData>& views,
       const std::vector<device::LayerData>& layers) final;
-  void WaitGetDeviceConfig(
-      device_test::mojom::XRTestHook::WaitGetDeviceConfigCallback callback)
-      final {
-    std::move(callback).Run(GetDeviceConfig());
-  }
-  void WaitGetPresentingPose(
-      device_test::mojom::XRTestHook::WaitGetPresentingPoseCallback callback)
-      final;
-  void WaitGetMagicWindowPose(
-      device_test::mojom::XRTestHook::WaitGetMagicWindowPoseCallback callback)
-      final;
+  void UpdateFrameDataUnlocked() override;
 
   base::Lock frame_data_lock;
   std::vector<Frame> submitted_frames GUARDED_BY(frame_data_lock);
@@ -55,10 +48,10 @@ class MyXRMock : public MockXRDeviceHookBase {
   std::atomic_int frame_id_ = 0;
 };
 
-uint32_t ParseColorFrameId(const device::Color& color) {
+uint32_t ParseColorFrameId(SkColor color) {
   // Corresponding math in test_webxr_poses.html.
-  uint32_t frame_id =
-      static_cast<uint32_t>(color.r) + 256 * color.g + 256 * 256 * color.b;
+  uint32_t frame_id = static_cast<uint32_t>(SkColorGetR(color)) +
+                      256 * SkColorGetG(color) + 256 * 256 * SkColorGetB(color);
   return frame_id;
 }
 
@@ -85,20 +78,9 @@ void MyXRMock::ProcessSubmittedFrameUnlocked(
   }
 }
 
-void MyXRMock::WaitGetMagicWindowPose(
-    device_test::mojom::XRTestHook::WaitGetMagicWindowPoseCallback callback) {
+void MyXRMock::UpdateFrameDataUnlocked() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(mock_device_sequence_);
-  // Almost identity matrix - enough different that we can identify if magic
-  // window poses are used instead of presenting poses.
-  gfx::Transform pose;
-  pose.set_rc(1, 1, -1);
-  std::move(callback).Run(std::move(pose));
-}
-
-void MyXRMock::WaitGetPresentingPose(
-    device_test::mojom::XRTestHook::WaitGetPresentingPoseCallback callback) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(mock_device_sequence_);
-  DLOG(ERROR) << "WaitGetPresentingPose: " << frame_id_;
+  DLOG(ERROR) << "UpdateFrameData: " << frame_id_;
 
   gfx::Transform pose;
 
@@ -112,7 +94,7 @@ void MyXRMock::WaitGetPresentingPose(
     last_immersive_frame_data = pose;
   }
 
-  std::move(callback).Run(pose);
+  SetHeadPose(pose);
 }
 
 std::string GetMatrixAsString(const gfx::Transform& m) {

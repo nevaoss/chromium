@@ -93,6 +93,7 @@ using ::testing::WithParamInterface;
 constexpr size_t kVisibleSuffixLength = 4;
 constexpr std::u16string_view kDots = u"\u2022\u2060\u2006\u2060";
 constexpr std::string_view kFormUrl = "https://myform.com/form.html";
+constexpr base::TimeDelta kFetchingMessageInterval = base::Seconds(3);
 
 class MockAutofillClient : public TestAutofillClient {
  public:
@@ -293,12 +294,11 @@ class AtMemoryManagerTest : public Test,
           AutofillSuggestionTriggerSource::kAtMemoryTriggerString,
       base::optional_ref<const AutofillSuggestionDelegate::SuggestionMetadata>
           parent_suggestion_metadata = std::nullopt,
-      bool is_context_secure = true,
       ukm::SourceId ukm_source_id = ukm::kInvalidSourceId) {
     auto [form_id, field_id] = SeeForm();
     manager().OnPopupShown(form_id, field_id, trigger_source,
-                           parent_suggestion_metadata, is_context_secure,
-                           update_callback_.Get(), ukm_source_id);
+                           parent_suggestion_metadata, update_callback_.Get(),
+                           ukm_source_id);
     return {form_id, field_id};
   }
 
@@ -1529,9 +1529,11 @@ TEST_F(AtMemoryManagerTest, FillIban_Success) {
 // Tests that SPII entries and metadata are filtered out from the search
 // results when the context is insecure.
 TEST_F(AtMemoryManagerTest, FiltersSpiiInInsecureContext) {
-  SeeFormAndShowPopup(AutofillSuggestionTriggerSource::kAtMemoryTriggerString,
-                      /*parent_suggestion_metadata=*/std::nullopt,
-                      /*is_context_secure=*/false);
+  // Setting an HTTP URL causes `TestAutofillClient::IsContextSecure()` to
+  // return false, simulating an insecure page context.
+  autofill_client().set_last_committed_primary_main_frame_url(
+      GURL("http://example.com/"));
+  SeeFormAndShowPopup();
 
   base::RepeatingCallback<void(MemorySearchResults)> search_callback;
   EXPECT_CALL(mock_query_service(),
@@ -1769,7 +1771,7 @@ TEST_P(AtMemoryManagerPolicyTest, RespectsEnterprisePolicy) {
     EXPECT_EQ(resulting_suggestions[0].type,
               SuggestionType::kAtMemorySearchResult);
     EXPECT_EQ(resulting_suggestions[0].acceptability,
-              Suggestion::Acceptability::kSelectableButUnacceptable);
+              Suggestion::Acceptability::kUnselectableAndUnacceptable);
   }
 }
 
@@ -1839,7 +1841,7 @@ TEST_P(AtMemoryManagerPrefTest, FiltersOutCreditCardsWhenPrefDisabled) {
     EXPECT_EQ(resulting_suggestions[0].type,
               SuggestionType::kAtMemorySearchResult);
     EXPECT_EQ(resulting_suggestions[0].acceptability,
-              Suggestion::Acceptability::kSelectableButUnacceptable);
+              Suggestion::Acceptability::kUnselectableAndUnacceptable);
   }
 }
 
@@ -1968,11 +1970,9 @@ TEST_F(AtMemoryManagerTest, FillOverlappingPopups) {
   // 4. Show Popup 2 (overlapping with the pending async fill of Popup 1).
   base::MockCallback<AtMemoryManager::UpdateSuggestionsCallback>
       update_callback_2;
-  manager().OnPopupShown(form_id, field_id,
-                         AutofillSuggestionTriggerSource::kAtMemoryContextMenu,
-                         std::nullopt,
-                         /*is_context_secure=*/true, update_callback_2.Get(),
-                         ukm::kInvalidSourceId);
+  manager().OnPopupShown(
+      form_id, field_id, AutofillSuggestionTriggerSource::kAtMemoryContextMenu,
+      std::nullopt, update_callback_2.Get(), ukm::kInvalidSourceId);
 
   // 5. Hide Popup 2 (without accepting suggestions).
   manager().OnPopupHidden();
@@ -2087,9 +2087,9 @@ TEST_F(AtMemoryManagerTest, PersonalContext_NoticePositioning_SearchResults) {
 
   // Verify that the personal context notice card is prepended first, followed
   // by the search result entry.
-  ASSERT_EQ(2u, suggestions.size());
-  EXPECT_EQ(SuggestionType::kPersonalContextNotice, suggestions[0].type);
-  EXPECT_EQ(SuggestionType::kAtMemorySearchResult, suggestions[1].type);
+  EXPECT_THAT(suggestions,
+              SuggestionVectorIdsAre(SuggestionType::kPersonalContextNotice,
+                                     SuggestionType::kAtMemorySearchResult));
 }
 
 // Tests that during the fetching state (while search is in progress), the UI
@@ -2103,8 +2103,7 @@ TEST_F(AtMemoryManagerTest, FetchingState_Suggestions_NoticeActive) {
   manager().OnPopupShown(
       form_id, field_id,
       AutofillSuggestionTriggerSource::kAtMemoryTriggerString, std::nullopt,
-      /*is_context_secure=*/true, update_callback_.Get(),
-      ukm::kInvalidSourceId);
+      update_callback_.Get(), ukm::kInvalidSourceId);
 
   EXPECT_CALL(
       update_callback_,
@@ -2132,8 +2131,7 @@ TEST_F(AtMemoryManagerTest, FetchingState_Suggestions_NoticeAccepted) {
   manager().OnPopupShown(
       form_id, field_id,
       AutofillSuggestionTriggerSource::kAtMemoryTriggerString, std::nullopt,
-      /*is_context_secure=*/true, update_callback_.Get(),
-      ukm::kInvalidSourceId);
+      update_callback_.Get(), ukm::kInvalidSourceId);
 
   std::vector<Suggestion> suggestions;
   EXPECT_CALL(update_callback_,
@@ -2145,11 +2143,119 @@ TEST_F(AtMemoryManagerTest, FetchingState_Suggestions_NoticeAccepted) {
   EXPECT_TRUE(suggestions.empty());
 }
 
+// Tests that during search execution, the fetching suggestion message iterates
+// over all configured strings in a loop at each interval.
+TEST_F(AtMemoryManagerTest,
+       FetchingState_CyclesThroughFetchingStringsAndLoops) {
+  SeeFormAndShowPopup();
+
+  {
+    InSequence seq;
+    // Notify the UI that search has started.
+    EXPECT_CALL(
+        update_callback_,
+        Run(ElementsAre(EqualsSuggestion(
+                SuggestionType::kAtMemoryFetching,
+                l10n_util::GetStringUTF16(
+                    IDS_AUTOFILL_AT_MEMORY_FETCHING_REVIEWING_CONNECTED_APPS))),
+            AutofillSuggestionTriggerSource::kAtMemoryTriggerString));
+    // Query is sent to the service.
+    EXPECT_CALL(mock_query_service(),
+                Query(std::u16string_view(u"query"), _, _, _));
+    // First timer tick advances to next message.
+    EXPECT_CALL(
+        update_callback_,
+        Run(ElementsAre(EqualsSuggestion(
+                SuggestionType::kAtMemoryFetching,
+                l10n_util::GetStringUTF16(
+                    IDS_AUTOFILL_AT_MEMORY_FETCHING_PUTTING_IT_TOGETHER))),
+            AutofillSuggestionTriggerSource::kAtMemoryTriggerString));
+    // Second timer tick loops back to the first string.
+    EXPECT_CALL(
+        update_callback_,
+        Run(ElementsAre(EqualsSuggestion(
+                SuggestionType::kAtMemoryFetching,
+                l10n_util::GetStringUTF16(
+                    IDS_AUTOFILL_AT_MEMORY_FETCHING_REVIEWING_CONNECTED_APPS))),
+            AutofillSuggestionTriggerSource::kAtMemoryTriggerString));
+  }
+
+  manager().OnSearchSubmitted(u"query");
+
+  task_environment_.FastForwardBy(kFetchingMessageInterval);
+  task_environment_.FastForwardBy(kFetchingMessageInterval);
+}
+
+// Tests that when search results arrive, the fetching timer is cancelled.
+TEST_F(AtMemoryManagerTest, FetchingState_TimerStopsWhenResultsReceived) {
+  SeeFormAndShowPopup();
+
+  base::RepeatingCallback<void(MemorySearchResults)> search_callback;
+  EXPECT_CALL(mock_query_service(),
+              Query(std::u16string_view(u"query"), _, _, _))
+      .WillOnce(SaveArg<3>(&search_callback));
+
+  EXPECT_CALL(
+      update_callback_,
+      Run(ElementsAre(EqualsSuggestion(
+              SuggestionType::kAtMemoryFetching,
+              l10n_util::GetStringUTF16(
+                  IDS_AUTOFILL_AT_MEMORY_FETCHING_REVIEWING_CONNECTED_APPS))),
+          AutofillSuggestionTriggerSource::kAtMemoryTriggerString));
+
+  manager().OnSearchSubmitted(u"query");
+
+  // Advance once.
+  EXPECT_CALL(
+      update_callback_,
+      Run(ElementsAre(EqualsSuggestion(
+              SuggestionType::kAtMemoryFetching,
+              l10n_util::GetStringUTF16(
+                  IDS_AUTOFILL_AT_MEMORY_FETCHING_PUTTING_IT_TOGETHER))),
+          AutofillSuggestionTriggerSource::kAtMemoryTriggerString));
+  task_environment_.FastForwardBy(kFetchingMessageInterval);
+
+  // Return search results.
+  EXPECT_CALL(update_callback_,
+              Run(ElementsAre(Field(&Suggestion::type,
+                                    SuggestionType::kAtMemorySearchResult)),
+                  AutofillSuggestionTriggerSource::kAtMemoryTriggerString));
+  MemorySearchResult entry(MemoryDataType::kAddressFull, u"Address",
+                           u"123 Main St");
+  search_callback.Run(MemorySearchResults(
+      MemorySearchStatus::kFinalResponseSuccess, {std::move(entry)}));
+
+  // Fast forward further: `update_callback_` should NOT be called again.
+  task_environment_.FastForwardBy(kFetchingMessageInterval * 5);
+}
+
+// Tests that when popup is hidden, the fetching timer is stopped.
+TEST_F(AtMemoryManagerTest, FetchingState_TimerStopsOnPopupHidden) {
+  SeeFormAndShowPopup();
+
+  EXPECT_CALL(mock_query_service(),
+              Query(std::u16string_view(u"query"), _, _, _));
+
+  EXPECT_CALL(
+      update_callback_,
+      Run(ElementsAre(EqualsSuggestion(
+              SuggestionType::kAtMemoryFetching,
+              l10n_util::GetStringUTF16(
+                  IDS_AUTOFILL_AT_MEMORY_FETCHING_REVIEWING_CONNECTED_APPS))),
+          AutofillSuggestionTriggerSource::kAtMemoryTriggerString));
+
+  manager().OnSearchSubmitted(u"query");
+
+  manager().OnPopupHidden();
+
+  // Fast forward: `update_callback_` should NOT be called again.
+  task_environment_.FastForwardBy(kFetchingMessageInterval * 5);
+}
+
 // Tests that when Glic is enabled and search returns `kUnsupportedQuery`,
 // the unsupported query suggestion is returned.
-TEST_F(
-    AtMemoryManagerTest,
-    OnSearchSubmitted_UnsupportedQuery_GlicEnabled_UnsupportedQuerySuggestion) {
+TEST_F(AtMemoryManagerTest,
+       OnSearchSubmitted_UnsupportedQuery_GlicEnabled_FallbackSuggestion) {
   base::HistogramTester histogram_tester;
 
   autofill_client().set_is_glic_enabled(true);
@@ -2162,8 +2268,8 @@ TEST_F(
 
   manager().OnSearchSubmitted(u"query");
 
-  ASSERT_EQ(final_suggestions.size(), 1u);
-  EXPECT_EQ(final_suggestions[0].type, SuggestionType::kOpenGemini);
+  EXPECT_THAT(final_suggestions,
+              SuggestionVectorIdsAre(SuggestionType::kOpenGemini));
 
   // Verify that we still logged that some sort of suggestion was shown to the
   // user despite it not being an AtMemory suggestion.
@@ -2184,8 +2290,8 @@ TEST_F(AtMemoryManagerTest,
 
   manager().OnSearchSubmitted(u"query");
 
-  ASSERT_EQ(final_suggestions.size(), 1u);
-  EXPECT_EQ(final_suggestions[0].type, SuggestionType::kAtMemorySearchResult);
+  ASSERT_THAT(final_suggestions,
+              SuggestionVectorIdsAre(SuggestionType::kAtMemorySearchResult));
   EXPECT_EQ(final_suggestions[0].main_text.value,
             l10n_util::GetStringUTF16(IDS_AUTOFILL_AT_MEMORY_NO_DATA));
 }
@@ -2450,8 +2556,7 @@ TEST_F(AtMemoryManagerTest, OnPopupShown_SubPopup_DoesNotResetRecorder) {
   manager().OnPopupShown(
       form_id, field_id,
       AutofillSuggestionTriggerSource::kAtMemoryTriggerString, metadata,
-      /*is_context_secure=*/true, update_callback_.Get(),
-      ukm::kInvalidSourceId);
+      update_callback_.Get(), ukm::kInvalidSourceId);
 
   // If it had reset, the first recorder would have been destroyed and logged
   // "QuerySubmitted".
@@ -2718,8 +2823,7 @@ TEST_F(AtMemoryManagerTest, OnPopupShown_SubPopup_NoCrashWhenRecorderMovedOut) {
       form_id, field_id,
       AutofillSuggestionTriggerSource::kAtMemoryTriggerString,
       AutofillSuggestionDelegate::SuggestionMetadata{.multi_index = {2}},
-      /*is_context_secure=*/true, update_callback_.Get(),
-      ukm::kInvalidSourceId);
+      update_callback_.Get(), ukm::kInvalidSourceId);
   EXPECT_EQ(test_api(manager()).at_memory_metrics_recorder(), nullptr);
 }
 
@@ -2735,8 +2839,7 @@ TEST_F(AtMemoryManagerTest,
   manager().OnPopupShown(
       uncached_form_id, uncached_field_id,
       AutofillSuggestionTriggerSource::kAtMemoryTriggerString,
-      /*parent_suggestion_metadata=*/std::nullopt,
-      /*is_context_secure=*/true, update_callback_.Get(),
+      /*parent_suggestion_metadata=*/std::nullopt, update_callback_.Get(),
       ukm::kInvalidSourceId);
 
   std::vector<Suggestion> final_suggestions;
@@ -2778,8 +2881,7 @@ TEST_F(AtMemoryManagerTest,
   manager().OnPopupShown(
       uncached_form_id, uncached_field_id,
       AutofillSuggestionTriggerSource::kAtMemoryTriggerString,
-      /*parent_suggestion_metadata=*/std::nullopt,
-      /*is_context_secure=*/true, update_callback_.Get(),
+      /*parent_suggestion_metadata=*/std::nullopt, update_callback_.Get(),
       ukm::kInvalidSourceId);
 
   std::vector<Suggestion> final_suggestions;

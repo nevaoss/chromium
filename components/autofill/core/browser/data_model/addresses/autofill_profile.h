@@ -23,7 +23,9 @@
 #include "components/autofill/core/browser/country_type.h"
 #include "components/autofill/core/browser/data_model/addresses/address.h"
 #include "components/autofill/core/browser/data_model/addresses/autofill_structured_address_component.h"
+#include "components/autofill/core/browser/data_model/addresses/company_info.h"
 #include "components/autofill/core/browser/data_model/addresses/contact_info.h"
+#include "components/autofill/core/browser/data_model/addresses/email_info.h"
 #include "components/autofill/core/browser/data_model/addresses/phone_number.h"
 #include "components/autofill/core/browser/data_model/form_group.h"
 #include "components/autofill/core/browser/data_model/usage_history_information.h"
@@ -274,8 +276,8 @@ class AutofillProfile : public FormGroup {
   // Merges the data from `profile` into `this` profile if they are mergeable.
   // Returns a `ProfileMergeResult` indicating whether the merge succeeded and
   // whether `this` was modified. If mergeable, modifies `this` in-place.
-  ProfileMergeResult MergeDataFrom(const AutofillProfile& profile,
-                                   std::string_view app_locale);
+  [[nodiscard]] ProfileMergeResult MergeDataFrom(const AutofillProfile& profile,
+                                                 std::string_view app_locale);
 
   // Creates a differentiating label for each of the `profiles`.
   // Labels consist of the minimal differentiating combination of:

@@ -38,6 +38,7 @@
 <translation id="1097807529207545420">{count,plural, =1{1 password verificata immediatamente}other{# password verificate immediatamente}}</translation>
 <translation id="1103523840287552314">Traduci sempre <ph name="LANGUAGE" /></translation>
 <translation id="1110772719190051587">Sblocca con Face ID</translation>
+<translation id="1111776967764068277">Vorresti evitare di dover copiare i link?</translation>
 <translation id="1112015203684611006">Stampa non riuscita.</translation>
 <translation id="1118569444314402022">Ti diamo il bentornato <ph name="USER_NAME" /></translation>
 <translation id="1121850836842642159">Foto e immagini</translation>
@@ -478,6 +479,7 @@
 <translation id="2496180316473517155">Cronologia di navigazione</translation>
 <translation id="2496626742194544812">Vai alla prima scheda</translation>
 <translation id="2499505845365628575">Puoi trovare tutta la tua cronologia di navigazione a partire da <ph name="HISTORY_BUTTON_ACCESSIBILITY_LABEL" />.</translation>
+<translation id="251033673027346551">Visita Google Wallet per gestire le <ph name="BEGIN_LINK" />preferenze relative a dati e privacy<ph name="END_LINK" />.</translation>
 <translation id="2511117522375201202">Hai <ph name="NUMBER_OF_PASSWORDS" /> password compromesse che potrebbero mettere a rischio la tua sicurezza.</translation>
 <translation id="2512709994717613803">Livello <ph name="LEVEL_NUMBER" /></translation>
 <translation id="2513103768503127042">Qui troverai i tuoi gruppi di schede</translation>
@@ -527,6 +529,7 @@
 <translation id="2666092431469916601">In alto</translation>
 <translation id="2669454659051515572">Tutte le persone che usano questo dispositivo possono vedere i file scaricati</translation>
 <translation id="2671423594960767771">Condividi gruppo</translation>
+<translation id="2672512470874391563"><ph name="OWNER_NAME" /> • <ph name="DEVICE_NAME" /></translation>
 <translation id="2673183423393669407">Paga a rate</translation>
 <translation id="2673508731173059946">Visita il link copiato</translation>
 <translation id="2679659833697380">Le tue informazioni sono salvate sul dispositivo</translation>
@@ -543,6 +546,7 @@
 <translation id="271033894570825754">Nuova raccolta</translation>
 <translation id="2712929214961145009">Sans Serif</translation>
 <translation id="2713106313042589954">Disattiva videocamera</translation>
+<translation id="2715440913764382254">Apri i link direttamente qui</translation>
 <translation id="2718352093833049315">Solo su Wi-Fi</translation>
 <translation id="2721190673959776287">Esempio di guida nel prodotto dettagliata per il riquadro contestuale, che dovrebbe essere visualizzato più volte al giorno.</translation>
 <translation id="2739887572830526131">Mantieni questo gruppo per aggiungere schede in un secondo momento o eliminalo se non ti serve più.</translation>
@@ -692,6 +696,7 @@
 <translation id="3259451381796379533">Questo account non funziona con Gemini. Accedi con un altro Account Google.</translation>
 <translation id="3265736395246760288">Accedi più velocemente da tutti i tuoi dispositivi sincronizzati.</translation>
 <translation id="3272527697863656322">Annulla</translation>
+<translation id="3272955648592358996">I tuoi dati migliorano Google AI</translation>
 <translation id="3273510436356991673">Personalizza la schermata Home</translation>
 <translation id="3277021493514034324">Indirizzo del sito copiato</translation>
 <translation id="3280562213547448728">Ricerca vocale</translation>
@@ -859,6 +864,7 @@
 <translation id="3888863481921783344">Ti verranno mostrati i possibili invitati al tuo evento.</translation>
 <translation id="3891414008432200754">Prezzo</translation>
 <translation id="3892144330757387737">Qui troverai la tua cronologia</translation>
+<translation id="3892695492576181257">Se questa impostazione è attiva, la tua attività viene salvata nell'Attività delle app Gemini per 18 mesi; puoi modificare questo lasso di tempo in 3 o 36 mesi. Google usa la tua attività per sviluppare e migliorare i suoi servizi (inclusi i modelli Gemini) e per proteggere Google, i suoi utenti e il pubblico con l'aiuto di revisori umani. I dati esaminati da fornitori di servizi vengono scollegati dal tuo account e salvati per 3 anni.</translation>
 <translation id="3893858854379998374">Per salvare i preferiti nel tuo account, elimina quelli inutilizzati</translation>
 <translation id="3897092660631435901">Menu</translation>
 <translation id="3904270275864974753">Modifica carosello</translation>
@@ -1002,6 +1008,7 @@
 <translation id="4338258232580025606">Impossibile accedere</translation>
 <translation id="4338650699862464074">Invia a Google gli URL delle pagine che visiti.</translation>
 <translation id="4342946437867096381">Hai già salvato una password per questo sito nel tuo Account Google. Google può scegliere automaticamente la password più recente.</translation>
+<translation id="4355702523442402731">Navigazione fluida tra app</translation>
 <translation id="4365121137632832185">Gruppo di schede. Espanso.</translation>
 <translation id="4365685757967464989">Consenti a Gemini di usare la fotocamera per scattare foto</translation>
 <translation id="4367971618859387374">Nome visualizzato</translation>
@@ -1279,6 +1286,7 @@
 <translation id="5233111790346066304">Salva i file su Google Drive e accedi ad essi in qualsiasi momento.</translation>
 <translation id="5233638681132016545">Nuova scheda</translation>
 <translation id="5234094073825090254">{count,plural, =1{Preferito salvato nel tuo Account Google {email}.}other{Preferiti salvati nel tuo Account Google {email}.}}</translation>
+<translation id="5234162151438379838">{COUNT,plural, =1{È possibile condividere solo una scheda.}other{È possibile condividere solo {COUNT} schede.}}</translation>
 <translation id="5234764350956374838">Ignora</translation>
 <translation id="5238596603078743134">Ora <ph name="BEGIN_BOLD" /><ph name="USERNAME" /><ph name="END_BOLD" /> può utilizzare il tuo nome utente e la tua password quando usa Gestore delle password di Google per accedere a <ph name="BEGIN_BOLD" /><ph name="WEBSITE" /><ph name="END_BOLD" />.</translation>
 <translation id="5241106044372754566"><ph name="NAME" />, <ph name="EMAIL" />, gestito dalla tua organizzazione, attualmente selezionato. Scegli un account.</translation>
@@ -1311,6 +1319,7 @@
 <translation id="5351613737248079168">Devi aver eseguito l'accesso per usare Level Up</translation>
 <translation id="5352128922772839949">Salva file</translation>
 <translation id="5355191726083956201">Protezione avanzata è attiva</translation>
+<translation id="5359436665022446585">Apertura dei link migliorata</translation>
 <translation id="536067926684072644">Mostra i preferiti</translation>
 <translation id="5364647308446127983">{count,plural, =1{Impossibile importare {count} passkey}other{Impossibile importare {count} passkey}}</translation>
 <translation id="5371112366564891538">Aumenta dimensioni testo</translation>
@@ -1489,11 +1498,13 @@ La funzione Handoff deve anche essere attivata nella sezione Generali di Imposta
 <translation id="5952641243319721872">Ignorare la selezione?</translation>
 <translation id="5956112131836209882">Scheda Gruppo di schede. <ph name="TAB_INDEX_IN_GROUP" /> di <ph name="NUMBER_OF_TABS_IN_GROUP" />.</translation>
 <translation id="595769230373966252">Cerca con <ph name="SEARCH_PROVIDER" /></translation>
+<translation id="5963694076845073027">Apri i link qui la prossima volta</translation>
 <translation id="5963939892571022323">Non è possibile creare un link al testo evidenziato.</translation>
 <translation id="5968400720580217226">AI Mode</translation>
 <translation id="5971459446352190251">Ricerca di codici QR</translation>
 <translation id="5971872012779224351">{count,plural, =1{1 preferito eliminato}other{{count} preferiti eliminati}}</translation>
 <translation id="5972844218283131174">Deseleziona tutto</translation>
+<translation id="597482816780655631">Gemini è un'AI e può commettere errori, anche in merito a persone. Alcuni contenuti potrebbero non essere adatti a tutti. Le chat vengono esaminate e utilizzate per migliorare Google AI. <ph name="BEGIN_LINK" />Scopri le opzioni a tua disposizione<ph name="END_LINK" />. Si applicano i nostri <ph name="BEGIN_LINK" />Termini<ph name="END_LINK" /> e la nostra <ph name="BEGIN_LINK" />Informativa sulla privacy<ph name="END_LINK" />.</translation>
 <translation id="5976160379964388480">Altri</translation>
 <translation id="5977976211062815271">Su questo dispositivo</translation>
 <translation id="5986043348928676121">Avanti</translation>
@@ -1817,6 +1828,7 @@ Per continuare dal computer, passa a <ph name="OTHER_EMAIL" />. Potrai usare le 
 <translation id="6932739965694346873"><ph name="USER_NAME" />, <ph name="EMAIL" />. <ph name="MANAGED_STATUS" />.</translation>
 <translation id="6937083164784433305">{count,plural, =1{Hai utilizzato 1 foto per la ricerca}other{Hai utilizzato # foto per la ricerca}}</translation>
 <translation id="693761253105515415">Imposta un passcode</translation>
+<translation id="6938212956536472404">Questa scheda non può essere condivisa</translation>
 <translation id="6945221475159498467">Seleziona</translation>
 <translation id="6946722113367118030">Faccina che pensa</translation>
 <translation id="6950522403736391608">Nascoste</translation>
@@ -1860,6 +1872,7 @@ Per continuare dal computer, passa a <ph name="OTHER_EMAIL" />. Potrai usare le 
 <translation id="7102005569666697658">Download in corso… <ph name="FILE_SIZE" /></translation>
 <translation id="7104701424653979232">Menu → Impostazioni → Metodi di pagamento</translation>
 <translation id="7108338896283013870">Nascondi</translation>
+<translation id="7119533351103192286">Usa Gemini</translation>
 <translation id="7127922377013221748">Nascondi barra degli strumenti</translation>
 <translation id="7128693485119315539">La tua organizzazione potrebbe aver bisogno di vedere e gestire i dati di navigazione legati al tuo account gestito, come la cronologia di navigazione e le password.</translation>
 <translation id="713215255510512027"><ph name="FILENAME" /> (<ph name="FILESIZE" />)</translation>
@@ -1991,6 +2004,7 @@ Per continuare dal computer, passa a <ph name="OTHER_EMAIL" />. Potrai usare le 
 <translation id="7561982940498449837">Chiudi menu</translation>
 <translation id="7566349809380613217">Apri <ph name="GROUP_TITLE" />, gruppo condiviso di <ph name="NUMBER_OF_TABS" />, <ph name="CREATION_TEXT" /></translation>
 <translation id="7567579665882069209">I preferiti sono nascosti</translation>
+<translation id="7575664680938145959">Apertura con un tocco</translation>
 <translation id="7577900504646297215">Gestisci interessi</translation>
 <translation id="7582666837709186351">Traduci con la fotocamera il testo nelle foto o nell'ambiente circostante.</translation>
 <translation id="7582857256643797524">Questa impostazione è attiva sul tuo dispositivo</translation>
@@ -2014,6 +2028,7 @@ Per continuare dal computer, passa a <ph name="OTHER_EMAIL" />. Potrai usare le 
 <translation id="7646263789464975852">Menu → Impostazioni → Controllo di sicurezza</translation>
 <translation id="7646772052135772216">La sincronizzazione delle password non funziona</translation>
 <translation id="764827086632467055">Tocca App browser predefinita</translation>
+<translation id="7648666127045672239">Torna qui con un solo tocco</translation>
 <translation id="7649070708921625228">Guida</translation>
 <translation id="765555660695722850">Questa azione elimina gli indirizzi salvati su questo dispositivo. Vengono eliminate anche alcune informazioni dal tuo Account Google, ma non quelle di base come il tuo nome o l'indirizzo di casa.</translation>
 <translation id="765631330137769217">Tocca "Salva" per trovare facilmente questa password al prossimo accesso</translation>
@@ -2031,6 +2046,7 @@ Per continuare dal computer, passa a <ph name="OTHER_EMAIL" />. Potrai usare le 
 <translation id="7701040980221191251">Nessun dato</translation>
 <translation id="7702428539671224160">Compila automaticamente i dati di pagamento su <ph name="URL" /></translation>
 <translation id="7708994397325774423">Recupera tutte le tue password</translation>
+<translation id="7710096647785049958">Risparmia tempo su ogni link</translation>
 <translation id="7711440461521638739">Non stai riutilizzando alcuna password</translation>
 <translation id="7712361583414030698">Visualizzazione versione offline</translation>
 <translation id="7719038820139380048">Accedi per ricevere contenuti basati sui tuoi interessi.</translation>
@@ -2356,6 +2372,7 @@ Per continuare dal computer, passa a <ph name="OTHER_EMAIL" />. Potrai usare le 
 <translation id="8706806585855470492">Potrai partecipare e collaborare a gruppi di schede, nonché condividerli</translation>
 <translation id="8709409604518538305">Le schede sono state chiuse</translation>
 <translation id="8712637175834984815">Ok</translation>
+<translation id="8717519179050551968">Incolla meno, naviga di più</translation>
 <translation id="8717864919010420084">Copia link</translation>
 <translation id="8722229818691036192">Account su questo dispositivo</translation>
 <translation id="8722649775263832315">Tocca o evidenzia per cercare qualsiasi cosa con Google Lens</translation>
@@ -2386,6 +2403,7 @@ Per continuare dal computer, passa a <ph name="OTHER_EMAIL" />. Potrai usare le 
 <translation id="8796634520835503150">Modalità Lettura disponibile</translation>
 <translation id="8803526663383843427">Quando attiva</translation>
 <translation id="8803639129939845298">Sicuro</translation>
+<translation id="8809212245338455710">Abbonamento <ph name="AI_TIER_NAME" /></translation>
 <translation id="8813277370772331957">Ricordamelo dopo</translation>
 <translation id="8814308045751067027">Per usare Live, consenti a Chrome l'accesso al microfono nelle Impostazioni</translation>
 <translation id="8814719628147284151">Continua</translation>
@@ -2397,6 +2415,7 @@ Per continuare dal computer, passa a <ph name="OTHER_EMAIL" />. Potrai usare le 
 <translation id="882557203579758546">Trova nella pagina…</translation>
 <translation id="8829809207373502270">Questa passkey non funziona più. È stata eliminata da <ph name="WEBSITE" /> e verrà eliminata anche da qui a breve. <ph name="BEGIN_LINK" />Informazioni sulle passkey<ph name="END_LINK" /></translation>
 <translation id="8831208860914609320">Chiudi tutte le schede non attive</translation>
+<translation id="8831871601813227635">Si applicano i <ph name="BEGIN_LINK" />Termini<ph name="END_LINK" />, i <ph name="BEGIN_LINK" />Termini per la posizione coreani<ph name="END_LINK" /> e l‘<ph name="BEGIN_LINK" />Informativa sulla privacy<ph name="END_LINK" />. Le chat vengono esaminate e utilizzate per migliorare Google AI. Gemini è un'AI e può commettere errori, anche in merito a persone. Alcuni contenuti potrebbero non essere adatti a tutti. Puoi <ph name="BEGIN_LINK" />gestire la tua attività<ph name="END_LINK" />, incluse le informazioni sulla tua posizione. <ph name="BEGIN_LINK" />Scopri di più sulle tue scelte<ph name="END_LINK" /></translation>
 <translation id="8837654851594567190">Ordina per publisher</translation>
 <translation id="884351711508006491">Le tue informazioni sono salvate sul dispositivo.</translation>
 <translation id="8844136307393039959">Calo di prezzo sul prodotto monitorato</translation>
@@ -2493,6 +2512,7 @@ Per continuare dal computer, passa a <ph name="OTHER_EMAIL" />. Potrai usare le 
 <translation id="9148126808321036104">Esegui di nuovo l'accesso</translation>
 <translation id="9149866541089851383">Modifica...</translation>
 <translation id="9152637745605628097">Scegli tra i temi, i colori oppure carica un'immagine</translation>
+<translation id="9153159728062222866">Evita il copia e incolla</translation>
 <translation id="9159628751968616911">Invia pagina web</translation>
 <translation id="9162412286847966593">I dati e le registrazioni della tua organizzazione non verranno usati per migliorare i modelli di AI generativa. <ph name="BEGIN_LINK" />La tua privacy e Gemini<ph name="END_LINK" /></translation>
 <translation id="9162432979321511934">Attiva l'opzione Compila automaticamente le password.</translation>

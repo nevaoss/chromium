@@ -9,8 +9,9 @@ import '//resources/cr_components/search/animated_glow.js';
 import '//resources/cr_components/composebox/composebox_file_inputs.js';
 import '//resources/cr_components/composebox/contextual_entrypoint_and_menu.js';
 import './profile_icon.js';
+import '//resources/cr_elements/cr_action_menu/cr_action_menu.js';
 
-import {ContextType, GlifAnimationState, recordContextAdditionMethod, recordContextualElementClickedMetric, TabSuggestionsState} from '//resources/cr_components/composebox/common.js';
+import {ContextType, recordContextAdditionMethod, recordContextualElementClickedMetric, TabSuggestionsState} from '//resources/cr_components/composebox/common.js';
 import type {ComposeboxState, ContextualUpload, DriveUpload, TabUpload, TabUploadOrigin} from '//resources/cr_components/composebox/common.js';
 import type {ComposeboxFileInputsElement} from '//resources/cr_components/composebox/composebox_file_inputs.js';
 import type {ContextualEntrypointAndMenuElement} from '//resources/cr_components/composebox/contextual_entrypoint_and_menu.js';
@@ -22,6 +23,8 @@ import type {SearchboxDropdownElement} from '//resources/cr_components/searchbox
 import type {SearchboxInputElement} from '//resources/cr_components/searchbox/searchbox_input.js';
 import type {SearchboxMixinInterface} from '//resources/cr_components/searchbox/searchbox_mixin.js';
 import {SearchboxMixin} from '//resources/cr_components/searchbox/searchbox_mixin.js';
+import {AnchorAlignment} from '//resources/cr_elements/cr_action_menu/cr_action_menu.js';
+import type {CrActionMenuElement} from '//resources/cr_elements/cr_action_menu/cr_action_menu.js';
 import {I18nMixinLit} from '//resources/cr_elements/i18n_mixin_lit.js';
 import {WebUiListenerMixinLit} from '//resources/cr_elements/web_ui_listener_mixin_lit.js';
 import {loadTimeData} from '//resources/js/load_time_data.js';
@@ -36,6 +39,7 @@ import type {Url} from '//resources/mojo/url/mojom/url.mojom-webui.js';
 import {getCss} from './omnibox.css.js';
 import {getHtml} from './omnibox.html.js';
 import {UnboundedMenuManager} from './unbounded_utils.js';
+
 
 export interface OmniboxEverywhereOmniboxElement {
   $: {
@@ -90,10 +94,6 @@ export class OmniboxEverywhereOmniboxElement extends
         type: Boolean,
         reflect: true,
       },
-      useWebkitSearchIcons_: {
-        type: Boolean,
-        reflect: true,
-      },
       animationState: {
         type: String,
         reflect: true,
@@ -107,10 +107,6 @@ export class OmniboxEverywhereOmniboxElement extends
       isFuseboxEnabled: {type: Boolean, reflect: true},
       hasUserInput_: {type: Boolean},
       ntpRealboxDynamicAiModeButtonEnabled_: {type: Boolean},
-      contextMenuGlifAnimationState: {
-        type: String,
-        reflect: true,
-      },
       inputState_: {type: Object},
       tabSuggestions_: {type: Array},
       searchboxLayoutMode: {type: String},
@@ -123,6 +119,10 @@ export class OmniboxEverywhereOmniboxElement extends
       energyEffectAnimationEnabled_: {type: Boolean},
       fileContextEnabled_: {type: Boolean},
       entrypointName: {type: String},
+      screenshotMenuOpen: {
+        type: Boolean,
+        reflect: true,
+      },
     };
   }
 
@@ -146,7 +146,6 @@ export class OmniboxEverywhereOmniboxElement extends
       loadTimeData.getBoolean('searchboxVoiceSearch');
   protected accessor searchboxLensSearchEnabled_: boolean =
       loadTimeData.getBoolean('searchboxLensSearch');
-  protected accessor useWebkitSearchIcons_: boolean = true;
   accessor animationState: GlowAnimationState = GlowAnimationState.NONE;
   accessor inVoiceSearchMode: boolean = false;
   protected accessor composeButtonEnabled: boolean =
@@ -158,14 +157,13 @@ export class OmniboxEverywhereOmniboxElement extends
   protected accessor hasUserInput_: boolean = false;
   protected accessor ntpRealboxDynamicAiModeButtonEnabled_: boolean =
       loadTimeData.getBoolean('ntpRealboxDynamicAiModeButton');
-  accessor contextMenuGlifAnimationState: GlifAnimationState =
-      GlifAnimationState.STARTED;
   protected accessor inputState_: InputState|null = null;
   protected accessor tabSuggestions_: TabInfo[] = [];
   protected accessor searchboxLayoutMode: string =
       loadTimeData.getString('searchboxLayoutMode');
   protected accessor tabSuggestionsState_: TabSuggestionsState =
       TabSuggestionsState.NOT_STARTED;
+  protected accessor screenshotMenuOpen: boolean = false;
 
   private pageHandler_: PageHandlerInterface;
   private callbackRouter_: PageCallbackRouter;
@@ -206,14 +204,6 @@ export class OmniboxEverywhereOmniboxElement extends
     if (this.inputStateListenerId_ !== null) {
       this.callbackRouter_.removeListener(this.inputStateListenerId_);
       this.inputStateListenerId_ = null;
-    }
-  }
-
-  override willUpdate(changedProperties: PropertyValues<this>) {
-    super.willUpdate(changedProperties);
-
-    if (changedProperties.has('searchboxChromeRefreshTheming')) {
-      this.useWebkitSearchIcons_ = this.searchboxChromeRefreshTheming;
     }
   }
 
@@ -304,10 +294,40 @@ export class OmniboxEverywhereOmniboxElement extends
         new Event('open-voice-search', {bubbles: true, composed: true}));
   }
 
-  protected onLensSearchClick_() {
+  protected onLensSearchClick_(e: Event) {
     this.dropdownIsVisible = false;
-    this.dispatchEvent(
-        new Event('open-lens-search', {bubbles: true, composed: true}));
+    this.screenshotMenuOpen = true;
+    const menu =
+        this.shadowRoot.querySelector<CrActionMenuElement>('#screenshotMenu')!;
+    const anchor = e.currentTarget as HTMLElement;
+    const rect = anchor.getBoundingClientRect();
+
+    menu.showAtPosition({
+      top: rect.top,
+      left: rect.left,
+      height: rect.height - 2,
+      width: rect.width,
+      anchorAlignmentX: AnchorAlignment.AFTER_START,
+      anchorAlignmentY: AnchorAlignment.AFTER_END,
+      maxX: Number.MAX_SAFE_INTEGER,
+    });
+
+    this.screenshotMenuManager_.onContextMenuOpened();
+  }
+
+  protected onScreenshotMenuClose_() {
+    this.screenshotMenuOpen = false;
+    this.screenshotMenuManager_.onContextMenuClosed();
+  }
+
+  protected onScreenshotWindowClick_() {
+    this.shadowRoot.querySelector<CrActionMenuElement>(
+                       '#screenshotMenu')!.close();
+  }
+
+  protected onScreenshotEntireScreenClick_() {
+    this.shadowRoot.querySelector<CrActionMenuElement>(
+                       '#screenshotMenu')!.close();
   }
 
   protected async onOpenDriveUpload_() {
@@ -434,6 +454,13 @@ export class OmniboxEverywhereOmniboxElement extends
   private unboundedMenuManager_ = new UnboundedMenuManager(
       () => this.shadowRoot?.querySelector('#context') ?? null);
 
+  private screenshotMenuManager_ = new UnboundedMenuManager(
+      () => this.shadowRoot?.querySelector('#screenshotMenu') ?? null, () => {
+        const menu = this.shadowRoot?.querySelector<CrActionMenuElement>(
+            '#screenshotMenu');
+        menu?.close();
+      });
+
   protected onContextMenuOpened_() {
     this.refreshTabSuggestions_(/*forceRefresh=*/ true);
     this.unboundedMenuManager_.onContextMenuOpened();
@@ -445,7 +472,8 @@ export class OmniboxEverywhereOmniboxElement extends
   }
 
   override onInputWrapperFocusout(e: FocusEvent) {
-    if (this.unboundedMenuManager_.isDialogOpen()) {
+    if (this.unboundedMenuManager_.isDialogOpen() ||
+        this.screenshotMenuManager_.isDialogOpen()) {
       return;
     }
     super.onInputWrapperFocusout(e);

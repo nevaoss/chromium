@@ -18,6 +18,15 @@ inline constexpr char kHotkeyEnabled[] = "omnibox_everywhere.hotkey_enabled";
 inline constexpr char kOmniboxEverywhereBackgroundMode[] =
     "omnibox_everywhere.background_mode";
 
+// Boolean preference specifying whether Omnibox Everywhere uses the ephemeral
+// (close/hide on focus loss) model instead of the persistent model.
+inline constexpr char kOmniboxEverywhereEphemeralModel[] =
+    "omnibox_everywhere.ephemeral_model";
+// FilePath preference specifying the path of the last target profile set
+// for Omnibox Everywhere.
+inline constexpr char kLastTargetProfileDir[] =
+    "omnibox_everywhere.last_target_profile_dir";
+
 // Registers Local State preferences for Omnibox Everywhere.
 void RegisterLocalStatePrefs(PrefRegistrySimple* registry);
 

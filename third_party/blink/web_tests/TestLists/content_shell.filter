@@ -29,7 +29,6 @@ virtual/global-privacy-control-force/wpt_internal/*
 # Blocklisted tests fail unexpectedly on headless shell for at least one
 # platform, so continue running them on content shell.
 external/wpt/background-fetch/abort.https.window.html
-external/wpt/background-fetch/fetch.https.window.html
 external/wpt/background-fetch/fetch-uploads.https.window.html
 external/wpt/background-fetch/match.https.window.html
 external/wpt/background-fetch/update-ui.https.window.html
@@ -37,8 +36,6 @@ external/wpt/client-hints/viewport-size/viewport-size-window-different-dimension
 external/wpt/css/compositing/mix-blend-mode/mix-blend-mode-blended-with-transform-and-perspective.html
 external/wpt/css/compositing/mix-blend-mode/mix-blend-mode-both-parent-and-blended-with-3D-transform.html
 external/wpt/css/compositing/mix-blend-mode/mix-blend-mode-with-transform-and-preserve-3D.html
-external/wpt/css/compositing/root-element-opacity-change.html
-external/wpt/css/compositing/svg/mix-blend-mode-svg-rectangle.html
 external/wpt/css/CSS2/floats-clear/floats-142.xht
 external/wpt/css/CSS2/floats-clear/floats-143.xht
 external/wpt/css/CSS2/linebox/empty-inline-003.xht
@@ -382,6 +379,8 @@ external/wpt/fedcm/fedcm-manifest-not-in-list.https.html
 external/wpt/fedcm/fedcm-multi-idp/fedcm-multi-idp-mediation-optional.https.html
 external/wpt/fedcm/fedcm-multi-idp/fedcm-multi-idp-mediation-silent.https.html
 external/wpt/fedcm/fedcm-not-observed-by-service-worker.https.html
+external/wpt/fedcm/third-party-iframe/fedcm-third-party-iframe-active-mode.https.html
+external/wpt/fedcm/third-party-iframe/fedcm-third-party-iframe.https.html
 # https://github.com/web-platform-tests/wpt/issues/48078
 external/wpt/fetch/stale-while-revalidate/stale-css.html
 external/wpt/fetch/stale-while-revalidate/stale-image.html
@@ -751,8 +750,6 @@ virtual/disable-css-line-clamp/external/wpt/css/css-overflow/line-clamp/webkit-l
 virtual/disable-css-line-clamp/external/wpt/css/css-overflow/line-clamp/webkit-line-clamp-036.html
 virtual/fedcm-accounts-push/external/wpt/fedcm/fedcm-accounts-push/fedcm-identity-discovery.tentative.sub.https.html
 virtual/fedcm-register/external/wpt/fedcm/fedcm-register/fedcm-no-registered-idps.https.html
-virtual/fedcm-third-party-iframe/external/wpt/fedcm/third-party-iframe/fedcm-third-party-iframe.https.html
-virtual/fedcm-third-party-iframe/external/wpt/fedcm/third-party-iframe/fedcm-third-party-iframe-active-mode.https.html
 virtual/fenced-frame-mparch/external/wpt/fenced-frame/history-length-fenced-navigations-replace-do-not-contribute-to-joint.https.html
 virtual/fenced-frame-mparch/external/wpt/fenced-frame/history-length-outer-page-navigation-not-reflected-in-fenced.https.html
 virtual/fenced-frame-mparch/external/wpt/fenced-frame/key-scrolling.https.html

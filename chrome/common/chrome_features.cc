@@ -113,6 +113,13 @@ BASE_FEATURE(kCaptureHandleForStandalonePwasAndIwas,
 // Enable project Crostini, Linux VMs on Chrome OS.
 BASE_FEATURE(kCrostini, base::FEATURE_DISABLED_BY_DEFAULT);
 
+// If enabled, use the restricted/unified locked state controller.
+BASE_FEATURE(kUseUnifiedLockedStateController,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsUseUnifiedLockedStateControllerEnabled() {
+  return base::FeatureList::IsEnabled(kUseUnifiedLockedStateController);
+}
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
 // Enables stricter cryptography settings for CNSA2 compliance. This is not
@@ -345,6 +352,10 @@ BASE_FEATURE(kGlicHandoffButtonResetFocusAndHoverStatus,
 
 // If enabled, hide handoff button when omnibox popup is opened.
 BASE_FEATURE(kGlicHandoffButtonHideWhenOmniboxPopupOpened,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
+// If enabled, hide handoff button when tab modal UI is shown.
+BASE_FEATURE(kGlicHandoffButtonHideWhenModalUIShown,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 // If enabled, the magic cursor is shown during actuation for mouse movements
@@ -1102,7 +1113,6 @@ const base::FeatureParam<int> kGlicGuestUrlPresetType{
 
 BASE_FEATURE(kGlicContextualCueBubble, base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kGlicClientZoomControl, base::FEATURE_ENABLED_BY_DEFAULT);
 
 
 // Enables the `google-chrome://` URI scheme.
@@ -1377,6 +1387,10 @@ BASE_FEATURE(kIsolatedWebAppDevMode, base::FEATURE_DISABLED_BY_DEFAULT);
 // Enables the chrome://iwa-dev WebUI page.
 BASE_FEATURE(kIsolatedWebAppDevUi, base::FEATURE_DISABLED_BY_DEFAULT);
 
+// Enables fast update checks for Isolated Web Apps, reducing the update check
+// interval to 1 minute.
+BASE_FEATURE(kIsolatedWebAppFastUpdateCheck, base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Enables users on unmanaged devices to install Isolated Web Apps.
 BASE_FEATURE(kIsolatedWebAppUnmanagedInstall,
 #if BUILDFLAG(IS_CHROMEOS)
@@ -1638,6 +1652,18 @@ const base::FeatureParam<base::TimeDelta> kSCTLogMaxIngestionRandomDelay{
 // down, and retry indefinitely (crbug.com/484218883). The boost is dropped once
 // the worker reaches RUNNING or stops.
 BASE_FEATURE(kServiceWorkerForegroundOnExtensionStartup,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
+// When enabled, a performance manager voter keeps the renderer process of an
+// extension service worker at foreground priority for as long as the worker
+// lives, but only when the extension holds the `webRequestBlocking` permission.
+// Those workers synchronously gate navigations and network requests, so letting
+// their process drop to background priority (EcoQoS on Windows) stalls the
+// browsing session (crbug.com/484218883). This is the narrowly scoped
+// counterpart to performance_manager::features::kExtensionServiceWorkerVoter,
+// which boosts every extension service worker and regressed performance metrics
+// (crbug.com/493556675).
+BASE_FEATURE(kExtensionServiceWorkerPriorityVoter,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Alternative to switches::kSitePerProcess, for turning on full site isolation.

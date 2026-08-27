@@ -381,55 +381,6 @@ bool IsGeminiUpdatedConsentEnabled() {
   return base::FeatureList::IsEnabled(kGeminiUpdatedConsent);
 }
 
-BASE_FEATURE(kGeminiImageRemixTool, base::FEATURE_ENABLED_BY_DEFAULT);
-
-bool IsGeminiImageRemixToolEnabled() {
-  if (!IsPageActionMenuEnabled()) {
-    return false;
-  }
-  return base::FeatureList::IsEnabled(kGeminiImageRemixTool);
-}
-
-const char kGeminiImageRemixToolShowFRERow[] = "ShowFRERow";
-
-bool IsGeminiImageRemixToolShowFRERowEnabled() {
-  if (!IsGeminiImageRemixToolEnabled()) {
-    return false;
-  }
-  return base::GetFieldTrialParamByFeatureAsBool(
-      kGeminiImageRemixTool, kGeminiImageRemixToolShowFRERow, true);
-}
-
-const char kGeminiImageRemixToolShowAboveSearchImage[] = "ShowAboveSearchImage";
-
-bool IsGeminiImageRemixToolShowAboveSearchImageEnabled() {
-  if (!IsGeminiImageRemixToolEnabled()) {
-    return false;
-  }
-  return base::GetFieldTrialParamByFeatureAsBool(
-      kGeminiImageRemixTool, kGeminiImageRemixToolShowAboveSearchImage, true);
-}
-
-const char kGeminiImageRemixToolShowBelowSearchImage[] = "ShowBelowSearchImage";
-
-bool IsGeminiImageRemixToolShowBelowSearchImageEnabled() {
-  if (!IsGeminiImageRemixToolEnabled()) {
-    return false;
-  }
-  return base::GetFieldTrialParamByFeatureAsBool(
-      kGeminiImageRemixTool, kGeminiImageRemixToolShowBelowSearchImage, false);
-}
-
-const char kGeminiImageRemixToolRemovePageContext[] = "RemovePageContext";
-
-bool IsGeminiImageRemixToolRemovePageContextEnabled() {
-  if (!IsGeminiImageRemixToolEnabled()) {
-    return false;
-  }
-  return base::GetFieldTrialParamByFeatureAsBool(
-      kGeminiImageRemixTool, kGeminiImageRemixToolRemovePageContext, true);
-}
-
 BASE_FEATURE(kGeminiEligibilityAblation, base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool IsGeminiEligibilityAblationEnabled() {
@@ -521,12 +472,12 @@ BASE_FEATURE_PARAM(base::TimeDelta,
                    &kActorTools,
                    base::Seconds(1));
 
-BASE_FEATURE_PARAM(int, kActorPageStabilityMutationCap, &kActorTools, 250);
+BASE_FEATURE_PARAM(int, kActorPageStabilityMutationCap, &kActorTools, 10);
 
 BASE_FEATURE_PARAM(base::TimeDelta,
                    kActorPageStabilityWindowDuration,
                    &kActorTools,
-                   base::Milliseconds(4000));
+                   base::Milliseconds(1000));
 
 BASE_FEATURE_PARAM(base::TimeDelta,
                    kActorPageStabilityLcpDelay,
@@ -789,11 +740,39 @@ bool IsAppSwitcherAISummarizationEnabled() {
 BASE_FEATURE(kGeminiContextualSuggestionsCues,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+const char kGeminiContextualSuggestionsCuesOnDeviceClassifierParam[] =
+    "enable_on_device_classifier";
+
+BASE_FEATURE_PARAM(bool,
+                   kGeminiContextualSuggestionsCuesOnDeviceClassifier,
+                   &kGeminiContextualSuggestionsCues,
+                   kGeminiContextualSuggestionsCuesOnDeviceClassifierParam,
+                   false);
+
+const char kGeminiContextualSuggestionsCuesAllowGpuExecutionParam[] =
+    "allow_gpu_execution";
+
+BASE_FEATURE_PARAM(bool,
+                   kGeminiContextualSuggestionsCuesAllowGpuExecution,
+                   &kGeminiContextualSuggestionsCues,
+                   kGeminiContextualSuggestionsCuesAllowGpuExecutionParam,
+                   false);
+
 bool IsGeminiContextualSuggestionsCuesEnabled() {
   if (!IsPageActionMenuEnabled()) {
     return false;
   }
   return base::FeatureList::IsEnabled(kGeminiContextualSuggestionsCues);
+}
+
+bool IsGeminiContextualSuggestionsCuesOnDeviceClassifierEnabled() {
+  return IsGeminiContextualSuggestionsCuesEnabled() &&
+         kGeminiContextualSuggestionsCuesOnDeviceClassifier.Get();
+}
+
+bool IsGeminiContextualSuggestionsCuesAllowGpuExecutionEnabled() {
+  return IsGeminiContextualSuggestionsCuesEnabled() &&
+         kGeminiContextualSuggestionsCuesAllowGpuExecution.Get();
 }
 
 #pragma mark - Debugging Features
@@ -874,10 +853,32 @@ bool IsGeminiCoordinatorTeardownFixEnabled() {
   return base::FeatureList::IsEnabled(kGeminiCoordinatorTeardownFix);
 }
 
-BASE_FEATURE(kGeminiVisualRichFRE, base::FEATURE_DISABLED_BY_DEFAULT);
+const char kGeminiFREExperimentParam[] = "variant";
+const char kGeminiFREExperimentParamVisualRich[] = "visual-rich";
+const char kGeminiFREExperimentParamLightweight[] = "lightweight";
+
+BASE_FEATURE(kGeminiFREExperiment, base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsGeminiFREExperimentEnabled() {
+  return base::FeatureList::IsEnabled(kGeminiFREExperiment);
+}
 
 bool IsGeminiVisualRichFREEnabled() {
-  return base::FeatureList::IsEnabled(kGeminiVisualRichFRE);
+  if (!base::FeatureList::IsEnabled(kGeminiFREExperiment)) {
+    return false;
+  }
+  std::string variant = base::GetFieldTrialParamValueByFeature(
+      kGeminiFREExperiment, kGeminiFREExperimentParam);
+  return variant.empty() || variant == kGeminiFREExperimentParamVisualRich;
+}
+
+bool IsGeminiLightweightFREEnabled() {
+  if (!base::FeatureList::IsEnabled(kGeminiFREExperiment)) {
+    return false;
+  }
+  std::string variant = base::GetFieldTrialParamValueByFeature(
+      kGeminiFREExperiment, kGeminiFREExperimentParam);
+  return variant == kGeminiFREExperimentParamLightweight;
 }
 
 BASE_FEATURE(kPageContextScreenshotSensitivePaymentRedaction,
@@ -893,4 +894,11 @@ BASE_FEATURE(kPageContextAutofillCreditCardRedactions,
 
 bool IsPageContextAutofillCreditCardRedactionsEnabled() {
   return base::FeatureList::IsEnabled(kPageContextAutofillCreditCardRedactions);
+}
+
+BASE_FEATURE(kPageContextAutofillOtpRedactions,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsPageContextAutofillOtpRedactionsEnabled() {
+  return base::FeatureList::IsEnabled(kPageContextAutofillOtpRedactions);
 }

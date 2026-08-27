@@ -9,6 +9,7 @@
 #include "base/time/time.h"
 #include "build/android_buildflags.h"
 #include "build/build_config.h"
+#include "extensions/buildflags/buildflags.h"
 
 namespace policy::features {
 
@@ -44,11 +45,6 @@ const base::FeatureParam<base::TimeDelta> kPolicyRegistrationDelay{
 BASE_FEATURE(kSafeSitesCaptivePortalCheck, base::FEATURE_ENABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_DESKTOP_ANDROID)
-// TODO(https://crbug.com/452666657): Remove this feature flag after launching
-// policies to supported on Android Desktop.
-BASE_FEATURE(kFuturePoliciesOnDesktopAndroid,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
 // A blocklist of policies to be blocked/ignored on Desktop Android.
 BASE_FEATURE(kDesktopAndroidPolicy, base::FEATURE_DISABLED_BY_DEFAULT);
 const base::FeatureParam<std::string> kDesktopAndroidPolicyBlocklist{
@@ -57,10 +53,10 @@ const base::FeatureParam<std::string> kDesktopAndroidPolicyBlocklist{
 
 // Used to enable extension install policy support.
 BASE_FEATURE(kEnableExtensionInstallPolicyFetching,
-#if BUILDFLAG(IS_CHROMEOS)
-             base::FEATURE_DISABLED_BY_DEFAULT);
-#else
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE) && !BUILDFLAG(IS_CHROMEOS)
              base::FEATURE_ENABLED_BY_DEFAULT);
+#else
+             base::FEATURE_DISABLED_BY_DEFAULT);
 #endif
 
 // When enabled, uses ManagementService to determine whether to honor sensitive

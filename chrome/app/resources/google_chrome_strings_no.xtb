@@ -31,6 +31,7 @@
 <translation id="1290883685122687410">Konfigureringsfeil: <ph name="METAINSTALLER_EXIT_CODE" />. <ph name="WINDOWS_ERROR" /></translation>
 <translation id="1302523850133262269">Vent mens Chrome installerer de nyeste systemoppdateringene.</translation>
 <translation id="1330562121671411446">Gjenkjenn språk</translation>
+<translation id="1333654552732143316">Start Chrome</translation>
 <translation id="1341711321000856656">Du kan bytte til å se passord fra en annen Chrome-profil</translation>
 <translation id="1343830902827845050">Logg på Chrome</translation>
 <translation id="1356661055722410047">Nyhet! Du kan oversette både tekst og bilder på skjermen</translation>
@@ -378,7 +379,6 @@ Hvis denne siden ikke fungerer som forventet, kan du prøve å tillate optimalis
 <translation id="4885446229353981848">Vis alltid Google Lens-snarveien</translation>
 <translation id="4891791193823137474">La Google Chrome kjøre i bakgrunnen</translation>
 <translation id="4895437082222824641">Åpne linken i en ny &amp;fane i Chrome</translation>
-<translation id="4896867431081882115">Ved å angi Chrome som standardnettleser får du enkel tilgang til funksjonene du kjenner til, liker og stoler på. Chrome festes på oppgavelinjen for rask tilgang.</translation>
 <translation id="4904953848704395458">Åpne Gemini i Chrome med en hurtigtast.</translation>
 <translation id="4918086044614829423">Godta</translation>
 <translation id="4918844574251943176">Bildet er kopiert</translation>
@@ -740,6 +740,7 @@ Hvis denne siden ikke fungerer som forventet, kan du prøve å tillate optimalis
 <translation id="8367705492654390392">Spør om hva som helst</translation>
 <translation id="8367950957770994118">Få rask tilgang til Gemini i Chrome når du trenger det</translation>
 <translation id="8370517070665726704">Copyright <ph name="YEAR" /> Google LLC. Med enerett.</translation>
+<translation id="8370748943308169953">QR-kode for å logge på Chrome som <ph name="USER_NAME" /></translation>
 <translation id="8377158135256176353">Slå av/på Gemini i Chrome Canary</translation>
 <translation id="8387459386171870978">Fortsett å bruke Chrome</translation>
 <translation id="8394720698884623075">Kontrollerer nettadresser opp mot en liste i Chrome over utrygge nettsteder</translation>

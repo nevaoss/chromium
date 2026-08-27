@@ -66,6 +66,7 @@ using TypedValueFilter =
 using ::testing::_;
 using ::testing::AllOf;
 using ::testing::ByMove;
+using ::testing::DoubleEq;
 using ::testing::ElementsAre;
 using ::testing::ElementsAreArray;
 using ::testing::Field;
@@ -95,6 +96,23 @@ TypedValue CreateDateTypedValue(int year, int month, int day) {
   typed_value.mutable_date()->set_year(year);
   typed_value.mutable_date()->set_month(month);
   typed_value.mutable_date()->set_day(day);
+  return typed_value;
+}
+
+TypedValue CreateDateTimeTypedValue(int year,
+                                    int month,
+                                    int day,
+                                    int hours = 0,
+                                    int minutes = 0,
+                                    int seconds = 0) {
+  TypedValue typed_value;
+  auto* dt = typed_value.mutable_date_time();
+  dt->set_year(year);
+  dt->set_month(month);
+  dt->set_day(day);
+  dt->set_hours(hours);
+  dt->set_minutes(minutes);
+  dt->set_seconds(seconds);
   return typed_value;
 }
 
@@ -430,8 +448,9 @@ TEST_F(AtMemoryQueryServiceTest, Query_FiltersLocalDataUsingFetchPlanKeywords) {
   ASSERT_TRUE(future.Wait());
   const auto& result = future.Get();
   EXPECT_EQ(result.status, MemorySearchStatus::kFinalResponseSuccess);
-  ASSERT_EQ(result.entries.size(), 1u);
-  EXPECT_EQ(result.entries[0].value, u"123 San Diego St Home San Diego");
+  EXPECT_THAT(result.entries,
+              ElementsAre(Field(&MemorySearchResult::value,
+                                u"123 San Diego St Home San Diego")));
 }
 
 // Tests that local Autofill results precede remote results in the final output.
@@ -466,11 +485,13 @@ TEST_F(AtMemoryQueryServiceTest, Query_LocalResultsPrecedeRemoteResults) {
   ASSERT_TRUE(future.Wait());
   const auto& result = future.Get();
   EXPECT_EQ(result.status, MemorySearchStatus::kFinalResponseSuccess);
-  ASSERT_EQ(result.entries.size(), 2u);
-  EXPECT_EQ(result.entries[0].value, u"Local Name");
-  EXPECT_EQ(result.entries[0].remote_response_index, std::nullopt);
-  EXPECT_EQ(result.entries[1].value, u"Remote Name");
-  EXPECT_EQ(result.entries[1].remote_response_index, 0);
+  EXPECT_THAT(
+      result.entries,
+      ElementsAre(AllOf(Field(&MemorySearchResult::value, u"Local Name"),
+                        Field(&MemorySearchResult::remote_response_index,
+                              std::nullopt)),
+                  AllOf(Field(&MemorySearchResult::value, u"Remote Name"),
+                        Field(&MemorySearchResult::remote_response_index, 0))));
 }
 
 // Tests that results with the most matching filter words are retained, ties for
@@ -774,13 +795,15 @@ TEST_F(AtMemoryQueryServiceTest,
 
   ASSERT_TRUE(future.Wait());
   const auto& result = future.Get();
-  ASSERT_EQ(result.entries.size(), 1u);
-  EXPECT_EQ(result.entries[0].value, u"John Doe");
-  EXPECT_DOUBLE_EQ(result.entries[0].confidence_score, 0.9);
-  EXPECT_TRUE(result.entries[0].is_local);
-  ASSERT_EQ(result.entries[0].sources.size(), 1u);
-  EXPECT_EQ(result.entries[0].sources[0].type,
-            MemoryEntrySourceType::kAutofill);
+  EXPECT_THAT(
+      result.entries,
+      ElementsAre(
+          AllOf(Field(&MemorySearchResult::value, u"John Doe"),
+                Field(&MemorySearchResult::confidence_score, DoubleEq(0.9)),
+                Field(&MemorySearchResult::is_local, true),
+                Field(&MemorySearchResult::sources,
+                      ElementsAre(Field(&MemoryEntrySource::type,
+                                        MemoryEntrySourceType::kAutofill))))));
 }
 
 // Tests that entries with different values or metadata lists are both retained.
@@ -803,26 +826,26 @@ TEST_F(AtMemoryQueryServiceTest,
 
   const MemorySearchResults& result = RunDeduplicationQueryWithLocalResults(
       {result1, result2, result3, result4});
-  ASSERT_EQ(result.entries.size(), 4u);
-  EXPECT_EQ(result.entries[0].value, u"John Doe");
-  ASSERT_EQ(result.entries[0].metadata_list.size(), 1u);
-  EXPECT_EQ(result.entries[0].metadata_list[0].value, u"San Diego");
-  EXPECT_EQ(result.entries[0].type, MemoryDataType::kNameFull);
-
-  EXPECT_EQ(result.entries[1].value, u"John Doe");
-  ASSERT_EQ(result.entries[1].metadata_list.size(), 1u);
-  EXPECT_EQ(result.entries[1].metadata_list[0].value, u"New York");
-  EXPECT_EQ(result.entries[1].type, MemoryDataType::kNameFull);
-
-  EXPECT_EQ(result.entries[2].value, u"Jane Doe");
-  ASSERT_EQ(result.entries[2].metadata_list.size(), 1u);
-  EXPECT_EQ(result.entries[2].metadata_list[0].value, u"San Diego");
-  EXPECT_EQ(result.entries[2].type, MemoryDataType::kNameFull);
-
-  EXPECT_EQ(result.entries[3].value, u"John Doe");
-  ASSERT_EQ(result.entries[3].metadata_list.size(), 1u);
-  EXPECT_EQ(result.entries[3].metadata_list[0].value, u"San Diego");
-  EXPECT_EQ(result.entries[3].type, MemoryDataType::kUnknown);
+  EXPECT_THAT(
+      result.entries,
+      ElementsAre(
+          AllOf(Field(&MemorySearchResult::value, u"John Doe"),
+                Field(&MemorySearchResult::type, MemoryDataType::kNameFull),
+                Field(&MemorySearchResult::metadata_list,
+                      ElementsAre(Field(&EntryMetadata::value, u"San Diego")))),
+          AllOf(Field(&MemorySearchResult::value, u"John Doe"),
+                Field(&MemorySearchResult::type, MemoryDataType::kNameFull),
+                Field(&MemorySearchResult::metadata_list,
+                      ElementsAre(Field(&EntryMetadata::value, u"New York")))),
+          AllOf(Field(&MemorySearchResult::value, u"Jane Doe"),
+                Field(&MemorySearchResult::type, MemoryDataType::kNameFull),
+                Field(&MemorySearchResult::metadata_list,
+                      ElementsAre(Field(&EntryMetadata::value, u"San Diego")))),
+          AllOf(
+              Field(&MemorySearchResult::value, u"John Doe"),
+              Field(&MemorySearchResult::type, MemoryDataType::kUnknown),
+              Field(&MemorySearchResult::metadata_list,
+                    ElementsAre(Field(&EntryMetadata::value, u"San Diego"))))));
 }
 
 // Tests that deduplication prefers explicitly saved local Autofill results.
@@ -1762,19 +1785,88 @@ INSTANTIATE_TEST_SUITE_P(
                    u"Departure Airport", u"LAX"},
                   {MemoryDataType::kFlightReservationArrivalAirport,
                    u"Arrival Airport", u"SFO"}}},
+            .expected_metadata_per_result =
+                {{{MemoryDataType::kFlightReservationDepartureAirport,
+                   u"Departure Airport", u"SFO"},
+                  {MemoryDataType::kFlightReservationDepartureAirport,
+                   u"Departure Airport", u"LAX"}},
+                 {{MemoryDataType::kFlightReservationDepartureAirport,
+                   u"Departure Airport", u"SFO"},
+                  {MemoryDataType::kFlightReservationDepartureAirport,
+                   u"Departure Airport", u"LAX"}},
+                 {{MemoryDataType::kFlightReservationArrivalAirport,
+                   u"Arrival Airport", u"SFO"},
+                  {MemoryDataType::kFlightReservationDepartureAirport,
+                   u"Departure Airport", u"LAX"}}}},
+        // Reorders schemaless metadata attributes by uniqueness (more unique
+        // values first).
+        ReorderMetadataTestCase{
+            .input_metadata_per_result =
+                {{{MemoryDataType::kUnknown, u"Gate", u"A1"},
+                  {MemoryDataType::kUnknown, u"Terminal", u"T1"},
+                  {MemoryDataType::kUnknown, u"Seat", u"12A"}},
+                 {{MemoryDataType::kUnknown, u"Gate", u"A1"},
+                  {MemoryDataType::kUnknown, u"Terminal", u"T1"},
+                  {MemoryDataType::kUnknown, u"Seat", u"14B"}},
+                 {{MemoryDataType::kUnknown, u"Gate", u"A1"},
+                  {MemoryDataType::kUnknown, u"Terminal", u"T2"},
+                  {MemoryDataType::kUnknown, u"Seat", u"16C"}}},
+            .expected_metadata_per_result =
+                {{{MemoryDataType::kUnknown, u"Seat", u"12A"},
+                  {MemoryDataType::kUnknown, u"Terminal", u"T1"},
+                  {MemoryDataType::kUnknown, u"Gate", u"A1"}},
+                 {{MemoryDataType::kUnknown, u"Seat", u"14B"},
+                  {MemoryDataType::kUnknown, u"Terminal", u"T1"},
+                  {MemoryDataType::kUnknown, u"Gate", u"A1"}},
+                 {{MemoryDataType::kUnknown, u"Terminal", u"T2"},
+                  {MemoryDataType::kUnknown, u"Seat", u"16C"},
+                  {MemoryDataType::kUnknown, u"Gate", u"A1"}}}},
+        // Counts values of different schemaless type names independently (e.g.,
+        // "A1" in Gate vs. "A1" in Seat).
+        ReorderMetadataTestCase{
+            .input_metadata_per_result =
+                {{{MemoryDataType::kUnknown, u"Gate", u"A1"},
+                  {MemoryDataType::kUnknown, u"Gate", u"B2"}},
+                 {{MemoryDataType::kUnknown, u"Gate", u"A1"},
+                  {MemoryDataType::kUnknown, u"Gate", u"B2"}},
+                 {{MemoryDataType::kUnknown, u"Gate", u"A1"},
+                  {MemoryDataType::kUnknown, u"Seat", u"B2"}}},
+            .expected_metadata_per_result =
+                {{{MemoryDataType::kUnknown, u"Gate", u"B2"},
+                  {MemoryDataType::kUnknown, u"Gate", u"A1"}},
+                 {{MemoryDataType::kUnknown, u"Gate", u"B2"},
+                  {MemoryDataType::kUnknown, u"Gate", u"A1"}},
+                 {{MemoryDataType::kUnknown, u"Seat", u"B2"},
+                  {MemoryDataType::kUnknown, u"Gate", u"A1"}}}},
+        // Mixed schemaful and schemaless metadata are properly reordered
+        // together by uniqueness.
+        ReorderMetadataTestCase{
+            .input_metadata_per_result =
+                {{{MemoryDataType::kAddressCountry, u"Country",
+                   u"United States"},
+                  {MemoryDataType::kUnknown, u"Neighborhood", u"North End"},
+                  {MemoryDataType::kAddressState, u"State", u"MA"}},
+                 {{MemoryDataType::kAddressCountry, u"Country",
+                   u"United States"},
+                  {MemoryDataType::kUnknown, u"Neighborhood", u"Back Bay"},
+                  {MemoryDataType::kAddressState, u"State", u"MA"}},
+                 {{MemoryDataType::kAddressCountry, u"Country",
+                   u"United States"},
+                  {MemoryDataType::kUnknown, u"Neighborhood", u"North End"},
+                  {MemoryDataType::kAddressState, u"State", u"IL"}}},
             .expected_metadata_per_result = {
-                {{MemoryDataType::kFlightReservationDepartureAirport,
-                  u"Departure Airport", u"SFO"},
-                 {MemoryDataType::kFlightReservationDepartureAirport,
-                  u"Departure Airport", u"LAX"}},
-                {{MemoryDataType::kFlightReservationDepartureAirport,
-                  u"Departure Airport", u"SFO"},
-                 {MemoryDataType::kFlightReservationDepartureAirport,
-                  u"Departure Airport", u"LAX"}},
-                {{MemoryDataType::kFlightReservationArrivalAirport,
-                  u"Arrival Airport", u"SFO"},
-                 {MemoryDataType::kFlightReservationDepartureAirport,
-                  u"Departure Airport", u"LAX"}}}}));
+                {{MemoryDataType::kUnknown, u"Neighborhood", u"North End"},
+                 {MemoryDataType::kAddressState, u"State", u"MA"},
+                 {MemoryDataType::kAddressCountry, u"Country",
+                  u"United States"}},
+                {{MemoryDataType::kUnknown, u"Neighborhood", u"Back Bay"},
+                 {MemoryDataType::kAddressState, u"State", u"MA"},
+                 {MemoryDataType::kAddressCountry, u"Country",
+                  u"United States"}},
+                {{MemoryDataType::kAddressState, u"State", u"IL"},
+                 {MemoryDataType::kUnknown, u"Neighborhood", u"North End"},
+                 {MemoryDataType::kAddressCountry, u"Country",
+                  u"United States"}}}}));
 
 // Tests that local results are filtered using string filters in fetch
 // specifications.
@@ -2021,6 +2113,201 @@ TEST_F(
 
   EXPECT_THAT(future.Get(), SuccessfulSearchResults(
                                 SearchResultWithValue(u"PASSPORT_MATCH")));
+}
+
+// Tests that typed filters support relational operators (LESS_THAN,
+// GREATER_THAN, etc.)
+TEST_F(AtMemoryQueryServiceTest,
+       Query_FiltersLocalDataUsingFetchSpecifications_FilterOperators) {
+  base::test::ScopedFeatureList feature_list(
+      features::kAutofillAtMemoryTypedFetchPlan);
+
+  AtMemoryQueryResponse response = CreateQueryResponse();
+  AutofillFetchPlan* plan = response.mutable_autofill_fetch_plan();
+  auto* spec = plan->add_fetch_specifications();
+  spec->set_data_type(personal_context::proto::
+                          MEMORY_DATA_TYPE_FLIGHT_RESERVATION_FLIGHT_NUMBER);
+  auto* filter = spec->add_filters();
+  filter->mutable_typed_value_filter()
+      ->mutable_typed_value()
+      ->mutable_date()
+      ->set_year(2026);
+  filter->mutable_typed_value_filter()
+      ->mutable_typed_value()
+      ->mutable_date()
+      ->set_month(10);
+  filter->mutable_typed_value_filter()->set_filter_operator(
+      AutofillFetchSpecification::TypedValueFilter::
+          FILTER_OPERATOR_LESS_THAN_OR_EQUAL);
+
+  StubFetchContextResponse(std::move(response));
+
+  MemorySearchResult oct_flight(MemoryDataType::kFlightReservationFlightNumber,
+                                u"Flight Number", u"FLIGHT_OCT");
+  EntryMetadata oct_meta(MemoryDataType::kFlightReservationDepartureDate,
+                         u"Departure Date", u"2026-10-15");
+  oct_meta.typed_value = CreateDateTypedValue(2026, 10, 15);
+  oct_flight.metadata_list.push_back(std::move(oct_meta));
+
+  MemorySearchResult nov_flight(MemoryDataType::kFlightReservationFlightNumber,
+                                u"Flight Number", u"FLIGHT_NOV");
+  EntryMetadata nov_meta(MemoryDataType::kFlightReservationDepartureDate,
+                         u"Departure Date", u"2026-11-01");
+  nov_meta.typed_value = CreateDateTypedValue(2026, 11, 1);
+  nov_flight.metadata_list.push_back(std::move(nov_meta));
+
+  auto service = CreateQueryProviderWithResults({oct_flight, nov_flight});
+
+  TestFuture<MemorySearchResults> future;
+  service->Query(u"flight", GURL("https://example.com"), u"Title",
+                 future.GetRepeatingCallback());
+
+  EXPECT_THAT(future.Get(),
+              SuccessfulSearchResults(SearchResultWithValue(u"FLIGHT_OCT")));
+}
+
+// Tests cross-type matching between Date and DateTime typed values.
+TEST_F(
+    AtMemoryQueryServiceTest,
+    Query_FiltersLocalDataUsingFetchSpecifications_DateAndDateTimeCrossMatching) {
+  base::test::ScopedFeatureList feature_list(
+      features::kAutofillAtMemoryTypedFetchPlan);
+
+  AtMemoryQueryResponse response = CreateQueryResponse();
+  AutofillFetchPlan* plan = response.mutable_autofill_fetch_plan();
+  auto* spec = plan->add_fetch_specifications();
+  spec->set_data_type(personal_context::proto::
+                          MEMORY_DATA_TYPE_FLIGHT_RESERVATION_FLIGHT_NUMBER);
+  auto* filter = spec->add_filters();
+  filter->mutable_typed_value_filter()
+      ->mutable_typed_value()
+      ->mutable_date()
+      ->set_year(2026);
+  filter->mutable_typed_value_filter()
+      ->mutable_typed_value()
+      ->mutable_date()
+      ->set_month(10);
+  filter->mutable_typed_value_filter()->set_filter_operator(
+      AutofillFetchSpecification::TypedValueFilter::
+          FILTER_OPERATOR_LESS_THAN_OR_EQUAL);
+
+  StubFetchContextResponse(std::move(response));
+
+  MemorySearchResult datetime_flight(
+      MemoryDataType::kFlightReservationFlightNumber, u"Flight Number",
+      u"FLIGHT_DATETIME_MATCH");
+  EntryMetadata dt_meta(MemoryDataType::kFlightReservationDepartureDate,
+                        u"Departure Date", u"2026-10-15T14:30:00");
+  dt_meta.typed_value = CreateDateTimeTypedValue(2026, 10, 15, 14, 30, 0);
+  datetime_flight.metadata_list.push_back(std::move(dt_meta));
+
+  MemorySearchResult nov_flight(MemoryDataType::kFlightReservationFlightNumber,
+                                u"Flight Number", u"FLIGHT_NOV");
+  EntryMetadata nov_meta(MemoryDataType::kFlightReservationDepartureDate,
+                         u"Departure Date", u"2026-11-01T09:00:00");
+  nov_meta.typed_value = CreateDateTimeTypedValue(2026, 11, 1, 9, 0, 0);
+  nov_flight.metadata_list.push_back(std::move(nov_meta));
+
+  auto service = CreateQueryProviderWithResults({datetime_flight, nov_flight});
+
+  TestFuture<MemorySearchResults> future;
+  service->Query(u"flight", GURL("https://example.com"), u"Title",
+                 future.GetRepeatingCallback());
+
+  EXPECT_THAT(
+      future.Get(),
+      SuccessfulSearchResults(SearchResultWithValue(u"FLIGHT_DATETIME_MATCH")));
+}
+
+// Tests that unset time fields in a DateTime filter act as wildcards, whereas
+// explicitly setting time fields to 0 filters strictly for midnight (00:00:00).
+TEST_F(
+    AtMemoryQueryServiceTest,
+    Query_FiltersLocalDataUsingFetchSpecifications_DateTimeTimeWildcardVsZero) {
+  base::test::ScopedFeatureList feature_list(
+      features::kAutofillAtMemoryTypedFetchPlan);
+
+  MemorySearchResult midnight_flight(
+      MemoryDataType::kFlightReservationFlightNumber, u"Flight Number",
+      u"FLIGHT_MIDNIGHT");
+  EntryMetadata midnight_meta(MemoryDataType::kFlightReservationDepartureDate,
+                              u"Departure Date", u"2026-10-15T00:00:00");
+  midnight_meta.typed_value = CreateDateTimeTypedValue(2026, 10, 15, 0, 0, 0);
+  midnight_flight.metadata_list.push_back(std::move(midnight_meta));
+
+  MemorySearchResult afternoon_flight(
+      MemoryDataType::kFlightReservationFlightNumber, u"Flight Number",
+      u"FLIGHT_AFTERNOON");
+  EntryMetadata afternoon_meta(MemoryDataType::kFlightReservationDepartureDate,
+                               u"Departure Date", u"2026-10-15T14:30:00");
+  afternoon_meta.typed_value =
+      CreateDateTimeTypedValue(2026, 10, 15, 14, 30, 0);
+  afternoon_flight.metadata_list.push_back(std::move(afternoon_meta));
+
+  // Case 1: Filter with UNSET time fields (acting as wildcards).
+  // Both midnight_flight and afternoon_flight should match.
+  {
+    AtMemoryQueryResponse response = CreateQueryResponse();
+    AutofillFetchPlan* plan = response.mutable_autofill_fetch_plan();
+    auto* spec = plan->add_fetch_specifications();
+    spec->set_data_type(personal_context::proto::
+                            MEMORY_DATA_TYPE_FLIGHT_RESERVATION_FLIGHT_NUMBER);
+    auto* filter = spec->add_filters();
+    auto* dt = filter->mutable_typed_value_filter()
+                   ->mutable_typed_value()
+                   ->mutable_date_time();
+    dt->set_year(2026);
+    dt->set_month(10);
+    dt->set_day(15);
+    filter->mutable_typed_value_filter()->set_filter_operator(
+        AutofillFetchSpecification::TypedValueFilter::FILTER_OPERATOR_EQUAL);
+
+    StubFetchContextResponse(std::move(response));
+
+    auto service =
+        CreateQueryProviderWithResults({midnight_flight, afternoon_flight});
+
+    TestFuture<MemorySearchResults> future;
+    service->Query(u"flight", GURL("https://example.com"), u"Title",
+                   future.GetRepeatingCallback());
+
+    EXPECT_THAT(future.Get(), SuccessfulSearchResults(
+                                  SearchResultWithValue(u"FLIGHT_MIDNIGHT"),
+                                  SearchResultWithValue(u"FLIGHT_AFTERNOON")));
+  }
+
+  // Case 2: Filter with EXPLICITLY SET time fields set to 0 (hours = 0, minutes
+  // = 0). Only midnight_flight should match; afternoon_flight must be rejected.
+  {
+    AtMemoryQueryResponse response = CreateQueryResponse();
+    AutofillFetchPlan* plan = response.mutable_autofill_fetch_plan();
+    auto* spec = plan->add_fetch_specifications();
+    spec->set_data_type(personal_context::proto::
+                            MEMORY_DATA_TYPE_FLIGHT_RESERVATION_FLIGHT_NUMBER);
+    auto* filter = spec->add_filters();
+    auto* dt = filter->mutable_typed_value_filter()
+                   ->mutable_typed_value()
+                   ->mutable_date_time();
+    dt->set_year(2026);
+    dt->set_month(10);
+    dt->set_day(15);
+    dt->set_hours(0);
+    dt->set_minutes(0);
+    filter->mutable_typed_value_filter()->set_filter_operator(
+        AutofillFetchSpecification::TypedValueFilter::FILTER_OPERATOR_EQUAL);
+
+    StubFetchContextResponse(std::move(response));
+
+    auto service =
+        CreateQueryProviderWithResults({midnight_flight, afternoon_flight});
+
+    TestFuture<MemorySearchResults> future;
+    service->Query(u"flight", GURL("https://example.com"), u"Title",
+                   future.GetRepeatingCallback());
+
+    EXPECT_THAT(future.Get(), SuccessfulSearchResults(
+                                  SearchResultWithValue(u"FLIGHT_MIDNIGHT")));
+  }
 }
 
 // Tests that filters only match against fields whose data types are in the

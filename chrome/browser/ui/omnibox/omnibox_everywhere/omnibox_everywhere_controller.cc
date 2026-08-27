@@ -47,11 +47,101 @@ OmniboxEverywhereController::OmniboxEverywhereController(
             base::Unretained(this)));
   }
   UpdateHotkeyRegistration();
+
+  if (g_browser_process && g_browser_process->profile_manager()) {
+    profile_manager_observation_.Observe(g_browser_process->profile_manager());
+    for (auto* profile :
+         g_browser_process->profile_manager()->GetLoadedProfiles()) {
+      OnProfileAdded(profile);
+    }
+  }
+
+  if (GlobalBrowserCollection::GetInstance()) {
+    browser_collection_observation_.Observe(
+        GlobalBrowserCollection::GetInstance());
+  }
 }
 
 OmniboxEverywhereController::~OmniboxEverywhereController() {
+  browser_collection_observation_.Reset();
   if (listener_) {
     listener_->UnregisterAccelerators(this);
+  }
+}
+
+void OmniboxEverywhereController::OnBrowserActivated(
+    BrowserWindowInterface* browser) {
+  if (browser) {
+    SetTargetProfile(browser->GetProfile());
+  }
+}
+
+void OmniboxEverywhereController::SetTargetProfile(Profile* profile) {
+  if (profile) {
+    if (profile->IsOffTheRecord()) {
+      profile = profile->GetOriginalProfile();
+    }
+    if (!IsProfileEligible(profile)) {
+      return;
+    }
+  }
+
+  if (target_profile_ == profile) {
+    return;
+  }
+
+  target_profile_ = profile;
+  background_mode_manager_->SetProfile(target_profile_);
+
+  if (target_profile_) {
+    PersistTargetProfilePath(target_profile_->GetPath());
+  }
+}
+
+void OmniboxEverywhereController::OnProfileAdded(Profile* profile) {
+  if (target_profile_ || !IsProfileEligible(profile)) {
+    return;
+  }
+
+  // TODO(crbug.com/532190282): Handle locked profiles (e.g. show profile picker
+  // if locked) and deleted (or no longer eligible) profiles (e.g. clear the
+  // persisted target profile pref).
+  const base::FilePath persisted_path = GetPersistedTargetProfilePath();
+  if (persisted_path.empty() || profile->GetPath() == persisted_path) {
+    SetTargetProfile(profile);
+  }
+}
+
+void OmniboxEverywhereController::OnProfileManagerDestroying() {
+  profile_manager_observation_.Reset();
+}
+
+bool OmniboxEverywhereController::IsProfileEligible(Profile* profile) const {
+  return profile && !profile->IsOffTheRecord() &&
+         omnibox::IsOmniboxEverywhereEnabled(profile) &&
+         OmniboxEverywhereServiceFactory::GetForProfile(profile);
+}
+
+base::FilePath OmniboxEverywhereController::GetPersistedTargetProfilePath()
+    const {
+  if (g_browser_process && g_browser_process->local_state()) {
+    return g_browser_process->local_state()->GetFilePath(
+        prefs::kLastTargetProfileDir);
+  }
+  return base::FilePath();
+}
+
+void OmniboxEverywhereController::PersistTargetProfilePath(
+    const base::FilePath& path) {
+  if (!g_browser_process || !g_browser_process->local_state()) {
+    return;
+  }
+
+  if (path.empty()) {
+    g_browser_process->local_state()->ClearPref(prefs::kLastTargetProfileDir);
+  } else {
+    g_browser_process->local_state()->SetFilePath(prefs::kLastTargetProfileDir,
+                                                  path);
   }
 }
 
@@ -68,22 +158,22 @@ void OmniboxEverywhereController::UpdateHotkeyRegistration() {
       hotkey_pref_member_.prefs() && hotkey_pref_member_.GetValue();
   if (is_enabled) {
     listener_->RegisterAccelerator(
-        ui::Accelerator(ui::VKEY_SPACE,
-                        ui::EF_SHIFT_DOWN | ui::EF_PLATFORM_ACCELERATOR),
-        this);
+        ui::Accelerator(ui::VKEY_SPACE, ui::EF_ALT_DOWN), this);
   }
 }
 
 void OmniboxEverywhereController::OnInvoke(InvocationSource source,
                                            Profile* profile,
                                            gfx::NativeWindow context) {
-  if (!omnibox::IsOmniboxEverywhereEnabled(profile)) {
+  if (!IsProfileEligible(profile)) {
     return;
   }
+
+  SetTargetProfile(profile);
   switch (source) {
     case InvocationSource::kGlobalHotkey:
     case InvocationSource::kStatusTrayIcon:
-      if (IsVisible() && ui_manager_->profile() == profile) {
+      if (ui_manager_->IsVisible() && ui_manager_->profile() == profile) {
         Close();
       } else {
         ui_manager_->ShowForProfile(profile, context);
@@ -131,29 +221,21 @@ void OmniboxEverywhereController::OnProfilePicked(Profile* new_profile) {
   if (!new_profile) {
     return;
   }
+  SetTargetProfile(new_profile);
   OnInvoke(InvocationSource::kProfilePicker, new_profile);
 }
 
 void OmniboxEverywhereController::ShutdownForProfile(Profile* profile) {
+  if (profile == target_profile_) {
+    SetTargetProfile(nullptr);
+  }
   if (profile == ui_manager_->profile()) {
     ui_manager_->Shutdown();
   }
 }
 
-// TODO(crbug.com/527183107): Implement a better profile selection heuristic.
-Profile* OmniboxEverywhereController::GetTargetProfile() {
-  BrowserWindowInterface* active_bwi =
-      GlobalBrowserCollection::GetInstance()->GetLastActiveBrowser();
-  Profile* target_profile = active_bwi ? active_bwi->GetProfile() : nullptr;
-
-  // Only use the profile of the last active browser window. If no browser
-  // window is active (e.g. on the profile selection screen), return nullptr.
-  // Also check that the profile has the required service.
-  if (target_profile &&
-      !OmniboxEverywhereServiceFactory::GetForProfile(target_profile)) {
-    target_profile = nullptr;
-  }
-  return target_profile;
+Profile* OmniboxEverywhereController::GetTargetProfile() const {
+  return target_profile_;
 }
 
 void OmniboxEverywhereController::OnKeyPressed(

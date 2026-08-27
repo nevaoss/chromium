@@ -20,7 +20,6 @@
 #include "chrome/browser/autofill/personal_data_manager_factory.h"
 #include "chrome/browser/autofill/ui/ui_util.h"
 #include "chrome/browser/personal_context/personal_context_eligibility_service_factory.h"
-#include "chrome/browser/ssl/chrome_security_state_tab_helper.h"
 #include "chrome/browser/ui/autofill/autofill_popup_controller_impl.h"
 #include "chrome/browser/ui/autofill/edit_address_profile_dialog_controller_impl.h"
 #include "chrome/browser/ui/autofill/popup_controller_common.h"
@@ -208,7 +207,6 @@ class ChromeAutofillClientTest : public ChromeRenderViewHostTestHarness {
     NavigateAndCommit(GURL("about:blank"));
 
 #if !BUILDFLAG(IS_ANDROID)
-    ChromeSecurityStateTabHelper::CreateForWebContents(web_contents());
 
     auto save_card_bubble_controller =
         std::make_unique<MockSaveCardBubbleController>(web_contents());
@@ -521,7 +519,6 @@ TEST_F(
       FieldTypeSet({FLIGHT_RESERVATION_FLIGHT_NUMBER}));
 }
 
-
 TEST_F(ChromeAutofillClientTest,
        TriggerUserPerceptionOfAutofillCreditCardSurvey) {
   MockHatsService* mock_hats_service = static_cast<MockHatsService*>(
@@ -631,6 +628,58 @@ TEST_F(ChromeAutofillClientTest,
   task_environment()->RunUntilIdle();
 
   testing::Mock::VerifyAndClearExpectations(autofill_field_promo_controller());
+}
+
+TEST_F(ChromeAutofillClientTest,
+       ShowAutofillSuggestions_AbortsIfQueriedFieldChanges) {
+  auto delegate = std::make_unique<MockAutofillSuggestionDelegate>();
+
+  FieldGlobalId field1(LocalFrameToken(base::UnguessableToken::Create()),
+                       FieldRendererId(1));
+  FieldGlobalId field2(LocalFrameToken(base::UnguessableToken::Create()),
+                       FieldRendererId(2));
+
+  ON_CALL(*delegate, GetQueriedFieldId).WillByDefault(Return(field1));
+
+  // Because ShowAutofillSuggestionsImpl() early-returns upon detecting a
+  // queried field mismatch (field2 != field1), it aborts before creating or
+  // showing an AutofillSuggestionController. Thus, no popup session is
+  // created and delegate->OnSuggestionsHidden() must not be called (0 times).
+  EXPECT_CALL(*delegate, OnSuggestionsHidden).Times(0);
+
+  client()->ShowAutofillSuggestions(AutofillClient::PopupOpenArgs(),
+                                    delegate->GetWeakPtr());
+
+  ON_CALL(*delegate, GetQueriedFieldId).WillByDefault(Return(field2));
+
+  {
+    base::RunLoop run_loop;
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, run_loop.QuitClosure());
+    run_loop.Run();
+  }
+
+  testing::Mock::VerifyAndClearExpectations(delegate.get());
+
+  // When the queried field ID matches (field2 == field2),
+  // ShowAutofillSuggestionsImpl() passes the guard check and proceeds to
+  // create AutofillSuggestionController and call Show(). In this headless unit
+  // test environment without window focus, Show() immediately dismisses the
+  // popup with kNoFrameHasFocus, triggering delegate->OnSuggestionsHidden()
+  // exactly once.
+  EXPECT_CALL(*delegate,
+              OnSuggestionsHidden(SuggestionHidingReason::kNoFrameHasFocus))
+      .Times(1);
+
+  client()->ShowAutofillSuggestions(AutofillClient::PopupOpenArgs(),
+                                    delegate->GetWeakPtr());
+
+  {
+    base::RunLoop run_loop;
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, run_loop.QuitClosure());
+    run_loop.Run();
+  }
 }
 
 class ChromeAutofillClientTestWithMockWindow : public ChromeAutofillClientTest {

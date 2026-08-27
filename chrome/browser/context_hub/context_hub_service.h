@@ -30,6 +30,8 @@
 #include "components/saved_tab_groups/public/types.h"
 #include "url/gurl.h"
 
+class PrefService;
+
 namespace content {
 class WebContents;
 }  // namespace content
@@ -48,6 +50,10 @@ namespace personal_context {
 class PersonalContextService;
 }  // namespace personal_context
 
+namespace signin {
+class PersistentRepeatingTimer;
+}  // namespace signin
+
 namespace tab_groups {
 class TabGroupSyncService;
 }  // namespace tab_groups
@@ -65,6 +71,7 @@ class ContextHubService : public KeyedService, public AutoTodosStore::Observer {
   };
 
   ContextHubService(
+      PrefService* pref_service,
       personal_context::PersonalContextService* personal_context_service,
       optimization_guide::RemoteModelExecutor*
           optimization_guide_remote_model_executor,
@@ -105,6 +112,11 @@ class ContextHubService : public KeyedService, public AutoTodosStore::Observer {
   // single complete todo item from the UI.
   void UpdateAutoTodo(AutoTodoEntry item,
                       AutoTodosStore::OperationCallback callback);
+
+  // Deletes a third-party todo item matching the given tab ID from the
+  // AutoTodos store.
+  void DeleteAutoTodoByTabId(int64_t tab_id,
+                             AutoTodosStore::OperationCallback callback);
 
   // Stores or updates a todo feedback item in the in-memory cache.
   void SetTodoFeedback(
@@ -201,6 +213,10 @@ class ContextHubService : public KeyedService, public AutoTodosStore::Observer {
   }
 
  private:
+  // Triggered periodically by `first_party_auto_todos_timer_` to generate 1P
+  // AutoTodos.
+  void OnFirstPartyAutoTodosTimerTriggered();
+
   // Adds a TabGroupEntry to TabGroupSyncService and returns its SavedTabGroup
   // GUID if successful, or std::nullopt if conversion failed.
   std::optional<base::Uuid> AddTabGroupToSyncService(
@@ -320,6 +336,11 @@ class ContextHubService : public KeyedService, public AutoTodosStore::Observer {
   std::unique_ptr<TabGroupStore> tab_group_store_;
 
   std::unique_ptr<AutoTodosStore> auto_todos_store_;
+
+  // Recurring daily timer that generates and stores 1P AutoTodos across
+  // sessions.
+  std::unique_ptr<signin::PersistentRepeatingTimer>
+      first_party_auto_todos_timer_;
 
   base::ObserverList<Observer> observers_;
 

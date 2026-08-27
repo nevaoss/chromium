@@ -76,7 +76,6 @@ class TabStripCollectionControllerBrowserTest
       override {
     auto enabled = VerticalTabsBrowserTestMixin<
         InProcessBrowserTest>::GetEnabledFeatures();
-    enabled.push_back({features::kTabGroupsCollapseFreezing, {}});
     enabled.push_back({tabs::kTabStripUnification, {}});
     return enabled;
   }
@@ -146,16 +145,16 @@ IN_PROC_BROWSER_TEST_P(TabStripCollectionControllerBrowserTest,
       group, ToggleTabGroupCollapsedStateOrigin::kMouse);
 
   // Verify freezing votes.
-  EXPECT_TRUE(tab_view0->HasFreezingVote());
-  EXPECT_TRUE(tab_view1->HasFreezingVote());
+  EXPECT_TRUE(tab_view0->HasFreezingVote(FreezingVoteReason::kCollapsedGroup));
+  EXPECT_TRUE(tab_view1->HasFreezingVote(FreezingVoteReason::kCollapsedGroup));
 
   // Expand the group.
   vertical_tab_strip_controller()->ToggleTabGroupCollapsedState(
       group, ToggleTabGroupCollapsedStateOrigin::kMouse);
 
   // Verify freezing votes are released.
-  EXPECT_FALSE(tab_view0->HasFreezingVote());
-  EXPECT_FALSE(tab_view1->HasFreezingVote());
+  EXPECT_FALSE(tab_view0->HasFreezingVote(FreezingVoteReason::kCollapsedGroup));
+  EXPECT_FALSE(tab_view1->HasFreezingVote(FreezingVoteReason::kCollapsedGroup));
 }
 
 IN_PROC_BROWSER_TEST_P(TabStripCollectionControllerBrowserTest, ShiftTabNext) {
@@ -282,7 +281,6 @@ class TabGroupHoverCardTest
       override {
     auto enabled = VerticalTabsBrowserTestMixin<
         InProcessBrowserTest>::GetEnabledFeatures();
-    enabled.push_back({features::kTabGroupsCollapseFreezing, {}});
     enabled.push_back({features::kTabGroupHoverCards, {}});
     enabled.push_back({tabs::kTabStripUnification, {}});
     return enabled;

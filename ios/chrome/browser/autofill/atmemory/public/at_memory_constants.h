@@ -14,6 +14,9 @@ inline constexpr CGFloat kDefaultCellAlpha = 1.0;
 // The opacity for disabled cells.
 inline constexpr CGFloat kDisabledCellAlpha = 0.5;
 
+// The symbol point size for cell icons.
+inline constexpr CGFloat kIconPointSize = 24;
+
 // Accessibility identifier for the AtMemory close button.
 extern NSString* const kAtMemoryCloseButtonAccessibilityIdentifier;
 
@@ -34,5 +37,17 @@ extern NSString* const kAtMemoryUnsupportedQueryCellAccessibilityIdentifier;
 
 // Accessibility identifier for the AtMemory search cell.
 extern NSString* const kAtMemorySearchCellAccessibilityIdentifier;
+
+// Accessibility identifier for the AtMemory fetching cell.
+extern NSString* const kAtMemoryFetchingCellAccessibilityIdentifier;
+
+// Accessibility identifier prefix for the AtMemory granular fill attribute
+// label.
+extern NSString* const
+    kAtMemoryGranularFillAttributeLabelAccessibilityIdentifierPrefix;
+
+// Accessibility identifier prefix for the AtMemory granular fill chip button.
+extern NSString* const
+    kAtMemoryGranularFillChipButtonAccessibilityIdentifierPrefix;
 
 #endif  // IOS_CHROME_BROWSER_AUTOFILL_ATMEMORY_PUBLIC_AT_MEMORY_CONSTANTS_H_

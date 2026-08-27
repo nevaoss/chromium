@@ -358,7 +358,7 @@ TEST_F(AccountPreviewDataServiceTest,
   EXPECT_TRUE(service_->HasActiveFetcherForTesting(account2.gaia));
 }
 
-#if BUILDFLAG(ENABLE_DICE_SUPPORT)
+#if !BUILDFLAG(IS_CHROMEOS)
 TEST_F(AccountPreviewDataServiceTest, OnAllFetchesCompleted) {
   AllDataAvailableWaiter waiter(service_.get());
 
@@ -394,7 +394,6 @@ TEST_F(AccountPreviewDataServiceTest, OnAllFetchesCompleted) {
   EXPECT_TRUE(service_->GetAccountPreviewData(account1.gaia).has_value());
   EXPECT_TRUE(service_->GetAccountPreviewData(account2.gaia).has_value());
 }
-#endif
 
 TEST_F(AccountPreviewDataServiceTest, GetPreferredAccountForPromo) {
   // 1. Initially empty.
@@ -416,12 +415,12 @@ TEST_F(AccountPreviewDataServiceTest, GetPreferredAccountForPromo) {
 
   all_data_available_loop.Run();
 
-  // 3. Verify it returns empty preference (since heuristic is to be
-  // implemented).
-  // TODO(crbug.com/530144650): When the heuristic is implemented, this test
-  // should be updated to expect a non-empty preference.
-  EXPECT_EQ(service_->GetPreferredAccountForPromo(), std::nullopt);
+  // 3. Verify preferred account is computed.
+  EXPECT_THAT(service_->GetPreferredAccountForPromo(),
+              testing::Optional(testing::Field(
+                  &AccountPreviewPreference::gaia_id, account1.gaia)));
 }
+#endif
 
 TEST_F(AccountPreviewDataServiceTest, PeriodicRefreshDefersUntilTokensLoaded) {
   // Destroy the service created in SetUp to prevent it from fetching when we
@@ -923,10 +922,25 @@ TEST_F(AccountPreviewDataServiceTest, ReadPreviewPreferenceFromPrefsDataTypes) {
   base::DictValue dict;
   dict.Set("gaia_id", "test_gaia_id");
   base::ListValue data_types_list;
-  data_types_list.Append(syncer::DataTypeToStableIdentifier(syncer::BOOKMARKS));
-  data_types_list.Append(-1);    // Negative invalid value.
-  data_types_list.Append(9999);  // Unknown/invalid stable identifier.
-  data_types_list.Append(syncer::DataTypeToStableIdentifier(syncer::PASSWORDS));
+
+  base::DictValue bookmarks_dict;
+  bookmarks_dict.Set("data_type",
+                     syncer::DataTypeToStableIdentifier(syncer::BOOKMARKS));
+  bookmarks_dict.Set("quartile",
+                     static_cast<int>(SyncDataQuartile::kMedianToQ3));
+  data_types_list.Append(std::move(bookmarks_dict));
+
+  base::DictValue invalid_dict;
+  invalid_dict.Set("data_type", -1);
+  invalid_dict.Set("quartile", 1);
+  data_types_list.Append(std::move(invalid_dict));
+
+  base::DictValue passwords_dict;
+  passwords_dict.Set("data_type",
+                     syncer::DataTypeToStableIdentifier(syncer::PASSWORDS));
+  passwords_dict.Set("quartile", static_cast<int>(SyncDataQuartile::kAboveQ3));
+  data_types_list.Append(std::move(passwords_dict));
+
   dict.Set("data_types", std::move(data_types_list));
 
   prefs_.SetDict(prefs::kAccountPreviewPreference, std::move(dict));
@@ -936,9 +950,14 @@ TEST_F(AccountPreviewDataServiceTest, ReadPreviewPreferenceFromPrefsDataTypes) {
       testing::Optional(testing::AllOf(
           testing::Field(&AccountPreviewPreference::gaia_id,
                          GaiaId("test_gaia_id")),
-          testing::Field(
-              &AccountPreviewPreference::preferred_data_types,
-              testing::ElementsAre(syncer::BOOKMARKS, syncer::PASSWORDS)))));
+          testing::Field(&AccountPreviewPreference::preferred_data_types,
+                         testing::ElementsAre(
+                             PreferredDataTypeInfo{
+                                 .data_type = syncer::BOOKMARKS,
+                                 .quartile = SyncDataQuartile::kMedianToQ3},
+                             PreferredDataTypeInfo{
+                                 .data_type = syncer::PASSWORDS,
+                                 .quartile = SyncDataQuartile::kAboveQ3})))));
 }
 
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
@@ -1520,7 +1539,7 @@ TEST_F(AccountPreviewDataServiceTest, NullSyncService) {
 }
 
 TEST_F(AccountPreviewDataServiceTest,
-       GetPreferredAccountForPromo_OtherDeviceFormFactor) {
+       GetPreferredAccountForPromoOtherDeviceFormFactor) {
   AccountInfo account =
       identity_test_env_.MakeAccountAvailable("user@gmail.com");
 
@@ -1715,10 +1734,10 @@ TEST_F(AccountPreviewDataServiceTest,
   EXPECT_FALSE(service_->GetAccountPreviewData(account1.gaia).has_value());
   EXPECT_TRUE(service_->GetAccountPreviewData(account2.gaia).has_value());
 
-  // Preferred account for promo is recomputed.
-  // TODO(crbug.com/530144650): Expect account2 to be preferred once the
-  // heuristic is implemented.
-  EXPECT_EQ(service_->GetPreferredAccountForPromo(), std::nullopt);
+  // Preferred account for promo is recomputed and selects account2.
+  EXPECT_THAT(service_->GetPreferredAccountForPromo(),
+              testing::Optional(testing::Field(
+                  &AccountPreviewPreference::gaia_id, account2.gaia)));
 
   // `TriggerCauseWithAllCachesAvailable` is recorded because all remaining
   // accounts (account2) were already cached.

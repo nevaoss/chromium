@@ -147,11 +147,14 @@ void DaemonProcessLinux::LaunchNetworkProcess() {
 
   base::CommandLine command_line(this_exe);
   command_line.AppendSwitchASCII(kProcessTypeSwitchName, kProcessTypeNetwork);
+  command_line.CopySwitchesFrom(*base::CommandLine::ForCurrentProcess(),
+                                kCopiedSwitchNames);
 
   LinuxWorkerProcessLauncherDelegate::LaunchOptions options(command_line);
   options.new_session = true;
   options.uid = user_info->uid;
   options.gid = user_info->gid;
+  options.supplementary_gids = user_info->supplementary_gids;
   // The home directory of the network user is /nonexistent, so we just change
   // the working directory to /tmp instead.
   base::FilePath temp_dir;
@@ -189,11 +192,14 @@ DaemonProcessLinux::CreatePeerConnectionProcessLauncherDelegate() {
   base::CommandLine command_line(this_exe);
   command_line.AppendSwitchASCII(kProcessTypeSwitchName,
                                  kProcessTypePeerConnection);
+  command_line.CopySwitchesFrom(*base::CommandLine::ForCurrentProcess(),
+                                kCopiedSwitchNames);
 
   LinuxWorkerProcessLauncherDelegate::LaunchOptions options(command_line);
   options.new_session = true;
   options.uid = user_info->uid;
   options.gid = user_info->gid;
+  options.supplementary_gids = user_info->supplementary_gids;
 
   base::FilePath temp_dir;
   if (!base::PathService::Get(base::DIR_TEMP, &temp_dir)) {

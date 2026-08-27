@@ -165,7 +165,7 @@ BASE_FEATURE(kContextualTasksOverrideShowBottomSheetOnLargeScreen,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables prefetching of cookies for contextual tasks.
-BASE_FEATURE(kContextualTasksCookiePrefetch, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kContextualTasksCookiePrefetch, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kAimTriggeredThreadLinks, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -467,6 +467,11 @@ const base::FeatureParam<std::string> kContextualTasksHelpUrl(
 const base::FeatureParam<std::string> kContextualTasksOverflowMenuHelpUrl(
     &kContextualTasks,
     "ContextualTasksOverflowMenuHelpUrl",
+    "https://support.google.com/chrome/answer/17025061");
+
+const base::FeatureParam<std::string> kContextualTasksTabHelpUrl(
+    &kContextualTasks,
+    "ContextualTasksTabHelpUrl",
     "https://support.google.com/chrome/answer/17025061");
 
 const base::FeatureParam<bool> kEnableProtectedPageError(
@@ -777,6 +782,10 @@ std::string GetContextualTasksHelpUrl() {
 
 std::string GetContextualTasksOverflowMenuHelpUrl() {
   return kContextualTasksOverflowMenuHelpUrl.Get();
+}
+
+std::string GetContextualTasksTabHelpUrl() {
+  return kContextualTasksTabHelpUrl.Get();
 }
 
 bool GetEnableContextualTasksSmartCompose() {

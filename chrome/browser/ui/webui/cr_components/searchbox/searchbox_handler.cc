@@ -964,6 +964,12 @@ SearchboxHandler::CreateAutocompleteMatch(
           AutocompleteMatch::EnterpriseSearchAggregatorType::PEOPLE;
   if (!match.from_keyword) {
     for (const auto& action : match.actions) {
+// TODO(b/544764632): Implement Pedals for Android.
+#if BUILDFLAG(IS_ANDROID)
+      if (action->ActionId() == OmniboxActionId::PEDAL) {
+        continue;
+      }
+#endif
       std::string icon_path;
       if (action->GetIconImage().IsEmpty()) {
         icon_path = AutocompleteIconToResourceName(action->GetVectorIcon());
@@ -1111,13 +1117,25 @@ void SearchboxHandler::QueryAutocomplete(
 
   std::u16string input_with_keyword = input;
   bool is_keyword_selected = false;
+  const TemplateURL* template_url = nullptr;
   if (!keyword.empty()) {
     TemplateURLService* service =
         client() ? client()->GetTemplateURLService() : nullptr;
     if (service) {
-      std::u16string keyword16 = base::UTF8ToUTF16(keyword);
-      const TemplateURL* template_url =
-          service->GetTemplateURLForKeyword(keyword16);
+      std::u16string keyword16;
+      // TODO(b:504669216): There may actually exist a `TemplateURL` with
+      //   shortcut '?'. Using '?' as a sentinel value to represent the default
+      //   search engine will incorrectly trigger the default search engine even
+      //   when the user wanted the '?' search engine.
+      if (keyword == "?") {
+        template_url = service->GetDefaultSearchProvider();
+        if (template_url) {
+          keyword16 = template_url->keyword();
+        }
+      } else {
+        keyword16 = base::UTF8ToUTF16(keyword);
+        template_url = service->GetTemplateURLForKeyword(keyword16);
+      }
       if (template_url) {
         is_keyword_selected = true;
         input_with_keyword = keyword16 + u" " + input;
@@ -1141,6 +1159,20 @@ void SearchboxHandler::QueryAutocomplete(
     // This will SetInputInProgress and consequently mark the input timer so
     // that Omnibox.TypingDuration will be logged correctly.
     edit_model()->SetUserText(input);
+    // There are various `CHECK()`s and assumptions in the `OmniboxEditModel`
+    // that verify the keyword state is set. Even though we're relying on
+    // searchbox webUI code to manage its keyword state, we need to propagate to
+    // `OmniboxEditModel`'s too to avoid crashes and bugs. This won't be
+    // necessary as we kill the `OmniboxEditModel`. `SetUserText()` above clears
+    // the `OmniboxEditModel`'s keyword state. So we only have to set it here if
+    // in keyword mode, and don't have to clear it if not in keyword mode.
+    if (is_keyword_selected && template_url) {
+      edit_model()->SetKeywordInfo(
+          KeywordState::kKeyword, template_url->keyword(),
+          /*keyword_placeholder=*/u"",
+          keyword == "?" ? metrics::OmniboxEventProto::QUESTION_MARK
+                         : metrics::OmniboxEventProto::SPACE_AT_END);
+    }
   } else if (!is_on_focus &&
              metrics_tracker_.time_user_first_modified_omnibox().is_null()) {
     metrics_tracker_.set_time_user_first_modified_omnibox(
@@ -1693,7 +1725,6 @@ void SearchboxHandler::GetPageClassification(
   std::move(callback).Run(::metrics::OmniboxEventProto::PageClassification_Name(
       classification_enum));
 }
-
 
 void SearchboxHandler::OnDefaultSearchExtensionDialogDone(
     OmniboxPopupSelection selection,

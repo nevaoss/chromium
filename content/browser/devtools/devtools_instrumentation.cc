@@ -1188,6 +1188,59 @@ void OnNavigationRequestFailed(
                    protocol::Network::ResourceTypeEnum::Document, status);
 }
 
+namespace {
+
+protocol::String ConnectionAllowlistIssueToProtocolError(
+    ConnectionAllowlistEmbeddedEnforcementIssue issue) {
+  namespace ConnectionAllowlistErrorEnum =
+      protocol::Audits::ConnectionAllowlistErrorEnum;
+  switch (issue) {
+    case ConnectionAllowlistEmbeddedEnforcementIssue::
+        kIFrameAttributeLoosensEmbeddingRequirement:
+      return ConnectionAllowlistErrorEnum::
+          IFrameAttributeLoosensEmbeddingRequirement;
+    case ConnectionAllowlistEmbeddedEnforcementIssue::
+        kInvalidAllowConnectionAllowlistFrom:
+      return ConnectionAllowlistErrorEnum::InvalidAllowConnectionAllowlistFrom;
+    case ConnectionAllowlistEmbeddedEnforcementIssue::
+        kEmbeddingRequirementNotSatisfied:
+      return ConnectionAllowlistErrorEnum::EmbeddingRequirementNotSatisfied;
+  }
+}
+
+}  // namespace
+
+void OnConnectionAllowlistEmbeddedEnforcementIssue(
+    const NavigationRequest& nav_request,
+    ConnectionAllowlistEmbeddedEnforcementIssue issue) {
+  auto request =
+      protocol::Audits::AffectedRequest::Create()
+          .SetRequestId(nav_request.devtools_navigation_token().ToString())
+          .SetUrl(nav_request.common_params().url.spec())
+          .Build();
+
+  auto connection_allowlist_details =
+      protocol::Audits::ConnectionAllowlistIssueDetails::Create()
+          .SetError(ConnectionAllowlistIssueToProtocolError(issue))
+          .SetRequest(std::move(request))
+          .Build();
+
+  auto details = protocol::Audits::InspectorIssueDetails::Create()
+                     .SetConnectionAllowlistIssueDetails(
+                         std::move(connection_allowlist_details))
+                     .Build();
+
+  auto inspector_issue = protocol::Audits::InspectorIssue::Create()
+                             .SetCode(protocol::Audits::InspectorIssueCodeEnum::
+                                          ConnectionAllowlistIssue)
+                             .SetDetails(std::move(details))
+                             .Build();
+
+  ReportBrowserInitiatedIssue(
+      nav_request.frame_tree_node()->current_frame_host(),
+      std::move(inspector_issue));
+}
+
 void OnNavigationEntryMarkedSkippable(const GURL& url,
                                       RenderFrameHostImpl* rfh) {
   DCHECK(rfh);
@@ -1585,8 +1638,6 @@ void ApplyNetworkRequestOverrides(
     bool* disable_cache,
     bool* network_instrumentation_enabled,
     bool* skip_service_worker,
-    std::optional<std::vector<net::SourceStreamType>>*
-        devtools_accepted_stream_types,
     bool* devtools_user_agent_overridden,
     bool* devtools_accept_language_overridden,
     GURL* referrer_override) {
@@ -1598,7 +1649,7 @@ void ApplyNetworkRequestOverrides(
       *network_instrumentation_enabled = true;
     }
     network->ApplyOverrides(headers, skip_service_worker, disable_cache,
-                            devtools_accepted_stream_types, referrer_override);
+                            referrer_override);
   }
 
   DevtoolsOverriddenOutputParams output_params =
@@ -1626,7 +1677,7 @@ void ApplyExtraHeadersForWebSocket(
     bool skip_service_worker = false;
     ApplyNetworkRequestOverrides(agent_host, headers, &disable_cache, nullptr,
                                  &skip_service_worker, nullptr, nullptr,
-                                 nullptr, nullptr);
+                                 nullptr);
   };
   if (RenderFrameHostImpl* frame = RenderFrameHostImpl::FromID(frame_id)) {
     if (FrameTreeNode* ftn = frame->frame_tree_node()) {
@@ -1650,10 +1701,10 @@ void ApplyAuctionNetworkRequestOverrides(
   if (!agent_host) {
     return;
   }
-  ApplyNetworkRequestOverrides(
-      agent_host, &request->headers, &disable_cache,
-      network_instrumentation_enabled, &request->skip_service_worker,
-      &request->devtools_accepted_stream_types, nullptr, nullptr, nullptr);
+  ApplyNetworkRequestOverrides(agent_host, &request->headers, &disable_cache,
+                               network_instrumentation_enabled,
+                               &request->skip_service_worker, nullptr, nullptr,
+                               nullptr);
   if (disable_cache) {
     request->load_flags = net::LOAD_BYPASS_CACHE;
   }
@@ -1663,8 +1714,6 @@ void ApplyNetworkRequestOverrides(
     FrameTreeNode* frame_tree_node,
     blink::mojom::BeginNavigationParams* begin_params,
     bool* report_raw_headers,
-    std::optional<std::vector<net::SourceStreamType>>*
-        devtools_accepted_stream_types,
     bool* devtools_user_agent_overridden,
     bool* devtools_accept_language_overridden,
     GURL* referrer_override) {
@@ -1680,9 +1729,8 @@ void ApplyNetworkRequestOverrides(
   headers.AddHeadersFromString(begin_params->headers);
   ApplyNetworkRequestOverrides(
       agent_host, &headers, &disable_cache, report_raw_headers,
-      &begin_params->skip_service_worker, devtools_accepted_stream_types,
-      devtools_user_agent_overridden, devtools_accept_language_overridden,
-      referrer_override);
+      &begin_params->skip_service_worker, devtools_user_agent_overridden,
+      devtools_accept_language_overridden, referrer_override);
   if (disable_cache) {
     begin_params->load_flags &=
         ~(net::LOAD_VALIDATE_CACHE | net::LOAD_SKIP_CACHE_VALIDATION |
@@ -2655,8 +2703,7 @@ void OnWorkerMainScriptRequestWillBeSent(
   // renderer.
   bool disable_cache = false;
   ApplyNetworkRequestOverrides(effective_host, &request.headers, &disable_cache,
-                               nullptr, &request.skip_service_worker,
-                               &request.devtools_accepted_stream_types, nullptr,
+                               nullptr, &request.skip_service_worker, nullptr,
                                nullptr, nullptr);
   if (disable_cache) {
     request.load_flags &=

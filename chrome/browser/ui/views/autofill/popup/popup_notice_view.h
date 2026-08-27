@@ -29,19 +29,6 @@ namespace autofill {
 
 class AutofillPopupController;
 
-// Outcomes of interaction with an Autofill popup notice.
-// These values are persisted to logs. Entries should not be renumbered and
-// numeric values should never be reused.
-// LINT.IfChange(PopupNoticeInteractions)
-enum class PopupNoticeInteractions {
-  kShown = 0,
-  kAcknowledged = 1,
-  kDismissed = 2,
-  kLinkButtonClicked = 3,
-  kMaxValue = kLinkButtonClicked,
-};
-// LINT.ThenChange(//tools/metrics/histograms/metadata/personal_context/enums.xml:PopupNoticeInteractions)
-
 // The view that displays an informational notice (such as for Personal Context
 // or Ambient Autofill) at the bottom of the Autofill popup.
 class PopupNoticeView : public PopupInteractiveRowView {
@@ -58,6 +45,7 @@ class PopupNoticeView : public PopupInteractiveRowView {
       std::u16string_view subtitle_text,
       std::u16string_view link_text,
       std::u16string_view accept_button_text,
+      std::u16string_view accept_button_a11y_label,
       base::RepeatingClosure on_link_clicked,
       std::string_view notice_interaction_histogram_name);
 
@@ -73,16 +61,9 @@ class PopupNoticeView : public PopupInteractiveRowView {
   PopupNoticeView& operator=(const PopupNoticeView&) = delete;
   ~PopupNoticeView() override;
 
-  views::StyledLabel* description_for_testing() const { return description_; }
-  views::MdTextButton* accept_button_for_testing() const {
-    return accept_button_;
-  }
-  bool is_link_focused_for_testing() const { return is_link_focused_; }
-  bool is_accept_button_focused_for_testing() const {
-    return is_accept_button_focused_;
-  }
-
  private:
+  friend class PopupNoticeViewTestApi;
+
   // Marks the notice as acknowledged and removes it from the parent view.
   void OnAcceptButtonClicked();
 

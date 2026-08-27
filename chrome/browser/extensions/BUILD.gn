@@ -1791,6 +1791,9 @@ if (enable_extensions) {
       # Pull test-specific stubs for symbols needed by //c/b.
       "//chrome/test:test_support",
     ]
+    if (toolkit_views) {
+      deps += [ "//chrome/browser/ui/views/web_apps:launch_dialogs" ]
+    }
   }
 }  # if (enable_extensions)
 
@@ -2290,6 +2293,10 @@ source_set("unit_tests") {
   if (is_chromeos) {
     deps += [ "//ash/constants" ]
   }
+
+  if (toolkit_views) {
+    deps += [ "//chrome/browser/ui/views/web_apps:launch_dialogs" ]
+  }
 }
 
 # By default these tests run on Win, Mac, Linux, Chrome OS and desktop Android.
@@ -2403,6 +2410,7 @@ source_set("browser_tests") {
     "extension_bindings_apitest.cc",
     "extension_bookmarklet_browsertest.cc",
     "extension_browsertest_browsertest.cc",
+    "extension_context_menu_model_browsertest.cc",
     "extension_cookies_browsertest.cc",
     "extension_csp_bypass_browsertest.cc",
     "extension_dom_apitest.cc",
@@ -2540,6 +2548,7 @@ source_set("browser_tests") {
     "//components/embedder_support",
     "//components/enterprise:test_support",
     "//components/enterprise/browser/promotion",
+    "//components/enterprise/device_trust/core:device_trust_service",
     "//components/infobars/content",
     "//components/javascript_dialogs",
     "//components/media_device_salt",
@@ -2569,6 +2578,14 @@ source_set("browser_tests") {
   ]
   if (enable_extensions) {
     deps += [ "//chrome/browser/ui/views/supervised_user" ]
+  }
+
+  # api/context_menus/context_menu_apitest.cc's include of
+  # tab_context_menu_controller.h is itself guarded by
+  # #if BUILDFLAG(ENABLE_EXTENSIONS) -- matches the supervised_user grant
+  # right above.
+  if (enable_extensions) {
+    deps += [ "//chrome/browser/ui/views/tabs/tab" ]
   }
 
   public_deps = []
@@ -2750,7 +2767,6 @@ source_set("browser_tests") {
       "crx_installer_browsertest.cc",
       "event_metrics_browsertest.cc",
       "events_apitest.cc",
-      "extension_context_menu_model_browsertest.cc",
       "extension_disabled_ui_browsertest.cc",
       "extension_fileapi_apitest.cc",
       "extension_get_views_apitest.cc",
@@ -3164,12 +3180,6 @@ source_set("browser_tests") {
     # - web_view_browsertest.cc
     deps += [ "//chrome/browser/serial" ]
 
-    # TODO(357784804): Remove this explicit dependency on `//c/b/ui/zoom` when
-    # tests that include chrome_zoom_level_prefs.h get modularized, eg
-    # tabs_test.cc, app_browsertest.cc, host_zoom_map_browsertest.cc and
-    # ats_browsertest.cc.
-    deps += [ "//chrome/browser/ui/zoom" ]
-
     data += [
       "//chrome/test/data/extensions/",
       "//extensions/test/data/",
@@ -3181,6 +3191,10 @@ source_set("browser_tests") {
 
   if (enable_pdf) {
     deps += [ "//chrome/browser/pdf:pdf_extension_test_base" ]
+  }
+
+  if (toolkit_views) {
+    deps += [ "//chrome/browser/ui/views/web_apps:launch_dialogs" ]
   }
 }
 

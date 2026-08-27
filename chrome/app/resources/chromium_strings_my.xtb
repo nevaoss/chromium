@@ -308,7 +308,6 @@
 <translation id="4304713468139749426">စကားဝှက်မန်နေဂျာ</translation>
 <translation id="4334241893986177674">ဤဖန်သားပြင်ဓာတ်ပုံကို ရှာရန်</translation>
 <translation id="4384331407722351213">Windows စတင်သောအခါ Chromium စတင်ရန်</translation>
-<translation id="4384993550046411228">Chromium ကို မူရင်း ဘရောင်ဇာအဖြစ် သတ်မှတ်ပြီး သင်ရင်းနှီး၊ နှစ်သက်၍ ယုံကြည်စိတ်ချသော တူးလ်များကို အလွယ်တကူသုံးခွင့် ရရှိနိုင်သည်။ အမြန်သုံးခွင့်အတွက် Chromium ကို သင့် Taskbar တွင် ပင်ထိုးပါမည်။</translation>
 <translation id="4400772909124543403">အပ်ဒိတ် မရနိုင်ပါ</translation>
 <translation id="4407044323746248786">မည်သို့ပင်ဖြစ်စေ Chromium မှ ထွက်လိုပါသလား။</translation>
 <translation id="4413205837991854510">ပုံဖြင့်ရှာဖွေမှု ဖြတ်လမ်းကို အမြဲပြပါ</translation>
@@ -686,6 +685,7 @@ Chromium သည်သင့်ကြိုတင်ချိန်ညှိခ�
 <translation id="8286943863733751221">မလုံခြုံသော ဝဘ်ဆိုက်နှင့် ဒေါင်းလုဒ်များအကြောင်း <ph name="BEGIN_LINK" />Chromium က သင့်ကို သတိပေးသည်<ph name="END_LINK" /></translation>
 <translation id="8295827201165805317">လတ်တလော ဝင်ကြည့်ထားခြင်း မရှိပါ။ Chromium သည် <ph name="PERMISSION" /> ကို ဖယ်ရှားလိုက်သည်။</translation>
 <translation id="8296236834352487533">Chromium iOS အက်ပ်တွင် မြင်ရသောအရာများကို သင့်ကင်မရာဖြင့် ဝယ်ယူ၊ ဘာသာပြန်၊ ခွဲခြားဖော်ထုတ်နိုင်သည်</translation>
+<translation id="8310603974518734211"><ph name="USER_NAME" /> အဖြစ် Chromium သို့ လက်မှတ်ထိုးဝင်ရန် QR ကုဒ်</translation>
 <translation id="8313851650939857356">စတင်မှုဆိုင်ရာ အမှားအယွင်း- <ph name="STARTUP_ERROR" />။</translation>
 <translation id="8318772038038596122">Chromium ကို <ph name="TIMEOUT_DURATION" /> ကြာ အသုံးမပြုဘဲထားပါက သင့်အဖွဲ့အစည်းသည် ၎င်းကို ပိတ်ပါသည်။</translation>
 <translation id="8321888067342493336">ပုံအဖြစ် သိမ်းရန်</translation>

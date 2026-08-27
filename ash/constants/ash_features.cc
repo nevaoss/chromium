@@ -59,6 +59,11 @@ BASE_FEATURE(kAnnotatorMode, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kApnRevamp, base::FEATURE_ENABLED_BY_DEFAULT);
 
+// Controls whether proxy settings from policy or extensions are applied
+// verbatim without appending implicit bypass rules for simple hostnames.
+BASE_FEATURE(kApplyManagedProxyBypassListVerbatim,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 // Controls whether to enable ARC ADB sideloading support.
 BASE_FEATURE(kArcAdbSideloadingFeature,
              "ArcAdbSideloading",
@@ -521,6 +526,9 @@ BASE_FEATURE(kDoNotDisturbShortcut, base::FEATURE_ENABLED_BY_DEFAULT);
 // Enables or disables Sync for desk templates on ChromeOS.
 BASE_FEATURE(kDeskTemplateSync, base::FEATURE_ENABLED_BY_DEFAULT);
 
+// Enables or disables the new window occlusion calculator.
+BASE_FEATURE(kNewWindowOcclusionCalculator, base::FEATURE_DISABLED_BY_DEFAULT);
+
 BASE_FEATURE(kDesksTemplates, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables diacritics on longpress on the physical keyboard by default.
@@ -531,9 +539,6 @@ BASE_FEATURE(kDiacriticsOnPhysicalKeyboardLongpressDefaultOn,
 // more easy development against changes of said requirements.
 BASE_FEATURE(kDisableBruschettaInstallChecks,
              base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Disables the DNS proxy service for ChromeOS.
-BASE_FEATURE(kDisableDnsProxy, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Disconnect WiFi when the device get connected to Ethernet.
 BASE_FEATURE(kDisconnectWiFiOnEthernetConnected,
@@ -2242,6 +2247,10 @@ bool IsApnRevampEnabled() {
   return base::FeatureList::IsEnabled(kApnRevamp);
 }
 
+bool IsApplyManagedProxyBypassListVerbatimEnabled() {
+  return base::FeatureList::IsEnabled(kApplyManagedProxyBypassListVerbatim);
+}
+
 bool IsAutoNightLightEnabled() {
   return base::FeatureList::IsEnabled(kAutoNightLight);
 }
@@ -2460,6 +2469,10 @@ bool IsDemoModeWallpaperUpdateEnabled() {
 
 bool IsDemoModeSignInFileCleanupEnabled() {
   return base::FeatureList::IsEnabled(kDemoModeSignInFileCleanup);
+}
+
+bool IsNewWindowOcclusionCalculatorEnabled() {
+  return base::FeatureList::IsEnabled(kNewWindowOcclusionCalculator);
 }
 
 bool IsDeskTemplateSyncEnabled() {

@@ -16,6 +16,7 @@
 #include "chrome/browser/ui/tabs/tab_style.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
 #include "chrome/browser/ui/views/tabs/hovercard/hover_card_anchor_target.h"
+#include "chrome/browser/ui/views/tabs/shared/tab_strip_types.h"
 #include "chrome/browser/ui/views/tabs/tab/alert_indicator_button.h"
 #include "chrome/browser/ui/views/tabs/tab/tab_context_menu_controller.h"
 #include "chrome/common/buildflags.h"
@@ -73,9 +74,10 @@ class TabView : public views::View,
 
   void StepLoadingAnimation(const base::TimeDelta& elapsed_time);
 
-  void CreateFreezingVote();
-  void ReleaseFreezingVote();
-  bool HasFreezingVote() const { return freezing_vote_.has_value(); }
+  void CreateFreezingVote(FreezingVoteReason reason);
+  void ReleaseFreezingVote(FreezingVoteReason reason);
+  bool HasFreezingVote(FreezingVoteReason reason) const;
+  bool HasFreezingVote() const;
 
   void UpdateHovered(bool hovered);
   bool IsHoverAnimationActive() const;
@@ -219,6 +221,7 @@ class TabView : public views::View,
       const TabView* tab_view);
 
   raw_ptr<TabCollectionNode> collection_node_ = nullptr;
+  TabStripOrientation orientation_ = TabStripOrientation::kHorizontal;
 
   std::vector<TabChildConfig> tab_children_configs_;
 
@@ -252,7 +255,15 @@ class TabView : public views::View,
   float hover_opacity_max_;
   float radial_highlight_opacity_;
 
-  std::optional<performance_manager::freezing::FreezingVote> freezing_vote_;
+  std::optional<performance_manager::freezing::FreezingVote>& GetFreezingVote(
+      FreezingVoteReason reason);
+
+  // Freezing vote held while the tab's group is collapsed.
+  std::optional<performance_manager::freezing::FreezingVote>
+      collapsed_freezing_vote_;
+  // Freezing vote held while another group is focused in focus mode.
+  std::optional<performance_manager::freezing::FreezingVote>
+      focus_mode_freezing_vote_;
 
   std::unique_ptr<tabs::TabDataObserver> tab_data_observer_;
 

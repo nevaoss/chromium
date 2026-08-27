@@ -109,25 +109,6 @@ std::optional<GraphOptimizationLevel> StringToOrtGraphOptimizationLevel(
   return std::nullopt;
 }
 
-std::optional<uint32_t> GetBatchedMatMulKDimensionLimit(
-    const OrtEpDevice* first_selected_device) {
-  const OrtApi* ort_api = PlatformFunctions::GetInstance()->ort_api();
-
-  std::string_view ep_name = ort_api->EpDevice_EpName(first_selected_device);
-  const auto iter = kKnownEPs.find(ep_name);
-  if (iter == kKnownEPs.end()) {
-    return std::nullopt;
-  }
-
-  OrtHardwareDeviceType hardware_device_type = ort_api->HardwareDevice_Type(
-      ort_api->EpDevice_Device(first_selected_device));
-  if (hardware_device_type != OrtHardwareDeviceType_NPU) {
-    return std::nullopt;
-  }
-
-  return iter->second.workarounds.npu_batched_matmul_k_dimension_limit;
-}
-
 ScopedOrtSessionOptions CreateBaseSessionOptions(
     std::string_view primary_ep_name) {
   const OrtApi* ort_api = PlatformFunctions::GetInstance()->ort_api();
@@ -336,6 +317,12 @@ scoped_refptr<SessionOptions> SessionOptions::Create(
   CHECK_STATUS(ort_api->AddSessionConfigEntry(
       session_options.get(), kOrtSessionOptionsDisableCPUEPFallback, "1"));
 
+  // Setting the intra-op thread count to 1 stops ORT from spawning an intra-op
+  // thread pool, which it otherwise creates eagerly per session. The pool is
+  // only used to execute CPU kernels during graph execution, which never
+  // happens here since CPU EP fallback is disabled above.
+  CHECK_STATUS(ort_api->SetIntraOpNumThreads(session_options.get(), 1));
+
   const auto ep_it = kKnownEPs.find(target_device.ep_name);
   if (ep_it != kKnownEPs.end()) {
     for (const auto& [key, value] : ep_it->second.config_entries) {
@@ -371,8 +358,6 @@ SessionOptions::SessionOptions(base::PassKey<SessionOptions>,
     : session_options_(std::move(session_options)),
       env_(std::move(env)),
       first_selected_device_(first_selected_device),
-      batched_matmul_k_dimension_limit_(
-          GetBatchedMatMulKDimensionLimit(first_selected_device)),
       context_options_(std::move(context_options)) {
   // Set the EP selection policy delegate if `context_options_` is provided.
   if (context_options_) {

@@ -1029,18 +1029,6 @@ targets.mixin(
 )
 
 targets.mixin(
-    name = "ios_runtime_cache_18_2",
-    swarming = targets.swarming(
-        named_caches = [
-            swarming.cache(
-                name = "runtime_ios_18_2",
-                path = "Runtime-ios-18.2",
-            ),
-        ],
-    ),
-)
-
-targets.mixin(
     name = "ios_runtime_cache_18_4",
     swarming = targets.swarming(
         named_caches = [
@@ -1179,6 +1167,15 @@ targets.mixin(
     swarming = targets.swarming(
         dimensions = {
             "os": "Ubuntu-24.04",
+        },
+    ),
+)
+
+targets.mixin(
+    name = "linux-ubuntu",
+    swarming = targets.swarming(
+        dimensions = {
+            "os": "Ubuntu",
         },
     ),
 )
@@ -2251,12 +2248,12 @@ targets.mixin(
     name = "xcode_27_beta",
     args = [
         "--xcode-build-version",
-        "27a5228h",
+        "27a5237l",
     ],
     swarming = targets.swarming(
         named_caches = [
             swarming.cache(
-                name = "xcode_ios_27a5228h",
+                name = "xcode_ios_27a5237l",
                 path = "Xcode.app",
             ),
         ],

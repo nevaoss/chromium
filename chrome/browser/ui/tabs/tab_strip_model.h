@@ -317,14 +317,15 @@ class TabStripModel {
       bool pinned,
       std::optional<tab_groups::TabGroupId> group_id = std::nullopt);
 
+  // Closes the specified WebContents. This causes the WebContents to be
+  // destroyed, but it may not happen immediately.
+  // |close_types| is a bitmask of CloseTypes. Prefer this over
+  // CloseWebContentsAt() when a WebContents* is already available.
+  void CloseWebContents(content::WebContents* contents, uint32_t close_types);
+
   // Closes the WebContents at the specified index. This causes the
   // WebContents to be destroyed, but it may not happen immediately.
   // |close_types| is a bitmask of CloseTypes.
-  // TODO(crbug.com/540843679): Currently many call sites of CloseWebContentsAt
-  // convert a tab/webcontents to an index, which gets converted back to a
-  // webcontents within this function. Provide a CloseWebContents function that
-  // directly closes a web contents so that we don't have to convert back and
-  // forth.
   void CloseWebContentsAt(int index, uint32_t close_types);
 
   // Discards the WebContents at |index| and replaces it with |new_contents|.
@@ -451,13 +452,14 @@ class TabStripModel {
   void NotifyTabChanged(tabs::TabInterface* tab,
                         TabChangeType change_type);
 
-  // Notify any observers that the WebContents at the specified index has
-  // changed in some way. See TabChangeType for details of |change_type|.
-  void UpdateWebContentsStateAt(int index, TabChangeType change_type);
+  // Notify any observers that the WebContents has changed in some way. See
+  // TabChangeType for details of |change_type|.
+  void UpdateWebContentsState(content::WebContents* contents,
+                              TabChangeType change_type);
 
   // Cause a tab to display a UI indication to the user that it needs their
   // attention.
-  void SetTabNeedsAttentionAt(int index, bool attention);
+  void SetTabNeedsAttention(content::WebContents* contents, bool attention);
 
   // Close all tabs at once. Code can use closing_all() above to defer
   // operations that might otherwise by invoked by the flurry of detach/select
@@ -706,6 +708,13 @@ class TabStripModel {
 
   // Sets the group to be focused.
   void SetFocusedGroup(std::optional<tab_groups::TabGroupId> group);
+
+  // Rotates the focused tab group between the unfocused state and active tab
+  // groups in the strip. Requires `features::kTabGroupsFocusing` to be enabled
+  // (CHECKs). If there are no tab groups, this is a no-op. When `forward` is
+  // true, rotates towards higher-indexed groups; otherwise rotates in reverse
+  // order.
+  void RotateFocusedGroup(bool forward);
 
   // Returns true if one or more of the tabs pointed to by |indices| are
   // supported by read later.

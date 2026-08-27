@@ -242,6 +242,22 @@ void AddContextMenuItemEligibilityLoadTimeData(base::DictValue& dict,
   }
 }
 
+std::string EntryPointToString(omnibox::ChromeAimEntryPoint entry_point) {
+  switch (entry_point) {
+    case omnibox::DESKTOP_CHROME_COBROWSE_TOOLBAR_BUTTON:
+    case omnibox::DESKTOP_CHROME_COBROWSE_PINNED_TOOLBAR_BUTTON:
+      return "toolbar";
+    case omnibox::DESKTOP_CHROME_COBROWSE_OMNIBOX_ACTION:
+      return "omnibox_action";
+    case omnibox::DESKTOP_CHROME_COBROWSE_OMNIBOX_TAB_SEARCH:
+      return "omnibox_tab_search";
+    case omnibox::DESKTOP_CHROME_COBROWSE_OMNIBOX_CONTEXTUAL_SUGGESTION:
+      return "omnibox_contextual_suggestion";
+    default:
+      return "unknown";
+  }
+}
+
 }  // namespace
 
 DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(ContextualTasksUI,
@@ -397,6 +413,10 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
       SearchboxHandler::GetVoiceSearchCoherenceCobrowsingComposeboxEnabled());
 #endif  // BUILDFLAG(ENABLE_WEBUI_CONTEXTUAL_TASKS_COMPOSEBOX)
 
+  // Determine and cache tab input support on initialization.
+  are_tab_inputs_supported_on_init_ =
+      contextual_tasks::IsTabSharingEligible(profile);
+
   // Determine and cache contextual tasks eligibility on initialization. This
   // prevents the expand button from dynamically appearing or changing state
   // mid-session, avoiding a jarring user experience.
@@ -452,6 +472,7 @@ base::DictValue ContextualTasksUI::GetContextualTasksLoadTimeData(
       {"continueThread", IDS_CONTEXTUAL_TASKS_CONTINUE_THREAD_MESSAGE},
       {"feedback", IDS_LENS_SEND_FEEDBACK},
       {"help", IDS_CONTEXTUAL_TASKS_MENU_HELP},
+      {"learnMore", IDS_LEARN_MORE},
       {"moreOptionsTooltip",
        IDS_CONTEXTUAL_TASKS_SIDE_PANEL_MORE_OPTIONS_TOOL_TIP},
       {"myActivity", IDS_CONTEXTUAL_TASKS_MENU_MY_ACTIVITY},
@@ -468,6 +489,8 @@ base::DictValue ContextualTasksUI::GetContextualTasksLoadTimeData(
       {"onboardingBody", IDS_CONTEXTUAL_TASKS_FIRST_RUN_EXPERIENCE_DESCRIPTION},
       {"onboardingLink", IDS_CONTEXTUAL_TASKS_FIRST_RUN_EXPERIENCE_LEARN_MORE},
       {"onboardingAcceptButton",
+       IDS_CONTEXTUAL_TASKS_FIRST_RUN_EXPERIENCE_ACCEPT_BUTTON},
+      {"lensSearchTooltipAcceptButton",
        IDS_CONTEXTUAL_TASKS_FIRST_RUN_EXPERIENCE_ACCEPT_BUTTON},
       {"lensSearchTooltipTitle", IDS_LENS_COBROWSE_IPH_HEADER},
       {"lensSearchTooltipBody", IDS_LENS_COBROWSE_IPH_DESCRIPTION},
@@ -503,6 +526,7 @@ base::DictValue ContextualTasksUI::GetContextualTasksLoadTimeData(
   dict.Set(
       "voiceSearchCoherenceComposeboxesEnabled",
       SearchboxHandler::GetVoiceSearchCoherenceCobrowsingComposeboxEnabled());
+  dict.Set("composeboxSmartTabSharingSupported", !BUILDFLAG(IS_ANDROID));
 #endif  // BUILDFLAG(ENABLE_WEBUI_CONTEXTUAL_TASKS_COMPOSEBOX)
 
   int stsDefaultOnHeaderId = IDS_STS_IPH_DEFAULT_ON_HEADER;
@@ -542,6 +566,8 @@ base::DictValue ContextualTasksUI::GetContextualTasksLoadTimeData(
 
   dict.Set("onboardingLinkUrl",
            contextual_tasks::GetContextualTasksOnboardingTooltipHelpUrl());
+  dict.Set("askGHelpUrl",
+           contextual_tasks::GetContextualTasksTabHelpUrl());
   dict.Set("composeboxImageFileTypes",
            contextual_tasks::kContextualTasksNextboxImageFileTypes.Get());
   dict.Set("composeboxAttachmentFileTypes",
@@ -692,6 +718,9 @@ base::DictValue ContextualTasksUI::GetContextualTasksLoadTimeData(
   bool is_dark_mode =
       ThemeServiceFactory::GetForProfile(profile)->BrowserUsesDarkColors() ||
       profile->IsOffTheRecord();
+#else
+  bool is_dark_mode = false;
+#endif
   dict.Set("darkMode", is_dark_mode);
   dict.Set("protectedErrorPageTopLine",
            l10n_util::GetStringUTF16(
@@ -699,12 +728,6 @@ base::DictValue ContextualTasksUI::GetContextualTasksLoadTimeData(
   dict.Set("protectedErrorPageBottomLine",
            l10n_util::GetStringUTF16(
                IDS_SIDE_PANEL_LENS_OVERLAY_PROTECTED_PAGE_ERROR_SECOND_LINE));
-#else
-  bool is_dark_mode = false;
-  dict.Set("darkMode", is_dark_mode);
-  dict.Set("protectedErrorPageTopLine", "string");
-  dict.Set("protectedErrorPageBottomLine", "string");
-#endif
 
   dict.Set("userAgentSuffix",
            contextual_tasks::GetContextualTasksUserAgentSuffix());
@@ -1300,6 +1323,11 @@ void ContextualTasksUI::AddInitialTaskStateToDataSource(
                       ui_service_->IsSignedInToBrowserWithValidCredentials() &&
                       ui_service_->CookieJarContainsPrimaryAccount();
   source->AddBoolean("isSignedIn", is_signed_in);
+
+  omnibox::ChromeAimEntryPoint entry_point =
+      ui_service_ ? ui_service_->GetInitialEntryPointForTask(task_id)
+                  : omnibox::ChromeAimEntryPoint::UNKNOWN_AIM_ENTRY_POINT;
+  source->AddString("entryPoint", EntryPointToString(entry_point));
 }
 
 void ContextualTasksUI::OnSidePanelStateChanged() {
@@ -1402,7 +1430,7 @@ bool ContextualTasksUI::CanUpdateSuggestedTabContext(
     }
   }
 
-  if (!is_contextual_tasks_eligible_on_init_) {
+  if (!are_tab_inputs_supported_on_init_) {
     return false;
   }
 

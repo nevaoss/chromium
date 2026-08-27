@@ -1403,6 +1403,9 @@ const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
   (*s_allowlist)[glic::prefs::kGlicHotkeyGlobalScopeEnabled] =
       settings_api::PrefType::kBoolean;
 
+  // Dictation / Voice typing prefs
+  (*s_allowlist)[prefs::kVoiceTypingHotkey] = settings_api::PrefType::kString;
+
   return *s_allowlist;
 }
 

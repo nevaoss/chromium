@@ -20,7 +20,7 @@ import org.chromium.chrome.browser.omnibox.suggestions.AutocompleteController;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.components.embedder_support.util.UrlConstants;
 import org.chromium.components.embedder_support.util.UrlUtilities;
-import org.chromium.components.metrics.OmniboxEventProtos.OmniboxEventProto.PageClassification;
+import org.chromium.components.metrics.OmniboxEventProtosIntDef.PageClassification;
 import org.chromium.components.omnibox.AutocompleteInput;
 import org.chromium.components.omnibox.AutocompleteInput.AutocompleteState;
 import org.chromium.components.omnibox.AutocompleteRequestType;
@@ -119,11 +119,6 @@ public class FuseboxSessionState implements UserData {
         return mWebContents;
     }
 
-    /** Returns whether the session is scoped to a specific AI task. */
-    public boolean isTaskScoped() {
-        return false;
-    }
-
     /** Returns the current {@link Profile} for this session. */
     public @Nullable Profile getProfile() {
         return mProfile;
@@ -182,9 +177,9 @@ public class FuseboxSessionState implements UserData {
         // Apply the initial default value unless user text is already set.
         if (mAutocompleteInput.getUserText().isEmpty()
                 && mAutocompleteInput.getPageClassification()
-                        != PageClassification.ANDROID_SEARCH_WIDGET_VALUE
+                        != PageClassification.ANDROID_SEARCH_WIDGET
                 && mAutocompleteInput.getPageClassification()
-                        != PageClassification.ANDROID_SHORTCUTS_WIDGET_VALUE
+                        != PageClassification.ANDROID_SHORTCUTS_WIDGET
                 && !PageClassificationUtils.isHubOrTabSearch(
                         mAutocompleteInput.getPageClassification())) {
             mAutocompleteInput
@@ -252,7 +247,7 @@ public class FuseboxSessionState implements UserData {
 
         if (mComposeBoxQueryControllerBridge == null) {
             mComposeBoxQueryControllerBridge =
-                    ComposeboxQueryControllerBridge.create(mProfile, mWebContents, isTaskScoped());
+                    ComposeboxQueryControllerBridge.create(mProfile, mWebContents);
         }
 
         if (mComposeBoxQueryControllerBridge != null && mFuseboxAttachmentModelList == null) {

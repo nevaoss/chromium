@@ -9,12 +9,13 @@
 
 #include "base/base64.h"
 #include "base/functional/bind.h"
+#include "base/strings/strcat.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/scoped_command_line.h"
 #include "base/test/task_environment.h"
 #include "base/test/test_future.h"
 #include "base/test/values_test_util.h"
-#include "chrome/browser/password_manager/protos/list_affiliated_passwords_result.pb.h"
+#include "chrome/browser/password_manager/remote_actor/protos/remote_actor_list_affiliated_passwords_result.pb.h"
 #include "chrome/browser/password_manager/remote_actor/remote_actor_switches.h"
 #include "components/signin/public/identity_manager/identity_test_environment.h"
 #include "components/sync/protocol/password_specifics.pb.h"
@@ -30,7 +31,8 @@ namespace {
 
 constexpr char kTestGaiaId[] = "12345";
 constexpr char kTestWebOrigin[] = "https://nike.com";
-constexpr char kTestTagHash[] = "tag_hash";
+constexpr char kTestTagHash[] = "HEJUlbCns/tAdqunOs14cRDYyHg=";
+constexpr char kTestEscapedTagHash[] = "HEJUlbCns%2FtAdqunOs14cRDYyHg%3D";
 constexpr char16_t kTestUsername[] = u"alice";
 constexpr char16_t kTestPassword[] = u"password";
 
@@ -82,18 +84,23 @@ TEST_F(RemoteActorCredentialStoreClientTest, UpdateCredentialSuccess) {
   ASSERT_TRUE(pending_request);
   EXPECT_EQ(pending_request->request.method, "PATCH");
   EXPECT_EQ(pending_request->request.url.spec(),
-            "https://passbox-pa.googleapis.com/v1/internalservices/"
-            "AGENTIC_CREDENTIAL_MANAGER/owneridnamespaces/GOOGLE_USER_ID/"
-            "ownerids/12345/externalservices/https%3A%2F%2Fnike.com/"
-            "credentials/tag_hash?allow_missing=true");
+            base::StrCat(
+                {"https://passbox-pa.googleapis.com/v1/internalservices/"
+                 "AGENTIC_CREDENTIAL_MANAGER/owneridnamespaces/GOOGLE_USER_ID/"
+                 "ownerids/12345/externalservices/https%3A%2F%2Fnike.com/"
+                 "credentials/",
+                 kTestEscapedTagHash, "?allow_missing=true"}));
 
   // Verify request body
   base::DictValue request_dict = base::test::ParseJsonDict(
       network::GetUploadData(pending_request->request));
-  EXPECT_EQ(*request_dict.FindString("name"),
-            "internalservices/AGENTIC_CREDENTIAL_MANAGER/owneridnamespaces/"
-            "GOOGLE_USER_ID/ownerids/12345/externalservices/"
-            "https%3A%2F%2Fnike.com/credentials/tag_hash");
+  EXPECT_EQ(
+      *request_dict.FindString("name"),
+      base::StrCat(
+          {"internalservices/AGENTIC_CREDENTIAL_MANAGER/owneridnamespaces/"
+           "GOOGLE_USER_ID/ownerids/12345/externalservices/"
+           "https%3A%2F%2Fnike.com/credentials/",
+           kTestEscapedTagHash}));
 
   const base::DictValue* credential_data_dict =
       request_dict.FindDict("credentialData");
@@ -101,16 +108,15 @@ TEST_F(RemoteActorCredentialStoreClientTest, UpdateCredentialSuccess) {
   std::string base64_payload = *credential_data_dict->FindString("data");
   std::string serialized_proto;
   ASSERT_TRUE(base::Base64Decode(base64_payload, &serialized_proto));
-  password_manager::ListAffiliatedPasswordsResult::AffiliatedPassword proto;
+  password_manager::RemoteActorListAffiliatedPasswordsResult::
+      RemoteActorAffiliatedPassword proto;
   ASSERT_TRUE(proto.ParseFromString(serialized_proto));
 
-  EXPECT_EQ(proto.password_data().password_specifics_data().signon_realm(),
-            kTestWebOrigin);
-  EXPECT_EQ(proto.password_data().password_specifics_data().origin(),
-            kTestWebOrigin);
-  EXPECT_EQ(proto.password_data().password_specifics_data().username_value(),
+  EXPECT_EQ(proto.password_data().signon_realm(), kTestWebOrigin);
+  EXPECT_EQ(proto.password_data().origin(), kTestWebOrigin);
+  EXPECT_EQ(proto.password_data().username_value(),
             base::UTF16ToUTF8(kTestUsername));
-  EXPECT_EQ(proto.password_data().password_specifics_data().password_value(),
+  EXPECT_EQ(proto.password_data().password_value(),
             base::UTF16ToUTF8(kTestPassword));
 
   // Respond to Passbox with 200 OK
@@ -151,10 +157,12 @@ TEST_F(RemoteActorCredentialStoreClientTest,
   ASSERT_TRUE(pending_request);
   EXPECT_EQ(pending_request->request.method, "PATCH");
   EXPECT_EQ(pending_request->request.url.spec(),
-            "https://custom-passbox.com/v1/internalservices/"
-            "AGENTIC_CREDENTIAL_MANAGER/owneridnamespaces/GOOGLE_USER_ID/"
-            "ownerids/12345/externalservices/https%3A%2F%2Fnike.com/"
-            "credentials/tag_hash?allow_missing=true");
+            base::StrCat(
+                {"https://custom-passbox.com/v1/internalservices/"
+                 "AGENTIC_CREDENTIAL_MANAGER/owneridnamespaces/GOOGLE_USER_ID/"
+                 "ownerids/12345/externalservices/https%3A%2F%2Fnike.com/"
+                 "credentials/",
+                 kTestEscapedTagHash, "?allow_missing=true"}));
 
   test_url_loader_factory_.SimulateResponseForPendingRequest(
       pending_request->request.url.spec(), "{}");
@@ -179,10 +187,12 @@ TEST_F(RemoteActorCredentialStoreClientTest, DeleteCredentialSuccess) {
   ASSERT_TRUE(pending_request);
   EXPECT_EQ(pending_request->request.method, "DELETE");
   EXPECT_EQ(pending_request->request.url.spec(),
-            "https://passbox-pa.googleapis.com/v1/internalservices/"
-            "AGENTIC_CREDENTIAL_MANAGER/owneridnamespaces/GOOGLE_USER_ID/"
-            "ownerids/12345/externalservices/https%3A%2F%2Fnike.com/"
-            "credentials/tag_hash?allow_missing=true");
+            base::StrCat(
+                {"https://passbox-pa.googleapis.com/v1/internalservices/"
+                 "AGENTIC_CREDENTIAL_MANAGER/owneridnamespaces/GOOGLE_USER_ID/"
+                 "ownerids/12345/externalservices/https%3A%2F%2Fnike.com/"
+                 "credentials/",
+                 kTestEscapedTagHash, "?allow_missing=true"}));
 
   test_url_loader_factory_.SimulateResponseForPendingRequest(
       pending_request->request.url.spec(), "");

@@ -414,21 +414,19 @@ TEST_F(PeerSessionImplTest, DisconnectsAfterMaxSessionDurationIsReached) {
   EXPECT_TRUE(base::test::RunUntil([this] { return !is_connected(); }));
 }
 
-TEST_F(PeerSessionImplTest, Start_InvalidSessionPolicies_DisconnectsSession) {
+TEST_F(PeerSessionImplTest, MaximumSessionDurationIsClampedTo30Minutes) {
   SessionPolicies policies;
-#if !BUILDFLAG(IS_CHROMEOS)
-  policies.maximum_session_duration = base::Minutes(15);
-  EXPECT_CALL(
-      session_event_handler_,
-      OnSessionClosed(ErrorCode::HOST_CONFIGURATION_ERROR,
-                      testing::HasSubstr("maximum_session_duration"), _));
-#else
-  policies.host_udp_port_range = PortRange{100, 50};
-  EXPECT_CALL(session_event_handler_,
-              OnSessionClosed(ErrorCode::HOST_CONFIGURATION_ERROR,
-                              testing::HasSubstr("UDP port range"), _));
-#endif
-  StartPeerSession(policies);
+  policies.maximum_session_duration = base::Minutes(10);
+  ConnectPeerSession(policies);
+
+  EXPECT_TRUE(is_connected());
+  // Advancing by 20 minutes should not disconnect the session since 10 minutes
+  // is clamped to the minimum duration of 30 minutes.
+  task_environment_.AdvanceClock(base::Minutes(20));
+  EXPECT_TRUE(is_connected());
+
+  task_environment_.AdvanceClock(base::Minutes(11));
+  EXPECT_TRUE(base::test::RunUntil([this] { return !is_connected(); }));
 }
 
 // TODO(lambroslambrou): Re-implement the deleted MultiMonMouseMove
@@ -1113,7 +1111,7 @@ TEST_F(PeerSessionImplTest, RequestPairing_BufferedBeforeChannelsConnected) {
   future.Get();
 }
 
-TEST_F(PeerSessionImplTest, RequestPairing_ConcurrentRequestsIgnored) {
+TEST_F(PeerSessionImplTest, RequestPairing_SubsequentRequestsIgnored) {
   ConnectPeerSession();
 
   protocol::PairingRequest request1;
@@ -1142,7 +1140,7 @@ TEST_F(PeerSessionImplTest, RequestPairing_ConcurrentRequestsIgnored) {
   protocol::PairingRequest request3;
   request3.set_client_name("client3");
   peer_session_->RequestPairing(request3);
-  EXPECT_EQ(requested_client_name_, "client3");
+  EXPECT_TRUE(requested_client_name_.empty());
 }
 
 TEST_F(PeerSessionImplTest, RequestPairing_EmptyClientIdOrSecretIgnored) {

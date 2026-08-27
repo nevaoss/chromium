@@ -5,6 +5,8 @@
 package org.chromium.chrome.browser.tasks.tab_management;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyInt;
@@ -30,6 +32,7 @@ import org.mockito.junit.MockitoRule;
 import org.chromium.base.Token;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.build.annotations.Nullable;
+import org.chromium.chrome.browser.tab.MediaState;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tabmodel.TabGroupObserver.DidRemoveTabGroupReason;
 import org.chromium.chrome.browser.tabmodel.TabModel;
@@ -72,6 +75,35 @@ public class NestedLayoutDelegateUnitTest {
     }
 
     @Test
+    public void testRequiresThumbnailUpdateOnDeselect() {
+        assertFalse(mDelegate.requiresThumbnailUpdateOnDeselect());
+    }
+
+    @Test
+    public void testRequiresThumbnailUpdateOnSelect() {
+        assertFalse(mDelegate.requiresThumbnailUpdateOnSelect());
+    }
+
+    @Test
+    public void testGetMediaIndicatorState_Tab() {
+        PropertyModel tabModel = new PropertyModel.Builder(TabProperties.ALL_KEYS_TAB_GRID).build();
+        when(mTab1.getMediaState()).thenReturn(MediaState.AUDIBLE);
+        int state = mDelegate.getMediaIndicatorState(mTab1, tabModel);
+        assertEquals(MediaState.AUDIBLE, state);
+    }
+
+    @Test
+    public void testGetMediaIndicatorState_GroupHeader() {
+        PropertyModel headerModel =
+                new PropertyModel.Builder(TabProperties.ALL_KEYS_TAB_GRID)
+                        .with(TabProperties.TAB_GROUP_HEADER_ID, new Token(1, 2))
+                        .build();
+        when(mTab1.getMediaState()).thenReturn(MediaState.AUDIBLE);
+        int state = mDelegate.getMediaIndicatorState(mTab1, headerModel);
+        assertEquals(MediaState.NONE, state);
+    }
+
+    @Test
     public void testDidChangeTabGroupTitle() {
         mDelegate.didChangeTabGroupTitle(TAB_GROUP_ID, "New Title");
         verify(mMediator).updateTabGroupTitle(TAB_GROUP_ID);
@@ -79,7 +111,7 @@ public class NestedLayoutDelegateUnitTest {
 
     @Test
     public void testDidChangeTabGroupColor() {
-        PropertyModel headerModel = addGroupHeaderToModelList(TAB1_ID, TAB_GROUP_ID);
+        PropertyModel headerModel = addGroupHeaderToModelList(TAB1_ID);
         PropertyModel child1Model = addTabToModelList(TAB1_ID, TAB_GROUP_ID);
         PropertyModel child2Model = addTabToModelList(TAB2_ID, TAB_GROUP_ID);
 
@@ -103,7 +135,7 @@ public class NestedLayoutDelegateUnitTest {
 
     @Test
     public void testDidChangeTabGroupCollapsed_Collapse() {
-        PropertyModel headerModel = addGroupHeaderToModelList(TAB1_ID, TAB_GROUP_ID);
+        PropertyModel headerModel = addGroupHeaderToModelList(TAB1_ID);
         headerModel.set(TabProperties.IS_COLLAPSED, false);
         addTabToModelList(TAB1_ID, TAB_GROUP_ID);
         addTabToModelList(TAB2_ID, TAB_GROUP_ID);
@@ -114,14 +146,14 @@ public class NestedLayoutDelegateUnitTest {
 
         mDelegate.didChangeTabGroupCollapsed(TAB_GROUP_ID, true, false);
 
-        assertEquals(true, headerModel.get(TabProperties.IS_COLLAPSED));
+        assertTrue(headerModel.get(TabProperties.IS_COLLAPSED));
         assertEquals(1, mModelList.size());
         assertEquals(TAB_GROUP_ID, mModelList.get(0).model.get(TabProperties.TAB_GROUP_HEADER_ID));
     }
 
     @Test
     public void testDidChangeTabGroupCollapsed_Idempotent() {
-        PropertyModel headerModel = addGroupHeaderToModelList(TAB1_ID, TAB_GROUP_ID);
+        PropertyModel headerModel = addGroupHeaderToModelList(TAB1_ID);
         headerModel.set(TabProperties.IS_COLLAPSED, false);
         addTabToModelList(TAB1_ID, TAB_GROUP_ID);
         addTabToModelList(TAB2_ID, TAB_GROUP_ID);
@@ -139,20 +171,20 @@ public class NestedLayoutDelegateUnitTest {
 
     @Test
     public void testDidChangeTabGroupCollapsed_Expand() {
-        PropertyModel headerModel = addGroupHeaderToModelList(TAB1_ID, TAB_GROUP_ID);
+        PropertyModel headerModel = addGroupHeaderToModelList(TAB1_ID);
         headerModel.set(TabProperties.IS_COLLAPSED, true);
 
         assertEquals(1, mModelList.size());
 
         mDelegate.didChangeTabGroupCollapsed(TAB_GROUP_ID, false, false);
 
-        assertEquals(false, headerModel.get(TabProperties.IS_COLLAPSED));
+        assertFalse(headerModel.get(TabProperties.IS_COLLAPSED));
         verify(mMediator).insertChildTabs(TAB_GROUP_ID, 0);
     }
 
     @Test
     public void testDidMoveWithinGroup_Forward() {
-        addGroupHeaderToModelList(TAB1_ID, TAB_GROUP_ID);
+        addGroupHeaderToModelList(TAB1_ID);
         addTabToModelList(TAB1_ID, TAB_GROUP_ID);
         addTabToModelList(TAB2_ID, TAB_GROUP_ID);
 
@@ -165,7 +197,7 @@ public class NestedLayoutDelegateUnitTest {
 
     @Test
     public void testDidMoveWithinGroup_Backward() {
-        addGroupHeaderToModelList(TAB1_ID, TAB_GROUP_ID);
+        addGroupHeaderToModelList(TAB1_ID);
         addTabToModelList(TAB1_ID, TAB_GROUP_ID);
         addTabToModelList(TAB2_ID, TAB_GROUP_ID);
 
@@ -179,9 +211,9 @@ public class NestedLayoutDelegateUnitTest {
     @Test
     public void testDidMoveTabOutOfGroup() {
         setupTabsInModel(mTab1, mTab3);
-        addGroupHeaderToModelList(TAB1_ID, TAB_GROUP_ID);
-        PropertyModel tab1Model = addTabToModelList(TAB1_ID, TAB_GROUP_ID);
-        PropertyModel tab3Model = addTabToModelList(TAB3_ID, TAB_GROUP_ID);
+        addGroupHeaderToModelList(TAB1_ID);
+        addTabToModelList(TAB1_ID, TAB_GROUP_ID);
+        PropertyModel tab1Model = addTabToModelList(TAB3_ID, TAB_GROUP_ID);
 
         when(mTabModel.getRepresentativeTabAt(1)).thenReturn(mTab1);
         when(mTab1.getTabGroupId()).thenReturn(TAB_GROUP_ID);
@@ -190,7 +222,7 @@ public class NestedLayoutDelegateUnitTest {
         mDelegate.didMoveTabOutOfGroup(mTab3, 1);
 
         verify(mMediator).updateTabGroupHeaderId(TAB_GROUP_ID);
-        verify(mMediator).clearTabGroupProperties(tab3Model);
+        verify(mMediator).clearTabGroupProperties(tab1Model);
         verify(mMediator).updateTabGroupTitle(TAB_GROUP_ID);
 
         assertModelListTabIds(TAB1_ID, TAB1_ID, TAB3_ID);
@@ -199,7 +231,7 @@ public class NestedLayoutDelegateUnitTest {
     @Test
     public void testDidMoveTabOutOfGroup_CollapsedGroup() {
         setupTabsInModel(mTab1, mTab3);
-        addGroupHeaderToModelList(TAB1_ID, TAB_GROUP_ID);
+        addGroupHeaderToModelList(TAB1_ID);
 
         when(mTabModel.getRepresentativeTabAt(1)).thenReturn(mTab1);
         when(mTab1.getTabGroupId()).thenReturn(TAB_GROUP_ID);
@@ -214,9 +246,9 @@ public class NestedLayoutDelegateUnitTest {
     @Test
     public void testDidMoveTabOutOfGroup_RepresentativeTab() {
         setupTabsInModel(mTab1, mTab3);
-        PropertyModel headerModel = addGroupHeaderToModelList(TAB3_ID, TAB_GROUP_ID);
+        addGroupHeaderToModelList(TAB3_ID);
         PropertyModel tab1Model = addTabToModelList(TAB1_ID, TAB_GROUP_ID);
-        PropertyModel tab3Model = addTabToModelList(TAB3_ID, TAB_GROUP_ID);
+        addTabToModelList(TAB3_ID, TAB_GROUP_ID);
 
         when(mTabModel.getRepresentativeTabAt(1)).thenReturn(mTab3);
         when(mTab3.getTabGroupId()).thenReturn(TAB_GROUP_ID);
@@ -234,7 +266,7 @@ public class NestedLayoutDelegateUnitTest {
     @Test
     public void testDidMoveTabOutOfGroup_LastTab() {
         setupTabsInModel(mTab1);
-        addGroupHeaderToModelList(TAB1_ID, TAB_GROUP_ID);
+        addGroupHeaderToModelList(TAB1_ID);
         PropertyModel tab1Model = addTabToModelList(TAB1_ID, TAB_GROUP_ID);
 
         when(mTabModel.getRepresentativeTabAt(1)).thenReturn(mTab1);
@@ -271,26 +303,26 @@ public class NestedLayoutDelegateUnitTest {
     @Test
     public void testDidMergeTabToGroup_ToExistingGroup() {
         setupTabsInModel(mTab1, mTab2, mTab3);
-        addGroupHeaderToModelList(TAB1_ID, TAB_GROUP_ID);
+        addGroupHeaderToModelList(TAB1_ID);
         addTabToModelList(TAB1_ID, TAB_GROUP_ID);
         addTabToModelList(TAB2_ID, TAB_GROUP_ID);
-        PropertyModel tab3Model = addTabToModelList(TAB3_ID, null);
+        PropertyModel tab1Model = addTabToModelList(TAB3_ID, null);
 
         when(mTab3.getTabGroupId()).thenReturn(TAB_GROUP_ID);
         when(mTabModel.getTabsInGroup(TAB_GROUP_ID)).thenReturn(List.of(mTab1, mTab2, mTab3));
 
         mDelegate.didMergeTabToGroup(mTab3, false);
 
-        assertEquals(TAB_GROUP_ID, tab3Model.get(TabProperties.TAB_GROUP_ID));
-        verify(mMediator).updateTabGroupProperties(mTab3, tab3Model, TabGroupColorId.BLUE);
+        assertEquals(TAB_GROUP_ID, tab1Model.get(TabProperties.TAB_GROUP_ID));
+        verify(mMediator).updateTabGroupProperties(mTab3, tab1Model, TabGroupColorId.BLUE);
         verify(mMediator).updateTabGroupTitle(TAB_GROUP_ID);
     }
 
     @Test
     public void testDidMergeTabToGroup_CollapsedGroup() {
         setupTabsInModel(mTab1, mTab2, mTab3);
-        addGroupHeaderToModelList(TAB1_ID, TAB_GROUP_ID);
-        PropertyModel tab3Model = addTabToModelList(TAB3_ID, null);
+        addGroupHeaderToModelList(TAB1_ID);
+        addTabToModelList(TAB3_ID, null);
 
         assertEquals(2, mModelList.size());
 
@@ -308,7 +340,7 @@ public class NestedLayoutDelegateUnitTest {
     @Test
     public void testDidMoveTabGroup_Forward() {
         addTabToModelList(TAB1_ID, null);
-        addGroupHeaderToModelList(TAB2_ID, TAB_GROUP_ID);
+        addGroupHeaderToModelList(TAB2_ID);
         addTabToModelList(TAB2_ID, TAB_GROUP_ID);
         addTabToModelList(TAB3_ID, TAB_GROUP_ID);
 
@@ -330,7 +362,7 @@ public class NestedLayoutDelegateUnitTest {
 
     @Test
     public void testDidMoveTabGroup_Backward() {
-        addGroupHeaderToModelList(TAB1_ID, TAB_GROUP_ID);
+        addGroupHeaderToModelList(TAB1_ID);
         addTabToModelList(TAB1_ID, TAB_GROUP_ID);
         addTabToModelList(TAB3_ID, TAB_GROUP_ID);
         addTabToModelList(TAB2_ID, null);
@@ -372,8 +404,8 @@ public class NestedLayoutDelegateUnitTest {
 
     @Test
     public void testDidCreateNewGroup_AlreadyExists() {
-        addGroupHeaderToModelList(TAB1_ID, TAB_GROUP_ID);
-        PropertyModel tab1Model = addTabToModelList(TAB1_ID, TAB_GROUP_ID);
+        addGroupHeaderToModelList(TAB1_ID);
+        addTabToModelList(TAB1_ID, TAB_GROUP_ID);
 
         when(mTab1.getTabGroupId()).thenReturn(TAB_GROUP_ID);
         when(mMediator.ensureGroupHeaderExistsInNestedLayout(eq(mTab1), eq(TAB_GROUP_ID), anyInt()))
@@ -387,7 +419,7 @@ public class NestedLayoutDelegateUnitTest {
 
     @Test
     public void testDidRemoveTabGroup() {
-        addGroupHeaderToModelList(TAB1_ID, TAB_GROUP_ID);
+        addGroupHeaderToModelList(TAB1_ID);
         addTabToModelList(TAB1_ID, TAB_GROUP_ID);
 
         assertEquals(2, mModelList.size());
@@ -422,12 +454,12 @@ public class NestedLayoutDelegateUnitTest {
         return model;
     }
 
-    private PropertyModel addGroupHeaderToModelList(int tabId, Token tabGroupId) {
+    private PropertyModel addGroupHeaderToModelList(int tabId) {
         PropertyModel model =
                 new PropertyModel.Builder(TabProperties.ALL_KEYS_TAB_GRID)
                         .with(CARD_TYPE, TAB_GROUP)
                         .with(TabProperties.TAB_ID, tabId)
-                        .with(TabProperties.TAB_GROUP_HEADER_ID, tabGroupId)
+                        .with(TabProperties.TAB_GROUP_HEADER_ID, TAB_GROUP_ID)
                         .build();
         mModelList.add(new ListItem(UiType.TAB, model));
         return model;

@@ -19,8 +19,7 @@ export interface ResponsiveControl {
 
   /**
    * Unconditionally sets the control to its preferred width without considering
-   * window sizing or other control state. This is exposed to all tests to
-   * determine the preferred size of individual controls.
+   * window sizing or other control state.
    */
   setToPreferredWidth(): void;
 
@@ -29,6 +28,13 @@ export interface ResponsiveControl {
    * container to overflow, the control is responsible for shrinking back.
    */
   expandUpToPreferredWidth(): void;
+
+  /**
+   * Returns string HTML element ids of controls that are hidden and therefore
+   * need to be added to the overflow menu. Returns an empty Array if there are
+   * no such controls managed by this ResponsiveControl.
+   */
+  controlsToAddToOverflowMenu(): string[];
 
   /**
    * Returns true if the state of the control has changed in a way likely to

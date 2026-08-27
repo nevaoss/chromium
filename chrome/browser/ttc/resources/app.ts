@@ -18,7 +18,7 @@ import {AudioPlayer} from './audio_player.js';
 import {CaptionBlockManager, formatCaptions} from './caption_block_manager.js';
 import {LocalSpeechRecognition} from './local_speech_recognition.js';
 // <if expr="_google_chrome">
-import {Conversation, State} from './internal/conversation.js';
+import {Conversation, DEFAULT_TTC_BUNDLE_URL, State} from './internal/conversation.js';
 import type {ApiConfig, ConversationConfig, Persona} from './internal/conversation.js';
 export type ConversationMessage =|{
   type: 'inputTranscription',
@@ -43,11 +43,13 @@ enum State {
 class Conversation {
   connected: boolean = false;
   pageContext: any = null;
-  constructor(_config: any, _callbacks: {
-    sendToUI: (msg: any) => void,
-    onStateChange: (state: any, oldState: any) => void,
-    onResponse: (audioData: any) => void,
-  }, _tools?: any, _router?: any, _context?: any) {}
+  constructor(
+      _config: any, _callbacks: {
+        sendToUI: (msg: any) => void,
+        onStateChange: (state: any, oldState: any) => void,
+        onResponse: (audioData: any) => void,
+      },
+      _tools?: any, _router?: any, _context?: any, _pageHandler?: any) {}
   sendAudio(..._args: any[]): void {}
   sendText(..._args: any[]): void {}
   markMockAudioEndTime(..._args: any[]): void {}
@@ -66,6 +68,7 @@ type ConversationConfig = {
 };
 type ConversationMessage = any;
 type Persona = any;
+const DEFAULT_TTC_BUNDLE_URL = '';
 // </if>
 /* eslint-enable @typescript-eslint/no-explicit-any */
 import {errorLog, log} from './logging.js';
@@ -417,7 +420,8 @@ export class AppElement extends CrLitElement {
           onStateChange: (state) => this.onConversationStateChanged(state),
           onResponse: (audioData) => this.onAudioOutput(audioData),
         },
-        this.toolsRemote, this.pageCallbackRouter, this.initialPageContext);
+        this.toolsRemote, this.pageCallbackRouter, this.initialPageContext,
+        this.pageHandler);
 
     if (this.unregisterPageContextListeners) {
       this.unregisterPageContextListeners();
@@ -649,7 +653,8 @@ export class AppElement extends CrLitElement {
     this.initializationState = InitializationState.CONNECTING;
 
     try {
-      const ttcBundleUrl = loadTimeData.getString('ttcBundleUrl');
+      const ttcBundleUrl = loadTimeData.getString('ttcBundleUrl') ||
+          DEFAULT_TTC_BUNDLE_URL;
       const bundle = await this.initializeResourceBundle(ttcBundleUrl);
 
       log(FILE, 'Bundle initialized');

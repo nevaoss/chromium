@@ -157,6 +157,9 @@ chromium-metrics-reviews@google.com.
   <int value="5"
       label="Settings launch failed (e.g. set-as-default unsupported by the
              install mode)"/>
+  <int value="6" label="User navigated the guide tab away before completion"/>
+  <int value="7"
+      label="User moved or resized the Settings window (degraded to floating)"/>
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/ui/webui/default_browser/visual_guided_setter_controller_win.h:DefaultBrowserVisualGuideOutcome) -->
@@ -191,7 +194,10 @@ chromium-metrics-reviews@google.com.
   <int value="1" label="KeyPress"/>
 </enum>
 
-<!-- LINT.ThenChange(//chrome/browser/ui/waap/waap_ui_metrics_recorder.h:ReloadButtonInputType) -->
+<!-- LINT.ThenChange(
+  //chrome/browser/ui/waap/waap_ui_metrics_recorder.h:ReloadButtonInputType,
+  //chrome/browser/resources/webui_toolbar/metrics_recorder.ts:ReloadButtonInputType
+) -->
 
 <!-- LINT.IfChange(RenderViewContextMenuItem) -->
 
@@ -528,6 +534,7 @@ chromium-metrics-reviews@google.com.
   <int value="93" label="UMA_SEND_TAB_TO_SELF"/>
   <int value="94"
       label="UMA_FACILITATED_PAYMENTS_PIX_ACCOUNT_LINKING_FAILURE_NOTIFICATION"/>
+  <int value="95" label="UMA_GLIC_UNPIN_UNDO"/>
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/ui/messages/android/java/src/org/chromium/chrome/browser/ui/messages/snackbar/Snackbar.java:SnackbarIdentifier) -->
@@ -1030,6 +1037,7 @@ chromium-metrics-reviews@google.com.
   <int value="1131279479" label="chrome://actor-internals/"/>
   <int value="1131405887" label="chrome://taskscheduler-internals/"/>
   <int value="1134924982" label="chrome://app-icon/"/>
+  <int value="1139989231" label="chrome://content-settings/"/>
   <int value="1145000455" label="chrome://arc-overview-tracing/"/>
   <int value="1145963223" label="chrome://process-internals/"/>
   <int value="1148733422" label="chrome://restart/"/>

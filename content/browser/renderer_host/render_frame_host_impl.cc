@@ -3094,6 +3094,10 @@ int RenderFrameHostImpl::GetRoutingID() const {
   return routing_id_;
 }
 
+int64_t RenderFrameHostImpl::GetNavigationId() const {
+  return navigation_id_;
+}
+
 const blink::LocalFrameToken& RenderFrameHostImpl::GetFrameToken() const {
   return frame_token_;
 }
@@ -7655,7 +7659,6 @@ void RenderFrameHostImpl::ContentsPreferredSizeChanged(
   delegate_->UpdateWindowPreferredSize(this, pref_size);
 }
 
-
 void RenderFrameHostImpl::FocusPage() {
   render_view_host_->OnFocus();
 }
@@ -8006,8 +8009,10 @@ void RenderFrameHostImpl::DownloadURL(
         })");
   std::unique_ptr<download::DownloadUrlParameters> parameters =
       CreateDownloadUrlParameters(blink_parameters->url, traffic_annotation);
-  parameters->set_content_initiated(!blink_parameters->is_context_menu_save);
-  // Ensure that user gesture claims match the current activation state.
+  // Downloads arriving through this IPC handler always originate from web
+  // content, so treat them as content-initiated regardless of what the
+  // renderer reports in `is_context_menu_save`.
+  parameters->set_content_initiated(true);
   parameters->set_has_user_gesture(blink_parameters->has_user_gesture &&
                                    HasTransientUserActivation());
   parameters->set_suggested_name(
@@ -11743,6 +11748,7 @@ void RenderFrameHostImpl::BeginNavigation(
     }
   }
 
+  // TODO(crbug.com/40066983): Consider converting these into renderer kills.
   GetProcess()->FilterURL(true, &begin_params->searchable_form_url);
 // TODO(neva): Workaround to fix NEVA-2474 TC failure after upgrade up to
 // 153.0.7992.0~1. It partially reverts logic added in upstream CL
@@ -16707,7 +16713,6 @@ bool RenderFrameHostImpl::DidCommitNavigationInternal(
             fenced_frame_properties->nested_urn_config_pairs()
                 ->GetValueIgnoringVisibility());
       }
-
     }
 
     // Continue observing the events for the committed navigation.

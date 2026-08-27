@@ -532,7 +532,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="PasswordManager.AccountStorageUserStateDuration{UserSyncingType}"
-    units="ms" expires_after="2026-09-20">
+    units="ms" expires_after="2027-09-20">
   <owner>mamir@chromium.org</owner>
   <owner>treib@chromium.org</owner>
   <summary>
@@ -865,7 +865,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PasswordManager.ApplySyncChanges.UpdateLoginSyncError"
-    enum="PasswordUpdateLoginSyncError" expires_after="2026-09-20">
+    enum="PasswordUpdateLoginSyncError" expires_after="2027-09-20">
   <owner>mamir@chromium.org</owner>
   <owner>mastiz@chromium.org</owner>
   <summary>
@@ -2168,6 +2168,18 @@ useful for Chirp alerts (go/crca-alerts). -->
   </summary>
 </histogram>
 
+<histogram name="PasswordManager.LeakDetection.LeakedCredentialsUrlType"
+    enum="PasswordLeakDetectionUrlType" expires_after="2027-02-01">
+  <owner>vsemeniuk@google.com</owner>
+  <owner>chrome-password-manager-metrics-alerts@google.com</owner>
+  <summary>
+    Records the URL type/scheme (HTTPS, localhost, HTTP, private/intranet IP,
+    Android app, or other) of a leaked credential when a leak is detected.
+    Recorded in LeakDetectionDelegate when a single leak check finishes with a
+    positive leak result.
+  </summary>
+</histogram>
+
 <histogram name="PasswordManager.LeakDetection.LookupSingleLeakResponseResult"
     enum="PasswordLeakLookupResponseResult" expires_after="2027-01-17">
   <owner>vsemeniuk@google.com</owner>
@@ -2625,6 +2637,51 @@ useful for Chirp alerts (go/crca-alerts). -->
     <variant name=".WithPrivacyNotice"
         summary="This is the first run dialog that includes privacy notice."/>
   </token>
+</histogram>
+
+<histogram name="PasswordManager.PasswordChange.LoginCheckAttempts"
+    units="attempts" expires_after="2027-08-01">
+  <owner>talitahalboth@google.com</owner>
+  <owner>vsemeniuk@google.com</owner>
+  <owner>chrome-password-manager-metrics-alerts@google.com</owner>
+  <summary>
+    Records the number of attempts (login state checks) performed during the
+    LOGIN_CHECK step of the password change flow. Recorded when the login check
+    step finishes (either successfully or with a failure).
+  </summary>
+</histogram>
+
+<histogram name="PasswordManager.PasswordChange.LoginCheckDuration" units="ms"
+    expires_after="2027-08-01">
+  <owner>talitahalboth@google.com</owner>
+  <owner>vsemeniuk@google.com</owner>
+  <owner>chrome-password-manager-metrics-alerts@google.com</owner>
+  <summary>
+    Records the duration of the LOGIN_CHECK step of the password change flow in
+    ms.
+  </summary>
+</histogram>
+
+<histogram name="PasswordManager.PasswordChange.LoginCheckError"
+    enum="LoginCheckError" expires_after="2027-08-01">
+  <owner>talitahalboth@google.com</owner>
+  <owner>vsemeniuk@google.com</owner>
+  <owner>chrome-password-manager-metrics-alerts@google.com</owner>
+  <summary>
+    Records the exact failure reason when the LOGIN_CHECK step in the password
+    change flow fails. Recorded when the login check step fails.
+  </summary>
+</histogram>
+
+<histogram name="PasswordManager.PasswordChange.LoginCheckResult"
+    enum="LoginCheckResult" expires_after="2027-08-01">
+  <owner>talitahalboth@google.com</owner>
+  <owner>vsemeniuk@google.com</owner>
+  <owner>chrome-password-manager-metrics-alerts@google.com</owner>
+  <summary>
+    Records the outcome of the LOGIN_CHECK step in the password change flow
+    (Success, Failure, or Error). Recorded when the login check step finishes.
+  </summary>
 </histogram>
 
 <histogram name="PasswordManager.PasswordChange.NoPasswordForm"
@@ -3278,7 +3335,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 
 <histogram
     name="PasswordManager.PasswordStoreAndroidBackend.Retry{Operation}.APIError"
-    enum="PasswordStoreAndroidBackendAPIError" expires_after="2026-09-14">
+    enum="PasswordStoreAndroidBackendAPIError" expires_after="2027-09-14">
   <owner>izuzic@google.com</owner>
   <owner>ioanap@chromium.org</owner>
   <summary>
@@ -3292,7 +3349,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 
 <histogram
     name="PasswordManager.PasswordStoreAndroidBackend.Retry{Operation}.Attempt"
-    units="Times" expires_after="2026-09-14">
+    units="Times" expires_after="2027-09-14">
   <owner>izuzic@google.com</owner>
   <owner>ioanap@chromium.org</owner>
   <summary>
@@ -3308,7 +3365,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 
 <histogram
     name="PasswordManager.PasswordStoreAndroidBackend.Retry{Operation}.CancelledAtAttempt"
-    units="Times" expires_after="2026-09-14">
+    units="Times" expires_after="2027-09-14">
   <owner>izuzic@google.com</owner>
   <owner>ioanap@chromium.org</owner>
   <summary>

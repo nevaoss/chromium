@@ -23,6 +23,7 @@
 #include "chrome/browser/ui/webui/context_hub/context_hub.mojom-features.h"
 #include "chrome/browser/ui/webui/context_hub/context_hub.mojom.h"
 #include "chrome/test/base/testing_profile.h"
+#include "components/keyed_service/content/browser_context_dependency_manager.h"
 #include "components/optimization_guide/proto/features/context_hub.pb.h"
 #include "components/personal_context/core/mock_personal_context_service.h"
 #include "components/personal_context/core/personal_context_service.h"
@@ -54,6 +55,7 @@ class MockTabProvider : public ContextHubPageHandler::TabProvider {
               (),
               (override));
   MOCK_METHOD(void, SwitchToTab, (int64_t), (override));
+  MOCK_METHOD(void, CloseTab, (int64_t), (override));
   MOCK_METHOD(bool,
               ConfirmTabGroups,
               (base::span<const context_hub::TabGroupEntry>),
@@ -92,28 +94,35 @@ class MockPage : public browser::context_hub::mojom::Page {
 
 class ContextHubPageHandlerTest : public testing::Test {
  public:
-  ContextHubPageHandlerTest() {
-    feature_list_.InitWithFeatures(
-        {features::kContextHub, features::kMemoryBanks,
-         browser::context_hub::mojom::kAutoTabGroups,
-         browser::context_hub::mojom::kAutoTodos},
-        {});
+  ContextHubPageHandlerTest()
+      : feature_list_(CreateScopedFeatureList()),
+        create_services_subscription_(
+            BrowserContextDependencyManager::GetInstance()
+                ->RegisterCreateServicesCallbackForTesting(base::BindRepeating(
+                    &ContextHubPageHandlerTest::
+                        OnWillCreateBrowserContextKeyedServices,
+                    base::Unretained(this)))) {}
+
+  void OnWillCreateBrowserContextKeyedServices(
+      content::BrowserContext* browser_context) {
+    PersonalContextServiceFactory::GetInstance()->SetTestingFactoryAndUse(
+        browser_context,
+        base::BindRepeating([](content::BrowserContext* context)
+                                -> std::unique_ptr<KeyedService> {
+          return std::make_unique<
+              personal_context::MockPersonalContextService>();
+        }));
+    OptimizationGuideKeyedServiceFactory::GetInstance()
+        ->SetTestingFactoryAndUse(
+            browser_context,
+            base::BindRepeating([](content::BrowserContext* context)
+                                    -> std::unique_ptr<KeyedService> {
+              return std::make_unique<MockOptimizationGuideKeyedService>();
+            }));
   }
 
   void SetUp() override {
     testing::Test::SetUp();
-
-    PersonalContextServiceFactory::GetInstance()->SetTestingFactory(
-        &profile_, base::BindRepeating([](content::BrowserContext* context)
-                                           -> std::unique_ptr<KeyedService> {
-          return std::make_unique<
-              personal_context::MockPersonalContextService>();
-        }));
-    OptimizationGuideKeyedServiceFactory::GetInstance()->SetTestingFactory(
-        &profile_, base::BindRepeating([](content::BrowserContext* context)
-                                           -> std::unique_ptr<KeyedService> {
-          return std::make_unique<MockOptimizationGuideKeyedService>();
-        }));
 
 #if !BUILDFLAG(IS_ANDROID)
     auto mock_tab_provider = std::make_unique<MockTabProvider>();
@@ -140,6 +149,16 @@ class ContextHubPageHandlerTest : public testing::Test {
   }
 
  protected:
+  static base::test::ScopedFeatureList CreateScopedFeatureList() {
+    base::test::ScopedFeatureList feature_list;
+    feature_list.InitWithFeatures(
+        {features::kContextHub, features::kMemoryBanks,
+         browser::context_hub::mojom::kAutoTabGroups,
+         browser::context_hub::mojom::kAutoTodos},
+        {});
+    return feature_list;
+  }
+
   personal_context::MockPersonalContextService* GetMockService() {
     return static_cast<personal_context::MockPersonalContextService*>(
         PersonalContextServiceFactory::GetForProfile(&profile_));
@@ -150,10 +169,11 @@ class ContextHubPageHandlerTest : public testing::Test {
         OptimizationGuideKeyedServiceFactory::GetForProfile(&profile_));
   }
 
+  base::test::ScopedFeatureList feature_list_;
   content::BrowserTaskEnvironment task_environment_;
   content::RenderViewHostTestEnabler rvh_test_enabler_;
+  base::CallbackListSubscription create_services_subscription_;
   TestingProfile profile_;
-  base::test::ScopedFeatureList feature_list_;
 #if !BUILDFLAG(IS_ANDROID)
   raw_ptr<MockTabProvider> mock_tab_provider_ = nullptr;
 #endif
@@ -882,6 +902,45 @@ TEST_F(ContextHubPageHandlerTest, SwitchToTab) {
   EXPECT_CALL(*mock_tab_provider_, SwitchToTab(42)).Times(1);
 
   handler_->SwitchToTab(42);
+}
+
+TEST_F(ContextHubPageHandlerTest, CloseTab) {
+  ContextHubService* service =
+      ContextHubServiceFactory::GetForProfile(&profile_);
+  ASSERT_TRUE(service);
+
+  AutoTodoEntry entry;
+  entry.id = "tp_1";
+  entry.title = "Tab Todo";
+  entry.status = AutoTodoEntry::Status::kActive;
+  entry.data = ThirdPartyData{
+      .tab_id = 42,
+      .group_type = ThirdPartyData::GroupType::kNudgeToClose,
+  };
+
+  // Add the auto todo entry to cache.
+  base::test::TestFuture<bool> bool_future;
+  service->UpdateAutoTodo(std::move(entry), bool_future.GetCallback());
+  ASSERT_TRUE(bool_future.Get());
+  mock_page_.Flush();
+
+  EXPECT_CALL(*mock_tab_provider_, CloseTab(42)).Times(1);
+
+  base::test::TestFuture<std::vector<AutoTodoEntry>> notify_future;
+  EXPECT_CALL(mock_page_, OnAutoTodosChanged(_))
+      .WillOnce([&notify_future](const std::vector<AutoTodoEntry>& todos) {
+        notify_future.SetValue(todos);
+      });
+
+  handler_->CloseTab(42);
+
+  // Verify that the WebUI is notified with an empty list.
+  auto updated_todos = notify_future.Take();
+  EXPECT_TRUE(updated_todos.empty());
+
+  base::test::TestFuture<std::vector<AutoTodoEntry>> get_future;
+  service->GetAutoTodos(get_future.GetCallback());
+  EXPECT_TRUE(get_future.Get().empty());
 }
 
 TEST_F(ContextHubPageHandlerTest, GetTabs_NoTabs) {

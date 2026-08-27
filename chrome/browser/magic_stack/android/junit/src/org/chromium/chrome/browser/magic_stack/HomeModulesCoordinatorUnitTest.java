@@ -26,7 +26,6 @@ import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.graphics.Color;
 import android.util.DisplayMetrics;
-import android.view.ContextMenu;
 import android.view.View;
 import android.view.View.OnCreateContextMenuListener;
 import android.view.View.OnLongClickListener;
@@ -56,7 +55,6 @@ import org.chromium.base.FeatureOverrides;
 import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.SettableMonotonicObservableSupplier;
 import org.chromium.base.test.BaseRobolectricTestRunner;
-import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.magic_stack.ModuleDelegate.ModuleType;
@@ -488,15 +486,13 @@ public class HomeModulesCoordinatorUnitTest {
         verify(mView).setOnCreateContextMenuListener(mOnCreateContextMenuListenerCaptor.capture());
         mOnCreateContextMenuListenerCaptor
                 .getValue()
-                .onCreateContextMenu(
-                        mock(ContextMenu.class), mView, mock(ContextMenu.ContextMenuInfo.class));
+                .onCreateContextMenu(/* menu= */ null, mView, /* menuInfo= */ null);
         verify(homeModulesContextMenuManager).displayMenu(eq(mView), eq(mModuleProvider));
     }
 
     @Test
     @SmallTest
-    @EnableFeatures({ChromeFeatureList.HOME_MODULE_PREF_REFACTOR})
-    public void testAllCardsConfigChanged_FeatureEnabled() {
+    public void testAllCardsConfigChanged() {
         assertFalse(DeviceFormFactor.isNonMultiDisplayContextOnTablet(mActivity));
         when(mModuleDelegateHost.isHomeSurface()).thenReturn(true);
         mCoordinator = createCoordinator(/* skipInitProfile= */ false);
@@ -508,23 +504,6 @@ public class HomeModulesCoordinatorUnitTest {
 
         mHomeModulesStateListener.getValue().allCardsConfigChanged(true);
         verify(mRecyclerView).setVisibility(eq(View.VISIBLE));
-    }
-
-    @Test
-    @SmallTest
-    @DisableFeatures({ChromeFeatureList.HOME_MODULE_PREF_REFACTOR})
-    public void testAllCardsConfigChanged_FeatureDisabled() {
-        assertFalse(DeviceFormFactor.isNonMultiDisplayContextOnTablet(mActivity));
-        when(mModuleDelegateHost.isHomeSurface()).thenReturn(true);
-        mCoordinator = createCoordinator(/* skipInitProfile= */ false);
-
-        verify(mHomeModulesConfigManager).addListener(mHomeModulesStateListener.capture());
-
-        mHomeModulesStateListener.getValue().allCardsConfigChanged(false);
-        verify(mRecyclerView, never()).setVisibility(eq(View.GONE));
-
-        mHomeModulesStateListener.getValue().allCardsConfigChanged(true);
-        verify(mRecyclerView, never()).setVisibility(eq(View.VISIBLE));
     }
 
     @Test

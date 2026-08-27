@@ -24,3 +24,13 @@ NSString* const kAtMemoryUnsupportedQueryCellAccessibilityIdentifier =
 
 NSString* const kAtMemorySearchCellAccessibilityIdentifier =
     @"AtMemorySearchCell";
+
+NSString* const kAtMemoryFetchingCellAccessibilityIdentifier =
+    @"AtMemoryFetchingCell";
+
+NSString* const
+    kAtMemoryGranularFillAttributeLabelAccessibilityIdentifierPrefix =
+        @"AtMemoryGranularFillAttributeLabel_";
+
+NSString* const kAtMemoryGranularFillChipButtonAccessibilityIdentifierPrefix =
+    @"AtMemoryGranularFillChipButton_";

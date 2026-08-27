@@ -13,6 +13,7 @@
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
 #include "base/test/bind.h"
+#include "base/test/metrics/histogram_tester.h"
 #include "base/test/task_environment.h"
 #include "base/threading/platform_thread.h"
 #include "base/values.h"
@@ -68,6 +69,7 @@ TEST_F(EnterpriseSkillsProviderTest, ValidSkillIsParsed) {
   EXPECT_EQ(skill->id.length(), 36u);
   EXPECT_EQ(skill->name, "My Skill");
   EXPECT_EQ(skill->description, "Test description");
+  EXPECT_EQ(skill->curated_by, "your organization");
   EXPECT_EQ(skill->prompt, "Prompt goes here");
   EXPECT_EQ(skill->icon, "💼");
   EXPECT_EQ(skill->source, sync_pb::SkillSource::SKILL_SOURCE_ENTERPRISE);
@@ -288,6 +290,7 @@ class EnterpriseSkillsProviderFetchTest : public testing::Test {
 };
 
 TEST_F(EnterpriseSkillsProviderFetchTest, FetchValidSkill) {
+  base::HistogramTester histogram_tester;
   std::string expected_hash =
       base::HexEncode(crypto::hash::Sha256(kFetchYamlFrontmatter));
 
@@ -308,6 +311,17 @@ TEST_F(EnterpriseSkillsProviderFetchTest, FetchValidSkill) {
   EXPECT_EQ(
       "https://www.gstatic.com/chrome/skills/images/enterprise_briefcase.png",
       skills[0]->image_url.spec());
+
+  histogram_tester.ExpectUniqueSample("Enterprise.Skills.FetchResult",
+                                      /*sample=*/true,
+                                      /*expected_bucket_count=*/1);
+  histogram_tester.ExpectTotalCount("Enterprise.Skills.FetchLatency", 1);
+  histogram_tester.ExpectUniqueSample("Enterprise.Skills.ValidationResult",
+                                      EnterpriseSkillValidationResult::kSuccess,
+                                      /*expected_bucket_count=*/1);
+  histogram_tester.ExpectUniqueSample("Enterprise.Skills.Count",
+                                      /*sample=*/1,
+                                      /*expected_bucket_count=*/1);
 }
 
 TEST_F(EnterpriseSkillsProviderFetchTest, ValidateResourceRequest) {

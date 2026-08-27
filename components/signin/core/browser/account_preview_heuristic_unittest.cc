@@ -1,0 +1,551 @@
+// Copyright 2026 The Chromium Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include "components/signin/core/browser/account_preview_heuristic.h"
+
+#include <optional>
+#include <vector>
+
+#include "base/test/scoped_feature_list.h"
+#include "base/time/time.h"
+#include "components/signin/core/browser/account_preview_data.h"
+#include "components/signin/core/browser/account_preview_data_service.h"
+#include "components/signin/public/base/signin_switches.h"
+#include "components/sync/base/data_type.h"
+#include "components/sync/protocol/sync_enums.pb.h"
+#include "google_apis/gaia/gaia_id.h"
+#include "testing/gmock/include/gmock/gmock.h"
+#include "testing/gtest/include/gtest/gtest.h"
+
+namespace signin {
+
+namespace {
+
+using ::testing::ElementsAre;
+using ::testing::IsEmpty;
+
+DevicePreview CreateDevicePreview(
+    const std::string& guid,
+    base::Time last_updated,
+    sync_pb::SyncEnums_DeviceFormFactor form_factor) {
+  DevicePreview device;
+  device.cache_guid = guid;
+  device.last_updated = last_updated;
+  device.form_factor = form_factor;
+  return device;
+}
+
+struct DataTypeCountsForTesting {
+  size_t passwords = 0;
+  size_t bookmarks = 0;
+  size_t autofill = 0;
+  size_t wallet = 0;
+};
+
+AccountPreviewData CreatePreviewData(DataTypeCountsForTesting counts = {},
+                                     std::vector<DevicePreview> devices = {}) {
+  AccountPreviewData data;
+  if (counts.passwords > 0) {
+    data.counts[syncer::PASSWORDS] = counts.passwords;
+  }
+  if (counts.bookmarks > 0) {
+    data.counts[syncer::BOOKMARKS] = counts.bookmarks;
+  }
+  if (counts.autofill > 0) {
+    data.counts[syncer::AUTOFILL] = counts.autofill;
+  }
+  if (counts.wallet > 0) {
+    data.counts[syncer::AUTOFILL_WALLET_METADATA] = counts.wallet;
+  }
+  data.devices = std::move(devices);
+  return data;
+}
+
+class AccountPreviewHeuristicTest : public testing::Test {
+  base::test::ScopedFeatureList scoped_feature_list_{
+      switches::kEnableAccountPreviewPreferredAccount};
+};
+
+}  // namespace
+
+// =============================================================================
+// Account Data Types Criteria Tests (ComputeAccountPreviewPreference)
+// =============================================================================
+
+TEST(AccountPreviewHeuristicDisabledFeatureTest, ReturnsNullopt) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndDisableFeature(
+      switches::kEnableAccountPreviewPreferredAccount);
+
+  AccountPreviewData data = CreatePreviewData({.passwords = 60});
+  EXPECT_EQ(ComputeAccountPreviewPreference(GaiaId("user1"), data),
+            std::nullopt);
+  EXPECT_EQ(ComputePreferredAccountForPromo({AccountPreviewHeuristicContext{
+                .gaia_id = GaiaId("user1"), .preview_data = &data}}),
+            std::nullopt);
+}
+
+TEST_F(AccountPreviewHeuristicTest,
+       ComputeAccountPreviewPreferencePreferredDataTypesRankingAndQuartile) {
+  // Passwords: 40 (median=20, ratio=2.0, quartile=kMedianToQ3)
+  // Bookmarks: 50 (median=50, ratio=1.0, quartile=kMedianToQ3)
+  // Autofill: 2 (median=15, ratio=0.13, quartile=kBelowQ1)
+  // Wallet: 0 -> Excluded
+  AccountPreviewData data =
+      CreatePreviewData({.passwords = 40, .bookmarks = 50, .autofill = 2});
+
+  auto pref = ComputeAccountPreviewPreference(GaiaId("user1"), data);
+  ASSERT_TRUE(pref.has_value());
+  EXPECT_EQ(pref->gaia_id, GaiaId("user1"));
+  ASSERT_THAT(
+      pref->preferred_data_types,
+      ElementsAre(
+          PreferredDataTypeInfo{.data_type = syncer::PASSWORDS,
+                                .quartile = SyncDataQuartile::kMedianToQ3},
+          PreferredDataTypeInfo{.data_type = syncer::BOOKMARKS,
+                                .quartile = SyncDataQuartile::kMedianToQ3},
+          PreferredDataTypeInfo{.data_type = syncer::AUTOFILL,
+                                .quartile = SyncDataQuartile::kBelowQ1}));
+
+  EXPECT_TRUE(pref->preferred_data_types[0].is_above_or_at_median());
+  EXPECT_TRUE(pref->preferred_data_types[1].is_above_or_at_median());
+  EXPECT_FALSE(pref->preferred_data_types[2].is_above_or_at_median());
+}
+
+TEST_F(AccountPreviewHeuristicTest,
+       ComputeAccountPreviewPreferencePreferredDataTypesNoneAboveMedian) {
+  // Passwords: 2 (ratio=0.1), Autofill: 4 (ratio=0.267)
+  AccountPreviewData data = CreatePreviewData({.passwords = 2, .autofill = 4});
+
+  auto pref = ComputeAccountPreviewPreference(GaiaId("user1"), data);
+  ASSERT_TRUE(pref.has_value());
+  ASSERT_THAT(
+      pref->preferred_data_types,
+      ElementsAre(
+          PreferredDataTypeInfo{.data_type = syncer::AUTOFILL,
+                                .quartile = SyncDataQuartile::kBelowQ1},
+          PreferredDataTypeInfo{.data_type = syncer::PASSWORDS,
+                                .quartile = SyncDataQuartile::kBelowQ1}));
+
+  EXPECT_FALSE(pref->preferred_data_types[0].is_above_or_at_median());
+  EXPECT_FALSE(pref->preferred_data_types[1].is_above_or_at_median());
+}
+
+TEST_F(AccountPreviewHeuristicTest,
+       ComputeAccountPreviewPreferenceEmptyDataTypes) {
+  AccountPreviewData data = CreatePreviewData();
+  auto pref = ComputeAccountPreviewPreference(GaiaId("user1"), data);
+  ASSERT_TRUE(pref.has_value());
+  EXPECT_THAT(pref->preferred_data_types, IsEmpty());
+}
+
+TEST_F(AccountPreviewHeuristicTest,
+       ComputeAccountPreviewPreferenceFormFactorExtraction) {
+  AccountPreviewData no_devices;
+  auto pref_no_devices =
+      ComputeAccountPreviewPreference(GaiaId("user1"), no_devices);
+  ASSERT_TRUE(pref_no_devices.has_value());
+  EXPECT_EQ(pref_no_devices->other_device_form_factor,
+            sync_pb::SyncEnums_DeviceFormFactor_DEVICE_FORM_FACTOR_UNSPECIFIED);
+
+  base::Time now = base::Time::Now();
+  AccountPreviewData data_with_devices = CreatePreviewData(
+      {}, {CreateDevicePreview(
+               "guid1", now - base::Days(2),
+               sync_pb::SyncEnums_DeviceFormFactor_DEVICE_FORM_FACTOR_DESKTOP),
+           CreateDevicePreview(
+               "guid2", now - base::Days(1),
+               sync_pb::SyncEnums_DeviceFormFactor_DEVICE_FORM_FACTOR_PHONE)});
+
+  auto pref_with_devices =
+      ComputeAccountPreviewPreference(GaiaId("user2"), data_with_devices);
+  ASSERT_TRUE(pref_with_devices.has_value());
+  EXPECT_EQ(pref_with_devices->other_device_form_factor,
+            sync_pb::SyncEnums_DeviceFormFactor_DEVICE_FORM_FACTOR_PHONE);
+}
+
+TEST_F(AccountPreviewHeuristicTest,
+       ComputeAccountPreviewPreferenceTieBreakingPreservesDataTypeOrder) {
+  // All counts are set to their exact median (ratio = 1.0, quartile =
+  // kMedianToQ3): Passwords: 20 (median=20, ratio=1.0) Bookmarks: 50
+  // (median=50, ratio=1.0) Autofill: 15 (median=15, ratio=1.0) Wallet: 3
+  // (median=3, ratio=1.0) Tie-breaking should preserve the priority declaration
+  // order (PASSWORDS -> BOOKMARKS -> AUTOFILL -> AUTOFILL_WALLET_METADATA).
+  AccountPreviewData data = CreatePreviewData(
+      {.passwords = 20, .bookmarks = 50, .autofill = 15, .wallet = 3});
+
+  auto pref = ComputeAccountPreviewPreference(GaiaId("user1"), data);
+  ASSERT_TRUE(pref.has_value());
+  EXPECT_THAT(
+      pref->preferred_data_types,
+      ElementsAre(
+          PreferredDataTypeInfo{.data_type = syncer::PASSWORDS,
+                                .quartile = SyncDataQuartile::kMedianToQ3},
+          PreferredDataTypeInfo{.data_type = syncer::BOOKMARKS,
+                                .quartile = SyncDataQuartile::kMedianToQ3},
+          PreferredDataTypeInfo{.data_type = syncer::AUTOFILL,
+                                .quartile = SyncDataQuartile::kMedianToQ3},
+          PreferredDataTypeInfo{.data_type = syncer::AUTOFILL_WALLET_METADATA,
+                                .quartile = SyncDataQuartile::kMedianToQ3}));
+}
+
+// =============================================================================
+// Multi-Account Heuristic Selection Tests (ComputePreferredAccountForPromo)
+// =============================================================================
+
+TEST_F(AccountPreviewHeuristicTest, EmptyListReturnsNullopt) {
+  EXPECT_EQ(ComputePreferredAccountForPromo({}), std::nullopt);
+}
+
+TEST_F(AccountPreviewHeuristicTest, SingleValidAccountReturnsPreference) {
+  AccountPreviewData data = CreatePreviewData(
+      {.passwords = 25},
+      {CreateDevicePreview(
+          "guid", base::Time::Now(),
+          sync_pb::SyncEnums_DeviceFormFactor_DEVICE_FORM_FACTOR_PHONE)});
+  AccountPreviewHeuristicContext account{
+      .gaia_id = GaiaId("user1"),
+      .preview_data = &data,
+  };
+
+  auto pref = ComputePreferredAccountForPromo({account});
+  ASSERT_TRUE(pref.has_value());
+  EXPECT_EQ(pref->gaia_id, GaiaId("user1"));
+  EXPECT_THAT(pref->preferred_data_types,
+              ElementsAre(PreferredDataTypeInfo{
+                  .data_type = syncer::PASSWORDS,
+                  .quartile = SyncDataQuartile::kMedianToQ3}));
+  EXPECT_EQ(pref->other_device_form_factor,
+            sync_pb::SyncEnums_DeviceFormFactor_DEVICE_FORM_FACTOR_PHONE);
+}
+
+TEST_F(AccountPreviewHeuristicTest,
+       AccountPreviewHeuristicContextIsEligibleForPreferredAccount) {
+  AccountPreviewData data = CreatePreviewData({.passwords = 10});
+  AccountPreviewHeuristicContext context{
+      .gaia_id = GaiaId("user1"),
+      .preview_data = &data,
+  };
+  EXPECT_TRUE(context.is_eligible_for_preferred_account());
+
+  // Ineligible if managed.
+  context.is_managed = true;
+  EXPECT_FALSE(context.is_eligible_for_preferred_account());
+  context.is_managed = false;
+
+  // Ineligible if child account.
+  context.is_child = true;
+  EXPECT_FALSE(context.is_eligible_for_preferred_account());
+  context.is_child = false;
+
+  // Ineligible if no preview data.
+  context.preview_data = nullptr;
+  EXPECT_FALSE(context.is_eligible_for_preferred_account());
+}
+
+TEST_F(AccountPreviewHeuristicTest, Disqualifications) {
+  AccountPreviewData default_data = CreatePreviewData({.passwords = 10});
+  AccountPreviewHeuristicContext default_acc{
+      .gaia_id = GaiaId("default"),
+      .preview_data = &default_data,
+  };
+
+  // Managed candidate is not preferred.
+  AccountPreviewData managed_data = CreatePreviewData({.passwords = 100});
+  AccountPreviewHeuristicContext managed_candidate{
+      .gaia_id = GaiaId("managed"),
+      .is_managed = true,
+      .preview_data = &managed_data,
+  };
+  auto pref = ComputePreferredAccountForPromo({default_acc, managed_candidate});
+  ASSERT_TRUE(pref.has_value());
+  EXPECT_EQ(pref->gaia_id, GaiaId("default"));
+
+  // Child candidate is not preferred.
+  AccountPreviewData child_data = CreatePreviewData({.passwords = 100});
+  AccountPreviewHeuristicContext child_candidate{
+      .gaia_id = GaiaId("child"),
+      .is_child = true,
+      .preview_data = &child_data,
+  };
+  pref = ComputePreferredAccountForPromo({default_acc, child_candidate});
+  ASSERT_TRUE(pref.has_value());
+  EXPECT_EQ(pref->gaia_id, GaiaId("default"));
+
+  // Candidate with no preview data is not preferred.
+  AccountPreviewHeuristicContext no_data_candidate{
+      .gaia_id = GaiaId("no_data"),
+      .preview_data = nullptr,
+  };
+  pref = ComputePreferredAccountForPromo({default_acc, no_data_candidate});
+  ASSERT_TRUE(pref.has_value());
+  EXPECT_EQ(pref->gaia_id, GaiaId("default"));
+
+  // If default account is managed, eligible candidate is chosen.
+  AccountPreviewData managed_default_data =
+      CreatePreviewData({.passwords = 10});
+  AccountPreviewHeuristicContext managed_default{
+      .gaia_id = GaiaId("managed_default"),
+      .is_managed = true,
+      .preview_data = &managed_default_data,
+  };
+  AccountPreviewData consumer_data = CreatePreviewData({.passwords = 1});
+  AccountPreviewHeuristicContext consumer_candidate{
+      .gaia_id = GaiaId("consumer"),
+      .preview_data = &consumer_data,
+  };
+  pref = ComputePreferredAccountForPromo({managed_default, consumer_candidate});
+  ASSERT_TRUE(pref.has_value());
+  EXPECT_EQ(pref->gaia_id, GaiaId("consumer"));
+
+  // All accounts ineligible returns nullopt.
+  EXPECT_EQ(ComputePreferredAccountForPromo({managed_default, child_candidate}),
+            std::nullopt);
+}
+
+TEST_F(AccountPreviewHeuristicTest, DefaultAgaPrimary) {
+  AccountPreviewData default_aga_data = CreatePreviewData({.passwords = 5});
+  AccountPreviewHeuristicContext default_aga{
+      .gaia_id = GaiaId("default_aga"),
+      .is_external_app_primary = true,
+      .preview_data = &default_aga_data,
+  };
+
+  AccountPreviewData candidate_cross_more_data = CreatePreviewData(
+      {.passwords = 50},
+      {CreateDevicePreview(
+          "guid", base::Time::Now(),
+          sync_pb::SyncEnums_DeviceFormFactor_DEVICE_FORM_FACTOR_DESKTOP)});
+  AccountPreviewHeuristicContext candidate_cross_more{
+      .gaia_id = GaiaId("candidate_cross_more"),
+      .preview_data = &candidate_cross_more_data,
+  };
+  // Cross-device candidate with strictly more data overrides AGA default.
+  auto pref =
+      ComputePreferredAccountForPromo({default_aga, candidate_cross_more});
+  ASSERT_TRUE(pref.has_value());
+  EXPECT_EQ(pref->gaia_id, GaiaId("candidate_cross_more"));
+
+  AccountPreviewData candidate_single_more_data =
+      CreatePreviewData({.passwords = 50});
+  AccountPreviewHeuristicContext candidate_single_more{
+      .gaia_id = GaiaId("candidate_single_more"),
+      .preview_data = &candidate_single_more_data,
+  };
+  // Single-device candidate with more data cannot override AGA default.
+  pref = ComputePreferredAccountForPromo({default_aga, candidate_single_more});
+  ASSERT_TRUE(pref.has_value());
+  EXPECT_EQ(pref->gaia_id, GaiaId("default_aga"));
+
+  AccountPreviewData candidate_cross_equal_data = CreatePreviewData(
+      {.passwords = 5},
+      {CreateDevicePreview(
+          "guid", base::Time::Now(),
+          sync_pb::SyncEnums_DeviceFormFactor_DEVICE_FORM_FACTOR_DESKTOP)});
+  AccountPreviewHeuristicContext candidate_cross_equal{
+      .gaia_id = GaiaId("candidate_cross_equal"),
+      .preview_data = &candidate_cross_equal_data,
+  };
+  // Cross-device candidate with equal data cannot override AGA default.
+  pref = ComputePreferredAccountForPromo({default_aga, candidate_cross_equal});
+  ASSERT_TRUE(pref.has_value());
+  EXPECT_EQ(pref->gaia_id, GaiaId("default_aga"));
+}
+
+TEST_F(AccountPreviewHeuristicTest, CandidateCrossDeviceDefaultSingleDevice) {
+  AccountPreviewData default_data = CreatePreviewData({.passwords = 5});
+  AccountPreviewHeuristicContext default_single{
+      .gaia_id = GaiaId("default"),
+      .preview_data = &default_data,
+  };
+
+  AccountPreviewData candidate_cross_equal_data = CreatePreviewData(
+      {.passwords = 5},
+      {CreateDevicePreview(
+          "guid", base::Time::Now(),
+          sync_pb::SyncEnums_DeviceFormFactor_DEVICE_FORM_FACTOR_PHONE)});
+  AccountPreviewHeuristicContext candidate_cross_equal{
+      .gaia_id = GaiaId("candidate_equal"),
+      .preview_data = &candidate_cross_equal_data,
+  };
+  // Equal sync data -> Candidate wins.
+  auto pref =
+      ComputePreferredAccountForPromo({default_single, candidate_cross_equal});
+  ASSERT_TRUE(pref.has_value());
+  EXPECT_EQ(pref->gaia_id, GaiaId("candidate_equal"));
+
+  AccountPreviewData candidate_cross_less_data = CreatePreviewData(
+      {.passwords = 1},
+      {CreateDevicePreview(
+          "guid", base::Time::Now(),
+          sync_pb::SyncEnums_DeviceFormFactor_DEVICE_FORM_FACTOR_PHONE)});
+  AccountPreviewHeuristicContext candidate_cross_less{
+      .gaia_id = GaiaId("candidate_less"),
+      .preview_data = &candidate_cross_less_data,
+  };
+  // Less sync data -> Default remains preferred.
+  pref =
+      ComputePreferredAccountForPromo({default_single, candidate_cross_less});
+  ASSERT_TRUE(pref.has_value());
+  EXPECT_EQ(pref->gaia_id, GaiaId("default"));
+}
+
+TEST_F(AccountPreviewHeuristicTest, CandidateCrossDeviceDefaultCrossDevice) {
+  AccountPreviewData default_data = CreatePreviewData(
+      {.passwords = 5},
+      {CreateDevicePreview(
+          "guid1", base::Time::Now(),
+          sync_pb::SyncEnums_DeviceFormFactor_DEVICE_FORM_FACTOR_DESKTOP)});
+  AccountPreviewHeuristicContext default_cross{
+      .gaia_id = GaiaId("default"),
+      .preview_data = &default_data,
+  };
+
+  AccountPreviewData candidate_cross_equal_data = CreatePreviewData(
+      {.passwords = 5},
+      {CreateDevicePreview(
+          "guid2", base::Time::Now(),
+          sync_pb::SyncEnums_DeviceFormFactor_DEVICE_FORM_FACTOR_PHONE)});
+  AccountPreviewHeuristicContext candidate_cross_equal{
+      .gaia_id = GaiaId("candidate_equal"),
+      .preview_data = &candidate_cross_equal_data,
+  };
+  // Equal sync data -> Default remains preferred (requires strictly more).
+  auto pref =
+      ComputePreferredAccountForPromo({default_cross, candidate_cross_equal});
+  ASSERT_TRUE(pref.has_value());
+  EXPECT_EQ(pref->gaia_id, GaiaId("default"));
+
+  AccountPreviewData candidate_cross_more_data = CreatePreviewData(
+      {.passwords = 50},
+      {CreateDevicePreview(
+          "guid3", base::Time::Now(),
+          sync_pb::SyncEnums_DeviceFormFactor_DEVICE_FORM_FACTOR_PHONE)});
+  AccountPreviewHeuristicContext candidate_cross_more{
+      .gaia_id = GaiaId("candidate_more"),
+      .preview_data = &candidate_cross_more_data,
+  };
+  // Strictly more sync data -> Candidate wins.
+  pref = ComputePreferredAccountForPromo({default_cross, candidate_cross_more});
+  ASSERT_TRUE(pref.has_value());
+  EXPECT_EQ(pref->gaia_id, GaiaId("candidate_more"));
+}
+
+TEST_F(AccountPreviewHeuristicTest, CandidateSingleDeviceDefaultSingleDevice) {
+  AccountPreviewData default_data = CreatePreviewData({.passwords = 5});
+  AccountPreviewHeuristicContext default_single{
+      .gaia_id = GaiaId("default"),
+      .preview_data = &default_data,
+  };
+
+  AccountPreviewData candidate_single_equal_data =
+      CreatePreviewData({.passwords = 5});
+  AccountPreviewHeuristicContext candidate_single_equal{
+      .gaia_id = GaiaId("candidate_equal"),
+      .preview_data = &candidate_single_equal_data,
+  };
+  // Equal sync data -> Default remains preferred.
+  auto pref =
+      ComputePreferredAccountForPromo({default_single, candidate_single_equal});
+  ASSERT_TRUE(pref.has_value());
+  EXPECT_EQ(pref->gaia_id, GaiaId("default"));
+
+  AccountPreviewData candidate_single_more_data =
+      CreatePreviewData({.passwords = 50});
+  AccountPreviewHeuristicContext candidate_single_more{
+      .gaia_id = GaiaId("candidate_more"),
+      .preview_data = &candidate_single_more_data,
+  };
+  // Strictly more sync data -> Candidate wins.
+  pref =
+      ComputePreferredAccountForPromo({default_single, candidate_single_more});
+  ASSERT_TRUE(pref.has_value());
+  EXPECT_EQ(pref->gaia_id, GaiaId("candidate_more"));
+}
+
+TEST_F(AccountPreviewHeuristicTest, CandidateAgaPrimary) {
+  AccountPreviewData candidate_aga_data = CreatePreviewData({.passwords = 5});
+  AccountPreviewHeuristicContext candidate_aga{
+      .gaia_id = GaiaId("candidate_aga"),
+      .is_external_app_primary = true,
+      .preview_data = &candidate_aga_data,
+  };
+
+  AccountPreviewData default_cross_more_data = CreatePreviewData(
+      {.passwords = 50},
+      {CreateDevicePreview(
+          "guid", base::Time::Now(),
+          sync_pb::SyncEnums_DeviceFormFactor_DEVICE_FORM_FACTOR_DESKTOP)});
+  AccountPreviewHeuristicContext default_cross_more{
+      .gaia_id = GaiaId("default_cross"),
+      .preview_data = &default_cross_more_data,
+  };
+  // Blocked because default is cross-device AND has strictly more data.
+  auto pref =
+      ComputePreferredAccountForPromo({default_cross_more, candidate_aga});
+  ASSERT_TRUE(pref.has_value());
+  EXPECT_EQ(pref->gaia_id, GaiaId("default_cross"));
+
+  AccountPreviewData default_single_more_data =
+      CreatePreviewData({.passwords = 50});
+  AccountPreviewHeuristicContext default_single_more{
+      .gaia_id = GaiaId("default_single"),
+      .preview_data = &default_single_more_data,
+  };
+  // Default is single-device -> AGA candidate wins despite having less data.
+  pref = ComputePreferredAccountForPromo({default_single_more, candidate_aga});
+  ASSERT_TRUE(pref.has_value());
+  EXPECT_EQ(pref->gaia_id, GaiaId("candidate_aga"));
+
+  AccountPreviewData default_cross_equal_data = CreatePreviewData(
+      {.passwords = 5},
+      {CreateDevicePreview(
+          "guid", base::Time::Now(),
+          sync_pb::SyncEnums_DeviceFormFactor_DEVICE_FORM_FACTOR_DESKTOP)});
+  AccountPreviewHeuristicContext default_cross_equal{
+      .gaia_id = GaiaId("default_cross_equal"),
+      .preview_data = &default_cross_equal_data,
+  };
+  // Default is cross-device with equal data -> AGA candidate wins.
+  pref = ComputePreferredAccountForPromo({default_cross_equal, candidate_aga});
+  ASSERT_TRUE(pref.has_value());
+  EXPECT_EQ(pref->gaia_id, GaiaId("candidate_aga"));
+}
+
+TEST_F(AccountPreviewHeuristicTest,
+       MultiAccountCandidateSelectionAndTieBreaking) {
+  AccountPreviewData data1 = CreatePreviewData({.passwords = 5});
+  AccountPreviewHeuristicContext acc1{
+      .gaia_id = GaiaId("acc1"),
+      .preview_data = &data1,
+  };
+  AccountPreviewData data2 = CreatePreviewData({.passwords = 5});
+  AccountPreviewHeuristicContext acc2{
+      .gaia_id = GaiaId("acc2"),
+      .preview_data = &data2,
+  };
+  AccountPreviewData data3 = CreatePreviewData(
+      {.passwords = 50},
+      {CreateDevicePreview(
+          "guid", base::Time::Now(),
+          sync_pb::SyncEnums_DeviceFormFactor_DEVICE_FORM_FACTOR_TABLET)});
+  AccountPreviewHeuristicContext acc3{
+      .gaia_id = GaiaId("acc3"),
+      .preview_data = &data3,
+  };
+
+  // acc3 beats acc1 and acc2.
+  auto pref = ComputePreferredAccountForPromo({acc1, acc2, acc3});
+  ASSERT_TRUE(pref.has_value());
+  EXPECT_EQ(pref->gaia_id, GaiaId("acc3"));
+  EXPECT_EQ(pref->other_device_form_factor,
+            sync_pb::SyncEnums_DeviceFormFactor_DEVICE_FORM_FACTOR_TABLET);
+
+  // Tie between acc1 and acc2 preserves the earlier account (acc1).
+  pref = ComputePreferredAccountForPromo({acc1, acc2});
+  ASSERT_TRUE(pref.has_value());
+  EXPECT_EQ(pref->gaia_id, GaiaId("acc1"));
+}
+
+}  // namespace signin

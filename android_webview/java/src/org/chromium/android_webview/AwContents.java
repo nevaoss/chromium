@@ -1450,6 +1450,11 @@ public class AwContents implements SmartClipProvider {
      */
     private void updateContext(Context newContext) {
         mContext = ClassLoaderContextWrapperFactory.get(newContext);
+
+        if (mSettings != null) {
+            mSettings.updateContext();
+        }
+
         WindowAndroidWrapper newWindowAndroid = getWindowAndroid(newContext);
         if (newWindowAndroid != mWindowAndroid) {
             mWindowAndroid = newWindowAndroid;
@@ -2492,6 +2497,12 @@ public class AwContents implements SmartClipProvider {
         IllegalArgumentException headerException = validateAdditionalHeaders(params.extraHeaders);
         if (headerException != null) {
             throw headerException;
+        }
+
+        if (AwFeatureMap.isEnabled(AwFeatures.WEBVIEW_NAVIGATE_DRAIN_PREFETCH)) {
+            // Drain any pending prefetch requests from the queue.
+            // TODO (crbug.com/363939616) Clean this up once prefetch infra supports bg thread.
+            mBrowserContext.getPrefetchManager().executeQueuedPrefetchRequests();
         }
 
         // TODO(crbug.com/408974593): Consider adding a fixupUrl option.

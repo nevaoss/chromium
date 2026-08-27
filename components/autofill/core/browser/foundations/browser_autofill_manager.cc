@@ -1447,6 +1447,20 @@ bool BrowserAutofillManager::TryToShowTouchToFillSuggestions(
              form, trigger_field);
 }
 
+bool BrowserAutofillManager::MaybeShowPrivateInferenceNotice(
+    base::span<const Suggestion> autofill_ai_suggestions) {
+  if (std::ranges::contains(autofill_ai_suggestions,
+                            SuggestionType::kAutofillAiPrivateInferenceNotice,
+                            &Suggestion::type)) {
+    // Shows a message-based UI on mobile instead of the private inference
+    // notice suggestion, because suggestions can't have buttons on mobile
+    // platforms.
+    client().ShowAutofillAiPrivateInferenceNotice();
+  }
+
+  return false;
+}
+
 std::vector<Suggestion> BrowserAutofillManager::MergeWithAddressSuggestions(
     std::map<FillingProduct, std::vector<Suggestion>>& suggestions_map,
     AutofillSuggestionTriggerSource trigger_source) {
@@ -1579,17 +1593,22 @@ void BrowserAutofillManager::GenerateSuggestionsAndMaybeShowUIPhase2(
 
   AutofillAiManager* ai_manager = client().GetAutofillAiManager();
   if (form_structure && autofill_field && ai_manager &&
-      !context.do_not_generate_autofill_suggestions &&
-      GetFieldsFillableByAutofillAi(*form_structure, client())
-          .contains(field.global_id())) {
-    std::move(callback).Run(
-        /*show_suggestions=*/true,
-        ai_manager->GetSuggestions(*form_structure, field));
-    return;
-  } else if (suggestions.empty() && ai_manager && form_structure &&
-             ai_manager->ShouldDisplayIph(*form_structure, field.global_id()) &&
-             client().ShowAutofillFieldIphForFeature(
-                 field, AutofillClient::IphFeature::kAutofillAi)) {
+      !context.do_not_generate_autofill_suggestions) {
+    const bool is_fillable_by_ai =
+        GetFieldsFillableByAutofillAi(*form_structure, client())
+            .contains(field.global_id());
+    std::vector<Suggestion> autofill_ai_suggestions =
+        ai_manager->GetSuggestions(*form_structure, field);
+    if (is_fillable_by_ai || !autofill_ai_suggestions.empty()) {
+      std::move(callback).Run(
+          /*show_suggestions=*/true, std::move(autofill_ai_suggestions));
+      return;
+    }
+  }
+  if (suggestions.empty() && ai_manager && form_structure &&
+      ai_manager->ShouldDisplayIph(*form_structure, field.global_id()) &&
+      client().ShowAutofillFieldIphForFeature(
+          field, AutofillClient::IphFeature::kAutofillAi)) {
     std::move(callback).Run(/*show_suggestions=*/false, /*suggestions=*/{});
     return;
   }
@@ -1823,6 +1842,7 @@ void BrowserAutofillManager::OnGenerateSuggestionsComplete(
   }
 
   if (show_suggestions) {
+    MaybeShowPrivateInferenceNotice(suggestions);
     // Send Autofill suggestions (could be an empty list).
     external_delegate_->OnSuggestionsReturned(trigger_field, suggestions);
   }
@@ -2253,8 +2273,7 @@ void BrowserAutofillManager::DidShowSuggestions(
 
   if (AtMemoryManager* am = client().GetAtMemoryManager()) {
     am->OnPopupShown(form_id, field_id, trigger_source,
-                     parent_suggestion_metadata, client().IsContextSecure(),
-                     update_suggestions_callback,
+                     parent_suggestion_metadata, update_suggestions_callback,
                      driver().GetPageUkmSourceId());
   }
   if (parent_suggestion_metadata.has_value()) {
@@ -2561,7 +2580,9 @@ void BrowserAutofillManager::HandleLoadedServerPredictionsForAutofillAi(
   }
 
   for (const raw_ref<FormStructure>& form : forms) {
-    if (model_cache->Contains(form->form_signature())) {
+    if (model_cache->Contains(form->form_signature()) &&
+        !base::FeatureList::IsEnabled(
+            features::kAutofillAiAlwaysTriggerServerModel)) {
       if (MayPerformAutofillAiAction(
               client(),
               AutofillAiAction::kUseCachedServerClassificationModelResults)) {

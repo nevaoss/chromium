@@ -5325,6 +5325,146 @@ IN_PROC_BROWSER_TEST_P(DetachToBrowserTabDragControllerTest,
   ASSERT_FALSE(TabDragController::IsActive());
 }
 
+class DetachToBrowserTabDragControllerTestWithFocusMode
+    : public DetachToBrowserTabDragControllerTest {
+ public:
+  DetachToBrowserTabDragControllerTestWithFocusMode() {
+    focus_mode_feature_.InitAndEnableFeature(features::kTabGroupsFocusing);
+  }
+
+ private:
+  base::test::ScopedFeatureList focus_mode_feature_;
+};
+
+// Creates a browser with four tabs. The middle two belong in the same Tab
+// Group. When the group is focused in focus mode, dragging the group header
+// should not change the position or index of the group.
+IN_PROC_BROWSER_TEST_P(DetachToBrowserTabDragControllerTestWithFocusMode,
+                       DragGroupHeaderInFocusModeDoesNotMoveGroup) {
+  ASSERT_TRUE(browser()->tab_strip_model()->SupportsTabGroups());
+
+  TabStrip* tab_strip = GetTabStripForBrowser(browser());
+  TabStripModel* model = browser()->tab_strip_model();
+  TabGroupModel* group_model = model->group_model();
+
+  AddTabsAndResetBrowser(browser(), 3);
+  tab_groups::TabGroupId group = model->AddToNewGroup({1, 2});
+  EnsureFocusToTabStrip(tab_strip);
+  model->SetFocusedGroup(group);
+  StopAnimating(tab_strip);
+
+  ASSERT_EQ(4, model->count());
+  ASSERT_EQ(2u, group_model->GetTabGroup(group)->ListTabs().length());
+  EXPECT_EQ("0 1 2 3", IDString(model));
+
+  // Drag the group header to the right over tab 2.
+  ASSERT_TRUE(PressInputAtCenter(tab_strip->group_header(group)));
+  ASSERT_TRUE(DragInputToCenter(tab_strip->tab_at(2)));
+  ASSERT_TRUE(ReleaseInput());
+  StopAnimating(tab_strip);
+
+  // Group index and tab order should not have changed.
+  EXPECT_EQ("0 1 2 3", IDString(model));
+  EXPECT_EQ(group_model->GetTabGroup(group)->ListTabs(), gfx::Range(1, 3));
+  EXPECT_EQ(std::nullopt, model->GetTabGroupForTab(0));
+  EXPECT_EQ(group, model->GetTabGroupForTab(1));
+  EXPECT_EQ(group, model->GetTabGroupForTab(2));
+  EXPECT_EQ(std::nullopt, model->GetTabGroupForTab(3));
+
+  // Drag the group header to the right with an offset.
+  ASSERT_TRUE(PressInputAtCenter(tab_strip->group_header(group)));
+  ASSERT_TRUE(
+      DragInputToCenter(tab_strip->group_header(group), gfx::Vector2d(50, 0)));
+  ASSERT_TRUE(ReleaseInput());
+  StopAnimating(tab_strip);
+
+  // Group index and tab order should still remain unchanged.
+  EXPECT_EQ("0 1 2 3", IDString(model));
+  EXPECT_EQ(group_model->GetTabGroup(group)->ListTabs(), gfx::Range(1, 3));
+  EXPECT_EQ(std::nullopt, model->GetTabGroupForTab(0));
+  EXPECT_EQ(group, model->GetTabGroupForTab(1));
+  EXPECT_EQ(group, model->GetTabGroupForTab(2));
+  EXPECT_EQ(std::nullopt, model->GetTabGroupForTab(3));
+}
+
+// In a focused tab group, dragging a tab to the right past the furthest tab in
+// the group should not cause the tab to drop outside the focused group.
+IN_PROC_BROWSER_TEST_P(DetachToBrowserTabDragControllerTestWithFocusMode,
+                       DragTabInFocusedGroupToRightDoesNotLeaveGroup) {
+  ASSERT_TRUE(browser()->tab_strip_model()->SupportsTabGroups());
+
+  TabStrip* tab_strip = GetTabStripForBrowser(browser());
+  TabStripModel* model = browser()->tab_strip_model();
+  TabGroupModel* group_model = model->group_model();
+
+  AddTabsAndResetBrowser(browser(), 2);
+  tab_groups::TabGroupId group = model->AddToNewGroup({0, 1, 2});
+  EnsureFocusToTabStrip(tab_strip);
+  model->SetFocusedGroup(group);
+  StopAnimating(tab_strip);
+
+  ASSERT_EQ(3, model->count());
+  ASSERT_EQ(3u, group_model->GetTabGroup(group)->ListTabs().length());
+  EXPECT_EQ(group, model->GetFocusedGroup());
+
+  // Drag tab 0 to the right past the furthest tab in the tab group (tab 2).
+  ASSERT_TRUE(PressInputAtCenter(tab_strip->tab_at(0)));
+  ASSERT_TRUE(DragInputToCenter(tab_strip->tab_at(2), gfx::Vector2d(50, 0)));
+  ASSERT_TRUE(ReleaseInput());
+  StopAnimating(tab_strip);
+
+  // All tabs should still remain in the focused group, and tab 0 moved to
+  // index 2.
+  EXPECT_EQ("1 2 0", IDString(model));
+  EXPECT_EQ(group, model->GetFocusedGroup());
+  EXPECT_EQ(3u, group_model->GetTabGroup(group)->ListTabs().length());
+  EXPECT_EQ(group, model->GetTabGroupForTab(0));
+  EXPECT_EQ(group, model->GetTabGroupForTab(1));
+  EXPECT_EQ(group, model->GetTabGroupForTab(2));
+}
+
+// Creates two browsers, focuses a group in the second browser, then drags a
+// group from the first browser into the second browser. The second browser
+// should lose its focused state.
+IN_PROC_BROWSER_TEST_P(DetachToBrowserTabDragControllerTestWithFocusMode,
+                       DragGroupHeaderIntoWindowWithFocusedGroupUnfocuses) {
+  ASSERT_TRUE(browser()->tab_strip_model()->SupportsTabGroups());
+
+  TabStrip* tab_strip = GetTabStripForBrowser(browser());
+  TabStripModel* model = browser()->tab_strip_model();
+  AddTabsAndResetBrowser(browser(), 1);
+  tab_groups::TabGroupId group1 = model->AddToNewGroup({0, 1});
+  StopAnimating(tab_strip);
+
+  // Create another browser with a tab group.
+  Browser* browser2 = CreateAnotherBrowserAndResize();
+  TabStrip* tab_strip2 = GetTabStripForBrowser(browser2);
+  TabStripModel* model2 = browser2->tab_strip_model();
+  AddTabsAndResetBrowser(browser2, 1);
+  tab_groups::TabGroupId group2 = model2->AddToNewGroup({0, 1});
+  StopAnimating(tab_strip2);
+
+  // Focus group2 in browser2.
+  model2->SetFocusedGroup(group2);
+  ASSERT_EQ(model2->GetFocusedGroup(), group2);
+
+  // Drag group1 by its header from browser into browser2.
+  DragToDetachGroupAndNotify(tab_strip,
+                             base::BindOnce(&DragAllToSeparateWindowStep2, this,
+                                            tab_strip, tab_strip2),
+                             group1);
+
+  ASSERT_TRUE(WaitForAttach(tab_strip2, 4));
+  ASSERT_TRUE(ReleaseInput());
+  StopAnimating(tab_strip2);
+
+  // Expect browser2 to lose the focused state so both groups are occupied
+  // safely.
+  EXPECT_EQ(model2->GetFocusedGroup(), std::nullopt);
+  EXPECT_TRUE(model2->group_model()->ContainsTabGroup(group1));
+  EXPECT_TRUE(model2->group_model()->ContainsTabGroup(group2));
+}
+
 #if BUILDFLAG(IS_CHROMEOS)
 namespace {
 
@@ -6848,10 +6988,22 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::Combine(
         /*kTearOffWebAppTabOpensWebAppWindow=*/::testing::Values(false),
         /*input_source=*/::testing::Values("mouse", "touch")));
+INSTANTIATE_TEST_SUITE_P(
+    TabDragging,
+    DetachToBrowserTabDragControllerTestWithFocusMode,
+    ::testing::Combine(
+        /*kTearOffWebAppTabOpensWebAppWindow=*/::testing::Values(false),
+        /*input_source=*/::testing::Values("mouse", "touch")));
 #else
 INSTANTIATE_TEST_SUITE_P(
     TabDragging,
     DetachToBrowserTabDragControllerTest,
+    ::testing::Combine(
+        /*kTearOffWebAppTabOpensWebAppWindow=*/::testing::Bool(),
+        /*input_source=*/::testing::Values("mouse")));
+INSTANTIATE_TEST_SUITE_P(
+    TabDragging,
+    DetachToBrowserTabDragControllerTestWithFocusMode,
     ::testing::Combine(
         /*kTearOffWebAppTabOpensWebAppWindow=*/::testing::Bool(),
         /*input_source=*/::testing::Values("mouse")));

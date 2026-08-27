@@ -74,7 +74,6 @@
 <translation id="1046521327593783388">{NUM_PASSWORDS,plural, =1{1 件のパスワードをこのデバイスの <ph name="BRAND" /> にインポートしました}other{{NUM_PASSWORDS} 件のパスワードをこのデバイスの <ph name="BRAND" /> にインポートしました}}</translation>
 <translation id="1046572983040892965">ウィンドウを左上に移動しました</translation>
 <translation id="1047431265488717055">リンクテキストをコピー(&amp;X)</translation>
-<translation id="1048350929895890054">フローティング メニューを表示しないサイト</translation>
 <translation id="1048986595386481879">動的に割り当て</translation>
 <translation id="1049324577536766607">{COUNT,plural, =1{<ph name="DEVICE_NAME" /> から <ph name="ATTACHMENTS" />を受信しています}other{<ph name="DEVICE_NAME" /> から <ph name="ATTACHMENTS" />を受信しています}}</translation>
 <translation id="1049743911850919806">シークレット モード</translation>
@@ -235,7 +234,6 @@
 <translation id="1164891049599601209">不正なサイトで入力</translation>
 <translation id="1165039591588034296">エラー</translation>
 <translation id="1166212789817575481">右側のタブを閉じる</translation>
-<translation id="1166457390969131095">Google アカウントのパスワードとパスキーを使用、保存する</translation>
 <translation id="1166583374608765787">新しい名前を確認</translation>
 <translation id="1166596238782048887"><ph name="TAB_TITLE" /> はデスク <ph name="DESK_TITLE" /> に含まれています</translation>
 <translation id="1167008614036441342">最近使用していないため、カードを削除しました</translation>
@@ -3094,7 +3092,6 @@
 <translation id="3385916046075724800">タブグループが自動的に保存されるようになりました。</translation>
 <translation id="3387023983419383865">、</translation>
 <translation id="3387412523265061481">分割ビューで開く(&amp;S)</translation>
-<translation id="3387588771342841525">オンにすると、パスワードは <ph name="EMAIL" /> に保存されます。オフにすると、パスワードはこのデバイスのみに保存されます。</translation>
 <translation id="3387614642886316601">拡張スペルチェックを使用する</translation>
 <translation id="3387829698079331264">このデバイスのアクティブ状態の検出を許可しない</translation>
 <translation id="3388094447051599208">排紙トレイがあと少しでいっぱいです</translation>
@@ -4214,6 +4211,7 @@
 <translation id="4232375817808480934">Kerberos の設定</translation>
 <translation id="4232376164796433044">パスワードと自動入力</translation>
 <translation id="4233739489690259993">この Chromebook は、セキュリティ アップデートとソフトウェア アップデートの提供が終了しました。最新のセキュリティと新機能でデバイスをアップグレードしましょう。特典の利用規約が適用されます。</translation>
+<translation id="4235200303672858594">画面全体</translation>
 <translation id="4235965441080806197">ログインをキャンセル</translation>
 <translation id="4235976607074422892">スクロール速度</translation>
 <translation id="4236163961381003811">他の拡張機能を見る</translation>
@@ -5764,6 +5762,7 @@
 <translation id="5444281205834970653">削除して続行</translation>
 <translation id="5444452275167152925">ChromeOS からインポート</translation>
 <translation id="5445400788035474247">10 倍</translation>
+<translation id="5446836766119801744">⌥L</translation>
 <translation id="5447289297870286353">ブレインストーミング</translation>
 <translation id="5449551289610225147">パスワードが無効です</translation>
 <translation id="5449588825071916739">すべてのタブをブックマークに追加する</translation>
@@ -5897,7 +5896,6 @@
 <translation id="5546865291508181392">検索</translation>
 <translation id="5547868626772433490">Gemini に相談</translation>
 <translation id="5548075230008247516">すべての項目の選択を解除し、選択モードを終了しました。</translation>
-<translation id="554810465530189549">テキストを選択したときにフローティング メニューを表示しない</translation>
 <translation id="5548159762883465903">{NUM_OTHER_TABS,plural, =0{「<ph name="TAB_TITLE" />」}=1{「<ph name="TAB_TITLE" />」と他 1 個のタブ}other{「<ph name="TAB_TITLE" />」と他 # 個のタブ}}</translation>
 <translation id="554903022911579950">Kerberos</translation>
 <translation id="5551573675707792127">キーボードとテキスト入力</translation>
@@ -6055,7 +6053,6 @@
 <translation id="5678955352098267522"><ph name="WEBSITE_1" /> でのユーザーデータの読み取り</translation>
 <translation id="5680050361008726776">「<ph name="ESIM_PROFILE_NAME" />」を削除しますか？</translation>
 <translation id="5681586175480958839">ファイルはすでに開かれています</translation>
-<translation id="5682950763196110705">テキストを選択したときにフローティング メニューを表示する</translation>
 <translation id="5684110242705861346">「<ph name="NAME" />」拡張機能は組織のポリシーによって追加され、この設定を制御しています。<ph name="BEGIN_LINK" />詳細を表示<ph name="END_LINK" /></translation>
 <translation id="5684181005476681636">Wi-Fi の詳細</translation>
 <translation id="5687340364605915800">このリクエストへの対応はサイトが自らの裁量で決定します</translation>
@@ -7344,6 +7341,7 @@
 <translation id="6702859741546259407"><ph name="FEATURE_NAME" />　を使うには、Bluetooth と Wi-Fi をオンにしてください</translation>
 <translation id="6703109186846420472">、</translation>
 <translation id="670431355064244920">フォーカス（小）</translation>
+<translation id="6706210727756204531">範囲</translation>
 <translation id="6707122714992751648">ChromeOS 診断テストを実行する</translation>
 <translation id="6707389671160270963">SSL クライアント証明書</translation>
 <translation id="6707671917294473995">ウェブサイトでカメラの使用は許可されていません</translation>
@@ -8128,6 +8126,7 @@
 <translation id="7311244614769792472">一致する結果は見つかりませんでした</translation>
 <translation id="7312040805247765153">アプリをインストールできません</translation>
 <translation id="7312210124139670355">管理者が eSIM をリセットしています。この処理には数分かかることがあります。</translation>
+<translation id="731239254927333251">Alt+L</translation>
 <translation id="7313539585802573958">キーボード バックライトの色</translation>
 <translation id="7314722166530073269">{NUM_EVENTS,plural, =1{日付を特定できなかった 1 件のイベントは表示されていません}other{日付を特定できなかった # 件のイベントは表示されていません}}</translation>
 <translation id="7314865262803554456">録画の開始時には通知されません。</translation>

@@ -2512,6 +2512,7 @@ interface Element : Node
     method getAttributeNodeNS
     method getBoundingClientRect
     method getBoxQuads
+    method getCanvasTransform
     method getClientRects
     method getElementsByClassName
     method getElementsByTagName
@@ -2553,6 +2554,7 @@ interface Element : Node
     method setAttributeNS
     method setAttributeNode
     method setAttributeNodeNS
+    method setCanvasTransform
     method setHTML
     method setHTMLUnsafe
     method setPointerCapture
@@ -5189,7 +5191,10 @@ interface HTMLTemplateElement : HTMLElement
     attribute @@toStringTag
     getter buffer
     getter content
+    getter crossOrigin
     getter htmlFor
+    getter integrity
+    getter referrerPolicy
     getter sanitize
     getter shadowRootAdoptedStyleSheets
     getter shadowRootClonable
@@ -5199,9 +5204,13 @@ interface HTMLTemplateElement : HTMLElement
     getter shadowRootReferenceTarget
     getter shadowRootSerializable
     getter shadowRootSlotAssignment
+    getter src
     method constructor
     setter buffer
+    setter crossOrigin
     setter htmlFor
+    setter integrity
+    setter referrerPolicy
     setter sanitize
     setter shadowRootAdoptedStyleSheets
     setter shadowRootClonable
@@ -5211,6 +5220,7 @@ interface HTMLTemplateElement : HTMLElement
     setter shadowRootReferenceTarget
     setter shadowRootSerializable
     setter shadowRootSlotAssignment
+    setter src
 interface HTMLTextAreaElement : HTMLElement
     attribute @@toStringTag
     getter autocomplete
@@ -7229,6 +7239,7 @@ interface Performance : EventTarget
     method mark
     method markConditional
     method measure
+    method measureConditional
     method now
     method setResourceTimingBufferSize
     method toJSON
@@ -7309,6 +7320,9 @@ interface PerformanceMarkConditional : PerformanceEntry
 interface PerformanceMeasure : PerformanceEntry
     attribute @@toStringTag
     getter detail
+    method constructor
+interface PerformanceMeasureConditional : PerformanceEntry
+    attribute @@toStringTag
     method constructor
 interface PerformanceNavigation
     attribute @@toStringTag

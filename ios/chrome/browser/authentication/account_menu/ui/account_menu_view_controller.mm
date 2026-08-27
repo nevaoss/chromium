@@ -96,7 +96,8 @@ NSString* const kCustomExpandedDetentIdentifier = @"customExpandedDetent";
 
 }  // namespace
 
-@interface AccountMenuViewController () <UITableViewDelegate>
+@interface AccountMenuViewController () <CentralAccountViewDelegate,
+                                         UITableViewDelegate>
 
 @property(nonatomic, strong) UITableView* tableView;
 
@@ -117,6 +118,7 @@ NSString* const kCustomExpandedDetentIdentifier = @"customExpandedDetent";
   BOOL _resizeReady;
   // Whether or not to hide the ellipsis menu.
   BOOL _hideEllipsisMenu;
+  UIView* _blockingOverlay;
 }
 
 - (instancetype)initWithHideEllipsisMenu:(BOOL)hideEllipsisMenu {
@@ -691,12 +693,35 @@ NSString* const kCustomExpandedDetentIdentifier = @"customExpandedDetent";
   return [[UIView alloc] initWithFrame:CGRectZero];
 }
 
+#pragma mark - CentralAccountViewDelegate
+
+- (void)centralAccountViewDidTapAISubscriptionChip:(CentralAccountView*)view {
+  base::RecordAction(
+      base::UserMetricsAction("Signin_AccountMenu_SubscriptionChip"));
+}
+
 #pragma mark - AccountMenuConsumer
 
 - (void)setUserInteractionsEnabled:(BOOL)enabled {
   self.tableView.allowsSelection = enabled;
+  _identityAccountView.userInteractionEnabled = enabled;
+  self.tableView.scrollEnabled = enabled;
   _closeButton.enabled = enabled;
   _ellipsisButton.enabled = enabled;
+  self.navigationController.modalInPresentation = !enabled;
+  self.modalInPresentation = !enabled;
+  self.tableView.accessibilityElementsHidden = !enabled;
+
+  if (enabled) {
+    [_blockingOverlay removeFromSuperview];
+    _blockingOverlay = nil;
+  } else if (!_blockingOverlay) {
+    _blockingOverlay = [[UIView alloc] init];
+    _blockingOverlay.translatesAutoresizingMaskIntoConstraints = NO;
+    _blockingOverlay.backgroundColor = UIColor.clearColor;
+    [self.view addSubview:_blockingOverlay];
+    AddSameConstraints(_blockingOverlay, self.view);
+  }
 }
 
 - (void)switchingStarted {
@@ -741,6 +766,7 @@ NSString* const kCustomExpandedDetentIdentifier = @"customExpandedDetent";
                       email:self.dataSource.primaryAccountEmail
       managementDescription:self.dataSource.managementDescription
             useLargeMargins:NO];
+  _identityAccountView.delegate = self;
   [_identityAccountView updateTopPadding:[self navigationBarHeight]];
   self.tableView.tableHeaderView = _identityAccountView;
   [self.tableView reloadData];

@@ -997,6 +997,7 @@ public class StripLayoutHelperTest {
     }
 
     @Test
+    @DisableFeatures(ChromeFeatureList.TAB_CLOSURE_METHOD_REFACTOR)
     public void testAllTabsClosed() {
         initializeTest(false, false, 0);
         assertTrue(
@@ -1008,6 +1009,25 @@ public class StripLayoutHelperTest {
 
         // Notify strip of tab closure
         mStripLayoutHelper.willCloseAllTabs();
+
+        // Verify strip has no tabs.
+        assertTrue(mStripLayoutHelper.getStripLayoutTabsForTesting().length == 0);
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.TAB_CLOSURE_METHOD_REFACTOR)
+    public void testAllTabsClosed_WillCloseTabs() {
+        initializeTest(false, false, 0);
+        assertTrue(
+                mStripLayoutHelper.getStripLayoutTabsForTesting().length == TEST_TAB_TITLES.length);
+
+        // Close all tabs
+        mModel.getTabRemover()
+                .closeTabs(TabClosureParams.closeAllTabs().build(), /* allowDialog= */ false);
+
+        // Notify strip of tab closure
+        mStripLayoutHelper.willCloseTabs(
+                List.of(), /* isAllTabs= */ true, /* allowUndo= */ false);
 
         // Verify strip has no tabs.
         assertTrue(mStripLayoutHelper.getStripLayoutTabsForTesting().length == 0);
@@ -1762,6 +1782,14 @@ public class StripLayoutHelperTest {
 
         TintedCompositorButton button = mStripLayoutHelper.getTabSearchButton();
 
+        // Verify tab search button default background tint.
+        int defaultBackgroundTint =
+                mContext.getColorStateList(R.color.tab_strip_tsb_bg_tint_list).getDefaultColor();
+        assertEquals(
+                "Tab Search button default background tint is not as expected",
+                defaultBackgroundTint,
+                button.getBackgroundTint());
+
         // Verify tab search button hover highlight default tint.
         button.setHovered(true);
         int defaultHoverBackgroundTint = mActivity.getColor(R.color.tab_strip_button_bg_hover_tint);
@@ -1790,6 +1818,15 @@ public class StripLayoutHelperTest {
         mStripLayoutHelper.updateLayout(TIMESTAMP);
 
         TintedCompositorButton button = mStripLayoutHelper.getTabSearchButton();
+
+        // Verify tab search button default background tint.
+        int defaultBackgroundTint =
+                mContext.getColorStateList(R.color.tab_strip_tsb_bg_incognito_tint_list)
+                        .getDefaultColor();
+        assertEquals(
+                "Tab Search button default background tint is not as expected",
+                defaultBackgroundTint,
+                button.getBackgroundTint());
 
         // Verify tab search button incognito hover highlight default tint.
         button.setHovered(true);
@@ -1857,6 +1894,56 @@ public class StripLayoutHelperTest {
                 "Tab search button opacity should remain 1.f",
                 1.f,
                 tabSearchButton.getOpacity(),
+                EPSILON);
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.TAB_SEARCH_FOR_DESKTOP)
+    public void testTabSearchButtonFadeAndMargins_Ltr() {
+        // Setup LTR with Tab Search Button enabled
+        initializeTest(/* rtl= */ false, /* incognito= */ false, /* tabIndex= */ 0);
+        mStripLayoutHelper.onSizeChanged(
+                STRIP_WIDTH, STRIP_HEIGHT, false, TIMESTAMP, PADDING_LEFT, PADDING_RIGHT, 0f);
+        mStripLayoutHelper.updateLayout(TIMESTAMP);
+
+        // Verify mReservedStartMargin is 38.f (BUTTON_TOUCH_TARGET_SIZE_DP (48) - 10.f)
+        assertEquals(
+                "Reserved start margin should be 38.f",
+                38.f,
+                mStripLayoutHelper.getReservedStartMarginForTesting(),
+                EPSILON);
+
+        // Verify left fade opaque width: BUTTON_TOUCH_TARGET_SIZE_DP (48) + mButtonSideFadePadding
+        // (8)
+        assertEquals(
+                "Left fade opaque width should be 56.f",
+                56.f,
+                mStripLayoutHelper.getLeftFadeOpaqueWidth(),
+                EPSILON);
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.TAB_SEARCH_FOR_DESKTOP)
+    public void testTabSearchButtonFadeAndMargins_Rtl() {
+        // Setup RTL with Tab Search Button enabled
+        initializeTest(/* rtl= */ true, /* incognito= */ false, /* tabIndex= */ 0);
+        mStripLayoutHelper.onSizeChanged(
+                STRIP_WIDTH, STRIP_HEIGHT, false, TIMESTAMP, PADDING_LEFT, PADDING_RIGHT, 0f);
+        mStripLayoutHelper.updateLayout(TIMESTAMP);
+
+        // Verify mReservedStartMargin is 38.f (BUTTON_TOUCH_TARGET_SIZE_DP (48) - 10.f)
+        assertEquals(
+                "Reserved start margin should be 38.f",
+                38.f,
+                mStripLayoutHelper.getReservedStartMarginForTesting(),
+                EPSILON);
+
+        // Verify right fade opaque width: BUTTON_TOUCH_TARGET_SIZE_DP (48) + mButtonSideFadePadding
+        // (8)
+        assertEquals(
+                "Right fade opaque width should be 56.f",
+                56.f,
+                mStripLayoutHelper.getRightFadeOpaqueWidth(),
                 EPSILON);
     }
 
@@ -6395,11 +6482,11 @@ public class StripLayoutHelperTest {
 
         assertEquals(
                 "Hover card delay for min tab is incorrect.",
-                StripLayoutHelper.MIN_HOVER_CARD_DELAY_MS,
+                TabHoverCardView.MIN_HOVER_CARD_DELAY_MS,
                 mStripLayoutHelper.getHoverCardDelay(TAB_WIDTH_SMALL));
         assertEquals(
                 "Hover card delay for width < min tab is incorrect.",
-                StripLayoutHelper.MIN_HOVER_CARD_DELAY_MS,
+                TabHoverCardView.MIN_HOVER_CARD_DELAY_MS,
                 mStripLayoutHelper.getHoverCardDelay(TAB_WIDTH_SMALL - 1.f));
         assertEquals(
                 "Hover card delay for medium tab is incorrect.",
@@ -6407,7 +6494,7 @@ public class StripLayoutHelperTest {
                 mStripLayoutHelper.getHoverCardDelay(TAB_WIDTH_MEDIUM));
         assertEquals(
                 "Hover card delay for max tab is incorrect.",
-                StripLayoutHelper.MAX_HOVER_CARD_DELAY_MS,
+                TabHoverCardView.MAX_HOVER_CARD_DELAY_MS,
                 mStripLayoutHelper.getHoverCardDelay(MAX_TAB_WIDTH_DP));
     }
 

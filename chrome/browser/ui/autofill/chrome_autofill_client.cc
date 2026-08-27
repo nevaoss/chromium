@@ -201,6 +201,7 @@
 #include "components/autofill/core/browser/payments/autofill_save_card_infobar_delegate_mobile.h"
 #include "components/infobars/content/content_infobar_manager.h"
 #include "components/infobars/core/infobar.h"
+#include "components/messages/android/message_enums.h"
 #include "components/messages/android/messages_feature.h"
 #include "components/strings/grit/components_strings.h"
 #else  // !BUILDFLAG(IS_ANDROID)
@@ -876,13 +877,16 @@ ChromeAutofillClient::ShowAutofillSuggestions(
   // guarantees the IPH will be hidden by the time the Autofill Popup will
   // attempt to open. This works because the tasks of hiding the IPH and showing
   // the Autofill Popup are posted on the same thread (UI thread).
+  const FieldGlobalId expected_field_id =
+      delegate ? delegate->GetQueriedFieldId() : FieldGlobalId();
+
   const SuggestionUiSessionId session_id =
       AutofillSuggestionController::GenerateSuggestionUiSessionId();
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE,
       base::BindOnce(&ChromeAutofillClient::ShowAutofillSuggestionsImpl,
                      weak_ptr_factory_.GetWeakPtr(), session_id, open_args,
-                     delegate));
+                     delegate, expected_field_id));
   return session_id;
 }
 
@@ -928,7 +932,7 @@ void ChromeAutofillClient::UpdateAutofillSuggestions(
   suggestion_controller_->Show(
       *session_id, suggestions, trigger_source,
       ShouldAutofillPopupAutoselectFirstSuggestion(trigger_source),
-      ignore_focus_loss);
+      ignore_focus_loss, /*search_bar_initial_value=*/{});
 }
 
 void ChromeAutofillClient::HideSuggestions(
@@ -1375,7 +1379,15 @@ void ChromeAutofillClient::ShowEmailVerificationPopup(
 void ChromeAutofillClient::ShowAutofillSuggestionsImpl(
     SuggestionUiSessionId session_id,
     const PopupOpenArgs& open_args,
-    base::WeakPtr<AutofillSuggestionDelegate> delegate) {
+    base::WeakPtr<AutofillSuggestionDelegate> delegate,
+    FieldGlobalId expected_field_id) {
+  if (expected_field_id &&
+      (!delegate || delegate->GetQueriedFieldId() != expected_field_id) &&
+      base::FeatureList::IsEnabled(
+          features::kAutofillCheckTriggeringFieldDoesNotChangeDuringFilling)) {
+    return;
+  }
+
   // Convert element_bounds to be in screen space.
   const gfx::Rect client_area = web_contents()->GetContainerBounds();
   const gfx::RectF element_bounds_in_screen_space =
@@ -1394,7 +1406,8 @@ void ChromeAutofillClient::ShowAutofillSuggestionsImpl(
   suggestion_controller_->Show(
       session_id, open_args.suggestions, open_args.trigger_source,
       ShouldAutofillPopupAutoselectFirstSuggestion(open_args.trigger_source),
-      AutofillSuggestionsIgnoreFocusLoss(false));
+      AutofillSuggestionsIgnoreFocusLoss(false),
+      open_args.search_bar_initial_value);
 
   // When testing, try to keep popup open when the reason to hide is one of:
   // - An external browser frame resize that is extraneous to our testing goals.
@@ -1579,7 +1592,6 @@ void ChromeAutofillClient::ShowAutofillAiPreFetchFailureNotification() {
 
 void ChromeAutofillClient::ShowAutofillAiPrivateInferenceNotice() {
 #if BUILDFLAG(IS_ANDROID)
-  // TODO(crbug.com/530174611): Record the timestamp when the notice was shown.
   base::OnceClosure action_callback = base::BindOnce(
       [](base::WeakPtr<AutofillClient> client) {
         if (client && client->GetPrefs()) {
@@ -1587,13 +1599,28 @@ void ChromeAutofillClient::ShowAutofillAiPrivateInferenceNotice() {
               prefs::kAutofillAiPrivateInferenceNoticeAcknowledgedTimestamp,
               base::Time::Now());
         }
+        AutofillMetrics::LogAutofillAiPrivateInferenceNoticeInteraction(
+            AutofillMetrics::PopupNoticeInteractions::kAcknowledged);
       },
       GetWeakPtr());
+  messages::MessageWrapper::DismissCallback dismiss_callback =
+      base::BindOnce([](messages::DismissReason unused) {
+        AutofillMetrics::LogAutofillAiPrivateInferenceNoticeInteraction(
+            AutofillMetrics::PopupNoticeInteractions::kDismissed);
+      });
+  base::RepeatingClosure secondary_action_callback = base::BindRepeating(
+      [](content::WebContents* web_contents) {
+        AutofillMetrics::LogAutofillAiPrivateInferenceNoticeInteraction(
+            AutofillMetrics::PopupNoticeInteractions::kLinkButtonClicked);
+        ShowAutofillSettingsPage(web_contents);
+      },
+      web_contents());
   GetAutofillMessageController()->Show(
       AutofillMessageModel::CreateForPrivateInferenceNotice(
-          web_contents(), std::move(action_callback)));
-#else
-  NOTREACHED();
+          std::move(action_callback), std::move(dismiss_callback),
+          std::move(secondary_action_callback)));
+  AutofillMetrics::LogAutofillAiPrivateInferenceNoticeInteraction(
+      AutofillMetrics::PopupNoticeInteractions::kShown);
 #endif  // BUILDFLAG(IS_ANDROID)
 }
 

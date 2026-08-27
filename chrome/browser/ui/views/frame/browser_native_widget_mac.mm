@@ -24,6 +24,7 @@
 #include "chrome/browser/ui/browser_command_controller.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #import "chrome/browser/ui/cocoa/browser_window_command_handler.h"
 #import "chrome/browser/ui/cocoa/chrome_command_dispatcher_delegate.h"
 #import "chrome/browser/ui/cocoa/touchbar/browser_window_touch_bar_controller.h"
@@ -79,7 +80,7 @@ AppShimHost* GetHostForBrowser(BrowserView* browser_view) {
   return shim_manager->GetHostForRemoteCocoaBrowser(browser_view->browser());
 }
 
-bool UsesRemoteCocoaApplicationHost(Browser* browser) {
+bool UsesRemoteCocoaApplicationHost(BrowserWindowInterface* browser) {
   auto* const shim_manager = apps::AppShimManager::Get();
   return shim_manager && shim_manager->BrowserUsesRemoteCocoa(browser);
 }
@@ -282,12 +283,13 @@ std::optional<int> BrowserNativeWidgetMac::GetGlassFrameHeight() const {
       browser_view_->browser_widget()->GetFrameView()) {
     height = browser_view_->browser_widget()->GetFrameView()->GetTopInset(true);
   }
-  // The glass frame area covers the tab strip plus a slight overlap into the
-  // toolbar so the corner radii meet at the tangent point without visual
-  // overlap.
+  // The glass frame area covers the tab strip and toolbar plus a slight
+  // overlap into the web contents so the corner radii meet at the tangent point
+  // without visual overlap. It expands past the tabstrip to include the toolbar
+  // to prevent glass frame artifacts when one of the dimensions is too small.
   const auto top_element_info = browser_view_->GetFrameElementInfo();
   height += top_element_info.top_area_height();
-  height += GetGlassCornerPadding();
+  height += top_element_info.toolbar_preferred_height;
   return height;
 }
 
@@ -380,7 +382,8 @@ void BrowserNativeWidgetMac::OnWidgetDestroyed(views::Widget* widget) {
 void BrowserNativeWidgetMac::ValidateUserInterfaceItem(
     int32_t tag,
     remote_cocoa::mojom::ValidateUserInterfaceItemResult* result) {
-  Browser* const browser = browser_view_ ? browser_view_->browser() : nullptr;
+  BrowserWindowInterface* const browser =
+      browser_view_ ? browser_view_->browser() : nullptr;
   if (!browser || !chrome::SupportsCommand(browser, tag)) {
     result->enable = false;
     return;
@@ -592,7 +595,7 @@ bool BrowserNativeWidgetMac::WillExecuteCommand(
     return false;
   }
 
-  Browser* const browser = browser_view_->browser();
+  BrowserWindowInterface* const browser = browser_view_->browser();
 
   if (is_before_first_responder) {
     // The specification for this private extensions API is incredibly vague.
@@ -630,7 +633,7 @@ bool BrowserNativeWidgetMac::ExecuteCommand(
     return false;
   }
 
-  Browser* browser = browser_view_->browser();
+  BrowserWindowInterface* browser = browser_view_->browser();
 
   if (command == IDC_TOGGLE_VERTICAL_TABS) {
     if (auto* controller =

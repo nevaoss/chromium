@@ -248,14 +248,14 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
             shiftKey: e.shiftKey,
           },
           /*viaKeyboard=*/ e instanceof KeyboardEvent);
-      this.getInputElement().setInput({
-        text: this.computeMatchFillIntoEdit_(match),
-        inline: '',
-        moveCursorToEnd: true,
-      });
-      const isBackgroundTab = this.isBackgroundTabNavigation(e);
 
+      const isBackgroundTab = this.isBackgroundTabNavigation(e);
       if (!isBackgroundTab) {
+        this.getInputElement().setInput({
+          text: this.computeMatchFillIntoEdit_(match),
+          inline: '',
+          moveCursorToEnd: true,
+        });
         this.clearAutocompleteMatches();
       }
       e.preventDefault();
@@ -362,6 +362,18 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
         return;
       }
 
+      if (this.shouldAcceptQuestionMarkKeywordEntry(input)) {
+        this.inputKeywordModel = {
+          type: KeywordType.kInKeyword,
+          keyword: '?',
+          displayText: '',
+        };
+        this.getInputElement().setInputText('');
+        this.queryAutocomplete(
+            '', /*preventInlineAutocomplete=*/ false, /*isOnFocus=*/ false);
+        return;
+      }
+
       const isEmpty = !input.trim() &&
           this.inputKeywordModel?.type !== KeywordType.kInKeyword;
       if (isEmpty) {
@@ -382,7 +394,8 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
         return;
       }
 
-      if (this.lastQueriedInput === '') {
+      if (this.lastQueriedInput === '' &&
+          this.inputKeywordModel?.type !== KeywordType.kInKeyword) {
         // Clear the input as well as the matches if the input was empty when
         // the matches arrived.
         this.getInputElement().setInput({text: '', inline: ''});
@@ -462,7 +475,37 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
     }
 
     async handleKeyNavigation(e: KeyboardEvent) {
-      if (e.key === 'Backspace' || e.key === 'Tab') {
+      if (e.key === 'Backspace') {
+        const inputEl = this.getInputElement().inputElement;
+        const cursorAtStart =
+            inputEl.selectionStart === 0 && inputEl.selectionEnd === 0;
+        if (this.inputKeywordModel?.type === KeywordType.kInKeyword &&
+            cursorAtStart) {
+          const remainingText = inputEl.value;
+          // TODO(b:504669216): Restoring keyword text correctly is more
+          //   complicated than just prepending keyword and a space.
+          const restoredKeywordText = this.inputKeywordModel.keyword + ' ';
+          const restoredText = restoredKeywordText + remainingText;
+          const newCursorPos = restoredKeywordText.length;
+
+          this.inputKeywordModel = null;
+
+          this.getInputElement().setInput({
+            text: restoredText,
+            inline: '',
+            moveCursorToEnd: false,
+          });
+          inputEl.setSelectionRange(newCursorPos, newCursorPos);
+
+          this.queryAutocomplete(
+              restoredText, /*preventInlineAutocomplete=*/ true,
+              /*isOnFocus=*/ false);
+          e.preventDefault();
+        }
+        return;
+      }
+
+      if (e.key === 'Tab') {
         return;
       }
 
@@ -625,6 +668,18 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
       });
     }
 
+    onKeywordClick(e: Event) {
+      const match =
+          (e as CustomEvent<{match?: AutocompleteMatch}>).detail.match;
+      assert(match?.keywordModel);
+      this.inputKeywordModel = {
+        type: KeywordType.kInKeyword,
+        keyword: match.keywordModel.keyword,
+        displayText: match.keywordModel.chipHint,
+      };
+      this.getInputElement().setInputText('');
+    }
+
     private computeMatchFillIntoEdit_(match: AutocompleteMatch): string {
       if (this.inputKeywordModel?.type === KeywordType.kInKeyword) {
         const keyword = this.inputKeywordModel.keyword;
@@ -694,6 +749,32 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
       return true;
     }
 
+    private shouldAcceptQuestionMarkKeywordEntry(input: string): boolean {
+      // Input must be '?'.
+      if (input !== '?') {
+        return false;
+      }
+
+      // Cursor must be after '?'.
+      if (this.getInputElement().inputElement.selectionStart !== 1) {
+        return false;
+      }
+
+      // Must not already be in keyword mode.
+      if (this.inputKeywordModel?.type === KeywordType.kInKeyword) {
+        return false;
+      }
+
+      // Input must have been typed, not backspaced to '?'. E.g. '?q<backspace>'
+      // should not enter keyword mode.
+      // TODO(b/504669216): this isn't handled yet.
+
+      // Input must have been typed, not pasted.
+      // TODO(b/504669216): webUI doesn't track paste state yet.
+
+      return true;
+    }
+
     private computeInputAriaLive_(): string {
       return this.selectedMatch ? 'off' : 'polite';
     }
@@ -734,6 +815,7 @@ export interface SearchboxMixinInterface {
   onInputWrapperKeydown(e: KeyboardEvent): void;
   onMatchClick(): void;
   onMatchFocusin(e: CustomEvent<number>): void;
+  onKeywordClick(e: Event): void;
   openCtrlEnterMatch(matchIndex: number): void;
   onSearchboxInputTextUpdated(
       e: CustomEvent<{value: string, isComposing: boolean}>): void;

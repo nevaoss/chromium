@@ -871,13 +871,13 @@ inline constexpr char kGeminiCoordinatorTeardownFixName[] =
 inline constexpr char kGeminiCoordinatorTeardownFixDescription[] =
     "Enables the teardown crash fix for Gemini First Run Coordinator.";
 
+inline constexpr char kGeminiFREExperimentName[] = "Gemini FRE Experiment";
+inline constexpr char kGeminiFREExperimentDescription[] =
+    "Enables the experimental Gemini First Run Experience";
+
 inline constexpr char kGeminiFRERefactorName[] = "Gemini FRE Refactor";
 inline constexpr char kGeminiFRERefactorDescription[] =
     "Enables the refactored Gemini First Run Experience UI.";
-
-inline constexpr char kGeminiImageRemixToolName[] = "Gemini Image Remix Tool";
-inline constexpr char kGeminiImageRemixToolDescription[] =
-    "Enables the image remix tool in the Gemini floaty.";
 
 inline constexpr char kGeminiLiveDormantReasonsName[] =
     "Gemini Live Dormant Reasons";
@@ -930,10 +930,6 @@ inline constexpr char kGeminiUpdatedEligibilityName[] =
     "Gemini Updated Eligibility";
 inline constexpr char kGeminiUpdatedEligibilityDescription[] =
     "Enables the updated eligibility checks for Gemini users.";
-
-inline constexpr char kGeminiVisualRichFREName[] = "Gemini Visual Rich FRE";
-inline constexpr char kGeminiVisualRichFREDescription[] =
-    "Enables the Visual Rich experimental flow in Gemini First Run Experience.";
 
 inline constexpr char kGeneralizedGeminiEntryFlowName[] =
     "Generalized Gemini Entry Flow";
@@ -1463,15 +1459,15 @@ inline constexpr char kNewTabPageFieldTrialDescription[] =
     "Enables new tab page features that are available on first run for new "
     "Chrome iOS users.";
 
-inline constexpr char kNewTabPagePaddingUpdateName[] =
-    "New Tab Page padding updates";
-inline constexpr char kNewTabPagePaddingUpdateDescription[] =
-    "Enables padding updates and fake omnibox styling on the New Tab Page. "
-    "Padding is dependent on the enabled feature parameter.";
-
 inline constexpr char kNewTabPageRedesignName[] = "New Tab Page Redesign";
 inline constexpr char kNewTabPageRedesignDescription[] =
     "Enables the redesigned New Tab Page on iOS (iPhone only).";
+
+inline constexpr char kNewTabPageUICleanupName[] = "New Tab Page UI cleanup";
+inline constexpr char kNewTabPageUICleanupDescription[] =
+    "Enables a UI refresh on the New Tab Page with updated padding, fakebox "
+    "styling, and color improvements. Different variations adjust the "
+    "spacing between modules.";
 
 inline constexpr char kNextOldDesignName[] = "NextOldDesign";
 inline constexpr char kNextOldDesignDescription[] =
@@ -1675,16 +1671,6 @@ inline constexpr char kPageActionMenuDescription[] =
     "When enabled, the entry point for the Page Action Menu becomes available "
     "for actions relating to the web page.";
 
-inline constexpr char kPageContentAnnotationsName[] =
-    "Page content annotations";
-inline constexpr char kPageContentAnnotationsDescription[] =
-    "Enables page content to be annotated on-device.";
-
-inline constexpr char kPageContentAnnotationsRemotePageMetadataName[] =
-    "Page content annotations - Remote page metadata";
-inline constexpr char kPageContentAnnotationsRemotePageMetadataDescription[] =
-    "Enables fetching of page load metadata to be persisted on-device.";
-
 inline constexpr char kPageContextIPCOptimizationName[] =
     "PageContextIPCOptimization";
 inline constexpr char kPageContextIPCOptimizationDescription[] =
@@ -1693,10 +1679,6 @@ inline constexpr char kPageContextIPCOptimizationDescription[] =
 inline constexpr char kPageContextPdfName[] = "Page Context PDF";
 inline constexpr char kPageContextPdfDescription[] =
     "Enables PDF support for Page Context in Gemini.";
-
-inline constexpr char kPageStabilityMetricsName[] = "Page Stability Metrics";
-inline constexpr char kPageStabilityMetricsDescription[] =
-    "Enables metrics to track DOM mutation frequency after user interactions.";
 
 inline constexpr char kPageToolsFeatureUnavailabilityName[] =
     "PageToolsFeatureUnavailability";
@@ -1740,6 +1722,12 @@ inline constexpr char kPlusButtonInFakeboxName[] =
 inline constexpr char kPlusButtonInFakeboxDescription[] =
     "When enabled, the fakebox NTP can contain a plus button for multimodal "
     "actions";
+
+inline constexpr char kPrepopulatedEnginesShadowVariantsName[] =
+    "Prepopulated Engines Shadow Variants";
+inline constexpr char kPrepopulatedEnginesShadowVariantsDescription[] =
+    "Enables shadow variants for prepopulated engines resolution, allowing "
+    "alternative engines to be resolved in specific regions.";
 
 inline constexpr char kPriceTrackingPromoName[] =
     "Enables price tracking notification promo card";
@@ -1879,12 +1867,6 @@ inline constexpr char kStrokesAPIEnabledName[] = "Enable Strokes API for Lens";
 inline constexpr char kStrokesAPIEnabledDescription[] =
     "When enabled, Lens will use the Strokes API.";
 
-inline constexpr char kSupervisedUserEmitLogRecordSeparatelyName[] =
-    "Emit supervised user log record separately";
-inline constexpr char kSupervisedUserEmitLogRecordSeparatelyDescription[] =
-    "Emit supervised user log record separately for Family Link and device "
-    "parental controls users (no user-visible effect).";
-
 inline constexpr char kSupportGoogleOneDeepLinkName[] =
     "Support Google One Deep Link";
 inline constexpr char kSupportGoogleOneDeepLinkDescription[] =
@@ -2011,6 +1993,11 @@ inline constexpr char kViewCertificateInformationName[] =
     "View Certificate Information";
 inline constexpr char kViewCertificateInformationDescription[] =
     "Enables viewing detailed certificate information in Page Info.";
+
+inline constexpr char kVoiceSearchMicPermissionsName[] =
+    "Voice Search Microphone Permissions";
+inline constexpr char kVoiceSearchMicPermissionsDescription[] =
+    "Enables microphone permissions optimizations for voice search.";
 
 inline constexpr char kWaitThresholdMillisecondsForCapabilitiesApiName[] =
     "Maximum wait time (in seconds) for a response from the Account "

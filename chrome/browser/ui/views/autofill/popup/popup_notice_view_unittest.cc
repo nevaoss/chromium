@@ -13,6 +13,7 @@
 #include "base/test/mock_callback.h"
 #include "chrome/browser/ui/autofill/mock_autofill_popup_controller.h"
 #include "chrome/browser/ui/views/autofill/popup/mock_accessibility_selection_delegate.h"
+#include "chrome/browser/ui/views/autofill/popup/popup_notice_view_test_api.h"
 #include "chrome/test/base/testing_profile.h"
 #include "chrome/test/views/chrome_views_test_base.h"
 #include "components/autofill/core/browser/filling/filling_product.h"
@@ -52,6 +53,8 @@ constexpr char16_t kTestTitle[] = u"Test Title";
 constexpr char16_t kTestContext[] = u"Test Context";
 constexpr char16_t kTestLink[] = u"Test Link";
 constexpr char16_t kTestAcceptButton[] = u"Test Accept Button";
+constexpr char16_t kTestAcceptButtonA11yLabel[] =
+    u"Test Accept Button A11y Label";
 constexpr char kTestHistogram[] = "Test.NoticeInteractions";
 
 class PopupNoticeViewTest : public ChromeViewsTestBase {
@@ -73,8 +76,8 @@ class PopupNoticeViewTest : public ChromeViewsTestBase {
     view_ = widget_->SetContentsView(std::make_unique<PopupNoticeView>(
         mock_a11y_selection_delegate_, mock_announce_callback_.Get(),
         controller().GetWeakPtr(), kNoticePosition, kTestTitle, kTestContext,
-        kTestLink, kTestAcceptButton, mock_on_link_clicked_.Get(),
-        kTestHistogram));
+        kTestLink, kTestAcceptButton, kTestAcceptButtonA11yLabel,
+        mock_on_link_clicked_.Get(), kTestHistogram));
 
     // Assign manual bounds so the widget has a physical size.
     // In test env, this is required to position child views
@@ -115,10 +118,9 @@ class PopupNoticeViewTest : public ChromeViewsTestBase {
       const std::u16string& expected_title,
       const std::u16string& expected_context,
       const std::u16string& expected_link) {
-    views::StyledLabel* description = view().description_for_testing();
+    views::StyledLabel* description = test_api(view()).description();
     if (!description) {
-      return testing::AssertionFailure()
-             << "description_for_testing() is null.";
+      return testing::AssertionFailure() << "description() is null.";
     }
     if (!description->GetVisible()) {
       return testing::AssertionFailure() << "description_ is not visible.";
@@ -137,10 +139,9 @@ class PopupNoticeViewTest : public ChromeViewsTestBase {
   // underline style.
   [[nodiscard]] testing::AssertionResult VerifyLink(
       const std::u16string& expected_link) {
-    views::StyledLabel* description = view().description_for_testing();
+    views::StyledLabel* description = test_api(view()).description();
     if (!description) {
-      return testing::AssertionFailure()
-             << "description_for_testing() is null.";
+      return testing::AssertionFailure() << "description() is null.";
     }
     views::Link* link = description->GetFirstLinkForTesting();
     if (!link) {
@@ -162,10 +163,9 @@ class PopupNoticeViewTest : public ChromeViewsTestBase {
   // Verifies that the accept button is visible and has the correct text.
   [[nodiscard]] testing::AssertionResult VerifyAcceptButton(
       const std::u16string& expected_button_text) {
-    views::MdTextButton* accept_button = view().accept_button_for_testing();
+    views::MdTextButton* accept_button = test_api(view()).accept_button();
     if (!accept_button) {
-      return testing::AssertionFailure()
-             << "accept_button_for_testing() is null.";
+      return testing::AssertionFailure() << "accept_button() is null.";
     }
     if (!accept_button->GetVisible()) {
       return testing::AssertionFailure() << "accept_button_ is not visible.";
@@ -180,7 +180,7 @@ class PopupNoticeViewTest : public ChromeViewsTestBase {
 
   testing::AssertionResult VerifyAllLinkBordersFocused(bool expected_focused) {
     bool has_link = false;
-    for (views::View* child : view().description_for_testing()->children()) {
+    for (views::View* child : test_api(view()).description()->children()) {
       if (views::IsViewClass<views::Link>(child)) {
         has_link = true;
         views::Link* link = views::AsViewClass<views::Link>(child);
@@ -233,8 +233,8 @@ TEST_F(PopupNoticeViewTest, InitialStateAndHistogramShown) {
   base::HistogramTester histogram_tester;
   ShowView();
 
-  histogram_tester.ExpectUniqueSample(kTestHistogram,
-                                      PopupNoticeInteractions::kShown, 1);
+  histogram_tester.ExpectUniqueSample(
+      kTestHistogram, AutofillMetrics::PopupNoticeInteractions::kShown, 1);
   EXPECT_TRUE(VerifyDescription(kTestTitle, kTestContext, kTestLink));
   EXPECT_TRUE(VerifyLink(kTestLink));
   EXPECT_TRUE(VerifyAcceptButton(kTestAcceptButton));
@@ -247,7 +247,7 @@ TEST_F(PopupNoticeViewTest, AcceptButtonTriggersRemoveSuggestionAndMetric) {
   ShowView();
 
   widget().LayoutRootViewIfNecessary();
-  views::MdTextButton* accept_button = view().accept_button_for_testing();
+  views::MdTextButton* accept_button = test_api(view()).accept_button();
 
   EXPECT_CALL(
       controller(),
@@ -259,10 +259,11 @@ TEST_F(PopupNoticeViewTest, AcceptButtonTriggersRemoveSuggestionAndMetric) {
   generator().MoveMouseTo(accept_button->GetBoundsInScreen().CenterPoint());
   generator().ClickLeftButton();
 
-  histogram_tester.ExpectBucketCount(kTestHistogram,
-                                     PopupNoticeInteractions::kShown, 1);
-  histogram_tester.ExpectBucketCount(kTestHistogram,
-                                     PopupNoticeInteractions::kAcknowledged, 1);
+  histogram_tester.ExpectBucketCount(
+      kTestHistogram, AutofillMetrics::PopupNoticeInteractions::kShown, 1);
+  histogram_tester.ExpectBucketCount(
+      kTestHistogram, AutofillMetrics::PopupNoticeInteractions::kAcknowledged,
+      1);
   histogram_tester.ExpectTotalCount(kTestHistogram, 2);
 }
 
@@ -273,7 +274,7 @@ TEST_F(PopupNoticeViewTest, ClickLinkTriggersCallbackAndMetric) {
   ShowView();
   widget().LayoutRootViewIfNecessary();
 
-  views::StyledLabel* description = view().description_for_testing();
+  views::StyledLabel* description = test_api(view()).description();
   views::Link* link = description->GetFirstLinkForTesting();
   ASSERT_NE(link, nullptr);
 
@@ -283,10 +284,11 @@ TEST_F(PopupNoticeViewTest, ClickLinkTriggersCallbackAndMetric) {
   generator().MoveMouseTo(link->GetBoundsInScreen().CenterPoint());
   generator().ClickLeftButton();
 
-  histogram_tester.ExpectBucketCount(kTestHistogram,
-                                     PopupNoticeInteractions::kShown, 1);
   histogram_tester.ExpectBucketCount(
-      kTestHistogram, PopupNoticeInteractions::kLinkButtonClicked, 1);
+      kTestHistogram, AutofillMetrics::PopupNoticeInteractions::kShown, 1);
+  histogram_tester.ExpectBucketCount(
+      kTestHistogram,
+      AutofillMetrics::PopupNoticeInteractions::kLinkButtonClicked, 1);
   histogram_tester.ExpectTotalCount(kTestHistogram, 2);
 }
 
@@ -295,20 +297,20 @@ TEST_F(PopupNoticeViewTest, ClickLinkTriggersCallbackAndMetric) {
 TEST_F(PopupNoticeViewTest, NavigateToNoticeView) {
   ShowView();
   views::FocusRing* button_focus_ring =
-      views::FocusRing::Get(view().accept_button_for_testing());
+      views::FocusRing::Get(test_api(view()).accept_button());
   ASSERT_NE(button_focus_ring, nullptr);
 
-  EXPECT_FALSE(view().is_link_focused_for_testing());
-  EXPECT_FALSE(view().is_accept_button_focused_for_testing());
+  EXPECT_FALSE(test_api(view()).is_link_focused());
+  EXPECT_FALSE(test_api(view()).is_accept_button_focused());
   EXPECT_EQ(view().GetSelectedCell(),
             PopupInteractiveRowView::CellType::kContent);
 
   view().SetSelectedCell(PopupInteractiveRowView::CellType::kContent);
 
-  EXPECT_TRUE(view().is_link_focused_for_testing());
-  EXPECT_FALSE(view().is_accept_button_focused_for_testing());
+  EXPECT_TRUE(test_api(view()).is_link_focused());
+  EXPECT_FALSE(test_api(view()).is_accept_button_focused());
   EXPECT_TRUE(VerifyAllLinkBordersFocused(true));
-  EXPECT_EQ(view().accept_button_for_testing()->GetState(),
+  EXPECT_EQ(test_api(view()).accept_button()->GetState(),
             views::Button::STATE_NORMAL);
   EXPECT_FALSE(button_focus_ring->ShouldPaintForTesting());
 }
@@ -321,12 +323,12 @@ TEST_F(PopupNoticeViewTest, NavigateInsideOfNoticeView) {
   ShowView();
 
   views::FocusRing* button_focus_ring =
-      views::FocusRing::Get(view().accept_button_for_testing());
+      views::FocusRing::Get(test_api(view()).accept_button());
   ASSERT_NE(button_focus_ring, nullptr);
 
   view().SetSelectedCell(PopupInteractiveRowView::CellType::kContent);
-  ASSERT_TRUE(view().is_link_focused_for_testing());
-  ASSERT_FALSE(view().is_accept_button_focused_for_testing());
+  ASSERT_TRUE(test_api(view()).is_link_focused());
+  ASSERT_FALSE(test_api(view()).is_accept_button_focused());
 
   input::NativeWebKeyboardEvent right_event(
       blink::WebInputEvent::Type::kRawKeyDown,
@@ -335,10 +337,10 @@ TEST_F(PopupNoticeViewTest, NavigateInsideOfNoticeView) {
   right_event.windows_key_code = ui::VKEY_RIGHT;
   EXPECT_TRUE(view().HandleKeyPressEvent(right_event));
 
-  EXPECT_FALSE(view().is_link_focused_for_testing());
-  EXPECT_TRUE(view().is_accept_button_focused_for_testing());
+  EXPECT_FALSE(test_api(view()).is_link_focused());
+  EXPECT_TRUE(test_api(view()).is_accept_button_focused());
   EXPECT_TRUE(VerifyAllLinkBordersFocused(false));
-  EXPECT_EQ(view().accept_button_for_testing()->GetState(),
+  EXPECT_EQ(test_api(view()).accept_button()->GetState(),
             views::Button::STATE_HOVERED);
   EXPECT_TRUE(button_focus_ring->ShouldPaintForTesting());
 
@@ -346,10 +348,10 @@ TEST_F(PopupNoticeViewTest, NavigateInsideOfNoticeView) {
   left_event.windows_key_code = ui::VKEY_LEFT;
   EXPECT_TRUE(view().HandleKeyPressEvent(left_event));
 
-  EXPECT_TRUE(view().is_link_focused_for_testing());
-  EXPECT_FALSE(view().is_accept_button_focused_for_testing());
+  EXPECT_TRUE(test_api(view()).is_link_focused());
+  EXPECT_FALSE(test_api(view()).is_accept_button_focused());
   EXPECT_TRUE(VerifyAllLinkBordersFocused(true));
-  EXPECT_EQ(view().accept_button_for_testing()->GetState(),
+  EXPECT_EQ(test_api(view()).accept_button()->GetState(),
             views::Button::STATE_NORMAL);
   EXPECT_FALSE(button_focus_ring->ShouldPaintForTesting());
 }
@@ -362,12 +364,12 @@ TEST_F(PopupNoticeViewTest, NavigateInsideOfNoticeViewRTL) {
   ShowView();
 
   views::FocusRing* button_focus_ring =
-      views::FocusRing::Get(view().accept_button_for_testing());
+      views::FocusRing::Get(test_api(view()).accept_button());
   ASSERT_NE(button_focus_ring, nullptr);
 
   view().SetSelectedCell(PopupInteractiveRowView::CellType::kContent);
-  ASSERT_TRUE(view().is_link_focused_for_testing());
-  ASSERT_FALSE(view().is_accept_button_focused_for_testing());
+  ASSERT_TRUE(test_api(view()).is_link_focused());
+  ASSERT_FALSE(test_api(view()).is_accept_button_focused());
 
   input::NativeWebKeyboardEvent left_event(
       blink::WebInputEvent::Type::kRawKeyDown,
@@ -376,10 +378,10 @@ TEST_F(PopupNoticeViewTest, NavigateInsideOfNoticeViewRTL) {
   left_event.windows_key_code = ui::VKEY_LEFT;
   EXPECT_TRUE(view().HandleKeyPressEvent(left_event));
 
-  EXPECT_FALSE(view().is_link_focused_for_testing());
-  EXPECT_TRUE(view().is_accept_button_focused_for_testing());
+  EXPECT_FALSE(test_api(view()).is_link_focused());
+  EXPECT_TRUE(test_api(view()).is_accept_button_focused());
   EXPECT_TRUE(VerifyAllLinkBordersFocused(false));
-  EXPECT_EQ(view().accept_button_for_testing()->GetState(),
+  EXPECT_EQ(test_api(view()).accept_button()->GetState(),
             views::Button::STATE_HOVERED);
   EXPECT_TRUE(button_focus_ring->ShouldPaintForTesting());
 
@@ -387,10 +389,10 @@ TEST_F(PopupNoticeViewTest, NavigateInsideOfNoticeViewRTL) {
   right_event.windows_key_code = ui::VKEY_RIGHT;
   EXPECT_TRUE(view().HandleKeyPressEvent(right_event));
 
-  EXPECT_TRUE(view().is_link_focused_for_testing());
-  EXPECT_FALSE(view().is_accept_button_focused_for_testing());
+  EXPECT_TRUE(test_api(view()).is_link_focused());
+  EXPECT_FALSE(test_api(view()).is_accept_button_focused());
   EXPECT_TRUE(VerifyAllLinkBordersFocused(true));
-  EXPECT_EQ(view().accept_button_for_testing()->GetState(),
+  EXPECT_EQ(test_api(view()).accept_button()->GetState(),
             views::Button::STATE_NORMAL);
   EXPECT_FALSE(button_focus_ring->ShouldPaintForTesting());
 
@@ -402,17 +404,17 @@ TEST_F(PopupNoticeViewTest, NavigateInsideOfNoticeViewRTL) {
 TEST_F(PopupNoticeViewTest, NavigateFromNoticeViewLink) {
   ShowView();
   views::FocusRing* button_focus_ring =
-      views::FocusRing::Get(view().accept_button_for_testing());
+      views::FocusRing::Get(test_api(view()).accept_button());
   ASSERT_NE(button_focus_ring, nullptr);
 
   view().SetSelectedCell(PopupInteractiveRowView::CellType::kContent);
-  EXPECT_TRUE(view().is_link_focused_for_testing());
+  EXPECT_TRUE(test_api(view()).is_link_focused());
 
   view().SetSelectedCell(std::nullopt);
-  EXPECT_FALSE(view().is_link_focused_for_testing());
-  EXPECT_FALSE(view().is_accept_button_focused_for_testing());
+  EXPECT_FALSE(test_api(view()).is_link_focused());
+  EXPECT_FALSE(test_api(view()).is_accept_button_focused());
   EXPECT_TRUE(VerifyAllLinkBordersFocused(false));
-  EXPECT_EQ(view().accept_button_for_testing()->GetState(),
+  EXPECT_EQ(test_api(view()).accept_button()->GetState(),
             views::Button::STATE_NORMAL);
   EXPECT_FALSE(button_focus_ring->ShouldPaintForTesting());
 }
@@ -422,7 +424,7 @@ TEST_F(PopupNoticeViewTest, NavigateFromNoticeViewLink) {
 TEST_F(PopupNoticeViewTest, NavigateFromNoticeViewAcceptButton) {
   ShowView();
   views::FocusRing* button_focus_ring =
-      views::FocusRing::Get(view().accept_button_for_testing());
+      views::FocusRing::Get(test_api(view()).accept_button());
   ASSERT_NE(button_focus_ring, nullptr);
 
   view().SetSelectedCell(PopupInteractiveRowView::CellType::kContent);
@@ -432,13 +434,13 @@ TEST_F(PopupNoticeViewTest, NavigateFromNoticeViewAcceptButton) {
       blink::WebInputEvent::GetStaticTimeStampForTests());
   right_event.windows_key_code = ui::VKEY_RIGHT;
   EXPECT_TRUE(view().HandleKeyPressEvent(right_event));
-  EXPECT_TRUE(view().is_accept_button_focused_for_testing());
+  EXPECT_TRUE(test_api(view()).is_accept_button_focused());
 
   view().SetSelectedCell(std::nullopt);
-  EXPECT_FALSE(view().is_link_focused_for_testing());
-  EXPECT_FALSE(view().is_accept_button_focused_for_testing());
+  EXPECT_FALSE(test_api(view()).is_link_focused());
+  EXPECT_FALSE(test_api(view()).is_accept_button_focused());
   EXPECT_TRUE(VerifyAllLinkBordersFocused(false));
-  EXPECT_EQ(view().accept_button_for_testing()->GetState(),
+  EXPECT_EQ(test_api(view()).accept_button()->GetState(),
             views::Button::STATE_NORMAL);
   EXPECT_FALSE(button_focus_ring->ShouldPaintForTesting());
 }
@@ -448,7 +450,7 @@ TEST_F(PopupNoticeViewTest, NavigateFromNoticeViewAcceptButton) {
 TEST_F(PopupNoticeViewTest, PressReturnOnLinkFocused) {
   ShowView();
   view().SetSelectedCell(PopupInteractiveRowView::CellType::kContent);
-  ASSERT_TRUE(view().is_link_focused_for_testing());
+  ASSERT_TRUE(test_api(view()).is_link_focused());
 
   EXPECT_CALL(mock_on_link_clicked(), Run()).Times(1);
 
@@ -473,7 +475,7 @@ TEST_F(PopupNoticeViewTest, PressReturnOnAcceptButtonFocused) {
       blink::WebInputEvent::GetStaticTimeStampForTests());
   right_event.windows_key_code = ui::VKEY_RIGHT;
   EXPECT_TRUE(view().HandleKeyPressEvent(right_event));
-  ASSERT_TRUE(view().is_accept_button_focused_for_testing());
+  ASSERT_TRUE(test_api(view()).is_accept_button_focused());
 
   EXPECT_CALL(
       controller(),
@@ -486,10 +488,11 @@ TEST_F(PopupNoticeViewTest, PressReturnOnAcceptButtonFocused) {
   return_event.windows_key_code = ui::VKEY_RETURN;
   EXPECT_TRUE(view().HandleKeyPressEvent(return_event));
 
-  histogram_tester.ExpectBucketCount(kTestHistogram,
-                                     PopupNoticeInteractions::kShown, 1);
-  histogram_tester.ExpectBucketCount(kTestHistogram,
-                                     PopupNoticeInteractions::kAcknowledged, 1);
+  histogram_tester.ExpectBucketCount(
+      kTestHistogram, AutofillMetrics::PopupNoticeInteractions::kShown, 1);
+  histogram_tester.ExpectBucketCount(
+      kTestHistogram, AutofillMetrics::PopupNoticeInteractions::kAcknowledged,
+      1);
   histogram_tester.ExpectTotalCount(kTestHistogram, 2);
 }
 
@@ -497,8 +500,8 @@ TEST_F(PopupNoticeViewTest, PressReturnOnAcceptButtonFocused) {
 // without calling callbacks or metrics.
 TEST_F(PopupNoticeViewTest, PressReturnOnNoFocusedElement) {
   ShowView();
-  EXPECT_FALSE(view().is_link_focused_for_testing());
-  EXPECT_FALSE(view().is_accept_button_focused_for_testing());
+  EXPECT_FALSE(test_api(view()).is_link_focused());
+  EXPECT_FALSE(test_api(view()).is_accept_button_focused());
 
   EXPECT_CALL(mock_on_link_clicked(), Run()).Times(0);
   EXPECT_CALL(controller(), RemoveSuggestion).Times(0);
@@ -532,7 +535,7 @@ TEST_F(PopupNoticeViewTest, AccessibilitySelectionAndAnnouncements) {
   EXPECT_CALL(mock_a11y_selection_delegate(),
               NotifyAXSelection(testing::Ref(view())));
   EXPECT_CALL(mock_announce_callback(),
-              Run(std::u16string(kTestAcceptButton), false));
+              Run(std::u16string(kTestAcceptButtonA11yLabel), false));
 
   EXPECT_TRUE(view().HandleKeyPressEvent(right_event));
   EXPECT_TRUE(IsViewSelected());
@@ -574,7 +577,7 @@ TEST_F(PopupNoticeViewTest, CreatePersonalContextNoticeViewAmbientAutofill) {
   ASSERT_TRUE(view);
   histogram_tester.ExpectUniqueSample(
       "PersonalContext.AmbientAutofill.NoticeInteractions",
-      PopupNoticeInteractions::kShown, 1);
+      AutofillMetrics::PopupNoticeInteractions::kShown, 1);
 
   ui::AXNodeData node_data;
   view->GetViewAccessibility().GetAccessibleNodeData(&node_data);
@@ -602,10 +605,10 @@ TEST_F(PopupNoticeViewTest,
   ASSERT_TRUE(view);
   histogram_tester.ExpectUniqueSample(
       "PersonalContext.AtMemory.NoticeInteractions",
-      PopupNoticeInteractions::kShown, 1);
+      AutofillMetrics::PopupNoticeInteractions::kShown, 1);
   EXPECT_NE(
-      view->description_for_testing()->GetText().find(l10n_util::GetStringUTF16(
-          IDS_AUTOFILL_POPUP_PERSONAL_CONTEXT_NOTICE_CONTEXT_WITH_LOGGING)),
+      test_api(*view).description()->GetText().find(l10n_util::GetStringUTF16(
+          IDS_AUTOFILL_POPUP_PERSONAL_CONTEXT_NOTICE_SUBTITLE_WITH_LOGGING)),
       std::u16string::npos);
 }
 
@@ -628,8 +631,8 @@ TEST_F(PopupNoticeViewTest,
       controller().GetWeakPtr(), kNoticePosition);
   ASSERT_TRUE(view);
   EXPECT_NE(
-      view->description_for_testing()->GetText().find(l10n_util::GetStringUTF16(
-          IDS_AUTOFILL_POPUP_PERSONAL_CONTEXT_NOTICE_CONTEXT)),
+      test_api(*view).description()->GetText().find(l10n_util::GetStringUTF16(
+          IDS_AUTOFILL_POPUP_PERSONAL_CONTEXT_NOTICE_SUBTITLE)),
       std::u16string::npos);
 }
 
@@ -645,7 +648,7 @@ TEST_F(PopupNoticeViewTest, CreateAutofillAiPrivateInferenceNoticeViewCreated) {
   ASSERT_TRUE(view);
   histogram_tester.ExpectUniqueSample(
       "Autofill.Ai.PrivateInferenceNoticeInteractions",
-      PopupNoticeInteractions::kShown, 1);
+      AutofillMetrics::PopupNoticeInteractions::kShown, 1);
 
   ui::AXNodeData node_data;
   view->GetViewAccessibility().GetAccessibleNodeData(&node_data);

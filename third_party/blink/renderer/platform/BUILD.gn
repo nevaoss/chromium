@@ -190,18 +190,6 @@ group("make_platform_generated") {
   ]
 }
 
-rust_static_library("font_format_check") {
-  allow_unsafe = true  # Needed for FFI that underpins the `cxx` crate.
-  crate_root = "fonts/opentype/format_check.rs"
-  sources = [ crate_root ]
-  cxx_bindings = [ crate_root ]
-  deps = [
-    "//third_party/rust/font_types/v0_12:lib",
-    "//third_party/rust/read_fonts/v0_41:lib",
-    "//third_party/rust/skrifa/v0_44:lib",
-  ]
-}
-
 rust_static_library("rustfft_ffi") {
   allow_unsafe = true  # Needed for FFI that underpins the `cxx` crate.
   crate_root = "audio/rustfft_ffi.rs"
@@ -461,8 +449,6 @@ component("platform") {
     "audio/reverb_convolver.h",
     "audio/reverb_convolver_stage.cc",
     "audio/reverb_convolver_stage.h",
-    "audio/reverb_input_buffer.cc",
-    "audio/reverb_input_buffer.h",
     "audio/simple_fft_convolver.cc",
     "audio/simple_fft_convolver.h",
     "audio/sinc_resampler.cc",
@@ -1821,6 +1807,7 @@ component("platform") {
     ":allow_discouraged_type",
     ":blink_platform_public_deps",
     ":platform_export",
+    "//build/rust/crubit",
     "//gpu/command_buffer/client:raster_interface",
     "//media/capture:capture_lib",
     "//mojo/public/cpp/base",
@@ -1847,8 +1834,8 @@ component("platform") {
     "//ui/native_theme/features",
   ]
   deps = [
-    ":font_format_check",
     ":rustfft_ffi",
+    "fonts:font_format_bindings",
     "//base:base_static",
     "//base/allocator:buildflags",
     "//build:chromecast_buildflags",
@@ -2251,6 +2238,7 @@ source_set("blink_platform_unittests_sources") {
     "audio/fft_frame_test.cc",
     "audio/push_pull_fifo_multithread_test.cc",
     "audio/push_pull_fifo_test.cc",
+    "audio/reverb_convolver_test.cc",
     "audio/up_sampler_test.cc",
     "audio/vector_math_test.cc",
     "bindings/parkable_string_test.cc",

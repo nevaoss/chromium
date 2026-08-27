@@ -3474,11 +3474,23 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       <message name="IDS_SAFETY_FRE_PROMO_PASSWORD_MANAGER_SUBTITLE" desc="Subtitle of the Google Password Manager card on the Safety Promo screen of the First Run Experience.">
         Create, save, and autofill strong passwords
       </message>
+      <message name="IDS_SAFETY_FRE_PROMO_PASSWORD_MANAGER_CAROUSEL_TITLE" desc="Title of the Google Password Manager slide on the Safety Promo Carousel screen of the First Run Experience.">
+        Safer passwords, faster sign-in
+      </message>
+      <message name="IDS_SAFETY_FRE_PROMO_PASSWORD_MANAGER_CAROUSEL_SUBTITLE" desc="Subtitle of the Google Password Manager slide on the Safety Promo Carousel screen of the First Run Experience.">
+        Securely create and store your passwords, sign in faster, and identify password security issues to keep you safe
+      </message>
       <message name="IDS_SAFETY_FRE_PROMO_HISTORY_QUICK_DELETE_TITLE" desc="Title of the Quick Delete History card on the Safety Promo screen of the First Run Experience.">
         Quickly delete your history
       </message>
       <message name="IDS_SAFETY_FRE_PROMO_HISTORY_QUICK_DELETE_SUBTITLE" desc="Subtitle of the Quick Delete History card on the Safety Promo screen of the First Run Experience.">
         Delete your browsing history with one tap
+      </message>
+      <message name="IDS_SAFETY_FRE_PROMO_HISTORY_QUICK_DELETE_CAROUSEL_TITLE" desc="Title of the Quick Delete History slide on the Safety Promo Carousel screen of the First Run Experience.">
+        Delete your history with the tap of a button
+      </message>
+      <message name="IDS_SAFETY_FRE_PROMO_HISTORY_QUICK_DELETE_CAROUSEL_SUBTITLE" desc="Subtitle of the Quick Delete History slide on the Safety Promo Carousel screen of the First Run Experience.">
+        Quickly delete your browsing history and take more control over your privacy
       </message>
       <message name="IDS_SAFETY_FRE_PROMO_ENHANCED_SAFE_BROWSING_TITLE" desc="Title of the Enhanced Safe Browsing card on the Safety Promo screen of the First Run Experience.">
         Enhanced Safe Browsing
@@ -3486,11 +3498,26 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       <message name="IDS_SAFETY_FRE_PROMO_ENHANCED_SAFE_BROWSING_SUBTITLE" desc="Subtitle of the Enhanced Safe Browsing card on the Safety Promo screen of the First Run Experience.">
         Google’s highest level of protection against online threats
       </message>
+      <message name="IDS_SAFETY_FRE_PROMO_ENHANCED_SAFE_BROWSING_CAROUSEL_TITLE" desc="Title of the Enhanced Safe Browsing slide on the Safety Promo Carousel screen of the First Run Experience.">
+        Google’s most secure browsing experience
+      </message>
+      <message name="IDS_SAFETY_FRE_PROMO_ENHANCED_SAFE_BROWSING_CAROUSEL_SUBTITLE" desc="Subtitle of the Enhanced Safe Browsing slide on the Safety Promo Carousel screen of the First Run Experience.">
+        Enhanced Safe Browsing offers security from known and potential new dangers
+      </message>
       <message name="IDS_SAFETY_FRE_PROMO_INCOGNITO_TITLE" desc="Title of the Locked Incognito card on the Safety Promo screen of the First Run Experience.">
         Locked Incognito mode
       </message>
       <message name="IDS_SAFETY_FRE_PROMO_INCOGNITO_SUBTITLE" desc="Subtitle of the Locked Incognito card on the Safety Promo screen of the First Run Experience.">
         Keep your private tabs locked
+      </message>
+      <message name="IDS_SAFETY_FRE_PROMO_INCOGNITO_CAROUSEL_TITLE" desc="Title of the Locked Incognito slide on the Safety Promo Carousel screen of the First Run Experience.">
+        Lock your Incognito tabs
+      </message>
+      <message name="IDS_SAFETY_FRE_PROMO_INCOGNITO_CAROUSEL_SUBTITLE" desc="Subtitle of the Locked Incognito slide on the Safety Promo Carousel screen of the First Run Experience.">
+        Protect your private browsing with a pin to prevent unwanted access
+      </message>
+      <message name="IDS_SAFETY_FRE_PROMO_SHOW_ME_HOW_BUTTON" desc="Text on the button to show the user how to configure safety settings from the Safety Promo screen of the First Run Experience.">
+        Show me how
       </message>
       <message name="IDS_LIGHTWEIGHT_FRE_ASSOCIATED_APP_TOS" desc="Message explaining that use of Chrome is governed by Chrome's terms of service.">
         <ph name="APP_NAME">%1$s<ex>Google Maps</ex></ph> will open in Chrome. By continuing, you agree to the <ph name="BEGIN_LINK1">&lt;LINK1&gt;</ph>Google Terms of Service<ph name="END_LINK1">&lt;/LINK1&gt;</ph>, and the <ph name="BEGIN_LINK2">&lt;LINK2&gt;</ph>Google Chrome and ChromeOS Additional Terms of Service<ph name="END_LINK2">&lt;/LINK2&gt;</ph>.
@@ -3722,6 +3749,51 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       </message>
       <message name="IDS_SIGNIN_ACCOUNT_PICKER_BOTTOM_SHEET_SUBTITLE_FOR_WEB_SIGNIN" desc="This string is on a sign-in page, after the user taps to sign in to a website with their Google Account. It offers to sign the user in to both the website and to Chrome with the account. It highlights the overarching user benefit of signing in to Chrome (access to data from other devices like bookmarks, passwords, history, settings, etc.). We want users to understand why signing in is beneficial, and click 'Continue as name' to sign in to their Google Account. The tone should be informative and lightweight.">
         Sign in to this site and Chrome to get your bookmarks and more on all your devices
+      </message>
+      <message name="IDS_SIGNIN_DEVICE_TYPE_PHONE" desc="Device type string to be inserted as a placeholder into sign-in promo and web sign-in subtitle messages.">
+        your phone
+      </message>
+      <message name="IDS_SIGNIN_DEVICE_TYPE_TABLET" desc="Device type string to be inserted as a placeholder into sign-in promo and web sign-in subtitle messages.">
+        your tablet
+      </message>
+      <message name="IDS_SIGNIN_DEVICE_TYPE_LAPTOP" desc="Device type string to be inserted as a placeholder into sign-in promo and web sign-in subtitle messages.">
+        your laptop
+      </message>
+      <message name="IDS_SIGNIN_ACCOUNT_PICKER_BOTTOM_SHEET_SUBTITLE_ON_ALL_DEVICES_SAVED_INFO" desc="This string is the subtitle of a promotional bottom sheet about signing in to Chrome with the user's Google Account. It explains the user benefit of signing in to get data on all devices.">
+        Sign in to get your saved info and more on all your devices
+      </message>
+      <message name="IDS_SIGNIN_ACCOUNT_PICKER_BOTTOM_SHEET_SUBTITLE_ON_ALL_DEVICES_BOOKMARKS" desc="This string is the subtitle of a promotional bottom sheet about signing in to Chrome with the user's Google Account. It explains the user benefit of signing in to get data on all devices.">
+        Sign in to get your bookmarks and more on all your devices
+      </message>
+      <message name="IDS_SIGNIN_ACCOUNT_PICKER_BOTTOM_SHEET_SUBTITLE_ON_ALL_DEVICES_PASSWORDS" desc="This string is the subtitle of a promotional bottom sheet about signing in to Chrome with the user's Google Account. It explains the user benefit of signing in to get data on all devices.">
+        Sign in to get your passwords and more on all your devices
+      </message>
+      <message name="IDS_SIGNIN_ACCOUNT_PICKER_BOTTOM_SHEET_SUBTITLE_FOR_DEVICE_TYPE_SAVED_INFO" desc="This string is the subtitle of a promotional bottom sheet about signing in to Chrome with the user's Google Account. It explains the user benefit of signing in to get data from their other device where they may be signed-in.">
+        Sign in to get your saved info and more from <ph name="DEVICE_TYPE">%1$s<ex>your phone</ex></ph>
+      </message>
+      <message name="IDS_SIGNIN_ACCOUNT_PICKER_BOTTOM_SHEET_SUBTITLE_FOR_DEVICE_TYPE_BOOKMARKS" desc="This string is the subtitle of a promotional bottom sheet about signing in to Chrome with the user's Google Account. It explains the user benefit of signing in to get data from their other device where they may be signed-in.">
+        Sign in to get your bookmarks and more from <ph name="DEVICE_TYPE">%1$s<ex>your phone</ex></ph>
+      </message>
+      <message name="IDS_SIGNIN_ACCOUNT_PICKER_BOTTOM_SHEET_SUBTITLE_FOR_DEVICE_TYPE_PASSWORDS" desc="This string is the subtitle of a promotional bottom sheet about signing in to Chrome with the user's Google Account. It explains the user benefit of signing in to get data from their other device where they may be signed-in.">
+        Sign in to get your passwords and more from <ph name="DEVICE_TYPE">%1$s<ex>your phone</ex></ph>
+      </message>
+      <message name="IDS_SIGNIN_ACCOUNT_PICKER_BOTTOM_SHEET_SUBTITLE_FOR_WEB_SIGNIN_ON_ALL_DEVICES_SAVED_INFO" desc="This string is on a sign-in page, after the user taps to sign in to a website with their Google Account. It offers to sign the user in to both the website and to Chrome with the account. It highlights the overarching user benefit of signing in to Chrome to get data on all devices. We want users to understand why signing in is beneficial, and click 'Continue as name' to sign in to their Google Account. The tone should be informative and lightweight.">
+        Sign in to this site and Chrome to get your saved info and more on all your devices
+      </message>
+      <message name="IDS_SIGNIN_ACCOUNT_PICKER_BOTTOM_SHEET_SUBTITLE_FOR_WEB_SIGNIN_ON_ALL_DEVICES_BOOKMARKS" desc="This string is on a sign-in page, after the user taps to sign in to a website with their Google Account. It offers to sign the user in to both the website and to Chrome with the account. It highlights the overarching user benefit of signing in to Chrome to get data on all devices. We want users to understand why signing in is beneficial, and click 'Continue as name' to sign in to their Google Account. The tone should be informative and lightweight.">
+        Sign in to this site and Chrome to get your bookmarks and more on all your devices
+      </message>
+      <message name="IDS_SIGNIN_ACCOUNT_PICKER_BOTTOM_SHEET_SUBTITLE_FOR_WEB_SIGNIN_ON_ALL_DEVICES_PASSWORDS" desc="This string is on a sign-in page, after the user taps to sign in to a website with their Google Account. It offers to sign the user in to both the website and to Chrome with the account. It highlights the overarching user benefit of signing in to Chrome to get data on all devices. We want users to understand why signing in is beneficial, and click 'Continue as name' to sign in to their Google Account. The tone should be informative and lightweight.">
+        Sign in to this site and Chrome to get your passwords and more on all your devices
+      </message>
+      <message name="IDS_SIGNIN_ACCOUNT_PICKER_BOTTOM_SHEET_SUBTITLE_FOR_WEB_SIGNIN_DEVICE_TYPE_SAVED_INFO" desc="This string is on a sign-in page, after the user taps to sign in to a website with their Google Account. It offers to sign the user in to both the website and to Chrome with the account. It highlights the user benefit of signing in to Chrome to get data from their other device. We want users to understand why signing in is beneficial, and click 'Continue as name' to sign in to their Google Account. The tone should be informative and lightweight.">
+        Sign in to this site and Chrome to get your saved info and more from <ph name="DEVICE_TYPE">%1$s<ex>your phone</ex></ph>
+      </message>
+      <message name="IDS_SIGNIN_ACCOUNT_PICKER_BOTTOM_SHEET_SUBTITLE_FOR_WEB_SIGNIN_DEVICE_TYPE_BOOKMARKS" desc="This string is on a sign-in page, after the user taps to sign in to a website with their Google Account. It offers to sign the user in to both the website and to Chrome with the account. It highlights the user benefit of signing in to Chrome to get data from their other device. We want users to understand why signing in is beneficial, and click 'Continue as name' to sign in to their Google Account. The tone should be informative and lightweight.">
+        Sign in to this site and Chrome to get your bookmarks and more from <ph name="DEVICE_TYPE">%1$s<ex>your phone</ex></ph>
+      </message>
+      <message name="IDS_SIGNIN_ACCOUNT_PICKER_BOTTOM_SHEET_SUBTITLE_FOR_WEB_SIGNIN_DEVICE_TYPE_PASSWORDS" desc="This string is on a sign-in page, after the user taps to sign in to a website with their Google Account. It offers to sign the user in to both the website and to Chrome with the account. It highlights the user benefit of signing in to Chrome to get data from their other device. We want users to understand why signing in is beneficial, and click 'Continue as name' to sign in to their Google Account. The tone should be informative and lightweight.">
+        Sign in to this site and Chrome to get your passwords and more from <ph name="DEVICE_TYPE">%1$s<ex>your phone</ex></ph>
       </message>
 
       <!-- Extension requests sign in to Chrome through chrome.identity API -->
@@ -4251,6 +4323,9 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       </message>
       <message name="IDS_CONTEXTMENU_ALWAYS_SHOW_BOOKMARKS_BAR" desc="Menu item for always showing the bookmarks bar. [CHAR_LIMIT=27]" translateable="false">
         Always show
+      </message>
+      <message name="IDS_CONTEXTMENU_ONLY_SHOW_BOOKMARKS_BAR_ON_NTP" desc="Menu item for only showing the bookmarks bar on the new tab page. [CHAR_LIMIT=27]" translateable="false">
+        Only show on New Tab Page
       </message>
       <message name="IDS_CONTEXTMENU_EDIT_BOOKMARK_ELLIPSIS" desc="Menu item for editing a bookmark from the context menu. [CHAR_LIMIT=27]">
         Edit…
@@ -4929,9 +5004,6 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       <message name="IDS_PDF_PROPERTIES_FILE_SIZE" desc="Label for file size in PDF document properties">
         File size
       </message>
-      <message name="IDS_PDF_PROPERTIES_TITLE" desc="Label for title in PDF document properties">
-        Title
-      </message>
       <message name="IDS_PDF_PROPERTIES_CREATED" desc="Label for creation date and time in PDF document properties">
         Created
       </message>
@@ -4953,8 +5025,8 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       <message name="IDS_PDF_DOWNLOAD" desc="Menu option to download the PDF document.">
         Download
       </message>
-      <message name="IDS_PDF_FIT_HEIGHT" desc="Menu option to fit the PDF page height to the screen.">
-        Fit to height
+      <message name="IDS_PDF_FIT_PAGE" desc="Menu option to fit the PDF page to the screen.">
+        Fit to page
       </message>
       <message name="IDS_PDF_FIT_WIDTH" desc="Menu option to fit the PDF page width to the screen.">
         Fit to width
@@ -7776,8 +7848,11 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       <message name="IDS_GLIC_ACTOR_TASK_IN_PROGRESS" desc="Snackbar message shown when a Glic actor task is still in progress.">
         Your task is still in progress
       </message>
-      <message name="IDS_GLIC_INCOGNITO_NOT_AVAILABLE" desc="Text displayed in a snackbar when clicking the Glic toolbar button in an Incognito tab.">
+      <message name="IDS_GLIC_INCOGNITO_NOT_AVAILABLE" desc="Text displayed in a snackbar when clicking the Glic button in an Incognito tab.">
         Gemini isn’t available in Incognito mode
+      </message>
+      <message name="IDS_GLIC_BUTTON_UNPINNED" desc="Snackbar message shown after the user unpins the Glic button from the tab strip.">
+        Gemini unpinned
       </message>
 
       <!-- Immersive Playback Confirmation strings -->
@@ -7834,7 +7909,7 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
         Your work secured on Chrome
       </message>
       <message name="IDS_ENTERPRISE_SIGNALS_DISCLAIMER_DESCRIPTION" desc="Description of the enterprise signals disclaimer dialog.">
-        To secure your work on Chrome, your organization will be able to view or manage certain information when you’re signed-in to Chrome. Learn more
+        To secure your work on Chrome, your organization will be able to view or manage certain information when you’re signed-in to Chrome. <ph name="BEGIN_LINK">&lt;LINK&gt;</ph>Learn more<ph name="END_LINK">&lt;/LINK&gt;</ph>
       </message>
       <message name="IDS_ENTERPRISE_SIGNALS_DISCLAIMER_PROFILE_INFORMATION_TITLE" desc="Title of the profile information section in the enterprise signals disclaimer dialog.">
         Profile information

@@ -17,6 +17,7 @@ import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.PopupState
 import org.chromium.chrome.browser.ui.theme.BrandedColorScheme;
 import org.chromium.components.omnibox.AutocompleteRequestType;
 import org.chromium.ui.modelutil.PropertyKey;
+import org.chromium.ui.modelutil.PropertyModel.ReadableBooleanPropertyKey;
 import org.chromium.ui.modelutil.PropertyModel.WritableBooleanPropertyKey;
 import org.chromium.ui.modelutil.PropertyModel.WritableObjectPropertyKey;
 import org.chromium.ui.modelutil.SimpleRecyclerViewAdapter;
@@ -105,6 +106,10 @@ class FuseboxProperties {
     /** Action to perform when the user clicks the activation chip. */
     public static final WritableObjectPropertyKey<Runnable> ACTIVATION_CHIP_CLICKED =
             new WritableObjectPropertyKey<>();
+
+    /** Whether the activation chip should be compact (displaying only the icon). */
+    public static final WritableBooleanPropertyKey ACTIVATION_CHIP_COMPACT =
+            new WritableBooleanPropertyKey();
 
     /** Whether the activation chip should be selected. */
     public static final WritableBooleanPropertyKey ACTIVATION_CHIP_SELECTED =
@@ -216,6 +221,10 @@ class FuseboxProperties {
     public static final WritableBooleanPropertyKey POPUP_ATTACH_TAB_PICKER_VISIBLE =
             new WritableBooleanPropertyKey();
 
+    /** Whether the popup is shown as a bottom sheet. */
+    public static final ReadableBooleanPropertyKey POPUP_IS_BOTTOM_SHEET =
+            new ReadableBooleanPropertyKey();
+
     /** Holds button data objects for each model that is to be shown. */
     public static final WritableObjectPropertyKey<List<PopupButtonData>>
             POPUP_MODEL_BUTTON_DATA_LIST = new WritableObjectPropertyKey<>();
@@ -287,6 +296,7 @@ class FuseboxProperties {
     public static final PropertyKey[] ALL_KEYS = {
         // go/keep-sorted start
         ACTIVATION_CHIP_CLICKED,
+        ACTIVATION_CHIP_COMPACT,
         ACTIVATION_CHIP_SELECTED,
         ACTIVATION_CHIP_VISIBLE,
         ADAPTER,
@@ -313,6 +323,7 @@ class FuseboxProperties {
         POPUP_ATTACH_TAB_PICKER_CLICKED,
         POPUP_ATTACH_TAB_PICKER_ENABLED,
         POPUP_ATTACH_TAB_PICKER_VISIBLE,
+        POPUP_IS_BOTTOM_SHEET,
         POPUP_MODEL_BUTTON_DATA_LIST,
         POPUP_MODEL_DIVIDER_VISIBLE,
         POPUP_MODEL_HEADER_TEXT,

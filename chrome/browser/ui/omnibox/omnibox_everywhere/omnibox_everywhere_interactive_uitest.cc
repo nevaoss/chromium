@@ -2,20 +2,29 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "base/test/run_until.h"
 #include "base/test/scoped_feature_list.h"
 #include "build/build_config.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/global_features.h"
+#include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
+#include "chrome/browser/profiles/profile_manager.h"
+#include "chrome/browser/profiles/profile_test_util.h"
+#include "chrome/browser/status_icons/status_tray.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/omnibox/omnibox_everywhere/omnibox_everywhere_controller.h"
+#include "chrome/browser/ui/omnibox/omnibox_everywhere/omnibox_everywhere_prefs.h"
 #include "chrome/browser/ui/omnibox/omnibox_everywhere/omnibox_everywhere_ui_manager.h"
 #include "chrome/browser/ui/omnibox/omnibox_everywhere/omnibox_everywhere_widget_delegate.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/interaction/interactive_browser_test.h"
+#include "components/keep_alive_registry/keep_alive_registry.h"
+#include "components/keep_alive_registry/keep_alive_types.h"
 #include "components/permissions/permission_request_manager.h"
+#include "components/prefs/pref_service.h"
 #include "content/public/test/browser_test.h"
 #include "extensions/buildflags/buildflags.h"
 #include "third_party/blink/public/mojom/page/draggable_region.mojom.h"
@@ -54,8 +63,8 @@ class OmniboxEverywhereBrowserTest : public InteractiveBrowserTest {
     return Do([]() {
       OmniboxEverywhereController* controller =
           g_browser_process->GetFeatures()->omnibox_everywhere_controller();
-      controller->OnKeyPressed(ui::Accelerator(
-          ui::VKEY_SPACE, ui::EF_SHIFT_DOWN | ui::EF_PLATFORM_ACCELERATOR));
+      controller->OnKeyPressed(
+          ui::Accelerator(ui::VKEY_SPACE, ui::EF_ALT_DOWN));
     });
   }
 
@@ -107,17 +116,16 @@ class OmniboxEverywhereBrowserTest : public InteractiveBrowserTest {
         "cr-searchbox-input",
     };
     search_input_loaded.event = kSearchInputLoadedEvent;
-    return Steps(
-        InstrumentNonTabWebView(
-            web_contents_id, base::BindOnce([]() -> views::View* {
-              OmniboxEverywhereController* controller =
-                  g_browser_process->GetFeatures()
-                      ->omnibox_everywhere_controller();
-              return controller->ui_manager()
-                  ->widget_delegate()
-                  ->GetContentsView();
-            })),
-        WaitForStateChange(web_contents_id, search_input_loaded));
+    return Steps(InstrumentNonTabWebView(
+                     web_contents_id, base::BindOnce([]() -> views::View* {
+                       OmniboxEverywhereController* controller =
+                           g_browser_process->GetFeatures()
+                               ->omnibox_everywhere_controller();
+                       return controller->ui_manager()
+                           ->widget_delegate()
+                           ->GetContentsView();
+                     })),
+                 WaitForStateChange(web_contents_id, search_input_loaded));
   }
 
   // Simulates dragging the mouse from `start_point` to `end_point` within
@@ -416,6 +424,153 @@ IN_PROC_BROWSER_TEST_F(OmniboxEverywhereBrowserTest,
       CheckJsResultAt(kOmniboxWebContentsId, kInputElementQuery,
                       "el => el.value", "hello wor"),
       InvokeViaHotkey(), CheckWidgetVisible(false));
+}
+
+#if BUILDFLAG(IS_CHROMEOS)
+#define MAYBE_StatusIconLifecycle DISABLED_StatusIconLifecycle_
+#else
+#define MAYBE_StatusIconLifecycle StatusIconLifecycle
+#endif
+IN_PROC_BROWSER_TEST_F(OmniboxEverywhereBrowserTest,
+                       MAYBE_StatusIconLifecycle) {
+  StatusTray* status_tray = g_browser_process->status_tray();
+  PrefService* local_state = g_browser_process->local_state();
+  ASSERT_TRUE(local_state);
+
+  if (!status_tray) {
+    GTEST_SKIP() << "StatusTray is not supported on this platform.";
+  }
+
+  // Initially background mode pref is false, status icon should not exist.
+  EXPECT_FALSE(status_tray->HasStatusIconOfTypeForTesting(
+      StatusTray::OMNIBOX_EVERYWHERE_ICON));
+
+  // Enable background mode pref.
+  local_state->SetBoolean(prefs::kOmniboxEverywhereBackgroundMode, true);
+  EXPECT_TRUE(status_tray->HasStatusIconOfTypeForTesting(
+      StatusTray::OMNIBOX_EVERYWHERE_ICON));
+
+  // Disable background mode pref.
+  local_state->SetBoolean(prefs::kOmniboxEverywhereBackgroundMode, false);
+  EXPECT_FALSE(status_tray->HasStatusIconOfTypeForTesting(
+      StatusTray::OMNIBOX_EVERYWHERE_ICON));
+}
+
+IN_PROC_BROWSER_TEST_F(OmniboxEverywhereBrowserTest, BackgroundModeKeepAlive) {
+  Profile* profile = browser()->GetProfile();
+  ProfileManager* profile_manager = g_browser_process->profile_manager();
+  KeepAliveRegistry* keep_alive_registry = KeepAliveRegistry::GetInstance();
+  PrefService* local_state = g_browser_process->local_state();
+  ASSERT_TRUE(profile_manager);
+  ASSERT_TRUE(keep_alive_registry);
+  ASSERT_TRUE(local_state);
+
+  // Background mode should initially be disabled.
+  EXPECT_FALSE(profile_manager->HasKeepAliveForTesting(
+      profile, ProfileKeepAliveOrigin::kOmniboxEverywhere));
+
+  // Enable background mode pref.
+  local_state->SetBoolean(prefs::kOmniboxEverywhereBackgroundMode, true);
+
+  // Verify both ScopedProfileKeepAlive and ScopedKeepAlive are held.
+  EXPECT_TRUE(profile_manager->HasKeepAliveForTesting(
+      profile, ProfileKeepAliveOrigin::kOmniboxEverywhere));
+  EXPECT_TRUE(keep_alive_registry->IsKeepingAlive());
+  EXPECT_TRUE(keep_alive_registry->IsOriginRegistered(
+      KeepAliveOrigin::OMNIBOX_EVERYWHERE));
+
+  // Disable background mode pref.
+  local_state->SetBoolean(prefs::kOmniboxEverywhereBackgroundMode, false);
+
+  // Wait until ScopedProfileKeepAlive is released on UI thread.
+  EXPECT_TRUE(base::test::RunUntil([&]() {
+    return !profile_manager->HasKeepAliveForTesting(
+        profile, ProfileKeepAliveOrigin::kOmniboxEverywhere);
+  }));
+}
+
+#if BUILDFLAG(IS_CHROMEOS)
+#define MAYBE_TargetProfileUpdatesOnBrowserActivation \
+  DISABLED_TargetProfileUpdatesOnBrowserActivation
+#else
+#define MAYBE_TargetProfileUpdatesOnBrowserActivation \
+  TargetProfileUpdatesOnBrowserActivation
+#endif
+
+IN_PROC_BROWSER_TEST_F(OmniboxEverywhereBrowserTest,
+                       MAYBE_TargetProfileUpdatesOnBrowserActivation) {
+  Profile* profile1 = browser()->GetProfile();
+  ASSERT_TRUE(profile1);
+
+  GlobalFeatures* features = g_browser_process->GetFeatures();
+  ASSERT_TRUE(features);
+  auto* controller = features->omnibox_everywhere_controller();
+  ASSERT_TRUE(controller);
+
+  // Activating the first browser window sets controller's target profile to
+  // profile1.
+  controller->OnBrowserActivated(browser());
+  EXPECT_EQ(profile1, controller->target_profile());
+
+  // Create a secondary profile and browser window.
+  ProfileManager* profile_manager = g_browser_process->profile_manager();
+  ASSERT_TRUE(profile_manager);
+  base::FilePath profile2_path =
+      profile_manager->GenerateNextProfileDirectoryPath();
+  profiles::testing::CreateProfileSync(profile_manager, profile2_path);
+  Profile* profile2 = profile_manager->GetProfile(profile2_path);
+  ASSERT_TRUE(profile2);
+
+  Browser* browser2 = CreateBrowser(profile2);
+  ASSERT_TRUE(browser2);
+
+  // Activating browser2 updates controller's target profile to profile2.
+  controller->OnBrowserActivated(browser2);
+  EXPECT_EQ(profile2, controller->target_profile());
+
+  // Re-activating browser1 updates target profile back to profile1.
+  controller->OnBrowserActivated(browser());
+  EXPECT_EQ(profile1, controller->target_profile());
+}
+
+IN_PROC_BROWSER_TEST_F(OmniboxEverywhereBrowserTest,
+                       PRE_RestoresTargetProfileAcrossRestart) {
+  Profile* profile = browser()->GetProfile();
+  PrefService* local_state = g_browser_process->local_state();
+  ASSERT_TRUE(profile);
+  ASSERT_TRUE(local_state);
+
+  GlobalFeatures* features = g_browser_process->GetFeatures();
+  ASSERT_TRUE(features);
+  auto* controller = features->omnibox_everywhere_controller();
+  ASSERT_TRUE(controller);
+
+  // Set target profile to profile1 in initial session.
+  controller->SetTargetProfile(profile);
+
+  // Verify profile1 path was persisted in local state.
+  EXPECT_EQ(local_state->GetFilePath(prefs::kLastTargetProfileDir),
+            profile->GetPath());
+}
+
+IN_PROC_BROWSER_TEST_F(OmniboxEverywhereBrowserTest,
+                       RestoresTargetProfileAcrossRestart) {
+  Profile* profile = browser()->GetProfile();
+  PrefService* local_state = g_browser_process->local_state();
+  ASSERT_TRUE(profile);
+  ASSERT_TRUE(local_state);
+
+  GlobalFeatures* features = g_browser_process->GetFeatures();
+  ASSERT_TRUE(features);
+  auto* controller = features->omnibox_everywhere_controller();
+  ASSERT_TRUE(controller);
+
+  // Verify local state persisted profile1 path across restart.
+  EXPECT_EQ(local_state->GetFilePath(prefs::kLastTargetProfileDir),
+            profile->GetPath());
+
+  // Verify controller restored profile1 as target profile on startup.
+  EXPECT_EQ(profile, controller->target_profile());
 }
 
 }  // namespace omnibox_everywhere

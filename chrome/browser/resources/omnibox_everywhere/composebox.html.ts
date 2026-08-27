@@ -127,7 +127,7 @@ export function getHtml(this: OmniboxEverywhereComposeboxElement) {
                         .tabSuggestions="${this.tabSuggestions}"
                         .recentTabId="${this.recentTabId}"
                         .hasImageFiles="${this.hasImageFiles()}"
-                        .disabledTabIds="${this.addedTabsIds}"
+                        .selectedTabIds="${this.addedTabsIds}"
                         .aimThreadRestoredTabs="${this.aimThreadRestoredTabs}"
                         .fileNum="${this.files.size}"
                         .sharedTabs="${this.getSharedTabs()}"
@@ -178,8 +178,21 @@ export function getHtml(this: OmniboxEverywhereComposeboxElement) {
             </div>
           </cr-composebox-file-inputs>
         </div>
-      </div>
     </div>
+    <cr-action-menu id="screenshotMenu" role-description="menu"
+        @close="${this.onScreenshotMenuClose_}">
+      <div class="menu-title">${this.i18n('shareScreenshotLabel')}</div>
+      <button class="dropdown-item" id="screenshotFullscreen"
+          @click="${this.onScreenshotEntireScreenClick_}">
+        <div class="icon entire-screen"></div>
+        ${this.i18n('screenshotEntireScreenLabel')}
+      </button>
+      <button class="dropdown-item" id="screenshotWindow"
+          @click="${this.onScreenshotWindowClick_}">
+        <div class="icon window"></div>
+        ${this.i18n('screenshotWindowLabel')}
+      </button>
+    </cr-action-menu>
 <!--_html_template_end_-->`;
   // clang-format on
 }

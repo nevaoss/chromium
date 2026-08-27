@@ -77,6 +77,9 @@ class OmniboxEverywhereUIManager : public views::WidgetObserver,
   // Returns true if the widget is visible.
   bool IsVisible() const;
 
+  // Returns true if the widget is active/focused.
+  bool IsActive() const;
+
   // views::WidgetObserver:
   void OnWidgetActivationChanged(views::Widget* widget, bool active) override;
   void OnWidgetDestroying(views::Widget* widget) override;
@@ -90,6 +93,11 @@ class OmniboxEverywhereUIManager : public views::WidgetObserver,
       content::WebContents* web_contents,
       const content::MediaStreamRequest& request,
       content::MediaResponseCallback callback) override;
+  content::WebContents* OpenURLFromTab(
+      content::WebContents* source,
+      const content::OpenURLParams& params,
+      base::OnceCallback<void(content::NavigationHandle&)>
+          navigation_handle_callback) override;
   void RunFileChooser(content::RenderFrameHost* render_frame_host,
                       scoped_refptr<content::FileSelectListener> listener,
                       const blink::mojom::FileChooserParams& params) override;

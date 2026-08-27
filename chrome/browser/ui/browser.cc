@@ -37,9 +37,6 @@
 #include "build/build_config.h"
 #include "chrome/browser/ai/ai_data_keyed_service.h"          // nogncheck
 #include "chrome/browser/ai/ai_data_keyed_service_factory.h"  // nogncheck
-#include "chrome/browser/app_mode/app_mode_utils.h"
-#include "chrome/browser/background/background_contents_service.h"
-#include "chrome/browser/background/background_contents_service_factory.h"
 #include "chrome/browser/bookmarks/bookmark_model_factory.h"
 #include "chrome/browser/buildflags.h"
 #include "chrome/browser/content_settings/sound_content_setting_observer.h"
@@ -163,10 +160,6 @@
 #include "content/public/common/profiling.h"
 #include "content/public/common/url_constants.h"
 #include "content/public/common/webplugininfo.h"
-#include "extensions/browser/extension_system.h"
-#include "extensions/browser/process_map.h"
-#include "extensions/buildflags/buildflags.h"
-#include "extensions/common/manifest_handlers/background_info.h"
 #include "net/base/filename_util.h"
 #include "third_party/blink/public/mojom/frame/blocked_navigation_types.mojom.h"
 #include "third_party/blink/public/mojom/page/draggable_region.mojom.h"
@@ -207,7 +200,6 @@ using content::RenderWidgetHostView;
 using content::SiteInstance;
 using content::WebContents;
 using custom_handlers::ProtocolHandler;
-using extensions::Extension;
 using input::NativeWebKeyboardEvent;
 using ui::WebDialogDelegate;
 using web_modal::WebContentsModalDialogManager;
@@ -228,105 +220,29 @@ BrowserWindowInterface* BrowserWindowInterface::FromSessionID(
   return found;
 }
 
-Browser::CreateParams::CreateParams(Profile* profile, bool user_gesture)
-    : CreateParams(TYPE_NORMAL, profile, user_gesture) {}
-
-Browser::CreateParams::CreateParams(Type type,
-                                    Profile* profile,
-                                    bool user_gesture)
-    : type(type), profile(profile), user_gesture(user_gesture) {}
-
-Browser::CreateParams::CreateParams(const CreateParams& other) = default;
-
-Browser::CreateParams& Browser::CreateParams::operator=(
-    const CreateParams& other) = default;
-
-Browser::CreateParams::~CreateParams() = default;
-
-// static
-Browser::CreateParams Browser::CreateParams::CreateForAppBase(
-    bool is_popup,
-    const std::string& app_name,
-    bool trusted_source,
-    const gfx::Rect& window_bounds,
-    Profile* profile,
-    bool user_gesture) {
-  DCHECK(!app_name.empty());
-
-  CreateParams params(is_popup ? Type::TYPE_APP_POPUP : Type::TYPE_APP, profile,
-                      user_gesture);
-  params.app_name = app_name;
-  params.trusted_source = trusted_source;
-  params.initial_bounds = window_bounds;
-
-  return params;
-}
-
-// static
-Browser::CreateParams Browser::CreateParams::CreateForApp(
-    const std::string& app_name,
-    bool trusted_source,
-    const gfx::Rect& window_bounds,
-    Profile* profile,
-    bool user_gesture) {
-  return CreateForAppBase(false, app_name, trusted_source, window_bounds,
-                          profile, user_gesture);
-}
-
-// static
-Browser::CreateParams Browser::CreateParams::CreateForAppPopup(
-    const std::string& app_name,
-    bool trusted_source,
-    const gfx::Rect& window_bounds,
-    Profile* profile,
-    bool user_gesture) {
-  return CreateForAppBase(true, app_name, trusted_source, window_bounds,
-                          profile, user_gesture);
-}
-
-// static
-Browser::CreateParams Browser::CreateParams::CreateForPictureInPicture(
-    const std::string& app_name,
-    bool trusted_source,
-    Profile* profile,
-    bool user_gesture) {
-  Browser::CreateParams browser_params(Browser::TYPE_PICTURE_IN_PICTURE,
-                                       profile, user_gesture);
-  browser_params.app_name = app_name;
-  browser_params.trusted_source = trusted_source;
-  return browser_params;
-}
-
-// static
-Browser::CreateParams Browser::CreateParams::CreateForDevTools(
-    Profile* profile) {
-  CreateParams params(TYPE_DEVTOOLS, profile, true);
-  params.app_name = DevToolsWindow::kDevToolsApp;
-  params.trusted_source = true;
-  return params;
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 // Browser, Constructors, Creation, Showing:
 
 // static
-Browser* Browser::Create(const CreateParams& params) {
+Browser* Browser::Create(BrowserWindowCreateParams params) {
   // If this is failing, a caller is trying to create a browser when creation is
   // not possible, e.g. using the wrong profile or during shutdown. The caller
   // should handle this; see e.g. crbug.com/40154317 and crbug.com/40798999.
   CHECK_EQ(CreationStatus::kOk,
            GetBrowserWindowCreationStatusForProfile(*params.profile));
 
-  std::unique_ptr<Browser> browser = base::WrapUnique(new Browser(params));
+  Profile* const profile_ptr = &*params.profile;
+  std::unique_ptr<Browser> browser =
+      base::WrapUnique(new Browser(std::move(params)));
   Browser* const browser_ptr = browser.get();
-  BrowserManagerServiceFactory::GetForProfile(params.profile)
+  BrowserManagerServiceFactory::GetForProfile(profile_ptr)
       ->AddBrowser(std::move(browser));
   return browser_ptr;
 }
 
 // static
 std::unique_ptr<Browser> Browser::DeprecatedCreateOwnedForTesting(
-    const CreateParams& params) {
+    BrowserWindowCreateParams params) {
   CHECK_IS_TEST();
   // If this is failing, a caller is trying to create a browser when creation is
   // not possible, e.g. using the wrong profile or during shutdown. The caller
@@ -334,21 +250,23 @@ std::unique_ptr<Browser> Browser::DeprecatedCreateOwnedForTesting(
   CHECK_EQ(CreationStatus::kOk,
            GetBrowserWindowCreationStatusForProfile(*params.profile));
 
-  std::unique_ptr<Browser> browser = base::WrapUnique(new Browser(params));
-  BrowserManagerServiceFactory::GetForProfile(params.profile)
+  Profile* const profile_ptr = &*params.profile;
+  std::unique_ptr<Browser> browser =
+      base::WrapUnique(new Browser(std::move(params)));
+  BrowserManagerServiceFactory::GetForProfile(profile_ptr)
       ->AddBrowserForTesting(browser.get());
   return browser;
 }
 
-Browser::Browser(const CreateParams& params)
+Browser::Browser(BrowserWindowCreateParams params)
     : type_(params.type),
-      profile_(params.profile),
+      profile_(&*params.profile),
       window_(nullptr),
       tab_strip_model_delegate_(
           std::make_unique<chrome::BrowserTabStripModelDelegate>(this)),
       tab_strip_model_(std::make_unique<TabStripModel>(
           tab_strip_model_delegate_.get(),
-          params.profile,
+          profile_,
           // Tab groups are disabled for app browsers.
           (type_ == TYPE_APP || type_ == TYPE_APP_POPUP)
               ? nullptr
@@ -357,16 +275,19 @@ Browser::Browser(const CreateParams& params)
       keep_alive_(
           std::make_unique<ScopedKeepAlive>(KeepAliveOrigin::BROWSER,
                                             KeepAliveRestartOption::DISABLED)) {
+  const bool user_gesture = params.from_user_gesture;
+  const bool in_tab_dragging = params.in_tab_dragging;
+  BrowserWindow* const custom_window = params.window;
+
   // Constructed first so that downstream features and window setup (e.g.
   // BrowserWindowFeatures and the window sizer) can query the creation and
   // initial parameters of this window.
-  init_state_ =
-      std::make_unique<BrowserInitState>(params, unowned_user_data_host_);
+  init_state_ = std::make_unique<BrowserInitState>(std::move(params),
+                                                   unowned_user_data_host_);
 
   if (!profile_->IsOffTheRecord()) {
     profile_keep_alive_ = std::make_unique<ScopedProfileKeepAlive>(
-        params.profile->GetOriginalProfile(),
-        ProfileKeepAliveOrigin::kBrowserWindow);
+        profile_->GetOriginalProfile(), ProfileKeepAliveOrigin::kBrowserWindow);
   }
 
   tab_strip_model_->AddObserver(this);
@@ -385,14 +306,14 @@ Browser::Browser(const CreateParams& params)
   features_ = std::make_unique<BrowserWindowFeatures>();
   features_->Init(this);
 
-  if (params.window) {
-    CHECK_IS_TEST() << "Browser::CreateParams::window is a test-only param";
+  if (custom_window) {
+    CHECK_IS_TEST() << "BrowserWindowCreateParams::window is a test-only param";
   }
   window_ =
-      params.window
-          ? std::unique_ptr<BrowserWindow, BrowserWindowDeleter>(params.window)
-          : BrowserWindow::CreateBrowserWindow(this, params.user_gesture,
-                                               params.in_tab_dragging);
+      custom_window
+          ? std::unique_ptr<BrowserWindow, BrowserWindowDeleter>(custom_window)
+          : BrowserWindow::CreateBrowserWindow(this, user_gesture,
+                                               in_tab_dragging);
 
   if (auto* const app_browser_controller =
           web_app::AppBrowserController::From(this)) {
@@ -473,25 +394,6 @@ Browser::~Browser() {
   profile_pref_registrar_.Reset();
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// Getters & Setters
-
-
-base::WeakPtr<Browser> Browser::AsWeakPtr() {
-  return weak_factory_.GetWeakPtr();
-}
-
-base::WeakPtr<const Browser> Browser::AsWeakPtr() const {
-  return weak_factory_.GetWeakPtr();
-}
-
-///////////////////////////////////////////////////////////////////////////////
-// Browser, OnBeforeUnload handling:
-
-std::vector<StatusBubble*> Browser::GetStatusBubblesForTesting() {
-  return GetStatusBubbles();
-}
-
 Profile* Browser::GetProfile() {
   return profile_;
 }
@@ -540,7 +442,7 @@ base::CallbackListSubscription Browser::RegisterBrowserCloseCancelled(
 }
 
 base::WeakPtr<BrowserWindowInterface> Browser::GetWeakPtr() {
-  return AsWeakPtr();
+  return weak_factory_.GetWeakPtr();
 }
 
 base::CallbackListSubscription Browser::RegisterActiveTabDidChange(
@@ -594,14 +496,6 @@ base::CallbackListSubscription Browser::RegisterDidBecomeInactive(
     DidBecomeInactiveCallback callback) {
   return BrowserActiveStateManager::From(this)->RegisterDidBecomeInactive(
       std::move(callback));
-}
-
-void Browser::SynchronouslyDestroyBrowser() {
-  // TODO(crbug.com/413168662): Eliminate the need for BrowserCloseManager to
-  // call this directly, instead allow Browsers to be destroyed by their owning
-  // BrowserManagerService at shutdown.
-  BrowserManagerServiceFactory::GetForProfile(profile_)->DeleteBrowser(this);
-  // `this` is no longer valid from this point forward.
 }
 
 BrowserWindowInterface::Type Browser::GetType() const {
@@ -774,7 +668,8 @@ void Browser::OnTabInsertedAt(WebContents* contents, int index) {
   // won't start if the page is loading. Note that we don't want to
   // ScheduleUIUpdate() because the tab may not have been inserted in the UI
   // yet if this function is called before TabStripModel::TabInsertedAt().
-  UpdateWindowForLoadingStateChanged(contents, true);
+  BrowserUiController::From(this)->UpdateWindowForLoadingStateChanged(contents,
+                                                                      true);
 }
 
 void Browser::OnTabClosing(tabs::TabInterface* tab,
@@ -939,7 +834,8 @@ void Browser::OnActiveTabChanged(const TabStripModelChange& change,
   browser_command_controller->TabStateChanged();
 
   // Reset the status bubble.
-  std::vector<StatusBubble*> status_bubbles = GetStatusBubbles();
+  std::vector<StatusBubble*> status_bubbles =
+      BrowserUiController::From(this)->GetStatusBubbles();
   for (StatusBubble* status_bubble : status_bubbles) {
     status_bubble->Hide();
 
@@ -991,33 +887,6 @@ void Browser::OnDevToolsAvailabilityChanged() {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// Browser, Getters for UI (private):
-
-std::vector<StatusBubble*> Browser::GetStatusBubbles() {
-  // For kiosk and exclusive app mode we want to always hide the status bubble.
-  if (IsRunningInAppMode()) {
-    return {};
-  }
-
-  // We hide the status bar for web apps windows as this matches native
-  // experience. However, we include the status bar for 'minimal-ui' display
-  // mode, as the minimal browser UI includes the status bar.
-  auto* const app_browser_controller =
-      web_app::AppBrowserController::From(this);
-  if (app_browser_controller &&
-      !app_browser_controller->HasMinimalUiButtons()) {
-    return {};
-  }
-
-  if (window_) {
-    return window_->GetStatusBubbles();
-  } else {
-    return {};
-  }
-}
-
-
-///////////////////////////////////////////////////////////////////////////////
 // Browser, Assorted utility functions (private):
 
 void Browser::SetAsDelegate(WebContents* web_contents, bool set_delegate) {
@@ -1064,128 +933,6 @@ void Browser::TabDetachedAtImpl(content::WebContents* contents,
   if (HasFindBarController() && was_active) {
     CreateOrGetFindBarController()->ChangeWebContents(nullptr);
   }
-}
-
-void Browser::UpdateWindowForLoadingStateChanged(content::WebContents* source,
-                                                 bool should_show_loading_ui) {
-  window_->UpdateLoadingAnimations(/* is_visible=*/!window_->IsMinimized());
-  window_->UpdateTitleBar();
-
-  WebContents* selected_contents = tab_strip_model_->GetActiveWebContents();
-  if (source == selected_contents) {
-    bool is_loading = source->IsLoading() && should_show_loading_ui;
-    chrome::BrowserCommandController::From(this)->LoadingStateChanged(
-        is_loading, false);
-
-    std::vector<StatusBubble*> status_bubbles = GetStatusBubbles();
-    if (status_bubbles.size() > 0) {
-      status_bubbles.front()->SetStatus(
-          CoreTabHelper::FromWebContents(selected_contents)->GetStatusText());
-    }
-  }
-}
-
-bool Browser::ShouldCreateBackgroundContents(
-    content::SiteInstance* source_site_instance,
-    const GURL& opener_url,
-    const std::string& frame_name) {
-  extensions::ExtensionSystem* extension_system =
-      extensions::ExtensionSystem::Get(profile_);
-
-  if (!opener_url.is_valid() || frame_name.empty() ||
-      !extension_system->is_ready()) {
-    return false;
-  }
-
-  // Only hosted apps have web extents, so this ensures that only hosted apps
-  // can create BackgroundContents. We don't have to check for background
-  // permission as that is checked in RenderMessageFilter when the CreateWindow
-  // message is processed.
-  const Extension* extension = extensions::ExtensionRegistry::Get(profile_)
-                                   ->enabled_extensions()
-                                   .GetHostedAppByURL(opener_url);
-  if (!extension) {
-    return false;
-  }
-
-  // No BackgroundContents allowed if BackgroundContentsService doesn't exist.
-  BackgroundContentsService* service =
-      BackgroundContentsServiceFactory::GetForProfile(profile_);
-  if (!service) {
-    return false;
-  }
-
-  // Ensure that we're trying to open this from the extension's process.
-  extensions::ProcessMap* process_map = extensions::ProcessMap::Get(profile_);
-  if (!source_site_instance->HasProcess() ||
-      !process_map->Contains(extension->id(),
-                             source_site_instance->GetProcess()->GetID())) {
-    return false;
-  }
-
-  return true;
-}
-
-BackgroundContents* Browser::CreateBackgroundContents(
-    content::SiteInstance* source_site_instance,
-    content::RenderFrameHost* opener,
-    const GURL& opener_url,
-    bool is_new_browsing_instance,
-    const std::string& frame_name,
-    const GURL& target_url,
-    const content::StoragePartitionConfig& partition_config,
-    content::SessionStorageNamespace* session_storage_namespace) {
-  BackgroundContentsService* service =
-      BackgroundContentsServiceFactory::GetForProfile(profile_);
-  const Extension* extension = extensions::ExtensionRegistry::Get(profile_)
-                                   ->enabled_extensions()
-                                   .GetHostedAppByURL(opener_url);
-  bool allow_js_access = extensions::BackgroundInfo::AllowJSAccess(extension);
-  // Only allow a single background contents per app.
-  BackgroundContents* existing =
-      service->GetAppBackgroundContents(extension->id());
-  if (existing) {
-    // For non-scriptable background contents, ignore the request altogether,
-    // Note that ShouldCreateBackgroundContents() returning true will also
-    // suppress creation of the normal WebContents.
-    if (!allow_js_access) {
-      return nullptr;
-    }
-    // For scriptable background pages, if one already exists, close it (even
-    // if it was specified in the manifest).
-    service->DeleteBackgroundContents(existing);
-  }
-
-  // Passed all the checks, so this should be created as a BackgroundContents.
-  if (allow_js_access) {
-    return service->CreateBackgroundContents(
-        source_site_instance, opener, is_new_browsing_instance, frame_name,
-        extension->id(), partition_config, session_storage_namespace);
-  }
-
-  // If script access is not allowed, create the the background contents in a
-  // new SiteInstance, so that a separate process is used. We must not use any
-  // of the passed-in routing IDs, as they are objects in the opener's
-  // process.
-  BackgroundContents* contents = service->CreateBackgroundContents(
-      content::SiteInstance::Create(source_site_instance->GetBrowserContext()),
-      nullptr, is_new_browsing_instance, frame_name, extension->id(),
-      partition_config, session_storage_namespace);
-
-  // When a separate process is used, the original renderer cannot access the
-  // new window later, thus we need to navigate the window now.
-  content::NavigationController::LoadURLParams params(target_url);
-  params.is_renderer_initiated = true;
-  if (opener) {
-    params.initiator_origin = opener->GetLastCommittedOrigin();
-    params.initiator_process_id = opener->GetProcess()->GetID();
-  } else {
-    params.initiator_origin = url::Origin::Create(opener_url);
-  }
-  params.source_site_instance = source_site_instance;
-  contents->web_contents()->GetController().LoadURLWithParams(params);
-
-  return contents;
 }
 
 FindBarController* Browser::CreateOrGetFindBarController() {

@@ -55,6 +55,7 @@
 #include "third_party/blink/renderer/core/exported/web_view_impl.h"
 #include "third_party/blink/renderer/core/frame/event_handler_registry.h"
 #include "third_party/blink/renderer/core/frame/frame_test_helpers.h"
+#include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
 #include "third_party/blink/renderer/core/html/html_element.h"
 #include "third_party/blink/renderer/core/layout/layout_embedded_content.h"
@@ -194,14 +195,38 @@ class TestPluginWithEditableText : public FakeWebPlugin {
       paste_called_ = true;
       return true;
     }
+    if (name == "MakeTextWritingDirectionLeftToRight") {
+      writing_direction_left_to_right_called_ = true;
+      return true;
+    }
+    if (name == "MakeTextWritingDirectionRightToLeft") {
+      writing_direction_right_to_left_called_ = true;
+      return true;
+    }
+    if (name == "MakeTextWritingDirectionNatural") {
+      writing_direction_natural_called_ = true;
+      return true;
+    }
     return false;
   }
 
   bool IsCutCalled() const { return cut_called_; }
   bool IsPasteCalled() const { return paste_called_; }
+  bool IsWritingDirectionLeftToRightCalled() const {
+    return writing_direction_left_to_right_called_;
+  }
+  bool IsWritingDirectionRightToLeftCalled() const {
+    return writing_direction_right_to_left_called_;
+  }
+  bool IsWritingDirectionNaturalCalled() const {
+    return writing_direction_natural_called_;
+  }
   void ResetEditCommandState() {
     cut_called_ = false;
     paste_called_ = false;
+    writing_direction_left_to_right_called_ = false;
+    writing_direction_right_to_left_called_ = false;
+    writing_direction_natural_called_ = false;
   }
 
  private:
@@ -209,6 +234,9 @@ class TestPluginWithEditableText : public FakeWebPlugin {
 
   bool cut_called_;
   bool paste_called_;
+  bool writing_direction_left_to_right_called_ = false;
+  bool writing_direction_right_to_left_called_ = false;
+  bool writing_direction_natural_called_ = false;
 };
 
 class RenderThrottlingTestPlugin : public FakeWebPlugin {
@@ -1422,9 +1450,7 @@ TEST_F(WebPluginContainerTest, IsRectTopmostTest) {
 
   auto* plugin_container_impl = To<WebPluginContainerImpl>(
       GetWebPluginContainer(web_view, WebString("translated-plugin")));
-  plugin_container_impl->SetFrameRect(gfx::Rect(0, 0, 300, 300));
-
-  gfx::Rect rect = plugin_container_impl->GetElement().BoundsInWidget();
+  gfx::Rect rect(plugin_container_impl->GetElement().BoundsInWidget().size());
   EXPECT_TRUE(plugin_container_impl->IsRectTopmost(rect));
 
   // Cause the plugin's frame to be detached.
@@ -1445,14 +1471,14 @@ TEST_F(WebPluginContainerTest, IsRectTopmostTestWithOddAndEvenDimensions) {
 
   auto* even_plugin_container_impl = To<WebPluginContainerImpl>(
       GetWebPluginContainer(web_view, WebString("translated-plugin")));
-  even_plugin_container_impl->SetFrameRect(gfx::Rect(0, 0, 300, 300));
-  auto even_rect = even_plugin_container_impl->GetElement().BoundsInWidget();
+  gfx::Rect even_rect(
+      even_plugin_container_impl->GetElement().BoundsInWidget().size());
   EXPECT_TRUE(even_plugin_container_impl->IsRectTopmost(even_rect));
 
   auto* odd_plugin_container_impl = To<WebPluginContainerImpl>(
       GetWebPluginContainer(web_view, WebString("odd-dimensions-plugin")));
-  odd_plugin_container_impl->SetFrameRect(gfx::Rect(0, 0, 300, 300));
-  auto odd_rect = odd_plugin_container_impl->GetElement().BoundsInWidget();
+  gfx::Rect odd_rect(
+      odd_plugin_container_impl->GetElement().BoundsInWidget().size());
   EXPECT_TRUE(odd_plugin_container_impl->IsRectTopmost(odd_rect));
 }
 
@@ -1615,7 +1641,7 @@ TEST_F(WebPluginContainerTest, ClippedRectsForSubpixelPositionedPlugin) {
 }
 
 TEST_F(WebPluginContainerTest, TopmostAfterDetachTest) {
-  static constexpr gfx::Rect kTopmostRect(10, 10, 40, 40);
+  static constexpr gfx::Rect kTopmostRect(0, 0, 40, 40);
 
   // Plugin that checks isRectTopmost in destroy().
   class TopmostPlugin : public FakeWebPlugin {
@@ -1645,8 +1671,6 @@ TEST_F(WebPluginContainerTest, TopmostAfterDetachTest) {
 
   auto* plugin_container_impl = To<WebPluginContainerImpl>(
       GetWebPluginContainer(web_view, WebString("translated-plugin")));
-  plugin_container_impl->SetFrameRect(gfx::Rect(0, 0, 300, 300));
-
   EXPECT_TRUE(plugin_container_impl->IsRectTopmost(kTopmostRect));
 
   TopmostPlugin* test_plugin =
@@ -1856,19 +1880,29 @@ TEST_F(WebPluginContainerTest, GeometryAndPaintFixedPositionScroll) {
   CalculateGeometry(plugin_container_impl, window_rect, clip_rect,
                     unobscured_rect);
   // Part of the original clip rect is scrolled out of the view.
-  // TODO(crbug.com/540906913): The window rect is incorrect. The fixed-position
-  // plugin should remain in the same position relative to the viewport on
-  // scroll.
-  EXPECT_EQ(gfx::Rect(-924, -1876, 33, 44), window_rect);
-  EXPECT_EQ(gfx::Rect(6, 4, 33, 44), clip_rect);
-  EXPECT_EQ(gfx::Rect(6, 4, 33, 44), unobscured_rect);
+  if (RuntimeEnabledFeatures::AvoidEmbeddedContentViewLocationEnabled()) {
+    EXPECT_EQ(gfx::Rect(76, 124, 33, 44), window_rect);
+    EXPECT_EQ(gfx::Rect(6, 4, 33, 44), clip_rect);
+    EXPECT_EQ(gfx::Rect(6, 4, 33, 44), unobscured_rect);
 
-  // For now, though the window rect is incorrect, the paint rect and
-  // translation are also incorrect, and their errors cancel each other out,
-  // so the final painting result happens to be correct.
-  test_plugin->CheckPainting(web_view, display_item_visual_rect,
-                             gfx::Rect(-1000, -2000, 300, 300),
-                             gfx::Vector2dF(930, 1880));
+    test_plugin->CheckPainting(web_view, display_item_visual_rect,
+                               gfx::Rect(0, 0, 300, 300),
+                               gfx::Vector2dF(-70, -120));
+  } else {
+    // TODO(crbug.com/540906913): The window rect is incorrect. The
+    // fixed-position plugin should remain in the same position relative to the
+    // viewport on scroll.
+    EXPECT_EQ(gfx::Rect(-924, -1876, 33, 44), window_rect);
+    EXPECT_EQ(gfx::Rect(6, 4, 33, 44), clip_rect);
+    EXPECT_EQ(gfx::Rect(6, 4, 33, 44), unobscured_rect);
+
+    // For now, though the window rect is incorrect, the paint rect and
+    // translation are also incorrect, and their errors cancel each other out,
+    // so the final painting result happens to be correct.
+    test_plugin->CheckPainting(web_view, display_item_visual_rect,
+                               gfx::Rect(-1000, -2000, 300, 300),
+                               gfx::Vector2dF(930, 1880));
+  }
 
   // The scroll above didn't invalidate layout. Now invalidate layout, and the
   // geometry should not change.
@@ -1958,6 +1992,9 @@ TEST_F(WebPluginContainerTest, CompositedPlugin) {
   const auto& foreign_layer_display_item =
       To<ForeignLayerDisplayItem>(UNSAFE_BUFFERS(display_items[0]));
   EXPECT_EQ(plugin->GetCcLayer(), foreign_layer_display_item.GetLayer());
+  EXPECT_EQ(gfx::Vector2dF(20, 20),
+            plugin->GetCcLayer()->offset_to_transform_parent());
+  EXPECT_EQ(gfx::Size(400, 300), plugin->GetCcLayer()->bounds());
 }
 
 TEST_F(WebPluginContainerTest, NeedsWheelEvents) {
@@ -1979,6 +2016,56 @@ TEST_F(WebPluginContainerTest, NeedsWheelEvents) {
                   ->GetFrame()
                   ->GetEventHandlerRegistry()
                   .HasEventHandlers(EventHandlerRegistry::kWheelEventBlocking));
+}
+
+TEST_F(WebPluginContainerTest, SetTextDirection) {
+  RegisterMockedURL("plugin_container.html");
+  TestPluginWebFrameClient plugin_web_frame_client;
+  frame_test_helpers::WebViewHelper web_view_helper;
+
+  plugin_web_frame_client.SetHasEditableText(true);
+
+  WebViewImpl* web_view = web_view_helper.InitializeAndLoad(
+      base_url_ + "plugin_container.html", &plugin_web_frame_client);
+  EnablePlugins(web_view, gfx::Size(300, 300));
+
+  WebElement plugin_container_one_element =
+      web_view->MainFrameImpl()->GetDocument().GetElementById(
+          WebString("translated-plugin"));
+
+  auto* test_plugin =
+      TestPluginWithEditableText::FromContainer(&plugin_container_one_element);
+  ASSERT_TRUE(test_plugin);
+
+  LocalFrame* frame = web_view->MainFrameImpl()->GetFrame();
+
+  web_view->MainFrameImpl()
+      ->GetFrame()
+      ->GetDocument()
+      ->QuerySelector(AtomicString("#translated-plugin"))
+      ->Focus();
+
+  // Test LTR
+  frame->SetTextDirection(base::i18n::TextDirection::LEFT_TO_RIGHT);
+  EXPECT_TRUE(test_plugin->IsWritingDirectionLeftToRightCalled());
+  EXPECT_FALSE(test_plugin->IsWritingDirectionRightToLeftCalled());
+  EXPECT_FALSE(test_plugin->IsWritingDirectionNaturalCalled());
+
+  test_plugin->ResetEditCommandState();
+
+  // Test RTL
+  frame->SetTextDirection(base::i18n::TextDirection::RIGHT_TO_LEFT);
+  EXPECT_FALSE(test_plugin->IsWritingDirectionLeftToRightCalled());
+  EXPECT_TRUE(test_plugin->IsWritingDirectionRightToLeftCalled());
+  EXPECT_FALSE(test_plugin->IsWritingDirectionNaturalCalled());
+
+  test_plugin->ResetEditCommandState();
+
+  // Test Natural
+  frame->SetTextDirection(base::i18n::TextDirection::UNKNOWN_DIRECTION);
+  EXPECT_FALSE(test_plugin->IsWritingDirectionLeftToRightCalled());
+  EXPECT_FALSE(test_plugin->IsWritingDirectionRightToLeftCalled());
+  EXPECT_TRUE(test_plugin->IsWritingDirectionNaturalCalled());
 }
 
 }  // namespace blink

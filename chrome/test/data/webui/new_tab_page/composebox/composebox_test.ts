@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 import {ComposeboxElement, NtpComposeboxElement, SubmitButtonIconType} from 'chrome://new-tab-page/lazy_load.js';
-import {$$, InputSource} from 'chrome://new-tab-page/new_tab_page.js';
+import {$$, InputSource, QueryActionOverride} from 'chrome://new-tab-page/new_tab_page.js';
 import {InputType, ToolMode} from 'chrome://resources/cr_components/composebox/composebox_query.mojom-webui.js';
 import type {ContextualEntrypointAndMenuElement} from 'chrome://resources/cr_components/composebox/contextual_entrypoint_and_menu.js';
 import {WindowProxy as CrWindowProxy} from 'chrome://resources/cr_components/composebox/window_proxy.js';
@@ -42,7 +42,8 @@ suite(`NewTabPageComposeboxTest`, () => {
     testProxy.element.searchboxLayoutMode = 'Compact';
     await microtasksFinished();
 
-    testProxy.element.getInputElement().$.input.value = 'test';
+    (testProxy.element.getInputElement().$.input as HTMLTextAreaElement).value =
+        'test';
     testProxy.element.getInputElement().$.input.dispatchEvent(
         new Event('input'));
     await microtasksFinished();
@@ -59,7 +60,8 @@ suite(`NewTabPageComposeboxTest`, () => {
     testProxy.element.searchboxLayoutMode = 'Compact';
     await microtasksFinished();
 
-    testProxy.element.getInputElement().$.input.value = 'test';
+    (testProxy.element.getInputElement().$.input as HTMLTextAreaElement).value =
+        'test';
     testProxy.element.getInputElement().$.input.dispatchEvent(
         new Event('input'));
     await microtasksFinished();
@@ -108,7 +110,8 @@ suite(`NewTabPageComposeboxTest`, () => {
             'cr-composebox-submit'));
 
         // Add input and files.
-        testProxy.element.getInputElement().$.input.value = 'test';
+        (testProxy.element.getInputElement().$.input as HTMLTextAreaElement)
+            .value = 'test';
         testProxy.element.getInputElement().$.input.dispatchEvent(
             new Event('input'));
         const dataTransfer = new DataTransfer();
@@ -230,7 +233,8 @@ suite(`NewTabPageComposeboxTest`, () => {
           searchboxNextEnabled: true,
         });
         testProxy.element.searchboxLayoutMode = 'Compact';
-        testProxy.element.getInputElement().$.input.value = 'test';
+        (testProxy.element.getInputElement().$.input as HTMLTextAreaElement)
+            .value = 'test';
         testProxy.element.getInputElement().$.input.dispatchEvent(
             new Event('input'));
         await microtasksFinished();
@@ -248,7 +252,8 @@ suite(`NewTabPageComposeboxTest`, () => {
           searchboxNextEnabled: true,
         });
         testProxy.element.searchboxLayoutMode = 'Compact';
-        testProxy.element.getInputElement().$.input.value = '';
+        (testProxy.element.getInputElement().$.input as HTMLTextAreaElement)
+            .value = '';
         testProxy.element.getInputElement().$.input.dispatchEvent(
             new Event('input'));
         await microtasksFinished();
@@ -270,7 +275,8 @@ suite(`NewTabPageComposeboxTest`, () => {
         testProxy.searchboxHandler.getCallCount('openAutocompleteMatch'), 0);
 
     // Arrange.
-    testProxy.element.getInputElement().$.input.value = 'test';
+    (testProxy.element.getInputElement().$.input as HTMLTextAreaElement).value =
+        'test';
     testProxy.element.getInputElement().$.input.dispatchEvent(
         new Event('input'));
     const matches =
@@ -302,7 +308,8 @@ suite(`NewTabPageComposeboxTest`, () => {
         testProxy.searchboxHandler.getCallCount('openAutocompleteMatch'), 0);
 
     // Arrange.
-    testProxy.element.getInputElement().$.input.value = 'test';
+    (testProxy.element.getInputElement().$.input as HTMLTextAreaElement).value =
+        'test';
     testProxy.element.getInputElement().$.input.dispatchEvent(
         new Event('input'));
     const matches =
@@ -889,7 +896,7 @@ suite(`NewTabPageComposeboxTest`, () => {
           imageInputClicked = true;
         });
 
-        composebox.handleFuseboxAction({
+        await composebox.handleFuseboxAction({
           preselectedTool: null,
           preferredInventory: null,
           preselectedModel: null,
@@ -917,7 +924,7 @@ suite(`NewTabPageComposeboxTest`, () => {
           fileInputClicked = true;
         });
 
-        composebox.handleFuseboxAction({
+        await composebox.handleFuseboxAction({
           preselectedTool: null,
           preferredInventory: null,
           preselectedModel: null,
@@ -927,6 +934,61 @@ suite(`NewTabPageComposeboxTest`, () => {
         });
 
         assertTrue(fileInputClicked);
+      });
+
+  test(
+      'handleFuseboxAction opens tab picker for kInputSourceTabPicker',
+      async () => {
+        const composebox = new NtpComposeboxElement();
+        composebox.contextMenuEnabled = true;
+        document.body.appendChild(composebox);
+        await microtasksFinished();
+
+        await composebox.handleFuseboxAction({
+          preselectedTool: null,
+          preferredInventory: null,
+          preselectedModel: null,
+          queryActionOverride: null,
+          preselectedInputSource: InputSource.kInputSourceTabPicker,
+          searchboxOverride: null,
+        });
+
+        assertTrue(composebox.shareTabsFlyoutOpen);
+      });
+
+  test(
+      'hint action sets the placeholder and survives input state updates',
+      async () => {
+        const composebox = new NtpComposeboxElement();
+        document.body.appendChild(composebox);
+        await microtasksFinished();
+        await composebox.updateComplete;
+        await composebox.getInputElement().updateComplete;
+        const input = composebox.getInputElement().$.input;
+
+        await composebox.handleFuseboxAction(
+            {
+              preselectedTool: null,
+              preferredInventory: null,
+              preselectedModel: null,
+              queryActionOverride: QueryActionOverride.kHint,
+              preselectedInputSource: null,
+              searchboxOverride: null,
+            },
+            'chip hint');
+        await composebox.updateComplete;
+        await composebox.getInputElement().updateComplete;
+        assertEquals('chip hint', input.getAttribute('placeholder'));
+
+        // An asynchronous input state update carrying its own hint must not
+        // clobber the active chip hint.
+        testProxy.searchboxCallbackRouterRemote.onInputStateChanged(
+            new MockInputState({hintText: 'server hint'}));
+        await testProxy.searchboxCallbackRouterRemote.$.flushForTesting();
+        await microtasksFinished();
+        await composebox.updateComplete;
+        await composebox.getInputElement().updateComplete;
+        assertEquals('chip hint', input.getAttribute('placeholder'));
       });
 });
 

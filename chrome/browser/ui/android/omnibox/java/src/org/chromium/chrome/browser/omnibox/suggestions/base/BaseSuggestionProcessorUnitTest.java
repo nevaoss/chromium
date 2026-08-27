@@ -46,7 +46,6 @@ import org.chromium.chrome.browser.omnibox.R;
 import org.chromium.chrome.browser.omnibox.UrlBarEditingTextStateProvider;
 import org.chromium.chrome.browser.omnibox.styles.OmniboxDrawableState;
 import org.chromium.chrome.browser.omnibox.styles.OmniboxImageSupplier;
-import org.chromium.chrome.browser.omnibox.styles.OmniboxResourceProvider;
 import org.chromium.chrome.browser.omnibox.suggestions.AutocompleteUIContext;
 import org.chromium.chrome.browser.omnibox.suggestions.SuggestionHost;
 import org.chromium.chrome.browser.omnibox.suggestions.action.OmniboxActionInSuggest;
@@ -54,7 +53,7 @@ import org.chromium.chrome.browser.omnibox.suggestions.base.BaseSuggestionViewPr
 import org.chromium.chrome.browser.omnibox.suggestions.basic.BasicSuggestionProcessor.BookmarkState;
 import org.chromium.chrome.browser.share.ShareDelegate;
 import org.chromium.chrome.browser.tab.Tab;
-import org.chromium.components.metrics.OmniboxEventProtos.OmniboxEventProto.PageClassification;
+import org.chromium.components.metrics.OmniboxEventProtosIntDef.PageClassification;
 import org.chromium.components.omnibox.AutocompleteInput;
 import org.chromium.components.omnibox.AutocompleteMatch;
 import org.chromium.components.omnibox.AutocompleteMatchBuilder;
@@ -154,8 +153,7 @@ public class BaseSuggestionProcessorUnitTest {
                         mActionDelegate);
         mProcessor = new TestBaseSuggestionProcessor(mUiContext);
         mInput = new AutocompleteInput();
-        mInput.setPageClassification(
-                PageClassification.INSTANT_NTP_WITH_OMNIBOX_AS_STARTING_FOCUS_VALUE);
+        mInput.setPageClassification(PageClassification.INSTANT_NTP_WITH_OMNIBOX_AS_STARTING_FOCUS);
     }
 
     /** Create Suggestion for test. */
@@ -431,7 +429,7 @@ public class BaseSuggestionProcessorUnitTest {
 
     @Test
     public void setRemoveOrRefineAction_suppressedForHubOrTabSearch() {
-        mInput.setPageClassification(PageClassification.ANDROID_TAB_SEARCH_OVERLAY_VALUE);
+        mInput.setPageClassification(PageClassification.ANDROID_TAB_SEARCH_OVERLAY);
         createSuggestion(
                 OmniboxSuggestionType.HISTORY_URL,
                 /* isSearch= */ false,
@@ -442,7 +440,7 @@ public class BaseSuggestionProcessorUnitTest {
         var actions = mModel.get(BaseSuggestionViewProperties.ACTION_BUTTONS);
         assertNull(actions);
 
-        mInput.setPageClassification(PageClassification.ANDROID_HUB_VALUE);
+        mInput.setPageClassification(PageClassification.ANDROID_HUB);
         mProcessor.setRemoveOrRefineAction(mModel, mInput, mSuggestion, 0);
 
         actions = mModel.get(BaseSuggestionViewProperties.ACTION_BUTTONS);
@@ -459,7 +457,7 @@ public class BaseSuggestionProcessorUnitTest {
         assertEquals(false, mModel.get(BaseSuggestionViewProperties.USE_LARGE_DECORATION));
         assertEquals(
                 mModel.get(BaseSuggestionViewProperties.ACTION_CHIP_LEAD_IN_SPACING),
-                OmniboxResourceProvider.getSuggestionDecorationIconSizeWidth(mContext));
+                mUiContext.resourceProvider.getSuggestionDecorationIconSizeWidth());
 
         mModel.set(BaseSuggestionViewProperties.USE_LARGE_DECORATION, true);
         mModel.set(BaseSuggestionViewProperties.ACTION_CHIP_LEAD_IN_SPACING, 43);
@@ -468,7 +466,7 @@ public class BaseSuggestionProcessorUnitTest {
         assertEquals(false, mModel.get(BaseSuggestionViewProperties.USE_LARGE_DECORATION));
         assertEquals(
                 mModel.get(BaseSuggestionViewProperties.ACTION_CHIP_LEAD_IN_SPACING),
-                OmniboxResourceProvider.getSuggestionDecorationIconSizeWidth(mContext));
+                mUiContext.resourceProvider.getSuggestionDecorationIconSizeWidth());
     }
 
     @Test
@@ -552,7 +550,7 @@ public class BaseSuggestionProcessorUnitTest {
     public void addActionButtonIfAvailable_HubPageClassificationSkipsButton() {
         // When the ANDROID_HUB PageClassification is seen, the action button is intentionally
         // skipped.
-        mInput.setPageClassification(PageClassification.ANDROID_HUB_VALUE);
+        mInput.setPageClassification(PageClassification.ANDROID_HUB);
 
         createSuggestionWithActions(
                 OmniboxSuggestionType.SEARCH_WHAT_YOU_TYPED,
@@ -576,7 +574,7 @@ public class BaseSuggestionProcessorUnitTest {
     public void addActionButtonIfAvailable_TabSearchOverlayPageClassificationSkipsButton() {
         // When the ANDROID_TAB_SEARCH_OVERLAY PageClassification is seen, the action button is
         // intentionally skipped.
-        mInput.setPageClassification(PageClassification.ANDROID_TAB_SEARCH_OVERLAY_VALUE);
+        mInput.setPageClassification(PageClassification.ANDROID_TAB_SEARCH_OVERLAY);
 
         createSuggestionWithActions(
                 OmniboxSuggestionType.SEARCH_WHAT_YOU_TYPED,
@@ -599,7 +597,7 @@ public class BaseSuggestionProcessorUnitTest {
     @Test
     public void allowOmniboxActions_HubPageClassificationSkipsChips() {
         // When the ANDROID_HUB PageClassification is seen, action chips are skipped.
-        mInput.setPageClassification(PageClassification.ANDROID_HUB_VALUE);
+        mInput.setPageClassification(PageClassification.ANDROID_HUB);
 
         createSuggestionWithActions(
                 OmniboxSuggestionType.SEARCH_WHAT_YOU_TYPED,
@@ -622,7 +620,7 @@ public class BaseSuggestionProcessorUnitTest {
     @Test
     public void allowOmniboxActions_TabSearchOverlayPageClassificationSkipsChips() {
         // When the ANDROID_TAB_SEARCH_OVERLAY PageClassification is seen, action chips are skipped.
-        mInput.setPageClassification(PageClassification.ANDROID_TAB_SEARCH_OVERLAY_VALUE);
+        mInput.setPageClassification(PageClassification.ANDROID_TAB_SEARCH_OVERLAY);
 
         createSuggestionWithActions(
                 OmniboxSuggestionType.SEARCH_WHAT_YOU_TYPED,

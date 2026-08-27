@@ -31,6 +31,7 @@
 <translation id="1290883685122687410">Σφάλμα ρύθμισης: <ph name="METAINSTALLER_EXIT_CODE" />. <ph name="WINDOWS_ERROR" /></translation>
 <translation id="1302523850133262269">Περιμένετε μέχρι να γίνει εγκατάσταση των πιο πρόσφατων ενημερώσεων συστήματος από το Chrome.</translation>
 <translation id="1330562121671411446">Εντοπισμός γλώσσας</translation>
+<translation id="1333654552732143316">Έναρξη του Chrome</translation>
 <translation id="1341711321000856656">Μπορείτε να κάνετε εναλλαγή για να δείτε τους κωδικούς πρόσβασης από ένα άλλο προφίλ Chrome</translation>
 <translation id="1343830902827845050">Σύνδεση στο Chrome</translation>
 <translation id="1356661055722410047">Νέο! Μπορείτε να μεταφράσετε κείμενο και εικόνες που εμφανίζονται στην οθόνη σας</translation>
@@ -380,7 +381,6 @@
 <translation id="4885446229353981848">Να εμφανίζεται πάντα η συντόμευση Google Lens</translation>
 <translation id="4891791193823137474">Να επιτρέπεται στο Google Chrome να εκτελείται στο παρασκήνιο</translation>
 <translation id="4895437082222824641">Άνοιγμα συνδέσμου σε νέα καρτέ&amp;λα Chrome</translation>
-<translation id="4896867431081882115">Αποκτήστε εύκολη πρόσβαση στις λειτουργίες που γνωρίζετε, αγαπάτε και εμπιστεύεστε, ορίζοντας το Chrome ως το προεπιλεγμένο πρόγραμμα περιήγησης. Το Chrome θα καρφιτσωθεί στη γραμμή εργαλείων για γρήγορη πρόσβαση.</translation>
 <translation id="4904953848704395458">Ανοίξτε το Gemini στο Chrome με μια συντόμευση πληκτρολογίου.</translation>
 <translation id="4918086044614829423">Αποδοχή</translation>
 <translation id="4918844574251943176">Η εικόνα αντιγράφηκε</translation>
@@ -744,6 +744,7 @@
 <translation id="8367705492654390392">Ρωτήστε οτιδήποτε</translation>
 <translation id="8367950957770994118">Ανοίξτε γρήγορα το Gemini στο Chrome όποτε το χρειάζεστε</translation>
 <translation id="8370517070665726704">Πνευματικά δικαιώματα <ph name="YEAR" /> Google LLC. Με την επιφύλαξη παντός δικαιώματος.</translation>
+<translation id="8370748943308169953">Κωδικός QR για σύνδεση στο Chrome ως <ph name="USER_NAME" /></translation>
 <translation id="8377158135256176353">Ενεργοποίηση/Απενεργοποίηση Gemini στο Chrome Canary</translation>
 <translation id="8387459386171870978">Συνέχεια χρήσης του Chrome</translation>
 <translation id="8394720698884623075">Ελέγχει εάν τα URL περιλαμβάνονται στην λίστα μη ασφαλών ιστοτόπων που είναι αποθηκευμένη στο Chrome</translation>

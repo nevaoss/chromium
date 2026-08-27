@@ -28,6 +28,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import org.chromium.base.ApplicationStatus;
 import org.chromium.base.Callback;
+import org.chromium.base.CallbackUtils;
 import org.chromium.base.CommandLine;
 import org.chromium.base.ContextUtils;
 import org.chromium.base.DeviceInfo;
@@ -38,6 +39,7 @@ import org.chromium.base.Token;
 import org.chromium.base.TraceEvent;
 import org.chromium.base.lifetime.Destroyable;
 import org.chromium.base.metrics.RecordHistogram;
+import org.chromium.base.metrics.RecordUserAction;
 import org.chromium.base.shared_preferences.SharedPreferencesManager;
 import org.chromium.base.supplier.MonotonicObservableSupplier;
 import org.chromium.base.supplier.NonNullObservableSupplier;
@@ -177,7 +179,6 @@ import org.chromium.chrome.browser.share.ShareDelegate;
 import org.chromium.chrome.browser.share.link_to_text.LinkToTextIphController;
 import org.chromium.chrome.browser.signin.SigninAndHistorySyncActivityLauncherImpl;
 import org.chromium.chrome.browser.signin.services.IdentityServicesProvider;
-import org.chromium.chrome.browser.signin.services.SigninManager;
 import org.chromium.chrome.browser.status_indicator.StatusIndicatorCoordinator;
 import org.chromium.chrome.browser.status_indicator.StatusIndicatorCoordinator.StatusIndicatorObserver;
 import org.chromium.chrome.browser.subscriptions.CommerceSubscriptionsService;
@@ -243,7 +244,7 @@ import org.chromium.chrome.browser.ui.edge_to_edge.EdgeToEdgeController;
 import org.chromium.chrome.browser.ui.edge_to_edge.EdgeToEdgeControllerFactory;
 import org.chromium.chrome.browser.ui.edge_to_edge.EdgeToEdgeUtils;
 import org.chromium.chrome.browser.ui.edge_to_edge.TopInsetProvider;
-import org.chromium.chrome.browser.ui.enterprise_signals_disclaimer.EnterpriseSignalsDisclaimerCoordinator;
+import org.chromium.chrome.browser.ui.enterprise_signals_disclaimer.EnterpriseSignalsDisclaimerController;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.chrome.browser.ui.side_panel.AndroidSidePanelEnabledFn;
 import org.chromium.chrome.browser.ui.side_panel.SidePanelCoordinatorAndroid;
@@ -309,7 +310,6 @@ import org.chromium.ui.widget.ViewRectProvider;
 import org.chromium.url.GURL;
 
 import java.util.Collections;
-import java.util.Objects;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -387,8 +387,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
     private CharSequence mApplicationLabel;
     private @Nullable TipsOptInCoordinator mTipsOptInCoordinator;
     private @Nullable GlicPromoCoordinator mGlicPromoCoordinator;
-    private @Nullable EnterpriseSignalsDisclaimerCoordinator
-            mEnterpriseSignalsDisclaimerCoordinator;
+    private @Nullable EnterpriseSignalsDisclaimerController mEnterpriseSignalsDisclaimerController;
     private boolean mPromosEvaluatedForCurrentForeground;
     private final OneshotSupplier<ChromeInactivityTracker> mInactivityTrackerSupplier;
     private final InactivityObserver mInactivityObserver;
@@ -630,13 +629,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                 bottomBarHostManager);
 
         if (BottomBarConfigUtils.isBottomBarEnabled(activity)) {
-            BottomBarActionEligibility.setCountrySupplier(
-                    () -> {
-                        String country =
-                                ChromeActivitySessionTracker.getInstance()
-                                        .getVariationsLatestCountry();
-                        return country != null ? country : "";
-                    });
+            mCountrySupplier = new OneshotSupplierImpl<>();
             mActionRegistry = new ActionRegistry();
             ActionUtils.registerBottomBarActions(mActionRegistry);
         }
@@ -925,9 +918,9 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         if (mGlicPromoCoordinator != null) {
             mGlicPromoCoordinator.destroy();
         }
-        if (mEnterpriseSignalsDisclaimerCoordinator != null) {
-            mEnterpriseSignalsDisclaimerCoordinator.destroy();
-            mEnterpriseSignalsDisclaimerCoordinator = null;
+        if (mEnterpriseSignalsDisclaimerController != null) {
+            mEnterpriseSignalsDisclaimerController.destroy();
+            mEnterpriseSignalsDisclaimerController = null;
         }
 
         if (mInactivityTrackerSupplier.get() != null) {
@@ -1152,6 +1145,16 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         super.onFinishNativeInitialization();
         assert mLayoutManager != null;
 
+        if (mCountrySupplier != null && mCountrySupplier.get() == null) {
+            String country =
+                    BottomBarActionEligibility.resolveCountryCodeWithLocalDevFallback(
+                            ChromeActivitySessionTracker.getInstance()
+                                    .getVariationsLatestCountry());
+            if (country != null && !country.isEmpty()) {
+                mCountrySupplier.set(country);
+            }
+        }
+
         mAdvancedProtectionCoordinator =
                 new AdvancedProtectionCoordinator(mWindowAndroid, PrivacySettings.class);
 
@@ -1336,30 +1339,13 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                         mProfileSupplier.asNonNull().get().getOriginalProfile(),
                         SigninAndHistorySyncActivityLauncherImpl.get());
 
-        // TODO(b/512836948): This is temporary for testing purposes. A proper way to launch and
-        // control the dialog shall be introduced later on.
         if (ChromeFeatureList.isEnabled(ChromeFeatureList.ANDROID_DEVICE_SIGNALS_DISCLAIMER)) {
-            final Profile profile = mProfileSupplier.asNonNull().get().getOriginalProfile();
-            final SigninManager signinManager =
-                    Objects.requireNonNull(
-                            IdentityServicesProvider.get().getSigninManager(profile));
-            final IdentityManager identityManager =
-                    Objects.requireNonNull(signinManager.getIdentityManager());
-            final @Nullable AccountInfo primaryAccount = identityManager.getPrimaryAccountInfo();
-            if (primaryAccount != null) {
-                signinManager.isAccountManaged(
-                        primaryAccount,
-                        (Boolean isManaged) -> {
-                            if (isManaged) {
-                                mEnterpriseSignalsDisclaimerCoordinator =
-                                        new EnterpriseSignalsDisclaimerCoordinator(
-                                                mActivity,
-                                                assertNonNull(getBottomSheetController()),
-                                                signinManager);
-                                mEnterpriseSignalsDisclaimerCoordinator.show();
-                            }
-                        });
-            }
+            mEnterpriseSignalsDisclaimerController =
+                    EnterpriseSignalsDisclaimerController.maybeCreateForProfile(
+                            mProfileSupplier.asNonNull().get().getOriginalProfile(),
+                            assertNonNull(getBottomSheetController()),
+                            mActivity,
+                            url -> CustomTabActivity.showInfoPage(mActivity, url));
         }
     }
 
@@ -1833,7 +1819,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                 .writeBoolean(ChromePreferenceKeys.GLIC_PROMO_ACCEPTED, false);
 
         Runnable onAccepted = this::enableGlicButton;
-        Runnable onDismissed = () -> {};
+        Runnable onDismissed = CallbackUtils.emptyRunnable();
 
         var bottomSheetController = getBottomSheetController();
         assert bottomSheetController != null;
@@ -2262,7 +2248,8 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                             mEdgeToEdgeManager.getEdgeToEdgeSystemBarColorHelper(),
                             mBackPressManager,
                             mCompositorViewHolderSupplier,
-                            mTabGroupUiActionHandlerSupplier);
+                            mTabGroupUiActionHandlerSupplier,
+                            getDesktopWindowStateManager());
         }
 
         mSideUiCoordinator =
@@ -2664,6 +2651,11 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
             return true;
         }
 
+        if (mEnterpriseSignalsDisclaimerController != null
+                && mEnterpriseSignalsDisclaimerController.maybeShow()) {
+            return true;
+        }
+
         if (ChoiceDialogCoordinator.maybeShow(
                 mActivity, mModalDialogManagerSupplier.get(), mActivityLifecycleDispatcher)) {
             return true;
@@ -2843,7 +2835,8 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                             mSideUiStateProviderSupplier,
                             mTabObscuringHandlerSupplier.get(),
                             mModalDialogManagerSupplier,
-                            mSnackbarManagerSupplier);
+                            mSnackbarManagerSupplier,
+                            mXrSpaceModeObservableSupplier);
             if (mBookmarkBarVisibilityProvider != null) {
                 mBookmarkBarVisibilityProvider.addObserver(mBookmarkBarCoordinator);
             }
@@ -2931,6 +2924,24 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
             if (BookmarkBarUtils.isActivityStateBookmarkBarCompatible(mActivity)) {
                 BookmarkBarUtils.toggleShowBookmarksBar(
                         mProfileSupplier.asNonNull().get(), /* fromKeyboardShortcut= */ true);
+                return true;
+            }
+        } else if (id == R.id.bookmark_bar_state_always_show_menu_id) {
+            if (BookmarkBarUtils.isActivityStateBookmarkBarCompatible(mActivity)) {
+                if (!getBookmarkBarVisibility()) {
+                    BookmarkBarUtils.toggleShowBookmarksBar(
+                            mProfileSupplier.asNonNull().get(), /* fromKeyboardShortcut= */ false);
+                    RecordUserAction.record("MobileMenuBookmarkBarAlwaysShow");
+                }
+                return true;
+            }
+        } else if (id == R.id.bookmark_bar_state_always_hide_menu_id) {
+            if (BookmarkBarUtils.isActivityStateBookmarkBarCompatible(mActivity)) {
+                if (getBookmarkBarVisibility()) {
+                    BookmarkBarUtils.toggleShowBookmarksBar(
+                            mProfileSupplier.asNonNull().get(), /* fromKeyboardShortcut= */ false);
+                    RecordUserAction.record("MobileMenuBookmarkBarAlwaysHide");
+                }
                 return true;
             }
         } else if (id == R.id.close_window) {
@@ -3090,5 +3101,10 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
 
     @Nullable GlicPromoCoordinator getGlicPromoCoordinatorForTesting() {
         return mGlicPromoCoordinator;
+    }
+
+    @Override
+    public @Nullable OneshotSupplier<String> getCountrySupplierForTesting() {
+        return mCountrySupplier;
     }
 }

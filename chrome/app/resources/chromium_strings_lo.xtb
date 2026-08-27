@@ -307,7 +307,6 @@
 <translation id="4304713468139749426">ຕົວຈັດການລະຫັດຜ່ານ</translation>
 <translation id="4334241893986177674">ຊອກຫາຮູບໜ້າຈໍນີ້</translation>
 <translation id="4384331407722351213">ເປີດໃຊ້ Chromium ເມື່ອ Windows ເລີ່ມເຮັດວຽກ</translation>
-<translation id="4384993550046411228">ເຂົ້າເຖິງຄຸນສົມບັດທີ່ທ່ານຮູ້ຈັກ, ມັກ ແລະ ໄວ້ວາງໃຈໄດ້ຢ່າງງ່າຍດາຍໂດຍການຕັ້ງຄ່າ Chromium ເປັນໂປຣແກຣມທ່ອງເວັບເລີ່ມຕົ້ນຂອງທ່ານ. ລະບົບຈະປັກໝຸດ Chromium ໄວ້ຢູ່ແຖບໜ້າວຽກຂອງທ່ານເພື່ອໃຫ້ເຂົ້າເຖິງໄດ້ຢ່າງວ່ອງໄວ.</translation>
 <translation id="4400772909124543403">ບໍ່ມີອັບເດດພ້ອມນຳໃຊ້</translation>
 <translation id="4407044323746248786">ຢືນຢັນການອອກຈາກ Chromium ບໍ?</translation>
 <translation id="4413205837991854510">ສະແດງທາງລັດການຊອກຫາຮູບສະເໝີ</translation>
@@ -685,6 +684,7 @@ Chromium ບໍ່ສາມາດກູ້ການຕັ້ງຄ່າຂອ�
 <translation id="8286943863733751221"><ph name="BEGIN_LINK" />Chromium ຈະເຕືອນທ່ານ<ph name="END_LINK" /> ກ່ຽວກັບເວັບໄຊ ແລະ ການດາວໂຫຼດທີ່ບໍ່ປອດໄພ</translation>
 <translation id="8295827201165805317">ທ່ານບໍ່ໄດ້ເຂົ້າເບິ່ງເມື່ອບໍ່ດົນມານີ້. Chromium ໄດ້ລຶບສິດເຂົ້າເຖິງ <ph name="PERMISSION" /> ອອກແລ້ວ.</translation>
 <translation id="8296236834352487533">ເລືອກຊື້, ແປພາສາ ແລະ ລະບຸສິ່ງທີ່ທ່ານເຫັນດ້ວຍກ້ອງຂອງທ່ານຢູ່ແອັບ Chromium iOS</translation>
+<translation id="8310603974518734211">ລະຫັດ QR ເພື່ອເຂົ້າສູ່ລະບົບ Chromium ໃນຊື່ <ph name="USER_NAME" /></translation>
 <translation id="8313851650939857356">ຂໍ້ຜິດພາດໃນການເລີ່ມຕົ້ນ: <ph name="STARTUP_ERROR" />.</translation>
 <translation id="8318772038038596122">ອົງກອນຂອງທ່ານປິດ Chromium ໄວ້ເມື່ອມັນບໍ່ໄດ້ຖືກນຳໃຊ້ເປັນເວລາ <ph name="TIMEOUT_DURATION" />.</translation>
 <translation id="8321888067342493336">ບັນທຶກເປັນຮູບ</translation>

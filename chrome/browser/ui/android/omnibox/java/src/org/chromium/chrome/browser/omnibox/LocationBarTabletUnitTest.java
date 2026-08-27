@@ -651,7 +651,7 @@ public class LocationBarTabletUnitTest {
                 (LocationBarBackgroundDrawable) mLocationBarTablet.getBackground();
         GradientDrawable unfocusedRect = background.getBackgroundGradient();
 
-        mLocationBarTablet.setShowStandbyRing(true);
+        mLocationBarTablet.setShowFocusRing(true);
 
         // Verify the background hairline is in standby mode.
         assertEquals(HairlineBehavior.SOLID, background.getHairlineBehaviorForTesting());
@@ -663,10 +663,10 @@ public class LocationBarTabletUnitTest {
                         mActivity, BrandedColorScheme.APP_DEFAULT);
         assertEquals(expectedStandbyColor, unfocusedRect.getColor().getDefaultColor());
 
-        mLocationBarTablet.setShowStandbyRing(false);
+        mLocationBarTablet.setShowFocusRing(false);
         assertEquals(HairlineBehavior.NONE, background.getHairlineBehaviorForTesting());
         mLocationBarTablet.updateVisualsForState(BrandedColorScheme.INCOGNITO);
-        mLocationBarTablet.setShowStandbyRing(true);
+        mLocationBarTablet.setShowFocusRing(true);
         assertEquals(HairlineBehavior.SOLID, background.getHairlineBehaviorForTesting());
         @ColorInt
         int expectedIncognitoStandbyColor =
@@ -676,17 +676,23 @@ public class LocationBarTabletUnitTest {
 
         mLocationBarTablet.onFuseboxStateChanged(FuseboxState.COMPACT);
         // Standby mode should override the fusebox state when deciding if to expand.
-        var layoutParams = (LinearLayout.LayoutParams) mHolderView.getLayoutParams();
+        LinearLayout.LayoutParams layoutParams =
+                (LinearLayout.LayoutParams) mHolderView.getLayoutParams();
         assertEquals(0, layoutParams.leftMargin);
         assertEquals(0, layoutParams.rightMargin);
         assertEquals(0, layoutParams.topMargin);
+        assertEquals(0, mLocationBarTablet.getPaddingBottom());
+
+        FrameLayout.LayoutParams tabletLayoutParams =
+                (FrameLayout.LayoutParams) mLocationBarTablet.getLayoutParams();
+        assertEquals(0, tabletLayoutParams.bottomMargin);
 
         View urlBar = mLocationBarTablet.findViewById(R.id.url_bar);
         View statusView = mLocationBarTablet.findViewById(R.id.location_bar_status);
         assertEquals(0, urlBar.getTranslationY(), MathUtils.EPSILON);
         assertEquals(0, statusView.getTranslationY(), MathUtils.EPSILON);
 
-        mLocationBarTablet.setShowStandbyRing(false);
+        mLocationBarTablet.setShowFocusRing(false);
         assertNull(mLocationBarTablet.getForeground());
         @ColorInt
         int expectedNormalColor =

@@ -1012,14 +1012,26 @@ struct IsNameVariantOfTestCase {
 
 class NameInfoIsNameVariantOfTest
     : public NameInfoTest,
-      public testing::WithParamInterface<IsNameVariantOfTestCase> {
+      public testing::WithParamInterface<
+          std::tuple<bool, IsNameVariantOfTestCase>> {
+ public:
+  NameInfoIsNameVariantOfTest() {
+    scoped_feature_list_.InitWithFeatureState(
+        features::kAutofillOptimizeIsNormalizedNameVariantOf,
+        IsOptimizationEnabled());
+  }
+
+  bool IsOptimizationEnabled() const { return std::get<0>(GetParam()); }
+  const IsNameVariantOfTestCase& GetTestCase() const {
+    return std::get<1>(GetParam());
+  }
+
  private:
-  base::test::ScopedFeatureList scoped_feature_list_{
-      features::kAutofillOptimizeIsNormalizedNameVariantOf};
+  base::test::ScopedFeatureList scoped_feature_list_;
 };
 
 TEST_P(NameInfoIsNameVariantOfTest, NameVariants) {
-  const IsNameVariantOfTestCase test_case = GetParam();
+  const IsNameVariantOfTestCase& test_case = GetTestCase();
   NameInfo name_info =
       CreateNameInfo(u"", u"", u"", test_case.full_name.c_str());
   EXPECT_EQ(name_info.IsNameVariantOf(test_case.other_full_name, kLocale),
@@ -1029,82 +1041,102 @@ TEST_P(NameInfoIsNameVariantOfTest, NameVariants) {
 INSTANTIATE_TEST_SUITE_P(
     NameVariants,
     NameInfoIsNameVariantOfTest,
-    testing::ValuesIn(std::vector<IsNameVariantOfTestCase>{
-        {.full_name = u"Timothe Noël Etienne Perier",
-         .other_full_name = u"timothe noel etienne perier"},
-        {.full_name = u"Timothe Noël Etienne Perier",
-         .other_full_name = u"t noel etienne perier"},
-        {.full_name = u"Timothe Noël Etienne Perier",
-         .other_full_name = u"timothe perier"},
-        {.full_name = u"Timothe Noël Etienne Perier",
-         .other_full_name = u"t perier"},
-        {.full_name = u"Timothe Noël Etienne Perier",
-         .other_full_name = u"noel perier"},
-        {.full_name = u"Timothe Noël Etienne Perier",
-         .other_full_name = u"t n etienne perier"},
-        {.full_name = u"Timothe Noël Etienne Perier",
-         .other_full_name = u"tn perier"},
-        {.full_name = u"Timothe Noël Etienne Perier",
-         .other_full_name = u"te perier"},
-        {.full_name = u"Timothe Noël Etienne Perier",
-         .other_full_name = u"etienne noel perier",
-         .are_variant = false},
-        {.full_name = u"Mary Jane Watson", .other_full_name = u"MJ Watson"},
-        {.full_name = u"Mary Jane Watson", .other_full_name = u"M.J. Watson"},
-        {.full_name = u"Mary Jane Watson", .other_full_name = u"MJW"},
-        {.full_name = u"John Smith", .other_full_name = u"John S"},
-        {.full_name = u"John Quincy Public", .other_full_name = u"J Q Public"},
-        {.full_name = u"Петров Иван Николаевич",
-         .other_full_name = u"Петров И."},
-        {.full_name = u"Mary Jane Watson", .other_full_name = u""},
-        {.full_name = u"",
-         .other_full_name = u"Mary Jane Watson",
-         .are_variant = false},
-        {.full_name = u"", .other_full_name = u""},
-        {.full_name = u"   ", .other_full_name = u"  "},
-        {.full_name = u"-", .other_full_name = u" "},
-        {.full_name = u"-, -", .other_full_name = u""},
-    }));
+    testing::Combine(
+        testing::Bool(),
+        testing::ValuesIn(std::vector<IsNameVariantOfTestCase>{
+            {.full_name = u"Timothe Noël Etienne Perier",
+             .other_full_name = u"timothe noel etienne perier"},
+            {.full_name = u"Timothe Noël Etienne Perier",
+             .other_full_name = u"t noel etienne perier"},
+            {.full_name = u"Timothe Noël Etienne Perier",
+             .other_full_name = u"timothe perier"},
+            {.full_name = u"Timothe Noël Etienne Perier",
+             .other_full_name = u"t perier"},
+            {.full_name = u"Timothe Noël Etienne Perier",
+             .other_full_name = u"noel perier"},
+            {.full_name = u"Timothe Noël Etienne Perier",
+             .other_full_name = u"t n etienne perier"},
+            {.full_name = u"Timothe Noël Etienne Perier",
+             .other_full_name = u"tn perier"},
+            {.full_name = u"Timothe Noël Etienne Perier",
+             .other_full_name = u"te perier"},
+            {.full_name = u"Timothe Noël Etienne Perier",
+             .other_full_name = u"etienne noel perier",
+             .are_variant = false},
+            {.full_name = u"Mary Jane Watson", .other_full_name = u"MJ Watson"},
+            {.full_name = u"Mary Jane Watson",
+             .other_full_name = u"M.J. Watson"},
+            {.full_name = u"Mary Jane Watson",
+             .other_full_name = u"MJW",
+             .are_variant = false},
+            {.full_name = u"John Smith",
+             .other_full_name = u"John S",
+             .are_variant = false},
+            {.full_name = u"John Smith Jr", .other_full_name = u"John Smith"},
+            {.full_name = u"John Smith",
+             .other_full_name = u"John Smith Jr",
+             .are_variant = false},
+            {.full_name = u"John Quincy Public",
+             .other_full_name = u"J Q Public"},
+            {.full_name = u"Ludwig van Beethoven",
+             .other_full_name = u"van",
+             .are_variant = false},
+            {.full_name = u"Петров Иван Николаевич",
+             .other_full_name = u"Петров И."},
+            {.full_name = u"Mary Jane Watson", .other_full_name = u""},
+            {.full_name = u"",
+             .other_full_name = u"Mary Jane Watson",
+             .are_variant = false},
+            {.full_name = u"", .other_full_name = u""},
+            {.full_name = u"   ", .other_full_name = u"  "},
+            {.full_name = u"-", .other_full_name = u" "},
+            {.full_name = u"-, -", .other_full_name = u""},
+        })));
 
 // Verifies that `IsNameVariantOf` works correctly with CJK names where one is
 // the same as the other.
 INSTANTIATE_TEST_SUITE_P(
     CJKNamesAreVariantOfThemselves,
     NameInfoIsNameVariantOfTest,
-    testing::ValuesIn(std::vector<IsNameVariantOfTestCase>{
-        {.full_name = u"王磊", .other_full_name = u"王磊"},
-        {.full_name = u"王 磊", .other_full_name = u"王 磊"},
-        {.full_name = u"王", .other_full_name = u"王"},
-        {.full_name = u"ワ　タシ", .other_full_name = u"ワ　タシ"},
-        {.full_name = u"ワ・タシ", .other_full_name = u"ワ・タシ"},
-        {.full_name = u"이영호", .other_full_name = u"이영호"},
-        {.full_name = u"이 영호", .other_full_name = u"이 영호"},
-        {.full_name = u"이", .other_full_name = u"이"}}));
+    testing::Combine(
+        testing::Bool(),
+        testing::ValuesIn(std::vector<IsNameVariantOfTestCase>{
+            {.full_name = u"王磊", .other_full_name = u"王磊"},
+            {.full_name = u"王 磊", .other_full_name = u"王 磊"},
+            {.full_name = u"王", .other_full_name = u"王"},
+            {.full_name = u"ワ　タシ", .other_full_name = u"ワ　タシ"},
+            {.full_name = u"ワ・タシ", .other_full_name = u"ワ・タシ"},
+            {.full_name = u"이영호", .other_full_name = u"이영호"},
+            {.full_name = u"이 영호", .other_full_name = u"이 영호"},
+            {.full_name = u"이", .other_full_name = u"이"}})));
 
 // Verifies that `IsNameVariantOf` works correctly with CJK names.
 INSTANTIATE_TEST_SUITE_P(
     CJKNamesVariants,
     NameInfoIsNameVariantOfTest,
-    testing::ValuesIn(std::vector<IsNameVariantOfTestCase>{
-        {.full_name = u"王磊", .other_full_name = u"王"},
-        {.full_name = u"王磊", .other_full_name = u"磊"},
-        {.full_name = u"王 磊", .other_full_name = u"王"},
-        {.full_name = u"王 磊", .other_full_name = u"磊"},
-        {.full_name = u"王 磊", .other_full_name = u"王磊"},
-        {.full_name = u"王磊", .other_full_name = u"王 磊"},
-        {.full_name = u"ワ　タシ", .other_full_name = u"ワ"},
-        {.full_name = u"ワ　タシ", .other_full_name = u"タシ"},
-        {.full_name = u"ワ・タシ", .other_full_name = u"ワ"},
-        {.full_name = u"ワ・タシ", .other_full_name = u"タシ"},
-        {.full_name = u"이영호", .other_full_name = u"이"},
-        {.full_name = u"이영호", .other_full_name = u"영호"},
-        {.full_name = u"이 영호", .other_full_name = u"영호"},
-        {.full_name = u"이 영호", .other_full_name = u"이"},
-        {.full_name = u"王", .other_full_name = u""},
-        {.full_name = u"王", .other_full_name = u"  "},
-        {.full_name = u"王", .other_full_name = u"・  ・"},
-        {.full_name = u"・", .other_full_name = u"王", .are_variant = false},
-        {.full_name = u"・", .other_full_name = u""}}));
+    testing::Combine(testing::Bool(),
+                     testing::ValuesIn(std::vector<IsNameVariantOfTestCase>{
+                         {.full_name = u"王磊", .other_full_name = u"王"},
+                         {.full_name = u"王磊", .other_full_name = u"磊"},
+                         {.full_name = u"王 磊", .other_full_name = u"王"},
+                         {.full_name = u"王 磊", .other_full_name = u"磊"},
+                         {.full_name = u"王 磊", .other_full_name = u"王磊"},
+                         {.full_name = u"王磊", .other_full_name = u"王 磊"},
+                         {.full_name = u"ワ　タシ", .other_full_name = u"ワ"},
+                         {.full_name = u"ワ　タシ", .other_full_name = u"タシ"},
+                         {.full_name = u"ワ・タシ", .other_full_name = u"ワ"},
+                         {.full_name = u"ワ・タシ", .other_full_name = u"タシ"},
+                         {.full_name = u"이영호", .other_full_name = u"이"},
+                         {.full_name = u"이영호", .other_full_name = u"영호"},
+                         {.full_name = u"이 영호", .other_full_name = u"영호"},
+                         {.full_name = u"이 영호", .other_full_name = u"이"},
+                         {.full_name = u"王", .other_full_name = u""},
+                         {.full_name = u"王", .other_full_name = u"  "},
+                         {.full_name = u"王", .other_full_name = u"・  ・"},
+                         {.full_name = u"・",
+                          .other_full_name = u"王",
+                          .are_variant = false},
+                         {.full_name = u"・", .other_full_name = u""}})));
 
 TEST_F(NameInfoTest, HaveMergeableNames) {
   NameInfo empty = CreateNameInfo(u"", u"", u"", u"");
@@ -1470,42 +1502,5 @@ INSTANTIATE_TEST_SUITE_P(
         // Non Japanese profiles shouldn't offer migration.
         NameMigrationTestCase{"メタワ", false, AddressCountryCode("US")},
         NameMigrationTestCase{"ねこです", false, AddressCountryCode("US")}));
-
-TEST(CompanyTest, SetRawInfo) {
-  CompanyInfo company;
-  company.SetRawInfo(COMPANY_NAME, u"Google");
-  EXPECT_EQ(company.GetRawInfo(COMPANY_NAME), u"Google");
-}
-
-TEST(CompanyTest, IsValid) {
-  auto set_and_validate = [](const std::u16string& company_name) {
-    CompanyInfo company;
-    company.SetRawInfo(COMPANY_NAME, company_name);
-    return company.IsValid();
-  };
-
-  EXPECT_TRUE(set_and_validate(u"Google"));
-  EXPECT_TRUE(set_and_validate(u"1818"));
-  EXPECT_FALSE(set_and_validate(u"1987"));
-  EXPECT_FALSE(set_and_validate(u"2019"));
-  EXPECT_TRUE(set_and_validate(u"2345"));
-  EXPECT_TRUE(set_and_validate(u"It was 1987."));
-  EXPECT_TRUE(set_and_validate(u"1987 was the year."));
-  EXPECT_FALSE(set_and_validate(u"Mr"));
-  EXPECT_FALSE(set_and_validate(u"Mr."));
-  EXPECT_FALSE(set_and_validate(u"Mrs"));
-  EXPECT_FALSE(set_and_validate(u"Mrs."));
-  EXPECT_TRUE(set_and_validate(u"Mr. & Mrs."));
-  EXPECT_TRUE(set_and_validate(u"Mr. & Mrs. Smith"));
-  EXPECT_FALSE(set_and_validate(u"Frau"));
-  EXPECT_TRUE(set_and_validate(u"Frau Doktor"));
-  EXPECT_FALSE(set_and_validate(u"Herr"));
-  EXPECT_FALSE(set_and_validate(u"Mme"));
-  EXPECT_FALSE(set_and_validate(u"Ms"));
-  EXPECT_FALSE(set_and_validate(u"Dr"));
-  EXPECT_FALSE(set_and_validate(u"Dr."));
-  EXPECT_FALSE(set_and_validate(u"Prof"));
-  EXPECT_FALSE(set_and_validate(u"Prof."));
-}
 
 }  // namespace autofill

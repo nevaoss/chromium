@@ -632,6 +632,26 @@ chrome.test.runTests([
     mockMetricsPrivate.assertCount(UserAction.UNDO_INK2, 1);
     mockMetricsPrivate.assertCount(UserAction.REDO_INK2, 1);
 
+    if (!isMac) {
+      sendUndoShortcutKey(viewerToolbar);
+      mockPlugin.clearMessages();
+
+      keyDownOn(viewerToolbar, 0, ['ctrl', 'shift'], 'z');
+      chrome.test.assertTrue(
+          mockPlugin.findMessage('annotationRedo') !== undefined);
+      mockMetricsPrivate.assertCount(UserAction.UNDO_INK2, 2);
+      mockMetricsPrivate.assertCount(UserAction.REDO_INK2, 2);
+
+      sendUndoShortcutKey(viewerToolbar);
+      mockPlugin.clearMessages();
+
+      keyDownOn(viewerToolbar, 0, ['ctrl', 'shift'], 'Z');
+      chrome.test.assertTrue(
+          mockPlugin.findMessage('annotationRedo') !== undefined);
+      mockMetricsPrivate.assertCount(UserAction.UNDO_INK2, 3);
+      mockMetricsPrivate.assertCount(UserAction.REDO_INK2, 3);
+    }
+
     Ink2Manager.getInstance().resetStackForTesting();
     chrome.test.succeed();
   },

@@ -59,6 +59,11 @@ void TabModelObserverJniBridge::WillCloseTabs(
   for (auto& observer : model_observers_) {
     observer.WillCloseTabs(tabs, is_all_tabs, allow_undo);
   }
+  if (is_all_tabs) {
+    for (auto& observer : interface_observers_) {
+      observer.OnAllTabsAreClosing(*tab_model_);
+    }
+  }
 }
 
 void TabModelObserverJniBridge::WillCloseTab(JNIEnv* env, TabAndroid* tab) {
@@ -258,6 +263,12 @@ void TabModelObserverJniBridge::OnTabGroupVisualsChanged(JNIEnv* env,
   CHECK(!tab_group_id.is_empty());
   for (auto& observer : model_observers_) {
     observer.OnTabGroupVisualsChanged(tab_group_id);
+  }
+}
+
+void TabModelObserverJniBridge::OnActiveChanged(JNIEnv* env, bool active) {
+  for (auto& observer : interface_observers_) {
+    observer.OnTabListActiveChanged(*tab_model_, active);
   }
 }
 

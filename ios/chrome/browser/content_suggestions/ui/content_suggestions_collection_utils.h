@@ -16,28 +16,34 @@ extern const CGFloat kHintTextScale;
 // Bottom margin for the Return to Recent Tab tile.
 extern const CGFloat kReturnToRecentTabSectionBottomMargin;
 
-// Constants for the `kNewTabPagePaddingUpdate` feature arms.
+// Constants for the `kNewTabPageUICleanup` feature arms.
 // Tight Padding Arm.
 extern const CGFloat kLogoTopPaddingTight;
 extern const CGFloat kLogoToFakeboxPaddingTight;
-extern const CGFloat kFakeboxToQuickActionsPaddingTight;
-extern const CGFloat kQuickActionsToMostVisitedPaddingTight;
+extern const CGFloat kDoodleTopPaddingTight;
+extern const CGFloat kDoodleToFakeboxPaddingTight;
+extern const CGFloat kQuickActionsTopPaddingTight;
+extern const CGFloat kMostVisitedTopPaddingTight;
 
 // Medium Padding Arm.
 extern const CGFloat kLogoTopPaddingMedium;
 extern const CGFloat kLogoToFakeboxPaddingMedium;
-extern const CGFloat kFakeboxToQuickActionsPaddingMedium;
-extern const CGFloat kQuickActionsToMostVisitedPaddingMedium;
+extern const CGFloat kDoodleTopPaddingMedium;
+extern const CGFloat kDoodleToFakeboxPaddingMedium;
+extern const CGFloat kQuickActionsTopPaddingMedium;
+extern const CGFloat kMostVisitedTopPaddingMedium;
 
 // Preferred Padding Arm.
 extern const CGFloat kLogoTopPaddingPreferred;
 extern const CGFloat kLogoToFakeboxPaddingPreferred;
-extern const CGFloat kFakeboxToQuickActionsPaddingPreferred;
-extern const CGFloat kQuickActionsToMostVisitedPaddingPreferred;
+extern const CGFloat kDoodleTopPaddingPreferred;
+extern const CGFloat kDoodleToFakeboxPaddingPreferred;
+extern const CGFloat kQuickActionsTopPaddingPreferred;
+extern const CGFloat kMostVisitedTopPaddingPreferred;
 
 // Control Padding.
-extern const CGFloat kFakeboxToQuickActionsPaddingControl;
-extern const CGFloat kQuickActionsToMostVisitedPaddingControl;
+extern const CGFloat kQuickActionsTopPaddingControl;
+extern const CGFloat kMostVisitedTopPaddingControl;
 extern const CGFloat kReducedModuleSpacingControl;
 
 // Shared spacing constants.
@@ -52,7 +58,7 @@ CGFloat DoodleHeight(SearchEngineLogoState logo_state,
 // Legacy helper. Use `LogoTopPadding` instead. Returns the proper margin to the
 // top of the header for the doodle.
 // TODO(crbug.com/542594099): Remove legacy helpers once
-// `kNewTabPagePaddingUpdate` is launched.
+// `kNewTabPageUICleanup` is launched.
 CGFloat DoodleTopMargin(SearchEngineLogoState logo_state,
                         UITraitCollection* trait_collection);
 // Returns the height of the separator line below the omnibox.
@@ -60,7 +66,7 @@ CGFloat HeaderSeparatorHeight();
 // Legacy helper. Use `LogoToFakeboxPadding` instead. Returns the proper margin
 // to the bottom of the doodle for the search field.
 // TODO(crbug.com/542594099): Remove legacy helpers once
-// `kNewTabPagePaddingUpdate` is launched.
+// `kNewTabPageUICleanup` is launched.
 CGFloat SearchFieldTopMargin(SearchEngineLogoState logo_state);
 // Returns the height of the Fake Omnibox on Home when it is not scrolled.
 CGFloat FakeOmniboxHeight();
@@ -79,7 +85,7 @@ CGFloat HeightForLogoHeader(SearchEngineLogoState logo_state,
 // between the fake omnibox and the content suggestions tiles.
 CGFloat HeaderBottomPadding(UITraitCollection* trait_collection);
 
-// Spacing helper methods for kNewTabPagePaddingUpdate experiment arms.
+// Spacing helper methods for kNewTabPageUICleanup experiment arms.
 // Returns padding above the Google logo/doodle based on the enabled arm and
 // size class.
 CGFloat LogoTopPadding(SearchEngineLogoState logo_state,
@@ -87,11 +93,11 @@ CGFloat LogoTopPadding(SearchEngineLogoState logo_state,
 // Returns padding between the Google logo/doodle and fakebox based on the
 // enabled arm.
 CGFloat LogoToFakeboxPadding(SearchEngineLogoState logo_state);
-// Returns padding between fakebox and Quick Actions based on the enabled arm.
-CGFloat FakeboxToQuickActionsPadding();
-// Returns padding between Quick Actions and Most Visited Tiles based on the
+// Returns top padding for Quick Actions based on the enabled arm.
+CGFloat QuickActionsTopPadding();
+// Returns top padding for Most Visited Tiles based on the
 // enabled arm.
-CGFloat QuickActionsToMostVisitedPadding();
+CGFloat MostVisitedTopPadding();
 // Returns reduced spacing used between the MVT, Magic Stack, and Discover Feed.
 // Padding is based on the size class.
 CGFloat ReducedModuleSpacing(UITraitCollection* trait_collection = nil);

@@ -22,6 +22,7 @@
 
 namespace tabs_api {
 
+class DropTarget;
 class TabDragSessionInjector;
 class TabDragWindowRegistry;
 struct TabDragInputEvent;
@@ -63,7 +64,6 @@ class TabDragSession {
   const gfx::Point& last_mouse_screen_point() const {
     return last_mouse_screen_point_;
   }
-  const gfx::Vector2d& delta() const { return delta_; }
   const std::vector<tabs_api::NodeId>& dragged_tabs() const {
     return dragged_tabs_;
   }
@@ -81,23 +81,30 @@ class TabDragSession {
   DragMode drag_mode() const { return drag_mode_; }
 
  private:
-  void OnWindowMoved(const gfx::Point& cursor_screen_point);
-
   void EndSession();
   void OnInputEvent(const TabDragInputEvent& event);
-
   void HandleMovedEvent(const gfx::Point& screen_point);
-  void HandleMoveWhileAttached(const gfx::Point& screen_point);
-  void HandleMoveWhileDetached(const gfx::Point& screen_point);
 
+  // Attached mode handlers
+  void HandleMoveWhileAttached(const gfx::Point& screen_point);
   bool IsDraggingEntireWindow() const;
   bool ShouldTearOff(const gfx::Point& screen_point) const;
+  void DetachAndStartWindowDrag(const gfx::Point& screen_point);
   void StartWindowDrag(TabDragWindowId window_id,
                        const gfx::Point& screen_point);
-  void DetachAndStartWindowDrag(const gfx::Point& screen_point);
+
+  // Detached mode handlers
+  void HandleMoveWhileDetached(const gfx::Point& screen_point);
+  DropTarget* FindReattachmentTargetAtPoint(
+      const gfx::Point& screen_point) const;
+  bool CanReattachToTarget(DropTarget* target,
+                           const gfx::Point& screen_point) const;
+  void OnWindowMoved(const gfx::Point& cursor_screen_point);
   void CompleteReattachment();
   void CompleteWindowDrop(DragMoveLoopResult loop_result,
                           const gfx::Point& screen_point);
+  void TransferDragToWindow(TabDragWindowId target_window_id,
+                            bool activate_target_window);
 
   std::vector<tabs_api::NodeId> dragged_tabs_;
   const raw_ref<TabDragSessionInjector> injector_;
@@ -112,11 +119,9 @@ class TabDragSession {
 
   const gfx::Point start_point_in_screen_;
   gfx::Point last_mouse_screen_point_;
-  gfx::Vector2d delta_;
   TabDragWindowId dragged_window_;
   TabDragWindowRegistry* registry() const;
   DragMode drag_mode_ = DragMode::kAttachedToWindow;
-  gfx::Vector2d start_window_offset_;
   int32_t tab_original_offset_x_ = 0;
   std::optional<PendingReattachment> pending_reattachment_;
 

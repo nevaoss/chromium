@@ -613,9 +613,7 @@ void GeminiBrowserAgent::OnPrimaryAccountChanged(
   if (event_type != signin::PrimaryAccountChangeEvent::Type::kNone) {
     browser_->GetProfile()->GetPrefs()->ClearPref(prefs::kGeminiConversationId);
 
-    if (is_floaty_invoked_) {
-      ForceDismissFloaty();
-    }
+    ForceDismissFloaty();
   }
 }
 
@@ -624,9 +622,7 @@ void GeminiBrowserAgent::OnIdentityManagerShutdown(
   if (identity_manager_) {
     identity_manager_->RemoveObserver(this);
     identity_manager_ = nullptr;
-    if (is_floaty_invoked_) {
-      ForceDismissFloaty();
-    }
+    ForceDismissFloaty();
   }
 }
 
@@ -1432,6 +1428,9 @@ void GeminiBrowserAgent::DismissFloaty() {
 }
 
 void GeminiBrowserAgent::ForceDismissFloaty() {
+  if (!is_floaty_invoked_) {
+    return;
+  }
   is_floaty_temporarily_hidden_ = false;
   DismissFloaty();
 }
@@ -1707,12 +1706,18 @@ void GeminiBrowserAgent::OnActiveWebStateChanged(web::WebState* old_active,
         removeObserver:scroll_observer_];
 
     web::WebStateID old_active_id = old_active->GetUniqueIdentifier();
-    if (HasSharedTabs() && GetAttachedPageContext(old_active_id)) {
-      // We are switching tabs and there is more than one tab attached to the
-      // conversation. Refetch the old active tab's page context to ensure it
-      // reflects its most recent state (instead of the state when the Floaty
-      // was last invoked).
-      UpdateAttachedTabContexts({old_active_id});
+    if (GeminiPageContext* old_context =
+            GetAttachedPageContext(old_active_id)) {
+      if (old_context.geminiPageContextAttachmentState !=
+          ios::provider::GeminiPageContextAttachmentState::kAttached) {
+        RemoveAttachedPageContext(old_active_id);
+      } else if (HasSharedTabs()) {
+        // We are switching tabs and there is more than one tab attached to the
+        // conversation. Refetch the old active tab's page context to ensure it
+        // reflects its most recent state (instead of the state when the Floaty
+        // was last invoked).
+        UpdateAttachedTabContexts({old_active_id});
+      }
     }
   }
 
@@ -2018,9 +2023,13 @@ void GeminiBrowserAgent::PropagatePageContextToProvider(
     }
   }
 
-  // Save the new active web state to attached tabs.
-  if (active_web_state && !IsTabGridVisible() &&
-      IsGeminiMultiTabContextEnabled()) {
+  // Save the active page context to `attached_tabs`. If we are on the tab
+  // grid, the active page context will be saved as `kBlocked` unless we have
+  // other tabs attached. This prevents the current tab from being erroneously
+  // showed as `kBlocked` when we open the Floaty on a different attached tab.
+  bool should_save_active_context = !IsTabGridVisible() || !HasSharedTabs();
+  if (IsGeminiMultiTabContextEnabled() && active_web_state &&
+      should_save_active_context) {
     SetAttachedPageContext(active_web_state->GetUniqueIdentifier(),
                            active_page_context);
   }
@@ -2374,6 +2383,7 @@ void GeminiBrowserAgent::DetachTabWithID(NSString* tab_id) {
   CHECK(detached_tab_id != active_web_state_id);
 
   RemoveAttachedPageContext(detached_tab_id);
+  RecordGeminiTabDetached();
 
   GeminiPageContext* active_page_context =
       GetAttachedPageContext(active_web_state_id);
@@ -2394,6 +2404,13 @@ void GeminiBrowserAgent::UpdateLocalTabAttachmentState(
   if (GeminiPageContext* page_context =
           GetAttachedPageContext(attached_tab_id)) {
     page_context.geminiPageContextAttachmentState = new_state;
+    if (new_state ==
+        ios::provider::GeminiPageContextAttachmentState::kAttached) {
+      RecordGeminiActiveTabAttached();
+    } else if (new_state ==
+               ios::provider::GeminiPageContextAttachmentState::kDetached) {
+      RecordGeminiActiveTabDetached();
+    }
   }
 }
 

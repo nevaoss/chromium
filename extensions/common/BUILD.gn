@@ -114,6 +114,7 @@ mojom("mojom") {
     "mojom/stack_frame.mojom",
     "mojom/url_pattern_set.mojom",
     "mojom/view_type.mojom",
+    "mojom/web_request_host.mojom",
   ]
 
   public_deps = [
@@ -576,6 +577,7 @@ static_library("common") {
 
   deps = [
     "//base",
+    "//base:i18n",
     "//build:android_buildflags",
     "//build:branding_buildflags",
     "//build:chromeos_buildflags",

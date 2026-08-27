@@ -79,6 +79,7 @@
 namespace gfx {
 class QuadF;
 class RectF;
+class Transform;
 class Vector2dF;
 }  // namespace gfx
 
@@ -112,6 +113,8 @@ class CustomElementRegistry;
 class DisplayLockContext;
 class DisplayStyle;
 class Document;
+class DOMMatrix;
+class DOMMatrixInit;
 class DOMPoint;
 class DOMPointInit;
 class DOMQuad;
@@ -129,6 +132,7 @@ class ElementIntersectionObserverData;
 class ExceptionState;
 class FocusOptions;
 class GetAnimationsOptions;
+class HTMLCanvasElement;
 class HTMLElement;
 class HTMLSubmitButtonBehavior;
 class HTMLTemplateElement;
@@ -1170,6 +1174,21 @@ class CORE_EXPORT Element : public ContainerNode {
   bool IsCanvasOrInCanvasSubtree() const;
   // Called when `IsInCanvasSubtree()` changes.
   virtual void DidChangeIsInCanvasSubtree();
+  HTMLCanvasElement* CanvasForDrawing() const;
+
+  DOMMatrix* getCanvasTransform();
+  void setCanvasTransform(DOMMatrixInit* matrix,
+                          ExceptionState& exception_state);
+  bool HasCanvasTransform() const;
+  // Returns the transform that should be used for mapping the border-box,
+  // before CSS transforms, to the canvas coordinate space. When the element is
+  // in a canvas subtree, this affects the geometry of the element (e.g., for
+  // hit-testing, `getBoundingClientRect()`) and can be used to make the
+  // element's geometry match its drawn position in a canvas. Returns nullptr
+  // if the element is not in a canvas subtree.
+  const gfx::Transform* GetUsedCanvasTransform() const;
+  const gfx::Transform* GetCanvasTransformInternal() const;
+  void SetCanvasTransformInternal(const gfx::Transform& transform);
 
   bool IsDefined() const {
     // An element whose custom element state is "uncustomized" or "custom"

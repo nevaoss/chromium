@@ -114,6 +114,7 @@
 #include "third_party/blink/renderer/core/html/html_script_element.h"
 #include "third_party/blink/renderer/core/html/html_slot_element.h"
 #include "third_party/blink/renderer/core/html/html_stream.h"
+#include "third_party/blink/renderer/core/html/html_template_element.h"
 #include "third_party/blink/renderer/core/html/parser/fragment_parser.h"
 #include "third_party/blink/renderer/core/html_names.h"
 #include "third_party/blink/renderer/core/input/event_handler.h"
@@ -1076,7 +1077,16 @@ void Node::after(
 namespace {
 ContainerNode* ParentForHTMLInsertion(Node* self,
                                       ExceptionState& exception_state) {
+  CHECK(RuntimeEnabledFeatures::NewHTMLSettingMethodsEnabled());
   ContainerNode* parent = self->parentNode();
+
+  if (IsA<HTMLTemplateElement>(parent)) {
+    exception_state.ThrowDOMException(
+        DOMExceptionCode::kHierarchyRequestError,
+        "Cannot insert HTML around a direct child of a template element.");
+    return nullptr;
+  }
+
   if (!parent || parent->IsElementNode() || parent->IsShadowRoot()) {
     return parent;
   }
@@ -1219,19 +1229,17 @@ WritableStream* Node::streamBeforeHTMLUnsafe(
   if (!resolved_options) {
     return nullptr;
   }
-  return HTMLStream::Create(
-      script_state, parentNode(), this, Sanitizer::Mode::kUnsafe,
-      *resolved_options, trusted_types_names::kNode,
-      trusted_types_names::kStreamBeforeHTMLUnsafe, exception_state);
+  return HTMLStream::Create(script_state, parentNode(), this,
+                            Sanitizer::Mode::kUnsafe, *resolved_options,
+                            exception_state);
 }
 
 WritableStream* Node::streamBeforeHTML(ScriptState* script_state,
                                        SetHTMLOptions* options,
                                        ExceptionState& exception_state) {
-  return HTMLStream::Create(
-      script_state, parentNode(), this, Sanitizer::Mode::kSafe,
-      FragmentParserOptions(options), trusted_types_names::kNode,
-      trusted_types_names::kStreamBeforeHTML, exception_state);
+  return HTMLStream::Create(script_state, parentNode(), this,
+                            Sanitizer::Mode::kSafe,
+                            FragmentParserOptions(options), exception_state);
 }
 
 WritableStream* Node::streamAfterHTMLUnsafe(
@@ -1246,19 +1254,17 @@ WritableStream* Node::streamAfterHTMLUnsafe(
   if (!resolved_options) {
     return nullptr;
   }
-  return HTMLStream::Create(
-      script_state, parentNode(), nextSibling(), Sanitizer::Mode::kUnsafe,
-      *resolved_options, trusted_types_names::kNode,
-      trusted_types_names::kStreamAfterHTMLUnsafe, exception_state);
+  return HTMLStream::Create(script_state, parentNode(), nextSibling(),
+                            Sanitizer::Mode::kUnsafe, *resolved_options,
+                            exception_state);
 }
 
 WritableStream* Node::streamAfterHTML(ScriptState* script_state,
                                       SetHTMLOptions* options,
                                       ExceptionState& exception_state) {
-  return HTMLStream::Create(
-      script_state, parentNode(), nextSibling(), Sanitizer::Mode::kSafe,
-      FragmentParserOptions(options), trusted_types_names::kNode,
-      trusted_types_names::kStreamAfterHTML, exception_state);
+  return HTMLStream::Create(script_state, parentNode(), nextSibling(),
+                            Sanitizer::Mode::kSafe,
+                            FragmentParserOptions(options), exception_state);
 }
 
 WritableStream* Node::streamReplaceWithHTMLUnsafe(
@@ -1275,8 +1281,7 @@ WritableStream* Node::streamReplaceWithHTMLUnsafe(
   }
   return HTMLStream::Create(script_state, parentNode(), nextSibling(),
                             Sanitizer::Mode::kUnsafe, *resolved_options,
-                            trusted_types_names::kNode,
-                            trusted_types_names::kStreamReplaceWithHTMLUnsafe,
+
                             exception_state, [&]() { remove(); });
 }
 
@@ -1285,9 +1290,7 @@ WritableStream* Node::streamReplaceWithHTML(ScriptState* script_state,
                                             ExceptionState& exception_state) {
   return HTMLStream::Create(
       script_state, parentNode(), nextSibling(), Sanitizer::Mode::kSafe,
-      FragmentParserOptions(options), trusted_types_names::kNode,
-      trusted_types_names::kStreamReplaceWithHTML, exception_state,
-      [&]() { remove(); });
+      FragmentParserOptions(options), exception_state, [&]() { remove(); });
 }
 
 void Node::replaceWith(

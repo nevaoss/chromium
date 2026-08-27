@@ -21,7 +21,7 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/translate/chrome_translate_client.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
-#include "chrome/browser/ui/browser.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/read_anything/read_anything_immersive_web_view.h"
 #include "chrome/browser/ui/read_anything/read_anything_prefs.h"
 #include "chrome/browser/ui/read_anything/read_anything_side_panel_controller.h"
@@ -78,6 +78,8 @@ using ash::language_packs::OnInstallCompleteCallback;
 using ash::language_packs::PackResult;
 using read_anything::mojom::InstallationState;
 #endif  // BUILDFLAG(IS_CHROMEOS)
+
+using read_anything::mojom::ReadAnythingOpenTrigger;
 
 namespace {
 
@@ -367,7 +369,8 @@ class ReadAnythingUntrustedPageHandlerTest
     }
   }
 
-  views::View* GetImmersiveOverlay(Browser* browser_ptr = nullptr) {
+  views::View* GetImmersiveOverlay(
+      BrowserWindowInterface* browser_ptr = nullptr) {
     if (!browser_ptr) {
       browser_ptr = browser();
     }
@@ -378,7 +381,7 @@ class ReadAnythingUntrustedPageHandlerTest
   }
 
   content::WebContents* GetImmersiveWebContents(
-      Browser* browser_ptr = nullptr) {
+      BrowserWindowInterface* browser_ptr = nullptr) {
     views::View* overlay_view = GetImmersiveOverlay(browser_ptr);
     if (!overlay_view || !overlay_view->GetVisible() ||
         overlay_view->children().empty()) {

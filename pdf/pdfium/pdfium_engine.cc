@@ -766,8 +766,7 @@ sk_sp<const SkData> MakeDataAvoidingCopy(SkStreamAsset* stream) {
 // Caller takes ownership of `page_objects` via the return value.
 std::vector<ScopedFPDFPageObject> RemovePageObjectsFromPage(
     FPDF_PAGE page,
-    std::vector<base::RawPtrIfPtrT<FPDF_PAGEOBJECT, DanglingUntriaged>>
-        page_objects) {
+    PDFiumEngine::PageObjectVector page_objects) {
   std::vector<ScopedFPDFPageObject> page_object_deleters;
   page_object_deleters.reserve(page_objects.size());
   for (FPDF_PAGEOBJECT page_object : page_objects) {
@@ -4945,35 +4944,37 @@ void PDFiumEngine::SetCaretPosition(const gfx::Point& position) {
 }
 
 void PDFiumEngine::MoveRangeSelectionExtent(const gfx::Point& extent) {
+  if (!range_selection_base_.has_value()) {
+    return;
+  }
+
   auto point_data = GetPointData(gfx::PointF(extent));
   if (!PageIndexInBounds(point_data.page_index) || point_data.char_index < 0) {
     return;
   }
 
-  SelectionChangeInvalidator selection_invalidator(this);
-  if (range_selection_direction_ == RangeSelectionDirection::Right) {
-    ExtendSelection(point_data);
+  PageCharacterIndex extent_index{
+      static_cast<uint32_t>(point_data.page_index),
+      static_cast<uint32_t>(GetCharIndexBasedOnPointData(point_data))};
+
+  SetSelection(range_selection_base_.value(), extent_index);
+  if (caret_) {
+    caret_->SetChar(extent_index);
+    caret_->SetVisible(!IsSelecting());
+  }
+}
+
+void PDFiumEngine::SetSelectionBase(const gfx::Point& base) {
+  auto base_point_data = GetPointData(gfx::PointF(base));
+  if (!PageIndexInBounds(base_point_data.page_index) ||
+      base_point_data.char_index < 0) {
+    range_selection_base_.reset();
     return;
   }
 
-  // For a left selection we clear the current selection and set a new starting
-  // point based on the new left position. We then extend that selection out to
-  // the previously provided base location.
-  selection_.clear();
-  selection_.push_back(PDFiumRange(pages_[point_data.page_index].get(),
-                                   point_data.char_index, 0));
-
-  // This should always succeed because the range selection base should have
-  // already been selected.
-  ExtendSelection(GetPointData(gfx::PointF(range_selection_base_)));
-}
-
-void PDFiumEngine::SetSelectionBounds(const gfx::Point& base,
-                                      const gfx::Point& extent) {
-  range_selection_base_ = base;
-  range_selection_direction_ = IsAboveOrDirectlyLeftOf(base, extent)
-                                   ? RangeSelectionDirection::Left
-                                   : RangeSelectionDirection::Right;
+  range_selection_base_ = PageCharacterIndex{
+      static_cast<uint32_t>(base_point_data.page_index),
+      static_cast<uint32_t>(GetCharIndexBasedOnPointData(base_point_data))};
 }
 
 std::optional<Selection> PDFiumEngine::GetSelection() const {
@@ -5487,8 +5488,7 @@ void PDFiumEngine::DrawText(int page_index,
 
   ascent /= pdf_zoom;
 
-  std::vector<base::RawPtrIfPtrT<FPDF_PAGEOBJECT, DanglingUntriaged>>
-      page_objects;
+  PageObjectVector page_objects;
   page_objects.reserve(text_info.size());
   FPDF_PAGEOBJECTMARK mark = nullptr;
   for (const InkTextInfo& item : text_info) {
@@ -5634,8 +5634,7 @@ void PDFiumEngine::ApplyStroke(int page_index,
   FPDF_PAGE page = pdfium_page->GetPage();
   CHECK(page);
 
-  std::vector<base::RawPtrIfPtrT<FPDF_PAGEOBJECT, DanglingUntriaged>>
-      page_objects = WriteStrokeToPage(page, stroke);
+  PageObjectVector page_objects = WriteStrokeToPage(page, stroke);
   CHECK(!page_objects.empty());
   ink_edited_pages_needing_regeneration_.insert(page_index);
 
@@ -5950,10 +5949,8 @@ void PDFiumEngine::UpdateTextActiveAndInvalidateHelper(InkTextData& data,
   GetPage(page_index)->ReloadTextPage();
 }
 
-PDFiumEngine::InkStrokeData::InkStrokeData(
-    int page_index,
-    std::vector<base::RawPtrIfPtrT<FPDF_PAGEOBJECT, DanglingUntriaged>>
-        page_objects)
+PDFiumEngine::InkStrokeData::InkStrokeData(int page_index,
+                                           PageObjectVector page_objects)
     : page_index(page_index), page_objects(std::move(page_objects)) {}
 
 PDFiumEngine::InkStrokeData::InkStrokeData(InkStrokeData&&) noexcept = default;
@@ -5963,10 +5960,8 @@ PDFiumEngine::InkStrokeData& PDFiumEngine::InkStrokeData::operator=(
 
 PDFiumEngine::InkStrokeData::~InkStrokeData() = default;
 
-PDFiumEngine::InkTextData::InkTextData(
-    int page_index,
-    std::vector<base::RawPtrIfPtrT<FPDF_PAGEOBJECT, DanglingUntriaged>>
-        page_objects)
+PDFiumEngine::InkTextData::InkTextData(int page_index,
+                                       PageObjectVector page_objects)
     : page_index(page_index), page_objects(std::move(page_objects)) {}
 
 PDFiumEngine::InkTextData::InkTextData(InkTextData&&) noexcept = default;

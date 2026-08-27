@@ -69,9 +69,9 @@ LocalRecoveryFactorType ICloudKeychainRecoveryFactor::GetRecoveryFactorType()
 }
 
 void ICloudKeychainRecoveryFactor::AttemptRecovery(AttemptRecoveryCallback cb) {
-  auto* per_user_vault = GetPrimaryAccountVault();
+  const auto& per_user_vault = GetPrimaryAccountVault();
 
-  if (StandaloneTrustedVaultStorage::HasNonConstantKey(*per_user_vault)) {
+  if (StandaloneTrustedVaultStorage::HasNonConstantKey(per_user_vault)) {
     // iCloud Keychain is only used to recover keys if there were no
     // non-constant keys available previously.
     FulfillRecoveryWithFailure(
@@ -82,6 +82,7 @@ void ICloudKeychainRecoveryFactor::AttemptRecovery(AttemptRecoveryCallback cb) {
 
   // ICloudRecoveryKey::Retrieve() can't be cancelled, so we use a weak pointer
   // for the callback.
+  ongoing_keychain_tasks_count_++;
   ICloudRecoveryKey::Retrieve(
       base::BindOnce(
           &ICloudKeychainRecoveryFactor::OnICloudKeysRetrievedForRecovery,
@@ -92,6 +93,7 @@ void ICloudKeychainRecoveryFactor::AttemptRecovery(AttemptRecoveryCallback cb) {
 void ICloudKeychainRecoveryFactor::OnICloudKeysRetrievedForRecovery(
     AttemptRecoveryCallback cb,
     std::vector<std::unique_ptr<ICloudRecoveryKey>> local_icloud_keys) {
+  ongoing_keychain_tasks_count_--;
   if (local_icloud_keys.empty()) {
     MarkAsNotRegistered();
     FulfillRecoveryWithFailure(
@@ -203,34 +205,35 @@ void ICloudKeychainRecoveryFactor::FulfillRecoveryWithFailure(
 }
 
 bool ICloudKeychainRecoveryFactor::IsRegistered() {
-  auto* per_user_vault = GetPrimaryAccountVault();
-  return per_user_vault->icloud_keychain_registration_info().registered();
+  return GetPrimaryAccountVault()
+      .icloud_keychain_registration_info()
+      .registered();
 }
 
 void ICloudKeychainRecoveryFactor::MarkAsNotRegistered() {
-  auto* per_user_vault = GetPrimaryAccountVault();
-  per_user_vault->mutable_icloud_keychain_registration_info()->set_registered(
-      false);
-  storage_->WriteDataToDisk();
+  storage_->MutateUserVault(primary_account_.gaia, [](UserVault& user_vault) {
+    user_vault.mutable_icloud_keychain_registration_info()->set_registered(
+        false);
+  });
 }
 
 void ICloudKeychainRecoveryFactor::MarkAsRegistered() {
-  auto* per_user_vault = GetPrimaryAccountVault();
-  per_user_vault->mutable_icloud_keychain_registration_info()->set_registered(
-      true);
-  storage_->WriteDataToDisk();
+  storage_->MutateUserVault(primary_account_.gaia, [](UserVault& user_vault) {
+    user_vault.mutable_icloud_keychain_registration_info()->set_registered(
+        true);
+  });
 }
 
 TrustedVaultRecoveryFactorRegistrationStateForUMA
 ICloudKeychainRecoveryFactor::MaybeRegister(RegisterCallback cb) {
-  auto* per_user_vault = GetPrimaryAccountVault();
+  const auto& per_user_vault = GetPrimaryAccountVault();
 
-  if (per_user_vault->icloud_keychain_registration_info().registered()) {
+  if (per_user_vault.icloud_keychain_registration_info().registered()) {
     return TrustedVaultRecoveryFactorRegistrationStateForUMA::
         kAlreadyRegisteredV1;
   }
 
-  if (per_user_vault->last_registration_returned_local_data_obsolete()) {
+  if (per_user_vault.last_registration_returned_local_data_obsolete()) {
     // Client already knows that existing vault keys (or their absence) isn't
     // sufficient for registration. Fresh keys should be obtained first.
     return TrustedVaultRecoveryFactorRegistrationStateForUMA::
@@ -242,7 +245,7 @@ ICloudKeychainRecoveryFactor::MaybeRegister(RegisterCallback cb) {
         kThrottledClientSide;
   }
 
-  if (!StandaloneTrustedVaultStorage::HasNonConstantKey(*per_user_vault)) {
+  if (!StandaloneTrustedVaultStorage::HasNonConstantKey(per_user_vault)) {
     // Registration without non-constant keys isn't supported for iCloud
     // Keychain.
     return TrustedVaultRecoveryFactorRegistrationStateForUMA::
@@ -251,6 +254,7 @@ ICloudKeychainRecoveryFactor::MaybeRegister(RegisterCallback cb) {
 
   // ICloudRecoveryKey::Retrieve() can't be cancelled, so we use a weak pointer
   // for the callback.
+  ongoing_keychain_tasks_count_++;
   ICloudRecoveryKey::Retrieve(
       base::BindOnce(
           &ICloudKeychainRecoveryFactor::OnICloudKeysRetrievedForRegistration,
@@ -266,12 +270,21 @@ ICloudKeychainRecoveryFactor::MaybeRegister(RegisterCallback cb) {
       kAttemptingRegistrationWithNewKeyPair;
 }
 
+bool ICloudKeychainRecoveryFactor::IsIdleForTesting() const {
+  return !ongoing_registration_request_ &&
+         !ongoing_download_registration_state_request_for_recovery_ &&
+         !ongoing_download_registration_state_request_for_registration_ &&
+         ongoing_keychain_tasks_count_ == 0;
+}
+
 void ICloudKeychainRecoveryFactor::OnICloudKeysRetrievedForRegistration(
     RegisterCallback cb,
     std::vector<std::unique_ptr<ICloudRecoveryKey>> local_icloud_keys) {
+  ongoing_keychain_tasks_count_--;
   if (local_icloud_keys.empty()) {
     // No local iCloud Keychain key. We need to create a new one and register
     // it.
+    ongoing_keychain_tasks_count_++;
     ICloudRecoveryKey::Create(
         base::BindOnce(
             &ICloudKeychainRecoveryFactor::OnICloudKeyCreatedForRegistration,
@@ -336,6 +349,7 @@ void ICloudKeychainRecoveryFactor::
 
   // None of the retrieved iCloud Keychain keys is in the security domain. We
   // need to create a new one and register it.
+  ongoing_keychain_tasks_count_++;
   ICloudRecoveryKey::Create(
       base::BindOnce(
           &ICloudKeychainRecoveryFactor::OnICloudKeyCreatedForRegistration,
@@ -346,19 +360,20 @@ void ICloudKeychainRecoveryFactor::
 void ICloudKeychainRecoveryFactor::OnICloudKeyCreatedForRegistration(
     RegisterCallback cb,
     std::unique_ptr<ICloudRecoveryKey> local_icloud_key) {
+  ongoing_keychain_tasks_count_--;
   if (!local_icloud_key) {
     FulfillRegistrationWithFailure(TrustedVaultRegistrationStatus::kOtherError,
                                    std::move(cb));
     return;
   }
 
-  auto* per_user_vault = GetPrimaryAccountVault();
+  const auto& per_user_vault = GetPrimaryAccountVault();
 
   ongoing_registration_request_ = connection_->RegisterAuthenticationFactor(
       primary_account_,
       GetTrustedVaultKeysWithVersions(
-          StandaloneTrustedVaultStorage::GetAllVaultKeys(*per_user_vault),
-          per_user_vault->last_vault_key_version()),
+          StandaloneTrustedVaultStorage::GetAllVaultKeys(per_user_vault),
+          per_user_vault.last_vault_key_version()),
       local_icloud_key->key()->public_key(), ICloudKeychain(),
       base::BindOnce(&ICloudKeychainRecoveryFactor::OnRegistered,
                      base::Unretained(this), std::move(cb)));
@@ -376,20 +391,23 @@ void ICloudKeychainRecoveryFactor::OnRegistered(
   CHECK(ongoing_registration_request_);
   ongoing_registration_request_ = nullptr;
 
-  auto* per_user_vault = GetPrimaryAccountVault();
   switch (status) {
     case TrustedVaultRegistrationStatus::kSuccess:
     case TrustedVaultRegistrationStatus::kAlreadyRegistered:
       // kAlreadyRegistered handled as success, because it only means that
       // client doesn't fully handled successful device registration before.
-      per_user_vault->mutable_icloud_keychain_registration_info()
-          ->set_registered(true);
-      per_user_vault->clear_last_registration_returned_local_data_obsolete();
-      storage_->WriteDataToDisk();
+      storage_->MutateUserVault(
+          primary_account_.gaia, [](UserVault& user_vault) {
+            user_vault.mutable_icloud_keychain_registration_info()
+                ->set_registered(true);
+            user_vault.clear_last_registration_returned_local_data_obsolete();
+          });
       break;
     case TrustedVaultRegistrationStatus::kLocalDataObsolete:
-      per_user_vault->set_last_registration_returned_local_data_obsolete(true);
-      storage_->WriteDataToDisk();
+      storage_->MutateUserVault(
+          primary_account_.gaia, [](UserVault& user_vault) {
+            user_vault.set_last_registration_returned_local_data_obsolete(true);
+          });
       break;
     case TrustedVaultRegistrationStatus::kTransientAccessTokenFetchError:
     case TrustedVaultRegistrationStatus::kPersistentAccessTokenFetchError:
@@ -413,14 +431,11 @@ void ICloudKeychainRecoveryFactor::FulfillRegistrationWithFailure(
                     /*had_local_keys=*/true);
 }
 
-trusted_vault_pb::LocalTrustedVaultPerUser*
-ICloudKeychainRecoveryFactor::GetPrimaryAccountVault() {
-  auto* per_user_vault = storage_->FindUserVault(primary_account_.gaia);
+const UserVault& ICloudKeychainRecoveryFactor::GetPrimaryAccountVault() {
   // ICloudKeychainRecoveryFactor is only constructed by
   // StandaloneTrustedVaultBackend when a primary account is set, and it also
   // ensures that there is a user vault in storage at the same time.
-  CHECK(per_user_vault);
-  return per_user_vault;
+  return storage_->GetUserVault(primary_account_.gaia);
 }
 
 }  // namespace trusted_vault

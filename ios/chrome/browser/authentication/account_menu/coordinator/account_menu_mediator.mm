@@ -392,16 +392,26 @@
       } else {
         base::RecordAction(
             base::UserMetricsAction("Signin_AccountMenu_ErrorButton_MDM"));
+        self.userInteractionsBlocked = YES;
+        __weak __typeof(self) weakSelf = self;
         [self.syncErrorSettingsCommandHandler
-            openMDMErrodDialogWithSystemIdentity:_primaryIdentityBeforeSignin];
+            openMDMErrorDialogWithSystemIdentity:_primaryIdentityBeforeSignin
+                                      completion:^{
+                                        [weakSelf accountMenuIsUsable];
+                                      }];
       }
       break;
     }
     case syncer::SyncService::UserActionableError::kDeviceManagementError: {
       base::RecordAction(
           base::UserMetricsAction("Signin_AccountMenu_ErrorButton_MDM"));
+      self.userInteractionsBlocked = YES;
+      __weak __typeof(self) weakSelf = self;
       [self.syncErrorSettingsCommandHandler
-          openMDMErrodDialogWithSystemIdentity:_primaryIdentityBeforeSignin];
+          openMDMErrorDialogWithSystemIdentity:_primaryIdentityBeforeSignin
+                                    completion:^{
+                                      [weakSelf accountMenuIsUsable];
+                                    }];
       break;
     }
     case syncer::SyncService::UserActionableError::kNeedsPassphrase:
@@ -533,7 +543,8 @@
                            signedIdentity:identity
                           userTappedClose:NO];
   } else if (_accountManagerService->IsValidIdentity(
-                 _primaryIdentityBeforeSignin.gaiaId)) {
+                 _primaryIdentityBeforeSignin.gaiaId) &&
+             _authenticationService->SigninEnabled()) {
     // If the sign-in failed, sign back in previous account if possible and
     // restart using the account menu.
     _authenticationService->SignIn(

@@ -525,6 +525,124 @@ TEST_F(PrivateVerificationTokensStoreTest, StoreTokens_Success) {
   }
 }
 
+TEST_F(PrivateVerificationTokensStoreTest, DeleteToken_Success) {
+  const base::FilePath database_path = DbPath(TempDir());
+  StoreInDatabase(database_path, CreateTestData());
+  CreateStore(database_path);
+  ASSERT_EQ(store()->tokens().size(), 3u);
+  ASSERT_TRUE(store()->tokens().contains(kOriginA));
+
+  // 1. Delete first token for kOriginA.
+  int64_t first_token_id_a = store()->tokens().find(kOriginA)->second.id;
+  EXPECT_EQ(store()->tokens().find(kOriginA)->second.token.token(),
+            (std::vector<uint8_t>{11, 22, 33}));
+
+  base::test::TestFuture<void> future1;
+  store()->DeleteToken(first_token_id_a, future1.GetCallback());
+  EXPECT_TRUE(future1.Wait());
+
+  // Cache is refreshed: kOriginA is still present, populated with second token.
+  ASSERT_EQ(store()->tokens().size(), 3u);
+  ASSERT_TRUE(store()->tokens().contains(kOriginA));
+  int64_t second_token_id_a = store()->tokens().find(kOriginA)->second.id;
+  EXPECT_NE(second_token_id_a, first_token_id_a);
+  EXPECT_EQ(store()->tokens().find(kOriginA)->second.token.token(),
+            (std::vector<uint8_t>{11, 22, 44}));
+
+  // 2. Delete second token for kOriginA.
+  base::test::TestFuture<void> future2;
+  store()->DeleteToken(second_token_id_a, future2.GetCallback());
+  EXPECT_TRUE(future2.Wait());
+
+  // Cache is refreshed: kOriginA has no more tokens and is removed from cache.
+  EXPECT_EQ(store()->tokens().size(), 2u);
+  EXPECT_FALSE(store()->tokens().contains(kOriginA));
+  EXPECT_TRUE(store()->tokens().contains(kOriginBTri));
+  EXPECT_TRUE(store()->tokens().contains(kOriginCEee));
+
+  // Verify that both tokens are marked redeemed in the database.
+  store_.reset();
+  base::ThreadPoolInstance::Get()->FlushForTesting();
+  {
+    sql::Database database(sql::test::kTestTag);
+    ASSERT_TRUE(database.Open(database_path));
+    sql::Statement s1(database.GetUniqueStatement(
+        "SELECT redeemed FROM tokens WHERE id = ?"));
+    s1.BindInt64(0, first_token_id_a);
+    ASSERT_TRUE(s1.Step());
+    EXPECT_EQ(s1.ColumnInt(0), 1);
+
+    sql::Statement s2(database.GetUniqueStatement(
+        "SELECT redeemed FROM tokens WHERE id = ?"));
+    s2.BindInt64(0, second_token_id_a);
+    ASSERT_TRUE(s2.Step());
+    EXPECT_EQ(s2.ColumnInt(0), 1);
+  }
+}
+
+TEST_F(PrivateVerificationTokensStoreTest, NullCallback_DoesNotCrash) {
+  const base::FilePath database_path = DbPath(TempDir());
+  StoreInDatabase(database_path, CreateTestData());
+  CreateStore(database_path);
+  ASSERT_EQ(store()->tokens().size(), 3u);
+
+  // 1. DeleteToken with null callback.
+  int64_t token_id_a = store()->tokens().find(kOriginA)->second.id;
+  store()->DeleteToken(token_id_a, base::NullCallback());
+
+  // 2. StoreTokens with null callback.
+  std::vector<PrivateVerificationTokensToken> new_tokens;
+  new_tokens.emplace_back(kOriginA, std::vector<uint8_t>{99, 99}, 3,
+                          base::Time::UnixEpoch() + base::Seconds(100), 3);
+  store()->StoreTokens(std::move(new_tokens), base::NullCallback());
+
+  // 3. DeleteTokens with null callback.
+  store()->DeleteTokens(base::Time::Min(), base::Time::Max(), std::nullopt,
+                        base::NullCallback());
+
+  // Flush background database operations.
+  store_.reset();
+  base::ThreadPoolInstance::Get()->FlushForTesting();
+}
+
+TEST_F(PrivateVerificationTokensStoreTest, TokenCountForIssuer_Success) {
+  const base::FilePath database_path = DbPath(TempDir());
+  std::map<url::Origin, std::vector<PrivateVerificationTokensToken>> tokens =
+      CreateTestData();
+  StoreInDatabase(database_path, tokens);
+
+  CreateStore(database_path);
+
+  // In CreateTestData(), kOriginA has 2 tokens, kOriginBTri has 2 tokens,
+  // kOriginCEee has 1 token.
+  EXPECT_EQ(store()->TokenCountForIssuer(kOriginA), 2u);
+  EXPECT_EQ(store()->TokenCountForIssuer(kOriginBTri), 2u);
+  EXPECT_EQ(store()->TokenCountForIssuer(kOriginCEee), 1u);
+
+  const url::Origin non_existent =
+      url::Origin::Create(GURL("https://unknown.org"));
+  EXPECT_EQ(store()->TokenCountForIssuer(non_existent), 0u);
+}
+
+TEST_F(PrivateVerificationTokensStoreTest, TokenCountForIssuer_AfterDelete) {
+  const base::FilePath database_path = DbPath(TempDir());
+  std::map<url::Origin, std::vector<PrivateVerificationTokensToken>> tokens =
+      CreateTestData();
+  StoreInDatabase(database_path, tokens);
+
+  CreateStore(database_path);
+
+  EXPECT_EQ(store()->TokenCountForIssuer(kOriginA), 2u);
+
+  base::test::TestFuture<void> delete_future;
+  store()->DeleteTokens(base::Time(), base::Time::Max(),
+                        std::vector<url::Origin>{kOriginA},
+                        delete_future.GetCallback());
+  EXPECT_TRUE(delete_future.Wait());
+
+  EXPECT_EQ(store()->TokenCountForIssuer(kOriginA), 0u);
+}
+
 }  // namespace
 
 }  // namespace private_verification_tokens

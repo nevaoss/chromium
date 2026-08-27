@@ -41,7 +41,6 @@
 #include "components/autofill/core/browser/field_type_utils.h"
 #include "components/autofill/core/browser/field_types.h"
 #include "components/autofill/core/common/autofill_features.h"
-#include "components/autofill/core/common/autofill_regexes.h"
 #include "third_party/icu/source/common/unicode/uchar.h"
 #include "third_party/icu/source/common/unicode/urename.h"
 #include "third_party/icu/source/common/unicode/uscript.h"
@@ -399,19 +398,46 @@ bool IsNormalizedNameVariantOfLinear(std::u16string_view full_name_1,
     return true;
   }
 
-  if (HasCjkNameCharacteristics(base::UTF16ToUTF8(full_name_1))) {
-    return IsSubsequence(TokenizeNormalizedCjkName(full_name_1),
-                         TokenizeNormalizedCjkName(full_name_2));
-  }
+  const bool is_cjk = HasCjkNameCharacteristics(base::UTF16ToUTF8(full_name_1));
 
-  if (full_name_2.size() > full_name_1.size()) {
+  if (!is_cjk && full_name_2.size() > full_name_1.size()) {
     return false;
   }
 
-  std::vector<std::u16string_view> tokens_1 = base::SplitStringPiece(
-      full_name_1, kSpace, base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-  std::vector<std::u16string_view> tokens_2 = base::SplitStringPiece(
-      full_name_2, kSpace, base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  data_util::NameParts name_1_parts = data_util::SplitName(full_name_1);
+
+  // Family name abbreviations are not allowed; the family name must match
+  // exactly or be completely omitted. If found, it is stripped first (from the
+  // beginning for CJK, or from the end for non-CJK), leaving only given and
+  // middle names (if applicable, middle name is not parsed for CJK) for the
+  // subsequence check.
+  if (is_cjk) {
+    std::u16string_view given_name_2 =
+        base::RemovePrefix(full_name_2, name_1_parts.family)
+            .value_or(full_name_2);
+    return IsSubsequence(TokenizeNormalizedCjkName(name_1_parts.given),
+                         TokenizeNormalizedCjkName(given_name_2));
+  }
+
+  auto tokenize = [](std::u16string_view str) {
+    return base::SplitStringPiece(str, kSpace, base::TRIM_WHITESPACE,
+                                  base::SPLIT_WANT_NONEMPTY);
+  };
+
+  std::vector<std::u16string_view> tokens_1 = tokenize(name_1_parts.given);
+  std::vector<std::u16string_view> middle_tokens =
+      tokenize(name_1_parts.middle);
+  tokens_1.insert(tokens_1.end(), middle_tokens.begin(), middle_tokens.end());
+
+  std::vector<std::u16string_view> tokens_2 = tokenize(full_name_2);
+  std::vector<std::u16string_view> family_tokens =
+      tokenize(name_1_parts.family);
+
+  // Similarly to CJK, remove the family name from the end if found before the
+  // abbreviated subsequence check.
+  if (std::ranges::ends_with(tokens_2, family_tokens)) {
+    tokens_2.resize(tokens_2.size() - family_tokens.size());
+  }
 
   return IsAbbreviatedConcatenatedSubsequence(tokens_1, tokens_2);
 }
@@ -868,121 +894,6 @@ bool NameInfo::IsAlternativeNameSupported() const {
 
 bool NameInfo::HaveSimilarAlternativeNameSupport(const NameInfo& other) const {
   return IsAlternativeNameSupported() == other.IsAlternativeNameSupported();
-}
-
-EmailInfo::EmailInfo() = default;
-
-EmailInfo::EmailInfo(const EmailInfo& info) = default;
-
-EmailInfo& EmailInfo::operator=(const EmailInfo& info) = default;
-
-EmailInfo::~EmailInfo() = default;
-
-bool EmailInfo::operator==(const EmailInfo& other) const {
-  return this == &other || email_ == other.email_;
-}
-
-FieldTypeSet EmailInfo::GetSupportedTypes() const {
-  static constexpr FieldTypeSet supported_types{EMAIL_ADDRESS};
-  return supported_types;
-}
-
-std::u16string EmailInfo::GetInfo(const AutofillType& type,
-                                  std::string_view app_locale) const {
-  return GetRawInfo(type.GetAddressType());
-}
-
-std::u16string EmailInfo::GetRawInfo(FieldType type) const {
-  if (type == EMAIL_ADDRESS || type == EMAIL_OR_LOYALTY_MEMBERSHIP_ID) {
-    return email_;
-  }
-
-  return std::u16string();
-}
-
-void EmailInfo::SetRawInfoWithVerificationStatus(FieldType type,
-                                                 std::u16string_view value,
-                                                 VerificationStatus status) {
-  CHECK(type == EMAIL_ADDRESS || type == EMAIL_OR_LOYALTY_MEMBERSHIP_ID);
-  email_ = value;
-}
-
-bool EmailInfo::SetInfoWithVerificationStatus(const AutofillType& type,
-                                              std::u16string_view value,
-                                              std::string_view app_locale,
-                                              const VerificationStatus status) {
-  SetRawInfoWithVerificationStatus(type.GetAddressType(), value, status);
-  return true;
-}
-
-VerificationStatus EmailInfo::GetVerificationStatus(FieldType type) const {
-  return VerificationStatus::kNoStatus;
-}
-
-CompanyInfo::CompanyInfo() = default;
-
-CompanyInfo::CompanyInfo(const CompanyInfo& info) = default;
-
-CompanyInfo::~CompanyInfo() = default;
-
-bool CompanyInfo::operator==(const CompanyInfo& other) const {
-  return this == &other ||
-         GetRawInfo(COMPANY_NAME) == other.GetRawInfo(COMPANY_NAME);
-}
-
-FieldTypeSet CompanyInfo::GetSupportedTypes() const {
-  static constexpr FieldTypeSet supported_types{COMPANY_NAME};
-  return supported_types;
-}
-
-void CompanyInfo::GetMatchingTypes(std::u16string_view text,
-                                   std::string_view app_locale,
-                                   FieldTypeSet* matching_types) const {
-  if (IsValid()) {
-    FormGroup::GetMatchingTypes(text, app_locale, matching_types);
-  } else if (text.empty()) {
-    matching_types->insert(EMPTY_TYPE);
-  }
-}
-
-std::u16string CompanyInfo::GetInfo(const AutofillType& type,
-                                    std::string_view app_locale) const {
-  return GetRawInfo(type.GetAddressType());
-}
-
-std::u16string CompanyInfo::GetRawInfo(FieldType type) const {
-  return company_name_;
-}
-
-void CompanyInfo::SetRawInfoWithVerificationStatus(FieldType type,
-                                                   std::u16string_view value,
-                                                   VerificationStatus status) {
-  DCHECK_EQ(COMPANY_NAME, type);
-  company_name_ = value;
-}
-
-bool CompanyInfo::SetInfoWithVerificationStatus(
-    const AutofillType& type,
-    std::u16string_view value,
-    std::string_view app_locale,
-    const VerificationStatus status) {
-  SetRawInfoWithVerificationStatus(type.GetAddressType(), value, status);
-  return true;
-}
-
-VerificationStatus CompanyInfo::GetVerificationStatus(FieldType type) const {
-  return VerificationStatus::kNoStatus;
-}
-
-bool CompanyInfo::IsValid() const {
-  static constexpr char16_t kBirthyearRe[] = u"^(19|20)\\d{2}$";
-  static constexpr char16_t kSocialTitleRe[] =
-      u"^(Ms\\.?|Mrs\\.?|Mr\\.?|Miss|Mistress|Mister|"
-      u"Frau|Herr|"
-      u"Mlle|Mme|M\\.|"
-      u"Dr\\.?|Prof\\.?)$";
-  return !MatchesRegex<kBirthyearRe>(company_name_) &&
-         !MatchesRegex<kSocialTitleRe>(company_name_);
 }
 
 }  // namespace autofill

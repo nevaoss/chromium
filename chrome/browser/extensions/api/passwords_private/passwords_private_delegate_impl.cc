@@ -60,7 +60,6 @@
 #include "components/password_manager/core/browser/sharing/recipients_fetcher_impl.h"
 #include "components/password_manager/core/browser/ui/credential_ui_entry.h"
 #include "components/password_manager/core/browser/ui/credential_utils.h"
-#include "components/password_manager/core/browser/ui/passwords_provider.h"
 #include "components/password_manager/core/browser/ui/saved_passwords_presenter.h"
 #include "components/password_manager/core/common/password_manager_constants.h"
 #include "components/password_manager/core/common/password_manager_features.h"
@@ -833,22 +832,6 @@ bool PasswordsPrivateDelegateImpl::IsAccountStorageActive() {
   return password_manager::features_util::IsAccountStorageActive(sync_service_);
 }
 
-void PasswordsPrivateDelegateImpl::SetAccountStorageEnabled(bool enabled) {
-  // TODO(crbug.com/470332074): Verify whether this should check for "enabled"
-  // instead of "active".
-  if (enabled ==
-      password_manager::features_util::IsAccountStorageActive(sync_service_)) {
-    return;
-  }
-  sync_service_->GetUserSettings()->SetSelectedType(
-      syncer::UserSelectableType::kPasswords, enabled);
-}
-
-bool PasswordsPrivateDelegateImpl::ShouldShowAccountStorageSettingToggle() {
-  return password_manager::features_util::ShouldShowAccountStorageSettingToggle(
-      sync_service_);
-}
-
 std::vector<api::passwords_private::PasswordUiEntry>
 PasswordsPrivateDelegateImpl::GetInsecureCredentials() {
   return password_check_delegate_.GetInsecureCredentials();
@@ -917,8 +900,7 @@ void PasswordsPrivateDelegateImpl::ShowAddShortcutDialog(
       GlobalBrowserCollection::GetInstance()->FindBrowserWithTab(web_contents);
   DCHECK(browser);
   web_app::CreateWebAppFromCurrentWebContents(
-      browser->GetBrowserForMigrationOnly(),
-      web_app::WebAppInstallFlow::kInstallSite);
+      browser, web_app::WebAppInstallFlow::kInstallSite);
   base::UmaHistogramEnumeration(
       "PasswordManager.ShortcutMetric",
       password_manager::metrics_util::PasswordManagerShortcutMetric::
@@ -1234,8 +1216,6 @@ void PasswordsPrivateDelegateImpl::OnStateChanged(
     syncer::SyncService* sync_service) {
   if (event_router_) {
     event_router_->OnAccountStorageActiveStateChanged(IsAccountStorageActive());
-    event_router_->OnShouldShowAccountStorageSettingToggleChanged(
-        ShouldShowAccountStorageSettingToggle());
   }
 }
 

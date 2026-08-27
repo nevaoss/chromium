@@ -30,7 +30,7 @@ class AutofillClient;
 // numeric values should never be reused.
 // LINT.IfChange(EvpAutofillFlowResult)
 enum class EvpAutofillFlowResult {
-  kSuccess = 0,
+  kSuccess = 0,  // Obsolete.
   kTokenFieldHasNoNonce = 1,
   kUserPrefDisabled = 2,
   kStrikeDatabaseBlock = 3,
@@ -171,7 +171,7 @@ class EmailVerifierDelegate : public AutofillManager::Observer,
   std::optional<FieldGlobalId> last_focused_field_;
   // A tab-scoped cache of recently verified email values (mapped by field ID)
   // used to deduplicate verification prompts when the user alternates focus.
-  std::vector<std::pair<FieldGlobalId, std::u16string>> last_verified_values_;
+  std::vector<std::pair<FieldGlobalId, std::string>> last_verified_values_;
 
   base::WeakPtrFactory<EmailVerifierDelegate> weak_ptr_factory_{this};
 };

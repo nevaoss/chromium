@@ -312,6 +312,9 @@ const char kEnableNetBenchmarking[] = "enable-net-benchmarking";
 const char kEnablePotentiallyAnnoyingSecurityFeatures[] =
     "enable-potentially-annoying-security-features";
 
+// Enables verbose debug logs for Talk to Chrome (TTC).
+const char kEnableTtcDebugLogs[] = "enable-ttc-debug-logs";
+
 // Allows experimental ai extension APIs to be used in stable channel.
 // This disables chrome sign-in if set, regardless of channel.
 const char kExperimentalAiStableChannel[] = "experimental-ai-stable-channel";
@@ -855,6 +858,9 @@ const char kCodeSignCloneCleanupProcess[] = "code-sign-clone-cleanup";
 // temporary directory that contains the clone. The full path will be
 // reconstructed by the cleanup process.
 const char kUniqueTempDirSuffix[] = "unique-temp-dir-suffix";
+
+// A process type that exits cleanly with code 0 without performing work.
+const char kNoOpForTestingProcess[] = "no-op-for-testing";
 #endif  // BUILDFLAG(IS_MAC)
 
 #if BUILDFLAG(IS_WIN)

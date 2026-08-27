@@ -23,6 +23,7 @@
 #include "components/supervised_user/core/common/features.h"
 #include "components/supervised_user/core/common/pref_names.h"
 #include "components/supervised_user/core/common/supervised_user_constants.h"
+#include "components/supervised_user/test_support/features.h"
 #include "content/public/test/browser_task_environment.h"
 #include "extensions/buildflags/buildflags.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -514,16 +515,6 @@ struct ContentFiltersTestCase {
 class FamilyLinkUserMetricsProviderWithContentFiltersAndroidTest
     : public FamilyLinkUserMetricsProviderTest {
  protected:
-  virtual void SetUpFeatureList() {
-    scoped_feature_list_.InitAndEnableFeature(
-        kSupervisedUserEmitLogRecordSeparately);
-  }
-
-  void SetUp() override {
-    FamilyLinkUserMetricsProviderTest::SetUp();
-    SetUpFeatureList();
-  }
-
   // Enables or disables the browser content filters for all profiles.
   void SetBrowserContentFilters(bool enabled) {
     TestingBrowserProcess::GetGlobal()
@@ -537,8 +528,6 @@ class FamilyLinkUserMetricsProviderWithContentFiltersAndroidTest
         ->android_parental_controls()
         .SetSearchContentFiltersEnabledForTesting(enabled);
   }
-
-  base::test::ScopedFeatureList scoped_feature_list_;
 };
 
 TEST_F(FamilyLinkUserMetricsProviderWithContentFiltersAndroidTest,
@@ -575,11 +564,6 @@ class
     : public FamilyLinkUserMetricsProviderWithContentFiltersAndroidTest,
       public testing::WithParamInterface<ContentFiltersTestCase> {
  protected:
-  void SetUpFeatureList() override {
-    scoped_feature_list_.InitWithFeatureStates(
-        {{kSupervisedUserEmitLogRecordSeparately, false}});
-  }
-
   void CreateProfiles(std::size_t count) {
     CHECK_GE(email_addresses_.size(), count) << "Not enough email addresses";
     CHECK_GE(profile_names_.size(), count) << "Not enough profile names";
@@ -639,6 +623,10 @@ TEST_P(
       SupervisedUserLogRecord::Segment::kSupervisionEnabledLocally,
       /*expected_count=*/1);
   histogram_tester.ExpectBucketCount(
+      kFamilyLinkUserLogSegmentHistogramName,
+      SupervisedUserLogRecord::Segment::kUnsupervised,
+      /*expected_count=*/1);
+  histogram_tester.ExpectBucketCount(
       kFamilyLinkUserLogSegmentWebFilterHistogramName,
       WebFilterType::kAllowAllSites,
       /*expected_count=*/1);
@@ -656,6 +644,10 @@ TEST_P(
   histogram_tester.ExpectBucketCount(
       kFamilyLinkUserLogSegmentHistogramName,
       SupervisedUserLogRecord::Segment::kSupervisionEnabledLocally,
+      /*expected_count=*/1);
+  histogram_tester.ExpectBucketCount(
+      kFamilyLinkUserLogSegmentHistogramName,
+      SupervisedUserLogRecord::Segment::kUnsupervised,
       /*expected_count=*/1);
   histogram_tester.ExpectUniqueSample(
       kFamilyLinkUserLogSegmentWebFilterHistogramName,
@@ -676,6 +668,10 @@ TEST_P(
   histogram_tester.ExpectBucketCount(
       kFamilyLinkUserLogSegmentHistogramName,
       SupervisedUserLogRecord::Segment::kSupervisionEnabledLocally,
+      /*expected_count=*/1);
+  histogram_tester.ExpectBucketCount(
+      kFamilyLinkUserLogSegmentHistogramName,
+      SupervisedUserLogRecord::Segment::kUnsupervised,
       /*expected_count=*/1);
   histogram_tester.ExpectUniqueSample(
       kFamilyLinkUserLogSegmentWebFilterHistogramName,

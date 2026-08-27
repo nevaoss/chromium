@@ -33,6 +33,7 @@ Neke funkcije su možda nedostupne i promene podešavanja neće biti sačuvane.
 <translation id="1290883685122687410">Greška pri podešavanju: <ph name="METAINSTALLER_EXIT_CODE" />. <ph name="WINDOWS_ERROR" /></translation>
 <translation id="1302523850133262269">Sačekajte da Chrome instalira najnovija ažuriranja sistema.</translation>
 <translation id="1330562121671411446">Otkriveni jezik</translation>
+<translation id="1333654552732143316">Pokreni Chrome</translation>
 <translation id="1341711321000856656">Možete da se prebacite da biste videli lozinke sa drugog Chrome profila</translation>
 <translation id="1343830902827845050">Prijavite se u Chrome</translation>
 <translation id="1356661055722410047">Novo. Možete da prevodite i tekst i slike na ekranu</translation>
@@ -382,7 +383,6 @@ Ako ova stranica ne radi na očekivani način, dozvolite optimizaciju.</translat
 <translation id="4885446229353981848">Uvek prikazuj prečicu za Google objektiv</translation>
 <translation id="4891791193823137474">Neka Google Chrome radi u pozadini</translation>
 <translation id="4895437082222824641">Otvori link u novoj Chrome &amp;kartici</translation>
-<translation id="4896867431081882115">Podesite Chrome kao podrazumevani pregledač da biste lako pristupali funkcijama koje znate, volite i kojima verujete. Chrome će biti zakačen na traku zadataka radi brzog pristupa.</translation>
 <translation id="4904953848704395458">Otvorite Gemini u Chrome-u pomoću tasterske prečice.</translation>
 <translation id="4918086044614829423">Prihvati</translation>
 <translation id="4918844574251943176">Slika je kopirana</translation>
@@ -748,6 +748,7 @@ Google Chrome ne može da vrati podešavanja.</translation>
 <translation id="8367705492654390392">Upitajte bilo šta</translation>
 <translation id="8367950957770994118">Brzo otvorite Gemini u Chrome-u kad god vam zatreba</translation>
 <translation id="8370517070665726704">Autorska prava <ph name="YEAR" />. Google LLC. Sva prava zadržana.</translation>
+<translation id="8370748943308169953">QR kôd za prijavljivanje u Chrome kao <ph name="USER_NAME" /></translation>
 <translation id="8377158135256176353">Uključite ili isključite Gemini u Chrome Canary-ju</translation>
 <translation id="8387459386171870978">Nastavite sa korišćenjem Chrome-a</translation>
 <translation id="8394720698884623075">Proverava URL-ove sa listom nebezbednih sajtova koji se čuvaju u Chrome-u</translation>

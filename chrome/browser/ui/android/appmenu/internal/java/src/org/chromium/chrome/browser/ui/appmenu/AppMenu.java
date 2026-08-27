@@ -253,7 +253,7 @@ class AppMenu implements OnKeyListener {
     private final int[] mTempLocation;
     private final AppMenuVisibilityDelegate mVisibilityDelegate;
     private final boolean mDisableVerticalScrollbar;
-    private final boolean mPositionBelowAnchor;
+    private boolean mPositionBelowAnchor;
 
     private @Nullable Context mContext;
     private @Nullable ListView mListView;
@@ -412,8 +412,10 @@ class AppMenu implements OnKeyListener {
         Rect bgPadding = new Rect();
         contentView.getBackground().getPadding(bgPadding);
 
-        assert mAdapter != null;
-        int itemWidth = UiUtils.computeListAdapterContentDimensions(mAdapter, mListView)[0];
+        int itemWidth =
+                mAdapter == null
+                        ? 0
+                        : UiUtils.computeListAdapterContentDimensions(mAdapter, mListView)[0];
         int contentWidth = itemWidth + bgPadding.left + bgPadding.right;
         int minWidth = context.getResources().getDimensionPixelSize(R.dimen.menu_width_min);
         int menuMaxWidth = context.getResources().getDimensionPixelSize(R.dimen.menu_width_max);
@@ -485,6 +487,8 @@ class AppMenu implements OnKeyListener {
                         Math.abs(mTempLocation[1] - visibleDisplayFrame.top),
                         Math.abs(mTempLocation[1] - visibleDisplayFrame.bottom));
 
+        mPositionBelowAnchor = DeviceInfo.isDesktop();
+
         mMenuSpec =
                 new MenuSpec(
                         visibleDisplayFrame,
@@ -493,6 +497,19 @@ class AppMenu implements OnKeyListener {
                         headerHeight,
                         anchorView,
                         anchorViewOffset);
+
+        if (mPositionBelowAnchor) {
+            int spaceBelow =
+                    visibleDisplayFrame.height()
+                            - anchorViewOffset
+                            - anchorView.getHeight()
+                            - footerHeight
+                            - headerHeight
+                            - padding.bottom;
+            if (spaceBelow <= 0) {
+                mPositionBelowAnchor = false;
+            }
+        }
 
         int popupHeight = calculateMenuHeight();
         popup.setHeight(popupHeight);
