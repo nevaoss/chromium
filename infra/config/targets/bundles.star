@@ -2703,8 +2703,8 @@ targets.bundle(
                 "disable_field_trial_config_for_earl_grey",
             ],
             variants = [
-                "SIM_IPAD_AIR_6TH_GEN_18_2",
-                "SIM_IPHONE_15_18_2",
+                "SIM_IPAD_AIR_6TH_GEN_18_5",
+                "SIM_IPHONE_15_18_5",
             ],
         ),
         targets.bundle(
@@ -2714,8 +2714,8 @@ targets.bundle(
                 "disable_field_trial_config_for_earl_grey",
             ],
             variants = [
-                "SIM_IPAD_AIR_6TH_GEN_18_2",
-                "SIM_IPHONE_15_18_2",
+                "SIM_IPAD_AIR_6TH_GEN_18_5",
+                "SIM_IPHONE_15_18_5",
             ],
         ),
     ],
@@ -3234,13 +3234,13 @@ targets.bundle(
         targets.bundle(
             targets = "gpu_angle_ios_end2end_gtests",
             variants = [
-                "SIM_IPHONE_14_18_2",
+                "SIM_IPHONE_14_18_5",
             ],
         ),
         targets.bundle(
             targets = "gpu_angle_ios_white_box_gtests",
             variants = [
-                "SIM_IPHONE_14_18_2",
+                "SIM_IPHONE_14_18_5",
             ],
         ),
     ],
@@ -4280,10 +4280,8 @@ targets.bundle(
 targets.bundle(
     name = "gpu_fyi_mac_debug_gtests",
     targets = [
-        "gpu_angle_unit_gtests",
-        "gpu_common_gtests_passthrough",
-        "gpu_fyi_and_optional_non_linux_gtests",
-        "gpu_fyi_mac_specific_gtests",
+        # Identical to the release gtests for now
+        "gpu_fyi_mac_release_gtests",
     ],
 )
 
@@ -4297,8 +4295,6 @@ targets.bundle(
 targets.bundle(
     name = "gpu_fyi_mac_release_gtests",
     targets = [
-        "gpu_angle_unit_gtests",
-        "gpu_common_gtests_passthrough",
         "gpu_fyi_and_optional_non_linux_gtests",
         "gpu_fyi_mac_specific_gtests",
     ],
@@ -4360,6 +4356,7 @@ targets.bundle(
 targets.bundle(
     name = "gpu_fyi_win_debug_gtests",
     targets = [
+        # Identical to the release gtests for now.
         "gpu_fyi_win_release_gtests",
     ],
 )
@@ -4374,10 +4371,7 @@ targets.bundle(
 targets.bundle(
     name = "gpu_fyi_win_release_gtests",
     targets = [
-        "gpu_angle_unit_gtests",
-        "gpu_common_gtests_passthrough",
         "gpu_default_and_optional_win_media_foundation_specific_gtests",
-        "gpu_default_and_optional_win_specific_gtests",
         "gpu_fyi_and_optional_non_linux_gtests",
         "gpu_fyi_and_optional_win_specific_gtests",
     ],
@@ -5044,15 +5038,15 @@ targets.bundle(
         targets.bundle(
             targets = "ios_common_tests",
             variants = [
-                "SIM_IPAD_AIR_6TH_GEN_18_2",
-                "SIM_IPHONE_15_18_2",
+                "SIM_IPAD_AIR_6TH_GEN_18_5",
+                "SIM_IPHONE_15_18_5",
             ],
         ),
         targets.bundle(
             targets = "ios_screen_size_dependent_tests",
             variants = [
-                "SIM_IPAD_AIR_6TH_GEN_18_2",
-                "SIM_IPHONE_15_18_2",
+                "SIM_IPAD_AIR_6TH_GEN_18_5",
+                "SIM_IPHONE_15_18_5",
             ],
         ),
         targets.bundle(
@@ -5061,8 +5055,8 @@ targets.bundle(
                 "xcodebuild_sim_runner",
             ],
             variants = [
-                "SIM_IPAD_AIR_6TH_GEN_18_2",
-                "SIM_IPHONE_15_18_2",
+                "SIM_IPAD_AIR_6TH_GEN_18_5",
+                "SIM_IPHONE_15_18_5",
             ],
         ),
         targets.bundle(
@@ -5071,8 +5065,8 @@ targets.bundle(
                 "xcodebuild_sim_runner",
             ],
             variants = [
-                "SIM_IPAD_AIR_6TH_GEN_18_2",
-                "SIM_IPHONE_15_18_2",
+                "SIM_IPAD_AIR_6TH_GEN_18_5",
+                "SIM_IPHONE_15_18_5",
             ],
         ),
     ],
@@ -5275,7 +5269,7 @@ targets.bundle(
         targets.bundle(
             targets = "clang_tot_gtests",
             variants = [
-                "SIM_IPHONE_15_18_2",
+                "SIM_IPHONE_15_18_5",
             ],
         ),
     ],
@@ -5290,7 +5284,7 @@ targets.bundle(
         targets.bundle(
             targets = "ios_common_tests",
             variants = [
-                "SIM_IPHONE_15_18_2",
+                "SIM_IPHONE_15_18_5",
                 #"SIM_IPHONE_16_26_0",
             ],
         ),
@@ -5300,9 +5294,9 @@ targets.bundle(
                 "xcodebuild_sim_runner",
             ],
             variants = [
-                "SIM_IPAD_PRO_7TH_GEN_18_2",
+                "SIM_IPAD_PRO_7TH_GEN_18_5",
                 #"SIM_IPAD_PRO_7TH_GEN_26_0",
-                "SIM_IPHONE_15_18_2",
+                "SIM_IPHONE_15_18_5",
                 #"SIM_IPHONE_16_26_0",
             ],
         ),
@@ -5312,18 +5306,18 @@ targets.bundle(
                 "xcodebuild_sim_runner",
             ],
             variants = [
-                "SIM_IPAD_PRO_7TH_GEN_18_2",
+                "SIM_IPAD_PRO_7TH_GEN_18_5",
                 #"SIM_IPAD_PRO_7TH_GEN_26_0",
-                "SIM_IPHONE_15_18_2",
+                "SIM_IPHONE_15_18_5",
                 #"SIM_IPHONE_16_26_0",
             ],
         ),
         targets.bundle(
             targets = "ios_screen_size_dependent_tests",
             variants = [
-                "SIM_IPAD_PRO_7TH_GEN_18_2",
+                "SIM_IPAD_PRO_7TH_GEN_18_5",
                 #"SIM_IPAD_PRO_7TH_GEN_26_0",
-                "SIM_IPHONE_15_18_2",
+                "SIM_IPHONE_15_18_5",
                 #"SIM_IPHONE_16_26_0",
             ],
         ),
@@ -5336,8 +5330,7 @@ targets.bundle(
         "absl_hardening_tests",
         "boringssl_crypto_tests",
         "boringssl_ssl_tests",
-        # TODO(crbug.com/414602629): Re-enable after upgrading to iOS18.4.
-        # "crashpad_tests",
+        "crashpad_tests",
         "crypto_unittests",
         "google_apis_unittests",
         "gwp_asan_unittests",
@@ -5463,7 +5456,7 @@ targets.bundle(
                 "mac_26_vm_optional",
             ],
             variants = [
-                "SIM_IPHONE_14_PLUS_18_2",
+                "SIM_IPHONE_14_PLUS_18_5",
             ],
         ),
         targets.bundle(
@@ -5479,8 +5472,8 @@ targets.bundle(
                 "mac_26_vm_optional",
             ],
             variants = [
-                "SIM_IPAD_PRO_7TH_GEN_18_2",
-                "SIM_IPHONE_15_18_2",
+                "SIM_IPAD_PRO_7TH_GEN_18_5",
+                "SIM_IPHONE_15_18_5",
             ],
         ),
         targets.bundle(
@@ -5500,7 +5493,7 @@ targets.bundle(
                 "mac_26_vm_optional",
             ],
             variants = [
-                "SIM_IPHONE_15_18_2",
+                "SIM_IPHONE_15_18_5",
             ],
         ),
         targets.bundle(
@@ -5519,8 +5512,8 @@ targets.bundle(
                 "mac_26_vm_optional",
             ],
             variants = [
-                "SIM_IPAD_PRO_7TH_GEN_18_2",
-                "SIM_IPHONE_15_18_2",
+                "SIM_IPAD_PRO_7TH_GEN_18_5",
+                "SIM_IPHONE_15_18_5",
             ],
         ),
         targets.bundle(
@@ -5544,7 +5537,7 @@ targets.bundle(
                 "xcodebuild_sim_runner",
             ],
             variants = [
-                "SIM_IPHONE_SE_3RD_GEN_18_2",
+                "SIM_IPHONE_SE_3RD_GEN_18_5",
                 "SIM_IPHONE_SE_3RD_GEN_26_0",
             ],
         ),
@@ -5556,7 +5549,7 @@ targets.bundle(
                 "mac_26_vm_optional",
             ],
             variants = [
-                "SIM_IPAD_AIR_6TH_GEN_18_2",
+                "SIM_IPAD_AIR_6TH_GEN_18_5",
             ],
         ),
         targets.bundle(
@@ -5576,20 +5569,20 @@ targets.bundle(
                 "record_failed_tests",
             ],
             variants = [
-                "SIM_IPAD_PRO_7TH_GEN_18_2",
+                "SIM_IPAD_PRO_7TH_GEN_18_5",
                 "SIM_IPAD_PRO_7TH_GEN_26_0",
             ],
         ),
         targets.bundle(
             targets = "ios_screen_size_dependent_tests",
             variants = [
-                "SIM_IPAD_AIR_6TH_GEN_18_2",
+                "SIM_IPAD_AIR_6TH_GEN_18_5",
                 "SIM_IPAD_AIR_6TH_GEN_26_0",
-                "SIM_IPAD_PRO_7TH_GEN_18_2",
+                "SIM_IPAD_PRO_7TH_GEN_18_5",
                 "SIM_IPAD_PRO_7TH_GEN_26_0",
-                "SIM_IPHONE_14_PLUS_18_2",
+                "SIM_IPHONE_14_PLUS_18_5",
                 "SIM_IPHONE_16_26_0",
-                "SIM_IPHONE_SE_3RD_GEN_18_2",
+                "SIM_IPHONE_SE_3RD_GEN_18_5",
                 "SIM_IPHONE_SE_3RD_GEN_26_0",
             ],
         ),
@@ -5608,7 +5601,7 @@ targets.bundle(
                 "mac_26_vm_optional",
             ],
             variants = [
-                "SIM_IPHONE_15_18_2",
+                "SIM_IPHONE_15_18_5",
             ],
         ),
         targets.bundle(
@@ -5624,7 +5617,7 @@ targets.bundle(
                 "mac_26_vm_optional",
             ],
             variants = [
-                "SIM_IPHONE_15_18_2",
+                "SIM_IPHONE_15_18_5",
             ],
         ),
         targets.bundle(
@@ -5642,8 +5635,8 @@ targets.bundle(
                 "mac_26_vm_optional",
             ],
             variants = [
-                "SIM_IPHONE_15_18_2",
-                "SIM_IPAD_PRO_7TH_GEN_18_2",
+                "SIM_IPHONE_15_18_5",
+                "SIM_IPAD_PRO_7TH_GEN_18_5",
             ],
         ),
         targets.bundle(
@@ -6723,6 +6716,11 @@ targets.bundle(
             "updater-default-pool",
         ],
         "updater_tests_system": [
+            targets.mixin(
+                swarming = targets.swarming(
+                    shards = 2,
+                ),
+            ),
             "updater-tests-pool",
         ],
     },

@@ -6,7 +6,7 @@ import 'chrome://new-tab-page/lazy_load.js';
 
 import {ActionChipsApiProxyImpl, ActionChipsRetrievalState} from 'chrome://new-tab-page/lazy_load.js';
 import type {ActionChipClickDetail, ActionChipsElement} from 'chrome://new-tab-page/lazy_load.js';
-import {ActionChipsHandlerRemote, ActionChipsPageCallbackRouter as PageCallbackRouter, IconType, QueryActionOverride, SearchboxOverride, SuggestInventory} from 'chrome://new-tab-page/new_tab_page.js';
+import {ActionChipsHandlerRemote, ActionChipsPageCallbackRouter as PageCallbackRouter, IconType, InputSource, QueryActionOverride, SearchboxOverride, SuggestInventory} from 'chrome://new-tab-page/new_tab_page.js';
 import type {ActionChip, ActionChipsPageRemote as PageRemote, TabInfo} from 'chrome://new-tab-page/new_tab_page.js';
 import {WindowProxy} from 'chrome://new-tab-page/new_tab_page.js';
 import type {TabUpload} from 'chrome://resources/cr_components/composebox/common.js';
@@ -368,6 +368,42 @@ suite('NewTabPageActionChipsTest', () => {
          preferredInventory: SuggestInventory.kConversationStarters,
          queryActionOverride: QueryActionOverride.kPaste,
          searchboxOverride: SearchboxOverride.kComposebox,
+       },
+       suggestion: '',
+     },
+     {
+       name: 'brainstorm',
+       iconType: IconType.kLightbulb,
+       iconClass: '.icon-type-lightbulb',
+       fuseboxAction: {
+         preferredInventory: SuggestInventory.kBrainstorm,
+       },
+       suggestion: '',
+     },
+     {
+       name: 'attach file',
+       iconType: IconType.kAttachFile,
+       iconClass: '.icon-type-attach-file',
+       fuseboxAction: {
+         preselectedInputSource: InputSource.kInputSourceGallery,
+       },
+       suggestion: '',
+     },
+     {
+       name: 'help me learn',
+       iconType: IconType.kSchool,
+       iconClass: '.icon-type-school',
+       fuseboxAction: {
+         preferredInventory: SuggestInventory.kHelpMeLearn,
+       },
+       suggestion: '',
+     },
+     {
+       name: 'write or edit',
+       iconType: IconType.kInkPen,
+       iconClass: '.icon-type-ink-pen',
+       fuseboxAction: {
+         preferredInventory: SuggestInventory.kWriteOrEdit,
        },
        suggestion: '',
      },
@@ -852,30 +888,51 @@ suite('NewTabPageActionChipsTest', () => {
       assertFalse(chips.hasAttribute('small-chips-enabled'));
     });
 
-    test('renders subtitle span when chip has secondary text', async () => {
-      await initializeChips({
-        ntpSmallActionChipsEnabled: true,
-        actionChips: [{
-          suggestTemplateInfo: {
-            typeIcon: IconType.kFavicon,
-            primaryText: {text: 'Example Tab', a11yText: null},
-            secondaryText: {text: 'Subtitle for recent tab', a11yText: null},
-            fuseboxAction: {
-              preselectedTool: ToolMode.kUnspecified,
-              preferredInventory: null,
-            },
-          },
-          suggestion: 'Suggestion for recent tab',
-          tab: null,
-        }],
-      });
-      const chip =
-          chips.shadowRoot.querySelector<HTMLButtonElement>('.action-chip');
-      assertTrue(!!chip);
-      const bodyElement = chip.querySelector('.chip-body');
-      assertTrue(!!bodyElement);
-      assertEquals('Subtitle for recent tab', bodyElement.textContent?.trim());
-    });
+    test(
+        'renders has-chips attribute when action chips are present',
+        async () => {
+          await initializeChips({
+            actionChips: defaultActionChips,
+          });
+          assertTrue(chips.hasAttribute('has-chips'));
+        });
+
+    test(
+        'does not render has-chips attribute when action chips are empty',
+        async () => {
+          await initializeChips({
+            actionChips: [],
+          });
+          assertFalse(chips.hasAttribute('has-chips'));
+        });
+
+    test(
+        'does not render subtitle span when small chips are enabled even if ' +
+            'chip has secondary text',
+        async () => {
+          await initializeChips({
+            ntpSmallActionChipsEnabled: true,
+            actionChips: [{
+              suggestTemplateInfo: {
+                typeIcon: IconType.kFavicon,
+                primaryText: {text: 'Example Tab', a11yText: null},
+                secondaryText:
+                    {text: 'Subtitle for recent tab', a11yText: null},
+                fuseboxAction: {
+                  preselectedTool: ToolMode.kUnspecified,
+                  preferredInventory: null,
+                },
+              },
+              suggestion: 'Suggestion for recent tab',
+              tab: null,
+            }],
+          });
+          const chip =
+              chips.shadowRoot.querySelector<HTMLButtonElement>('.action-chip');
+          assertTrue(!!chip);
+          const bodyElement = chip.querySelector('.chip-body');
+          assertEquals(null, bodyElement);
+        });
 
     test(
         'does not render subtitle span when chip has no secondary text',

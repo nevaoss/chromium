@@ -74,7 +74,6 @@
 <translation id="1046521327593783388">{NUM_PASSWORDS,plural, =1{นำเข้ารหัสผ่าน 1 รายการไปยัง<ph name="BRAND" /> ในอุปกรณ์นี้แล้ว}other{นำเข้ารหัสผ่าน {NUM_PASSWORDS} รายการไปยัง<ph name="BRAND" /> ในอุปกรณ์นี้แล้ว}}</translation>
 <translation id="1046572983040892965">หน้าต่างเลื่อนขึ้นและไปทางซ้าย</translation>
 <translation id="1047431265488717055">คัดลอก&amp;ข้อความของลิงก์</translation>
-<translation id="1048350929895890054">เว็บไซต์ที่บล็อกเมนูแบบลอย</translation>
 <translation id="1048986595386481879">จัดสรรแบบไดนามิก</translation>
 <translation id="1049324577536766607">{COUNT,plural, =1{กำลังรับ <ph name="ATTACHMENTS" />จาก <ph name="DEVICE_NAME" />}other{กำลังรับ <ph name="ATTACHMENTS" />จาก <ph name="DEVICE_NAME" />}}</translation>
 <translation id="1049743911850919806">โหมดไม่ระบุตัวตน</translation>
@@ -235,7 +234,6 @@
 <translation id="1164891049599601209">มีการป้อนในเว็บไซต์ที่มีการหลอกลวง</translation>
 <translation id="1165039591588034296">ข้อผิดพลาด</translation>
 <translation id="1166212789817575481">ปิดแท็บทางด้านขวา</translation>
-<translation id="1166457390969131095">ใช้และบันทึกรหัสผ่านและพาสคีย์จากบัญชี Google</translation>
 <translation id="1166583374608765787">ตรวจสอบการอัปเดตชื่อ</translation>
 <translation id="1166596238782048887"><ph name="TAB_TITLE" /> อยู่ในเดสก์ <ph name="DESK_TITLE" /></translation>
 <translation id="1167008614036441342">นำการ์ดออกแล้วเนื่องจากคุณไม่ได้ใช้การ์ดนี้เมื่อเร็วๆ นี้</translation>
@@ -3095,7 +3093,6 @@
 <translation id="3385916046075724800">ตอนนี้ระบบจะบันทึกกลุ่มแท็บโดยอัตโนมัติ</translation>
 <translation id="3387023983419383865">,</translation>
 <translation id="3387412523265061481">เปิดในมุมมองแบบแยก</translation>
-<translation id="3387588771342841525">เมื่อเปิด ระบบจะบันทึกรหัสผ่านใน <ph name="EMAIL" /> เมื่อปิด ระบบจะบันทึกรหัสผ่านในอุปกรณ์นี้เท่านั้น</translation>
 <translation id="3387614642886316601">ใช้ฟีเจอร์ตรวจตัวสะกดที่ได้รับการปรับปรุง</translation>
 <translation id="3387829698079331264">ไม่อนุญาตให้ทราบเวลาที่คุณใช้งานอุปกรณ์อยู่</translation>
 <translation id="3388094447051599208">ถาดกระดาษออกใกล้เต็มแล้ว</translation>
@@ -4215,6 +4212,7 @@
 <translation id="4232375817808480934">กำหนดค่า Kerberos</translation>
 <translation id="4232376164796433044">รหัสผ่านและป้อนข้อความอัตโนมัติ</translation>
 <translation id="4233739489690259993">Chromebook ของคุณจะไม่ได้รับการอัปเดตความปลอดภัยและซอฟต์แวร์อีกต่อไป อัปเกรดอุปกรณ์เพื่อรับการรักษาความปลอดภัยและฟีเจอร์ใหม่ล่าสุด เป็นไปตามข้อกำหนดของข้อเสนอ</translation>
+<translation id="4235200303672858594">ทั้งหน้าจอ</translation>
 <translation id="4235965441080806197">ยกเลิกการลงชื่อเข้าใช้</translation>
 <translation id="4235976607074422892">ความเร็วของการเลื่อน</translation>
 <translation id="4236163961381003811">สำรวจส่วนขยายเพิ่มเติม</translation>
@@ -5767,6 +5765,7 @@
 <translation id="5444281205834970653">ลบและดำเนินการต่อ</translation>
 <translation id="5444452275167152925">นำเข้าจาก ChromeOS</translation>
 <translation id="5445400788035474247">10x</translation>
+<translation id="5446836766119801744">⌥L</translation>
 <translation id="5447289297870286353">ระดมความคิด</translation>
 <translation id="5449551289610225147">รหัสผ่านไม่ถูกต้อง</translation>
 <translation id="5449588825071916739">บุ๊กมาร์กแท็บทั้งหมด</translation>
@@ -5900,7 +5899,6 @@
 <translation id="5546865291508181392">ค้นหา</translation>
 <translation id="5547868626772433490">ขอความช่วยเหลือจาก Gemini</translation>
 <translation id="5548075230008247516">ยกเลิกการเลือกรายการทั้งหมด ออกจากโหมดการเลือกแล้ว</translation>
-<translation id="554810465530189549">ไม่แสดงเมนูแบบลอยเมื่อเลือกข้อความ</translation>
 <translation id="5548159762883465903">{NUM_OTHER_TABS,plural, =0{"<ph name="TAB_TITLE" />"}=1{"<ph name="TAB_TITLE" />" และแท็บอื่นอีก 1 แท็บ}other{"<ph name="TAB_TITLE" />" และแท็บอื่นอีก # แท็บ}}</translation>
 <translation id="554903022911579950">Kerberos</translation>
 <translation id="5551573675707792127">แป้นพิมพ์และการป้อนข้อความ</translation>
@@ -6056,7 +6054,6 @@
 <translation id="5678955352098267522">อ่านข้อมูลใน <ph name="WEBSITE_1" /></translation>
 <translation id="5680050361008726776">นำ "<ph name="ESIM_PROFILE_NAME" />" ออกใช่ไหม</translation>
 <translation id="5681586175480958839">ไฟล์เปิดอยู่แล้ว</translation>
-<translation id="5682950763196110705">แสดงเมนูแบบลอยเมื่อเลือกข้อความ</translation>
 <translation id="5684110242705861346">มีการเพิ่มส่วนขยาย "<ph name="NAME" />" โดยนโยบายขององค์กรและกำลังควบคุมการตั้งค่านี้ <ph name="BEGIN_LINK" />ดูรายละเอียด<ph name="END_LINK" /></translation>
 <translation id="5684181005476681636">รายละเอียด Wi-Fi</translation>
 <translation id="5687340364605915800">เว็บไซต์ใช้การพิจารณาตามที่เห็นสมควรเมื่อตอบคำขอนี้</translation>
@@ -7344,6 +7341,7 @@
 <translation id="6702859741546259407">เปิดบลูทูธและ Wi-Fi เพื่อใช้<ph name="FEATURE_NAME" /></translation>
 <translation id="6703109186846420472">,</translation>
 <translation id="670431355064244920">โฟกัสขนาดเล็ก</translation>
+<translation id="6706210727756204531">ขอบเขต</translation>
 <translation id="6707122714992751648">เรียกใช้การทดสอบวินิจฉัย ChromeOS</translation>
 <translation id="6707389671160270963">ใบรับรองไคลเอ็นต์ SSL</translation>
 <translation id="6707671917294473995">เว็บไซต์ไม่ได้รับอนุญาตให้ใช้กล้อง</translation>
@@ -8128,6 +8126,7 @@
 <translation id="7311244614769792472">ไม่พบผลการค้นหา</translation>
 <translation id="7312040805247765153">ติดตั้งแอปไม่ได้</translation>
 <translation id="7312210124139670355">ผู้ดูแลระบบกำลังรีเซ็ต eSIM การดำเนินการนี้อาจใช้เวลาสักครู่</translation>
+<translation id="731239254927333251">Alt+L</translation>
 <translation id="7313539585802573958">สีไฟแบ็กไลต์ของแป้นพิมพ์</translation>
 <translation id="7314722166530073269">{NUM_EVENTS,plural, =1{ระบุวันที่ของกิจกรรม 1 รายการไม่ได้และไม่แสดง}other{ไม่สามารถระบุวันที่ของกิจกรรม # รายการและระบบจะไม่แสดง}}</translation>
 <translation id="7314865262803554456">คุณจะไม่ได้รับการแจ้งเตือนเมื่อเริ่มการบันทึก</translation>

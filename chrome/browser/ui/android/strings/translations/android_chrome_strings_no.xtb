@@ -85,7 +85,6 @@
 <translation id="1310482092992808703">Gruppér faner</translation>
 <translation id="1318262688555255786">Del linken til nettsiden <ph name="PAGE_TITLE" />. Kilde: <ph name="PAGE_URL" /></translation>
 <translation id="1327257854815634930">Navigasjonsloggen er åpnet</translation>
-<translation id="1330043879670259913">For å sikre arbeidet ditt i Chrome kan organisasjonen din se eller administrere bestemt informasjon når du er logget på Chrome. Finn ut mer</translation>
 <translation id="1331212799747679585">Kan ikke oppdatere Chrome. Flere alternativer</translation>
 <translation id="1332501820983677155">Hurtigtaster for funksjoner i Google Chrome.</translation>
 <translation id="1333491156693005331">Sjekket nylig</translation>
@@ -723,7 +722,6 @@ Bare personer som har passordfrasen din, kan lese de krypterte dataene. Passordf
 <translation id="399788104667917863">Fest til verktøyraden</translation>
 <translation id="4000212216660919741">Hjem uten nett</translation>
 <translation id="4000670338830950598">Tilpass og kontroller Google Chrome med et element som er uthevet</translation>
-<translation id="4002066346123236978">Tittel</translation>
 <translation id="4015643064997321279">{NUM_PASSWORDS,plural, =1{1 kompromittert passord i Google-kontoen din}other{# kompromitterte passord i Google-kontoen din}}</translation>
 <translation id="4023638601467301498">For å få bokmerkene dine med mer på alle enhetene dine, logg på Chrome</translation>
 <translation id="4024768890073681126">Nettleseren administreres av forelderen din</translation>
@@ -1973,6 +1971,7 @@ For å endre denne innstillingen, <ph name="BEGIN_LINK" />slett Chrome-dataene i
 <translation id="8937772741022875483">Vil du fjerne Chrome-aktiviteten din fra Digital balanse?</translation>
 <translation id="8942627711005830162">Åpne i et annet vindu</translation>
 <translation id="8945143127965743188"><ph name="LANG" /> – Kunne ikke laste ned dette språket. Prøv på nytt senere.</translation>
+<translation id="8945348199139712719">Lim inn og gå til den kopierte teksten</translation>
 <translation id="8946759102391960088">Behold tilgangen til passordene dine</translation>
 <translation id="895442993047180128">Samtykke for varsler for tips er lukket</translation>
 <translation id="8957528460562961174">For å beholde tilgangen til passordene dine, eksporter dem nå og importer dem deretter til passordlagringsverktøyet du vil bruke. Google Passordlagring har sluttet å fungere fordi Google Play-tjenester ikke er tilgjengelig.</translation>

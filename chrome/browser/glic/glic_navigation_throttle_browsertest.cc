@@ -23,6 +23,7 @@
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/common/chrome_features.h"
+#include "extensions/common/extension_features.h"
 #include "chrome/common/chrome_switches.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/ui_test_utils.h"
@@ -182,7 +183,10 @@ IN_PROC_BROWSER_TEST_F(GlicNavigationThrottleBrowserTest,
           AllOf(Property(&GlicInvokeOptions::GetInvocationSource,
                          Eq(glic::mojom::InvocationSource::kNavigationCapture)),
                 Field(&GlicInvokeOptions::target,
-                      Field(&Target::conversation, conversation_matcher)))))
+                      Field(&Target::conversation, conversation_matcher)),
+                Field(&GlicInvokeOptions::fre_completion_wait_mode,
+                      Eq(FreCompletionWaitMode::kNever)),
+                Field(&GlicInvokeOptions::supersede_if_in_progress, Eq(true)))))
       .Times(1);
 
   NavigateToURL(browser(), continue_url);
@@ -193,6 +197,69 @@ IN_PROC_BROWSER_TEST_F(GlicNavigationThrottleBrowserTest,
   histogram_tester.ExpectUniqueSample(
       "Glic.NavigationCapture.GlicWebContinuityFeatureEnabled",
       GeminiNavigationCaptureResult::kSuccess, 1);
+}
+
+IN_PROC_BROWSER_TEST_F(GlicNavigationThrottleBrowserTest,
+                       InterceptGlicContinueUrlSequentially) {
+  base::HistogramTester histogram_tester;
+  MockGlicKeyedService* mock_service = static_cast<MockGlicKeyedService*>(
+      GlicKeyedServiceFactory::GetGlicKeyedService(browser()->GetProfile(),
+                                                   /*create=*/true));
+  ASSERT_TRUE(mock_service);
+
+  std::string cid = "123";
+  std::string turn_id1 = "turnA";
+  std::string turn_id2 = "turnB";
+  GURL target_url1("https://www.google.com/1");
+  GURL target_url2("https://www.google.com/2");
+  GURL continue_url1 = BuildContinueUrl(target_url1, cid, turn_id1);
+  GURL continue_url2 = BuildContinueUrl(target_url2, cid, turn_id2);
+
+  auto conversation_matcher1 = VariantWith<ConversationId>(
+      AllOf(Field(&ConversationId::conversation_id, Eq(cid)),
+            Field(&ConversationId::turn_id, Eq(std::make_optional(turn_id1)))));
+
+  auto conversation_matcher2 = VariantWith<ConversationId>(
+      AllOf(Field(&ConversationId::conversation_id, Eq(cid)),
+            Field(&ConversationId::turn_id, Eq(std::make_optional(turn_id2)))));
+
+  EXPECT_CALL(
+      *mock_service,
+      Invoke(
+          AllOf(Property(&GlicInvokeOptions::GetInvocationSource,
+                         Eq(glic::mojom::InvocationSource::kNavigationCapture)),
+                Field(&GlicInvokeOptions::target,
+                      Field(&Target::conversation, conversation_matcher1)),
+                Field(&GlicInvokeOptions::fre_completion_wait_mode,
+                      Eq(FreCompletionWaitMode::kNever)),
+                Field(&GlicInvokeOptions::supersede_if_in_progress, Eq(true)))))
+      .Times(1);
+
+  NavigateToURL(browser(), continue_url1);
+
+  EXPECT_EQ(browser()->tab_strip_model()->GetActiveWebContents()->GetURL(),
+            target_url1);
+
+  EXPECT_CALL(
+      *mock_service,
+      Invoke(
+          AllOf(Property(&GlicInvokeOptions::GetInvocationSource,
+                         Eq(glic::mojom::InvocationSource::kNavigationCapture)),
+                Field(&GlicInvokeOptions::target,
+                      Field(&Target::conversation, conversation_matcher2)),
+                Field(&GlicInvokeOptions::fre_completion_wait_mode,
+                      Eq(FreCompletionWaitMode::kNever)),
+                Field(&GlicInvokeOptions::supersede_if_in_progress, Eq(true)))))
+      .Times(1);
+
+  NavigateToURL(browser(), continue_url2);
+
+  EXPECT_EQ(browser()->tab_strip_model()->GetActiveWebContents()->GetURL(),
+            target_url2);
+
+  histogram_tester.ExpectUniqueSample(
+      "Glic.NavigationCapture.GlicWebContinuityFeatureEnabled",
+      GeminiNavigationCaptureResult::kSuccess, 2);
 }
 
 IN_PROC_BROWSER_TEST_F(GlicNavigationThrottleBrowserTest, Metrics_CIDTooLong) {
@@ -494,6 +561,49 @@ IN_PROC_BROWSER_TEST_F(GlicNavigationThrottleBrowserTest,
 
   EXPECT_EQ(observer.captured_initiator_origin(), expected_origin);
   EXPECT_TRUE(observer.captured_is_renderer_initiated());
+}
+
+class GlicNavigationThrottleInvokeBrowserTest
+    : public GlicNavigationThrottleBrowserTest {
+ public:
+  GlicNavigationThrottleInvokeBrowserTest() {
+    scoped_feature_list_.InitAndEnableFeature(
+        extensions_features::kApiGlicAccessFromWebContinuity);
+  }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
+};
+
+IN_PROC_BROWSER_TEST_F(GlicNavigationThrottleInvokeBrowserTest,
+                       GlicWebContinuityInvokeFlagDisablesThrottle) {
+  base::HistogramTester histogram_tester;
+  MockGlicKeyedService* mock_service = static_cast<MockGlicKeyedService*>(
+      GlicKeyedServiceFactory::GetGlicKeyedService(browser()->GetProfile(),
+                                                   /*create=*/true));
+  ASSERT_TRUE(mock_service);
+
+  std::string cid = "123";
+  std::string turn_id = "turnA";
+  GURL target_url("https://www.google.com/");
+  GURL continue_url = BuildContinueUrl(target_url, cid, turn_id);
+
+  // Expect NO calls to Invoke or InvokeWithAutoSubmit.
+  EXPECT_CALL(*mock_service, InvokeWithAutoSubmit(_, _)).Times(0);
+  EXPECT_CALL(*mock_service, Invoke(_)).Times(0);
+
+  NavigateToURL(browser(), continue_url);
+
+  // Since the throttle is disabled, we should NOT have redirected to
+  // target_url.
+  EXPECT_NE(browser()->tab_strip_model()->GetActiveWebContents()->GetURL(),
+            target_url);
+
+  // No metrics should be logged because the throttle didn't run.
+  histogram_tester.ExpectTotalCount(
+      "Glic.NavigationCapture.GlicWebContinuityFeatureEnabled", 0);
+  histogram_tester.ExpectTotalCount(
+      "Glic.NavigationCapture.GlicWebContinuityFeatureDisabled", 0);
 }
 
 }  // namespace glic

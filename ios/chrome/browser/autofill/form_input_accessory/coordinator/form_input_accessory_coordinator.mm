@@ -20,6 +20,7 @@
 #import "base/task/sequenced_task_runner.h"
 #import "base/time/time.h"
 #import "components/autofill/core/browser/data_manager/personal_data_manager.h"
+#import "components/autofill/core/browser/data_model/autofill_ai/entity_instance.h"
 #import "components/autofill/core/browser/payments/payments_service_url.h"
 #import "components/autofill/core/common/autofill_features.h"
 #import "components/autofill/ios/browser/form_suggestion.h"
@@ -78,6 +79,7 @@
 #import "ios/chrome/browser/shared/public/commands/scene_commands.h"
 #import "ios/chrome/browser/shared/public/commands/security_alert_commands.h"
 #import "ios/chrome/browser/shared/public/commands/settings_commands.h"
+#import "ios/chrome/browser/shared/public/features/features.h"
 #import "ios/chrome/browser/shared/ui/util/layout_guide_names.h"
 #import "ios/chrome/browser/shared/ui/util/uikit_ui_util.h"
 #import "ios/chrome/browser/shared/ui/util/util_swift.h"
@@ -118,7 +120,8 @@ const base::Feature* FetchIPHFeatureFromEnum(
 
 // Returns the AutofillSettingsPage corresponding to the given suggestion.
 AutofillSettingsPage SuggestionToAutofillSettingsPage(
-    FormSuggestion* suggestion) {
+    FormSuggestion* suggestion,
+    ProfileIOS* profile) {
   switch (suggestion.type) {
     case autofill::SuggestionType::kPasswordEntry:
     case autofill::SuggestionType::kBackupPasswordEntry:
@@ -127,8 +130,18 @@ AutofillSettingsPage SuggestionToAutofillSettingsPage(
     case autofill::SuggestionType::kVirtualCreditCardEntry:
       return AutofillSettingsPage::kCreditCards;
     case autofill::SuggestionType::kAddressEntry:
-    case autofill::SuggestionType::kFillAutofillAi:
       return AutofillSettingsPage::kAddresses;
+    case autofill::SuggestionType::kFillAutofillAi: {
+      if (!IsYourSavedInfoSettingsPageIosEnabled()) {
+        // If "Your Saved Info" is not enabled, go to "Addresses and More"
+        return AutofillSettingsPage::kAddresses;
+      }
+      CHECK(profile);
+      base::optional_ref<const autofill::EntityInstance> entity =
+          autofill::GetEntityInstance(profile, suggestion.payload);
+      CHECK(entity.has_value());
+      return AutofillSettingsPageForEntityTypeName(entity->type().name());
+    }
     default:
       NOTREACHED();
   }
@@ -554,8 +567,8 @@ AutofillSettingsPage SuggestionToAutofillSettingsPage(
 
 - (void)openSettingsForSuggestion:(FormSuggestion*)suggestion {
   [self reset];
-  [self.navigator
-      openSettingsForPage:SuggestionToAutofillSettingsPage(suggestion)];
+  [self.navigator openSettingsForPage:SuggestionToAutofillSettingsPage(
+                                          suggestion, self.profile)];
 }
 
 - (void)openEditForSuggestion:(FormSuggestion*)suggestion {
@@ -748,6 +761,20 @@ AutofillSettingsPage SuggestionToAutofillSettingsPage(
   _atMemoryCoordinator = nil;
   [coordinator stop];
   [self.childCoordinators removeObject:coordinator];
+}
+
+- (void)openAutofillSettings {
+  [self dismissAtMemory];
+  id<SettingsCommands> settingsHandler = HandlerForProtocol(
+      self.browser->GetCommandDispatcher(), SettingsCommands);
+  if (IsYourSavedInfoSettingsPageIosEnabled()) {
+    // TODO(crbug.com/540433768): Present the Autofill Settings page without a
+    // back button.
+    [settingsHandler showAutofillSettings];
+  } else {
+    [settingsHandler
+        showProfileSettingsFromViewController:self.baseViewController];
+  }
 }
 
 #pragma mark - SecurityAlertCommands

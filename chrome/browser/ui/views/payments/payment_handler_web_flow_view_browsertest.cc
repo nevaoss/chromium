@@ -7,7 +7,6 @@
 #include "chrome/browser/content_settings/host_content_settings_map_factory.h"
 #include "chrome/browser/permissions/one_time_permissions_tracker_helper.h"
 #include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/ssl/chrome_security_state_tab_helper.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/views/payments/payment_handler_web_flow_view_controller.h"
 #include "chrome/browser/ui/views/payments/payment_request_browsertest_base.h"
@@ -28,7 +27,14 @@
 
 namespace payments {
 
-using PaymentHandlerWebFlowViewTest = PaymentRequestBrowserTestBase;
+class PaymentHandlerWebFlowViewTest : public PaymentRequestBrowserTestBase {
+ public:
+  PaymentHandlerWebFlowViewTest() = default;
+
+ private:
+  base::test::ScopedFeatureList feature_list_{
+      features::kPaymentRequestMandatoryPaymentAppUi};
+};
 
 class TestClient : public ChromeContentBrowserClient {
  public:
@@ -60,9 +66,9 @@ IN_PROC_BROWSER_TEST_F(PaymentHandlerWebFlowViewTest,
   ResetEventWaiterForSequence({DialogEvent::PROCESSING_SPINNER_SHOWN,
                                DialogEvent::PROCESSING_SPINNER_HIDDEN,
                                DialogEvent::DIALOG_OPENED,
-                               DialogEvent::PROCESSING_SPINNER_SHOWN,
-                               DialogEvent::PROCESSING_SPINNER_HIDDEN,
+                               DialogEvent::LOADING_VIEW_SHOWN,
                                DialogEvent::PAYMENT_HANDLER_WINDOW_OPENED,
+                               DialogEvent::LOADING_VIEW_HIDDEN,
                                DialogEvent::PAYMENT_HANDLER_TITLE_SET});
   ASSERT_EQ(
       "success",
@@ -91,8 +97,10 @@ class PaymentHandlerWebFlowViewUseInitiatorInUrlLoadEnabledTest
     : public PaymentRequestBrowserTestBase {
  public:
   PaymentHandlerWebFlowViewUseInitiatorInUrlLoadEnabledTest() {
-    feature_list_.InitAndEnableFeature(
-        payments::features::kPaymentHandlerDialogUseInitiatorInUrlLoad);
+    feature_list_.InitWithFeatures(
+        {payments::features::kPaymentHandlerDialogUseInitiatorInUrlLoad,
+         payments::features::kPaymentRequestMandatoryPaymentAppUi},
+        {});
   }
 
  private:
@@ -115,9 +123,9 @@ IN_PROC_BROWSER_TEST_F(
   ResetEventWaiterForSequence({DialogEvent::PROCESSING_SPINNER_SHOWN,
                                DialogEvent::PROCESSING_SPINNER_HIDDEN,
                                DialogEvent::DIALOG_OPENED,
-                               DialogEvent::PROCESSING_SPINNER_SHOWN,
-                               DialogEvent::PROCESSING_SPINNER_HIDDEN,
+                               DialogEvent::LOADING_VIEW_SHOWN,
                                DialogEvent::PAYMENT_HANDLER_WINDOW_OPENED,
+                               DialogEvent::LOADING_VIEW_HIDDEN,
                                DialogEvent::PAYMENT_HANDLER_TITLE_SET});
 
   ASSERT_EQ(
@@ -142,9 +150,9 @@ IN_PROC_BROWSER_TEST_F(PaymentHandlerWebFlowViewTest, UserInteractionRecorded) {
   ResetEventWaiterForSequence({DialogEvent::PROCESSING_SPINNER_SHOWN,
                                DialogEvent::PROCESSING_SPINNER_HIDDEN,
                                DialogEvent::DIALOG_OPENED,
-                               DialogEvent::PROCESSING_SPINNER_SHOWN,
-                               DialogEvent::PROCESSING_SPINNER_HIDDEN,
+                               DialogEvent::LOADING_VIEW_SHOWN,
                                DialogEvent::PAYMENT_HANDLER_WINDOW_OPENED,
+                               DialogEvent::LOADING_VIEW_HIDDEN,
                                DialogEvent::PAYMENT_HANDLER_TITLE_SET});
   ASSERT_EQ(
       "success",
@@ -201,6 +209,10 @@ class PaymentHandlerWindowCloseTest
       public testing::WithParamInterface<WindowCloseTestParams> {
  protected:
   PaymentHandlerWindowCloseTest() { SetBypassUserInteractionForTesting(); }
+
+ private:
+  base::test::ScopedFeatureList feature_list_{
+      features::kPaymentRequestMandatoryPaymentAppUi};
 };
 
 IN_PROC_BROWSER_TEST_P(PaymentHandlerWindowCloseTest, WindowCloseIsIgnored) {
@@ -213,9 +225,9 @@ IN_PROC_BROWSER_TEST_P(PaymentHandlerWindowCloseTest, WindowCloseIsIgnored) {
   ResetEventWaiterForSequence({DialogEvent::PROCESSING_SPINNER_SHOWN,
                                DialogEvent::PROCESSING_SPINNER_HIDDEN,
                                DialogEvent::DIALOG_OPENED,
-                               DialogEvent::PROCESSING_SPINNER_SHOWN,
-                               DialogEvent::PROCESSING_SPINNER_HIDDEN,
+                               DialogEvent::LOADING_VIEW_SHOWN,
                                DialogEvent::PAYMENT_HANDLER_WINDOW_OPENED,
+                               DialogEvent::LOADING_VIEW_HIDDEN,
                                DialogEvent::PAYMENT_HANDLER_TITLE_SET});
   ASSERT_EQ(
       "success",
@@ -315,13 +327,11 @@ INSTANTIATE_TEST_SUITE_P(
 class PaymentHandlerWebFlowViewMandatoryUiEnabledTest
     : public PaymentRequestBrowserTestBase {
  public:
-  PaymentHandlerWebFlowViewMandatoryUiEnabledTest() {
-    feature_list_.InitAndEnableFeature(
-        payments::features::kPaymentRequestMandatoryPaymentAppUi);
-  }
+  PaymentHandlerWebFlowViewMandatoryUiEnabledTest() = default;
 
  private:
-  base::test::ScopedFeatureList feature_list_;
+  base::test::ScopedFeatureList feature_list_{
+      payments::features::kPaymentRequestMandatoryPaymentAppUi};
 };
 
 IN_PROC_BROWSER_TEST_F(PaymentHandlerWebFlowViewMandatoryUiEnabledTest,
@@ -559,7 +569,8 @@ class PaymentHandlerWebFlowViewCameraTest
       public testing::WithParamInterface<base::test::FeatureRef> {
  public:
   PaymentHandlerWebFlowViewCameraTest() {
-    feature_list_.InitAndEnableFeature(*GetParam());
+    feature_list_.InitWithFeatures(
+        {*GetParam(), features::kPaymentRequestMandatoryPaymentAppUi}, {});
   }
 
   void SetUpCommandLine(base::CommandLine* command_line) override {
@@ -580,9 +591,9 @@ IN_PROC_BROWSER_TEST_F(PaymentHandlerWebFlowViewTest,
   ResetEventWaiterForSequence({DialogEvent::PROCESSING_SPINNER_SHOWN,
                                DialogEvent::PROCESSING_SPINNER_HIDDEN,
                                DialogEvent::DIALOG_OPENED,
-                               DialogEvent::PROCESSING_SPINNER_SHOWN,
-                               DialogEvent::PROCESSING_SPINNER_HIDDEN,
+                               DialogEvent::LOADING_VIEW_SHOWN,
                                DialogEvent::PAYMENT_HANDLER_WINDOW_OPENED,
+                               DialogEvent::LOADING_VIEW_HIDDEN,
                                DialogEvent::PAYMENT_HANDLER_TITLE_SET});
   ASSERT_EQ(
       "success",
@@ -598,8 +609,6 @@ IN_PROC_BROWSER_TEST_F(PaymentHandlerWebFlowViewTest,
       static_cast<PaymentHandlerWebFlowViewController*>(sheet_controller);
   content::WebContents* payment_handler_contents =
       web_flow_controller->web_contents();
-  EXPECT_EQ(nullptr, ChromeSecurityStateTabHelper::FromWebContents(
-                         payment_handler_contents));
   EXPECT_EQ(nullptr, OneTimePermissionsTrackerHelper::FromWebContents(
                          payment_handler_contents));
   EXPECT_EQ(nullptr, permissions::PermissionRequestManager::FromWebContents(
@@ -623,9 +632,9 @@ IN_PROC_BROWSER_TEST_P(PaymentHandlerWebFlowViewCameraTest,
   ResetEventWaiterForSequence({DialogEvent::PROCESSING_SPINNER_SHOWN,
                                DialogEvent::PROCESSING_SPINNER_HIDDEN,
                                DialogEvent::DIALOG_OPENED,
-                               DialogEvent::PROCESSING_SPINNER_SHOWN,
-                               DialogEvent::PROCESSING_SPINNER_HIDDEN,
+                               DialogEvent::LOADING_VIEW_SHOWN,
                                DialogEvent::PAYMENT_HANDLER_WINDOW_OPENED,
+                               DialogEvent::LOADING_VIEW_HIDDEN,
                                DialogEvent::PAYMENT_HANDLER_TITLE_SET});
   ASSERT_EQ(
       "success",
@@ -650,16 +659,11 @@ IN_PROC_BROWSER_TEST_P(PaymentHandlerWebFlowViewCameraTest,
                          payment_handler_contents));
 
   // kPaymentHandlerCameraAccessUx flag also initializes
-  // ChromeSecurityStateTabHelper and PermissionRequestManager for permission
-  // prompting and indicators.
+  // PermissionRequestManager for permission prompting and indicators.
   if (GetParam() == features::kPaymentHandlerCameraAccessUx) {
-    EXPECT_NE(nullptr, ChromeSecurityStateTabHelper::FromWebContents(
-                           payment_handler_contents));
     EXPECT_NE(nullptr, permissions::PermissionRequestManager::FromWebContents(
                            payment_handler_contents));
   } else {
-    EXPECT_EQ(nullptr, ChromeSecurityStateTabHelper::FromWebContents(
-                           payment_handler_contents));
     EXPECT_EQ(nullptr, permissions::PermissionRequestManager::FromWebContents(
                            payment_handler_contents));
   }
@@ -688,9 +692,9 @@ IN_PROC_BROWSER_TEST_P(PaymentHandlerWebFlowViewCameraTest, AudioAccessDenied) {
   ResetEventWaiterForSequence({DialogEvent::PROCESSING_SPINNER_SHOWN,
                                DialogEvent::PROCESSING_SPINNER_HIDDEN,
                                DialogEvent::DIALOG_OPENED,
-                               DialogEvent::PROCESSING_SPINNER_SHOWN,
-                               DialogEvent::PROCESSING_SPINNER_HIDDEN,
+                               DialogEvent::LOADING_VIEW_SHOWN,
                                DialogEvent::PAYMENT_HANDLER_WINDOW_OPENED,
+                               DialogEvent::LOADING_VIEW_HIDDEN,
                                DialogEvent::PAYMENT_HANDLER_TITLE_SET});
   ASSERT_EQ(
       "success",
@@ -731,9 +735,9 @@ IN_PROC_BROWSER_TEST_P(PaymentHandlerWebFlowViewCameraTest,
   ResetEventWaiterForSequence({DialogEvent::PROCESSING_SPINNER_SHOWN,
                                DialogEvent::PROCESSING_SPINNER_HIDDEN,
                                DialogEvent::DIALOG_OPENED,
-                               DialogEvent::PROCESSING_SPINNER_SHOWN,
-                               DialogEvent::PROCESSING_SPINNER_HIDDEN,
+                               DialogEvent::LOADING_VIEW_SHOWN,
                                DialogEvent::PAYMENT_HANDLER_WINDOW_OPENED,
+                               DialogEvent::LOADING_VIEW_HIDDEN,
                                DialogEvent::PAYMENT_HANDLER_TITLE_SET});
   ASSERT_EQ(
       "success",
@@ -778,9 +782,9 @@ IN_PROC_BROWSER_TEST_P(PaymentHandlerWebFlowViewCameraTest,
   ResetEventWaiterForSequence({DialogEvent::PROCESSING_SPINNER_SHOWN,
                                DialogEvent::PROCESSING_SPINNER_HIDDEN,
                                DialogEvent::DIALOG_OPENED,
-                               DialogEvent::PROCESSING_SPINNER_SHOWN,
-                               DialogEvent::PROCESSING_SPINNER_HIDDEN,
+                               DialogEvent::LOADING_VIEW_SHOWN,
                                DialogEvent::PAYMENT_HANDLER_WINDOW_OPENED,
+                               DialogEvent::LOADING_VIEW_HIDDEN,
                                DialogEvent::PAYMENT_HANDLER_TITLE_SET});
   ASSERT_EQ(
       "success",

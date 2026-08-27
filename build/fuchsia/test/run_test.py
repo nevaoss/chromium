@@ -38,6 +38,7 @@ from run_executable_test import (
     create_executable_test_runner,
     register_executable_test_args,
 )
+from run_perf_gtest import PerfGtestTestRunner
 from run_telemetry_test import TelemetryTestRunner
 from run_webpage_test import WebpageTestRunner
 from serve_repo import register_serve_args, serve_repository
@@ -65,6 +66,13 @@ def _get_test_runner(
             runner_args.out_dir,
             test_args,
             runner_args.target_id,
+        )
+    if runner_args.test_type == 'perf_gtest':
+        return PerfGtestTestRunner(
+            runner_args.out_dir,
+            test_args,
+            runner_args.target_id,
+            runner_args.logs_dir,
         )
     if runner_args.test_type == 'webpage':
         return WebpageTestRunner(
@@ -129,11 +137,8 @@ def main():
     )
 
     monitors.tag('fuchsia')
-    with (
-        ExitStack() as stack,
-        monitors.time_consumption(
-            'orchestrate' if use_orchestrate else 'homemade', 'run'
-        ),
+    with ExitStack() as stack, monitors.time_consumption(
+        'orchestrate' if use_orchestrate else 'homemade', 'run'
     ):
         if runner_args.logs_dir:
             # TODO(crbug.com/343242386): Find a way to upload metric output when

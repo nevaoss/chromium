@@ -41,7 +41,7 @@ BASE_FEATURE(kWebViewBackForwardCache, base::FEATURE_DISABLED_BY_DEFAULT);
 // Enables preloading WebView classes on a background thread during early
 // startup.
 BASE_FEATURE(kWebViewBackgroundClassPreloading,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables tracing init on a background thread. This is mutually exclusive with
 // `kWebViewEarlyTracingInit`. If both flags are enabled,
@@ -94,8 +94,17 @@ const base::FeatureParam<double> kWebViewCodeCacheSizeLimitMultiplier{
 BASE_FEATURE(kWebViewContentRestrictionSupport,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+// Enables a simpler URL fixup implementation for URLs passed to CookieManager.
+BASE_FEATURE(kWebViewCookieManagerSimplerUrlFixups,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Enables C++ UMA metrics filtering.
-BASE_FEATURE(kWebViewCppMetricsFiltering, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kWebViewCppMetricsFiltering, base::FEATURE_ENABLED_BY_DEFAULT);
+
+// Enables the Cross Origin Isolated Allowlist API. The allowlist enables
+// developers to opt out of origin isolation requirements for certain features
+// who require it.
+BASE_FEATURE(kWebViewCrossOriginAllowlistApi, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // When enabled (which is the default state) a navigation will download a
 // Favicon. When disabled (which can be done through Finch or Flag UI) a
@@ -261,6 +270,10 @@ BASE_FEATURE(kWebViewMultiProfileSkipDefaultProfile,
 // Kill switch for the WebView Navigate method.
 BASE_FEATURE(kWebViewNavigate, base::FEATURE_ENABLED_BY_DEFAULT);
 
+// Kill switch for draining the prefetch queue prior to loading the URL in the
+// WebView Navigate method.
+BASE_FEATURE(kWebViewNavigateDrainPrefetch, base::FEATURE_ENABLED_BY_DEFAULT);
+
 // When enabled, the provisional cookie store is properly closed before the
 // Network Service opens the database, fixing race conditions that can cause
 // cookie loss and CHECK failures when cookies are set before WebView is fully
@@ -355,6 +368,11 @@ BASE_FEATURE(kWebViewRendererKeepAlive, base::FEATURE_ENABLED_BY_DEFAULT);
 const base::FeatureParam<base::TimeDelta> kWebViewRendererKeepAliveDuration{
     &kWebViewRendererKeepAlive, "webview_renderer_keep_alive_duration",
     base::Days(1000)};
+
+// Enables using a single shared gpu::SharedContextState across all
+// OutputSurfaceProviderWebView instances.
+BASE_FEATURE(kWebViewSingleSharedContextState,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // When enabled, navigation headers will be saved and restored as part
 // of saved state for WebView.

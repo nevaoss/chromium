@@ -47,6 +47,8 @@
 #include "components/url_formatter/url_formatter.h"
 #include "content/public/browser/web_contents.h"
 #include "third_party/omnibox_proto/groups.pb.h"
+#include "third_party/omnibox_proto/input_type.pb.h"
+#include "third_party/omnibox_proto/input_type_config.pb.h"
 #include "third_party/omnibox_proto/page_vertical.pb.h"
 #include "third_party/omnibox_proto/suggest_inventory.pb.h"
 #include "third_party/omnibox_proto/suggest_template_info.pb.h"
@@ -195,6 +197,16 @@ SuggestTemplateInfoPtr CreateSuggestTemplateInfo(
   return mojom_suggest_template_info;
 }
 
+// Locally generated chips explicitly request the current click behavior:
+// paste the query into the Composebox without submitting it.
+void SetPasteAndComposeboxOverrides(
+    fusebox_action::mojom::FuseboxAction& action) {
+  action.query_action_override =
+      fusebox_action::mojom::QueryActionOverride::kPaste;
+  action.searchbox_override =
+      fusebox_action::mojom::SearchboxOverride::kComposebox;
+}
+
 // Create a recent tab chip. The chip by default (in U.S.) would look like the
 // following:
 // |-------------------------|
@@ -216,6 +228,9 @@ ActionChipPtr CreateRecentTabChip(TabInfoPtr tab, std::string_view suggestion) {
   chip->suggest_template_info->secondary_text =
       action_chips::mojom::FormattedString::New();
   chip->suggest_template_info->secondary_text->text = chip->tab->title;
+  chip->suggest_template_info->fusebox_action =
+      fusebox_action::mojom::FuseboxAction::New();
+  SetPasteAndComposeboxOverrides(*chip->suggest_template_info->fusebox_action);
   return chip;
 }
 
@@ -238,6 +253,7 @@ ActionChipPtr CreateDeepSearchChip(std::string_view suggestion) {
       fusebox_action::mojom::FuseboxAction::New();
   chip->suggest_template_info->fusebox_action->preselected_tool =
       omnibox::TOOL_MODE_DEEP_SEARCH;
+  SetPasteAndComposeboxOverrides(*chip->suggest_template_info->fusebox_action);
   return chip;
 }
 
@@ -270,6 +286,7 @@ ActionChipPtr CreateImageCreationChip(std::string_view suggestion) {
       fusebox_action::mojom::FuseboxAction::New();
   chip->suggest_template_info->fusebox_action->preselected_tool =
       omnibox::TOOL_MODE_IMAGE_GEN;
+  SetPasteAndComposeboxOverrides(*chip->suggest_template_info->fusebox_action);
   return chip;
 }
 
@@ -300,6 +317,7 @@ ActionChipPtr CreateStarterChip() {
       fusebox_action::mojom::FuseboxAction::New();
   chip->suggest_template_info->fusebox_action->preferred_inventory =
       omnibox::SUGGEST_INVENTORY_AIM_CONVERSATION_STARTERS;
+  SetPasteAndComposeboxOverrides(*chip->suggest_template_info->fusebox_action);
   return chip;
 }
 
@@ -333,6 +351,7 @@ ActionChipPtr CreateCanvasChip(std::string_view suggestion) {
       fusebox_action::mojom::FuseboxAction::New();
   chip->suggest_template_info->fusebox_action->preselected_tool =
       omnibox::TOOL_MODE_CANVAS;
+  SetPasteAndComposeboxOverrides(*chip->suggest_template_info->fusebox_action);
   return chip;
 }
 
@@ -351,7 +370,7 @@ ActionChipPtr CreateBrainstormChip() {
   ActionChipPtr chip = ActionChip::New();
   chip->suggestion = std::string();
   chip->suggest_template_info = SuggestTemplateInfo::New();
-  chip->suggest_template_info->type_icon = IconType::kDraftSpark;
+  chip->suggest_template_info->type_icon = IconType::kLightbulb;
   chip->suggest_template_info->primary_text =
       action_chips::mojom::FormattedString::New();
   chip->suggest_template_info->primary_text->text =
@@ -360,6 +379,7 @@ ActionChipPtr CreateBrainstormChip() {
       fusebox_action::mojom::FuseboxAction::New();
   chip->suggest_template_info->fusebox_action->preferred_inventory =
       omnibox::SUGGEST_INVENTORY_BRAINSTORM;
+  SetPasteAndComposeboxOverrides(*chip->suggest_template_info->fusebox_action);
   return chip;
 }
 
@@ -376,7 +396,7 @@ ActionChipPtr CreateLearnChip() {
   ActionChipPtr chip = ActionChip::New();
   chip->suggestion = std::string();
   chip->suggest_template_info = SuggestTemplateInfo::New();
-  chip->suggest_template_info->type_icon = IconType::kDraftSpark;
+  chip->suggest_template_info->type_icon = IconType::kSchool;
   chip->suggest_template_info->primary_text =
       action_chips::mojom::FormattedString::New();
   chip->suggest_template_info->primary_text->text =
@@ -385,6 +405,7 @@ ActionChipPtr CreateLearnChip() {
       fusebox_action::mojom::FuseboxAction::New();
   chip->suggest_template_info->fusebox_action->preferred_inventory =
       omnibox::SUGGEST_INVENTORY_HELP_ME_LEARN;
+  SetPasteAndComposeboxOverrides(*chip->suggest_template_info->fusebox_action);
   return chip;
 }
 
@@ -401,7 +422,7 @@ ActionChipPtr CreateWriteChip() {
   ActionChipPtr chip = ActionChip::New();
   chip->suggestion = std::string();
   chip->suggest_template_info = SuggestTemplateInfo::New();
-  chip->suggest_template_info->type_icon = IconType::kDraftSpark;
+  chip->suggest_template_info->type_icon = IconType::kInkPen;
   chip->suggest_template_info->primary_text =
       action_chips::mojom::FormattedString::New();
   chip->suggest_template_info->primary_text->text =
@@ -410,6 +431,7 @@ ActionChipPtr CreateWriteChip() {
       fusebox_action::mojom::FuseboxAction::New();
   chip->suggest_template_info->fusebox_action->preferred_inventory =
       omnibox::SUGGEST_INVENTORY_WRITE_OR_EDIT;
+  SetPasteAndComposeboxOverrides(*chip->suggest_template_info->fusebox_action);
   return chip;
 }
 
@@ -426,7 +448,7 @@ ActionChipPtr CreateAddImageChip() {
   ActionChipPtr chip = ActionChip::New();
   chip->suggestion = "";
   chip->suggest_template_info = SuggestTemplateInfo::New();
-  chip->suggest_template_info->type_icon = IconType::kDraftSpark;
+  chip->suggest_template_info->type_icon = IconType::kAttachFile;
   chip->suggest_template_info->primary_text =
       action_chips::mojom::FormattedString::New();
   chip->suggest_template_info->primary_text->text = "Add Image";
@@ -460,6 +482,20 @@ std::vector<omnibox::ToolMode> GetAllowedTools(
     tools.push_back(tool_config.tool());
   }
   return tools;
+}
+
+std::vector<omnibox::InputType> GetAllowedInputs(
+    const AimEligibilityService* aim_eligibility_service) {
+  std::vector<omnibox::InputType> inputs;
+  if (aim_eligibility_service == nullptr) {
+    return inputs;
+  }
+  const omnibox::SearchboxConfig* searchbox_config =
+      aim_eligibility_service->GetSearchboxConfig();
+  for (const auto& input_type_config : searchbox_config->input_type_configs()) {
+    inputs.push_back(input_type_config.input_type());
+  }
+  return inputs;
 }
 
 TabInfoPtr CreateTabInfo(const TabIdGenerator& tab_id_generator,
@@ -629,7 +665,8 @@ void ActionChipsGeneratorImpl::GenerateActionChipsFromNewEndpoint(
 
   auto [title, url] = GetTitleAndUrl(tab);
   loader_ = remote_suggestions_service_simple_->GetActionChipSuggestions(
-      title, url, GetAllowedTools(aim_eligibility_service_), page_vertical,
+      title, url, GetAllowedTools(aim_eligibility_service_),
+      GetAllowedInputs(aim_eligibility_service_), page_vertical,
       base::BindOnce(
           &ActionChipsGeneratorImpl::GenerateActionChipsFromRemoteResponse,
           this->weak_factory_.GetWeakPtr(),
@@ -643,35 +680,41 @@ void ActionChipsGeneratorImpl::GenerateActionChipsFromRemoteResponse(
     base::OnceCallback<void(std::vector<ActionChipPtr>)> callback,
     RemoteSuggestionsServiceSimple::ActionChipSuggestionsResult&& result) {
   RecordActionChipsRequestStatus(result);
-  if (!result.has_value()) {
+
+  std::vector<ActionChipPtr> chips;
+  if (result.has_value()) {
+    const size_t max_num_chips = GetMaxNumChips();
+    for (const auto& suggestion : *result) {
+      if (chips.size() >= max_num_chips) {
+        break;
+      }
+      std::optional<ParsedActionChipData> parsed_data =
+          ExtractActionChipData(suggestion, page_vertical);
+      if (!parsed_data.has_value()) {
+        continue;
+      }
+
+      ActionChipPtr chip = ActionChip::New();
+      chip->suggest_template_info =
+          std::move(parsed_data->suggest_template_info);
+
+      chip->suggestion = base::UTF16ToUTF8(suggestion.suggestion());
+      if (parsed_data->group_id ==
+          omnibox::GROUP_AI_MODE_CONTEXTUAL_SEARCH_ACTION) {
+        if (tab) {
+          chip->tab = tab->Clone();
+        }
+      }
+      chips.push_back(std::move(chip));
+    }
+  }
+
+  // Fall back to steady-state chips if the remote response did not yield any
+  // valid chips.
+  if (chips.empty()) {
     std::move(callback).Run(
         CreateChipsForSteadyState(std::move(tab), aim_eligibility_service_));
     return;
-  }
-
-  const size_t max_num_chips = GetMaxNumChips();
-  std::vector<ActionChipPtr> chips;
-  for (const auto& suggestion : *result) {
-    if (chips.size() >= max_num_chips) {
-      break;
-    }
-    std::optional<ParsedActionChipData> parsed_data =
-        ExtractActionChipData(suggestion, page_vertical);
-    if (!parsed_data.has_value()) {
-      continue;
-    }
-
-    ActionChipPtr chip = ActionChip::New();
-    chip->suggest_template_info = std::move(parsed_data->suggest_template_info);
-
-    chip->suggestion = base::UTF16ToUTF8(suggestion.suggestion());
-    if (parsed_data->group_id ==
-        omnibox::GROUP_AI_MODE_CONTEXTUAL_SEARCH_ACTION) {
-      if (tab) {
-        chip->tab = tab->Clone();
-      }
-    }
-    chips.push_back(std::move(chip));
   }
   std::move(callback).Run(std::move(chips));
 }

@@ -5,6 +5,8 @@
 package org.chromium.chrome.browser.tasks.tab_management;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -20,6 +22,7 @@ import org.mockito.junit.MockitoRule;
 
 import org.chromium.base.Token;
 import org.chromium.base.test.BaseRobolectricTestRunner;
+import org.chromium.chrome.browser.tab.MediaState;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tabmodel.TabGroupObserver;
 import org.chromium.chrome.browser.tabmodel.TabModel;
@@ -27,7 +30,7 @@ import org.chromium.chrome.browser.tasks.tab_management.TabListMediator.TabGridD
 import org.chromium.ui.modelutil.MVCListAdapter.ListItem;
 import org.chromium.ui.modelutil.PropertyModel;
 
-import java.util.Arrays;
+import java.util.List;
 
 /** Unit tests for {@link FlatLayoutDelegate}. */
 @RunWith(BaseRobolectricTestRunner.class)
@@ -227,9 +230,27 @@ public class FlatLayoutDelegateUnitTest {
     }
 
     @Test
+    public void testRequiresThumbnailUpdateOnDeselect() {
+        assertFalse(mDelegate.requiresThumbnailUpdateOnDeselect());
+    }
+
+    @Test
+    public void testRequiresThumbnailUpdateOnSelect() {
+        assertTrue(mDelegate.requiresThumbnailUpdateOnSelect());
+    }
+
+    @Test
+    public void testGetMediaIndicatorState() {
+        when(mTab1.getMediaState()).thenReturn(MediaState.AUDIBLE);
+        PropertyModel model = new PropertyModel(TabProperties.ALL_KEYS_TAB_GRID);
+        int state = mDelegate.getMediaIndicatorState(mTab1, model);
+        assertEquals(MediaState.AUDIBLE, state);
+    }
+
+    @Test
     public void testGetInsertionIndexOfTab() {
         addTabsToModelList(TAB1_ID);
-        when(mMediator.getRelatedTabsForId(TAB1_ID)).thenReturn(Arrays.asList(mTab1, mTab2));
+        when(mMediator.getRelatedTabsForId(TAB1_ID)).thenReturn(List.of(mTab1, mTab2));
 
         int insertionIndex = mDelegate.getInsertionIndexOfTab(mTab2);
 

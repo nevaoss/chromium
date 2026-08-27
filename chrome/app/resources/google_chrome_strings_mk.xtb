@@ -382,7 +382,6 @@
 <translation id="4885446229353981848">Секогаш прикажувај ја кратенката за Google Lens</translation>
 <translation id="4891791193823137474">Остави Google Chrome да работи во заднина</translation>
 <translation id="4895437082222824641">Отвори го линкот во нова &amp;картичка на Chrome</translation>
-<translation id="4896867431081882115">Добијте лесен пристап до функциите што ги знаете, ги обожавате и во коишто имате доверба така што ќе го поставите Chrome како стандарден прелистувач. За брз пристап, Chrome ќе се закачи на лентата со задачи.</translation>
 <translation id="4904953848704395458">Отворете го Gemini во Chrome со кратенка од тастатура.</translation>
 <translation id="4918086044614829423">Прифати</translation>
 <translation id="4918844574251943176">Сликата е копирана</translation>
@@ -747,6 +746,7 @@ Google Chrome не може да ги обнови вашите поставки
 <translation id="8367705492654390392">Прашајте што било</translation>
 <translation id="8367950957770994118">Брзо отворајте го Gemini во Chrome кога и да ви затреба</translation>
 <translation id="8370517070665726704">Авторски права <ph name="YEAR" /> Google LLC. Сите права се задржани.</translation>
+<translation id="8370748943308169953">QR-код за најавување на Chrome како <ph name="USER_NAME" /></translation>
 <translation id="8377158135256176353">Вклучете/исклучете го Gemini во Chrome Canary</translation>
 <translation id="8387459386171870978">Продолжете да користите Chrome</translation>
 <translation id="8394720698884623075">Ги проверува URL-адресите во список со небезбедни сајтови меморирани во Chrome</translation>

@@ -382,7 +382,6 @@
 <translation id="4885446229353981848">Google Lens-ის მალსახმობის ყოველთვის ჩვენება</translation>
 <translation id="4891791193823137474">Google Chrome გაიშვას ფონურ რეჟიმში</translation>
 <translation id="4895437082222824641">ბმულის გახსნა Chrome-ის ახალ ჩა&amp;ნართში</translation>
-<translation id="4896867431081882115">დააყენეთ Chrome ნაგულისხმევ ბრაუზერად და მიიღეთ მარტივი წვდომა იმ ფუნქციებზე, რომლებსაც იცნობთ, გიყვართ და ენდობით. Chrome ჩამაგრდება თქვენს ამოცანათა ზოლში სწრაფი წვდომისთვის.</translation>
 <translation id="4904953848704395458">გახსენით Gemini Chrome-ში კლავიატურის მალსახმობით.</translation>
 <translation id="4918086044614829423">მიღება</translation>
 <translation id="4918844574251943176">სურათი დაკოპირდა</translation>
@@ -748,6 +747,7 @@ Google Chrome ვერ შეძლებს თქვენი პარამ
 <translation id="8367705492654390392">იკითხეთ, რაც გსურთ</translation>
 <translation id="8367950957770994118">სწრაფად გახსენით Gemini Chrome-ში, როცა ის დაგჭირდებათ</translation>
 <translation id="8370517070665726704">© <ph name="YEAR" />, Google LLC. ყველა უფლება დაცულია.</translation>
+<translation id="8370748943308169953">QR კოდი Chrome-ში <ph name="USER_NAME" />-ის ანგარიშით შესასვლელად</translation>
 <translation id="8377158135256176353">Gemini Chrome Canary-შის ჩართვა/გამორთვა</translation>
 <translation id="8387459386171870978">Chrome-ის გამოყენების გაგრძელება</translation>
 <translation id="8394720698884623075">შეამოწმებს URL-ების თანხვედრას Chrome-ში შენახულ არაუსაფრთხო საიტების სიასთან</translation>

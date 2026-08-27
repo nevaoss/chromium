@@ -3115,8 +3115,9 @@ void RenderProcessHostImpl::RegisterRenderFrameHost(
 void RenderProcessHostImpl::UnregisterRenderFrameHost(
     const GlobalRenderFrameHostId& render_frame_host_id,
     bool is_outermost_main_frame) {
-  CHECK(render_frame_host_id_set_.contains(render_frame_host_id),
-        base::NotFatalUntil::M152);
+  // TODO(crbug.com/544783227): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK(render_frame_host_id_set_.contains(render_frame_host_id));
   render_frame_host_id_set_.erase(render_frame_host_id);
   prerendering_frame_host_id_set_.erase(render_frame_host_id);
   if (is_outermost_main_frame) {
@@ -4370,6 +4371,13 @@ void RenderProcessHostImpl::OnChannelError() {
   ProcessDied(info);
 }
 
+void RenderProcessHostImpl::OnBadMessageReceived() {
+  // Message de-serialization failed. We consider this a capital crime. Kill
+  // the renderer if we have one.
+  LOG(ERROR) << "bad message, terminating renderer.";
+  bad_message::ReceivedBadMessage(this,
+                                  bad_message::RPH_DESERIALIZATION_FAILED);
+}
 
 BrowserContext* RenderProcessHostImpl::GetBrowserContext() {
   return browser_context_;

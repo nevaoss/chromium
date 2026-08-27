@@ -2243,6 +2243,48 @@ TEST_F(PopupViewViewsTest, SubPopupHidingOnNoSelectionCustomDelay) {
   EXPECT_EQ(test_api(view()).GetOpenSubPopupRow(), std::nullopt);
 }
 
+// Verifies that hovering a non-selectable suggestion inside a sub-popup
+// prevents premature sub-popup closing.
+TEST_F(PopupViewViewsTest,
+       SubPopupDoesNotHideWhenHoveringNonSelectableRowInSubPopup) {
+  controller().set_suggestions({
+      CreateSuggestionWithChildren(
+          SuggestionType::kPasswordEntry,
+          {Suggestion(u"Selectable Item", SuggestionType::kPasswordEntry),
+           Suggestion(u"Non-selectable Title", SuggestionType::kTitle)}),
+  });
+
+  CreateAndShowView(
+      /*widget_params=*/std::nullopt,
+      /*search_bar_config=*/std::nullopt,
+      /*tabbed_pane_config=*/std::nullopt,
+      /*sub_popup_config=*/
+      AutofillPopupView::SubPopupConfig{.no_selection_hide_delay =
+                                            base::Seconds(1)});
+  CellIndex cell{0, CellType::kControl};
+
+  view().SetSelectedCell(cell, PopupCellSelectionSource::kNonUserInput);
+  task_environment()->FastForwardBy(PopupViewViews::kNonMouseOpenSubPopupDelay);
+  ASSERT_EQ(test_api(view()).GetOpenSubPopupRow(), cell.first);
+
+  auto [sub_controller, sub_view] = OpenSubView(
+      view(), {Suggestion(u"Selectable Item", SuggestionType::kPasswordEntry),
+               Suggestion(u"Non-selectable Title", SuggestionType::kTitle)});
+
+  // Parent loses selection (mimicking mouse leaving control cell into
+  // sub-popup), starting the 1-second delay.
+  view().SetSelectedCell(std::nullopt, PopupCellSelectionSource::kNonUserInput);
+
+  // Mouse enters row 1 ("Non-selectable Title") in the sub-popup.
+  sub_view->SetSelectedCell(CellIndex{1, CellType::kContent},
+                            PopupCellSelectionSource::kMouse);
+
+  // Even after 1 second, sub-popup should NOT hide because the cursor is inside
+  // it.
+  task_environment()->FastForwardBy(base::Seconds(1));
+  EXPECT_NE(test_api(view()).GetOpenSubPopupRow(), std::nullopt);
+}
+
 TEST_F(PopupViewViewsTest, SubPopupHidesWhenMouseMovesToSearchBar) {
   ui::MouseEvent fake_event(ui::EventType::kMouseMoved, gfx::Point(),
                             gfx::Point(), ui::EventTimeForNow(),
@@ -2256,7 +2298,8 @@ TEST_F(PopupViewViewsTest, SubPopupHidesWhenMouseMovesToSearchBar) {
   CreateAndShowView(
       /*widget_params=*/std::nullopt,
       /*search_bar_config=*/
-      AutofillPopupView::SearchBarConfig{.placeholder = u"Search"},
+      AutofillPopupView::SearchBarConfig{.placeholder = u"Search",
+                                         .initial_value = {}},
       /*tabbed_pane_config=*/std::nullopt,
       /*sub_popup_config=*/
       AutofillPopupView::SubPopupConfig{.no_selection_hide_delay =
@@ -3141,6 +3184,7 @@ TEST_F(PopupViewViewsTest, SearchBar_InputGetsFocusOnShow) {
   CreateAndShowView({SuggestionType::kAddressEntry}, std::move(widget_params),
                     AutofillPopupView::SearchBarConfig{
                         .placeholder = u"Placeholder",
+                        .initial_value = {},
                         .no_results_message = u"No suggestions found"});
 
   views::View* focused_field = widget().GetFocusManager()->GetFocusedView();
@@ -3156,6 +3200,7 @@ TEST_F(PopupViewViewsTest, SearchBar_HidesPopupOnFocusLost) {
   CreateAndShowView({SuggestionType::kAddressEntry}, std::move(widget_params),
                     AutofillPopupView::SearchBarConfig{
                         .placeholder = u"Placeholder",
+                        .initial_value = {},
                         .no_results_message = u"No suggestions found"});
 
   views::View* focused_field = widget().GetFocusManager()->GetFocusedView();
@@ -3173,6 +3218,7 @@ TEST_F(PopupViewViewsTest, SearchBar_QueryIsSetAsFilterToController) {
                     CreateParamsForTestWidget(),
                     AutofillPopupView::SearchBarConfig{
                         .placeholder = u"Placeholder",
+                        .initial_value = {},
                         .no_results_message = u"No suggestions found"});
 
   MockFunction<void()> check;
@@ -3204,6 +3250,7 @@ TEST_F(PopupViewViewsTest, SearchBar_PressedKeysPassedToController) {
                     CreateParamsForTestWidget(),
                     AutofillPopupView::SearchBarConfig{
                         .placeholder = u"Placeholder",
+                        .initial_value = {},
                         .no_results_message = u"No suggestions found"});
 
   EXPECT_CALL(controller(),
@@ -3455,10 +3502,11 @@ TEST_F(PopupViewViewsTest, SearchBar_RemainVisibleEvenWithNoSuggestions) {
   ON_CALL(controller(), GetAutofillSuggestionTriggerSource)
       .WillByDefault(
           Return(AutofillSuggestionTriggerSource::kAtMemoryTriggerString));
-  CreateAndShowView(/*ids=*/{}, CreateParamsForTestWidget(),
-                    AutofillPopupView::SearchBarConfig{
-                        .placeholder = u"Recall from memory",
-                        .no_results_message = u""});
+  CreateAndShowView(
+      /*ids=*/{}, CreateParamsForTestWidget(),
+      AutofillPopupView::SearchBarConfig{.placeholder = u"Recall from memory",
+                                         .initial_value = {},
+                                         .no_results_message = u""});
 
   // The popup should not be hidden due to no suggestions.
   EXPECT_CALL(controller(), Hide(SuggestionHidingReason::kNoSuggestions))
@@ -3479,11 +3527,11 @@ TEST_F(PopupViewViewsTest, AtMemory_KeyboardNavigation) {
   input::NativeWebKeyboardEvent event(
       blink::WebKeyboardEvent::Type::kRawKeyDown,
       blink::WebInputEvent::kNoModifiers, ui::EventTimeForNow());
-  CreateAndShowView({SuggestionType::kAtMemorySearchResult},
-                    CreateParamsForTestWidget(),
-                    AutofillPopupView::SearchBarConfig{
-                        .placeholder = u"Recall from memory",
-                        .no_results_message = u""});
+  CreateAndShowView(
+      {SuggestionType::kAtMemorySearchResult}, CreateParamsForTestWidget(),
+      AutofillPopupView::SearchBarConfig{.placeholder = u"Recall from memory",
+                                         .initial_value = {},
+                                         .no_results_message = u""});
 
   // After `DoUpdateBoundsAndRedrawPopup()` is called,
   // the popup view width is clamped to `kAtMemoryPopupWidth`.

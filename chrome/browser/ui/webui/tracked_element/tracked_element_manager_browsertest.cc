@@ -7,6 +7,7 @@
 #include <string_view>
 
 #include "chrome/browser/browser_process.h"
+#include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/interaction/browser_elements.h"
 #include "chrome/browser/ui/webui/user_education_internals/user_education_internals_ui.h"
 #include "chrome/common/webui_url_constants.h"
@@ -22,13 +23,14 @@
 #include "ui/webui/tracked_element/tracked_element_web_ui.h"
 #include "url/gurl.h"
 
-DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kTabElementId);
 constexpr std::string_view kElementName = "MenuItemElement";
 
 class TrackedElementManagerBrowsertest : public InteractiveBrowserTest {
  public:
   TrackedElementManagerBrowsertest() = default;
   ~TrackedElementManagerBrowsertest() override = default;
+
+  DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kTabElementId);
 
   void SetUpOnMainThread() override {
     InteractiveBrowserTest::SetUpOnMainThread();
@@ -47,6 +49,19 @@ class TrackedElementManagerBrowsertest : public InteractiveBrowserTest {
     window->SetBounds(bounds);
   }
 };
+
+DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(TrackedElementManagerBrowsertest,
+                                      kTabElementId);
+
+IN_PROC_BROWSER_TEST_F(TrackedElementManagerBrowsertest, DumpWebContents) {
+  RunTestSequence(
+      InstrumentTab(kTabElementId),
+      NavigateWebContents(kTabElementId,
+                          GURL(chrome::kChromeUIUserEducationInternalsURL)),
+      InAnyContext(WaitForShow(kWebUIIPHDemoElementIdentifier)),
+      DumpWebContents(kTabElementId),
+      DumpWebContentsAt(kTabElementId, {"user-education-internals", "#menu"}));
+}
 
 IN_PROC_BROWSER_TEST_F(TrackedElementManagerBrowsertest, CheckElementsExist) {
   gfx::Rect menu_bounds;
@@ -81,4 +96,66 @@ IN_PROC_BROWSER_TEST_F(TrackedElementManagerBrowsertest, CheckElementsExist) {
       // Verify that the index changes in the document.
       CheckJsResultAt(kTabElementId, {"user-education-internals"},
                       "el => el.selectedTabIndex", 2));
+}
+
+IN_PROC_BROWSER_TEST_F(TrackedElementManagerBrowsertest, ExecuteJsAt) {
+  const DeepQuery kDeepQueryToMenu = {"user-education-internals", "#menu"};
+  RunTestSequence(
+      InstrumentTab(kTabElementId),
+      NavigateWebContents(kTabElementId,
+                          GURL(chrome::kChromeUIUserEducationInternalsURL)),
+      // Wait for the menu element to appear and capture its bounds.
+      InAnyContext(WaitForShow(UserEducationInternalsUI::kMenuElementId)),
+      InSameContext(ExecuteJsAt(UserEducationInternalsUI::kMenuElementId,
+                                "el => el.fooBarBaz = 1")),
+      CheckJsResultAt(kTabElementId, kDeepQueryToMenu, "el => el.fooBarBaz",
+                      1));
+}
+
+IN_PROC_BROWSER_TEST_F(TrackedElementManagerBrowsertest,
+                       ExecuteJsAtFireAndForget) {
+  DEFINE_LOCAL_CUSTOM_ELEMENT_EVENT_TYPE(kChangeDetected);
+  const DeepQuery kDeepQueryToMenu = {"user-education-internals", "#menu"};
+  StateChange expected_state;
+  expected_state.where = kDeepQueryToMenu;
+  expected_state.test_function = "el => el.fooBarBaz == 1";
+  expected_state.event = kChangeDetected;
+  RunTestSequence(
+      InstrumentTab(kTabElementId),
+      NavigateWebContents(kTabElementId,
+                          GURL(chrome::kChromeUIUserEducationInternalsURL)),
+      // Wait for the menu element to appear and capture its bounds.
+      InAnyContext(WaitForShow(UserEducationInternalsUI::kMenuElementId)),
+      InSameContext(ExecuteJsAt(UserEducationInternalsUI::kMenuElementId,
+                                "el => el.fooBarBaz = 1",
+                                ExecuteJsMode::kFireAndForget)),
+      WaitForStateChange(kTabElementId, expected_state));
+}
+
+IN_PROC_BROWSER_TEST_F(TrackedElementManagerBrowsertest,
+                       CheckJsResultAtWithMatcher) {
+  RunTestSequence(
+      InstrumentTab(kTabElementId),
+      NavigateWebContents(kTabElementId,
+                          GURL(chrome::kChromeUIUserEducationInternalsURL)),
+      // Wait for the menu element to appear and capture its bounds.
+      InAnyContext(WaitForShow(UserEducationInternalsUI::kMenuElementId)),
+      InSameContext(ExecuteJsAt(UserEducationInternalsUI::kMenuElementId,
+                                "el => el.fooBarBaz = 1"),
+                    CheckJsResultAt(UserEducationInternalsUI::kMenuElementId,
+                                    "el => el.fooBarBaz", testing::Eq(1))));
+}
+
+IN_PROC_BROWSER_TEST_F(TrackedElementManagerBrowsertest,
+                       CheckJsResultAtWithoutMatcher) {
+  RunTestSequence(
+      InstrumentTab(kTabElementId),
+      NavigateWebContents(kTabElementId,
+                          GURL(chrome::kChromeUIUserEducationInternalsURL)),
+      // Wait for the menu element to appear and capture its bounds.
+      InAnyContext(WaitForShow(UserEducationInternalsUI::kMenuElementId)),
+      InSameContext(ExecuteJsAt(UserEducationInternalsUI::kMenuElementId,
+                                "el => el.fooBarBaz = 1"),
+                    CheckJsResultAt(UserEducationInternalsUI::kMenuElementId,
+                                    "el => el.fooBarBaz == 1")));
 }

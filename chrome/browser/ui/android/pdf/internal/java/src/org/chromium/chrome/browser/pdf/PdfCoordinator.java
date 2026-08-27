@@ -897,9 +897,9 @@ public class PdfCoordinator
                         float newZoom =
                                 calculateFitToPageZoom(
                                         pageInfo,
-                                        /* fitToPageHeight= */ false,
+                                        /* fitToPage= */ false,
                                         pdfView,
-                                        /* zoomRatio= */ viewportWidthDp >= 600 ? 0.8f : 1.0f);
+                                        /* zoomRatio= */ viewportWidthDp >= 600 ? 0.6f : 1.0f);
                         pdfView.post(
                                 () -> {
                                     pdfView.setZoom(newZoom);
@@ -921,21 +921,26 @@ public class PdfCoordinator
 
         @VisibleForTesting
         float calculateFitToPageZoom(
-                PageInfo info, boolean fitToPageHeight, PdfView pdfView, float zoomRatio) {
-            int contentSize = fitToPageHeight ? info.getHeight() : info.getWidth();
-            if (contentSize <= 0) return 0f;
+                PageInfo info, boolean fitToPage, PdfView pdfView, float zoomRatio) {
+            int contentWidth = info.getWidth();
+            int contentHeight = info.getHeight();
+            if (contentWidth <= 0 || (fitToPage && contentHeight <= 0)) return 0f;
 
-            int viewportSize =
-                    fitToPageHeight
-                            ? pdfView.getHeight()
-                                    - pdfView.getPaddingTop()
-                                    - pdfView.getPaddingBottom()
-                            : pdfView.getWidth()
-                                    - pdfView.getPaddingLeft()
-                                    - pdfView.getPaddingRight();
-            if (viewportSize <= 0) return 0f;
+            int viewportWidth =
+                    pdfView.getWidth() - pdfView.getPaddingLeft() - pdfView.getPaddingRight();
+            if (viewportWidth <= 0) return 0f;
 
-            float newZoom = ((float) viewportSize * zoomRatio) / contentSize;
+            float zoomWidth = ((float) viewportWidth * zoomRatio) / contentWidth;
+            float newZoom = zoomWidth;
+
+            if (fitToPage) {
+                int viewportHeight =
+                        pdfView.getHeight() - pdfView.getPaddingTop() - pdfView.getPaddingBottom();
+                if (viewportHeight <= 0) return 0f;
+                float zoomHeight = ((float) viewportHeight * zoomRatio) / contentHeight;
+                newZoom = Math.min(zoomWidth, zoomHeight);
+            }
+
             return Math.max(pdfView.getMinZoom(), Math.min(newZoom, pdfView.getMaxZoom()));
         }
 
@@ -973,7 +978,7 @@ public class PdfCoordinator
             }
         }
 
-        void fitToPage(boolean fitToPageHeight, int pageIndex) {
+        void fitToPage(boolean fitToPage, int pageIndex) {
             PdfView pdfView = mPdfView;
             if (pdfView == null) return;
 
@@ -982,7 +987,7 @@ public class PdfCoordinator
                     pageInfo -> {
                         float newZoom =
                                 calculateFitToPageZoom(
-                                        pageInfo, fitToPageHeight, pdfView, /* zoomRatio= */ 1.0f);
+                                        pageInfo, fitToPage, pdfView, /* zoomRatio= */ 1.0f);
                         pdfView.post(
                                 () -> {
                                     pdfView.setZoom(newZoom);
@@ -1339,14 +1344,14 @@ public class PdfCoordinator
     }
 
     /**
-     * Toggles between "fit to page height" and "fit to page width" modes.
+     * Toggles between "fit to page" and "fit to page width" modes.
      *
-     * @param fitToPageHeight Whether to fit to page height or fit to page width.
+     * @param fitToPage Whether to fit to page or fit to page width.
      * @param pageIndex The 0-based index of page to update scaling.
      */
     @Override
-    public void toggleFitToPage(boolean fitToPageHeight, int pageIndex) {
-        mChromePdfViewerFragment.fitToPage(fitToPageHeight, pageIndex);
+    public void toggleFitToPage(boolean fitToPage, int pageIndex) {
+        mChromePdfViewerFragment.fitToPage(fitToPage, pageIndex);
     }
 
     @Override
@@ -1502,7 +1507,7 @@ public class PdfCoordinator
 
         Context appContext = mActivity.getApplicationContext();
         Uri uri = mUri;
-        String title = mTitle;
+        String fallbackFileName = mTitle;
         String pdfFilePath = mPdfFilePath;
         WeakReference<PdfCoordinator> weakSelf = new WeakReference<>(this);
 
@@ -1515,7 +1520,11 @@ public class PdfCoordinator
                             () -> {
                                 PdfDocumentPropertiesFetcher.DocProperties fileProps =
                                         PdfDocumentPropertiesFetcher.getDocProperties(
-                                                appContext, uri, title, pdfFilePath);
+                                                appContext,
+                                                uri,
+                                                fallbackFileName,
+                                                pdfFilePath,
+                                                mIsIncognito);
                                 // Post back to UI thread to show dialog
                                 ThreadUtils.postOnUiThread(
                                         () -> {
@@ -1535,7 +1544,6 @@ public class PdfCoordinator
 
         String fileName = fileProps.mFileName;
         String fileSize = formatFileSize(fileProps.mFileSize);
-        String title = mTitle;
         String created = formatTimestamp(fileProps.mCreationTime);
         String modified = formatTimestamp(fileProps.mLastModified);
 
@@ -1557,7 +1565,6 @@ public class PdfCoordinator
 
         ((TextView) dialogView.findViewById(R.id.file_name_value)).setText(fileName);
         ((TextView) dialogView.findViewById(R.id.file_size_value)).setText(fileSize);
-        ((TextView) dialogView.findViewById(R.id.title_value)).setText(title);
         ((TextView) dialogView.findViewById(R.id.created_value)).setText(created);
         ((TextView) dialogView.findViewById(R.id.modified_value)).setText(modified);
         ((TextView) dialogView.findViewById(R.id.page_count_value)).setText(pageCountStr);

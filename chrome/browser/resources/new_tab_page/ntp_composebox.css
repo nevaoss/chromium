@@ -195,10 +195,6 @@ cr-composebox-submit::part(submit) {
   --color-composebox-input-plate-outline: #CCCFD9;
 }
 
-:host([is-dark]):host-context([energy-effect-enabled_][energy-effect-variant_='pre-energy-effect-with-border']) {
-  --color-composebox-input-plate-outline: #4D5263;
-}
-
 :host-context([energy-effect-enabled_][energy-effect-variant_='energy-effect-fusebox']) {
   --box-shadow-energy-effect: 0 2px 6px 0 rgba(60, 64, 67, 0.16);
 }
@@ -207,15 +203,11 @@ cr-composebox-submit::part(submit) {
   --color-composebox-input-plate-outline: #DADCE0;
 }
 
-:host([is-dark]):host-context([energy-effect-enabled_]:not([energy-effect-variant_='pre-energy-effect-with-border'])) {
-  --color-composebox-input-plate-outline: #4E5059;
-}
-
 :host-context([energy-effect-enabled_]) search-animated-glow {
-  inset: 1px;
+  inset: 0;
   z-index: -1;
 }
 
 :host-context([energy-effect-enabled_]) search-animated-glow::part(composebox-background) {
-  inset: 1px;
+  inset: 0;
 }

@@ -60,6 +60,7 @@
 #include "components/tabs/public/tab_alert.h"
 #include "components/tabs/public/tab_group.h"
 #include "components/tabs/public/tab_interface.h"
+#include "third_party/skia/include/core/SkPath.h"
 #include "third_party/skia/include/core/SkPathBuilder.h"
 #include "third_party/skia/include/core/SkRRect.h"
 #include "ui/accessibility/ax_enums.mojom-shared.h"
@@ -270,6 +271,8 @@ class TabStyleViewDelegateImpl : public TabStyleViewDelegate {
     return controller ? controller->IsGlassFrame() : false;
   }
 
+  bool IsPinned() const override { return tab_view_->pinned_; }
+
   bool ShouldPaintTabBackgroundColor() const override {
     return tab_view_->should_fill_background_tab_color_;
   }
@@ -288,6 +291,7 @@ class TabStyleViewDelegateImpl : public TabStyleViewDelegate {
 TabView::TabView(TabCollectionNode* collection_node)
     : HoverCardAnchorTarget(this),
       collection_node_(collection_node),
+      orientation_(collection_node->orientation()),
       icon_(AddChildView(std::make_unique<TabIcon>())),
       title_(AddChildView(std::make_unique<TabTitle>())),
       alert_indicator_(
@@ -302,8 +306,7 @@ TabView::TabView(TabCollectionNode* collection_node)
                                   this,
                                   kGlowHoverAnimationDuration)
                             : nullptr) {
-  tab_styling_ = TabStyleViews::Create(CreateStyleDelegate(this),
-                                       collection_node_->orientation());
+  tab_styling_ = TabStyleViews::Create(CreateStyleDelegate(this), orientation_);
   tabs::TabInterface* tab = const_cast<tabs::TabInterface*>(GetTabInterface());
   BrowserWindowInterface* browser_window = tab->GetBrowserWindowInterface();
   if (browser_window &&
@@ -379,7 +382,7 @@ TabView::TabView(TabCollectionNode* collection_node)
           &TabView::OnTabDataChanged, base::Unretained(this)));
 
   CHECK(collection_node_->GetController());
-  if (collection_node_->orientation() == TabStripOrientation::kVertical) {
+  if (orientation_ == TabStripOrientation::kVertical) {
     auto* state_controller =
         collection_node_->GetController()->GetStateController();
     CHECK(state_controller);
@@ -403,14 +406,32 @@ void TabView::StepLoadingAnimation(const base::TimeDelta& elapsed_time) {
   icon_->StepLoadingAnimation(elapsed_time);
 }
 
-void TabView::CreateFreezingVote() {
-  if (!freezing_vote_.has_value()) {
-    freezing_vote_.emplace(GetTabInterface()->GetContents());
+void TabView::CreateFreezingVote(FreezingVoteReason reason) {
+  auto& vote = GetFreezingVote(reason);
+  if (!vote.has_value()) {
+    if (const tabs::TabInterface* tab = GetTabInterface()) {
+      vote.emplace(tab->GetContents());
+    }
   }
 }
 
-void TabView::ReleaseFreezingVote() {
-  freezing_vote_.reset();
+void TabView::ReleaseFreezingVote(FreezingVoteReason reason) {
+  GetFreezingVote(reason).reset();
+}
+
+bool TabView::HasFreezingVote(FreezingVoteReason reason) const {
+  switch (reason) {
+    case FreezingVoteReason::kCollapsedGroup:
+      return collapsed_freezing_vote_.has_value();
+    case FreezingVoteReason::kFocusedGroup:
+      return focus_mode_freezing_vote_.has_value();
+  }
+  NOTREACHED();
+}
+
+bool TabView::HasFreezingVote() const {
+  return collapsed_freezing_vote_.has_value() ||
+         focus_mode_freezing_vote_.has_value();
 }
 
 void TabView::UpdateHovered(bool hovered) {
@@ -528,10 +549,16 @@ bool TabView::OnMousePressed(const ui::MouseEvent& event) {
       (event.IsOnlyRightMouseButton() && event.flags() & ui::EF_FROM_TOUCH)) {
     if (event.IsShiftDown() && IsSelectionModifierDown(event)) {
       controller->AddSelectionFromAnchorTo(GetTabInterface());
+      base::RecordAction(
+          base::UserMetricsAction("TabMultiSelect_AddSelectionFromAnchorTo"));
     } else if (event.IsShiftDown()) {
       controller->ExtendSelectionTo(GetTabInterface());
+      base::RecordAction(
+          base::UserMetricsAction("TabMultiSelect_ExtendSelectionTo"));
     } else if (IsSelectionModifierDown(event)) {
       controller->ToggleSelected(GetTabInterface());
+      base::RecordAction(
+          base::UserMetricsAction("TabMultiSelect_ToggleSelected"));
       if (!selected_) {
         return false;
       }
@@ -746,22 +773,24 @@ void TabView::OnBlur() {
 }
 
 gfx::Size TabView::GetMinimumSize() const {
-  if (collection_node_ &&
-      collection_node_->orientation() == TabStripOrientation::kHorizontal) {
+  if (orientation_ == TabStripOrientation::kHorizontal) {
     if (pinned_) {
       return gfx::Size(tab_styling()->tab_style()->GetPinnedWidth(split_),
-                       GetLayoutConstant(LayoutConstant::kTabHeight));
+                       tab_styling()->tab_style()->GetStandardHeight());
     }
     const int min_width =
         active_ ? tab_styling()->tab_style()->GetMinimumActiveWidth(split_)
                 : tab_styling()->tab_style()->GetMinimumInactiveWidth();
-    return gfx::Size(min_width, GetLayoutConstant(LayoutConstant::kTabHeight));
+    return gfx::Size(min_width,
+                     tab_styling()->tab_style()->GetStandardHeight());
   }
   return views::View::GetMinimumSize();
 }
 
 void TabView::OnBoundsChanged(const gfx::Rect& previous_bounds) {
-  SetClipPath(GetPath());
+  if (orientation_ == TabStripOrientation::kVertical) {
+    SetClipPath(GetPath());
+  }
 }
 
 void TabView::UpdateParentLayer() {
@@ -878,8 +907,7 @@ bool TabView::IsChildVisible(const views::View* child_view,
 views::ProposedLayout TabView::CalculateProposedLayout(
     const views::SizeBounds& size_bounds) const {
   int width;
-  if (collection_node_ &&
-      collection_node_->orientation() == TabStripOrientation::kHorizontal) {
+  if (orientation_ == TabStripOrientation::kHorizontal) {
     if (pinned_) {
       width = tab_styling()->tab_style()->GetPinnedWidth(split_);
     } else {
@@ -896,16 +924,15 @@ views::ProposedLayout TabView::CalculateProposedLayout(
         VerticalTabStripRegionView::kUncollapsedMaxWidth);
   }
   const int height =
-      (collection_node_ &&
-       collection_node_->orientation() == TabStripOrientation::kHorizontal)
-          ? GetLayoutConstant(LayoutConstant::kTabHeight)
+      (orientation_ == TabStripOrientation::kHorizontal)
+          ? tab_styling()->tab_style()->GetStandardHeight()
           : GetLayoutConstant(pinned_ ? LayoutConstant::kVerticalTabPinnedHeight
                                       : LayoutConstant::kVerticalTabHeight);
   views::ProposedLayout layouts;
   layouts.host_size = gfx::Size(width, height);
 
   gfx::Rect bounds_remaining = gfx::Rect(0, 0, width, height);
-  bounds_remaining.Inset(gfx::Insets::VH(0, kHorizontalInset));
+  bounds_remaining.Inset(tab_styling()->GetContentsInsets());
 
   // If the tab is collapsed but animating with a wider width then we shouldn't
   // center the contents.
@@ -1013,8 +1040,7 @@ bool TabView::IsValidHoverCardTarget() const {
 }
 
 views::BubbleBorder::Arrow TabView::GetAnchorPosition() const {
-  if (collection_node_ &&
-      collection_node_->orientation() == TabStripOrientation::kHorizontal) {
+  if (orientation_ == TabStripOrientation::kHorizontal) {
     return views::BubbleBorder::Arrow::TOP_LEFT;
   }
   if (pinned_ && !collapsed_) {
@@ -1188,7 +1214,7 @@ void TabView::UpdateTitle(std::u16string title,
 }
 
 void TabView::UpdateBorder() {
-  if (pinned_) {
+  if (pinned_ && orientation_ == TabStripOrientation::kVertical) {
     if (split_) {
       // Insets for border handled by the `SplitTabView`.
       SetBorder(views::CreateEmptyBorder(gfx::Insets(GetLayoutConstant(
@@ -1439,6 +1465,17 @@ std::optional<SkColor> TabView::GetGroupColor() const {
 std::unique_ptr<TabStyleViewDelegate> TabView::CreateStyleDelegate(
     const TabView* tab_view) {
   return std::make_unique<TabStyleViewDelegateImpl>(tab_view);
+}
+
+std::optional<performance_manager::freezing::FreezingVote>&
+TabView::GetFreezingVote(FreezingVoteReason reason) {
+  switch (reason) {
+    case FreezingVoteReason::kCollapsedGroup:
+      return collapsed_freezing_vote_;
+    case FreezingVoteReason::kFocusedGroup:
+      return focus_mode_freezing_vote_;
+  }
+  NOTREACHED();
 }
 
 BEGIN_METADATA(TabView)

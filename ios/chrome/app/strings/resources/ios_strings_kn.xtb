@@ -38,6 +38,7 @@
 <translation id="1097807529207545420">{count,plural, =1{1 ಪಾಸ್‌ವರ್ಡ್ ಅನ್ನು ತಕ್ಷಣವೇ ದೃಢೀಕರಿಸಲಾಗಿದೆ}one{# ಪಾಸ್‌ವರ್ಡ್‌ಗಳನ್ನು ತಕ್ಷಣವೇ ದೃಢೀಕರಿಸಲಾಗಿದೆ}other{# ಪಾಸ್‌ವರ್ಡ್‌ಗಳನ್ನು ತಕ್ಷಣವೇ ದೃಢೀಕರಿಸಲಾಗಿದೆ}}</translation>
 <translation id="1103523840287552314">ಯಾವಾಗಲೂ ಅನುವಾದಿಸಿ <ph name="LANGUAGE" /></translation>
 <translation id="1110772719190051587">ಫೇಸ್‌ ID ಬಳಸಿ ಅನ್‌ಲಾಕ್‌ ಮಾಡಿ</translation>
+<translation id="1111776967764068277">ಲಿಂಕ್‌ಗಳನ್ನು ಕಾಪಿ ಮಾಡಿ ಸಾಕಾಗಿದೆಯೇ?</translation>
 <translation id="1112015203684611006">ಮುದ್ರಿಸುವಿಕೆ ವಿಫಲಗೊಂಡಿದೆ.</translation>
 <translation id="1118569444314402022">ಮರಳಿ ಸುಸ್ವಾಗತ, <ph name="USER_NAME" /></translation>
 <translation id="1121850836842642159">ಫೋಟೋಗಳು ಮತ್ತು ಚಿತ್ರಗಳು</translation>
@@ -478,6 +479,7 @@
 <translation id="2496180316473517155">ಬ್ರೌಸಿಂಗ್ ಇತಿಹಾಸ</translation>
 <translation id="2496626742194544812">ಮೊದಲ ಟ್ಯಾನ್‌ಗೆ ಹೋಗಿ</translation>
 <translation id="2499505845365628575"><ph name="HISTORY_BUTTON_ACCESSIBILITY_LABEL" /> ದಿಂದ ನಿಮ್ಮ ಎಲ್ಲಾ ಬ್ರೌಸಿಂಗ್ ಇತಿಹಾಸವನ್ನು ನೀವು ಕಾಣಬಹುದು.</translation>
+<translation id="251033673027346551"><ph name="BEGIN_LINK" />ಡೇಟಾ ಮತ್ತು ಗೌಪ್ಯತೆ ಆದ್ಯತೆಗಳನ್ನು<ph name="END_LINK" /> ನಿರ್ವಹಿಸಲು Google Wallet ಗೆ ಭೇಟಿ ನೀಡಿ.</translation>
 <translation id="2511117522375201202">ನಿಮ್ಮ ಭದ್ರತೆಯನ್ನು ಅಪಾಯಕ್ಕೀಡು ಮಾಡಬಹುದಾದ <ph name="NUMBER_OF_PASSWORDS" /> ಅಪಾಯಕ್ಕೀಡಾದ ಪಾಸ್‌ವರ್ಡ್‌ಗಳನ್ನು ನೀವು ಹೊಂದಿದ್ದೀರಿ.</translation>
 <translation id="2512709994717613803">ಹಂತ <ph name="LEVEL_NUMBER" /></translation>
 <translation id="2513103768503127042">ನಿಮ್ಮ ಟ್ಯಾಬ್ ಗುಂಪುಗಳನ್ನು ನೀವು ಇಲ್ಲಿ ಕಾಣುತ್ತೀರಿ</translation>
@@ -527,6 +529,7 @@
 <translation id="2666092431469916601">ಮೇಲೆ</translation>
 <translation id="2669454659051515572">ಈ ಸಾಧನವನ್ನು ಬಳಸುವ ಯಾರಾದರೂ ಡೌನ್‌ಲೋಡ್ ಮಾಡಿರುವ ಫೈಲ್‌ಗಳನ್ನು ನೋಡಬಹುದು</translation>
 <translation id="2671423594960767771">ಗುಂಪನ್ನು ಹಂಚಿಕೊಳ್ಳಿ</translation>
+<translation id="2672512470874391563"><ph name="OWNER_NAME" /> • <ph name="DEVICE_NAME" /></translation>
 <translation id="2673183423393669407">ಪೇ ಓವರ್‌ ಟೈಮ್</translation>
 <translation id="2673508731173059946">ಕಾಪಿ ಮಾಡಲಾದ ಲಿಂಕ್‌ಗೆ ಭೇಟಿ ನೀಡಿ</translation>
 <translation id="2679659833697380">ನಿಮ್ಮ ಮಾಹಿತಿಯನ್ನು ನಿಮ್ಮ ಸಾಧನದಲ್ಲಿ ಸೇವ್ ಮಾಡಲಾಗಿದೆ</translation>
@@ -543,6 +546,7 @@
 <translation id="271033894570825754">ಹೊಸ ಸಂಗ್ರಹಣೆ</translation>
 <translation id="2712929214961145009">ಸ್ಯಾನ್ಸ್ ಸೆರಿಫ್</translation>
 <translation id="2713106313042589954">ಕ್ಯಾಮರಾ ಆಫ್ ಮಾಡಿ</translation>
+<translation id="2715440913764382254">ಲಿಂಕ್‌ಗಳನ್ನು ನೇರವಾಗಿ ಇಲ್ಲಿ ತೆರೆಯಿರಿ</translation>
 <translation id="2718352093833049315">ಕೇವಲ ವೈ-ಫೈ ಮಾತ್ರ</translation>
 <translation id="2721190673959776287">ಸಂದರ್ಭೋಚಿತ ಪ್ಯಾನೆಲ್‌ಗೆ ಉಪಯುಕ್ತ ಮಾದರಿಯುಳ್ಳ ಉತ್ಪನ್ನದ ಸಹಾಯವು ದಿನಕ್ಕೆ ಹಲವಾರು ಬಾರಿ ಕಾಣಿಸಿಕೊಳ್ಳಬೇಕು</translation>
 <translation id="2739887572830526131">ನಂತರ ಟ್ಯಾಬ್‌ಗಳನ್ನು ಸೇರಿಸಲು ಈ ಗುಂಪನ್ನು ಇರಿಸಿಕೊಳ್ಳಿ ಅಥವಾ ನಿಮಗೆ ಅಗತ್ಯವಿಲ್ಲದಿದ್ದರೆ ಅದನ್ನು ಅಳಿಸಿ.</translation>
@@ -692,6 +696,7 @@
 <translation id="3259451381796379533">ಈ ಖಾತೆಯು Gemini ಜೊತೆ ಕಾರ್ಯನಿರ್ವಹಿಸುವುದಿಲ್ಲ. ಬೇರೊಂದು Google ಖಾತೆಯೊಂದಿಗೆ ಸೈನ್ ಇನ್ ಮಾಡಿ.</translation>
 <translation id="3265736395246760288">ನಿಮ್ಮ ಯಾವುದೇ ಸಿಂಕ್ ಮಾಡಲಾದ ಸಾಧನಗಳಿಂದ ವೇಗವಾಗಿ ಸೈನ್ ಇನ್ ಮಾಡಿ.</translation>
 <translation id="3272527697863656322">ರದ್ದುಮಾಡಿ</translation>
+<translation id="3272955648592358996">ನಿಮ್ಮ ಡೇಟಾ Google AI ಅನ್ನು ಸುಧಾರಿಸುತ್ತದೆ</translation>
 <translation id="3273510436356991673">ಹೋಮ್‌ ಸ್ಕ್ರೀನ್‌ ಅನ್ನು ಕಸ್ಟಮೈಸ್‌ ಮಾಡಿ</translation>
 <translation id="3277021493514034324">ಸೈಟ್‌ ವಿಳಾಸವನ್ನು ಕಾಪಿ ಮಾಡಲಾಗಿದೆ</translation>
 <translation id="3280562213547448728">ಧ್ವನಿ ಹುಡುಕಾಟ</translation>
@@ -859,6 +864,7 @@
 <translation id="3888863481921783344">ನಿಮ್ಮ ಈವೆಂಟ್‌ಗೆ ಆಗಮಿಸುವ ಸಂಭವನೀಯ ಆಹ್ವಾನಿತರನ್ನು ತೋರಿಸಲು ಇದನ್ನು ಬಳಸಲಾಗುತ್ತದೆ.</translation>
 <translation id="3891414008432200754">ಬೆಲೆ</translation>
 <translation id="3892144330757387737">ನಿಮ್ಮ ಇತಿಹಾಸವನ್ನು ನೀವು ಇಲ್ಲಿ ಕಾಣಬಹುದು</translation>
+<translation id="3892695492576181257">ಇದು ಆನ್ ಆಗಿದ್ದಾಗ, ನಿಮ್ಮ ಚಟುವಟಿಕೆಯನ್ನು Gemini ಆ್ಯಪ್‌ಗಳ ಚಟುವಟಿಕೆಯಲ್ಲಿ 18 ತಿಂಗಳುಗಳವರೆಗೆ ಸೇವ್ ಮಾಡಲಾಗುತ್ತದೆ, ಇದನ್ನು ನೀವು 3 ಅಥವಾ 36 ತಿಂಗಳುಗಳಿಗೆ ಬದಲಾಯಿಸಬಹುದು. Google ತನ್ನ ಸೇವೆಗಳನ್ನು (Gemini ಮಾಡಲ್‌ಗಳನ್ನು ಒಳಗೊಂಡಂತೆ) ಅಭಿವೃದ್ಧಿಪಡಿಸಲು ಮತ್ತು ಸುಧಾರಿಸಲು, ಹಾಗೆಯೇ ಮಾನವ ರಿವ್ಯೂವರ್‌ಗಳ ಸಹಾಯದಿಂದ Google, ಅದರ ಬಳಕೆದಾರರು ಮತ್ತು ಸಾರ್ವಜನಿಕರನ್ನು ರಕ್ಷಿಸಲು ನಿಮ್ಮ ಚಟುವಟಿಕೆಯನ್ನು ಬಳಸುತ್ತದೆ. ಸೇವೆ ಒದಗಿಸುವವರು ರಿವ್ಯೂ ಮಾಡಿದ ಡೇಟಾವನ್ನು ನಿಮ್ಮ ಖಾತೆಯಿಂದ ಡಿಸ್‌ಕನೆಕ್ಟ್ ಮಾಡಲಾಗುತ್ತದೆ ಮತ್ತು 3 ವರ್ಷಗಳವರೆಗೆ ಸೇವ್ ಮಾಡಲಾಗುತ್ತದೆ.</translation>
 <translation id="3893858854379998374">ನಿಮ್ಮ ಖಾತೆಯಲ್ಲಿ ಬುಕ್‌ಮಾರ್ಕ್‌ಗಳನ್ನು ಸೇವ್ ಮಾಡಲು, ನಿಮ್ಮ ಬಳಕೆಯಾಗದ ಬುಕ್‌ಮಾರ್ಕ್‌ಗಳನ್ನು ಅಳಿಸಿ</translation>
 <translation id="3897092660631435901">ಮೆನು</translation>
 <translation id="3904270275864974753">ಕರೋಸಲ್‌ ಅನ್ನು ಎಡಿಟ್ ಮಾಡಿ</translation>
@@ -1002,6 +1008,7 @@
 <translation id="4338258232580025606">ಸೈನ್ ಇನ್ ಆಗಲು ಸಾಧ್ಯವಿಲ್ಲ</translation>
 <translation id="4338650699862464074">ನೀವು ಭೇಟಿ ನೀಡುವ ಪುಟಗಳ URL ಗಳನ್ನು Google ಗೆ ಕಳುಹಿಸಿ.</translation>
 <translation id="4342946437867096381">ನೀವು ಈಗಾಗಲೇ ನಿಮ್ಮ Google ಖಾತೆಯಲ್ಲಿ ಈ ಸೈಟ್‌ಗಾಗಿ ಪಾಸ್‌ವರ್ಡ್ ಒಂದನ್ನು ಉಳಿಸಿದ್ದೀರಿ. Google ನಿಮಗಾಗಿ ಇತ್ತೀಚಿನ ಪಾಸ್‌ವರ್ಡ್ ಅನ್ನು ಆಯ್ಕೆ ಮಾಡಬಹುದು.</translation>
+<translation id="4355702523442402731">ಆ್ಯಪ್‌ಗಳ ನಡುವೆ ಸುಗಮ ಬ್ರೌಸಿಂಗ್</translation>
 <translation id="4365121137632832185">ಟ್ಯಾಬ್‌ ಗುಂಪು. ವಿಸ್ತೃತಗೊಳಿಸಲಾಗಿದೆ.</translation>
 <translation id="4365685757967464989">ಫೋಟೋಗಳನ್ನು ತೆಗೆದುಕೊಳ್ಳಲು Gemini ಗೆ ನಿಮ್ಮ ಕ್ಯಾಮರಾವನ್ನು ಬಳಸಲು ಅನುಮತಿಸಿ</translation>
 <translation id="4367971618859387374">ಡಿಸ್‌ಪ್ಲೇ ಹೆಸರು</translation>
@@ -1279,6 +1286,7 @@
 <translation id="5233111790346066304">ನಿಮ್ಮ Google Drive ನಲ್ಲಿ ಫೈಲ್‌ಗಳನ್ನು ಸೇವ್ ಮಾಡಿ ಮತ್ತು ಅವುಗಳನ್ನು ಯಾವುದೇ ಸಮಯದಲ್ಲಿ ಆ್ಯಕ್ಸೆಸ್ ಮಾಡಿ.</translation>
 <translation id="5233638681132016545">ಹೊಸ ಟ್ಯಾಬ್</translation>
 <translation id="5234094073825090254">{count,plural, =1{ಬುಕ್‌ಮಾರ್ಕ್ ಅನ್ನು ನಿಮ್ಮ Google ಖಾತೆಯಲ್ಲಿ ಸೇವ್ ಮಾಡಲಾಗಿದೆ, {email}.}one{ನಿಮ್ಮ Google ಖಾತೆಯಲ್ಲಿ ಬುಕ್‌ಮಾರ್ಕ್‌ಗಳನ್ನು ಸೇವ್ ಮಾಡಲಾಗಿದೆ, {email}.}other{ನಿಮ್ಮ Google ಖಾತೆಯಲ್ಲಿ ಬುಕ್‌ಮಾರ್ಕ್‌ಗಳನ್ನು ಸೇವ್ ಮಾಡಲಾಗಿದೆ, {email}.}}</translation>
+<translation id="5234162151438379838">{COUNT,plural, =1{1 ಟ್ಯಾಬ್ ಅನ್ನು ಮಾತ್ರ ಹಂಚಿಕೊಳ್ಳಬಹುದು.}one{{COUNT} ಟ್ಯಾಬ್‌ಗಳನ್ನು ಮಾತ್ರ ಹಂಚಿಕೊಳ್ಳಬಹುದು.}other{{COUNT} ಟ್ಯಾಬ್‌ಗಳನ್ನು ಮಾತ್ರ ಹಂಚಿಕೊಳ್ಳಬಹುದು.}}</translation>
 <translation id="5234764350956374838">ವಜಾಗೊಳಿಸಿ</translation>
 <translation id="5238596603078743134"><ph name="BEGIN_BOLD" /><ph name="USERNAME" /><ph name="END_BOLD" /> ಅವರು <ph name="BEGIN_BOLD" /><ph name="WEBSITE" /><ph name="END_BOLD" /> ಗೆ ಸೈನ್ ಇನ್ ಮಾಡಲು Google Password Manager ಅನ್ನು ಬಳಸುವಾಗ, ಅವರು ನಿಮ್ಮ ಬಳಕೆದಾರರ ಹೆಸರು ಮತ್ತು ಪಾಸ್‌ವರ್ಡ್ ಅನ್ನು ಬಳಸಬಹುದು.</translation>
 <translation id="5241106044372754566"><ph name="NAME" />, <ph name="EMAIL" />, ಪ್ರಸ್ತುತ ಆಯ್ಕೆ ಮಾಡಲಾದ ನಿಮ್ಮ ಸಂಸ್ಥೆಯಿಂದ ನಿರ್ವಹಿಸಲ್ಪಡುತ್ತದೆ. ಖಾತೆಯೊಂದನ್ನು ಆಯ್ಕೆಮಾಡಿ.</translation>
@@ -1311,6 +1319,7 @@
 <translation id="5351613737248079168">Level Up ಅನ್ನು ಬಳಸಲು ನೀವು ಸೈನ್ ಇನ್ ಆಗಿರಬೇಕು</translation>
 <translation id="5352128922772839949">ಫೈಲ್‌ ಸೇವ್‌ ಮಾಡಿ</translation>
 <translation id="5355191726083956201">ಸುಧಾರಿತ ಸಂರಕ್ಷಣೆ ಆನ್ ಆಗಿದೆ</translation>
+<translation id="5359436665022446585">ಲಿಂಕ್‌ಗಳನ್ನು ತೆರೆಯಲು ಉತ್ತಮ ವಿಧಾನ</translation>
 <translation id="536067926684072644">ಬುಕ್‌ಮಾರ್ಕ್‌ಗಳನ್ನು ತೋರಿಸಿ</translation>
 <translation id="5364647308446127983">{count,plural, =1{{count} ಪಾಸ್‌ಕೀಯನ್ನು ಇಂಪೋರ್ಟ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ}one{{count} ಪಾಸ್‌ಕೀಗಳನ್ನು ಇಂಪೋರ್ಟ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ}other{{count} ಪಾಸ್‌ಕೀಗಳನ್ನು ಇಂಪೋರ್ಟ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ}}</translation>
 <translation id="5371112366564891538">ಪಠ್ಯದ ಗಾತ್ರವನ್ನು ಹೆಚ್ಚಿಸಿ</translation>
@@ -1489,11 +1498,13 @@
 <translation id="5952641243319721872">ನಿಮ್ಮ ಆಯ್ಕೆಗಳನ್ನು ತ್ಯಜಿಸಲು ನೀವು ಖಚಿತವಾಗಿ ಬಯಸುತ್ತೀರಾ?</translation>
 <translation id="5956112131836209882">ಟ್ಯಾಬ್ ಗುಂಪು ಟ್ಯಾಬ್. <ph name="NUMBER_OF_TABS_IN_GROUP" /> ರಲ್ಲಿ <ph name="TAB_INDEX_IN_GROUP" />.</translation>
 <translation id="595769230373966252"><ph name="SEARCH_PROVIDER" /> ಮೂಲಕ ಹುಡುಕಿ</translation>
+<translation id="5963694076845073027">ಮುಂದಿನ ಬಾರಿ ಇಲ್ಲಿ ಲಿಂಕ್‌ಗಳನ್ನು ತೆರೆಯಿರಿ</translation>
 <translation id="5963939892571022323">ಹೈಲೈಟ್ ಮಾಡುವುದಕ್ಕಾಗಿ ಲಿಂಕ್ ಅನ್ನು ರಚಿಸಲು ಸಾದ್ಯವಿಲ್ಲ.</translation>
 <translation id="5968400720580217226">AI ಮೋಡ್</translation>
 <translation id="5971459446352190251">QR ಕೋಡ್‌ ಅನ್ನು ಹುಡುಕಿ</translation>
 <translation id="5971872012779224351">{count,plural, =1{1 ಬುಕ್‌ಮಾರ್ಕ್ ಅನ್ನು ಅಳಿಸಲಾಗಿದೆ}one{{count} ಬುಕ್‌ಮಾರ್ಕ್‌ಗಳನ್ನು ಅಳಿಸಲಾಗಿದೆ}other{{count} ಬುಕ್‌ಮಾರ್ಕ್‌ಗಳನ್ನು ಅಳಿಸಲಾಗಿದೆ}}</translation>
 <translation id="5972844218283131174">ಎಲ್ಲಾ ಆಯ್ಕೆಯನ್ನು ರದ್ದುಮಾಡಿ</translation>
+<translation id="597482816780655631">Gemini ಎಂಬುದು AI ಆಗಿದ್ದು, ಜನರ ಕುರಿತಾದ ವಿಚಾರದಲ್ಲಿಯೂ ಸೇರಿದಂತೆ ತಪ್ಪುಗಳನ್ನು ಮಾಡಬಹುದು. ಕೆಲವು ಕಂಟೆಂಟ್ ಎಲ್ಲರಿಗೂ ಸೂಕ್ತವಲ್ಲದಿರಬಹುದು. ಚಾಟ್‌ಗಳನ್ನು ರಿವ್ಯೂ ಮಾಡಲಾಗುತ್ತದೆ ಮತ್ತು Google AI ಅನ್ನು ಸುಧಾರಿಸಲು ಬಳಸಲಾಗುತ್ತದೆ. <ph name="BEGIN_LINK" />ನಿಮ್ಮ ಆಯ್ಕೆಗಳ ಕುರಿತು ತಿಳಿದುಕೊಳ್ಳಿ.<ph name="END_LINK" /> ನಮ್ಮ <ph name="BEGIN_LINK" />ನಿಯಮಗಳು <ph name="END_LINK" /> ಮತ್ತು <ph name="BEGIN_LINK" />ಗೌಪ್ಯತಾ ಸೂಚನೆ<ph name="END_LINK" /> ಅನ್ವಯವಾಗುತ್ತವೆ.</translation>
 <translation id="5976160379964388480">ಇತರರು</translation>
 <translation id="5977976211062815271">ಈ ಸಾಧನದಲ್ಲಿರುವವು</translation>
 <translation id="5986043348928676121">ಮುಂದಿನದು</translation>
@@ -1817,6 +1828,7 @@
 <translation id="6932739965694346873"><ph name="USER_NAME" />, <ph name="EMAIL" />. <ph name="MANAGED_STATUS" />.</translation>
 <translation id="6937083164784433305">{count,plural, =1{ಹುಡುಕಲು ನೀವು 1 ಫೋಟೋವನ್ನು ಬಳಸಿದ್ದೀರಿ}one{ಹುಡುಕಲು ನೀವು # ಫೋಟೋಗಳನ್ನು ಬಳಸಿದ್ದೀರಿ}other{ಹುಡುಕಲು ನೀವು # ಫೋಟೋಗಳನ್ನು ಬಳಸಿದ್ದೀರಿ}}</translation>
 <translation id="693761253105515415">ಪಾಸ್‌ಕೋಡ್‌ ಅನ್ನು ಸೆಟ್‌ ಮಾಡಿ</translation>
+<translation id="6938212956536472404">ಈ ಟ್ಯಾಬ್ ಅನ್ನು ಹಂಚಿಕೊಳ್ಳಲು ಸಾಧ್ಯವಿಲ್ಲ</translation>
 <translation id="6945221475159498467">ಆಯ್ಕೆಮಾಡಿ</translation>
 <translation id="6946722113367118030">ಆಲೋಚಿಸುವುದು</translation>
 <translation id="6950522403736391608">ಮರೆಮಾಡಲಾಗಿದೆ</translation>
@@ -1860,6 +1872,7 @@
 <translation id="7102005569666697658">ಡೌನ್‌ಲೋಡ್‌ ಮಾಡಲಾಗುತ್ತಿದೆ… <ph name="FILE_SIZE" /></translation>
 <translation id="7104701424653979232">ಮೆನು → ಸೆಟ್ಟಿಂಗ್‌ಗಳು → ಪಾವತಿ ವಿಧಾನಗಳು</translation>
 <translation id="7108338896283013870">ಮರೆಮಾಡಿ</translation>
+<translation id="7119533351103192286">Gemini ಅನ್ನು ಬಳಸಿ</translation>
 <translation id="7127922377013221748">ಪರಿಕರ ಪಟ್ಟಿ ಮರೆಮಾಡಿ</translation>
 <translation id="7128693485119315539">ನಿಮ್ಮ ಬ್ರೌಸಿಂಗ್ ಇತಿಹಾಸ ಮತ್ತು ಪಾಸ್‌ವರ್ಡ್‌ಗಳಂತಹ ನಿಮ್ಮ ನಿರ್ವಹಿಸಲಾದ ಖಾತೆಗೆ ಸಂಬಂಧಿಸಿರುವ ಬ್ರೌಸಿಂಗ್ ಡೇಟಾವನ್ನು ನಿಮ್ಮ ಸಂಸ್ಥೆಯು ನೋಡಬೇಕಾಗಬಹುದು ಮತ್ತು ನಿರ್ವಹಿಸಬೇಕಾಗಬಹುದು.</translation>
 <translation id="713215255510512027"><ph name="FILENAME" /> (<ph name="FILESIZE" />)</translation>
@@ -1991,6 +2004,7 @@
 <translation id="7561982940498449837">ಮೆನು ಮುಚ್ಚಿರಿ</translation>
 <translation id="7566349809380613217"><ph name="GROUP_TITLE" /> ಅನ್ನು ತೆರೆಯಿರಿ, <ph name="NUMBER_OF_TABS" /> ಹಂಚಿಕೊಂಡ ಗುಂಪುಗಳು, <ph name="CREATION_TEXT" /></translation>
 <translation id="7567579665882069209">ಬುಕ್‌ಮಾರ್ಕ್‌ಗಳನ್ನು ಮರೆಮಾಡಲಾಗಿದೆ</translation>
+<translation id="7575664680938145959">ಒಂದೇ ಟ್ಯಾಪ್‌ನಲ್ಲಿ ತೆರೆಯಿರಿ</translation>
 <translation id="7577900504646297215">ಆಸಕ್ತಿಗಳನ್ನು ನಿರ್ವಹಿಸಿ</translation>
 <translation id="7582666837709186351">ಫೋಟೋಗಳಲ್ಲಿನ ಅಥವಾ ನಿಮ್ಮ ಸುತ್ತಮುತ್ತಲಿನ ಪಠ್ಯವನ್ನು ಅನುವಾದಿಸಲು ನಿಮ್ಮ ಕ್ಯಾಮರಾವನ್ನು ಬಳಸಿ.</translation>
 <translation id="7582857256643797524">ನಿಮ್ಮ ಸಾಧನದಲ್ಲಿ ಈ ಸೆಟ್ಟಿಂಗ್ ಅನ್ನು ಸಕ್ರಿಯಗೊಳಿಸಲಾಗಿದೆ</translation>
@@ -2014,6 +2028,7 @@
 <translation id="7646263789464975852">ಮೆನು → ಸೆಟ್ಟಿಂಗ್‌ಗಳು → ಸುರಕ್ಷತೆಯ ಪರಿಶೀಲನೆ</translation>
 <translation id="7646772052135772216">ಪಾಸ್‌ವರ್ಡ್ ಸಿಂಕ್ ಕಾರ್ಯನಿರ್ವಹಿಸುತ್ತಿಲ್ಲ</translation>
 <translation id="764827086632467055">ಡೀಫಾಲ್ಟ್ ಬ್ರೌಸರ್ ಆ್ಯಪ್ ಟ್ಯಾಪ್ ಮಾಡಿ</translation>
+<translation id="7648666127045672239">ಒಂದೇ ಟ್ಯಾಪ್‌ನಲ್ಲಿ ಇಲ್ಲಿಗೆ ತಲುಪಿ</translation>
 <translation id="7649070708921625228">ಸಹಾಯ</translation>
 <translation id="765555660695722850">ಇದು ಈ ಸಾಧನದಲ್ಲಿ ಸೇವ್ ಮಾಡಲಾದ ವಿಳಾಸಗಳನ್ನು ಅಳಿಸುತ್ತದೆ. ಇದು ನಿಮ್ಮ Google ಖಾತೆಯಿಂದ ಕೆಲವು ಮಾಹಿತಿಯನ್ನು ಸಹ ಅಳಿಸುತ್ತದೆ ಆದರೆ ನಿಮ್ಮ ಹೆಸರು ಅಥವಾ ಮನೆ ವಿಳಾಸದಂತಹ ಪ್ರಾಥಮಿಕ ಮಾಹಿತಿಯನ್ನು ಅಳಿಸುವುದಿಲ್ಲ.</translation>
 <translation id="765631330137769217">ಮುಂದಿನ ಬಾರಿ ನೀವು ಸೈನ್‌ ಇನ್‌ ಮಾಡಿದಾಗ ಈ ಪಾಸ್‌ವರ್ಡ್ ಅನ್ನು ಸುಲಭವಾಗಿ ಆ್ಯಕ್ಸೆಸ್‌ ಮಾಡಲು "ಸೇವ್‌ ಮಾಡಿ" ಎಂಬುದನ್ನು ಟ್ಯಾಪ್‌ ಮಾಡಿ</translation>
@@ -2031,6 +2046,7 @@
 <translation id="7701040980221191251">ಯಾವುದೂ ಇಲ್ಲ</translation>
 <translation id="7702428539671224160"><ph name="URL" /> ನಲ್ಲಿ ಪಾವತಿ ಮಾಹಿತಿಯನ್ನು ಆಟೋಫಿಲ್ ಮಾಡಿ</translation>
 <translation id="7708994397325774423">ನಿಮ್ಮ ಎಲ್ಲಾ ಪಾಸ್‌ವರ್ಡ್‌ಗಳನ್ನು ಪಡೆಯಿರಿ</translation>
+<translation id="7710096647785049958">ಪ್ರತಿ ಲಿಂಕ್‌ನಲ್ಲಿ ಸಮಯವನ್ನು ಉಳಿಸಿ</translation>
 <translation id="7711440461521638739">ನೀವು ಯಾವುದೇ ಪಾಸ್‌ವರ್ಡ್‌ಗಳನ್ನು ಮರುಬಳಕೆ ಮಾಡುತ್ತಿಲ್ಲ</translation>
 <translation id="7712361583414030698">ಆಫ್‌ಲೈನ್ ಆವೃತ್ತಿ ಅನ್ನು ವೀಕ್ಷಿಸಲಾಗುತ್ತಿದೆ</translation>
 <translation id="7719038820139380048">ನಿಮ್ಮ ಆಸಕ್ತಿಗಳ ಆಧಾರದ ಮೇಲೆ ಕಂಟೆಂಟ್‌ ಅನ್ನು ಪಡೆಯಲು ಸೈನ್ ಇನ್ ಮಾಡಿ.</translation>
@@ -2356,6 +2372,7 @@
 <translation id="8706806585855470492">ಟ್ಯಾಬ್ ಗುಂಪುಗಳನ್ನು ಹಂಚಿಕೊಳ್ಳುವ, ಸೇರಿಕೊಳ್ಳುವ ಮತ್ತು ಅವುಗಳಲ್ಲಿ ಕೊಲಾಬೊರೇಟ್ ಮಾಡುವ ಅವಕಾಶ ನಿಮಗೆ ದೊರೆಯುತ್ತದೆ</translation>
 <translation id="8709409604518538305">ಟ್ಯಾಬ್‌ಗಳನ್ನು ಮುಚ್ಚಲಾಗಿದೆ</translation>
 <translation id="8712637175834984815">ಅರ್ಥವಾಯಿತು</translation>
+<translation id="8717519179050551968">ಕಡಿಮೆ ಪೇಸ್ಟ್ ಮಾಡಿ, ಹೆಚ್ಚು ಬ್ರೌಸ್ ಮಾಡಿ</translation>
 <translation id="8717864919010420084">ಲಿಂಕ್ ನಕಲಿಸಿ</translation>
 <translation id="8722229818691036192">ಈ ಸಾಧನದಲ್ಲಿನ ಖಾತೆಗಳು</translation>
 <translation id="8722649775263832315">Google Lens ಮೂಲಕ ಏನನ್ನಾದರೂ ಹುಡುಕಲು ಟ್ಯಾಪ್ ಮಾಡಿ ಅಥವಾ ಹೈಲೈಟ್ ಮಾಡಿ</translation>
@@ -2386,6 +2403,7 @@
 <translation id="8796634520835503150">ರೀಡಿಂಗ್ ಮೋಡ್ ಲಭ್ಯವಿದೆ</translation>
 <translation id="8803526663383843427">ಆನ್ ಆಗಿರುವಾಗ</translation>
 <translation id="8803639129939845298">ಸುರಕ್ಷಿತ</translation>
+<translation id="8809212245338455710"><ph name="AI_TIER_NAME" /> ಸದಸ್ಯತ್ವ</translation>
 <translation id="8813277370772331957">ನಂತರ ನನಗೆ ಜ್ಞಾಪಿಸಿ</translation>
 <translation id="8814308045751067027">Live ಅನ್ನು ಬಳಸಲು, ಸೆಟ್ಟಿಂಗ್‌ಗಳಲ್ಲಿ ನಿಮ್ಮ ಮೈಕ್ರೊಫೋನ್‌ಗೆ Chrome ಆ್ಯಕ್ಸೆಸ್ ಅನ್ನು ನೀಡಿ</translation>
 <translation id="8814719628147284151">ಮುಂದುವರಿಸಿ</translation>
@@ -2397,6 +2415,7 @@
 <translation id="882557203579758546">ಪುಟದಲ್ಲಿ ಹುಡುಕಿ…</translation>
 <translation id="8829809207373502270">ಈ ಪಾಸ್‌ಕೀ ಇನ್ನು ಮುಂದೆ ಕಾರ್ಯನಿರ್ವಹಿಸುವುದಿಲ್ಲ. ಇದನ್ನು <ph name="WEBSITE" /> ನಿಂದ ಅಳಿಸಲಾಗಿದೆ ಹಾಗೂ ಶೀಘ್ರದಲ್ಲೇ ಇಲ್ಲಿಂದಲೂ ಅಳಿಸಲಾಗುತ್ತದೆ. <ph name="BEGIN_LINK" />ಪಾಸ್‌ಕೀಗಳ ಕುರಿತು<ph name="END_LINK" /></translation>
 <translation id="8831208860914609320">ಎಲ್ಲಾ ನಿಷ್ಕ್ರಿಯ ಟ್ಯಾಬ್‌ಗಳನ್ನು ಮುಚ್ಚಿರಿ</translation>
+<translation id="8831871601813227635">ನಮ್ಮ <ph name="BEGIN_LINK" />ನಿಯಮಗಳು<ph name="END_LINK" />, <ph name="BEGIN_LINK" />ಕೊರಿಯನ್ ಸ್ಥಳ ನಿಯಮಗಳು<ph name="END_LINK" /> ಮತ್ತು <ph name="BEGIN_LINK" />ಗೌಪ್ಯತಾ ಸೂಚನೆ<ph name="END_LINK" /> ಅನ್ವಯವಾಗುತ್ತವೆ. ಚಾಟ್‌ಗಳನ್ನು ರಿವ್ಯೂ ಮಾಡಲಾಗುತ್ತದೆ ಮತ್ತು Google AI ಅನ್ನು ಸುಧಾರಿಸಲು ಬಳಸಲಾಗುತ್ತದೆ. Gemini ಎಂಬುದು AI ಆಗಿದ್ದು, ಜನರ ಕುರಿತಾದ ವಿಚಾರದಲ್ಲಿಯೂ ಸೇರಿದಂತೆ ತಪ್ಪುಗಳನ್ನು ಮಾಡಬಹುದು. ಕೆಲವು ಕಂಟೆಂಟ್ ಎಲ್ಲರಿಗೂ ಸೂಕ್ತವಲ್ಲದಿರಬಹುದು. ನಿಮ್ಮ ಸ್ಥಳದ ಕುರಿತಾದ ಮಾಹಿತಿ ಸೇರಿದಂತೆ <ph name="BEGIN_LINK" />ನಿಮ್ಮ ಚಟುವಟಿಕೆಯನ್ನು ನೀವು ನಿರ್ವಹಿಸಬಹುದು<ph name="END_LINK" />. <ph name="BEGIN_LINK" />ನಿಮ್ಮ ಆಯ್ಕೆಗಳ ಕುರಿತು ಇನ್ನಷ್ಟು ತಿಳಿಯಿರಿ<ph name="END_LINK" /></translation>
 <translation id="8837654851594567190">ಪ್ರಕಾಶಕರ ಪ್ರಕಾರ ವಿಂಗಡಿಸಿ</translation>
 <translation id="884351711508006491">ನಿಮ್ಮ ಮಾಹಿತಿಯನ್ನು ನಿಮ್ಮ ಸಾಧನದಲ್ಲಿ ಸೇವ್ ಮಾಡಲಾಗಿದೆ.</translation>
 <translation id="8844136307393039959">ನೀವು ಟ್ರ್ಯಾಕ್ ಮಾಡುತ್ತಿರುವ ಉತ್ಪನ್ನದ ದರ ಇಳಿಕೆ</translation>
@@ -2493,6 +2512,7 @@
 <translation id="9148126808321036104">ಪುನಃ ಸೈನ್ ಇನ್  ಆಗಿ</translation>
 <translation id="9149866541089851383">ಎಡಿಟ್...</translation>
 <translation id="9152637745605628097">ಥೀಮ್‌ಗಳು, ಬಣ್ಣಗಳಿಂದ ಆಯ್ಕೆಮಾಡಿ ಅಥವಾ ಚಿತ್ರವನ್ನು ಅಪ್‌ಲೋಡ್ ಮಾಡಿ</translation>
+<translation id="9153159728062222866">ಕಾಪಿ ಮತ್ತು ಪೇಸ್ಟ್ ಅನ್ನು ಸ್ಕಿಪ್ ಮಾಡಿ</translation>
 <translation id="9159628751968616911">ವೆಬ್‌ಪುಟವನ್ನು ಕಳುಹಿಸಿ</translation>
 <translation id="9162412286847966593">ಜನರೇಟಿವ್ AI ಮಾಡಲ್‌ಗಳನ್ನು ಸುಧಾರಿಸಲು ನಿಮ್ಮ ಸಂಸ್ಥೆಯ ಡೇಟಾ ಮತ್ತು ರೆಕಾರ್ಡಿಂಗ್‌ಗಳನ್ನು ಬಳಸಲಾಗುವುದಿಲ್ಲ. <ph name="BEGIN_LINK" />ನಿಮ್ಮ ಗೌಪ್ಯತೆ ಮತ್ತು Gemini<ph name="END_LINK" /></translation>
 <translation id="9162432979321511934">ಆಟೋಫಿಲ್ ಪಾಸ್‌ವರ್ಡ್‌ಗಳನ್ನು ಆನ್ ಮಾಡಿ</translation>

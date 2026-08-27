@@ -491,6 +491,7 @@ IN_PROC_BROWSER_TEST_P(PopupViewViewsBrowsertest, SearchBarViewProvided) {
   ShowAndVerifyUi(
       /*popup_has_parent=*/false,
       AutofillPopupView::SearchBarConfig{.placeholder = u"Search",
+                                         .initial_value = {},
                                          .no_results_message = u""});
 }
 
@@ -500,6 +501,7 @@ IN_PROC_BROWSER_TEST_P(PopupViewViewsBrowsertest,
   ShowAndVerifyUi(
       /*popup_has_parent=*/false,
       AutofillPopupView::SearchBarConfig{.placeholder = u"Search",
+                                         .initial_value = {},
                                          .no_results_message = u""});
 }
 
@@ -510,9 +512,10 @@ IN_PROC_BROWSER_TEST_P(PopupViewViewsBrowsertest,
       {SuggestionType::kSeparator, SuggestionType::kManageAddress});
   ON_CALL(controller(), HasFilteredOutSuggestions).WillByDefault(Return(true));
   ShowAndVerifyUi(
-      /*popup_has_parent=*/false,
-      AutofillPopupView::SearchBarConfig{
-          .placeholder = u"Search", .no_results_message = u"No suggestions"});
+      /*popup_has_parent=*/false, AutofillPopupView::SearchBarConfig{
+                                      .placeholder = u"Search",
+                                      .initial_value = {},
+                                      .no_results_message = u"No suggestions"});
 }
 
 IN_PROC_BROWSER_TEST_P(PopupViewViewsBrowsertest, InvokeUi_BnplFootnote) {
@@ -555,6 +558,7 @@ IN_PROC_BROWSER_TEST_P(PopupViewViewsBrowsertest, InvokeUi_AtMemoryFetching) {
   ShowAndVerifyUi(
       /*popup_has_parent=*/false,
       AutofillPopupView::SearchBarConfig{.placeholder = u"Find and fill",
+                                         .initial_value = {},
                                          .no_results_message = u""});
 }
 
@@ -577,6 +581,26 @@ IN_PROC_BROWSER_TEST_P(PopupViewViewsBrowsertest,
   Suggestion notice_suggestion(SuggestionType::kPersonalContextNotice);
   PrepareSuggestions({notice_suggestion});
   ShowAndVerifyUi();
+}
+
+IN_PROC_BROWSER_TEST_P(PopupViewViewsBrowsertest, InvokeUi_AutofillAi_SubMenu) {
+  Suggestion remove_suggestion(
+      l10n_util::GetStringUTF16(IDS_AUTOFILL_AI_REMOVE_INFO),
+      SuggestionType::kRemoveAutofillAi);
+  remove_suggestion.icon = Suggestion::Icon::kClose;
+  PrepareSuggestions({std::move(remove_suggestion)});
+  ShowAndVerifyUi(/*popup_has_parent=*/true);
+}
+
+IN_PROC_BROWSER_TEST_P(PopupViewViewsBrowsertest,
+                       InvokeUi_AutofillAi_SubMenu_Selected) {
+  Suggestion remove_suggestion(
+      l10n_util::GetStringUTF16(IDS_AUTOFILL_AI_REMOVE_INFO),
+      SuggestionType::kRemoveAutofillAi);
+  remove_suggestion.icon = Suggestion::Icon::kClose;
+  PrepareSuggestions({std::move(remove_suggestion)});
+  PrepareSelectedCell(CellIndex{0, CellType::kContent});
+  ShowAndVerifyUi(/*popup_has_parent=*/true);
 }
 
 INSTANTIATE_TEST_SUITE_P(All,

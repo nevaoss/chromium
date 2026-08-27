@@ -9,9 +9,11 @@
 #include <vector>
 
 #include "base/base64.h"
+#include "base/command_line.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/logging.h"
+#include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/thread_pool.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
@@ -267,10 +269,9 @@ void AiOverlayDialogPageHandler::CaptureRawViewportRegion(
     return;
   }
 
-  gfx::Rect tab_bounds = web_contents->GetContainerBounds();
-  gfx::Rect crop_rect_logical(x, y, width, height);
-  crop_rect_logical.Intersect(
-      gfx::Rect(0, 0, tab_bounds.width(), tab_bounds.height()));
+  gfx::Rect crop_rect_logical =
+      gfx::IntersectRects(gfx::Rect(web_contents->GetContainerBounds().size()),
+                          gfx::Rect(x, y, width, height));
 
   float scale = view->GetDeviceScaleFactor();
 
@@ -312,24 +313,73 @@ void AiOverlayDialogPageHandler::SetRememberedNote(
     std::move(callback).Run(false);
     return;
   }
-  if (note->value.empty()) {
-    remembered_notes_.erase(note->key);
-  } else {
-    remembered_notes_[note->key] = note->value;
+  auto* controller = AiOverlayDialogController::From(browser_);
+  if (!controller) {
+    std::move(callback).Run(false);
+    return;
   }
+  controller->SetRememberedNote(note->key, note->value);
   std::move(callback).Run(true);
 }
 
 void AiOverlayDialogPageHandler::GetRememberedNotes(
     GetRememberedNotesCallback callback) {
+  auto* controller = AiOverlayDialogController::From(browser_);
+  if (!controller) {
+    std::move(callback).Run({});
+    return;
+  }
+
   std::vector<ai_overlay_dialog::mojom::RememberedNotePtr> result;
-  result.reserve(remembered_notes_.size());
-  for (const auto& [key, value] : remembered_notes_) {
+  result.reserve(controller->remembered_notes().size());
+  for (const auto& [key, value] : controller->remembered_notes()) {
     auto note = ai_overlay_dialog::mojom::RememberedNote::New();
     note->key = key;
     note->value = value;
     result.push_back(std::move(note));
   }
   std::move(callback).Run(std::move(result));
+}
+
+void AiOverlayDialogPageHandler::SaveDebugFile(
+    ai_overlay_dialog::mojom::DebugFileType type,
+    const std::string& content) {
+  const base::CommandLine* command_line =
+      base::CommandLine::ForCurrentProcess();
+  if (!command_line->HasSwitch("enable-ttc-debug-logs")) {
+    return;
+  }
+
+  base::FilePath filename;
+  bool is_image = false;
+  switch (type) {
+    case ai_overlay_dialog::mojom::DebugFileType::kPrimingTurnMarkdown:
+      filename = base::FilePath(FILE_PATH_LITERAL("priming_turn.md"));
+      break;
+    case ai_overlay_dialog::mojom::DebugFileType::kImage:
+      filename = base::FilePath(FILE_PATH_LITERAL("image.jpg"));
+      is_image = true;
+      break;
+  }
+
+  base::FilePath dir_path(FILE_PATH_LITERAL("/tmp/ttc"));
+  base::CreateDirectory(dir_path);
+  base::FilePath file_path = dir_path.Append(filename);
+
+  std::string data_to_write = content;
+  std::string base64_prefix = "data:image/jpeg;base64,";
+  if (base::StartsWith(content, base64_prefix)) {
+    std::string decoded;
+    if (base::Base64Decode(content.substr(base64_prefix.size()), &decoded)) {
+      data_to_write = decoded;
+    }
+  } else if (is_image) {
+    std::string decoded;
+    if (base::Base64Decode(content, &decoded)) {
+      data_to_write = decoded;
+    }
+  }
+
+  base::WriteFile(file_path, data_to_write);
 }
 }  // namespace ttc

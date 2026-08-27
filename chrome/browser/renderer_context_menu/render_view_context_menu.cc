@@ -16,6 +16,7 @@
 
 #include "base/check.h"
 #include "base/command_line.h"
+#include "base/containers/fixed_flat_map.h"
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
@@ -478,14 +479,16 @@ enum class UmaEnumIdLookupType {
   ContextSpecificEnumId,
 };
 
-const std::map<int, int>& GetIdcToUmaMap(UmaEnumIdLookupType type) {
+// Returns the UMA enum value for `key` in the map for `type`, or -1 if not
+// found.
+int UmaEnumForCommand(int key, UmaEnumIdLookupType type) {
   // These maps are from IDC_* -> UMA value. Never alter UMA ids. You may remove
   // items, but add a line to keep the old value from being reused.
 
   // LINT.IfChange(RenderViewContextMenuItem)
   // These UMA values are for the RenderViewContextMenuItem enum, used for
   // the RenderViewContextMenu.Shown and RenderViewContextMenu.Used histograms.
-  static const base::NoDestructor<std::map<int, int>> kGeneralMap(
+  static constexpr auto kGeneralMap = base::MakeFixedFlatMap<int, int>(
       {// NB: UMA values for 0 and 1 are detected using
        // RenderViewContextMenu::IsContentCustomCommandId() and
        // ContextMenuMatcher::IsExtensionsCustomCommandId()
@@ -660,7 +663,7 @@ const std::map<int, int>& GetIdcToUmaMap(UmaEnumIdLookupType type) {
   // LINT.IfChange(ContextMenuOptionDesktop)
   // These UMA values are for the ContextMenuOptionDesktop enum, used for
   // the ContextMenu.SelectedOptionDesktop histograms.
-  static const base::NoDestructor<std::map<int, int>> kSpecificMap(
+  static constexpr auto kSpecificMap = base::MakeFixedFlatMap<int, int>(
       {{IDC_CONTENT_CONTEXT_OPENLINKNEWTAB, 0},
        {IDC_CONTENT_CONTEXT_OPENLINKOFFTHERECORD, 1},
        {IDC_CONTENT_CONTEXT_COPYLINKLOCATION, 2},
@@ -704,12 +707,21 @@ const std::map<int, int>& GetIdcToUmaMap(UmaEnumIdLookupType type) {
        {kUmaMaxValueKey, 35}});
   // LINT.ThenChange(//tools/metrics/histograms/metadata/ui/enums.xml:ContextMenuOptionDesktop)
 
-  return *(type == UmaEnumIdLookupType::GeneralEnumId ? kGeneralMap
-                                                      : kSpecificMap);
+  switch (type) {
+    case UmaEnumIdLookupType::GeneralEnumId: {
+      auto it = kGeneralMap.find(key);
+      return it != kGeneralMap.end() ? it->second : -1;
+    }
+    case UmaEnumIdLookupType::ContextSpecificEnumId: {
+      auto it = kSpecificMap.find(key);
+      return it != kSpecificMap.end() ? it->second : -1;
+    }
+  }
+  NOTREACHED();
 }
 
 int GetUmaValueMax(UmaEnumIdLookupType type) {
-  return GetIdcToUmaMap(type).find(kUmaMaxValueKey)->second;
+  return UmaEnumForCommand(kUmaMaxValueKey, type);
 }
 
 // Collapses large ranges of ids before looking for UMA enum.
@@ -740,7 +752,7 @@ int CollapseCommandsForUMA(int id) {
   return id;
 }
 
-// Returns UMA enum value for command specified by |id| or -1 if not found.
+// Returns UMA enum value for command specified by `id` or -1 if not found.
 int FindUMAEnumValueForCommand(int id, UmaEnumIdLookupType type) {
   if (RenderViewContextMenu::IsContentCustomCommandId(id)) {
     return 0;
@@ -751,13 +763,7 @@ int FindUMAEnumValueForCommand(int id, UmaEnumIdLookupType type) {
   }
 
   id = CollapseCommandsForUMA(id);
-  const auto& map = GetIdcToUmaMap(type);
-  auto it = map.find(id);
-  if (it == map.end()) {
-    return -1;
-  }
-
-  return it->second;
+  return UmaEnumForCommand(id, type);
 }
 
 // Returns true if the command id is for opening a link.
@@ -1425,14 +1431,26 @@ void RenderViewContextMenu::InitMenu() {
   }
 #endif  // !BUILDFLAG(IS_CHROMEOS)
 
-  // Spell check and writing direction options are not currently supported by
-  // pepper plugins.
-  if (editable && params_.misspelled_word.empty() &&
-      !content_type_->SupportsGroup(
-          ContextMenuContentType::ITEM_GROUP_MEDIA_PLUGIN)) {
+  // Spell check, language settings, and writing direction.
+  if (editable && params_.misspelled_word.empty()) {
     menu_model_.AddSeparator(ui::NORMAL_SEPARATOR);
-    AppendLanguageSettings();
-    AppendPlatformEditableItems();
+
+    // Spell check and language settings are not supported by media plugins.
+    if (!content_type_->SupportsGroup(
+            ContextMenuContentType::ITEM_GROUP_MEDIA_PLUGIN)) {
+      AppendLanguageSettings();
+    }
+
+    // Only append writing direction options if they are supported by
+    // the focused element (HTML text fields or editable plugins).
+    if ((params_.writing_direction_default &
+         blink::ContextMenuData::kCheckableMenuItemEnabled) ||
+        (params_.writing_direction_left_to_right &
+         blink::ContextMenuData::kCheckableMenuItemEnabled) ||
+        (params_.writing_direction_right_to_left &
+         blink::ContextMenuData::kCheckableMenuItemEnabled)) {
+      AppendPlatformEditableItems();
+    }
   }
 
   if (content_type_->SupportsGroup(
@@ -1607,7 +1625,7 @@ void RenderViewContextMenu::RecordUsedItem(int id) {
   int enum_id =
       FindUMAEnumValueForCommand(id, UmaEnumIdLookupType::GeneralEnumId);
   if (enum_id == -1) {
-    NOTREACHED() << "Update GetIdcToUmaMap. Unhandled IDC: " << id;
+    NOTREACHED() << "Update UmaEnumForCommand(). Unhandled IDC: " << id;
   }
 
   UMA_HISTOGRAM_EXACT_LINEAR(
@@ -1727,7 +1745,7 @@ void RenderViewContextMenu::RecordShownItem(int id, bool is_submenu) {
   if (enum_id == -1) {
     // Just warning here. It's harder to maintain list of all possibly
     // visible items than executable items.
-    DLOG(ERROR) << "Update GetIdcToUmaMap. Unhandled IDC: " << id;
+    DLOG(ERROR) << "Update UmaEnumForCommand(). Unhandled IDC: " << id;
     return;
   }
 
@@ -4891,12 +4909,14 @@ void RenderViewContextMenu::ExecOpenCompose() {
 
 void RenderViewContextMenu::ExecOpenInReadAnything() {
   read_anything::ReadAnythingEntryPointController::ShowUI(
-      GetBrowser(), ReadAnythingOpenTrigger::kReadAnythingContextMenu);
+      GetBrowser(),
+      read_anything::mojom::ReadAnythingOpenTrigger::kReadAnythingContextMenu);
 }
 
 void RenderViewContextMenu::ExecListenToThisPage() {
   read_anything::ReadAnythingEntryPointController::ShowUI(
-      GetBrowser(), ReadAnythingOpenTrigger::kListenToThisPageContextMenu);
+      GetBrowser(), read_anything::mojom::ReadAnythingOpenTrigger::
+                        kListenToThisPageContextMenu);
 }
 
 void RenderViewContextMenu::ExecSaveToMemoryBanks() {

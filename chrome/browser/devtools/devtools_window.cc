@@ -1330,9 +1330,8 @@ void DevToolsWindow::OnPolicyUpdated(const policy::PolicyNamespace& ns,
   OnDevToolsPolicyChanged();
 }
 
-// static
-bool DevToolsWindow::AllowDevToolsFor(Profile* profile,
-                                      content::WebContents* web_contents) {
+namespace {
+bool IsDevToolsAllowedForProfile(Profile* profile) {
   // Don't allow DevTools UI in kiosk mode, because the DevTools UI would be
   // broken there. See https://crbug.com/41191065 for context.
   if (base::CommandLine::ForCurrentProcess()->HasSwitch(switches::kKioskMode)) {
@@ -1348,7 +1347,22 @@ bool DevToolsWindow::AllowDevToolsFor(Profile* profile,
     return false;
   }
 
-  return IsInspectionAllowed(profile, web_contents);
+  return true;
+}
+}  // namespace
+
+// static
+bool DevToolsWindow::AllowDevToolsFor(Profile* profile,
+                                      content::WebContents* web_contents) {
+  return IsDevToolsAllowedForProfile(profile) &&
+         IsInspectionAllowed(profile, web_contents);
+}
+
+// static
+bool DevToolsWindow::AllowDevToolsFor(Profile* profile,
+                                      content::DevToolsAgentHost* agent_host) {
+  return IsDevToolsAllowedForProfile(profile) &&
+         IsInspectionAllowed(profile, agent_host);
 }
 
 // static
@@ -1703,7 +1717,17 @@ void DevToolsWindow::ActivateWindow() {
 }
 
 void DevToolsWindow::CloseWindow() {
-  Close(DevToolsClosedByAction::kCloseButton);
+  if (is_docked_) {
+    Close(DevToolsClosedByAction::kCloseButton);
+  } else {
+#if BUILDFLAG(IS_ANDROID)
+    main_web_contents_->Close();
+#else
+    if (browser_) {
+      browser_->GetWindow()->Close();
+    }
+#endif  // BUILDFLAG(IS_ANDROID)
+  }
 }
 
 void DevToolsWindow::Close(DevToolsClosedByAction closed_by) {

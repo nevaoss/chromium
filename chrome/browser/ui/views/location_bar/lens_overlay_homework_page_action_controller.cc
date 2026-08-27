@@ -13,12 +13,13 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/call_to_action/call_to_action_lock.h"
+#include "chrome/browser/ui/lens/lens_overlay_edu_utils.h"
 #include "chrome/browser/ui/lens/lens_overlay_entry_point_controller.h"
 #include "chrome/browser/ui/lens/lens_search_controller.h"
-#include "chrome/browser/ui/lens/lens_search_feature_flag_utils.h"
 #include "chrome/browser/ui/location_bar/location_bar.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/interaction/browser_elements_views.h"
+#include "chrome/browser/ui/views/location_bar/location_bar_view.h"
 #include "chrome/browser/user_education/user_education_service.h"
 #include "chrome/common/buildflags.h"
 #include "components/lens/lens_features.h"
@@ -129,8 +130,19 @@ bool LensOverlayHomeworkPageActionController::ShouldShow() {
     return false;
   }
 
-  const LocationBar* location_bar =
-      lens_overlay_entry_point_controller->location_bar();
+  const LocationBar* location_bar = nullptr;
+  // Legacy lookup path; only still around for performance experiment reasons.
+  if (!base::FeatureList::IsEnabled(
+          features::kLensOverlayHomeworkPageActionFocusOptimization)) {
+    location_bar = static_cast<LocationBarView*>(
+        BrowserElementsViews::From(tab_->GetBrowserWindowInterface())
+            ->GetView(kLocationBarElementId));
+  }
+
+  if (!location_bar) {
+    location_bar = lens_overlay_entry_point_controller->location_bar();
+  }
+
   if (!location_bar) {
     return false;
   }

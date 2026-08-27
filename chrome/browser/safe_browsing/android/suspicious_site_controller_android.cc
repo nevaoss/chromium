@@ -9,6 +9,7 @@
 #include "base/metrics/histogram_functions.h"
 #include "base/no_destructor.h"
 #include "base/strings/stringprintf.h"
+#include "base/types/pass_key.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/content_settings/host_content_settings_map_factory.h"
 #include "chrome/browser/history/history_service_factory.h"
@@ -79,13 +80,6 @@ SuspiciousSiteControllerAndroid::SuspiciousSiteControllerAndroid(
 }
 
 SuspiciousSiteControllerAndroid::~SuspiciousSiteControllerAndroid() {
-  if (web_contents() && is_observing_async_check_tracker_) {
-    auto* tracker = AsyncCheckTracker::FromWebContents(web_contents());
-    if (tracker) {
-      tracker->RemoveObserver(this);
-    }
-  }
-
   // If the dialog was shown, log the tracked warning outcome directly.
   if (has_shown_) {
     base::UmaHistogramEnumeration(
@@ -100,6 +94,7 @@ SuspiciousSiteControllerAndroid::~SuspiciousSiteControllerAndroid() {
         g_browser_process->safe_browsing_service();
     if (sb_service && sb_service->ui_manager()) {
       sb_service->ui_manager()->RemoveAllowlistUrlSetThreatType(
+          base::PassKey<SuspiciousSiteControllerAndroid>(),
           current_suspicious_url_, navigation_id_, web_contents(),
           /*from_pending_only=*/true,
           SBThreatType::SB_THREAT_TYPE_WARNABLE_SUSPICIOUS_SITE);
@@ -120,9 +115,8 @@ void SuspiciousSiteControllerAndroid::ShowForWebContents(
   controller->is_suspended_ = true;
 
   auto* tracker = AsyncCheckTracker::FromWebContents(web_contents);
-  if (tracker && !controller->is_observing_async_check_tracker_) {
-    tracker->AddObserver(controller);
-    controller->is_observing_async_check_tracker_ = true;
+  if (tracker && !controller->async_check_observation_.IsObserving()) {
+    controller->async_check_observation_.Observe(tracker);
   }
 
   controller->MaybeShowDialog();
@@ -160,7 +154,7 @@ void SuspiciousSiteControllerAndroid::OnAsyncSafeBrowsingCheckCompleted() {
 
 void SuspiciousSiteControllerAndroid::
     OnAsyncSafeBrowsingCheckTrackerDestructed() {
-  // AsyncCheckTracker is being destroyed; no action required.
+  async_check_observation_.Reset();
 }
 
 void SuspiciousSiteControllerAndroid::MaybeShowDialog() {
@@ -248,6 +242,7 @@ void SuspiciousSiteControllerAndroid::ShowDialog() {
     // first before setting the new one.
     if (!current_suspicious_url_.is_empty()) {
       sb_service->ui_manager()->RemoveAllowlistUrlSetThreatType(
+          base::PassKey<SuspiciousSiteControllerAndroid>(),
           current_suspicious_url_, navigation_id_, web_contents(),
           /*from_pending_only=*/true,
           SBThreatType::SB_THREAT_TYPE_WARNABLE_SUSPICIOUS_SITE);
@@ -264,7 +259,7 @@ void SuspiciousSiteControllerAndroid::ShowDialog() {
   if (sb_service && sb_service->ui_manager()) {
     // Add the suspicious site URL to AllowlistUrlSet with pending=true.
     // AllowlistUrlSet stores the threat type for WebContents, enabling
-    // ChromeSecurityStateTabHelper to return
+    // the chrome_security_state computation to return
     // MALICIOUS_CONTENT_STATUS_WARNABLE_SUSPICIOUS_SITE so the red warning icon
     // remains active in the Omnibox and Page Info even if the dialog is closed.
     sb_service->ui_manager()->AddToAllowlistUrlSet(

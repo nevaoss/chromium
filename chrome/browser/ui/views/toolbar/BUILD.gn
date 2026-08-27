@@ -83,6 +83,7 @@ source_set("toolbar") {
     "//chrome/browser/ui/views/frame:toolbar_button_provider",
     "//chrome/browser/ui/views/glic",
     "//chrome/browser/ui/views/location_bar",
+    "//chrome/browser/ui/views/tabs/hovercard:hovercard_helpers",
     "//chrome/browser/ui/webui/webui_toolbar",
     "//chrome/browser/ui/webui/webui_toolbar/adapters",
     "//chrome/browser/ui/webui/webui_toolbar/utils",
@@ -229,6 +230,7 @@ source_set("impl") {
     "//chrome/browser/ui/views/app_menu:impl",
     "//chrome/browser/ui/views/contextual_tasks",
     "//chrome/browser/ui/views/download",
+    "//chrome/browser/ui/views/extensions:extensions_views_utils",
     "//chrome/browser/ui/views/frame:app_menu_button_observer",
     "//chrome/browser/ui/views/frame:toolbar_button_provider",
     "//chrome/browser/ui/views/glic",
@@ -397,6 +399,8 @@ if (!is_android) {
     if (toolkit_views) {
       sources += [
         "toolbar_view_browsertest.cc",
+        "webui_home_control_test_base.cc",
+        "webui_home_control_test_base.h",
         "webui_pinned_toolbar_actions_browsertest.cc",
         "webui_pinned_toolbar_actions_test_base.cc",
         "webui_pinned_toolbar_actions_test_base.h",
@@ -448,6 +452,9 @@ if (!is_android && !is_chromeos_device) {
         "toolbar_view_interactive_uitest.cc",
         "webui_and_views_toolbar_interactive_uitest_base.cc",
         "webui_and_views_toolbar_interactive_uitest_base.h",
+        "webui_home_control_interactive_uitest.cc",
+        "webui_home_control_test_base.cc",
+        "webui_home_control_test_base.h",
         "webui_pinned_toolbar_actions_interactive_uitest.cc",
         "webui_pinned_toolbar_actions_test_base.cc",
         "webui_pinned_toolbar_actions_test_base.h",
@@ -520,7 +527,6 @@ if (toolkit_views) {
     testonly = true
 
     sources = [
-      "pinned_toolbar_actions_container_unittest.cc",
       "reload_button_unittest.cc",
       "toolbar_action_view_unittest.cc",
       "toolbar_button_unittest.cc",

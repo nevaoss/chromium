@@ -17,6 +17,8 @@
 #include "base/memory/raw_ref.h"
 #include "base/memory/weak_ptr.h"
 #include "base/scoped_observation.h"
+#include "base/time/time.h"
+#include "base/timer/timer.h"
 #include "base/types/expected.h"
 #include "base/types/optional_ref.h"
 #include "components/autofill/core/browser/at_memory/at_memory_metrics_recorder.h"
@@ -64,7 +66,6 @@ class AtMemoryManager : public CreditCardAccessManager::Observer {
       AutofillSuggestionTriggerSource trigger_source,
       base::optional_ref<const AutofillSuggestionDelegate::SuggestionMetadata>
           parent_suggestion_metadata,
-      bool is_context_secure,
       UpdateSuggestionsCallback update_callback,
       ukm::SourceId ukm_source_id);
 
@@ -119,11 +120,12 @@ class AtMemoryManager : public CreditCardAccessManager::Observer {
   void MaybeAppendPersonalContextNotice(
       std::vector<Suggestion>& suggestions) const;
 
-  // Creates the AI disclosure suggestion.
-  static Suggestion CreateAiDisclosureSuggestion();
+  // Appends the AI disclosure to the suggestions if necessary.
+  static void MaybeAppendAiDisclosure(std::vector<Suggestion>& suggestions);
 
-  // Creates the fetching / loading throbber suggestion.
-  static Suggestion CreateFetchingSuggestion();
+  // Creates the fetching / loading throbber suggestion. `index` determines
+  // which string from the fetching cycle is used.
+  static Suggestion CreateFetchingSuggestion(size_t index = 0);
 
   // Creates a catch-all suggestion to display when AtMemory search fails due to
   // an unexpected or generic error.
@@ -163,11 +165,38 @@ class AtMemoryManager : public CreditCardAccessManager::Observer {
   // Sends the given suggestions to the UI.
   void SendSuggestions(std::vector<Suggestion> suggestions);
 
-  // Shows the fetching suggestion in the UI.
-  void ShowFetchingSuggestion();
+  // Advances to the next fetching suggestion message and updates the UI.
+  void AdvanceFetchingSuggestion();
 
-  // Clears all currently shown suggestions in the UI.
-  void ClearSuggestions();
+  // Shows all the suggestions in the empty state.
+  // These suggestions will be in order:
+  // * kPersonalContextNotice (optional)
+  void ShowEmptyQuerySuggestions();
+
+  // Shows all the suggestions in the query typing state.
+  // These suggestions will be in order:
+  // * kAtMemorySearchAffordance | kAtMemoryNoConnection
+  // * kAtMemoryAiDisclosure | kPersonalContextNotice
+  void ShowQueryTypingSuggestions(const std::u16string& query);
+
+  // Shows all the suggestions in the fetching state.
+  // These suggestions will be in order:
+  // * kAtMemoryFetching
+  // * kPersonalContextNotice (optional)
+  void ShowFetchingStateSuggestions();
+
+  // Shows all the suggestions in the results retrieved state.
+  // These suggestions will be in order:
+  // * kPersonalContextNotice (optional)
+  // * kAtMemorySearchResult (repeated)
+  void ShowResultsRetrievedStateSuggestions(const MemorySearchResults& result);
+
+  // Shows all the suggestions in the no results retrieved state.
+  // These suggestions will be in order:
+  // * kPersonalContextNotice (optional)
+  // * suggestion describing the error
+  void ShowNoResultsStateSuggestions(const std::u16string& query,
+                                     const MemorySearchResults& result);
 
   // Fills the unmasked IBAN value after fetching it. Returns `IsAsync(true)` if
   // the operation involves reauthentication or server communication.
@@ -257,8 +286,6 @@ class AtMemoryManager : public CreditCardAccessManager::Observer {
         AutofillSuggestionTriggerSource::kUnspecified;
     UpdateSuggestionsCallback update_callback;
     std::unique_ptr<AtMemoryMetricsRecorder> metrics_recorder;
-    // Indicates whether the current tab and the form uses a secure connection.
-    bool is_context_secure = false;
     // Flag indicating that a search query is in progress.
     bool is_searching = false;
   };
@@ -275,6 +302,10 @@ class AtMemoryManager : public CreditCardAccessManager::Observer {
 
   // Origin of the target field for the active search session.
   url::Origin target_field_origin_;
+  // Timer used to rotate the fetching suggestions.
+  base::RepeatingTimer fetching_timer_;
+  // Index of the current fetching message to display.
+  size_t fetching_string_index_ = 0;
   // Factory for search queries, used to identify currently active query and
   // discard the old ones.
   base::WeakPtrFactory<AtMemoryManager> query_weak_ptr_factory_{this};

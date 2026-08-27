@@ -44,6 +44,8 @@ should be able to be added at any place in this file.
   <variant name=".kActionPrint" summary="Print action"/>
   <variant name=".kActionQrCodeGenerator" summary="QR code generator action"/>
   <variant name=".kActionRouteMedia" summary="Media router action"/>
+  <variant name=".kActionSendSharedTabGroupFeedback"
+      summary="Send shared tab group feedback action"/>
   <variant name=".kActionSendTabToSelf" summary="Send tab to self action"/>
   <variant name=".kActionShowAddresses" summary="Show addresses action"/>
   <variant name=".kActionShowAddressesBubbleOrPage"
@@ -61,6 +63,8 @@ should be able to be added at any place in this file.
   <variant name=".kActionShowTranslate" summary="Show translate action"/>
   <variant name=".kActionSidePanelShowBookmarks"
       summary="Show bookmarks side panel action"/>
+  <variant name=".kActionSidePanelShowContextualTasks"
+      summary="Show contextual tasks side panel action"/>
   <variant name=".kActionSidePanelShowHistory"
       summary="Show history side panel action"/>
   <variant name=".kActionSidePanelShowHistoryCluster"
@@ -4397,6 +4401,36 @@ should be able to be added at any place in this file.
     Recorded after checking for remote settings to import from another device.
     This happens the first time the user lands on the NTP or a URL page (after
     FRE or if a user arrives in Chrome through a URL intent).
+  </description>
+</action>
+
+<action name="Android.CrossDeviceSettingImport.NonNtp.Apply">
+  <owner>clank-app-team@google.com</owner>
+  <owner>jhimawan@google.com</owner>
+  <description>
+    Recorded when the user taps on the &quot;Apply&quot; button in the
+    cross-device settings import snackbar, to apply settings that affect non-NTP
+    pages (e.g. omnibox position and theme).
+  </description>
+</action>
+
+<action name="Android.CrossDeviceSettingImport.NonNtp.Redo">
+  <owner>clank-app-team@google.com</owner>
+  <owner>jhimawan@google.com</owner>
+  <description>
+    Recorded when the user taps on the &quot;Redo&quot; button in the
+    cross-device settings import snackbar, to redo applying settings that affect
+    non-NTP pages (e.g. omnibox position and theme).
+  </description>
+</action>
+
+<action name="Android.CrossDeviceSettingImport.NonNtp.Undo">
+  <owner>clank-app-team@google.com</owner>
+  <owner>jhimawan@google.com</owner>
+  <description>
+    Recorded when the user taps on the &quot;Undo&quot; button in the
+    cross-device settings import snackbar, to undo applying settings that affect
+    non-NTP pages (e.g. omnibox position and theme).
   </description>
 </action>
 
@@ -16259,6 +16293,14 @@ should be able to be added at any place in this file.
   <description>The Glic instance WebUI is warmed.</description>
 </action>
 
+<action name="Glic.Interaction.TabStripButton.UndoUnpin">
+  <owner>mklw@google.com</owner>
+  <description>
+    User tapped 'Undo' on the snackbar to undo unpinning the Glic button from
+    the tab strip.
+  </description>
+</action>
+
 <action name="Glic.Interaction.TabStripButton.UnpinnedInContextMenu">
   <owner>mklw@google.com</owner>
   <description>
@@ -17520,7 +17562,30 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="Indigo.PageAction.AnchoredMessage.Proactive.Show"
+    not_user_triggered="true">
+  <owner>jbroman@chromium.org</owner>
+  <owner>adithyas@chromium.org</owner>
+  <owner>baranerf@google.com</owner>
+  <description>
+    The indigo page action was displayed as a proactive anchored message.
+  </description>
+</action>
+
+<action name="Indigo.PageAction.AnchoredMessage.Reactive.Show">
+  <owner>jbroman@chromium.org</owner>
+  <owner>adithyas@chromium.org</owner>
+  <owner>baranerf@google.com</owner>
+  <description>
+    The indigo page action was displayed as a reactive anchored message.
+  </description>
+</action>
+
 <action name="Indigo.PageAction.Click">
+  <obsolete>
+    Deprecated M152. Replaced by Indigo.PageAction.SuggestionChip.Click and
+    Indigo.PageAction.AnchoredMessage.Click.
+  </obsolete>
   <owner>jbroman@chromium.org</owner>
   <owner>adithyas@chromium.org</owner>
   <owner>baranerf@google.com</owner>
@@ -17528,6 +17593,12 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Indigo.PageAction.Show" not_user_triggered="true">
+  <obsolete>
+    Deprecated M152. Replaced by
+    Indigo.PageAction.AnchoredMessage.Proactive.Show,
+    Indigo.PageAction.AnchoredMessage.Reactive.Show, and
+    Indigo.PageAction.SuggestionChip.Show.
+  </obsolete>
   <owner>jbroman@chromium.org</owner>
   <owner>adithyas@chromium.org</owner>
   <owner>baranerf@google.com</owner>
@@ -17535,6 +17606,11 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Indigo.PageAction.ShowAnchoredMessage" not_user_triggered="true">
+  <obsolete>
+    Deprecated M152. Replaced by
+    Indigo.PageAction.AnchoredMessage.Proactive.Show and
+    Indigo.PageAction.AnchoredMessage.Reactive.Show.
+  </obsolete>
   <owner>jbroman@chromium.org</owner>
   <owner>adithyas@chromium.org</owner>
   <owner>baranerf@google.com</owner>
@@ -17550,6 +17626,22 @@ should be able to be added at any place in this file.
   <description>
     User clicked the Indigo page action from a suggestion chip.
   </description>
+</action>
+
+<action name="Indigo.PageAction.SuggestionChip.Show" not_user_triggered="true">
+  <owner>jbroman@chromium.org</owner>
+  <owner>adithyas@chromium.org</owner>
+  <owner>baranerf@google.com</owner>
+  <description>
+    The indigo page action was displayed as a suggestion chip.
+  </description>
+</action>
+
+<action name="Indigo.Regenerate.Trigger">
+  <owner>jbroman@chromium.org</owner>
+  <owner>adithyas@chromium.org</owner>
+  <owner>baranerf@google.com</owner>
+  <description>User triggered the regenerate image flow.</description>
 </action>
 
 <action name="Indigo.ReplaceImage.Complete">
@@ -28437,6 +28529,24 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="MobileGeminiActiveTabAttached">
+  <owner>joepeplowski@google.com</owner>
+  <owner>bling-alchemy-eng@google.com</owner>
+  <description>
+    Reported when the active tab is attached by the user via a Floaty chip (e.g.
+    'Ask about this page') in a Gemini session. iOS only.
+  </description>
+</action>
+
+<action name="MobileGeminiActiveTabDetached">
+  <owner>joepeplowski@google.com</owner>
+  <owner>bling-alchemy-eng@google.com</owner>
+  <description>
+    Reported when the active tab is detached by the user via a Floaty chip in a
+    Gemini session. iOS only.
+  </description>
+</action>
+
 <action name="MobileGeminiCameraFlowBegan">
   <owner>joepeplowski@google.com</owner>
   <owner>bling-alchemy-eng@google.com</owner>
@@ -28946,11 +29056,47 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="MobileGeminiTabDetached">
+  <owner>joepeplowski@google.com</owner>
+  <owner>bling-alchemy-eng@google.com</owner>
+  <description>
+    Reported when a shared (non-active) tab is detached by the user from a
+    Floaty chip in a Gemini session. iOS only.
+  </description>
+</action>
+
 <action name="MobileGeminiTabPickerDismissed">
   <owner>joepeplowski@google.com</owner>
   <owner>bling-alchemy@google.com</owner>
   <description>
     Reported when the Tab Picker UI is dismissed in a Gemini session. iOS only.
+  </description>
+</action>
+
+<action name="MobileGeminiTabPickerErrorAttachmentLimit">
+  <owner>joepeplowski@google.com</owner>
+  <owner>bling-alchemy-eng@google.com</owner>
+  <description>
+    Reported when a snackbar error is shown due to the user trying to attach
+    more tabs than the limit in the Tab Picker in a Gemini session. iOS only.
+  </description>
+</action>
+
+<action name="MobileGeminiTabPickerErrorCannotAttachTab">
+  <owner>joepeplowski@google.com</owner>
+  <owner>bling-alchemy-eng@google.com</owner>
+  <description>
+    Reported when a snackbar error is shown due to the user attempting to attach
+    an ineligible tab in the Tab Picker in a Gemini session. iOS only.
+  </description>
+</action>
+
+<action name="MobileGeminiTabPickerErrorCannotReloadTab">
+  <owner>joepeplowski@google.com</owner>
+  <owner>bling-alchemy-eng@google.com</owner>
+  <description>
+    Reported when a snackbar error is shown due to a tab failing to reload in
+    the Tab Picker in a Gemini session. iOS only.
   </description>
 </action>
 
@@ -29084,6 +29230,14 @@ should be able to be added at any place in this file.
   <owner>gambard@chromium.org</owner>
   <description>
     User confirmed provided credentials in HTTP Authentication dialog. iOS only.
+  </description>
+</action>
+
+<action name="MobileHubExitViaButton">
+  <owner>polardz@google.com</owner>
+  <owner>clank-tab-dev@google.com</owner>
+  <description>
+    User exited the Hub (Grid Tab Switcher) by clicking the tab switcher button.
   </description>
 </action>
 
@@ -29730,6 +29884,20 @@ should be able to be added at any place in this file.
   <obsolete>Deprecated as of 3/2021</obsolete>
   <owner>gangwu@chromium.org</owner>
   <description>User pressed the back icon in the app menu.</description>
+</action>
+
+<action name="MobileMenuBookmarkBarAlwaysHide">
+  <owner>massan@google.com</owner>
+  <description>
+    User pressed 'Always hide' in the 'Bookmark bar' submenu in the app menu.
+  </description>
+</action>
+
+<action name="MobileMenuBookmarkBarAlwaysShow">
+  <owner>massan@google.com</owner>
+  <description>
+    User pressed 'Always show' in the 'Bookmark bar' submenu in the app menu.
+  </description>
 </action>
 
 <action name="MobileMenuBookmarkThisPage">
@@ -43276,6 +43444,15 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="Settings.OpenDefaultBrowserFromPassiveCell">
+  <owner>cheickcisse@google.com</owner>
+  <owner>bling-mony-pod@google.com</owner>
+  <description>
+    Reported when user opens the Default Browser Settings page from the Default
+    Browser Passive cell promo.
+  </description>
+</action>
+
 <action name="Settings.Privacy">
   <owner>thgreenfrog@chromium.org</owner>
   <owner>sczs@chromium.org</owner>
@@ -46589,6 +46766,15 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="Signin_AccountMenu_SubscriptionChip">
+  <owner>arthurmilchior@chromium.org</owner>
+  <owner>chrome-signin-mobile-team@google.com</owner>
+  <description>
+    Recorded when the user taps on the AI subscription chip in the account menu.
+    iOS only.
+  </description>
+</action>
+
 <action name="Signin_AccountPicker_Close">
   <owner>jlebel@chromium.org</owner>
   <owner>chrome-signin-mobile-team@google.com</owner>
@@ -47216,6 +47402,14 @@ should be able to be added at any place in this file.
   <owner>gogerald@chromium.org</owner>
   <description>
     Recorded when showing sign in entry in the cloud print preview page.
+  </description>
+</action>
+
+<action name="Signin_Impression_FromComposeboxDriveContextMenuOptionBubble">
+  <owner>chrome-signin-desktop-team@google.com</owner>
+  <description>
+    Recorded when the signin promo is shown from interacting with the Composebox
+    Drive context menu option.
   </description>
 </action>
 
@@ -48097,6 +48291,14 @@ should be able to be added at any place in this file.
   <description>
     Recorded on sign in start from access point
     signin_metrics::AccessPoint::kCollaborationTabGroup.
+  </description>
+</action>
+
+<action name="Signin_Signin_FromComposeboxDriveContextMenuOptionBubble">
+  <owner>chrome-signin-desktop-team@google.com</owner>
+  <description>
+    Recorded on sign in start from the Composebox Drive context menu option
+    signin promo.
   </description>
 </action>
 
@@ -53619,6 +53821,33 @@ should be able to be added at any place in this file.
   <owner>miu@chromium.org</owner>
   <description>
     User clicked the tab media indicator; this will have no effect.
+  </description>
+</action>
+
+<action name="TabMultiSelect_AddSelectionFromAnchorTo">
+  <owner>agale@chromium.org</owner>
+  <owner>top-chrome-desktop-ui@google.com</owner>
+  <description>
+    Recorded when a user Shift+Ctrl+clicks (Shift+Cmd+clicks on macOS) a tab to
+    add a range of tabs from the anchor tab to the selection in the tab strip.
+  </description>
+</action>
+
+<action name="TabMultiSelect_ExtendSelectionTo">
+  <owner>agale@chromium.org</owner>
+  <owner>top-chrome-desktop-ui@google.com</owner>
+  <description>
+    Recorded when a user Shift+clicks a tab to extend the tab selection from the
+    anchor tab to the clicked tab in the tab strip.
+  </description>
+</action>
+
+<action name="TabMultiSelect_ToggleSelected">
+  <owner>agale@chromium.org</owner>
+  <owner>top-chrome-desktop-ui@google.com</owner>
+  <description>
+    Recorded when a user Ctrl+clicks (Cmd+clicks on macOS) a tab to toggle its
+    selection state in the tab strip.
   </description>
 </action>
 

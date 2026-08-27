@@ -567,11 +567,6 @@ BASE_FEATURE(kDisableArrayBufferSizeLimitsForTesting,
 BASE_FEATURE(kDiscardInputEventsToRecentlyMovedFrames,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Drop input events at the browser process until the process receives the first
-// signal that the renderer has sent a frame to cc (https://crbug.com/40057499).
-BASE_FEATURE(kDropInputEventsWhilePaintHolding,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 // Extends console.timestamp to support adding deep-links into the DevTools
 // Performance Panel, which (when clicked) call into a DevTools extension.
 BASE_FEATURE(kEnableDevtoolsDeepLinkViaExtensibilityApi,
@@ -1896,9 +1891,6 @@ BASE_FEATURE_PARAM(bool,
 BASE_FEATURE(kForceProduceCompileHints, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kLocalCompileHints, base::FEATURE_ENABLED_BY_DEFAULT);
-
-BASE_FEATURE(kQuoteEmptySecChUaStringHeadersConsistently,
-             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Reduce the amount of information in the default 'referer' header for
 // cross-origin requests.

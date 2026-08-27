@@ -17,12 +17,21 @@
 #include "base/path_service.h"
 #include "base/threading/thread_restrictions.h"
 #include "base/values.h"
-#include "build/build_config.h"
+#include "device/vr/openxr/openxr_platform_helper.h"
 #include "device/vr/openxr/test/fake_openxr_impl_api.h"
-#include "device/vr/test/test_hook.h"
+#include "device/vr/openxr/test/openxr_test_helper.h"
+#include "device/vr/public/mojom/test/browser_test_interfaces.mojom.h"
+#include "mojo/public/cpp/bindings/pending_remote.h"
+#include "mojo/public/cpp/system/message_pipe.h"
 
 typedef void (*SetMockOpenXrDispatchTableFn)(
     PFN_xrGetInstanceProcAddr get_instance_proc_addr);
+
+void BindTestHook(mojo::ScopedMessagePipeHandle receiver) {
+  OpenXrTestHelper::Get().SetTestHook(
+      mojo::PendingRemote<device_test::mojom::XRTestHook>(std::move(receiver),
+                                                          0));
+}
 
 bool InitializeOpenXrMockTrampoline() {
   static bool s_initialized = false;
@@ -90,8 +99,9 @@ bool InitializeOpenXrMockTrampoline() {
 namespace {
 struct TrampolineRegistrar {
   TrampolineRegistrar() {
-    device::ServiceTestHook::RegisterInitializeOpenXrMockTrampolineFn(
+    device::OpenXrPlatformHelper::RegisterInitializeOpenXrMockTrampolineFn(
         &InitializeOpenXrMockTrampoline);
+    device::OpenXrPlatformHelper::RegisterBindTestHookFn(&BindTestHook);
   }
 };
 TrampolineRegistrar g_trampoline_registrar;

@@ -10,8 +10,10 @@ import '//resources/cr_elements/cr_toast/cr_toast.js';
 
 import type {CrButtonElement} from '//resources/cr_elements/cr_button/cr_button.js';
 import type {CrToastElement} from '//resources/cr_elements/cr_toast/cr_toast.js';
+import {assertNotReached} from '//resources/js/assert.js';
 import {loadTimeData} from '//resources/js/load_time_data.js';
 import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
+import type {Empty} from '//resources/mojo/mojo/public/mojom/base/empty.mojom-webui.js';
 import type {Url} from '//resources/mojo/url/mojom/url.mojom-webui.js';
 
 import {getCss} from './app.css.js';
@@ -19,6 +21,8 @@ import {getHtml} from './app.html.js';
 import type {IwaDevInstallDialogElement} from './install_dialog.js';
 import type {BrowserProxy, IwaDevModeAppInfo, UpdateInfo, UpdateManifest} from './iwa_dev.mojom-webui.js';
 import {browserProxyFactory} from './iwa_dev.mojom-webui.js';
+
+export const MIN_UPDATE_DELAY_MS = 750;
 
 export interface IwaDevAppElement {
   $: {
@@ -58,6 +62,40 @@ export class IwaDevAppElement extends CrLitElement {
   private browserProxy_: BrowserProxy = browserProxyFactory.getInstance();
   private listenerIds_: number[] = [];
 
+  protected async onRequestUpdate_(e: CustomEvent<{app: IwaDevModeAppInfo}>) {
+    const app = e.detail.app;
+    let updatePromise: Promise<unknown>;
+
+    if (app.source.proxyOrigin) {
+      updatePromise =
+          this.browserProxy_.handler.updateDevProxyInstalledApp(app.appId);
+    } else if (app.source.bundlePath) {
+      updatePromise =
+          this.browserProxy_.handler.selectAndUpdateAppFromLocalWebBundle(
+              app.appId);
+    } else if (app.source.updateInfo) {
+      updatePromise =
+          this.browserProxy_.handler.updateManifestInstalledApp(app.appId);
+    } else {
+      assertNotReached();
+    }
+
+    return Promise
+        .all([
+          updatePromise,
+          new Promise(resolve => setTimeout(resolve, MIN_UPDATE_DELAY_MS)),
+        ])
+        .then(() => {
+          this.toastMessage_ = 'Update successful!';
+          this.$.toast.show();
+        })
+        .catch(err => {
+          const error = (err as {message?: string})?.message || String(err);
+          this.toastMessage_ = `Update failed: ${error}`;
+          this.$.toast.show();
+        });
+  }
+
   protected async onRequestUninstall_(
       e: CustomEvent<{app: IwaDevModeAppInfo}>) {
     await this.browserProxy_.handler.uninstallApp(e.detail.app.appId);
@@ -82,10 +120,10 @@ export class IwaDevAppElement extends CrLitElement {
     callback: (result: {success?: UpdateManifest, error?: string}) => void,
   }>) {
     this.browserProxy_.handler.parseUpdateManifestFromUrl(e.detail.url)
-        .then(success => e.detail.callback({success}))
+        .then((success: UpdateManifest) => e.detail.callback({success}))
         .catch(
             err => e.detail.callback(
-                {error: (err as Error)?.message || String(err)}));
+                {error: (err as {message?: string})?.message || String(err)}));
   }
 
   protected async onRequestInstallFromUpdateManifest_(e: CustomEvent<{
@@ -97,18 +135,21 @@ export class IwaDevAppElement extends CrLitElement {
             e.detail.webBundleUrl, e.detail.updateInfo));
   }
 
-  private async processInstallRequest_(
-      installPromise: Promise<{error: string | null}>) {
+  private processInstallRequest_(installPromise: Promise<Empty>) {
     const dialog = this.$.installDialog;
     dialog.startInstallation();
 
-    const {error} = await installPromise;
-
-    dialog.onInstallationFinished(error);
-    if (!error) {
-      this.toastMessage_ = 'Installation successful!';
-      this.$.toast.show();
-    }
+    return installPromise
+        .then(() => {
+          dialog.onInstallationFinished(null);
+          this.toastMessage_ = 'Installation successful!';
+          this.$.toast.show();
+        })
+        .catch(err => {
+          const errorMessage =
+              (err as {message?: string})?.message || String(err);
+          dialog.onInstallationFinished(errorMessage);
+        });
   }
 
   override async connectedCallback() {

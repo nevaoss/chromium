@@ -131,6 +131,14 @@ export class ActionChipsElement extends CrLitElement {
         return 'icon-type-favicon';
       case IconType.kSearchLoopWithSparkle:
         return 'icon-type-search-spark';
+      case IconType.kLightbulb:
+        return 'icon-type-lightbulb';
+      case IconType.kAttachFile:
+        return 'icon-type-attach-file';
+      case IconType.kSchool:
+        return 'icon-type-school';
+      case IconType.kInkPen:
+        return 'icon-type-ink-pen';
       default:
         return '';
     }
@@ -150,6 +158,7 @@ export class ActionChipsElement extends CrLitElement {
         this.callbackRouter.onActionChipsChanged.addListener(
             (actionChips: ActionChip[]) => {
               this.actionChips_ = actionChips;
+              this.toggleAttribute('has-chips', actionChips.length > 0);
               this.fire(
                   kActionChipsRetrievalStateChangedEvent,
                   {state: ActionChipsRetrievalState.UPDATED});
@@ -223,6 +232,7 @@ export class ActionChipsElement extends CrLitElement {
     const chip = this.actionChips_[index]!;
     this.actionChips_ =
         this.actionChips_.filter((c) => c.suggestion !== chip.suggestion);
+    this.toggleAttribute('has-chips', this.actionChips_.length > 0);
   }
 
   protected onContextmenu_(e: MouseEvent) {

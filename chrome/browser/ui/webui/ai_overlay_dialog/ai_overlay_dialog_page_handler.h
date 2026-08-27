@@ -14,7 +14,6 @@
 #include "chrome/browser/ui/webui/ai_overlay_dialog/ai_overlay_dialog.mojom.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/remote.h"
-#include "third_party/abseil-cpp/absl/container/flat_hash_map.h"
 #include "url/gurl.h"
 
 class BrowserWindowInterface;
@@ -49,6 +48,8 @@ class AiOverlayDialogPageHandler
   void SetRememberedNote(ai_overlay_dialog::mojom::RememberedNotePtr note,
                          SetRememberedNoteCallback callback) override;
   void GetRememberedNotes(GetRememberedNotesCallback callback) override;
+  void SaveDebugFile(ai_overlay_dialog::mojom::DebugFileType type,
+                     const std::string& content) override;
 
   void DidChangePage(const GURL& url,
                      const std::optional<std::u16string>& title,
@@ -67,11 +68,6 @@ class AiOverlayDialogPageHandler
   mojo::Remote<ai_overlay_dialog::mojom::Page> page_;
   raw_ptr<BrowserWindowInterface> browser_;
   raw_ptr<actions::ActionItem> overlay_action_item_ = nullptr;
-
-  // In-memory dictionary storage for remembered conversational notes.
-  // TODO(crbug.com/542590634): Determine product and architecture requirements
-  // for long-term storage and persistence of remembered notes across restarts.
-  absl::flat_hash_map<std::string, std::string> remembered_notes_;
 };
 
 }  // namespace ttc

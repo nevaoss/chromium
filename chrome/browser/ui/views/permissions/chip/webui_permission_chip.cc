@@ -4,10 +4,10 @@
 
 #include "chrome/browser/ui/views/permissions/chip/webui_permission_chip.h"
 
-#include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/location_bar/location_bar.h"
 #include "chrome/browser/ui/views/location_bar/webui_location_bar.h"
+#include "ui/base/base_window.h"
 #include "ui/gfx/paint_vector_icon.h"
 #include "ui/views/widget/widget.h"
 
@@ -240,7 +240,8 @@ bool WebUIPermissionChip::IsMouseHovered() const {
   return is_mouse_hovered_;
 }
 
-void WebUIPermissionChip::SetPressedCallback(base::RepeatingClosure callback) {
+void WebUIPermissionChip::SetPressedCallback(
+    base::RepeatingCallback<void(bool)> callback) {
   pressed_callback_ = std::move(callback);
 }
 
@@ -254,8 +255,7 @@ views::BubbleAnchor WebUIPermissionChip::GetAnchor() {
   if (ui::TrackedElement* element = location_bar_->GetAnchorOrNull()) {
     return views::BubbleAnchor(element);
   }
-  BrowserWindow* window =
-      BrowserWindow::FromBrowser(location_bar_->GetBrowser());
+  ui::BaseWindow* window = location_bar_->GetBrowser()->GetWindow();
   CHECK(window);
   views::Widget* widget =
       views::Widget::GetWidgetForNativeWindow(window->GetNativeWindow());
@@ -304,9 +304,9 @@ void WebUIPermissionChip::OnMousePressed() {
   observers_.Notify(&Observer::OnMousePressed);
 }
 
-void WebUIPermissionChip::OnClicked() {
+void WebUIPermissionChip::OnClicked(bool is_pointer_interaction) {
   if (pressed_callback_) {
-    pressed_callback_.Run();
+    pressed_callback_.Run(is_pointer_interaction);
   }
 }
 

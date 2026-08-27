@@ -34,6 +34,7 @@ import org.chromium.base.supplier.SettableNonNullObservableSupplier;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.compositor.overlays.strip.TabContextMenuCoordinator;
+import org.chromium.chrome.browser.compositor.overlays.strip.TabContextMenuCoordinator.AnchorInfo;
 import org.chromium.chrome.browser.compositor.overlays.strip.TabContextMenuCoordinator.TabStripLayoutType;
 import org.chromium.chrome.browser.compositor.overlays.strip.TabGroupContextMenuCoordinator;
 import org.chromium.chrome.browser.compositor.overlays.strip.TabStripContextMenuCoordinator;
@@ -73,6 +74,7 @@ import org.chromium.chrome.browser.tasks.tab_management.TabListMediator.TabListI
 import org.chromium.chrome.browser.tasks.tab_management.TabListMediator.TabListLayoutType;
 import org.chromium.chrome.browser.tasks.tab_management.TabListModel;
 import org.chromium.chrome.browser.tasks.tab_management.TabListRecyclerView;
+import org.chromium.chrome.browser.tasks.tab_management.TabMultiSelectHelper;
 import org.chromium.chrome.browser.tasks.tab_management.TabProperties;
 import org.chromium.chrome.browser.tasks.tab_management.TabProperties.UiType;
 import org.chromium.chrome.browser.tasks.tab_management.TabSwitcherBackPressHandlerManager;
@@ -219,8 +221,6 @@ public class VerticalTabListCoordinator {
 
         @Override
         public void onTabSelecting(int tabId, boolean fromActionButton) {
-            // TODO(crbug.com/509226293): Coordinate tab selection with smooth side panel
-            // dismissal or collapse animations when running on narrow screens.
             TabModelUtils.selectTabById(mTabModelSelector, tabId, TabSelectionType.FROM_USER);
         }
 
@@ -712,6 +712,12 @@ public class VerticalTabListCoordinator {
                     }
 
                     @Override
+                    public void willCloseTabs(
+                            List<Tab> tabs, boolean isAllTabs, boolean allowUndo) {
+                        mTabHoverCardController.hideHoverCard();
+                    }
+
+                    @Override
                     public void tabClosureCommitted(Tab tab) {
                         mTabHoverCardController.hideHoverCard();
                     }
@@ -990,7 +996,13 @@ public class VerticalTabListCoordinator {
 
                         itemTouchHelper.setExternalDragItem(viewHolder);
                         dragHandler.setDragHandlerDelegate(
-                                createDragHandlerDelegate(itemTouchHelper, model));
+                                createDragHandlerDelegate(
+                                        recyclerView,
+                                        itemTouchHelper,
+                                        touchHelperCallback,
+                                        dragHandler,
+                                        viewHolder,
+                                        model));
 
                         mLastDraggedGroupId = tabGroupId;
 
@@ -1034,7 +1046,13 @@ public class VerticalTabListCoordinator {
 
                     itemTouchHelper.setExternalDragItem(viewHolder);
                     dragHandler.setDragHandlerDelegate(
-                            createDragHandlerDelegate(itemTouchHelper, model));
+                            createDragHandlerDelegate(
+                                    recyclerView,
+                                    itemTouchHelper,
+                                    touchHelperCallback,
+                                    dragHandler,
+                                    viewHolder,
+                                    model));
 
                     mLastDraggedGroupId = null;
                     View gridCardView = buildGridCardDragShadow(activity, model);
@@ -1076,8 +1094,36 @@ public class VerticalTabListCoordinator {
     }
 
     private DragHandlerDelegate createDragHandlerDelegate(
-            ItemTouchHelper2 itemTouchHelper, @Nullable PropertyModel model) {
+            RecyclerView recyclerView,
+            ItemTouchHelper2 itemTouchHelper,
+            VerticalTabListItemTouchHelperCallback touchHelperCallback,
+            TabSwitcherDragHandler dragHandler,
+            RecyclerView.ViewHolder viewHolder,
+            @Nullable PropertyModel model) {
         return new DragHandlerDelegate() {
+            private final int[] mTempViewLoc = new int[2];
+            private final int[] mTempRvLoc = new int[2];
+            private final float[] mTempCoords = new float[2];
+
+            private float[] toRvCoordinates(View view, float x, float y) {
+                if (view == recyclerView) {
+                    mTempCoords[0] = x;
+                    mTempCoords[1] = y;
+                } else {
+                    view.getLocationOnScreen(mTempViewLoc);
+                    recyclerView.getLocationOnScreen(mTempRvLoc);
+                    mTempCoords[0] = x + mTempViewLoc[0] - mTempRvLoc[0];
+                    mTempCoords[1] = y + mTempViewLoc[1] - mTempRvLoc[1];
+                }
+                return mTempCoords;
+            }
+
+            @Override
+            public boolean handleDragStart(View view, float xPx, float yPx) {
+                float[] coords = toRvCoordinates(view, xPx, yPx);
+                return handleDragStart(coords[0], coords[1]);
+            }
+
             @Override
             public boolean handleDragStart(float xPx, float yPx) {
                 mTabHoverCardController.hideHoverCard();
@@ -1092,8 +1138,14 @@ public class VerticalTabListCoordinator {
                 // outside the bounds of the RecyclerView, we will never receive an
                 // ACTION_DRAG_EXITED event. Therefore, we must explicitly trigger the collapse of
                 // the drag gap right away.
-                itemTouchHelper.clearExternalDragItemVisibility();
+                touchHelperCallback.collapseDraggedItem(viewHolder);
                 return true;
+            }
+
+            @Override
+            public boolean handleDragLocation(View view, float xPx, float yPx) {
+                float[] coords = toRvCoordinates(view, xPx, yPx);
+                return handleDragLocation(coords[0], coords[1]);
             }
 
             @Override
@@ -1104,25 +1156,34 @@ public class VerticalTabListCoordinator {
 
             @Override
             public boolean handleDragEnter() {
+                dragHandler.showDragShadow(recyclerView, false);
                 updateSingleTabListMinHeight(model, /* useMinHeight= */ false);
-                itemTouchHelper.restoreExternalDragItemVisibility(/* isOSNewWindowDrop= */ false);
+                touchHelperCallback.restoreDraggedItem(/* isOSNewWindowDrop= */ false);
                 return true;
             }
 
             @Override
             public boolean handleDragExit() {
+                dragHandler.showDragShadow(recyclerView, true);
                 moveDraggedPinnedTabToEndIfNeeded(model);
                 // Keep a minimum height during external drag so a single-item list does not
                 // collapse to 0px.
                 updateSingleTabListMinHeight(model, /* useMinHeight= */ true);
-                itemTouchHelper.clearExternalDragItemVisibility();
+                touchHelperCallback.collapseDraggedItem(null);
                 return true;
+            }
+
+            @Override
+            public boolean handleExternalDragEnd(
+                    View view, float xPx, float yPx, boolean isOSNewWindowDrop) {
+                float[] coords = toRvCoordinates(view, xPx, yPx);
+                return handleExternalDragEnd(coords[0], coords[1], isOSNewWindowDrop);
             }
 
             @Override
             public boolean handleExternalDragEnd(float xPx, float yPx, boolean isOSNewWindowDrop) {
                 updateSingleTabListMinHeight(model, /* useMinHeight= */ false);
-                itemTouchHelper.restoreExternalDragItemVisibility(isOSNewWindowDrop);
+                touchHelperCallback.restoreDraggedItem(isOSNewWindowDrop);
                 itemTouchHelper.onExternalDragStop(/* recoverItem= */ false);
 
                 if (mLastDraggedGroupId != null) {
@@ -1136,6 +1197,12 @@ public class VerticalTabListCoordinator {
                     }
                 }
                 return true;
+            }
+
+            @Override
+            public boolean handleDrop(View view, float xPx, float yPx) {
+                float[] coords = toRvCoordinates(view, xPx, yPx);
+                return handleDrop(coords[0], coords[1]);
             }
 
             @Override
@@ -1334,8 +1401,18 @@ public class VerticalTabListCoordinator {
     private void showTabItemContextMenu(
             Activity activity, RecyclerView recyclerView, View itemView, int tabId) {
         RectProvider rectProvider = getAnchorRectProvider(recyclerView, itemView);
-        List<Integer> allTabIds = List.of(tabId);
-        var anchorInfo = new TabContextMenuCoordinator.AnchorInfo(tabId, allTabIds);
+
+        TabModel tabModel = mTabModelSelector.getCurrentModel();
+        List<Integer> allTabIds;
+        if (VerticalTabUtils.isMultiSelectEnabled()
+                && TabMultiSelectHelper.hasMultipleTabsSelected(tabModel)
+                && tabModel.isTabMultiSelected(tabId)) {
+            allTabIds = tabModel.getOrderedMultiSelectedTabIds();
+        } else {
+            allTabIds = List.of(tabId);
+        }
+
+        var anchorInfo = new AnchorInfo(tabId, allTabIds);
 
         if (mTabContextMenuCoordinator == null) {
             TabGroupCreationCallback tabGroupCreationCallback =

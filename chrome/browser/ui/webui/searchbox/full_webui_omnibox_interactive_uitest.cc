@@ -421,7 +421,7 @@ IN_PROC_BROWSER_TEST_F(FullWebUIOmniboxInteractiveTest, FocusOnlyNtp) {
 
 // Verifies switching to a tab where the webpage body is focused and has no
 // omnibox draft to verify the popup remains closed.
-#if BUILDFLAG(IS_WIN)
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX)
 #define MAYBE_BlurredPage DISABLED_BlurredPage
 #else
 #define MAYBE_BlurredPage BlurredPage
@@ -729,7 +729,8 @@ IN_PROC_BROWSER_TEST_F(FullWebUIOmniboxInteractiveTest,
                   }))),
       // Click the bookmark button situated directly beneath the Omnibox.
       InContext(browser_context, MoveMouseTo(kBookmarkButtonName)),
-      InContext(browser_context, ClickMouse()),
+      InSameContextAs(OmniboxPopupPresenter::kRoundedResultsFrame,
+                      ClickMouse()),
       // Verify the popup closes, navigation occurs, and Omnibox loses focus.
       InAnyContext(WaitForHide(OmniboxPopupPresenter::kRoundedResultsFrame)),
       InContext(browser_context,
@@ -829,6 +830,8 @@ IN_PROC_BROWSER_TEST_F(FullWebUIOmniboxInteractiveTest,
       SendKeyPress(kBrowserViewElementId, ui::VKEY_RETURN,
                    ui::EF_ALT_DOWN | ui::EF_SHIFT_DOWN),
       WaitForWebContentsReady(kTab2),
+      // Verify popup remains open on Tab 1.
+      InAnyContext(WaitForShow(OmniboxPopupPresenter::kRoundedResultsFrame)),
       // Switch to the newly opened background tab (index 2).
       SelectTab(kTabStripElementId, 2), WaitForPopupTransitionLockout(),
       InAnyContext(WaitForHide(OmniboxPopupPresenter::kRoundedResultsFrame)),

@@ -192,6 +192,11 @@ class PDFiumEngine : public DocumentLoader::Client,
     PDFLoadedWithInkTextAnnotations ink_text_annotations;
     PDFLoadedWithV2InkAnnotations v2_ink_path;
   };
+  using InkModeledShapeMap =
+      std::map<InkModeledShapeId,
+               base::RawPtrIfPtrT<FPDF_PAGEOBJECT, DanglingUntriaged>>;
+  using PageObjectVector =
+      std::vector<base::RawPtrIfPtrT<FPDF_PAGEOBJECT, DanglingUntriaged>>;
 #endif
 
   // NOTE: `script_option` is ignored when PDF_ENABLE_V8 is not defined.
@@ -377,7 +382,7 @@ class PDFiumEngine : public DocumentLoader::Client,
 
   void MoveRangeSelectionExtent(const gfx::Point& extent);
 
-  void SetSelectionBounds(const gfx::Point& base, const gfx::Point& extent);
+  void SetSelectionBase(const gfx::Point& base);
 
   std::optional<Selection> GetSelection() const;
 
@@ -558,9 +563,7 @@ class PDFiumEngine : public DocumentLoader::Client,
   // device coordinates. Virtual to support testing.
   virtual void OnTextOrLinkAreaClick(const gfx::PointF& point, int click_count);
 
-  const std::map<InkModeledShapeId,
-                 base::RawPtrIfPtrT<FPDF_PAGEOBJECT, DanglingUntriaged>>&
-  ink_modeled_shape_map_for_testing() const {
+  const InkModeledShapeMap& ink_modeled_shape_map_for_testing() const {
     return ink_modeled_shape_map_;
   }
 
@@ -1210,10 +1213,7 @@ class PDFiumEngine : public DocumentLoader::Client,
 
 #if BUILDFLAG(ENABLE_PDF_INK2)
   struct InkTextData {
-    InkTextData(
-        int page_index,
-        std::vector<base::RawPtrIfPtrT<FPDF_PAGEOBJECT, DanglingUntriaged>>
-            page_objects);
+    InkTextData(int page_index, PageObjectVector page_objects);
     InkTextData(InkTextData&&) noexcept;
     InkTextData& operator=(InkTextData&&) noexcept;
     ~InkTextData();
@@ -1223,8 +1223,7 @@ class PDFiumEngine : public DocumentLoader::Client,
     // The handles for text page objects within the PDF document.
     // `edited_pages_unload_preventers_` protects these handles from going
     // stale.
-    std::vector<base::RawPtrIfPtrT<FPDF_PAGEOBJECT, DanglingUntriaged>>
-        page_objects;
+    PageObjectVector page_objects;
   };
 
   // Returns the next available textbox ID, avoiding collisions with
@@ -1473,11 +1472,7 @@ class PDFiumEngine : public DocumentLoader::Client,
   // downloading.
   bool process_when_pending_request_complete_ = true;
 
-  enum class RangeSelectionDirection { Left, Right };
-  RangeSelectionDirection range_selection_direction_ =
-      RangeSelectionDirection::Right;
-
-  gfx::Point range_selection_base_;
+  std::optional<PageCharacterIndex> range_selection_base_;
 
   bool edit_mode_ = false;
 
@@ -1505,10 +1500,7 @@ class PDFiumEngine : public DocumentLoader::Client,
       edited_pages_unload_preventers_;
 
   struct InkStrokeData {
-    InkStrokeData(
-        int page_index,
-        std::vector<base::RawPtrIfPtrT<FPDF_PAGEOBJECT, DanglingUntriaged>>
-            page_objects);
+    InkStrokeData(int page_index, PageObjectVector page_objects);
     InkStrokeData(InkStrokeData&&) noexcept;
     InkStrokeData& operator=(InkStrokeData&&) noexcept;
     ~InkStrokeData();
@@ -1518,8 +1510,7 @@ class PDFiumEngine : public DocumentLoader::Client,
     // The handles for stroke path page objects within the PDF document.
     // `edited_pages_unload_preventers_` protects these handles from going
     // stale.
-    std::vector<base::RawPtrIfPtrT<FPDF_PAGEOBJECT, DanglingUntriaged>>
-        page_objects;
+    PageObjectVector page_objects;
   };
 
   // Data associated for Ink strokes, keyed by stroke IDs.
@@ -1542,9 +1533,7 @@ class PDFiumEngine : public DocumentLoader::Client,
 
   // Key: ID to identify a shape.
   // Value: The PDFium page object associated with the shape.
-  std::map<InkModeledShapeId,
-           base::RawPtrIfPtrT<FPDF_PAGEOBJECT, DanglingUntriaged>>
-      ink_modeled_shape_map_;
+  InkModeledShapeMap ink_modeled_shape_map_;
 
   // Key: ID to identify the font.
   // Value: The associated PDFium font objects.

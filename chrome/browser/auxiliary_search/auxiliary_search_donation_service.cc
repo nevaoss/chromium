@@ -15,11 +15,13 @@
 #include <vector>
 
 #include "base/android/application_status_listener.h"
+#include "base/check.h"
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/location.h"
 #include "base/memory/raw_ref.h"
 #include "base/time/time.h"
+#include "chrome/browser/auxiliary_search/auxiliary_search_donation_service_bridge.h"
 #include "chrome/browser/auxiliary_search/auxiliary_search_provider.h"
 #include "chrome/browser/flags/android/chrome_feature_list.h"
 #include "chrome/browser/visited_url_ranking/visited_url_ranking_service_factory.h"
@@ -113,7 +115,7 @@ AuxiliarySearchDonationService::AuxiliarySearchDonationService(
     visited_url_ranking::VisitedURLRankingService* ranking_service,
     signin::IdentityManager* identity_manager,
     PrefService* pref_service,
-    DonateCallback donate_callback)
+    std::unique_ptr<Delegate> testing_delegate)
     : page_content_annotations_service_(
           raw_ref<page_content_annotations::PageContentAnnotationsService>::
               from_ptr(page_content_annotations_service)),
@@ -123,13 +125,18 @@ AuxiliarySearchDonationService::AuxiliarySearchDonationService(
       identity_manager_(
           raw_ref<signin::IdentityManager>::from_ptr(identity_manager)),
       pref_service_(raw_ref<PrefService>::from_ptr(pref_service)),
-      donate_callback_(std::move(donate_callback)),
       application_status_listener_(
           base::android::ApplicationStatusListener::New(base::BindRepeating(
               &AuxiliarySearchDonationService::OnApplicationStateChanged,
               // Listener is destroyed at destructor, and
               // object will be alive for any callback.
               base::Unretained(this)))) {
+  if (!testing_delegate) {
+    testing_delegate = std::make_unique<AuxiliarySearchDonationServiceBridge>(
+        pref_service_->GetBoolean(
+            prefs::kAuxiliarySearchBrowsingDataDonationEnabled));
+  }
+  delegate_ = std::move(testing_delegate);
   page_content_annotations_service_->AddObserver(
       page_content_annotations::AnnotationType::kContentVisibility, this);
 }
@@ -141,6 +148,8 @@ AuxiliarySearchDonationService::~AuxiliarySearchDonationService() {
 
 void AuxiliarySearchDonationService::RegisterProfilePrefs(
     PrefRegistrySimple* registry) {
+  registry->RegisterBooleanPref(
+      prefs::kAuxiliarySearchBrowsingDataDonationEnabled, true);
   registry->RegisterTimePref(
       prefs::kAuxiliarySearchLastDonatedHistoryEntryVisitTime, base::Time());
 }
@@ -242,7 +251,8 @@ void AuxiliarySearchDonationService::DonateHistoryEntries(
   if (!entries.empty()) {
     CoreAccountInfo account_info =
         identity_manager_->GetPrimaryAccountInfo(signin::ConsentLevel::kSignin);
-    donate_callback_.Run(std::move(entries), std::move(account_info));
+    delegate_->DonateHistoryEntries(std::move(entries),
+                                    std::move(account_info));
   }
 
   if (!metadata.most_recent_timestamp.has_value()) {

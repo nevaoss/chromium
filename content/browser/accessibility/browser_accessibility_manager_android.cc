@@ -10,6 +10,7 @@
 #include "base/android/android_info.h"
 #include "base/check.h"
 #include "base/i18n/char_iterator.h"
+#include "base/notreached.h"
 #include "base/strings/utf_string_conversions.h"
 #include "content/browser/accessibility/browser_accessibility_android.h"
 #include "content/browser/accessibility/web_contents_accessibility_android.h"
@@ -1096,8 +1097,14 @@ BrowserAccessibilityManagerAndroid::ConvertChromeSelectionPositionToAndroid(
   BrowserAccessibilityAndroid* parent_node =
       static_cast<BrowserAccessibilityAndroid*>(
           GetFromAXNode(target_node->GetUnignoredParent()));
-  // TODO(crbug.com/498376490): Find a test case that triggers this behavior.
+
+  // `parent_node` cannot be null because tree positions only occur on anchors
+  // with children, resolving `target_node` to a child, and
+  // `GetUnignoredParent()` walks up to the nearest unignored ancestor (up to
+  // RootWebArea). Childless root nodes are treated as leaves by
+  // `AXNodePosition` and handled earlier in the text position branch.
   if (!parent_node) {
+    DUMP_WILL_BE_NOTREACHED();
     return std::nullopt;
   }
 
@@ -1111,7 +1118,19 @@ BrowserAccessibilityManagerAndroid::ConvertAndroidSelectionPositionToChrome(
     int32_t offset,
     ExtendedSelectionOffsetType offset_type) {
   if (offset_type == ExtendedSelectionOffsetType::OFFSET_TYPE_TEXT) {
-    return node->CreatePositionForSelectionAt(offset);
+    ui::BrowserAccessibility::AXPosition position =
+        node->CreatePositionForSelectionAt(offset);
+    // If the node is an empty text-selectable container (e.g., an empty
+    // paragraph or heading treated as an Android TextView) with no text
+    // descendants, `CreatePositionForSelectionAt` returns a text position
+    // anchored at the container itself. Blink expects text positions only on
+    // text nodes or text fields, so convert it to a tree position.
+    if (position->IsTextPosition() &&
+        !position->GetAnchor()->data().IsTextField() &&
+        !position->GetAnchor()->IsText()) {
+      return position->AsTreePosition();
+    }
+    return position;
   }
 
   // When node 'c' is a child of node 'p' in the Android accessibility tree,

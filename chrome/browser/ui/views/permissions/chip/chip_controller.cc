@@ -15,6 +15,7 @@
 #include "base/memory/raw_ptr.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/time/time.h"
+#include "chrome/browser/ui/content_settings/content_setting_image_view_delegate.h"
 #include "chrome/browser/ui/location_bar/location_bar.h"
 #include "chrome/browser/ui/page_info/page_info_dialog.h"
 #include "chrome/browser/ui/views/content_setting_bubble_contents.h"
@@ -350,7 +351,12 @@ void ChipController::ShowPermissionUi(
 
   chip_->SetBubbleOwner(this);
   chip_->SetPressedCallback(base::BindRepeating(
-      &ChipController::OnRequestChipButtonPressed, weak_factory_.GetWeakPtr()));
+      // base::Unretained() is safe here because the ChipController and the
+      // chip object are both owned by the LocationBarView (or similar UI
+      // container) which shares their lifecycles, and no ui events are
+      // fired during teardown.
+      [](ChipController* self, bool) { self->OnRequestChipButtonPressed(); },
+      base::Unretained(this)));
   chip_->ResetAnimation(PermissionChipInterface::AnimationState::kCollapsed);
   ObservePromptBubble();
 
@@ -398,7 +404,7 @@ void ChipController::RemoveBubbleObserverAndResetTimersAndChipCallbacks() {
   }
 
   // Reset button click callback
-  chip_->SetPressedCallback(base::RepeatingClosure());
+  chip_->SetPressedCallback(base::RepeatingCallback<void(bool)>());
 
   ResetTimers();
 }
@@ -538,7 +544,12 @@ void ChipController::HandleConfirmation(
     }
 
     chip_->SetPressedCallback(base::BindRepeating(
-        &ChipController::ShowPageInfoDialog, weak_factory_.GetWeakPtr()));
+        // base::Unretained() is safe here because the ChipController and the
+        // chip object are both owned by the LocationBarView (or similar UI
+        // container) which shares their lifecycles, and no ui events are
+        // fired during teardown.
+        [](ChipController* self, bool) { self->ShowPageInfoDialog(); },
+        base::Unretained(this)));
     AnnouncePermissionRequestForAccessibility(
         permission_prompt_model_->GetAccessibilityChipText());
 

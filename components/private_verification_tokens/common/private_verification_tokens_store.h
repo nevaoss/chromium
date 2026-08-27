@@ -39,6 +39,7 @@ class PrivateVerificationTokensStore {
   ~PrivateVerificationTokensStore();
 
   const std::map<url::Origin, TokenWithId>& tokens() const;
+  size_t TokenCountForIssuer(const url::Origin& issuer) const;
   bool is_initialized() const { return initialized_; }
 
   void DeleteAllTokens();
@@ -50,6 +51,8 @@ class PrivateVerificationTokensStore {
   void StoreTokens(std::vector<PrivateVerificationTokensToken> tokens,
                    base::OnceClosure callback);
 
+  void DeleteToken(int64_t token_id, base::OnceClosure callback);
+
  private:
   explicit PrivateVerificationTokensStore(
       scoped_refptr<base::SequencedTaskRunner> task_runner,
@@ -57,17 +60,21 @@ class PrivateVerificationTokensStore {
       base::FilePath path_to_database,
       base::OnceCallback<void()> cache_initialized_callback);
 
-  void CacheTokens(std::map<url::Origin, TokenWithId> tokens);
+  void CacheTokens(TokensAndCounts tokens_and_counts);
   void OnCacheInitialized(base::OnceCallback<void()> callback);
   void InitializeCache(base::OnceCallback<void()> callback, bool file_exists);
   void OnTokensDeleted(base::OnceClosure callback, bool success);
   void OnTokensStored(base::OnceClosure callback, bool success);
+  void OnTokenDeleted(base::OnceClosure callback, bool success);
 
   base::SequenceBound<PrivateVerificationTokensDatabase> database_;
 
   // Holds a single token for each issuer. These tokens are read from the
   // database.
   std::map<url::Origin, TokenWithId> tokens_;
+
+  // Holds the count of unredeemed tokens for each issuer.
+  std::map<url::Origin, size_t> token_counts_;
 
   bool initialized_ = false;
 

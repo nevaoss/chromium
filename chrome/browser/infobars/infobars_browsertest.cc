@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -82,7 +83,7 @@
 using extensions::InstallPromptData;
 
 class InfoBarsTest : public InProcessBrowserTest {
- public:
+ protected:
   InfoBarsTest() = default;
 
   void InstallExtension(const char* filename) {
@@ -327,7 +328,7 @@ void InfoBarUiTest::ShowUi(const std::string& name) {
         if (auto* browser_infobar_manager =
                 infobars::BrowserInfoBarManager::From(g_browser_process)) {
           browser_infobar_manager->Show(
-              GetWebContents(),
+              GetTab(),
               infobars::InfoBarDelegate::GOOGLE_API_KEYS_INFOBAR_DELEGATE);
         }
       } else {
@@ -341,7 +342,7 @@ void InfoBarUiTest::ShowUi(const std::string& name) {
         if (auto* browser_infobar_manager =
                 infobars::BrowserInfoBarManager::From(g_browser_process)) {
           browser_infobar_manager->Show(
-              GetWebContents(),
+              GetTab(),
               infobars::InfoBarDelegate::OBSOLETE_SYSTEM_INFOBAR_DELEGATE);
         }
       } else {
@@ -361,8 +362,7 @@ void InfoBarUiTest::ShowUi(const std::string& name) {
             infobars::BrowserInfoBarManager::From(g_browser_process);
         if (browser_infobar_manager) {
           browser_infobar_manager->Show(
-              GetWebContents(),
-              infobars::InfoBarDelegate::PAGE_INFO_INFOBAR_DELEGATE);
+              GetTab(), infobars::InfoBarDelegate::PAGE_INFO_INFOBAR_DELEGATE);
         }
       } else {
         PageInfoInfoBarDelegate::Create(GetInfoBarManager());

@@ -148,16 +148,7 @@ namespace {
 // structured headers as described in
 // https://www.rfc-editor.org/rfc/rfc8941.html.
 const AtomicString SerializeStringHeader(const std::string& str) {
-  std::string output;
-
-  // See https://crbug.com/1416925.
-  if (str.empty() &&
-      !base::FeatureList::IsEnabled(
-          blink::features::kQuoteEmptySecChUaStringHeadersConsistently)) {
-    return AtomicString(output.c_str());
-  }
-
-  output =
+  std::string output =
       net::structured_headers::SerializeItem(net::structured_headers::Item(str))
           .value_or(std::string());
 
@@ -470,9 +461,22 @@ void FrameFetchContext::PrepareRequest(
 // calculation for resource timing and dev tools.
 void FrameFetchContext::FillInitiatorInfo(FetchInitiatorInfo& initiator_info) {
   CHECK(RuntimeEnabledFeatures::ResourceTimingInitiatorEnabled());
+  // A module script reaches one of three branches below depending on how it is
+  // requested:
+  //   - Statically imported (import "leaf.js";): the imported-module branch
+  //     just below. |initiator_info.referrer| is the importing module's URL.
+  //     Unlike the stylesheet case, it is non-empty even when the document
+  //     imports the module itself, e.g.
+  //       <script type="module">import "leaf.js";</script>
+  //   - Dynamically imported (import("leaf.js")), or loaded by a module script
+  //     element that JavaScript adds to the document (e.g. via
+  //     document.createElement("script")): the running-script branch, since a
+  //     script is executing when the fetch is initiated.
+  //   - Loaded directly by the parser (<script type="module" src="leaf.js">):
+  //     the document-fallback branch at the end.
   if (initiator_info.is_imported_module && !initiator_info.referrer.empty()) {
-    // TODO(crbug.com/40919714): Fill |initiator_url|.
     // Initiator is a referrer of an imported js file.
+    initiator_info.initiator_url = KURL(initiator_info.referrer);
     return;
   }
   bool was_requested_by_stylesheet =
@@ -482,7 +486,6 @@ void FrameFetchContext::FillInitiatorInfo(FetchInitiatorInfo& initiator_info) {
   // the document.
   if (was_requested_by_stylesheet && !initiator_info.referrer.empty()) {
     initiator_info.initiator_url = KURL(initiator_info.referrer);
-
     return;
   }
 

@@ -85,7 +85,6 @@
 <translation id="1310482092992808703">Gruppera flikar</translation>
 <translation id="1318262688555255786">Dela länk till webbsidan <ph name="PAGE_TITLE" />. Källa: <ph name="PAGE_URL" /></translation>
 <translation id="1327257854815634930">Navigeringshistoriken har öppnats</translation>
-<translation id="1330043879670259913">För att skydda ditt arbete i Chrome kan organisationen visa eller hantera viss information när du är inloggad i Chrome. Läs mer</translation>
 <translation id="1331212799747679585">Det går inte att uppdatera Chrome. Fler alternativ</translation>
 <translation id="1332501820983677155">Kortkommandon för funktioner i Google Chrome</translation>
 <translation id="1333491156693005331">Kontrollerades nyligen</translation>
@@ -724,7 +723,6 @@ Din krypterade data kan endast läsas av en person som har din lösenfras. Löse
 <translation id="399788104667917863">Fäst i verktygsfältet</translation>
 <translation id="4000212216660919741">Startsida offline</translation>
 <translation id="4000670338830950598">Anpassa och kontrollera Google Chrome med ett markerat objekt</translation>
-<translation id="4002066346123236978">Titel</translation>
 <translation id="4015643064997321279">{NUM_PASSWORDS,plural, =1{1 utsatt lösenord i Google-kontot}other{# utsatta lösenord i Google-kontot}}</translation>
 <translation id="4023638601467301498">Logga in i Chrome om du vill få tillgång till dina bokmärken med mera på alla dina enheter</translation>
 <translation id="4024768890073681126">Webbläsaren hanteras av din förälder</translation>
@@ -1974,6 +1972,7 @@ Om du vill ändra den här inställningen <ph name="BEGIN_LINK" />raderar du Chr
 <translation id="8937772741022875483">Vill du ta bort din aktivitet i Chrome från Digitalt välmående?</translation>
 <translation id="8942627711005830162">Öppna i ett annat fönster</translation>
 <translation id="8945143127965743188"><ph name="LANG" /> – Det gick inte att ladda ned språket. Försök igen senare.</translation>
+<translation id="8945348199139712719">Klistra in och gå till kopierad text</translation>
 <translation id="8946759102391960088">Behåll åtkomsten till dina lösenord</translation>
 <translation id="895442993047180128">Dialogrutan om att välja att få tipsaviseringar har stängts</translation>
 <translation id="8957528460562961174">Om du vill behålla åtkomsten till dina lösenord kan du exportera dem nu och sedan importera dem till din favoritlösenordshanterare. Google Lösenordshantering slutade fungera eftersom Google Play-tjänster inte är tillgängliga.</translation>

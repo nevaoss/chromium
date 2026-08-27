@@ -195,6 +195,11 @@ export class TabDragDelegate {
         element.style.transform = '';
       }
     }
+    const newTabButton =
+        this.host_.shadowRoot?.querySelector<HTMLElement>('#newTabButton');
+    if (newTabButton) {
+      newTabButton.style.transform = '';
+    }
     this.draggedTabId_ = '';
     this.mouseXOffset_ = 0;
     this.dragInProgress_ = false;
@@ -212,7 +217,37 @@ export class TabDragDelegate {
     tabElement.style.transform = '';
     const originalViewportLeft = tabElement.getBoundingClientRect().left;
     const deltaX = localX - originalViewportLeft - this.mouseXOffset_;
-    tabElement.style.transform = `translateX(${deltaX}px)`;
+    const containerBounds = this.host_.getDragContainerBounds();
+
+    // Left boundary clamp:
+    const minDeltaX = containerBounds.left - originalViewportLeft;
+
+    // Right boundary clamp (Add Tab button geometry):
+    const newTabButton =
+        this.host_.shadowRoot?.querySelector<HTMLElement>('#newTabButton');
+    if (newTabButton) {
+      newTabButton.style.transform = '';
+    }
+    const buttonRect = newTabButton?.getBoundingClientRect();
+    const buttonWidth = buttonRect?.width ?? 0;
+    const maxButtonOffset = buttonRect ?
+        Math.max(0, containerBounds.right - buttonRect.right) :
+        Infinity;
+
+    const maxDeltaX = containerBounds.right - buttonWidth -
+        tabElement.offsetWidth - originalViewportLeft;
+    const clampedDeltaX = Math.min(Math.max(deltaX, minDeltaX), maxDeltaX);
+    tabElement.style.transform = `translateX(${clampedDeltaX}px)`;
+
+    if (newTabButton && buttonRect) {
+      const draggedRight =
+          originalViewportLeft + clampedDeltaX + tabElement.offsetWidth;
+      if (draggedRight > buttonRect.left) {
+        const offset =
+            Math.min(draggedRight - buttonRect.left, maxButtonOffset);
+        newTabButton.style.transform = `translateX(${offset}px)`;
+      }
+    }
   }
 
   private tryMoveLeft_(

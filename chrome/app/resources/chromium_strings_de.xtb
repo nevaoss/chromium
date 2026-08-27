@@ -151,6 +151,7 @@
 <translation id="2635452620547538388">Bestätige deine Identität, um Chromium-Daten in deinem Konto <ph name="ACCOUNT_EMAIL" /> zu verwenden und zu speichern</translation>
 <translation id="2636783171884046627">Wenn du Gemini in Chromium schließen oder wieder aufrufen möchtest, verwende die Tastenkombination.</translation>
 <translation id="2637732208198500597">{COUNT,plural, =0{Das erweiterte Sicherheitsprogramm erfordert, dass du Chromium neu startest, um ein Update durchzuführen}=1{Das erweiterte Sicherheitsprogramm erfordert, dass du Chromium neu startest, um ein Update durchzuführen. Dein Inkognitofenster wird nicht wieder geöffnet.}other{Das erweiterte Sicherheitsprogramm erfordert, dass du Chromium neu startest, um ein Update durchzuführen. Deine # Inkognitofenster werden nicht wieder geöffnet.}}</translation>
+<translation id="263863604136125912">Chromium starten</translation>
 <translation id="2648074677641340862">Während der Installation ist ein Fehler im Betriebssystem aufgetreten. Bitte lade Chromium erneut herunter.</translation>
 <translation id="2661879430930417727">Auf gemeinsam genutzten Geräten können die verschiedenen Nutzer separat surfen und Chromium jeweils nach ihren Wünschen einrichten</translation>
 <translation id="2676569452213089702">Du kannst Gemini ganz einfach in Chromium auf deinem Gerät verwenden, auch wenn Chromium minimiert ist.</translation>
@@ -304,7 +305,6 @@
 <translation id="4304713468139749426">Passwort­manager</translation>
 <translation id="4334241893986177674">In diesem Screenshot suchen</translation>
 <translation id="4384331407722351213">Chromium beim Starten von Windows öffnen</translation>
-<translation id="4384993550046411228">Wenn du Chromium als Standardbrowser festlegst, hast du ganz einfach Zugriff auf die vertrauten Funktionen. Chromium wird für den Schnellzugriff an die Taskleiste angepinnt.</translation>
 <translation id="4400772909124543403">Es ist kein Update verfügbar</translation>
 <translation id="4407044323746248786">Chromium trotzdem beenden?</translation>
 <translation id="4413205837991854510">Button für die Bildersuche immer anzeigen</translation>
@@ -682,6 +682,7 @@ Chromium kann deine Einstellungen nicht wiederherstellen.</translation>
 <translation id="8286943863733751221"><ph name="BEGIN_LINK" />Chromium warnt dich<ph name="END_LINK" /> vor unsicheren Websites und Downloads</translation>
 <translation id="8295827201165805317">Du hast diese Website in letzter Zeit nicht besucht. Chromium hat „<ph name="PERMISSION" />“ entfernt.</translation>
 <translation id="8296236834352487533">Du kannst mit der Chromium App für iOS die Kamera nutzen, um einzukaufen, Texte übersetzen zu lassen und zu identifizieren, was du gerade siehst</translation>
+<translation id="8310603974518734211">QR-Code, um dich als <ph name="USER_NAME" /> in Chromium anzumelden</translation>
 <translation id="8313851650939857356">Fehler beim Starten: <ph name="STARTUP_ERROR" />.</translation>
 <translation id="8318772038038596122">In deiner Organisation wird Chromium nach <ph name="TIMEOUT_DURATION" /> Inaktivität geschlossen.</translation>
 <translation id="8321888067342493336">Als Bild speichern</translation>

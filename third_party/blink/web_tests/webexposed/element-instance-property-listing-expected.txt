@@ -147,6 +147,7 @@ namespace http://www.w3.org/1999/xhtml
     property getAttributeNodeNS
     property getBoundingClientRect
     property getBoxQuads
+    property getCanvasTransform
     property getClientRects
     property getElementsByClassName
     property getElementsByTagName
@@ -365,6 +366,7 @@ namespace http://www.w3.org/1999/xhtml
     property setAttributeNS
     property setAttributeNode
     property setAttributeNodeNS
+    property setCanvasTransform
     property setHTML
     property setHTMLUnsafe
     property setPointerCapture
@@ -1212,7 +1214,10 @@ html element td
 html element template
     property buffer
     property content
+    property crossOrigin
     property htmlFor
+    property integrity
+    property referrerPolicy
     property sanitize
     property shadowRootAdoptedStyleSheets
     property shadowRootClonable
@@ -1222,6 +1227,7 @@ html element template
     property shadowRootReferenceTarget
     property shadowRootSerializable
     property shadowRootSlotAssignment
+    property src
 html element textarea
     property autocomplete
     property checkValidity
@@ -1533,6 +1539,7 @@ namespace http://www.w3.org/2000/svg
     property getAttributeNodeNS
     property getBoundingClientRect
     property getBoxQuads
+    property getCanvasTransform
     property getClientRects
     property getElementsByClassName
     property getElementsByTagName
@@ -1735,6 +1742,7 @@ namespace http://www.w3.org/2000/svg
     property setAttributeNS
     property setAttributeNode
     property setAttributeNodeNS
+    property setCanvasTransform
     property setHTML
     property setHTMLUnsafe
     property setPointerCapture

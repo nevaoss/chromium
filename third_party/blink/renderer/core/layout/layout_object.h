@@ -426,9 +426,24 @@ class CORE_EXPORT LayoutObject : public GarbageCollected<LayoutObject>,
   LayoutObject* PreviousInPostOrderBeforeChildren(
       const LayoutObject* stay_within) const;
 
-  // The depth of the tree.
-  wtf_size_t Depth() const;
+  static constexpr unsigned kLayoutObjectDepthBits = 10;
+  static constexpr unsigned kMaxLayoutObjectDepth =
+      (1u << kLayoutObjectDepthBits) - 1;
 
+  // The depth of this object in the layout-tree. Only valid if this object
+  // (and all its ancestors) are attached.
+  unsigned Depth() const {
+    NOT_DESTROYED();
+    return depth_ < kMaxLayoutObjectDepth ? depth_ : DepthSlow();
+  }
+
+ private:
+  // Instead of accessing `depth_` directly, walks up the ancestor chain.
+  unsigned DepthSlow() const;
+
+  void SetDepthIncludingDescendants(unsigned);
+
+ public:
   struct CommonAncestorData {
     STACK_ALLOCATED();
 
@@ -735,8 +750,7 @@ class CORE_EXPORT LayoutObject : public GarbageCollected<LayoutObject>,
   }
   inline bool IsStacked(const ComputedStyle& style) const {
     NOT_DESTROYED();
-    if (auto* html_element = DynamicTo<HTMLElement>(GetNode());
-        html_element && html_element->IsUnboundedElementActive()) {
+    if (style.IsUnboundedElementActive()) {
       // For unbounded elements, we treat them as stacked, so they get their own
       // paint layer by default.
       DCHECK(RuntimeEnabledFeatures::UnboundedElementEnabled());
@@ -774,6 +788,10 @@ class CORE_EXPORT LayoutObject : public GarbageCollected<LayoutObject>,
         parent && (parent->IsInsideMulticol() || parent->IsMulticolContainer());
     if (inside_multicol != IsInsideMulticol()) {
       SetIsInsideMulticolIncludingDescendants(inside_multicol);
+    }
+
+    if (parent) {
+      SetDepthIncludingDescendants(parent->Depth() + 1);
     }
   }
 
@@ -1583,9 +1601,17 @@ class CORE_EXPORT LayoutObject : public GarbageCollected<LayoutObject>,
     return has_transform_related_property_;
   }
   // Compared to StyleRef().HasTransform(), this excludes objects that ignore
-  // transform-related styles (e.g. LayoutInline).
+  // transform-related styles (e.g. LayoutInline), and includes elements with a
+  // canvas transform in a canvas subtree.
   bool HasTransform() const {
     NOT_DESTROYED();
+    if (IsInCanvasSubtree() && IsBox()) [[unlikely]] {
+      if (const auto* element = DynamicTo<Element>(GetNode())) {
+        if (element->GetUsedCanvasTransform()) {
+          return true;
+        }
+      }
+    }
     return HasTransformRelatedProperty() && StyleRef().HasTransform();
   }
   // Similar to the above.
@@ -4109,6 +4135,9 @@ class CORE_EXPORT LayoutObject : public GarbageCollected<LayoutObject>,
 
   // Whether this is an (inclusive) descendant of an unbounded element.
   unsigned is_active_unbounded_element_or_descendant_ : 1 = false;
+
+  // The depth of this object in the layout-tree.
+  unsigned depth_ : kLayoutObjectDepthBits = 0u;
 
   void SetSelfNeedsFullLayout(bool b) {
     NOT_DESTROYED();

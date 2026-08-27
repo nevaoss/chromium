@@ -197,6 +197,7 @@ public class StripLayoutHelper
 
     // Visibility Constants
     private static final float BUTTON_BACKGROUND_Y_OFFSET_DP = 3.f;
+    private static final float TAB_SEARCH_BUTTON_Y_OFFSET_DP = 2.f;
 
     // Desired spacing between new tab button and tabs when tab strip is not full.
     private static final float DESIRED_PADDING_BETWEEN_NEW_TAB_BUTTON_AND_TABS = 2.f;
@@ -233,9 +234,6 @@ public class StripLayoutHelper
     static final String NULL_TAB_HOVER_CARD_VIEW_SHOW_DELAYED_HISTOGRAM_NAME =
             "Android.TabStrip.NullTabHoverCardView.ShowDelayed";
 
-    // Hover card constants
-    @VisibleForTesting static final int MAX_HOVER_CARD_DELAY_MS = 800;
-    @VisibleForTesting static final int MIN_HOVER_CARD_DELAY_MS = 300;
     private static final int SHOW_HOVER_CARD_WITHOUT_DELAY_TIME_BUFFER = 300;
 
     // An observer that is notified of changes to a {@link TabModel} object.
@@ -966,7 +964,7 @@ public class StripLayoutHelper
         button.setBackgroundTint(context.getColorStateList(bgTintRes));
 
         button.setTint(ChromeColors.getPrimaryIconTint(context, incognito).getDefaultColor());
-        button.setDrawY(BUTTON_BACKGROUND_Y_OFFSET_DP);
+        button.setDrawY(TAB_SEARCH_BUTTON_Y_OFFSET_DP);
         button.setAccessibilityDescription(
                 res.getString(R.string.accessibility_search_loupe_tooltip_text));
         button.setVisible(ChromeFeatureList.sTabSearchForDesktop.isEnabled());
@@ -1135,28 +1133,56 @@ public class StripLayoutHelper
         }
     }
 
+    /**
+     * @return The gradient width of the left fade layer. When a button is visible on this side (LTR
+     *     for Tab Search button, RTL for trailing buttons), it returns the button-side gradient
+     *     width to ensure a sharper fade transition. Otherwise, it returns the standard edge fade
+     *     gradient width.
+     */
     public float getLeftFadeGradientWidth() {
-        return LocalizationUtils.isLayoutRtl()
-                ? mButtonSideFadeGradientWidth
-                : NO_BUTTON_FADE_GRADIENT_WIDTH_DP;
+        if (LocalizationUtils.isLayoutRtl()) {
+            return mButtonSideFadeGradientWidth;
+        } else {
+            return mTabSearchButton.isVisible()
+                    ? BUTTON_FADE_GRADIENT_SHORT_WIDTH_DP
+                    : NO_BUTTON_FADE_GRADIENT_WIDTH_DP;
+        }
     }
 
+    /**
+     * @return The gradient width of the right fade layer. When a button is visible on this side
+     *     (RTL for Tab Search button, LTR for trailing buttons), it returns the button-side
+     *     gradient width to ensure a sharper fade transition. Otherwise, it returns the standard
+     *     edge fade gradient width.
+     */
     public float getRightFadeGradientWidth() {
-        return LocalizationUtils.isLayoutRtl()
-                ? NO_BUTTON_FADE_GRADIENT_WIDTH_DP
-                : mButtonSideFadeGradientWidth;
+        if (LocalizationUtils.isLayoutRtl()) {
+            return mTabSearchButton.isVisible()
+                    ? BUTTON_FADE_GRADIENT_SHORT_WIDTH_DP
+                    : NO_BUTTON_FADE_GRADIENT_WIDTH_DP;
+        } else {
+            return mButtonSideFadeGradientWidth;
+        }
     }
 
+    /**
+     * @return The opaque width of the left fade layer. When a button is visible on this side (LTR
+     *     for Tab Search button, RTL for trailing buttons), the opaque width covers the button's
+     *     touch target and a padding buffer to prevent scrolling tabs from showing behind the
+     *     button. Otherwise, it covers the standard margin width.
+     */
     public float getLeftFadeOpaqueWidth() {
-        return LocalizationUtils.isLayoutRtl()
-                ? mLeftFadeWidth - mButtonSideFadeGradientWidth
-                : NO_BUTTON_FADE_OPAQUE_WIDTH_DP;
+        return mLeftFadeWidth - getLeftFadeGradientWidth();
     }
 
+    /**
+     * @return The opaque width of the right fade layer. When a button is visible on this side (RTL
+     *     for Tab Search button, LTR for trailing buttons), the opaque width covers the button's
+     *     touch target and a padding buffer to prevent scrolling tabs from showing behind the
+     *     button. Otherwise, it covers the standard margin width.
+     */
     public float getRightFadeOpaqueWidth() {
-        return LocalizationUtils.isLayoutRtl()
-                ? NO_BUTTON_FADE_OPAQUE_WIDTH_DP
-                : mRightFadeWidth - mButtonSideFadeGradientWidth;
+        return mRightFadeWidth - getRightFadeGradientWidth();
     }
 
     float getLeftFadeWidthForTesting() {
@@ -1271,7 +1297,17 @@ public class StripLayoutHelper
                         ? BUTTON_FADE_GRADIENT_LONG_WIDTH_DP
                         : BUTTON_FADE_GRADIENT_SHORT_WIDTH_DP;
 
-        float startFadeWidth = NO_BUTTON_FADE_GRADIENT_WIDTH_DP + NO_BUTTON_FADE_OPAQUE_WIDTH_DP;
+        float startFadeWidth;
+        if (mTabSearchButton.isVisible()) {
+            // BUTTON_TOUCH_TARGET_SIZE_DP represents the Tab Search button's touch target size.
+            startFadeWidth =
+                    BUTTON_TOUCH_TARGET_SIZE_DP
+                            + mButtonSideFadePadding
+                            + BUTTON_FADE_GRADIENT_SHORT_WIDTH_DP;
+        } else {
+            startFadeWidth = NO_BUTTON_FADE_GRADIENT_WIDTH_DP + NO_BUTTON_FADE_OPAQUE_WIDTH_DP;
+        }
+
         float endFadeWidth =
                 mReservedEndMargin + mButtonSideFadePadding + mButtonSideFadeGradientWidth;
         if (LocalizationUtils.isLayoutRtl()) {
@@ -1954,6 +1990,23 @@ public class StripLayoutHelper
     /** Called when all tabs are closed at once. */
     public void willCloseAllTabs() {
         rebuildStripTabs(/* deferAnimations= */ false);
+    }
+
+    /**
+     * Called when a set of tabs are going to be closed.
+     *
+     * @param tabs The list of tabs being closed.
+     * @param isAllTabs Whether all tabs are closing.
+     * @param allowUndo Whether undo is allowed for this closure.
+     */
+    public void willCloseTabs(List<Tab> tabs, boolean isAllTabs, boolean allowUndo) {
+        if (isAllTabs) {
+            willCloseAllTabs();
+            return;
+        }
+        for (Tab tab : tabs) {
+            willCloseTab(tab);
+        }
     }
 
     /**
@@ -3096,33 +3149,7 @@ public class StripLayoutHelper
 
     @VisibleForTesting
     int getHoverCardDelay(float tabWidth) {
-        // Delay is calculated as a logarithmic scale and bounded by a minimum width
-        // based on the width of a pinned tab and a maximum of the standard width.
-        //
-        //  delay (ms)
-        //           |
-        // max delay-|                                    *
-        //           |                          *
-        //           |                    *
-        //           |                *
-        //           |            *
-        //           |         *
-        //           |       *
-        //           |     *
-        //           |    *
-        // min delay-|****
-        //           |___________________________________________ tab width
-        //               |                                |
-        //       pinned tab width               standard tab width
-
-        tabWidth = MathUtils.clamp(tabWidth, MIN_TAB_WIDTH_DP, MAX_TAB_WIDTH_DP);
-        double logarithmicFraction =
-                Math.log(tabWidth - MIN_TAB_WIDTH_DP + 1.f)
-                        / Math.log(MAX_TAB_WIDTH_DP - MIN_TAB_WIDTH_DP + 1.f);
-        int scalingFactor = MAX_HOVER_CARD_DELAY_MS - MIN_HOVER_CARD_DELAY_MS;
-        int delay = (int) (logarithmicFraction * scalingFactor) + MIN_HOVER_CARD_DELAY_MS;
-
-        return delay;
+        return TabHoverCardView.getHoverCardDelay(tabWidth, MIN_TAB_WIDTH_DP, MAX_TAB_WIDTH_DP);
     }
 
     private void showTabHoverCardView(boolean isDelayedCall) {
@@ -5305,6 +5332,11 @@ public class StripLayoutHelper
     /** Returns The width of the tab strip. */
     float getWidthForTesting() {
         return mWidth;
+    }
+
+    /** Returns the margin reserved at the start of the strip. */
+    float getReservedStartMarginForTesting() {
+        return mReservedStartMargin;
     }
 
     /**

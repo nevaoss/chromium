@@ -9917,6 +9917,12 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_READING_MODE_TURN_HIGHLIGHT_ON" desc="Tooltip label for button that turns on highlighting in Read Aloud.">
         Turn on highlight
       </message>
+      <message name="IDS_READING_MODE_AI_PLAYBACK_TURN_ON" desc="Tooltip label for button that turns on AI Playback in Read Aloud.">
+        Turn on AI Playback
+      </message>
+      <message name="IDS_READING_MODE_AI_PLAYBACK_TURN_OFF" desc="Tooltip label for button that turns off AI Playback in Read Aloud.">
+        Turn off AI Playback
+      </message>
       <message name="IDS_READING_MODE_PLAY_DESCRIPTION" desc="Accessibility description for button that plays speech in Read Aloud.">
         Listen to the text with natural voice
       </message>
@@ -10484,6 +10490,39 @@ Keep your key file in a safe place. You will need it to create new versions of y
             Collapse Vertical Tabs
       </message>
       <!-- /Vertical Tab Strings -->
+
+      <!-- Tab Scroll Strings -->
+      <if expr="use_titlecase">
+        <then>
+          <message name="IDS_TAB_SCROLL_AUTO_SHOW_ON_OVERFLOW" desc="In Title Case: Text of the setting to automatically show scroll buttons on tab overflow.">
+            Automatically Show Tab Scroll Buttons When Needed
+          </message>
+          <message name="IDS_TAB_SCROLL_HIDE_BUTTONS" desc="In Title Case: Text of the context menu item or button to hide scroll buttons.">
+            Hide Scroll Buttons
+          </message>
+          <message name="IDS_TAB_SCROLL_PIN_BUTTONS" desc="In Title Case: Text of the context menu item to pin scroll buttons.">
+            Pin Scroll Buttons
+          </message>
+        </then>
+        <else>
+          <message name="IDS_TAB_SCROLL_AUTO_SHOW_ON_OVERFLOW" desc="Text of the setting to automatically show scroll buttons on tab overflow.">
+            Automatically show tab scroll buttons when needed
+          </message>
+          <message name="IDS_TAB_SCROLL_HIDE_BUTTONS" desc="Text of the context menu item or button to hide scroll buttons.">
+            Hide scroll buttons
+          </message>
+          <message name="IDS_TAB_SCROLL_PIN_BUTTONS" desc="Text of the context menu item to pin scroll buttons.">
+            Pin scroll buttons
+          </message>
+        </else>
+      </if>
+      <message name="IDS_TAB_SCROLL_IPH_TITLE" desc="Title of the in-product help promo educating users on tab scrolling.">
+        See all your tabs
+      </message>
+      <message name="IDS_TAB_SCROLL_IPH_BODY" desc="Body text of the in-product help promo educating users on tab scrolling.">
+        You can scroll or use your mouse wheel to see all your tabs
+      </message>
+      <!-- /Tab Scroll Strings -->
 
       <!-- Organizer Panel Strings -->
       <if expr="use_titlecase">
@@ -19225,10 +19264,13 @@ Please help our engineers fix this problem. Tell us what happened right before y
       </message>
       <!-- Dictation strings -->
       <message name="IDS_DICTATION_ONBOARDING_BULLET_DATA_SHARING" desc="The second paragraph in the onboarding dialog describing data sharing with Google servers." translateable="false">
-        Your spoken audio, the transcribed text, and the content and URL of the page you're interacting with will be sent to Google.
+        The content and URL of the page you're on will be sent to Google to generate text based on your spoken audio and the page context.
       </message>
       <message name="IDS_DICTATION_ONBOARDING_BUTTON_ACCEPT" desc="Button label on the onboarding dialog to confirm the provided information and use the feature." translateable="false">
-        Ok, got it
+        Allow
+      </message>
+      <message name="IDS_DICTATION_ONBOARDING_BUTTON_CANCEL" desc="Button label on the onboarding dialog to cancel the provided information and not use the feature." translateable="false">
+        Cancel
       </message>
       <message name="IDS_DICTATION_BUTTON_START" desc="Button label on the dictation UI that turns on the microphone to start dictating text." translateable="false">
         Start
@@ -19250,6 +19292,17 @@ Please help our engineers fix this problem. Tell us what happened right before y
     <!-- Infobar shown when Protected Audiences Debugging is enabled -->
     <message name="IDS_PROTECTED_AUDIENCE_DEBUGGING_DISCLAIMER" desc="Text of infobar that shows up when the consented debugging feature for Protected Audiences is enabled.">
       Protected Audiences Debugging is enabled.
+    </message>
+
+    <!-- Omnibox Everywhere Screenshot Menu -->
+    <message name="IDS_OMNIBOX_EVERYWHERE_SHARE_SCREENSHOT" desc="Title of the screenshot sharing menu option.">
+      Share a screenshot
+    </message>
+    <message name="IDS_OMNIBOX_EVERYWHERE_ENTIRE_SCREEN" desc="Label of the option to capture an entire screen screenshot.">
+      Entire screen
+    </message>
+    <message name="IDS_OMNIBOX_EVERYWHERE_WINDOW" desc="Label of the option to capture a window screenshot.">
+      Window
     </message>
 
     <!-- Responsive Toolbar -->

@@ -1100,6 +1100,12 @@ void PopupViewViews::SetSelectedCell(
   // New selected cell invalidates this scheduling (if it's running), cancel it.
   open_sub_popup_timer_.Stop();
 
+  if (cell_index) {
+    // The sub-popup hiding is canceled because the newly selected/entered cell
+    // rules visibility from now.
+    OnMouseEnteredInChildren();
+  }
+
   if (cell_index && HasSelectablePopupInteractiveRowViewAt(cell_index->first)) {
     if (auto* footnote = GetBnplFootnoteView()) {
       // Since cell selection is based on virtual focus and not real focus,
@@ -1111,9 +1117,6 @@ void PopupViewViews::SetSelectedCell(
       }
     }
     has_keyboard_focus_ = true;
-    // The sub-popup hiding is canceled because the newly selected cell will
-    // rule the sub-pupop visibility from now.
-    OnMouseEnteredInChildren();
 
     row_with_selected_cell_ = cell_index->first;
     PopupInteractiveRowView& new_selected_row =
@@ -1152,7 +1155,9 @@ void PopupViewViews::SetSelectedCell(
                        autoselect_first_suggestion));
   } else {
     row_with_selected_cell_ = std::nullopt;
-    ScheduleSubPopupClosing();
+    if (!cell_index) {
+      ScheduleSubPopupClosing();
+    }
   }
 }
 
@@ -1284,7 +1289,8 @@ void PopupViewViews::InitViews() {
         controller_ &&
         controller_->GetMainFillingProduct() == FillingProduct::kAtMemory;
     search_bar_ = AddChildView(std::make_unique<PopupSearchBarView>(
-        search_bar_config_->placeholder, *this,
+        search_bar_config_->placeholder, search_bar_config_->initial_value,
+        *this,
         /*show_indicator=*/is_at_memory,
         /*show_search_icon_sparkle=*/is_at_memory,
         /*debounce_delay=*/
@@ -1340,8 +1346,8 @@ void PopupViewViews::CreateSuggestionViews() {
 
   SetBackground(views::CreateSolidBackground(ui::kColorDropdownBackground));
 
-  // Show the "no results" message if the controller identifies this state.
-  if (search_bar_ && controller_->ShouldShowNoSuggestionsMessage()) {
+  if (search_bar_ &&
+      controller_->ShouldShowNoSuggestionsMessage(search_bar_config_)) {
     suggestions_container_->AddChildView(
         std::make_unique<PopupCenteredTextView>(
             search_bar_config_->no_results_message));

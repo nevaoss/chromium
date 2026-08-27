@@ -365,7 +365,7 @@ void AttachTabHelpers(web::WebState* web_state, TabHelperFilter filter_flags) {
   attacher.Create<EditMenuTabHelper>();
 
   attacher.CreateWhen<MiniMapTabHelper>(
-      (base::FeatureList::IsEnabled(kIOSMiniMapUniversalLink) ||
+      (IsMiniMapUniversalLinkEnabled() ||
        base::FeatureList::IsEnabled(kIOSMiniMapUniversalLinkCounterfactual)) &&
       attacher.IsNotInTabHelperFilter());
 
@@ -401,10 +401,8 @@ void AttachTabHelpers(web::WebState* web_state, TabHelperFilter filter_flags) {
     if (IsModelBasedPageClassificationEnabled()) {
       ios::provider::AttachClassificationMetricsTabHelper(web_state);
     }
-    // TODO(crbug.com/526992227): Add feature param to
-    // IsGeminiContextualSuggestionsCuesEnabled for on-device classifier.
     attacher.CreateWhen<OnDeviceCategoryClassifierTabHelper>(
-        /*enabled=*/false);
+        IsGeminiContextualSuggestionsCuesOnDeviceClassifierEnabled());
   }
 
   attacher.Create<data_controls::DataControlsTabHelper>();

@@ -31,6 +31,7 @@
 <translation id="1290883685122687410">Einrichtungsfehler: <ph name="METAINSTALLER_EXIT_CODE" />. <ph name="WINDOWS_ERROR" /></translation>
 <translation id="1302523850133262269">Bitte warte, bis die aktuellen Systemupdates von Chrome installiert wurden.</translation>
 <translation id="1330562121671411446">Sprache erkennen</translation>
+<translation id="1333654552732143316">Chrome starten</translation>
 <translation id="1341711321000856656">Wenn du das Profil wechselst, kannst du dir Passwörter anderer Chrome-Profile anzeigen lassen</translation>
 <translation id="1343830902827845050">In Chrome anmelden</translation>
 <translation id="1356661055722410047">Neu! Du kannst sowohl Text als auch Bilder auf deinem Bildschirm übersetzen lassen</translation>
@@ -377,7 +378,6 @@ Wenn diese Seite nicht wie erwartet funktioniert, kannst du versuchen, die Optim
 <translation id="4885446229353981848">Google Lens-Verknüpfung immer anzeigen</translation>
 <translation id="4891791193823137474">Google Chrome im Hintergrund ausführen</translation>
 <translation id="4895437082222824641">Link in neuem Chrome-Tab öffnen</translation>
-<translation id="4896867431081882115">Wenn du Chrome als Standardbrowser festlegst, hast du ganz einfach Zugriff auf die vertrauten Funktionen. Chrome wird für den Schnellzugriff an die Taskleiste angepinnt.</translation>
 <translation id="4904953848704395458">Gemini in Chrome mit einer Tastenkombination öffnen.</translation>
 <translation id="4918086044614829423">Annehmen</translation>
 <translation id="4918844574251943176">Bild kopiert</translation>
@@ -739,6 +739,7 @@ Wenn diese Seite nicht wie erwartet funktioniert, kannst du versuchen, die Optim
 <translation id="8367705492654390392">Frage stellen</translation>
 <translation id="8367950957770994118">Du kannst Gemini in Chrome jederzeit schnell öffnen</translation>
 <translation id="8370517070665726704">Copyright <ph name="YEAR" /> Google LLC. Alle Rechte vorbehalten.</translation>
+<translation id="8370748943308169953">QR-Code, um dich als <ph name="USER_NAME" /> in Chrome anzumelden</translation>
 <translation id="8377158135256176353">Gemini in Chrome Canary aktivieren / deaktivieren</translation>
 <translation id="8387459386171870978">Chrome weiterhin verwenden</translation>
 <translation id="8394720698884623075">Prüft URLs anhand einer Liste unsicherer Websites, die in Chrome gespeichert ist</translation>

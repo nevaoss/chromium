@@ -221,6 +221,13 @@ void HTMLFormElement::HTMLFormMcpTool::ExecuteTool(
   }
 }
 
+void HTMLFormElement::HTMLFormMcpTool::CancelTool() {
+  CHECK(is_currently_running_);
+  CallDoneCallback(base::unexpected(
+      ScriptToolError(ScriptToolErrorCode::kToolCancelled,
+                      "Tool execution cancelled by abort signal")));
+}
+
 std::optional<ScriptToolError>
 HTMLFormElement::HTMLFormMcpTool::FillFormControls(
     const String& input_arguments,
@@ -291,11 +298,18 @@ void HTMLFormElement::HandleWebMcpToolResponse(HTMLFormMcpTool* tool,
   if (resolved) {
     String result;
     if (value.IsObject()) {
+      v8::TryCatch try_catch(script_state->GetIsolate());
       v8::Local<v8::String> json_string;
       if (v8::JSON::Stringify(script_state->GetContext(), value.V8Value())
               .ToLocal(&json_string)) {
         result = ToBlinkString<String>(script_state->GetIsolate(), json_string,
                                        kDoNotExternalize);
+      } else {
+        tool->CallDoneCallback(base::unexpected(
+            ScriptToolError(ScriptToolErrorCode::kToolInvocationFailed,
+                            "respondWith promise resolved with an object that "
+                            "could not be serialized to JSON")));
+        return;
       }
     }
 

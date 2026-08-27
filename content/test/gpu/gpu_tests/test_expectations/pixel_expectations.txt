@@ -494,6 +494,10 @@ crbug.com/515133241 [ win11 amd-0x7550 ] Pixel_DirectComposition_Video_VP9_BGRA 
 # crbug.com/402171652 [ win11 amd-0x150e ] Pixel_DirectComposition_Video_VP9_BGRA [ Failure ]
 # crbug.com/402429382 [ win11 amd-0x150e ] Pixel_ReflectedDiv [ Failure ]
 
+# Win11/GTX 1660 experimental flaky failures when going to 610.74
+crbug.com/402429382 [ win11 nvidia-0x2184 nvidia_ge_32.0.16.1074 ] Pixel_ReflectedDiv [ RetryOnFailure ]
+crbug.com/543955581 [ win11 nvidia-0x2184 nvidia_ge_32.0.16.1074 ] Pixel_Video_Context_Loss_MP4 [ RetryOnFailure ]
+
 # Win/Qualcomm Snapdragon X Elite
 crbug.com/402429382 [ win11 qualcomm-0x36334330 ] Pixel_ReflectedDiv [ Failure ]
 
@@ -561,7 +565,7 @@ crbug.com/536089774 [ android android-pixel-10 android-webview-instrumentation ]
 crbug.com/536089774 [ android android-pixel-10 android-webview-instrumentation ] Pixel_Video_MP4_FourColors_Rot_180 [ RetryOnFailure ]
 crbug.com/536089774 [ android android-pixel-10 android-webview-instrumentation ] Pixel_ViewTransitionsCapture [ RetryOnFailure ]
 
-crbug.com/544795245 [ mac apple-angle-metal-renderer:-apple-m2 asan ] Pixel_ViewTransitionsCapture [ RetryOnFailure ]
+crbug.com/544795245 [ mac apple-angle-metal-renderer:-apple-m2 asan ] Pixel_ViewTransitionsCapture [ Failure ]
 
 #######################################################################
 # Automated Entries After This Point - Do Not Manually Add Below Here #

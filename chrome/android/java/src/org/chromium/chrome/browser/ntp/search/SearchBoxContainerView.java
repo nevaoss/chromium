@@ -78,9 +78,14 @@ public class SearchBoxContainerView extends LinearLayout {
                 });
         mIsNtpAuroraEnabled = NewTabPageUtils.isNtpAuroraEnabled();
 
-        Typeface typeface = Typeface.create("google-sans-medium", Typeface.NORMAL);
-        mHintTextView.setTypeface(typeface);
         Resources res = getResources();
+        if (mIsNtpAuroraEnabled) {
+            mHintTextView.setTextAppearance(R.style.TextAppearance_FakeSearchBoxTextNewStyle);
+        } else {
+            Typeface typeface = Typeface.create("google-sans-medium", Typeface.NORMAL);
+            mHintTextView.setTypeface(typeface);
+        }
+
         @Px int size = res.getDimensionPixelSize(R.dimen.omnibox_search_engine_logo_composed_size);
         @Px int radius = size / 2;
         mDseIconView.setOutlineProvider(new RoundedCornerOutlineProvider(radius));
@@ -138,7 +143,7 @@ public class SearchBoxContainerView extends LinearLayout {
         View searchBoxShadowContainerView = findViewById(R.id.search_box_shadow_container);
         if (searchBoxShadowContainerView == null) return;
 
-        ComposeplateUtils.applyWhiteBackground(
+        ComposeplateUtils.applySearchBoxBackground(
                 getContext(), searchBoxShadowContainerView, applyWhiteBackground);
         applyShadow(searchBoxShadowContainerView);
         updateSearchBoxPaddingAndMarginForShadow(mIsNtpAuroraEnabled);

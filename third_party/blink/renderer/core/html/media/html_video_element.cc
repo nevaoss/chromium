@@ -910,47 +910,25 @@ scoped_refptr<StaticBitmapImage> HTMLVideoElement::CreateStaticBitmapImage(
     return nullptr;
   }
 
-  media::VideoTransformation transform =
-      media_video_frame->metadata().transformation.value_or(
-          media::kNoTransformation);
-
-  // The underlying VideoFrame may have been stripped of its transformation
-  // metadata by the decoder or hardware buffer pipeline. If the frame lacks
-  // a rotation but the WebMediaPlayer's pipeline metadata knows it exists,
-  // we must inherit it.
-  if (transform.rotation == media::VIDEO_ROTATION_0) {
-    transform = wmp->GetVideoTransformation();
-  }
-
-  if (media_video_frame->visible_rect().size() == wmp->NaturalSize() &&
-      (transform.rotation == media::VIDEO_ROTATION_90 ||
-       transform.rotation == media::VIDEO_ROTATION_270)) {
-    // Clear the transformation metadata to prevent double rotation during
-    // paint
-    transform = media::kNoTransformation;
-  }
-
   viz::RasterContextProvider* raster_context_provider = nullptr;
   if (auto wrapper = SharedGpuContext::ContextProviderWrapper()) {
     raster_context_provider =
         wrapper->ContextProvider().RasterContextProvider();
   }
 
-  bool is_accelerated = ShouldCreateAcceleratedImages(raster_context_provider);
-  bool will_hard_flip =
-      is_accelerated || respect_orientation == kDoNotRespectImageOrientation;
-
-  std::optional<gfx::Size> dest_size = size;
-  if (!dest_size && will_hard_flip) {
-    if (transform.rotation == media::VIDEO_ROTATION_90 ||
-        transform.rotation == media::VIDEO_ROTATION_270) {
-      dest_size = gfx::Size(media_video_frame->natural_size().height(),
-                            media_video_frame->natural_size().width());
-    }
-  }
+  const bool is_accelerated =
+      ShouldCreateAcceleratedImages(raster_context_provider);
+  const auto orientation_behavior =
+      !is_accelerated && respect_orientation == kRespectImageOrientation
+          ? VideoOrientationBehavior::kTagOrientation
+          : VideoOrientationBehavior::kHardFlip;
+  const auto color_space_interpretation =
+      reinterpret_as_srgb ? VideoColorSpaceInterpretation::kReinterpretAsSRGB
+                          : VideoColorSpaceInterpretation::kPreserve;
 
   auto required_provider_info = CreateSnapshotProviderInfoForVideoFrame(
-      *media_video_frame, dest_size, reinterpret_as_srgb);
+      *media_video_frame, size, color_space_interpretation,
+      orientation_behavior);
 
   bool cached_info_matches_required_info =
       cached_draw_info_ &&
@@ -958,7 +936,7 @@ scoped_refptr<StaticBitmapImage> HTMLVideoElement::CreateStaticBitmapImage(
   if (!cached_info_matches_required_info) {
     snapshot_provider_.reset();
 
-    if (ShouldCreateAcceleratedImages(raster_context_provider)) {
+    if (is_accelerated) {
       snapshot_provider_ = CanvasNon2DResourceProvider::Create(
           required_provider_info.size, required_provider_info.format,
           required_provider_info.alpha_type, required_provider_info.color_space,
@@ -975,17 +953,15 @@ scoped_refptr<StaticBitmapImage> HTMLVideoElement::CreateStaticBitmapImage(
   cache_deleting_timer_.StartOneShot(kTemporaryResourceDeletionDelay,
                                      FROM_HERE);
 
-  bool prefer_tagged_orientation =
-      respect_orientation == kRespectImageOrientation;
   scoped_refptr<StaticBitmapImage> image;
   if (snapshot_provider_) {
     image = CreateAcceleratedImageFromVideoFrame(
         std::move(media_video_frame), snapshot_provider_.get(), video_renderer,
-        prefer_tagged_orientation, reinterpret_as_srgb, transform);
+        orientation_behavior, color_space_interpretation);
   } else {
     image = CreateUnacceleratedImageFromVideoFrame(
         std::move(media_video_frame), cached_draw_info_.value(), video_renderer,
-        prefer_tagged_orientation, reinterpret_as_srgb, transform);
+        orientation_behavior, color_space_interpretation);
   }
 
   if (image) {

@@ -835,13 +835,19 @@ void ChromeAutocompleteProviderClient::OpenCoBrowsePanel() {
     std::unique_ptr<contextual_search::ContextualSearchSessionHandle>
         session_handle = tab_helper->TakeSessionHandle();
 
+    contextual_tasks::StartTaskUiOptions options;
+    options.entry_point =
+        omnibox::ChromeAimEntryPoint::DESKTOP_CHROME_COBROWSE_OMNIBOX_ACTION;
+
     ui_service->StartTaskUiInSidePanel(bwi, tab, creation_url,
-                                       std::move(session_handle));
+                                       std::move(session_handle), options);
   }
 #endif
 }
 
-void ChromeAutocompleteProviderClient::OpenLensOverlay(bool show) {
+void ChromeAutocompleteProviderClient::OpenLensOverlay(
+    bool show,
+    lens::LensOverlayInvocationSource invocation_source) {
 #if !BUILDFLAG(IS_ANDROID)
   if (auto* lens_search_controller =
           GetLensSearchController(GetWebContents(web_contents_getter_))) {
@@ -849,8 +855,7 @@ void ChromeAutocompleteProviderClient::OpenLensOverlay(bool show) {
       // Force showing the contextual search box in the Lens Overlay, unless
       // kAskGLensChipRoute is enabled.
       bool show_csb = !omnibox::kAskGLensChipRoute.Get();
-      lens_search_controller->OpenLensOverlay(
-          lens::LensOverlayInvocationSource::kOmniboxPageAction, show_csb);
+      lens_search_controller->OpenLensOverlay(invocation_source, show_csb);
     } else {
       // TODO(crbug.com/402497756): For prototyping, reusing the existing
       // omnibox entry point. However, for production, create a new invocation

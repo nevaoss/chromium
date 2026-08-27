@@ -157,7 +157,7 @@ class WebUILocationBar : public LocationBar,
   views::Widget* GetLocationBarWidget() override;
   OmniboxPopupFileSelector* GetOmniboxPopupFileSelector() const override;
   OmniboxPopupAimPresenter* GetOmniboxPopupAimPresenter() const override;
-  const views::View* GetLocationBarFocusRestoreView() const override;
+  views::View* GetLocationBarFocusRestoreView() override;
 
   void SetSuppressionThresholdForTesting(base::TimeDelta threshold);
 
@@ -242,7 +242,6 @@ class WebUILocationBar : public LocationBar,
       security_state::NONE;
 
   WebUIBubbleReopenSuppressor page_info_reopen_suppressor_;
-  bool suppress_lhs_chip_clicked_ = false;
 
   std::optional<std::u16string> last_search_keyword_;
   std::optional<bool> last_is_keyword_selected_;

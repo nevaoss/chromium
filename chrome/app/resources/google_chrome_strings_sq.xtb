@@ -381,7 +381,6 @@ Nëse kjo faqe nuk funksionon siç pritet, provo të lejosh optimizimin.</transl
 <translation id="4885446229353981848">Shfaq gjithmonë shkurtoren e "Lentes së Google"</translation>
 <translation id="4891791193823137474">Lejo që Google Chrome të ekzekutohet në sfond</translation>
 <translation id="4895437082222824641">Hape lidhjen në një &amp;skedë të re të Chrome</translation>
-<translation id="4896867431081882115">Përfito qasje të lehtë te veçoritë që njeh, që të pëlqejnë dhe që u beson duke caktuar Chrome si shfletuesin tënd të parazgjedhur. Chrome do të gozhdohet te shiriti i detyrave për qasje të shpejtë.</translation>
 <translation id="4904953848704395458">Hap Gemini në Chrome me një shkurtore të tastierës.</translation>
 <translation id="4918086044614829423">Prano</translation>
 <translation id="4918844574251943176">Imazhi u kopjua</translation>
@@ -745,6 +744,7 @@ Google Chrome nuk është në gjendje të rikuperojë cilësimet e tua.</transla
 <translation id="8367705492654390392">Pyet për çdo gjë</translation>
 <translation id="8367950957770994118">Hap me shpejtësi Gemini në Chrome sa herë që të nevojitet</translation>
 <translation id="8370517070665726704">Të drejtat e autorit <ph name="YEAR" /> Google LLC. Të gjitha të drejtat e rezervuara.</translation>
+<translation id="8370748943308169953">Kodi QR për t'u identifikuar në Chrome si <ph name="USER_NAME" /></translation>
 <translation id="8377158135256176353">Aktivizo/çaktivizo Gemini në Chrome Canary</translation>
 <translation id="8387459386171870978">Vazhdo të përdorësh Chrome</translation>
 <translation id="8394720698884623075">Kontrollon URL-të kundrejt një liste sajtesh të pasigurta të ruajtur në Chrome</translation>

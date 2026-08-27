@@ -2001,6 +2001,14 @@ String BuildProtocolDeviceBoundSessionFetchResult(
         kPreProvisionedKeyNotFound:
       return protocol::Network::DeviceBoundSessionFetchResultEnum::
           PreProvisionedKeyNotFound;
+    case net::device_bound_sessions::SessionError::ErrorType::
+        kAttestationCertificationError:
+      return protocol::Network::DeviceBoundSessionFetchResultEnum::
+          AttestationCertificationError;
+    case net::device_bound_sessions::SessionError::ErrorType::
+        kAttestationSigningError:
+      return protocol::Network::DeviceBoundSessionFetchResultEnum::
+          AttestationSigningError;
   }
 }
 // LINT.ThenChange(//third_party/blink/public/devtools_protocol/domains/Network.pdl:DeviceBoundSessionFetchResult)
@@ -3827,13 +3835,10 @@ NetworkHandler::CreateRequestFromResourceRequest(
   return request_object;
 }
 
-
-void NetworkHandler::ApplyOverrides(
-    net::HttpRequestHeaders* headers,
-    bool* skip_service_worker,
-    bool* disable_cache,
-    std::optional<std::vector<net::SourceStreamType>>* accepted_stream_types,
-    GURL* referrer_override) {
+void NetworkHandler::ApplyOverrides(net::HttpRequestHeaders* headers,
+                                    bool* skip_service_worker,
+                                    bool* disable_cache,
+                                    GURL* referrer_override) {
   for (auto& entry : extra_headers_) {
     if (referrer_override &&
         base::EqualsCaseInsensitiveASCII(entry.first,

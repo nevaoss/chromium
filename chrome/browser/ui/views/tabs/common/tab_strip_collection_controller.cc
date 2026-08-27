@@ -366,8 +366,7 @@ void TabStripCollectionController::ToggleTabGroupCollapsedState(
         group->IsCustomized());
   }
 
-  if (should_toggle_group &&
-      base::FeatureList::IsEnabled(features::kTabGroupsCollapseFreezing)) {
+  if (should_toggle_group) {
     gfx::Range tabs_in_group = group->ListTabs();
     for (uint32_t i = tabs_in_group.start(); i < tabs_in_group.end(); ++i) {
       views::View* const view =
@@ -375,9 +374,9 @@ void TabStripCollectionController::ToggleTabGroupCollapsedState(
       CHECK(views::IsViewClass<TabView>(view));
       TabView* const tab_view = views::AsViewClass<TabView>(view);
       if (is_currently_collapsed) {
-        tab_view->ReleaseFreezingVote();
+        tab_view->ReleaseFreezingVote(FreezingVoteReason::kCollapsedGroup);
       } else {
-        tab_view->CreateFreezingVote();
+        tab_view->CreateFreezingVote(FreezingVoteReason::kCollapsedGroup);
       }
     }
   }
@@ -647,6 +646,10 @@ void TabStripCollectionController::ShiftTabRelative(
 void TabStripCollectionController::ShiftGroupRelative(
     const tab_groups::TabGroupId& group,
     int offset) {
+  if (GetFocusedGroup() == group) {
+    return;
+  }
+
   CHECK_EQ(1, std::abs(offset))
       << "Offset must be 1 or -1 to shift the group up or down.";
 

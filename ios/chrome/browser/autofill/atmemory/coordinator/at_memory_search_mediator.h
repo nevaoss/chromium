@@ -13,18 +13,26 @@ namespace autofill {
 class AtMemoryQueryService;
 }
 
+namespace personal_context {
+class PersonalContextFirstRunService;
+}
+
 namespace web {
 class WebState;
 }
 
 @protocol AtMemoryFillCommands;
 @protocol AtMemorySearchConsumer;
+@protocol AtMemoryCommands;
 
 // Mediator for AtMemory search feature page.
 @interface AtMemorySearchMediator : NSObject <AtMemorySearchMutator>
 
 // Handler for filling commands.
 @property(nonatomic, weak) id<AtMemoryFillCommands> fillHandler;
+
+// Handler for AtMemory commands.
+@property(nonatomic, weak) id<AtMemoryCommands> atMemoryHandler;
 
 // The consumer for this mediator.
 @property(nonatomic, weak) id<AtMemorySearchConsumer> consumer;
@@ -33,10 +41,14 @@ class WebState;
 // by the user and provides results to the user if available. If not, the
 // service provides an empty result along with a status indicating the error.
 // `webState` is used to retrieve context like the current URL and page title.
-- (instancetype)initWithAtMemoryQueryService:
-                    (autofill::AtMemoryQueryService*)atMemoryQueryService
-                                    webState:(web::WebState*)webState
-    NS_DESIGNATED_INITIALIZER;
+// `firstRunService` is used to read and update notice confirmation states.
+- (instancetype)
+    initWithAtMemoryQueryService:
+        (autofill::AtMemoryQueryService*)atMemoryQueryService
+                        webState:(web::WebState*)webState
+                 firstRunService:
+                     (personal_context::PersonalContextFirstRunService*)
+                         firstRunService NS_DESIGNATED_INITIALIZER;
 
 - (instancetype)init NS_UNAVAILABLE;
 

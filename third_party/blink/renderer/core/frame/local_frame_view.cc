@@ -3485,7 +3485,9 @@ void LocalFrameView::UpdateStyleAndLayout() {
 
   // Second pass: run autosize until it stabilizes
   if (auto_size_info_) {
-    while (auto_size_info_->AutoSizeIfNeeded()) {
+    bool should_reset_for_layout = did_layout;
+    while (auto_size_info_->AutoSizeIfNeeded(should_reset_for_layout)) {
+      should_reset_for_layout = false;
       base::AutoReset<bool> reset(&is_being_auto_sized_, true);
       did_layout |= UpdateStyleAndLayoutInternal();
     }
@@ -4246,14 +4248,18 @@ bool LocalFrameView::CapturePaintPreview(
   auto* tracker = context.Canvas()->GetPaintPreviewTracker();
   DCHECK(tracker);  // |tracker| must exist or there is a bug upstream.
 
+  gfx::Rect rect(Size());
+  if (!RuntimeEnabledFeatures::AvoidEmbeddedContentViewLocationEnabled()) {
+    rect.set_origin(DeprecatedLocation());
+  }
   // Create a placeholder ID that maps to an embedding token.
   context.Canvas()->recordCustomData(tracker->CreateContentForRemoteFrame(
-      DeprecatedFrameRect(), maybe_embedding_token.value()));
+      rect, maybe_embedding_token.value()));
   context.Restore();
 
   // Send a request to the browser to trigger a capture of the frame.
   GetFrame().GetLocalFrameHostRemote().CapturePaintPreviewOfSubframe(
-      DeprecatedFrameRect(), tracker->Guid());
+      rect, tracker->Guid());
   return true;
 }
 
@@ -4282,7 +4288,8 @@ void LocalFrameView::Paint(const PaintInfo& paint_info,
     }
   }
 
-  if (!cull_rect.Rect().Intersects(DeprecatedFrameRect())) {
+  if (!RuntimeEnabledFeatures::AvoidEmbeddedContentViewLocationEnabled() &&
+      !cull_rect.Rect().Intersects(DeprecatedFrameRect())) {
     return;
   }
 

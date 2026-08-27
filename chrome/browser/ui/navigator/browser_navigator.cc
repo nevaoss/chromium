@@ -210,16 +210,13 @@ bool AdjustNavigateParamsForURL(NavigateParams* params) {
     params->window_action = NavigateParams::WindowAction::kShowWindow;
   }
 
-  Browser* browser_for_migration =
-      params->browser ? params->browser->GetBrowserForMigrationOnly() : nullptr;
-
   // Clicking a link to the home tab in a tabbed web app should always open the
   // link in the home tab.
-  if (web_app::IsHomeTabUrl(browser_for_migration, params->url)) {
-    browser_for_migration->tab_strip_model()->ActivateTabAt(0);
+  if (web_app::IsHomeTabUrl(params->browser, params->url)) {
+    params->browser->GetTabStripModel()->ActivateTabAt(0);
     // If the navigation URL is the same as the current home tab URL, skip the
     // navigation.
-    if (browser_for_migration->tab_strip_model()
+    if (params->browser->GetTabStripModel()
             ->GetActiveWebContents()
             ->GetLastCommittedURL() == params->url) {
       return false;
@@ -980,10 +977,18 @@ base::WeakPtr<content::NavigationHandle> NavigateImpl(
     }
 
     DCHECK(tab_to_insert);
+    std::optional<tab_groups::TabGroupId> group = params->group;
+    if (!(params->tabstrip_add_types & AddTabTypes::ADD_PINNED)) {
+      if (!group.has_value()) {
+        group = params->browser->GetBrowserForMigrationOnly()
+                    ->tab_strip_model()
+                    ->GetFocusedGroup();
+      }
+    }
     // The navigation should insert a new tab into the target Browser.
     params->browser->GetBrowserForMigrationOnly()->tab_strip_model()->AddTab(
         std::move(tab_to_insert), params->tabstrip_index, params->transition,
-        params->tabstrip_add_types, params->group);
+        params->tabstrip_add_types, group);
 
     // For NEW_SPLIT_VIEW, pair the new tab with the active tab. The
     // "already split" case is handled in Browser::OpenURLFromTab().

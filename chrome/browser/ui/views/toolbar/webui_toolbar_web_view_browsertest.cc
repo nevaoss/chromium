@@ -84,6 +84,7 @@
 #include "chrome/browser/ui/views/toolbar/reload_button.h"
 #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
 #include "chrome/browser/ui/views/toolbar/webui_avatar_toolbar_button.h"
+#include "chrome/browser/ui/views/toolbar/webui_home_control_test_base.h"
 #include "chrome/browser/ui/views/toolbar/webui_pinned_toolbar_actions.h"
 #include "chrome/browser/ui/views/toolbar/webui_reload_control.h"
 #include "chrome/browser/ui/views/toolbar/webui_test_utils.h"
@@ -204,14 +205,6 @@ constexpr char kHomeSelector[] = "#home";
 constexpr char kAppMenuButtonSelector[] = "#app-menu";
 
 
-std::string GetButtonIconJS(const std::string& selector) {
-  // `toolbar-chip-button` is added to support the internal structure of the
-  // element used by the `app-menu-button`.
-  return base::StrCat(
-      {GetButtonAppJS(selector),
-       "?.shadowRoot?.querySelector('cr-icon-button, toolbar-chip-button')"});
-}
-
 #if !BUILDFLAG(IS_CHROMEOS)
 std::string GetAppMenuPropertyJS(const std::string& property) {
   return base::StrCat({GetButtonAppJS(kAppMenuButtonSelector), property});
@@ -228,28 +221,6 @@ std::string GetValueForCSSProperty(const std::string& element_js,
 std::string GetValueForToolbarAppCSSProperty(const std::string& property) {
   return GetValueForCSSProperty("document.querySelector('toolbar-app')",
                                 property);
-}
-
-bool WaitForButtonVisible(content::WebContents* web_contents,
-                          const std::string& selector) {
-  static constexpr char kScript[] = R"(
-    (() => {
-      const btn = %s;
-      return !!btn && btn.checkVisibility();
-    })();
-  )";
-
-  return base::test::RunUntil([&]() {
-    return content::EvalJs(
-               web_contents,
-               base::StringPrintf(kScript, GetButtonAppJS(selector).c_str()))
-        .ExtractBool();
-  });
-}
-
-void PinButton(Browser* browser, views::WebView* web_view, const char* pref) {
-  browser->GetProfile()->GetPrefs()->SetBoolean(pref, true);
-  content::WaitForCopyableViewInWebContents(web_view->GetWebContents());
 }
 
 bool WaitForButtonEnabled(content::WebContents* web_contents,
@@ -284,58 +255,6 @@ void AssertToolbarSyncState(content::WebContents* web_contents,
           .ExtractBool());
 }
 
-
-constexpr char kGetCoordinatesJS[] =
-    "const rect = target.getBoundingClientRect(); "
-    "const x = rect.left + rect.width / 2; "
-    "const y = rect.top + rect.height / 2; ";
-
-// Adds functions to `target` to mimic pointer capture functions. Note that real
-// pointer capture is lost on pointer up, but the returned functions cannot
-// handle that, so if that is important for a test, it must manually call
-// `releasePointerCapture('*')`.
-std::string AddMockPointerCaptureFunctions(const char* target) {
-  return base::StringPrintf(
-      R"({
-        var element = %s;
-        var elements = [element, element?.parentElement].filter(Boolean);
-        var hasCapture = null;
-        for (var el of elements) {
-          el.setPointerCapture = (id) => { hasCapture = id; };
-          el.hasPointerCapture = (id) => { return id == hasCapture; };
-          el.releasePointerCapture = (id) => {
-            if (id == hasCapture || id == '*') {
-              hasCapture = null;
-            }
-          };
-        }
-      })",
-      target);
-}
-
-// Dispatches an event to a WebUI toolbar button.
-// `selector`: The CSS selector for the button element.
-// `event_class`: The JS event class (e.g. 'MouseEvent', 'PointerEvent').
-// `type`: The event type string (e.g. 'click', 'contextmenu').
-// `options`: JS object string for event options (e.g. "detail: 1, button: 2").
-std::string DispatchEventScript(const std::string& selector,
-                                const std::string& event_class,
-                                const std::string& type,
-                                const std::string& options = "") {
-  return base::StringPrintf(
-      "(() => { const target = %s; "
-      "if (target) { "
-      "  %s"
-      "  %s"
-      "  target.dispatchEvent(new %s('%s', "
-      "  {bubbles: true, cancelable: true, view: window, clientX: x, clientY: "
-      "y, "
-      "  %s}));"
-      "} })();",
-      GetButtonIconJS(selector).c_str(), kGetCoordinatesJS,
-      AddMockPointerCaptureFunctions("target").c_str(), event_class.c_str(),
-      type.c_str(), options.c_str());
-}
 
 // Dispatches a pointerup or pointerdown event based on `event`name`.
 std::string DispatchPointerEventImpl(
@@ -477,14 +396,6 @@ class TestMenuRunnerHandler : public views::MenuRunnerHandler {
  private:
   base::RepeatingCallback<void(const gfx::Rect&)> callback_;
 };
-
-WebUIToolbarWebView* SetUpAndPinHomeButton(Browser* browser) {
-  WebUIToolbarWebView* webui_toolbar_view = GetWebUIToolbarWebView(browser);
-  views::WebView* web_view = webui_toolbar_view->GetWebViewForTesting();
-  PinButton(browser, web_view, prefs::kShowHomeButton);
-  EXPECT_TRUE(WaitForButtonVisible(web_view->GetWebContents(), kHomeSelector));
-  return webui_toolbar_view;
-}
 
 }  // namespace
 
@@ -880,8 +791,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewPixelBrowserTest,
                                      &webui_toolbar_view, &web_view,
                                      browser()));
 
-  WebUIHomeControl* home_control =
-      webui_toolbar_view->GetHomeControlForTesting();
+  WebUIHomeControl* home_control = &webui_toolbar_view->home_control_;
 
   gfx::Rect control_rect = element->GetScreenBounds();
   gfx::Rect view_rect = webui_toolbar_view->GetBoundsInScreen();
@@ -1338,15 +1248,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewPixelBrowserTest,
 
   // 1. Verify initially hidden.
   EXPECT_FALSE(webui_toolbar_view->battery_saver_control_.IsVisible());
-  auto check_visible = [&]() {
-    return content::EvalJs(
-               webui_web_contents,
-               base::StringPrintf("(() => { const btn = %s; return !!btn && "
-                                  "btn.checkVisibility(); })()",
-                                  GetButtonAppJS(bsm_selector).c_str()))
-        .ExtractBool();
-  };
-  EXPECT_FALSE(check_visible());
+  EXPECT_FALSE(IsButtonVisible(webui_web_contents, bsm_selector));
 
   // 2. Enable Battery Saver.
 #if BUILDFLAG(IS_CHROMEOS)
@@ -1422,14 +1324,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewPixelBrowserTest,
   EXPECT_TRUE(base::test::RunUntil([&]() {
     return !webui_toolbar_view->battery_saver_control_.IsVisible();
   }));
-  EXPECT_TRUE(base::test::RunUntil([&]() {
-    return content::EvalJs(
-               webui_web_contents,
-               base::StringPrintf("(() => { const btn = %s; return !btn || "
-                                  "!btn.checkVisibility(); })()",
-                                  GetButtonAppJS(bsm_selector).c_str()))
-        .ExtractBool();
-  }));
+  EXPECT_TRUE(WaitForButtonHidden(webui_web_contents, bsm_selector));
 }
 
 class WebUIToolbarWebViewStabilityTest : public InProcessBrowserTest {
@@ -3023,7 +2918,6 @@ IN_PROC_BROWSER_TEST_F(WebUIAvatarButtonBrowserTest, AvatarButtonIPHPromo) {
 
 struct ButtonVisibilityToggleTestParam {
   const char* test_name;
-  const char* button_acc_name_key;
   const char* button_pref;
   const char* button_selector;
 };
@@ -3032,15 +2926,8 @@ class WebUIToolbarWebViewButtonVisibilityTest
     : public WebUIToolbarWebViewBrowserTest,
       public testing::WithParamInterface<ButtonVisibilityToggleTestParam> {};
 
-// TODO(crbug.com/540745897): Re-enable this test on Mac.
-#if BUILDFLAG(IS_MAC)
-#define MAYBE_TogglesVisibility DISABLED_TogglesVisibility
-#else
-#define MAYBE_TogglesVisibility TogglesVisibility
-#endif
 IN_PROC_BROWSER_TEST_P(WebUIToolbarWebViewButtonVisibilityTest,
-                       MAYBE_TogglesVisibility) {
-  content::ScopedAccessibilityModeOverride mode_override(ui::kAXModeComplete);
+                       TogglesVisibility) {
   const auto& param = GetParam();
 
   WebUIToolbarWebView* webui_toolbar_view = GetWebUIToolbarWebView(browser());
@@ -3048,49 +2935,19 @@ IN_PROC_BROWSER_TEST_P(WebUIToolbarWebViewButtonVisibilityTest,
   views::WebView* web_view = webui_toolbar_view->GetWebViewForTesting();
   ASSERT_TRUE(web_view);
 
-  // Get button name from WebUI.
-  std::string button_name =
-      content::EvalJs(
-          web_view->GetWebContents(),
-          base::StringPrintf(
-              "import('//resources/js/load_time_data.js').then(m => "
-              "m.loadTimeData.getString('%s'))",
-              param.button_acc_name_key))
-          .ExtractString();
-
-  content::FindAccessibilityNodeCriteria find_criteria;
-  find_criteria.name = button_name;
-  find_criteria.role = ax::mojom::Role::kButton;
-
-  // Wait for a known always-present node to ensure the accessibility tree is
-  // populated.
-  content::WaitForAccessibilityTreeToContainNodeWithName(
-      web_view->GetWebContents(), "Reload");
-
-  // Verify the button is initially not found.
-  EXPECT_FALSE(content::FindAccessibilityNode(web_view->GetWebContents(),
-                                              find_criteria));
+  // Verify the button is initially not visible.
+  EXPECT_FALSE(
+      IsButtonVisible(web_view->GetWebContents(), param.button_selector));
 
   // Pin the button and wait for it to become visible.
   PinButton(browser(), web_view, param.button_pref);
   EXPECT_TRUE(
       WaitForButtonVisible(web_view->GetWebContents(), param.button_selector));
 
-  // Wait for it to appear in the accessibility tree.
-  content::WaitForAccessibilityTreeToContainNodeWithName(
-      web_view->GetWebContents(), button_name);
-
-  // Verify it now exists.
-  EXPECT_TRUE(content::FindAccessibilityNode(web_view->GetWebContents(),
-                                             find_criteria));
-
-  // Disable the button via pref and wait for the tree to update.
+  // Disable the button via pref and wait for it to become hidden.
   browser()->GetProfile()->GetPrefs()->SetBoolean(param.button_pref, false);
-  content::WaitForAccessibilityTreeToChange(web_view->GetWebContents());
-
-  // Verify it is gone.
-  EXPECT_FALSE(content::FindAccessibilityNode(web_view->GetWebContents(),
-                                              find_criteria));
+  EXPECT_TRUE(
+      WaitForButtonHidden(web_view->GetWebContents(), param.button_selector));
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -3099,12 +2956,10 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Values(
         ButtonVisibilityToggleTestParam{
             .test_name = "SplitTabsButton",
-            .button_acc_name_key = "splitTabsButtonAccNamePinned",
             .button_pref = prefs::kPinSplitTabButton,
             .button_selector = kSplitTabsSelector},
         ButtonVisibilityToggleTestParam{
             .test_name = "HomeButton",
-            .button_acc_name_key = "homeButtonAccName",
             .button_pref = prefs::kShowHomeButton,
             .button_selector = kHomeSelector}),
     [](const testing::TestParamInfo<ButtonVisibilityToggleTestParam>& info) {
@@ -3682,31 +3537,6 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewSplitTabsBrowserTest,
     return content::EvalJs(web_contents, kGetAriaHasPopup).ExtractString() ==
            "true";
   }));
-}
-
-// TODO(crbug.com/539404714): Deflake and re-enable.
-IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewSplitTabsBrowserTest,
-                       DISABLED_RightClickSplitTabsButton) {
-  WebUIToolbarWebView* webui_toolbar_view = GetWebUIToolbarWebView(browser());
-  views::WebView* web_view = webui_toolbar_view->GetWebViewForTesting();
-  PinButton(browser(), web_view, prefs::kPinSplitTabButton);
-  EXPECT_TRUE(
-      WaitForButtonVisible(web_view->GetWebContents(), kSplitTabsSelector));
-  EXPECT_TRUE(
-      content::ExecJs(web_view->GetWebContents(),
-                      DispatchEventScript(kSplitTabsSelector, "MouseEvent",
-                                          "contextmenu", "button: 2")));
-
-  WebUISplitTabsControl* split_tabs_control =
-      &webui_toolbar_view->split_tabs_control_;
-
-  EXPECT_TRUE(base::test::RunUntil([&]() {
-    return split_tabs_control->menu_runner_ &&
-           split_tabs_control->menu_runner_->IsRunning();
-  }));
-
-  // Clean up
-  split_tabs_control->menu_runner_->Cancel();
 }
 
 IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewSplitTabsBrowserTest,
@@ -4740,93 +4570,8 @@ IN_PROC_BROWSER_TEST_F(WebUIReadOnlyOmniboxDragDropBrowserTest,
 }
 
 // Tests for the home button. Also serve as the general PressHandler tests.
-class WebUIToolbarWebViewHomeButtonBrowserTest : public InProcessBrowserTest {
- public:
-  WebUIToolbarWebViewHomeButtonBrowserTest() {
-    feature_list_.InitWithFeatures(
-        {features::kInitialWebUI, features::kWebUIHomeButton,
-         features::kSkipIPCChannelPausingForNonGuests,
-         features::kWebUIInProcessResourceLoadingV2},
-        {});
-  }
-
-  void SetUpOnMainThread() override {
-    InProcessBrowserTest::SetUpOnMainThread();
-    ThemeServiceFactory::GetForProfile(browser()->GetProfile())
-        ->SetBrowserColorScheme(ThemeService::BrowserColorScheme::kLight);
-  }
-
- protected:
-  void WaitForUndoBubble(WebUIToolbarWebView* webui_toolbar_view) {
-    ASSERT_TRUE(base::test::RunUntil([&]() {
-      return views::ElementTrackerViews::GetInstance()->GetFirstMatchingView(
-                 HomePageUndoBubbleCoordinator::kHomePageUndoBubbleMainViewId,
-                 views::ElementTrackerViews::GetContextForView(
-                     webui_toolbar_view)) != nullptr;
-    }));
-  }
-
-  GURL GetHomeURL() {
-    GURL home_url(
-        browser()->GetProfile()->GetPrefs()->GetString(prefs::kHomePage));
-    if (home_url.is_empty()) {
-      return chrome::ChromeUINewTabURLAsGURL();
-    }
-    return home_url;
-  }
-
-  void SimulateDropOnHomeButton(content::WebContents* web_contents,
-                                const std::string& url) {
-    EXPECT_TRUE(content::ExecJs(web_contents,
-                                base::StringPrintf(R"(
-      const homeButton = document.querySelector('toolbar-app').shadowRoot
-                             .querySelector('#home').shadowRoot
-                             .querySelector('cr-icon-button');
-      const dataTransfer = new DataTransfer();
-      dataTransfer.setData('text/uri-list', '%s');
-      dataTransfer.setData('text/plain', '%s');
-      const dropEvent = new DragEvent('drop', {
-        bubbles: true,
-        cancelable: true,
-        dataTransfer: dataTransfer
-      });
-      homeButton.dispatchEvent(dropEvent);
-    )",
-                                                   url.c_str(), url.c_str())));
-  }
-
-  WebUIToolbarWebView* PerformDragAndDrop(const std::string& new_home_url) {
-    WebUIToolbarWebView* webui_toolbar_view = SetUpAndPinHomeButton(browser());
-    views::WebView* web_view = webui_toolbar_view->GetWebViewForTesting();
-
-    SimulateDropOnHomeButton(web_view->GetWebContents(), new_home_url);
-
-    // Wait for the bubble widget to be created.
-    WaitForUndoBubble(webui_toolbar_view);
-
-    // Verify the new home page was correctly set.
-    auto* prefs = browser()->GetProfile()->GetPrefs();
-    EXPECT_EQ(new_home_url, prefs->GetString(prefs::kHomePage));
-    EXPECT_FALSE(prefs->GetBoolean(prefs::kHomePageIsNewTabPage));
-
-    return webui_toolbar_view;
-  }
-
-  void PerformUndo(WebUIToolbarWebView* webui_toolbar_view) {
-    // Click undo.
-    auto* bubble =
-        views::ElementTrackerViews::GetInstance()->GetFirstMatchingView(
-            HomePageUndoBubbleCoordinator::kHomePageUndoBubbleMainViewId,
-            views::ElementTrackerViews::GetContextForView(webui_toolbar_view));
-    ASSERT_TRUE(bubble);
-    auto* styled_label =
-        static_cast<views::StyledLabel*>(bubble->children().front());
-    styled_label->ClickFirstLinkForTesting();
-  }
-
- private:
-  base::test::ScopedFeatureList feature_list_;
-};
+class WebUIToolbarWebViewHomeButtonBrowserTest
+    : public WebUIHomeControlTestBase {};
 
 // Home icon is different for touch only with old icon set.
 class WebUIToolbarWebViewHomeButtonOldIconsBrowserTest
@@ -4875,49 +4620,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewHomeButtonBrowserTest,
   }
 }
 
-// TODO(crbug.com/539404714): Deflake and re-enable.
-IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewHomeButtonBrowserTest,
-                       DISABLED_RightClickHomeButton) {
-  WebUIToolbarWebView* webui_toolbar_view = SetUpAndPinHomeButton(browser());
-  views::WebView* web_view = webui_toolbar_view->GetWebViewForTesting();
-  EXPECT_TRUE(content::ExecJs(web_view->GetWebContents(),
-                              DispatchEventScript(kHomeSelector, "MouseEvent",
-                                                  "contextmenu", "button: 2")));
 
-  WebUIHomeControl* home_control =
-      webui_toolbar_view->GetHomeControlForTesting();
-
-  EXPECT_TRUE(base::test::RunUntil([&]() {
-    return home_control->menu_runner_ &&
-           home_control->menu_runner_->IsRunning();
-  }));
-
-  // Clean up
-  home_control->menu_runner_->Cancel();
-}
-
-// TODO(crbug.com/539569490): Deflake and re-enable.
-IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewHomeButtonBrowserTest,
-                       DISABLED_LongPressHomeButton) {
-  WebUIToolbarWebView* webui_toolbar_view = SetUpAndPinHomeButton(browser());
-  views::WebView* web_view = webui_toolbar_view->GetWebViewForTesting();
-
-  EXPECT_TRUE(content::ExecJs(web_view->GetWebContents(),
-                              DispatchEventScript(kHomeSelector, "PointerEvent",
-                                                  "pointerdown", "button: 0")));
-
-  WebUIHomeControl* home_control =
-      webui_toolbar_view->GetHomeControlForTesting();
-
-  // Wait for the long press timer to trigger and show the menu.
-  EXPECT_TRUE(base::test::RunUntil([&]() {
-    return home_control->menu_runner_ &&
-           home_control->menu_runner_->IsRunning();
-  }));
-
-  // Clean up
-  home_control->menu_runner_->Cancel();
-}
 
 IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewHomeButtonBrowserTest,
                        CtrlClickHomeButton) {
@@ -6171,6 +5874,9 @@ class WebUIToolbarFullyEnabledBrowserTest
     // be consumed before controls start shrinking below their preferred width.
     int location_bar_extra_width;
 
+    // The width of the overflow button when displayed.
+    int overflow_button_width;
+
     std::vector<ResponsiveControlInfo> controls;
   };
 
@@ -6239,11 +5945,17 @@ class WebUIToolbarFullyEnabledBrowserTest
           });
         }
 
+        const overflowButton = app.shadowRoot.querySelector('#overflow');
+        overflowButton.toggleAttribute('hidden', false);
+        const overflowButtonWidth =
+            Math.round(overflowButton.getBoundingClientRect().width);
+
         // Revert control size changes made while measuring widths.
         app.layoutResponsiveControls();
 
         return {
           locationBarExtraWidth: locationBarExtraWidth,
+          overflowButtonWidth: overflowButtonWidth,
           controls: controlInfos,
         };
       })();
@@ -6258,6 +5970,9 @@ class WebUIToolbarFullyEnabledBrowserTest
     std::optional<int> location_bar_extra_width =
         measure_dict.FindInt("locationBarExtraWidth");
     ASSERT_TRUE(location_bar_extra_width);
+    std::optional<int> overflow_button_width =
+        measure_dict.FindInt("overflowButtonWidth");
+    ASSERT_TRUE(overflow_button_width);
     const base::ListValue* controls_list = measure_dict.FindList("controls");
     ASSERT_TRUE(controls_list);
 
@@ -6287,6 +6002,7 @@ class WebUIToolbarFullyEnabledBrowserTest
 
     all_controls_info = {
         .location_bar_extra_width = *location_bar_extra_width,
+        .overflow_button_width = *overflow_button_width,
         .controls = std::move(control_infos),
     };
   }
@@ -6305,8 +6021,9 @@ class WebUIToolbarFullyEnabledBrowserTest
               base::JoinString(expected_order, ","));
   }
 
-  // Returns a dictionary mapping control id to actual width for all controls
-  // whose shouldBeShown() method currently returns true.
+  // Returns a dictionary mapping control id to actual width for all
+  // ResponsiveControls whose shouldBeShown() method currently returns true.
+  // Also includes the overflow button, if not hidden.
   base::DictValue GetControlSizes() {
     static constexpr char kCheckScript[] = R"(
       (async () => {
@@ -6327,6 +6044,12 @@ class WebUIToolbarFullyEnabledBrowserTest
           const width = Math.round(control.getBoundingClientRect().width);
           const id = control.id;
           actual_widths[id] = width;
+        }
+
+        const overflowButton = app.shadowRoot.querySelector('#overflow');
+        if (overflowButton && !overflowButton.hasAttribute('hidden')) {
+          actual_widths[overflowButton.id] =
+              Math.round(overflowButton.getBoundingClientRect().width);
         }
         return actual_widths;
       })();
@@ -6408,17 +6131,37 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarFullyEnabledBrowserTest,
   ASSERT_EQ(SetSpacerWidth(spacer_width), true);
   CheckControlSizes(expected_sizes);
 
-  // Go through controls in reverse priority order, increasing spacer width to
-  // exactly shrink each control to its min size.
-  for (int i = static_cast<int>(all_controls_info.controls.size()) - 1; i >= 0;
-       --i) {
-    const ResponsiveControlInfo& info = all_controls_info.controls[i];
-    spacer_width += info.effective_width_delta;
-    ASSERT_EQ(SetSpacerWidth(spacer_width), true);
+  // Increasing spacer width to overflow the home button will cause the overflow
+  // button to be shown, taking up space and causing the forward button to
+  // overflow as well. Note that this logic assumes the overflow button has the
+  // same effective width as the forward button, when all CSS margins and
+  // padding are taken into account.
+  const ResponsiveControlInfo& home_info = all_controls_info.controls[3];
+  const ResponsiveControlInfo& forward_info = all_controls_info.controls[2];
+  spacer_width += home_info.effective_width_delta;
+  ASSERT_EQ(SetSpacerWidth(spacer_width), true);
 
-    expected_sizes.Set(info.id, info.min_width);
-    CheckControlSizes(expected_sizes);
-  }
+  expected_sizes.Set(home_info.id, home_info.min_width);
+  expected_sizes.Set(forward_info.id, forward_info.min_width);
+  expected_sizes.Set("overflow", all_controls_info.overflow_button_width);
+  CheckControlSizes(expected_sizes);
+
+  // Increase spacer width to overflow the split-tabs button.
+  const ResponsiveControlInfo& split_tabs_info = all_controls_info.controls[1];
+  spacer_width += split_tabs_info.effective_width_delta;
+  ASSERT_EQ(SetSpacerWidth(spacer_width), true);
+
+  expected_sizes.Set(split_tabs_info.id, split_tabs_info.min_width);
+  CheckControlSizes(expected_sizes);
+
+  // Increase spacer width to shrink the location bar to its minimum size.
+  const ResponsiveControlInfo& location_bar_info =
+      all_controls_info.controls[0];
+  spacer_width += location_bar_info.effective_width_delta;
+  ASSERT_EQ(SetSpacerWidth(spacer_width), true);
+
+  expected_sizes.Set(location_bar_info.id, location_bar_info.min_width);
+  CheckControlSizes(expected_sizes);
 }
 
 // Tests expanding responsive navigation controls in priority order (from
@@ -6459,32 +6202,62 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarFullyEnabledBrowserTest,
       all_controls_info, {"location-bar", "split-tabs", "forward", "home"});
 
   // Calculate spacer width needed to force all controls to their minimum size.
+  // Skip adding the home button's delta since showing the overflow button takes
+  // up space, which we assume is the same effective width as the home button,
+  // so adding deltas for location-bar, split-tabs, and forward is sufficient to
+  // overflow the home button, as well as shrink all those controls to their
+  // minimum sizes.
   spacer_width += all_controls_info.location_bar_extra_width;
   base::DictValue expected_sizes;
   for (const ResponsiveControlInfo& info : all_controls_info.controls) {
-    spacer_width += info.effective_width_delta;
+    if (info.id != "home") {
+      spacer_width += info.effective_width_delta;
+    }
     expected_sizes.Set(info.id, info.min_width);
   }
+  // The overflow button should be shown.
+  expected_sizes.Set("overflow", all_controls_info.overflow_button_width);
   ASSERT_EQ(SetSpacerWidth(spacer_width), true);
   CheckControlSizes(expected_sizes);
 
-  // Go through controls in priority order, shrinking spacer width by
-  // `effective_width_delta + 4` to expand each control to its preferred size
-  // and give the extra 4px to the location bar. Since the location bar is
-  // first, it will be expanded to preferred size (And actually be slightly
-  // width) on the first loop iteration.
-  for (size_t i = 0; i < all_controls_info.controls.size(); ++i) {
-    const ResponsiveControlInfo& info = all_controls_info.controls[i];
-    spacer_width -= (info.effective_width_delta + 4);
-    ASSERT_EQ(SetSpacerWidth(spacer_width), true);
+  // Shrink the spacer enough to let the location bar, the next highest priority
+  // control, expand to its preferred size + 4px.
+  const ResponsiveControlInfo& location_bar_info =
+      all_controls_info.controls[0];
+  spacer_width -= (location_bar_info.effective_width_delta + 4);
+  ASSERT_EQ(SetSpacerWidth(spacer_width), true);
 
-    expected_sizes.Set(info.id, info.preferred_width);
-    // Size the location bar, which should have the highest priority.
-    expected_sizes.Set(all_controls_info.controls[0].id,
-                       all_controls_info.controls[0].preferred_width +
-                           4 * (1 + static_cast<int>(i)));
-    CheckControlSizes(expected_sizes);
-  }
+  expected_sizes.Set(location_bar_info.id,
+                     location_bar_info.preferred_width + 4);
+  CheckControlSizes(expected_sizes);
+
+  // Shrink the spacer enough to show the split-tabs button, the next highest
+  // priority control.
+  const ResponsiveControlInfo& split_tabs_info = all_controls_info.controls[1];
+  spacer_width -= (split_tabs_info.effective_width_delta + 4);
+  ASSERT_EQ(SetSpacerWidth(spacer_width), true);
+
+  expected_sizes.Set(split_tabs_info.id, split_tabs_info.preferred_width);
+  expected_sizes.Set(location_bar_info.id,
+                     location_bar_info.preferred_width + 8);
+  CheckControlSizes(expected_sizes);
+
+  // Shrink the spacer enough to show the forward button. This should result in
+  // swapping the overflow button for the home button as well, since the home
+  // button and overflow button are the same size, and there's no reason to show
+  // an overflow button for just a single overflowed home button, if we can show
+  // the home button instead.
+  const ResponsiveControlInfo& forward_info = all_controls_info.controls[2];
+  const ResponsiveControlInfo& home_info = all_controls_info.controls[3];
+  spacer_width -= (forward_info.effective_width_delta + 4);
+  ASSERT_EQ(SetSpacerWidth(spacer_width), true);
+
+  expected_sizes.Set(forward_info.id, forward_info.preferred_width);
+  expected_sizes.Set(home_info.id, home_info.preferred_width);
+  expected_sizes.Remove("overflow");
+  expected_sizes.Set(location_bar_info.id,
+                     location_bar_info.preferred_width + 12);
+  CheckControlSizes(expected_sizes);
 }
 
 // Tests that pinning a new button via preferences triggers a layout update that
@@ -6493,9 +6266,9 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarFullyEnabledBrowserTest,
 //
 // Starts with home and forward buttons pinned, and sizes the spacer so that
 // both forward and home buttons are at their preferred size, but no extra space
-// is available. Then pins the split-tab button via prefs. Since split-tab has
-// higher priority than home, split-tab is shown at its preferred size while
-// home is hidden.
+// is available. Then pins the split-tabs button via prefs. Since the split-tabs
+// button has higher priority than home, split-tabs button is shown at its
+// preferred size while home is hidden.
 IN_PROC_BROWSER_TEST_F(WebUIToolbarFullyEnabledBrowserTest,
                        ResponsiveNavigationControlsPinUnpinControl) {
   // Pin home button. Forward button is pinned by default.
@@ -6533,8 +6306,10 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarFullyEnabledBrowserTest,
                      all_controls_info.controls[2].preferred_width);
   CheckControlSizes(expected_sizes);
 
-  // Pin split-tabs button in prefs. Since split-tabs has higher priority than
-  // home, split-tabs should be shown and home should be hidden.
+  // Pin the split-tabs button in prefs. Since the split-tabs button has higher
+  // priority than the home button, showing the split-tabs button causes the
+  // home button to overflow, which shows the overflow button, causing the
+  // forward button to overflow as well.
   browser()->GetProfile()->GetPrefs()->SetBoolean(prefs::kPinSplitTabButton,
                                                   true);
   base::DictValue expected_sizes2;
@@ -6543,9 +6318,9 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarFullyEnabledBrowserTest,
                       all_controls_info.controls[0].preferred_width);
   expected_sizes2.Set("split-tabs",
                       all_controls_info.controls[1].preferred_width);
+  expected_sizes2.Set("overflow", all_controls_info.overflow_button_width);
   // forward
-  expected_sizes2.Set(all_controls_info.controls[1].id,
-                      all_controls_info.controls[1].preferred_width);
+  expected_sizes2.Set(all_controls_info.controls[1].id, 0);
   // home
   expected_sizes2.Set(all_controls_info.controls[2].id, 0);
   CheckControlSizes(expected_sizes2);
@@ -6561,15 +6336,29 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarFullyEnabledBrowserTest,
 // layout update even when the overall width needed by enabled buttons remains
 // the same.
 //
-// Starts with split-tab and forward buttons enabled (home disabled), and sizes
-// the spacer so that only split-tab fits and forward is overflowed. Then
-// disables split-tab and enables home in prefs right in a row, which should
+// Starts with split-tabs and forward buttons enabled (home disabled), and sizes
+// the spacer so that only split-tabs fits and forward is overflowed. Then
+// disables split-tabs and enables home in prefs right in a row, which should
 // trigger a single state change notification. Rather than naively switch from
-// displaying the split-tab button for the home button, we must run the
+// displaying the split-tabs button for the home button, we must run the
 // layoutResponsiveControls(), which should show the forward button while making
 // home overflow, due to the forward button having a higher priority..
+//
+// This test is disabled because we need to be able to show the overflow button
+// with one high priority pinnable control shown, and another one not pinned.
+// That requires 1 pinnable buttons of lower priority of the pinned button, 1
+// overflowable button of priority between those two buttons, and then a fourth
+// button of lower priority than the others to be overflowed. The last is needed
+// since the overflow button takes up space, so showing it generally requires we
+// overflow two buttons. Currently, the split-tabs button is the highest
+// priority pinned button, and there are only 2 total supported overflowable
+// buttons of lower priority.
+//
+// TODO(crbug.com/491791965): Once we support overflowing more buttons of
+// priority lower than the split-tabs buttons, like the action buttons or media
+// button, re-enable this test, using those buttons.
 IN_PROC_BROWSER_TEST_F(WebUIToolbarFullyEnabledBrowserTest,
-                       ResponsiveNavigationControlsVisibilitySwap) {
+                       DISABLED_ResponsiveNavigationControlsVisibilitySwap) {
   // Enable split-tabs button. Forward button is enabled by default. Leave home
   // disabled.
   browser()->GetProfile()->GetPrefs()->SetBoolean(prefs::kPinSplitTabButton,
@@ -6668,15 +6457,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarFullyEnabledBrowserTest,
 
   // Resize twice more, shrinking once and growing once, making sure the
   // toolbar-app element is sized accordingly.
-  //
-  // This passes in the minimum client area size to a function that takes the
-  // size of the entire window. As a result, this tries to set the window to a
-  // size below its minimum size. This is not a problem for SetWindowWidth(),
-  // will end up setting the window to whatever its minimum allowed size
-  // actually is.
-  ASSERT_TRUE(SetWindowWidth(BrowserView::GetBrowserViewForBrowser(browser())
-                                 ->GetMinimumSize()
-                                 .width()));
+  ASSERT_TRUE(SetWindowWidth(800));
   ASSERT_TRUE(SetWindowWidth(1200));
 }
 
@@ -6731,17 +6512,39 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarNoOmniboxPrioritizationBrowserTest,
   ASSERT_EQ(SetSpacerWidth(spacer_width), true);
   CheckControlSizes(expected_sizes);
 
-  // Go through controls in reverse priority order, increasing spacer width to
-  // exactly shrink each control to its min size.
-  for (int i = static_cast<int>(all_controls_info.controls.size()) - 1; i >= 0;
-       --i) {
-    const ResponsiveControlInfo& info = all_controls_info.controls[i];
-    spacer_width += info.effective_width_delta;
-    ASSERT_EQ(SetSpacerWidth(spacer_width), true);
+  // Increase spacer width to shrink the location bar (lowest priority control)
+  // to its minimum size. No control has overflowed yet, so the overflow button
+  // remains hidden.
+  const ResponsiveControlInfo& location_bar_info =
+      all_controls_info.controls[3];
+  spacer_width += location_bar_info.effective_width_delta;
+  ASSERT_EQ(SetSpacerWidth(spacer_width), true);
 
-    expected_sizes.Set(info.id, info.min_width);
-    CheckControlSizes(expected_sizes);
-  }
+  expected_sizes.Set(location_bar_info.id, location_bar_info.min_width);
+  CheckControlSizes(expected_sizes);
+
+  // Increasing spacer width to overflow the home button will cause the overflow
+  // button to be shown, taking up space and causing the forward button to
+  // overflow as well. Note that this logic assumes the overflow button has the
+  // same effective width as the forward button, when all CSS margins and
+  // padding are taken into account.
+  const ResponsiveControlInfo& home_info = all_controls_info.controls[2];
+  const ResponsiveControlInfo& forward_info = all_controls_info.controls[1];
+  spacer_width += home_info.effective_width_delta;
+  ASSERT_EQ(SetSpacerWidth(spacer_width), true);
+
+  expected_sizes.Set(home_info.id, home_info.min_width);
+  expected_sizes.Set(forward_info.id, forward_info.min_width);
+  expected_sizes.Set("overflow", all_controls_info.overflow_button_width);
+  CheckControlSizes(expected_sizes);
+
+  // Increase spacer width to overflow the split-tabs button.
+  const ResponsiveControlInfo& split_tabs_info = all_controls_info.controls[0];
+  spacer_width += split_tabs_info.effective_width_delta;
+  ASSERT_EQ(SetSpacerWidth(spacer_width), true);
+
+  expected_sizes.Set(split_tabs_info.id, split_tabs_info.min_width);
+  CheckControlSizes(expected_sizes);
 }
 
 // Tests expanding responsive navigation controls when available toolbar space
@@ -6772,34 +6575,58 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarNoOmniboxPrioritizationBrowserTest,
       all_controls_info, {"split-tabs", "forward", "home", "location-bar"});
 
   // Calculate spacer width needed to force all controls to their minimum size.
+  // Skip adding the home button's delta since showing the overflow button takes
+  // up space, which we assume is the same effective width as the home button,
+  // so adding deltas for location-bar, split-tabs, and forward is sufficient to
+  // overflow the home button, as well as shrink all those controls to their
+  // minimum sizes.
   spacer_width += all_controls_info.location_bar_extra_width;
   base::DictValue expected_sizes;
   for (const ResponsiveControlInfo& info : all_controls_info.controls) {
-    spacer_width += info.effective_width_delta;
+    if (info.id != "home") {
+      spacer_width += info.effective_width_delta;
+    }
     expected_sizes.Set(info.id, info.min_width);
   }
+  // The overflow button should be shown.
+  expected_sizes.Set("overflow", all_controls_info.overflow_button_width);
   ASSERT_EQ(SetSpacerWidth(spacer_width), true);
   CheckControlSizes(expected_sizes);
 
-  // Go through controls in priority order, shrinking spacer width by
-  // `effective_width_delta + 4` to expand each control. Since the location
-  // bar has the lowest priority when omnibox resizing prioritization is
-  // disabled, it remains near its min size (receiving the extra 4px per step)
-  // until the last iteration, when it expands past its preferred size.
-  for (size_t i = 0; i < all_controls_info.controls.size(); ++i) {
-    const ResponsiveControlInfo& info = all_controls_info.controls[i];
-    spacer_width -= (info.effective_width_delta + 4);
-    ASSERT_EQ(SetSpacerWidth(spacer_width), true);
+  // Shrink the spacer enough to let the split-tabs button, the highest priority
+  // control, expand to its preferred size.
+  const ResponsiveControlInfo& split_tabs_info = all_controls_info.controls[0];
+  const ResponsiveControlInfo& location_bar_info =
+      all_controls_info.controls[3];
+  spacer_width -= (split_tabs_info.effective_width_delta + 4);
+  ASSERT_EQ(SetSpacerWidth(spacer_width), true);
 
-    expected_sizes.Set(info.id, info.preferred_width);
-    // Size the location bar, which has the lowest priority in this fixture.
-    const ResponsiveControlInfo& loc_bar_info =
-        all_controls_info.controls.back();
-    int base_width = (i == all_controls_info.controls.size() - 1)
-                         ? loc_bar_info.preferred_width
-                         : loc_bar_info.min_width;
-    expected_sizes.Set(loc_bar_info.id,
-                       base_width + 4 * (1 + static_cast<int>(i)));
-    CheckControlSizes(expected_sizes);
-  }
+  expected_sizes.Set(split_tabs_info.id, split_tabs_info.preferred_width);
+  expected_sizes.Set(location_bar_info.id, location_bar_info.min_width + 4);
+  CheckControlSizes(expected_sizes);
+
+  // Shrink the spacer enough to show the forward button. This should result in
+  // swapping the overflow button for the home button as well, since the home
+  // button and overflow button are the same size, and there's no reason to show
+  // an overflow button for just a single overflowed home button, if we can show
+  // the home button instead.
+  const ResponsiveControlInfo& forward_info = all_controls_info.controls[1];
+  const ResponsiveControlInfo& home_info = all_controls_info.controls[2];
+  spacer_width -= (forward_info.effective_width_delta + 4);
+  ASSERT_EQ(SetSpacerWidth(spacer_width), true);
+
+  expected_sizes.Set(forward_info.id, forward_info.preferred_width);
+  expected_sizes.Set(home_info.id, home_info.preferred_width);
+  expected_sizes.Remove("overflow");
+  expected_sizes.Set(location_bar_info.id, location_bar_info.min_width + 8);
+  CheckControlSizes(expected_sizes);
+
+  // Shrink the spacer one more time, expanding the location bar to its
+  // preferred size + 12px.
+  spacer_width -= (location_bar_info.effective_width_delta + 4);
+  ASSERT_EQ(SetSpacerWidth(spacer_width), true);
+
+  expected_sizes.Set(location_bar_info.id,
+                     location_bar_info.preferred_width + 12);
+  CheckControlSizes(expected_sizes);
 }

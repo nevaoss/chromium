@@ -422,13 +422,8 @@ Suggestion::Icon GetSuggestionIcon(
       return is_personal_context ? Suggestion::Icon::kOrderSpark
                                  : Suggestion::Icon::kOrder;
     case EntityTypeName::kPassport:
-      if (is_personal_context) {
-        return Suggestion::Icon::kPassportSpark;
-      }
-      return base::FeatureList::IsEnabled(
-                 features::kAutofillAiWalletPrivatePasses)
-                 ? Suggestion::Icon::kPassport
-                 : Suggestion::Icon::kIdCard;
+      return is_personal_context ? Suggestion::Icon::kPassportSpark
+                                 : Suggestion::Icon::kPassport;
     case EntityTypeName::kKnownTravelerNumber:
     case EntityTypeName::kRedressNumber:
       return is_personal_context ? Suggestion::Icon::kIdCard2Spark
@@ -543,7 +538,8 @@ Suggestion GetSuggestionForEntity(
     suggestion.labels.push_back({Suggestion::Text(
         l10n_util::GetStringUTF16(IDS_AUTOFILL_AI_SUGGESTED_BY_GEMINI))});
 
-    if (base::FeatureList::IsEnabled(features::kAutofillAiHideSuggestion)) {
+    if (base::FeatureList::IsEnabled(
+            features::kAutofillAmbientAutofillSuppressionUI)) {
       Suggestion remove_info(
           l10n_util::GetStringUTF16(IDS_AUTOFILL_AI_REMOVE_INFO),
           SuggestionType::kRemoveAutofillAi);

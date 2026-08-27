@@ -31,6 +31,7 @@
 <translation id="1290883685122687410">Seadistuse viga: <ph name="METAINSTALLER_EXIT_CODE" />. <ph name="WINDOWS_ERROR" /></translation>
 <translation id="1302523850133262269">Oodake, kuni Chrome installib uusimad süsteemivärskendused.</translation>
 <translation id="1330562121671411446">Keele tuvastamine</translation>
+<translation id="1333654552732143316">Kävita Chrome</translation>
 <translation id="1341711321000856656">Saate lülituda, et näha paroole teiselt Chrome'i profiililt</translation>
 <translation id="1343830902827845050">Chrome'i sisselogimine</translation>
 <translation id="1356661055722410047">Uus! Saate tõlkida nii ekraanil olevat teksti kui ka pilte</translation>
@@ -380,7 +381,6 @@ Kui see leht ei tööta ootuspäraselt, proovige optimeerimine lubada.</translat
 <translation id="4885446229353981848">Kuva alati Google Lensi otsetee</translation>
 <translation id="4891791193823137474">Luba Google Chrome'i töötamine taustal</translation>
 <translation id="4895437082222824641">Ava link Chrome'i uuel &amp;vahelehel</translation>
-<translation id="4896867431081882115">Määrake Chrome oma vaikebrauseriks, et saada hõlpsasti juurdepääs funktsioonidele, mida teate, armastate ja usaldate. Kiireks juurdepääsuks kinnitatakse Chrome teie tegumiribale.</translation>
 <translation id="4904953848704395458">Avage Gemini Chrome'is klaviatuuri otsetee abil.</translation>
 <translation id="4918086044614829423">Nõustu</translation>
 <translation id="4918844574251943176">Pilt kopeeriti</translation>
@@ -744,6 +744,7 @@ Mõned funktsioonid ei pruugi saadaval olla. Määrake muu profiilikataloog või
 <translation id="8367705492654390392">Küsige midagi</translation>
 <translation id="8367950957770994118">Avage Gemini Chrome'is kiiresti just siis, kui seda vajate</translation>
 <translation id="8370517070665726704">Autoriõigus <ph name="YEAR" /> Google LLC. Kõik õigused on kaitstud.</translation>
+<translation id="8370748943308169953">QR-kood Chrome'i kasutajana <ph name="USER_NAME" /> sisselogimiseks</translation>
 <translation id="8377158135256176353">Gemini sisse- ja väljalülitamine Chrome Canarys</translation>
 <translation id="8387459386171870978">Jätkan Chrome'i kasutamist.</translation>
 <translation id="8394720698884623075">Kontrollib URL-e Chrome'i talletatud ohtlike saitide loendi alusel.</translation>

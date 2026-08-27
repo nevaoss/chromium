@@ -11,6 +11,9 @@ import("//tools/grit/grit_rule.gni")
 java_strings_grd("java_strings_grd") {
   defines = chrome_grit_defines
   grd_file = "java/strings/android_chrome_tab_ui_strings.grd"
+  inputs = process_file_template(
+          xtb_locales,
+          [ "java/strings/translations/android_chrome_tab_ui_strings_{{source_name_part}}.xtb" ])
 }
 
 android_resources("java_resources") {
@@ -72,6 +75,7 @@ android_resources("java_resources") {
     "java/res/drawable/tab_label_background.xml",
     "java/res/drawable/tab_label_icon_background.xml",
     "java/res/drawable/tab_list_editor_share_icon.xml",
+    "java/res/drawable/tab_search_empty_state.xml",
     "java/res/drawable/tab_search_overlay_panel_bg.xml",
     "java/res/drawable/tab_strip_fading_edge_end.xml",
     "java/res/drawable/tab_strip_fading_edge_start.xml",

@@ -1737,6 +1737,9 @@ class CONTENT_EXPORT WebContentsImpl
   // changed.
   void OnCapturerCountChanged();
 
+  // base::trace_event::TraceSessionObserver implementation:
+  void OnStart(const perfetto::DataSourceBase::StartArgs&) override;
+
  private:
   using FrameTreeIterationCallback = base::FunctionRef<void(FrameTree&)>;
   using RenderViewHostIterationCallback =
@@ -2348,6 +2351,9 @@ class CONTENT_EXPORT WebContentsImpl
   void RecursivelyConstructAXTree(ui::AXNode* node,
                                   std::vector<ui::AXNodeData>& nodes);
 
+  void StartRecordingAccessibilityEvents(ui::AXApiType::Type api_type,
+                                         ui::AXEventCallback callback);
+
   // Performs some checks before sending user interaction notification to
   // observers for a given `WebInputEvent`.
   void HandleUserInteractionForInputEvent(
@@ -2713,6 +2719,14 @@ class CONTENT_EXPORT WebContentsImpl
   // Enables ui::kAXModeBasic for the duration of a recording session.
   std::unique_ptr<ScopedAccessibilityMode> recording_mode_;
 
+  // Holds the state for an accessibility event recording session for a hidden
+  // WebContents until accessibility is enabled when shown.
+  struct PendingRecording {
+    ui::AXApiType::Type api_type;
+    ui::AXEventCallback callback;
+  };
+  std::optional<PendingRecording> pending_recording_;
+
   // Monitors power levels for audio streams associated with this WebContents.
   AudioStreamMonitor audio_stream_monitor_;
 
@@ -2959,8 +2973,6 @@ class CONTENT_EXPORT WebContentsImpl
   void SetDragSource(const DragId& drag_id,
                      const GlobalRenderFrameHostToken& source_rfh_token);
 
-  // base::trace_event::TraceSessionObserver implementation:
-  void OnStart(const perfetto::DataSourceBase::StartArgs&) override;
 
   std::optional<DragId> active_drag_id_;
 

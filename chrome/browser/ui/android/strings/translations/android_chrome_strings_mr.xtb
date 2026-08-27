@@ -85,7 +85,6 @@
 <translation id="1310482092992808703">टॅबची गटामध्ये विभागणी करा</translation>
 <translation id="1318262688555255786"><ph name="PAGE_TITLE" /> या वेबपेजची लिंक शेअर करा. स्रोत: <ph name="PAGE_URL" /></translation>
 <translation id="1327257854815634930">नेव्हिगेशन इतिहास उघडलेला आहे</translation>
-<translation id="1330043879670259913">Chrome वर तुमचे काम सुरक्षित ठेवण्यासाठी, तुम्ही Chrome मध्ये साइन-इन केलेले असताना तुमची संस्था विशिष्ट माहिती पाहू किंवा व्यवस्थापित करू शकेल. अधिक जाणून घ्या</translation>
 <translation id="1331212799747679585">Chrome अपडेट होऊ शकत नाही. आणखी पर्याय</translation>
 <translation id="1332501820983677155">Google Chrome वैशिष्ट्य शॉर्टकट</translation>
 <translation id="1333491156693005331">अलीकडे तपासला आहे</translation>
@@ -723,7 +722,6 @@
 <translation id="399788104667917863">टूलबारवर पिन करा</translation>
 <translation id="4000212216660919741">ऑफलाइन होम</translation>
 <translation id="4000670338830950598">हायलाइट केलेल्या आयटमच्या मदतीने Google Chrome कस्टमाइझ आणि नियंत्रित करा</translation>
-<translation id="4002066346123236978">शीर्षक</translation>
 <translation id="4015643064997321279">{NUM_PASSWORDS,plural, =1{तुमच्या Google खाते मध्ये धोक्यात असलेला १ पासवर्ड आहे}other{तुमच्या Google खाते मध्ये धोक्यात असलेले # पासवर्ड आहेत}}</translation>
 <translation id="4023638601467301498">तुमच्या सर्व डिव्हाइसवर तुमचे बुकमार्क आणि आणखी बरेच काही मिळवण्यासाठी, Chrome मध्ये साइन इन करा</translation>
 <translation id="4024768890073681126">तुमचा ब्राउझर तुमच्या पालकाद्वारे व्यवस्थापित केला जातो</translation>
@@ -1973,6 +1971,7 @@
 <translation id="8937772741022875483">Digital wellbeing वरून तुमची Chrome ॲक्टिव्हिटी काढून टाकायची का?</translation>
 <translation id="8942627711005830162">इतर विंडोमध्ये उघडा</translation>
 <translation id="8945143127965743188"><ph name="LANG" /> - ही भाषा डाउनलोड करता आली नाही. नंतर पुन्हा प्रयत्न करा.</translation>
+<translation id="8945348199139712719">पेस्ट करा आणि कॉपी केलेल्या मजकुरावर जा</translation>
 <translation id="8946759102391960088">तुमच्या सर्व पासवर्डचा अ‍ॅक्सेस ठेवा</translation>
 <translation id="895442993047180128">टिपा यांसाठीच्या नोटिफिकेशनची निवड बंद केली आहे</translation>
 <translation id="8957528460562961174">तुमच्या पासवर्डचा ॲक्सेस कायम ठेवण्यासाठी, ते आता एक्सपोर्ट करा आणि नंतर ते तुमच्या प्राधान्य दिलेल्या पासवर्ड व्यवस्थापकामध्ये इंपोर्ट करा. Google Play सेवा उपलब्ध नसल्यामुळे, Google Password Manager काम करणे थांबले आहे.</translation>

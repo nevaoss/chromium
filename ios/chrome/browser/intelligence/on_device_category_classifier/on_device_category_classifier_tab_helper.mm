@@ -4,9 +4,12 @@
 
 #import "ios/chrome/browser/intelligence/on_device_category_classifier/on_device_category_classifier_tab_helper.h"
 
+#import "base/metrics/histogram_functions.h"
+#import "base/numerics/safe_conversions.h"
 #import "base/strings/string_util.h"
 #import "base/strings/sys_string_conversions.h"
 #import "components/optimization_guide/proto/features/common_quality_data.pb.h"
+#import "components/page_content_annotations/core/page_content_annotations_common.h"
 #import "components/page_content_annotations/core/simple_page_content_verbalization.h"
 #import "components/ukm/ios/ukm_url_recorder.h"
 #import "ios/chrome/browser/intelligence/actor/tools/model/page_stability_monitor.h"
@@ -19,6 +22,9 @@
 #import "ios/web/public/js_messaging/web_frames_manager.h"
 #import "ios/web/public/navigation/navigation_context.h"
 #import "ios/web/public/web_state.h"
+#import "services/metrics/public/cpp/ukm_builders.h"
+#import "services/metrics/public/cpp/ukm_recorder.h"
+#import "url/gurl.h"
 
 namespace {
 
@@ -40,18 +46,49 @@ OnDeviceCategoryClassifierTabHelper::~OnDeviceCategoryClassifierTabHelper() {
   }
 }
 
+void OnDeviceCategoryClassifierTabHelper::AddObserver(Observer* observer) {
+  observers_.AddObserver(observer);
+}
+
+void OnDeviceCategoryClassifierTabHelper::RemoveObserver(Observer* observer) {
+  observers_.RemoveObserver(observer);
+}
+
+const std::optional<std::vector<page_content_annotations::Category>>&
+OnDeviceCategoryClassifierTabHelper::GetCategories() const {
+  return categories_;
+}
+
 #pragma mark - web::WebStateObserver
 
 void OnDeviceCategoryClassifierTabHelper::DidFinishNavigation(
     web::WebState* web_state,
     web::NavigationContext* navigation_context) {
-  if (navigation_context->HasCommitted() &&
-      navigation_context->IsSameDocument()) {
-    StartExtraction();
-  } else {
-    weak_ptr_factory_.InvalidateWeakPtrs();
-    page_context_wrapper_ = nil;
-    page_stability_monitor_.reset();
+  // If the navigation didn't commit (e.g. aborted click, download), do not
+  // touch the current page's classification state.
+  if (!navigation_context->HasCommitted()) {
+    return;
+  }
+
+  const GURL& new_url_without_ref =
+      navigation_context->GetUrl().GetWithoutRef();
+  if (new_url_without_ref == current_url_.GetWithoutRef()) {
+    return;
+  }
+  current_url_ = navigation_context->GetUrl();
+
+  // Cancel pending classifications and clear previous page state.
+  weak_ptr_factory_.InvalidateWeakPtrs();
+  page_context_wrapper_ = nil;
+  page_stability_monitor_.reset();
+  categories_.reset();
+
+  // For same-document navigations with a changed URL (e.g. Single Page Apps
+  // updating history via pushState), `PageLoaded` will not fire, so trigger
+  // classification directly. Cross-document navigations will trigger
+  // classification once `PageLoaded` is invoked.
+  if (navigation_context->IsSameDocument()) {
+    StartClassification();
   }
 }
 
@@ -59,7 +96,7 @@ void OnDeviceCategoryClassifierTabHelper::PageLoaded(
     web::WebState* web_state,
     web::PageLoadCompletionStatus load_completion_status) {
   if (load_completion_status == web::PageLoadCompletionStatus::SUCCESS) {
-    StartExtraction();
+    StartClassification();
   }
 }
 
@@ -77,7 +114,7 @@ void OnDeviceCategoryClassifierTabHelper::WebStateDestroyed(
 
 #pragma mark - Private
 
-void OnDeviceCategoryClassifierTabHelper::StartExtraction() {
+void OnDeviceCategoryClassifierTabHelper::StartClassification() {
   weak_ptr_factory_.InvalidateWeakPtrs();
   page_context_wrapper_ = nil;
   page_stability_monitor_.reset();
@@ -105,14 +142,15 @@ void OnDeviceCategoryClassifierTabHelper::StartExtraction() {
         std::make_unique<actor::PageStabilityMonitor>(main_frame->AsWeakPtr());
     page_stability_monitor_->NotifyWhenStable(
         /*observation_delay=*/base::TimeDelta(),
-        base::BindOnce(&OnDeviceCategoryClassifierTabHelper::ExtractPageContext,
-                       weak_ptr_factory_.GetWeakPtr()));
+        base::BindOnce(
+            &OnDeviceCategoryClassifierTabHelper::ExtractPageContextAndClassify,
+            weak_ptr_factory_.GetWeakPtr()));
   } else {
-    ExtractPageContext();
+    ExtractPageContextAndClassify();
   }
 }
 
-void OnDeviceCategoryClassifierTabHelper::ExtractPageContext() {
+void OnDeviceCategoryClassifierTabHelper::ExtractPageContextAndClassify() {
   ProfileIOS* profile =
       ProfileIOS::FromBrowserState(web_state_->GetBrowserState());
   if (!profile || profile->IsOffTheRecord()) {
@@ -217,5 +255,40 @@ void OnDeviceCategoryClassifierTabHelper::OnPageContextExtracted(
 void OnDeviceCategoryClassifierTabHelper::OnCategoriesClassified(
     ukm::SourceId source_id,
     const std::vector<page_content_annotations::Category>& categories) {
-  // Stub for CL 2.
+  ukm::builders::PageContentAnnotations2 builder(source_id);
+  bool has_ukm = false;
+
+  for (const page_content_annotations::Category& category : categories) {
+    int64_t score = base::ClampRound(category.score * 100);
+    int64_t noisy_score =
+        page_content_annotations::GenerateRapporNoisedScore(category.score);
+    switch (category.category_type) {
+      case page_content_annotations::CategoryType::kEducation:
+        base::UmaHistogramPercentage(
+            "OptimizationGuide.PageContentAnnotations.CategoryClassifier."
+            "EducationScore",
+            score);
+        builder.SetCategoryClassifier_EducationScore(noisy_score);
+        has_ukm = true;
+        break;
+      case page_content_annotations::CategoryType::kShopping:
+        base::UmaHistogramPercentage(
+            "OptimizationGuide.PageContentAnnotations.CategoryClassifier."
+            "ShoppingScore",
+            score);
+        builder.SetCategoryClassifier_ShoppingScore(noisy_score);
+        has_ukm = true;
+        break;
+    }
+  }
+
+  if (has_ukm) {
+    builder.Record(ukm::UkmRecorder::Get());
+  }
+
+  categories_ = categories;
+
+  for (auto& observer : observers_) {
+    observer.OnCategoriesClassified(web_state_, categories);
+  }
 }

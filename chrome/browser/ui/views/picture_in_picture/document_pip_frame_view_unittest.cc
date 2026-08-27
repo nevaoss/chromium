@@ -15,7 +15,6 @@
 #include "chrome/browser/content_settings/page_specific_content_settings_delegate.h"
 #include "chrome/browser/picture_in_picture/auto_pip_setting_overlay_view.h"
 #include "chrome/browser/picture_in_picture/picture_in_picture_window_manager.h"
-#include "chrome/browser/ssl/chrome_security_state_tab_helper.h"
 #include "chrome/browser/ssl/chrome_security_state_util.h"
 #include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/layout_constants.h"
@@ -108,9 +107,6 @@ class DocumentPipFrameViewTest : public ChromeViewsTestBase {
     opener_web_contents_ =
         content::WebContentsTester::CreateTestWebContents(&profile_, nullptr);
     ASSERT_TRUE(opener_web_contents_);
-    // The thin origin chip reads the opener's security state.
-    ChromeSecurityStateTabHelper::CreateForWebContents(
-        opener_web_contents_.get());
 
     opener_host_widget_ =
         CreateTestWidget(views::Widget::InitParams::CLIENT_OWNS_WIDGET);
@@ -327,8 +323,6 @@ TEST_F(DocumentPipFrameViewTest, CloseButtonAlwaysPresent) {
   opener_web_contents_.reset();
   opener_web_contents_ =
       content::WebContentsTester::CreateTestWebContents(&profile_, nullptr);
-  ChromeSecurityStateTabHelper::CreateForWebContents(
-      opener_web_contents_.get());
   auto* web_view =
       static_cast<views::WebView*>(opener_host_widget_->GetContentsView());
   web_view->SetWebContents(opener_web_contents_.get());
@@ -1073,5 +1067,45 @@ TEST_F(DocumentPipFrameViewTest, IsOverlayViewVisible_TracksOverlayVisibility) {
   EXPECT_TRUE(IsOverlayViewVisible(frame_view));
 
   overlay->SetVisible(false);
+  EXPECT_FALSE(IsOverlayViewVisible(frame_view));
+}
+
+// A visible auto-PiP overlay keeps the top bar rendered active even when the
+// widget deactivates, so the Allow/Block prompt stays legible (matching
+// PictureInPictureBrowserFrameView, which folds IsOverlayViewVisible() into the
+// render-active computation). Hiding the overlay lets deactivation take effect.
+TEST_F(DocumentPipFrameViewTest, AutoPipOverlayVisibleKeepsTopBarActive) {
+  auto* frame_view =
+      CreatePipAndGetFrameView(/*disallow_return_to_opener=*/false);
+  AutoPipSettingOverlayView* overlay = InjectAutoPipOverlay(frame_view);
+  ASSERT_TRUE(overlay);
+  ASSERT_TRUE(IsOverlayViewVisible(frame_view));
+
+  // Deactivating while the overlay is visible must not drop the active render
+  // state (without the overlay this would go inactive, per
+  // WidgetActivationTogglesRenderState).
+  frame_view->OnWidgetActivationChanged(frame_view->GetWidget(),
+                                        /*active=*/false);
+  EXPECT_TRUE(GetRenderActive(frame_view));
+
+  // Once the overlay is hidden, the same deactivation drops the active state.
+  overlay->SetVisible(false);
+  frame_view->OnWidgetActivationChanged(frame_view->GetWidget(),
+                                        /*active=*/false);
+  EXPECT_FALSE(GetRenderActive(frame_view));
+}
+
+// OnWidgetDestroying nulls the overlay raw_ptr during teardown (the overlay is
+// owned by the view tree, which is torn down after this hook), so no dangling
+// pointer survives into ~DocumentPipFrameView.
+TEST_F(DocumentPipFrameViewTest, OnWidgetDestroyingClearsAutoPipOverlay) {
+  auto* frame_view =
+      CreatePipAndGetFrameView(/*disallow_return_to_opener=*/false);
+  ASSERT_TRUE(InjectAutoPipOverlay(frame_view));
+  ASSERT_TRUE(GetAutoPipOverlay(frame_view));
+
+  frame_view->OnWidgetDestroying(frame_view->GetWidget());
+
+  EXPECT_FALSE(GetAutoPipOverlay(frame_view));
   EXPECT_FALSE(IsOverlayViewVisible(frame_view));
 }

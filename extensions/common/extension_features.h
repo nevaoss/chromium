@@ -73,10 +73,20 @@ BASE_DECLARE_FEATURE(kApiGlicPrivate);
 // `enterprise.reportingPrivate.onDataMaskingRulesTriggered` API.
 BASE_DECLARE_FEATURE(kApiEnterpriseReportingPrivateOnDataMaskingRulesTriggered);
 
+// Controls the availability of the
+// `enterprise.reportingPrivate.reportForceSaveToCloudEventHandled` API.
+BASE_DECLARE_FEATURE(
+    kApiEnterpriseReportingPrivateReportForceSaveToCloudEventHandled);
+
 // Controls the availability of Glic access from Google webpages.
 BASE_DECLARE_FEATURE(kApiGlicAccessFromGoogleWebpage);
+
 // Controls the availability of Glic access from Chrome promotion pages.
 BASE_DECLARE_FEATURE(kApiGlicAccessFromPromotionPage);
+
+// Controls the availability of Glic access from Web Continuity.
+BASE_DECLARE_FEATURE(kApiGlicAccessFromWebContinuity);
+
 extern const base::FeatureParam<std::string> kProdPromptEndpointUrlParam;
 extern const base::FeatureParam<std::string> kGlicInvokeApiOAuth2ScopeParam;
 extern const base::FeatureParam<bool> kGlicRequireConsentForInvokeParam;
@@ -325,7 +335,7 @@ BASE_DECLARE_FEATURE(kOptimizeWebRequestProxy);
 // (using per-listener synthetic sub-event names). The renderer matches
 // listeners itself, reports each blocking listener's response via the
 // `webRequestInternal.eventHandled` function, and signals completion with a
-// single `webRequestInternal.eventHandlingDone` per context.
+// single `WebRequestHost.EventHandlingDone` mojo call per target.
 BASE_DECLARE_FEATURE(kWebRequestPerContextEventDispatch);
 
 }  // namespace extensions_features

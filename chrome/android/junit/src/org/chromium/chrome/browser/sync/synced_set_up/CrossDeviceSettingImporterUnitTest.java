@@ -16,7 +16,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import static org.chromium.chrome.browser.flags.ChromeFeatureList.CROSS_DEVICE_PREF_TRACKER_EXTRA_LOGS;
-import static org.chromium.chrome.browser.flags.ChromeFeatureList.XPLAT_SYNCED_SETUP;
 import static org.chromium.chrome.browser.ntp_customization.ntp_cards.NtpCardsMediator.MODULE_TYPE_TO_USER_PREFS_KEY;
 
 import android.app.Activity;
@@ -41,7 +40,6 @@ import org.chromium.base.supplier.SettableNullableObservableSupplier;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.RobolectricUtil;
 import org.chromium.base.test.util.Features.DisableFeatures;
-import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.base.test.util.UserActionTester;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.R;
@@ -77,7 +75,6 @@ import java.util.function.Supplier;
 /** Unit tests for {@link CrossDeviceSettingImporter}. */
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(manifest = Config.NONE)
-@EnableFeatures(XPLAT_SYNCED_SETUP)
 @DisableFeatures(CROSS_DEVICE_PREF_TRACKER_EXTRA_LOGS)
 public class CrossDeviceSettingImporterUnitTest {
     @Rule
@@ -132,6 +129,8 @@ public class CrossDeviceSettingImporterUnitTest {
         sharedPrefManager.writeBoolean(
                 ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_ALL_SETTINGS, false);
         sharedPrefManager.writeBoolean(
+                ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_NON_NTP_SETTINGS, false);
+        sharedPrefManager.writeBoolean(
                 ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_BOTTOM_OMNIBOX, false);
 
         // PrefService and ConfigManager mocks.
@@ -168,6 +167,8 @@ public class CrossDeviceSettingImporterUnitTest {
         ChromeSharedPreferences.getInstance()
                 .removeKey(ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_ALL_SETTINGS);
         ChromeSharedPreferences.getInstance()
+                .removeKey(ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_NON_NTP_SETTINGS);
+        ChromeSharedPreferences.getInstance()
                 .removeKey(ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_BOTTOM_OMNIBOX);
     }
 
@@ -198,8 +199,7 @@ public class CrossDeviceSettingImporterUnitTest {
         when(mPrefService.getBoolean(Pref.MAGIC_STACK_HOME_MODULE_ENABLED)).thenReturn(true);
 
         initializeCrossDeviceSettingImporter()
-                .askToApplyNtpSettingImportIfNeeded(
-                        mProfile, preferencesToApply, /* onlyOmniboxPosition= */ false);
+                .askToApplySettingImportIfNeeded(mProfile, preferencesToApply, /* nonNtp= */ false);
 
         verify(mSnackbarManager).showSnackbar(mSnackbarCaptor.capture());
         Snackbar snackbar = mSnackbarCaptor.getValue();
@@ -247,8 +247,7 @@ public class CrossDeviceSettingImporterUnitTest {
         }
 
         initializeCrossDeviceSettingImporter()
-                .askToApplyNtpSettingImportIfNeeded(
-                        mProfile, preferencesToApply, /* onlyOmniboxPosition= */ false);
+                .askToApplySettingImportIfNeeded(mProfile, preferencesToApply, /* nonNtp= */ false);
 
         verify(mSnackbarManager, times(0)).showSnackbar(mSnackbarCaptor.capture());
     }
@@ -262,8 +261,7 @@ public class CrossDeviceSettingImporterUnitTest {
         when(mPrefService.getBoolean(Pref.MAGIC_STACK_HOME_MODULE_ENABLED)).thenReturn(true);
 
         initializeCrossDeviceSettingImporter()
-                .askToApplyNtpSettingImportIfNeeded(
-                        mProfile, preferencesToApply, /* onlyOmniboxPosition= */ false);
+                .askToApplySettingImportIfNeeded(mProfile, preferencesToApply, /* nonNtp= */ false);
 
         verify(mSnackbarManager).showSnackbar(mSnackbarCaptor.capture());
         Snackbar snackbar = mSnackbarCaptor.getValue();
@@ -309,8 +307,7 @@ public class CrossDeviceSettingImporterUnitTest {
         when(mPrefService.getBoolean(Pref.MAGIC_STACK_HOME_MODULE_ENABLED)).thenReturn(true);
 
         initializeCrossDeviceSettingImporter()
-                .askToApplyNtpSettingImportIfNeeded(
-                        mProfile, preferencesToApply, /* onlyOmniboxPosition= */ false);
+                .askToApplySettingImportIfNeeded(mProfile, preferencesToApply, /* nonNtp= */ false);
 
         verify(mSnackbarManager).showSnackbar(mSnackbarCaptor.capture());
         Snackbar snackbar = mSnackbarCaptor.getValue();
@@ -342,7 +339,7 @@ public class CrossDeviceSettingImporterUnitTest {
     }
 
     @Test
-    public void testAskToApplyNtpSettingImportIfNeeded_OmniboxOnly_differs() {
+    public void testAskToApplySettingImportIfNeeded_NonNtp_differs() {
         Map<String, Object> preferencesToApply = new HashMap<>();
         preferencesToApply.put(Pref.IS_OMNIBOX_IN_BOTTOM_POSITION, false);
         when(mLocalPrefService.getBoolean(Pref.IS_OMNIBOX_IN_BOTTOM_POSITION)).thenReturn(true);
@@ -351,8 +348,7 @@ public class CrossDeviceSettingImporterUnitTest {
                 .thenReturn(ServiceStatus.DEVICE_INFO_TRACKER_MISSING);
 
         initializeCrossDeviceSettingImporter()
-                .askToApplyNtpSettingImportIfNeeded(
-                        mProfile, preferencesToApply, /* onlyOmniboxPosition= */ true);
+                .askToApplySettingImportIfNeeded(mProfile, preferencesToApply, /* nonNtp= */ true);
 
         verify(mSnackbarManager).showSnackbar(mSnackbarCaptor.capture());
         Snackbar snackbar = mSnackbarCaptor.getValue();
@@ -365,28 +361,27 @@ public class CrossDeviceSettingImporterUnitTest {
                 .setBoolean(Pref.IS_OMNIBOX_IN_BOTTOM_POSITION, false);
         verify(mHomeModulesConfigManager, never()).setPrefAllCardsEnabled(any(Boolean.class));
         assertTrue(
-                "The 'Apply' user action for Omnibox position should be recorded.",
+                "The 'Apply' user action for non-NTP settings should be recorded.",
                 mUserActionTester
                         .getActions()
-                        .contains("Android.CrossDeviceSettingImport.OmniboxPosition.Apply"));
+                        .contains("Android.CrossDeviceSettingImport.NonNtp.Apply"));
     }
 
     @Test
-    public void testAskToApplyNtpSettingImportIfNeeded_OmniboxOnly_noDiffs() {
+    public void testAskToApplySettingImportIfNeeded_NonNtp_noDiffs() {
         Map<String, Object> preferencesToApply = new HashMap<>();
         preferencesToApply.put(Pref.IS_OMNIBOX_IN_BOTTOM_POSITION, true);
         when(mLocalPrefService.getBoolean(Pref.IS_OMNIBOX_IN_BOTTOM_POSITION)).thenReturn(true);
 
         initializeCrossDeviceSettingImporter()
-                .askToApplyNtpSettingImportIfNeeded(
-                        mProfile, preferencesToApply, /* onlyOmniboxPosition= */ true);
+                .askToApplySettingImportIfNeeded(mProfile, preferencesToApply, /* nonNtp= */ true);
 
         verify(mSnackbarManager, never()).showSnackbar(any(Snackbar.class));
     }
 
     @Test
     public void testImportedSettingsHavePreferenceChange_includesOmnibox() {
-        // Test that when onlyOmniboxPosition=false, omnibox changes still trigger the snackbar.
+        // Test that when nonNtp=false, omnibox changes still trigger the snackbar.
         Map<String, Object> preferencesToApply = new HashMap<>();
         preferencesToApply.put(Pref.IS_OMNIBOX_IN_BOTTOM_POSITION, false);
         when(mLocalPrefService.getBoolean(Pref.IS_OMNIBOX_IN_BOTTOM_POSITION)).thenReturn(true);
@@ -396,8 +391,7 @@ public class CrossDeviceSettingImporterUnitTest {
         when(mPrefService.getBoolean(any(String.class))).thenReturn(true);
 
         initializeCrossDeviceSettingImporter()
-                .askToApplyNtpSettingImportIfNeeded(
-                        mProfile, preferencesToApply, /* onlyOmniboxPosition= */ false);
+                .askToApplySettingImportIfNeeded(mProfile, preferencesToApply, /* nonNtp= */ false);
 
         verify(mSnackbarManager).showSnackbar(any(Snackbar.class));
     }
@@ -409,8 +403,7 @@ public class CrossDeviceSettingImporterUnitTest {
         when(mLocalPrefService.getBoolean(Pref.IS_OMNIBOX_IN_BOTTOM_POSITION)).thenReturn(true);
 
         initializeCrossDeviceSettingImporter()
-                .askToApplyNtpSettingImportIfNeeded(
-                        mProfile, preferencesToApply, /* onlyOmniboxPosition= */ true);
+                .askToApplySettingImportIfNeeded(mProfile, preferencesToApply, /* nonNtp= */ true);
 
         verify(mSnackbarManager).showSnackbar(mSnackbarCaptor.capture());
         Snackbar snackbar = mSnackbarCaptor.getValue();
@@ -421,20 +414,20 @@ public class CrossDeviceSettingImporterUnitTest {
         undoSnackbar.getController().onAction(null); // Undo
 
         assertTrue(
-                "The 'Undo' user action for Omnibox position should be recorded.",
+                "The 'Undo' user action for non-NTP settings should be recorded.",
                 mUserActionTester
                         .getActions()
-                        .contains("Android.CrossDeviceSettingImport.OmniboxPosition.Undo"));
+                        .contains("Android.CrossDeviceSettingImport.NonNtp.Undo"));
 
         verify(mSnackbarManager, times(3)).showSnackbar(mSnackbarCaptor.capture());
         Snackbar redoSnackbar = mSnackbarCaptor.getValue();
         redoSnackbar.getController().onAction(null); // Redo
 
         assertTrue(
-                "The 'Redo' user action for Omnibox position should be recorded.",
+                "The 'Redo' user action for non-NTP settings should be recorded.",
                 mUserActionTester
                         .getActions()
-                        .contains("Android.CrossDeviceSettingImport.OmniboxPosition.Redo"));
+                        .contains("Android.CrossDeviceSettingImport.NonNtp.Redo"));
     }
 
     @Test
@@ -487,24 +480,6 @@ public class CrossDeviceSettingImporterUnitTest {
                 "The preference for having imported all settings should be set to true even if "
                         + "the tracker is unavailable.",
                 ChromeSharedPreferences.getInstance()
-                        .readBoolean(
-                                ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_ALL_SETTINGS, false));
-    }
-
-    @Test
-    @DisableFeatures(XPLAT_SYNCED_SETUP)
-    public void testOnTabChange_FeatureDisabled_NoAction() {
-        ChromeSharedPreferences.getInstance()
-                .writeBoolean(ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_ALL_SETTINGS, false);
-        when(mCrossDevicePrefTracker.getServiceStatus()).thenReturn(ServiceStatus.AVAILABLE);
-
-        initializeCrossDeviceSettingImporter().onTabChangeOrGainFocus(mTab);
-
-        verify(mCrossDevicePrefTracker, never()).getServiceStatus();
-        assertTrue(
-                "The preference for having imported all settings should not be set if the "
-                        + "feature is disabled.",
-                !ChromeSharedPreferences.getInstance()
                         .readBoolean(
                                 ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_ALL_SETTINGS, false));
     }
@@ -577,11 +552,11 @@ public class CrossDeviceSettingImporterUnitTest {
     }
 
     @Test
-    public void testOnTabChange_TrackerReady_OmniboxImported() {
+    public void testOnTabChange_TrackerReady_NonNtpSettingsImported() {
         ChromeSharedPreferences.getInstance()
                 .writeBoolean(ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_ALL_SETTINGS, false);
         ChromeSharedPreferences.getInstance()
-                .writeBoolean(ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_BOTTOM_OMNIBOX, false);
+                .writeBoolean(ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_NON_NTP_SETTINGS, false);
 
         when(mCrossDevicePrefTracker.getServiceStatus()).thenReturn(ServiceStatus.AVAILABLE);
         when(mCrossDevicePrefTracker.getNativePtr()).thenReturn(0L);
@@ -591,17 +566,18 @@ public class CrossDeviceSettingImporterUnitTest {
                 Map.of(Pref.IS_OMNIBOX_IN_BOTTOM_POSITION, false));
         when(mLocalPrefService.getBoolean(Pref.IS_OMNIBOX_IN_BOTTOM_POSITION)).thenReturn(true);
 
-        // Simulate tab change to a non-NTP (omnibox import only).
+        // Simulate tab change to a non-NTP (non-NTP settings import only).
         when(mTab.getUrl()).thenReturn(JUnitTestGURLs.EXAMPLE_URL);
         initializeCrossDeviceSettingImporter().onTabChangeOrGainFocus(mTab);
 
         verify(mCrossDevicePrefTracker, never()).addObserver(any());
         verify(mSnackbarManager).showSnackbar(any());
         assertTrue(
-                "The preference for having imported bottom omnibox should be set to true.",
+                "The preference for having imported non-NTP settings should be set to true.",
                 ChromeSharedPreferences.getInstance()
                         .readBoolean(
-                                ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_BOTTOM_OMNIBOX, false));
+                                ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_NON_NTP_SETTINGS,
+                                false));
     }
 
     @Test
@@ -610,7 +586,7 @@ public class CrossDeviceSettingImporterUnitTest {
     }
 
     @Test
-    public void testAskToApplyNtpSettingImportIfNeeded_honorsImportedSettings() {
+    public void testAskToApplySettingImportIfNeeded_honorsImportedSettings() {
         ChromeSharedPreferences.getInstance()
                 .writeBoolean(ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_ALL_SETTINGS, true);
 
@@ -618,7 +594,7 @@ public class CrossDeviceSettingImporterUnitTest {
         preferencesToApply.put(Pref.IS_OMNIBOX_IN_BOTTOM_POSITION, false);
         SyncedSetUpUtilsBridge.setCrossDeviceSettingsForTesting(preferencesToApply);
 
-        // Even if there are diffs, it should return early if onlyOmniboxPosition=false because
+        // Even if there are diffs, it should return early if nonNtp=false because
         // CROSS_DEVICE_IMPORTED_ALL_SETTINGS is true.
         initializeCrossDeviceSettingImporter()
                 .onCrossDevicePrefTrackerAndLocalStateReady(
@@ -628,7 +604,25 @@ public class CrossDeviceSettingImporterUnitTest {
     }
 
     @Test
-    public void testAskToApplyNtpSettingImportIfNeeded_honorsImportedOmnibox() {
+    public void testAskToApplySettingImportIfNeeded_honorsImportedNonNtpSettings() {
+        ChromeSharedPreferences.getInstance()
+                .writeBoolean(ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_NON_NTP_SETTINGS, true);
+
+        when(mLocalPrefService.getBoolean(Pref.IS_OMNIBOX_IN_BOTTOM_POSITION)).thenReturn(true);
+        when(mTab.getUrl()).thenReturn(JUnitTestGURLs.EXAMPLE_URL);
+
+        initializeCrossDeviceSettingImporter()
+                .onCrossDevicePrefTrackerAndLocalStateReady(
+                        mCrossDevicePrefTracker, ServiceStatus.AVAILABLE, mProfile, mTab, true);
+
+        verify(mSnackbarManager, never()).showSnackbar(any());
+    }
+
+    @Test
+    public void testMigration_FromBottomOmniboxToNonNtpSettings() {
+        // Old key was set, new key was not yet set.
+        ChromeSharedPreferences.getInstance()
+                .removeKey(ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_NON_NTP_SETTINGS);
         ChromeSharedPreferences.getInstance()
                 .writeBoolean(ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_BOTTOM_OMNIBOX, true);
 
@@ -639,7 +633,14 @@ public class CrossDeviceSettingImporterUnitTest {
                 .onCrossDevicePrefTrackerAndLocalStateReady(
                         mCrossDevicePrefTracker, ServiceStatus.AVAILABLE, mProfile, mTab, true);
 
+        // Should return early and migrate the key to true.
         verify(mSnackbarManager, never()).showSnackbar(any());
+        assertTrue(
+                "Old key value should migrate into CROSS_DEVICE_IMPORTED_NON_NTP_SETTINGS.",
+                ChromeSharedPreferences.getInstance()
+                        .readBoolean(
+                                ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_NON_NTP_SETTINGS,
+                                false));
     }
 
     @Test
@@ -666,8 +667,7 @@ public class CrossDeviceSettingImporterUnitTest {
                         ToolbarPositionAndSource.TOP_SETTINGS);
 
         initializeCrossDeviceSettingImporter()
-                .askToApplyNtpSettingImportIfNeeded(
-                        mProfile, preferencesToApply, /* onlyOmniboxPosition= */ true);
+                .askToApplySettingImportIfNeeded(mProfile, preferencesToApply, /* nonNtp= */ true);
 
         verify(mSnackbarManager).showSnackbar(mSnackbarCaptor.capture());
         Snackbar snackbar = mSnackbarCaptor.getValue();

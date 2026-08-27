@@ -33,6 +33,7 @@
 <translation id="1290883685122687410">Памылка наладжвання: <ph name="METAINSTALLER_EXIT_CODE" />. <ph name="WINDOWS_ERROR" /></translation>
 <translation id="1302523850133262269">Пачакайце, пакуль Chrome усталюе апошнія абнаўленні сістэмы.</translation>
 <translation id="1330562121671411446">Выявіць мову</translation>
+<translation id="1333654552732143316">Запусціць Chrome</translation>
 <translation id="1341711321000856656">Вы можаце пераключыцца на прагляд пароляў з іншага профілю Chrome</translation>
 <translation id="1343830902827845050">Увайдзіце ў Chrome</translation>
 <translation id="1356661055722410047">Навінка! Вы можаце перакладаць тэкст і відарысы на экране</translation>
@@ -381,7 +382,6 @@
 <translation id="4885446229353981848">Заўсёды паказваць ярлык "Google Аб’ектыў"</translation>
 <translation id="4891791193823137474">Дазволіць Google Chrome працаваць у фонавым рэжыме</translation>
 <translation id="4895437082222824641">Адкрыць спасылку ў новай &amp;укладцы Chrome</translation>
-<translation id="4896867431081882115">Зрабіце Chrome стандартным браўзерам, каб мець лёгкі доступ да знаёмых, любімых і надзейных функцый. Для хуткага доступу Chrome будзе замацаваны на панэлі задач.</translation>
 <translation id="4904953848704395458">Адкрываць Gemini ў Chrome з дапамогай спалучэння клавіш.</translation>
 <translation id="4918086044614829423">Прыняць</translation>
 <translation id="4918844574251943176">Відарыс скапіраваны</translation>
@@ -747,6 +747,7 @@
 <translation id="8367705492654390392">Задайце любое пытанне</translation>
 <translation id="8367950957770994118">Магчымасць хутка адкрываць Gemini ў Chrome ў любы момант</translation>
 <translation id="8370517070665726704">© <ph name="YEAR" /> Google LLC. Усе правы абароненыя.</translation>
+<translation id="8370748943308169953">QR-код для ўваходу ў Chrome як <ph name="USER_NAME" /></translation>
 <translation id="8377158135256176353">Уключыць/выключыць Gemini ў Chrome Canary</translation>
 <translation id="8387459386171870978">Працягнуць работу ў Chrome</translation>
 <translation id="8394720698884623075">Правярае, ці знаходзяцца URL-адрасы ў спісе небяспечных сайтаў, захаваным у Chrome</translation>

@@ -66,7 +66,6 @@
 #include "cc/layers/layer_impl.h"
 #include "cc/layers/render_surface_impl.h"
 #include "cc/layers/surface_layer_impl.h"
-#include "cc/layers/video_layer_impl.h"
 #include "cc/layers/viewport.h"
 #include "cc/metrics/compositor_frame_reporting_controller.h"
 #include "cc/metrics/custom_metrics_recorder.h"
@@ -698,7 +697,8 @@ LayerTreeHostImpl::LayerTreeHostImpl(
 
   browser_controls_offset_manager_ = BrowserControlsOffsetManager::Create(
       this, settings.top_controls_show_threshold,
-      settings.top_controls_hide_threshold);
+      settings.top_controls_hide_threshold,
+      settings.trees_in_viz_in_viz_process);
 
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
   base::CommandLine& cmd_line = *base::CommandLine::ForCurrentProcess();
@@ -4868,6 +4868,13 @@ void LayerTreeHostImpl::WillScrollContent(ElementId element_id) {
 void LayerTreeHostImpl::DidScrollContent(ElementId element_id,
                                          bool animated,
                                          const gfx::Vector2dF& scroll_delta) {
+  // An animated scroll has not moved content yet; the movement lands on later
+  // animation ticks that do not reach here.
+  if (settings_.enable_scroll_performance_timing && !animated && element_id &&
+      !scroll_delta.IsZero()) {
+    events_metrics_manager_.RecordAppliedScrollObservation(element_id);
+  }
+
   scroll_accumulated_this_frame_ += scroll_delta;
   frame_max_scroll_delta_ =
       std::max(std::abs(scroll_delta.x()), std::abs(scroll_delta.y()));

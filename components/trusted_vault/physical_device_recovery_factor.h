@@ -48,8 +48,10 @@ class PhysicalDeviceRecoveryFactor : public LocalRecoveryFactor {
   TrustedVaultRecoveryFactorRegistrationStateForUMA MaybeRegister(
       RegisterCallback cb) override;
 
+  bool IsIdleForTesting() const override;
+
  private:
-  trusted_vault_pb::LocalTrustedVaultPerUser* GetPrimaryAccountVault();
+  const UserVault& GetPrimaryAccountVault();
 
   void OnKeysDownloaded(AttemptRecoveryCallback cb,
                         TrustedVaultDownloadKeysStatus status,

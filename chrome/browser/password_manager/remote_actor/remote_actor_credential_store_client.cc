@@ -22,7 +22,7 @@
 #include "base/task/sequenced_task_runner.h"
 #include "base/time/time.h"
 #include "base/values.h"
-#include "chrome/browser/password_manager/protos/list_affiliated_passwords_result.pb.h"
+#include "chrome/browser/password_manager/remote_actor/protos/remote_actor_list_affiliated_passwords_result.pb.h"
 #include "chrome/browser/password_manager/remote_actor/remote_actor_request_helper.h"
 #include "chrome/browser/password_manager/remote_actor/remote_actor_switches.h"
 #include "components/signin/public/base/oauth_consumer_id.h"
@@ -115,9 +115,8 @@ void RemoteActorCredentialStoreClient::UpdateCredential(
     base::TimeDelta ttl,
     UpdateCallback callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  ListAffiliatedPasswordsResult::AffiliatedPassword proto;
-  *proto.mutable_password_data()->mutable_password_specifics_data() =
-      std::move(password_data);
+  RemoteActorListAffiliatedPasswordsResult::RemoteActorAffiliatedPassword proto;
+  *proto.mutable_password_data() = std::move(password_data);
   // Only username and password are needed by the remote actor.
   // TODO(crbug.com/540786152): consider alternative payload after teamfood.
   std::string serialized_proto;
@@ -129,13 +128,14 @@ void RemoteActorCredentialStoreClient::UpdateCredential(
 
   std::string base64_payload = base::Base64Encode(serialized_proto);
 
-  std::string escaped_origin =
-      base::EscapeQueryParamValue(web_origin, /*use_plus=*/false);
+  std::string escaped_origin = base::EscapeAllExceptUnreserved(web_origin);
+  std::string escaped_client_tag_hash =
+      base::EscapeAllExceptUnreserved(password_client_tag_hash);
   std::string resource_name = base::StringPrintf(
       "internalservices/AGENTIC_CREDENTIAL_MANAGER/owneridnamespaces/"
       "GOOGLE_USER_ID/ownerids/%s/externalservices/%s/credentials/%s",
       obfuscated_gaia_id.c_str(), escaped_origin.c_str(),
-      password_client_tag_hash.c_str());
+      escaped_client_tag_hash.c_str());
 
   GURL url(base::StrCat(
       {GetEndpointUrlBase(), "v1/", resource_name, "?allow_missing=true"}));
@@ -170,13 +170,14 @@ void RemoteActorCredentialStoreClient::DeleteCredential(
     const std::string& password_client_tag_hash,
     DeleteCallback callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  std::string escaped_origin =
-      base::EscapeQueryParamValue(web_origin, /*use_plus=*/false);
+  std::string escaped_origin = base::EscapeAllExceptUnreserved(web_origin);
+  std::string escaped_client_tag_hash =
+      base::EscapeAllExceptUnreserved(password_client_tag_hash);
   std::string resource_name = base::StringPrintf(
       "internalservices/AGENTIC_CREDENTIAL_MANAGER/owneridnamespaces/"
       "GOOGLE_USER_ID/ownerids/%s/externalservices/%s/credentials/%s",
       obfuscated_gaia_id.c_str(), escaped_origin.c_str(),
-      password_client_tag_hash.c_str());
+      escaped_client_tag_hash.c_str());
 
   GURL url(base::StrCat(
       {GetEndpointUrlBase(), "v1/", resource_name, "?allow_missing=true"}));

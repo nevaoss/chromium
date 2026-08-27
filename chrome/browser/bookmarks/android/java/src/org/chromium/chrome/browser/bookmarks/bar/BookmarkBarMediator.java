@@ -53,6 +53,7 @@ import org.chromium.chrome.browser.theme.ThemeUtils;
 import org.chromium.chrome.browser.ui.favicon.FaviconUtils;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.chrome.browser.ui.theme.BrandedColorScheme;
+import org.chromium.components.bookmarks.BookmarkBarVisibilityState;
 import org.chromium.components.bookmarks.BookmarkId;
 import org.chromium.components.bookmarks.BookmarkItem;
 import org.chromium.components.browser_ui.util.GlobalDiscardableReferencePool;
@@ -138,6 +139,7 @@ class BookmarkBarMediator
      *     bookmark_bar view.
      * @param bookmarkBarView The bookmark_bar view that contains the entire bookmarks bar.
      * @param popupCoordinator The coordinator for displaying popups.
+     * @param xrSpaceModeObservableSupplier Used to check if currently in XR full space mode.
      */
     BookmarkBarMediator(
             Activity activity,
@@ -153,7 +155,8 @@ class BookmarkBarMediator
             Supplier<ModalDialogManager> modalDialogManagerSupplier,
             RecyclerView itemsRecyclerView,
             BookmarkBar bookmarkBarView,
-            BookmarkBarPopupCoordinator popupCoordinator) {
+            BookmarkBarPopupCoordinator popupCoordinator,
+            NonNullObservableSupplier<Boolean> xrSpaceModeObservableSupplier) {
         mActivity = activity;
         mSnackbarManagerSupplier = snackbarManagerSupplier;
         mModalDialogManagerSupplier = modalDialogManagerSupplier;
@@ -209,7 +212,8 @@ class BookmarkBarMediator
                         profileSupplier,
                         currentTabSupplier,
                         this,
-                        popupCoordinator::dismiss);
+                        popupCoordinator::dismiss,
+                        xrSpaceModeObservableSupplier);
     }
 
     /** Destroys the bookmark bar mediator. */
@@ -583,7 +587,7 @@ class BookmarkBarMediator
     }
 
     @Override
-    public void openAll(List<BookmarkId> ids) {
+    public void openBookmarksInNewTabs(List<BookmarkId> ids) {
         runIfStillRelevantAfterFinishLoadingBookmarkModel(
                 (Profile profile, BookmarkModel _) ->
                         mBookmarkOpener.openBookmarksInNewTabs(
@@ -593,23 +597,60 @@ class BookmarkBarMediator
     }
 
     @Override
-    public void openAllInNewWindow(List<BookmarkId> ids) {
+    public void openBookmarksInNewWindow(List<BookmarkId> ids) {
         runIfStillRelevantAfterFinishLoadingBookmarkModel(
                 (_, _) -> mBookmarkOpener.openBookmarksInNewWindow(ids, /* incognito= */ false));
     }
 
     @Override
-    public void openAllInIncognitoWindow(List<BookmarkId> ids) {
+    public void openBookmarksInIncognitoWindow(List<BookmarkId> ids) {
         runIfStillRelevantAfterFinishLoadingBookmarkModel(
                 (_, _) -> mBookmarkOpener.openBookmarksInNewWindow(ids, /* incognito= */ true));
     }
 
     @Override
-    public void openAllInNewTabGroup(List<BookmarkId> ids, @Nullable String title) {
+    public void openBookmarksInNewTabGroup(List<BookmarkId> ids, @Nullable String title) {
         runIfStillRelevantAfterFinishLoadingBookmarkModel(
                 (Profile profile, BookmarkModel _) ->
                         mBookmarkOpener.openBookmarksInNewTabGroup(
                                 ids, profile.isOffTheRecord(), title));
+    }
+
+    @Override
+    public void openFolderInNewTabs(BookmarkId folderId) {
+        runIfStillRelevantAfterFinishLoadingBookmarkModel(
+                (profile, model) -> {
+                    mBookmarkOpener.openFolderBookmarksInNewTabs(
+                            folderId,
+                            profile.isOffTheRecord(),
+                            TabLaunchType.FROM_BOOKMARK_BAR_BACKGROUND);
+                });
+    }
+
+    @Override
+    public void openFolderInNewWindow(BookmarkId folderId) {
+        runIfStillRelevantAfterFinishLoadingBookmarkModel(
+                (profile, model) -> {
+                    mBookmarkOpener.openFolderBookmarksInNewWindow(
+                            folderId, /* incognito= */ false);
+                });
+    }
+
+    @Override
+    public void openFolderInIncognitoWindow(BookmarkId folderId) {
+        runIfStillRelevantAfterFinishLoadingBookmarkModel(
+                (profile, model) -> {
+                    mBookmarkOpener.openFolderBookmarksInNewWindow(folderId, /* incognito= */ true);
+                });
+    }
+
+    @Override
+    public void openFolderInNewTabGroup(BookmarkId folderId, @Nullable String title) {
+        runIfStillRelevantAfterFinishLoadingBookmarkModel(
+                (profile, model) -> {
+                    mBookmarkOpener.openFolderBookmarksInNewTabGroup(
+                            folderId, profile.isOffTheRecord(), title);
+                });
     }
 
     @Override
@@ -683,6 +724,36 @@ class BookmarkBarMediator
                 (Profile profile, BookmarkModel _) ->
                         BookmarkBarUtils.toggleShowBookmarksBar(
                                 profile, /* fromKeyboardShortcut= */ false));
+    }
+
+    @Override
+    public void setBookmarksBarVisibilityToAlwaysHide() {
+        runIfStillRelevantAfterFinishLoadingBookmarkModel(
+                (Profile profile, BookmarkModel _) ->
+                        BookmarkBarUtils.setBookmarkBarVisibilityState(
+                                profile,
+                                BookmarkBarVisibilityState.ALWAYS_HIDE,
+                                /* fromKeyboardShortcut= */ false));
+    }
+
+    @Override
+    public void setBookmarksBarVisibilityToAlwaysShow() {
+        runIfStillRelevantAfterFinishLoadingBookmarkModel(
+                (Profile profile, BookmarkModel _) ->
+                        BookmarkBarUtils.setBookmarkBarVisibilityState(
+                                profile,
+                                BookmarkBarVisibilityState.ALWAYS_SHOW,
+                                /* fromKeyboardShortcut= */ false));
+    }
+
+    @Override
+    public void setBookmarksBarVisibilityToOnlyShowOnNTP() {
+        runIfStillRelevantAfterFinishLoadingBookmarkModel(
+                (Profile profile, BookmarkModel _) ->
+                        BookmarkBarUtils.setBookmarkBarVisibilityState(
+                                profile,
+                                BookmarkBarVisibilityState.ONLY_SHOW_ON_NTP,
+                                /* fromKeyboardShortcut= */ false));
     }
 
     public void setVisibility(boolean isVisible) {

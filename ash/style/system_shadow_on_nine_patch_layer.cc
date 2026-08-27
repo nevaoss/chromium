@@ -32,10 +32,7 @@ void SystemShadowOnNinePatchLayer::SetRoundedCornerRadius(int corner_radius) {
 
 void SystemShadowOnNinePatchLayer::SetRoundedCorners(
     const gfx::RoundedCornersF& rounded_corners) {
-  // TODO(http://b/307326019): use corresponding interface of `ui::Shadow` when
-  // available.
-  NOTREACHED() << "Setting uneven rounded corners to the shadow on nine patch "
-                  "layer is not ready.";
+  shadow()->SetRoundedCorners(rounded_corners);
 }
 
 const gfx::Rect& SystemShadowOnNinePatchLayer::GetContentBounds() {
@@ -107,6 +104,11 @@ SystemViewShadowOnNinePatchLayer::~SystemViewShadowOnNinePatchLayer() = default;
 void SystemViewShadowOnNinePatchLayer::SetRoundedCornerRadius(
     int corner_radius) {
   view_shadow_.SetRoundedCornerRadius(corner_radius);
+}
+
+void SystemViewShadowOnNinePatchLayer::SetRoundedCorners(
+    const gfx::RoundedCornersF& rounded_corners) {
+  view_shadow_.SetRoundedCorners(rounded_corners);
 }
 
 void SystemViewShadowOnNinePatchLayer::OnViewAddedToWidget(

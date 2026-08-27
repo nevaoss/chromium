@@ -2611,7 +2611,7 @@ TEST_F(DownloadItemTest, DataUrlNotTruncatedWhileInProgress) {
 
 TEST_F(DownloadItemTest, TruncateDataUrlAfterComplete) {
   std::string large_data_url = "data:text/plain,";
-  large_data_url.append(2000, 'a');
+  large_data_url.append(70000, 'a');
   create_info()->url_chain.clear();
   create_info()->url_chain.emplace_back(large_data_url);
 
@@ -2621,17 +2621,19 @@ TEST_F(DownloadItemTest, TruncateDataUrlAfterComplete) {
 
   ASSERT_EQ(DownloadItem::IN_PROGRESS, item->GetState());
   EXPECT_EQ(large_data_url, item->GetURL().spec());
+  EXPECT_FALSE(item->IsUrlTruncated());
 
   DoDestinationComplete(item, download_file);
 
   EXPECT_EQ(DownloadItem::COMPLETE, item->GetState());
-  EXPECT_EQ(1024u, item->GetURL().spec().length());
-  EXPECT_EQ(large_data_url.substr(0, 1024), item->GetURL().spec());
+  EXPECT_EQ(8192u, item->GetURL().spec().length());
+  EXPECT_EQ(large_data_url.substr(0, 8192), item->GetURL().spec());
+  EXPECT_TRUE(item->IsUrlTruncated());
 }
 
 TEST_F(DownloadItemTest, TruncateDataUrlAfterCancel) {
   std::string large_data_url = "data:text/plain,";
-  large_data_url.append(2000, 'a');
+  large_data_url.append(70000, 'a');
   create_info()->url_chain.clear();
   create_info()->url_chain.emplace_back(large_data_url);
 
@@ -2641,17 +2643,19 @@ TEST_F(DownloadItemTest, TruncateDataUrlAfterCancel) {
       CallDownloadItemStart(item, &target_callback);
 
   EXPECT_CALL(*download_file, Cancel());
+  EXPECT_FALSE(item->IsUrlTruncated());
 
   item->Cancel(true);
 
   EXPECT_EQ(DownloadItem::CANCELLED, item->GetState());
-  EXPECT_EQ(1024u, item->GetURL().spec().length());
-  EXPECT_EQ(large_data_url.substr(0, 1024), item->GetURL().spec());
+  EXPECT_EQ(8192u, item->GetURL().spec().length());
+  EXPECT_EQ(large_data_url.substr(0, 8192), item->GetURL().spec());
+  EXPECT_TRUE(item->IsUrlTruncated());
 }
 
 TEST_F(DownloadItemTest, TruncateBase64DataUrlToValidUrl) {
   std::string large_data_url = "data:text/plain;base64,";
-  large_data_url.append(2000, 'a');
+  large_data_url.append(70000, 'a');
   create_info()->url_chain.clear();
   create_info()->url_chain.emplace_back(large_data_url);
 
@@ -2665,9 +2669,9 @@ TEST_F(DownloadItemTest, TruncateBase64DataUrlToValidUrl) {
   DoDestinationComplete(item, download_file);
 
   std::string valid_base64_truncated_url = "data:text/plain;base64,";
-  // The base64 string can be at most 1001(1024-23) characters, but needs to be
+  // The base64 string can be at most 8169(8192-23) characters, but needs to be
   // a multiple of 4.
-  valid_base64_truncated_url.append(1000, 'a');
+  valid_base64_truncated_url.append(8168, 'a');
   EXPECT_EQ(DownloadItem::COMPLETE, item->GetState());
   EXPECT_EQ(valid_base64_truncated_url.length(), item->GetURL().spec().length());
   EXPECT_EQ(valid_base64_truncated_url, item->GetURL().spec());
@@ -2687,6 +2691,7 @@ TEST_F(DownloadItemTest, SmallDataUrlNotTruncatedAfterComplete) {
 
   EXPECT_EQ(DownloadItem::COMPLETE, item->GetState());
   EXPECT_EQ(small_data_url, item->GetURL().spec());
+  EXPECT_FALSE(item->IsUrlTruncated());
 }
 
 TEST_F(DownloadItemTest, LargeHttpUrlNotTruncatedAfterComplete) {
@@ -2703,6 +2708,7 @@ TEST_F(DownloadItemTest, LargeHttpUrlNotTruncatedAfterComplete) {
 
   EXPECT_EQ(DownloadItem::COMPLETE, item->GetState());
   EXPECT_EQ(large_http_url, item->GetURL().spec());
+  EXPECT_FALSE(item->IsUrlTruncated());
 }
 
 // On resume of a network-fetched download, the params handed to the delegate

@@ -225,6 +225,7 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(
                 BlinkFeatures.WEBVIEW_ACCELERATE_SMALL_CANVASES,
                 "Accelerate all canvases in webview."),
+        Flag.baseFeature("RustyJpegFeature", "Enables Rust-based JPEG image decoding."),
         Flag.baseFeature(
                 AwFeatures.WEBVIEW_MIXED_CONTENT_AUTOUPGRADES,
                 "Enables autoupgrades for audio/video/image mixed content when mixed content "
@@ -1373,10 +1374,6 @@ public final class ProductionSupportedFlagList {
                 AwFeatures.WEBVIEW_CPP_METRICS_FILTERING,
                 "Enables WebView UMA metrics filtering in C++ instead of Java."),
         Flag.baseFeature(
-                BlinkFeatures.SELECT_WEBVIEW_UNTRUSTED_EVENT_REMOVAL,
-                "Enables the removal of a WebView-specific hack to allow select elements to be"
-                        + " opened with untrusted mousedown events."),
-        Flag.baseFeature(
                 "QuicIgnoreRedundantOnNetworkMadeDefault",
                 "When enabled, Quic will ignore redundant OnNetworkMadeDefault calls."),
         Flag.baseFeature(
@@ -1460,6 +1457,17 @@ public final class ProductionSupportedFlagList {
                 NetFeatures.PERSIST_BROKEN_ALTERNATIVE_SERVICES,
                 "Controls whether broken alternative services should be persisted to disk"
                         + " cache."),
+        Flag.baseFeature(
+                AwFeatures.WEBVIEW_COOKIE_MANAGER_SIMPLER_URL_FIXUPS,
+                "Enables a simpler URL fixup implementation for URLs passed to CookieManager."),
+        Flag.baseFeature(
+                AwFeatures.WEBVIEW_CROSS_ORIGIN_ALLOWLIST_API,
+                "Enables the Cross Origin Allowlist API, which permits opting out of origin"
+                        + " isolation security checks."),
+        Flag.baseFeature(
+                AwFeatures.WEBVIEW_NAVIGATE_DRAIN_PREFETCH,
+                "Enables draining the prefetch queue before loading the URL in the WebView"
+                        + " navigate method"),
         // Add new commandline switches and features above. The final entry should have a
         // trailing comma for cleaner diffs.
     };

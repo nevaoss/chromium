@@ -4,11 +4,16 @@
 
 #include "chrome/browser/background/omnibox_everywhere/omnibox_everywhere_background_mode_manager.h"
 
+#include <utility>
+
 #include "base/check.h"
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "build/branding_buildflags.h"
 #include "chrome/browser/browser_process.h"
+#include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
+#include "chrome/browser/profiles/keep_alive/scoped_profile_keep_alive.h"
+#include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/status_icons/status_icon_menu_model.h"
 #include "chrome/browser/status_icons/status_tray.h"
 #include "chrome/browser/ui/omnibox/omnibox_everywhere/omnibox_everywhere_prefs.h"
@@ -44,7 +49,16 @@ OmniboxEverywhereBackgroundModeManager::
   Reset();
 }
 
+void OmniboxEverywhereBackgroundModeManager::SetProfile(Profile* profile) {
+  if (profile_ == profile) {
+    return;
+  }
+  profile_ = profile;
+  UpdateProfileKeepAlive();
+}
+
 void OmniboxEverywhereBackgroundModeManager::Reset() {
+  profile_keep_alive_.reset();
   keep_alive_.reset();
   HideStatusIcon();
 }
@@ -67,6 +81,20 @@ void OmniboxEverywhereBackgroundModeManager::OnPrefChanged() {
       keep_alive_ = std::make_unique<ScopedKeepAlive>(
           KeepAliveOrigin::OMNIBOX_EVERYWHERE, KeepAliveRestartOption::ENABLED);
     }
+  }
+
+  UpdateProfileKeepAlive();
+}
+
+void OmniboxEverywhereBackgroundModeManager::UpdateProfileKeepAlive() {
+  if (background_mode_pref_member_.GetValue() && profile_ &&
+      !profile_->IsOffTheRecord()) {
+    if (!profile_keep_alive_ || profile_keep_alive_->profile() != profile_) {
+      profile_keep_alive_ = ScopedProfileKeepAlive::TryAcquire(
+          profile_, ProfileKeepAliveOrigin::kOmniboxEverywhere);
+    }
+  } else {
+    profile_keep_alive_.reset();
   }
 }
 
@@ -92,6 +120,9 @@ void OmniboxEverywhereBackgroundModeManager::ShowStatusIcon() {
       StatusTray::OMNIBOX_EVERYWHERE_ICON, icon_image, tooltip);
   if (status_icon_) {
     status_icon_->AddObserver(this);
+#if BUILDFLAG(IS_MAC)
+    status_icon_->SetOpenMenuWithSecondaryClick(true);
+#endif
     UpdateStatusIconContextMenu();
   }
 }
@@ -106,10 +137,14 @@ void OmniboxEverywhereBackgroundModeManager::HideStatusIcon() {
   StatusTray* status_tray =
       g_browser_process ? g_browser_process->status_tray() : nullptr;
   if (status_tray) {
-    status_tray->RemoveStatusIcon(status_icon_);
+    // Avoids dangling the `status_icon_` raw_ptr while `RemoveStatusIcon` is
+    // called.
+    StatusIcon* status_icon = status_icon_;
+    status_icon_ = nullptr;
+    status_tray->RemoveStatusIcon(status_icon);
+  } else {
+    status_icon_ = nullptr;
   }
-
-  status_icon_ = nullptr;
 }
 
 void OmniboxEverywhereBackgroundModeManager::OnStatusIconClicked() {

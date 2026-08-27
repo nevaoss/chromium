@@ -148,14 +148,22 @@ const Suggestion kSuggestions[] = {
     Suggestion(u"Promo_code",
                u"label",
                Suggestion::Icon::kGlobe,
-               SuggestionType::kSeePromoCodeDetails)};
+               SuggestionType::kSeePromoCodeDetails),
+    Suggestion(u"Remove_this_info",
+               u"",
+               Suggestion::Icon::kClose,
+               SuggestionType::kRemoveAutofillAi)};
 
 const Suggestion kExpandableSuggestions[] = {
     CreateSuggestionWithChildren(
         u"Address_entry",
         SuggestionType::kDevtoolsTestAddresses,
         {Suggestion(u"Address", SuggestionType::kAddressEntry)}),
-    CreateAllLoyaltyCardsEntry()};
+    CreateAllLoyaltyCardsEntry(),
+    CreateSuggestionWithChildren(
+        u"Fill_autofill_ai",
+        SuggestionType::kFillAutofillAi,
+        {Suggestion(u"Remove_this_info", SuggestionType::kRemoveAutofillAi)})};
 
 const Suggestion kBnplSuggestions[] = {
     CreateBnplSuggestion(u"Bnpl_linked",
@@ -180,7 +188,7 @@ const AtMemoryTestParam kAtMemorySuggestions[] = {
     {"AtMemory_source_attribution",
      base::BindRepeating(&AtMemoryManager::CreateSourceAttributionSuggestion)},
     {"AtMemory_fetching",
-     base::BindRepeating(&AtMemoryManager::CreateFetchingSuggestion)},
+     base::BindRepeating(&AtMemoryManager::CreateFetchingSuggestion, 0)},
     {"AtMemory_search_affordance", base::BindRepeating([]() {
        return AtMemoryManager::CreateSearchAffordanceSuggestion(u"passport");
      })},

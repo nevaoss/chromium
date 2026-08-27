@@ -1006,7 +1006,7 @@
       // embed camera and microphone permission request controls directly in the page.
       // https://chromestatus.com/feature/5153829504024576
       name: "CameraAndMicrophoneElements",
-      status: "test",
+      status: "experimental",
       public: true,
     },
     {
@@ -2538,6 +2538,13 @@
       status: "stable",
     },
     {
+      // Kill switch for marking scripts parsed by DOMParser in XML documents as
+      // "already started" so they stay inert when cloned or imported.
+      // https://crbug.com/542115030
+      name: "DOMParserXmlScriptAlreadyStarted",
+      status: "stable",
+    },
+    {
       // When enabled, retarget the relatedTarget attribute of drag events.
       // This landed partly in M146 and more in M150 and can be removed in M152.
       name: "DontLeakShadowTreesInDragEvents",
@@ -2595,6 +2602,10 @@
       // axis.
       name: "ElasticOverscrollUseEventDeltaForAxisSelection",
       status: "stable",
+    },
+    {
+      name: "ElementCanvasTransform",
+      status: "experimental",
     },
     {
       public: true,
@@ -2896,6 +2907,7 @@
       // Enables the Blink feature only when the base::Feature is overridden by
       // field trial or command line.
       copied_from_base_feature_if: "overridden",
+      browser_process_read_access: true,
     },
     {
       name: "FetchUploadStreaming",
@@ -3012,6 +3024,10 @@
       // CustomizableCombobox features.
       name: "FilteringPrimitives",
       implied_by: ["FilterableSelect", "CustomizableCombobox"],
+    },
+    {
+      name: "FindBufferMatchAcrossIgnoredNodes",
+      status: "stable",
     },
     {
       name: "FindFirstMisspellingEndWhenNonEditable",
@@ -3825,8 +3841,9 @@
       // instead of pointerdown and pointerup in order to fix light dismiss
       // bugs for touch inputs.
       // https://issues.chromium.org/issues/408010435
+      // Enabled in M153, can be removed in M157.
       name: "LightDismissFromClick",
-      status: "experimental",
+      status: "stable",
     },
     {
       name: "LineBreakAfterSpaceBeforeOpenTag",
@@ -4808,22 +4825,6 @@
       status: "stable",
     },
     {
-      // Controls the aggregate error reporting feature, which allows for
-      // contributions to be made conditional on error conditions that can be
-      // hit when using the API. This also defers contribution merging and
-      // modifies the budgeting flow.
-      // https://chromestatus.com/feature/5194896325214208
-      name: "PrivateAggregationApiErrorReporting",
-      status: "experimental",
-    },
-    {
-      // Controls whether Private Aggregation's "maxContributions" field is
-      // enabled for Shared Storage callers. If disabled, the field will be
-      // ignored. https://chromestatus.com/feature/5189366316793856
-      name: "PrivateAggregationApiMaxContributions",
-      status: "stable",
-    },
-    {
       name: "PrivateNetworkAccessNullIpAddress",
       status: "experimental",
       base_feature: "none",
@@ -5560,14 +5561,6 @@
       name: "SelectUsesFlatTree",
     },
     {
-      // Removes a hack which allows select elements to be opened with a script
-      // dispatched mousedown event on WebView, as opposed to a real user
-      // click.
-      // https://issues.chromium.org/issues/41273490
-      // Enabled in M152, safe to remove in M154
-      name: "SelectWebViewUntrustedEventRemoval",
-    },
-    {
       name: "SendBeaconThrowForBlobWithNonSimpleType",
       public: true,
       status: "stable",
@@ -5775,13 +5768,6 @@
     {
       // See crbug.com/502616235.
       name: "SkipViewTransitionSnapshotResumeRendering",
-      status: "stable",
-    },
-    {
-      // Fix for notifying changed slots in different shadow roots during
-      // manual assignment. crbug.com/517322978
-      // Enabled in M151, safe to remove in M153.
-      name: "SlotAssignNotifyDifferentShadowRoots",
       status: "stable",
     },
     {
@@ -6219,6 +6205,10 @@
     },
     {
       name: "TextAreaEmptyPlaceholderBreak",
+      status: "stable",
+    },
+    {
+      name: "TextAreaResizerFixedSize",
       status: "stable",
     },
     {
@@ -7114,6 +7104,10 @@
       name: "WebShare",
       public: true,
       status: "test",
+    },
+    {
+      name: "WebSocketOptionBag",
+      status: "experimental",
     },
     {
       name: "WebSocketStream",

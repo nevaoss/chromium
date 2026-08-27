@@ -307,7 +307,6 @@
 <translation id="4304713468139749426">Управник со лозинки</translation>
 <translation id="4334241893986177674">Пребарај ја оваа слика од екранот</translation>
 <translation id="4384331407722351213">Стартувај го Chromium кога ќе се стартува Windows</translation>
-<translation id="4384993550046411228">Добијте лесен пристап до функциите што ги знаете, ги обожавате и во коишто имате доверба така што ќе го поставите Chromium како стандарден прелистувач. За брз пристап, Chromium ќе се закачи на лентата со задачи.</translation>
 <translation id="4400772909124543403">Не е достапно ажурирање</translation>
 <translation id="4407044323746248786">Сепак да се излезе од Chromium?</translation>
 <translation id="4413205837991854510">Секогаш прикажувај ја кратенката за „Пребарување со слики“</translation>
@@ -684,6 +683,7 @@ Chromium не може да ги обнови вашите поставки.</tr
 <translation id="8286943863733751221"><ph name="BEGIN_LINK" />Chromium ве предупредува<ph name="END_LINK" /> за небезбедни сајтови и преземања</translation>
 <translation id="8295827201165805317">Не сте дошле одамна. Chromium ја отстрани следнава дозвола: <ph name="PERMISSION" />.</translation>
 <translation id="8296236834352487533">Купувајте, преведувајте и идентификувајте ги работите што ги гледате со камерата во апликацијата Chromium за iOS</translation>
+<translation id="8310603974518734211">QR-код за најавување на Chromium како <ph name="USER_NAME" /></translation>
 <translation id="8313851650939857356">Грешка при стартување: <ph name="STARTUP_ERROR" />.</translation>
 <translation id="8318772038038596122">Вашата организација го затвора Chromium кога не се користи <ph name="TIMEOUT_DURATION" />.</translation>
 <translation id="8321888067342493336">Зачувај како слика</translation>

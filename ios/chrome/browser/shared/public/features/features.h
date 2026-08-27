@@ -529,6 +529,10 @@ BASE_DECLARE_FEATURE(kIOSMiniMapUniversalLink);
 // experiment.
 BASE_DECLARE_FEATURE(kIOSMiniMapUniversalLinkCounterfactual);
 
+// Returns true if kIOSMiniMapUniversalLink is enabled and the current country
+// is not in the excluded list.
+bool IsMiniMapUniversalLinkEnabled();
+
 // Feature flag to open linkified address in Maps native preview.
 BASE_DECLARE_FEATURE(kIOSMiniMapLinkifiedAddress);
 
@@ -1004,5 +1008,11 @@ BASE_DECLARE_FEATURE(kNextOldDesign);
 
 // Returns true if the NextOldDesign feature is enabled.
 bool IsNextOldDesignEnabled();
+
+// Feature to enable mic permissions for voice search.
+BASE_DECLARE_FEATURE(kVoiceSearchMicPermissions);
+
+// Returns true if VoiceSearchMicPermissions is enabled.
+bool IsVoiceSearchMicPermissionsEnabled();
 
 #endif  // IOS_CHROME_BROWSER_SHARED_PUBLIC_FEATURES_FEATURES_H_

@@ -38,6 +38,7 @@
 <translation id="1097807529207545420">{count,plural, =1{1 password instantly verified}other{# passwords instantly verified}}</translation>
 <translation id="1103523840287552314">Always translate <ph name="LANGUAGE" /></translation>
 <translation id="1110772719190051587">Unlock with Face ID</translation>
+<translation id="1111776967764068277">Tired of copying links?</translation>
 <translation id="1112015203684611006">Printing failed.</translation>
 <translation id="1118569444314402022">Welcome back, <ph name="USER_NAME" /></translation>
 <translation id="1121850836842642159">Photos and images</translation>
@@ -478,6 +479,7 @@
 <translation id="2496180316473517155">Browsing history</translation>
 <translation id="2496626742194544812">Go to first tab</translation>
 <translation id="2499505845365628575">You can find all your browsing history from the <ph name="HISTORY_BUTTON_ACCESSIBILITY_LABEL" />.</translation>
+<translation id="251033673027346551">Visit Google Wallet to manage <ph name="BEGIN_LINK" />data and privacy preferences<ph name="END_LINK" />.</translation>
 <translation id="2511117522375201202">You have <ph name="NUMBER_OF_PASSWORDS" /> compromised passwords that could put your security at risk.</translation>
 <translation id="2512709994717613803">Level <ph name="LEVEL_NUMBER" /></translation>
 <translation id="2513103768503127042">You’ll find your tab groups here</translation>
@@ -527,6 +529,7 @@
 <translation id="2666092431469916601">Top</translation>
 <translation id="2669454659051515572">Anyone using this device can see downloaded files</translation>
 <translation id="2671423594960767771">Share group</translation>
+<translation id="2672512470874391563"><ph name="OWNER_NAME" /> • <ph name="DEVICE_NAME" /></translation>
 <translation id="2673183423393669407">Pay over time</translation>
 <translation id="2673508731173059946">Visit copied link</translation>
 <translation id="2679659833697380">Your info is saved to your device</translation>
@@ -543,6 +546,7 @@
 <translation id="271033894570825754">New collection</translation>
 <translation id="2712929214961145009">Sans Serif</translation>
 <translation id="2713106313042589954">Turn off camera</translation>
+<translation id="2715440913764382254">Launch links directly here</translation>
 <translation id="2718352093833049315">Only on Wi-Fi</translation>
 <translation id="2721190673959776287">Sample rich in-product help for the Contextual panel, which should appear multiple times a day.</translation>
 <translation id="2739887572830526131">Keep this group to add tabs later or delete it if you no longer need it.</translation>
@@ -692,6 +696,7 @@
 <translation id="3259451381796379533">This account won't work with Gemini. Sign in with a different Google Account.</translation>
 <translation id="3265736395246760288">Sign in faster from any of your synced devices.</translation>
 <translation id="3272527697863656322">Cancel</translation>
+<translation id="3272955648592358996">Your data improves Google AI</translation>
 <translation id="3273510436356991673">Customise your home screen</translation>
 <translation id="3277021493514034324">Site address copied</translation>
 <translation id="3280562213547448728">Voice search</translation>
@@ -859,6 +864,7 @@
 <translation id="3888863481921783344">This will be used to show you possible invitees to your event.</translation>
 <translation id="3891414008432200754">Price</translation>
 <translation id="3892144330757387737">You'll find your history here</translation>
+<translation id="3892695492576181257">When it’s on, your activity is saved in Gemini Apps activity for 18 months, which you can change to 3 or 36 months. Google uses your activity to develop and improve its services (including Gemini models) as well as to protect Google, its users and the public with the help of human reviewers. Data reviewed by service providers is disconnected from your account and saved for 3 years.</translation>
 <translation id="3893858854379998374">To save bookmarks in your account, delete your unused bookmarks</translation>
 <translation id="3897092660631435901">Menu</translation>
 <translation id="3904270275864974753">Edit carousel</translation>
@@ -1002,6 +1008,7 @@
 <translation id="4338258232580025606">Cannot sign in</translation>
 <translation id="4338650699862464074">Sends URLs of pages that you visit to Google.</translation>
 <translation id="4342946437867096381">You already saved a password for this site in your Google Account. Google can choose the most recent password for you.</translation>
+<translation id="4355702523442402731">Fluid cross-app browsing</translation>
 <translation id="4365121137632832185">Tab group. Expanded.</translation>
 <translation id="4365685757967464989">Let Gemini use your camera to take photos</translation>
 <translation id="4367971618859387374">Display name</translation>
@@ -1279,6 +1286,7 @@
 <translation id="5233111790346066304">Save files in your Google Drive and access them at any time.</translation>
 <translation id="5233638681132016545">New tab</translation>
 <translation id="5234094073825090254">{count,plural, =1{Bookmark saved in your Google Account, {email}.}other{Bookmarks saved in your Google Account, {email}.}}</translation>
+<translation id="5234162151438379838">{COUNT,plural, =1{Only 1 tab can be shared.}other{Only {COUNT} tabs can be shared.}}</translation>
 <translation id="5234764350956374838">Dismiss</translation>
 <translation id="5238596603078743134"><ph name="BEGIN_BOLD" /><ph name="USERNAME" /><ph name="END_BOLD" /> can now use your username and password when they use Google Password Manager to sign in to <ph name="BEGIN_BOLD" /><ph name="WEBSITE" /><ph name="END_BOLD" />.</translation>
 <translation id="5241106044372754566"><ph name="NAME" />, <ph name="EMAIL" />, managed by your organisation currently selected. Choose an account.</translation>
@@ -1311,6 +1319,7 @@
 <translation id="5351613737248079168">You have to be signed in to use Level Up</translation>
 <translation id="5352128922772839949">Save file</translation>
 <translation id="5355191726083956201">Enhanced protection is on</translation>
+<translation id="5359436665022446585">Better link opening</translation>
 <translation id="536067926684072644">Show bookmarks</translation>
 <translation id="5364647308446127983">{count,plural, =1{Couldn't import {count} passkey}other{Couldn't import {count} passkeys}}</translation>
 <translation id="5371112366564891538">Increase text size</translation>
@@ -1489,11 +1498,13 @@ Handoff must also be enabled in the General section of Settings, and your device
 <translation id="5952641243319721872">Are you sure you want to discard your selection?</translation>
 <translation id="5956112131836209882">Tab group tab. <ph name="TAB_INDEX_IN_GROUP" /> of <ph name="NUMBER_OF_TABS_IN_GROUP" />.</translation>
 <translation id="595769230373966252">Search with <ph name="SEARCH_PROVIDER" /></translation>
+<translation id="5963694076845073027">Open links here next time</translation>
 <translation id="5963939892571022323">A link to the highlight cannot be created.</translation>
 <translation id="5968400720580217226">AI Mode</translation>
 <translation id="5971459446352190251">QR code search</translation>
 <translation id="5971872012779224351">{count,plural, =1{1 bookmark deleted}other{{count} bookmarks deleted}}</translation>
 <translation id="5972844218283131174">Deselect all</translation>
+<translation id="597482816780655631">Gemini is AI and can make mistakes, including about people. Some content may not be suitable for everyone. Chats are reviewed and used to improve Google AI. <ph name="BEGIN_LINK" />Learn about your choices<ph name="END_LINK" />. Our <ph name="BEGIN_LINK" />Terms<ph name="END_LINK" /> and <ph name="BEGIN_LINK" />Privacy Notice<ph name="END_LINK" /> apply.</translation>
 <translation id="5976160379964388480">Others</translation>
 <translation id="5977976211062815271">On this device</translation>
 <translation id="5986043348928676121">Next</translation>
@@ -1817,6 +1828,7 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL" />. You'll get 
 <translation id="6932739965694346873"><ph name="USER_NAME" />, <ph name="EMAIL" />. <ph name="MANAGED_STATUS" />.</translation>
 <translation id="6937083164784433305">{count,plural, =1{You used 1 photo to search}other{You used # photos to search}}</translation>
 <translation id="693761253105515415">Set a passcode</translation>
+<translation id="6938212956536472404">This tab can't be shared</translation>
 <translation id="6945221475159498467">Select</translation>
 <translation id="6946722113367118030">Thinking</translation>
 <translation id="6950522403736391608">Hidden</translation>
@@ -1860,6 +1872,7 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL" />. You'll get 
 <translation id="7102005569666697658">Downloading… <ph name="FILE_SIZE" /></translation>
 <translation id="7104701424653979232">Menu → Settings → Payment methods</translation>
 <translation id="7108338896283013870">Hide</translation>
+<translation id="7119533351103192286">Use Gemini</translation>
 <translation id="7127922377013221748">Hide Toolbar</translation>
 <translation id="7128693485119315539">Your organisation may need to see and manage browsing data tied to your managed account, such as your browsing history and passwords.</translation>
 <translation id="713215255510512027"><ph name="FILENAME" /> (<ph name="FILESIZE" />)</translation>
@@ -1991,6 +2004,7 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL" />. You'll get 
 <translation id="7561982940498449837">Close menu</translation>
 <translation id="7566349809380613217">Open <ph name="GROUP_TITLE" />, shared group of <ph name="NUMBER_OF_TABS" />, <ph name="CREATION_TEXT" /></translation>
 <translation id="7567579665882069209">Bookmarks are hidden</translation>
+<translation id="7575664680938145959">One-tap open</translation>
 <translation id="7577900504646297215">Manage interests</translation>
 <translation id="7582666837709186351">Translate text in your photos or your surroundings with your camera.</translation>
 <translation id="7582857256643797524">This setting is enabled on your device</translation>
@@ -2014,6 +2028,7 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL" />. You'll get 
 <translation id="7646263789464975852">Menu → Settings → Safety Check</translation>
 <translation id="7646772052135772216">Password sync isn't working</translation>
 <translation id="764827086632467055">Tap default browser app</translation>
+<translation id="7648666127045672239">Get here in one tap</translation>
 <translation id="7649070708921625228">Help</translation>
 <translation id="765555660695722850">This deletes addresses saved on this device. It also deletes some info from your Google Account but not basic info like your name or home address.</translation>
 <translation id="765631330137769217">Tap 'Save' to easily access this password the next time that you sign in</translation>
@@ -2031,6 +2046,7 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL" />. You'll get 
 <translation id="7701040980221191251">None</translation>
 <translation id="7702428539671224160">Autofill payment info on <ph name="URL" /></translation>
 <translation id="7708994397325774423">Get all your passwords</translation>
+<translation id="7710096647785049958">Save time on every link</translation>
 <translation id="7711440461521638739">You're not reusing any passwords</translation>
 <translation id="7712361583414030698">Viewing offline version</translation>
 <translation id="7719038820139380048">Sign in to get content based on your interests.</translation>
@@ -2356,6 +2372,7 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL" />. You'll get 
 <translation id="8706806585855470492">You'll get to share, join and collaborate in tab groups</translation>
 <translation id="8709409604518538305">Tabs were closed</translation>
 <translation id="8712637175834984815">Got it</translation>
+<translation id="8717519179050551968">Paste less, browse more</translation>
 <translation id="8717864919010420084">Copy link</translation>
 <translation id="8722229818691036192">Accounts on this device</translation>
 <translation id="8722649775263832315">Tap or highlight to search anything with Google Lens</translation>
@@ -2386,6 +2403,7 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL" />. You'll get 
 <translation id="8796634520835503150">Reading mode available</translation>
 <translation id="8803526663383843427">When on</translation>
 <translation id="8803639129939845298">Secure</translation>
+<translation id="8809212245338455710"><ph name="AI_TIER_NAME" /> membership</translation>
 <translation id="8813277370772331957">Remind me later</translation>
 <translation id="8814308045751067027">To use Live, give Chrome access to your microphone in settings</translation>
 <translation id="8814719628147284151">Continue</translation>
@@ -2397,6 +2415,7 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL" />. You'll get 
 <translation id="882557203579758546">Find in page…</translation>
 <translation id="8829809207373502270">This passkey doesn't work any more. It was deleted from <ph name="WEBSITE" /> and will get deleted from here soon. <ph name="BEGIN_LINK" />About passkeys<ph name="END_LINK" /></translation>
 <translation id="8831208860914609320">Close all inactive</translation>
+<translation id="8831871601813227635">Our <ph name="BEGIN_LINK" />Terms<ph name="END_LINK" />, <ph name="BEGIN_LINK" />Korean Location Terms<ph name="END_LINK" /> and <ph name="BEGIN_LINK" />Privacy Notice<ph name="END_LINK" /> apply. Chats are reviewed and used to improve Google AI. Gemini is AI and can make mistakes, including about people. Some content may not be suitable for everyone. You can <ph name="BEGIN_LINK" />manage your activity<ph name="END_LINK" />, including info about your location. <ph name="BEGIN_LINK" />Learn more about your choices<ph name="END_LINK" /></translation>
 <translation id="8837654851594567190">Sort by publisher</translation>
 <translation id="884351711508006491">Your info is saved to your device.</translation>
 <translation id="8844136307393039959">Price drop on your tracked product</translation>
@@ -2493,6 +2512,7 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL" />. You'll get 
 <translation id="9148126808321036104">Sign in again</translation>
 <translation id="9149866541089851383">Edit...</translation>
 <translation id="9152637745605628097">Choose from themes, colours or upload an image</translation>
+<translation id="9153159728062222866">Skip the copy and paste</translation>
 <translation id="9159628751968616911">Send web page</translation>
 <translation id="9162412286847966593">Your organisation's data and recordings won't be used to improve generative AI models. <ph name="BEGIN_LINK" />Your privacy and Gemini<ph name="END_LINK" /></translation>
 <translation id="9162432979321511934">Turn on Auto-fill passwords</translation>

@@ -8,6 +8,7 @@ import 'chrome://contextual-tasks/sources_menu.js';
 import {BrowserProxyImpl} from 'chrome://contextual-tasks/contextual_tasks_browser_proxy.js';
 import type {ContextualTasksFaviconGroupElement} from 'chrome://contextual-tasks/favicon_group.js';
 import type {TopToolbarElement} from 'chrome://contextual-tasks/top_toolbar.js';
+import type {UnboundedDialog} from 'chrome://contextual-tasks/utils.js';
 import type {CrIconElement} from 'chrome://resources/cr_elements/cr_icon/cr_icon.js';
 import type {CrIconButtonElement} from 'chrome://resources/cr_elements/cr_icon_button/cr_icon_button.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
@@ -429,22 +430,6 @@ suite('TopToolbarTest', () => {
       assertFalse(!!pinButton);
     });
 
-    test('hides pin button when not cobrowse eligible', async () => {
-      topToolbar.isCobrowseEligible = false;
-      await microtasksFinished();
-
-      const moreButton =
-          topToolbar.shadowRoot.querySelector<CrIconButtonElement>(
-              '#overflowMenuButton');
-      assertTrue(!!moreButton);
-      moreButton.click();
-      await microtasksFinished();
-
-      const menu = topToolbar.$.overflowMenu.get();
-      const pinButton =
-          menu.shadowRoot.querySelector<HTMLElement>('#pinButton');
-      assertFalse(!!pinButton);
-    });
 
     test('hides pin button when not on AI page', async () => {
       topToolbar.isAiPage = false;
@@ -562,6 +547,12 @@ suite('TopToolbarTest', () => {
       topToolbar.isAiPage = false;
       await microtasksFinished();
       assertFalse(moreButton.hidden);
+    });
+
+    test('close button does not have rounded-corner attribute', () => {
+      const closeButton = topToolbar.$.closeButton;
+      assertTrue(!!closeButton);
+      assertFalse(closeButton.hasAttribute('rounded-corner'));
     });
 
     (isPhone ? test.skip : test)(
@@ -881,7 +872,7 @@ suite('TopToolbarTest', () => {
     const menu = topToolbar.$.overflowMenu.get();
     let showUnboundedCalled = false;
     let hideUnboundedCalled = false;
-    const dialogEl = menu.$.menu.getDialog() as any;
+    const dialogEl = menu.$.menu.getDialog() as UnboundedDialog;
     dialogEl.showUnboundedElement = () => {
       showUnboundedCalled = true;
       return Promise.resolve();

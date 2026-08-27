@@ -16,6 +16,8 @@
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/ui/omnibox/omnibox_everywhere_service_factory.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
+#include "chrome/browser/ui/webui/cr_components/most_visited/most_visited_handler.h"
+#include "chrome/browser/ui/webui/cr_components/most_visited/most_visited_pref_observer.h"
 #include "chrome/browser/ui/webui/cr_components/searchbox/searchbox_handler.h"
 #include "chrome/browser/ui/webui/favicon_source.h"
 #include "chrome/browser/ui/webui/metrics_reporter/metrics_reporter_service.h"
@@ -36,9 +38,14 @@
 #include "components/omnibox/browser/aim_eligibility_service.h"
 #include "components/omnibox/common/composebox_features.h"
 #include "components/omnibox/common/omnibox_features.h"
+#include "components/search/ntp_features.h"
+#include "components/strings/grit/components_strings.h"
 #include "content/public/browser/web_ui.h"
 #include "content/public/browser/web_ui_data_source.h"
 #include "services/network/public/mojom/content_security_policy.mojom.h"
+#include "ui/base/accelerators/accelerator.h"
+#include "ui/base/l10n/l10n_util.h"
+#include "ui/strings/grit/ui_strings.h"
 #include "ui/webui/webui_util.h"
 
 namespace {
@@ -53,6 +60,63 @@ bool IsFuseboxEligible(Profile* profile) {
   return IsAimEligible(profile) &&
          AimEligibilityServiceFactory::GetForProfile(profile)
              ->IsFuseboxEligible();
+}
+
+void AddMostVisitedSourceStrings(content::WebUIDataSource* source) {
+  source->AddBoolean("omniboxEverywhereMostVisitedEnabled",
+                     omnibox::kOmniboxEverywhereMostVisitedParam.Get());
+
+  static constexpr webui::LocalizedString kMostVisitedStrings[] = {
+      {"addLinkTitle", IDS_NTP_CUSTOM_LINKS_ADD_SHORTCUT_TITLE},
+      {"editLinkTitle", IDS_NTP_CUSTOM_LINKS_EDIT_SHORTCUT},
+      {"viewLinkTitle", IDS_NTP_CUSTOM_LINKS_SHORTCUT_DETAILS_TITLE},
+      {"invalidUrl", IDS_NTP_CUSTOM_LINKS_INVALID_URL},
+      {"linkAddedMsg", IDS_NTP_CONFIRM_MSG_SHORTCUT_ADDED},
+      {"linkCancel", IDS_NTP_CUSTOM_LINKS_CANCEL},
+      {"linkCantCreate", IDS_NTP_CUSTOM_LINKS_CANT_CREATE},
+      {"linkCantEdit", IDS_NTP_CUSTOM_LINKS_CANT_EDIT},
+      {"viewLink", IDS_NTP_CUSTOM_LINKS_DETAILS},
+      {"linkDone", IDS_NTP_CUSTOM_LINKS_DONE},
+      {"linkEditedMsg", IDS_NTP_CONFIRM_MSG_SHORTCUT_EDITED},
+      {"linkRemove", IDS_NTP_CUSTOM_LINKS_REMOVE},
+      {"linkRemoveA11y", IDS_NTP_MOST_VISITED_SITES_REMOVE},
+      {"linkRemovedMsg", IDS_NTP_CONFIRM_MSG_SHORTCUT_REMOVED},
+      {"shortcutMoreActions", IDS_NTP_CUSTOM_LINKS_MORE_ACTIONS},
+      {"enterpriseShortcutSubtitle", IDS_NTP_ENTERPRISE_SHORTCUT_SUBTITLE},
+      {"nameField", IDS_NTP_CUSTOM_LINKS_NAME},
+      {"restoreDefaultLinks", IDS_NTP_CONFIRM_MSG_RESTORE_DEFAULTS},
+      {"restoreDefaultEnterpriseShortcuts",
+       IDS_NTP_CONFIRM_MSG_RESTORE_ENTERPRISE_DEFAULTS},
+      {"restoreThumbnailsShort", IDS_NEW_TAB_RESTORE_THUMBNAILS_SHORT_LINK},
+      {"shortcutAlreadyExists", IDS_NTP_CUSTOM_LINKS_ALREADY_EXISTS},
+      {"urlField", IDS_NTP_CUSTOM_LINKS_URL},
+      {"showMore", IDS_NTP_SHOW_MORE_BUTTON_LABEL},
+      {"showLess", IDS_NTP_SHOW_LESS_BUTTON_LABEL},
+      {"shortcutsInactivityRemovalMsg",
+       IDS_NTP_MOST_VISITED_SHORTCUTS_INACTIVITY_REMOVAL},
+      {"moduleInactivityRemovalMsg", IDS_NTP_MODULE_INACTIVITY_REMOVAL},
+      {"modulesInactivityRemovalMsg", IDS_NTP_MODULES_INACTIVITY_REMOVAL},
+      {"undo", IDS_NEW_TAB_UNDO_THUMBNAIL_REMOVE},
+  };
+  source->AddLocalizedStrings(kMostVisitedStrings);
+
+  ui::Accelerator undo_accelerator(ui::VKEY_Z, ui::EF_PLATFORM_ACCELERATOR);
+  source->AddString("undoDescription", l10n_util::GetStringFUTF16(
+                                           IDS_UNDO_DESCRIPTION,
+                                           undo_accelerator.GetShortcutText()));
+
+  source->AddInteger("maxTilesInCollapsedState",
+                     ntp_features::GetMaxTilesInCollapsedState());
+  source->AddInteger("maxShortcutsInExpandedState",
+                     ntp_features::GetMaxShortcutsInExpandedState());
+  source->AddInteger("maxMostVisitedTilesInExpandedState",
+                     ntp_features::GetMaxMostVisitedTilesInExpandedState());
+  source->AddInteger("maxEnterpriseShortcuts",
+                     ntp_features::GetMaxEnterpriseShortcuts());
+  source->AddInteger("preconnectStartTimeThreshold", 0);
+  source->AddInteger("prefetchStartTimeThreshold", 0);
+  source->AddBoolean("prefetchTriggerEnabled", false);
+  source->AddBoolean("prerenderOnPressEnabled", false);
 }
 
 }  // namespace
@@ -115,6 +179,12 @@ OmniboxEverywhereUI::OmniboxEverywhereUI(content::WebUI* web_ui)
                              IDS_OVERFLOW_MENU_ITEM_TEXT_PROFILE);
   source->AddLocalizedString("searchBoxHintAskOrType",
                              IDS_NTP_SEARCH_BOX_PLACEHOLDER_ASK_OR_TYPE);
+  source->AddLocalizedString("shareScreenshotLabel",
+                             IDS_OMNIBOX_EVERYWHERE_SHARE_SCREENSHOT);
+  source->AddLocalizedString("screenshotWindowLabel",
+                             IDS_OMNIBOX_EVERYWHERE_WINDOW);
+  source->AddLocalizedString("screenshotEntireScreenLabel",
+                             IDS_OMNIBOX_EVERYWHERE_ENTIRE_SCREEN);
 
   // Sanitized image and favicon source initialization
   content::URLDataSource::Add(profile_,
@@ -176,6 +246,8 @@ OmniboxEverywhereUI::OmniboxEverywhereUI(content::WebUI* web_ui)
                      omnibox::kShowContextMenuTabPreviews.Get());
   source->AddBoolean("composeboxShowImageSuggest",
                      omnibox::kShowComposeboxImageSuggestions.Get());
+
+  AddMostVisitedSourceStrings(source);
 
   source->AddBoolean("searchboxShowComposeEntrypoint", IsAimEligible(profile_));
   source->AddBoolean("isFuseboxEnabled", IsFuseboxEligible(profile_));
@@ -308,6 +380,30 @@ void OmniboxEverywhereUI::CreatePageHandler(
   debug_page_handler_ = std::make_unique<
       omnibox_everywhere_debug::OmniboxEverywhereDebugPageHandler>(
       profile_, std::move(page), std::move(handler));
+}
+
+void OmniboxEverywhereUI::BindInterface(
+    mojo::PendingReceiver<most_visited::mojom::MostVisitedPageHandlerFactory>
+        receiver) {
+  if (!base::FeatureList::IsEnabled(omnibox::kOmniboxEverywhere)) {
+    return;
+  }
+  if (most_visited_page_factory_receiver_.is_bound()) {
+    most_visited_page_factory_receiver_.reset();
+  }
+  most_visited_page_factory_receiver_.Bind(std::move(receiver));
+}
+
+void OmniboxEverywhereUI::CreatePageHandler(
+    mojo::PendingRemote<most_visited::mojom::MostVisitedPage> pending_page,
+    mojo::PendingReceiver<most_visited::mojom::MostVisitedPageHandler>
+        pending_page_handler) {
+  most_visited_handler_ = std::make_unique<MostVisitedHandler>(
+      std::move(pending_page_handler), std::move(pending_page), profile_,
+      web_ui()->GetWebContents(), chrome::ChromeUINewTabPageURLAsGURL(),
+      base::Time(), base::TimeTicks());
+  most_visited_pref_observer_ = std::make_unique<MostVisitedPrefObserver>(
+      profile_, most_visited_handler_.get());
 }
 
 contextual_search::ContextualSearchSessionHandle*

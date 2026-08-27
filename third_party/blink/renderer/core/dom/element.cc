@@ -48,6 +48,7 @@
 #include "third_party/blink/renderer/bindings/core/v8/v8_box_quad_options.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_check_visibility_options.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_convert_coordinate_options.h"
+#include "third_party/blink/renderer/bindings/core/v8/v8_dom_matrix_init.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_get_animations_options.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_keyframe_animation_options.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_pointer_lock_options.h"
@@ -187,6 +188,7 @@
 #include "third_party/blink/renderer/core/frame/settings.h"
 #include "third_party/blink/renderer/core/frame/visual_viewport.h"
 #include "third_party/blink/renderer/core/fullscreen/fullscreen.h"
+#include "third_party/blink/renderer/core/geometry/dom_matrix.h"
 #include "third_party/blink/renderer/core/geometry/dom_point.h"
 #include "third_party/blink/renderer/core/geometry/dom_quad.h"
 #include "third_party/blink/renderer/core/geometry/dom_rect.h"
@@ -325,6 +327,7 @@
 #include "third_party/blink/renderer/platform/wtf/wtf_size_t.h"
 #include "ui/accessibility/ax_mode.h"
 #include "ui/gfx/geometry/rect_conversions.h"
+#include "ui/gfx/geometry/transform.h"
 
 namespace blink {
 
@@ -1010,7 +1013,8 @@ bool Element::IsFocusableStyle(UpdateBehavior update_behavior) const {
       if (canvas) {
         break;
       }
-      if (const Element* parent = element->ParentOrShadowHostElement()) {
+      if (const Element* parent =
+              FlatTreeTraversal::ParentElementSkippingSlots(*element)) {
         element = parent;
       } else if (element->isConnected()) {
         element = element->GetDocument().LocalOwner();
@@ -3851,6 +3855,10 @@ void Element::AttributeChanged(const AttributeModificationParams& params) {
       SetNeedsStyleRecalc(kLocalStyleChange,
                           StyleChangeReasonForTracing::FromAttribute(name));
     }
+  } else if (name == html_names::kDrawableAttr) {
+    if (auto* layout_object = GetLayoutObject()) {
+      layout_object->SetNeedsPaintPropertyUpdate();
+    }
   } else if (IsStyledElement()) {
     if (name == html_names::kStyleAttr) {
       if (params.old_value == params.new_value) {
@@ -4467,6 +4475,58 @@ void Element::DidChangeIsInCanvasSubtree() {
     ObjectPaintInvalidator(*layout_object)
         .InvalidateDisplayItemClient(*layout_object,
                                      PaintInvalidationReason::kUncacheable);
+  }
+}
+
+DOMMatrix* Element::getCanvasTransform() {
+  if (const auto* transform = GetCanvasTransformInternal()) {
+    return MakeGarbageCollected<DOMMatrix>(*transform,
+                                           transform->Is2dTransform());
+  }
+  return DOMMatrix::Create();
+}
+
+void Element::setCanvasTransform(DOMMatrixInit* matrix,
+                                 ExceptionState& exception_state) {
+  DOMMatrix* dom_matrix = DOMMatrix::fromMatrix(matrix, exception_state);
+  if (exception_state.HadException()) {
+    return;
+  }
+  CHECK(dom_matrix);
+  gfx::Transform transform = dom_matrix->Matrix();
+  SetCanvasTransformInternal(transform);
+}
+
+const gfx::Transform* Element::GetCanvasTransformInternal() const {
+  if (const NodeRareData* data = RareData()) {
+    return data->GetWrappedField<gfx::Transform>(
+        NodeRareData::FieldId::kCanvasTransform);
+  }
+  return nullptr;
+}
+
+bool Element::HasCanvasTransform() const {
+  return GetCanvasTransformInternal() != nullptr;
+}
+
+const gfx::Transform* Element::GetUsedCanvasTransform() const {
+  if (IsInCanvasSubtree() &&
+      RuntimeEnabledFeatures::ElementCanvasTransformEnabled(
+          GetExecutionContext())) {
+    return GetCanvasTransformInternal();
+  }
+  return nullptr;
+}
+
+void Element::SetCanvasTransformInternal(const gfx::Transform& transform) {
+  data_ = EnsureRareData().SetWrappedField<gfx::Transform>(
+      NodeRareData::FieldId::kCanvasTransform, transform);
+  if (LayoutObject* layout_object = GetLayoutObject()) {
+    layout_object->SetNeedsPaintPropertyUpdate();
+    // Layout is needed to update the PaintLayer transform (which is updated
+    // during layout in LayoutBox::UpdateLayout). We cannot rely on style recalc
+    // because canvas transform is not stored in ComputedStyle.
+    layout_object->SetNeedsLayout(layout_invalidation_reason::kDomChanged);
   }
 }
 
@@ -10507,6 +10567,34 @@ bool Element::ShouldStoreComputedStyle(const ComputedStyle& style) const {
   }
 
   return style.Display() == EDisplay::kContents;
+}
+
+HTMLCanvasElement* Element::CanvasForDrawing() const {
+  if (!RuntimeEnabledFeatures::CanvasDrawElementEnabled(
+          GetDocument().GetExecutionContext())) {
+    return nullptr;
+  }
+  if (!isConnected() || !IsInCanvasSubtree()) {
+    return nullptr;
+  }
+
+  // TODO(paint-dev): The check for `drawable` purposely skips immediate
+  // canvas children, to ease migration. Ultimately it must apply to
+  // immediate children as well.
+  Element* ancestor = FlatTreeTraversal::ParentElementSkippingSlots(*this);
+  if (auto* ancestor_canvas = DynamicTo<HTMLCanvasElement>(ancestor)) {
+    return ancestor_canvas->layoutSubtree() ? ancestor_canvas : nullptr;
+  }
+  if (!FastHasAttribute(html_names::kDrawableAttr)) {
+    return nullptr;
+  }
+  while (ancestor) {
+    ancestor = FlatTreeTraversal::ParentElementSkippingSlots(*ancestor);
+    if (auto* ancestor_canvas = DynamicTo<HTMLCanvasElement>(ancestor)) {
+      return ancestor_canvas->layoutSubtree() ? ancestor_canvas : nullptr;
+    }
+  }
+  return nullptr;
 }
 
 AtomicString Element::ComputeInheritedLanguage() const {

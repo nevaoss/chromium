@@ -110,6 +110,7 @@ constexpr char kRtcLogTransferDataChannelPrefix[] = "rtc-log-transfer-";
 
 constexpr base::TimeDelta kDefaultBoostCaptureInterval = base::Milliseconds(5);
 constexpr base::TimeDelta kDefaultBoostDuration = base::Milliseconds(50);
+constexpr base::TimeDelta kMinMaximumSessionDuration = base::Minutes(30);
 
 std::string_view PixelTypeToString(
     remoting::protocol::VideoLayout::PixelType pixel_type) {
@@ -144,7 +145,7 @@ using protocol::ActionRequest;
 PeerSessionImpl::PeerSessionImpl(
     std::unique_ptr<protocol::ConnectionToClient> connection,
     DesktopEnvironmentFactory* desktop_environment_factory,
-    RequestPairingCallback request_pairing_cb)
+    RequestPairingOnceCallback request_pairing_cb)
     : desktop_environment_factory_(desktop_environment_factory),
       host_clipboard_filter_(clipboard_echo_filter_.host_filter()),
       client_clipboard_filter_(clipboard_echo_filter_.client_filter()),
@@ -177,17 +178,11 @@ void PeerSessionImpl::Start(
   desktop_environment_options_ = desktop_environment_options;
   extensions_.assign(extensions.begin(), extensions.end());
   effective_policies_ = session_policies;
-  if (auto result = effective_policies_.Validate(); !result.has_value()) {
-    LOG(ERROR) << "Disconnecting session due to invalid session policies: "
-               << result.error();
-    DisconnectSession(ErrorCode::HOST_CONFIGURATION_ERROR,
-                      result.error().ToString(), FROM_HERE);
-    return;
-  }
 
   base::TimeDelta max_duration =
       effective_policies_.maximum_session_duration.value_or(base::TimeDelta());
   if (max_duration.is_positive()) {
+    max_duration = std::max(max_duration, kMinMaximumSessionDuration);
     max_duration_timer_.Start(
         FROM_HERE, max_duration,
         base::BindOnce(&PeerSessionImpl::DisconnectSession,
@@ -560,10 +555,10 @@ void PeerSessionImpl::RequestPairing(
   }
 
   pairing_request_pending_ = true;
-  request_pairing_cb_.Run(
-      client_name,
-      base::BindPostTaskToCurrentDefault(base::BindOnce(
-          &PeerSessionImpl::OnPairingResponse, weak_factory_.GetWeakPtr())));
+  std::move(request_pairing_cb_)
+      .Run(client_name, base::BindPostTaskToCurrentDefault(
+                            base::BindOnce(&PeerSessionImpl::OnPairingResponse,
+                                           weak_factory_.GetWeakPtr())));
 }
 
 void PeerSessionImpl::OnPairingResponse(
@@ -966,7 +961,7 @@ const std::string& PeerSessionImpl::client_jid() const {
   return client_jid_;
 }
 
-protocol::Transport* PeerSessionImpl::transport() const {
+protocol::Transport* PeerSessionImpl::transport() {
   return connection_ ? connection_->transport() : nullptr;
 }
 
@@ -1610,6 +1605,12 @@ PeerSessionImplFactory::PeerSessionImplFactory(
 
 PeerSessionImplFactory::~PeerSessionImplFactory() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+}
+
+void PeerSessionImplFactory::set_request_pairing_callback(
+    const RequestPairingCallback& request_pairing_cb) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  request_pairing_cb_ = request_pairing_cb;
 }
 
 std::unique_ptr<PeerSession> PeerSessionImplFactory::Create() {
