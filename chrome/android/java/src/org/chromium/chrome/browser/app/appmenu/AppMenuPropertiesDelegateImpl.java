@@ -11,6 +11,9 @@ import android.content.pm.ResolveInfo;
 import android.content.res.Resources;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
+import android.text.Spannable;
+import android.text.SpannableString;
+import android.text.style.ForegroundColorSpan;
 import android.util.Pair;
 import android.util.SparseArray;
 import android.view.View;
@@ -116,7 +119,6 @@ import java.util.function.BiFunction;
  */
 @NullMarked
 public abstract class AppMenuPropertiesDelegateImpl implements AppMenuPropertiesDelegate {
-
     public static final String BOOKMARK_ID_BUNDLE_KEY = "BookmarkId";
     public static final String TAB_ID_BUNDLE_KEY = "TabId";
     public static final String TAB_GROUP_ID_BUNDLE_KEY = "TabGroupId";
@@ -160,31 +162,6 @@ public abstract class AppMenuPropertiesDelegateImpl implements AppMenuProperties
         int PAGE_MENU = 0;
         int OVERVIEW_MODE_MENU = 1;
         int TABLET_EMPTY_MODE_MENU = 2;
-    }
-
-    // Please treat this list as append only and keep it in sync with
-    // AppMenuHighlightItem in enums.xml.
-    @IntDef({
-        AppMenuHighlightItem.UNKNOWN,
-        AppMenuHighlightItem.DOWNLOADS,
-        AppMenuHighlightItem.BOOKMARKS,
-        AppMenuHighlightItem.TRANSLATE,
-        AppMenuHighlightItem.ADD_TO_HOMESCREEN,
-        AppMenuHighlightItem.DOWNLOAD_THIS_PAGE,
-        AppMenuHighlightItem.BOOKMARK_THIS_PAGE,
-        AppMenuHighlightItem.DATA_REDUCTION_FOOTER
-    })
-    @Retention(RetentionPolicy.SOURCE)
-    @interface AppMenuHighlightItem {
-        int UNKNOWN = 0;
-        int DOWNLOADS = 1;
-        int BOOKMARKS = 2;
-        int TRANSLATE = 3;
-        int ADD_TO_HOMESCREEN = 4;
-        int DOWNLOAD_THIS_PAGE = 5;
-        int BOOKMARK_THIS_PAGE = 6;
-        int DATA_REDUCTION_FOOTER = 7;
-        int NUM_ENTRIES = 8;
     }
 
     @IntDef({CustomMenuItemType.ZOOM_ITEM})
@@ -238,9 +215,8 @@ public abstract class AppMenuPropertiesDelegateImpl implements AppMenuProperties
         if (layoutStateProvidersSupplier != null) {
             layoutStateProvidersSupplier.onAvailable(
                     mCallbackController.makeCancelable(
-                            layoutStateProvider -> {
-                                mLayoutStateProvider = layoutStateProvider;
-                            }));
+                            (LayoutStateProvider layoutStateProvider) ->
+                                    mLayoutStateProvider = layoutStateProvider));
         }
 
         mBookmarkModelSupplier = bookmarkModelSupplier;
@@ -615,8 +591,8 @@ public abstract class AppMenuPropertiesDelegateImpl implements AppMenuProperties
     protected ListItem buildAddToHomescreenListItem(Tab currentTab, boolean showIcon) {
         ResolveInfo resolveInfo = queryWebApkResolveInfo(mContext, currentTab);
 
-        String manifestId =
-                AppBannerManager.maybeGetManifestId(assumeNonNull(currentTab.getWebContents()));
+        String manifestId = WebappRegistry.getManifestIdOrUrl(currentTab);
+
         String webApkPackageName =
                 WebappRegistry.getInstance().findWebApkWithManifestId(manifestId);
         boolean isWebApkInstalled = false;
@@ -680,17 +656,36 @@ public abstract class AppMenuPropertiesDelegateImpl implements AppMenuProperties
                                             : null)
                             .build());
         } else {
-            return new ListItem(
-                    showIcon
-                            ? AppMenuHandler.AppMenuItemType.STANDARD
-                            : AppMenuHandler.AppMenuItemType.STANDARD_NO_ICON,
+            PropertyModel model =
                     AppMenuItemUtils.buildModelForStandardMenuItem(
                             mContext,
                             mAppMenuItemTheme,
                             R.id.universal_install,
                             R.string.menu_install_create_shortcut,
                             showIcon ? R.drawable.ic_add_to_home_screen : 0,
-                            isMenuIconAtStart()));
+                            isMenuIconAtStart());
+
+            boolean isPending = WebappRegistry.getInstance().isWebApkPending(manifestId);
+            if (isPending) {
+                model.set(
+                        AppMenuItemProperties.ICON_COLOR_RES, R.color.default_icon_color_disabled);
+
+                String titleText = mContext.getString(R.string.menu_install_create_shortcut);
+                SpannableString spannableTitle = new SpannableString(titleText);
+                spannableTitle.setSpan(
+                        new ForegroundColorSpan(
+                                mContext.getColor(R.color.default_text_color_disabled_list)),
+                        0,
+                        titleText.length(),
+                        Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                model.set(AppMenuItemProperties.TITLE, spannableTitle);
+            }
+
+            return new ListItem(
+                    showIcon
+                            ? AppMenuHandler.AppMenuItemType.STANDARD
+                            : AppMenuHandler.AppMenuItemType.STANDARD_NO_ICON,
+                    model);
         }
     }
 

@@ -56,6 +56,8 @@
 #include "chrome/browser/ui/autofill/payments/omnibox_autofill_page_action_controller.h"
 #include "chrome/browser/ui/autofill/payments/payments_churned_users_bubble_controller.h"
 #include "chrome/browser/ui/autofill/payments/payments_churned_users_page_action_controller.h"
+#include "chrome/browser/ui/autofill/payments/wallet_reminder_notice_bubble_controller.h"
+#include "chrome/browser/ui/autofill/payments/wallet_reminder_notice_page_action_controller.h"
 #include "chrome/browser/ui/browser_actions.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/commerce/commerce_ui_tab_helper.h"
@@ -456,6 +458,17 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
                 tab, tab, tab.GetContents());
   }
 
+  if (page_action_controller_->ActionExists(kActionWalletReminderNotice)) {
+    wallet_reminder_notice_page_action_controller_ =
+        GetUserDataFactory()
+            .CreateInstance<autofill::WalletReminderNoticePageActionController>(
+                tab, tab, *page_action_controller_);
+    wallet_reminder_notice_bubble_controller_ =
+        GetUserDataFactory()
+            .CreateInstance<autofill::WalletReminderNoticeBubbleController>(
+                tab, tab, tab.GetContents());
+  }
+
   customize_chrome_side_panel_controller_ =
       std::make_unique<customize_chrome::SidePanelControllerViews>(tab);
 
@@ -753,6 +766,14 @@ void TabFeatures::WillDiscardContents(tabs::TabInterface* tab,
     payments_churned_users_bubble_controller_ =
         GetUserDataFactory()
             .CreateInstance<autofill::PaymentsChurnedUsersBubbleController>(
+                *tab, *tab, new_contents);
+  }
+
+  if (wallet_reminder_notice_bubble_controller_) {
+    wallet_reminder_notice_bubble_controller_.reset();
+    wallet_reminder_notice_bubble_controller_ =
+        GetUserDataFactory()
+            .CreateInstance<autofill::WalletReminderNoticeBubbleController>(
                 *tab, *tab, new_contents);
   }
 }

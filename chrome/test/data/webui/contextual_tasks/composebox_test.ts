@@ -743,9 +743,12 @@ suite('ContextualTasksComposeboxTest', () => {
     // Call onInputStateUpdate with ToolMode = 1 and ModelMode = 2.
     contextualComposebox.onInputStateUpdate(1, 2);
 
-    const toolMode =
+    const [toolMode] =
         await mockSearchboxPageHandler.whenCalled('setActiveToolMode');
     assertEquals(1, toolMode);
+    const [, isSetByServer] =
+        mockSearchboxPageHandler.getArgs('setActiveToolMode')[0];
+    assertTrue(isSetByServer);
 
     const modelMode =
         await mockSearchboxPageHandler.whenCalled('setActiveModelMode');
@@ -1595,6 +1598,14 @@ suite('ContextualTasksComposeboxTest', () => {
           assertTrue(
               queryAutocompleteClearMatchesArg,
               'should pass clearMatches = true');
+        });
+
+        test('clear-smart-compose event clears the inline hint', () => {
+          const {innerComposebox} = parts;
+          innerComposebox.smartComposeInlineHint = 'test hint';
+          innerComposebox.getInputElement().dispatchEvent(
+              new CustomEvent('clear-smart-compose'));
+          assertEquals('', innerComposebox.smartComposeInlineHint);
         });
       });
 });

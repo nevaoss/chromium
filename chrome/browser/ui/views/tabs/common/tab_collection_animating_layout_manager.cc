@@ -60,6 +60,11 @@ bool TabCollectionAnimatingLayoutManager::Delegate::
   return false;
 }
 
+std::optional<views::SizeBound> TabCollectionAnimatingLayoutManager::Delegate::
+    GetAvailableMainAxisSpaceOverride() const {
+  return std::nullopt;
+}
+
 void TabCollectionAnimatingLayoutManager::Delegate::OnAnimationEnded() {}
 
 TabCollectionAnimatingLayoutManager::TabCollectionAnimatingLayoutManager(
@@ -115,7 +120,7 @@ gfx::Size TabCollectionAnimatingLayoutManager::GetPreferredSize(
       target_layout_manager_->GetPreferredSize(host);
   if (animate_host_size_ && animation_.is_animating() &&
       !delegate_->IsDragging()) {
-    if (animation_axis_ == AnimationAxis::kVertical) {
+    if (IsVerticalOrWrappingVertically()) {
       target_preferred_size.set_height(current_layout_content_size_);
     } else {
       target_preferred_size.set_width(current_layout_content_size_);
@@ -137,13 +142,17 @@ gfx::Size TabCollectionAnimatingLayoutManager::GetPreferredSize(
       target_layout_manager_->GetPreferredSize(host, available_size);
   if (animate_host_size_ && animation_.is_animating() &&
       !delegate_->IsDragging()) {
-    if (animation_axis_ == AnimationAxis::kVertical) {
+    if (IsVerticalOrWrappingVertically()) {
       target_preferred_size.set_height(current_layout_content_size_);
     } else {
       target_preferred_size.set_width(current_layout_content_size_);
     }
   }
   return target_preferred_size;
+}
+
+gfx::Size TabCollectionAnimatingLayoutManager::GetTargetPreferredSize() const {
+  return target_layout_manager_->GetPreferredSize(host_view());
 }
 
 gfx::Size TabCollectionAnimatingLayoutManager::GetMinimumSize(
@@ -292,18 +301,29 @@ bool TabCollectionAnimatingLayoutManager::RecalculateTarget() {
     return false;
   }
 
-  // Calculate the target layout with unbounded height for vertical axis, or
-  // bounded by available parent width for horizontal axis, to support dynamic
-  // tab shrinking and scrolling.
+  // Calculate the target layout with unbounded height for vertical or
+  // horizontal-wrapping-vertically axes, or bounded by available parent width
+  // for horizontal axis, to support dynamic tab shrinking and scrolling.
   views::SizeBounds size_bounds;
-  if (animation_axis_ == AnimationAxis::kVertical) {
+  if (IsVerticalOrWrappingVertically()) {
     size_bounds = views::SizeBounds(std::max(host_view()->width(), 0), {});
   } else {
-    const int available_width = host_view()->parent()
-                                    ? host_view()->parent()->width()
-                                    : host_view()->width();
-    size_bounds = views::SizeBounds(std::max(available_width, 0),
-                                    std::max(host_view()->height(), 0));
+    // For horizontal layouts, top-level containers calculate target layouts
+    // using the total space available to the tab strip (to allow tabs to expand
+    // to their preferred width rather than being constrained to the host's
+    // mid-animation width). Nested containers (e.g. tab groups) that do not
+    // provide an explicit available space override fall back to their host view
+    // width.
+    views::SizeBound available_width;
+    if (const auto space_override =
+            delegate_->GetAvailableMainAxisSpaceOverride();
+        space_override.has_value() && space_override->is_bounded()) {
+      available_width = *space_override;
+    } else if (host_view()->width() > 0) {
+      available_width = views::SizeBound(host_view()->width());
+    }
+    size_bounds =
+        views::SizeBounds(available_width, std::max(host_view()->height(), 0));
   }
   views::ProposedLayout new_target =
       target_layout_manager_->GetProposedLayout(size_bounds, PassKey());
@@ -316,7 +336,7 @@ bool TabCollectionAnimatingLayoutManager::RecalculateTarget() {
   // Animating bounds along the cross-axis is not supported and layout should
   // immediately snap to target for cross-axis bounds changes.
   const bool cross_axis_changed =
-      animation_axis_ == AnimationAxis::kVertical
+      IsVerticalOrWrappingVertically()
           ? current_layout_.host_size.width() != new_target.host_size.width()
           : current_layout_.host_size.height() != new_target.host_size.height();
   if (!current_layout_.host_size.IsEmpty() && cross_axis_changed) {
@@ -425,7 +445,7 @@ views::ProposedLayout TabCollectionAnimatingLayoutManager::InterpolateLayout(
   // interpolated host size along the animation axis to prevent the layout from
   // shrinking momentarily when tabs are swapping positions (e.g., reordering
   // tabs).
-  if (animation_axis_ == AnimationAxis::kVertical) {
+  if (IsVerticalOrWrappingVertically()) {
     current_layout_content_size_ =
         gfx::Tween::IntValueBetween(value, starting_layout_.host_size.height(),
                                     target_layout_.host_size.height());
@@ -436,8 +456,7 @@ views::ProposedLayout TabCollectionAnimatingLayoutManager::InterpolateLayout(
   }
 
   auto get_animation_axis_end = [this](const gfx::Rect& bounds) {
-    return animation_axis_ == AnimationAxis::kVertical ? bounds.bottom()
-                                                       : bounds.right();
+    return IsVerticalOrWrappingVertically() ? bounds.bottom() : bounds.right();
   };
 
   for (views::View* child_view : host_view()->children()) {
@@ -666,4 +685,10 @@ void TabCollectionAnimatingLayoutManager::ClearViewAnimationMetadataForView(
   }
   view->ClearProperty(kPreviousCollectionBounds);
   view->ClearProperty(kSourceLayoutInfo);
+}
+
+bool TabCollectionAnimatingLayoutManager::IsVerticalOrWrappingVertically()
+    const {
+  return animation_axis_ == AnimationAxis::kVertical ||
+         animation_axis_ == AnimationAxis::kHorizontalWrappingVertically;
 }

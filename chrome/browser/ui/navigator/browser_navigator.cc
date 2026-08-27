@@ -30,6 +30,7 @@
 #include "chrome/browser/tab_contents/tab_util.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_init_state.h"
+#include "chrome/browser/ui/browser_ui_controller/browser_ui_controller.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/create_browser_window.h"
@@ -122,7 +123,7 @@ bool WindowCanOpenTabs(const NavigateParams& params) {
   // If the browser is created from a template, we do not need to check if the
   // url is in the app scope since we know it was saved directly from the app.
   if (BrowserInitState::From(params.browser)->creation_source() !=
-          Browser::CreationSource::kDeskTemplate &&
+          BrowserWindowCreateParams::CreationSource::kDeskTemplate &&
       web_app::AppBrowserController::From(params.browser) &&
       !web_app::AppBrowserController::From(params.browser)
            ->IsUrlInAppScope(params.url)) {
@@ -953,9 +954,10 @@ base::WeakPtr<content::NavigationHandle> NavigateImpl(
 
   if (params->source_contents == contents_to_navigate_or_insert) {
     // The navigation occurred in the source tab.
-    params->browser->GetBrowserForMigrationOnly()->UpdateUIForNavigationInTab(
-        contents_to_navigate_or_insert, params->transition,
-        params->window_action, user_initiated);
+    BrowserUiController::From(params->browser)
+        ->UpdateUIForNavigationInTab(contents_to_navigate_or_insert,
+                                     params->transition, params->window_action,
+                                     user_initiated);
   } else if (singleton_index == -1) {
     if (source_browser != params->browser) {
       params->tabstrip_index = params->browser->GetBrowserForMigrationOnly()

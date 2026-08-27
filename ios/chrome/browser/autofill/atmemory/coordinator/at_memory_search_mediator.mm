@@ -55,7 +55,33 @@
   _consumer = consumer;
 
   [_consumer setNoticeVisible:_noticeIsVisible];
-  [_consumer updateTableViewBackgroundStyle:[self tableViewBackgroundStyle]];
+  [_consumer
+      updateTableViewBackgroundStyle:[self
+                                         tableViewBackgroundStyleForViewState:
+                                             AtMemoryViewState::kInitialState]];
+}
+
+#pragma mark - AtMemorySearchMutator
+
+- (void)startSearchWithQuery:(NSString*)query {
+  if (!_atMemoryQueryService || !_webState) {
+    return;
+  }
+
+  // Request AtMemory search results from the AtMemory query service for the
+  // given `query`.
+  __weak __typeof(self) weakSelf = self;
+  auto callback = base::BindRepeating(^(autofill::MemorySearchResults results) {
+    [weakSelf handleAtMemorySearchResults:results];
+  });
+
+  _atMemoryQueryService->Query(base::SysNSStringToUTF16(query),
+                               _webState->GetVisibleURL(),
+                               _webState->GetTitle(), callback);
+}
+
+- (void)acknowledgePrivacyNotice {
+  // TODO(crbug.com/541207744): Handle notice acknowledgment.
 }
 
 #pragma mark - Private
@@ -90,28 +116,11 @@
   // to the consumer. If the array is nil, there was an error.
 }
 
-// TODO(crbug.com/540127498): This method will be updated to be used by the
-// AtMemorySearchMutator. Requests AtMemory search results from the AtMemory
-// query service for the given `query`.
-- (void)requestResultsForQuery:(NSString*)query {
-  if (!_atMemoryQueryService || !_webState) {
-    return;
-  }
-
-  __weak __typeof(self) weakSelf = self;
-  auto callback = base::BindRepeating(^(autofill::MemorySearchResults results) {
-    [weakSelf handleAtMemorySearchResults:results];
-  });
-
-  _atMemoryQueryService->Query(base::SysNSStringToUTF16(query),
-                               _webState->GetVisibleURL(),
-                               _webState->GetTitle(), callback);
-}
-
-- (AtMemoryBackgroundStyle)tableViewBackgroundStyle {
+- (AtMemoryBackgroundStyle)tableViewBackgroundStyleForViewState:
+    (AtMemoryViewState)viewState {
   // TODO(crbug.com/540877897): Verify if there are any recent fills. If yes,
   // show kDefaultStyle.
-  if (_noticeIsVisible) {
+  if (_noticeIsVisible || viewState != AtMemoryViewState::kInitialState) {
     return AtMemoryBackgroundStyle::kDefaultStyle;
   }
   return AtMemoryBackgroundStyle::kEmptyStyle;

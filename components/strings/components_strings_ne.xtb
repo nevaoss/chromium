@@ -592,6 +592,7 @@
 <translation id="2027465737841872819">प्लास्टिक</translation>
 <translation id="2027707238798802149">कार्ड उपलब्ध छैन</translation>
 <translation id="2032962459168915086"><ph name="BEGIN_LINK" />प्रोक्सी र फायरवाललाई जाँच गर्नुहोस्<ph name="END_LINK" /></translation>
+<translation id="2033550997390154638">Chrome को यो इन्स्ट्यान्स म्यानुअल रूपमा सेट गरिएका कमान्ड लाइन फ्ल्यागहरूका साथ रन भइरहेको छ। कमान्ड लाइन फ्ल्यागहरू जुनसुकै बेला परिवर्तन हुन सक्छन् र यिनलाई प्राविधिक सहायता प्राप्त हुँदैन भन्ने कुरा ख्याल गर्नुहोस्।</translation>
 <translation id="2033900728810589426">यो सर्टकट र <ph name="DEFAULT_SEARCH_PROVIDER_KEYWORD_POLICY_NAME" /> ले परिभाषित गरिएको खोज प्रदायकको डिफल्ट किवर्ड एउटै हुनु हुँदैन: <ph name="SHORTCUT_NAME" /></translation>
 <translation id="2034971124472263449">जे भए पनि सेभ गर्नुहोस्</translation>
 <translation id="2036514476578229158">तपाईंले यो साइटमा जाने अनुमति माग्नुभएको छ। तपाईंका अभिभावकहरू Family Link मार्फत अनुमति दिन वा नदिन सक्छन्।</translation>
@@ -1061,7 +1062,6 @@
 <translation id="2824775600643448204">ठेगाना र खोज पट्टी</translation>
 <translation id="2826760142808435982">यो जडान गुप्तलेख गरिएको र <ph name="CIPHER" /> प्रयोग गर्दै प्रमाणीकरण गरिएको छ र कुञ्जी साट्ने प्रक्रियाको रूपमा <ph name="KX" /> प्रयोग गर्छ।</translation>
 <translation id="2828797285817981634">अहिलेका लागि मोसन सेन्सरहरू प्रयोग गर्ने अनुमति दिइएको छ</translation>
-<translation id="2835170189407361413">फारम खालि गर्नुहोस्</translation>
 <translation id="2835907903001172712">ब्राउजरसम्बन्धी संक्षिप्त जानकारी</translation>
 <translation id="2837891525090413132">यसले तपाईंको किबोर्ड लक गरी प्रयोग गर्ने अनुमति माग्न सक्छ</translation>
 <translation id="2839032553903800133">सूचनाहरूलाई रोक लगाइयो</translation>
@@ -3293,7 +3293,6 @@
 <translation id="6679354743514146922">Chrome ब्राउजरले <ph name="APP_NAME" /> मा तपाईंको पासवर्ड हाल्न खोज्दै छ।</translation>
 <translation id="668132230070712111">भिडियो Google Drive मा सेभ गरिएको छ</translation>
 <translation id="6681790815630918386">CVC सेभ गरिएको छ</translation>
-<translation id="6686570026048064255">Pix कोड पत्ता लगाउने सुविधा अफ गर्न <ph name="BEGIN_LINK1" />Chrome का सेटिङ<ph name="END_LINK1" />मा जानुहोस्</translation>
 <translation id="6687230248707087982">इन्भलप (प्लेन)</translation>
 <translation id="6687335167692595844">फन्टको अनुरोध गरिएको आकार</translation>
 <translation id="6688743156324860098">बदल्नुहोस्…</translation>
@@ -4434,6 +4433,7 @@
 <translation id="8708134712139312373">ब्लुटुथ चल्ने डिभाइसहरूमा कनेक्ट गर्ने अनुमति माग्न सक्छ</translation>
 <translation id="8710842507289500830">फन्टको शैली</translation>
 <translation id="8712637175834984815">भयो</translation>
+<translation id="8715198179991802709">Chrome ले भर्खरै तपाईंले खोल्न खोज्नुभएको वेबसाइट फ्ल्याग गरेको छ। १ मिनेटको सर्वेक्षणमा सहभागी भएर हामीलाई यी चेतावनीहरू सुधार गर्न मद्दत गर्नुहोस्।</translation>
 <translation id="8718314106902482036">भुक्तानी पूरा हुन सकेन</translation>
 <translation id="8719263113926255150"><ph name="ENTITY" />, <ph name="DESCRIPTION" />, सम्बन्धी खोज सुझाव</translation>
 <translation id="8719528812645237045">सिरानमा एकभन्दा बढी प्वाल</translation>
@@ -4561,7 +4561,6 @@
 <translation id="8932102934695377596">तपाईंको घडी ढिला छ</translation>
 <translation id="893332455753468063">नाम थप्नुहोस्</translation>
 <translation id="8938242527120341116">तपाईंको डिभाइसका सामग्रीसम्बन्धी फिल्टरहरूले <ph name="BLOCKED_URL" /> ब्लक गरेका छन्</translation>
-<translation id="8942355029279167844">तपाईंका एड्मिनले <ph name="APP_NAME" /> एप सुधार्ने प्रयोजनका लागि यो एपलाई निदानसम्बन्धी डेटा सङ्कलन गर्ने अनुमति दिनुभएको छ। थप जानकारीका लागि <ph name="BEGIN_LINK" />https://www.parallels.com/pcep<ph name="END_LINK" /> मा जानुहोस्।</translation>
 <translation id="8943282376843390568">हल्का पहेँलो</translation>
 <translation id="8949410982325929394">टोन</translation>
 <translation id="8949493680961858543">A1x4</translation>

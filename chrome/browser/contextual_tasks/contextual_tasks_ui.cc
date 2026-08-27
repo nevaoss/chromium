@@ -390,6 +390,11 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
   source->AddLocalizedStrings(SearchboxHandler::GetWebUIDataSourceDict(
       profile, {.enable_voice_search = true,
                 .session_allows_drag_and_drop = session_allows_drag_and_drop}));
+  // Re-apply the Contextual Tasks coherence override after the searchbox
+  // overwrite above; see GetContextualTasksLoadTimeData().
+  source->AddBoolean(
+      "voiceSearchCoherenceComposeboxesEnabled",
+      SearchboxHandler::GetVoiceSearchCoherenceCobrowsingComposeboxEnabled());
 #endif  // BUILDFLAG(ENABLE_WEBUI_CONTEXTUAL_TASKS_COMPOSEBOX)
 
   // Determine and cache contextual tasks eligibility on initialization. This
@@ -422,11 +427,7 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
       this, std::move(tracked_element_ids));
 }
 
-ContextualTasksUI::~ContextualTasksUI() {
-  if (ui_service_) {
-    ui_service_->OnWebUIDestroyed(GetBrowser(), task_id_);
-  }
-}
+ContextualTasksUI::~ContextualTasksUI() = default;
 
 content::WebUIDataSource* ContextualTasksUI::RegisterWebUIDataSource(
     Profile* profile) {
@@ -496,6 +497,12 @@ base::DictValue ContextualTasksUI::GetContextualTasksLoadTimeData(
   dict.Merge(SearchboxHandler::GetWebUIDataSourceDict(
       profile, {.enable_voice_search = true,
                 .session_allows_drag_and_drop = session_allows_drag_and_drop}));
+  // Contextual Tasks follows the cobrowsing coherence key on all composebox
+  // paths; the flag-off legacy <cr-composebox> reads the all-surfaces key via
+  // the shared mixin default, so here that key carries the cobrowsing value.
+  dict.Set(
+      "voiceSearchCoherenceComposeboxesEnabled",
+      SearchboxHandler::GetVoiceSearchCoherenceCobrowsingComposeboxEnabled());
 #endif  // BUILDFLAG(ENABLE_WEBUI_CONTEXTUAL_TASKS_COMPOSEBOX)
 
   int stsDefaultOnHeaderId = IDS_STS_IPH_DEFAULT_ON_HEADER;
@@ -911,11 +918,6 @@ bool ContextualTasksUI::IsInitComplete() {
 }
 
 void ContextualTasksUI::OnInitComplete() {
-  if (task_id_ && ui_service_) {
-    ui_service_->OnWebUIReady(GetBrowser(), *task_id_,
-                              web_ui()->GetWebContents());
-  }
-
   for (auto& observer : observers_) {
     observer.OnInitComplete();
   }

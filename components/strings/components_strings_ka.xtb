@@ -592,6 +592,7 @@
 <translation id="2027465737841872819">პლასტმასა</translation>
 <translation id="2027707238798802149">ბარათი მიუწვდომელია</translation>
 <translation id="2032962459168915086"><ph name="BEGIN_LINK" />პროქსისა და ქსელის დაცვის შემოწმება<ph name="END_LINK" /></translation>
+<translation id="2033550997390154638">Chrome-ის ეს ეგზემპლარი გაშვებულია ბრძანებათა სტრიქონის ხელით დაყენებული ალმებით. გაითვალისწინეთ, რომ ბრძანებათა სტრიქონის ალმები შეიძლება ნებისმიერ დროს შეიცვალოს და ისინი არ არის მხარდაჭერილი.</translation>
 <translation id="2033900728810589426">მალსახმობი არ უნდა იყოს ძიების პროვაიდერის იმ ნაგულისხმევი საკვანძო სიტყვის იდენტური, რომელსაც <ph name="DEFAULT_SEARCH_PROVIDER_KEYWORD_POLICY_NAME" /> განსაზღვრავს: <ph name="SHORTCUT_NAME" /></translation>
 <translation id="2034971124472263449">მაინც შენახვა</translation>
 <translation id="2036514476578229158">თქვენ მოითხოვეთ ამ საიტის მონახულება. თქვენს მშობლებს გამოხმაურება შეუძლია Family Link-იდან.</translation>
@@ -1061,7 +1062,6 @@
 <translation id="2824775600643448204">მისამართი და ძიების ზოლი</translation>
 <translation id="2826760142808435982">კავშირი დაშიფრულია და ავთენტიფიცირებულია <ph name="CIPHER" />-ის გამოყენებით, იგი იყენებს <ph name="KX" />-ს, როგორც კოდის გაცვლის მექანიზმს.</translation>
 <translation id="2828797285817981634">მოძრაობის სენსორები ამჟამად დაშვებულია</translation>
-<translation id="2835170189407361413">ფორმის გასუფთავება</translation>
 <translation id="2835907903001172712">ბრაუზერის მიმოხილვა</translation>
 <translation id="2837891525090413132">შეიძლება მოითხოვოს დაბლოკვა და თქვენი კლავიატურის გამოყენება</translation>
 <translation id="2839032553903800133">შეტყობინებები დაბლოკილია</translation>
@@ -3295,7 +3295,6 @@
 <translation id="6679354743514146922">Chrome ბრაუზერი ცდილობს, შეავსოს თქვენი პაროლი <ph name="APP_NAME" />-ში.</translation>
 <translation id="668132230070712111">ვიდეო შენახულია Google Drive-ში</translation>
 <translation id="6681790815630918386">CVC შეინახა</translation>
-<translation id="6686570026048064255">Pix-ის კოდის ამოცნობის გამოსართავად გადადით <ph name="BEGIN_LINK1" />Chrome-ის პარამეტრებში<ph name="END_LINK1" /></translation>
 <translation id="6687230248707087982">კონვერტი (უბრალო)</translation>
 <translation id="6687335167692595844">შრიფტის ზომა მოთხოვნილია</translation>
 <translation id="6688743156324860098">განახლება…</translation>
@@ -4436,6 +4435,7 @@
 <translation id="8708134712139312373">შეუძლია Bluetooth მოწყობილობებთან დაკავშირების თხოვნა</translation>
 <translation id="8710842507289500830">შრიფტის სტილი</translation>
 <translation id="8712637175834984815">კარგი</translation>
+<translation id="8715198179991802709">Chrome-მა ახლახან დროშით მონიშნა ვებსაიტი, რომლის მონახულებასაც ცდილობდით. მიიღეთ მონაწილეობა 1-წუთიან გამოკითხვაში, რომ დაგვეხმაროთ ამ გაფრთხილებების გაუმჯობესებაში.</translation>
 <translation id="8718314106902482036">გადახდა დასრულებული არ არის</translation>
 <translation id="8719263113926255150"><ph name="ENTITY" />, <ph name="DESCRIPTION" />, ძიების შეთავაზება</translation>
 <translation id="8719528812645237045">მრავალად გახვრეტა ზემოთ</translation>
@@ -4563,7 +4563,6 @@
 <translation id="8932102934695377596">თქვენი საათი უკანაა</translation>
 <translation id="893332455753468063">დაამატეთ სახელი</translation>
 <translation id="8938242527120341116">თქვენი მოწყობილობის კონტენტის ფილტრებმა დაბლოკა <ph name="BLOCKED_URL" /></translation>
-<translation id="8942355029279167844">თქვენმა ადმინისტრატორმა <ph name="APP_NAME" />-ს ნება დართო, შეაგროვოს დიაგნოსტიკური მონაცემები, პროდუქტით სარგებლობის გასაუმჯობესებლად. დამატებითი ინფორმაციისთვის იხილეთ <ph name="BEGIN_LINK" />https://www.parallels.com/pcep<ph name="END_LINK" />.</translation>
 <translation id="8943282376843390568">ლაიმისფერი</translation>
 <translation id="8949410982325929394">ტონი</translation>
 <translation id="8949493680961858543">A1x4</translation>

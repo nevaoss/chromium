@@ -14,6 +14,9 @@
 #include "chrome/browser/ui/omnibox/omnibox_edit_model.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/omnibox/omnibox_popup_presenter_base.h"
+#include "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_handler.h"
+#include "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_ui.h"
+#include "chrome/browser/ui/webui/top_chrome/webui_contents_wrapper.h"
 #include "chrome/common/webui_url_constants.h"
 #include "content/public/browser/render_widget_host_view.h"
 #include "content/public/browser/web_contents.h"
@@ -47,10 +50,26 @@ bool OmniboxFullPopupWebUIContent::EscClosesUI() const {
 }
 
 void OmniboxFullPopupWebUIContent::CloseUI() {
+  // Call base class method first so that any focus operations downstream
+  // will be overridden by focusing the web contents.
+  OmniboxPopupWebUIBaseContent::CloseUI();
+
   controller()->client()->FocusWebContents();
   controller()->edit_model()->OnKillFocus();
+}
 
-  OmniboxPopupWebUIBaseContent::CloseUI();
+void OmniboxFullPopupWebUIContent::Clear() {
+  if (auto* handler = popup_handler()) {
+    handler->ClearPopup(
+        base::BindOnce(&OmniboxFullPopupWebUIContent::OnClearCallback,
+                       weak_ptr_factory_.GetWeakPtr()));
+  } else {
+    Detach();
+  }
+}
+
+void OmniboxFullPopupWebUIContent::OnClearCallback() {
+  Detach();
 }
 
 // TODO(b/504668887): If necessary, copy `OmniboxAimPopupWebUIContent::Clear()`

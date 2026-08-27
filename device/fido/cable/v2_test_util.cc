@@ -13,6 +13,8 @@
 #include "base/check.h"
 #include "base/compiler_specific.h"
 #include "base/containers/span.h"
+#include "base/containers/to_array.h"
+#include "base/containers/to_vector.h"
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
@@ -445,14 +447,11 @@ class TestPlatform : public authenticator::Platform {
         PRFInput prf_input_to_authenticator;
         prf_input_to_authenticator.credential_id =
             std::move(prf_input_from_request->id);
-        CHECK(fido_parsing_utils::ExtractArray(
-            prf_input_from_request->first, 0,
-            &prf_input_to_authenticator.salt1));
+        prf_input_to_authenticator.salt1 =
+            base::ToArray<32>(prf_input_from_request->first);
         if (prf_input_from_request->second) {
-          prf_input_to_authenticator.salt2.emplace();
-          CHECK(fido_parsing_utils::ExtractArray(
-              *prf_input_from_request->second, 0,
-              &prf_input_to_authenticator.salt2.value()));
+          prf_input_to_authenticator.salt2 =
+              base::ToArray<32>(*prf_input_from_request->second);
         }
 
         request.prf_inputs.emplace_back(std::move(prf_input_to_authenticator));
@@ -484,9 +483,8 @@ class TestPlatform : public authenticator::Platform {
       base::span<const uint8_t, kAdvertSize> payload) override {
     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE,
-        base::BindOnce(
-            &TestPlatform::DoSendBLEAdvert, weak_factory_.GetWeakPtr(),
-            device::fido_parsing_utils::Materialize<payload.size()>(payload)));
+        base::BindOnce(&TestPlatform::DoSendBLEAdvert,
+                       weak_factory_.GetWeakPtr(), base::ToArray(payload)));
     return std::make_unique<DummyBLEAdvert>();
   }
 
@@ -657,8 +655,8 @@ class LateLinkingDevice : public authenticator::Transaction {
             qr_secret,
             {},
             device::cablev2::DerivedValueType::kEIDKey)),
-        peer_identity_(device::fido_parsing_utils::Materialize(peer_identity)),
-        secret_(fido_parsing_utils::Materialize(qr_secret)) {
+        peer_identity_(base::ToArray(peer_identity)),
+        secret_(base::ToVector(qr_secret)) {
     websocket_client_ = std::make_unique<device::cablev2::WebSocketAdapter>(
         base::BindOnce(&LateLinkingDevice::OnTunnelReady,
                        base::Unretained(this)),
@@ -882,7 +880,7 @@ class HandshakeErrorDevice : public authenticator::Transaction {
             qr_secret,
             {},
             device::cablev2::DerivedValueType::kEIDKey)),
-        secret_(fido_parsing_utils::Materialize(qr_secret)) {
+        secret_(base::ToVector(qr_secret)) {
     websocket_client_ = std::make_unique<device::cablev2::WebSocketAdapter>(
         base::BindOnce(&HandshakeErrorDevice::OnTunnelReady,
                        base::Unretained(this)),

@@ -10,6 +10,7 @@
 #include "base/functional/callback.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/stringprintf.h"
+#include "base/test/bind.h"
 #include "base/test/gmock_callback_support.h"
 #include "base/test/gmock_expected_support.h"
 #include "base/test/scoped_logging_settings.h"
@@ -61,6 +62,7 @@
 #include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
+#include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
 #include "chrome/browser/ui/chrome_pages.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/common/webui_url_constants.h"
@@ -83,6 +85,7 @@
 #include "components/skills/public/skills_service.h"
 #include "components/subscription_eligibility/subscription_eligibility_prefs.h"
 #include "components/tabs/public/tab_interface.h"
+#include "components/version_info/version_info.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
 #include "content/public/browser/render_frame_host.h"
@@ -93,6 +96,7 @@
 #include "content/public/test/browser_test_utils.h"
 #include "mojo/public/cpp/base/big_buffer.h"
 #include "services/network/test/test_url_loader_factory.h"
+#include "testing/gmock/include/gmock/gmock.h"
 #include "third_party/blink/public/common/features.h"
 #include "url/origin.h"
 
@@ -112,6 +116,7 @@
 #include "chrome/browser/skills/skills_service_factory.h"
 #include "chrome/browser/skills/skills_ui_tab_controller.h"
 #include "chrome/browser/ui/browser.h"
+#include "chrome/browser/ui/passwords/ui_utils.h"  // nogncheck
 #include "chrome/test/base/ui_test_utils.h"
 #include "ui/display/screen.h"
 #endif
@@ -357,6 +362,18 @@ class NewGlicApiTest : public GlicApiBrowserTest,
         can_resize ? std::string("CanResize") : std::string("CannotResize"));
   }
 #endif
+
+  int GetPopupCount() {
+    int popup_count = 0;
+    ProfileBrowserCollection::GetForProfile(GetProfile())
+        ->ForEach([&popup_count](BrowserWindowInterface* browser) {
+          if (browser->GetType() == BrowserWindowInterface::TYPE_POPUP) {
+            popup_count++;
+          }
+          return true;
+        });
+    return popup_count;
+  }
 
  private:
   logging::ScopedVmoduleSwitches scoped_vmodule_switches_;
@@ -928,6 +945,82 @@ IN_PROC_BROWSER_TEST_P(NewGlicApiTest,
 
   // Verify that client data was received by the new client.
   ExecuteJsTest({.params = base::Value("verifyNewInstance")});
+}
+
+IN_PROC_BROWSER_TEST_P(NewGlicApiTest,
+                       testSwitchConversationToOldConversationInPlace) {
+  glic::GlicHistogramTester histogram_tester;
+  ASSERT_OK(OpenGlicForActiveTab());
+  ASSERT_OK(WaitForInstanceActive());
+  ExecuteJsTest();
+  ASSERT_OK(histogram_tester.WaitForBucketCount(
+      "Glic.Interaction.SwitchConversationTarget",
+      GlicSwitchConversationTarget::kSwitchedToNewInstance, 1));
+  EXPECT_EQ("A", GetOnlyGlicInstance()->conversation_id().value_or(""));
+  EXPECT_EQ("Title A", GetOnlyGlicInstance()->conversation_title());
+}
+
+IN_PROC_BROWSER_TEST_P(NewGlicApiTest,
+                       testSwitchConversationToNewConversationInPlace) {
+  glic::GlicHistogramTester histogram_tester;
+  ASSERT_OK(OpenGlicForActiveTab());
+  ASSERT_OK(WaitForInstanceActive());
+  ExecuteJsTest();
+  ASSERT_OK(histogram_tester.WaitForBucketCount(
+      "Glic.Interaction.SwitchConversationTarget",
+      GlicSwitchConversationTarget::kStartNewConversation, 1));
+  EXPECT_EQ("", GetOnlyGlicInstance()->conversation_id().value_or(""));
+  EXPECT_EQ("", GetOnlyGlicInstance()->conversation_title());
+}
+
+IN_PROC_BROWSER_TEST_P(NewGlicApiTest,
+                       testSwitchConversationToOldConversationNewInstance) {
+  glic::GlicHistogramTester histogram_tester;
+  auto* active_tab = GetTabListInterface()->GetActiveTab();
+  ASSERT_OK_AND_ASSIGN(auto* initial_instance, OpenGlicForActiveTab());
+  ASSERT_OK(WaitForInstanceActive());
+  ExecuteJsTest();
+  ASSERT_OK(histogram_tester.WaitForBucketCount(
+      "Glic.Interaction.SwitchConversationTarget",
+      GlicSwitchConversationTarget::kSwitchedToNewInstance, 1));
+  EXPECT_EQ("initial_id", initial_instance->conversation_id().value_or(""));
+  EXPECT_EQ("Initial Title", initial_instance->conversation_title());
+
+  auto initial_id = initial_instance->id();
+  ContinueJsTest(
+      {.expect_guest_frame_destroyed = true, .instance = initial_instance});
+  ASSERT_OK(histogram_tester.WaitForBucketCount(
+      "Glic.Interaction.SwitchConversationTarget",
+      GlicSwitchConversationTarget::kSwitchedToNewInstance, 2));
+  ASSERT_OK_AND_ASSIGN(auto* new_instance,
+                       WaitForInstanceWithConversationId(active_tab, "A"));
+  EXPECT_NE(new_instance->id(), initial_id);
+  EXPECT_EQ("Title A", new_instance->conversation_title());
+}
+
+IN_PROC_BROWSER_TEST_P(NewGlicApiTest,
+                       testSwitchConversationToNewConversationNewInstance) {
+  glic::GlicHistogramTester histogram_tester;
+  auto* active_tab = GetTabListInterface()->GetActiveTab();
+  ASSERT_OK_AND_ASSIGN(auto* initial_instance, OpenGlicForActiveTab());
+  ASSERT_OK(WaitForInstanceActive());
+  ExecuteJsTest();
+  ASSERT_OK(histogram_tester.WaitForBucketCount(
+      "Glic.Interaction.SwitchConversationTarget",
+      GlicSwitchConversationTarget::kSwitchedToNewInstance, 1));
+  EXPECT_EQ("initial_id", initial_instance->conversation_id().value_or(""));
+  EXPECT_EQ("Initial Title", initial_instance->conversation_title());
+
+  auto initial_id = initial_instance->id();
+  ContinueJsTest(
+      {.expect_guest_frame_destroyed = true, .instance = initial_instance});
+  ASSERT_OK(histogram_tester.WaitForBucketCount(
+      "Glic.Interaction.SwitchConversationTarget",
+      GlicSwitchConversationTarget::kStartNewConversation, 1));
+  ASSERT_OK_AND_ASSIGN(auto* new_instance,
+                       WaitForInstanceWithConversationId(active_tab, ""));
+  EXPECT_NE(new_instance->id(), initial_id);
+  EXPECT_EQ("", new_instance->conversation_title());
 }
 
 #if defined(NOT_VETTED_ON_ANDROID)
@@ -1668,6 +1761,21 @@ IN_PROC_BROWSER_TEST_P(NewGlicApiTestWithNewTabDaisyChain,
 #endif
 
 #if !BUILDFLAG(IS_ANDROID)
+IN_PROC_BROWSER_TEST_P(NewGlicApiTestWithNewTabDaisyChain,
+                       testCanAttachPanelToFallbackEmbedder) {
+  ASSERT_OK(OpenGlicForActiveTab());
+
+  ExecuteJsTest();
+
+  tabs::TabInterface* active_tab = GetTabListInterface()->GetActiveTab();
+  ASSERT_TRUE(active_tab);
+  GetTabListInterface()->CloseTab(active_tab->GetHandle());
+
+  ContinueJsTest();
+}
+#endif
+
+#if !BUILDFLAG(IS_ANDROID)
 // TODO(crbug.com/520959831): Fix flaky test.
 IN_PROC_BROWSER_TEST_P(NewGlicApiTest, DISABLED_testEnableDragResize) {
   ASSERT_OK(OpenGlicForActiveTabAndDetach());
@@ -2129,6 +2237,174 @@ IN_PROC_BROWSER_TEST_P(NewGlicApiTest, testGetUserProfileInfo) {
       "Glic.Api.RequestHostLatency.GetUserProfileInfo", 1);
 }
 
+IN_PROC_BROWSER_TEST_P(NewGlicApiTest, testRequestHeader) {
+  ASSERT_OK(OpenGlicForActiveTab());
+  const GURL cross_origin_rpc_url =
+      embedded_test_server()->GetURL("b.com", "/fake-rpc/cors");
+  base::ListValue rpc_urls;
+  rpc_urls.Append("/fake-rpc");
+  rpc_urls.Append(cross_origin_rpc_url.spec());
+  ExecuteJsTest({.params = base::Value(
+                     base::DictValue().Set("rpcUrls", std::move(rpc_urls)))});
+
+  auto request_header_matcher = testing::AllOf(
+      testing::Contains(testing::Pair(testing::StrCaseEq("x-glic"), "1")),
+      testing::Contains(testing::Pair(
+          testing::StrCaseEq("x-glic-chrome-channel"),
+          testing::AnyOf("unknown", "canary", "dev", "beta", "stable"))),
+      testing::Contains(
+          testing::Pair(testing::StrCaseEq("x-glic-chrome-version"),
+                        version_info::GetVersionNumber())));
+
+  auto find_request = [&](std::string_view path) {
+    const auto it = std::ranges::find_if(
+        embedded_test_server_requests_, [&](const auto& request) {
+          return request.GetURL().GetPath() == path &&
+                 request.method == net::test_server::METHOD_GET;
+        });
+    return it == embedded_test_server_requests_.end() ? nullptr : &(*it);
+  };
+
+  auto* main_request = find_request(GetGuestURL().GetPath());
+  ASSERT_TRUE(main_request);
+  EXPECT_THAT(main_request->headers, request_header_matcher);
+
+  auto* rpc_request = find_request("/fake-rpc");
+  ASSERT_TRUE(rpc_request);
+  EXPECT_THAT(rpc_request->headers, request_header_matcher);
+
+  auto* cross_origin_rpc_request = find_request("/fake-rpc/cors");
+  ASSERT_TRUE(cross_origin_rpc_request);
+  EXPECT_THAT(cross_origin_rpc_request->headers, request_header_matcher);
+}
+
+IN_PROC_BROWSER_TEST_P(NewGlicApiTest, testDialogResponseCallOrder) {
+  ASSERT_OK(OpenGlicForActiveTab());
+  auto* actor_service = actor::ActorKeyedService::Get(GetProfile());
+  ASSERT_TRUE(actor_service);
+
+  base::test::TestFuture<actor::TaskId> task_created;
+  base::CallbackListSubscription subscription =
+      actor_service->AddTaskStateChangedCallback(
+          base::BindLambdaForTesting([&](actor::ActorTask& task) {
+            if (task.GetState() == actor::ActorTask::State::kCreated) {
+              task_created.SetValue(task.id());
+            }
+          }));
+
+  // Client side subscribes to the observable returned from
+  // selectUserConfirmationDialogRequestHandler and it creates an actor task.
+  ExecuteJsTest();
+
+  // Wait for the task to be created. Put it in an interrupted state.
+  actor::ActorTask* task = actor_service->GetTask(task_created.Get());
+  ASSERT_TRUE(task);
+
+  // TODO(bokan): This shouldn't be necessary but the task is kCreated state
+  // from which we cannot interrupt.
+  task->SetState(actor::ActorTask::State::kReflecting);
+
+  task->Interrupt();
+  ASSERT_EQ(task->GetState(), actor::ActorTask::State::kWaitingOnUser);
+
+  // Request a user dialog to show and record the state of the task when the
+  // response from it is received.
+  base::test::TestFuture<actor::ActorTask::State>
+      state_when_dialog_response_received;
+  GetOnlyGlicInstance()
+      ->GetActorTaskManager()
+      ->GetClientSessionForTesting()
+      ->RequestToShowUserConfirmationDialog(
+          task->id(), url::Origin(), /*for_sensitive_origin=*/false,
+          base::BindLambdaForTesting(
+              [&](actor::webui::mojom::UserConfirmationDialogResponsePtr) {
+                state_when_dialog_response_received.SetValue(task->GetState());
+              }));
+
+  // The client side will respond to the dialog then uninterrupt the task.
+  // Ensure the dialog response is received before the task has been
+  // uninterrupted.
+  ContinueJsTest();
+
+  EXPECT_EQ(state_when_dialog_response_received.Get(),
+            actor::ActorTask::State::kWaitingOnUser);
+}
+
+IN_PROC_BROWSER_TEST_P(NewGlicApiTest, testPopupOpens) {
+  ASSERT_OK(OpenGlicForActiveTab());
+  EXPECT_EQ(GetPopupCount(), 0);
+  ExecuteJsTest();
+  ASSERT_OK(RunUntilEqual([&]() { return GetPopupCount(); }, 1));
+}
+
+#if !BUILDFLAG(IS_ANDROID)
+IN_PROC_BROWSER_TEST_P(NewGlicApiTest, testOpenGlicSettingsPage) {
+  glic::GlicHistogramTester histogram_tester;
+  ASSERT_OK(OpenGlicForActiveTab());
+  ExecuteJsTest();
+  ASSERT_OK(
+      RunUntilEqual([&]() { return GetTabListInterface()->GetTabCount(); }, 2));
+  EXPECT_EQ(
+      GetTabListInterface()->GetActiveTab()->GetContents()->GetVisibleURL(),
+      chrome::GetSettingsUrl(chrome::kGlicSettingsSubpage));
+  histogram_tester.ExpectTotalCount(
+      "Glic.Api.RequestHostLatency.OpenGlicSettingsPage", 0);
+}
+#endif
+
+#if !BUILDFLAG(IS_ANDROID)
+IN_PROC_BROWSER_TEST_P(NewGlicApiTest, testOpenPasswordManagerSettingsPage) {
+  glic::GlicHistogramTester histogram_tester;
+  ASSERT_OK(OpenGlicForActiveTab());
+  ExecuteJsTest();
+  ASSERT_OK(
+      RunUntilEqual([&]() { return GetTabListInterface()->GetTabCount(); }, 2));
+  const GURL settings_url =
+      base::FeatureList::IsEnabled(features::kFedCmEmbedderInitiatedLogin)
+          ? chrome::GetSettingsUrl(chrome::kGlicLoginSettingsSubpage)
+          : GURL(GetGooglePasswordManagerSubPageURLStr());
+  EXPECT_EQ(
+      GetTabListInterface()->GetActiveTab()->GetContents()->GetVisibleURL(),
+      settings_url);
+}
+#endif
+
+IN_PROC_BROWSER_TEST_P(NewGlicApiTest, testClosedCaptioning) {
+  ASSERT_OK(OpenGlicForActiveTab());
+  ExecuteJsTest();
+}
+
+IN_PROC_BROWSER_TEST_P(NewGlicApiTest, testRefreshSignInCookies) {
+  ASSERT_OK(OpenGlicForActiveTab());
+  ExecuteJsTest();
+}
+
+IN_PROC_BROWSER_TEST_P(NewGlicApiTest, testSignInPauseState) {
+  ASSERT_OK(OpenGlicForActiveTab());
+  // Check that Glic web client is open and can retrieve the user's info.
+  ExecuteJsTest();
+
+  // Pause the sign-in.
+  auto* const identity_manager =
+      IdentityManagerFactory::GetForProfile(GetProfile());
+  signin::SetInvalidRefreshTokenForPrimaryAccount(identity_manager);
+
+  // The guest frame should be destroyed, and the WebUI should show the sign-in
+  // panel.
+  ASSERT_OK(RunUntilNull([&]() { return FindGlicGuestMainFrame(); }));
+  ASSERT_OK(WaitForWebUiState(mojom::WebUiState::kSignIn));
+}
+
+IN_PROC_BROWSER_TEST_P(NewGlicApiTest, testInvoke) {
+  ASSERT_OK_AND_ASSIGN(auto* instance, OpenGlicForActiveTab());
+  ASSERT_OK(WaitForGlicClient());
+  auto options = mojom::InvokeOptions::New();
+  options->invocation_source = mojom::InvocationSource::kTopChromeButton;
+  instance->host().GetPrimaryWebClient()->Invoke(std::move(options),
+                                                 base::DoNothing());
+  ExecuteJsTest();
+}
+
 IN_PROC_BROWSER_TEST_P(NewGlicApiTest, testGetContextFromFocusedTabWithIframe) {
   ASSERT_TRUE(content::NavigateToURL(
       GetTabListInterface()->GetActiveTab()->GetContents(),
@@ -2526,13 +2802,11 @@ IN_PROC_BROWSER_TEST_P(NewGlicApiTestWithWebContentsWarming,
   ASSERT_TRUE(coordinator()
                   .GetWebContentsWarmingPoolForTesting()
                   .MaybeStartInitialWarming());
-  ASSERT_OK(RunUntilEqual(
-      [&]() {
-        return coordinator()
-                   .GetWebContentsWarmingPoolForTesting()
-                   .GetWarmedContainerForTesting() != nullptr;
-      },
-      true));
+  ASSERT_OK(RunUntilNotNull([&]() {
+    return coordinator()
+        .GetWebContentsWarmingPoolForTesting()
+        .GetWarmedContainerForTesting();
+  }));
   // Opening the glic window will trigger the bootstrap, which should transition
   // the WebUI state to kReady.
   ASSERT_OK(OpenGlicForActiveTab());
@@ -3223,6 +3497,29 @@ IN_PROC_BROWSER_TEST_P(NewGlicApiUnresponsiveTest, MAYBE_testUnresponsive) {
       "Glic.Host.WebClientUnresponsiveState.Duration", 1);
   histogram_tester.ExpectBucketCount("Glic.PanelWebUiState.Error",
                                      /*WebUiErrorReason.CLIENT_ERROR*/ 6, 1);
+}
+
+IN_PROC_BROWSER_TEST_P(NewGlicApiTest, testActuationOnWebSetting) {
+  ASSERT_OK(OpenGlicForActiveTab());
+  ExecuteJsTest();
+}
+
+IN_PROC_BROWSER_TEST_P(NewGlicApiTest, testSetContextAccessIndicator) {
+  ASSERT_OK(OpenGlicForActiveTab());
+  ExecuteJsTest();
+}
+
+IN_PROC_BROWSER_TEST_P(NewGlicApiTest, testSetAudioDucking) {
+  ASSERT_OK(OpenGlicForActiveTab());
+  ExecuteJsTest();
+}
+
+IN_PROC_BROWSER_TEST_P(NewGlicApiTest, testGetDisplayMedia) {
+  // getDisplayMedia() (tab capture) is not supported on standard mobile
+  // Android.
+  SKIP_TEST_FOR_NON_DESKTOP_ANDROID();
+  ASSERT_OK(OpenGlicForActiveTab());
+  ExecuteJsTest();
 }
 
 auto DefaultTestParamSet() {

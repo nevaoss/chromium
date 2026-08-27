@@ -58,7 +58,6 @@
 #include "content/public/common/content_client.h"
 #include "content/public/common/content_features.h"
 #include "content/public/common/content_switches.h"
-#include "ipc/ipc_channel_factory.h"
 #include "ipc/ipc_channel_proxy.h"
 #include "mojo/core/embedder/scoped_ipc_support.h"
 #include "mojo/public/cpp/bindings/binder_map.h"
@@ -730,12 +729,8 @@ void ChildThreadImpl::Init(const Options& options) {
   // Add filters passed here via options.
   if (options.with_legacy_ipc_channel) {
     DCHECK(legacy_ipc_bootstrap_pipe.is_valid());
-    channel_->Init(IPC::ChannelFactory::CreateClientFactory(
-                       std::move(legacy_ipc_bootstrap_pipe),
-                       ChildProcess::current()->io_task_runner(),
-                       ipc_task_runner_
-                           ? ipc_task_runner_
-                           : base::SingleThreadTaskRunner::GetCurrentDefault()),
+    channel_->Init(std::move(legacy_ipc_bootstrap_pipe),
+                   IPC::Channel::MODE_CLIENT,
                    /*create_pipe_now=*/true);
   }
 
@@ -784,22 +779,11 @@ void ChildThreadImpl::Init(const Options& options) {
 }
 
 ChildThreadImpl::~ChildThreadImpl() {
-  if (channel_) {
-    // The ChannelProxy object caches a pointer to the IPC thread, so need to
-    // reset it as it's not guaranteed to outlive this object.
-    // NOTE: this also has the side-effect of not closing the main IPC channel
-    // to the browser process.  This is needed because this is the signal that
-    // the browser uses to know that this process has died, so we need it to be
-    // alive until this process is shut down, and the OS closes the handle
-    // automatically.  We used to watch the object handle on Windows to do this,
-    // but it wasn't possible to do so on POSIX.
-    channel_->ClearIPCTaskRunner();
-  } else if (!IsInBrowserProcess()) {
-    // With no legacy IPC channel, the browser monitors the lifetime of the
-    // ChildProcessHost connection to detect our exit. For reasons similar to
-    // above, we leak our side of this connection to ensure that the browser
-    // does not observe disconnection until after our process is actually
-    // terminated.
+  if (!IsInBrowserProcess()) {
+    // The browser monitors the lifetime of the ChildProcessHost connection to
+    // detect our exit. We leak our side of this connection to ensure that the
+    // browser does not observe disconnection until after our process is
+    // actually terminated.
     auto leaked_remote =
         std::make_unique<mojo::SharedRemote<mojom::ChildProcessHost>>(
             std::move(child_process_host_));

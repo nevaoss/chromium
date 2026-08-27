@@ -116,6 +116,7 @@ Se queres ver máis opcións de configuración que usen datos para mellorar a t�
 <translation id="1414919006379339073">Pechar ventá actual</translation>
 <translation id="1416550906796893042">Versión da aplicación</translation>
 <translation id="1430915738399379752">Imprimir</translation>
+<translation id="1432581352905426595">Xestionar motores de busca</translation>
 <translation id="1435593198351412143">Abrir PDF automaticamente</translation>
 <translation id="1437543266176261764">Executándose en <ph name="APP_NAME" /></translation>
 <translation id="1448440926884431741">Organiza os produtos dos que fagas un seguimento en Marcadores</translation>
@@ -297,6 +298,7 @@ Só poderán ler os teus datos encriptados as persoas que coñezan a túa frase 
 <translation id="2233735624724508540">Escolle un período e, a continuación, toca Eliminar datos</translation>
 <translation id="2234031676056123135">Personaliza os teus atallos</translation>
 <translation id="2234827758954819389">Guía de privacidade</translation>
+<translation id="2236949375853147973">A miña actividade</translation>
 <translation id="2238038374973843156">Mover grupo a outra ventá</translation>
 <translation id="2247789808226901522">A tarxeta venceu</translation>
 <translation id="2251809247798634662">Nova ventá do modo de incógnito</translation>
@@ -574,6 +576,7 @@ Só poderán ler os teus datos encriptados as persoas que coñezan a túa frase 
 <translation id="3385749568468586663">Gemini non está dispoñible no modo de incógnito</translation>
 <translation id="3387650086002190359">Produciuse un erro ao descargar <ph name="FILE_NAME" /> debido a erros no sistema de ficheiros.</translation>
 <translation id="3391311825344469964">Podes xestionar as ventás no Xestor de ventás de Chrome</translation>
+<translation id="3410151451624226773">Xestiona estes elementos no xestor de contrasinais de Google</translation>
 <translation id="3417835166382867856">Realizar buscas nas pestanas</translation>
 <translation id="3430670036890315772">Se desactivas o bloqueo do perfil, quitarase a información gardada</translation>
 <translation id="3435575784518354875">Para poder acceder aos contrasinais, expórtaos agora, actualiza os servizos de Google Play e despois volve importalos no xestor de contrasinais de Google. <ph name="BEGIN_LINK" />Ver as instrucións completas.<ph name="END_LINK" /></translation>
@@ -942,6 +945,7 @@ Só poderán ler os teus datos encriptados as persoas que coñezan a túa frase 
 <translation id="4877678010818027629">Entrar no modo de incógnito</translation>
 <translation id="4878404682131129617">Produciuse un erro ao establecer un túnel a través do servidor proxy</translation>
 <translation id="4880127995492972015">Traducir…</translation>
+<translation id="4880827082731008257">Historial de busca</translation>
 <translation id="4881695831933465202">Abrir</translation>
 <translation id="488187801263602086">Cambia o nome do ficheiro</translation>
 <translation id="4885273946141277891">Non se admite este número de instancias de Chrome.</translation>
@@ -991,6 +995,7 @@ Só poderán ler os teus datos encriptados as persoas que coñezan a túa frase 
 <translation id="509429900233858213">Produciuse un erro.</translation>
 <translation id="5096775069898886423">Recibe un aviso antes de visitar sitios que non admitan conexións seguras</translation>
 <translation id="510275257476243843">Queda 1 hora</translation>
+<translation id="5105442806410269908">Xestionar outros datos de Google</translation>
 <translation id="5114895953710637392">A folla para filtrar por aplicación está pechada.</translation>
 <translation id="5115811374190515607">á seguinte localización: <ph name="PRODUCT_NAME" /></translation>
 <translation id="5116239826668864748">Podes utilizar Chrome cando toques as ligazóns en mensaxes, en documentos e noutras aplicacións</translation>
@@ -1041,6 +1046,7 @@ Só poderán ler os teus datos encriptados as persoas que coñezan a túa frase 
 <translation id="5316947901395241499">A persoa administradora desactivou a opción de gardar contrasinais</translation>
 <translation id="5317780077021120954">Gardar</translation>
 <translation id="5319359161174645648">Google recomenda Chrome</translation>
+<translation id="5323501626199324454">Xestionar na túa Conta de Google</translation>
 <translation id="5326246328175179736">Non podes iniciar sesión con esta conta</translation>
 <translation id="5327248766486351172">Nome</translation>
 <translation id="5328542107300944283">Úsao con <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /></translation>
@@ -1325,6 +1331,7 @@ Por exemplo, algúns sitios web poden responder a esta solicitude mostrándoche 
 <translation id="6461962085415701688">Non se puido abrir o ficheiro</translation>
 <translation id="6464977750820128603">Podes ver os sitios que visitas en Chrome e definirlles temporizadores.\n\nGoogle obtén información sobre os sitios para os que estableces temporizadores e sobre a duración da túa visita. Estes datos utilízanse para mellorar Benestar dixital.</translation>
 <translation id="6468703991511753953">A barra de enderezos está actualmente na parte inferior</translation>
+<translation id="6469702164109431067">Contrasinais e claves de acceso</translation>
 <translation id="6470181189905173055">As páxinas que abras en Chrome mentres usas <ph name="APP_LABEL" /> mostraranse aquí.</translation>
 <translation id="6473086018775716761">A lista de cartafoles de opcións para compartir está aberta a media pantalla.</translation>
 <translation id="6475951671322991020">Descargar vídeo</translation>
@@ -1432,7 +1439,7 @@ Por exemplo, algúns sitios web poden responder a esta solicitude mostrándoche 
 <translation id="6858893072923394368">Engadir páxina…</translation>
 <translation id="6864459304226931083">Descargar imaxe</translation>
 <translation id="686490460830618322">Folla para filtrar por aplicación</translation>
-<translation id="6865313869410766144">Autocompletar datos do formulario</translation>
+<translation id="6865313869410766144">Datos para autocompletar formularios</translation>
 <translation id="6867400383614725881">Nova pestana de incógnito</translation>
 <translation id="686899695320434745">Os enderezos non se encriptan coa túa frase de acceso. Deste xeito, poderás usalos noutros servizos de Google.</translation>
 <translation id="6870625088374152862">Iniciaches sesión como <ph name="USER_EMAIL_ADDRESS" /></translation>
@@ -1531,6 +1538,7 @@ Para cambiar esta opción de configuración, <ph name="BEGIN_LINK" />elimina os 
 <translation id="7182520625618447753">Cambia a posición da barra de enderezos á parte superior ou á inferior para desfrutar dunha experiencia de navegación personalizada</translation>
 <translation id="7183517696921903380">A folla para filtrar por aplicación está aberta.</translation>
 <translation id="7186568385131859684">Controla como se utiliza o historial de navegación xunto con outros datos nos servizos de Google</translation>
+<translation id="7189516830800112767">{NUM_TABS,plural, =1{Preme ^W de novo para pechar a pestana fixada}other{Preme ^W de novo para pechar as pestanas fixadas}}</translation>
 <translation id="7190921792980745354">Queres bloquear a <ph name="MEMBER_FULL_NAME" />?</translation>
 <translation id="7191430249889272776">Abriuse a pestana en segundo plano.</translation>
 <translation id="7192397795254933433">{NUM_PASSWORDS,plural, =1{Recomendámosche que o cambies agora}other{Recomendámosche que os cambies agora}}</translation>
@@ -1979,6 +1987,7 @@ Para cambiar esta opción de configuración, <ph name="BEGIN_LINK" />elimina os 
 <translation id="8995521496079646922">As aplicacións que escolliches usaranse de forma predeterminada. Se hai algunha que non estea instalada neste dispositivo, descargarase en breve.</translation>
 <translation id="8996847606757455498">Escoller outro provedor</translation>
 <translation id="8998837250940831980">Non se puido minimizar a pestana. Téntao de novo máis tarde.</translation>
+<translation id="9000089900434778519">O teu motor de busca é <ph name="DSE_NAME" />. En caso aplicable, consulta as súas instrucións para eliminar o historial de busca.</translation>
 <translation id="9001604755921395912">Abrir en incógnito en Chrome</translation>
 <translation id="9010094279589497751">Abre rapidamente Gemini cando o necesites</translation>
 <translation id="9012585441087414258">Protéxete contra os sitios, as descargas e as extensións que se consideren perigosos. Se algunha páxina leva a cabo unha acción sospeitosa, os URL e algúns fragmentos do contido da páxina enviaranse a Navegación segura de Google.</translation>

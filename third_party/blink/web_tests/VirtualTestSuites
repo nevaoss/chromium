@@ -2088,6 +2088,26 @@
     ],
     "expires": "Dec 1, 2024"
   },
+  {
+    "prefix": "media-caption-settings-button-disabled",
+    "owners": [
+      "media-dev@chromium.org",
+      "brpeters@microsoft.com"
+    ],
+    "platforms": [
+      "Linux",
+      "Mac",
+      "Win"
+    ],
+    "bases": [
+      "media/video-controls-labels.html",
+      "media/controls/overflow-menu-hide-on-click-item.html"
+    ],
+    "args": [
+      "--disable-blink-features=MediaCaptionSettingsButton"
+    ],
+    "expires": "Jul 24, 2027"
+  },
   "This suite is incompatible with the default WPT Origin Isolation mode of ",
   "Site Isolation (see",
   "WebTestContentBrowserClient::GetOriginsRequiringDedicatedProcess) which",
@@ -4783,7 +4803,7 @@
     "owners": [
       "masonf@chromium.org"
     ],
-    "expires": "Aug 1, 2026"
+    "expires": "Dec 1, 2027"
   },
   "This suite just verifies that both XSLT-disabled flags work. The main ToT",
   "code verifies XSLTSpecialTrial, since it is enabled via fieldtrial testing",
@@ -4803,7 +4823,7 @@
     "owners": [
       "masonf@chromium.org"
     ],
-    "expires": "Aug 1, 2026"
+    "expires": "Dec 1, 2027"
   },
   {
     "prefix": "rust-xml",

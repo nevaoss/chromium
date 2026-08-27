@@ -4,7 +4,9 @@
 
 import("//build/config/android/config.gni")
 import("//build/config/cronet/config.gni")
+import("//build/config/gclient_args.gni")
 import("//build/toolchain/gcc_toolchain.gni")
+
 import("//chrome/android/chrome_common_shared_library.gni")
 import("//chrome/android/modules/chrome_feature_module_tmpl.gni")
 import("//components/supervised_user/buildflags.gni")
@@ -397,7 +399,6 @@ if (_is_default_toolchain) {
       "//chrome/browser/contextmenu:java",
       "//chrome/browser/contextual_tasks:java",
       "//chrome/browser/contextual_tasks:utils_java",
-      "//chrome/browser/contextual_tasks/fusebox/android:java",
       "//chrome/browser/data_sharing:factory_java",
       "//chrome/browser/data_sharing:instant_message_delegate_factory_java",
       "//chrome/browser/glic:metrics_java",
@@ -1061,6 +1062,7 @@ if (_is_default_toolchain) {
       "//chrome/browser/metrics/metrics_reporting_state.h",
       "//chrome/browser/notifications/notification_handler.h",
       "//chrome/browser/notifications/notification_platform_bridge_android.cc",
+      "//chrome/browser/prefs/session_startup_pref.h",
     ]
   }
 
@@ -2479,7 +2481,10 @@ if (_is_default_toolchain) {
       "-*",
     ]
 
-    data_deps = [ "//testing/buildbot/filters:chrome_public_test_apk_filters" ]
+    data_deps = [
+      "//chrome/test/data/webui/glic:generate_test_files",
+      "//testing/buildbot/filters:chrome_public_test_apk_filters",
+    ]
 
     if (enable_chrome_android_internal) {
       data_deps +=
@@ -2586,7 +2591,10 @@ if (_is_default_toolchain) {
     apk_under_test = ":chrome_public_apk"
     android_test_apk = ":chrome_smoke_test_apk"
     additional_apks = [ "//net/android:net_test_support_apk" ]
-    extra_args = _common_smoke_test_args
+    if (checkout_fuchsia) {
+      data_deps = [ "//build/fuchsia/starview:run_cuttlefish" ]
+    }
+
     if (!is_java_debug) {
       proguard_mapping_path = "$root_build_dir/apks/ChromePublic.apk.mapping"
     }
@@ -2594,6 +2602,7 @@ if (_is_default_toolchain) {
 
   instrumentation_test_runner("chrome_public_bundle_smoke_test") {
     apk_under_test = "//chrome/android:chrome_public_bundle_apks"
+
     android_test_apk = ":chrome_smoke_test_apk"
     extra_args = _common_smoke_test_args
     additional_apks = [ "//net/android:net_test_support_apk" ]
@@ -3310,6 +3319,7 @@ if (_is_default_toolchain) {
       ":chrome_test_util",
       "//base/test:test_support",
       "//chrome/browser/android/metrics:ukm_utils_for_test",
+      "//chrome/browser/glic/test_support",
       "//chrome/browser/password_manager/android:test_support",
       "//chrome/browser/subresource_filter:android_test_support",
       "//chrome/browser/supervised_user:test_support",

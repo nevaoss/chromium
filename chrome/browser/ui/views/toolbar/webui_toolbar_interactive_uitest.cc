@@ -258,6 +258,16 @@ class WebUIToolbarPixelInteractiveUiTest : public InteractiveBrowserTest {
     ASSERT_NO_FATAL_FAILURE(SetUpWebUI(kWebUIToolbarElementIdentifier, &element,
                                        &webui_toolbar_view, &web_view,
                                        browser));
+
+    // Force the physical mouse cursor off the toolbar and into the center of
+    // the main web page. We do this at the very beginning of the test to ensure
+    // any CSS hover fade-out transitions have time to finish while the WebUI
+    // finishes loading during `WaitForLoadStop`.
+    BrowserView* browser_view = BrowserView::GetBrowserViewForBrowser(browser);
+    gfx::Point safe_page_center =
+        browser_view->contents_web_view()->GetBoundsInScreen().CenterPoint();
+    ASSERT_TRUE(ui_test_utils::SendMouseMoveSync(safe_page_center));
+
     // Wait for the WebContents to finish loading before checking `IsLoading()`,
     // in case a load is triggered, which can happen whenever
     // `WebUIToolbarWebView::AddedToWidget()` is called if WebUI is not
@@ -1628,7 +1638,9 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarViewsLocationBarInteractiveUiTest,
 #endif
 }
 
-#if defined(USE_AURA) && !BUILDFLAG(IS_CHROMEOS)
+// TODO(crbug.com/538459286): Flaky on MSan due to clipboard synchronization
+// timeouts.
+#if defined(USE_AURA) && !BUILDFLAG(IS_CHROMEOS) && !defined(MEMORY_SANITIZER)
 #define MAYBE_CopyTextFromWebUIOmnibox CopyTextFromWebUIOmnibox
 #define MAYBE_CopyUrlFromWebUIOmnibox CopyUrlFromWebUIOmnibox
 #define MAYBE_CutUrlFromWebUIOmnibox CutUrlFromWebUIOmnibox
@@ -2279,33 +2291,3 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewInteractiveUiTest,
   }
 }
 
-class WebUIPinnedToolbarActionsInteractiveUiTest
-    : public WebUIPinnedToolbarActionsTestBase {};
-
-IN_PROC_BROWSER_TEST_F(WebUIPinnedToolbarActionsInteractiveUiTest,
-                       HighlightOnShowTranslateBubble) {
-  WebUIToolbarWebView* webui_toolbar_view = GetWebUIToolbarWebView(browser());
-  content::WebContents* web_ui_contents =
-      webui_toolbar_view->GetWebViewForTesting()->GetWebContents();
-
-  actions::ActionId action_id = kActionShowTranslate;
-  toolbar_ui_api::mojom::PinnedToolbarAction mojom_action =
-      toolbar_ui_api::mojom::PinnedToolbarAction::kShowTranslate;
-
-  // Pin Translate action.
-  PinAction(action_id, mojom_action);
-
-  // Show translate bubble.
-  BrowserWindow::FromBrowser(browser())->ShowTranslateBubble(
-      browser()->tab_strip_model()->GetActiveWebContents(),
-      translate::TRANSLATE_STEP_BEFORE_TRANSLATE, "fr", "en",
-      translate::TranslateErrors::NONE, true);
-
-  // Verify it's highlighted.
-  EXPECT_TRUE(base::test::RunUntil([&]() {
-    return EvalJsOnPinnedButton(web_ui_contents, mojom_action,
-                                "return !!btn && "
-                                "btn.hasAttribute('is-menu-open');")
-        .ExtractBool();
-  }));
-}

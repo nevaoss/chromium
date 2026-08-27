@@ -138,7 +138,6 @@ enum class PaintBenchmarkMode;
 
 typedef uint64_t DOMTimeStamp;
 using LayerTreeFlags = unsigned;
-using MainThreadScrollingReasons = uint32_t;
 
 struct LifecycleData {
   LifecycleData() {}
@@ -1314,8 +1313,6 @@ class CORE_EXPORT LocalFrameView final
   Member<PaintControllerPersistentData> paint_controller_persistent_data_;
   Member<PaintArtifactCompositor> paint_artifact_compositor_;
 
-  MainThreadScrollingReasons main_thread_scrolling_reasons_;
-
   scoped_refptr<LocalFrameUkmAggregator> ukm_aggregator_;
   unsigned forced_layout_stack_depth_;
   std::optional<LocalFrameUkmAggregator::ScopedForcedLayoutTimer>
@@ -1363,8 +1360,7 @@ class CORE_EXPORT LocalFrameView final
   // A set of objects needing a transform property tree update. These updates
   // are deferred until the end prepaint and updating them directly, if
   // possible, avoids needing to walk the tree to update them. See:
-  // https://chromium.googlesource.com/chromium/src/+/main/third_party/blink/renderer/core/paint/README.md#Transform-update-optimization
-  // for more on the fast path
+  // ../paint/README.md#Property-tree-update-optimization
   // TODO(yotha): unify these into one HeapHashMap.
   Member<GCedHeapHashSet<Member<LayoutObject>>> pending_transform_updates_;
   Member<GCedHeapHashSet<Member<LayoutObject>>> pending_opacity_updates_;

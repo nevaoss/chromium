@@ -38,7 +38,6 @@ import org.chromium.base.Callback;
 import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.SettableMonotonicObservableSupplier;
 import org.chromium.base.test.BaseRobolectricTestRunner;
-import org.chromium.base.test.util.Batch;
 import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.build.annotations.Nullable;
@@ -55,7 +54,6 @@ import java.util.List;
 /** Unit tests for {@link MultiColumnTitleUpdater}. */
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(qualifiers = "sw600dp")
-@Batch(Batch.UNIT_TESTS)
 public class MultiColumnTitleUpdaterTest {
 
     /** Fake PreferenceFragment for testing. */
@@ -256,6 +254,71 @@ public class MultiColumnTitleUpdaterTest {
 
         // Clicking parent title ("Appearance") should pop to previous title and trigger callback.
         verify(mTitleTapCallback).onResult("appearance_entry");
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.SETTINGS_IN_TAB)
+    public void testSearchResults_settingsInTabEnabled_noBackButton() {
+        List<MultiColumnSettings.Title> titles = new ArrayList<>();
+        titles.add(
+                new MultiColumnSettings.Title("uuid1", createTitleSupplier("Appearance"), 0, null));
+        titles.add(
+                new MultiColumnSettings.Title(
+                        "uuid2", createTitleSupplier("Search results"), 1, null));
+        mMultiColumnSettings.setFakeTitles(titles);
+
+        MultiColumnTitleUpdater updater =
+                new MultiColumnTitleUpdater(
+                        /* savedInstanceState= */ null,
+                        mMultiColumnSettings,
+                        mActivity,
+                        mContainer,
+                        /* mainTitleSetter= */ (t) -> {},
+                        /* titleTapCallback= */ mTitleTapCallback,
+                        /* initialBreadcrumbPath= */ null);
+
+        updater.setFirstVisibleTitleIndex(1);
+        updater.onTitleUpdated();
+
+        // When viewing Search results (mFirstVisibleTitleIndex = 1), back button should be hidden.
+        // Container should only contain 1 DetailedTitle ("Search results").
+        assertEquals(1, mContainer.getChildCount());
+        assertTrue(mContainer.getChildAt(0) instanceof TextView);
+        assertEquals("Search results", ((TextView) mContainer.getChildAt(0)).getText().toString());
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.SETTINGS_IN_TAB)
+    public void
+            testDetailPageFromSearchResults_settingsInTabEnabled_showsBackButtonToSearchResults() {
+        List<MultiColumnSettings.Title> titles = new ArrayList<>();
+        titles.add(
+                new MultiColumnSettings.Title("uuid1", createTitleSupplier("Appearance"), 0, null));
+        titles.add(
+                new MultiColumnSettings.Title(
+                        "uuid2", createTitleSupplier("Search results"), 1, null));
+        titles.add(new MultiColumnSettings.Title("uuid3", createTitleSupplier("Theme"), 2, null));
+        mMultiColumnSettings.setFakeTitles(titles);
+
+        MultiColumnTitleUpdater updater =
+                new MultiColumnTitleUpdater(
+                        /* savedInstanceState= */ null,
+                        mMultiColumnSettings,
+                        mActivity,
+                        mContainer,
+                        /* mainTitleSetter= */ (t) -> {},
+                        /* titleTapCallback= */ mTitleTapCallback,
+                        /* initialBreadcrumbPath= */ null);
+
+        updater.setFirstVisibleTitleIndex(1);
+        updater.onTitleUpdated();
+
+        // When viewing detail page from search results, back button should be shown pointing to
+        // Search results.
+        assertEquals(2, mContainer.getChildCount());
+        assertTrue(mContainer.getChildAt(0) instanceof ChromeImageButton);
+        assertTrue(mContainer.getChildAt(1) instanceof TextView);
+        assertEquals("Theme", ((TextView) mContainer.getChildAt(1)).getText().toString());
     }
 
     public static class TestSearchViewProviderFragment extends Fragment

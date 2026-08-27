@@ -52,10 +52,6 @@
 #include "ui/aura/window.h"
 #endif
 
-#if BUILDFLAG(IS_MAC)
-#include "chrome/browser/ui/omnibox/omnibox_everywhere/omnibox_everywhere_mac_utils.h"
-#endif
-
 namespace omnibox_everywhere {
 
 DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(OmniboxEverywhereUIManager,
@@ -158,14 +154,13 @@ content::WebContents* OmniboxEverywhereUIManager::web_contents() const {
 
 void OmniboxEverywhereUIManager::ShowForProfile(Profile* profile,
                                                 gfx::NativeWindow context) {
-  if (widget_ && profile_ == profile && widget_->IsVisible()) {
+  if (widget_ && profile_ == profile) {
     ActivateAndFocus();
     return;
   }
 
   if (widget_) {
-    // If a different profile (or a hidden/closing widget) is present, clean up
-    // first.
+    // If a different profile is present, clean up first.
     CleanUpWidget();
   }
 
@@ -175,7 +170,6 @@ void OmniboxEverywhereUIManager::ShowForProfile(Profile* profile,
     browser_collection_observation_.Reset();
   }
   profile_ = profile;
-  is_navigating_ = false;
 
   EnsureContentsWrapperInitialized(profile_);
   CreateAndInitWidget(context);
@@ -247,7 +241,7 @@ void OmniboxEverywhereUIManager::CreateAndInitWidget(
     widget_delegate_->SetDraggableRegion(draggable_region_);
   }
   params.delegate = widget_delegate_.get();
-  params.z_order = ui::ZOrderLevel::kFloatingUIElement;
+  params.z_order = ui::ZOrderLevel::kFloatingWindow;
   if (context) {
     params.context = context;
   }
@@ -255,14 +249,13 @@ void OmniboxEverywhereUIManager::CreateAndInitWidget(
   display::Display target_display =
       display::Screen::Get()->GetDisplayNearestPoint(
           display::Screen::Get()->GetCursorScreenPoint());
-  gfx::Rect screen_bounds = target_display.bounds();
+  gfx::Rect work_area = target_display.work_area();
   constexpr gfx::Size kDefaultPopupSize(864, 632);
-  params.bounds =
-      gfx::Rect(screen_bounds.x() +
-                    (screen_bounds.width() - kDefaultPopupSize.width()) / 2,
-                screen_bounds.y() +
-                    (screen_bounds.height() - kDefaultPopupSize.height()) / 2,
-                kDefaultPopupSize.width(), kDefaultPopupSize.height());
+  params.bounds = gfx::Rect(
+      work_area.x() + (work_area.width() - kDefaultPopupSize.width()) / 2,
+      work_area.y() + (work_area.height() - kDefaultPopupSize.height()) / 2,
+      kDefaultPopupSize.width(), kDefaultPopupSize.height());
+
   auto web_view = std::make_unique<views::WebView>(profile_);
   web_view->SetProperty(views::kElementIdentifierKey,
                         kOmniboxEverywhereElementId);
@@ -279,6 +272,11 @@ void OmniboxEverywhereUIManager::CreateAndInitWidget(
   widget_delegate_->SetContentsView(std::move(web_view));
 
   widget_->Init(std::move(params));
+#if BUILDFLAG(IS_MAC)
+  widget_->SetActivationIndependence(true);
+  widget_->SetVisibleOnAllWorkspaces(true);
+  widget_->SetCanAppearInExistingFullscreenSpaces(true);
+#endif
   widget_->MakeCloseSynchronous(base::BindOnce(
       &OmniboxEverywhereUIManager::OnWidgetClosed, base::Unretained(this)));
   widget_observation_.Observe(widget_.get());
@@ -299,11 +297,7 @@ void OmniboxEverywhereUIManager::ActivateAndFocus() {
     return;
   }
   widget_->Show();
-#if BUILDFLAG(IS_MAC)
-  OrderOmniboxEverywhereFrontOnMac(widget_.get());
-#else
   widget_->Activate();
-#endif
 
   if (widget_->GetContentsView()) {
     widget_->GetContentsView()->RequestFocus();
@@ -315,7 +309,15 @@ void OmniboxEverywhereUIManager::ActivateAndFocus() {
 
 void OmniboxEverywhereUIManager::Close() {
   if (widget_) {
-    widget_->Close();
+    if (is_file_chooser_open_ || is_drive_picker_open_) {
+      CleanUpWidget();
+      return;
+    }
+    if (is_context_menu_open_ && context_menu_runner_) {
+      context_menu_runner_->Cancel();
+      is_context_menu_open_ = false;
+    }
+    widget_->Hide();
   }
 }
 
@@ -356,7 +358,6 @@ void OmniboxEverywhereUIManager::CleanUpWidget() {
   is_file_chooser_open_ = false;
   is_drive_picker_open_ = false;
   is_context_menu_open_ = false;
-  is_navigating_ = false;
   draggable_region_.reset();
   browser_collection_observation_.Reset();
 }

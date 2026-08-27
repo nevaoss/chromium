@@ -11,9 +11,11 @@
 #include "content/public/browser/preloading.h"
 #include "content/public/browser/preloading_trigger_type.h"
 #include "content/public/browser/web_contents_delegate.h"
+#include "content/public/browser/web_contents_observer.h"
 
 namespace content {
 class BrowserContext;
+class NavigationHandle;
 class WebContents;
 }  // namespace content
 
@@ -31,7 +33,8 @@ namespace pwc {
 //
 // This is the skeleton: enforcement (process isolation, service worker
 // controls, navigation policy, capability bridge) is added by later CLs.
-class PrivilegedWebContents : public content::WebContentsDelegate {
+class PrivilegedWebContents : public content::WebContentsDelegate,
+                              public content::WebContentsObserver {
  public:
   // Creates a PrivilegedWebContents for `component` in `browser_context`.
   // `policy_delegate` supplies the component's origin allowlists and is
@@ -66,6 +69,24 @@ class PrivilegedWebContents : public content::WebContentsDelegate {
   content::PreloadingEligibility IsPrerender2Supported(
       content::WebContents& web_contents,
       content::PreloadingTriggerType trigger_type) override;
+  // A privileged WebContents never creates related windows
+  // (ChromeContentBrowserClient::CanCreateWindow denies them), so this must be
+  // unreachable.
+  content::WebContents* AddNewContents(
+      content::WebContents* source,
+      std::unique_ptr<content::WebContents> new_contents,
+      const GURL& target_url,
+      WindowOpenDisposition disposition,
+      const blink::mojom::WindowFeatures& window_features,
+      bool user_gesture,
+      bool* was_blocked) override;
+
+  // content::WebContentsObserver:
+  // Disables the back-forward cache for every committed document, so a
+  // privileged page is never restored from bfcache (which would skip the
+  // navigation gauntlet). Cross-document back/forward becomes a fresh load.
+  void DidFinishNavigation(
+      content::NavigationHandle* navigation_handle) override;
 
  private:
   PrivilegedWebContents(PrivilegedComponent component,

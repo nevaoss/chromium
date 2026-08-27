@@ -30,9 +30,6 @@ namespace l10n_util {
 // Takes normalized locale as `locale`. Returns language part (before '-').
 COMPONENT_EXPORT(UI_BASE) std::string_view GetLanguage(std::string_view locale);
 
-// Takes normalized locale as `locale`. Returns country part (after '-').
-COMPONENT_EXPORT(UI_BASE) std::string_view GetCountry(std::string_view locale);
-
 enum class CheckLocaleMode {
   // Checks that the localization data is present on disk. It is the default,
   // but potentially costly.
@@ -108,12 +105,6 @@ std::u16string GetDisplayNameForLocale(std::string_view locale,
 COMPONENT_EXPORT(UI_BASE)
 std::u16string GetDisplayNameForCountry(std::string_view country_code,
                                         std::string_view display_locale);
-
-// Produce a vector of parent locales for given locale.
-// It includes the current locale in the result.
-// sr_Cyrl_RS generates sr_Cyrl_RS, sr_Cyrl and sr.
-COMPONENT_EXPORT(UI_BASE)
-std::vector<std::string> GetParentLocales(std::string_view current_locale);
 
 //
 // Mac Note: See l10n_util_mac.h for some NSString versions and other support.

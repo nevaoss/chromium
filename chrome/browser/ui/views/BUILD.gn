@@ -45,7 +45,10 @@ component("views") {
 
   defines = [ "CHROME_VIEWS_IMPLEMENTATION" ]
 
-  public_deps = [ "//chrome/browser:browser_public_dependencies" ]
+  public_deps = [
+    "//chrome/browser:browser_public_dependencies",
+    "//chrome/browser/ui/tabs:tab_enums",
+  ]
 
   deps = [
     "//base",
@@ -76,6 +79,14 @@ component("views") {
       "//chromeos/ash/experiences/arc/intent_helper",
     ]
   }
+}
+
+source_set("bubble_anchor_util_views") {
+  public = [ "bubble_anchor_util_views.h" ]
+  public_deps = [
+    "//chrome/browser/ui:bubble_anchor_util",
+    "//ui/views",
+  ]
 }
 
 source_set("layout_provider") {

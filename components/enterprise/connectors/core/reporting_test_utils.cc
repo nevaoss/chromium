@@ -99,7 +99,8 @@ void SetOnSecurityEventReporting(
 
 ::chrome::cros::reporting::proto::TriggeredRuleInfo MakeTriggeredRuleInfo(
     ::chrome::cros::reporting::proto::TriggeredRuleInfo::Action action,
-    bool has_watermark) {
+    bool has_watermark,
+    bool has_screenshot_protection) {
   ::chrome::cros::reporting::proto::TriggeredRuleInfo info;
   info.set_action(action);
   info.set_rule_id(123);
@@ -107,6 +108,9 @@ void SetOnSecurityEventReporting(
   info.set_url_category("test rule category");
   if (has_watermark) {
     info.set_has_watermarking(true);
+  }
+  if (has_screenshot_protection) {
+    info.set_has_screenshot_protection(true);
   }
   return info;
 }
@@ -335,99 +339,6 @@ void EventReportValidatorBase::ExpectSensitiveDataEvent(
           });
 }
 
-void EventReportValidatorBase::ValidateField(
-    const base::DictValue* value,
-    const std::string& field_key,
-    const std::optional<std::string>& expected_value) {
-  if (expected_value.has_value()) {
-    ASSERT_TRUE(value->FindString(field_key))
-        << "Mismatch in field " << field_key << "\nNo value was set"
-        << "\nExpected value: " << expected_value.value();
-    ASSERT_EQ(*value->FindString(field_key), expected_value.value())
-        << "Mismatch in field " << field_key
-        << "\nActual value: " << value->FindString(field_key)
-        << "\nExpected value: " << expected_value.value();
-  } else {
-    ASSERT_EQ(nullptr, value->FindString(field_key))
-        << "Field " << field_key << " should not be populated. It has value "
-        << *value->FindString(field_key);
-  }
-}
 
-void EventReportValidatorBase::ValidateField(
-    const base::DictValue* value,
-    const std::string& field_key,
-    const std::optional<std::u16string>& expected_value) {
-  const std::string* s = value->FindString(field_key);
-  if (expected_value.has_value()) {
-    ASSERT_TRUE(s) << "Mismatch in field " << field_key << "\nNo value was set"
-                   << "\nExpected value: " << expected_value.value();
-
-    const std::u16string actual_string_value = base::UTF8ToUTF16(*s);
-    ASSERT_EQ(actual_string_value, expected_value.value())
-        << "Mismatch in field " << field_key
-        << "\nActual value: " << actual_string_value
-        << "\nExpected value: " << expected_value.value();
-  } else {
-    ASSERT_EQ(nullptr, s) << "Field " << field_key
-                          << " should not be populated. It has value "
-                          << *value->FindString(field_key);
-  }
-}
-
-void EventReportValidatorBase::ValidateField(
-    const base::DictValue* value,
-    const std::string& field_key,
-    const std::optional<int>& expected_value) {
-  if (expected_value.has_value()) {
-    ASSERT_TRUE(value->FindInt(field_key).has_value())
-        << "Mismatch in field " << field_key << "\nNo value was set"
-        << "\nExpected value: " << expected_value.value();
-    ASSERT_EQ(value->FindInt(field_key), expected_value)
-        << "Mismatch in field " << field_key
-        << "\nActual value: " << value->FindInt(field_key).value()
-        << "\nExpected value: " << expected_value.value();
-  } else {
-    ASSERT_FALSE(value->FindInt(field_key).has_value())
-        << "Field " << field_key << " should not be populated. It has value "
-        << *value->FindInt(field_key);
-  }
-}
-
-void EventReportValidatorBase::ValidateField(const base::DictValue* value,
-                                             const std::string& field_key,
-                                             int expected_value) {
-  ASSERT_TRUE(value->FindInt(field_key).has_value())
-      << "Mismatch in field " << field_key << "\nNo value was set"
-      << "\nExpected value: " << expected_value;
-  ASSERT_EQ(value->FindInt(field_key), expected_value)
-      << "Mismatch in field " << field_key
-      << "\nActual value: " << value->FindInt(field_key).value()
-      << "\nExpected value: " << expected_value;
-}
-
-void EventReportValidatorBase::ValidateField(const base::DictValue* value,
-                                             const std::string& field_key,
-                                             bool expected_value) {
-  ASSERT_TRUE(value->FindBool(field_key).has_value())
-      << "Mismatch in field " << field_key << "\nNo value was set"
-      << "\nExpected value: " << expected_value;
-  ASSERT_EQ(value->FindBool(field_key), expected_value)
-      << "Mismatch in field " << field_key
-      << "\nActual value: " << value->FindBool(field_key).value()
-      << "\nExpected value: " << expected_value;
-}
-
-void EventReportValidatorBase::ValidateField(const base::DictValue* value,
-                                             const std::string& field_key,
-                                             int64_t expected_value) {
-  ASSERT_TRUE(base::ValueToInt64(value->Find(field_key)).has_value())
-      << "Mismatch in field " << field_key << "\nNo value was set"
-      << "\nExpected value: " << expected_value;
-  ASSERT_EQ(base::ValueToInt64(value->Find(field_key)).value(), expected_value)
-      << "Mismatch in field " << field_key << "\nActual value: "
-      << base::ValueToInt64(value->Find(field_key)).value()
-      << "\nExpected value: " << expected_value;
-}
 
 }  // namespace enterprise_connectors::test

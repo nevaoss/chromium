@@ -281,49 +281,15 @@ class Browser : public TabStripModelObserver,
 
   // Constructors, Creation, Showing //////////////////////////////////////////
 
-  // WARNING: Use of this is DEPRECATED and exists only to support pre-existing
-  // browser unittests.
-  // TODO(crbug.com/417766643): Remove this once all use of Browser in unittests
-  // has been eliminated.
-  static std::unique_ptr<Browser> DeprecatedCreateOwnedForTesting(
-      const CreateParams& params);
-
   Browser(const Browser&) = delete;
   Browser& operator=(const Browser&) = delete;
 
   ~Browser() override;
 
-  // Sets whether the UI should be immediately updated when scheduled on a
-  // test.
-  void set_update_ui_immediately_for_testing() {
-    update_ui_immediately_for_testing_ = true;
-  }
-
   // Accessors ////////////////////////////////////////////////////////////////
 
   base::WeakPtr<Browser> AsWeakPtr();
   base::WeakPtr<const Browser> AsWeakPtr() const;
-
-  // OnBeforeUnload handling //////////////////////////////////////////////////
-
-  // Called when the window closing process has been cancelled.
-  void NotifyWindowCloseCancelled(BrowserWindowInterface::ClosingStatus status);
-
-  // Called when the window closing process has been completed and the window
-  // can be safely destroyed.
-  void OnWindowCloseComplete();
-
-  // In-progress download termination handling /////////////////////////////////
-
-
-  // External state change handling ////////////////////////////////////////////
-
-  // Called by Navigate() when a navigation has occurred in a tab in
-  // this Browser. Updates the UI for the start of this navigation.
-  void UpdateUIForNavigationInTab(content::WebContents* contents,
-                                  ui::PageTransition transition,
-                                  NavigateParams::WindowAction action,
-                                  bool user_initiated);
 
   // Interface implementations ////////////////////////////////////////////////
 
@@ -404,6 +370,8 @@ class Browser : public TabStripModelObserver,
   friend class FullscreenControllerInteractiveTest;
   friend BrowserWindowInterface* CreateBrowserWindow(
       BrowserWindowCreateParams create_params);
+  friend std::unique_ptr<Browser> DeprecatedCreateOwnedBrowserWindowForTesting(
+      BrowserWindowCreateParams create_params);
   FRIEND_TEST_ALL_PREFIXES(AppModeTest, EnableAppModeTest);
   FRIEND_TEST_ALL_PREFIXES(BrowserCloseTest, LastIncognito);
   FRIEND_TEST_ALL_PREFIXES(BrowserCloseTest, LastRegular);
@@ -442,6 +410,13 @@ class Browser : public TabStripModelObserver,
   // of the created Browser instance.
   static Browser* Create(const CreateParams& params);
 
+  // WARNING: Use of this is DEPRECATED and exists only to support pre-existing
+  // browser unittests.
+  // TODO(crbug.com/417766643): Remove this once all use of Browser in unittests
+  // has been eliminated.
+  static std::unique_ptr<Browser> DeprecatedCreateOwnedForTesting(
+      const CreateParams& params);
+
   explicit Browser(const CreateParams& params);
 
   // Command and state updating ///////////////////////////////////////////////
@@ -463,34 +438,6 @@ class Browser : public TabStripModelObserver,
 
   // Handle changes to kDevToolsAvailability preference.
   void OnDevToolsAvailabilityChanged();
-
-  // UI update coalescing and handling ////////////////////////////////////////
-
-  // Asks the toolbar (and as such the location bar) to update its state to
-  // reflect the current tab's current URL, security state, etc.
-  // If |should_restore_state| is true, we're switching (back?) to this tab and
-  // should restore any previous location bar state (such as user editing) as
-  // well.
-  void UpdateToolbar(bool should_restore_state);
-
-  // Asks the toolbar to layout and redraw to reflect the current security
-  // state.
-  void UpdateToolbarSecurityState();
-
-  // Does one or both of the following for each bit in |changed_flags|:
-  // . If the update should be processed immediately, it is.
-  // . If the update should processed asynchronously (to avoid lots of ui
-  //   updates), then scheduled_updates_ is updated for the |source| and update
-  //   pair and a task is scheduled (assuming it isn't running already)
-  //   that invokes ProcessPendingUIUpdates.
-  void ScheduleUIUpdate(content::WebContents* source, unsigned changed_flags);
-
-  // Processes all pending updates to the UI that have been scheduled by
-  // ScheduleUIUpdate in scheduled_updates_.
-  void ProcessPendingUIUpdates();
-
-  // Removes all entries from scheduled_updates_ whose source is contents.
-  void RemoveScheduledUpdatesFor(content::WebContents* contents);
 
   // Getters for UI ///////////////////////////////////////////////////////////
 
@@ -559,10 +506,6 @@ class Browser : public TabStripModelObserver,
   // TODO(crbug.com/423956131): Remove this function.
   bool HasFindBarController();
 
-  // Notifies the tab UI that it should update when the browser schedule or
-  // process UI updates.
-  void NotifyTabUIChanged(tabs::TabInterface* tab, TabChangeType change_type);
-
   // Data members /////////////////////////////////////////////////////////////
 
   PrefChangeRegistrar profile_pref_registrar_;
@@ -587,42 +530,12 @@ class Browser : public TabStripModelObserver,
   // across sessions.
   const SessionID session_id_;
 
-  // UI update coalescing and handling ////////////////////////////////////////
-
-  typedef std::map<tabs::TabInterface*, int> UpdateMap;
-
-  // Maps from TabInterface to pending UI updates that need to be processed.
-  // We don't update things like the URL or tab title right away to avoid
-  // flickering and extra painting.
-  // See ScheduleUIUpdate and ProcessPendingUIUpdates.
-  UpdateMap scheduled_updates_;
-
-  // In-progress download termination handling /////////////////////////////////
-
-  /////////////////////////////////////////////////////////////////////////////
-
   std::unique_ptr<ScopedKeepAlive> keep_alive_;
-
-  // If true, immediately updates the UI when scheduled.
-  bool update_ui_immediately_for_testing_ = false;
 
   WebContentsCollection web_contents_collection_{this};
 
-  // If true, the Browser window has been closed and this will be deleted
-  // shortly (after a PostTask).
-  bool is_delete_scheduled_ = false;
-
   // If true, the browser window was created as a tab modal pop-up.
   bool is_tab_modal_popup_ = false;
-
-  using BrowserDidCloseCallbackList =
-      base::RepeatingCallbackList<void(BrowserWindowInterface*)>;
-  BrowserDidCloseCallbackList browser_did_close_callback_list_;
-
-  using BrowserCloseCancelledCallbackList =
-      base::RepeatingCallbackList<void(BrowserWindowInterface*,
-                                       BrowserWindowInterface::ClosingStatus)>;
-  BrowserCloseCancelledCallbackList browser_close_cancelled_callback_list_;
 
   using DidActiveTabChangeCallbackList =
       base::RepeatingCallbackList<void(BrowserWindowInterface*)>;
@@ -640,9 +553,6 @@ class Browser : public TabStripModelObserver,
 
   // Tracks whether the browser object is fully initialized.
   bool is_initialized_ = false;
-
-  // The following factory is used for chrome update coalescing.
-  base::WeakPtrFactory<Browser> chrome_updater_factory_{this};
 
   // The following factory is used to close the frame at a later time.
   base::WeakPtrFactory<Browser> weak_factory_{this};

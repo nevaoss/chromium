@@ -103,7 +103,9 @@ EntityInstance CreateEntityInstance(EntityTypeName type_name,
       /*nickname=*/"",
       /*date_modified=*/base::Time::Now(),
       /*use_count=*/0,
-      /*use_date=*/base::Time(), EntityInstance::RecordType::kPersonalContext,
+      /*use_date=*/base::Time(),
+      // TODO(crbug.com/542083924): Populate payload.
+      EntityInstance::PersonalContextRecordTypePayload{.sources = {}},
       EntityInstance::AreAttributesReadOnly(true),
       std::move(frecency_override));
 }

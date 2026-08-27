@@ -587,6 +587,7 @@
 <translation id="2027465737841872819">ప్లాస్టిక్</translation>
 <translation id="2027707238798802149">కార్డ్ అందుబాటులో లేదు</translation>
 <translation id="2032962459168915086"><ph name="BEGIN_LINK" />ప్రాక్సీని, ఫైర్‌వాల్‌ను చెక్ చేయడం<ph name="END_LINK" /></translation>
+<translation id="2033550997390154638">Chromeకు సంబంధించిన ఈ ఇన్‌స్టెన్స్, మాన్యువల్‌గా సెట్ చేసిన కమాండ్ లైన్ ఫ్లాగ్‌లతో రన్ అవుతోంది. కమాండ్ లైన్ ఫ్లాగ్‌లు ఎప్పుడైనా మారవచ్చని, వాటికి సపోర్ట్ లేదని గమనించండి.</translation>
 <translation id="2033900728810589426">షార్ట్‌కట్ అనేది <ph name="DEFAULT_SEARCH_PROVIDER_KEYWORD_POLICY_NAME" /> ద్వారా నిర్వచించబడిన ఆటోమేటిక్ సెర్చ్ ప్రొవైడర్ కీవర్డ్ లాగా ఉండకూడదు: <ph name="SHORTCUT_NAME" /></translation>
 <translation id="2034971124472263449">ఏదేమైనా సేవ్ చేయండి</translation>
 <translation id="2036514476578229158">మీరు ఈ సైట్‌ను సందర్శించడానికి అనుమతి కోరారు. మీ తల్లిదండ్రులు Family Linkలో రిప్లయి ఇవ్వవచ్చు.</translation>
@@ -1056,7 +1057,6 @@
 <translation id="2824775600643448204">అడ్రస్‌ మరియు శోధన బార్</translation>
 <translation id="2826760142808435982"><ph name="CIPHER" />ను ఉపయోగించి కనెక్షన్ ఎన్‌క్రిప్ట్ చేయ‌బ‌డింది, ప్రామాణీకరించబడింది మరియు <ph name="KX" />ను కీలకమైన పరివర్తన విధానంగా ఉపయోగిస్తుంది.</translation>
 <translation id="2828797285817981634">మోషన్ సెన్సార్‌లకు ప్రస్తుతం అనుమతి ఉంది</translation>
-<translation id="2835170189407361413">ఫారమ్‌ను క్లియర్ చేయండి</translation>
 <translation id="2835907903001172712">బ్రౌజర్ ఓవర్‌వ్యూ</translation>
 <translation id="2837891525090413132">లాక్ చేసి, మీ కీబోర్డ్‌ను ఉపయోగించమని అడగవచ్చు</translation>
 <translation id="2839032553903800133">నోటిఫికేషన్‌లు బ్లాక్ చేయబడ్డాయి</translation>
@@ -3290,7 +3290,6 @@
 <translation id="6679354743514146922">Chrome బ్రౌజర్ <ph name="APP_NAME" />‌లో మీ పాస్‌వర్డ్‌ను పూరించడానికి ట్రై చేస్తోంది.</translation>
 <translation id="668132230070712111">వీడియో Google Driveకు సేవ్ చేయబడింది</translation>
 <translation id="6681790815630918386">CVC సేవ్ అయింది</translation>
-<translation id="6686570026048064255">Pix కోడ్ గుర్తింపును ఆఫ్ చేయడానికి, <ph name="BEGIN_LINK1" />Chrome సెట్టింగ్‌ల<ph name="END_LINK1" />కు వెళ్లండి</translation>
 <translation id="6687230248707087982">ఎన్వలప్ (ప్లెయిన్)</translation>
 <translation id="6687335167692595844">రిక్వెస్ట్ చేయబడిన ఫాంట్ సైజ్‌</translation>
 <translation id="6688743156324860098">అప్‌డేట్ చేయి…</translation>
@@ -4432,6 +4431,7 @@
 <translation id="8708134712139312373">బ్లూటూత్ పరికరాలకు కనెక్ట్ చేయడం కోసం సైట్ అనుమతి అడగవచ్చు</translation>
 <translation id="8710842507289500830">ఫాంట్ స్టయిల్</translation>
 <translation id="8712637175834984815">అర్థమైంది</translation>
+<translation id="8715198179991802709">మీరు సందర్శించడానికి ట్రై చేసిన వెబ్‌సైట్‌ను Chrome ఫ్లాగ్ చేసింది. 1 నిమిషం సర్వేలో పాల్గొనడం ద్వారా ఈ హెచ్చరికలను మెరుగుపరచడంలో మాకు సహాయపడండి.</translation>
 <translation id="8718314106902482036">పేమెంట్ పూర్తి కాలేదు</translation>
 <translation id="8719263113926255150"><ph name="ENTITY" />, <ph name="DESCRIPTION" />, శోధన సూచన</translation>
 <translation id="8719528812645237045">ఎగువ భాగంలో అనేక రంధ్రాలు</translation>
@@ -4559,7 +4559,6 @@
 <translation id="8932102934695377596">మీ గడియారం సమయం గతంలో ఉంది</translation>
 <translation id="893332455753468063">పేరుని జోడించండి</translation>
 <translation id="8938242527120341116">మీ డివైజ్ కంటెంట్ ఫిల్టర్‌లు, <ph name="BLOCKED_URL" />‌ను బ్లాక్ చేశాయి</translation>
-<translation id="8942355029279167844">ప్రోడక్ట్ అనుభవాన్ని మెరుగుపరచడం కోసం, <ph name="APP_NAME" />కు సమస్య విశ్లేషణ డేటాను సేకరించడానికి మీ అడ్మినిస్ట్రేట‌ర్ అనుమతిచ్చారు. మరింత సమాచారం కోసం <ph name="BEGIN_LINK" />https://www.parallels.com/pcep<ph name="END_LINK" />ను చూడండి.</translation>
 <translation id="8943282376843390568">నిమ్మపండు రంగు</translation>
 <translation id="8949410982325929394">టోన్</translation>
 <translation id="8949493680961858543">A1x4</translation>

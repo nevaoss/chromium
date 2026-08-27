@@ -5,6 +5,7 @@
 import '//resources/cr_components/searchbox/searchbox_dropdown.js';
 import '//resources/cr_components/searchbox/searchbox_input.js';
 import '//resources/cr_components/searchbox/searchbox_compose_button.js';
+import './omnibox_popup_contextual_entrypoint.js';
 
 import {SearchboxBrowserProxy} from '//resources/cr_components/searchbox/searchbox_browser_proxy.js';
 import type {ComposeClickEventDetail, SearchboxComposeButtonElement} from '//resources/cr_components/searchbox/searchbox_compose_button.js';
@@ -21,11 +22,13 @@ import {loadTimeData} from '//resources/js/load_time_data.js';
 import type {PropertyValues} from '//resources/lit/v3_0/lit.rollup.js';
 import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
 import {SelectionLineState} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
-import type {AutocompleteResult, PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerInterface as SearchboxPageHandlerInterface} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import type {PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerInterface as SearchboxPageHandlerInterface} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import type {Url} from '//resources/mojo/url/mojom/url.mojom-webui.js';
 
 import {browserProxyFactory, OmniboxEscapeAction} from './omnibox_popup.mojom-webui.js';
 import type {OmniboxInputState, PageCallbackRouter as PopupPageCallbackRouter, PageHandlerInterface as PopupPageHandlerInterface} from './omnibox_popup.mojom-webui.js';
+import type {OmniboxPopupContextualEntrypointElement} from './omnibox_popup_contextual_entrypoint.js';
+import type {OmniboxPopupContextualEntrypointButtonElement} from './omnibox_popup_contextual_entrypoint_button.js';
 import {getCss} from './omnibox_popup_searchbox.css.js';
 import {getHtml} from './omnibox_popup_searchbox.html.js';
 
@@ -149,12 +152,30 @@ export class OmniboxPopupSearchboxElement extends
         type: Boolean,
         reflect: true,
       },
+      /**
+       * Whether the input has selection or not. Used when the widget loses
+       * activation but should still show the selection,
+       */
+      hasInputSelection_: {
+        type: Boolean,
+        reflect: true,
+      },
+      /**
+       * Whether the input has focus or not. Used when the widget loses
+       * activation but should still show the focus ring.
+       */
+      isLogicallyFocused_: {
+        type: Boolean,
+        reflect: true,
+      },
     };
   }
 
   accessor canShowSecondarySide: boolean =
       canShowSecondarySideMediaQueryList.matches;
   accessor hasSecondarySide: boolean = false;
+  accessor isLogicallyFocused_: boolean = false;
+  accessor hasInputSelection_: boolean = false;
   accessor searchboxChromeRefreshTheming: boolean =
       loadTimeData.getBoolean('searchboxCr23Theming');
   accessor searchboxSteadyStateShadow: boolean =
@@ -185,6 +206,14 @@ export class OmniboxPopupSearchboxElement extends
     a11yLabel: '',
     icon: '',
   };
+
+  get showContextEntrypoint(): boolean {
+    return this.shadowRoot
+               ?.querySelector<OmniboxPopupContextualEntrypointElement>(
+                   'omnibox-popup-contextual-entrypoint')
+               ?.showContextEntrypoint ??
+        false;
+  }
 
   private eventTracker_ = new EventTracker();
   private searchboxPageHandler_: SearchboxPageHandlerInterface;
@@ -249,6 +278,10 @@ export class OmniboxPopupSearchboxElement extends
           this.onSetInputState_.bind(this)),
       this.popupCallbackRouter_.setFocus.addListener(
           this.onSetFocus_.bind(this)),
+      this.popupCallbackRouter_.clearAutocompleteMatches.addListener(
+          this.clearAutocompleteMatches.bind(this)),
+      this.popupCallbackRouter_.clearPopup.addListener(
+          this.onClearPopup_.bind(this)),
     ];
     this.eventTracker_.add(
         document, 'selectionchange', this.onSelectionChanged_.bind(this));
@@ -304,6 +337,15 @@ export class OmniboxPopupSearchboxElement extends
     if (changedProperties.has('searchboxChromeRefreshTheming')) {
       this.useWebkitSearchIcons_ = this.searchboxChromeRefreshTheming;
     }
+  }
+
+  getContextualEntrypointButton(): OmniboxPopupContextualEntrypointButtonElement
+      |null {
+    return this.shadowRoot
+               ?.querySelector<OmniboxPopupContextualEntrypointElement>(
+                   'omnibox-popup-contextual-entrypoint')
+               ?.getContextEntrypointElement() ??
+        null;
   }
 
   override firstUpdated(changedProperties: PropertyValues<this>) {
@@ -416,10 +458,6 @@ export class OmniboxPopupSearchboxElement extends
     return true;
   }
 
-  override isAutocompleteResultStale(result: AutocompleteResult): boolean {
-    return super.isAutocompleteResultStale(result) || !result.matches.length;
-  }
-
   //========================================================================
   // Event handlers
   //========================================================================
@@ -520,6 +558,44 @@ export class OmniboxPopupSearchboxElement extends
     }
   }
 
+  protected onInputCutOrCopy_(e: ClipboardEvent, isCut: boolean) {
+    const input = this.getInputElement().inputElement;
+    const start = input.selectionStart || 0;
+    const end = input.selectionEnd || 0;
+    if (start === end) {
+      return;
+    }
+
+    e.preventDefault();
+    const oldValue = input.value;
+    this.popupPageHandler_.onCutOrCopy(
+        this.currentSequenceNum_, isCut, oldValue, {start, end});
+
+    if (isCut) {
+      const newValue = oldValue.substring(0, start) + oldValue.substring(end);
+      this.userInputInProgress_ = true;
+      this.hasUserInput_ = !!newValue.trim();
+      this.getInputElement().setInput({text: newValue, inline: ''});
+      this.getInputElement().setSelectionRange(start, start);
+
+      if (newValue.trim()) {
+        this.queryAutocomplete(
+            newValue, /*preventInlineAutocomplete=*/ true,
+            /*isOnFocus=*/ false);
+      } else {
+        this.clearAutocompleteMatches();
+      }
+    }
+  }
+
+  protected onInputCopy_(e: ClipboardEvent) {
+    this.onInputCutOrCopy_(e, /*isCut=*/ false);
+  }
+
+  protected onInputCut_(e: ClipboardEvent) {
+    this.onInputCutOrCopy_(e, /*isCut=*/ true);
+  }
+
   protected showFullUrlOnDeselect_() {
     if (this.userInputInProgress_) {
       return;
@@ -548,6 +624,7 @@ export class OmniboxPopupSearchboxElement extends
    */
   private onSelectionChanged_() {
     const input = this.$.input.inputElement;
+    this.hasInputSelection_ = input.selectionStart !== input.selectionEnd;
     // Suppress selection updates during active IME text composition.
     if (this.shadowRoot.activeElement !== this.$.input || this.isComposing_) {
       return;
@@ -574,10 +651,9 @@ export class OmniboxPopupSearchboxElement extends
 
     // Clear any stale results and close the dropdown on a hard state reset.
     // Clear results here since focusout event may not fire.
-    if (this.result && this.isAutocompleteResultStale(this.result)) {
-      this.result = null;
-      this.dropdownIsVisible = false;
-    }
+    this.clearAutocompleteMatches();
+
+    this.isLogicallyFocused_ = state.isFocused;
 
     if (state.isFocused) {
       if (document.visibilityState === 'visible') {
@@ -596,17 +672,18 @@ export class OmniboxPopupSearchboxElement extends
       this.fullUrlShown_ = false;
     }
 
+    this.hasInputSelection_ = state.selection.start !== state.selection.end;
+
     this.selectRange(state.selection);
     this.getDropdownElement().unselect();
     // If zero-prefix suggestions are requested by the new state, initiate
-    // an on-focus autocomplete query. Otherwise, clear any existing matches
-    // so the suggestion dropdown is closed on state resets and tab switches.
+    // an on-focus autocomplete query.
     if (state.queryZps) {
       this.queryAutocomplete(
           state.text, /*preventInlineAutocomplete=*/ false,
           /*isOnFocus=*/ true);
     } else {
-      this.clearAutocompleteMatches();
+      // Prevent stale tracking of queried input across state updates.
       this.lastQueriedInput = state.text;
     }
   }
@@ -618,11 +695,11 @@ export class OmniboxPopupSearchboxElement extends
    * If hidden, defers the action until `visibilitychange`.
    */
   private onSetFocus_(isFocused: boolean) {
+    this.isLogicallyFocused_ = isFocused;
     if (isFocused) {
       if (document.visibilityState === 'visible') {
         this.deferredFocusAction_ = null;
         this.$.input.focus();
-        this.getInputElement().select();
       } else {
         // Defer focusing and selecting text if the document is currently
         // hidden, as DOM focus calls on hidden documents may be ignored.
@@ -634,6 +711,17 @@ export class OmniboxPopupSearchboxElement extends
     }
   }
 
+  /**
+   * Called by C++ via `ClearPopup` Mojo IPC when the popup is being hidden.
+   * Clears input text, selection range, and matches before resolving the Mojo
+   * callback to complete the hide handshake.
+   */
+  private async onClearPopup_(): Promise<void> {
+    this.$.input.setInputText('');
+    this.getInputElement().blur();
+    this.clearAutocompleteMatches();
+    await this.updateComplete;
+  }
   /**
    * Resets selection range, blurs input, and clears autocomplete matches when
    * focus is lost to external targets or when clicking outside.
@@ -665,7 +753,8 @@ export class OmniboxPopupSearchboxElement extends
       this.maybeShowFullUrl_();
     }
 
-    if (isFullSelection) {
+    const isLogicallyFocused = this.shadowRoot?.activeElement === this.$.input;
+    if (isFullSelection && isLogicallyFocused) {
       this.getInputElement().select();
     } else {
       this.$.input.setSelectionRange(

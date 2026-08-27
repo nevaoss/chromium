@@ -178,7 +178,9 @@ source_set("unit_tests") {
   testonly = true
 
   sources = [
+    "full_webui_omnibox_frame_unittest.cc",
     "omnibox_match_cell_view_unittest.cc",
+    "omnibox_popup_full_presenter_unittest.cc",
     "omnibox_popup_presenter_base_unittest.cc",
     "omnibox_result_view_unittest.cc",
     "omnibox_view_views_unittest.cc",
@@ -189,11 +191,13 @@ source_set("unit_tests") {
 
   deps = [
     ":omnibox",
+    ":test_support",
     "//chrome/app:command_ids",
     "//chrome/browser/autocomplete",
     "//chrome/browser/signin:test_support",
     "//chrome/browser/ui/browser_window",
     "//chrome/browser/ui/omnibox",
+    "//chrome/browser/ui/views:bubble_anchor_util_views",
     "//chrome/browser/ui/views:layout_provider",
     "//chrome/test:test_support",
     "//chrome/test/views",
@@ -214,6 +218,8 @@ source_set("test_support") {
   sources = [
     "omnibox_popup_view_views_test.cc",
     "omnibox_popup_view_views_test.h",
+    "test_location_bar.cc",
+    "test_location_bar.h",
   ]
 
   public_deps = [
@@ -224,6 +230,7 @@ source_set("test_support") {
     "//chrome/browser/themes:test_support",
     "//chrome/browser/ui/color:color_headers",
     "//chrome/browser/ui/omnibox",
+    "//chrome/browser/ui/views:bubble_anchor_util_views",
     "//chrome/browser/ui/views/frame",
     "//chrome/browser/ui/views/toolbar",
     "//chrome/test:test_support",

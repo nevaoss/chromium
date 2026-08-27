@@ -381,7 +381,7 @@ public class SettingsActivity extends ChromeBaseAppCompatActivity
     public void onAppHeaderStateChanged(AppHeaderState newState) {
         setCaptionBarHeight(newState.getAppHeaderHeight());
         assumeNonNull(mAppHeaderCoordinator)
-                .updateForegroundColor(SemanticColorUtils.getSettingsBackgroundColor(this));
+                .onBackgroundColorChanged(SemanticColorUtils.getSettingsBackgroundColor(this));
     }
 
     private void setCaptionBarHeight(int height) {
@@ -401,13 +401,7 @@ public class SettingsActivity extends ChromeBaseAppCompatActivity
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
         if (mMultiColumnSettings != null) {
-            for (Fragment fragment :
-                    mMultiColumnSettings.getChildFragmentManager().getFragments()) {
-                if (fragment.isAdded()
-                        && fragment instanceof PreferenceFragmentCompat preferenceFragmentCompat) {
-                    mContainmentHelper.postUpdateContainmentOnLayout(preferenceFragmentCompat);
-                }
-            }
+            mContainmentHelper.updateContainmentForAttachedFragments(getSupportFragmentManager());
         }
         if (mSearchCoordinator != null) mSearchCoordinator.onConfigurationChanged(newConfig);
     }

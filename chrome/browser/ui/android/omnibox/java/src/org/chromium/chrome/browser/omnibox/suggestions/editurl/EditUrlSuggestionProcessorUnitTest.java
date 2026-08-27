@@ -12,7 +12,6 @@ import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.argThat;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -93,20 +92,21 @@ public final class EditUrlSuggestionProcessorUnitTest {
     public static final GURL ESCAPED_PATH_URL =
             new GURL("https://pl.wikipedia.org/wiki/G%C5%BCeg%C5%BC%C3%B3%C5%82ka");
 
-    public @Rule MockitoRule mMockitoRule = MockitoJUnit.rule();
+    @Rule public final MockitoRule mMockitoRule = MockitoJUnit.rule();
 
-    private @Mock ShareDelegate mShareDelegate;
-    private @Mock Tab mTab;
-    private @Mock OmniboxImageSupplier mImageSupplier;
-    private @Mock SuggestionHost mSuggestionHost;
-    private @Mock ClipboardManager mClipboardManager;
-    private @Mock WebContents mWebContents;
-    private @Mock UrlBarEditingTextStateProvider mTextProvider;
-    private @Mock BookmarkState mBookmarkState;
-    private @Mock OmniboxActionDelegate mActionDelegate;
-    private @Mock UkmRecorder.Natives mUkmRecorderJniMock;
-    private @Mock AutocompleteInput mInput;
-    private @Mock DomDistillerUrlUtilsJni mDomDistillerUrlUtilsJni;
+    @Mock private ShareDelegate mShareDelegate;
+    @Mock private Tab mTab;
+    @Mock private OmniboxImageSupplier mImageSupplier;
+    @Mock private SuggestionHost mSuggestionHost;
+    @Mock private ClipboardManager mClipboardManager;
+    @Mock private WebContents mWebContents;
+    @Mock private UrlBarEditingTextStateProvider mTextProvider;
+    @Mock private BookmarkState mBookmarkState;
+    @Mock private OmniboxActionDelegate mActionDelegate;
+    @Mock private UkmRecorder.Natives mUkmRecorderJniMock;
+    @Mock private AutocompleteInput mInput;
+    @Mock private DomDistillerUrlUtilsJni mDomDistillerUrlUtilsJni;
+    @Mock private SadTab mSadTab;
 
     private final UserDataHost mTabUserData = new UserDataHost();
     private final Supplier<Tab> mTabSupplier = () -> mTab;
@@ -237,9 +237,8 @@ public final class EditUrlSuggestionProcessorUnitTest {
 
     @Test
     public void doesProcessSuggestion_rejectMatchForSadTab() {
-        SadTab mockSadTab = mock(SadTab.class);
-        doReturn(true).when(mockSadTab).isShowing();
-        mTabUserData.setUserData(SadTab.class, mockSadTab);
+        doReturn(true).when(mSadTab).isShowing();
+        mTabUserData.setUserData(SadTab.class, mSadTab);
         assertFalse(mProcessor.doesProcessSuggestion(mMatch, 0));
         verifyNoMoreInteractions(mSuggestionHost, mShareDelegate, mClipboardManager);
     }

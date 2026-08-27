@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "base/compiler_specific.h"
+#include "base/test/task_environment.h"
 #include "components/viz/common/hit_test/aggregated_hit_test_region.h"
 #include "components/viz/common/hit_test/hit_test_region_list.h"
 #include "mojo/public/cpp/test_support/test_utils.h"
@@ -112,24 +113,53 @@ auto AnyHitTestRegionList() {
       fuzztest::VectorOf(AnyHitTestRegion()).WithMaxSize(100));
 }
 
+class HitTestStructTraitsTest : public testing::Test {
+ public:
+  HitTestStructTraitsTest() = default;
+  ~HitTestStructTraitsTest() override = default;
+
+ private:
+  // StructTraits for hit testing can return deserialization error traces,
+  // which have an implicit dependency on a functioning task environment to
+  // look up the current `MessageDispatchContext`.
+  base::test::SingleThreadTaskEnvironment task_environment_;
+};
+
+class HitTestStructTraitsFuzzTest {
+ public:
+  HitTestStructTraitsFuzzTest() = default;
+  ~HitTestStructTraitsFuzzTest() = default;
+
+  void AggregatedHitTestRegionFuzz(const AggregatedHitTestRegion& input);
+  void HitTestRegionListFuzz(const HitTestRegionList& input);
+
+ private:
+  // StructTraits for hit testing can return deserialization error traces,
+  // which have an implicit dependency on a functioning task environment to
+  // look up the current `MessageDispatchContext`.
+  base::test::SingleThreadTaskEnvironment task_environment_;
+};
+
 }  // namespace
 
-void AggregatedHitTestRegionFuzz(const AggregatedHitTestRegion& input) {
+void HitTestStructTraitsFuzzTest::AggregatedHitTestRegionFuzz(
+    const AggregatedHitTestRegion& input) {
   AggregatedHitTestRegion output;
   mojo::test::SerializeAndDeserialize<mojom::AggregatedHitTestRegion>(input,
                                                                       output);
 }
-FUZZ_TEST(StructTraitsTest, AggregatedHitTestRegionFuzz)
+FUZZ_TEST_F(HitTestStructTraitsFuzzTest, AggregatedHitTestRegionFuzz)
     .WithDomains(AnyAggregatedHitTestRegion());
 
-void HitTestRegionListFuzz(const HitTestRegionList& input) {
+void HitTestStructTraitsFuzzTest::HitTestRegionListFuzz(
+    const HitTestRegionList& input) {
   HitTestRegionList output;
   mojo::test::SerializeAndDeserialize<mojom::HitTestRegionList>(input, output);
 }
-FUZZ_TEST(StructTraitsTest, HitTestRegionListFuzz)
+FUZZ_TEST_F(HitTestStructTraitsFuzzTest, HitTestRegionListFuzz)
     .WithDomains(AnyHitTestRegionList());
 
-TEST(StructTraitsTest, AggregatedHitTestRegion) {
+TEST_F(HitTestStructTraitsTest, AggregatedHitTestRegion) {
   constexpr FrameSinkId frame_sink_id(1337, 1234);
   constexpr uint32_t flags = HitTestRegionFlags::kHitTestAsk;
   constexpr uint32_t async_hit_test_reasons =
@@ -152,7 +182,7 @@ TEST(StructTraitsTest, AggregatedHitTestRegion) {
   EXPECT_EQ(input.child_count, output.child_count);
 }
 
-TEST(StructTraitsTest, HitTestRegionList) {
+TEST_F(HitTestStructTraitsTest, HitTestRegionList) {
   std::optional<HitTestRegionList> input(std::in_place);
   input->flags = HitTestRegionFlags::kHitTestAsk;
   input->async_hit_test_reasons = AsyncHitTestReasons::kOverlappedRegion;
@@ -186,7 +216,7 @@ TEST(StructTraitsTest, HitTestRegionList) {
 
 // Ensures gfx::Transform doesn't mutate itself when its const methods are
 // called, to ensure it won't change in the read-only shared memory segment.
-TEST(StructTraitsTest, TransformImmutable) {
+TEST_F(HitTestStructTraitsTest, TransformImmutable) {
   auto t = gfx::Transform::RowMajor(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
                                     14, 15, 16);
   uint8_t mem[sizeof(t)];

@@ -454,6 +454,7 @@
 <translation id="2422174748424038845">Ako je izbrišete, svi će odmah izgubiti pristup grupi kartica <ph name="GROUP_NAME" /> i ona će se izbrisati sa svih uređaja.</translation>
 <translation id="2424805048070062787">Nastavite s ovom karticom</translation>
 <translation id="2426805022920575512">Odaberi drugi račun</translation>
+<translation id="2428543302546523788">Prikaži veze nakon uključivanja prozora za čitanje</translation>
 <translation id="243275146591958220">Otkaži preuzimanje</translation>
 <translation id="2434405374328098816">Već ste spremili zaporku za korisničko ime <ph name="USERNAME" /> na web-lokaciji <ph name="WEBSITE" /></translation>
 <translation id="2434918313224755415">Da biste pregledavali u anonimnom načinu, pomaknite se ulijevo.</translation>
@@ -468,6 +469,7 @@
 <translation id="2470654816840674524">Što mi omogućuje Gemini u Chromeu?</translation>
 <translation id="2473876017985765807">Već ste spremili zaporku za web-lokaciju <ph name="WEBSITE" /></translation>
 <translation id="247430852844518481">Možete postaviti podsjetnik da kasnije ponovo posjetite ovu stranicu</translation>
+<translation id="2476554421818031422">Pomažete unaprijediti poboljšano automatsko popunjavanje</translation>
 <translation id="2479148705183875116">Otvori Postavke</translation>
 <translation id="2482878487686419369">Obavijesti</translation>
 <translation id="2484459871750294497">Kako mogu omogućiti ovu značajku?</translation>
@@ -570,7 +572,6 @@
 <translation id="2816489851009559785">Izbornik → Postavke → Zadani preglednik</translation>
 <translation id="2818821771744632548">Odjavljeni ste s računa <ph name="USER_NAME" /> pri vraćanju iPhonea na zadano. Da biste se ponovno prijavili, dodirnite Nastavi u nastavku.</translation>
 <translation id="2819667972867209401">Kada je postavka uključena, podaci se spremaju na vaš Google račun. Kad je isključeno, podaci se spremaju samo na ovaj uređaj i brišu se ako se odjavite.</translation>
-<translation id="2825777862277359739">Prijavite se da biste pristupili svojim zaporkama, karticama, oznakama i drugim podacima.</translation>
 <translation id="2827760117436553203">Želite li da podaci budu odvojeni?</translation>
 <translation id="2829172210806130158">Pretražite zaslon</translation>
 <translation id="2831109159746537587">Zaokružite ili dodirnite sliku da biste pretražili</translation>
@@ -717,7 +718,6 @@
 <translation id="3377063233124932127">Sada se vaše spremljene oznake, zaporke i ostalo nalaze pri vrhu.</translation>
 <translation id="3378214228000661758">Izradite pristupni ključ za korisnika</translation>
 <translation id="3380352560400387991">Ova web-lokacija pokušava otvoriti aplikaciju. Time ćete izaći iz anonimnog načina.</translation>
-<translation id="3385742921291399323">Pristupite svojim spremljenim zaporkama, karticama, oznakama i drugim podacima.</translation>
 <translation id="3391765987934722383">Ne propustite sniženje cijene</translation>
 <translation id="3392923070107623576">Izradite grupu kartica i ostanite organizirani</translation>
 <translation id="3404232721752787413">Spremi u Google fotografije</translation>
@@ -1248,7 +1248,6 @@
 <translation id="5148717509369231739">Safari – uvoz</translation>
 <translation id="5152483358138813104">Brže se prijavite na svim svojim uređajima</translation>
 <translation id="515315847398512535">Pretraživanje zaslona isključeno je za vaš račun. Zatražite više informacija od administratora.</translation>
-<translation id="5155502059906700593">Premjestite adresnu traku na vrh ili dno.</translation>
 <translation id="5157638238828697074">Nešto nije u redu. Otvaranje aplikacije nije uspjelo.</translation>
 <translation id="5163417375525818870">PDF-ovi</translation>
 <translation id="5168414296986405587">Razvijeno za iPadOS</translation>
@@ -1567,7 +1566,6 @@ Handoff mora biti omogućen i u odjeljku Općenito u Postavkama, a vaši uređaj
 <translation id="6193448654517602979">Odaberite kartice</translation>
 <translation id="6196207969502475924">Glasovno pretraživanje</translation>
 <translation id="6198252989419008588">Promijeni PIN</translation>
-<translation id="6199783146233591178">Zaštite se u stvarnom vremenu uz poboljšano sigurno pregledavanje</translation>
 <translation id="6210079381482819663">Kartice koje se ne upotrebljavaju <ph name="THRESHOLD" /> ili više dana premještaju se ovdje. To uvijek možete promijeniti u <ph name="BEGIN_LINK" />postavkama<ph name="END_LINK" />.</translation>
 <translation id="6213281885682386884">Nije pronađena nijedna adresa</translation>
 <translation id="6218508144653756827">Ljubičastocrvena tema</translation>
@@ -1718,7 +1716,6 @@ Handoff mora biti omogućen i u odjeljku Općenito u Postavkama, a vaši uređaj
 <translation id="6626281667717553020">URI CPS-a</translation>
 <translation id="6627583120233659107">Uredi mapu</translation>
 <translation id="6629759408545977279">Izvor: <ph name="ORIGINATING_HOST" /></translation>
-<translation id="66306952800092318">Dodajte ovu dodatnu razinu zaštite od online prijetnji.</translation>
 <translation id="6634432609054530164">Vaša organizacija isključila je anonimni način</translation>
 <translation id="6637478299472506933">Preuzimanje nije uspjelo</translation>
 <translation id="6638511529934826365">Zumiraj tekst…</translation>
@@ -2068,6 +2065,7 @@ Da biste nastavili s računala, prebacite se na <ph name="OTHER_EMAIL" />. Dohva
 <translation id="78146569776629510">Preuzimanja</translation>
 <translation id="7815852444315004084">Zasad sakrij</translation>
 <translation id="7825973332242257878">Grupe kartica</translation>
+<translation id="7828344837949522075">Prikaži prijedlog</translation>
 <translation id="7839994177130598711">Članovi obitelji sada mogu koristiti vaše korisničko ime i zaporku kad upotrebljavaju Google upravitelj zaporki za prijavu na <ph name="BEGIN_BOLD" /><ph name="WEBSITE" /><ph name="END_BOLD" />.</translation>
 <translation id="7841180087127694526">Pretražite tekst koji ste kopirali</translation>
 <translation id="7841418003178675048">Odaberite koje će se kartice prikazivati na novoj kartici preglednika.</translation>

@@ -274,8 +274,12 @@ IOSGeminiSessionCancellationReason HistogramEnumFromGeminiCancelType(
               imagesAttachedCount:(NSUInteger)imagesAttachedCount
                    longPressImage:(BOOL)longPressImage
               pageContextAttached:(BOOL)pageContextAttached {
-  NSUInteger tabsAttachedCount =
-      self.attachedTabsCountProvider ? self.attachedTabsCountProvider() : 0;
+  NSUInteger tabsAttachedCount = 0;
+  if (IsGeminiMultiTabContextEnabled() && self.attachedTabsCountProvider) {
+    tabsAttachedCount = self.attachedTabsCountProvider();
+  } else {
+    tabsAttachedCount = pageContextAttached ? 1 : 0;
+  }
   BOOL usedMultiTab =
       self.isMultiTabUsedProvider ? self.isMultiTabUsedProvider() : NO;
 
@@ -319,6 +323,7 @@ IOSGeminiSessionCancellationReason HistogramEnumFromGeminiCancelType(
   // Ensure page context is attached for a new chat.
   ios::provider::UpdatePageAttachmentState(
       ios::provider::GeminiPageContextAttachmentState::kAttached);
+  ios::provider::SetShouldShowSuggestionChips(true);
   // Record the new chat metric.
   RecordGeminiNewChatButtonTapped();
 

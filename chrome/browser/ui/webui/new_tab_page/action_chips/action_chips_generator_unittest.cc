@@ -99,6 +99,9 @@ struct CreateSuggestionOptions {
   omnibox::SuggestTemplateInfo_FuseboxAction_QueryActionOverride
       query_action_override =
           omnibox::SuggestTemplateInfo_FuseboxAction::QUERY_ACTION_DEFAULT;
+  omnibox::SuggestTemplateInfo_FuseboxAction_SearchboxOverride
+      searchbox_override = omnibox::SuggestTemplateInfo_FuseboxAction::
+          SEARCHBOX_OVERRIDE_UNSPECIFIED;
 };
 
 SearchSuggestionParser::SuggestResult CreateSuggestion(
@@ -144,6 +147,12 @@ SearchSuggestionParser::SuggestResult CreateSuggestion(
         omnibox::SuggestTemplateInfo_FuseboxAction::QUERY_ACTION_DEFAULT) {
       suggest_template_info.mutable_fusebox_action()->set_query_action_override(
           options.query_action_override);
+    }
+    if (options.searchbox_override !=
+        omnibox::SuggestTemplateInfo_FuseboxAction::
+            SEARCHBOX_OVERRIDE_UNSPECIFIED) {
+      suggest_template_info.mutable_fusebox_action()->set_searchbox_override(
+          options.searchbox_override);
     }
     result.SetSuggestTemplateInfo(std::move(suggest_template_info));
   }
@@ -266,16 +275,40 @@ const ActionChipPtr& GetStaticStarterChip() {
         omnibox::SUGGEST_INVENTORY_AIM_CONVERSATION_STARTERS;
     return CreateActionChip(
         /*suggestion=*/"",
-        SuggestTemplateInfo::New(
-            IconType::kSearchLoopWithSparkle,
-            CreateFormattedString(
-                l10n_util::GetStringUTF8(IDS_NTP_ACTION_CHIP_STARTER_HEADING)),
-            CreateFormattedString(
-                l10n_util::GetStringUTF8(IDS_NTP_ACTION_CHIP_STARTER_BODY)),
-            std::move(action)),
+        SuggestTemplateInfo::New(IconType::kSearchLoopWithSparkle,
+                                 CreateFormattedString(l10n_util::GetStringUTF8(
+                                     IDS_NTP_ACTION_CHIP_STARTER_HEADING)),
+                                 CreateFormattedString(l10n_util::GetStringUTF8(
+                                     IDS_NTP_ACTION_CHIP_STARTER_BODY)),
+                                 std::move(action)),
         /*tab=*/nullptr);
   }());
   return *kInstance;
+}
+
+MATCHER(BrainstormChip, "") {
+  return arg && arg->suggest_template_info &&
+         arg->suggest_template_info->type_icon == IconType::kDraftSpark &&
+         arg->suggest_template_info->primary_text &&
+         arg->suggest_template_info->primary_text->text ==
+             l10n_util::GetStringUTF8(IDS_NTP_ACTION_CHIP_BRAINSTORM_HEADING);
+}
+
+MATCHER(LearnChip, "") {
+  return arg && arg->suggest_template_info &&
+         arg->suggest_template_info->type_icon == IconType::kDraftSpark &&
+         arg->suggest_template_info->primary_text &&
+         arg->suggest_template_info->primary_text->text ==
+             l10n_util::GetStringUTF8(
+                 IDS_NTP_ACTION_CHIP_HELP_ME_LEARN_HEADING);
+}
+
+MATCHER(WriteChip, "") {
+  return arg && arg->suggest_template_info &&
+         arg->suggest_template_info->type_icon == IconType::kDraftSpark &&
+         arg->suggest_template_info->primary_text &&
+         arg->suggest_template_info->primary_text->text ==
+             l10n_util::GetStringUTF8(IDS_NTP_ACTION_CHIP_WRITE_EDIT_HEADING);
 }
 
 // A container to store WebContents and its dependency.
@@ -426,6 +459,30 @@ TEST(ActionChipGeneratorTest,
   EXPECT_THAT(actual,
               ElementsAre(Eq(std::cref(GetStaticDeepSearchChip())),
                           Eq(std::cref(GetStaticImageGenerationChip()))));
+}
+
+TEST(ActionChipGeneratorTest, GenerateFallbackChips) {
+  EnvironmentFixture env;
+  GeneratorFixture generator_fixture;
+
+  EXPECT_CALL(generator_fixture.mock_aim_eligibility_service(),
+              IsCreateImagesEligible())
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(generator_fixture.mock_aim_eligibility_service(),
+              IsDeepSearchEligible())
+      .WillRepeatedly(Return(false));
+
+  base::test::ScopedFeatureList list;
+  list.InitWithFeaturesAndParameters(
+      {{ntp_features::kNtpScaledActionChips,
+        {{ntp_features::kNtpScaledActionChipsShowFallback.name, "true"}}}},
+      {});
+
+  base::RunLoop run_loop;
+  std::vector<ActionChipPtr> actual;
+  generator_fixture.GenerateActionChips(std::nullopt, run_loop, actual);
+  run_loop.Run();
+  EXPECT_THAT(actual, ElementsAre(BrainstormChip(), LearnChip(), WriteChip()));
 }
 
 TEST(ActionChipGeneratorTest,
@@ -679,10 +736,9 @@ TEST(ActionChipGeneratorTest, SteadyStateWithNewEndpoint) {
   TabInfoPtr tab_info = CreateTabInfo(&tab_fixture.mock_tab());
   ActionChipPtr chip0 = CreateActionChip(
       base::UTF16ToUTF8(recent_tab_suggestion),
-      SuggestTemplateInfo::New(IconType::kFavicon,
-                               CreateFormattedString(recent_tab_title),
-                               CreateFormattedString(recent_tab_subtitle),
-                               nullptr),
+      SuggestTemplateInfo::New(
+          IconType::kFavicon, CreateFormattedString(recent_tab_title),
+          CreateFormattedString(recent_tab_subtitle), nullptr),
       tab_info->Clone());
 
   auto ds_fusebox_action = fusebox_action::mojom::FuseboxAction::New();
@@ -707,6 +763,10 @@ TEST(ActionChipGeneratorTest, SteadyStateWithNewEndpoint) {
 
   EXPECT_THAT(actual, ElementsAre(Eq(std::cref(chip0)), Eq(std::cref(chip1)),
                                   Eq(std::cref(chip2))));
+  ASSERT_EQ(actual.size(), 3u);
+  ASSERT_TRUE(actual[1]->suggest_template_info->fusebox_action);
+  EXPECT_FALSE(
+      actual[1]->suggest_template_info->fusebox_action->searchbox_override);
   histogram_tester.ExpectUniqueSample("NewTabPage.ActionChips.RequestStatus",
                                       ActionChipsRequestStatus::kSuccess, 1);
   histogram_tester.ExpectUniqueSample("NewTabPage.ActionChips.SuggestionCount",
@@ -1404,9 +1464,11 @@ TEST(ActionChipGeneratorTest, ParsesAimActionCorrectly) {
                      .match_contents = "aim action",
                      .annotation = "aim action subtitle",
                      .suggestion = u"aim action suggestion",
-                     .query_action_override =
+                     .query_action_override = omnibox::
+                         SuggestTemplateInfo_FuseboxAction::QUERY_ACTION_PASTE,
+                     .searchbox_override =
                          omnibox::SuggestTemplateInfo_FuseboxAction::
-                             QUERY_ACTION_PASTE})});
+                             SEARCHBOX_OVERRIDE_COMPOSEBOX})});
             return nullptr;
           }));
 
@@ -1427,6 +1489,52 @@ TEST(ActionChipGeneratorTest, ParsesAimActionCorrectly) {
   EXPECT_EQ(
       actual[0]->suggest_template_info->fusebox_action->query_action_override,
       fusebox_action::mojom::QueryActionOverride::kPaste);
+  EXPECT_EQ(
+      actual[0]->suggest_template_info->fusebox_action->searchbox_override,
+      fusebox_action::mojom::SearchboxOverride::kComposebox);
 }
 
+TEST(ActionChipsGeneratorTest, SteadyStateFallbackChipsHavePreferredInventory) {
+  EnvironmentFixture env;
+  GeneratorFixture generator_fixture;
+
+  EXPECT_CALL(generator_fixture.mock_aim_eligibility_service(),
+              IsCreateImagesEligible())
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(generator_fixture.mock_aim_eligibility_service(),
+              IsDeepSearchEligible())
+      .WillRepeatedly(Return(false));
+
+  base::test::ScopedFeatureList list;
+  list.InitWithFeaturesAndParameters(
+      {{ntp_features::kNtpScaledActionChips,
+        {{ntp_features::kNtpScaledActionChipsShowFallback.name, "true"}}}},
+      {ntp_features::kNtpNextCanvasChip, ntp_features::kNtpStarterChip});
+
+  base::RunLoop run_loop;
+  std::vector<ActionChipPtr> actual;
+  generator_fixture.GenerateActionChips(std::nullopt, run_loop, actual);
+  run_loop.Run();
+
+  // Brainstorm chip.
+  EXPECT_TRUE(actual[0]->suggestion.empty());
+  ASSERT_TRUE(actual[0]->suggest_template_info->fusebox_action);
+  EXPECT_EQ(
+      actual[0]->suggest_template_info->fusebox_action->preferred_inventory,
+      omnibox::SuggestInventory::SUGGEST_INVENTORY_BRAINSTORM);
+
+  // Help me learn chip.
+  EXPECT_TRUE(actual[1]->suggestion.empty());
+  ASSERT_TRUE(actual[1]->suggest_template_info->fusebox_action);
+  EXPECT_EQ(
+      actual[1]->suggest_template_info->fusebox_action->preferred_inventory,
+      omnibox::SuggestInventory::SUGGEST_INVENTORY_HELP_ME_LEARN);
+
+  // Write or edit chip.
+  EXPECT_TRUE(actual[2]->suggestion.empty());
+  ASSERT_TRUE(actual[2]->suggest_template_info->fusebox_action);
+  EXPECT_EQ(
+      actual[2]->suggest_template_info->fusebox_action->preferred_inventory,
+      omnibox::SuggestInventory::SUGGEST_INVENTORY_WRITE_OR_EDIT);
+}
 }  // namespace

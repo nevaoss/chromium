@@ -57,6 +57,7 @@ SuggestionSection GetSuggestionSection(SuggestionType type) {
     case SuggestionType::kManageLoyaltyCard:
     case SuggestionType::kPendingStateSignin:
     case SuggestionType::kManageEnhancedAutofill:
+    case SuggestionType::kRemoveAutofillAi:
     case SuggestionType::kScanCreditCard:
     case SuggestionType::kSeePromoCodeDetails:
     case SuggestionType::kUndo:
@@ -165,6 +166,32 @@ bool ShouldApplyDeactivatedStyle(const Suggestion& suggestion) {
   // except for suggestion types like source attribution, which are
   // informational.
   return suggestion.type != SuggestionType::kAtMemorySourceAttribution;
+}
+
+bool ShouldResetIdleBarrier(AutofillSuggestionTriggerSource trigger_source) {
+  switch (trigger_source) {
+    case AutofillSuggestionTriggerSource::kAtMemoryContextMenu:
+    case AutofillSuggestionTriggerSource::kAtMemoryInactivityNudge:
+    case AutofillSuggestionTriggerSource::kAtMemoryKeyboardShortcut:
+    case AutofillSuggestionTriggerSource::kAtMemoryTriggerString:
+      return false;
+    case AutofillSuggestionTriggerSource::kUnspecified:
+    case AutofillSuggestionTriggerSource::kFormControlElementClicked:
+    case AutofillSuggestionTriggerSource::kTextareaFocusedWithoutClick:
+    case AutofillSuggestionTriggerSource::kContentEditableClicked:
+    case AutofillSuggestionTriggerSource::kTextFieldValueChanged:
+    case AutofillSuggestionTriggerSource::kTextFieldDidReceiveKeyDown:
+    case AutofillSuggestionTriggerSource::kOpenTextDataListChooser:
+    case AutofillSuggestionTriggerSource::kPasswordManager:
+    case AutofillSuggestionTriggerSource::kiOS:
+    case AutofillSuggestionTriggerSource::kManualFallbackPasswords:
+    case AutofillSuggestionTriggerSource::kComposeDialogLostFocus:
+    case AutofillSuggestionTriggerSource::kComposeDelayedProactiveNudge:
+    case AutofillSuggestionTriggerSource::kPasswordManagerProcessedFocusedField:
+    case AutofillSuggestionTriggerSource::kProactivePasswordRecovery:
+    case AutofillSuggestionTriggerSource::kGlic:
+      return true;
+  }
 }
 
 content::RenderFrameHost* GetRenderFrameHost_DoNotUse(

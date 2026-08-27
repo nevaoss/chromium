@@ -153,12 +153,20 @@ void RouteMap::EstablishNavigationStateFromActivation() {
   }
   NavigationHistoryEntry* to = activation->entry();
   NavigationHistoryEntry* from = activation->from();
-  if (!to || !from) {
+  V8NavigationType::Enum nav_type = activation->navigationType().AsEnum();
+  if (!to || (!from && nav_type != V8NavigationType::Enum::kReload)) {
     return;
   }
-  NavigationState::Create(GetDocument(), from->url(), to->url(),
+  KURL from_url = from ? from->url() : to->url();
+  NavigationState::Create(GetDocument(), from_url, to->url(),
                           /*source_element=*/nullptr);
   SetNavigationStarted();
+  if (nav_type == V8NavigationType::Enum::kTraverse) {
+    SetTraverseType(to->index() < from->index() ? NavigationState::kBack
+                                                : NavigationState::kForward);
+  } else if (nav_type == V8NavigationType::Enum::kReload) {
+    SetTraverseType(NavigationState::kReload);
+  }
 }
 
 void RouteMap::SetNavigationStarted() {
@@ -173,6 +181,9 @@ void RouteMap::SetNavigationStarted() {
 }
 
 void RouteMap::SetTraverseType(NavigationState::HistoryTraverseType type) {
+  if (!RuntimeEnabledFeatures::NavigationTypeAndPhaseEnabled()) {
+    return;
+  }
   auto* navigation_state = NavigationState::Get(&GetDocument());
   DCHECK(navigation_state);
   navigation_state->SetTraverseType(type);

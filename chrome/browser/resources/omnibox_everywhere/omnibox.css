@@ -29,7 +29,8 @@
   --color-searchbox-selection-background: rgba(26, 115, 232, 0.2);
   --color-searchbox-selection-foreground: #1f1f1f;
   --cr-composebox-background-color: var(--color-searchbox-background);
-  border: var(--cr-searchbox-border, none);
+  border: var(--cr-searchbox-border, 2px solid transparent);
+  box-sizing: border-box;
 
   border-radius: var(--cr-searchbox-border-radius);
   font-size: var(--cr-searchbox-font-size, 16px);
@@ -184,7 +185,7 @@ cr-searchbox-input::part(searchbox-input) {
 }
 
 :host([use-webkit-search-icons_]) #voiceSearchButton {
-  -webkit-mask-image: url(//resources/cr_components/searchbox/icons/mic.svg);
+  -webkit-mask-image: url(//resources/cr_components/searchbox/icons/mic_old.svg);
 }
 
 :host([use-webkit-search-icons_]) #lensSearchButton {
@@ -273,6 +274,13 @@ cr-searchbox-dropdown::part(dropdown-content) {
   --cr-icon-button-margin-start: 0px;
 }
 
+.contextualEntrypointContainer,
+.context-menu-container,
+cr-composebox-contextual-entrypoint-and-menu {
+  position: relative;
+  z-index: var(--cr-composebox-context-menu-z-index, 1001);
+}
+
 :host([is-fusebox-enabled]) .context-menu-container {
   padding-block: 10px;
 }
@@ -282,7 +290,7 @@ cr-searchbox-dropdown::part(dropdown-content) {
   padding-inline-end: 6px;
   padding-inline-start: 8px;
   position: relative;
-  z-index: 100;
+  z-index: var(--cr-composebox-context-menu-z-index, 1001);
 }
 
 :host-context(
@@ -404,3 +412,13 @@ cr-composebox-contextual-entrypoint-button,
 #profileIcon {
   -webkit-app-region: no-drag;
 }
+
+:host-context([webui-rounded-icons]):host([use-webkit-search-icons_]) #voiceSearchButton {
+  -webkit-mask-image: url(//resources/cr_components/searchbox/icons/mic.svg);
+}
+
+cr-searchbox-input::part(icon) {
+  -webkit-app-region: drag;
+  -webkit-user-drag: none;
+}
+

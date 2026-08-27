@@ -1062,7 +1062,6 @@ Anders wordt dit geblokkeerd door je privacyinstellingen. Hierdoor werkt de cont
 <translation id="2824775600643448204">Adres- en zoekbalk</translation>
 <translation id="2826760142808435982">De verbinding is gecodeerd en geverifieerd met <ph name="CIPHER" /> en gebruikt <ph name="KX" /> als mechanisme voor sleuteluitwisseling.</translation>
 <translation id="2828797285817981634">Bewegingssensoren voorlopig toegestaan</translation>
-<translation id="2835170189407361413">Formulier leegmaken</translation>
 <translation id="2835907903001172712">Browseroverzicht</translation>
 <translation id="2837891525090413132">Kan vragen om je toetsenbord te vergrendelen en te gebruiken</translation>
 <translation id="2839032553903800133">Meldingen geblokkeerd</translation>
@@ -3289,7 +3288,6 @@ Je kunt ook contact opnemen met de site-eigenaar en voorstellen dat die upgradet
 <translation id="6679354743514146922">Chrome probeert je wachtwoord in te vullen in <ph name="APP_NAME" />.</translation>
 <translation id="668132230070712111">Video opgeslagen in Google Drive</translation>
 <translation id="6681790815630918386">CVC opgeslagen</translation>
-<translation id="6686570026048064255">Als je detectie van Pix-codes wilt uitzetten, ga je naar de <ph name="BEGIN_LINK1" />Chrome-instellingen<ph name="END_LINK1" /></translation>
 <translation id="6687230248707087982">Envelop (effen)</translation>
 <translation id="6687335167692595844">Lettergrootte aangevraagd</translation>
 <translation id="6688743156324860098">Updaten…</translation>
@@ -4431,6 +4429,7 @@ Aanvullende informatie:
 <translation id="8708134712139312373">Kan vragen of deze site verbinding mag maken met bluetooth-apparaten</translation>
 <translation id="8710842507289500830">Letterstijl</translation>
 <translation id="8712637175834984815">Begrepen</translation>
+<translation id="8715198179991802709">Chrome heeft zojuist een website gemarkeerd die je probeerde te bezoeken. Help ons deze waarschuwingen te verbeteren door een enquête van 1 minuut in te vullen.</translation>
 <translation id="8718314106902482036">Betaling niet voltooid</translation>
 <translation id="8719263113926255150"><ph name="ENTITY" />, <ph name="DESCRIPTION" />, zoeksuggestie</translation>
 <translation id="8719528812645237045">Meerdere perforaties boven</translation>
@@ -4558,7 +4557,6 @@ Aanvullende informatie:
 <translation id="8932102934695377596">Je klok loopt achter</translation>
 <translation id="893332455753468063">Naam toevoegen</translation>
 <translation id="8938242527120341116">De contentfilters van je apparaat hebben <ph name="BLOCKED_URL" /> geblokkeerd</translation>
-<translation id="8942355029279167844">Je beheerder heeft toegestaan dat <ph name="APP_NAME" /> diagnostische gegevens verzamelt om de productfunctionaliteit te verbeteren. Zie <ph name="BEGIN_LINK" />https://www.parallels.com/pcep<ph name="END_LINK" /> voor meer informatie.</translation>
 <translation id="8943282376843390568">Limoengroen</translation>
 <translation id="8949410982325929394">Toon</translation>
 <translation id="8949493680961858543">A1x4</translation>

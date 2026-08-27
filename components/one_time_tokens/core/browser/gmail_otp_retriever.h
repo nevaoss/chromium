@@ -5,6 +5,7 @@
 #ifndef COMPONENTS_ONE_TIME_TOKENS_CORE_BROWSER_GMAIL_OTP_RETRIEVER_H_
 #define COMPONENTS_ONE_TIME_TOKENS_CORE_BROWSER_GMAIL_OTP_RETRIEVER_H_
 
+#include <iosfwd>
 #include <memory>
 #include <optional>
 #include <string>
@@ -26,6 +27,17 @@ class DomainRelationChecker;
 }  // namespace affiliations
 
 namespace one_time_tokens {
+
+// LINT.IfChange(GmailOtpSenderDomainMatchRejectionReason)
+enum class GmailOtpSenderDomainMatchRejectionReason {
+  kUnknown = 0,
+  kNoMatch = 1,
+  kGrouped = 2,
+  kPslMatchDisallowed = 3,
+  kGroupedAndPslMatchDisallowed = 4,
+  kMaxValue = kGroupedAndPslMatchDisallowed
+};
+// LINT.ThenChange(//tools/metrics/histograms/metadata/one_time_tokens/enums.xml:GmailOtpSenderDomainMatchRejectionReason)
 
 class OneTimeTokenService;
 enum class OneTimeTokenSource;
@@ -56,6 +68,9 @@ class GmailOtpRetriever {
     std::string otp;
     Source source;
   };
+
+  friend std::ostream& operator<<(std::ostream& os,
+                                  GmailOtpRetriever::Source source);
 
   using ResultCallback = base::OnceCallback<void(
       base::expected<Result, OneTimeTokenRetrievalError>)>;

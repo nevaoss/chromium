@@ -87,10 +87,12 @@ found in the LICENSE file.
     <dimen name="tab_list_editor_share_sheet_preview_thumbnail_padding">10dp</dimen>
 
     <!-- Large form factor device strip tab hover card dimensions -->
-    <dimen name="tab_hover_card_width">264dp</dimen>
+    <dimen name="tab_hover_card_width">288dp</dimen>
     <dimen name="tab_hover_card_window_horizontal_margin">8dp</dimen>
     <dimen name="tab_hover_card_thumbnail_height">135dp</dimen>
     <dimen name="tab_hover_card_text_content_margin">12dp</dimen>
+    <dimen name="tab_hover_card_footer_row_spacing">8dp</dimen>
+    <dimen name="tab_hover_card_footer_text_end_padding">24dp</dimen>
     <dimen name="tab_hover_card_url_top_margin">4dp</dimen>
     <dimen name="tab_hover_card_corner_radius">8dp</dimen>
     <dimen name="tab_hover_card_elevation">6dp</dimen>
@@ -212,7 +214,6 @@ found in the LICENSE file.
     <dimen name="vertical_tab_item_title_margin_end">4dp</dimen>
     <dimen name="vertical_tab_item_favicon_margin_end">8dp</dimen>
     <dimen name="vertical_tab_item_media_indicator_margin_end">12dp</dimen>
-    <dimen name="vertical_tab_item_ai_indicator_margin_vertical">2dp</dimen>
     <dimen name="vertical_tab_item_ai_indicator_width">2dp</dimen>
     <dimen name="vertical_tab_item_actuation_icon_size">20dp</dimen>
     <dimen name="vertical_tab_item_corner_radius">8dp</dimen>
@@ -224,9 +225,13 @@ found in the LICENSE file.
     <dimen name="vertical_tab_spine_radius">4dp</dimen>
 
     <!-- Dimens for vertical pinned tabs -->
+    <!-- TODO(crbug.com/509226293): A11y requires touch target to be a minimum of 48dp. -->
     <dimen name="vertical_tab_pinned_item_width">42dp</dimen>
+    <dimen name="vertical_tab_pinned_item_min_width">32dp</dimen>
     <dimen name="vertical_tab_pinned_item_height">32dp</dimen>
+    <dimen name="vertical_tab_pinned_item_gap">4dp</dimen>
     <dimen name="vertical_tab_pinned_item_ai_indicator_margin_start">2dp</dimen>
+    <dimen name="vertical_tab_pinned_item_margin_bottom">4dp</dimen>
 
     <!-- New Tab button dimens.-->
     <dimen name="vertical_tabs_new_tab_button_height">32dp</dimen>
@@ -241,7 +246,6 @@ found in the LICENSE file.
     <dimen name="vertical_tabs_header_button_size">32dp</dimen>
     <dimen name="vertical_tabs_header_button_padding">4dp</dimen>
     <dimen name="vertical_tabs_header_button_gap">2dp</dimen>
-    <dimen name="vertical_tabs_header_button_collapsed_margin_end">8dp</dimen>
 
     <!-- Dimens for tab search -->
     <dimen name="tab_search_overlay_width">264dp</dimen>

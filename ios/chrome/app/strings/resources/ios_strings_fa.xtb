@@ -454,6 +454,7 @@
 <translation id="2422174748424038845">اگر گروه زبانه را حذف کنید، همه دسترسی به گروه زبانه «<ph name="GROUP_NAME" />» را فوراً ازدست می‌دهند و این گروه زبانه از همه دستگاه‌ها حذف می‌شود.</translation>
 <translation id="2424805048070062787">ادامه کار با این زبانه</translation>
 <translation id="2426805022920575512">انتخاب یک حساب دیگر</translation>
+<translation id="2428543302546523788">نمایش پیوندها وقتی «حالت خواندن» روشن است</translation>
 <translation id="243275146591958220">لغو بارگیری</translation>
 <translation id="2434405374328098816">قبلاً گذرواژه‌ای برای «<ph name="USERNAME" />» در <ph name="WEBSITE" /> ذخیره کرده‌اید</translation>
 <translation id="2434918313224755415">برای مرور در «حالت ناشناس»، می‌توانید به چپ پیمایش کنید.</translation>
@@ -468,6 +469,7 @@
 <translation id="2470654816840674524">‏با «Gemini در Chrome» چه کارهایی می‌توانم انجام دهم؟</translation>
 <translation id="2473876017985765807">قبلاً گذرواژه‌ای برای <ph name="WEBSITE" /> ذخیره کرده‌اید</translation>
 <translation id="247430852844518481">برای بازدید مجدد از این صفحه در فرصتی دیگر، می‌توانید یادآوری تنظیم کنید</translation>
+<translation id="2476554421818031422">شما درحال کمک به بهبود تکمیل خودکار بهبودیافته هستید.</translation>
 <translation id="2479148705183875116">رفتن به «تنظیمات»</translation>
 <translation id="2482878487686419369">اعلان‌ها</translation>
 <translation id="2484459871750294497">چگونه این ویژگی را فعال کنم؟</translation>
@@ -570,7 +572,6 @@
 <translation id="2816489851009559785">منو ← تنظیمات ← مرورگر پیش‌فرض</translation>
 <translation id="2818821771744632548">‏به‌عنوان بخشی از بازنشانی iPhone، از سیستم حساب <ph name="USER_NAME" /> خارج شدید. برای ورود مجدد به سیستم، روی «ادامه» در زیر تک‌ضرب بزنید.</translation>
 <translation id="2819667972867209401">‏وقتی روشن باشد، داده‌ها در «حساب Google» شما ذخیره می‌شود. وقتی خاموش باشد، داده‌ها فقط در این دستگاه ذخیره می‌شود و درصورت خروج از سیستم، داده‌ها حذف می‌شود.</translation>
-<translation id="2825777862277359739">به سیستم وارد شوید تا گذرواژه‌ها، زبانه‌ها، نشانک‌ها، و موارد دیگر را دریافت کنید.</translation>
 <translation id="2827760117436553203">داده‌ها جدا نگه داشته شود؟</translation>
 <translation id="2829172210806130158">جستجو در صفحه</translation>
 <translation id="2831109159746537587">برای جستجو کردن، دور عکس موردنظر دایره بکشید یا روی آن تک‌ضرب بزنید</translation>
@@ -717,7 +718,6 @@
 <translation id="3377063233124932127">اکنون نشانک‌ها، گذرواژه‌ها، و دیگر موارد ذخیره‌شده در بالا نمایش داده می‌شوند.</translation>
 <translation id="3378214228000661758">ایجاد گذرکلید برای</translation>
 <translation id="3380352560400387991">این سایت تلاش می‌کند برنامه‌ای را باز کند. با این کار، از حالت «ناشناس» خارج خواهید شد.</translation>
-<translation id="3385742921291399323">گذرواژه‌ها، زبانه‌ها، نشانک‌ها، و دیگر موارد ذخیره‌شده را دریافت کنید.</translation>
 <translation id="3391765987934722383">کاهش قیمت را ازدست ندهید</translation>
 <translation id="3392923070107623576">با ایجاد گروه زبانه، منظم بمانید</translation>
 <translation id="3404232721752787413">‏ذخیره در Google Photos</translation>
@@ -1248,7 +1248,6 @@
 <translation id="5148717509369231739">‏درون‌بُرد Safari</translation>
 <translation id="5152483358138813104">سریع‌تر در همه دستگاه‌هایتان به سیستم وارد شوید</translation>
 <translation id="515315847398512535">«جستجوی صفحه» برای حسابتان خاموش است. برای اطلاعات بیشتر با سرپرست خود تماس بگیرید.</translation>
-<translation id="5155502059906700593">جای نوار نشانی را به بالا یا پایین تغییر دهید.</translation>
 <translation id="5157638238828697074">مشکلی پیش آمد. برنامه باز نشد.</translation>
 <translation id="5163417375525818870">PDF</translation>
 <translation id="5168414296986405587">‏ساخته‌شده برای iPadOS</translation>
@@ -1567,7 +1566,6 @@ Handoff باید در بخش عمومی تنظیمات نیز فعال شود و
 <translation id="6193448654517602979">انتخاب زبانه‌ها</translation>
 <translation id="6196207969502475924">جستجوی گفتاری</translation>
 <translation id="6198252989419008588">تغییر دادن پین</translation>
-<translation id="6199783146233591178">با «مرور ایمن پیشرفته»، محافظت بی‌درنگ دریافت کنید</translation>
 <translation id="6210079381482819663">برگه‌هایی که <ph name="THRESHOLD" /> روز یا بیشتر استفاده نشده‌اند به اینجا منتقل می‌شوند. هرزمان بخواهید می‌توانید آن را در <ph name="BEGIN_LINK" />تنظیمات<ph name="END_LINK" /> تغییر دهید.</translation>
 <translation id="6213281885682386884">نشانی‌ای وجود ندارد‏</translation>
 <translation id="6218508144653756827">زمینه سرخابی</translation>
@@ -1718,7 +1716,6 @@ Handoff باید در بخش عمومی تنظیمات نیز فعال شود و
 <translation id="6626281667717553020">CPS URI</translation>
 <translation id="6627583120233659107">ویرایش پوشه</translation>
 <translation id="6629759408545977279">از: <ph name="ORIGINATING_HOST" /></translation>
-<translation id="66306952800092318">این لایه محافظتی بیشتر را دربرابر تهدیدهای آنلاین اضافه کنید.</translation>
 <translation id="6634432609054530164">سازمانتان «حالت ناشناس» را خاموش کرده است</translation>
 <translation id="6637478299472506933">بارگیری نشد</translation>
 <translation id="6638511529934826365">بزرگ‌نمایی نوشتار…</translation>
@@ -2068,6 +2065,7 @@ Handoff باید در بخش عمومی تنظیمات نیز فعال شود و
 <translation id="78146569776629510">بارگیری‌ها</translation>
 <translation id="7815852444315004084">فعلاً پنهان کردن</translation>
 <translation id="7825973332242257878">گروه زبانه</translation>
+<translation id="7828344837949522075">نمایش پیشنهاد</translation>
 <translation id="7839994177130598711">‏اعضای خانواده‌تان اکنون می‌توانند هنگام ورود به سیستم <ph name="BEGIN_BOLD" /><ph name="WEBSITE" /><ph name="END_BOLD" /> بااستفاده از «مدیر گذرواژه Google»، نام کاربری و گذرواژه شما را به‌کار ببرند.</translation>
 <translation id="7841180087127694526">جستجوی نوشتار کپی‌شده</translation>
 <translation id="7841418003178675048">انتخاب کنید چه کارت‌هایی در صفحه زبانه جدید نشان داده شود.</translation>

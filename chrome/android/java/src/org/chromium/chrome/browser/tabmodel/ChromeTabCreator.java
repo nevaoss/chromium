@@ -376,7 +376,8 @@ public class ChromeTabCreator implements TabCreator, NeedsTabModel, NeedsTabMode
             // Check if the tab is being created asynchronously.
             int assignedTabId = IntentHandler.getTabId(intent);
             boolean isReparenting = isReparenting(assignedTabId);
-            AsyncTabParams asyncParams = mAsyncTabParamsManager.remove(assignedTabId);
+            AsyncTabParams asyncParams =
+                    mAsyncTabParamsManager.getAsyncTabParams().get(assignedTabId);
             if ((type == TabLaunchType.FROM_REPARENTING
                             || type == TabLaunchType.FROM_REPARENTING_BACKGROUND)
                     && asyncParams == null) {
@@ -394,6 +395,7 @@ public class ChromeTabCreator implements TabCreator, NeedsTabModel, NeedsTabMode
             @TabCreationState int creationState = TabCreationState.LIVE_IN_FOREGROUND;
             if (isReparenting) {
                 TabReparentingParams params = (TabReparentingParams) asyncParams;
+                assert params != null;
                 tab = params.getTabToReparent();
 
                 assert intent != null;
@@ -527,6 +529,7 @@ public class ChromeTabCreator implements TabCreator, NeedsTabModel, NeedsTabMode
                 creationState = TabCreationState.LIVE_IN_BACKGROUND;
             }
             mTabModel.addTab(tab, position, type, creationState);
+            mAsyncTabParamsManager.remove(assignedTabId);
             return tab;
         }
     }
@@ -551,6 +554,7 @@ public class ChromeTabCreator implements TabCreator, NeedsTabModel, NeedsTabMode
         // performance using an existing WebContents.
         try (TraceEvent te = TraceEvent.scoped("ChromeTabCreator.createTabWithWebContents")) {
             final int position = evaluateNewTabPosition(suggestedPosition, parentId);
+            Profile tabProfile = assumeNonNull(Profile.fromWebContents(webContents));
 
             boolean openInForeground = mOrderController.willOpenInForeground(type, mIncognito);
             TabDelegateFactory delegateFactory =
@@ -562,7 +566,7 @@ public class ChromeTabCreator implements TabCreator, NeedsTabModel, NeedsTabMode
                 // The webContents may not have a renderer. Treat it as FROZEN_FOR_LAZY_LOAD
                 // so that the TabStateAttribute forces an immediate write.
                 tab =
-                        TabBuilder.createLazyTabWithWebContents(getProfile())
+                        TabBuilder.createLazyTabWithWebContents(tabProfile)
                                 .setParent(parent)
                                 .setWindow(mNativeWindow)
                                 .setLaunchType(type)
@@ -574,7 +578,7 @@ public class ChromeTabCreator implements TabCreator, NeedsTabModel, NeedsTabMode
                 creationState = TabCreationState.FROZEN_FOR_LAZY_LOAD;
             } else {
                 tab =
-                        TabBuilder.createLiveTab(getProfile(), !openInForeground)
+                        TabBuilder.createLiveTab(tabProfile, !openInForeground)
                                 .setParent(parent)
                                 .setWindow(mNativeWindow)
                                 .setLaunchType(type)

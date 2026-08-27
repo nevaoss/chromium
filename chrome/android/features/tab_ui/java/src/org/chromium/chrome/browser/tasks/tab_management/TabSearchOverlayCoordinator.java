@@ -49,6 +49,7 @@ import org.chromium.chrome.browser.document.ChromeLauncherActivity;
 import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
 import org.chromium.chrome.browser.omnibox.BackKeyBehaviorDelegate;
 import org.chromium.chrome.browser.omnibox.LocationBarEmbedder;
+import org.chromium.chrome.browser.omnibox.UrlBar;
 import org.chromium.chrome.browser.omnibox.suggestions.OmniboxLoadUrlParams;
 import org.chromium.chrome.browser.omnibox.suggestions.action.OmniboxActionDelegateImpl;
 import org.chromium.chrome.browser.profiles.Profile;
@@ -161,8 +162,8 @@ public class TabSearchOverlayCoordinator implements BackPressHandler {
 
         mModel = TabSearchOverlayProperties.createDefaultModel();
         mModel.set(TabSearchOverlayProperties.VISIBLE, false);
-        mModel.set(TabSearchOverlayProperties.ON_SCRIM_CLICK, (v) -> hide());
-        mModel.set(TabSearchOverlayProperties.ON_CLOSE_CLICK, (v) -> hide());
+        mModel.set(TabSearchOverlayProperties.ON_SCRIM_CLICK, (_) -> hide());
+        mModel.set(TabSearchOverlayProperties.ON_CLOSE_CLICK, (_) -> hide());
         mModel.set(TabSearchOverlayProperties.ON_HIDE_FINISHED, this::onHideFinished);
 
         mSearchBoxDataProvider = new SearchBoxDataProvider();
@@ -210,10 +211,7 @@ public class TabSearchOverlayCoordinator implements BackPressHandler {
                                         false);
         final LinearLayout panelContainer = mPanelContainer;
         View panelView = panelContainer.findViewById(R.id.tab_search_overlay_panel);
-        panelView.addOnLayoutChangeListener(
-                (v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
-                    updateExclusionRects();
-                });
+        panelView.addOnLayoutChangeListener((_, _, _, _, _, _, _, _, _) -> updateExclusionRects());
         View searchActivityView = panelContainer.findViewById(R.id.search_activity_container);
 
         setupWindowFocusListener(panelContainer);
@@ -360,6 +358,14 @@ public class TabSearchOverlayCoordinator implements BackPressHandler {
         var searchUiCoordinator = assumeNonNull(mSearchUiCoordinator);
         searchUiCoordinator.setDefaultStatusIconOverrideResId(R.drawable.ic_suggestion_magnifier);
 
+        // Shrink the size of the UrlBar text from the default (16sp) to medium (14sp) so the hint
+        // text fits within the given viewport given the tab search overlay has a fixed small width.
+        var locationBarCoordinator = searchUiCoordinator.getLocationBarCoordinator();
+        var urlBar = (UrlBar) locationBarCoordinator.getContainerView().findViewById(R.id.url_bar);
+        if (urlBar != null) {
+            urlBar.setTextAppearance(R.style.TextAppearance_TextMedium);
+        }
+
         // If the profile supplier is null (rare), default to the non-incognito state as it is the
         // safest choice in terms of incognito agnostic wording.
         boolean isIncognito =
@@ -368,8 +374,7 @@ public class TabSearchOverlayCoordinator implements BackPressHandler {
                 isIncognito
                         ? R.string.hub_search_empty_hint_incognito
                         : R.string.hub_search_empty_hint;
-        searchUiCoordinator
-                .getLocationBarCoordinator()
+        locationBarCoordinator
                 .getUrlBarCoordinator()
                 .setUrlBarHintText(mActivity.getResources().getString(hintTextRes));
     }
@@ -737,10 +742,6 @@ public class TabSearchOverlayCoordinator implements BackPressHandler {
     }
 
     // Testing methods.
-
-    @Nullable SearchUiCoordinator getSearchUiCoordinatorForTesting() {
-        return mSearchUiCoordinator;
-    }
 
     @Nullable LinearLayout getPanelContainerForTesting() {
         return mPanelContainer;

@@ -26,6 +26,7 @@
 #include "ui/display/screen.h"
 #include "ui/display/win/screen_win.h"
 #include "ui/gfx/geometry/rect_conversions.h"
+#include "ui/gfx/win/hwnd_util.h"
 #include "ui/views/win/hwnd_util.h"
 #include "url/gurl.h"
 
@@ -355,9 +356,7 @@ void VisualGuidedSetterControllerWin::PauseLayoutObservation() {
 
 void VisualGuidedSetterControllerWin::OnWebContentsHidden() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (overlay_) {
-    overlay_->Hide();
-  }
+  HideOverlayArrow();
   if (IsSettingsWindowAlive()) {
     // Drop HWND_TOPMOST so the Settings window behaves like a normal floating
     // window and doesn't remain pinned on top of Chrome while viewing other
@@ -389,6 +388,11 @@ void VisualGuidedSetterControllerWin::UpdateDockedLayout() {
     return;
   }
   if (!IsSettingsWindowValid()) {
+    // Reachable for a latched window that is not closed but is not showable
+    // either — minimized, or cloaked because the whole desktop is inactive.
+    // Both are exempted from IsSettingsWindowClosed() above, so the flow stays
+    // alive; only the arrow must not be left pointing at a hidden window.
+    UpdateOverlay();
     return;
   }
 
@@ -450,15 +454,53 @@ void VisualGuidedSetterControllerWin::UpdateDockedLayout() {
 }
 
 bool VisualGuidedSetterControllerWin::IsSettingsWindowAlive() const {
-  return settings_hwnd_ && ::IsWindow(settings_hwnd_);
+  return settings_hwnd_ && IsWindowAlive(settings_hwnd_);
 }
 
 bool VisualGuidedSetterControllerWin::IsSettingsWindowValid() const {
-  return IsSettingsWindowAlive() && ::IsWindowVisible(settings_hwnd_);
+  return IsSettingsWindowAlive() && IsWindowOnScreen(settings_hwnd_) &&
+         !IsWindowCloaked(settings_hwnd_);
 }
 
 bool VisualGuidedSetterControllerWin::IsSettingsWindowClosed() const {
-  return settings_hwnd_ && !::IsWindow(settings_hwnd_);
+  if (!settings_hwnd_) {
+    return false;
+  }
+  if (!IsWindowAlive(settings_hwnd_)) {
+    return true;
+  }
+  // Closing a UWP window such as Settings often does not destroy its
+  // ApplicationFrameWindow: the frame is kept alive hidden or DWM-cloaked
+  // while the process is suspended. Treat the latched window as closed when
+  // it is no longer genuinely visible — unless that is explained by
+  // something other than a close:
+  // - a minimized window is cloaked by the shell but the user can restore it;
+  // - when the Chrome window is cloaked too, the whole desktop went inactive
+  //   (virtual desktop switch, Win+D), which says nothing about Settings.
+  if (IsWindowMinimized(settings_hwnd_)) {
+    return false;
+  }
+  if (chrome_hwnd_ && IsWindowAlive(chrome_hwnd_) &&
+      IsWindowCloaked(chrome_hwnd_)) {
+    return false;
+  }
+  return !IsWindowOnScreen(settings_hwnd_) || IsWindowCloaked(settings_hwnd_);
+}
+
+bool VisualGuidedSetterControllerWin::IsWindowAlive(HWND hwnd) const {
+  return ::IsWindow(hwnd);
+}
+
+bool VisualGuidedSetterControllerWin::IsWindowOnScreen(HWND hwnd) const {
+  return ::IsWindowVisible(hwnd);
+}
+
+bool VisualGuidedSetterControllerWin::IsWindowCloaked(HWND hwnd) const {
+  return gfx::IsWindowCloaked(hwnd);
+}
+
+bool VisualGuidedSetterControllerWin::IsWindowMinimized(HWND hwnd) const {
+  return ::IsIconic(hwnd);
 }
 
 std::optional<gfx::Rect> VisualGuidedSetterControllerWin::GetAnchorRectScreen()
@@ -485,9 +527,7 @@ std::optional<gfx::Rect> VisualGuidedSetterControllerWin::GetAnchorRectScreen()
 
 void VisualGuidedSetterControllerWin::EnterDegradedFloating(Outcome reason) {
   outcome_ = reason;
-  if (overlay_) {
-    overlay_->Hide();
-  }
+  HideOverlayArrow();
   if (IsSettingsWindowValid()) {
     ::SetWindowPos(
         settings_hwnd_, HWND_NOTOPMOST, 0, 0, 0, 0,
@@ -537,41 +577,58 @@ void VisualGuidedSetterControllerWin::UpdateOverlay() {
   if (!is_running_ || is_degraded_ || !IsSettingsWindowValid() ||
       !chrome_hwnd_ || ::IsIconic(chrome_hwnd_) ||
       (parent_widget_ && parent_widget_->IsMinimized())) {
-    overlay_->Hide();
+    HideOverlayArrow();
     return;
   }
 
   if (!web_contents() ||
       web_contents()->GetVisibility() != content::Visibility::VISIBLE ||
       !IsDefaultBrowserWebUiUrl(web_contents()->GetLastCommittedURL())) {
-    overlay_->Hide();
+    HideOverlayArrow();
     return;
   }
 
   std::optional<gfx::Rect> anchor_rect_screen = GetAnchorRectScreen();
   if (!anchor_rect_screen.has_value()) {
-    overlay_->Hide();
+    HideOverlayArrow();
     return;
   }
 
-  RECT settings_rect_win;
-  if (!::GetWindowRect(settings_hwnd_, &settings_rect_win)) {
-    overlay_->Hide();
-    return;
-  }
-  gfx::Rect settings_rect(settings_rect_win);
-  if (settings_rect.IsEmpty()) {
-    overlay_->Hide();
+  std::optional<gfx::Rect> settings_rect = GetSettingsWindowScreenRect();
+  if (!settings_rect.has_value()) {
+    HideOverlayArrow();
     return;
   }
 
-  const gfx::Point start =
-      visual_guided_setter::ComputeArrowStartPointFromAnchor(
-          *anchor_rect_screen);
-  const gfx::Point end =
-      visual_guided_setter::ComputeArrowEndPoint(settings_rect);
+  ShowOverlayArrow(visual_guided_setter::ComputeArrowStartPointFromAnchor(
+                       *anchor_rect_screen),
+                   visual_guided_setter::ComputeArrowEndPoint(*settings_rect));
+}
 
-  overlay_->UpdateAndShow(start, end);
+std::optional<gfx::Rect>
+VisualGuidedSetterControllerWin::GetSettingsWindowScreenRect() const {
+  RECT rect_win;
+  if (!::GetWindowRect(settings_hwnd_, &rect_win)) {
+    return std::nullopt;
+  }
+  gfx::Rect rect(rect_win);
+  if (rect.IsEmpty()) {
+    return std::nullopt;
+  }
+  return rect;
+}
+
+void VisualGuidedSetterControllerWin::ShowOverlayArrow(const gfx::Point& start,
+                                                       const gfx::Point& end) {
+  if (overlay_) {
+    overlay_->UpdateAndShow(start, end);
+  }
+}
+
+void VisualGuidedSetterControllerWin::HideOverlayArrow() {
+  if (overlay_) {
+    overlay_->Hide();
+  }
 }
 
 void VisualGuidedSetterControllerWin::UpdateOverlayColor() {
@@ -635,10 +692,8 @@ void VisualGuidedSetterControllerWin::TearDownInternal() {
   // Invalidate any outstanding weak replies.
   weak_ptr_factory_.InvalidateWeakPtrs();
 
-  if (overlay_) {
-    overlay_->Hide();
-    overlay_.reset();
-  }
+  HideOverlayArrow();
+  overlay_.reset();
 
   if (IsSettingsWindowAlive()) {
     ::SetWindowPos(

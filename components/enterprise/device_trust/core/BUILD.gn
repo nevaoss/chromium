@@ -24,6 +24,18 @@ source_set("core") {
   ]
 }
 
+source_set("metrics") {
+  configs += [ "//components/enterprise:extra_warnings" ]
+
+  public = [ "metrics_utils.h" ]
+  sources = [ "metrics_utils.cc" ]
+
+  public_deps = [
+    ":core",
+    "//base",
+  ]
+}
+
 source_set("device_trust_connector_service") {
   configs += [ "//components/enterprise:extra_warnings" ]
 
@@ -43,6 +55,27 @@ source_set("device_trust_connector_service") {
     "//components/device_signals/core/browser",
     "//components/keyed_service/core",
     "//components/prefs",
+  ]
+}
+
+source_set("test_support") {
+  testonly = true
+  configs += [ "//components/enterprise:extra_warnings" ]
+
+  public = [ "fake_device_trust_connector_service.h" ]
+  sources = [ "fake_device_trust_connector_service.cc" ]
+
+  deps = [
+    "//components/enterprise/device_trust",
+    "//components/pref_registry",
+    "//components/prefs:test_support",
+    "//components/sync_preferences:test_support",
+  ]
+
+  public_deps = [
+    ":core",
+    ":device_trust_connector_service",
+    "//base",
   ]
 }
 

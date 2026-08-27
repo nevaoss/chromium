@@ -384,22 +384,19 @@ public class MainSettings extends ChromeBaseSettingsFragment
                     () -> {
                         OneshotSupplierImpl<Profile> profileSupplier = new OneshotSupplierImpl<>();
                         profileSupplier.set(getProfile());
+                        var l = SigninAndHistorySyncActivityLauncherImpl.get();
                         mSigninCoordinator =
-                                SigninAndHistorySyncActivityLauncherImpl.get()
-                                        .createBottomSheetSigninCoordinatorAndObserveAddAccountResult(
-                                                SupplierUtils.asNonNull(mWindowAndroidSupplier)
-                                                        .get(),
-                                                getActivity(),
-                                                mActivityResultTracker,
-                                                signInPreference,
-                                                DeviceLockActivityLauncherImpl.get(),
-                                                profileSupplier,
-                                                SupplierUtils.asNonNull(
-                                                        mBottomSheetControllerSupplier),
-                                                mModalDialogManagerSupplier.asNonNull().get(),
-                                                SupplierUtils.asNonNull(mSnackbarManagerSupplier)
-                                                        .get(),
-                                                SigninAccessPoint.SETTINGS);
+                                l.createBottomSheetSigninCoordinatorAndObserveAddAccountResult(
+                                        SupplierUtils.asNonNull(mWindowAndroidSupplier).get(),
+                                        getActivity(),
+                                        mActivityResultTracker,
+                                        signInPreference,
+                                        DeviceLockActivityLauncherImpl.get(),
+                                        profileSupplier,
+                                        SupplierUtils.asNonNull(mBottomSheetControllerSupplier),
+                                        mModalDialogManagerSupplier.asNonNull().get(),
+                                        SupplierUtils.asNonNull(mSnackbarManagerSupplier).get(),
+                                        SigninAccessPoint.SETTINGS);
                         signinCoordinatorSupplier.set(mSigninCoordinator);
                     },
                     mWindowAndroidSupplier,
@@ -511,21 +508,26 @@ public class MainSettings extends ChromeBaseSettingsFragment
         assert (multiColumnSettings == null) == (selectionDecoration == null);
         var view = getListView();
 
-        if (mMultiColumnSettings != null) {
-            mMultiColumnSettings.removeObserver(this);
-        }
-        if (mSelectionDecoration != null && view != null) {
-            view.removeItemDecoration(mSelectionDecoration);
+        // Only update the observer list if there was a change.
+        if (mMultiColumnSettings != multiColumnSettings) {
+            if (mMultiColumnSettings != null) {
+                mMultiColumnSettings.removeObserver(this);
+            }
+            mMultiColumnSettings = multiColumnSettings;
+            if (mMultiColumnSettings != null) {
+                mMultiColumnSettings.addObserver(this);
+            }
         }
 
-        mMultiColumnSettings = multiColumnSettings;
-        mSelectionDecoration = selectionDecoration;
-
-        if (mMultiColumnSettings != null) {
-            mMultiColumnSettings.addObserver(this);
-        }
-        if (mSelectionDecoration != null && view != null) {
-            view.addItemDecoration(mSelectionDecoration);
+        // Only update item decorations if there was a change.
+        if (mSelectionDecoration != selectionDecoration) {
+            if (mSelectionDecoration != null && view != null) {
+                view.removeItemDecoration(mSelectionDecoration);
+            }
+            mSelectionDecoration = selectionDecoration;
+            if (mSelectionDecoration != null && view != null) {
+                view.addItemDecoration(mSelectionDecoration);
+            }
         }
 
         // Reflect the title update immediately.

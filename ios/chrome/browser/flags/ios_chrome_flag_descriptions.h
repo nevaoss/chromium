@@ -52,6 +52,10 @@ inline constexpr char kAiAvatarRingIosName[] = "AiAvatarRing";
 inline constexpr char kAiAvatarRingIosDescription[] =
     "Display a ring around the avatar if the primary account has a AI Tier";
 
+inline constexpr char kAimCobrowseName[] = "AimCobrowse";
+inline constexpr char kAimCobrowseDescription[] =
+    "Enables the AimCobrowse feature.";
+
 inline constexpr char kAimUrlNavigationFetchEnabledName[] =
     "AimUrlNavigationFetchEnabled";
 inline constexpr char kAimUrlNavigationFetchEnabledDescription[] =
@@ -129,6 +133,12 @@ inline constexpr char kAutofillAcrossIframesName[] =
 inline constexpr char kAutofillAcrossIframesDescription[] =
     "When enabled, Autofill will fill and save information on forms that "
     "spread across multiple iframes.";
+
+inline constexpr char kAutofillAiAlwaysShowPrivateAiNoticeName[] =
+    "Autofill AI always show Private AI notice";
+inline constexpr char kAutofillAiAlwaysShowPrivateAiNoticeDescription[] =
+    "Forces the Autofill AI Private AI notice suggestion to be shown for "
+    "testing.";
 
 inline constexpr char kAutofillAiAvailableByDefaultName[] =
     "Autofill AI available by default";
@@ -1367,6 +1377,11 @@ inline constexpr char kLockBottomToolbarName[] = "Lock bottom toolbar";
 inline constexpr char kLockBottomToolbarDescription[] =
     "When enabled, the bottom toolbar will not get collapsed when scrolling "
     "into fullscreen mode.";
+
+inline constexpr char kMVTInBottomSheetName[] = "NTP MVT in Bottom Sheet";
+inline constexpr char kMVTInBottomSheetDescription[] =
+    "Places the Most Visited Tiles inside the bottom sheet card for the NTP "
+    "Redesign.";
 
 inline constexpr char kManualLogUploadsInFREName[] =
     "Manual log uploads in the FRE";

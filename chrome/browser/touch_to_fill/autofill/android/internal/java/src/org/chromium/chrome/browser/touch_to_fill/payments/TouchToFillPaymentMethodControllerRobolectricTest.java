@@ -181,7 +181,6 @@ import org.chromium.base.ContextUtils;
 import org.chromium.base.ServiceLoaderUtil;
 import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.base.test.BaseRobolectricTestRunner;
-import org.chromium.base.test.util.Batch;
 import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.base.test.util.HistogramWatcher;
@@ -221,7 +220,7 @@ import org.chromium.components.prefs.PrefChangeRegistrarJni;
 import org.chromium.components.prefs.PrefService;
 import org.chromium.components.user_prefs.UserPrefs;
 import org.chromium.components.user_prefs.UserPrefsJni;
-import org.chromium.ui.accessibility.AccessibilityState;
+import org.chromium.ui.accessibility.AccessibilityStateTestHelper;
 import org.chromium.ui.modelutil.MVCListAdapter.ListItem;
 import org.chromium.ui.modelutil.MVCListAdapter.ModelList;
 import org.chromium.ui.modelutil.PropertyModel;
@@ -241,7 +240,6 @@ import java.util.stream.StreamSupport;
  * TouchToFillPaymentMethodMediator}
  */
 @RunWith(BaseRobolectricTestRunner.class)
-@Batch(Batch.PER_CLASS)
 @EnableFeatures({AutofillFeatures.AUTOFILL_ENABLE_NEW_FOP_DISPLAY_ANDROID})
 @DisableFeatures({
     AutofillFeatures.AUTOFILL_ENABLE_SECURITY_TOUCH_EVENT_FILTERING_ANDROID,
@@ -1099,7 +1097,7 @@ public class TouchToFillPaymentMethodControllerRobolectricTest {
     public void testDoesNotRecordBnplSuggestionVisibilityHistograms() {
         // BNPL suggestion visibility metrics should not be logged when touch exploration is
         // enabled.
-        AccessibilityState.setIsTouchExplorationEnabledForTesting(true);
+        AccessibilityStateTestHelper.setIsTouchExplorationEnabledForTesting(true);
 
         for (int visibility = 0;
                 visibility <= TouchToFillBnplSuggestionVisibility.MAX_VALUE;
@@ -1125,7 +1123,7 @@ public class TouchToFillPaymentMethodControllerRobolectricTest {
                 RecordHistogram.getHistogramTotalCountForTesting(
                         TOUCH_TO_FILL_BNPL_SUGGESTION_STARTED_FULLY_VISIBLE_HISTOGRAM));
 
-        AccessibilityState.setIsTouchExplorationEnabledForTesting(false);
+        AccessibilityStateTestHelper.setIsTouchExplorationEnabledForTesting(false);
     }
 
     @Test

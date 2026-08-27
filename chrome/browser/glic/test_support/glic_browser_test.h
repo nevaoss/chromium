@@ -17,6 +17,7 @@
 #include "base/functional/function_ref.h"
 #include "base/path_service.h"
 #include "base/run_loop.h"
+#include "base/strings/strcat.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/test/gmock_expected_support.h"
 #include "base/test/run_until.h"
@@ -84,6 +85,11 @@
 namespace glic {
 
 #if BUILDFLAG(IS_ANDROID)
+void SetActivityOrientationForTesting(content::WebContents* web_contents,
+                                      int orientation);
+#endif
+
+#if BUILDFLAG(IS_ANDROID)
 #define SKIP_TEST_FOR_NON_DESKTOP_ANDROID()            \
   if (!base::android::device_info::is_desktop()) {     \
     GTEST_SKIP() << "Skipping on non-desktop Android"; \
@@ -146,6 +152,37 @@ template <typename T>
     std::string_view message = std::string_view()) {
   return RunUntilComparisonPasses<T>(get_value, expected_value,
                                      std::equal_to<T>(), "==", message);
+}
+
+template <typename T>
+[[nodiscard]] TestResult<> RunUntilNotEqual(
+    base::FunctionRef<std::type_identity_t<T>()> get_value,
+    const T& unexpected_value,
+    std::string_view message = std::string_view()) {
+  return RunUntilComparisonPasses<T>(get_value, unexpected_value,
+                                     std::not_equal_to<T>(), "!=", message);
+}
+
+template <typename Callable>
+[[nodiscard]] TestResult<> RunUntilNull(
+    Callable&& get_value,
+    std::string_view message = std::string_view()) {
+  using ReturnType = std::invoke_result_t<Callable>;
+  static_assert(std::is_pointer_v<ReturnType>, "ReturnType must be a pointer");
+  return RunUntilComparisonPasses<ReturnType>(
+      std::forward<Callable>(get_value), nullptr, std::equal_to<ReturnType>(),
+      "==", message);
+}
+
+template <typename Callable>
+[[nodiscard]] TestResult<> RunUntilNotNull(
+    Callable&& get_value,
+    std::string_view message = std::string_view()) {
+  using ReturnType = std::invoke_result_t<Callable>;
+  static_assert(std::is_pointer_v<ReturnType>, "ReturnType must be a pointer");
+  return RunUntilComparisonPasses<ReturnType>(
+      std::forward<Callable>(get_value), nullptr,
+      std::not_equal_to<ReturnType>(), "!=", message);
 }
 
 template <typename T>
@@ -349,6 +386,37 @@ class GlicBrowserTestMixin : public T {
     return RunUntilEqual<bool>(
         [&]() { return instance_impl->IsHibernated(); }, false,
         "WaitForInstanceAwakened: instance did not wake up");
+  }
+
+  [[nodiscard]] TestResult<> WaitForInstanceActive(
+      GlicInstance* instance = nullptr) {
+    auto* instance_impl = GetInstanceImpl(instance);
+    if (!instance_impl) {
+      return base::unexpected("WaitForInstanceActive: instance is null");
+    }
+    return RunUntilEqual<bool>(
+        [&]() { return instance_impl->IsActive(); }, true,
+        "WaitForInstanceActive: instance did not become active");
+  }
+
+  [[nodiscard]] TestResult<GlicInstanceImpl*> WaitForInstanceWithConversationId(
+      tabs::TabInterface* tab,
+      const std::string& expected_conversation_id) {
+    auto result = RunUntilEqual<std::string>(
+        [&]() {
+          auto* instance = GetInstanceForTab(tab);
+          if (!instance) {
+            return std::string("no instance bound to tab");
+          }
+          return instance->conversation_id().value_or("");
+        },
+        expected_conversation_id,
+        "WaitForInstanceWithConversationId: timeout waiting for conversation "
+        "ID");
+    if (!result) {
+      return base::unexpected(result.error());
+    }
+    return GetInstanceForTab(tab);
   }
 
   void RegisterConversation(GlicInstance* instance,

@@ -17,6 +17,7 @@
 
 #include "base/auto_reset.h"
 #include "base/check_op.h"
+#include "base/containers/extend.h"
 #include "base/containers/to_vector.h"
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
@@ -49,6 +50,7 @@
 #include "chrome/browser/ui/views/autofill/popup/popup_interactive_row_view.h"
 #include "chrome/browser/ui/views/autofill/popup/popup_loading_view.h"
 #include "chrome/browser/ui/views/autofill/popup/popup_notice_view.h"
+#include "chrome/browser/ui/views/autofill/popup/popup_row_content_view.h"
 #include "chrome/browser/ui/views/autofill/popup/popup_row_factory_utils.h"
 #include "chrome/browser/ui/views/autofill/popup/popup_row_view.h"
 #include "chrome/browser/ui/views/autofill/popup/popup_search_bar_view.h"
@@ -59,6 +61,7 @@
 #include "chrome/browser/ui/views/chrome_layout_provider.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/common/webui_url_constants.h"
+#include "components/autofill/content/browser/content_autofill_client.h"
 #include "components/autofill/core/browser/data_model/payments/credit_card.h"
 #include "components/autofill/core/browser/filling/filling_product.h"
 #include "components/autofill/core/browser/metrics/autofill_metrics.h"
@@ -119,70 +122,6 @@ using views::BubbleBorder;
 namespace autofill {
 
 namespace {
-
-// TODO(b/524157152): Refactor AutofillPopupController to provide this.
-bool IsLoggingDisabledByPolicy(const AutofillPopupController* controller) {
-  if (!controller || !controller->GetWebContents()) {
-    return false;
-  }
-  Profile* profile = Profile::FromBrowserContext(
-      controller->GetWebContents()->GetBrowserContext());
-  if (!profile || !profile->GetPrefs()) {
-    return false;
-  }
-  const int policy_value = profile->GetPrefs()->GetInteger(
-      optimization_guide::prefs::kFindAndFillWithGeminiSettings);
-  return policy_value ==
-         std::to_underlying(
-             optimization_guide::model_execution::prefs::
-                 ModelExecutionEnterprisePolicyValue::kAllowWithoutLogging);
-}
-
-std::unique_ptr<PopupNoticeView> GetPersonalContextNoticeView(
-    PopupRowView::AccessibilitySelectionDelegate& a11y_selection_delegate,
-    base::RepeatingCallback<void(const std::u16string&, bool)>
-        announce_callback,
-    base::WeakPtr<AutofillPopupController> controller,
-    int line_number) {
-  std::string histogram_name =
-      controller &&
-              controller->GetMainFillingProduct() == FillingProduct::kAtMemory
-          ? "PersonalContext.AtMemory.NoticeInteractions"
-          : "PersonalContext.AmbientAutofill.NoticeInteractions";
-  std::u16string title_text = l10n_util::GetStringUTF16(
-      IDS_AUTOFILL_POPUP_PERSONAL_CONTEXT_NOTICE_TITLE);
-  std::u16string subtitle_text = l10n_util::GetStringUTF16(
-      IDS_AUTOFILL_POPUP_PERSONAL_CONTEXT_NOTICE_CONTEXT);
-  std::u16string link_text = l10n_util::GetStringUTF16(
-      IDS_AUTOFILL_POPUP_PERSONAL_CONTEXT_NOTICE_LINK_TEXT);
-  std::u16string accept_button_text = l10n_util::GetStringUTF16(
-      IDS_AUTOFILL_POPUP_PERSONAL_CONTEXT_NOTICE_OK_BUTTON);
-  if (controller) {
-    if (controller->GetMainFillingProduct() == FillingProduct::kAtMemory &&
-        !IsLoggingDisabledByPolicy(controller.get())) {
-      subtitle_text = l10n_util::GetStringUTF16(
-          IDS_AUTOFILL_POPUP_PERSONAL_CONTEXT_NOTICE_CONTEXT_WITH_LOGGING);
-    }
-  }
-  auto on_link_clicked = base::BindRepeating(
-      [](base::WeakPtr<AutofillPopupController> controller) {
-        if (!controller || !controller->GetWebContents()) {
-          return;
-        }
-        Profile* profile = Profile::FromBrowserContext(
-            controller->GetWebContents()->GetBrowserContext());
-        if (!profile) {
-          return;
-        }
-        chrome::ShowSettingsSubPageForProfile(
-            profile, chrome::kSuggestionsFromGeminiSubPage);
-      },
-      controller);
-  return std::make_unique<PopupNoticeView>(
-      a11y_selection_delegate, announce_callback, std::move(controller),
-      line_number, title_text, subtitle_text, link_text, accept_button_text,
-      std::move(on_link_clicked), histogram_name);
-}
 
 // The minimum width should exceed the maximum size of a cursor, which is 128
 // (see crbug.com/40064089).
@@ -281,6 +220,137 @@ void DefaultA11yAnnouncer(const std::u16string& message, bool polite) {
     browser_view->GetViewAccessibility().AnnounceText(message);
   }
 }
+
+// Builder responsible for creating the body and footer containers of
+// `PopupViewViews`. It encapsulates tracking the height of rows to allow
+// applying a height limit to the popup that can depend on the size of its
+// entries.
+class PopupRowContainerBuilder {
+ public:
+  // Returns builder used for creating `PopupViewViews::body_container_`.
+  static PopupRowContainerBuilder CreateBodyBuilder(int popup_min_width) {
+    return PopupRowContainerBuilder(
+        /*container=*/views::Builder<views::BoxLayoutView>()
+            .SetOrientation(views::BoxLayout::Orientation::kVertical)
+            .SetInsideBorderInsets(
+                gfx::Insets::VH(GetContentsVerticalPadding(), 0))
+            .Build(),
+        popup_min_width, /*initial_visible_entries=*/0,
+        /*initial_visible_height=*/0);
+  }
+
+  // Returns builder used for creating `PopupViewViews::footer_container_`.
+  static PopupRowContainerBuilder CreateFooterBuilder(
+      int popup_min_width,
+      int initial_visible_entries,
+      int initial_visible_height) {
+    return PopupRowContainerBuilder(
+        /*container=*/views::Builder<views::BoxLayoutView>()
+            .SetOrientation(views::BoxLayout::Orientation::kVertical)
+            .SetBackground(
+                views::CreateSolidBackground(ui::kColorDropdownBackground))
+            .Build(),
+        popup_min_width, initial_visible_entries, initial_visible_height);
+  }
+
+  // Returns the built container and a vector of raw pointers to the added rows.
+  std::pair<std::unique_ptr<views::BoxLayoutView>,
+            std::vector<PopupViewViews::RowPointer>>
+  Build() && {
+    return {std::move(container_), std::move(rows_)};
+  }
+
+  int visible_entries() const { return visible_entries_; }
+  int visible_height() const { return visible_height_; }
+
+  // Adds a new row to the body container and updates height accordingly.
+  template <typename T>
+    requires std::derived_from<T, views::View>
+  T* AddRow(std::unique_ptr<T> row_view) {
+    T* new_view = container_->AddChildView(std::move(row_view));
+
+    constexpr bool kIsRelevantEntry = !std::same_as<T, PopupSeparatorView>;
+    if (visible_entries_ < PopupViewViews::kAutofillPopupMaxVisibleEntries) {
+      double height_factor = 1.0;
+      if constexpr (kIsRelevantEntry) {
+        // Last entry might be partially visible. Since separators are not
+        // counted as entries, they are always fully visible, but do not count
+        // towards `visible_entries_`.
+        height_factor = std::min(
+            PopupViewViews::kAutofillPopupMaxVisibleEntries - visible_entries_,
+            1.0);
+        ++visible_entries_;
+      }
+      visible_height_ += height_factor * MaxHeightOfRow(new_view);
+    } else if constexpr (kIsRelevantEntry) {
+      has_fully_hidden_entry = true;
+    }
+
+    rows_.push_back(new_view);
+    return new_view;
+  }
+
+  // Returns the desired maximum height of the built container for clipping the
+  // height on a surrounding scroll area, or `std::nullopt` if no height limit
+  // is necessary.
+  std::optional<int> GetScrollClippingHeight() const {
+    if (!has_fully_hidden_entry ||
+        !base::FeatureList::IsEnabled(
+            features::kAutofillEnableEntryLimitInPopup)) {
+      // Do not apply a height limit when the scrollbar would be very small
+      // (less than one full entry). This also serves as a safeguard to avoid
+      // returning a minimally too small height limit.
+      return std::nullopt;
+    }
+    return visible_height_;
+  }
+
+ private:
+  explicit PopupRowContainerBuilder(
+      std::unique_ptr<views::BoxLayoutView> container,
+      int popup_min_width,
+      int initial_visible_entries,
+      int initial_visible_height)
+      : container_(std::move(container)),
+        visible_entries_(initial_visible_entries),
+        visible_height_(initial_visible_height),
+        popup_min_width_(popup_min_width) {
+    CHECK(container_);
+    visible_height_ += container_->GetInsideBorderInsets().height();
+  }
+
+  // Returns the maximal possible size of a row by using the minimal width of
+  // the popup. In multi-line rows, this will lead to the maximum number of
+  // lines and thus the maximum height. For single-line rows this will be equal
+  // to the actual height. Additionally consider margins since they are added
+  // separately by the layout manager in the usual code path for the size
+  // calculation.
+  int MaxHeightOfRow(views::View* row_view) const {
+    int height = row_view->GetHeightForWidth(popup_min_width_);
+    if (const gfx::Insets* margins =
+            row_view->GetProperty(views::kMarginsKey)) {
+      height += margins->height();
+    }
+    return height;
+  }
+
+  // Container owned by this builder that is currently being constructed.
+  std::unique_ptr<views::BoxLayoutView> container_;
+  // Collection of all added rows.
+  std::vector<PopupViewViews::RowPointer> rows_;
+  // Number of relevant (i.e. non-separator) entries that were encountered so
+  // far and that should be (at least partially) visible according to
+  // `PopupViewViews::kAutofillPopupMaxVisibleEntries`.
+  int visible_entries_ = 0;
+  // The calculated desired height of the body container that should be visible
+  // according to `PopupViewViews::kAutofillPopupMaxVisibleEntries`.
+  int visible_height_ = 0;
+  // Indicator if there is at least one relevant entry that is entirely out of
+  // view after restricting the height to `visible_height_`.
+  bool has_fully_hidden_entry = false;
+  // Minimum width the popup can have.
+  const int popup_min_width_;
+};
 
 }  // namespace
 
@@ -1270,9 +1340,6 @@ void PopupViewViews::CreateSuggestionViews() {
 
   SetBackground(views::CreateSolidBackground(ui::kColorDropdownBackground));
 
-  rows_.reserve(suggestions.size());
-  size_t current_line_number = 0u;
-
   // Show the "no results" message if the controller identifies this state.
   if (search_bar_ && controller_->ShouldShowNoSuggestionsMessage()) {
     suggestions_container_->AddChildView(
@@ -1280,51 +1347,51 @@ void PopupViewViews::CreateSuggestionViews() {
             search_bar_config_->no_results_message));
   }
 
+  int current_visible_body_entries = 0;
+  int current_body_visible_height = 0;
+  size_t current_line_number = 0u;
   // Add the body rows, if there are any.
   if (!suggestions.empty() && !IsFooterItem(suggestions, 0u)) {
     // Create a container to wrap the "regular" (non-footer) rows.
-    std::unique_ptr<views::BoxLayoutView> body_container =
-        views::Builder<views::BoxLayoutView>()
-            .SetOrientation(views::BoxLayout::Orientation::kVertical)
-            .SetInsideBorderInsets(gfx::Insets::VH(kInterItemsPadding, 0))
-            .Build();
+    auto body_builder =
+        PopupRowContainerBuilder::CreateBodyBuilder(GetPopupMinWidth());
 
     for (; current_line_number < suggestions.size() &&
            !IsFooterItem(suggestions, current_line_number);
          ++current_line_number) {
       switch (suggestions[current_line_number].type) {
         case SuggestionType::kSeparator:
-          rows_.push_back(body_container->AddChildView(
-              std::make_unique<PopupSeparatorView>(kInterItemsPadding)));
+          body_builder.AddRow(
+              std::make_unique<PopupSeparatorView>(kInterItemsPadding));
           break;
         case SuggestionType::kTitle:
-          rows_.push_back(
-              body_container->AddChildView(std::make_unique<PopupTitleView>(
-                  suggestions[current_line_number].main_text.value)));
+          body_builder.AddRow(std::make_unique<PopupTitleView>(
+              suggestions[current_line_number].main_text.value));
           break;
         case SuggestionType::kInsecureContextPaymentDisabledMessage:
         case SuggestionType::kMixedFormMessage:
-          rows_.push_back(
-              body_container->AddChildView(std::make_unique<PopupWarningView>(
-                  suggestions[current_line_number])));
+          body_builder.AddRow(std::make_unique<PopupWarningView>(
+              suggestions[current_line_number]));
           break;
         case SuggestionType::kLoadingThrobber: {
-          rows_.push_back(
-              body_container->AddChildView(std::make_unique<PopupLoadingView>(
-                  suggestions[current_line_number]
-                      .expected_number_of_suggestions.value_or(1))));
+          body_builder.AddRow(std::make_unique<PopupLoadingView>(
+              suggestions[current_line_number]
+                  .expected_number_of_suggestions.value_or(1)));
           break;
         }
         case SuggestionType::kAtMemoryFetching: {
-          rows_.push_back(body_container->AddChildView(
-              std::make_unique<PopupCenteredTextView>(
-                  suggestions[current_line_number].main_text.value)));
+          body_builder.AddRow(std::make_unique<PopupCenteredTextView>(
+              suggestions[current_line_number].main_text.value));
           break;
         }
         case SuggestionType::kPersonalContextNotice: {
-          rows_.push_back(
-              body_container->AddChildView(GetPersonalContextNoticeView(
-                  *this, a11y_announcer_, controller(), current_line_number)));
+          body_builder.AddRow(CreatePersonalContextNoticeView(
+              *this, a11y_announcer_, controller(), current_line_number));
+          break;
+        }
+        case SuggestionType::kAutofillAiPrivateInferenceNotice: {
+          body_builder.AddRow(CreateAutofillAiPrivateInferenceNoticeView(
+              *this, a11y_announcer_, controller(), current_line_number));
           break;
         }
         // The default section contains all selectable rows and includes
@@ -1334,12 +1401,10 @@ void PopupViewViews::CreateSuggestionViews() {
               filter_match =
                   filter_matches.empty() ? std::nullopt
                                          : filter_matches[current_line_number];
-          PopupRowView* row_view =
-              body_container->AddChildView(CreatePopupRowView(
-                  controller(), /*a11y_selection_delegate=*/*this,
-                  /*selection_delegate=*/*this, current_line_number,
-                  std::move(filter_match), password_favicon_loader_.get()));
-          rows_.push_back(row_view);
+          PopupRowView* row_view = body_builder.AddRow(CreatePopupRowView(
+              controller(), /*a11y_selection_delegate=*/*this,
+              /*selection_delegate=*/*this, current_line_number,
+              std::move(filter_match), password_favicon_loader_.get()));
 
           // Set appropriate element ids for IPH targets, it is important to
           // set them earlier to make sure the elements are discoverable later
@@ -1352,14 +1417,21 @@ void PopupViewViews::CreateSuggestionViews() {
       }
     }
 
+    current_visible_body_entries = body_builder.visible_entries();
+    current_body_visible_height = body_builder.visible_height();
+    std::optional<int> scroll_clipping_height =
+        body_builder.GetScrollClippingHeight();
+    auto [body_container, rows] = std::move(body_builder).Build();
+    rows_ = std::move(rows);
     std::unique_ptr<views::ScrollView> scroll_view =
         views::Builder<views::ScrollView>()
             .SetBackgroundColor(ui::kColorDropdownBackground)
             .SetHorizontalScrollBarMode(
                 views::ScrollView::ScrollBarMode::kDisabled)
             .SetDrawOverflowIndicator(false)
-            .ClipHeightTo(0,
-                          body_container->GetHeightForWidth(GetPopupMaxWidth()))
+            .ClipHeightTo(
+                0, scroll_clipping_height.value_or(
+                       body_container->GetHeightForWidth(GetPopupMaxWidth())))
             .Build();
     body_container_ = scroll_view->SetContents(std::move(body_container));
     scroll_view_ = suggestions_container_->AddChildView(std::move(scroll_view));
@@ -1380,17 +1452,7 @@ void PopupViewViews::CreateSuggestionViews() {
     return;
   }
 
-  auto footer_container =
-      views::Builder<views::BoxLayoutView>()
-          .SetOrientation(views::BoxLayout::Orientation::kVertical)
-          .SetBackground(
-              views::CreateSolidBackground(ui::kColorDropdownBackground))
-          .Build();
-
-  if (IsFooterScrollable()) {
-    footer_container_ =
-        body_container_->AddChildView(std::move(footer_container));
-  } else {
+  if (!IsFooterScrollable()) {
     // Add a separator between the main list of suggestions and the footer with
     // no vertical padding as these elements have their own top/bottom paddings.
     if (suggestions[current_line_number].type == SuggestionType::kSeparator) {
@@ -1398,7 +1460,53 @@ void PopupViewViews::CreateSuggestionViews() {
           std::make_unique<PopupSeparatorView>(/*vertical_padding=*/0)));
       ++current_line_number;
     }
+  }
 
+  // Continue counting visible entries as if they were part of the body
+  // container in case the footer is scrollable.
+  auto footer_builder = PopupRowContainerBuilder::CreateFooterBuilder(
+      GetPopupMinWidth(),
+      /*initial_visible_entries=*/current_visible_body_entries,
+      /*initial_visible_height=*/current_body_visible_height);
+
+  for (; current_line_number < suggestions.size(); ++current_line_number) {
+    DCHECK(IsFooterItem(suggestions, current_line_number));
+    // The footer can contain either footer views or separator lines.
+    if (suggestions[current_line_number].type == SuggestionType::kSeparator) {
+      footer_builder.AddRow(
+          std::make_unique<PopupSeparatorView>(kInterItemsPadding));
+    } else if (suggestions[current_line_number].type ==
+               SuggestionType::kBnplFootnote) {
+      footer_builder.AddRow(std::make_unique<PopupBnplFootnoteView>(
+          controller(), /*a11y_selection_delegate=*/*this,
+          base::BindRepeating(&DefaultA11yAnnouncer)));
+    } else if (suggestions[current_line_number].type ==
+               SuggestionType::kAtMemoryAiDisclosure) {
+      footer_builder.AddRow(std::make_unique<PopupAtMemoryAiDisclosureView>(
+          controller(), /*a11y_selection_delegate=*/*this));
+    } else {
+      footer_builder.AddRow(CreatePopupRowView(
+          controller(), /*a11y_selection_delegate=*/*this,
+          /*selection_delegate=*/*this, current_line_number));
+    }
+  }
+  std::optional<int> scroll_clipping_height =
+      footer_builder.GetScrollClippingHeight();
+  auto [footer_container, rows] = std::move(footer_builder).Build();
+  base::Extend(rows_, std::move(rows));
+
+  if (IsFooterScrollable()) {
+    footer_container_ =
+        body_container_->AddChildView(std::move(footer_container));
+
+    if (scroll_view_) {
+      // Adjust the scrollable area height. Make sure this adjustment always
+      // happens after changes that can affect `body_container_`'s size.
+      scroll_view_->ClipHeightTo(
+          0, scroll_clipping_height.value_or(
+                 body_container_->GetHeightForWidth(GetPopupMaxWidth())));
+    }
+  } else {
     footer_container_ =
         suggestions_container_->AddChildView(std::move(footer_container));
 
@@ -1413,38 +1521,6 @@ void PopupViewViews::CreateSuggestionViews() {
         gfx::Insets::TLBR(kInterItemsPadding, 0, footer_bottom_padding, 0));
 
     suggestions_container_->SetFlexForView(footer_container_, 0);
-  }
-
-  for (; current_line_number < suggestions.size(); ++current_line_number) {
-    DCHECK(IsFooterItem(suggestions, current_line_number));
-    // The footer can contain either footer views or separator lines.
-    if (suggestions[current_line_number].type == SuggestionType::kSeparator) {
-      rows_.push_back(footer_container_->AddChildView(
-          std::make_unique<PopupSeparatorView>(kInterItemsPadding)));
-    } else if (suggestions[current_line_number].type ==
-               SuggestionType::kBnplFootnote) {
-      rows_.push_back(footer_container_->AddChildView(
-          std::make_unique<PopupBnplFootnoteView>(
-              controller(), /*a11y_selection_delegate=*/*this,
-              base::BindRepeating(&DefaultA11yAnnouncer))));
-    } else if (suggestions[current_line_number].type ==
-               SuggestionType::kAtMemoryAiDisclosure) {
-      rows_.push_back(
-          static_cast<PopupInteractiveRowView*>(footer_container_->AddChildView(
-              std::make_unique<PopupAtMemoryAiDisclosureView>(
-                  controller(), /*a11y_selection_delegate=*/*this))));
-    } else {
-      rows_.push_back(footer_container_->AddChildView(CreatePopupRowView(
-          controller(), /*a11y_selection_delegate=*/*this,
-          /*selection_delegate=*/*this, current_line_number)));
-    }
-  }
-
-  // Adjust the scrollable area height. Make sure this adjustment always goes
-  // after changes that can affect `body_container_`'s size.
-  if (scroll_view_ && body_container_ && IsFooterScrollable()) {
-    scroll_view_->ClipHeightTo(
-        0, body_container_->GetHeightForWidth(GetPopupMaxWidth()));
   }
 }
 
@@ -1656,8 +1732,27 @@ void PopupViewViews::OnMouseEnteredInChildren() {
 }
 
 void PopupViewViews::OnMouseExitedInChildren() {
-  if (GetSelectedCell() && !row_with_open_sub_popup_) {
-    return;
+  const std::optional<size_t> row_to_check = row_with_selected_cell_.has_value()
+                                                 ? row_with_selected_cell_
+                                                 : row_with_open_sub_popup_;
+  if (row_to_check && controller_ &&
+      *row_to_check < static_cast<size_t>(controller_->GetLineCount())) {
+    if (PopupRowView* row = MaybeGetPopupRowViewAt(*row_to_check)) {
+      // If we are hovering the control cell, do not schedule close.
+      views::View* control_view = row->GetExpandChildSuggestionsView();
+      if (control_view && control_view->IsMouseHovered()) {
+        return;
+      }
+
+      // Similarly, do not close the sub-popup if we are hovering the content
+      // cell and the content cell acts in the same way as the chevron.
+      const Suggestion& suggestion =
+          controller_->GetSuggestionAt(*row_to_check);
+      if (ContentCellShouldOpenSubPopupSuggestion(suggestion) &&
+          row->GetContentView().IsMouseHovered()) {
+        return;
+      }
+    }
   }
 
   if (parent_ && parent_->get()) {
@@ -1769,6 +1864,9 @@ void PopupViewViews::SetRowWithOpenSubPopup(
 
   // Open a sub-popup on the new cell if provided.
   if (row_index) {
+    // Any open sub-popup change invalidates a pending close timer for an
+    // earlier sub-popup.
+    StopSubPopupClosing();
     PopupRowView* row = MaybeGetPopupRowViewAt(*row_index);
     if (row && row->IsSelectable()) {
       const Suggestion& suggestion = controller_->GetSuggestionAt(*row_index);

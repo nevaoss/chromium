@@ -11,8 +11,10 @@ import '//resources/cr_elements/icons.html.js';
 
 import type {CrActionMenuElement} from '//resources/cr_elements/cr_action_menu/cr_action_menu.js';
 import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
+import type {Time} from '//resources/mojo/mojo/public/mojom/base/time.mojom-webui.js';
 
-import type {SourceReference} from '../context_hub.mojom-webui.js';
+import {AutoTodoGroup, AutoTodoStatus, browserProxyFactory} from '../context_hub.mojom-webui.js';
+import type {AutoTodoData, AutoTodoItem, SourceReference} from '../context_hub.mojom-webui.js';
 
 import {getCss} from './todo_item.css.js';
 import {getHtml} from './todo_item.html.js';
@@ -53,24 +55,33 @@ export class TodoItemElement extends CrLitElement {
       id: {type: String},
       heading: {type: String},
       description: {type: String},
+      status: {type: Number},
       actionableUrl: {type: String},
       sourceReferences: {type: Array},
       score: {type: Number},
+      lastActiveTimestamp: {type: Object},
+      groupType: {type: Number},
       expanded_: {type: Boolean},
       liked: {type: Boolean},
       variant: {type: String},
+      disable_state_mgmt: {type: Boolean},
     };
   }
 
   override accessor id: string = '';
   accessor heading: string = '';
   accessor description: string = '';
+  accessor status: AutoTodoStatus = AutoTodoStatus.kActive;
   accessor actionableUrl: string = '';
   accessor sourceReferences: SourceReference[] = [];
   accessor score: number|null = null;
+  tabId: bigint|null = null;
+  accessor lastActiveTimestamp: Time|null = null;
+  accessor groupType: AutoTodoGroup = AutoTodoGroup.kNoMatch;
   protected accessor expanded_: boolean = false;
   accessor liked: boolean|null = null;
   accessor variant: TodoItemVariant = TodoItemVariant.DEFAULT;
+  accessor disable_state_mgmt: boolean = false;
 
   protected onExpandedChanged_(e: CustomEvent<{value: boolean}>) {
     this.expanded_ = e.detail.value;
@@ -114,14 +125,57 @@ export class TodoItemElement extends CrLitElement {
     window.open(`${FORM_URL}?${params.toString()}`, '_blank');
   }
 
-  protected onCheckCircleClick_(e: Event) {
-    e.stopPropagation();
-    // TODO(crbug.com/541016246): Implement check circle click.
+  private async updateStatus_(status: AutoTodoStatus) {
+    if (this.disable_state_mgmt) {
+      return;
+    }
+
+    if (this.variant === TodoItemVariant.TAB && this.tabId === null) {
+      return;
+    }
+
+    const data: AutoTodoData = this.variant === TodoItemVariant.TAB ?
+        {
+          thirdParty: {
+            tabId: this.tabId!,
+            lastActiveTimestamp:
+                this.lastActiveTimestamp ?? {internalValue: 0n},
+            groupType: this.groupType,
+          },
+        } :
+        {
+          firstParty: {
+            actionableUrl: this.actionableUrl,
+            sourceReferences: this.sourceReferences,
+          },
+        };
+
+    const todo: AutoTodoItem = {
+      id: this.id,
+      title: this.heading,
+      description: this.description,
+      status,
+      score: this.score ?? 0,
+      data,
+    };
+    try {
+      await browserProxyFactory.getInstance().handler.updateAutoTodo(todo);
+    } catch (e) {
+      console.error('Failed to update auto todo status:', e);
+    }
   }
 
-  protected onDismissClick_(e: Event) {
+  protected async onCheckCircleClick_(e: Event) {
     e.stopPropagation();
-    // TODO(crbug.com/541016246): Implement dismiss click.
+    const nextStatus = this.status === AutoTodoStatus.kCompleted ?
+        AutoTodoStatus.kActive :
+        AutoTodoStatus.kCompleted;
+    await this.updateStatus_(nextStatus);
+  }
+
+  protected async onDismissClick_(e: Event) {
+    e.stopPropagation();
+    await this.updateStatus_(AutoTodoStatus.kDismissed);
   }
 
   protected onMoreClick_(e: Event) {
@@ -131,6 +185,13 @@ export class TodoItemElement extends CrLitElement {
 
   protected onOpenTabClick_(e: Event) {
     e.stopPropagation();
+    if (this.variant === TodoItemVariant.TAB) {
+      if (this.tabId !== null) {
+        browserProxyFactory.getInstance().handler.switchToTab(this.tabId);
+      }
+      return;
+    }
+
     if (this.actionableUrl) {
       window.open(this.actionableUrl, '_blank');
     }

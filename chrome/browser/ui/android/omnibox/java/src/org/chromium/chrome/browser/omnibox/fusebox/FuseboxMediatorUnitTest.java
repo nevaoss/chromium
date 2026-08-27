@@ -171,6 +171,7 @@ public class FuseboxMediatorUnitTest {
     @Mock private Runnable mClearUrlBarTextCallback;
     @Mock private KeyEvent mKeyEvent;
     @Mock private Runnable mOnRemoveRunnable;
+    @Mock private FuseboxAttachmentModelList mFuseboxAttachmentModelList;
 
     @Captor private ArgumentCaptor<Intent> mIntentCaptor;
     @Captor private ArgumentCaptor<WindowAndroid.IntentCallback> mIntentCallbackCaptor;
@@ -271,6 +272,7 @@ public class FuseboxMediatorUnitTest {
                         mWindowAndroid,
                         mModel,
                         mViewHolder,
+                        new OmniboxResourceProvider(mContext, BrandedColorScheme.APP_DEFAULT),
                         mTabModelSelectorSupplier,
                         mFuseboxStateSupplier,
                         mPopupStateSupplier,
@@ -456,11 +458,8 @@ public class FuseboxMediatorUnitTest {
 
     @Test
     public void testDestroy() {
-        // Use a temp for mock to avoid DirectInvocationOnMock lint check. This test cases uses a
-        // mock for mAttachments but the rest of this test file does not.
-        FuseboxAttachmentModelList mockAttachments = mock(FuseboxAttachmentModelList.class);
-        when(mockAttachments.iterator()).thenReturn(Collections.emptyIterator());
-        mAttachments = mockAttachments;
+        when(mFuseboxAttachmentModelList.iterator()).thenReturn(Collections.emptyIterator());
+        mAttachments = mFuseboxAttachmentModelList;
         recreateMediator();
 
         assertTrue(mInput.getRequestTypeSupplier().hasObservers());
@@ -1247,7 +1246,7 @@ public class FuseboxMediatorUnitTest {
     @Config(sdk = Build.VERSION_CODES.S_V2)
     public void testGalleryIntent_extraAllowMultiple() {
         mModel.get(FuseboxProperties.POPUP_ATTACH_GALLERY_CLICKED).run();
-        assertTrue(mMediator.wasActionTaken());
+        assertTrue(mMediator.wasPopupItemSelected());
         verify(mWindowAndroid).showCancelableIntent(mIntentCaptor.capture(), any(), any());
         Intent intent = mIntentCaptor.getValue();
         assertTrue(intent.getBooleanExtra(Intent.EXTRA_ALLOW_MULTIPLE, /* defaultValue= */ false));
@@ -1452,7 +1451,7 @@ public class FuseboxMediatorUnitTest {
 
         List<PopupButtonData> models = mModel.get(FuseboxProperties.POPUP_MODEL_BUTTON_DATA_LIST);
         models.get(0).onClicked.run();
-        assertTrue(mMediator.wasActionTaken());
+        assertTrue(mMediator.wasPopupItemSelected());
 
         histogramWatcher.assertExpected();
     }
@@ -1812,7 +1811,7 @@ public class FuseboxMediatorUnitTest {
     @Test
     public void onTabPickerClicked_launchesTabPickerActivity() {
         mModel.get(FuseboxProperties.POPUP_ATTACH_TAB_PICKER_CLICKED).run();
-        assertTrue(mMediator.wasActionTaken());
+        assertTrue(mMediator.wasPopupItemSelected());
 
         assertEquals(PopupState.HIDDEN, (int) mModel.get(FuseboxProperties.POPUP_STATE));
         verify(mWindowAndroid).showCancelableIntent(mIntentCaptor.capture(), any(), any());

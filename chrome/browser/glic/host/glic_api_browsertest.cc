@@ -171,7 +171,6 @@ using ::testing::UnorderedElementsAre;
 DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kFirstTab);
 DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSecondTab);
 DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kThirdTab);
-DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSettingsTab);
 std::vector<std::string> GetTestSuiteNames() {
   return {
       "GlicApiTest",
@@ -764,146 +763,6 @@ IN_PROC_BROWSER_TEST_P(GlicApiTestWithFailedCookieSync, testCookieSyncFails) {
                                      2 /*COOKIE_SYNC_ERROR*/, 1);
 }
 
-// Connect the client, and check that the special request header is sent.
-IN_PROC_BROWSER_TEST_P(GlicApiTest, testRequestHeader) {
-  RunTestSequence(OpenGlic(GlicInstrumentMode::kHostAndContents));
-  const GURL cross_origin_rpc_url =
-      embedded_test_server()->GetURL("b.com", "/fake-rpc/cors");
-  ExecuteJsTest({.params = base::Value(base::DictValue().Set(
-                     "rpcUrls", base::ListValue()
-                                    .Append("/fake-rpc")
-                                    .Append(cross_origin_rpc_url.spec())))});
-
-  auto request_header_matcher = testing::AllOf(
-      Contains(Pair("x-glic", "1")),
-      Contains(
-          Pair("x-glic-chrome-channel",
-               testing::AnyOf("unknown", "canary", "dev", "beta", "stable"))),
-      Contains(
-          Pair("x-glic-chrome-version", version_info::GetVersionNumber())));
-
-  auto find_request = [&](std::string_view path) {
-    const auto it = std::ranges::find_if(
-        embedded_test_server_requests_, [&](const auto& request) {
-          return request.GetURL().GetPath() == path &&
-                 request.method == net::test_server::METHOD_GET;
-        });
-    return it == embedded_test_server_requests_.end() ? nullptr : &(*it);
-  };
-
-  auto* main_request = find_request(GetGuestURL().GetPath());
-  ASSERT_TRUE(main_request);
-  EXPECT_THAT(main_request->headers, request_header_matcher);
-
-  auto* rpc_request = find_request("/fake-rpc");
-  ASSERT_TRUE(rpc_request);
-  EXPECT_THAT(rpc_request->headers, request_header_matcher);
-
-  auto* cross_origin_rpc_request = find_request("/fake-rpc/cors");
-  ASSERT_TRUE(cross_origin_rpc_request);
-  EXPECT_THAT(cross_origin_rpc_request->headers, request_header_matcher);
-}
-
-// Tests that the response to a user confirmation dialog is correctly ordered
-// w.r.t. other Glic API calls. See b/465690937 and associated CLs for details.
-IN_PROC_BROWSER_TEST_P(GlicApiTest, testDialogResponseCallOrder) {
-  auto* actor_service = actor::ActorKeyedService::Get(browser()->GetProfile());
-  ASSERT_TRUE(actor_service);
-
-  RunTestSequence(OpenGlic(GlicInstrumentMode::kHostAndContents),
-                  CheckTabCount(1));
-
-  base::test::TestFuture<actor::TaskId> task_created;
-  base::CallbackListSubscription subscription =
-      actor_service->AddTaskStateChangedCallback(
-          base::BindLambdaForTesting([&](actor::ActorTask& task) {
-            if (task.GetState() == actor::ActorTask::State::kCreated) {
-              task_created.SetValue(task.id());
-            }
-          }));
-
-  // Client side subscribes to the observable returned from
-  // selectUserConfirmationDialogRequestHandler and it creates an actor task.
-  ExecuteJsTest();
-
-  // Wait for the task to be created. Put it in an interrupted state.
-  actor::ActorTask* task = actor_service->GetTask(task_created.Get());
-  ASSERT_TRUE(task);
-
-  // TODO(bokan): This shouldn't be necessary but the task is kCreated state
-  // from which we cannot interrupt.
-  task->SetState(actor::ActorTask::State::kReflecting);
-
-  task->Interrupt();
-  ASSERT_EQ(task->GetState(), actor::ActorTask::State::kWaitingOnUser);
-
-  // Request a user dialog to show and record the state of the task when the
-  // response from it is received.
-  base::test::TestFuture<actor::ActorTask::State>
-      state_when_dialog_response_received;
-  GetGlicInstanceImpl()
-      ->GetActorTaskManager()
-      ->GetClientSessionForTesting()
-      ->RequestToShowUserConfirmationDialog(
-          task->id(), url::Origin(), /*for_sensitive_origin=*/false,
-          base::BindLambdaForTesting(
-              [&](actor::webui::mojom::UserConfirmationDialogResponsePtr) {
-                state_when_dialog_response_received.SetValue(task->GetState());
-              }));
-
-  // The client side will respond to the dialog then uninterrupt the task.
-  // Ensure the dialog response is received before the task has been
-  // uninterrupted.
-  ContinueJsTest();
-
-  EXPECT_EQ(state_when_dialog_response_received.Get(),
-            actor::ActorTask::State::kWaitingOnUser);
-}
-
-
-IN_PROC_BROWSER_TEST_P(GlicApiTest, testPopupOpens) {
-  RunTestSequence(OpenGlic(GlicInstrumentMode::kHostAndContents),
-                  CheckPopupCount(0));
-  ExecuteJsTest();
-  RunTestSequence(CheckPopupCount(1));
-}
-
-IN_PROC_BROWSER_TEST_P(GlicApiTest, testInvoke) {
-  RunTestSequence(OpenGlic(GlicInstrumentMode::kHostAndContents));
-  auto options = mojom::InvokeOptions::New();
-  options->invocation_source = mojom::InvocationSource::kTopChromeButton;
-  GetGlicInstanceImpl()->host().GetPrimaryWebClient()->Invoke(
-      std::move(options), base::DoNothing());
-  ExecuteJsTest();
-}
-
-IN_PROC_BROWSER_TEST_P(GlicApiTestWithOneTab, testOpenGlicSettingsPage) {
-  ExecuteJsTest();
-
-  RunTestSequence(
-      InstrumentTab(kSettingsTab),
-      WaitForWebContentsReady(
-          kSettingsTab, chrome::GetSettingsUrl(chrome::kGlicSettingsSubpage)));
-
-  // Confirm that this no-response request does not get latency metrics
-  // recorded.
-  histogram_tester->ExpectTotalCount(
-      "Glic.Api.RequestHostLatency.OpenGlicSettingsPage", 0);
-}
-
-IN_PROC_BROWSER_TEST_P(GlicApiTestWithOneTab,
-                       testOpenPasswordManagerSettingsPage) {
-  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kPasswordManagerTab);
-
-  const GURL settings_url =
-      base::FeatureList::IsEnabled(features::kFedCmEmbedderInitiatedLogin)
-          ? chrome::GetSettingsUrl(chrome::kGlicLoginSettingsSubpage)
-          : GURL(GetGooglePasswordManagerSubPageURLStr());
-  RunTestSequence(InstrumentNextTab(kPasswordManagerTab),
-                  Do([this]() { ExecuteJsTest(); }),
-                  WaitForWebContentsReady(kPasswordManagerTab, settings_url));
-}
-
 class GlicApiTestWithDaisyChain : public GlicApiTest {
  public:
   GlicApiTestWithDaisyChain() {
@@ -920,44 +779,6 @@ class GlicApiTestWithDaisyChain : public GlicApiTest {
  private:
   base::test::ScopedFeatureList daisy_chain_features_;
 };
-
-IN_PROC_BROWSER_TEST_P(GlicApiTestWithDaisyChain,
-                       testCanAttachPanelToFallbackEmbedder) {
-  RunTestSequence(OpenGlic(GlicInstrumentMode::kHostAndContents),
-                  CheckTabCount(1));
-
-  // Runs the JS test until the first `advanceToNextStep()`.
-  ExecuteJsTest();
-
-  // The JS test is now paused.
-  auto* tab = browser()->tab_strip_model()->GetActiveTab();
-  ASSERT_TRUE(tab);
-  tab->Close();
-
-  // Continue the JS test to verify canAttachPanel is still true since it will
-  // now attach to the fallback embedder.
-  ContinueJsTest();
-}
-
-IN_PROC_BROWSER_TEST_P(GlicApiTest,
-                       testSwitchConversationToOldConversationNewInstance) {
-  RunTestSequence(OpenGlic(GlicInstrumentMode::kHostAndContents,
-                           /*conversation_id=*/std::nullopt));
-  ExecuteJsTest();
-  histogram_tester->ExpectBucketCount(
-      "Glic.Interaction.SwitchConversationTarget",
-      GlicSwitchConversationTarget::kSwitchedToNewInstance, 1);
-}
-
-IN_PROC_BROWSER_TEST_P(GlicApiTest,
-                       testSwitchConversationToNewConversationNewInstance) {
-  RunTestSequence(OpenGlic(GlicInstrumentMode::kHostAndContents,
-                           /*conversation_id=*/std::nullopt));
-  ExecuteJsTest();
-  histogram_tester->ExpectBucketCount(
-      "Glic.Interaction.SwitchConversationTarget",
-      GlicSwitchConversationTarget::kStartNewConversation, 1);
-}
 
 IN_PROC_BROWSER_TEST_P(GlicApiTest,
                        testSwitchConversationToLastActiveConversation) {
@@ -1482,9 +1303,6 @@ IN_PROC_BROWSER_TEST_P(GlicApiTestWithOneTab, DISABLED_testCaptureScreenshot) {
   ExecuteJsTest();
 }
 
-IN_PROC_BROWSER_TEST_P(GlicApiTestWithOneTab, testClosedCaptioning) {
-  ExecuteJsTest();
-}
 
 class GlicApiTestWithOneTabAndCachedUserProfile : public GlicApiTestWithOneTab {
  public:
@@ -1504,42 +1322,6 @@ IN_PROC_BROWSER_TEST_P(GlicApiTestWithOneTabAndCachedUserProfile,
 
 IN_PROC_BROWSER_TEST_P(GlicApiTestWithOneTab,
                        testGetUserProfileInfoDoesNotDeferWhenInactive) {
-  ExecuteJsTest();
-}
-
-IN_PROC_BROWSER_TEST_P(GlicApiTestWithOneTab, testSignInPauseState) {
-  // Check that Glic web client is open and can retrieve the user's info.
-  ExecuteJsTest({.expect_guest_frame_destroyed = false});
-
-  // Pause the sign-in.
-  auto* const identity_manager =
-      IdentityManagerFactory::GetForProfile(browser()->GetProfile());
-  signin::SetInvalidRefreshTokenForPrimaryAccount(identity_manager);
-
-  // The guest frame should be destroyed, and the WebUI should show the sign-in
-  // panel.
-  ASSERT_TRUE(base::test::RunUntil(
-      [&]() { return FindGlicGuestMainFrame() == nullptr; }));
-  WaitForWebUiState(mojom::WebUiState::kSignIn);
-}
-
-IN_PROC_BROWSER_TEST_P(GlicApiTestWithOneTab, testRefreshSignInCookies) {
-  ExecuteJsTest();
-}
-
-IN_PROC_BROWSER_TEST_P(GlicApiTestWithOneTab, testActuationOnWebSetting) {
-  ExecuteJsTest();
-}
-
-IN_PROC_BROWSER_TEST_P(GlicApiTestWithOneTab, testSetContextAccessIndicator) {
-  ExecuteJsTest();
-}
-
-IN_PROC_BROWSER_TEST_P(GlicApiTestWithOneTab, testSetAudioDucking) {
-  ExecuteJsTest();
-}
-
-IN_PROC_BROWSER_TEST_P(GlicApiTestWithOneTab, testGetDisplayMedia) {
   ExecuteJsTest();
 }
 

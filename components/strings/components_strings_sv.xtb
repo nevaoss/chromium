@@ -592,6 +592,7 @@ Annars blockeras detta av integritetsinställningarna. Om du tillåter detta kan
 <translation id="2027465737841872819">Plast</translation>
 <translation id="2027707238798802149">Kortet är inte tillgängligt</translation>
 <translation id="2032962459168915086"><ph name="BEGIN_LINK" />kontrollera proxyn och brandväggen<ph name="END_LINK" /></translation>
+<translation id="2033550997390154638">Den här instansen av Chrome körs med manuellt inställda kommandoradsflaggor. Observera att kommandoradsflaggor kan ändras när som helst och stöds inte.</translation>
 <translation id="2033900728810589426">Genvägen kan inte vara densamma som standardsökordet hos sökleverantören som definieras av <ph name="DEFAULT_SEARCH_PROVIDER_KEYWORD_POLICY_NAME" />: <ph name="SHORTCUT_NAME" /></translation>
 <translation id="2034971124472263449">Spara ändå</translation>
 <translation id="2036514476578229158">Du har bett att få besöka den här webbplatsen. Dina föräldrar kan svara via Family Link.</translation>
@@ -1061,7 +1062,6 @@ Annars blockeras detta av integritetsinställningarna. Om du tillåter detta kan
 <translation id="2824775600643448204">Adress- och sökfält</translation>
 <translation id="2826760142808435982">Anslutningen är krypterad och verifieras med <ph name="CIPHER" /> och använder <ph name="KX" /> som nyckelutbytesmekanism.</translation>
 <translation id="2828797285817981634">Rörelsesensorer tillåts för närvarande</translation>
-<translation id="2835170189407361413">Rensa formuläret</translation>
 <translation id="2835907903001172712">webbläsaröversikt</translation>
 <translation id="2837891525090413132">Kan be om tillåtelse att låsa och använda ditt tangentbord</translation>
 <translation id="2839032553903800133">Aviseringar har blockerats</translation>
@@ -3295,7 +3295,6 @@ Gå till <ph name="BEGIN_LINK" />betalningsinställningarna<ph name="END_LINK" /
 <translation id="6679354743514146922">Chrome-webbläsaren försöker fylla i ditt lösenord i <ph name="APP_NAME" />.</translation>
 <translation id="668132230070712111">Videon har sparats i Google Drive</translation>
 <translation id="6681790815630918386">CVC har sparats</translation>
-<translation id="6686570026048064255">Om du vill inaktivera identifiering av Pix-kod öppnar du <ph name="BEGIN_LINK1" />Chrome-inställningarna<ph name="END_LINK1" /></translation>
 <translation id="6687230248707087982">Kuvert (normalt)</translation>
 <translation id="6687335167692595844">Teckenstorlek begärd</translation>
 <translation id="6688743156324860098">Uppdatera …</translation>
@@ -4438,6 +4437,7 @@ Mer information:
 <translation id="8708134712139312373">Får begära tillstånd att ansluta till enheter via Bluetooth</translation>
 <translation id="8710842507289500830">Fontformat</translation>
 <translation id="8712637175834984815">Uppfattat</translation>
+<translation id="8715198179991802709">Chrome har precis flaggat en webbplats som du försökte besöka. Hjälp oss att förbättra dessa varningar genom att svara på en enkät på en minut.</translation>
 <translation id="8718314106902482036">Betalningen slutfördes inte</translation>
 <translation id="8719263113926255150"><ph name="ENTITY" />, <ph name="DESCRIPTION" />, sökförslag</translation>
 <translation id="8719528812645237045">Flera hål högst upp</translation>
@@ -4565,7 +4565,6 @@ Mer information:
 <translation id="8932102934695377596">Klockan går efter</translation>
 <translation id="893332455753468063">Lägg till namn</translation>
 <translation id="8938242527120341116">Enhetens innehållsfilter blockerade <ph name="BLOCKED_URL" /></translation>
-<translation id="8942355029279167844">Administratören har tillåtit <ph name="APP_NAME" /> att samla in diagnostikdata i syfte att förbättra produktupplevelsen. Du hittar mer information på <ph name="BEGIN_LINK" />https://www.parallels.com/pcep<ph name="END_LINK" />.</translation>
 <translation id="8943282376843390568">Limegrön</translation>
 <translation id="8949410982325929394">Ton</translation>
 <translation id="8949493680961858543">A1 x 4</translation>

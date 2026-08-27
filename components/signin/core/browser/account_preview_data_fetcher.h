@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include "base/containers/flat_set.h"
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
@@ -71,6 +72,7 @@ class AccountPreviewDataFetcher {
       IdentityManager* identity_manager,
       scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
       version_info::Channel channel,
+      base::flat_set<std::string> current_device_cache_guids,
       FetchCompleteCallback callback);
   ~AccountPreviewDataFetcher();
 
@@ -80,6 +82,8 @@ class AccountPreviewDataFetcher {
   static GURL GetStatsUrlForChannel(version_info::Channel channel);
   static GURL GetPreviewsUrlForChannel(version_info::Channel channel);
 
+  void SetOnFetchCompletedForTesting(base::OnceClosure closure);
+
  private:
   void OnAccessTokenReceived(GoogleServiceAuthError error,
                              AccessTokenInfo token_info);
@@ -87,11 +91,14 @@ class AccountPreviewDataFetcher {
   void OnStatsFetchCompleted(std::optional<std::string> response_body);
   void OnPreviewsFetchCompleted(std::optional<std::string> response_body);
   void OnFetchCompleted(std::vector<bool> results);
+  void CompleteFetch();
+  void RunCallback();
 
   const GaiaId gaia_id_;
   const raw_ptr<IdentityManager> identity_manager_;
   scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory_;
   const version_info::Channel channel_;
+  const base::flat_set<std::string> current_device_cache_guids_;
   FetchCompleteCallback callback_;
 
   std::unique_ptr<AccessTokenFetcher> token_fetcher_;
@@ -104,6 +111,8 @@ class AccountPreviewDataFetcher {
   base::RepeatingCallback<void(bool)> barrier_callback_;
 
   bool is_started_ = false;
+
+  base::OnceClosure on_fetch_completed_for_testing_;
 
   base::WeakPtrFactory<AccountPreviewDataFetcher> weak_ptr_factory_{this};
 };

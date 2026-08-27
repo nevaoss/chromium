@@ -392,8 +392,6 @@ TEST_F(AutofillAiManagerTest,
   manager().OnAfterLoadedServerPredictions(autofill_manager(), {form_id});
 }
 
-
-
 // Tests that IPH should not be displayed if the user is opted into AutofillAI
 // already.
 TEST_F(AutofillAiManagerTest, ShouldNotDisplayIphWhenOptedIn) {
@@ -538,6 +536,29 @@ TEST_F(AutofillAiManagerTest,
   EXPECT_CALL(autofill_client(), TriggerAutofillAiFillingJourneySurvey)
       .Times(0);
   ASSERT_FALSE(manager().OnFormSubmitted(form_structure, /*ukm_source_id=*/{}));
+}
+
+// Tests that OnAutofillAiSuggestionsShown sets
+// kAutofillAiPrivateInferenceNoticeShownTimestamp when
+// kAutofillAiPrivateInferenceNotice is in the shown suggestions.
+TEST_F(
+    AutofillAiManagerTest,
+    OnAutofillAiSuggestionsShown_SetsPrivateInferenceNoticeFirstShownTimestamp) {
+  FormStructure form_structure(
+      test::GetFormData({.fields = {{.role = PASSPORT_NUMBER}}}));
+
+  EXPECT_EQ(autofill_client().GetPrefs()->GetTime(
+                prefs::kAutofillAiPrivateInferenceNoticeShownTimestamp),
+            base::Time());
+
+  manager().OnAutofillAiSuggestionsShown(
+      form_structure, *form_structure.field(0),
+      {Suggestion(SuggestionType::kAutofillAiPrivateInferenceNotice)}, {},
+      /*update_suggestions_callback=*/{});
+
+  EXPECT_NE(autofill_client().GetPrefs()->GetTime(
+                prefs::kAutofillAiPrivateInferenceNoticeShownTimestamp),
+            base::Time());
 }
 
 // Tests that filling moment surveys are triggered even when save or update

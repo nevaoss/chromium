@@ -110,6 +110,8 @@ class AtMemoryQueryService : public KeyedService {
       base::RepeatingCallback<void(MemorySearchResults)> callback,
       std::vector<MemorySearchResult> remote_results,
       base::flat_set<std::u16string> filter_words,
+      std::vector<personal_context::proto::AutofillFetchSpecification>
+          fetch_specifications,
       std::string server_request_id,
       std::vector<MemorySearchResult> local_results);
 
@@ -131,37 +133,6 @@ class AtMemoryQueryService : public KeyedService {
   base::WeakPtrFactory<AtMemoryQueryService> pii_unmasking_weak_ptr_factory_{
       this};
 };
-
-// TODO(crbug.com/542022101): Move all of these functions into the anonymous
-// namespace once they can be tested via `AtMemoryQueryService::Query()`.
-namespace internal {
-
-// Returns whether `entry_string` matches `filter` according to its filter mode.
-bool MatchesStringFilter(
-    std::u16string_view entry_string,
-    const personal_context::proto::AutofillFetchSpecification::StringFilter&
-        filter);
-
-// Returns whether `entry_typed_val` matches `filter`.
-bool MatchesTypedFilter(
-    const personal_context::proto::TypedValue& entry_typed_val,
-    const personal_context::proto::AutofillFetchSpecification::TypedValueFilter&
-        filter);
-
-// Returns whether `entry` or any of its metadata items whose type is allowed
-// by `filter.data_types()` matches `filter.typed_value_filter()` (when set) or
-// `filter.string_filter()`.
-bool MatchesFilter(
-    const MemorySearchResult& entry,
-    const personal_context::proto::AutofillFetchSpecification::Filter& filter);
-
-// Returns whether `entry` has the data type requested by `spec` and satisfies
-// all filters in `spec.filters()`.
-bool MatchesFetchSpecification(
-    const MemorySearchResult& entry,
-    const personal_context::proto::AutofillFetchSpecification& spec);
-
-}  // namespace internal
 
 }  // namespace autofill
 

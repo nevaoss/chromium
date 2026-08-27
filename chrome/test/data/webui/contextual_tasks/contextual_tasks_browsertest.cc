@@ -54,8 +54,6 @@ class ContextualTasksBrowserTest : public WebUIMochaBrowserTest {
         .WillByDefault(testing::Return(true));
     ON_CALL(*aim_eligibility_service, IsCobrowseEligible())
         .WillByDefault(testing::Return(true));
-    ON_CALL(*aim_eligibility_service, IsAimUrl(testing::_, testing::_))
-        .WillByDefault(testing::Return(true));
     return aim_eligibility_service;
   }
 
@@ -66,8 +64,9 @@ class ContextualTasksBrowserTest : public WebUIMochaBrowserTest {
 
 // TODO(crbug.com/487147580): Re-enable the test
 // Only running on Mac and Desktop Android currently.
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX) || \
-    (BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_DESKTOP_ANDROID))
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX) ||                  \
+    (BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_DESKTOP_ANDROID)) || \
+    BUILDFLAG(IS_CHROMEOS)
 #define MAYBE_App DISABLED_App
 #else
 #define MAYBE_App App

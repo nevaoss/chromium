@@ -411,8 +411,7 @@ int TabStripModel::InsertDetachedTabAt(
   // Newly attached dragged tabs without an explicit group should join the
   // focused group if focus mode is active, unless the tab is pinned.
   const bool is_pinned = (add_types & ADD_PINNED) != 0;
-  if (base::FeatureList::IsEnabled(features::kTabGroupsFocusing) &&
-      !group.has_value() && !is_pinned) {
+  if (!group.has_value() && !is_pinned) {
     group = GetFocusedGroup();
   }
 
@@ -1070,8 +1069,7 @@ void TabStripModel::ActivateTab(tabs::TabInterface* tab,
   scrubbing_metrics_.IncrementPressCount(user_gesture);
 
   // If this tab was activated, eg. by an extension, but is not in the focused
-  // group, unfocus the focused group (unless it is a pinned tab and pinned
-  // tabs are allowed in focus mode).
+  // group, unfocus the focused group (unless it is a pinned tab).
   std::optional<tab_groups::TabGroupId> focused_group = GetFocusedGroup();
   if (focused_group.has_value() &&
       !tabs::TabStripModelSelectionState::IsTabValidInFocusedGroup(
@@ -1780,9 +1778,9 @@ void TabStripModel::AddTab(std::unique_ptr<tabs::TabModel> tab,
   }
 
   // Newly created tabs without an explicit group join the focused group if
-  // focus mode is active.
-  if (base::FeatureList::IsEnabled(features::kTabGroupsFocusing) &&
-      !group.has_value()) {
+  // focus mode is active, unless the tab is pinned.
+  const bool is_pinned = (add_types & ADD_PINNED) != 0;
+  if (!group.has_value() && !is_pinned) {
     group = GetFocusedGroup();
   }
 
@@ -3651,6 +3649,11 @@ int TabStripModel::InsertTabAtImpl(
   if (group_model_ && group.has_value()) {
     CHECK(group_model_->ContainsTabGroup(group.value()));
   }
+
+  // A privileged WebContents (see //chrome's PrivilegedWebContents) is hosted
+  // natively by its owning feature (e.g. in a side panel), never as a browser
+  // tab. Guard every tab insertion against one ending up in the tab strip.
+  CHECK(!tab->GetContents()->IsPrivileged());
 
   delegate()->WillAddWebContents(tab->GetContents());
 
@@ -5556,21 +5559,6 @@ std::optional<int> TabStripModel::DetermineNewSelectedIndex(
 
   gfx::Range block_tabs = gfx::Range(start_index, start_index + block_size);
 
-  // When focus mode is active, prioritize selecting a tab within the focused
-  // group so that tab removals/detaches preserve focus state.
-  const std::optional<tab_groups::TabGroupId> focused_group = GetFocusedGroup();
-  if (focused_group) {
-    const TabGroup* group = group_model_->GetTabGroup(*focused_group);
-    if (group) {
-      const gfx::Range group_range = group->ListTabs();
-      for (uint32_t i = group_range.start(); i < group_range.end(); ++i) {
-        if (!block_tabs.Contains(gfx::Range(i, i + 1))) {
-          return GetTabIndexAfterClosing(i, block_tabs);
-        }
-      }
-    }
-  }
-
   // First preference is a tab the block opened.
   int new_selected_index = GetIndexOfNextWebContentsOpenedBy(block_tabs);
   if (new_selected_index != TabStripModel::kNoTab &&
@@ -5628,6 +5616,21 @@ std::optional<int> TabStripModel::DetermineNewSelectedIndex(
 
     if (parent_collection_range.start() != block_tabs.start()) {
       return GetTabIndexAfterClosing(start_index - 1, block_tabs);
+    }
+  }
+
+  // When focus mode is active, prioritize selecting a tab within the focused
+  // group so that tab removals/detaches preserve focus state.
+  const std::optional<tab_groups::TabGroupId> focused_group = GetFocusedGroup();
+  if (focused_group) {
+    const TabGroup* group = group_model_->GetTabGroup(*focused_group);
+    if (group) {
+      const gfx::Range group_range = group->ListTabs();
+      for (uint32_t i = group_range.start(); i < group_range.end(); ++i) {
+        if (!block_tabs.Contains(gfx::Range(i, i + 1))) {
+          return GetTabIndexAfterClosing(i, block_tabs);
+        }
+      }
     }
   }
 

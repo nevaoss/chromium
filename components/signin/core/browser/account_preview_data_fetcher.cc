@@ -21,6 +21,7 @@
 #include "components/signin/public/identity_manager/access_token_info.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
 #include "components/sync/base/data_type.h"
+#include "components/sync/base/time.h"
 #include "google_apis/gaia/gaia_constants.h"
 #include "net/base/url_util.h"
 #include "net/http/http_request_headers.h"
@@ -104,11 +105,13 @@ bool ParseStatsResponse(const std::string& response_body,
   return true;
 }
 
-// Parses the response from the previews endpoint. Returns true if the
-// response format is as expected (or if the data is properly structured
-// but empty).
-bool ParsePreviewsResponse(const std::string& response_body,
-                           AccountPreviewData& data) {
+// Parses the response from the previews endpoint (ProtoJSON format). Returns
+// true if the response format is as expected (or if the data is properly
+// structured but empty).
+bool ParsePreviewsResponse(
+    const std::string& response_body,
+    AccountPreviewData& data,
+    const base::flat_set<std::string>& current_device_cache_guids) {
   std::optional<base::Value> value =
       base::JSONReader::Read(response_body, base::JSON_PARSE_RFC);
   if (!value || !value->is_dict()) {
@@ -120,26 +123,64 @@ bool ParsePreviewsResponse(const std::string& response_body,
     // An empty valid result is still considered a success.
     return true;
   }
-  data.password_domains.clear();
+
+  data.devices.clear();
   for (const auto& item : *list) {
     if (!item.is_dict()) {
       continue;
     }
-    const auto& item_dict = item.GetDict();
-    const auto* specifics = item_dict.FindDict("specifics");
-    if (!specifics) {
+    const auto* specifics_preview = item.GetDict().FindDict("specificsPreview");
+    if (!specifics_preview) {
       continue;
     }
-    const auto* password_preview = specifics->FindDict("passwordPreview");
-    if (!password_preview) {
+    const auto* device_info_preview =
+        specifics_preview->FindDict("deviceInfoPreview");
+    if (!device_info_preview) {
       continue;
     }
-    const std::string* url = password_preview->FindString("url");
-    const std::string* domain =
-        url ? url : password_preview->FindString("hashedUrl");
-    if (domain) {
-      data.password_domains.push_back(*domain);
+
+    const std::string* cache_guid =
+        device_info_preview->FindString("cacheGuid");
+    if (!cache_guid) {
+      continue;
     }
+
+    // Filter out current device.
+    if (current_device_cache_guids.contains(*cache_guid)) {
+      continue;
+    }
+
+    const std::string* sync_user_agent =
+        device_info_preview->FindString("syncUserAgent");
+    // Filter out non-Chrome devices (e.g. Google Play Services or iGSA).
+    if (!device_info_preview->FindDict("chromeVersionInfo") ||
+        (sync_user_agent && sync_user_agent->starts_with("iGSA"))) {
+      continue;
+    }
+
+    DevicePreview device;
+    device.cache_guid = *cache_guid;
+
+    // ProtoJSON serializes uint64/int64 values as strings (or numbers).
+    int64_t timestamp = 0;
+    if (const std::string* ts_str =
+            device_info_preview->FindString("lastUpdatedTimestamp")) {
+      base::StringToInt64(*ts_str, &timestamp);
+    } else if (std::optional<double> ts_double =
+                   device_info_preview->FindDouble("lastUpdatedTimestamp")) {
+      timestamp = static_cast<int64_t>(*ts_double);
+    }
+    device.last_updated = syncer::ProtoTimeToTime(timestamp);
+
+    int os_type_int = device_info_preview->FindInt("osType").value_or(0);
+    device.os_type = static_cast<sync_pb::SyncEnums_OsType>(os_type_int);
+
+    int form_factor_int =
+        device_info_preview->FindInt("deviceFormFactor").value_or(0);
+    device.form_factor =
+        static_cast<sync_pb::SyncEnums_DeviceFormFactor>(form_factor_int);
+
+    data.devices.push_back(std::move(device));
   }
   return true;
 }
@@ -157,6 +198,7 @@ std::string_view GetBaseUrl(version_info::Channel channel) {
 
 // The list of data types to fetch statistics for. This list explicitly requests
 // only the data types currently used by metrics.
+// static
 GURL AccountPreviewDataFetcher::GetStatsUrlForChannel(
     version_info::Channel channel) {
   GURL url(
@@ -170,6 +212,7 @@ GURL AccountPreviewDataFetcher::GetStatsUrlForChannel(
   return url;
 }
 
+// static
 GURL AccountPreviewDataFetcher::GetPreviewsUrlForChannel(
     version_info::Channel channel) {
   // Requesting only DEVICE_INFO.
@@ -185,11 +228,13 @@ AccountPreviewDataFetcher::AccountPreviewDataFetcher(
     IdentityManager* identity_manager,
     scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
     version_info::Channel channel,
+    base::flat_set<std::string> current_device_cache_guids,
     FetchCompleteCallback callback)
     : gaia_id_(gaia_id),
       identity_manager_(identity_manager),
       url_loader_factory_(std::move(url_loader_factory)),
       channel_(channel),
+      current_device_cache_guids_(std::move(current_device_cache_guids)),
       callback_(std::move(callback)) {
   CHECK(identity_manager_);
 }
@@ -205,9 +250,8 @@ void AccountPreviewDataFetcher::Start() {
   AccountInfo account_info =
       identity_manager_->FindExtendedAccountInfoByGaiaId(gaia_id_);
   if (account_info.IsEmpty()) {
-    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE,
-        base::BindOnce(std::move(callback_), gaia_id_, std::nullopt));
+    fetched_data_ = std::nullopt;
+    CompleteFetch();
     return;
   }
 
@@ -223,11 +267,17 @@ void AccountPreviewDataFetcher::OnAccessTokenReceived(
     AccessTokenInfo token_info) {
   token_fetcher_.reset();
   if (error.state() != GoogleServiceAuthError::NONE) {
-    std::move(callback_).Run(gaia_id_, std::nullopt);
+    fetched_data_ = std::nullopt;
+    CompleteFetch();
     return;
   }
 
   StartNetworkRequests(token_info.token);
+}
+
+void AccountPreviewDataFetcher::SetOnFetchCompletedForTesting(
+    base::OnceClosure closure) {
+  on_fetch_completed_for_testing_ = std::move(closure);
 }
 
 void AccountPreviewDataFetcher::StartNetworkRequests(
@@ -333,7 +383,8 @@ void AccountPreviewDataFetcher::OnPreviewsFetchCompleted(
                                     ? FetchState::kEntityPreviewHasResult
                                     : FetchState::kEntityPreviewEmptyResult);
   bool success = response_body.has_value() &&
-                 ParsePreviewsResponse(*response_body, *fetched_data_);
+                 ParsePreviewsResponse(*response_body, *fetched_data_,
+                                       current_device_cache_guids_);
   barrier_callback_.Run(success);
 }
 
@@ -347,13 +398,25 @@ void AccountPreviewDataFetcher::OnFetchCompleted(std::vector<bool> results) {
                                 fetched_data_.has_value()
                                     ? FetchState::kCompletedWithResults
                                     : FetchState::kCompletedWithoutResults);
-  // PostTask is required here because `barrier_callback_` is owned by `this`
-  // and is triggering this callback (`OnFetchCompleted()`). If `callback_`
-  // causes `this` to be deleted, the destruction of `barrier_callback_` could
-  // result in a use-after-free.
+
+  CompleteFetch();
+}
+
+void AccountPreviewDataFetcher::CompleteFetch() {
+  // `PostTask` + `WeakPtr` prevents re-entrancy and stack-unwinding UAFs, and a
+  // subtle race where `this` is destroyed after posting but prior to execution
+  // (see crbug.com/533927599, crbug.com/542550030).
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE,
-      base::BindOnce(std::move(callback_), gaia_id_, std::move(fetched_data_)));
+      FROM_HERE, base::BindOnce(&AccountPreviewDataFetcher::RunCallback,
+                                weak_ptr_factory_.GetWeakPtr()));
+  if (on_fetch_completed_for_testing_) {
+    std::move(on_fetch_completed_for_testing_).Run();
+  }
+}
+
+void AccountPreviewDataFetcher::RunCallback() {
+  CHECK(callback_);
+  std::move(callback_).Run(gaia_id_, std::move(fetched_data_));
 }
 
 }  // namespace signin

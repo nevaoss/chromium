@@ -248,16 +248,6 @@ class ContextualTasksUiService : public KeyedService {
                              const std::optional<base::Uuid>& new_task_id,
                              bool is_shown_in_tab);
 
-  // Called when the WebUI is ready.
-  virtual void OnWebUIReady(BrowserWindowInterface* browser_window_interface,
-                            const base::Uuid& task_id,
-                            content::WebContents* web_contents);
-
-  // Called when the WebUI controller is destroyed.
-  virtual void OnWebUIDestroyed(
-      BrowserWindowInterface* browser_window_interface,
-      const std::optional<base::Uuid>& task_id);
-
   // Turns on smart tab sharing in the specified browser window's active WebUI.
   virtual void TurnOnSmartTabSharing(BrowserWindowInterface* browser);
 
@@ -294,11 +284,6 @@ class ContextualTasksUiService : public KeyedService {
 
   // Returns whether the provided URL is to an AI page.
   virtual bool IsAiUrl(const GURL& url);
-
-  // Returns whether the contextual tasks side panel is open and the given
-  // WebContents is inside the side panel.
-  virtual bool IsSidePanelOpenAndRequestInSidePanel(
-      content::WebContents* web_contents);
 
   // Returns whether the provided task ID is for a task that should show the
   // error page on load.

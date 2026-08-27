@@ -7,6 +7,8 @@
 
 #include <windows.h>
 
+#include <vector>
+
 #include "base/functional/callback.h"
 #include "base/memory/weak_ptr.h"
 #include "base/sequence_checker.h"
@@ -53,9 +55,15 @@ class SettingsWindowFinderWin {
  protected:
   virtual HWND FindSettingsTopLevelWindow() const;
 
- private:
-  bool IsLikelySettingsWindow(HWND hwnd) const;
+  // Virtual for testing.
+  virtual bool IsLikelySettingsWindow(HWND hwnd) const;
+  virtual HWND GetRootWindow(HWND hwnd) const;
 
+  // Instance-side handler for the static WinEventCallback. Exposed to tests
+  // via the virtual seams above.
+  void HandleWinEvent(DWORD event, HWND hwnd, LONG idObject);
+
+ private:
   static void CALLBACK WinEventCallback(HWINEVENTHOOK hWinEventHook,
                                         DWORD event,
                                         HWND hwnd,
@@ -73,7 +81,10 @@ class SettingsWindowFinderWin {
   HWND observed_hwnd_ = nullptr;
   base::OneShotTimer timeout_timer_;
   HWINEVENTHOOK winevent_hook_ = nullptr;
-  HWINEVENTHOOK location_change_hook_ = nullptr;
+  HWINEVENTHOOK uncloak_hook_ = nullptr;
+
+  // Hooks on `observed_hwnd_`, installed and released as a set.
+  std::vector<HWINEVENTHOOK> observation_hooks_;
 
   bool is_active_ = false;
 

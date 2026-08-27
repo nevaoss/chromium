@@ -98,6 +98,11 @@
 - (void)dismissSaveCardBottomSheet {
 }
 
+- (void)showWalletReminderNoticeOnOriginWebState:(web::WebState*)originWebState
+                               legalMessageLines:(autofill::LegalMessageLines)
+                                                     legalMessageLines {
+}
+
 - (void)showVirtualCardEnrollmentBottomSheet:
             (std::unique_ptr<autofill::VirtualCardEnrollUiModel>)model
                               originWebState:(web::WebState*)originWebState {
@@ -224,6 +229,16 @@ class IOSChromePaymentsAutofillClientTest : public PlatformTest {
     bottomsheet_tab_helper_->SetAutofillBottomSheetHandler(autofill_commands_);
 
     autofill_client_->set_commands_handler(autofill_commands_);
+  }
+
+  void TearDown() override {
+    bottomsheet_tab_helper_ = nullptr;
+    autofill_commands_ = nil;
+    autofill_agent_ = nil;
+    autofill_client_.reset();
+    web_state_.reset();
+    profile_.reset();
+    PlatformTest::TearDown();
   }
 
   TestChromeAutofillClient* client() { return autofill_client_.get(); }
@@ -889,6 +904,16 @@ TEST_F(IOSChromePaymentsAutofillClientTest, IsAutofillPaymentMethodsEnabled) {
       GURL("https://www.google.com"));
 
   EXPECT_TRUE(payments_client()->IsAutofillPaymentMethodsEnabled());
+}
+
+TEST_F(IOSChromePaymentsAutofillClientTest,
+       GetWalletReminderNoticeUiDelegate_ReturnsNonNull) {
+  EXPECT_NE(payments_client()->GetWalletReminderNoticeUiDelegate(), nullptr);
+}
+
+TEST_F(IOSChromePaymentsAutofillClientTest,
+       GetWalletReminderNoticeManager_ReturnsNonNull) {
+  EXPECT_NE(payments_client()->GetWalletReminderNoticeManager(), nullptr);
 }
 
 }  // namespace

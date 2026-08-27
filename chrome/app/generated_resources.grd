@@ -465,6 +465,14 @@ are declared in tools/grit/grit_args.gni.
       <message name="IDS_ALTERNATE_NAV_URL_VIEW_LABEL" desc="Label displayed in an infobar when a user searches for a term they may have meant to navigate to.">
         Did you mean to go to <ph name="SITE">$1<ex>http://intranetsite/</ex></ph>?
       </message>
+      <if expr="is_android">
+        <message name="IDS_INTRANET_REDIRECT_MESSAGE_TITLE" desc="Title for the message banner asking if the user meant to navigate to an intranet site rather than search.">
+          Redirect to <ph name="URL">$1<ex>http://intranetsite/</ex></ph> instead?
+        </message>
+        <message name="IDS_INTRANET_REDIRECT_MESSAGE_PRIMARY_BUTTON" desc="Label on the action button in the message banner to redirect to the intranet site.">
+          Redirect
+        </message>
+      </if>
 
       <if expr="use_titlecase">
         <message name="IDS_DOWNLOAD_HISTORY_TITLE" desc="In Title Case: Title for the download history tab.">
@@ -11104,6 +11112,15 @@ Keep your key file in a safe place. You will need it to create new versions of y
       </message>
       <message name="IDS_MEMORY_SAVER_MODE_PROMO_TEXT" desc="The text shown for the high efficiency mode in-product promo bubble">
         Memory Saver frees up memory from inactive tabs so it can be used by active tabs and other apps
+      </message>
+      <message name="IDS_PDF_TRANSLATE_PROMO_TITLE" desc="The title shown for the pdf reading mode translate in-product promo bubble">
+        Translate PDFs
+      </message>
+      <message name="IDS_PDF_TRANSLATE_PROMO_TEXT" desc="The text shown for the pdf reading mode translate in-product promo bubble">
+        PDF translations appear in the reading mode side panel
+      </message>
+      <message name="IDS_PDF_TRANSLATE_PROMO_ACCESSIBLE_TEXT" desc="Screen reader text for the pdf reading mode translate in-product promo bubble">
+        In-Product Help: PDF translations appear in the reading mode side panel
       </message>
       <if expr="use_titlecase">
         <message name="IDS_MEMORY_SAVER_MODE_PROMO_ACTION_TEXT" desc="In Title Case: The custom action button text for the high efficiency mode in-product promo bubble">

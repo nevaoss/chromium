@@ -9,7 +9,6 @@
 
 #include "base/i18n/rtl.h"
 #include "chrome/browser/ui/layout_constants.h"
-#include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/frame/browser_root_view.h"
 #include "chrome/browser/ui/views/tabs/dragging/tab_drag_context.h"
 #include "chrome/browser/ui/views/tabs/dragging/tab_drag_controller.h"
@@ -736,8 +735,6 @@ void TabContainerImpl::SetTabSlotVisibility() {
 
   const std::optional<tab_groups::TabGroupId> focused_group =
       controller_->GetFocusedGroup();
-  const bool show_pinned_tabs_in_focused_groups =
-      features::kTabGroupsFocusingPinnedTabs.Get();
 
   std::set<tab_groups::TabGroupId> visibility_changed_groups;
   bool last_tab_visible = false;
@@ -763,7 +760,7 @@ void TabContainerImpl::SetTabSlotVisibility() {
       // Hide underlines if they would underline an invisible tab, but don't
       // show underlines if they're hidden during a header drag session.
       if (!group_view->header()->dragging()) {
-        group_view->underline()->MaybeSetVisible(last_tab_visible);
+        group_view->underline()->MaybeSetVisible(should_header_be_visible);
       }
     }
 
@@ -776,12 +773,10 @@ void TabContainerImpl::SetTabSlotVisibility() {
     last_tab_group = tab->closing() ? std::nullopt : current_group;
 
     // Tabs outside the focused group are implicitly collapsed in focus mode,
-    // unless they are pinned and pinned tabs are configured to be shown.
+    // unless they are pinned.
     bool is_collapsed_by_focus_mode = false;
     if (focused_group.has_value()) {
-      const bool is_pinned_and_shown =
-          show_pinned_tabs_in_focused_groups && tab->data().pinned;
-      if (!is_pinned_and_shown) {
+      if (!tab->data().pinned) {
         is_collapsed_by_focus_mode =
             !current_group.has_value() ||
             current_group.value() != focused_group.value();

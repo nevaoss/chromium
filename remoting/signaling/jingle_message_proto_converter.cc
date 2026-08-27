@@ -7,8 +7,11 @@
 #include <string>
 #include <utility>
 
+#include "base/base64.h"
 #include "base/logging.h"
 #include "base/notreached.h"
+#include "base/strings/string_split.h"
+#include "remoting/base/errors.h"
 #include "remoting/signaling/content_description.h"
 #include "remoting/signaling/jingle_data_structures.h"
 #include "remoting/signaling/signaling_address.h"
@@ -32,7 +35,7 @@ ftl::AuthenticationMethod AuthMethodToProto(AuthenticationMethod method) {
     case AuthenticationMethod::CORP_SESSION_AUTHZ_SPAKE2_CURVE25519:
       return ftl::AUTHENTICATION_METHOD_CORP_SESSION_AUTHZ_SPAKE2_CURVE25519;
   }
-  NOTREACHED();
+  return ftl::AUTHENTICATION_METHOD_UNSPECIFIED;
 }
 
 AuthenticationMethod ProtoToAuthMethod(ftl::AuthenticationMethod method) {
@@ -47,9 +50,8 @@ AuthenticationMethod ProtoToAuthMethod(ftl::AuthenticationMethod method) {
       return AuthenticationMethod::CLOUD_SESSION_AUTHZ_SPAKE2_CURVE25519;
     case ftl::AUTHENTICATION_METHOD_CORP_SESSION_AUTHZ_SPAKE2_CURVE25519:
       return AuthenticationMethod::CORP_SESSION_AUTHZ_SPAKE2_CURVE25519;
-    default:
-      return AuthenticationMethod::INVALID;
   }
+  return AuthenticationMethod::INVALID;
 }
 
 void JingleAuthenticationToProto(const JingleAuthentication& auth,
@@ -69,10 +71,20 @@ void JingleAuthenticationToProto(const JingleAuthentication& auth,
                                  auth.verification_hash.size());
   }
   if (!auth.session_authz_host_token.empty()) {
-    proto->set_session_authz_host_token(auth.session_authz_host_token);
+    std::string decoded;
+    if (base::Base64Decode(auth.session_authz_host_token, &decoded)) {
+      proto->set_session_authz_host_token(decoded);
+    } else {
+      proto->set_session_authz_host_token(auth.session_authz_host_token);
+    }
   }
   if (!auth.session_authz_session_token.empty()) {
-    proto->set_session_authz_session_token(auth.session_authz_session_token);
+    std::string decoded;
+    if (base::Base64Decode(auth.session_authz_session_token, &decoded)) {
+      proto->set_session_authz_session_token(decoded);
+    } else {
+      proto->set_session_authz_session_token(auth.session_authz_session_token);
+    }
   }
 }
 
@@ -94,10 +106,25 @@ void JingleAuthenticationFromProto(const ftl::Authentication& proto,
                                    proto.verification_hash().end());
   }
   if (proto.has_session_authz_host_token()) {
-    auth->session_authz_host_token = proto.session_authz_host_token();
+    // TODO(joedow): Note that if raw bytes happen to form a valid Base64 string
+    // (e.g. valid Base64 chars with length multiple of 4), this heuristic will
+    // falsely assume it is an old client and skip re-encoding.
+    std::string raw = proto.session_authz_host_token();
+    std::string unused;
+    if (base::Base64Decode(raw, &unused)) {
+      auth->session_authz_host_token = std::move(raw);
+    } else {
+      auth->session_authz_host_token = base::Base64Encode(raw);
+    }
   }
   if (proto.has_session_authz_session_token()) {
-    auth->session_authz_session_token = proto.session_authz_session_token();
+    std::string raw = proto.session_authz_session_token();
+    std::string unused;
+    if (base::Base64Decode(raw, &unused)) {
+      auth->session_authz_session_token = std::move(raw);
+    } else {
+      auth->session_authz_session_token = base::Base64Encode(raw);
+    }
   }
 }
 
@@ -110,7 +137,7 @@ ftl::SessionDescription::SdpType SdpTypeToProto(SessionDescription::Type type) {
     case SessionDescription::Type::kAnswer:
       return ftl::SessionDescription::ANSWER;
   }
-  NOTREACHED();
+  return ftl::SessionDescription::SDP_TYPE_UNSPECIFIED;
 }
 
 SessionDescription::Type ProtoToSdpType(ftl::SessionDescription::SdpType type) {
@@ -121,9 +148,8 @@ SessionDescription::Type ProtoToSdpType(ftl::SessionDescription::SdpType type) {
       return SessionDescription::Type::kOffer;
     case ftl::SessionDescription::ANSWER:
       return SessionDescription::Type::kAnswer;
-    default:
-      return SessionDescription::Type::kUnspecified;
   }
+  return SessionDescription::Type::kUnspecified;
 }
 
 void JingleTransportInfoToProto(const JingleTransportInfo& transport,
@@ -200,16 +226,25 @@ void SignalingAddressToJabberId(const SignalingAddress& address,
     return;
   }
 
-  // For FTL, the ID is usually the email address.
-  // SignalingAddress might contain more info, but JabberId splits it.
-  // This is a simplified mapping.
   std::string username;
   std::string registration_id;
   if (address.GetFtlInfo(&username, &registration_id)) {
-    jabber_id->set_local_part(username);
+    auto parts = base::SplitStringOnce(username, '@');
+    if (parts.has_value()) {
+      jabber_id->set_local_part(std::string(parts->first));
+      jabber_id->set_domain_part(std::string(parts->second));
+    } else {
+      jabber_id->set_local_part(username);
+    }
     jabber_id->set_resource_part(registration_id);
   } else {
-    jabber_id->set_local_part(address.id());
+    auto parts = base::SplitStringOnce(address.id(), '@');
+    if (parts.has_value()) {
+      jabber_id->set_local_part(std::string(parts->first));
+      jabber_id->set_domain_part(std::string(parts->second));
+    } else {
+      jabber_id->set_local_part(address.id());
+    }
   }
 }
 
@@ -219,7 +254,8 @@ SignalingAddress JabberIdToSignalingAddress(const ftl::JabberId& jabber_id) {
   }
 
   std::string username = jabber_id.local_part();
-  if (!jabber_id.domain_part().empty()) {
+  if (!jabber_id.domain_part().empty() &&
+      username.find('@') == std::string::npos) {
     username += "@" + jabber_id.domain_part();
   }
 
@@ -257,6 +293,7 @@ ftl::SessionTerminate::Reason JingleTerminateReasonToProto(
     case SessionTerminate::Reason::kUnknownReason:
       return ftl::SessionTerminate::UNKNOWN_REASON;
   }
+  return ftl::SessionTerminate::UNKNOWN_REASON;
 }
 
 SessionTerminate::Reason ProtoTerminateReasonToJingle(
@@ -281,6 +318,7 @@ SessionTerminate::Reason ProtoTerminateReasonToJingle(
     case ftl::SessionTerminate::UNKNOWN_REASON:
       return SessionTerminate::Reason::kUnknownReason;
   }
+  return SessionTerminate::Reason::kUnknownReason;
 }
 
 }  // namespace
@@ -303,6 +341,9 @@ ftl::IqStanza JingleMessageToProto(const JingleMessage& message) {
     if (initiate->authentication) {
       JingleAuthenticationToProto(*initiate->authentication,
                                   proto_initiate->mutable_authentication());
+    } else if (message.description) {
+      JingleAuthenticationToProto(message.description->authentication(),
+                                  proto_initiate->mutable_authentication());
     }
   } else if (const auto* accept =
                  std::get_if<SessionAccept>(&message.payload())) {
@@ -310,24 +351,53 @@ ftl::IqStanza JingleMessageToProto(const JingleMessage& message) {
     if (accept->authentication) {
       JingleAuthenticationToProto(*accept->authentication,
                                   proto_accept->mutable_authentication());
+    } else if (message.description) {
+      JingleAuthenticationToProto(message.description->authentication(),
+                                  proto_accept->mutable_authentication());
     }
   } else if (auto* terminate =
                  std::get_if<SessionTerminate>(&message.payload())) {
     ftl::SessionTerminate* proto_terminate =
         jingle->mutable_session_terminate();
-    proto_terminate->set_reason(
-        JingleTerminateReasonToProto(terminate->reason));
-    if (!terminate->error_code.empty()) {
-      proto_terminate->set_error_code(terminate->error_code);
+    SessionTerminate::Reason reason = message.reason;
+    if (reason == SessionTerminate::Reason::kUnspecified) {
+      reason = terminate->reason;
     }
-    if (!terminate->error_details.empty()) {
-      proto_terminate->set_error_details(terminate->error_details);
+    proto_terminate->set_reason(JingleTerminateReasonToProto(reason));
+
+    std::string error_code;
+    if (message.error_code != ErrorCode::UNKNOWN_ERROR) {
+      error_code = ErrorCodeToString(message.error_code);
+    } else {
+      error_code = terminate->error_code;
+    }
+    if (!error_code.empty()) {
+      proto_terminate->set_error_code(error_code);
+    }
+
+    std::string error_details = message.error_details;
+    if (error_details.empty()) {
+      error_details = terminate->error_details;
+    }
+    if (!error_details.empty()) {
+      proto_terminate->set_error_details(error_details);
+    }
+
+    std::string error_location = message.error_location;
+    if (error_location.empty()) {
+      error_location = terminate->error_location;
+    }
+    if (!error_location.empty()) {
+      proto_terminate->set_error_location(error_location);
     }
   } else if (const auto* session_info =
                  std::get_if<SessionInfo>(&message.payload())) {
     ftl::SessionInfo* proto_session_info = jingle->mutable_session_info();
     if (session_info->authentication) {
       JingleAuthenticationToProto(*session_info->authentication,
+                                  proto_session_info->mutable_authentication());
+    } else if (message.description) {
+      JingleAuthenticationToProto(message.description->authentication(),
                                   proto_session_info->mutable_authentication());
     }
   } else if (const auto* transport =
@@ -372,7 +442,20 @@ bool JingleMessageFromProto(const ftl::IqStanza& stanza,
   message->message_id = stanza.id();
   message->from = JabberIdToSignalingAddress(stanza.sender());
   message->to = JabberIdToSignalingAddress(stanza.receiver());
+  if (message->from.empty() || message->to.empty()) {
+    *error = "Missing signaling address (from=" + message->from.id() +
+             ", to=" + message->to.id() +
+             ", sender_local=" + stanza.sender().local_part() +
+             ", sender_domain=" + stanza.sender().domain_part() +
+             ", receiver_local=" + stanza.receiver().local_part() +
+             ", receiver_domain=" + stanza.receiver().domain_part() + ")";
+    return false;
+  }
   message->sid = jingle.session_id();
+  if (message->sid.empty()) {
+    *error = "sid attribute is missing";
+    return false;
+  }
 
   if (jingle.has_session_initiate()) {
     SessionInitiate initiate;
@@ -405,6 +488,21 @@ bool JingleMessageFromProto(const ftl::IqStanza& stanza,
         ProtoTerminateReasonToJingle(jingle.session_terminate().reason());
     terminate.error_code = jingle.session_terminate().error_code();
     terminate.error_details = jingle.session_terminate().error_details();
+    if (jingle.session_terminate().has_error_location()) {
+      terminate.error_location = jingle.session_terminate().error_location();
+    }
+
+    // Set fields on the message directly, matching XML behavior.
+    message->reason = terminate.reason;
+    if (!terminate.error_code.empty()) {
+      if (!ParseErrorCode(terminate.error_code, &message->error_code)) {
+        LOG(WARNING) << "Unknown error-code received: " << terminate.error_code;
+        message->error_code = ErrorCode::UNKNOWN_ERROR;
+      }
+    }
+    message->error_details = terminate.error_details;
+    message->error_location = terminate.error_location;
+
     message->SetPayload(std::move(terminate));
   } else if (jingle.has_session_info()) {
     SessionInfo session_info;
@@ -462,6 +560,7 @@ ftl::IqStanza JingleMessageReplyToProto(const JingleMessageReply& reply) {
   } else {
     // Ensure we set the error case even if error_type is missing.
     ftl::ErrorStanza* error = stanza.mutable_error();
+    error->set_condition(ftl::ErrorStanza::CONDITION_UNSPECIFIED);
     if (!reply.text.empty()) {
       error->set_text(reply.text);
     }
@@ -503,6 +602,7 @@ bool JingleMessageReplyFromProto(const ftl::IqStanza& stanza,
   } else if (stanza.has_error()) {
     reply->reply_type = JingleMessageReply::REPLY_ERROR;
     const ftl::ErrorStanza& error = stanza.error();
+    reply->error_type = JingleMessageReply::UNSPECIFIED;
     switch (error.condition()) {
       case ftl::ErrorStanza::BAD_REQUEST:
         reply->error_type = JingleMessageReply::BAD_REQUEST;
@@ -520,9 +620,6 @@ bool JingleMessageReplyFromProto(const ftl::IqStanza& stanza,
         reply->error_type = JingleMessageReply::UNSUPPORTED_INFO;
         break;
       case ftl::ErrorStanza::CONDITION_UNSPECIFIED:
-        reply->error_type = JingleMessageReply::UNSPECIFIED;
-        break;
-      default:
         reply->error_type = JingleMessageReply::UNSPECIFIED;
         break;
     }

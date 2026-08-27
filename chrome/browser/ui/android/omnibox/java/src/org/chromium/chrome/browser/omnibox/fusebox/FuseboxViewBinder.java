@@ -43,6 +43,7 @@ import org.chromium.chrome.browser.omnibox.fusebox.FuseboxProperties.PopupButton
 import org.chromium.chrome.browser.omnibox.styles.OmniboxResourceProvider;
 import org.chromium.chrome.browser.ui.theme.BrandedColorScheme;
 import org.chromium.components.browser_ui.widget.RoundedCornerOutlineProvider;
+import org.chromium.components.browser_ui.widget.chips.ChipView;
 import org.chromium.components.omnibox.AutocompleteRequestType;
 import org.chromium.components.omnibox.IconResourceIdsProto.IconResourceIds;
 import org.chromium.components.omnibox.ToolModeUtils;
@@ -57,17 +58,21 @@ import java.util.List;
 /** Binds the Fusebox properties to the view and component. */
 @NullMarked
 class FuseboxViewBinder {
+    private final OmniboxResourceProvider mResourceProvider;
+
+    public FuseboxViewBinder(OmniboxResourceProvider resourceProvider) {
+        mResourceProvider = resourceProvider;
+    }
 
     private static final int[][] HOVER_STATES =
             new int[][] {
                 new int[] {android.R.attr.state_hovered}, new int[] {} // Default, must be last
             };
-    ;
 
     /**
      * @see PropertyModelChangeProcessor.ViewBinder#bind(Object, Object, Object)
      */
-    public static void bind(PropertyModel model, FuseboxViewHolder view, PropertyKey propertyKey) {
+    public void bind(PropertyModel model, FuseboxViewHolder view, PropertyKey propertyKey) {
         if (propertyKey == FuseboxProperties.ACTIVATION_CHIP_CLICKED) {
             view.activationChip.setOnClickListener(
                     v -> model.get(FuseboxProperties.ACTIVATION_CHIP_CLICKED).run());
@@ -536,21 +541,17 @@ class FuseboxViewBinder {
         view.navigateButton.setContentDescription(res.getText(navButtonAccessibilityStringRes));
     }
 
-    private static void updateButtonsVisibilityAndStyling(
-            PropertyModel model, FuseboxViewHolder view) {
+    private void updateButtonsVisibilityAndStyling(PropertyModel model, FuseboxViewHolder view) {
         updatePlusButtonVisuals(model, view);
         updateNavigateButton(model, view);
         updateRequestTypeButton(model, view);
         updatePopupTheme(model, view);
         updateActivationChip(model, view);
-        Context context = view.parentView.getContext();
-        @BrandedColorScheme int brandedColorScheme = model.get(FuseboxProperties.COLOR_SCHEME);
-        Drawable background =
-                OmniboxResourceProvider.getPopupBackgroundDrawable(context, brandedColorScheme);
-        view.popup.mPopupWindow.setBackgroundDrawable(background);
+        view.popup.mPopupWindow.setBackgroundDrawable(
+                mResourceProvider.getPopupBackgroundDrawable());
     }
 
-    private static void updatePlusButtonVisuals(PropertyModel model, FuseboxViewHolder view) {
+    private void updatePlusButtonVisuals(PropertyModel model, FuseboxViewHolder view) {
         Context context = view.parentView.getContext();
         ChromeImageView plusButton = view.plusButton;
         @BrandedColorScheme int brandedColorScheme = model.get(FuseboxProperties.COLOR_SCHEME);
@@ -559,9 +560,7 @@ class FuseboxViewBinder {
         plusButton.setImageTintList(
                 OmniboxResourceProvider.getPrimaryIconTintList(context, brandedColorScheme));
         if (style == BackgroundStyle.ALWAYS_VISIBLE_WIDE) {
-            plusButton.setBackground(
-                    OmniboxResourceProvider.getPopoverPlusButtonBackground(
-                            context, brandedColorScheme));
+            plusButton.setBackground(mResourceProvider.getPopoverPlusButtonBackground());
             // Our drawable implicitly handles corner rounding, while the other background style's
             // drawable needs the outline provider.
             plusButton.setOutlineProvider(null);
@@ -646,12 +645,12 @@ class FuseboxViewBinder {
                         context, brandedColorScheme);
         int[] backgroundColors = new int[] {buttonColorHovered, buttonColor};
 
-        ButtonCompat button = viewHolder.activationChip;
-        button.setButtonColor(new ColorStateList(HOVER_STATES, backgroundColors));
+        ChipView button = viewHolder.activationChip;
+        button.setBackgroundTintList(new ColorStateList(HOVER_STATES, backgroundColors));
 
         @ColorInt
         int colorOnSurface = OmniboxResourceProvider.getColorOnSurface(context, brandedColorScheme);
-        button.setCompoundDrawableTintList(ColorStateList.valueOf(colorOnSurface));
+        button.setIconTint(ColorStateList.valueOf(colorOnSurface));
         @ColorInt
         int focusRingColor = OmniboxResourceProvider.getColorPrimary(context, brandedColorScheme);
         button.setForegroundTintList(ColorStateList.valueOf(focusRingColor));

@@ -361,11 +361,6 @@ AX_BASE_EXPORT bool IsReadAnythingLineFocusEnabled();
 AX_BASE_EXPORT BASE_DECLARE_FEATURE(kHatsReadingModeSurvey);
 AX_BASE_EXPORT bool IsHatsReadingModeSurveyEnabled();
 
-// Enable images to be distilled via algorithm. Should be disabled by
-// default.
-AX_BASE_EXPORT BASE_DECLARE_FEATURE(kReadAnythingImagesViaAlgorithm);
-AX_BASE_EXPORT bool IsReadAnythingImagesViaAlgorithmEnabled();
-
 AX_BASE_EXPORT bool IsReadAnythingDocsIntegrationEnabled();
 
 // Enable "load more" button to show at the end of Reading Mode panel.
@@ -380,6 +375,11 @@ AX_BASE_EXPORT bool IsReadAnythingWithReadabilityEnabled();
 // Enable distillation quality evaluation for Reading Mode.
 AX_BASE_EXPORT BASE_DECLARE_FEATURE(kReadAnythingDistillationQualityEvaluation);
 AX_BASE_EXPORT bool IsReadAnythingDistillationQualityEvaluationEnabled();
+
+// Enables unifying distillation triggers to the renderer and decoupling
+// distillation logic.
+AX_BASE_EXPORT BASE_DECLARE_FEATURE(kReadAnythingDistillerRefactor);
+AX_BASE_EXPORT bool IsReadAnythingDistillerRefactorEnabled();
 
 // ScreenAI library's Main Content Extraction service is enabled.
 AX_BASE_EXPORT bool IsScreenAIMainContentExtractionEnabled();

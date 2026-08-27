@@ -20,6 +20,8 @@
 #include "base/containers/span.h"
 #include "base/functional/callback.h"
 #include "base/functional/callback_helpers.h"
+#include "base/functional/function_ref.h"
+#include "base/i18n/rtl.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/time/time.h"
@@ -272,6 +274,19 @@ class PDFiumEngine : public DocumentLoader::Client,
   void Undo();
   void Redo();
 
+  // Sets the text direction for the currently focused form field. Returns false
+  // if there is no focused form field, or if the focused form field is of a
+  // type that does not support text direction (e.g. buttons).
+  // Virtual to support testing.
+  virtual bool SetFocusedFormTextDirection(base::i18n::TextDirection direction);
+
+  // Gets the text direction for the currently focused form field. Returns
+  // std::nullopt if there is no focused form field, or if the focused form
+  // field is of a type that does not support text direction.
+  // Virtual to support testing.
+  virtual std::optional<base::i18n::TextDirection> GetFocusedFormTextDirection()
+      const;
+
   // Handles actions invoked by Accessibility clients.
   void HandleAccessibilityAction(const AccessibilityActionData& action_data);
 
@@ -389,7 +404,7 @@ class PDFiumEngine : public DocumentLoader::Client,
   // exceeds a threshold. This method should be called after making sure the
   // document is loaded to ensure the pages are available for checking;
   // otherwise, it may return false if pages are not yet available.
-  virtual bool HasMeaningfulText() const;
+  virtual bool HasMeaningfulText();
 
   // Returns true if the PDF contains JavaScript actions. This method should be
   // called after the document is loaded; otherwise, it returns false if the
@@ -403,7 +418,7 @@ class PDFiumEngine : public DocumentLoader::Client,
 
   // Returns a copy of the structure tree which describes the logical
   // organization of the PDF, if present.
-  std::unique_ptr<AccessibilityStructureElement> GetStructureTree() const;
+  std::unique_ptr<AccessibilityStructureElement> GetStructureTree();
 
   virtual uint32_t GetLoadedByteSize();
 
@@ -478,7 +493,7 @@ class PDFiumEngine : public DocumentLoader::Client,
   // Scans the document to detect the presence of Ink annotations (Ink text
   // annotations and "V2" Ink paths) within `timeout`. Virtual to support
   // testing.
-  virtual InkIdentifiers ScanForInkAnnotations(base::TimeDelta timeout) const;
+  virtual InkIdentifiers ScanForInkAnnotations(base::TimeDelta timeout);
 
   // Loads "V2" Ink paths from a page in the PDF identified by `page_index`. The
   // `page_index` must be in bounds.
@@ -780,6 +795,14 @@ class PDFiumEngine : public DocumentLoader::Client,
   friend class SelectionChangeInvalidator;
 
   gfx::Size plugin_size() const;
+
+  // Iterates through all pages in the document safely. Takes a snapshot of page
+  // weak pointers to protect against re-entrant container modifications.
+  void ForEachPage(base::FunctionRef<void(PDFiumPage*)> callback);
+
+  // Same as ForEachPage(), but iterates through all pages or until `callback`
+  // returns true. Returns whether early exit occurred.
+  bool ForEachPageUntilTrue(base::FunctionRef<bool(PDFiumPage*)> callback);
 
   // We finished getting the pdf file, so load it. This will complete
   // asynchronously (due to password fetching) and may be run multiple times.

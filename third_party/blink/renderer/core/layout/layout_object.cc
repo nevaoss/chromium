@@ -151,6 +151,7 @@
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/partitions.h"
 #include "third_party/blink/renderer/platform/wtf/size_assertions.h"
+#include "third_party/blink/renderer/platform/wtf/text/format.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 #include "third_party/blink/renderer/platform/wtf/wtf_size_t.h"
@@ -2709,7 +2710,7 @@ void LayoutObject::DumpLayoutObject(StringBuilder& string_builder,
   string_builder.Append(DecoratedName());
 
   if (dump_address)
-    string_builder.AppendFormat(" %p", this);
+    FormatTo(string_builder, " {}", this);
 
   if (IsText() && To<LayoutText>(this)->IsTextFragment()) {
     string_builder.AppendFormat(
@@ -3598,6 +3599,8 @@ void LayoutObject::MapLocalToAncestor(const LayoutBoxModelObject* ancestor,
                                       TransformState& transform_state,
                                       MapCoordinatesFlags mode) const {
   NOT_DESTROYED();
+  CHECK_EQ(transform_state.Direction(),
+           TransformState::kApplyTransformDirection);
   if (ancestor == this)
     return;
 
@@ -3612,17 +3615,18 @@ void LayoutObject::MapLocalToAncestor(const LayoutBoxModelObject* ancestor,
 
   PhysicalOffset container_offset = OffsetFromContainer(container, mode);
 
-  // Text objects just copy their parent's computed style, so we need to ignore
-  // them.
   bool use_transforms = !mode.Has(MapCoordinatesMode::kIgnoreTransforms);
 
-  const bool container_preserves_3d = container->StyleRef().Preserves3D();
+  // Text objects just copy their parent's computed style, so we need to ignore
+  // them.
+  const bool container_preserves_3d =
+      container->StyleRef().Preserves3D() && !container->IsText();
   // Just because container and this have preserve-3d doesn't mean all
   // the DOM elements between them do.  (We know they don't have a
   // transform, though, since otherwise they'd be the container.)
   const bool path_preserves_3d = container == NearestAncestorForElement();
-  const bool preserve3d = use_transforms && container_preserves_3d &&
-                          !container->IsText() && path_preserves_3d;
+  const bool preserve3d =
+      use_transforms && container_preserves_3d && path_preserves_3d;
 
   if (use_transforms && ShouldUseTransformFromContainer(container)) {
     gfx::Transform t;
@@ -3653,6 +3657,8 @@ void LayoutObject::MapAncestorToLocal(const LayoutBoxModelObject* ancestor,
                                       TransformState& transform_state,
                                       MapCoordinatesFlags mode) const {
   NOT_DESTROYED();
+  CHECK_EQ(transform_state.Direction(),
+           TransformState::kUnapplyInverseTransformDirection);
   if (this == ancestor)
     return;
 
@@ -4250,7 +4256,7 @@ bool LayoutObject::CanHaveAdditionalCompositingReasons() const {
 
 CompositingReasons LayoutObject::AdditionalCompositingReasons() const {
   NOT_DESTROYED();
-  return CompositingReason::kNone;
+  return {};
 }
 
 bool LayoutObject::HitTestAllPhases(HitTestResult& result,

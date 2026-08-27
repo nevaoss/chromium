@@ -454,6 +454,7 @@
 <translation id="2422174748424038845">Grubu silerseniz herkes "<ph name="GROUP_NAME" />" sekme grubuna erişimini anında kaybeder ve grup tüm cihazlardan silinir.</translation>
 <translation id="2424805048070062787">Bu sekmeyle devam et</translation>
 <translation id="2426805022920575512">Başka hesap seç</translation>
+<translation id="2428543302546523788">Okuma modu açıkken bağlantıları göster</translation>
 <translation id="243275146591958220">İndirmeyi iptal et</translation>
 <translation id="2434405374328098816"><ph name="WEBSITE" /> adresinde "<ph name="USERNAME" />" için zaten kayıtlı şifreniz var</translation>
 <translation id="2434918313224755415">Gizli modda göz atmak için sola kaydırabilirsiniz.</translation>
@@ -468,6 +469,7 @@
 <translation id="2470654816840674524">Chrome'da Gemini ile neler yapabilirim?</translation>
 <translation id="2473876017985765807"><ph name="WEBSITE" /> için zaten kayıtlı şifreniz var</translation>
 <translation id="247430852844518481">Bu sayfayı daha sonra tekrar ziyaret etmek için hatırlatıcı oluşturabilirsiniz</translation>
+<translation id="2476554421818031422">Gelişmiş otomatik doldurma özelliğinin iyileştirilmesine yardımcı oluyorsunuz</translation>
 <translation id="2479148705183875116">Ayarlar'a git</translation>
 <translation id="2482878487686419369">Bildirimler</translation>
 <translation id="2484459871750294497">Bu özelliği nasıl etkinleştiririm?</translation>
@@ -570,7 +572,6 @@
 <translation id="2816489851009559785">Menü → Ayarlar → Varsayılan tarayıcı</translation>
 <translation id="2818821771744632548">iPhone sıfırlama işleminin bir parçası olarak <ph name="USER_NAME" /> hesabınızın oturumu kapatıldı. Yeniden oturum açmak için aşağıda "İlerle"ye dokunun.</translation>
 <translation id="2819667972867209401">Bu ayar etkinleştirildiğinde veriler Google Hesabınıza kaydedilir. Devre dışı bırakıldığında veriler yalnızca bu cihaza kaydedilir ve oturumunuzu kapatırsanız silinir.</translation>
-<translation id="2825777862277359739">Şifreleriniz, sekmeleriniz, yer işaretlerinize ve daha fazlasına erişmek için oturum açın.</translation>
 <translation id="2827760117436553203">Veriler ayrı tutulsun mu?</translation>
 <translation id="2829172210806130158">Ekranınızda arayın</translation>
 <translation id="2831109159746537587">Aramak istediğiniz görseli daire içine almayı veya görsele dokunmayı deneyin</translation>
@@ -717,7 +718,6 @@
 <translation id="3377063233124932127">Kayıtlı yer işaretleriniz, şifreleriniz ve daha fazlası artık üst kısımda.</translation>
 <translation id="3378214228000661758">Şunun için geçiş anahtarı oluşturun:</translation>
 <translation id="3380352560400387991">Bu site bir uygulamayı açmaya çalışıyor. Bu işlem sonrasında Gizli moddan çıkarsınız.</translation>
-<translation id="3385742921291399323">Kayıtlı şifreleriniz, sekmeleriniz, yer işaretleriniz ve daha fazlasına erişin.</translation>
 <translation id="3391765987934722383">Fiyat düşüşlerini kaçırmayın</translation>
 <translation id="3392923070107623576">Sekme grupları oluşturarak düzenli kalın</translation>
 <translation id="3404232721752787413">Google Fotoğraflar'a kaydet</translation>
@@ -1248,7 +1248,6 @@
 <translation id="5148717509369231739">Safari'den içe aktarma</translation>
 <translation id="5152483358138813104">Cihazlarınızda daha hızlı oturum açın</translation>
 <translation id="515315847398512535">Ekranda ara, hesabınız için devre dışı bırakıldı. Daha fazla bilgi için yöneticinizle iletişime geçin.</translation>
-<translation id="5155502059906700593">Adres çubuğunuzun konumunu yukarıda veya aşağıda olacak şekilde değiştirin.</translation>
 <translation id="5157638238828697074">Bir hata oluştu. Uygulama açılamadı.</translation>
 <translation id="5163417375525818870">PDF'ler</translation>
 <translation id="5168414296986405587">iPadOS için geliştirildi</translation>
@@ -1567,7 +1566,6 @@ Handoff'un ayrıca, Ayarlar'ın Genel bölümünde de etkinleştirilmesi ve ciha
 <translation id="6193448654517602979">Sekmeleri seç</translation>
 <translation id="6196207969502475924">Sesli Arama</translation>
 <translation id="6198252989419008588">PIN'i değiştir</translation>
-<translation id="6199783146233591178">Gelişmiş Güvenli Tarama ile anlık korumadan faydalanın</translation>
 <translation id="6210079381482819663"><ph name="THRESHOLD" /> gün veya daha uzun süre boyunca kullanılmayan sekmeler buraya taşınır. İstediğiniz zaman bunu <ph name="BEGIN_LINK" />ayarlardan<ph name="END_LINK" /> değiştirebilirsiniz.</translation>
 <translation id="6213281885682386884">Adres bulunamadı</translation>
 <translation id="6218508144653756827">Fuşya tema</translation>
@@ -1718,7 +1716,6 @@ Handoff'un ayrıca, Ayarlar'ın Genel bölümünde de etkinleştirilmesi ve ciha
 <translation id="6626281667717553020">CPS URI'si</translation>
 <translation id="6627583120233659107">Klasörü düzenle</translation>
 <translation id="6629759408545977279">İndirmeyi başlatan: <ph name="ORIGINATING_HOST" /></translation>
-<translation id="66306952800092318">İnternet ortamındaki tehditlere karşı ek koruma katmanı sağlayın.</translation>
 <translation id="6634432609054530164">Kuruluşunuz Gizli modu kapattı</translation>
 <translation id="6637478299472506933">İndirme İşlemi Başarısız Oldu</translation>
 <translation id="6638511529934826365">Metni Yakınlaştır</translation>
@@ -2068,6 +2065,7 @@ Bilgisayarınızdan devam etmek için <ph name="OTHER_EMAIL" /> hesabına geçin
 <translation id="78146569776629510">İndirilenler</translation>
 <translation id="7815852444315004084">Şimdilik Gizle</translation>
 <translation id="7825973332242257878">Sekme grupları</translation>
+<translation id="7828344837949522075">Öneriyi göster</translation>
 <translation id="7839994177130598711">Aile üyeleriniz artık Google Şifre Yöneticisi'nin yardımıyla <ph name="BEGIN_BOLD" /><ph name="WEBSITE" /><ph name="END_BOLD" /> sitesinde oturum açarken kullanıcı adınızı ve şifrenizi kullanabilir.</translation>
 <translation id="7841180087127694526">Kopyalanan metni ara</translation>
 <translation id="7841418003178675048">Yeni sekme sayfanızda göreceğiniz kartları seçin.</translation>

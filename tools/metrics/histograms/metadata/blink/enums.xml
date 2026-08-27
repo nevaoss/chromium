@@ -6714,6 +6714,9 @@ Called by update_use_counter_feature_enum.py.-->
   <int value="5981" label="AdImageHDR"/>
   <int value="5982" label="AdVideoHDR"/>
   <int value="5983" label="LocalNetworkAccessShouldTreatAsPublicAddressCsp"/>
+  <int value="5984" label="CreateBytesModuleScript"/>
+  <int value="5985" label="V8ModuleNamespaceMissingDefaultWithStarExport"/>
+  <int value="5986" label="V8WasmGCAllocation"/>
 </enum>
 
 <!-- LINT.ThenChange(//third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom:WebFeature) -->
@@ -6827,12 +6830,12 @@ Called by update_permissions_policy_enum.py.-->
   <int value="100" label="LocalFonts"/>
   <int value="101" label="Bluetooth"/>
   <int value="102" label="IdentityCredentialsGet"/>
-  <int value="103" label="SharedStorage"/>
+  <int value="103" label="Deprecated_SharedStorage"/>
   <int value="104" label="Unload"/>
   <int value="105" label="ClientHintPrefersReducedMotion"/>
   <int value="106" label="ComputePressure"/>
   <int value="107" label="SmartCard"/>
-  <int value="108" label="SharedStorageSelectUrl"/>
+  <int value="108" label="Deprecated_SharedStorageSelectUrl"/>
   <int value="109" label="PrivateAggregation"/>
   <int value="110" label="PrivateStateTokenIssuance"/>
   <int value="111" label="ClientHintUAFormFactors"/>
@@ -9203,6 +9206,7 @@ Called by update_use_counter_feature_enum.py.-->
   <int value="444" label="DRAFT_HTMLStreamMethods"/>
   <int value="445" label="CanvasHtml"/>
   <int value="446" label="DRAFT_Symbols"/>
+  <int value="447" label="JSSelfProfilingMarkers"/>
 </enum>
 
 <!-- LINT.ThenChange(//third_party/blink/public/mojom/use_counter/metrics/webdx_feature.mojom:WebDXFeature) -->

@@ -689,10 +689,14 @@ bool BrowserAccessibilityAndroid::IsInterestingOnAndroid() const {
   // Otherwise, the interesting nodes are leaf nodes with non-whitespace
   // accessible name or text content.
 
-  // First, we determine whether we have a nonempty, nonwhitespace name.
-  bool has_nonwhitespace_name = !base::ContainsOnlyChars(
-      GetString16Attribute(ax::mojom::StringAttribute::kName),
-      base::kWhitespaceUTF16);
+  // First, we determine whether we have a nonempty, nonwhitespace name from
+  // attribute or computed contentDescription (such as image annotations).
+  bool has_nonwhitespace_name =
+      !base::ContainsOnlyChars(
+          GetString16Attribute(ax::mojom::StringAttribute::kName),
+          base::kWhitespaceUTF16) ||
+      !base::ContainsOnlyChars(GetAndroidContentDescription(),
+                               base::kWhitespaceUTF16);
 
   // And, whether we have nonempty, nonwhitespace text.
   bool has_nonwhitespace_text =
@@ -1267,6 +1271,14 @@ std::u16string BrowserAccessibilityAndroid::GetAndroidStateDescription() const {
     state_descs.push_back(GetMultiselectableStateDescription());
   }
 
+  // For switches, determine the current switch state and append the
+  // corresponding "On" or "Off" to the state description.
+  // TODO(crbug.com/536089300): Consider removing this state description once
+  // all web-based switch controls have equal announcement on Android.
+  if (GetRole() == ax::mojom::Role::kSwitch) {
+    state_descs.push_back(GetSwitchStateDescription());
+  }
+
   // For radio buttons, we will communicate how many radio buttons are in the
   // group and which one is selected/checked (e.g. "in group, option x of y")
   if (GetRole() == ax::mojom::Role::kRadioButton) {
@@ -1324,6 +1336,7 @@ std::u16string BrowserAccessibilityAndroid::GetAndroidContentDescription()
   if (GetRole() == ax::mojom::Role::kCanvas) {
     return GetCanvasAnnotationText();
   }
+
   if (ui::IsImage(GetRole())) {
     return GetImageAnnotationText();
   }
@@ -1394,13 +1407,13 @@ std::u16string BrowserAccessibilityAndroid::GetMultiselectableStateDescription()
       nullptr);
 }
 
-std::u16string BrowserAccessibilityAndroid::GetToggleStateDescription() const {
-  // For checked Toggle buttons and switches, we will return "on", otherwise
-  // "off".
+std::u16string BrowserAccessibilityAndroid::GetSwitchStateDescription() const {
+  // Due to API limitations, switches currently use the checked property to
+  // signal their state. If a switch is marked as "checked", we return "On",
+  // otherwise we return "Off".
   if (IsChecked()) {
     return GetLocalizedString(IDS_AX_TOGGLE_BUTTON_ON);
   }
-
   return GetLocalizedString(IDS_AX_TOGGLE_BUTTON_OFF);
 }
 

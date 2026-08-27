@@ -12,15 +12,15 @@
 #include <type_traits>
 #include <utility>
 
+#include "base/component_export.h"
 #include "base/containers/span.h"
-#include "base/i18n/base_i18n_export.h"
 #include "base/i18n/bcp47_extensions.h"
 #include "base/i18n/internal/bcp47_parser.h"
 #include "base/i18n/internal/immutable_string.h"
 
 namespace base::i18n {
 
-class BASE_I18N_EXPORT LanguageTagConverter;
+class LanguageTagConverter;
 
 class LanguageTag;
 
@@ -48,7 +48,7 @@ class LanguageTagDataView;
 //   - Variants: Optional (e.g., "oxendict").
 //   - Extensions: Optional (e.g., "u-ca-gregory").
 //   - Private use: Optional (e.g., "x-privatestuff")
-class BASE_I18N_EXPORT LanguageTag {
+class COMPONENT_EXPORT(LANGUAGE_TAG) LanguageTag {
  public:
   using ImmutableStringType = i18n_internal::ImmutableString;
 
@@ -127,6 +127,11 @@ class BASE_I18N_EXPORT LanguageTag {
   // If the language tag only consists of the base language subtag (e.g., "en"),
   // it has no parent and `std::nullopt` is returned.
   constexpr std::optional<LanguageTag> GetParentTag() const;
+  // Returns the lineage of this language tag, starting with the tag itself and
+  // traversing up the parent hierarchy.
+  // Example:
+  //  "sr-Latn-RS" -> ["sr-Latn-RS", "sr-Latn", "sr"]
+  constexpr std::vector<LanguageTag> GetLineage() const;
 
   // Retrieves the singleton and subtag(s) for an extension to a BCP47 language
   // tag.
@@ -215,12 +220,12 @@ class BASE_I18N_EXPORT LanguageTag {
   ImmutableStringType tag_;
 };
 
-BASE_I18N_EXPORT std::ostream& operator<<(std::ostream& os,
-                                          const LanguageTag& lt);
+COMPONENT_EXPORT(LANGUAGE_TAG)
+std::ostream& operator<<(std::ostream& os, const LanguageTag& lt);
 
-BASE_I18N_EXPORT std::ostream& operator<<(
-    std::ostream& os,
-    const std::optional<LanguageTag>& opt);
+COMPONENT_EXPORT(LANGUAGE_TAG)
+std::ostream& operator<<(std::ostream& os,
+                         const std::optional<LanguageTag>& opt);
 
 // Parses a LanguageTag from a string_view.
 // Returns std::nullopt if `tag` is not a valid BCP 47 language tag or has
@@ -276,6 +281,14 @@ constexpr std::optional<LanguageTag> LanguageTag::GetParentTag() const {
   }
 
   return LanguageTag(i18n_internal::GetBcp47TagPieces(*parsed));
+}
+
+constexpr std::vector<LanguageTag> LanguageTag::GetLineage() const {
+  std::vector<LanguageTag> lineage;
+  for (std::optional<LanguageTag> tag = *this; tag; tag = tag->GetParentTag()) {
+    lineage.push_back(*tag);
+  }
+  return lineage;
 }
 
 }  // namespace base::i18n

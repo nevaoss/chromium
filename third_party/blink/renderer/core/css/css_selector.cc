@@ -423,6 +423,8 @@ PseudoId CSSSelector::GetPseudoId(PseudoType type) {
       return kPseudoIdOverscrollAreaParent;
     case kPseudoOverscrollBackdrop:
       return kPseudoIdOverscrollBackdrop;
+    case kPseudoSkeleton:
+      return kPseudoIdSkeleton;
     case kPseudoAnimatedImage:
     case kPseudoActive:
     case kPseudoActiveOption:
@@ -725,6 +727,7 @@ constexpr static NameToPseudoStruct kPseudoTypeWithoutArgumentsMap[] = {
     {"select-listbox", CSSSelector::kPseudoSelectListbox},
     {"selection", CSSSelector::kPseudoSelection},
     {"single-button", CSSSelector::kPseudoSingleButton},
+    {"skeleton", CSSSelector::kPseudoSkeleton},
     {"spelling-error", CSSSelector::kPseudoSpellingError},
     {"stalled", CSSSelector::kPseudoStalled},
     {"start", CSSSelector::kPseudoStart},
@@ -923,6 +926,11 @@ CSSSelector::PseudoType CSSSelector::NameToPseudoType(
     return CSSSelector::kPseudoUnknown;
   }
 
+  if (match->type == CSSSelector::kPseudoSkeleton &&
+      !RuntimeEnabledFeatures::DeclarativeSkeletonsEnabled()) {
+    return CSSSelector::kPseudoUnknown;
+  }
+
   return static_cast<CSSSelector::PseudoType>(match->type);
 }
 
@@ -1048,6 +1056,11 @@ void CSSSelector::UpdatePseudoType(const AtomicString& value,
     case kPseudoOverscrollAreaParent:
     case kPseudoBlinkInternalElement:
       if (Match() != kPseudoElement || mode != kUASheetMode) {
+        bits_.set<PseudoTypeField>(kPseudoUnknown);
+      }
+      break;
+    case kPseudoSkeleton:
+      if (Match() != kPseudoElement) {
         bits_.set<PseudoTypeField>(kPseudoUnknown);
       }
       break;
@@ -1789,6 +1802,7 @@ bool CSSSelector::IsTreeAbidingPseudoElement() const {
           GetPseudoType() == kPseudoViewTransitionOld ||
           GetPseudoType() == kPseudoViewTransitionNew ||
           GetPseudoType() == kPseudoOverscrollAreaParent ||
+          GetPseudoType() == kPseudoSkeleton ||
           IsElementBackedPseudoElement(GetPseudoType()));
 }
 
@@ -1857,6 +1871,7 @@ bool CSSSelector::IsAllowedAfterPart() const {
     case kPseudoViewTransitionNew:
     case kPseudoViewTransitionOld:
     case kPseudoOverscrollAreaParent:
+    case kPseudoSkeleton:
       return true;
 
     // It's possible that we should support ::slotted() after ::part().

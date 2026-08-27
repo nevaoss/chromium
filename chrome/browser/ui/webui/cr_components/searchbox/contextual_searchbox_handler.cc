@@ -1332,7 +1332,8 @@ void ContextualSearchboxHandler::UploadSnapshotTabContextIfPresent() {
   UploadTabContext(context_token, std::move(page_content_data));
 }
 
-void ContextualSearchboxHandler::SetActiveToolMode(omnibox::ToolMode tool) {
+void ContextualSearchboxHandler::SetActiveToolMode(omnibox::ToolMode tool,
+                                                   bool is_set_by_server) {
   if (!input_state_model_) {
     return;
   }
@@ -1843,7 +1844,8 @@ void ContextualSearchboxHandler::QueryAutocomplete(
     const std::string& keyword,
     searchbox::mojom::InputMethod input_method) {
   if (contextual_tasks_context_service_) {
-    contextual_tasks_context_service_->OnTypedQuery();
+    contextual_tasks_context_service_->OnTypedQuery(
+        webui::GetBrowserWindowInterface(web_contents_)->GetWeakPtr());
   }
 
   SearchboxHandler::QueryAutocomplete(

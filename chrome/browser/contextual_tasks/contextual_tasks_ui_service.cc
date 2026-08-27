@@ -4,7 +4,6 @@
 
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service.h"
 
-#include <algorithm>
 #include <optional>
 
 #include "base/command_line.h"
@@ -632,7 +631,7 @@ static bool IsPdfCitation(const GURL& url,
       page_url.GetQuery() != url.GetQuery() || url.GetRef().empty()) {
     return false;
   }
-  return pdf::PDFDocumentHelper::MaybeGetForWebContents(web_contents) !=
+  return pdf::PDFDocumentHelper::MaybeGetForWebContents(*web_contents) !=
          nullptr;
 }
 #endif
@@ -2603,8 +2602,6 @@ void ContextualTasksUiService::OnTaskChanged(
     return;
   }
 
-  delegate_->OnTaskChanged(browser_window_interface, old_task_id, new_task_id);
-
   ContextualTasksPanelController* controller =
       ContextualTasksPanelController::From(browser_window_interface);
 
@@ -2654,19 +2651,6 @@ void ContextualTasksUiService::OnTaskChanged(
 
     controller->OnTaskChanged(web_contents, final_task_id);
   }
-}
-
-void ContextualTasksUiService::OnWebUIReady(
-    BrowserWindowInterface* browser_window_interface,
-    const base::Uuid& task_id,
-    content::WebContents* web_contents) {
-  delegate_->OnWebUIReady(browser_window_interface, task_id, web_contents);
-}
-
-void ContextualTasksUiService::OnWebUIDestroyed(
-    BrowserWindowInterface* browser_window_interface,
-    const std::optional<base::Uuid>& task_id) {
-  delegate_->OnWebUIDestroyed(browser_window_interface, task_id);
 }
 
 void ContextualTasksUiService::TurnOnSmartTabSharing(
@@ -2970,24 +2954,6 @@ void ContextualTasksUiService::StartTaskUiInSidePanelWithErrorPage(
 
 bool ContextualTasksUiService::IsAiUrl(const GURL& url) {
   return aim_eligibility_service_->IsAimUrl(url, GetForcedEmbeddedPageHost());
-}
-
-bool ContextualTasksUiService::IsSidePanelOpenAndRequestInSidePanel(
-    content::WebContents* web_contents) {
-  if (!web_contents) {
-    return false;
-  }
-  BrowserWindowInterface* browser =
-      webui::GetBrowserWindowInterface(web_contents);
-  if (!browser) {
-    return false;
-  }
-  auto* controller = ContextualTasksPanelController::From(browser);
-  if (!controller || !controller->IsPanelOpenForContextualTask()) {
-    return false;
-  }
-  return std::ranges::contains(controller->GetPanelWebContentsList(),
-                               web_contents);
 }
 
 bool ContextualTasksUiService::IsPendingErrorPage(const base::Uuid& task_id) {

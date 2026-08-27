@@ -116,6 +116,7 @@
 <translation id="1414919006379339073">Zapiranje trenutnega okna</translation>
 <translation id="1416550906796893042">Različica aplikacije</translation>
 <translation id="1430915738399379752">Natisni</translation>
+<translation id="1432581352905426595">Upravljanje iskalnikov</translation>
 <translation id="1435593198351412143">Samodejno odpiranje datotek PDF</translation>
 <translation id="1437543266176261764">Izvaja se v aplikaciji <ph name="APP_NAME" /></translation>
 <translation id="1448440926884431741">Organizirajte spremljane izdelke v zaznamkih.</translation>
@@ -297,6 +298,7 @@ Vaše šifrirane podatke lahko bere samo oseba, ki ima vaše geslo. Geslo ni pos
 <translation id="2233735624724508540">Izberite časovno obdobje in se dotaknite »Izbriši podatke«</translation>
 <translation id="2234031676056123135">Prilagajanje bližnjic</translation>
 <translation id="2234827758954819389">Vodnik po zasebnosti</translation>
+<translation id="2236949375853147973">Moja dejavnost</translation>
 <translation id="2238038374973843156">Premik skupine v drugo okno</translation>
 <translation id="2247789808226901522">Kartica je potekla</translation>
 <translation id="2251809247798634662">Novo okno brez beleženja zgodovine</translation>
@@ -574,6 +576,7 @@ Vaše šifrirane podatke lahko bere samo oseba, ki ima vaše geslo. Geslo ni pos
 <translation id="3385749568468586663">Gemini ni na voljo v anonimnem načinu</translation>
 <translation id="3387650086002190359">Prenos datoteke <ph name="FILE_NAME" /> ni uspel zaradi napak v datotečnem sistemu.</translation>
 <translation id="3391311825344469964">Okna lahko upravljate v Chromovem upravitelju oken</translation>
+<translation id="3410151451624226773">Upravljanje v Googlovem upravitelju gesel</translation>
 <translation id="3417835166382867856">Iskanje zavihkov</translation>
 <translation id="3430670036890315772">Če izklopite zaklepanje profila, se shranjeni podatki odstranijo</translation>
 <translation id="3435575784518354875">Če želite ohraniti dostop do gesel, jih izvozite, posodobite Storitve Google Play in nato gesla znova uvozite v Googlovega upravitelja gesel. <ph name="BEGIN_LINK" />Oglejte si celotna navodila<ph name="END_LINK" />.</translation>
@@ -942,6 +945,7 @@ V Google Računu so morda druge vrste zgodovine brskanja, kot so iskanja in deja
 <translation id="4877678010818027629">Vklop anonimnega načina</translation>
 <translation id="4878404682131129617">Vzpostavljanje tunela prek strežnika proxy ni uspelo</translation>
 <translation id="4880127995492972015">Prevedi …</translation>
+<translation id="4880827082731008257">Zgodovina iskanja</translation>
 <translation id="4881695831933465202">Odpri</translation>
 <translation id="488187801263602086">Preimenovanje datoteke</translation>
 <translation id="4885273946141277891">To število primerkov Chroma ni podprto.</translation>
@@ -991,6 +995,7 @@ V Google Računu so morda druge vrste zgodovine brskanja, kot so iskanja in deja
 <translation id="509429900233858213">Napaka.</translation>
 <translation id="5096775069898886423">Prejmite opozorilo pred obiskom spletnih mest, ki ne podpirajo varnih povezav</translation>
 <translation id="510275257476243843">Še 1 h</translation>
+<translation id="5105442806410269908">Upravljanje drugih Googlovih podatkov</translation>
 <translation id="5114895953710637392">List filtra za aplikacije je zaprt.</translation>
 <translation id="5115811374190515607">za <ph name="PRODUCT_NAME" /></translation>
 <translation id="5116239826668864748">Chrome lahko uporabljate, kadar koli se dotaknete povezav v sporočilih, dokumentih in drugih aplikacijah</translation>
@@ -1041,6 +1046,7 @@ V Google Računu so morda druge vrste zgodovine brskanja, kot so iskanja in deja
 <translation id="5316947901395241499">Skrbnik je izklopil shranjevanje gesel</translation>
 <translation id="5317780077021120954">Shrani</translation>
 <translation id="5319359161174645648">Google priporoča Chrome</translation>
+<translation id="5323501626199324454">Upravljanje v računu Google</translation>
 <translation id="5326246328175179736">S tem računom se ni mogoče prijaviti</translation>
 <translation id="5327248766486351172">Ime</translation>
 <translation id="5328542107300944283">Uporabi z računom <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /></translation>
@@ -1325,6 +1331,7 @@ Nekatera spletna mesta se lahko na primer na zahtevo odzovejo tako, da prikažej
 <translation id="6461962085415701688">Datoteke ni mogoče odpreti</translation>
 <translation id="6464977750820128603">Ogledate si lahko spletna mesta, ki jih obiščete v Chromu, in zanje nastavite merilnike časa.\n\nGoogle dobi podatke o spletnih mestih, za katere nastavite merilnike časa, in o tem, kako dolgo traja vaš obisk teh mest. Te podatke uporabljamo za izboljšanje Digitalne dobrobiti.</translation>
 <translation id="6468703991511753953">Naslovna vrstica je trenutno na dnu</translation>
+<translation id="6469702164109431067">Gesla in ključi za dostop</translation>
 <translation id="6470181189905173055">Strani, ki ste jih odprli v Chromu, ko ste uporabljali aplikacijo <ph name="APP_LABEL" />, bodo prikazane tukaj.</translation>
 <translation id="6473086018775716761">Seznam možnosti deljenja z drugimi je odprt pri polovični višini.</translation>
 <translation id="6475951671322991020">Prenos videoposnetka</translation>
@@ -1531,6 +1538,7 @@ Nekatera spletna mesta se lahko na primer na zahtevo odzovejo tako, da prikažej
 <translation id="7182520625618447753">Za prilagojeno izkušnjo brskanja spremenite položaj naslovne vrstice na vrh ali dno</translation>
 <translation id="7183517696921903380">List filtra za aplikacije je odprt.</translation>
 <translation id="7186568385131859684">Nadziranje, kako se zgodovina brskanja uporablja z drugimi podatki v Googlovih storitvah</translation>
+<translation id="7189516830800112767">{NUM_TABS,plural, =1{Znova pritisnite ^W, če želite zapreti pripeti zavihek}one{Znova pritisnite ^W, če želite zapreti pripete zavihke}two{Znova pritisnite ^W, če želite zapreti pripete zavihke}few{Znova pritisnite ^W, če želite zapreti pripete zavihke}other{Znova pritisnite ^W, če želite zapreti pripete zavihke}}</translation>
 <translation id="7190921792980745354">Želite blokirati člana <ph name="MEMBER_FULL_NAME" />?</translation>
 <translation id="7191430249889272776">Zavihek se je odprl v ozadju.</translation>
 <translation id="7192397795254933433">{NUM_PASSWORDS,plural, =1{Takoj ga spremenite}one{Takoj jih spremenite}two{Takoj jih spremenite}few{Takoj jih spremenite}other{Takoj jih spremenite}}</translation>
@@ -1979,6 +1987,7 @@ Nekatera spletna mesta se lahko na primer na zahtevo odzovejo tako, da prikažej
 <translation id="8995521496079646922">Izbrane aplikacije se bodo privzeto uporabljale. Če aplikacije še ni v tej napravi, bo kmalu prenesena.</translation>
 <translation id="8996847606757455498">Izberi drugega ponudnika:</translation>
 <translation id="8998837250940831980">Zavihka ni bilo mogoče minimirati. Poskusite znova pozneje.</translation>
+<translation id="9000089900434778519">Vaš iskalnik je <ph name="DSE_NAME" />. Oglejte si navodila iskalnika za brisanje zgodovine iskanja, če je na voljo.</translation>
 <translation id="9001604755921395912">Odpri na anonimnem zavihku v Chromu</translation>
 <translation id="9010094279589497751">Hitro odprite Geminija, ko ga potrebujete</translation>
 <translation id="9012585441087414258">Ščiti pred spletnimi mesti, prenosi in razširitvami, za katere vemo, da so nevarni. Če se na strani zgodi kaj sumljivega, se URL-ji in delčki vsebine strani pošljejo v Google Varno brskanje.</translation>

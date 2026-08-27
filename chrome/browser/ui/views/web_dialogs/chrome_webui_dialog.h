@@ -6,18 +6,24 @@
 #define CHROME_BROWSER_UI_VIEWS_WEB_DIALOGS_CHROME_WEBUI_DIALOG_H_
 
 #include <memory>
+#include <optional>
 
+#include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
+#include "base/scoped_observation.h"
 #include "chrome/browser/ui/webui/top_chrome/webui_contents_wrapper.h"
 #include "ui/base/interaction/element_identifier.h"
+#include "ui/base/mojom/dialog_button.mojom.h"
+#include "ui/base/mojom/ui_base_types.mojom-shared.h"
 #include "ui/gfx/geometry/size.h"
+#include "ui/views/view_observer.h"
+#include "ui/views/widget/widget_observer.h"
 #include "ui/views/window/dialog_delegate.h"
 
 namespace views {
-class Widget;
-class WebView;
 class View;
 class Widget;
+class WebView;
 }  // namespace views
 
 namespace tabs {
@@ -32,9 +38,9 @@ struct WebDialogSpec {
   ~WebDialogSpec();
   WebDialogSpec(const WebDialogSpec&);
 
-  // The minimum and maximum size of the dialog.
-  // The dialog will auto-resize within these bounds based on the WebUI content.
-  // To fix a dimension, set min == max.
+  // Bounds for content-driven auto-resizing. Set min == max to fix a dimension.
+  // A zero extent leaves that dimension unconstrained, so a spec may pin the
+  // width and let the height follow content.
   gfx::Size min_size;
   gfx::Size max_size;
 

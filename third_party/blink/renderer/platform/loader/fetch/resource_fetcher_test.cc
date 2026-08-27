@@ -1703,7 +1703,8 @@ TEST_F(ResourceFetcherTestBase, PopulateResourceRequestPermissionsPolicy) {
              /*self_if_matches=*/std::nullopt,
              /*matches_all_origins=*/false,
              /*matches_opaque_src=*/false},
-            {network::mojom::PermissionsPolicyFeature::kSharedStorage,
+            {network::mojom::PermissionsPolicyFeature::
+                 kDeprecated_SharedStorage,
              /*allowed_origins=*/{},
              /*self_if_matches=*/std::nullopt,
              /*matches_all_origins=*/false,
@@ -1740,7 +1741,8 @@ TEST_F(ResourceFetcherTestBase,
              /*self_if_matches=*/std::nullopt,
              /*matches_all_origins=*/false,
              /*matches_opaque_src=*/false},
-            {network::mojom::PermissionsPolicyFeature::kSharedStorage,
+            {network::mojom::PermissionsPolicyFeature::
+                 kDeprecated_SharedStorage,
              /*allowed_origins=*/{},
              /*self_if_matches=*/std::nullopt,
              /*matches_all_origins=*/false,
@@ -2478,6 +2480,12 @@ TEST_P(TransparentPlaceholderResourceFetcherTest, InspectorNotAttached) {
 // world) are not reused by requests originating from a different isolated
 // world. Regression test for crbug.com/461167648.
 TEST_P(ResourceFetcherTest, CrossWorldExtensionResourceMismatch) {
+  // Explicitly enable `kPreventExtensionResourceFetchAcrossIsolatedWorlds` for
+  // this test since the feature is disabled by default.
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndEnableFeature(
+      kPreventExtensionResourceFetchAcrossIsolatedWorlds);
+
   // Register the scheme to ensure it's recognized as an extension.
   CommonSchemeRegistry::RegisterURLSchemeAsExtension("chrome-extension");
 

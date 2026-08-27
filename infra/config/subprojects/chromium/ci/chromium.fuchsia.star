@@ -72,8 +72,6 @@ ci.builder(
     # Runs two builds, which can cause the builder to run out of disk space
     # with standard free space.
     free_space = free_space.high,
-    # TODO(crbug.com/542581343): Re-enable tree-closing.
-    tree_closing = False,
     console_view_entry = [
         consoles.console_view_entry(
             category = "det",
@@ -214,6 +212,7 @@ ci.builder(
             "cast_test_lists",
         ],
         mixins = [
+            "fuchsia-orchestrate",
             "isolate_profile_data",
             "linux-jammy",
             targets.mixin(
@@ -255,8 +254,6 @@ ci.builder(
         },
     ),
     free_space = free_space.high,
-    # TODO(crbug.com/542581343): Re-enable tree-closing.
-    tree_closing = False,
     console_view_entry = [
         consoles.console_view_entry(
             category = "cast-receiver",
@@ -319,6 +316,7 @@ ci.builder(
         ],
         mixins = [
             "fuchsia-large-device-spec",
+            "fuchsia-orchestrate",
             "isolate_profile_data",
             "linux-jammy",
             targets.mixin(

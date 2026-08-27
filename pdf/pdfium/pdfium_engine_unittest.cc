@@ -16,6 +16,7 @@
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/functional/callback.h"
+#include "base/functional/function_ref.h"
 #include "base/i18n/language_tag.h"
 #include "base/i18n/tag_converters.h"
 #include "base/path_service.h"
@@ -1857,6 +1858,16 @@ class PDFiumEnginePageMutationTest : public PDFiumEngineTest {
   void SetLastFocusedPage(PDFiumEngine* engine, int page_index) {
     engine->last_focused_page_ = page_index;
   }
+
+  void ForEachPage(PDFiumEngine* engine,
+                   base::FunctionRef<void(PDFiumPage*)> callback) {
+    engine->ForEachPage(callback);
+  }
+
+  bool ForEachPageUntilTrue(PDFiumEngine* engine,
+                            base::FunctionRef<bool(PDFiumPage*)> callback) {
+    return engine->ForEachPageUntilTrue(callback);
+  }
 };
 
 // Simulates an XFA page deletion when handling a char event.
@@ -1935,6 +1946,71 @@ TEST_P(PDFiumEnginePageMutationTest, DeferPageDestructionWithPreventer) {
     // kept alive, and its destruction should be deferred. This should complete
     // without crashing.
   }
+}
+
+TEST_P(PDFiumEnginePageMutationTest, ForEachPage) {
+  NiceMock<MockTestClient> client(/*use_skia_renderer=*/GetParam());
+  std::unique_ptr<PDFiumEngine> engine = InitializeEngine(
+      &client, FILE_PATH_LITERAL("annotation_form_fields.pdf"));
+  ASSERT_TRUE(engine);
+  ASSERT_EQ(2, engine->GetNumberOfPages());
+
+  int visited_count = 0;
+  ForEachPage(engine.get(), [&](PDFiumPage* page) {
+    EXPECT_TRUE(page);
+    ++visited_count;
+  });
+  EXPECT_EQ(2, visited_count);
+}
+
+TEST_P(PDFiumEnginePageMutationTest, ForEachPageUntilTrue) {
+  NiceMock<MockTestClient> client(/*use_skia_renderer=*/GetParam());
+  std::unique_ptr<PDFiumEngine> engine = InitializeEngine(
+      &client, FILE_PATH_LITERAL("annotation_form_fields.pdf"));
+  ASSERT_TRUE(engine);
+  ASSERT_EQ(2, engine->GetNumberOfPages());
+
+  int visited_count = 0;
+  const bool stopped_early =
+      ForEachPageUntilTrue(engine.get(), [&](PDFiumPage* page) {
+        EXPECT_TRUE(page);
+        ++visited_count;
+        return true;
+      });
+  EXPECT_TRUE(stopped_early);
+  EXPECT_EQ(1, visited_count);
+
+  visited_count = 0;
+  const bool completed_all =
+      ForEachPageUntilTrue(engine.get(), [&](PDFiumPage* page) {
+        EXPECT_TRUE(page);
+        ++visited_count;
+        return false;
+      });
+  EXPECT_FALSE(completed_all);
+  EXPECT_EQ(2, visited_count);
+}
+
+TEST_P(PDFiumEnginePageMutationTest, ForEachPageMidIterationPageDeletion) {
+  NiceMock<MockTestClient> client(/*use_skia_renderer=*/GetParam());
+  std::unique_ptr<PDFiumEngine> engine = InitializeEngine(
+      &client, FILE_PATH_LITERAL("annotation_form_fields.pdf"));
+  ASSERT_TRUE(engine);
+  ASSERT_EQ(2, engine->GetNumberOfPages());
+
+  int visited_count = 0;
+  ForEachPage(engine.get(), [&](PDFiumPage* page) {
+    ++visited_count;
+    if (visited_count == 1) {
+      // Delete page 2 in the document and update layout mid-iteration.
+      FPDFPage_Delete(GetDoc(engine.get()), 1);
+      InvalidateAllPages(engine.get());
+    }
+  });
+
+  // Iteration should complete safely without crashing or accessing deleted
+  // page.
+  EXPECT_EQ(1, visited_count);
 }
 
 INSTANTIATE_TEST_SUITE_P(All, PDFiumEnginePageMutationTest, testing::Bool());
@@ -2513,6 +2589,77 @@ TEST_P(PDFiumEngineTabbingTest, RetainSelectionOnFocusNotInFormTextArea) {
             GetFocusedElementType(engine.get()));
   EXPECT_EQ(0, GetLastFocusedPage(engine.get()));
   EXPECT_EQ(1u, GetSelectionSize(engine.get()));
+}
+
+TEST_P(PDFiumEngineTabbingTest, TextDirectionOnFocusedFormField) {
+  TestClient client(/*use_skia_renderer=*/GetParam());
+  std::unique_ptr<PDFiumEngine> engine =
+      InitializeEngine(&client, FILE_PATH_LITERAL("form_text_fields.pdf"));
+  ASSERT_TRUE(engine);
+  ASSERT_EQ(1, engine->GetNumberOfPages());
+
+  // Initially no focus.
+  EXPECT_EQ(std::nullopt, engine->GetFocusedFormTextDirection());
+
+  // Setting text direction when no form field is focused should not crash
+  // and should be a no-op (i.e. direction remains unknown).
+  EXPECT_FALSE(engine->SetFocusedFormTextDirection(base::i18n::RIGHT_TO_LEFT));
+  EXPECT_EQ(std::nullopt, engine->GetFocusedFormTextDirection());
+
+  // Tab to bring focus to a form text area annotation.
+  // Tab into the document.
+  ASSERT_TRUE(HandleTabEvent(engine.get(), 0));
+  // Tab into the page.
+  ASSERT_TRUE(HandleTabEvent(engine.get(), 0));
+  EXPECT_EQ(PDFiumEngine::FocusElementType::kPage,
+            GetFocusedElementType(engine.get()));
+
+  // The default text direction for the field.
+  EXPECT_THAT(engine->GetFocusedFormTextDirection(),
+              Optional(base::i18n::UNKNOWN_DIRECTION));
+
+  EXPECT_TRUE(engine->SetFocusedFormTextDirection(base::i18n::RIGHT_TO_LEFT));
+  EXPECT_THAT(engine->GetFocusedFormTextDirection(),
+              Optional(base::i18n::RIGHT_TO_LEFT));
+
+  EXPECT_TRUE(engine->SetFocusedFormTextDirection(base::i18n::LEFT_TO_RIGHT));
+  EXPECT_THAT(engine->GetFocusedFormTextDirection(),
+              Optional(base::i18n::LEFT_TO_RIGHT));
+}
+
+TEST_P(PDFiumEngineTabbingTest, TextDirectionOnFocusedNonTextFormField) {
+  TestClient client(/*use_skia_renderer=*/GetParam());
+  std::unique_ptr<PDFiumEngine> engine =
+      InitializeEngine(&client, FILE_PATH_LITERAL("annots.pdf"));
+  ASSERT_TRUE(engine);
+  ASSERT_EQ(1, engine->GetNumberOfPages());
+
+  // Bring focus to the document.
+  ASSERT_TRUE(HandleTabEvent(engine.get(), 0));
+
+  // Bring focus to the text field.
+  ASSERT_TRUE(HandleTabEvent(engine.get(), 0));
+  ASSERT_EQ(PDFiumEngineClient::FocusFieldType::kText,
+            FormFocusFieldType(engine.get()));
+
+  // Setting text direction should succeed on a text field.
+  EXPECT_TRUE(engine->SetFocusedFormTextDirection(base::i18n::RIGHT_TO_LEFT));
+  EXPECT_THAT(engine->GetFocusedFormTextDirection(),
+              Optional(base::i18n::RIGHT_TO_LEFT));
+
+  // Bring focus to the button.
+  ASSERT_TRUE(HandleTabEvent(engine.get(), 0));
+  ASSERT_EQ(PDFiumEngineClient::FocusFieldType::kNonText,
+            FormFocusFieldType(engine.get()));
+
+  // Bring focus to the link.
+  ASSERT_TRUE(HandleTabEvent(engine.get(), 0));
+  ASSERT_EQ(PDFiumEngineClient::FocusFieldType::kNoFocus,
+            FormFocusFieldType(engine.get()));
+
+  // Setting text direction should fail on a link.
+  EXPECT_FALSE(engine->SetFocusedFormTextDirection(base::i18n::LEFT_TO_RIGHT));
+  EXPECT_EQ(std::nullopt, engine->GetFocusedFormTextDirection());
 }
 
 TEST_P(PDFiumEngineTabbingTest, SetFormHighlight) {

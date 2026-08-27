@@ -1346,7 +1346,8 @@ public class RootUiCoordinator
                             /* itemDelegate= */ null,
                             mShareDelegateSupplier,
                             ChromeContextMenuPopulator.ContextMenuMode.THIN_WEB_VIEW,
-                            /* customContentActions= */ Collections.emptyList());
+                            /* customContentActions= */ Collections.emptyList(),
+                            getLeftSideUiWidthSupplier());
             mEphemeralTabCoordinatorSupplier.set(
                     new EphemeralTabCoordinator(
                             mActivity,
@@ -1427,7 +1428,10 @@ public class RootUiCoordinator
                 transitiveTopInsetProvider.set(topInsetCoordinator);
             }
         }
-        if (ChromeFeatureList.isEnabled(ChromeFeatureList.LINK_HOVER_STATUS_BAR)) {
+        // Temporarily disable LinkHoverStatusBar on non-desktop devices.
+        // TODO(b/542488395): Enable this on non-desktop devices.
+        if (DeviceInfo.isDesktop()
+                && ChromeFeatureList.isEnabled(ChromeFeatureList.LINK_HOVER_STATUS_BAR)) {
             ViewStub statusBarStub = mActivity.findViewById(R.id.link_hover_status_bar_stub);
             mLinkHoverStatusBarCoordinator =
                     new LinkHoverStatusBarCoordinator(
@@ -2206,6 +2210,9 @@ public class RootUiCoordinator
 
     protected void onScrimColorChanged(@ColorInt int scrimColor) {
         mStatusBarColorController.onScrimColorChanged(scrimColor);
+        if (mDesktopWindowStateManager != null) {
+            mDesktopWindowStateManager.onScrimColorChanged(scrimColor);
+        }
     }
 
     protected void setLayoutStateProvider(LayoutStateProvider layoutStateProvider) {
@@ -2908,5 +2915,21 @@ public class RootUiCoordinator
      */
     protected @Nullable OneshotSupplier<SideUiStateProvider> getSideUiStateProviderSupplier() {
         return null;
+    }
+
+    /**
+     * Returns the supplier for the left side UI width in px.
+     *
+     * <p>If the current Activity does not have left side UI, the supplier will always supply 0
+     *
+     * <p>NOTE: Always prefer {@link SideUiStateProvider} rather than this supplier. This supplier
+     * is created because some components can't depend on {@link SideUiStateProvider}, such as
+     * {@link ContextMenuPopulatorFactory}.
+     *
+     * <p>TOOD(crbug.com/543470110): Fix the dependency issue and remove this supplier.
+     */
+    @Deprecated
+    public Supplier<Integer> getLeftSideUiWidthSupplier() {
+        return () -> 0;
     }
 }

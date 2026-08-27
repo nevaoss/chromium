@@ -2774,7 +2774,14 @@
       'gpu_webrtc_metal_passthrough_graphite_telemetry_test',
     ],
 
-    'gpu_fyi_win_release_telemetry_tests': [
+    'gpu_telemetry_tests_v8': [
+      'gpu_common_and_optional_telemetry_tests',
+      'gpu_validating_telemetry_tests',
+      'gpu_webgl_conformance_gles_passthrough_telemetry_tests',
+      'gpu_webgl_conformance_validating_telemetry_tests',
+    ],
+
+    'gpu_v8_win_release_telemetry_tests': [
       'gpu_common_and_optional_telemetry_tests',
       'gpu_passthrough_graphite_telemetry_tests',
       'gpu_passthrough_telemetry_tests',
@@ -2783,13 +2790,6 @@
       'gpu_webgl_conformance_d3d11_passthrough_telemetry_tests',
       'gpu_webgl_conformance_vulkan_passthrough_telemetry_tests',
       'gpu_webrtc_telemetry_test',
-    ],
-
-    'gpu_telemetry_tests_v8': [
-      'gpu_common_and_optional_telemetry_tests',
-      'gpu_validating_telemetry_tests',
-      'gpu_webgl_conformance_gles_passthrough_telemetry_tests',
-      'gpu_webgl_conformance_validating_telemetry_tests',
     ],
 
     'linux_chromeos_gtests': [
@@ -3675,6 +3675,7 @@
     },
 
     'optimization_guide_win_arm64_script_tests': {
+      'chrome_ai_wpt_tests_manifest_suite': {},
       'model_validation_tests_light_suite': {},
       'model_validation_tests_suite': {},
       'ondevice_stability_tests_suite': {},

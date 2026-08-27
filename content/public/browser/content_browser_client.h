@@ -1090,42 +1090,6 @@ class CONTENT_EXPORT ContentBrowserClient {
       const url::Origin& destination_origin,
       content::PrivacySandboxInvokingAPI invoking_api);
 
-
-  // Allows the embedder to control if Shared Storage API operations can happen
-  // in a given context.
-  //
-  // If non-null, the embedder can use `out_debug_message` to relay further
-  // details about how the returned boolean result was obtained.
-  //
-  // Note that `rfh` can be nullptr.
-  //
-  // If non-null, the embedder can use `out_block_is_site_setting_specific` to
-  // relay whether or not a failure to be allowed is due to a site-specific
-  // reason.
-  virtual bool IsSharedStorageAllowed(content::BrowserContext* browser_context,
-                                      content::RenderFrameHost* rfh,
-                                      const url::Origin& top_frame_origin,
-                                      const url::Origin& accessing_origin,
-                                      std::string* out_debug_message,
-                                      bool* out_block_is_site_setting_specific);
-
-  // Allows the embedder to control if Shared Storage API `selectURL()` can
-  // happen in a given context.
-  //
-  // If non-null, the embedder can use `out_debug_message` to relay further
-  // details about how the returned boolean result was obtained.
-  //
-  // If non-null, the embedder can use `out_block_is_site_setting_specific` to
-  // relay whether or not a failure to be allowed is due to a site-specific
-  // reason.
-  virtual bool IsSharedStorageSelectURLAllowed(
-      content::BrowserContext* browser_context,
-
-      const url::Origin& top_frame_origin,
-      const url::Origin& accessing_origin,
-      std::string* out_debug_message,
-      bool* out_block_is_site_setting_specific);
-
   // Returns whether cookies should be allowed for requests to `url`, fetched
   // from contexts whose storage is keyed on `storage_key`.
   // The `web_contents` parameter should be `nullptr` for requests coming from
@@ -3185,6 +3149,10 @@ class CONTENT_EXPORT ContentBrowserClient {
   // this is used to not move VoiceOver's focus on navigation. This is used
   // today to suppress the event when the user navigates to the new tab page.
   virtual bool ShouldSuppressAXLoadComplete(RenderFrameHost* rfh);
+
+  // Called when a frame requests that the operating system's caption style
+  // settings be shown.
+  virtual void ShowCaptionSettings(RenderFrameHost* rfh);
 
   // Binds the AIManager for a given `browser_context` to `receiver`. The
   // created AIManager will be owned by the `context_user_data`. The

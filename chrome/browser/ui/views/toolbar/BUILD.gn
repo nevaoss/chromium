@@ -180,6 +180,7 @@ source_set("impl") {
     "//chrome/browser:primitives",
     "//chrome/browser:resources",
     "//chrome/browser/actor/ui/task_list_bubble:controller",
+    "//chrome/browser/actor/ui/task_list_bubble:ui",
     "//chrome/browser/bookmarks",
     "//chrome/browser/extensions",
     "//chrome/browser/external_protocol",
@@ -349,13 +350,17 @@ if (!is_android) {
       "pinned_toolbar_actions_container_browsertest.cc",
     ]
 
+    data = [ "//tools/metrics/actions/actions.xml" ]
+
     deps = [
       ":test_support",
       ":toolbar",
       "//base",
+      "//base/test:test_support",
       "//chrome/browser:flags",
       "//chrome/browser/ui:browser_actions",
       "//chrome/browser/ui:ui_features",
+      "//chrome/browser/ui/actions",
       "//chrome/browser/ui/browser_web_contents_delegate",
       "//chrome/browser/ui/hats:test_support",
       "//chrome/browser/ui/profiles",
@@ -363,6 +368,7 @@ if (!is_android) {
       "//chrome/browser/ui/side_panel",
       "//chrome/browser/ui/side_panel:side_panel_views_dependent",
       "//chrome/browser/ui/toolbar/chrome_labs",
+      "//chrome/browser/ui/toolbar/pinned_toolbar",
       "//chrome/browser/ui/views/frame",
       "//chrome/browser/ui/views/frame:app_menu_button_observer",
       "//chrome/browser/ui/views/page_info",
@@ -374,16 +380,26 @@ if (!is_android) {
       "//components/prefs",
       "//components/translate/content/browser:test_support",
       "//components/user_education/views",
+      "//components/vector_icons",
       "//components/version_info",
       "//components/webui/flags",
+      "//content/test:test_support",
       "//testing/gtest",
+      "//ui/accessibility",
+      "//ui/actions",
       "//ui/base",
+      "//ui/base/dragdrop:types",
+      "//ui/base/mojom",
+      "//ui/compositor",
       "//ui/views",
     ]
 
     if (toolkit_views) {
       sources += [
         "toolbar_view_browsertest.cc",
+        "webui_pinned_toolbar_actions_browsertest.cc",
+        "webui_pinned_toolbar_actions_test_base.cc",
+        "webui_pinned_toolbar_actions_test_base.h",
         "webui_toolbar_web_view_browsertest.cc",
         "webui_toolbar_web_view_test_base.cc",
         "webui_toolbar_web_view_test_base.h",
@@ -432,6 +448,9 @@ if (!is_android && !is_chromeos_device) {
         "toolbar_view_interactive_uitest.cc",
         "webui_and_views_toolbar_interactive_uitest_base.cc",
         "webui_and_views_toolbar_interactive_uitest_base.h",
+        "webui_pinned_toolbar_actions_interactive_uitest.cc",
+        "webui_pinned_toolbar_actions_test_base.cc",
+        "webui_pinned_toolbar_actions_test_base.h",
         "webui_toolbar_interactive_uitest.cc",
         "webui_toolbar_web_view_interactive_uitest.cc",
         "webui_toolbar_web_view_test_base.cc",

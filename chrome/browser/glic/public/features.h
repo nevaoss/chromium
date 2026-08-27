@@ -127,7 +127,6 @@ BASE_DECLARE_FEATURE(kGlicHotkeyLocalScope);
 
 BASE_DECLARE_FEATURE(kGlicPasteEligibilityCheck);
 BASE_DECLARE_FEATURE(kGlicWebPasteEligibilityCheck);
-BASE_DECLARE_FEATURE(kGlicOptInDialogLinkA11yFix);
 
 BASE_DECLARE_FEATURE(kGlicTabGroups);
 extern const base::FeatureParam<bool> kGlicTabGroupsUseFullTabEmbedder;
@@ -139,6 +138,8 @@ BASE_DECLARE_FEATURE(kGlicStructuredYieldMetadata);
 BASE_DECLARE_FEATURE(kGlicEnableMojoJs);
 
 BASE_DECLARE_FEATURE(kGlicNoWebview);
+
+BASE_DECLARE_FEATURE(kGlicShakeTrigger);
 
 }  // namespace features
 

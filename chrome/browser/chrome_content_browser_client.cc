@@ -55,6 +55,7 @@
 #include "build/branding_buildflags.h"
 #include "build/build_config.h"
 #include "build/config/chromebox_for_meetings/buildflags.h"  // PLATFORM_CFM
+#include "chrome/browser/accessibility/caption_settings_dialog.h"
 #include "chrome/browser/after_startup_task_utils.h"
 #include "chrome/browser/ai/ai_manager.h"
 #include "chrome/browser/app_mode/app_mode_utils.h"
@@ -2285,9 +2286,14 @@ bool ChromeContentBrowserClient::ShouldAllowMojoJsBindingsForFrame(
                              ->GetSecurityPrincipal()
                              .GetDeprecatedSiteURL();
   if (site_url.SchemeIs(extensions::kExtensionScheme)) {
-    return extensions::util::IsMojoJsEnabledForExtension(
-        extensions::ExtensionId(site_url.host()),
-        render_frame_host.GetBrowserContext());
+    content::BrowserContext* browser_context =
+        render_frame_host.GetBrowserContext();
+    const extensions::Extension* extension =
+        extensions::ExtensionRegistry::Get(browser_context)
+            ->enabled_extensions()
+            .GetByID(site_url.GetHost());
+    return extensions::util::IsMojoJsEnabledForExtension(extension,
+                                                         browser_context);
   }
 #endif
   return false;
@@ -3641,43 +3647,6 @@ bool ChromeContentBrowserClient::IsPrivacySandboxReportingDestinationAttested(
       destination_origin, gated_api);
 }
 
-bool ChromeContentBrowserClient::IsSharedStorageAllowed(
-    content::BrowserContext* browser_context,
-    content::RenderFrameHost* rfh,
-    const url::Origin& top_frame_origin,
-    const url::Origin& accessing_origin,
-    std::string* out_debug_message,
-    bool* out_block_is_site_setting_specific) {
-  Profile* profile = Profile::FromBrowserContext(browser_context);
-  auto* privacy_sandbox_settings =
-      PrivacySandboxSettingsFactory::GetForProfile(profile);
-  DCHECK(privacy_sandbox_settings);
-  bool allowed = privacy_sandbox_settings->IsSharedStorageAllowed(
-      top_frame_origin, accessing_origin, out_debug_message, rfh,
-      out_block_is_site_setting_specific);
-  if (rfh) {
-    content_settings::PageSpecificContentSettings::BrowsingDataAccessed(
-        rfh, blink::StorageKey::CreateFirstParty(accessing_origin),
-        BrowsingDataModel::StorageType::kSharedStorage, !allowed);
-  }
-  return allowed;
-}
-
-bool ChromeContentBrowserClient::IsSharedStorageSelectURLAllowed(
-    content::BrowserContext* browser_context,
-    const url::Origin& top_frame_origin,
-    const url::Origin& accessing_origin,
-    std::string* out_debug_message,
-    bool* out_block_is_site_setting_specific) {
-  Profile* profile = Profile::FromBrowserContext(browser_context);
-  auto* privacy_sandbox_settings =
-      PrivacySandboxSettingsFactory::GetForProfile(profile);
-  DCHECK(privacy_sandbox_settings);
-  return privacy_sandbox_settings->IsSharedStorageSelectURLAllowed(
-      top_frame_origin, accessing_origin, out_debug_message,
-      out_block_is_site_setting_specific);
-}
-
 bool ChromeContentBrowserClient::IsFullCookieAccessAllowed(
     content::BrowserContext* browser_context,
     content::WebContents* web_contents,
@@ -4422,6 +4391,15 @@ bool ChromeContentBrowserClient::CanCreateWindow(
       Profile::FromBrowserContext(web_contents->GetBrowserContext());
   DCHECK(profile);
   *no_javascript_access = false;
+
+  // A privileged WebContents (see //chrome's PrivilegedWebContents) must not
+  // create related windows: the new window would share an opener relationship
+  // (and, for same-site targets, a process) with the privileged page. Deny
+  // outright, so window.open() returns null and target=_blank openers get
+  // nothing. Any legitimate off-PWC navigation is the feature's own concern.
+  if (web_contents->IsPrivileged()) {
+    return false;
+  }
 
   // This block gives the Contextual Tasks feature the opportunity to intercept
   // tab creation in the event it doesn't go directly through the feature's
@@ -9178,6 +9156,29 @@ bool ChromeContentBrowserClient::ShouldSuppressAXLoadComplete(
   const GURL& url = web_contents->GetVisibleURL();
   return url == chrome::ChromeUINewTabURLAsGURL() ||
          url == chrome::ChromeUINewTabPageURLAsGURL();
+}
+
+void ChromeContentBrowserClient::ShowCaptionSettings(
+    content::RenderFrameHost* rfh) {
+  CHECK(rfh);
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
+  // Windows and Mac caption styles come from the OS settings. Open the native
+  // dialog to allow users to change them.
+  captions::CaptionSettingsDialog::ShowCaptionSettingsDialog();
+#else
+  // Other platforms have no native dialog, so navigate to the Chrome
+  // caption settings page.
+  content::WebContents* web_contents =
+      content::WebContents::FromRenderFrameHost(rfh);
+  if (!web_contents) {
+    return;
+  }
+  content::OpenURLParams params(
+      GURL(captions::GetCaptionSettingsUrl()), content::Referrer(),
+      WindowOpenDisposition::NEW_FOREGROUND_TAB, ui::PAGE_TRANSITION_LINK,
+      /*is_renderer_initiated=*/false);
+  web_contents->OpenURL(params, /*navigation_handle_callback=*/{});
+#endif
 }
 
 void ChromeContentBrowserClient::BindAIManager(

@@ -17,6 +17,11 @@
             (NewTabPageBottomSheetViewController*)bottomSheetViewController
                didUpdateTopOffset:(CGFloat)topOffset;
 
+// Called when the user performs the VoiceOver escape gesture on the bottom
+// sheet.
+- (void)bottomSheetViewControllerDidEscape:
+    (NewTabPageBottomSheetViewController*)bottomSheetViewController;
+
 // Returns the preferred resting offset for the bottom sheet.
 - (CGFloat)restingOffsetForBottomSheetViewController:
     (NewTabPageBottomSheetViewController*)viewController;
@@ -29,7 +34,8 @@
 
 // View controller managing the bottom sheet card, gestures, and subviews for
 // the NTP Redesign.
-@interface NewTabPageBottomSheetViewController : UIViewController
+@interface NewTabPageBottomSheetViewController
+    : UIViewController <UIScrollViewDelegate>
 
 // Delegate for bottom sheet actions.
 @property(nonatomic, weak) id<NewTabPageBottomSheetViewControllerDelegate>
@@ -40,6 +46,9 @@
 
 // The magic stack view controller.
 @property(nonatomic, strong) UIViewController* magicStackViewController;
+
+// Embeds the Most Visited view.
+- (void)embedMostVisitedView:(UIView*)mostVisitedView;
 
 // Clears state and delegates.
 - (void)invalidate;
@@ -52,6 +61,9 @@
 
 // Returns the collapsed offset of the bottom sheet.
 - (CGFloat)collapsedOffset;
+
+// Updates the bottom sheet position to match its current snapping state.
+- (void)updateBottomSheetPositionAnimated:(BOOL)animated;
 
 @end
 

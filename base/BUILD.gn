@@ -319,6 +319,7 @@ component("base") {
     "containers/span_reader.h",
     "containers/span_writer.h",
     "containers/stack.h",
+    "containers/to_array.h",
     "containers/to_value_list.h",
     "containers/to_vector.h",
     "containers/transparent_hash.h",
@@ -665,8 +666,6 @@ component("base") {
     "sampling_heap_profiler/lock_free_bloom_filter.h",
     "sampling_heap_profiler/poisson_allocation_sampler.cc",
     "sampling_heap_profiler/poisson_allocation_sampler.h",
-    "sampling_heap_profiler/sampling_heap_churn_profiler.cc",
-    "sampling_heap_profiler/sampling_heap_churn_profiler.h",
     "sampling_heap_profiler/sampling_heap_profiler.cc",
     "sampling_heap_profiler/sampling_heap_profiler.h",
     "scoped_add_feature_flags.cc",
@@ -2379,8 +2378,6 @@ component("base") {
       sources -= [
         "sampling_heap_profiler/poisson_allocation_sampler.cc",
         "sampling_heap_profiler/poisson_allocation_sampler.h",
-        "sampling_heap_profiler/sampling_heap_churn_profiler.cc",
-        "sampling_heap_profiler/sampling_heap_churn_profiler.h",
         "sampling_heap_profiler/sampling_heap_profiler.cc",
         "sampling_heap_profiler/sampling_heap_profiler.h",
       ]
@@ -3219,7 +3216,6 @@ component("i18n") {
     ":base",
     "//base/i18n:base_i18n_export",
     "//base/i18n:language_tag",
-    "//base/i18n:language_tag_value_converters",
     "//base/i18n:time_formatting_types",
     "//base/i18n:timezone",
     "//base/i18n/icubridge",
@@ -3720,6 +3716,7 @@ test("base_unittests") {
     "containers/span_reader_unittest.cc",
     "containers/span_unittest.cc",
     "containers/span_writer_unittest.cc",
+    "containers/to_array_unittest.cc",
     "containers/to_value_list_unittest.cc",
     "containers/to_vector_unittest.cc",
     "containers/transparent_hash_unittest.cc",
@@ -4668,7 +4665,6 @@ test("base_unittests") {
   if (use_allocator_shim) {
     sources += [
       "sampling_heap_profiler/poisson_allocation_sampler_unittest.cc",
-      "sampling_heap_profiler/sampling_heap_churn_profiler_unittest.cc",
       "sampling_heap_profiler/sampling_heap_profiler_unittest.cc",
 
       # TODO(crbug.com/40158212): Move partition_alloc tests into its
@@ -4816,6 +4812,7 @@ if (enable_nocompile_tests) {
       "containers/fixed_flat_set_nocompile.nc",
       "containers/heap_array_nocompile.nc",
       "containers/span_nocompile.nc",
+      "containers/to_array_nocompile.nc",
       "containers/to_value_list_nocompile.nc",
       "containers/to_vector_nocompile.nc",
       "debug/crash_logging_nocompile.nc",

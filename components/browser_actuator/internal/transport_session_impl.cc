@@ -42,9 +42,25 @@ base::expected<void, SendMessageError> TransportSessionImpl::SendMessage(
   return base::unexpected(SendMessageError::kChannelDisconnected);
 }
 
+void TransportSessionImpl::OnMessage(
+    PayloadType payload_type,
+    const google::protobuf::MessageLite& message) {
+  std::ignore = ProcessPayload(payload_type, message);
+}
+
 base::expected<void, TransportSessionImpl::ProcessPayloadError>
-TransportSessionImpl::ProcessPayload(PayloadType payload_type,
-                                     std::string_view payload) {
+TransportSessionImpl::ProcessPayload(
+    PayloadType payload_type,
+    const google::protobuf::MessageLite& message) {
+  return DispatchToHandlers(
+      payload_type,
+      [&message](TransportHandler* handler) { handler->OnMessage(message); });
+}
+
+base::expected<void, TransportSessionImpl::ProcessPayloadError>
+TransportSessionImpl::DispatchToHandlers(
+    PayloadType payload_type,
+    base::FunctionRef<void(TransportHandler*)> dispatch_fn) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!channel_) {
     return base::unexpected(ProcessPayloadError::kChannelDisconnected);
@@ -64,11 +80,10 @@ TransportSessionImpl::ProcessPayload(PayloadType payload_type,
       handlers.push_back(handler.get());
     }
     for (TransportHandler* handler : handlers) {
-      // If a handler destroys the session stop dispatching to future handlers.
       if (!session) {
         break;
       }
-      handler->OnMessage(payload);
+      dispatch_fn(handler);
     }
   }
 
@@ -147,23 +162,26 @@ void TransportSessionImpl::ProcessDownstreamMessage(
       break;
     }
     // Map ActuatorDownstreamPayloadType to public PayloadType
-    PayloadType public_type = PayloadType::kUnspecified;
     switch (typed_payload.payload_type()) {
+      case ACTUATOR_DOWNSTREAM_PAYLOAD_TYPE_CONTROL_COMMAND: {
+        ControlCommand command;
+        if (!command.ParseFromString(typed_payload.proto_payload().value())) {
+          DLOG(WARNING) << "Failed to parse ControlCommand payload";
+          continue;
+        }
+        auto result = ProcessPayload(PayloadType::kControl, command);
+        if (!result.has_value()) {
+          DLOG(WARNING) << "Failed to process payload "
+                        << "error: " << static_cast<int>(result.error());
+        }
+        break;
+      }
       case ACTUATOR_DOWNSTREAM_PAYLOAD_TYPE_UNSPECIFIED:
-        public_type = PayloadType::kUnspecified;
-        break;
-      case ACTUATOR_DOWNSTREAM_PAYLOAD_TYPE_CONTROL_COMMAND:
-        public_type = PayloadType::kControl;
-        break;
       default:
-        // Ignore unknown payload types
+        // Ignore unspecified or unknown payload types
+        DLOG(WARNING) << "Ignoring payload with unspecified or unknown type: "
+                      << typed_payload.payload_type();
         continue;
-    }
-    auto result =
-        ProcessPayload(public_type, typed_payload.proto_payload().value());
-    if (!result.has_value()) {
-      DLOG(WARNING) << "Failed to process payload "
-                    << "error: " << static_cast<int>(result.error());
     }
   }
 }

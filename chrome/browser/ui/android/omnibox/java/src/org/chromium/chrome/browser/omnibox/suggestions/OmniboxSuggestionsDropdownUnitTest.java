@@ -10,7 +10,6 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -57,12 +56,12 @@ import org.chromium.ui.modelutil.PropertyModel;
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(sdk = BaseRobolectricTestRunner.MIN_SDK)
 public class OmniboxSuggestionsDropdownUnitTest {
-    public @Rule MockitoRule mMockitoRule = MockitoJUnit.rule();
-    private @Mock Runnable mDropdownScrollListener;
-    private @Mock Runnable mDropdownScrollToTopListener;
-    private @Mock OmniboxSuggestionsDropdownAdapter mAdapter;
-    private @Mock View mView;
-    private @Mock OmniboxSuggestionsDropdown.NavigationListener mNavigationListener;
+    @Rule public final MockitoRule mMockitoRule = MockitoJUnit.rule();
+    @Mock private Runnable mDropdownScrollListener;
+    @Mock private Runnable mDropdownScrollToTopListener;
+    @Mock private OmniboxSuggestionsDropdownAdapter mAdapter;
+    @Mock private View mView;
+    @Mock private OmniboxSuggestionsDropdown.NavigationListener mNavigationListener;
 
     private Context mContext;
     private OmniboxSuggestionsDropdown mDropdown;
@@ -239,26 +238,24 @@ public class OmniboxSuggestionsDropdownUnitTest {
 
     @Test
     public void translateChildrenVertical() {
-        View childView = mock(View.class);
 
         mDropdown.translateChildrenVertical(45.6f);
-        mDropdown.onChildAttachedToWindow(childView);
-        verify(childView).setTranslationY(45.6f);
+        mDropdown.onChildAttachedToWindow(mView);
+        verify(mView).setTranslationY(45.6f);
 
-        mDropdown.onChildDetachedFromWindow(childView);
-        verify(childView).setTranslationY(0.0f);
+        mDropdown.onChildDetachedFromWindow(mView);
+        verify(mView).setTranslationY(0.0f);
     }
 
     @Test
     public void setChildAlpha() {
-        View childView = mock(View.class);
 
         mDropdown.setChildAlpha(0.6f);
-        mDropdown.onChildAttachedToWindow(childView);
-        verify(childView).setAlpha(0.6f);
+        mDropdown.onChildAttachedToWindow(mView);
+        verify(mView).setAlpha(0.6f);
 
-        mDropdown.onChildDetachedFromWindow(childView);
-        verify(childView).setAlpha(1.0f);
+        mDropdown.onChildDetachedFromWindow(mView);
+        verify(mView).setAlpha(1.0f);
     }
 
     @Test

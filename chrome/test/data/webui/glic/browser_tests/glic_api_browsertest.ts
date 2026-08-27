@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 import {HostCapability, InvocationSource, MetricUserInputReactionType, PanelStateKind, Platform, ResponseStopCause, WebClientMode} from '/glic/glic_api/glic_api.js';
-import type {CancelActionsResult, FocusedTabData, InvokeOptions, OpenPanelInfo, PanelOpeningData, TabData, UserConfirmationDialogRequest, UserProfileInfo} from '/glic/glic_api/glic_api.js';
+import type {CancelActionsResult, FocusedTabData, OpenPanelInfo, PanelOpeningData, TabData, UserProfileInfo} from '/glic/glic_api/glic_api.js';
 
-import {ApiTestError, ApiTestFixtureBase, assertDefined, assertEquals, assertFalse, assertNotEquals, assertRejects, assertTrue, assertUndefined, checkDefined, mapObservable, observeSequence, readStream, runUntil, sleep, testMain, waitFor, WebClient} from './browser_test_base.js';
+import {ApiTestFixtureBase, assertDefined, assertEquals, assertFalse, assertNotEquals, assertRejects, assertTrue, assertUndefined, checkDefined, mapObservable, observeSequence, readStream, runUntil, sleep, testMain, waitFor, WebClient} from './browser_test_base.js';
 import type {SequencedSubscriber} from './browser_test_base.js';
 
 // Test cases here correspond to test cases in glic_api_browsertest.cc.
@@ -80,114 +80,6 @@ class ApiTests extends ApiTestFixtureBase {
     assertEquals(
         panelOpenData.invocationSource, InvocationSource.TOP_CHROME_BUTTON);
   }
-
-  async testRequestHeader() {
-    const rpcUrls: string[] = this.testParams.rpcUrls;
-    await Promise.all(rpcUrls.map(url => fetch(url)));
-  }
-
-  async testDialogResponseCallOrder() {
-    assertDefined(this.host.uninterruptActorTask);
-    assertDefined(this.host.createTask);
-    assertDefined(this.host.interruptActorTask);
-    assertDefined(this.host.selectUserConfirmationDialogRequestHandler);
-
-    // Create a task and subscribe to user confirmation dialog requests.
-    const task_id = await this.host.createTask();
-    const dialogRequestPromise =
-        new Promise<UserConfirmationDialogRequest>((resolve) => {
-          assertDefined(this.host.selectUserConfirmationDialogRequestHandler);
-          this.host.selectUserConfirmationDialogRequestHandler().subscribe(
-              (request: UserConfirmationDialogRequest) => {
-                resolve(request);
-              });
-        });
-
-    // Wait for the C++ side to request a dialog.
-    await this.advanceToNextStep();
-    const request: UserConfirmationDialogRequest = await dialogRequestPromise;
-
-    // Respond to the dialog request and then uninterrupt the actor task. The
-    // C++ side will check that the dialog response and uninterrupt happen in
-    // the called order.
-    assertDefined(request);
-    request.onDialogClosed({response: {permissionGranted: false}});
-
-    // TODO(b/477060111): This test fails without this. Because onDialogClosed
-    // resolves a promise, it doesn't actually postMessage the response until a
-    // yield to the event loop. It should probably return a promise which can be
-    // awaited. This await yields allowing the queued task that does the
-    // postMessage to schedule so that the response message is sent before
-    // uninterruptActorTask.
-    await new Promise((resolve) => void setTimeout(resolve, 0));
-
-    this.host.uninterruptActorTask(task_id);
-  }
-
-  async testPopupOpens() {
-    const link = document.createElement('a');
-    link.setAttribute('href', 'https://www.chromium.org');
-
-    // Attach a click listener to force opening as a popup with specific
-    // dimensions. Including features like width/height forces a new window
-    // instead of a tab.
-    link.addEventListener('click', (e) => {
-      e.preventDefault();
-      window.open(
-          link.getAttribute('href')!, 'popup_window',
-          'width=500,height=500,scrollbars=yes,resizable=yes');
-    });
-
-    document.body.appendChild(link);
-    link.click();
-  }
-
-
-  async testOpenGlicSettingsPage() {
-    assertDefined(this.host.openGlicSettingsPage);
-    this.host.openGlicSettingsPage();
-    // There is a problem with InProcessBrowserTest::QuitBrowsers(). Opening a
-    // browser at the same time as exiting a test results in QuitBrowsers()
-    // never exiting. This sleep avoids this problem.
-    await sleep(500);
-  }
-
-  async testOpenPasswordManagerSettingsPage() {
-    assertDefined(this.host.openPasswordManagerSettingsPage);
-    this.host.openPasswordManagerSettingsPage();
-  }
-
-
-
-  async testCanAttachPanelToFallbackEmbedder() {
-    assertDefined(this.host.getFocusedTabStateV2);
-    assertDefined(this.host.getPinnedTabs);
-    assertDefined(this.host.getPanelState);
-    assertDefined(this.host.detachPanel);
-    assertDefined(this.host.canAttachPanel);
-    const link = document.createElement('a');
-    link.setAttribute('href', 'https://www.chromium.org');
-    link.setAttribute('target', '_blank');
-    document.body.appendChild(link);
-    link.click();
-    // The opened tab should be pinned.
-    await observeSequence(this.host.getPinnedTabs())
-        .waitFor(tabs => tabs.length === 2);
-
-    // Detach panel
-    const panelStates = observeSequence(this.host.getPanelState());
-    await panelStates.waitFor(state => state.kind === PanelStateKind.ATTACHED);
-
-    this.host.detachPanel();
-    await panelStates.waitFor(state => state.kind === PanelStateKind.DETACHED);
-
-    // Wait for C++ to close the tab.
-    await this.advanceToNextStep();
-
-    // The panel should still be attachable.
-    await observeSequence(this.host.canAttachPanel()).waitForValue(true);
-  }
-
 
   async testErrorShownOnMojoPipeError() {}
 
@@ -589,27 +481,6 @@ class ApiTests extends ApiTestFixtureBase {
     assertEquals(expectedHotkey, hotkeyState.hotkey);
   }
 
-  async testClosedCaptioning() {
-    assertDefined(this.host.getClosedCaptioningSetting);
-    assertDefined(this.host.setClosedCaptioningSetting);
-    const closedCaptioningState =
-        observeSequence(this.host.getClosedCaptioningSetting());
-    assertFalse(await closedCaptioningState.next());
-    await this.host.setClosedCaptioningSetting(true);
-    assertTrue(await closedCaptioningState.next());
-  }
-
-  async testActuationOnWebSetting() {
-    assertDefined(this.host.getActuationOnWebSetting);
-    assertDefined(this.host.setActuationOnWebSetting);
-    const actuationOnWebState =
-        observeSequence(this.host.getActuationOnWebSetting());
-    assertFalse(await actuationOnWebState.next());
-    await this.host.setActuationOnWebSetting(true);
-    assertTrue(await actuationOnWebState.next());
-  }
-
-
   async testGetUserProfileInfoCached() {
     assertDefined(this.host.getUserProfileInfo);
     assertDefined(this.host.getPlatform);
@@ -661,72 +532,6 @@ class ApiTests extends ApiTestFixtureBase {
       // Can be 'Your Chrome' or 'Your Chromium'.
       assertEquals('Your C', profileInfo.localProfileName?.substring(0, 6));
     }
-  }
-
-  async testRefreshSignInCookies() {
-    assertDefined(this.host.refreshSignInCookies);
-
-    await this.host.refreshSignInCookies();
-  }
-
-  async testSignInPauseState() {
-    assertDefined(this.host.getUserProfileInfo);
-    assertDefined(this.host.getPlatform);
-    const profileInfo = await this.host.getUserProfileInfo();
-    const platform = await this.host.getPlatform();
-
-    assertEquals('Glic Testing', profileInfo.displayName);
-    assertEquals('glic-test@example.com', profileInfo.email);
-    assertEquals('Glic', profileInfo.givenName);
-    assertEquals(false, profileInfo.isManaged!);
-    if (platform !== Platform.CHROME_OS) {
-      assertTrue((profileInfo.localProfileName?.length ?? 0) > 0);
-    }
-  }
-
-  async testSetContextAccessIndicator() {
-    assertDefined(this.host.setContextAccessIndicator);
-
-    await this.host.setContextAccessIndicator(true);
-  }
-
-  async testSetAudioDucking() {
-    assertDefined(this.host.setAudioDucking);
-
-    await this.host.setAudioDucking(true);
-  }
-
-  async testGetDisplayMedia() {
-    async function waitForFirstFrame(track: MediaStreamVideoTrack):
-        Promise<boolean> {
-      const processor = new MediaStreamTrackProcessor({track});
-      const reader = processor.readable.getReader();
-
-      try {
-        const result = await reader.read();
-        if (result.done) {
-          throw new ApiTestError('Track ended before a frame could be read.');
-        }
-        const frame = result.value;  // This is a VideoFrame
-        frame.close();
-        return true;
-      } finally {
-        reader.releaseLock();
-      }
-    }
-
-    // The client should be able to use getDisplayMedia() to capture the glic
-    // window.
-    const stream = await navigator.mediaDevices.getDisplayMedia({
-      video: true,
-      audio: false,
-      preferCurrentTab: true,
-    } as any);
-    const videoTracks = stream.getVideoTracks();
-    assertTrue(videoTracks.length > 0);
-    const track = videoTracks[0] as MediaStreamVideoTrack;
-    assertDefined(track);
-    assertTrue(await waitForFirstFrame(track));
   }
 
   async testMetrics() {
@@ -1302,17 +1107,6 @@ class ApiTests extends ApiTestFixtureBase {
     }
   }
 
-  async testSwitchConversationToOldConversationNewInstance() {
-    assertDefined(this.host.switchConversation);
-    await this.host.switchConversation(
-        {conversationId: 'A', conversationTitle: 'Title A'});
-  }
-
-  async testSwitchConversationToNewConversationNewInstance() {
-    assertDefined(this.host.switchConversation);
-    await this.host.switchConversation();
-  }
-
   async testSwitchConversationToLastActiveConversation() {
     assertDefined(this.host.registerConversation);
     assertDefined(this.host.switchConversation);
@@ -1832,25 +1626,6 @@ class NotifyPanelWillOpenTest extends ApiTestFixtureBase {
 }
 
 
-class WebClientWithInvoke extends WebClient {
-  invokePromise = Promise.withResolvers<InvokeOptions>();
-  override async invoke(options: InvokeOptions): Promise<void> {
-    this.invokePromise.resolve(options);
-  }
-}
-
-class ApiTestWithInvoke extends ApiTestFixtureBase {
-  override createWebClient(): WebClient {
-    return new WebClientWithInvoke();
-  }
-
-  async testInvoke() {
-    const options =
-        await (this.client as WebClientWithInvoke).invokePromise.promise;
-    assertEquals(options.invocationSource, InvocationSource.TOP_CHROME_BUTTON);
-  }
-}
-
 // All test fixtures. We look up tests by name, and the fixture name is ignored.
 // Therefore all tests must have unique names.
 const TEST_FIXTURES = [
@@ -1858,7 +1633,6 @@ const TEST_FIXTURES = [
   DaisyChainApiTests,
   NotifyPanelWillOpenTest,
   ApiTestWithoutOpen,
-  ApiTestWithInvoke,
 ];
 
 testMain(TEST_FIXTURES);

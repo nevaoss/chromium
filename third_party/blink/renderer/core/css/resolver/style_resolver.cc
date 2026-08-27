@@ -166,6 +166,7 @@ bool IsPseudoElementWithUAStyle(PseudoId pseudo_id) {
     case kPseudoIdViewTransitionImagePair:
     case kPseudoIdViewTransitionOld:
     case kPseudoIdViewTransitionNew:
+    case kPseudoIdSkeleton:
       return true;
     default:
       return false;
@@ -1072,8 +1073,10 @@ bool IsInMediaUAShadow(const Element& element) {
   return outer_root->host().IsMediaElement();
 }
 
-void SetZoomedInitialBorderAndOutlineWidths(ComputedStyleBuilder& builder,
-                                            float zoom) {
+}  // namespace
+
+void StyleResolver::SetZoomedInitialLineWidths(float zoom,
+                                               ComputedStyleBuilder& builder) {
   builder.SetBorderTopWidth(StyleBuilderConverter::ClampLineWidth(
       ComputedStyleInitialValues::InitialBorderTopWidth() * zoom));
   builder.SetBorderRightWidth(StyleBuilderConverter::ClampLineWidth(
@@ -1084,9 +1087,16 @@ void SetZoomedInitialBorderAndOutlineWidths(ComputedStyleBuilder& builder,
       ComputedStyleInitialValues::InitialBorderLeftWidth() * zoom));
   builder.SetOutlineWidth(StyleBuilderConverter::ClampLineWidth(
       ComputedStyleInitialValues::InitialOutlineWidth() * zoom));
+  builder.SetColumnRuleWidthInternal(
+      GapDataList<int>(StyleBuilderConverter::ClampLineWidth(
+          ComputedStyleInitialValues::InitialColumnRuleWidth()
+              .GetLegacyValue() *
+          zoom)));
+  builder.SetRowRuleWidthInternal(
+      GapDataList<int>(StyleBuilderConverter::ClampLineWidth(
+          ComputedStyleInitialValues::InitialRowRuleWidth().GetLegacyValue() *
+          zoom)));
 }
-
-}  // namespace
 
 template <typename Functor>
 void StyleResolver::ForEachUARulesForElement(const Element& element,
@@ -2374,7 +2384,7 @@ float StyleResolver::InitialZoom() const {
 
 const ComputedStyle* StyleResolver::CreateInitialStyle() const {
   ComputedStyleBuilder builder(*ComputedStyle::GetInitialStyleSingleton());
-  SetZoomedInitialBorderAndOutlineWidths(builder, InitialZoom());
+  SetZoomedInitialLineWidths(InitialZoom(), builder);
   return builder.TakeStyle();
 }
 
@@ -2855,14 +2865,14 @@ StyleResolver::CacheSuccess StyleResolver::ApplyMatchedCache(
     InitStyle(element, style_request, InitialStyle(), state.ParentStyle(),
               state.OriginatingElementStyle(), state);
 
-    // Initial border/outline widths come from `InitialStyle()` zoomed by
+    // Initial <line-width>s come from `InitialStyle()` zoomed by
     // `InitialZoom()`. Re-zoom them for an inherited effective zoom (e.g. from
     // an ancestor's CSS zoom). Highlights clone the parent style instead, and
     // the element's own zoom is handled later in the cascade.
     if (!state.IsForHighlight() &&
         state.ParentStyle()->EffectiveZoom() != InitialZoom()) {
-      SetZoomedInitialBorderAndOutlineWidths(
-          state.StyleBuilder(), state.ParentStyle()->EffectiveZoom());
+      SetZoomedInitialLineWidths(state.ParentStyle()->EffectiveZoom(),
+                                 state.StyleBuilder());
     }
 
     ExpandInheritedVisitedProperties(state);

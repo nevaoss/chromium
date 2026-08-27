@@ -10,13 +10,12 @@ import {assert} from '//resources/js/assert.js';
 import {loadTimeData} from '//resources/js/load_time_data.js';
 import {MetricsReporterImpl} from '//resources/js/metrics_reporter/metrics_reporter.js';
 import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
-import type {AutocompleteMatch, PageCallbackRouter} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import type {AutocompleteMatch, InputKeywordModel, PageCallbackRouter} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 
 import {SearchboxBrowserProxy} from './searchbox_browser_proxy.js';
 import type {SearchboxIconElement} from './searchbox_icon.js';
 import {getCss} from './searchbox_input.css.js';
 import {getHtml} from './searchbox_input.html.js';
-import type {InputKeywordModel} from './searchbox_mixin.js';
 
 // Register --placeholder-opacity as type <number> so that we can animate it.
 CSS.registerProperty({
@@ -281,7 +280,14 @@ export class SearchboxInputElement extends SearchboxInputElementBase {
           metricsReporter.mark('CharTyped');
         }
       }
+      // The above code already updated the text and selection. Prevent default
+      // keydown handling muddling the updated state.
       e.preventDefault();
+      // The above code already identified this is a text-changing keydown event
+      // and fired 'searchbox-input-text-updated' to update state accordingly
+      // text update. Prevent event bubbling from triggering other custom
+      // keydown handlers treating this as a generic keydown event.
+      e.stopPropagation();
     }
   }
 

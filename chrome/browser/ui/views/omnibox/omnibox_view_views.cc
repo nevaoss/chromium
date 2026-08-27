@@ -57,10 +57,13 @@
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/view_ids.h"
 #include "chrome/browser/ui/views/chrome_layout_provider.h"
+#include "chrome/browser/ui/views/frame/contents_web_view.h"
 #include "chrome/browser/ui/views/location_bar/icon_label_bubble_view.h"
 #include "chrome/browser/ui/views/location_bar/location_bar_view.h"
 #include "chrome/browser/ui/views/omnibox/omnibox_placeholder_util.h"
 #include "chrome/browser/ui/views/omnibox/omnibox_popup_closer.h"
+#include "chrome/browser/ui/views/omnibox/omnibox_popup_presenter_base.h"
+#include "chrome/browser/ui/views/omnibox/omnibox_popup_webui_base_content.h"
 #include "chrome/browser/ui/views/omnibox/omnibox_text_view.h"
 #include "chrome/browser/ui/views/page_action/page_action_container_view.h"
 #include "chrome/browser/ui/views/page_action/page_action_view.h"
@@ -119,6 +122,7 @@
 #include "ui/base/models/image_model.h"
 #include "ui/base/ui_base_features.h"
 #include "ui/compositor/layer.h"
+#include "ui/display/screen.h"
 #include "ui/events/event.h"
 #include "ui/gfx/canvas.h"
 #include "ui/gfx/font_list.h"
@@ -134,6 +138,7 @@
 #include "ui/views/button_drag_utils.h"
 #include "ui/views/controls/focus_ring.h"
 #include "ui/views/controls/textfield/textfield.h"
+#include "ui/views/focus/focus_manager.h"
 #include "ui/views/view_class_properties.h"
 #include "ui/views/widget/widget.h"
 #include "url/gurl.h"
@@ -1083,36 +1088,8 @@ void OmniboxViewViews::ClearAccessibilityLabel() {
 void OmniboxViewViews::SetAccessibilityLabel(const std::u16string& display_text,
                                              const AutocompleteMatch& match,
                                              bool notify_text_changed) {
-  if (controller()->edit_model()->GetPopupSelection().state ==
-      OmniboxPopupSelection::LineState::FOCUSED_BUTTON_AIM) {
-    friendly_suggestion_text_ =
-        controller()->edit_model()->GetPopupAccessibilityLabelForAimButton();
-  } else if (controller()->edit_model()->GetPopupSelection().line ==
-             OmniboxPopupSelection::kNoMatch) {
-    // If nothing is selected in the popup, we are in the no-default-match edge
-    // case, and |match| is a synthetically generated match. In that case,
-    // bypass OmniboxPopupModel and get the label from our synthetic |match|.
-    friendly_suggestion_text_ = AutocompleteMatchType::ToAccessibilityLabel(
-        match, /*header_text=*/u"", display_text,
-        OmniboxPopupSelection::kNoMatch,
-        controller()->autocomplete_controller()->result().size(),
-        std::u16string(), &friendly_suggestion_text_prefix_length_);
-  } else {
-    friendly_suggestion_text_ =
-        controller()
-            ->edit_model()
-            ->GetPopupAccessibilityLabelForCurrentSelection(
-                display_text, true, &friendly_suggestion_text_prefix_length_);
-
-    // If the line immediately after the current selection is the
-    // informational IPH row, append its accessibility label at the end of
-    // this selection's accessibility label.
-    friendly_suggestion_text_ +=
-        controller()
-            ->edit_model()
-            ->MaybeGetPopupAccessibilityLabelForIPHSuggestion();
-  }
-
+  friendly_suggestion_text_ = ComputeFriendlySuggestionTextForAccessibility(
+      display_text, match, friendly_suggestion_text_prefix_length_);
   UpdateAccessibleValue();
 
 #if BUILDFLAG(IS_MAC)
@@ -1634,9 +1611,6 @@ void OmniboxViewViews::OnFocus() {
 void OmniboxViewViews::OnBlur() {
   views::Textfield::OnBlur();
 
-  // Save the user's existing selection to restore it later.
-  saved_selection_for_focus_change_ = GetSelectedRange();
-
   // If focus is transferring to a WebUI popup widget (e.g., Full Popup or AIM
   // Popup), treat this as a logical focus transfer rather than a true blur.
   // Keep the edit model's focus state active, and skip all reversion/blurring.
@@ -1646,6 +1620,9 @@ void OmniboxViewViews::OnBlur() {
           OmniboxPopupState::kAim) {
     return;
   }
+
+  // Save the user's existing selection to restore it later.
+  saved_selection_for_focus_change_ = GetSelectedRange();
 
   // If the view is showing text that's not user-text, revert the text to the
   // permanent display text. This usually occurs if Steady State Elisions is on

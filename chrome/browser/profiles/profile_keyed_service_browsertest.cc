@@ -31,6 +31,7 @@
 #include "components/omnibox/common/omnibox_features.h"
 #include "components/signin/public/base/signin_switches.h"
 #include "components/supervised_user/core/common/features.h"
+#include "components/universal_optout/features.h"
 #include "content/public/common/content_features.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/test_utils.h"
@@ -424,7 +425,6 @@ IN_PROC_BROWSER_TEST_F(ProfileKeyedServiceGuestBrowserTest,
     "AutocompleteActionPredictor",
     "AutocompleteClassifier",
     "AutocompleteControllerEmitter",
-    "AutocompleteHistoryManager",
     "BackgroundContentsService",
     "BackgroundSyncService",
 #if BUILDFLAG(IS_CHROMEOS)
@@ -603,6 +603,10 @@ IN_PROC_BROWSER_TEST_F(ProfileKeyedServiceGuestBrowserTest,
     guest_otr_active_services.insert("AimEligibilityExtensionBridge");
     guest_otr_active_services.insert("ExtensionMojoBinderRegistry");
   }
+  if (base::FeatureList::IsEnabled(
+          universal_optout::features::kUniversalOptOut)) {
+    guest_otr_active_services.insert("UniversalOptOutService");
+  }
 
 #if BUILDFLAG(IS_CHROMEOS)
   EXPECT_TRUE(user_manager::UserManager::Get()->IsLoggedInAsGuest());
@@ -652,6 +656,7 @@ IN_PROC_BROWSER_TEST_F(ProfileKeyedServiceGuestBrowserTest,
     "AppWindowRegistry",
     "AudioAPI",
     "AutocompleteActionPredictor",
+    "AutocompleteHistoryManager",
     "AutocompleteScoringModelService",
     "AutofillClientProvider",
     "AutofillImageFetcher",

@@ -44,7 +44,13 @@ enum KeywordType {
   kInstant,
 };
 
-struct KeywordModel {
+struct InputKeywordModel {
+  KeywordType type;
+  string keyword;
+  string display_text;
+};
+
+struct MatchKeywordModel {
   KeywordType type;
   string chip_hint;
   string chip_a11y;
@@ -104,7 +110,7 @@ struct AutocompleteMatch {
   // would be the text following "sale".
   mojo_base.mojom.String16? tail_suggest_common_prefix;
   // Keyword UI state for this match. Empty if not a keyword suggestion.
-  KeywordModel? keyword_model;
+  MatchKeywordModel? keyword_model;
 };
 
 // Information about a suggested tab in the WebUI.
@@ -527,8 +533,10 @@ interface PageHandler {
   // Opens the Lens search UI.
   OpenLensSearch();
 
-  // Called when a user enables a tool.
-  SetActiveToolMode(composebox_query.mojom.ToolMode tool);
+  // Called when a tool is enabled (either manually or via server auto tool
+  // add).
+  SetActiveToolMode(composebox_query.mojom.ToolMode tool,
+                    bool is_set_by_server);
 
   // Called when a user enables a model.
   SetActiveModelMode(composebox_query.mojom.ModelMode model);

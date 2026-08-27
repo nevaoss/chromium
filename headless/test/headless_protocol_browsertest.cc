@@ -736,13 +736,7 @@ HEADLESS_PROTOCOL_TEST(ScreenRotationSecondaryScreen,
 HEADLESS_PROTOCOL_TEST(MoveWindowBetweenScreens,
                        "shared/move-window-between-screens.js")
 
-// This fails on Mac with RenderDocument enabled, http://crbug.com/446689489.
-#if BUILDFLAG(IS_MAC)
-#define MAYBE_CreateTargetSecondaryScreen DISABLED_CreateTargetSecondaryScreen
-#else
-#define MAYBE_CreateTargetSecondaryScreen CreateTargetSecondaryScreen
-#endif
-HEADLESS_PROTOCOL_TEST(MAYBE_CreateTargetSecondaryScreen,
+HEADLESS_PROTOCOL_TEST(CreateTargetSecondaryScreen,
                        "shared/create-target-secondary-screen.js")
 
 HEADLESS_PROTOCOL_TEST(CreateTargetWindowState,
@@ -754,8 +748,6 @@ HEADLESS_PROTOCOL_TEST(DocumentVisibilityState,
 HEADLESS_PROTOCOL_TEST(DocumentVisibilityStatePopup,
                        "shared/document-visibility-state-popup.js")
 
-// This currently results in an unexpected screen orientation type,
-// see http://crbug.com/398150465.
 HEADLESS_PROTOCOL_TEST(MultipleScreenDetails,
                        "shared/multiple-screen-details.js")
 

@@ -55,14 +55,14 @@ WEB_CONTENTS_USER_DATA_KEY_IMPL(PDFDocumentHelperCreationTracker);
 
 // static
 base::CallbackListSubscription PDFDocumentHelper::RegisterForCreate(
-    content::WebContents* web_contents,
+    content::WebContents& web_contents,
     base::OnceClosure callback) {
   // Disallow calling this if the helper already exists, as the caller is
   // expected to check this beforehand.
   DCHECK(!MaybeGetForWebContents(web_contents));
 
   return PDFDocumentHelperCreationTracker::GetOrCreateForWebContents(
-             web_contents)
+             &web_contents)
       ->RegisterCallback(std::move(callback));
 }
 
@@ -91,14 +91,14 @@ void PDFDocumentHelper::BindPdfHost(
 
 // static
 PDFDocumentHelper* PDFDocumentHelper::MaybeGetForWebContents(
-    content::WebContents* contents) {
+    content::WebContents& contents) {
   PDFDocumentHelper* pdf_helper = nullptr;
 
   // Iterate through each of the render frame hosts, because the frame
   // associated to a PDFDocumentHelper is not guaranteed to be a specific frame.
   // For example, if kPdfOopif feature is enabled, the frame is the top frame.
   // If kPdfOopif is disabled, it is a child frame.
-  contents->ForEachRenderFrameHostWithAction(
+  contents.ForEachRenderFrameHostWithAction(
       [&pdf_helper](content::RenderFrameHost* rfh) {
         auto* possible_pdf_helper =
             PDFDocumentHelper::GetForCurrentDocument(rfh);

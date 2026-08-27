@@ -454,6 +454,7 @@
 <translation id="2422174748424038845">如果刪除，所有人將立即無法存取「<ph name="GROUP_NAME" />」分頁群組，且該群組將從所有裝置中刪除。</translation>
 <translation id="2424805048070062787">繼續使用此分頁</translation>
 <translation id="2426805022920575512">選擇其他帳戶</translation>
+<translation id="2428543302546523788">在閱讀模式開啟時顯示連結</translation>
 <translation id="243275146591958220">取消下載</translation>
 <translation id="2434405374328098816">您已儲存「<ph name="USERNAME" />」在 <ph name="WEBSITE" /> 使用的密碼</translation>
 <translation id="2434918313224755415">向左碌就可以用無痕模式瀏覽。</translation>
@@ -468,6 +469,7 @@
 <translation id="2470654816840674524">我可以用 Chrome 版 Gemini 做到啲咩？</translation>
 <translation id="2473876017985765807">您已儲存 <ph name="WEBSITE" /> 的密碼</translation>
 <translation id="247430852844518481">你可以設定提醒，之後再回來查看</translation>
+<translation id="2476554421818031422">你正在協助改善加強版自動填入功能</translation>
 <translation id="2479148705183875116">前往「設定」</translation>
 <translation id="2482878487686419369">通知</translation>
 <translation id="2484459871750294497">如何啟用此功能？</translation>
@@ -570,7 +572,6 @@
 <translation id="2816489851009559785">選單 → 設定 → 預設瀏覽器</translation>
 <translation id="2818821771744632548">您已在重設 iPhone 時登出帳戶 (<ph name="USER_NAME" />)，如要重新登入，請輕按下方的 [繼續]。</translation>
 <translation id="2819667972867209401">如果開啟，資料就會儲存至你的 Google 帳戶。關閉後，資料只會儲存至此裝置，並在你登出後刪除。</translation>
-<translation id="2825777862277359739">登入即可存取密碼、分頁、書籤和其他資料。</translation>
 <translation id="2827760117436553203">要分開保存資料嗎？</translation>
 <translation id="2829172210806130158">搜尋畫面內容</translation>
 <translation id="2831109159746537587">請嘗試圈出或輕按要搜尋的圖片</translation>
@@ -717,7 +718,6 @@
 <translation id="3377063233124932127">您儲存的書籤、密碼等內容現在會在頂端顯示。</translation>
 <translation id="3378214228000661758">為以下網址建立密鑰：</translation>
 <translation id="3380352560400387991">此網站正在嘗試開啟某個應用程式，系統將會退出無痕模式。</translation>
-<translation id="3385742921291399323">存取已儲存的密碼、分頁、書籤和其他資料。</translation>
 <translation id="3391765987934722383">緊貼降價消息</translation>
 <translation id="3392923070107623576">建立分頁群組以保持條理</translation>
 <translation id="3404232721752787413">儲存在「Google 相片」中</translation>
@@ -1248,7 +1248,6 @@
 <translation id="5148717509369231739">Safari 匯入</translation>
 <translation id="5152483358138813104">在不同的裝置上快速登入</translation>
 <translation id="515315847398512535">你的帳戶已關閉搜尋畫面。請聯絡管理員瞭解詳情。</translation>
-<translation id="5155502059906700593">將網址列的位置改為頁頂或頁底。</translation>
 <translation id="5157638238828697074">發生問題，無法開啟應用程式。</translation>
 <translation id="5163417375525818870">PDF</translation>
 <translation id="5168414296986405587">為 iPadOS 而設</translation>
@@ -1567,7 +1566,6 @@
 <translation id="6193448654517602979">選取分頁</translation>
 <translation id="6196207969502475924">語音搜尋</translation>
 <translation id="6198252989419008588">變更 PIN</translation>
-<translation id="6199783146233591178">「強化安全瀏覽」可以提供即時保護</translation>
 <translation id="6210079381482819663">已有 <ph name="THRESHOLD" /> 天或以上未使用的分頁會移到此處。您可隨時在<ph name="BEGIN_LINK" />設定<ph name="END_LINK" />中變更此設定。</translation>
 <translation id="6213281885682386884">找不到地址</translation>
 <translation id="6218508144653756827">紫紅色主題</translation>
@@ -1718,7 +1716,6 @@
 <translation id="6626281667717553020">CPS URI</translation>
 <translation id="6627583120233659107">編輯資料夾</translation>
 <translation id="6629759408545977279">來源：<ph name="ORIGINATING_HOST" /></translation>
-<translation id="66306952800092318">為對抗網上威脅增添多一重安全保障。</translation>
 <translation id="6634432609054530164">您的機構已關閉無痕模式</translation>
 <translation id="6637478299472506933">下載失敗</translation>
 <translation id="6638511529934826365">縮放文字…</translation>
@@ -2066,6 +2063,7 @@
 <translation id="78146569776629510">下載</translation>
 <translation id="7815852444315004084">暫時隱藏</translation>
 <translation id="7825973332242257878">分頁群組</translation>
+<translation id="7828344837949522075">顯示建議</translation>
 <translation id="7839994177130598711">家庭成員現在透過「Google 密碼管理工具」登入 <ph name="BEGIN_BOLD" /><ph name="WEBSITE" /><ph name="END_BOLD" /> 時，可以使用你的使用者名稱和密碼。</translation>
 <translation id="7841180087127694526">搜尋已複製的文字</translation>
 <translation id="7841418003178675048">選擇新分頁要顯示的資訊卡。</translation>

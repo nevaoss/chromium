@@ -2055,6 +2055,7 @@ Ak chcete spravovať nastavenia tohto účtu, nainštalujte si do zariadenia apl
 <translation id="2598710988533271874">K dispozícii je nový Chrome</translation>
 <translation id="2599048253926156421">Používateľské meno bolo skopírované do schránky</translation>
 <translation id="2600631204638174747">{NUM_SITES,plural, =1{Bolo vypnuté 1 nebezpečné rozšírenie}few{Boli vypnuté {NUM_SITES} nebezpečné rozšírenia}many{Turned off {NUM_SITES} unsafe extensions}other{Bolo vypnutých {NUM_SITES} nebezpečných rozšírení}}</translation>
+<translation id="2603121359676416582">Pre túto stránku</translation>
 <translation id="2604129989323098489">Weby zvyčajne žiadajú o informácie o vašich obrazovkách, aby mohli otvárať a umiestňovať okná inteligentne, napríklad zobrazovať dokumenty alebo obsah na celú obrazovku vedľa seba</translation>
 <translation id="2604255671529671813">Chyba sieťového pripojenia</translation>
 <translation id="2604805099836652105">Bol vyplnený formulár adresy <ph name="ADDRESS_LABEL" />.</translation>
@@ -2969,6 +2970,7 @@ Ak chcete spravovať nastavenia tohto účtu, nainštalujte si do zariadenia apl
 <translation id="3285329711156774325">Hľadať zručnosti</translation>
 <translation id="3285500645985761267">Povoliť súvisiacim webom zobrazovať si vašu aktivitu v skupine</translation>
 <translation id="328571385944182268">Chcete ukladať heslá?</translation>
+<translation id="3285969135399641759">Naučte sa niečo nové</translation>
 <translation id="3289668031376215426">Automatické písanie veľkých písmen</translation>
 <translation id="3289856944988573801">Ak chcete skontrolovať aktualizácie, použite sieť ethernet alebo Wi‑Fi.</translation>
 <translation id="3290249595466894471">Odosiela aj malú vzorku stránok, stiahnutých súborov, aktivity rozšírení a informácií o systéme, čím pomáha zisťovať nové hrozby</translation>
@@ -6373,6 +6375,7 @@ Tejto akcii môžete prideliť viacero prepínačov.</translation>
 <translation id="5939719276406088041">Odkaz sa nedá vytvoriť</translation>
 <translation id="5939723110967488589">Vyberte, ktoré tlačidlá sa majú zobrazovať na paneli s nástrojmi</translation>
 <translation id="594048410531370124">Nerozpoznaný kláves. Ak chcete <ph name="RESPONSE" />, stlačte ľubovoľný kláves.</translation>
+<translation id="5940614040566393493">Získať radu</translation>
 <translation id="5941711191222866238">Minimalizovať</translation>
 <translation id="5941854976565320351">{PASSWORD_COUNT,plural, =1{1 heslo je uložené iba v tomto zariadení. Ak ho chcete používať v ďalších zariadeniach, uložte si ho v účte Google.}few{{PASSWORD_COUNT} heslá sú uložené iba v tomto zariadení. Ak ich chcete používať v ďalších zariadeniach, uložte si ich v účte Google.}many{{PASSWORD_COUNT} passwords are saved only to this device. To use them on your other devices, save them in your Google Account.}other{{PASSWORD_COUNT} hesiel je uložených iba v tomto zariadení. Ak ich chcete používať v ďalších zariadeniach, uložte si ich v účte Google.}}</translation>
 <translation id="594221546068848596">Hľadať na stránke pomocou služby <ph name="VISUAL_SEARCH_PROVIDER" /></translation>
@@ -7563,7 +7566,7 @@ Máte ešte # ďalších. Správca hesiel Google odporúča okamžite dané hes
 <translation id="6863496016067551393">Všetky rozšírenia sú povolené</translation>
 <translation id="686366188661646310">Chcete heslo odstrániť?</translation>
 <translation id="6863925886424789941">Koloseum</translation>
-<translation id="6865313869410766144">Dáta automatického dopĺňania formulárov</translation>
+<translation id="6865313869410766144">Údaje na automatické dopĺňanie formulárov</translation>
 <translation id="6865708901122695652">Denníky udalostí WebRTC (<ph name="WEBRTC_EVENT_LOG_COUNT" />)</translation>
 <translation id="686609795364435700">Tiché</translation>
 <translation id="686664946474413495">Teplota farieb</translation>
@@ -10682,7 +10685,6 @@ Môže to zahŕňať informácie o nainštalovanom softvéri, súboroch, prehli
 <translation id="983192555821071799">Zavrieť všetky karty</translation>
 <translation id="983531994960412650"><ph name="WINDOW_TITLE" />– kamera a mikrofón nahrávajú</translation>
 <translation id="984705303330760860">Pridanie jazykov kontroly pravopisu</translation>
-<translation id="987068745968718743">Parallels Desktop: <ph name="PLUGIN_VM_NAME" /></translation>
 <translation id="987264212798334818">Všeobecné</translation>
 <translation id="987574372967138078"><ph name="WEBSITE_ORIGIN" /> chce získať informácie z vášho mobilného zariadenia</translation>
 <translation id="988320949174893488">Príležitostné zasekávanie</translation>

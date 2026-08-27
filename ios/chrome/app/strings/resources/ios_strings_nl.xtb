@@ -454,6 +454,7 @@
 <translation id="2422174748424038845">Als je de groep verwijdert, raakt iedereen meteen de toegang tot de tabbladgroep <ph name="GROUP_NAME" /> kwijt en wordt deze verwijderd van alle apparaten.</translation>
 <translation id="2424805048070062787">Doorgaan met dit tabblad</translation>
 <translation id="2426805022920575512">Een ander account kiezen</translation>
+<translation id="2428543302546523788">Toon links wanneer de leesmodus aanstaat</translation>
 <translation id="243275146591958220">Download annuleren</translation>
 <translation id="2434405374328098816">Je hebt al een wachtwoord voor <ph name="USERNAME" /> opgeslagen op <ph name="WEBSITE" /></translation>
 <translation id="2434918313224755415">Je kunt naar links scrollen om in de incognitomodus te browsen.</translation>
@@ -468,6 +469,7 @@
 <translation id="2470654816840674524">Wat kan ik doen met Gemini in Chrome?</translation>
 <translation id="2473876017985765807">Je hebt al een wachtwoord opgeslagen voor <ph name="WEBSITE" /></translation>
 <translation id="247430852844518481">Je kunt een herinnering instellen om deze pagina later opnieuw te bezoeken</translation>
+<translation id="2476554421818031422">Je helpt ons verbeterd automatisch invullen te verbeteren</translation>
 <translation id="2479148705183875116">Naar Instellingen</translation>
 <translation id="2482878487686419369">Meldingen</translation>
 <translation id="2484459871750294497">Hoe zet ik deze functie aan?</translation>
@@ -570,7 +572,6 @@
 <translation id="2816489851009559785">Menu → Instellingen → Standaardbrowser</translation>
 <translation id="2818821771744632548">Je bent uitgelogd van je account <ph name="USER_NAME" /> omdat je iPhone wordt gereset. Tik hieronder op Doorgaan om weer in te loggen.</translation>
 <translation id="2819667972867209401">Als dit aanstaat, worden gegevens opgeslagen in je Google-account. Staat dit uit? Dan worden gegevens alleen opgeslagen op dit apparaat en worden ze verwijderd als je uitlogt.</translation>
-<translation id="2825777862277359739">Log in om onder andere je wachtwoorden, tabbladen en bookmarks te gebruiken.</translation>
 <translation id="2827760117436553203">Gegevens gescheiden houden?</translation>
 <translation id="2829172210806130158">Zoeken op je scherm</translation>
 <translation id="2831109159746537587">Omcirkel of tik op de afbeelding om te zoeken</translation>
@@ -717,7 +718,6 @@
 <translation id="3377063233124932127">Je opgeslagen bookmarks, wachtwoorden enz. staan nu bovenaan.</translation>
 <translation id="3378214228000661758">Maak een toegangssleutel voor</translation>
 <translation id="3380352560400387991">Deze site probeert een app te openen. Hiermee verlaat je de incognitomodus.</translation>
-<translation id="3385742921291399323">Krijg onder andere je opgeslagen wachtwoorden, tabbladen en bookmarks.</translation>
 <translation id="3391765987934722383">Mis geen prijsdalingen</translation>
 <translation id="3392923070107623576">Houd alles overzichtelijk door tabbladgroepen te maken</translation>
 <translation id="3404232721752787413">Opslaan in Google Foto's</translation>
@@ -1248,7 +1248,6 @@
 <translation id="5148717509369231739">Safari-import</translation>
 <translation id="5152483358138813104">Log sneller in op al je apparaten</translation>
 <translation id="515315847398512535">Het zoekscherm staat uit voor je account. Neem contact op met je beheerder voor meer informatie.</translation>
-<translation id="5155502059906700593">Wijzig de positie van je adresbalk naar bovenaan of onderaan.</translation>
 <translation id="5157638238828697074">Er is iets misgegaan. De app kan niet worden geopend.</translation>
 <translation id="5163417375525818870">Pdf's</translation>
 <translation id="5168414296986405587">Gebouwd voor iPadOS</translation>
@@ -1567,7 +1566,6 @@ Handoff moet ook aanstaan in het gedeelte Algemeen van Instellingen en je appara
 <translation id="6193448654517602979">Tabbladen selecteren</translation>
 <translation id="6196207969502475924">Gesproken zoekopdrachten</translation>
 <translation id="6198252989419008588">Pincode wijzigen</translation>
-<translation id="6199783146233591178">Krijg realtime beveiliging met de uitgebreide versie van Safe Browsing</translation>
 <translation id="6210079381482819663">Tabbladen die <ph name="THRESHOLD" /> dagen of langer niet zijn gebruikt, worden hier naartoe verplaatst. Je kunt dit altijd wijzigen in de <ph name="BEGIN_LINK" />instellingen<ph name="END_LINK" />.</translation>
 <translation id="6213281885682386884">Geen adressen gevonden</translation>
 <translation id="6218508144653756827">Fuchsiakleurig thema</translation>
@@ -1718,7 +1716,6 @@ Handoff moet ook aanstaan in het gedeelte Algemeen van Instellingen en je appara
 <translation id="6626281667717553020">CPS-URI</translation>
 <translation id="6627583120233659107">Map bewerken</translation>
 <translation id="6629759408545977279">Van: <ph name="ORIGINATING_HOST" /></translation>
-<translation id="66306952800092318">Voeg deze extra beveiligingslaag toe tegen online dreigingen.</translation>
 <translation id="6634432609054530164">Je organisatie heeft de incognitomodus uitgezet</translation>
 <translation id="6637478299472506933">Download is mislukt</translation>
 <translation id="6638511529934826365">Tekst zoomen…</translation>
@@ -2068,6 +2065,7 @@ Wissel naar <ph name="OTHER_EMAIL" /> om door te gaan vanaf je computer. Je krij
 <translation id="78146569776629510">Downloads</translation>
 <translation id="7815852444315004084">Voorlopig verbergen</translation>
 <translation id="7825973332242257878">Tabbladgroepen</translation>
+<translation id="7828344837949522075">Suggestie tonen</translation>
 <translation id="7839994177130598711">Je gezinsleden kunnen nu je gebruikersnaam en wachtwoord gebruiken als ze Google Wachtwoordmanager gebruiken om in te loggen bij <ph name="BEGIN_BOLD" /><ph name="WEBSITE" /><ph name="END_BOLD" />.</translation>
 <translation id="7841180087127694526">Zoeken naar gekopieerde tekst</translation>
 <translation id="7841418003178675048">Kies welke kaarten op de pagina Nieuw tabblad staan.</translation>

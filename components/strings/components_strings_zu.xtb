@@ -592,6 +592,7 @@ Lokhu uma kungenjalo kuzovinjelwa izilungiselelo zakho zobumfihlo. Lokhu kuzovum
 <translation id="2027465737841872819">Ipulastiki</translation>
 <translation id="2027707238798802149">Alitholakali ikhadi</translation>
 <translation id="2032962459168915086"><ph name="BEGIN_LINK" />Ukuhlola i-proxy ne-firewall<ph name="END_LINK" /></translation>
+<translation id="2033550997390154638">Lesi simo seChrome sisebenza ngezimpawu zomugqa womyalo ezisethwe mathupha. Qaphela ukuthi imiyalo yomugqa womaka ingashintsha noma nini futhi ayisekelwa.</translation>
 <translation id="2033900728810589426">Isinqamuleli asikwazi ukufana negama elingukhiye lomhlinzeki wosesho elichazwe yi-<ph name="DEFAULT_SEARCH_PROVIDER_KEYWORD_POLICY_NAME" />: <ph name="SHORTCUT_NAME" /></translation>
 <translation id="2034971124472263449">Londoloza nakuba kunjalo</translation>
 <translation id="2036514476578229158">Ucele ukuvakashela le sayithi. Abazali bakho bangaphendula ku-Family Link.</translation>
@@ -1061,7 +1062,6 @@ Lokhu uma kungenjalo kuzovinjelwa izilungiselelo zakho zobumfihlo. Lokhu kuzovum
 <translation id="2824775600643448204">Ikheli nebha yosesho</translation>
 <translation id="2826760142808435982">Ukuxhumeka kubetheliwe kwaphinde kwaqinisekiswa kusetshenziswa i-<ph name="CIPHER" /> futhi kusebenzisa i-<ph name="KX" /> njengendlela yokushintshanisa ukhiye.</translation>
 <translation id="2828797285817981634">Izinzwa zokunyakaza zivunyelwe okwamanje</translation>
-<translation id="2835170189407361413">Sula ifomu</translation>
 <translation id="2835907903001172712">Amazwibela ebhrawuza</translation>
 <translation id="2837891525090413132">Ingacela ukukhiya nokusebenzisa ikhibhodi yakho</translation>
 <translation id="2839032553903800133">Izaziso zivinjelwe</translation>
@@ -3292,7 +3292,6 @@ Ukuze ufihle okungakhethwa kukho kokukhokha kamuva, iya <ph name="BEGIN_LINK" />
 <translation id="6679354743514146922">Ibhrawuza yeChrome izama ukugcwalisa iphasiwedi yakho ku-<ph name="APP_NAME" />.</translation>
 <translation id="668132230070712111">Ividiyo ilondolozwe kuGoogle Drive</translation>
 <translation id="6681790815630918386">I-CVC ilondoloziwe</translation>
-<translation id="6686570026048064255">Ukuze uvale ukutholwa kwekhodi yePix, iya <ph name="BEGIN_LINK1" />Amasethingi eWallet<ph name="END_LINK1" /></translation>
 <translation id="6687230248707087982">Imvilophu (Engenalutho)</translation>
 <translation id="6687335167692595844">Usayizi wefonti eceliwe</translation>
 <translation id="6688743156324860098">Buyekeza…</translation>
@@ -4433,6 +4432,7 @@ Imininingwane engeziwe:
 <translation id="8708134712139312373">Amasayithi angacela ukuxhuma kumadivayisi we-Bluetooth</translation>
 <translation id="8710842507289500830">Isitayela sefonti</translation>
 <translation id="8712637175834984815">Ngiyitholile</translation>
+<translation id="8715198179991802709">IChrome imake iwebhusayithi obuzama ukuyivakashela. Sisize sithuthukise lezi zexwayiso ngokuthatha inhlolovo yomzuzu o-1.</translation>
 <translation id="8718314106902482036">Inkokhelo ayiqediwe</translation>
 <translation id="8719263113926255150"><ph name="ENTITY" />, <ph name="DESCRIPTION" />, isiphakamiso sosesho</translation>
 <translation id="8719528812645237045">Ukushaya okuningi phezulu</translation>
@@ -4560,7 +4560,6 @@ Imininingwane engeziwe:
 <translation id="8932102934695377596">Iwashi lakho lisemuva</translation>
 <translation id="893332455753468063">Engeza igama</translation>
 <translation id="8938242527120341116">Izihlungi zokuqukethwe kwedivayisi yakho zivimbe okuthi <ph name="BLOCKED_URL" /></translation>
-<translation id="8942355029279167844">Umlawuli wakho uvumele i-<ph name="APP_NAME" /> ukuthi iqoqe idatha yokuxilonga ukuthuthukisa ukuzizwela komkhiqizo. Bona i-<ph name="BEGIN_LINK" />https://www.parallels.com/pcep<ph name="END_LINK" /> ukuthola ulwazi olwengeziwe.</translation>
 <translation id="8943282376843390568">I-Lime</translation>
 <translation id="8949410982325929394">Ithoni</translation>
 <translation id="8949493680961858543">I-A1x4</translation>

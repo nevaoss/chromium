@@ -24,14 +24,19 @@ import org.mockito.junit.MockitoRule;
 import org.robolectric.annotation.Config;
 
 import org.chromium.base.test.BaseRobolectricTestRunner;
+import org.chromium.chrome.browser.app.tabwindow.TabWindowManagerSingleton;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.profiles.ProfileManager;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabBuilder;
 import org.chromium.chrome.browser.tab.TabObserver;
+import org.chromium.chrome.browser.tab.TabState;
+import org.chromium.chrome.browser.tab.TabStateExtractor;
+import org.chromium.chrome.browser.tabmodel.TabCreator;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.tabmodel.TabRemover;
+import org.chromium.chrome.browser.tabwindow.TabWindowManager;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.url.GURL;
 
@@ -58,6 +63,9 @@ public class ActorBackgroundActuationManagerTest {
     @Mock private TabModelSelector mTabModelSelector;
     @Mock private TabModel mTabModel;
     @Mock private TabRemover mTabRemover;
+    @Mock private TabCreator mTabCreator;
+    @Mock private Tab mPlaceholderTab;
+    @Mock private TabWindowManager mTabWindowManager;
 
     private ActorBackgroundActuationManager mManager;
 
@@ -66,9 +74,17 @@ public class ActorBackgroundActuationManagerTest {
         ProfileManager.setLastUsedProfileForTesting(mProfile);
         ActorKeyedServiceFactory.setForTesting(mActorKeyedService);
         OffscreenRenderingManager.setInstanceForTesting(mOffscreenRenderingManager);
+        TabWindowManagerSingleton.setTabWindowManagerForTesting(mTabWindowManager);
 
         when(mOffscreenRenderingManager.getOffscreenWindow()).thenReturn(mWindowAndroid);
         TabBuilder.setTabForTesting(mTab);
+
+        when(mTabModel.getTabCreator()).thenReturn(mTabCreator);
+        when(mTabModel.getTabRemover()).thenReturn(mTabRemover);
+        when(mTabModel.indexOf(mTab)).thenReturn(0);
+        when(mPlaceholderTab.getId()).thenReturn(101);
+        when(mTabCreator.createFrozenTab(any(), anyInt(), anyInt())).thenReturn(mPlaceholderTab);
+        when(mTabWindowManager.getWindowIdForSelector(mTabModelSelector)).thenReturn(42);
 
         mManager = new ActorBackgroundActuationManager();
     }
@@ -79,6 +95,7 @@ public class ActorBackgroundActuationManagerTest {
         ActorKeyedServiceFactory.setForTesting(null);
         OffscreenRenderingManager.setInstanceForTesting(null);
         TabBuilder.setTabForTesting(null);
+        TabWindowManagerSingleton.setTabWindowManagerForTesting(null);
     }
 
     @Test
@@ -165,6 +182,9 @@ public class ActorBackgroundActuationManagerTest {
 
     @Test
     public void testTransitionActiveTasksToBackground() {
+        TabState testTabState = new TabState();
+        TabStateExtractor.setTabStateForTesting(100, testTabState);
+
         when(mTabModelSelector.getModel(false)).thenReturn(mTabModel);
         when(mTabModel.getProfile()).thenReturn(mProfile);
         when(mTabModel.getTabRemover()).thenReturn(mTabRemover);
@@ -187,13 +207,20 @@ public class ActorBackgroundActuationManagerTest {
         // Verify the transitioned session is tracked
         mManager.destroy();
         verify(mOffscreenRenderingManager).stopOffscreenRendering(mTab);
+
+        TabStateExtractor.resetTabStatesForTesting();
     }
 
     @Test
     public void testTransitionActiveTasksToBackground_MultipleTabs() {
+        TabStateExtractor.setTabStateForTesting(100, new TabState());
+        TabStateExtractor.setTabStateForTesting(101, new TabState());
+
         Tab tab2 = mock(Tab.class);
         when(tab2.getId()).thenReturn(101);
         when(tab2.getProfile()).thenReturn(mProfile);
+        when(mTabModel.indexOf(tab2)).thenReturn(1);
+
         when(mTabModel.iterator()).thenReturn(Arrays.asList(mTab, tab2).iterator());
 
         when(mTabModelSelector.getModel(false)).thenReturn(mTabModel);
@@ -217,5 +244,7 @@ public class ActorBackgroundActuationManagerTest {
 
         mManager.destroy();
         verify(mOffscreenRenderingManager).stopOffscreenRendering(tab2);
+
+        TabStateExtractor.resetTabStatesForTesting();
     }
 }

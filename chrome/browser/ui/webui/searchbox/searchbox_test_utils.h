@@ -139,6 +139,8 @@ class MockOmniboxPopupPage : public omnibox_popup::mojom::Page {
               (omnibox_popup::mojom::OmniboxInputStatePtr state),
               (override));
   MOCK_METHOD(void, SetFocus, (bool is_focused), (override));
+  MOCK_METHOD(void, ClearAutocompleteMatches, (), (override));
+  MOCK_METHOD(void, ClearPopup, (ClearPopupCallback callback), (override));
 };
 #endif
 

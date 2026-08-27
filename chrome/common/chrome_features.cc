@@ -192,6 +192,8 @@ bool RemoteActorCredentialSharingEnabled() {
 // Controls the enablement of structured metrics on Windows, Linux, and Mac.
 BASE_FEATURE(kChromeStructuredMetrics, base::FEATURE_ENABLED_BY_DEFAULT);
 
+BASE_FEATURE(kDeferSpellcheckInitialization, base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Moves the Extensions "puzzle piece" icon from the title bar into the app menu
 // for web app windows.
 BASE_FEATURE(kDesktopPWAsElidedExtensionsMenu,
@@ -779,9 +781,6 @@ BASE_FEATURE_PARAM(std::string,
                    &kGlicLearnMoreURLConfig,
                    "glic-experimental-triggering-toggle-learn-more-url",
                    "https://support.google.com/chrome?p=gemini_spark");
-// WARNING: If this URL is changed, update the substring match check in the
-// accessibility script injected in
-// chrome/browser/resources/glic/experimental_opt_in/experimental_opt_in.ts
 BASE_FEATURE_PARAM(std::string,
                    kGlicExperimentalTriggeringSafetyURL,
                    &kGlicLearnMoreURLConfig,
@@ -792,18 +791,12 @@ BASE_FEATURE_PARAM(std::string,
 // ("use-policy" and "unexpected_results") to apply accessibility labels.
 // Finch configurations overriding these URLs should retain these substrings
 // or update the WebUI logic accordingly.
-// WARNING: If this URL is changed, update the substring match check in the
-// accessibility script injected in
-// chrome/browser/resources/glic/experimental_opt_in/experimental_opt_in.ts
 BASE_FEATURE_PARAM(
     std::string,
     kGlicWebActuationToggleConsiderSafelyURL,
     &kGlicLearnMoreURLConfig,
     "glic-actuation-on-web-toggle-things-to-consider-safely-url",
     "https://policies.google.com/terms/generative-ai/use-policy");
-// WARNING: If this URL is changed, update the substring match check in the
-// accessibility script injected in
-// chrome/browser/resources/glic/experimental_opt_in/experimental_opt_in.ts
 BASE_FEATURE_PARAM(
     std::string,
     kGlicWebActuationToggleConsiderUnexpectedResultsURL,

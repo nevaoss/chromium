@@ -43,6 +43,8 @@ export {WindowProxy} from './window_proxy.js';
 export * from './new_tab_page.mojom-webui.js';
 export type {ActionChip, PageRemote as ActionChipsPageRemote, TabInfo} from './action_chips.mojom-webui.js';
 export {ActionChipsHandlerRemote, IconType, PageCallbackRouter as ActionChipsPageCallbackRouter} from './action_chips.mojom-webui.js';
+export type {FuseboxAction} from './fusebox_action.mojom-webui.js';
+export {InputSource} from './fusebox_action.mojom-webui.js';
 export type {CalendarEvent, Attachment} from './calendar_data.mojom-webui.js';
 export type {Promo as NtpPromo, NtpPromoClientRemote, NtpPromoHandlerInterface} from './ntp_promo.mojom-webui.js';
 export {NtpPromoClientCallbackRouter} from './ntp_promo.mojom-webui.js';
@@ -53,6 +55,7 @@ export {CustomizeButtonsDocumentCallbackRouter, CustomizeButtonsHandlerRemote, S
 export {DriveSuggestionHandlerRemote} from './drive_suggestion.mojom-webui.js';
 export type {File} from './file_suggestion.mojom-webui.js';
 export {RecommendationType} from './file_suggestion.mojom-webui.js';
+export {QueryActionOverride, SearchboxOverride} from './fusebox_action.mojom-webui.js';
 export {GoogleCalendarPageHandlerRemote} from './google_calendar.mojom-webui.js';
 export {MicrosoftAuthPageHandlerRemote} from './microsoft_auth.mojom-webui.js';
 export {MicrosoftFilesPageHandlerRemote} from './microsoft_files.mojom-webui.js';

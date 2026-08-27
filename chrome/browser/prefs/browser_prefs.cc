@@ -213,6 +213,7 @@
 #include "components/sync_sessions/session_sync_prefs.h"
 #include "components/tracing/common/pref_names.h"
 #include "components/translate/core/browser/translate_prefs.h"
+#include "components/universal_optout/prefs.h"
 #include "components/update_client/update_client.h"
 #include "components/variations/service/variations_service.h"
 #include "components/visited_url_ranking/internal/url_grouping/group_suggestions_service_impl.h"
@@ -940,6 +941,52 @@ constexpr char kMetricsConsentRestructureFeatureState[] =
 
 // Deprecated 08/2026.
 constexpr char kPrivacySandboxNotices[] = "privacy_sandbox.notices";
+constexpr char kPrivacySandboxM1ConsentDecisionMade[] =
+    "privacy_sandbox.m1.consent_decision_made";
+constexpr char kPrivacySandboxM1EEANoticeAcknowledged[] =
+    "privacy_sandbox.m1.eea_notice_acknowledged";
+constexpr char kPrivacySandboxM1RowNoticeAcknowledged[] =
+    "privacy_sandbox.m1.row_notice_acknowledged";
+constexpr char kPrivacySandboxM1RestrictedNoticeAcknowledged[] =
+    "privacy_sandbox.m1.restricted_notice_acknowledged";
+constexpr char kPrivacySandboxM1PromptSuppressed[] =
+    "privacy_sandbox.m1.prompt_suppressed";
+constexpr char kPrivacySandboxNoticeDisplayed[] =
+    "privacy_sandbox.notice_displayed";
+constexpr char kPrivacySandboxConsentDecisionMade[] =
+    "privacy_sandbox.consent_decision_made";
+constexpr char kPrivacySandboxNoConfirmationSandboxDisabled[] =
+    "privacy_sandbox.no_confirmation_sandbox_disabled";
+constexpr char kPrivacySandboxNoConfirmationSandboxRestricted[] =
+    "privacy_sandbox.no_confirmation_sandbox_restricted";
+constexpr char kPrivacySandboxNoConfirmationSandboxManaged[] =
+    "privacy_sandbox.no_confirmation_sandbox_managed";
+constexpr char kPrivacySandboxNoConfirmationThirdPartyCookiesBlocked[] =
+    "privacy_sandbox.no_confirmation_3PC_blocked";
+constexpr char kPrivacySandboxNoConfirmationManuallyControlled[] =
+    "privacy_sandbox.no_confirmation_manually_controlled";
+constexpr char kPrivacySandboxDisabledInsufficientConfirmation[] =
+    "privacy_sandbox.disabled_insufficient_confirmation";
+constexpr char kPrivacySandboxTopicsConsentGiven[] =
+    "privacy_sandbox.topics_consent.consent_given";
+constexpr char kPrivacySandboxTopicsConsentLastUpdateTime[] =
+    "privacy_sandbox.topics_consent.last_update_time";
+constexpr char kPrivacySandboxTopicsConsentLastUpdateReason[] =
+    "privacy_sandbox.topics_consent.last_update_reason";
+constexpr char kPrivacySandboxTopicsConsentTextAtLastUpdate[] =
+    "privacy_sandbox.topics_consent.text_at_last_update";
+constexpr char kPrivacySandboxAllowNoticeFor3PCBlockedTrial[] =
+    "privacy_sandbox.allow_notice_for_3PC_blocked_trial";
+constexpr char kObsoleteAutofillWalletImportEnabled[] =
+    "autofill.wallet_import_enabled";
+constexpr char kObsoleteAutofillWalletImportEnabledMigrated[] =
+    "sync.autofill_wallet_import_enabled_migrated";
+constexpr char kPrivacySandboxTopicsDataAccessibleSince[] =
+    "privacy_sandbox.topics_data_accessible_since";
+constexpr char kPrivacySandboxBlockedTopics[] =
+    "privacy_sandbox.blocked_topics";
+constexpr char kPrivacySandboxFledgeJoinBlocked[] =
+    "privacy_sandbox.fledge_join_blocked";
 
 #if BUILDFLAG(IS_CHROMEOS)
 // Deprecated 07/2026.
@@ -1292,6 +1339,39 @@ void RegisterProfilePrefsForMigration(
 
   // Deprecated 08/2026.
   registry->RegisterDictionaryPref(kPrivacySandboxNotices);
+  registry->RegisterTimePref(kPrivacySandboxTopicsDataAccessibleSince,
+                             base::Time());
+  registry->RegisterListPref(kPrivacySandboxBlockedTopics);
+  registry->RegisterDictionaryPref(kPrivacySandboxFledgeJoinBlocked);
+  registry->RegisterBooleanPref(kPrivacySandboxM1ConsentDecisionMade, false);
+  registry->RegisterBooleanPref(kPrivacySandboxM1EEANoticeAcknowledged, false);
+  registry->RegisterBooleanPref(kPrivacySandboxM1RowNoticeAcknowledged, false);
+  registry->RegisterBooleanPref(kPrivacySandboxM1RestrictedNoticeAcknowledged,
+                                false);
+  registry->RegisterIntegerPref(kPrivacySandboxM1PromptSuppressed, 0);
+  registry->RegisterBooleanPref(kPrivacySandboxNoticeDisplayed, false);
+  registry->RegisterBooleanPref(kPrivacySandboxConsentDecisionMade, false);
+  registry->RegisterBooleanPref(kPrivacySandboxNoConfirmationSandboxDisabled,
+                                false);
+  registry->RegisterBooleanPref(kPrivacySandboxNoConfirmationSandboxRestricted,
+                                false);
+  registry->RegisterBooleanPref(kPrivacySandboxNoConfirmationSandboxManaged,
+                                false);
+  registry->RegisterBooleanPref(
+      kPrivacySandboxNoConfirmationThirdPartyCookiesBlocked, false);
+  registry->RegisterBooleanPref(kPrivacySandboxNoConfirmationManuallyControlled,
+                                false);
+  registry->RegisterBooleanPref(kPrivacySandboxDisabledInsufficientConfirmation,
+                                false);
+  registry->RegisterBooleanPref(kPrivacySandboxTopicsConsentGiven, false);
+  registry->RegisterTimePref(kPrivacySandboxTopicsConsentLastUpdateTime,
+                             base::Time());
+  registry->RegisterIntegerPref(kPrivacySandboxTopicsConsentLastUpdateReason,
+                                0);
+  registry->RegisterStringPref(kPrivacySandboxTopicsConsentTextAtLastUpdate,
+                               "");
+  registry->RegisterBooleanPref(kPrivacySandboxAllowNoticeFor3PCBlockedTrial,
+                                false);
 
 #if BUILDFLAG(IS_CHROMEOS)
   // Deprecated 07/2026.
@@ -1313,6 +1393,11 @@ void RegisterProfilePrefsForMigration(
   registry->RegisterStringPref(kPluginVmEngagementTimeOsVersion, std::string());
   registry->RegisterIntegerPref(kPluginVmEngagementTimeDayId, 0);
 #endif  // BUILDFLAG(IS_CHROMEOS)
+
+  // Deprecated 08/2026.
+  registry->RegisterBooleanPref(kObsoleteAutofillWalletImportEnabled, true);
+  registry->RegisterBooleanPref(kObsoleteAutofillWalletImportEnabledMigrated,
+                                false);
 }
 
 }  // namespace
@@ -1793,6 +1878,7 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
   TemplateURLPrepopulateData::RegisterProfilePrefs(registry);
   tab_groups::prefs::RegisterProfilePrefs(registry);
   translate::TranslatePrefs::RegisterProfilePrefs(registry);
+  universal_optout::prefs::RegisterProfilePrefs(registry);
   visited_url_ranking::GroupSuggestionsServiceImpl::RegisterProfilePrefs(
       registry);
   wallet::prefs::RegisterProfilePrefs(registry);
@@ -2594,6 +2680,25 @@ void MigrateObsoleteProfilePrefs(PrefService* profile_prefs,
 
   // Added 08/2026.
   profile_prefs->ClearPref(kPrivacySandboxNotices);
+  profile_prefs->ClearPref(kPrivacySandboxM1ConsentDecisionMade);
+  profile_prefs->ClearPref(kPrivacySandboxM1EEANoticeAcknowledged);
+  profile_prefs->ClearPref(kPrivacySandboxM1RowNoticeAcknowledged);
+  profile_prefs->ClearPref(kPrivacySandboxM1RestrictedNoticeAcknowledged);
+  profile_prefs->ClearPref(kPrivacySandboxM1PromptSuppressed);
+  profile_prefs->ClearPref(kPrivacySandboxNoticeDisplayed);
+  profile_prefs->ClearPref(kPrivacySandboxConsentDecisionMade);
+  profile_prefs->ClearPref(kPrivacySandboxNoConfirmationSandboxDisabled);
+  profile_prefs->ClearPref(kPrivacySandboxNoConfirmationSandboxRestricted);
+  profile_prefs->ClearPref(kPrivacySandboxNoConfirmationSandboxManaged);
+  profile_prefs->ClearPref(
+      kPrivacySandboxNoConfirmationThirdPartyCookiesBlocked);
+  profile_prefs->ClearPref(kPrivacySandboxNoConfirmationManuallyControlled);
+  profile_prefs->ClearPref(kPrivacySandboxDisabledInsufficientConfirmation);
+  profile_prefs->ClearPref(kPrivacySandboxTopicsConsentGiven);
+  profile_prefs->ClearPref(kPrivacySandboxTopicsConsentLastUpdateTime);
+  profile_prefs->ClearPref(kPrivacySandboxTopicsConsentLastUpdateReason);
+  profile_prefs->ClearPref(kPrivacySandboxTopicsConsentTextAtLastUpdate);
+  profile_prefs->ClearPref(kPrivacySandboxAllowNoticeFor3PCBlockedTrial);
 
 #if BUILDFLAG(IS_CHROMEOS)
   // Added 07/2026.
@@ -2612,6 +2717,13 @@ void MigrateObsoleteProfilePrefs(PrefService* profile_prefs,
   profile_prefs->ClearPref(kPluginVmEngagementTimeOsVersion);
   profile_prefs->ClearPref(kPluginVmEngagementTimeDayId);
 #endif  // BUILDFLAG(IS_CHROMEOS)
+
+  // Added 08/2026.
+  profile_prefs->ClearPref(kObsoleteAutofillWalletImportEnabled);
+  profile_prefs->ClearPref(kObsoleteAutofillWalletImportEnabledMigrated);
+  profile_prefs->ClearPref(kPrivacySandboxTopicsDataAccessibleSince);
+  profile_prefs->ClearPref(kPrivacySandboxBlockedTopics);
+  profile_prefs->ClearPref(kPrivacySandboxFledgeJoinBlocked);
 
   // Please don't delete the following line. It is used by PRESUBMIT.py.
   // END_MIGRATE_OBSOLETE_PROFILE_PREFS

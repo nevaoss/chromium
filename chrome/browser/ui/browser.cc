@@ -55,7 +55,6 @@
 #include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/glic/public/glic_keyed_service.h"
 #include "chrome/browser/lifetime/application_lifetime.h"
-#include "chrome/browser/lifetime/browser_shutdown.h"
 #include "chrome/browser/picture_in_picture/picture_in_picture_window_manager.h"
 #include "chrome/browser/policy/developer_tools_policy_handler.h"
 #include "chrome/browser/prefs/incognito_mode_prefs.h"
@@ -78,6 +77,7 @@
 #include "chrome/browser/ui/browser_manager_service.h"
 #include "chrome/browser/ui/browser_manager_service_factory.h"
 #include "chrome/browser/ui/browser_tab_strip_model_delegate.h"
+#include "chrome/browser/ui/browser_ui_controller/browser_ui_controller.h"
 #include "chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
@@ -134,7 +134,6 @@
 #include "components/favicon/content/content_favicon_driver.h"
 #include "components/infobars/content/content_infobar_manager.h"
 #include "components/javascript_dialogs/tab_modal_dialog_manager.h"
-#include "components/keep_alive_registry/keep_alive_registry.h"
 #include "components/keep_alive_registry/keep_alive_types.h"
 #include "components/keep_alive_registry/scoped_keep_alive.h"
 #include "components/optimization_guide/content/browser/page_content_proto_provider.h"
@@ -212,15 +211,6 @@ using extensions::Extension;
 using input::NativeWebKeyboardEvent;
 using ui::WebDialogDelegate;
 using web_modal::WebContentsModalDialogManager;
-
-///////////////////////////////////////////////////////////////////////////////
-
-namespace {
-
-// How long we wait before updating the browser chrome while loading a page.
-constexpr base::TimeDelta kUIUpdateCoalescingTime = base::Milliseconds(200);
-
-}  // namespace
 
 ////////////////////////////////////////////////////////////////////////////////
 // Browser, CreateParams:
@@ -436,7 +426,7 @@ Browser::Browser(const CreateParams& params)
 }
 
 Browser::~Browser() {
-  if (!is_delete_scheduled_) {
+  if (!IsDeleteScheduled()) {
     // Guarantee the Browser has performed the necessary cleanup in the
     // `OnWindowClosing()` lifecycle hook. This may not be invoked during
     // Browser shutdown specifically in cases where clients directly reset
@@ -498,11 +488,6 @@ base::WeakPtr<const Browser> Browser::AsWeakPtr() const {
 ///////////////////////////////////////////////////////////////////////////////
 // Browser, OnBeforeUnload handling:
 
-void Browser::NotifyWindowCloseCancelled(
-    BrowserWindowInterface::ClosingStatus status) {
-  browser_close_cancelled_callback_list_.Notify(this, status);
-}
-
 std::vector<StatusBubble*> Browser::GetStatusBubblesForTesting() {
   return GetStatusBubbles();
 }
@@ -516,7 +501,7 @@ const Profile* Browser::GetProfile() const {
 }
 
 bool Browser::IsDeleteScheduled() const {
-  return is_delete_scheduled_;
+  return UnloadController::From(this)->is_delete_scheduled();
 }
 
 void Browser::OpenGURL(const GURL& gurl, WindowOpenDisposition disposition) {
@@ -544,12 +529,14 @@ bool Browser::IsTabStripVisible() {
 
 base::CallbackListSubscription Browser::RegisterBrowserDidClose(
     BrowserDidCloseCallback callback) {
-  return browser_did_close_callback_list_.Add(std::move(callback));
+  return UnloadController::From(this)->RegisterBrowserDidClose(
+      std::move(callback));
 }
 
 base::CallbackListSubscription Browser::RegisterBrowserCloseCancelled(
     BrowserCloseCancelledCallback callback) {
-  return browser_close_cancelled_callback_list_.Add(std::move(callback));
+  return UnloadController::From(this)->RegisterBrowserCloseCancelled(
+      std::move(callback));
 }
 
 base::WeakPtr<BrowserWindowInterface> Browser::GetWeakPtr() {
@@ -667,92 +654,6 @@ const DesktopBrowserWindowCapabilities* Browser::capabilities() const {
   return DesktopBrowserWindowCapabilities::From(this);
 }
 
-void Browser::OnWindowCloseComplete() {
-  // If there are no tabs, then a task will be scheduled (by views) to delete
-  // this Browser.
-  is_delete_scheduled_ = true;
-
-  // At this point the browser has successfully closed and is scheduled for
-  // deletion.
-  browser_did_close_callback_list_.Notify(this);
-
-  // Application should shutdown on last window close if the user is
-  // explicitly trying to quit, or if there is nothing keeping the browser
-  // alive (such as AppController on the Mac, or BackgroundContentsService for
-  // background pages).
-  const bool should_quit_if_last_browser =
-      browser_shutdown::IsTryingToQuit() ||
-      KeepAliveRegistry::GetInstance()->IsKeepingAliveOnlyByBrowserOrigin();
-
-  // Below will not consider browsers for which delete has already been
-  // scheduled.
-  const bool is_last_browser =
-      !GetLastActiveBrowserWindowInterfaceWithAnyProfile();
-
-  if (should_quit_if_last_browser && is_last_browser) {
-    browser_shutdown::OnShutdownStarting(
-        browser_shutdown::ShutdownType::kWindowClose);
-  }
-
-  // Once a Browser has successfully closed, client code expects control to
-  // return to the run loop before the instance is finally deleted. To
-  // maintain existing expectations schedule the delete asynchronously here.
-  // TODO(crbug.com/413168662): Explore synchronously destroying the browser
-  // instead.
-  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE, base::BindOnce(&Browser::SynchronouslyDestroyBrowser,
-                                weak_factory_.GetWeakPtr()));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// In-progress download termination handling:
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-// Browser, Tab adding/showing functions:
-
-void Browser::UpdateUIForNavigationInTab(WebContents* contents,
-                                         ui::PageTransition transition,
-                                         NavigateParams::WindowAction action,
-                                         bool user_initiated) {
-  tab_strip_model_->TabNavigating(contents, transition);
-
-  bool contents_is_selected =
-      contents == tab_strip_model_->GetActiveWebContents();
-  if (user_initiated && contents_is_selected && window_->GetLocationBar()) {
-    // Forcibly reset the location bar if the url is going to change in the
-    // current tab, since otherwise it won't discard any ongoing user edits,
-    // since it doesn't realize this is a user-initiated action.
-    window_->GetLocationBar()->Revert();
-  }
-
-  std::vector<StatusBubble*> status_bubbles = GetStatusBubbles();
-  for (StatusBubble* status_bubble : status_bubbles) {
-    status_bubble->Hide();
-  }
-
-  // Update the location bar. This is synchronous. We specifically don't
-  // update the load state since the load hasn't started yet and updating it
-  // will put it out of sync with the actual state like whether we're
-  // displaying a favicon, which controls the throbber. If we updated it here,
-  // the throbber will show the default favicon for a split second when
-  // navigating away from the new tab page.
-  ScheduleUIUpdate(contents, content::INVALIDATE_TYPE_URL);
-
-  // Navigating contents can take focus (potentially taking it away from other,
-  // currently-focused UI element like the omnibox) if the navigation was
-  // initiated by the user (e.g., via omnibox, bookmarks, etc.).
-  //
-  // Note that focusing contents of NTP-initiated navigations is taken care of
-  // elsewhere - see FocusTabAfterNavigationHelper.
-  if (user_initiated && contents_is_selected &&
-      (window_->IsActive() ||
-       action == NavigateParams::WindowAction::kShowWindow)) {
-    contents->SetInitialFocus();
-  }
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 // Browser, PageNavigator implementation:
 
@@ -859,7 +760,7 @@ void Browser::OnTabInsertedAt(WebContents* contents, int index) {
   // scheduled (WebContents is leaked, unload handlers aren't checked...).
   // TODO(crbug.com/40064092): this should check that `is_delete_scheduled_` is
   // false.
-  DUMP_WILL_BE_CHECK(!is_delete_scheduled_);
+  DUMP_WILL_BE_CHECK(!IsDeleteScheduled());
 
   SetAsDelegate(contents, true);
 
@@ -1020,12 +921,13 @@ void Browser::OnActiveTabChanged(const TabStripModelChange& change,
       selection.old_contents);
 
   // If we have any update pending, do it now.
-  if (chrome_updater_factory_.HasWeakPtrs() && selection.old_contents) {
-    ProcessPendingUIUpdates();
+  if (selection.old_contents) {
+    BrowserUiController::From(this)->ProcessPendingUIUpdates();
   }
 
   // Propagate the profile to the location bar.
-  UpdateToolbar((selection.reason & CHANGE_REASON_REPLACED) == 0);
+  BrowserUiController::From(this)->UpdateToolbar(
+      (selection.reason & CHANGE_REASON_REPLACED) == 0);
 
   // Update reload/stop state.
   chrome::BrowserCommandController* const browser_command_controller =
@@ -1085,149 +987,6 @@ void Browser::OnDevToolsAvailabilityChanged() {
                                           agent_host->GetWebContents())) {
       agent_host->ForceDetachAllSessions();
     }
-  }
-}
-
-///////////////////////////////////////////////////////////////////////////////
-// Browser, UI update coalescing and handling (private):
-
-void Browser::UpdateToolbar(bool should_restore_state) {
-  TRACE_EVENT0("ui", "Browser::UpdateToolbar");
-  window_->UpdateToolbar(should_restore_state
-                             ? tab_strip_model_->GetActiveWebContents()
-                             : nullptr);
-}
-
-void Browser::UpdateToolbarSecurityState() {
-  TRACE_EVENT0("ui", "Browser::UpdateToolbarSecurityState");
-  window_->UpdateToolbarSecurityState();
-}
-
-void Browser::ScheduleUIUpdate(WebContents* source, unsigned changed_flags) {
-  DCHECK(source);
-  // WebContents may in some rare cases send updates after they've been detached
-  // from the tabstrip but before they are deleted, causing a potential crash if
-  // we proceed. For now bail out.
-  // TODO(crbug.com/40100269) Figure out a safe way to detach browser delegate
-  // from WebContents when it's removed so this doesn't happen - then put a
-  // DCHECK back here.
-  tabs::TabInterface* tab = tabs::TabInterface::MaybeGetFromContents(source);
-  if (!tab || tab->GetBrowserWindowInterface() != this) {
-    return;
-  }
-
-  // Do some synchronous updates.
-  if (changed_flags & content::INVALIDATE_TYPE_URL) {
-    if (source == tab_strip_model_->GetActiveWebContents()) {
-      // Only update the URL for the current tab. Note that we do not update
-      // the navigation commands since those would have already been updated
-      // synchronously by NavigationStateChanged.
-      UpdateToolbar(false);
-    } else {
-      // Clear the saved tab state for the tab that navigated, so that we don't
-      // restore any user text after the old URL has been invalidated (e.g.,
-      // after a new navigation commits in that tab while unfocused).
-      window_->ResetToolbarTabState(source);
-    }
-    changed_flags &= ~content::INVALIDATE_TYPE_URL;
-  }
-
-  if (changed_flags & content::INVALIDATE_TYPE_LOAD) {
-    // Update the loading state synchronously. This is so the throbber will
-    // immediately start/stop, which gives a more snappy feel. We want to do
-    // this for any tab so they start & stop quickly.
-    NotifyTabUIChanged(tab, TabChangeType::kLoadingOnly);
-    // The status bubble needs to be updated during INVALIDATE_TYPE_LOAD too,
-    // but we do that asynchronously by not stripping INVALIDATE_TYPE_LOAD from
-    // changed_flags.
-  }
-
-  // If the only updates were synchronously handled above, we're done.
-  if (changed_flags == 0) {
-    return;
-  }
-
-  // Save the dirty bits.
-  scheduled_updates_[tab] |= changed_flags;
-
-  if (!chrome_updater_factory_.HasWeakPtrs()) {
-    base::TimeDelta delay = update_ui_immediately_for_testing_
-                                ? base::Milliseconds(0)
-                                : kUIUpdateCoalescingTime;
-    // No task currently scheduled, start another.
-    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
-        FROM_HERE,
-        base::BindOnce(&Browser::ProcessPendingUIUpdates,
-                       chrome_updater_factory_.GetWeakPtr()),
-        delay);
-  }
-}
-
-void Browser::ProcessPendingUIUpdates() {
-#ifndef NDEBUG
-  // Validate that all tabs we have pending updates for exist. This is scary
-  // because the pending list must be kept in sync with any detached or
-  // deleted tabs.
-  size_t processed_count = 0;
-  for (tabs::TabInterface* tab : *tab_strip_model_) {
-    if (scheduled_updates_.find(tab) != scheduled_updates_.end()) {
-      processed_count++;
-    }
-  }
-  DCHECK_EQ(processed_count, scheduled_updates_.size());
-#endif
-
-  chrome_updater_factory_.InvalidateWeakPtrs();
-
-  for (const auto& [tab, flags] : scheduled_updates_) {
-    if (tab->IsActivated()) {
-      // Updates that only matter when the tab is selected go here.
-
-      // Updating the URL happens synchronously in ScheduleUIUpdate.
-      std::vector<StatusBubble*> status_bubbles = GetStatusBubbles();
-      if (flags & content::INVALIDATE_TYPE_LOAD && status_bubbles.size() > 0) {
-        status_bubbles.front()->SetStatus(
-            CoreTabHelper::FromWebContents(
-                tab->GetContents())->GetStatusText());
-      }
-
-      if (flags &
-          (content::INVALIDATE_TYPE_TAB | content::INVALIDATE_TYPE_TITLE)) {
-        window_->UpdateTitleBar();
-      }
-    }
-
-    // Updates that don't depend upon the selected state go here.
-    if (flags & (content::INVALIDATE_TYPE_TAB | content::INVALIDATE_TYPE_TITLE |
-                 content::INVALIDATE_TYPE_AUDIO)) {
-      NotifyTabUIChanged(tab, TabChangeType::kAll);
-    }
-
-    // Update the bookmark bar and PWA install icon. It may happen that the tab
-    // is crashed, and if so, the bookmark bar and PWA install icon should be
-    // hidden.
-    if (flags & content::INVALIDATE_TYPE_TAB) {
-      // Update bookmark bar state with kTabState to handle tab state changes
-      // (like crashes). This is different from kTabSwitch which is already
-      // handled in Browser::OnActiveTabChanged().
-      BookmarkBarController::From(this)->UpdateBookmarkBarState(
-          BookmarkBarController::StateChangeReason::kTabState);
-    }
-
-    // We don't need to process INVALIDATE_STATE, since that's not visible.
-  }
-
-  scheduled_updates_.clear();
-}
-
-void Browser::RemoveScheduledUpdatesFor(WebContents* contents) {
-  if (!contents) {
-    return;
-  }
-
-  tabs::TabInterface* tab = tabs::TabInterface::MaybeGetFromContents(contents);
-  if (tab) {
-    scheduled_updates_.erase(tab);
   }
 }
 
@@ -1300,7 +1059,7 @@ void Browser::TabDetachedAtImpl(content::WebContents* contents,
   }
 
   SetAsDelegate(contents, false);
-  RemoveScheduledUpdatesFor(contents);
+  BrowserUiController::From(this)->RemoveScheduledUpdatesFor(contents);
 
   if (HasFindBarController() && was_active) {
     CreateOrGetFindBarController()->ChangeWebContents(nullptr);
@@ -1435,10 +1194,4 @@ FindBarController* Browser::CreateOrGetFindBarController() {
 
 bool Browser::HasFindBarController() {
   return GetFeatures().HasFindBarController();
-}
-
-void Browser::NotifyTabUIChanged(tabs::TabInterface* tab,
-                                 TabChangeType change_type) {
-  tab_strip_model_->NotifyTabChanged(tab, change_type);
-  TabUIHelper::From(tab)->NotifyTabUIChanged(base::PassKey<Browser>());
 }

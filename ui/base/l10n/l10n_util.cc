@@ -71,12 +71,6 @@ using ::base::i18n::LanguageTagMatcher;
 using ::ui_l10n::GetAcceptLanguageMatcher;
 using ::ui_l10n::GetAcceptLanguageTags;
 
-std::string NormalizeLocaleWithLanguageTag(std::string_view locale) {
-  return GetLanguageTagFromString(locale)
-      .value_or(GetKnownLanguageTag("und"))
-      .ToLegacyICUFormat();
-}
-
 bool IsResourceBundleLocale(const LanguageTag& locale) {
   return ui::ResourceBundle::LocaleDataPakExists(
       locale, ui::ResourceBundle::Gender::kDefault);
@@ -100,12 +94,6 @@ void AdjustParagraphDirectionality(std::u16string* paragraph) {
 
 std::string_view GetLanguage(std::string_view locale) {
   return locale.substr(0, locale.find('-'));
-}
-
-std::string_view GetCountry(std::string_view locale) {
-  size_t hyphen_pos = locale.find('-');
-  return (hyphen_pos == std::string::npos) ? std::string_view()
-                                           : locale.substr(hyphen_pos + 1);
 }
 
 std::optional<LanguageTag> CheckAndResolveLocale(const LanguageTag& locale,
@@ -384,24 +372,6 @@ std::u16string GetDisplayNameForCountry(std::string_view country_code,
   return GetDisplayNameForLocale(base::StrCat({"_", country_code}),
                                  display_locale, false);
 }
-
-std::vector<std::string> GetParentLocales(std::string_view current_locale) {
-  std::string locale = NormalizeLocaleWithLanguageTag(current_locale);
-
-  const int kNameCapacity = 256;
-  char parent[kNameCapacity];
-  base::strlcpy(parent, locale.c_str(), kNameCapacity);
-  std::vector<std::string> parent_locales = {parent};
-  UErrorCode err = U_ZERO_ERROR;
-  while (uloc_getParent(parent, parent, kNameCapacity, &err) > 0) {
-    if (U_FAILURE(err))
-      break;
-    parent_locales.push_back(parent);
-  }
-  return parent_locales;
-}
-
-
 
 std::string GetStringUTF8(int message_id) {
   return base::UTF16ToUTF8(GetStringUTF16(message_id));

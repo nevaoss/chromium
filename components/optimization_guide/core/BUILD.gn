@@ -611,8 +611,8 @@ static_library("hints_test_support") {
     "proto_database_provider_test_base.cc",
     "proto_database_provider_test_base.h",
   ]
+  public_deps = [ ":hints" ]
   deps = [
-    ":hints",
     "//base",
     "//components/leveldb_proto",
     "//components/optimization_guide/proto:optimization_guide_proto",
@@ -946,7 +946,6 @@ source_set("unit_tests") {
     "optimization_guide_logger_unittest.cc",
     "optimization_guide_permissions_util_unittest.cc",
     "optimization_guide_proto_util_unittest.cc",
-    "optimization_guide_switches_unittest.cc",
     "optimization_guide_util_unittest.cc",
   ]
   deps = [

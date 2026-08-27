@@ -177,7 +177,6 @@
 #include "gpu/config/gpu_finch_features.h"
 #include "gpu/config/gpu_switches.h"
 #include "ipc/constants.mojom.h"
-#include "ipc/ipc_channel_factory.h"
 #include "ipc/ipc_channel_proxy.h"
 #include "media/base/media_switches.h"
 #include "media/capture/capture_switches.h"
@@ -2222,16 +2221,12 @@ void RenderProcessHostImpl::InitializeChannelProxy() {
   // Bootstrap the IPC Channel.
   mojo::ScopedMessagePipeHandle bootstrap =
       mojo_invitation_.AttachMessagePipe(kLegacyIpcBootstrapAttachmentName);
-  std::unique_ptr<IPC::ChannelFactory> channel_factory =
-      IPC::ChannelFactory::CreateServerFactory(
-          std::move(bootstrap), io_task_runner,
-          base::SingleThreadTaskRunner::GetCurrentDefault());
 
   ResetChannelProxy();
 
   CHECK(!channel_, base::NotFatalUntil::M152);
   channel_ = IPC::ChannelProxy::Create(
-      std::move(channel_factory), this,
+      std::move(bootstrap), IPC::Channel::MODE_SERVER, this,
       /*ipc_task_runner=*/io_task_runner.get(),
       /*listener_task_runner=*/
       base::SingleThreadTaskRunner::GetCurrentDefault());
@@ -4375,13 +4370,6 @@ void RenderProcessHostImpl::OnChannelError() {
   ProcessDied(info);
 }
 
-void RenderProcessHostImpl::OnBadMessageReceived() {
-  // Message de-serialization failed. We consider this a capital crime. Kill
-  // the renderer if we have one.
-  LOG(ERROR) << "bad message, terminating renderer.";
-  bad_message::ReceivedBadMessage(this,
-                                  bad_message::RPH_DESERIALIZATION_FAILED);
-}
 
 BrowserContext* RenderProcessHostImpl::GetBrowserContext() {
   return browser_context_;

@@ -3829,6 +3829,14 @@ TEST_F(BrowserAutofillManagerTest, NoSaveToAutocompleteWhenActorIsActive) {
   FormSubmitted(form);
 }
 
+// Tests that single field form fillers are not notified about OTR submissions.
+TEST_F(BrowserAutofillManagerTest, SingleFieldFormFillerOffTheRecord) {
+  autofill_client().set_is_off_the_record(true);
+  FormData form = CreateTestAddressFormData();
+  EXPECT_CALL(single_field_fill_router(), OnWillSubmitForm).Times(0);
+  FormSubmitted(form);
+}
+
 // Tests that form import (saving to Autofill) is suppressed when there is an
 // active actor task.
 TEST_F(BrowserAutofillManagerTest, FormSubmittedActorActive) {
@@ -3849,19 +3857,6 @@ TEST_F(BrowserAutofillManagerTest, FormSubmittedActorActive) {
   FormSubmitted(response_data);
 
   EXPECT_THAT(adm.GetProfiles(), IsEmpty());
-}
-
-// Test that when Autocomplete is enabled and Autofill is disabled, form
-// submissions are still received by the SingleFieldFillRouter.
-TEST_F(BrowserAutofillManagerTest, FormSubmittedAutocompleteEnabled) {
-  autofill_client().SetAutofillProfileEnabled(false);
-  payments_autofill_client().SetAutofillPaymentMethodsEnabled(false);
-
-  // Set up our form data.
-  FormData form = CreateTestAddressFormData();
-
-  EXPECT_CALL(single_field_fill_router(), OnWillSubmitForm(_, _, true));
-  FormSubmitted(form);
 }
 
 // Test that the value patterns metric is reported.
@@ -5441,6 +5436,8 @@ TEST_F(BrowserAutofillManagerTest,
 // Tests that if the context is insecure, the suggestions are filtered out
 // to not contain SPII.
 TEST_F(BrowserAutofillManagerTest, DidShowSuggestions_FormNonSecureContext) {
+  base::test::ScopedFeatureList scoped_feature_list{
+      features::kAutofillAtMemory};
   // Ensure that the client context is insecure.
   autofill_client().set_last_committed_primary_main_frame_url(
       GURL("http://example.com"));
@@ -5479,7 +5476,7 @@ TEST_F(BrowserAutofillManagerTest, DidShowSuggestions_FormNonSecureContext) {
   EXPECT_CALL(*mock_query_service_ptr,
               Query(std::u16string_view(u"query"), _, _, _))
       .WillOnce(testing::SaveArg<3>(&search_callback));
-  autofill_manager().GetAtMemoryManager().OnSearchSubmitted(u"query");
+  autofill_client().GetAtMemoryManager()->OnSearchSubmitted(u"query");
   ASSERT_FALSE(search_callback.is_null());
 
   // Prepare search results containing a SPII entry.

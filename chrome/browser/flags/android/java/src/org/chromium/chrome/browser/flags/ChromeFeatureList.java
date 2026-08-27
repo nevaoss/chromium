@@ -185,6 +185,7 @@ public abstract class ChromeFeatureList {
     public static final String ANDROID_APP_RATING_PROMPT = "AndroidAppRatingPrompt";
     public static final String ANDROID_AUTO_MINTED_TWA = "AndroidAutoMintedTWA";
     public static final String ANDROID_BOTTOM_BAR = "AndroidBottomBar";
+    public static final String ANDROID_BOTTOM_BAR_AIM = "AndroidBottomBarAim";
     public static final String ANDROID_BRICKS_NATIVE_PAGE = "AndroidBricksNativePage";
     public static final String ANDROID_CONTEXT_MENU_DISABLED_MENU_ITEMS =
             "AndroidContextMenuDisabledMenuItems";
@@ -272,6 +273,8 @@ public abstract class ChromeFeatureList {
             "AutofillAndroidDesktopSuppressAccessoryOnEmpty";
     public static final String AUTOFILL_ANDROID_KEYBOARD_ACCESSORY_DYNAMIC_POSITIONING =
             "AutofillAndroidKeyboardAccessoryDynamicPositioning";
+    public static final String AUTOFILL_ANDROID_KEYBOARD_ACCESSORY_HOVER_PREVIEW =
+            "AutofillAndroidKeyboardAccessoryHoverPreview";
     public static final String AUTOFILL_AT_MEMORY = "AutofillAtMemory";
     public static final String AUTOFILL_ENABLE_AI_BASED_AMOUNT_EXTRACTION =
             "AutofillEnableAiBasedAmountExtraction";
@@ -386,7 +389,6 @@ public abstract class ChromeFeatureList {
     public static final String CONTEXTUAL_SEARCH_SUPPRESS_SHORT_VIEW =
             "ContextualSearchSuppressShortView";
     public static final String CONTEXTUAL_TASKS = "ContextualTasks";
-    public static final String CONTEXTUAL_TASKS_JAVA_FUSEBOX = "ContextualTasksJavaFusebox";
     public static final String CONTEXT_MENU_COPY_VIDEO_FRAME_ANDROID = "ContextMenuCopyVideoFrame";
     public static final String CONTEXT_MENU_DOWNLOAD_VIDEO_FRAME_ANDROID =
             "ContextMenuSaveVideoFrameAs";
@@ -417,6 +419,7 @@ public abstract class ChromeFeatureList {
     public static final String DESKTOP_ANDROID_LINK_CAPTURING = "DesktopAndroidLinkCapturing";
     public static final String DESKTOP_UA_ON_CONNECTED_DISPLAY = "DesktopUAOnConnectedDisplay";
     public static final String DETAILED_LANGUAGE_SETTINGS = "DetailedLanguageSettings";
+    public static final String DIALOGS_ON_LARGE_FORM_FACTORS = "DialogsOnLargeFormFactors";
     public static final String DISABLE_PARTNER_HOMEPAGE_ANDROID = "DisablePartnerHomepageAndroid";
     public static final String DISABLE_SCROLLBAR_OF_FADING_EDGE_SCROLLVIEW =
             "DisableScrollbarOfFadingEdgeScrollView";
@@ -560,6 +563,8 @@ public abstract class ChromeFeatureList {
             "OpenDownloadInFilesAppIfNoHandlerFound";
     public static final String OPEN_DOWNLOAD_IN_NEW_TAB = "OpenDownloadInNewTab";
     public static final String OPEN_DOWNLOAD_IN_PREFERRED_APP = "OpenDownloadInPreferredApp";
+    public static final String OPTIONAL_BUTTON_NO_HARDWARE_LAYER_KILLSWITCH =
+            "OptionalButtonNoHardwareLayerKillswitch";
     public static final String PAGE_CONTENT_PROVIDER = "PageContentProvider";
     public static final String PAGE_INFO_ABOUT_THIS_SITE_MORE_LANGS =
             "PageInfoAboutThisSiteMoreLangs";
@@ -573,9 +578,6 @@ public abstract class ChromeFeatureList {
             "PermissionDedicatedCpssSettingAndroid";
     public static final String PERSIST_ACROSS_REBOOTS = "PersistAcrossReboots";
     public static final String PERSIST_ACROSS_REBOOTS_DEBUG_LOGS = "PersistAcrossRebootsDebugLogs";
-    public static final String PLUS_ADDRESSES_ENABLED = "PlusAddressesEnabled";
-    public static final String PLUS_ADDRESS_ANDROID_OPEN_GMS_CORE_MANAGEMENT_PAGE =
-            "PlusAddressAndroidOpenGmsCoreManagementPage";
     public static final String POST_GET_MEMORY_PRESSURE_TO_BACKGROUND =
             BaseFeatures.POST_GET_MY_MEMORY_STATE_TO_BACKGROUND;
     public static final String POWER_SAVING_MODE_BROADCAST_RECEIVER_IN_BACKGROUND =
@@ -798,6 +800,8 @@ public abstract class ChromeFeatureList {
             newCachedFlag(ANDROID_AUTO_MINTED_TWA, false);
     public static final CachedFlag sAndroidBottomBar =
             newCachedFlag(ANDROID_BOTTOM_BAR, false, /* defaultValueInTests= */ true);
+    public static final CachedFlag sAndroidBottomBarAim =
+            newCachedFlag(ANDROID_BOTTOM_BAR_AIM, false);
     public static final CachedFlag sAndroidElegantTextHeight =
             newCachedFlag(ANDROID_ELEGANT_TEXT_HEIGHT, true);
     public static final CachedFlag sAndroidNewMediaPicker =
@@ -968,6 +972,11 @@ public abstract class ChromeFeatureList {
                     DESKTOP_UA_ON_CONNECTED_DISPLAY,
                     /* defaultValue= */ true,
                     /* defaultValueInTests= */ true);
+    public static final CachedFlag sDialogsOnLargeFormFactors =
+            newCachedFlag(
+                    DIALOGS_ON_LARGE_FORM_FACTORS,
+                    /* defaultValue= */ false,
+                    /* defaultValueInTests= */ false);
     public static final CachedFlag sDisablePartnerHomepageAndroid =
             newCachedFlag(
                     DISABLE_PARTNER_HOMEPAGE_ANDROID,
@@ -1146,6 +1155,8 @@ public abstract class ChromeFeatureList {
             newCachedFlag(NTP_VISION, /* defaultValue= */ false);
     public static final CachedFlag sOnStartupWindowPolicy =
             newCachedFlag(ON_STARTUP_WINDOW_POLICY, /* defaultValue= */ true);
+    public static final CachedFlag sOptionalButtonNoHardwareLayerKillswitch =
+            newCachedFlag(OPTIONAL_BUTTON_NO_HARDWARE_LAYER_KILLSWITCH, /* defaultValue= */ true);
     public static final CachedFlag sPCctMinimumHeight = newCachedFlag(PCCT_MINIMUM_HEIGHT, true);
     public static final CachedFlag sPaintPreviewDemo = newCachedFlag(PAINT_PREVIEW_DEMO, false);
     public static final CachedFlag sPdfReuseFragment =
@@ -1317,6 +1328,7 @@ public abstract class ChromeFeatureList {
                     sAndroidAppRatingPrompt,
                     sAndroidAutoMintedTwa,
                     sAndroidBottomBar,
+                    sAndroidBottomBarAim,
                     sAndroidElegantTextHeight,
                     sAndroidNewMediaPicker,
                     sAndroidNoCaptureWhenScrollingDisabledOnDesktop,
@@ -1386,6 +1398,7 @@ public abstract class ChromeFeatureList {
                     sDefaultBrowserPromoEntryPoint,
                     sDesktopAndroidLinkCapturing,
                     sDesktopUAOnConnectedDisplay,
+                    sDialogsOnLargeFormFactors,
                     sDisablePartnerHomepageAndroid,
                     sDocumentPictureInPictureAPI,
                     sDrawChromePagesEdgeToEdge,
@@ -1441,6 +1454,7 @@ public abstract class ChromeFeatureList {
                     sNtpMvcRefactor,
                     sNtpVision,
                     sOnStartupWindowPolicy,
+                    sOptionalButtonNoHardwareLayerKillswitch,
                     sPCctMinimumHeight,
                     sPaintPreviewDemo,
                     sPdfReuseFragment,
@@ -1525,7 +1539,7 @@ public abstract class ChromeFeatureList {
     public static final MutableFlagWithSafeDefault sAndroidZoomImmersive =
             newMutableFlagWithSafeDefault(ANDROID_ZOOM_IMMERSIVE, false);
     public static final MutableFlagWithSafeDefault sBookmarksBarContextMenu =
-            newMutableFlagWithSafeDefault(BOOKMARKS_BAR_CONTEXT_MENU, true);
+            newMutableFlagWithSafeDefault(BOOKMARKS_BAR_CONTEXT_MENU, false);
     public static final MutableFlagWithSafeDefault sBookmarksBarNTP =
             newMutableFlagWithSafeDefault(BOOKMARKS_BAR_NTP, false);
     public static final MutableFlagWithSafeDefault sBrowserControlsEarlyResize =

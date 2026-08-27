@@ -27,7 +27,11 @@ class TabCollectionAnimatingLayoutManager
  public:
   // Controls along which axis view bounds are animated during animate-in and
   // animate-out transitions.
-  enum class AnimationAxis { kVertical, kHorizontal };
+  enum class AnimationAxis {
+    kVertical,
+    kHorizontal,
+    kHorizontalWrappingVertically,
+  };
 
   // Represents how animations should progress along the animation axis.
   enum class AnimationDirection { kStartToEnd, kEndToStart };
@@ -52,6 +56,13 @@ class TabCollectionAnimatingLayoutManager
     virtual bool ShouldSnapToTarget(const views::View& child_view) const;
     virtual bool ShouldAnimateOpacityForAddAndRemove(
         const views::View& child_view) const;
+    // If provided, this is used to calculate target layouts against the total
+    // available capacity rather than the host view's mid-animation bounds (e.g.
+    // for the horizontal unpinned container). If not provided (the default),
+    // target layout calculations fall back to using the host view's allocated
+    // bounds (e.g. for nested containers like tab groups).
+    virtual std::optional<views::SizeBound> GetAvailableMainAxisSpaceOverride()
+        const;
     virtual void OnAnimationEnded();
 
    protected:
@@ -108,6 +119,10 @@ class TabCollectionAnimatingLayoutManager
 
   const views::ProposedLayout& target_layout() const { return target_layout_; }
 
+  // Returns the target preferred size that `host_view()` will occupy once
+  // current animations complete.
+  gfx::Size GetTargetPreferredSize() const;
+
   bool is_animating() const { return animation_.is_animating(); }
 
  protected:
@@ -136,6 +151,9 @@ class TabCollectionAnimatingLayoutManager
   // Interpolates between `starting_layout_` and `target_layout_` based on
   // current `animation_` value.
   views::ProposedLayout InterpolateLayout(double value) const;
+
+  // Returns true if the animation axis is vertical or wraps vertically.
+  bool IsVerticalOrWrappingVertically() const;
 
   // Removes and destroys any views marked for deletion that are no longer
   // needed for animated effects. This is called after a new layout has been

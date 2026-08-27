@@ -89,7 +89,10 @@ import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.search_engines.TemplateUrlServiceFactory;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.Tab.LoadUrlResult;
+import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.SideUiSpecs;
+import org.chromium.chrome.browser.ui.side_ui.SideUiStateProvider;
 import org.chromium.chrome.browser.ui.theme.BrandedColorScheme;
+import org.chromium.chrome.browser.ui.vertical_tabs.VerticalTabUtils;
 import org.chromium.components.favicon.LargeIconBridge;
 import org.chromium.components.favicon.LargeIconBridgeJni;
 import org.chromium.components.metrics.OmniboxEventProtos.OmniboxEventProto.PageClassification;
@@ -113,6 +116,7 @@ import org.chromium.components.search_engines.TemplateUrlService;
 import org.chromium.components.user_prefs.UserPrefs;
 import org.chromium.content_public.browser.NavigationHandle;
 import org.chromium.content_public.browser.WebContents;
+import org.chromium.ui.base.ViewUtils;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.insets.InsetObserver;
 import org.chromium.ui.modaldialog.DialogDismissalCause;
@@ -143,44 +147,47 @@ public class AutocompleteMediatorUnitTest {
     private static final String TABS_STARTER_PACK_KEYWORD = "@tabs";
     private static final String SAMPLE_QUERY = "sample query";
 
-    public @Rule MockitoRule mMockitoRule = MockitoJUnit.rule();
+    @Rule public final MockitoRule mMockitoRule = MockitoJUnit.rule();
 
-    private @Mock AutocompleteDelegate mAutocompleteDelegate;
-    private @Mock UrlBarEditingTextStateProvider mTextStateProvider;
-    private @Mock SuggestionProcessor mMockProcessor;
-    private @Mock AutocompleteController mAutocompleteController;
-    private @Mock AutocompleteMatch mAutocompleteMatch;
-    private @Mock AutocompleteController.Natives mControllerJniMock;
-    private @Mock LocationBarDataProvider mLocationBarDataProvider;
-    private @Mock ModalDialogManager mModalDialogManager;
-    private @Mock OmniboxActionDelegateImpl mOmniboxActionDelegate;
-    private @Mock LargeIconBridge.Natives mLargeIconBridgeJniMock;
-    private @Mock NavigationHandle mNavigationHandle;
-    private @Mock ActivityLifecycleDispatcher mActivityLifecycleDispatcher;
-    private @Mock WindowAndroid mWindowAndroid;
-    private @Mock Activity mActivity;
-    private @Mock Window mWindow;
-    private @Mock View mDecorView;
-    private @Mock OmniboxSuggestionsDropdownEmbedder mEmbedder;
-    private @Mock InsetObserver mInsetObserver;
+    @Mock private AutocompleteDelegate mAutocompleteDelegate;
+    @Mock private UrlBarEditingTextStateProvider mTextStateProvider;
+    @Mock private SuggestionProcessor mMockProcessor;
+    @Mock private AutocompleteController mAutocompleteController;
+    @Mock private AutocompleteMatch mAutocompleteMatch;
+    @Mock private AutocompleteController.Natives mControllerJniMock;
+    @Mock private LocationBarDataProvider mLocationBarDataProvider;
+    @Mock private ModalDialogManager mModalDialogManager;
+    @Mock private OmniboxActionDelegateImpl mOmniboxActionDelegate;
+    @Mock private LargeIconBridge.Natives mLargeIconBridgeJniMock;
+    @Mock private NavigationHandle mNavigationHandle;
+    @Mock private ActivityLifecycleDispatcher mActivityLifecycleDispatcher;
+    @Mock private WindowAndroid mWindowAndroid;
+    @Mock private Activity mActivity;
+    @Mock private Window mWindow;
+    @Mock private View mDecorView;
+    @Mock private OmniboxSuggestionsDropdownEmbedder mEmbedder;
+    @Mock private InsetObserver mInsetObserver;
     private @Mock AutocompleteCoordinator.OmniboxSuggestionsVisualStateObserver
             mVisualStateObserver;
-    private @Mock DeferredIMEWindowInsetApplicationCallback mDeferredImeCallback;
-    private @Mock FuseboxCoordinator mFuseboxCoordinator;
-    private @Mock LocationBarEmbedderUiOverrides mUiOverrides;
-    private @Mock PreloadingFeatureMap mPreloadingFeatureMap;
-    private @Mock ComposeboxQueryControllerBridge mComposeboxQueryControllerBridge;
-    private @Mock Callback<GURL> mGurlCallback;
-    private @Captor ArgumentCaptor<OmniboxLoadUrlParams> mOmniboxLoadUrlParamsCaptor;
-    private @Captor ArgumentCaptor<Consumer<SiteSearchData>> mKeywordModeEnteredCaptor;
-    private @Captor ArgumentCaptor<Callback<GURL>> mUrlCallbackCaptor;
+    @Mock private DeferredIMEWindowInsetApplicationCallback mDeferredImeCallback;
+    @Mock private FuseboxCoordinator mFuseboxCoordinator;
+    @Mock private LocationBarEmbedderUiOverrides mUiOverrides;
+    @Mock private SideUiStateProvider mSideUiStateProvider;
+    @Mock private PreloadingFeatureMap mPreloadingFeatureMap;
+    @Mock private ComposeboxQueryControllerBridge mComposeboxQueryControllerBridge;
+    @Mock private Callback<GURL> mGurlCallback;
+    @Captor private ArgumentCaptor<OmniboxLoadUrlParams> mOmniboxLoadUrlParamsCaptor;
+    @Captor private ArgumentCaptor<Consumer<SiteSearchData>> mKeywordModeEnteredCaptor;
+    @Captor private ArgumentCaptor<Callback<GURL>> mUrlCallbackCaptor;
     private @Mock CachedZeroSuggestionsManager.OverridesForTesting
             mMockCachedZeroSuggestionsManager;
-    private @Mock TemplateUrlService mTemplateUrlService;
-    private @Mock Profile mProfile;
-    private @Mock PrefService mPrefService;
-    private @Mock TemplateUrl mTemplateUrl;
-    private @Mock PropertyObserver<PropertyKey> mPropertyObserver;
+    @Mock private TemplateUrlService mTemplateUrlService;
+    @Mock private Profile mProfile;
+    @Mock private PrefService mPrefService;
+    @Mock private TemplateUrl mTemplateUrl;
+    @Mock private PropertyObserver<PropertyKey> mPropertyObserver;
+    @Mock private Tab mTab;
+    @Mock private WebContents mWebContents;
     private PropertyModel mListModel;
     private OmniboxResourceProvider mResourceProvider;
     private AutocompleteMediator mMediator;
@@ -210,6 +217,10 @@ public class AutocompleteMediatorUnitTest {
         mToolbarPositionSupplier = ObservableSuppliers.createNonNull(ControlsPosition.TOP);
         mFuseboxStateSupplier = ObservableSuppliers.createNonNull(FuseboxState.DISABLED);
         mFuseboxLayoutModeSupplier = ObservableSuppliers.createNonNull(FuseboxLayoutMode.TOOLBAR);
+        lenient()
+                .doReturn(new SideUiSpecs(0, 0))
+                .when(mSideUiStateProvider)
+                .getCurrentSideUiSpecs();
 
         lenient().doReturn(mAutocompleteController).when(mControllerJniMock).getForProfile(any());
 
@@ -237,6 +248,7 @@ public class AutocompleteMediatorUnitTest {
                 .doReturn(mFuseboxLayoutModeSupplier)
                 .when(mFuseboxCoordinator)
                 .getFuseboxLayoutModeSupplier();
+        lenient().doReturn(mSideUiStateProvider).when(mUiOverrides).getSideUiStateProvider();
 
         mMediator =
                 new AutocompleteMediator(
@@ -481,10 +493,9 @@ public class AutocompleteMediatorUnitTest {
                 .getBoolean(AutocompleteMediator.KEYWORD_SPACE_TRIGGERING_ENABLED_PREF);
         doReturn("bing").when(mTextStateProvider).getTextWithoutAutocomplete();
         doReturn(true).when(mTemplateUrlService).isLoaded();
-        var mockTemplateUrl = mock(TemplateUrl.class);
-        doReturn("bing").when(mockTemplateUrl).getKeyword();
-        doReturn("Bing").when(mockTemplateUrl).getShortName();
-        doReturn(mockTemplateUrl).when(mAutocompleteController).getTemplateUrlForText("bing");
+        doReturn("bing").when(mTemplateUrl).getKeyword();
+        doReturn("Bing").when(mTemplateUrl).getShortName();
+        doReturn(mTemplateUrl).when(mAutocompleteController).getTemplateUrlForText("bing");
 
         assertTrue(mMediator.triggerSiteSearch(SiteSearchActivationSource.SPACE));
         verify(mAutocompleteDelegate).setOmniboxEditingText("");
@@ -513,10 +524,9 @@ public class AutocompleteMediatorUnitTest {
                 .getBoolean(AutocompleteMediator.KEYWORD_SPACE_TRIGGERING_ENABLED_PREF);
         doReturn("bing").when(mTextStateProvider).getTextWithoutAutocomplete();
         doReturn(true).when(mTemplateUrlService).isLoaded();
-        var mockTemplateUrl = mock(TemplateUrl.class);
-        doReturn("bing").when(mockTemplateUrl).getKeyword();
-        doReturn("Bing").when(mockTemplateUrl).getShortName();
-        doReturn(mockTemplateUrl).when(mAutocompleteController).getTemplateUrlForText("bing");
+        doReturn("bing").when(mTemplateUrl).getKeyword();
+        doReturn("Bing").when(mTemplateUrl).getShortName();
+        doReturn(mTemplateUrl).when(mAutocompleteController).getTemplateUrlForText("bing");
 
         assertFalse(mMediator.triggerSiteSearch(SiteSearchActivationSource.SPACE));
     }
@@ -855,13 +865,11 @@ public class AutocompleteMediatorUnitTest {
         mMediator.beginInput(createEmptySession());
 
         when(mPreloadingFeatureMap.shouldPrewarmOnAutocomplete()).thenReturn(true);
-        Tab tab = mock(Tab.class);
-        WebContents webContents = mock(WebContents.class);
-        when(mLocationBarDataProvider.getTab()).thenReturn(tab);
-        when(tab.getWebContents()).thenReturn(webContents);
+        when(mLocationBarDataProvider.getTab()).thenReturn(mTab);
+        when(mTab.getWebContents()).thenReturn(mWebContents);
 
         mMediator.onSuggestionsReceived(mAutocompleteResult, /* isFinal= */ false);
-        verify(mAutocompleteController).startPrewarm(eq(webContents));
+        verify(mAutocompleteController).startPrewarm(eq(mWebContents));
     }
 
     @Test
@@ -2646,11 +2654,10 @@ public class AutocompleteMediatorUnitTest {
         var session = createEmptySession();
         mMediator.beginInput(session);
 
-        AutocompleteMatch match = mock(AutocompleteMatch.class);
-        doReturn(true).when(match).isDeletable();
-        doReturn(1L).when(match).getNativeObjectRef();
+        doReturn(true).when(mAutocompleteMatch).isDeletable();
+        doReturn(1L).when(mAutocompleteMatch).getNativeObjectRef();
 
-        mMediator.showDeleteDialog(match, "Title", () -> {});
+        mMediator.showDeleteDialog(mAutocompleteMatch, "Title", () -> {});
 
         // Verify dialog is shown.
         verify(mModalDialogManager).showDialog(any(), eq(ModalDialogManager.ModalDialogType.APP));
@@ -3094,11 +3101,35 @@ public class AutocompleteMediatorUnitTest {
     @EnableFeatures(ChromeFeatureList.ANDROID_VERTICAL_TABS)
     public void propagateOmniboxSessionStateChange_verticalTabsEnabledAndMainBrowser() {
         when(mUiOverrides.isMainBrowserOmnibox()).thenReturn(true);
+        int widthPx = ViewUtils.dpToPx(mContext, VerticalTabUtils.SIDE_UI_CONTAINER_WIDTH_DP);
+        when(mSideUiStateProvider.getCurrentSideUiSpecs())
+                .thenReturn(new SideUiSpecs(widthPx, /* rightContainerWidth= */ 0));
         ChromeSharedPreferences.getInstance()
                 .writeBoolean(ChromePreferenceKeys.VERTICAL_TABS_ENABLED, true);
         mMediator.beginInput(createEmptySession());
         mMediator.propagateOmniboxSessionStateChange(true);
         assertEquals(true, mListModel.get(SuggestionListProperties.APPLY_MARGIN_FOR_LEFT_SIDE_BAR));
+        assertEquals(widthPx, mListModel.get(SuggestionListProperties.LEFT_SIDE_BAR_MARGIN_PX));
+    }
+
+    @Test
+    @SmallTest
+    @Config(qualifiers = "sw600dp")
+    @EnableFeatures(ChromeFeatureList.ANDROID_VERTICAL_TABS)
+    public void
+            propagateOmniboxSessionStateChange_verticalTabsEnabledAndMainBrowser_railCollapsed() {
+        when(mUiOverrides.isMainBrowserOmnibox()).thenReturn(true);
+        int collapsedWidthPx =
+                ViewUtils.dpToPx(mContext, VerticalTabUtils.SIDE_UI_CONTAINER_COLLAPSED_WIDTH_DP);
+        when(mSideUiStateProvider.getCurrentSideUiSpecs())
+                .thenReturn(new SideUiSpecs(collapsedWidthPx, /* rightContainerWidth= */ 0));
+        ChromeSharedPreferences.getInstance()
+                .writeBoolean(ChromePreferenceKeys.VERTICAL_TABS_ENABLED, true);
+        mMediator.beginInput(createEmptySession());
+        mMediator.propagateOmniboxSessionStateChange(true);
+        assertEquals(true, mListModel.get(SuggestionListProperties.APPLY_MARGIN_FOR_LEFT_SIDE_BAR));
+        assertEquals(
+                collapsedWidthPx, mListModel.get(SuggestionListProperties.LEFT_SIDE_BAR_MARGIN_PX));
     }
 
     @Test

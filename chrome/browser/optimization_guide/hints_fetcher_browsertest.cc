@@ -42,6 +42,7 @@
 #include "components/optimization_guide/core/filters/hints_component_util.h"
 #include "components/optimization_guide/core/filters/optimization_hints_component_update_listener.h"
 #include "components/optimization_guide/core/filters/test_hints_component_creator.h"
+#include "components/optimization_guide/core/hints/command_line_top_host_provider.h"
 #include "components/optimization_guide/core/hints/fake_hints_fetcher.h"
 #include "components/optimization_guide/core/hints/hints_manager.h"
 #include "components/optimization_guide/core/hints/optimization_guide_store.h"
@@ -196,7 +197,7 @@ class HintsFetcherDisabledBrowserTest : public InProcessBrowserTest {
     // Set up OptimizationGuideServiceURL, this does not enable HintsFetching,
     // only provides the URL.
     cmd->AppendSwitchASCII(
-        optimization_guide::switches::kOptimizationGuideServiceGetHintsURL,
+        optimization_guide::kOptimizationGuideServiceGetHintsURLSwitch,
         hints_server_
             ->GetURL(GURL(optimization_guide::
                               kOptimizationGuideServiceGetHintsDefaultURL)
@@ -205,10 +206,10 @@ class HintsFetcherDisabledBrowserTest : public InProcessBrowserTest {
             .spec());
     cmd->AppendSwitchASCII("force-variation-ids", "4");
 
-    cmd->AppendSwitchASCII(optimization_guide::switches::kFetchHintsOverride,
+    cmd->AppendSwitchASCII(optimization_guide::kFetchHintsOverrideSwitch,
                            "example1.com, example2.com");
 
-    cmd->AppendSwitch(optimization_guide::switches::kFetchHintsOverrideTimer);
+    cmd->AppendSwitch(optimization_guide::kFetchHintsOverrideTimerSwitch);
 
     // Ignore the port numbers for the Google Search URL check.
     cmd->AppendSwitch(switches::kIgnoreGooglePortNumbers);
@@ -847,9 +848,9 @@ IN_PROC_BROWSER_TEST_F(HintsFetcherBrowserTest, HintsFetcherOverrideTimer) {
   const base::HistogramTester* histogram_tester = GetHistogramTester();
   GURL url = https_url();
   base::CommandLine::ForCurrentProcess()->AppendSwitchASCII(
-      optimization_guide::switches::kFetchHintsOverride, "whatever.com");
+      optimization_guide::kFetchHintsOverrideSwitch, "whatever.com");
   base::CommandLine::ForCurrentProcess()->AppendSwitch(
-      optimization_guide::switches::kFetchHintsOverrideTimer);
+      optimization_guide::kFetchHintsOverrideTimerSwitch);
 
   // Allowlist NoScript for https_url()'s' host.
   SetUpComponentUpdateHints(https_url());
@@ -1326,8 +1327,9 @@ IN_PROC_BROWSER_TEST_F(HintsFetcherBrowserTest, HintsFetcherDoesntFetchOnNSP) {
 class HintsFetcherSearchPageBrowserTest : public HintsFetcherBrowserTest {
  public:
   void SetUpCommandLine(base::CommandLine* cmd) override {
-    cmd->AppendSwitch(optimization_guide::switches::
-                          kDisableFetchingHintsAtNavigationStartForTesting);
+    cmd->AppendSwitch(
+        optimization_guide::
+            kDisableFetchingHintsAtNavigationStartForTestingSwitch);
     HintsFetcherBrowserTest::SetUpCommandLine(cmd);
   }
 };
@@ -1663,8 +1665,9 @@ class HintsFetcherSearchPageLimitedURLsBrowserTest
   }
 
   void SetUpCommandLine(base::CommandLine* cmd) override {
-    cmd->AppendSwitch(optimization_guide::switches::
-                          kDisableFetchingHintsAtNavigationStartForTesting);
+    cmd->AppendSwitch(
+        optimization_guide::
+            kDisableFetchingHintsAtNavigationStartForTestingSwitch);
     HintsFetcherDisabledBrowserTest::SetUpCommandLine(cmd);
   }
 

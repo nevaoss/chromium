@@ -161,6 +161,7 @@ class ChromeAutofillClient : public ContentAutofillClient {
   AutocompleteHistoryManager* GetAutocompleteHistoryManager() final;
   AutofillComposeDelegate* GetComposeDelegate() final;
   AtMemoryQueryService* GetAtMemoryQueryService() override;
+  AtMemoryManager* GetAtMemoryManager() override;
   personal_context::PersonalContextEligibilityState
   GetPersonalContextEligibilityState() const override;
   personal_context::PersonalContextEligibilityService*
@@ -171,6 +172,7 @@ class ChromeAutofillClient : public ContentAutofillClient {
   AutofillAiManager* GetAutofillAiManager() final;
   AutofillAiPersonalContextAccessManager*
   GetAutofillAiPersonalContextAccessManager() final;
+  EntitySuppressionManager* GetEntitySuppressionManager() final;
   AutofillAiModelCache* GetAutofillAiModelCache() final;
   AutofillAiModelExecutor* GetAutofillAiModelExecutor() final;
   consent_auditor::ConsentAuditor* GetConsentAuditor() final;
@@ -252,6 +254,14 @@ class ChromeAutofillClient : public ContentAutofillClient {
   // The AutofillSnackbarController is used to show a snackbar notification
   // on Android.
   AutofillSnackbarControllerImpl* GetAutofillSnackbarController() final;
+
+  // Notifies the user that their data is being fetched from the server to fill
+  // the form.
+  void ShowAutofillAiLoadingDialog() final;
+
+  // Closes the dialog that informs the user that their data is being fetched
+  // from the server to fill the form.
+  void DismissAutofillAiLoadingDialog() final;
 
   bool ShowAmbientAutoFillNotice(
       base::WeakPtr<TouchToFillAutofillDelegate> delegate) override;
@@ -398,6 +408,7 @@ class ChromeAutofillClient : public ContentAutofillClient {
       this};
 
   std::unique_ptr<AutofillAiManager> autofill_ai_manager_;
+  std::unique_ptr<AtMemoryManager> at_memory_manager_;
 
   // These members are initialized lazily in their respective getters.
   // Therefore, do not access the members directly.

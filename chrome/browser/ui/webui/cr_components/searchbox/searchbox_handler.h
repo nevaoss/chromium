@@ -186,7 +186,8 @@ class SearchboxHandler : public searchbox::mojom::PageHandler,
                    bool shift_key,
                    bool is_voice_search) override {}
   void OpenLensSearch() override {}
-  void SetActiveToolMode(omnibox::ToolMode tool) override {}
+  void SetActiveToolMode(omnibox::ToolMode tool,
+                         bool is_set_by_server) override {}
   void RecordToolSelectionAction(omnibox::ToolMode tool) override {}
   void SetActiveModelMode(omnibox::ModelMode model) override {}
   void RecordModelSelectionAction(omnibox::ModelMode model) override {}
@@ -219,6 +220,11 @@ class SearchboxHandler : public searchbox::mojom::PageHandler,
                            QueryAutocomplete_SetsLensInputs);
   FRIEND_TEST_ALL_PREFIXES(ContextualSearchboxHandlerTest,
                            QueryAutocomplete_SetsLensInputs_InToolModes);
+  FRIEND_TEST_ALL_PREFIXES(WebuiOmniboxHandlerTest,
+                           OpenMatchResumesNavigationWhenNoDialogShown);
+  FRIEND_TEST_ALL_PREFIXES(WebuiOmniboxHandlerTest,
+                           OpenMatchDropsNavigationWhenDialogCancelled);
+
   SearchboxHandler(
       mojo::PendingReceiver<searchbox::mojom::PageHandler> pending_page_handler,
       mojo::PendingRemote<searchbox::mojom::Page> pending_page,

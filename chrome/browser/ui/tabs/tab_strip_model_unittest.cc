@@ -19,6 +19,7 @@
 #include "base/containers/fixed_flat_map.h"
 #include "base/containers/flat_map.h"
 #include "base/containers/flat_set.h"
+#include "base/memory/ptr_util.h"
 #include "base/memory/raw_ptr.h"
 #include "base/notreached.h"
 #include "base/strings/string_number_conversions.h"
@@ -1347,6 +1348,25 @@ TEST_F(TabStripModelTest, FocusMode) {
   EXPECT_FALSE(tabstrip()->GetFocusedGroup().has_value());
 }
 
+// A privileged WebContents (a WebContents created with PrivilegedParams) is
+// hosted natively by its owning feature, never as a browser tab. Inserting one
+// into a tab strip is a CHECK failure.
+TEST_F(TabStripModelTest, PrivilegedWebContentsCannotBeInserted) {
+  TestTabStripModelDelegate delegate;
+  TabStripModel model(&delegate, profile());
+
+  WebContents::CreateParams params(profile());
+  WebContents::PrivilegedParams privileged_params;
+  privileged_params.feature_id = 42;
+  params.privileged_params = privileged_params;
+  std::unique_ptr<WebContents> privileged = base::WrapUnique(
+      content::WebContentsTester::CreateTestWebContents(params));
+  ASSERT_TRUE(privileged->IsPrivileged());
+
+  EXPECT_DEATH_IF_SUPPORTED(
+      model.AppendWebContents(std::move(privileged), true), "");
+}
+
 TEST_F(TabStripModelTest, ClosingFocusedGroupUnsetsFocus) {
   TestTabStripModelDelegate delegate;
   TabStripModel model(&delegate, profile());
@@ -1466,11 +1486,6 @@ TEST_F(TabStripModelTest, FocusModeSessionDurationHistogramOnSwitchGroup) {
 
 TEST_F(TabStripModelTest,
        FocusModePinnedTabsUsageHistogramRecordedWhenPinnedTabsPresent) {
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndEnableFeatureWithParameters(
-      features::kTabGroupsFocusing,
-      {{features::kTabGroupsFocusingPinnedTabs.name, "true"}});
-
   TestTabStripModelDelegate delegate;
   TabStripModel model(&delegate, profile());
   base::HistogramTester histogram_tester;
@@ -1509,11 +1524,6 @@ TEST_F(TabStripModelTest,
 
 TEST_F(TabStripModelTest,
        FocusModePinnedTabsUsageHistogramZeroActivationsWhenUntouched) {
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndEnableFeatureWithParameters(
-      features::kTabGroupsFocusing,
-      {{features::kTabGroupsFocusingPinnedTabs.name, "true"}});
-
   TestTabStripModelDelegate delegate;
   TabStripModel model(&delegate, profile());
   base::HistogramTester histogram_tester;
@@ -1544,11 +1554,6 @@ TEST_F(TabStripModelTest,
 
 TEST_F(TabStripModelTest,
        FocusModePinnedTabsUsageHistogramRecordedWhenNoPinnedTabsPresent) {
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndEnableFeatureWithParameters(
-      features::kTabGroupsFocusing,
-      {{features::kTabGroupsFocusingPinnedTabs.name, "true"}});
-
   TestTabStripModelDelegate delegate;
   TabStripModel model(&delegate, profile());
   base::HistogramTester histogram_tester;
@@ -1577,11 +1582,6 @@ TEST_F(TabStripModelTest,
 
 TEST_F(TabStripModelTest,
        FocusModePinnedTabsUsageHistogramPinnedTabAddedDuringSession) {
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndEnableFeatureWithParameters(
-      features::kTabGroupsFocusing,
-      {{features::kTabGroupsFocusingPinnedTabs.name, "true"}});
-
   TestTabStripModelDelegate delegate;
   TabStripModel model(&delegate, profile());
   base::HistogramTester histogram_tester;
@@ -2699,13 +2699,7 @@ TEST_F(TabStripModelTest, CommandCloseTabsToRightInFocusedGroupOnly) {
   EXPECT_EQ(group_b, tabstrip()->GetTabGroupForTab(1));
 }
 
-TEST_F(TabStripModelTest,
-       SelectingPinnedTabPreservesFocusWhenPinnedTabsEnabled) {
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndEnableFeatureWithParameters(
-      features::kTabGroupsFocusing,
-      {{features::kTabGroupsFocusingPinnedTabs.name, "true"}});
-
+TEST_F(TabStripModelTest, SelectingPinnedTabPreservesFocus) {
   PrepareTabs(tabstrip(), 4);
   tabstrip()->SetTabPinned(0, true);
   tab_groups::TabGroupId group_id = tabstrip()->AddToNewGroup({1, 2});
@@ -2715,7 +2709,7 @@ TEST_F(TabStripModelTest,
   // Activate the pinned tab (index 0).
   tabstrip()->ActivateTabAt(0);
 
-  // Focus should be preserved because kTabGroupsFocusingPinnedTabs is enabled.
+  // Focus should be preserved.
   EXPECT_EQ(group_id, tabstrip()->GetFocusedGroup());
 }
 
@@ -2737,6 +2731,33 @@ TEST_F(TabStripModelTest, RemovingPinnedTabPreservesFocusAndSelectsGroupTab) {
   EXPECT_EQ(group_id, tabstrip()->GetFocusedGroup());
   EXPECT_EQ(group_id,
             tabstrip()->GetTabGroupForTab(tabstrip()->active_index()));
+}
+
+TEST_F(TabStripModelTest, ClosingTabInFocusedGroupSelectsAdjacentTab) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(features::kTabGroupsFocusing);
+
+  PrepareTabs(tabstrip(), 5);
+  tab_groups::TabGroupId group_id = tabstrip()->AddToNewGroup({1, 2, 3});
+  tabstrip()->SetFocusedGroup(group_id);
+  ASSERT_EQ(group_id, tabstrip()->GetFocusedGroup());
+
+  // Activate the middle tab in the focused group (index 2).
+  tabstrip()->ActivateTabAt(2);
+  EXPECT_EQ(2, tabstrip()->active_index());
+
+  // Close the active tab (index 2). The selection should move to the adjacent
+  // tab to the right in the group (index 2, formerly index 3), rather than
+  // jumping back to the first tab in the group (index 1).
+  tabstrip()->CloseWebContentsAt(2, TabCloseTypes::CLOSE_NONE);
+  EXPECT_EQ(2, tabstrip()->active_index());
+  EXPECT_EQ(group_id, tabstrip()->GetFocusedGroup());
+
+  // Close the last tab in the focused group (index 2). The selection should
+  // move to the preceding tab in the group (index 1).
+  tabstrip()->CloseWebContentsAt(2, TabCloseTypes::CLOSE_NONE);
+  EXPECT_EQ(1, tabstrip()->active_index());
+  EXPECT_EQ(group_id, tabstrip()->GetFocusedGroup());
 }
 
 TEST_F(TabStripModelTest, SplitTabPinning) {

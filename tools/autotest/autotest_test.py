@@ -473,6 +473,32 @@ class FindTestTargetsTest(TestCase):
     self.assertIn('chrome/test:browser_tests', targets)
     self.assertIn('chrome/test:unit_tests', targets)
 
+  def test_no_matching_targets_with_raw_targets(self):
+
+    def side_effect(cmd, *args, **kwargs):
+      if any(c.startswith('--type=executable') for c in cmd):
+        return ''
+      return '//components/payments:passkey_unknown_target'
+
+    self.mock_run_command.side_effect = side_effect
+    with self.assertRaises(Exception):
+      target_finder.FindTestTargets(self.mock_cache, self.out_dir, ['foo.cc'])
+    self.mock_exit.assert_called_once()
+    exit_msg = self.mock_exit.call_args[0][0]
+    self.assertIn('did not match any test targets', exit_msg)
+    self.assertIn('TEST_TARGET_ALLOWLIST', exit_msg)
+    self.assertIn('//components/payments:passkey_unknown_target', exit_msg)
+
+  def test_no_matching_targets_no_raw_targets(self):
+    self.mock_run_command.runnable_targets = []
+    self.mock_run_command.non_runnable_targets = []
+    with self.assertRaises(Exception):
+      target_finder.FindTestTargets(self.mock_cache, self.out_dir, ['foo.cc'])
+    self.mock_exit.assert_called_once()
+    exit_msg = self.mock_exit.call_args[0][0]
+    self.assertIn('did not match any test targets', exit_msg)
+    self.assertNotIn('TEST_TARGET_ALLOWLIST', exit_msg)
+
 
 class FindRelatedTestFilesTest(TestCase):
 
@@ -669,6 +695,20 @@ class SearchForTestsByNameTest(TestCase):
     called_args = self.mock_run_command.call_args[0][0]
     self.assertIn('(\\bFooTest\\b)', called_args)
 
+  def test_parameterized_test_syntax(self):
+    test_file = 'FooTest.cc'
+    self.fs.create_file(test_file,
+                        contents='IN_PROC_BROWSER_TEST_P(FooTest, Bar) {}')
+
+    self.mock_run_command.return_value = test_file
+
+    files, filter = file_finder.SearchForTestsByName(['FooTest.Bar'],
+                                                     quiet=True,
+                                                     remote_search=False)
+
+    self.assertEqual([test_file], files)
+    self.assertEqual('FooTest.Bar:FooTest.Bar/*:*/FooTest.Bar/*', filter)
+
 
 # Tests execution of multiple test targets to ensure correct flag isolation.
 class RunTestTargetsTest(TestCase):
@@ -801,6 +841,21 @@ class MainExitCodeTest(TestCase):
     result = runner.invoke(main.main, ['-C', self.out_dir, self.test_file])
     self.assertEqual(result.exit_code, 1)
     self.mock_run.assert_not_called()
+
+  def test_main_suite(self):
+    self.mock_run.return_value = 0
+    runner = CliRunner()
+    result = runner.invoke(
+        main.main, ['-C', self.out_dir, '--suite', 'chrome_junit_tests'])
+    self.assertEqual(result.exit_code, 0)
+    self.mock_build.assert_called_once_with(self.out_dir,
+                                            ['chrome_junit_tests'], False,
+                                            False, False)
+    self.mock_run.assert_called_once()
+    call_args, call_kwargs = self.mock_run.call_args
+    self.assertEqual(call_args[1], ['chrome_junit_tests'])
+    self.assertIsNone(call_args[2])
+    self.assertTrue(call_kwargs.get('is_suite'))
 
 
 if __name__ == '__main__':

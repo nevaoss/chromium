@@ -199,16 +199,18 @@ void GlicActorNudgeController::TriggerGlicActorNudge(
 }
 
 void GlicActorNudgeController::ShowBubble() {
-  if (auto* delegate = split_button_controller_->GetActiveDelegate()) {
-    delegate->ShowActorTaskListBubble();
+#if !BUILDFLAG(IS_ANDROID)
+  if (auto* bubble_controller = ActorTaskListBubbleController::From(browser_)) {
+    bubble_controller->ShowBubble();
   }
+#endif
 }
 
 void GlicActorNudgeController::CloseBubble() {
 #if !BUILDFLAG(IS_ANDROID)
-  ActorTaskListBubbleController* bubble_controller =
-      ActorTaskListBubbleController::From(browser_);
-  bubble_controller->CloseBubble();
+  if (auto* bubble_controller = ActorTaskListBubbleController::From(browser_)) {
+    bubble_controller->CloseBubble();
+  }
 #endif
 }
 

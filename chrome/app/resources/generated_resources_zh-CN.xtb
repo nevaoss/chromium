@@ -658,7 +658,7 @@
 <translation id="1508931164824684991">网站可以使用 JavaScript</translation>
 <translation id="1509163368529404530">恢复组(&amp;R)</translation>
 <translation id="1509281256533087115">通过 USB 访问任何<ph name="DEVICE_NAME_AND_VENDOR" /></translation>
-<translation id="1510135664727683766">您与 Gemini 的对话以及您的 Google Workspace 数据均不会经过人工审核，也不会用于改进生成式 AI 模型。Gemini 是一款 AI 工具，可能会出错。</translation>
+<translation id="1510135664727683766">您与 Gemini 的对话以及您的 Google Workspace 数据不会经过人工审核，也不会用于改进生成式 AI 模型。Gemini 是一款 AI 工具，可能会出错。</translation>
 <translation id="1510238584712386396">启动器</translation>
 <translation id="1510341833810331442">网站不得将数据保存在您的设备上</translation>
 <translation id="1510882959204224895">在窗口中打开</translation>
@@ -1158,7 +1158,7 @@
 <translation id="1892453608039100484">1. 点击下方的“<ph name="BUTTON_LABEL" />”
 2. 在 Windows 设置中点击“<ph name="BUTTON_2" />”</translation>
 <translation id="1895658205118569222">关机</translation>
-<translation id="1896353439080510710">对话内容会接受审核，并用于改进 Google AI。Gemini 是一款 AI 工具，可能会出错。您可以<ph name="BEGIN_LINK_MANAGE_ACTIVITY" />管理活动记录<ph name="END_LINK_MANAGE_ACTIVITY" />，包括您的位置信息。<ph name="BEGIN_LINK_LEARN_MORE" />详细了解您有哪些选择<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="1896353439080510710">对话内容会经过人工审核，并用于改进 Google AI。Gemini 是一款 AI 工具，可能会出错。您可以<ph name="BEGIN_LINK_MANAGE_ACTIVITY" />管理活动记录<ph name="END_LINK_MANAGE_ACTIVITY" />，包括您的位置信息。<ph name="BEGIN_LINK_LEARN_MORE" />详细了解您有哪些选择<ph name="END_LINK_LEARN_MORE" /></translation>
 <translation id="1897120393475391208">使用安全系数高的密码</translation>
 <translation id="1897860317037652061">扫描失败</translation>
 <translation id="1898804291554630487">询问与此页面有关的问题</translation>
@@ -1764,7 +1764,7 @@
 <translation id="2373499590298659902">按下“0”键表示按住鼠标按键</translation>
 <translation id="2373666622366160481">适合纸张大小</translation>
 <translation id="2375406435414127095">连接到您的手机</translation>
-<translation id="2375947780110007467">Google 会使用共享标签页的内容和网址。系统会在新对话中共享当前标签页。你可以随时更改此设置。</translation>
+<translation id="2375947780110007467">Google 会使用共享标签页的内容和网址。开启新对话将共享当前标签页。你可以随时更改此设置。</translation>
 <translation id="2376056713414548745">大声朗读</translation>
 <translation id="2376122016044804363">已复制到剪贴板的确认消息</translation>
 <translation id="2377667304966270281">硬故障数</translation>
@@ -2055,6 +2055,7 @@
 <translation id="2598710988533271874">有新版 Chrome 可用</translation>
 <translation id="2599048253926156421">用户名已复制到剪贴板</translation>
 <translation id="2600631204638174747">{NUM_SITES,plural, =1{关闭了 1 个不安全的扩展程序}other{关闭了 {NUM_SITES} 个不安全的扩展程序}}</translation>
+<translation id="2603121359676416582">针对此页面</translation>
 <translation id="2604129989323098489">网站通常会询问您的显示屏的相关信息，以便智能地打开和放置窗口，例如并排显示文档或全屏内容</translation>
 <translation id="2604255671529671813">网络连接错误</translation>
 <translation id="2604805099836652105">已填充<ph name="ADDRESS_LABEL" />地址表单。</translation>
@@ -2967,6 +2968,7 @@
 <translation id="3285329711156774325">搜索技能</translation>
 <translation id="3285500645985761267">允许关联网站查看您在该群组中的活动记录</translation>
 <translation id="328571385944182268">保存您的密码？</translation>
+<translation id="3285969135399641759">学习新技能</translation>
 <translation id="3289668031376215426">自动大写</translation>
 <translation id="3289856944988573801">要检查是否有更新，请使用以太网或 WLAN。</translation>
 <translation id="3290249595466894471">还会发送网页、下载内容、扩展程序活动和系统信息的少量样本，以帮助发现新威胁</translation>
@@ -6085,7 +6087,7 @@
 <translation id="5713158217420111469">已连接到“<ph name="DEVICE" />”</translation>
 <translation id="5713988532993992900">反色</translation>
 <translation id="5714100381896040477">限制在屏幕上的移动</translation>
-<translation id="5714683021965197919">您与 Gemini 的对话以及您的 Google Workspace 数据均不会经过人工审核，也不会用于改进生成式 AI 模型。Gemini 是一款 AI 工具，可能会出错。部分内容可能并不适合所有人。</translation>
+<translation id="5714683021965197919">您与 Gemini 的对话以及您的 Google Workspace 数据不会经过人工审核，也不会用于改进生成式 AI 模型。Gemini 是一款 AI 工具，可能会出错。部分内容可能并不适合所有人。</translation>
 <translation id="5719854774000914513">网站可以请求连接到 HID 设备</translation>
 <translation id="5720729194423017301">网站和搜索引擎的快捷字词</translation>
 <translation id="572155275267014074">Android 设置</translation>
@@ -6368,6 +6370,7 @@
 <translation id="5939719276406088041">无法创建快捷方式</translation>
 <translation id="5939723110967488589">选择要显示在工具栏中的按钮</translation>
 <translation id="594048410531370124">无法识别此键。按任意键即可<ph name="RESPONSE" />。</translation>
+<translation id="5940614040566393493">获取建议</translation>
 <translation id="5941711191222866238">最小化</translation>
 <translation id="5941854976565320351">{PASSWORD_COUNT,plural, =1{有 1 个密码只保存到此设备上。若要在其他设备上使用它，请将它保存到您的 Google 账号中。}other{有 {PASSWORD_COUNT} 个密码只保存到此设备上。若要在其他设备上使用它们，请将它们保存到您的 Google 账号中。}}</translation>
 <translation id="594221546068848596">使用<ph name="VISUAL_SEARCH_PROVIDER" />搜索网页</translation>
@@ -7860,7 +7863,7 @@
 <translation id="710224247908684995">某个扩展程序关闭了安全浏览功能</translation>
 <translation id="7102832101143475489">此请求已超时</translation>
 <translation id="7103944802169726298">PC 和投放设备使用的是同一个 Wi-Fi 网络</translation>
-<translation id="7105387152460258846"><ph name="PROFILE_NAME" />，Google 会员</translation>
+<translation id="7105387152460258846"><ph name="PROFILE_NAME" />（Google 会员）</translation>
 <translation id="7107609441453408294">在所有音响设备上播放相同的音频</translation>
 <translation id="7108338896283013870">隐藏</translation>
 <translation id="7108419148561505648">请先填写至少一个字段，然后再保存</translation>
@@ -8228,7 +8231,7 @@
 <translation id="7395774987022469191">整个屏幕</translation>
 <translation id="7396017167185131589">共享文件夹将会显示在此处</translation>
 <translation id="7396845648024431313"><ph name="APP_NAME" /> 会在系统启动时启动，即使您将其他所有 <ph name="PRODUCT_NAME" />窗口关闭，它也会继续在后台运行。</translation>
-<translation id="7398815534290329738">对话内容会接受审核，并用于改进 Google AI。Gemini 是一款 AI 工具，可能会出错。部分内容可能并不适合所有人。您可以<ph name="BEGIN_LINK_MANAGE_ACTIVITY" />管理活动记录<ph name="END_LINK_MANAGE_ACTIVITY" />，包括您的位置信息。<ph name="BEGIN_LINK_LEARN_MORE" />详细了解您有哪些选择<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="7398815534290329738">对话内容会经过人工审核，并用于改进 Google AI。Gemini 是一款 AI 工具，可能会出错。部分内容可能并不适合所有人。您可以<ph name="BEGIN_LINK_MANAGE_ACTIVITY" />管理活动记录<ph name="END_LINK_MANAGE_ACTIVITY" />，包括您的位置信息。<ph name="BEGIN_LINK_LEARN_MORE" />详细了解您有哪些选择<ph name="END_LINK_LEARN_MORE" /></translation>
 <translation id="7399045143794278225">自定义同步</translation>
 <translation id="7399616692258236448">系统会自动屏蔽除您允许的网站之外的其他所有网站的位置信息请求</translation>
 <translation id="7399802613464275309">安全检查</translation>
@@ -9847,7 +9850,7 @@
 <translation id="8655295600908251630">版本</translation>
 <translation id="8656888282555543604">启用盲文记录功能</translation>
 <translation id="8657393004602556571">您想舍弃反馈吗？</translation>
-<translation id="8657542881463614516">使用滑动手势浏览各个页面</translation>
+<translation id="8657542881463614516">使用滑动手势切换页面</translation>
 <translation id="865857184419171576">将字幕翻译为</translation>
 <translation id="865936634714975126">在网址中添加查询参数，以便选择网页加载类型。示例：chrome://device-log/?types=Bluetooth,USB</translation>
 <translation id="8659609431223166673">窗口已向下移动</translation>
@@ -10673,7 +10676,6 @@
 <translation id="983192555821071799">关闭所有标签页</translation>
 <translation id="983531994960412650"><ph name="WINDOW_TITLE" /> - 摄像头正在录像且麦克风正在录音</translation>
 <translation id="984705303330760860">添加拼写检查语言</translation>
-<translation id="987068745968718743">Parallels Desktop：<ph name="PLUGIN_VM_NAME" /></translation>
 <translation id="987264212798334818">常规</translation>
 <translation id="987574372967138078"><ph name="WEBSITE_ORIGIN" /> 想从您的移动设备获取信息</translation>
 <translation id="988320949174893488">偶尔不流畅</translation>

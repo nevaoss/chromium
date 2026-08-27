@@ -116,6 +116,7 @@
 <translation id="1414919006379339073">关闭当前窗口</translation>
 <translation id="1416550906796893042">应用版本</translation>
 <translation id="1430915738399379752">打印</translation>
+<translation id="1432581352905426595">管理搜索引擎</translation>
 <translation id="1435593198351412143">自动打开 PDF 文件</translation>
 <translation id="1437543266176261764">正在“<ph name="APP_NAME" />”应用内运行</translation>
 <translation id="1448440926884431741">在“书签”页面中整理您跟踪的商品</translation>
@@ -297,6 +298,7 @@
 <translation id="2233735624724508540">选择时间范围，然后点按“删除数据”</translation>
 <translation id="2234031676056123135">自定义快捷方式</translation>
 <translation id="2234827758954819389">隐私保护指南</translation>
+<translation id="2236949375853147973">我的活动记录</translation>
 <translation id="2238038374973843156">将分组移至另一个窗口</translation>
 <translation id="2247789808226901522">银行卡已过期</translation>
 <translation id="2251809247798634662">打开新的无痕式窗口</translation>
@@ -574,6 +576,7 @@
 <translation id="3385749568468586663">Gemini 在无痕模式下无法使用</translation>
 <translation id="3387650086002190359">未能成功下载 <ph name="FILE_NAME" />，因为文件系统出现了错误。</translation>
 <translation id="3391311825344469964">您可以在 Chrome 的窗口管理器中管理窗口</translation>
+<translation id="3410151451624226773">在 Google 密码管理工具中管理</translation>
 <translation id="3417835166382867856">搜索标签页</translation>
 <translation id="3430670036890315772">关闭个人资料锁定功能将移除您已保存的信息</translation>
 <translation id="3435575784518354875">如需继续使用您的密码，请立即将其导出，更新 Google Play 服务，然后将其重新导入 Google 密码管理工具。<ph name="BEGIN_LINK" />查看完整说明<ph name="END_LINK" />。</translation>
@@ -942,6 +945,7 @@
 <translation id="4877678010818027629">进入无痕模式</translation>
 <translation id="4878404682131129617">未能成功通过代理服务器建立隧道</translation>
 <translation id="4880127995492972015">翻译…</translation>
+<translation id="4880827082731008257">搜索记录</translation>
 <translation id="4881695831933465202">打开</translation>
 <translation id="488187801263602086">重命名文件</translation>
 <translation id="4885273946141277891">Chrome 实例数量已超出上限。</translation>
@@ -991,6 +995,7 @@
 <translation id="509429900233858213">出现错误。</translation>
 <translation id="5096775069898886423">在您访问不支持安全连接的网站前，系统会发出警告</translation>
 <translation id="510275257476243843">还剩 1 小时</translation>
+<translation id="5105442806410269908">管理其他 Google 数据</translation>
 <translation id="5114895953710637392">应用过滤器工作表已关闭。</translation>
 <translation id="5115811374190515607">已移至<ph name="PRODUCT_NAME" /></translation>
 <translation id="5116239826668864748">当您点按消息、文档和其他应用中的链接时，可以随时使用 Chrome 打开链接</translation>
@@ -1041,6 +1046,7 @@
 <translation id="5316947901395241499">您的管理员已关闭密码保存功能</translation>
 <translation id="5317780077021120954">保存</translation>
 <translation id="5319359161174645648">Google 推荐使用 Chrome</translation>
+<translation id="5323501626199324454">在 Google 账号中管理</translation>
 <translation id="5326246328175179736">您无法使用此账号登录</translation>
 <translation id="5327248766486351172">名称</translation>
 <translation id="5328542107300944283">通过 <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> 账号使用</translation>
@@ -1325,6 +1331,7 @@
 <translation id="6461962085415701688">无法打开文件</translation>
 <translation id="6464977750820128603">您可以查看自己在 Chrome 中访问的网站并为这些网站设置计时器。\n\nGoogle 会获取这些设有计时器的网站的相关信息以及您对这些网站的访问时长。这些信息会被用于改进“数字健康”应用。</translation>
 <translation id="6468703991511753953">地址栏目前位于底部</translation>
+<translation id="6469702164109431067">密码和通行密钥</translation>
 <translation id="6470181189905173055">您使用“<ph name="APP_LABEL" />”在 Chrome 中打开的网页将显示在此处。</translation>
 <translation id="6473086018775716761">分享选项列表已半屏打开。</translation>
 <translation id="6475951671322991020">下载视频</translation>
@@ -1529,6 +1536,7 @@
 <translation id="7182520625618447753">您可以将地址栏移至顶部或底部，获享个性化浏览体验</translation>
 <translation id="7183517696921903380">应用过滤器工作表已打开。</translation>
 <translation id="7186568385131859684">控制 Google 服务如何使用浏览记录及您的其他数据</translation>
+<translation id="7189516830800112767">{NUM_TABS,plural, =1{再次按 ^W 才能关闭固定标签页}other{再次按 ^W 才能关闭固定标签页}}</translation>
 <translation id="7190921792980745354">要屏蔽<ph name="MEMBER_FULL_NAME" />吗？</translation>
 <translation id="7191430249889272776">标签页已在后台打开。</translation>
 <translation id="7192397795254933433">{NUM_PASSWORDS,plural, =1{您应立即更改这个密码}other{您应立即更改这些密码}}</translation>
@@ -1977,6 +1985,7 @@
 <translation id="8995521496079646922">系统将默认使用您选择的应用。如果此设备上尚未安装某个应用，系统会很快下载该应用。</translation>
 <translation id="8996847606757455498">另选一个提供商</translation>
 <translation id="8998837250940831980">无法将标签页最小化。请稍后再试。</translation>
+<translation id="9000089900434778519">您所用的搜索引擎是<ph name="DSE_NAME" />。请查看它的相关说明，了解如何删除您的搜索记录（若适用）。</translation>
 <translation id="9001604755921395912">在 Chrome 无痕式标签页中打开</translation>
 <translation id="9010094279589497751">随时随需快速打开 Gemini</translation>
 <translation id="9012585441087414258">防范已知危险的网站、下载内容和扩展程序。如果发现某个网页有可疑之处，系统会将相应网址连同少量网页内容发送到“Google 安全浏览”功能进行检查。</translation>

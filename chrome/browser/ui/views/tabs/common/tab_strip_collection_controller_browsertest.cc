@@ -195,18 +195,10 @@ IN_PROC_BROWSER_TEST_P(TabStripCollectionControllerBrowserTest,
 
 // TODO(crbug.com/539987012): Enable this test on MacOS once the flakiness is
 // fixed.
-// This could have been "disabled" by only having the test compile on ChromeOS
-// by updating L204, but that also involves updating L221-227, where OS
-// specific code is running. These changes make it easier to revert the
-// "disabling" of the test.
-#if BUILDFLAG(IS_MAC)
-#define MAYBE_ClickTabInImmersiveMode DISABLED_ClickTabInImmersiveMode
-#else
-#define MAYBE_ClickTabInImmersiveMode ClickTabInImmersiveMode
-#endif
+// TODO(crbug.com/545007115): Flaky on ChromeOS.
 #if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_MAC)
 IN_PROC_BROWSER_TEST_P(TabStripCollectionControllerBrowserTest,
-                       MAYBE_ClickTabInImmersiveMode) {
+                       DISABLED_ClickTabInImmersiveMode) {
   // Add another tab to switch to.
   AppendTab();
 
@@ -586,8 +578,7 @@ class TabStripControllerFocusingVisibilityBrowserTest
       override {
     auto enabled = VerticalTabsBrowserTestMixin<
         InProcessBrowserTest>::GetEnabledFeatures();
-    enabled.push_back({features::kTabGroupsFocusing,
-                       {{"tab_groups_focusing_pinned_tabs", "false"}}});
+    enabled.push_back({features::kTabGroupsFocusing, {}});
     enabled.push_back({tabs::kTabStripUnification, {}});
     return enabled;
   }
@@ -598,11 +589,11 @@ class TabStripControllerFocusingVisibilityBrowserTest
           gfx::Animation::RichAnimationRenderMode::FORCE_DISABLED);
 };
 
-// Verifies that when a tab group is focused, pinned tabs and unfocused
-// groups/tabs are correctly hidden from the layout. It also ensures that
-// exiting focus mode restores the visibility of all tabs.
+// Verifies that when a tab group is focused, pinned tabs remain visible while
+// unfocused groups/tabs are correctly hidden from the layout. It also ensures
+// that exiting focus mode restores the visibility of all tabs.
 IN_PROC_BROWSER_TEST_P(TabStripControllerFocusingVisibilityBrowserTest,
-                       FocusModeHidesUnfocusedAndPinnedTabs) {
+                       FocusModeHidesUnfocusedTabsPreservesPinnedTabs) {
   AppendTab();
   AppendTab();
 
@@ -632,8 +623,8 @@ IN_PROC_BROWSER_TEST_P(TabStripControllerFocusingVisibilityBrowserTest,
   model->SetFocusedGroup(group_id);
   RunScheduledLayouts();
 
-  // Verify pinned tab and unfocused tab are hidden.
-  EXPECT_FALSE(pinned_tab_view->GetVisible());
+  // Verify pinned tab remains visible and unfocused tab is hidden.
+  EXPECT_TRUE(pinned_tab_view->GetVisible());
   EXPECT_TRUE(group_view->GetVisible());
   EXPECT_FALSE(unpinned_tab_view->GetVisible());
 

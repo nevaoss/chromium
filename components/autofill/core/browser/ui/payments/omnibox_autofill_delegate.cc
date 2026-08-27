@@ -108,6 +108,7 @@ bool IsValidOmniboxAutofillSuggestion(SuggestionType type) {
     case SuggestionType::kPasswordFieldByFieldFilling:
     case SuggestionType::kPendingStateSignin:
     case SuggestionType::kPersonalContextNotice:
+    case SuggestionType::kRemoveAutofillAi:
     case SuggestionType::kSaveAndFillCreditCardEntry:
     case SuggestionType::kScanCreditCard:
     case SuggestionType::kSeePromoCodeDetails:
@@ -198,22 +199,29 @@ void OmniboxAutofillDelegate::OnFieldTypesDetermined(
 
   // Iterate over all AutofillFields in the FormStructure, paying attention to
   // the frame they are in (main vs. iframe) as well as ensuring there's only a
-  // single CREDIT_CARD_NUMBER type.
-  bool found_credit_card_number_field = false;
+  // single visible CREDIT_CARD_NUMBER type.
+  bool found_visible_credit_card_number_field = false;
   std::set<url::Origin> iframe_origins;
   for (const std::unique_ptr<AutofillField>& field : form_structure->fields()) {
-    if (field->Type().GetCreditCardType() == CREDIT_CARD_NUMBER) {
-      if (found_credit_card_number_field) {
+    if (IsVisibleCreditCardNumberField(*field)) {
+      if (found_visible_credit_card_number_field) {
         LogOmniboxAutofillShowChipDecisionPart1(
             OmniboxAutofillShowChipDecisionPart1::
-                kFoundMultipleCreditCardNumberFields);
+                kFoundMultipleVisibleCreditCardNumberFields);
         return;
       }
-      found_credit_card_number_field = true;
+      found_visible_credit_card_number_field = true;
     }
     if (!IsFieldInMainFrame(manager, *field)) {
       iframe_origins.insert(field->origin());
     }
+  }
+
+  // Not a single visible credit card number field was detected.
+  if (!found_visible_credit_card_number_field) {
+    LogOmniboxAutofillShowChipDecisionPart1(
+        OmniboxAutofillShowChipDecisionPart1::kNoVisibleCreditCardNumberFields);
+    return;
   }
 
   // All fields of the form must be either in the main frame or an allowlisted
@@ -241,7 +249,7 @@ void OmniboxAutofillDelegate::OnFieldTypesDetermined(
   trigger_form_global_id_ = form_structure->global_id();
   trigger_field_global_id_ = {};
   for (const std::unique_ptr<AutofillField>& field : form_structure->fields()) {
-    if (field->Type().GetCreditCardType() == CREDIT_CARD_NUMBER) {
+    if (IsVisibleCreditCardNumberField(*field)) {
       trigger_field_global_id_ = field->global_id();
       break;
     }
@@ -515,6 +523,12 @@ bool OmniboxAutofillDelegate::IsOutermostMainFrameActiveAutofillManager(
     AutofillManager& manager) {
   return manager.driver().GetParent() == nullptr &&
          !manager.driver().IsEmbedded() && manager.driver().IsActive();
+}
+
+bool OmniboxAutofillDelegate::IsVisibleCreditCardNumberField(
+    const AutofillField& field) const {
+  return field.Type().GetCreditCardType() == CREDIT_CARD_NUMBER &&
+         field.is_visible();
 }
 
 bool OmniboxAutofillDelegate::IsFieldInMainFrame(

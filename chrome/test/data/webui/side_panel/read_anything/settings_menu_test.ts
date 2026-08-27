@@ -32,7 +32,6 @@ suite('SettingsMenuElement', () => {
     document.body.innerHTML = window.trustedTypes!.emptyHTML;
     const readingMode = new FakeReadingMode();
     chrome.readingMode = readingMode as unknown as typeof chrome.readingMode;
-    chrome.readingMode.imagesFeatureEnabled = true;
     chrome.readingMode.isLineFocusEnabled = true;
     metrics = mockMetrics();
 
@@ -447,7 +446,6 @@ suite('SettingsMenuElement', () => {
 
   test('only first toggle has separator', async () => {
     chrome.readingMode.isReadabilityEnabled = true;
-    chrome.readingMode.imagesFeatureEnabled = true;
     settingsMenu.isImmersiveMode = true;
     settingsMenu.settingsPrefs = {...settingsMenu.settingsPrefs};
     await microtasksFinished();
@@ -577,5 +575,48 @@ suite('SettingsMenuElement', () => {
     translateItem.click();
     const event = await whenFired;
     assertEquals(SettingsOption.FONT, event.detail.previousId);
+  });
+
+  test(
+      'line focus item shows new badge when showLineFocusNewBadge is true',
+      async () => {
+        settingsMenu.showLineFocusNewBadge = true;
+        await microtasksFinished();
+
+        const actionMenu = settingsMenu.$.lazyMenu.get();
+        const lineFocusItem = actionMenu.querySelector<HTMLButtonElement>(
+            `#${SettingsOption.LINE_FOCUS}`);
+        assertTrue(!!lineFocusItem);
+
+        const badge = lineFocusItem.querySelector('new-badge');
+        assertTrue(!!badge);
+      });
+
+  test(
+      'line focus item hides new badge when showLineFocusNewBadge is false',
+      async () => {
+        settingsMenu.showLineFocusNewBadge = false;
+        await microtasksFinished();
+
+        const actionMenu = settingsMenu.$.lazyMenu.get();
+        const lineFocusItem = actionMenu.querySelector<HTMLButtonElement>(
+            `#${SettingsOption.LINE_FOCUS}`);
+        assertTrue(!!lineFocusItem);
+
+        const badge = lineFocusItem.querySelector('new-badge');
+        assertFalse(!!badge);
+      });
+
+  test('requests line focus new badge on open', () => {
+    let requested = false;
+    chrome.readingMode.requestShouldShowLineFocusNewBadge = () => {
+      requested = true;
+    };
+    const anchor = document.createElement('div');
+    document.body.appendChild(anchor);
+
+    settingsMenu.open(anchor);
+
+    assertTrue(requested);
   });
 });

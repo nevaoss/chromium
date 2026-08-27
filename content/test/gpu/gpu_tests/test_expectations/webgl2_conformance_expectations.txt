@@ -11,7 +11,7 @@
 # Devices
 # tags: [ android-pixel-2 android-pixel-4 android-pixel-6 android-pixel-10
 #             android-shield-android-tv android-sm-a137f android-sm-a236b
-#             android-sm-s911u1
+#             android-sm-s911u1 android-sm-s926b
 #         android-brya android-corsola
 #         chromeos-board-amd64-generic chromeos-board-eve chromeos-board-jacuzzi
 #             chromeos-board-octopus
@@ -43,7 +43,8 @@
 #             intel-0x3e9b intel-0x4680 intel-0x46a8 intel-0x5912 intel-0x9bc5
 #         microsoft microsoft-0xffff
 #         nvidia nvidia-0x1cb3 nvidia-0x2184 nvidia-0x2783 nvidia-0x2c02
-#         qualcomm qualcomm-0x36333630 qualcomm-0x36334330 ]
+#         qualcomm qualcomm-0x36333630 qualcomm-0x36334330
+#         samsung-electronics-co.-ltd. ]
 # Architecture
 # tags: [ arch-arm64 arch-x86_64 ]
 # Decoder
@@ -628,6 +629,11 @@ crbug.com/328100306 [ amd angle-metal graphite-enabled sonoma ] conformance/glsl
 
 crbug.com/angleproject/6430 [ angle-metal intel passthrough sequoia ] deqp/functional/gles3/readpixel.html [ Failure ]
 
+## Metal M2 ##
+
+crbug.com/527353878 [ mac apple-angle-metal-renderer:-apple-m2 asan ] conformance/extensions/khr-parallel-shader-compile.html [ RetryOnFailure ]
+crbug.com/544795247 [ mac apple-angle-metal-renderer:-apple-m2 asan ] deqp/functional/gles3/occlusionquery_conservative.html [ RetryOnFailure ]
+
 ######################################################################
 # Mac failures (mainly OpenGL; some need to be reevaluated on Metal) #
 ######################################################################
@@ -967,6 +973,11 @@ crbug.com/352104898 [ fuchsia fuchsia-board-qemu-x64 passthrough ] WebglExtensio
 crbug.com/352104898 [ fuchsia fuchsia-board-qemu-x64 passthrough ] WebglExtension_EXT_texture_norm16 [ Failure ]
 crbug.com/352104898 [ fuchsia fuchsia-board-qemu-x64 passthrough ] WebglExtension_WEBGL_blend_func_extended [ Failure ]
 crbug.com/352104898 [ fuchsia fuchsia-board-qemu-x64 passthrough angle-swiftshader ] WebglExtension_WEBGL_render_shared_exponent [ Failure ]
+
+crbug.com/542706617 [ fuchsia fuchsia-board-qemu-x64 ] conformance2/textures/image_bitmap_from_canvas/tex-2d-rgb9_e5-rgb-float.html [ Failure ]
+crbug.com/542706617 [ fuchsia fuchsia-board-qemu-x64 ] conformance2/textures/image_bitmap_from_canvas/tex-2d-rgb9_e5-rgb-half_float.html [ Failure ]
+crbug.com/542706617 [ fuchsia fuchsia-board-qemu-x64 ] conformance2/textures/webgl_canvas/tex-2d-rgb9_e5-rgb-float.html [ Failure ]
+crbug.com/542706617 [ fuchsia fuchsia-board-qemu-x64 ] conformance2/textures/webgl_canvas/tex-2d-rgb9_e5-rgb-half_float.html [ Failure ]
 
 ###############################
 # New failures in WebGL rolls #

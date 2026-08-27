@@ -118,6 +118,7 @@ namespace autofill {
 class ActorKeyMetricsRecorder;
 class AutofillManager;
 class AddressNormalizer;
+class AtMemoryManager;
 class AtMemoryQueryService;
 class AutocompleteHistoryManager;
 class AutofillAblationStudy;
@@ -155,6 +156,7 @@ class SingleFieldFillRouter;
 class TouchToFillAutofillDelegate;
 class ValuablesDataManager;
 class AutofillAiPersonalContextAccessManager;
+class EntitySuppressionManager;
 class VotesUploader;
 class PasswordManagerAutofillHelperDelegate;
 class WalletPassAccessManager;
@@ -466,6 +468,11 @@ class AutofillClient {
   const AutofillAiPersonalContextAccessManager*
   GetAutofillAiPersonalContextAccessManager() const;
 
+  // Returns the per-profile `EntitySuppressionManager` associated with the
+  // client.
+  virtual EntitySuppressionManager* GetEntitySuppressionManager();
+  const EntitySuppressionManager* GetEntitySuppressionManager() const;
+
   // Returns the per-profile `AutofillAiModelCache`. Returns `nullptr` if the
   // `kAutofillAiServerModel` is not enabled.
   virtual AutofillAiModelCache* GetAutofillAiModelCache();
@@ -492,6 +499,10 @@ class AutofillClient {
   // Returns the `AtMemoryQueryService` associated with the profile of
   // the window of this tab.
   virtual AtMemoryQueryService* GetAtMemoryQueryService();
+
+  // Returns the `AtMemoryManager`.
+  virtual AtMemoryManager* GetAtMemoryManager();
+  const AtMemoryManager* GetAtMemoryManager() const;
 
   // Returns the enablement state of the Accessibility Annotator.
   // TODO(crbug.com/524193567) Delete this method once all the invocations are
@@ -749,6 +760,14 @@ class AutofillClient {
   // The AutofillSnackbarController is used to show a snackbar notification
   // on Android.
   virtual AutofillSnackbarControllerImpl* GetAutofillSnackbarController();
+
+  // Notifies the user that their data is being fetched from the server to fill
+  // the form.
+  virtual void ShowAutofillAiLoadingDialog();
+
+  // Closes the dialog that informs the user that their data is being fetched
+  // from the server to fill the form.
+  virtual void DismissAutofillAiLoadingDialog();
 #endif
 
 #if BUILDFLAG(IS_IOS)

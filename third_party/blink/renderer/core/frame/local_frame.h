@@ -100,6 +100,7 @@
 #include "third_party/blink/renderer/platform/scheduler/public/frame_scheduler.h"
 #include "third_party/blink/renderer/platform/supplementable.h"
 #include "third_party/perfetto/include/perfetto/tracing/traced_value_forward.h"
+#include "ui/gfx/geometry/rect.h"
 #include "ui/gfx/geometry/transform.h"
 #include "ui/gfx/image/image_skia.h"
 
@@ -376,9 +377,14 @@ class CORE_EXPORT LocalFrame final
   void RegisterVirtualKeyboardOverlayChangedObserver(
       VirtualKeyboardOverlayChangedObserver*);
 
-  // Notify |virtual_keyboard_overlay_changed_observers_| that keyboard overlay
-  // rect has changed.
-  void NotifyVirtualKeyboardOverlayRectObservers(const gfx::Rect&) const;
+  // Update the current keyboard overlay geometry, then notify
+  // |virtual_keyboard_overlay_changed_observers_|.
+  void NotifyVirtualKeyboardOverlayRectObservers(const gfx::Rect&);
+  void SetVirtualKeyboardOverlayGeometry(const gfx::Rect&);
+  // The most recent normalized keyboard overlay geometry.
+  const gfx::Rect& VirtualKeyboardOverlayRect() const {
+    return virtual_keyboard_overlay_rect_;
+  }
 
   // This call will "show interest" in the Element with the provided DOMNodeID,
   // which is presumed to have an `interestfor` attribute.
@@ -776,6 +782,10 @@ class CORE_EXPORT LocalFrame final
       network::mojom::blink::RedirectMode cross_origin_redirect_behavior,
       mojo::PendingRemote<mojom::blink::BlobURLToken> blob_url_token);
 
+  // Requests that the browser open the operating system's caption style
+  // settings page.
+  void ShowCaptionSettings();
+
   void NotifyUserActivation(
       mojom::blink::UserActivationNotificationType notification_type);
   void AddInspectorIssue(AuditsIssue issue);
@@ -1085,6 +1095,9 @@ class CORE_EXPORT LocalFrame final
   // Keeps track of all the registered VK observers.
   HeapHashSet<WeakMember<VirtualKeyboardOverlayChangedObserver>>
       virtual_keyboard_overlay_changed_observers_;
+  // Retains normalized geometry before navigator.virtualKeyboard is created,
+  // so its boundingRect can start with the current value.
+  gfx::Rect virtual_keyboard_overlay_rect_;
 
   HeapHashSet<WeakMember<WidgetCreationObserver>> widget_creation_observers_;
 

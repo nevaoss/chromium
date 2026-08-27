@@ -106,7 +106,7 @@ public final class StatusMediatorUnitTest {
     private static final int CURRENT_TAB_ID = 5;
     private static final int NEW_TAB_ID = 1;
 
-    @Rule public MockitoRule mMockitoRule = MockitoJUnit.rule();
+    @Rule public final MockitoRule mMockitoRule = MockitoJUnit.rule();
 
     @Mock private NewTabPageDelegate mNewTabPageDelegate;
     @Mock private LocationBarDataProvider mLocationBarDataProvider;
@@ -123,7 +123,7 @@ public final class StatusMediatorUnitTest {
     @Mock private WebContents mWebContents;
     @Mock private NavigationController mNavigationController;
     @Mock private NavigationEntry mNavigationEntry;
-    @Mock UserPrefsJni mMockUserPrefsJni;
+    @Mock private UserPrefsJni mMockUserPrefsJni;
     @Mock private PrefService mPrefs;
     @Mock private Tracker mTracker;
     @Mock private OnClickListener mOnClickListener;
@@ -133,6 +133,7 @@ public final class StatusMediatorUnitTest {
     @Mock private ComposeboxQueryControllerBridge.Natives mComposeboxBridgeJni;
     @Mock private LargeIconBridge.Natives mLargeIconBridgeNatives;
     @Mock private Drawable mMockFaviconDrawable;
+    @Mock private TemplateUrl mTemplateUrl;
 
     @Captor private ArgumentCaptor<PermissionDialogController.Observer> mPermissionObserverCaptor;
 
@@ -596,13 +597,13 @@ public final class StatusMediatorUnitTest {
 
     @Test
     @SmallTest
-    public void testWideIconTrue_tabSearchOverlay() {
+    public void testWideIconFalse_tabSearchOverlay() {
         doReturn(PageClassification.ANDROID_TAB_SEARCH_OVERLAY_VALUE)
                 .when(mLocationBarDataProvider)
                 .getPageClassification(/* prefetch= */ false);
 
         mMediator.beginInput(mFuseboxSessionState);
-        assertTrue(mModel.get(StatusProperties.USE_WIDE_STATUS_ICON));
+        assertFalse(mModel.get(StatusProperties.USE_WIDE_STATUS_ICON));
     }
 
     @Test
@@ -1291,15 +1292,14 @@ public final class StatusMediatorUnitTest {
 
         Shadows.shadowOf(Looper.getMainLooper()).idle();
 
-        TemplateUrl geminiTemplate = mock(TemplateUrl.class);
-        doReturn(geminiTemplate).when(mTemplateUrlService).getTemplateUrlForKeyword("gemini");
+        doReturn(mTemplateUrl).when(mTemplateUrlService).getTemplateUrlForKeyword("gemini");
         SiteSearchData geminiData = new SiteSearchData("gemini", "Gemini");
         siteSearchDataSupplier.set(geminiData);
 
         Shadows.shadowOf(Looper.getMainLooper()).idle();
 
         verify(mSearchEngineService)
-                .retrieveFavicon(eq(geminiTemplate), mFaviconCallbackCaptor.capture());
+                .retrieveFavicon(eq(mTemplateUrl), mFaviconCallbackCaptor.capture());
 
         StatusIconResource geminiIcon = new StatusIconResource("gemini_icon", null, 0);
         mFaviconCallbackCaptor.getValue().onResult(geminiIcon);
@@ -1374,6 +1374,28 @@ public final class StatusMediatorUnitTest {
         if (icon != null) {
             assertNotEquals(R.drawable.ic_logo_googleg_20dp, icon.getIconRes());
         }
+    }
+
+    @Test
+    @SmallTest
+    public void testHover_enabledWhenClickListenerSet() {
+        doReturn(PageClassification.ANDROID_HUB_VALUE)
+                .when(mLocationBarDataProvider)
+                .getPageClassification(/* prefetch= */ false);
+        mMediator.setOnStatusIconNavigateBackButtonPress(mOnClickListener);
+        mMediator.updateLocationBarIcon(IconTransitionType.CROSSFADE);
+
+        assertNotNull(mModel.get(StatusProperties.STATUS_CLICK_LISTENER));
+        assertTrue(mModel.get(StatusProperties.STATUS_VIEW_HOVER_ENABLED));
+    }
+
+    @Test
+    @SmallTest
+    public void testHover_disabledWhenClickListenerNull() {
+        mMediator.beginInput(mFuseboxSessionState);
+
+        assertNull(mModel.get(StatusProperties.STATUS_CLICK_LISTENER));
+        assertFalse(mModel.get(StatusProperties.STATUS_VIEW_HOVER_ENABLED));
     }
 
     private void setAutocompleteState(@AutocompleteState int state) {

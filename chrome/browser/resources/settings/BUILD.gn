@@ -14,6 +14,7 @@ build_webui("build") {
   static_files = [
     "images/cvc.svg",
     "images/cvc_amex.svg",
+    "images/gemini_spark.svg",
     "images/googleg_standard_clr_32px.svg",
     "images/iban.svg",
     "images/iban_old.svg",
@@ -63,15 +64,15 @@ build_webui("build") {
     "ai_page/offer_writing_help_page.ts",
     "ai_page/skills_page.ts",
     "autofill_page/account_card.ts",
-    "autofill_page/address_edit_dialog.ts",
-    "autofill_page/address_remove_confirmation_dialog.ts",
     "autofill_page/autofill_ai_add_or_edit_dialog.ts",
     "autofill_page/autofill_ai_entries_list.ts",
     "autofill_page/autofill_page.ts",
     "autofill_page/autofill_page_index.ts",
-    "autofill_page/autofill_section.ts",
     "autofill_page/category_reference_card.ts",
     "autofill_page/collapsible_autofill_settings_card.ts",
+    "autofill_page/contact_info/address_edit_dialog.ts",
+    "autofill_page/contact_info/address_remove_confirmation_dialog.ts",
+    "autofill_page/contact_info/contact_info_page.ts",
     "autofill_page/credit_card_edit_dialog.ts",
     "autofill_page/credit_card_list_entry.ts",
     "autofill_page/iban_edit_dialog.ts",
@@ -254,6 +255,7 @@ build_webui("build") {
   # -----------------ts_files start ----------------------------
 
   ts_files = [
+    "privacy_icons.html.ts",
     "a11y_page/a11y_browser_proxy.ts",
     "a11y_page/a11y_page.html.ts",
     "a11y_page/a11y_page.ts",
@@ -274,8 +276,8 @@ build_webui("build") {
     "appearance_page/appearance_page_index.ts",
     "appearance_page/home_url_input.html.ts",
     "appearance_page/home_url_input.ts",
-    "autofill_page/address_edit_dialog_components.ts",
     "autofill_page/autofill_manager_proxy.ts",
+    "autofill_page/contact_info/address_edit_dialog_components.ts",
     "autofill_page/country_detail_manager_proxy.ts",
     "autofill_page/entity_data_manager_proxy.ts",
     "autofill_page/password_manager_proxy.ts",
@@ -458,10 +460,7 @@ build_webui("build") {
 
   # -----------------ts_files end -------------------------------
 
-  icons_html_files = [
-    "privacy_icons.html",
-    "privacy_page/security/fingerprint_icons.html",
-  ]
+  icons_html_files = [ "privacy_page/security/fingerprint_icons.html" ]
 
   if (is_chrome_branded) {
     icons_html_files += [ "internal/icons.html" ]
@@ -493,6 +492,7 @@ build_webui("build") {
     "languages_page/add_languages_dialog.css",
     "on_startup_page/startup_url_entry.css",
     "on_startup_page/startup_urls_page.css",
+    "people_page/import_data_dialog.css",
     "performance_page/battery_page.css",
     "performance_page/memory_page.css",
     "performance_page/performance_page_index.css",

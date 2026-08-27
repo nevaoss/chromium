@@ -482,9 +482,7 @@ source_set("extensions") {
     # TODO(crbug.com/353284909): Remove this circular dependency.
     "//chrome/browser/media/webrtc",
     "//chrome/browser/ui/extensions",
-    "//chrome/browser/ui/safety_hub",
     "//chrome/browser/ui/toolbar",
-    "//chrome/browser/supervised_user",
   ]
   deps = [
     "//base",
@@ -577,6 +575,7 @@ source_set("extensions") {
     "//components/contextual_search:prefs",
     "//components/contextual_tasks/public",
     "//components/cookie_config",
+    "//components/crash/content/browser/error_reporting",
     "//components/crx_file",
     "//components/data_sharing/public",
     "//components/data_sharing/public:features",
@@ -871,9 +870,6 @@ source_set("extensions") {
       # TODO(b/40251079): Remove this circular dependency.
       "//chrome/browser/apps/app_service/app_icon",
 
-      # Lots of APIs use headers from the list above.
-      "//chrome/browser/extensions/api:api_registration",
-
       # TODO(crbug.com/346472679): Remove this circular dependency.
       "//chrome/browser/web_applications/extensions",
 
@@ -884,14 +880,10 @@ source_set("extensions") {
       "//chrome/browser/themes",
 
       # TODO(crbug.com/344921703): Remove circular dependencies.
-      "//chrome/browser/sync",
       "//chrome/browser/sync_file_system",
 
       # TODO(crbug.com/345487716): Remove this circular dependency.
       "//chrome/browser/ui/views/side_panel",
-
-      "//chrome/browser/feedback",
-      "//chrome/browser/ui/views/toolbar",
     ]
 
     # Since browser and browser_extensions actually depend on each other,
@@ -1225,10 +1217,8 @@ source_set("extensions") {
 
       allow_circular_includes_from += [
         "//chrome/browser/chromeos/app_mode",
-        "//chrome/browser/chromeos/drivefs",
         "//chrome/browser/chromeos/extensions/component_extension_content_settings",
         "//chrome/browser/chromeos/extensions/desk_api",
-        "//chrome/browser/chromeos/extensions/file_system_provider",
         "//chrome/browser/chromeos/extensions/login_screen/login/cleanup",
       ]
     } else {
@@ -1418,46 +1408,27 @@ source_set("extensions") {
 
       allow_circular_includes_from += [
         "//chrome/browser/ash/accessibility",
-        "//chrome/browser/ash/account_manager",
-        "//chrome/browser/ash/attestation",
         "//chrome/browser/ash/app_list",
         "//chrome/browser/ash/app_list/app_service",
         "//chrome/browser/ash/app_mode",
         "//chrome/browser/ash/app_mode/web_app",
-        "//chrome/browser/ash/app_restore",
-        "//chrome/browser/ash/arc",
         "//chrome/browser/ash/arc/optin",
-        "//chrome/browser/ash/bruschetta",
-        "//chrome/browser/ash/child_accounts",
         "//chrome/browser/ash/child_accounts/time_limits",
-        "//chrome/browser/ash/crostini",
         "//chrome/browser/ash/customization",
-        "//chrome/browser/ash/drive",
         "//chrome/browser/ash/extensions",
         "//chrome/browser/ash/extensions/autotest_private",
         "//chrome/browser/ash/extensions/file_manager",
-        "//chrome/browser/ash/extensions/speech",
         "//chrome/browser/ash/extensions/users_private",
         "//chrome/browser/ash/file_manager",
         "//chrome/browser/ash/file_system_provider",
-        "//chrome/browser/ash/fileapi",
-        "//chrome/browser/ash/guest_os",
-        "//chrome/browser/ash/guest_os/public",
         "//chrome/browser/ash/input_method",
         "//chrome/browser/ash/login",
         "//chrome/browser/ash/login/app_mode",
-        "//chrome/browser/ash/login/demo_mode",
-        "//chrome/browser/ash/login/quick_unlock",
-        "//chrome/browser/ash/login/session",
         "//chrome/browser/ash/net",
-        "//chrome/browser/ash/platform_keys",
         "//chrome/browser/ash/policy/core",
         "//chrome/browser/ash/policy/handlers",
         "//chrome/browser/ash/system_web_apps/apps",
-        "//chrome/browser/ash/system_logs",
-        "//chrome/browser/ui/ash/login",
         "//chrome/browser/ui/ash/shelf/app_service",
-        "//chrome/browser/ui/ash/thumbnail_loader",
         "//chrome/browser/ui/webui/ash/settings/pages/a11y",
       ]
 
@@ -2297,12 +2268,23 @@ source_set("unit_tests") {
     }
   }
 
+  if (!is_android) {
+    sources += [ "chrome_extension_web_contents_observer_unittest.cc" ]
+    deps += [
+      "//chrome/browser/ui/webui/omnibox/aim_eligibility_extension",
+      "//components/crash/content/browser/error_reporting",
+    ]
+  }
+
   if (is_android) {
     sources += [ "system_display/display_info_provider_android_unittest.cc" ]
 
     # developer_private_api_unittest.cc includes extension_util_bridge.h under
     # IS_ANDROID.
-    deps += [ "//chrome/browser/ui/android/extensions:public" ]
+    deps += [
+      "//chrome/browser/ui/android/extensions:public",
+      "//chrome/browser/ui/android/tab_model:test_support",
+    ]
   }
 
   if (is_chromeos) {
@@ -2524,6 +2506,8 @@ source_set("browser_tests") {
     "//chrome/browser/profiles/keep_alive",
     "//chrome/browser/push_messaging",
     "//chrome/browser/push_messaging:service_impl_public",
+    "//chrome/browser/pwc",
+    "//chrome/browser/pwc:features",
     "//chrome/browser/reading_list",
     "//chrome/browser/renderer_host",
     "//chrome/browser/resource_coordinator:utils",
@@ -2828,6 +2812,10 @@ source_set("browser_tests") {
       "//chrome/test/data/controlled_frame/resources/mangle.js",
     ]
 
+    # TODO(crbug.com/353332589): Remove this dependency when
+    # custom_cursor_suppressor_browsertest.cc gets built from its own BUILD.gn.
+    deps += [ "//chrome/browser/ui/views/autofill/popup" ]
+
     if (use_brlapi) {
       deps += [ "//third_party/libbrlapi" ]
     } else {
@@ -2890,13 +2878,13 @@ source_set("browser_tests") {
 
       deps += [
         "//chrome/browser/enterprise/connectors/device_trust:features",
-        "//chrome/browser/enterprise/connectors/device_trust/common",
         "//chrome/browser/enterprise/connectors/device_trust/test:test_support",
         "//chrome/browser/enterprise/network_header_injection:browser_tests",
         "//components/device_signals/core/common",
         "//components/device_signals/core/common:features",
         "//components/device_signals/test:test_support",
         "//components/enterprise/connectors/core",
+        "//components/enterprise/device_trust/core:metrics",
       ]
     }
 

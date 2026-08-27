@@ -89,6 +89,7 @@
 #include "chrome/browser/ui/autofill/payments/omnibox_autofill_page_action_controller.h"
 #include "chrome/browser/ui/autofill/payments/save_payment_icon_controller.h"
 #include "chrome/browser/ui/autofill/payments/virtual_card_enroll_bubble_controller_impl.h"
+#include "chrome/browser/ui/autofill/payments/wallet_reminder_notice_bubble_controller.h"
 #include "chrome/browser/ui/bookmarks/bookmark_utils.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_action_prefs_listener.h"
@@ -4490,6 +4491,28 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
                   ? kCreditCardIcon
                   : kCreditCardChromeRefreshOldIcon))
           .Build());
+
+  if (base::FeatureList::IsEnabled(
+          autofill::features::kAutofillEnableWalletReminderNotice)) {
+    root_action_item_->AddChild(
+        actions::ActionItem::Builder(
+            base::BindRepeating(
+                [](BrowserWindowInterface* bwi, actions::ActionItem* item,
+                   actions::ActionInvocationContext context) {
+                  tabs::TabInterface* tab = bwi->GetActiveTabInterface();
+                  CHECK(tab);
+
+                  if (auto* controller =
+                          autofill::WalletReminderNoticeBubbleController::From(
+                              *tab)) {
+                    controller->ReshowBubble();
+                  }
+                },
+                bwi))
+            .SetActionId(kActionWalletReminderNotice)
+            .SetImage(ui::ImageModel::FromVectorIcon(kWalletIcon))
+            .Build());
+  }
 #endif  // !BUILDFLAG(IS_ANDROID)
 }
 

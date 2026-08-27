@@ -34,6 +34,8 @@ constexpr char kTestReceiverDomain[] = "robot_domain.com";
 constexpr char kTestReceiverEmail[] = "host@robot_domain.com";
 constexpr char kTestReceiverRegistration[] =
     "00000000-1111-2222-3333-555555555555";
+constexpr char kSessionAuthzHostToken[] = "aG9zdF90b2tlbl9zYW1wbGU=";
+constexpr char kSessionAuthzSessionToken[] = "c2Vzc2lvbl90b2tlbl9zYW1wbGU=";
 
 JingleAuthentication CreateTestAuthentication() {
   JingleAuthentication auth;
@@ -43,8 +45,8 @@ JingleAuthentication CreateTestAuthentication() {
   auth.method = AuthenticationMethod::SHARED_SECRET_SPAKE2_CURVE25519;
   auth.spake_message = {1, 2, 3, 4};
   auth.verification_hash = {5, 6, 7, 8};
-  auth.session_authz_host_token = "host_token";
-  auth.session_authz_session_token = "session_token";
+  auth.session_authz_host_token = kSessionAuthzHostToken;
+  auth.session_authz_session_token = kSessionAuthzSessionToken;
   return auth;
 }
 
@@ -85,9 +87,11 @@ TEST_F(JingleMessageProtoConverterTest, ConvertSessionInitiate) {
   ftl::IqStanza stanza = message.ToFtlIqStanza();
 
   EXPECT_EQ(stanza.id(), kMessageId);
-  EXPECT_EQ(stanza.sender().local_part(), kFromLocalId);
+  EXPECT_EQ(stanza.sender().local_part(), "from_user");
+  EXPECT_EQ(stanza.sender().domain_part(), "gmail.com");
   EXPECT_EQ(stanza.sender().resource_part(), kFromRegistrationId);
-  EXPECT_EQ(stanza.receiver().local_part(), kToLocalId);
+  EXPECT_EQ(stanza.receiver().local_part(), "to_user");
+  EXPECT_EQ(stanza.receiver().domain_part(), "gmail.com");
   EXPECT_EQ(stanza.receiver().resource_part(), kToRegistrationId);
 
   EXPECT_TRUE(stanza.has_jingle());
@@ -140,6 +144,50 @@ TEST_F(JingleMessageProtoConverterTest, ConvertSessionTerminate) {
   EXPECT_EQ(converted_terminate->error_details, "The peer is offline.");
 }
 
+TEST_F(JingleMessageProtoConverterTest,
+       ConvertSessionTerminateWithDirectFields) {
+  JingleMessage message;
+  message.from = from_address_;
+  message.to = to_address_;
+  message.message_id = kMessageId;
+  message.sid = kSid;
+  message.reason = SessionTerminate::Reason::kGeneralError;
+  message.error_code = ErrorCode::HOST_OVERLOAD;
+  message.error_details = "Host is overloaded";
+  message.error_location = "host.cc:123";
+  message.SetPayload(SessionTerminate());
+
+  ftl::IqStanza stanza = message.ToFtlIqStanza();
+
+  EXPECT_TRUE(stanza.jingle().has_session_terminate());
+  EXPECT_EQ(stanza.jingle().session_terminate().reason(),
+            ftl::SessionTerminate::GENERAL_ERROR);
+  EXPECT_EQ(stanza.jingle().session_terminate().error_code(), "HOST_OVERLOAD");
+  EXPECT_EQ(stanza.jingle().session_terminate().error_details(),
+            "Host is overloaded");
+  EXPECT_EQ(stanza.jingle().session_terminate().error_location(),
+            "host.cc:123");
+
+  JingleMessage converted_message;
+  std::string error;
+  ASSERT_TRUE(JingleMessageFromProto(stanza, &converted_message, &error))
+      << error;
+
+  EXPECT_EQ(converted_message.reason, SessionTerminate::Reason::kGeneralError);
+  EXPECT_EQ(converted_message.error_code, ErrorCode::HOST_OVERLOAD);
+  EXPECT_EQ(converted_message.error_details, "Host is overloaded");
+  EXPECT_EQ(converted_message.error_location, "host.cc:123");
+
+  auto* converted_terminate =
+      std::get_if<SessionTerminate>(&converted_message.payload());
+  ASSERT_TRUE(converted_terminate);
+  EXPECT_EQ(converted_terminate->reason,
+            SessionTerminate::Reason::kGeneralError);
+  EXPECT_EQ(converted_terminate->error_code, "HOST_OVERLOAD");
+  EXPECT_EQ(converted_terminate->error_details, "Host is overloaded");
+  EXPECT_EQ(converted_terminate->error_location, "host.cc:123");
+}
+
 TEST_F(JingleMessageProtoConverterTest, ConvertReplyResult) {
   JingleMessageReply reply;
   reply.from = from_address_;
@@ -151,8 +199,10 @@ TEST_F(JingleMessageProtoConverterTest, ConvertReplyResult) {
 
   EXPECT_EQ(stanza.id(), kMessageId);
   EXPECT_TRUE(stanza.has_reply());
-  EXPECT_EQ(stanza.sender().local_part(), kFromLocalId);
-  EXPECT_EQ(stanza.receiver().local_part(), kToLocalId);
+  EXPECT_EQ(stanza.sender().local_part(), "from_user");
+  EXPECT_EQ(stanza.sender().domain_part(), "gmail.com");
+  EXPECT_EQ(stanza.receiver().local_part(), "to_user");
+  EXPECT_EQ(stanza.receiver().domain_part(), "gmail.com");
 
   JingleMessageReply converted_reply;
   ASSERT_TRUE(JingleMessageReplyFromProto(stanza, &converted_reply));
@@ -200,7 +250,9 @@ TEST_F(JingleMessageProtoConverterTest, ConvertSessionInitiateWithAuth) {
 
   EXPECT_TRUE(stanza.jingle().has_session_initiate());
   EXPECT_EQ(stanza.jingle().session_initiate().initiator().local_part(),
-            kFromLocalId);
+            "from_user");
+  EXPECT_EQ(stanza.jingle().session_initiate().initiator().domain_part(),
+            "gmail.com");
   EXPECT_TRUE(stanza.jingle().session_initiate().has_authentication());
 
   JingleMessage converted_message;
@@ -244,6 +296,32 @@ TEST_F(JingleMessageProtoConverterTest, ConvertSessionAcceptWithAuth) {
   ASSERT_TRUE(converted_accept->authentication.has_value());
   VerifyAuthentication(*converted_accept->authentication, auth);
 
+  ASSERT_TRUE(converted_message.description);
+  VerifyAuthentication(converted_message.description->authentication(), auth);
+}
+
+TEST_F(JingleMessageProtoConverterTest,
+       ConvertSessionAcceptWithDescriptionAuth) {
+  JingleMessage message;
+  message.from = from_address_;
+  message.to = to_address_;
+  message.message_id = kMessageId;
+  message.sid = kSid;
+  message.SetPayload(SessionAccept());
+  JingleAuthentication auth = CreateTestAuthentication();
+  message.description = std::make_unique<ContentDescription>(auth);
+
+  ftl::IqStanza stanza = message.ToFtlIqStanza();
+
+  EXPECT_TRUE(stanza.jingle().has_session_accept());
+  EXPECT_TRUE(stanza.jingle().session_accept().has_authentication());
+  EXPECT_EQ(stanza.jingle().session_accept().authentication().method(),
+            ftl::AUTHENTICATION_METHOD_SPAKE2_CURVE25519);
+
+  JingleMessage converted_message;
+  std::string error;
+  ASSERT_TRUE(JingleMessageFromProto(stanza, &converted_message, &error))
+      << error;
   ASSERT_TRUE(converted_message.description);
   VerifyAuthentication(converted_message.description->authentication(), auth);
 }
@@ -504,6 +582,86 @@ TEST_F(JingleMessageProtoConverterTest, ConvertAttachmentsRoundTrip) {
   EXPECT_EQ(converted_message.attachments[1]
                 .host_config->settings["Av1-Encoder-Speed"],
             "11");
+}
+
+TEST_F(JingleMessageProtoConverterTest, ConvertUnknownTerminateReason) {
+  JingleMessage message;
+  message.from = from_address_;
+  message.to = to_address_;
+  message.message_id = kMessageId;
+  message.sid = kSid;
+  SessionTerminate terminate;
+  terminate.reason = static_cast<SessionTerminate::Reason>(999);
+  message.SetPayload(std::move(terminate));
+
+  ftl::IqStanza stanza = message.ToFtlIqStanza();
+  EXPECT_EQ(stanza.jingle().session_terminate().reason(),
+            ftl::SessionTerminate::UNKNOWN_REASON);
+}
+
+TEST_F(JingleMessageProtoConverterTest, ConvertUnknownAuthMethod) {
+  JingleMessage message;
+  message.from = from_address_;
+  message.to = to_address_;
+  message.message_id = kMessageId;
+  message.sid = kSid;
+  SessionInitiate initiate;
+  JingleAuthentication auth;
+  auth.supported_methods = {static_cast<AuthenticationMethod>(999)};
+  auth.method = static_cast<AuthenticationMethod>(999);
+  initiate.authentication = auth;
+  message.SetPayload(std::move(initiate));
+
+  ftl::IqStanza stanza = message.ToFtlIqStanza();
+  EXPECT_TRUE(stanza.jingle().has_session_initiate());
+  EXPECT_TRUE(stanza.jingle().session_initiate().has_authentication());
+  EXPECT_EQ(
+      stanza.jingle().session_initiate().authentication().supported_methods(0),
+      ftl::AUTHENTICATION_METHOD_UNSPECIFIED);
+  EXPECT_EQ(stanza.jingle().session_initiate().authentication().method(),
+            ftl::AUTHENTICATION_METHOD_UNSPECIFIED);
+}
+
+TEST_F(JingleMessageProtoConverterTest, ConvertUnknownSdpType) {
+  JingleMessage message;
+  message.from = from_address_;
+  message.to = to_address_;
+  message.message_id = kMessageId;
+  message.sid = kSid;
+
+  JingleTransportInfo transport;
+  SessionDescription sdp;
+  sdp.type = static_cast<SessionDescription::Type>(999);
+  sdp.sdp = "test_sdp";
+  transport.session_description = sdp;
+  message.SetPayload(std::move(transport));
+
+  ftl::IqStanza stanza = message.ToFtlIqStanza();
+  EXPECT_TRUE(stanza.jingle().has_transport_info());
+  EXPECT_TRUE(stanza.jingle().transport_info().has_session_description());
+  EXPECT_EQ(stanza.jingle().transport_info().session_description().type(),
+            ftl::SessionDescription::SDP_TYPE_UNSPECIFIED);
+}
+
+TEST_F(JingleMessageProtoConverterTest, ConvertMissingHeaders) {
+  JingleMessage message;
+  message.from = from_address_;
+  message.to = to_address_;
+  message.message_id = kMessageId;
+  message.sid = "";
+  message.SetPayload(SessionInitiate());
+
+  ftl::IqStanza stanza = message.ToFtlIqStanza();
+
+  JingleMessage converted_message;
+  std::string error;
+  EXPECT_FALSE(JingleMessageFromProto(stanza, &converted_message, &error));
+  EXPECT_EQ(error, "sid attribute is missing");
+
+  stanza.mutable_jingle()->set_session_id(kSid);
+  stanza.clear_sender();
+  EXPECT_FALSE(JingleMessageFromProto(stanza, &converted_message, &error));
+  EXPECT_TRUE(error.starts_with("Missing signaling address"));
 }
 
 }  // namespace remoting

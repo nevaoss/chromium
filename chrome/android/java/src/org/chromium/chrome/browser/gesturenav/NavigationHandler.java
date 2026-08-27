@@ -113,6 +113,9 @@ class NavigationHandler implements TouchEventObserver {
     private int mDownWidth;
     private int mDownHeight;
 
+    private int mLeftSideUiWidth;
+    private int mRightSideUiWidth;
+
     private @GestureState int mState;
 
     private final PropertyModel mModel;
@@ -285,9 +288,16 @@ class NavigationHandler implements TouchEventObserver {
         return mTab != null && !mTab.isDestroyed();
     }
 
+    void setSideUiWidths(int leftWidth, int rightWidth) {
+        mLeftSideUiWidth = leftWidth;
+        mRightSideUiWidth = rightWidth;
+    }
+
     private boolean shouldTriggerUi(float sX, float dX, float dY) {
+        boolean isLeftEdge = sX < (mLeftSideUiWidth + mEdgeWidthPx);
+        boolean isRightEdge = (mParentView.getWidth() - mRightSideUiWidth - mEdgeWidthPx) < sX;
         return Math.abs(dX) > Math.abs(dY) * WEIGTHED_TRIGGER_THRESHOLD
-                && (sX < mEdgeWidthPx || (mParentView.getWidth() - mEdgeWidthPx) < sX);
+                && (isLeftEdge || isRightEdge);
     }
 
     /**
@@ -376,9 +386,9 @@ class NavigationHandler implements TouchEventObserver {
     }
 
     private boolean canNavigate(boolean forward) {
-        // Navigating back is considered always possible (actual navigation, closing
-        // tab, or exiting app).
-        return !forward || (mTab != null && mTab.canGoForward());
+        if (mTab == null) return false;
+        if (forward) return mTab.canGoForward();
+        return mBackActionDelegate.getBackActionType(mTab) != ActionType.NONE;
     }
 
     /**

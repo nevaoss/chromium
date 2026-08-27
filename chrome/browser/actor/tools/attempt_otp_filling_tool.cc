@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "base/command_line.h"
+#include "base/containers/span.h"
 #include "base/functional/bind.h"
 #include "base/logging.h"
 #include "base/metrics/histogram_functions.h"
@@ -327,12 +328,14 @@ void AttemptOtpFillingTool::Invoke(ToolCallback callback) {
                        "Target frame containing OTP fields not found.")));
     return;
   }
-
-  // Consume the context. The service clears its state and stops observing.
-  std::optional<autofill::ActorLoginContext> context =
+  std::optional<url::Origin> context_origin =
       tool_delegate()
           .GetActorOneTimeTokenFillingService()
-          .ConsumeLoginContext();
+          .GetLoginContextOrigin();
+  bool should_use_strong_matching =
+      tool_delegate()
+          .GetActorOneTimeTokenFillingService()
+          .GetLoginContextShouldUseStrongMatching();
 
   tabs::TabInterface* tab = GetTargetTab().Get();
   content::WebContents* web_contents = tab ? tab->GetContents() : nullptr;
@@ -343,7 +346,13 @@ void AttemptOtpFillingTool::Invoke(ToolCallback callback) {
 
   actor_login_flow_verifier_->VerifyIsActorLoginFlow(
       otp_frame->GetFrameTreeNodeId(), otp_frame->GetLastCommittedOrigin(),
-      main_frame_origin, context,
+      main_frame_origin, context_origin, should_use_strong_matching,
+      base::BindOnce(
+          [](base::WeakPtr<autofill::ActorOneTimeTokenFillingService> service)
+              -> std::optional<autofill::ActorLoginContext> {
+            return service ? service->ConsumeLoginContext() : std::nullopt;
+          },
+          tool_delegate().GetActorOneTimeTokenFillingService().GetWeakPtr()),
       base::BindOnce(&AttemptOtpFillingTool::OnActorLoginFlowChecked,
                      weak_factory_.GetWeakPtr(), std::move(callback)));
 }

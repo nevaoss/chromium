@@ -164,6 +164,9 @@ def RunCargo(cargo_args):
         env['CXXFLAGS'] += f' -isysroot {sdk_path}'
         env['LDFLAGS'] += f' -isysroot {sdk_path}'
         env['RUSTFLAGS'] += f' -Clink-arg=-isysroot -Clink-arg={sdk_path}'
+        if 'x86_64' in RustTargetTriple():
+            env['LDFLAGS'] += ' -fapple-link-rtlib'
+            env['RUSTFLAGS'] += ' -Clink-arg=-fapple-link-rtlib'
 
     # This will `fail_hard` and not return if `cargo` reports problems.
     RunCommand([cargo_bin] + cargo_args, setenv=True, env=env)

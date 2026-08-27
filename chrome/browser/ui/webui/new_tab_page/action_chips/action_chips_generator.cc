@@ -76,6 +76,11 @@ size_t GetMaxNumChips() {
           : kMaxActionChips);
 }
 
+bool IsScaledChipsEnabled() {
+  return base::FeatureList::IsEnabled(ntp_features::kNtpScaledActionChips) ||
+         base::FeatureList::IsEnabled(ntp_features::kNtpScaledActionChipsSmall);
+}
+
 template <typename T>
 void AssignMojoField(const T& source, T& dest) {
   dest = source;
@@ -343,121 +348,104 @@ std::optional<ActionChipPtr> CreateCanvasChipIfEligible(
 }
 
 ActionChipPtr CreateBrainstormChip() {
-  constexpr auto kBrainstormSuggestions = std::to_array<int>({
-      IDS_NTP_ACTION_CHIP_BRAINSTORM_PROMPT_1,
-      IDS_NTP_ACTION_CHIP_BRAINSTORM_PROMPT_2,
-      IDS_NTP_ACTION_CHIP_BRAINSTORM_PROMPT_3,
-      IDS_NTP_ACTION_CHIP_BRAINSTORM_PROMPT_4,
-      IDS_NTP_ACTION_CHIP_BRAINSTORM_PROMPT_5,
-      IDS_NTP_ACTION_CHIP_BRAINSTORM_PROMPT_6,
-      IDS_NTP_ACTION_CHIP_BRAINSTORM_PROMPT_7,
-      IDS_NTP_ACTION_CHIP_BRAINSTORM_PROMPT_8,
-      IDS_NTP_ACTION_CHIP_BRAINSTORM_PROMPT_9,
-      IDS_NTP_ACTION_CHIP_BRAINSTORM_PROMPT_10,
-      IDS_NTP_ACTION_CHIP_BRAINSTORM_PROMPT_11,
-      IDS_NTP_ACTION_CHIP_BRAINSTORM_PROMPT_12,
-      IDS_NTP_ACTION_CHIP_BRAINSTORM_PROMPT_13,
-      IDS_NTP_ACTION_CHIP_BRAINSTORM_PROMPT_14,
-      IDS_NTP_ACTION_CHIP_BRAINSTORM_PROMPT_15,
-      IDS_NTP_ACTION_CHIP_BRAINSTORM_PROMPT_16,
-      IDS_NTP_ACTION_CHIP_BRAINSTORM_PROMPT_17,
-      IDS_NTP_ACTION_CHIP_BRAINSTORM_PROMPT_18,
-      IDS_NTP_ACTION_CHIP_BRAINSTORM_PROMPT_19,
-      IDS_NTP_ACTION_CHIP_BRAINSTORM_PROMPT_20,
-      IDS_NTP_ACTION_CHIP_BRAINSTORM_PROMPT_21,
-      IDS_NTP_ACTION_CHIP_BRAINSTORM_PROMPT_22,
-      IDS_NTP_ACTION_CHIP_BRAINSTORM_PROMPT_23,
-      IDS_NTP_ACTION_CHIP_BRAINSTORM_PROMPT_24,
-      IDS_NTP_ACTION_CHIP_BRAINSTORM_PROMPT_25,
-      IDS_NTP_ACTION_CHIP_BRAINSTORM_PROMPT_26,
-      IDS_NTP_ACTION_CHIP_BRAINSTORM_PROMPT_27,
-      IDS_NTP_ACTION_CHIP_BRAINSTORM_PROMPT_28,
-  });
-  size_t index = base::RandGenerator(std::size(kBrainstormSuggestions));
-
   ActionChipPtr chip = ActionChip::New();
-  chip->suggestion = l10n_util::GetStringUTF8(kBrainstormSuggestions[index]);
+  chip->suggestion = std::string();
   chip->suggest_template_info = SuggestTemplateInfo::New();
   chip->suggest_template_info->type_icon = IconType::kDraftSpark;
   chip->suggest_template_info->primary_text =
       action_chips::mojom::FormattedString::New();
   chip->suggest_template_info->primary_text->text =
       l10n_util::GetStringUTF8(IDS_NTP_ACTION_CHIP_BRAINSTORM_HEADING);
+  chip->suggest_template_info->fusebox_action =
+      fusebox_action::mojom::FuseboxAction::New();
+  chip->suggest_template_info->fusebox_action->preferred_inventory =
+      omnibox::SUGGEST_INVENTORY_BRAINSTORM;
   return chip;
 }
 
 std::optional<ActionChipPtr> CreateBrainstormChipIfEligible(
     std::string_view suggestion,
     const AimEligibilityService* aim_eligibility_service) {
-  if (!base::FeatureList::IsEnabled(ntp_features::kNtpScaledActionChipsSmall)) {
+  if (!IsScaledChipsEnabled()) {
     return std::nullopt;
   }
   return CreateBrainstormChip();
 }
 
 ActionChipPtr CreateLearnChip() {
-  constexpr auto kLearnSuggestions = std::to_array<int>({
-      IDS_NTP_ACTION_CHIP_HELP_ME_LEARN_PROMPT_1,
-      IDS_NTP_ACTION_CHIP_HELP_ME_LEARN_PROMPT_2,
-      IDS_NTP_ACTION_CHIP_HELP_ME_LEARN_PROMPT_3,
-      IDS_NTP_ACTION_CHIP_HELP_ME_LEARN_PROMPT_4,
-      IDS_NTP_ACTION_CHIP_HELP_ME_LEARN_PROMPT_5,
-      IDS_NTP_ACTION_CHIP_HELP_ME_LEARN_PROMPT_6,
-      IDS_NTP_ACTION_CHIP_HELP_ME_LEARN_PROMPT_7,
-  });
-  size_t index = base::RandGenerator(std::size(kLearnSuggestions));
-
   ActionChipPtr chip = ActionChip::New();
-  chip->suggestion = l10n_util::GetStringUTF8(kLearnSuggestions[index]);
+  chip->suggestion = std::string();
   chip->suggest_template_info = SuggestTemplateInfo::New();
   chip->suggest_template_info->type_icon = IconType::kDraftSpark;
   chip->suggest_template_info->primary_text =
       action_chips::mojom::FormattedString::New();
   chip->suggest_template_info->primary_text->text =
       l10n_util::GetStringUTF8(IDS_NTP_ACTION_CHIP_HELP_ME_LEARN_HEADING);
+  chip->suggest_template_info->fusebox_action =
+      fusebox_action::mojom::FuseboxAction::New();
+  chip->suggest_template_info->fusebox_action->preferred_inventory =
+      omnibox::SUGGEST_INVENTORY_HELP_ME_LEARN;
   return chip;
 }
 
 std::optional<ActionChipPtr> CreateLearnChipIfEligible(
     std::string_view suggestion,
     const AimEligibilityService* aim_eligibility_service) {
-  if (!base::FeatureList::IsEnabled(ntp_features::kNtpScaledActionChipsSmall)) {
+  if (!IsScaledChipsEnabled()) {
     return std::nullopt;
   }
   return CreateLearnChip();
 }
 
 ActionChipPtr CreateWriteChip() {
-  constexpr auto kWriteSuggestions = std::to_array<int>({
-      IDS_NTP_ACTION_CHIP_WRITE_EDIT_PROMPT_1,
-      IDS_NTP_ACTION_CHIP_WRITE_EDIT_PROMPT_2,
-      IDS_NTP_ACTION_CHIP_WRITE_EDIT_PROMPT_3,
-      IDS_NTP_ACTION_CHIP_WRITE_EDIT_PROMPT_4,
-      IDS_NTP_ACTION_CHIP_WRITE_EDIT_PROMPT_5,
-      IDS_NTP_ACTION_CHIP_WRITE_EDIT_PROMPT_6,
-      IDS_NTP_ACTION_CHIP_WRITE_EDIT_PROMPT_7,
-      IDS_NTP_ACTION_CHIP_WRITE_EDIT_PROMPT_8,
-  });
-  size_t index = base::RandGenerator(std::size(kWriteSuggestions));
-
   ActionChipPtr chip = ActionChip::New();
-  chip->suggestion = l10n_util::GetStringUTF8(kWriteSuggestions[index]);
+  chip->suggestion = std::string();
   chip->suggest_template_info = SuggestTemplateInfo::New();
   chip->suggest_template_info->type_icon = IconType::kDraftSpark;
   chip->suggest_template_info->primary_text =
       action_chips::mojom::FormattedString::New();
   chip->suggest_template_info->primary_text->text =
       l10n_util::GetStringUTF8(IDS_NTP_ACTION_CHIP_WRITE_EDIT_HEADING);
+  chip->suggest_template_info->fusebox_action =
+      fusebox_action::mojom::FuseboxAction::New();
+  chip->suggest_template_info->fusebox_action->preferred_inventory =
+      omnibox::SUGGEST_INVENTORY_WRITE_OR_EDIT;
   return chip;
 }
 
 std::optional<ActionChipPtr> CreateWriteChipIfEligible(
     std::string_view suggestion,
     const AimEligibilityService* aim_eligibility_service) {
-  if (!base::FeatureList::IsEnabled(ntp_features::kNtpScaledActionChipsSmall)) {
+  if (!IsScaledChipsEnabled()) {
     return std::nullopt;
   }
   return CreateWriteChip();
+}
+
+ActionChipPtr CreateAddImageChip() {
+  ActionChipPtr chip = ActionChip::New();
+  chip->suggestion = "";
+  chip->suggest_template_info = SuggestTemplateInfo::New();
+  chip->suggest_template_info->type_icon = IconType::kDraftSpark;
+  chip->suggest_template_info->primary_text =
+      action_chips::mojom::FormattedString::New();
+  chip->suggest_template_info->primary_text->text = "Add Image";
+  chip->suggest_template_info->fusebox_action =
+      fusebox_action::mojom::FuseboxAction::New();
+  chip->suggest_template_info->fusebox_action->preselected_input_source =
+      fusebox_action::mojom::InputSource::kInputSourceGallery;
+  return chip;
+}
+
+std::optional<ActionChipPtr> CreateAddImageChipIfEligible(
+    std::string_view suggestion,
+    const AimEligibilityService* aim_eligibility_service) {
+  if (!(base::FeatureList::IsEnabled(
+            ntp_features::kNtpScaledActionChipsSmall) &&
+        ntp_features::kNtpScaledActionChipsSmallInTestMode.Get())) {
+    return std::nullopt;
+  }
+  return CreateAddImageChip();
 }
 
 std::vector<omnibox::ToolMode> GetAllowedTools(
@@ -503,20 +491,26 @@ std::vector<ActionChipPtr> CreateChipsForSteadyState(
   using GeneratorFn = const base::FunctionRef<std::optional<ActionChipPtr>(
       std::string_view, const AimEligibilityService*)>;
   static const GeneratorFn kNewGenerators[] = {
+      &CreateBrainstormChipIfEligible,
+      &CreateLearnChipIfEligible,
+      &CreateWriteChipIfEligible,
       &CreateStarterChipIfEligible,
+      // TODO(crbug.com/537040757): Remove from here, only adding for test
+      // purposes until the server sends new chip types.
+      &CreateAddImageChipIfEligible,
       &CreateImageCreationChipIfEligible,
       &CreateCanvasChipIfEligible,
       &CreateDeepSearchChipIfEligible,
   };
   static const GeneratorFn kOldGenerators[] = {
-      &CreateDeepSearchChipIfEligible, &CreateImageCreationChipIfEligible,
-      &CreateBrainstormChipIfEligible, &CreateLearnChipIfEligible,
-      &CreateWriteChipIfEligible,
+      &CreateDeepSearchChipIfEligible,
+      &CreateImageCreationChipIfEligible,
   };
 
   const base::span<GeneratorFn> generators =
       base::FeatureList::IsEnabled(ntp_features::kNtpNextCanvasChip) ||
-              base::FeatureList::IsEnabled(ntp_features::kNtpStarterChip)
+              base::FeatureList::IsEnabled(ntp_features::kNtpStarterChip) ||
+              IsScaledChipsEnabled()
           ? base::span<GeneratorFn>(kNewGenerators)
           : base::span<GeneratorFn>(kOldGenerators);
   const size_t max_num_chips = GetMaxNumChips();
@@ -616,7 +610,8 @@ void ActionChipsGeneratorImpl::GenerateActionChips(
   // loader.
   loader_.reset();
 
-  if (ntp_features::kNtpNextShowStaticTextParam.Get()) {
+  if (ntp_features::kNtpNextShowStaticTextParam.Get() ||
+      ntp_features::kNtpScaledActionChipsShowFallback.Get()) {
     std::move(callback).Run(CreateChipsForSteadyState(
         CreateTabInfo(*tab_id_generator_, tab), aim_eligibility_service_));
     return;

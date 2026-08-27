@@ -668,6 +668,11 @@ BASE_DECLARE_FEATURE(kNoAccountWebSignin);
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kNonDefaultGaiaOriginCheck);
 
+#if BUILDFLAG(IS_ANDROID)
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE(kOpenSystemAccountSettingsDirectly);
+#endif  // BUILDFLAG(IS_ANDROID)
+
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 // It enables the pre first run desktop refresh (changes to the onboarding flow
 // prior to the core first run).
@@ -710,6 +715,10 @@ BASE_DECLARE_FEATURE(kProfilesReordering);
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kReadContextualAccountCapabilities);
 #endif
+
+// Enables fetching the capability of the same name on all platforms.
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE(kReadIsSubjectToUniversalOptOutCapability);
 
 // Enables fetching the capability of the same name on all platforms.
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
@@ -839,11 +848,6 @@ BASE_DECLARE_FEATURE(kBookmarksMigrateUiChanges);
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kUndoChromeOsUseConsentLevelSignin);
 #endif  // BUILDFLAG(IS_CHROMEOS)
-
-// If enabled, buttons for sign-in promos / intercepts will use consistent
-// primary - tonal button class pattern.
-COMPONENT_EXPORT(SIGNIN_SWITCHES)
-BASE_DECLARE_FEATURE(kUsePrimaryAndTonalButtonsForPromos);
 
 #if BUILDFLAG(IS_ANDROID)
 // Additional gate for user policy registration and download based on user

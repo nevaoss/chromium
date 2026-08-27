@@ -374,6 +374,8 @@ source_set("impl") {
     "host/glic_guest_observer.cc",
     "host/glic_guest_observer.h",
     "host/glic_internals_page_handler.cc",
+    "host/glic_local_storage_migration.cc",
+    "host/glic_local_storage_migration.h",
     "host/glic_page_handler.cc",
     "host/glic_skills_manager_impl.cc",
     "host/glic_skills_manager_impl.h",
@@ -498,6 +500,7 @@ source_set("impl") {
     "//components/pdf/common:constants",
     "//components/pref_registry",
     "//components/prefs",
+    "//components/services/storage/public/mojom",
     "//components/sessions",
     "//components/skills:features",
     "//components/skills/public",
@@ -508,6 +511,7 @@ source_set("impl") {
     "//components/webui/chrome_urls",
     "//extensions/buildflags",
     "//net",
+    "//third_party/blink/public/common",
     "//third_party/metrics_proto",
     "//ui/base",
     "//ui/base/clipboard:file_info",
@@ -722,6 +726,7 @@ source_set("unit_tests") {
     "glic_settings_util_unittest.cc",
     "host/auth_controller_unittest.cc",
     "host/context/glic_sharing_utils_unittest.cc",
+    "host/glic_local_storage_migration_unittest.cc",
     "host/glic_web_client_responsiveness_monitor_unittest.cc",
     "host/glic_web_contents_warming_pool_unittest.cc",
     "public/glic_cui_tracker_unittest.cc",
@@ -736,9 +741,12 @@ source_set("unit_tests") {
     "//base/test:test_support",
     "//chrome/browser:global_features",
     "//chrome/browser/background/glic",
+    "//chrome/browser/glic/actor",
     "//chrome/browser/glic/test_support",
     "//chrome/browser/sync",
     "//chrome/browser/ui:ui_features",
+    "//components/services/storage:test_support",
+    "//components/services/storage/public/mojom",
     "//components/tabs:test_support",
     "//testing/gmock",
     "//testing/gtest",
@@ -906,6 +914,7 @@ source_set("browser_tests") {
       "//chrome/browser/actor/ui",
       "//chrome/browser/actor/ui:test_support",
       "//chrome/browser/autocomplete:aim_eligibility_service",
+      "//chrome/browser/background/glic:browser_tests",
       "//chrome/browser/enterprise/connectors/test:test_support",
       "//chrome/browser/extensions",
       "//chrome/browser/glic/browser_ui:browser_tests",
@@ -952,14 +961,17 @@ source_set("browser_tests") {
   }
 
   if (is_android) {
-    sources += [ "browser_ui/glic_nudge_controller_android_browsertest.cc" ]
-
+    sources += [
+      "android/glic_android_browsertest.cc",
+      "browser_ui/glic_nudge_controller_android_browsertest.cc",
+    ]
     deps += [
       "//chrome/browser/glic/browser_ui",
       "//chrome/browser/ui/omnibox",
       "//chrome/browser/ui/side_panel",
       "//chrome/browser/ui/side_panel/android",
       "//chrome/test:test_support_ui_android",
+      "//chrome/test/data/webui/glic:generate_test_files",
       "//components/messages/android:test_support",
     ]
   }

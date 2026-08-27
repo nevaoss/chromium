@@ -454,6 +454,7 @@
 <translation id="2422174748424038845">Kung ide-delete mo ito, mawawalan kaagad ng access ang lahat sa grupo ng tab na “<ph name="GROUP_NAME" />," at made-delete ito sa lahat ng device.</translation>
 <translation id="2424805048070062787">Magpatuloy sa tab na ito</translation>
 <translation id="2426805022920575512">Pumili ng ibang account</translation>
+<translation id="2428543302546523788">Magpakita ng mga link kapag naka-on ang reading mode</translation>
 <translation id="243275146591958220">Kanselahin ang pag-download</translation>
 <translation id="2434405374328098816">May na-save ka nang password para sa "<ph name="USERNAME" />" sa <ph name="WEBSITE" /></translation>
 <translation id="2434918313224755415">Puwede kang mag-scroll pakaliwa para mag-browse sa Incognito.</translation>
@@ -468,6 +469,7 @@
 <translation id="2470654816840674524">Ano ang magagawa ko sa Gemini sa Chrome?</translation>
 <translation id="2473876017985765807">May na-save ka nang password para sa <ph name="WEBSITE" /></translation>
 <translation id="247430852844518481">Puwede kang magtakda ng paalalang bisitahin ulit ang page na ito sa ibang pagkakataon</translation>
+<translation id="2476554421818031422">Tumutulong kang pahusayin ang pinahusay na autofill</translation>
 <translation id="2479148705183875116">Pumunta sa Mga Setting</translation>
 <translation id="2482878487686419369">Mga Abiso</translation>
 <translation id="2484459871750294497">Paano ko ie-enable ang feature na ito?</translation>
@@ -570,7 +572,6 @@
 <translation id="2816489851009559785">Menu → Mga Setting → Default browser</translation>
 <translation id="2818821771744632548">Na-sign out ka sa iyong account na <ph name="USER_NAME" />, bilang bahagi ng pag-reset ng iPhone mo. Para mag-sign in ulit, i-tap ang "Magpatuloy" sa ibaba.</translation>
 <translation id="2819667972867209401">Kapag naka-on, mase-save ang data sa iyong Google Account. Kapag naka-off, mase-save lang ang data sa device na ito at made-delete ito kung magsa-sign out ka.</translation>
-<translation id="2825777862277359739">Mag-sign in para makuha ang iyong mga password, tab, bookmark, at higit pa.</translation>
 <translation id="2827760117436553203">Panatilihing nakahiwalay ang data?</translation>
 <translation id="2829172210806130158">Maghanap sa iyong screen</translation>
 <translation id="2831109159746537587">Subukang bilugan o i-tap ang larawan para maghanap</translation>
@@ -717,7 +718,6 @@
 <translation id="3377063233124932127">Nasa taas na ngayon ang iyong mga naka-save na bookmark, password, at higit pa.</translation>
 <translation id="3378214228000661758">Gumawa ng passkey para sa</translation>
 <translation id="3380352560400387991">Sinusubukan ng site na ito na magbukas ng application. Dadalhin ka nito palabas ng Incognito.</translation>
-<translation id="3385742921291399323">Kunin ang iyong mga naka-save na password, tab, bookmark, at higit pa.</translation>
 <translation id="3391765987934722383">Huwag palampasin ang pagbaba ng presyo</translation>
 <translation id="3392923070107623576">Manatiling organisado sa pamamagitan ng paggawa ng mga grupo ng tab</translation>
 <translation id="3404232721752787413">I-save sa Google Photos</translation>
@@ -1248,7 +1248,6 @@
 <translation id="5148717509369231739">Pag-import mula sa Safari</translation>
 <translation id="5152483358138813104">Mas mabilis na mag-sign in sa iyong mga device</translation>
 <translation id="515315847398512535">Naka-off ang screen ng paghahanap para sa iyong account. Makipag-ugnayan sa iyong admin para sa higit pang impormasyon.</translation>
-<translation id="5155502059906700593">Ilipat ang posisyon ng iyong address bar sa itaas o ibaba.</translation>
 <translation id="5157638238828697074">Nagkaproblema. Hindi mabuksan ang application.</translation>
 <translation id="5163417375525818870">Mga PDF</translation>
 <translation id="5168414296986405587">Binuo para sa iPadOS</translation>
@@ -1567,7 +1566,6 @@ Dapat ding naka-enable ang handoff sa Pangkalahatang seksyon ng Mga Setting, at 
 <translation id="6193448654517602979">Pumili ng mga tab</translation>
 <translation id="6196207969502475924">Paghahanap gamit ang boses</translation>
 <translation id="6198252989419008588">Palitan ang PIN</translation>
-<translation id="6199783146233591178">Makakuha ng real-time na proteksyon sa pamamagitan ng Pinahusay na ligtas na pag-browse</translation>
 <translation id="6210079381482819663">Ililipat dito ang mga tab na hindi ginamit sa loob ng <ph name="THRESHOLD" /> (na) araw o higit pa. Puwede mo itong baguhin anumang oras sa <ph name="BEGIN_LINK" />mga setting<ph name="END_LINK" />.</translation>
 <translation id="6213281885682386884">Walang nakitang address</translation>
 <translation id="6218508144653756827">Fuchsia na tema</translation>
@@ -1718,7 +1716,6 @@ Dapat ding naka-enable ang handoff sa Pangkalahatang seksyon ng Mga Setting, at 
 <translation id="6626281667717553020">CPS URI</translation>
 <translation id="6627583120233659107">I-edit ang folder</translation>
 <translation id="6629759408545977279">Mula sa: <ph name="ORIGINATING_HOST" /></translation>
-<translation id="66306952800092318">Ilagay itong karagdagang layer ng proteksyon laban sa mga banta online.</translation>
 <translation id="6634432609054530164">Na-off ng iyong organisasyon ang Incognito mode</translation>
 <translation id="6637478299472506933">Nabigo ang Download</translation>
 <translation id="6638511529934826365">I-zoom ang Text…</translation>
@@ -2068,6 +2065,7 @@ Para magpatuloy mula sa iyong computer, lumipat sa <ph name="OTHER_EMAIL" />. Ma
 <translation id="78146569776629510">Mga Download</translation>
 <translation id="7815852444315004084">I-hide Sa Ngayon</translation>
 <translation id="7825973332242257878">Mga grupo ng tab</translation>
+<translation id="7828344837949522075">Magpakita ng suhestyon</translation>
 <translation id="7839994177130598711">Magagamit na ng mga miyembro ng pamilya mo ang iyong username at password kapag ginamit nila ang Google Password Manager para mag-sign in sa <ph name="BEGIN_BOLD" /><ph name="WEBSITE" /><ph name="END_BOLD" />.</translation>
 <translation id="7841180087127694526">Maghanap para sa kinopyang text</translation>
 <translation id="7841418003178675048">Piliin kung anong mga card ang makikita mo sa iyong page ng bagong tab.</translation>

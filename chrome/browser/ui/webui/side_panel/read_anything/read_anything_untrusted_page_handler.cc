@@ -34,6 +34,7 @@
 #include "chrome/browser/ui/read_anything/read_anything_side_panel_controller.h"
 #include "chrome/browser/ui/tabs/public/tab_features.h"
 #include "chrome/browser/ui/toolbar/pinned_toolbar/pinned_toolbar_actions_model.h"
+#include "chrome/browser/user_education/user_education_service.h"
 #include "chrome/common/chrome_isolated_world_ids.h"
 #include "chrome/common/extensions/extension_constants.h"
 #include "chrome/common/read_anything/read_anything.mojom-shared.h"
@@ -528,6 +529,13 @@ bool ReadAnythingUntrustedPageHandler::AreInnerContentsPdfContent(
 #else
   return false;
 #endif
+}
+
+bool ReadAnythingUntrustedPageHandler::IsGoogleDocs(const GURL& url) const {
+  return url.SchemeIsHTTPOrHTTPS() &&
+         (url.DomainIs("docs.google.com") ||
+          url.DomainIs("docs.sandbox.google.com")) &&
+         url.GetPath().starts_with("/document");
 }
 
 void ReadAnythingUntrustedPageHandler::WebContentsDestroyed() {
@@ -1025,6 +1033,21 @@ void ReadAnythingUntrustedPageHandler::OnLineFocusChanged(
     profile_->GetPrefs()->SetInteger(
         prefs::kAccessibilityReadAnythingLastNonDisabledLineFocus,
         static_cast<size_t>(last_non_disabled_line_focus));
+  }
+}
+
+void ReadAnythingUntrustedPageHandler::ShouldShowLineFocusNewBadge(
+    ShouldShowLineFocusNewBadgeCallback callback) {
+  bool show = features::IsReadAnythingLineFocusEnabled() &&
+              UserEducationService::MaybeShowNewBadge(
+                  profile_, features::kReadAnythingLineFocus);
+  std::move(callback).Run(show);
+}
+
+void ReadAnythingUntrustedPageHandler::OnLineFocusFeatureUsed() {
+  if (features::IsReadAnythingLineFocusEnabled()) {
+    UserEducationService::MaybeNotifyNewBadgeFeatureUsed(
+        profile_, features::kReadAnythingLineFocus);
   }
 }
 
@@ -1540,8 +1563,13 @@ void ReadAnythingUntrustedPageHandler::OnActiveAXTreeIDChanged() {
   // with the TS text segmentation method. Therefore, it doesn't work with
   // Readability. Until phrase highlighting works with TSTextSegmentation,
   // default to using Screen2x when the phrase highlighting flag is enabled.
+  // Google Docs enforces a strict TrustedHTML Content Security Policy that
+  // causes Readability script injection to fail. Avoid requesting Readability
+  // distillation when on Google Docs so the renderer can fall back cleanly to
+  // Screen2x.
   const bool use_readability =
       features::IsReadAnythingWithReadabilityEnabled() && !is_pdf_with_frame_ &&
+      !IsGoogleDocs(contents->GetLastCommittedURL()) &&
       !features::IsReadAnythingReadAloudPhraseHighlightingEnabled();
 
   if (use_readability) {
@@ -1573,7 +1601,8 @@ void ReadAnythingUntrustedPageHandler::RequestDomDistillerDistillation(
     content::WebContents* content) {
   if (!features::IsReadAnythingWithReadabilityEnabled() ||
       features::IsReadAnythingReadAloudPhraseHighlightingEnabled() ||
-      is_pdf_with_frame_) {
+      is_pdf_with_frame_ ||
+      (content && IsGoogleDocs(content->GetLastCommittedURL()))) {
     return;
   }
 

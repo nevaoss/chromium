@@ -7474,8 +7474,23 @@ std::wstring AXPlatformNodeWin::ComputeUIAProperties() {
   std::vector<std::wstring> properties;
   BoolAttributeToUIAAriaProperty(
       properties, ax::mojom::BoolAttribute::kLiveAtomic, "atomic");
+  StringAttributeToUIAAriaProperty(
+      properties, ax::mojom::StringAttribute::kAriaBrailleLabel,
+      "braillelabel");
+  StringAttributeToUIAAriaProperty(
+      properties, ax::mojom::StringAttribute::kAriaBrailleRoleDescription,
+      "brailleroledescription");
   BoolAttributeToUIAAriaProperty(properties, ax::mojom::BoolAttribute::kBusy,
                                  "busy");
+
+  if (IsCellOrTableHeader(GetRole())) {
+    StringAttributeToUIAAriaProperty(
+        properties, ax::mojom::StringAttribute::kAriaCellColumnIndexText,
+        "colindextext");
+    StringAttributeToUIAAriaProperty(
+        properties, ax::mojom::StringAttribute::kAriaCellRowIndexText,
+        "rowindextext");
+  }
 
   switch (GetData().GetCheckedState()) {
     case ax::mojom::CheckedState::kNone:

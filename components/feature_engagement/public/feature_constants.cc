@@ -190,6 +190,9 @@ BASE_FEATURE(kIPHPdfSearchifyFeature,
 BASE_FEATURE(kIPHPdfTextAnnotationsFeature,
              "IPH_PdfTextAnnotations",
              base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHPdfTranslateBubbleFeature,
+             "IPH_PdfTranslateBubble",
+             base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHPerformanceInterventionDialogFeature,
              "IPH_PerformanceInterventionDialogFeature",
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -696,6 +699,9 @@ BASE_FEATURE(kIPHTabTearingXR,
 #if BUILDFLAG(IS_IOS) || BUILDFLAG(IS_ANDROID)
 BASE_FEATURE(kIPHBottomToolbarTipFeature,
              "IPH_BottomToolbarTip",
+             base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHSendTabToSelfOmnibox,
+             "IPH_SendTabToSelfOmnibox",
              base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_IOS) || BUILDFLAG(IS_ANDROID)
 

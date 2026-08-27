@@ -8,10 +8,12 @@
 #include <optional>
 #include <vector>
 
+#include "base/functional/callback.h"
 #include "build/build_config.h"
 #include "components/keyed_service/core/keyed_service.h"
 #include "components/signin/core/browser/account_preview_data.h"
 #include "components/sync/base/data_type.h"
+#include "components/sync/protocol/sync_enums.pb.h"
 #include "google_apis/gaia/gaia_id.h"
 
 class PrefRegistrySimple;
@@ -25,6 +27,10 @@ class AccountPreviewDataService : public KeyedService {
   struct AccountPreviewPreference {
     GaiaId gaia_id;
     std::vector<syncer::DataType> preferred_data_types;
+    sync_pb::SyncEnums_DeviceFormFactor other_device_form_factor =
+        sync_pb::SyncEnums_DeviceFormFactor_DEVICE_FORM_FACTOR_UNSPECIFIED;
+
+    bool operator==(const AccountPreviewPreference&) const = default;
   };
 
   AccountPreviewDataService() = default;
@@ -42,6 +48,16 @@ class AccountPreviewDataService : public KeyedService {
   // if no signed-in accounts exist.
   virtual std::optional<AccountPreviewPreference> GetPreferredAccountForPromo()
       const = 0;
+
+  // Computes the preview preference for a single account specified by
+  // `gaia_id`. If data is already cached or the account is invalid/tokens
+  // unloaded, `callback` is invoked synchronously with the result. Otherwise, a
+  // network fetch is started and `callback` is invoked asynchronously upon
+  // completion.
+  virtual void GetPreviewPreferenceForAccount(
+      const GaiaId& gaia_id,
+      base::OnceCallback<void(std::optional<AccountPreviewPreference>)>
+          callback) = 0;
 
 #if BUILDFLAG(IS_ANDROID)
   // Updates the account currently used by the external 1P app. A null/empty

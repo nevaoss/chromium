@@ -375,18 +375,10 @@ HEADLESS_MODE_PROTOCOL_TEST(OzoneScreenSizeOverride,
                             "sanity/ozone-screen-size-override.js")
 #endif
 
-// This currently results in an unexpected screen orientation type,
-// see http://crbug.com/398150465.
 HEADLESS_MODE_PROTOCOL_TEST(MultipleScreenDetails,
                             "shared/multiple-screen-details.js")
 
-// TODO(crbug.com/543203215): Re-enable this test.
-#if BUILDFLAG(IS_MAC)
-#define MAYBE_MoveWindowBetweenScreens DISABLED_MoveWindowBetweenScreens
-#else
-#define MAYBE_MoveWindowBetweenScreens MoveWindowBetweenScreens
-#endif
-HEADLESS_MODE_PROTOCOL_TEST(MAYBE_MoveWindowBetweenScreens,
+HEADLESS_MODE_PROTOCOL_TEST(MoveWindowBetweenScreens,
                             "shared/move-window-between-screens.js")
 
 HEADLESS_MODE_PROTOCOL_TEST(WindowOpenOnSecondaryScreen,

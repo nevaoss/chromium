@@ -73,6 +73,7 @@ import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
+import org.chromium.chrome.browser.ui.theme.BrandedColorScheme;
 import org.chromium.components.metrics.OmniboxEventProtos.OmniboxEventProto.PageClassification;
 import org.chromium.components.omnibox.AutocompleteInput;
 import org.chromium.components.omnibox.AutocompleteRequestType;
@@ -173,6 +174,8 @@ public class FuseboxCoordinatorUnitTest {
                 mActivityController.get(),
                 mWindowAndroid,
                 mParent,
+                new OmniboxResourceProvider(
+                        mActivityController.get(), BrandedColorScheme.APP_DEFAULT),
                 mTabModelSelectorSupplier,
                 mTemplateUrlServiceSupplier,
                 mSnackbarManager,
@@ -377,11 +380,11 @@ public class FuseboxCoordinatorUnitTest {
 
     @Test
     @EnableFeatures(OmniboxFeatureList.OMNIBOX_MULTIMODAL_INPUT)
-    public void testPopupDismissed_noActionTaken_plusButtonFocused() {
+    public void testPopupDismissed_noPopupItemSelected_plusButtonFocused() {
         mCoordinator.beginInput(createSession());
         RobolectricUtil.runAllBackgroundAndUiIncludingDelayed();
         mCoordinator.setMediatorForTesting(mMediator);
-        doReturn(false).when(mMediator).wasActionTaken();
+        doReturn(false).when(mMediator).wasPopupItemSelected();
 
         mCoordinator.setOnInteractionCompletedCallback(mOnInteractionCompletedCallback);
 
@@ -395,11 +398,11 @@ public class FuseboxCoordinatorUnitTest {
 
     @Test
     @EnableFeatures(OmniboxFeatureList.OMNIBOX_MULTIMODAL_INPUT)
-    public void testPopupDismissed_actionTaken_plusButtonNotFocused() {
+    public void testPopupDismissed_popupItemSelected_plusButtonNotFocused() {
         mCoordinator.beginInput(createSession());
         RobolectricUtil.runAllBackgroundAndUiIncludingDelayed();
         mCoordinator.setMediatorForTesting(mMediator);
-        doReturn(true).when(mMediator).wasActionTaken();
+        doReturn(true).when(mMediator).wasPopupItemSelected();
 
         mCoordinator.setOnInteractionCompletedCallback(mOnInteractionCompletedCallback);
 

@@ -987,7 +987,7 @@ public class PdfCoordinator
                                 () -> {
                                     pdfView.setZoom(newZoom);
                                     // Scroll to the top of the page after zooming.
-                                    if (fitToPageHeight) scrollToPage(pageIndex);
+                                    scrollToPage(pageIndex);
                                 });
                     });
         }
@@ -1606,7 +1606,7 @@ public class PdfCoordinator
                                 ModalDialogProperties.ButtonStyles.PRIMARY_FILLED_NO_NEGATIVE)
                         .build();
 
-        manager.showDialog(model, ModalDialogType.APP);
+        manager.showDialog(model, ModalDialogType.TAB);
     }
 
     private void showAlertDialog(View dialogView) {

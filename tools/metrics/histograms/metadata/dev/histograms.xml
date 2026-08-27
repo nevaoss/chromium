@@ -23,7 +23,7 @@ chromium-metrics-reviews@google.com.
 <histograms>
 
 <histogram name="DevTools.ActionTaken" enum="DevToolsAction"
-    expires_after="2026-11-29">
+    expires_after="2027-02-07">
   <owner>yangguo@google.com</owner>
   <owner>bmeurer@google.com</owner>
   <summary>Specified DevTools action has been taken.</summary>
@@ -48,7 +48,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="DevTools.CDPCommandFrom{ClientType}" enum="CDPCommands"
-    expires_after="2026-11-29">
+    expires_after="2027-02-07">
   <owner>wolfi@google.com</owner>
   <owner>danilsomsikov@google.com</owner>
   <owner>yangguo@google.com</owner>
@@ -115,6 +115,18 @@ chromium-metrics-reviews@google.com.
     The value SchemeUnknown signifies that parsing the scheme from the URL
     failed (note that at the point the enum is recorded, only absolute URLs
     arrive).
+  </summary>
+</histogram>
+
+<histogram name="DevTools.EditResendRequest" enum="DevToolsResendRequestType"
+    expires_after="2027-06-18">
+  <owner>dsv@chromium.org</owner>
+  <owner>dgarber@microsoft.com</owner>
+  <component>1456922</component>
+  <summary>
+    Records the resource type of a network request that the user selects to edit
+    and resend. Fired at the start of resendFromConsole(), at the point that a
+    fetch command is pasted into the console for user edit.
   </summary>
 </histogram>
 
@@ -428,7 +440,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="DevTools.PanelShown" enum="DevToolsPanel"
-    expires_after="2026-11-29">
+    expires_after="2027-02-07">
   <owner>yangguo@google.com</owner>
   <owner>bmeurer@google.com</owner>
   <summary>Specified DevTools panel was shown.</summary>
@@ -479,6 +491,17 @@ chromium-metrics-reviews@google.com.
   <owner>hablich@google.com</owner>
   <summary>
     Actions taken on the remote debugging server on chrome://inspect.
+  </summary>
+</histogram>
+
+<histogram name="DevTools.ResendRequest" enum="DevToolsResendRequestType"
+    expires_after="2027-06-18">
+  <owner>dsv@chromium.org</owner>
+  <owner>dgarber@microsoft.com</owner>
+  <component>1456922</component>
+  <summary>
+    Records the resource type of a network request resent from DevTools. Fired
+    at the start of resendRequest(), regardless of success or failure.
   </summary>
 </histogram>
 

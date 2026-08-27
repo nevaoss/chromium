@@ -139,6 +139,7 @@ import java.util.function.Supplier;
     private final SettableNonNullObservableSupplier<Boolean> mHasAttachmentsSupplier;
     private final NonNullObservableSupplier<Boolean> mWindowHasFocusSupplier;
     private final Callback<Boolean> mOnWindowFocusChanged = hasFocus -> updateActivationChip();
+    private final OmniboxResourceProvider mResourceProvider;
     private @Nullable AttachmentsSelectionController mSelectionController;
 
     private boolean mIsTextWrapping;
@@ -150,7 +151,7 @@ import java.util.function.Supplier;
     private @Nullable ComposeboxQueryControllerBridge mComposeboxQueryControllerBridge;
     private @Nullable FuseboxMetrics mMetrics;
     private @Nullable PropertyModel mScrimModel;
-    private boolean mActionTaken;
+    private boolean mPopupItemSelected;
     private @Nullable Runnable mOnFirstPickerInteractionCanceledCallback;
     private boolean mNeedUnfocusOnCancel;
     @VisibleForTesting /* package */ @Nullable PrefChangeRegistrar mPrefChangeRegistrar;
@@ -173,6 +174,7 @@ import java.util.function.Supplier;
             WindowAndroid windowAndroid,
             PropertyModel model,
             FuseboxViewHolder viewHolder,
+            OmniboxResourceProvider resourceProvider,
             MonotonicObservableSupplier<TabModelSelector> tabModelSelectorSupplier,
             SettableNonNullObservableSupplier<@FuseboxState Integer> fuseboxStateSupplier,
             SettableNonNullObservableSupplier<@PopupState Integer> popupStateSupplier,
@@ -192,6 +194,7 @@ import java.util.function.Supplier;
         mPermissionDelegate = windowAndroid;
         mModel = model;
         mViewHolder = viewHolder;
+        mResourceProvider = resourceProvider;
         mViewHolder.popup.addOnDismissListener(this::hidePopup);
         mTabModelSelectorSupplier = tabModelSelectorSupplier;
         mFuseboxStateSupplier = fuseboxStateSupplier;
@@ -256,8 +259,8 @@ import java.util.function.Supplier;
         mWindowHasFocusSupplier.removeObserver(mOnWindowFocusChanged);
     }
 
-    public boolean wasActionTaken() {
-        return mActionTaken;
+    public boolean wasPopupItemSelected() {
+        return mPopupItemSelected;
     }
 
     public void setOnFirstPickerInteractionCanceledCallback(Runnable callback) {
@@ -343,7 +346,7 @@ import java.util.function.Supplier;
         mModelList = modelList;
 
         if (mModelList != null) {
-            var adapter = mModelList.getAdapter();
+            var adapter = mModelList.createAdapter(mResourceProvider);
             mViewHolder.attachmentsView.setAdapter(adapter);
             mModel.set(FuseboxProperties.ADAPTER, adapter);
             mModelList.setAttachmentUploadFailedListener(this::onAttachmentUploadFailed);
@@ -369,7 +372,7 @@ import java.util.function.Supplier;
      *     through the endInput() (valid -> valid). This is the case for tab switching.
      */
     /* package */ void beginInput(FuseboxSessionState session) {
-        mActionTaken = false;
+        mPopupItemSelected = false;
         mMetrics = session.getMetrics();
         mProfile = assertNonNull(session.getProfile());
         if (mPrefChangeRegistrar != null) {
@@ -862,7 +865,7 @@ import java.util.function.Supplier;
     private void onTabPickerClicked() {
         if (!isInInputSession()) return;
 
-        mActionTaken = true;
+        mPopupItemSelected = true;
         hidePopup();
         mMetrics.notifyAttachmentButtonUsed(FuseboxAttachmentButtonType.TAB_PICKER);
 
@@ -998,7 +1001,7 @@ import java.util.function.Supplier;
     private void onCameraClicked() {
         if (!isInInputSession()) return;
 
-        mActionTaken = true;
+        mPopupItemSelected = true;
         hidePopup();
         mMetrics.notifyAttachmentButtonUsed(FuseboxAttachmentButtonType.CAMERA);
 
@@ -1203,7 +1206,7 @@ import java.util.function.Supplier;
     private void onImagePickerClicked() {
         if (!isInInputSession()) return;
 
-        mActionTaken = true;
+        mPopupItemSelected = true;
         hidePopup();
         mMetrics.notifyAttachmentButtonUsed(FuseboxAttachmentButtonType.GALLERY);
 
@@ -1254,7 +1257,7 @@ import java.util.function.Supplier;
     private void onFilePickerClicked() {
         if (!isInInputSession()) return;
 
-        mActionTaken = true;
+        mPopupItemSelected = true;
         hidePopup();
         mMetrics.notifyAttachmentButtonUsed(FuseboxAttachmentButtonType.FILES);
 
@@ -1483,7 +1486,7 @@ import java.util.function.Supplier;
     }
 
     private void onDynamicButtonClicked(PopupButtonData data) {
-        mActionTaken = true;
+        mPopupItemSelected = true;
         mNeedUnfocusOnCancel = false;
         if (data.type == PopupButtonType.MODEL) {
             FuseboxMetrics.notifyModelButtonSelected(data.protoId);

@@ -49,6 +49,7 @@ class BrowserLiveTabContext;
 class BrowserLocationBarModelDelegate;
 class BrowserSelectFileDialogController;
 class BrowserSyncedWindowDelegate;
+class BrowserUiController;
 class BrowserUserEducationInterface;
 class BrowserView;
 class BrowserWebContentsDelegate;
@@ -535,6 +536,7 @@ class BrowserWindowFeatures {
   GetUserDataFactory();
 
   // Members owned by all browser window types.
+  std::unique_ptr<UnloadController> unload_controller_;
   std::unique_ptr<ActorBorderViewController> actor_border_view_controller_;
   std::unique_ptr<ttc::AiOverlayDialogController> ai_overlay_dialog_controller_;
 
@@ -560,6 +562,7 @@ class BrowserWindowFeatures {
   std::unique_ptr<BrowserFocusController> browser_focus_controller_;
   std::unique_ptr<BrowserSelectFileDialogController>
       browser_select_file_dialog_controller_;
+  std::unique_ptr<BrowserUiController> browser_ui_controller_;
   std::unique_ptr<BrowserWebContentsDelegate> browser_web_contents_delegate_;
   std::unique_ptr<BrowserWindowModalDialogDelegate>
       browser_window_modal_dialog_delegate_;
@@ -589,7 +592,6 @@ class BrowserWindowFeatures {
   std::unique_ptr<content_settings::CookieControlsController>
       cookie_controls_controller_;
   std::unique_ptr<DataSharingBubbleController> data_sharing_bubble_controller_;
-  std::unique_ptr<UnloadController> unload_controller_;
 
   // A collection of features specific to desktop versions of Chrome.
   // Member order dependencies:

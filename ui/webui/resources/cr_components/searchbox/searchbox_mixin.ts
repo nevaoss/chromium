@@ -10,19 +10,13 @@ import {hasKeyModifiers} from '//resources/js/util.js';
 import type {CrLitElement, PropertyValues} from '//resources/lit/v3_0/lit.rollup.js';
 import {NavigationPredictor} from '//resources/mojo/components/omnibox/browser/omnibox.mojom-webui.js';
 import {KeywordType} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
-import type {AutocompleteMatch, AutocompleteResult, PageHandlerInterface} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import type {AutocompleteMatch, AutocompleteResult, InputKeywordModel, PageHandlerInterface} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import {InputMethod, SelectionLineState, SuggestInventory} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 
 import type {SearchboxDropdownElement} from './searchbox_dropdown.js';
 import type {SearchboxInputElement} from './searchbox_input.js';
 
 /* @fileoverview Helper functions for implementing a custom searchbox. */
-
-export interface InputKeywordModel {
-  type: KeywordType;
-  keyword: string;
-  displayText: string;
-}
 
 export enum ControlKeyState {
   UP,
@@ -114,6 +108,16 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
     override connectedCallback() {
       super.connectedCallback();
 
+      // On user interaction, freeze the current results to avoid result updates
+      // potentially erasing user changes like cursor position.
+      this.searchboxEventTracker_.add(this, 'input-mousedown', () => {
+        this.activeQueryId = -1;
+      });
+      // When deleting a match, unfreeze `activeQueryId` so post-deletion
+      // results are accepted.
+      this.searchboxEventTracker_.add(this, 'match-remove', () => {
+        this.activeQueryId = this.nextQueryId_ - 1;
+      });
       // Listen for 'keyup' on window to reliably catch Control key releases
       // even if the user clicks outside the searchbox while holding Control.
       this.searchboxEventTracker_.add(window, 'keyup', (e: Event) => {
@@ -390,13 +394,26 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
         // listening for key presses. These stale results should never be shown.
         // They correspond to the potentially stale suggestion left in the
         // searchbox when blurred. That stale result may be navigated to by
-        // focusing and pressing 'Enter'.
+        // focusing and pressing 'Enter'. Reset `activeQueryId` to prevent an
+        // in-flight result from re-opening the popup.
+        this.activeQueryId = -1;
         this.pageHandler().stopAutocomplete(/*clearResult=*/ false);
       }
       this.pageHandler().onFocusChanged(false);
     }
 
     async onInputWrapperKeydown(e: KeyboardEvent) {
+      // On user interaction, freeze the current results to avoid result updates
+      // potentially erasing user changes like cursor position. Freezing on
+      // 'enter' would break the fast-enter navigations via
+      // `lastIgnoredEnterEvent_`. It'd cause the searchbox to discard the
+      // pending results the navigation is waiting for, causing the navigation
+      // to never occur. But this is a hack; comparing `e.key !=== 'Enter'` is
+      // only a semi-accurate heuristic for whether a navigation is about to
+      // occur.
+      if (e.key !== 'Enter') {
+        this.activeQueryId = -1;
+      }
       const modifier =
           isMac ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey;
       if (modifier && e.key === 'z') {
@@ -478,6 +495,8 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
       if (e.key === 'Delete') {
         if (e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey) {
           if (this.selectedMatch && this.selectedMatch.supportsDeletion) {
+            // Unfreeze `activeQueryId` so post-deletion results are accepted.
+            this.activeQueryId = this.nextQueryId_ - 1;
             this.pageHandler().deleteAutocompleteMatch(
                 this.selectedMatchIndex, this.selectedMatch.destinationUrl);
             e.preventDefault();
@@ -525,6 +544,8 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
           // because the matches are stale. Navigate to the default match (if
           // one exists) once the up-to-date matches arrive.
           this.lastIgnoredEnterEvent_ = e;
+          // Unfreeze `activeQueryId` so pending query results are accepted.
+          this.activeQueryId = this.nextQueryId_ - 1;
         }
         return;
       }

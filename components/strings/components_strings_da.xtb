@@ -592,6 +592,7 @@ Ellers vil det blive blokeret af dine privatlivsindstillinger. Det giver det ind
 <translation id="2027465737841872819">Plast</translation>
 <translation id="2027707238798802149">Kortet er ikke tilgængeligt</translation>
 <translation id="2032962459168915086"><ph name="BEGIN_LINK" />Tjekke din proxy og din firewall<ph name="END_LINK" /></translation>
+<translation id="2033550997390154638">Denne forekomst af Chrome kører med manuelt angivne kommandoer til demofunktion. Bemærk! Kommandoer til demofunktion kan til enhver tid ændres og understøttes ikke.</translation>
 <translation id="2033900728810589426">Genvejen kan ikke være den samme som søgeordet til standardsøgemaskinen, som er defineret af <ph name="DEFAULT_SEARCH_PROVIDER_KEYWORD_POLICY_NAME" />: <ph name="SHORTCUT_NAME" /></translation>
 <translation id="2034971124472263449">Gem alligevel</translation>
 <translation id="2036514476578229158">Du har anmodet om at besøge dette website. Dine forældre kan besvare anmodningen i Family Link.</translation>
@@ -1061,7 +1062,6 @@ Ellers vil det blive blokeret af dine privatlivsindstillinger. Det giver det ind
 <translation id="2824775600643448204">Adresse og søgelinje</translation>
 <translation id="2826760142808435982">Forbindelsen er krypteret og godkendt ved hjælp af <ph name="CIPHER" />, og den anvender <ph name="KX" /> som primær udvekslingsmekanisme.</translation>
 <translation id="2828797285817981634">Brug af bevægelsessensorer er tilladt indtil videre</translation>
-<translation id="2835170189407361413">Ryd formular</translation>
 <translation id="2835907903001172712">Browseroversigt</translation>
 <translation id="2837891525090413132">Kan anmode om at låse og bruge dit tastatur</translation>
 <translation id="2839032553903800133">Notifikationer blokeres</translation>
@@ -3295,7 +3295,6 @@ Gå til <ph name="BEGIN_LINK" />betalingsindstillingerne<ph name="END_LINK" /> f
 <translation id="6679354743514146922">Chrome-browseren forsøger at udfylde din adgangskode i <ph name="APP_NAME" />.</translation>
 <translation id="668132230070712111">Videoen er gemt i Google Drev</translation>
 <translation id="6681790815630918386">CVC er gemt</translation>
-<translation id="6686570026048064255">Gå til <ph name="BEGIN_LINK1" />Chrome-indstillingerne<ph name="END_LINK1" /> for at deaktivere registrering af Pix-kode</translation>
 <translation id="6687230248707087982">Kuvert (almindelig)</translation>
 <translation id="6687335167692595844">Der blev anmodet om størrelse på skrifttype</translation>
 <translation id="6688743156324860098">Opdater…</translation>
@@ -4438,6 +4437,7 @@ Yderligere oplysninger:
 <translation id="8708134712139312373">Websitet kan anmode om tilladelse til at oprette forbindelse til Bluetooth-enheder</translation>
 <translation id="8710842507289500830">Skriftstil</translation>
 <translation id="8712637175834984815">Forstået</translation>
+<translation id="8715198179991802709">Chrome har lige rapporteret et website, du forsøgte at besøge. Hjælp os med at forbedre disse advarsler ved at deltage i en undersøgelse. Det tager kun 1 minut.</translation>
 <translation id="8718314106902482036">Betalingen blev ikke fuldført</translation>
 <translation id="8719263113926255150"><ph name="ENTITY" />, <ph name="DESCRIPTION" />, søgeforslag</translation>
 <translation id="8719528812645237045">Flere huller øverst</translation>
@@ -4565,7 +4565,6 @@ Yderligere oplysninger:
 <translation id="8932102934695377596">Dit ur er bagud</translation>
 <translation id="893332455753468063">Tilføj navn</translation>
 <translation id="8938242527120341116">Indholdsfiltrene på din enhed har blokeret <ph name="BLOCKED_URL" /></translation>
-<translation id="8942355029279167844">Din administrator har givet <ph name="APP_NAME" /> tilladelse til at indsamle diagnostikdata med henblik på at forbedre brugeroplevelsen i produktet. Du kan få flere oplysninger på <ph name="BEGIN_LINK" />https://www.parallels.com/pcep<ph name="END_LINK" />.</translation>
 <translation id="8943282376843390568">Limegrøn</translation>
 <translation id="8949410982325929394">Tone</translation>
 <translation id="8949493680961858543">A1x4</translation>

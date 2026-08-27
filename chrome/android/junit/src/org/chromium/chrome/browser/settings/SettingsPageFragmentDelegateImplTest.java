@@ -10,6 +10,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -559,8 +560,7 @@ public class SettingsPageFragmentDelegateImplTest {
     }
 
     @Test
-    public void
-            testInitSettings_withExistingMultiColumnSettings_initializesTitleUpdaterAndSearchCoordinator() {
+    public void testInitSettings_withMultiColumn_initializesTitleUpdaterAndSearchCoordinator() {
         when(mMockSettingsHostFragment.isAttachedToActivity()).thenReturn(true);
         when(mMockSettingsHostFragment.getActiveFragment()).thenReturn(mMultiColumnSettings);
         when(mMultiColumnSettings.getView()).thenReturn(null);
@@ -740,5 +740,58 @@ public class SettingsPageFragmentDelegateImplTest {
         mDelegate.onHeaderLayoutUpdated();
         ShadowLooper.idleMainLooper();
         assertTrue(mDelegate.getHandleBackPressChangedSupplier().get());
+    }
+
+    /** Regression test for crash due to activity recreation. http://crbug.com/542023392 */
+    @Test
+    public void testInitSettings_withNullContainmentHelper_delaysSearchCoordinatorCreation() {
+        SettingsContainmentHelper mockContainmentHelper = mock(SettingsContainmentHelper.class);
+        when(mMockSettingsHostFragment.getContainmentHelper()).thenReturn(null);
+
+        mDelegate.initSettings(mContainerView, "");
+
+        ArgumentCaptor<FragmentManager.FragmentLifecycleCallbacks> callbackCaptor =
+                ArgumentCaptor.forClass(FragmentManager.FragmentLifecycleCallbacks.class);
+        verify(mFragmentManager, atLeastOnce())
+                .registerFragmentLifecycleCallbacks(callbackCaptor.capture(), anyBoolean());
+
+        when(mFragmentView.findViewById(R.id.settings_title_in_detailed_pane))
+                .thenReturn(mTitleContainer);
+
+        for (FragmentManager.FragmentLifecycleCallbacks callback :
+                new ArrayList<>(callbackCaptor.getAllValues())) {
+            callback.onFragmentViewCreated(
+                    mFragmentManager, mMultiColumnSettings, mFragmentView, null);
+        }
+
+        // Search coordinator creation is delayed because containmentHelper is null.
+        assertNull(mDelegate.getSearchCoordinator());
+
+        // Now mock containmentHelper becoming available upon fragment attachment.
+        when(mMockSettingsHostFragment.getContainmentHelper()).thenReturn(mockContainmentHelper);
+
+        // Capture newly registered callbacks (the non-recursive attached listener).
+        verify(mFragmentManager, atLeastOnce())
+                .registerFragmentLifecycleCallbacks(callbackCaptor.capture(), eq(false));
+
+        for (FragmentManager.FragmentLifecycleCallbacks callback :
+                new ArrayList<>(callbackCaptor.getAllValues())) {
+            callback.onFragmentAttached(
+                    mFragmentManager,
+                    mMockSettingsHostFragment,
+                    ApplicationProvider.getApplicationContext());
+        }
+
+        SettingsSearchCoordinator searchCoordinator = mDelegate.getSearchCoordinator();
+        assertNotNull(searchCoordinator);
+        verify(mMultiColumnSettings).addObserver(searchCoordinator);
+        verify(mockContainmentHelper).getItemDecorations();
+    }
+
+    @Test
+    public void testOnHeaderLayoutUpdated_updatesContainment() {
+        mDelegate.initSettings(mContainerView, "");
+        mDelegate.onHeaderLayoutUpdated();
+        verify(mMockSettingsHostFragment).updateContainmentForAttachedFragments();
     }
 }

@@ -38,6 +38,7 @@
 #include "chrome/browser/autofill/autofill_offer_manager_factory.h"
 #include "chrome/browser/autofill/autofill_optimization_guide_decider_factory.h"
 #include "chrome/browser/autofill/autofill_policy_service_factory.h"
+#include "chrome/browser/autofill/entity_suppression_manager_factory.h"
 #include "chrome/browser/autofill/merchant_promo_code_manager_factory.h"
 #include "chrome/browser/autofill/ml_log_router_factory.h"
 #include "chrome/browser/autofill/one_time_token_service_factory.h"
@@ -182,8 +183,6 @@
 #include "chrome/browser/personal_context/personal_context_eligibility_service_factory.h"
 #include "chrome/browser/personal_context/personal_context_service_factory.h"
 #include "chrome/browser/plugins/plugin_prefs_factory.h"
-#include "chrome/browser/plus_addresses/plus_address_service_factory.h"
-#include "chrome/browser/plus_addresses/plus_address_setting_service_factory.h"
 #include "chrome/browser/policy/chrome_policy_blocklist_service_factory.h"
 #include "chrome/browser/policy/cloud/user_cloud_policy_invalidator_factory.h"
 #include "chrome/browser/policy/cloud/user_fm_registration_token_uploader_factory.h"
@@ -277,6 +276,7 @@
 #include "chrome/browser/ui/webui/signin/login_ui_service_factory.h"
 #include "chrome/browser/undo/bookmark_undo_service_factory.h"
 #include "chrome/browser/unified_consent/unified_consent_service_factory.h"
+#include "chrome/browser/universal_optout/universal_optout_service_factory.h"
 #include "chrome/browser/updates/announcement_notification/announcement_notification_service_factory.h"
 #include "chrome/browser/usb/usb_chooser_context_factory.h"
 #include "chrome/browser/visited_url_ranking/group_suggestions_service_factory.h"
@@ -806,6 +806,7 @@ void ChromeBrowserMainExtraPartsProfiles::
   autofill::AutofillFieldClassificationModelServiceFactory::GetInstance();
   autofill::AutofillOfferManagerFactory::GetInstance();
   autofill::AutofillOptimizationGuideDeciderFactory::GetInstance();
+  autofill::EntitySuppressionManagerFactory::GetInstance();
   autofill::MerchantPromoCodeManagerFactory::GetInstance();
   autofill::MlLogRouterFactory::GetInstance();
   autofill::OneTimeTokenServiceFactory::GetInstance();
@@ -1333,8 +1334,6 @@ void ChromeBrowserMainExtraPartsProfiles::
   PluginInfoHostImpl::EnsureFactoryBuilt();
   PluginPrefsFactory::GetInstance();
 #endif
-  PlusAddressServiceFactory::GetInstance();
-  PlusAddressSettingServiceFactory::GetInstance();
 #if BUILDFLAG(IS_CHROMEOS)
   policy::DlpDownloadObserverFactory::GetInstance();
   policy::DlpRulesManagerFactory::GetInstance();
@@ -1585,6 +1584,7 @@ void ChromeBrowserMainExtraPartsProfiles::
       GetInstance();
 #endif
   UnifiedConsentServiceFactory::GetInstance();
+  universal_optout::UniversalOptOutServiceFactory::GetInstance();
   RevokedPermissionsServiceFactory::GetInstance();
   UrlLanguageHistogramFactory::GetInstance();
   UsbChooserContextFactory::GetInstance();

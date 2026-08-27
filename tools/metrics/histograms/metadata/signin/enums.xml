@@ -219,6 +219,7 @@ chromium-metrics-reviews@google.com.
   <int value="0" label="PeriodicRefresh"/>
   <int value="1" label="RefreshTokenUpdated"/>
   <int value="2" label="RefreshTokenRemoved"/>
+  <int value="3" label="RefreshTokenInvalidated"/>
 </enum>
 
 <!-- LINT.ThenChange(//components/signin/core/browser/account_preview_data_service_impl.h:FetchTriggerCause) -->
@@ -743,6 +744,17 @@ chromium-metrics-reviews@google.com.
 
 <!-- LINT.ThenChange(//ios/chrome/browser/signin/model/authentication_service.h:IOSProfileInitializationOutcome) -->
 
+<!-- LINT.IfChange(IOSResizedAvatarCacheGetAvatarResult) -->
+
+<enum name="IOSResizedAvatarCacheGetAvatarResult">
+  <int value="0" label="Success"/>
+  <int value="1" label="Missing (Fetch triggered)"/>
+  <int value="2" label="Invalid dimensions (Fetch triggered)"/>
+  <int value="3" label="Resize failed"/>
+</enum>
+
+<!-- LINT.ThenChange(//ios/chrome/browser/signin/model/avatar/resized_avatar_cache.h:IOSResizedAvatarCacheGetAvatarResult) -->
+
 <!-- LINT.IfChange(LaunchWebAuthFlowResult) -->
 
 <enum name="LaunchWebAuthFlowResult">
@@ -916,6 +928,7 @@ chromium-metrics-reviews@google.com.
   <int value="105" label="Remote Actor Login Credentials Service"/>
   <int value="106" label="Browser Actuator"/>
   <int value="107" label="Tab Context Containers Service"/>
+  <int value="108" label="Site Token Provider"/>
 </enum>
 
 <!-- LINT.ThenChange(//components/signin/public/base/oauth_consumer_id.h:OAuthConsumerId) -->

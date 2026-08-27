@@ -2730,6 +2730,13 @@ const CSSValue* RowRuleStyle::CSSValueFromComputedStyleInternal(
       style.RowRuleStyle(), style, value_phase);
 }
 
+void ColumnRuleWidth::ApplyInitial(StyleResolverState& state) const {
+  int width = state.CssToLengthConversionData().ZoomedComputedPixels(
+      ComputedStyleInitialValues::InitialColumnRuleWidth().GetSingleValue(),
+      CSSPrimitiveValue::UnitType::kPixels);
+  state.StyleBuilder().SetColumnRuleWidth(GapDataList<int>(width));
+}
+
 void ColumnRuleWidth::ApplyInherit(StyleResolverState& state) const {
   if (state.GetDocument().StandardizedBrowserZoomEnabled()) {
     if (ApplyParentValueIfZoomChanged(state)) {
@@ -2756,6 +2763,23 @@ const CSSValue* ColumnRuleWidth::CSSValueFromComputedStyleInternal(
     CSSValuePhase value_phase) const {
   return ComputedStyleUtils::ValueForGapDecorationWidthDataList(
       style.ColumnRuleWidth(), style, value_phase);
+}
+
+void RowRuleWidth::ApplyInitial(StyleResolverState& state) const {
+  int width = state.CssToLengthConversionData().ZoomedComputedPixels(
+      ComputedStyleInitialValues::InitialRowRuleWidth().GetLegacyValue(),
+      CSSPrimitiveValue::UnitType::kPixels);
+  state.StyleBuilder().SetRowRuleWidth(GapDataList<int>(width));
+}
+
+void RowRuleWidth::ApplyInherit(StyleResolverState& state) const {
+  if (state.GetDocument().StandardizedBrowserZoomEnabled()) {
+    if (ApplyParentValueIfZoomChanged(state)) {
+      return;
+    }
+  }
+
+  state.StyleBuilder().SetRowRuleWidth(state.ParentStyle()->RowRuleWidth());
 }
 
 const CSSValue* RowRuleWidth::ParseSingleValue(
@@ -9147,7 +9171,12 @@ const CSSValue* ScrollSnapType::ParseSingleValue(
   CSSValueID axis_id = stream.Peek().Id();
   if (axis_id != CSSValueID::kNone && axis_id != CSSValueID::kX &&
       axis_id != CSSValueID::kY && axis_id != CSSValueID::kBlock &&
-      axis_id != CSSValueID::kInline && axis_id != CSSValueID::kBoth) {
+      axis_id != CSSValueID::kInline && axis_id != CSSValueID::kBoth &&
+      axis_id != CSSValueID::kPair) {
+    return nullptr;
+  }
+  if (!RuntimeEnabledFeatures::CSSScrollSnapTypePairEnabled() &&
+      axis_id == CSSValueID::kPair) {
     return nullptr;
   }
   CSSValue* axis_value = css_parsing_utils::ConsumeIdent(stream);
@@ -10827,6 +10856,12 @@ const CSSValue* VerticalAlign::CSSValueFromComputedStyleInternal(
 }
 
 void VerticalAlign::ApplyInherit(StyleResolverState& state) const {
+  if (state.GetDocument().StandardizedBrowserZoomEnabled()) {
+    if (ApplyParentValueIfZoomChanged(state)) {
+      return;
+    }
+  }
+
   ComputedStyleBuilder& builder = state.StyleBuilder();
   EVerticalAlign vertical_align = state.ParentStyle()->VerticalAlign();
   builder.SetVerticalAlign(vertical_align);

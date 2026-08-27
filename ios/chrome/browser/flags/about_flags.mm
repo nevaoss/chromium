@@ -1152,20 +1152,6 @@ const FeatureEntry::FeatureVariation kMobilePromoOnDesktopWave1Variations[] = {
      kMobilePromoOnDesktopPriceTrackingNotification, nullptr},
 };
 
-// Tips Notifications alternative strings.
-const FeatureEntry::FeatureParam kTipsNotificationsAlternative1[] = {
-    {kTipsNotificationsAlternativeStringVersion, "1"}};
-const FeatureEntry::FeatureParam kTipsNotificationsAlternative2[] = {
-    {kTipsNotificationsAlternativeStringVersion, "2"}};
-const FeatureEntry::FeatureParam kTipsNotificationsAlternative3[] = {
-    {kTipsNotificationsAlternativeStringVersion, "3"}};
-
-const FeatureEntry::FeatureVariation
-    kTipsNotificationsAlternativeStringVariation[] = {
-        {" - 1", kTipsNotificationsAlternative1, nullptr},
-        {" - 2", kTipsNotificationsAlternative2, nullptr},
-        {" - 3", kTipsNotificationsAlternative3, nullptr}};
-
 const FeatureEntry::FeatureParam kGeminiImageRemixToolShowFRERowParam[] = {
     {kGeminiImageRemixToolShowFRERow, "true"}};
 const FeatureEntry::FeatureParam
@@ -1478,6 +1464,9 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
     {"new-tab-page-redesign", flag_descriptions::kNewTabPageRedesignName,
      flag_descriptions::kNewTabPageRedesignDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kNewTabPageRedesign)},
+    {"ntp-mvt-in-bottom-sheet", flag_descriptions::kMVTInBottomSheetName,
+     flag_descriptions::kMVTInBottomSheetDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kMVTInBottomSheet)},
     {"plus-button-in-fakebox", flag_descriptions::kPlusButtonInFakeboxName,
      flag_descriptions::kPlusButtonInFakeboxDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kPlusButtonInFakebox)},
@@ -2283,10 +2272,7 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kIOSTipsNotificationsStringAlternativesName,
      flag_descriptions::kIOSTipsNotificationsStringAlternativesDescription,
      flags_ui::kOsIos,
-     FEATURE_WITH_PARAMS_VALUE_TYPE(
-         kIOSTipsNotificationsAlternativeStrings,
-         kTipsNotificationsAlternativeStringVariation,
-         "IOSTipsNotificationsAlternativeStrings")},
+     FEATURE_VALUE_TYPE(kIOSTipsNotificationsAlternativeStrings)},
     {"variations-experimental-corpus",
      flag_descriptions::kVariationsExperimentalCorpusName,
      flag_descriptions::kVariationsExperimentalCorpusDescription,
@@ -2524,6 +2510,9 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kIOSSaveToPhotosSignedOutName,
      flag_descriptions::kIOSSaveToPhotosSignedOutDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kIOSSaveToPhotosSignedOut)},
+    {"aim-cobrowse", flag_descriptions::kAimCobrowseName,
+     flag_descriptions::kAimCobrowseDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kAimCobrowse)},
     {"ios-date-to-calendar-signed-out",
      flag_descriptions::kIOSDateToCalendarSignedOutName,
      flag_descriptions::kIOSDateToCalendarSignedOutDescription,
@@ -2599,6 +2588,12 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
     {"app-bar-hide-labels", flag_descriptions::kAppBarHideLabelsName,
      flag_descriptions::kAppBarHideLabelsDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kAppBarHideLabels)},
+    {"autofill-ai-always-show-private-ai-notice",
+     flag_descriptions::kAutofillAiAlwaysShowPrivateAiNoticeName,
+     flag_descriptions::kAutofillAiAlwaysShowPrivateAiNoticeDescription,
+     flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(
+         autofill::features::debug::kAutofillAiAlwaysShowPrivateAiNotice)},
     {"autofill-ai-available-by-default",
      flag_descriptions::kAutofillAiAvailableByDefaultName,
      flag_descriptions::kAutofillAiAvailableByDefaultDescription,

@@ -712,22 +712,6 @@ bool IsTipsNotificationsAlternativeStringsEnabled() {
   return base::FeatureList::IsEnabled(kIOSTipsNotificationsAlternativeStrings);
 }
 
-const char kTipsNotificationsAlternativeStringVersion[] =
-    "TipsNotificationsAlternativeStringVersion";
-
-BASE_FEATURE_PARAM(
-    int,
-    kTipsNotificationsAlternativeStringVersionFeatureParam,
-    &kIOSTipsNotificationsAlternativeStrings,
-    kTipsNotificationsAlternativeStringVersion,
-    static_cast<int>(TipsNotificationsAlternativeStringVersion::kDefault));
-
-TipsNotificationsAlternativeStringVersion
-GetTipsNotificationsAlternativeStringVersion() {
-  return static_cast<TipsNotificationsAlternativeStringVersion>(
-      kTipsNotificationsAlternativeStringVersionFeatureParam.Get());
-}
-
 BASE_FEATURE(kDisableKeyboardAccessory, base::FEATURE_DISABLED_BY_DEFAULT);
 
 const char kDisableKeyboardAccessoryParam[] = "kDisableKeyboardAccessoryParam";
@@ -1021,9 +1005,6 @@ const base::FeatureParam<base::TimeDelta> kIOSSoftLockBackgroundThreshold{
 BASE_FEATURE(kAimCobrowse, base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool IsAimCobrowseEnabled() {
-  if (GetChannel() == version_info::Channel::STABLE) {
-    return false;
-  }
   return base::FeatureList::IsEnabled(kAimCobrowse);
 }
 

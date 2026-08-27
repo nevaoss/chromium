@@ -888,6 +888,9 @@
   <message name="IDS_AUTOFILL_AI_SUGGESTED_BY_GEMINI" desc="Sublabel text indicating that a suggestion is sourced from Gemini.">
     Suggested by Gemini
   </message>
+  <message name="IDS_AUTOFILL_AI_REMOVE_INFO" desc="Text for a child menu option to remove an Autofill AI suggestion.">
+    Remove this info
+  </message>
   <message name="IDS_AUTOFILL_AT_MEMORY_MANAGE_CONTACT_INFO" desc="The text displayed at the bottom of the AtMemory popup to allow the user to manage their Autofill preferences for contact information. When the user clicks on it, opens the Contact info settings page." translateable="false">
     Manage contact info
   </message>
@@ -1874,6 +1877,9 @@
     </message>
     <message name="IDS_AUTOFILL_POPUP_PERSONAL_CONTEXT_NOTICE_OK_BUTTON" translateable="false" desc="Got it button text for the personal context notice in Ambient Autofill/AtMemory popup.">
       OK
+    </message>
+    <message name="IDS_AUTOFILL_AI_PRIVATE_INFERENCE_NOTICE_LINK_TEXT" desc="Link text for the private inference notice in Autofill AI popup.">
+      Manage settings
     </message>
   </if>
 

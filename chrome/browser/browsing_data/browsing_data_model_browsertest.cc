@@ -385,7 +385,6 @@ class BrowsingDataModelBrowserTest
         {features::kPrivacySandboxAdsAPIsOverride, {}},
         {features::kIsolatedWebApps, {}},
         {features::kIsolatedWebAppDevMode, {}},
-        {network::features::kSharedStorageAPI, {}},
         {blink::features::kFencedFrames, {}},
         {network::features::kBrowsingTopics, {}},
         {net::features::kThirdPartyStoragePartitioning, {}},
@@ -431,8 +430,6 @@ class BrowsingDataModelBrowserTest
   }
 
   void SetUpOnMainThread() override {
-    PrivacySandboxSettingsFactory::GetForProfile(browser()->GetProfile())
-        ->SetAllPrivacySandboxAllowedForTesting();
     // Mark all Privacy Sandbox APIs as attested since the test cases are
     // testing behaviors not related to attestations.
     privacy_sandbox::PrivacySandboxAttestations::GetInstance()

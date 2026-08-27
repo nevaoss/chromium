@@ -843,9 +843,6 @@ BASE_FEATURE(kGaiaRecordAccountCreation, base::FEATURE_ENABLED_BY_DEFAULT);
 // Enables the Game Dashboard Main Menu utility views.
 BASE_FEATURE(kGameDashboardUtilities, base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Enables the App launch keyboard shortcut.
-BASE_FEATURE(kAppLaunchShortcut, base::FEATURE_ENABLED_BY_DEFAULT);
-
 // Enables the Game Dashboard's Record Game feature. This flag is to be enabled
 // by the feature management module.
 BASE_FEATURE(kFeatureManagementGameDashboardRecordGame,
@@ -1301,9 +1298,6 @@ BASE_FEATURE(kNotificationCenterController, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kNotificationExpansionAnimation,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Enables notification scroll bar in UnifiedSystemTray.
-BASE_FEATURE(kNotificationScrollBar, base::FEATURE_DISABLED_BY_DEFAULT);
-
 // Enables notifications to be shown within context menus.
 BASE_FEATURE(kNotificationsInContextMenu, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -1540,11 +1534,6 @@ BASE_FEATURE(kPickerGifs, base::FEATURE_ENABLED_BY_DEFAULT);
 // Enables or disables the preference of using constant frame rate for camera
 // when streaming.
 BASE_FEATURE(kPreferConstantFrameRate, base::FEATURE_DISABLED_BY_DEFAULT);
-
-// If enabled, ChromeOS print preview app is available. Enabling does not
-// replace the existing Chrome print preview UI, and will require an additional
-// flag and pref configured to facilitate. See b/323421684 for more information.
-BASE_FEATURE(kPrintPreviewCrosApp, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Controls whether the Projector app launches in debug mode, with more detailed
 // error messages.
@@ -2842,10 +2831,6 @@ bool AreGameDashboardUtilitiesEnabled() {
   return base::FeatureList::IsEnabled(kGameDashboardUtilities);
 }
 
-bool IsAppLaunchShortcutEnabled() {
-  return base::FeatureList::IsEnabled(kAppLaunchShortcut);
-}
-
 bool IsProductivityLauncherImageSearchEnabled() {
   return base::FeatureList::IsEnabled(kFeatureManagementLocalImageSearch);
 }
@@ -2887,10 +2872,6 @@ bool IsNotificationCenterControllerEnabled() {
 
 bool IsNotificationExpansionAnimationEnabled() {
   return base::FeatureList::IsEnabled(kNotificationExpansionAnimation);
-}
-
-bool IsNotificationScrollBarEnabled() {
-  return base::FeatureList::IsEnabled(kNotificationScrollBar);
 }
 
 bool IsNotificationsInContextMenuEnabled() {
@@ -3029,10 +3010,6 @@ bool IsPhoneHubShortQuickActionPodsTitlesEnabled() {
 
 bool IsPinAutosubmitBackfillFeatureEnabled() {
   return base::FeatureList::IsEnabled(kQuickUnlockPinAutosubmitBackfill);
-}
-
-bool IsPrinterPreviewCrosAppEnabled() {
-  return base::FeatureList::IsEnabled(kPrintPreviewCrosApp);
 }
 
 bool IsProjectorAppDebugMode() {

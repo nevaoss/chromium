@@ -177,6 +177,7 @@ export class ReadAnythingToolbarElement extends ReadAnythingToolbarElementBase {
       lineFocusStyle: {type: Object},
       lineFocusEnabled: {type: Boolean},
       lineFocusMovement: {type: Number},
+      showLineFocusNewBadge: {type: Boolean},
       webuiRoundedIconsEnabled_: {type: Boolean},
     };
   }
@@ -207,6 +208,9 @@ export class ReadAnythingToolbarElement extends ReadAnythingToolbarElementBase {
   accessor lineFocusStyle: LineFocusStyle|null = null;
   accessor lineFocusEnabled: boolean = false;
   accessor lineFocusMovement: LineFocusMovement|null = null;
+  // TODO(crbug.com/543113387): Remove this when the WebUI new badge supports
+  // auto-disappearing logic itself.
+  accessor showLineFocusNewBadge: boolean = false;
   protected accessor hideSpinner_: boolean = true;
   protected accessor isImmersiveEnabled_: boolean = false;
   // Overflow buttons on the toolbar that open a menu of options.
@@ -264,17 +268,14 @@ export class ReadAnythingToolbarElement extends ReadAnythingToolbarElementBase {
         TimeFrom.TOOLBAR, this.startTime_, this.constructorTime_);
     this.isImmersiveEnabled_ = chrome.readingMode.isImmersiveEnabled;
 
-    // Only add the button to the toolbar if the feature is enabled.
-    if (chrome.readingMode.imagesFeatureEnabled) {
-      this.textStyleToggles_.push({
-        id: IMAGES_TOGGLE_BUTTON_ID,
-        icon: chrome.readingMode.imagesEnabled ? IMAGES_ENABLED_ICON :
-                                                 IMAGES_DISABLED_ICON,
-        title: chrome.readingMode.imagesEnabled ?
-            loadTimeData.getString('disableImagesLabel') :
-            loadTimeData.getString('enableImagesLabel'),
-      });
-    }
+    this.textStyleToggles_.push({
+      id: IMAGES_TOGGLE_BUTTON_ID,
+      icon: chrome.readingMode.imagesEnabled ? IMAGES_ENABLED_ICON :
+                                               IMAGES_DISABLED_ICON,
+      title: chrome.readingMode.imagesEnabled ?
+          loadTimeData.getString('disableImagesLabel') :
+          loadTimeData.getString('enableImagesLabel'),
+    });
   }
 
   override connectedCallback() {

@@ -564,9 +564,7 @@ void ReadAnythingAppController::OnStringAttributeChanged(
     ax::mojom::StringAttribute attr,
     const std::string& old_value,
     const std::string& new_value) {
-  // Return early when the images flag is disabled to avoid potential crashes.
-  if (!features::IsReadAnythingImagesViaAlgorithmEnabled() ||
-      attr != ax::mojom::StringAttribute::kUrl) {
+  if (attr != ax::mojom::StringAttribute::kUrl) {
     return;
   }
 
@@ -908,11 +906,14 @@ ReadAnythingAppController::GetInitialDistillationMethod(bool is_pdf) const {
   if (forced_distillation_method_for_testing_) {
     return *forced_distillation_method_for_testing_;
   }
-  // If |is_pdf| = true, or if phrase highlighting is enabled, override
-  // IsReadAnythingWithReadabilityEnabled flag and return kScreen2x.
+
+  // If |is_pdf| = true, or if phrase highlighting is enabled, or if the current
+  // page is a Google Doc, override IsReadAnythingWithReadabilityEnabled flag
+  // and return kScreen2x.
   // TODO: crbug.com/444029483- Update the phrase highlighting implementation
   // so that it works with Readability.
-  return is_pdf || !features::IsReadAnythingWithReadabilityEnabled() ||
+  return is_pdf || IsGoogleDocs() ||
+                 !features::IsReadAnythingWithReadabilityEnabled() ||
                  features::IsReadAnythingReadAloudPhraseHighlightingEnabled()
              ? ReadAnythingAppModel::DistillationMethod::kScreen2x
              : ReadAnythingAppModel::DistillationMethod::kReadability;
@@ -1435,8 +1436,6 @@ gin::ObjectTemplateBuilder ReadAnythingAppController::GetObjectTemplateBuilder(
       .SetProperty("fontSize", &ReadAnythingAppController::FontSize)
       .SetProperty("linksEnabled", &ReadAnythingAppController::LinksEnabled)
       .SetProperty("imagesEnabled", &ReadAnythingAppController::ImagesEnabled)
-      .SetProperty("imagesFeatureEnabled",
-                   &ReadAnythingAppController::ImagesFeatureEnabled)
       .SetProperty("letterSpacing", &ReadAnythingAppController::LetterSpacing)
       .SetProperty("lineSpacing", &ReadAnythingAppController::LineSpacing)
       .SetProperty("standardLineSpacing",
@@ -1539,7 +1538,6 @@ gin::ObjectTemplateBuilder ReadAnythingAppController::GetObjectTemplateBuilder(
                    &ReadAnythingAppController::GetDistillationMethod)
       .SetProperty("isLineFocusEnabled",
                    &ReadAnythingAppController::IsLineFocusEnabled)
-      .SetProperty("isChromeOsAsh", &ReadAnythingAppController::IsChromeOsAsh)
       .SetProperty("baseLanguageForSpeech",
                    &ReadAnythingAppController::GetLanguageCodeForSpeech)
       .SetProperty("requiresDistillation",
@@ -1587,6 +1585,10 @@ gin::ObjectTemplateBuilder ReadAnythingAppController::GetObjectTemplateBuilder(
                  &ReadAnythingAppController::OnLinksEnabledToggled)
       .SetMethod("onTranslationRequested",
                  &ReadAnythingAppController::OnTranslationRequested)
+      .SetMethod("requestShouldShowLineFocusNewBadge",
+                 &ReadAnythingAppController::RequestShouldShowLineFocusNewBadge)
+      .SetMethod("onLineFocusFeatureUsed",
+                 &ReadAnythingAppController::OnLineFocusFeatureUsed)
       .SetMethod("onImagesEnabledToggled",
                  &ReadAnythingAppController::OnImagesEnabledToggled)
       .SetMethod("onScroll", &ReadAnythingAppController::OnScroll)
@@ -1754,10 +1756,6 @@ bool ReadAnythingAppController::LinksEnabled() const {
 
 bool ReadAnythingAppController::ImagesEnabled() const {
   return model_.images_enabled();
-}
-
-bool ReadAnythingAppController::ImagesFeatureEnabled() const {
-  return features::IsReadAnythingImagesViaAlgorithmEnabled();
 }
 
 bool ReadAnythingAppController::IsPhraseHighlightingEnabled() const {
@@ -2291,12 +2289,21 @@ bool ReadAnythingAppController::IsLineFocusEnabled() const {
   return features::IsReadAnythingLineFocusEnabled();
 }
 
-bool ReadAnythingAppController::IsChromeOsAsh() const {
-#if BUILDFLAG(IS_CHROMEOS)
-  return true;
-#else
-  return false;
-#endif
+void ReadAnythingAppController::RequestShouldShowLineFocusNewBadge() {
+  page_handler_->ShouldShowLineFocusNewBadge(base::BindOnce(
+      &ReadAnythingAppController::OnShouldShowLineFocusNewBadgeResponse,
+      weak_ptr_factory_.GetWeakPtr()));
+}
+
+void ReadAnythingAppController::OnShouldShowLineFocusNewBadgeResponse(
+    bool show) {
+  ExecuteJavaScript(
+      "chrome.readingMode.onShouldShowLineFocusNewBadgeResponse(" +
+      base::ToString(show) + ")");
+}
+
+void ReadAnythingAppController::OnLineFocusFeatureUsed() {
+  page_handler_->OnLineFocusFeatureUsed();
 }
 
 bool ReadAnythingAppController::IsGoogleDocs() const {
@@ -2330,12 +2337,10 @@ std::vector<std::string> ReadAnythingAppController::GetAllFonts() const {
 }
 
 void ReadAnythingAppController::RequestImageData(ui::AXNodeID node_id) const {
-  if (features::IsReadAnythingImagesViaAlgorithmEnabled()) {
-    DUMP_WILL_BE_CHECK(model_.GetAXNode(node_id));
-    auto target_tree_id = model_.active_tree_id();
-    CHECK_NE(target_tree_id, ui::AXTreeIDUnknown());
-    page_handler_->OnImageDataRequested(target_tree_id, node_id);
-  }
+  DUMP_WILL_BE_CHECK(model_.GetAXNode(node_id));
+  auto target_tree_id = model_.active_tree_id();
+  CHECK_NE(target_tree_id, ui::AXTreeIDUnknown());
+  page_handler_->OnImageDataRequested(target_tree_id, node_id);
 }
 
 void ReadAnythingAppController::OnImageDataDownloaded(

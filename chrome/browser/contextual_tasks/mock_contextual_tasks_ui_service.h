@@ -30,17 +30,6 @@ class MockContextualTasksUiService : public ContextualTasksUiService {
                const std::optional<base::Uuid>& new_task_id,
                bool is_shown_in_tab),
               (override));
-  MOCK_METHOD(void,
-              OnWebUIReady,
-              (BrowserWindowInterface * browser_window_interface,
-               const base::Uuid& task_id,
-               content::WebContents* web_contents),
-              (override));
-  MOCK_METHOD(void,
-              OnWebUIDestroyed,
-              (BrowserWindowInterface * browser_window_interface,
-               const std::optional<base::Uuid>& task_id),
-              (override));
   MOCK_METHOD(
       void,
       StartTaskUiInSidePanelImpl,
@@ -88,11 +77,6 @@ class MockContextualTasksUiService : public ContextualTasksUiService {
               (const GURL&, BrowserWindowInterface*),
               (override));
   MOCK_METHOD(bool, IsAiUrl, (const GURL&), (override));
-  MOCK_METHOD(bool,
-              IsSidePanelOpenAndRequestInSidePanel,
-              (content::WebContents*),
-              (override));
-
   MOCK_METHOD(bool, IsSearchResultsUrl, (const GURL&), (override));
   MOCK_METHOD(bool, IsGoogleCaptchaUrl, (const GURL&), (override));
   MOCK_METHOD(bool, IsUrlForPrimaryAccount, (const GURL&), (override));

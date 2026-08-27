@@ -207,6 +207,10 @@ BASE_FEATURE(kAutofillAiEditEntitiesFromSaveUpdatePrompt,
 // to be accepted.
 BASE_FEATURE(kAutofillAiFillingSurvey, base::FEATURE_DISABLED_BY_DEFAULT);
 
+// When enabled, Personal Context Autofill AI suggestions display a hide button
+// in the child submenu on Desktop.
+BASE_FEATURE(kAutofillAiHideSuggestion, base::FEATURE_DISABLED_BY_DEFAULT);
+
 // If enabled, no GeoIp requirements are imposed for AutofillAi.
 // Note that this feature can be modified as follows (all assuming that
 // `kAutofillAiIgnoreGeoIp` is enabled):
@@ -348,6 +352,11 @@ BASE_FEATURE(kAutofillAiShipment, base::FEATURE_ENABLED_BY_DEFAULT);
 // via a dialog instead of a snackbar.
 BASE_FEATURE(kAutofillAiShowDialogInSettingsWhenUpstreamingFails,
              base::FEATURE_ENABLED_BY_DEFAULT);
+
+// If enabled, a loading dialog is shown to the user during the time their data
+// is fetched from the server.
+BASE_FEATURE(kAutofillAiShowPersonalContextFillingYourInfoDialog,
+             base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_ANDROID)
 
 // Controls whether a banner is shown in settings when wallet data sharing is
@@ -446,6 +455,11 @@ BASE_FEATURE_PARAM(base::TimeDelta,
                    "ambient_autofill_unmasked_spii_cache_ttl",
                    base::Minutes(1));
 
+// Controls whether pContext suggestion suppression in Ambient Autofill is
+// enabled.
+BASE_FEATURE(kAutofillAmbientAutofillSuppression,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // If enabled, on Android desktop, the Autofill keyboard accessory will have a
 // new behavior and design.
 // TODO(crbug.com/438125774): Remove when launched.
@@ -476,6 +490,14 @@ BASE_FEATURE(kAutofillAndroidDisableSuggestionsOnJSFocus,
 // TODO(crbug.com/438125774): Remove when launched.
 BASE_FEATURE(kAutofillAndroidKeyboardAccessoryDynamicPositioning,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+#if BUILDFLAG(IS_ANDROID)
+// If enabled, on Android, hovering over an Autofill suggestion in the keyboard
+// accessory triggers a preview of the suggestion.
+// TODO(crbug.com/542535472): Remove when launched.
+BASE_FEATURE(kAutofillAndroidKeyboardAccessoryHoverPreview,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+#endif  // BUILDFLAG(IS_ANDROID)
 
 // Feature flag for kAutofillAtMemory.
 BASE_FEATURE(kAutofillAtMemory, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -520,8 +542,7 @@ BASE_FEATURE(kAutofillAtMemoryTriggerShortcut,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Controls whether AtMemory uses the strongly-typed AutofillFetchPlan.
-BASE_FEATURE(kAutofillAtMemoryTypedFetchPlan,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kAutofillAtMemoryTypedFetchPlan, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // When enabled, the placeholder is not considered a label fallback on the
 // renderer side anymore. Instead, local heuristic will match regexes against
@@ -646,7 +667,12 @@ BASE_FEATURE(kAutofillEnableAutofillSettingsEnterprisePolicy,
 // background thread to avoid blocking the UI thread.
 // TODO(crbug.com/496889243): Remove when launched.
 BASE_FEATURE(kAutofillEnableDeduplicationOnBackgroundThread,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
+// When enabled, the height of the autofill popup is limited to show a fixed
+// maximum number of entries.
+BASE_FEATURE(kAutofillEnableEntryLimitInPopup,
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables a couple of improvements to credit card expiration date handling:
 // - The autocomplete attribute values are rationalized with format strings

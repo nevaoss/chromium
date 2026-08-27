@@ -8,14 +8,16 @@
  * #css_wrapper_metadata_end */
 
 #bottomControls {
+  align-items: center;
   box-sizing: border-box;
   display: flex;
   flex-direction: row;
   justify-content: space-between;
-  align-items: center;
   padding-inline-end: 16px;
   padding-inline-start: 10px;
+  position: relative;
   width: 100%;
+  z-index: 1000;
 }
 
 #actionButtons {
@@ -76,7 +78,7 @@
 }
 
 #voiceSearchButton {
-  background-image: url(//resources/cr_components/searchbox/icons/mic.svg);
+  background-image: url(//resources/cr_components/searchbox/icons/mic_old.svg);
 }
 
 #lensSearchButton {
@@ -92,4 +94,8 @@
   top: 10px;
   width: 36px;
   z-index: 100;
+}
+
+:host-context([webui-rounded-icons]) #voiceSearchButton {
+  background-image: url(//resources/cr_components/searchbox/icons/mic.svg);
 }

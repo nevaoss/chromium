@@ -721,6 +721,7 @@ Called by update_autofill_enums.py.-->
   <int value="10" label="WalletablePassSave"/>
   <int value="11" label="OmniboxAutofill"/>
   <int value="12" label="PaymentsChurnedUsers"/>
+  <int value="13" label="WalletReminderNotice"/>
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/ui/autofill/bubble_controller_base.h:BubbleType) -->
@@ -5628,10 +5629,13 @@ Called by update_autofill_enums.py.-->
   <int value="3" label="Aborted; failed to fetch cached form"/>
   <int value="4" label="Aborted; card number or expiration date field missing"/>
   <int value="5" label="Aborted; form or client context not secure"/>
-  <int value="6" label="Aborted; found multiple credit card number fields"/>
+  <int value="6"
+      label="Aborted; found multiple visible credit card number fields"/>
   <int value="7" label="Aborted; OptimizationGuideDecider missing"/>
   <int value="8" label="Aborted; found field from non-allowlisted iframe"/>
   <int value="9" label="All prior checks passed; started IntersectionObserver"/>
+  <int value="10"
+      label="Aborted; form did not contain a visible credit card number field"/>
 </enum>
 
 <!-- LINT.ThenChange(/components/autofill/core/browser/metrics/payments/omnibox_autofill_metrics.h:OmniboxAutofillShowChipDecisionPart1) -->
@@ -5700,6 +5704,26 @@ Called by update_autofill_enums.py.-->
 </enum>
 
 <!-- LINT.ThenChange(/components/autofill/core/browser/metrics/payments/bnpl_metrics.h:PayLaterTabsFormEvent) -->
+
+<enum name="PaymentsChurnedUsersBubbleShowResult">
+  <int value="0" label="Shown successfully"/>
+  <int value="1" label="Off The Record"/>
+  <int value="2" label="No Cached Form"/>
+  <int value="3" label="Strike Database Blocked"/>
+  <int value="4" label="Form Not Visible"/>
+  <int value="5" label="Pref Already Turned On"/>
+  <int value="6" label="Pref Not User Controlled"/>
+  <int value="7" label="No Account Info Present"/>
+</enum>
+
+<enum name="PaymentsUiClosedReason">
+  <int value="0" label="Unknown"/>
+  <int value="1" label="Accepted"/>
+  <int value="2" label="Cancelled"/>
+  <int value="3" label="Closed"/>
+  <int value="4" label="Not Interacted"/>
+  <int value="5" label="Lost Focus"/>
+</enum>
 
 <enum name="PaymentsWindowUserConsentDialogResult">
   <int value="0" label="The tab or browser was closed"/>
@@ -6080,6 +6104,7 @@ Called by update_autofill_enums.py.-->
   <int value="95" label="Autofill AI other shipments"/>
   <int value="96" label="AtMemory source attribution"/>
   <int value="97" label="AtMemory fetching"/>
+  <int value="98" label="Remove Autofill AI info"/>
 </enum>
 
 <!-- LINT.ThenChange(/components/autofill/core/browser/suggestions/suggestion_type.h:SuggestionType) -->

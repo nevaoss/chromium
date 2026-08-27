@@ -22,9 +22,10 @@
 #include "third_party/blink/renderer/platform/wtf/wtf_export.h"
 #include "third_party/blink/renderer/platform/wtf/wtf_size_t.h"
 
-// `blink::Format()`, `blink::VFormat()`, and `blink::VFormatTo()` provide
-// string formatting functionality for Blink's WTF string types, inspired by
-// C++20's `std::format()`, `std::vformat()`, and `std::vformat_to()`.
+// `blink::Format()`, `blink::FormatTo()`, `blink::VFormat()`, and
+// `blink::VFormatTo()` provide string formatting functionality for Blink's WTF
+// string types, inspired by C++20's `std::format()`, `std::format_to()`,
+// `std::vformat()`, and `std::vformat_to()`.
 
 namespace blink {
 
@@ -39,17 +40,21 @@ consteval void FormatStringError(const char* message) {
 }
 
 // Internal helper class representing a single type-erased argument for
-// formatting. This class is used internally by `Format()`, `VFormat()`, and
-// `VFormatTo()` and is not intended for direct public usage.
+// formatting. This class is used internally by `Format()`, `FormatTo()`,
+// `VFormat()`, and `VFormatTo()` and is not intended for direct public usage.
 class WTF_EXPORT FormatArg {
  public:
-  using Value = std::variant<int64_t, uint64_t, StringView>;
+  using Value = std::variant<int64_t, uint64_t, StringView, const void*>;
 
   // NOLINTBEGIN(google-explicit-constructor)
-  FormatArg(int32_t v) : value_(static_cast<int64_t>(v)) {}
-  FormatArg(uint32_t v) : value_(static_cast<uint64_t>(v)) {}
-  FormatArg(int64_t v) : value_(v) {}
-  FormatArg(uint64_t v) : value_(v) {}
+  FormatArg(int v) : value_(static_cast<int64_t>(v)) {}
+  FormatArg(unsigned int v) : value_(static_cast<uint64_t>(v)) {}
+  FormatArg(long v) : value_(static_cast<int64_t>(v)) {}
+  FormatArg(unsigned long v) : value_(static_cast<uint64_t>(v)) {}
+  FormatArg(long long v) : value_(v) {}
+  FormatArg(unsigned long long v) : value_(v) {}
+  FormatArg(const void* v) : value_(v) {}
+  FormatArg(std::nullptr_t) : value_(static_cast<const void*>(nullptr)) {}
   template <typename T>
     requires std::convertible_to<const T&, StringView>
   FormatArg(const T& v) : value_(StringView(v)) {}
@@ -142,7 +147,7 @@ constexpr std::optional<ParsedFormatSpec> ParseFormatSpec(
   }
 
   if (type != '\0' && type != 'd' && type != 'x' && type != 'X' &&
-      type != 's') {
+      type != 's' && type != 'p' && type != 'P') {
     return std::nullopt;
   }
 
@@ -224,6 +229,10 @@ class FormatString {
           valid = std::is_integral_v<RawT> || std::is_enum_v<RawT>;
         } else if (type == 's') {
           valid = std::convertible_to<const RawT&, StringView>;
+        } else if (type == 'p' || type == 'P') {
+          valid = (std::convertible_to<RawT, const void*> &&
+                   !std::convertible_to<const RawT&, StringView>) ||
+                  std::is_same_v<RawT, std::nullptr_t>;
         }
       }
       current++;
@@ -274,9 +283,9 @@ WTF_EXPORT StringBuilder& VFormatTo(StringBuilder& builder,
 //   convertible types.
 // - Placeholders: Unindexed `{}` or `{:}` and width-specified `{:width}` or
 //   zero-padded `{:0width}` (where width is a 32-bit unsigned integer) with
-//   optional type specifier `d`, `x`, `X`, `s` (e.g. `{:d}`, `{:08x}`, `{:s}`)
-//   are supported. Positional (e.g. `{0}`) format specifiers are currently
-//   not supported.
+//   optional type specifier `d`, `x`, `X`, `s`, `p`, `P` (e.g. `{:d}`,
+//   `{:08x}`, `{:p}`, `{:P}`) are supported. Positional (e.g. `{0}`) format
+//   specifiers are currently not supported.
 // - Escaping: `{{` outputs `{`, and `}}` outputs `}`.
 //
 // Supported Argument Types:
@@ -284,6 +293,8 @@ WTF_EXPORT StringBuilder& VFormatTo(StringBuilder& builder,
 //   implicitly convertible types).
 // - String types: `blink::StringView`, `blink::String`, `blink::AtomicString`,
 //   `const char[N]`.
+// - Pointer types: `const void*`, `std::nullptr_t` (and implicitly
+//   convertible types).
 //
 // Usage Examples:
 //   // Basic formatting:
@@ -309,6 +320,31 @@ inline String Format(FormatString<std::type_identity_t<Args>...> format,
   } else {
     const FormatArg arg_array[] = {FormatArg(args)...};
     return VFormat(format.GetStringView(), base::span(arg_array));
+  }
+}
+
+// Appends a formatted string to a `StringBuilder` with compile-time format
+// string validation and argument count checking. Inspired by C++20's
+// `std::format_to()`.
+//
+// Parameters:
+// - `builder`: The `StringBuilder` to append the formatted result to.
+// - `format`: A format string with compile-time validation. See `Format()` for
+//   specifications and supported types.
+// - `args`: The arguments to format.
+//
+// Return value:
+//   `builder` is returned for chaining.
+template <typename... Args>
+inline StringBuilder& FormatTo(
+    StringBuilder& builder,
+    FormatString<std::type_identity_t<Args>...> format,
+    Args&&... args) {
+  if constexpr (sizeof...(Args) == 0) {
+    return VFormatTo(builder, format.GetStringView(), FormatArgs());
+  } else {
+    const FormatArg arg_array[] = {FormatArg(args)...};
+    return VFormatTo(builder, format.GetStringView(), base::span(arg_array));
   }
 }
 

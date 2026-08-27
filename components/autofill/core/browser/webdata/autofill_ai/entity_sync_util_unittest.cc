@@ -414,7 +414,7 @@ TEST(EntitySyncUtilTest,
       EntityType(EntityTypeName::kVehicle), std::move(attributes),
       EntityInstance::EntityId("00000000-0000-4000-8000-200000000000"),
       /*nickname=*/"", /*date_modified=*/{}, /*use_count=*/0, /*use_date=*/{},
-      EntityInstance::RecordType::kServerWallet,
+      EntityInstance::WalletRecordTypePayload{},
       EntityInstance::AreAttributesReadOnly(false),
       /*frecency_override=*/"");
 
@@ -478,7 +478,7 @@ TEST(EntitySyncUtilTest, CreateEntityInstanceFromSpecifics_FlightReservation) {
 TEST(EntitySyncUtilTest,
      CreateEntityInstanceFromSpecifics_FlightReservation_EmptyDepartureTime) {
   sync_pb::AutofillValuableSpecifics specifics =
-      TestFlightReservationSpecifics();
+      TestFlightReservationSpecifics({.departure_time = std::nullopt});
 
   std::optional<EntityInstance> flight_reservation =
       CreateEntityInstanceFromSpecifics(specifics);

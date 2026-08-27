@@ -591,6 +591,7 @@
 <translation id="2027465737841872819">塑膠</translation>
 <translation id="2027707238798802149">無法使用卡片</translation>
 <translation id="2032962459168915086"><ph name="BEGIN_LINK" />檢查 Proxy 和防火牆<ph name="END_LINK" /></translation>
+<translation id="2033550997390154638">這個 Chrome 執行個體正在使用手動設定的指令列旗標。請注意，指令列旗標可能隨時變更，且不屬於正式支援範圍。</translation>
 <translation id="2033900728810589426">搜尋捷徑不得與 <ph name="DEFAULT_SEARCH_PROVIDER_KEYWORD_POLICY_NAME" /> 定義的預設搜尋引擎關鍵字相同：<ph name="SHORTCUT_NAME" /></translation>
 <translation id="2034971124472263449">仍要儲存</translation>
 <translation id="2036514476578229158">你已要求造訪這個網站，家長可以透過 Family Link 回覆要求。</translation>
@@ -1060,7 +1061,6 @@
 <translation id="2824775600643448204">網址與搜尋列</translation>
 <translation id="2826760142808435982">連線採用 <ph name="CIPHER" /> 加密，並設有 <ph name="KX" /> 金鑰交換機制。</translation>
 <translation id="2828797285817981634">目前允許使用動作感應器</translation>
-<translation id="2835170189407361413">清除表單</translation>
 <translation id="2835907903001172712">瀏覽器總覽</translation>
 <translation id="2837891525090413132">可要求鎖定及使用鍵盤</translation>
 <translation id="2839032553903800133">已封鎖通知</translation>
@@ -3293,7 +3293,6 @@
 <translation id="6679354743514146922">Chrome 瀏覽器正嘗試在 <ph name="APP_NAME" /> 中填入密碼。</translation>
 <translation id="668132230070712111">影片已儲存至 Google 雲端硬碟</translation>
 <translation id="6681790815630918386">信用卡安全碼已儲存</translation>
-<translation id="6686570026048064255">如要關閉 Pix 碼偵測功能，請前往 <ph name="BEGIN_LINK1" />Chrome 設定<ph name="END_LINK1" /></translation>
 <translation id="6687230248707087982">信封 (普通紙)</translation>
 <translation id="6687335167692595844">要求的字型大小</translation>
 <translation id="6688743156324860098">更新…</translation>
@@ -4435,6 +4434,7 @@
 <translation id="8708134712139312373">可以要求連線至藍牙裝置</translation>
 <translation id="8710842507289500830">字型樣式</translation>
 <translation id="8712637175834984815">知道了</translation>
+<translation id="8715198179991802709">Chrome 剛剛標記了你嘗試造訪的網站。請花 1 分鐘填寫問卷調查，協助我們改善這類警告訊息。</translation>
 <translation id="8718314106902482036">未完成付款程序</translation>
 <translation id="8719263113926255150"><ph name="ENTITY" />，<ph name="DESCRIPTION" />，搜尋建議</translation>
 <translation id="8719528812645237045">多孔 (頂端)</translation>
@@ -4562,7 +4562,6 @@
 <translation id="8932102934695377596">你的時鐘時間過慢</translation>
 <translation id="893332455753468063">新增名稱</translation>
 <translation id="8938242527120341116">裝置的內容篩選器已封鎖 <ph name="BLOCKED_URL" /></translation>
-<translation id="8942355029279167844">系統管理員已允許 <ph name="APP_NAME" /> 收集診斷資料以改善產品使用體驗。詳情請參閱 <ph name="BEGIN_LINK" />https://www.parallels.com/pcep<ph name="END_LINK" />。</translation>
 <translation id="8943282376843390568">萊姆綠</translation>
 <translation id="8949410982325929394">語氣</translation>
 <translation id="8949493680961858543">A1 x 4</translation>

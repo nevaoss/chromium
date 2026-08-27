@@ -4,6 +4,8 @@
 
 package org.chromium.chrome.browser.omnibox.styles;
 
+import static org.chromium.build.NullUtil.assumeNonNull;
+
 import android.content.ComponentCallbacks2;
 import android.content.Context;
 import android.content.res.ColorStateList;
@@ -26,7 +28,6 @@ import androidx.annotation.IntDef;
 import androidx.annotation.Px;
 import androidx.annotation.StringRes;
 import androidx.annotation.StyleRes;
-import androidx.appcompat.content.res.AppCompatResources;
 import androidx.core.content.ContextCompat;
 
 import com.google.android.material.color.MaterialColors;
@@ -85,7 +86,6 @@ public class OmniboxResourceProvider implements ComponentCallbacks2 {
 
     private static final String TAG = "OmniboxResourceProvider";
 
-    private static SparseArray<ConstantState> sDrawableCache = new SparseArray<>();
     private static SparseArray<String> sStringCache = new SparseArray<>();
     private static @Nullable Function<Tab, @Nullable Bitmap> sTabFaviconFactory;
     private static @ColorInt @Nullable Integer sUrlBarPrimaryTextColorForTesting;
@@ -193,9 +193,17 @@ public class OmniboxResourceProvider implements ComponentCallbacks2 {
         return LayoutSize.PHONE;
     }
 
-    /** As {@link #getDrawable(Context, int)} but uses the instance context and cache. */
-    public Drawable getDrawable(@DrawableRes int res) {
-        return mCache.getDrawable(res);
+    /**
+     * Resolves a drawable resource using the instance context and cache, automatically casting the
+     * result to the target {@link Drawable} subtype.
+     *
+     * @param <T> Target {@link Drawable} subtype to cast to.
+     * @param res Drawable resource ID to retrieve.
+     * @return Resolved {@link Drawable} cast to the target type {@code T}.
+     */
+    @SuppressWarnings("unchecked")
+    public <T extends Drawable> T getDrawable(@DrawableRes int res) {
+        return (T) mCache.getDrawable(res);
     }
 
     /**
@@ -683,39 +691,32 @@ public class OmniboxResourceProvider implements ComponentCallbacks2 {
         return getSearchBoxIconBackground(mContext, getBrandedColorScheme());
     }
 
-    /**
-     * Get popover plus button background.
-     *
-     * @see #getPopoverPlusButtonBackground(Context, ...)
-     */
+    /** Get popover plus button background. */
     public Drawable getPopoverPlusButtonBackground() {
-        return getPopoverPlusButtonBackground(mContext, getBrandedColorScheme());
+        boolean isIncognito =
+                convertBrandedColorSchemeToIncognitoOrDayNightAdaptive(getBrandedColorScheme());
+        @DrawableRes
+        int resId =
+                isIncognito
+                        ? R.drawable.fusebox_popover_plus_button_background_incognito
+                        : R.drawable.fusebox_popover_plus_button_background;
+        return getDrawable(resId);
     }
 
-    /**
-     * Get popup background drawable.
-     *
-     * @see #getPopupBackgroundDrawable(Context, ...)
-     */
+    /** Get popup background drawable. */
     public Drawable getPopupBackgroundDrawable() {
-        return getPopupBackgroundDrawable(mContext, getBrandedColorScheme());
-    }
-
-    /**
-     * As {@link androidx.appcompat.content.res.AppCompatResources#getDrawable(Context, int)} but
-     * potentially augmented with caching. If caching is enabled, there is a single, unbounded cache
-     * of ConstantState shared by all contexts.
-     */
-    public static Drawable getDrawable(Context context, @DrawableRes int res) {
-        ThreadUtils.assertOnUiThread();
-        ConstantState constantState = sDrawableCache.get(res, null);
-        if (constantState != null) {
-            return constantState.newDrawable(context.getResources());
-        }
-
-        Drawable drawable = AppCompatResources.getDrawable(context, res);
-        sDrawableCache.put(res, drawable.getConstantState());
-        return drawable;
+        boolean isIncognito =
+                convertBrandedColorSchemeToIncognitoOrDayNightAdaptive(getBrandedColorScheme());
+        @DrawableRes
+        int resId =
+                OmniboxFeatures.shouldShowBottomSheetPopup()
+                        ? isIncognito
+                                ? R.drawable.fusebox_popup_bg_tinted_on_dark_bg
+                                : R.drawable.fusebox_popup_bg_tinted
+                        : isIncognito
+                                ? R.drawable.menu_bg_tinted_on_dark_bg
+                                : R.drawable.menu_bg_tinted;
+        return getDrawable(resId);
     }
 
     /**
@@ -754,30 +755,7 @@ public class OmniboxResourceProvider implements ComponentCallbacks2 {
                         (Object[]) args);
     }
 
-    /**
-     * Clears the drawable cache to avoid, e.g. caching a now incorrectly colored drawable resource.
-     */
-    public static void invalidateDrawableCache() {
-        sDrawableCache.clear();
-    }
-
-    public static SparseArray<ConstantState> getDrawableCacheForTesting() {
-        return sDrawableCache;
-    }
-
     public static void disableCachesForTesting() {
-        sDrawableCache =
-                new SparseArray<>() {
-                    @Override
-                    public @Nullable ConstantState get(int key) {
-                        return null;
-                    }
-
-                    @Override
-                    public ConstantState get(int key, ConstantState valueIfKeyNotFound) {
-                        return valueIfKeyNotFound;
-                    }
-                };
         sStringCache =
                 new SparseArray<>() {
                     @Override
@@ -793,7 +771,6 @@ public class OmniboxResourceProvider implements ComponentCallbacks2 {
     }
 
     public static void reenableCachesForTesting() {
-        sDrawableCache = new SparseArray<>();
         sStringCache = new SparseArray<>();
     }
 
@@ -814,7 +791,7 @@ public class OmniboxResourceProvider implements ComponentCallbacks2 {
         Context wrappedContext =
                 maybeWrapContextForIncognitoColorScheme(context, brandedColorScheme);
         @DrawableRes int resourceId = resolveAttributeToDrawableRes(wrappedContext, attributeResId);
-        return getDrawable(wrappedContext, resourceId);
+        return assumeNonNull(wrappedContext.getDrawable(resourceId));
     }
 
     /**
@@ -1402,42 +1379,15 @@ public class OmniboxResourceProvider implements ComponentCallbacks2 {
         return DrawableUtils.getIconBackground(context, isIncognito, size, size);
     }
 
-    /** Returns the drawable that goes behind the plus button when in popover mode. */
-    public static Drawable getPopoverPlusButtonBackground(
-            Context context, @BrandedColorScheme int brandedColorScheme) {
-        boolean isIncognito =
-                convertBrandedColorSchemeToIncognitoOrDayNightAdaptive(brandedColorScheme);
-        @DrawableRes
-        int resId =
-                isIncognito
-                        ? R.drawable.fusebox_popover_plus_button_background_incognito
-                        : R.drawable.fusebox_popover_plus_button_background;
-        return getDrawable(context, resId);
-    }
-
-    /** Returns the drawable for the popup menu that shows menu items for context and tools. */
-    public static Drawable getPopupBackgroundDrawable(
-            Context context, @BrandedColorScheme int brandedColorScheme) {
-        boolean isIncognito =
-                convertBrandedColorSchemeToIncognitoOrDayNightAdaptive(brandedColorScheme);
-
-        @DrawableRes
-        int resId =
-                OmniboxFeatures.shouldShowBottomSheetPopup()
-                        ? isIncognito
-                                ? R.drawable.fusebox_popup_bg_tinted_on_dark_bg
-                                : R.drawable.fusebox_popup_bg_tinted
-                        : isIncognito
-                                ? R.drawable.menu_bg_tinted_on_dark_bg
-                                : R.drawable.menu_bg_tinted;
-        return getDrawable(context, resId);
-    }
-
     public static void setTabFaviconFactory(Function<Tab, @Nullable Bitmap> tabFaviconFactory) {
         sTabFaviconFactory = tabFaviconFactory;
     }
 
     ResourceCache getCacheForTesting() {
         return mCache;
+    }
+
+    SparseArray<ConstantState> getDrawableCacheForTesting() {
+        return mCache.getDrawableCacheForTesting();
     }
 }

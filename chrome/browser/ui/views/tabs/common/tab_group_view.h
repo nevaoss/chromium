@@ -109,21 +109,20 @@ class TabGroupView : public views::View,
 
   raw_ptr<TabCollectionNode> collection_node_ = nullptr;
 
-  base::CallbackListSubscription node_destroyed_subscription_;
-
   tab_groups::TabGroupVisualData tab_group_visual_data_;
   const raw_ptr<TabGroupHeaderView> group_header_ = nullptr;
   const raw_ptr<views::View> group_line_ = nullptr;
-
-  const raw_ref<TabCollectionAnimatingLayoutManager> layout_manager_;
 
   // Tracked separately for layout purposes so child/underline visibility
   // updates occur only when collapse/expand animations complete, rather than
   // reacting immediately to visual data updates during animation.
   bool is_collapsed_ = false;
 
+  const raw_ref<TabCollectionAnimatingLayoutManager> layout_manager_;
+
   std::unique_ptr<tabs::TabGroupDataObserver> tab_group_data_observer_;
   base::CallbackListSubscription tab_group_data_changed_subscription_;
+  base::CallbackListSubscription node_destroyed_subscription_;
 };
 
 #endif  // CHROME_BROWSER_UI_VIEWS_TABS_COMMON_TAB_GROUP_VIEW_H_
