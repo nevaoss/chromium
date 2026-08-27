@@ -43,14 +43,10 @@ bool ShouldUpdateTextInputState(const ui::mojom::TextInputState& old_state,
 #if defined(USE_AURA)
   return old_state.node_id != new_state.node_id ||
          old_state.type != new_state.type || old_state.mode != new_state.mode ||
-<<<<<<< HEAD
-         old_state.flags != new_state.flags ||
+         ShouldUpdateForFlagChanges(old_state.flags, new_state.flags) ||
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
          old_state.input_panel_rectangle != new_state.input_panel_rectangle ||
 #endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
-=======
-         ShouldUpdateForFlagChanges(old_state.flags, new_state.flags) ||
->>>>>>> 153.0.8007.0~1
          old_state.can_compose_inline != new_state.can_compose_inline;
 #elif BUILDFLAG(IS_APPLE)
   return old_state.type != new_state.type ||
