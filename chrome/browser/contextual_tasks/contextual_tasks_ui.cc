@@ -154,15 +154,11 @@ void UpdateDarkModePreferenceFromUrl(content::WebContents* wc,
 }
 
 bool IsUserFeedbackAllowed(Profile* profile) {
-  bool is_user_feedback_allowed = true;
 #if BUILDFLAG(IS_ANDROID)
-  if (base::FeatureList::IsEnabled(
-          chrome::android::kUserFeedbackAllowedPolicy)) {
-    is_user_feedback_allowed =
-        profile->GetPrefs()->GetBoolean(prefs::kUserFeedbackAllowed);
-  }
+  return profile->GetPrefs()->GetBoolean(prefs::kUserFeedbackAllowed);
+#else
+  return true;
 #endif
-  return is_user_feedback_allowed;
 }
 
 std::string GetEncodedHandshakeMessage() {
@@ -1557,10 +1553,12 @@ void ContextualTasksUI::PushTaskDetailsToPage(std::optional<base::Uuid> id,
 }
 
 bool ContextualTasksUI::CanExpandToFullTab() const {
-  // Employs the cached contextual tasks eligibility value calculated on
-  // initialization. Mid-session updates are ignored to ensure the expand
-  // affordance remains static and consistent.
-  return was_ai_page_ && is_contextual_tasks_eligible_on_init_;
+  // Expanding to a full tab requires the `kContextualTasks` feature flag (other
+  // side panel configurations lack full-tab support), an active AI page, and
+  // initial eligibility. The initialization-time eligibility is cached so the
+  // expand affordance remains static and consistent throughout the session.
+  return base::FeatureList::IsEnabled(contextual_tasks::kContextualTasks) &&
+         was_ai_page_ && is_contextual_tasks_eligible_on_init_;
 }
 
 mojo::Remote<contextual_tasks::mojom::Page>&
@@ -1823,9 +1821,11 @@ void ContextualTasksUI::FrameNavObserver::DidFinishNavigation(
         base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox) &&
         task_info_delegate_->GetTaskId().has_value();
 
-    bool should_create_new_task = pending_task_title_mismatch ||
-                                  is_thread_switch ||
-                                  (is_new_conversation && !has_reusable_task);
+    bool should_create_new_task =
+        is_thread_switch ||
+        (!has_reusable_task &&
+         (pending_task_title_mismatch || is_new_conversation));
+
     if (should_create_new_task) {
       OMNIBOX_LOG("nav_trace") << "ContextualTasks navigation trace: "
                                   "FrameNavObserver::DidFinishNavigation "

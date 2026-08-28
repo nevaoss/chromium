@@ -532,6 +532,7 @@
 <translation id="3161699713309727585"><ph name="BUTTON_TEXT" />, адкрыецца ў новай укладцы</translation>
 <translation id="3166827708714933426">Спалучэнні клавіш для працы з укладкамі і вокнамі</translation>
 <translation id="3167258285411721858">Вы можаце запытаць мабільную версію сайта <ph name="HOST_NAME" /></translation>
+<translation id="3177338796769255211">Увайдзіце, каб атрымаць доступ да закладак і іншых даных на ўсіх сваіх прыладах</translation>
 <translation id="3181145110929454111"><ph name="TAB_TITLE" />, замацаваная ўкладка ў рэжыме інкогніта з выключаным гукам, выбраная разам з іншымі ўкладкамі</translation>
 <translation id="3189635831478931757">Група ўкладак "<ph name="GROUP_TITLE" />"</translation>
 <translation id="3200536777393523575">Закрыць гэта акно?</translation>
@@ -764,6 +765,7 @@
 <translation id="4180726336228139707">Толькі на гэтай прыладзе</translation>
 <translation id="4181841719683918333">Мовы</translation>
 <translation id="4188221736490993796">Па алфавіце (ад Я да А)</translation>
+<translation id="4188638484665452040">Сэрвіс Gemini адмацаваны</translation>
 <translation id="4189344235004694858">{NUM_REVOKED_PERMISSIONS,plural, =1{Браўзер Chrome забараніў гэтаму сайту адпраўляць апавяшчэнні з-за спама ці падманнага змесціва}one{Браўзер Chrome забараніў гэтым сайтам адпраўляць апавяшчэнні з-за спама ці падманнага змесціва}few{Браўзер Chrome забараніў гэтым сайтам адпраўляць апавяшчэнні з-за спама ці падманнага змесціва}many{Браўзер Chrome забараніў гэтым сайтам адпраўляць апавяшчэнні з-за спама ці падманнага змесціва}other{Браўзер Chrome забараніў гэтым сайтам адпраўляць апавяшчэнні з-за спама ці падманнага змесціва}}</translation>
 <translation id="4195643157523330669">Адкрыць у новай укладцы</translation>
 <translation id="4197828496439691735">{NUM_TABS,plural, =1{1 укладка на гэтай прыладзе}one{# укладка на гэтай прыладзе}few{# укладкі на гэтай прыладзе}many{# укладак на гэтай прыладзе}other{# укладкі на гэтай прыладзе}}</translation>
@@ -928,13 +930,13 @@
 <translation id="4794291718671962615">(<ph name="MEGABYTES" />) <ph name="URL" /></translation>
 <translation id="4807098396393229769">Імя на картцы</translation>
 <translation id="480990236307250886">Адкрыць галоўную старонку</translation>
+<translation id="4816492930507672669">Дапасаваць да памераў старонкі</translation>
 <translation id="4822710610088666676">Група ўкладак "<ph name="TAB_GROUP_TITLE" />" закрыта і захавана</translation>
 <translation id="4834250788637067901">Спосабы аплаты, прапановы і адрасы, якія выкарыстоўваюць Google Pay</translation>
 <translation id="4835385943915508971">Chrome не мае доступу да запытанай крыніцы.</translation>
 <translation id="483742037940503070">{TAB_COUNT,plural, =1{Аднавіць групу з <ph name="TAB_COUNT_ONE" /> укладкі, колер "<ph name="COLOR_NAME" />", як новую фонавую групу ўкладак.}one{Аднавіць групу з некалькіх укладак (<ph name="TAB_COUNT_MANY" />), колер "<ph name="COLOR_NAME" />", як новую фонавую групу ўкладак.}few{Аднавіць групу з некалькіх укладак (<ph name="TAB_COUNT_MANY" />), колер "<ph name="COLOR_NAME" />", як новую фонавую групу ўкладак.}many{Аднавіць групу з некалькіх укладак (<ph name="TAB_COUNT_MANY" />), колер "<ph name="COLOR_NAME" />", як новую фонавую групу ўкладак.}other{Аднавіць групу з некалькіх укладак (<ph name="TAB_COUNT_MANY" />), колер "<ph name="COLOR_NAME" />", як новую фонавую групу ўкладак.}}</translation>
 <translation id="4849731766219625109">Выкарыстоўваць уліковы запіс <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /></translation>
 <translation id="4850886885716139402">Праглядзець</translation>
-<translation id="4852014461738377247">Уваход…</translation>
 <translation id="4860895144060829044">Выклік</translation>
 <translation id="4864369630010738180">Уваход...</translation>
 <translation id="4866368707455379617">Не ўдалося ўсталяваць модуль "<ph name="MODULE" />" для Chrome</translation>
@@ -1314,7 +1316,6 @@
 <translation id="6411219469806822692">Не ўдаецца перамясціцца вышэй. Паспрабуйце пачаць з месца, якое б знаходзілася вышэй на старонцы.</translation>
 <translation id="6412215853589222273"><ph name="TAB_TITLE" />, выбраная ўкладка</translation>
 <translation id="641643625718530986">Друк…</translation>
-<translation id="6427723330233512782">Дапасаваць да вышыні экрана</translation>
 <translation id="6433501201775827830">Выберыце пошукавую сістэму</translation>
 <translation id="6434309073475700221">Адхіліць</translation>
 <translation id="6435307030888827407">Не ўваходзіць</translation>
@@ -1838,6 +1839,7 @@
 <translation id="8393700583063109961">Адправіць паведамленне</translation>
 <translation id="8396098434728053815">Таксама абагуліць аўдыя з укладкі</translation>
 <translation id="8398389123831319859">Двойчы дакраніцеся і ўтрымлівайце, каб пераключыцца ў рэжым інкогніта</translation>
+<translation id="8412037385861858490">Каб зрабіць вашу працу ў Chrome бяспечнай, арганізацыя зможа праглядаць пэўную інфармацыю і кіраваць ёй, калі вы ўвайшлі ў Chrome. <ph name="BEGIN_LINK" />Даведацца больш<ph name="END_LINK" /></translation>
 <translation id="8413126021676339697">Паказаць усю гісторыю</translation>
 <translation id="8413795581997394485">Абараняе ад заведама небяспечных сайтаў, спамповак і пашырэнняў. Калі вы наведваеце сайт, Chrome адпраўляе замаскіраваную частку URL-адраса ў Google праз прыватны сервер, які хавае ваш IP-адрас. Калі сайт робіць нешта падазронае, таксама адпраўляюцца поўныя URL-адрасы і фрагменты змесціва на старонцы.</translation>
 <translation id="8414396119627470038">Увайдзіце на сайт <ph name="SITE_ETLD_PLUS_ONE" />, выкарыстаўшы ідэнтыфікацыйную інфармацыю ад пастаўшчыка <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /></translation>

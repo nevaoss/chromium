@@ -206,8 +206,6 @@ public class MessagesMetrics {
                 return "OsAdvancedProtectionSettingChangedMessage";
             case MessageIdentifier.UPDATE_CHROME_FOR_TAB_GROUP_SHARE:
                 return "UpdateChromeForTabGroupShare";
-            case MessageIdentifier.MODE_B_ROLLBACK_MESSAGE:
-                return "ModeBRollbackMessage";
             case MessageIdentifier.RELOAD_PAGE:
                 return "ReloadPage";
             case MessageIdentifier.MULTI_INSTANCE_CREATION_LIMIT:
@@ -236,6 +234,8 @@ public class MessagesMetrics {
                 return "ImmersivePlaybackConfirmation";
             case MessageIdentifier.INTRANET_REDIRECT:
                 return "IntranetRedirect";
+            case MessageIdentifier.PASSWORD_SAVED_CONFIRMATION:
+                return "PasswordSavedConfirmation";
             default:
                 return "Unknown";
         }

@@ -20,6 +20,7 @@
 #include "base/observer_list.h"
 #include "base/types/id_type.h"
 #include "base/uuid.h"
+#include "build/build_config.h"
 #include "chrome/browser/context_hub/auto_todos/auto_todos_store.h"
 #include "chrome/browser/context_hub/memory_bank/memory_bank.h"
 #include "chrome/browser/context_hub/tab_group_store/tab_group_entry.h"
@@ -30,7 +31,20 @@
 #include "components/saved_tab_groups/public/types.h"
 #include "url/gurl.h"
 
-class PrefService;
+#if !BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/ui/browser_tab_strip_tracker_delegate.h"
+#include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
+#endif
+
+class Profile;
+
+#if !BUILDFLAG(IS_ANDROID)
+class BrowserTabStripTracker;
+class BrowserWindowInterface;
+class TabStripModel;
+class TabStripModelChange;
+struct TabStripSelectionChange;
+#endif
 
 namespace content {
 class WebContents;
@@ -63,15 +77,26 @@ namespace context_hub {
 class TabGroupStore;
 class ContextHubBackend;
 
-class ContextHubService : public KeyedService, public AutoTodosStore::Observer {
+class ContextHubService : public KeyedService,
+                          public AutoTodosStore::Observer
+#if !BUILDFLAG(IS_ANDROID)
+    ,
+                          public BrowserTabStripTrackerDelegate,
+                          public TabStripModelObserver
+#endif
+{
  public:
   class Observer : public base::CheckedObserver {
    public:
     virtual void OnAutoTodosChanged(base::span<const AutoTodoEntry> entries) {}
+    virtual void OnFirstPartyAutoTodosGenerationStateChanged(
+        bool is_generating) {}
+    virtual void OnThirdPartyAutoTodosGenerationStateChanged(
+        bool is_generating) {}
   };
 
   ContextHubService(
-      PrefService* pref_service,
+      Profile* profile,
       personal_context::PersonalContextService* personal_context_service,
       optimization_guide::RemoteModelExecutor*
           optimization_guide_remote_model_executor,
@@ -93,6 +118,17 @@ class ContextHubService : public KeyedService, public AutoTodosStore::Observer {
   // AutoTodosStore::Observer:
   void OnAutoTodosChanged(base::span<const AutoTodoEntry> entries) override;
 
+#if !BUILDFLAG(IS_ANDROID)
+  // BrowserTabStripTrackerDelegate:
+  bool ShouldTrackBrowser(BrowserWindowInterface* browser) override;
+
+  // TabStripModelObserver:
+  void OnTabStripModelChanged(
+      TabStripModel* tab_strip_model,
+      const TabStripModelChange& change,
+      const TabStripSelectionChange& selection) override;
+#endif
+
   // Generates 1P AutoTodos and saves them in the AutoTodos store. Invokes
   // `callback` on completion indicating whether the generation was successful.
   void GenerateFirstPartyAutoTodos(AutoTodosStore::OperationCallback callback);
@@ -102,6 +138,9 @@ class ContextHubService : public KeyedService, public AutoTodosStore::Observer {
   void GenerateTabBasedTodos(
       std::vector<base::WeakPtr<content::WebContents>> tabs,
       AutoTodosStore::OperationCallback callback);
+
+  // Returns true if a First Party Auto Todos generation request is in flight.
+  bool IsGeneratingFirstPartyAutoTodos() const;
 
   using GetAutoTodosCallback =
       base::OnceCallback<void(std::vector<AutoTodoEntry>)>;
@@ -150,16 +189,9 @@ class ContextHubService : public KeyedService, public AutoTodosStore::Observer {
 
   // Memory bank wrappers that forward operations to the underlying storage
   // backend.
-  // Saves a tab to the memory bank.
-  void SaveTab(const GURL& url,
-               std::string_view tab_title,
-               std::string_view page_text,
-               MemoryBank::OperationCompleteCallback callback);
-  // Saves a text selection to the memory bank.
-  void SaveTextSelection(const GURL& url,
-                         std::string_view tab_title,
-                         std::string_view selected_text,
-                         MemoryBank::OperationCompleteCallback callback);
+  // Saves an entry in the memory bank.
+  void SaveMemoryBankEntry(MemoryBankEntry entry,
+                           MemoryBank::OperationCompleteCallback callback);
   // Deletes an entry from the memory bank.
   void DeleteEntries(base::span<const int64_t> ids,
                      MemoryBank::OperationCompleteCallback callback);
@@ -249,6 +281,19 @@ class ContextHubService : public KeyedService, public AutoTodosStore::Observer {
       AutoTodosStore::OperationCallback callback,
       personal_context::FetchContextResult result);
 
+  // Cleans up First Party Auto Todos generation state, notifies observers, and
+  // invokes the completion callback.
+  void FinishFirstPartyAutoTodosGeneration(
+      AutoTodosStore::OperationCallback callback,
+      bool success);
+
+  // Handles the async response when all auto todos are fetched to filter tabs
+  // for tab-based todos generation.
+  void OnAllAutoTodosFetchedForTabBasedTodos(
+      std::vector<base::WeakPtr<content::WebContents>> tabs,
+      AutoTodosStore::OperationCallback callback,
+      std::vector<AutoTodoEntry> stored_todos);
+
   // Handles the async response when APC is fetched for tabs.
   void OnTabContextsFetched(
       std::vector<
@@ -284,6 +329,7 @@ class ContextHubService : public KeyedService, public AutoTodosStore::Observer {
       optimization_guide::OptimizationGuideModelExecutionResult result,
       std::unique_ptr<optimization_guide::ModelQualityLogEntry> log_entry);
 
+  const raw_ref<Profile> profile_;
   const raw_ref<personal_context::PersonalContextService>
       personal_context_service_;
   const raw_ref<optimization_guide::RemoteModelExecutor>
@@ -292,6 +338,9 @@ class ContextHubService : public KeyedService, public AutoTodosStore::Observer {
       tab_group_sync_service_;
   const raw_ref<page_content_annotations::PageContentExtractionService>
       page_content_extraction_service_;
+
+  // Indicates if a First Party Auto Todos generation request is in flight.
+  bool is_generating_first_party_auto_todos_ = false;
 
   // Stores the client's callback during an in-flight `GenerateTabBasedTodos`
   // request while page contexts are being extracted and model execution is
@@ -341,6 +390,10 @@ class ContextHubService : public KeyedService, public AutoTodosStore::Observer {
   // sessions.
   std::unique_ptr<signin::PersistentRepeatingTimer>
       first_party_auto_todos_timer_;
+
+#if !BUILDFLAG(IS_ANDROID)
+  std::unique_ptr<BrowserTabStripTracker> browser_tab_strip_tracker_;
+#endif
 
   base::ObserverList<Observer> observers_;
 

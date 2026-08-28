@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/compiler_specific.h"
 #include "base/memory/raw_ptr.h"
 #include "base/strings/strcat.h"
 #include "base/test/bind.h"
@@ -31,6 +32,7 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_context_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_service_factory.h"
 #include "chrome/browser/feature_engagement/tracker_factory.h"
+#include "chrome/browser/media/webrtc/fake_desktop_media_picker_factory.h"
 #include "chrome/browser/search_engines/template_url_service_factory.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/tab_list/mock_tab_list_interface.h"
@@ -45,7 +47,6 @@
 #include "chrome/browser/ui/tabs/tab_model.h"
 #include "chrome/browser/ui/views/drive_picker_host/drive_picker_host_controller.h"
 #include "chrome/browser/ui/views/drive_picker_host/drive_picker_sanitizer.h"
-#include "components/lens/lens_features.h"
 #include "chrome/browser/ui/webui/cr_components/composebox/composebox_handler.h"
 #include "chrome/browser/ui/webui/drive_picker_host/drive_picker_host_request.h"
 #include "chrome/browser/ui/webui/new_tab_page/composebox/variations/composebox_fieldtrial.h"
@@ -65,6 +66,7 @@
 #include "components/contextual_tasks/public/prefs.h"
 #include "components/contextual_tasks/public/query_contextualizer.h"
 #include "components/feature_engagement/test/mock_tracker.h"
+#include "components/lens/lens_features.h"
 #include "components/lens/lens_overlay_invocation_source.h"
 #include "components/lens/proto/server/lens_overlay_response.pb.h"
 #include "components/omnibox/browser/autocomplete_input.h"
@@ -80,9 +82,11 @@
 #include "components/prefs/pref_service.h"
 #include "components/search/ntp_features.h"
 #include "components/tabs/public/mock_tab_interface.h"
+#include "content/public/browser/desktop_capture.h"
 #include "content/public/browser/navigation_entry.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_contents_delegate.h"
+#include "content/public/test/desktop_capture_test_utils.h"
 #include "content/public/test/navigation_simulator.h"
 #include "content/public/test/test_navigation_observer.h"
 #include "content/public/test/web_contents_tester.h"
@@ -91,6 +95,8 @@
 #include "mojo/public/cpp/test_support/test_utils.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/webrtc/modules/desktop_capture/desktop_capturer.h"
+#include "third_party/webrtc/modules/desktop_capture/desktop_frame.h"
 #include "ui/base/base_window.h"
 #include "ui/base/test/mock_base_window.h"
 #include "ui/base/unowned_user_data/unowned_user_data_host.h"
@@ -172,6 +178,8 @@ class FakeContextualSearchboxHandler : public ContextualSearchboxHandler {
         ->GetMetricsRecorder()
         ->NotifySessionStateChanged(session_state);
   }
+
+  using ContextualSearchboxHandler::InitializeInputStateModel;
 
   contextual_search::InputStateModel* input_state_model() {
     return input_state_model_.get();
@@ -341,7 +349,8 @@ class ContextualSearchboxHandlerTest
     // TODO(crbug.com/503732217): Fix tests to support lazy fetching of cluster
     // info and enable this feature by default in tests.
     scoped_feature_list_.InitWithFeatures(
-        {omnibox::kComposeboxDriveContextMenuOption},
+        {omnibox::kComposeboxDriveContextMenuOption,
+         omnibox::kForceDriveDisclaimerAccepted},
         {contextual_tasks::kContextualTasksLazyFetchClusterInfo});
 
     auto query_controller_config_params = std::make_unique<
@@ -439,20 +448,24 @@ class ContextualSearchboxHandlerTest
   MockQueryController& query_controller() { return *query_controller_; }
 
   void SetUpMockFpopService(bool accepted) {
+    SetUpMockFpopServiceWithStatus(
+        accepted ? drive_picker::DriveDisclaimerController::
+                       ConsentEligibilityStatus::kAlreadyConsented
+                 : drive_picker::DriveDisclaimerController::
+                       ConsentEligibilityStatus::kCanConsent);
+  }
+
+  void SetUpMockFpopServiceWithStatus(
+      drive_picker::DriveDisclaimerController::ConsentEligibilityStatus
+          status) {
     auto mock_fpop_service = std::make_unique<MockFpopService>();
     EXPECT_CALL(*mock_fpop_service,
                 ShouldShowMobileConsentFlow(testing::_, testing::_))
-        .WillOnce([accepted](const auto& request, auto callback) {
+        .WillOnce([status](const auto& request, auto callback) {
           footprints::oneplatform::ShouldShowMobileConsentFlowResponse response;
-          if (accepted) {
-            response.mutable_should_show_flow_result()
-                ->mutable_eligibility()
-                ->set_status(3);  // ALREADY_CONSENTED
-          } else {
-            response.mutable_should_show_flow_result()
-                ->mutable_eligibility()
-                ->set_status(1);  // ELIGIBLE / CAN_CONSENT
-          }
+          response.mutable_should_show_flow_result()
+              ->mutable_eligibility()
+              ->set_status(static_cast<int32_t>(status));
           std::move(callback).Run(true, response);
         });
     handler().SetDriveDisclaimerController(
@@ -1694,7 +1707,8 @@ TEST_F(ContextualSearchboxHandlerTest, OnInputStateChanged) {
           GetMetricsRecorderPtr(),
           &MockContextualSearchMetricsRecorder::RecordModelModeBase));
 
-  handler().SetActiveModelMode(omnibox::ModelMode::MODEL_MODE_GEMINI_REGULAR);
+  handler().SetActiveModelMode(omnibox::ModelMode::MODEL_MODE_GEMINI_REGULAR,
+                               /*is_set_by_aim=*/false);
   handler().RecordModelSelectionAction(
       omnibox::ModelMode::MODEL_MODE_GEMINI_REGULAR);
   mock_searchbox_page_.FlushForTesting();
@@ -1833,7 +1847,8 @@ TEST_F(ContextualSearchboxHandlerTest, OnDrivePickerResult_OnError) {
 
 TEST_F(ContextualSearchboxHandlerTest, DriveDisclaimer_NotAccepted) {
   base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndEnableFeature(omnibox::kComposeboxDriveContextMenuOption);
+  feature_list.InitWithFeatures({omnibox::kComposeboxDriveContextMenuOption},
+                                {omnibox::kForceDriveDisclaimerAccepted});
 
   SetUpMockFpopService(/*accepted=*/false);
 
@@ -1841,17 +1856,57 @@ TEST_F(ContextualSearchboxHandlerTest, DriveDisclaimer_NotAccepted) {
   handler().GetDriveDisclaimerStatus(future.GetCallback());
   EXPECT_EQ(searchbox::mojom::DriveDisclaimerStatus::kNotAccepted,
             future.Get());
+  EXPECT_EQ(
+      profile()->GetPrefs()->GetInteger(contextual_search::kDriveConsentState),
+      static_cast<int>(contextual_search::DriveConsentState::kNotConsent));
 }
 
 TEST_F(ContextualSearchboxHandlerTest, DriveDisclaimer_Accepted) {
   base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndEnableFeature(omnibox::kComposeboxDriveContextMenuOption);
+  feature_list.InitWithFeatures({omnibox::kComposeboxDriveContextMenuOption},
+                                {omnibox::kForceDriveDisclaimerAccepted});
 
   SetUpMockFpopService(/*accepted=*/true);
 
   base::test::TestFuture<searchbox::mojom::DriveDisclaimerStatus> future;
   handler().GetDriveDisclaimerStatus(future.GetCallback());
   EXPECT_EQ(searchbox::mojom::DriveDisclaimerStatus::kAccepted, future.Get());
+  EXPECT_EQ(
+      profile()->GetPrefs()->GetInteger(contextual_search::kDriveConsentState),
+      static_cast<int>(contextual_search::DriveConsentState::kConsent));
+}
+
+TEST_F(ContextualSearchboxHandlerTest, DriveDisclaimer_Restricted) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitWithFeatures({omnibox::kComposeboxDriveContextMenuOption},
+                                {omnibox::kForceDriveDisclaimerAccepted});
+
+  SetUpMockFpopServiceWithStatus(drive_picker::DriveDisclaimerController::
+                                     ConsentEligibilityStatus::kCannotConsent);
+
+  base::test::TestFuture<searchbox::mojom::DriveDisclaimerStatus> future;
+  handler().GetDriveDisclaimerStatus(future.GetCallback());
+  EXPECT_EQ(searchbox::mojom::DriveDisclaimerStatus::kRestricted, future.Get());
+  EXPECT_EQ(
+      profile()->GetPrefs()->GetInteger(contextual_search::kDriveConsentState),
+      static_cast<int>(contextual_search::DriveConsentState::kRestricted));
+}
+
+TEST_F(ContextualSearchboxHandlerTest, DriveDisclaimer_NoEagerRpcOnInitialize) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(omnibox::kComposeboxDriveContextMenuOption);
+
+  auto mock_fpop_service = std::make_unique<MockFpopService>();
+  EXPECT_CALL(*mock_fpop_service,
+              ShouldShowMobileConsentFlow(testing::_, testing::_))
+      .Times(0);
+  handler().SetDriveDisclaimerController(
+      std::make_unique<drive_picker::DriveDisclaimerController>(
+          std::move(mock_fpop_service)));
+
+  // Initializing the input state model (as done on page load) should NOT
+  // trigger the RPC.
+  handler().InitializeInputStateModel();
 }
 
 TEST_F(ContextualSearchboxHandlerTest, DriveDisclaimer_FlagDisabled) {
@@ -3877,3 +3932,116 @@ INSTANTIATE_TEST_SUITE_P(
         composebox_query::mojom::ContextUploadStatus::kUploadFailed,
         composebox_query::mojom::ContextUploadStatus::kUploadExpired,
         composebox_query::mojom::ContextUploadStatus::kUploadReplaced));
+
+#if !BUILDFLAG(IS_ANDROID)
+class FakeDesktopCapturer : public webrtc::DesktopCapturer {
+ public:
+  FakeDesktopCapturer() = default;
+  ~FakeDesktopCapturer() override = default;
+
+  void Start(Callback* callback) override { callback_ = callback; }
+
+  void CaptureFrame() override {
+    auto frame =
+        std::make_unique<webrtc::BasicDesktopFrame>(webrtc::DesktopSize(1, 1));
+    frame->SetFrameDataToBlack();
+    callback_->OnCaptureResult(Result::SUCCESS, std::move(frame));
+  }
+
+  bool GetSourceList(SourceList* sources) override { return true; }
+  bool SelectSource(SourceId id) override { return true; }
+
+ private:
+  raw_ptr<Callback> callback_ = nullptr;
+};
+
+TEST_F(ContextualSearchboxHandlerTest, StartScreenshare_Success) {
+  profile()->GetPrefs()->SetInteger(
+      contextual_search::kSearchContentSharingSettings,
+      static_cast<int>(
+          contextual_search::SearchContentSharingSettingsValue::kEnabled));
+
+  scoped_config().config.mutable_composebox()->set_max_num_files(5);
+  scoped_config()
+      .config.mutable_composebox()
+      ->mutable_attachment_upload()
+      ->set_max_size_bytes(1024 * 1024);
+  scoped_config()
+      .config.mutable_composebox()
+      ->mutable_image_upload()
+      ->set_mime_types_allowed("image/png");
+
+  FakeDesktopMediaPickerFactory picker_factory;
+  handler().set_desktop_media_picker_factory_for_testing(&picker_factory);
+  content::desktop_capture::ScopedDesktopCapturerForTesting scoped_capturer(
+      std::make_unique<FakeDesktopCapturer>());
+
+  FakeDesktopMediaPickerFactory::TestFlags test_flags;
+  test_flags.expect_screens = true;
+  test_flags.expect_windows = true;
+  test_flags.picker_result =
+      content::DesktopMediaID(content::DesktopMediaID::TYPE_WINDOW, 42);
+  picker_factory.SetTestFlags(base::span_from_ref(test_flags));
+
+  std::unique_ptr<lens::ContextualInputData> captured_input_data;
+  EXPECT_CALL(query_controller(), StartFileUploadFlow)
+      .WillOnce([&](const base::UnguessableToken& token,
+                    std::unique_ptr<lens::ContextualInputData> input_data,
+                    std::optional<lens::ImageEncodingOptions> image_options) {
+        captured_input_data = std::move(input_data);
+        EXPECT_TRUE(image_options.has_value());
+      });
+
+  base::UnguessableToken callback_token;
+  EXPECT_CALL(mock_searchbox_page_, AddFileContext)
+      .WillOnce([&](const base::UnguessableToken& token,
+                    searchbox::mojom::SelectedFileInfoPtr file_info) {
+        callback_token = token;
+        EXPECT_EQ(file_info->file_name, "Screenshot.png");
+        EXPECT_EQ(file_info->mime_type, "image/png");
+        EXPECT_FALSE(file_info->image_data_url.has_value());
+      });
+
+  base::test::TestFuture<const std::optional<base::UnguessableToken>&> future;
+  handler().StartScreenshare(/*prefer_entire_screen=*/false,
+                             future.GetCallback());
+
+  EXPECT_TRUE(future.Get().has_value());
+  mock_searchbox_page_.FlushForTesting();
+
+  auto uploaded_tokens = handler().GetUploadedContextTokens();
+  ASSERT_EQ(uploaded_tokens.size(), 1u);
+  EXPECT_EQ(uploaded_tokens[0], callback_token);
+  ASSERT_TRUE(captured_input_data);
+  EXPECT_EQ(captured_input_data->file_name, "Screenshot.png");
+  EXPECT_EQ(captured_input_data->primary_content_type, lens::MimeType::kImage);
+  EXPECT_EQ(captured_input_data->mime_type_string, "image/png");
+
+  handler().set_desktop_media_picker_factory_for_testing(nullptr);
+}
+
+TEST_F(ContextualSearchboxHandlerTest, StartScreenshare_Cancelled) {
+  FakeDesktopMediaPickerFactory picker_factory;
+  handler().set_desktop_media_picker_factory_for_testing(&picker_factory);
+
+  FakeDesktopMediaPickerFactory::TestFlags test_flags;
+  test_flags.expect_screens = true;
+  test_flags.expect_windows = true;
+  test_flags.picker_result = content::DesktopMediaID();
+  picker_factory.SetTestFlags(base::span_from_ref(test_flags));
+
+  base::test::TestFuture<const std::optional<base::UnguessableToken>&> future;
+  handler().StartScreenshare(/*prefer_entire_screen=*/true,
+                             future.GetCallback());
+
+  EXPECT_FALSE(future.Get().has_value());
+  handler().set_desktop_media_picker_factory_for_testing(nullptr);
+}
+#else
+TEST_F(ContextualSearchboxHandlerTest, StartScreenshare_AndroidAlwaysFails) {
+  base::test::TestFuture<const std::optional<base::UnguessableToken>&> future;
+  handler().StartScreenshare(/*prefer_entire_screen=*/false,
+                             future.GetCallback());
+  EXPECT_FALSE(future.Get().has_value());
+}
+#endif

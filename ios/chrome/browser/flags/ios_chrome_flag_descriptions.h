@@ -813,6 +813,11 @@ inline constexpr char kForceStartupSigninPromoDescription[] =
     "When enabled, the startup sign-in promo is always displayed when starting "
     "Chrome.";
 
+inline constexpr char kFullscreenEasedTransitionsName[] =
+    "FullscreenEasedTransitions";
+inline constexpr char kFullscreenEasedTransitionsDescription[] =
+    "Enables eased, animated threshold transitions into and out of fullscreen.";
+
 inline constexpr char kFullscreenRefactoringName[] = "FullscreenRefactoring";
 inline constexpr char kFullscreenRefactoringDescription[] =
     "Enables the FullscreenRefactoring feature.";
@@ -871,7 +876,14 @@ inline constexpr char kGeminiCoordinatorTeardownFixName[] =
 inline constexpr char kGeminiCoordinatorTeardownFixDescription[] =
     "Enables the teardown crash fix for Gemini First Run Coordinator.";
 
+inline constexpr char kGeminiExperimentalGuidedOnboardingName[] =
+    "Gemini Experimental Guided Onboarding driven by the SDK.";
+inline constexpr char kGeminiExperimentalGuidedOnboardingDescription[] =
+    "Enables the experimental Gemini guided onboarding. Meant for "
+    "experiments only.";
+
 inline constexpr char kGeminiFREExperimentName[] = "Gemini FRE Experiment";
+
 inline constexpr char kGeminiFREExperimentDescription[] =
     "Enables the experimental Gemini First Run Experience";
 
@@ -941,6 +953,11 @@ inline constexpr char kGlassToolbarName[] = "GlassToolbar";
 inline constexpr char kGlassToolbarDescription[] =
     "Enables the GlassToolbar feature.";
 
+inline constexpr char kGlicActorAutofillName[] = "Actor autofill";
+inline constexpr char kGlicActorAutofillDescription[] =
+    "Enables autofill actions for the actor tools on iOS. Specific fillable "
+    "types may also need to be enabled.";
+
 inline constexpr char kHandleMdmErrorsForDasherAccountsName[] =
     "Mdm error handling for dasher accounts";
 inline constexpr char kHandleMdmErrorsForDasherAccountsDescription[] =
@@ -986,10 +1003,6 @@ inline constexpr char kIOSBrowserReportIncludeAllProfilesName[] =
 inline constexpr char kIOSBrowserReportIncludeAllProfilesDescription[] =
     "When enabled, enterprise browser reports include all profiles (instead of "
     "only the current profile).";
-
-inline constexpr char kIOSChooseFromDriveName[] = "IOS Choose from Drive";
-inline constexpr char kIOSChooseFromDriveDescription[] =
-    "Enables the Choose from Drive feature on iOS.";
 
 inline constexpr char kIOSChooseFromDriveSignedOutName[] =
     "Choose from Drive Signed Out";
@@ -1452,6 +1465,13 @@ inline constexpr char kNativeFindInPageDescription[] =
     "When enabled, the JavaScript implementation of the Find in Page feature "
     "is replaced with a native implementation which also enables searching "
     "text in PDF files. Available for iOS 16 or later.";
+
+inline constexpr char kNewGeolocationPermissionDelegateName[] =
+    "New Geolocation Permission Delegate";
+inline constexpr char kNewGeolocationPermissionDelegateDescription[] =
+    "Enables the new geolocation permission delegate feature to help users "
+    "manage location permission updates when sharing their location with the "
+    "browser.";
 
 inline constexpr char kNewTabPageFieldTrialName[] =
     "New tab page features that target new users";

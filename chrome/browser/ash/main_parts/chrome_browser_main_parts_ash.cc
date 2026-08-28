@@ -32,6 +32,7 @@
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
 #include "base/functional/callback_helpers.h"
+#include "base/i18n/legacy_language_tag_helpers.h"
 #include "base/lazy_instance.h"
 #include "base/linux_util.h"
 #include "base/logging.h"
@@ -942,7 +943,8 @@ void ChromeBrowserMainPartsAsh::PreProfileInit() {
       g_browser_process->local_state(),
       g_browser_process->GetFeatures()->application_locale_storage(),
       g_browser_process->shared_url_loader_factory(),
-      g_browser_process->platform_part()->browser_policy_connector_ash());
+      g_browser_process->platform_part()->browser_policy_connector_ash(),
+      g_browser_process->platform_part()->component_manager_ash());
 
   // List of instances providing KeyedService related services.
   app_service_registry_ = std::make_unique<apps::AppServiceRegistry>();
@@ -973,7 +975,11 @@ void ChromeBrowserMainPartsAsh::PreProfileInit() {
   g_browser_process->metrics_service()->InitPerUserMetrics();
 
   screen_locker_controller_ = std::make_unique<ScreenLockerController>(
-      session_termination_manager_.get(),
+      g_browser_process->local_state(),
+      g_browser_process->GetFeatures()->application_locale_storage(),
+      g_browser_process->shared_url_loader_factory(),
+      g_browser_process->platform_part()->browser_policy_connector_ash(),
+      SessionManagerClient::Get(), session_termination_manager_.get(),
       session_manager::SessionManager::Get(), user_manager::UserManager::Get(),
       UserAddingScreen::Get());
 
@@ -1128,8 +1134,9 @@ void ChromeBrowserMainPartsAsh::PreProfileInit() {
   // CoralController depends on machine_learning::ServiceConnection, so needs to
   // be initialized after it.
   if (features::IsCoralFeatureEnabled()) {
-    Shell::Get()->coral_controller()->Initialize(std::string(
-        l10n_util::GetLanguage(g_browser_process->GetApplicationLocale())));
+    Shell::Get()->coral_controller()->Initialize(
+        base::i18n::GetLanguageSubtagUsingLanguageTag(
+            g_browser_process->GetApplicationLocale()));
   }
 
   metrics::structured::ChromeStructuredMetricsDelegate::Get()->Initialize();

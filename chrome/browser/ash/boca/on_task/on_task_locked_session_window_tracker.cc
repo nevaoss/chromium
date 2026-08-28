@@ -30,7 +30,6 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/immersive/immersive_mode_controller.h"
 #include "chrome/browser/ui/tabs/tab_strip_model_delegate.h"
-#include "chrome/browser/ui/unload_controller.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chromeos/ash/components/boca/boca_role_util.h"
 #include "chromeos/ash/components/boca/boca_window_observer.h"
@@ -179,14 +178,13 @@ void LockedSessionWindowTracker::MaybeCloseWebContents(
     return;
   }
   if (browser_->GetWebContentsCount() > 1) {
-    int index =
-        browser_->GetBrowser().GetTabStripModel()->GetIndexOfWebContents(tab);
-    if (index == TabStripModel::kNoTab) {
+    if (browser_->GetBrowser().GetTabStripModel()->GetIndexOfWebContents(tab) ==
+        TabStripModel::kNoTab) {
       return;
     }
     on_task_blocklist()->RemoveChildFilter(tab);
-    browser_->GetBrowser().GetTabStripModel()->CloseWebContentsAt(
-        index, TabCloseTypes::CLOSE_NONE);
+    browser_->GetBrowser().GetTabStripModel()->CloseWebContents(
+        tab, TabCloseTypes::CLOSE_NONE);
   }
 }
 
@@ -381,7 +379,9 @@ void LockedSessionWindowTracker::WillCloseAllTabs(
   // TODO (crbug.com/372362860): Add browser tests to test tab unload.
   BrowserWindowInterface* const browser =
       tab_strip_model->delegate()->GetBrowserWindowInterface();
-  UnloadController::From(browser)->set_force_skip_warning_user_on_close(true);
+  ash::BrowserController::GetInstance()
+      ->GetDelegate(browser)
+      ->SetSkipWarningUserOnClose(true);
 }
 
 // ash::BrowserController::Observer Implementation

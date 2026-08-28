@@ -371,6 +371,7 @@ WebUIToolbarWebView::WebUIToolbarWebView(
               toolbar_ui_api::IconHandle(),
               toolbar_ui_api::mojom::SecurityLevel::kNone,
               /*text=*/std::u16string(),
+              /*tooltip=*/std::u16string(),
               toolbar_ui_api::mojom::SecurityChipAccessibilityState::New(
                   /*label=*/std::u16string(),
                   /*description=*/std::u16string()),
@@ -525,8 +526,7 @@ void WebUIToolbarWebView::AddedToWidget() {
 
 void WebUIToolbarWebView::OnThemeChanged() {
   views::View::OnThemeChanged();
-  UpdateProfileThemeColors(browser_->GetBrowserForMigrationOnly(),
-                           GetColorProvider());
+  UpdateProfileThemeColors(browser_, GetColorProvider());
   avatar_control_.UpdateIcon();
   if (location_bar_) {
     location_bar_->OnThemeChanged();
@@ -729,6 +729,13 @@ void WebUIToolbarWebView::MaybeInitializePageDependentControls() {
 void WebUIToolbarWebView::OnPageInitialized() {
   SetInitializationState(InitializationState::kInitialized);
   MaybeInitializePageDependentControls();
+
+  if (pending_focus_request_) {
+    if (WebUIToolbarUI* web_ui = GetWebUIToolbarUI()) {
+      web_ui->OnFocusRequested(*pending_focus_request_);
+    }
+    pending_focus_request_.reset();
+  }
 
   if (auto* manager = InitialWebUIManager::From(browser_)) {
     manager->OnWebUIToolbarLoaded();
@@ -987,16 +994,13 @@ void WebUIToolbarWebView::DidFinishNavigation(
   ui->Init(this);
 }
 
-void WebUIToolbarWebView::SetBackButtonLeadingMargin(int margin) {
-  // This is called every time ToolbarView::Layout() is called, almost always
-  // with the same value as before. Best to avoid the expensive
-  // PreferredSizeChanged() call if nothing actually changed.
-  if (margin == back_button_leading_margin_) {
+void WebUIToolbarWebView::SetIsMaximizedOrFullscreen(
+    bool maximized_or_fullscreen) {
+  if (maximized_or_fullscreen == window_is_maximized_or_fullscreen_) {
     return;
   }
-  back_button_leading_margin_ = margin;
+  window_is_maximized_or_fullscreen_ = maximized_or_fullscreen;
   OnBackForwardStateChanged();
-  PreferredSizeChanged();
 }
 
 void WebUIToolbarWebView::SetBackForwardEnabled(int command_id, bool enabled) {
@@ -1540,8 +1544,12 @@ void WebUIToolbarWebView::OnFocusRequested(
     toolbar_ui_api::mojom::FocusRequestTarget target) {
   // We need to focus the WebView as well, besides the JS focus.
   web_view_->RequestFocus();
-  if (WebUIToolbarUI* web_ui = GetWebUIToolbarUI()) {
-    web_ui->OnFocusRequested(target);
+  if (initialization_state_ == InitializationState::kInitialized) {
+    if (WebUIToolbarUI* web_ui = GetWebUIToolbarUI()) {
+      web_ui->OnFocusRequested(target);
+    }
+  } else {
+    pending_focus_request_ = target;
   }
 }
 
@@ -1602,7 +1610,7 @@ WebUIToolbarWebView::GetBackForwardState() const {
   auto state = toolbar_ui_api::mojom::BackForwardControlState::New();
   state->back_button_state = back_control_.GetButtonState();
   state->forward_button_state = forward_control_.GetButtonState();
-  state->back_button_leading_margin = back_button_leading_margin_;
+  state->window_is_maximized_or_fullscreen = window_is_maximized_or_fullscreen_;
   return state;
 }
 
@@ -1623,6 +1631,7 @@ gfx::Size WebUIToolbarWebView::ComputeLayout(
                   battery_saver_control_.IsVisible();
   button_count += features::IsWebUIPerformanceInterventionButtonEnabled() &&
                   performance_intervention_control_.IsButtonShowing();
+  button_count += features::IsWebUIAppMenuButtonEnabled();
 
   const int size = GetLayoutConstant(LayoutConstant::kToolbarButtonHeight);
   const int gap = GetLayoutConstant(LayoutConstant::kToolbarIconDefaultMargin);
@@ -1633,7 +1642,15 @@ gfx::Size WebUIToolbarWebView::ComputeLayout(
 
   // TODO(crbug.com/517948314): This isn't sizing the forward button correctly.
   if (features::IsWebUIBackForwardButtonEnabled()) {
-    width += back_button_leading_margin_;
+    const gfx::Insets default_insets =
+        ::GetLayoutInsets(LayoutInset::TOOLBAR_INTERIOR_MARGIN);
+    width += GetMirrored() ? default_insets.right() : default_insets.left();
+  }
+
+  if (features::IsWebUIAppMenuButtonEnabled()) {
+    const gfx::Insets default_insets =
+        ::GetLayoutInsets(LayoutInset::TOOLBAR_INTERIOR_MARGIN);
+    width += GetMirrored() ? default_insets.left() : default_insets.right();
   }
 
   // Handle overflowable / resizable controls here, with highest priority

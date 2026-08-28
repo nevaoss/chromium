@@ -532,6 +532,7 @@
 <translation id="3161699713309727585"><ph name="BUTTON_TEXT" /> откроется в новой вкладке</translation>
 <translation id="3166827708714933426">Работа с вкладками и окнами</translation>
 <translation id="3167258285411721858">Вы можете переключиться на мобильную версию сайта <ph name="HOST_NAME" />.</translation>
+<translation id="3177338796769255211">Войдите, чтобы получить доступ к закладкам и многому другому на всех своих устройствах.</translation>
 <translation id="3181145110929454111">Выбранная вместе с несколькими другими и закрепленная вкладка инкогнито "<ph name="TAB_TITLE" />" с отключенным звуком</translation>
 <translation id="3189635831478931757">Группа вкладок "<ph name="GROUP_TITLE" />"</translation>
 <translation id="3200536777393523575">Закрыть текущее окно?</translation>
@@ -674,7 +675,7 @@
 <translation id="3792938779249970121">Выбор аккаунта</translation>
 <translation id="3795154175078851242">Скопировать изображение со ссылкой</translation>
 <translation id="3807999512799921804">Выбранная и закрепленная вкладка инкогнито "<ph name="TAB_TITLE" />" с включенным звуком</translation>
-<translation id="3810973564298564668">Управление</translation>
+<translation id="3810973564298564668">Настроить</translation>
 <translation id="3819178904835489326">Удаленные скачивания: <ph name="NUMBER_OF_DOWNLOADS" /></translation>
 <translation id="3823019343150397277">Код IBAN</translation>
 <translation id="3824259034819781947">Прикрепить файлы</translation>
@@ -764,6 +765,7 @@
 <translation id="4180726336228139707">Только на этом устройстве</translation>
 <translation id="4181841719683918333">Языки</translation>
 <translation id="4188221736490993796">По алфавиту (от Я до А)</translation>
+<translation id="4188638484665452040">Значок Gemini откреплен.</translation>
 <translation id="4189344235004694858">{NUM_REVOKED_PERMISSIONS,plural, =1{Chrome заблокировал отправку уведомлений с этого сайта из-за спама или недостоверной информации.}one{Chrome заблокировал отправку уведомлений с этих сайтов из-за спама или недостоверной информации.}few{Chrome заблокировал отправку уведомлений с этих сайтов из-за спама или недостоверной информации.}many{Chrome заблокировал отправку уведомлений с этих сайтов из-за спама или недостоверной информации.}other{Chrome заблокировал отправку уведомлений с этих сайтов из-за спама или недостоверной информации.}}</translation>
 <translation id="4195643157523330669">Открыть в новой вкладке</translation>
 <translation id="4197828496439691735">{NUM_TABS,plural, =1{1 вкладка на этом устройстве}one{# вкладка на этом устройстве}few{# вкладки на этом устройстве}many{# вкладок на этом устройстве}other{# вкладки на этом устройстве}}</translation>
@@ -928,13 +930,13 @@
 <translation id="4794291718671962615"><ph name="URL" /> (<ph name="MEGABYTES" />)</translation>
 <translation id="4807098396393229769">Имя владельца</translation>
 <translation id="480990236307250886">Перейти на главную страницу</translation>
+<translation id="4816492930507672669">Выровнять по размеру страницы</translation>
 <translation id="4822710610088666676">Группа вкладок "<ph name="TAB_GROUP_TITLE" />" закрыта и сохранена.</translation>
 <translation id="4834250788637067901">Способы оплаты, предложения и адреса из Google Pay</translation>
 <translation id="4835385943915508971">Запрошенный ресурс недоступен в Chrome</translation>
 <translation id="483742037940503070">{TAB_COUNT,plural, =1{Восстановить группу из <ph name="TAB_COUNT_ONE" /> вкладки, которой присвоен <ph name="COLOR_NAME" /> цвет, и открыть ее в фоновом режиме.}one{Восстановить группу из <ph name="TAB_COUNT_MANY" /> вкладки, которой присвоен <ph name="COLOR_NAME" /> цвет, и открыть ее в фоновом режиме.}few{Восстановить группу из <ph name="TAB_COUNT_MANY" /> вкладок, которой присвоен <ph name="COLOR_NAME" /> цвет, и открыть ее в фоновом режиме.}many{Восстановить группу из <ph name="TAB_COUNT_MANY" /> вкладок, которой присвоен <ph name="COLOR_NAME" /> цвет, и открыть ее в фоновом режиме.}other{Восстановить группу из <ph name="TAB_COUNT_MANY" /> вкладки, которой присвоен <ph name="COLOR_NAME" /> цвет, и открыть ее в фоновом режиме.}}</translation>
 <translation id="4849731766219625109">Использовать аккаунт <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /></translation>
 <translation id="4850886885716139402">Смотреть</translation>
-<translation id="4852014461738377247">Вход…</translation>
 <translation id="4860895144060829044">Позвонить</translation>
 <translation id="4864369630010738180">Вход в систему...</translation>
 <translation id="4866368707455379617">Не удается установить модуль "<ph name="MODULE" />" для Chrome</translation>
@@ -1207,7 +1209,7 @@
 <translation id="605721222689873409">ГГ</translation>
 <translation id="606985262342505139">Нижний экран вкладки открыт полностью</translation>
 <translation id="6071995715087444295">Чтобы проверить наличие раскрытых паролей, войдите в аккаунт Google</translation>
-<translation id="6078323886959318429">Добавить ярлык</translation>
+<translation id="6078323886959318429">Новый ярлык</translation>
 <translation id="6085886413119427067">Определяет, как подключаться к сайтам, используя защищенное соединение.</translation>
 <translation id="6087286598828478206">Заблокировать и выйти из группы?</translation>
 <translation id="6091464625487374759">Gemini теперь на панели инструментов. Чтобы изменить закрепленный инструмент, нажмите на его значок и удерживайте.</translation>
@@ -1314,7 +1316,6 @@
 <translation id="6411219469806822692">Невозможно прокрутить дальше вверх. Начните делать скриншот выше на этой странице.</translation>
 <translation id="6412215853589222273">Вкладка "<ph name="TAB_TITLE" />", одна из выбранных</translation>
 <translation id="641643625718530986">Печать</translation>
-<translation id="6427723330233512782">Подогнать по высоте</translation>
 <translation id="6433501201775827830">Выберите поисковую систему по умолчанию</translation>
 <translation id="6434309073475700221">Отменить</translation>
 <translation id="6435307030888827407">Не входить</translation>
@@ -1838,6 +1839,7 @@
 <translation id="8393700583063109961">Отправить сообщение</translation>
 <translation id="8396098434728053815">Также предоставить доступ к аудио на вкладке</translation>
 <translation id="8398389123831319859">Чтобы перейти в режим инкогнито, нажмите дважды и удерживайте</translation>
+<translation id="8412037385861858490">Чтобы обеспечить безопасность работы в Chrome, организация сможет просматривать определенные данные и управлять ими, пока вы не выйдете из аккаунта Chrome. <ph name="BEGIN_LINK" />Подробнее…<ph name="END_LINK" /></translation>
 <translation id="8413126021676339697">Показать всю историю</translation>
 <translation id="8413795581997394485">Защита от сайтов, расширений и скачиваемых файлов, признанных опасными. Когда вы переходите на сайт, Chrome отправляет обфусцированную часть URL в Google через сервер защиты конфиденциальности, который скрывает ваш IP-адрес. Если сайт делает что-то подозрительное, передается полный URL и части контента со страницы.</translation>
 <translation id="8414396119627470038">Вход на сайт <ph name="SITE_ETLD_PLUS_ONE" /> с аккаунтом <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /></translation>

@@ -110,6 +110,10 @@
 #include "net/dns/mdns_client_impl.h"
 #endif  // BUILDFLAG(ENABLE_MDNS)
 
+#if BUILDFLAG(IS_ANDROID)
+#include "base/android/android_info.h"
+#endif  // BUILDFLAG(IS_ANDROID)
+
 using net::test::IsError;
 using net::test::IsOk;
 using ::testing::_;
@@ -4234,7 +4238,6 @@ DnsConfig CreateUpgradableDnsConfig() {
       IPEndPoint(dns_ip3, dns_protocol::kDefaultPort),
       IPEndPoint(dns_ip4, dns_protocol::kDefaultPort),
   };
-  EXPECT_TRUE(config.IsValid());
   return config;
 }
 
@@ -4877,7 +4880,6 @@ void HostResolverManagerDnsTest::AddSecureDnsRule(
 }
 
 void HostResolverManagerDnsTest::ChangeDnsConfig(const DnsConfig& config) {
-  DCHECK(config.IsValid());
   notifier_task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce(&TestDnsConfigService::OnHostsRead,
@@ -5027,6 +5029,73 @@ TEST_F(HostResolverManagerDnsTest,
               testing::ElementsAre(ExpectEndpointResult(
                   testing::ElementsAre(CreateExpected("192.168.2.47", 1212)))));
 }
+
+// InsecureDnsMode::{kEnabledPlatform, kEnabledPlatformNoSystem} are currently
+// only supported on Android.
+#if BUILDFLAG(IS_ANDROID)
+TEST_F(HostResolverManagerDnsTest,
+       DnsPlatform_ScheduledOnStartupWithEmptyConfig) {
+  if (base::android::android_info::sdk_int() <
+      base::android::android_info::SDK_VERSION_Q) {
+    GTEST_SKIP() << "Platform DNS APIs are only available from Q.";
+  }
+
+  resolver_->SetInsecureDnsClientEnabled(InsecureDnsMode::kEnabledPlatform,
+                                         /*additional_dns_types_enabled=*/true);
+
+  ResolveHostResponseHelper response(resolver_->CreateRequest(
+      HostPortPair("ok", 80), NetworkAnonymizationKey(),
+      handles::kInvalidNetworkHandle, NetLogWithSource(), std::nullopt,
+      resolve_context_.get()));
+  EXPECT_THAT(response.result_error(), IsOk());
+  EXPECT_THAT(response.request()->GetAddressResults(),
+              testing::UnorderedElementsAre(CreateExpected("127.0.0.1", 80),
+                                            CreateExpected("::1", 80)));
+}
+
+TEST_F(HostResolverManagerDnsTest,
+       DnsPlatform_ScheduledWhenTransitioningToEmptyNameservers) {
+  if (base::android::android_info::sdk_int() <
+      base::android::android_info::SDK_VERSION_Q) {
+    GTEST_SKIP() << "Platform DNS APIs are only available from Q.";
+  }
+
+  resolver_->SetInsecureDnsClientEnabled(InsecureDnsMode::kEnabledPlatform,
+                                         /*additional_dns_types_enabled=*/true);
+
+  // Transition to an empty config with 0 nameservers.
+  ChangeDnsConfig(DnsConfig());
+
+  ResolveHostResponseHelper response(resolver_->CreateRequest(
+      HostPortPair("ok", 80), NetworkAnonymizationKey(),
+      handles::kInvalidNetworkHandle, NetLogWithSource(), std::nullopt,
+      resolve_context_.get()));
+  EXPECT_THAT(response.result_error(), IsOk());
+  EXPECT_THAT(response.request()->GetAddressResults(),
+              testing::UnorderedElementsAre(CreateExpected("127.0.0.1", 80),
+                                            CreateExpected("::1", 80)));
+}
+
+TEST_F(HostResolverManagerDnsTest,
+       DnsPlatformNoSystem_ResolvesWithoutSystemFallback) {
+  if (base::android::android_info::sdk_int() <
+      base::android::android_info::SDK_VERSION_Q) {
+    GTEST_SKIP() << "Platform DNS APIs are only available from Q.";
+  }
+
+  resolver_->SetInsecureDnsClientEnabled(
+      InsecureDnsMode::kEnabledPlatformNoSystem,
+      /*additional_dns_types_enabled=*/true);
+
+  ResolveHostResponseHelper response(resolver_->CreateRequest(
+      HostPortPair("4ok", 80), NetworkAnonymizationKey(),
+      handles::kInvalidNetworkHandle, NetLogWithSource(), std::nullopt,
+      resolve_context_.get()));
+  EXPECT_THAT(response.result_error(), IsOk());
+  EXPECT_THAT(response.request()->GetAddressResults(),
+              testing::ElementsAre(CreateExpected("127.0.0.1", 80)));
+}
+#endif  // BUILDFLAG(IS_ANDROID)
 
 // RFC 6761 localhost names should always resolve to loopback.
 TEST_F(HostResolverManagerDnsTest, LocalhostLookup) {
@@ -8827,10 +8896,9 @@ TEST_F(HostResolverManagerDnsTest, AddDnsOverHttpsServerAfterConfig) {
   overrides.dns_over_https_config = *DnsOverHttpsConfig::FromString(server);
   overrides.secure_dns_mode = SecureDnsMode::kAutomatic;
   resolver_->SetDnsConfigOverrides(overrides);
-  const auto* config = mock_dns_client_->GetEffectiveConfig();
-  ASSERT_TRUE(config);
-  EXPECT_EQ(overrides.dns_over_https_config, config->doh_config);
-  EXPECT_EQ(SecureDnsMode::kAutomatic, config->secure_dns_mode);
+  const auto& config = mock_dns_client_->GetEffectiveConfig();
+  EXPECT_EQ(overrides.dns_over_https_config, config.doh_config);
+  EXPECT_EQ(SecureDnsMode::kAutomatic, config.secure_dns_mode);
 }
 
 TEST_F(HostResolverManagerDnsTest, AddDnsOverHttpsServerBeforeConfig) {
@@ -8847,10 +8915,9 @@ TEST_F(HostResolverManagerDnsTest, AddDnsOverHttpsServerBeforeConfig) {
       NetworkChangeNotifier::CONNECTION_WIFI);
   ChangeDnsConfig(CreateValidDnsConfig());
 
-  const auto* config = mock_dns_client_->GetEffectiveConfig();
-  ASSERT_TRUE(config);
-  EXPECT_EQ(overrides.dns_over_https_config, config->doh_config);
-  EXPECT_EQ(SecureDnsMode::kAutomatic, config->secure_dns_mode);
+  const auto& config = mock_dns_client_->GetEffectiveConfig();
+  EXPECT_EQ(overrides.dns_over_https_config, config.doh_config);
+  EXPECT_EQ(SecureDnsMode::kAutomatic, config.secure_dns_mode);
 }
 
 TEST_F(HostResolverManagerDnsTest, AddDnsOverHttpsServerBeforeClient) {
@@ -8867,10 +8934,9 @@ TEST_F(HostResolverManagerDnsTest, AddDnsOverHttpsServerBeforeClient) {
       NetworkChangeNotifier::CONNECTION_WIFI);
   ChangeDnsConfig(CreateValidDnsConfig());
 
-  const auto* config = mock_dns_client_->GetEffectiveConfig();
-  ASSERT_TRUE(config);
-  EXPECT_EQ(overrides.dns_over_https_config, config->doh_config);
-  EXPECT_EQ(SecureDnsMode::kAutomatic, config->secure_dns_mode);
+  const auto& config = mock_dns_client_->GetEffectiveConfig();
+  EXPECT_EQ(overrides.dns_over_https_config, config.doh_config);
+  EXPECT_EQ(SecureDnsMode::kAutomatic, config.secure_dns_mode);
 }
 
 TEST_F(HostResolverManagerDnsTest, AddDnsOverHttpsServerAndThenRemove) {
@@ -8889,16 +8955,14 @@ TEST_F(HostResolverManagerDnsTest, AddDnsOverHttpsServerAndThenRemove) {
   network_dns_config.doh_config = {};
   ChangeDnsConfig(network_dns_config);
 
-  const auto* config = mock_dns_client_->GetEffectiveConfig();
-  ASSERT_TRUE(config);
-  EXPECT_EQ(overrides.dns_over_https_config, config->doh_config);
-  EXPECT_EQ(SecureDnsMode::kAutomatic, config->secure_dns_mode);
+  const auto& config = mock_dns_client_->GetEffectiveConfig();
+  EXPECT_EQ(overrides.dns_over_https_config, config.doh_config);
+  EXPECT_EQ(SecureDnsMode::kAutomatic, config.secure_dns_mode);
 
   resolver_->SetDnsConfigOverrides(DnsConfigOverrides());
-  config = mock_dns_client_->GetEffectiveConfig();
-  ASSERT_TRUE(config);
-  EXPECT_EQ(0u, config->doh_config.servers().size());
-  EXPECT_EQ(SecureDnsMode::kOff, config->secure_dns_mode);
+  const auto& config_cleared = mock_dns_client_->GetEffectiveConfig();
+  EXPECT_EQ(0u, config_cleared.doh_config.servers().size());
+  EXPECT_EQ(SecureDnsMode::kOff, config_cleared.secure_dns_mode);
 }
 
 // Basic test socket factory that allows creation of UDP sockets, but those
@@ -8945,7 +9009,7 @@ TEST_F(HostResolverManagerDnsTest, SetDnsConfigOverrides) {
   ChangeDnsConfig(original_config);
 
   // Confirm pre-override state.
-  ASSERT_EQ(original_config, *client_ptr->GetEffectiveConfig());
+  ASSERT_EQ(original_config, client_ptr->GetEffectiveConfig());
 
   DnsConfigOverrides overrides;
   const std::vector<IPEndPoint> nameservers = {
@@ -8984,25 +9048,24 @@ TEST_F(HostResolverManagerDnsTest, SetDnsConfigOverrides) {
 
   resolver_->SetDnsConfigOverrides(overrides);
 
-  const DnsConfig* overridden_config = client_ptr->GetEffectiveConfig();
-  ASSERT_TRUE(overridden_config);
-  EXPECT_EQ(nameservers, overridden_config->nameservers);
-  EXPECT_TRUE(overridden_config->dns_over_tls_active);
-  EXPECT_EQ(dns_over_tls_hostname, overridden_config->dns_over_tls_hostname);
-  EXPECT_EQ(search, overridden_config->search);
-  EXPECT_FALSE(overridden_config->append_to_multi_label_name);
-  EXPECT_EQ(ndots, overridden_config->ndots);
-  EXPECT_EQ(fallback_period, overridden_config->fallback_period);
-  EXPECT_EQ(attempts, overridden_config->attempts);
-  EXPECT_EQ(doh_attempts, overridden_config->doh_attempts);
-  EXPECT_TRUE(overridden_config->rotate);
-  EXPECT_TRUE(overridden_config->use_local_ipv6);
-  EXPECT_EQ(doh_config, overridden_config->doh_config);
-  EXPECT_EQ(secure_dns_mode, overridden_config->secure_dns_mode);
-  EXPECT_TRUE(overridden_config->allow_dns_over_https_upgrade);
-  EXPECT_THAT(overridden_config->hosts, testing::IsEmpty());
+  const DnsConfig& overridden_config = client_ptr->GetEffectiveConfig();
+  EXPECT_EQ(nameservers, overridden_config.nameservers);
+  EXPECT_TRUE(overridden_config.dns_over_tls_active);
+  EXPECT_EQ(dns_over_tls_hostname, overridden_config.dns_over_tls_hostname);
+  EXPECT_EQ(search, overridden_config.search);
+  EXPECT_FALSE(overridden_config.append_to_multi_label_name);
+  EXPECT_EQ(ndots, overridden_config.ndots);
+  EXPECT_EQ(fallback_period, overridden_config.fallback_period);
+  EXPECT_EQ(attempts, overridden_config.attempts);
+  EXPECT_EQ(doh_attempts, overridden_config.doh_attempts);
+  EXPECT_TRUE(overridden_config.rotate);
+  EXPECT_TRUE(overridden_config.use_local_ipv6);
+  EXPECT_EQ(doh_config, overridden_config.doh_config);
+  EXPECT_EQ(secure_dns_mode, overridden_config.secure_dns_mode);
+  EXPECT_TRUE(overridden_config.allow_dns_over_https_upgrade);
+  EXPECT_THAT(overridden_config.hosts, testing::IsEmpty());
   EXPECT_EQ(fallback_doh_nameservers,
-            overridden_config->fallback_doh_nameservers);
+            overridden_config.fallback_doh_nameservers);
 
   base::RunLoop().RunUntilIdle();  // Notifications are async.
   EXPECT_EQ(1, config_observer.dns_changed_calls());
@@ -9022,7 +9085,7 @@ TEST_F(HostResolverManagerDnsTest,
   ChangeDnsConfig(original_config);
 
   // Confirm pre-override state.
-  ASSERT_EQ(original_config, *client_ptr->GetEffectiveConfig());
+  ASSERT_EQ(original_config, client_ptr->GetEffectiveConfig());
   ASSERT_FALSE(original_config.Equals(DnsConfig()));
 
   DnsConfigOverrides overrides =
@@ -9038,7 +9101,7 @@ TEST_F(HostResolverManagerDnsTest,
 
   DnsConfig expected;
   expected.nameservers = nameservers;
-  EXPECT_THAT(client_ptr->GetEffectiveConfig(), testing::Pointee(expected));
+  EXPECT_EQ(client_ptr->GetEffectiveConfig(), expected);
 }
 
 TEST_F(HostResolverManagerDnsTest, SetDnsConfigOverrides_PartialOverride) {
@@ -9052,7 +9115,7 @@ TEST_F(HostResolverManagerDnsTest, SetDnsConfigOverrides_PartialOverride) {
   ChangeDnsConfig(original_config);
 
   // Confirm pre-override state.
-  ASSERT_EQ(original_config, *client_ptr->GetEffectiveConfig());
+  ASSERT_EQ(original_config, client_ptr->GetEffectiveConfig());
 
   DnsConfigOverrides overrides;
   const std::vector<IPEndPoint> nameservers = {
@@ -9063,21 +9126,20 @@ TEST_F(HostResolverManagerDnsTest, SetDnsConfigOverrides_PartialOverride) {
 
   resolver_->SetDnsConfigOverrides(overrides);
 
-  const DnsConfig* overridden_config = client_ptr->GetEffectiveConfig();
-  ASSERT_TRUE(overridden_config);
-  EXPECT_EQ(nameservers, overridden_config->nameservers);
-  EXPECT_EQ(original_config.search, overridden_config->search);
-  EXPECT_EQ(original_config.hosts, overridden_config->hosts);
-  EXPECT_TRUE(overridden_config->append_to_multi_label_name);
-  EXPECT_EQ(original_config.ndots, overridden_config->ndots);
+  const DnsConfig& overridden_config = client_ptr->GetEffectiveConfig();
+  EXPECT_EQ(nameservers, overridden_config.nameservers);
+  EXPECT_EQ(original_config.search, overridden_config.search);
+  EXPECT_EQ(original_config.hosts, overridden_config.hosts);
+  EXPECT_TRUE(overridden_config.append_to_multi_label_name);
+  EXPECT_EQ(original_config.ndots, overridden_config.ndots);
   EXPECT_EQ(original_config.fallback_period,
-            overridden_config->fallback_period);
-  EXPECT_EQ(original_config.attempts, overridden_config->attempts);
-  EXPECT_TRUE(overridden_config->rotate);
-  EXPECT_FALSE(overridden_config->use_local_ipv6);
-  EXPECT_EQ(original_config.doh_config, overridden_config->doh_config);
+            overridden_config.fallback_period);
+  EXPECT_EQ(original_config.attempts, overridden_config.attempts);
+  EXPECT_TRUE(overridden_config.rotate);
+  EXPECT_FALSE(overridden_config.use_local_ipv6);
+  EXPECT_EQ(original_config.doh_config, overridden_config.doh_config);
   EXPECT_EQ(original_config.secure_dns_mode,
-            overridden_config->secure_dns_mode);
+            overridden_config.secure_dns_mode);
 }
 
 // Test that overridden configs are reapplied over a changed underlying system
@@ -9093,7 +9155,7 @@ TEST_F(HostResolverManagerDnsTest, SetDnsConfigOverrides_NewConfig) {
   ChangeDnsConfig(original_config);
 
   // Confirm pre-override state.
-  ASSERT_EQ(original_config, *client_ptr->GetEffectiveConfig());
+  ASSERT_EQ(original_config, client_ptr->GetEffectiveConfig());
 
   DnsConfigOverrides overrides;
   const std::vector<IPEndPoint> nameservers = {
@@ -9101,18 +9163,16 @@ TEST_F(HostResolverManagerDnsTest, SetDnsConfigOverrides_NewConfig) {
   overrides.nameservers = nameservers;
 
   resolver_->SetDnsConfigOverrides(overrides);
-  ASSERT_TRUE(client_ptr->GetEffectiveConfig());
-  ASSERT_EQ(nameservers, client_ptr->GetEffectiveConfig()->nameservers);
+  ASSERT_EQ(nameservers, client_ptr->GetEffectiveConfig().nameservers);
 
   DnsConfig new_config = original_config;
   new_config.attempts = 103;
   ASSERT_NE(nameservers, new_config.nameservers);
   ChangeDnsConfig(new_config);
 
-  const DnsConfig* overridden_config = client_ptr->GetEffectiveConfig();
-  ASSERT_TRUE(overridden_config);
-  EXPECT_EQ(nameservers, overridden_config->nameservers);
-  EXPECT_EQ(new_config.attempts, overridden_config->attempts);
+  const DnsConfig& overridden_config = client_ptr->GetEffectiveConfig();
+  EXPECT_EQ(nameservers, overridden_config.nameservers);
+  EXPECT_EQ(new_config.attempts, overridden_config.attempts);
 }
 
 TEST_F(HostResolverManagerDnsTest, SetDnsConfigOverrides_ClearOverrides) {
@@ -9129,12 +9189,10 @@ TEST_F(HostResolverManagerDnsTest, SetDnsConfigOverrides_ClearOverrides) {
   overrides.attempts = 245;
   resolver_->SetDnsConfigOverrides(overrides);
 
-  ASSERT_THAT(client_ptr->GetEffectiveConfig(),
-              testing::Not(testing::Pointee(original_config)));
+  ASSERT_NE(client_ptr->GetEffectiveConfig(), original_config);
 
   resolver_->SetDnsConfigOverrides(DnsConfigOverrides());
-  EXPECT_THAT(client_ptr->GetEffectiveConfig(),
-              testing::Pointee(original_config));
+  EXPECT_EQ(client_ptr->GetEffectiveConfig(), original_config);
 }
 
 TEST_F(HostResolverManagerDnsTest, SetDnsConfigOverrides_NoChange) {
@@ -9152,7 +9210,7 @@ TEST_F(HostResolverManagerDnsTest, SetDnsConfigOverrides_NoChange) {
   ChangeDnsConfig(original_config);
 
   // Confirm pre-override state.
-  ASSERT_EQ(original_config, *client_ptr->GetEffectiveConfig());
+  ASSERT_EQ(original_config, client_ptr->GetEffectiveConfig());
 
   DnsConfigOverrides overrides;
   overrides.nameservers = original_config.nameservers;
@@ -9160,8 +9218,7 @@ TEST_F(HostResolverManagerDnsTest, SetDnsConfigOverrides_NoChange) {
   EXPECT_EQ(0, config_observer.dns_changed_calls());
 
   resolver_->SetDnsConfigOverrides(overrides);
-  EXPECT_THAT(client_ptr->GetEffectiveConfig(),
-              testing::Pointee(original_config));
+  EXPECT_EQ(client_ptr->GetEffectiveConfig(), original_config);
 
   base::RunLoop().RunUntilIdle();  // Notifications are async.
   EXPECT_EQ(0,
@@ -9190,8 +9247,10 @@ TEST_F(HostResolverManagerDnsTest, NoBaseConfig_PartialOverrides) {
   resolver_->SetDnsConfigOverrides(overrides);
   base::RunLoop().RunUntilIdle();  // Potential notifications are async.
 
-  EXPECT_FALSE(client_ptr->GetEffectiveConfig());
-  EXPECT_EQ(0, config_observer.dns_changed_calls());
+  DnsConfig expected;
+  expected.nameservers = {CreateExpected("192.168.0.3", 193)};
+  EXPECT_EQ(client_ptr->GetEffectiveConfig(), expected);
+  EXPECT_EQ(1, config_observer.dns_changed_calls());
 
   NetworkChangeNotifier::RemoveDNSObserver(&config_observer);
 }
@@ -9220,7 +9279,7 @@ TEST_F(HostResolverManagerDnsTest, NoBaseConfig_OverridesEverything) {
   DnsConfig expected;
   expected.nameservers = nameservers;
 
-  EXPECT_THAT(client_ptr->GetEffectiveConfig(), testing::Pointee(expected));
+  EXPECT_EQ(client_ptr->GetEffectiveConfig(), expected);
   EXPECT_EQ(1, config_observer.dns_changed_calls());
 
   NetworkChangeNotifier::RemoveDNSObserver(&config_observer);
@@ -9239,13 +9298,13 @@ TEST_F(HostResolverManagerDnsTest, DohMapping) {
   DnsConfig original_config = CreateUpgradableDnsConfig();
   ChangeDnsConfig(original_config);
 
-  const DnsConfig* fetched_config = client_ptr->GetEffectiveConfig();
-  EXPECT_EQ(original_config.nameservers, fetched_config->nameservers);
+  const DnsConfig& fetched_config = client_ptr->GetEffectiveConfig();
+  EXPECT_EQ(original_config.nameservers, fetched_config.nameservers);
   auto expected_doh_config = *DnsOverHttpsConfig::FromTemplatesForTesting(
       {"https://chrome.cloudflare-dns.com/dns-query",
        "https://doh.cleanbrowsing.org/doh/family-filter{?dns}",
        "https://doh.cleanbrowsing.org/doh/security-filter{?dns}"});
-  EXPECT_EQ(expected_doh_config, fetched_config->doh_config);
+  EXPECT_EQ(expected_doh_config, fetched_config.doh_config);
 }
 
 TEST_F(HostResolverManagerDnsTest, DohMappingDisabled) {
@@ -9262,9 +9321,9 @@ TEST_F(HostResolverManagerDnsTest, DohMappingDisabled) {
   original_config.allow_dns_over_https_upgrade = false;
   ChangeDnsConfig(original_config);
 
-  const DnsConfig* fetched_config = client_ptr->GetEffectiveConfig();
-  EXPECT_EQ(original_config.nameservers, fetched_config->nameservers);
-  EXPECT_THAT(fetched_config->doh_config.servers(), IsEmpty());
+  const DnsConfig& fetched_config = client_ptr->GetEffectiveConfig();
+  EXPECT_EQ(original_config.nameservers, fetched_config.nameservers);
+  EXPECT_THAT(fetched_config.doh_config.servers(), IsEmpty());
 }
 
 TEST_F(HostResolverManagerDnsTest, DohMappingModeIneligibleForUpgrade) {
@@ -9281,9 +9340,9 @@ TEST_F(HostResolverManagerDnsTest, DohMappingModeIneligibleForUpgrade) {
   original_config.secure_dns_mode = SecureDnsMode::kSecure;
   ChangeDnsConfig(original_config);
 
-  const DnsConfig* fetched_config = client_ptr->GetEffectiveConfig();
-  EXPECT_EQ(original_config.nameservers, fetched_config->nameservers);
-  EXPECT_THAT(fetched_config->doh_config.servers(), IsEmpty());
+  const DnsConfig& fetched_config = client_ptr->GetEffectiveConfig();
+  EXPECT_EQ(original_config.nameservers, fetched_config.nameservers);
+  EXPECT_THAT(fetched_config.doh_config.servers(), IsEmpty());
 }
 
 TEST_F(HostResolverManagerDnsTest,
@@ -9301,7 +9360,9 @@ TEST_F(HostResolverManagerDnsTest,
   original_config.unhandled_options = true;
   ChangeDnsConfig(original_config);
 
-  EXPECT_FALSE(client_ptr->GetEffectiveConfig());
+  const DnsConfig& fetched_config = client_ptr->GetEffectiveConfig();
+  EXPECT_TRUE(fetched_config.nameservers.empty());
+  EXPECT_THAT(fetched_config.doh_config.servers(), IsEmpty());
 }
 
 TEST_F(HostResolverManagerDnsTest, DohMappingWithExclusion) {
@@ -9325,11 +9386,11 @@ TEST_F(HostResolverManagerDnsTest, DohMappingWithExclusion) {
 
   // A DoH upgrade should be attempted on the DNS servers in the config, but
   // only for permitted providers.
-  const DnsConfig* fetched_config = client_ptr->GetEffectiveConfig();
-  EXPECT_EQ(original_config.nameservers, fetched_config->nameservers);
+  const DnsConfig& fetched_config = client_ptr->GetEffectiveConfig();
+  EXPECT_EQ(original_config.nameservers, fetched_config.nameservers);
   auto expected_doh_config = *DnsOverHttpsConfig::FromString(
       "https://doh.cleanbrowsing.org/doh/family-filter{?dns}");
-  EXPECT_EQ(expected_doh_config, fetched_config->doh_config);
+  EXPECT_EQ(expected_doh_config, fetched_config.doh_config);
 }
 
 TEST_F(HostResolverManagerDnsTest, DohMappingIgnoredIfTemplateSpecified) {
@@ -9351,9 +9412,9 @@ TEST_F(HostResolverManagerDnsTest, DohMappingIgnoredIfTemplateSpecified) {
       *DnsOverHttpsConfig::FromString("https://doh.server.override.com/");
   overrides.dns_over_https_config = dns_over_https_config_override;
   resolver_->SetDnsConfigOverrides(overrides);
-  const DnsConfig* fetched_config = client_ptr->GetEffectiveConfig();
-  EXPECT_EQ(original_config.nameservers, fetched_config->nameservers);
-  EXPECT_EQ(dns_over_https_config_override, fetched_config->doh_config);
+  const DnsConfig& fetched_config = client_ptr->GetEffectiveConfig();
+  EXPECT_EQ(original_config.nameservers, fetched_config.nameservers);
+  EXPECT_EQ(dns_over_https_config_override, fetched_config.doh_config);
 }
 
 TEST_F(HostResolverManagerDnsTest,
@@ -9377,10 +9438,10 @@ TEST_F(HostResolverManagerDnsTest,
       *DnsOverHttpsConfig::FromString("https://doh.server.override.com/");
   overrides.dns_over_https_config = dns_over_https_config_override;
   resolver_->SetDnsConfigOverrides(overrides);
-  const DnsConfig* fetched_config = client_ptr->GetEffectiveConfig();
-  EXPECT_TRUE(fetched_config->nameservers.empty());
+  const DnsConfig& fetched_config = client_ptr->GetEffectiveConfig();
+  EXPECT_TRUE(fetched_config.nameservers.empty());
   EXPECT_FALSE(client_ptr->CanUseInsecureDnsTransactions());
-  EXPECT_EQ(dns_over_https_config_override, fetched_config->doh_config);
+  EXPECT_EQ(dns_over_https_config_override, fetched_config.doh_config);
   EXPECT_TRUE(client_ptr->CanUseSecureDnsTransactions());
 }
 
@@ -9398,13 +9459,13 @@ TEST_F(HostResolverManagerDnsTest, DohMappingWithAutomaticDot) {
   original_config.dns_over_tls_active = true;
   ChangeDnsConfig(original_config);
 
-  const DnsConfig* fetched_config = client_ptr->GetEffectiveConfig();
-  EXPECT_EQ(original_config.nameservers, fetched_config->nameservers);
+  const DnsConfig& fetched_config = client_ptr->GetEffectiveConfig();
+  EXPECT_EQ(original_config.nameservers, fetched_config.nameservers);
   auto expected_doh_config = *DnsOverHttpsConfig::FromTemplatesForTesting(
       {"https://chrome.cloudflare-dns.com/dns-query",
        "https://doh.cleanbrowsing.org/doh/family-filter{?dns}",
        "https://doh.cleanbrowsing.org/doh/security-filter{?dns}"});
-  EXPECT_EQ(expected_doh_config, fetched_config->doh_config);
+  EXPECT_EQ(expected_doh_config, fetched_config.doh_config);
 }
 
 TEST_F(HostResolverManagerDnsTest, DohMappingWithStrictDot) {
@@ -9424,11 +9485,11 @@ TEST_F(HostResolverManagerDnsTest, DohMappingWithStrictDot) {
   // Google DoT hostname
   original_config.dns_over_tls_hostname = "dns.google";
   ChangeDnsConfig(original_config);
-  const DnsConfig* fetched_config = client_ptr->GetEffectiveConfig();
-  EXPECT_EQ(original_config.nameservers, fetched_config->nameservers);
+  const DnsConfig& fetched_config = client_ptr->GetEffectiveConfig();
+  EXPECT_EQ(original_config.nameservers, fetched_config.nameservers);
   auto expected_doh_config =
       *DnsOverHttpsConfig::FromString("https://dns.google/dns-query{?dns}");
-  EXPECT_EQ(expected_doh_config, fetched_config->doh_config);
+  EXPECT_EQ(expected_doh_config, fetched_config.doh_config);
 }
 
 #endif  // !BUILDFLAG(IS_IOS)
@@ -13464,13 +13525,14 @@ TEST_F(HostResolverManagerDnsTest,
   overrides.secure_dns_mode = SecureDnsMode::kSecure;
   resolver_->SetDnsConfigOverrides(overrides);
 
-  ASSERT_FALSE(mock_dns_client_->GetCurrentSession());
+  ASSERT_TRUE(mock_dns_client_->GetCurrentSession());
 
   // Register context before loading a DNS config.
   resolver_->RegisterResolveContext(&context);
-  EXPECT_FALSE(context.current_session_for_testing());
+  EXPECT_EQ(context.current_session_for_testing(),
+            mock_dns_client_->GetCurrentSession());
 
-  // Load DNS config and expect the session to be loaded into the ResolveContext
+  // Load DNS config and expect the new session to be loaded into the ResolveContext
   ChangeDnsConfig(CreateValidDnsConfig());
   ASSERT_TRUE(mock_dns_client_->GetCurrentSession());
   EXPECT_EQ(context.current_session_for_testing(),

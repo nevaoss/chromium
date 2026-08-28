@@ -356,8 +356,11 @@ void PermissionRequestManager::AddRequest(
 }
 
 bool PermissionRequestManager::ReprioritizeCurrentRequestIfNeeded() {
+  // Use `ShouldCurrentRequestUsePermissionElementSecondaryUI` to also include
+  // allowlisted surfaces.
   if (!IsRequestInProgress() ||
-      IsCurrentRequestEmbeddedPermissionElementInitiated() ||
+      PermissionUtil::ShouldCurrentRequestUsePermissionElementSecondaryUI(
+          this, web_contents()) ||
       !can_preempt_current_request_) {
     return true;
   }
@@ -903,7 +906,11 @@ bool PermissionRequestManager::RecreateView() {
   const bool should_do_auto_response_for_testing =
       (current_request_prompt_disposition_ ==
        PermissionPromptDisposition::MAC_OS_PROMPT);
-  if (IsCurrentRequestEmbeddedPermissionElementInitiated()) {
+  // Check that a request is filed, and the surface is allowlisted or
+  // has an initiated permission prompt. If a flow model is not created even
+  // though a permission prompt has been requested, it will cause a crash.
+  if (PermissionUtil::ShouldCurrentRequestUsePermissionElementSecondaryUI(
+          this, web_contents())) {
     if (!embedded_prompt_flow_model_) {
       embedded_prompt_flow_model_ =
           std::make_unique<EmbeddedPermissionPromptFlowModel>(web_contents(),
@@ -918,7 +925,11 @@ bool PermissionRequestManager::RecreateView() {
     if (ShouldDropCurrentRequestIfCannotShowQuietly()) {
       CurrentRequestsDecided(PermissionAction::IGNORED,
                              /*prompt_options=*/std::monostate());
-    } else if (IsCurrentRequestEmbeddedPermissionElementInitiated() ||
+      // Use `ShouldCurrentRequestUsePermissionElementSecondaryUI` to also
+      // include allowlisted surfaces.
+    } else if (PermissionUtil::
+                   ShouldCurrentRequestUsePermissionElementSecondaryUI(
+                       this, web_contents()) ||
                IsCurrentRequestExclusiveAccess()) {
       Ignore(/*prompt_options=*/std::monostate());
     }
@@ -1001,12 +1012,6 @@ std::optional<GeolocationPromptType>
 PermissionRequestManager::GetGeolocationPromptType() const {
   CHECK_EQ(requests_.size(), 1u);
   return requests_[0]->GetGeolocationPromptType();
-}
-
-bool PermissionRequestManager::
-    IsCurrentRequestEmbeddedPermissionElementInitiated() const {
-  return IsRequestInProgress() &&
-         requests_[0]->IsEmbeddedPermissionElementInitiated();
 }
 
 std::optional<gfx::Rect>
@@ -1626,7 +1631,10 @@ void PermissionRequestManager::RemoveObserver(Observer* observer) {
 }
 
 bool PermissionRequestManager::ShouldCurrentRequestUseQuietUI() const {
-  if (IsCurrentRequestEmbeddedPermissionElementInitiated()) {
+  // Use `ShouldCurrentRequestUsePermissionElementSecondaryUI` to include
+  // allowlisted surfaces.
+  if (PermissionUtil::ShouldCurrentRequestUsePermissionElementSecondaryUI(
+          this, web_contents())) {
     return false;
   }
   // ContentSettingImageModel might call into this method if the user switches
@@ -2038,7 +2046,7 @@ void PermissionRequestManager::OnTabWillDiscardContents(
     content::WebContents* new_contents) {
   // Runs on the manager of old_contents — the only object that exists
   // before the swap and is subscribed to the tab. The replacement's manager
-  // already exists (TabStripModel::DiscardWebContentsAt() attaches tab
+  // already exists (TabStripModel::DiscardWebContents() attaches tab
   // helpers before the swap) but cannot discover the TabInterface itself:
   // the TabLookupFromWebContents entry moves over only after this
   // notification returns. Hand it over explicitly.

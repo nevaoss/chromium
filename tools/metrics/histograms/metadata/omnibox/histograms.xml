@@ -224,8 +224,11 @@ chromium-metrics-reviews@google.com.
 <!-- LINT.IfChange(OmniboxModelMode) -->
 
 <variants name="OmniboxModelMode">
+  <variant name="GeminiFlashLatest" summary="Gemini Flash Latest model"/>
+  <variant name="GeminiPreview" summary="Gemini Preview model"/>
   <variant name="GeminiPro" summary="Gemini Pro model"/>
   <variant name="GeminiProAutoroute" summary="Gemini Pro Autoroute model"/>
+  <variant name="GeminiProLatest" summary="Gemini Pro Latest model"/>
   <variant name="GeminiProNoGenUi" summary="Gemini Pro No-Gen-UI model"/>
   <variant name="GeminiRegular" summary="Gemini Regular model"/>
   <variant name="Unspecified" summary="Unspecified model"/>
@@ -243,6 +246,8 @@ chromium-metrics-reviews@google.com.
   <variant name="ANDROID_HUB" summary="Searchbox in the Android Hub"/>
   <variant name="ANDROID_SEARCH_WIDGET" summary="Android search widget"/>
   <variant name="ANDROID_SHORTCUTS_WIDGET" summary="Android Shortcuts widget"/>
+  <variant name="ANDROID_TAB_SEARCH_OVERLAY"
+      summary="Searchbox in the Android Tab Search overlay"/>
   <variant name="APP_HOME" summary="home screen"/>
   <variant name="APP_MAPS" summary="maps app"/>
   <variant name="APP_SEARCH" summary="search app"/>
@@ -1414,6 +1419,29 @@ Keep consistent with active providers. Doesn't need to include every provider in
     logged to once per autocomplete pass when there exists a suggestion of
     entity type. Recorded after attempting to find matching domains between a
     historical URL and a company entity website URI.
+  </summary>
+</histogram>
+
+<histogram name="Omnibox.ContextMenu.AnimationShown.ContextualTasks"
+    enum="Boolean" expires_after="2027-08-01">
+  <owner>dhruvkathpalia@google.com</owner>
+  <owner>chrome-desktop-search@google.com</owner>
+  <summary>
+    Records whether the context menu (nextbox) animation was shown to the user
+    or blocked due to the ContextMenuAnimationLimiting experiment on Contextual
+    Tasks page. Recorded when the context menu animation is shown on the
+    Nextbox.
+  </summary>
+</histogram>
+
+<histogram name="Omnibox.ContextMenu.AnimationShown.NTP" enum="Boolean"
+    expires_after="2027-08-01">
+  <owner>dhruvkathpalia@google.com</owner>
+  <owner>chrome-desktop-search@google.com</owner>
+  <summary>
+    Records whether the context menu (realbox) animation was shown to the user
+    or blocked due to the ContextMenuAnimationLimiting experiment on NTP.
+    Recorded when the context menu animation is shown on the Realbox.
   </summary>
 </histogram>
 

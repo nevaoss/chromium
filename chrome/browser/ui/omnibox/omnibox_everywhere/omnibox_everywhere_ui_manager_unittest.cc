@@ -4,6 +4,10 @@
 
 #include "chrome/browser/ui/omnibox/omnibox_everywhere/omnibox_everywhere_ui_manager.h"
 
+#include <memory>
+#include <utility>
+#include <vector>
+
 #include "base/memory/weak_ptr.h"
 #include "base/run_loop.h"
 #include "base/test/run_until.h"
@@ -32,6 +36,23 @@
 #include "url/gurl.h"
 
 namespace {
+
+class ScopedScreenOverride {
+ public:
+  explicit ScopedScreenOverride(display::Screen* new_screen)
+      : old_screen_(display::Screen::SetScreenInstance(nullptr)) {
+    display::Screen::SetScreenInstance(new_screen);
+  }
+  ~ScopedScreenOverride() {
+    display::Screen::SetScreenInstance(nullptr);
+    if (old_screen_) {
+      display::Screen::SetScreenInstance(old_screen_);
+    }
+  }
+
+ private:
+  raw_ptr<display::Screen> old_screen_;
+};
 
 class TestWebUIContentsWrapper : public WebUIContentsWrapper {
  public:
@@ -146,6 +167,77 @@ TEST_F(OmniboxEverywhereUIManagerTest, ShowWhileWidgetIsHidden) {
   // Clean up.
   ui_manager->Shutdown();
   EXPECT_FALSE(ui_manager->widget());
+}
+
+// Verifies that when the widget is first shown on a standard display, its
+// initial bounds are centered and initialized with the default resting height
+// (kDefaultRestingHeight) and fixed width (kPopupFixedWidth) to prevent visual
+// resize flashing before WebUI auto-resize occurs.
+#if BUILDFLAG(IS_CHROMEOS)
+#define MAYBE_InitialBoundsMatchRestingHeight \
+  DISABLED_InitialBoundsMatchRestingHeight
+#else
+#define MAYBE_InitialBoundsMatchRestingHeight InitialBoundsMatchRestingHeight
+#endif
+TEST_F(OmniboxEverywhereUIManagerTest, MAYBE_InitialBoundsMatchRestingHeight) {
+  display::test::TestScreen test_screen(/*create_display=*/false,
+                                        /*register_screen=*/false);
+  ScopedScreenOverride screen_override(&test_screen);
+
+  display::Display display1(1, gfx::Rect(0, 0, 1920, 1080));
+  test_screen.display_list().AddDisplay(display1,
+                                        display::DisplayList::Type::PRIMARY);
+
+  auto ui_manager = CreateUIManager();
+  ui_manager->ShowForProfile(&profile_, GetContext());
+  views::Widget* widget = ui_manager->widget();
+  ASSERT_TRUE(widget);
+
+  EXPECT_EQ(
+      widget->GetWindowBoundsInScreen(),
+      gfx::Rect(
+          536, 464,
+          omnibox_everywhere::OmniboxEverywhereUIManager::kPopupFixedWidth,
+          omnibox_everywhere::OmniboxEverywhereUIManager::
+              kDefaultRestingHeight));
+
+  ui_manager->Shutdown();
+}
+
+// Verifies that on displays with dimensions smaller than the fixed popup width,
+// widget bounds calculation clamps width and coordinates to remain fully within
+// the visible work area without overflowing or negative positioning.
+#if BUILDFLAG(IS_CHROMEOS)
+#define MAYBE_CalculateBoundsClampsToSmallDisplays \
+  DISABLED_CalculateBoundsClampsToSmallDisplays
+#else
+#define MAYBE_CalculateBoundsClampsToSmallDisplays \
+  CalculateBoundsClampsToSmallDisplays
+#endif
+TEST_F(OmniboxEverywhereUIManagerTest,
+       MAYBE_CalculateBoundsClampsToSmallDisplays) {
+  display::test::TestScreen test_screen(/*create_display=*/false,
+                                        /*register_screen=*/false);
+  ScopedScreenOverride screen_override(&test_screen);
+
+  // Display smaller than default popup width (800 < 848).
+  display::Display small_display(1, gfx::Rect(0, 0, 800, 600));
+  test_screen.display_list().AddDisplay(small_display,
+                                        display::DisplayList::Type::PRIMARY);
+
+  auto ui_manager = CreateUIManager();
+  ui_manager->ShowForProfile(&profile_, GetContext());
+  views::Widget* widget = ui_manager->widget();
+  ASSERT_TRUE(widget);
+
+  // Width is clamped to work area width (800) and x starts at 0 (non-negative).
+  EXPECT_EQ(widget->GetWindowBoundsInScreen().x(), 0);
+  EXPECT_EQ(widget->GetWindowBoundsInScreen().width(), 800);
+  EXPECT_EQ(
+      widget->GetWindowBoundsInScreen().height(),
+      omnibox_everywhere::OmniboxEverywhereUIManager::kDefaultRestingHeight);
+
+  ui_manager->Shutdown();
 }
 
 TEST_F(OmniboxEverywhereUIManagerTest, FileChooserStateTracking) {
@@ -300,8 +392,7 @@ TEST_F(OmniboxEverywhereUIManagerTest, MAYBE_ShowPositionsOnTargetDisplay) {
   // Display 2: 800, 0, 1024, 768 (Secondary)
   display::test::TestScreen test_screen(/*create_display=*/false,
                                         /*register_screen=*/false);
-  display::Screen* old_screen = display::Screen::SetScreenInstance(nullptr);
-  display::Screen::SetScreenInstance(&test_screen);
+  ScopedScreenOverride screen_override(&test_screen);
 
   display::Display display1(1, gfx::Rect(0, 0, 800, 600));
   display::Display display2(2, gfx::Rect(800, 0, 1024, 768));
@@ -329,8 +420,6 @@ TEST_F(OmniboxEverywhereUIManagerTest, MAYBE_ShowPositionsOnTargetDisplay) {
             display::Screen::Get()->GetPrimaryDisplay().id());
 
   ui_manager->Close();
-  display::Screen::SetScreenInstance(nullptr);
-  display::Screen::SetScreenInstance(old_screen);
 }
 
 #if BUILDFLAG(IS_CHROMEOS)
@@ -344,8 +433,7 @@ TEST_F(OmniboxEverywhereUIManagerTest,
        MAYBE_PreservePositionAcrossDisplaysOnReinvoke) {
   display::test::TestScreen test_screen(/*create_display=*/false,
                                         /*register_screen=*/false);
-  display::Screen* old_screen = display::Screen::SetScreenInstance(nullptr);
-  display::Screen::SetScreenInstance(&test_screen);
+  ScopedScreenOverride screen_override(&test_screen);
 
   display::Display display1(1, gfx::Rect(0, 0, 800, 600));
   display::Display display2(2, gfx::Rect(800, 0, 1024, 768));
@@ -372,8 +460,6 @@ TEST_F(OmniboxEverywhereUIManagerTest,
   EXPECT_EQ(widget->GetWindowBoundsInScreen(), initial_bounds);
 
   ui_manager->Close();
-  display::Screen::SetScreenInstance(nullptr);
-  display::Screen::SetScreenInstance(old_screen);
 }
 
 TEST_F(OmniboxEverywhereUIManagerTest, DrivePickerStateTracking) {
@@ -580,7 +666,7 @@ TEST_F(OmniboxEverywhereUIManagerTest, ContextMenuModelEditableElement) {
 
   content::ContextMenuParams params;
   params.is_editable = true;
-  ui_manager->HandleContextMenu(*rfh, params);
+  EXPECT_TRUE(ui_manager->HandleContextMenu(*rfh, params));
 
   const ui::SimpleMenuModel* model =
       ui_manager->context_menu_model_for_testing();
@@ -610,7 +696,7 @@ TEST_F(OmniboxEverywhereUIManagerTest,
   content::ContextMenuParams params;
   params.is_editable = false;
   params.selection_text = u"selected text";
-  ui_manager->HandleContextMenu(*rfh, params);
+  EXPECT_TRUE(ui_manager->HandleContextMenu(*rfh, params));
 
   const ui::SimpleMenuModel* model =
       ui_manager->context_menu_model_for_testing();
@@ -624,7 +710,7 @@ TEST_F(OmniboxEverywhereUIManagerTest,
 }
 
 TEST_F(OmniboxEverywhereUIManagerTest,
-       ContextMenuModelNonEditableElementWithoutSelection) {
+       ContextMenuSuppressedOnNonEditableBackground) {
   auto ui_manager = CreateUIManager();
   ui_manager->ShowForProfile(&profile_, GetContext());
   ASSERT_TRUE(ui_manager->widget());
@@ -633,19 +719,32 @@ TEST_F(OmniboxEverywhereUIManagerTest,
                   ->web_contents()
                   ->GetPrimaryMainFrame();
 
+  // Right-clicking on empty background space (not editable, no selection text).
   content::ContextMenuParams params;
   params.is_editable = false;
-  ui_manager->HandleContextMenu(*rfh, params);
+  params.selection_text = u"";
 
-  const ui::SimpleMenuModel* model =
-      ui_manager->context_menu_model_for_testing();
-  ASSERT_TRUE(model);
-  EXPECT_EQ(model->GetItemCount(), 3u);
-  EXPECT_EQ(model->GetCommandIdAt(0),
-            omnibox_everywhere::OmniboxEverywhereUIManager::kPaste);
-  EXPECT_EQ(model->GetTypeAt(1), ui::MenuModel::ItemType::TYPE_SEPARATOR);
-  EXPECT_EQ(model->GetCommandIdAt(2),
-            omnibox_everywhere::OmniboxEverywhereUIManager::kSelectAll);
+  bool menu_runner_created = false;
+  ui_manager->SetMenuRunnerFactoryForTesting(base::BindRepeating(
+      [](bool* created, ui::MenuModel* model,
+         base::RepeatingClosure on_closed) {
+        *created = true;
+        auto runner = std::make_unique<views::MenuRunner>(
+            model,
+            views::MenuRunner::HAS_MNEMONICS | views::MenuRunner::CONTEXT_MENU,
+            on_closed);
+        views::test::MenuRunnerTestAPI(runner.get())
+            .SetMenuRunnerHandler(std::make_unique<TestMenuRunnerHandler>());
+        return runner;
+      },
+      &menu_runner_created));
+
+  // Should return true (consumed/handled) but NOT create or open a context
+  // menu.
+  EXPECT_TRUE(ui_manager->HandleContextMenu(*rfh, params));
+  EXPECT_FALSE(menu_runner_created);
+  EXPECT_FALSE(ui_manager->is_context_menu_open_for_testing());
+  EXPECT_FALSE(ui_manager->context_menu_model_for_testing());
 }
 
 TEST_F(OmniboxEverywhereUIManagerTest, ContextMenuCommandEnablement) {
@@ -685,4 +784,126 @@ TEST_F(OmniboxEverywhereUIManagerTest, ContextMenuCommandEnablement) {
       omnibox_everywhere::OmniboxEverywhereUIManager::kPaste));
   EXPECT_TRUE(ui_manager->IsCommandIdEnabled(
       omnibox_everywhere::OmniboxEverywhereUIManager::kSelectAll));
+}
+
+// TODO(crbug.com/546710681): Re-enable test on linux
+#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX)
+#define MAYBE_ResizeDueToAutoResizeUpdatesWidgetBounds \
+  DISABLED_ResizeDueToAutoResizeUpdatesWidgetBounds
+#else
+#define MAYBE_ResizeDueToAutoResizeUpdatesWidgetBounds \
+  ResizeDueToAutoResizeUpdatesWidgetBounds
+#endif
+TEST_F(OmniboxEverywhereUIManagerTest,
+       MAYBE_ResizeDueToAutoResizeUpdatesWidgetBounds) {
+  display::test::TestScreen test_screen(/*create_display=*/false,
+                                        /*register_screen=*/false);
+  display::Screen* old_screen = display::Screen::SetScreenInstance(nullptr);
+  display::Screen::SetScreenInstance(&test_screen);
+  base::ScopedClosureRunner screen_restorer(base::BindOnce(
+      [](display::Screen* old_screen) {
+        display::Screen::SetScreenInstance(nullptr);
+        display::Screen::SetScreenInstance(old_screen);
+      },
+      old_screen));
+  test_screen.display_list().AddDisplay(
+      display::Display(1, gfx::Rect(0, 0, 1920, 1080)),
+      display::DisplayList::Type::PRIMARY);
+
+  auto ui_manager = CreateUIManager();
+  ui_manager->ShowForProfile(&profile_, GetContext());
+  views::Widget* widget = ui_manager->widget();
+  ASSERT_TRUE(widget);
+
+  EXPECT_EQ(widget->GetWindowBoundsInScreen().width(), 848);
+
+  // Resize above minimum height should resize the widget height directly.
+  ui_manager->ResizeDueToAutoResize(nullptr, gfx::Size(848, 150));
+  EXPECT_EQ(widget->GetWindowBoundsInScreen().height(), 150);
+  EXPECT_EQ(widget->GetWindowBoundsInScreen().width(), 848);
+
+  // Resize below minimum height (56) should clamp to 56.
+  ui_manager->ResizeDueToAutoResize(nullptr, gfx::Size(848, 30));
+  EXPECT_EQ(widget->GetWindowBoundsInScreen().height(), 56);
+  EXPECT_EQ(widget->GetWindowBoundsInScreen().width(), 848);
+
+  // Even if widget width was temporarily modified (e.g. edge clamping),
+  // ResizeDueToAutoResize enforces the fixed width.
+  gfx::Rect clamped_bounds = widget->GetWindowBoundsInScreen();
+  clamped_bounds.set_width(400);
+  widget->SetBounds(clamped_bounds);
+  EXPECT_EQ(widget->GetWindowBoundsInScreen().width(), 400);
+
+  ui_manager->ResizeDueToAutoResize(nullptr, gfx::Size(848, 200));
+  EXPECT_EQ(widget->GetWindowBoundsInScreen().height(), 200);
+  EXPECT_EQ(widget->GetWindowBoundsInScreen().width(), 848);
+
+  // While dragging, AutoResize should be deferred.
+  ui_manager->OnWidgetUserDragStarted(widget);
+  ui_manager->ResizeDueToAutoResize(nullptr, gfx::Size(848, 300));
+  // Size remains unchanged during drag.
+  EXPECT_EQ(widget->GetWindowBoundsInScreen().height(), 200);
+
+  // When drag ends, the pending AutoResize is applied.
+  ui_manager->OnWidgetUserDragEnded(widget);
+  EXPECT_EQ(widget->GetWindowBoundsInScreen().height(), 300);
+
+  ui_manager->Close();
+}
+
+TEST_F(OmniboxEverywhereUIManagerTest,
+       RebuildWidgetOnEphemeralModelPrefChangeWhenVisible) {
+  if (g_browser_process && g_browser_process->local_state()) {
+    g_browser_process->local_state()->SetBoolean(
+        omnibox_everywhere::prefs::kOmniboxEverywhereEphemeralModel, false);
+  }
+  auto ui_manager = CreateUIManager();
+
+  ui_manager->ShowForProfile(&profile_, GetContext());
+  views::Widget* original_widget = ui_manager->widget();
+  ASSERT_TRUE(original_widget);
+  EXPECT_TRUE(original_widget->IsVisible());
+
+  // Changing the ephemeral model pref should rebuild the widget.
+  if (g_browser_process && g_browser_process->local_state()) {
+    g_browser_process->local_state()->SetBoolean(
+        omnibox_everywhere::prefs::kOmniboxEverywhereEphemeralModel, true);
+  }
+  views::Widget* rebuilt_widget = ui_manager->widget();
+  ASSERT_TRUE(rebuilt_widget);
+  EXPECT_TRUE(rebuilt_widget->IsVisible());
+  EXPECT_NE(original_widget, rebuilt_widget);
+
+  ui_manager->Shutdown();
+}
+
+TEST_F(OmniboxEverywhereUIManagerTest,
+       RebuildWidgetOnEphemeralModelPrefChangeWhenHidden) {
+  if (g_browser_process && g_browser_process->local_state()) {
+    g_browser_process->local_state()->SetBoolean(
+        omnibox_everywhere::prefs::kOmniboxEverywhereEphemeralModel, false);
+  }
+  auto ui_manager = CreateUIManager();
+
+  ui_manager->ShowForProfile(&profile_, GetContext());
+  ASSERT_TRUE(ui_manager->widget());
+  EXPECT_TRUE(ui_manager->widget()->IsVisible());
+
+  // Hide the widget.
+  ui_manager->Close();
+  EXPECT_FALSE(ui_manager->widget()->IsVisible());
+
+  // Changing the ephemeral pref while hidden should clean up the old widget.
+  if (g_browser_process && g_browser_process->local_state()) {
+    g_browser_process->local_state()->SetBoolean(
+        omnibox_everywhere::prefs::kOmniboxEverywhereEphemeralModel, true);
+  }
+  EXPECT_FALSE(ui_manager->widget());
+
+  // Showing again creates a new widget with the updated ephemeral settings.
+  ui_manager->ShowForProfile(&profile_, GetContext());
+  ASSERT_TRUE(ui_manager->widget());
+  EXPECT_TRUE(ui_manager->widget()->IsVisible());
+
+  ui_manager->Shutdown();
 }

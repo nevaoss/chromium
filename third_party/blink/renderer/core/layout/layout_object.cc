@@ -1053,66 +1053,88 @@ void LayoutObject::SetDepthIncludingDescendants(unsigned depth) {
   }
 }
 
-LayoutObject* LayoutObject::CommonAncestor(const LayoutObject& other,
-                                           CommonAncestorData* data) const {
-  NOT_DESTROYED();
-  if (this == &other)
-    return const_cast<LayoutObject*>(this);
+namespace {
 
-  const wtf_size_t depth = Depth();
-  const wtf_size_t other_depth = other.Depth();
-  const LayoutObject* iterator = this;
-  const LayoutObject* other_iterator = &other;
+struct CommonAncestorResult {
+  STACK_ALLOCATED();
+
+ public:
+  const LayoutObject* common_ancestor = nullptr;
+  // The last objects before reaching the common ancestor.
   const LayoutObject* last = nullptr;
   const LayoutObject* other_last = nullptr;
-  if (depth > other_depth) {
-    for (wtf_size_t i = depth - other_depth; i; --i) {
-      last = iterator;
-      iterator = iterator->Parent();
-    }
-  } else if (other_depth > depth) {
-    for (wtf_size_t i = other_depth - depth; i; --i) {
-      other_last = other_iterator;
-      other_iterator = other_iterator->Parent();
-    }
+};
+
+CommonAncestorResult CommonAncestorInternal(const LayoutObject* object,
+                                            const LayoutObject* other_object) {
+  unsigned depth = object->Depth();
+  unsigned other_depth = other_object->Depth();
+
+  // Jump up to the same level in the tree.
+  while (depth > other_depth) {
+    object = object->Parent();
+    --depth;
   }
-  while (iterator) {
-    DCHECK(other_iterator);
-    if (iterator == other_iterator) {
-      if (data) {
-        data->last = const_cast<LayoutObject*>(last);
-        data->other_last = const_cast<LayoutObject*>(other_last);
-      }
-      return const_cast<LayoutObject*>(iterator);
-    }
-    last = iterator;
-    iterator = iterator->Parent();
-    other_last = other_iterator;
-    other_iterator = other_iterator->Parent();
+  while (other_depth > depth) {
+    other_object = other_object->Parent();
+    --other_depth;
   }
-  DCHECK(!other_iterator);
-  return nullptr;
+
+  // Walk up until we hit the same object.
+  const LayoutObject* last = nullptr;
+  const LayoutObject* other_last = nullptr;
+  while (object != other_object) {
+    last = object;
+    other_last = other_object;
+    object = object->Parent();
+    other_object = other_object->Parent();
+  }
+
+  return {object, last, other_last};
+}
+
+}  // namespace
+
+const LayoutObject* LayoutObject::CommonAncestor(
+    const LayoutObject& other) const {
+  NOT_DESTROYED();
+  return CommonAncestorInternal(this, &other).common_ancestor;
 }
 
 bool LayoutObject::IsBeforeInPreOrder(const LayoutObject& other) const {
   NOT_DESTROYED();
   DCHECK_NE(this, &other);
-  CommonAncestorData data;
-  const LayoutObject* common_ancestor = CommonAncestor(other, &data);
-  DCHECK(common_ancestor);
-  DCHECK(data.last || data.other_last);
-  if (!data.last)
-    return true;  // |this| is the ancestor of |other|.
-  if (!data.other_last)
-    return false;  // |other| is the ancestor of |this|.
-  for (const LayoutObject* child = common_ancestor->SlowFirstChild(); child;
-       child = child->NextSibling()) {
-    if (child == data.last)
-      return true;
-    if (child == data.other_last)
-      return false;
+  CommonAncestorResult result = CommonAncestorInternal(this, &other);
+
+  // Check if `this` is a direct ancestor of `other`.
+  if (this == result.common_ancestor) {
+    return true;
   }
-  NOTREACHED();
+  // Check if `other` is a direct ancestor of `this`.
+  if (&other == result.common_ancestor) {
+    return false;
+  }
+
+  DCHECK(result.last);
+  DCHECK(result.other_last);
+
+  // Try and walk towards each other, if we encounter the other we are before.
+  const LayoutObject* forward = result.last;
+  const LayoutObject* backward = result.other_last;
+  while (forward && backward) {
+    forward = forward->NextSibling();
+    if (forward && forward == backward) {
+      return true;
+    }
+    backward = backward->PreviousSibling();
+    if (forward && forward == backward) {
+      return true;
+    }
+  }
+
+  // Either `forward` or `backward` are null, we didn't hit the other object so
+  // `this` must be after `other`.
+  return false;
 }
 
 static void AddLayers(LayoutObject* obj,
@@ -3880,7 +3902,7 @@ PhysicalOffset LayoutObject::OffsetFromOverscrollContainer(
     MapCoordinatesFlags mode) const {
   // If either container is not a shifting overscroll area container or we need
   // to ignore scroll offsets, then we can early out.
-  if (container->InternalOverscrollArea() != EInternalOverscrollArea::kAuto ||
+  if (!container->IsContentMovingOverscrollContainer() ||
       mode.Has(MapCoordinatesMode::kIgnoreScrollOffset)) {
     return PhysicalOffset();
   }
@@ -5109,17 +5131,11 @@ void LayoutObject::ClearPaintFlags() {
             DocumentLifecycle::kInPrePaint);
   ClearPaintInvalidationFlags();
   needs_paint_property_update_ = false;
-  effective_allowed_touch_action_changed_ = false;
-  blocking_wheel_event_handler_changed_ = false;
-  soft_navigation_context_changed_ = false;
-  container_timing_changed_ = false;
+  pre_paint_subtree_walk_reasons_ = 0;
 
   if (!ChildPrePaintBlockedByDisplayLock()) {
     descendant_needs_paint_property_update_ = false;
-    descendant_effective_allowed_touch_action_changed_ = false;
-    descendant_blocking_wheel_event_handler_changed_ = false;
-    descendant_soft_navigation_context_changed_ = false;
-    descendant_container_timing_changed_ = false;
+    descendant_pre_paint_subtree_walk_reasons_ = 0;
     subtree_paint_property_update_reasons_ =
         static_cast<unsigned>(SubtreePaintPropertyUpdateReason::kNone);
   }
@@ -5208,125 +5224,63 @@ void LayoutObject::InvalidateSelectedChildrenOnStyleChange() {
   }
 }
 
-void LayoutObject::MarkEffectiveAllowedTouchActionChanged() {
+void LayoutObject::SetNeedsPrePaintSubtreeWalk(
+    PrePaintSubtreeWalkReasons reasons) {
   NOT_DESTROYED();
   DCHECK(!GetDocument().InvalidationDisallowed());
-  effective_allowed_touch_action_changed_ = true;
-  // If we're locked, mark our descendants as needing this change. This is used
-  // a signal to ensure we mark the element as needing effective allowed
-  // touch action recalculation when the element becomes unlocked.
+  CHECK(!reasons.empty());
+  pre_paint_subtree_walk_reasons_ |= reasons.ToEnumBitmask();
+  // If we're locked, mark our descendants as needing pre-paint subtree walk.
+  // This is used a signal to ensure we mark the element as needing pre-paint
+  // subtree walk when the element becomes unlocked.
   if (ChildPrePaintBlockedByDisplayLock()) {
-    descendant_effective_allowed_touch_action_changed_ = true;
-    return;
-  }
-
-  if (Parent())
-    Parent()->MarkDescendantEffectiveAllowedTouchActionChanged();
-}
-
-void LayoutObject::MarkDescendantEffectiveAllowedTouchActionChanged() {
-  NOT_DESTROYED();
-  DCHECK(!GetDocument().InvalidationDisallowed());
-  LayoutObject* obj = this;
-  while (obj && !obj->DescendantEffectiveAllowedTouchActionChanged()) {
-    obj->descendant_effective_allowed_touch_action_changed_ = true;
-    if (obj->ChildPrePaintBlockedByDisplayLock())
-      break;
-
-    obj = obj->Parent();
-  }
-}
-
-void LayoutObject::MarkBlockingWheelEventHandlerChanged() {
-  NOT_DESTROYED();
-  DCHECK(!GetDocument().InvalidationDisallowed());
-  blocking_wheel_event_handler_changed_ = true;
-  // If we're locked, mark our descendants as needing this change. This is used
-  // as a signal to ensure we mark the element as needing wheel event handler
-  // recalculation when the element becomes unlocked.
-  if (ChildPrePaintBlockedByDisplayLock()) {
-    descendant_blocking_wheel_event_handler_changed_ = true;
-    return;
-  }
-
-  if (Parent())
-    Parent()->MarkDescendantBlockingWheelEventHandlerChanged();
-}
-
-void LayoutObject::MarkDescendantBlockingWheelEventHandlerChanged() {
-  NOT_DESTROYED();
-  DCHECK(!GetDocument().InvalidationDisallowed());
-  LayoutObject* obj = this;
-  while (obj && !obj->DescendantBlockingWheelEventHandlerChanged()) {
-    obj->descendant_blocking_wheel_event_handler_changed_ = true;
-    if (obj->ChildPrePaintBlockedByDisplayLock())
-      break;
-
-    obj = obj->Parent();
-  }
-}
-
-void LayoutObject::MarkSoftNavigationContextChanged() {
-  NOT_DESTROYED();
-  DCHECK(!GetDocument().InvalidationDisallowed());
-  soft_navigation_context_changed_ = true;
-  // If we're locked, mark our descendants as needing this change. This is used
-  // as a signal to ensure we mark the element as needing soft navigation
-  // context recalculation when the element becomes unlocked.
-  if (ChildPrePaintBlockedByDisplayLock()) {
-    descendant_soft_navigation_context_changed_ = true;
+    descendant_pre_paint_subtree_walk_reasons_ |= reasons.ToEnumBitmask();
     return;
   }
 
   if (Parent()) {
-    Parent()->MarkDescendantSoftNavigationContextChanged();
+    Parent()->SetDescendantNeedsPrePaintSubtreeWalk(reasons);
   }
 }
 
-void LayoutObject::MarkDescendantSoftNavigationContextChanged() {
+void LayoutObject::SetDescendantNeedsPrePaintSubtreeWalk(
+    PrePaintSubtreeWalkReasons reasons) {
   NOT_DESTROYED();
   DCHECK(!GetDocument().InvalidationDisallowed());
-  LayoutObject* obj = this;
-  while (obj && !obj->DescendantSoftNavigationContextChanged()) {
-    obj->descendant_soft_navigation_context_changed_ = true;
+  for (LayoutObject* obj = this;
+       obj && !obj->GetDescendantPrePaintSubtreeWalkReasons().HasAll(reasons);
+       obj = obj->Parent()) {
+    obj->descendant_pre_paint_subtree_walk_reasons_ |= reasons.ToEnumBitmask();
     if (obj->ChildPrePaintBlockedByDisplayLock()) {
       break;
     }
-    obj = obj->Parent();
   }
+}
+
+void LayoutObject::MarkEffectiveAllowedTouchActionChanged() {
+  NOT_DESTROYED();
+  SetNeedsPrePaintSubtreeWalk(
+      {PrePaintSubtreeWalkReason::kEffectiveAllowedTouchAction});
+}
+
+void LayoutObject::MarkBlockingWheelEventHandlerChanged() {
+  NOT_DESTROYED();
+  SetNeedsPrePaintSubtreeWalk(
+      {PrePaintSubtreeWalkReason::kBlockingWheelEventHandler});
+}
+
+void LayoutObject::MarkSoftNavigationContextChanged() {
+  NOT_DESTROYED();
+  SetNeedsPrePaintSubtreeWalk(
+      {PrePaintSubtreeWalkReason::kSoftNavigationContext});
 }
 
 void LayoutObject::MarkContainerTimingChanged() {
   NOT_DESTROYED();
   DCHECK(RuntimeEnabledFeatures::ContainerTimingPrepaintTraversalEnabled(
       GetDocument().GetExecutionContext()));
-  DCHECK(!GetDocument().InvalidationDisallowed());
-  container_timing_changed_ = true;
-  // If we're locked, mark our descendants as needing this change. This is used
-  // as a signal to ensure we mark the element as needing container timing
-  // recalculation when the element becomes unlocked.
-  if (ChildPrePaintBlockedByDisplayLock()) {
-    descendant_container_timing_changed_ = true;
-    return;
-  }
-  if (Parent()) {
-    Parent()->MarkDescendantContainerTimingChanged();
-  }
-}
-
-void LayoutObject::MarkDescendantContainerTimingChanged() {
-  NOT_DESTROYED();
-  DCHECK(RuntimeEnabledFeatures::ContainerTimingPrepaintTraversalEnabled(
-      GetDocument().GetExecutionContext()));
-  DCHECK(!GetDocument().InvalidationDisallowed());
-  LayoutObject* obj = this;
-  while (obj && !obj->DescendantContainerTimingChanged()) {
-    obj->descendant_container_timing_changed_ = true;
-    if (obj->ChildPrePaintBlockedByDisplayLock()) {
-      break;
-    }
-    obj = obj->Parent();
-  }
+  SetNeedsPrePaintSubtreeWalk(
+      {PrePaintSubtreeWalkReason::kContainerTimingContext});
 }
 
 // Note about ::first-letter pseudo-element:

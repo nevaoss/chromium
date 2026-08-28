@@ -18,9 +18,9 @@
 #include "base/threading/thread.h"
 #include "chrome/browser/vr/test/mock_xr_input_source.h"
 #include "device/vr/public/mojom/openxr_interaction_profile_type.mojom.h"
-#include "device/vr/public/mojom/test/browser_test_interfaces.mojom.h"
 #include "device/vr/public/mojom/test/controller_frame_data.h"
 #include "device/vr/public/mojom/test/view_data.h"
+#include "device/vr/public/mojom/test/xr_test_hook.test-mojom.h"
 #include "device/vr/public/mojom/vr_service.mojom.h"
 #include "device/vr/public/mojom/xr_hand_tracking_data.mojom.h"
 #include "mojo/public/cpp/bindings/receiver.h"
@@ -29,12 +29,18 @@
 #include "ui/gfx/geometry/quaternion.h"
 #include "ui/gfx/geometry/transform.h"
 
-// A Mock XR Device. This is setup such that the runtime can query and receive
-// fake data from the runtime, and tests can customize this and inspect any
-// submitted frames.
-// Please refer to xr_browser_tests.md for a description of the threading model.
-// Due to this, it is important to document expectations for each method on
-// where it is expecting to be called from via use of the sequence checkers.
+// A Mock XR Device implementing device_test::mojom::XRTestHook. This allows
+// the mock OpenXR runtime to synchronously query simulated frame, pose, and
+// input data, while allowing tests to inspect submitted frames and inject
+// runtime events.
+//
+// Threading Model:
+// - The test runner / test assertions run on the main browser UI thread.
+// - Incoming synchronous Mojo queries from the runtime are handled on a
+//   dedicated background thread (`MockXRDeviceHookThread`) to avoid deadlocks.
+// - Sequence checkers (`mock_device_sequence_` and `main_sequence_`) ensure
+//   proper thread boundary separation.
+// Please refer to xr_browser_tests.md for complete details.
 class MockXRDeviceHookBase : public device_test::mojom::XRTestHook {
  public:
   MockXRDeviceHookBase();

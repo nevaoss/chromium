@@ -59,6 +59,7 @@ if (is_android) {
       "//base:base_junit_test_support",
       "//base:holder_java",
       "//base:service_loader_java",
+      "//base:tristate_java",
       "//base/test:test_support_java",
       "//base/version_info/android:version_constants_java",
       "//cc:cc_java",
@@ -446,6 +447,7 @@ if (is_android) {
       "src/org/chromium/chrome/browser/RecentlyClosedEntriesManagerTrackerImplUnitTest.java",
       "src/org/chromium/chrome/browser/RecentlyClosedEntriesManagerUnitTest.java",
       "src/org/chromium/chrome/browser/ShortcutHelperTest.java",
+      "src/org/chromium/chrome/browser/SwipeRefreshHandlerUnitTest.java",
       "src/org/chromium/chrome/browser/TabGroupUsageTrackerUnitTest.java",
       "src/org/chromium/chrome/browser/TabStateThemeResourceProviderTest.java",
       "src/org/chromium/chrome/browser/UndoRefocusHelperTest.java",
@@ -457,6 +459,7 @@ if (is_android) {
     deps = [
       ":chrome_junit_tests_helper",
       "//chrome/browser/tabpersistence:java",
+      "//third_party/android_swipe_refresh:android_swipe_refresh_java",
     ]
   }
 
@@ -689,6 +692,7 @@ if (is_android) {
     sources = [
       "src/org/chromium/chrome/browser/contextmenu/ContextMenuCoordinatorTest.java",
       "src/org/chromium/chrome/browser/contextmenu/ContextMenuHeaderMediatorTest.java",
+      "src/org/chromium/chrome/browser/contextmenu/ContextMenuListViewUnitTest.java",
       "src/org/chromium/chrome/browser/contextmenu/ContextMenuMediatorTest.java",
     ]
 
@@ -921,6 +925,9 @@ if (is_android) {
       "src/org/chromium/chrome/browser/media/MediaCapturePickerInvokerTest.java",
       "src/org/chromium/chrome/browser/media/MediaCapturePickerManagerTest.java",
       "src/org/chromium/chrome/browser/media/MediaCaptureUtilsTest.java",
+      "src/org/chromium/chrome/browser/media/TabSharingToolbarMediatorTest.java",
+      "src/org/chromium/chrome/browser/media/TabSharingToolbarUiCoordinatorTest.java",
+      "src/org/chromium/chrome/browser/media/TabSharingToolbarViewBinderTest.java",
       "src/org/chromium/chrome/browser/media/TabSharingUIBridgeTest.java",
       "src/org/chromium/chrome/browser/media/TabSharingUIManagerTest.java",
       "src/org/chromium/chrome/browser/media/document_picture_in_picture_header/DocumentPictureInPictureHeaderCoordinatorUnitTest.java",
@@ -1080,17 +1087,6 @@ if (is_android) {
   }
 
   robolectric_library(
-      "chrome_junit_tests_org.chromium.chrome.browser.privacy_sandbox") {
-    sources = [
-      "src/org/chromium/chrome/browser/privacy_sandbox/CctHandlerTest.java",
-      "src/org/chromium/chrome/browser/privacy_sandbox/FakeCookieControlsBridge.java",
-      "src/org/chromium/chrome/browser/privacy_sandbox/PrivacySandbox3pcdRollbackMessageControllerTest.java",
-    ]
-
-    deps = [ ":chrome_junit_tests_helper" ]
-  }
-
-  robolectric_library(
       "chrome_junit_tests_org.chromium.chrome.browser.search_engines") {
     sources = [
       "src/org/chromium/chrome/browser/search_engines/SearchEngineChoiceMetricsTest.java",
@@ -1231,6 +1227,7 @@ if (is_android) {
 
     deps = [
       ":chrome_junit_tests_helper",
+      "//chrome/browser/ntp_customization:java",
       "//chrome/browser/prefs/android:java",
       "//chrome/browser/sync/synced_set_up/android:java",
       "//components/sync_preferences/cross_device_pref_tracker/android:java",
@@ -1307,6 +1304,7 @@ if (is_android) {
       "//chrome/android/java/src/org/chromium/chrome/browser/tabmodel/TabCollectionsTabModelObserversUnitTest.java",
       "//chrome/android/java/src/org/chromium/chrome/browser/tabmodel/TabModelImplUtilUnitTest.java",
       "//chrome/android/java/src/org/chromium/chrome/browser/tabmodel/TabModelRemoverUnitTest.java",
+      "//chrome/android/java/src/org/chromium/chrome/browser/tabmodel/TabOpenerTrackerHelperUnitTest.java",
       "//chrome/android/java/src/org/chromium/chrome/browser/tabmodel/TabPinnerActionListenerUnitTest.java",
       "//chrome/android/java/src/org/chromium/chrome/browser/tabmodel/TabRemoverImplUnitTest.java",
       "//chrome/android/java/src/org/chromium/chrome/browser/tabmodel/TabUngrouperImplUnitTest.java",
@@ -1358,6 +1356,7 @@ if (is_android) {
       "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/TabGroupCreationUiDelegateUnitTest.java",
       "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/TabGroupFaviconClusterUnitTest.java",
       "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/TabGroupFaviconQuarterUnitTest.java",
+      "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/TabGroupHoverCardViewUnitTest.java",
       "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/TabGroupLabellerUnitTest.java",
       "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/TabGroupListBottomSheetCoordinatorUnitTest.java",
       "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/TabGroupListBottomSheetMediatorUnitTest.java",

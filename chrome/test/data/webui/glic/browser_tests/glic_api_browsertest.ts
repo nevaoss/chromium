@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 import {HostCapability, MetricUserInputReactionType, PanelStateKind, Platform, ResponseStopCause, WebClientMode} from '/glic/glic_api/glic_api.js';
-import type {CancelActionsResult, FocusedTabData, TabData, UserProfileInfo} from '/glic/glic_api/glic_api.js';
+import type {FocusedTabData, TabData, UserProfileInfo} from '/glic/glic_api/glic_api.js';
 
-import {ApiTestFixtureBase, assertDefined, assertEquals, assertFalse, assertNotEquals, assertRejects, assertTrue, assertUndefined, checkDefined, mapObservable, observeSequence, readStream, runUntil, sleep, testMain, waitFor} from './browser_test_base.js';
+import {ApiTestFixtureBase, assertDefined, assertEquals, assertFalse, assertNotEquals, assertRejects, assertTrue, assertUndefined, checkDefined, mapObservable, observeSequence, readStream, runUntil, sleep, testMain} from './browser_test_base.js';
 import type {SequencedSubscriber} from './browser_test_base.js';
 
 // Test cases here correspond to test cases in glic_api_browsertest.cc.
@@ -41,12 +41,6 @@ class ApiTests extends ApiTestFixtureBase {
 
 
 
-  async testCancelActions() {
-    assertDefined(this.host.cancelActions);
-    const taskId: number = this.testParams;
-    const result: CancelActionsResult = await this.host.cancelActions(taskId);
-    await this.advanceToNextStep(result);
-  }
 
 
   async testErrorShownOnMojoPipeError() {}
@@ -54,171 +48,6 @@ class ApiTests extends ApiTestFixtureBase {
   async testPanelActiveWithMicrophone() {
     await this.advanceToNextStep();
     await this.advanceToNextStep();
-  }
-
-  async testIsOnboardingCompleted() {
-    assertDefined(this.host.isOnboardingCompleted);
-    const completedSequence =
-        observeSequence(this.host.isOnboardingCompleted());
-    assertFalse(await completedSequence.next());
-
-    // Mark onboarding as completed.
-    await this.advanceToNextStep();
-
-    assertTrue(await completedSequence.next());
-  }
-
-  async testSetOnboardingCompleted() {
-    assertDefined(this.host.setOnboardingCompleted);
-
-    // Check that onboarding is not completed yet.
-    await this.advanceToNextStep();
-
-    // Call mojo to set onboarding completed.
-    await this.host.setOnboardingCompleted();
-
-    // Check that onboarding is completed.
-    await this.advanceToNextStep();
-  }
-
-
-  async testGetFocusedTabStateV2WithNavigation() {
-    // Initial state.
-    assertDefined(this.host.getFocusedTabStateV2);
-    const sequence =
-        observeSequence<FocusedTabData>(this.host.getFocusedTabStateV2());
-    const focus = await sequence.next();
-    assertDefined(focus.hasFocus);
-    assertEquals(
-        new URL(focus.hasFocus.tabData.url).pathname,
-        '/glic/browser_tests/test.html', `url=${focus.hasFocus.tabData.url}`);
-    assertFalse(!!focus.hasNoFocus);
-
-    // After a second navigation occurs.
-    await this.advanceToNextStep();
-    const focus2 = await sequence.next();
-    assertDefined(focus2.hasFocus);
-    assertEquals(
-        new URL(focus2.hasFocus.tabData.url).pathname,
-        '/scrollable_page_with_content.html',
-        `url=${focus2.hasFocus.tabData.url}`);
-
-    await this.advanceToNextStep();
-    let focus3 = await sequence.next();
-
-    // After a navigation occurs in a new tab, there could first exist a
-    // transitory states where the focus is not yet available, is empty, or
-    // still previous page.
-    while (focus3.hasNoFocus ||
-           (!!focus3.hasFocus &&
-            (focus3.hasFocus.tabData.url === '' ||
-             focus3.hasFocus.tabData.url.endsWith(
-                 'scrollable_page_with_content.html')))) {
-      focus3 = await sequence.next();
-    }
-
-    // Final state, after the tab is fully loaded.
-    assertDefined(focus3.hasFocus);
-    assertEquals(
-        new URL(focus3.hasFocus.tabData.url).pathname,
-        '/glic/browser_tests/test.html', `url=${focus3.hasFocus.tabData.url}`);
-    assertFalse(!!focus3.hasNoFocus);
-  }
-
-  async testGetFocusedTabStateV2WithNavigationWhenInactive() {
-    // Initial state.
-    assertDefined(this.host.getFocusedTabStateV2);
-    await this.closePanelAndWaitUntilInactive();
-    const sequence =
-        observeSequence<FocusedTabData>(this.host.getFocusedTabStateV2());
-    const focus = await sequence.next();
-    assertDefined(focus.hasFocus);
-    assertEquals(
-        new URL(focus.hasFocus.tabData.url).pathname,
-        '/glic/browser_tests/test.html', `url=${focus.hasFocus.tabData.url}`);
-    assertFalse(!!focus.hasNoFocus);
-
-    await this.closePanelAndWaitUntilInactive();
-
-    // After we hide, two navigations will occur. The second in a new tab.
-    await this.advanceToNextStep();
-
-    const focus2 = await runUntil(async () => {
-      const nextFocus = await sequence.next();
-
-      // After a navigation occurs in a new tab, there could first exist a
-      // transitory states where the focus is not yet available, is empty, or
-      // still previous page.
-      if (!nextFocus || !!nextFocus.hasNoFocus || !nextFocus.hasFocus) {
-        return undefined;
-      }
-
-      const focused_url = nextFocus.hasFocus.tabData.url;
-      if (focused_url === '' ||
-          focused_url.endsWith('scrollable_page_with_content.html')) {
-        return undefined;
-      }
-      return nextFocus;
-    });
-
-    // Final state, after the tab is fully loaded.
-    assertDefined(focus2.hasFocus);
-    assertEquals(
-        new URL(focus2.hasFocus.tabData.url).pathname,
-        '/glic/browser_tests/test.html', `url=${focus2.hasFocus.tabData.url}`);
-    assertFalse(!!focus2.hasNoFocus);
-  }
-
-  async testSingleFocusedTabUpdatesOnTabEvents() {
-    assertDefined(this.host.getFocusedTabStateV2);
-    const sequence =
-        observeSequence<FocusedTabData>(this.host.getFocusedTabStateV2());
-    // Check events from first tab.
-    {
-      const focus = await sequence.next();
-      assertDefined(
-          !!focus.hasFocus,
-          `#1: should have a focused tab; FocusedTabData=${
-              JSON.stringify(focus)}`);
-      assertEquals(
-          new URL(focus.hasFocus?.tabData.url).pathname,
-          '/glic/browser_tests/test.html',
-          `#1: Unexpected URL; FocusedTabData=${JSON.stringify(focus)}`);
-      assertTrue(
-          sequence.isEmpty(), '#1: Spurious updates after first tab opened');
-    }
-
-    // After a navigation occurs in the first tab.
-    {
-      await this.advanceToNextStep();
-      const focus = await sequence.next();
-      assertDefined(
-          !!focus.hasFocus,
-          `#2: should have a focused tab; FocusedTabData=${
-              JSON.stringify(focus)}`);
-      assertEquals(
-          new URL(focus.hasFocus?.tabData.url).pathname,
-          '/scrollable_page_with_content.html',
-          `#2: Unexpected URL; FocusedTabData=${JSON.stringify(focus)}`);
-      assertTrue(
-          sequence.isEmpty(), '#2: Spurious updates after first tab navigated');
-    }
-
-    // A new tab is opened and navigated.
-    {
-      await this.advanceToNextStep();
-      const focus = await sequence.next();
-      assertDefined(
-          !!focus.hasFocus,
-          `#3: should have a focused tab; FocusedTabData=${
-              JSON.stringify(focus)}`);
-      assertEquals(
-          new URL(focus.hasFocus?.tabData.url).pathname,
-          '/glic/browser_tests/test.html',
-          `#3: Unexpected URL; FocusedTabData=${JSON.stringify(focus)}`);
-      assertTrue(
-          sequence.isEmpty(), '#3: Spurious updates after a new tab opened');
-    }
   }
 
   async testGetContextFromFocusedTabWithoutPermission() {
@@ -407,22 +236,6 @@ class ApiTests extends ApiTestFixtureBase {
   }
 
 
-  async testGetOsHotkeyState() {
-    assertDefined(this.host.getOsHotkeyState);
-    const osHotkeyState = observeSequence(this.host.getOsHotkeyState());
-    let hotkeyState = await osHotkeyState.next();
-    const isMac = /Mac/.test(navigator.platform);
-    let expectedHotkey = isMac ? '<⌃>-<G>' : '<Ctrl>-<G>';
-    assertEquals(expectedHotkey, hotkeyState.hotkey);
-    await this.advanceToNextStep();
-    hotkeyState = await osHotkeyState.next();
-    expectedHotkey = isMac ? '<⌃>-<⇧>-<1>' : '<Ctrl>-<Shift>-<1>';
-    assertEquals(expectedHotkey, hotkeyState.hotkey);
-    await this.advanceToNextStep();
-    hotkeyState = await osHotkeyState.next();
-    expectedHotkey = '';
-    assertEquals(expectedHotkey, hotkeyState.hotkey);
-  }
 
   async testGetUserProfileInfoCached() {
     assertDefined(this.host.getUserProfileInfo);
@@ -503,25 +316,9 @@ class ApiTests extends ApiTestFixtureBase {
 
 
 
-  async testOpenOsMediaPermissionSettings() {
-    assertDefined(this.host.openOsPermissionSettingsMenu);
-    this.host.openOsPermissionSettingsMenu('media');
-  }
 
-  async testOpenOsGeoPermissionSettings() {
-    assertDefined(this.host.openOsPermissionSettingsMenu);
-    this.host.openOsPermissionSettingsMenu('geolocation');
-  }
 
-  async testGetOsMicrophonePermissionStatusAllowed() {
-    assertDefined(this.host.getOsMicrophonePermissionStatus);
-    assertTrue(await this.host.getOsMicrophonePermissionStatus());
-  }
 
-  async testGetOsMicrophonePermissionStatusNotAllowed() {
-    assertDefined(this.host.getOsMicrophonePermissionStatus);
-    assertFalse(await this.host.getOsMicrophonePermissionStatus());
-  }
 
   // Test navigating unsuccessfully after client connection.
   async testNavigateToBadPage() {
@@ -557,17 +354,6 @@ class ApiTests extends ApiTestFixtureBase {
     })();
   }
 
-  async testCallingApiWhileHiddenRecordsMetrics() {
-    assertDefined(this.host.createTab);
-    await this.advanceToNextStep();
-    await observeSequence(this.host.panelActive())
-        .waitFor(isActive => !isActive);
-    try {
-      await this.host.createTab(
-          'https://www.google.com', {openInBackground: false});
-    } catch {
-    }
-  }
 
   // Helper function to pin the active tab. Asserts the tab is pinned, and
   // returns the tab ID.
@@ -581,125 +367,6 @@ class ApiTests extends ApiTestFixtureBase {
     await pinnedTabsUpdates.waitFor(
         (tabs) => tabs.some(t => t.tabId === tabId));
     return tabId;
-  }
-
-  async testPinTabsStatePersistWhenClosePanelAndReopen() {
-    assertDefined(this.host.closePanel);
-    assertDefined(this.host.pinTabs);
-    assertDefined(this.host.getPinnedTabs);
-
-    const tabId = this.testParams.tabId;
-    const activeTabId = this.getActiveTabId();
-
-    assertTrue(await this.host.pinTabs([activeTabId, tabId]));
-    const pinnedTabsUpdates = observeSequence(this.host.getPinnedTabs());
-    await pinnedTabsUpdates.waitFor((tabs) => tabs.length === 2);
-
-    await this.host.closePanel();
-
-    // Open glic window again.
-    await this.advanceToNextStep();
-
-    assertEquals(this.host.getPinnedTabs().getCurrentValue()?.length, 2);
-  }
-
-  async testUnpinTabsFailsWhenNotPinned() {
-    assertDefined(this.host.pinTabs);
-    assertDefined(this.host.getPinnedTabs);
-    assertDefined(this.host.unpinTabs);
-
-    const tabId = this.testParams.tabId;
-    const tabId2 = this.getActiveTabId();
-    // Pin both tabs.
-    assertTrue(await this.host.pinTabs([tabId2, tabId]));
-
-    const pinnedTabsUpdates = observeSequence(this.host.getPinnedTabs());
-    await pinnedTabsUpdates.waitFor((tabs) => tabs.length === 2);
-
-    // Unpin tabId.
-    assertTrue(await this.host.unpinTabs([tabId]));
-    await pinnedTabsUpdates.waitFor((tabs) => tabs.length === 1);
-
-    // Unpinning a tab that is not pinned should fail.
-    assertFalse(await this.host.unpinTabs([tabId, tabId2]));
-    await pinnedTabsUpdates.waitFor((tabs) => tabs.length === 0);
-  }
-
-  async testUnpinAllTabs() {
-    assertDefined(this.host.pinTabs);
-    assertDefined(this.host.getPinnedTabs);
-    assertDefined(this.host.unpinAllTabs);
-
-    const tabId = this.testParams.tabId;
-    const tabId2 = this.getActiveTabId();
-
-    // Pin both tabs.
-    assertTrue(await this.host.pinTabs([tabId2, tabId]));
-
-    const pinnedTabsUpdates = observeSequence(this.host.getPinnedTabs());
-    await pinnedTabsUpdates.waitFor((tabs) => tabs.length === 2);
-
-    // Unpin all tabs.
-    this.host.unpinAllTabs();
-    await pinnedTabsUpdates.waitFor((tabs) => tabs.length === 0);
-  }
-
-  async testPinTabsHaveNoEffectOnFocusedTab() {
-    assertDefined(this.host.pinTabs);
-    assertDefined(this.host.unpinAllTabs);
-    assertDefined(this.host.getPinnedTabs);
-    assertDefined(this.host.getFocusedTabStateV2);
-
-    await this.host.setTabContextPermissionState(true);
-    const tabId: string = this.testParams.tabId;
-
-    const focusSequence = observeSequence(this.host.getFocusedTabStateV2());
-    const focus = await focusSequence.next();
-    const focusedTabId = checkDefined(focus?.hasFocus?.tabData.tabId);
-    // Make sure tabId is not the focused tab.
-    assertNotEquals(tabId, focusedTabId);
-
-    await this.host.pinTabs([tabId]);
-    const pinnedTabsUpdates = observeSequence(this.host.getPinnedTabs());
-    pinnedTabsUpdates.waitFor(
-        (tabs) => tabs.length === 1 && tabs.at(0)?.tabId === tabId);
-
-    assertTrue(focusSequence.isEmpty());
-
-    this.host.unpinAllTabs();
-    pinnedTabsUpdates.waitFor((tabs) => tabs.length === 0);
-
-    assertTrue(focusSequence.isEmpty());
-  }
-
-  // Tests that tabs which navigate are unpinned if the glic window is closed.
-  async testUnpinTabsThatNavigateInBackground() {
-    assertDefined(this.host.getPinCandidates);
-    assertDefined(this.host.pinTabs);
-    assertDefined(this.host.getPinnedTabs);
-    assertDefined(this.host.closePanel);
-
-    // Pin all tabs.
-    const pinnedTabsUpdates = observeSequence(this.host.getPinnedTabs());
-    const candidates = await observeSequence(this.host.getPinCandidates({
-                         maxCandidates: 3,
-                       })).next();
-    assertEquals(candidates.length, 2);
-    assertTrue(await this.host.pinTabs(candidates.map(c => c.tabData.tabId)));
-    await pinnedTabsUpdates.waitFor((tabs) => tabs.length === 2);
-
-    await this.host.closePanel();
-
-    // Open glic window again.
-    await this.advanceToNextStep();
-
-    // Wait for pin updates. We should see one fewer pinned tab, and one
-    // navigated tab.
-    // Note: pinned tab updates will see the navigation just before the tab is
-    // unpinned.
-    await pinnedTabsUpdates.waitFor(
-        tabs => tabs.map(t => new URL(t.url).search).sort().join(',') ===
-            '?changedOne');
   }
 
   async testTabDataUpdateOnUrlChangeForPinnedTab() {
@@ -784,88 +451,6 @@ class ApiTests extends ApiTestFixtureBase {
         }));
   }
 
-  async testGetContextFromTabIgnorePermissionWhenPinned() {
-    assertDefined(this.host.getContextFromTab);
-    assertDefined(this.host.pinTabs);
-    assertDefined(this.host.getPinnedTabs);
-    assertDefined(this.host.unpinTabs);
-
-    // Fail getContextFromTab due to no tab context permission not granted.
-    await this.host.setTabContextPermissionState(false);
-    const tabId: string = this.getFocusedTabId();
-    await this.host.unpinTabs([tabId]);  // Unpin required for multi-instance.
-    await assertRejects(this.host.getContextFromTab(tabId, {}), {
-      withErrorMessage: 'tabContext failed: permission denied:' +
-          ' context permission not enabled',
-    });
-
-    // Pinning the tab should allow ignoring the tab context permission.
-    await this.host.pinTabs([tabId]);
-    const pinnedTabsUpdates = observeSequence(this.host.getPinnedTabs());
-    pinnedTabsUpdates.waitFor(
-        (tabs) => tabs.length === 1 && tabs.some((t) => t.tabId === tabId));
-
-    const result = await this.host.getContextFromTab(tabId, {});
-    assertDefined(result);
-    assertEquals(result.tabData.tabId, tabId);
-  }
-
-  async testGetContextFromTabFailDifferentlyBasedOnPermission() {
-    assertDefined(this.host.getContextFromTab);
-    // For unfocused unpinned tabs, getTabContext call fail with different error
-    // messages based on Context sharing permission state.
-
-    const tabId: string = this.testParams.tabId;
-    // Make sure tabId is not the focused tab.
-    assertNotEquals(tabId, this.getFocusedTabId());
-
-    await this.host.setTabContextPermissionState(false);
-    await assertRejects(this.host.getContextFromTab(tabId, {}), {
-      withErrorMessage: 'tabContext failed: permission denied:' +
-          ' context permission not enabled',
-    });
-
-    await this.host.setTabContextPermissionState(true);
-    await assertRejects(this.host.getContextFromTab(tabId, {}), {
-      withErrorMessage: 'tabContext failed: permission denied',
-    });
-  }
-
-  async testGetContextFromTabFailsIfNotPinned() {
-    assertDefined(this.host.getContextFromTab);
-    assertDefined(this.host.pinTabs);
-    assertDefined(this.host.unpinTabs);
-    assertDefined(this.host.getPinnedTabs);
-
-    const tabId: string = this.testParams.tabId;
-    // Make sure tabId is not the focused tab.
-    assertNotEquals(tabId, this.getFocusedTabId());
-
-    await this.host.pinTabs([tabId]);
-    const pinnedTabsUpdates = observeSequence(this.host.getPinnedTabs());
-    pinnedTabsUpdates.waitFor(
-        (tabs) => tabs.length === 1 && tabs.at(0)?.tabId === tabId);
-
-    const result = await this.host.getContextFromTab(tabId, {});
-    assertDefined(result);
-    assertEquals(result.tabData.tabId, tabId);
-
-    await this.host.unpinTabs([tabId]);
-    pinnedTabsUpdates.waitFor((tabs) => tabs.length === 0);
-    await assertRejects(this.host.getContextFromTab(tabId, {}), {
-      withErrorMessage: 'tabContext failed: permission denied:' +
-          ' context permission not enabled',
-    });
-  }
-
-  async testGetContextFromTabFailsIfDoesNotExist() {
-    assertDefined(this.host.getContextFromTab);
-
-    await assertRejects(
-        this.host.getContextFromTab('not-exist', {}),
-        {withErrorMessage: 'tabContext failed: tab not found'},
-    );
-  }
 
   // Helper for `testFetchInactiveTabScreenshot` and
   // `testFetchInactiveTabScreenshotWhileMinimized`.
@@ -1101,12 +686,6 @@ class ApiTests extends ApiTestFixtureBase {
     await actOnWebCapabilitySequence.waitForValue(false);
   }
 
-  async testRegisterConversationWithEmptyId() {
-    assertDefined(this.host.registerConversation);
-    // Register an initial conversation with a valid ID.
-    await this.host.registerConversation(
-        {conversationId: '', conversationTitle: 'Empty Conversation'});
-  }
 
   async testPanelWillOpenBeforeClientReady() {
     const openData = await observeSequence(this.client.panelOpenData).next();
@@ -1162,19 +741,6 @@ class ApiTests extends ApiTestFixtureBase {
     assertEquals('Prompt Suggestion', invokeOptions.prompts?.[0]);
   }
 
-  async testGetZoomLevel() {
-    assertDefined(this.host.getZoomLevel);
-    const sequence = observeSequence<number>(this.host.getZoomLevel());
-    const zoom = await sequence.next();
-    assertDefined(zoom);
-    assertEquals(zoom, 1.0);
-
-    // Trigger zoom-in.
-    await this.advanceToNextStep();
-
-    const newZoom = await sequence.next();
-    assertEquals(newZoom, 1.1);
-  }
 
   private async closePanelAndWaitUntilInactive() {
     assertDefined(this.host.closePanel);
@@ -1194,80 +760,6 @@ class ApiTests extends ApiTestFixtureBase {
     throw new Error(`Unknown capability: ${capability}`);
   }
 }
-
-// Tests which do not wait for the panel to open before starting.
-class ApiTestWithoutOpen extends ApiTestFixtureBase {
-  override async setUpTest() {
-    await this.client.waitForInitialize();
-  }
-
-  async testDeferredFocusedTabStateAtCreation() {
-    // Initial state.
-    assertDefined(this.host.getFocusedTabStateV2);
-    const focusedTabStateV2Sequence =
-        observeSequence<FocusedTabData>(this.host.getFocusedTabStateV2());
-    let focusedTabState = await focusedTabStateV2Sequence.next();
-    assertDefined(focusedTabState.hasNoFocus);
-    const tabStatePromise = focusedTabStateV2Sequence.next();
-    assertRejects(waitFor(tabStatePromise, 200));
-    // We should only see the second page.
-    await this.advanceToNextStep();
-    focusedTabState = await tabStatePromise;
-    assertDefined(focusedTabState.hasFocus);
-    assertEquals(
-        new URL(focusedTabState.hasFocus.tabData.url).pathname,
-        '/scrollable_page_with_content.html',
-        `url=${focusedTabState.hasFocus.tabData.url}`);
-  }
-
-  async testNoExtractionWhileHidden() {
-    assertDefined(this.host.getContextFromFocusedTab);
-    assertDefined(this.host.getContextFromTab);
-    assertDefined(this.host.getFocusedTabStateV2);
-    assertDefined(this.host.pinTabs);
-    await this.host.setTabContextPermissionState(true);
-
-    // While still hidden (preloaded), focused tab extraction should fail.
-    await assertRejects(this.host.getContextFromFocusedTab({}), {
-      withErrorMessage:
-          'GetContextFromFocusedTab not allowed while backgrounded',
-    });
-
-    // Glic panel is open, so both focused and arbitrary tab extraction should
-    // succeed.
-    await this.advanceToNextStep();
-    await this.client.waitForFirstOpen();
-    let result = await this.host.getContextFromFocusedTab({});
-    assertDefined(result);
-    assertEquals(
-        new URL(result.tabData.url).pathname, '/glic/browser_tests/test.html',
-        `Tab data has unexpected url ${result.tabData.url}`);
-    const focusedTab = await this.host.getFocusedTabStateV2().getCurrentValue();
-    const tabId = checkDefined(focusedTab?.hasFocus?.tabData.tabId);
-    assertTrue(await this.host.pinTabs([tabId]));
-    result = await this.host.getContextFromTab(tabId, {});
-    assertDefined(result);
-    assertEquals(
-        new URL(result.tabData.url).pathname, '/glic/browser_tests/test.html',
-        `Tab data has unexpected url ${result.tabData.url}`);
-
-    // Glic panel is hidden again. Focused and arbitrary tab extraction should
-    // fail.
-    await this.advanceToNextStep();
-    // Panel closure was only requested by native code, but still needs to be
-    // waited on.
-    await observeSequence(this.host.panelActive()).waitForValue(false);
-    await assertRejects(this.host.getContextFromFocusedTab({}), {
-      withErrorMessage:
-          'GetContextFromFocusedTab not allowed while backgrounded',
-    });
-    await assertRejects(this.host.getContextFromTab(tabId, {}), {
-      withErrorMessage: 'GetContextFromTab not allowed while backgrounded',
-    });
-  }
-}
-
-
 
 class DaisyChainApiTests extends ApiTestFixtureBase {
   async clickLinkInGlicUi() {
@@ -1311,7 +803,6 @@ class DaisyChainApiTests extends ApiTestFixtureBase {
 const TEST_FIXTURES = [
   ApiTests,
   DaisyChainApiTests,
-  ApiTestWithoutOpen,
 ];
 
 testMain(TEST_FIXTURES);

@@ -182,9 +182,8 @@ struct BrowserViewTabbedLayoutImpl::TransientLayoutData {
 
 BrowserViewTabbedLayoutImpl::BrowserViewTabbedLayoutImpl(
     std::unique_ptr<BrowserViewLayoutDelegate> delegate,
-    BrowserWindowInterface* browser,
     BrowserViewLayoutViews views)
-    : BrowserViewLayoutImpl(std::move(delegate), browser, std::move(views)) {}
+    : BrowserViewLayoutImpl(std::move(delegate), std::move(views)) {}
 
 BrowserViewTabbedLayoutImpl::~BrowserViewTabbedLayoutImpl() = default;
 
@@ -256,18 +255,18 @@ int BrowserViewTabbedLayoutImpl::GetHorizontalTabStripLeadingMargin(
   return leading_margin;
 }
 
-bool BrowserViewTabbedLayoutImpl::AvoidCrackingForFractionalDisplay() const {
+int BrowserViewTabbedLayoutImpl::GetVerticalTabStripContentOverlap() const {
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN)
-  // This is primarily an issue on Linux and Windows; add other platforms here
-  // as needed.
+  // On fractional display scaling (e.g. 1.25x, 1.5x), overlap the content area
+  // by 1 DIP over the vertical tab strip border to prevent subpixel seams.
   if (auto* const widget = views().browser_view->GetWidget()) {
     if (const auto display = widget->GetNearestDisplay()) {
       const float scale = display->device_scale_factor();
-      return scale != std::floor(scale);
+      return scale != std::floor(scale) ? 1 : 0;
     }
   }
 #endif
-  return false;
+  return 0;
 }
 
 std::pair<gfx::Size, gfx::Size>
@@ -468,6 +467,8 @@ BrowserViewTabbedLayoutImpl::CalculateVerticalTabStripAnimation() {
   const bool has_infobar = delegate().IsInfobarVisible();
   std::optional<double> max_uncollapsed_top_corner;
 
+  auto* const controller = delegate().GetAnimationController();
+
   if (layout_data_->tab_strip_type == TabStripType::kVertical) {
     double top_corner_collapsed_state = 1.0;
     const bool would_have_separator = has_infobar || !is_split_view;
@@ -492,7 +493,6 @@ BrowserViewTabbedLayoutImpl::CalculateVerticalTabStripAnimation() {
         break;
     }
 
-    auto* const controller = BrowserAnimationController::From(browser());
     auto* const animations =
         controller->GetAnimationProvider<TabStripAnimations>();
     animations->UpdateDefaultValue(TabStripAnimations::kVerticalTabStrip,
@@ -504,7 +504,6 @@ BrowserViewTabbedLayoutImpl::CalculateVerticalTabStripAnimation() {
   // animation values.
   int leading_exclusion_height = GetCollapsedVerticalTabStripRelativeTop();
   VerticalTabStripAnimation animation;
-  auto* const controller = BrowserAnimationController::From(browser());
   animation.current_motion =
       controller->GetCurrentMotion(TabStripAnimations::kVerticalTabStrip);
   animation.top_offset = base::ClampRound(
@@ -571,15 +570,6 @@ gfx::Size BrowserViewTabbedLayoutImpl::GetMinimumMainAreaSize(
 BrowserViewTabbedLayoutImpl::TabStripType
 BrowserViewTabbedLayoutImpl::GetTabStripType() const {
   if (delegate().ShouldDrawVerticalTabStrip()) {
-#if BUILDFLAG(IS_MAC)
-    // Do not lay out the vertical tabstrip in content-fullscreen on Mac. This
-    // check cannot be done in BrowserView because the immersive mode controller
-    // itself relies on BrowserView reporting which tab strip it *would* draw,
-    // creating a circular dependency/race condition.
-    if (fullscreen_utils::IsInContentFullscreen(browser())) {
-      return TabStripType::kNone;
-    }
-#endif
     return TabStripType::kVertical;
   }
   return delegate().ShouldDrawTabStrip() ? TabStripType::kHorizontal
@@ -591,9 +581,8 @@ BrowserViewTabbedLayoutImpl::GetVerticalTabStripCollapsedState() const {
   if (!views().vertical_tab_strip_region_view) {
     return VerticalTabStripCollapsedState::kExpanded;
   }
-  const auto motion =
-      BrowserAnimationController::From(browser())->GetCurrentMotion(
-          TabStripAnimations::kVerticalTabStrip);
+  const auto motion = delegate().GetAnimationController()->GetCurrentMotion(
+      TabStripAnimations::kVerticalTabStrip);
   if (motion == TabStripAnimations::kCollapse) {
     return VerticalTabStripCollapsedState::kCollapsing;
   }
@@ -691,7 +680,6 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
 
   BrowserLayoutParams params = layout_data_->revised_params;
   bool needs_exclusion = true;
-  const bool adjust_for_cracking = AvoidCrackingForFractionalDisplay();
   const HorizontalLayout& horizontal_layout = layout_data_->horizontal_layout;
 
   // Lay out horizontal tab strip region if present.
@@ -770,10 +758,8 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
             gfx::Insets::TLBR(views::Separator::kThickness, 0, 0, 0));
       }
 
-      int inset_amount = horizontal_layout.vertical_tab_strip_width;
-      if (adjust_for_cracking) {
-        inset_amount -= 1;
-      }
+      const int inset_amount = horizontal_layout.vertical_tab_strip_width -
+                               GetVerticalTabStripContentOverlap();
       params.InsetHorizontal(inset_amount, /*leading=*/true);
 
       // Let the vertical tab strip animate out over the content.
@@ -929,15 +915,10 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
     } else {
       main_background_bounds = params.visual_client_area;
     }
-    if (adjust_for_cracking &&
-        main_background_bounds.y() > browser_params.visual_client_area.y()) {
-      main_background_bounds.Outset(gfx::Outsets::TLBR(1, 0, 0, 0));
-    }
-    const bool show_main_background =
-        horizontal_layout.has_side_panel() || adjust_for_cracking;
+    const bool main_background_visibility = horizontal_layout.has_side_panel();
     main_background_layout =
         &layout.AddChild(views().main_background_region, main_background_bounds,
-                         show_main_background);
+                         main_background_visibility);
   }
 
   // Lay out toolbar-height side panel.

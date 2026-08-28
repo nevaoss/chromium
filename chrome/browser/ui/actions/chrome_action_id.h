@@ -434,6 +434,13 @@
   E(kActionOmniboxContextSetModelAuto, IDC_OMNIBOX_CONTEXT_SET_MODEL_AUTO)  \
   E(kActionOmniboxContextSetModelThinking, IDC_OMNIBOX_CONTEXT_SET_MODEL_THINKING)  \
   E(kActionOmniboxContextSetModelRegular, IDC_OMNIBOX_CONTEXT_SET_MODEL_REGULAR)  \
+  /*Omnibox Everywhere Status Icon Menu*/ \
+  E(kActionOmniboxEverywhereStatusIconMenuToggle, \
+    IDC_OMNIBOX_EVERYWHERE_STATUS_ICON_MENU_TOGGLE) \
+  E(kActionOmniboxEverywhereStatusIconMenuCustomizeKeyboardShortcut, \
+    IDC_OMNIBOX_EVERYWHERE_STATUS_ICON_MENU_CUSTOMIZE_KEYBOARD_SHORTCUT) \
+  E(kActionOmniboxEverywhereStatusIconMenuSettings, \
+    IDC_OMNIBOX_EVERYWHERE_STATUS_ICON_MENU_SETTINGS) \
   E(kActionShowPaymentsChurnedUsersBubble) \
 
 #if BUILDFLAG(IS_CHROMEOS)
@@ -479,6 +486,7 @@
   E(kActionSidePanelShowCustomizeChromeToolbar, \
     IDC_SHOW_CUSTOMIZE_CHROME_TOOLBAR) \
   E(kActionSidePanelShowFeed) \
+  E(kActionSidePanelShowGeic) \
   E(kActionSidePanelShowGlic) \
   E(kActionSidePanelShowContextualTasks) \
   E(kActionSidePanelShowHistoryCluster, IDC_SHOW_HISTORY_CLUSTERS_SIDE_PANEL) \
@@ -539,6 +547,7 @@
   E(kActionWalletReminderNotice) \
 
 #define SUBMENU_ACTION_IDS                                                     \
+  E(kActionAppMenuRoot)                                                        \
   E(kActionMenuBookmarksSubmenu, kBookmarksMenuId)                             \
   E(kActionMenuPasswordsAndAutofillSubmenu, kPasswordsAndAutofillMenuId)       \
   E(kActionMenuReadingListSubmenu, kReadingListMenuId)                         \

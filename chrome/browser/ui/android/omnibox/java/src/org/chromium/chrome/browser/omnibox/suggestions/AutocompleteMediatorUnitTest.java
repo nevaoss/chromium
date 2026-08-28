@@ -78,6 +78,7 @@ import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxLayoutMode;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxState;
 import org.chromium.chrome.browser.omnibox.styles.OmniboxResourceProvider;
+import org.chromium.chrome.browser.omnibox.suggestions.AutocompleteCoordinator.OmniboxSuggestionsVisualStateObserver;
 import org.chromium.chrome.browser.omnibox.suggestions.SelectionController.Mode;
 import org.chromium.chrome.browser.omnibox.suggestions.SuggestionCommonProperties.RoundSides;
 import org.chromium.chrome.browser.omnibox.suggestions.action.OmniboxActionDelegateImpl;
@@ -167,8 +168,7 @@ public class AutocompleteMediatorUnitTest {
     @Mock private View mDecorView;
     @Mock private OmniboxSuggestionsDropdownEmbedder mEmbedder;
     @Mock private InsetObserver mInsetObserver;
-    private @Mock AutocompleteCoordinator.OmniboxSuggestionsVisualStateObserver
-            mVisualStateObserver;
+    @Mock private OmniboxSuggestionsVisualStateObserver mVisualStateObserver;
     @Mock private DeferredIMEWindowInsetApplicationCallback mDeferredImeCallback;
     @Mock private FuseboxCoordinator mFuseboxCoordinator;
     @Mock private LocationBarEmbedderUiOverrides mUiOverrides;
@@ -176,11 +176,6 @@ public class AutocompleteMediatorUnitTest {
     @Mock private PreloadingFeatureMap mPreloadingFeatureMap;
     @Mock private ComposeboxQueryControllerBridge mComposeboxQueryControllerBridge;
     @Mock private Callback<GURL> mGurlCallback;
-    @Captor private ArgumentCaptor<OmniboxLoadUrlParams> mOmniboxLoadUrlParamsCaptor;
-    @Captor private ArgumentCaptor<Consumer<SiteSearchData>> mKeywordModeEnteredCaptor;
-    @Captor private ArgumentCaptor<Callback<GURL>> mUrlCallbackCaptor;
-    private @Mock CachedZeroSuggestionsManager.OverridesForTesting
-            mMockCachedZeroSuggestionsManager;
     @Mock private TemplateUrlService mTemplateUrlService;
     @Mock private Profile mProfile;
     @Mock private PrefService mPrefService;
@@ -188,6 +183,15 @@ public class AutocompleteMediatorUnitTest {
     @Mock private PropertyObserver<PropertyKey> mPropertyObserver;
     @Mock private Tab mTab;
     @Mock private WebContents mWebContents;
+
+    @Mock
+    private CachedZeroSuggestionsManager.OverridesForTesting mMockCachedZeroSuggestionsManager;
+
+    @Captor private ArgumentCaptor<OmniboxLoadUrlParams> mOmniboxLoadUrlParamsCaptor;
+    @Captor private ArgumentCaptor<Consumer<SiteSearchData>> mKeywordModeEnteredCaptor;
+    @Captor private ArgumentCaptor<Callback<GURL>> mUrlCallbackCaptor;
+    @Captor private ArgumentCaptor<AutocompleteInput> mAutocompleteInputCaptor;
+
     private PropertyModel mListModel;
     private OmniboxResourceProvider mResourceProvider;
     private AutocompleteMediator mMediator;
@@ -784,8 +788,8 @@ public class AutocompleteMediatorUnitTest {
         mMediator.beginInput(session);
 
         RobolectricUtil.runAllBackgroundAndUi();
-        var captor = ArgumentCaptor.forClass(AutocompleteInput.class);
-        verify(mAutocompleteController, never()).startZeroSuggest(any(), captor.capture());
+        verify(mAutocompleteController, never())
+                .startZeroSuggest(any(), mAutocompleteInputCaptor.capture());
         clearInvocations(mAutocompleteController);
     }
 
@@ -2825,8 +2829,15 @@ public class AutocompleteMediatorUnitTest {
                 Mode.SENTINEL_THEN_WRAPPING,
                 mListModel.get(SuggestionListProperties.SELECTION_MODE));
 
+        input.setRequestType(AutocompleteRequestType.AI_MODE);
+        mMediator.onInputChanged();
+        assertEquals(
+                Mode.WRAPPING_WITH_SENTINEL,
+                mListModel.get(SuggestionListProperties.SELECTION_MODE));
+
         // Prefixed -- use WRAPPING mode on desktop.
         input.setUserText("test");
+        input.setRequestType(AutocompleteRequestType.SEARCH);
         mMediator.onInputChanged();
         assertEquals(Mode.WRAPPING, mListModel.get(SuggestionListProperties.SELECTION_MODE));
     }
@@ -3166,9 +3177,9 @@ public class AutocompleteMediatorUnitTest {
 
         ShadowLooper.runUiThreadTasksIncludingDelayedTasks();
 
-        ArgumentCaptor<AutocompleteInput> captor = ArgumentCaptor.forClass(AutocompleteInput.class);
-        verify(mAutocompleteController).start(any(), captor.capture(), anyInt(), anyBoolean());
-        assertEquals("query", captor.getValue().getUserText());
+        verify(mAutocompleteController)
+                .start(any(), mAutocompleteInputCaptor.capture(), anyInt(), anyBoolean());
+        assertEquals("query", mAutocompleteInputCaptor.getValue().getUserText());
     }
 
     @Test

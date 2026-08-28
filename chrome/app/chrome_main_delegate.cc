@@ -1211,6 +1211,16 @@ std::optional<int> ChromeMainDelegate::BasicStartupComplete() {
     const auto isolated_process =
         chrome::IsolatedBrowserProcess::Launch(command_line);
     if (isolated_process.has_value()) {
+      // Set the stub process's shutdown priority to a lower value than the
+      // default value. The default priority is 0x280, so 0x27E is picked, which
+      // is below the 0x27F picked by child processes in `CommonSubprocessInit`.
+      // Assigning a lower priority instructs Windows to delay terminating this
+      // stub process until all higher priority processes (the isolated browser,
+      // and its child processes) have fully completed their shutdown sequence.
+      // This ensures the Job Object remains open and the isolated browser is
+      // not killed abruptly during OS shutdown.
+      ::SetProcessShutdownParameters(0x27E, SHUTDOWN_NORETRY);
+
       auto exit_code = isolated_process->WaitForExit();
       if (!exit_code.has_value()) {
         return CHROME_RESULT_CODE_INVALID_ISOLATED_BROWSER_PROCESS;
@@ -1645,10 +1655,9 @@ std::variant<int, content::MainFunctionParams> ChromeMainDelegate::RunProcess(
       {switches::kNoOpForTestingProcess, NoOpMain},
   };
 
-  for (size_t i = 0; i < std::size(kMainFunctions); ++i) {
-    if (process_type == UNSAFE_TODO(kMainFunctions[i]).name) {
-      return UNSAFE_TODO(kMainFunctions[i])
-          .function(std::move(main_function_params));
+  for (const MainFunction& main_function : kMainFunctions) {
+    if (process_type == main_function.name) {
+      return main_function.function(std::move(main_function_params));
     }
   }
 #endif  // BUILDFLAG(IS_MAC)

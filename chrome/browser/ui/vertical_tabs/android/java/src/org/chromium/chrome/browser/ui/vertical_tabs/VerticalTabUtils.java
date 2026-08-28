@@ -99,6 +99,12 @@ public class VerticalTabUtils {
     /** Feature parameter name for enabling external drag. */
     public static final String EXTERNAL_DRAG_PARAM = "external_drag";
 
+    /** Feature parameter name for enabling tab group hover cards. */
+    public static final String GROUP_HOVER_CARD_PARAM = "group_hover_card";
+
+    /** Feature parameter name for enabling the incognito button in the footer. */
+    public static final String INCOGNITO_BUTTON_PARAM = "incognito_button";
+
     /** Feature parameter name for enabling multi-select. */
     public static final String MULTI_SELECT_PARAM = "multi_select";
 
@@ -206,11 +212,27 @@ public class VerticalTabUtils {
                 /* defaultValue= */ false);
     }
 
+    /** Returns whether tab group hover cards are enabled for Vertical Tabs. */
+    public static boolean isGroupHoverCardEnabled() {
+        return ChromeFeatureList.getFieldTrialParamByFeatureAsBoolean(
+                ChromeFeatureList.ANDROID_VERTICAL_TABS,
+                GROUP_HOVER_CARD_PARAM,
+                /* defaultValue= */ false);
+    }
+
     /** Returns whether multi-select behavior is enabled for Vertical Tabs. */
     public static boolean isMultiSelectEnabled() {
         return ChromeFeatureList.getFieldTrialParamByFeatureAsBoolean(
                 ChromeFeatureList.ANDROID_VERTICAL_TABS,
                 MULTI_SELECT_PARAM,
+                /* defaultValue= */ false);
+    }
+
+    /** Returns whether the incognito button in the footer is enabled for Vertical Tabs. */
+    public static boolean isIncognitoButtonEnabled() {
+        return ChromeFeatureList.getFieldTrialParamByFeatureAsBoolean(
+                ChromeFeatureList.ANDROID_VERTICAL_TABS,
+                INCOGNITO_BUTTON_PARAM,
                 /* defaultValue= */ false);
     }
 

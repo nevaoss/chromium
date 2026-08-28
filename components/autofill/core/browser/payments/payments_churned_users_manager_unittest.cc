@@ -15,6 +15,7 @@
 #include "components/autofill/core/browser/foundations/test_autofill_driver.h"
 #include "components/autofill/core/browser/foundations/test_browser_autofill_manager.h"
 #include "components/autofill/core/browser/foundations/with_test_autofill_client_driver_manager.h"
+#include "components/autofill/core/browser/payments/payments_churned_users_metrics.h"
 #include "components/autofill/core/browser/payments/test_payments_autofill_client.h"
 #include "components/autofill/core/browser/strike_databases/payments/payments_churned_users_strike_database.h"
 #include "components/autofill/core/browser/strike_databases/payments/test_strike_database.h"
@@ -334,9 +335,8 @@ TEST_F(PaymentsChurnedUsersManagerTest, ClosedCallbackAddsStrike) {
   EXPECT_EQ(strike_database.GetStrikes(), 1);
 }
 
-// Tests that accepting the UI clears any existing strikes from the strike
-// database.
-TEST_F(PaymentsChurnedUsersManagerTest, AcceptCallbackClearsStrikes) {
+// Tests that accepting the UI adds max strikes to the strike database.
+TEST_F(PaymentsChurnedUsersManagerTest, AcceptCallbackAddsMaxStrikes) {
   feature_list_.InitAndEnableFeature(
       features::kAutofillEnableResurrectingPaymentsUsers);
   manager_ = std::make_unique<PaymentsChurnedUsersManager>(&autofill_client());
@@ -346,11 +346,6 @@ TEST_F(PaymentsChurnedUsersManagerTest, AcceptCallbackClearsStrikes) {
 
   PaymentsChurnedUsersStrikeDatabase strike_database(
       autofill_client().GetStrikeDatabase());
-  strike_database.AddStrikes(strike_database.GetMaxStrikesLimit() - 1);
-  EXPECT_EQ(strike_database.GetStrikes(),
-            strike_database.GetMaxStrikesLimit() - 1);
-  task_environment_.FastForwardBy(base::Days(8));
-
   base::OnceClosure accept_callback;
   EXPECT_CALL(*payments_client(),
               ShowPaymentsChurnedUsersUI(testing::_, testing::_, testing::_))
@@ -363,7 +358,7 @@ TEST_F(PaymentsChurnedUsersManagerTest, AcceptCallbackClearsStrikes) {
   ASSERT_TRUE(accept_callback);
   std::move(accept_callback).Run();
 
-  EXPECT_EQ(strike_database.GetStrikes(), 0);
+  EXPECT_EQ(strike_database.GetStrikes(), strike_database.GetMaxStrikesLimit());
 }
 
 // Tests that the NotShownReason metric is logged correctly for off the record.
@@ -378,7 +373,9 @@ TEST_F(PaymentsChurnedUsersManagerTest, Metrics_NotShownReason_OffTheRecord) {
 
   histogram_tester.ExpectUniqueSample(
       "Autofill.PaymentsChurnedUsersBubble.ShowResult",
-      /*sample=*/1, /*expected_bucket_count=*/1);
+      /*sample=*/
+      autofill_metrics::PaymentsChurnedUsersBubbleShowResult::kOffTheRecord,
+      /*expected_bucket_count=*/1);
 }
 
 // Tests that the NotShownReason metric is logged correctly for no cached form.
@@ -395,7 +392,9 @@ TEST_F(PaymentsChurnedUsersManagerTest, Metrics_NotShownReason_NoCachedForm) {
 
   histogram_tester.ExpectUniqueSample(
       "Autofill.PaymentsChurnedUsersBubble.ShowResult",
-      /*sample=*/2, /*expected_bucket_count=*/1);
+      /*sample=*/
+      autofill_metrics::PaymentsChurnedUsersBubbleShowResult::kNoCachedForm,
+      /*expected_bucket_count=*/1);
 }
 
 // Tests that the NotShownReason metric is logged correctly for strike database.
@@ -419,7 +418,10 @@ TEST_F(PaymentsChurnedUsersManagerTest,
 
   histogram_tester.ExpectUniqueSample(
       "Autofill.PaymentsChurnedUsersBubble.ShowResult",
-      /*sample=*/3, /*expected_bucket_count=*/1);
+      /*sample=*/
+      autofill_metrics::PaymentsChurnedUsersBubbleShowResult::
+          kStrikeDatabaseBlocked,
+      /*expected_bucket_count=*/1);
 }
 
 // Tests that the NotShownReason metric is logged correctly for no visible form.
@@ -434,7 +436,29 @@ TEST_F(PaymentsChurnedUsersManagerTest, Metrics_NotShownReason_FormNotVisible) {
 
   histogram_tester.ExpectUniqueSample(
       "Autofill.PaymentsChurnedUsersBubble.ShowResult",
-      /*sample=*/4, /*expected_bucket_count=*/1);
+      /*sample=*/
+      autofill_metrics::PaymentsChurnedUsersBubbleShowResult::
+          kNoVisibleCreditCardForm,
+      /*expected_bucket_count=*/1);
+}
+
+// Tests that the NotShownReason metric is logged correctly when the form is not
+// a credit card form.
+TEST_F(PaymentsChurnedUsersManagerTest,
+       Metrics_NotShownReason_NotCreditCardForm) {
+  feature_list_.InitAndEnableFeature(
+      features::kAutofillEnableResurrectingPaymentsUsers);
+  manager_ = std::make_unique<PaymentsChurnedUsersManager>(&autofill_client());
+
+  base::HistogramTester histogram_tester;
+  SimulateOnFieldTypesDetermined(/*is_credit_card_form=*/false);
+
+  histogram_tester.ExpectUniqueSample(
+      "Autofill.PaymentsChurnedUsersBubble.ShowResult",
+      /*sample=*/
+      autofill_metrics::PaymentsChurnedUsersBubbleShowResult::
+          kNoVisibleCreditCardForm,
+      /*expected_bucket_count=*/1);
 }
 
 // Tests that the NotShownReason metric is logged correctly when pref is turned
@@ -453,7 +477,10 @@ TEST_F(PaymentsChurnedUsersManagerTest,
 
   histogram_tester.ExpectUniqueSample(
       "Autofill.PaymentsChurnedUsersBubble.ShowResult",
-      /*sample=*/5, /*expected_bucket_count=*/1);
+      /*sample=*/
+      autofill_metrics::PaymentsChurnedUsersBubbleShowResult::
+          kPrefAlreadyTurnedOn,
+      /*expected_bucket_count=*/1);
 }
 
 // Tests that the NotShownReason metric is logged correctly when pref is not
@@ -474,7 +501,10 @@ TEST_F(PaymentsChurnedUsersManagerTest,
 
   histogram_tester.ExpectUniqueSample(
       "Autofill.PaymentsChurnedUsersBubble.ShowResult",
-      /*sample=*/6, /*expected_bucket_count=*/1);
+      /*sample=*/
+      autofill_metrics::PaymentsChurnedUsersBubbleShowResult::
+          kPrefNotUserControlled,
+      /*expected_bucket_count=*/1);
 }
 
 }  // namespace

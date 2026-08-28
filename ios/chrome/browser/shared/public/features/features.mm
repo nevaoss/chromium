@@ -122,9 +122,6 @@ bool IsOmahaServiceRefactorEnabled() {
   return base::FeatureList::IsEnabled(kOmahaServiceRefactor);
 }
 
-// TODO(crbug.com/473788390): Clean-up feature once file upload menu is ready.
-BASE_FEATURE(kIOSChooseFromDrive, base::FEATURE_ENABLED_BY_DEFAULT);
-
 BASE_FEATURE(kIOSChooseFromDriveSignedOut, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kIOSDateToCalendarSignedOut, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -1062,6 +1059,13 @@ BASE_FEATURE(kFullscreenRefactoring, base::FEATURE_DISABLED_BY_DEFAULT);
 bool IsFullscreenRefactoringEnabled() {
   return IsChromeNextIaEnabled() ||
          base::FeatureList::IsEnabled(kFullscreenRefactoring);
+}
+
+BASE_FEATURE(kFullscreenEasedTransitions, base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsFullscreenEasedTransitionsEnabled() {
+  return IsFullscreenRefactoringEnabled() &&
+         base::FeatureList::IsEnabled(kFullscreenEasedTransitions);
 }
 
 BASE_FEATURE(kPageToolsFeatureUnavailability, base::FEATURE_ENABLED_BY_DEFAULT);

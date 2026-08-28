@@ -61,6 +61,7 @@ class FakePageHandler extends TestBrowserProxy implements PageHandlerInterface {
       'setSmartComposeStats',
       'setSmartTabSharingActive',
       'showContextMenu',
+      'startScreenshare',
       'stopAutocomplete',
       'submitQuery',
       'toggleSuggestionGroupIdVisibility',
@@ -244,7 +245,7 @@ class FakePageHandler extends TestBrowserProxy implements PageHandlerInterface {
     this.methodCalled('openProfilePicker');
   }
 
-  setActiveToolMode(tool: ToolMode, isSetByServer: boolean = false) {
+  setActiveToolMode(tool: ToolMode, isSetByServer: boolean) {
     this.methodCalled('setActiveToolMode', tool, isSetByServer);
   }
 
@@ -252,8 +253,8 @@ class FakePageHandler extends TestBrowserProxy implements PageHandlerInterface {
     this.methodCalled('recordToolSelectionAction', tool);
   }
 
-  setActiveModelMode(model: ModelMode) {
-    this.methodCalled('setActiveModelMode', model);
+  setActiveModelMode(model: ModelMode, isSetByAim: boolean) {
+    this.methodCalled('setActiveModelMode', model, isSetByAim);
   }
 
   recordModelSelectionAction(model: ModelMode) {
@@ -294,6 +295,11 @@ class FakePageHandler extends TestBrowserProxy implements PageHandlerInterface {
   getSmartTabSharingActive() {
     this.methodCalled('getSmartTabSharingActive');
     return Promise.resolve({active: false});
+  }
+
+  startScreenshare(preferEntireScreen: boolean) {
+    this.methodCalled('startScreenshare', {preferEntireScreen});
+    return Promise.resolve({token: null});
   }
 }
 

@@ -61,6 +61,7 @@ import org.chromium.base.UserDataHost;
 import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.SettableMonotonicObservableSupplier;
 import org.chromium.base.supplier.SettableNonNullObservableSupplier;
+import org.chromium.base.supplier.SupplierUtils;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.Features;
 import org.chromium.base.test.util.Features.DisableFeatures;
@@ -79,6 +80,7 @@ import org.chromium.chrome.browser.data_sharing.DataSharingTabManager;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.glic.GlicEnabling;
 import org.chromium.chrome.browser.hub.PaneId;
+import org.chromium.chrome.browser.incognito.IncognitoUtils;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManager;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceOrchestrator;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceOrchestratorFactory;
@@ -237,6 +239,7 @@ public class VerticalTabListCoordinatorUnitTest {
 
         mActivity = Robolectric.buildActivity(Activity.class).setup().get();
         mActivity.setTheme(R.style.Theme_BrowserUI_DayNight);
+        IncognitoUtils.setEnabledForTesting(true);
 
         mCurrentTabModelSupplier.set(mTabModel);
         when(mTabModelSelector.getCurrentTabModelSupplier()).thenReturn(mCurrentTabModelSupplier);
@@ -392,6 +395,14 @@ public class VerticalTabListCoordinatorUnitTest {
         TabModelSelectorObserver observer = mSelectorObserverCaptor.getValue();
         assertNotNull(observer);
 
+        TabListRecyclerView recyclerView =
+                mCoordinator.getView().findViewById(R.id.tab_list_recycler_view);
+        TabListRecyclerView pinnedRecyclerView =
+                mCoordinator.getView().findViewById(R.id.pinned_tabs_recycler_view);
+        SimpleRecyclerViewAdapter adapter = (SimpleRecyclerViewAdapter) recyclerView.getAdapter();
+        SimpleRecyclerViewAdapter pinnedAdapter =
+                (SimpleRecyclerViewAdapter) pinnedRecyclerView.getAdapter();
+
         mCoordinator.destroy();
 
         verify(mTabModelSelector).removeObserver(observer);
@@ -413,6 +424,14 @@ public class VerticalTabListCoordinatorUnitTest {
         assertTrue(
                 "The drag handlers list must be cleared on destruction.",
                 mCoordinator.getTabSwitcherDragHandlersForTesting().isEmpty());
+        assertNull(
+                "The tab list recycler view adapter must be set to null on destruction.",
+                recyclerView.getAdapter());
+        assertNull(
+                "The pinned tab list recycler view adapter must be set to null on destruction.",
+                pinnedRecyclerView.getAdapter());
+        assertEquals(0, adapter.getModelList().size());
+        assertEquals(0, pinnedAdapter.getModelList().size());
     }
 
     @Test
@@ -912,7 +931,7 @@ public class VerticalTabListCoordinatorUnitTest {
 
         assertNull(
                 clickHandler.getTabGroupActionButtonData(
-                        tab, model, /* defaultOverflowListenerSupplier= */ () -> null));
+                        tab, model, /* defaultOverflowListenerSupplier= */ SupplierUtils.ofNull()));
     }
 
     @Test
@@ -1093,6 +1112,54 @@ public class VerticalTabListCoordinatorUnitTest {
         verify(mTabCreator).launchNtp(TabLaunchType.FROM_CHROME_UI);
         assertTrue(userActionTester.getActions().contains("MobileNewTabOpened.VerticalTabs"));
         userActionTester.tearDown();
+    }
+
+    @Test
+    @SmallTest
+    public void testIncognitoButtonVisibility_TabletUnder10Inches() {
+        FeatureOverrides.overrideParam(
+                ChromeFeatureList.ANDROID_VERTICAL_TABS,
+                VerticalTabUtils.INCOGNITO_BUTTON_PARAM,
+                true);
+        IncognitoUtils.setShouldOpenIncognitoAsWindowForTesting(false);
+        IncognitoUtils.setEnabledForTesting(true);
+        createCoordinator();
+        ImageButton incognitoButton =
+                mCoordinator.getView().findViewById(R.id.new_incognito_tab_button);
+        assertNotNull(incognitoButton);
+        assertEquals(View.VISIBLE, incognitoButton.getVisibility());
+    }
+
+    @Test
+    @SmallTest
+    public void testIncognitoButtonVisibility_TabletOver10Inches() {
+        FeatureOverrides.overrideParam(
+                ChromeFeatureList.ANDROID_VERTICAL_TABS,
+                VerticalTabUtils.INCOGNITO_BUTTON_PARAM,
+                true);
+        IncognitoUtils.setShouldOpenIncognitoAsWindowForTesting(true);
+        IncognitoUtils.setEnabledForTesting(true);
+        createCoordinator();
+        ImageButton incognitoButton =
+                mCoordinator.getView().findViewById(R.id.new_incognito_tab_button);
+        assertNotNull(incognitoButton);
+        assertEquals(View.GONE, incognitoButton.getVisibility());
+    }
+
+    @Test
+    @SmallTest
+    public void testIncognitoButtonVisibility_ParamDisabled() {
+        FeatureOverrides.overrideParam(
+                ChromeFeatureList.ANDROID_VERTICAL_TABS,
+                VerticalTabUtils.INCOGNITO_BUTTON_PARAM,
+                false);
+        IncognitoUtils.setShouldOpenIncognitoAsWindowForTesting(false);
+        IncognitoUtils.setEnabledForTesting(true);
+        createCoordinator();
+        ImageButton incognitoButton =
+                mCoordinator.getView().findViewById(R.id.new_incognito_tab_button);
+        assertNotNull(incognitoButton);
+        assertEquals(View.GONE, incognitoButton.getVisibility());
     }
 
     @Test

@@ -27,6 +27,7 @@ import android.util.Pair;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.webkit.JavascriptInterface;
@@ -64,6 +65,7 @@ import org.chromium.base.FakeTimeTestRule;
 import org.chromium.base.Log;
 import org.chromium.base.ThreadUtils;
 import org.chromium.base.TimeUtils;
+
 import org.chromium.base.test.util.CallbackHelper;
 import org.chromium.base.test.util.CommandLineFlags;
 import org.chromium.base.test.util.CriteriaHelper;
@@ -71,6 +73,7 @@ import org.chromium.base.test.util.DisabledTest;
 import org.chromium.base.test.util.DoNotBatch;
 import org.chromium.base.test.util.Feature;
 import org.chromium.base.test.util.HistogramWatcher;
+import org.chromium.base.test.util.MaxAndroidSdkLevel;
 import org.chromium.base.test.util.MinAndroidSdkLevel;
 import org.chromium.content_public.browser.test.util.RenderProcessHostUtils;
 import org.chromium.content_public.browser.test.util.TouchCommon;
@@ -197,6 +200,43 @@ public class AwContentsTest extends AwParameterizedTest {
                 "<html><body>Hello</body></html>",
                 "text/html",
                 false);
+    }
+
+    @Test
+    @SmallTest
+    @Feature({"AndroidWebView"})
+    @MaxAndroidSdkLevel(Build.VERSION_CODES.R)
+    public void testAdoptRegistersWindowInsetsListener() throws Throwable {
+        mActivityTestRule.startBrowserProcess();
+        AwTestContainerView testContainer =
+                mActivityTestRule.createAwTestContainerViewOnMainSync(mContentsClient);
+        AwContents awContents = testContainer.getAwContents();
+
+        class SpyingContainerView extends AwTestContainerView {
+            View.OnApplyWindowInsetsListener mInsetsListener;
+
+            SpyingContainerView() {
+                super(mActivityTestRule.getActivity(), false);
+            }
+
+            @Override
+            public void setOnApplyWindowInsetsListener(View.OnApplyWindowInsetsListener listener) {
+                super.setOnApplyWindowInsetsListener(listener);
+                mInsetsListener = listener;
+            }
+        }
+        SpyingContainerView newContainer = new SpyingContainerView();
+
+        ThreadUtils.runOnUiThreadBlocking(
+                () -> {
+                    ((ViewGroup) testContainer.getParent()).removeView(testContainer);
+                    awContents.adopt(newContainer, newContainer.getInternalAccessDelegate());
+                });
+
+        Assert.assertNotNull(
+                "AwContents.adopt() must register an OnApplyWindowInsetsListener on the new"
+                    + " container.",
+                newContainer.mInsetsListener);
     }
 
     @Test
@@ -2037,5 +2077,64 @@ public class AwContentsTest extends AwParameterizedTest {
         AwTestContainerView newerView = mActivityTestRule.reparentAwContents(newView);
 
         Assert.assertEquals(150, newerView.getAwContents().getSettings().getTextZoom());
+    }
+
+    @Test
+    @MediumTest
+    @Feature({"AndroidWebView"})
+    public void testReparentAwContentsOverScrollGlow() throws Throwable {
+        mActivityTestRule.startBrowserProcess();
+        TestAwContentsClient client = new TestAwContentsClient();
+        AwTestContainerView oldView =
+                mActivityTestRule.createAwTestContainerViewOnMainSync(client, false);
+
+        int oldColor = ThreadUtils.runOnUiThreadBlocking(
+                () -> oldView.getAwContents().getEdgeEffectColor());
+
+        AwTestContainerView newView =
+                mActivityTestRule.reparentAwContents(oldView, android.R.style.Theme_Black);
+
+        int newColor = ThreadUtils.runOnUiThreadBlocking(
+                () -> newView.getAwContents().getEdgeEffectColor());
+
+        Assert.assertNotEquals(oldColor, newColor);
+    }
+
+    @Test
+    @MediumTest
+    @Feature({"AndroidWebView"})
+    public void testReparentAwContentsViewAndroidDelegate() throws Throwable {
+        mActivityTestRule.startBrowserProcess();
+        TestAwContentsClient client = new TestAwContentsClient();
+        AwTestContainerView oldView =
+                mActivityTestRule.createAwTestContainerViewOnMainSync(client, false);
+
+        ThreadUtils.runOnUiThreadBlocking(() -> {
+            oldView.getAwContents().getViewAndroidDelegateForTesting().acquireView();
+        });
+
+        AwTestContainerView newView =
+                mActivityTestRule.reparentAwContents(oldView, android.R.style.Theme_Black);
+
+        Assert.assertNotNull(newView);
+    }
+
+    @Test
+    @MediumTest
+    @Feature({"AndroidWebView"})
+    public void testReparentAwContentsZoomControls() throws Throwable {
+        mActivityTestRule.startBrowserProcess();
+        TestAwContentsClient client = new TestAwContentsClient();
+        AwTestContainerView oldView =
+                mActivityTestRule.createAwTestContainerViewOnMainSync(client, false);
+
+        ThreadUtils.runOnUiThreadBlocking(() -> {
+            oldView.getAwContents().getZoomControlsForTest().invokeZoomPicker();
+        });
+
+        AwTestContainerView newView =
+                mActivityTestRule.reparentAwContents(oldView, android.R.style.Theme_Black);
+
+        Assert.assertNotNull(newView);
     }
 }

@@ -138,10 +138,6 @@ bool ShouldHideSafetyCheckModuleIfNoIssues();
 // Whether the refactored implementation of the `OmahaService` is enabled.
 bool IsOmahaServiceRefactorEnabled();
 
-// Feature flag enabling Choose from Drive.
-// TODO(crbug.com/473788390): Clean-up feature once file upload menu is ready.
-BASE_DECLARE_FEATURE(kIOSChooseFromDrive);
-
 // Feature flag enabling Choose from Drive for signed out users.
 BASE_DECLARE_FEATURE(kIOSChooseFromDriveSignedOut);
 
@@ -846,6 +842,12 @@ BASE_DECLARE_FEATURE(kFullscreenRefactoring);
 
 // Returns true if the FullscreenRefactoring feature or ChromeNext is enabled.
 bool IsFullscreenRefactoringEnabled();
+
+// Enables the FullscreenEasedTransitions feature.
+BASE_DECLARE_FEATURE(kFullscreenEasedTransitions);
+
+// Returns true if the FullscreenEasedTransitions feature is enabled.
+bool IsFullscreenEasedTransitionsEnabled();
 
 // Enables the AskAboutThisPage feature.
 BASE_DECLARE_FEATURE(kAskAboutThisPage);

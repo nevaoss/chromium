@@ -9,7 +9,6 @@
 
 #include "base/check.h"
 #include "base/containers/span.h"
-#include "base/memory/raw_ptr_exclusion.h"
 #include "base/memory/stack_allocated.h"
 #include "base/notreached.h"
 #include "base/types/expected.h"
@@ -27,6 +26,7 @@
 #include "components/viz/common/resources/resource_id.h"
 #include "components/viz/common/view_transition_element_resource_id.h"
 #include "mojo/public/cpp/bindings/deserialization_error.h"
+#include "mojo/public/cpp/bindings/optional_as_pointer.h"
 #include "services/viz/public/cpp/compositing/filter_operation_mojom_traits.h"
 #include "services/viz/public/cpp/compositing/filter_operations_mojom_traits.h"
 #include "services/viz/public/cpp/compositing/shared_quad_state_mojom_traits.h"
@@ -540,10 +540,16 @@ struct StructTraits<viz::mojom::TileQuadStateDataView, viz::DrawQuad> {
       viz::DrawQuad* out);
 };
 
+// Wrapper to optimize serialization/deserialization of viz::QuadList.
 struct DrawQuadWithSharedQuadState {
-  // RAW_PTR_EXCLUSION: Performance reasons (based on analysis of speedometer3).
-  RAW_PTR_EXCLUSION const viz::DrawQuad* quad = nullptr;
-  RAW_PTR_EXCLUSION const viz::SharedQuadState* shared_quad_state = nullptr;
+  STACK_ALLOCATED();
+
+ public:
+  const viz::DrawQuad* quad = nullptr;
+  // If null, indicates that the current quad should reuse the last-seen
+  // `SharedQuadState`, so only the first `SharedQuadState` in a run needs to
+  // be serialized/deserialized.
+  const viz::SharedQuadState* shared_quad_state = nullptr;
 };
 
 template <>
@@ -561,8 +567,9 @@ struct StructTraits<viz::mojom::DrawQuadDataView, DrawQuadWithSharedQuadState> {
     return input.quad->needs_blending;
   }
 
-  static OptSharedQuadState sqs(const DrawQuadWithSharedQuadState& input) {
-    return {input.shared_quad_state};
+  static mojo::OptionalAsPointer<const viz::SharedQuadState> sqs(
+      const DrawQuadWithSharedQuadState& input) {
+    return mojo::OptionalAsPointer(input.shared_quad_state);
   }
 
   static const viz::DrawQuad& draw_quad_state(

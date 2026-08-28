@@ -9,7 +9,7 @@
 #include <variant>
 
 #include "base/strings/to_string.h"
-#include "chrome/browser/ui/browser.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/webui/signin/batch_upload/batch_upload.mojom.h"
 #include "chrome/browser/ui/webui/signin/signin_utils.h"
 #include "chrome/grit/generated_resources.h"
@@ -26,6 +26,7 @@
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
 #include "chrome/browser/device_reauth/chrome_device_authenticator_factory.h"
 #include "components/device_reauth/device_authenticator.h"
+#include "components/tabs/public/tab_interface.h"
 #endif
 
 namespace {
@@ -150,8 +151,8 @@ GURL ComputeIconUrl(const syncer::LocalDataItemModel::Icon& icon) {
   }
 
   if (std::holds_alternative<syncer::LocalDataItemModel::FolderIcon>(icon)) {
-    return GURL(features::IsRoundedIconsEnabled() ? kFolderIconUrl
-                                                  : kFolderOldIconUrl);
+    return GURL(features::IsWebUIRoundedIconsEnabled() ? kFolderIconUrl
+                                                       : kFolderOldIconUrl);
   }
 
   NOTREACHED() << "Unsupported icon type, index: " << icon.index();
@@ -163,7 +164,7 @@ BatchUploadHandler::BatchUploadHandler(
     mojo::PendingReceiver<batch_upload::mojom::PageHandler> receiver,
     mojo::PendingRemote<batch_upload::mojom::Page> page,
     const AccountInfo& account_info,
-    Browser* browser,
+    BrowserWindowInterface* browser,
     std::vector<syncer::LocalDataDescription> local_data_description_list,
     base::RepeatingCallback<void(int)> update_view_height_callback,
     base::RepeatingCallback<void(bool)> allow_web_view_input_callback,
@@ -240,8 +241,8 @@ void BatchUploadHandler::SaveToAccount(
 
     device_authenticator_ = ChromeDeviceAuthenticatorFactory::GetForProfile(
         browser_->GetProfile(),
-        browser_->tab_strip_model()
-            ->GetActiveWebContents()
+        browser_->GetActiveTabInterface()
+            ->GetContents()
             ->GetTopLevelNativeWindow(),
         params);
 

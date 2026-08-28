@@ -64,7 +64,8 @@ class BaseTabStripRegionView : public TabStripRegionView,
   void UpdateLoadingAnimations(const base::TimeDelta& elapsed_time) override;
   std::optional<int> GetFocusedTabIndex() const override;
   const tabs::TabData& GetTabData(const tabs::TabHandle& tab) override;
-  views::View* GetTabAnchorViewAt(int tab_index) override;
+  TabHoverCardController* GetHoverCardController() override;
+  views::View* GetTabAnchorView(const tabs::TabHandle& tab) override;
   views::View* GetTabGroupAnchorView(
       const tab_groups::TabGroupId& group) override;
   void OnTabGroupFocusChanged(
@@ -124,6 +125,7 @@ class BaseTabStripRegionView : public TabStripRegionView,
   bool IsDropBeforeGroupHeader(const BrowserRootView::DropIndex& drop_index,
                                const tabs::TabInterface* tab) const;
   views::View* GetGroupHeaderView(const tab_groups::TabGroupId& group_id) const;
+  bool IsDragging() const;
 
   BrowserView* browser_view() const { return browser_view_; }
   actions::ActionItem* root_action_item() const { return root_action_item_; }

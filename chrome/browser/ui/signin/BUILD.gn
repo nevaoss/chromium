@@ -36,6 +36,7 @@ source_set("signin") {
 
   if (enable_dice_support) {
     sources += [
+      "account_preview_utils.h",
       "chrome_signout_confirmation_prompt.h",
       "cross_device_signin_qr_bubble.h",
       "dice_migration_service.h",
@@ -107,6 +108,7 @@ source_set("impl") {
 
   if (enable_dice_support) {
     sources += [
+      "account_preview_utils.cc",
       "chrome_signout_confirmation_prompt.cc",
       "dice_migration_service.cc",
       "dice_migration_service_factory.cc",
@@ -129,6 +131,7 @@ source_set("impl") {
       "//chrome/browser/ui/views:layout_provider",
       "//chrome/browser/ui/views/controls",
       "//chrome/browser/ui/views/infobars",
+      "//chrome/browser/ui/views/profiles:badged_profile_photo",
       "//chrome/browser/ui/views/webauthn",
       "//chrome/browser/ui/web_applications",
       "//components/infobars/content",
@@ -172,6 +175,7 @@ if (!is_android) {
         "//chrome/browser/ui/hats",
         "//chrome/browser/ui/hats:test_support",
         "//chrome/browser/ui/passwords:test_support",
+        "//chrome/browser/ui/views/autofill:address_sign_in_promo_view",
         "//chrome/browser/ui/views/bookmarks",
         "//chrome/browser/ui/views/extensions:extension_post_install_dialog_view_utils",
         "//chrome/browser/ui/views/passwords",
@@ -277,7 +281,10 @@ if (enable_dice_support) {
   source_set("unit_tests") {
     testonly = true
 
-    sources = [ "promos/signin_promo_tab_helper_unittest.cc" ]
+    sources = [
+      "account_preview_utils_unittest.cc",
+      "promos/signin_promo_tab_helper_unittest.cc",
+    ]
 
     deps = [
       ":signin",

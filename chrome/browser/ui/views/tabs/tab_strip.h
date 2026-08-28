@@ -314,7 +314,6 @@ class TabStrip : public views::View,
       const tab_groups::TabGroupColorId& color_id) const override;
   void ShiftGroupLeft(const tab_groups::TabGroupId& group) override;
   void ShiftGroupRight(const tab_groups::TabGroupId& group) override;
-  Browser* GetBrowser() override;
   BrowserWindowInterface* GetBrowserWindowInterface() override;
 
   // views::View:
@@ -336,7 +335,7 @@ class TabStrip : public views::View,
   views::View* GetViewForDrop() override;
 
   void DisableTabStripEditingForTesting();
-  TabHoverCardController* hover_card_controller_for_testing() {
+  TabHoverCardController* hover_card_controller() {
     return hover_card_controller_.get();
   }
 

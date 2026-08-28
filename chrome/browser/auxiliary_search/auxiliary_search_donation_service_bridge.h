@@ -18,6 +18,8 @@ struct CoreAccountInfo;
 class AuxiliarySearchDonationServiceBridge
     : public AuxiliarySearchDonationService::Delegate {
  public:
+  static bool IsBrowsingDataDonationSupported();
+
   explicit AuxiliarySearchDonationServiceBridge(
       bool is_browsing_data_donation_enabled);
   ~AuxiliarySearchDonationServiceBridge() override;
@@ -25,6 +27,8 @@ class AuxiliarySearchDonationServiceBridge
   void DonateHistoryEntries(
       std::vector<AuxiliarySearchDonationService::HistoryData> entries,
       CoreAccountInfo account_info) override;
+  void SetBrowsingDataDonationEnabled(
+      bool is_browsing_data_donation_enabled) override;
 
  private:
   jni_zero::ScopedJavaGlobalRef<JAuxiliarySearchDonationServiceBridge> bridge_;

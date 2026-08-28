@@ -110,12 +110,23 @@ using read_anything::mojom::UntrustedPage;
 using read_anything::mojom::UntrustedPageHandler;
 using read_anything::mojom::VoicePackInstallationState;
 
-class ReadAnythingUntrustedPageHandler::DistillerDelegate
+// A helper class that orchestrates page distillation using the
+// DomDistillerService.
+//
+// It triggers distillation via StartDistillation() and implements the
+// dom_distiller::ViewRequestDelegate interface to receive the results.
+//
+// It holds a dom_distiller::ViewerHandle to manage the lifetime of the active
+// distillation request. Resetting or replacing this handle cancels any
+// outstanding request, ensuring that only one distillation request is active
+// at any given time. Once distillation completes, it forwards the resulting
+// article to the enclosing ReadAnythingUntrustedPageHandler.
+class ReadAnythingUntrustedPageHandler::DomDistillerDelegate
     : public dom_distiller::ViewRequestDelegate {
  public:
-  explicit DistillerDelegate(ReadAnythingUntrustedPageHandler* handler)
+  explicit DomDistillerDelegate(ReadAnythingUntrustedPageHandler* handler)
       : handler_(handler) {}
-  ~DistillerDelegate() override = default;
+  ~DomDistillerDelegate() override = default;
 
   void StartDistillation(dom_distiller::DomDistillerService* service,
                          content::WebContents* contents) {
@@ -428,7 +439,7 @@ ReadAnythingUntrustedPageHandler::ReadAnythingUntrustedPageHandler(
           ISOLATED_WORLD_ID_CHROME_INTERNAL);
     }
 
-    distiller_delegate_ = std::make_unique<DistillerDelegate>(this);
+    distiller_delegate_ = std::make_unique<DomDistillerDelegate>(this);
   }
 
   // Enable accessibility for the top level render frame and all descendants.
@@ -1574,15 +1585,18 @@ void ReadAnythingUntrustedPageHandler::OnActiveAXTreeIDChanged() {
 
   if (use_readability) {
     readability_distillation_tree_change_start_time_ = base::TimeTicks::Now();
-    // We must emit `kDistillationInProgress` before sending the new tree ID
-    // to the renderer with page_->OnActiveAXTreeIDChanged. This ensures the
-    // renderer pauses its update processing
-    // (`ReadAnythingAppController::IsUpdateProcessingPaused() == true`) for the
-    // new tree. If we reverse this order, any A11y events arriving in the gap
-    // will be processed on an incomplete tree and cause a crash.
-    page_->OnReadabilityDistillationStateChanged(
-        read_anything::mojom::ReadAnythingDistillationState::
-            kDistillationInProgress);
+
+    if (!features::IsReadAnythingDistillerRefactorEnabled()) {
+      // We must emit `kDistillationInProgress` before sending the new tree ID
+      // to the renderer with page_->OnActiveAXTreeIDChanged. This ensures the
+      // renderer pauses its update processing
+      // (`ReadAnythingAppController::IsUpdateProcessingPaused() == true`) for
+      // the new tree. If we reverse this order, any A11y events arriving in the
+      // gap will be processed on an incomplete tree and cause a crash.
+      page_->OnReadabilityDistillationStateChanged(
+          read_anything::mojom::ReadAnythingDistillationState::
+              kDistillationInProgress);
+    }
   }
 
   // When IsReadAnythingWithReadabilityEnabled is true, we still send AX tree
@@ -1591,6 +1605,11 @@ void ReadAnythingUntrustedPageHandler::OnActiveAXTreeIDChanged() {
                                  /*is_pdf=*/false);
 
   if (use_readability) {
+    // This flag initiates a Readability Distillation in the renderer, so don't
+    // request a distillation here if it's enabled.
+    if (features::IsReadAnythingDistillerRefactorEnabled()) {
+      return;
+    }
     // Now that the renderer is prepped, request distillation. If this fails
     // synchronously, the renderer will correctly fall back to Screen2x for the
     // *new* tree.

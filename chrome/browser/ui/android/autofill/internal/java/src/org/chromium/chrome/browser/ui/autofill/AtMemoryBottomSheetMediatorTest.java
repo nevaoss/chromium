@@ -15,7 +15,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import static org.chromium.chrome.browser.ui.autofill.AtMemoryBottomSheetProperties.CURRENT_SCREEN;
+import static org.chromium.chrome.browser.ui.autofill.AtMemoryBottomSheetProperties.SuggestionItemProperties.APPLY_DEACTIVATED_STYLE;
 import static org.chromium.chrome.browser.ui.autofill.AtMemoryBottomSheetProperties.SuggestionItemProperties.IS_FLYOUT_VISIBLE;
+import static org.chromium.chrome.browser.ui.autofill.AtMemoryBottomSheetProperties.SuggestionItemProperties.IS_LOADING;
 import static org.chromium.chrome.browser.ui.autofill.AtMemoryBottomSheetProperties.SuggestionItemProperties.ON_FLYOUT_CLICKED;
 import static org.chromium.chrome.browser.ui.autofill.AtMemoryBottomSheetProperties.SuggestionItemProperties.ON_SUGGESTION_CLICKED;
 import static org.chromium.chrome.browser.ui.autofill.AtMemoryBottomSheetProperties.SuggestionItemProperties.TITLE;
@@ -55,6 +57,7 @@ import org.chromium.chrome.browser.ui.autofill.AtMemoryBottomSheetProperties.Hom
 import org.chromium.chrome.browser.ui.autofill.AtMemoryBottomSheetProperties.IllustrationCardItemProperties;
 import org.chromium.chrome.browser.ui.autofill.AtMemoryBottomSheetProperties.ScreenId;
 import org.chromium.chrome.browser.ui.autofill.internal.R;
+import org.chromium.components.autofill.Acceptability;
 import org.chromium.components.autofill.AutofillSuggestion;
 import org.chromium.components.autofill.PopupNoticeInteractions;
 import org.chromium.components.autofill.SuggestionType;
@@ -112,13 +115,13 @@ public class AtMemoryBottomSheetMediatorTest {
                                 .setIconId(R.drawable.flight)
                                 .setLabel("KLM204")
                                 .setSubLabel("Flight ⋅ 15 May ⋅ SEA - MUC")
-                                .setIsAcceptable(true)
+                                .setAcceptability(Acceptability.SELECTABLE_AND_ACCEPTABLE)
                                 .build(),
                         new AutofillSuggestion.Builder()
                                 .setIconId(R.drawable.travel_trip)
                                 .setLabel("Hotel Booking")
                                 .setSubLabel("Hilton ⋅ 16 May")
-                                .setIsAcceptable(true)
+                                .setAcceptability(Acceptability.SELECTABLE_AND_ACCEPTABLE)
                                 .build());
 
         mMediator.show(suggestions);
@@ -144,7 +147,7 @@ public class AtMemoryBottomSheetMediatorTest {
                                 .setLabel("No Connection")
                                 .setSubLabel("No connection")
                                 .setSuggestionType(SuggestionType.AT_MEMORY_NO_CONNECTION)
-                                .setIsAcceptable(false)
+                                .setAcceptability(Acceptability.UNSELECTABLE_AND_UNACCEPTABLE)
                                 .build());
 
         mMediator.show(suggestions);
@@ -178,13 +181,19 @@ public class AtMemoryBottomSheetMediatorTest {
                                 .build());
 
         mMediator.show(suggestions);
+        assertEquals(ScreenId.HOME_SCREEN, mModel.get(CURRENT_SCREEN));
 
         PropertyModel itemModel2 = mModelList.get(1).model;
         itemModel2.get(ON_FLYOUT_CLICKED).run();
+        assertEquals(ScreenId.FLYOUT_SCREEN, mModel.get(CURRENT_SCREEN));
 
         PropertyModel flyoutModel = mMediator.getFlyoutModel();
         assertEquals("Hotel Booking Type", flyoutModel.get(FlyoutProperties.TITLE));
         assertEquals(List.of(childSuggestion), flyoutModel.get(FlyoutProperties.SUGGESTIONS));
+
+        // Showing the suggestions again should switch the screen to the home screen.
+        mMediator.show(suggestions);
+        assertEquals(ScreenId.HOME_SCREEN, mModel.get(CURRENT_SCREEN));
     }
 
     @Test
@@ -215,7 +224,7 @@ public class AtMemoryBottomSheetMediatorTest {
                         .setLabel("Recent")
                         .setSubLabel("No connection")
                         .setSuggestionType(SuggestionType.AT_MEMORY_NO_CONNECTION)
-                        .setIsAcceptable(false)
+                        .setAcceptability(Acceptability.UNSELECTABLE_AND_UNACCEPTABLE)
                         .build();
         List<AutofillSuggestion> suggestions = List.of(suggestion);
         mMediator.show(suggestions);
@@ -398,8 +407,47 @@ public class AtMemoryBottomSheetMediatorTest {
                 .setSubLabel("test details")
                 .setIconId(R.drawable.flight)
                 .setSuggestionType(SuggestionType.AT_MEMORY_SEARCH_AFFORDANCE)
-                .setIsAcceptable(true)
+                .setAcceptability(Acceptability.SELECTABLE_AND_ACCEPTABLE)
                 .build();
+    }
+
+    @Test
+    public void testShow_DeactivatedSuggestion() {
+        mMediator.show(
+                List.of(
+                        new AutofillSuggestion.Builder()
+                                .setLabel("Deactivated suggestion")
+                                .setSubLabel("")
+                                .setSuggestionType(SuggestionType.AT_MEMORY_SEARCH_RESULT)
+                                .setIsLoading(false)
+                                .setApplyDeactivatedStyle(true)
+                                .setAcceptability(Acceptability.UNSELECTABLE_AND_UNACCEPTABLE)
+                                .build()));
+
+        assertEquals(1, mModelList.size());
+        assertEquals(HomeProperties.ItemType.SUGGESTION, mModelList.get(0).type);
+        assertTrue(mModelList.get(0).model.get(APPLY_DEACTIVATED_STYLE));
+        assertFalse(mModelList.get(0).model.get(IS_LOADING));
+    }
+
+    @Test
+    public void testShow_LoadingSuggestion() {
+        mMediator.show(
+                List.of(
+                        new AutofillSuggestion.Builder()
+                                .setLabel("Deactivated suggestion")
+                                .setSubLabel("")
+                                .setSuggestionType(SuggestionType.AT_MEMORY_SEARCH_RESULT)
+                                .setIsLoading(true)
+                                .setApplyDeactivatedStyle(false)
+                                .setAcceptability(Acceptability.UNSELECTABLE_AND_UNACCEPTABLE)
+                                .build()));
+
+        assertEquals(1, mModelList.size());
+        assertEquals(HomeProperties.ItemType.SUGGESTION, mModelList.get(0).type);
+        // Loading suggestion should be deactivated as well.
+        assertTrue(mModelList.get(0).model.get(APPLY_DEACTIVATED_STYLE));
+        assertTrue(mModelList.get(0).model.get(IS_LOADING));
     }
 
     @Test
@@ -417,7 +465,7 @@ public class AtMemoryBottomSheetMediatorTest {
                         .setLabel("Find and fill with Gemini")
                         .setSubLabel("")
                         .setSuggestionType(SuggestionType.AT_MEMORY_FETCHING)
-                        .setIsAcceptable(false)
+                        .setAcceptability(Acceptability.UNSELECTABLE_AND_UNACCEPTABLE)
                         .build();
 
         mMediator.show(List.of(fetchingSuggestion));
@@ -442,7 +490,7 @@ public class AtMemoryBottomSheetMediatorTest {
                         .setLabel("Find and fill with Gemini")
                         .setSubLabel("")
                         .setSuggestionType(SuggestionType.AT_MEMORY_FETCHING)
-                        .setIsAcceptable(false)
+                        .setAcceptability(Acceptability.UNSELECTABLE_AND_UNACCEPTABLE)
                         .build();
 
         mMediator.show(List.of(noticeSuggestion, fetchingSuggestion));

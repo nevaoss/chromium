@@ -24,6 +24,7 @@
 <translation id="1472013873724362412">Váš účet nefunguje v prehliadači Chromium. Kontaktujte správcu domény alebo sa prihláste pomocou bežného účtu Google.</translation>
 <translation id="148576268809812097">Ukladajte si heslá v prehliadači Chromium</translation>
 <translation id="1501302548410882220">Používajte Chromium kdekoľvek</translation>
+<translation id="1502360822835740515">Nastavenie prehliadača Chromium ako predvoleného prehliadača</translation>
 <translation id="1503199973012840174">Váš prehliadač Chromium je zastaraný. V záujme svojho bezpečia ho aktualizujte.</translation>
 <translation id="1515748263297244785">Používajte Chromium pre iPad predvolene</translation>
 <translation id="1530961174488670696">Prehliadaču Chromium sa nepodarilo skontrolovať dostupnosť aktualizácií. Skúste to neskôr.</translation>
@@ -331,6 +332,7 @@ Ak chcete toto nastavenie zmeniť, <ph name="BEGIN_LINK" />odstráňte údaje pr
 <translation id="8014091604604659473">Prehliadač Chromium je odhlásený</translation>
 <translation id="8104697640054703121">Získajte najúčinnejšie zabezpečenie prehliadača Chromium pred nebezpečnými webmi</translation>
 <translation id="8119542592987737574">Získavajte prístup k prehliadaču Chromium rýchlejšie z Docku na ploche iPhonu.</translation>
+<translation id="8119553494985516751">Keď nastavíte Chromium ako predvolený prehliadač, budete môcť otvárať odkazy rýchlejšie</translation>
 <translation id="8164086860209325020">Prejdite do Nastavení prehliadača Chromium</translation>
 <translation id="8197822717502700527">Teraz budete môcť využívať Chromium vo svojom zariadení naplno.</translation>
 <translation id="8236210361418193126">Import do Správcu hesiel</translation>

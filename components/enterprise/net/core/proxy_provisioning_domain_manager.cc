@@ -55,20 +55,41 @@ bool IsTransientHttpError(int net_error, std::optional<int> response_code) {
   return true;
 }
 
-bool IsTransientError(const ProvisioningDomainFetchError& error) {
+ProvisioningDomainProxyConfig::State ClassifyFetchError(
+    const ProvisioningDomainFetchError& error) {
   switch (error.status) {
     case ProvisioningDomainFetchResultStatus::kInvalidUrl:
+      return ProvisioningDomainProxyConfig::State::kFailedPermanent;
+
+    // Invalid response, we should treat this as a blocked error in case the
+    // server side response is corrected, or in the special case of captive
+    // portal.
     case ProvisioningDomainFetchResultStatus::kParseError:
-      return false;
+      return ProvisioningDomainProxyConfig::State::kFailedBlocked;
 
     case ProvisioningDomainFetchResultStatus::kTokenFetchError:
-      return error.token_fetch_error == TokenFetchError::kTransientError;
+      CHECK(error.token_fetch_error.has_value());
+      switch (*error.token_fetch_error) {
+        case TokenFetchError::kTransientError:
+          return ProvisioningDomainProxyConfig::State::kFailedTransient;
+        case TokenFetchError::kNoPrimaryAccount:
+        case TokenFetchError::kUnmanagedUser:
+        case TokenFetchError::kInvalidCredentials:
+        case TokenFetchError::kAuthError:
+        case TokenFetchError::kCanceled:
+          return ProvisioningDomainProxyConfig::State::kFailedBlocked;
+        case TokenFetchError::kUnsupportedScope:
+          return ProvisioningDomainProxyConfig::State::kFailedPermanent;
+      }
 
     case ProvisioningDomainFetchResultStatus::kHttpError:
-      return IsTransientHttpError(error.net_error, error.response_code);
+      if (IsTransientHttpError(error.net_error, error.response_code)) {
+        return ProvisioningDomainProxyConfig::State::kFailedTransient;
+      }
+      return ProvisioningDomainProxyConfig::State::kFailedPermanent;
 
     case ProvisioningDomainFetchResultStatus::kSuccess:
-      return false;
+      NOTREACHED();
   }
 }
 
@@ -133,7 +154,7 @@ ProxyProvisioningDomainManager::ProxyProvisioningDomainManager(
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE,
       base::BindOnce(&ProxyProvisioningDomainManager::StartRefreshInternal,
-                     weak_factory_.GetWeakPtr()));
+                     weak_factory_.GetWeakPtr(), /*force=*/false));
 }
 
 ProxyProvisioningDomainManager::~ProxyProvisioningDomainManager() = default;
@@ -147,10 +168,13 @@ void ProxyProvisioningDomainManager::RemoveObserver(Observer* observer) {
 }
 
 void ProxyProvisioningDomainManager::ForceRefresh() {
+  if (state() == ProvisioningDomainProxyConfig::State::kFailedPermanent) {
+    return;
+  }
   if (is_refresh_in_progress()) {
     CancelRefresh();
   }
-  StartRefreshInternal();
+  StartRefreshInternal(/*force=*/true);
 }
 
 void ProxyProvisioningDomainManager::CancelRefresh() {
@@ -171,11 +195,15 @@ void ProxyProvisioningDomainManager::Refresh() {
   if (is_refresh_in_progress()) {
     return;
   }
-  StartRefreshInternal();
+  StartRefreshInternal(/*force=*/false);
 }
 
-void ProxyProvisioningDomainManager::StartRefreshInternal() {
+void ProxyProvisioningDomainManager::StartRefreshInternal(bool force) {
   if (state() == ProvisioningDomainProxyConfig::State::kFailedPermanent) {
+    return;
+  }
+  if (!force &&
+      state() == ProvisioningDomainProxyConfig::State::kFailedBlocked) {
     return;
   }
   if (!url_loader_factory_) {
@@ -206,11 +234,19 @@ void ProxyProvisioningDomainManager::OnRefreshComplete(
     fetched_config_ = std::move(*result);
     fetched_config_.state = ProvisioningDomainProxyConfig::State::kValid;
   } else {
-    // Preserve existing routes on failure.
-    fetched_config_.state =
-        IsTransientError(result.error())
-            ? ProvisioningDomainProxyConfig::State::kFailedTransient
-            : ProvisioningDomainProxyConfig::State::kFailedPermanent;
+    ProvisioningDomainProxyConfig::State state =
+        ClassifyFetchError(result.error());
+    if (state == ProvisioningDomainProxyConfig::State::kFailedTransient) {
+      // Preserve existing routes for momentary network/server blips.
+      fetched_config_.state = state;
+    } else {
+      // Flush active routes so re-authentication and IdP traffic connect
+      // directly (kFailedBlocked) or mark permanently failed
+      // (kFailedPermanent).
+      fetched_config_ = ProvisioningDomainProxyConfig();
+      fetched_config_.pvd_id = policy_.pvd_id;
+      fetched_config_.state = state;
+    }
   }
 
   NotifyIfStateChanged();

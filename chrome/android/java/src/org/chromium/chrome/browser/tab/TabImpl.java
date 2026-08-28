@@ -98,6 +98,7 @@ import org.chromium.components.embedder_support.contextmenu.ContextMenuPopulator
 import org.chromium.components.embedder_support.util.UrlConstants;
 import org.chromium.components.embedder_support.view.ContentView;
 import org.chromium.components.embedder_support.virtual_structure.PageContentProtoViewStructureBuilder;
+import org.chromium.components.prefs.PrefChangeRegistrar;
 import org.chromium.components.prefs.PrefService;
 import org.chromium.components.security_state.ConnectionSecurityLevel;
 import org.chromium.components.security_state.SecurityStateModel;
@@ -121,6 +122,7 @@ import org.chromium.ui.base.ImmutableWeakReference;
 import org.chromium.ui.base.PageTransition;
 import org.chromium.ui.base.ViewAndroidDelegate;
 import org.chromium.ui.base.WindowAndroid;
+import org.chromium.ui.xr.scenecore.XrInteractableComponent.OnDragListener;
 import org.chromium.url.GURL;
 import org.chromium.url.Origin;
 
@@ -235,6 +237,7 @@ class TabImpl implements Tab, TabInternal {
     private @Nullable @ColorInt Integer mCustomViewBackgroundColor;
 
     @Nullable AutofillProvider mAutofillProvider;
+    private @Nullable PrefChangeRegistrar mPrefChangeRegistrar;
 
     private @Nullable CompositeSelectionActionMenuDelegate mSelectionActionMenuDelegate;
 
@@ -1389,6 +1392,11 @@ class TabImpl implements Tab, TabInternal {
             mIsDraggingObserver = null;
         }
 
+        if (mPrefChangeRegistrar != null) {
+            mPrefChangeRegistrar.destroy();
+            mPrefChangeRegistrar = null;
+        }
+
         // Update the title before destroying the tab. http://b/5783092
         updateTitle();
 
@@ -1666,6 +1674,7 @@ class TabImpl implements Tab, TabInternal {
         }
 
         mWindowAndroid = windowAndroid;
+        initAutofillPrefObserver();
         if (mAutofillProvider != null) {
             mAutofillProvider.switchToContext(getActivityContext());
         }
@@ -1896,7 +1905,12 @@ class TabImpl implements Tab, TabInternal {
         if (!maybeShowNativePage(url.getSpec(), isReload, pdfInfo)) {
             // This is restricted to HTTP(S) URLs specifically, as these are the only schemes that
             // necessitate a PDF re-download.
-            String downloadUrl = PdfUtils.getPdfReDownloadUrl(url.getSpec());
+            String downloadUrl =
+                    (isPdf
+                                    || (UrlConstants.CHROME_NATIVE_SCHEME.equals(url.getScheme())
+                                            && UrlConstants.PDF_HOST.equals(url.getHost())))
+                            ? PdfUtils.getPdfReDownloadUrl(url.getSpec())
+                            : null;
             if (downloadUrl != null) {
                 // When the download url is not null, we are navigating to a pdf native page which
                 // requires re-download. Load the download url to trigger the re-download.
@@ -2353,12 +2367,8 @@ class TabImpl implements Tab, TabInternal {
 
             mWebContents.notifyRendererPreferenceUpdate();
             addTextSelectionActionMenuDelegate(webContents);
-            if (mContentView != null) {
-                mContentView.setImportantForAutofill(
-                        prepareAutofillProvider(webContents)
-                                ? View.IMPORTANT_FOR_AUTOFILL_YES
-                                : View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS);
-            }
+            initAutofillPrefObserver();
+            updateAutofillProviderState();
             TabHelpers.initWebContentsHelpers(this);
             notifyContentChanged();
 
@@ -2396,12 +2406,7 @@ class TabImpl implements Tab, TabInternal {
         assert mWebContents != null;
         mIsContentViewDeferred = false;
         setupContentView(mWebContents);
-        if (mContentView != null) {
-            mContentView.setImportantForAutofill(
-                    prepareAutofillProvider(mWebContents)
-                            ? View.IMPORTANT_FOR_AUTOFILL_YES
-                            : View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS);
-        }
+        updateAutofillProviderState();
         notifyContentChanged();
     }
 
@@ -2624,6 +2629,26 @@ class TabImpl implements Tab, TabInternal {
     }
 
     /**
+     * Initializes the {@link PrefChangeRegistrar} to observe changes to autofill preferences once
+     * the native {@link PrefService} is ready for this tab's profile.
+     */
+    private void initAutofillPrefObserver() {
+        if (!ChromeFeatureList.sAndroidAutofillPrefObserver.isEnabled()) {
+            return;
+        }
+        if (mPrefChangeRegistrar != null || !mProfile.isNativeInitialized()) {
+            return;
+        }
+        @Nullable PrefService prefs = UserPrefs.get(mProfile);
+        if (prefs == null) {
+            return;
+        }
+        mPrefChangeRegistrar = new PrefChangeRegistrar(prefs);
+        mPrefChangeRegistrar.addObserver(
+                AUTOFILL_PREF_USES_VIRTUAL_STRUCTURE, this::updateAutofillProviderState);
+    }
+
+    /**
      * Initializes the {@link AutofillProvider} so that it can provide a ViewStructure for the given
      * WebContents. If the provider existed already, it's only assigned the new WebContents.
      *
@@ -2634,12 +2659,18 @@ class TabImpl implements Tab, TabInternal {
         assert isInitialized();
         if (!providesAutofillStructure()) {
             maybeLogAutofillProviderDoesntUseVirtualStructureMetric();
-            mAutofillProvider = null;
+            if (mAutofillProvider != null) {
+                mAutofillProvider.destroy();
+                mAutofillProvider = null;
+            }
             return false; // Autofill provider can't be prepared.
         }
         if (mAutofillProvider != null) {
             // Provider already existed. Swapping contents suffices.
             mAutofillProvider.setWebContents(newWebContents);
+            if (mContentView != null) {
+                mAutofillProvider.onContainerViewChanged(mContentView);
+            }
         } else {
             // TODO: crbug.com/432447902 — Provide only an activity context and push changes.
             mAutofillProvider =
@@ -2648,10 +2679,34 @@ class TabImpl implements Tab, TabInternal {
                             mContentView,
                             newWebContents,
                             getContext().getString(R.string.app_name));
-            TabImplJni.get().initializeAutofillIfNecessary(mNativeTabAndroid);
+            if (mNativeTabAndroid != 0) {
+                TabImplJni.get().initializeAutofillIfNecessary(mNativeTabAndroid);
+            }
         }
         addAutofillItemsToSelectionActionMenu(newWebContents);
         return true;
+    }
+
+    private void updateContentViewAutofillImportance(boolean providesAutofill) {
+        if (mContentView != null) {
+            mContentView.setImportantForAutofill(
+                    providesAutofill
+                            ? View.IMPORTANT_FOR_AUTOFILL_YES
+                            : View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS);
+        }
+    }
+
+    /**
+     * Synchronizes the {@link AutofillProvider} and {@link ContentView} importance with the current
+     * state of {@link #providesAutofillStructure()}.
+     */
+    @VisibleForTesting
+    void updateAutofillProviderState() {
+        WebContents webContents = getWebContents();
+        if (webContents == null || isDestroyed()) {
+            return;
+        }
+        updateContentViewAutofillImportance(prepareAutofillProvider(webContents));
     }
 
     private void maybeLogAutofillProviderDoesntUseVirtualStructureMetric() {
@@ -2815,6 +2870,10 @@ class TabImpl implements Tab, TabInternal {
     @VisibleForTesting
     void setAutofillProvider(AutofillProvider autofillProvider) {
         mAutofillProvider = autofillProvider;
+    }
+
+    @Nullable PrefChangeRegistrar getPrefChangeRegistrarForTesting() {
+        return mPrefChangeRegistrar;
     }
 
     @VisibleForTesting

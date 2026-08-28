@@ -13,6 +13,7 @@
 #include "base/check_deref.h"
 #include "base/containers/adapters.h"
 #include "base/containers/flat_map.h"
+#include "base/containers/flat_set.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
 #include "base/functional/callback_helpers.h"
@@ -20,6 +21,7 @@
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
+#include "build/build_config.h"
 #include "chrome/browser/context_hub/auto_todos/auto_todo_entry.h"
 #include "chrome/browser/context_hub/auto_todos/auto_todos_store.h"
 #include "chrome/browser/context_hub/features.h"
@@ -29,6 +31,7 @@
 #include "chrome/browser/context_hub/tab_group_store/tab_group_entry.h"
 #include "chrome/browser/context_hub/tab_group_store/tab_group_entry_conversions.h"
 #include "chrome/browser/context_hub/tab_group_store/tab_group_store.h"
+#include "chrome/browser/profiles/profile.h"
 #include "components/optimization_guide/core/model_execution/feature_keys.h"
 #include "components/optimization_guide/core/model_execution/remote_model_executor.h"
 #include "components/optimization_guide/core/model_quality/model_quality_log_entry.h"
@@ -47,6 +50,13 @@
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/page.h"
 #include "content/public/browser/web_contents.h"
+
+#if !BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/tab_list/tab_removed_reason.h"
+#include "chrome/browser/ui/browser_tab_strip_tracker.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/tabs/tab_strip_model.h"
+#endif
 
 namespace context_hub {
 
@@ -138,7 +148,7 @@ ThirdPartyData::GroupType ToThirdPartyGroupType(
 }  // namespace
 
 ContextHubService::ContextHubService(
-    PrefService* pref_service,
+    Profile* profile,
     personal_context::PersonalContextService* personal_context_service,
     optimization_guide::RemoteModelExecutor*
         optimization_guide_remote_model_executor,
@@ -149,7 +159,8 @@ ContextHubService::ContextHubService(
     std::unique_ptr<TabGroupStore> tab_group_store,
     std::unique_ptr<ContextHubBackend> context_hub_backend,
     std::unique_ptr<AutoTodosStore> auto_todos_store)
-    : personal_context_service_(CHECK_DEREF(personal_context_service)),
+    : profile_(CHECK_DEREF(profile)),
+      personal_context_service_(CHECK_DEREF(personal_context_service)),
       optimization_guide_remote_model_executor_(
           CHECK_DEREF(optimization_guide_remote_model_executor)),
       tab_group_sync_service_(CHECK_DEREF(tab_group_sync_service)),
@@ -162,18 +173,23 @@ ContextHubService::ContextHubService(
       memory_bank_(std::move(memory_bank)),
       tab_group_store_(std::move(tab_group_store)),
       auto_todos_store_(std::move(auto_todos_store)) {
-  CHECK(pref_service);
   CHECK(memory_bank_);
   if (auto_todos_store_) {
     auto_todos_store_->AddObserver(this);
     first_party_auto_todos_timer_ =
         std::make_unique<signin::PersistentRepeatingTimer>(
-            pref_service, prefs::kContextHubLastAutoTodosGenerationTime,
+            profile_->GetPrefs(), prefs::kContextHubLastAutoTodosGenerationTime,
             features::kFirstPartyAutoTodosInterval.Get(),
             base::BindRepeating(
                 &ContextHubService::OnFirstPartyAutoTodosTimerTriggered,
                 weak_factory_.GetWeakPtr()));
     first_party_auto_todos_timer_->Start();
+
+#if !BUILDFLAG(IS_ANDROID)
+    browser_tab_strip_tracker_ =
+        std::make_unique<BrowserTabStripTracker>(this, this);
+    browser_tab_strip_tracker_->Init();
+#endif
   }
 }
 
@@ -182,9 +198,46 @@ ContextHubService::~ContextHubService() {
     auto_todos_store_->RemoveObserver(this);
   }
   if (pending_tab_todos_callback_) {
+    observers_.Notify(&Observer::OnThirdPartyAutoTodosGenerationStateChanged,
+                      false);
     std::move(pending_tab_todos_callback_).Run(false);
   }
+  if (is_generating_first_party_auto_todos_) {
+    observers_.Notify(&Observer::OnFirstPartyAutoTodosGenerationStateChanged,
+                      false);
+  }
 }
+
+#if !BUILDFLAG(IS_ANDROID)
+bool ContextHubService::ShouldTrackBrowser(BrowserWindowInterface* browser) {
+  return browser->GetProfile() == &profile_.get();
+}
+
+void ContextHubService::OnTabStripModelChanged(
+    TabStripModel* tab_strip_model,
+    const TabStripModelChange& change,
+    const TabStripSelectionChange& selection) {
+  // Delete any cached AutoTodos that are associated with a removed tab.
+  if (change.type() == TabStripModelChange::kRemoved) {
+    const TabStripModelChange::Remove* remove = change.GetRemove();
+    for (const auto& removed_tab : remove->contents) {
+      if (TabRemoveReasonUtils::WillDeleteWebContents(
+              removed_tab.remove_reason)) {
+        content::WebContents* contents =
+            removed_tab.contents
+                ? removed_tab.contents.get()
+                : (removed_tab.tab ? removed_tab.tab->GetContents() : nullptr);
+        if (contents) {
+          SessionID session_id = sessions::SessionTabHelper::IdForTab(contents);
+          if (session_id.is_valid()) {
+            DeleteAutoTodoByTabId(session_id.id(), base::DoNothing());
+          }
+        }
+      }
+    }
+  }
+}
+#endif
 
 void ContextHubService::OnFirstPartyAutoTodosTimerTriggered() {
   GenerateFirstPartyAutoTodos(base::DoNothing());
@@ -205,10 +258,14 @@ void ContextHubService::OnAutoTodosChanged(
 
 void ContextHubService::GenerateFirstPartyAutoTodos(
     AutoTodosStore::OperationCallback callback) {
-  if (!auto_todos_store_) {
+  if (!auto_todos_store_ || is_generating_first_party_auto_todos_) {
     std::move(callback).Run(false);
     return;
   }
+
+  is_generating_first_party_auto_todos_ = true;
+  observers_.Notify(&Observer::OnFirstPartyAutoTodosGenerationStateChanged,
+                    true);
 
   personal_context::proto::AutoTodosRequest request_metadata;
   personal_context::ContextMemoryRequestOptions options;
@@ -221,6 +278,10 @@ void ContextHubService::GenerateFirstPartyAutoTodos(
                      weak_factory_.GetWeakPtr(), std::move(callback)));
 }
 
+bool ContextHubService::IsGeneratingFirstPartyAutoTodos() const {
+  return is_generating_first_party_auto_todos_;
+}
+
 void ContextHubService::GenerateTabBasedTodos(
     std::vector<base::WeakPtr<content::WebContents>> tabs,
     AutoTodosStore::OperationCallback callback) {
@@ -229,6 +290,31 @@ void ContextHubService::GenerateTabBasedTodos(
       std::move(callback).Run(false);
     }
     return;
+  }
+
+  auto_todos_store_->GetAllItems(base::BindOnce(
+      &ContextHubService::OnAllAutoTodosFetchedForTabBasedTodos,
+      weak_factory_.GetWeakPtr(), std::move(tabs), std::move(callback)));
+}
+
+void ContextHubService::OnAllAutoTodosFetchedForTabBasedTodos(
+    std::vector<base::WeakPtr<content::WebContents>> tabs,
+    AutoTodosStore::OperationCallback callback,
+    std::vector<AutoTodoEntry> stored_todos) {
+  if (!auto_todos_store_ || pending_tab_todos_callback_) {
+    if (callback) {
+      std::move(callback).Run(false);
+    }
+    return;
+  }
+
+  base::flat_set<int64_t> cached_tab_ids;
+  for (const auto& entry : stored_todos) {
+    if (entry.is_third_party()) {
+      if (auto tab_id = entry.tab_id()) {
+        cached_tab_ids.insert(*tab_id);
+      }
+    }
   }
 
   std::vector<base::WeakPtr<content::WebContents>> eligible_tabs;
@@ -248,6 +334,11 @@ void ContextHubService::GenerateTabBasedTodos(
     if (!tab->GetLastActiveTime().is_null() &&
         (base::Time::Now() - tab->GetLastActiveTime()) >
             features::kTabBasedTodosInactivityThreshold.Get()) {
+      SessionID session_id = sessions::SessionTabHelper::IdForTab(tab.get());
+      int64_t tab_id = session_id.is_valid() ? session_id.id() : -1;
+      if (tab_id != -1 && cached_tab_ids.contains(tab_id)) {
+        continue;
+      }
       eligible_tabs.push_back(std::move(tab));
     }
   }
@@ -264,6 +355,8 @@ void ContextHubService::GenerateTabBasedTodos(
   // Store the callback to be invoked when page context extraction and model
   // execution are complete.
   pending_tab_todos_callback_ = std::move(callback);
+  observers_.Notify(&Observer::OnThirdPartyAutoTodosGenerationStateChanged,
+                    true);
 
   // Collects the asynchronous page content extraction results across all
   // eligible tabs. Once all tab extractions have completed, `barrier_callback`
@@ -406,6 +499,9 @@ void ContextHubService::FinishTabBasedTodosGeneration(bool success) {
   pending_tab_todos_requests_ = {};
   generated_tab_todos_.clear();
 
+  observers_.Notify(&Observer::OnThirdPartyAutoTodosGenerationStateChanged,
+                    false);
+
   if (pending_tab_todos_callback_) {
     std::move(pending_tab_todos_callback_).Run(success);
   }
@@ -415,13 +511,13 @@ void ContextHubService::OnFirstPartyAutoTodosFetched(
     AutoTodosStore::OperationCallback callback,
     personal_context::FetchContextResult result) {
   if (!result.response.has_value()) {
-    std::move(callback).Run(false);
+    FinishFirstPartyAutoTodosGeneration(std::move(callback), /*success=*/false);
     return;
   }
 
   personal_context::proto::AutoTodosResponse response;
   if (!response.ParseFromString(result.response.value().value())) {
-    std::move(callback).Run(false);
+    FinishFirstPartyAutoTodosGeneration(std::move(callback), /*success=*/false);
     return;
   }
 
@@ -432,9 +528,6 @@ void ContextHubService::OnFirstPartyAutoTodosFetched(
   entries.reserve(response.todos_size());
   for (const personal_context::proto::AutoTodoItem& todo : response.todos()) {
     AutoTodoEntry entry;
-    // TODO(crbug.com/541276677): Remove when the observer is notified of cache
-    // changes.
-    entry.id = todo.title();
     entry.title = todo.title();
     entry.description = todo.description();
     entry.importance_score = todo.importance_score();
@@ -453,8 +546,21 @@ void ContextHubService::OnFirstPartyAutoTodosFetched(
     entries.push_back(std::move(entry));
   }
 
-  auto_todos_store_->AddAllTodos(std::move(entries), base::DoNothing());
-  std::move(callback).Run(true);
+  auto_todos_store_->AddAllTodos(
+      std::move(entries),
+      base::BindOnce(&ContextHubService::FinishFirstPartyAutoTodosGeneration,
+                     weak_factory_.GetWeakPtr(), std::move(callback)));
+}
+
+void ContextHubService::FinishFirstPartyAutoTodosGeneration(
+    AutoTodosStore::OperationCallback callback,
+    bool success) {
+  is_generating_first_party_auto_todos_ = false;
+  observers_.Notify(&Observer::OnFirstPartyAutoTodosGenerationStateChanged,
+                    false);
+  if (callback) {
+    std::move(callback).Run(success);
+  }
 }
 
 void ContextHubService::GetAutoTodos(GetAutoTodosCallback callback) const {
@@ -543,21 +649,10 @@ void ContextHubService::ClearTabGroupChatHistory() {
   tab_group_chat_history_cache_.Clear();
 }
 
-void ContextHubService::SaveTab(
-    const GURL& url,
-    std::string_view tab_title,
-    std::string_view page_text,
+void ContextHubService::SaveMemoryBankEntry(
+    MemoryBankEntry entry,
     MemoryBank::OperationCompleteCallback callback) {
-  memory_bank_->SaveTab(url, tab_title, page_text, std::move(callback));
-}
-
-void ContextHubService::SaveTextSelection(
-    const GURL& url,
-    std::string_view tab_title,
-    std::string_view selected_text,
-    MemoryBank::OperationCompleteCallback callback) {
-  memory_bank_->SaveTextSelection(url, tab_title, selected_text,
-                                  std::move(callback));
+  memory_bank_->SaveMemoryBankEntry(std::move(entry), std::move(callback));
 }
 
 void ContextHubService::DeleteEntries(

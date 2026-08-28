@@ -184,6 +184,9 @@ component("modules") {
       "//third_party/blink/renderer/modules/smart_card",
     ]
   }
+  if (is_chromeos) {
+    sub_modules += [ "//third_party/blink/renderer/modules/set_shape" ]
+  }
   if (!is_ios && !target_os_is_android) {
     sub_modules += [ "//third_party/blink/renderer/modules/awc" ]
   }
@@ -598,6 +601,7 @@ source_set("unit_tests") {
     "peerconnection/rtc_rtp_sender_test.cc",
     "peerconnection/rtc_rtp_transceiver_impl_test.cc",
     "peerconnection/rtc_sctp_transport_test.cc",
+    "peerconnection/rtc_stats_report_test.cc",
     "peerconnection/rtc_transport/rtc_received_packet_test.cc",
     "peerconnection/rtc_transport/rtc_transport_dependencies_test.cc",
     "peerconnection/rtc_transport/rtc_transport_test.cc",
@@ -622,6 +626,7 @@ source_set("unit_tests") {
     "sensor/sensor_test_utils.cc",
     "sensor/sensor_test_utils.h",
     "service_worker/service_worker_container_test.cc",
+    "service_worker/service_worker_content_settings_proxy_test.cc",
     "service_worker/service_worker_event_queue_test.cc",
     "service_worker/service_worker_global_scope_test.cc",
     "service_worker/service_worker_installed_scripts_manager_test.cc",
@@ -650,6 +655,7 @@ source_set("unit_tests") {
     "webaudio/biquad_filter_handler_test.cc",
     "webaudio/convolver_handler_test.cc",
     "webaudio/convolver_node_test.cc",
+    "webaudio/delay_handler_test.cc",
     "webaudio/dynamics_compressor_node_test.cc",
     "webaudio/media_stream_audio_destination_handler_test.cc",
     "webaudio/offline_audio_context_test.cc",

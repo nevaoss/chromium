@@ -689,6 +689,22 @@ chromium-metrics-reviews@google.com.
   </token>
 </histogram>
 
+<histogram name="Signin.AccountPreviewData.FetchDuration.{Result}" units="ms"
+    expires_after="2027-06-01">
+  <owner>rsult@google.com</owner>
+  <owner>chrome-signin-team@google.com</owner>
+  <summary>
+    Measures the duration of fetching sync preview data (including token
+    fetching and network requests) for a signed-in account, split by {Result}
+    fetches. Recorded when the fetch finishes.
+  </summary>
+  <token key="Result">
+    <variant name="Failure" summary="failed (network requests failed)"/>
+    <variant name="Success" summary="successful (at least some data returned)"/>
+    <variant name="TokenFailure" summary="failed during access token fetch"/>
+  </token>
+</histogram>
+
 <histogram name="Signin.AccountPreviewData.FetchState"
     enum="AccountPreviewDataFetchState" expires_after="2027-06-01">
   <owner>rsult@google.com</owner>
@@ -2385,6 +2401,28 @@ prefs when the profile is loaded.  -->
   </summary>
 </histogram>
 
+<histogram name="Signin.Intercept.AccountPreview.ResponseTime" units="ms"
+    expires_after="2027-06-01">
+  <owner>rsult@google.com</owner>
+  <owner>chrome-signin-team@google.com</owner>
+  <summary>
+    Records the duration between requesting account preview preferences for an
+    intercepted account and receiving the preference response (or reaching the
+    timeout). Recorded before showing the interception bubble.
+  </summary>
+</histogram>
+
+<histogram name="Signin.Intercept.AccountPreview.TimedOut"
+    enum="BooleanTimedOut" expires_after="2027-06-01">
+  <owner>rsult@google.com</owner>
+  <owner>chrome-signin-team@google.com</owner>
+  <summary>
+    Records whether requesting account preview preferences for an intercepted
+    account timed out before receiving the preference response. Recorded before
+    showing the interception bubble.
+  </summary>
+</histogram>
+
 <histogram name="Signin.Intercept.BubbleDismissReason{Type}"
     enum="SigninInterceptionDismissReason" expires_after="2026-09-06">
   <owner>rsult@google.com</owner>
@@ -3283,6 +3321,16 @@ Signin.OAuthMultiloginResponseStatus2{PartitionSuffix} one for a long enough tim
   </summary>
 </histogram>
 
+<histogram name="Signin.ProcessMirrorHeaders.LoadingDuration.Aborted"
+    units="ms" expires_after="2027-08-11">
+  <owner>mlbipin@google.com</owner>
+  <owner>chrome-signin-mobile-team@google.com</owner>
+  <summary>
+    Records the duration of the wait for WebSignin to complete before it was
+    aborted. Recorded when WebSignin is aborted.
+  </summary>
+</histogram>
+
 <histogram name="Signin.ProcessMirrorHeaders.LoadingDuration.{Result}"
     units="ms" expires_after="2027-04-22">
   <owner>mlbipin@google.com</owner>
@@ -3298,6 +3346,17 @@ Signin.OAuthMultiloginResponseStatus2{PartitionSuffix} one for a long enough tim
     <variant name="OtherError" summary="An other error occurred"/>
     <variant name="Success" summary="The web sign-in succeeded"/>
   </token>
+</histogram>
+
+<histogram name="Signin.ProcessMirrorHeaders.WaitOutcome"
+    enum="WebSigninWaitOutcome" expires_after="2027-08-11">
+  <owner>mlbipin@google.com</owner>
+  <owner>chrome-signin-mobile-team@google.com</owner>
+  <summary>
+    Records the outcome of the wait for WebSignin to complete. Recorded when the
+    WebSignin process either completes or is aborted, along with whether a
+    loading dialog was shown during the wait.
+  </summary>
 </histogram>
 
 <histogram name="Signin.Promo.ImpressionsUntil.{Action}.{AccessPoint}"

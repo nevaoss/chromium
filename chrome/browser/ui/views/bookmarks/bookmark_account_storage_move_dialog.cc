@@ -18,7 +18,6 @@
 #include "chrome/browser/profiles/profile_avatar_icon_util.h"
 #include "chrome/browser/profiles/profile_window.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/dialogs/browser_dialogs.h"
 #include "chrome/browser/ui/views/bookmarks/bookmark_account_storage_move_dialog_delegate.h"
@@ -175,8 +174,8 @@ void ShowDialogOnRegularProfile(
 
     avatar_and_email_view->AddChildView(std::make_unique<views::ImageView>(
         ui::ImageModel::FromImage(profiles::GetSizedAvatarIcon(
-            account_info.account_image, kAvatarSize, kAvatarSize,
-            profiles::SHAPE_CIRCLE))));
+            account_info.GetAvatarImage().value_or(gfx::Image()), kAvatarSize,
+            kAvatarSize, profiles::SHAPE_CIRCLE))));
     avatar_and_email_view->AddChildView(
         std::make_unique<views::Label>(base::UTF8ToUTF16(account_info.email)));
     avatar_and_email_view
@@ -201,7 +200,7 @@ void OpenDialogInOriginalProfileBookmarksManager(
     size_t index,
     BookmarkAccountStorageMoveDialogType dialog_type,
     base::OnceClosure closed_callback,
-    Browser* browser) {
+    BrowserWindowInterface* browser) {
   // `browser` may be null in case of failure to instantiate a window.
   if (!browser) {
     return;
@@ -236,9 +235,10 @@ void ShowDialog(BrowserWindowInterface* browser,
         policy::IncognitoModeAvailability::kForced) {
       return;
     }
-    base::OnceCallback<void(Browser*)> on_browser_ready = base::BindOnce(
-        &OpenDialogInOriginalProfileBookmarksManager, node, target_folder,
-        index, dialog_type, std::move(closed_callback));
+    base::OnceCallback<void(BrowserWindowInterface*)> on_browser_ready =
+        base::BindOnce(&OpenDialogInOriginalProfileBookmarksManager, node,
+                       target_folder, index, dialog_type,
+                       std::move(closed_callback));
     profiles::OpenBrowserWindowForProfile(
         std::move(on_browser_ready), /*always_create=*/false,
         /*is_new_profile=*/false, /*open_command_line_urls=*/false,

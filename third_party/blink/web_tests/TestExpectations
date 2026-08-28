@@ -64,6 +64,10 @@ crbug.com/40183464 [ Mac ] external/wpt/html/editing/dnd/js-file-image-drag.html
 crbug.com/475504307 [ Mac ] html/details_summary/details-replace-text.html [ Failure Pass ]
 
 crbug.com/457388389 http/tests/devtools/sources/debugger-pause/set-return-value.js [ Failure Pass Timeout ]
+crbug.com/457388389 http/tests/devtools/console/console-edit-property-value.js [ Failure Pass Timeout ]
+crbug.com/457388389 http/tests/devtools/console/console-group-click.js [ Failure Pass Timeout ]
+crbug.com/457388389 http/tests/devtools/console/console-proxy.js [ Failure Pass Timeout ]
+crbug.com/457388389 http/tests/devtools/console/viewport-testing/console-clicking-messages.js [ Failure Pass Timeout ]
 
 
 
@@ -162,8 +166,6 @@ crbug.com/887140 virtual/hdr/video-canvas-alpha.html [ Failure ]
 crbug.com/1254933 [ Linux ] css3/filters/filterRegions.html [ Failure Pass ]
 crbug.com/1254933 [ Win ] css3/filters/filterRegions.html [ Failure Pass ]
 crbug.com/1405377 [ Mac ] css3/filters/filterRegions.html [ Failure Pass ]
-
-crbug.com/1459010 fast/events/hit-test-counts.html [ Failure ]
 
 # Fails flakily or times out
 
@@ -591,9 +593,6 @@ crbug.com/329302543 external/wpt/css/css-backgrounds/background-clip/clip-border
 # [css-image-animation]
 crbug.com/536159147 [ Mac ] external/wpt/css/css-image-animation/image-animation-paused-exact-frame.tentative.html [ Failure Pass ]
 
-# Failures due to pointerMove building synthetic events without button information (main thread only).
-crbug.com/1056778 fast/scrolling/scrollbars/scrollbar-thumb-snapping.html [ Failure ]
-
 # Most of these fail due to subpixel differences, but a couple are real failures.
 crbug.com/1044742 external/wpt/css/compositing/mix-blend-mode/mix-blend-mode-border-image.html [ Failure ]
 crbug.com/1044742 external/wpt/css/compositing/mix-blend-mode/mix-blend-mode-filter.html [ Failure ]
@@ -995,6 +994,22 @@ crbug.com/1076027 external/wpt/css/css-break/grid/grid-lanes/grid-lanes-fragment
 crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-lanes-subgridded-to-grid-lanes/track-sizing/grid-lanes-subgrid-flex.html [ Failure ]
 crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-lanes-subgridded-to-grid-lanes/track-sizing/grid-lanes-subgrid.html [ Failure ]
 crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-lanes-subgridded-to-grid-lanes/track-sizing/grid-lanes-subgrid-intrinsic-sizing.html [ Failure ]
+crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-lanes-subgridded-to-grid-lanes/column/grid-lanes-subgrid-001a.html [ Failure ]
+crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-lanes-subgridded-to-grid-lanes/column/grid-lanes-subgrid-002a.html [ Failure ]
+crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-lanes-subgridded-to-grid-lanes/column/independent-formatting-context.html [ Failure ]
+crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-lanes-subgridded-to-grid-lanes/row/grid-lanes-subgrid-001a.html [ Failure ]
+crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-lanes-subgridded-to-grid-lanes/row/grid-lanes-subgrid-002a.html [ Failure ]
+crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-lanes-subgridded-to-grid-lanes/row/independent-formatting-context.html [ Failure ]
+# Grid Lanes subgrids into a grid container are not yet supported.
+crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-lanes-subgridded-to-grid/track-sizing/grid-lanes-subgrid.html [ Failure ]
+crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-lanes-subgridded-to-grid/track-sizing/grid-lanes-subgrid-flex.html [ Failure ]
+crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-lanes-subgridded-to-grid/track-sizing/grid-lanes-subgrid-intrinsic-sizing.html [ Failure ]
+crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-lanes-subgridded-to-grid/column/grid-lanes-subgrid-001a.html [ Failure ]
+crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-lanes-subgridded-to-grid/column/grid-lanes-subgrid-002a.html [ Failure ]
+crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-lanes-subgridded-to-grid/column/independent-formatting-context.html [ Failure ]
+crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-lanes-subgridded-to-grid/row/grid-lanes-subgrid-001a.html [ Failure ]
+crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-lanes-subgridded-to-grid/row/grid-lanes-subgrid-002a.html [ Failure ]
+crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-lanes-subgridded-to-grid/row/independent-formatting-context.html [ Failure ]
 # Grid subgridded into grid-lanes baseline alignment; subgrid extra margin is not yet included in the baseline calculation.
 crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-subgridded-to-grid-lanes/alignment/column-subgrid-alignment-in-subgridded-axis-002.html [ Failure ]
 crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-subgridded-to-grid-lanes/alignment/row-subgrid-alignment-in-subgridded-axis-002.html [ Failure ]
@@ -1391,6 +1406,8 @@ crbug.com/332331836 external/wpt/html/semantics/popovers/popover-attribute-basic
 
 # Interestfor related tests
 crbug.com/326681249 external/wpt/html/semantics/interestfor/interestfor-svg-a-event-dispatch.tentative.html [ Failure ]
+crbug.com/546131804 external/wpt/html/semantics/interestfor/interestfor-pseudo-element-appearance.tentative.html [ Failure ]
+crbug.com/546131804 virtual/area-display-inline/external/wpt/html/semantics/interestfor/interestfor-pseudo-element-appearance.tentative.html [ Pass ]
 
 crbug.com/421119389 external/wpt/pointerevents/crashtests/longpress-crash.html [ Crash ]
 
@@ -1675,8 +1692,6 @@ crbug.com/706350 external/wpt/html/browsers/browsing-the-web/history-traversal/w
 
 crbug.com/1236768 external/wpt/html/browsers/browsing-the-web/overlapping-navigations-and-traversals/same-document-traversal-same-document-traversal-hashchange.html [ Timeout ]
 crbug.com/1236768 external/wpt/html/browsers/browsing-the-web/overlapping-navigations-and-traversals/same-document-traversal-same-document-traversal-pushstate.html [ Timeout ]
-
-crbug.com/876485 fast/performance/performance-measure-null-exception.html [ Failure ]
 
 crbug.com/808834 [ Linux ] external/wpt/css/css-pseudo/first-letter-001.html [ Failure ]
 crbug.com/808834 [ Win ] external/wpt/css/css-pseudo/first-letter-001.html [ Failure ]
@@ -2583,9 +2598,6 @@ crbug.com/438309773 external/wpt/service-workers/service-worker/fetch-request-xh
 
 crbug.com/499074021 external/wpt/paint-timing/fcp-only/fcp-broken-image.html [ Failure ]
 
-# UUID in `*-expected.txt`
-crbug.com/499074020 external/wpt/fetch/metadata/text.https.html [ Failure ]
-
 crbug.com/501198804 external/wpt/visual-viewport/viewport-scale-clamped.html [ Failure ]
 
 crbug.com/501209160 external/wpt/webrtc/RTCDtlsTransport-state.html [ Failure Timeout ]
@@ -2696,6 +2708,14 @@ crbug.com/536952792 external/wpt/html/semantics/scripting-1/the-script-element/m
 crbug.com/540322301 external/wpt/webaudio/the-audio-api/the-oscillatornode-interface/sub-sample-start.html [ Failure ]
 
 # ====== New tests from wpt-importer added here ======
+crbug.com/546278641 external/wpt/css/css-values/using-font-relative-units-in-font-properties.html [ Crash ]
+crbug.com/546159614 external/wpt/html/rendering/widgets/button-layout/anonymous-button-content-box.html [ Failure ]
+crbug.com/546241037 external/wpt/css/css-borders/corner-shape/corner-shape-superellipse-concave.html [ Failure ]
+crbug.com/546241037 external/wpt/css/css-borders/corner-shape/corner-shape-superellipse-convex.html [ Failure ]
+crbug.com/546146009 external/wpt/css/css-overflow/line-clamp/line-clamp-with-floats-012.html [ Failure ]
+crbug.com/546146009 virtual/disable-css-line-clamp-line-breaking-ellipsis/external/wpt/css/css-overflow/line-clamp/line-clamp-with-floats-012.html [ Failure ]
+crbug.com/546146009 virtual/disable-css-line-clamp-longhands/external/wpt/css/css-overflow/line-clamp/line-clamp-with-floats-012.html [ Failure ]
+crbug.com/546146009 virtual/disable-css-line-clamp/external/wpt/css/css-overflow/line-clamp/line-clamp-with-floats-012.html [ Failure ]
 crbug.com/545678290 external/wpt/css/css-overflow/line-clamp/block-ellipsis-038.html [ Failure ]
 crbug.com/545678290 external/wpt/css/css-overflow/line-clamp/block-ellipsis-039.html [ Failure ]
 crbug.com/545678290 external/wpt/css/css-overflow/line-clamp/block-ellipsis-040.html [ Failure ]
@@ -2788,7 +2808,6 @@ crbug.com/526673507 external/wpt/webdriver/tests/bidi/browsing_context/dom_conte
 crbug.com/526673507 external/wpt/webdriver/tests/bidi/browsing_context/download_end/user_context_tentative.py [ Failure ]
 crbug.com/526673507 external/wpt/webdriver/tests/bidi/browsing_context/download_will_begin/user_context_tentative.py [ Failure ]
 crbug.com/526673507 external/wpt/webdriver/tests/bidi/browsing_context/fragment_navigated/user_context_tentative.py [ Failure ]
-crbug.com/526673507 external/wpt/webdriver/tests/bidi/browsing_context/history_updated/history_updated.py [ Failure ]
 crbug.com/526673507 external/wpt/webdriver/tests/bidi/browsing_context/history_updated/user_context_tentative.py [ Failure ]
 crbug.com/526673507 external/wpt/webdriver/tests/bidi/browsing_context/load/user_context_tentative.py [ Failure ]
 crbug.com/526673507 external/wpt/webdriver/tests/bidi/browsing_context/navigate/invalid.py [ Failure ]
@@ -2883,7 +2902,6 @@ crbug.com/494337166 external/wpt/webdriver/tests/classic/get_page_source/source.
 crbug.com/494337166 external/wpt/webdriver/tests/classic/is_element_selected/selected.py [ Failure ]
 crbug.com/494337166 external/wpt/webdriver/tests/classic/new_session/default_values.py [ Failure ]
 crbug.com/494337166 external/wpt/webdriver/tests/classic/perform_actions/invalid.py [ Failure ]
-crbug.com/494337166 external/wpt/webdriver/tests/classic/perform_actions/none.py [ Failure ]
 crbug.com/494337166 [ Android ] external/wpt/webdriver/tests/classic/print/printcmd.py [ Failure ]
 crbug.com/494337166 external/wpt/webdriver/tests/classic/release_actions/release.py [ Failure ]
 crbug.com/494337166 external/wpt/webdriver/tests/classic/switch_to_frame/switch.py [ Failure ]
@@ -2895,8 +2913,6 @@ crbug.com/492307971 external/wpt/client-hints/inner-delegation/accept_ch_delegat
 crbug.com/492286058 external/wpt/css/css-forms/meter-base-appearance-custom-style-initial-rendering.tentative.html [ Failure ]
 crbug.com/492286058 external/wpt/css/css-forms/meter-base-appearance-custom-style-value-dynamic-rendering.tentative.html [ Failure ]
 crbug.com/492307970 external/wpt/gamepad/gamepad-default-permissions-policy.https.sub.html [ Timeout ]
-crbug.com/492274862 external/wpt/html/semantics/embedded-content/media-elements/autoplay-allowed-by-permissions-policy-attribute.https.sub.html [ Timeout ]
-crbug.com/492274862 external/wpt/html/semantics/embedded-content/media-elements/autoplay-allowed-by-permissions-policy.https.sub.html [ Timeout ]
 crbug.com/492230082 [ Win ] external/wpt/permissions-policy/historical.html [ Pass Timeout ]
 crbug.com/492281019 external/wpt/webdriver/tests/bidi/log/entry_added/console.py [ Failure ]
 crbug.com/492281019 external/wpt/webdriver/tests/bidi/session/subscribe/contexts.py [ Failure ]
@@ -3012,7 +3028,6 @@ crbug.com/484353698 external/wpt/webdriver/tests/bidi/external/user_agent_client
 crbug.com/484353698 external/wpt/webdriver/tests/bidi/external/user_agent_client_hints/set_client_hints_override/contexts.py [ Failure ]
 crbug.com/484353698 external/wpt/webdriver/tests/bidi/external/user_agent_client_hints/set_client_hints_override/global.py [ Failure ]
 crbug.com/484353698 external/wpt/webdriver/tests/bidi/external/user_agent_client_hints/set_client_hints_override/invalid.py [ Failure ]
-crbug.com/484353698 external/wpt/webdriver/tests/bidi/external/user_agent_client_hints/set_client_hints_override/user_contexts.py [ Failure ]
 crbug.com/484353698 [ Android ] external/wpt/webdriver/tests/bidi/input/perform_actions/wheel.py [ Failure ]
 crbug.com/484353698 [ Android ] external/wpt/webdriver/tests/bidi/input/perform_actions/wheel_events.py [ Timeout ]
 crbug.com/484353698 [ Android ] external/wpt/webdriver/tests/classic/perform_actions/wheel_events.py [ Timeout ]
@@ -3097,17 +3112,6 @@ crbug.com/450776558 external/wpt/css/css-text/line-breaking/segment-break-transf
 crbug.com/450513406 external/wpt/css/css-writing-modes/text-shadow-sideways-001.html [ Failure ]
 crbug.com/450555241 [ Win ] external/wpt/speculation-rules/prefetch/tentative/cookie-indices.https.html?include=changedWithRedirect [ Pass Timeout ]
 crbug.com/450555241 external/wpt/speculation-rules/prefetch/tentative/cookie-indices.https.html?include=changedWithRedirect3 [ Skip Timeout ]
-
-# performance.getSpeculations().navigations reports the renderer's activated
-# candidate set, which only excludes non-immediate (moderate/conservative)
-# candidates before interaction when SpeculationRulesRendererSideHeuristics is
-# enabled. That feature is off by default, so these run only in the
-# virtual/speculation-rules-renderer-side-heuristics suite.
-crbug.com/532860179 external/wpt/speculation-rules/speculation-measurement/performance-speculations-navigations-eagerness.tentative.https.html [ Failure ]
-crbug.com/532860179 external/wpt/speculation-rules/speculation-measurement/performance-speculations-navigations.tentative.https.html [ Failure ]
-crbug.com/532860179 virtual/speculation-rules-renderer-side-heuristics/external/wpt/speculation-rules/speculation-measurement/performance-speculations-navigations-eagerness.tentative.https.html [ Pass ]
-crbug.com/532860179 virtual/speculation-rules-renderer-side-heuristics/external/wpt/speculation-rules/speculation-measurement/performance-speculations-navigations.tentative.https.html [ Pass ]
-
 crbug.com/450508310 external/wpt/webdriver/tests/bidi/emulation/set_network_conditions/contexts.py [ Crash Failure Timeout ]
 crbug.com/448843863 [ Win11-arm64 ] external/wpt/fetch/fetch-later/basic.https.window.html [ Pass Timeout ]
 crbug.com/448843863 [ Mac14 ] external/wpt/fetch/fetch-later/basic.https.window.html [ Pass Timeout ]
@@ -4308,7 +4312,6 @@ crbug.com/356498699 external/wpt/webdriver/tests/bidi/browsing_context/navigatio
 crbug.com/626703 [ Release ] external/wpt/webdriver/tests/bidi/browsing_context/user_prompt_closed/user_prompt_closed.py [ Failure ]  # Flaky output
 crbug.com/626703 [ Linux ] external/wpt/webdriver/tests/classic/element_clear/clear.py [ Failure Timeout ]
 crbug.com/626703 [ Linux ] external/wpt/webdriver/tests/bidi/network/continue_with_auth/invalid.py [ Timeout ]
-crbug.com/626703 external/wpt/webdriver/tests/classic/element_send_keys/send_keys.py [ Failure ]
 
 # Some WebXR tests that have become flaky
 crbug.com/343470120 external/wpt/webxr/xrSession_requestAnimationFrame_getViewerPose.https.html [ Failure Pass ]
@@ -5959,50 +5962,23 @@ crbug.com/445971864 external/wpt/css/css-gaps/multicol/multicol-gap-decorations-
 
 # Grid-lanes gap decorations have partial grid-axis support.
 crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/column-gap-decorations-002.html [ Failure ]
-crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/column-gap-decorations-003.html [ Failure ]
-crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/column-gap-decorations-004.html [ Failure ]
-crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/column-gap-decorations-005.html [ Failure ]
 crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/column-gap-decorations-006.html [ Failure ]
 crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/column-gap-decorations-007.html [ Failure ]
-crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/column-gap-decorations-008.html [ Failure ]
-crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/column-gap-decorations-009.html [ Failure ]
-crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/column-gap-decorations-010.html [ Failure ]
-crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/column-gap-decorations-011.html [ Failure ]
-crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/column-gap-decorations-012.html [ Failure ]
-crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/column-gap-decorations-013.html [ Failure ]
 crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/column-gap-decorations-014.html [ Failure ]
-crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/column-gap-decorations-015.html [ Failure ]
-crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/column-gap-decorations-016.html [ Failure ]
 crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/column-gap-decorations-017.html [ Failure ]
 crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/column-gap-decorations-018.html [ Failure ]
 crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/column-gap-decorations-019.html [ Failure ]
-crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/column-gap-decorations-020.html [ Failure ]
-crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/column-gap-decorations-021.html [ Failure ]
 crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/column-gap-decorations-022.html [ Failure ]
 crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/column-gap-decorations-023.html [ Failure ]
-crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/column-gap-decorations-024.html [ Failure ]
-crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/column-gap-decorations-025.html [ Failure ]
-crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/column-gap-decorations-026.html [ Failure ]
-crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/column-gap-decorations-027.html [ Failure ]
 crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/column-gap-decorations-028.html [ Failure ]
 crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/column-gap-decorations-029.html [ Failure ]
-crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/row-gap-decorations-002.html [ Failure ]
-crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/row-gap-decorations-003.html [ Failure ]
+crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/column-gap-decorations-036.html [ Failure ]
+crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/column-gap-decorations-037.html [ Failure ]
 crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/row-gap-decorations-004.html [ Failure ]
 crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/row-gap-decorations-005.html [ Failure ]
-crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/row-gap-decorations-006.html [ Failure ]
 crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/row-gap-decorations-007.html [ Failure ]
 crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/row-gap-decorations-008.html [ Failure ]
-crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/row-gap-decorations-009.html [ Failure ]
 crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/row-gap-decorations-010.html [ Failure ]
-crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/row-gap-decorations-011.html [ Failure ]
-crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/row-gap-decorations-012.html [ Failure ]
-crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/row-gap-decorations-013.html [ Failure ]
-crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/row-gap-decorations-014.html [ Failure ]
-crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/row-gap-decorations-015.html [ Failure ]
-crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/row-gap-decorations-016.html [ Failure ]
-crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/row-gap-decorations-017.html [ Failure ]
-crbug.com/343257585 external/wpt/css/css-gaps/grid-lanes/row-gap-decorations-018.html [ Failure ]
 
 ### End of tests failing with CSSGapDecorations Enabled
 
@@ -6131,7 +6107,6 @@ crbug.com/1340167 fast/loader/iframe-navigation-stealing-focus.html [ Pass Timeo
 crbug.com/1354433 [ Mac ] external/wpt/html/browsers/the-window-object/window-properties.https.html [ Failure Pass ]
 
 # Failures with FractionalScrollOffsets disabled for web tests by default.
-crbug.com/1358383 virtual/threaded-prefer-compositing/fast/scrolling/scrollbars/mouse-scrolling-on-root-scrollbar-thumb.html [ Failure ]
 crbug.com/326122314 external/wpt/css/css-viewport/zoom/scroll-top-test-with-zoom.html [ Failure Pass ]
 
 # Sheriff 2022-08-30
@@ -7147,7 +7122,6 @@ crbug.com/1496375 [ Mac ] http/tests/loading/image-picture-download-after-shrink
 
 # Gardener 2023-12-19
 crbug.com/1512897 external/wpt/webdriver/tests/bidi/network/combined/network_events.py [ Failure ] # Flaky
-crbug.com/1512119 external/wpt/webdriver/tests/classic/perform_actions/pointer_touch.py [ Failure ]
 
 # Gardener 2023-12-21
 crbug.com/1470053 external/wpt/html/browsers/browsing-the-web/overlapping-navigations-and-traversals/cross-document-traversal-cross-document-traversal.html [ Failure Pass ]
@@ -9200,10 +9174,6 @@ crbug.com/527385398 external/wpt/web-extensions/browser.browsingData.extension.h
 crbug.com/527385398 external/wpt/web-extensions/browser.idle.extension.html [ Failure ]
 crbug.com/527385398 external/wpt/web-extensions/browser.storage.extension.html [ Failure ]
 
-# WebMCP: Flaky WPT tests.
-
-crbug.com/521896358 external/wpt/webmcp/imperative/document-domain-enabled.https.html [ Failure Pass ]
-
 # Gardener 2026-06-01
 crbug.com/517759858 [ Win11-arm64 ] external/wpt/webrtc-encoded-transform/tentative/RTCEncodedFrame-timestamps.html [ Failure ]
 crbug.com/453144946 [ Linux ] external/wpt/wasm/core/simd/simd_f64x2_arith.wast.js.html [ Crash Failure Pass ]
@@ -9284,8 +9254,6 @@ crbug.com/529423495 http/tests/devtools/elements/styles/xsl-transformed.js [ Fai
 # Gardener 2026-07-17
 crbug.com/535696870 [ Linux ] external/wpt/html/semantics/permission-element/bounded-sizes-reftest.tentative.html [ Failure Pass ]
 
-# Gardener 2026-07-21
-crbug.com/531170669 [ Linux ] fast/canvas/canvas-drawImage-live-video.html [ Failure Pass Timeout ]
 
 crbug.com/510232476 [ Mac13 ] external/wpt/css/css-tables/height-distribution/percentage-sizing-of-table-cell-children-002.html [ Failure Pass ]
 
@@ -9366,7 +9334,6 @@ crbug.com/540619916 [ Linux ] external/wpt/webdriver/tests/bidi/network/remove_d
 crbug.com/540619916 [ Linux ] external/wpt/webdriver/tests/bidi/network/set_cache_behavior/contexts.py [ Failure Pass ]
 crbug.com/540619916 [ Linux ] external/wpt/webdriver/tests/bidi/network/set_extra_headers/headers.py [ Failure Pass ]
 crbug.com/540619916 [ Linux ] external/wpt/webdriver/tests/bidi/network/set_extra_headers/invalid.py [ Failure Pass ]
-crbug.com/540619916 [ Linux ] external/wpt/webdriver/tests/bidi/script/add_preload_script/add_preload_script.py [ Failure Pass ]
 crbug.com/540619916 [ Linux ] external/wpt/webdriver/tests/bidi/script/evaluate/internal_id.py [ Failure Pass ]
 crbug.com/540619916 [ Linux ] external/wpt/webdriver/tests/bidi/script/evaluate/invalid.py [ Failure Pass ]
 crbug.com/540619916 [ Linux ] external/wpt/webdriver/tests/bidi/script/evaluate/primitive_values.py [ Failure Pass ]
@@ -9406,15 +9373,12 @@ crbug.com/540619916 [ Linux ] external/wpt/webdriver/tests/classic/take_element_
 crbug.com/540619916 [ Linux ] external/wpt/webdriver/tests/classic/take_screenshot/screenshot.py [ Failure Pass ]
 crbug.com/540619916 [ Linux ] external/wpt/webdriver/tests/classic/take_screenshot/user_prompts.py [ Failure Pass ]
 
-# Added during FFmpeg roll: Ogg Vorbis container duration vs discard padding discrepancy
-crbug.com/450394703 media/video-seek-to-duration-with-playbackrate-zero.html [ Timeout ]
 
 # Gardener 2026-08-10
 # Timing out on MSAN.
 crbug.com/544415105 [ Linux ] http/tests/origin_trials/webexposed/js-self-profiling-markers-origin-trial-enabled-coi.php [ Pass Timeout ]
 crbug.com/543560198 [ Linux ] external/wpt/html/semantics/permission-element/unbounded-width-with-border-reftest.tentative.html [ Failure ]
 crbug.com/532186979 [ Linux ] external/wpt/css/css-image-animation/image-animation-video-poster-paused-normal-mixed.html [ Failure ]
-crbug.com/324436866 [ Linux ] external/wpt/webdriver/tests/bidi/browser/remove_user_context/user_context.py [ Failure ]
 crbug.com/543622964 [ Linux ] external/wpt/html/semantics/permission-element/large-min-size-reftest.tentative.html [ Failure ]
 
 # http://crrev.com/c/8217307 improved headless initial window frame reporting
@@ -9422,3 +9386,30 @@ crbug.com/543622964 [ Linux ] external/wpt/html/semantics/permission-element/lar
 # for popups to avoid racing mid-navigation resizes, causing an opener/popup
 # geometry mismatch.
 crbug.com/446689489 [ Mac ] external/wpt/html/browsers/the-window-object/open-close/open_initial_size.html [ Failure ]
+
+# Gardener 2026-08-14
+crbug.com/546014641 [ Win ] external/wpt/css/css-scroll-snap/snap-fling-past-furthest-area.html [ Failure Pass Timeout ]
+
+# Gardener 2026-08-17
+# Bug 547617167: WebDriver WPT failures in chrome_wpt_tests
+crbug.com/547617167 [ Linux ] external/wpt/webdriver/tests/bidi/browser/remove_user_context/user_context.py [ Failure Timeout ]
+crbug.com/547617167 external/wpt/webdriver/tests/bidi/browsing_context/history_updated/history_updated.py [ Failure Timeout ]
+crbug.com/547617167 [ Linux ] external/wpt/webdriver/tests/bidi/browsing_context/set_viewport/invalid.py [ Failure Timeout ]
+crbug.com/547617167 [ Linux ] external/wpt/webdriver/tests/bidi/emulation/set_network_conditions/network_conditions_offline.py [ Failure Timeout ]
+crbug.com/547617167 [ Linux ] external/wpt/webdriver/tests/bidi/emulation/set_screen_settings_override/user_contexts.py [ Failure Timeout ]
+crbug.com/547617167 external/wpt/webdriver/tests/bidi/external/user_agent_client_hints/set_client_hints_override/user_contexts.py [ Failure Timeout ]
+crbug.com/547617167 [ Linux ] external/wpt/webdriver/tests/bidi/network/continue_response/status_code.py [ Failure Timeout ]
+crbug.com/547617167 [ Linux ] external/wpt/webdriver/tests/bidi/network/provide_response/status_code.py [ Failure Timeout ]
+crbug.com/547617167 [ Linux ] external/wpt/webdriver/tests/bidi/script/add_preload_script/add_preload_script.py [ Failure Timeout Pass ]
+crbug.com/547617167 [ Linux ] external/wpt/webdriver/tests/bidi/script/call_function/invalid.py [ Failure Timeout ]
+crbug.com/547617167 [ Linux ] external/wpt/webdriver/tests/bidi/storage/delete_cookies/partition.py [ Failure Timeout ]
+crbug.com/547617167 [ Linux ] external/wpt/webdriver/tests/classic/element_send_keys/file_upload.py [ Failure Timeout ]
+crbug.com/547617167 external/wpt/webdriver/tests/classic/element_send_keys/send_keys.py [ Failure Timeout ]
+crbug.com/547617167 [ Linux ] external/wpt/webdriver/tests/classic/get_element_text/user_prompts.py [ Failure Timeout ]
+crbug.com/547617167 [ Linux ] external/wpt/webdriver/tests/classic/get_window_rect/user_prompts.py [ Failure Timeout ]
+crbug.com/547617167 [ Linux ] external/wpt/webdriver/tests/classic/navigate_to/navigate.py [ Failure Timeout ]
+crbug.com/547617167 external/wpt/webdriver/tests/classic/perform_actions/none.py [ Failure Timeout ]
+crbug.com/547617167 [ Linux ] external/wpt/webdriver/tests/classic/perform_actions/pointer_modifier_click.py [ Failure Timeout ]
+crbug.com/547617167 [ Linux ] external/wpt/webdriver/tests/classic/perform_actions/pointer_mouse.py [ Failure Timeout ]
+crbug.com/547617167 external/wpt/webdriver/tests/classic/perform_actions/pointer_touch.py [ Failure Timeout ]
+crbug.com/547617167 [ Linux ] external/wpt/webdriver/tests/classic/print/printcmd.py [ Failure Timeout ]

@@ -5,7 +5,6 @@
 #include "base/run_loop.h"
 #include "base/task/single_thread_task_runner.h"
 #include "chrome/app/chrome_command_ids.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_tabstrip.h"
@@ -437,7 +436,8 @@ IN_PROC_BROWSER_TEST_P(TabStripCollectionControllerInteractiveUiTest,
 
 // TODO(crbug.com/505768540): Investigate why test fails to show the duplicate
 // menu item on windows.
-#if BUILDFLAG(IS_WIN)
+// TODO(crbug.com/547746068): Re-enable on mac.
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
 #define MAYBE_TabOpenedWhileUsingTabContextMenu \
   DISABLED_TabOpenedWhileUsingTabContextMenu
 #else

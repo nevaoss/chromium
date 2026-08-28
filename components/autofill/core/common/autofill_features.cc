@@ -101,7 +101,7 @@ BASE_FEATURE(kAutofillActorSuppressImport, base::FEATURE_DISABLED_BY_DEFAULT);
 // stored in the user's profile.
 // TODO(crbug.com/381994105): Cleanup when launched.
 BASE_FEATURE(kAutofillAddressSuggestionsOnTyping,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // This parameter enables updating the minimum number of characters a user needs
 // to type to maybe see an Autofill on typing suggestion.
@@ -140,7 +140,7 @@ BASE_FEATURE_PARAM(std::string,
                    kAutofillOnTypingFieldTypes,
                    &kAutofillAddressSuggestionsOnTyping,
                    "field_types",
-                   "");
+                   "9-83-30-60-36-13-33-7");
 
 // This parameter controls whether Autofill on typing suggestions should be
 // displayed only on unclassified fields.
@@ -153,7 +153,7 @@ BASE_FEATURE_PARAM(bool,
 // Feature flag to controls whether Autofill on typing suggestions will have a
 // strike database.
 BASE_FEATURE(kAutofillAddressSuggestionsOnTypingHasStrikeDatabase,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Feature flag controlling the display of surveys when a user declines the
 // save prompt of Autofill address and a user does not have any address stored.
@@ -473,6 +473,11 @@ BASE_FEATURE(kAutofillAmbientAutofillSuppression,
 BASE_FEATURE(kAutofillAmbientAutofillSuppressionUI,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+// Controls the removal of the sign-in promotional components from the
+// Autofill and passwords settings page across platforms.
+BASE_FEATURE(kAutofillAndPasswordsRemoveSignInPromo,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // If enabled, on Android desktop, the Autofill keyboard accessory will have a
 // new behavior and design.
 // TODO(crbug.com/438125774): Remove when launched.
@@ -542,6 +547,10 @@ BASE_FEATURE_PARAM(base::TimeDelta,
 // Controls whether the Autosuggest nudging logic is used. If enabled, user are
 // encouraged to use the AtMemory feature.
 BASE_FEATURE(kAutofillAtMemoryInactivityNudge,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Controls whether the previously filled suggestions from AtMemory are shown.
+BASE_FEATURE(kAutofillAtMemoryPreviouslyFilled,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Controls whether contenteditable fields on Android are supported for
@@ -1065,7 +1074,14 @@ BASE_FEATURE(kFieldClassificationModelCaching,
 #endif
 );
 
-BASE_FEATURE(kGlicActorAutofill, base::FEATURE_DISABLED_BY_DEFAULT);
+// The feature will be tested and rolled out independently on iOS.
+BASE_FEATURE(kGlicActorAutofill,
+#if BUILDFLAG(IS_IOS)
+             base::FEATURE_DISABLED_BY_DEFAULT
+#else
+             base::FEATURE_DISABLED_BY_DEFAULT
+#endif  // BUILDFLAG(IS_IOS)
+);
 
 // The amount of time to wait for a fill to happen if no credit card fetch is
 // ongoing.
@@ -1121,11 +1137,6 @@ BASE_FEATURE(kResetNativePointerInCreditCardAuthDialog,
 // Autocomplete dialogs.
 BASE_FEATURE(kShowAutocompleteAtMemoryButton,
              base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Kill switch: if enabled, suggestions are shown for fields with unrecognized
-// autocomplete attribute if they are already autofilled.
-BASE_FEATURE(kShowSugesstionsOnAlreadyAutofilledUnrecognized,
-             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // When enabled, "Manage information" menu item for enhanced autofill will
 // redirect user either to "/travel" or "/identityDocs" pages instead of

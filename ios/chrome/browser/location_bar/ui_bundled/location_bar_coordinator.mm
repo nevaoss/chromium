@@ -89,6 +89,7 @@
 #import "ios/chrome/browser/shared/model/web_state_list/web_state_list.h"
 #import "ios/chrome/browser/shared/public/commands/browser_coordinator_commands.h"
 #import "ios/chrome/browser/shared/public/commands/command_dispatcher.h"
+#import "ios/chrome/browser/shared/public/commands/custom_leading_view_type.h"
 #import "ios/chrome/browser/shared/public/commands/fullscreen_commands.h"
 #import "ios/chrome/browser/shared/public/commands/gemini_commands.h"
 #import "ios/chrome/browser/shared/public/commands/help_commands.h"
@@ -165,6 +166,9 @@ struct AIHubBadgeActiveWindowsData : public base::SupportsUserData::Data {
   raw_ptr<PrefService> _prefService;
   // Tracker for feature events.
   raw_ptr<feature_engagement::Tracker> _tracker;
+
+  // Whether this coordinator is for a text-only location bar.
+  BOOL _textOnly;
 }
 // Whether the coordinator is started.
 @property(nonatomic, assign, getter=isStarted) BOOL started;
@@ -222,9 +226,21 @@ struct AIHubBadgeActiveWindowsData : public base::SupportsUserData::Data {
   return self.viewController;
 }
 
-- (instancetype)initWithBrowser:(Browser*)browser {
+- (UILayoutGuide*)steadyViewLayoutGuide {
+  return self.viewController.steadyViewLayoutGuide;
+}
+
+- (instancetype)initWithBrowser:(Browser*)browser textOnly:(BOOL)textOnly {
   CHECK(browser);
-  return [super initWithBaseViewController:nil browser:browser];
+  self = [super initWithBaseViewController:nil browser:browser];
+  if (self) {
+    _textOnly = textOnly;
+  }
+  return self;
+}
+
+- (instancetype)initWithBrowser:(Browser*)browser {
+  return [self initWithBrowser:browser textOnly:NO];
 }
 
 - (void)start {
@@ -242,7 +258,8 @@ struct AIHubBadgeActiveWindowsData : public base::SupportsUserData::Data {
 
   BOOL isIncognito = self.isOffTheRecord;
 
-  self.viewController = [[LocationBarViewController alloc] init];
+  self.viewController =
+      [[LocationBarViewController alloc] initWithTextOnly:_textOnly];
   self.viewController.incognito = isIncognito;
   _prefService = self.profile->GetPrefs();
   self.viewController.profilePrefs = _prefService;
@@ -659,8 +676,8 @@ struct AIHubBadgeActiveWindowsData : public base::SupportsUserData::Data {
   [self.viewController focusSteadyViewForVoiceOver];
 }
 
-- (void)setCustomLeadingViewVisible:(BOOL)visible animated:(BOOL)animated {
-  [self.viewController setCustomLeadingViewVisible:visible animated:animated];
+- (void)setCustomLeadingViewType:(CustomLeadingViewType)type {
+  [self.viewController setCustomLeadingViewType:type];
 }
 
 - (void)cancelOmniboxEdit {
@@ -852,6 +869,11 @@ struct AIHubBadgeActiveWindowsData : public base::SupportsUserData::Data {
 - (void)markDisplayedBadgeAsUnread:(BOOL)read {
   CHECK(IsChromeNextIaEnabled());
   [self.locationBarBadgeCoordinator markDisplayedBadgeAsUnread:read];
+}
+
+- (void)setBadgeCustomLeadingViewType:(CustomLeadingViewType)type {
+  CHECK(IsChromeNextIaEnabled());
+  [self.viewController setCustomLeadingViewType:type];
 }
 
 - (void)togglePageActionMenuEntryPointHighlight:(BOOL)highlight {

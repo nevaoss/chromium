@@ -9,20 +9,28 @@ import static androidx.test.espresso.action.ViewActions.click;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
 import static androidx.test.espresso.contrib.RecyclerViewActions.scrollTo;
 import static androidx.test.espresso.matcher.ViewMatchers.hasDescendant;
+import static androidx.test.espresso.matcher.ViewMatchers.isDescendantOfA;
 import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
 
 import static org.hamcrest.Matchers.allOf;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 
 import static org.chromium.base.test.util.Batch.PER_CLASS;
 
+import android.content.res.Resources;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
 
+import androidx.test.espresso.matcher.BoundedMatcher;
 import androidx.test.filters.MediumTest;
 
+import org.hamcrest.Description;
+import org.hamcrest.Matcher;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -39,6 +47,9 @@ import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.flags.ChromeSwitches;
 import org.chromium.chrome.test.ChromeJUnit4ClassRunner;
 import org.chromium.chrome.test.ChromeTabbedActivityTestRule;
+import org.chromium.chrome.test.util.ChromeTabUtils;
+import org.chromium.components.browser_ui.styles.SemanticColorUtils;
+import org.chromium.components.embedder_support.util.UrlConstants;
 import org.chromium.ui.base.DeviceFormFactor;
 import org.chromium.ui.base.ViewUtils;
 
@@ -201,5 +212,179 @@ public class SettingsPageTest {
                             && lp.getMarginStart() == expectedExpandedMargin
                             && lp.getMarginEnd() == expectedExpandedMargin;
                 });
+    }
+
+    @Test
+    @MediumTest
+    public void testThemeSwitchRestoresSettingsPageAndDetailFragment() {
+        mActivityTestRule.loadUrl("chrome-native://settings/");
+
+        // Verify MainSettings header fragment is displayed by checking for Search engine
+        // preference.
+        onView(withText(R.string.search_engine_settings)).check(matches(isDisplayed()));
+
+        // Click on "Search engine" in MainSettings header pane to open SearchEngineSettings detail
+        // fragment.
+        var matcher =
+                allOf(
+                        withId(R.id.recycler_view),
+                        hasDescendant(withText(R.string.search_engine_settings)));
+        onView(matcher).perform(scrollTo(hasDescendant(withText(R.string.search_engine_settings))));
+        onView(withText(R.string.search_engine_settings)).perform(click());
+
+        // Simulate theme switch / activity recreation.
+        mActivityTestRule.recreateActivity();
+
+        // 1. Verify Toolbar/Action Bar is restored and displayed.
+        onView(withId(R.id.action_bar)).check(matches(isDisplayed()));
+
+        // 2. Verify MainSettings header pane is restored (checking top-level preference item).
+        onView(withText(R.string.prefs_privacy_security)).check(matches(isDisplayed()));
+
+        // 3. Verify SearchEngineSettings detail pane fragment is restored and displayed.
+        onView(withText("Microsoft Bing")).check(matches(isDisplayed()));
+    }
+
+    /** Regression test for https://crbug.com/535695748. */
+    @Test
+    @MediumTest
+    public void testTwoSettingsTabsThemeSwitchRestoresDetailFragment() {
+        // Tab 0: Open settings and navigate to Search engine detail fragment.
+        mActivityTestRule.loadUrl("chrome-native://settings/");
+        onView(withText(R.string.search_engine_settings)).check(matches(isDisplayed()));
+
+        var matcher =
+                allOf(
+                        withId(R.id.recycler_view),
+                        hasDescendant(withText(R.string.search_engine_settings)));
+        onView(matcher).perform(scrollTo(hasDescendant(withText(R.string.search_engine_settings))));
+        onView(withText(R.string.search_engine_settings)).perform(click());
+        onView(withText("Microsoft Bing")).check(matches(isDisplayed()));
+
+        // Tab 1: Open a second settings tab at root MainSettings.
+        mActivityTestRule.loadUrlInNewTab("chrome-native://settings/");
+        onView(allOf(withText(R.string.prefs_privacy_security), isDisplayed()))
+                .check(matches(isDisplayed()));
+
+        // Simulate theme switch / activity recreation.
+        mActivityTestRule.recreateActivity();
+
+        // Verify Tab 1 (active tab): Action bar and MainSettings header pane are restored.
+        onView(allOf(withId(R.id.action_bar), isDisplayed())).check(matches(isDisplayed()));
+        onView(allOf(withText(R.string.prefs_privacy_security), isDisplayed()))
+                .check(matches(isDisplayed()));
+
+        // Switch to Tab 0.
+        ChromeTabUtils.switchTabInCurrentTabModel(mActivityTestRule.getActivity(), 0);
+
+        // Verify Tab 0 (previously navigated tab): Action bar and SearchEngineSettings detail
+        // fragment are restored.
+        CriteriaHelper.pollInstrumentationThread(
+                () -> {
+                    try {
+                        onView(allOf(withId(R.id.action_bar), isDisplayed()))
+                                .check(matches(isDisplayed()));
+                        onView(allOf(withText("Microsoft Bing"), isDisplayed()))
+                                .check(matches(isDisplayed()));
+                        return true;
+                    } catch (AssertionError | Exception e) {
+                        return false;
+                    }
+                });
+    }
+
+    @Test
+    @MediumTest
+    @Restriction(DeviceFormFactor.PHONE) // TODO(crbug.com/547765865): Fix for tablets/auto.
+    public void testAccessibilityPageZoomDoesNotShowPopup() {
+        mActivityTestRule.loadUrl("chrome-native://settings/");
+
+        // Click on "Accessibility" in MainSettings header pane.
+        var matcher =
+                allOf(
+                        withId(R.id.recycler_view),
+                        hasDescendant(withText(R.string.search_engine_settings)));
+        onView(matcher).perform(scrollTo(hasDescendant(withText(R.string.prefs_accessibility))));
+        onView(withText(R.string.prefs_accessibility)).perform(click());
+
+        // Verify the Accessibility preference screen is displayed.
+        onView(withText(R.string.zoom_info_preference_title)).check(matches(isDisplayed()));
+
+        // Verify the page zoom popup window is not permitted to show on the settings native page.
+        ThreadUtils.runOnUiThreadBlocking(
+                () -> {
+                    var rootUiCoordinator =
+                            mActivityTestRule.getActivity().getRootUiCoordinatorForTesting();
+                    assertFalse(
+                            rootUiCoordinator
+                                    .getPageZoomManager()
+                                    .canShowPopupWindow(UrlConstants.SETTINGS_HOST));
+                });
+    }
+
+    /** Regression test for https://crbug.com/546419920. */
+    // TODO(crbug.com/547889541): Disabled on android-12l-landscape bots due to viewport height.
+    @Test
+    @MediumTest
+    @EnableFeatures(ChromeFeatureList.YOUR_SAVED_INFO_SETTINGS_PAGE_ANDROID)
+    public void testAutofillAndPasswordsHighlighting() {
+        // The test requires an emulator wide enough to use two-column mode.
+        Resources res = mActivityTestRule.getActivity().getResources();
+        int minWidth = res.getDimensionPixelSize(R.dimen.settings_min_multi_column_screen_width);
+        int screenWidth = res.getDisplayMetrics().widthPixels;
+        Assume.assumeTrue("Test requires two-column mode.", screenWidth >= minWidth);
+
+        mActivityTestRule.loadUrl("chrome-native://settings/");
+
+        // Shorten the IDs for better line wrapping.
+        int searchEngineTitle = R.string.search_engine_settings;
+        int autofillTitle = R.string.autofill_and_passwords_settings_title;
+
+        // Verify the settings page loads by checking for a top-level preference item.
+        onView(withText(searchEngineTitle)).check(matches(isDisplayed()));
+
+        // Click on Search engine in the left column.
+        var searchEngineMatcher =
+                allOf(withId(R.id.recycler_view), hasDescendant(withText(searchEngineTitle)));
+        onView(searchEngineMatcher).perform(scrollTo(hasDescendant(withText(searchEngineTitle))));
+        var searchEngineInHeader =
+                allOf(
+                        isDescendantOfA(withId(R.id.preferences_header)),
+                        withText(searchEngineTitle));
+        onView(searchEngineInHeader).perform(click());
+
+        // Verify Search engine is highlighted.
+        onView(searchEngineInHeader).check(matches(isHighlighted()));
+
+        // Click on Autofill and passwords in the left column.
+        var autofillMatcher =
+                allOf(withId(R.id.recycler_view), hasDescendant(withText(autofillTitle)));
+        onView(autofillMatcher).perform(scrollTo(hasDescendant(withText(autofillTitle))));
+        var autofillInHeader =
+                allOf(isDescendantOfA(withId(R.id.preferences_header)), withText(autofillTitle));
+        onView(autofillInHeader).perform(click());
+
+        // Verify Autofill and passwords is highlighted.
+        onView(autofillInHeader).check(matches(isHighlighted()));
+    }
+
+    /**
+     * Matches whether a TextView (such as a preference title in the settings main menu) has the
+     * selected text color applied by {@link SelectionDecoration}.
+     */
+    private static Matcher<View> isHighlighted() {
+        return new BoundedMatcher<View, TextView>(TextView.class) {
+            @Override
+            public void describeTo(Description description) {
+                description.appendText("is highlighted (selected text color)");
+            }
+
+            @Override
+            protected boolean matchesSafely(TextView textView) {
+                int expectedColor =
+                        SemanticColorUtils.getColorOnSecondaryContainer(textView.getContext());
+                return textView.getCurrentTextColor() == expectedColor;
+            }
+        };
     }
 }

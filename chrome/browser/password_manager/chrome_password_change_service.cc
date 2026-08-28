@@ -224,25 +224,20 @@ void ChromePasswordChangeService::OfferPasswordChangeUi(
 }
 
 #if !BUILDFLAG(IS_ANDROID)
-void ChromePasswordChangeService::StartPasswordChangeFromCheckup(
+base::WeakPtr<PasswordChangeFromCheckupDelegate>
+ChromePasswordChangeService::StartPasswordChangeFromCheckup(
     password_manager::StoredCredential credential,
     content::WebContents* web_contents,
     PasswordChangeFromCheckupDelegate::StateChangeCallback callback) {
   if (!web_contents) {
-    return;
+    return nullptr;
   }
 
   auto delegate = std::make_unique<PasswordChangeFromCheckupDelegate>();
   delegate->StartPasswordChangeFlow(
       std::move(credential), web_contents->GetWeakPtr(), std::move(callback));
   password_change_from_checkup_delegates_.push_back(std::move(delegate));
-}
-
-void ChromePasswordChangeService::StopPasswordChangeFromCheckup() {
-  for (const auto& delegate : password_change_from_checkup_delegates_) {
-    delegate->Stop(actor::ActorTask::StoppedReason::kStoppedByUser);
-  }
-  password_change_from_checkup_delegates_.clear();
+  return password_change_from_checkup_delegates_.back()->GetWeakPtr();
 }
 #endif  // BUILDFLAG(IS_ANDROID)
 
@@ -340,6 +335,18 @@ PasswordChangeAvailability ChromePasswordChangeService::GetGeneralAvailability()
       logger->LogMessage(Logger::STRING_PASSWORD_CHANGE_DISABLED_BY_POLICY);
     }
     return PasswordChangeAvailability::kDisabledByPolicy;
+  }
+
+  // The preference is disabled by the user in settings (and feature is enabled)
+  if (!pref_service_->GetBoolean(
+          password_manager::prefs::kAutomatedPasswordChangeEnabled) &&
+      base::FeatureList::IsEnabled(
+          password_change::features::
+              kPasswordChangeWithPrivateInferenceLoginCheck)) {
+    if (logger) {
+      logger->LogMessage(Logger::STRING_PASSWORD_CHANGE_DISABLED_BY_USER);
+    }
+    return PasswordChangeAvailability::kDisabledByUser;
   }
 
   if (!pref_service_->GetInteger(

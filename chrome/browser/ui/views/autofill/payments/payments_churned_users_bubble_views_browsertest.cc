@@ -166,6 +166,55 @@ IN_PROC_BROWSER_TEST_P(PaymentsChurnedUsersBubbleViewsBrowserTest,
       PaymentsUiClosedReason::kAccepted, 1);
 }
 
+IN_PROC_BROWSER_TEST_P(
+    PaymentsChurnedUsersBubbleViewsBrowserTest,
+    LogsResultMetrics_Accepted_NoMetricLoggedOnConfirmationBubbleClose) {
+  base::HistogramTester histogram_tester;
+
+  ShowBubble();
+  EXPECT_TRUE(IsBubbleShowing());
+
+  PaymentsChurnedUsersBubbleView* bubble_view = GetBubbleView();
+  ASSERT_TRUE(bubble_view);
+  bubble_view->AcceptDialog();
+
+  // The confirmation bubble will be shown after a short delay, which will close
+  // the original bubble.
+  EXPECT_TRUE(base::test::RunUntil([&]() {
+    AutofillBubbleBase* current_bubble = GetAutofillBubbleView();
+    if (!current_bubble || current_bubble == bubble_view) {
+      return false;
+    }
+
+    // Check that it's the confirmation bubble by verifying its view ID.
+    auto* location_bar_bubble =
+        static_cast<AutofillLocationBarBubble*>(current_bubble);
+    return location_bar_bubble->GetID() ==
+           DialogViewId::
+               SAVE_PAYMENT_METHOD_AND_VIRTUAL_CARD_ENROLL_CONFIRMATION_BUBBLE_VIEWS;
+  }));
+
+  histogram_tester.ExpectUniqueSample(
+      "Autofill.PaymentsChurnedUsersBubble.Result",
+      PaymentsUiClosedReason::kAccepted, 1);
+
+  // Close the confirmation bubble and verify that no new accept metric was
+  // logged.
+  AutofillBubbleBase* current_bubble = GetAutofillBubbleView();
+  ASSERT_TRUE(current_bubble);
+  auto* location_bar_bubble =
+      static_cast<AutofillLocationBarBubble*>(current_bubble);
+  views::test::WidgetDestroyedWaiter destroyed_waiter(
+      location_bar_bubble->GetWidget());
+  location_bar_bubble->GetWidget()->CloseWithReason(
+      views::Widget::ClosedReason::kCloseButtonClicked);
+  destroyed_waiter.Wait();
+
+  histogram_tester.ExpectUniqueSample(
+      "Autofill.PaymentsChurnedUsersBubble.Result",
+      PaymentsUiClosedReason::kAccepted, 1);
+}
+
 IN_PROC_BROWSER_TEST_P(PaymentsChurnedUsersBubbleViewsBrowserTest,
                        LogsResultMetrics_Cancelled) {
   base::HistogramTester histogram_tester;
@@ -254,6 +303,26 @@ IN_PROC_BROWSER_TEST_P(PaymentsChurnedUsersBubbleViewsBrowserTest,
   bubble_view->AcceptDialog();
 
   EXPECT_TRUE(accept_future.Wait());
+
+  // Wait for the confirmation bubble to be shown.
+  EXPECT_TRUE(base::test::RunUntil([&]() {
+    AutofillBubbleBase* current_bubble = GetAutofillBubbleView();
+    if (!current_bubble || current_bubble == bubble_view) {
+      return false;
+    }
+    return true;
+  }));
+
+  // Icon should be visible while confirmation bubble is shown.
+  EXPECT_TRUE(IsIconVisible());
+
+  // Close the confirmation bubble.
+  AutofillBubbleBase* current_bubble = GetAutofillBubbleView();
+  auto* location_bar_bubble =
+      static_cast<AutofillLocationBarBubble*>(current_bubble);
+  location_bar_bubble->GetWidget()->CloseWithReason(
+      views::Widget::ClosedReason::kCloseButtonClicked);
+
   EXPECT_TRUE(base::test::RunUntil([&]() { return !IsIconVisible(); }));
 }
 
@@ -295,6 +364,44 @@ IN_PROC_BROWSER_TEST_P(PaymentsChurnedUsersBubbleViewsBrowserTest,
       views::Widget::ClosedReason::kCloseButtonClicked);
 
   EXPECT_TRUE(closed_future.Wait());
+  EXPECT_FALSE(IsIconVisible());
+}
+
+IN_PROC_BROWSER_TEST_P(PaymentsChurnedUsersBubbleViewsBrowserTest,
+                       NavigatingAwayHidesIcon) {
+  ShowBubble();
+  EXPECT_TRUE(IsIconVisible());
+
+  // Navigate to a new page.
+  EXPECT_TRUE(
+      ui_test_utils::NavigateToURL(browser(), GURL("chrome://version/")));
+
+  EXPECT_FALSE(IsIconVisible());
+}
+
+IN_PROC_BROWSER_TEST_P(PaymentsChurnedUsersBubbleViewsBrowserTest,
+                       NavigatingAwayHidesIconWhileConfirmationBubbleIsShown) {
+  ShowBubble();
+
+  PaymentsChurnedUsersBubbleView* bubble_view = GetBubbleView();
+  ASSERT_TRUE(bubble_view);
+  bubble_view->AcceptDialog();
+
+  // Wait for the confirmation bubble to be shown.
+  EXPECT_TRUE(base::test::RunUntil([&]() {
+    AutofillBubbleBase* current_bubble = GetAutofillBubbleView();
+    if (!current_bubble || current_bubble == bubble_view) {
+      return false;
+    }
+    return true;
+  }));
+
+  EXPECT_TRUE(IsIconVisible());
+
+  // Navigate to a new page.
+  EXPECT_TRUE(
+      ui_test_utils::NavigateToURL(browser(), GURL("chrome://version/")));
+
   EXPECT_FALSE(IsIconVisible());
 }
 

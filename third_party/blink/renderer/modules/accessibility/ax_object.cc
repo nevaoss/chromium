@@ -80,6 +80,7 @@
 #include "third_party/blink/renderer/core/html/forms/html_select_element.h"
 #include "third_party/blink/renderer/core/html/forms/html_text_area_element.h"
 #include "third_party/blink/renderer/core/html/forms/text_control_element.h"
+#include "third_party/blink/renderer/core/html/html_area_element.h"
 #include "third_party/blink/renderer/core/html/html_body_element.h"
 #include "third_party/blink/renderer/core/html/html_dialog_element.h"
 #include "third_party/blink/renderer/core/html/html_element.h"
@@ -2988,6 +2989,50 @@ bool AXObject::IsValidationMessage() const {
   return false;
 }
 
+namespace {
+
+// Returns the ARIA role implied for a focusgroup item, or kUnknown when no
+// role should be inferred. This encapsulates the accessibility policy for
+// focusgroup item-role inference:
+//  * Non-control inferred roles preserve explicit ARIA and richer native
+//    semantics.
+//  * The owner's role must match the behavior's minimum ARIA role, so items of
+//    an owner with a non-implied explicit role are left untouched.
+//  * The inferred role is the behavior's item minimum ARIA role, which is
+//    kUnknown for behaviors whose items do not map to an ARIA role.
+// Callers own the AXObject/cache lookups needed to supply |owner_role|.
+ax::mojom::blink::Role InferFocusgroupItemRole(
+    const FocusgroupData& owner_data,
+    ax::mojom::blink::Role owner_role,
+    ax::mojom::blink::Role item_raw_aria_role,
+    ax::mojom::blink::Role item_native_role) {
+  // Only infer item roles when the owner's role matches the behavior's minimum
+  // ARIA role. We don't want to infer roles for focusgroup items within a
+  // focusgroup owner that has an explicit role set to something other than the
+  // behavior's minimum.
+  if (owner_role != focusgroup::FocusgroupMinimumAriaRole(owner_data)) {
+    return ax::mojom::blink::Role::kUnknown;
+  }
+
+  // Not all focusgroup behaviors map their items to an ARIA role.
+  const ax::mojom::blink::Role implied_role =
+      focusgroup::FocusgroupItemMinimumAriaRole(owner_data);
+
+  // Non-control roles describe content and must not replace author-supplied or
+  // native semantics. Control roles may replace button semantics as described
+  // at the call site.
+  if (!ui::IsControl(implied_role) &&
+      (item_raw_aria_role != ax::mojom::blink::Role::kUnknown ||
+       (item_native_role != ax::mojom::blink::Role::kGenericContainer &&
+        item_native_role != ax::mojom::blink::Role::kUnknown))) {
+    return ax::mojom::blink::Role::kUnknown;
+  }
+
+  return implied_role;
+}
+
+}  // namespace
+
 ax::mojom::blink::Role AXObject::ComputeFinalRoleForSerialization() const {
   // Focusgroup child implied role inference:
   // Applies only when:
@@ -3033,21 +3078,13 @@ ax::mojom::blink::Role AXObject::ComputeFinalRoleForSerialization() const {
     if (focusgroup_owner) {
       AXObject* focusgroup_owner_axobj = AXObjectCache().Get(focusgroup_owner);
       if (focusgroup_owner_axobj) {
-        // Check to see if the focusgroup owner's role matches the behavior's
-        // minimum ARIA role. We don't want to infer roles for focusgroup items
-        // within a focusgroup owner that has an explicit role set to something
-        // other than thek behavior's minimum.
-        if (focusgroup_owner_axobj->RoleValue() ==
-            focusgroup::FocusgroupMinimumAriaRole(
-                focusgroup_owner->GetFocusgroupData())) {
-          ax::mojom::blink::Role implied_role =
-              focusgroup::FocusgroupItemMinimumAriaRole(
-                  focusgroup_owner->GetFocusgroupData());
-          // Not all focusgroup behaviors will have their items map to an ARIA
-          // role.
-          if (implied_role != ax::mojom::blink::Role::kUnknown) {
-            return implied_role;
-          }
+        // Orchestrate the AX/cache lookups here and delegate the inference
+        // policy to InferFocusgroupItemRole().
+        const ax::mojom::blink::Role implied_role = InferFocusgroupItemRole(
+            focusgroup_owner->GetFocusgroupData(),
+            focusgroup_owner_axobj->RoleValue(), RawAriaRole(), role_);
+        if (implied_role != ax::mojom::blink::Role::kUnknown) {
+          return implied_role;
         }
       }
     }
@@ -4984,6 +5021,19 @@ bool AXObject::ComputeIsHiddenViaStyle(const ComputedStyle* style) {
   if (style) {
     if (GetLayoutObject()) {
       return style->Visibility() != EVisibility::kVisible;
+    }
+
+    // <area> is display:none by default, in which case it has no box of its
+    // own, but it is rendered as part of the <img> that uses its <map>. Its
+    // visibility is the image's.
+    if (const auto* area = DynamicTo<HTMLAreaElement>(GetNode());
+        area && RuntimeEnabledFeatures::HTMLAreaElementDisplayNoneEnabled()) {
+      HTMLImageElement* image = area->ImageElement();
+      const LayoutObject* image_layout_object =
+          image ? image->GetLayoutObject() : nullptr;
+      return !image_layout_object ||
+             image_layout_object->StyleRef().Visibility() !=
+                 EVisibility::kVisible;
     }
 
     // TODO(crbug.com/1286465): It's not consistent to only check
@@ -7558,17 +7608,13 @@ void AXObject::GetRelativeBounds(AXObject** out_container,
         gfx::Rect frame_rect;
         LocalFrameView* reference_view =
             AXObjectCache().GetDocument().GetFrame()->View();
+        Element* owner_element = chrome_client.GetPopupClientOwnerElement();
+        LocalFrame* owner_frame = owner_element->GetDocument().GetFrame();
         gfx::Rect reference_frame_rect;
         if (RuntimeEnabledFeatures::AvoidEmbeddedContentViewLocationEnabled()) {
           frame_rect = view->FrameToScreen(gfx::Rect(view->Size()));
-          // TODO(crbug.com/398893928): Remove the conditions for color input
-          // elements because the logic applies to all popups.
-          if (auto* input_element = DynamicTo<HTMLInputElement>(
-                  chrome_client.GetPopupClientOwnerElement())) {
-            if (input_element->FormControlType() ==
-                FormControlType::kInputColor) {
-              reference_view = input_element->GetDocument().GetFrame()->View();
-            }
+          if (owner_frame && owner_frame->View()) {
+            reference_view = owner_frame->View();
           }
           reference_frame_rect =
               reference_view->FrameToScreen(gfx::Rect(reference_view->Size()));
@@ -7576,19 +7622,10 @@ void AXObject::GetRelativeBounds(AXObject** out_container,
           frame_rect = view->FrameToScreen(view->DeprecatedFrameRect());
           reference_frame_rect = reference_view->FrameToScreen(
               reference_view->DeprecatedFrameRect());
-          // If a color picker popup is found inside of an iframe, account for
-          // the distance from the current frame to the parent frame.
-          auto* owner_element = chrome_client.GetPopupClientOwnerElement();
-          if (auto* input_element =
-                  DynamicTo<HTMLInputElement>(owner_element)) {
-            if (input_element->FormControlType() ==
-                FormControlType::kInputColor) {
-              gfx::Point origin(reference_frame_rect.origin());
-              owner_element->GetDocument()
-                  .GetFrame()
-                  ->DeprecatedAdjustOffsetByAncestorFrames(&origin);
-              reference_frame_rect.set_origin(origin);
-            }
+          if (owner_frame) {
+            gfx::Point origin(reference_frame_rect.origin());
+            owner_frame->DeprecatedAdjustOffsetByAncestorFrames(&origin);
+            reference_frame_rect.set_origin(origin);
           }
         }
 

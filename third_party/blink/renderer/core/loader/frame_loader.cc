@@ -68,6 +68,7 @@
 #include "third_party/blink/public/web/web_navigation_type.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_controller.h"
 #include "third_party/blink/renderer/bindings/core/v8/serialization/serialized_script_value.h"
+#include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/document_init.h"
 #include "third_party/blink/renderer/core/dom/element.h"
 #include "third_party/blink/renderer/core/dom/ignore_opens_during_unload_count_incrementer.h"
@@ -719,9 +720,6 @@ void FrameLoader::StartNavigation(FrameLoadRequest& request,
                url.GetString().Utf8(), "load_type",
                static_cast<int>(frame_load_type));
 
-  resource_request.SetHasUserGesture(
-      LocalFrame::HasTransientUserActivation(frame_.Get()));
-
   if (!AllowRequestForThisFrame(request))
     return;
 
@@ -913,17 +911,6 @@ void FrameLoader::StartNavigation(FrameLoadRequest& request,
   // See wpt/url/javascript-urls.window.js test for the standard compliant
   // behaviors.
   if (ProtocolIsJavaScript(url.GetString()) && !url.IsValid()) {
-    return;
-  }
-
-  // A sandboxed iframe without `allow-popups` should not be able to
-  // open a new browsing context by emulating a user gesture in JS.
-  // (e.g. Ctrl+click).
-  if (request.GetNavigationPolicy() != kNavigationPolicyCurrentTab &&
-      request.GetTriggeringEventInfo() ==
-          mojom::blink::TriggeringEventInfo::kFromUntrustedEvent &&
-      frame_->GetSecurityContext()->IsSandboxed(
-          network::mojom::blink::WebSandboxFlags::kPopups)) {
     return;
   }
 
@@ -1276,7 +1263,8 @@ void FrameLoader::CommitNavigation(
     // DocumentLoader from reporting an error when detaching the pre-XSLT
     // document.
     if (commit_reason == CommitReason::kXSLT && document_loader_) {
-      DCHECK(XSLTProcessor::IsXSLTEnabled(nullptr));
+      DCHECK(
+          XSLTProcessor::IsXSLTEnabled(frame_ ? frame_->DomWindow() : nullptr));
       document_loader_->SetSentDidFinishLoad();
       previous_document_loader_for_xslt_ = document_loader_.Get();
     }
@@ -1344,7 +1332,8 @@ void FrameLoader::CommitNavigation(
       std::move(policy_container), std::move(extra_data));
 
   if (previous_document_loader_for_xslt_) {
-    DCHECK(XSLTProcessor::IsXSLTEnabled(nullptr));
+    DCHECK(
+        XSLTProcessor::IsXSLTEnabled(frame_ ? frame_->DomWindow() : nullptr));
     new_document_loader->InheritXsltUseCountersFrom(
         previous_document_loader_for_xslt_);
     previous_document_loader_for_xslt_ = nullptr;

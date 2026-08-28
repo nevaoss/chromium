@@ -44,6 +44,7 @@
 #include "chrome/browser/profiles/profile_key.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/ssl/ask_before_http_dialog_controller.h"
+#include "chrome/browser/ssl/security_state_event_observer.h"
 #include "chrome/browser/sync/sessions/sync_sessions_router_tab_helper.h"
 #include "chrome/browser/sync/sessions/sync_sessions_web_contents_router_factory.h"
 #include "chrome/browser/sync/sync_service_factory.h"
@@ -62,7 +63,6 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/commerce/commerce_ui_tab_helper.h"
 #include "chrome/browser/ui/context_highlight/context_highlight_tab_feature.h"
-#include "chrome/browser/ui/cookie_controls/roll_back_mode_b_infobar_controller.h"
 #include "chrome/browser/ui/focus_tab_after_navigation_helper.h"
 #include "chrome/browser/ui/lens/lens_overlay_controller.h"
 #include "chrome/browser/ui/lens/lens_search_controller.h"
@@ -75,6 +75,7 @@
 #include "chrome/browser/ui/performance_controls/tab_resource_usage_tab_helper.h"
 #include "chrome/browser/ui/read_anything/read_anything_controller.h"
 #include "chrome/browser/ui/read_anything/read_anything_side_panel_controller.h"
+#include "chrome/browser/ui/search_engine_choice/search_engine_choice_tab_helper.h"
 #include "chrome/browser/ui/side_panel/side_panel_registry.h"
 #include "chrome/browser/ui/tab_ui_helper.h"
 #include "chrome/browser/ui/tabs/alert/tab_alert_controller.h"
@@ -325,9 +326,6 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
                   ->GetImageFetcher(
                       image_fetcher::ImageFetcherConfig::kNetworkOnly),
               side_panel_registry_.get());
-
-      roll_back_mode_b_infobar_controller_ =
-          std::make_unique<RollBackModeBInfoBarController>(tab.GetContents());
     }
 
     contextual_cueing_helper_ = glic::ContextualCueingHelper::MaybeCreate(&tab);
@@ -504,6 +502,9 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
     web_app::WebAppTabHelper::Create(&tab, tab.GetContents());
   }
 
+  security_state_event_observer_ =
+      std::make_unique<SecurityStateEventObserver>(tab.GetContents());
+
   sync_sessions_router_ =
       std::make_unique<sync_sessions::SyncSessionsRouterTabHelper>(
           tab.GetContents(),
@@ -517,6 +518,11 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
 
   zero_suggest_prefetch_tab_helper_ =
       std::make_unique<ZeroSuggestPrefetchTabHelper>(tab.GetContents());
+
+  if (SearchEngineChoiceTabHelper::IsHelperNeeded()) {
+    search_engine_choice_tab_helper_ =
+        std::make_unique<SearchEngineChoiceTabHelper>(tab.GetContents());
+  }
 
   from_gws_navigation_and_keep_alive_request_observer_ =
       FromGWSNavigationAndKeepAliveRequestObserver::MaybeCreate(
@@ -715,6 +721,14 @@ void TabFeatures::WillDiscardContents(tabs::TabInterface* tab,
   zero_suggest_prefetch_tab_helper_ =
       std::make_unique<ZeroSuggestPrefetchTabHelper>(new_contents);
 
+  security_state_event_observer_ =
+      std::make_unique<SecurityStateEventObserver>(new_contents);
+
+  if (search_engine_choice_tab_helper_) {
+    search_engine_choice_tab_helper_ =
+        std::make_unique<SearchEngineChoiceTabHelper>(new_contents);
+  }
+
   sync_sessions_router_.reset();
   sync_sessions_router_ =
       std::make_unique<sync_sessions::SyncSessionsRouterTabHelper>(
@@ -728,12 +742,6 @@ void TabFeatures::WillDiscardContents(tabs::TabInterface* tab,
     permission_indicators_tab_data_ =
         std::make_unique<permissions::PermissionIndicatorsTabData>(
             new_contents);
-  }
-
-  if (roll_back_mode_b_infobar_controller_) {
-    roll_back_mode_b_infobar_controller_.reset();
-    roll_back_mode_b_infobar_controller_ =
-        std::make_unique<RollBackModeBInfoBarController>(new_contents);
   }
 
   if (bookmarkbar_preload_pipeline_manager_) {

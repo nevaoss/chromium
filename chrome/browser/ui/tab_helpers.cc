@@ -71,7 +71,6 @@
 #include "chrome/browser/sessions/session_tab_helper_factory.h"
 #include "chrome/browser/site_protection/site_protection_metrics_observer.h"
 #include "chrome/browser/ssl/chrome_security_blocking_page_factory.h"
-#include "chrome/browser/ssl/chrome_security_state_tab_helper.h"
 #include "chrome/browser/ssl/connection_help_tab_helper.h"
 #include "chrome/browser/ssl/https_only_mode_tab_helper.h"
 #include "chrome/browser/storage_access_api/storage_access_api_service_factory.h"
@@ -194,7 +193,6 @@
 #include "chrome/browser/ui/read_anything/read_anything_side_panel_controller.h"
 #include "chrome/browser/ui/sad_tab_helper.h"
 #include "chrome/browser/ui/search/search_tab_helper.h"
-#include "chrome/browser/ui/search_engine_choice/search_engine_choice_tab_helper.h"
 #include "chrome/browser/ui/sync/browser_synced_tab_delegate.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/uma_browsing_activity_observer.h"
@@ -408,7 +406,6 @@ void TabHelpers::AttachTabHelpers(WebContents* web_contents,
   ChromeRLZTrackerWebContentsObserver::CreateForWebContentsIfNeeded(
       web_contents);
 #endif
-  ChromeSecurityStateTabHelper::CreateForWebContents(web_contents);
   ChromeTranslateClient::CreateForWebContents(web_contents);
 #if BUILDFLAG(IS_ANDROID)
   // Register LanguagePersistedTabDataAndroid for non-incognito tabs to
@@ -736,10 +733,6 @@ void TabHelpers::AttachTabHelpers(WebContents* web_contents,
   // created, which is gated by enable_browser_autofill.
   if (enable_browser_autofill) {
     ManagePasswordsUIController::CreateForWebContents(web_contents);
-  }
-
-  if (SearchEngineChoiceTabHelper::IsHelperNeeded()) {
-    SearchEngineChoiceTabHelper::CreateForWebContents(web_contents);
   }
 
   if (!webui_browser::IsWebUIBrowserEnabled()) {

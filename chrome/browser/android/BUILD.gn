@@ -56,9 +56,9 @@ source_set("tabs_impl") {
     "//chrome/browser/ui/side_panel/android",
     "//chrome/browser/ui/webui:webui_util",
 
-    # TODO(crbug.com/489548570): Remove "side_panel_container/internal:android"
+    # TODO(crbug.com/489548570): Remove "side_panel/internal/android"
     # since it's for the tab-scoped dev feature.
-    "//chrome/browser/ui/side_panel_container/internal:android",
+    "//chrome/browser/ui/side_panel/internal/android",
     "//components/external_intents/android",
     "//components/favicon/content",
     "//components/lens",
@@ -406,6 +406,7 @@ if (is_android) {
       "tab_storage_packager_android.h",
       "tab_web_contents_delegate_android.cc",
       "tab_web_contents_delegate_android.h",
+      "tabbed_startup_window_policy_delegate_bridge.cc",
       "thin_webview/chrome_thin_webview_initializer.cc",
       "thin_webview/chrome_thin_webview_initializer.h",
       "trusted_cdn.cc",
@@ -799,6 +800,7 @@ if (is_android) {
       "//chrome/browser/predictors",
       "//chrome/browser/prefs",
       "//chrome/browser/prefs:impl",
+      "//chrome/browser/prefs:util",
       "//chrome/browser/preloading",
       "//chrome/browser/preloading:prefs",
       "//chrome/browser/preloading/new_tab_page_preload",

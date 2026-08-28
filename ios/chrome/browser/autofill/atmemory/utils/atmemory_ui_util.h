@@ -21,6 +21,11 @@ NSString* GetAtMemoryGranularFillTitle(
 NSArray<AtMemoryGranularFillItem*>* AtMemoryGranularFillItemsForSearchResult(
     const autofill::MemorySearchResult& result);
 
+// Returns the accessibility identifier for the granular fill cell
+// corresponding to `attribute_name`.
+NSString* GetAtMemoryGranularFillCellAccessibilityIdentifier(
+    NSString* attribute_name);
+
 // Returns the accessibility identifier for the granular fill attribute label
 // corresponding to `attribute_name`.
 NSString* GetAtMemoryGranularFillAttributeLabelAccessibilityIdentifier(
@@ -30,5 +35,14 @@ NSString* GetAtMemoryGranularFillAttributeLabelAccessibilityIdentifier(
 // corresponding to `attribute_name`.
 NSString* GetAtMemoryGranularFillChipButtonAccessibilityIdentifier(
     NSString* attribute_name);
+
+// Returns the accessibility identifier for the search result cell
+// corresponding to `title`.
+NSString* GetAtMemorySearchResultCellAccessibilityIdentifier(NSString* title);
+
+// Returns the accessibility identifier for the search result's info button
+// corresponding to `title`.
+NSString* GetAtMemorySearchResultInfoButtonAccessibilityIdentifier(
+    NSString* title);
 
 #endif  // IOS_CHROME_BROWSER_AUTOFILL_ATMEMORY_UTILS_ATMEMORY_UI_UTIL_H_

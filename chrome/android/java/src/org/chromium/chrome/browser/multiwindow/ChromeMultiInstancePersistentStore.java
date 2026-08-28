@@ -433,7 +433,7 @@ class ChromeMultiInstancePersistentStore extends MultiInstancePersistentStore {
     }
 
     static void clearLastSessionExitType() {
-        if (sData != null) {
+        if (sData != null && sData.hasLastSessionExitType()) {
             sData = sData.toBuilder().clearLastSessionExitType().build();
             saveProto();
         }
@@ -441,12 +441,31 @@ class ChromeMultiInstancePersistentStore extends MultiInstancePersistentStore {
 
     static int readRestoreOnStartupPrefValue() {
         assert sData != null;
-        return sData.getRestoreOnStartupPrefValue();
+        return sData.hasRestoreOnStartupPrefValue()
+                ? sData.getRestoreOnStartupPrefValue()
+                : TabbedStartupWindowPolicyDelegate.PREF_UNSET;
     }
 
     static void writeRestoreOnStartupPrefValue(int value) {
         assert sData != null;
         sData = sData.toBuilder().setRestoreOnStartupPrefValue(value).build();
+        saveProto();
+    }
+
+    static @Nullable List<String> readRestoreOnStartupUrls() {
+        assert sData != null;
+        return sData.getRestoreOnStartupUrlsCount() == 0
+                ? null
+                : sData.getRestoreOnStartupUrlsList();
+    }
+
+    static void writeRestoreOnStartupUrls(@Nullable List<String> urls) {
+        assert sData != null;
+        var builder = sData.toBuilder().clearRestoreOnStartupUrls();
+        if (urls != null) {
+            builder.addAllRestoreOnStartupUrls(urls);
+        }
+        sData = builder.build();
         saveProto();
     }
 

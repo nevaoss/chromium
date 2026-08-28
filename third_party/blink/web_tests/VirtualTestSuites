@@ -134,7 +134,7 @@
       "fullscreen"
     ],
     "args": [
-      "--enable-features=OverlayScrollbar",
+      "--enable-features=OverlayScrollbar:mode/overlay",
       "--enable-threaded-compositing",
       "--enable-prefer-compositing-to-lcd-text",
       "--enable-overscroll-notifications",
@@ -201,6 +201,39 @@
       "--web-settings-for-testing=autoplayPolicy:2"
     ],
     "expires": "never"
+  },
+  {
+    "prefix": "area-display-inline",
+    "owners": [
+      "helmut@januschka.com"
+    ],
+    "platforms": [
+      "Linux"
+    ],
+    "bases": [
+      "accessibility/image-map1.html",
+      "external/wpt/css/css-break/area-crash.html",
+      "external/wpt/css/css-break/area-in-inline-crash.html",
+      "external/wpt/css/css-multicol/crashtests/oof-in-area-001.html",
+      "external/wpt/css/css-multicol/crashtests/oof-in-area-002.html",
+      "external/wpt/css/css-multicol/crashtests/oof-in-area-003.html",
+      "external/wpt/css/css-multicol/crashtests/oof-in-area-004.html",
+      "external/wpt/css/css-multicol/crashtests/oof-in-area-005.html",
+      "external/wpt/html/rendering/non-replaced-elements/hidden-elements.html",
+      "external/wpt/html/semantics/embedded-content/the-area-element",
+      "external/wpt/html/semantics/interestfor/interestfor-area-event-dispatch.tentative.html",
+      "external/wpt/html/semantics/interestfor/interestfor-pseudo-element-appearance.tentative.html",
+      "fast/css/area-computedStyle.html",
+      "fast/dom/HTMLAreaElement",
+      "fast/spatial-navigation/snav-imagemap-area-not-focusable.html",
+      "images/imagemap-circle-focus-ring.html",
+      "images/imagemap-focus-ring.html",
+      "images/imagemap-polygon-focus-ring.html"
+    ],
+    "args": [
+      "--disable-blink-features=HTMLAreaElementDisplayNone"
+    ],
+    "expires": "Aug 1, 2027"
   },
   {
     "prefix": "backface-visibility-interop",
@@ -1166,27 +1199,6 @@
     "expires": "Feb 1, 2027"
   },
   {
-    "prefix": "fedcm-error-attribute",
-    "platforms": [
-      "Linux",
-      "Mac",
-      "Win"
-    ],
-    "bases": [
-      "external/wpt/fedcm/fedcm-error-attribute"
-    ],
-    "exclusive_tests": "ALL",
-    "args": [
-      "--enable-features=FedCmErrorAttribute"
-    ],
-    "owners": [
-      "npm@chromium.org",
-      "cbiesinger@chromium.org",
-      "goto@chromium.org"
-    ],
-    "expires": "Aug 1, 2026"
-  },
-  {
     "prefix": "fenced-frame-mparch",
     "owners": [
       "shivanisha@chromium.org",
@@ -1275,7 +1287,7 @@
       "virtual/overlay-scrollbar/overlay-scrollbar-smoke-test.html"
     ],
     "args": [
-      "--enable-features=OverlayScrollbar",
+      "--enable-features=OverlayScrollbar:mode/overlay",
       "--enable-threaded-compositing",
       "--disable-features=RasterInducingScroll"
     ],
@@ -1938,6 +1950,29 @@
     "expires": "June 1, 2027"
   },
   {
+    "prefix": "lna-bg-fetch",
+    "platforms": [
+      "Linux",
+      "Mac",
+      "Win"
+    ],
+    "bases": [
+      "external/wpt/fetch/local-network-access"
+    ],
+    "exclusive_tests": [
+      "external/wpt/fetch/local-network-access/service-worker-background-fetch.tentative.https.html"
+    ],
+    "args": [
+      "--enable-features=BackgroundFetchLocalNetworkAccess",
+      "--disable-features=RestrictBackgroundFetchFromServiceWorker"
+    ],
+    "owners": [
+      "cthomp@chromium.org",
+      "chrome-secure-web-and-net@chromium.org"
+    ],
+    "expires": "Dec 1, 2026"
+  },
+  {
     "prefix": "log-dns-prefetch-and-preconnect",
     "owners": [
       "leimy@google.com"
@@ -2173,7 +2208,7 @@
     ],
     "bases": [],
     "args": [
-      "--disable-features=OverlayScrollbar"
+      "--enable-features=OverlayScrollbar:mode/classic"
     ],
     "expires": "never",
     "owners": [
@@ -2403,7 +2438,7 @@
       "external/wpt/css/css-ui/pointer-events-no-scrollbars-002.html"
     ],
     "args": [
-      "--enable-features=OverlayScrollbar"
+      "--enable-features=OverlayScrollbar:mode/overlay"
     ],
     "expires": "never",
     "owners": [
@@ -2500,6 +2535,25 @@
     ],
     "args": [
       "--enable-features=PrefetchOffTheMainThread,PrefetchOffTheMainThreadForceForTesting"
+    ],
+    "expires": "Dec 31, 2026"
+  },
+  {
+    "prefix": "prefetch-force-off-the-main-thread-wculf",
+    "owners": [
+      "hiroshige@chromium.org",
+      "taiyo@chromium.org"
+    ],
+    "platforms": [
+      "Linux",
+      "Mac",
+      "Win"
+    ],
+    "bases": [
+      "external/wpt/speculation-rules/prefetch/"
+    ],
+    "args": [
+      "--enable-features=PrefetchOffTheMainThread:check_will_create_url_loader_factory/true,PrefetchOffTheMainThreadForceForTesting"
     ],
     "expires": "Dec 31, 2026"
   },
@@ -2984,7 +3038,7 @@
     "expires": "Apr 1, 2027"
   },
   {
-    "prefix": "speculation-rules-renderer-side-heuristics",
+    "prefix": "speculation-rules-browser-side-heuristics",
     "platforms": [
       "Linux",
       "Mac",
@@ -2992,12 +3046,11 @@
     ],
     "bases": [
       "external/wpt/speculation-rules/prefetch",
-      "external/wpt/speculation-rules/speculation-tags",
-      "external/wpt/speculation-rules/speculation-measurement"
+      "external/wpt/speculation-rules/speculation-tags"
     ],
     "exclusive_tests": [],
     "args": [
-      "--enable-features=SpeculationRulesRendererSideHeuristics"
+      "--disable-features=SpeculationRulesRendererSideHeuristics"
     ],
     "owners": [
       "yoavweiss@chromium.org",
@@ -4770,7 +4823,8 @@
       "inspector-protocol/debugger/unpause-after-xslt-commit.js",
       "http/tests/origin_trials/xslt-deprecation-trial-disabled.html",
       "http/tests/origin_trials/xslt-deprecation-trial-enabled.html",
-      "fast/parser/xml-cap-alert-xslt-use-counter.html"
+      "fast/parser/xml-cap-alert-xslt-use-counter.html",
+      "fast/parser/xml-cap-alert-xslt-enabled.html"
     ],
     "exclusive_tests": [
       "http/tests/xsl/xslt/xsltpi-issue.js",
@@ -4796,7 +4850,8 @@
       "http/tests/xsl/xslt",
       "inspector-protocol/debugger/unpause-after-xslt-commit.js",
       "http/tests/origin_trials/xslt-deprecation-trial-disabled.html",
-      "http/tests/origin_trials/xslt-deprecation-trial-enabled.html"
+      "http/tests/origin_trials/xslt-deprecation-trial-enabled.html",
+      "fast/parser/xml-cap-alert-xslt-enabled.html"
     ],
     "args": ["--disable-blink-features=XSLTSpecialTrial"],
     "owners": [
@@ -4866,27 +4921,6 @@
     ],
     "args": [
       "--enable-features=DurableMessages:max_global_buffer_size/20000"
-    ],
-    "expires": "Dec 31, 2026"
-  },
-  {
-    "prefix": "web-audio-configurable-render-quantum",
-    "owners": [
-      "mjwilson@chromium.org",
-      "web-audio-team@google.com"
-    ],
-    "platforms": [
-      "Linux",
-      "Mac",
-      "Win",
-      "Android"
-    ],
-    "bases": [
-      "webaudio/BiquadFilter/biquad-render-size-hint.html",
-      "webaudio/WaveShaper/waveshaper-rendersizehint.html"
-    ],
-    "args": [
-      "--enable-features=WebAudioConfigurableRenderQuantum"
     ],
     "expires": "Dec 31, 2026"
   },
@@ -5082,8 +5116,9 @@
       "Win"
     ],
     "bases": [
-      "external/wpt/html/canvas/element/manual/draw-element-image/css-transform-on-div.tentative.html"
+      "wpt_internal/html/canvas/drawElementImage/css-transform-on-div-disabled.html"
     ],
+    "exclusive_tests": "ALL",
     "args": [
       "--disable-blink-features=ElementCanvasTransform"
     ],

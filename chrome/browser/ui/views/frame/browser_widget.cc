@@ -56,13 +56,11 @@
 
 #if BUILDFLAG(IS_WIN)
 #include "base/feature_list.h"
-#include "chrome/browser/win/mica_titlebar.h"
 #include "content/public/browser/desktop_capture_pip_utils.h"
 #include "media/base/media_switches.h"
 #include "media/capture/capture_switches.h"
 #include "ui/wm/core/window_properties.h"
 #endif
-
 namespace {
 
 // Helper to track whether a ThemeChange event has been received by the widget.
@@ -263,6 +261,10 @@ bool BrowserWidget::HandleKeyboardEvent(
 }
 
 void BrowserWidget::UserChangedTheme(BrowserThemeChangeType theme_change_type) {
+  if (base::FeatureList::IsEnabled(features::kThemeChangeOptimization)) {
+    ResetLastColorProviderKey();
+  }
+
   // kWebAppTheme is triggered by web apps and will only change colors, not the
   // frame type; just refresh the theme on all views in the browser window.
   if (theme_change_type == BrowserThemeChangeType::kWebAppTheme) {
@@ -285,13 +287,15 @@ void BrowserWidget::UserChangedTheme(BrowserThemeChangeType theme_change_type) {
     // When the browser theme changes, the NativeTheme may also change.
     SelectNativeTheme();
 
-    // Browser theme changes are directly observed by the BrowserWidget. However
-    // the other Widgets in the frame's hierarchy may inherit this new theme
-    // information in their ColorProviderKeys and thus should also be forwarded
-    // theme change notifications.
-    Widget::Widgets widgets = GetAllOwnedWidgets(GetNativeView());
-    for (Widget* widget : widgets) {
-      widget->ThemeChanged();
+    if (!base::FeatureList::IsEnabled(features::kThemeChangeOptimization)) {
+      // Browser theme changes are directly observed by the BrowserWidget.
+      // However the other Widgets in the frame's hierarchy may inherit this new
+      // theme information in their ColorProviderKeys and thus should also be
+      // forwarded theme change notifications.
+      Widget::Widgets widgets = GetAllOwnedWidgets(GetNativeView());
+      for (Widget* widget : widgets) {
+        widget->ThemeChanged();
+      }
     }
   }
 
@@ -564,17 +568,9 @@ bool BrowserWidget::RegenerateFrameOnThemeChange(
   // System and user theme changes can both change frame buttons, so the frame
   // always needs to be regenerated on Linux.
   need_regenerate = true;
-#endif
-
-#if BUILDFLAG(IS_WIN)
-  // On Windows, DWM transition does not performed for a frame regeneration in
-  // fullscreen mode, so do a lighweight theme change to refresh a bookmark bar
-  // on new tab. (see crbug.com/40646694)
-  // With Mica, toggling titlebar accent colors in the native theme needs a
-  // frame regen to switch between the system-drawn and custom-drawn titlebars.
+#elif BUILDFLAG(IS_WIN)
   need_regenerate |=
-      (theme_change_type == BrowserThemeChangeType::kBrowserTheme ||
-       SystemTitlebarCanUseMicaMaterial()) &&
+      (theme_change_type == BrowserThemeChangeType::kBrowserTheme) &&
       !IsFullscreen();
 #else
   need_regenerate |= theme_change_type == BrowserThemeChangeType::kBrowserTheme;

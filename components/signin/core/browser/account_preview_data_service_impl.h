@@ -50,7 +50,8 @@ class AccountPreviewDataServiceImpl : public AccountPreviewDataService,
     kRefreshTokenUpdated = 1,
     kRefreshTokenRemoved = 2,
     kRefreshTokenInvalidated = 3,
-    kMaxValue = kRefreshTokenInvalidated,
+    kExternalAppAccountUpdated = 4,
+    kMaxValue = kExternalAppAccountUpdated,
   };
   // LINT.ThenChange(//tools/metrics/histograms/metadata/signin/enums.xml:AccountPreviewFetchTriggerCause)
 
@@ -86,6 +87,8 @@ class AccountPreviewDataServiceImpl : public AccountPreviewDataService,
 #if BUILDFLAG(IS_ANDROID)
   void UpdateExternalAppAccount(
       const std::optional<std::string>& email) override;
+
+  std::optional<GaiaId> GetExternalAppAccountForTesting() const;
 #endif
 
   bool HasActiveFetcherForTesting(const GaiaId& gaia_id) const;
@@ -124,6 +127,7 @@ class AccountPreviewDataServiceImpl : public AccountPreviewDataService,
   void CreateAndStartRepeatingTimer();
   void ResetTimer();
   std::optional<AccountPreviewPreference> ComputePreferredAccount() const;
+  void ComputeAndStorePreferredAccount();
 
   void NotifyBatchBarrierOnFetchCompleted(const GaiaId& gaia_id);
   void MaybeNotifySinglePendingRequests(const GaiaId& gaia_id);
@@ -144,6 +148,15 @@ class AccountPreviewDataServiceImpl : public AccountPreviewDataService,
   // Writing `std::nullopt` as `preference` clears the pref.
   void WritePreferredAccountToPrefs(
       std::optional<AccountPreviewPreference> preference);
+
+#if BUILDFLAG(IS_ANDROID)
+  std::optional<GaiaId> ReadExternalAppAccountFromPrefs() const;
+  void WriteExternalAppAccountToPrefs(const GaiaId& gaia_id,
+                                      base::Time timestamp);
+  void ClearExternalAppAccount();
+  void CleanUpExternalAppAccountIfExpired();
+  void CleanUpExternalAppAccountIfNotOnDevice();
+#endif
 
   raw_ptr<IdentityManager> identity_manager_ = nullptr;
   raw_ptr<syncer::SyncService> sync_service_ = nullptr;

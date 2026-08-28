@@ -110,6 +110,7 @@ Nové záložky sa nebudú môcť ukladať do vášho účtu, kým niektoré neo
 <translation id="322254490661677575">Ak chcete vo svojom účte Google používať a ukladať údaje Chromu, zadajte prístupovú frázu.</translation>
 <translation id="3303503998967553377">Používajte akcie v Chrome v systéme iOS</translation>
 <translation id="3348862487678490430">Pridanie položky čitateľského zoznamu do Chromu</translation>
+<translation id="3350281376951945723">Nastavte si Chrome ako predvolený prehliadač a otvárajte tak odkazy rýchlejšie</translation>
 <translation id="3357827134511189025">Prihlasujte sa uloženými heslami a prístupovými kľúčmi v ľubovoľnej aplikácii pomocou automatického dopĺňania v Chrome</translation>
 <translation id="3360031466389132716">{THRESHOLD,plural, =1{Dochádza k tomu, keď Chrome nepoužívate {THRESHOLD} minútu}few{Dochádza k tomu, keď Chrome nepoužívate {THRESHOLD} minúty}many{Dochádza k tomu, keď Chrome nepoužívate {THRESHOLD} minúty}other{Dochádza k tomu, keď Chrome nepoužívate {THRESHOLD} minút}}</translation>
 <translation id="3367797402528056312">Dokončite nastavovanie Chromu</translation>
@@ -168,6 +169,7 @@ Nové záložky sa nebudú môcť ukladať do vášho účtu, kým niektoré neo
 <translation id="5030102366287574140">Chrome vás môže chrániť pred porušeniami ochrany údajov, nebezpečnými webmi a ďalšími hrozbami.</translation>
 <translation id="5109169629909011627">Zobrazenie záložiek v Chrome</translation>
 <translation id="5112925986883715005">Zobraziť čitateľský zoznam v Chrome</translation>
+<translation id="5116239826668864748">Chrome môžete teraz kedykoľvek použiť klepnutím na odkazy v správach, dokumentoch a ďalších aplikáciách</translation>
 <translation id="5119391094379141756">Vyberte Chrome</translation>
 <translation id="5123188916260706415">Vyhľadávajte hlasom v Chrome</translation>
 <translation id="5162467219239570114">Chrome je zastaraný. Ak v <ph name="BEGIN_LINK" />obchode s aplikáciami<ph name="END_LINK" /> nie je dostupná aktualizácia, vaše zariadenie možno už nepodporuje nové verzie Chromu.</translation>
@@ -378,6 +380,7 @@ Vaše údaje boli zašifrované pomocou prístupovej frázy <ph name="TIME" />. 
 <translation id="9122931302567044771">Znamená to, že Chrome bude zakaždým žiadať o verziu webu pre počítače.</translation>
 <translation id="9176561303811134420">Správa spôsobov platby v Chrome</translation>
 <translation id="9181628561061032322">Otvorí nedávne karty v Chrome.</translation>
+<translation id="924447568950697217">Nastavenie Chromu ako predvoleného prehliadača</translation>
 <translation id="948597495737267756">Otvorí stránku histórie Chromu.</translation>
 <translation id="954347330803595209">Importujte svoje údaje, aby ste mohli používať heslá, históriu, záložky a kreditné karty v Chrome</translation>
 <translation id="97300214378190234">Chrome môžete kedykoľvek použiť klepnutím na odkazy v iných aplikáciách.</translation>

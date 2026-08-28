@@ -48,6 +48,17 @@
 #include "components/contextual_search/footprints/public/drive_disclaimer_controller.h"
 #endif
 
+class DesktopMediaPickerController;
+class DesktopMediaPickerFactory;
+
+namespace content {
+struct DesktopMediaID;
+}
+
+namespace content::desktop_capture {
+class ScreenshotCaptureRequest;
+}
+
 class Profile;
 class ContextualSearchboxTabFaviconHelper;
 class SkBitmap;
@@ -130,6 +141,11 @@ class ContextualSearchboxHandler
 #endif
 {
  public:
+  struct ProcessedScreenshot {
+    std::vector<uint8_t> png_bytes;
+    std::optional<std::string> thumbnail_data_url;
+  };
+
   using RecontextualizeTabCallback = base::OnceCallback<void(bool)>;
 
   explicit ContextualSearchboxHandler(
@@ -186,9 +202,15 @@ class ContextualSearchboxHandler
   void GetDriveDisclaimerStatus(
       GetDriveDisclaimerStatusCallback callback) override;
   void OnDriveDisclaimerAccepted() override;
+  void StartScreenshare(bool prefer_entire_screen,
+                        StartScreenshareCallback callback) override;
 #if !BUILDFLAG(IS_ANDROID)
   bool has_drive_picker_deactivation_blocker_for_testing() const {
     return drive_picker_deactivation_blocker_ != nullptr;
+  }
+  void set_desktop_media_picker_factory_for_testing(
+      DesktopMediaPickerFactory* factory) {
+    picker_factory_ = factory;
   }
 #endif
   void QueryAutocomplete(int32_t query_id,
@@ -278,7 +300,8 @@ class ContextualSearchboxHandler
   void SetActiveToolMode(omnibox::ToolMode tool,
                          bool is_set_by_server) override;
   void RecordToolSelectionAction(omnibox::ToolMode tool) override;
-  void SetActiveModelMode(omnibox::ModelMode model) override;
+  void SetActiveModelMode(omnibox::ModelMode model,
+                          bool is_set_by_aim) override;
   void RecordModelSelectionAction(omnibox::ModelMode model) override;
   void ActivateMetricsFunnel(const std::string& funnel_name) override;
 
@@ -286,6 +309,14 @@ class ContextualSearchboxHandler
       const contextual_search::InputState& state) {
     OnInputStateChanged(state);
   }
+
+#if !BUILDFLAG(IS_ANDROID)
+  bool ShouldOpenInLensSidePanelForTesting(
+      content::WebContents* active_web_contents,
+      contextual_search::ContextualSearchSessionHandle* session_handle) {
+    return ShouldOpenInLensSidePanel(active_web_contents, session_handle);
+  }
+#endif
 
   // Map of context tokens (frontend) to tab IDs (backend);
   // used for determining which tabs to underline based on frontend changes, and
@@ -486,9 +517,26 @@ class ContextualSearchboxHandler
 
 #if !BUILDFLAG(IS_ANDROID)
   void OnDrivePickerDisconnected();
-  void OnDriveDisclaimerChecked(
+  void UpdateDriveConsentPref(
+      drive_picker::DriveDisclaimerController::DisclaimerStatus status);
+  void ShowDrivePicker(
       drive_picker::DriveDisclaimerController::DisclaimerStatus status);
   drive_picker::DriveDisclaimerController* GetDriveDisclaimerController();
+
+  void FallbackToChromeDefaultPicker(bool prefer_entire_screen,
+                                     StartScreenshareCallback callback);
+  void OnChromeDefaultPickerResults(StartScreenshareCallback callback,
+                                    const std::string& err,
+                                    content::DesktopMediaID source);
+  void CaptureAndUploadScreenshot(content::DesktopMediaID source,
+                                  StartScreenshareCallback callback);
+  void OnScreenshotCaptured(StartScreenshareCallback callback,
+                            const SkBitmap& bitmap);
+  void OnScreenshotRequestCreated(
+      std::unique_ptr<content::desktop_capture::ScreenshotCaptureRequest>
+          request);
+  void OnScreenshotProcessed(StartScreenshareCallback callback,
+                             ProcessedScreenshot result);
 
   mojo::Receiver<drive_picker_host::mojom::DrivePickerResultHandler>
       drive_picker_result_handler_receiver_{this};
@@ -501,6 +549,12 @@ class ContextualSearchboxHandler
   // Keeps the AIM popup open while the Google Drive picker is active.
   std::unique_ptr<OmniboxPopupDeactivationBlocker>
       drive_picker_deactivation_blocker_;
+
+  std::unique_ptr<DesktopMediaPickerController> screenshare_picker_controller_;
+  raw_ptr<DesktopMediaPickerFactory> picker_factory_ = nullptr;
+  std::unique_ptr<content::desktop_capture::ScreenshotCaptureRequest>
+      active_screenshot_request_;
+  bool is_capturing_ = false;
 #endif
 
   OnDriveUploadClickedCallback drive_upload_click_callback_;

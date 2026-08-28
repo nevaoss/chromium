@@ -101,6 +101,8 @@ struct AutocompleteMatch {
   string type;  // Result of AutocompleteMatchType::ToString().
   mojo_base.mojom.String16 remove_button_a11y_label;
   bool swap_contents_and_description;
+  // Whether to show the description for a contextual match.
+  bool show_contextual_description;
   // ID of the group the suggestion belongs to. 0 if it does not belong to any.
   int32 suggestion_group_id;
   bool supports_deletion;
@@ -539,7 +541,8 @@ interface PageHandler {
                     bool is_set_by_server);
 
   // Called when a user enables a model.
-  SetActiveModelMode(composebox_query.mojom.ModelMode model);
+  SetActiveModelMode(composebox_query.mojom.ModelMode model,
+                     bool is_set_by_aim);
 
   // Activates a metrics funnel for the session.
   ActivateMetricsFunnel(string funnel_name);
@@ -561,6 +564,19 @@ interface PageHandler {
 
   // Opens the profile picker for switching profiles.
   OpenProfilePicker();
+
+  // Triggers screensharing (window or entire screen picker).
+  // `prefer_entire_screen` is a hint indicating whether the screen picker
+  // should default to selecting the entire screen (true) or a window
+  // (false).
+  // Returns a token on success, or null if the selection was cancelled, failed
+  // to start, or if there is already an active screensharing session.
+  // The token is used by the WebUI to create a placeholder chip synchronously,
+  // and subsequently to associate it with the captured screenshot details
+  // delivered asynchronously via `Page.AddFileContext()`. It can also be used
+  // to delete the context via `DeleteContext()`.
+  StartScreenshare(bool prefer_entire_screen)
+      => (mojo_base.mojom.UnguessableToken? token);
 
   // Gets the page classification for the current context.
   GetPageClassification() => (string metricSource);
@@ -595,6 +611,11 @@ interface Page {
   // TODO(crbug.com/483117840): This is driven by interaction with
   //  OmniboxViewViews and can be eliminated once we have full webui popup.
   OpenCurrentSelection(ui.mojom.WindowOpenDisposition disposition);
+
+  // Resets the popup selection to the initial state.
+  // TODO(crbug.com/483117840): This is driven by interaction with
+  //  OmniboxViewViews and can be eliminated once we have full webui popup.
+  ResetPopupToInitialState();
 
   // Updates visibility of the AIM button (on right side of OmniboxViewViews).
   // TODO(crbug.com/483117840): This is driven by interaction with

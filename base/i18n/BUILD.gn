@@ -31,6 +31,7 @@ component("language_tag") {
   sources = [
     "language_tag_matcher.cc",
     "language_tag_matcher.h",
+    "legacy_language_tag_helpers.h",
     "locale_holder.cc",
     "locale_holder.h",
     "tag_converters.cc",
@@ -45,6 +46,7 @@ component("language_tag") {
   ]
   deps = [
     "//base",
+    "//base/i18n/internal",
     "//base/i18n/internal:canonical_language_tags",
     "//third_party/abseil-cpp:absl",
     "//third_party/rust/icu_capi/v2:lib",
@@ -97,7 +99,7 @@ source_set("unittests") {
   ]
   deps = [
     "//base",
-    "//base:i18n",
+    "//base/i18n:language_tag",
     "//base/i18n/internal:unittests",
     "//base/test:test_support",
     "//testing/gmock",

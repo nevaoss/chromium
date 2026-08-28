@@ -356,8 +356,7 @@ UIImage* SendButtonImage(BOOL highlighted,
 
   AddSameConstraintsToSidesWithInsets(
       _inputPlateStackView, _inputPlateInternalContainerView,
-      (LayoutSides::kLeading | LayoutSides::kTrailing),
-      kInputPlateStackViewPadding);
+      LayoutSides::kHorizontal, kInputPlateStackViewPadding);
 
   [self updateInputPlateStackViewAnimated:NO];
 
@@ -482,7 +481,7 @@ UIImage* SendButtonImage(BOOL highlighted,
                                     .trailingAnchor],
   ]];
   AddSameConstraintsToSides(_editView, _omniboxContainer,
-                            LayoutSides::kTop | LayoutSides::kBottom);
+                            LayoutSides::kVertical);
 
   [self.mutator requestUIRefresh];
   [self updatePlaceholderText];
@@ -1742,6 +1741,18 @@ UIImage* SendButtonImage(BOOL highlighted,
                                 ComposeboxModelOption::kThinkingNoGenUI];
                 }];
 
+    UIAction* flashModelOption = [self
+        actionWithTitle:[_state.strings
+                            menuLabelForModel:ComposeboxModelOption::kFlash]
+                  image:SymbolWithPointSize(SymbolAcute, kSymbolActionPointSize)
+                 hidden:[_state isModelHidden:ComposeboxModelOption::kFlash]
+               disabled:[_state isModelDisabled:ComposeboxModelOption::kFlash]
+               selected:_state.activeModel == ComposeboxModelOption::kFlash
+                handler:^{
+                  [weakSelf handleModelChangeFromToolsMenuWithOption:
+                                ComposeboxModelOption::kFlash];
+                }];
+
     NSString* modelPickerTitle = [_state.strings modelSectionHeader];
     UIMenu* modelPickerMenu =
         [UIMenu menuWithTitle:modelPickerTitle
@@ -1750,7 +1761,7 @@ UIImage* SendButtonImage(BOOL highlighted,
                       options:UIMenuOptionsDisplayInline
                      children:@[
                        regularModelOption, autoModelOption, thinkingModelOption,
-                       thinkingModelNoGenUIOption
+                       thinkingModelNoGenUIOption, flashModelOption
                      ]];
 
     [sections addObject:modelPickerMenu];

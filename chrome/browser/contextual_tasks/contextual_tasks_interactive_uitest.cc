@@ -34,7 +34,6 @@
 #include "chrome/browser/contextual_tasks/mock_contextual_tasks_ui_service_delegate.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_tabstrip.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
@@ -2248,8 +2247,8 @@ IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTestParameterized,
           kOpenedPopup, base::BindOnce([](ui::TrackedElement* el) {
             auto* wc = AsInstrumentedWebContents(el)->web_contents();
             tabs::TabInterface* tab = tabs::TabInterface::GetFromContents(wc);
-            Browser* popup_browser =
-                tab->GetBrowserWindowInterface()->GetBrowserForMigrationOnly();
+            BrowserWindowInterface* popup_browser =
+                tab->GetBrowserWindowInterface();
             EXPECT_TRUE(popup_browser);
             EXPECT_TRUE(ui_test_utils::IsBrowserActive(popup_browser));
             return true;
@@ -2837,6 +2836,14 @@ IN_PROC_BROWSER_TEST_P(ContextualTasksCopyUrlTest, MAYBE_CopyUrl) {
 }
 
 IN_PROC_BROWSER_TEST_P(ContextualTasksCopyUrlTest, FocusAndBlur) {
+  const bool is_webui = GetParam();
+
+#if BUILDFLAG(IS_LINUX) && defined(MEMORY_SANITIZER)
+  if (is_webui) {
+    // TODO(crbug.com/546594688): Re-enable test
+    GTEST_SKIP() << "Disabled on Linux MSan for WebUI because test flakiness";
+  }
+#endif
   const GURL kInterceptionUrl("https://www.google.com/search?udm=50&q=test");
 
   ui::Accelerator focus_accelerator;
@@ -2846,8 +2853,6 @@ IN_PROC_BROWSER_TEST_P(ContextualTasksCopyUrlTest, FocusAndBlur) {
 
   const WebContentsInteractionTestUtil::DeepQuery kTextInputDeepQuery = {
       "toolbar-app", "location-bar", "readonly-omnibox", "#textInput"};
-
-  const bool is_webui = GetParam();
 
   auto focus_omnibox = [this, focus_accelerator, kTextInputDeepQuery,
                         is_webui]() {

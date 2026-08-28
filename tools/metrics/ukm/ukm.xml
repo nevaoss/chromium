@@ -4802,6 +4802,57 @@ be describing additional metrics about the same event.
   </metric>
 </event>
 
+<event name="Blink.EmailVerificationProtocol">
+  <owner>npm@google.com</owner>
+  <owner>web-identity-eng@google.com</owner>
+  <summary>
+    Records metrics for the Email Verification Protocol (EVP) flow. Surfaced
+    once per EVP request attempt when the request flow finishes.
+  </summary>
+  <metric name="Autofill.FlowResult" enum="EvpAutofillFlowResult">
+    <summary>
+      Records the outcomes and failure reasons of the high-level Email
+      Verification Protocol (EVP) flow from autofill side. Recorded once per
+      autofill attempt when the verification flow finishes.
+    </summary>
+  </metric>
+  <metric name="PermissionUi.Status" enum="EvpPermissionUiStatus">
+    <summary>
+      Records the outcome and dismissal reasons of the Email Verification
+      Permission UI. Recorded once per permission UI showing when it is
+      dismissed or accepted.
+    </summary>
+  </metric>
+  <metric name="Status.IsVerifiable" enum="EvpRequestStatus">
+    <summary>
+      Records the status of the IsVerifiable stage of an Email Verification
+      Protocol (EVP) request. Recorded once per request when the IsVerifiable
+      check completes.
+    </summary>
+  </metric>
+  <metric name="Status.Verify" enum="EvpRequestStatus">
+    <summary>
+      Records the status of the Verify stage of an Email Verification Protocol
+      (EVP) request. Recorded once per request when the Verify operation
+      completes.
+    </summary>
+  </metric>
+  <metric name="Timing.IsVerifiable">
+    <summary>
+      Records the time taken (in milliseconds) from the start of checking if an
+      email is verifiable until the pre-prompt background verification check
+      completes.
+    </summary>
+  </metric>
+  <metric name="Timing.Verify">
+    <summary>
+      Records the time taken (in milliseconds) from the start of the token
+      verification call until the post-prompt token verification and fetch
+      completes.
+    </summary>
+  </metric>
+</event>
+
 <event name="Blink.FedCm">
   <owner>yigu@chromium.org</owner>
   <owner>web-identity-eng@google.com</owner>
@@ -5969,42 +6020,6 @@ be describing additional metrics about the same event.
     Metrics associated with the async script count associated with a document,
     recorded when the HTML parsing of a mainframe has completed.
   </summary>
-</event>
-
-<event name="Blink.SVGImage" singular="True">
-  <owner>chikamune@chromium.org</owner>
-  <owner>chrome-loading@google.com</owner>
-  <summary>
-    Metrics to measure the SVGImage::DataChanged() performance per document
-    while loading the outermost main frame document. This is recorded at the
-    frequency of 0.001.
-  </summary>
-  <metric name="Count">
-    <summary>
-      Measures the call count of SVGImage::DataChanged().
-      ukm::GetExponentialBucketMinForCounts1000() is applied.
-    </summary>
-    <aggregation>
-      <history>
-        <statistics>
-          <quantiles type="std-percentiles"/>
-        </statistics>
-      </history>
-    </aggregation>
-  </metric>
-  <metric name="TotalTime">
-    <summary>
-      Measures the total elapsed time it takes to run SVGImage::DataChanged(),
-      in microseconds.
-    </summary>
-    <aggregation>
-      <history>
-        <statistics>
-          <quantiles type="std-percentiles"/>
-        </statistics>
-      </history>
-    </aggregation>
-  </metric>
 </event>
 
 <event name="Blink.UpdateTime">
@@ -10273,8 +10288,7 @@ be describing additional metrics about the same event.
 </event>
 
 <event name="GameControls.ButtonOptionsMenuFunctionTriggered">
-  <owner>cuicuiruan@google.com</owner>
-  <owner>pjlee@google.com</owner>
+  <owner>phshah@chromium.org</owner>
   <owner>arc-gaming@google.com</owner>
   <summary>
     Logged when Game Controls' options menu button functions are triggered.
@@ -10287,8 +10301,7 @@ be describing additional metrics about the same event.
 </event>
 
 <event name="GameControls.EditDeleteMenuFuctionTriggered">
-  <owner>cuicuiruan@google.com</owner>
-  <owner>pjlee@google.com</owner>
+  <owner>phshah@chromium.org</owner>
   <owner>arc-gaming@google.com</owner>
   <summary>
     Logged when Game Controls edit-delete menu functions are triggered.
@@ -10301,8 +10314,7 @@ be describing additional metrics about the same event.
 </event>
 
 <event name="GameControls.EditingListFunctionTriggered">
-  <owner>cuicuiruan@google.com</owner>
-  <owner>pjlee@google.com</owner>
+  <owner>phshah@chromium.org</owner>
   <owner>arc-gaming@google.com</owner>
   <summary>
     Logged when Game Controls editing list functions are triggered.
@@ -10315,7 +10327,7 @@ be describing additional metrics about the same event.
 </event>
 
 <event name="GameControls.PlayGameWithGameControls">
-  <owner>cuicuiruan@google.com</owner>
+  <owner>phshah@chromium.org</owner>
   <owner>arc-gaming@google.com</owner>
   <summary>
     Log once whether the ARC game is played with Game Controls per game session.
@@ -10330,8 +10342,7 @@ be describing additional metrics about the same event.
 </event>
 
 <event name="GameControls.ToggleWithMappingSource">
-  <owner>cuicuiruan@google.com</owner>
-  <owner>pjlee@google.com</owner>
+  <owner>phshah@chromium.org</owner>
   <owner>arc-gaming@google.com</owner>
   <summary>
     Logged when Game Controls feature or hint is toggled on or off.
@@ -10354,7 +10365,6 @@ be describing additional metrics about the same event.
 </event>
 
 <event name="GameDashboard.ControlsFeatureToggleState">
-  <owner>cuicuiruan@google.com</owner>
   <owner>phshah@chromium.org</owner>
   <owner>arc-gaming@google.com</owner>
   <summary>
@@ -10368,7 +10378,6 @@ be describing additional metrics about the same event.
 </event>
 
 <event name="GameDashboard.ControlsHintToggleSource">
-  <owner>cuicuiruan@google.com</owner>
   <owner>phshah@chromium.org</owner>
   <owner>arc-gaming@google.com</owner>
   <summary>
@@ -10387,7 +10396,6 @@ be describing additional metrics about the same event.
 </event>
 
 <event name="GameDashboard.EditControlsWithEmptyState">
-  <owner>cuicuiruan@google.com</owner>
   <owner>phshah@chromium.org</owner>
   <owner>arc-gaming@google.com</owner>
   <summary>
@@ -10401,7 +10409,6 @@ be describing additional metrics about the same event.
 </event>
 
 <event name="GameDashboard.FunctionTriggered">
-  <owner>cuicuiruan@google.com</owner>
   <owner>phshah@chromium.org</owner>
   <owner>arc-gaming@google.com</owner>
   <summary>
@@ -10415,7 +10422,6 @@ be describing additional metrics about the same event.
 </event>
 
 <event name="GameDashboard.RecordingStartSource">
-  <owner>cuicuiruan@google.com</owner>
   <owner>phshah@chromium.org</owner>
   <owner>arc-gaming@google.com</owner>
   <summary>
@@ -10429,7 +10435,6 @@ be describing additional metrics about the same event.
 </event>
 
 <event name="GameDashboard.ScreenshotTakeSource">
-  <owner>cuicuiruan@google.com</owner>
   <owner>phshah@chromium.org</owner>
   <owner>arc-gaming@google.com</owner>
   <summary>
@@ -10443,7 +10448,6 @@ be describing additional metrics about the same event.
 </event>
 
 <event name="GameDashboard.ToggleMainMenu">
-  <owner>cuicuiruan@google.com</owner>
   <owner>phshah@chromium.org</owner>
   <owner>arc-gaming@google.com</owner>
   <summary>
@@ -10463,7 +10467,6 @@ be describing additional metrics about the same event.
 </event>
 
 <event name="GameDashboard.ToolbarClickToExpandState">
-  <owner>cuicuiruan@google.com</owner>
   <owner>phshah@chromium.org</owner>
   <owner>arc-gaming@google.com</owner>
   <summary>
@@ -10477,7 +10480,6 @@ be describing additional metrics about the same event.
 </event>
 
 <event name="GameDashboard.ToolbarNewLocation">
-  <owner>cuicuiruan@google.com</owner>
   <owner>phshah@chromium.org</owner>
   <owner>arc-gaming@google.com</owner>
   <summary>
@@ -10491,7 +10493,6 @@ be describing additional metrics about the same event.
 </event>
 
 <event name="GameDashboard.ToolbarToggleState">
-  <owner>cuicuiruan@google.com</owner>
   <owner>phshah@chromium.org</owner>
   <owner>arc-gaming@google.com</owner>
   <summary>
@@ -10505,7 +10506,6 @@ be describing additional metrics about the same event.
 </event>
 
 <event name="GameDashboard.WelcomeDialogNotificationToggleState">
-  <owner>cuicuiruan@google.com</owner>
   <owner>phshah@chromium.org</owner>
   <owner>arc-gaming@google.com</owner>
   <summary>
@@ -10520,8 +10520,7 @@ be describing additional metrics about the same event.
 </event>
 
 <event name="GamingInputOverlay.ActionRepositionOperationType">
-  <owner>pjlee@google.com</owner>
-  <owner>cuicuiruan@google.com</owner>
+  <owner>phshah@chromium.org</owner>
   <owner>arc-gaming@google.com</owner>
   <summary>
     An event that is logged when key mapping position is changed.
@@ -10541,8 +10540,7 @@ be describing additional metrics about the same event.
 </event>
 
 <event name="GamingInputOverlay.ActionRepositionWindowStateType">
-  <owner>pjlee@google.com</owner>
-  <owner>cuicuiruan@google.com</owner>
+  <owner>phshah@chromium.org</owner>
   <owner>arc-gaming@google.com</owner>
   <summary>
     An event that is logged when key mapping position is changed.
@@ -10562,8 +10560,7 @@ be describing additional metrics about the same event.
 </event>
 
 <event name="GamingInputOverlay.ButtonGroupRepositionOperationType">
-  <owner>pjlee@google.com</owner>
-  <owner>cuicuiruan@google.com</owner>
+  <owner>phshah@chromium.org</owner>
   <owner>arc-gaming@google.com</owner>
   <summary>
     An event that is logged when button group position is changed.
@@ -10583,8 +10580,7 @@ be describing additional metrics about the same event.
 </event>
 
 <event name="GamingInputOverlay.ButtonGroupRepositionWindowStateType">
-  <owner>pjlee@google.com</owner>
-  <owner>cuicuiruan@google.com</owner>
+  <owner>phshah@chromium.org</owner>
   <owner>arc-gaming@google.com</owner>
   <summary>
     An event that is logged when menu entry position is changed.
@@ -10604,8 +10600,7 @@ be describing additional metrics about the same event.
 </event>
 
 <event name="GamingInputOverlay.Customization">
-  <owner>pjlee@google.com</owner>
-  <owner>cuicuiruan@google.com</owner>
+  <owner>phshah@chromium.org</owner>
   <owner>arc-gaming@google.com</owner>
   <summary>
     An event for gaming input overlay that is logged when users enter into edit
@@ -10626,8 +10621,7 @@ be describing additional metrics about the same event.
 </event>
 
 <event name="GamingInputOverlay.Feature">
-  <owner>pjlee@google.com</owner>
-  <owner>cuicuiruan@google.com</owner>
+  <owner>phshah@chromium.org</owner>
   <owner>arc-gaming@google.com</owner>
   <summary>
     An event for gaming input overlay that is logged when the input overlay
@@ -10648,8 +10642,7 @@ be describing additional metrics about the same event.
 </event>
 
 <event name="GamingInputOverlay.MappingHint">
-  <owner>pjlee@google.com</owner>
-  <owner>cuicuiruan@google.com</owner>
+  <owner>phshah@chromium.org</owner>
   <owner>arc-gaming@google.com</owner>
   <summary>
     An event for gaming input overlay that is logged when the mapping hint state
@@ -10670,8 +10663,7 @@ be describing additional metrics about the same event.
 </event>
 
 <event name="GamingInputOverlay.MenuEntryRepositionOperationType">
-  <owner>pjlee@google.com</owner>
-  <owner>cuicuiruan@google.com</owner>
+  <owner>phshah@chromium.org</owner>
   <owner>arc-gaming@google.com</owner>
   <summary>
     An event that is logged when key mapping position is changed.
@@ -10691,8 +10683,7 @@ be describing additional metrics about the same event.
 </event>
 
 <event name="GamingInputOverlay.MenuEntryRepositionWindowStateType">
-  <owner>pjlee@google.com</owner>
-  <owner>cuicuiruan@google.com</owner>
+  <owner>phshah@chromium.org</owner>
   <owner>arc-gaming@google.com</owner>
   <summary>
     An event that is logged when menu entry position is changed.
@@ -20046,11 +20037,13 @@ be describing additional metrics about the same event.
       particular prompt disposition was used, if any.
     </summary>
   </metric>
+<!-- LINT.IfChange(UkmPermissionPromptOptions) -->
+
   <metric name="PromptOptions">
     <summary>
-      An enum of type UkmPromptOptions (see
-      https://source.chromium.org/search?q=class:%5CbPermissionAction%5Cb). This
-      is only emitted if the permission prompt supports additional prompt
+      An enum of type UkmPermissionPromptOptions (see
+      https://source.chromium.org/search?q=class:%5CbUkmPermissionPromptOptions%5Cb).
+      This is only emitted if the permission prompt supports additional prompt
       options, which currently is the case only for geolocation permission
       prompts when the ApproximateGeolocationPermission is enabled. In that
       case, this is either 1 (APPROXIMATE_LOCATION) or 2 (PRECISE_LOCATION) and
@@ -20058,6 +20051,8 @@ be describing additional metrics about the same event.
       &quot;precise&quot; at the time when the action was taken.
     </summary>
   </metric>
+<!-- LINT.ThenChange(//components/permissions/permission_uma_constants.h:UkmPermissionPromptOptions) -->
+
   <metric name="SatisfiedAdaptiveTriggers">
     <summary>
       A bitmask consisting of flags defined in enum type AdaptiveTriggers. A bit

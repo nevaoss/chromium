@@ -98,7 +98,7 @@ class ContextualTasksExtensionHandler
   void NotifyComposeboxQuerySubmittedWithContext() override;
   void CanShowNextboxAnimation(
       CanShowNextboxAnimationCallback callback) override;
-  void RecordNextboxAnimationImpression() override;
+  void RecordNextboxAnimationImpression(bool shown) override;
   void OnContextMenuOpened() override;
 
   // searchbox::mojom::PageHandler:
@@ -111,7 +111,8 @@ class ContextualTasksExtensionHandler
                    bool is_voice_search) override;
   void SetActiveToolMode(omnibox::ToolMode tool,
                          bool is_set_by_server) override;
-  void SetActiveModelMode(omnibox::ModelMode model) override;
+  void SetActiveModelMode(omnibox::ModelMode model,
+                          bool is_set_by_aim) override;
 
   // These are stubs required to implement searchbox::mojom::PageHandler
   // (which is shared with Realbox) but are not used by the extension
@@ -188,6 +189,8 @@ class ContextualTasksExtensionHandler
   void OpenProfilePicker() override;
   void GetPageClassification(GetPageClassificationCallback callback) override;
   void OnThumbnailRemoved() override;
+  void StartScreenshare(bool prefer_entire_screen,
+                        StartScreenshareCallback callback) override;
 
  private:
   friend class content::DocumentUserData<ContextualTasksExtensionHandler>;

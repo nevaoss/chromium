@@ -137,7 +137,8 @@ void ContextualTasksExtensionHandler::CanShowNextboxAnimation(
     CanShowNextboxAnimationCallback callback) {
   std::move(callback).Run(false);
 }
-void ContextualTasksExtensionHandler::RecordNextboxAnimationImpression() {}
+void ContextualTasksExtensionHandler::RecordNextboxAnimationImpression(
+    bool shown) {}
 void ContextualTasksExtensionHandler::OnContextMenuOpened() {}
 
 // searchbox::mojom::PageHandler stubs:
@@ -273,7 +274,8 @@ void ContextualTasksExtensionHandler::SetActiveToolMode(omnibox::ToolMode tool,
 void ContextualTasksExtensionHandler::RecordToolSelectionAction(
     omnibox::ToolMode tool) {}
 void ContextualTasksExtensionHandler::SetActiveModelMode(
-    omnibox::ModelMode model) {
+    omnibox::ModelMode model,
+    bool is_set_by_aim) {
   active_model_ = model;
 }
 void ContextualTasksExtensionHandler::RecordModelSelectionAction(
@@ -470,4 +472,10 @@ ContextualTasksExtensionHandler::GetOrCreateInputStateModel() {
             active_tab_contents);
   }
   return user_data->GetOrCreateInputStateModel(*session_handle);
+}
+
+void ContextualTasksExtensionHandler::StartScreenshare(
+    bool prefer_entire_screen,
+    StartScreenshareCallback callback) {
+  std::move(callback).Run(std::nullopt);
 }

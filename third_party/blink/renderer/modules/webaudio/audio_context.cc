@@ -62,6 +62,7 @@
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 #include "third_party/blink/renderer/platform/scheduler/public/post_cross_thread_task.h"
 #include "third_party/blink/renderer/platform/wtf/cross_thread_functional.h"
+#include "third_party/blink/renderer/platform/wtf/text/format.h"
 #include "third_party/blink/renderer/platform/wtf/text/strcat.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
 
@@ -142,15 +143,15 @@ String GetAudioContextLogString(const WebAudioLatencyHint& latency_hint,
   StringBuilder builder;
   builder.Append("({latency_hint=");
   builder.Append(LatencyCategoryToString(latency_hint.Category()));
-  builder.Append("}");
+  builder.Append('}');
   if (latency_hint.Category() == WebAudioLatencyHint::kCategoryExact) {
-    builder.AppendFormat(", {seconds=%.3f}", latency_hint.Seconds());
+    FormatTo(builder, ", {{seconds={:.3f}}}", latency_hint.Seconds());
   }
   if (sample_rate.has_value()) {
-    builder.AppendFormat(", {sample_rate=%.0f}", sample_rate.value());
+    FormatTo(builder, ", {{sample_rate={:.0f}}}", sample_rate.value());
   }
-  builder.Append(String(")"));
-  return builder.ToString();
+  builder.Append(')');
+  return builder.ReleaseString();
 }
 
 bool IsAudible(const AudioBus* rendered_data) {
@@ -676,8 +677,8 @@ AudioContext::AudioContext(LocalDOMWindow& window,
                                        .GetFramesPerBuffer()),
                static_cast<size_t>(renderQuantumSize()));
   base_latency_ = base_latency_frames / static_cast<double>(sampleRate());
-  SendLogMessage(__func__, String::Format("=> (base latency=%.3f seconds))",
-                                          base_latency_));
+  SendLogMessage(__func__,
+                 Format("=> (base latency={:.3f} seconds))", base_latency_));
 
   // Perform the initial permission check for the output latency precision.
   auto microphone_permission_name = mojom::blink::PermissionName::AUDIO_CAPTURE;
@@ -766,7 +767,6 @@ void AudioContext::Trace(Visitor* visitor) const {
   visitor->Trace(media_player_receiver_);
   visitor->Trace(media_player_observer_);
   visitor->Trace(pending_resume_resolvers_);
-  visitor->Trace(pending_suspend_resolvers_);
   visitor->Trace(deferred_resume_resolvers_);
   BaseAudioContext::Trace(visitor);
   PageVisibilityObserver::Trace(visitor);
@@ -801,10 +801,7 @@ ScriptPromise<IDLUndefined> AudioContext::suspendContext(
         script_state, exception_state.GetContext());
     promise = resolver->Promise();
 
-    {
-      DeferredTaskHandler::GraphAutoLocker locker(GetDeferredTaskHandler());
-      pending_suspend_resolvers_.push_back(resolver);
-    }
+    AddPendingPromiseResolver(resolver);
 
     // Probe reports the user action to the inspector synchronously.
     probe::DidSuspendAudioContext(GetExecutionContext());
@@ -1061,16 +1058,8 @@ void AudioContext::DidClose() {
   }
   set_sink_id_resolvers_.clear();
 
-  // Reject all pending suspend promises.
-  {
-    DeferredTaskHandler::GraphAutoLocker locker(GetDeferredTaskHandler());
-    for (auto& resolver : pending_suspend_resolvers_) {
-      resolver->Reject(MakeGarbageCollected<DOMException>(
-          DOMExceptionCode::kInvalidStateError,
-          "AudioContext closed before a pending suspend() could complete."));
-    }
-    pending_suspend_resolvers_.clear();
-  }
+  RejectPendingPromiseResolversWithException(
+      "AudioContext closed before a pending suspend() could complete.");
 
   // Reject all resume() promises that are still deferred waiting for the
   // frame's visibility to become known. They can never settle now that the
@@ -1154,19 +1143,10 @@ void AudioContext::PerformTransitionToSuspended() {
 
   pending_transition_to_suspend_ = false;
 
-  HeapVector<Member<ScriptPromiseResolver<IDLUndefined>>> resolvers;
-  {
-    DeferredTaskHandler::GraphAutoLocker locker(GetDeferredTaskHandler());
-    resolvers.swap(pending_suspend_resolvers_);
-  }
-
   // If the context has already been closed, reject pending suspend promises.
   if (ContextState() == V8AudioContextState::Enum::kClosed) {
-    for (auto& resolver : resolvers) {
-      resolver->Reject(MakeGarbageCollected<DOMException>(
-          DOMExceptionCode::kInvalidStateError,
-          "Cannot suspend a closed AudioContext."));
-    }
+    RejectPendingPromiseResolversWithException(
+        "Cannot suspend a closed AudioContext.");
     return;
   }
 
@@ -1175,9 +1155,7 @@ void AudioContext::PerformTransitionToSuspended() {
     SuspendRendering();
   }
 
-  for (auto& resolver : resolvers) {
-    resolver->Resolve();
-  }
+  ResolvePendingPromiseResolvers();
 }
 
 void AudioContext::StartRendering() {

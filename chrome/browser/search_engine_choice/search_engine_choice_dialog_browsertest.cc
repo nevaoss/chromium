@@ -278,9 +278,9 @@ class SearchEngineChoiceDialogBrowserTest : public InProcessBrowserTest {
   // Unlike `CreateGuestBrowser()` which opens a blank tab, this opens a guest
   // profile and shows the Guest NTP.
   Browser* CreateGuestBrowserAndLoadNTP() {
-    base::test::TestFuture<Browser*> browser_future;
+    base::test::TestFuture<BrowserWindowInterface*> browser_future;
     profiles::SwitchToGuestProfile(browser_future.GetCallback());
-    Browser* guest_browser = browser_future.Get();
+    Browser* guest_browser = browser_future.Get()->GetBrowserForMigrationOnly();
     CHECK(guest_browser);
     EXPECT_TRUE(guest_browser->GetProfile()->IsGuestSession());
     content::WebContents* ntp_contents =
@@ -381,6 +381,28 @@ IN_PROC_BROWSER_TEST_F(SearchEngineChoiceDialogBrowserTest,
   CloseBrowserSynchronously(new_browser);
   QuitAndRestoreBrowser(browser());
   EXPECT_EQ(GlobalBrowserCollection::GetInstance()->GetSize(), 2u);
+}
+
+IN_PROC_BROWSER_TEST_F(
+    SearchEngineChoiceDialogBrowserTest,
+    ComputeProfileManagementFlowConditions_AlreadyBeingShown) {
+  Profile* profile = browser()->GetProfile();
+  SearchEngineChoiceDialogService* service =
+      SearchEngineChoiceDialogServiceFactory::GetForProfile(profile);
+  ASSERT_TRUE(service);
+
+  EXPECT_EQ(
+      regional_capabilities::SearchEngineChoiceScreenConditions::kEligible,
+      service->ComputeProfileManagementFlowConditions());
+
+  // Register a dialog for `browser()`.
+  EXPECT_TRUE(service->RegisterDialog(*browser(), base::DoNothing()));
+
+  // With an open dialog registered, ComputeProfileManagementFlowConditions
+  // should return kAlreadyBeingShown instead of crashing.
+  EXPECT_EQ(regional_capabilities::SearchEngineChoiceScreenConditions::
+                kAlreadyBeingShown,
+            service->ComputeProfileManagementFlowConditions());
 }
 
 IN_PROC_BROWSER_TEST_F(SearchEngineChoiceDialogBrowserTest,

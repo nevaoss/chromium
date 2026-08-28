@@ -315,7 +315,7 @@
       status: "test",
       base_feature: "none",
     },
-        {
+    {
       name: "AIClassifierAPI",
       status: {
         "Win": "experimental",
@@ -594,12 +594,6 @@
       // This was added in M147 and can be removed after M149.
       // https://issues.chromium.org/issues/483610021
       name: "AncestorOriginsStoredOnDocument",
-      status: "stable",
-    },
-    {
-      // This is a bug fix for rendering a missing focus ring on <a> elements.
-      // Shipping in M147, safe to remove in M150.
-      name: "AnchorFocusRingFix",
       status: "stable",
     },
     {
@@ -904,12 +898,6 @@
       browser_process_read_write_access: true,
     },
     {
-      name: "BlinkExtensionChromeOSIsolatedWebAppSetShape",
-      status: {"ChromeOS": "experimental", "default": ""},
-      browser_process_read_write_access: true,
-      depends_on: ["BlinkExtensionChromeOS"],
-    },
-    {
       name: "BlinkExtensionWebView",
       public: true,
     },
@@ -1006,7 +994,7 @@
       // embed camera and microphone permission request controls directly in the page.
       // https://chromestatus.com/feature/5153829504024576
       name: "CameraAndMicrophoneElements",
-      status: "experimental",
+      status: "stable",
       public: true,
     },
     {
@@ -2678,6 +2666,14 @@
       status: "stable"
     },
     {
+      // Controls whether XSLT processing is selectively re-enabled for
+      // Common Alerting Protocol (CAP) alert XML documents when native XSLT
+      // is otherwise disabled.
+      // crbug.com/435623334.
+      name: "EnableXSLTForCAPAlerts",
+      status: "stable",
+    },
+    {
       name: "EndpointInclusiveCommitStyles",
       status: "stable",
     },
@@ -2752,6 +2748,16 @@
       status: "experimental",
     },
     {
+      name: "ExtensionScriptTagging",
+      public: true,
+      status: "test",
+      base_feature: "ExtensionScriptTagging",
+    },
+    {
+      name: "ExtensionScriptTaggingTestingAPI",
+      base_feature: "ExtensionScriptTaggingTestingAPI",
+    },
+    {
       // Kill-switch for crbug.com/40434449.
       // Added in M139, and it can be removed in M141.
       name: "ExternalPopupMenuClickEvent",
@@ -2800,12 +2806,6 @@
       depends_on: ["FedCm"],
       public: true,
       status: "test",
-      base_feature: "none",
-    },
-    {
-      name: "FedCmErrorAttribute",
-      depends_on: ["FedCm"],
-      public: true,
       base_feature: "none",
     },
     {
@@ -3345,10 +3345,6 @@
       },
     },
     {
-      // https://crbug.com/40571175
-      name: "GetComputedStyleOutsideFlatTree",
-    },
-    {
       name: "GetDisplayMedia",
       public: true,
       status: {
@@ -3490,6 +3486,12 @@
       status: "stable",
     },
     {
+      // Kill switch for making <area> display:none by default according to the
+      // HTML rendering specification. https://crbug.com/1231263
+      name: "HTMLAreaElementDisplayNone",
+      status: "stable",
+    },
+    {
       name: "HTMLAreaHreflangType",
       status: "test",
     },
@@ -3571,6 +3573,12 @@
       // Parse processing instructions in HTML.
       name: "HTMLProcessingInstruction",
       status: "stable",
+    },
+    {
+      // Enables the switch attribute on <input type="checkbox">.
+      // https://open-ui.org/components/switch.attribute.explainer/
+      name: "HTMLSwitchAttribute",
+      status: "experimental",
     },
     {
       name: "ICUCapitalization",
@@ -3841,12 +3849,15 @@
       // instead of pointerdown and pointerup in order to fix light dismiss
       // bugs for touch inputs.
       // https://issues.chromium.org/issues/408010435
-      // Enabled in M153, can be removed in M157.
       name: "LightDismissFromClick",
-      status: "stable",
+      status: "experimental",
     },
     {
       name: "LineBreakAfterSpaceBeforeOpenTag",
+      status: "stable",
+    },
+    {
+      name: "LineBreakerHanKerningEnd",
       status: "stable",
     },
     {
@@ -3876,6 +3887,11 @@
       // No status because this feature is controlled by
       // network::features::kLocalNetworkAccessChecks and
       // network::features::kLocalNetworkAccessChecksWebRTC.
+    },
+    {
+      name: "LocalNetworkAccessWebSocketsTargetAddressSpace",
+      status: "experimental",
+      depends_on: ["WebSocketOptionBag"],
     },
     {
       name: "LockedMode",
@@ -4706,7 +4722,8 @@
       // Simplifies the behavior and stacking interactions of popover=hint and
       // popover=auto. See https://crbug.com/499019927.
       // This shipped in M150, was disabled via Finch, and was re-enabled in
-      // M151. It can be removed in M153.
+      // M151. The behavior was tweaked slightly in M153, and milestones
+      // now happen twice as quickly, so the flag can be removed in M157.
       name: "PopoverHintNewBehavior",
       status: "stable",
     },
@@ -5094,6 +5111,11 @@
     {
       // See https://issues.chromium.org/issues/40779139
       name: "RemoveScrollNodeWorkaround",
+      status: "stable",
+    },
+    {
+      // See https://crbug.com/539212797
+      name: "RemoveTargetCurrent",
       status: "stable",
     },
     {
@@ -5640,6 +5662,11 @@
       name: "SetSequentialFocusStartingPoint",
       status: "experimental",
     },
+    {
+      name: "SetShape",
+      status: {"ChromeOS": "experimental", "default": ""},
+      browser_process_read_write_access: true,
+    },
     // https://chromestatus.com/feature/5176753681203200
     {
       name: "ShadowContourFollowsBorder",
@@ -5723,6 +5750,7 @@
     {
       name: "SingleAxisScrollContainersForScrollSnap",
       depends_on: ["SingleAxisScrollContainers"],
+      status: "test",
     },
     {
       name: "SkipAd",
@@ -6466,6 +6494,7 @@
     },
     {
       name: "UAImageReplacementAPI",
+      origin_trial_feature_name: "UAImageReplacementAPI",
     },
     {
       // The Unbounded Element API. See crbug.com/508672616.
@@ -6797,7 +6826,7 @@
       // https://webaudio.github.io/web-audio-api/#dom-baseaudiocontext-renderquantumsize
       name: "WebAudioConfigurableRenderQuantum",
       origin_trial_feature_name: "WebAudioConfigurableRenderQuantum",
-      status: "experimental",
+      status: "stable",
     },
     {
       name: "WebAudioRustFft",
@@ -6934,17 +6963,6 @@
       name: "WebGLOnWebGPU",
     },
     {
-      // Launch feature flag for WebGPU Compatibility Mode
-      // https://chromestatus.com/feature/6436406437871616
-      name: "WebGPUCompatibilityMode",
-      origin_trial_feature_name: "WebGPUCompatibilityMode",
-      status: "stable",
-      base_feature: "none",
-      public: true,
-      // Also enabled as part of all experimental WebGPU features.
-      implied_by: ["WebGPUExperimentalFeatures"],
-    },
-    {
       // WebGPU developer features are deliberately not enabled by experimental
       // web platform features.
       name: "WebGPUDeveloperFeatures",
@@ -6966,10 +6984,6 @@
       public: true,
     },
     {
-      name: "WebGPUImmediatesFeature",
-      status: "stable",
-    },
-    {
       // Enables GPUBuffer::mapSync for WebGPU.
       name: "WebGPUMapSyncOnWorkers",
       status: "experimental",
@@ -6982,10 +6996,6 @@
       name: "WebGPUMultithreadDawnWireOnWorkers",
       status: "experimental",
       implied_by: ["WebGPUMapSyncOnWorkers"],
-    },
-    {
-      name: "WebGPUTransientAttachment",
-      status: "stable",
     },
     {
       name: "WebHID",

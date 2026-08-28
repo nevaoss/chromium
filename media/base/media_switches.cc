@@ -359,6 +359,12 @@ namespace media {
 // Whether we should allow color space changes to flush AcceleratedVideoDecoder.
 BASE_FEATURE(kAVDColorSpaceChanges, base::FEATURE_ENABLED_BY_DEFAULT);
 
+// Controls whether VideoFrameConverter accurately maps RGB to YUV color spaces
+// instead of always coercing to Rec.601.
+// TODO(crbug.com/467555325): Remove after M153 reaches stable.
+BASE_FEATURE(kAccurateVideoFrameConverterColorSpace,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 // Controls whether AOM/VPX decoders should use the presentation thread type.
 BASE_FEATURE(kAomVpxUsePresentationThreadType,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -1240,31 +1246,15 @@ BASE_FEATURE(kPlatformHEVCMain10EncoderSupport,
 
 #endif  // BUILDFLAG(ENABLE_PLATFORM_HEVC)
 
+// SymphoniaAudioDecoder support flags. When enabled, the SymphoniaAudioDecoder
+// will indicate support for the specified codec, causing it to be used for
+// audio decoding. If disabled, the media pipeline shall fall back to a
+// reasonable default, typically the FFmpeg audio decoder.
 #if BUILDFLAG(ENABLE_SYMPHONIA)
-// Android / Fuchsia are expected to launch in M150.
-BASE_FEATURE(kSymphoniaAudioDecoding,
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
-    BUILDFLAG(IS_CHROMEOS)
-             base::FEATURE_ENABLED_BY_DEFAULT
-#else
-             base::FEATURE_DISABLED_BY_DEFAULT
-#endif
-);
-
-// Android / Fuchsia are expected to launch in M150.
-BASE_FEATURE(kSymphoniaMp3Decoding,
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
-    BUILDFLAG(IS_CHROMEOS)
-             base::FEATURE_ENABLED_BY_DEFAULT
-#else
-             base::FEATURE_DISABLED_BY_DEFAULT
-#endif
-);
-
+BASE_FEATURE(kSymphoniaAudioDecoding, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kSymphoniaMp3Decoding, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kSymphoniaPcmDecoding, base::FEATURE_DISABLED_BY_DEFAULT);
-
 BASE_FEATURE(kSymphoniaVorbisDecoding, base::FEATURE_DISABLED_BY_DEFAULT);
-
 #endif  // BUILDFLAG(ENABLE_SYMPHONIA)
 
 #if BUILDFLAG(IS_ANDROID)
@@ -1402,12 +1392,6 @@ BASE_FEATURE(kUseAudioManagerMaxChannelLayout,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kUseMediaFormatCodedSize, base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Specify the required security level for MediaDrm when checking the MediaDrm
-// version.
-BASE_FEATURE(kUseSecurityLevelWhenCheckingMediaDrmVersion,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 #endif  // BUILDFLAG(IS_ANDROID)
 
 #if BUILDFLAG(IS_APPLE)

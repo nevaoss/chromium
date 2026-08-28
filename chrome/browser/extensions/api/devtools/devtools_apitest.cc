@@ -94,8 +94,16 @@ IN_PROC_BROWSER_TEST_F(DevtoolsApiTest,
 // window and prevents the extension from accessing local file resources when
 // DevTools is reopened.
 // Regression test for https://crbug.com/483435192.
+// TODO(https://crbug.com/546216109): Enable on desktop android.
+#if BUILDFLAG(IS_ANDROID)
+#define MAYBE_CantGetFileResourceWhenFileAccessRevoked \
+  DISABLED_CantGetFileResourceWhenFileAccessRevoked
+#else
+#define MAYBE_CantGetFileResourceWhenFileAccessRevoked \
+  CantGetFileResourceWhenFileAccessRevoked
+#endif
 IN_PROC_BROWSER_TEST_F(DevtoolsApiTest,
-                       CantGetFileResourceWhenFileAccessRevoked) {
+                       MAYBE_CantGetFileResourceWhenFileAccessRevoked) {
   ASSERT_TRUE(StartEmbeddedTestServer());
 
   TestExtensionDir devtools_extension_dir;
@@ -110,17 +118,11 @@ IN_PROC_BROWSER_TEST_F(DevtoolsApiTest,
       "<html><head><script src='devtools.js'></script></head></html>");
   devtools_extension_dir.WriteFile(FILE_PATH_LITERAL("devtools.js"), R"(
       function onResourceAdded(resource) {
-        // Check if either the resource itself is a file or if any other
-        // files the extension can reach are files.
-        if (resource.url.startsWith('file:')) {
-          chrome.test.sendMessage('has_file_access');
-          return;
-        }
         if (resource.url.includes('sentinel.js')) {
           chrome.devtools.inspectedWindow.getResources(resources => {
             const hasFile = resources.some(r => r.url.startsWith('file:'));
             chrome.test.sendMessage(
-                self.hasFile ? 'has_file_access' : 'no_file_access');
+                hasFile ? 'has_file_access' : 'no_file_access');
           });
         }
       }

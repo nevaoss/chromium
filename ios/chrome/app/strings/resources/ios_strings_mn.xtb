@@ -51,6 +51,7 @@
 <translation id="1147031633655575115"><ph name="USER" />-р нэвтэрсэн</translation>
 <translation id="1149401351239820326">Хугацаа дуусах сар</translation>
 <translation id="1150989369772528668">Календарь</translation>
+<translation id="1158134713295836892">Chrome дахь Gemini</translation>
 <translation id="1161444134753003495">Нэвтрэх</translation>
 <translation id="1161663161838091892">Үргэлжлүүлэхийн тулд таб, түүхийг синк хийх</translation>
 <translation id="1162834932051545794">{count,plural, =1{{count} кредит карт}other{{count} кредит карт}}</translation>
@@ -225,7 +226,6 @@
 <translation id="1674504678466460478"><ph name="SOURCE_LANGUAGE" /> -с <ph name="TARGET_LANGUAGE" /></translation>
 <translation id="1678855624321223424">Танай байгууллагын бодлогод зааснаар энэ файлд эмзэг мэдээлэл агуулагдаж байж магадгүй</translation>
 <translation id="1683276189281028863">Нууц үгний хяналт</translation>
-<translation id="168389590065701766">Та одоо хаяг оруулах хэсгээсээ Google Lens-г нээж, харж буй дурын зүйлээ хайж болно</translation>
 <translation id="1689333818294560261">Хоч</translation>
 <translation id="169048873465870056">Табыг хасаж, бүлгийг устгах уу?</translation>
 <translation id="1692115862433274081">Өөр бүртгэл ашиглах</translation>
@@ -2527,6 +2527,7 @@ Handoff-ыг Тохиргооны ерөнхий хэсэгт идэвхижүү
 <translation id="9203951165704618409">Өөрчилсөн үзэх хэрэглээг авах бол хаяг оруулах хэсгээ дээрээс доош шилжүүлнэ үү.</translation>
 <translation id="9205189991633470489">Нууцлалтай табыг түгжих</translation>
 <translation id="9206887540681440657">Хурд</translation>
+<translation id="9218430445555521422">Өгөгдмөлөөр тохируулах</translation>
 <translation id="9219103736887031265">Зураг</translation>
 <translation id="9219154867334666734">Табуудаас хайх…</translation>
 <translation id="9223358826628549784">Алдаа ослын тайланг илгээсэн байна.</translation>

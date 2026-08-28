@@ -12,32 +12,12 @@
 namespace optimization_guide {
 namespace switches {
 
-// Overrides the Optimization Guide Service URL that the PredictionModelFetcher
-// will request remote models and host features from.
-const char kOptimizationGuideServiceGetModelsURL[] =
-    "optimization-guide-service-get-models-url";
-
 // Overrides the Optimization Guide model execution URL.
 const char kOptimizationGuideServiceModelExecutionURL[] =
     "optimization-guide-service-model-execution-url";
 
 const char kOptimizationGuideServiceModelExecutionDefaultURL[] =
     "https://chromemodelexecution-pa.googleapis.com/v1:Execute";
-
-// Overrides the Optimization Guide Service API Key for remote requests to be
-// made.
-const char kOptimizationGuideServiceAPIKey[] =
-    "optimization-guide-service-api-key";
-
-// Purges the store containing prediction medels and host model features on
-// startup, so that it's guaranteed to be using fresh data.
-const char kPurgeModelAndFeaturesStore[] = "purge-model-and-features-store";
-
-const char kDisableCheckingUserPermissionsForTesting[] =
-    "disable-checking-optimization-guide-user-permissions";
-
-const char kDisableModelDownloadVerificationForTesting[] =
-    "disable-model-download-verification";
 
 const char kDebugLoggingEnabled[] = "enable-optimization-guide-debug-logs";
 
@@ -97,10 +77,6 @@ const char kEnableModelQualityDogfoodLogging[] =
 const char kGetFreeDiskSpaceWithUserVisiblePriorityTask[] =
     "optimization-guide-get-free-disk-space-with-user-visible-priority-task";
 
-// Enables overriding Google API key configuration check for permissions.
-const char kGoogleApiKeyConfigurationCheckOverride[] =
-    "optimization-guide-google-api-key-configuration-check-override";
-
 std::string GetModelQualityServiceAPIKey() {
   // Command line override takes priority.
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
@@ -112,25 +88,10 @@ std::string GetModelQualityServiceAPIKey() {
   return google_apis::GetAPIKey();
 }
 
-bool ShouldPurgeModelAndFeaturesStoreOnStartup() {
-  base::CommandLine* cmd_line = base::CommandLine::ForCurrentProcess();
-  return cmd_line->HasSwitch(kPurgeModelAndFeaturesStore);
-}
-
 bool IsDebugLogsEnabled() {
   static bool enabled =
       base::CommandLine::ForCurrentProcess()->HasSwitch(kDebugLoggingEnabled);
   return enabled;
-}
-
-bool ShouldOverrideCheckingUserPermissionsToFetchHintsForTesting() {
-  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
-  return command_line->HasSwitch(kDisableCheckingUserPermissionsForTesting);
-}
-
-bool ShouldSkipModelDownloadVerificationForTesting() {
-  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
-  return command_line->HasSwitch(kDisableModelDownloadVerificationForTesting);
 }
 
 bool ShouldValidateModel() {
@@ -170,11 +131,6 @@ std::optional<base::FilePath> GetOnDeviceValidationWriteToFile() {
 bool ShouldGetFreeDiskSpaceWithUserVisiblePriorityTask() {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
   return command_line->HasSwitch(kGetFreeDiskSpaceWithUserVisiblePriorityTask);
-}
-
-bool ShouldSkipGoogleApiKeyConfigurationCheck() {
-  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
-  return command_line->HasSwitch(kGoogleApiKeyConfigurationCheckOverride);
 }
 
 GURL GetModelExecutionServiceURL() {

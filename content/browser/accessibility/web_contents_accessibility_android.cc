@@ -628,6 +628,44 @@ BrowserAccessibilityAndroid* GetDialogAncestor(
   return nullptr;
 }
 
+// Converts the given `AndroidPosition` to a pair of node IDs and text
+// offsets considering the original offset type.
+std::pair<int, int> ResolvePositionToTextOffset(
+    const BrowserAccessibilityManagerAndroid::AndroidPosition& pos) {
+  if (!pos.node) {
+    return {ui::kAXAndroidInvalidViewId, ui::kAXAndroidUndefinedSelectionIndex};
+  }
+
+  if (pos.offset_type == ExtendedSelectionOffsetType::OFFSET_TYPE_TEXT) {
+    return {pos.node->GetUniqueId(), pos.offset};
+  }
+
+  if (pos.offset_type == ExtendedSelectionOffsetType::OFFSET_TYPE_CHILD) {
+    size_t child_count = pos.node->PlatformChildCount();
+    if (child_count > 0) {
+      if (pos.offset <= 0) {
+        auto* child = static_cast<BrowserAccessibilityAndroid*>(
+            pos.node->PlatformGetChild(0));
+        return {child->GetUniqueId(), 0};
+      }
+      size_t child_idx =
+          std::min(static_cast<size_t>(pos.offset - 1), child_count - 1);
+      auto* child = static_cast<BrowserAccessibilityAndroid*>(
+          pos.node->PlatformGetChild(child_idx));
+      return {child->GetUniqueId(),
+              static_cast<int>(child->GetTextContentUTF16().length())};
+    }
+
+    int text_offset =
+        (pos.offset == 0)
+            ? 0
+            : static_cast<int>(pos.node->GetTextContentUTF16().length());
+    return {pos.node->GetUniqueId(), text_offset};
+  }
+
+  return {pos.node->GetUniqueId(), ui::kAXAndroidUndefinedSelectionIndex};
+}
+
 }  // anonymous namespace
 
 class WebContentsAccessibilityAndroid::Connector
@@ -1402,7 +1440,8 @@ int32_t WebContentsAccessibilityAndroid::GetRootId(JNIEnv* env) {
 
 bool WebContentsAccessibilityAndroid::IsNodeValid(JNIEnv* env,
                                                   int32_t unique_id) {
-  return GetAXFromUniqueID(unique_id) != nullptr;
+  BrowserAccessibilityAndroid* node = GetAXFromUniqueID(unique_id);
+  return node && !node->IsIgnored();
 }
 
 void WebContentsAccessibilityAndroid::HitTest(JNIEnv* env,
@@ -1442,28 +1481,6 @@ bool WebContentsAccessibilityAndroid::IsTextSelectable(JNIEnv* env,
   }
 
   return node->IsTextSelectable();
-}
-
-int32_t WebContentsAccessibilityAndroid::GetEditableTextSelectionStart(
-    JNIEnv* env,
-    int32_t unique_id) {
-  BrowserAccessibilityAndroid* node = GetAXFromUniqueID(unique_id);
-  if (!node) {
-    return ui::kAXAndroidUndefinedSelectionIndex;
-  }
-
-  return node->GetSelectionStart();
-}
-
-int32_t WebContentsAccessibilityAndroid::GetEditableTextSelectionEnd(
-    JNIEnv* env,
-    int32_t unique_id) {
-  BrowserAccessibilityAndroid* node = GetAXFromUniqueID(unique_id);
-  if (!node) {
-    return ui::kAXAndroidUndefinedSelectionIndex;
-  }
-
-  return node->GetSelectionEnd();
 }
 
 gfx::Rect WebContentsAccessibilityAndroid::GetAbsoluteBoundsForNode(
@@ -2012,6 +2029,43 @@ WebContentsAccessibilityAndroid::GetExtendedSelection(JNIEnv* env,
   return ToJavaIntArray(env, selection_data);
 }
 
+ScopedJavaLocalRef<jintArray>
+WebContentsAccessibilityAndroid::GetSelectionRangeAsTextOffsets(
+    JNIEnv* env,
+    int32_t unique_id) {
+  BrowserAccessibilityAndroid* node = GetAXFromUniqueID(unique_id);
+  if (!node) {
+    return nullptr;
+  }
+
+  if (node->IsAtomicTextField()) {
+    int sel_start = 0;
+    int sel_end = 0;
+    node->GetIntAttribute(ax::mojom::IntAttribute::kTextSelStart, &sel_start);
+    node->GetIntAttribute(ax::mojom::IntAttribute::kTextSelEnd, &sel_end);
+    int selection_data[] = {node->GetUniqueId(), sel_start, node->GetUniqueId(),
+                            sel_end};
+    return ToJavaIntArray(env, selection_data);
+  }
+
+  auto* root_manager =
+      static_cast<BrowserAccessibilityManagerAndroid*>(node->manager());
+  std::optional<BrowserAccessibilityManagerAndroid::SelectionRange> selection =
+      root_manager->GetSelectionRange();
+  if (!selection.has_value()) {
+    return nullptr;
+  }
+
+  auto [anchor_node_id, anchor_offset] =
+      ResolvePositionToTextOffset(selection->anchor);
+  auto [focus_node_id, focus_offset] =
+      ResolvePositionToTextOffset(selection->focus);
+
+  int selection_data[] = {anchor_node_id, anchor_offset, focus_node_id,
+                          focus_offset};
+  return ToJavaIntArray(env, selection_data);
+}
+
 bool WebContentsAccessibilityAndroid::PopulateAccessibilityNodeInfo(
     JNIEnv* env,
     const JavaRef<jobject>& info,
@@ -2299,7 +2353,11 @@ bool WebContentsAccessibilityAndroid::SetExtendedSelection(
 
   BrowserAccessibilityAndroid* start_node = GetAXFromUniqueID(start_node_id);
   BrowserAccessibilityAndroid* end_node = GetAXFromUniqueID(end_node_id);
-  if (!start_node || !end_node) {
+  // Callers can sometimes request selection on an ignored node (e.g. from
+  // stale caches). This will crash when computing text offsets or querying
+  // child counts, so strictly reject it here.
+  if (!start_node || !end_node || start_node->IsIgnored() ||
+      end_node->IsIgnored()) {
     return false;
   }
 

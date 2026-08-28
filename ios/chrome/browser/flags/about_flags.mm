@@ -1060,6 +1060,14 @@ const FeatureEntry::FeatureVariation kGeminiFREExperimentVariations[] = {
     {"Lightweight", kGeminiFREExperimentLightweight, nullptr},
 };
 
+const FeatureEntry::FeatureParam kGeminiExperimentalGuidedOnboardingForce[] = {
+    {kGeminiExperimentalGuidedOnboardingForceParam, "true"}};
+
+const FeatureEntry::FeatureVariation
+    kGeminiExperimentalGuidedOnboardingVariations[] = {
+        {"Force Guided Onboarding", kGeminiExperimentalGuidedOnboardingForce,
+         nullptr}};
+
 const FeatureEntry::FeatureParam kPageActionMenuDirectEntryPoint[] = {
     {kPageActionMenuDirectEntryPointParam, "true"},
 };
@@ -1371,6 +1379,14 @@ const FeatureEntry::FeatureVariation
         {"with on-device classifier (GPU / ANE)",
          kGeminiContextualSuggestionsCuesWithOnDeviceClassifierGPU, nullptr}};
 
+const FeatureEntry::FeatureParam
+    kNewTabPageRedesignStaticFakeboxParamEnabled[] = {
+        {kNewTabPageRedesignStaticFakeboxParam, "true"}};
+
+const FeatureEntry::FeatureVariation kNewTabPageRedesignVariations[] = {
+    {"Static Fakebox", kNewTabPageRedesignStaticFakeboxParamEnabled, nullptr},
+};
+
 // To add a new entry, add to the end of kFeatureEntries. There are four
 // distinct types of entries:
 // . ENABLE_DISABLE_VALUE: entry is either enabled, disabled, or uses the
@@ -1467,7 +1483,9 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      FEATURE_VALUE_TYPE(ntp_features::kNtpAlphaBackgroundCollections)},
     {"new-tab-page-redesign", flag_descriptions::kNewTabPageRedesignName,
      flag_descriptions::kNewTabPageRedesignDescription, flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(kNewTabPageRedesign)},
+     FEATURE_WITH_PARAMS_VALUE_TYPE(kNewTabPageRedesign,
+                                    kNewTabPageRedesignVariations,
+                                    "NewTabPageRedesign")},
     {"ntp-mvt-in-bottom-sheet", flag_descriptions::kMVTInBottomSheetName,
      flag_descriptions::kMVTInBottomSheetDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kMVTInBottomSheet)},
@@ -1933,10 +1951,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      FEATURE_WITH_PARAMS_VALUE_TYPE(first_run::kBestFeaturesScreenInFirstRun,
                                     kBestFeaturesScreenInFirstRunVariations,
                                     "BestFeaturesScreenInFirstRun")},
-    {"manual-log-uploads-in-the-fre",
-     flag_descriptions::kManualLogUploadsInFREName,
-     flag_descriptions::kManualLogUploadsInFREDescription, flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(first_run::kManualLogUploadsInTheFRE)},
     {"lens-unary-api-salient-text-enabled",
      flag_descriptions::kLensUnaryApiSalientTextEnabledName,
      flag_descriptions::kLensUnaryApiSalientTextEnabledDescription,
@@ -2428,6 +2442,14 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
     {"gemini-updated-consent", flag_descriptions::kGeminiUpdatedConsentName,
      flag_descriptions::kGeminiUpdatedConsentDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kGeminiUpdatedConsent)},
+    {"gemini-experimental-guided-onboarding",
+     flag_descriptions::kGeminiExperimentalGuidedOnboardingName,
+     flag_descriptions::kGeminiExperimentalGuidedOnboardingDescription,
+     flags_ui::kOsIos,
+     FEATURE_WITH_PARAMS_VALUE_TYPE(
+         kGeminiExperimentalGuidedOnboarding,
+         kGeminiExperimentalGuidedOnboardingVariations,
+         "GeminiExperimentalGuidedOnboarding")},
     {"gemini-fre-experiment", flag_descriptions::kGeminiFREExperimentName,
      flag_descriptions::kGeminiFREExperimentDescription, flags_ui::kOsIos,
      FEATURE_WITH_PARAMS_VALUE_TYPE(kGeminiFREExperiment,
@@ -2569,6 +2591,10 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
     {"fullscreen-refactoring", flag_descriptions::kFullscreenRefactoringName,
      flag_descriptions::kFullscreenRefactoringDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kFullscreenRefactoring)},
+    {"fullscreen-eased-transitions",
+     flag_descriptions::kFullscreenEasedTransitionsName,
+     flag_descriptions::kFullscreenEasedTransitionsDescription,
+     flags_ui::kOsIos, FEATURE_VALUE_TYPE(kFullscreenEasedTransitions)},
     {"app-bar-hide-labels", flag_descriptions::kAppBarHideLabelsName,
      flag_descriptions::kAppBarHideLabelsDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kAppBarHideLabels)},
@@ -2911,6 +2937,14 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kVoiceSearchMicPermissionsName,
      flag_descriptions::kVoiceSearchMicPermissionsDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kVoiceSearchMicPermissions)},
+    {"glic-actor-autofill", flag_descriptions::kGlicActorAutofillName,
+     flag_descriptions::kGlicActorAutofillDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(autofill::features::kGlicActorAutofill)},
+    {"new-geolocation-permission-delegate",
+     flag_descriptions::kNewGeolocationPermissionDelegateName,
+     flag_descriptions::kNewGeolocationPermissionDelegateDescription,
+     flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(web::features::kNewGeolocationPermissionDelegate)},
 });
 
 bool SkipConditionalFeatureEntry(const flags_ui::FeatureEntry& entry) {

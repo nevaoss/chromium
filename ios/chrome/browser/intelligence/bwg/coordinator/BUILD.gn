@@ -9,14 +9,18 @@ source_set("container_mediator") {
     "gemini_container_mediator_event_handler.h",
   ]
   public_deps = [
+    "//ios/chrome/browser/assistant/coordinator:commands",
+    "//ios/chrome/browser/assistant/ui:detent",
     "//ios/chrome/browser/intelligence/bwg/model",
     "//ios/chrome/browser/intelligence/bwg/model:gateway_manager",
+    "//ios/chrome/browser/intelligence/bwg/ui",
   ]
   deps = [
     "//base",
     "//components/feature_engagement/public",
     "//components/prefs",
     "//ios/chrome/app/strings",
+    "//ios/chrome/browser/assistant/ui",
     "//ios/chrome/browser/feature_engagement/model",
     "//ios/chrome/browser/intelligence/actor/model",
     "//ios/chrome/browser/intelligence/bwg/metrics",
@@ -35,6 +39,7 @@ source_set("container_mediator") {
     "//ios/chrome/browser/shared/model/profile",
     "//ios/chrome/browser/shared/model/web_state_list",
     "//ios/chrome/browser/shared/public/commands",
+    "//ios/chrome/browser/shared/public/features",
     "//ios/chrome/browser/signin/model:authentication_service",
     "//ios/chrome/browser/signin/model:authentication_service_factory",
     "//ios/chrome/browser/url_loading/model",
@@ -150,6 +155,7 @@ source_set("unit_tests") {
     "//ios/chrome/browser/shared/model/prefs:pref_names",
     "//ios/chrome/browser/shared/model/profile/test",
     "//ios/chrome/browser/shared/public/commands",
+    "//ios/chrome/browser/shared/public/features",
     "//ios/chrome/browser/signin/model",
     "//ios/chrome/browser/signin/model:authentication_service_factory",
     "//ios/chrome/browser/signin/model:test_support",

@@ -361,7 +361,7 @@ const char kChromeAppStoreUrl[] =
   [self hideParentAccessBottomSheet];
   [self hidePriceTrackedItems];
   [self stopReminderNotificationsCoordinator];
-  [self hideSaveToDrive];
+  [self hideSaveToDriveAnimated:NO];
   [self stopSaveToPhotos];
   [self stopSearchEngineChoiceScreen];
   [self stopSendTabToSelf];
@@ -1106,9 +1106,6 @@ const char kChromeAppStoreUrl[] =
 #pragma mark - DriveFilePickerCommands
 
 - (void)showDriveFilePicker {
-  if (!base::FeatureList::IsEnabled(kIOSChooseFromDrive)) {
-    return;
-  }
   // If there is a coordinator, stop it before showing it again.
   [self hideDriveFilePicker];
   // Return early if the current WebState is not choosing files.
@@ -1166,9 +1163,6 @@ const char kChromeAppStoreUrl[] =
   // incognito.
   CHECK_EQ(_browser->type(), Browser::Type::kRegular);
 
-  if (!base::FeatureList::IsEnabled(kIOSChooseFromDrive)) {
-    return;
-  }
   // If there is a coordinator, stop it before showing it again.
   [self hideDriveFilePicker];
   web::WebState* activeWebState = self.activeWebState;
@@ -1767,7 +1761,7 @@ const char kChromeAppStoreUrl[] =
 
 - (void)showSaveToDriveForDownload:(web::DownloadTask*)downloadTask {
   // If the Save to Drive coordinator is not nil, stop it.
-  [self hideSaveToDrive];
+  [self hideSaveToDriveAnimated:NO];
 
   _saveToDriveCoordinator = [[SaveToDriveCoordinator alloc]
       initWithBaseViewController:_baseViewController
@@ -1776,8 +1770,8 @@ const char kChromeAppStoreUrl[] =
   [_saveToDriveCoordinator start];
 }
 
-- (void)hideSaveToDrive {
-  [_saveToDriveCoordinator stop];
+- (void)hideSaveToDriveAnimated:(BOOL)animated {
+  [_saveToDriveCoordinator stopAnimated:animated];
   _saveToDriveCoordinator = nil;
 }
 
@@ -2072,11 +2066,13 @@ const char kChromeAppStoreUrl[] =
 
 #pragma mark - WelcomeBackPromoCommands
 
-- (void)showWelcomeBack {
+- (void)showWelcomeBackPromoWithPromosUIHandler:
+    (id<PromosManagerUIHandler>)promosUIHandler {
   [_welcomeBackCoordinator stop];
   _welcomeBackCoordinator = [[WelcomeBackCoordinator alloc]
       initWithBaseViewController:_baseViewController
-                         browser:_browser];
+                         browser:_browser
+                 promosUIHandler:promosUIHandler];
   [_welcomeBackCoordinator start];
 }
 

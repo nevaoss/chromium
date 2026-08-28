@@ -19,7 +19,9 @@ import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.flags.ChromeFeatureMap;
 import org.chromium.chrome.browser.preferences.Pref;
 import org.chromium.chrome.browser.profiles.Profile;
+import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.components.bookmarks.BookmarkBarVisibilityState;
+import org.chromium.components.embedder_support.util.UrlUtilities;
 import org.chromium.components.prefs.PrefChangeRegistrar.PrefObserver;
 import org.chromium.components.prefs.PrefService;
 import org.chromium.components.user_prefs.UserPrefs;
@@ -99,15 +101,84 @@ public class BookmarkBarUtils {
 
     // LINT.ThenChange(/tools/metrics/histograms/metadata/bookmarks/enums.xml:BookmarkBarShownReason)
 
-    // Histogram names:
+    // LINT.IfChange(BookmarkBarSettingChangeOrigin)
+    /**
+     * Enum that defines the possible origins from which the bookmark bar visibility setting can be
+     * changed.
+     */
+    @Retention(RetentionPolicy.SOURCE)
+    @IntDef({
+        BookmarkBarSettingChangeOrigin.KEYBOARD_SHORTCUT,
+        BookmarkBarSettingChangeOrigin.APPEARANCE_SETTINGS,
+        BookmarkBarSettingChangeOrigin.BOOKMARK_BAR_CONTEXT_MENU,
+        BookmarkBarSettingChangeOrigin.APP_MENU,
+    })
+    public @interface BookmarkBarSettingChangeOrigin {
+        int KEYBOARD_SHORTCUT = 0;
+        int APPEARANCE_SETTINGS = 1;
+        int BOOKMARK_BAR_CONTEXT_MENU = 2;
+        int APP_MENU = 3;
+        int NUM_ENTRIES = 4;
+    }
+
+    // LINT.ThenChange(/tools/metrics/histograms/metadata/bookmarks/enums.xml:BookmarkBarSettingChangeOrigin)
+
+    // LINT.IfChange(BookmarkBarVisibilityStateOnStartUpReason)
+    /**
+     * Enum that defines the possible reasons the bookmark bar may be shown or hidden when using the
+     * tri-state visibility preference. These values are persisted to logs. Entries should not be
+     * renumbered and numeric values should never be reused.
+     */
+    @Retention(RetentionPolicy.SOURCE)
+    @IntDef({
+        BookmarkBarVisibilityStateOnStartUpReason.UNKNOWN,
+        BookmarkBarVisibilityStateOnStartUpReason.ALWAYS_SHOW_BY_USER_PREF,
+        BookmarkBarVisibilityStateOnStartUpReason.ALWAYS_HIDE_BY_USER_PREF,
+        BookmarkBarVisibilityStateOnStartUpReason.ONLY_SHOW_ON_NTP_BY_USER_PREF,
+        BookmarkBarVisibilityStateOnStartUpReason.ALWAYS_SHOW_BY_DEVICE_PREF,
+        BookmarkBarVisibilityStateOnStartUpReason.ALWAYS_HIDE_BY_DEVICE_PREF,
+        BookmarkBarVisibilityStateOnStartUpReason.ONLY_SHOW_ON_NTP_BY_DEVICE_PREF,
+        BookmarkBarVisibilityStateOnStartUpReason.DEFAULT_DEVICE_VALUE,
+    })
+    public @interface BookmarkBarVisibilityStateOnStartUpReason {
+        int UNKNOWN = 0;
+        int ALWAYS_SHOW_BY_USER_PREF = 1;
+        int ALWAYS_HIDE_BY_USER_PREF = 2;
+        int ONLY_SHOW_ON_NTP_BY_USER_PREF = 3;
+        int ALWAYS_SHOW_BY_DEVICE_PREF = 4;
+        int ALWAYS_HIDE_BY_DEVICE_PREF = 5;
+        int ONLY_SHOW_ON_NTP_BY_DEVICE_PREF = 6;
+        int DEFAULT_DEVICE_VALUE = 7;
+        int NUM_ENTRIES = 8;
+    }
+
+    // LINT.ThenChange(/tools/metrics/histograms/metadata/bookmarks/enums.xml:BookmarkBarVisibilityStateOnStartUpReason)
+
+    // [v1] Histogram names:
     public static final String TOGGLED_IN_SETTINGS = "Bookmarks.BookmarkBar.ToggledInSettings";
     public static final String TOGGLED_BY_KEYBOARD_SHORTCUT =
             "Bookmarks.BookmarkBar.ToggledByKeyboardShortcut";
-    public static final String BOOKMARK_BAR_CLICK = "Bookmarks.BookmarkBar.Click";
     public static final String BOOKMARK_BAR_SHOWN_ON_START_UP =
             "Bookmarks.BookmarkBar.Android.ShownOnStartUp";
     public static final String BOOKMARK_BAR_SHOWN_ON_START_UP_REASON =
             "Bookmarks.BookmarkBar.Android.ShownOnStartUpReason";
+
+    // [v2] Histogram names:
+    public static final String TOGGLED_KEYBOARD = "Bookmarks.BookmarkBar.TriState.ToggledKeyboard";
+    public static final String TOGGLED_APPEARANCE_SETTINGS =
+            "Bookmarks.BookmarkBar.TriState.ToggledAppearanceSettings";
+    public static final String TOGGLED_CONTEXT_MENU =
+            "Bookmarks.BookmarkBar.TriState.ToggledContextMenu";
+    public static final String TOGGLED_APP_MENU = "Bookmarks.BookmarkBar.TriState.ToggledAppMenu";
+    public static final String VISIBILITY_STATE_CHANGE_ORIGIN =
+            "Bookmarks.BookmarkBar.TriState.VisibilityStateChangeOrigin";
+    public static final String VISIBILITY_STATE_ON_START_UP =
+            "Bookmarks.BookmarkBar.TriState.VisibilityStateOnStartUp";
+    public static final String VISIBILITY_STATE_ON_START_UP_REASON =
+            "Bookmarks.BookmarkBar.TriState.VisibilityStateOnStartUpReason";
+
+    // Common histogram names:
+    public static final String BOOKMARK_BAR_CLICK = "Bookmarks.BookmarkBar.Click";
 
     /** Whether the bookmark bar feature is forcibly allowed/disallowed for testing. */
     private static @Nullable Boolean sActivityStateBookmarkBarCompatibleForTesting;
@@ -286,19 +357,64 @@ public class BookmarkBarUtils {
      *
      * @param profile The profile for which the bookmarks bar visibility should be toggled.
      * @param state The new visibility state for the bookmark bar.
-     * @param fromKeyboardShortcut True if the change was triggered by a keyboard shortcut.
+     * @param origin The origin from which the setting change was triggered.
      */
     public static void setBookmarkBarVisibilityState(
-            Profile profile, @BookmarkBarVisibilityState int state, boolean fromKeyboardShortcut) {
+            Profile profile,
+            @BookmarkBarVisibilityState int state,
+            @BookmarkBarSettingChangeOrigin int origin) {
         // This should only be called if the tri-state feature flag is enabled.
         assert ChromeFeatureMap.isEnabled(ChromeFeatureList.BOOKMARKS_BAR_NTP)
                 : "Tri-state visibility preference should not be used without feature flag.";
 
         if (shouldUseProfileUserPrefs()) {
-            setUserPrefsBookmarkBarVisibilityState(profile, state, fromKeyboardShortcut);
+            setUserPrefsBookmarkBarVisibilityState(profile, state, origin);
         } else {
-            setDevicePrefBookmarkBarVisibilityState(state, fromKeyboardShortcut);
+            setDevicePrefBookmarkBarVisibilityState(state, origin);
         }
+    }
+
+    /**
+     * Returns true if the Bookmark Bar should be visible based on the visibility state and the
+     * current state of the Tab. The feature is visible when it is allowed in the given context, and
+     * the bookmark bar visibility state UserPref or DevicePref is set to a value that allows it to
+     * be enabled in the current context. When set to ONLY_SHOW_ON_NTP, the visibility is evaluated
+     * against the active tab.
+     *
+     * @param context The context in which compatibility should be assessed.
+     * @param profile The profile for which the user UserPref should be assessed.
+     * @param isXrFullSpaceMode Supplier for whether the device is in XR full space mode.
+     * @param activeTab The currently active tab, if any.
+     * @return Whether the Bookmark Bar is currently visible.
+     */
+    public static boolean isBookmarkBarVisibleForState(
+            Context context,
+            @Nullable Profile profile,
+            boolean isXrFullSpaceMode,
+            @Nullable Tab activeTab) {
+        if (sBookmarkBarVisibleForTesting != null) {
+            return sBookmarkBarVisibleForTesting;
+        }
+
+        if (isXrFullSpaceMode || !isActivityStateBookmarkBarCompatible(context)) {
+            return false;
+        }
+
+        // On Desktop, we sync with the UserPrefs.
+        // On tablets we use the device preference logic (policy (pref service) > local pref
+        // (shared pref)).
+        @BookmarkBarVisibilityState
+        int visibilityState =
+                shouldUseProfileUserPrefs()
+                        ? getUserPrefsBookmarkBarVisibilityState(profile)
+                        : getDevicePrefBookmarkBarVisibilityState(profile);
+
+        if (visibilityState == BookmarkBarVisibilityState.ALWAYS_SHOW) {
+            return true;
+        } else if (visibilityState == BookmarkBarVisibilityState.ONLY_SHOW_ON_NTP) {
+            return activeTab != null && UrlUtilities.isNtpUrl(activeTab.getUrl());
+        }
+        return false;
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -527,11 +643,13 @@ public class BookmarkBarUtils {
      *
      * @param profile The profile for which the user setting should be set.
      * @param state The new state for the visibility state of the bookmarks bar.
-     * @param fromKeyboardShortcut True if the change was triggered by a keyboard shortcut.
+     * @param origin The origin from which the setting change was triggered.
      */
     public static void setUserPrefsBookmarkBarVisibilityState(
-            Profile profile, @BookmarkBarVisibilityState int state, boolean fromKeyboardShortcut) {
-        // TODO(crbug.com/543113459): Add metrics for new tri-state setting.
+            Profile profile,
+            @BookmarkBarVisibilityState int state,
+            @BookmarkBarSettingChangeOrigin int origin) {
+        recordBookmarkBarVisibilityStateToggled(state, origin);
         getPrefService(profile).setInteger(Pref.BOOKMARK_BAR_VISIBILITY_STATE, state);
     }
 
@@ -687,11 +805,11 @@ public class BookmarkBarUtils {
      * for tablets. Local overrides do not need to be propagated to the profile's PrefService.
      *
      * @param state The new device preference for the visibility state of the bookmark bar.
-     * @param fromKeyboardShortcut True if the change was triggered by a keyboard shortcut.
+     * @param origin The origin from which the setting change was triggered.
      */
     public static void setDevicePrefBookmarkBarVisibilityState(
-            @BookmarkBarVisibilityState int state, boolean fromKeyboardShortcut) {
-        // TODO(crbug.com/543113459): Add metrics for new tri-state setting.
+            @BookmarkBarVisibilityState int state, @BookmarkBarSettingChangeOrigin int origin) {
+        recordBookmarkBarVisibilityStateToggled(state, origin);
         ContextUtils.getAppSharedPreferences()
                 .edit()
                 .putInt(BookmarkBarConstants.BOOKMARK_BAR_BOOKMARK_BAR_VISIBILITY_STATE, state)
@@ -718,6 +836,32 @@ public class BookmarkBarUtils {
     // ---------------------------------------------------------------------------------------------
 
     // Histogram recording methods.
+
+    private static void recordBookmarkBarVisibilityStateToggled(
+            @BookmarkBarVisibilityState int state, @BookmarkBarSettingChangeOrigin int origin) {
+        RecordHistogram.recordEnumeratedHistogram(
+                VISIBILITY_STATE_CHANGE_ORIGIN, origin, BookmarkBarSettingChangeOrigin.NUM_ENTRIES);
+        switch (origin) {
+            case BookmarkBarSettingChangeOrigin.KEYBOARD_SHORTCUT:
+                RecordHistogram.recordEnumeratedHistogram(
+                        TOGGLED_KEYBOARD, state, BookmarkBarVisibilityState.MAX_VALUE + 1);
+                break;
+            case BookmarkBarSettingChangeOrigin.APPEARANCE_SETTINGS:
+                RecordHistogram.recordEnumeratedHistogram(
+                        TOGGLED_APPEARANCE_SETTINGS,
+                        state,
+                        BookmarkBarVisibilityState.MAX_VALUE + 1);
+                break;
+            case BookmarkBarSettingChangeOrigin.BOOKMARK_BAR_CONTEXT_MENU:
+                RecordHistogram.recordEnumeratedHistogram(
+                        TOGGLED_CONTEXT_MENU, state, BookmarkBarVisibilityState.MAX_VALUE + 1);
+                break;
+            case BookmarkBarSettingChangeOrigin.APP_MENU:
+                RecordHistogram.recordEnumeratedHistogram(
+                        TOGGLED_APP_MENU, state, BookmarkBarVisibilityState.MAX_VALUE + 1);
+                break;
+        }
+    }
 
     public static void recordClick(@BookmarkBarClickType int clickType) {
         RecordHistogram.recordEnumeratedHistogram(
@@ -761,6 +905,61 @@ public class BookmarkBarUtils {
                         BookmarkBarShownReason.NUM_ENTRIES);
             }
         }
+    }
+
+    public static void recordStartUpMetricsForVisibilityState(@Nullable Profile profile) {
+        @BookmarkBarVisibilityState
+        int settingState =
+                shouldUseProfileUserPrefs()
+                        ? getUserPrefsBookmarkBarVisibilityState(profile)
+                        : getDevicePrefBookmarkBarVisibilityState(profile);
+
+        // Record if the Bookmark Bar is visible, but not in cases of an unselected default state.
+        if (shouldUseProfileUserPrefs() || hasUserSetDevicePrefBookmarkBarVisibilityState()) {
+            RecordHistogram.recordEnumeratedHistogram(
+                    VISIBILITY_STATE_ON_START_UP,
+                    settingState,
+                    BookmarkBarVisibilityState.MAX_VALUE + 1);
+        }
+
+        // Record the reason why the Bookmark Bar is visible (hidden) in this instance.
+        @BookmarkBarVisibilityStateOnStartUpReason int reason;
+        if (shouldUseProfileUserPrefs()) {
+            reason =
+                    switch (settingState) {
+                        case BookmarkBarVisibilityState.ALWAYS_SHOW ->
+                                BookmarkBarVisibilityStateOnStartUpReason.ALWAYS_SHOW_BY_USER_PREF;
+                        case BookmarkBarVisibilityState.ALWAYS_HIDE ->
+                                BookmarkBarVisibilityStateOnStartUpReason.ALWAYS_HIDE_BY_USER_PREF;
+                        case BookmarkBarVisibilityState.ONLY_SHOW_ON_NTP ->
+                                BookmarkBarVisibilityStateOnStartUpReason
+                                        .ONLY_SHOW_ON_NTP_BY_USER_PREF;
+                        default -> BookmarkBarVisibilityStateOnStartUpReason.UNKNOWN;
+                    };
+        } else {
+            if (hasUserSetDevicePrefBookmarkBarVisibilityState()) {
+                reason =
+                        switch (settingState) {
+                            case BookmarkBarVisibilityState.ALWAYS_SHOW ->
+                                    BookmarkBarVisibilityStateOnStartUpReason
+                                            .ALWAYS_SHOW_BY_DEVICE_PREF;
+                            case BookmarkBarVisibilityState.ALWAYS_HIDE ->
+                                    BookmarkBarVisibilityStateOnStartUpReason
+                                            .ALWAYS_HIDE_BY_DEVICE_PREF;
+                            case BookmarkBarVisibilityState.ONLY_SHOW_ON_NTP ->
+                                    BookmarkBarVisibilityStateOnStartUpReason
+                                            .ONLY_SHOW_ON_NTP_BY_DEVICE_PREF;
+                            default -> BookmarkBarVisibilityStateOnStartUpReason.UNKNOWN;
+                        };
+            } else {
+                reason = BookmarkBarVisibilityStateOnStartUpReason.DEFAULT_DEVICE_VALUE;
+            }
+        }
+
+        RecordHistogram.recordEnumeratedHistogram(
+                VISIBILITY_STATE_ON_START_UP_REASON,
+                reason,
+                BookmarkBarVisibilityStateOnStartUpReason.NUM_ENTRIES);
     }
 
     // Helper methods.

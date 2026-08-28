@@ -62,7 +62,7 @@ class ProxyProvisioningDomainManager {
 
   // Forces a new refresh for this Provisioning Domain.
   // Cancels any in-flight refresh before starting a new one.
-  // Used in cases such as refreshing configs upon network change.
+  // Used in cases such as refreshing configs upon network or account change.
   void ForceRefresh();
 
   // Cancels any in-flight refresh workflow.
@@ -85,7 +85,7 @@ class ProxyProvisioningDomainManager {
   // already in-progress. Scheduled internally on TTL expiration or creation.
   void Refresh();
 
-  void StartRefreshInternal();
+  void StartRefreshInternal(bool force);
   void OnRefreshComplete(ProvisioningDomainFetchResult result);
   void NotifyIfStateChanged();
 

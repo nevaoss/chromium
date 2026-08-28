@@ -9,12 +9,17 @@ import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {assertDeepEquals, assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import type {MetricsTracker} from 'chrome://webui-test/metrics_test_support.js';
 import {fakeMetricsPrivate} from 'chrome://webui-test/metrics_test_support.js';
+import {TestMock} from 'chrome://webui-test/test_mock.js';
 import {isVisible, microtasksFinished} from 'chrome://webui-test/test_util.js';
 
 import {assertStyle, createContextualTasksAppElement, fixtureUrl, simulateLoadCommit} from './contextual_tasks_test_utils.js';
 import {TestContextualTasksBrowserProxy} from './test_contextual_tasks_browser_proxy.js';
 
 // <if expr="not is_android or enable_webui_contextual_tasks_composebox">
+import {PageHandlerRemote as ComposeboxPageHandlerRemote} from 'chrome://resources/cr_components/composebox/composebox.mojom-webui.js';
+import {ComposeboxProxyImpl} from 'chrome://resources/cr_components/composebox/composebox_proxy.js';
+import {PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerRemote as SearchboxPageHandlerRemote} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+
 // Remove the element to prevent background loadabort events from triggering
 // a race condition with our manual event simulation.
 async function removeThreadFrameToPreventRaceConditions() {
@@ -66,6 +71,22 @@ suite('ContextualTasksAppTest', function() {
     metrics = fakeMetricsPrivate();
     const proxy = new TestContextualTasksBrowserProxy('http://example.com');
     BrowserProxyImpl.setInstance(proxy);
+
+    // <if expr="not is_android or enable_webui_contextual_tasks_composebox">
+    const mockComposeboxPageHandler =
+        TestMock.fromClass(ComposeboxPageHandlerRemote);
+    const mockSearchboxPageHandler =
+        TestMock.fromClass(SearchboxPageHandlerRemote);
+    mockSearchboxPageHandler.setResultFor(
+        'getPageClassification',
+        Promise.resolve({metricSource: 'CO_BROWSING_COMPOSEBOX'}));
+    mockSearchboxPageHandler.setResultFor(
+        'getInputState', Promise.resolve({state: null}));
+    const searchboxCallbackRouter = new SearchboxPageCallbackRouter();
+    ComposeboxProxyImpl.setInstance(new ComposeboxProxyImpl(
+        mockComposeboxPageHandler, mockSearchboxPageHandler,
+        searchboxCallbackRouter));
+    // </if>
   });
 
   test('gets thread url', async () => {
@@ -1305,6 +1326,150 @@ suite('ContextualTasksAppTest', function() {
     askGTooltip.dispatchEvent(new CustomEvent('tooltip-dismissed'));
 
     await proxy.handler.whenCalled('askGTooltipDismissed');
+  });
+
+  suite('TooltipVisibility', () => {
+    let appElement: any;
+    let mockCrComposebox: any;
+
+    setup(async () => {
+      document.body.innerHTML = window.trustedTypes!.emptyHTML;
+      const proxy = new TestContextualTasksBrowserProxy('http://example.com');
+      BrowserProxyImpl.setInstance(proxy);
+
+      loadTimeData.overrideValues({
+        showOnboardingTooltip: true,
+        isOnboardingTooltipDismissCountBelowCap: true,
+        webUIOmniboxAskGAboutThisPageEnabled: true,
+        isAskGTooltipDismissCountBelowCap: true,
+        askGTooltipSessionImpressionCap: 10,
+        askGCoBrowseEnabled: true,
+        isLensSearchTooltipDismissCountBelowCap: true,
+        lensSearchTooltipSessionImpressionCap: 10,
+      });
+
+      const result = await createContextualTasksAppElement(/*url=*/ fixtureUrl);
+      appElement = result.appElement;
+
+      mockCrComposebox = {
+        getContextEntrypointElement: () => document.createElement('div'),
+        getAutomaticActiveTabChipElement: () => document.createElement('div'),
+        getLensButtonElement: () => document.createElement('div'),
+        getHasAutomaticActiveTabChipToken: () => true,
+      };
+      appElement.$.composebox.getComposebox = () => mockCrComposebox;
+    });
+
+    test('AskG shows when eligible', async () => {
+      appElement.entryPoint_ = 'omnibox_action';
+      appElement.isShownInTab_ = false;
+
+      appElement.updateTooltipVisibilityForTesting();
+      await microtasksFinished();
+
+      assertTrue(appElement.askGTooltipTarget_ !== null);
+
+      const onboardingTooltip =
+          appElement.shadowRoot.querySelector('#onboardingTooltip');
+      if (onboardingTooltip) {
+        assertFalse(onboardingTooltip.shouldShow);
+      }
+    });
+
+    test('AskG does not show when feature disabled', async () => {
+      loadTimeData.overrideValues({
+        webUIOmniboxAskGAboutThisPageEnabled: false,
+      });
+      const result = await createContextualTasksAppElement(/*url=*/ fixtureUrl);
+      appElement = result.appElement;
+      appElement.$.composebox.getComposebox = () => mockCrComposebox;
+
+      appElement.entryPoint_ = 'omnibox_action';
+      appElement.isShownInTab_ = false;
+
+      appElement.updateTooltipVisibilityForTesting();
+      await microtasksFinished();
+
+      assertEquals(null, appElement.askGTooltipTarget_);
+    });
+
+    test('AskG does not show when ineligible entry point', async () => {
+      appElement.entryPoint_ = 'toolbar';
+      appElement.isShownInTab_ = false;
+
+      appElement.updateTooltipVisibilityForTesting();
+      await microtasksFinished();
+
+      assertEquals(null, appElement.askGTooltipTarget_);
+    });
+
+    test('Onboarding is not suppressed when AskG is not eligible', async () => {
+      appElement.entryPoint_ = 'toolbar';
+      appElement.isShownInTab_ = false;
+
+      appElement.updateTooltipVisibilityForTesting();
+      await microtasksFinished();
+
+      const onboardingTooltip =
+          appElement.shadowRoot.querySelector('#onboardingTooltip');
+      assertTrue(!!onboardingTooltip);
+      assertTrue(onboardingTooltip.shouldShow);
+    });
+
+    test('Lens shows when AskG is dismissed', async () => {
+      loadTimeData.overrideValues({
+        isAskGTooltipDismissCountBelowCap: false,
+      });
+      const result = await createContextualTasksAppElement(/*url=*/ fixtureUrl);
+      appElement = result.appElement;
+      appElement.$.composebox.getComposebox = () => mockCrComposebox;
+      appElement.entryPoint_ = 'omnibox_action';
+      appElement.isShownInTab_ = false;
+
+      appElement.updateTooltipVisibilityForTesting();
+      await microtasksFinished();
+
+      assertTrue(appElement.lensSearchTooltipTarget_ !== null);
+      assertEquals(null, appElement.askGTooltipTarget_);
+    });
+
+    test(
+        'Lens does not show when AskG is dismissed but wrong entry point',
+        async () => {
+          loadTimeData.overrideValues({
+            isAskGTooltipDismissCountBelowCap: false,
+          });
+          const result =
+              await createContextualTasksAppElement(/*url=*/ fixtureUrl);
+          appElement = result.appElement;
+          appElement.$.composebox.getComposebox = () => mockCrComposebox;
+          appElement.entryPoint_ = 'toolbar';  // Ineligible
+          appElement.isShownInTab_ = false;
+
+          appElement.updateTooltipVisibilityForTesting();
+          await microtasksFinished();
+
+          assertEquals(null, appElement.lensSearchTooltipTarget_);
+        });
+
+    test(
+        'Lens does not show when AskG is dismissed but shown in tab',
+        async () => {
+          loadTimeData.overrideValues({
+            isAskGTooltipDismissCountBelowCap: false,
+          });
+          const result =
+              await createContextualTasksAppElement(/*url=*/ fixtureUrl);
+          appElement = result.appElement;
+          appElement.$.composebox.getComposebox = () => mockCrComposebox;
+          appElement.entryPoint_ = 'omnibox_action';
+          appElement.isShownInTab_ = true;  // Ineligible
+
+          appElement.updateTooltipVisibilityForTesting();
+          await microtasksFinished();
+
+          assertEquals(null, appElement.lensSearchTooltipTarget_);
+        });
   });
   // </if>
 });

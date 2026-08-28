@@ -532,6 +532,7 @@
 <translation id="3161699713309727585"><ph name="BUTTON_TEXT" />, නව පටිත්තක විවෘත වේ</translation>
 <translation id="3166827708714933426">ටැබ සහ කවුළු කෙටි මං</translation>
 <translation id="3167258285411721858">ඔබට <ph name="HOST_NAME" /> සඳහා ජංගම අඩවිය ඉල්ලා සිටිය හැක</translation>
+<translation id="3177338796769255211">ඔබේ සියලු උපාංග මත ඔබේ පිටුසන් සහ තවත් දේ ලබා ගැනීමට පුරන්න</translation>
 <translation id="3181145110929454111"><ph name="TAB_TITLE" />, බහු-තේරූ ඇමිණූ නිහඬ අප්‍රකට පටිත්ත</translation>
 <translation id="3189635831478931757"><ph name="GROUP_TITLE" /> පටිති සමූහය</translation>
 <translation id="3200536777393523575">ඔබේ වත්මන් කවුළුව වසන්න ද?</translation>
@@ -764,6 +765,7 @@
 <translation id="4180726336228139707">මෙම උපාංගය මත පමණි</translation>
 <translation id="4181841719683918333">භාෂා</translation>
 <translation id="4188221736490993796">Z සිට A දක්වා වර්ග කරන්න</translation>
+<translation id="4188638484665452040">Gemini නොඇමුණුවා</translation>
 <translation id="4189344235004694858">{NUM_REVOKED_PERMISSIONS,plural, =1{අයාචිත හෝ රැවටිලිකාර අන්තර්ගතය නිසා Chrome මෙම අඩවියෙන් දැනුම්දීම් යැවීම නතර කර ඇත}one{අයාචිත හෝ රැවටිලිකාර අන්තර්ගතය නිසා Chrome මෙම අඩවිවලට දැනුම්දීම් යැවීම නතර කර ඇත}other{අයාචිත හෝ රැවටිලිකාර අන්තර්ගතය නිසා Chrome මෙම අඩවිවලට දැනුම්දීම් යැවීම නතර කර ඇත}}</translation>
 <translation id="4195643157523330669">නව ටැබයක විවෘත කරන්න</translation>
 <translation id="4197828496439691735">{NUM_TABS,plural, =1{මෙම උපාංගයෙහි 1 පටිත්තක්}one{මෙම උපාංගයෙහි පටිති #ක්}other{මෙම උපාංගයෙහි පටිති #ක්}}</translation>
@@ -928,13 +930,13 @@
 <translation id="4794291718671962615">(<ph name="MEGABYTES" />) <ph name="URL" /></translation>
 <translation id="4807098396393229769">කාඩ්පතෙහි නම</translation>
 <translation id="480990236307250886">මුල් පිටුව විවෘත කරන්න</translation>
+<translation id="4816492930507672669">පිටුව වෙත සවි කරන්න</translation>
 <translation id="4822710610088666676"><ph name="TAB_GROUP_TITLE" /> පටිති සමූහයක් වසා දමා සුරකින ලදි</translation>
 <translation id="4834250788637067901">Google Pay භාවිතයෙන් ගෙවීමේ ක්‍රම, දීමනා සහ ලිපින</translation>
 <translation id="4835385943915508971">Chrome හට ඉල්ලන ලද සම්පත් වෙත ප්‍රවේශය නැත.</translation>
 <translation id="483742037940503070">{TAB_COUNT,plural, =1{නව පසුබිම් පටිති සමූහයක් ලෙස, <ph name="TAB_COUNT_ONE" /> පටිත්තක පටිති සමූහය, <ph name="COLOR_NAME" /> වර්ණය ප්‍රතිසාධනය කරන්න.}one{නව පසුබිම් පටිති සමූහයක් ලෙස, පටිති <ph name="TAB_COUNT_MANY" />ක පටිති සමූහය, <ph name="COLOR_NAME" /> වර්ණය ප්‍රතිසාධනය කරන්න.}other{නව පසුබිම් පටිති සමූහයක් ලෙස, පටිති <ph name="TAB_COUNT_MANY" />ක පටිති සමූහය, <ph name="COLOR_NAME" /> වර්ණය ප්‍රතිසාධනය කරන්න.}}</translation>
 <translation id="4849731766219625109">ඔබේ <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> ගිණුම භාවිතා කරන්න</translation>
 <translation id="4850886885716139402">දසුන</translation>
-<translation id="4852014461738377247">පුරමින්…</translation>
 <translation id="4860895144060829044">අමතන්න</translation>
 <translation id="4864369630010738180">පුරමින්...</translation>
 <translation id="4866368707455379617">Chrome සඳහා <ph name="MODULE" /> ස්ථාපන කළ නොහැක</translation>
@@ -1314,7 +1316,6 @@
 <translation id="6411219469806822692">ඉහළට යාමට නොහැකිය. පිටුවේ තවදුරටත් ඉහළින් ආරම්භ කිරීමට උත්සාහ කරන්න.</translation>
 <translation id="6412215853589222273"><ph name="TAB_TITLE" />, බහු-තේරූ පටිත්ත</translation>
 <translation id="641643625718530986">මුද්‍රණය කරන්න...</translation>
-<translation id="6427723330233512782">උසට ගළපන්න</translation>
 <translation id="6433501201775827830">ඔබේ සෙවුම් එන්ජිම තෝරා ගන්න</translation>
 <translation id="6434309073475700221">ඉවත ලන්න</translation>
 <translation id="6435307030888827407">වරා සිටින්න</translation>
@@ -1838,6 +1839,7 @@
 <translation id="8393700583063109961">පණිවිඩය යවන්න</translation>
 <translation id="8396098434728053815">පටිති ශ්‍රව්‍ය ද බෙදා ගන්න</translation>
 <translation id="8398389123831319859">අප්‍රකට වෙත මාරු වීමට දෙවරක් තට්ටු කර සිටින්න</translation>
+<translation id="8412037385861858490">Chrome හි ඔබේ වැඩ සුරක්ෂිත කිරීමට, ඔබ Chrome වෙත පුරනය වී ඇති විට ඔබේ සංවිධානයට ඇතැම් තොරතුරු බැලීමට හෝ කළමනාකරණය කිරීමට හැකි වනු ඇත. <ph name="BEGIN_LINK" />තව දැන ගන්න<ph name="END_LINK" /></translation>
 <translation id="8413126021676339697">සම්පූර්ණ ඉතිහාසය පෙන්වන්න</translation>
 <translation id="8413795581997394485">අනතුරුදායක බව දන්නා වෙබ් අඩවි, බාගැනීම්, සහ දිගුවලින් ආරක්ෂා කරයි. ඔබ වෙබ් අඩවියකට පිවිසෙන විට, Chrome ඔබේ IP ලිපිනය සඟවන පෞද්ගලිකත්ව සේවාදායකයක් හරහා URL හි අපැහැදිලි කොටසක් Google වෙත යවයි. වෙබ් අඩවියක් සැක කටයුතු දෙයක් සිදු කරන්නේ නම්, සම්පූර්ණ URL සහ පිටු අන්තර්ගතයේ බිටු ද යවයි.</translation>
 <translation id="8414396119627470038"><ph name="SITE_ETLD_PLUS_ONE" /> වෙත <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> සමග පුරන්න</translation>

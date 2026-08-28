@@ -174,6 +174,7 @@ def get_parts(config):
         )
 
     dylibs = [
+        'libaperitif.dylib',
         'libvk_swiftshader.dylib',
         'libvulkan.dylib',
     ]
@@ -189,6 +190,7 @@ def get_parts(config):
             (
                 'liboptimization_guide_internal.dylib',
                 'libchromecompaneros.dylib',
+                'libsapisid.dylib',
             )
         )
     for library in dylibs:

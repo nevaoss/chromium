@@ -28,6 +28,7 @@ source_set("ui") {
     "at_memory_search_view_controller.mm",
   ]
   deps = [
+    ":item",
     "//base",
     "//components/autofill/core/browser",
     "//components/strings",
@@ -36,14 +37,19 @@ source_set("ui") {
     "//ios/chrome/browser/autofill/atmemory/resources",
     "//ios/chrome/browser/autofill/atmemory/utils",
     "//ios/chrome/browser/autofill/autofill_ai/public",
+    "//ios/chrome/browser/net/model:crurl",
     "//ios/chrome/browser/shared/ui:buildflags",
+    "//ios/chrome/browser/shared/ui/list_model",
     "//ios/chrome/browser/shared/ui/symbols",
     "//ios/chrome/browser/shared/ui/table_view",
+    "//ios/chrome/browser/shared/ui/table_view:utils",
+    "//ios/chrome/browser/shared/ui/table_view/cells",
     "//ios/chrome/browser/shared/ui/table_view/content_configuration",
     "//ios/chrome/common:string_util",
     "//ios/chrome/common/ui/colors",
     "//ios/chrome/common/ui/util",
     "//ui/base",
+    "//url",
   ]
 }
 
@@ -51,17 +57,22 @@ source_set("unit_tests") {
   testonly = true
   sources = [
     "at_memory_granular_fill_cell_content_configuration_unittest.mm",
+    "at_memory_granular_fill_view_controller_unittest.mm",
     "at_memory_search_view_controller_unittest.mm",
   ]
   deps = [
+    ":item",
     ":ui",
     "//base",
     "//components/autofill/core/browser",
     "//components/strings",
     "//ios/chrome/browser/autofill/atmemory/public",
     "//ios/chrome/browser/autofill/atmemory/utils",
+    "//ios/chrome/browser/shared/ui/table_view:utils",
+    "//ios/chrome/browser/shared/ui/table_view/cells",
     "//ios/chrome/browser/shared/ui/table_view/content_configuration",
     "//testing/gtest",
+    "//third_party/ocmock",
     "//ui/base",
   ]
 }

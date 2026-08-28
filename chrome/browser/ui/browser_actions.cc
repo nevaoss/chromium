@@ -64,6 +64,7 @@
 #include "chrome/browser/devtools/devtools_window.h"
 #include "chrome/browser/devtools/features.h"
 #include "chrome/browser/feedback/show_feedback_page.h"
+#include "chrome/browser/geic/geic_enabling.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/indigo/resources/grit/indigo_strings.h"
 #include "chrome/browser/lifetime/application_lifetime_desktop.h"
@@ -340,7 +341,6 @@ BrowserActions::~BrowserActions() {
   browser_action_prefs_listener_.reset();
   // Extract the root and destruct it after the raw_ptr to avoid a dangling
   // pointer scenario.
-  app_menu_root_ = nullptr;
   if (root_action_item_) {
     std::unique_ptr<actions::ActionItem> owned_root_action_item =
         actions::ActionManager::Get().RemoveAction(root_action_item_);
@@ -357,9 +357,6 @@ std::u16string BrowserActions::GetCleanTitleAndTooltipText(
 void BrowserActions::InitializeBrowserActions() {
   actions::ActionManager::Get().AddAction(
       actions::ActionItem::Builder().CopyAddressTo(&root_action_item_).Build());
-
-  RegisterAction(
-      actions::ActionItem::Builder().CopyAddressTo(&app_menu_root_).Build());
 
   InitializeSidePanelActions();
 
@@ -690,7 +687,15 @@ void BrowserActions::InitializeSidePanelActions() {
             .Build());
   }
 
-  if (glic::GlicEnabling::IsEnabledByGlobalCriteria()) {
+  if (geic::IsGeicEnabled(profile)) {
+    root_action_item_->AddChild(
+        SidePanelAction(
+            SidePanelEntryId::kGeic, IDS_SETTINGS_SIDE_PANEL_ALIGNMENT_GLIC,
+            IDS_SETTINGS_SIDE_PANEL_ALIGNMENT_GLIC, omnibox::kSparkIcon,
+            kActionSidePanelShowGeic, bwi, false)
+            .SetVisible(true)
+            .Build());
+  } else if (glic::GlicEnabling::IsEnabledByGlobalCriteria()) {
     root_action_item_->AddChild(
         SidePanelAction(
             SidePanelEntryId::kGlic, IDS_SETTINGS_SIDE_PANEL_ALIGNMENT_GLIC,
@@ -1594,7 +1599,7 @@ void BrowserActions::InitializeChromeMenuActions() {
           base::BindRepeating(
               [](BrowserWindowInterface* bwi, actions::ActionItem* item,
                  actions::ActionInvocationContext context) {
-                InspectUI::InspectDevices(bwi->GetBrowserForMigrationOnly());
+                InspectUI::InspectDevices(bwi);
               },
               bwi))
           .SetActionId(kActionDevToolsDevices)
@@ -1793,7 +1798,6 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
           .Build());
   CastToolbarButtonUtil::AddCastChildActions(media_router_action, bwi);
 
-#if !BUILDFLAG(IS_CHROMEOS)
   // TODO(crbug.com/435220196): Ideally this action would have
   // DownloadToolbarUIController passed in as a dependency directly.
   root_action_item_->AddChild(
@@ -1801,9 +1805,17 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
           base::BindRepeating(
               [](BrowserWindowInterface* bwi, actions::ActionItem* item,
                  actions::ActionInvocationContext context) {
+#if BUILDFLAG(IS_CHROMEOS)
+                // ChromeOS does not use DownloadToolbarUIController (downloads
+                // are managed via the Ash shelf/holding space), so directly
+                // open the downloads WebUI page instead of showing the toolbar
+                // bubble.
+                chrome::ShowDownloads(webui::GetBrowserForOpeningWebUi(bwi));
+#else
                 if (auto* controller = DownloadToolbarUIController::From(bwi)) {
                   controller->InvokeUI();
                 }
+#endif
               },
               bwi),
           kActionShowDownloads, IDS_SHOW_DOWNLOADS, IDS_TOOLTIP_DOWNLOAD_ICON,
@@ -1811,7 +1823,6 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
               ? kDownloadIcon
               : kDownloadToolbarButtonChromeRefreshOldIcon)
           .Build());
-#endif  // !BUILDFLAG(IS_CHROMEOS)
 
   if (tab_groups::SavedTabGroupUtils::SupportsSharedTabGroups()) {
     root_action_item_->AddChild(
@@ -3187,7 +3198,6 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
               bwi))
           .SetActionId(kActionGroupUngroupedTabs)
           .Build());
-
 
   root_action_item_->AddChild(
       actions::ActionItem::Builder(
@@ -4626,6 +4636,9 @@ void BrowserActions::InitializeNavigationActions() {
 
 void BrowserActions::InitializeSubmenuActions() {
   BrowserWindowInterface* const bwi = base::to_address(bwi_);
+
+  root_action_item_->AddChild(
+      actions::ActionItem::Builder().SetActionId(kActionAppMenuRoot).Build());
 
   root_action_item_->AddChild(
       ChromeMenuAction(

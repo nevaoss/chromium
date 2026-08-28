@@ -707,6 +707,14 @@ void NativeWidgetNSWindowBridge::SetBounds(
             display:YES
             animate:NO];
 
+  if (window_move_loop_) {
+    // If the window bounds are updated programmatically during an active move
+    // loop (e.g. by TabDragController when crossing display boundaries),
+    // update the move loop baseline so subsequent mouse drag events calculate
+    // deltas against the new frame rather than the stale initial frame.
+    window_move_loop_->SetBaseFrame([window_ frame], [NSEvent mouseLocation]);
+  }
+
   // If the window has focus but is not on the active space and the window was
   // moved to a different display, re-activate it to switch the space to the
   // active window. (crbug.com/1316543)
@@ -1031,10 +1039,14 @@ void NativeWidgetNSWindowBridge::SetVisibilityState(
     parent_->OrderChildren();
 
   if (new_state == WindowVisibilityState::kShowAndActivateWindow) {
-    [window_ makeKeyAndOrderFront:nil];
+    // Activate the app before `makeKeyAndOrderFront:`. If the order is
+    // reversed while the app is inactive, AppKit will not send
+    // NSWindowDidBecomeKeyNotification, causing Widget::IsActive() to
+    // incorrectly return false.
     if (![window_ activationIndependence]) {
       [NSApp activateIgnoringOtherApps:YES];
     }
+    [window_ makeKeyAndOrderFront:nil];
   } else if (new_state == WindowVisibilityState::kShowInactive && !parent_ &&
              ![window_ isMiniaturized]) {
     if ([[NSApp mainWindow] screen] == [window_ screen] ||

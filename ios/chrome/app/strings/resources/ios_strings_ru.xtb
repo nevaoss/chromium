@@ -51,6 +51,7 @@
 <translation id="1147031633655575115">Вы вошли как <ph name="USER" /></translation>
 <translation id="1149401351239820326">Месяц окончания</translation>
 <translation id="1150989369772528668">Календарь</translation>
+<translation id="1158134713295836892">Gemini в Chrome</translation>
 <translation id="1161444134753003495">Войти</translation>
 <translation id="1161663161838091892">Чтобы продолжить, синхронизируйте вкладки и историю</translation>
 <translation id="1162834932051545794">{count,plural, =1{{count} кредитная карта}one{{count} кредитная карта}few{{count} кредитные карты}many{{count} кредитных карт}other{{count} кредитной карты}}</translation>
@@ -225,7 +226,6 @@
 <translation id="1674504678466460478"><ph name="SOURCE_LANGUAGE" /> – <ph name="TARGET_LANGUAGE" /></translation>
 <translation id="1678855624321223424">Согласно правилам вашей организации этот файл может содержать конфиденциальную информацию</translation>
 <translation id="1683276189281028863">Проверка паролей</translation>
-<translation id="168389590065701766">Теперь вы можете открывать Google Объектив из адресной строки и искать всё, что видите.</translation>
 <translation id="1689333818294560261">Название</translation>
 <translation id="169048873465870056">Удалить вкладку и группу?</translation>
 <translation id="1692115862433274081">Использовать другой аккаунт</translation>
@@ -836,7 +836,7 @@
 <translation id="3789841737615482174">Установить</translation>
 <translation id="380329542618494757">Имя</translation>
 <translation id="3803696231112616155">Предлагать переводить этот сайт</translation>
-<translation id="3810973564298564668">Управление</translation>
+<translation id="3810973564298564668">Настроить</translation>
 <translation id="381219490185664296">Расформировать группу вкладок?</translation>
 <translation id="3812308602011798782">Отзывы</translation>
 <translation id="3813175908845379029">Подсказки по работе в браузере</translation>
@@ -2527,6 +2527,7 @@
 <translation id="9203951165704618409">Чтобы вам было удобнее, выберите, где должна находиться адресная строка: вверху или внизу.</translation>
 <translation id="9205189991633470489">Блокировка вкладок инкогнито</translation>
 <translation id="9206887540681440657">Скорость</translation>
+<translation id="9218430445555521422">Использовать по умолчанию</translation>
 <translation id="9219103736887031265">Картинки</translation>
 <translation id="9219154867334666734">Поиск по вкладкам</translation>
 <translation id="9223358826628549784">Отчет отправлен</translation>

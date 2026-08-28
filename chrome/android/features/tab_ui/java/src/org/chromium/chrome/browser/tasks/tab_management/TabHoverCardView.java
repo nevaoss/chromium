@@ -8,6 +8,7 @@ import static org.chromium.build.NullUtil.assumeNonNull;
 
 import android.content.Context;
 import android.content.res.ColorStateList;
+import android.content.res.Resources;
 import android.graphics.drawable.BitmapDrawable;
 import android.text.format.Formatter;
 import android.util.AttributeSet;
@@ -17,11 +18,13 @@ import android.widget.FrameLayout;
 import android.widget.TextView;
 
 import androidx.annotation.ColorInt;
+import androidx.annotation.DrawableRes;
+import androidx.annotation.Px;
+import androidx.annotation.StringRes;
 import androidx.core.view.ViewCompat;
 
 import org.chromium.base.Callback;
 import org.chromium.base.MathUtils;
-import org.chromium.base.SysUtils;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.R;
@@ -83,6 +86,19 @@ public class TabHoverCardView extends FrameLayout {
         return (int) (logarithmicFraction * scalingFactor) + MIN_HOVER_CARD_DELAY_MS;
     }
 
+    /**
+     * Get the width of the hover card in px, bounded by {@link #HOVER_CARD_MAX_WIDTH_PERCENT} of
+     * the window width.
+     *
+     * @param context The context used to load resources.
+     * @return The bounded hover card width in px.
+     */
+    public static @Px int getHoverCardWidthPx(Context context) {
+        float maxWidth = context.getResources().getDimension(R.dimen.tab_hover_card_width);
+        float windowWidthPx = context.getResources().getDisplayMetrics().widthPixels;
+        return Math.round(Math.min(maxWidth, HOVER_CARD_MAX_WIDTH_PERCENT * windowWidthPx));
+    }
+
     private ViewGroup mContentView;
     private TextView mTitleView;
     private TextView mUrlView;
@@ -111,7 +127,13 @@ public class TabHoverCardView extends FrameLayout {
         mAlertStatusView = mContentView.findViewById(R.id.alert_status);
         mMemoryUsageView = mContentView.findViewById(R.id.memory_usage);
         mThumbnailView = mContentView.findViewById(R.id.thumbnail);
-        maybeUpdateBackgroundOnLowEndDevice();
+    }
+
+    @Override
+    protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        int exactWidthSpec =
+                MeasureSpec.makeMeasureSpec(getHoverCardWidthPx(getContext()), MeasureSpec.EXACTLY);
+        super.onMeasure(exactWidthSpec, heightMeasureSpec);
     }
 
     /**
@@ -154,8 +176,7 @@ public class TabHoverCardView extends FrameLayout {
         setX(x);
         setY(y);
 
-        float width = getLayoutParams().width;
-        assert width > 0 : "Hover card width must be an explicit value.";
+        int width = getHoverCardWidthPx(getContext());
         updateThumbnail(hoveredTab, width);
 
         setVisibility(VISIBLE);
@@ -207,8 +228,15 @@ public class TabHoverCardView extends FrameLayout {
                 TabUiThemeProvider.getTabHoverCardTextColorSecondary(getContext(), incognito));
 
         ViewCompat.setBackgroundTintList(
-                this,
+                mContentView,
                 TabUiThemeProvider.getTabHoverCardBackgroundTintList(getContext(), incognito));
+    }
+
+    @Override
+    public @Nullable ColorStateList getBackgroundTintList() {
+        return mContentView != null
+                ? ViewCompat.getBackgroundTintList(mContentView)
+                : super.getBackgroundTintList();
     }
 
     public void destroy() {
@@ -218,12 +246,6 @@ public class TabHoverCardView extends FrameLayout {
             mTabModelSelector.getCurrentTabModelSupplier().removeObserver(mCurrentTabModelObserver);
             mTabModelSelector = null;
         }
-    }
-
-    void maybeUpdateBackgroundOnLowEndDevice() {
-        if (!SysUtils.isLowEndDevice()) return;
-        mContentView.setBackgroundResource(R.drawable.popup_bg_8dp);
-        setBackground(null);
     }
 
     private void unsubscribeFromTab() {
@@ -274,31 +296,19 @@ public class TabHoverCardView extends FrameLayout {
     }
 
     private void updateAlertStatusView(@Nullable @TabAlert Integer alertState) {
-        boolean showAlert = false;
-        if (alertState != null) {
-            showAlert = true;
-            @ColorInt int accentColor = SemanticColorUtils.getDefaultIconColorAccent1(getContext());
-            ColorStateList accentTintList = ColorStateList.valueOf(accentColor);
-            mAlertStatusView.setDrawableTintColor(accentTintList);
-            switch (alertState) {
-                case TabAlert.ACTOR_ACCESSING -> {
-                    mAlertStatusView.setText(R.string.tooltip_tab_alert_state_actor_accessing);
-                    mAlertStatusView.setCompoundDrawablesRelativeWithIntrinsicBounds(
-                            R.drawable.ic_arrow_selector_spark_16dp, 0, 0, 0);
-                }
-                case TabAlert.GLIC_ACCESSING -> {
-                    mAlertStatusView.setText(R.string.tooltip_tab_alert_state_glic_accessing);
-                    mAlertStatusView.setCompoundDrawablesRelativeWithIntrinsicBounds(
-                            R.drawable.ic_screensaver_auto_16dp, 0, 0, 0);
-                }
-                case TabAlert.GLIC_SHARING -> {
-                    mAlertStatusView.setText(R.string.tooltip_tab_alert_state_glic_sharing);
-                    mAlertStatusView.setCompoundDrawablesRelativeWithIntrinsicBounds(
-                            R.drawable.ic_screensaver_auto_16dp, 0, 0, 0);
-                }
-                default -> showAlert = false;
-            }
+        @DrawableRes int iconRes = TabUtils.getTabAlertDrawable(alertState);
+        @StringRes int stringRes = TabUtils.getTabAlertDescriptionRes(alertState);
+
+        boolean showAlert = iconRes != Resources.ID_NULL && stringRes != Resources.ID_NULL;
+        if (showAlert) {
+            @ColorInt int defaultTint = SemanticColorUtils.getDefaultIconColorAccent1(getContext());
+            @ColorInt
+            int tint = TabUtils.getTabAlertTintColor(getContext(), alertState, defaultTint);
+            mAlertStatusView.setCompoundDrawablesRelativeWithIntrinsicBounds(iconRes, 0, 0, 0);
+            mAlertStatusView.setDrawableTintColor(ColorStateList.valueOf(tint));
+            mAlertStatusView.setText(stringRes);
         }
+
         mAlertStatusView.setVisibility(showAlert ? VISIBLE : GONE);
         updateAlertStatusBottomMargin();
     }

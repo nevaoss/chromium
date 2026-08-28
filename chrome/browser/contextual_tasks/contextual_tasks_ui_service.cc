@@ -28,10 +28,12 @@
 #include "chrome/browser/contextual_tasks/active_task_context_provider.h"
 #include "chrome/browser/contextual_tasks/contextual_search_session_finder.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_cookie_synchronizer.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_eligibility_manager.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_panel_controller.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_interface.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_ui_service_delegate.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_utils.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_window_tracker.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_window_tracker_manager.h"
@@ -99,7 +101,6 @@
 
 #if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/ui/lens/lens_media_link_handler.h"
-#include "components/omnibox/common/omnibox_features.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #endif
 
@@ -261,6 +262,40 @@ void LoadUrlInSidePanel(content::WebContents* web_contents, const GURL& url) {
                                         std::string());
 }
 
+// Returns true if `web_contents` corresponds to an active tab that is attached
+// as context in the current contextual search session.
+bool IsActiveTabInContext(content::WebContents* web_contents) {
+  if (!contextual_tasks::IsContextualTasksUIEnabled() || !web_contents) {
+    return false;
+  }
+
+  SessionID current_tab_id = SessionTabHelper::IdForTab(web_contents);
+  if (!current_tab_id.is_valid()) {
+    return false;
+  }
+
+  auto* helper =
+      ContextualSearchWebContentsHelper::FromWebContents(web_contents);
+  if (!helper || !helper->session_handle()) {
+    return false;
+  }
+
+  auto* session_handle = helper->session_handle();
+  for (const auto& file : session_handle->GetSubmittedContextFileInfos()) {
+    if (file.tab_session_id.has_value() &&
+        file.tab_session_id.value() == current_tab_id) {
+      return true;
+    }
+  }
+  for (const auto& file : session_handle->GetUploadedContextFileInfos()) {
+    if (file.tab_session_id.has_value() &&
+        file.tab_session_id.value() == current_tab_id) {
+      return true;
+    }
+  }
+  return false;
+}
+
 }  // namespace
 
 ContextualTasksUiService::ContextualTasksUiService(
@@ -341,14 +376,20 @@ void ContextualTasksUiService::OnNavigationToAiPageIntercepted(
   // propagate context from the source WebUI.
   std::unique_ptr<contextual_search::ContextualSearchSessionHandle>
       session_handle;
+  std::unique_ptr<contextual_search::InputStateModel> input_state_model;
+  std::vector<int32_t> selected_tab_ids;
   contextual_search::ContextualSearchSource source =
       contextual_search::ContextualSearchSource::kUnknown;
   if (source_tab) {
     auto* helper = ContextualSearchWebContentsHelper::FromWebContents(
         source_tab->GetContents());
-    if (helper && helper->session_handle()) {
-      session_handle = helper->TakeSessionHandle();
-      source = session_handle->GetMetricsRecorder()->source();
+    if (helper) {
+      if (helper->session_handle()) {
+        session_handle = helper->TakeSessionHandle();
+        source = session_handle->GetMetricsRecorder()->source();
+      }
+      input_state_model = helper->TakeInputStateModel();
+      selected_tab_ids = helper->GetSelectedTabIds();
     }
   }
   base::UmaHistogramEnumeration(
@@ -453,7 +494,8 @@ void ContextualTasksUiService::OnNavigationToAiPageIntercepted(
           ContextualSearchWebContentsHelper::GetOrCreateForWebContents(
               contextual_task_web_contents);
       helper->SetTaskSession(task.GetTaskId(), std::move(session_handle),
-                             helper->TakeInputStateModel());
+                             std::move(input_state_model),
+                             std::move(selected_tab_ids));
     }
     AssociateWebContentsToTask(contextual_task_web_contents, task.GetTaskId());
   }
@@ -1153,8 +1195,10 @@ bool ContextualTasksUiService::ShouldRedirectIneligibleRequest(
 
   // Bypasses the redirect check if the session was started from Lens and the
   // Lens side panel unification feature is enabled (either as an active
-  // session or a pending session for the given task ID).
-  if (IsSessionAllowedWhileIneligible(source_contents, task_id)) {
+  // session or a pending session for the given task ID), or if the active tab
+  // is present in context on the WebContents.
+  if (IsSessionAllowedWhileIneligible(source_contents, task_id) ||
+      IsActiveTabInContext(source_contents)) {
     return false;
   }
 
@@ -1182,6 +1226,8 @@ bool ContextualTasksUiService::IsSessionAllowedWhileIneligible(
     return false;
   }
 
+  // Allow cobrowse session if we reached here from lens entry points. It will
+  // end up in opening the side panel.
   if (web_contents) {
     auto* helper =
         ContextualSearchWebContentsHelper::FromWebContents(web_contents);
@@ -2178,7 +2224,8 @@ bool ContextualTasksUiService::HandleNavigationImpl(
   // Navigations to the AI URL in the topmost frame should always be
   // intercepted.
   if (is_nav_to_ai) {
-    if (!aim_eligibility_service_->IsCobrowseEligible()) {
+    if (!aim_eligibility_service_->IsCobrowseEligible() &&
+        !IsActiveTabInContext(source_contents)) {
       OMNIBOX_LOG("nav_trace")
           << "ContextualTasks navigation trace: HandleNavigationImpl "
              "returning false, nav to AI but not cobrowse eligible";

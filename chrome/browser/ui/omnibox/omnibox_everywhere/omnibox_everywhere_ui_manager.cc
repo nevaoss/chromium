@@ -13,9 +13,6 @@
 #include "chrome/browser/file_select_helper.h"
 #include "chrome/browser/media/webrtc/media_capture_devices_dispatcher.h"
 #include "chrome/browser/profiles/profile.h"
-#if defined(USE_AURA)
-#include "chrome/browser/ui/omnibox/omnibox_everywhere/omnibox_everywhere_event_handler_aura.h"
-#endif
 #include "chrome/browser/ui/omnibox/omnibox_everywhere/omnibox_everywhere_prefs.h"
 #include "chrome/browser/ui/omnibox/omnibox_everywhere/omnibox_everywhere_widget_delegate.h"
 #include "chrome/browser/ui/omnibox/omnibox_everywhere_service.h"
@@ -40,9 +37,9 @@
 #include "ui/gfx/geometry/rect.h"
 #include "ui/gfx/geometry/size.h"
 #include "ui/strings/grit/ui_strings.h"
-#include "ui/views/background.h"
 #include "ui/views/controls/menu/menu_runner.h"
 #include "ui/views/controls/webview/unhandled_keyboard_event_handler.h"
+#include "ui/views/controls/webview/web_contents_set_background_color.h"
 #include "ui/views/controls/webview/webview.h"
 #include "ui/views/view.h"
 #include "ui/views/view_class_properties.h"
@@ -54,7 +51,9 @@
 #endif
 
 #if defined(USE_AURA)
+#include "chrome/browser/ui/omnibox/omnibox_everywhere/omnibox_everywhere_event_handler_aura.h"
 #include "ui/aura/window.h"
+#include "ui/wm/core/window_animations.h"
 #endif
 
 namespace omnibox_everywhere {
@@ -141,6 +140,14 @@ OmniboxEverywhereUIManager::OmniboxEverywhereUIManager(
 #if defined(USE_AURA)
   event_handler_ = std::make_unique<OmniboxEverywhereEventHandlerAura>(*this);
 #endif
+  if (g_browser_process && g_browser_process->local_state()) {
+    local_state_pref_change_registrar_.Init(g_browser_process->local_state());
+    local_state_pref_change_registrar_.Add(
+        prefs::kOmniboxEverywhereEphemeralModel,
+        base::BindRepeating(
+            &OmniboxEverywhereUIManager::OnEphemeralModelPrefChanged,
+            base::Unretained(this)));
+  }
 }
 
 OmniboxEverywhereUIManager::~OmniboxEverywhereUIManager() {
@@ -158,6 +165,9 @@ OmniboxEverywhereUIManager::widget_delegate() const {
 
 bool OmniboxEverywhereUIManager::IsPointInDraggableRegion(
     const gfx::Point& point) const {
+  // TODO(b/546065055): There's additional padding on the widget to support the
+  // shadow, which is draggable. This should be addressed to prevent dragging
+  // this area.
   return draggable_region_ && !draggable_region_->isEmpty() &&
          draggable_region_->contains(point.x(), point.y());
 }
@@ -191,11 +201,23 @@ void OmniboxEverywhereUIManager::ShowForProfile(Profile* profile,
 
   if (web_contents()) {
     if (auto* rwhv = web_contents()->GetRenderWidgetHostView()) {
-      constexpr gfx::Size kAutoResizeMinSize(800, 50);
-      constexpr gfx::Size kAutoResizeMaxSize(800, 800);
+      constexpr gfx::Size kAutoResizeMinSize(kPopupFixedWidth, 50);
+      constexpr gfx::Size kAutoResizeMaxSize(kPopupFixedWidth, 800);
       rwhv->EnableAutoResize(kAutoResizeMinSize, kAutoResizeMaxSize);
     }
   }
+}
+
+gfx::Rect OmniboxEverywhereUIManager::CalculateWidgetBounds(int height) {
+  display::Display target_display =
+      display::Screen::Get()->GetDisplayNearestPoint(
+          display::Screen::Get()->GetCursorScreenPoint());
+  gfx::Rect work_area = target_display.work_area();
+  int width = std::min(kPopupFixedWidth, work_area.width());
+  int clamped_height = std::min(height, work_area.height());
+  int x = work_area.x() + (work_area.width() - width) / 2;
+  int y = work_area.y() + (work_area.height() - clamped_height) / 2;
+  return gfx::Rect(x, y, width, clamped_height);
 }
 
 void OmniboxEverywhereUIManager::EnsureContentsWrapperInitialized(
@@ -206,6 +228,8 @@ void OmniboxEverywhereUIManager::EnsureContentsWrapperInitialized(
   contents_wrapper_ = CreateContentsWrapper(profile);
 
   if (web_contents()) {
+    views::WebContentsSetBackgroundColor::CreateForWebContentsWithColor(
+        web_contents(), SK_ColorTRANSPARENT);
     OmniboxPopupWebContentsHelper::CreateForWebContents(web_contents());
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
     // Set ViewType::kComponent so `ChromeSpeechRecognitionManagerDelegate`
@@ -262,15 +286,7 @@ void OmniboxEverywhereUIManager::CreateAndInitWidget(
     params.context = context;
   }
 
-  display::Display target_display =
-      display::Screen::Get()->GetDisplayNearestPoint(
-          display::Screen::Get()->GetCursorScreenPoint());
-  gfx::Rect work_area = target_display.work_area();
-  constexpr gfx::Size kDefaultPopupSize(864, 632);
-  params.bounds = gfx::Rect(
-      work_area.x() + (work_area.width() - kDefaultPopupSize.width()) / 2,
-      work_area.y() + (work_area.height() - kDefaultPopupSize.height()) / 2,
-      kDefaultPopupSize.width(), kDefaultPopupSize.height());
+  params.bounds = CalculateWidgetBounds(kDefaultRestingHeight);
 
   auto web_view = std::make_unique<views::WebView>(profile_);
   web_view->SetProperty(views::kElementIdentifierKey,
@@ -279,12 +295,6 @@ void OmniboxEverywhereUIManager::CreateAndInitWidget(
   // the Views focus/accelerator system.
   web_view->set_allow_accelerators(true);
   web_view->SetWebContents(web_contents());
-  web_view->SetBackground(views::CreateSolidBackground(SK_ColorTRANSPARENT));
-  if (web_contents()) {
-    if (auto* rwhv = web_contents()->GetRenderWidgetHostView()) {
-      rwhv->SetBackgroundColor(SK_ColorTRANSPARENT);
-    }
-  }
   widget_delegate_->SetContentsView(std::move(web_view));
 
   widget_->Init(std::move(params));
@@ -304,6 +314,8 @@ void OmniboxEverywhereUIManager::CreateAndInitWidget(
 
 #if defined(USE_AURA)
   CHECK(widget_->GetNativeView());
+  wm::SetWindowVisibilityAnimationTransition(widget_->GetNativeView(),
+                                             wm::ANIMATE_NONE);
   widget_->GetNativeView()->AddPreTargetHandler(event_handler_.get());
 #endif
 }
@@ -321,6 +333,19 @@ void OmniboxEverywhereUIManager::ActivateAndFocus() {
   }
   if (web_contents()) {
     web_contents()->Focus();
+  }
+}
+
+void OmniboxEverywhereUIManager::OnEphemeralModelPrefChanged() {
+  if (!widget_) {
+    return;
+  }
+  bool was_visible = IsVisible();
+  Profile* profile = profile_;
+  CleanUpWidget();
+  if (was_visible) {
+    CHECK(profile);
+    ShowForProfile(profile);
   }
 }
 
@@ -375,6 +400,8 @@ void OmniboxEverywhereUIManager::CleanUpWidget() {
   is_file_chooser_open_ = false;
   is_drive_picker_open_ = false;
   is_context_menu_open_ = false;
+  is_dragging_ = false;
+  pending_auto_resize_size_.reset();
   draggable_region_.reset();
   browser_collection_observation_.Reset();
 }
@@ -439,6 +466,20 @@ void OmniboxEverywhereUIManager::OnWidgetClosed(
   CleanUpWidget();
 }
 
+void OmniboxEverywhereUIManager::OnWidgetUserDragStarted(
+    views::Widget* widget) {
+  is_dragging_ = true;
+}
+
+void OmniboxEverywhereUIManager::OnWidgetUserDragEnded(views::Widget* widget) {
+  is_dragging_ = false;
+  if (pending_auto_resize_size_.has_value()) {
+    gfx::Size size = *pending_auto_resize_size_;
+    pending_auto_resize_size_.reset();
+    ResizeDueToAutoResize(web_contents(), size);
+  }
+}
+
 void OmniboxEverywhereUIManager::CloseUI() {
   Close();
 }
@@ -450,13 +491,18 @@ void OmniboxEverywhereUIManager::ShowUI() {
 void OmniboxEverywhereUIManager::ResizeDueToAutoResize(
     content::WebContents* source,
     const gfx::Size& new_size) {
-  if (widget_) {
-    constexpr int kAutoResizeHeightPadding = 96;
-    constexpr int kAutoResizeMinHeight = 56;
-    gfx::Rect bounds = widget_->GetWindowBoundsInScreen();
-    bounds.set_height(std::max(new_size.height() + kAutoResizeHeightPadding,
-                               kAutoResizeMinHeight));
-    widget_->SetBounds(bounds);
+  if (!widget_) {
+    return;
+  }
+  if (is_dragging_) {
+    pending_auto_resize_size_ = new_size;
+    return;
+  }
+  constexpr int kAutoResizeMinHeight = 56;
+  gfx::Size target_size(kPopupFixedWidth,
+                        std::max(new_size.height(), kAutoResizeMinHeight));
+  if (widget_->GetSize() != target_size) {
+    widget_->SetSize(target_size);
   }
 }
 
@@ -545,11 +591,20 @@ void OmniboxEverywhereUIManager::DraggableRegionsChanged(
 // Omnibox Everywhere is a standalone popup WebUI window without a default
 // browser-frame context menu controller. HandleContextMenu creates and displays
 // a lightweight context menu for standard text editing actions (Cut, Copy,
-// Paste, Select All) in editable controls or selected text.
+// Paste, Select All) exclusively for editable controls (query input) or
+// selected text. Non-editable background/padding areas suppress the context
+// menu.
 bool OmniboxEverywhereUIManager::HandleContextMenu(
     content::RenderFrameHost& render_frame_host,
     const content::ContextMenuParams& params) {
   if (!widget_ || !widget_->GetContentsView()) {
+    return true;
+  }
+
+  // Only show a context menu for editable elements (e.g. search input box)
+  // or when text is selected. Suppress context menus when right-clicking on
+  // non-editable background or container padding of the widget.
+  if (!params.is_editable && params.selection_text.empty()) {
     return true;
   }
 
@@ -572,14 +627,9 @@ bool OmniboxEverywhereUIManager::HandleContextMenu(
     context_menu_model_->AddItemWithStringId(kPaste, IDS_APP_PASTE);
     context_menu_model_->AddSeparator(ui::NORMAL_SEPARATOR);
     context_menu_model_->AddItemWithStringId(kSelectAll, IDS_APP_SELECT_ALL);
-  } else if (!params.selection_text.empty()) {
-    context_menu_model_->AddItemWithStringId(kCopy, IDS_APP_COPY);
-    context_menu_model_->AddSeparator(ui::NORMAL_SEPARATOR);
-    context_menu_model_->AddItemWithStringId(kSelectAll, IDS_APP_SELECT_ALL);
   } else {
-    // If right-clicked on container/padding area, provide Paste and Select All
-    // so the user can paste clipboard text/files directly into the input.
-    context_menu_model_->AddItemWithStringId(kPaste, IDS_APP_PASTE);
+    CHECK(!params.selection_text.empty());
+    context_menu_model_->AddItemWithStringId(kCopy, IDS_APP_COPY);
     context_menu_model_->AddSeparator(ui::NORMAL_SEPARATOR);
     context_menu_model_->AddItemWithStringId(kSelectAll, IDS_APP_SELECT_ALL);
   }

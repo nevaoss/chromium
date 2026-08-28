@@ -256,6 +256,7 @@
 #include "third_party/blink/renderer/core/html/forms/html_select_element.h"
 #include "third_party/blink/renderer/core/html/html_all_collection.h"
 #include "third_party/blink/renderer/core/html/html_anchor_element.h"
+#include "third_party/blink/renderer/core/html/html_area_element.h"
 #include "third_party/blink/renderer/core/html/html_base_element.h"
 #include "third_party/blink/renderer/core/html/html_body_element.h"
 #include "third_party/blink/renderer/core/html/html_collection.h"
@@ -550,9 +551,6 @@ bool IsSyntheticSelect(Element& element) {
          HasSelectInNameAttribute(element) || IsRoleCombobox(element) ||
          IsAriaHasPopupListbox(element);
 }
-
-// The sampling rate for UKM.
-constexpr double kUkmSamplingRate = 0.001;
 
 }  // namespace
 
@@ -5799,6 +5797,14 @@ static Element* SkipDisplayNoneAncestors(Element* element) {
   for (; element; element = FlatTreeTraversal::ParentElement(*element)) {
     if (element->GetLayoutObject() || element->HasDisplayContentsStyle())
       return element;
+    // <area> is display:none by default, in which case it has no box of its
+    // own, but it is painted as part of the <img> that uses its <map>, and hit
+    // testing resolves image map hits to it, so it can be hovered/activated
+    // like a rendered element.
+    if (IsA<HTMLAreaElement>(*element) &&
+        RuntimeEnabledFeatures::HTMLAreaElementDisplayNoneEnabled()) {
+      return element;
+    }
   }
   return nullptr;
 }
@@ -8111,24 +8117,6 @@ void Document::FinishedParsing() {
 
   if (IsInOutermostMainFrame() && !IsInitialEmptyDocument() &&
       Url().ProtocolIsInHttpFamily()) {
-    // Record histograms of SVGImage.
-    base::UmaHistogramCounts100(
-        "Blink.Layout.SVGImage.Count.InOutermostMainFrame",
-        data_->svg_image_processed_count_);
-    base::UmaHistogramMicrosecondsTimes(
-        "Blink.Layout.SVGImage.TotalTime.InOutermostMainFrame",
-        data_->accumulated_svg_image_elapsed_time_);
-
-    // UKM data is sampled at a frequency of `kUkmSamplingRate`.
-    if (base::RandDouble() < kUkmSamplingRate) {
-      ukm::builders::Blink_SVGImage(UkmSourceID())
-          .SetCount(ukm::GetExponentialBucketMinForCounts1000(
-              data_->svg_image_processed_count_))
-          .SetTotalTime(
-              data_->accumulated_svg_image_elapsed_time_.InMicroseconds())
-          .Record(UkmRecorder());
-    }
-
     // Record the total taken time by UseCounter.
     Loader()->GetUseCounter().ReportTotalTakenTime(GetFrame(),
                                                    /*did_commit_load=*/false);
@@ -8475,13 +8463,6 @@ ukm::UkmRecorder* Document::UkmRecorder() {
 
 ukm::SourceId Document::UkmSourceID() const {
   return ukm_source_id_;
-}
-
-void Document::MaybeRecordSvgImageProcessingTime(
-    int data_change_count,
-    base::TimeDelta data_change_elapsed_time) const {
-  data_->svg_image_processed_count_ += data_change_count;
-  data_->accumulated_svg_image_elapsed_time_ += data_change_elapsed_time;
 }
 
 bool Document::AllowInlineEventHandler(Node* node,

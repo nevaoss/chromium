@@ -89,6 +89,7 @@
 #include "crypto/hash.h"
 #include "crypto/kdf.h"
 #include "crypto/keypair.h"
+#include "crypto/openssl_util.h"
 #include "crypto/random.h"
 #include "crypto/sha2.h"
 #include "crypto/subtle_passkey.h"
@@ -718,6 +719,11 @@ bool StoreWrappedSecrets(EnclaveLocalState::User* user,
 const char* TrustedVaultRegistrationStatusToString(
     trusted_vault::TrustedVaultRegistrationStatus status) {
   switch (status) {
+    case trusted_vault::TrustedVaultRegistrationStatus::
+        kRegistrationNotAttempted:
+      return "RegistrationNotAttempted";
+    case trusted_vault::TrustedVaultRegistrationStatus::kRegistrationCancelled:
+      return "RegistrationCancelled";
     case trusted_vault::TrustedVaultRegistrationStatus::kSuccess:
       return "Success";
     case trusted_vault::TrustedVaultRegistrationStatus::kAlreadyRegistered:
@@ -870,21 +876,22 @@ std::optional<std::string> CBORListOfBytestringToASN1Sequence(
   std::string cert_path;
   cert_path.resize(total_bytes);
   bssl::ScopedCBB cbb;
-  CBB_init_fixed(cbb.get(), reinterpret_cast<uint8_t*>(&cert_path[0]),
+  CBB_init_fixed(cbb.get(), reinterpret_cast<uint8_t*>(cert_path.data()),
                  cert_path.size());
   CBB inner;
-  CBB_add_asn1(cbb.get(), &inner, CBS_ASN1_SEQUENCE);
+  if (!CBB_add_asn1(cbb.get(), &inner, CBS_ASN1_SEQUENCE)) {
+    return std::nullopt;
+  }
   for (const auto& bytestring : bytestrings) {
     const std::vector<uint8_t>& bytes = bytestring.GetBytestring();
     if (!CBB_add_bytes(&inner, bytes.data(), bytes.size())) {
       return std::nullopt;
     }
   }
-  size_t final_len;
-  if (!CBB_finish(cbb.get(), nullptr, &final_len)) {
+  if (!CBB_flush(cbb.get())) {
     return std::nullopt;
   }
-  cert_path.resize(final_len);
+  cert_path.resize(CBB_len(cbb.get()));
   return cert_path;
 }
 

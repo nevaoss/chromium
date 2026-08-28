@@ -34,6 +34,7 @@ class LensQueryFlowRouter
   enum class ContextUploadMode {
     kViewportOnly,
     kFullPage,
+    kSelectedRegionOnly,
   };
 
   explicit LensQueryFlowRouter(LensSearchController* lens_search_controller);
@@ -172,8 +173,8 @@ class LensQueryFlowRouter
   // Returns whether the current active tab is context eligible.
   virtual bool IsActiveTabContextEligible() const;
 
-  // Returns whether full page context should be populated based on sign-in
-  // status, cobrowse eligibility, and permissions.
+  // Returns whether full page context should be populated based on page context
+  // eligibility and permissions.
   bool ShouldPopulateFullPageContext() const;
 
   virtual Profile* profile() const;

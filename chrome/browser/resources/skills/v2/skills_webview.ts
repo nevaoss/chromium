@@ -6,17 +6,20 @@ import {loadTimeData} from '//resources/js/load_time_data.js';
 import {getRequiredElement} from '//resources/js/util.js';
 
 import {ErrorType} from '../error_page.js';
+import type {Skill} from '../skill.mojom-webui.js';
 import {SkillsDialogType} from '../skill.mojom-webui.js';
-import {SkillsPageHandler} from '../skills.mojom-webui.js';
-import type {PendingEditorData} from '../skills.mojom-webui.js';
+import type {PendingEditorData, SkillsPageV2Interface} from '../skills.mojom-webui.js';
+import {SkillsPageHandler, SkillsPageV2Receiver} from '../skills.mojom-webui.js';
 
 import type {SkillsWebviewBridgeDelegate} from './skills_webview_bridge.js';
 import {SkillsWebviewBridge} from './skills_webview_bridge.js';
-import {getChromePathForRemoteUrl, getLoadingStageHistogramName, getRemoteUrlForChromePath, HISTOGRAM_TOTAL_INIT_LATENCY, IS_FIRST_PARTY_QUERY_PARAMETER, IS_SAVING_GEMINI_QUERY_PARAMETER, LoadingStage} from './skills_webview_bridge_constants.js';
+import {getChromePathForRemoteUrl, getLoadingStageHistogramName, getRemoteUrlForChromePath, HISTOGRAM_TOTAL_INIT_LATENCY, IS_SAVING_GEMINI_QUERY_PARAMETER, LoadingStage, SkillSource, SOURCE_QUERY_PARAMETER} from './skills_webview_bridge_constants.js';
 
-export class SkillsWebview {
+export class SkillsWebview implements SkillsPageV2Interface {
   protected remoteUrl: string = '';
   protected handler = SkillsPageHandler.getRemote();
+  protected pageReceiver_: SkillsPageV2Receiver =
+      new SkillsPageV2Receiver(this);
   protected webview: chrome.webviewTag.WebView|null = null;
   protected bridge: SkillsWebviewBridge|null = null;
   private promptToSend = '';
@@ -50,18 +53,19 @@ export class SkillsWebview {
 
     const url = new URL(this.remoteUrl);
 
-    // For dialog type urls, set query paraemters as necessary.
+    // For dialog type urls, set query parameters as necessary.
     if (loadTimeData.valueExists('dialogType')) {
       if (this.isSavingGeminiQuery()) {
         url.searchParams.set(IS_SAVING_GEMINI_QUERY_PARAMETER, 'true');
         this.promptToSend = loadTimeData.getString('skillPrompt');
       } else if (this.isFirstPartySkill()) {
         url.searchParams.set('id', loadTimeData.getString('skillId'));
-        url.searchParams.set(IS_FIRST_PARTY_QUERY_PARAMETER, 'true');
+        url.searchParams.set(SOURCE_QUERY_PARAMETER, SkillSource.FIRST_PARTY);
       } else if (this.isUserSkill()) {
         const skillId = loadTimeData.getString('skillId');
         if (skillId) {
           url.searchParams.set('id', skillId);
+          url.searchParams.set(SOURCE_QUERY_PARAMETER, SkillSource.USER);
         }
       }
     }
@@ -85,6 +89,8 @@ export class SkillsWebview {
     }
     this.webview = getRequiredElement<chrome.webviewTag.WebView>('webview');
 
+    this.handler.setPage(this.pageReceiver_.$.bindNewPipeAndPassRemote());
+
     // Wait for cookie sync to complete before setting src
     const success = await this.syncCookiesAndRecordMetric();
 
@@ -104,6 +110,8 @@ export class SkillsWebview {
       }
     }
 
+    const {skills} = await this.handler.getProvidedSkills();
+
     const delegate: SkillsWebviewBridgeDelegate = {
       onError: () => this.showError(ErrorType.REMOTE_AUTHORITY_UNREACHABLE),
       onShowSaveToast: () => this.handler.showSaveToast(),
@@ -120,6 +128,12 @@ export class SkillsWebview {
       onSendPrompt: (prompt: string) => this.handler.sendPrompt(prompt),
       onCloseDialogAndOpenEditor: (data: PendingEditorData) =>
           this.handler.closeDialog(data),
+      onGetProvidedSkill: async (skillId: string) => {
+        const {skill} = await this.handler.getProvidedSkill(skillId);
+        if (this.bridge) {
+          this.bridge.sendProvidedSkillInfo(skill);
+        }
+      },
     };
 
     // Initiate handshake. Show error page on failure.
@@ -141,6 +155,9 @@ export class SkillsWebview {
           skillDescription: pendingData.description,
           skillInstructions: pendingData.instructions,
         });
+      }
+      if (skills) {
+        this.loadProvidedSkills(skills);
       }
     });
 
@@ -202,5 +219,9 @@ export class SkillsWebview {
           Math.floor(navDuration));
       this.isInitialNavigation_ = false;
     }
+  }
+
+  loadProvidedSkills(skills: Skill[]) {
+    this.bridge?.sendProvidedSkills(skills);
   }
 }

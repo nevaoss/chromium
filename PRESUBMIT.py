@@ -1402,13 +1402,6 @@ _BANNED_CPP_FUNCTIONS: Sequence[BanRule] = (
         excluded_paths=[_THIRD_PARTY_EXCEPT_BLINK],
     ),
     BanRule(
-        pattern=r'/std::(in)?out_ptr',
-        explanation=('Use of std::{out_ptr,inout_ptr} isn`t allowed. If you '
-                     'need it, contact cxx@chromium.org.', ),
-        treat_as_error=True,
-        excluded_paths=[_THIRD_PARTY_EXCEPT_BLINK],
-    ),
-    BanRule(
         pattern=r'std::start_lifetime_as',
         explanation=('Use of std::start_lifetime_as isn`t allowed. If you '
                      'need it, contact cxx@chromium.org.', ),
@@ -2712,6 +2705,8 @@ _GENERIC_PYDEPS_FILES = [
     'third_party/blink/renderer/bindings/scripts/validate_web_idl.pydeps',
     'third_party/blink/tools/blinkpy/web_tests/merge_results.pydeps',
     'third_party/blink/tools/merge_web_test_results.pydeps',
+    'tools/android/layout_inspector/run_server.pydeps',
+    'tools/android/layout_inspector/run_server_test.pydeps',
     'tools/binary_size/sizes.pydeps',
     'tools/binary_size/supersize.pydeps',
     'tools/cygprofile/generate_orderfile.pydeps',
@@ -7846,50 +7841,6 @@ def CheckAssertAshOnlyCode(input_api, output_api):
     return errors
 
 
-def _IsMiraclePtrDisallowed(input_api, affected_file):
-    path = affected_file.UnixLocalPath()
-    if not _IsCPlusPlusFile(input_api, path):
-        return False
-
-    # Renderer-only code is generally allowed to use MiraclePtr. These
-    # directories, however, are specifically disallowed, for perf reasons.
-    if ('third_party/blink/renderer/core/' in path
-            or 'third_party/blink/renderer/platform/heap/' in path
-            or 'third_party/blink/renderer/platform/fonts/' in path):
-        return True
-
-    # `functional.h` contains some shared plumbing, and should not be
-    # excluded directly.
-    if ('third_party/blink/renderer/platform/wtf/' in path and
-            'third_party/blink/renderer/platform/wtf/functional' not in path):
-        return True
-
-    # We assume that everything else may be used outside of Renderer processes.
-    return False
-
-
-# TODO(crbug.com/40206238): Remove these checks, once they are replaced
-# by the Chromium Clang Plugin (which will be preferable because it will
-# 1) report errors earlier - at compile-time and 2) cover more rules).
-def CheckRawPtrUsage(input_api, output_api):
-    """Rough checks that raw_ptr<T> usage guidelines are followed."""
-    errors = []
-    # The regex below matches "raw_ptr<" following a word boundary, but not in a
-    # C++ comment.
-    raw_ptr_matcher = input_api.re.compile(r'^((?!//).)*\braw_(ptr|ref|span)<')
-    file_filter = lambda f: _IsMiraclePtrDisallowed(input_api, f)
-    for f, line_num, line in input_api.RightHandSideLines(file_filter):
-        match_result = raw_ptr_matcher.search(line)
-        if match_result:
-            errors.append(
-                output_api.PresubmitError(
-                    f'Problem on {f.LocalPath()}:{line_num} - '
-                    f'`raw_{match_result.group(2)}` should not be used in this '
-                    'renderer code (as documented in the "Pointers to '
-                    'unprotected memory" section in //base/memory/raw_ptr.md)')
-            )
-    return errors
-
 
 def CheckAdvancedMemorySafetyChecksUsage(input_api, output_api):
     """Checks that ADVANCED_MEMORY_SAFETY_CHECKS() macro is neither added nor
@@ -7943,17 +7894,26 @@ def CheckPythonShebang(input_api, output_api):
 
 
 def CheckAndroidTestAnnotations(input_api, output_api):
-    """Checks that tests have either @Batch or @DoNotBatch annotation. If this
-    is not an instrumentation test, disregard."""
+    """Checks annotations for Android test classes:
+    1. On-device instrumentation tests: Newly added tests using batch-capable
+       runners (e.g. ChromeJUnit4ClassRunner, BaseJUnit4ClassRunner, ParameterizedRunner)
+       must be annotated with either @Batch or @DoNotBatch.
+    2. Robolectric host tests: Must NOT use @Batch or @DoNotBatch annotations.
+       Should use BaseRobolectricTestRunner or BaseRobolectricTestRule.
+    """
 
     batch_annotation = input_api.re.compile(r'^\s*@Batch')
     do_not_batch_annotation = input_api.re.compile(r'^\s*@DoNotBatch')
     robolectric_test = input_api.re.compile(
         r'@RunWith\((.*?)RobolectricTestRunner')
-    test_class_declaration = input_api.re.compile(r'^\s*public\sclass.*Test')
-    uiautomator_test = input_api.re.compile(r'[uU]i[aA]utomator')
+    # Match batch-capable Chromium instrumentation test runners.
+    instrumentation_test = input_api.re.compile(
+        r'@RunWith\((?:(?:Base|Chrome|Aw|Content)JUnit4ClassRunner|ParameterizedRunner|Parameterized)\.class\)'
+    )
+    test_class_declaration = input_api.re.compile(
+        r'^\s*(?:public\s+|abstract\s+|final\s+)*class\s+\w+')
     test_annotation_declaration = input_api.re.compile(
-        r'^\s*public\s@interface\s.*{')
+        r'^\s*(?:public\s+)?@interface\s+\w+')
 
     missing_annotation_errors = []
     extra_annotation_errors = []
@@ -7966,46 +7926,58 @@ def CheckAndroidTestAnnotations(input_api, output_api):
             files_to_check=[r'.*Test\.java$'])
 
     for f in input_api.AffectedSourceFiles(_FilterFile):
-        if f.Action() != 'A':
-            continue
         batch_matched = None
         do_not_batch_matched = None
-        is_instrumentation_test = True
-        test_annotation_declaration_matched = None
-        has_base_robolectric_rule = False
+        test_annotation_declaration_matched = False
+        has_base_robolectric_runner = False
+        raw_robolectric_runner = False
+        is_robolectric_test = False
+        is_instrumentation_test = False
+
+        has_base_robolectric_rule = any(
+            'BaseRobolectricTestRule' in line for line in f.NewContents())
+        if has_base_robolectric_rule:
+            is_robolectric_test = True
+
         for line in f.NewContents():
-            if 'BaseRobolectricTestRule' in line:
-                has_base_robolectric_rule = True
-                continue
             if m := robolectric_test.search(line):
-                is_instrumentation_test = False
-                if not m.group(1) and not has_base_robolectric_rule:
-                    path = str(f.LocalPath())
-                    # These two spots cannot use it.
-                    if 'webapk' not in path and 'build' not in path:
-                        wrong_robolectric_test_runner_errors.append(path)
-                break
-            if uiautomator_test.search(line):
-                is_instrumentation_test = False
-                break
+                is_robolectric_test = True
+                if m.group(1):
+                    has_base_robolectric_runner = True
+                else:
+                    raw_robolectric_runner = True
+            elif instrumentation_test.search(line):
+                is_instrumentation_test = True
+
             if not batch_matched:
                 batch_matched = batch_annotation.search(line)
             if not do_not_batch_matched:
                 do_not_batch_matched = do_not_batch_annotation.search(line)
-            test_class_declaration_matched = test_class_declaration.search(
-                line)
-            test_annotation_declaration_matched = test_annotation_declaration.search(
-                line)
-            if test_class_declaration_matched or test_annotation_declaration_matched:
+
+            if test_annotation_declaration.search(line):
+                test_annotation_declaration_matched = True
                 break
+            if test_class_declaration.search(line):
+                break
+
         if test_annotation_declaration_matched:
             continue
-        if (is_instrumentation_test and not batch_matched
-                and not do_not_batch_matched):
-            missing_annotation_errors.append(str(f.LocalPath()))
-        if (not is_instrumentation_test
-                and (batch_matched or do_not_batch_matched)):
-            extra_annotation_errors.append(str(f.LocalPath()))
+
+        if is_robolectric_test:
+            if (raw_robolectric_runner and not has_base_robolectric_runner
+                    and not has_base_robolectric_rule):
+                path = str(f.LocalPath())
+                # These two spots cannot use it.
+                if 'webapk' not in path and 'build' not in path:
+                    wrong_robolectric_test_runner_errors.append(path)
+
+            if batch_matched or do_not_batch_matched:
+                extra_annotation_errors.append(str(f.LocalPath()))
+        elif is_instrumentation_test:
+            # Standard on-device instrumentation test.
+            if (f.Action() == 'A' and not batch_matched
+                    and not do_not_batch_matched):
+                missing_annotation_errors.append(str(f.LocalPath()))
 
     results = []
 
@@ -8020,9 +7992,9 @@ See https://source.chromium.org/chromium/chromium/src/+/main:docs/testing/batchi
 """, missing_annotation_errors))
     if extra_annotation_errors:
         results.append(
-            output_api.PresubmitPromptWarning(
+            output_api.PresubmitError(
                 """
-Robolectric tests do not need a @Batch or @DoNotBatch annotations.
+Robolectric tests should not use @Batch or @DoNotBatch annotations.
 """, extra_annotation_errors))
     if wrong_robolectric_test_runner_errors:
         results.append(

@@ -29,7 +29,9 @@
 #include "third_party/blink/renderer/core/html/html_div_element.h"
 #include "third_party/blink/renderer/core/html/html_hr_element.h"
 #include "third_party/blink/renderer/core/html/shadow/shadow_element_names.h"
+#include "third_party/blink/renderer/core/layout/layout_box.h"
 #include "third_party/blink/renderer/core/layout/layout_theme.h"
+#include "third_party/blink/renderer/core/paint/paint_layer_scrollable_area.h"
 #include "third_party/blink/renderer/core/testing/page_test_base.h"
 #include "third_party/blink/renderer/core/testing/sim/sim_compositor.h"
 #include "third_party/blink/renderer/core/testing/sim/sim_request.h"
@@ -38,6 +40,7 @@
 #include "third_party/blink/renderer/platform/keyboard_codes.h"
 #include "third_party/blink/renderer/platform/testing/runtime_enabled_features_test_helpers.h"
 #include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
+#include "third_party/blink/renderer/platform/wtf/text/format.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
 
 namespace blink {
@@ -147,11 +150,11 @@ TEST_F(HTMLSelectElementTest, ListBoxSuggestedOptionScrollTargetGroup) {
       "<style>nav { scroll-target-group: auto }</style>"
       "<select id='sel' size='4'>");
   for (int i = 0; i < 20; ++i) {
-    html.AppendFormat("<option id='o%d' value='v%d'>o%d</option>", i, i, i);
+    FormatTo(html, "<option id='o{}' value='v{}'>o{}</option>", i, i, i);
   }
   html.Append("</select><nav id='nav'>");
   for (int i = 0; i < 20; ++i) {
-    html.AppendFormat("<a id='a%d' href='#o%d'></a>", i, i);
+    FormatTo(html, "<a id='a{}' href='#o{}'></a>", i, i);
   }
   html.Append("</nav>");
   SetHtmlInnerHTML(html.ToString().Utf8());
@@ -187,8 +190,7 @@ TEST_F(HTMLSelectElementTest,
   StringBuilder html;
   html.Append("<!DOCTYPE HTML><select id='sel' size='4'>");
   for (int i = 0; i < 20; ++i) {
-    html.AppendFormat("<option id='o%d' value='v%d'>option %d</option>", i, i,
-                      i);
+    FormatTo(html, "<option id='o{}' value='v{}'>option {}</option>", i, i, i);
   }
   html.Append("</select>");
   SetHtmlInnerHTML(html.ToString().Utf8());
@@ -238,13 +240,57 @@ TEST_F(HTMLSelectElementTest,
   EXPECT_EQ(scrolled_top, select->scrollTop());
 }
 
-TEST_F(HTMLSelectElementTest, ListBoxAutofillPreviewDisabledFallback) {
-  ScopedSelectAutofillPopoverPreviewForTest disable_popover_preview(false);
+TEST_F(HTMLSelectElementTest,
+       ListBoxAutofillPreviewPreservesGeometryAndOverflow) {
   StringBuilder html;
   html.Append("<!DOCTYPE HTML><select id='sel' size='4'>");
   for (int i = 0; i < 20; ++i) {
     html.AppendFormat("<option id='o%d' value='v%d'>option %d</option>", i, i,
                       i);
+  }
+  html.Append("</select>");
+  SetHtmlInnerHTML(html.ToString().Utf8());
+  test::RunPendingTasks();
+  UpdateAllLifecyclePhasesForTest();
+
+  auto* select = To<HTMLSelectElement>(GetElementById("sel"));
+  int initial_client_width = select->clientWidth();
+  EXPECT_GT(initial_client_width, 0);
+
+  auto* scrollable_area = select->GetLayoutBox()->GetScrollableArea();
+  ASSERT_NE(nullptr, scrollable_area);
+  EXPECT_TRUE(scrollable_area->HasVerticalScrollbar());
+  EXPECT_NE(nullptr, scrollable_area->VerticalScrollbar());
+  EXPECT_GT(scrollable_area->MaximumScrollOffset().y(), 0);
+
+  select->SetSuggestedValue("v15");
+  ASSERT_TRUE(select->IsPreviewed());
+  test::RunPendingTasks();
+  UpdateAllLifecyclePhasesForTest();
+
+  // Scrollbar and clientWidth should remain invariant when autofill preview is
+  // shown.
+  EXPECT_TRUE(scrollable_area->HasVerticalScrollbar());
+  EXPECT_NE(nullptr, scrollable_area->VerticalScrollbar());
+  EXPECT_GT(scrollable_area->MaximumScrollOffset().y(), 0);
+  EXPECT_EQ(initial_client_width, select->clientWidth());
+
+  // Clearing the suggested value should preserve scrollbars and clientWidth.
+  select->SetSuggestedValue("");
+  ASSERT_FALSE(select->IsPreviewed());
+  test::RunPendingTasks();
+  UpdateAllLifecyclePhasesForTest();
+  EXPECT_TRUE(scrollable_area->HasVerticalScrollbar());
+  EXPECT_NE(nullptr, scrollable_area->VerticalScrollbar());
+  EXPECT_EQ(initial_client_width, select->clientWidth());
+}
+
+TEST_F(HTMLSelectElementTest, ListBoxAutofillPreviewDisabledFallback) {
+  ScopedSelectAutofillPopoverPreviewForTest disable_popover_preview(false);
+  StringBuilder html;
+  html.Append("<!DOCTYPE HTML><select id='sel' size='4'>");
+  for (int i = 0; i < 20; ++i) {
+    FormatTo(html, "<option id='o{}' value='v{}'>option {}</option>", i, i, i);
   }
   html.Append("</select>");
   SetHtmlInnerHTML(html.ToString().Utf8());

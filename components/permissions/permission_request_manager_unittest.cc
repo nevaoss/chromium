@@ -24,6 +24,7 @@
 #include "build/build_config.h"
 #include "components/content_settings/core/common/content_settings_types.h"
 #include "components/content_settings/core/common/features.h"
+#include "components/omnibox/common/omnibox_feature_configs.h"
 #include "components/permissions/features.h"
 #include "components/permissions/permission_decision.h"
 #include "components/permissions/permission_request.h"
@@ -272,6 +273,13 @@ class PermissionRequestManagerTest : public content::RenderViewHostTestHarness {
 TEST_F(PermissionRequestManagerTest, NoRequests) {
   WaitForBubbleToBeShown();
   EXPECT_FALSE(prompt_factory_->is_visible());
+  EXPECT_FALSE(manager_->ShouldCurrentRequestUseQuietUI());
+  EXPECT_FALSE(
+      PermissionUtil::ShouldCurrentRequestUsePermissionElementSecondaryUI(
+          manager_, web_contents()));
+  EXPECT_FALSE(
+      PermissionUtil::ShouldCurrentRequestUsePermissionElementSecondaryUI(
+          manager_));
 }
 
 TEST_F(PermissionRequestManagerTest, SingleRequest) {
@@ -2588,7 +2596,6 @@ TEST_F(PermissionRequestManagerTest, PEPCRequestNeverQuiet) {
       prompt_factory_->RequestTypeSeen(pepc_request_state.request_type));
   EXPECT_FALSE(manager_->ShouldCurrentRequestUseQuietUI());
   Accept();
-  manager_->FinalizeCurrentRequests();
 
   // Regular request is quieted by selector.
   MockPermissionRequest::MockPermissionRequestState request_state;
@@ -2605,6 +2612,37 @@ TEST_F(PermissionRequestManagerTest, PEPCRequestNeverQuiet) {
   Accept();
 }
 
+TEST_F(PermissionRequestManagerTest,
+       AllowlistedSurfaceRequestNeverQuietAndInitializesFlowModel) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndEnableFeature(
+      omnibox_feature_configs::kEmbeddedPermissionEnabled);
+  client_.SetIsPrivilegedInternalWebUI(true);
+
+  manager_->clear_permission_ui_selector_for_testing();
+  MockNotificationGeolocationPermissionUiSelector::CreateForManager(
+      manager_,
+      Decision::UseQuietUi(PermissionUiSelector::QuietUiReason::kEnabledInPrefs,
+                           Decision::ShowNoWarning()),
+      std::nullopt /* async_delay */);
+
+  // Allowlisted surface request is not quieted by selector and initializes flow
+  // model.
+  MockPermissionRequest::MockPermissionRequestState request_state;
+  auto request = std::make_unique<MockPermissionRequest>(
+      RequestType::kNotifications, PermissionRequestGestureType::GESTURE,
+      request_state.GetWeakPtr());
+  manager_->AddRequest(web_contents()->GetPrimaryMainFrame(),
+                       std::move(request));
+  WaitForBubbleToBeShown();
+
+  ASSERT_TRUE(prompt_factory_->is_visible());
+  ASSERT_TRUE(prompt_factory_->RequestTypeSeen(request_state.request_type));
+  EXPECT_FALSE(manager_->ShouldCurrentRequestUseQuietUI());
+  EXPECT_NE(nullptr, manager_->GetEmbeddedPromptFlowModel());
+  Accept();
+}
+
 #endif  // BUILDFLAG(IS_ANDROID)
 
 class PermissionRequestManagerApproximateGeolocationTest
@@ -2615,9 +2653,10 @@ class PermissionRequestManagerApproximateGeolocationTest
       content_settings::features::kApproximateGeolocationPermission};
 };
 
-// Match UkmPromptOptions in permission_uma_util.cc.
-constexpr int64_t kPromptOptionsApproximate = 1;
-constexpr int64_t kPromptOptionsPrecise = 2;
+constexpr int64_t kPromptOptionsApproximate = static_cast<int64_t>(
+    permissions::UkmPermissionPromptOptions::APPROXIMATE_LOCATION);
+constexpr int64_t kPromptOptionsPrecise = static_cast<int64_t>(
+    permissions::UkmPermissionPromptOptions::PRECISE_LOCATION);
 
 TEST_P(PermissionRequestManagerApproximateGeolocationTest,
        ReportAccuracyInUmaAOnAccept) {

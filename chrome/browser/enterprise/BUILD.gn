@@ -253,9 +253,7 @@ source_set("enterprise") {
       "connectors/device_trust/device_trust_service_factory.h",
       "connectors/device_trust/navigation_throttle.h",
       "connectors/device_trust/signals/decorators/common/context_signals_decorator.h",
-      "connectors/device_trust/signals/signals_filterer.h",
       "connectors/device_trust/signals/signals_service_factory.h",
-      "connectors/device_trust/signals/signals_service_impl.h",
     ]
     public_deps += [
       "//chrome/browser/enterprise/connectors/device_trust/signals",
@@ -730,9 +728,7 @@ source_set("impl") {
       "connectors/device_trust/device_trust_service_factory.cc",
       "connectors/device_trust/navigation_throttle.cc",
       "connectors/device_trust/signals/decorators/common/context_signals_decorator.cc",
-      "connectors/device_trust/signals/signals_filterer.cc",
       "connectors/device_trust/signals/signals_service_factory.cc",
-      "connectors/device_trust/signals/signals_service_impl.cc",
     ]
     deps += [
       "//chrome/browser/enterprise/connectors/device_trust:features",
@@ -907,6 +903,7 @@ if (!is_android) {
       "//base",
       "//chrome/browser/policy:test_support",
       "//chrome/browser/ui:ui_features",
+      "//chrome/browser/ui/browser_window",
       "//chrome/test:test_support",
       "//chrome/test:test_support_ui",
       "//components/enterprise:test_support",

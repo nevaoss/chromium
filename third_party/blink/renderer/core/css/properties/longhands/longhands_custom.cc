@@ -1271,6 +1271,12 @@ const CSSValue* BaselineShift::CSSValueFromComputedStyleInternal(
 }
 
 void BaselineShift::ApplyInherit(StyleResolverState& state) const {
+  if (state.GetDocument().StandardizedBrowserZoomEnabled()) {
+    if (ApplyParentValueIfZoomChanged(state)) {
+      return;
+    }
+  }
+
   ComputedStyleBuilder& builder = state.StyleBuilder();
   builder.SetBaselineShiftType(state.ParentStyle()->BaselineShiftType());
   builder.SetBaselineShift(state.ParentStyle()->BaselineShift());
@@ -5166,6 +5172,12 @@ const CSSValue* GridTemplateColumns::CSSValueFromComputedStyleInternal(
 }
 
 void GridTemplateColumns::ApplyInherit(StyleResolverState& state) const {
+  if (state.GetDocument().StandardizedBrowserZoomEnabled()) {
+    if (ApplyParentValueIfZoomChanged(state)) {
+      return;
+    }
+  }
+
   state.StyleBuilder().SetGridTemplateColumns(
       state.ParentStyle()->SpecifiedGridTemplateColumns());
 }
@@ -5185,6 +5197,12 @@ const CSSValue* GridTemplateRows::CSSValueFromComputedStyleInternal(
 }
 
 void GridTemplateRows::ApplyInherit(StyleResolverState& state) const {
+  if (state.GetDocument().StandardizedBrowserZoomEnabled()) {
+    if (ApplyParentValueIfZoomChanged(state)) {
+      return;
+    }
+  }
+
   state.StyleBuilder().SetGridTemplateRows(
       state.ParentStyle()->SpecifiedGridTemplateRows());
 }
@@ -6855,8 +6873,8 @@ const CSSValue* MarginTop::CSSValueFromComputedStyleInternal(
 }
 
 // none |
-// [ block || inline ] |
-// [ block-start || inline-start || block-end || inline-end ]
+// [ block ] |
+// [ block-start || block-end ]
 const CSSValue* MarginTrim::ParseSingleValue(CSSParserTokenStream& stream,
                                              const CSSParserContext& context,
                                              CSSParserLocalContext&) const {
@@ -6876,40 +6894,24 @@ const CSSValue* MarginTrim::ParseSingleValue(CSSParserTokenStream& stream,
   if (id == CSSValueID::kNone) {
     // none
     return css_parsing_utils::ConsumeIdent(stream);
-  } else if (id == CSSValueID::kBlock || id == CSSValueID::kInline) {
-    // [ block || inline ]
-    while (!stream.AtEnd()) {
-      id = stream.ConsumeIncludingWhitespace().Id();
-      if (id == CSSValueID::kBlock) {
-        if (!add_flags(kMarginTrimBlock)) {
-          return nullptr;
-        }
-      } else if (id == CSSValueID::kInline) {
-        if (!add_flags(kMarginTrimInline)) {
-          return nullptr;
-        }
-      } else {
-        return nullptr;
-      }
+  }
+  if (id == CSSValueID::kBlock) {
+    // [ block ]
+    stream.ConsumeIncludingWhitespace();
+    if (!stream.AtEnd()) {
+      return nullptr;
     }
+    add_flags(kMarginTrimBlock);
   } else {
-    // [ block-start || inline-start || block-end || inline-end ]
+    // [ block-start || block-end ]
     while (!stream.AtEnd()) {
       id = stream.ConsumeIncludingWhitespace().Id();
       if (id == CSSValueID::kBlockStart) {
         if (!add_flags(kMarginTrimBlockStart)) {
           return nullptr;
         }
-      } else if (id == CSSValueID::kInlineStart) {
-        if (!add_flags(kMarginTrimInlineStart)) {
-          return nullptr;
-        }
       } else if (id == CSSValueID::kBlockEnd) {
         if (!add_flags(kMarginTrimBlockEnd)) {
-          return nullptr;
-        }
-      } else if (id == CSSValueID::kInlineEnd) {
-        if (!add_flags(kMarginTrimInlineEnd)) {
           return nullptr;
         }
       } else {
@@ -6917,37 +6919,16 @@ const CSSValue* MarginTrim::ParseSingleValue(CSSParserTokenStream& stream,
       }
     }
   }
+  DCHECK(margin_trim & kMarginTrimBlock);
 
   CSSValueList* list = CSSValueList::CreateSpaceSeparated();
-  bool has_single_edges =
-      ((margin_trim & kMarginTrimBlock) &&
-       (margin_trim & kMarginTrimBlock) != kMarginTrimBlock) ||
-      ((margin_trim & kMarginTrimInline) &&
-       (margin_trim & kMarginTrimInline) != kMarginTrimInline);
-  if (has_single_edges) {
-    // At least one axis has only one edge present.
-    if (margin_trim & kMarginTrimBlockStart) {
-      list->Append(*CSSIdentifierValue::Create(CSSValueID::kBlockStart));
-    }
-    if (margin_trim & kMarginTrimInlineStart) {
-      list->Append(*CSSIdentifierValue::Create(CSSValueID::kInlineStart));
-    }
-    if (margin_trim & kMarginTrimBlockEnd) {
-      list->Append(*CSSIdentifierValue::Create(CSSValueID::kBlockEnd));
-    }
-    if (margin_trim & kMarginTrimInlineEnd) {
-      list->Append(*CSSIdentifierValue::Create(CSSValueID::kInlineEnd));
-    }
+  if (margin_trim == kMarginTrimBlockStart) {
+    list->Append(*CSSIdentifierValue::Create(CSSValueID::kBlockStart));
+  } else if (margin_trim == kMarginTrimBlockEnd) {
+    list->Append(*CSSIdentifierValue::Create(CSSValueID::kBlockEnd));
   } else {
-    // Both edges for an axis are either present or absent.
-    if (margin_trim & kMarginTrimBlock) {
-      DCHECK_EQ((margin_trim & kMarginTrimBlock), kMarginTrimBlock);
-      list->Append(*CSSIdentifierValue::Create(CSSValueID::kBlock));
-    }
-    if (margin_trim & kMarginTrimInline) {
-      DCHECK_EQ((margin_trim & kMarginTrimInline), kMarginTrimInline);
-      list->Append(*CSSIdentifierValue::Create(CSSValueID::kInline));
-    }
+    DCHECK_EQ(margin_trim, kMarginTrimBlock);
+    list->Append(*CSSIdentifierValue::Create(CSSValueID::kBlock));
   }
 
   DCHECK(list->length());
@@ -6963,44 +6944,14 @@ const CSSValue* MarginTrim::CSSValueFromComputedStyleInternal(
   if (!trim) {
     return CSSIdentifierValue::Create(CSSValueID::kNone);
   }
-  CSSValueList* list = CSSValueList::CreateSpaceSeparated();
-
-  // If one axis only trims at only one edge, we need to output individual edges
-  // for the other axis, even if both edges are set there, because that's what
-  // valid syntax looks like.
-  bool needs_separate_edge_values =
-      ((trim & kMarginTrimBlock) &&
-       (trim & kMarginTrimBlock) != kMarginTrimBlock) ||
-      ((trim & kMarginTrimInline) &&
-       (trim & kMarginTrimInline) != kMarginTrimInline);
-
-  if (trim & kMarginTrimBlockStart) {
-    if ((trim & kMarginTrimBlockEnd) && !needs_separate_edge_values) {
-      list->Append(*CSSIdentifierValue::Create(CSSValueID::kBlock));
-    } else {
-      list->Append(*CSSIdentifierValue::Create(CSSValueID::kBlockStart));
-    }
+  if (trim == kMarginTrimBlock) {
+    return CSSIdentifierValue::Create(CSSValueID::kBlock);
   }
-
-  if (trim & kMarginTrimInlineStart) {
-    if ((trim & kMarginTrimInlineEnd) && !needs_separate_edge_values) {
-      list->Append(*CSSIdentifierValue::Create(CSSValueID::kInline));
-    } else {
-      list->Append(*CSSIdentifierValue::Create(CSSValueID::kInlineStart));
-    }
+  if (trim == kMarginTrimBlockStart) {
+    return CSSIdentifierValue::Create(CSSValueID::kBlockStart);
   }
-
-  if (needs_separate_edge_values) {
-    if (trim & kMarginTrimBlockEnd) {
-      list->Append(*CSSIdentifierValue::Create(CSSValueID::kBlockEnd));
-    }
-    if (trim & kMarginTrimInlineEnd) {
-      list->Append(*CSSIdentifierValue::Create(CSSValueID::kInlineEnd));
-    }
-  }
-
-  DCHECK(list->length());
-  return list;
+  DCHECK_EQ(trim, kMarginTrimBlockEnd);
+  return CSSIdentifierValue::Create(CSSValueID::kBlockEnd);
 }
 
 const CSSValue* MarkerEnd::ParseSingleValue(
@@ -7861,13 +7812,22 @@ void OverflowY::ApplyValue(StyleResolverState& state,
   }
 }
 
-// -internal-overscroll-area: none | auto
-const CSSValue* InternalOverscrollArea::CSSValueFromComputedStyleInternal(
+// overscroll-container-type: none | auto | push | overlay
+const CSSValue* OverscrollContainerType::CSSValueFromComputedStyleInternal(
     const ComputedStyle& style,
     const LayoutObject*,
     bool allow_visited_style,
     CSSValuePhase value_phase) const {
-  return CSSIdentifierValue::Create(style.InternalOverscrollArea());
+  return CSSIdentifierValue::Create(style.OverscrollContainerType());
+}
+
+// -internal-overscroll-container: none | auto
+const CSSValue* InternalOverscrollContainer::CSSValueFromComputedStyleInternal(
+    const ComputedStyle& style,
+    const LayoutObject*,
+    bool allow_visited_style,
+    CSSValuePhase value_phase) const {
+  return CSSIdentifierValue::Create(style.InternalOverscrollContainer());
 }
 
 // -internal-overscroll-position: none | auto
@@ -9762,10 +9722,13 @@ const CSSValue* TabSize::CSSValueFromComputedStyleInternal(
     const LayoutObject*,
     bool allow_visited_style,
     CSSValuePhase value_phase) const {
+  const blink::TabSize& tab_size = style.GetTabSize();
+  const bool is_spaces = tab_size.IsSpaces();
+  const float value =
+      tab_size.GetPixelSize(1.0) / (is_spaces ? 1.0 : style.EffectiveZoom());
   return CSSNumericLiteralValue::Create(
-      style.GetTabSize().GetPixelSize(1.0),
-      style.GetTabSize().IsSpaces() ? CSSPrimitiveValue::UnitType::kNumber
-                                    : CSSPrimitiveValue::UnitType::kPixels);
+      value, is_spaces ? CSSPrimitiveValue::UnitType::kNumber
+                       : CSSPrimitiveValue::UnitType::kPixels);
 }
 
 const CSSValue* TableLayout::CSSValueFromComputedStyleInternal(
@@ -11725,6 +11688,16 @@ const CSSValue* WebkitPerspectiveOriginX::ParseSingleValue(
 }
 
 void WebkitPerspectiveOriginX::ApplyInherit(StyleResolverState& state) const {
+  if (state.GetDocument().StandardizedBrowserZoomEnabled() &&
+      state.ParentStyle()->EffectiveZoom() !=
+          state.StyleBuilder().EffectiveZoom()) {
+    ApplyValue(
+        state,
+        *ComputedStyleUtils::ZoomAdjustedPixelValueForLength(
+            state.ParentStyle()->PerspectiveOrigin().X(), *state.ParentStyle()),
+        static_cast<ValueModeFlags>(ValueMode::kNormal));
+    return;
+  }
   state.StyleBuilder().SetPerspectiveOriginX(
       state.ParentStyle()->PerspectiveOrigin().X());
 }
@@ -11739,6 +11712,16 @@ const CSSValue* WebkitPerspectiveOriginY::ParseSingleValue(
 }
 
 void WebkitPerspectiveOriginY::ApplyInherit(StyleResolverState& state) const {
+  if (state.GetDocument().StandardizedBrowserZoomEnabled() &&
+      state.ParentStyle()->EffectiveZoom() !=
+          state.StyleBuilder().EffectiveZoom()) {
+    ApplyValue(
+        state,
+        *ComputedStyleUtils::ZoomAdjustedPixelValueForLength(
+            state.ParentStyle()->PerspectiveOrigin().Y(), *state.ParentStyle()),
+        static_cast<ValueModeFlags>(ValueMode::kNormal));
+    return;
+  }
   state.StyleBuilder().SetPerspectiveOriginY(
       state.ParentStyle()->PerspectiveOrigin().Y());
 }
@@ -12288,6 +12271,16 @@ const CSSValue* WebkitTransformOriginX::ParseSingleValue(
 }
 
 void WebkitTransformOriginX::ApplyInherit(StyleResolverState& state) const {
+  if (state.GetDocument().StandardizedBrowserZoomEnabled() &&
+      state.ParentStyle()->EffectiveZoom() !=
+          state.StyleBuilder().EffectiveZoom()) {
+    ApplyValue(state,
+               *ComputedStyleUtils::ZoomAdjustedPixelValueForLength(
+                   state.ParentStyle()->GetTransformOrigin().X(),
+                   *state.ParentStyle()),
+               static_cast<ValueModeFlags>(ValueMode::kNormal));
+    return;
+  }
   state.StyleBuilder().SetTransformOriginX(
       state.ParentStyle()->GetTransformOrigin().X());
 }
@@ -12320,6 +12313,16 @@ const CSSValue* WebkitTransformOriginY::ParseSingleValue(
 }
 
 void WebkitTransformOriginY::ApplyInherit(StyleResolverState& state) const {
+  if (state.GetDocument().StandardizedBrowserZoomEnabled() &&
+      state.ParentStyle()->EffectiveZoom() !=
+          state.StyleBuilder().EffectiveZoom()) {
+    ApplyValue(state,
+               *ComputedStyleUtils::ZoomAdjustedPixelValueForLength(
+                   state.ParentStyle()->GetTransformOrigin().Y(),
+                   *state.ParentStyle()),
+               static_cast<ValueModeFlags>(ValueMode::kNormal));
+    return;
+  }
   state.StyleBuilder().SetTransformOriginY(
       state.ParentStyle()->GetTransformOrigin().Y());
 }
@@ -12333,6 +12336,18 @@ const CSSValue* WebkitTransformOriginZ::ParseSingleValue(
 }
 
 void WebkitTransformOriginZ::ApplyInherit(StyleResolverState& state) const {
+  if (state.GetDocument().StandardizedBrowserZoomEnabled() &&
+      state.ParentStyle()->EffectiveZoom() !=
+          state.StyleBuilder().EffectiveZoom()) {
+    const ComputedStyle& parent_style = *state.ParentStyle();
+    ApplyValue(
+        state,
+        *CSSNumericLiteralValue::Create(parent_style.GetTransformOrigin().Z() /
+                                            parent_style.EffectiveZoom(),
+                                        CSSPrimitiveValue::UnitType::kPixels),
+        static_cast<ValueModeFlags>(ValueMode::kNormal));
+    return;
+  }
   state.StyleBuilder().SetTransformOriginZ(
       state.ParentStyle()->GetTransformOrigin().Z());
 }

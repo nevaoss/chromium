@@ -46,6 +46,12 @@ ToJniType<AuxiliarySearchDonationService::HistoryData>(
 
 }  // namespace jni_zero
 
+// static
+bool AuxiliarySearchDonationServiceBridge::IsBrowsingDataDonationSupported() {
+  return AuxiliarySearchDonationServiceBridgeJni::
+      isBrowsingDataDonationSupported(base::android::AttachCurrentThread());
+}
+
 AuxiliarySearchDonationServiceBridge::AuxiliarySearchDonationServiceBridge(
     bool is_browsing_data_donation_enabled)
     : bridge_(AuxiliarySearchDonationServiceBridgeJni::New(
@@ -68,4 +74,10 @@ void AuxiliarySearchDonationServiceBridge::DonateHistoryEntries(
       base::android::AttachCurrentThread(), std::move(entries),
       account_info.IsEmpty() ? std::nullopt
                              : std::make_optional(std::move(account_info)));
+}
+
+void AuxiliarySearchDonationServiceBridge::SetBrowsingDataDonationEnabled(
+    bool is_browsing_data_donation_enabled) {
+  bridge_->setSchema(base::android::AttachCurrentThread(),
+                     is_browsing_data_donation_enabled);
 }

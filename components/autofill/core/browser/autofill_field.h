@@ -204,7 +204,6 @@ class AutofillField : public FormFieldData {
   FieldType heuristic_type() const;
   FieldType heuristic_type(HeuristicSource s) const;
   FieldType server_type() const;
-  bool server_type_prediction_is_override() const;
   const std::vector<FieldPrediction>& server_predictions() const {
     return server_predictions_;
   }
@@ -539,9 +538,6 @@ class AutofillField : public FormFieldData {
   // Copies the information from `field_data` into the members of
   // `AutofillField` that were inherited from `FormFieldData`.
   void UpdateFieldData(const FormFieldData& field_data);
-
-  // Whether the heuristics or server predict a credit card field.
-  bool IsCreditCardPrediction() const;
 
   // Creates a union type that contains
   // - the `primary_field_type` and

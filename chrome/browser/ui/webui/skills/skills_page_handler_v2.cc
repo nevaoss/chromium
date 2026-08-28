@@ -4,10 +4,13 @@
 
 #include "chrome/browser/ui/webui/skills/skills_page_handler_v2.h"
 
+#include <optional>
+
 #include "base/check_deref.h"
 #include "base/supports_user_data.h"
 #include "chrome/browser/glic/host/glic_cookie_synchronizer.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/skills/skills_service_factory.h"
 #include "chrome/browser/skills/skills_ui_tab_controller_interface.h"
 #include "chrome/browser/skills/skills_ui_window_controller.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
@@ -15,6 +18,8 @@
 #include "chrome/browser/ui/toasts/api/toast_id.h"
 #include "chrome/browser/ui/webui/skills/skills_dialog_delegate.h"
 #include "chrome/common/webui_url_constants.h"
+#include "components/skills/public/skill.h"
+#include "components/skills/public/skills_service.h"
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/storage_partition_config.h"
 #include "content/public/browser/web_contents.h"
@@ -76,9 +81,63 @@ SkillsPageHandlerV2::SkillsPageHandlerV2(
               chrome::kChromeUISkillsHost,
               /*partition_name=*/"glicskillspart",
               /*in_memory=*/true))),
-      delegate_(delegate) {}
+      delegate_(delegate) {
+  if (auto* service =
+          SkillsServiceFactory::GetForProfile(base::to_address(profile_))) {
+    service_observation_.Observe(service);
+  }
+}
 
 SkillsPageHandlerV2::~SkillsPageHandlerV2() = default;
+
+void SkillsPageHandlerV2::SetPage(
+    mojo::PendingRemote<skills::mojom::SkillsPageV2> page) {
+  page_.reset();
+  page_.Bind(std::move(page));
+}
+
+void SkillsPageHandlerV2::GetProvidedSkill(const std::string& skill_id,
+                                           GetProvidedSkillCallback callback) {
+  const Skill* skill = nullptr;
+  if (auto* service =
+          SkillsServiceFactory::GetForProfile(base::to_address(profile_))) {
+    skill = service->GetSkillById(skill_id);
+  }
+
+  if (!skill) {
+    std::move(callback).Run(std::nullopt);
+    return;
+  }
+  std::move(callback).Run(*skill);
+}
+
+void SkillsPageHandlerV2::GetProvidedSkills(
+    GetProvidedSkillsCallback callback) {
+  std::vector<Skill> skills;
+  if (auto* service =
+          SkillsServiceFactory::GetForProfile(base::to_address(profile_))) {
+    for (const auto& [id, skill] : service->GetProvidedSkills()) {
+      skills.push_back(*skill);
+    }
+  }
+  std::move(callback).Run(std::move(skills));
+}
+
+void SkillsPageHandlerV2::OnProvidedSkillsChanged(SkillsProvider* provider) {
+  if (!page_.is_bound()) {
+    return;
+  }
+  auto* service =
+      SkillsServiceFactory::GetForProfile(base::to_address(profile_));
+  if (!service) {
+    return;
+  }
+  std::vector<Skill> skills;
+  for (const auto& [id, skill] : service->GetProvidedSkills()) {
+    skills.push_back(*skill);
+  }
+  page_->LoadProvidedSkills(std::move(skills));
+}
 
 void SkillsPageHandlerV2::SyncCookies(SyncCookiesCallback callback) {
   cookie_synchronizer_->CopyCookiesToWebviewStoragePartition(
@@ -152,6 +211,9 @@ void SkillsPageHandlerV2::ShowDeleteToast(const std::string& skill_id,
 void SkillsPageHandlerV2::InvokeSkill(const std::string& skill_id,
                                       const std::string& skill_name,
                                       const std::string& skill_icon) {
+  if (!SkillsServiceFactory::IsSkillsEnabledForProfile(&profile_.get())) {
+    return;
+  }
   tabs::TabInterface* tab =
       tabs::TabInterface::GetFromContents(&web_contents_.get());
   if (!tab) {

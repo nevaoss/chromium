@@ -83,7 +83,6 @@
 #include "chrome/browser/ui/startup/default_browser_prompt/default_browser_prompt_manager.h"
 #include "chrome/browser/ui/startup/default_browser_prompt/default_browser_prompt_prefs.h"
 #include "chrome/browser/ui/tabs/features.h"
-#include "chrome/browser/ui/tabs/public/tab_features.h"
 #include "chrome/browser/ui/tabs/split_tab_metrics.h"
 #include "chrome/browser/ui/tabs/tab_change_type.h"
 #include "chrome/browser/ui/tabs/tab_model.h"
@@ -126,6 +125,7 @@
 #include "components/signin/public/base/signin_metrics.h"
 #include "components/signin/public/base/signin_pref_names.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
+#include "components/tabs/public/tab_interface.h"
 #include "components/translate/core/browser/translate_manager.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
@@ -601,13 +601,12 @@ void BrowserCommandController::ShowCustomizeChromeSidePanel(
     SidePanelOpenTrigger trigger,
     std::optional<CustomizeChromeSection> section) {
   tabs::TabInterface* tab = browser_->tab_strip_model()->GetActiveTab();
-  if (!tab || !tab->GetTabFeatures() ||
-      !tab->GetTabFeatures()->customize_chrome_side_panel_controller()) {
+  if (!tab) {
     return;
   }
 
   customize_chrome::SidePanelController* side_panel_controller =
-      tab->GetTabFeatures()->customize_chrome_side_panel_controller();
+      customize_chrome::SidePanelController::Get(tab->GetUnownedUserDataHost());
 
   if (!side_panel_controller ||
       !side_panel_controller->IsCustomizeChromeEntryAvailable()) {
@@ -628,19 +627,11 @@ bool BrowserCommandController::IsCommandEnabled(int id) const {
   return command_updater_->IsCommandEnabled(id);
 }
 
-bool BrowserCommandController::ExecuteCommandImpl(
-    int id,
-    base::TimeTicks time_stamp,
-    std::optional<actions::ActionInvocationContext> context) {
-  return ExecuteCommandWithDispositionImpl(
-      id, WindowOpenDisposition::CURRENT_TAB, time_stamp, std::move(context));
-}
-
-bool BrowserCommandController::ExecuteCommandWithDispositionImpl(
+bool BrowserCommandController::ExecuteCommandWithDispositionAndContext(
     int id,
     WindowOpenDisposition disposition,
-    base::TimeTicks time_stamp,
-    std::optional<actions::ActionInvocationContext> context) {
+    std::optional<actions::ActionInvocationContext> context,
+    base::TimeTicks time_stamp) {
   if (!SupportsCommand(id) || !IsCommandEnabled(id)) {
     return false;
   }
@@ -658,12 +649,8 @@ bool BrowserCommandController::ExecuteCommandWithDispositionImpl(
 
   DCHECK(IsCommandEnabled(id)) << "Invalid/disabled command " << id;
 
-  if (context.has_value()) {
-    return command_updater_->ExecuteCommandWithDispositionAndContext(
-        id, disposition, std::move(*context), time_stamp);
-  }
-  return command_updater_->ExecuteCommandWithDisposition(id, disposition,
-                                                         time_stamp);
+  return command_updater_->ExecuteCommandWithDisposition(
+      id, disposition, std::move(context), time_stamp);
 }
 
 void BrowserCommandController::HandleCommandWithDisposition(

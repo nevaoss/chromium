@@ -346,6 +346,11 @@ chromium-metrics-reviews@google.com.
     <owner>rbock@google.com</owner>
     <owner>zmin@chromium.org</owner>
   </variant>
+  <variant name=".UserManagementStatusAndPolicies"
+      summary="User Management Status And Policies.">
+    <owner>ydago@chromium.org</owner>
+    <owner>cbe-eng@google.com</owner>
+  </variant>
 </variants>
 
 <variants name="EnterpriseReportingEventType">
@@ -3972,6 +3977,16 @@ chromium-metrics-reviews@google.com.
   <owner>chrome-enterprise-networking-core@google.com</owner>
   <summary>
     Recorded when a Provisioning Domain fetch fails due to a network error.
+  </summary>
+</histogram>
+
+<histogram name="Enterprise.Proxy.DisguisedErrorPage.ErrorCode"
+    enum="HttpResponseCode" expires_after="2027-07-01">
+  <owner>xzonghan@google.com</owner>
+  <owner>chrome-enterprise-networking-core@google.com</owner>
+  <summary>
+    Recorded when an alternative error page HTML is generated for an Enterprise
+    Proxy disguised error, logging the disguised HTTP response or error code.
   </summary>
 </histogram>
 

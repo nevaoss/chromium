@@ -20,13 +20,45 @@ class WebStateList;
 @class GeminiGatewayManager;
 @class GeminiPageContext;
 @class GeminiStartupState;
+@protocol AssistantContainerCommands;
 @protocol BWGGatewayProtocol;
+@protocol GeminiCommands;
+
+#import "ios/chrome/browser/assistant/ui/assistant_container_delegate.h"
+#import "ios/chrome/browser/assistant/ui/assistant_container_detent.h"
+#import "ios/chrome/browser/intelligence/bwg/ui/gemini_container_consumer.h"
 
 // Mediator for the Gemini container.
-@interface GeminiContainerMediator : NSObject <GeminiViewStateDelegate>
+@interface GeminiContainerMediator
+    : NSObject <AssistantContainerDelegate, GeminiViewStateDelegate>
 
-// Delegate for handling events from the mediator.
+// Delegate for handling events from the mediator. Temporarily used by
+// `GeminiBrowserAgent` to support pre-migration logic.
 @property(nonatomic, assign) GeminiContainerMediatorEventHandler* eventHandler;
+
+// Handler for container commands to update detent and grabber state.
+@property(nonatomic, weak) id<AssistantContainerCommands> containerHandler;
+
+// Handler for Gemini commands (e.g. dismissing Gemini flow).
+@property(nonatomic, weak) id<GeminiCommands> geminiHandler;
+
+// Consumer interface for handling UI updates from the coordinator.
+@property(nonatomic, weak) id<GeminiContainerConsumer> consumer;
+
+// Whether the container grabber is visible.
+@property(nonatomic, assign) BOOL hasGrabber;
+
+// Current detent size of the container.
+@property(nonatomic, assign) AssistantContainerDetent detentSize;
+
+// Whether the container is in zero state.
+@property(nonatomic, assign, getter=isZeroState) BOOL zeroState;
+
+// Current processing status of the Gemini client.
+@property(nonatomic, readonly) ios::provider::GeminiClientMode processingStatus;
+
+// Current view mode of the Gemini UI (e.g. chat or live).
+@property(nonatomic, readonly) ios::provider::GeminiViewMode viewMode;
 
 // The gateway for bridging internal protocols.
 @property(nonatomic, readonly) id<BWGGatewayProtocol> gateway;
@@ -62,8 +94,14 @@ class WebStateList;
 - (BOOL)shouldShowSuggestionChipsForEntryPoint:
     (gemini::EntryPoint)entryPoint;
 
-// Returns whether full page context is required for the given entry point.
-- (BOOL)shouldRequireFullPageContextForEntryPoint:
+// Returns whether query submission should be blocked while page context is
+// loading for the given entry point.
+- (BOOL)shouldBlockQuerySubmissionWhileLoadingForEntryPoint:
+    (gemini::EntryPoint)entryPoint;
+
+// Returns whether the page loading snackbar should be displayed on opening
+// invocation for the given entry point.
+- (BOOL)shouldShowPageLoadingSnackbarOnOpeningInvocationForEntryPoint:
     (gemini::EntryPoint)entryPoint;
 
 // Currently, `GeminiBrowserAgent` does some of the state cleanup after each

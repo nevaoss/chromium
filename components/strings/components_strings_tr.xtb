@@ -149,6 +149,7 @@ Aksi halde bu işlem gizlilik ayarlarınız tarafından engellenecek. Buna izin 
 <translation id="1243027604378859286">Yazar:</translation>
 <translation id="1246424317317450637">Kalın</translation>
 <translation id="1247030632403369975">Alüminyum</translation>
+<translation id="1249643768796040660">Bu bilgiyi kaldır</translation>
 <translation id="1253846494229886276">Ekran görüntüsü kaydetme</translation>
 <translation id="1253921432148366685"><ph name="TYPE_1" />, <ph name="TYPE_2" /> (senkronize edildi)</translation>
 <translation id="1255931290436977164">Pasaport</translation>
@@ -286,7 +287,7 @@ Aksi halde bu işlem gizlilik ayarlarınız tarafından engellenecek. Buna izin 
 <translation id="1465457928007067810">IBAN, Google Hesabınıza kaydedildi</translation>
 <translation id="1467432559032391204">Sola</translation>
 <translation id="1471514598850585811">Dizüstü bilgisayar</translation>
-<translation id="1472675084647422956">Daha fazla göster</translation>
+<translation id="1472675084647422956">Daha fazla</translation>
 <translation id="1473183651233018052">JIS B10</translation>
 <translation id="1473495410389165587">Yazma konusunda yardım almak için en az 3 kelime girin</translation>
 <translation id="147358896496811705">2A0</translation>
@@ -610,8 +611,10 @@ Aksi halde bu işlem gizlilik ayarlarınız tarafından engellenecek. Buna izin 
 <translation id="2045871135676061132">Zarf Personal</translation>
 <translation id="2048261947532620704">Sayfa çevriliyor</translation>
 <translation id="2055016614992422886">Görüşme</translation>
+<translation id="2058468041496756763">Arama motorunuzu istediğiniz zaman Chrome ayarlarından değiştirebilirsiniz. Tercih ettiğiniz arama motorunu göremiyorsanız doğrudan kendi sitesi üzerinden arama yapabilirsiniz. Bunu Chrome ayarlarındaki son ziyaret edilen arama motorları listesinde görebilir ve varsayılan yapabilirsiniz.</translation>
 <translation id="2059166748188874810">Belediye</translation>
 <translation id="2059202684901022309">22 x 34 inç</translation>
+<translation id="2063929825539050431">Bu sayfayı başka bir cihaza hızlıca göndermek için adres çubuğuna dokunup basılı tutun</translation>
 <translation id="2064691555167957331">{COUNT,plural, =1{1 öneri}other{# öneri}}</translation>
 <translation id="2066969741541525119">Gideceğiniz site kuruluşunuz tarafından işaretlendi</translation>
 <translation id="2071156619270205202">Bu kart, sanal kart numarası için uygun değil.</translation>
@@ -2429,7 +2432,7 @@ Sonra ödeme seçeneklerini gizlemek için <ph name="BEGIN_LINK" />ödeme ayarla
 <translation id="5136841603454277753">Doğru kodu girin</translation>
 <translation id="5137761395480718572">Bu uygulama kablosuz ağ kimlik bilgileri yüklemek için izin istiyor. Kurulumdan sonra <ph name="DEVICE_TYPE" /> cihazınız katılımcı kablosuz ağlara otomatik olarak bağlanacaktır. Bu kimlik bilgilerini kaldırmak için uygulamayı kaldırın. <ph name="LEARN_MORE" /></translation>
 <translation id="5138014172396933048">Sanal kart şu anda kullanılamıyor. Lütfen bankanızla iletişim kurun.</translation>
-<translation id="5138227688689900538">Daha az göster</translation>
+<translation id="5138227688689900538">Daha az</translation>
 <translation id="5140155249377545621">Sürücü belgeleri</translation>
 <translation id="5143310416385956149">Tarama, OneDrive'a kaydedildi</translation>
 <translation id="5144613843429436866">Bu site için <ph name="PERMISSION" /> iznini verdiniz</translation>
@@ -3720,6 +3723,7 @@ Ek ayrıntılar:
 <translation id="7379321689415048316">Chrome, standart otomatik doldurma özelliğinin atlayabileceği zor alanları otomatik olarak doldurabilir.</translation>
 <translation id="7380398842872229465">10 x 15 inç</translation>
 <translation id="7381551826960739226">Bu form güvenli bağlantı kullanmadığından ödeme yöntemlerini otomatik doldurma özelliği devre dışı bırakıldı.</translation>
+<translation id="7382980704744807223">Şüpheli</translation>
 <translation id="7388594495505979117">{0,plural, =1{Cihazınız 1 dakika içinde yeniden başlatılacak}other{Cihazınız # dakika içinde yeniden başlatılacak}}</translation>
 <translation id="7393475648162498734">Ödeme sırasında kartlarınızla kullanabileceğiniz ödül ve avantajlar gösterilir</translation>
 <translation id="7393971683644170444">Kart sağlayıcınıza bağlanılıyor...</translation>
@@ -4191,6 +4195,7 @@ Ek ayrıntılar:
 <translation id="8175796834047840627">Chrome, oturumunuz açık olduğu için kartlarınızı Google Hesabınıza kaydetmeyi öneriyor. Bu davranışı ayarlardan değiştirebilirsiniz.</translation>
 <translation id="8176440868214972690">Bu cihazın yöneticisi, aşağıdaki web sitelerine ayarlar ve politikalar gibi bazı bilgiler gönderdi.</translation>
 <translation id="818254048113802060">{0,plural, =1{<ph name="FILE_NAME" />, içerik nedeniyle engellendi}other{<ph name="FILE_COUNT" /> dosya, içerik nedeniyle engellendi}}</translation>
+<translation id="8186171296341598122">Arama motorunuzu istediğiniz zaman Chromium ayarlarından değiştirebilirsiniz. Tercih ettiğiniz arama motorunu göremiyorsanız doğrudan kendi sitesi üzerinden arama yapabilirsiniz. Bunu Chromium ayarlarındaki son ziyaret edilen arama motorları listesinde görebilir ve varsayılan yapabilirsiniz.</translation>
 <translation id="8188830160449823068">IBAN yalnızca cihaza kaydedildi</translation>
 <translation id="8189557652711717875">Seçtiğiniz arama motoru, adres çubuğundan ve web sayfalarındaki resimlerden arama yapma gibi özellikler için kullanılır.</translation>
 <translation id="8190193880870196235">Bir uzantı tarafından yönetiliyor</translation>

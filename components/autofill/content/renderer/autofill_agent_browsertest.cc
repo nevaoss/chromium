@@ -1922,7 +1922,7 @@ class AutofillAgentTest_AtMemory : public AutofillAgentTest {
 
   void SetUp() override {
     AutofillAgentTest::SetUp();
-    SetTrigger("@@");
+    SetTrigger(u"@@");
     run_loop_.emplace();
     ON_CALL(autofill_driver(), AskForValuesToFill)
         .WillByDefault([this](const FormData& form, FieldRendererId field_id,
@@ -1931,17 +1931,25 @@ class AutofillAgentTest_AtMemory : public AutofillAgentTest {
                               const std::optional<PasswordSuggestionRequest>&
                                   password_request) {
           if (IsAtMemoryTriggerSource(trigger_source)) {
-            base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-                FROM_HERE,
-                base::BindOnce(
-                    &AutofillAgent::ApplyFieldAction,
-                    test_api(autofill_agent()).GetWeakPtr(),
-                    mojom::FieldActionType::kReplaceSelectionForAtMemory,
-                    action_persistence_to_respond_, field_id,
-                    fill_value_to_respond_)
-                    .Then(run_loop_->QuitClosure()));
+            ApplyFieldActionAsync(field_id, fill_value_to_respond_,
+                                  action_persistence_to_respond_);
           }
         });
+  }
+
+  // Calls ApplyFieldAction() asynchronously.
+  // To be called in response to AskForValuesToFill().
+  void ApplyFieldActionAsync(
+      FieldRendererId field_id,
+      std::u16string value = u"result",
+      mojom::ActionPersistence persistence = mojom::ActionPersistence::kFill) {
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE,
+        base::BindOnce(&AutofillAgent::ApplyFieldAction,
+                       test_api(autofill_agent()).GetWeakPtr(),
+                       mojom::FieldActionType::kReplaceSelectionForAtMemory,
+                       persistence, field_id, std::move(value))
+            .Then(run_loop_->QuitClosure()));
   }
 
   void WaitForApplyFieldAction() {
@@ -1957,7 +1965,7 @@ class AutofillAgentTest_AtMemory : public AutofillAgentTest {
     action_persistence_to_respond_ = persistence;
   }
 
-  void SetTrigger(std::string trigger_string) {
+  void SetTrigger(std::u16string trigger_string) {
     blink::RendererPreferences prefs =
         GetMainRenderFrame()->GetWebView()->GetRendererPreferences();
     prefs.autofill_trigger_string = std::move(trigger_string);
@@ -1969,7 +1977,7 @@ class AutofillAgentTest_AtMemory : public AutofillAgentTest {
   void SetTrigger(ui::KeyboardCode key_code, int modifiers) {
     blink::RendererPreferences prefs =
         GetMainRenderFrame()->GetWebView()->GetRendererPreferences();
-    prefs.autofill_trigger_string = "";
+    prefs.autofill_trigger_string = u"";
     prefs.autofill_shortcut_key_code = key_code;
     prefs.autofill_shortcut_modifiers = modifiers;
     GetMainRenderFrame()->GetWebView()->SetRendererPreferences(prefs);
@@ -2341,7 +2349,7 @@ TEST_F(AutofillAgentTest_AtMemory, MemorySearchTriggerInMiddle) {
 // "aaaa" is not a prefix of the trigger string "aaab", AtMemoryHandler detects
 // typing one more "b" completes the trigger.
 TEST_F(AutofillAgentTest_AtMemory, MemorySearchTriggerOverlappingPrefix) {
-  SetTrigger("aaab");
+  SetTrigger(u"aaab");
 
   EXPECT_CALL(
       autofill_driver(),
@@ -2529,6 +2537,43 @@ TEST_F(AutofillAgentTest_AtMemory, AtMemoryReplaceTriggerAbortsIfValueChanged) {
   EXPECT_EQ(input.Value().Utf16(), u"hello @@ changed");
 }
 
+// Tests that ApplyFieldAction() with kReplaceSelectionForAtMemory refocuses the
+// element and restores the caret if the element lost focus.
+TEST_F(AutofillAgentTest_AtMemory, RefocusesAndRestoresCaretIfUnfocused) {
+  LoadHTML(R"(<input id="f"><input id="g">)");
+  WaitForFormsSeen();
+  blink::WebInputElement input = GetInputElementById("f");
+  blink::WebInputElement other = GetInputElementById("g");
+  Focus("f");
+
+  // Ignore standard Autofill noise during setup.
+  EXPECT_CALL(
+      autofill_driver(),
+      AskForValuesToFill(
+          _, _, _, Ne(AutofillSuggestionTriggerSource::kAtMemoryTriggerString),
+          _))
+      .Times(AnyNumber());
+  // Expect the specific @memory trigger.
+  EXPECT_CALL(
+      autofill_driver(),
+      AskForValuesToFill(
+          _, _, _, AutofillSuggestionTriggerSource::kAtMemoryTriggerString, _))
+      .WillOnce([this, &other](const FormData& form, FieldRendererId field_id,
+                               const gfx::Rect& caret_bounds,
+                               AutofillSuggestionTriggerSource trigger_source,
+                               const std::optional<PasswordSuggestionRequest>&
+                                   password_request) {
+        other.Focus();
+        EXPECT_EQ(other.GetDocument().FocusedElement(), other);
+        ApplyFieldActionAsync(field_id);
+      });
+
+  SimulateSlowTyping("hello @@");
+  WaitForApplyFieldAction();
+  EXPECT_EQ(input.Value().Utf16(), u"hello result");
+  EXPECT_EQ(input.GetDocument().FocusedElement(), input);
+}
+
 // Tests that a non-standard trigger string works in <input> fields.
 TEST_F(AutofillAgentTest_AtMemory, NonStandardTriggerString) {
   // Ignore standard Autofill noise during setup.
@@ -2544,7 +2589,7 @@ TEST_F(AutofillAgentTest_AtMemory, NonStandardTriggerString) {
       AskForValuesToFill(
           _, _, _, AutofillSuggestionTriggerSource::kAtMemoryTriggerString, _));
 
-  SetTrigger("Foo");
+  SetTrigger(u"Foo");
   LoadHTML(R"(<input id="f">)");
   WaitForFormsSeen();
   Focus("f");
@@ -2699,10 +2744,7 @@ TEST_F(AutofillAgentTest_AtMemoryContentEditable,
   WaitForApplyFieldAction();
 
   // 2. Verify the trigger was replaced.
-  // \xA0 is a non-breaking whitespace. Blink replaces the whitespace the
-  // original whitespace with a non-breaking one to prevent whitespace
-  // collapsing.
-  EXPECT_EQ(ce.TextContent().Utf16(), u"Prefix\xA0Suffix");
+  EXPECT_EQ(ce.TextContent().Utf16(), u"Prefix Suffix");
 
   // 3. Verify the cursor position (at the end of "Prefix Suffix").
   blink::WebRange selection =
@@ -2800,6 +2842,48 @@ TEST_F(AutofillAgentTest_AtMemoryContentEditable,
   EXPECT_EQ(ce.TextContent().Utf16(), u"hello @@ changed");
 }
 
+// Tests that ApplyFieldAction() with kReplaceSelectionForAtMemory refocuses the
+// element and restores the caret if the element lost focus.
+TEST_F(AutofillAgentTest_AtMemoryContentEditable,
+       RefocusesAndRestoresCaretIfUnfocused) {
+  blink::WebElement ce = GetWebElementById("ce");
+  Focus("ce");
+
+  ExecuteJavaScriptForTests(R"(
+    const input = document.createElement('input');
+    input.id = 'other';
+    document.body.appendChild(input);
+  )");
+  blink::WebElement other = GetWebElementById("other");
+
+  // Ignore standard Autofill noise during setup.
+  EXPECT_CALL(
+      autofill_driver(),
+      AskForValuesToFill(
+          _, _, _, Ne(AutofillSuggestionTriggerSource::kAtMemoryTriggerString),
+          _))
+      .Times(AnyNumber());
+  // Expect the specific @memory trigger.
+  EXPECT_CALL(
+      autofill_driver(),
+      AskForValuesToFill(
+          _, _, _, AutofillSuggestionTriggerSource::kAtMemoryTriggerString, _))
+      .WillOnce([this, &other](const FormData& form, FieldRendererId field_id,
+                               const gfx::Rect& caret_bounds,
+                               AutofillSuggestionTriggerSource trigger_source,
+                               const std::optional<PasswordSuggestionRequest>&
+                                   password_request) {
+        other.Focus();
+        ApplyFieldActionAsync(field_id);
+        EXPECT_EQ(other.GetDocument().FocusedElement(), other);
+      });
+
+  SimulateSlowTyping("hello @@");
+  WaitForApplyFieldAction();
+  EXPECT_EQ(ce.TextContent().Utf16(), u"hello result");
+  EXPECT_EQ(ce.GetDocument().FocusedElement(), ce);
+}
+
 // Tests that a non-standard trigger string works in <div contenteditable>
 // fields.
 TEST_F(AutofillAgentTest_AtMemoryContentEditable, NonStandardTriggerString) {
@@ -2816,7 +2900,7 @@ TEST_F(AutofillAgentTest_AtMemoryContentEditable, NonStandardTriggerString) {
       AskForValuesToFill(
           _, _, _, AutofillSuggestionTriggerSource::kAtMemoryTriggerString, _));
 
-  SetTrigger("Foo");
+  SetTrigger(u"Foo");
   LoadHTML(R"(<div contenteditable id="f">)");
   WaitForFormsSeen();
   Focus("f");
@@ -2905,13 +2989,13 @@ TEST_F(EmailVerificationHandlerTest,
   blink::WebFormControlElement verification_element =
       GetFormControlElementById("verification");
 
-  autofill_agent().SendEmailVerificationToken(
-      form_util::GetFieldRendererId(email_element), "a@example.com",
-      form_util::GetFieldRendererId(verification_element), "evt_token_123");
-
   EXPECT_CALL(autofill_driver(),
               FormWithEmailVerificationTokenSubmitted(
-                  _, form_util::GetFieldRendererId(verification_element)));
+                  _, form_util::GetFieldRendererId(email_element)));
+
+  autofill_agent().SendEmailVerificationToken(
+      form_util::GetFieldRendererId(email_element), "a@example.com",
+      "evt_token_123");
 
   test_api(autofill_agent())
       .email_verification_handler()
@@ -2940,16 +3024,14 @@ TEST_F(EmailVerificationHandlerTest,
   blink::WebFormControlElement verification_element =
       GetFormControlElementById("verification");
 
+  EXPECT_CALL(autofill_driver(), FormWithEmailVerificationTokenSubmitted(_, _))
+      .Times(0);
+
   autofill_agent().SendEmailVerificationToken(
       form_util::GetFieldRendererId(email_element), "a@example.com",
-      form_util::GetFieldRendererId(verification_element), "evt_token_123");
+      "evt_token_123");
 
   email_element.SetValue(blink::WebString::FromUtf16(u"b@example.com"));
-
-  EXPECT_CALL(autofill_driver(),
-              FormWithEmailVerificationTokenSubmitted(
-                  _, form_util::GetFieldRendererId(verification_element)))
-      .Times(0);
 
   test_api(autofill_agent())
       .email_verification_handler()
@@ -2978,22 +3060,51 @@ TEST_F(EmailVerificationHandlerTest,
   blink::WebFormControlElement verification_element =
       GetFormControlElementById("verification");
 
+  EXPECT_CALL(autofill_driver(), FormWithEmailVerificationTokenSubmitted(_, _))
+      .Times(0);
+
   autofill_agent().SendEmailVerificationToken(
       form_util::GetFieldRendererId(email_element), "a@example.com",
-      form_util::GetFieldRendererId(verification_element), "evt_token_123");
+      "evt_token_123");
 
   email_element.SetValue(blink::WebString::FromUtf16(u""));
-
-  EXPECT_CALL(autofill_driver(),
-              FormWithEmailVerificationTokenSubmitted(
-                  _, form_util::GetFieldRendererId(verification_element)))
-      .Times(0);
 
   test_api(autofill_agent())
       .email_verification_handler()
       .WillSendSubmitEvent(form_element);
 
   EXPECT_EQ(verification_element.Value().Utf16(), u"");
+}
+
+// Tests that GetNonceForEmailVerification correctly queries the nonce from
+// the hidden verification token field.
+TEST_F(EmailVerificationHandlerTest, GetNonceForEmailVerification) {
+  EXPECT_CALL(autofill_driver(), FormsSeen);
+  LoadHTML(R"(<body>
+    <form id="form">
+      <input type="email" id="email" value="a@example.com">
+      <input type="hidden" id="verification" autocomplete="email-verification-token" nonce="test_nonce_123">
+    </form>
+    <form id="form_without_token">
+      <input type="email" id="email2" value="b@example.com">
+    </form>
+  </body>)");
+  WaitForFormsSeen();
+
+  blink::WebFormControlElement email_element =
+      GetFormControlElementById("email");
+  blink::WebFormControlElement email2_element =
+      GetFormControlElementById("email2");
+
+  base::test::TestFuture<const std::optional<std::string>&> future1;
+  autofill_agent().GetNonceForEmailVerification(
+      form_util::GetFieldRendererId(email_element), future1.GetCallback());
+  EXPECT_EQ(future1.Get(), "test_nonce_123");
+
+  base::test::TestFuture<const std::optional<std::string>&> future2;
+  autofill_agent().GetNonceForEmailVerification(
+      form_util::GetFieldRendererId(email2_element), future2.GetCallback());
+  EXPECT_EQ(future2.Get(), std::nullopt);
 }
 
 // Malicious web pages can attempt to steal saved autofill data via a
