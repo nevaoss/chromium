@@ -7,18 +7,21 @@ package org.chromium.chrome.browser.tasks.tab_management;
 import static org.chromium.build.NullUtil.assumeNonNull;
 import static org.chromium.chrome.browser.tasks.tab_management.TabSwitcherMessageManager.isOnlyArchivedMsg;
 
-import android.util.Pair;
+import android.graphics.Bitmap;
+import android.view.View;
 
 import org.chromium.base.Token;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.tab.MediaState;
 import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.tab.TabLaunchType;
+import org.chromium.chrome.browser.tab.TabSelectionType;
 import org.chromium.chrome.browser.tabmodel.TabGroupObserver;
 import org.chromium.chrome.browser.tabmodel.TabList;
 import org.chromium.chrome.browser.tabmodel.TabModel;
-import org.chromium.components.tab_groups.TabGroupColorId;
 import org.chromium.ui.modelutil.PropertyModel;
+import org.chromium.url.GURL;
 
 /**
  * Abstract delegate handler for {@link TabGroupObserver} callbacks. Layout-specific subclasses
@@ -84,24 +87,120 @@ abstract class TabListLayoutDelegate implements TabGroupObserver {
         return newIndex;
     }
 
-    @Override
-    public void didChangeTabGroupTitle(Token tabGroupId, String newTitle) {
-        mMediator.updateTabGroupTitle(tabGroupId);
+    /**
+     * Handles UI model updates when a tab is added to the tab model.
+     *
+     * @param tab The {@link Tab} being added.
+     * @param type The {@link TabLaunchType} indicating how the tab was launched.
+     */
+    void didAddTab(Tab tab, @TabLaunchType int type) {
+        onTabAdded(tab);
+    }
+
+    /**
+     * Resolves the UI index in {@link #mModelList} of the card representing the given tab in this
+     * layout.
+     *
+     * <p>For flat and nested layouts, this locates the tab's direct card in the model list.
+     * Subclasses (such as grouped layouts) may override this to resolve to the containing group
+     * card if the tab is part of a tab group.
+     *
+     * @param tabId The ID of the tab to locate.
+     * @return The UI index in {@link #mModelList}, or {@link TabModel#INVALID_TAB_INDEX} if not
+     *     present.
+     */
+    int getUiIndexForTab(int tabId) {
+        return mModelList.indexFromTabId(tabId);
+    }
+
+    /**
+     * Handles UI model updates when a tab is selected in the tab model.
+     *
+     * @param tab The {@link Tab} that was selected.
+     * @param type The {@link TabSelectionType} indicating the selection trigger.
+     * @param lastId The ID of the previously selected tab.
+     */
+    void didSelectTab(Tab tab, @TabSelectionType int type, int lastId) {
+        int oldIndex = getUiIndexForTab(lastId);
+        int newIndex = getUiIndexForTab(tab.getId());
+
+        mMediator.setLastSelectedTabListModelIndex(oldIndex);
+        if (mMediator.isTabDelayed(tab)) {
+            // If tab is being added later, it will be selected later.
+            return;
+        }
+        mMediator.selectTab(oldIndex, newIndex);
+    }
+
+    /**
+     * Updates the favicon for a tab or its representing card when the favicon changes.
+     *
+     * @param updatedTab The {@link Tab} whose favicon was updated.
+     * @param icon The updated favicon {@link Bitmap}, or null.
+     * @param iconUrl The {@link GURL} of the updated favicon, or null.
+     */
+    void onFaviconUpdated(Tab updatedTab, @Nullable Bitmap icon, @Nullable GURL iconUrl) {
+        @Nullable PropertyModel model = mModelList.getModelFromTabId(updatedTab.getId());
+        if (model == null) return;
+        mMediator.updateFaviconForTab(model, updatedTab, icon, iconUrl);
+    }
+
+    /**
+     * Handles UI model updates when a tab is removed for closure.
+     *
+     * @param tab The {@link Tab} being removed for closure.
+     */
+    void onTabClose(Tab tab) {
+        int index = mModelList.indexFromTabId(tab.getId());
+        if (index == TabModel.INVALID_TAB_INDEX) return;
+
+        mModelList.removeAt(index);
+    }
+
+    /**
+     * Prepares layout-specific view properties and animation tags prior to tab closure animation.
+     *
+     * @param view The clicked close button {@link View}, or null.
+     * @param closingTabIndex The UI index of the tab being closed in {@link #mModelList}.
+     */
+    void prepareTabCloseAnimation(@Nullable View view, int closingTabIndex) {}
+
+    /**
+     * Handles UI model updates when a tab is moved in the tab model.
+     *
+     * @param tab The {@link Tab} that moved.
+     * @param newIndex The new index of the tab in the {@link TabModel}.
+     * @param curIndex The previous index of the tab in the {@link TabModel}.
+     */
+    void didMoveTab(Tab tab, int newIndex, int curIndex) {
+        // Standalone tab moves triggered from external sources need to be
+        // explicitly synced to the ModelList for GROUPED and NESTED layouts.
+
+        // Intra-group move or merging into group.
+        if (tab.getTabGroupId() != null) {
+            return;
+        }
+
+        int currentUiIndex = mModelList.indexFromTabId(tab.getId());
+        if (currentUiIndex == TabModel.INVALID_TAB_INDEX) return;
+
+        // Moving out of a group.
+        // This assumes the move event is dispatched before the ungroup event
+        // (didMoveTabOutOfGroup) is processed, meaning the UI model still has the
+        // old grouping metadata.
+        PropertyModel model = mModelList.get(currentUiIndex).model;
+        if (TabProperties.isTabInGroup(model) || TabProperties.isTabGroupHeader(model)) {
+            return;
+        }
+
+        // Standalone tab movement.
+        int targetUiIndex = getInsertionIndexOfTab(tab);
+        mModelList.moveItem(currentUiIndex, targetUiIndex);
     }
 
     @Override
-    public void didChangeTabGroupColor(Token tabGroupId, @TabGroupColorId int newColor) {
-        @Nullable Pair<Integer, Tab> indexAndTab =
-                mMediator.getIndexAndTabForTabGroupId(tabGroupId);
-        if (indexAndTab == null) return;
-        Tab tab = indexAndTab.second;
-        PropertyModel model = mModelList.get(indexAndTab.first).model;
-
-        mMediator.updateTabGroupProperties(tab, model, newColor);
-        mMediator.updateFaviconForTab(model, tab, null, null);
-        mMediator.updateDescriptionString(model);
-        mMediator.updateActionButtonDescriptionString(tab, model);
-        mMediator.updateThumbnailFetcher(model, tab.getId());
+    public void didChangeTabGroupTitle(Token tabGroupId, String newTitle) {
+        mMediator.updateTabGroupTitle(tabGroupId);
     }
 
     @Override

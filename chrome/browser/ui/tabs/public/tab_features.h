@@ -42,8 +42,10 @@ class CommitLimitOOMRecoveryTracker;
 class CookieControlsPageActionController;
 class FileSystemAccessPageActionController;
 class FocusTabAfterNavigationHelper;
+class FramebustBlockTabHelper;
 class FromGWSNavigationAndKeepAliveRequestObserver;
 class HttpAuthCacheStatus;
+class IntentPickerTabHelper;
 class IntentPickerViewPageActionController;
 class JsOptimizationsPageActionController;
 class LensOverlayController;
@@ -59,12 +61,14 @@ class QwacWebContentsObserver;
 class ReadAnythingController;
 class ReadAnythingSidePanelController;
 class RecordReplayPageActionController;
+class SadTabHelper;
 class SearchEngineChoiceTabHelper;
 class SearchPromotionNavigationObserver;
 class SecurityStateEventObserver;
 class SidePanelRegistry;
 class TabResourceUsageTabHelper;
 class TabUIHelper;
+class ThumbnailTabHelper;
 class TranslatePageActionController;
 class ZeroSuggestPrefetchTabHelper;
 
@@ -75,10 +79,6 @@ class SkillsUiTabControllerInterface;
 namespace back_to_opener {
 class BackToOpenerController;
 }  // namespace back_to_opener
-
-namespace accessibility_annotator {
-class ContentAnnotatorTabHelper;
-}  // namespace accessibility_annotator
 
 namespace autofill {
 class BubbleManager;
@@ -555,6 +555,9 @@ class TabFeatures {
   std::unique_ptr<FocusTabAfterNavigationHelper>
       focus_tab_after_navigation_helper_;
 
+  // Tracks blocked framebusts on the current page for the omnibox UI.
+  std::unique_ptr<FramebustBlockTabHelper> framebust_block_tab_helper_;
+
   std::unique_ptr<FromGWSNavigationAndKeepAliveRequestObserver>
       from_gws_navigation_and_keep_alive_request_observer_;
 
@@ -627,6 +630,10 @@ class TabFeatures {
   std::unique_ptr<lens::TabContextualizationController>
       tab_contextualization_controller_;
 
+  // Manages the sad tab view shown when the tab's main frame has crashed.
+  // Null when the WebUI browser is enabled.
+  std::unique_ptr<SadTabHelper> sad_tab_helper_;
+
   // Watches for an opportunity to show the search engine choice dialog.
   // Only created when SearchEngineChoiceTabHelper::IsHelperNeeded().
   std::unique_ptr<SearchEngineChoiceTabHelper> search_engine_choice_tab_helper_;
@@ -671,9 +678,6 @@ class TabFeatures {
       commit_limit_oom_recovery_tracker_;
 #endif
 
-  std::unique_ptr<accessibility_annotator::ContentAnnotatorTabHelper>
-      content_annotator_tab_helper_;
-
 #if !BUILDFLAG(IS_ANDROID)
   std::unique_ptr<indigo::IndigoPageActionController>
       indigo_page_action_controller_;
@@ -688,6 +692,13 @@ class TabFeatures {
   // Prefetches zero-prefix suggestions on opening or switching to an NTP.
   std::unique_ptr<ZeroSuggestPrefetchTabHelper>
       zero_suggest_prefetch_tab_helper_;
+
+  // Controls the visibility of the intent picker page action.
+  std::unique_ptr<IntentPickerTabHelper> intent_picker_tab_helper_;
+
+  // Maintains the thumbnail shown in e.g. tab hover cards. Null when no
+  // feature that needs thumbnails is enabled.
+  std::unique_ptr<ThumbnailTabHelper> thumbnail_tab_helper_;
 
   // Must be the last member.
   base::WeakPtrFactory<TabFeatures> weak_factory_{this};

@@ -316,13 +316,14 @@ bool IsZeroStateSuggestionsEnabled() {
       GetApplicationContext()->GetVariationsService();
   bool is_launched_country =
       variations_service &&
-      base::ToLowerASCII(variations_service->GetStoredPermanentCountry()) ==
-          "us";
+      base::EqualsCaseInsensitiveASCII(
+          variations_service->GetStoredPermanentCountry(), "us");
 
   ApplicationLocaleStorage* locale_storage =
       GetApplicationContext()->GetApplicationLocaleStorage();
   bool is_launched_locale =
-      locale_storage && base::ToLowerASCII(locale_storage->Get()) == "en-us";
+      locale_storage &&
+      base::EqualsCaseInsensitiveASCII(locale_storage->Get(), "en-us");
 
   if (is_launched_country && is_launched_locale) {
     return true;
@@ -338,13 +339,14 @@ bool IsZeroStateSuggestionsWCGDEnabled() {
       GetApplicationContext()->GetVariationsService();
   bool is_launched_country =
       variations_service &&
-      base::ToLowerASCII(variations_service->GetStoredPermanentCountry()) ==
-          "us";
+      base::EqualsCaseInsensitiveASCII(
+          variations_service->GetStoredPermanentCountry(), "us");
 
   ApplicationLocaleStorage* locale_storage =
       GetApplicationContext()->GetApplicationLocaleStorage();
   bool is_launched_locale =
-      locale_storage && base::ToLowerASCII(locale_storage->Get()) == "en-us";
+      locale_storage &&
+      base::EqualsCaseInsensitiveASCII(locale_storage->Get(), "en-us");
 
   if (is_launched_country && is_launched_locale) {
     return true;
@@ -483,6 +485,12 @@ BASE_FEATURE_PARAM(base::TimeDelta,
                    kActorPageStabilityLcpDelay,
                    &kActorTools,
                    base::Seconds(1));
+// LINT.IfChange(kActorPageStabilityAutofillPredictionsTimeout)
+BASE_FEATURE_PARAM(base::TimeDelta,
+                   kActorPageStabilityAutofillPredictionsTimeout,
+                   &kActorTools,
+                   base::Seconds(1));
+// LINT.ThenChange(//chrome/common/chrome_features.cc:kActorObservationDelayAutofillPredictionsTimeout)
 
 bool IsActorEnabled() {
   return base::FeatureList::IsEnabled(kActorTools);
@@ -523,6 +531,11 @@ base::TimeDelta GetActorPageStabilityWindowDuration() {
 base::TimeDelta GetActorPageStabilityLcpDelay() {
   CHECK(IsPageStabilityEnabled());
   return kActorPageStabilityLcpDelay.Get();
+}
+
+base::TimeDelta GetActorPageStabilityAutofillPredictionsTimeout() {
+  CHECK(IsPageStabilityEnabled());
+  return kActorPageStabilityAutofillPredictionsTimeout.Get();
 }
 
 bool IsToolDisabled(optimization_guide::proto::Action::ActionCase tool) {
@@ -570,13 +583,14 @@ bool IsModelBasedPageClassificationEnabled() {
       GetApplicationContext()->GetVariationsService();
   bool is_launched_country =
       variations_service &&
-      base::ToLowerASCII(variations_service->GetStoredPermanentCountry()) ==
-          "us";
+      base::EqualsCaseInsensitiveASCII(
+          variations_service->GetStoredPermanentCountry(), "us");
 
   ApplicationLocaleStorage* locale_storage =
       GetApplicationContext()->GetApplicationLocaleStorage();
   bool is_launched_locale =
-      locale_storage && base::ToLowerASCII(locale_storage->Get()) == "en-us";
+      locale_storage &&
+      base::EqualsCaseInsensitiveASCII(locale_storage->Get(), "en-us");
 
   if (!is_launched_country || !is_launched_locale) {
     return false;
@@ -676,7 +690,7 @@ bool IsPageContextPDFEnabled() {
   return base::FeatureList::IsEnabled(kPageContextPdf);
 }
 
-BASE_FEATURE(kGeminiClientMigration, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGeminiClientMigration, base::FEATURE_ENABLED_BY_DEFAULT);
 
 bool IsGeminiClientMigrationEnabled() {
   if (!IsPageActionMenuEnabled()) {
@@ -928,4 +942,11 @@ BASE_FEATURE(kPageContextAutofillOtpRedactions,
 
 bool IsPageContextAutofillOtpRedactionsEnabled() {
   return base::FeatureList::IsEnabled(kPageContextAutofillOtpRedactions);
+}
+
+BASE_FEATURE(kPageContextScreenshotPasswordRedaction,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsPageContextScreenshotPasswordRedactionEnabled() {
+  return base::FeatureList::IsEnabled(kPageContextScreenshotPasswordRedaction);
 }

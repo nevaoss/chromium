@@ -34,6 +34,8 @@
 #include "base/strings/stringprintf.h"
 #include "base/strings/to_string.h"
 #include "base/strings/utf_string_conversions.h"
+#include "base/task/bind_post_task.h"
+#include "base/task/thread_pool.h"
 #include "base/test/bind.h"
 #include "base/test/gmock_callback_support.h"
 #include "base/test/gmock_move_support.h"
@@ -133,6 +135,7 @@
 #include "components/autofill/core/browser/ui/test_autofill_external_delegate.h"
 #include "components/autofill/core/browser/webdata/autofill_ai/entity_table.h"
 #include "components/autofill/core/browser/webdata/autofill_webdata_service_test_helper.h"
+#include "components/autofill/core/browser/webdata/mock_autofill_webdata_service.h"
 #include "components/autofill/core/common/autocomplete_parsing_util.h"
 #include "components/autofill/core/common/autofill_debug_features.h"
 #include "components/autofill/core/common/autofill_features.h"
@@ -2098,22 +2101,12 @@ TEST_F(BrowserAutofillManagerTest, GetAddressAndCreditCardSuggestionsNonHttps) {
 
   // Clear the test credit cards and try again -- we shouldn't return a warning.
   personal_data().test_payments_data_manager().ClearCreditCards();
+  // Set the value of the trigger field to be longer than 3 characters, so that
+  // the "Save and Fill" promo is not shown.
+  cc_number_field.set_value(u"1234");
   OnAskForValuesToFill(form, cc_number_field);
-#if BUILDFLAG(IS_IOS)
-  // On iOS, the Scan Card / Save and Fill promo is enabled by default. Even
-  // though the promo itself doesn't check for secure context, its presence
-  // causes the generic secure context check to replace it with a warning.
-  external_delegate()->CheckSuggestions(
-      cc_number_field.global_id(),
-      {Suggestion(
-          l10n_util::GetStringUTF16(IDS_AUTOFILL_WARNING_INSECURE_CONNECTION),
-          u"", Suggestion::Icon::kNoIcon,
-          SuggestionType::kInsecureContextPaymentDisabledMessage)});
-#else
-  // On other platforms, the promo is not enabled by default, so no suggestions
-  // are generated.
+
   external_delegate()->CheckNoSuggestions(cc_number_field.global_id());
-#endif
 }
 
 TEST_F(BrowserAutofillManagerTest,
@@ -2382,11 +2375,9 @@ TEST_F(BrowserAutofillManagerTest,
       .Times(0);
 #endif
 
-#if BUILDFLAG(IS_IOS)
   // Set the value of the trigger field to be longer than 3 characters, so that
   // the "Save and Fill" promo is not shown.
   test_api(form).field(0).set_value(u"1234");
-#endif
   OnAskForValuesToFill(form, form.fields()[0]);
 
   // Verify that no suggestion is returned.
@@ -2566,13 +2557,13 @@ TEST_P(BrowserAutofillManagerLogAblationTest, TestLogging) {
   // Simulate retrieving autofill suggestions with the first field as a trigger
   // script. This should emit signals that lead to recorded metrics later on.
   FormFieldData& field = test_api(form).field(0);
-#if BUILDFLAG(IS_IOS)
+
   if (!params.run_with_data_on_file) {
     // Set the field value to > 3 characters to suppress the "Save and Fill"
-    // promo on iOS, ensuring that NO suggestions are generated.
+    // promo, ensuring that NO suggestions are generated.
     field.set_value(u"1234");
   }
-#endif
+
   OnAskForValuesToFill(form, field);
 
   // Simulate user typing into field (due to the ablation we would not fill).
@@ -5864,6 +5855,56 @@ TEST_F(BrowserAutofillManagerTest,
   EXPECT_TRUE(try_to_show_ttf_called);
   EXPECT_TRUE(on_after_called);
 
+  autofill_manager().RemoveObserver(&observer);
+}
+
+// Tests that if an asynchronous suggestion generator query (e.g. Autocomplete)
+// is in flight and is cancelled/destroyed on a background ThreadPool sequence,
+// `OnAfterAskForValuesToFill` is safely notified on the main thread sequence
+// without crashing or violating sequence checker assertions.
+TEST_F(BrowserAutofillManagerTest,
+       OnAskForValuesToFill_CancelledDatabaseQueryDoesNotCrash) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(features::kAutofillNewSuggestionGeneration);
+
+  auto mock_web_data_service =
+      base::MakeRefCounted<testing::NiceMock<MockAutofillWebDataService>>();
+  autofill_client().set_autocomplete_history_manager(
+      std::make_unique<MockAutocompleteHistoryManager>(mock_web_data_service));
+
+  FormData form =
+      test::GetFormData({.fields = {{.label = u"label", .name = u"name"}}});
+  FormsSeen({form});
+
+  using DbCallback = base::OnceCallback<void(WebDataServiceBase::Handle,
+                                             std::unique_ptr<WDTypedResult>)>;
+
+  EXPECT_CALL(*mock_web_data_service, GetFormValuesForElementName)
+      .WillOnce([&](const std::u16string&, const std::u16string&, int,
+                    DbCallback callback) {
+        constexpr int kDbQueryId = 100;
+        // Simulate a slow DB query running on a background worker thread:
+        // transfer the DB callback to ThreadPool and drop it there without
+        // running. This ensures that `callback` is destroyed on the ThreadPool
+        // worker thread without running.
+        base::ThreadPool::PostTask(
+            FROM_HERE,
+            base::BindOnce([](DbCallback cb) {}, std::move(callback)));
+        return kDbQueryId;
+      });
+
+  testing::NiceMock<MockAutofillManagerObserver> observer;
+  autofill_manager().AddObserver(&observer);
+
+  base::RunLoop run_loop;
+  EXPECT_CALL(observer, OnAfterAskForValuesToFill).WillOnce([&]() {
+    run_loop.Quit();
+  });
+
+  // Trigger suggestion generation and the DB query.
+  OnAskForValuesToFill(form, form.fields().front());
+
+  run_loop.Run();
   autofill_manager().RemoveObserver(&observer);
 }
 

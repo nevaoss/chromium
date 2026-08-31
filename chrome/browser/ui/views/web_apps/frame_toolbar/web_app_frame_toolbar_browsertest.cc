@@ -36,6 +36,7 @@
 #include "base/values.h"
 #include "build/build_config.h"
 #include "chrome/app/chrome_command_ids.h"
+#include "chrome/browser/content_settings/host_content_settings_map_factory.h"
 #include "chrome/browser/download/bubble/download_bubble_ui_controller.h"
 #include "chrome/browser/extensions/chrome_test_extension_loader.h"
 #include "chrome/browser/extensions/scoped_test_mv2_enabler.h"
@@ -63,6 +64,7 @@
 #include "chrome/browser/ui/views/infobars/infobar_view.h"
 #include "chrome/browser/ui/views/page_action/test_support/page_action_test_support.h"
 #include "chrome/browser/ui/views/toolbar/pinned_toolbar_actions_container.h"
+#include "chrome/browser/ui/views/web_apps/frame_toolbar/web_app_content_settings_container.h"
 #include "chrome/browser/ui/views/web_apps/frame_toolbar/web_app_frame_toolbar_test_helper.h"
 #include "chrome/browser/ui/views/web_apps/frame_toolbar/web_app_frame_toolbar_view.h"
 #include "chrome/browser/ui/views/web_apps/frame_toolbar/web_app_menu_button.h"
@@ -95,12 +97,13 @@
 #include "chrome/browser/web_applications/web_app_registry_update.h"
 #include "chrome/browser/web_applications/web_app_sync_bridge.h"
 #include "chrome/common/chrome_features.h"
-#include "chrome/test/base/chrome_test_utils.h"
+#include "chrome/test/base/chrome_test_path_utils.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "chromeos/constants/chromeos_features.h"
 #include "chromeos/ui/base/chromeos_ui_constants.h"
 #include "chromeos/ui/frame/caption_buttons/frame_caption_button_container_view.h"
+#include "components/blocked_content/popup_blocker_tab_helper.h"
 #include "components/infobars/content/content_infobar_manager.h"
 #include "components/infobars/core/infobar_delegate.h"
 #include "components/input/native_web_keyboard_event.h"
@@ -223,7 +226,8 @@ SkColor GetFrameColor(Browser* browser) {
 content::EvalJsResult EvalDisplayStateChange(
     const content::ToRenderFrameHost& execution_target,
     std::string window_method,
-    std::string expected_state) {
+    std::string expected_state,
+    int execute_script_options = content::EXECUTE_SCRIPT_DEFAULT_OPTIONS) {
   static constexpr char script[] =
       R"(new Promise((resolve, reject) => {
         window.$1().then(() => {
@@ -239,7 +243,8 @@ content::EvalJsResult EvalDisplayStateChange(
       execution_target,
       base::ReplaceStringPlaceholders(
           script, {std::move(window_method), std::move(expected_state)},
-          nullptr));
+          nullptr),
+      execute_script_options);
 }
 
 content::EvalJsResult EvalSetResizable(
@@ -323,6 +328,34 @@ class WebAppFrameToolbarBrowserTest : public web_app::WebAppBrowserTestBase {
   // TODO(https://crbug.com/40804030): Remove this when updated to use MV3.
   extensions::ScopedTestMV2Enabler mv2_enabler_;
 };
+
+IN_PROC_BROWSER_TEST_F(WebAppFrameToolbarBrowserTest,
+                       BlockedPopupIconVisibleInPwaTitlebar) {
+  WebAppToolbarButtonContainer::DisableAnimationForTesting(true);
+  const GURL app_url("https://test.org");
+  helper()->InstallAndLaunchWebApp(browser(), app_url);
+
+  content::WebContents* web_contents =
+      helper()->browser_view()->GetActiveWebContents();
+
+  // Execute ungestured window.open call to trigger popup blocker.
+  EXPECT_TRUE(content::ExecJs(web_contents, "window.open('about:blank');",
+                              content::EXECUTE_SCRIPT_NO_USER_GESTURE));
+
+  auto* popup_blocker =
+      blocked_content::PopupBlockerTabHelper::FromWebContents(web_contents);
+  ASSERT_TRUE(popup_blocker);
+  EXPECT_EQ(1u, popup_blocker->GetBlockedPopupsCount());
+
+  WebAppToolbarButtonContainer* toolbar_right_container =
+      helper()->web_app_frame_toolbar()->get_right_container_for_testing();
+  WebAppContentSettingsContainer* content_settings =
+      toolbar_right_container->content_settings_container();
+  ASSERT_TRUE(content_settings);
+  EXPECT_TRUE(
+      base::test::RunUntil([&]() { return content_settings->GetVisible(); }));
+  EXPECT_GT(content_settings->width(), 0);
+}
 
 IN_PROC_BROWSER_TEST_F(WebAppFrameToolbarBrowserTest, SpaceConstrained) {
   const GURL app_url("https://test.org");
@@ -3185,6 +3218,26 @@ IN_PROC_BROWSER_TEST_F(
 
 IN_PROC_BROWSER_TEST_F(
     WebAppFrameToolbarBrowserTest_AdditionalWindowingControls,
+    RejectWithoutUserActivation) {
+  InstallAndLaunchWebApp();
+  auto* web_contents = helper()->browser_view()->GetActiveWebContents();
+  const GURL url = web_contents->GetLastCommittedURL();
+  // Grant window-management permission without transient user activation.
+  HostContentSettingsMapFactory::GetForProfile(browser()->GetProfile())
+      ->SetContentSettingDefaultScope(url, url,
+                                      ContentSettingsType::WINDOW_MANAGEMENT,
+                                      CONTENT_SETTING_ALLOW);
+
+  EXPECT_THAT(
+      EvalDisplayStateChange(web_contents, "maximize", "maximized",
+                             content::EXECUTE_SCRIPT_NO_USER_GESTURE),
+      content::EvalJsResult::ErrorIs(testing::AllOf(
+          testing::HasSubstr("window.maximize() rejected"),
+          testing::HasSubstr("API requires transient user activation."))));
+}
+
+IN_PROC_BROWSER_TEST_F(
+    WebAppFrameToolbarBrowserTest_AdditionalWindowingControls,
     RejectSimultaneousWindowChanges) {
   InstallAndLaunchWebApp();
   helper()->GrantWindowManagementPermission();
@@ -3426,6 +3479,46 @@ IN_PROC_BROWSER_TEST_F(
     gfx::Rect bounds_after = helper()->app_browser()->GetWindow()->GetBounds();
     EXPECT_NE(bounds_before.ToString(), bounds_after.ToString());
   }
+}
+
+class IsolatedWebAppFrameToolbarBrowserTest_AdditionalWindowingControls
+    : public WebAppFrameToolbarBrowserTest {
+ public:
+  IsolatedWebAppFrameToolbarBrowserTest_AdditionalWindowingControls() {
+    scoped_feature_list_.InitWithFeatures(
+        {blink::features::kDesktopPWAsAdditionalWindowingControls,
+         features::kIsolatedWebApps},
+        {});
+  }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
+};
+
+IN_PROC_BROWSER_TEST_F(
+    IsolatedWebAppFrameToolbarBrowserTest_AdditionalWindowingControls,
+    UserActivationNotRequiredForIwa) {
+  std::unique_ptr iwa =
+      web_app::IsolatedWebAppBuilder(
+          web_app::ManifestBuilder().AddPermissionsPolicy(
+              network::mojom::PermissionsPolicyFeature::kWindowManagement, true,
+              {}))
+          .BuildBundle();
+  auto* profile = browser()->GetProfile();
+  web_app::IsolatedWebAppUrlInfo url_info =
+      helper()->InstallAndLaunchIsolatedWebApp(profile, iwa.get());
+
+  auto* web_contents = helper()->browser_view()->GetActiveWebContents();
+  const GURL url = web_contents->GetLastCommittedURL();
+  // Grant window-management permission without transient user activation.
+  HostContentSettingsMapFactory::GetForProfile(browser()->GetProfile())
+      ->SetContentSettingDefaultScope(url, url,
+                                      ContentSettingsType::WINDOW_MANAGEMENT,
+                                      CONTENT_SETTING_ALLOW);
+
+  EXPECT_THAT(EvalDisplayStateChange(web_contents, "maximize", "maximized",
+                                     content::EXECUTE_SCRIPT_NO_USER_GESTURE),
+              "window.maximize() succeeded.");
 }
 
 #endif  // !BUILDFLAG(IS_ANDROID)

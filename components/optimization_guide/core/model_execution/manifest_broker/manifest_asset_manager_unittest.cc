@@ -149,8 +149,7 @@ class ManifestAssetManagerTest : public testing::Test {
  public:
   ManifestAssetManagerTest() {
     scoped_feature_list_.InitWithFeatures(
-        {features::kOptimizationGuideModelExecution,
-         features::kOptimizationGuideOnDeviceModel},
+        {features::kOptimizationGuideModelExecution},
         {features::kAIModelUnloadableProgress});
   }
 
@@ -268,6 +267,43 @@ TEST_F(ManifestAssetManagerTest, DownloadProgressObserverReceivesUpdates) {
   task_environment_.FastForwardBy(base::Milliseconds(51));
   SendUpdate(GetCrxId(asset), 50);
   observer.ExpectReceivedNormalizedUpdate(50, 100);
+}
+
+TEST_F(ManifestAssetManagerTest,
+       DownloadProgressObserverAppliesUnloadableProgressPercent) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndEnableFeatureWithParameters(
+      features::kAIModelUnloadableProgress,
+      {{"ai_model_unloadable_progress_percent", "10"}});
+
+  DummyAsset asset = DummyAsset::For("compose");
+  usage_tracker_.OnDeviceEligibleUseCaseUsed(asset.use_case);
+  UpdateManifest(DummyManifest().Add(asset));
+  Startup();
+  EXPECT_TRUE(component_state_.WaitForRegistration(asset.ToInstallTarget()));
+
+  MockDownloadProgressObserver observer;
+  model_broker_client_->AddModelDownloadProgressObserver(
+      asset.use_case, observer.BindNewPipeAndPassRemote());
+  task_environment_.RunUntilIdle();  // nocheck
+
+  // 900 actual component bytes with 10% holdback = 1000 total virtual bytes.
+  RegisterFakeComponent(GetCrxId(asset), 900);
+
+  // Send the zero update.
+  SendUpdate(GetCrxId(asset), 0);
+  observer.ExpectReceivedNormalizedUpdate(0, 1000);
+
+  // Send an update for 450 downloaded bytes (45% of virtual total).
+  task_environment_.FastForwardBy(base::Milliseconds(51));
+  SendUpdate(GetCrxId(asset), 450);
+  observer.ExpectReceivedNormalizedUpdate(450, 1000);
+
+  // Send an update for 900 downloaded bytes (all actual bytes downloaded =
+  // 90%).
+  task_environment_.FastForwardBy(base::Milliseconds(51));
+  SendUpdate(GetCrxId(asset), 900);
+  observer.ExpectReceivedNormalizedUpdate(900, 1000);
 }
 
 TEST_F(ManifestAssetManagerTest, DownloadProgressObserverIsUseCaseSpecific) {
@@ -621,7 +657,7 @@ TEST_F(ManifestAssetManagerTest, UninstallsWhenRunningOutOfDiskSpace) {
   SimulateShutdown();
   base::HistogramTester histogram_tester;
   // 5gb is the default in `IsFreeDiskSpaceTooLowForOnDeviceModelInstall`.
-  component_state_.SetFreeDiskSpace(base::GiBU(5) - base::ByteSizeDelta(1));
+  component_state_.SetFreeDiskSpace(base::GiB(5) - base::ByteSizeDelta(1));
   task_environment_.FastForwardBy(base::Seconds(11));
   UpdateManifest(DummyManifest().Add(asset));
   Startup();
@@ -753,7 +789,7 @@ TEST_F(ManifestAssetManagerTest, DoesNotInstallWhenNotEnoughDiskSpace) {
   DummyAsset asset = DummyAsset::For("compose");
   usage_tracker_.OnDeviceEligibleUseCaseUsed(asset.use_case);
   // 20gb is the default in `IsFreeDiskSpaceSufficientForOnDeviceModelInstall`.
-  component_state_.SetFreeDiskSpace(base::GiBU(20) - base::ByteSizeDelta(1));
+  component_state_.SetFreeDiskSpace(base::GiB(20) - base::ByteSizeDelta(1));
 
   UpdateManifest(DummyManifest().Add(asset));
   Startup();
@@ -793,11 +829,10 @@ TEST_F(ManifestAssetManagerTest, BackgroundDownloadForManifestEnabledUseCase) {
   scoped_feature_list_.Reset();
   scoped_feature_list_.InitWithFeatures(
       {features::kOptimizationGuideModelExecution,
-       features::kOptimizationGuideOnDeviceModel,
        features::kOnDeviceModelBackgroundDownload},
       {});
 
-  component_state_.SetFreeDiskSpace(base::GiBU(100));
+  component_state_.SetFreeDiskSpace(base::GiB(100));
 
   DummyAsset compose_asset =
       DummyAsset::For("compose").WithBackgroundDownload(true);

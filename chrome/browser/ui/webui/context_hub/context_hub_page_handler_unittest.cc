@@ -21,6 +21,7 @@
 #include "chrome/browser/optimization_guide/mock_optimization_guide_keyed_service.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
 #include "chrome/browser/personal_context/personal_context_service_factory.h"
+#include "chrome/browser/tab_group_sync/tab_group_sync_service_factory.h"
 #include "chrome/browser/ui/webui/context_hub/context_hub.mojom-features.h"
 #include "chrome/browser/ui/webui/context_hub/context_hub.mojom.h"
 #include "chrome/test/base/testing_profile.h"
@@ -29,6 +30,10 @@
 #include "components/personal_context/core/mock_personal_context_service.h"
 #include "components/personal_context/core/personal_context_service.h"
 #include "components/personal_context/proto/features/auto_todos.pb.h"
+#include "components/saved_tab_groups/public/saved_tab_group.h"
+#include "components/saved_tab_groups/public/tab_group_sync_service.h"
+#include "components/saved_tab_groups/public/types.h"
+#include "components/saved_tab_groups/test_support/fake_tab_group_sync_service.h"
 #include "components/sessions/content/session_tab_helper.h"
 #include "content/public/test/browser_task_environment.h"
 #include "content/public/test/test_renderer_host.h"
@@ -118,6 +123,11 @@ class ContextHubPageHandlerTest : public testing::Test {
     profile->GetPrefs()->SetTime(prefs::kContextHubLastAutoTodosGenerationTime,
                                  base::Time::Now());
 
+    tab_groups::TabGroupSyncServiceFactory::GetInstance()->SetTestingFactory(
+        &profile_, base::BindRepeating([](content::BrowserContext* context)
+                                           -> std::unique_ptr<KeyedService> {
+          return std::make_unique<tab_groups::FakeTabGroupSyncService>();
+        }));
     PersonalContextServiceFactory::GetInstance()->SetTestingFactoryAndUse(
         browser_context,
         base::BindRepeating([](content::BrowserContext* context)
@@ -189,6 +199,10 @@ class ContextHubPageHandlerTest : public testing::Test {
   content::BrowserTaskEnvironment task_environment_;
   content::RenderViewHostTestEnabler rvh_test_enabler_;
   base::CallbackListSubscription create_services_subscription_;
+
+  struct EnsureFactories {
+    EnsureFactories() { ContextHubServiceFactory::GetInstance(); }
+  } ensure_factories_;
   TestingProfile profile_;
 #if !BUILDFLAG(IS_ANDROID)
   raw_ptr<MockTabProvider> mock_tab_provider_ = nullptr;
@@ -216,8 +230,6 @@ TEST_F(ContextHubPageHandlerTest, GenerateFirstPartyAutoTodos_Success) {
           base::ok(std::move(any_response)))));
 
   EXPECT_CALL(mock_page_, OnFirstPartyAutoTodosGenerationStateChanged(true));
-  // Initial clearing of the store.
-  EXPECT_CALL(mock_page_, OnAutoTodosChanged(IsEmpty()));
   // Notification after adding the todos.
   EXPECT_CALL(mock_page_, OnAutoTodosChanged(Not(IsEmpty())))
       .WillOnce([](const std::vector<context_hub::AutoTodoEntry>& todos) {
@@ -271,8 +283,6 @@ TEST_F(ContextHubPageHandlerTest,
           base::ok(std::move(any_response)))));
 
   EXPECT_CALL(mock_page_, OnFirstPartyAutoTodosGenerationStateChanged(true));
-  // Initial clearing of the store.
-  EXPECT_CALL(mock_page_, OnAutoTodosChanged(IsEmpty()));
   // Notification after adding the todos.
   EXPECT_CALL(mock_page_, OnAutoTodosChanged(Not(IsEmpty())))
       .WillOnce([](const std::vector<context_hub::AutoTodoEntry>& todos) {
@@ -335,7 +345,7 @@ TEST_F(ContextHubPageHandlerTest, GenerateFirstPartyAutoTodos_Empty) {
           base::ok(std::move(any_response)))));
 
   EXPECT_CALL(mock_page_, OnFirstPartyAutoTodosGenerationStateChanged(true));
-  EXPECT_CALL(mock_page_, OnAutoTodosChanged(IsEmpty())).Times(2);
+  EXPECT_CALL(mock_page_, OnAutoTodosChanged(IsEmpty()));
   EXPECT_CALL(mock_page_, OnFirstPartyAutoTodosGenerationStateChanged(false));
 
   base::test::TestFuture<bool> future;
@@ -887,14 +897,14 @@ TEST_F(ContextHubPageHandlerTest, GetAllMemoryBankEntries_Success) {
       ContextHubServiceFactory::GetForProfile(&profile_);
   ASSERT_TRUE(service);
 
-  base::test::TestFuture<void> save_tab_future;
+  base::test::TestFuture<bool> save_tab_future;
   service->SaveMemoryBankEntry(
       MemoryBankEntry(MemoryBankType::kTab, GURL("https://example.com/tab"),
                       "Tab Title", "Page text"),
       save_tab_future.GetCallback());
   ASSERT_TRUE(save_tab_future.Wait());
 
-  base::test::TestFuture<void> save_selection_future;
+  base::test::TestFuture<bool> save_selection_future;
   service->SaveMemoryBankEntry(
       MemoryBankEntry(MemoryBankType::kTextSelection,
                       GURL("https://example.com/select"), "Selection Title",
@@ -940,14 +950,14 @@ TEST_F(ContextHubPageHandlerTest, DeleteMemoryBankEntries_Success) {
       ContextHubServiceFactory::GetForProfile(&profile_);
   ASSERT_TRUE(service);
 
-  base::test::TestFuture<void> save_tab_future1;
+  base::test::TestFuture<bool> save_tab_future1;
   service->SaveMemoryBankEntry(
       MemoryBankEntry(MemoryBankType::kTab, GURL("https://example.com/tab1"),
                       "Tab Title 1", "Page text 1"),
       save_tab_future1.GetCallback());
   ASSERT_TRUE(save_tab_future1.Wait());
 
-  base::test::TestFuture<void> save_tab_future2;
+  base::test::TestFuture<bool> save_tab_future2;
   service->SaveMemoryBankEntry(
       MemoryBankEntry(MemoryBankType::kTab, GURL("https://example.com/tab2"),
                       "Tab Title 2", "Page text 2"),
@@ -1376,7 +1386,7 @@ TEST_F(ContextHubPageHandlerTest, AskGeminiWithContext_WithSelectedEntries) {
       ContextHubServiceFactory::GetForProfile(&profile_);
   ASSERT_TRUE(service);
 
-  base::test::TestFuture<void> save_future;
+  base::test::TestFuture<bool> save_future;
   service->SaveMemoryBankEntry(
       MemoryBankEntry(MemoryBankType::kTab, GURL("https://example.com/test"),
                       "Test Page", "Page content"),
@@ -1505,6 +1515,189 @@ TEST_F(ContextHubPageHandlerTest, DeleteTodoFeedback) {
   ASSERT_EQ(1u, feedbacks.size());
   EXPECT_EQ("todo_2", feedbacks[0]->todo_id);
   EXPECT_FALSE(feedbacks[0]->liked);
+}
+
+TEST_F(ContextHubPageHandlerTest, GetConfirmedTabGroups) {
+  auto* sync_service =
+      tab_groups::TabGroupSyncServiceFactory::GetForProfile(&profile_);
+  base::Uuid uuid = base::Uuid::GenerateRandomV4();
+  tab_groups::SavedTabGroup group(u"Test Group",
+                                  tab_groups::TabGroupColorId::kBlue, {},
+                                  /*position=*/std::nullopt, uuid);
+  sync_service->AddGroup(group);
+
+  base::test::TestFuture<std::vector<browser::context_hub::mojom::TabGroupPtr>>
+      future;
+  handler_->GetConfirmedTabGroups(future.GetCallback());
+  auto groups = future.Take();
+  ASSERT_EQ(1u, groups.size());
+  EXPECT_EQ(uuid, groups[0]->saved_guid);
+  EXPECT_EQ("Test Group", groups[0]->label);
+}
+
+TEST_F(ContextHubPageHandlerTest, RemoveConfirmedTabGroup_InvalidGuid) {
+  base::Uuid invalid_uuid;
+  base::test::TestFuture<void> future;
+  handler_->RemoveConfirmedTabGroup(invalid_uuid, future.GetCallback());
+  EXPECT_TRUE(future.Wait());
+}
+
+TEST_F(ContextHubPageHandlerTest, CloseConfirmedTabGroup_InvalidGuid) {
+  base::Uuid invalid_uuid;
+  base::test::TestFuture<void> future;
+  handler_->CloseConfirmedTabGroup(invalid_uuid, future.GetCallback());
+  EXPECT_TRUE(future.Wait());
+}
+
+#if !BUILDFLAG(IS_ANDROID)
+TEST_F(ContextHubPageHandlerTest, ConfirmAllTabGroups) {
+  EXPECT_CALL(*mock_tab_provider_, ConfirmTabGroups(_))
+      .WillOnce(testing::Return(true));
+  base::test::TestFuture<bool> future;
+  handler_->ConfirmAllTabGroups(future.GetCallback());
+  EXPECT_TRUE(future.Get());
+}
+
+TEST_F(ContextHubPageHandlerTest, RemoveConfirmedTabGroup) {
+  auto* sync_service =
+      tab_groups::TabGroupSyncServiceFactory::GetForProfile(&profile_);
+  base::Uuid uuid = base::Uuid::GenerateRandomV4();
+  tab_groups::SavedTabGroup group(u"Test Group",
+                                  tab_groups::TabGroupColorId::kBlue, {},
+                                  /*position=*/std::nullopt, uuid);
+  sync_service->AddGroup(group);
+
+  EXPECT_CALL(*mock_tab_provider_, UngroupGroupFromTabstripIfOpen(uuid));
+
+  base::test::TestFuture<void> future;
+  handler_->RemoveConfirmedTabGroup(uuid, future.GetCallback());
+  EXPECT_TRUE(future.Wait());
+}
+
+TEST_F(ContextHubPageHandlerTest, CloseConfirmedTabGroup) {
+  auto* sync_service =
+      tab_groups::TabGroupSyncServiceFactory::GetForProfile(&profile_);
+  base::Uuid uuid = base::Uuid::GenerateRandomV4();
+  tab_groups::SavedTabGroup group(u"Test Group",
+                                  tab_groups::TabGroupColorId::kBlue, {},
+                                  /*position=*/std::nullopt, uuid);
+  sync_service->AddGroup(group);
+
+  EXPECT_CALL(*mock_tab_provider_, RemoveGroupFromTabstripIfOpen(uuid));
+
+  base::test::TestFuture<void> future;
+  handler_->CloseConfirmedTabGroup(uuid, future.GetCallback());
+  EXPECT_TRUE(future.Wait());
+}
+
+TEST_F(ContextHubPageHandlerTest, RemoveAllConfirmedTabGroups) {
+  auto* sync_service =
+      tab_groups::TabGroupSyncServiceFactory::GetForProfile(&profile_);
+  base::Uuid uuid = base::Uuid::GenerateRandomV4();
+  tab_groups::SavedTabGroup group(u"Test Group",
+                                  tab_groups::TabGroupColorId::kBlue, {},
+                                  /*position=*/std::nullopt, uuid);
+  sync_service->AddGroup(group);
+
+  EXPECT_CALL(*mock_tab_provider_, UngroupGroupFromTabstripIfOpen(uuid));
+
+  base::test::TestFuture<void> future;
+  handler_->RemoveAllConfirmedTabGroups(future.GetCallback());
+  EXPECT_TRUE(future.Wait());
+}
+#endif  // !BUILDFLAG(IS_ANDROID)
+
+TEST_F(ContextHubPageHandlerTest, GetSaveToMemoryBankContext_NotFound) {
+  base::test::TestFuture<
+      browser::context_hub::mojom::SaveToMemoryBankContextPtr>
+      future;
+  handler_->GetSaveToMemoryBankContext(future.GetCallback());
+  EXPECT_FALSE(future.Get());
+}
+
+TEST_F(ContextHubPageHandlerTest,
+       GetSaveToMemoryBankContext_WithTextSelectionContext) {
+  auto* service = ContextHubServiceFactory::GetForProfile(&profile_);
+  ASSERT_TRUE(service);
+  MemoryBankEntry entry(MemoryBankType::kTextSelection,
+                        GURL("https://example.com/test"), "Test Title",
+                        "Test Snippet");
+  service->SetPendingMemoryBankEntry(std::move(entry));
+
+  base::test::TestFuture<
+      browser::context_hub::mojom::SaveToMemoryBankContextPtr>
+      future;
+  handler_->GetSaveToMemoryBankContext(future.GetCallback());
+
+  browser::context_hub::mojom::SaveToMemoryBankContextPtr context =
+      future.Take();
+  ASSERT_TRUE(context);
+  EXPECT_EQ(context->url, GURL("https://example.com/test"));
+  EXPECT_EQ(context->tab_title, "Test Title");
+  EXPECT_EQ(context->selected_text, "Test Snippet");
+  EXPECT_TRUE(context->is_text_selection);
+}
+
+TEST_F(ContextHubPageHandlerTest, GetSaveToMemoryBankContext_WithTabContext) {
+  auto* service = ContextHubServiceFactory::GetForProfile(&profile_);
+  ASSERT_TRUE(service);
+  MemoryBankEntry entry(MemoryBankType::kTab, GURL("https://example.com/test"),
+                        "Test Title", "Page Inner Text");
+  service->SetPendingMemoryBankEntry(std::move(entry));
+
+  base::test::TestFuture<
+      browser::context_hub::mojom::SaveToMemoryBankContextPtr>
+      future;
+  handler_->GetSaveToMemoryBankContext(future.GetCallback());
+
+  browser::context_hub::mojom::SaveToMemoryBankContextPtr context =
+      future.Take();
+  ASSERT_TRUE(context);
+  EXPECT_EQ(context->url, GURL("https://example.com/test"));
+  EXPECT_EQ(context->tab_title, "Test Title");
+  EXPECT_FALSE(context->selected_text.has_value());
+  EXPECT_FALSE(context->is_text_selection);
+}
+
+TEST_F(ContextHubPageHandlerTest,
+       GetSaveToMemoryBankContext_TruncatesLargeSnippet) {
+  auto* service = ContextHubServiceFactory::GetForProfile(&profile_);
+  ASSERT_TRUE(service);
+  std::string long_snippet(500, 'a');
+  MemoryBankEntry entry(MemoryBankType::kTextSelection,
+                        GURL("https://example.com/test"), "Test Title",
+                        long_snippet);
+  service->SetPendingMemoryBankEntry(std::move(entry));
+
+  base::test::TestFuture<
+      browser::context_hub::mojom::SaveToMemoryBankContextPtr>
+      future;
+  handler_->GetSaveToMemoryBankContext(future.GetCallback());
+
+  browser::context_hub::mojom::SaveToMemoryBankContextPtr context =
+      future.Take();
+  ASSERT_TRUE(context);
+  EXPECT_EQ(context->selected_text->length(), 300u);
+  EXPECT_EQ(context->selected_text, std::string(300, 'a'));
+}
+
+TEST_F(ContextHubPageHandlerTest, SaveMemoryBankEntry_WithContext) {
+  auto* service = ContextHubServiceFactory::GetForProfile(&profile_);
+  ASSERT_TRUE(service);
+  MemoryBankEntry entry(MemoryBankType::kTextSelection,
+                        GURL("https://example.com/test"), "Test Title",
+                        "Test Snippet");
+  service->SetPendingMemoryBankEntry(std::move(entry));
+
+  auto annotations =
+      browser::context_hub::mojom::MemoryBankEntryAnnotations::New();
+  annotations->note = "Test Note";
+  annotations->collection = "Test Collection";
+  annotations->tags = std::vector<std::string>{"tag1"};
+
+  base::test::TestFuture<bool> future;
+  handler_->SaveMemoryBankEntry(std::move(annotations), future.GetCallback());
+  EXPECT_TRUE(future.Get());
 }
 
 }  // namespace

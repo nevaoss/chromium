@@ -78,6 +78,12 @@ struct RetrieveForFillingParams {
 };
 
 class AutofillOptimizationGuideDecider;
+class LogManager;
+
+// Logs an AtMemory action suppression event to `chrome://autofill-internals`.
+void LogAtMemorySuppression(AtMemoryAction action,
+                            LogManager* log_manager,
+                            std::string_view debug_reason = {});
 
 // Returns true if the action retrieves data for filling.
 [[nodiscard]] bool IsRetrieveForFillingAction(AtMemoryAction action);
@@ -139,6 +145,23 @@ std::optional<AtMemoryAction> ToAtMemoryRetrieveForFillingAction(
 // profile-independent feature check.
 [[nodiscard]] bool IsAtMemoryFeatureEnabled(
     const GoogleGroupsManager* google_groups_manager);
+
+// Returns whether the user's subscription tier or current device is
+// eligible for AtMemory. Note that this does not check other requirements
+// (e.g. user sign-in state or enterprise policy).
+//
+// Eligibility is determined by checking whether the user's tier is configured
+// as eligible by the `kAutofillAtMemoryEligibleTiers` feature parameter, or if
+// the device is a premium device configured as eligible by the
+// `kAutofillAtMemoryEnabledDevices` feature parameter.
+//
+// If the eligible tiers feature parameter is empty (not set or set to an empty
+// list), this is interpreted as having no restrictions, in which case any
+// subscription tier or any device is eligible.
+[[nodiscard]] bool IsDeviceOrSubscriptionTierEligibleForAtMemory(
+    const subscription_eligibility::SubscriptionEligibilityService*
+        subscription_eligibility_service,
+    std::string* debug_message = nullptr);
 
 }  // namespace autofill
 

@@ -36,6 +36,7 @@
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/profiles/profiles_state.h"
 #include "chrome/browser/signin/account_consistency_mode_manager.h"
+#include "chrome/browser/signin/account_preview_data_service_factory.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/signin/signin_promo_util.h"
 #include "chrome/browser/signin/signin_ui_util.h"
@@ -999,7 +1000,6 @@ class PromoStateProviderCoordinator
       case ButtonState::kShowIdentityName:
       case ButtonState::kIncognitoProfile:
       case ButtonState::kGuestSession:
-        break;
       case ButtonState::kNormal:
       case ButtonState::kManagement:
         CHECK(!collapse_timer_.IsRunning());
@@ -1134,7 +1134,10 @@ class PromoStateProviderCoordinator
   explicit PromoStateProviderCoordinator(Profile& profile)
       : profile_(profile),
         identity_manager_(IdentityManagerFactory::GetForProfile(&profile)),
-        promo_manager_(identity_manager_, profile.GetPrefs()) {}
+        promo_manager_(
+            identity_manager_,
+            AccountPreviewDataServiceFactory::GetForProfile(&profile),
+            profile.GetPrefs()) {}
 
   void Trigger() {
     if (promo_type_.has_value()) {
@@ -1191,19 +1194,26 @@ class PromoStateProviderCoordinator
       promo_type_ = promo_info.type;
     }
 
+    if (old_promo_type != promo_type_ || !promo_type_.has_value()) {
+      if (collapse_timer_.IsRunning()) {
+        collapse_timer_.Stop();
+      }
+      before_promo_used_elapsed_timer_.reset();
+    }
+
     if (old_promo_type != promo_type_) {
       promo_type_changed_callbacks_.Notify();
     }
   }
 
   void Collapse() {
-    if (!promo_type_.has_value()) {
-      return;
-    }
-    if (IsPromoShowing()) {
+    if (collapse_timer_.IsRunning()) {
       collapse_timer_.Stop();
     }
     before_promo_used_elapsed_timer_.reset();
+    if (!promo_type_.has_value()) {
+      return;
+    }
     promo_type_.reset();
     promo_type_changed_callbacks_.Notify();
   }

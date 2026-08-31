@@ -161,9 +161,6 @@ BASE_DECLARE_FEATURE(kNumSrpZpsRelatedSearches);
 BASE_DECLARE_FEATURE(kEnableSearchAggregatorPolicy);
 BASE_DECLARE_FEATURE(kUseAgentspace25Logo);
 
-// Site search allow user override feature.
-BASE_DECLARE_FEATURE(kEnableSiteSearchAllowUserOverridePolicy);
-
 // Preconnect/prerender behavior for suggestions
 BASE_DECLARE_FEATURE(kPreconnectNonSearchOmniboxSuggestions);
 
@@ -287,6 +284,8 @@ extern const base::FeatureParam<bool> kAskGComposeboxLensChip;
 // when we have auto added tabs so we can show the user contextual suggestions
 // from the auto added tabs instead.
 extern const base::FeatureParam<bool> kAskGBlockAutoTabZeroStateSuggestions;
+// Whether to bypass the Lens privacy notice.
+extern const base::FeatureParam<bool> kAskGBypassPrivacyNotice;
 // Note: no new flags beyond this point.
 
 namespace flag_descriptions {

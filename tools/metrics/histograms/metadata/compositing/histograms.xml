@@ -396,7 +396,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Compositing.Display.DrawToVizScheduledDraw"
-    units="microseconds" expires_after="2026-10-28">
+    units="microseconds" expires_after="2027-02-14">
   <owner>magchen@chromium.org</owner>
   <owner>chrome-gpu-metric-alerts@chromium.org</owner>
   <improvement direction="LOWER_IS_BETTER"/>
@@ -434,6 +434,43 @@ chromium-metrics-reviews@google.com.
     Note: this metric was expired and removed on 2024-06-17 and re-enabled on
     2025-01-09.
   </summary>
+</histogram>
+
+<histogram
+    name="Compositing.Display.OverlayProcessorUsingStrategy.NumOverlays{Counted}V2"
+    units="overlay candidates" expires_after="2027-08-17">
+  <owner>zoraiznaeem@chromium.org</owner>
+  <owner>chromeos-gfx-compositor@chromium.org</owner>
+  <summary>
+    Logged once per frame during display composition. Records the number of
+    overlay candidates {Counted}.
+
+    Hardware overlays allow surfaces (such as videos, web contents, or UI
+    elements) to be sent directly to dedicated display controller hardware
+    planes for scanout, bypassing GPU compositing.
+
+    During frame processing, the display compositor evaluates potential visual
+    elements (candidates) to determine if they can be promoted to hardware
+    overlays using either single-overlay or multi-overlay strategies, testing
+    them against hardware display controller capabilities.
+
+    Note: These metrics are used in ChromeOS for performance tracking and in
+    Tast tests.
+  </summary>
+  <token key="Counted">
+    <variant name="Attempted"
+        summary="Number of overlay candidates evaluated or submitted for
+                 hardware capability testing."/>
+    <variant name="Failed"
+        summary="Number of evaluated overlay candidates that could not be
+                 promoted (e.g., due to unsupported scaling/transforms, pixel
+                 formats, clipping/occlusion, or lack of available hardware
+                 display planes)."/>
+    <variant name="Promoted"
+        summary="Number of overlay candidates successfully promoted to
+                 hardware overlay planes for direct scanout in the current
+                 frame."/>
+  </token>
 </histogram>
 
 <histogram name="Compositing.Display.ScheduleOverlayToSwapStart"
@@ -602,7 +639,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Compositing.SkiaRenderer.{DrawQuadMaterial}.SrcRectConstraint"
-    enum="SrcRectConstraintUMA" expires_after="2026-12-16">
+    enum="SrcRectConstraintUMA" expires_after="2027-02-14">
   <owner>hitawala@chromium.org</owner>
   <owner>chrome-gpu-metric-alerts@chromium.org</owner>
   <summary>

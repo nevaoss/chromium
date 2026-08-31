@@ -88,7 +88,8 @@
 #include "ui/base/ui_base_features.h"
 #include "ui/base/ui_base_switches.h"
 #include "ui/base/ui_base_types.h"
-#include "ui/compositor/layer.h"
+#include "ui/compositor/layer_solid_color.h"
+#include "ui/compositor/layer_surface.h"
 #include "ui/display/screen.h"
 #include "ui/events/blink/blink_event_util.h"
 #include "ui/events/blink/did_overscroll_params.h"
@@ -2545,6 +2546,11 @@ void RenderWidgetHostViewAura::OnMouseEvent(ui::MouseEvent* event) {
 bool RenderWidgetHostViewAura::HasFallbackSurface() const {
   CHECK(delegated_frame_host_) << "Cannot be invoked during destruction.";
   return delegated_frame_host_->HasFallbackSurface();
+}
+
+void RenderWidgetHostViewAura::OptOutFrameEviction() {
+  CHECK(delegated_frame_host_) << "Cannot be invoked during destruction.";
+  delegated_frame_host_->OptOutFrameEviction();
 }
 
 bool RenderWidgetHostViewAura::TransformPointToCoordSpaceForView(

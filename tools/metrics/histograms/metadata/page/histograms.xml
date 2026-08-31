@@ -2121,7 +2121,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram
-    name="PageLoad.Clients.GoogleSearch.HttpStatusCode{NavigationType}{IncognitoSuffix}"
+    name="PageLoad.Clients.GoogleSearch.HttpStatusCode2{NavigationType}{IncognitoSuffix}"
     enum="HttpResponseCode" expires_after="2027-01-03">
   <owner>suzukikeita@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
@@ -2304,7 +2304,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="PageLoad.Clients.GoogleSearch.NavigationTiming.CreateStreamDelay2"
-    units="ms" expires_after="2026-12-16">
+    units="ms" expires_after="2027-02-14">
   <owner>hayato@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
   <improvement direction="LOWER_IS_BETTER"/>
@@ -2856,6 +2856,17 @@ chromium-metrics-reviews@google.com.
   </summary>
   <token key="InitiatorOfNavigation" variants="InitiatorOfNavigation"/>
   <token key="PrerenderStatus" variants="PrerenderStatus"/>
+</histogram>
+
+<histogram name="PageLoad.Clients.GoogleSearch.Prewarm.WasResponseCached"
+    enum="Boolean" expires_after="2027-02-07">
+  <owner>suzukikeita@chromium.org</owner>
+  <owner>chrome-loading@google.com</owner>
+  <summary>
+    Records whether the Google Search prewarm page load was served from the HTTP
+    cache or network. Recorded once upon navigation commit of the prerendered
+    prewarm page.
+  </summary>
 </histogram>
 
 <histogram
@@ -3672,7 +3683,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="PageLoad.Clients.ServiceWorker2.ParseTiming.NavigationToParseStart{SyntheticResponseSuffix}"
-    units="ms" expires_after="2026-12-16">
+    units="ms" expires_after="2027-02-14">
   <owner>sisidovski@chromium.org</owner>
   <owner>chrome-worker@google.com</owner>
   <improvement direction="LOWER_IS_BETTER"/>
@@ -3748,7 +3759,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.Clients.WebView.PageAttemptResults"
-    enum="WebViewPageAttemptResult" expires_after="2026-09-30">
+    enum="WebViewPageAttemptResult" expires_after="2027-09-30">
   <owner>narms@google.com</owner>
   <owner>android-sre@google.com</owner>
   <summary>
@@ -3762,7 +3773,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.Clients.WebView.PageAttempts" enum="Boolean"
-    expires_after="2026-09-30">
+    expires_after="2027-09-30">
   <owner>narms@google.com</owner>
   <owner>android-sre@google.com</owner>
   <summary>
@@ -3847,7 +3858,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="PageLoad.Clients{ObservedNavigation}.Leakage2.AbandonReasonAt.{NavigationMilestone}{BackgroundSuffix}{HiddenSuffix}{IncognitoSuffix}{ResponseFromCache}"
-    enum="NavigationAbandonReasonEnum" expires_after="2026-08-30">
+    enum="NavigationAbandonReasonEnum" expires_after="2027-08-30">
   <owner>sisidovski@chromium.org</owner>
   <owner>rakina@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
@@ -4152,7 +4163,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.DocumentTiming.NavigationToLoadEventFired" units="ms"
-    expires_after="2026-12-13">
+    expires_after="2027-02-14">
   <owner>bmcquade@chromium.org</owner>
   <owner>csharrison@chromium.org</owner>
   <improvement direction="LOWER_IS_BETTER"/>
@@ -4628,7 +4639,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.InteractiveTiming.TimeToNextPaint" units="ms"
-    expires_after="2027-01-03">
+    expires_after="2027-07-31">
   <owner>iclelland@chromium.org</owner>
   <owner>speed-metrics-dev@chromium.org</owner>
   <summary>
@@ -4643,7 +4654,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="PageLoad.InteractiveTiming.{NormalizedResponsivenessMetric}.{UserInteractionLatency}{PageLoadType}"
-    units="ms" expires_after="2027-02-07">
+    units="ms" expires_after="2027-07-31">
   <owner>iclelland@chromium.org</owner>
   <owner>speed-metrics-dev@chromium.org</owner>
   <summary>
@@ -4804,7 +4815,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.Internal.SoftNavigation.{Status}.TotalPaintArea"
-    units="pixels" expires_after="2026-12-15">
+    units="pixels" expires_after="2027-02-14">
   <owner>sullivan@chromium.org</owner>
   <owner>speed-metrics-dev@chromium.org</owner>
   <summary>
@@ -4817,7 +4828,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="PageLoad.Internal.SoftNavigation.{Status}.TotalPaintAreaPoints"
-    units="Points" expires_after="2026-12-15">
+    units="Points" expires_after="2027-02-14">
   <owner>sullivan@chromium.org</owner>
   <owner>speed-metrics-dev@chromium.org</owner>
   <summary>
@@ -5275,7 +5286,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.PaintTiming.NavigationToFirstPaint" units="ms"
-    expires_after="2026-12-16">
+    expires_after="2027-02-14">
   <owner>sullivan@chromium.org</owner>
   <owner>speed-metrics-dev@chromium.org</owner>
   <summary>
@@ -5585,7 +5596,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.ParseTiming.NavigationToParseStart" units="ms"
-    expires_after="2026-12-13">
+    expires_after="2027-02-14">
   <owner>bmcquade@chromium.org</owner>
   <owner>csharrison@chromium.org</owner>
   <improvement direction="LOWER_IS_BETTER"/>
@@ -5637,7 +5648,7 @@ chromium-metrics-reviews@google.com.
 <histogram
     name="PageLoad.SoftNavigation.SoftNavigationPageLoadMetricsObserverState"
     enum="SoftNavigationPageLoadMetricsObserverState"
-    expires_after="2026-12-16">
+    expires_after="2027-02-14">
   <owner>sullivan@chromium.org</owner>
   <owner>johannes@chromium.org</owner>
   <owner>speed-metrics-dev@chromium.org</owner>

@@ -22,7 +22,7 @@
 #include "chrome/browser/indigo/onboarding/indigo_onboarding_dialog.h"
 #include "chrome/browser/indigo/resources/grit/indigo_strings.h"
 #include "chrome/browser/signin/identity_test_environment_profile_adaptor.h"
-#include "chrome/browser/ui/browser.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/toasts/api/toast_id.h"
 #include "chrome/browser/ui/toasts/toast_controller.h"
@@ -369,7 +369,7 @@ IN_PROC_BROWSER_TEST_F(IndigoImageReplacementManagerBrowserTest,
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), test_url));
 
   content::WebContents* web_contents =
-      browser()->tab_strip_model()->GetActiveWebContents();
+      browser()->GetTabStripModel()->GetActiveWebContents();
   content::RenderFrameHostWrapper main_rfh(web_contents->GetPrimaryMainFrame());
 
   IndigoImageReplacementManager* manager =
@@ -416,7 +416,7 @@ IN_PROC_BROWSER_TEST_F(IndigoImageReplacementManagerBrowserTest,
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), test_url));
 
   content::WebContents* web_contents =
-      browser()->tab_strip_model()->GetActiveWebContents();
+      browser()->GetTabStripModel()->GetActiveWebContents();
   content::RenderFrameHostWrapper main_rfh(web_contents->GetPrimaryMainFrame());
 
   IndigoImageReplacementManager* manager =
@@ -444,7 +444,7 @@ IN_PROC_BROWSER_TEST_F(IndigoImageReplacementManagerBrowserTest,
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), test_url));
 
   content::WebContents* web_contents =
-      browser()->tab_strip_model()->GetActiveWebContents();
+      browser()->GetTabStripModel()->GetActiveWebContents();
   content::RenderFrameHostWrapper main_rfh(web_contents->GetPrimaryMainFrame());
 
   IndigoImageReplacementManager* manager =
@@ -492,7 +492,7 @@ IN_PROC_BROWSER_TEST_F(IndigoImageReplacementManagerBrowserTest,
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), test_url));
 
   content::WebContents* web_contents =
-      browser()->tab_strip_model()->GetActiveWebContents();
+      browser()->GetTabStripModel()->GetActiveWebContents();
   content::RenderFrameHostWrapper main_rfh(web_contents->GetPrimaryMainFrame());
 
   IndigoImageReplacementManager* manager =
@@ -535,7 +535,7 @@ IN_PROC_BROWSER_TEST_F(
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), test_url));
 
   content::WebContents* web_contents =
-      browser()->tab_strip_model()->GetActiveWebContents();
+      browser()->GetTabStripModel()->GetActiveWebContents();
   content::RenderFrameHostWrapper main_rfh(web_contents->GetPrimaryMainFrame());
 
   IndigoImageReplacementManager* manager =
@@ -626,7 +626,7 @@ IN_PROC_BROWSER_TEST_F(IndigoImageReplacementManagerBrowserTest,
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), test_url));
 
   content::WebContents* web_contents =
-      browser()->tab_strip_model()->GetActiveWebContents();
+      browser()->GetTabStripModel()->GetActiveWebContents();
   content::RenderFrameHostWrapper main_rfh(web_contents->GetPrimaryMainFrame());
 
   IndigoImageReplacementManager* manager =
@@ -653,7 +653,7 @@ IN_PROC_BROWSER_TEST_F(IndigoImageReplacementManagerBrowserTest,
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), test_url));
 
   content::WebContents* web_contents =
-      browser()->tab_strip_model()->GetActiveWebContents();
+      browser()->GetTabStripModel()->GetActiveWebContents();
   content::RenderFrameHostWrapper main_rfh(web_contents->GetPrimaryMainFrame());
 
   // Set up IndigoAgent host.
@@ -691,7 +691,7 @@ IN_PROC_BROWSER_TEST_F(IndigoImageReplacementManagerBrowserTest,
 
   base::HistogramTester histogram_tester;
   content::WebContents* web_contents =
-      browser()->tab_strip_model()->GetActiveWebContents();
+      browser()->GetTabStripModel()->GetActiveWebContents();
   content::RenderFrameHostWrapper main_rfh(web_contents->GetPrimaryMainFrame());
 
   // Set up IndigoAgent host.
@@ -744,7 +744,7 @@ IN_PROC_BROWSER_TEST_F(IndigoImageReplacementManagerBrowserTest,
   base::HistogramTester histogram_tester;
 
   content::WebContents* web_contents =
-      browser()->tab_strip_model()->GetActiveWebContents();
+      browser()->GetTabStripModel()->GetActiveWebContents();
   content::RenderFrameHostWrapper main_rfh(web_contents->GetPrimaryMainFrame());
 
   IndigoImageReplacementManager* manager =
@@ -793,7 +793,7 @@ IN_PROC_BROWSER_TEST_F(IndigoImageReplacementManagerBrowserTest,
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), test_url));
 
   content::WebContents* web_contents =
-      browser()->tab_strip_model()->GetActiveWebContents();
+      browser()->GetTabStripModel()->GetActiveWebContents();
   content::RenderFrameHostWrapper main_rfh(web_contents->GetPrimaryMainFrame());
 
   IndigoImageReplacementManager* manager =
@@ -851,7 +851,7 @@ IN_PROC_BROWSER_TEST_F(IndigoImageReplacementManagerBrowserTest,
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), test_url));
 
   content::WebContents* web_contents =
-      browser()->tab_strip_model()->GetActiveWebContents();
+      browser()->GetTabStripModel()->GetActiveWebContents();
   content::RenderFrameHostWrapper main_rfh(web_contents->GetPrimaryMainFrame());
 
   IndigoImageReplacementManager* manager =
@@ -884,7 +884,7 @@ IN_PROC_BROWSER_TEST_F(IndigoImageReplacementManagerBrowserTest,
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), test_url));
 
   content::WebContents* web_contents =
-      browser()->tab_strip_model()->GetActiveWebContents();
+      browser()->GetTabStripModel()->GetActiveWebContents();
 
   auto* tab = tabs::TabInterface::GetFromContents(web_contents);
   ASSERT_TRUE(tab);
@@ -924,7 +924,7 @@ IN_PROC_BROWSER_TEST_F(IndigoImageReplacementManagerBrowserTest,
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), test_url));
 
   content::WebContents* web_contents =
-      browser()->tab_strip_model()->GetActiveWebContents();
+      browser()->GetTabStripModel()->GetActiveWebContents();
 
   auto* tab = tabs::TabInterface::GetFromContents(web_contents);
   ASSERT_TRUE(tab);
@@ -960,7 +960,7 @@ IN_PROC_BROWSER_TEST_F(IndigoImageReplacementManagerBrowserTest,
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), test_url));
 
   content::WebContents* web_contents =
-      browser()->tab_strip_model()->GetActiveWebContents();
+      browser()->GetTabStripModel()->GetActiveWebContents();
 
   auto* tab = tabs::TabInterface::GetFromContents(web_contents);
   ASSERT_TRUE(tab);
@@ -989,7 +989,7 @@ IN_PROC_BROWSER_TEST_F(IndigoImageReplacementManagerBrowserTest,
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), test_url));
 
   content::WebContents* web_contents =
-      browser()->tab_strip_model()->GetActiveWebContents();
+      browser()->GetTabStripModel()->GetActiveWebContents();
   content::RenderFrameHostWrapper main_rfh(web_contents->GetPrimaryMainFrame());
 
   IndigoImageReplacementManager* manager =
@@ -1020,7 +1020,7 @@ IN_PROC_BROWSER_TEST_F(IndigoImageReplacementManagerBrowserTest,
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), test_url));
 
   content::WebContents* web_contents =
-      browser()->tab_strip_model()->GetActiveWebContents();
+      browser()->GetTabStripModel()->GetActiveWebContents();
   content::RenderFrameHostWrapper main_rfh(web_contents->GetPrimaryMainFrame());
 
   // 1) Setup IndigoAgent host and get the fake agent.
@@ -1104,7 +1104,7 @@ IN_PROC_BROWSER_TEST_F(IndigoImageReplacementManagerBFCacheBrowserTest,
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url_a));
 
   content::WebContents* web_contents =
-      browser()->tab_strip_model()->GetActiveWebContents();
+      browser()->GetTabStripModel()->GetActiveWebContents();
   content::RenderFrameHostWrapper rfh_a(web_contents->GetPrimaryMainFrame());
 
   IndigoImageReplacementManager* manager =
@@ -1133,7 +1133,7 @@ IN_PROC_BROWSER_TEST_F(IndigoImageReplacementManagerBrowserTest,
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), test_url));
 
   content::WebContents* web_contents =
-      browser()->tab_strip_model()->GetActiveWebContents();
+      browser()->GetTabStripModel()->GetActiveWebContents();
   content::RenderFrameHostWrapper main_rfh(web_contents->GetPrimaryMainFrame());
 
   IndigoImageReplacementManager* manager =
@@ -1204,7 +1204,7 @@ IN_PROC_BROWSER_TEST_F(IndigoImageReplacementManagerBrowserTest,
   // Setup Tab 1 with an image replacement.
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), test_url));
   content::WebContents* web_contents1 =
-      browser()->tab_strip_model()->GetActiveWebContents();
+      browser()->GetTabStripModel()->GetActiveWebContents();
   content::RenderFrameHostWrapper main_rfh1(
       web_contents1->GetPrimaryMainFrame());
 
@@ -1224,7 +1224,7 @@ IN_PROC_BROWSER_TEST_F(IndigoImageReplacementManagerBrowserTest,
       browser(), test_url, WindowOpenDisposition::NEW_FOREGROUND_TAB,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP);
   content::WebContents* web_contents2 =
-      browser()->tab_strip_model()->GetActiveWebContents();
+      browser()->GetTabStripModel()->GetActiveWebContents();
   EXPECT_NE(web_contents1, web_contents2);
   content::RenderFrameHostWrapper main_rfh2(
       web_contents2->GetPrimaryMainFrame());
@@ -1306,7 +1306,7 @@ IN_PROC_BROWSER_TEST_F(IndigoImageReplacementManagerBrowserTest,
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), test_url));
 
   content::WebContents* web_contents =
-      browser()->tab_strip_model()->GetActiveWebContents();
+      browser()->GetTabStripModel()->GetActiveWebContents();
   content::RenderFrameHostWrapper main_rfh(web_contents->GetPrimaryMainFrame());
 
   IndigoImageReplacementManager* manager =
@@ -1387,7 +1387,7 @@ IN_PROC_BROWSER_TEST_F(IndigoImageReplacementManagerBrowserTest,
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), test_url));
 
   content::WebContents* web_contents =
-      browser()->tab_strip_model()->GetActiveWebContents();
+      browser()->GetTabStripModel()->GetActiveWebContents();
   content::RenderFrameHostWrapper main_rfh(web_contents->GetPrimaryMainFrame());
 
   IndigoImageReplacementManager* manager =
@@ -1462,7 +1462,7 @@ IN_PROC_BROWSER_TEST_F(IndigoImageReplacementManagerBrowserTest,
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), test_url));
 
   content::WebContents* web_contents =
-      browser()->tab_strip_model()->GetActiveWebContents();
+      browser()->GetTabStripModel()->GetActiveWebContents();
   content::RenderFrameHostWrapper main_rfh(web_contents->GetPrimaryMainFrame());
 
   IndigoImageReplacementManager* manager =
@@ -1519,7 +1519,7 @@ IN_PROC_BROWSER_TEST_F(IndigoImageReplacementManagerBrowserTest,
 
   base::HistogramTester histogram_tester;
   content::WebContents* web_contents =
-      browser()->tab_strip_model()->GetActiveWebContents();
+      browser()->GetTabStripModel()->GetActiveWebContents();
   content::RenderFrameHostWrapper main_rfh(web_contents->GetPrimaryMainFrame());
 
   // Set up IndigoAgent host.
@@ -1557,7 +1557,7 @@ IN_PROC_BROWSER_TEST_P(IndigoImageReplacementManagerBrowserTestWithParam,
 
   base::HistogramTester histogram_tester;
   content::WebContents* web_contents =
-      browser()->tab_strip_model()->GetActiveWebContents();
+      browser()->GetTabStripModel()->GetActiveWebContents();
   content::RenderFrameHostWrapper main_rfh(web_contents->GetPrimaryMainFrame());
 
   // Set up IndigoAgent host.
@@ -1619,7 +1619,7 @@ IN_PROC_BROWSER_TEST_F(IndigoImageReplacementManagerBrowserTest, ObjectFit) {
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), test_url));
 
   content::WebContents* web_contents =
-      browser()->tab_strip_model()->GetActiveWebContents();
+      browser()->GetTabStripModel()->GetActiveWebContents();
   content::RenderFrameHostWrapper main_rfh(web_contents->GetPrimaryMainFrame());
 
   IndigoImageReplacementManager* manager =
@@ -1655,6 +1655,430 @@ IN_PROC_BROWSER_TEST_F(IndigoImageReplacementManagerBrowserTest, ObjectFit) {
           return window.getComputedStyle(img).objectFit;
         })()
       )js"));
+}
+
+IN_PROC_BROWSER_TEST_F(IndigoImageReplacementManagerBrowserTest,
+                       CachesGeneratedImageOnReinvocation) {
+  GURL test_url = embedded_test_server()->GetURL("/empty.html");
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), test_url));
+
+  content::WebContents* web_contents =
+      browser()->GetTabStripModel()->GetActiveWebContents();
+  content::RenderFrameHostWrapper main_rfh(web_contents->GetPrimaryMainFrame());
+
+  IndigoImageReplacementManager* manager =
+      IndigoImageReplacementManager::GetOrCreateForPage(main_rfh->GetPage());
+  ASSERT_TRUE(manager);
+
+  base::HistogramTester histogram_tester;
+
+  // First invocation (Cache Miss).
+  MockImageReplacement mock_replacement1(web_contents, 0);
+  mojo::Receiver<blink::mojom::ImageReplacement> receiver1(&mock_replacement1);
+  manager->RegisterImageReplacement(receiver1.BindNewPipeAndPassRemote(),
+                                    /*is_primary=*/true);
+  mock_replacement1.WaitForStartReplacement();
+  mock_replacement1.WaitForRenderReplacement();
+
+  fake_api_.WaitForGenerateRequest(0);
+  EXPECT_TRUE(fake_api_.RequestHasValidProductImage(kImageBytes, 0));
+  GURL success_url(
+      "data:image/"
+      "png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+"
+      "M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==");
+  fake_api_.SendSuccessResponse(success_url, 0);
+
+  content::RenderFrameHostWrapper subframe1(
+      content::ChildFrameAt(main_rfh.get(), 0));
+  ASSERT_TRUE(subframe1.get());
+  EXPECT_TRUE(
+      WaitUntilReplacementImageSrcMatches(subframe1.get(), success_url.spec()));
+
+  histogram_tester.ExpectBucketCount("Indigo.Transformation.IsCacheHit", false,
+                                     1);
+  histogram_tester.ExpectBucketCount("Indigo.Transformation.IsCacheHit", true,
+                                     0);
+
+  // Turn off Indigo (reset replacements).
+  auto* tab = tabs::TabInterface::GetFromContents(web_contents);
+  ASSERT_TRUE(tab);
+  auto* controller = IndigoPageActionController::From(tab);
+  ASSERT_TRUE(controller);
+  controller->Reset(ResetType::kResetReplacementsAndContentScript);
+
+  EXPECT_TRUE(manager->HasCachedImage());
+  EXPECT_TRUE(manager->cache_expiration_timer_for_testing().IsRunning());
+
+  // Second invocation (Cache Hit).
+  MockImageReplacement mock_replacement2(web_contents, 1);
+  mojo::Receiver<blink::mojom::ImageReplacement> receiver2(&mock_replacement2);
+  manager->RegisterImageReplacement(receiver2.BindNewPipeAndPassRemote(),
+                                    /*is_primary=*/true);
+  mock_replacement2.WaitForStartReplacement();
+  mock_replacement2.WaitForRenderReplacement();
+
+  // Expiration timer should now be stopped since the look is actively showing.
+  EXPECT_FALSE(manager->cache_expiration_timer_for_testing().IsRunning());
+
+  content::RenderFrameHostWrapper subframe2(
+      content::ChildFrameAt(main_rfh.get(), 1));
+  ASSERT_TRUE(subframe2.get());
+  EXPECT_TRUE(
+      WaitUntilReplacementImageSrcMatches(subframe2.get(), success_url.spec()));
+
+  // No second network generate request was sent, and cache hit histogram is
+  // logged.
+  histogram_tester.ExpectBucketCount("Indigo.Transformation.IsCacheHit", false,
+                                     1);
+  histogram_tester.ExpectBucketCount("Indigo.Transformation.IsCacheHit", true,
+                                     1);
+}
+
+IN_PROC_BROWSER_TEST_F(IndigoImageReplacementManagerBrowserTest,
+                       RegenerateInvalidatesCache) {
+  GURL test_url = embedded_test_server()->GetURL("/empty.html");
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), test_url));
+
+  content::WebContents* web_contents =
+      browser()->GetTabStripModel()->GetActiveWebContents();
+  content::RenderFrameHostWrapper main_rfh(web_contents->GetPrimaryMainFrame());
+
+  IndigoImageReplacementManager* manager =
+      IndigoImageReplacementManager::GetOrCreateForPage(main_rfh->GetPage());
+  ASSERT_TRUE(manager);
+
+  base::HistogramTester histogram_tester;
+
+  MockImageReplacement mock_replacement(web_contents, 0);
+  mojo::Receiver<blink::mojom::ImageReplacement> receiver(&mock_replacement);
+  manager->RegisterImageReplacement(receiver.BindNewPipeAndPassRemote(),
+                                    /*is_primary=*/true);
+  mock_replacement.WaitForStartReplacement();
+  mock_replacement.WaitForRenderReplacement();
+
+  fake_api_.WaitForGenerateRequest(0);
+  GURL success_url1(
+      "data:image/"
+      "png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+"
+      "M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==");
+  fake_api_.SendSuccessResponse(success_url1, 0);
+
+  content::RenderFrameHostWrapper subframe(
+      content::ChildFrameAt(main_rfh.get(), 0));
+  ASSERT_TRUE(subframe.get());
+  EXPECT_TRUE(
+      WaitUntilReplacementImageSrcMatches(subframe.get(), success_url1.spec()));
+
+  // Trigger regeneration.
+  EXPECT_TRUE(manager->RegenerateImage());
+
+  // Second generate request should arrive.
+  fake_api_.WaitForGenerateRequest(1);
+  GURL success_url2(
+      "data:image/"
+      "png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk"
+      "YPjfDwAEhQGA6R1ykwAAAABJRU5ErkJggg==");
+  fake_api_.SendSuccessResponse(success_url2, 1);
+
+  EXPECT_TRUE(
+      WaitUntilReplacementImageSrcMatches(subframe.get(), success_url2.spec()));
+  EXPECT_EQ(manager->generated_image_url(), success_url2);
+
+  histogram_tester.ExpectBucketCount("Indigo.Transformation.IsCacheHit", false,
+                                     2);
+  histogram_tester.ExpectBucketCount("Indigo.Transformation.IsCacheHit", true,
+                                     0);
+}
+
+IN_PROC_BROWSER_TEST_F(IndigoImageReplacementManagerBrowserTest,
+                       CacheExpiresAfterLifetime) {
+  GURL test_url = embedded_test_server()->GetURL("/empty.html");
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), test_url));
+
+  content::WebContents* web_contents =
+      browser()->GetTabStripModel()->GetActiveWebContents();
+  content::RenderFrameHostWrapper main_rfh(web_contents->GetPrimaryMainFrame());
+
+  IndigoImageReplacementManager* manager =
+      IndigoImageReplacementManager::GetOrCreateForPage(main_rfh->GetPage());
+  ASSERT_TRUE(manager);
+
+  base::HistogramTester histogram_tester;
+
+  MockImageReplacement mock_replacement1(web_contents, 0);
+  mojo::Receiver<blink::mojom::ImageReplacement> receiver1(&mock_replacement1);
+  manager->RegisterImageReplacement(receiver1.BindNewPipeAndPassRemote(),
+                                    /*is_primary=*/true);
+  mock_replacement1.WaitForStartReplacement();
+  mock_replacement1.WaitForRenderReplacement();
+
+  fake_api_.WaitForGenerateRequest(0);
+  GURL success_url1(
+      "data:image/"
+      "png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+"
+      "M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==");
+  fake_api_.SendSuccessResponse(success_url1, 0);
+
+  content::RenderFrameHostWrapper subframe1(
+      content::ChildFrameAt(main_rfh.get(), 0));
+  ASSERT_TRUE(subframe1.get());
+  EXPECT_TRUE(WaitUntilReplacementImageSrcMatches(subframe1.get(),
+                                                  success_url1.spec()));
+
+  auto* tab = tabs::TabInterface::GetFromContents(web_contents);
+  ASSERT_TRUE(tab);
+  auto* controller = IndigoPageActionController::From(tab);
+  ASSERT_TRUE(controller);
+  controller->Reset(ResetType::kResetReplacementsAndContentScript);
+
+  EXPECT_TRUE(manager->HasCachedImage());
+  EXPECT_TRUE(manager->cache_expiration_timer_for_testing().IsRunning());
+
+  // Simulate expiration by firing the timer now.
+  manager->cache_expiration_timer_for_testing().FireNow();
+
+  EXPECT_FALSE(manager->HasCachedImage());
+  EXPECT_FALSE(manager->cache_expiration_timer_for_testing().IsRunning());
+
+  // Re-invocation should miss the cache and send a new Generate request.
+  MockImageReplacement mock_replacement2(web_contents, 1);
+  mojo::Receiver<blink::mojom::ImageReplacement> receiver2(&mock_replacement2);
+  manager->RegisterImageReplacement(receiver2.BindNewPipeAndPassRemote(),
+                                    /*is_primary=*/true);
+  mock_replacement2.WaitForStartReplacement();
+  mock_replacement2.WaitForRenderReplacement();
+
+  fake_api_.WaitForGenerateRequest(1);
+  fake_api_.SendSuccessResponse(success_url1, 1);
+
+  content::RenderFrameHostWrapper subframe2(
+      content::ChildFrameAt(main_rfh.get(), 1));
+  ASSERT_TRUE(subframe2.get());
+  EXPECT_TRUE(WaitUntilReplacementImageSrcMatches(subframe2.get(),
+                                                  success_url1.spec()));
+
+  histogram_tester.ExpectBucketCount("Indigo.Transformation.IsCacheHit", false,
+                                     2);
+  histogram_tester.ExpectBucketCount("Indigo.Transformation.IsCacheHit", true,
+                                     0);
+}
+
+IN_PROC_BROWSER_TEST_F(IndigoImageReplacementManagerBrowserTest,
+                       DeleteOriginalPhotoClearsCacheAcrossTabs) {
+  GURL test_url = embedded_test_server()->GetURL("/empty.html");
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), test_url));
+
+  content::WebContents* web_contents1 =
+      browser()->GetTabStripModel()->GetActiveWebContents();
+  content::RenderFrameHostWrapper main_rfh1(
+      web_contents1->GetPrimaryMainFrame());
+
+  IndigoImageReplacementManager* manager1 =
+      IndigoImageReplacementManager::GetOrCreateForPage(main_rfh1->GetPage());
+  ASSERT_TRUE(manager1);
+
+  MockImageReplacement mock_replacement1(web_contents1, 0);
+  mojo::Receiver<blink::mojom::ImageReplacement> receiver1(&mock_replacement1);
+  manager1->RegisterImageReplacement(receiver1.BindNewPipeAndPassRemote(),
+                                     /*is_primary=*/true);
+  mock_replacement1.WaitForStartReplacement();
+  mock_replacement1.WaitForRenderReplacement();
+
+  fake_api_.WaitForGenerateRequest(0);
+  GURL success_url(
+      "data:image/"
+      "png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+"
+      "M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==");
+  fake_api_.SendSuccessResponse(success_url, 0);
+
+  content::RenderFrameHostWrapper subframe1(
+      content::ChildFrameAt(main_rfh1.get(), 0));
+  ASSERT_TRUE(subframe1.get());
+  EXPECT_TRUE(
+      WaitUntilReplacementImageSrcMatches(subframe1.get(), success_url.spec()));
+
+  EXPECT_TRUE(manager1->HasCachedImage());
+
+  // Turn off Indigo in Tab 1.
+  auto* tab1 = tabs::TabInterface::GetFromContents(web_contents1);
+  ASSERT_TRUE(tab1);
+  auto* controller1 = IndigoPageActionController::From(tab1);
+  ASSERT_TRUE(controller1);
+  controller1->Reset(ResetType::kResetReplacementsAndContentScript);
+  mock_replacement1.WaitForDisconnect();
+
+  // Tab 1 still holds the cached image during its cache lifetime.
+  EXPECT_TRUE(manager1->HasCachedImage());
+
+  // Open a second tab in the same profile.
+  ui_test_utils::NavigateToURLWithDisposition(
+      browser(), test_url, WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP);
+  content::WebContents* web_contents2 =
+      browser()->GetTabStripModel()->GetActiveWebContents();
+  EXPECT_NE(web_contents1, web_contents2);
+
+  auto* tab2 = tabs::TabInterface::GetFromContents(web_contents2);
+  ASSERT_TRUE(tab2);
+  auto* controller2 = IndigoPageActionController::From(tab2);
+  ASSERT_TRUE(controller2);
+
+  // Deleting photo in tab 2 should clear cache across the entire profile.
+  controller2->DeleteOriginalPhoto();
+  fake_api_.WaitForDeleteRequest(0);
+  fake_api_.SendDeleteSuccessResponse(0);
+
+  EXPECT_TRUE(
+      base::test::RunUntil([&]() { return !manager1->HasCachedImage(); }));
+}
+
+IN_PROC_BROWSER_TEST_F(IndigoImageReplacementManagerBrowserTest,
+                       DeleteOriginalPhotoDuringGenerationDoesNotCache) {
+  GURL test_url = embedded_test_server()->GetURL("/empty.html");
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), test_url));
+
+  content::WebContents* web_contents1 =
+      browser()->GetTabStripModel()->GetActiveWebContents();
+  content::RenderFrameHostWrapper main_rfh1(
+      web_contents1->GetPrimaryMainFrame());
+
+  IndigoImageReplacementManager* manager1 =
+      IndigoImageReplacementManager::GetOrCreateForPage(main_rfh1->GetPage());
+  ASSERT_TRUE(manager1);
+
+  MockImageReplacement mock_replacement(web_contents1, 0);
+  mojo::Receiver<blink::mojom::ImageReplacement> receiver(&mock_replacement);
+  manager1->RegisterImageReplacement(receiver.BindNewPipeAndPassRemote(),
+                                     /*is_primary=*/true);
+  mock_replacement.WaitForStartReplacement();
+  mock_replacement.WaitForRenderReplacement();
+
+  // Wait for Generate request to arrive at the API server, but do NOT send
+  // response yet.
+  fake_api_.WaitForGenerateRequest(0);
+
+  // Open a second tab in the same profile and trigger photo deletion while Tab
+  // 1's Generate request is in flight.
+  ui_test_utils::NavigateToURLWithDisposition(
+      browser(), test_url, WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP);
+  content::WebContents* web_contents2 =
+      browser()->GetTabStripModel()->GetActiveWebContents();
+  EXPECT_NE(web_contents1, web_contents2);
+
+  auto* tab2 = tabs::TabInterface::GetFromContents(web_contents2);
+  ASSERT_TRUE(tab2);
+  auto* controller2 = IndigoPageActionController::From(tab2);
+  ASSERT_TRUE(controller2);
+  controller2->DeleteOriginalPhoto();
+  fake_api_.WaitForDeleteRequest(0);
+  fake_api_.SendDeleteSuccessResponse(0);
+
+  GURL success_url(
+      "data:image/"
+      "png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+"
+      "M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==");
+  fake_api_.SendSuccessResponse(success_url, 0);
+
+  content::RenderFrameHostWrapper subframe1(
+      content::ChildFrameAt(main_rfh1.get(), 0));
+  ASSERT_TRUE(subframe1.get());
+  EXPECT_TRUE(
+      WaitUntilReplacementImageSrcMatches(subframe1.get(), success_url.spec()));
+
+  // The generated image is displayed, but should NOT be cached since the photo
+  // changed during generation.
+  EXPECT_FALSE(manager1->HasCachedImage());
+
+  // Resetting replacements should not start the cache expiration timer.
+  auto* tab1 = tabs::TabInterface::GetFromContents(web_contents1);
+  ASSERT_TRUE(tab1);
+  auto* controller1 = IndigoPageActionController::From(tab1);
+  ASSERT_TRUE(controller1);
+  controller1->Reset(ResetType::kResetReplacementsAndContentScript);
+  EXPECT_FALSE(manager1->HasCachedImage());
+  EXPECT_FALSE(manager1->cache_expiration_timer_for_testing().IsRunning());
+}
+
+class IndigoImageReplacementManagerCacheDisabledBrowserTest
+    : public IndigoImageReplacementManagerBrowserTest {
+ public:
+  void SetUpCommandLine(base::CommandLine* command_line) override {
+    disabled_cache_feature_list_.InitAndDisableFeature(
+        features::kIndigoGeneratedImageCache);
+    IndigoImageReplacementManagerBrowserTest::SetUpCommandLine(command_line);
+  }
+
+ private:
+  base::test::ScopedFeatureList disabled_cache_feature_list_;
+};
+
+IN_PROC_BROWSER_TEST_F(IndigoImageReplacementManagerCacheDisabledBrowserTest,
+                       DisabledCacheFeatureDoesNotCache) {
+  GURL test_url = embedded_test_server()->GetURL("/empty.html");
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), test_url));
+
+  content::WebContents* web_contents =
+      browser()->GetTabStripModel()->GetActiveWebContents();
+  content::RenderFrameHostWrapper main_rfh(web_contents->GetPrimaryMainFrame());
+
+  IndigoImageReplacementManager* manager =
+      IndigoImageReplacementManager::GetOrCreateForPage(main_rfh->GetPage());
+  ASSERT_TRUE(manager);
+
+  base::HistogramTester histogram_tester;
+
+  MockImageReplacement mock_replacement1(web_contents, 0);
+  mojo::Receiver<blink::mojom::ImageReplacement> receiver1(&mock_replacement1);
+  manager->RegisterImageReplacement(receiver1.BindNewPipeAndPassRemote(),
+                                    /*is_primary=*/true);
+  mock_replacement1.WaitForStartReplacement();
+  mock_replacement1.WaitForRenderReplacement();
+
+  fake_api_.WaitForGenerateRequest(0);
+  GURL success_url(
+      "data:image/"
+      "png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+"
+      "M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==");
+  fake_api_.SendSuccessResponse(success_url, 0);
+
+  content::RenderFrameHostWrapper subframe1(
+      content::ChildFrameAt(main_rfh.get(), 0));
+  ASSERT_TRUE(subframe1.get());
+  EXPECT_TRUE(
+      WaitUntilReplacementImageSrcMatches(subframe1.get(), success_url.spec()));
+
+  // Turn off Indigo.
+  auto* tab = tabs::TabInterface::GetFromContents(web_contents);
+  ASSERT_TRUE(tab);
+  auto* controller = IndigoPageActionController::From(tab);
+  ASSERT_TRUE(controller);
+  controller->Reset(ResetType::kResetReplacementsAndContentScript);
+
+  // When feature is disabled, image should not be cached.
+  EXPECT_FALSE(manager->HasCachedImage());
+
+  // Second invocation should issue another Generate request.
+  MockImageReplacement mock_replacement2(web_contents, 1);
+  mojo::Receiver<blink::mojom::ImageReplacement> receiver2(&mock_replacement2);
+  manager->RegisterImageReplacement(receiver2.BindNewPipeAndPassRemote(),
+                                    /*is_primary=*/true);
+  mock_replacement2.WaitForStartReplacement();
+  mock_replacement2.WaitForRenderReplacement();
+
+  fake_api_.WaitForGenerateRequest(1);
+  fake_api_.SendSuccessResponse(success_url, 1);
+
+  content::RenderFrameHostWrapper subframe2(
+      content::ChildFrameAt(main_rfh.get(), 1));
+  ASSERT_TRUE(subframe2.get());
+  EXPECT_TRUE(
+      WaitUntilReplacementImageSrcMatches(subframe2.get(), success_url.spec()));
+
+  histogram_tester.ExpectBucketCount("Indigo.Transformation.IsCacheHit", false,
+                                     2);
+  histogram_tester.ExpectBucketCount("Indigo.Transformation.IsCacheHit", true,
+                                     0);
 }
 
 }  // namespace indigo

@@ -518,15 +518,12 @@ extern const char kIOSOneTapMiniMapRestrictionMinAlphanumProportionParamName[];
 extern const base::FeatureParam<double>
     kIOSOneTapMiniMapRestrictionMinAlphanumProportionParam;
 
-// Feature flag to forward Maps Universal links to native maps.
-BASE_DECLARE_FEATURE(kIOSMiniMapUniversalLink);
-
 // Feature flag for counterfactual logging for the universal link native map
 // experiment.
 BASE_DECLARE_FEATURE(kIOSMiniMapUniversalLinkCounterfactual);
 
-// Returns true if kIOSMiniMapUniversalLink is enabled and the current country
-// is not in the excluded list.
+// Returns true if Maps Universal links are enabled (i.e. the current country
+// is not in the excluded list).
 bool IsMiniMapUniversalLinkEnabled();
 
 // Feature flag to open linkified address in Maps native preview.
@@ -1016,5 +1013,9 @@ BASE_DECLARE_FEATURE(kVoiceSearchMicPermissions);
 
 // Returns true if VoiceSearchMicPermissions is enabled.
 bool IsVoiceSearchMicPermissionsEnabled();
+
+// Feature to control whether the application should try to restore the tabs
+// of the last closed window on startup when possible.
+BASE_DECLARE_FEATURE(kRecoverTabsOfLastClosedWindow);
 
 #endif  // IOS_CHROME_BROWSER_SHARED_PUBLIC_FEATURES_FEATURES_H_

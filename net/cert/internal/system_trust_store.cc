@@ -163,6 +163,10 @@ class SystemTrustStoreChromeWithUnOwnedSystemStore : public SystemTrustStore {
     return trust_store_chrome_->version();
   }
 
+  std::optional<base::Time> signer_set_timestamp() const override {
+    return trust_store_chrome_->signer_set_timestamp();
+  }
+
   std::optional<base::Time> mtc_metadata_update_time() const override {
     return trust_store_chrome_->mtc_metadata_update_time();
   }
@@ -173,8 +177,8 @@ class SystemTrustStoreChromeWithUnOwnedSystemStore : public SystemTrustStore {
   }
 
   const TrustStoreChrome::MtcAnchorExtraData* GetMTCAnchorData(
-      base::span<const uint8_t> log_id) const override {
-    return trust_store_chrome_->GetMTCAnchorData(log_id);
+      base::span<const uint8_t> ca_id) const override {
+    return trust_store_chrome_->GetMTCAnchorData(ca_id);
   }
 
   std::optional<bssl::VerifyCertificateChainDelegate::MTCCosigner>

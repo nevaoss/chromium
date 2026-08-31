@@ -8,6 +8,8 @@ import android.os.SystemClock;
 
 import androidx.annotation.IntDef;
 
+import org.chromium.android_webview.common.AwSwitches;
+import org.chromium.base.CommandLine;
 import org.chromium.base.Log;
 import org.chromium.base.ThreadUtils;
 import org.chromium.build.annotations.NullMarked;
@@ -69,10 +71,31 @@ public final class StartupTasksRunner {
 
     // LINT.ThenChange(//base/tracing/protos/chrome_track_event.proto:WebViewChromiumStartupMode,//tools/metrics/histograms/metadata/android/enums.xml:WebViewChromiumStartupMode)
 
+    /** Immutable value class containing timings and state recorded during Chromium startup. */
+    public static class StartupTimings {
+        public final long startTimeMs;
+        public final long totalTimeTakenMs;
+        public final long longestUiBlockingTaskTimeMs;
+        public final long wallClockTimeMs;
+        public final @StartupMode int startupMode;
+        public final @StartupCallSite int startCallSite;
+        public final @StartupCallSite int finishCallSite;
+
+        StartupTimings(StartupTasksRunner runner) {
+            this.startTimeMs = runner.mStartupTimeMs;
+            this.totalTimeTakenMs = runner.mTotalTimeTakenMs;
+            this.longestUiBlockingTaskTimeMs = runner.mLongestUiBlockingTaskTimeMs;
+            this.wallClockTimeMs = SystemClock.uptimeMillis() - runner.mStartupTimeMs;
+            this.startupMode = runner.calculateStartupMode();
+            this.startCallSite = runner.mStartCallSite;
+            this.finishCallSite = runner.mFinishCallSite;
+        }
+    }
+
     /** Delegate interface for communicating back with the startup coordinator. */
     public interface Delegate {
         /** Called when all tasks are complete to record metrics and notify listeners. */
-        void onStartupComplete(StartupDiagnostics diagnostics);
+        void onStartupComplete(StartupTimings timings);
 
         /** Called when a startup task throws a runtime exception. */
         void onStartupFailed(RuntimeException e);
@@ -85,12 +108,10 @@ public final class StartupTasksRunner {
     }
 
     private final Delegate mDelegate;
-    private final StartupDiagnostics mDiagnostics;
     private final ArrayDeque<Runnable> mPreBrowserProcessStartQueue;
     private final ArrayDeque<Runnable> mPostBrowserProcessStartQueue;
     private final int mPreBrowserProcessStartTasksSize;
     private final int mNumTasks;
-    private final boolean mRunStartupTasksAsync;
     private final @StartupRequestMode int mChromiumFirstStartupRequestMode;
 
     private boolean mAsyncHasBeenTriggered;
@@ -105,19 +126,19 @@ public final class StartupTasksRunner {
 
     public StartupTasksRunner(
             Delegate delegate,
-            StartupDiagnostics diagnostics,
             ArrayDeque<Runnable> preBrowserProcessStartTasks,
             ArrayDeque<Runnable> postBrowserProcessStartTasks,
-            boolean runStartupTasksAsync,
             @StartupRequestMode int chromiumFirstStartupRequestMode) {
         mDelegate = delegate;
-        mDiagnostics = diagnostics;
         mPreBrowserProcessStartQueue = preBrowserProcessStartTasks;
         mPostBrowserProcessStartQueue = postBrowserProcessStartTasks;
         mPreBrowserProcessStartTasksSize = preBrowserProcessStartTasks.size();
         mNumTasks = mPreBrowserProcessStartTasksSize + postBrowserProcessStartTasks.size();
-        mRunStartupTasksAsync = runStartupTasksAsync;
         mChromiumFirstStartupRequestMode = chromiumFirstStartupRequestMode;
+    }
+
+    private boolean shouldRunStartupTasksAsync() {
+        return !CommandLine.getInstance().hasSwitch(AwSwitches.WEBVIEW_RUN_STARTUP_TASKS_SYNC);
     }
 
     public void run(@StartupCallSite int callSite, boolean triggeredFromUIThread) {
@@ -137,7 +158,7 @@ public final class StartupTasksRunner {
             return;
         }
 
-        if (mRunStartupTasksAsync && !triggeredFromUIThread) {
+        if (shouldRunStartupTasksAsync() && !triggeredFromUIThread) {
             // Prevents triggering async run multiple times and thus reduces the interval between
             // tasks.
             if (mAsyncHasBeenTriggered) {
@@ -250,15 +271,7 @@ public final class StartupTasksRunner {
             mLongestUiBlockingTaskTimeMs = Math.max(mLongestUiBlockingTaskTimeMs, durationMs);
             mTotalTimeTakenMs += durationMs;
             if (mPostBrowserProcessStartQueue.isEmpty()) {
-                // We are done running all the tasks, so store them in the diagnostics object.
-                mDiagnostics.setTotalTimeUiThreadChromiumInitMillis(mTotalTimeTakenMs);
-                mDiagnostics.setMaxTimePerTaskUiThreadChromiumInitMillis(
-                        mLongestUiBlockingTaskTimeMs);
-                mDiagnostics.setStartTimeMillis(mStartupTimeMs);
-                mDiagnostics.setStartupMode(calculateStartupMode());
-                mDiagnostics.setCallSites(mStartCallSite, mFinishCallSite);
-
-                mDelegate.onStartupComplete(mDiagnostics);
+                mDelegate.onStartupComplete(new StartupTimings(this));
             }
         } catch (RuntimeException e) {
             Log.e(TAG, "WebView chromium startup failed", e);
@@ -276,8 +289,9 @@ public final class StartupTasksRunner {
     // 2. Whether the first task ran synchronously or asynchronously.
     // 3. Whether the last task ran synchronously or asynchronously.
     private @StartupMode int calculateStartupMode() {
-        // The control arm of our experiment runs fully synchronously.
-        if (!mRunStartupTasksAsync) {
+        // TODO(abhijithnair): Evaluate if we need to consider the switch value here and remove if
+        // not needed.
+        if (!shouldRunStartupTasksAsync()) {
             return StartupMode.FULLY_SYNC;
         }
 

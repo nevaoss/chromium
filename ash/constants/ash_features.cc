@@ -526,9 +526,6 @@ BASE_FEATURE(kDoNotDisturbShortcut, base::FEATURE_ENABLED_BY_DEFAULT);
 // Enables or disables Sync for desk templates on ChromeOS.
 BASE_FEATURE(kDeskTemplateSync, base::FEATURE_ENABLED_BY_DEFAULT);
 
-// Enables or disables the new window occlusion calculator.
-BASE_FEATURE(kNewWindowOcclusionCalculator, base::FEATURE_ENABLED_BY_DEFAULT);
-
 BASE_FEATURE(kDesksTemplates, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables diacritics on longpress on the physical keyboard by default.
@@ -813,6 +810,10 @@ BASE_FEATURE(kViewTreeHostRootViewNewBackend,
 
 // Enables the new backend for `FastInkHost` backend.
 BASE_FEATURE(kFastInkHostNewBackend, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Enables low priority hint instead of overlay candidate override in
+// `FastInkHost`.
+BASE_FEATURE(kFastInkHostLowPriorityHint, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables the new backend for `RoundedDisplayHost` backend.
 BASE_FEATURE(kRoundedDisplayHostNewBackend, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -1998,8 +1999,6 @@ BASE_FEATURE(kDeviceMoveConfigSave, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kDeviceWeeklyScheduledSuspendMgs,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
-// Enables peripheral customization to be split per device.
-BASE_FEATURE(kPeripheralCustomization, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables or disables peripherals logging.
 BASE_FEATURE(kEnablePeripheralsLogging,
@@ -2463,10 +2462,6 @@ bool IsDemoModeSignInFileCleanupEnabled() {
   return base::FeatureList::IsEnabled(kDemoModeSignInFileCleanup);
 }
 
-bool IsNewWindowOcclusionCalculatorEnabled() {
-  return base::FeatureList::IsEnabled(kNewWindowOcclusionCalculator);
-}
-
 bool IsDeskTemplateSyncEnabled() {
   return base::FeatureList::IsEnabled(kDeskTemplateSync);
 }
@@ -2479,9 +2474,6 @@ bool IsDisplayPerformanceModeEnabled() {
   return base::FeatureList::IsEnabled(kDisplayPerformanceMode);
 }
 
-bool IsPeripheralCustomizationEnabled() {
-  return base::FeatureList::IsEnabled(kPeripheralCustomization);
-}
 
 bool IsPeripheralsLoggingEnabled() {
   return base::FeatureList::IsEnabled(kEnablePeripheralsLogging);
@@ -2641,6 +2633,10 @@ bool IsViewTreeHostNewBackendEnabled() {
 
 bool IsFastInkHostNewBackendEnabled() {
   return base::FeatureList::IsEnabled(kFastInkHostNewBackend);
+}
+
+bool IsFastInkHostLowPriorityHintEnabled() {
+  return base::FeatureList::IsEnabled(kFastInkHostLowPriorityHint);
 }
 
 bool IsRoundedDisplayHostNewBackendEnabled() {
@@ -2993,8 +2989,7 @@ bool IsPerDeskShelfEnabled() {
 }
 
 bool IsPeripheralNotificationEnabled() {
-  return base::FeatureList::IsEnabled(kPeripheralNotification) &&
-         IsPeripheralCustomizationEnabled();
+  return base::FeatureList::IsEnabled(kPeripheralNotification);
 }
 
 bool IsPhoneHubMonochromeNotificationIconsEnabled() {

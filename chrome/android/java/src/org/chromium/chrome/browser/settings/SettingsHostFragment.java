@@ -36,6 +36,7 @@ import org.chromium.chrome.browser.profiles.ProfileManager;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController;
 import org.chromium.components.browser_ui.settings.PreferenceUpdateObserver;
+import org.chromium.components.browser_ui.settings.SettingsNavigation;
 import org.chromium.ui.base.ActivityResultTracker;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.modaldialog.ModalDialogManager;
@@ -58,6 +59,7 @@ public class SettingsHostFragment extends Fragment
     private @Nullable FragmentDependencyProvider mDependencyProvider;
     private @Nullable SettingsContainmentHelper mContainmentHelper;
     private @Nullable WideDisplayPaddingApplier mWideDisplayPaddingApplier;
+    private @Nullable SettingsNavigation mSettingsNavigation;
     private int mPendingPopBackCount;
 
     /** Public constructor needed for Fragment re-instantiation. */
@@ -155,7 +157,7 @@ public class SettingsHostFragment extends Fragment
     public void onAttach(Context context) {
         // Ensure child fragments inherit the same Chromium Settings theme used by SettingsActivity.
         // For example, this ensures the left column category labels are styled correctly.
-        mThemedContext = new ContextThemeWrapper(context, R.style.Theme_Chromium_Settings);
+        mThemedContext = new ContextThemeWrapper(context, R.style.ThemeOverlay_Chromium_Settings);
         super.onAttach(mThemedContext);
 
         mContainmentHelper = new SettingsContainmentHelper(mThemedContext, this);
@@ -283,6 +285,16 @@ public class SettingsHostFragment extends Fragment
         return multiColumnSettings;
     }
 
+    /** Sets the tab-scoped {@link SettingsNavigation} delegate for this host fragment. */
+    public void setSettingsNavigation(@Nullable SettingsNavigation settingsNavigation) {
+        mSettingsNavigation = settingsNavigation;
+    }
+
+    /** Returns the tab-scoped {@link SettingsNavigation} delegate bound to this host fragment. */
+    public @Nullable SettingsNavigation getSettingsNavigation() {
+        return mSettingsNavigation;
+    }
+
     @Override
     public boolean onPreferenceStartFragment(
             PreferenceFragmentCompat caller, Preference preference) {
@@ -387,6 +399,12 @@ public class SettingsHostFragment extends Fragment
     public @Nullable Fragment getMainFragment() {
         Fragment activeFragment = getActiveFragment();
         if (activeFragment instanceof MultiColumnSettings multiColumnSettings) {
+            // In single-column mode when the detail pane is closed, the user is viewing the
+            // top-level MainSettings header rather than the detail pane. Return MainSettings
+            // instead of a possibly-stale detail fragment.
+            if (!multiColumnSettings.isTwoColumn() && !multiColumnSettings.isLayoutOpen()) {
+                return multiColumnSettings.getMainSettings();
+            }
             return multiColumnSettings
                     .getChildFragmentManager()
                     .findFragmentById(R.id.preferences_detail);

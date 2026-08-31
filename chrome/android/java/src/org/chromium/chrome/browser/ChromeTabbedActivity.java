@@ -88,6 +88,7 @@ import org.chromium.chrome.R;
 import org.chromium.chrome.browser.IntentHandler.ExternalAppId;
 import org.chromium.chrome.browser.IntentHandler.TabOpenType;
 import org.chromium.chrome.browser.accessibility.settings.CaretBrowsingDialog;
+import org.chromium.chrome.browser.actor.ActorForegroundServiceController;
 import org.chromium.chrome.browser.app.ChromeActivity;
 import org.chromium.chrome.browser.app.appmenu.AppMenuPropertiesDelegateImpl;
 import org.chromium.chrome.browser.app.metrics.LaunchCauseMetrics;
@@ -1348,7 +1349,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                         tabGroupCreationUiDelegate,
                         mUndoBarPopupController,
                         mHubProvider.getHubManagerSupplier(),
-                        mArchivedTabsAutoDeletePromoManager,
+                        getArchivedTabsAutoDeletePromoManager(),
                         () ->
                                 ((TabbedRootUiCoordinator) mRootUiCoordinator)
                                         .getTabGroupSyncController(),
@@ -1440,6 +1441,9 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
     }
 
     private void onTabSwitcherClicked() {
+        assert !TabSwitcherUtils.isGridTabSwitcherDisabled()
+                : "Tab switcher button clicked when GTS is disabled.";
+
         Profile profile = mTabModelProfileSupplier.get();
         if (profile != null) {
             TrackerFactory.getTrackerForProfile(profile)
@@ -1683,15 +1687,8 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
             if (ChromeFeatureList.isEnabled(ChromeFeatureList.GROUP_SUGGESTION_SERVICE)) {
                 mSuggestionEventObserver =
                         new SuggestionEventObserver(mTabModelSelector, mHubManagerSupplier);
-                if (ChromeFeatureList.getFieldTrialParamByFeatureAsBoolean(
-                        ChromeFeatureList.GROUP_SUGGESTION_SERVICE,
-                        GroupSuggestionsPromotionCoordinator.CREATE_SUGGESTIONS_PROMOTION_UI_PARAM,
-                        false)) {
-                    mGroupSuggestionsPromotionCoordinator =
-                            new GroupSuggestionsPromotionCoordinator(
-                                    this,
-                                    assertNonNull(mRootUiCoordinator.getBottomSheetController()),
-                                    mTabModelSelector.getModel(false));
+                if (!ChromeFeatureList.sAndroidStartupImprovements.isEnabled()) {
+                    initGroupSuggestionsPromotionCoordinator();
                 }
             }
 
@@ -1699,7 +1696,9 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                 ExtensionsUrlOverrideRegistry.resetRegistry();
             }
 
-            initiateArchivedTabsAutoDeletePromoManager();
+            if (!ChromeFeatureList.sAndroidStartupImprovements.isEnabled()) {
+                initiateArchivedTabsAutoDeletePromoManager();
+            }
 
             if (!ChromeFeatureList.sAndroidStartupImprovements.isEnabled()
                     && FindsFeatures.sChromeFinds.isEnabled()) {
@@ -1936,8 +1935,8 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
     public void onNewIntentWithNative(Intent intent) {
         try {
             TraceEvent.begin("ChromeTabbedActivity.onNewIntentWithNative");
-
             super.onNewIntentWithNative(intent);
+
             if (!IntentHandler.shouldIgnoreIntent(intent, this, /* isCustomTab= */ false)) {
                 maybeHandleOpenTabGroupIntent(intent);
                 maybeHandleUrlIntent(intent);
@@ -3226,6 +3225,21 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
     }
 
     @Override
+    protected @Nullable Bundle transformSavedInstanceStateForOnCreate(
+            @Nullable Bundle savedInstanceState) {
+        if (!ProfileManager.isInitialized()) {
+            // Pass null to Activity.onCreate() so that it doesn't automatically restore the
+            // FragmentManager state before native is initialized, as restored fragments (such as
+            // SettingsPage) may depend on native/profile and crash during onCreate(). This is the
+            // same approach used by FirstRunActivity. Fragments will be recreated when tabs are
+            // restored after asynchronous native initialization completes. The original saved
+            // instance state is still available via getSavedInstanceState().
+            return null;
+        }
+        return savedInstanceState;
+    }
+
+    @Override
     public void performPreInflationStartup() {
         super.performPreInflationStartup();
 
@@ -3811,6 +3825,14 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                         if (mMultiInstanceManager != null) {
                             mMultiInstanceManager.onTabStateInitialized();
                         }
+                        if (ChromeFeatureList.isEnabled(
+                                ChromeFeatureList.GLIC_BACKGROUND_ACTUATION)) {
+                            ActorForegroundServiceController.get()
+                                    .restoreActiveWindowBackgroundTabs(
+                                            getTabModelSelector(),
+                                            getWindowAndroid(),
+                                            getTabDelegateFactory());
+                        }
                     }
                 };
         mTabModelSelector.addObserver(mTabModelSelectorObserver);
@@ -4030,6 +4052,24 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
             if (FindsFeatures.sChromeFinds.isEnabled()) {
                 initFindsManager(profile);
             }
+            if (ChromeFeatureList.isEnabled(ChromeFeatureList.GROUP_SUGGESTION_SERVICE)) {
+                initGroupSuggestionsPromotionCoordinator();
+            }
+            initiateArchivedTabsAutoDeletePromoManager();
+        }
+    }
+
+    private void initGroupSuggestionsPromotionCoordinator() {
+        if (mGroupSuggestionsPromotionCoordinator != null) return;
+        if (ChromeFeatureList.getFieldTrialParamByFeatureAsBoolean(
+                ChromeFeatureList.GROUP_SUGGESTION_SERVICE,
+                GroupSuggestionsPromotionCoordinator.CREATE_SUGGESTIONS_PROMOTION_UI_PARAM,
+                /* defaultValue= */ false)) {
+            mGroupSuggestionsPromotionCoordinator =
+                    new GroupSuggestionsPromotionCoordinator(
+                            this,
+                            assertNonNull(mRootUiCoordinator.getBottomSheetController()),
+                            mTabModelSelector.getModel(/* incognito= */ false));
         }
     }
 
@@ -4389,7 +4429,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
             RecordHistogram.recordEnumeratedHistogram(
                     "Bookmarks.OpenBookmarkManager.PerProfileType",
                     type,
-                    BrowserProfileType.MAX_VALUE);
+                    BrowserProfileType.MAX_VALUE + 1);
 
             RecordUserAction.record("MobileMenuAllBookmarks");
         } else if (id == R.id.show_reading_list_menu_id) {
@@ -5122,7 +5162,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
     }
 
     private void showOverview() {
-        if (mLayoutManager == null) return;
+        if (mLayoutManager == null || TabSwitcherUtils.isGridTabSwitcherDisabled()) return;
 
         if (isInOverviewMode()) {
             if (didFinishNativeInitialization()) {
@@ -5196,6 +5236,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
 
     @Override
     public void onDestroyInternal() {
+
         if (mPrefChangeRegistrar != null) {
             mPrefChangeRegistrar.destroy();
             mPrefChangeRegistrar = null;
@@ -5686,9 +5727,17 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
         return mUndoBarPopupController;
     }
 
+    private @Nullable ArchivedTabsAutoDeletePromoManager getArchivedTabsAutoDeletePromoManager() {
+        initiateArchivedTabsAutoDeletePromoManager();
+        return mArchivedTabsAutoDeletePromoManager;
+    }
+
     private void initiateArchivedTabsAutoDeletePromoManager() {
+        if (mArchivedTabsAutoDeletePromoManager != null) return;
         if (!ChromeSharedPreferences.getInstance()
-                .readBoolean(ChromePreferenceKeys.TAB_DECLUTTER_AUTO_DELETE_DECISION_MADE, false)) {
+                .readBoolean(
+                        ChromePreferenceKeys.TAB_DECLUTTER_AUTO_DELETE_DECISION_MADE,
+                        /* defaultValue= */ false)) {
             mArchivedTabsAutoDeletePromoManager =
                     new ArchivedTabsAutoDeletePromoManager(
                             ChromeTabbedActivity.this,
@@ -5697,7 +5746,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                             ArchivedTabModelOrchestrator.getForProfile(
                                             mTabModelSelector.getCurrentModel().getProfile())
                                     .getTabCountSupplier(),
-                            mTabModelSelector.getModel(false));
+                            mTabModelSelector.getModel(/* incognito= */ false));
         }
     }
 

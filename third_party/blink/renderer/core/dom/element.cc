@@ -1138,7 +1138,7 @@ Node* Element::Clone(Document& factory,
   // 2-3. If registry is a global custom element registry, then set
   // registry to document's effective global custom element registry.
   if (registry && registry->IsGlobalRegistry()) {
-    registry = factory.customElementRegistry();
+    registry = factory.EffectiveGlobalCustomElementRegistry();
   }
   if (!data.Has(CloneOption::kIncludeDescendants)) {
     copy = &CloneWithoutChildren(data, registry, &factory);
@@ -1165,7 +1165,7 @@ Node* Element::Clone(Document& factory,
       // set shadowRootRegistry to document's effective global custom element
       // registry
       if (shadow_root_registry && shadow_root_registry->IsGlobalRegistry()) {
-        shadow_root_registry = factory.customElementRegistry();
+        shadow_root_registry = factory.EffectiveGlobalCustomElementRegistry();
       }
       // 6.4 Run attach a shadow root with copy, node's shadow root's mode,
       // true, node’s shadow root’s delegates focus, and node’s shadow root’s
@@ -3471,12 +3471,10 @@ DOMRect* Element::GetBoundingClientRectForBinding() {
 ContainerQueryList* Element::matchContainer(const String& query) {
   CSSParserContext* context =
       MakeGarbageCollected<CSSParserContext>(GetDocument());
-  ContainerQueryParser parser(*context);
-  auto* conditional = parser.ParseCondition(query);
-  auto* container_query = MakeGarbageCollected<ContainerQuery>(
-      ContainerSelector(AtomicString(), conditional), conditional);
+  auto* container_queries =
+      ContainerQueryParser::ParseContainerQuerySet(query, *context);
   return MakeGarbageCollected<ContainerQueryList>(
-      GetDocument().GetExecutionContext(), container_query, this);
+      GetDocument().GetExecutionContext(), container_queries, this);
 }
 
 const AtomicString& Element::computedRole() {
@@ -4354,39 +4352,45 @@ void Element::MovedFrom(ContainerNode& old_parent) {
 }
 
 #if DCHECK_IS_ON()
-void VerifySubtreeIsInCanvas(const Element& element, bool value) {
-  DCHECK(element.IsInCanvasSubtree() == value);
-  if (IsA<HTMLCanvasElement>(element)) {
-    DCHECK(element.IsCanvasOrInCanvasSubtree());
+void Element::VerifySubtreeIsInCanvas(bool value) {
+  DCHECK(IsInCanvasSubtree() == value);
+  if (IsA<HTMLCanvasElement>(this)) {
+    DCHECK(IsCanvasOrInCanvasSubtree());
     // When the verifier starts with an element outside the tree that should
     // have value false, but then reaches a canvas within the subtree (e.g.
     // in an iframe or nested), we should set the expected value back to true.
     value = true;
   }
-  if (ShadowRoot* shadow_root = element.GetShadowRoot()) {
+  if (ShadowRoot* shadow_root = GetShadowRoot()) {
     for (Element& child : ElementTraversal::ChildrenOf(*shadow_root)) {
-      VerifySubtreeIsInCanvas(child, value);
+      child.VerifySubtreeIsInCanvas(value);
     }
   }
-  if (auto* slot = ToHTMLSlotElementIfSupportsAssignmentOrNull(element)) {
+  if (auto* slot = ToHTMLSlotElementIfSupportsAssignmentOrNull(*this)) {
     for (Node* node : slot->AssignedNodesNoRecalc()) {
       if (auto* child = DynamicTo<Element>(node)) {
-        VerifySubtreeIsInCanvas(*child, value);
+        child->VerifySubtreeIsInCanvas(value);
       }
     }
   }
-  if (const auto* frame_owner = DynamicTo<HTMLFrameOwnerElement>(element)) {
+  if (const auto* frame_owner = DynamicTo<HTMLFrameOwnerElement>(this)) {
     if (Document* inner_document = frame_owner->contentDocument()) {
       if (Element* root = inner_document->documentElement()) {
-        VerifySubtreeIsInCanvas(*root, value);
+        root->VerifySubtreeIsInCanvas(value);
       }
     }
   }
-  for (Element& child : ElementTraversal::ChildrenOf(element)) {
+  if (const NodeRareData* rare_data = RareData()) {
+    for (PseudoElement* pseudo_element : rare_data->GetPseudoElements()) {
+      pseudo_element->VerifySubtreeIsInCanvas(value);
+    }
+  }
+
+  for (Element& child : ElementTraversal::ChildrenOf(*this)) {
     if (child.AssignedSlotWithoutRecalc()) {
       continue;
     }
-    VerifySubtreeIsInCanvas(child, value);
+    child.VerifySubtreeIsInCanvas(value);
   }
 }
 #endif
@@ -4395,7 +4399,7 @@ void Element::SetIsInCanvasSubtree(bool value) {
   if (value == IsInCanvasSubtree()) {
 #if DCHECK_IS_ON()
     if (!GetDocument().IsSlotAssignmentRecalcForbidden()) {
-      VerifySubtreeIsInCanvas(*this, value);
+      VerifySubtreeIsInCanvas(value);
     }
 #endif
     return;
@@ -4426,6 +4430,11 @@ void Element::SetIsInCanvasSubtree(bool value) {
       continue;
     }
     child.SetIsInCanvasSubtree(value);
+  }
+  if (const NodeRareData* rare_data = RareData()) {
+    for (PseudoElement* pseudo_element : rare_data->GetPseudoElements()) {
+      pseudo_element->SetIsInCanvasSubtree(value);
+    }
   }
 }
 
@@ -4469,12 +4478,9 @@ bool Element::IsCanvasOrInCanvasSubtree() const {
 void Element::DidChangeIsInCanvasSubtree() {
   if (auto* layout_object = GetLayoutObject()) {
     layout_object->SetNeedsPaintPropertyUpdate();
-    if (layout_object->HasLayer()) {
-      To<LayoutBoxModelObject>(layout_object)->Layer()->SetNeedsRepaint();
-    }
     ObjectPaintInvalidator(*layout_object)
-        .InvalidateDisplayItemClient(*layout_object,
-                                     PaintInvalidationReason::kUncacheable);
+        .SlowSetPaintingLayerNeedsRepaintAndInvalidateDisplayItemClient(
+            *layout_object, PaintInvalidationReason::kUncacheable);
   }
 }
 
@@ -4519,14 +4525,25 @@ const gfx::Transform* Element::GetUsedCanvasTransform() const {
 }
 
 void Element::SetCanvasTransformInternal(const gfx::Transform& transform) {
+  if (const gfx::Transform* existing = GetCanvasTransformInternal()) {
+    if (*existing == transform) {
+      return;
+    }
+  }
   data_ = EnsureRareData().SetWrappedField<gfx::Transform>(
       NodeRareData::FieldId::kCanvasTransform, transform);
   if (LayoutObject* layout_object = GetLayoutObject()) {
     layout_object->SetNeedsPaintPropertyUpdate();
-    // Layout is needed to update the PaintLayer transform (which is updated
-    // during layout in LayoutBox::UpdateLayout). We cannot rely on style recalc
-    // because canvas transform is not stored in ComputedStyle.
-    layout_object->SetNeedsLayout(layout_invalidation_reason::kDomChanged);
+    const auto* box = DynamicTo<LayoutBox>(layout_object);
+    if (box && box->TransformsChangeMayRequireLayout()) {
+      layout_object->SetNeedsLayout(layout_invalidation_reason::kDomChanged);
+    } else {
+      if (layout_object->HasLayer()) {
+        // Directly update the PaintLayer transform to avoid a repaint from
+        // layout invalidation.
+        To<LayoutBoxModelObject>(layout_object)->Layer()->UpdateTransform();
+      }
+    }
   }
 }
 
@@ -14037,6 +14054,16 @@ bool Element::ShouldAdjustContainerTimingForInsert(
 void Element::AdjustContainerTimingIfNeededAfterChildrenChanged(
     const ChildrenChange& change) {
   if (!RuntimeEnabledFeatures::ContainerTimingEnabled(GetExecutionContext())) {
+    return;
+  }
+
+  // Prepaint mode does not maintain the SelfOrAncestorHasContainerTiming() node
+  // flag: newly inserted subtrees are attributed by the pre-paint attribution
+  // tracker on the next walk (new LayoutObjects default their
+  // ContainerTimingChanged bit to true, and the paint-invalidation walk reaches
+  // them), so this O(subtree) DOM traversal is unnecessary.
+  if (RuntimeEnabledFeatures::ContainerTimingPrepaintTraversalEnabled(
+          GetExecutionContext())) {
     return;
   }
 

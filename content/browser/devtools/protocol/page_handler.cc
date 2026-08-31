@@ -862,6 +862,7 @@ void PageHandler::Reload(std::optional<bool> bypassCache,
     have_pending_reload_ = true;
     pending_script_to_evaluate_on_load_ =
         script_to_evaluate_on_load.value_or("");
+    initiating_origin_ = outermost_main_frame->GetLastCommittedOrigin();
     navigation_controller.Reload(reload_type, false);
     callback->sendSuccess();
   } else {
@@ -2144,6 +2145,10 @@ Page::BackForwardCacheNotRestoredReason NotRestoredReasonToProtocol(
       // into sub reasons.
       NOTREACHED();
     case Reason::kUnknown:
+    case Reason::kRfhEnforceInsecureNavigationsSet:
+    case Reason::kRfhEnforceInsecureRequestPolicy:
+    case Reason::kRfhHadStickyUserActivationBeforeNavigationChanged:
+    case Reason::kRfhUpdateIsAdFrame:
       return Page::BackForwardCacheNotRestoredReasonEnum::Unknown;
     case Reason::kCacheControlNoStoreDeviceBoundSessionTerminated:
       return Page::BackForwardCacheNotRestoredReasonEnum::
@@ -2470,6 +2475,10 @@ Page::BackForwardCacheNotRestoredReasonType MapNotRestoredReasonToType(
     case Reason::kWebLocksContention:
       return Page::BackForwardCacheNotRestoredReasonTypeEnum::PageSupportNeeded;
     case Reason::kNetworkRequestDatapipeDrainedAsBytesConsumer:
+    case Reason::kRfhEnforceInsecureNavigationsSet:
+    case Reason::kRfhEnforceInsecureRequestPolicy:
+    case Reason::kRfhHadStickyUserActivationBeforeNavigationChanged:
+    case Reason::kRfhUpdateIsAdFrame:
     case Reason::kUnknown:
       return Page::BackForwardCacheNotRestoredReasonTypeEnum::SupportPending;
     case Reason::kBlocklistedFeatures:
@@ -2660,6 +2669,11 @@ void PageHandler::ReadyToCommitNavigation(
     have_pending_reload_ = false;
     pending_script_to_evaluate_on_load_.clear();
   } else if (have_pending_reload_) {
+    if (navigation_request->WasServerRedirect() &&
+        !initiating_origin_.IsSameOriginWith(
+            navigation_request->GetOriginToCommit().value_or(url::Origin()))) {
+      pending_script_to_evaluate_on_load_.clear();
+    }
     prepare_for_reload_callback_.Run(
         std::move(pending_script_to_evaluate_on_load_));
     have_pending_reload_ = false;

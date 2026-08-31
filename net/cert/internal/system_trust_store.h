@@ -68,6 +68,10 @@ class SystemTrustStore {
   // Chrome Root Store is not in use, returns 0.
   virtual int64_t chrome_root_store_version() const = 0;
 
+  // Returns the timestamp of the current SignerSet being used. If Chrome Root
+  // Store or MTCs are not enabled, returns nullopt.
+  virtual std::optional<base::Time> signer_set_timestamp() const = 0;
+
   // Returns the update timestamp for the Chrome Root Store MTC Metadata
   // component, or nullopt if MTC Metadata is not available.
   virtual std::optional<base::Time> mtc_metadata_update_time() const = 0;
@@ -81,7 +85,7 @@ class SystemTrustStore {
       const bssl::CertPathBuilderResultPath* path) const = 0;
 
   virtual const TrustStoreChrome::MtcAnchorExtraData* GetMTCAnchorData(
-      base::span<const uint8_t> log_id) const = 0;
+      base::span<const uint8_t> ca_id) const = 0;
 
   virtual std::optional<bssl::VerifyCertificateChainDelegate::MTCCosigner>
   GetMtcMirrorKey(base::span<const uint8_t> cosigner_id) const = 0;

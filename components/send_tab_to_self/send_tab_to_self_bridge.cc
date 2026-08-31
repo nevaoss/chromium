@@ -78,6 +78,7 @@ bool IsActivationUserVisible(ShareActivatedEntryPoint entry_point) {
     case ShareActivatedEntryPoint::kMobileNotification:
     case ShareActivatedEntryPoint::kTabStrip:
     case ShareActivatedEntryPoint::kChromeOSBirch:
+    case ShareActivatedEntryPoint::kMobileMessageBanner:
       return true;
     case ShareActivatedEntryPoint::kTabOrBrowserClosedWithoutActivation:
     case ShareActivatedEntryPoint::kSTTSEntryExpiredWithoutActivation:
@@ -407,6 +408,8 @@ void SendTabToSelfBridge::ApplyDisableSyncChanges(
   std::vector<std::string> all_guids = GetAllGuids();
 
   entries_.clear();
+  unknown_opened_entries_.clear();
+  unknown_activated_entries_.clear();
   mru_entry_guid_.clear();
 
   commit_tracker_->OnSyncDisabled();
@@ -739,7 +742,7 @@ SendTabToSelfBridge::GetTargetDeviceInfoSortedList() {
     // send_tab_to_self (e.g. into sync_device_info or sharing) so multiple
     // clients can share a unified struct.
     std::vector<std::string> device_names =
-        syncer::GetDeviceNames(raw_devices, GetLocalDeviceInfo());
+        syncer::GetDeviceDisplayNames(raw_devices, GetLocalDeviceInfo());
     std::vector<TargetDeviceInfo> target_devices;
     target_devices.reserve(devices.size());
     for (size_t i = 0; i < devices.size(); ++i) {

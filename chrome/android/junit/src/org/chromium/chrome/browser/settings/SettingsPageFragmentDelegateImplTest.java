@@ -25,6 +25,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.TypedValue;
+import android.view.ContextThemeWrapper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -141,11 +142,11 @@ public class SettingsPageFragmentDelegateImplTest {
                                     : null;
                         });
 
-        // Mock LayoutInflater with correct theme to support inflating settings_activity.
+        // Mock LayoutInflater with base TabbedMode theme to support inflating settings_activity.
         Context context =
-                new android.view.ContextThemeWrapper(
+                new ContextThemeWrapper(
                         ApplicationProvider.getApplicationContext(),
-                        R.style.Theme_Chromium_Settings);
+                        R.style.Theme_Chromium_TabbedMode);
         LayoutInflater layoutInflater = LayoutInflater.from(context);
         when(mActivity.getSystemService(Context.LAYOUT_INFLATER_SERVICE))
                 .thenReturn(layoutInflater);
@@ -171,6 +172,7 @@ public class SettingsPageFragmentDelegateImplTest {
         SettingsContainmentHelper mockContainmentHelper = mock(SettingsContainmentHelper.class);
         when(mMockSettingsHostFragment.getContainmentHelper()).thenReturn(mockContainmentHelper);
         when(mMockSettingsHostFragment.containsChild(mMultiColumnSettings)).thenReturn(true);
+        when(mMockSettingsHostFragment.getMultiColumnSettings()).thenReturn(mMultiColumnSettings);
         when(mTab.getId()).thenReturn(TAB_ID);
 
         mDelegate =
@@ -321,7 +323,7 @@ public class SettingsPageFragmentDelegateImplTest {
 
         Fragment mockFragment = mock(Fragment.class);
         when(mMockSettingsHostFragment.isAttachedToActivity()).thenReturn(true);
-        when(mMockSettingsHostFragment.getActiveFragment()).thenReturn(mockFragment);
+        when(mMockSettingsHostFragment.getMainFragment()).thenReturn(mockFragment);
 
         assertEquals(mockFragment, mDelegate.getMainFragment());
     }
@@ -331,7 +333,7 @@ public class SettingsPageFragmentDelegateImplTest {
         mDelegate.initSettings(mContainerView, "");
 
         when(mMockSettingsHostFragment.isAttachedToActivity()).thenReturn(true);
-        when(mMockSettingsHostFragment.getActiveFragment()).thenReturn(mMultiColumnSettings);
+        when(mMockSettingsHostFragment.getMultiColumnSettings()).thenReturn(mMultiColumnSettings);
 
         assertEquals(mMultiColumnSettings, mDelegate.getMultiColumnSettings());
     }

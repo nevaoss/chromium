@@ -732,6 +732,7 @@ VISIT_PROTO_FIELDS(const sync_pb::GooglePlayServicesVersionInfo& proto) {
 
 VISIT_PROTO_FIELDS(const sync_pb::PersonalContextSpecificFields& proto) {
   VISIT_BYTES(p256dh_v2);
+  VISIT_BYTES(serialized_tink_keyset);
 }
 
 VISIT_PROTO_FIELDS(const sync_pb::DictionarySpecifics& proto) {
@@ -2375,7 +2376,8 @@ VISIT_PROTO_FIELDS(const sync_pb::Shipment& proto) {
   VISIT(shipping_date);
   VISIT(carrier_name);
   VISIT(carrier_domain);
-  VISIT_REP(associated_order_ids);
+  VISIT(merchant_name);
+  VISIT_REP(product_names);
 }
 
 VISIT_PROTO_FIELDS(const sync_pb::AutofillValuableMetadataSpecifics& proto) {

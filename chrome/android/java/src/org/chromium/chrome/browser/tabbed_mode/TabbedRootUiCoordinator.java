@@ -179,6 +179,7 @@ import org.chromium.chrome.browser.search_engines.choice_screen.ChoiceDialogCoor
 import org.chromium.chrome.browser.selection.ChromeSelectionDropdownMenuDelegate;
 import org.chromium.chrome.browser.share.ShareDelegate;
 import org.chromium.chrome.browser.share.link_to_text.LinkToTextIphController;
+import org.chromium.chrome.browser.share.send_tab_to_self.SendTabToSelfCoordinator;
 import org.chromium.chrome.browser.signin.SigninAndHistorySyncActivityLauncherImpl;
 import org.chromium.chrome.browser.signin.services.IdentityServicesProvider;
 import org.chromium.chrome.browser.status_indicator.StatusIndicatorCoordinator;
@@ -755,7 +756,8 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                         () -> assumeNonNull(mLayoutManager).getStripLayoutHelperManager(),
                         mTabObscuringHandlerSupplier.get(),
                         () -> mToolbarManager, // Gets current value of mToolbarManager
-                        urlBarVisibleSupplier);
+                        urlBarVisibleSupplier,
+                        () -> mVerticalTabsSideUiCoordinator);
 
         mInactivityObserver =
                 new InactivityObserver() {
@@ -1621,6 +1623,13 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         } else {
             mToolbarButtonInProductHelpController.showColdStartIph();
             mReadLaterIphController.showColdStartIph();
+            SendTabToSelfCoordinator.maybeShowOmniboxIphOnStartup(
+                    mActivity,
+                    profile,
+                    mActivityTabProvider.get(),
+                    toolbarManager.getLocationBar() == null
+                            ? null
+                            : toolbarManager.getLocationBar().getContainerView());
             String featureName = null;
             int stringId = 0;
             int menuId = 0;
@@ -1936,7 +1945,10 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                         // Disable edge-to-edge on top when the status indicator is visible
                         // to avoid the indicator being obscured by the status bar in e2e
                         // mode.
-                        if (mTopInsetCoordinator != null) {
+                        if (EdgeToEdgeUtils.isEdgelessTopInsetEnabled()
+                                && mEdgeToEdgeController != null) {
+                            mEdgeToEdgeController.setStatusIndicatorVisible(indicatorHeight > 0);
+                        } else if (mTopInsetCoordinator != null) {
                             mTopInsetCoordinator.setStatusIndicatorVisible(indicatorHeight > 0);
                         }
                     }
@@ -2264,14 +2276,9 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         }
 
         if (ChromeFeatureList.sTabSearchForDesktop.isEnabled()) {
-            ViewGroup tabSearchParent =
-                    anchorContainerParent != null
-                            ? anchorContainerParent
-                            : assumeNonNull(mCoordinator);
             mTabSearchOverlayCoordinator =
                     new TabSearchOverlayCoordinator(
                             mActivity,
-                            tabSearchParent,
                             mWindowAndroid,
                             mProfileSupplier,
                             assumeNonNull(mSnackbarManagerSupplier.get()),
@@ -2282,7 +2289,8 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                             mBackPressManager,
                             mCompositorViewHolderSupplier,
                             mTabGroupUiActionHandlerSupplier,
-                            getDesktopWindowStateManager());
+                            getDesktopWindowStateManager(),
+                            mTabObscuringHandlerSupplier.get());
         }
 
         mSideUiCoordinator =
@@ -2304,14 +2312,16 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         }
 
         mSidePanelContainerCoordinator =
-                SidePanelContainerCoordinatorFactory.create(mActivity, mSideUiCoordinator);
+                SidePanelContainerCoordinatorFactory.create(
+                        mWindowAndroid,
+                        mSideUiCoordinator,
+                        mTabModelSelectorSupplier.asNonNull().get());
         if (mSidePanelContainerCoordinator != null) {
+            mSidePanelContainerCoordinator.init();
+
             var chromeAndroidTask = mChromeAndroidTaskSupplier.get();
             assert chromeAndroidTask != null
                     : "ChromeAndroidTask shouldn't be null when side panel is enabled";
-
-            mSidePanelContainerCoordinator.init(
-                    chromeAndroidTask, currentlySelectedProfile, mWindowAndroid);
 
             // TODO(crbug.com/489548570): Remove SidePanelDevFeature when it's not needed.
             mSidePanelDevFeature =
@@ -2378,6 +2388,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
 
     @SuppressWarnings("UseSharedPreferencesManagerFromChromeCheck")
     private void maybeInitializeVerticalTabs(Profile profile) {
+        if (mActivity == null) return;
         if (!VerticalTabUtils.isVerticalTabsEligible(mActivity)) return;
 
         // Restore the user's saved tab layout preference upon browser cold launch.
@@ -2657,6 +2668,8 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         }
 
         if (mEnterpriseSignalsDisclaimerController != null
+                && !CommandLine.getInstance().hasSwitch(ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE)
+                && !CommandLine.getInstance().hasSwitch(ChromeSwitches.DISABLE_STARTUP_PROMOS)
                 && mEnterpriseSignalsDisclaimerController.maybeShow()) {
             return true;
         }
@@ -2964,6 +2977,21 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                         BookmarkBarSettingChangeOrigin.KEYBOARD_SHORTCUT);
                 return true;
             }
+        } else if (id == R.id.bookmark_bar_state_only_ntp_menu_id) {
+            if (!BookmarkBarUtils.isActivityStateBookmarkBarCompatible(mActivity)) {
+                return false;
+            }
+            Profile profile = mProfileSupplier.asNonNull().get();
+            if (BookmarkBarUtils.getBookmarkBarVisibilityState(
+                            mActivity, profile, mXrSpaceModeObservableSupplier.get())
+                    != BookmarkBarVisibilityState.ONLY_SHOW_ON_NTP) {
+                BookmarkBarUtils.setBookmarkBarVisibilityState(
+                        profile,
+                        BookmarkBarVisibilityState.ONLY_SHOW_ON_NTP,
+                        BookmarkBarSettingChangeOrigin.APP_MENU);
+                RecordUserAction.record("MobileMenuBookmarkBarOnlyNtp");
+            }
+            return true;
         } else if (id == R.id.bookmark_bar_state_always_show_menu_id) {
             if (!BookmarkBarUtils.isActivityStateBookmarkBarCompatible(mActivity)) {
                 return false;

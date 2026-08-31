@@ -35,6 +35,7 @@
 #include "chrome/browser/profiles/profile_window.h"
 #include "chrome/browser/profiles/profiles_state.h"
 #include "chrome/browser/signin/account_consistency_mode_manager.h"
+#include "chrome/browser/signin/account_preview_data_service_factory.h"
 #include "chrome/browser/signin/chrome_signin_client_factory.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/signin/signin_hats_util.h"
@@ -55,6 +56,7 @@
 #include "chrome/browser/ui/profiles/profile_colors_util.h"
 #include "chrome/browser/ui/profiles/profile_picker.h"
 #include "chrome/browser/ui/profiles/profile_view_utils.h"
+#include "chrome/browser/ui/signin/account_preview_utils.h"
 #include "chrome/browser/ui/signin/signin_view_controller.h"
 #include "chrome/browser/ui/sync/sync_passphrase_dialog.h"
 #include "chrome/browser/ui/user_education/browser_user_education_interface.h"
@@ -74,6 +76,7 @@
 #include "components/autofill/core/browser/metrics/autofill_settings_metrics.h"
 #include "components/autofill/core/common/autofill_features.h"
 #include "components/feature_engagement/public/feature_constants.h"
+#include "components/signin/core/browser/account_preview_data_service.h"
 #include "components/signin/public/base/consent_level.h"
 #include "components/signin/public/base/signin_metrics.h"
 #include "components/signin/public/base/signin_pref_names.h"
@@ -767,8 +770,11 @@ ProfileMenuView::GetIdentitySectionParams(const ProfileAttributesEntry& entry) {
   switch (signin_util::GetSignedInState(identity_manager)) {
     case signin_util::SignedInState::kSignedOut:
     case signin_util::SignedInState::kWebOnlySignedIn: {
+      signin::AccountPreviewDataService* account_preview_data_service =
+          AccountPreviewDataServiceFactory::GetForProfile(&profile());
       AccountInfo account_info_for_promos =
-          signin_ui_util::GetSingleAccountForPromos(identity_manager);
+          signin_ui_util::GetSingleAccountForPromos(
+              identity_manager, account_preview_data_service);
       if (!CanOfferSignin(&profile(), account_info_for_promos.gaia,
                           account_info_for_promos.email,
                           /*allow_account_from_other_profile=*/true)
@@ -805,11 +811,27 @@ ProfileMenuView::GetIdentitySectionParams(const ProfileAttributesEntry& entry) {
       }
       // "Continue as" signin button.
       account_info_for_signin_action = account_info_for_promos;
-      params.subtitle = l10n_util::GetStringFUTF16(
-          syncer::IsReplaceSyncPromosWithSignInPromosEnabled()
-              ? IDS_SETTINGS_PEOPLE_ACCOUNT_AWARE_SIGNIN_ACCOUNT_ROW_SUBTITLE_WITH_EMAIL_WITH_BOOKMARKS
-              : IDS_SETTINGS_PEOPLE_ACCOUNT_AWARE_SIGNIN_ACCOUNT_ROW_SUBTITLE_WITH_EMAIL,
-          base::UTF8ToUTF16(account_info_for_promos.email));
+      if (account_preview_data_service) {
+        if (std::optional<
+                signin::AccountPreviewDataService::AccountPreviewPreference>
+                preferred_account =
+                    account_preview_data_service->GetPreferredAccountForPromo();
+            preferred_account.has_value() &&
+            preferred_account->gaia_id == account_info_for_promos.gaia) {
+          if (std::optional<std::string> custom_subtitle =
+                  signin::GetAccountPreviewPromoSubtitle(*preferred_account);
+              custom_subtitle.has_value() && !custom_subtitle->empty()) {
+            params.subtitle = base::UTF8ToUTF16(*custom_subtitle);
+          }
+        }
+      }
+      if (params.subtitle.empty()) {
+        params.subtitle = l10n_util::GetStringFUTF16(
+            syncer::IsReplaceSyncPromosWithSignInPromosEnabled()
+                ? IDS_SETTINGS_PEOPLE_ACCOUNT_AWARE_SIGNIN_ACCOUNT_ROW_SUBTITLE_WITH_EMAIL_WITH_BOOKMARKS
+                : IDS_SETTINGS_PEOPLE_ACCOUNT_AWARE_SIGNIN_ACCOUNT_ROW_SUBTITLE_WITH_EMAIL,
+            base::UTF8ToUTF16(account_info_for_promos.email));
+      }
       params.button_text = l10n_util::GetStringFUTF16(
           IDS_PROFILES_DICE_WEB_ONLY_SIGNIN_BUTTON,
           base::UTF8ToUTF16(account_info_for_promos.GetGivenName().value_or(

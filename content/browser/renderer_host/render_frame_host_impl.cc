@@ -539,6 +539,39 @@ RendererEvictionReasonToNotRestoredReason(
   NOTREACHED();
 }
 
+bool CanApplyFrameReplicationUpdate(
+    RenderFrameHostImpl* rfh,
+    BackForwardCacheMetrics::NotRestoredReason eviction_reason) {
+  // These updates apply to the BrowsingContextState that this RenderFrameHost
+  // shares with the FrameTreeNode's current document, so only accept them once
+  // this RenderFrameHost has been (or is about to be) swapped in (kActive,
+  // kPendingCommit, or kPrerendering):
+  // - kPendingCommit: Accepted because the renderer sends updates (e.g. ad
+  //   tagging) while committing the new document and before the browser has
+  //   processed the corresponding DidCommitNavigation message.
+  //   TODO(crbug.com/547754865): Consider sending replication state at
+  //   DidCommitNavigation time so updates during kPendingCommit can be avoided.
+  // - kPrerendering: Accepted because prerendered pages run in a completely
+  //   isolated FrameTree that has never seen any active RenderFrameHost before
+  //   activation. Their updates only mutate their own isolated
+  //   BrowsingContextState, and prerendered pages actively load and can
+  //   legitimately update state (e.g. CSP headers, ad tags).
+  //   TODO(crbug.com/547754865): Investigate if any replication updates in
+  //   prerendering should be deferred until activation.
+  if (rfh->lifecycle_state() ==
+          RenderFrameHostImpl::LifecycleStateImpl::kActive ||
+      rfh->lifecycle_state() ==
+          RenderFrameHostImpl::LifecycleStateImpl::kPendingCommit ||
+      rfh->lifecycle_state() ==
+          RenderFrameHostImpl::LifecycleStateImpl::kPrerendering) {
+    return true;
+  }
+  if (rfh->IsInBackForwardCache()) {
+    rfh->EvictFromBackForwardCacheWithReason(eviction_reason);
+  }
+  return false;
+}
+
 // Ensure that we reset nav_entry_id_ in DidCommitProvisionalLoad if any of
 // the validations fail and lead to an early return.  Call disable() once we
 // know the commit will be successful.  Resetting nav_entry_id_ avoids acting on
@@ -8559,11 +8592,21 @@ void RenderFrameHostImpl::DidChangeName(const std::string& name,
 
 void RenderFrameHostImpl::EnforceInsecureRequestPolicy(
     blink::mojom::InsecureRequestPolicy policy) {
+  if (!CanApplyFrameReplicationUpdate(
+          this, BackForwardCacheMetrics::NotRestoredReason::
+                    kRfhEnforceInsecureRequestPolicy)) {
+    return;
+  }
   browsing_context_state_->SetInsecureRequestPolicy(policy);
 }
 
 void RenderFrameHostImpl::EnforceInsecureNavigationsSet(
     const std::vector<uint32_t>& set) {
+  if (!CanApplyFrameReplicationUpdate(
+          this, BackForwardCacheMetrics::NotRestoredReason::
+                    kRfhEnforceInsecureNavigationsSet)) {
+    return;
+  }
   browsing_context_state_->SetInsecureNavigationsSet(set);
 }
 
@@ -9836,6 +9879,11 @@ void RenderFrameHostImpl::DidConsumeHistoryUserActivation() {
 
 void RenderFrameHostImpl::HadStickyUserActivationBeforeNavigationChanged(
     bool value) {
+  if (!CanApplyFrameReplicationUpdate(
+          this, BackForwardCacheMetrics::NotRestoredReason::
+                    kRfhHadStickyUserActivationBeforeNavigationChanged)) {
+    return;
+  }
   browsing_context_state_->OnSetHadStickyUserActivationBeforeNavigation(value);
 }
 
@@ -12921,8 +12969,7 @@ bool RenderFrameHostImpl::ShouldDispatchPagehideAndVisibilitychangeDuringCommit(
   DCHECK(is_main_frame());
   DCHECK_NE(old_frame_host, this);
   DCHECK_NE(old_frame_host->GetSiteInstance(), GetSiteInstance());
-  return GetContentClient()->browser()->ShouldDispatchPagehideDuringCommit(
-      GetSiteInstance()->GetBrowserContext(), dest_url_info.url);
+  return true;
 }
 
 bool RenderFrameHostImpl::is_initial_empty_document() const {
@@ -15393,6 +15440,21 @@ void RenderFrameHostImpl::BindRestrictedCookieManagerWithOrigin(
   devtools_instrumentation::ApplyNetworkCookieControlsOverrides(
       *this, devtools_cookie_setting_overrides);
 
+  // When the embedder declares an effective top frame for this frame's
+  // subtree, the bound IsolationInfo carries a cookie context the renderer
+  // cannot compute from its frame tree; the RestrictedCookieManager must
+  // prefer the bound context over the renderer-provided values.
+  //
+  // Unlike `ShouldPreferFactorySiteForCookies()`, this predicate must not
+  // require a non-null bound site_for_cookies: a cross-site child of the
+  // effective top frame has a null one, and the bound top_frame_origin is
+  // what matters there. (A URLRequest already takes top_frame_origin from
+  // the factory's IsolationInfo; RestrictedCookieManager takes both values
+  // per call.)
+  const bool prefer_bound_cookie_context =
+      GetContentClient()->browser()->GetEffectiveTopFrameForPartitioning(
+          this) != nullptr;
+
   // CookieSettingOverrides is passesd in instead of calling
   // GetCookieSettingOverrides, because this call can happen before the frame
   // is committed.
@@ -15400,7 +15462,7 @@ void RenderFrameHostImpl::BindRestrictedCookieManagerWithOrigin(
       network::mojom::RestrictedCookieManagerRole::SCRIPT, origin,
       isolation_info,
       /*is_service_worker=*/false, GetProcess()->GetDeprecatedID(),
-      GetRoutingID(), cookie_setting_overrides,
+      GetRoutingID(), prefer_bound_cookie_context, cookie_setting_overrides,
       devtools_cookie_setting_overrides, std::move(receiver),
       CreateCookieAccessObserver(CookieAccessDetails::Source::kNonNavigation));
 }
@@ -16361,10 +16423,25 @@ bool RenderFrameHostImpl::DidCommitNavigationInternal(
       features::IsEnforceSameDocumentOriginInvariantsEnabled()) {
     if (params->insecure_request_policy !=
         frame_tree_node_->current_replication_state().insecure_request_policy) {
-      bad_message::ReceivedBadMessage(
-          GetProcess(),
-          bad_message::RFH_SAME_DOC_INSECURE_REQUEST_POLICY_CHANGE);
-      return false;
+      // Log crash keys to diagnose the mismatch direction.
+      SCOPED_CRASH_KEY_NUMBER(
+          "SameDocIRP", "renderer_policy",
+          static_cast<int>(params->insecure_request_policy));
+      SCOPED_CRASH_KEY_NUMBER(
+          "SameDocIRP", "browser_policy",
+          static_cast<int>(frame_tree_node_->current_replication_state()
+                               .insecure_request_policy));
+      SCOPED_CRASH_KEY_BOOL("SameDocIRP", "is_main_frame", !GetParent());
+      SCOPED_CRASH_KEY_NUMBER("SameDocIRP", "lifecycle",
+                              static_cast<int>(lifecycle_state()));
+      SCOPED_CRASH_KEY_STRING256("SameDocIRP", "url", params->url.spec());
+      SCOPED_CRASH_KEY_STRING256("SameDocIRP", "origin",
+                                 GetLastCommittedOrigin().GetDebugString());
+      // TODO(crbug.com/549229687): Collect data on the mismatch before
+      // enforcing. The root cause is not yet identified — keeping as
+      // DumpWithoutCrashing to gather crash reports without killing the
+      // renderer.
+      base::debug::DumpWithoutCrashing();
     }
 
     if (params->insecure_navigations_set !=
@@ -19135,6 +19212,11 @@ bool RenderFrameHostImpl::IsDOMContentLoaded() {
 }
 
 void RenderFrameHostImpl::UpdateIsAdFrame(bool is_ad_frame) {
+  if (!CanApplyFrameReplicationUpdate(
+          this,
+          BackForwardCacheMetrics::NotRestoredReason::kRfhUpdateIsAdFrame)) {
+    return;
+  }
   browsing_context_state_->SetIsAdFrame(is_ad_frame);
 }
 

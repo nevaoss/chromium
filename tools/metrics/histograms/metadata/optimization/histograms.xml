@@ -1090,7 +1090,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="OptimizationGuide.HintsFetcher.GetHintsRequest.RequestStatus.{RequestContext}"
-    enum="OptimizationGuideFetcherRequestStatus" expires_after="2026-12-14">
+    enum="OptimizationGuideFetcherRequestStatus" expires_after="2027-02-14">
   <owner>holte@chromium.org</owner>
   <owner>wittman@chromium.org</owner>
   <owner>catliu@chromium.org</owner>
@@ -1543,7 +1543,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="OptimizationGuide.ModelExecution.OnDeviceModelUninstallReason.{BaseModel}"
-    enum="OnDeviceModelUninstallReason" expires_after="2026-12-16">
+    enum="OnDeviceModelUninstallReason" expires_after="2027-02-14">
   <owner>zekunjiang@google.com</owner>
   <owner>wittman@chromium.org</owner>
   <summary>
@@ -1933,16 +1933,6 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="OptimizationGuide.ModelQualityLogsUploaderService.Status"
-    enum="HttpResponseCode" expires_after="2025-08-10">
-  <owner>sreejakshetty@chromium.org</owner>
-  <owner>rajendrant@chromium.org</owner>
-  <summary>
-    The HTTP response code for each model quality logs upload, recorded on
-    success and failure.
-  </summary>
-</histogram>
-
 <histogram
     name="OptimizationGuide.ModelQualityLogsUploaderService.UploadStatus.{LogAiDataRequestFeature}"
     enum="OptimizationGuideModelQualityLogsUploadStatus"
@@ -2005,7 +1995,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="OptimizationGuide.OnDeviceModel.NewModelInstalled"
-    enum="InstalledModel" expires_after="2026-12-16">
+    enum="InstalledModel" expires_after="2027-02-14">
   <owner>zekunjiang@google.com</owner>
   <owner>wittman@chromium.org</owner>
   <summary>

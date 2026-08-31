@@ -156,6 +156,7 @@ import org.chromium.chrome.browser.tab_bottom_sheet.TabBottomSheetManager;
 import org.chromium.chrome.browser.tab_bottom_sheet.TabBottomSheetUtils;
 import org.chromium.chrome.browser.tab_ui.TabContentManager;
 import org.chromium.chrome.browser.tab_ui.TabModelDotInfo;
+import org.chromium.chrome.browser.tab_ui.TabSwitcherUtils;
 import org.chromium.chrome.browser.tabmodel.IncognitoStateProvider;
 import org.chromium.chrome.browser.tabmodel.OverridableTabCount;
 import org.chromium.chrome.browser.tabmodel.TabCreatorManager;
@@ -221,6 +222,8 @@ import org.chromium.chrome.browser.ui.edge_to_edge.EdgeToEdgeController;
 import org.chromium.chrome.browser.ui.edge_to_edge.TopInsetProvider;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.chrome.browser.ui.native_page.NativePage;
+import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.AnchorSide;
+import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.HeightType;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.SideUiSpecs;
 import org.chromium.chrome.browser.ui.side_ui.SideUiObserver;
 import org.chromium.chrome.browser.ui.side_ui.SideUiStateProvider;
@@ -1903,7 +1906,8 @@ public class ToolbarManager
         // after fixing the initialization order.
         var currentSideUiSpecs = sideUiStateProvider.getCurrentSideUiSpecs();
 
-        mControlContainerSideUiObserver = new ToolbarMarginAdjusterForSideUi(mControlContainer);
+        mControlContainerSideUiObserver =
+                new ToolbarMarginAdjusterForSideUi(mControlContainer, mToolbar);
         mControlContainerSideUiObserver.onSideUiSpecsChanged(currentSideUiSpecs);
         mSideUiStateProvider.addObserver(mControlContainerSideUiObserver);
 
@@ -1915,8 +1919,11 @@ public class ToolbarManager
     }
 
     private static class ToolbarMarginAdjusterForSideUi extends ViewMarginAdjusterForSideUi {
-        ToolbarMarginAdjusterForSideUi(View view) {
+        private final TopToolbarCoordinator mToolbar;
+
+        ToolbarMarginAdjusterForSideUi(View view, TopToolbarCoordinator toolbar) {
             super(view, /* forToolbarElement= */ true);
+            mToolbar = toolbar;
         }
 
         @Override
@@ -1933,6 +1940,16 @@ public class ToolbarManager
             Transition transition = super.onPreSideUiSpecsChange(sideUiSpecs);
             super.triggerSynchronousMeasureAndLayout();
             return transition;
+        }
+
+        @Override
+        public void onSideUiSpecsChanged(SideUiSpecs sideUiSpecs) {
+            super.onSideUiSpecsChanged(sideUiSpecs);
+            int xOffset = 0;
+            if (sideUiSpecs.getHeightType(AnchorSide.LEFT) == HeightType.TOOLBAR) {
+                xOffset = sideUiSpecs.getWidth(AnchorSide.LEFT);
+            }
+            mToolbar.setXOffset(xOffset);
         }
     }
 
@@ -2714,7 +2731,11 @@ public class ToolbarManager
                             archivedTabCountSupplier,
                             mLayoutStateProviderSupplier,
                             () -> openGridTabSwitcherHandler.run(),
-                            v -> tabSwitcherLongClickListener.onLongClick(v),
+                            v -> {
+                                if (tabSwitcherLongClickListener != null) {
+                                    tabSwitcherLongClickListener.onLongClick(v);
+                                }
+                            },
                             () -> TabArchiveSettings.setIphShownThisSession(true),
                             () -> TabArchiveSettings.setIphShownThisSession(false));
         }
@@ -3700,7 +3721,8 @@ public class ToolbarManager
         mControlContainer.setLayoutParams(layoutParams);
     }
 
-    private boolean isSendTabToSelfAvailable(GURL url) {
+    @VisibleForTesting
+    boolean isSendTabToSelfAvailable(GURL url) {
         Profile profile = mProfileSupplier.get();
         if (profile == null) {
             return false;
@@ -3709,9 +3731,17 @@ public class ToolbarManager
                 != null;
     }
 
-    private void onSendTabToSelfClicked() {
+    @VisibleForTesting
+    void onSendTabToSelfClicked() {
         GURL url = mLocationBarModel.getUrlBarData().url;
         if (url == null || url.isEmpty()) return;
+        Profile profile = mProfileSupplier.get();
+        assert profile != null;
+
+        // Mark the STTS entrypoint as known to the user to avoid showing an IPH.
+        TrackerFactory.getTrackerForProfile(profile)
+                .notifyEvent(EventConstants.SEND_TAB_TO_SELF_OMNIBOX_USED);
+
         Tab tab = mActivityTabProvider.get();
         String title = tab != null ? tab.getTitle() : "";
         SendTabToSelfCoordinator sttsCoordinator =
@@ -3721,7 +3751,7 @@ public class ToolbarManager
                         url.getSpec(),
                         title,
                         BottomSheetControllerProvider.from(mWindowAndroid),
-                        mProfileSupplier.get(),
+                        profile,
                         DeviceLockActivityLauncherSupplier.get(mWindowAndroid),
                         mActivityTabProvider,
                         mActivity,
@@ -3984,8 +4014,11 @@ public class ToolbarManager
         return mIsTablet ? mAppThemeColorProvider : getAdjustedToolbarThemeColorProvider();
     }
 
-    private OnLongClickListener createTabSwitcherLongClickListener(
+    private @Nullable OnLongClickListener createTabSwitcherLongClickListener(
             Profile profile, Runnable openGridTabSwitcherHandler) {
+        if (TabSwitcherUtils.isGridTabSwitcherDisabled()) {
+            return null;
+        }
         assert openGridTabSwitcherHandler != null;
         return TabSwitcherActionMenuCoordinator.createOnLongClickListener(
                 menuItemId -> mAppMenuDelegate.onOptionsItemSelected(menuItemId, null),

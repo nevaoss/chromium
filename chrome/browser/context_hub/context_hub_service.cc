@@ -145,6 +145,39 @@ ThirdPartyData::GroupType ToThirdPartyGroupType(
   }
 }
 
+personal_context::proto::AutoTodoItem ToAutoTodoItemProto(
+    const AutoTodoEntry& entry) {
+  personal_context::proto::AutoTodoItem proto;
+  proto.set_id(entry.id);
+  proto.set_title(entry.title);
+  proto.set_description(entry.description);
+  proto.set_importance_score(entry.importance_score);
+  switch (entry.status) {
+    case AutoTodoEntry::Status::kActive:
+      proto.set_status(personal_context::proto::AutoTodoItem::STATUS_ACTIVE);
+      break;
+    case AutoTodoEntry::Status::kCompleted:
+      proto.set_status(personal_context::proto::AutoTodoItem::STATUS_COMPLETED);
+      break;
+    case AutoTodoEntry::Status::kDismissed:
+      proto.set_status(personal_context::proto::AutoTodoItem::STATUS_DISMISSED);
+      break;
+  }
+  if (const FirstPartyData* first_party =
+          std::get_if<FirstPartyData>(&entry.data)) {
+    proto.set_actionable_url(first_party->actionable_url.spec());
+    for (const SourceReference& ref : first_party->source_references) {
+      personal_context::proto::SourceReference* source_ref =
+          proto.add_source_references();
+      personal_context::proto::GmailReference* gmail_ref =
+          source_ref->mutable_gmail();
+      gmail_ref->set_message_url(ref.url.spec());
+      gmail_ref->set_subject(ref.subject);
+    }
+  }
+  return proto;
+}
+
 }  // namespace
 
 ContextHubService::ContextHubService(
@@ -267,7 +300,28 @@ void ContextHubService::GenerateFirstPartyAutoTodos(
   observers_.Notify(&Observer::OnFirstPartyAutoTodosGenerationStateChanged,
                     true);
 
+  // Fetch all existing items from the store to use as deduplication input to
+  // the server.
+  auto_todos_store_->GetAllItems(
+      base::BindOnce(&ContextHubService::OnCachedFirstPartyAutoTodosFetched,
+                     weak_factory_.GetWeakPtr(), std::move(callback)));
+}
+
+void ContextHubService::OnCachedFirstPartyAutoTodosFetched(
+    AutoTodosStore::OperationCallback callback,
+    std::vector<AutoTodoEntry> stored_todos) {
+  if (!auto_todos_store_ || !is_generating_first_party_auto_todos_) {
+    FinishFirstPartyAutoTodosGeneration(std::move(callback), /*success=*/false);
+    return;
+  }
+
   personal_context::proto::AutoTodosRequest request_metadata;
+  for (const AutoTodoEntry& entry : stored_todos) {
+    if (entry.is_first_party()) {
+      *request_metadata.add_existing_todos() = ToAutoTodoItemProto(entry);
+    }
+  }
+
   personal_context::ContextMemoryRequestOptions options;
   options.request_timeout = features::kAutoTodosTimeoutSeconds.Get();
 
@@ -521,13 +575,13 @@ void ContextHubService::OnFirstPartyAutoTodosFetched(
     return;
   }
 
-  // TODO(crbug.com/540562062): Remove this once state management is handled.
-  auto_todos_store_->Clear(base::DoNothing());
-
   std::vector<AutoTodoEntry> entries;
   entries.reserve(response.todos_size());
   for (const personal_context::proto::AutoTodoItem& todo : response.todos()) {
     AutoTodoEntry entry;
+    if (!todo.id().empty()) {
+      entry.id = todo.id();
+    }
     entry.title = todo.title();
     entry.description = todo.description();
     entry.importance_score = todo.importance_score();
@@ -647,6 +701,29 @@ ContextHubService::GetTabGroupChatHistory() const {
 
 void ContextHubService::ClearTabGroupChatHistory() {
   tab_group_chat_history_cache_.Clear();
+}
+
+void ContextHubService::SetPendingMemoryBankEntry(MemoryBankEntry entry) {
+  pending_memory_bank_entry_ = std::move(entry);
+}
+
+std::optional<MemoryBankEntry> ContextHubService::GetPendingMemoryBankEntry()
+    const {
+  return pending_memory_bank_entry_;
+}
+
+bool ContextHubService::SavePendingMemoryBankEntry(
+    const std::vector<std::string>& tags) {
+  if (!pending_memory_bank_entry_.has_value()) {
+    return false;
+  }
+  MemoryBankEntry entry = std::move(*pending_memory_bank_entry_);
+  pending_memory_bank_entry_.reset();
+
+  entry.tags = tags;
+  // TODO(crbug.com/523377643): Add support for notes and collections.
+  SaveMemoryBankEntry(std::move(entry), base::DoNothing());
+  return true;
 }
 
 void ContextHubService::SaveMemoryBankEntry(

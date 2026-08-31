@@ -55,6 +55,7 @@ class NativePlayback implements Playback {
         mNativeBridge = nativeBridge;
         mWebContents = webContents;
         mMetadata = new NativeMetadata(languageCode, canonicalUrl, playbackMode);
+        mNativeBridge.setPlaybackMode(mMetadata.playbackMode().getValue());
         // Reused across progress updates to prevent heap allocations and GC pauses.
         mPlaybackData =
                 new PlaybackListener.PlaybackData() {
@@ -106,6 +107,7 @@ class NativePlayback implements Playback {
         ThreadUtils.assertOnUiThread();
         mMetadata.setTitle(title);
         mMetadata.setPublisher(publisher);
+        notifyMetadataChanged();
     }
 
     @PlaybackListener.State
@@ -138,6 +140,12 @@ class NativePlayback implements Playback {
     private void notifyPlaybackDataChanged() {
         for (PlaybackListener listener : mListeners) {
             listener.onPlaybackDataChanged(mPlaybackData);
+        }
+    }
+
+    private void notifyMetadataChanged() {
+        for (PlaybackListener listener : mListeners) {
+            listener.onMetadataChanged(mMetadata);
         }
     }
 

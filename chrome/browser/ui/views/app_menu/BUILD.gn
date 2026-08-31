@@ -9,7 +9,7 @@ import("//build/config/ui.gni")
 source_set("app_menu") {
   public = [
     "action_app_menu.h",
-    "app_menu_action_helper.h",
+    "action_app_menu_manager.h",
     "app_menu_section_action_item.h",
   ]
 
@@ -22,6 +22,7 @@ source_set("app_menu") {
     "//skia",
     "//ui/actions:actions_headers",
     "//ui/base",
+    "//ui/base:constants",
     "//ui/views",
   ]
 }
@@ -29,7 +30,7 @@ source_set("app_menu") {
 source_set("impl") {
   sources = [
     "action_app_menu.cc",
-    "app_menu_action_helper.cc",
+    "action_app_menu_manager.cc",
     "app_menu_section_action_item.cc",
   ]
 
@@ -39,6 +40,7 @@ source_set("impl") {
     "//chrome/app:command_ids",
     "//chrome/app:generated_resources",
     "//chrome/browser:command_updater_impl",
+    "//chrome/browser:global_features",
     "//chrome/browser/profiles:profile",
     "//chrome/browser/search",
     "//chrome/browser/search_engines",
@@ -49,6 +51,7 @@ source_set("impl") {
     "//chrome/browser/ui/color:color_headers",
     "//chrome/browser/ui/views",
     "//chrome/browser/ui/views/controls",
+    "//chrome/browser/ui/views/toolbar",
     "//components/bookmarks/browser",
     "//components/feature_engagement/public",
     "//components/omnibox/browser",
@@ -71,7 +74,12 @@ if (toolkit_views) {
   source_set("unit_tests") {
     testonly = true
 
-    sources = [ "action_app_menu_unittest.cc" ]
+    sources = [
+      "action_app_menu_manager_unittest.cc",
+      "action_app_menu_test_base.cc",
+      "action_app_menu_test_base.h",
+      "action_app_menu_unittest.cc",
+    ]
 
     deps = [
       ":app_menu",

@@ -48,6 +48,10 @@ void ReadAloudService::Play(content::WebContents* new_web_contents) {
   CHECK(active_session_);
   active_session_->NotifyPlaybackStarted();
 
+  if (utility_player_.is_bound()) {
+    utility_player_->Play();
+  }
+
   // Notify the UI/client delegate if the playback state transitioned.
   PlaybackState current_state = GetCurrentPlaybackState();
   if (current_state != previous_state && delegate_) {
@@ -59,6 +63,10 @@ void ReadAloudService::Pause() {
   PlaybackState previous_state = GetCurrentPlaybackState();
   if (active_session_) {
     active_session_->NotifyPlaybackPaused();
+  }
+
+  if (utility_player_.is_bound()) {
+    utility_player_->Pause();
   }
 
   // Notify the UI/client delegate if the playback state transitioned.
@@ -95,7 +103,11 @@ void ReadAloudService::Stop() {
 void ReadAloudService::SeekToWordIndex(int word_index) {}
 void ReadAloudService::Seek(base::TimeDelta absolute_time) {}
 void ReadAloudService::SeekRelative(base::TimeDelta offset) {}
-void ReadAloudService::SetPlaybackRate(float rate) {}
+void ReadAloudService::SetPlaybackRate(float rate) {
+  if (utility_player_.is_bound()) {
+    utility_player_->SetPlaybackRate(rate);
+  }
+}
 void ReadAloudService::SetVoice(std::string_view voice_id) {
   if (speech_synthesis_broker_) {
     speech_synthesis_broker_->SetVoice(voice_id);
@@ -132,7 +144,9 @@ void ReadAloudService::StopVoicePreview() {
                                                   PlaybackState::kStopped);
   }
 }
-void ReadAloudService::SetPlaybackMode(PlaybackMode mode) {}
+void ReadAloudService::SetPlaybackMode(PlaybackMode mode) {
+  playback_mode_ = mode;
+}
 void ReadAloudService::SetHighlightingEnabled(bool enabled) {}
 void ReadAloudService::SendFeedback(FeedbackType feedback_type) {}
 void ReadAloudService::CheckReadability(const GURL& url) {}
@@ -226,6 +240,11 @@ void ReadAloudService::OnArticleReady(
 
   if (!utility_player_.is_bound()) {
     return;
+  }
+
+  if (playback_mode_ == PlaybackMode::kOverview) {
+    // TODO(b/548552257): Connect to the Page Summary API to summarize the
+    // distilled article before sending to utility_player_.
   }
 
   // Rule of Two Enforcement: Distilled webpage text originates from untrusted

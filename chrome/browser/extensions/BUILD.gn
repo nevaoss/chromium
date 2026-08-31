@@ -708,6 +708,7 @@ source_set("extensions") {
     ]
     deps += [
       "//chrome/browser/indigo",
+      "//chrome/browser/ui:browser_init_state",
       "//chrome/browser/ui/interaction",
       "//chrome/browser/ui/user_education",
       "//chrome/browser/ui/web_applications:launch_utils",
@@ -1492,6 +1493,10 @@ source_set("extensions") {
       ]
     }
 
+    if (is_android) {
+      deps += [ "//chrome/browser/extensions/api/messaging/android:java" ]
+    }
+
     if (enable_plugins) {
       sources += [
         "plugin_manager.cc",
@@ -1704,6 +1709,7 @@ static_library("test_support") {
     sources += [ "extension_browsertest_platform_delegate_non_android.cc" ]
     deps += [
       "//chrome/browser/apps/app_service",
+      "//chrome/browser/ui:browser_init_state",
       "//chrome/test:test_support_ui",
     ]
   }
@@ -2070,6 +2076,7 @@ source_set("unit_tests") {
     "//chrome/browser/supervised_user:test_support",
     "//chrome/browser/sync",
     "//chrome/browser/ui/extensions",
+    "//chrome/browser/ui/supervised_user",
     "//chrome/browser/update_client",
     "//chrome/test:test_support",
     "//components/bookmarks/managed",
@@ -2687,7 +2694,6 @@ source_set("browser_tests") {
   if (enable_extensions) {
     sources += [
       # TODO(crbug.com/469417243): Move to BUILD.gn files closer to sources.
-      "//chrome/browser/chrome_service_worker_browsertest.cc",
       "//chrome/browser/controlled_frame/controlled_frame_apitest.cc",
       "//chrome/browser/controlled_frame/controlled_frame_contextmenus_browsertest.cc",
       "//chrome/browser/controlled_frame/controlled_frame_dialog_browsertest.cc",
@@ -3081,6 +3087,7 @@ source_set("browser_tests") {
       "//chrome/browser/password_manager:test_support",
       "//chrome/browser/pdf:pdf_extension_test_utils",
       "//chrome/browser/prefetch",
+      "//chrome/browser/service_worker:browser_tests",
       "//chrome/browser/sync_file_system",
       "//chrome/browser/tab_list",
       "//chrome/browser/ui/global_error:test_support",

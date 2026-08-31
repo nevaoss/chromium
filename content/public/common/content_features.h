@@ -141,6 +141,7 @@ CONTENT_EXPORT BASE_DECLARE_FEATURE(kDrawCutoutEdgeToEdge);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kEnableCanvas2DLayers);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kEnsureExistingRendererAlive);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kFedCm);
+CONTENT_EXPORT BASE_DECLARE_FEATURE(kFedCmActiveModeMultipleIdentityProviders);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kEmailVerificationProtocol);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kEnforceDedicatedWorkerSameOriginCheck);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kEnforceSharedWorkerSameOriginCheck);
@@ -281,10 +282,6 @@ CONTENT_EXPORT BASE_DECLARE_FEATURE(kSpareRendererProcessPriority);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kSkipIPCChannelPausingForNonGuests);
 CONTENT_EXPORT extern const base::FeatureParam<bool>
     kSkipIPCChannelPausingForNonGuestsInternalWebUiOnly;
-CONTENT_EXPORT BASE_DECLARE_FEATURE(kSkipPagehideInCommitForDSENavigation);
-CONTENT_EXPORT BASE_DECLARE_FEATURE_PARAM(
-    base::TimeDelta,
-    kSkipPagehideInCommitForDSENavigationDelay);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kProcessPerSiteUpToMainFrameThreshold);
 CONTENT_EXPORT extern const base::FeatureParam<int>
     kProcessPerSiteMainFrameThreshold;
@@ -379,6 +376,7 @@ CONTENT_EXPORT extern const base::FeatureParam<bool>
     kAccessibilityDeprecateJavaNodeCacheDisableCache;
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kAccessibilityDeprecateTypeAnnounce);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kAccessibilityExtendedSelection);
+CONTENT_EXPORT BASE_DECLARE_FEATURE(kAccessibilitySyncFocusOnViewFocusGain);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kAccessibilityImeGetFormattedText);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kAccessibilityImproveLiveRegionAnnounce);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kAccessibilityRequestLayoutBasedActions);

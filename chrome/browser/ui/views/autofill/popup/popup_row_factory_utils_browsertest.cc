@@ -163,7 +163,12 @@ const Suggestion kExpandableSuggestions[] = {
     CreateSuggestionWithChildren(
         u"Fill_autofill_ai",
         SuggestionType::kFillAutofillAi,
-        {Suggestion(u"Remove_this_info", SuggestionType::kRemoveAutofillAi)})};
+        {Suggestion(u"Source_attribution",
+                    SuggestionType::kAutofillAiSourceAttribution),
+         Suggestion(SuggestionType::kSeparator),
+         Suggestion(u"Remove_this_info", SuggestionType::kRemoveAutofillAi),
+         Suggestion(u"Manage_enhanced_autofill",
+                    SuggestionType::kManageEnhancedAutofill)})};
 
 const Suggestion kBnplSuggestions[] = {
     CreateBnplSuggestion(u"Bnpl_linked",
@@ -397,6 +402,15 @@ INSTANTIATE_TEST_SUITE_P(
 IN_PROC_BROWSER_TEST_F(CreatePopupRowViewTest, FreeformFooter) {
   CreateRowView(CreateFreeformFooter(),
                 /*selected_cell=*/std::nullopt,
+                /*filter_match=*/std::nullopt);
+  ShowAndVerifyUi();
+}
+
+IN_PROC_BROWSER_TEST_F(CreatePopupRowViewTest, AutofillAiSourceAttribution) {
+  Suggestion suggestion(u"From Photos · LR1234567 · Sweden",
+                        SuggestionType::kAutofillAiSourceAttribution);
+  suggestion.trailing_icon = Suggestion::Icon::kOpenInNew;
+  CreateRowView(std::move(suggestion), /*selected_cell=*/std::nullopt,
                 /*filter_match=*/std::nullopt);
   ShowAndVerifyUi();
 }

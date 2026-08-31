@@ -10,9 +10,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -67,6 +65,7 @@ import org.robolectric.shadows.ShadowDialog;
 import org.robolectric.shadows.ShadowLooper;
 import org.robolectric.shadows.ShadowView;
 
+import org.chromium.base.TriState;
 import org.chromium.base.task.PostTask;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.Features.DisableFeatures;
@@ -169,14 +168,26 @@ public class PdfCoordinatorUnitTest {
 
     @Test
     @EnableFeatures(ChromeFeatureList.INLINE_PDF_V2)
-    public void testOnLinkClicked_RegularProfile() {
-        runOnLinkClickedTest(false);
-    }
-
-    @Test
-    @EnableFeatures(ChromeFeatureList.INLINE_PDF_V2)
-    public void testOnLinkClicked_Incognito() {
-        runOnLinkClickedTest(true);
+    public void testOnLinkClicked() {
+        createPdfCoordinator();
+        Uri linkUri = Uri.parse(LINK_URL);
+        HistogramWatcher histogramExpectation =
+                HistogramWatcher.newSingleRecordWatcher(
+                        "Android.Pdf.Hyperlink.ClickResult",
+                        PdfHyperlinkClickResult.SUCCESS_LOAD_INITIATED);
+        boolean result = mPdfCoordinator.onLinkClicked(linkUri);
+        assertTrue("name should verify true", result);
+        histogramExpectation.assertExpected();
+        ArgumentCaptor<LoadUrlParams> captor = ArgumentCaptor.forClass(LoadUrlParams.class);
+        verify(mNativePageHost).openNewTab(captor.capture());
+        LoadUrlParams params = captor.getValue();
+        assertEquals("URL should match.", LINK_URL, params.getUrl());
+        assertEquals(
+                "Transition type should be LINK.", PageTransition.LINK, params.getTransitionType());
+        assertTrue("isRendererInitiated should be true.", params.getIsRendererInitiated());
+        assertEquals(
+                Origin.create(new GURL(PDF_URL)).toString(),
+                params.getInitiatorOrigin().toString());
     }
 
     @Test
@@ -252,6 +263,34 @@ public class PdfCoordinatorUnitTest {
 
     @Test
     @EnableFeatures(ChromeFeatureList.INLINE_PDF_V2)
+    @Config(shadows = {ShadowPdfView.class})
+    public void testResetZoomLevel() {
+        createPdfCoordinator();
+        ShadowPdfView shadowPdfView = Shadow.extract(mPdfView);
+
+        // Set default zoom level.
+        mPdfCoordinator.getToolbarCoordinatorForTesting().setDefaultZoomLevel(1.5f);
+
+        // Zoom into some other level.
+        mPdfCoordinator.changeZoomLevel(2.0f);
+        assertEquals(2.0f, shadowPdfView.mZoom, 0.001f);
+
+        // Reset zoom level.
+        assertTrue(mPdfCoordinator.resetZoomLevel());
+        assertEquals(1.5f, shadowPdfView.mZoom, 0.001f);
+    }
+
+    @Test
+    @DisableFeatures(ChromeFeatureList.INLINE_PDF_V2)
+    @Config(shadows = {ShadowPdfView.class})
+    public void testResetZoomLevel_ToolbarNull() {
+        createPdfCoordinator();
+        assertNull(mPdfCoordinator.getToolbarCoordinatorForTesting());
+        assertFalse(mPdfCoordinator.resetZoomLevel());
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.INLINE_PDF_V2)
     public void testOnLinkClicked_RejectsDangerousSchemes() {
         when(mProfile.isOffTheRecord()).thenReturn(false);
         createPdfCoordinator();
@@ -279,7 +318,7 @@ public class PdfCoordinatorUnitTest {
                     mPdfCoordinator.onLinkClicked(Uri.parse(raw)));
             histogramExpectation.assertExpected();
         }
-        verify(mNativePageHost, never()).loadUrl(any(LoadUrlParams.class), anyBoolean());
+        verify(mNativePageHost, never()).openNewTab(any(LoadUrlParams.class));
     }
 
     @Test
@@ -296,7 +335,7 @@ public class PdfCoordinatorUnitTest {
                 "onLinkClicked should reject schemeless URI.",
                 mPdfCoordinator.onLinkClicked(Uri.parse("//www.example.com/foo")));
         histogramExpectation.assertExpected();
-        verify(mNativePageHost, never()).loadUrl(any(LoadUrlParams.class), anyBoolean());
+        verify(mNativePageHost, never()).openNewTab(any(LoadUrlParams.class));
     }
 
     @Test
@@ -313,7 +352,7 @@ public class PdfCoordinatorUnitTest {
                 "onLinkClicked should return false when inline PDF V2 is disabled.",
                 mPdfCoordinator.onLinkClicked(Uri.parse("https://www.example.com/")));
         histogramExpectation.assertExpected();
-        verify(mNativePageHost, never()).loadUrl(any(LoadUrlParams.class), anyBoolean());
+        verify(mNativePageHost, never()).openNewTab(any(LoadUrlParams.class));
     }
 
     @Test
@@ -341,31 +380,7 @@ public class PdfCoordinatorUnitTest {
                     mPdfCoordinator.onLinkClicked(Uri.parse(raw)));
             histogramExpectation.assertExpected();
         }
-        verify(mNativePageHost, times(allowedUris.length))
-                .loadUrl(any(LoadUrlParams.class), eq(false));
-    }
-
-    private void runOnLinkClickedTest(boolean isIncognito) {
-        when(mProfile.isOffTheRecord()).thenReturn(isIncognito);
-        createPdfCoordinator();
-        Uri linkUri = Uri.parse(LINK_URL);
-        HistogramWatcher histogramExpectation =
-                HistogramWatcher.newSingleRecordWatcher(
-                        "Android.Pdf.Hyperlink.ClickResult",
-                        PdfHyperlinkClickResult.SUCCESS_LOAD_INITIATED);
-        boolean result = mPdfCoordinator.onLinkClicked(linkUri);
-        assertTrue("name should verify true", result);
-        histogramExpectation.assertExpected();
-        ArgumentCaptor<LoadUrlParams> captor = ArgumentCaptor.forClass(LoadUrlParams.class);
-        verify(mNativePageHost).loadUrl(captor.capture(), eq(isIncognito));
-        LoadUrlParams params = captor.getValue();
-        assertEquals("URL should match.", LINK_URL, params.getUrl());
-        assertEquals(
-                "Transition type should be LINK.", PageTransition.LINK, params.getTransitionType());
-        assertTrue("isRendererInitiated should be true.", params.getIsRendererInitiated());
-        assertEquals(
-                Origin.create(new GURL(PDF_URL)).toString(),
-                params.getInitiatorOrigin().toString());
+        verify(mNativePageHost, times(allowedUris.length)).openNewTab(any(LoadUrlParams.class));
     }
 
     @Test
@@ -450,6 +465,32 @@ public class PdfCoordinatorUnitTest {
 
     @Test
     @EnableFeatures(ChromeFeatureList.INLINE_PDF_V2)
+    public void testCalculateFitToPageZoom_TwoPagesPerRow() {
+        createPdfCoordinator();
+        mPdfCoordinator.mChromePdfViewerFragment.setPagesPerRow(true);
+
+        // mPdfView width = 500, height = 1000
+        // Tall page: content width = 200, height = 800
+        // Two pages per row -> total width = 200 * 2 = 400
+        androidx.pdf.PdfDocument.PageInfo tallPageInfo =
+                new androidx.pdf.PdfDocument.PageInfo(
+                        0, 800, 200, java.util.Collections.emptyList());
+
+        // 1. Fit to width: total content width = 400 -> zoom = 500 / 400 = 1.25f
+        float zoomWidth =
+                mPdfCoordinator.mChromePdfViewerFragment.calculateFitToPageZoom(
+                        tallPageInfo, /* fitToPage= */ false, mPdfView, /* zoomRatio= */ 1.0f);
+        assertEquals(1.25f, zoomWidth, 0.001f);
+
+        // 2. Fit to page: zoomWidth = 500 / 400 = 1.25f, zoomHeight = 1000 / 800 = 1.25f => min = 1.25f
+        float zoomPage =
+                mPdfCoordinator.mChromePdfViewerFragment.calculateFitToPageZoom(
+                        tallPageInfo, /* fitToPage= */ true, mPdfView, /* zoomRatio= */ 1.0f);
+        assertEquals(1.25f, zoomPage, 0.001f);
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.INLINE_PDF_V2)
     public void testToggleFitToPage_PdfViewNull() {
         createPdfCoordinator();
         mPdfCoordinator.mChromePdfViewerFragment.setPdfViewForTesting(null);
@@ -487,8 +528,34 @@ public class PdfCoordinatorUnitTest {
     @Test
     @EnableFeatures(ChromeFeatureList.INLINE_PDF_V2)
     @Config(shadows = {ShadowPdfView.class})
+    @SuppressWarnings("unchecked")
+    public void testToggleTwoPagesPerRow_FitActive() {
+        createPdfCoordinator();
+        ShadowPdfView shadowPdfView = Shadow.extract(mPdfView);
+        setupMockPdfDocumentForPageInfo(shadowPdfView, 400, 200);
+        mPdfCoordinator.mIsInitialZoomPass = false;
+
+        // First, toggle Fit to Width (fitToPage = false) in single page mode:
+        // viewportWidth = 500, contentWidth = 200 => zoom = 500 / 200 = 2.5f
+        mPdfCoordinator.toggleFitToPage(/* fitToPage= */ false, 0);
+        ShadowLooper.idleMainLooper();
+        assertEquals(2.5f, shadowPdfView.mZoom, 0.001f);
+
+        // When toggling to two pages per row with fit active, it should re-fit for two pages:
+        // total content width = 200 * 2 = 400 => zoom = 500 / 400 = 1.25f (not 2.5f)
+        mPdfCoordinator.toggleTwoPagesPerRow(true, 2.5f, 0);
+        ShadowLooper.idleMainLooper();
+
+        assertEquals(2, shadowPdfView.mPagesPerRow);
+        assertEquals(1.25f, shadowPdfView.mZoom, 0.001f);
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.INLINE_PDF_V2)
+    @Config(shadows = {ShadowPdfView.class})
     public void testResetLoadState_ResetsTwoPagesPerRow() {
         createPdfCoordinator();
+        mPdfCoordinator.setIsFitToPageActiveForTesting(TriState.TRUE);
         mPdfCoordinator.toggleTwoPagesPerRow(true, 1.5f, 2);
         ShadowPdfView shadowPdfView = Shadow.extract(mPdfView);
         assertEquals(2, shadowPdfView.mPagesPerRow);
@@ -496,6 +563,7 @@ public class PdfCoordinatorUnitTest {
         mPdfCoordinator.resetLoadState();
 
         assertEquals(1, shadowPdfView.mPagesPerRow);
+        assertEquals(TriState.NOT_SET, mPdfCoordinator.getIsFitToPageActiveForTesting());
     }
 
     @Test
@@ -569,10 +637,9 @@ public class PdfCoordinatorUnitTest {
     @SuppressWarnings("unchecked")
     public void testToggleFitToPage() {
         createPdfCoordinator();
-        ViewGroup contentView = mActivity.findViewById(android.R.id.content);
-        contentView.addView(mPdfView);
         ShadowPdfView shadowPdfView = Shadow.extract(mPdfView);
         setupMockPdfDocumentForPageInfo(shadowPdfView, 800, 200);
+        mPdfCoordinator.mIsInitialZoomPass = false;
 
         // Toggle Fit to Page (fitToPage = true) for page index 2 (height 800, width 200).
         // viewportWidth = 500, viewportHeight = 1000
@@ -591,10 +658,9 @@ public class PdfCoordinatorUnitTest {
     @SuppressWarnings("unchecked")
     public void testToggleFitToPage_FitToWidth() {
         createPdfCoordinator();
-        ViewGroup contentView = mActivity.findViewById(android.R.id.content);
-        contentView.addView(mPdfView);
         ShadowPdfView shadowPdfView = Shadow.extract(mPdfView);
         setupMockPdfDocumentForPageInfo(shadowPdfView, 400, 200);
+        mPdfCoordinator.mIsInitialZoomPass = false;
 
         // Toggle Fit to Width (fitToPage = false) for page index 2.
         mPdfCoordinator.toggleFitToPage(/* fitToPage= */ false, 2);
@@ -603,6 +669,229 @@ public class PdfCoordinatorUnitTest {
         // viewportWidth = 500, contentWidth = 200 => zoom = 500 / 200 = 2.5f
         assertEquals(2.5f, shadowPdfView.mZoom, 0.001f);
         float expectedYOffsetPoints = (mPdfView.getHeight() / 2f) / 2.5f;
+        assertEquals(new PdfPoint(2, 0f, expectedYOffsetPoints), shadowPdfView.mPdfPoint);
+        assertEquals(TriState.FALSE, mPdfCoordinator.getIsFitToPageActiveForTesting());
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.INLINE_PDF_V2)
+    @Config(shadows = {ShadowPdfView.class})
+    @SuppressWarnings("unchecked")
+    public void testToggleFitToPage_TwoPagesPerRow_FitToWidth() {
+        createPdfCoordinator();
+        ShadowPdfView shadowPdfView = Shadow.extract(mPdfView);
+        setupMockPdfDocumentForPageInfo(shadowPdfView, 400, 200);
+        mPdfCoordinator.mIsInitialZoomPass = false;
+
+        // Enable two-page view first
+        mPdfCoordinator.toggleTwoPagesPerRow(true, 1.0f, 0);
+
+        // Toggle Fit to Width (fitToPage = false) for page index 0.
+        // In two-page view, total content width = 200 * 2 = 400.
+        // viewportWidth = 500, totalWidth = 400 => zoom = 500 / 400 = 1.25f
+        mPdfCoordinator.toggleFitToPage(/* fitToPage= */ false, 0);
+        ShadowLooper.idleMainLooper();
+
+        assertEquals(1.25f, shadowPdfView.mZoom, 0.001f);
+        assertEquals(TriState.FALSE, mPdfCoordinator.getIsFitToPageActiveForTesting());
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.INLINE_PDF_V2)
+    @Config(shadows = {ShadowPdfView.class})
+    @SuppressWarnings("unchecked")
+    public void testToggleFitToPage_TwoPagesPerRow_FitToPage() {
+        createPdfCoordinator();
+        ShadowPdfView shadowPdfView = Shadow.extract(mPdfView);
+        setupMockPdfDocumentForPageInfo(shadowPdfView, 800, 200);
+        mPdfCoordinator.mIsInitialZoomPass = false;
+
+        // Enable two-page view first
+        mPdfCoordinator.toggleTwoPagesPerRow(true, 1.0f, 0);
+
+        // Toggle Fit to Page (fitToPage = true) for page index 0.
+        // In two-page view, total width = 200 * 2 = 400, height = 800.
+        // viewportWidth = 500, viewportHeight = 1000.
+        // zoomWidth = 500 / 400 = 1.25f, zoomHeight = 1000 / 800 = 1.25f => min = 1.25f
+        mPdfCoordinator.toggleFitToPage(/* fitToPage= */ true, 0);
+        ShadowLooper.idleMainLooper();
+
+        assertEquals(1.25f, shadowPdfView.mZoom, 0.001f);
+        assertEquals(TriState.TRUE, mPdfCoordinator.getIsFitToPageActiveForTesting());
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.INLINE_PDF_V2)
+    @Config(shadows = {ShadowPdfView.class})
+    public void testChangeZoomLevel_ClearsFitActive() {
+        createPdfCoordinator();
+        mPdfCoordinator.setIsFitToPageActiveForTesting(TriState.TRUE);
+        assertEquals(TriState.TRUE, mPdfCoordinator.getIsFitToPageActiveForTesting());
+
+        mPdfCoordinator.changeZoomLevel(1.5f);
+
+        assertEquals(TriState.NOT_SET, mPdfCoordinator.getIsFitToPageActiveForTesting());
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.INLINE_PDF_V2)
+    @Config(shadows = {ShadowPdfView.class})
+    @SuppressWarnings("unchecked")
+    public void testTwoPageView_FitToWidth_PinchZoom_ToggleSinglePageView_PreservesPinchZoom() {
+        createPdfCoordinator();
+        ShadowPdfView shadowPdfView = Shadow.extract(mPdfView);
+        setupMockPdfDocumentForPageInfo(shadowPdfView, 400, 200);
+        mPdfCoordinator.mIsInitialZoomPass = false;
+
+        // 1. User enables two-page view.
+        mPdfCoordinator.toggleTwoPagesPerRow(true, 1.0f, 0);
+
+        // 2. User enables fit to width (fitToPage = false).
+        // Two pages: 200 * 2 = 400 content width in 500 viewport -> zoom = 500 / 400 = 1.25f.
+        mPdfCoordinator.toggleFitToPage(/* fitToPage= */ false, 0);
+        ShadowLooper.idleMainLooper();
+        assertEquals(1.25f, shadowPdfView.mZoom, 0.001f);
+        assertEquals(TriState.FALSE, mPdfCoordinator.getIsFitToPageActiveForTesting());
+
+        // 3. User manually pinches to zoom (e.g. zooms in to 1.8f).
+        // Viewport listener triggers onViewportChanged with the new zoom.
+        mPdfCoordinator.onViewportChanged(0, 1.8f);
+
+        // Fit active is now cleared because zoom was manually adjusted.
+        assertEquals(TriState.NOT_SET, mPdfCoordinator.getIsFitToPageActiveForTesting());
+
+        // 4. User enables single page view.
+        // The manual pinched zoom (1.8f) must be maintained!
+        mPdfCoordinator.toggleTwoPagesPerRow(false, 1.8f, 0);
+        ShadowLooper.idleMainLooper();
+
+        assertEquals(1, shadowPdfView.mPagesPerRow);
+        assertEquals(1.8f, shadowPdfView.mZoom, 0.001f);
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.INLINE_PDF_V2)
+    @Config(shadows = {ShadowPdfView.class})
+    @SuppressWarnings("unchecked")
+    public void testTwoPageView_FitToWidth_ToggleSinglePageView_RefitsToWidth() {
+        createPdfCoordinator();
+        ShadowPdfView shadowPdfView = Shadow.extract(mPdfView);
+        setupMockPdfDocumentForPageInfo(shadowPdfView, 400, 200);
+        mPdfCoordinator.mIsInitialZoomPass = false;
+
+        // 1. User enables two-page view.
+        mPdfCoordinator.toggleTwoPagesPerRow(true, 1.0f, 0);
+
+        // 2. User enables fit to width (fitToPage = false).
+        mPdfCoordinator.toggleFitToPage(/* fitToPage= */ false, 0);
+        ShadowLooper.idleMainLooper();
+        assertEquals(1.25f, shadowPdfView.mZoom, 0.001f);
+        assertEquals(TriState.FALSE, mPdfCoordinator.getIsFitToPageActiveForTesting());
+
+        // 3. User scrolls (viewport changed with SAME zoom level).
+        mPdfCoordinator.onViewportChanged(1, 1.25f);
+        assertEquals(TriState.FALSE, mPdfCoordinator.getIsFitToPageActiveForTesting());
+
+        // 4. User enables single page view (fit is still active).
+        // It should re-fit to single-page width: 500 / 200 = 2.5f.
+        mPdfCoordinator.toggleTwoPagesPerRow(false, 1.25f, 1);
+        ShadowLooper.idleMainLooper();
+
+        assertEquals(1, shadowPdfView.mPagesPerRow);
+        assertEquals(2.5f, shadowPdfView.mZoom, 0.001f);
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.INLINE_PDF_V2)
+    @Config(shadows = {ShadowPdfView.class})
+    @SuppressWarnings("unchecked")
+    public void testTwoPageView_FitToPage_ToggleSinglePageView_RefitsToPage() {
+        createPdfCoordinator();
+        ShadowPdfView shadowPdfView = Shadow.extract(mPdfView);
+        // Page: height 800, width 200. Viewport: width 500, height 1000.
+        setupMockPdfDocumentForPageInfo(shadowPdfView, 800, 200);
+        mPdfCoordinator.mIsInitialZoomPass = false;
+
+        // 1. User enables two-page view.
+        mPdfCoordinator.toggleTwoPagesPerRow(true, 1.0f, 0);
+
+        // 2. User enables fit to page (fitToPage = true).
+        // Two pages: total width 200 * 2 = 400, height 800.
+        // zoomWidth = 500 / 400 = 1.25f, zoomHeight = 1000 / 800 = 1.25f => zoom = 1.25f.
+        mPdfCoordinator.toggleFitToPage(/* fitToPage= */ true, 0);
+        ShadowLooper.idleMainLooper();
+        assertEquals(1.25f, shadowPdfView.mZoom, 0.001f);
+        assertEquals(TriState.TRUE, mPdfCoordinator.getIsFitToPageActiveForTesting());
+
+        // 3. User enables single page view without pinch zooming.
+        // Single page: width 200, height 800.
+        // zoomWidth = 500 / 200 = 2.5f, zoomHeight = 1000 / 800 = 1.25f => min = 1.25f (100% viewport height).
+        mPdfCoordinator.toggleTwoPagesPerRow(false, 1.25f, 0);
+        ShadowLooper.idleMainLooper();
+
+        assertEquals(1, shadowPdfView.mPagesPerRow);
+        assertEquals(1.25f, shadowPdfView.mZoom, 0.001f);
+        assertEquals(TriState.TRUE, mPdfCoordinator.getIsFitToPageActiveForTesting());
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.INLINE_PDF_V2)
+    @Config(shadows = {ShadowPdfView.class})
+    @SuppressWarnings("unchecked")
+    public void testTwoPageView_FitToPage_PinchZoom_ToggleSinglePageView_PreservesPinchZoom() {
+        createPdfCoordinator();
+        ShadowPdfView shadowPdfView = Shadow.extract(mPdfView);
+        setupMockPdfDocumentForPageInfo(shadowPdfView, 800, 200);
+        mPdfCoordinator.mIsInitialZoomPass = false;
+
+        // 1. User enables two-page view.
+        mPdfCoordinator.toggleTwoPagesPerRow(true, 1.0f, 0);
+
+        // 2. User enables fit to page (fitToPage = true).
+        mPdfCoordinator.toggleFitToPage(/* fitToPage= */ true, 0);
+        ShadowLooper.idleMainLooper();
+        assertEquals(1.25f, shadowPdfView.mZoom, 0.001f);
+        assertEquals(TriState.TRUE, mPdfCoordinator.getIsFitToPageActiveForTesting());
+
+        // 3. User manually pinches to zoom (e.g. zooms to 2.2f).
+        mPdfCoordinator.onViewportChanged(0, 2.2f);
+        assertEquals(TriState.NOT_SET, mPdfCoordinator.getIsFitToPageActiveForTesting());
+
+        // 4. User enables single page view -> pinched zoom (2.2f) is preserved!
+        mPdfCoordinator.toggleTwoPagesPerRow(false, 2.2f, 0);
+        ShadowLooper.idleMainLooper();
+
+        assertEquals(1, shadowPdfView.mPagesPerRow);
+        assertEquals(2.2f, shadowPdfView.mZoom, 0.001f);
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.INLINE_PDF_V2)
+    @Config(shadows = {ShadowPdfView.class})
+    public void testTwoPageView_ToggleSinglePageView_LandsOnFirstOfTwoPages() {
+        createPdfCoordinator();
+        ShadowPdfView shadowPdfView = Shadow.extract(mPdfView);
+
+        // 1. User enables two-page view.
+        mPdfCoordinator.toggleTwoPagesPerRow(true, 1.0f, 0);
+        assertEquals(2, shadowPdfView.mPagesPerRow);
+
+        // 2. Viewport changes where pages 2 and 3 (pages 3 and 4) are visible in row 1.
+        SparseArray<RectF> twoPageLocations = new SparseArray<>();
+        twoPageLocations.put(2, new RectF(0, 0, 400, 800));
+        twoPageLocations.put(3, new RectF(400, 0, 800, 800));
+        int calculatedPage =
+                PdfCoordinator.ChromePdfViewerFragment.calculateCurrentPage(
+                        mPdfView, 2, twoPageLocations);
+        assertEquals(2, calculatedPage);
+
+        mPdfCoordinator.onViewportChanged(calculatedPage, 1.0f);
+
+        // 3. User toggles to single page view from toolbar using current page index 2 (page 3).
+        mPdfCoordinator.toggleTwoPagesPerRow(false, 1.0f, calculatedPage);
+
+        assertEquals(1, shadowPdfView.mPagesPerRow);
+        float expectedYOffsetPoints = (mPdfView.getHeight() / 2f) / 1.0f;
         assertEquals(new PdfPoint(2, 0f, expectedYOffsetPoints), shadowPdfView.mPdfPoint);
     }
 
@@ -688,11 +977,11 @@ public class PdfCoordinatorUnitTest {
         ShadowLooper.idleMainLooper();
 
         // viewportWidth = 1000. contentWidth = 200.
-        // expectedZoom = (1000 * 0.6) / 200 = 600 / 200 = 3.0f
-        assertEquals(3.0f, shadowPdfView.mZoom, 0.001f);
+        // expectedZoom = (1000 * 0.5) / 200 = 500 / 200 = 2.5f
+        assertEquals(2.5f, shadowPdfView.mZoom, 0.001f);
         assertNotNull(mPdfCoordinator.getToolbarCoordinatorForTesting());
         assertEquals(
-                3.0f,
+                2.5f,
                 mPdfCoordinator.getToolbarCoordinatorForTesting().getDefaultZoomLevel(),
                 0.001f);
     }
@@ -774,9 +1063,11 @@ public class PdfCoordinatorUnitTest {
         mPdfCoordinator.onViewportChanged(0, 1.0f);
         ShadowLooper.idleMainLooper();
 
-        assertEquals(3.0f, shadowPdfView.mZoom, 0.001f);
+        // viewportWidth = 1000. contentWidth = 200.
+        // expectedZoom = (1000 * 0.5) / 200 = 500 / 200 = 2.5f
+        assertEquals(2.5f, shadowPdfView.mZoom, 0.001f);
         assertEquals(
-                3.0f,
+                2.5f,
                 mPdfCoordinator.getToolbarCoordinatorForTesting().getDefaultZoomLevel(),
                 0.001f);
     }
@@ -1770,6 +2061,39 @@ public class PdfCoordinatorUnitTest {
                 2,
                 PdfCoordinator.ChromePdfViewerFragment.calculateCurrentPage(
                         mockPdfView, 1, multiPageLocations));
+
+        // Case 5: Two pages per row, pages 0 and 1 visible at the top (top = 0)
+        SparseArray<RectF> twoPageLocations = new SparseArray<>();
+        twoPageLocations.put(0, new RectF(0, 0, 400, 800));
+        twoPageLocations.put(1, new RectF(400, 0, 800, 800));
+        assertEquals(
+                0,
+                PdfCoordinator.ChromePdfViewerFragment.calculateCurrentPage(
+                        mockPdfView, 0, twoPageLocations));
+
+        // Case 6: Two pages per row, pages 2 and 3 (pages 3 and 4) visible and crossing threshold
+        SparseArray<RectF> twoPageRow1Locations = new SparseArray<>();
+        twoPageRow1Locations.put(0, new RectF(0, -600, 400, 200));
+        twoPageRow1Locations.put(1, new RectF(400, -600, 800, 200));
+        twoPageRow1Locations.put(2, new RectF(0, 200, 400, 1000));
+        twoPageRow1Locations.put(3, new RectF(400, 200, 800, 1000));
+        twoPageRow1Locations.put(4, new RectF(0, 1000, 400, 1800));
+        twoPageRow1Locations.put(5, new RectF(400, 1000, 800, 1800));
+        assertEquals(
+                2,
+                PdfCoordinator.ChromePdfViewerFragment.calculateCurrentPage(
+                        mockPdfView, 0, twoPageRow1Locations));
+
+        // Case 7: Two pages per row, row 1 has not crossed threshold
+        SparseArray<RectF> twoPageRow0Locations = new SparseArray<>();
+        twoPageRow0Locations.put(0, new RectF(0, -200, 400, 600));
+        twoPageRow0Locations.put(1, new RectF(400, -200, 800, 600));
+        twoPageRow0Locations.put(2, new RectF(0, 600, 400, 1400));
+        twoPageRow0Locations.put(3, new RectF(400, 600, 800, 1400));
+        assertEquals(
+                0,
+                PdfCoordinator.ChromePdfViewerFragment.calculateCurrentPage(
+                        mockPdfView, 0, twoPageRow0Locations));
     }
 
     @Implements(PdfView.class)

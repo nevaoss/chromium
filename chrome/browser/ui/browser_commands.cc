@@ -410,10 +410,36 @@ void CloseSelectedTabAndRecordTabCountMetric(BrowserWindowInterface* browser) {
   browser->GetTabStripModel()->CloseSelectedTabs();
 }
 
+// Preserves the focus state in the target window if a focused tab group was
+// moved to a new window (either as an entire group or via moving all of its
+// tabs) and the target window contains only the moved group (and any pinned
+// tabs).
+void MaybePreserveFocusedGroupInTarget(
+    TabStripModel* target_model,
+    std::optional<tab_groups::TabGroupId> focused_group) {
+  if (!focused_group.has_value() || !target_model->group_model() ||
+      !target_model->group_model()->ContainsTabGroup(*focused_group)) {
+    return;
+  }
+
+  const int non_pinned_count =
+      target_model->count() - target_model->IndexOfFirstNonPinnedTab();
+  const int group_tab_count =
+      target_model->group_model()->GetTabGroup(*focused_group)->tab_count();
+  if (non_pinned_count == group_tab_count) {
+    target_model->SetFocusedGroup(*focused_group);
+  }
+}
+
 void MoveGroupToWindowImpl(BrowserWindowInterface* source,
                            BrowserWindowInterface* target,
                            tab_groups::TabGroupId group) {
   CHECK(source->GetTabStripModel()->group_model()->ContainsTabGroup(group));
+
+  const std::optional<tab_groups::TabGroupId> focused_group =
+      source->GetTabStripModel()->GetFocusedGroup() == group
+          ? std::make_optional(group)
+          : std::nullopt;
 
   tab_groups::TabGroupSyncService* tab_group_service =
       tab_groups::TabGroupSyncServiceFactory::GetForProfile(
@@ -429,6 +455,8 @@ void MoveGroupToWindowImpl(BrowserWindowInterface* source,
   target->GetTabStripModel()->InsertDetachedTabGroupAt(
       std::move(detached_group), 0);
 
+  MaybePreserveFocusedGroupInTarget(target->GetTabStripModel(), focused_group);
+
   target->GetWindow()->Show();
 }
 
@@ -441,6 +469,9 @@ void MoveTabsToWindowImpl(BrowserWindowInterface* source,
 
   TabStripModel* source_model = source->GetTabStripModel();
   TabStripModel* target_model = target->GetTabStripModel();
+
+  const std::optional<tab_groups::TabGroupId> source_focused_group =
+      source_model->GetFocusedGroup();
 
   // Store the active tab from the source tab strip since this will change as
   // tabs are detached. If the active tab from `source_model` isn't moving,
@@ -478,6 +509,9 @@ void MoveTabsToWindowImpl(BrowserWindowInterface* source,
       }
     }
   }
+
+  MaybePreserveFocusedGroupInTarget(target_model, source_focused_group);
+
   target->GetWindow()->Show();
 }
 
@@ -1817,16 +1851,6 @@ void CloseTabGroup(BrowserWindowInterface* browser) {
     return;
   }
 
-  const int num_tabs_in_group = browser->GetTabStripModel()
-                                    ->group_model()
-                                    ->GetTabGroup(group_id.value())
-                                    ->tab_count();
-  if (num_tabs_in_group == browser->GetTabStripModel()->count()) {
-    // If the group about to be closed has all of the tabs in the browser, add a
-    // new tab outside the group to prevent the browser from closing.
-    browser->GetTabStripModel()->delegate()->AddTabAt(GURL(), -1, true);
-  }
-
   browser->GetTabStripModel()->CloseAllTabsInGroup(group_id.value());
 }
 
@@ -2514,6 +2538,13 @@ void ToggleTabSearchPin(BrowserWindowInterface* browser) {
       is_pinned ? "TabStripComboButton.TabSearch.Unpinned"
                 : "TabStripComboButton.TabSearch.Pinned"));
   prefs->SetBoolean(prefs::kTabSearchPinnedToTabstrip, !is_pinned);
+}
+
+void ToggleTabScrollButtonsPin(BrowserWindowInterface* browser) {
+  PrefService* prefs = browser->GetProfile()->GetPrefs();
+  const bool is_pinned =
+      prefs->GetBoolean(prefs::kTabScrollButtonsPinnedToTabstrip);
+  prefs->SetBoolean(prefs::kTabScrollButtonsPinnedToTabstrip, !is_pinned);
 }
 
 void ToggleContextualTasksSidePanel(BrowserWindowInterface* browser) {

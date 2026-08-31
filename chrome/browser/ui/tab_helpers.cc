@@ -27,6 +27,7 @@
 #include "chrome/browser/content_settings/mixed_content_settings_tab_helper.h"
 #include "chrome/browser/content_settings/page_specific_content_settings_delegate.h"
 #include "chrome/browser/content_settings/sound_content_setting_observer.h"
+#include "chrome/browser/contextual_tasks/aim_user_agent_tab_helper.h"
 #include "chrome/browser/external_protocol/external_protocol_observer.h"
 #include "chrome/browser/favicon/favicon_utils.h"
 #include "chrome/browser/file_system_access/file_system_access_features.h"
@@ -95,9 +96,7 @@
 #include "chrome/browser/ui/search_engines/search_engine_tab_helper.h"
 #include "chrome/browser/ui/tab_contents/core_tab_helper.h"
 #include "chrome/browser/ui/tab_dialogs.h"
-#include "chrome/browser/ui/thumbnails/thumbnail_tab_helper.h"
 #include "chrome/browser/ui/views/tab_sharing/tab_capture_contents_border_helper.h"
-#include "chrome/browser/ui/webui_browser/webui_browser.h"
 #include "chrome/browser/v8_compile_hints/v8_compile_hints_tab_helper.h"
 #include "chrome/browser/vr/vr_tab_helper.h"
 #include "chrome/common/buildflags.h"
@@ -113,6 +112,7 @@
 #include "components/commerce/core/commerce_feature_list.h"
 #include "components/compose/buildflags.h"
 #include "components/content_settings/browser/page_specific_content_settings.h"
+#include "components/contextual_tasks/public/features.h"
 #include "components/dom_distiller/core/dom_distiller_features.h"
 #include "components/download/content/factory/navigation_monitor_factory.h"
 #include "components/download/content/public/download_navigation_observer.h"
@@ -188,10 +188,8 @@
 #include "chrome/browser/banners/app_banner_manager_desktop.h"
 #include "chrome/browser/tab_contents/form_interaction_tab_helper.h"
 #include "chrome/browser/ui/bookmarks/bookmark_tab_helper.h"
-#include "chrome/browser/ui/intent_picker_tab_helper.h"
 #include "chrome/browser/ui/javascript_dialogs/javascript_tab_modal_dialog_manager_delegate_desktop.h"
 #include "chrome/browser/ui/read_anything/read_anything_side_panel_controller.h"
-#include "chrome/browser/ui/sad_tab_helper.h"
 #include "chrome/browser/ui/search/search_tab_helper.h"
 #include "chrome/browser/ui/sync/browser_synced_tab_delegate.h"
 #include "chrome/browser/ui/ui_features.h"
@@ -215,7 +213,6 @@
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
     BUILDFLAG(IS_CHROMEOS)
-#include "chrome/browser/ui/blocked_content/framebust_block_tab_helper.h"
 #include "chrome/browser/ui/hats/hats_helper.h"
 #include "chrome/browser/ui/performance_controls/performance_controls_hats_service_factory.h"
 #include "chrome/browser/ui/shared_highlighting/shared_highlighting_promo.h"
@@ -281,7 +278,6 @@
 
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
 #include "chrome/browser/contextual_tasks/search_ai_mode_promo_tab_helper.h"
-#include "components/contextual_tasks/public/features.h"
 #include "components/signin/public/base/signin_switches.h"
 #endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
 
@@ -608,6 +604,12 @@ void TabHelpers::AttachTabHelpers(WebContents* web_contents,
 #endif  // BUILDFLAG(SAFE_BROWSING_AVAILABLE)
   SafetyTipWebContentsObserver::CreateForWebContents(web_contents);
   SearchEngineTabHelper::CreateForWebContents(web_contents);
+#if !BUILDFLAG(IS_ANDROID)
+  if (contextual_tasks::IsContextualTasksUIEnabled()) {
+    // Manages User-Agent override for tab navigations to AIM / AI URLs.
+    contextual_tasks::AimUserAgentTabHelper::CreateForWebContents(web_contents);
+  }
+#endif  // !BUILDFLAG(IS_ANDROID)
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
   if (base::FeatureList::IsEnabled(switches::kEnableSearchAIModeSigninPromo) &&
       base::FeatureList::IsEnabled(contextual_tasks::kContextualTasks)) {
@@ -722,8 +724,6 @@ void TabHelpers::AttachTabHelpers(WebContents* web_contents,
   BookmarkTabHelper::CreateForWebContents(web_contents);
   BrowserSyncedTabDelegate::CreateForWebContents(web_contents);
   FormInteractionTabHelper::CreateForWebContents(web_contents);
-  FramebustBlockTabHelper::CreateForWebContents(web_contents);
-  IntentPickerTabHelper::CreateForWebContents(web_contents);
   javascript_dialogs::TabModalDialogManager::CreateForWebContents(
       web_contents,
       std::make_unique<JavaScriptTabModalDialogManagerDelegateDesktop>(
@@ -735,14 +735,8 @@ void TabHelpers::AttachTabHelpers(WebContents* web_contents,
     ManagePasswordsUIController::CreateForWebContents(web_contents);
   }
 
-  if (!webui_browser::IsWebUIBrowserEnabled()) {
-    SadTabHelper::CreateForWebContents(web_contents);
-  }
   SearchTabHelper::CreateForWebContents(web_contents);
   TabDialogs::CreateForWebContents(web_contents);
-  if (base::FeatureList::IsEnabled(features::kTabHoverCardImages)) {
-    ThumbnailTabHelper::CreateForWebContents(web_contents);
-  }
   UMABrowsingActivityObserver::TabHelper::CreateForWebContents(web_contents);
   web_modal::WebContentsModalDialogManager::CreateForWebContents(web_contents);
 #endif  // BUILDFLAG(IS_ANDROID)

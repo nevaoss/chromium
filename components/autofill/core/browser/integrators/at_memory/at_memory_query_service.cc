@@ -30,6 +30,7 @@
 #include "components/autofill/core/browser/data_model/autofill_ai/entity_type.h"
 #include "components/autofill/core/browser/data_model/payments/credit_card.h"
 #include "components/autofill/core/browser/foundations/autofill_client.h"
+#include "components/autofill/core/browser/integrators/at_memory/at_memory_eligibility_metrics_tracker.h"
 #include "components/autofill/core/browser/integrators/at_memory/at_memory_string_filtering_util.h"
 #include "components/autofill/core/browser/integrators/at_memory/memory_data_type.h"
 #include "components/autofill/core/browser/integrators/at_memory/memory_data_type_util.h"
@@ -83,40 +84,6 @@ personal_context::proto::AtMemoryQueryRequest BuildAtMemoryQueryRequest(
     request.add_supported_local_data_types(type);
   }
   return request;
-}
-
-// Tokenizes `text` using native word boundaries and counts the number of
-// occurrences of any filter word in `filter_words_set`.
-size_t CountFilterWordMatchesInText(
-    std::u16string_view text,
-    const base::flat_set<std::u16string>& filter_words_set) {
-  base::i18n::BreakIterator iter(text, base::i18n::BreakIterator::BREAK_WORD);
-  if (!iter.Init()) {
-    return 0;
-  }
-
-  size_t count = 0;
-  while (iter.Advance()) {
-    if (iter.IsWord()) {
-      std::u16string word = base::i18n::FoldCase(iter.GetString());
-      if (filter_words_set.contains(word)) {
-        count++;
-      }
-    }
-  }
-  return count;
-}
-
-// Counts total filter word matches across `entry`'s value and any of its
-// metadata values.
-size_t CountFilterWordMatchesInEntry(
-    const MemorySearchResult& entry,
-    const base::flat_set<std::u16string>& filter_words_set) {
-  size_t count = CountFilterWordMatchesInText(entry.value, filter_words_set);
-  for (const EntryMetadata& metadata : entry.metadata_list) {
-    count += CountFilterWordMatchesInText(metadata.value, filter_words_set);
-  }
-  return count;
 }
 
 // Trims any obfuscating dots and formatting characters from `value`.
@@ -359,37 +326,6 @@ void ReorderMetadataByUniqueness(std::vector<MemorySearchResult>& results) {
   }
 }
 
-// Filters search results by retaining only those entries that have the maximum
-// number of matching filter words. If `filter_words` is empty, all entries are
-// returned. If `filter_words` is provided but no entry matches any filter word,
-// an empty vector is returned.
-std::vector<MemorySearchResult> FilterResults(
-    std::vector<MemorySearchResult> entries,
-    const base::flat_set<std::u16string>& filter_words) {
-  if (filter_words.empty()) {
-    return entries;
-  }
-
-  std::vector<MemorySearchResult> filtered_entries;
-  size_t max_matches = 0;
-  for (MemorySearchResult& entry : entries) {
-    size_t count = CountFilterWordMatchesInEntry(entry, filter_words);
-    if (count == 0) {
-      continue;
-    }
-
-    if (count > max_matches) {
-      max_matches = count;
-      filtered_entries.clear();
-      filtered_entries.push_back(std::move(entry));
-    } else if (count == max_matches) {
-      filtered_entries.push_back(std::move(entry));
-    }
-  }
-
-  return filtered_entries;
-}
-
 MemorySearchStatus MapContextMemoryError(
     personal_context::ContextMemoryError::ExecutionError error) {
   switch (error) {
@@ -441,37 +377,6 @@ std::vector<MemorySearchResult> RankResults(
   }
 
   return ranked_results;
-}
-
-// Rationalizes `data_types` returned in an `AutofillFetchPlan`.
-// Removes duplicate types and filters out unknown types while preserving the
-// original insertion order. Also discards secondary Autofill AI attributes if
-// their corresponding primary attribute is present in the set.
-std::vector<MemoryDataType> RationalizeFetchPlanDataTypes(
-    const std::vector<MemoryDataType>& data_types) {
-  DenseSet<MemoryDataType> present_types(data_types);
-
-  std::vector<MemoryDataType> rationalized;
-  DenseSet<MemoryDataType> seen;
-  for (MemoryDataType type : data_types) {
-    if (type == MemoryDataType::kUnknown) {
-      continue;
-    }
-
-    if (std::optional<AttributeType> attribute_type = ToAttributeType(type)) {
-      const AttributeType primary_type =
-          GetPrimaryAttributeType(attribute_type->entity_type());
-      if (attribute_type != primary_type &&
-          present_types.contains(AttributeTypeToMemoryDataType(primary_type))) {
-        continue;
-      }
-    }
-
-    if (seen.insert(type).second) {
-      rationalized.push_back(type);
-    }
-  }
-  return rationalized;
 }
 
 // For debugging purposes only. Runs a debug query that directly retrieves
@@ -781,10 +686,18 @@ std::vector<MemorySearchResult> FilterResults(
 AtMemoryQueryService::AtMemoryQueryService(
     std::unique_ptr<AutofillDataProvider> data_provider,
     personal_context::PersonalContextService* personal_context_service,
-    const std::string& locale)
+    const std::string& locale,
+    personal_context::PersonalContextEligibilityService*
+        personal_context_eligibility_service,
+    subscription_eligibility::SubscriptionEligibilityService*
+        subscription_eligibility_service,
+    PrefService* pref_service)
     : data_provider_(std::move(data_provider)),
       personal_context_service_(personal_context_service),
-      locale_(locale) {}
+      locale_(locale),
+      eligibility_metrics_tracker_(personal_context_eligibility_service,
+                                   subscription_eligibility_service,
+                                   pref_service) {}
 
 AtMemoryQueryService::~AtMemoryQueryService() = default;
 
@@ -919,30 +832,17 @@ void AtMemoryQueryService::OnPersonalContextRetrieved(
       ExtractRemoteResults(response, locale_);
 
   std::vector<MemoryDataType> local_data_types;
-  base::flat_set<std::u16string> filter_words;
   std::vector<AutofillFetchSpecification> fetch_specifications;
   if (response.has_autofill_fetch_plan()) {
     const personal_context::proto::AutofillFetchPlan& plan =
         response.autofill_fetch_plan();
-    if (base::FeatureList::IsEnabled(
-            features::kAutofillAtMemoryTypedFetchPlan) &&
-        !plan.fetch_specifications().empty()) {
+    if (!plan.fetch_specifications().empty()) {
       fetch_specifications = base::ToVector(plan.fetch_specifications());
       local_data_types = base::ToVector(
           fetch_specifications, [](const AutofillFetchSpecification& spec) {
             return ToMemoryDataType(spec.data_type());
           });
       std::erase(local_data_types, MemoryDataType::kUnknown);
-    } else {
-      local_data_types = RationalizeFetchPlanDataTypes(
-          base::ToVector(plan.data_types(), [](int type) {
-            return ToMemoryDataType(
-                static_cast<personal_context::proto::MemoryDataType>(type));
-          }));
-      filter_words = base::MakeFlatSet<std::u16string>(
-          plan.filter_keywords(), {}, [](const std::string& word) {
-            return base::i18n::FoldCase(base::UTF8ToUTF16(word));
-          });
     }
   }
 
@@ -960,27 +860,24 @@ void AtMemoryQueryService::OnPersonalContextRetrieved(
       local_data_types,
       base::BindOnce(&AtMemoryQueryService::OnLocalDataRetrieved,
                      query_weak_ptr_factory_.GetWeakPtr(), callback,
-                     std::move(remote_results), std::move(filter_words),
-                     std::move(fetch_specifications),
+                     std::move(remote_results), std::move(fetch_specifications),
                      std::move(result.server_request_id)));
 }
 
 void AtMemoryQueryService::OnLocalDataRetrieved(
     base::RepeatingCallback<void(MemorySearchResults)> callback,
     std::vector<MemorySearchResult> remote_results,
-    base::flat_set<std::u16string> filter_words,
     std::vector<AutofillFetchSpecification> fetch_specifications,
     std::string server_request_id,
     std::vector<MemorySearchResult> local_results) {
   base::UmaHistogramCounts1000(
-      "AccessibilityAnnotator.AtMemoryQueryService.ProviderResultCount."
-      "AutofillDataProvider",
+      "Autofill.AtMemory.ProviderResultCount.AutofillDataProvider",
       local_results.size());
 
   std::vector<MemorySearchResult> filtered_local_results =
       !fetch_specifications.empty()
           ? FilterResults(std::move(local_results), fetch_specifications)
-          : FilterResults(std::move(local_results), filter_words);
+          : std::move(local_results);
   std::vector<MemorySearchResult> ranked_results =
       RankResults(std::move(filtered_local_results), std::move(remote_results));
   DeduplicateResults(ranked_results);

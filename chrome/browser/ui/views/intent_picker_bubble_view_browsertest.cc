@@ -13,7 +13,6 @@
 #include "build/build_config.h"
 #include "chrome/browser/apps/link_capturing/link_capturing_feature_test_support.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/intent_picker_tab_helper.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
@@ -30,6 +29,7 @@
 #include "chrome/browser/web_applications/test/web_app_install_test_utils.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/test/base/ui_test_utils.h"
+#include "components/tabs/public/tab_interface.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
 #include "content/public/test/fenced_frame_test_util.h"
@@ -75,7 +75,8 @@ class IntentPickerBrowserTest : public web_app::WebAppNavigationBrowserTest {
   template <typename Action>
   testing::AssertionResult DoAndWaitForIntentPickerIconUpdate(Action action) {
     base::test::TestFuture<void> intent_picker_done;
-    auto* tab_helper = IntentPickerTabHelper::FromWebContents(GetWebContents());
+    auto* tab_helper = IntentPickerTabHelper::From(
+        tabs::TabInterface::GetFromContents(GetWebContents()));
     tab_helper->SetIconUpdateCallbackForTesting(
         intent_picker_done.GetCallback());
     // On Mac, updating the icon requires asynchronous work that is done on the
@@ -99,7 +100,7 @@ class IntentPickerBrowserTest : public web_app::WebAppNavigationBrowserTest {
                                    const std::string& rel = "") {
     chrome::NewTab(browser(), NewTabTypes::kNoUserAction);
     content::WebContents* web_contents =
-        browser()->tab_strip_model()->GetActiveWebContents();
+        browser()->GetTabStripModel()->GetActiveWebContents();
 
     EXPECT_TRUE(DoAndWaitForIntentPickerIconUpdate(
         [this] { NavigateToLaunchingPage(browser()); }));
@@ -118,9 +119,8 @@ class IntentPickerBrowserTest : public web_app::WebAppNavigationBrowserTest {
                            "document.body.appendChild(iframe);");
   }
 
-
   content::WebContents* GetWebContents() {
-    return browser()->tab_strip_model()->GetActiveWebContents();
+    return browser()->GetTabStripModel()->GetActiveWebContents();
   }
 
   IntentPickerBubbleView* intent_picker_bubble() {
@@ -202,7 +202,8 @@ IN_PROC_BROWSER_TEST_P(IntentPickerIconBrowserTest,
 
   const GURL in_scope_url =
       embedded_https_test_server().GetURL(GetAppUrlHost(), GetInScopeUrlPath());
-  auto* tab_helper = IntentPickerTabHelper::FromWebContents(GetWebContents());
+  auto* tab_helper = IntentPickerTabHelper::From(
+      tabs::TabInterface::GetFromContents(GetWebContents()));
   NavigateToLaunchingPage(browser());
 
   base::RunLoop run_loop;
@@ -372,7 +373,7 @@ IN_PROC_BROWSER_TEST_P(IntentPickerIconBrowserTest, PushStateURLChangeTest) {
   EXPECT_TRUE(intent_picker_view->GetVisible());
 
   content::WebContents* web_contents =
-      browser()->tab_strip_model()->GetActiveWebContents();
+      browser()->GetTabStripModel()->GetActiveWebContents();
   ASSERT_TRUE(DoAndWaitForIntentPickerIconUpdate([web_contents] {
     ASSERT_TRUE(content::ExecJs(
         web_contents,
@@ -509,7 +510,7 @@ IN_PROC_BROWSER_TEST_P(IntentPickerIconBrowserBubbleTest, RememberOpenWebApp) {
   intent_picker_bubble()->AcceptDialog();
 
   // Accepting the bubble should open the app.
-  Browser* app_browser = browser_created_observer.Wait();
+  BrowserWindowInterface* app_browser = browser_created_observer.Wait();
   ASSERT_TRUE(web_app::AppBrowserController::IsForWebApp(app_browser,
                                                          test_web_app_id()));
 
@@ -683,7 +684,8 @@ IN_PROC_BROWSER_TEST_F(IntentPickerCrashTest, DoubleClickDoesNotCrash) {
   NavigateToLaunchingPage(browser());
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), in_scope_url));
 
-  auto* tab_helper = IntentPickerTabHelper::FromWebContents(GetWebContents());
+  auto* tab_helper = IntentPickerTabHelper::From(
+      tabs::TabInterface::GetFromContents(GetWebContents()));
   ASSERT_TRUE(tab_helper);
 
   base::test::TestFuture<bool> future1;

@@ -19,9 +19,9 @@
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_manager.h"
+#include "chrome/browser/signin/account_preview_data_service_factory.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/signin/signin_ui_util.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/dialogs/browser_dialogs.h"
@@ -206,8 +206,7 @@ WEB_CONTENTS_USER_DATA_KEY_IMPL(SigninQRCodeInfoBarLoader);
 void ShowTabOverwritingNTP(BrowserWindowInterface* browser,
                            TabStripModel* tab_strip_model,
                            const GURL& url) {
-  NavigateParams params(browser->GetBrowserForMigrationOnly(), url,
-                        ui::PAGE_TRANSITION_AUTO_BOOKMARK);
+  NavigateParams params(browser, url, ui::PAGE_TRANSITION_AUTO_BOOKMARK);
   params.disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
   params.window_action = NavigateParams::WindowAction::kShowWindow;
   params.user_gesture = false;
@@ -425,7 +424,7 @@ void SigninViewController::ShowModalInterceptFirstRunExperienceDialog(
     bool is_forced_intercept) {
   CloseModalSignin();
   auto fre_dialog = std::make_unique<SigninInterceptFirstRunExperienceDialog>(
-      browser_->GetBrowserForMigrationOnly(), account_id, is_forced_intercept,
+      &browser_.get(), account_id, is_forced_intercept,
       GetOnModalDialogClosedCallback());
   SigninInterceptFirstRunExperienceDialog* raw_dialog = fre_dialog.get();
   // Casts pointer to a base class.
@@ -472,7 +471,8 @@ void SigninViewController::MaybeShowChromeSigninDialogForExtensions(
 
   AccountInfo account_info_for_promos =
       signin_ui_util::GetSingleAccountForPromos(
-          IdentityManagerFactory::GetForProfile(GetProfile()));
+          IdentityManagerFactory::GetForProfile(GetProfile()),
+          AccountPreviewDataServiceFactory::GetForProfile(GetProfile()));
   if (account_info_for_promos.IsEmpty()) {
     DVLOG(1) << "The user is not signed in on the web.";
     std::move(on_complete).Run();
@@ -507,8 +507,7 @@ void SigninViewController::MaybeShowChromeSigninDialogForExtensions(
   }
 
   // Create a new tab page and wait for the navigation to complete.
-  NavigateParams params(browser_->GetBrowserForMigrationOnly(),
-                        chrome::ChromeUINewTabURLAsGURL(),
+  NavigateParams params(&browser_.get(), chrome::ChromeUINewTabURLAsGURL(),
                         ui::PAGE_TRANSITION_AUTO_BOOKMARK);
   params.disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
   params.window_action = NavigateParams::WindowAction::kShowWindow;

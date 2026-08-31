@@ -17,7 +17,6 @@ import androidx.annotation.VisibleForTesting;
 
 import org.chromium.base.ApkInfo;
 import org.chromium.base.Callback;
-import org.chromium.base.DeviceInfo;
 import org.chromium.base.Log;
 import org.chromium.base.ResettersForTesting;
 import org.chromium.base.metrics.RecordUserAction;
@@ -64,6 +63,7 @@ import java.util.concurrent.TimeUnit;
 public class BookmarkUtils {
     private static final String TAG = "BookmarkUtils";
     private static final int READING_LIST_SESSION_LENGTH_MS = (int) TimeUnit.HOURS.toMillis(1);
+    public static final int WIDE_DISPLAY_THRESHOLD_DP = 840;
 
     private static @Nullable Boolean sReadingListSupportedForTesting;
 
@@ -144,9 +144,7 @@ public class BookmarkUtils {
             boolean isBookmarkBarVisible) {
         assert bookmarkModel.isBookmarkModelLoaded();
         if (existingBookmarkItem != null) {
-            if (DeviceInfo.isDesktop()
-                    && ChromeFeatureList.isEnabled(
-                            ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_POPUP)) {
+            if (ChromeFeatureList.isEnabled(ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_POPUP)) {
                 showSaveFlow(
                         activity,
                         bottomSheetController,
@@ -308,8 +306,7 @@ public class BookmarkUtils {
 
         ShoppingService shoppingService = ShoppingServiceFactory.getForProfile(profile);
 
-        if (ChromeFeatureList.isEnabled(ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_POPUP)
-                && DeviceInfo.isDesktop()) {
+        if (ChromeFeatureList.isEnabled(ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_POPUP)) {
             View anchor = activity.findViewById(R.id.bookmark_button);
 
             // When the bookmark button isn't visible, fallback to the 3-dot menu.
@@ -944,8 +941,7 @@ public class BookmarkUtils {
      * @return Whether the desktop bookmarks layout is enabled.
      */
     public static boolean isDesktopBookmarksLayoutEnabled() {
-        return ChromeFeatureList.isEnabled(ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_LAYOUT)
-                && DeviceInfo.isDesktop();
+        return ChromeFeatureList.isEnabled(ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_LAYOUT);
     }
 
     private static Locale getLocale(Activity activity) {

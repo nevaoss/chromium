@@ -101,7 +101,6 @@
 #include "chrome/browser/sync/send_tab_to_self_sync_service_factory.h"
 #include "chrome/browser/translate/chrome_translate_client.h"
 #include "chrome/browser/translate/translate_service.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
@@ -538,9 +537,9 @@ int UmaEnumForCommand(int key, UmaEnumIdLookupType type) {
        {IDC_CONTENT_CONTEXT_GOTOURL, 45},
        {IDC_CONTENT_CONTEXT_LANGUAGE_SETTINGS, 46},
        {IDC_CONTENT_CONTEXT_PROTOCOL_HANDLER_SETTINGS, 47},
-       {kOpenLinkWithMenuId, 52},
+       {IDC_CONTENT_CONTEXT_OPENLINKWITH, 52},
        {IDC_CHECK_SPELLING_WHILE_TYPING, 53},
-       {kSpellcheckMenuId, 54},
+       {IDC_SPELLCHECK_MENU, 54},
        {IDC_CONTENT_CONTEXT_SPELLING_TOGGLE, 55},
        {IDC_SPELLCHECK_LANGUAGES_FIRST, 56},
        {IDC_CONTENT_CONTEXT_SEARCHWEBFORIMAGE, 57},
@@ -548,8 +547,8 @@ int UmaEnumForCommand(int key, UmaEnumIdLookupType type) {
        {IDC_SPELLCHECK_ADD_TO_DICTIONARY, 59},
        // Removed: {IDC_SPELLPANEL_TOGGLE, 60},
        {IDC_CONTENT_CONTEXT_OPEN_ORIGINAL_IMAGE_NEW_TAB, 61},
-       {kWritingDirectionMenuId, 62},
-       {kWritingDirectionDefaultId, 63},
+       {IDC_WRITING_DIRECTION_MENU, 62},
+       {IDC_WRITING_DIRECTION_DEFAULT, 63},
        {IDC_WRITING_DIRECTION_LTR, 64},
        {IDC_WRITING_DIRECTION_RTL, 65},
        {IDC_CONTENT_CONTEXT_LOAD_IMAGE, 66},
@@ -586,10 +585,11 @@ int UmaEnumForCommand(int key, UmaEnumIdLookupType type) {
        {IDC_CONTENT_CONTEXT_LOOK_UP, 98},
        {IDC_CONTENT_CONTEXT_ACCESSIBILITY_LABELS_TOGGLE, 99},
        {IDC_CONTENT_CONTEXT_ACCESSIBILITY_LABELS_TOGGLE_ONCE, 100},
-       {kAccessibilityLabelsMenuId, 101},
+       {IDC_CONTENT_CONTEXT_ACCESSIBILITY_LABELS, 101},
        {IDC_SEND_TAB_TO_SELF, 102},
-       // Removed: {IDC_CONTENT_CONTEXT_SHARING_SHARED_CLIPBOARD_SINGLE_DEVICE, 108},
-       // Removed: {IDC_CONTENT_CONTEXT_SHARING_SHARED_CLIPBOARD_MULTIPLE_DEVICES, 109},
+       // Removed: {IDC_CONTENT_CONTEXT_SHARING_SHARED_CLIPBOARD_SINGLE_DEVICE,
+       // 108}, Removed:
+       // {IDC_CONTENT_CONTEXT_SHARING_SHARED_CLIPBOARD_MULTIPLE_DEVICES, 109},
        {IDC_CONTENT_CONTEXT_GENERATE_QR_CODE, 110},
        // Removed: {IDC_CONTENT_CLIPBOARD_HISTORY_MENU, 111},
        {IDC_CONTENT_CONTEXT_COPYLINKTOTEXT, 112},
@@ -966,13 +966,13 @@ bool IsPrintPreviewContent(const GURL& current_url) {
 #if !BUILDFLAG(IS_ANDROID)
 std::pair<int, const gfx::VectorIcon*> GetOpenLinkInSplitStringAndIcon(
     tabs::TabInterface* tab,
-    Browser* const browser) {
+    BrowserWindowInterface* const browser) {
   int string_id = IDS_CONTENT_CONTEXT_OPENLINKSPLITVIEW;
   const gfx::VectorIcon* icon = &(
       features::IsRoundedIconsEnabled() ? kSplitSceneIcon : kSplitSceneOldIcon);
   if (tab && tab->IsSplit()) {
     split_tabs::SplitTabData* split_data =
-        browser->tab_strip_model()->GetSplitData(tab->GetSplit().value());
+        browser->GetTabStripModel()->GetSplitData(tab->GetSplit().value());
     switch (split_data->visual_data()->split_layout()) {
       case split_tabs::SplitTabLayout::kSideBySide:
         if (split_data->ListTabs()[base::i18n::IsRTL() ? 1 : 0] == tab) {
@@ -1975,8 +1975,8 @@ void RenderViewContextMenu::AppendLinkItems() {
       if (IsNormalBrowser()) {
         tabs::TabInterface* tab =
             tabs::TabInterface::MaybeGetFromContents(GetWebContents());
-        auto [string_id, icon] = GetOpenLinkInSplitStringAndIcon(
-            tab, GetBrowser()->GetBrowserForMigrationOnly());
+        auto [string_id, icon] =
+            GetOpenLinkInSplitStringAndIcon(tab, GetBrowser());
 
         if (tabs::kSplitViewHorizontalDirectAccess.Get() &&
             !(tab && tab->IsSplit())) {
@@ -2579,7 +2579,7 @@ void RenderViewContextMenu::AppendPageItems() {
     // Cast
     AppendMediaRouterItem();
 
-    // Send to your devices
+    // Send to your device
     if (GetBrowser() &&
         send_tab_to_self::ShouldDisplayEntryPoint(embedder_web_contents_)) {
       AppendSendTabToSelfItem(/*add_separator=*/false);
@@ -3219,7 +3219,7 @@ void RenderViewContextMenu::AppendProtocolHandlerSubMenu() {
       l10n_util::GetStringUTF16(IDS_CONTENT_CONTEXT_OPENLINKWITH_CONFIGURE));
 
   menu_model_.AddSubMenu(
-      kOpenLinkWithMenuId,
+      IDC_CONTENT_CONTEXT_OPENLINKWITH,
       l10n_util::GetStringUTF16(IDS_CONTENT_CONTEXT_OPENLINKWITH),
       &protocol_handler_submenu_model_);
 }
@@ -3585,13 +3585,13 @@ bool RenderViewContextMenu::IsCommandIdEnabled(int id) const {
 
 #if !BUILDFLAG(IS_MAC) && BUILDFLAG(IS_POSIX)
     // TODO(suzhe): this should not be enabled for password fields.
-    case kLinuxInputMethodsMenuId:
+    case IDC_INPUT_METHODS_MENU:
       return true;
 #endif
 
     case IDC_CONTENT_CONTEXT_VIDEO_FRAME:
-    case kSpellcheckMenuId:
-    case kOpenLinkWithMenuId:
+    case IDC_SPELLCHECK_MENU:
+    case IDC_CONTENT_CONTEXT_OPENLINKWITH:
     case IDC_CONTENT_CONTEXT_PROTOCOL_HANDLER_SETTINGS:
     case IDC_CONTENT_CONTEXT_GENERATEPASSWORD:
     case IDC_CONTENT_CONTEXT_SHOWALLSAVEDPASSWORDS:
@@ -4205,8 +4205,7 @@ void RenderViewContextMenu::ExecuteCommand(int id, int event_flags) {
         return;
       }
 
-      Browser* browser =
-          GetBrowser() ? GetBrowser()->GetBrowserForMigrationOnly() : nullptr;
+      BrowserWindowInterface* browser = GetBrowser();
       if (browser) {
         // TODO(crbug.com/514547038): Move this to BrowserWindowFeatures.
         BrowserWindow::FromBrowser(browser)->ShowEmojiPanel();
@@ -4249,7 +4248,7 @@ void RenderViewContextMenu::AddAccessibilityLabelsServiceItem(bool is_checked) {
         IDC_CONTENT_CONTEXT_ACCESSIBILITY_LABELS_TOGGLE_ONCE,
         IDS_CONTENT_CONTEXT_ACCESSIBILITY_LABELS_SEND_ONCE);
     menu_model_.AddSubMenu(
-        kAccessibilityLabelsMenuId,
+        IDC_CONTENT_CONTEXT_ACCESSIBILITY_LABELS,
         l10n_util::GetStringUTF16(
             IDS_CONTENT_CONTEXT_ACCESSIBILITY_LABELS_MENU_OPTION),
         &accessibility_labels_submenu_model_);

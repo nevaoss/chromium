@@ -666,6 +666,28 @@ chromium-metrics-reviews@google.com.
   <token key="Version" variants="NewWindowMetricVersion"/>
 </histogram>
 
+<histogram
+    name="InitialWebUI.ReloadButton.Dropped{PaintType}FromNavigationStart"
+    units="ms" expires_after="2027-01-10">
+  <owner>leimy@chromium.org</owner>
+  <owner>chrome-webium-product-eng@google.com</owner>
+  <summary>
+    Records the time from navigation start to {PaintType} for the Reload Button
+    when the InitialWebUIWindowMetricsManager was null and the metric was
+    dropped.
+
+    Note: This is measured from NavigationStart rather than FromConstructor
+    because the browser window creation timestamp is unavailable when the
+    metrics manager is null (e.g. for background prewarmed WebContents whose
+    paint occurs before a window constructor runs, or fast in-process loads
+    before the window reference is resolved).
+  </summary>
+  <token key="PaintType">
+    <variant name="FirstContentfulPaint"/>
+    <variant name="FirstPaint"/>
+  </token>
+</histogram>
+
 <histogram name="InitialWebUI.ReloadButton.InputCount"
     enum="ReloadButtonInputType" expires_after="2027-01-17">
   <owner>mych@chromium.org</owner>
@@ -784,7 +806,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="InitialWebUI.Startup{Scenario}.BrowserWindow.FirstPaint{StartupTemperature}"
-    units="ms" expires_after="2026-12-16">
+    units="ms" expires_after="2027-02-14">
   <owner>mych@chromium.org</owner>
   <owner>chrome-webium-product-eng@google.com</owner>
   <summary>
@@ -802,7 +824,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="InitialWebUI.Startup{Scenario}.BrowserWindow.ShowRequestedToFirstPaint{StartupTemperature}"
-    units="ms" expires_after="2026-12-16">
+    units="ms" expires_after="2027-02-14">
   <owner>mych@chromium.org</owner>
   <owner>chrome-webium-product-eng@google.com</owner>
   <summary>
@@ -849,7 +871,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="InitialWebUI.Startup{Scenario}.ReloadButton.RendererProcessCreated{StartupTemperature}"
-    units="ms" expires_after="2026-12-16">
+    units="ms" expires_after="2027-02-14">
   <owner>elkurin@chromium.org</owner>
   <owner>chrome-webium-product-eng@google.com</owner>
   <summary>
@@ -870,7 +892,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="InitialWebUI.Startup{Scenario}.ReloadButton.RendererProcessLaunched{StartupTemperature}"
-    units="ms" expires_after="2026-12-16">
+    units="ms" expires_after="2027-02-14">
   <owner>elkurin@chromium.org</owner>
   <owner>chrome-webium-product-eng@google.com</owner>
   <summary>
@@ -1297,7 +1319,7 @@ features through Chrome Labs. -->
 </histogram>
 
 <histogram name="WebUI.ColorsStylesheetServingDuration" units="ms"
-    expires_after="2026-12-13">
+    expires_after="2027-02-14">
   <owner>skau@chromium.org</owner>
   <owner>tluk@chromium.org</owner>
   <improvement direction="LOWER_IS_BETTER"/>
@@ -1333,7 +1355,7 @@ features through Chrome Labs. -->
 </histogram>
 
 <histogram name="WebUI.ShownUrl" enum="WebUIUrlHashes"
-    expires_after="2026-12-16">
+    expires_after="2027-02-14">
   <owner>kerenzhu@chromium.org</owner>
   <owner>dpapad@chromium.org</owner>
   <owner>chrome-webui@google.com</owner>

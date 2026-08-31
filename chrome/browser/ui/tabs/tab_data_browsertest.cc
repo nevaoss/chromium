@@ -15,7 +15,6 @@
 #include "base/test/scoped_feature_list.h"
 #include "chrome/browser/favicon/favicon_utils.h"
 #include "chrome/browser/performance_manager/public/user_tuning/user_performance_tuning_manager.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/performance_controls/tab_resource_usage_tab_helper.h"
 #include "chrome/browser/ui/tab_ui_helper.h"
 #include "chrome/browser/ui/tabs/public/tab_features.h"
@@ -351,8 +350,7 @@ IN_PROC_BROWSER_TEST_F(TabDataObserverBrowserTest, Thumbnail) {
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
   tabs::TabInterface* const tab_interface =
       browser()->GetTabStripModel()->GetTabAtIndex(0);
-  content::WebContents* wc = tab_interface->GetContents();
-  auto* thumbnail_tab_helper = ThumbnailTabHelper::FromWebContents(wc);
+  auto* thumbnail_tab_helper = ThumbnailTabHelper::From(tab_interface);
   ASSERT_NE(nullptr, thumbnail_tab_helper);
 
   // Initial data should reference the helper's thumbnail and have no data.

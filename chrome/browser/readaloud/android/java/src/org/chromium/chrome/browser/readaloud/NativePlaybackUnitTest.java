@@ -63,6 +63,16 @@ public class NativePlaybackUnitTest {
         assertEquals(CANONICAL_URL, mPlayback.getMetadata().canonicalUrl());
         assertEquals(PlaybackMode.CLASSIC, mPlayback.getMetadata().playbackMode());
         assertEquals(PlaybackListener.State.BUFFERING, mPlayback.getState());
+        verify(mBridgeMock).setPlaybackMode(PlaybackMode.CLASSIC.getValue());
+    }
+
+    @Test
+    public void testConstructor_setsOverviewPlaybackModeOnBridge() {
+        NativePlayback playback =
+                new NativePlayback(
+                        mBridgeMock, mWebContents, LANGUAGE, CANONICAL_URL, PlaybackMode.OVERVIEW);
+        verify(mBridgeMock).setPlaybackMode(PlaybackMode.OVERVIEW.getValue());
+        assertEquals(PlaybackMode.OVERVIEW, playback.getMetadata().playbackMode());
     }
 
     @Test
@@ -110,9 +120,11 @@ public class NativePlaybackUnitTest {
 
     @Test
     public void testUpdateMetadata() {
+        mPlayback.addListener(mListener);
         mPlayback.updateMetadata("Title", "Publisher");
         assertEquals("Title", mPlayback.getMetadata().title());
         assertEquals("Publisher", mPlayback.getMetadata().publisher());
+        verify(mListener).onMetadataChanged(mPlayback.getMetadata());
     }
 
     @Test

@@ -43,6 +43,7 @@
 #include "components/autofill/core/browser/suggestions/suggestion.h"
 #include "components/autofill/core/browser/suggestions/suggestion_hiding_reason.h"
 #include "components/autofill/core/browser/suggestions/suggestion_type.h"
+#include "components/autofill/core/browser/suggestions/suggestion_util.h"
 #include "components/autofill/core/browser/ui/autofill_suggestion_delegate.h"
 #include "components/autofill/core/browser/ui/popup_interaction.h"
 #include "components/autofill/core/browser/ui/tabbed_pane_enums.h"
@@ -299,15 +300,8 @@ void AutofillPopupControllerImpl::Show(
   ui_session_id_ = ui_session_id;
   ignore_focus_loss_ = ignore_focus_loss;
   trigger_source_ = trigger_source;
-  if (IsAtMemoryTriggerSource(trigger_source_)) {
-    suggestions_filling_product_ = FillingProduct::kAtMemory;
-  } else if (!suggestions.empty() &&
-             IsStandaloneSuggestionType(suggestions[0].type)) {
-    suggestions_filling_product_ =
-        GetFillingProductFromSuggestionType(suggestions[0].type);
-  } else {
-    suggestions_filling_product_ = FillingProduct::kNone;
-  }
+  suggestions_filling_product_ = GetFillingProductFromSuggestionTypes(
+      base::ToVector(suggestions, &Suggestion::type), trigger_source_);
 
   if (suggestions.empty() && !IsAtMemoryTriggerSource(trigger_source_) &&
       base::FeatureList::IsEnabled(
@@ -857,6 +851,12 @@ void AutofillPopupControllerImpl::FireControlsChangedEvent(bool is_show) {
     return;
   }
 
+  // Always clear the active popup ID on hide, even if subsequent accessibility
+  // node lookups fail (e.g., during frame teardown or navigation).
+  if (!is_show) {
+    ui::ClearActivePopupAxUniqueId();
+  }
+
   // In order to get the AXPlatformNode for the ax node id, we first need
   // the AXPlatformNode for the web contents.
   ui::AXPlatformNode* root_platform_node =
@@ -868,8 +868,14 @@ void AutofillPopupControllerImpl::FireControlsChangedEvent(bool is_show) {
   // Retrieve the ax tree id associated with the current web contents.
   ui::AXPlatformNodeDelegate* root_platform_node_delegate =
       root_platform_node->GetDelegate();
+  if (!root_platform_node_delegate) {
+    return;
+  }
   ui::AXTreeID tree_id =
       root_platform_node_delegate->GetTreeData().focused_tree_id;
+  if (tree_id == ui::AXTreeIDUnknown()) {
+    return;
+  }
 
   // Now get the target node from its tree ID and node ID.
   ui::AXPlatformNode* target_node =
@@ -888,8 +894,6 @@ void AutofillPopupControllerImpl::FireControlsChangedEvent(bool is_show) {
   // popup ax unique id.
   if (is_show) {
     ui::SetActivePopupAxUniqueId(popup_ax_id);
-  } else {
-    ui::ClearActivePopupAxUniqueId();
   }
 
   target_node->NotifyAccessibilityEvent(ax::mojom::Event::kControlsChanged);

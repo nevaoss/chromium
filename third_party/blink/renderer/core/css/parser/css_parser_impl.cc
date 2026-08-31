@@ -1744,6 +1744,18 @@ StyleRuleFontFeatureValues* CSSParserImpl::ConsumeFontFeatureValuesRule(
     ConsumeErroneousAtRule(stream, CSSAtRuleID::kCSSAtRuleFontFeatureValues);
     return nullptr;
   }
+
+  Vector<AtomicString> families;
+  families.ReserveInitialCapacity(family_list->length());
+  for (const auto& family_entry : *family_list) {
+    const CSSFontFamilyValue* family_value =
+        DynamicTo<CSSFontFamilyValue>(*family_entry);
+    if (!family_value) {
+      ConsumeErroneousAtRule(stream, CSSAtRuleID::kCSSAtRuleFontFeatureValues);
+      return nullptr;
+    }
+    families.push_back(family_value->Value());
+  }
   wtf_size_t prelude_offset_end = stream.LookAheadOffset();
   if (!ConsumeEndOfPreludeForAtRuleWithBlock(
           stream, CSSAtRuleID::kCSSAtRuleFontFeatureValues)) {
@@ -1815,16 +1827,6 @@ StyleRuleFontFeatureValues* CSSParserImpl::ConsumeFontFeatureValuesRule(
           break;
       }
     }
-  }
-
-  Vector<AtomicString> families;
-  for (const auto& family_entry : *family_list) {
-    const CSSFontFamilyValue* family_value =
-        DynamicTo<CSSFontFamilyValue>(*family_entry);
-    if (!family_value) {
-      return nullptr;
-    }
-    families.push_back(family_value->Value());
   }
 
   auto* feature_values_rule = MakeGarbageCollected<StyleRuleFontFeatureValues>(
@@ -1929,8 +1931,7 @@ StyleRuleProperty* CSSParserImpl::ConsumePropertyRule(
   // CSSParserLocalContext with custom property name just to keep it consistent
   // in case we need it in the future.
   CSSParserLocalContext local_context(CSSPropertyName(AtomicString(name)),
-                                      CSSPropertyID::kInvalid,
-                                      /*custom_function_name=*/g_null_atom);
+                                      CSSPropertyID::kInvalid);
   std::optional<const CSSValue*> initial =
       syntax.has_value()
           ? PropertyRegistration::ConvertInitial(
@@ -1968,9 +1969,9 @@ StyleRuleLocation* CSSParserImpl::ConsumeLocationRule(
   wtf_size_t prelude_offset_start = stream.LookAheadOffset();
   const CSSParserToken& name_token = stream.Peek();
   // <dashed-ident>
-  String name;
+  AtomicString name;
   if (name_token.GetType() == kIdentToken) {
-    name = name_token.Value().ToString();
+    name = name_token.Value().ToAtomicString();
     if (!name.starts_with("--")) {
       ConsumeErroneousAtRule(stream, CSSAtRuleID::kCSSAtRuleLocation);
       return nullptr;
@@ -2981,9 +2982,11 @@ StyleRule* CSSParserImpl::ConsumeStyleRule(CSSParserTokenStream& stream,
 
     StringView text(stream.RemainingText(), 1);
 #ifdef ARCH_CPU_X86_FAMILY
+    static const bool kHasAVX2AndPCLMUL =
+        base::CPU::GetInstanceNoAllocation().has_avx2() &&
+        base::CPU::GetInstanceNoAllocation().has_pclmul();
     wtf_size_t len;
-    if (base::CPU::GetInstanceNoAllocation().has_avx2() &&
-        base::CPU::GetInstanceNoAllocation().has_pclmul()) {
+    if (kHasAVX2AndPCLMUL) {
       len = static_cast<wtf_size_t>(FindLengthOfDeclarationListAVX2(text));
     } else {
       len = static_cast<wtf_size_t>(FindLengthOfDeclarationList(text));

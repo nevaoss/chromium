@@ -204,6 +204,12 @@ inline constexpr char kAutofillAmbientAutofillName[] =
 inline constexpr char kAutofillAmbientAutofillDescription[] =
     "Enables Ambient Autofill.";
 
+inline constexpr char kAutofillAndPasswordsRemoveSignInPromoName[] =
+    "Autofill and passwords remove sign-in promo";
+inline constexpr char kAutofillAndPasswordsRemoveSignInPromoDescription[] =
+    "When enabled, removes the sign-in promo component from the Autofill and "
+    "passwords settings page.";
+
 inline constexpr char kAutofillBottomSheetNewBlurName[] =
     "New Blur Method for Autofill Bottom Sheet";
 inline constexpr char kAutofillBottomSheetNewBlurDescription[] =
@@ -807,6 +813,11 @@ inline constexpr char
         "When enabled, feedback entry points require the can_submit_feedback "
         "capability. The entry points are either removed or ignored.";
 
+inline constexpr char kFetchDeviceAuthorizationKeysName[] =
+    "Fetch device authorization keys";
+inline constexpr char kFetchDeviceAuthorizationKeysDescription[] =
+    "Enables fetching device authorization keys for password manager passkeys.";
+
 inline constexpr char kForceStartupSigninPromoName[] =
     "Display the startup sign-in promo";
 inline constexpr char kForceStartupSigninPromoDescription[] =
@@ -1081,12 +1092,6 @@ inline constexpr char kIOSMiniMapUniversalLinkCounterfactualDescription[] =
     "universal link in Maps Lite so that subsequent iGMM installs would be "
     "logged.";
 
-inline constexpr char kIOSMiniMapUniversalLinkName[] =
-    "Open Maps Universal links in native view.";
-inline constexpr char kIOSMiniMapUniversalLinkDescription[] =
-    "When enabled, maps universal links on Google Page are opened in "
-    "native views (under conditions).";
-
 inline constexpr char kIOSOmniboxAimServerEligibilityEnName[] =
     "AIM Server Eligibility EN locales";
 inline constexpr char kIOSOmniboxAimServerEligibilityEnDescription[] =
@@ -1236,7 +1241,8 @@ inline constexpr char kLensBypassCompressionForC2paName[] =
     "Lens Bypass Compression for C2PA";
 inline constexpr char kLensBypassCompressionForC2paDescription[] =
     "Bypasses image downscaling and compression if a C2PA metadata urn is "
-    "detected, ensuring provenance is preserved during upload. Works across all surfaces.";
+    "detected, ensuring provenance is preserved during upload. Works across "
+    "all surfaces.";
 
 inline constexpr char kLensCameraNoStillOutputRequiredName[] =
     "Lens camera avoids creating unused outputs";
@@ -1787,6 +1793,12 @@ inline constexpr char kReaderModeSupportNewFontsName[] =
 inline constexpr char kReaderModeSupportNewFontsDescription[] =
     "Enables new accessible font options in Reader Mode.";
 
+inline constexpr char kRecoverTabsOfLastClosedWindowName[] =
+    "Recover Tabs of last closed window";
+inline constexpr char kRecoverTabsOfLastClosedWindowDescription[] =
+    "Allow the application to attempt to recover the tabs of the last closed "
+    "window on startup when possible.";
+
 inline constexpr char kRefactorToolbarsSizeName[] = "Refactor toolbars size";
 inline constexpr char kRefactorToolbarsSizeDescription[] =
     "When enabled, the toolbars size does not use broadcaster but observers.";
@@ -1964,6 +1976,11 @@ inline constexpr char kTabResumptionDescription[] =
 inline constexpr char kTaiyakiAllSurfacesName[] = "Taiyaki (all surfaces)";
 inline constexpr char kTaiyakiAllSurfacesDescription[] =
     "Enables Taiyaki for all surfaces (including post-FRE).";
+
+inline constexpr char kUniversalOptOutSettingsName[] =
+    "Universal Opt Out Settings";
+inline constexpr char kUniversalOptOutSettingsDescription[] =
+    "Enables Universal Opt Out settings.";
 
 inline constexpr char kUpdateTabGroupColorsName[] = "UpdateTabGroupColors";
 inline constexpr char kUpdateTabGroupColorsDescription[] =

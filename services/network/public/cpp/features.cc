@@ -193,6 +193,12 @@ BASE_FEATURE_PARAM(bool,
 BASE_FEATURE(kCorsNonWildcardRequestHeadersSupport,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+// When enabled, CORS preflight cache keys take the tainted origin flag into
+// account (using an opaque / null origin), preventing tainted preflight
+// results from satisfying untainted requests.
+BASE_FEATURE(kCorsPreflightCacheKeyTaintedOrigin,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 // Do not send TLS client certificates in CORS preflight. Omit all client certs
 // and continue the handshake without sending one if requested.
 BASE_FEATURE(kOmitCorsClientCert, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -495,10 +501,14 @@ BASE_FEATURE(kUseUnexportableKeyServiceInBrowserProcess,
 BASE_FEATURE(kBypassRequestForbiddenHeadersCheck,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
-// When enabled, the network service will prohibit modifications to the Origin
-// header in FollowRedirect.
-BASE_FEATURE(kBlockOriginHeaderModificationOnRedirect,
+// When enabled, the network service will prohibit invalid modifications to the
+// Origin header in CorsURLLoader::FollowRedirect.
+BASE_FEATURE(kBlockInvalidOriginHeaderModificationOnRedirect,
              base::FEATURE_ENABLED_BY_DEFAULT);
+
+// When enabled, the network service will prohibit invalid Origin headers in
+// CorsURLLoader::StartRequest.
+BASE_FEATURE(kBlockInvalidOriginHeader, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kServiceWorkerSyntheticResponseHeaderCheck,
              base::FEATURE_DISABLED_BY_DEFAULT);

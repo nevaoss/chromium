@@ -90,9 +90,11 @@
 #import "components/tab_groups/features.h"
 #import "components/translate/core/browser/translate_prefs.h"
 #import "components/translate/core/common/translate_util.h"
+#import "components/universal_optout/features.h"
 #import "components/variations/net/variations_command_line.h"
 #import "components/variations/variations_switches.h"
 #import "components/wallet/core/common/wallet_features.h"
+#import "components/webauthn/core/browser/device_authorization/device_authorization_features.h"
 #import "components/webauthn/ios/features.h"
 #import "components/webui/flags/feature_entry.h"
 #import "components/webui/flags/feature_entry_macros.h"
@@ -248,7 +250,6 @@ const FeatureEntry::FeatureVariation
         {"B) only show lens and voice search",
          kEnableFuseboxKeyboardAccessoryOnlyFeaturesParam, nullptr},
         {"C) enable both", kEnableFuseboxKeyboardAccessoryBothParam, nullptr}};
-
 
 const FeatureEntry::FeatureParam kOmniboxUIMaxAutocompleteMatches3[] = {
     {OmniboxFieldTrial::kUIMaxAutocompleteMatchesParam, "3"}};
@@ -1356,11 +1357,16 @@ const FeatureEntry::FeatureParam kNewTabPageUICleanupMediumPadding[] = {
     {kNewTabPageUICleanupArmParam, "2"}};
 const FeatureEntry::FeatureParam kNewTabPageUICleanupPreferredPadding[] = {
     {kNewTabPageUICleanupArmParam, "3"}};
+const FeatureEntry::FeatureParam
+    kNewTabPageUICleanupFakeboxBackgroundAndShadow[] = {
+        {kNewTabPageUICleanupArmParam, "4"}};
 
 const FeatureEntry::FeatureVariation kNewTabPageUICleanupVariations[] = {
     {" - Tight Padding", kNewTabPageUICleanupTightPadding, nullptr},
     {" - Medium Padding", kNewTabPageUICleanupMediumPadding, nullptr},
     {" - Preferred Padding", kNewTabPageUICleanupPreferredPadding, nullptr},
+    {" - Fakebox Background and Shadow Update",
+     kNewTabPageUICleanupFakeboxBackgroundAndShadow, nullptr},
 };
 
 const FeatureEntry::FeatureParam
@@ -2767,10 +2773,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kLensFollowupsFullHeightEnabledName,
      flag_descriptions::kLensFollowupsFullHeightEnabledDescription,
      flags_ui::kOsIos, FEATURE_VALUE_TYPE(kLensFollowupsFullHeightEnabled)},
-    {"ios-mini-map-universal-links",
-     flag_descriptions::kIOSMiniMapUniversalLinkName,
-     flag_descriptions::kIOSMiniMapUniversalLinkDescription, flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(kIOSMiniMapUniversalLink)},
     {"cross-device-signin", flag_descriptions::kCrossDeviceSigninName,
      flag_descriptions::kCrossDeviceSigninDescription, flags_ui::kOsIos,
      FEATURE_WITH_PARAMS_VALUE_TYPE(switches::kCrossDeviceSignin,
@@ -2945,6 +2947,25 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kNewGeolocationPermissionDelegateDescription,
      flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(web::features::kNewGeolocationPermissionDelegate)},
+    {"universal-opt-out-settings",
+     flag_descriptions::kUniversalOptOutSettingsName,
+     flag_descriptions::kUniversalOptOutSettingsDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(universal_optout::features::kUniversalOptOutSettings)},
+    {"fetch-device-authorization-keys",
+     flag_descriptions::kFetchDeviceAuthorizationKeysName,
+     flag_descriptions::kFetchDeviceAuthorizationKeysDescription,
+     flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(webauthn::features::kFetchDeviceAuthorizationKeys)},
+    {"autofill-and-passwords-remove-sign-in-promo",
+     flag_descriptions::kAutofillAndPasswordsRemoveSignInPromoName,
+     flag_descriptions::kAutofillAndPasswordsRemoveSignInPromoDescription,
+     flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(
+         autofill::features::kAutofillAndPasswordsRemoveSignInPromo)},
+    {"recover-tabs-of-last-closed-window",
+     flag_descriptions::kRecoverTabsOfLastClosedWindowName,
+     flag_descriptions::kRecoverTabsOfLastClosedWindowDescription,
+     flags_ui::kOsIos, FEATURE_VALUE_TYPE(kRecoverTabsOfLastClosedWindow)},
 });
 
 bool SkipConditionalFeatureEntry(const flags_ui::FeatureEntry& entry) {

@@ -4705,7 +4705,7 @@ void RenderFrameImpl::FinalizeRequestInternal(
     request.SetHttpHeaderField(
         blink::WebString::FromUtf8(blink::kDoNotTrackHeader), "1");
   }
-  if (blink::IsGlobalPrivacyControlEnabled()) {
+  if (blink::IsGlobalPrivacyControlFeatureAndSettingEnabled()) {
     request.SetHttpHeaderField(
         blink::WebString::FromUtf8(blink::kGlobalPrivacyControlHeader), "1");
     blink::MaybeRecordGlobalPrivacyControlSourceMetric(

@@ -40,6 +40,7 @@ import org.chromium.chrome.browser.compositor.overlays.strip.TabContextMenuCoord
 import org.chromium.chrome.browser.compositor.overlays.strip.TabGroupContextMenuCoordinator;
 import org.chromium.chrome.browser.compositor.overlays.strip.TabStripContextMenuCoordinator;
 import org.chromium.chrome.browser.compositor.overlays.strip.TabUnderlineManager;
+import org.chromium.chrome.browser.contextual_tasks.ContextualTasksUtils;
 import org.chromium.chrome.browser.data_sharing.DataSharingTabManager;
 import org.chromium.chrome.browser.dragdrop.ChromeDragAndDropBrowserDelegate;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
@@ -95,6 +96,7 @@ import org.chromium.components.browser_ui.desktop_windowing.DesktopWindowStateMa
 import org.chromium.components.browser_ui.desktop_windowing.DesktopWindowStateManager.AppHeaderObserver;
 import org.chromium.components.browser_ui.util.motion.MotionEventInfo;
 import org.chromium.components.browser_ui.widget.gesture.BackPressHandler;
+import org.chromium.ui.accessibility.KeyboardFocusUtil;
 import org.chromium.ui.base.ActivityResultTracker;
 import org.chromium.ui.base.LocalizationUtils;
 import org.chromium.ui.base.WindowAndroid;
@@ -294,7 +296,7 @@ public class VerticalTabListCoordinator {
         mShareDelegateSupplier = shareDelegateSupplier;
         mDataSharingTabManager = dataSharingTabManager;
         mUndoBarThrottle = undoBarThrottle;
-        if (GlicEnabling.isEnabledByFlags() || ChromeFeatureList.sContextualTasks.isEnabled()) {
+        if (GlicEnabling.isEnabledByFlags() || ContextualTasksUtils.isContextualTasksUiEnabled()) {
             mTabUnderlineManager = new TabUnderlineManager(windowAndroid);
         } else {
             mTabUnderlineManager = null;
@@ -494,6 +496,7 @@ public class VerticalTabListCoordinator {
                 new TabListConfig.Builder(TabListLayoutType.NESTED)
                         .setSupportsModifierMultiSelect(VerticalTabUtils.isMultiSelectEnabled())
                         .setSupportsTabLoadingState(/* supportsTabLoadingState= */ true)
+                        .setTabClosingSource(TabClosingSource.VERTICAL_TAB_STRIP)
                         .setRailCollapseStateSupplier(
                                 mCollapseController.getRailCollapseStateSupplier())
                         .setTabHoverCardListener(mTabHoverCardController.getTabHoverCardListener())
@@ -749,6 +752,35 @@ public class VerticalTabListCoordinator {
         return mContainerView;
     }
 
+    /** Requests keyboard focus on the first tab in the rail. */
+    public void requestKeyboardFocus() {
+        // TODO(crbug.com/509226293): Check with UX if we want to match desktop behavior by
+        // focusing the currently active tab instead of the first tab.
+        if (!mPinnedTabsModelList.isEmpty()) {
+            if (KeyboardFocusUtil.setFocusOnFirstFocusableDescendant(mPinnedTabsRecyclerView)) {
+                return;
+            }
+            requestFocusAtFirstItem(mPinnedTabsRecyclerView);
+            return;
+        }
+
+        if (!mModelList.isEmpty()) {
+            RecyclerView.ViewHolder holder = mRecyclerView.findViewHolderForAdapterPosition(0);
+            if (holder != null && KeyboardFocusUtil.setFocus(holder.itemView)) {
+                return;
+            }
+            mRecyclerView.scrollToPositionWithOffset(0);
+            requestFocusAtFirstItem(mRecyclerView);
+            return;
+        }
+
+        View collapseButton = mContainerView.findViewById(R.id.collapse_button);
+        if (collapseButton != null && KeyboardFocusUtil.setFocus(collapseButton)) {
+            return;
+        }
+        KeyboardFocusUtil.setFocusOnFirstFocusableDescendant(mContainerView);
+    }
+
     public void destroy() {
         mPinnedTabsMediator.destroy();
         mPinnedTabsRecyclerView.setAdapter(null);
@@ -869,6 +901,29 @@ public class VerticalTabListCoordinator {
             uiIndex = mMediator.getGroupHeaderIndexForTabId(tabId);
         }
         return uiIndex;
+    }
+
+    /**
+     * Attempts to request keyboard focus on the first item view in {@code recyclerView}. If the
+     * view holder is not yet attached, posts a fallback request to the message queue to wait for
+     * layout completion.
+     */
+    private void requestFocusAtFirstItem(RecyclerView recyclerView) {
+        RecyclerView.ViewHolder holder = recyclerView.findViewHolderForAdapterPosition(0);
+        if (holder != null && KeyboardFocusUtil.setFocus(holder.itemView)) {
+            return;
+        }
+        recyclerView.post(
+                () -> {
+                    RecyclerView.ViewHolder postHolder =
+                            recyclerView.findViewHolderForAdapterPosition(0);
+                    if (postHolder != null && KeyboardFocusUtil.setFocus(postHolder.itemView)) {
+                        return;
+                    }
+                    if (!KeyboardFocusUtil.setFocusOnFirstFocusableDescendant(recyclerView)) {
+                        KeyboardFocusUtil.setFocusOnFirstFocusableDescendant(mContainerView);
+                    }
+                });
     }
 
     /**

@@ -14,7 +14,6 @@
 #include "base/notimplemented.h"
 #include "base/strings/utf_string_conversions.h"
 #include "chrome/browser/autofill/autofill_offer_manager_factory.h"
-#include "chrome/browser/autofill/merchant_promo_code_manager_factory.h"
 #include "chrome/browser/feature_engagement/tracker_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
@@ -66,6 +65,7 @@
 #include "components/autofill/core/browser/ui/payments/card_unmask_prompt_controller_impl.h"
 #include "components/autofill/core/browser/ui/payments/card_unmask_prompt_view.h"
 #include "components/autofill/core/browser/ui/payments/save_and_fill_dialog_controller_impl.h"
+#include "components/autofill/core/browser/ui/payments/wallet_reminder_notice_ui_delegate.h"
 #include "components/autofill/core/common/autofill_features.h"
 #include "components/autofill/core/common/autofill_payments_features.h"
 #include "components/autofill/core/common/autofill_prefs.h"
@@ -115,6 +115,7 @@
 #include "chrome/browser/ui/autofill/payments/omnibox_autofill_page_action_controller.h"
 #include "chrome/browser/ui/autofill/payments/payments_churned_users_bubble_controller.h"
 #include "chrome/browser/ui/autofill/payments/save_card_bubble_controller_impl.h"
+#include "chrome/browser/ui/autofill/payments/wallet_reminder_notice_ui_delegate_desktop.h"
 #include "chrome/browser/ui/autofill/payments/webauthn_dialog_controller_impl.h"
 #include "chrome/browser/ui/autofill/payments/webauthn_dialog_state.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"  // nogncheck
@@ -136,6 +137,8 @@ ChromePaymentsAutofillClient::ChromePaymentsAutofillClient(
     ContentAutofillClient* client)
     : content::WebContentsObserver(&client->GetWebContents()),
       client_(CHECK_DEREF(client)),
+      merchant_promo_code_manager_(
+          std::make_unique<MerchantPromoCodeManager>()),
       save_and_fill_manager_(
           std::make_unique<SaveAndFillManagerImpl>(&client_.get())),
       payments_churned_users_manager_(
@@ -426,8 +429,7 @@ void ChromePaymentsAutofillClient::CreditCardUploadCompleted(
       }
 
       ios_promos_utils::MaybeOverrideCardConfirmationBubbleWithIOSPaymentPromo(
-          browser->GetBrowserForMigrationOnly(),
-          std::move(promo_will_show_callback),
+          browser, std::move(promo_will_show_callback),
           std::move(promo_not_shown_callback));
 
       return;
@@ -889,9 +891,7 @@ IbanAccessManager* ChromePaymentsAutofillClient::GetIbanAccessManager() {
 
 MerchantPromoCodeManager*
 ChromePaymentsAutofillClient::GetMerchantPromoCodeManager() {
-  Profile* profile =
-      Profile::FromBrowserContext(web_contents()->GetBrowserContext());
-  return MerchantPromoCodeManagerFactory::GetForProfile(profile);
+  return merchant_promo_code_manager_.get();
 }
 
 void ChromePaymentsAutofillClient::OpenPromoCodeOfferDetailsURL(
@@ -1255,6 +1255,17 @@ BnplUiDelegate* ChromePaymentsAutofillClient::GetBnplUiDelegate() {
 #endif  // BUILDFLAG(IS_ANDROID)
   }
   return bnpl_ui_delegate_.get();
+}
+
+WalletReminderNoticeUiDelegate*
+ChromePaymentsAutofillClient::GetWalletReminderNoticeUiDelegate() {
+  if (!wallet_reminder_notice_ui_delegate_) {
+#if !BUILDFLAG(IS_ANDROID)
+    wallet_reminder_notice_ui_delegate_ =
+        std::make_unique<WalletReminderNoticeUiDelegateDesktop>(&client_.get());
+#endif
+  }
+  return wallet_reminder_notice_ui_delegate_.get();
 }
 
 #if !BUILDFLAG(IS_ANDROID)

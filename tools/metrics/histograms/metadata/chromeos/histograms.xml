@@ -1494,7 +1494,7 @@ and mapped to the variant by `StatisticNameToMachineStatisticVariant()` -->
 
 <histogram
     name="ChromeOS.Display.TimeUntilFirstBrightnessChange.{Time}.{BrightnessAction}Brightness.{PowerSource}Power"
-    units="ms" expires_after="2026-09-27">
+    units="ms" expires_after="2027-03-27">
   <owner>longbowei@google.com</owner>
   <owner>cros-device-enablement@google.com</owner>
   <summary>
@@ -2518,7 +2518,7 @@ and mapped to the variant by `StatisticNameToMachineStatisticVariant()` -->
 </histogram>
 
 <histogram name="ChromeOS.K12UserAgeClassification.LogSegment"
-    enum="K12UserAgeClassificationMatrix" expires_after="2026-12-16">
+    enum="K12UserAgeClassificationMatrix" expires_after="2027-02-14">
   <owner>zifanzhang@google.com</owner>
   <owner>cros-client-wa@google.com</owner>
   <summary>Tracks the K12 user age classification.</summary>

@@ -1639,6 +1639,46 @@ IN_PROC_BROWSER_TEST_F(VerticalTabStripFocusModeLegacyTest,
   EXPECT_EQ(tab_strip_model()->GetFocusedGroup(), group_id);
 }
 
+IN_PROC_BROWSER_TEST_F(VerticalTabStripFocusModeLegacyTest,
+                       ToggleOrientationUnfocusedHidesUnfocusButton) {
+  // Start in vertical mode, create tabs and group.
+  AppendTab();
+  AppendTab();
+  ASSERT_EQ(3, tab_strip_model()->count());
+
+  const tab_groups::TabGroupId group_id =
+      tab_strip_model()->AddToNewGroup({1, 2});
+  tab_strip_model()->ActivateTabAt(
+      1, TabStripUserGestureDetails(
+             TabStripUserGestureDetails::GestureType::kOther));
+
+  // Focus the group while in vertical mode.
+  tab_strip_model()->SetFocusedGroup(group_id);
+  EXPECT_TRUE(
+      region_view()->GetTopContainer()->GetUnfocusButton()->GetVisible());
+  EXPECT_FALSE(
+      region_view()->GetTopContainer()->GetCollapseButton()->GetVisible());
+
+  // Switch to horizontal mode.
+  ExitVerticalTabsMode();
+  EXPECT_FALSE(state_controller()->ShouldDisplayVerticalTabs());
+
+  // Unfocus the tab group while in horizontal mode.
+  tab_strip_model()->SetFocusedGroup(std::nullopt);
+  EXPECT_EQ(tab_strip_model()->GetFocusedGroup(), std::nullopt);
+
+  // Switch back to vertical mode.
+  EnterVerticalTabsMode();
+  EXPECT_TRUE(state_controller()->ShouldDisplayVerticalTabs());
+
+  // In vertical mode, the unfocus button must NOT be visible, and the
+  // collapse button MUST be visible.
+  EXPECT_FALSE(
+      region_view()->GetTopContainer()->GetUnfocusButton()->GetVisible());
+  EXPECT_TRUE(
+      region_view()->GetTopContainer()->GetCollapseButton()->GetVisible());
+}
+
 class VerticalTabStripFocusModeUnifiedTest
     : public VerticalTabStripRegionViewTest {
  public:
@@ -1688,6 +1728,138 @@ IN_PROC_BROWSER_TEST_F(VerticalTabStripFocusModeUnifiedTest,
 
   // Focus state must be preserved and no crash.
   EXPECT_EQ(tab_strip_model()->GetFocusedGroup(), group_id);
+}
+
+IN_PROC_BROWSER_TEST_F(VerticalTabStripFocusModeUnifiedTest,
+                       MoveFocusedGroupToNewWindowPreservesFocus) {
+  AppendTab();
+  AppendTab();
+  ASSERT_EQ(3, tab_strip_model()->count());
+
+  const tab_groups::TabGroupId group_id =
+      tab_strip_model()->AddToNewGroup({1, 2});
+
+  tab_strip_model()->ActivateTabAt(
+      1, TabStripUserGestureDetails(
+             TabStripUserGestureDetails::GestureType::kOther));
+
+  tab_strip_model()->SetFocusedGroup(group_id);
+  ASSERT_EQ(tab_strip_model()->GetFocusedGroup(), group_id);
+
+  ui_test_utils::BrowserCreatedObserver observer;
+  chrome::MoveGroupToNewWindow(browser(), group_id);
+  Browser* new_browser = observer.Wait();
+  ASSERT_TRUE(new_browser);
+
+  // Source browser should no longer have the group or focus.
+  EXPECT_EQ(1, tab_strip_model()->count());
+  EXPECT_FALSE(tab_strip_model()->GetFocusedGroup().has_value());
+
+  // New browser should contain the group and have it focused.
+  EXPECT_EQ(2, new_browser->tab_strip_model()->count());
+  EXPECT_EQ(new_browser->tab_strip_model()->GetFocusedGroup(), group_id);
+}
+
+IN_PROC_BROWSER_TEST_F(VerticalTabStripFocusModeUnifiedTest,
+                       MoveAllTabsIngroupToNewWindowPreservesFocus) {
+  AppendTab();
+  AppendTab();
+  ASSERT_EQ(3, tab_strip_model()->count());
+
+  const tab_groups::TabGroupId group_id =
+      tab_strip_model()->AddToNewGroup({1, 2});
+
+  tab_strip_model()->ActivateTabAt(
+      1, TabStripUserGestureDetails(
+             TabStripUserGestureDetails::GestureType::kOther));
+
+  tab_strip_model()->SetFocusedGroup(group_id);
+  ASSERT_EQ(tab_strip_model()->GetFocusedGroup(), group_id);
+
+  ui_test_utils::BrowserCreatedObserver observer;
+  chrome::MoveTabsToNewWindow(browser(), {1, 2});
+  Browser* new_browser = observer.Wait();
+  ASSERT_TRUE(new_browser);
+
+  // Source browser should no longer have the group or focus.
+  EXPECT_EQ(1, tab_strip_model()->count());
+  EXPECT_FALSE(tab_strip_model()->GetFocusedGroup().has_value());
+
+  // New browser should contain the group and have it focused.
+  EXPECT_EQ(2, new_browser->tab_strip_model()->count());
+  EXPECT_EQ(new_browser->tab_strip_model()->GetFocusedGroup(), group_id);
+}
+
+IN_PROC_BROWSER_TEST_F(VerticalTabStripFocusModeUnifiedTest,
+                       MoveGroupAndPinnedTabsToNewWindowPreservesFocus) {
+  AppendTab();
+  AppendTab();
+  AppendTab();
+  ASSERT_EQ(4, tab_strip_model()->count());
+
+  tab_strip_model()->SetTabPinned(0, true);
+  ASSERT_TRUE(tab_strip_model()->IsTabPinned(0));
+
+  const tab_groups::TabGroupId group_id =
+      tab_strip_model()->AddToNewGroup({1, 2});
+
+  tab_strip_model()->ActivateTabAt(
+      1, TabStripUserGestureDetails(
+             TabStripUserGestureDetails::GestureType::kOther));
+
+  tab_strip_model()->SetFocusedGroup(group_id);
+  ASSERT_EQ(tab_strip_model()->GetFocusedGroup(), group_id);
+
+  ui_test_utils::BrowserCreatedObserver observer;
+  chrome::MoveTabsToNewWindow(browser(), {0, 1, 2});
+  Browser* new_browser = observer.Wait();
+  ASSERT_TRUE(new_browser);
+
+  // Source browser should retain the remaining tab and have no focused group.
+  EXPECT_EQ(1, tab_strip_model()->count());
+  EXPECT_FALSE(tab_strip_model()->GetFocusedGroup().has_value());
+
+  // New browser should contain the pinned tab and the group, with the group
+  // focused.
+  EXPECT_EQ(3, new_browser->tab_strip_model()->count());
+  EXPECT_TRUE(new_browser->tab_strip_model()->IsTabPinned(0));
+  EXPECT_EQ(new_browser->tab_strip_model()->GetFocusedGroup(), group_id);
+}
+
+IN_PROC_BROWSER_TEST_F(VerticalTabStripFocusModeUnifiedTest,
+                       MoveFocusedGroupToExistingWindowDoesNotFocus) {
+  AppendTab();
+  AppendTab();
+  ASSERT_EQ(3, tab_strip_model()->count());
+
+  const tab_groups::TabGroupId group_id =
+      tab_strip_model()->AddToNewGroup({1, 2});
+
+  tab_strip_model()->ActivateTabAt(
+      1, TabStripUserGestureDetails(
+             TabStripUserGestureDetails::GestureType::kOther));
+
+  tab_strip_model()->SetFocusedGroup(group_id);
+  ASSERT_EQ(tab_strip_model()->GetFocusedGroup(), group_id);
+
+  Browser* target_browser = CreateBrowser(browser()->GetProfile());
+  ASSERT_TRUE(target_browser);
+  ASSERT_EQ(1, target_browser->tab_strip_model()->count());
+
+  chrome::MoveGroupToExistingWindow(browser(), target_browser, group_id);
+
+  // Source browser should no longer have the group or focus.
+  EXPECT_EQ(1, tab_strip_model()->count());
+  EXPECT_FALSE(tab_strip_model()->GetFocusedGroup().has_value());
+
+  // Target browser contains the moved group along with its original tab, so the
+  // group should not be focused in the target window.
+  EXPECT_EQ(3, target_browser->tab_strip_model()->count());
+  EXPECT_TRUE(
+      target_browser->tab_strip_model()->group_model()->ContainsTabGroup(
+          group_id));
+  EXPECT_FALSE(
+      target_browser->tab_strip_model()->GetFocusedGroup().has_value());
 }
 
 class VerticalTabStripFocusSwipeTest : public VerticalTabStripRegionViewTest {
@@ -1803,15 +1975,8 @@ IN_PROC_BROWSER_TEST_F(VerticalTabStripFocusSwipeTest,
 }
 
 // TODO(crbug.com/546848427): Fix wall-clock timing race with kGestureResetTimeout.
-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN)
-#define MAYBE_SwipeTriggersOnlyOncePerGesture \
-  DISABLED_SwipeTriggersOnlyOncePerGesture
-#else
-#define MAYBE_SwipeTriggersOnlyOncePerGesture \
-  SwipeTriggersOnlyOncePerGesture
-#endif
 IN_PROC_BROWSER_TEST_F(VerticalTabStripFocusSwipeTest,
-                       MAYBE_SwipeTriggersOnlyOncePerGesture) {
+                       DISABLED_SwipeTriggersOnlyOncePerGesture) {
   EnterVerticalTabsMode();
   AppendTab();
   AppendTab();

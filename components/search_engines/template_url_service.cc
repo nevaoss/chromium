@@ -1897,8 +1897,8 @@ void TemplateURLService::OnWebDataServiceRequestDone(
               regional_capabilities::CountryAccessKey(
                   regional_capabilities::CountryAccessReason::
                       kTemplateURLServiceDatabaseMetadataCaching)));
-      web_data_service_->SetPrepopulatedEnginesMigrationEnabled(
-          updated_keywords_metadata.prepopulated_engines_migration_enabled);
+      web_data_service_->SetPrepopulatedEnginesMigrationState(
+          updated_keywords_metadata.prepopulated_engines_migration_state);
     }
 
     if (updated_keywords_metadata.HasStarterPackData()) {
@@ -2435,9 +2435,9 @@ void TemplateURLService::ClearSessionToken() {
   token_expiration_time_ = base::TimeTicks();
 }
 
-// static
-sync_pb::SearchEngineSpecifics_ActiveStatus
-TemplateURLService::ActiveStatusToSync(
+namespace {
+
+sync_pb::SearchEngineSpecifics_ActiveStatus ActiveStatusToSync(
     TemplateURLData::ActiveStatus is_active) {
   switch (is_active) {
     case TemplateURLData::ActiveStatus::kUnspecified:
@@ -2451,6 +2451,8 @@ TemplateURLService::ActiveStatusToSync(
           SearchEngineSpecifics_ActiveStatus_ACTIVE_STATUS_FALSE;
   }
 }
+
+}  // namespace
 
 // static
 syncer::SyncData TemplateURLService::CreateSyncDataFromTemplateURLData(

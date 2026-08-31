@@ -21,7 +21,9 @@ chromium-metrics-reviews@google.com.
 <histograms>
 
 <variants name="ChromeInitiatorLocation">
+  <variant name="Backward" summary="Initiated by a back navigation"/>
   <variant name="BookmarkBar" summary="Initiated from BookmarkBar"/>
+  <variant name="Forward" summary="Initiated by a forward navigation"/>
   <variant name="LinkClick" summary="Initiated by a link click"/>
   <variant name="NewTabPage" summary="Initiated from NewTabPage"/>
   <variant name="OmniboxDefaultSearchEngine"
@@ -29,6 +31,7 @@ chromium-metrics-reviews@google.com.
   <variant name="OmniboxDirectUrlInput"
       summary="Initiated from OmniboxDirectUrlInput"/>
   <variant name="Other" summary="Initiated from other"/>
+  <variant name="Reload" summary="Initiated by a reload navigation"/>
 </variants>
 
 <variants name="ExperimentalPreloadingPrediction">
@@ -45,6 +48,19 @@ chromium-metrics-reviews@google.com.
 <variants name="GroundTruth">
   <variant name="Negative" summary=""/>
   <variant name="Positive" summary=""/>
+</variants>
+
+<variants name="InitiatorLocation">
+  <variant name="All"
+      summary="All initiator locations. No additional condition."/>
+  <variant name="BookmarkBar" summary="Initiated from BookmarkBar"/>
+  <variant name="LinkClick" summary="Initiated by a link click"/>
+  <variant name="NewTabPage" summary="Initiated from NewTabPage"/>
+  <variant name="OmniboxDefaultSearchEngine"
+      summary="Initiated from OmniboxDefaultSearchEngine"/>
+  <variant name="OmniboxDirectUrlInput"
+      summary="Initiated from OmniboxDirectUrlInput"/>
+  <variant name="Other" summary="Initiated from other"/>
 </variants>
 
 <variants name="NavigationDestinationSuffix">
@@ -184,6 +200,19 @@ chromium-metrics-reviews@google.com.
 <variants name="PreloadServingMetricsPrerenderFallbackMatchSuffix">
   <variant name=".Match0" summary="For the first prefetch matching."/>
   <variant name=".Match1" summary="For the second prefetch matching."/>
+</variants>
+
+<variants name="UsedInstantLoad">
+  <variant name="All" summary="All navigations. No additional condition."/>
+  <variant name="NoInstantLoad" summary="No instant load technology was used."/>
+  <variant name="Prefetch" summary="Prefetch was used."/>
+  <variant name="Prefetch.WithoutPrePrefetch"
+      summary="Prefetch that was not constructed from a PrePrefetch was used.
+               Only recorded when `kPrefetchOffTheMainThread` is enabled."/>
+  <variant name="Prefetch.WithPrePrefetch"
+      summary="Prefetch that was constructed from a PrePrefetch was used.
+               Only recorded when `kPrefetchOffTheMainThread` is enabled."/>
+  <variant name="Prerender" summary="Prerender was used."/>
 </variants>
 
 <variants name="WithPreloadSuffix">
@@ -437,6 +466,40 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram
+    name="PreloadServingMetrics.PageLoad.Clients.PaintTiming.NavigationToFirstContentfulPaint.WithoutFiltering.{InitiatorLocation}.{NavigationDestinationSuffix}.{UsedInstantLoad}"
+    units="ms" expires_after="2027-02-07">
+  <owner>kenoss@chromium.org</owner>
+  <owner>chrome-prerendering@google.com</owner>
+  <summary>
+    FirstContentfulPaint without foreground filtering.
+
+    Recorded when {InitiatorLocation}, {NavigationDestinationSuffix}, and
+    {UsedInstantLoad}.
+  </summary>
+  <token key="InitiatorLocation" variants="InitiatorLocation"/>
+  <token key="NavigationDestinationSuffix"
+      variants="NavigationDestinationSuffix"/>
+  <token key="UsedInstantLoad" variants="UsedInstantLoad"/>
+</histogram>
+
+<histogram
+    name="PreloadServingMetrics.PageLoad.Clients.PaintTiming.NavigationToFirstContentfulPaint.{InitiatorLocation}.{NavigationDestinationSuffix}.{UsedInstantLoad}"
+    units="ms" expires_after="2027-02-07">
+  <owner>kenoss@chromium.org</owner>
+  <owner>chrome-prerendering@google.com</owner>
+  <summary>
+    FirstContentfulPaint.
+
+    Recorded when {InitiatorLocation}, {NavigationDestinationSuffix}, and
+    {UsedInstantLoad}.
+  </summary>
+  <token key="InitiatorLocation" variants="InitiatorLocation"/>
+  <token key="NavigationDestinationSuffix"
+      variants="NavigationDestinationSuffix"/>
+  <token key="UsedInstantLoad" variants="UsedInstantLoad"/>
+</histogram>
+
+<histogram
     name="PreloadServingMetrics.PageLoad.Clients.PaintTiming.NavigationToFirstContentfulPaint.{WithPreloadSuffix}"
     units="ms" expires_after="2027-01-31">
   <owner>kenoss@chromium.org</owner>
@@ -445,6 +508,10 @@ chromium-metrics-reviews@google.com.
     FirstContentfulPaint.
 
     Recorded when {WithPreloadSuffix}.
+
+    Note: This is going to be obsolete. Use
+    PreloadServingMetrics.PageLoad.Clients.PaintTiming.NavigationToFirstContentfulPaint.All.All.{{UsedInstantLoad}}
+    instead.
   </summary>
   <token key="WithPreloadSuffix" variants="WithPreloadSuffix"/>
 </histogram>

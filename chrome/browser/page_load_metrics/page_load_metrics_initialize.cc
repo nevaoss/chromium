@@ -70,6 +70,7 @@
 #include "components/page_load_metrics/browser/page_load_tracker.h"
 #include "components/page_load_metrics/google/browser/from_gws_abandoned_page_load_metrics_observer.h"
 #include "components/page_load_metrics/google/browser/gws_abandoned_page_load_metrics_observer.h"
+#include "components/page_load_metrics/google/browser/gws_prewarm_page_load_metrics_observer.h"
 #include "content/public/browser/internal_webui_config.h"
 #include "content/public/browser/preload_serving_metrics_capsule.h"
 #include "content/public/browser/web_contents.h"
@@ -182,8 +183,7 @@ void PageLoadMetricsEmbedder::RegisterObservers(
 
 #if !BUILDFLAG(IS_ANDROID)
   if (HasWebUIConfig(navigation_handle->GetURL()) &&
-      waap::IsForInitialWebUI(navigation_handle->GetURL()) &&
-      waap::IsInitialWebUIMetricsLoggingEnabled()) {
+      waap::IsForInitialWebUI(navigation_handle->GetURL())) {
     tracker->AddObserver(
         std::make_unique<InitialWebUIPageLoadMetricsObserver>());
   }
@@ -229,6 +229,7 @@ void PageLoadMetricsEmbedder::RegisterObservers(
     tracker->AddObserver(
         std::make_unique<ChromeGWSAbandonedPageLoadMetricsObserver>());
     tracker->AddObserver(std::make_unique<GWSHpPageLoadMetricsObserver>());
+    tracker->AddObserver(std::make_unique<GWSPrewarmPageLoadMetricsObserver>());
     tracker->AddObserver(std::make_unique<ForegroundDurationUKMObserver>());
     tracker->AddObserver(
         std::make_unique<DocumentWritePageLoadMetricsObserver>());

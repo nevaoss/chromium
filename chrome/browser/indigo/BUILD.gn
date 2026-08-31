@@ -44,6 +44,7 @@ source_set("indigo") {
     "//components/tabs:public",
     "//content/public/browser",
     "//content/public/common",
+    "//crypto",
     "//ui/menus",
     "//url",
   ]
@@ -195,6 +196,7 @@ source_set("browser_tests") {
     "//chrome/browser/signin",
     "//chrome/browser/signin:test_support",
     "//chrome/browser/ui",
+    "//chrome/browser/ui/browser_window",
     "//chrome/browser/ui/toasts",
     "//chrome/browser/ui/views/indigo",
     "//chrome/browser/ui/views/page_action",
@@ -228,6 +230,7 @@ source_set("interactive_ui_tests") {
     "//chrome/browser/signin",
     "//chrome/browser/signin:test_support",
     "//chrome/browser/ui",
+    "//chrome/browser/ui/browser_window",
     "//chrome/browser/ui/views/indigo",
     "//chrome/browser/ui/views/page_action",
     "//chrome/common:chrome_features",

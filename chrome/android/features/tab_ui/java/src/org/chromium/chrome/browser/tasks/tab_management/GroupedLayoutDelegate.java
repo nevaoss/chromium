@@ -6,6 +6,7 @@ package org.chromium.chrome.browser.tasks.tab_management;
 
 import static org.chromium.build.NullUtil.assumeNonNull;
 
+import android.graphics.Bitmap;
 import android.util.Pair;
 
 import org.chromium.base.Token;
@@ -15,12 +16,15 @@ import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.tab.MediaState;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabId;
+import org.chromium.chrome.browser.tab.TabLaunchType;
+import org.chromium.chrome.browser.tab.TabSelectionType;
 import org.chromium.chrome.browser.tab_ui.ThumbnailProvider;
 import org.chromium.chrome.browser.tabmodel.TabGroupUtils;
 import org.chromium.chrome.browser.tabmodel.TabList;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.components.tab_groups.TabGroupColorId;
 import org.chromium.ui.modelutil.PropertyModel;
+import org.chromium.url.GURL;
 
 import java.util.List;
 
@@ -101,9 +105,118 @@ class GroupedLayoutDelegate extends TabListLayoutDelegate {
     }
 
     @Override
+    void didAddTab(Tab tab, @TabLaunchType int type) {
+        super.didAddTab(tab, type);
+
+        if (type == TabLaunchType.FROM_RESTORE) {
+            TabModel tabModel = mMediator.getCurrentTabModelChecked();
+            int filterIndex = tabModel.representativeIndexOf(tab);
+            if (filterIndex == TabList.INVALID_TAB_INDEX) return;
+            Tab currentGroupSelectedTab = tabModel.getRepresentativeTabAt(filterIndex);
+            assumeNonNull(currentGroupSelectedTab);
+
+            int tabListModelIndex = mModelList.indexOfNthTabCard(filterIndex);
+            if (mModelList.indexFromTabId(currentGroupSelectedTab.getId()) != tabListModelIndex) {
+                return;
+            }
+            mMediator.updateTab(
+                    tabListModelIndex,
+                    currentGroupSelectedTab,
+                    /* isUpdatingId= */ false,
+                    /* quickMode= */ false);
+        }
+    }
+
+    /**
+     * Resolves the UI index in {@link #mModelList} for the given tab ID, falling back to finding
+     * the containing tab group card if the tab is a non-representative member of a group.
+     */
+    @Override
+    int getUiIndexForTab(int tabId) {
+        int index = super.getUiIndexForTab(tabId);
+        if (index == TabModel.INVALID_TAB_INDEX) {
+            // If a tab in a tab group does not have its own card in the model, identify the
+            // related tab IDs and determine the index of the group card in the model list.
+            index = mMediator.getIndexForTabIdWithRelatedTabs(tabId);
+        }
+        return index;
+    }
+
+    @Override
+    void didSelectTab(Tab tab, @TabSelectionType int type, int lastId) {
+        // For UNDO ensure we update the representative tab in the model.
+        if (type == TabSelectionType.FROM_UNDO) {
+            int newIndex = getUiIndexForTab(tab.getId());
+            if (mModelList.isValidIndex(newIndex)) {
+                mModelList.updateTabListModelIdForGroup(tab, newIndex);
+            }
+        }
+
+        super.didSelectTab(tab, type, lastId);
+    }
+
+    @Override
+    void onFaviconUpdated(Tab updatedTab, @Nullable Bitmap icon, @Nullable GURL iconUrl) {
+        if (mMediator.isTabInTabGroup(updatedTab)) {
+            @Nullable Pair<Integer, Tab> indexAndTab =
+                    mMediator.getIndexAndTabForTabGroupId(updatedTab.getTabGroupId());
+            if (indexAndTab == null) return;
+
+            PropertyModel model = mModelList.get(indexAndTab.first).model;
+            Tab representativeTab = indexAndTab.second;
+
+            if (mThumbnailProvider != null) {
+                mMediator.updateThumbnailFetcher(model, representativeTab.getId());
+            }
+            mMediator.updateFaviconForTab(model, representativeTab, icon, iconUrl);
+        } else {
+            super.onFaviconUpdated(updatedTab, icon, iconUrl);
+        }
+    }
+
+    @Override
+    void onTabClose(Tab tab) {
+        TabModel tabModel = mMediator.getCurrentTabModelChecked();
+        Token tabGroupId = tab.getTabGroupId();
+        if (tabGroupId != null && tabModel.tabGroupExists(tabGroupId)) {
+            // If the tab closed was part of a tab group and the closure was
+            // triggered from a grouped layout, update the group to reflect the
+            // closure instead of closing the tab.
+            int groupIndex = tabModel.representativeIndexOf(tab);
+            Tab groupTab = tabModel.getRepresentativeTabAt(groupIndex);
+            assumeNonNull(groupTab);
+            if (!groupTab.isClosing()) {
+                mMediator.updateTab(
+                        mModelList.indexOfNthTabCard(groupIndex),
+                        groupTab,
+                        /* isUpdatingId= */ true,
+                        /* quickMode= */ false);
+                return;
+            }
+        }
+
+        super.onTabClose(tab);
+    }
+
+    @Override
+    public void didChangeTabGroupColor(Token tabGroupId, @TabGroupColorId int newColor) {
+        @Nullable Pair<Integer, Tab> indexAndTab =
+                mMediator.getIndexAndTabForTabGroupId(tabGroupId);
+        if (indexAndTab == null) return;
+        Tab tab = indexAndTab.second;
+        PropertyModel model = mModelList.get(indexAndTab.first).model;
+
+        mMediator.updateTabGroupProperties(tab, model, newColor);
+        mMediator.updateFaviconForTab(model, tab, null, null);
+        mMediator.updateDescriptionString(model);
+        mMediator.updateActionButtonDescriptionString(tab, model);
+        mMediator.updateThumbnailFetcher(model, tab.getId());
+    }
+
+    @Override
     public void didMoveWithinGroup(Tab movedTab, int tabModelOldIndex, int tabModelNewIndex) {
         if (mThumbnailProvider != null) {
-            int indexInModel = mMediator.getIndexForTabIdWithRelatedTabs(movedTab.getId());
+            int indexInModel = getUiIndexForTab(movedTab.getId());
             if (indexInModel == TabModel.INVALID_TAB_INDEX) return;
 
             TabModel tabModel = mMediator.getCurrentTabModelChecked();

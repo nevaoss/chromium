@@ -15,6 +15,7 @@ import static androidx.test.espresso.matcher.ViewMatchers.withParent;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
 
 import static org.hamcrest.CoreMatchers.allOf;
+import static org.mockito.Mockito.when;
 
 import static org.chromium.ui.test.util.ViewUtils.onViewWaiting;
 
@@ -29,13 +30,17 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.Mockito;
 
 import org.chromium.base.test.util.Batch;
 import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.base.test.util.HistogramWatcher;
 import org.chromium.chrome.R;
+import org.chromium.chrome.browser.autofill.autofill_ai.EntityDataManager;
+import org.chromium.chrome.browser.autofill.autofill_ai.EntityDataManagerFactory;
 import org.chromium.chrome.browser.autofill.settings.AutofillAndPasswordsFragment.AutofillSettingsReferrer;
+import org.chromium.chrome.browser.autofill.settings.options.AutofillOptionsReferrer;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
 import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
@@ -172,7 +177,7 @@ public class AutofillSettingsSearchTest {
     @Test
     @SmallTest
     public void testSearchSaveAndFillAddresses() {
-        searchSettings("address");
+        searchSettings("save and fill address");
 
         onViewWaiting( // Wait for debounce and Search results to appear.
                         allOf(
@@ -309,8 +314,60 @@ public class AutofillSettingsSearchTest {
 
     @Test
     @SmallTest
+    @EnableFeatures(ChromeFeatureList.AUTOFILL_AI_WALLET_SHOPPING)
+    public void testSearchShoppingOptIn() {
+        searchSettings("fill shopping");
+
+        onViewWaiting( // Wait for debounce and Search results to appear.
+                        allOf(
+                                withId(android.R.id.title),
+                                withText(R.string.autofill_shopping_opt_in_toggle_label)))
+                .perform(click());
+
+        onView(
+                        allOf(
+                                hasDescendant(
+                                        withText(R.string.autofill_shopping_opt_in_toggle_label)),
+                                isHighlighted()))
+                .check(matches(isDisplayed()));
+    }
+
+    @Test
+    @SmallTest
+    public void testSearchPersonalContextToggle() {
+        EntityDataManager entityDataManagerMock = Mockito.mock(EntityDataManager.class);
+        when(entityDataManagerMock.isPersonalContextPreferenceVisible()).thenReturn(true);
+        when(entityDataManagerMock.isPersonalContextEnabled()).thenReturn(true);
+        EntityDataManagerFactory.setInstanceForTesting(entityDataManagerMock);
+
+        searchSettings("find and fill");
+
+        onViewWaiting( // Wait for debounce and Search results to appear.
+                        allOf(
+                                withId(android.R.id.title),
+                                withText(
+                                        R.string
+                                                .personal_context_autofill_settings_switch_title_android)))
+                .perform(click());
+
+        onView(
+                        allOf(
+                                hasDescendant(
+                                        withText(
+                                                R.string
+                                                        .personal_context_autofill_settings_switch_title_android)),
+                                isHighlighted()))
+                .check(matches(isDisplayed()));
+    }
+
+    @Test
+    @SmallTest
     @DisableFeatures(ChromeFeatureList.YOUR_SAVED_INFO_SETTINGS_PAGE_ANDROID)
     public void testSearchAutofill_autofillAndPasswordsDisabled() {
+        var histogramWatcher =
+                HistogramWatcher.newSingleRecordWatcher(
+                        "Autofill.Settings.AutofillOptionsReferrerAndroid",
+                        AutofillOptionsReferrer.SETTINGS_SEARCH);
         searchSettings("autofill");
 
         onViewWaiting( // Wait for debounce and Search results to appear.
@@ -320,6 +377,7 @@ public class AutofillSettingsSearchTest {
                 .perform(click());
 
         onView(withText(R.string.settings_autofill_service_provider)).check(matches(isDisplayed()));
+        histogramWatcher.assertExpected();
     }
 
     @Test
@@ -329,6 +387,10 @@ public class AutofillSettingsSearchTest {
         ChromeFeatureList.YOUR_SAVED_INFO_SETTINGS_PAGE_ANDROID
     })
     public void testSearchAutofill_autofillAiAndAutofillAndPasswordsDisabled() {
+        var histogramWatcher =
+                HistogramWatcher.newSingleRecordWatcher(
+                        "Autofill.Settings.AutofillOptionsReferrerAndroid",
+                        AutofillOptionsReferrer.SETTINGS_SEARCH);
         searchSettings("autofill");
 
         onViewWaiting( // Wait for debounce and Search results to appear.
@@ -339,6 +401,7 @@ public class AutofillSettingsSearchTest {
 
         onView(withText(R.string.autofill_third_party_filling_default))
                 .check(matches(isDisplayed()));
+        histogramWatcher.assertExpected();
     }
 
     @Test
@@ -356,6 +419,51 @@ public class AutofillSettingsSearchTest {
         assertAutofillAndPasswordsOpened();
         onView(allOf(hasDescendant(withText(R.string.autofill_options_title)), isHighlighted()))
                 .check(matches(isDisplayed()));
+    }
+
+    @Test
+    @SmallTest
+    @EnableFeatures({
+        ChromeFeatureList.AUTOFILL_AI_ONLINE_MODEL_TOGGLE_NEW_TITLE,
+        ChromeFeatureList.YOUR_SAVED_INFO_SETTINGS_PAGE_ANDROID
+    })
+    public void testSearchAutofillSettingsChildren_yourSavedInfoSettingsPageEnabled() {
+        testSearchAutofillAiSwitch();
+    }
+
+    @Test
+    @SmallTest
+    @EnableFeatures(ChromeFeatureList.AUTOFILL_AI_ONLINE_MODEL_TOGGLE_NEW_TITLE)
+    @DisableFeatures(ChromeFeatureList.YOUR_SAVED_INFO_SETTINGS_PAGE_ANDROID)
+    public void testSearchAutofillSettingsChildren_yourSavedInfoSettingsPageDisabled() {
+        testSearchAutofillAiSwitch();
+    }
+
+    private void testSearchAutofillAiSwitch() {
+        var histogramWatcher =
+                HistogramWatcher.newSingleRecordWatcher(
+                        "Autofill.Settings.AutofillOptionsReferrerAndroid",
+                        AutofillOptionsReferrer.SETTINGS_SEARCH);
+        searchSettings("Smarter form understanding");
+
+        onViewWaiting( // Wait for debounce and Search results to appear.
+                        allOf(
+                                withId(android.R.id.title),
+                                withText(R.string.settings_autofill_ai_page_title_v2)))
+                .perform(click());
+
+        onView(
+                        allOf(
+                                withText(R.string.autofill_settings_title),
+                                withParent(withId(R.id.action_bar))))
+                .check(matches(isDisplayed()));
+        onView(
+                        allOf(
+                                hasDescendant(
+                                        withText(R.string.settings_autofill_ai_page_title_v2)),
+                                isHighlighted()))
+                .check(matches(isDisplayed()));
+        histogramWatcher.assertExpected();
     }
 
     private void searchSettings(String query) {

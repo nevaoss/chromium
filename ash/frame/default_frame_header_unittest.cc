@@ -11,6 +11,7 @@
 #include "ash/test/ash_test_base.h"
 #include "ash/wm/desks/desks_util.h"
 #include "base/i18n/rtl.h"
+#include "base/i18n/test/scoped_rtl_for_testing.h"
 #include "base/memory/raw_ptr.h"
 #include "base/test/icu_test_util.h"
 #include "chromeos/ui/base/window_properties.h"
@@ -21,6 +22,7 @@
 #include "ui/aura/window_tree_host.h"
 #include "ui/compositor/layer.h"
 #include "ui/compositor/layer_animator.h"
+#include "ui/compositor/layer_test_api.h"
 #include "ui/compositor/test/test_utils.h"
 #include "ui/gfx/animation/animation_test_api.h"
 #include "ui/gfx/color_utils.h"
@@ -95,7 +97,7 @@ TEST_F(DefaultFrameHeaderTest, MinimumHeaderWidthRTL) {
       widget.get(), widget->non_client_view()->frame_view(), &container);
   frame_header.LayoutHeader();
   int ltr_minimum_width = frame_header.GetMinimumHeaderWidth();
-  base::i18n::SetRTLForTesting(true);
+  base::i18n::ScopedRTLForTesting scoped_rtl(true);
   frame_header.LayoutHeader();
   int rtl_minimum_width = frame_header.GetMinimumHeaderWidth();
   EXPECT_EQ(ltr_minimum_width, rtl_minimum_width);
@@ -319,7 +321,8 @@ TEST_F(DefaultFrameHeaderTest, AnimateDuringAnimation) {
   win_1.reset();
   EXPECT_TRUE(wm::IsActiveWindow(win_0.get()));
   // Makes sure that the layer has full damaged bounds.
-  EXPECT_TRUE(win_0->layer()->damaged_region().Contains(layer_bounds));
+  ui::LayerTestApi layer_test_api(win_0->layer());
+  EXPECT_TRUE(layer_test_api.damaged_region().Contains(layer_bounds));
 }
 
 }  // namespace ash

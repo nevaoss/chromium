@@ -54,6 +54,12 @@ class CRYPTO_EXPORT PrivateKey {
   // Generates a fresh, random ML-DSA-44 key.
   static PrivateKey GenerateMldsa44();
 
+  // Generates a fresh, random ML-DSA-65 key.
+  static PrivateKey GenerateMldsa65();
+
+  // Generates a fresh, random ML-DSA-87 key.
+  static PrivateKey GenerateMldsa87();
+
   // Generates a fresh, random ML-KEM-768 key.
   static PrivateKey GenerateMlkem768();
 
@@ -65,11 +71,11 @@ class CRYPTO_EXPORT PrivateKey {
 
   // Importing algorithm-specific formats.
   //
-  // The following methods import public keys in algorithm-specific formats. The
-  // formats encode the private key itself, without the key type or EC curve.
-  // They are appropriate when the full key type (e.g. EC P-256 or Ed25519) is
-  // known in context. When multiple key types are needed, use PrivateKeyInfo,
-  // which also encodes the key type.
+  // The following methods import private keys in algorithm-specific formats.
+  // The formats encode the private key itself, without the key type or EC
+  // curve. They are appropriate when the full key type (e.g. EC P-256 or
+  // Ed25519) is known in context. When multiple key types are needed, use
+  // PrivateKeyInfo, which also encodes the key type.
 
   // Imports an RFC 8017-encoded RSA private key. Returns nullopt if the
   // passed-in buffer is not a valid RSA private key.
@@ -95,6 +101,15 @@ class CRYPTO_EXPORT PrivateKey {
 
   // Imports an X25519 private key.
   static PrivateKey FromX25519PrivateKey(base::span<const uint8_t, 32> key);
+
+  // Imports an ML-DSA-44 private key seed (32 bytes).
+  static PrivateKey FromMldsa44PrivateKey(base::span<const uint8_t, 32> seed);
+
+  // Imports an ML-DSA-65 private key seed (32 bytes).
+  static PrivateKey FromMldsa65PrivateKey(base::span<const uint8_t, 32> seed);
+
+  // Imports an ML-DSA-87 private key seed (32 bytes).
+  static PrivateKey FromMldsa87PrivateKey(base::span<const uint8_t, 32> seed);
 
   // Imports an ML-KEM-768 private key seed.
   static PrivateKey FromMlkem768PrivateKey(base::span<const uint8_t, 64> key);
@@ -137,6 +152,18 @@ class CRYPTO_EXPORT PrivateKey {
   // Exports an X25519 private key.
   std::array<uint8_t, 32> ToX25519PrivateKey() const;
 
+  // Exports an ML-DSA-44 private key seed (32 bytes). It is illegal to call
+  // this if !IsMldsa44().
+  std::array<uint8_t, 32> ToMldsa44PrivateKey() const;
+
+  // Exports an ML-DSA-65 private key seed (32 bytes). It is illegal to call
+  // this if !IsMldsa65().
+  std::array<uint8_t, 32> ToMldsa65PrivateKey() const;
+
+  // Exports an ML-DSA-87 private key seed (32 bytes). It is illegal to call
+  // this if !IsMldsa87().
+  std::array<uint8_t, 32> ToMldsa87PrivateKey() const;
+
   // Exports an ML-KEM-768 private key seed.
   std::array<uint8_t, 64> ToMlkem768PrivateKey() const;
 
@@ -155,6 +182,18 @@ class CRYPTO_EXPORT PrivateKey {
   // Exports an X25519 public key.
   std::array<uint8_t, 32> ToX25519PublicKey() const;
 
+  // Exports an ML-DSA-44 public key in RFC 9881 raw format. It is illegal to
+  // call this if !IsMldsa44().
+  std::vector<uint8_t> ToMldsa44PublicKey() const;
+
+  // Exports an ML-DSA-65 public key in RFC 9881 raw format. It is illegal to
+  // call this if !IsMldsa65().
+  std::vector<uint8_t> ToMldsa65PublicKey() const;
+
+  // Exports an ML-DSA-87 public key in RFC 9881 raw format. It is illegal to
+  // call this if !IsMldsa87().
+  std::vector<uint8_t> ToMldsa87PublicKey() const;
+
   // Exports an ML-KEM-768 public key.
   std::array<uint8_t, 1184> ToMlkem768PublicKey() const;
 
@@ -166,6 +205,8 @@ class CRYPTO_EXPORT PrivateKey {
   bool IsEd25519() const;
   bool IsX25519() const;
   bool IsMldsa44() const;
+  bool IsMldsa65() const;
+  bool IsMldsa87() const;
   bool IsMlkem768() const;
 
   bool IsEcP256() const;
@@ -238,6 +279,18 @@ class CRYPTO_EXPORT PublicKey {
   // Imports an X25519 public key.
   static PublicKey FromX25519PublicKey(base::span<const uint8_t, 32> key);
 
+  // Imports an ML-DSA-44 public key in RFC 9881 raw format.
+  static std::optional<PublicKey> FromMldsa44PublicKey(
+      base::span<const uint8_t> key);
+
+  // Imports an ML-DSA-65 public key in RFC 9881 raw format.
+  static std::optional<PublicKey> FromMldsa65PublicKey(
+      base::span<const uint8_t> key);
+
+  // Imports an ML-DSA-87 public key in RFC 9881 raw format.
+  static std::optional<PublicKey> FromMldsa87PublicKey(
+      base::span<const uint8_t> key);
+
   // Imports an ML-KEM-768 public key. Returns nullopt if the input is invalid.
   static std::optional<PublicKey> FromMlkem768PublicKey(
       base::span<const uint8_t, 1184> key);
@@ -263,6 +316,18 @@ class CRYPTO_EXPORT PublicKey {
   // Exports an X25519 public key.
   std::array<uint8_t, 32> ToX25519PublicKey() const;
 
+  // Exports an ML-DSA-44 public key in RFC 9881 raw format. It is
+  // illegal to call this if !IsMldsa44().
+  std::vector<uint8_t> ToMldsa44PublicKey() const;
+
+  // Exports an ML-DSA-65 public key in RFC 9881 raw format. It is
+  // illegal to call this if !IsMldsa65().
+  std::vector<uint8_t> ToMldsa65PublicKey() const;
+
+  // Exports an ML-DSA-87 public key in RFC 9881 raw format. It is
+  // illegal to call this if !IsMldsa87().
+  std::vector<uint8_t> ToMldsa87PublicKey() const;
+
   // Exports an ML-KEM-768 public key.
   std::array<uint8_t, 1184> ToMlkem768PublicKey() const;
 
@@ -279,6 +344,8 @@ class CRYPTO_EXPORT PublicKey {
   bool IsEd25519() const;
   bool IsX25519() const;
   bool IsMldsa44() const;
+  bool IsMldsa65() const;
+  bool IsMldsa87() const;
   bool IsMlkem768() const;
 
   bool IsEcP256() const;

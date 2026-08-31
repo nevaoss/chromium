@@ -467,8 +467,10 @@ class TabStripModel {
   // notifications this method causes.
   void CloseAllTabs();
 
-  // Close all tabs in the given `group` at once, but sets the focus state
-  // first.
+  // Closes all tabs in the given `group`. If the group is focused, focus is
+  // unset before closing. If all tabs in the tabstrip are in `group`, a new
+  // fallback tab is added outside the group to prevent the browser window from
+  // closing.
   void CloseAllTabsInGroup(const tab_groups::TabGroupId& group);
 
   // Returns true if there are any WebContentses that are currently loading
@@ -1301,6 +1303,13 @@ class TabStripModel {
       tabs::TabInterface* tab,
       const std::optional<tab_groups::TabGroupId> initial_group,
       const std::optional<tab_groups::TabGroupId> new_group);
+
+  // Exits or updates focus mode when a moved or reparented tab was the active
+  // tab in the focused group.
+  void MaybeUpdateFocusModeForMovedTab(
+      tabs::TabInterface* tab,
+      bool initial_pinned_state,
+      const std::optional<tab_groups::TabGroupId>& initial_focused_group);
 
   // Updates the `group_model` by incrementing the tab count of `group`.
   void AddTabToGroupModel(const tab_groups::TabGroupId& group);

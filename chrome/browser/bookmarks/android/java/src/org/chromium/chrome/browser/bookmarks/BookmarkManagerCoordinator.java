@@ -86,9 +86,6 @@ import java.util.function.Supplier;
 @NullMarked
 public class BookmarkManagerCoordinator
         implements SearchDelegate, BackPressHandler, OnAttachStateChangeListener {
-
-    private static final int WIDE_DISPLAY_THRESHOLD_DP = 840;
-
     private final SelectionDelegate<BookmarkId> mSelectionDelegate =
             new SelectionDelegate<>() {
                 @Override
@@ -337,6 +334,7 @@ public class BookmarkManagerCoordinator
                             BookmarkSearchBoxRowViewBinder.createViewBinder());
 
             updateDesktopSearchBoxMargins();
+            updateDesktopSearchBoxPosition(activity.getResources().getConfiguration());
         }
 
         mMainView.addOnAttachStateChangeListener(this);
@@ -427,6 +425,7 @@ public class BookmarkManagerCoordinator
 
                             updateNavigationPaneVisibility(newConfig);
                             updateDesktopSearchBoxMargins();
+                            updateDesktopSearchBoxPosition(newConfig);
 
                             mBookmarkToolbarCoordinator.onConfigurationChanged(newConfig);
                         }
@@ -582,6 +581,7 @@ public class BookmarkManagerCoordinator
     View buildEmptyStateView(ViewGroup parent) {
         ViewGroup emptyStateView = (ViewGroup) inflate(parent, R.layout.empty_state_view);
         emptyStateView.setTouchscreenBlocksFocus(true);
+        emptyStateView.setFocusable(false);
         // Adjust the empty state view height dynamically to fill the remaining space in the
         // RecyclerView. Since R.layout.empty_state_view is a shared layout of height match_parent,
         // displaying it alongside the search box in the RecyclerView would exceed the viewport
@@ -720,7 +720,9 @@ public class BookmarkManagerCoordinator
         View navigationPane = mMainView.findViewById(R.id.navigation_pane);
         if (navigationPane != null) {
             navigationPane.setVisibility(
-                    config.screenWidthDp < WIDE_DISPLAY_THRESHOLD_DP ? View.GONE : View.VISIBLE);
+                    config.screenWidthDp < BookmarkUtils.WIDE_DISPLAY_THRESHOLD_DP
+                            ? View.GONE
+                            : View.VISIBLE);
         }
     }
 
@@ -739,6 +741,18 @@ public class BookmarkManagerCoordinator
             params.setMarginEnd(margin + padding);
             searchBoxView.setLayoutParams(params);
         }
+    }
+
+    private void updateDesktopSearchBoxPosition(Configuration config) {
+        if (!BookmarkUtils.isDesktopBookmarksLayoutEnabled()) {
+            return;
+        }
+        View searchBoxView = mMainView.findViewById(R.id.desktop_search_box_row);
+        boolean isSmallScreen = config.screenWidthDp < BookmarkUtils.WIDE_DISPLAY_THRESHOLD_DP;
+        if (searchBoxView != null) {
+            searchBoxView.setVisibility(isSmallScreen ? View.GONE : View.VISIBLE);
+        }
+        mMediator.setSearchBoxInline(isSmallScreen);
     }
 
     private void openSettings() {

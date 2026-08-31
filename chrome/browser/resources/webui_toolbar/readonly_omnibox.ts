@@ -483,6 +483,7 @@ export class ReadonlyOmniboxElement extends CrLitElement {
     }
 
     const wasAlreadyFocused = this.hasFocus();
+    let unelision = false;
     if (activateDefaultSearch && !this.omniboxViewState.userInputInProgress) {
       // If activateDefaultSearch is on, and text has not been entered,
       // the search will activate with empty box. Do that on this side
@@ -490,7 +491,7 @@ export class ReadonlyOmniboxElement extends CrLitElement {
       this.$.textInput.value = '';
       this.updateStateFromTextInput();
     } else if (isUserInitiated) {
-      this.unelide();
+      unelision = this.unelide();
     }
     this.$.textInput.focus();
     this.switchView_(/*hasFocus=*/ true);
@@ -520,7 +521,7 @@ export class ReadonlyOmniboxElement extends CrLitElement {
     }
     // It's important this is done after updating the selection since that
     // prevents inline completion, which isn't desired for these shortcuts.
-    this.sendInputToBrowser();
+    this.sendInputToBrowser(unelision);
 
     this.inputDelegate_.handleFocusChange(this, {
       hasFocus: true,
@@ -622,6 +623,7 @@ export class ReadonlyOmniboxElement extends CrLitElement {
     this.inputDelegate_.handlePointer(this, {
       isPointerDown: true,
       startZeroSuggest: false,
+      selection: this.getMojoSelection(),
     });
   }
 
@@ -641,11 +643,12 @@ export class ReadonlyOmniboxElement extends CrLitElement {
     // This isn't enough for double-click select, since things still
     // move between clicks; but the second clicks mouseDown takes advantage
     // of us fixing up the caret to know what to do.
+    let unelision = false;
     if (!willSelectAll) {
       // We don't want to use MOUSE_RELEASE on double-click since that would
       // extend the word-selection of first word to https://word, which is
       // not desirable.
-      this.unelideAndUpdateSelection(
+      unelision = this.unelideAndUpdateSelection(
           event.detail === 1 ? UnelisionGesture.MOUSE_RELEASE :
                                UnelisionGesture.DOUBLE_CLICK);
     }
@@ -657,13 +660,14 @@ export class ReadonlyOmniboxElement extends CrLitElement {
     // Make sure we stop accepting incremental selection updates from browser
     // at this point.
     ++this.omniboxViewState.uiVersion;
-    this.sendInputToBrowser();
+    this.sendInputToBrowser(unelision);
 
     const zeroSuggest = isOnlyLeftButton(event) &&
         (this.selectAllOnMouseRelease_ || this.userText.length === 0);
     this.inputDelegate_.handlePointer(this, {
       isPointerDown: false,
       startZeroSuggest: zeroSuggest,
+      selection: this.getMojoSelection(),
     });
 
     this.selectAllOnMouseRelease_ = false;
@@ -717,6 +721,7 @@ export class ReadonlyOmniboxElement extends CrLitElement {
     this.inputDelegate_.handlePointer(this, {
       isPointerDown: true,
       startZeroSuggest: false,
+      selection: this.getMojoSelection(),
     });
   }
 
@@ -739,6 +744,7 @@ export class ReadonlyOmniboxElement extends CrLitElement {
         this.inputDelegate_.handlePointer(this, {
           isPointerDown: false,
           startZeroSuggest: false,
+          selection: this.getMojoSelection(),
         });
       }
       return;
@@ -751,12 +757,13 @@ export class ReadonlyOmniboxElement extends CrLitElement {
     }
 
     ++this.omniboxViewState.uiVersion;
-    this.sendInputToBrowser();
+    this.sendInputToBrowser(/*unelision=*/ false);
 
     const zeroSuggest = willSelectAll || this.userText.length === 0;
     this.inputDelegate_.handlePointer(this, {
       isPointerDown: false,
       startZeroSuggest: zeroSuggest,
+      selection: this.getMojoSelection(),
     });
 
     this.selectAllOnTouchRelease_ = false;
@@ -828,7 +835,7 @@ export class ReadonlyOmniboxElement extends CrLitElement {
   private onInputInput(): void {
     this.omniboxViewState.userInputInProgress = true;
     this.updateStateFromTextInput();
-    this.sendInputToBrowser();
+    this.sendInputToBrowser(/*unelision=*/ false);
   }
 
   private onInputKeyDown(event: KeyboardEvent): void {
@@ -867,7 +874,7 @@ export class ReadonlyOmniboxElement extends CrLitElement {
         ++this.omniboxViewState.uiVersion;
         this.updateTextPiecesFromUserText();
 
-        this.sendInputToBrowser();
+        this.sendInputToBrowser(/*unelision=*/ false);
         event.preventDefault();
         return;
       }
@@ -888,7 +895,7 @@ export class ReadonlyOmniboxElement extends CrLitElement {
           // Otherwise just set caret.
           this.setSelection(0, 0);
         }
-        this.sendInputToBrowser();
+        this.sendInputToBrowser(/*unelision=*/ true);
         event.preventDefault();
       }
     }
@@ -918,7 +925,9 @@ export class ReadonlyOmniboxElement extends CrLitElement {
     const currentSelection = this.getMojoSelection();
     if (currentSelection.start !== this.omniboxViewState.selection?.start ||
         currentSelection.end !== this.omniboxViewState.selection?.end) {
-      this.unelideAndUpdateSelection(UnelisionGesture.OTHER);
+      if (this.unelideAndUpdateSelection(UnelisionGesture.OTHER)) {
+        this.sendInputToBrowser(/*unelision=*/ true);
+      }
     }
   }
 
@@ -1297,13 +1306,14 @@ export class ReadonlyOmniboxElement extends CrLitElement {
     }
   }
 
-  private sendInputToBrowser(): void {
+  private sendInputToBrowser(unelision: boolean): void {
     this.inputDelegate_.handleTextInput(this, {
       uiVersion: this.omniboxViewState.uiVersion,
       browserVersion: this.omniboxViewState.browserVersion,
       text: this.userText,
       inlineAutocompletion: this.omniboxViewState.inlineAutocompletion,
       selection: this.getMojoSelection(),
+      unelision,
     });
   }
 
@@ -1404,6 +1414,13 @@ export class ReadonlyOmniboxElement extends CrLitElement {
     } else {
       getA11yAnnouncer(target).announce(message);
     }
+  }
+
+  clearInput(): void {
+    this.$.textInput.value = '';
+    this.updateStateFromTextInput();
+    this.sendInputToBrowser(/*unelision=*/ false);
+    this.$.textInput.focus();
   }
 }
 

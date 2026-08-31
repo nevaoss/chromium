@@ -611,6 +611,7 @@ chromium-metrics-reviews@google.com.
   <int value="35" label="FAILURE_INVALID_ARGUMENT"/>
   <int value="36" label="FAILURE_NETWORK_FAILURE"/>
   <int value="37" label="FAILURE_OPERATION_TIMEOUT"/>
+  <int value="38" label="FAILURE_SOFTWARE_UPGRADED"/>
 </enum>
 
 <!-- LINT.IfChange(EnterpriseDeviceManagementStatus) -->
@@ -3173,6 +3174,19 @@ chromium-metrics-reviews@google.com.
   <int value="6" label="Canvas"/>
   <int value="7" label="[Deprecated] Google News"/>
   <int value="8" label="Explore"/>
+</enum>
+
+<enum name="WatermarkTimestampTimezoneType">
+  <int value="0" label="Default">Default local wall-clock time.</int>
+  <int value="1" label="UserDevice">
+    Admin-configured local wall-clock time.
+  </int>
+  <int value="2" label="ValidIANATimeZone">
+    Admin-configured valid time zone.
+  </int>
+  <int value="3" label="InvalidFallback">
+    Invalid string received, fell back to local device time.
+  </int>
 </enum>
 
 <enum name="WindowsProfileType">

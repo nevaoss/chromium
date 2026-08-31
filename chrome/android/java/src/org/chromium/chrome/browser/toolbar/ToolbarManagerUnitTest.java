@@ -7,12 +7,14 @@ package org.chromium.chrome.browser.toolbar;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -36,6 +38,7 @@ import org.robolectric.Robolectric;
 import org.robolectric.android.controller.ActivityController;
 
 import org.chromium.base.Callback;
+import org.chromium.base.DeviceInfo;
 import org.chromium.base.UnownedUserDataHost;
 import org.chromium.base.UserDataHost;
 import org.chromium.base.supplier.NonNullObservableSupplier;
@@ -97,6 +100,9 @@ import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.readaloud.ReadAloudController;
 import org.chromium.chrome.browser.search_engines.TemplateUrlServiceFactory;
 import org.chromium.chrome.browser.share.ShareDelegate;
+import org.chromium.chrome.browser.share.send_tab_to_self.EntryPointDisplayReason;
+import org.chromium.chrome.browser.share.send_tab_to_self.SendTabToSelfAndroidBridge;
+import org.chromium.chrome.browser.share.send_tab_to_self.SendTabToSelfAndroidBridgeJni;
 import org.chromium.chrome.browser.signin.services.IdentityServicesProvider;
 import org.chromium.chrome.browser.signin.services.SigninManager;
 import org.chromium.chrome.browser.subscription_eligibility.SubscriptionEligibilityService;
@@ -150,6 +156,7 @@ import org.chromium.components.browser_ui.util.BrowserControlsVisibilityDelegate
 import org.chromium.components.browser_ui.widget.scrim.ScrimManager;
 import org.chromium.components.favicon.LargeIconBridge;
 import org.chromium.components.favicon.LargeIconBridgeJni;
+import org.chromium.components.feature_engagement.EventConstants;
 import org.chromium.components.feature_engagement.Tracker;
 import org.chromium.components.omnibox.AutocompleteInput;
 import org.chromium.components.omnibox.OmniboxFocusReason;
@@ -513,6 +520,7 @@ public class ToolbarManagerUnitTest {
 
     @After
     public void tearDown() {
+        DeviceInfo.resetIsDesktopForTesting();
         mToolbarManager.destroy();
         mActivityController.close();
     }
@@ -1183,5 +1191,60 @@ public class ToolbarManagerUnitTest {
         maybeShowGlicIphMethod.setAccessible(true);
 
         maybeShowGlicIphMethod.invoke(mToolbarManager, mTab);
+    }
+
+    @Test
+    public void testOnSendTabToSelfClicked_recordsEvent() {
+        when(mLocationBarModelNatives.getUrlOfVisibleNavigationEntry(anyLong()))
+                .thenReturn(JUnitTestGURLs.EXAMPLE_URL);
+        when(mTab.getUrl()).thenReturn(JUnitTestGURLs.EXAMPLE_URL);
+        when(mTab.isInitialized()).thenReturn(true);
+        mToolbarManager.getLocationBarModelForTesting().setTab(mTab, mProfile);
+
+        SendTabToSelfAndroidBridge.Natives bridgeMock =
+                mock(SendTabToSelfAndroidBridge.Natives.class);
+        SendTabToSelfAndroidBridgeJni.setInstanceForTesting(bridgeMock);
+        when(bridgeMock.getEntryPointDisplayReason(any(), any())).thenReturn(null);
+
+        mToolbarManager.onSendTabToSelfClicked();
+
+        verify(mTracker).notifyEvent(EventConstants.SEND_TAB_TO_SELF_OMNIBOX_USED);
+    }
+
+    @Test
+    public void testOnSendTabToSelfClicked_emptyUrl_doesNotRecordEvent() {
+        when(mTab.getUrl()).thenReturn(GURL.emptyGURL());
+        when(mTab.isInitialized()).thenReturn(true);
+        mToolbarManager.getLocationBarModelForTesting().setTab(mTab, mProfile);
+
+        mToolbarManager.onSendTabToSelfClicked();
+
+        verify(mTracker, never()).notifyEvent(EventConstants.SEND_TAB_TO_SELF_OMNIBOX_USED);
+    }
+
+    @Test
+    public void testIsSendTabToSelfAvailable() {
+        SendTabToSelfAndroidBridge.Natives bridgeMock =
+                mock(SendTabToSelfAndroidBridge.Natives.class);
+        SendTabToSelfAndroidBridgeJni.setInstanceForTesting(bridgeMock);
+
+        when(bridgeMock.getEntryPointDisplayReason(any(), any()))
+                .thenReturn(EntryPointDisplayReason.OFFER_FEATURE);
+        assertTrue(mToolbarManager.isSendTabToSelfAvailable(JUnitTestGURLs.EXAMPLE_URL));
+
+        when(bridgeMock.getEntryPointDisplayReason(any(), any())).thenReturn(null);
+        assertFalse(mToolbarManager.isSendTabToSelfAvailable(JUnitTestGURLs.EXAMPLE_URL));
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.DISABLE_GRID_TAB_SWITCHER)
+    public void testCreateTabSwitcherLongClickListener_disabledOnDesktop() throws Exception {
+        DeviceInfo.setIsDesktopForTesting(true);
+        Method method =
+                ToolbarManager.class.getDeclaredMethod(
+                        "createTabSwitcherLongClickListener", Profile.class, Runnable.class);
+        method.setAccessible(true);
+        Object listener = method.invoke(mToolbarManager, mProfile, mOpenGridTabSwitcherHandler);
+        assertNull(listener);
     }
 }

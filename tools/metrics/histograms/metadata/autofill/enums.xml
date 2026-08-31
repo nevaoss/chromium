@@ -3114,6 +3114,8 @@ Called by update_autofill_enums.py.-->
   <int value="10"
       label="User entered the autofill options via personal context ambient
              autofill notice."/>
+  <int value="11"
+      label="User entered the autofill options via settings search."/>
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/android/preferences/autofill/settings_navigation_helper.h:AutofillOptionsReferrer) -->
@@ -4592,6 +4594,29 @@ Called by update_autofill_enums.py.-->
   <int value="0" label="One strike logged"/>
   <int value="1" label="All strikes cleared"/>
 </enum>
+
+<!-- LINT.IfChange(AutofillWalletReminderNoticeInteraction) -->
+
+<enum name="AutofillWalletReminderNoticeInteraction">
+  <int value="0" label="Acknowledged notice"/>
+  <int value="1" label="Link in legal disclaimer clicked"/>
+  <int value="2" label="Dismissed notice"/>
+</enum>
+
+<!-- LINT.ThenChange(//components/autofill/core/browser/metrics/payments/wallet_reminder_notice_metrics.h:WalletReminderNoticeInteraction) -->
+
+<!-- LINT.IfChange(AutofillWalletReminderNoticeShowResult) -->
+
+<enum name="AutofillWalletReminderNoticeShowResult">
+  <int value="0" label="Shown successfully"/>
+  <int value="1" label="Not shown: already acknowledged"/>
+  <int value="2" label="Not shown: network or server error"/>
+  <int value="3" label="Not shown: preempted by mandatory reauth"/>
+  <int value="4" label="Not shown: preempted by VCN enrollment"/>
+  <int value="5" label="Not shown: preempted by card or CVC save"/>
+</enum>
+
+<!-- LINT.ThenChange(//components/autofill/core/browser/metrics/payments/wallet_reminder_notice_metrics.h:WalletReminderNoticeShowResult) -->
 
 <enum name="AutofillWebauthnOptInPromoUserDecision">
   <int value="0" label="Accepted"/>
@@ -6106,6 +6131,7 @@ Called by update_autofill_enums.py.-->
   <int value="96" label="AtMemory source attribution"/>
   <int value="97" label="AtMemory fetching"/>
   <int value="98" label="Remove Autofill AI info"/>
+  <int value="99" label="Autofill AI source attribution"/>
 </enum>
 
 <!-- LINT.ThenChange(/components/autofill/core/browser/suggestions/suggestion_type.h:SuggestionType) -->

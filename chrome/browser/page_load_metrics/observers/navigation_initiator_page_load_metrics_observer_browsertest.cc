@@ -8,8 +8,8 @@
 #include "chrome/browser/preloading/chrome_preloading.h"
 #include "chrome/browser/preloading/prerender/prerender_manager.h"
 #include "chrome/browser/search_engines/template_url_service_factory.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/test/base/chrome_test_utils.h"
 #include "chrome/test/base/in_process_browser_test.h"
@@ -78,6 +78,8 @@ class NavigationInitiatorPageLoadMetricsBrowserTest
   }
 
   void SetUpCommandLine(base::CommandLine* command_line) override {
+    // Allows the embedded test server's non-standard ports to be recognized as
+    // valid Google search URLs (SRP).
     command_line->AppendSwitch(switches::kIgnoreGooglePortNumbers);
     InProcessBrowserTest::SetUpCommandLine(command_line);
   }
@@ -576,6 +578,8 @@ IN_PROC_BROWSER_TEST_P(NavigationInitiatorPageLoadMetricsBFCacheBrowserTest,
   GURL url_a = embedded_test_server()->GetURL("a.com", "/empty.html");
   GURL url_b = embedded_test_server()->GetURL("b.com", "/empty.html");
 
+  base::HistogramTester preload_histogram_tester;
+
   // Navigate to url_a.
   {
     base::HistogramTester histogram_tester;
@@ -677,6 +681,19 @@ IN_PROC_BROWSER_TEST_P(NavigationInitiatorPageLoadMetricsBFCacheBrowserTest,
         "Navigation.InitiatorType.SRP",
         MetricValue(GetInitiatorLocation(ChromeInitiatorLocation::kReload)), 0);
   }
+
+  // Navigate away to flush PreloadServingMetrics.
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GURL("about:blank")));
+
+  int expected_bfcache_bucket = IsBfcacheEnabled() ? 3 /* kBFCache */ : 0;
+  preload_histogram_tester.ExpectBucketCount("PreloadServingMetrics.Other.All",
+                                             0 /* kNoPreload */, 2);
+  preload_histogram_tester.ExpectBucketCount(
+      "PreloadServingMetrics.Backward.All", expected_bfcache_bucket, 1);
+  preload_histogram_tester.ExpectBucketCount(
+      "PreloadServingMetrics.Forward.All", expected_bfcache_bucket, 1);
+  preload_histogram_tester.ExpectBucketCount("PreloadServingMetrics.Reload.All",
+                                             0 /* kNoPreload */, 1);
 }
 
 IN_PROC_BROWSER_TEST_P(NavigationInitiatorPageLoadMetricsBFCacheBrowserTest,
@@ -684,6 +701,8 @@ IN_PROC_BROWSER_TEST_P(NavigationInitiatorPageLoadMetricsBFCacheBrowserTest,
   GURL url_srp =
       embedded_test_server()->GetURL("www.google.com", "/search?q=test");
   GURL url_b = embedded_test_server()->GetURL("b.com", "/empty.html");
+
+  base::HistogramTester preload_histogram_tester;
 
   // Navigate to url_srp.
   {
@@ -808,4 +827,25 @@ IN_PROC_BROWSER_TEST_P(NavigationInitiatorPageLoadMetricsBFCacheBrowserTest,
         "Navigation.InitiatorType.SRP",
         MetricValue(GetInitiatorLocation(ChromeInitiatorLocation::kReload)), 1);
   }
+
+  // Navigate away to flush PreloadServingMetrics.
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GURL("about:blank")));
+
+  int expected_bfcache_bucket = IsBfcacheEnabled() ? 3 /* kBFCache */ : 0;
+  preload_histogram_tester.ExpectBucketCount("PreloadServingMetrics.Other.All",
+                                             0 /* kNoPreload */, 2);
+  preload_histogram_tester.ExpectBucketCount("PreloadServingMetrics.Other.SRP",
+                                             0 /* kNoPreload */, 1);
+  preload_histogram_tester.ExpectBucketCount(
+      "PreloadServingMetrics.Backward.All", expected_bfcache_bucket, 2);
+  preload_histogram_tester.ExpectBucketCount(
+      "PreloadServingMetrics.Backward.SRP", expected_bfcache_bucket, 2);
+  preload_histogram_tester.ExpectBucketCount(
+      "PreloadServingMetrics.Forward.All", expected_bfcache_bucket, 1);
+  preload_histogram_tester.ExpectBucketCount(
+      "PreloadServingMetrics.Forward.SRP", expected_bfcache_bucket, 0);
+  preload_histogram_tester.ExpectBucketCount("PreloadServingMetrics.Reload.All",
+                                             0 /* kNoPreload */, 1);
+  preload_histogram_tester.ExpectBucketCount("PreloadServingMetrics.Reload.SRP",
+                                             0 /* kNoPreload */, 1);
 }

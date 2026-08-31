@@ -20,7 +20,10 @@ import static org.chromium.chrome.browser.tasks.tab_management.TabListModel.Card
 import static org.chromium.chrome.browser.tasks.tab_management.TabListModel.CardProperties.ModelType.TAB;
 import static org.chromium.chrome.browser.tasks.tab_management.TabListModel.CardProperties.ModelType.TAB_GROUP;
 
-import android.util.Pair;
+import android.view.View;
+import android.widget.FrameLayout;
+
+import androidx.test.core.app.ApplicationProvider;
 
 import org.junit.Before;
 import org.junit.Rule;
@@ -35,9 +38,12 @@ import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.tab.MediaState;
 import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.tab.TabLaunchType;
+import org.chromium.chrome.browser.tab.TabSelectionType;
 import org.chromium.chrome.browser.tabmodel.TabGroupObserver.DidRemoveTabGroupReason;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tasks.tab_management.TabProperties.UiType;
+import org.chromium.chrome.tab_ui.R;
 import org.chromium.components.tab_groups.TabGroupColorId;
 import org.chromium.ui.modelutil.MVCListAdapter.ListItem;
 import org.chromium.ui.modelutil.PropertyModel;
@@ -171,6 +177,160 @@ public class NestedLayoutDelegateUnitTest {
     }
 
     @Test
+    public void testDidAddTab_NormalLaunch() {
+        setupTabsInModel(mTab1);
+        when(mTab1.getTabGroupId()).thenReturn(null);
+
+        mDelegate.didAddTab(mTab1, TabLaunchType.FROM_CHROME_UI);
+
+        verify(mMediator).addTabInfoToModelForTab(eq(mTab1), eq(0), anyBoolean());
+        verify(mMediator, never()).updateTab(anyInt(), any(), anyBoolean(), anyBoolean());
+    }
+
+    @Test
+    public void testDidAddTab_FromRestore() {
+        when(mTab1.getTabGroupId()).thenReturn(TAB_GROUP_ID);
+        addTabToModelList(TAB1_ID, TAB_GROUP_ID);
+
+        mDelegate.didAddTab(mTab1, TabLaunchType.FROM_RESTORE);
+
+        verify(mMediator).updateTab(0, mTab1, false, false);
+        verify(mMediator).updateTabGroupTitle(TAB_GROUP_ID);
+    }
+
+    @Test
+    public void testOnFaviconUpdated() {
+        PropertyModel model = addTabToModelList(TAB1_ID, null);
+
+        mDelegate.onFaviconUpdated(mTab1, null, null);
+
+        verify(mMediator).updateFaviconForTab(model, mTab1, null, null);
+    }
+
+    @Test
+    public void testOnFaviconUpdated_NotFound() {
+        mDelegate.onFaviconUpdated(mTab1, null, null);
+
+        verify(mMediator, never()).updateFaviconForTab(any(), any(), any(), any());
+    }
+
+    @Test
+    public void testOnTabClose_InGroup() {
+        when(mTab1.getTabGroupId()).thenReturn(TAB_GROUP_ID);
+        when(mTabModel.tabGroupExists(TAB_GROUP_ID)).thenReturn(true);
+        addTabToModelList(TAB1_ID, TAB_GROUP_ID);
+
+        mDelegate.onTabClose(mTab1);
+
+        verify(mMediator).updateTabGroupHeaderId(TAB_GROUP_ID);
+        verify(mMediator).updateTabGroupTitle(TAB_GROUP_ID);
+        assertEquals(0, mModelList.size());
+    }
+
+    @Test
+    public void testOnTabClose_NotInGroup() {
+        when(mTab1.getTabGroupId()).thenReturn(null);
+        addTabToModelList(TAB1_ID, null);
+
+        mDelegate.onTabClose(mTab1);
+
+        verify(mMediator, never()).updateTabGroupHeaderId(any());
+        verify(mMediator, never()).updateTabGroupTitle(any());
+        assertEquals(0, mModelList.size());
+    }
+
+    @Test
+    public void testOnTabClose_NotFound() {
+        when(mTab1.getTabGroupId()).thenReturn(null);
+
+        mDelegate.onTabClose(mTab1);
+
+        assertEquals(0, mModelList.size());
+    }
+
+    @Test
+    public void testPrepareTabCloseAnimation_LastTab() {
+        addTabToModelList(TAB1_ID, null);
+        addTabToModelList(TAB2_ID, null);
+
+        View parentView = new FrameLayout(ApplicationProvider.getApplicationContext());
+        View closeButton = new View(ApplicationProvider.getApplicationContext());
+        ((FrameLayout) parentView).addView(closeButton);
+
+        mDelegate.prepareTabCloseAnimation(closeButton, 1);
+
+        assertEquals(true, parentView.getTag(R.id.tab_clip_from_top));
+    }
+
+    @Test
+    public void testPrepareTabCloseAnimation_NotLastTab() {
+        addTabToModelList(TAB1_ID, null);
+        addTabToModelList(TAB2_ID, null);
+
+        View parentView = new FrameLayout(ApplicationProvider.getApplicationContext());
+        View closeButton = new View(ApplicationProvider.getApplicationContext());
+        ((FrameLayout) parentView).addView(closeButton);
+
+        mDelegate.prepareTabCloseAnimation(closeButton, 0);
+
+        assertEquals(false, parentView.getTag(R.id.tab_clip_from_top));
+    }
+
+    @Test
+    public void testPrepareTabCloseAnimation_NullView() {
+        mDelegate.prepareTabCloseAnimation(null, 0);
+        // Verify no crash on null view.
+    }
+
+    @Test
+    public void testDidMoveTab_Standalone() {
+        when(mTab1.getTabGroupId()).thenReturn(null);
+        addTabToModelList(TAB1_ID, null);
+        addTabToModelList(TAB2_ID, null);
+        setupTabsInModel(mTab2, mTab1);
+
+        mDelegate.didMoveTab(mTab1, 1, 0);
+
+        assertEquals(TAB2_ID, mModelList.get(0).model.get(TabProperties.TAB_ID));
+        assertEquals(TAB1_ID, mModelList.get(1).model.get(TabProperties.TAB_ID));
+    }
+
+    @Test
+    public void testDidMoveTab_InGroup_NoOp() {
+        when(mTab1.getTabGroupId()).thenReturn(TAB_GROUP_ID);
+        addTabToModelList(TAB1_ID, TAB_GROUP_ID);
+        addTabToModelList(TAB2_ID, TAB_GROUP_ID);
+
+        mDelegate.didMoveTab(mTab1, 1, 0);
+
+        assertEquals(TAB1_ID, mModelList.get(0).model.get(TabProperties.TAB_ID));
+        assertEquals(TAB2_ID, mModelList.get(1).model.get(TabProperties.TAB_ID));
+    }
+
+    @Test
+    public void testDidMoveTab_ModelHasGroupMetadata_NoOp() {
+        when(mTab1.getTabGroupId()).thenReturn(null);
+        addTabToModelList(TAB1_ID, TAB_GROUP_ID);
+        addTabToModelList(TAB2_ID, null);
+
+        mDelegate.didMoveTab(mTab1, 1, 0);
+
+        assertEquals(TAB1_ID, mModelList.get(0).model.get(TabProperties.TAB_ID));
+        assertEquals(TAB2_ID, mModelList.get(1).model.get(TabProperties.TAB_ID));
+    }
+
+    @Test
+    public void testDidMoveTab_NotInModel_NoOp() {
+        when(mTab1.getTabGroupId()).thenReturn(null);
+        addTabToModelList(TAB2_ID, null);
+
+        mDelegate.didMoveTab(mTab1, 1, 0);
+
+        assertEquals(1, mModelList.size());
+        assertEquals(TAB2_ID, mModelList.get(0).model.get(TabProperties.TAB_ID));
+    }
+
+    @Test
     public void testDidChangeTabGroupTitle() {
         mDelegate.didChangeTabGroupTitle(TAB_GROUP_ID, "New Title");
         verify(mMediator).updateTabGroupTitle(TAB_GROUP_ID);
@@ -182,18 +342,10 @@ public class NestedLayoutDelegateUnitTest {
         PropertyModel child1Model = addTabToModelList(TAB1_ID, TAB_GROUP_ID);
         PropertyModel child2Model = addTabToModelList(TAB2_ID, TAB_GROUP_ID);
 
-        Pair<Integer, Tab> indexAndTab = new Pair<>(0, mTab1);
-        when(mMediator.getIndexAndTabForTabGroupId(TAB_GROUP_ID)).thenReturn(indexAndTab);
-        when(mTab1.getId()).thenReturn(TAB1_ID);
-
         mDelegate.didChangeTabGroupColor(TAB_GROUP_ID, TabGroupColorId.BLUE);
 
-        verify(mMediator).updateTabGroupProperties(mTab1, headerModel, TabGroupColorId.BLUE);
-        verify(mMediator).updateFaviconForTab(headerModel, mTab1, null, null);
-        verify(mMediator).updateDescriptionString(headerModel);
-        verify(mMediator).updateActionButtonDescriptionString(mTab1, headerModel);
-        verify(mMediator).updateThumbnailFetcher(headerModel, TAB1_ID);
-
+        verify(mMediator)
+                .updateTabGroupColorViewProvider(any(), eq(headerModel), eq(TabGroupColorId.BLUE));
         verify(mMediator)
                 .updateTabGroupColorViewProvider(any(), eq(child1Model), eq(TabGroupColorId.BLUE));
         verify(mMediator)
@@ -531,6 +683,38 @@ public class NestedLayoutDelegateUnitTest {
         assertFalse(
                 mDelegate.ensureGroupHeaderExists(mTab1, TAB_GROUP_ID, TabModel.INVALID_TAB_INDEX));
         verify(mMediator, never()).addTabInfoToModelForGroup(any(), any(), anyInt());
+    }
+
+    @Test
+    public void testDidSelectTab() {
+        addTabToModelList(TAB1_ID, null);
+        addTabToModelList(TAB2_ID, null);
+
+        mDelegate.didSelectTab(mTab2, TabSelectionType.FROM_USER, TAB1_ID);
+
+        verify(mMediator).setLastSelectedTabListModelIndex(0);
+        verify(mMediator).selectTab(0, 1);
+    }
+
+    @Test
+    public void testDidSelectTab_TabDelayed() {
+        addTabToModelList(TAB1_ID, null);
+        addTabToModelList(TAB2_ID, null);
+        when(mMediator.isTabDelayed(mTab2)).thenReturn(true);
+
+        mDelegate.didSelectTab(mTab2, TabSelectionType.FROM_USER, TAB1_ID);
+
+        verify(mMediator).setLastSelectedTabListModelIndex(0);
+        verify(mMediator, never()).selectTab(anyInt(), anyInt());
+    }
+
+    @Test
+    public void testGetUiIndexForTab() {
+        addTabToModelList(TAB1_ID, null);
+        addTabToModelList(TAB2_ID, null);
+        assertEquals(0, mDelegate.getUiIndexForTab(TAB1_ID));
+        assertEquals(1, mDelegate.getUiIndexForTab(TAB2_ID));
+        assertEquals(TabModel.INVALID_TAB_INDEX, mDelegate.getUiIndexForTab(3));
     }
 
     private PropertyModel addTabToModelList(int tabId, @Nullable Token tabGroupId) {

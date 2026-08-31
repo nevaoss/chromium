@@ -1693,6 +1693,7 @@ void StoragePartitionImpl::CreateRestrictedCookieManager(
     bool is_service_worker,
     int process_id,
     int routing_id,
+    bool prefer_bound_cookie_context,
     net::CookieSettingOverrides cookie_setting_overrides,
     net::CookieSettingOverrides devtools_cookie_setting_overrides,
     mojo::PendingReceiver<network::mojom::RestrictedCookieManager> receiver,
@@ -1700,11 +1701,11 @@ void StoragePartitionImpl::CreateRestrictedCookieManager(
   DCHECK(initialized_);
   if (!GetContentClient()->browser()->WillCreateRestrictedCookieManager(
           role, browser_context_, origin, isolation_info, is_service_worker,
-          process_id, routing_id, &receiver)) {
+          process_id, routing_id, prefer_bound_cookie_context, &receiver)) {
     GetNetworkContext()->GetRestrictedCookieManager(
         std::move(receiver), role, origin, isolation_info,
         cookie_setting_overrides, devtools_cookie_setting_overrides,
-        std::move(cookie_observer));
+        prefer_bound_cookie_context, std::move(cookie_observer));
   }
 }
 
@@ -2682,12 +2683,13 @@ StoragePartitionImpl::CreateURLLoaderNetworkObserverForNavigationRequest(
 mojo::PendingRemote<network::mojom::URLLoaderNetworkServiceObserver>
 StoragePartitionImpl::CreateURLLoaderNetworkObserverForServiceOrSharedWorker(
     const network::OriginatingProcessId& process_id,
-    const url::Origin& worker_origin) {
+    const url::Origin& worker_origin,
+    const std::optional<blink::StorageKey>& storage_key) {
   mojo::PendingRemote<network::mojom::URLLoaderNetworkServiceObserver> remote;
   url_loader_network_observers_.Add(
       this, remote.InitWithNewPipeAndPassReceiver(),
-      URLLoaderNetworkContext::CreateForServiceOrSharedWorker(process_id,
-                                                              worker_origin));
+      URLLoaderNetworkContext::CreateForServiceOrSharedWorker(
+          process_id, worker_origin, storage_key));
   return remote;
 }
 
@@ -3282,8 +3284,9 @@ void StoragePartitionImpl::ResetURLLoaderFactories() {
       ->Reset();
 }
 
-void StoragePartitionImpl::ClearBluetoothAllowedDevicesMapForTesting() {
-  DCHECK(initialized_);
+void StoragePartitionImpl::ClearBluetoothAllowedDevicesMap() {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  CHECK(initialized_);
   bluetooth_allowed_devices_map_->Clear();
 }
 
@@ -3694,8 +3697,21 @@ std::optional<blink::StorageKey> StoragePartitionImpl::CalculateStorageKey(
     return std::nullopt;
   }
 
-  NavigationOrDocumentHandle* handle =
-      url_loader_network_observers_.current_context().navigation_or_document();
+  const URLLoaderNetworkContext& context =
+      url_loader_network_observers_.current_context();
+  if (const auto* worker_context =
+          std::get_if<URLLoaderNetworkContext::SharedOrServiceWorkerContext>(
+              &context.context())) {
+    if (worker_context->storage_key.has_value()) {
+      if (nonce) {
+        return blink::StorageKey::CreateWithNonce(origin, *nonce);
+      }
+      return worker_context->storage_key->WithOrigin(origin);
+    }
+    return std::nullopt;
+  }
+
+  NavigationOrDocumentHandle* handle = context.navigation_or_document();
   if (!handle) {
     return std::nullopt;
   }
@@ -3800,8 +3816,10 @@ StoragePartitionImpl::URLLoaderNetworkContext::URLLoaderNetworkContext(
 
 StoragePartitionImpl::URLLoaderNetworkContext::URLLoaderNetworkContext(
     const network::OriginatingProcessId& process_id,
-    const url::Origin& worker_origin)
-    : context_(SharedOrServiceWorkerContext{process_id, worker_origin}) {}
+    const url::Origin& worker_origin,
+    const std::optional<blink::StorageKey>& storage_key)
+    : context_(SharedOrServiceWorkerContext{process_id, worker_origin,
+                                            storage_key}) {}
 
 StoragePartitionImpl::URLLoaderNetworkContext::URLLoaderNetworkContext(
     const URLLoaderNetworkContext& other) = default;
@@ -3831,9 +3849,10 @@ StoragePartitionImpl::URLLoaderNetworkContext::CreateForNavigation(
 StoragePartitionImpl::URLLoaderNetworkContext
 StoragePartitionImpl::URLLoaderNetworkContext::CreateForServiceOrSharedWorker(
     const network::OriginatingProcessId& process_id,
-    const url::Origin& worker_origin) {
-  return StoragePartitionImpl::URLLoaderNetworkContext(process_id,
-                                                       worker_origin);
+    const url::Origin& worker_origin,
+    const std::optional<blink::StorageKey>& storage_key) {
+  return StoragePartitionImpl::URLLoaderNetworkContext(
+      process_id, worker_origin, storage_key);
 }
 
 StoragePartitionImpl::URLLoaderNetworkContext

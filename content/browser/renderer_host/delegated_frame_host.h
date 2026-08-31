@@ -31,7 +31,8 @@
 #include "third_party/blink/public/common/page/content_to_visible_time_request.h"
 #include "ui/compositor/compositor.h"
 #include "ui/compositor/compositor_observer.h"
-#include "ui/compositor/layer.h"
+#include "ui/compositor/layer_solid_color.h"
+#include "ui/compositor/layer_surface.h"
 #include "ui/events/event.h"
 #include "ui/gfx/geometry/rect_conversions.h"
 
@@ -194,6 +195,7 @@ class CONTENT_EXPORT DelegatedFrameHost
   void ActivatedOrEvictedFromBackForwardCache();
 
   void WindowTitleChanged(const std::string& title);
+  void OptOutFrameEviction();
 
   // If our SurfaceLayer doesn't have a fallback, use the fallback info of
   // |other|.

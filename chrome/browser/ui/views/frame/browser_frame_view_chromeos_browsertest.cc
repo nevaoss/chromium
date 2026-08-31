@@ -140,6 +140,7 @@
 #include "ui/base/hit_test.h"
 #include "ui/base/page_transition_types.h"
 #include "ui/base/pointer/touch_ui_controller.h"
+#include "ui/compositor/layer_solid_color.h"
 #include "ui/display/screen.h"
 #include "ui/events/base_event_utils.h"
 #include "ui/events/event.h"
@@ -1209,7 +1210,7 @@ class PreventCloseBrowserFrameViewChromeOSTest : public PreventCloseTestBase {
     PreventCloseTestBase::TearDownOnMainThread();
   }
 
-  views::Button* GetWindowCloseButton(Browser* browser) {
+  views::Button* GetWindowCloseButton(BrowserWindowInterface* browser) {
     auto* const browser_view = BrowserView::GetBrowserViewForBrowser(browser);
     auto* const frame_view =
         ChromeOSBrowserUITest::GetFrameViewChromeOS(browser_view);
@@ -1227,7 +1228,7 @@ IN_PROC_BROWSER_TEST_F(PreventCloseBrowserFrameViewChromeOSTest,
                                    kPreventCloseEnabledForCalculator,
                                    kCalculatorForceInstalled);
 
-  Browser* const browser =
+  BrowserWindowInterface* const browser =
       LaunchPWA(ash::kCalculatorAppId, /*launch_in_window=*/true);
   ASSERT_TRUE(browser);
 
@@ -1258,7 +1259,7 @@ IN_PROC_BROWSER_TEST_F(PreventCloseBrowserFrameViewChromeOSTest,
                        CloseButtonIsEnabled) {
   InstallPWA(GURL(kCalculatorAppUrl), ash::kCalculatorAppId);
 
-  Browser* const browser =
+  BrowserWindowInterface* const browser =
       LaunchPWA(ash::kCalculatorAppId, /*launch_in_window=*/true);
   ASSERT_TRUE(browser);
 

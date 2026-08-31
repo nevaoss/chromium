@@ -1158,6 +1158,7 @@ bool ContentBrowserClient::WillCreateRestrictedCookieManager(
     bool is_service_worker,
     int process_id,
     int frame_id,
+    bool prefer_bound_cookie_context,
     mojo::PendingReceiver<network::mojom::RestrictedCookieManager>* receiver) {
   return false;
 }
@@ -1968,12 +1969,6 @@ void ContentBrowserClient::QueryInstalledWebAppsByManifestId(
 
 bool ContentBrowserClient::AllowNonActivatedCrossOriginPaintHolding() {
   return false;
-}
-
-bool ContentBrowserClient::ShouldDispatchPagehideDuringCommit(
-    BrowserContext* browser_context,
-    const GURL& destination_url) {
-  return true;
 }
 
 std::optional<network::CrossOriginEmbedderPolicy>

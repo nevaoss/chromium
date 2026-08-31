@@ -445,6 +445,14 @@ BASE_FEATURE_PARAM(std::string,
                    &kAutofillAmbientAutofill,
                    "ambient_autofill_eligible_tiers",
                    "");
+// A comma-separated list of EntityType string names (e.g. "Passport,Driver's
+// license,Vehicle") supported for Ambient Autofill. If empty, no entity types
+// are supported.
+BASE_FEATURE_PARAM(std::string,
+                   kAutofillAmbientAutofillSupportedEntityTypes,
+                   &kAutofillAmbientAutofill,
+                   "ambient_autofill_supported_entity_types",
+                   "");
 BASE_FEATURE_PARAM(std::string,
                    kAutofillAmbientAutofillEnabledDevices,
                    &kAutofillAmbientAutofill,
@@ -462,6 +470,15 @@ BASE_FEATURE_PARAM(base::TimeDelta,
                    &kAutofillAmbientAutofill,
                    "ambient_autofill_unmasked_spii_cache_ttl",
                    base::Minutes(1));
+
+// When enabled, Personal Context Autofill AI suggestions display detailed
+// source info submenus on Desktop.
+BASE_FEATURE(kAutofillAmbientAutofillSourceAttribution,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Controls whether the spii cache is enabled for Ambient Autofill.
+BASE_FEATURE(kAutofillAmbientAutofillSpiiCache,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Controls whether pContext suggestion suppression in Ambient Autofill is
 // enabled.
@@ -553,6 +570,10 @@ BASE_FEATURE(kAutofillAtMemoryInactivityNudge,
 BASE_FEATURE(kAutofillAtMemoryPreviouslyFilled,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+// Enables search statefulness for AtMemory.
+BASE_FEATURE(kAutofillAtMemorySearchStatefulness,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Controls whether contenteditable fields on Android are supported for
 // AtMemory.
 BASE_FEATURE(kAutofillAtMemorySupportContenteditableOnAndroid,
@@ -562,9 +583,6 @@ BASE_FEATURE(kAutofillAtMemorySupportContenteditableOnAndroid,
 // Ctrl+Space.
 BASE_FEATURE(kAutofillAtMemoryTriggerShortcut,
              base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Controls whether AtMemory uses the strongly-typed AutofillFetchPlan.
-BASE_FEATURE(kAutofillAtMemoryTypedFetchPlan, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // When enabled, the placeholder is not considered a label fallback on the
 // renderer side anymore. Instead, local heuristic will match regexes against
@@ -597,7 +615,12 @@ BASE_FEATURE(kAutofillCreditCardUserPerceptionSurvey,
 // TODO(crbug.com/479794574): Convert to killswitch if no regressions are
 // spotted.
 BASE_FEATURE(kAutofillDelayApcForPredictions,
+// The feature will be tested and rolled out independently on iOS.
+#if BUILDFLAG(IS_IOS)
              base::FEATURE_DISABLED_BY_DEFAULT);
+#else
+             base::FEATURE_DISABLED_BY_DEFAULT);
+#endif  // BUILDFLAG(IS_IOS)
 
 // Kill switch for Autofill address import.
 BASE_FEATURE(kAutofillDisableAddressImport, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -732,6 +755,12 @@ BASE_FEATURE(kAutofillEnableImportOfUnchangedValuesForCountryAndState,
 // numbers instead of aborting the import.
 // TODO(crbug.com/40742746) Remove once launched.
 BASE_FEATURE(kAutofillEnableImportWhenMultiplePhoneNumbers,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+// When enabled, the Keyboard Accessory on Android will be shown for search
+// fields if any filling sources (e.g. fallback sheets or autofill) are
+// available.
+BASE_FEATURE(kAutofillEnableKeyboardAccessoryOnSearchFields,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // When enabled, Autofill will help users fill in non-affiliated loyalty cards
@@ -925,12 +954,6 @@ BASE_FEATURE(kAutofillPopupCheckHtmlFormPopupOverlap,
 BASE_FEATURE(kAutofillPopupDontAcceptNonVisibleEnoughSuggestion,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Kill switch. When enabled, fields populated by standard Autofill or Autofill
-// AI products are not saved to the Autocomplete database at form submission.
-// TODO(crbug.com/533411686): Remove in M154.
-BASE_FEATURE(kAutofillPreventAutofillFromSavingToAutocomplete,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 // Replaces blink::WebFormElementObserver usage in FormTracker by updated logic
 // for tracking the disappearance of forms as well as other submission
 // triggering events.
@@ -994,6 +1017,12 @@ BASE_FEATURE(kAutofillSupportSplitZipCode, base::FEATURE_DISABLED_BY_DEFAULT);
 // globally, instead of just a handful of countries.
 BASE_FEATURE(kAutofillSupportStandaloneZipCodeGlobally,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Kill switch: When enabled, AskForValuesToFill() throttling is skipped for
+// browser-initiated and explicit user triggers.
+// TODO(crbug.com/547562303): Clean up after September 15, 2026.
+BASE_FEATURE(kAutofillThrottleAskForValuesToFillByTriggerSource,
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Mitigates side-channel brute-force probing of autofill data by rate-limiting
 // AskForValuesToFill() invocations per RenderFrame via a token bucket.

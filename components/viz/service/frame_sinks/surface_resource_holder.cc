@@ -11,8 +11,6 @@
 
 namespace viz {
 
-ReservedResourceDelegate::~ReservedResourceDelegate() = default;
-
 SurfaceResourceHolder::ResourceRefs::ResourceRefs() = default;
 
 SurfaceResourceHolder::ResourceRefs::~ResourceRefs() = default;
@@ -58,13 +56,15 @@ void SurfaceResourceHolder::RefResources(
   }
 }
 
-void SurfaceResourceHolder::UnrefResources(
+std::vector<ReturnedResourceViz> SurfaceResourceHolder::UnrefResources(
     std::vector<ReturnedResourceViz> resources_viz) {
   std::vector<ReturnedResource> resources_available_to_return;
+  std::vector<ReturnedResourceViz> unhandled_resources;
 
   for (auto& resource_viz : resources_viz) {
     // We don't handle reserved resources here.
     if (resource_viz.id >= kVizReservedRangeStartId) {
+      unhandled_resources.push_back(std::move(resource_viz));
       continue;
     }
 
@@ -89,6 +89,7 @@ void SurfaceResourceHolder::UnrefResources(
   }
 
   client_->ReturnResources(std::move(resources_available_to_return));
+  return unhandled_resources;
 }
 
 }  // namespace viz

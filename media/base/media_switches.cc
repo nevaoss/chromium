@@ -359,12 +359,6 @@ namespace media {
 // Whether we should allow color space changes to flush AcceleratedVideoDecoder.
 BASE_FEATURE(kAVDColorSpaceChanges, base::FEATURE_ENABLED_BY_DEFAULT);
 
-// Controls whether VideoFrameConverter accurately maps RGB to YUV color spaces
-// instead of always coercing to Rec.601.
-// TODO(crbug.com/467555325): Remove after M153 reaches stable.
-BASE_FEATURE(kAccurateVideoFrameConverterColorSpace,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 // Controls whether AOM/VPX decoders should use the presentation thread type.
 BASE_FEATURE(kAomVpxUsePresentationThreadType,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -496,7 +490,7 @@ BASE_FEATURE(kContextMenuSaveVideoFrameAs, base::FEATURE_ENABLED_BY_DEFAULT);
 // Enables the "Search Video Frame with <Search Provider>" context menu item.
 BASE_FEATURE(kContextMenuSearchForVideoFrame, base::FEATURE_ENABLED_BY_DEFAULT);
 
-// Forces D3D11VideoDecoder to use one decoder texture per picture buffer.
+// Forces D3DVideoDecoder to use one decoder texture per picture buffer.
 // Owner: media-gpu-team@chromium.org
 // Expiry: When no longer needed for decode texture selection experiments.
 BASE_FEATURE(kD3D11VideoDecoderForceSingleTexture,
@@ -1191,7 +1185,7 @@ BASE_FEATURE(kMediaRecorderHEVCSupport, base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(ENABLE_HEVC_PARSER_AND_HW_DECODER)
 
 #if BUILDFLAG(ENABLE_IAMF_TOOLS)
-BASE_FEATURE(kIamfAudioDecoding, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kIamfAudioDecoding, base::FEATURE_ENABLED_BY_DEFAULT);
 
 #endif  // BUILDFLAG(ENABLE_IAMF_TOOLS)
 
@@ -1287,7 +1281,7 @@ BASE_FEATURE(kAndroidZeroCopyVideoCapture, base::FEATURE_DISABLED_BY_DEFAULT);
 // Enables automatic Picture-in-Picture permission prompt on Android for
 // document picture-in-picture.
 BASE_FEATURE(kAutoDocPiPPermissionPromptAndroid,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables automatic Picture-in-Picture on Android for supported websites.
 // This triggers for active video playback or camera/microphone usage on sites
@@ -1336,10 +1330,6 @@ BASE_FEATURE(kMediaDrmPreprovisioning, base::FEATURE_ENABLED_BY_DEFAULT);
 // Note: Has no effect if kMediaDrmPreprovisioning feature is disabled.
 BASE_FEATURE(kMediaDrmPreprovisioningAtStartup,
              base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Enables exponential backoff for preprovisioning requests in
-// MediaDrmOriginIdManager.
-BASE_FEATURE(kMediaDrmPreprovisioningBackoff, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // This feature allows for some MediaDrm functions to be executed in a separate
 // process so that crashes do not bring down the browser. Flag is available so

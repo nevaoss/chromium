@@ -9,8 +9,6 @@
 #include "base/feature_list.h"
 #include "base/memory/ptr_util.h"
 #include "base/no_destructor.h"
-#include "chrome/browser/accessibility_annotator/content_annotator/content_annotator_service_factory.h"
-#include "chrome/browser/accessibility_annotator/content_annotator/content_annotator_tab_helper.h"
 #include "chrome/browser/actor/actor_keyed_service.h"
 #include "chrome/browser/actor/actor_tab_data.h"
 #include "chrome/browser/actor/ui/actor_ui_tab_controller.h"
@@ -59,11 +57,13 @@
 #include "chrome/browser/ui/autofill/payments/payments_churned_users_page_action_controller.h"
 #include "chrome/browser/ui/autofill/payments/wallet_reminder_notice_bubble_controller.h"
 #include "chrome/browser/ui/autofill/payments/wallet_reminder_notice_page_action_controller.h"
+#include "chrome/browser/ui/blocked_content/framebust_block_tab_helper.h"
 #include "chrome/browser/ui/browser_actions.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/commerce/commerce_ui_tab_helper.h"
 #include "chrome/browser/ui/context_highlight/context_highlight_tab_feature.h"
 #include "chrome/browser/ui/focus_tab_after_navigation_helper.h"
+#include "chrome/browser/ui/intent_picker_tab_helper.h"
 #include "chrome/browser/ui/lens/lens_overlay_controller.h"
 #include "chrome/browser/ui/lens/lens_search_controller.h"
 #include "chrome/browser/ui/page_action/action_ids.h"
@@ -75,6 +75,7 @@
 #include "chrome/browser/ui/performance_controls/tab_resource_usage_tab_helper.h"
 #include "chrome/browser/ui/read_anything/read_anything_controller.h"
 #include "chrome/browser/ui/read_anything/read_anything_side_panel_controller.h"
+#include "chrome/browser/ui/sad_tab_helper.h"
 #include "chrome/browser/ui/search_engine_choice/search_engine_choice_tab_helper.h"
 #include "chrome/browser/ui/side_panel/side_panel_registry.h"
 #include "chrome/browser/ui/tab_ui_helper.h"
@@ -92,6 +93,7 @@
 #include "chrome/browser/ui/tabs/tab_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_model_delegate.h"
+#include "chrome/browser/ui/thumbnails/thumbnail_tab_helper.h"
 #include "chrome/browser/ui/toolbar/pinned_toolbar/pinned_toolbar_actions_model.h"
 #include "chrome/browser/ui/toolbar/pinned_toolbar/pinned_translate_action_listener.h"
 #include "chrome/browser/ui/ui_features.h"
@@ -110,6 +112,7 @@
 #include "chrome/browser/ui/views/zoom/zoom_view_controller.h"
 #include "chrome/browser/ui/web_applications/pwa_install_page_action.h"
 #include "chrome/browser/ui/webui/webui_embedding_context.h"
+#include "chrome/browser/ui/webui_browser/webui_browser.h"
 #include "components/autofill/core/common/autofill_payments_features.h"
 #include "components/contextual_tasks/public/features.h"
 #include "components/enterprise/browser/reporting/reporting_features.h"
@@ -405,15 +408,6 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
           GetUserDataFactory().CreateInstance<skills::SkillsUiTabController>(
               tab, tab);
     }
-
-    if (accessibility_annotator::
-            ContentAnnotatorService* content_annotator_service =
-                ContentAnnotatorServiceFactory::GetForProfile(profile)) {
-      content_annotator_tab_helper_ =
-          std::make_unique<accessibility_annotator::ContentAnnotatorTabHelper>(
-              tab, *content_annotator_service,
-              ChromeTranslateClient::FromWebContents(tab.GetContents()));
-    }
   }  // IsInNormalWindow() end.
 
   if (base::FeatureList::IsEnabled(features::kGlicActor)) {
@@ -516,12 +510,30 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
   focus_tab_after_navigation_helper_ =
       std::make_unique<FocusTabAfterNavigationHelper>(tab.GetContents());
 
+  framebust_block_tab_helper_ =
+      GetUserDataFactory().CreateInstance<FramebustBlockTabHelper>(
+          tab, tab, tab.GetContents());
+
   zero_suggest_prefetch_tab_helper_ =
       std::make_unique<ZeroSuggestPrefetchTabHelper>(tab.GetContents());
 
   if (SearchEngineChoiceTabHelper::IsHelperNeeded()) {
     search_engine_choice_tab_helper_ =
         std::make_unique<SearchEngineChoiceTabHelper>(tab.GetContents());
+  }
+
+  intent_picker_tab_helper_ =
+      std::make_unique<IntentPickerTabHelper>(tab, tab.GetContents());
+
+  if (base::FeatureList::IsEnabled(features::kTabHoverCardImages)) {
+    thumbnail_tab_helper_ =
+        GetUserDataFactory().CreateInstance<ThumbnailTabHelper>(
+            tab, tab, tab.GetContents());
+  }
+
+  if (!webui_browser::IsWebUIBrowserEnabled()) {
+    sad_tab_helper_ = GetUserDataFactory().CreateInstance<SadTabHelper>(
+        tab, tab, tab.GetContents());
   }
 
   from_gws_navigation_and_keep_alive_request_observer_ =
@@ -718,6 +730,14 @@ void TabFeatures::WillDiscardContents(tabs::TabInterface* tab,
   focus_tab_after_navigation_helper_ =
       std::make_unique<FocusTabAfterNavigationHelper>(new_contents);
 
+  // The reset() must happen first so that the old instance deregisters
+  // itself from the UnownedUserDataHost before the new instance registers
+  // itself.
+  framebust_block_tab_helper_.reset();
+  framebust_block_tab_helper_ =
+      GetUserDataFactory().CreateInstance<FramebustBlockTabHelper>(
+          *tab, *tab, new_contents);
+
   zero_suggest_prefetch_tab_helper_ =
       std::make_unique<ZeroSuggestPrefetchTabHelper>(new_contents);
 
@@ -727,6 +747,34 @@ void TabFeatures::WillDiscardContents(tabs::TabInterface* tab,
   if (search_engine_choice_tab_helper_) {
     search_engine_choice_tab_helper_ =
         std::make_unique<SearchEngineChoiceTabHelper>(new_contents);
+  }
+
+  // The reset() must happen first so that the old instance deregisters
+  // itself from the UnownedUserDataHost before the new instance registers
+  // itself.
+  intent_picker_tab_helper_.reset();
+  intent_picker_tab_helper_ =
+      std::make_unique<IntentPickerTabHelper>(*tab, new_contents);
+
+  if (thumbnail_tab_helper_) {
+    // The old helper stashed its thumbnail data on `new_contents` from
+    // AboutToBeDiscarded(); the new helper picks it up in its constructor.
+    // The reset() must happen first so that the old instance deregisters
+    // itself from the UnownedUserDataHost before the new instance registers
+    // itself.
+    thumbnail_tab_helper_.reset();
+    thumbnail_tab_helper_ =
+        GetUserDataFactory().CreateInstance<ThumbnailTabHelper>(*tab, *tab,
+                                                                new_contents);
+  }
+
+  if (sad_tab_helper_) {
+    // The reset() must happen first so that the old instance deregisters
+    // itself from the UnownedUserDataHost before the new instance registers
+    // itself.
+    sad_tab_helper_.reset();
+    sad_tab_helper_ = GetUserDataFactory().CreateInstance<SadTabHelper>(
+        *tab, *tab, new_contents);
   }
 
   sync_sessions_router_.reset();

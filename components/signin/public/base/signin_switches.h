@@ -289,6 +289,9 @@ COMPONENT_EXPORT(SIGNIN_SWITCHES)
 extern const base::FeatureParam<base::TimeDelta>
     kAccountPreviewDataPeriodicRefreshTiming;
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE_PARAM(base::TimeDelta,
+                           kAccountPreviewData429RateLimitDuration);
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kEnableAccountPreviewEntityPreviews);
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kEnableAccountPreviewPreferredAccount);
@@ -825,6 +828,10 @@ BASE_DECLARE_FEATURE(kSigninWindows10DepreciationStateBypassForTesting);
 COMPONENT_EXPORT(SIGNIN_SWITCHES) bool IsSigninWindows10DepreciationState();
 
 #if BUILDFLAG(IS_ANDROID)
+// Feature to allow deleting browser data to android desktop users.
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE(kSignOutDeletesBrowsingData);
+
 // Feature to show "Sign out of Chrome" string to android desktop users.
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kSignOutOfChrome);

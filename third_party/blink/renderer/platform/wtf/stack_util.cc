@@ -181,8 +181,11 @@ bool IsOnStack(void* address) {
   // Fall through as there is still a regular stack present even when running
   // with ASAN fake stacks.
 #endif  // defined(ADDRESS_SANITIZER)
+<<<<<<< HEAD
 // TODO(neva): GCC doesn't support '__has_feature' macro. Try to contribite it
 // to upstream.
+=======
+>>>>>>> 154.0.8014.0~1
 #if defined(__has_feature)
 #if __has_feature(safe_stack)
   if (__builtin___get_unsafe_stack_ptr() <= address &&

@@ -36,7 +36,6 @@ import org.chromium.chrome.browser.tab_bottom_sheet.TabBottomSheetUtils;
 import org.chromium.chrome.browser.ui.side_panel.AndroidSidePanelEnabledFn;
 import org.chromium.components.browser_ui.widget.BrowserUiListMenuUtils;
 import org.chromium.components.dom_distiller.core.DomDistillerUrlUtils;
-import org.chromium.components.embedder_support.util.UrlConstants;
 import org.chromium.components.embedder_support.util.UrlUtilities;
 import org.chromium.components.search_engines.TemplateUrl;
 import org.chromium.components.search_engines.TemplateUrlService;
@@ -97,7 +96,7 @@ public class TextSelectionActionMenuDelegate implements SelectionActionMenuDeleg
                                             | MenuItem.SHOW_AS_ACTION_WITH_TEXT)
                             .build());
         }
-        if (shouldShowAskGeminiForSelection(menuType, isSelectionPassword, selectedText)) {
+        if (shouldShowAskGeminiForSelection(isSelectionPassword, selectedText)) {
             SelectionMenuItem.Builder builder =
                     new SelectionMenuItem.Builder(R.string.glic_button_entrypoint_ask_gemini_label)
                             .setId(R.id.contextmenu_ask_gemini)
@@ -202,15 +201,16 @@ public class TextSelectionActionMenuDelegate implements SelectionActionMenuDeleg
             return fullText;
         }
 
+        String prefix = template.substring(0, separatorIndex);
         String suffix = template.substring(separatorIndex + 2);
-        if (!fullText.endsWith(suffix)) {
+        if (!fullText.startsWith(prefix) || !fullText.endsWith(suffix)) {
             return fullText;
         }
-        String textBeforeSuffix = fullText.substring(0, fullText.length() - suffix.length());
-        return getTruncatedText(context, textBeforeSuffix, suffix);
+        return getTruncatedText(context, prefix, sanitizedText, suffix);
     }
 
-    private String getTruncatedText(Context context, String textBeforeSuffix, String suffix) {
+    private @Nullable String getTruncatedText(
+            Context context, String prefix, String sanitizedText, String suffix) {
         int availableTextWidth = getAvailableTextWidth(context);
         Context themedContext = new ContextThemeWrapper(context, R.style.Theme_BrowserUI_DayNight);
         TextView placeholderTextView = new TextView(themedContext);
@@ -218,13 +218,16 @@ public class TextSelectionActionMenuDelegate implements SelectionActionMenuDeleg
                 placeholderTextView, BrowserUiListMenuUtils.getDefaultTextAppearanceStyle());
         TextPaint paint = placeholderTextView.getPaint();
 
-        float suffixWidth = paint.measureText(suffix);
-        float remainingWidth = availableTextWidth - suffixWidth;
+        float templateWidth = paint.measureText(prefix) + paint.measureText(suffix);
+        float remainingWidth = availableTextWidth - templateWidth;
+
+        if (remainingWidth < paint.measureText("…")) {
+            return null;
+        }
 
         CharSequence truncatedText =
-                TextUtils.ellipsize(
-                        textBeforeSuffix, paint, remainingWidth, TextUtils.TruncateAt.END);
-        return truncatedText + suffix;
+                TextUtils.ellipsize(sanitizedText, paint, remainingWidth, TextUtils.TruncateAt.END);
+        return prefix + truncatedText + suffix;
     }
 
     private int getAvailableTextWidth(Context context) {
@@ -251,12 +254,11 @@ public class TextSelectionActionMenuDelegate implements SelectionActionMenuDeleg
      * side panel).
      */
     private boolean shouldShowAskGeminiForSelection(
-            @MenuType int menuType, boolean isSelectionPassword, String selectedText) {
-        boolean isFormFactorSupported =
-                (menuType == MenuType.DROPDOWN && AndroidSidePanelEnabledFn.isEnabled())
-                        || (menuType == MenuType.FLOATING
-                                && TabBottomSheetUtils.isTabBottomSheetEnabled());
-        if (!isFormFactorSupported) return false;
+            boolean isSelectionPassword, String selectedText) {
+        boolean isContainerAvailable =
+                AndroidSidePanelEnabledFn.isEnabled()
+                        || TabBottomSheetUtils.isTabBottomSheetEnabled();
+        if (!isContainerAvailable) return false;
         if (TextUtils.isEmpty(selectedText) || isSelectionPassword) return false;
         if (mTab.isDestroyed() || mTab.isIncognito()) return false;
         Profile profile = mTab.getProfile();
@@ -290,11 +292,7 @@ public class TextSelectionActionMenuDelegate implements SelectionActionMenuDeleg
         GURL pageUrl = mTab.getUrl();
         if (pageUrl == null || !pageUrl.isValid()) return false;
 
-        String scheme = pageUrl.getScheme();
-        boolean isChromeOrNativePage =
-                UrlConstants.CHROME_SCHEME.equals(scheme)
-                        || UrlConstants.CHROME_NATIVE_SCHEME.equals(scheme)
-                        || mTab.isNativePage();
+        boolean isChromeOrNativePage = UrlUtilities.isChromeScheme(pageUrl) || mTab.isNativePage();
         return !isChromeOrNativePage
                 && !DomDistillerUrlUtils.isDistilledPage(pageUrl)
                 && menuType == MenuType.DROPDOWN;

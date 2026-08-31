@@ -35,7 +35,6 @@
 #include "base/uuid.h"
 #include "build/buildflag.h"
 #include "components/autofill/core/browser/country_type.h"
-#include "components/autofill/core/browser/data_manager/personal_data_manager.h"
 #include "components/autofill/core/browser/data_model/payments/autofill_offer_data.h"
 #include "components/autofill/core/browser/data_model/payments/autofill_wallet_usage_data.h"
 #include "components/autofill/core/browser/data_model/payments/bank_account.h"
@@ -303,6 +302,7 @@ PaymentsDataManager::PaymentsDataManager(
 
 PaymentsDataManager::~PaymentsDataManager() {
   CancelPendingLocalQuery(&pending_creditcards_query_);
+  CancelPendingLocalQuery(&pending_local_ibans_query_);
   CancelPendingServerQueries();
 }
 

@@ -266,11 +266,18 @@ UIImage* SendButtonImage(BOOL highlighted,
   /// The constraint for the leading edge of the tabs accordion.
   NSLayoutConstraint* _tabsAccordionLeadingConstraint;
 
+  /// The constraint for the trailing edge of the tabs accordion when collapsed.
+  NSLayoutConstraint* _tabsAccordionTrailingConstraint;
+
   /// The constraint pinning the container's trailing to the accordion.
   NSLayoutConstraint* _containerTrailingToAccordionConstraint;
 
   /// The constraint pinning the container's trailing to the plus button.
   NSLayoutConstraint* _containerTrailingToPlusButtonConstraint;
+
+  /// Whether a tab attachment animation is pending completion of accordion
+  /// loading.
+  BOOL _pendingTabAttachmentAnimation;
 
   /// All items attached to the composebox query context
   /// (including media, files, and tab attachments). Serves as the single source
@@ -394,34 +401,52 @@ UIImage* SendButtonImage(BOOL highlighted,
     return;
   }
 
+  if (_tabsAccordionStackView.isLoading) {
+    _pendingTabAttachmentAnimation = YES;
+    return;
+  }
+
+  _pendingTabAttachmentAnimation = NO;
+
   _plusButtonContainer.backgroundColor =
       [UIColor colorNamed:kSecondaryBackgroundColor];
 
   if (_tabsAccordionStackView.arrangedSubviews.count > 0) {
+    // Delay the slide animation asynchronously because UIView animation delays
+    // execute constraint updates synchronously at setup time.
     __weak __typeof(self) weakSelf = self;
-    [UIView animateKeyframesWithDuration:kTabAttachmentAnimationDuration
-        delay:kTabAttachmentAnimationDelay
-        options:0
-        animations:^{
-          // Fades out the favicons.
-          [UIView addKeyframeWithRelativeStartTime:0.0
-                                  relativeDuration:
-                                      kTabAttachmentFadeOutRelativeDuration
-                                        animations:^{
-                                          [weakSelf fadeOutTabsAccordion];
-                                        }];
-          // Slides the tabs accordion view.
-          [UIView addKeyframeWithRelativeStartTime:0.0
-                                  relativeDuration:
-                                      kTabAttachmentSlideRelativeDuration
-                                        animations:^{
-                                          [weakSelf slideTabsAccordion];
-                                        }];
-        }
-        completion:^(BOOL finished) {
-          [weakSelf handleTabAttachmentAnimationCompletion];
-        }];
+    base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
+        FROM_HERE, base::BindOnce(^{
+          [weakSelf runTabAttachmentSlideAnimation];
+        }),
+        base::Seconds(kTabAttachmentAnimationDelay));
   }
+}
+
+- (void)runTabAttachmentSlideAnimation {
+  __weak __typeof(self) weakSelf = self;
+  [UIView animateKeyframesWithDuration:kTabAttachmentAnimationDuration
+      delay:0.0
+      options:0
+      animations:^{
+        // Fades out the favicons.
+        [UIView addKeyframeWithRelativeStartTime:0.0
+                                relativeDuration:
+                                    kTabAttachmentFadeOutRelativeDuration
+                                      animations:^{
+                                        [weakSelf fadeOutTabsAccordion];
+                                      }];
+        // Slides the tabs accordion view.
+        [UIView
+            addKeyframeWithRelativeStartTime:0.0
+                            relativeDuration:kTabAttachmentSlideRelativeDuration
+                                  animations:^{
+                                    [weakSelf slideTabsAccordion];
+                                  }];
+      }
+      completion:^(BOOL finished) {
+        [weakSelf handleTabAttachmentAnimationCompletion];
+      }];
 }
 
 - (void)viewWillAppear:(BOOL)animated {
@@ -1287,6 +1312,8 @@ UIImage* SendButtonImage(BOOL highlighted,
 
   _tabsAccordionLeadingConstraint = [_tabsAccordionStackView.leadingAnchor
       constraintEqualToAnchor:_plusButton.trailingAnchor];
+  _tabsAccordionTrailingConstraint = [_tabsAccordionStackView.trailingAnchor
+      constraintEqualToAnchor:_plusButton.trailingAnchor];
   _containerTrailingToAccordionConstraint = [container.trailingAnchor
       constraintEqualToAnchor:_tabsAccordionStackView.trailingAnchor
                      constant:kPlusButtonContainerTrailingPadding];
@@ -1345,13 +1372,25 @@ UIImage* SendButtonImage(BOOL highlighted,
   _tabsAccordionStackView.hidden = !hasTabs;
   if (hasTabs) {
     _containerTrailingToPlusButtonConstraint.active = NO;
+    _tabsAccordionTrailingConstraint.active = NO;
+    _tabsAccordionLeadingConstraint.constant = 0.0;
+    _tabsAccordionLeadingConstraint.active = YES;
     _containerTrailingToAccordionConstraint.constant =
         kPlusButtonContainerTrailingPadding;
-    _tabsAccordionLeadingConstraint.constant = 0.0;
     _containerTrailingToAccordionConstraint.active = YES;
   } else {
     _containerTrailingToAccordionConstraint.active = NO;
+    _tabsAccordionLeadingConstraint.active = NO;
+    _tabsAccordionTrailingConstraint.active = YES;
     _containerTrailingToPlusButtonConstraint.active = YES;
+  }
+
+  // Force UIKit to complete the current layout pass synchronously to ensure
+  // loaded favicon subviews are displayed before scheduling animations.
+  if (!isLoading && _pendingTabAttachmentAnimation) {
+    [self.view setNeedsLayout];
+    [self.view layoutIfNeeded];
+    [self performTabAttachmentAnimationIfNeeded];
   }
 }
 
@@ -1690,7 +1729,7 @@ UIImage* SendButtonImage(BOOL highlighted,
     UIAction* regularModelOption = [self
         actionWithTitle:[_state.strings
                             menuLabelForModel:ComposeboxModelOption::kRegular]
-                  image:SymbolWithPointSize(SymbolBolt, kSymbolActionPointSize)
+                  image:SymbolWithPointSize(SymbolAcute, kSymbolActionPointSize)
                  hidden:regularHidden
                disabled:[_state isModelDisabled:ComposeboxModelOption::kRegular]
                selected:_state.activeModel == ComposeboxModelOption::kRegular
@@ -1744,7 +1783,7 @@ UIImage* SendButtonImage(BOOL highlighted,
     UIAction* flashModelOption = [self
         actionWithTitle:[_state.strings
                             menuLabelForModel:ComposeboxModelOption::kFlash]
-                  image:SymbolWithPointSize(SymbolAcute, kSymbolActionPointSize)
+                  image:SymbolWithPointSize(SymbolBolt, kSymbolActionPointSize)
                  hidden:[_state isModelHidden:ComposeboxModelOption::kFlash]
                disabled:[_state isModelDisabled:ComposeboxModelOption::kFlash]
                selected:_state.activeModel == ComposeboxModelOption::kFlash
@@ -2525,9 +2564,10 @@ UIImage* SendButtonImage(BOOL highlighted,
 
 /// Slides the tabs accordion stack view layout.
 - (void)slideTabsAccordion {
-  _tabsAccordionLeadingConstraint.constant =
-      -_tabsAccordionStackView.frame.size.width;
-  _containerTrailingToAccordionConstraint.constant = 0.0;
+  _containerTrailingToAccordionConstraint.active = NO;
+  _tabsAccordionLeadingConstraint.active = NO;
+  _tabsAccordionTrailingConstraint.active = YES;
+  _containerTrailingToPlusButtonConstraint.active = YES;
   [self.view layoutIfNeeded];
 }
 

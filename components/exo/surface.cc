@@ -27,6 +27,7 @@
 #include "base/trace_event/trace_event.h"
 #include "base/trace_event/traced_value.h"
 #include "build/build_config.h"
+#include "cc/base/math_util.h"
 #include "components/exo/buffer.h"
 #include "components/exo/frame_sink_resource_manager.h"
 #include "components/exo/layer_tree_frame_sink_holder.h"
@@ -55,7 +56,7 @@
 #include "ui/base/cursor/cursor.h"
 #include "ui/base/cursor/mojom/cursor_type.mojom-shared.h"
 #include "ui/base/hit_test.h"
-#include "ui/compositor/layer.h"
+#include "ui/compositor/layer_solid_color.h"
 #include "ui/display/display.h"
 #include "ui/display/screen.h"
 #include "ui/events/event.h"
@@ -1762,7 +1763,7 @@ void Surface::AppendContentsToFrame(const gfx::PointF& parent_to_root_px,
 
       if (state_.buffer.has_value() && state_.buffer->buffer() &&
           ShouldDisableOverlay(state_.buffer->buffer()->GetFormat())) {
-        texture_quad->overlay_priority_hint = viz::OverlayPriority::kLow;
+        texture_quad->overlay_priority_hint = viz::OverlayPriority::kNone;
       }
 
 #if BUILDFLAG(USE_ARC_PROTECTED_MEDIA)

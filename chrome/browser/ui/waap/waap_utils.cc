@@ -13,6 +13,7 @@
 #include "chrome/common/chrome_features.h"
 #include "chrome/common/webui_url_constants.h"
 #include "components/ukm/content/source_url_recorder.h"
+#include "content/public/browser/frame_eviction_opt_out_client.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/render_process_host.h"
 #include "content/public/browser/site_instance.h"
@@ -75,10 +76,6 @@ bool IsForInitialWebUI(const GURL& url) {
   return false;
 }
 
-bool IsInitialWebUIMetricsLoggingEnabled() {
-  return base::FeatureList::IsEnabled(features::kInitialWebUIMetrics);
-}
-
 void PrewarmHelper::ConfigureWebUIContents(content::WebContents* web_contents,
                                            Profile* profile) {
   // `PageLoadMetrics` needs to be initialized before loading the URL.
@@ -88,6 +85,11 @@ void PrewarmHelper::ConfigureWebUIContents(content::WebContents* web_contents,
 
   web_contents->SetPageBaseBackgroundColor(SK_ColorTRANSPARENT);
   web_contents->SetIgnoreZoomGestures(true);
+  if (base::FeatureList::IsEnabled(
+          features::kWebUIToolbarFrameEvictionOptOut)) {
+    web_contents->OptOutFrameEviction(
+        content::FrameEvictionOptOutClient::GetPassKey());
+  }
 
   // Set up the color provider source so that early navigation can resolve
   // theme color properties.

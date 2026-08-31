@@ -346,7 +346,7 @@ void AddMaterialChromeColorMixer(ui::ColorProvider* provider,
     return;
   }
 
-  mixer[kColorActorUiHandoffButtonBackground] = {ui::kColorSysSurface2};
+  mixer[kColorActorUiHandoffButtonBackground] = {ui::kColorSysSurface};
   mixer[kColorActorUiHandoffButtonBorder] = {ui::kColorSysActorUiBorder};
   mixer[kColorActorUiHandoffButtonForeground] = {ui::kColorSysOnSurface};
   mixer[kColorActorUiOverlayBorder] = {ui::kColorSysActorUiBorder};
@@ -366,6 +366,11 @@ void AddMaterialChromeColorMixer(ui::ColorProvider* provider,
   mixer[kColorAppMenuYourChromeBackground] = {ui::kColorSysTonalContainer};
   mixer[kColorAppMenuToolsAndActionsBackground] = {
       ui::kColorSysNeutralContainer};
+  mixer[kColorAppMenuBlockButtonBackground] = {ui::kColorSysSurface};
+  mixer[kColorAppMenuBlockButtonBackgroundHovered] = {
+      ui::kColorSysTonalContainer};
+  mixer[kColorAppMenuBlockButtonBorder] = {ui::kColorSysInversePrimary};
+  mixer[kColorAppMenuBlockButtonForeground] = {ui::kColorSysPrimary};
   mixer[kColorAvatarButtonHighlightSyncPaused] = {
       kColorAvatarButtonHighlightDefault};
   mixer[kColorAvatarButtonHighlightPasskeysLocked] = {

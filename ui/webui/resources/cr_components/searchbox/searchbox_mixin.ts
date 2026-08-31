@@ -252,7 +252,7 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
       const isBackgroundTab = this.isBackgroundTabNavigation(e);
       if (!isBackgroundTab) {
         this.getInputElement().setInput({
-          text: this.computeMatchFillIntoEdit_(match),
+          text: this.computeMatchFillIntoEdit(match),
           inline: '',
           moveCursorToEnd: true,
         });
@@ -321,7 +321,7 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
         // empty input will change to the value of the first result.
         await this.getDropdownElement().selectIndex(this.selectedMatchIndex);
         this.getInputElement().setInput({
-          text: this.computeMatchFillIntoEdit_(this.selectedMatch!),
+          text: this.computeMatchFillIntoEdit(this.selectedMatch!),
           inline: '',
           moveCursorToEnd: true,
         });
@@ -631,7 +631,7 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
       }
 
       // Update the input.
-      const newFill = this.computeMatchFillIntoEdit_(this.selectedMatch!);
+      const newFill = this.computeMatchFillIntoEdit(this.selectedMatch!);
       const newInline = this.selectedMatchIndex === 0 &&
               this.selectedMatch!.allowedToBeDefaultMatch ?
           this.selectedMatch!.inlineAutocompletion :
@@ -662,7 +662,7 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
       const input = this.getInputElement();
       assert(input);
       input.setInput({
-        text: this.computeMatchFillIntoEdit_(this.selectedMatch!),
+        text: this.computeMatchFillIntoEdit(this.selectedMatch!),
         inline: '',
         moveCursorToEnd: true,
       });
@@ -680,7 +680,7 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
       this.getInputElement().setInputText('');
     }
 
-    private computeMatchFillIntoEdit_(match: AutocompleteMatch): string {
+    computeMatchFillIntoEdit(match: AutocompleteMatch): string {
       if (this.inputKeywordModel?.type === KeywordType.kInKeyword) {
         const keyword = this.inputKeywordModel.keyword;
         if (keyword && match.fillIntoEdit.startsWith(keyword + ' ')) {
@@ -778,6 +778,35 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
     private computeInputAriaLive_(): string {
       return this.selectedMatch ? 'off' : 'polite';
     }
+
+    /**
+     * Accepts the inline autocompletion by appending it to the input text and
+     * moving the cursor to the end. Returns `true` if inline autocomplete was
+     * handled, `false` otherwise.
+     */
+    acceptInlineAutocomplete(e: KeyboardEvent): boolean {
+      const input = this.getInputElement();
+      const lastInput = input?.lastInput();
+      if (!lastInput?.inline) {
+        return false;
+      }
+
+      if (e.shiftKey) {
+        input.setInput({inline: ''});
+        return true;
+      }
+
+      const newText = lastInput.text + lastInput.inline;
+      input.setInput({
+        text: newText,
+        inline: '',
+        moveCursorToEnd: true,
+      });
+      this.queryAutocomplete(
+          newText, /*preventInlineAutocomplete=*/ false, /*isOnFocus=*/ false);
+      e.preventDefault();
+      return true;
+    }
   }
 
   return SearchboxMixin;
@@ -798,12 +827,14 @@ export interface SearchboxMixinInterface {
   inputKeywordModel: InputKeywordModel|null;
   showThumbnail: boolean;
 
+  acceptInlineAutocomplete(e: KeyboardEvent): boolean;
   clearAutocompleteMatches(): void;
   getDropdownElement(): SearchboxDropdownElement;
   getInputElement(): SearchboxInputElement;
   getWrapperElement(): HTMLElement;
   handleKeyNavigation(e: KeyboardEvent): void;
   hasMatches(): boolean;
+  computeMatchFillIntoEdit(match: AutocompleteMatch): string;
   isAutocompleteResultStale(result: AutocompleteResult): boolean;
   isBackgroundTabNavigation(e: KeyboardEvent|MouseEvent): boolean;
   updateDropdownVisibility(): void;

@@ -383,7 +383,7 @@ IN_PROC_BROWSER_TEST_F(AppMenuModelTest, ModelHasIcons) {
   // Skip the items that are either not supposed to have an icon, or are not
   // ready to be tested. Remove items once they're ready for testing.
   const std::vector<int> skip_commands = {
-      kRecentTabsNoDeviceTabsId,
+      IDC_RECENT_TABS_NO_DEVICE_TABS,
       IDC_ABOUT,
       RecentTabsSubMenuModel::GetDisabledRecentlyClosedHeaderCommandId(),
       IDC_EXTENSIONS_SUBMENU_VISIT_CHROME_WEB_STORE,
@@ -1072,7 +1072,7 @@ class AppMenuModelSendTabToSelfEnhancedDisabledTest
 };
 
 // Tests that when kSendTabToSelfEnhancedDesktopUIv2 feature is enabled, the
-// "Send to Your Devices" item in the Save and Share submenu is a submenu model.
+// "Send to your device" item in the Save and Share submenu is a submenu model.
 IN_PROC_BROWSER_TEST_F(AppMenuModelSendTabToSelfEnhancedEnabledTest,
                        SendTabToSelfSaveAndShareSubmenuEnabled) {
   auto* sync_service = static_cast<StubSendTabToSelfSyncService*>(
@@ -1100,7 +1100,7 @@ IN_PROC_BROWSER_TEST_F(AppMenuModelSendTabToSelfEnhancedEnabledTest,
 }
 
 // Tests that when kSendTabToSelfEnhancedDesktopUIv2 feature is disabled, the
-// "Send to Your Devices" item in the Save and Share submenu remains a simple
+// "Send to your device" item in the Save and Share submenu remains a simple
 // command.
 IN_PROC_BROWSER_TEST_F(AppMenuModelSendTabToSelfEnhancedDisabledTest,
                        SendTabToSelfSaveAndShareSubmenuDisabled) {

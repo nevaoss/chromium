@@ -237,7 +237,7 @@ class CONTENT_EXPORT StoragePartitionImpl
       base::OnceClosure callback) override;
   void Flush() override;
   void ResetURLLoaderFactories() override;
-  void ClearBluetoothAllowedDevicesMapForTesting() override;
+  void ClearBluetoothAllowedDevicesMap() override;
   void AddObserver(DataRemovalObserver* observer) override;
   void RemoveObserver(DataRemovalObserver* observer) override;
   void FlushNetworkInterfaceForTesting() override;
@@ -427,6 +427,7 @@ class CONTENT_EXPORT StoragePartitionImpl
       bool is_service_worker,
       int process_id,
       int routing_id,
+      bool prefer_bound_cookie_context,
       net::CookieSettingOverrides cookie_setting_overrides,
       net::CookieSettingOverrides devtools_cookie_setting_overrides,
       mojo::PendingReceiver<network::mojom::RestrictedCookieManager> receiver,
@@ -445,7 +446,8 @@ class CONTENT_EXPORT StoragePartitionImpl
   mojo::PendingRemote<network::mojom::URLLoaderNetworkServiceObserver>
   CreateURLLoaderNetworkObserverForServiceOrSharedWorker(
       const network::OriginatingProcessId& process_id,
-      const url::Origin& worker_origin);
+      const url::Origin& worker_origin,
+      const std::optional<blink::StorageKey>& storage_key = std::nullopt);
 
   mojo::PendingRemote<network::mojom::URLLoaderNetworkServiceObserver>
   CreateURLLoaderNetworkObserverForDeviceBoundSessions();
@@ -538,7 +540,14 @@ class CONTENT_EXPORT StoragePartitionImpl
     struct SharedOrServiceWorkerContext {
       network::OriginatingProcessId process_id;
       std::optional<url::Origin> worker_origin;
+      // Holds the storage key of the worker that owns this network context.
+      // When present, `CalculateStorageKey()` uses this key to scope
+      // Clear-Site-Data filter deletions to the worker's top-level site
+      // partition. Is `std::nullopt` for contexts that lack a worker storage
+      // key.
+      std::optional<blink::StorageKey> storage_key;
     };
+
     struct DeviceBoundSessionContext {};
 
     using Context = std::variant<NavigationRequestContext,
@@ -565,7 +574,8 @@ class CONTENT_EXPORT StoragePartitionImpl
     static StoragePartitionImpl::URLLoaderNetworkContext
     CreateForServiceOrSharedWorker(
         const network::OriginatingProcessId& process_id,
-        const url::Origin& worker_origin);
+        const url::Origin& worker_origin,
+        const std::optional<blink::StorageKey>& storage_key = std::nullopt);
 
     // Creates a URLLoaderNetworkContext for background Device Bound Sessions
     // requests.
@@ -598,8 +608,10 @@ class CONTENT_EXPORT StoragePartitionImpl
         GlobalRenderFrameHostId global_render_frame_host_id);
 
     // Used when `context_` holds `SharedOrServiceWorkerContext`.
-    URLLoaderNetworkContext(const network::OriginatingProcessId& process_id,
-                            const url::Origin& worker_origin);
+    URLLoaderNetworkContext(
+        const network::OriginatingProcessId& process_id,
+        const url::Origin& worker_origin,
+        const std::optional<blink::StorageKey>& storage_key = std::nullopt);
 
     // Used when `context_` holds `NavigationRequestContext`.
     explicit URLLoaderNetworkContext(NavigationRequest& navigation_request);

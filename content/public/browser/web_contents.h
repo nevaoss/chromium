@@ -122,7 +122,6 @@ class ColorProviderSource;
 }  // namespace ui
 
 namespace gfx {
-class Point;
 class PointF;
 class Rect;
 }  // namespace gfx
@@ -132,6 +131,7 @@ namespace content {
 class BackForwardTransitionAnimationManager;
 class BrowserContext;
 class BrowserPluginGuestDelegate;
+class FrameEvictionOptOutClient;
 class GuestPageHolder;
 class NavigationController;
 class NavigationEntry;
@@ -532,6 +532,16 @@ class WebContents : public PageNavigator, public base::SupportsUserData {
   // See also GetVisibleURL above, which may differ from this URL. Note that
   // this might return an empty GURL if no navigation has committed in the
   // WebContents' main frame.
+  //
+  // Note: When a navigation fails and commits an error page (e.g.
+  // `chrome-error://chromewebdata/`), `GetLastCommittedURL()` continues to
+  // return the failed destination target URL rather than an error URL.
+  // Therefore, this should not be used directly for security, authorization,
+  // or permission checks without verifying that the primary main frame is not
+  // an error document (`!GetPrimaryMainFrame()->IsErrorDocument()`).
+  // Higher-level layers (such as extensions) should use their dedicated
+  // permission-check URL helper (e.g.,
+  // `extensions::util::GetURLForExtensionPermissionCheck()`).
   virtual const GURL& GetLastCommittedURL() const = 0;
 
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
@@ -1054,6 +1064,13 @@ class WebContents : public PageNavigator, public base::SupportsUserData {
   // TODO(crbug.com/40911760): Make updating Visibility more robust.
   virtual void UpdateWebContentsVisibility(Visibility visibility) = 0;
 
+  // Opts the WebContents out of frame eviction. Once opted out, a WebContents
+  // cannot be opted back in. You should evaluate the trade-offs before using
+  // this API.
+  // See FrameEvictionOptOutClient for instructions.
+  virtual void OptOutFrameEviction(
+      base::PassKey<FrameEvictionOptOutClient>) = 0;
+
   // This function checks *all* frames in this WebContents (not just the main
   // frame) and returns true if at least one frame has either a beforeunload or
   // an unload/pagehide/visibilitychange handler.
@@ -1211,9 +1228,9 @@ class WebContents : public PageNavigator, public base::SupportsUserData {
   virtual const std::optional<gfx::Rect> GetTextSelectionBounds(
       RenderFrameHost* render_frame_host) const = 0;
 
-  // Returns the point of the focus selection in global screen coordinates in
+  // Returns the bounds of the focus selection in global screen coordinates in
   // DIPs.
-  virtual const std::optional<gfx::Point> GetFocusSelectionPoint(
+  virtual const std::optional<gfx::Rect> GetFocusSelectionBounds(
       RenderFrameHost* render_frame_host) const = 0;
 
   // Notifies when the selection bounds change. This is provided using a
@@ -1809,7 +1826,8 @@ class WebContents : public PageNavigator, public base::SupportsUserData {
       scoped_refptr<PreloadPipelineInfo> preload_pipeline_info,
       base::WeakPtr<PreloadingAttempt> attempt,
       PreloadingHoldbackStatus holdback_status_override,
-      std::optional<base::TimeDelta> ttl) = 0;
+      std::optional<base::TimeDelta> ttl,
+      bool should_ignore_saver_modes) = 0;
 
   // Starts an embedder triggered (browser-initiated) prerendering page and
   // returns the unique_ptr<PrerenderHandle>, which cancels prerendering on its

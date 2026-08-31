@@ -9,7 +9,9 @@ import static org.junit.Assert.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyFloat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -25,6 +27,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
@@ -66,9 +69,10 @@ public class VerticalTabHoverCardControllerUnitTest {
     private static final int TAB_ID_2 = 2;
     private static final int TAB_ID_3 = 3;
     private static final int ROOT_VIEW_HEIGHT_PX = 1000;
-    private static final int EXPANDED_TAB_VIEW_WIDTH_PX = 200;
-    private static final int COLLAPSED_TAB_VIEW_WIDTH_PX = 36;
+    private static final int EXPANDED_CONTAINER_WIDTH_PX = 240;
+    private static final int COLLAPSED_CONTAINER_WIDTH_PX = 76;
     private static final int PINNED_TAB_VIEW_HEIGHT_PX = 40;
+    private static final int HOVER_CARD_VIEW_HEIGHT_PX = 200;
 
     @Before
     public void setUp() {
@@ -77,12 +81,23 @@ public class VerticalTabHoverCardControllerUnitTest {
         when(mContainerView.getRootView()).thenReturn(mRootView);
         when(mRootView.getHeight()).thenReturn(ROOT_VIEW_HEIGHT_PX);
         when(mTabHoverCardView.getContext()).thenReturn(activity);
+        when(mTabHoverCardView.getMeasuredHeight()).thenReturn(HOVER_CARD_VIEW_HEIGHT_PX);
         when(mTabHoverCardViewStub.getParent()).thenReturn(mViewStubParent);
 
         doAnswer(
                         invocation -> {
                             ViewStub.OnInflateListener listener = invocation.getArgument(0);
-                            listener.onInflate(mTabHoverCardViewStub, mTabHoverCardView);
+                            doAnswer(
+                                            inflateInvocation -> {
+                                                if (listener != null) {
+                                                    listener.onInflate(
+                                                            mTabHoverCardViewStub,
+                                                            mTabHoverCardView);
+                                                }
+                                                return mTabHoverCardView;
+                                            })
+                                    .when(mTabHoverCardViewStub)
+                                    .inflate();
                             return null;
                         })
                 .when(mTabHoverCardViewStub)
@@ -114,10 +129,13 @@ public class VerticalTabHoverCardControllerUnitTest {
         ShadowLooper.runUiThreadTasksIncludingDelayedTasks();
 
         verify(mTabHoverCardViewStub).inflate();
-        verify(mTabHoverCardView).show(eq(mTab1), anyFloat(), anyFloat());
+
+        InOrder inOrder = inOrder(mTabHoverCardView);
+        inOrder.verify(mTabHoverCardView).hide();
+        inOrder.verify(mTabHoverCardView).show(eq(mTab1), anyFloat(), anyFloat());
 
         listener.onTabHoverCardStateChanged(TAB_ID_1, mTabView1, /* isHovered= */ false);
-        verify(mTabHoverCardView).hide();
+        inOrder.verify(mTabHoverCardView).hide();
     }
 
     @Test
@@ -196,7 +214,7 @@ public class VerticalTabHoverCardControllerUnitTest {
 
     @Test
     @SmallTest
-    public void testScrubbing_EnterBeforeExit_DoesNotHideTab2() {
+    public void testScrubbing_EnterBeforeExit_HidesBeforeShowingTab2() {
         when(mTabModelSelector.getCurrentTabId()).thenReturn(TAB_ID_3);
         when(mTabHoverCardView.isShown()).thenReturn(true);
 
@@ -205,23 +223,29 @@ public class VerticalTabHoverCardControllerUnitTest {
         // Tab 1 is currently hovered and showing.
         listener.onTabHoverCardStateChanged(TAB_ID_1, mTabView1, /* isHovered= */ true);
         ShadowLooper.runUiThreadTasksIncludingDelayedTasks();
-        verify(mTabHoverCardView).show(eq(mTab1), anyFloat(), anyFloat());
+
+        InOrder inOrder = inOrder(mTabHoverCardView);
+        inOrder.verify(mTabHoverCardView).show(eq(mTab1), anyFloat(), anyFloat());
 
         // Scrubbing: Tab 2 enters BEFORE Tab 1 exits (due to ViewGroup dispatch order).
         listener.onTabHoverCardStateChanged(TAB_ID_2, mTabView2, /* isHovered= */ true);
-        verify(mTabHoverCardView).show(eq(mTab2), anyFloat(), anyFloat());
+        inOrder.verify(mTabHoverCardView).hide();
+        inOrder.verify(mTabHoverCardView).show(eq(mTab2), anyFloat(), anyFloat());
+
+        // Clear previous invocations to accurately verify the exit behavior.
+        clearInvocations(mTabHoverCardView);
 
         // Tab 1 exits subsequently.
         listener.onTabHoverCardStateChanged(TAB_ID_1, mTabView1, /* isHovered= */ false);
 
-        // Tab 2 should still be showing and hide() should NOT be called.
+        // Tab 2 should still be showing and hide() should NOT be called again.
         verify(mTabHoverCardView, never()).hide();
     }
 
     @Test
     @SmallTest
     public void testGetHoverCardPosition_RegularTab_Expanded() {
-        when(mTabView1.getWidth()).thenReturn(EXPANDED_TAB_VIEW_WIDTH_PX);
+        when(mContainerView.getWidth()).thenReturn(EXPANDED_CONTAINER_WIDTH_PX);
 
         float[] position =
                 VerticalTabHoverCardController.getHoverCardPosition(
@@ -232,14 +256,14 @@ public class VerticalTabHoverCardControllerUnitTest {
                         /* isRailCollapsed= */ false);
 
         assertEquals(2, position.length);
-        assertEquals((float) EXPANDED_TAB_VIEW_WIDTH_PX, position[0], 0.01f);
+        assertEquals((float) EXPANDED_CONTAINER_WIDTH_PX, position[0], 0.01f);
         assertEquals(0f, position[1], 0.01f);
     }
 
     @Test
     @SmallTest
     public void testGetHoverCardPosition_RegularTab_Collapsed() {
-        when(mTabView1.getWidth()).thenReturn(COLLAPSED_TAB_VIEW_WIDTH_PX);
+        when(mContainerView.getWidth()).thenReturn(COLLAPSED_CONTAINER_WIDTH_PX);
 
         float[] position =
                 VerticalTabHoverCardController.getHoverCardPosition(
@@ -250,7 +274,7 @@ public class VerticalTabHoverCardControllerUnitTest {
                         /* isRailCollapsed= */ true);
 
         assertEquals(2, position.length);
-        assertEquals((float) COLLAPSED_TAB_VIEW_WIDTH_PX, position[0], 0.01f);
+        assertEquals((float) COLLAPSED_CONTAINER_WIDTH_PX, position[0], 0.01f);
         assertEquals(0f, position[1], 0.01f);
     }
 
@@ -275,7 +299,7 @@ public class VerticalTabHoverCardControllerUnitTest {
     @Test
     @SmallTest
     public void testGetHoverCardPosition_PinnedTab_Collapsed() {
-        when(mTabView1.getWidth()).thenReturn(COLLAPSED_TAB_VIEW_WIDTH_PX);
+        when(mContainerView.getWidth()).thenReturn(COLLAPSED_CONTAINER_WIDTH_PX);
 
         float[] position =
                 VerticalTabHoverCardController.getHoverCardPosition(
@@ -286,8 +310,38 @@ public class VerticalTabHoverCardControllerUnitTest {
                         /* isRailCollapsed= */ true);
 
         assertEquals(2, position.length);
-        assertEquals((float) COLLAPSED_TAB_VIEW_WIDTH_PX, position[0], 0.01f);
+        assertEquals((float) COLLAPSED_CONTAINER_WIDTH_PX, position[0], 0.01f);
         assertEquals(0f, position[1], 0.01f);
+    }
+
+    @Test
+    @SmallTest
+    public void testGetHoverCardPosition_ExceedsRootHeight_ClampsToParentBounds() {
+        when(mContainerView.getWidth()).thenReturn(EXPANDED_CONTAINER_WIDTH_PX);
+        // Position the tab view near the bottom of the window so that the hover card extends
+        // beyond the root view height by 10px (relativeY + hoverCardHeight > parentHeight).
+        doAnswer(
+                        invocation -> {
+                            int[] array = invocation.getArgument(0);
+                            array[1] = ROOT_VIEW_HEIGHT_PX - HOVER_CARD_VIEW_HEIGHT_PX + 10;
+                            return null;
+                        })
+                .when(mTabView1)
+                .getLocationOnScreen(any());
+
+        float[] position =
+                VerticalTabHoverCardController.getHoverCardPosition(
+                        mTabView1,
+                        mContainerView,
+                        mTabHoverCardView,
+                        /* isPinnedTab= */ false,
+                        /* isRailCollapsed= */ false);
+
+        assertEquals(2, position.length);
+        assertEquals((float) EXPANDED_CONTAINER_WIDTH_PX, position[0], 0.01f);
+        // The hover card should be shifted upward to clamp to the root view bottom boundary:
+        // hoverCardY = ROOT_VIEW_HEIGHT_PX - HOVER_CARD_VIEW_HEIGHT_PX.
+        assertEquals((float) (ROOT_VIEW_HEIGHT_PX - HOVER_CARD_VIEW_HEIGHT_PX), position[1], 0.01f);
     }
 
     @Test

@@ -105,7 +105,7 @@ BASE_FEATURE(kGlicContextMenu,
 #endif
 );
 const base::FeatureParam<std::string> kGlicContextMenuArm{&kGlicContextMenu,
-                                                          "variant", "arm1"};
+                                                          "variant", "arm3"};
 const base::FeatureParam<bool> kGlicContextMenuWithOnboarding{
     &kGlicContextMenu, "WithOnboarding", false};
 
@@ -159,6 +159,8 @@ BASE_FEATURE(kGlicSkipCookieSyncOnOpen, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicCookieSyncOnTokenChange, base::FEATURE_DISABLED_BY_DEFAULT);
 const base::FeatureParam<base::TimeDelta> kGlicCookieSyncOnTokenChangeDelay{
     &kGlicCookieSyncOnTokenChange, "delay", base::Seconds(10)};
+const base::FeatureParam<bool> kGlicCookieSyncOnTokenChangeOnlyWhenFreCompleted{
+    &kGlicCookieSyncOnTokenChange, "only_when_fre_completed", true};
 BASE_FEATURE(kGlicCookieSyncOnError, base::FEATURE_DISABLED_BY_DEFAULT);
 const base::FeatureParam<base::TimeDelta> kGlicCookieSyncOnErrorMinInterval{
     &kGlicCookieSyncOnError, "min_interval", base::Minutes(5)};
@@ -195,7 +197,7 @@ BASE_FEATURE(kGlicContentsInitiallyHidden,
 );
 
 BASE_FEATURE(kGlicAnchorEntryPointForOnboardedUsers,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // If kGlicShowForSignedOut is enabled, the GiC panel can be shown to signed out
 // users to show the sign-in promotion.

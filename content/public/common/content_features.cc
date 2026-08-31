@@ -180,7 +180,7 @@ BASE_FEATURE(kBackgroundFetch, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables Local Network Access checks for Background Fetch.
 BASE_FEATURE(kBackgroundFetchLocalNetworkAccess,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enable using the BackForwardCache.
 BASE_FEATURE(kBackForwardCache, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -438,6 +438,10 @@ BASE_FEATURE(kEnforceDedicatedWorkerSameOriginCheck,
 // See https://crbug.com/504073872.
 BASE_FEATURE(kEnforceSharedWorkerSameOriginCheck,
              base::FEATURE_ENABLED_BY_DEFAULT);
+
+// Enables Active Mode support with multiple Identity Providers in FedCM.
+BASE_FEATURE(kFedCmActiveModeMultipleIdentityProviders,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables usage of the FedCM IdP Registration API.
 BASE_FEATURE(kFedCmIdPRegistration, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -948,18 +952,6 @@ const base::FeatureParam<bool>
     kSkipIPCChannelPausingForNonGuestsInternalWebUiOnly{
         &kSkipIPCChannelPausingForNonGuests, "internal_webui_only", false};
 
-// When enabled, skip pagehide-in-commit when navigating to DSE.
-// (See: https://crbug.com/375385416)
-BASE_FEATURE(kSkipPagehideInCommitForDSENavigation,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
-// A parameter to delay pagehide-in-commit.
-BASE_FEATURE_PARAM(base::TimeDelta,
-                   kSkipPagehideInCommitForDSENavigationDelay,
-                   &kSkipPagehideInCommitForDSENavigation,
-                   "delay",
-                   base::Milliseconds(0));
-
 // Reuses RenderProcessHost up to a certain threshold. This mode ignores the
 // soft process limit and behaves just like a process-per-site policy for all
 // sites, with an additional restriction that a process may only be reused while
@@ -1374,6 +1366,10 @@ BASE_FEATURE(kAccessibilityDeprecateTypeAnnounce,
 // API.
 BASE_FEATURE(kAccessibilityExtendedSelection,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+// When enabled, syncs accessibility focus when WebView gains focus.
+BASE_FEATURE(kAccessibilitySyncFocusOnViewFocusGain,
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // When this feature is enabled, the InputConnection will request
 // formatted text from the TextInputState.

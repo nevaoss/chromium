@@ -20,6 +20,7 @@
 #include "base/strings/strcat.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/test/gmock_expected_support.h"
+#include "base/test/metrics/user_action_tester.h"
 #include "base/test/run_until.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/test_future.h"
@@ -211,6 +212,17 @@ template <typename Trigger>
   }
   LOG(ERROR) << message;
   return false;
+}
+
+[[nodiscard]] inline TestResult<> WaitForUserActionCount(
+    const base::UserActionTester& user_action_tester,
+    std::string_view action,
+    int expected_count) {
+  return RunUntilEqual<int>(
+      [&]() { return user_action_tester.GetActionCount(action); },
+      expected_count,
+      base::StrCat({"User action ", action,
+                    " count != ", base::NumberToString(expected_count)}));
 }
 
 [[nodiscard]] inline TestResult<> WaitForWindowActive(
@@ -584,6 +596,15 @@ class GlicBrowserTestMixin : public T {
     return blink::ZoomLevelToZoomFactor(zoom_level);
   }
 
+  [[nodiscard]] TestResult<> WaitForPanelWillOpenComplete(
+      GlicInstanceImpl* instance) {
+    if (base::test::RunUntil(
+            [&]() { return instance->host().IsPrimaryClientOpen(); })) {
+      return base::ok();
+    }
+    return base::unexpected("Timeout waiting for PanelWillOpen to complete");
+  }
+
   [[nodiscard]] TestResult<> WaitForGuestFrameSubmission(
       GlicInstanceImpl* instance = nullptr) {
     if (!instance) {
@@ -746,7 +767,9 @@ class GlicBrowserTestMixin : public T {
 
   void ActivateTab(tabs::TabInterface* tab) {
     CHECK(tab);
-    tab->GetContents()->GetDelegate()->ActivateContents(tab->GetContents());
+    auto* tab_list = TabListInterface::From(tab->GetBrowserWindowInterface());
+    CHECK(tab_list);
+    tab_list->ActivateTab(tab->GetHandle());
   }
 
   tabs::TabInterface* CreateUserInitiatedTab(const GURL& url) {

@@ -173,10 +173,11 @@
 #include "components/os_crypt/async/browser/dpapi_key_provider.h"
 #elif BUILDFLAG(IS_MAC)
 #include "chrome/browser/chrome_browser_main_mac.h"
+#include "chrome/browser/shutdown_watchdog_mac.h"
 #endif
 
 #if BUILDFLAG(IS_WIN)
-#include "chrome/browser/win/isolated_browser_support.h"
+#include "chrome/browser/win/isolated_browser/isolated_browser_support.h"
 #endif  // BUILDFLAG(IS_WIN)
 
 #if BUILDFLAG(IS_CHROMEOS)
@@ -226,12 +227,15 @@ void OnLocalStatePrefsLoaded();
 #endif
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
-#include "chrome/browser/apps/platform_apps/chrome_apps_browser_api_provider.h"
-#include "chrome/browser/ui/apps/chrome_app_window_client.h"
 #include "chrome/common/extensions/chrome_extensions_client.h"
 #include "components/storage_monitor/storage_monitor.h"  // nogncheck crbug.com/40147906
 #include "extensions/common/context_data.h"
 #include "extensions/common/extension_l10n_util.h"
+#endif
+
+#if BUILDFLAG(ENABLE_PLATFORM_APPS)
+#include "chrome/browser/apps/platform_apps/chrome_apps_browser_api_provider.h"
+#include "chrome/browser/ui/apps/chrome_app_window_client.h"
 #endif
 
 #if BUILDFLAG(ENABLE_PLUGINS)
@@ -412,9 +416,12 @@ void BrowserProcessImpl::Init() {
 
   extensions_browser_client_->Init();
 
-#if BUILDFLAG(ENABLE_EXTENSIONS)
+#if BUILDFLAG(ENABLE_PLATFORM_APPS)
   extensions_browser_client_->AddAPIProvider(
       std::make_unique<chrome_apps::ChromeAppsBrowserAPIProvider>());
+  extensions::AppWindowClient::Set(ChromeAppWindowClient::GetInstance());
+#endif  // BUILDFLAG(ENABLE_PLATFORM_APPS)
+#if BUILDFLAG(ENABLE_EXTENSIONS)
   extensions_browser_client_->AddAPIProvider(
       std::make_unique<
           controlled_frame::ControlledFrameExtensionsBrowserAPIProvider>());
@@ -423,7 +430,6 @@ void BrowserProcessImpl::Init() {
       std::make_unique<
           chromeos::ChromeOSTelemetryExtensionsBrowserAPIProvider>());
 #endif  // BUILDFLAG(IS_CHROMEOS)
-  extensions::AppWindowClient::Set(ChromeAppWindowClient::GetInstance());
 #endif  // BUILDFLAG(ENABLE_EXTENSIONS)
 
   extensions::ExtensionsBrowserClient::Set(extensions_browser_client_.get());
@@ -566,6 +572,8 @@ BrowserProcessImpl::~BrowserProcessImpl() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 #if BUILDFLAG(ENABLE_EXTENSIONS)
   extensions::ExtensionsBrowserClient::Set(nullptr);
+#endif
+#if BUILDFLAG(ENABLE_PLATFORM_APPS)
   extensions::AppWindowClient::Set(nullptr);
 #endif
 
@@ -578,6 +586,10 @@ BrowserProcessImpl::~BrowserProcessImpl() {
 
 #if !BUILDFLAG(IS_ANDROID)
 void BrowserProcessImpl::StartTearDown() {
+#if BUILDFLAG(IS_MAC)
+  // Emergency bound on UI-initiated shutdown; see shutdown_watchdog_mac.h.
+  shutdown_watchdog::OnBrowserTearDownStarted();
+#endif
   TRACE_EVENT0("shutdown", "BrowserProcessImpl::StartTearDown");
   // TODO(crbug.com/41222012): Fix the tests that make the check of
   // |tearing_down_| necessary in IsShuttingDown().
@@ -646,6 +658,14 @@ void BrowserProcessImpl::StartTearDown() {
     // because the background mode manager does not stop observing profile
     // changes at destruction (notifying the observers would cause a use-after-
     // free).
+#if BUILDFLAG(IS_MAC)
+    // Scoped: the key must clear when this phase completes so later dumps
+    // don't misattribute hangs to a finished phase.
+    static crash_reporter::CrashKeyString<64> mac_teardown_phase_key(
+        "mac_teardown_phase");
+    crash_reporter::ScopedCrashKeyString scoped_teardown_phase(
+        &mac_teardown_phase_key, "profile_manager_reset");
+#endif
     profile_manager_.reset();
   }
 

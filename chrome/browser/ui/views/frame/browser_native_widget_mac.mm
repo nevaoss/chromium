@@ -66,6 +66,7 @@
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/mojom/window_show_state.mojom.h"
 #include "ui/base/ui_base_features.h"
+#include "ui/gfx/color_utils.h"
 #include "ui/native_theme/native_theme.h"
 #import "ui/views/cocoa/native_widget_mac_ns_window_host.h"
 #include "ui/views/interaction/element_tracker_views.h"
@@ -371,7 +372,6 @@ void BrowserNativeWidgetMac::OnWidgetDestroyed(views::Widget* widget) {
     tint_view_ = nil;
   }
   browser_view_ = nullptr;
-  last_preferred_color_scheme_.reset();
   last_theme_color_.reset();
   last_is_vertical_tabs_.reset();
   last_is_glass_eligible_.reset();
@@ -646,7 +646,7 @@ bool BrowserNativeWidgetMac::ExecuteCommand(
     if (auto* controller =
             tabs::VerticalTabStripStateController::From(browser)) {
       const bool is_view_menu = IsCommandTriggeredFromMacMenu(
-          kMacViewMenuId, IDC_TOGGLE_VERTICAL_TABS_COLLAPSE);
+          IDC_VIEW_MENU, IDC_TOGGLE_VERTICAL_TABS_COLLAPSE);
 
       if (is_view_menu) {
         if (controller->IsCollapsed()) {
@@ -668,7 +668,7 @@ bool BrowserNativeWidgetMac::ExecuteCommand(
     }
   } else if (command == IDC_NEW_SPLIT_TAB) {
     const bool is_tab_menu =
-        IsCommandTriggeredFromMacMenu(kMacTabMenuId, IDC_NEW_SPLIT_TAB);
+        IsCommandTriggeredFromMacMenu(IDC_TAB_MENU, IDC_NEW_SPLIT_TAB);
 
     split_tabs::SplitTabCreatedSource source =
         is_tab_menu ? split_tabs::SplitTabCreatedSource::kMacMenuBar
@@ -761,6 +761,10 @@ void BrowserNativeWidgetMac::OnWidgetInitDone() {
   if (!GetWidget()->HasObserver(this)) {
     GetWidget()->AddObserver(this);
   }
+  paint_as_active_subscription_ =
+      GetWidget()->RegisterPaintAsActiveChangedCallback(
+          base::BindRepeating(&BrowserNativeWidgetMac::UpdateBackgroundColor,
+                              base::Unretained(this)));
   // GlassFrameService is only available if glass frame is enabled.
   if (auto* const glass_frame_service = GlassFrameService::GetInstance()) {
     glass_frame_service_subscription_ =
@@ -791,7 +795,6 @@ void BrowserNativeWidgetMac::OnWindowDestroying(
 void BrowserNativeWidgetMac::OnWidgetActivationChanged(views::Widget* widget,
                                                        bool active) {
   last_theme_color_.reset();
-  last_preferred_color_scheme_.reset();
   UpdateBackgroundColor();
 }
 
@@ -896,7 +899,6 @@ void BrowserNativeWidgetMac::AnnounceTextInInProcessWindow(
 void BrowserNativeWidgetMac::OnVerticalTabStripModeChanged(
     tabs::VerticalTabStripStateController* controller) {
   last_theme_color_.reset();
-  last_preferred_color_scheme_.reset();
   UpdateBackgroundGeometry();
   UpdateBackgroundColor();
 }
@@ -949,7 +951,6 @@ void BrowserNativeWidgetMac::UpdateGlassEligibility(bool is_glass_eligible) {
       [tint_view_ removeFromSuperview];
       tint_view_ = nil;
     }
-    last_preferred_color_scheme_.reset();
     last_theme_color_.reset();
     last_is_vertical_tabs_.reset();
     return;
@@ -1049,9 +1050,7 @@ void BrowserNativeWidgetMac::UpdateBackgroundColor() {
     return;
   }
 
-  const ui::NativeTheme::PreferredColorScheme color_scheme =
-      browser_view_->GetNativeTheme()->preferred_color_scheme();
-  const bool is_active = GetWidget()->IsActive();
+  const bool is_active = GetWidget()->ShouldPaintAsActive();
   const SkColor theme_color = browser_view_->GetColorProvider()->GetColor(
       is_active ? ui::kColorFrameActive : ui::kColorFrameInactive);
 
@@ -1059,23 +1058,19 @@ void BrowserNativeWidgetMac::UpdateBackgroundColor() {
 
   // Avoid updating the background view if the theme colors and the tab strip
   // orientation have not changed.
-  if (last_preferred_color_scheme_ == color_scheme &&
-      last_theme_color_ == theme_color &&
+  if (last_theme_color_ == theme_color &&
       last_is_vertical_tabs_ == is_vertical_tabs) {
     return;
   }
 
-  last_preferred_color_scheme_ = color_scheme;
   last_theme_color_ = theme_color;
   last_is_vertical_tabs_ = is_vertical_tabs;
 
   const CGFloat r = SkColorGetR(theme_color) / 255.0;
   const CGFloat g = SkColorGetG(theme_color) / 255.0;
   const CGFloat b = SkColorGetB(theme_color) / 255.0;
-  const CGFloat a =
-      GetGlassFrameTintOpacity(last_preferred_color_scheme_ ==
-                                   ui::NativeTheme::PreferredColorScheme::kDark,
-                               is_vertical_tabs);
+  const CGFloat a = GetGlassFrameTintOpacity(color_utils::IsDark(theme_color),
+                                             is_vertical_tabs);
 
   tint_view_.layer.backgroundColor =
       [NSColor colorWithSRGBRed:r green:g blue:b alpha:a].CGColor;

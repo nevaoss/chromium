@@ -261,11 +261,7 @@ BASE_FEATURE(kForcedAppRelaunchOnPlaceholderUpdate,
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
 // Controls whether the actor component of Glic is enabled.
-#if BUILDFLAG(IS_ANDROID)
-BASE_FEATURE(kGlicActor, base::FEATURE_DISABLED_BY_DEFAULT);
-#else
 BASE_FEATURE(kGlicActor, base::FEATURE_ENABLED_BY_DEFAULT);
-#endif
 
 BASE_FEATURE(kGlicActorApcComparison, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -438,11 +434,13 @@ const base::FeatureParam<base::TimeDelta> kActorObservationDelayLcp{
 // The time for Autofill to parse and classify form fields.
 // Autofill is expected to return within this timeout (having successfully
 // parsed the form fields or not).
+// LINT.IfChange(kActorObservationDelayAutofillPredictionsTimeout)
 BASE_FEATURE_PARAM(base::TimeDelta,
                    kActorObservationDelayAutofillPredictionsTimeout,
                    &kGlicActor,
                    "actor-observation-delay-autofill-predictions-timeout",
                    base::Seconds(1));
+// LINT.ThenChange(//ios/chrome/browser/intelligence/features/features.mm:kActorPageStabilityAutofillPredictionsTimeout)
 
 // If enabled, observation for page load excludes load in ad frames.
 BASE_FEATURE(kGlicActorObservationDelayExcludeAdFrameLoading,
@@ -579,7 +577,8 @@ BASE_FEATURE(kGlicMessageFirstFre, base::FEATURE_DISABLED_BY_DEFAULT);
 // kill-switch for Glic and can be used in the future to handle unsupported
 // Chrome versions.
 BASE_FEATURE(kGlic,
-#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_CHROMEOS)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_CHROMEOS) || \
+    BUILDFLAG(IS_ANDROID)
              base::FEATURE_ENABLED_BY_DEFAULT
 #else
              base::FEATURE_DISABLED_BY_DEFAULT
@@ -605,7 +604,7 @@ const base::FeatureParam<bool> kGlicAdaptiveToolbarAutoPin{
     &kGlic, "adaptive-toolbar-auto-pin", true};
 
 const base::FeatureParam<bool> kGlicBottomSheetPromo{
-    &kGlic, "glic-bottom-sheet-promo", true};
+    &kGlic, "glic-bottom-sheet-promo", false};
 
 // Controls whether the Glic feature uses multiple instances or not.
 BASE_FEATURE(kGlicMultiInstance, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -1375,6 +1374,11 @@ const base::FeatureParam<std::string> kIndigoGlicSkillId{
 const base::FeatureParam<base::TimeDelta> kIndigoGlicTriggerDelay{
     &kIndigoOpenGlic, "indigo_glic_trigger_delay", base::Milliseconds(300)};
 
+BASE_FEATURE(kIndigoGeneratedImageCache, base::FEATURE_ENABLED_BY_DEFAULT);
+const base::FeatureParam<base::TimeDelta> kIndigoGeneratedImageCacheLifetime{
+    &kIndigoGeneratedImageCache, "indigo_generated_image_cache_lifetime",
+    base::Minutes(30)};
+
 #if !BUILDFLAG(IS_ANDROID)
 // A feature that controls whether Instant uses a spare renderer.
 BASE_FEATURE(kInstantUsesSpareRenderer, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -1932,11 +1936,6 @@ BASE_FEATURE(kWebAppUpgradeToDatabaseVersion6,
 
 #if !BUILDFLAG(IS_ANDROID)
 BASE_FEATURE(kWebium, base::FEATURE_DISABLED_BY_DEFAULT);
-// Enables logging InitialWebUI-related metrics. The metrics are not necessary
-// comes from WebUI but can also come from the C++ version of them.
-// Defaults to enabled to also collect metrics for the C++ group.
-// See crbug.com/448794588.
-BASE_FEATURE(kInitialWebUIMetrics, base::FEATURE_ENABLED_BY_DEFAULT);
 // When enable, the reload button will be replaced with the a WebView, and
 // chrome://webui-toolbar.top-chrome will be loaded as the content.
 // crbug.com/444358999
@@ -1950,6 +1949,10 @@ BASE_FEATURE(kWebUILocationBar, base::FEATURE_DISABLED_BY_DEFAULT);
 // When this is enabled, all the checks for enabled individual WebUI toolbar
 // controls in chrome/browser/ui/ui_features.h will return true.
 BASE_FEATURE(kWebUIToolbar, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Controls whether the WebUI toolbar WebContents opts out of frame eviction.
+BASE_FEATURE(kWebUIToolbarFrameEvictionOptOut,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // The following feature params control the crash recovery behavior of the Web
 // UI reload button. If the renderer crashes, we will try to recover it by

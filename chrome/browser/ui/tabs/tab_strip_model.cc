@@ -49,7 +49,6 @@
 #include "chrome/browser/resource_coordinator/tab_helper.h"
 #include "chrome/browser/send_tab_to_self/send_tab_to_self_util.h"
 #include "chrome/browser/ui/bookmarks/bookmark_utils.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_command_controller.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_window.h"
@@ -1367,8 +1366,7 @@ void TabStripModel::CloseAllTabs() {
 }
 
 void TabStripModel::CloseAllTabsInGroup(const tab_groups::TabGroupId& group) {
-  ReentrancyCheck reentrancy_check(&reentrancy_guard_);
-  if (!group_model_) {
+  if (!group_model_ || !group_model_->ContainsTabGroup(group)) {
     return;
   }
 
@@ -1378,6 +1376,21 @@ void TabStripModel::CloseAllTabsInGroup(const tab_groups::TabGroupId& group) {
     SetFocusedGroup(std::nullopt);
   }
 
+  const int num_tabs_in_group = group_model_->GetTabGroup(group)->tab_count();
+  if (count() == num_tabs_in_group) {
+    // If the group about to be closed has all of the tabs in the browser, add a
+    // new tab outside the group to prevent the browser from closing.
+    delegate_->AddTabAt(GURL(), -1, /*foreground=*/true);
+  }
+
+  if (!group_model_ || !group_model_->ContainsTabGroup(group)) {
+    return;
+  }
+
+  // The ReentrancyCheck must follow AddTabAt because adding a fallback tab
+  // re-enters TabStripModel to insert the new WebContents before the group is
+  // closed.
+  ReentrancyCheck reentrancy_check(&reentrancy_guard_);
   CloseAllTabsInGroupImpl(group);
 }
 
@@ -4552,6 +4565,13 @@ void TabStripModel::AddToNewGroupImpl(
     return true;
   }());
 
+  if (selection_model_.focused_group().has_value()) {
+    base::UmaHistogramEnumeration(
+        "TabGroups.Focus.ExitReason",
+        TabGroupFocusExitReason::kActiveTabGroupOperation);
+    SetFocusedGroup(std::nullopt);
+  }
+
   TabGroupDesktop::Factory factory(profile());
   std::unique_ptr<tabs::TabGroupTabCollection> group_collection =
       std::make_unique<tabs::TabGroupTabCollection>(
@@ -4838,6 +4858,8 @@ void TabStripModel::MoveTabToIndexImpl(
   CHECK_LT(initial_index, count());
   CHECK_LT(final_index, count());
 
+  const std::optional<tab_groups::TabGroupId> initial_focused_group =
+      GetFocusedGroup();
   tabs::TabInterface* const tab = GetTabAtIndex(initial_index);
   const bool initial_pinned_state = tab->IsPinned();
   const std::optional<tab_groups::TabGroupId> initial_group = tab->GetGroup();
@@ -4908,15 +4930,8 @@ void TabStripModel::MoveTabToIndexImpl(
     }
   }
 
-  // Unpinning an active pinned tab exits focus mode.
-  if (initial_pinned_state && !tab->IsPinned() &&
-      tab == selection_model_.active_tab()) {
-    if (GetFocusedGroup().has_value()) {
-      base::UmaHistogramEnumeration("TabGroups.Focus.ExitReason",
-                                    TabGroupFocusExitReason::kUnpinActiveTab);
-      SetFocusedGroup(std::nullopt);
-    }
-  }
+  MaybeUpdateFocusModeForMovedTab(tab, initial_pinned_state,
+                                  initial_focused_group);
 }
 
 void TabStripModel::MoveTabsToIndexImpl(
@@ -5011,6 +5026,46 @@ void TabStripModel::TabGroupStateChanged(
       TabGroupChange::VisualsChange visuals;
       NotifyTabGroupVisualsChanged(new_group.value(), visuals);
     }
+  }
+}
+
+void TabStripModel::MaybeUpdateFocusModeForMovedTab(
+    tabs::TabInterface* tab,
+    bool initial_pinned_state,
+    const std::optional<tab_groups::TabGroupId>& initial_focused_group) {
+  if (tab != selection_model_.active_tab()) {
+    return;
+  }
+
+  if (!initial_focused_group.has_value()) {
+    return;
+  }
+
+  // If the active tab is still valid in the focused group (in the group or
+  // pinned), do not exit focus mode.
+  if (tabs::TabStripModelSelectionState::IsTabValidInFocusedGroup(
+          tab, initial_focused_group)) {
+    return;
+  }
+
+  // 1. Unpinning an active pinned tab without adding to a group exits focus
+  // mode.
+  if (initial_pinned_state && !tab->IsPinned() &&
+      !tab->GetGroup().has_value()) {
+    if (GetFocusedGroup().has_value()) {
+      base::UmaHistogramEnumeration("TabGroups.Focus.ExitReason",
+                                    TabGroupFocusExitReason::kUnpinActiveTab);
+      SetFocusedGroup(std::nullopt);
+    }
+    return;
+  }
+
+  // 2. Active tab was moved to another group or ungrouped.
+  if (GetFocusedGroup().has_value()) {
+    base::UmaHistogramEnumeration(
+        "TabGroups.Focus.ExitReason",
+        TabGroupFocusExitReason::kActiveTabGroupOperation);
+    SetFocusedGroup(std::nullopt);
   }
 }
 
@@ -5313,6 +5368,8 @@ void TabStripModel::MoveTabsWithNotifications(
     std::vector<int> tab_indices,
     int destination_index,
     base::OnceClosure execute_tabs_move_operation) {
+  const std::optional<tab_groups::TabGroupId> initial_focused_group =
+      GetFocusedGroup();
   const std::vector<MoveNotification> notifications =
       PrepareTabsToMoveToIndex(tab_indices, destination_index);
 
@@ -5347,15 +5404,8 @@ void TabStripModel::MoveTabsWithNotifications(
       }
     }
 
-    // Unpinning an active pinned tab exits focus mode.
-    if (notification.initial_pinned && !tab->IsPinned() &&
-        tab == selection_model_.active_tab()) {
-      if (GetFocusedGroup().has_value()) {
-        base::UmaHistogramEnumeration("TabGroups.Focus.ExitReason",
-                                      TabGroupFocusExitReason::kUnpinActiveTab);
-        SetFocusedGroup(std::nullopt);
-      }
-    }
+    MaybeUpdateFocusModeForMovedTab(tab, notification.initial_pinned,
+                                    initial_focused_group);
   }
 }
 
@@ -5520,7 +5570,7 @@ void TabStripModel::OnActiveTabChanged(
       // but then it would be possible for a different observer to jump in front
       // and modify the WebContents, so for now, do it here.
       auto* const thumbnail_helper =
-          ThumbnailTabHelper::FromWebContents(old_tab->GetContents());
+          ThumbnailTabHelper::From(GetTabModelAtIndex(index));
       if (thumbnail_helper) {
         thumbnail_helper->CaptureThumbnailOnTabBackgrounded();
       }

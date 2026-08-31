@@ -2436,6 +2436,7 @@ void RenderProcessHostImpl::BindRestrictedCookieManagerForServiceWorker(
       network::mojom::RestrictedCookieManagerRole::SCRIPT, storage_key.origin(),
       storage_key.ToPartialNetIsolationInfo(),
       /*is_service_worker=*/true, GetDeprecatedID(), IPC::mojom::kRoutingIdNone,
+      /*prefer_bound_cookie_context=*/false,
       /*cookie_setting_overrides=*/net::CookieSettingOverrides(),
       /*devtools_cookie_setting_overrides=*/net::CookieSettingOverrides(),
       std::move(receiver),
@@ -3546,7 +3547,7 @@ bool RenderProcessHostImpl::IsSpareProcessKeptAtAllTimes() {
   // ensure that devices with exactly 1GB of RAM won't get included because of
   // inaccuracies or off-by-one errors.
   if (base::SysInfo::AmountOfTotalPhysicalMemory() <=
-      base::MiBU(base::saturated_cast<uint64_t>(
+      base::MiB(base::saturated_cast<uint64_t>(
           features::kAndroidSpareRendererMemoryThreshold.Get()))) {
     return false;
   }

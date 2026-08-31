@@ -475,13 +475,7 @@ public class WebViewChromiumFactoryProvider implements WebViewFactoryProvider {
             ApkInfo.setBrowserPackageInfo(packageInfo);
 
             // Find the package ID for the package that WebView's resources come from.
-            // This will be the donor package if there is one, not our main package.
             String resourcePackage = packageInfo.packageName;
-            if (packageInfo.applicationInfo.metaData != null) {
-                resourcePackage =
-                        packageInfo.applicationInfo.metaData.getString(
-                                "com.android.webview.WebViewDonorPackage", resourcePackage);
-            }
             int packageId;
             try {
                 packageId = webViewDelegate.getPackageId(ctx.getResources(), resourcePackage);
@@ -592,7 +586,7 @@ public class WebViewChromiumFactoryProvider implements WebViewFactoryProvider {
                                                 .WEBVIEW_MOVE_WORK_TO_PROVIDER_INIT_THREAD_POOL)) {
                     PostTask.postTask(
                             TaskTraits.USER_VISIBLE,
-                            () -> mAwInit.runNonUiThreadCapableStartupTasks());
+                            mAwInit.getStartupController()::runNonUiThreadCapableStartupTasks);
                 }
 
                 boolean enableSystemTracing =
@@ -668,7 +662,7 @@ public class WebViewChromiumFactoryProvider implements WebViewFactoryProvider {
             }
 
             // This must happen after pref value has been read and SafeMode setup has completed.
-            setupStartupTaskExperiments(androidXConfig);
+            setupStartupTasksRunMode(androidXConfig);
 
             AwBrowserProcess.startVariationsInit();
 
@@ -677,7 +671,7 @@ public class WebViewChromiumFactoryProvider implements WebViewFactoryProvider {
                     && !WebViewCachedFlags.get()
                             .isCachedFeatureEnabled(
                                     AwFeatures.WEBVIEW_MOVE_WORK_TO_PROVIDER_INIT_THREAD_POOL)) {
-                mAwInit.runNonUiThreadCapableStartupTasks();
+                mAwInit.getStartupController().runNonUiThreadCapableStartupTasks();
             }
 
             FlagOverrideHelper helper =
@@ -719,40 +713,37 @@ public class WebViewChromiumFactoryProvider implements WebViewFactoryProvider {
     }
 
     // The startup tasks are setup to run based on the following logic:
-    // 1. The AndroidX preference is checked first,
-    // 2. If it's not set, the manifest metadata is checked,
-    // 3. Then the commandline switch is checked,
-    // 4. Finally, the feature flag is checked.
-    private void setupStartupTaskExperiments(AndroidXProcessGlobalConfig androidXConfig) {
+    // 1. The commandline switch is checked first (developer/test override),
+    // 2. The AndroidX preference is checked next,
+    // 3. If it's not set, the manifest metadata is checked,
+    // 4. Finally, the default (async) is used.
+    private void setupStartupTasksRunMode(AndroidXProcessGlobalConfig androidXConfig) {
+        if (CommandLine.getInstance().hasSwitch(AwSwitches.WEBVIEW_RUN_STARTUP_TASKS_SYNC)) {
+            return;
+        }
+
+        boolean forceSync;
         switch (androidXConfig.getUiThreadStartupMode()) {
             case ProcessGlobalConfigConstants.UI_THREAD_STARTUP_MODE_DEFAULT:
-                {
-                    if (ManifestMetadataUtil.shouldForceSyncBrowserStartup()) {
-                        runStartupTasksAsync(false);
-                    } else {
-                        runStartupTasksAsync(true);
-                    }
-                    return;
-                }
+                forceSync = ManifestMetadataUtil.shouldForceSyncBrowserStartup();
+                break;
             case ProcessGlobalConfigConstants.UI_THREAD_STARTUP_MODE_SYNC:
-                runStartupTasksAsync(false);
-                return;
+                forceSync = true;
+                break;
             case ProcessGlobalConfigConstants.UI_THREAD_STARTUP_MODE_ASYNC_LONG_TASKS:
             case ProcessGlobalConfigConstants.UI_THREAD_STARTUP_MODE_ASYNC_SHORT_TASKS:
             case ProcessGlobalConfigConstants.UI_THREAD_STARTUP_MODE_ASYNC_VERY_SHORT_TASKS:
             case ProcessGlobalConfigConstants.UI_THREAD_STARTUP_MODE_ASYNC_PLUS_MULTI_PROCESS:
-                runStartupTasksAsync(true);
-                return;
+                forceSync = false;
+                break;
             default:
                 throw new RuntimeException(
                         "Invalid AndroidXProcessGlobalConfig UI thread startup mode: "
                                 + androidXConfig.getUiThreadStartupMode());
         }
-    }
-
-    private void runStartupTasksAsync(boolean enabled) {
-        mAwInit.runStartupTasksAsync(enabled);
-        AwBrowserMainParts.setRunStartupTasksAsync(enabled);
+        if (forceSync) {
+            CommandLine.getInstance().appendSwitch(AwSwitches.WEBVIEW_RUN_STARTUP_TASKS_SYNC);
+        }
     }
 
     /* package */ static void checkStorageIsNotDeviceProtected(Context context) {

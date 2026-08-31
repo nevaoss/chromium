@@ -368,6 +368,8 @@ should be able to be added at any place in this file.
       summary="For ContextualSearchWebSearch feature."/>
   <variant name="_ContextualSuggestions"
       summary="For ContextualSuggestions feature."/>
+  <variant name="_ContextualTasksEphemeralToolbarButton"
+      summary="For Contextual Tasks ephemeral toolbar button."/>
   <variant name="_CookieControls"
       summary="For CookieControls feature. (obsolete)"/>
   <variant name="_Crow" summary="For Crow feature."/>
@@ -29911,6 +29913,15 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="MobileMenuBookmarkBarOnlyNtp">
+  <owner>nehasapre@google.com</owner>
+  <owner>massan@google.com</owner>
+  <description>
+    User pressed 'Only show on New Tab Page' in the 'Bookmarks bar' submenu in
+    the app menu.
+  </description>
+</action>
+
 <action name="MobileMenuBookmarkThisPage">
   <owner>massan@google.com</owner>
   <description>User pressed 'Bookmark this page' in the app menu.</description>
@@ -36806,6 +36817,15 @@ should be able to be added at any place in this file.
   <description>
     User tapped on the share button after long-pressing on the omnibox on
     Android.
+  </description>
+</action>
+
+<action name="Omnibox.MostVisited.Clicked">
+  <owner>niharm@google.com</owner>
+  <owner>chrome-desktop-ntp@google.com</owner>
+  <description>
+    The user clicked on a most visited tile on Omnibox Everywhere. This action
+    is logged every time the Omnibox.MostVisited histogram is logged.
   </description>
 </action>
 

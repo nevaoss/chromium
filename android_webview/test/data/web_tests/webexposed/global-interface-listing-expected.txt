@@ -1445,6 +1445,7 @@ interface ContactsManager
 interface ContainerQueryList : EventTarget
     attribute @@toStringTag
     getter matches
+    getter query
     method constructor
 interface ContentIndex
     attribute @@toStringTag
@@ -5191,7 +5192,10 @@ interface HTMLTemplateElement : HTMLElement
     attribute @@toStringTag
     getter buffer
     getter content
+    getter crossOrigin
     getter htmlFor
+    getter integrity
+    getter referrerPolicy
     getter sanitize
     getter shadowRootAdoptedStyleSheets
     getter shadowRootClonable
@@ -5201,9 +5205,13 @@ interface HTMLTemplateElement : HTMLElement
     getter shadowRootReferenceTarget
     getter shadowRootSerializable
     getter shadowRootSlotAssignment
+    getter src
     method constructor
     setter buffer
+    setter crossOrigin
     setter htmlFor
+    setter integrity
+    setter referrerPolicy
     setter sanitize
     setter shadowRootAdoptedStyleSheets
     setter shadowRootClonable
@@ -5213,6 +5221,7 @@ interface HTMLTemplateElement : HTMLElement
     setter shadowRootReferenceTarget
     setter shadowRootSerializable
     setter shadowRootSlotAssignment
+    setter src
 interface HTMLTextAreaElement : HTMLElement
     attribute @@toStringTag
     getter autocomplete
@@ -11216,6 +11225,7 @@ interface WebGL2RenderingContext
     method stencilOp
     method stencilOpSeparate
     method texElementImage2D
+    method texElementSubImage2D
     method texImage2D
     method texImage3D
     method texParameterf
@@ -11718,6 +11728,7 @@ interface WebGLRenderingContext
     method stencilOp
     method stencilOpSeparate
     method texElementImage2D
+    method texElementSubImage2D
     method texImage2D
     method texParameterf
     method texParameteri

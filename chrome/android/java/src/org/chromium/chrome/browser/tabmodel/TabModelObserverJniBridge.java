@@ -69,7 +69,7 @@ class TabModelObserverJniBridge implements TabModelObserver {
         TabModelObserverJniBridgeJni.get()
                 .willCloseTabs(
                         mNativeTabModelObserverJniBridge,
-                        tabs.toArray(new Tab[0]),
+                        tabs,
                         isAllTabs,
                         allowUndo);
     }
@@ -93,8 +93,23 @@ class TabModelObserverJniBridge implements TabModelObserver {
     public final void onFinishingMultipleTabClosure(List<Tab> tabs, boolean canRestore) {
         assert mNativeTabModelObserverJniBridge != 0;
         TabModelObserverJniBridgeJni.get()
-                .onFinishingMultipleTabClosure(
-                        mNativeTabModelObserverJniBridge, tabs.toArray(new Tab[0]), canRestore);
+                .onFinishingMultipleTabClosure(mNativeTabModelObserverJniBridge, tabs, canRestore);
+    }
+
+    @Override
+    public void onTabCloseCommitted(
+            List<Tab> tabs,
+            boolean isAllTabs,
+            boolean canRestore,
+            @TabClosingSource int closingSource) {
+        assert mNativeTabModelObserverJniBridge != 0;
+        TabModelObserverJniBridgeJni.get()
+                .onTabCloseCommitted(
+                        mNativeTabModelObserverJniBridge,
+                        tabs,
+                        isAllTabs,
+                        canRestore,
+                        closingSource);
     }
 
     @Override
@@ -145,8 +160,6 @@ class TabModelObserverJniBridge implements TabModelObserver {
     @Override
     public final void onTabClosePending(
             List<Tab> tabs, boolean isAllTabs, @TabClosingSource int closingSource) {
-        // Convert the List to an array of objects. This makes the corresponding C++ code much
-        // easier.
         assert mNativeTabModelObserverJniBridge != 0;
         TabModelObserverJniBridgeJni.get()
                 .onTabClosePending(mNativeTabModelObserverJniBridge, tabs, closingSource);
@@ -176,8 +189,7 @@ class TabModelObserverJniBridge implements TabModelObserver {
         }
 
         TabModelObserverJniBridgeJni.get()
-                .onTabCloseUndone(
-                        mNativeTabModelObserverJniBridge, tabs.toArray(new Tab[0]), indices);
+                .onTabCloseUndone(mNativeTabModelObserverJniBridge, tabs, indices);
     }
 
     @Override
@@ -288,7 +300,7 @@ class TabModelObserverJniBridge implements TabModelObserver {
 
         void willCloseTabs(
                 long nativeTabModelObserverJniBridge,
-                @JniType("std::vector<TabAndroid*>") Tab[] tabs,
+                @JniType("std::vector<TabAndroid*>") List<Tab> tabs,
                 boolean isAllTabs,
                 boolean allowUndo);
 
@@ -304,8 +316,15 @@ class TabModelObserverJniBridge implements TabModelObserver {
 
         void onFinishingMultipleTabClosure(
                 long nativeTabModelObserverJniBridge,
-                @JniType("std::vector<TabAndroid*>") Tab[] tabs,
+                @JniType("std::vector<TabAndroid*>") List<Tab> tabs,
                 boolean canRestore);
+
+        void onTabCloseCommitted(
+                long nativeTabModelObserverJniBridge,
+                @JniType("std::vector<TabAndroid*>") List<Tab> tabs,
+                boolean isAllTabs,
+                boolean canRestore,
+                @TabClosingSource int closingSource);
 
         void willAddTab(
                 long nativeTabModelObserverJniBridge, @JniType("TabAndroid*") Tab tab, int type);
@@ -327,7 +346,7 @@ class TabModelObserverJniBridge implements TabModelObserver {
 
         void onTabCloseUndone(
                 long nativeTabModelObserverJniBridge,
-                @JniType("std::vector<TabAndroid*>") Tab[] tab,
+                @JniType("std::vector<TabAndroid*>") List<Tab> tabs,
                 @JniType("std::vector<int32_t>") int[] indices);
 
         void onTabsSelectionChanged(long nativeTabModelObserverJniBridge);

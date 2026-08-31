@@ -295,6 +295,7 @@ source_set("test_support") {
     deps += [
       "//chrome/browser/preloading:test_support",
       "//chrome/browser/profiles:profile",
+      "//chrome/browser/ui/browser_window",
       "//chrome/browser/ui/location_bar",
       "//chrome/common:constants",
       "//chrome/common/net",
@@ -623,7 +624,7 @@ source_set("browser_tests") {
       "test/renderer_app_container_enabled_win_browsertest.cc",
       "test/restrict_core_sharing_policy_browsertest.cc",
     ]
-    deps += [ "//chrome/browser/win:isolated_browser_support" ]
+    deps += [ "//chrome/browser/win/isolated_browser:isolated_browser_support" ]
   }
 
   if (is_win || is_linux) {
@@ -707,6 +708,7 @@ source_set("browser_tests") {
       "//chrome/browser/search_engines",
       "//chrome/browser/site_protection:utils",
       "//chrome/browser/ui:browser_otr_state",
+      "//chrome/browser/ui/browser_window",
       "//chrome/browser/ui/search:test_support_ui",
       "//chrome/browser/ui/toolbar/cast",
       "//chrome/browser/usb",
@@ -814,6 +816,7 @@ source_set("unit_tests") {
     "messaging_layer/util/user_dm_token_retriever_unittest.cc",
     "profile_policy_connector_unittest.cc",
     "serial_allow_usb_devices_for_urls_policy_handler_unittest.cc",
+    "status_provider/user_cloud_policy_status_provider_unittest.cc",
     "value_provider/policy_value_provider_unittest.cc",
     "webhid_device_policy_handler_unittest.cc",
     "webusb_allow_devices_for_urls_policy_handler_unittest.cc",

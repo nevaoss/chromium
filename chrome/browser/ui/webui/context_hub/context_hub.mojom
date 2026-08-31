@@ -5,6 +5,7 @@
 module browser.context_hub.mojom;
 
 import "mojo/public/mojom/base/time.mojom";
+import "mojo/public/mojom/base/uuid.mojom";
 import "url/mojom/url.mojom";
 
 feature kAutoTabGroups {
@@ -106,6 +107,9 @@ struct TabInfo {
 struct TabGroup {
   string label;
   array<TabInfo> tabs;
+  // Unique identifier for the saved group managed by TabGroupSyncService,
+  // present for confirmed saved groups only.
+  mojo_base.mojom.Uuid? saved_guid;
 };
 
 enum ChatRole {
@@ -116,6 +120,21 @@ enum ChatRole {
 struct ChatMessage {
   ChatRole role;
   string content;
+};
+
+// Context provided to the WebUI dialog for previewing the item to be saved.
+struct SaveToMemoryBankContext {
+  url.mojom.Url url;
+  string tab_title;
+  string? selected_text;
+  bool is_text_selection;
+};
+
+// User-specified annotations when saving a context item to the memory bank.
+struct MemoryBankEntryAnnotations {
+  string? collection;
+  string? note;
+  array<string>? tags;
 };
 
 // Represents feedback on an Auto Todo item.
@@ -191,11 +210,17 @@ interface PageHandler {
   [RuntimeFeature=kAutoTodos]
   GetTodoFeedbacks() => (array<AutoTodoItemFeedback> feedbacks);
 
+  // Returns initial context details for saving to memory bank.
+  GetSaveToMemoryBankContext() => (SaveToMemoryBankContext? context);
+
   // Returns all entries currently stored in the memory bank.
   GetAllMemoryBankEntries() => (array<MemoryBankEntry> entries);
 
   // Deletes entries from the memory bank.
   DeleteMemoryBankEntries(array<int64> ids) => ();
+
+  // Saves the current context entry to the memory bank with user annotations.
+  SaveMemoryBankEntry(MemoryBankEntryAnnotations annotations) => (bool success);
 
   // Returns the list of open ungrouped tabs in the current window.
   [RuntimeFeature=kAutoTabGroups]
@@ -234,4 +259,28 @@ interface PageHandler {
   AskGeminiWithContext(
       string user_command, array<int64> memory_bank_entry_ids)
       => (ChatMessage response);
+
+  // Confirms all suggested tab groups to the browser window and saves them
+  // to TabGroupSyncService.
+  [RuntimeFeature=kAutoTabGroups]
+  ConfirmAllTabGroups() => (bool success);
+
+  // Returns list of confirmed tab groups currently open or saved.
+  [RuntimeFeature=kAutoTabGroups]
+  GetConfirmedTabGroups() => (array<TabGroup> groups);
+
+  // Removes a confirmed tab group from TabGroupSyncService and ungroups its
+  // open tabs in the browser window without closing them.
+  [RuntimeFeature=kAutoTabGroups]
+  RemoveConfirmedTabGroup(mojo_base.mojom.Uuid saved_guid) => ();
+
+  // Closes an open confirmed tab group from the browser window without removing
+  // its saved state from TabGroupSyncService.
+  [RuntimeFeature=kAutoTabGroups]
+  CloseConfirmedTabGroup(mojo_base.mojom.Uuid saved_guid) => ();
+
+  // Removes all confirmed tab groups from TabGroupSyncService and ungroups
+  // their open tabs in the browser window.
+  [RuntimeFeature=kAutoTabGroups]
+  RemoveAllConfirmedTabGroups() => ();
 };

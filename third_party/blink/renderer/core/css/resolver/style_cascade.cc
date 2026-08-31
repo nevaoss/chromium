@@ -2330,8 +2330,10 @@ void StyleCascade::FlattenFunctionBody(
     } else if (auto* navigation_rule =
                    DynamicTo<StyleRuleNavigation>(child.Get())) {
       state_.StyleBuilder().SetAffectedByFunctionalNavigation();
-      // TODO(crbug.com/493044687): Implement
-      (void)navigation_rule;
+      if (navigation_rule->GetNavigationQuery().Evaluate(&GetDocument())) {
+        FlattenFunctionBody(*navigation_rule, function_tree_scope, result,
+                            locals);
+      }
     }
   }
 }
@@ -2369,17 +2371,12 @@ bool StyleCascade::ResolveEnvInto(CSSParserTokenStream& stream,
 
   CSSVariableData* data =
       GetEnvironmentVariable(variable_name, std::move(indices));
-  if (data) {
-    return out.Append(data, data->IsAttrTainted());
-  }
 
-  // Fallback.
-  if (ConsumeComma(stream)) {
-    return ResolveTokensInto(stream, tree_scope, resolver, context,
-                             /* function_context */ nullptr,
-                             /* stop_type */ kEOFToken, out);
-  }
-  return false;
+  // Appending the fallback (if any) through the same path as var() gives it
+  // the same treatment: the whitespace and comments surrounding it are not
+  // part of the substitution value.
+  return AppendDataWithFallback(data, stream, tree_scope, resolver, context,
+                                /*function_context=*/nullptr, out);
 }
 
 bool StyleCascade::ResolveAttrInto(CSSParserTokenStream& stream,
@@ -3079,7 +3076,7 @@ bool StyleCascade::TreatAsRevertLayer(CascadePriority priority) const {
                                       state_.StyleBuilder().GetPosition());
 }
 
-const Document& StyleCascade::GetDocument() const {
+Document& StyleCascade::GetDocument() const {
   return state_.GetDocument();
 }
 

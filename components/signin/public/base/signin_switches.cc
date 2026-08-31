@@ -312,6 +312,10 @@ const base::FeatureParam<base::TimeDelta>
     kAccountPreviewDataPeriodicRefreshTiming{
         &kEnableAccountPreviewData, "AccountPreviewDataPeriodicRefreshTiming",
         base::Hours(24)};
+BASE_FEATURE_PARAM(base::TimeDelta,
+                   kAccountPreviewData429RateLimitDuration,
+                   &kEnableAccountPreviewData,
+                   base::Hours(24));
 // Controls whether fetching entity preview data is enabled (via a specific api
 // method). This flag has no effect if `kEnableAccountPreviewData` is not
 // enabled.
@@ -876,6 +880,8 @@ bool IsSigninWindows10DepreciationState() {
 }
 
 #if BUILDFLAG(IS_ANDROID)
+BASE_FEATURE(kSignOutDeletesBrowsingData, base::FEATURE_DISABLED_BY_DEFAULT);
+
 BASE_FEATURE(kSignOutOfChrome, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Feature to bypass double-checking that signin callers have correctly gotten

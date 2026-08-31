@@ -1373,7 +1373,8 @@ WebContentsImpl::WebContentsImpl(BrowserContext* browser_context)
       SlowWebPreferenceCache::GetInstance());
   renderer_preferences_.caret_blink_interval =
       native_theme->caret_blink_interval();
-#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN)
+#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || \
+    BUILDFLAG(IS_WIN)
   renderer_preferences_.use_overlay_scrollbar =
       native_theme->use_overlay_scrollbar();
 #endif
@@ -1766,6 +1767,18 @@ void WebContentsImpl::SetDelegate(WebContentsDelegate* delegate) {
   // Re-read values from the new delegate and apply them.
   if (view_) {
     view_->SetOverscrollControllerEnabled(CanOverscrollContent());
+  }
+}
+
+void WebContentsImpl::OptOutFrameEviction(
+    base::PassKey<FrameEvictionOptOutClient>) {
+  if (opt_out_frame_eviction_) {
+    return;
+  }
+  opt_out_frame_eviction_ = true;
+  if (RenderWidgetHostViewBase* view =
+          static_cast<RenderWidgetHostViewBase*>(GetRenderWidgetHostView())) {
+    view->OptOutFrameEviction();
   }
 }
 
@@ -5133,6 +5146,10 @@ bool WebContentsImpl::GetResizable() {
   return GetDelegate() && GetDelegate()->GetCanResize();
 }
 
+bool WebContentsImpl::GetIsAlwaysOnTop() {
+  return GetDelegate() && GetDelegate()->GetIsAlwaysOnTop();
+}
+
 void WebContentsImpl::FullscreenFrameSetUpdated() {
   OPTIONAL_TRACE_EVENT0("content",
                         "WebContentsImpl::FullscreenFrameSetUpdated");
@@ -6697,7 +6714,7 @@ const std::optional<gfx::Rect> WebContentsImpl::GetTextSelectionBounds(
   return std::nullopt;
 }
 
-const std::optional<gfx::Point> WebContentsImpl::GetFocusSelectionPoint(
+const std::optional<gfx::Rect> WebContentsImpl::GetFocusSelectionBounds(
     RenderFrameHost* render_frame_host) const {
   if (text_input_manager_ && render_frame_host) {
     auto* view =
@@ -6711,8 +6728,7 @@ const std::optional<gfx::Point> WebContentsImpl::GetFocusSelectionPoint(
         gfx::Rect bounds = gfx::BoundingRect(start, end);
         gfx::Point origin = bounds.origin();
         origin += root_view->GetViewBounds().OffsetFromOrigin();
-        origin += gfx::Vector2d(bounds.width(), bounds.height());
-        return origin;
+        return gfx::Rect(origin, bounds.size());
       }
     }
   }
@@ -11421,6 +11437,13 @@ void WebContentsImpl::CreateRenderWidgetHostViewForRenderManager(
     view_->SetOverscrollControllerEnabled(CanOverscrollContent());
     rwh_view->SetSize(GetSizeForMainFrame());
   }
+
+  if (opt_out_frame_eviction_) {
+    if (RenderWidgetHostViewBase* view = static_cast<RenderWidgetHostViewBase*>(
+            render_view_host->GetWidget()->GetView())) {
+      view->OptOutFrameEviction();
+    }
+  }
 }
 
 void WebContentsImpl::ReattachOuterDelegateIfNeeded() {
@@ -12719,7 +12742,8 @@ void WebContentsImpl::OnNativeThemeUpdated(ui::NativeTheme* observed_theme) {
   HandleColorRelatedStateChanges();
 
   const auto caret_blink_interval = observed_theme->caret_blink_interval();
-#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN)
+#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || \
+    BUILDFLAG(IS_WIN)
   const auto use_overlay_scrollbar = observed_theme->use_overlay_scrollbar();
 #endif
   bool renderer_preference_changed = false;
@@ -12727,7 +12751,8 @@ void WebContentsImpl::OnNativeThemeUpdated(ui::NativeTheme* observed_theme) {
     renderer_preferences_.caret_blink_interval = caret_blink_interval;
     renderer_preference_changed = true;
   }
-#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN)
+#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || \
+    BUILDFLAG(IS_WIN)
   if (renderer_preferences_.use_overlay_scrollbar != use_overlay_scrollbar) {
     renderer_preferences_.use_overlay_scrollbar = use_overlay_scrollbar;
     renderer_preference_changed = true;
@@ -13035,7 +13060,8 @@ std::unique_ptr<PrefetchHandle> WebContentsImpl::StartPrefetch(
     scoped_refptr<PreloadPipelineInfo> preload_pipeline_info,
     base::WeakPtr<PreloadingAttempt> attempt,
     PreloadingHoldbackStatus holdback_status_override,
-    std::optional<base::TimeDelta> ttl) {
+    std::optional<base::TimeDelta> ttl,
+    bool should_ignore_saver_modes) {
   PrefetchService* prefetch_service =
       BrowserContextImpl::From(GetBrowserContext())->GetPrefetchService();
   if (!prefetch_service) {
@@ -13048,7 +13074,7 @@ std::unique_ptr<PrefetchHandle> WebContentsImpl::StartPrefetch(
       *this, prefetch_url, prefetch_type, embedder_histogram_suffix, referrer,
       referring_origin, std::move(no_vary_search_hint), std::move(priority),
       std::move(preload_pipeline_info), std::move(attempt),
-      holdback_status_override, std::move(ttl));
+      holdback_status_override, std::move(ttl), should_ignore_saver_modes);
 
   return prefetch_service->AddPrefetchRequestWithHandle(std::move(request));
 }

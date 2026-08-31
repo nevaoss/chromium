@@ -41,6 +41,8 @@
 #import "ios/chrome/browser/intelligence/bwg/metrics/gemini_metrics.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_actuation_handler.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_camera_handler.h"
+#import "ios/chrome/browser/intelligence/bwg/model/gemini_capabilities_manager.h"
+#import "ios/chrome/browser/intelligence/bwg/model/gemini_capabilities_manager_factory.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_configuration.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_consent_provider_handler.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_gateway_manager.h"
@@ -402,6 +404,14 @@ GeminiBrowserAgent::GeminiBrowserAgent(Browser* browser)
     identity_manager_->AddObserver(this);
   }
   last_known_gemini_availability_ = IsGeminiAvailableForActiveWebState();
+
+  if (IsAppSwitcherAISummarizationEnabled()) {
+    GeminiCapabilitiesManager* capabilities_manager =
+        GeminiCapabilitiesManagerFactory::GetForProfile(browser_->GetProfile());
+    if (capabilities_manager) {
+      capabilities_manager->UpdateCapabilities();
+    }
+  }
 
   if (IsIOSGeminiBottomSheetMigrationEnabled()) {
     return;
@@ -1089,6 +1099,14 @@ void GeminiBrowserAgent::PresentFloaty(UIViewController* base_view_controller,
     bool should_show_suggestion_chips = [gemini_container_mediator_
         shouldShowSuggestionChipsForEntryPoint:entry_point];
     ios::provider::SetShouldShowSuggestionChips(should_show_suggestion_chips);
+    bool block_query_submission = [gemini_container_mediator_
+        shouldBlockQuerySubmissionWhileLoadingForEntryPoint:entry_point];
+    ios::provider::SetBlockQuerySubmissionWhileLoading(block_query_submission);
+    bool show_page_loading_snackbar = [gemini_container_mediator_
+        shouldShowPageLoadingSnackbarOnOpeningInvocationForEntryPoint:
+            entry_point];
+    ios::provider::SetShowPageLoadingSnackbarOnOpeningInvocation(
+        show_page_loading_snackbar);
     if (IsChromeNextIaEnabled() && IsFullscreenRefactoringEnabled()) {
       [HandlerForProtocol(browser_->GetCommandDispatcher(), FullscreenCommands)
           exitFullscreenWithTrigger:FullscreenModeTransitionTrigger::

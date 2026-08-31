@@ -16,7 +16,7 @@
 
 namespace blink {
 
-StyleRuleLocation::StyleRuleLocation(const String& name,
+StyleRuleLocation::StyleRuleLocation(const AtomicString& name,
                                      CSSPropertyValueSet* values)
     : StyleRuleBase(kLocation),
       name_(name),
@@ -38,9 +38,6 @@ StyleRuleLocation::StyleRuleLocation(const String& name,
           values->GetPropertyCSSValue(CSSPropertyID::kBaseUrl))) {
   DCHECK(name.starts_with("--"));
 }
-
-StyleRuleLocation::StyleRuleLocation(const StyleRuleLocation& other)
-    : StyleRuleBase(other), name_(other.name_) {}
 
 void StyleRuleLocation::TraceAfterDispatch(Visitor* v) const {
   v->Trace(pattern_);

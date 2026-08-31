@@ -59,6 +59,7 @@
 #include "chrome/browser/after_startup_task_utils.h"
 #include "chrome/browser/ai/ai_manager.h"
 #include "chrome/browser/app_mode/app_mode_utils.h"
+#include "chrome/browser/back_forward_cache/back_forward_cache_util.h"
 #include "chrome/browser/bad_message.h"
 #include "chrome/browser/battery/battery_saver.h"
 #include "chrome/browser/bluetooth/chrome_bluetooth_delegate.h"
@@ -164,6 +165,7 @@
 #include "chrome/browser/search_engines/template_url_service_factory.h"
 #include "chrome/browser/sensor/chrome_sensor_delegate.h"
 #include "chrome/browser/serial/chrome_serial_delegate.h"
+#include "chrome/browser/service_worker/service_worker_prewarm.h"
 #include "chrome/browser/sharing/sms/sms_remote_fetcher.h"
 #include "chrome/browser/signin/chrome_signin_proxying_url_loader_factory.h"
 #include "chrome/browser/signin/chrome_signin_url_loader_throttle.h"
@@ -363,7 +365,6 @@
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/render_process_host.h"
 #include "content/public/browser/security_principal.h"
-#include "content/public/browser/service_worker_context.h"
 #include "content/public/browser/site_instance.h"
 #include "content/public/browser/site_isolation_mode.h"
 #include "content/public/browser/site_isolation_policy.h"
@@ -382,7 +383,6 @@
 #include "content/public/common/content_descriptors.h"
 #include "content/public/common/content_features.h"
 #include "content/public/common/content_switches.h"
-#include "content/public/common/origin_util.h"
 #include "content/public/common/url_utils.h"
 #include "content/public/common/window_container_type.mojom-shared.h"
 #include "device/fido/public/features.h"
@@ -842,10 +842,6 @@ constexpr char kSecurePaymentConfirmationKeychainAccessGroup[] =
 // Whether to disable caching of the advanced-protection state in
 // ShouldEnableStrictSiteIsolation().
 bool g_disable_advanced_protection_caching_for_tests = false;
-
-// Warm up the ServiceWorker registration for DSE.
-BASE_FEATURE(kPrewarmServiceWorkerRegistrationForDSE,
-             base::FEATURE_DISABLED_BY_DEFAULT);
 
 #if BUILDFLAG(ENABLE_REQUEST_HEADER_INTEGRITY)
 // Kill-switch for the request integrity headers support for prefetches
@@ -3754,56 +3750,8 @@ bool ChromeContentBrowserClient::AreThirdPartyCookiesGenerallyAllowed(
 void ChromeContentBrowserClient::PrewarmServiceWorkerRegistrationForDSE(
     content::BrowserContext* browser_context,
     content::ServiceWorkerContext& service_worker_context) {
-  TRACE_EVENT(
-      "ServiceWorker",
-      "ChromeContentBrowserClient::PrewarmServiceWorkerRegistrationForDSE");
-
-  if (ChromeContentBrowserClient::
-          PrewarmServiceWorkerRegistrationForDSECalledCountForTesting()) {
-    CHECK_IS_TEST();
-    ++(*ChromeContentBrowserClient::
-           PrewarmServiceWorkerRegistrationForDSECalledCountForTesting());
-  }
-
-  if (!base::FeatureList::IsEnabled(kPrewarmServiceWorkerRegistrationForDSE)) {
-    return;
-  }
-
-  Profile* profile = Profile::FromBrowserContext(browser_context);
-
-  if (!profile) {
-    return;
-  }
-
-  TemplateURLService* template_url_service =
-      TemplateURLServiceFactory::GetForProfile(profile);
-
-  if (!template_url_service) {
-    return;
-  }
-
-  GURL url =
-      template_url_service->GenerateSearchURLForDefaultSearchProvider(u"");
-
-  if (!content::OriginCanAccessServiceWorkers(url)) {
-    return;
-  }
-
-  const blink::StorageKey key =
-      blink::StorageKey::CreateFirstParty(url::Origin::Create(url));
-
-  if (!service_worker_context.MaybeHasRegistrationForStorageKey(key)) {
-    return;
-  }
-
-  service_worker_context.CheckHasServiceWorker(url, key, base::DoNothing());
-}
-
-// static
-std::optional<int>& ChromeContentBrowserClient::
-    PrewarmServiceWorkerRegistrationForDSECalledCountForTesting() {
-  static std::optional<int> call_count;
-  return call_count;
+  chrome_service_worker::PrewarmServiceWorkerRegistrationForDSE(
+      browser_context, service_worker_context);
 }
 
 bool ChromeContentBrowserClient::CanSendSCTAuditingReport(
@@ -6873,6 +6821,7 @@ bool ChromeContentBrowserClient::WillCreateRestrictedCookieManager(
     bool is_service_worker,
     int process_id,
     int routing_id,
+    bool prefer_bound_cookie_context,
     mojo::PendingReceiver<network::mojom::RestrictedCookieManager>* receiver) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
@@ -6880,6 +6829,7 @@ bool ChromeContentBrowserClient::WillCreateRestrictedCookieManager(
     DCHECK_EQ(network::mojom::RestrictedCookieManagerRole::SCRIPT, role);
     extensions::ChromeExtensionCookies::Get(browser_context)
         ->CreateRestrictedCookieManager(origin, isolation_info,
+                                        prefer_bound_cookie_context,
                                         std::move(*receiver));
     return true;
   }
@@ -9376,23 +9326,6 @@ void ChromeContentBrowserClient::AddExtraPartForTesting(
   AddExtraPart(std::move(part));
 }
 
-bool ChromeContentBrowserClient::ShouldDispatchPagehideDuringCommit(
-    content::BrowserContext* browser_context,
-    const GURL& destination_url) {
-  if (!base::FeatureList::IsEnabled(
-          features::kSkipPagehideInCommitForDSENavigation)) {
-    return true;
-  }
-  auto* template_url_service = TemplateURLServiceFactory::GetForProfile(
-      Profile::FromBrowserContext(browser_context));
-  // Allow not dispatching pagehide during commit when navigating to a DSE
-  // results page, to prioritize committing that page instead of running
-  // events on the previous page.
-  return !template_url_service ||
-         !template_url_service->IsSearchResultsPageFromDefaultSearchProvider(
-             destination_url);
-}
-
 #if BUILDFLAG(IS_WIN)
 void ChromeContentBrowserClient::OnTracingServiceStarted() {
   CHECK(!windows_system_tracing_client_);
@@ -9453,12 +9386,8 @@ ChromeContentBrowserClient::MaybeOverrideLocalURLCrossOriginEmbedderPolicy(
 bool ChromeContentBrowserClient::ShouldPrioritizeForBackForwardCache(
     content::BrowserContext* browser_context,
     const GURL& url) {
-  if (!browser_context) {
-    return false;
-  }
-  return TemplateURLServiceFactory::GetForProfile(
-             Profile::FromBrowserContext(browser_context))
-      ->IsSearchResultsPageFromDefaultSearchProvider(url);
+  return chrome_back_forward_cache::ShouldPrioritizeForBackForwardCache(
+      browser_context, url);
 }
 
 std::vector<std::unique_ptr<content::KeepAliveRequestTracker>>

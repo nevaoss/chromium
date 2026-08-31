@@ -156,12 +156,11 @@ targets.legacy_basic_suite(
             skylab = targets.skylab(
                 timeout_sec = 7200,
                 cros_test_names_from_file = ["chromeos/tast_control_flaky_tests.txt"],
-                # TODO(yoshiki): set shard_level_retries_on_ctp when ready.
+                shard_level_retries_on_ctp = 1,
             ),
             args = [
                 "-retries=2",
             ],
-            experiment_percentage = 100,
         ),
     },
 )
@@ -1505,6 +1504,7 @@ _CHROME_AI_WPT_GPU_HIGH_TIER_TEST_CONFIG = targets.legacy_test_config(
     # equipped with NVIDIA GeForce GTX 1660 GPUs (which report 5981 MB VRAM,
     # slightly below the default 6000 MB threshold).
     win_args = [
+        "--exit-after-n-crashes-or-timeouts=2",
         "--additional-driver-flag=--enable-features=OnDeviceModelGpuAudioInput:on_device_model_audio_input_vram_min/5000",
     ],
     mac_args = [

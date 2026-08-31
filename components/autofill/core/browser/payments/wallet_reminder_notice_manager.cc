@@ -6,9 +6,12 @@
 
 #include <utility>
 
+#include "components/autofill/core/browser/data_model/payments/credit_card.h"
 #include "components/autofill/core/browser/foundations/autofill_client.h"
 #include "components/autofill/core/browser/payments/payments_autofill_client.h"
 #include "components/autofill/core/browser/ui/payments/wallet_reminder_notice_ui_delegate.h"
+#include "components/autofill/core/common/autofill_payments_features.h"
+#include "components/autofill/core/common/autofill_prefs.h"
 
 namespace autofill::payments {
 
@@ -16,6 +19,22 @@ WalletReminderNoticeManager::WalletReminderNoticeManager(AutofillClient* client)
     : client_(*client) {}
 
 WalletReminderNoticeManager::~WalletReminderNoticeManager() = default;
+
+bool WalletReminderNoticeManager::IsWalletReminderNoticeEligible(
+    const CreditCard& extracted_card) {
+  if (!base::FeatureList::IsEnabled(
+          autofill::features::kAutofillEnableWalletReminderNotice)) {
+    return false;
+  }
+  if (extracted_card.record_type() !=
+      CreditCard::RecordType::kMaskedServerCard) {
+    return false;
+  }
+  if (prefs::HasShownWalletReminderNotice(client_->GetPrefs())) {
+    return false;
+  }
+  return true;
+}
 
 void WalletReminderNoticeManager::ShowWalletReminderNotice() {
   // TODO(crbug.com/540389575): Issue the `GetWalletReminderNotice` RPC
@@ -29,9 +48,9 @@ void WalletReminderNoticeManager::OnGetWalletReminderNoticeResponse(
     const LegalMessageLines& legal_message_lines,
     const std::string& acknowledgement_token,
     bool has_user_acknowledged) {
-  // TODO(crbug.com/540389575): We need to store the Gaia ID associated with
-  // this Chrome profile in the PrefService and use this Gaia ID to determine
-  // whether to show the reminder notice.
+  // TODO(crbug.com/540389575): Check HasShownWalletReminderNotice(~) before
+  // showing the reminder notice and call SetHasShownWalletReminderNotice(~)
+  // when `has_user_acknowledged` is `true`.
   if (has_user_acknowledged) {
     return;
   }

@@ -27,6 +27,7 @@ import org.chromium.android_webview.AwServiceWorkerController;
 import org.chromium.android_webview.AwTracingController;
 import org.chromium.android_webview.StartupCallSite;
 import org.chromium.android_webview.StartupDiagnostics;
+import org.chromium.android_webview.StartupTasksRunner;
 import org.chromium.android_webview.common.AwFeatures;
 import org.chromium.android_webview.common.WebViewCachedFlags;
 import org.chromium.base.TraceEvent;
@@ -131,7 +132,6 @@ public class SupportLibWebViewChromiumFactory implements WebViewProviderFactoryB
                 Features.EXTRA_HEADER_FOR_ORIGINS,
                 Features.BACK_FORWARD_CACHE_SETTINGS,
                 Features.PRECONNECT,
-                Features.HYPERLINK_CONTEXT_MENU_ITEMS + Features.DEV_SUFFIX,
                 Features.ASYNC_WEBVIEW_STARTUP_ASYNC_STARTUP_LOCATIONS,
                 Features.CUSTOM_REQUEST_HEADERS,
                 Features.ASYNC_WEBVIEW_STARTUP_V2,
@@ -174,7 +174,9 @@ public class SupportLibWebViewChromiumFactory implements WebViewProviderFactoryB
                     Features.ENQUEUE_PRECONNECT,
                     AwFeatures.WEBVIEW_PROFILE_STORE_NOT_TRIGGER_STARTUP,
                     Features.CROSS_ORIGIN_ISOLATED_ALLOW_LIST,
-                    AwFeatures.WEBVIEW_CROSS_ORIGIN_ALLOWLIST_API);
+                    AwFeatures.WEBVIEW_CROSS_ORIGIN_ALLOWLIST_API,
+                    Features.HYPERLINK_CONTEXT_MENU_ITEMS,
+                    AwFeatures.WEBVIEW_HYPERLINK_CONTEXT_MENU);
 
     // mAwInit.getLazyInitLock() guards access to fields that are lazily initialized.
     // This lock is shared across WebViewChromiumAwInit, WebViewChromiumFactoryProvider,
@@ -915,12 +917,15 @@ public class SupportLibWebViewChromiumFactory implements WebViewProviderFactoryB
         Consumer<BiConsumer<@StartUpResultField Integer, Object>> resultStream =
                 (finalResultHandler) -> {
                     // Once we have the final handler, stream the results.
-                    finalResultHandler.accept(
-                            StartUpResultField.TOTAL_TIME_UI_THREAD_MILLIS,
-                            result.getTotalTimeUiThreadChromiumInitMillis());
-                    finalResultHandler.accept(
-                            StartUpResultField.MAX_TIME_PER_TASK_UI_THREAD_MILLIS,
-                            result.getMaxTimePerTaskUiThreadChromiumInitMillis());
+                    StartupTasksRunner.StartupTimings timings = result.getStartupTimings();
+                    if (timings != null) {
+                        finalResultHandler.accept(
+                                StartUpResultField.TOTAL_TIME_UI_THREAD_MILLIS,
+                                timings.totalTimeTakenMs);
+                        finalResultHandler.accept(
+                                StartUpResultField.MAX_TIME_PER_TASK_UI_THREAD_MILLIS,
+                                timings.longestUiBlockingTaskTimeMs);
+                    }
 
                     Throwable syncLoc = result.getSynchronousChromiumInitLocationOrNull();
                     if (syncLoc != null) {
@@ -991,10 +996,12 @@ public class SupportLibWebViewChromiumFactory implements WebViewProviderFactoryB
             StartupDiagnostics.Callback callback =
                     result -> {
                         SupportLibStartUpResult supportLibResult = new SupportLibStartUpResult();
-                        supportLibResult.setTotalTimeInUiThreadMillis(
-                                result.getTotalTimeUiThreadChromiumInitMillis());
-                        supportLibResult.setMaxTimePerTaskInUiThreadMillis(
-                                result.getMaxTimePerTaskUiThreadChromiumInitMillis());
+                        StartupTasksRunner.StartupTimings timings = result.getStartupTimings();
+                        if (timings != null) {
+                            supportLibResult.setTotalTimeInUiThreadMillis(timings.totalTimeTakenMs);
+                            supportLibResult.setMaxTimePerTaskInUiThreadMillis(
+                                    timings.longestUiBlockingTaskTimeMs);
+                        }
                         Throwable syncChromiumInitLocation =
                                 result.getSynchronousChromiumInitLocationOrNull();
                         if (syncChromiumInitLocation != null) {

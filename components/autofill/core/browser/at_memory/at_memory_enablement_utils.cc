@@ -13,6 +13,7 @@
 #include "base/containers/flat_set.h"
 #include "base/feature_list.h"
 #include "base/notreached.h"
+#include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_split.h"
 #include "build/build_config.h"
@@ -20,9 +21,14 @@
 #include "components/autofill/core/browser/integrators/at_memory/memory_data_type_util.h"
 #include "components/autofill/core/browser/integrators/at_memory/memory_search_result.h"
 #include "components/autofill/core/browser/integrators/optimization_guide/autofill_optimization_guide_decider.h"
+#include "components/autofill/core/browser/logging/log_manager.h"
 #include "components/autofill/core/common/autofill_debug_features.h"
 #include "components/autofill/core/common/autofill_features.h"
+#include "components/autofill/core/common/autofill_internals/log_message.h"
+#include "components/autofill/core/common/autofill_internals/logging_scope.h"
 #include "components/autofill/core/common/autofill_prefs.h"
+#include "components/autofill/core/common/logging/log_buffer.h"
+#include "components/autofill/core/common/logging/log_macros.h"
 #include "components/optimization_guide/core/feature_registry/feature_registration.h"
 #include "components/optimization_guide/core/model_execution/model_execution_prefs.h"
 #include "components/personal_context/core/personal_context_eligibility_service.h"
@@ -85,10 +91,23 @@ AutofillClient::AutofillPolicyDataCategory GetPolicyCategory(
   }
   using enum personal_context::PersonalContextEligibilityState;
   switch (personal_context_service->GetEligibilityState()) {
-    case kDisabledNotEligible:
-      MaybeOutputReason(debug_message,
-                        "User is not eligible for Personal Context.");
+    case kDisabledNotEligible: {
+      if (std::optional<personal_context::PersonalContextNonEligibilityReason>
+              reason = personal_context_service->GetNonEligibilityReason();
+          reason.has_value() &&
+          *reason != personal_context::PersonalContextNonEligibilityReason::
+                         kEligible) {
+        MaybeOutputReason(
+            debug_message,
+            base::StrCat(
+                {"User is not eligible for Personal Context: ",
+                 PersonalContextNonEligibilityReasonToString(*reason)}));
+      } else {
+        MaybeOutputReason(debug_message,
+                          "User is not eligible for Personal Context.");
+      }
       return false;
+    }
     case kEligible:
       return true;
   }
@@ -141,42 +160,6 @@ base::flat_set<int32_t> GetAutofillAtMemoryEligibleTiers() {
 #endif
 }
 
-// Returns whether the subscription tier eligibility or device eligibility
-// criteria are met.
-//
-// Eligibility is determined by checking whether the user's tier is configured
-// as eligible by the `kAutofillAtMemoryEligibleTiers` feature parameter, or if
-// the device is a premium device configured as eligible by the
-// `kAutofillAtMemoryEnabledDevices` feature parameter.
-//
-// If the eligible tiers feature parameter is empty (not set or set to an empty
-// list), this is interpreted as having no restrictions, in which case any
-// subscription tier or any device is eligible.
-[[nodiscard]] bool IsSubscriptionOrDeviceEligible(
-    const subscription_eligibility::SubscriptionEligibilityService*
-        subscription_eligibility_service,
-    std::string* debug_message) {
-  const base::flat_set<int32_t> eligible_tiers =
-      GetAutofillAtMemoryEligibleTiers();
-  if (eligible_tiers.empty()) {
-    return true;
-  }
-  if (!subscription_eligibility_service) {
-    MaybeOutputReason(debug_message,
-                      "Subscription eligibility service not available.");
-    return false;
-  }
-  const int32_t tier =
-      subscription_eligibility_service->GetAiSubscriptionTier();
-  if (!eligible_tiers.contains(tier) && !IsAndroidDeviceEligibleForAtMemory()) {
-    MaybeOutputReason(debug_message,
-                      "User subscription tier is not eligible and device is "
-                      "not eligible.");
-    return false;
-  }
-  return true;
-}
-
 // Returns true if AtMemory is supported for the user.
 //
 // Checks that AtMemory feature flags are enabled, At-Memory eligibility
@@ -194,12 +177,8 @@ base::flat_set<int32_t> GetAutofillAtMemoryEligibleTiers() {
     return false;
   }
 
-  if (!IsSubscriptionOrDeviceEligible(subscription_eligibility_service,
-                                      debug_message)) {
-    return false;
-  }
-
-  return true;
+  return IsDeviceOrSubscriptionTierEligibleForAtMemory(
+      subscription_eligibility_service, debug_message);
 }
 
 [[nodiscard]] bool SatisfiesPersonalContextToggleRequirement(
@@ -304,7 +283,49 @@ std::optional<AtMemoryAction> MapCategoryToAtMemoryAction(
   return true;
 }
 
+std::string_view AtMemoryActionToString(AtMemoryAction action) {
+  switch (action) {
+    case AtMemoryAction::kTriggerSearchUI:
+      return "TriggerSearchUI";
+    case AtMemoryAction::kShowAtMemoryInSettings:
+      return "ShowAtMemoryInSettings";
+    case AtMemoryAction::kAllowCustomizeAtMemoryShortcut:
+      return "AllowCustomizeAtMemoryShortcut";
+    case AtMemoryAction::kShowIph:
+      return "ShowIph";
+    case AtMemoryAction::kShowAutocompleteAtMemoryButton:
+      return "ShowAutocompleteAtMemoryButton";
+    case AtMemoryAction::kRetrievePaymentsForFilling:
+      return "RetrievePaymentsForFilling";
+    case AtMemoryAction::kRetrieveContactInfoForFilling:
+      return "RetrieveContactInfoForFilling";
+    case AtMemoryAction::kRetrieveIdentityDocsForFilling:
+      return "RetrieveIdentityDocsForFilling";
+    case AtMemoryAction::kRetrieveTravelDataForFilling:
+      return "RetrieveTravelDataForFilling";
+    case AtMemoryAction::kRetrieveShoppingDataForFilling:
+      return "RetrieveShoppingDataForFilling";
+  }
+  NOTREACHED();
+}
+
 }  // namespace
+
+void LogAtMemorySuppression(AtMemoryAction action,
+                            LogManager* log_manager,
+                            std::string_view debug_reason) {
+  if (!log_manager || !IsLoggingActive(log_manager)) {
+    return;
+  }
+  LogBuffer table_rows;
+  LOG_AF(table_rows) << Tr{} << "Action: " << AtMemoryActionToString(action);
+  if (!debug_reason.empty()) {
+    LOG_AF(table_rows) << Tr{} << "Reason: " << debug_reason;
+  }
+  LOG_AF(log_manager) << LoggingScope::kAtMemory << LogMessage::kAtMemory
+                      << "Action suppressed." << Tag{"table"}
+                      << std::move(table_rows) << CTag{"table"};
+}
 
 [[nodiscard]] bool IsRetrieveForFillingAction(AtMemoryAction action) {
   switch (action) {
@@ -370,6 +391,7 @@ bool MayPerformAtMemoryAction(
       const GURL& target_url =
           url ? *url : client.GetLastCommittedPrimaryMainFrameURL();
       if (client.IsAutofillTypeBlockedByPolicy(target_url, category)) {
+        MaybeOutputReason(debug_message, "Autofill type is blocked by policy.");
         return false;
       }
     }
@@ -439,6 +461,29 @@ bool IsAtMemoryFeatureEnabled(
 #else
   return base::FeatureList::IsEnabled(features::kAutofillAtMemory);
 #endif
+}
+
+[[nodiscard]] bool IsDeviceOrSubscriptionTierEligibleForAtMemory(
+    const subscription_eligibility::SubscriptionEligibilityService*
+        subscription_eligibility_service,
+    std::string* debug_message) {
+  const base::flat_set<int32_t> eligible_tiers =
+      GetAutofillAtMemoryEligibleTiers();
+  if (eligible_tiers.empty()) {
+    return true;
+  }
+  if (subscription_eligibility_service &&
+      eligible_tiers.contains(
+          subscription_eligibility_service->GetAiSubscriptionTier())) {
+    return true;
+  }
+  if (IsAndroidDeviceEligibleForAtMemory()) {
+    return true;
+  }
+  MaybeOutputReason(debug_message,
+                    "User subscription tier is not eligible and device is not "
+                    "eligible.");
+  return false;
 }
 
 }  // namespace autofill

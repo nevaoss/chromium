@@ -4456,6 +4456,18 @@ void HTMLElement::OnContainerTimingAttrChanged(
     return;
   }
 
+  if (RuntimeEnabledFeatures::ContainerTimingPrepaintTraversalEnabled(
+          GetExecutionContext())) {
+    // Prepaint mode: the pre-paint attribution tracker is the sole source of
+    // truth; the legacy SelfOrAncestorHasContainerTiming() node flag is not
+    // maintained. Marking the layout object dirty re-attributes the subtree on
+    // the next pre-paint walk.
+    if (auto* layout_object = GetLayoutObject()) {
+      layout_object->MarkContainerTimingChanged();
+    }
+    return;
+  }
+
   if (had_container_timing && !has_container_timing) {
     if (!RecalcSelfOrAncestorHasContainerTiming()) {
       ClearSelfOrAncestorHasContainerTiming();
@@ -4464,13 +4476,6 @@ void HTMLElement::OnContainerTimingAttrChanged(
   } else if (!had_container_timing && has_container_timing) {
     SetSelfOrAncestorHasContainerTiming();
     UpdateDescendantHasContainerTiming(true /* has_container_timing */);
-  }
-
-  if (RuntimeEnabledFeatures::ContainerTimingPrepaintTraversalEnabled(
-          GetExecutionContext())) {
-    if (auto* layout_object = GetLayoutObject()) {
-      layout_object->MarkContainerTimingChanged();
-    }
   }
 }
 
@@ -4508,6 +4513,18 @@ void HTMLElement::OnContainerTimingIgnoreAttrChanged(
     return;
   }
 
+  if (RuntimeEnabledFeatures::ContainerTimingPrepaintTraversalEnabled(
+          GetExecutionContext())) {
+    // Prepaint mode: the pre-paint attribution tracker is the sole source of
+    // truth; the legacy SelfOrAncestorHasContainerTiming() node flag is not
+    // maintained. Marking the layout object dirty re-attributes the subtree on
+    // the next pre-paint walk.
+    if (auto* layout_object = GetLayoutObject()) {
+      layout_object->MarkContainerTimingChanged();
+    }
+    return;
+  }
+
   if (had_container_timing_ignore && !has_container_timing_ignore) {
     if (RecalcSelfOrAncestorHasContainerTiming()) {
       SetSelfOrAncestorHasContainerTiming();
@@ -4519,13 +4536,6 @@ void HTMLElement::OnContainerTimingIgnoreAttrChanged(
     // the tree if the node has ignore only
     ClearSelfOrAncestorHasContainerTiming();
     UpdateDescendantHasContainerTiming(false /* has_container_timing */);
-  }
-
-  if (RuntimeEnabledFeatures::ContainerTimingPrepaintTraversalEnabled(
-          GetExecutionContext())) {
-    if (auto* layout_object = GetLayoutObject()) {
-      layout_object->MarkContainerTimingChanged();
-    }
   }
 }
 

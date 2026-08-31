@@ -49,6 +49,7 @@
 #include "build/build_config.h"
 #include "components/autofill/core/browser/at_memory/at_memory_enablement_utils.h"
 #include "components/autofill/core/browser/at_memory/at_memory_manager.h"
+#include "components/autofill/core/browser/at_memory/at_memory_persisted_state_manager.h"
 #include "components/autofill/core/browser/autofill_browser_util.h"
 #include "components/autofill/core/browser/autofill_field.h"
 #include "components/autofill/core/browser/autofill_trigger_source.h"
@@ -288,6 +289,7 @@ FillDataType GetEventTypeFromSingleFieldSuggestionType(SuggestionType type) {
     case SuggestionType::kAutofillAiOtherOrders:
     case SuggestionType::kAutofillAiOtherShipments:
     case SuggestionType::kAutofillAiPrivateInferenceNotice:
+    case SuggestionType::kAutofillAiSourceAttribution:
     case SuggestionType::kBackupPasswordEntry:
     case SuggestionType::kBnplEntry:
     case SuggestionType::kBnplFootnote:
@@ -553,8 +555,7 @@ FillingProductSet GetFillingProductsToSuggest(
   }
 }
 
-// Populates all the fields (except for ablation study related fields) in
-// `SuggestionsContext` based on the given params.
+// Populates all the fields in `SuggestionsContext` based on the given params.
 SuggestionsContext BuildSuggestionsContext(
     const FormData& form,
     const FormStructure* form_structure,
@@ -1155,10 +1156,18 @@ void BrowserAutofillManager::OnAskForValuesToFillImpl(
   if (IsAtMemoryTriggerSource(trigger_source)) {
     const GURL& main_frame_url = client().GetLastCommittedPrimaryMainFrameURL();
     const GURL& field_url = field.origin().GetURL();
+    std::string debug_reason;
     if (!MayPerformAtMemoryAction(AtMemoryAction::kTriggerSearchUI, client(),
-                                  main_frame_url) ||
-        !MayPerformAtMemoryAction(AtMemoryAction::kTriggerSearchUI, client(),
-                                  field_url)) {
+                                  main_frame_url, std::nullopt,
+                                  &debug_reason)) {
+      LogAtMemorySuppression(AtMemoryAction::kTriggerSearchUI, log_manager(),
+                             debug_reason);
+      return;
+    }
+    if (!MayPerformAtMemoryAction(AtMemoryAction::kTriggerSearchUI, client(),
+                                  field_url, std::nullopt, &debug_reason)) {
+      LogAtMemorySuppression(AtMemoryAction::kTriggerSearchUI, log_manager(),
+                             debug_reason);
       return;
     }
   }
@@ -1168,10 +1177,11 @@ void BrowserAutofillManager::OnAskForValuesToFillImpl(
   if (AtMemoryManager* am = client().GetAtMemoryManager();
       am && IsAtMemoryTriggerSource(trigger_source)) {
     am->set_target_field_origin(field.origin());
-    std::vector<Suggestion> suggestions = am->GetEmptyQuerySuggestions();
+    AtMemoryManagerState state = am->GetInitialStateForField(field.global_id());
 
     // Show suggestions with a search bar to start the flow.
-    external_delegate_->OnSuggestionsReturned(field, suggestions);
+    external_delegate_->OnSuggestionsReturned(
+        field, std::move(state.suggestions), std::move(state.filter));
     return;
   }
 
@@ -1501,14 +1511,21 @@ void BrowserAutofillManager::GenerateSuggestionsAndMaybeShowUIPhase2(
   }
 
   std::vector<Suggestion> suggestions =
-      GetAvailableSuggestions(form, form_structure, field, autofill_field,
-                              trigger_source, one_time_passwords, context);
+      !context.do_not_generate_autofill_suggestions && form_structure &&
+              autofill_field
+          ? GetAvailableSuggestions(form, *form_structure, field,
+                                    *autofill_field, trigger_source,
+                                    one_time_passwords)
+          : std::vector<Suggestion>{};
+
+  if (autofill_field &&
+      EvaluateAblationStudy(*autofill_field, context.filling_product,
+                            !suggestions.empty())) {
+    context.suppress_reason = SuppressReason::kAblation;
+    client().GetSingleFieldFillRouter().CancelPendingQueries();
+  }
 
   if (ShouldSuppressSuggestions(context.suppress_reason, log_manager())) {
-    if (context.suppress_reason == SuppressReason::kAblation) {
-      CHECK(suggestions.empty());
-      client().GetSingleFieldFillRouter().CancelPendingQueries();
-    }
     std::move(callback).Run(/*show_suggestions=*/true, /*suggestions=*/{});
     return;
   }
@@ -1764,7 +1781,8 @@ void BrowserAutofillManager::OnGenerateSuggestionsComplete(
   if (show_suggestions) {
     MaybeShowPrivateInferenceNotice(suggestions);
     // Send Autofill suggestions (could be an empty list).
-    external_delegate_->OnSuggestionsReturned(trigger_field, suggestions);
+    external_delegate_->OnSuggestionsReturned(trigger_field, suggestions,
+                                              /*prefilled_query=*/{});
   }
 }
 
@@ -3169,20 +3187,11 @@ void BrowserAutofillManager::MergeIdentityCredentialsAndAddressSuggestions(
 
 std::vector<Suggestion> BrowserAutofillManager::GetAvailableSuggestions(
     const FormData& form,
-    const FormStructure* form_structure,
+    const FormStructure& form_structure,
     const FormFieldData& field,
-    AutofillField* autofill_field,
+    const AutofillField& autofill_field,
     AutofillSuggestionTriggerSource trigger_source,
-    const std::vector<std::string>& one_time_passwords,
-    SuggestionsContext& context) {
-  if (context.do_not_generate_autofill_suggestions) {
-    return {};
-  }
-
-  if (!form_structure || !autofill_field) {
-    return {};
-  }
-
+    const std::vector<std::string>& one_time_passwords) {
   // TODO(crbug.com/489659527): This currently overrides Autofill suggestions if
   // suggestions were presented to the user after typing started. Fix that.
   if (trigger_source ==
@@ -3193,19 +3202,19 @@ std::vector<Suggestion> BrowserAutofillManager::GetAvailableSuggestions(
   }
 
   std::vector<Suggestion> suggestions;
-  switch (context.filling_product) {
+  switch (GetPreferredSuggestionFillingProduct(autofill_field.Type())) {
     case FillingProduct::kAddress:
       if (client().IsAutofillProfileEnabled()) {
-        suggestions = GetProfileSuggestions(form, *form_structure, field,
-                                            *autofill_field, trigger_source);
+        suggestions = GetProfileSuggestions(form, form_structure, field,
+                                            autofill_field, trigger_source);
       }
-      if (autofill_field->Type().GetLoyaltyCardType() ==
+      if (autofill_field.Type().GetLoyaltyCardType() ==
           EMAIL_OR_LOYALTY_MEMBERSHIP_ID) {
         if (ValuablesDataManager* valuables_manager =
                 client().GetValuablesDataManager()) {
           if (suggestions.empty()) {
-            suggestions = GetLoyaltyCardSuggestions(form, form_structure, field,
-                                                    autofill_field);
+            suggestions = GetLoyaltyCardSuggestions(form, &form_structure,
+                                                    field, &autofill_field);
           } else {
             std::vector<Suggestion> loyalty_cards_suggestions_for_merge =
                 CreateLoyaltyCardSuggestionsForMerge(
@@ -3222,7 +3231,7 @@ std::vector<Suggestion> BrowserAutofillManager::GetAvailableSuggestions(
               .GetPaymentsAutofillClient()
               ->IsAutofillPaymentMethodsEnabled()) {
         suggestions = GetSuggestionsForCreditCards(
-            form, *form_structure, field, *autofill_field, client(),
+            form, form_structure, field, autofill_field, client(),
             four_digit_combinations_in_dom_, &GetAmountExtractionManager(),
             GetPaymentsBnplManager(), metrics_->credit_card_form_event_logger,
             metrics_->signin_state_for_metrics,
@@ -3231,10 +3240,9 @@ std::vector<Suggestion> BrowserAutofillManager::GetAvailableSuggestions(
       break;
     case FillingProduct::kLoyaltyCard:
       // Only loyalty card numbers filling is supported.
-      if (autofill_field->Type().GetLoyaltyCardType() ==
-          LOYALTY_MEMBERSHIP_ID) {
-        suggestions = GetLoyaltyCardSuggestions(form, form_structure, field,
-                                                autofill_field);
+      if (autofill_field.Type().GetLoyaltyCardType() == LOYALTY_MEMBERSHIP_ID) {
+        suggestions = GetLoyaltyCardSuggestions(form, &form_structure, field,
+                                                &autofill_field);
       }
       break;
     case FillingProduct::kOneTimePassword:
@@ -3249,23 +3257,15 @@ std::vector<Suggestion> BrowserAutofillManager::GetAvailableSuggestions(
       break;
   }
 
-  if (EvaluateAblationStudy(CHECK_DEREF(autofill_field),
-                            context.filling_product, !suggestions.empty())) {
-    // Logic for disabling/ablating autofill.
-    context.suppress_reason = SuppressReason::kAblation;
-    return {};
-  }
-
   if (const IdentityCredentialDelegate* identity_credential_delegate =
           client().GetIdentityCredentialDelegate()) {
     // Only <input autocomplete="email webidentity"> fields are considered.
     if (std::optional<AutocompleteParsingResult> autocomplete =
-            ParseAutocompleteAttribute(
-                autofill_field->autocomplete_attribute());
+            ParseAutocompleteAttribute(autofill_field.autocomplete_attribute());
         autocomplete && autocomplete->webidentity) {
       std::vector<Suggestion> verified_suggestions =
           identity_credential_delegate->GetVerifiedAutofillSuggestions(
-              form, form_structure, field, autofill_field, client());
+              form, &form_structure, field, &autofill_field, client());
       // Insert verified suggestions above unverified ones.
       MergeIdentityCredentialsAndAddressSuggestions(
           suggestions, std::move(verified_suggestions));

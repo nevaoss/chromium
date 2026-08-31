@@ -958,6 +958,12 @@ COMPONENT_EXPORT(CHROME_FEATURES)
 extern const base::FeatureParam<base::TimeDelta> kIndigoGlicTriggerDelay;
 
 COMPONENT_EXPORT(CHROME_FEATURES)
+BASE_DECLARE_FEATURE(kIndigoGeneratedImageCache);
+COMPONENT_EXPORT(CHROME_FEATURES)
+extern const base::FeatureParam<base::TimeDelta>
+    kIndigoGeneratedImageCacheLifetime;
+
+COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kInitialWebUIWithoutSpellCheckForNtp);
 
 #if !BUILDFLAG(IS_ANDROID)
@@ -1349,8 +1355,6 @@ BASE_DECLARE_FEATURE(kWebAppUpgradeToDatabaseVersion6);
 #if !BUILDFLAG(IS_ANDROID)
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kWebium);
-COMPONENT_EXPORT(CHROME_FEATURES)
-BASE_DECLARE_FEATURE(kInitialWebUIMetrics);
 // TODO(crbug.com/444358999): after the experiment to collect metrics, either
 // remove this reload button web UI or extend it to include more top-chrome
 // components.
@@ -1408,6 +1412,8 @@ COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kWebUILocationBar);
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kWebUIToolbar);
+COMPONENT_EXPORT(CHROME_FEATURES)
+BASE_DECLARE_FEATURE(kWebUIToolbarFrameEvictionOptOut);
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 COMPONENT_EXPORT(CHROME_FEATURES)

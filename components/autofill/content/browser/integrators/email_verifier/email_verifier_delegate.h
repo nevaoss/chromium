@@ -47,7 +47,8 @@ enum class EvpAutofillFlowResult {
   kTokenSentToRenderer = 10,
   kDriverInactive = 11,
   kPageNavigatedDuringVerification = 12,
-  kMaxValue = kPageNavigatedDuringVerification,
+  kPageNavigatedDuringCheckIfVerifiable = 13,
+  kMaxValue = kPageNavigatedDuringCheckIfVerifiable,
 };
 // LINT.ThenChange(//tools/metrics/histograms/metadata/blink/enums.xml:EvpAutofillFlowResult)
 
@@ -160,6 +161,9 @@ class EmailVerifierDelegate : public AutofillManager::Observer,
                            gfx::RectF email_field_bounds,
                            std::u16string email_value,
                            const std::string& nonce);
+
+  void OnDnsCheckPassed(base::WeakPtr<AutofillManager> manager,
+                        FieldGlobalId email_field_id);
 
   void OnIsVerifiable(
       base::WeakPtr<AutofillManager> manager,

@@ -119,6 +119,10 @@ struct OmniboxActionTextInput {
   // selection changes as well.
   uint32 ui_version;
 
+  // If true, this text change was an unelision (and thus should not be
+  // viewed as actually changing the URL).
+  bool unelision = false;
+
   gfx.mojom.Range selection;
 };
 
@@ -143,6 +147,9 @@ struct OmniboxActionPointer {
   // If true, asks for zero-suggest completion to start. Applies only if
   // `is_pointer_down` is false.
   bool start_zero_suggest = false;
+
+  // State of the selection in the omnibox on the WebUI side.
+  gfx.mojom.Range selection;
 };
 
 struct OmniboxActionDropText {
@@ -359,6 +366,10 @@ struct ContentSettingImageState {
   // Explanatory text that animates in if non empty.
   mojo_base.mojom.String16 explanatory_string;
 
+  // If true, when `explanatory_string` is displayed, it should appear via an
+  // animation.
+  bool should_run_animation;
+
   // NOTE: The visual icon to display is determined by `type`
   // and `is_blocked`.
 };
@@ -521,6 +532,9 @@ struct LocationBarFlags {
 
   // Whether to render the AIM button as focused even when it's not.
   bool force_aim_button_focus_ring = false;
+
+  // Whether the virtual keyboard is visible.
+  bool is_virtual_keyboard_visible = false;
 };
 
 // Search keyword chip, which shows up when the user enters things like

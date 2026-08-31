@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/base64.h"
 #include "base/compiler_specific.h"
 #include "base/memory/raw_ptr.h"
 #include "base/strings/strcat.h"
@@ -101,6 +102,7 @@
 #include "ui/base/test/mock_base_window.h"
 #include "ui/base/unowned_user_data/unowned_user_data_host.h"
 #include "ui/base/webui/web_ui_util.h"
+#include "ui/gfx/codec/png_codec.h"
 
 #if BUILDFLAG(IS_CHROMEOS)
 #include "chromeos/ash/components/network/network_handler_test_helper.h"
@@ -2374,6 +2376,27 @@ TEST_F(ContextualSearchboxHandlerTest, QueryAutocomplete_SetsLensInputs) {
 }
 
 TEST_F(ContextualSearchboxHandlerTest,
+       QueryAutocomplete_NullBrowserWindowInterfaceDoesNotCrash) {
+  // Ensure BrowserWindowInterface is null for web_contents.
+  webui::SetBrowserWindowInterface(web_contents(), nullptr);
+
+  auto autocomplete_controller =
+      std::make_unique<testing::NiceMock<MockAutocompleteController>>(
+          std::make_unique<MockAutocompleteProviderClient>(), 0);
+  EXPECT_CALL(*autocomplete_controller, Start(_));
+  handler().SetAutocompleteControllerForTesting(
+      std::move(autocomplete_controller));
+
+  // Should execute cleanly without crashing even when BrowserWindowInterface
+  // is null.
+  handler().QueryAutocomplete(
+      0, u"test", /*prevent_inline_autocomplete=*/false, 0,
+      omnibox::SuggestInventory::SUGGEST_INVENTORY_DEFAULT,
+      /*is_on_focus=*/false, /*keyword=*/"",
+      searchbox::mojom::InputMethod::kKeyboard);
+}
+
+TEST_F(ContextualSearchboxHandlerTest,
        QueryAutocomplete_SetsLensInputs_InToolModes) {
   lens::proto::LensOverlaySuggestInputs suggest_inputs;
   suggest_inputs.set_encoded_image_signals("xyz");
@@ -3828,7 +3851,7 @@ TEST_F(ContextualSearchboxHandlerTest,
 }
 
 TEST_F(ContextualSearchboxHandlerTest,
-       NewSessionModelInheritsSmartTabSharingActiveState) {
+       ResetInputStateModelResetsSmartTabSharingActiveState) {
   base::test::ScopedFeatureList local_feature_list;
   local_feature_list.InitWithFeaturesAndParameters(
       {{contextual_tasks::kContextualTasksContext,
@@ -3842,7 +3865,7 @@ TEST_F(ContextualSearchboxHandlerTest,
   ASSERT_TRUE(handler().input_state_model());
   EXPECT_TRUE(handler().input_state_model()->IsSmartTabSharingActive());
 
-  // Simulate starting a new session (new model).
+  // Simulate starting a new session (new model) and resetting input state model.
   query_controller_ = nullptr;
   metrics_recorder_ = nullptr;
 
@@ -3869,20 +3892,7 @@ TEST_F(ContextualSearchboxHandlerTest,
   // Trigger model recreation.
   handler().GetValidInputStateForTesting();
 
-  // The new model should have inherited the active state (true) from the
-  // handler.
-  ASSERT_TRUE(handler().input_state_model());
-  EXPECT_TRUE(handler().input_state_model()->IsSmartTabSharingActive());
-  EXPECT_TRUE(handler().IsSmartTabSharingActive());
-
-  // Clear thread state to simulate new handler instance.
-  handler().clear_smart_tab_sharing_active_for_thread();
-  handler().ResetInputStateModel();
-
-  // Trigger model recreation.
-  handler().GetValidInputStateForTesting();
-
-  // The new model should now fallback to the pref default (false).
+  // ResetInputStateModel() should have cleared the active state back to default (false).
   ASSERT_TRUE(handler().input_state_model());
   EXPECT_FALSE(handler().input_state_model()->IsSmartTabSharingActive());
   EXPECT_FALSE(handler().IsSmartTabSharingActive());
@@ -3936,14 +3946,15 @@ INSTANTIATE_TEST_SUITE_P(
 #if !BUILDFLAG(IS_ANDROID)
 class FakeDesktopCapturer : public webrtc::DesktopCapturer {
  public:
-  FakeDesktopCapturer() = default;
+  explicit FakeDesktopCapturer(
+      webrtc::DesktopSize size = webrtc::DesktopSize(1, 1))
+      : size_(size) {}
   ~FakeDesktopCapturer() override = default;
 
   void Start(Callback* callback) override { callback_ = callback; }
 
   void CaptureFrame() override {
-    auto frame =
-        std::make_unique<webrtc::BasicDesktopFrame>(webrtc::DesktopSize(1, 1));
+    auto frame = std::make_unique<webrtc::BasicDesktopFrame>(size_);
     frame->SetFrameDataToBlack();
     callback_->OnCaptureResult(Result::SUCCESS, std::move(frame));
   }
@@ -3952,6 +3963,7 @@ class FakeDesktopCapturer : public webrtc::DesktopCapturer {
   bool SelectSource(SourceId id) override { return true; }
 
  private:
+  webrtc::DesktopSize size_;
   raw_ptr<Callback> callback_ = nullptr;
 };
 
@@ -3974,7 +3986,7 @@ TEST_F(ContextualSearchboxHandlerTest, StartScreenshare_Success) {
   FakeDesktopMediaPickerFactory picker_factory;
   handler().set_desktop_media_picker_factory_for_testing(&picker_factory);
   content::desktop_capture::ScopedDesktopCapturerForTesting scoped_capturer(
-      std::make_unique<FakeDesktopCapturer>());
+      std::make_unique<FakeDesktopCapturer>(webrtc::DesktopSize(4000, 2000)));
 
   FakeDesktopMediaPickerFactory::TestFlags test_flags;
   test_flags.expect_screens = true;
@@ -3999,7 +4011,25 @@ TEST_F(ContextualSearchboxHandlerTest, StartScreenshare_Success) {
         callback_token = token;
         EXPECT_EQ(file_info->file_name, "Screenshot.png");
         EXPECT_EQ(file_info->mime_type, "image/png");
-        EXPECT_FALSE(file_info->image_data_url.has_value());
+        EXPECT_TRUE(file_info->image_data_url.has_value());
+        if (file_info->image_data_url.has_value()) {
+          EXPECT_TRUE(base::StartsWith(*file_info->image_data_url,
+                                       "data:image/png;base64,"));
+
+          // Verify thumbnail dimensions constraint (<= 120px, aspect ratio
+          // preserved 120x60).
+          std::string base64_payload = file_info->image_data_url->substr(
+              std::string_view("data:image/png;base64,").length());
+          std::optional<std::vector<uint8_t>> thumb_bytes =
+              base::Base64Decode(base64_payload);
+          EXPECT_TRUE(thumb_bytes.has_value());
+          if (thumb_bytes) {
+            SkBitmap thumb_bitmap = gfx::PNGCodec::Decode(*thumb_bytes);
+            EXPECT_FALSE(thumb_bitmap.isNull());
+            EXPECT_EQ(thumb_bitmap.width(), 120);
+            EXPECT_EQ(thumb_bitmap.height(), 60);
+          }
+        }
       });
 
   base::test::TestFuture<const std::optional<base::UnguessableToken>&> future;
@@ -4016,6 +4046,90 @@ TEST_F(ContextualSearchboxHandlerTest, StartScreenshare_Success) {
   EXPECT_EQ(captured_input_data->file_name, "Screenshot.png");
   EXPECT_EQ(captured_input_data->primary_content_type, lens::MimeType::kImage);
   EXPECT_EQ(captured_input_data->mime_type_string, "image/png");
+
+  // Verify oversized image downscaling constraint (<= 2048px, aspect ratio
+  // preserved 2048x1024).
+  ASSERT_TRUE(captured_input_data->context_input.has_value());
+  ASSERT_FALSE(captured_input_data->context_input->empty());
+  const auto& file_data = (*captured_input_data->context_input)[0].bytes_;
+  SkBitmap main_bitmap = gfx::PNGCodec::Decode(file_data);
+  EXPECT_FALSE(main_bitmap.isNull());
+  EXPECT_EQ(main_bitmap.width(), 2048);
+  EXPECT_EQ(main_bitmap.height(), 1024);
+
+  handler().set_desktop_media_picker_factory_for_testing(nullptr);
+}
+
+TEST_F(ContextualSearchboxHandlerTest, StartScreenshare_SmallImageNotResized) {
+  profile()->GetPrefs()->SetInteger(
+      contextual_search::kSearchContentSharingSettings,
+      static_cast<int>(
+          contextual_search::SearchContentSharingSettingsValue::kEnabled));
+
+  scoped_config().config.mutable_composebox()->set_max_num_files(5);
+  scoped_config()
+      .config.mutable_composebox()
+      ->mutable_attachment_upload()
+      ->set_max_size_bytes(1024 * 1024);
+  scoped_config()
+      .config.mutable_composebox()
+      ->mutable_image_upload()
+      ->set_mime_types_allowed("image/png");
+
+  FakeDesktopMediaPickerFactory picker_factory;
+  handler().set_desktop_media_picker_factory_for_testing(&picker_factory);
+  content::desktop_capture::ScopedDesktopCapturerForTesting scoped_capturer(
+      std::make_unique<FakeDesktopCapturer>(webrtc::DesktopSize(50, 30)));
+
+  FakeDesktopMediaPickerFactory::TestFlags test_flags;
+  test_flags.expect_screens = true;
+  test_flags.expect_windows = true;
+  test_flags.picker_result =
+      content::DesktopMediaID(content::DesktopMediaID::TYPE_WINDOW, 42);
+  picker_factory.SetTestFlags(base::span_from_ref(test_flags));
+
+  std::unique_ptr<lens::ContextualInputData> captured_input_data;
+  EXPECT_CALL(query_controller(), StartFileUploadFlow)
+      .WillOnce([&](const base::UnguessableToken& token,
+                    std::unique_ptr<lens::ContextualInputData> input_data,
+                    std::optional<lens::ImageEncodingOptions> image_options) {
+        captured_input_data = std::move(input_data);
+      });
+
+  EXPECT_CALL(mock_searchbox_page_, AddFileContext)
+      .WillOnce([&](const base::UnguessableToken& token,
+                    searchbox::mojom::SelectedFileInfoPtr file_info) {
+        EXPECT_TRUE(file_info->image_data_url.has_value());
+        if (file_info->image_data_url.has_value()) {
+          std::string base64_payload = file_info->image_data_url->substr(
+              std::string_view("data:image/png;base64,").length());
+          std::optional<std::vector<uint8_t>> thumb_bytes =
+              base::Base64Decode(base64_payload);
+          EXPECT_TRUE(thumb_bytes.has_value());
+          if (thumb_bytes) {
+            SkBitmap thumb_bitmap = gfx::PNGCodec::Decode(*thumb_bytes);
+            EXPECT_FALSE(thumb_bitmap.isNull());
+            EXPECT_EQ(thumb_bitmap.width(), 50);
+            EXPECT_EQ(thumb_bitmap.height(), 30);
+          }
+        }
+      });
+
+  base::test::TestFuture<const std::optional<base::UnguessableToken>&> future;
+  handler().StartScreenshare(/*prefer_entire_screen=*/false,
+                             future.GetCallback());
+
+  EXPECT_TRUE(future.Get().has_value());
+  mock_searchbox_page_.FlushForTesting();
+
+  ASSERT_TRUE(captured_input_data);
+  ASSERT_TRUE(captured_input_data->context_input.has_value());
+  ASSERT_FALSE(captured_input_data->context_input->empty());
+  const auto& file_data = (*captured_input_data->context_input)[0].bytes_;
+  SkBitmap main_bitmap = gfx::PNGCodec::Decode(file_data);
+  EXPECT_FALSE(main_bitmap.isNull());
+  EXPECT_EQ(main_bitmap.width(), 50);
+  EXPECT_EQ(main_bitmap.height(), 30);
 
   handler().set_desktop_media_picker_factory_for_testing(nullptr);
 }

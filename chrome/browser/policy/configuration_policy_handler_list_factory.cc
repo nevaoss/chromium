@@ -600,10 +600,10 @@ const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
     prefs::kAmbientAuthenticationInPrivateModesEnabled,
     base::Value::Type::INTEGER },
   { key::kAudioCaptureAllowed,
-    prefs::kAudioCaptureAllowed,
+    prefs::kManagedAudioCaptureAllowed,
     base::Value::Type::BOOLEAN },
   { key::kAudioCaptureAllowedUrls,
-    prefs::kAudioCaptureAllowedUrls,
+    prefs::kManagedAudioCaptureAllowedUrls,
     base::Value::Type::LIST },
   { key::kAutoOpenAllowedForURLs,
     prefs::kDownloadAllowedURLsForOpenByPolicy,
@@ -915,10 +915,10 @@ const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
     prefs::kTaskManagerEndProcessEnabled,
     base::Value::Type::BOOLEAN },
   { key::kVideoCaptureAllowed,
-    prefs::kVideoCaptureAllowed,
+    prefs::kManagedVideoCaptureAllowed,
     base::Value::Type::BOOLEAN },
   { key::kVideoCaptureAllowedUrls,
-    prefs::kVideoCaptureAllowedUrls,
+    prefs::kManagedVideoCaptureAllowedUrls,
     base::Value::Type::LIST },
   { key::kWPADQuickCheckEnabled,
     prefs::kQuickCheckEnabled,
@@ -3112,13 +3112,14 @@ std::unique_ptr<ConfigurationPolicyHandlerList> BuildHandlerList(
       std::make_unique<ManagedAccountRestrictionsPolicyHandler>(chrome_schema));
 #endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
 #if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || \
-    BUILDFLAG(IS_WIN)
+    BUILDFLAG(IS_WIN) || BUILDFLAG(IS_ANDROID)
   handlers->AddHandler(std::make_unique<CloudUserOnlyPolicyChecker>(
       std::make_unique<URLSchemeListPolicyHandler>(
           key::kSaasUsageReportingDomainUrlsForProfiles,
           enterprise_reporting::kSaasUsageDomainUrlsForProfile)));
 #endif
-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || \
+    BUILDFLAG(IS_ANDROID)
   handlers->AddHandler(std::make_unique<URLSchemeListPolicyHandler>(
       key::kSaasUsageReportingDomainUrlsForBrowsers,
       enterprise_reporting::kSaasUsageDomainUrlsForBrowser));

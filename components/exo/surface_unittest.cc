@@ -16,6 +16,7 @@
 #include "base/test/scoped_chromeos_version_info.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/time/time.h"
+#include "cc/base/math_util.h"
 #include "components/exo/buffer.h"
 #include "components/exo/shell_surface.h"
 #include "components/exo/sub_surface.h"
@@ -33,7 +34,7 @@
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/khronos/GLES2/gl2.h"
 #include "ui/aura/test/window_occlusion_tracker_test_api.h"
-#include "ui/compositor/layer.h"
+#include "ui/compositor/layer_surface.h"
 #include "ui/compositor/layer_tree_owner.h"
 #include "ui/display/display.h"
 #include "ui/display/display_switches.h"
@@ -1202,7 +1203,7 @@ TEST_P(SurfaceTest, DisableNonYUVOverlays) {
     viz::DrawQuad* draw_quad = frame.render_pass_list.back()->quad_list.back();
     EXPECT_EQ(viz::DrawQuad::Material::kTextureContent, draw_quad->material);
     EXPECT_EQ(
-        viz::OverlayPriority::kLow,
+        viz::OverlayPriority::kNone,
         viz::TextureDrawQuad::MaterialCast(draw_quad)->overlay_priority_hint);
   }
 }

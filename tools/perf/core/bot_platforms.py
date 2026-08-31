@@ -252,7 +252,7 @@ class CrossbenchConfig(BenchmarkConfig):
       if "--disable-field-trials" not in flags and (
         "--disable-field-trial-config" not in flags
       ):
-        flags += ("--enable-field-trials",)
+        flags += ("--enable-field-trials=benchmarking",)
     assert len(flags) == len(set(flags)), (
       f"Found duplicate arguments in {flags}"
     )
@@ -943,6 +943,12 @@ PLATFORM_INFO = {
     'num_shards': 1,
     'platform_os': 'linux',
     'is_fyi': False,
+  },
+  'linux-nvidia-dgx-spark-arm-perf': {
+    'description': 'Ubuntu-24.04, Nvidia DGX Spark',
+    'num_shards': 1,
+    'platform_os': 'linux',
+    'is_fyi': False
   },
   'mac-intel-perf': {
     'description': 'Mac Mini 8,1, Core i7 3.2 GHz',

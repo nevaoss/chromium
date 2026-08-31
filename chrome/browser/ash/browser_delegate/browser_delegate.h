@@ -130,6 +130,12 @@ class BrowserDelegate {
   // Returns whether the browser window is visible.
   virtual bool IsVisible() const = 0;
 
+  // Returns whether the browser window is fullscreen.
+  virtual bool IsFullscreen() const = 0;
+
+  // Sets whether the browser window is fullscreen.
+  virtual void SetFullscreen(bool fullscreen) = 0;
+
   // Shows the browser window, or activates it if it's already visible.
   virtual void Show() = 0;
 
@@ -220,6 +226,9 @@ class BrowserDelegate {
 
   // Activates the web contents at the specified tab strip index.
   virtual void ActivateWebContentsAt(size_t index) = 0;
+
+  // Sets whether the background of the web contents area is visible.
+  virtual void SetContentsBackgroundVisible(bool visible) = 0;
 
   //// The following functions are added purely for convenience. ////
 

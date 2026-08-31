@@ -43,6 +43,8 @@ class BrowserDelegateImpl : public BrowserDelegate {
   bool IsActive() const override;
   bool IsMinimized() const override;
   bool IsVisible() const override;
+  bool IsFullscreen() const override;
+  void SetFullscreen(bool fullscreen) override;
   void Show() override;
   void ShowInactive() override;
   void Activate() override;
@@ -70,6 +72,7 @@ class BrowserDelegateImpl : public BrowserDelegate {
   void SetDevToolsCommandsEnabled(bool enabled) override;
   void SetTabSwitchCommandsEnabled(bool enabled) override;
   void ActivateWebContentsAt(size_t index) override;
+  void SetContentsBackgroundVisible(bool visible) override;
 
  private:
   const raw_ref<Browser> browser_;

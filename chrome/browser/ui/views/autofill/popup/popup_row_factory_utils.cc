@@ -337,7 +337,8 @@ std::unique_ptr<PopupRowContentView> CreateFooterPopupRowContentView(
   main_text_label->SetEnabled(!suggestion.is_loading);
 
   if (suggestion.type == SuggestionType::kPendingStateSignin ||
-      suggestion.type == SuggestionType::kFreeformFooter) {
+      suggestion.type == SuggestionType::kFreeformFooter ||
+      suggestion.type == SuggestionType::kAutofillAiSourceAttribution) {
     main_text_label->SetMultiLine(true);
     main_text_label->SetHorizontalAlignment(gfx::ALIGN_TO_HEAD);
     view->SetInsideBorderInsets(
@@ -833,6 +834,7 @@ std::unique_ptr<PopupRowView> CreatePopupRowView(
     case SuggestionType::kAutofillAiOtherOrders:
     case SuggestionType::kAutofillAiOtherShipments:
     case SuggestionType::kAutofillAiPrivateInferenceNotice:
+    case SuggestionType::kAutofillAiSourceAttribution:
     case SuggestionType::kBnplFootnote:
     case SuggestionType::kComposeDisable:
     case SuggestionType::kComposeGoToSettings:
@@ -856,9 +858,9 @@ std::unique_ptr<PopupRowView> CreatePopupRowView(
     case SuggestionType::kManageAutofillAiShopping:
     case SuggestionType::kManageAutofillAiTravel:
     case SuggestionType::kManageCreditCard:
+    case SuggestionType::kManageEnhancedAutofill:
     case SuggestionType::kManageIban:
     case SuggestionType::kManageLoyaltyCard:
-    case SuggestionType::kManageEnhancedAutofill:
     case SuggestionType::kMaximizeCreditCardBenefitsEntry:
     case SuggestionType::kMerchantPromoCodeEntry:
     case SuggestionType::kOneTimePasswordEntry:

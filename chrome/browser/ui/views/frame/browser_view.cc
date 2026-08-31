@@ -1561,10 +1561,6 @@ void BrowserView::OnVerticalTabStripModeChanged(
     horizontal_tab_strip_region_view_->InitializeTabStrip();
   }
 
-  if (auto focused_group = browser_->tab_strip_model()->GetFocusedGroup()) {
-    tab_strip_view()->OnTabGroupFocusChanged(focused_group, std::nullopt);
-  }
-
   GetFrameView()->OnTabStripStateChanged();
 
   UpdateTabSearchBubbleHost();
@@ -1941,7 +1937,6 @@ bool BrowserView::IsLoadingAnimationRunning() const {
   return !loading_animation_start_.is_null();
 }
 
-
 void BrowserView::OnActiveTabChanged(content::WebContents* old_contents,
                                      content::WebContents* new_contents,
                                      int index,
@@ -2055,7 +2050,9 @@ void BrowserView::OnActiveTabChanged(content::WebContents* old_contents,
           new_contents);
     }
 
-    SadTabHelper* sad_tab_helper = SadTabHelper::FromWebContents(new_contents);
+    tabs::TabInterface* tab =
+        tabs::TabInterface::MaybeGetFromContents(new_contents);
+    SadTabHelper* sad_tab_helper = tab ? SadTabHelper::From(tab) : nullptr;
     if (sad_tab_helper) {
       sad_tab_helper->ReinstallInWebView();
     }
@@ -5120,7 +5117,7 @@ void BrowserView::RemovedFromWidget() {
 }
 
 void BrowserView::PaintChildren(const views::PaintInfo& paint_info) {
-  if (waap::IsInitialWebUIMetricsLoggingEnabled() && GetWidget()) {
+  if (GetWidget()) {
     GetWidget()->GetCompositor()->RequestSuccessfulPresentationTimeForNextFrame(
         base::BindOnce(&BrowserView::OnFirstPresentation,
                        weak_ptr_factory_.GetWeakPtr()));

@@ -112,6 +112,50 @@ IN_PROC_BROWSER_TEST_F(SystemMenuModelBuilderGlicTest,
   EXPECT_FALSE(profile_prefs->GetBoolean(prefs::kTabSearchPinnedToTabstrip));
 }
 
+class SystemMenuModelBuilderTabStripUnificationTest
+    : public InProcessBrowserTest {
+ public:
+  SystemMenuModelBuilderTabStripUnificationTest() {
+    scoped_feature_list_.InitAndEnableFeature(tabs::kTabStripUnification);
+  }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
+};
+
+// Check if the toggle tab scroll buttons pinning option exists and has the
+// right label based on relevant prefs.
+IN_PROC_BROWSER_TEST_F(SystemMenuModelBuilderTabStripUnificationTest,
+                       ToggleTabScrollButtonsPinning) {
+  PrefService* profile_prefs = browser()->GetProfile()->GetPrefs();
+  ui::MenuModel* menu = BrowserView::GetBrowserViewForBrowser(browser())
+                            ->browser_widget()
+                            ->GetSystemMenuModel();
+
+  profile_prefs->SetBoolean(prefs::kTabScrollButtonsPinnedToTabstrip, false);
+  EXPECT_TRUE(ContainsCommand(menu, IDC_TAB_SCROLL_BUTTONS_TOGGLE_PIN,
+                              IDS_TAB_SCROLL_PIN_BUTTONS_SYSTEM_MENU));
+
+  profile_prefs->SetBoolean(prefs::kTabScrollButtonsPinnedToTabstrip, true);
+  EXPECT_TRUE(ContainsCommand(menu, IDC_TAB_SCROLL_BUTTONS_TOGGLE_PIN,
+                              IDS_TAB_SCROLL_UNPIN_BUTTONS_SYSTEM_MENU));
+}
+
+// Verify that executing the tab scroll buttons toggle command actually changes
+// the pref.
+IN_PROC_BROWSER_TEST_F(SystemMenuModelBuilderTabStripUnificationTest,
+                       ExecuteTabScrollButtonsToggleCommand) {
+  PrefService* profile_prefs = browser()->GetProfile()->GetPrefs();
+
+  profile_prefs->SetBoolean(prefs::kTabScrollButtonsPinnedToTabstrip, false);
+  chrome::ExecuteCommand(browser(), IDC_TAB_SCROLL_BUTTONS_TOGGLE_PIN);
+  EXPECT_TRUE(
+      profile_prefs->GetBoolean(prefs::kTabScrollButtonsPinnedToTabstrip));
+  chrome::ExecuteCommand(browser(), IDC_TAB_SCROLL_BUTTONS_TOGGLE_PIN);
+  EXPECT_FALSE(
+      profile_prefs->GetBoolean(prefs::kTabScrollButtonsPinnedToTabstrip));
+}
+
 class SystemMenuModelBuilderSimplificationTest : public InProcessBrowserTest {
  protected:
   void SetUp() override {

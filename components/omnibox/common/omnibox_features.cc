@@ -383,12 +383,6 @@ BASE_FEATURE(kEnableSearchAggregatorPolicy, ENABLED);
 
 BASE_FEATURE(kUseAgentspace25Logo, ENABLED);
 
-// If enabled, site search engines, defined by the `SiteSearchSettings` policy,
-// can be marked as user-overridable by administrators using an
-// `allow_user_override` field. This setting is stored in preferences and
-// determines if the engine can be overridden on the Settings page.
-BASE_FEATURE(kEnableSiteSearchAllowUserOverridePolicy, ENABLED);
-
 // Enables preconnecting to omnibox suggestions that are not only Search types.
 BASE_FEATURE(kPreconnectNonSearchOmniboxSuggestions, ENABLED);
 
@@ -608,6 +602,9 @@ const base::FeatureParam<bool> kAskGComposeboxLensChip{
 const base::FeatureParam<bool> kAskGBlockAutoTabZeroStateSuggestions{
     &kWebUIOmniboxAskGAboutThisPage,
     "Omnibox_AskGBlockAutoTabZeroStateSuggestions", false};
+const base::FeatureParam<bool> kAskGBypassPrivacyNotice{
+    &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGBypassPrivacyNotice", false};
+
 // Note: no new flags beyond this point.
 
 namespace flag_descriptions {

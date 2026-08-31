@@ -536,6 +536,7 @@ android_library("chrome_test_java_org.chromium.chrome.browser.app") {
     "src/org/chromium/chrome/browser/app/appmenu/OverviewAppMenuTest.java",
     "src/org/chromium/chrome/browser/app/appmenu/TabbedAppMenuPTTest.java",
     "src/org/chromium/chrome/browser/app/appmenu/TabbedAppMenuTest.java",
+    "src/org/chromium/chrome/browser/app/bookmarks/BookmarkEditDesktopTest.java",
     "src/org/chromium/chrome/browser/app/bookmarks/BookmarkEditTest.java",
     "src/org/chromium/chrome/browser/app/bookmarks/BookmarkFolderPickerActivityTest.java",
     "src/org/chromium/chrome/browser/app/bookmarks/BookmarkTabletTest.java",
@@ -559,6 +560,7 @@ android_library("chrome_test_java_org.chromium.chrome.browser.app") {
   deps = [
     ":chrome_test_java_helper",
     ":chrome_test_java_org.chromium.chrome.browser.tabmodel",
+    "//chrome/browser/ntp_customization:java",
     "//ui/accessibility:ui_accessibility_test_support_java",
   ]
 }
@@ -995,6 +997,7 @@ android_library("chrome_test_java_org.chromium.chrome.browser.ntp") {
 
   deps = [
     ":chrome_test_java_helper",
+    "//chrome/android:new_tab_page_utils_java",
     "//chrome/android/feed:chrome_feed_java_resources",
     "//chrome/browser/composeplate/android:java",
     "//chrome/browser/educational_tip:java",
@@ -1030,6 +1033,7 @@ android_library("chrome_test_java_org.chromium.chrome.browser.omnibox") {
   sources = [
     "src/org/chromium/chrome/browser/omnibox/LocationBarLayoutTest.java",
     "src/org/chromium/chrome/browser/omnibox/LocationBarTest.java",
+    "src/org/chromium/chrome/browser/omnibox/OmniboxDisplayStatePTTest.java",
     "src/org/chromium/chrome/browser/omnibox/OmniboxPTTest.java",
     "src/org/chromium/chrome/browser/omnibox/OmniboxTest.java",
     "src/org/chromium/chrome/browser/omnibox/OmniboxUrlEmphasizerTest.java",
@@ -1216,6 +1220,7 @@ android_library("chrome_test_java_org.chromium.chrome.browser.privacy") {
     "src/org/chromium/chrome/browser/privacy/settings/PasswordEchoSplitSettingHandlerTest.java",
     "src/org/chromium/chrome/browser/privacy/settings/PrivacyPreferencesManagerImplNativeTest.java",
     "src/org/chromium/chrome/browser/privacy/settings/PrivacySettingsFragmentTest.java",
+    "src/org/chromium/chrome/browser/privacy/settings/UniversalOptOutSettingsFragmentTest.java",
   ]
 
   deps = [
@@ -1280,6 +1285,7 @@ android_library("chrome_test_java_org.chromium.chrome.browser.settings") {
     "src/org/chromium/chrome/browser/settings/MultiColumnSettingsUnitTest.java",
     "src/org/chromium/chrome/browser/settings/SettingsActivityTest.java",
     "src/org/chromium/chrome/browser/settings/SettingsPageBackButtonTest.java",
+    "src/org/chromium/chrome/browser/settings/SettingsPageRenderTest.java",
     "src/org/chromium/chrome/browser/settings/SettingsPageTest.java",
     "src/org/chromium/chrome/browser/settings/search/SearchIndexProviderRegistryTest.java",
     "src/org/chromium/chrome/browser/settings/search/SettingsSearchCoordinatorTest.java",
@@ -1773,6 +1779,7 @@ android_library("chrome_test_java_various") {
     ":chrome_test_java_helper",
     "//base:base_java_test_support",
     "//base:holder_java",
+    "//base:tristate_java",
     "//base/test:leak_canary_java",
     "//chrome/browser/actor/android:java",
     "//chrome/browser/educational_tip:java",

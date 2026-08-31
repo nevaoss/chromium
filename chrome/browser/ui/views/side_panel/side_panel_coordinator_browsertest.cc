@@ -12,6 +12,7 @@
 #include "base/files/file_path.h"
 #include "base/functional/callback_helpers.h"
 #include "base/i18n/rtl.h"
+#include "base/i18n/test/scoped_rtl_for_testing.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/strings/stringprintf.h"
@@ -230,6 +231,12 @@ class SidePanelCoordinatorTest : public InProcessBrowserTest {
 
   SidePanelRegistry* GetActiveTabRegistry() {
     return SidePanelRegistry::From(browser()->GetActiveTabInterface());
+  }
+
+  int GetTabIdAt(int index) {
+    return sessions::SessionTabHelper::IdForTab(
+               browser()->tab_strip_model()->GetWebContentsAt(index))
+        .id();
   }
 
   // Calls chrome.sidePanel.setOptions() for the given `extension`, `path` and
@@ -677,34 +684,38 @@ IN_PROC_BROWSER_TEST_F(SidePanelCoordinatorTest, ChangeSidePanelWidthRTL) {
       ->GetProfile()
       ->GetPrefs()
       ->SetBoolean(prefs::kSidePanelHorizontalAlignment, true);
-  // Set UI direction to LTR
-  base::i18n::SetRTLForTesting(false);
-  coordinator()->Toggle(SidePanelEntry::Key(SidePanelEntry::Id::kBookmarks),
-                        SidePanelOpenTrigger::kPinnedEntryToolbarButton);
   auto* const side_panel = GetSidePanel();
   const int starting_width = 500;
-  side_panel->SetPanelWidth(starting_width);
-  views::test::RunScheduledLayout(
-      BrowserView::GetBrowserViewForBrowser(browser()));
-  EXPECT_EQ(side_panel->width(), starting_width);
-
   const int increment = 20;
-  side_panel->OnResize(increment, true);
-  views::test::RunScheduledLayout(
-      BrowserView::GetBrowserViewForBrowser(browser()));
-  EXPECT_EQ(side_panel->width(), starting_width - increment);
+  {
+    // Set UI direction to LTR
+    base::i18n::ScopedRTLForTesting scoped_rtl(false);
+    coordinator()->Toggle(SidePanelEntry::Key(SidePanelEntry::Id::kBookmarks),
+                          SidePanelOpenTrigger::kPinnedEntryToolbarButton);
+    side_panel->SetPanelWidth(starting_width);
+    views::test::RunScheduledLayout(
+        BrowserView::GetBrowserViewForBrowser(browser()));
+    EXPECT_EQ(side_panel->width(), starting_width);
 
-  // Set UI direction to RTL
-  base::i18n::SetRTLForTesting(true);
-  side_panel->SetPanelWidth(starting_width);
-  views::test::RunScheduledLayout(
-      BrowserView::GetBrowserViewForBrowser(browser()));
-  EXPECT_EQ(side_panel->width(), starting_width);
+    side_panel->OnResize(increment, true);
+    views::test::RunScheduledLayout(
+        BrowserView::GetBrowserViewForBrowser(browser()));
+    EXPECT_EQ(side_panel->width(), starting_width - increment);
+  }
 
-  side_panel->OnResize(increment, true);
-  views::test::RunScheduledLayout(
-      BrowserView::GetBrowserViewForBrowser(browser()));
-  EXPECT_EQ(side_panel->width(), starting_width + increment);
+  {
+    // Set UI direction to RTL
+    base::i18n::ScopedRTLForTesting scoped_rtl(true);
+    side_panel->SetPanelWidth(starting_width);
+    views::test::RunScheduledLayout(
+        BrowserView::GetBrowserViewForBrowser(browser()));
+    EXPECT_EQ(side_panel->width(), starting_width);
+
+    side_panel->OnResize(increment, true);
+    views::test::RunScheduledLayout(
+        BrowserView::GetBrowserViewForBrowser(browser()));
+    EXPECT_EQ(side_panel->width(), starting_width + increment);
+  }
 }
 
 IN_PROC_BROWSER_TEST_F(SidePanelCoordinatorTest, ChangeSidePanelAlignment) {
@@ -1864,11 +1875,11 @@ IN_PROC_BROWSER_TEST_F(SidePanelCoordinatorTest,
       ->ActivateTabAt(0);
   // Add extension
   scoped_refptr<const extensions::Extension> extension =
-      LoadSidePanelExtension("extension");
+      AddExtensionWithSidePanel("extension", /*tab_id=*/std::nullopt);
   SidePanelEntry::Key extension_key(SidePanelEntry::Id::kExtension,
                                     extension->id());
-  global_registry()->Register(CreateEntry(extension_key));
-  contextual_registries_[0]->Register(CreateEntry(extension_key));
+  RunSetOptions(*extension, GetTabIdAt(0), /*path=*/"panel.html",
+                /*enabled=*/true);
 
   coordinator()->Show(extension_key);
   EXPECT_TRUE(
@@ -1938,13 +1949,17 @@ IN_PROC_BROWSER_TEST_F(SidePanelCoordinatorTest, DeregisterExtensionEntries) {
 
   // Add extension.
   scoped_refptr<const extensions::Extension> extension =
-      LoadSidePanelExtension("extension");
+      AddExtensionWithSidePanel("extension", /*tab_id=*/std::nullopt);
   SidePanelEntry::Key extension_key(SidePanelEntry::Id::kExtension,
                                     extension->id());
 
   // Registers an entry in the global and active contextual registry.
-  GetActiveTabRegistry()->Register(CreateEntry(extension_key));
-  global_registry()->Register(CreateEntry(extension_key));
+  const int active_tab_id =
+      sessions::SessionTabHelper::IdForTab(
+          browser()->GetActiveTabInterface()->GetContents())
+          .id();
+  RunSetOptions(*extension, active_tab_id, /*path=*/"panel.html",
+                /*enabled=*/true);
 
   // The contextual entry should be shown.
   coordinator()->Show(extension_key);
@@ -1953,7 +1968,8 @@ IN_PROC_BROWSER_TEST_F(SidePanelCoordinatorTest, DeregisterExtensionEntries) {
 
   // If the contextual entry is deregistered while there exists a global entry,
   // the global entry is not shown.
-  GetActiveTabRegistry()->Deregister(extension_key);
+  RunSetOptions(*extension, active_tab_id, /*path=*/std::nullopt,
+                /*enabled=*/false);
   EXPECT_FALSE(global_registry()->GetActiveEntry().has_value());
   EXPECT_FALSE(GetSidePanel()->GetVisible());
 }
@@ -1971,10 +1987,9 @@ IN_PROC_BROWSER_TEST_F(SidePanelCoordinatorTest,
       ->ActivateTabAt(0);
   // Add extension.
   scoped_refptr<const extensions::Extension> extension =
-      LoadSidePanelExtension("extension");
+      AddExtensionWithSidePanel("extension", /*tab_id=*/GetTabIdAt(0));
   SidePanelEntry::Key extension_key(SidePanelEntry::Id::kExtension,
                                     extension->id());
-  contextual_registries_[0]->Register(CreateEntry(extension_key));
   coordinator()->Show(extension_key);
 
   EXPECT_TRUE(
@@ -1998,11 +2013,11 @@ IN_PROC_BROWSER_TEST_F(SidePanelCoordinatorTest,
   Init();
   // Add extension.
   scoped_refptr<const extensions::Extension> extension =
-      LoadSidePanelExtension("extension");
+      AddExtensionWithSidePanel("extension", /*tab_id=*/std::nullopt);
   SidePanelEntry::Key extension_key(SidePanelEntry::Id::kExtension,
                                     extension->id());
-  contextual_registries_[0]->Register(CreateEntry(extension_key));
-  global_registry()->Register(CreateEntry(extension_key));
+  RunSetOptions(*extension, GetTabIdAt(0), /*path=*/"panel.html",
+                /*enabled=*/true);
 
   // Switching from a tab showing the extension's active entry to a
   // tab with no active contextual entry should show the extension's entry
@@ -2082,11 +2097,11 @@ IN_PROC_BROWSER_TEST_F(SidePanelCoordinatorTest,
   SidePanelEntry::Key shopping_key(SidePanelEntry::Id::kShoppingInsights);
   // Add extension.
   scoped_refptr<const extensions::Extension> extension =
-      LoadSidePanelExtension("extension");
+      AddExtensionWithSidePanel("extension", /*tab_id=*/std::nullopt);
   SidePanelEntry::Key extension_key(SidePanelEntry::Id::kExtension,
                                     extension->id());
-  contextual_registries_[0]->Register(CreateEntry(extension_key));
-  global_registry()->Register(CreateEntry(extension_key));
+  RunSetOptions(*extension, GetTabIdAt(0), /*path=*/"panel.html",
+                /*enabled=*/true);
 
   BrowserView::GetBrowserViewForBrowser(browser())
       ->browser()

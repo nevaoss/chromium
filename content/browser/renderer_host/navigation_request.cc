@@ -4116,7 +4116,17 @@ NavigationRequest::GetContentSettingsForTesting() {
 }
 
 void NavigationRequest::SetIsAdTagged() {
-  is_ad_tagged_ = true;
+  if (ad_status_ == AdStatus::kNone) {
+    ad_status_ = AdStatus::kAdTagged;
+  }
+}
+
+void NavigationRequest::SetIsAdTaggedByHostFilter() {
+  ad_status_ = AdStatus::kAdTaggedByHostFilter;
+}
+
+bool NavigationRequest::IsAdTaggedByHostFilter() const {
+  return ad_status_ == AdStatus::kAdTaggedByHostFilter;
 }
 
 void NavigationRequest::CheckForIsolationOptIn(const GURL& url) {
@@ -4179,7 +4189,8 @@ void NavigationRequest::AddOriginAgentClusterStateIfNecessary(
         OriginAgentClusterIsolationState::CreateNonIsolatedByHeader();
   }
 
-  if (!oac_isolation_state.has_value() && response() && is_ad_tagged() &&
+  if (!oac_isolation_state.has_value() && response() &&
+      IsAdTaggedByHostFilter() &&
       SiteIsolationPolicy::AreOriginAgentClustersEnabledByDefault(
           isolation_context.browser_context()) &&
       SiteIsolationPolicy::AreOriginKeyedProcessesEnabledByDefault(
@@ -4614,7 +4625,7 @@ UrlInfo NavigationRequest::GetUrlInfo() {
       .WithCOOPSiteIsolation(ShouldRequestSiteIsolationForCOOP())
       .WithWebExposedIsolationInfo(web_exposed_isolation_info)
       .WithEmbedderIsolationInfo(embedder_isolation_info_)
-      .WithMatchesAdFilterWithHost(response() && is_ad_tagged());
+      .WithIsAdTaggedByHostFilter(response() && IsAdTaggedByHostFilter());
 
   // Compute the CrossOriginIsolationKey for the navigation.
   std::optional<AgentClusterKey::CrossOriginIsolationKey>
@@ -6117,7 +6128,7 @@ void NavigationRequest::OnStartChecksComplete(
           devtools_navigation_token(), local_root_rfh->devtools_frame_token(),
           BuildClientSecurityStateForNavigationFetch(), IsPdf(),
           GetInitiatorProcessId(), initiator_document_token_,
-          allow_cookies_from_browser_, navigation_id_, is_ad_tagged_,
+          allow_cookies_from_browser_, navigation_id_, is_ad_tagged(),
           force_no_https_upgrade_),
       std::move(navigation_ui_data), service_worker_handle_.get(),
       std::move(prefetched_signed_exchange_cache_), this, loader_type,
@@ -8969,16 +8980,8 @@ void NavigationRequest::Resume(NavigationThrottle* resuming_throttle) {
       CHECK(response_body_callback_);
       response_body_watcher_.reset();
       base::WeakPtr<NavigationRequest> this_ptr(weak_factory_.GetWeakPtr());
-      std::string throttle_name = resuming_throttle->GetNameForLogging();
       std::move(response_body_callback_).Run(std::string());
-      if (this_ptr.WasInvalidated()) {
-        // TODO(https://crbug.com/411238078): Replace the debug code with a
-        // comment once we ensure that this is the root cause.
-        SCOPED_CRASH_KEY_STRING32("Bug411238078", "throttle",
-                                  throttle_name.c_str());
-        base::debug::DumpWithoutCrashing();
-        return;
-      }
+      CHECK(this_ptr) << "Synchronous cancellation is forbidden.";
     }
 
     is_resuming_ = false;

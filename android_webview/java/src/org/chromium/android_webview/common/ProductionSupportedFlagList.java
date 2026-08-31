@@ -492,6 +492,8 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(
                 NetFeatures.ASYNC_QUIC_SESSION, "Enables asynchronous QUIC session creation"),
         Flag.baseFeature(
+                NetFeatures.ASYNC_DNS_QUIC_JOB, "Enables asynchronous DNS resolutions for QUIC"),
+        Flag.baseFeature(
                 NetFeatures.SPDY_HEADERS_TO_HTTP_RESPONSE_USE_BUILDER,
                 "Enables new optimized implementation of SpdyHeadersToHttpResponse. No behavior"
                         + " change."),
@@ -1003,6 +1005,10 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature("ServiceWorkerAutoPreload"),
         Flag.baseFeature(GpuFeatures.WEB_GPU_USE_SPIRV14, "Use WebGPU's SPIR-V 1.4"),
         Flag.commandLine(
+                AwSwitches.WEBVIEW_RUN_STARTUP_TASKS_SYNC,
+                "Forces WebView startup tasks to run synchronously on the UI thread instead of "
+                        + "asynchronously."),
+        Flag.commandLine(
                 AwSwitches.STARTUP_NON_BLOCKING_WEBVIEW_CONSTRUCTOR,
                 "When enabled, WebView constructor will not block on WebView process global"
                         + " startup"),
@@ -1228,7 +1234,6 @@ public final class ProductionSupportedFlagList {
                         + " through it to receive IPCs directly."),
 
         // Features for PerfCombined2025_WebView study
-        Flag.baseFeature("AsyncSetCookie"),
         Flag.baseFeature("ReducePPMs"),
         Flag.baseFeature("GCOnArrayBufferAllocationFailure"),
         Flag.baseFeature("RemoveCancelledScriptedIdleTasks"),
@@ -1460,6 +1465,7 @@ public final class ProductionSupportedFlagList {
                 AwFeatures.WEBVIEW_SINGLE_SHARED_CONTEXT_STATE,
                 "Allows Webview to allocate and share a single shared context for all the"
                         + " webview instances."),
+        Flag.baseFeature("ComponentsBase32InRust", "Enables the Rust-based Base32 implementation."),
         // Add new commandline switches and features above. The final entry should have a
         // trailing comma for cleaner diffs.
     };

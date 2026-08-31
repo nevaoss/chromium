@@ -192,7 +192,10 @@ if (!is_android) {
       deps += [ "//chrome/browser:global_keyboard_shortcuts_mac" ]
     }
     if (is_chromeos) {
-      deps += [ "//chrome/browser/ui/ash/multi_user" ]
+      deps += [
+        ":browser_commands_chromeos",
+        "//chrome/browser/ui/ash/multi_user",
+      ]
     }
     if (is_win || is_mac || is_linux) {
       deps += [ "//chrome/browser/ui/startup/default_browser_prompt" ]
@@ -517,8 +520,6 @@ source_set("tab_dialogs") {
 # circular includes from each other.
 static_library("ui") {
   sources = [
-    "idle_bubble.h",
-    "screen_capture_notification_ui.h",
     "tab_helpers.cc",
     "tab_helpers.h",
   ]
@@ -540,6 +541,7 @@ static_library("ui") {
     ":accelerator_utils_headers",
     ":crypto_module_password_dialog",
     ":enterprise_startup_dialog",
+    ":screen_capture_notification_ui",
     ":simple_message_box_headers",
     ":tab_dialogs",
     ":tab_modal_confirm_dialog",
@@ -926,7 +928,10 @@ static_library("ui") {
   }
 
   if (is_win) {
-    deps += [ "//chrome/browser/ui/webui/default_browser:visual_guided_setter" ]
+    deps += [
+      ":accessibility_util",
+      "//chrome/browser/ui/webui/default_browser:visual_guided_setter",
+    ]
   }
 
   # //chrome/browser/ui/views/relaunch_notification:impl sources include
@@ -1094,7 +1099,6 @@ static_library("ui") {
     # TODO(crbug.com/353332589): Remove this circular dependency when the
     # following headers get componentized:
     # c/b/ui/browser.h, browser_window.h
-    # c/b/ui/views/profiles/profile_management_types.h
     "//chrome/browser/ui/profiles:impl",
 
     # TODO(crbug.com/353332589): Remove this circular dependency when the
@@ -1278,8 +1282,6 @@ static_library("ui") {
       "browser_commands.h",
       "browser_content_setting_bubble_model_delegate.cc",
       "browser_content_setting_bubble_model_delegate.h",
-      "browser_init_state.cc",
-      "browser_init_state.h",
       "browser_live_tab_context.cc",
       "browser_live_tab_context.h",
       "browser_manager_service.cc",
@@ -1858,9 +1860,6 @@ static_library("ui") {
     assert(enable_supervised_users)
     assert(toolkit_views)
     sources += [
-      "browser_commands_chromeos.cc",
-      "browser_commands_chromeos.h",
-      "platform_keys_certificate_selector_chromeos.h",
       "settings_window_manager_chromeos.cc",
       "settings_window_manager_chromeos.h",
       "views/chrome_views_delegate_ash.cc",
@@ -1890,6 +1889,8 @@ static_library("ui") {
     ]
 
     deps += [
+      ":browser_commands_chromeos",
+      ":platform_keys_certificate_selector_chromeos",
       "//ash",
       "//ash/keyboard/ui",
       "//ash/public/cpp",
@@ -2179,7 +2180,6 @@ static_library("ui") {
 
   if (is_win || is_mac || is_linux || is_chromeos) {
     sources += [
-      "incognito_clear_browsing_data_dialog_interface.h",
       "views/autofill/payments/webauthn_dialog_view.cc",
       "views/autofill/payments/webauthn_dialog_view.h",
       "views/external_protocol_dialog.cc",
@@ -2228,7 +2228,6 @@ static_library("ui") {
       "views/profiles/profile_management_flow_controller_impl.h",
       "views/profiles/profile_management_step_controller.cc",
       "views/profiles/profile_management_step_controller.h",
-      "views/profiles/profile_management_types.h",
       "views/profiles/profile_menu_view.cc",
       "views/profiles/profile_menu_view.h",
       "views/profiles/profile_picker_feature_promo_controller.cc",
@@ -2255,6 +2254,7 @@ static_library("ui") {
       "//chrome/browser/ui/startup/default_browser_prompt",
       "//chrome/browser/ui/startup/default_browser_prompt:impl",
       "//chrome/browser/ui/views/profiles:badged_profile_photo",
+      "//chrome/browser/ui/views/profiles:profile_management_types",
       "//chrome/browser/ui/webui/app_home",
       "//chrome/browser/ui/webui/app_home:impl",
       "//chrome/browser/ui/webui/app_settings",
@@ -2302,13 +2302,12 @@ static_library("ui") {
         "views/profiles/profile_picker_reauth_provider.h",
         "views/profiles/profile_picker_sign_in_provider.cc",
         "views/profiles/profile_picker_sign_in_provider.h",
-        "views/profiles/profile_picker_toolbar.cc",
-        "views/profiles/profile_picker_toolbar.h",
         "views/profiles/profile_picker_utils.cc",
         "views/profiles/profile_picker_utils.h",
       ]
       deps += [
         "webui/signin/batch_upload:mojo_bindings",
+        "//chrome/browser/ui/views/profiles:profile_picker_toolbar",
         "//chrome/browser/ui/views/profiles/feature_showcase",
         "//chrome/browser/ui/views/profiles/feature_showcase:metrics",
         "//chrome/browser/ui/webui/feature_showcase",
@@ -2352,10 +2351,6 @@ static_library("ui") {
     sources += [
       "browser_commands_mac.h",
       "browser_commands_mac.mm",
-      "browser_mac.cc",
-      "browser_mac.h",
-      "fullscreen_util_mac.cc",
-      "fullscreen_util_mac.h",
       "views/certificate_viewer_mac_views.mm",
       "views/frame/browser_frame_view_factory_mac.mm",
       "views/frame/browser_frame_view_mac.h",
@@ -2370,6 +2365,8 @@ static_library("ui") {
     ]
 
     deps += [
+      ":browser_mac",
+      ":fullscreen_util_mac",
       "//chrome/browser/apps/app_shim",
       "//chrome/browser/ui/cocoa",
     ]
@@ -2410,7 +2407,6 @@ static_library("ui") {
       "views/certificate_viewer_win.cc",
       "views/frame/browser_caption_button_container_win.cc",
       "views/frame/browser_caption_button_container_win.h",
-      "views/frame/browser_desktop_window_tree_host.h",
       "views/frame/browser_desktop_window_tree_host_win.cc",
       "views/frame/browser_desktop_window_tree_host_win.h",
       "views/frame/browser_frame_view_win.cc",
@@ -2418,10 +2414,6 @@ static_library("ui") {
       "views/frame/browser_native_widget_factory_aura.cc",
       "views/frame/browser_window_property_manager_win.cc",
       "views/frame/browser_window_property_manager_win.h",
-      "views/frame/minimize_button_metrics_win.cc",
-      "views/frame/minimize_button_metrics_win.h",
-      "views/frame/system_menu_insertion_delegate_win.cc",
-      "views/frame/system_menu_insertion_delegate_win.h",
       "views/frame/windows_caption_button.cc",
       "views/frame/windows_caption_button.h",
       "views/frame/windows_taskbar_icon_updater.cc",
@@ -2443,6 +2435,7 @@ static_library("ui") {
       "//chrome/browser/taskbar",
       "//chrome/browser/ui/views:critical_notification_bubble_view",
       "//chrome/browser/ui/views:uninstall_browser_prompt",
+      "//chrome/browser/ui/views/frame:minimize_button_metrics_win",
       "//chrome/browser/win:impl",
       "//components/search_engines",
       "//third_party/wtl",
@@ -2460,7 +2453,6 @@ static_library("ui") {
 
   if (is_linux) {
     sources += [
-      "views/frame/browser_desktop_window_tree_host.h",
       "views/frame/browser_desktop_window_tree_host_linux.cc",
       "views/frame/browser_desktop_window_tree_host_linux.h",
       "views/frame/browser_native_widget_aura_linux.cc",
@@ -2501,16 +2493,11 @@ static_library("ui") {
         [ "//chrome/browser/ui/views/device_signals_consent:impl" ]
   }
   if (enable_webui_certificate_viewer) {
-    sources += [
-      "certificate_dialogs.cc",
-      "certificate_dialogs.h",
-    ]
     deps += [
+      ":certificate_dialogs",
       "//chrome/browser/ui/webui/certificate_viewer",
       "//third_party/boringssl",
     ]
-    allow_circular_includes_from +=
-        [ "//chrome/browser/ui/webui/certificate_viewer" ]
   }
 
   if (is_linux || is_chromeos) {
@@ -2522,8 +2509,6 @@ static_library("ui") {
   if (toolkit_views) {
     sources += [
       "views/autofill/address_bubble_base_view.cc",
-      "views/autofill/address_editor_view.cc",
-      "views/autofill/address_editor_view.h",
       "views/autofill/at_memory_promo_bubble_view.cc",
       "views/autofill/at_memory_promo_bubble_view.h",
       "views/autofill/autofill_bubble_handler_impl.cc",
@@ -2568,8 +2553,6 @@ static_library("ui") {
       "views/autofill/payments/virtual_card_enroll_bubble_views.cc",
       "views/autofill/payments/virtual_card_enroll_bubble_views.h",
       "views/autofill/popup/custom_cursor_suppressor.cc",
-      "views/autofill/popup/password_favicon_loader.cc",
-      "views/autofill/popup/password_favicon_loader.h",
       "views/autofill/popup/popup_at_memory_ai_disclosure_view.cc",
       "views/autofill/popup/popup_at_memory_ai_disclosure_view.h",
       "views/autofill/popup/popup_base_view.cc",
@@ -2611,8 +2594,6 @@ static_library("ui") {
       "views/chrome_views_delegate.h",
       "views/chrome_web_dialog_view.cc",
       "views/chrome_web_dialog_view.h",
-      "views/color_provider_browser_helper.cc",
-      "views/color_provider_browser_helper.h",
       "views/constrained_web_dialog_delegate_views.cc",
       "views/content_setting_bubble_contents.cc",
       "views/content_setting_bubble_contents.h",
@@ -2656,7 +2637,6 @@ static_library("ui") {
       "views/extensions/security_dialog_tracker.cc",
       "views/find_bar_host.cc",
       "views/find_bar_host.h",
-      "views/find_bar_owner.h",
       "views/find_bar_view.cc",
       "views/find_bar_view.h",
       "views/frame/app_menu_button.cc",
@@ -2665,7 +2645,6 @@ static_library("ui") {
       "views/frame/base_tab_strip_region_view.h",
       "views/frame/browser_frame_view.cc",
       "views/frame/browser_frame_view.h",
-      "views/frame/browser_native_widget.h",
       "views/frame/browser_native_widget_factory.cc",
       "views/frame/browser_native_widget_factory.h",
       "views/frame/browser_root_view.cc",
@@ -2693,8 +2672,6 @@ static_library("ui") {
       "views/frame/horizontal_tab_strip_region_view.cc",
       "views/frame/horizontal_tab_strip_region_view.h",
       "views/frame/immersive_mode_controller_factory_views.cc",
-      "views/frame/immersive_mode_controller_stub.cc",
-      "views/frame/immersive_mode_controller_stub.h",
       "views/frame/layout/browser_view_app_layout_impl.cc",
       "views/frame/layout/browser_view_app_layout_impl.h",
       "views/frame/layout/browser_view_layout.cc",
@@ -2704,8 +2681,6 @@ static_library("ui") {
       "views/frame/layout/browser_view_layout_delegate_impl.h",
       "views/frame/layout/browser_view_layout_impl.cc",
       "views/frame/layout/browser_view_layout_impl.h",
-      "views/frame/layout/browser_view_layout_params.cc",
-      "views/frame/layout/browser_view_layout_params.h",
       "views/frame/layout/browser_view_popup_layout_impl.cc",
       "views/frame/layout/browser_view_popup_layout_impl.h",
       "views/frame/layout/browser_view_tabbed_layout_impl.cc",
@@ -2748,7 +2723,6 @@ static_library("ui") {
       "views/frame/vertical_tab_strip_region_view.h",
       "views/frame/web_contents_close_handler.cc",
       "views/frame/web_contents_close_handler.h",
-      "views/frame/web_contents_close_handler_delegate.h",
       "views/global_error_bubble_view.cc",
       "views/global_error_bubble_view.h",
       "views/idle_bubble.cc",
@@ -2805,6 +2779,8 @@ static_library("ui") {
       "views/tabs/hovercard/tab_hover_card_controller.h",
       "views/tabs/new_tab_button.cc",
       "views/tabs/new_tab_button.h",
+      "views/tabs/new_tab_button_menu_model.cc",
+      "views/tabs/new_tab_button_menu_model.h",
       "views/tabs/tab.cc",
       "views/tabs/tab.h",
       "views/tabs/tab_container.cc",
@@ -2883,8 +2859,6 @@ static_library("ui") {
       "views/web_apps/isolated_web_apps/isolated_web_app_installer_view_controller.h",
       "views/web_apps/isolated_web_apps/isolated_web_app_installer_view_impl.cc",
       "views/web_apps/isolated_web_apps/isolated_web_app_installer_view_impl.h",
-      "views/web_apps/isolated_web_apps/isolated_web_app_user_installability_checker.cc",
-      "views/web_apps/isolated_web_apps/isolated_web_app_user_installability_checker.h",
       "views/web_apps/isolated_web_apps/uninstall_sub_app_identity_view.cc",
       "views/web_apps/isolated_web_apps/uninstall_sub_app_identity_view.h",
       "views/web_apps/view_visible_in_active_widget_notifier.cc",
@@ -2920,6 +2894,10 @@ static_library("ui") {
     ]
 
     deps += [
+      ":browser_init_state",
+      ":idle_bubble",
+      ":idle_dialog",
+      ":incognito_clear_browsing_data_dialog_interface",
       "//base",
       "//chrome/browser:resources",
       "//chrome/browser/accessibility",
@@ -2955,9 +2933,11 @@ static_library("ui") {
       "//chrome/browser/ui/tabs/tab_strip_api/tab_strip_model_impl/converters",
       "//chrome/browser/ui/views:bubble_anchor_util_views",
       "//chrome/browser/ui/views:bubble_menu_item_factory",
+      "//chrome/browser/ui/views:color_provider_browser_helper",
       "//chrome/browser/ui/views:confirm_bubble",
       "//chrome/browser/ui/views:device_chooser_content_view",
       "//chrome/browser/ui/views:elevation_icon_setter",
+      "//chrome/browser/ui/views:find_bar_owner",
       "//chrome/browser/ui/views:flying_indicator",
       "//chrome/browser/ui/views:layout_provider_impl",
       "//chrome/browser/ui/views:login_view",
@@ -2976,6 +2956,7 @@ static_library("ui") {
       "//chrome/browser/ui/views/apps:impl",
       "//chrome/browser/ui/views/apps/app_info_dialog",
       "//chrome/browser/ui/views/apps/app_info_dialog:impl",
+      "//chrome/browser/ui/views/autofill:address_editor_view",
       "//chrome/browser/ui/views/autofill:autofill_bubble_utils",
       "//chrome/browser/ui/views/autofill:delete_address_profile_dialog_view",
       "//chrome/browser/ui/views/autofill/payments:autofill_error_dialog_view_native_views",
@@ -2991,6 +2972,7 @@ static_library("ui") {
       "//chrome/browser/ui/views/autofill/payments:wallet_reminder_notice_bubble_view",
       "//chrome/browser/ui/views/autofill/popup",
       "//chrome/browser/ui/views/autofill/popup:lazy_loading_image_view",
+      "//chrome/browser/ui/views/autofill/popup:password_favicon_loader",
       "//chrome/browser/ui/views/autofill/popup:popup_centered_text_view",
       "//chrome/browser/ui/views/autofill/popup:popup_separator_view",
       "//chrome/browser/ui/views/autofill/popup:popup_title_view",
@@ -3010,11 +2992,17 @@ static_library("ui") {
       "//chrome/browser/ui/views/extensions:security_dialog_tracker",
       "//chrome/browser/ui/views/extensions:windows_utils_views",
       "//chrome/browser/ui/views/frame:app_menu_button_observer",
+      "//chrome/browser/ui/views/frame:browser_desktop_window_tree_host",
+      "//chrome/browser/ui/views/frame:browser_native_widget",
+      "//chrome/browser/ui/views/frame:browser_view_layout_params",
       "//chrome/browser/ui/views/frame:caption_button_placeholder_container",
       "//chrome/browser/ui/views/frame:contents_container_outline",
       "//chrome/browser/ui/views/frame:contents_separator",
+      "//chrome/browser/ui/views/frame:immersive_mode_controller_stub",
+      "//chrome/browser/ui/views/frame:opaque_browser_frame_view_layout_delegate",
       "//chrome/browser/ui/views/frame:scrim_view",
       "//chrome/browser/ui/views/frame:shadow",
+      "//chrome/browser/ui/views/frame:web_contents_close_handler_delegate",
       "//chrome/browser/ui/views/frame:windows_icon_painter",
       "//chrome/browser/ui/views/fullscreen_control",
       "//chrome/browser/ui/views/fullscreen_control:impl",
@@ -3087,13 +3075,13 @@ static_library("ui") {
       "//chrome/browser/ui/views/web_apps:web_app_update_identity_view",
       "//chrome/browser/ui/views/web_apps/frame_toolbar:system_app_accessible_name",
       "//chrome/browser/ui/views/web_apps/isolated_web_apps:installer_base",
+      "//chrome/browser/ui/views/web_apps/isolated_web_apps:user_installability_checker",
       "//chrome/browser/ui/views/webauthn",
       "//chrome/browser/ui/views/webid",
       "//chrome/browser/ui/views/zoom",
       "//chrome/browser/ui/webauthn:impl",
       "//chrome/browser/ui/webui/app_service_internals",
       "//chrome/browser/ui/webui/autofill_ml_internals",
-      "//chrome/browser/ui/webui/content_annotator_internals",
       "//chrome/browser/ui/webui/side_panel/customize_chrome",
       "//chrome/browser/ui/window_metadata",
       "//chrome/browser/ui/window_name_prompt",
@@ -3434,16 +3422,14 @@ static_library("ui") {
         "//services/audio/public/cpp",
       ]
     } else {
-      sources += [
-        "views/create_application_shortcut_view.cc",
-        "views/create_application_shortcut_view.h",
-      ]
+      deps += [ "//chrome/browser/ui/views:create_application_shortcut_view" ]
     }
 
     if (is_win) {
-      sources += [
-        "accessibility_util.h",
-        "views/chrome_views_delegate_win.cc",
+      sources += [ "views/chrome_views_delegate_win.cc" ]
+      deps += [
+        ":accessibility_util",
+        "//chrome/browser/ui/views/frame:system_menu_insertion_delegate_win",
       ]
     }
 
@@ -3463,19 +3449,13 @@ static_library("ui") {
     }
 
     if (is_chromeos) {
-      sources += [
-        "views/web_apps/isolated_web_apps/multi_capture_notification_details_view.cc",
-        "views/web_apps/isolated_web_apps/multi_capture_notification_details_view.h",
-      ]
+      deps += [ "//chrome/browser/ui/views/web_apps/isolated_web_apps:multi_capture_notification_details_view" ]
     } else {
       sources += [
-        "idle_dialog.h",
         "views/frame/opaque_browser_frame_view.cc",
         "views/frame/opaque_browser_frame_view.h",
         "views/frame/opaque_browser_frame_view_layout.cc",
         "views/frame/opaque_browser_frame_view_layout.h",
-        "views/frame/opaque_browser_frame_view_layout_delegate.cc",
-        "views/frame/opaque_browser_frame_view_layout_delegate.h",
         "views/screen_capture_notification_ui_views.cc",
       ]
       deps += [
@@ -3486,11 +3466,6 @@ static_library("ui") {
         "//ui/views/window/vector_icons",
       ]
       allow_circular_includes_from += [
-        # Circular dependency exists because the following header is not yet
-        # componentized: c/b/ui/idle_dialog.h (IdleDialogView implements
-        # IdleDialog::Show and includes idle_dialog.h)
-        "//chrome/browser/ui/views/policy:idle_dialog",
-
         # Circular dependency exists because the following headers are not yet
         # componentized:
         # - c/b/ui/browser.h
@@ -3618,8 +3593,8 @@ static_library("ui") {
     ]
 
     if (is_mac) {
-      sources += [ "views/javascript_app_modal_event_blocker_mac.h" ]
-    } else {
+      deps +=
+          [ "//chrome/browser/ui/views:javascript_app_modal_event_blocker_mac" ]
     }
 
     if (use_aura) {
@@ -3799,7 +3774,10 @@ source_set("layout_constants") {
   }
 
   if (is_chromeos) {
-    deps += [ "//chromeos/constants" ]
+    deps += [
+      ":platform_keys_certificate_selector_chromeos",
+      "//chromeos/constants",
+    ]
   }
 }
 
@@ -3855,6 +3833,23 @@ source_set("ui_features") {
 }
 
 if (!is_android) {
+  source_set("browser_init_state") {
+    public = [ "browser_init_state.h" ]
+    sources = [ "browser_init_state.cc" ]
+    public_deps = [
+      "//base",
+      "//chrome/browser/ui/browser_window:create_browser_window",
+      "//components/tab_groups",
+      "//ui/base/mojom:ui_base_types",
+      "//ui/base/unowned_user_data",
+      "//ui/gfx/geometry",
+    ]
+    deps = [
+      "//build:buildflag_header_h",
+      "//chrome/browser/ui/browser_window",
+    ]
+  }
+
   source_set("browser_tab_strip") {
     sources = [
       "browser_tab_strip_model_delegate.h",
@@ -3869,6 +3864,19 @@ if (!is_android) {
       "//chrome/browser/ui/tabs:tab_strip",
       "//chrome/browser/ui/tabs:tabs_public",
       "//ui/base/unowned_user_data",
+    ]
+  }
+
+  source_set("incognito_clear_browsing_data_dialog_interface") {
+    public = [ "incognito_clear_browsing_data_dialog_interface.h" ]
+  }
+
+  source_set("idle_bubble") {
+    public = [ "idle_bubble.h" ]
+    public_deps = [
+      ":idle_dialog",
+      "//base",
+      "//ui/views",
     ]
   }
 
@@ -4017,7 +4025,6 @@ static_library("test_support") {
       "//chrome/browser/ui/content_settings:test_support",
       "//chrome/browser/ui/passwords:test_support_ui",
       "//chrome/browser/ui/views/toolbar",
-      "//chrome/test:test_support_ui",
       "//components/embedder_support",
       "//components/input",
       "//components/media_message_center",
@@ -4041,6 +4048,14 @@ static_library("browser_element_identifiers") {
 }
 
 if (toolkit_views) {
+  source_set("idle_dialog") {
+    public = [ "idle_dialog.h" ]
+    public_deps = [
+      "//base",
+      "//ui/gfx",
+    ]
+  }
+
   source_set("toolbar_controller_util") {
     sources = [
       "toolbar_controller_util.cc",
@@ -4061,6 +4076,7 @@ if (toolkit_views) {
       "//base",
       "//content/public/browser",
       "//ui/base/metadata",
+      "//ui/base/unowned_user_data",
       "//ui/views",
     ]
   }
@@ -4132,6 +4148,7 @@ if (toolkit_views) {
       "//chrome/test:test_support",
       "//components/no_state_prefetch/browser",
       "//components/split_tabs",
+      "//components/tabs:public",
       "//content/public/browser",
       "//content/public/common",
       "//content/test:test_support",
@@ -4155,6 +4172,7 @@ if (toolkit_views) {
       "//chrome/common",
       "//chrome/test:test_support",
       "//components/prefs",
+      "//components/tabs:public",
       "//content/public/browser",
       "//content/public/common",
       "//content/test:test_support",
@@ -4181,6 +4199,12 @@ if (use_aura) {
   }
 }
 
+if (is_win) {
+  source_set("accessibility_util") {
+    public = [ "accessibility_util.h" ]
+  }
+}
+
 source_set("status_bubble") {
   public = [ "status_bubble.h" ]
   public_deps = [ "//url" ]
@@ -4189,4 +4213,85 @@ source_set("status_bubble") {
 source_set("storage_pressure_bubble") {
   public = [ "storage_pressure_bubble.h" ]
   public_deps = [ "//url" ]
+}
+
+if (enable_webui_certificate_viewer) {
+  source_set("certificate_dialogs") {
+    public = [ "certificate_dialogs.h" ]
+    sources = [ "certificate_dialogs.cc" ]
+    public_deps = [
+      "//chrome/common:buildflags",
+      "//net",
+      "//third_party/boringssl",
+      "//ui/gfx",
+      "//ui/shell_dialogs",
+    ]
+    deps = [
+      "//base",
+      "//chrome/app:generated_resources",
+      "//chrome/browser/download",
+      "//chrome/browser/ui/select_file_policy",
+      "//content/public/browser",
+      "//crypto",
+      "//ui/base",
+      "//url",
+    ]
+  }
+}
+
+source_set("screen_capture_notification_ui") {
+  public = [ "screen_capture_notification_ui.h" ]
+  public_deps = [
+    "//base",
+    "//chrome/browser/media/webrtc:media_stream_ui",
+  ]
+}
+
+if (is_chromeos) {
+  source_set("browser_commands_chromeos") {
+    public = [ "browser_commands_chromeos.h" ]
+    sources = [ "browser_commands_chromeos.cc" ]
+    public_deps = [ "//base" ]
+    deps = [ "//ash" ]
+  }
+
+  source_set("platform_keys_certificate_selector_chromeos") {
+    public = [ "platform_keys_certificate_selector_chromeos.h" ]
+    public_deps = [
+      "//base",
+      "//net",
+    ]
+  }
+}
+
+if (is_mac) {
+  source_set("fullscreen_util_mac") {
+    public = [ "fullscreen_util_mac.h" ]
+    sources = [ "fullscreen_util_mac.cc" ]
+    public_deps = [ "//base" ]
+    deps = [
+      "//chrome/browser/profiles:profile",
+      "//chrome/browser/ui/browser_window",
+      "//chrome/browser/ui/exclusive_access",
+      "//chrome/browser/ui/web_applications",
+      "//chrome/common:constants",
+      "//components/prefs",
+      "//ui/base",
+    ]
+  }
+
+  source_set("browser_mac") {
+    public = [ "browser_mac.h" ]
+    sources = [ "browser_mac.cc" ]
+    public_deps = [
+      ":chrome_pages",
+      "//base",
+      "//ui/gfx",
+    ]
+    deps = [
+      "//chrome/browser/profiles:profile",
+      "//chrome/browser/ui/browser_window:create_browser_window",
+      "//ui/base",
+    ]
+  }
 }

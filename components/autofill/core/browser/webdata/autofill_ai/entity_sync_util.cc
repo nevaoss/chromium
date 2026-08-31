@@ -646,10 +646,10 @@ GetShipmentAttributesFromSpecifics(const sync_pb::Shipment& shipment,
   AddDateAttribute(kShipmentShippedDate, shipment.shipping_date(), attributes);
   AddAttribute(kShipmentCarrierName, shipment.carrier_name(), attributes);
   AddAttribute(kShipmentCarrierDomain, shipment.carrier_domain(), attributes);
-  AddAttribute(
-      kShipmentOrderIds,
-      base::JoinString(base::ToVector(shipment.associated_order_ids()), ", "),
-      attributes);
+  AddAttribute(kShipmentMerchantName, shipment.merchant_name(), attributes);
+  AddAttribute(kShipmentProductNames,
+               base::JoinString(base::ToVector(shipment.product_names()), ", "),
+               attributes);
   FinalizeEntityAttributes(EntityType(EntityTypeName::kShipment),
                            serialized_metadata, attributes);
   return attributes;
@@ -675,17 +675,18 @@ sync_pb::AutofillValuableSpecifics GetShipmentSpecifics(
                             shipment);
   SET_OR_CLEAR_STRING_FIELD(entity, kShipmentCarrierDomain, carrier_domain,
                             shipment);
+  SET_OR_CLEAR_STRING_FIELD(entity, kShipmentMerchantName, merchant_name,
+                            shipment);
   // Best-effort reversal of `GetShipmentAttributesFromSpecifics()`'s
   // JoinString().
   if (base::optional_ref<const AttributeInstance> attr =
-          entity.attribute(AttributeType(kShipmentOrderIds))) {
+          entity.attribute(AttributeType(kShipmentProductNames))) {
     for (std::string_view name : base::SplitStringPiece(
              base::UTF16ToUTF8(attr->GetCompleteRawInfo()), ", ",
              base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY)) {
-      shipment.add_associated_order_ids(std::string(name));
+      shipment.add_product_names(std::string(name));
     }
   }
-
   *specifics.mutable_serialized_chrome_valuables_metadata() =
       AnyWrapProto(SerializeChromeValuablesMetadata(entity));
   return specifics;

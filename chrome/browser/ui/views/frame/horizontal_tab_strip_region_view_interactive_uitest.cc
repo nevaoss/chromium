@@ -21,9 +21,12 @@
 #include "chrome/browser/ui/views/tabs/new_tab_button.h"
 #include "chrome/browser/ui/views/tabs/tab_strip.h"
 #include "chrome/common/chrome_features.h"
+#include "chrome/common/pref_names.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/interaction/interactive_browser_test.h"
+#include "components/prefs/pref_service.h"
 #include "content/public/test/browser_test.h"
+#include "ui/base/test/ui_controls.h"
 #include "ui/base/ui_base_switches.h"
 #include "ui/events/event_constants.h"
 #include "ui/gfx/animation/animation_test_api.h"
@@ -318,18 +321,13 @@ class HorizontalTabStripRegionViewNewInteractiveUiTest
         browser_view->tab_strip_view());
   }
 
-  views::View* scroll_button_container() {
-    return horizontal_tab_strip_region_view()
-               ? horizontal_tab_strip_region_view()
-                     ->scroll_button_container_for_testing()
-               : nullptr;
-  }
   TabStripView* tab_strip_view() {
-    auto* const browser_view = BrowserView::GetBrowserViewForBrowser(browser());
-    auto* const region_view =
-        views::AsViewClass<HorizontalTabStripRegionViewNew>(
-            browser_view->tab_strip_view());
-    return views::AsViewClass<TabStripView>(region_view->GetTabStripView());
+    return views::AsViewClass<TabStripView>(
+        horizontal_tab_strip_region_view()->GetTabStripView());
+  }
+
+  views::View* scroll_button_container() {
+    return tab_strip_view()->GetScrollButtonContainer();
   }
 
   // Adds unpinned tabs until the unpinned tab container is scrollable. Will
@@ -505,6 +503,53 @@ IN_PROC_BROWSER_TEST_F(HorizontalTabStripRegionViewNewInteractiveUiTest,
       PressButton(TabScrollButtonContainer::kStartScrollButton),
       WaitForState(kFirstTabVisibleObserver, true),
       WaitForState(kLastTabVisibleObserver, false));
+}
+
+IN_PROC_BROWSER_TEST_F(HorizontalTabStripRegionViewNewInteractiveUiTest,
+                       ScrollButtonsRespectPinnedPref) {
+  AddTabsUntilScrollable(10);
+
+  RunTestSequence(
+      EnsurePresent(kTabStripRegionElementId),
+      WaitForShow(TabScrollButtonContainer::kTabScrollButtonContainer),
+      Do([this]() {
+        browser()->GetProfile()->GetPrefs()->SetBoolean(
+            prefs::kTabScrollButtonsPinnedToTabstrip, false);
+      }),
+      WaitForHide(TabScrollButtonContainer::kTabScrollButtonContainer),
+      Do([this]() {
+        browser()->GetProfile()->GetPrefs()->SetBoolean(
+            prefs::kTabScrollButtonsPinnedToTabstrip, true);
+      }),
+      WaitForShow(TabScrollButtonContainer::kTabScrollButtonContainer));
+}
+
+// Disabled on macOS as context menu kombucha tests are flaky on that platform.
+#if BUILDFLAG(IS_MAC)
+#define MAYBE_UnpinScrollButtonsFromContextMenu \
+  DISABLED_UnpinScrollButtonsFromContextMenu
+#else
+#define MAYBE_UnpinScrollButtonsFromContextMenu \
+  UnpinScrollButtonsFromContextMenu
+#endif
+IN_PROC_BROWSER_TEST_F(HorizontalTabStripRegionViewNewInteractiveUiTest,
+                       MAYBE_UnpinScrollButtonsFromContextMenu) {
+  AddTabsUntilScrollable(10);
+
+  RunTestSequence(
+      EnsurePresent(kTabStripRegionElementId),
+      WaitForShow(TabScrollButtonContainer::kTabScrollButtonContainer),
+      MoveMouseTo(TabScrollButtonContainer::kStartScrollButton),
+      ClickMouse(ui_controls::RIGHT),
+      WaitForShow(TabScrollButtonContainer::kUnpinMenuItem),
+      SelectMenuItem(TabScrollButtonContainer::kUnpinMenuItem),
+      WaitForHide(TabScrollButtonContainer::kTabScrollButtonContainer),
+      CheckResult(
+          [this]() {
+            return browser()->GetProfile()->GetPrefs()->GetBoolean(
+                prefs::kTabScrollButtonsPinnedToTabstrip);
+          },
+          false));
 }
 
 IN_PROC_BROWSER_TEST_F(HorizontalTabStripRegionViewNewRTLInteractiveUiTest,

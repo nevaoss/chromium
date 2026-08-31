@@ -261,6 +261,7 @@ bool HasAutofillSuggestionsForA11y(SuggestionType type) {
     case SuggestionType::kAutofillAiOtherOrders:
     case SuggestionType::kAutofillAiOtherShipments:
     case SuggestionType::kAutofillAiPrivateInferenceNotice:
+    case SuggestionType::kAutofillAiSourceAttribution:
     case SuggestionType::kBackupPasswordEntry:
     case SuggestionType::kBnplEntry:
     case SuggestionType::kBnplFootnote:
@@ -364,6 +365,7 @@ bool AutofillExternalDelegate::IsAutofillAndFirstLayerSuggestionId(
     case SuggestionType::kAutofillAiOtherOrders:
     case SuggestionType::kAutofillAiOtherShipments:
     case SuggestionType::kAutofillAiPrivateInferenceNotice:
+    case SuggestionType::kAutofillAiSourceAttribution:
     case SuggestionType::kBackupPasswordEntry:
     case SuggestionType::kBnplEntry:
     case SuggestionType::kBnplFootnote:
@@ -451,7 +453,8 @@ AutofillTriggerSource AutofillExternalDelegate::GetTriggerSource() const {
 
 void AutofillExternalDelegate::OnSuggestionsReturned(
     const FormFieldData& trigger_field,
-    const std::vector<Suggestion>& input_suggestions) {
+    const std::vector<Suggestion>& input_suggestions,
+    std::u16string prefilled_query) {
   // These are guards against outdated suggestion results.
   if (trigger_field.global_id() != last_query_.field_id) {
     return;
@@ -463,7 +466,7 @@ void AutofillExternalDelegate::OnSuggestionsReturned(
 #endif
   AttemptToDisplayAutofillSuggestions(
       input_suggestions, trigger_source_, trigger_field,
-      AutofillSuggestionsIgnoreFocusLoss(false));
+      AutofillSuggestionsIgnoreFocusLoss(false), std::move(prefilled_query));
 }
 
 std::optional<AutofillProfile>
@@ -489,7 +492,8 @@ void AutofillExternalDelegate::AttemptToDisplayAutofillSuggestions(
     std::vector<Suggestion> suggestions,
     AutofillSuggestionTriggerSource trigger_source,
     base::optional_ref<const FormFieldData> trigger_field,
-    AutofillSuggestionsIgnoreFocusLoss ignore_focus_loss) {
+    AutofillSuggestionsIgnoreFocusLoss ignore_focus_loss,
+    std::u16string prefilled_query) {
   const bool is_update = !trigger_field.has_value();
   CHECK(!*ignore_focus_loss || is_update)
       << "Ignoring focus loss is only supported for updates";
@@ -592,7 +596,7 @@ void AutofillExternalDelegate::AttemptToDisplayAutofillSuggestions(
                               : trigger_field->bounds(),
       trigger_field->text_direction(), std::move(suggestions), trigger_source_,
       trigger_field->form_control_ax_id(), anchor_type, show_tabbed_popup,
-      prefer_prev_arrow_side_on_suggestions_update);
+      prefer_prev_arrow_side_on_suggestions_update, std::move(prefilled_query));
   manager_->client().ShowAutofillSuggestions(open_args, GetWeakPtr());
 }
 
@@ -835,6 +839,7 @@ void AutofillExternalDelegate::DidSelectSuggestion(
     case SuggestionType::kAutofillAiOtherOrders:
     case SuggestionType::kAutofillAiOtherShipments:
     case SuggestionType::kAutofillAiPrivateInferenceNotice:
+    case SuggestionType::kAutofillAiSourceAttribution:
     case SuggestionType::kBnplEntry:
     case SuggestionType::kComposeDisable:
     case SuggestionType::kComposeGoToSettings:
@@ -1189,6 +1194,10 @@ void AutofillExternalDelegate::DidAcceptSuggestion(
       // TODO(crbug.com/541184575): Implement suppression/removal of the entity.
       NOTIMPLEMENTED();
       break;
+    case SuggestionType::kAutofillAiSourceAttribution:
+      // TODO(crbug.com/541184575): Implement navigation to source URL.
+      NOTIMPLEMENTED();
+      break;
     case SuggestionType::kAccountStoragePasswordEntry:
     case SuggestionType::kAllSavedPasswordsEntry:
     case SuggestionType::kAtMemoryAiDisclosure:
@@ -1318,6 +1327,7 @@ bool AutofillExternalDelegate::RemoveSuggestion(const Suggestion& suggestion) {
     case SuggestionType::kAutocompleteAtMemoryButton:
     case SuggestionType::kAutofillAiOtherOrders:
     case SuggestionType::kAutofillAiOtherShipments:
+    case SuggestionType::kAutofillAiSourceAttribution:
     case SuggestionType::kBackupPasswordEntry:
     case SuggestionType::kBnplEntry:
     case SuggestionType::kBnplFootnote:
@@ -1411,16 +1421,8 @@ void AutofillExternalDelegate::ClearPreviewedForm() {
 }
 
 FillingProduct AutofillExternalDelegate::GetMainFillingProduct() const {
-  if (IsAtMemoryTriggerSource(trigger_source_)) {
-    return FillingProduct::kAtMemory;
-  }
-  for (SuggestionType type : shown_suggestion_types_) {
-    if (FillingProduct product = GetFillingProductFromSuggestionType(type);
-        product != FillingProduct::kNone) {
-      return product;
-    }
-  }
-  return FillingProduct::kNone;
+  return GetFillingProductFromSuggestionTypes(shown_suggestion_types_,
+                                              trigger_source_);
 }
 
 base::WeakPtr<AutofillExternalDelegate> AutofillExternalDelegate::GetWeakPtr() {

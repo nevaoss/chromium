@@ -39,7 +39,7 @@
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
-#include "chrome/browser/ui/browser.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/navigator/browser_navigator.h"
 #include "chrome/browser/ui/navigator/browser_navigator_params.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
@@ -79,6 +79,7 @@
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
 #include "content/public/test/download_test_observer.h"
+#include "content/public/test/hit_test_region_observer.h"
 #include "content/public/test/navigation_handle_observer.h"
 #include "content/public/test/prerender_test_util.h"
 #include "content/public/test/test_frame_navigation_observer.h"
@@ -779,6 +780,8 @@ IN_PROC_BROWSER_TEST_P(ExecutionEngineDropdownCaptureOopifBrowserTest,
   content::RenderFrameHost* iframe =
       ChildFrameAt(web_contents()->GetPrimaryMainFrame(), 0);
   ASSERT_NE(iframe, nullptr);
+  EXPECT_TRUE(WaitForRenderFrameReady(iframe));
+  content::WaitForHitTestData(iframe);
 
   // Now click on the <select> in the out of process iframe, and then look for
   // red pixels.
@@ -851,7 +854,7 @@ class ExecutionEngineFileSystemAccessApiBrowserTest
     return result;
   }
 
-  bool IsUsageIndicatorVisible(Browser* browser) {
+  bool IsUsageIndicatorVisible(BrowserWindowInterface* browser) {
     auto* browser_view = BrowserView::GetBrowserViewForBrowser(browser);
     auto* provider = browser_view->toolbar_button_provider();
     auto* icon_view = page_actions::GetIconLabelBubbleViewForTesting(
