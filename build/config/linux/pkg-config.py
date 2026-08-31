@@ -58,22 +58,15 @@ def SetConfigPath(options):
         print("You must specify an architecture via -a if using a sysroot.")
         sys.exit(1)
 
-<<<<<<< HEAD
-  libdir = sysroot + '/usr/' + options.system_libdir + '/pkgconfig'
-  libdir += ':' + sysroot + '/usr/share/pkgconfig'
-  os.environ['PKG_CONFIG_LIBDIR'] = libdir
-  # PKG_CONFIG_SYSROOT_DIR can be empty but it added as workaround for webos
-  # wayland-webos-client.pc package which has one from lib paths empty (-L)
-  # that is incorrect for the parsing. The workaround is correct for all
-  # toolchains (target, host and v8-snapshot).
-  os.environ['PKG_CONFIG_SYSROOT_DIR'] = sysroot
-  return libdir
-=======
     libdir = sysroot + '/usr/' + options.system_libdir + '/pkgconfig'
     libdir += ':' + sysroot + '/usr/share/pkgconfig'
     os.environ['PKG_CONFIG_LIBDIR'] = libdir
+    # PKG_CONFIG_SYSROOT_DIR can be empty but it added as workaround for webos
+    # wayland-webos-client.pc package which has one from lib paths empty (-L)
+    # that is incorrect for the parsing. The workaround is correct for all
+    # toolchains (target, host and v8-snapshot).
+    os.environ['PKG_CONFIG_SYSROOT_DIR'] = sysroot
     return libdir
->>>>>>> 153.0.8002.0~1
 
 
 def GetPkgConfigPrefixToStrip(options, args):
