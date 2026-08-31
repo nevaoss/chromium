@@ -7,38 +7,46 @@ on:
   # pull_request_review:
   # pull_request:
   workflow_dispatch:
-  
+
 jobs:
   test-pc-frt:
-    name: test-pc-frt
-    if: ${{ ! startsWith(github.ref_name, 'rolling/')
-            && github.ref_name != 'neva-main-rolling' }}
+    name: FRT tests for PC build
+    if: >-
+      github.ref_name != 'neva-main-rolling' &&
+      (!startsWith(github.ref_name, 'rolling/') ||
+      endsWith(github.ref_name, '/merge-rolling-in-main'))
     runs-on: self-hosted
+
     env:
       CI_TOKEN: ${{ secrets.CI_TOKEN }}
 
     steps:
-      - uses: actions/checkout@v6
+      - name: Check out CI repository
+        uses: actions/checkout@v6
         with:
           repository: nevaoss/ci
           ref: main
+
       - name: Run FRT tests for PC target
-        run: |
-          ./test-pc-frt.py
+        run: ./test-pc-frt.py
 
   rolling-test-pc-frt:
-    name: rolling-test-pc-frt
-    if: ${{ startsWith(github.ref_name, 'rolling/')
-            || github.ref_name == 'neva-main-rolling' }}
+    name: FRT test for PC build
+    if: >-
+      (github.ref_name == 'neva-main-rolling' ||
+      startsWith(github.ref_name, 'rolling/')) &&
+      !endsWith(github.ref_name, '/merge-rolling-in-main')
     runs-on: self-hosted
+
     env:
       CI_TOKEN: ${{ secrets.CI_TOKEN }}
 
     steps:
-      - uses: actions/checkout@v6
+      - name: Check out CI repository
+        uses: actions/checkout@v6
         with:
           repository: nevaoss/ci
           ref: main
-      - name: Run FRT tests for PC target
-        run: |
-          ./rolling/test-pc-frt.py
+
+      - name: Run FRT tests for rolling PC target
+        run: ./rolling/test-pc-frt.py
