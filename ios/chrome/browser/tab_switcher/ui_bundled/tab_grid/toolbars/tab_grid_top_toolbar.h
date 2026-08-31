@@ -8,7 +8,6 @@
 #import <UIKit/UIKit.h>
 
 #import "ios/chrome/browser/keyboard/ui_bundled/key_command_actions.h"
-#import "ios/chrome/browser/keyboard/ui_bundled/responder_chaining.h"
 #import "ios/chrome/browser/tab_switcher/ui_bundled/tab_grid/tab_grid_paging.h"
 
 @class LayoutGuideCenter;
@@ -30,7 +29,7 @@
 //   Tab Groups page: [                   PageControl             Done]
 //   Remote page:     [                   PageControl             Done]
 //   Selection mode:  [SelectAll        SelectedTabsCount         Done]
-@interface TabGridTopToolbar : UIToolbar <KeyCommandActions, ResponderChaining>
+@interface TabGridTopToolbar : UIToolbar <KeyCommandActions>
 
 // These components are publicly available to allow the user to set their
 // contents, visibility and actions.

@@ -33,6 +33,7 @@
 <translation id="1290883685122687410">設定錯誤：<ph name="METAINSTALLER_EXIT_CODE" />。<ph name="WINDOWS_ERROR" /></translation>
 <translation id="1302523850133262269">請稍候，Chrome 正在安裝最新的系統更新。</translation>
 <translation id="1330562121671411446">偵測語言</translation>
+<translation id="1333654552732143316">啟動 Chrome</translation>
 <translation id="1341711321000856656">您可切換查看其他 Chrome 個人檔案的密碼</translation>
 <translation id="1343830902827845050">登入 Chrome</translation>
 <translation id="1356661055722410047">新功能！你可翻譯畫面上的文字和圖片</translation>
@@ -81,6 +82,7 @@
 <translation id="1698376642261615901">Google Chrome 瀏覽器開啟網頁和執行應用程式的速度奇快無比！除了執行速度迅速、穩定且容易使用之外，內置防護機制還可讓您安心瀏覽網頁，無需擔心受到網絡釣魚與惡意軟件的威脅。</translation>
 <translation id="1713301662689114961">{0,plural, =1{Chrome 將於 1 小時後重新啟動}other{Chrome 將於 # 小時後重新啟動}}</translation>
 <translation id="1722488837206509557">這樣你就能選取可用裝置，並在這些裝置上顯示內容。</translation>
+<translation id="1724094881572874997">為確保你在 Chrome 上的工作成果安全，你的機構將可在你登入 Chrome 時查看或管理特定資料。</translation>
 <translation id="177180974022074201">試用 Chrome 版 Gemini</translation>
 <translation id="1786003790898721085">請確保您已在 <ph name="TARGET_DEVICE_NAME" /> 上登入 Chrome，然後再傳送一次。</translation>
 <translation id="1786044937610313874">在 Chrome 中開啟捷徑</translation>
@@ -200,6 +202,7 @@
 <translation id="2969728957078202736"><ph name="PAGE_TITLE" /> - 網絡登入 - Chrome</translation>
 <translation id="2970681950995291301">如要從 Chrome 中移除 Google 帳戶，請前往「設定」頁面登出 Chrome</translation>
 <translation id="2976869732253036751">在手機上透過 Chrome 接收價格追蹤通知</translation>
+<translation id="2985091279808606502">Chrome 需要區域網絡權限，才能執行此網站要求的功能</translation>
 <translation id="2991167882679440829">你儲存在 Google 帳戶的密碼和其他 Chrome 資料，將會從這部裝置移除。如要再次在 Chrome 中使用這些資料，請重新登入。</translation>
 <translation id="2994465299455873643">提供加密服務，以及安全復原 <ph name="BROWSER_NAME" /> 的方式 (如果已過期)。如果停用此服務，<ph name="BROWSER_NAME" /> 可能會無法存取已加密的資料，而且 <ph name="BROWSER_NAME" /> 可能無法自行復原。</translation>
 <translation id="3003694935412297923">所有工作</translation>
@@ -262,6 +265,7 @@
 <translation id="3595784445906693824">要在新個人檔案中登入 Chrome 嗎？</translation>
 <translation id="3596080736082218006">{COUNT,plural, =0{管理員要求您重新啟動 Chrome，以套用更新}=1{管理員要求您重新啟動 Chrome，以套用更新。您的無痕式視窗不會重新開啟。}other{管理員要求您重新啟動 Chrome，以套用更新。您的 # 個無痕式視窗不會重新開啟。}}</translation>
 <translation id="3597003331831379823">無法按更高權限執行設定。<ph name="METAINSTALLER_ERROR" /></translation>
+<translation id="3598673391539778844">在系統列顯示 Chrome 版 Gemini</translation>
 <translation id="3622716124581627104">識別物件或地點，並複製或翻譯文字。使用「Google 智能鏡頭」時，系統會向 Google 傳送頁面的螢幕截圖。<ph name="LEARN_MORE" /></translation>
 <translation id="3622797965165704966">無論是登入 Google 帳戶使用 Chrome，還是以 Google 帳戶使用共用電腦，現在都更輕而易舉。</translation>
 <translation id="3635073343384702370">儲存密碼時，Chrome 可檢查你的密碼</translation>
@@ -316,7 +320,6 @@
 <translation id="4149882025268051530">安裝程式無法解壓縮封存檔案，請再次下載 Google Chrome。</translation>
 <translation id="415112847282352845">如要在所有裝置上使用你的地址和其他資料，請登入 Chrome。登入後，此地址就會儲存至 Google 帳戶。</translation>
 <translation id="4153934450158521343">Chrome 即將關閉並刪除資料</translation>
-<translation id="4159985264221160808">為確保你在 Chrome 上的工作成果安全，你的機構將可查看或管理特定資料</translation>
 <translation id="4173512894976930765">網站可能會正常運作。關閉所有 Chrome 視窗後，系統會將你登出所有網站，但如果你已登入 Chrome，Google 帳戶就會維持登入狀態。</translation>
 <translation id="4175922240926474352">由於此網站未使用安全連線，且檔案可能已被篡改，因此 Chrome 已禁止下載</translation>
 <translation id="4191857738314598978">{0,plural, =1{請在 1 天內重新啟動 Chrome}other{請在 # 天內重新啟動 Chrome}}</translation>
@@ -347,7 +350,6 @@
 <translation id="4437295824090654417">與 Chrome 版 Gemini 分享此文件即可撮要文件內容並提出後續問題</translation>
 <translation id="4450664632294415862">Chrome - 網絡登入 - <ph name="PAGE_TITLE" /></translation>
 <translation id="4458462641685292929">Google Chrome 正在執行另一項操作，請稍後再試。</translation>
-<translation id="4459234553906210702">「廣告評估」允許您瀏覽的網站向 Chrome 要求資料，以便評估廣告的效益。「廣告評估」會透過盡量減少在網站之間傳送的資料，從而限制跨網站追蹤功能。</translation>
 <translation id="4493028449971051158">啟動錯誤：請以管理員身分執行安裝程式。</translation>
 <translation id="4501471624619070934">由於此國家/地區有存取限制，因此無法安裝。</translation>
 <translation id="4571503333518166079">前往 Chrome 通知設定</translation>
@@ -380,7 +382,6 @@
 <translation id="4885446229353981848">總是顯示 Google 智能鏡頭捷徑</translation>
 <translation id="4891791193823137474">讓 Google Chrome 在背景執行</translation>
 <translation id="4895437082222824641">在 Chrome 新分頁中開啟連結(&amp;T)</translation>
-<translation id="4896867431081882115">將 Chrome 設定為預設瀏覽器，即可輕鬆存取你熟悉、喜愛和信任的功能。Chrome 會固定在工作列，方便你快速取用。</translation>
 <translation id="4904953848704395458">使用鍵盤快速鍵開啟 Chrome 版 Gemini。</translation>
 <translation id="4918086044614829423">接受</translation>
 <translation id="4918844574251943176">已複製圖片</translation>
@@ -417,6 +418,7 @@
 <translation id="521447420733633466">如果您與親朋好友共用裝置，每人都能各自瀏覽網頁，並按需求設定 Chrome</translation>
 <translation id="5234764350956374838">關閉</translation>
 <translation id="5239627039202700673">隨時使用 Chrome 開啟訊息、文件和其他應用程式中的連結</translation>
+<translation id="524751727772074981">隨時隨地向 Chrome 版 Gemini 提問</translation>
 <translation id="5251420635869119124">以訪客身分使用 Chrome 不會留下任何記錄。</translation>
 <translation id="5271833978500241046">在 Chrome 中與其他 Gemini 功能一併使用</translation>
 <translation id="5286907366254680517">偵測到</translation>
@@ -722,6 +724,7 @@ Google Chrome 無法復原您的設定。</translation>
 <translation id="8113883687556086139">請驗證你的身分，以在帳戶 <ph name="ACCOUNT_EMAIL" /> 中使用及儲存 Chrome 資料</translation>
 <translation id="8115695070094288807">自訂 Chrome…</translation>
 <translation id="8118331347066725040">提供你對「智能鏡頭」搜尋功能的意見</translation>
+<translation id="812930250799242837">已使用<ph name="USER_NAME" />的身分登入，Google 會員。開啟帳戶選單</translation>
 <translation id="8129812357326543296">關於 Google Chrome(&amp;G)</translation>
 <translation id="813913629614996137">正在初始化…</translation>
 <translation id="8162006532256575008">在不登入帳戶的情況下使用 Chrome</translation>
@@ -744,6 +747,7 @@ Google Chrome 無法復原您的設定。</translation>
 <translation id="8367705492654390392">發問</translation>
 <translation id="8367950957770994118">需要時快速開啟 Chrome 版 Gemini</translation>
 <translation id="8370517070665726704">版權所有 <ph name="YEAR" /> Google LLC。保留所有權利。</translation>
+<translation id="8370748943308169953">用嚟以 <ph name="USER_NAME" /> 登入 Chrome 嘅二維碼</translation>
 <translation id="8377158135256176353">切換 Chrome Canary 版 Gemini</translation>
 <translation id="8387459386171870978">繼續使用 Chrome</translation>
 <translation id="8394720698884623075">使用儲存在 Chrome 中的不安全網站清單來檢查網址</translation>
@@ -755,6 +759,7 @@ Google Chrome 無法復原您的設定。</translation>
 
 你必須刪除部分書籤，才能將新書籤儲存至帳戶。如果你現在登出，未儲存的書籤將會刪除。</translation>
 <translation id="8458117863387545390">在手機下載 Chrome</translation>
+<translation id="848851325211467878">已使用<ph name="USER_NAME" /> (<ph name="USER_EMAIL" />) 的身分登入，Google 會員。開啟帳戶選單</translation>
 <translation id="8496177819998570653">Google 密碼管理工具(&amp;A)</translation>
 <translation id="8498858610309223613">Google Chrome 剛套用了特別的安全性更新。請立即重新啟動，我們將會還原您的分頁。</translation>
 <translation id="8521348052903287641">允許 mDNS 流量的 Google Chrome 開發人員版輸入規則。</translation>
@@ -790,6 +795,7 @@ Google Chrome 無法復原您的設定。</translation>
 <translation id="8821043148920470810">如要取得日後的 Google Chrome 更新，您需要使用 Windows 10 或以上版本。此電腦目前版本為 Windows 7。</translation>
 <translation id="8823341990149967727">Chrome 版本過舊</translation>
 <translation id="8834965163890861871">Google Chrome 正在嘗試編輯密碼。如果您同意，請輸入 Windows 密碼。</translation>
+<translation id="8841151363570555833">在 Mac 選單列顯示 Chrome 版 Gemini</translation>
 <translation id="8851180723659088381">{NUM_EXTENSIONS,plural, =1{Chrome 建議你移除此擴充程式}other{Chrome 建議你移除這些擴充程式}}</translation>
 <translation id="8862326446509486874">您沒有在系統層級進行安裝的權限，請以管理員的身分執行安裝程式。</translation>
 <translation id="8865415417596392024">帳戶中的 Chrome 資料</translation>

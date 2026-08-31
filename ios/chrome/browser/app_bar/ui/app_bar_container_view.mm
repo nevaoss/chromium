@@ -6,7 +6,7 @@
 
 #import "ios/chrome/browser/app_bar/ui/app_bar_constants.h"
 #import "ios/chrome/browser/app_bar/ui/app_bar_container_view_delegate.h"
-#import "ios/chrome/browser/shared/coordinator/scene/state/layout_state.h"
+#import "ios/chrome/browser/shared/coordinator/scene/state/scene_layout_state.h"
 #import "ios/chrome/browser/shared/public/features/features.h"
 
 namespace {
@@ -77,6 +77,14 @@ constexpr CGFloat kDefaultAppBarWidth = 300;
   [self updatePositioning];
 }
 
+- (void)setAssistantContainerInvoked:(BOOL)assistantContainerInvoked {
+  if (_assistantContainerInvoked == assistantContainerInvoked) {
+    return;
+  }
+  _assistantContainerInvoked = assistantContainerInvoked;
+  [self updatePositioning];
+}
+
 - (void)layoutSubviews {
   [super layoutSubviews];
   [self updatePositioning];
@@ -123,7 +131,9 @@ constexpr CGFloat kDefaultAppBarWidth = 300;
       appBarWidth = windowSize.width;
       heightInAppCoordinates = windowSize.height;
       CGFloat minHeight =
-          IsAppBarHiddenInFullscreen() ? 0 : kAppBarHeightFullscreen;
+          (IsAppBarHiddenInFullscreen() && !self.assistantContainerInvoked)
+              ? 0
+              : kAppBarHeightFullscreen;
       extraOffset =
           (1 - self.fullscreenProgress) * (AppBarHeightPortrait() - minHeight);
       break;

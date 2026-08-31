@@ -395,6 +395,7 @@ public class ManageSyncSettingsTest {
     @Test
     @LargeTest
     @Feature({"Sync"})
+    @DisableIf.Device(DeviceFormFactor.DESKTOP) // crbug.com/545268511
     public void testHistoryOptInDoNotCarryOverFromOneUserToAnother() {
         mSyncTestRule.getSigninTestRule().addAccountThenSignin(TestAccounts.ACCOUNT1);
 
@@ -425,7 +426,24 @@ public class ManageSyncSettingsTest {
     @Test
     @LargeTest
     @Feature({"Sync"})
-    @DisableIf.Device(DeviceFormFactor.DESKTOP) // crbug.com/529758544
+    // Regression test for crbug.com/539883315 - removing account should not cause a crash.
+    public void testCentralAccountCardPreferenceWhenAccountRemovedNoCrash() {
+        mSyncTestRule.setUpAccountAndSignInForTesting();
+        startManageSyncPreferences();
+
+        ViewUtils.waitForVisibleView(withId(R.id.central_account_card));
+
+        mSyncTestRule
+                .getSigninTestRule()
+                .removeAccount(mSyncTestRule.getSigninTestRule().getPrimaryAccount().getId());
+
+        ApplicationTestUtils.waitForActivityState(mSettingsActivity, Stage.DESTROYED);
+    }
+
+    @Test
+    @LargeTest
+    @Feature({"Sync"})
+    @DisabledTest(message = "crbug.com/544726018")
     public void testRemoveAccountFromDeviceShouldClearSyncPrefs() {
         SigninTestRule signinTestRule = mSyncTestRule.getSigninTestRule();
         signinTestRule.addAccountThenSignin(TestAccounts.ACCOUNT1);
@@ -550,7 +568,6 @@ public class ManageSyncSettingsTest {
     @Test
     @SmallTest
     @Feature({"Sync"})
-    @DisabledTest(message = "https://crbug.com/40754932")
     public void testPassphraseCreation() {
         mSyncTestRule.setUpAccountAndSignInForTesting();
         final ManageSyncSettings fragment = startManageSyncPreferences();

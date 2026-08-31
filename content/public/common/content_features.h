@@ -29,6 +29,10 @@ namespace features {
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kAbortNavigationsFromTabClosures);
 
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kAndroidCaptureKeyEvents);
+#if BUILDFLAG(IS_MAC)
+CONTENT_EXPORT BASE_DECLARE_FEATURE(kAperitifHelpers);
+#endif
+
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kAndroidDevToolsFrontend);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(
     kAndroidEnableBackgroundMediaLargeFormFactors);
@@ -81,16 +85,12 @@ CONTENT_EXPORT BASE_DECLARE_FEATURE(kAttachUnownedInnerWebContents);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kAudioServiceOutOfProcess);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kAudioServiceSandbox);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kBackgroundFetch);
+CONTENT_EXPORT BASE_DECLARE_FEATURE(kBackgroundFetchLocalNetworkAccess);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kBackForwardCache);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kBackForwardCacheEntryTimeout);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kBackForwardCacheMemoryControls);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(
     kBackForwardCacheCCNSIgnoreUnchangedCookies);
-#if BUILDFLAG(IS_ANDROID)
-CONTENT_EXPORT BASE_DECLARE_FEATURE(kBackForwardTransitionsCrossDocSharedImage);
-CONTENT_EXPORT BASE_DECLARE_FEATURE(
-    kBackForwardTransitionsNativePageSharedImage);
-#endif
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kBackToAdIntervention);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kBatterySaverModeAlignWakeUps);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(
@@ -109,6 +109,7 @@ CONTENT_EXPORT BASE_DECLARE_FEATURE(
 CONTENT_EXPORT BASE_DECLARE_FEATURE(
     kClearCrossSiteCrossBrowsingContextGroupWindowName);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kCompositeBGColorAnimation);
+CONTENT_EXPORT BASE_DECLARE_FEATURE(kDeferSessionStorageScavengingOnStartup);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kDeferSpeculativeRFHCreation);
 CONTENT_EXPORT extern const base::FeatureParam<bool>
     kWarmupSpareProcessCreationWhenDeferRFH;
@@ -120,7 +121,6 @@ CONTENT_EXPORT extern const base::FeatureParam<int>
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kDebugTopChromeWebUI);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(
     kDeviceBoundSessionTerminationEvictBackForwardCache);
-CONTENT_EXPORT BASE_DECLARE_FEATURE(kDevToolsLiveEdit);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kDigitalGoodsApi);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kBtm);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kBtmTtl);
@@ -147,7 +147,6 @@ CONTENT_EXPORT BASE_DECLARE_FEATURE(kEnforceSharedWorkerSameOriginCheck);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kFedCmAutofill);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kFedCmAmbientUI);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kFedCmDelegation);
-CONTENT_EXPORT BASE_DECLARE_FEATURE(kFedCmErrorAttribute);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kFedCmIdPRegistration);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kFedCmLightweightMode);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kFedCmMetricsEndpoint);
@@ -248,6 +247,8 @@ CONTENT_EXPORT BASE_DECLARE_FEATURE(kPrefetchActivationBeacon);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kPrefetchOffTheMainThread);
 CONTENT_EXPORT extern const base::FeatureParam<bool>
     kPrefetchOffTheMainThreadUpdateMissingHeaderCache;
+CONTENT_EXPORT extern const base::FeatureParam<bool>
+    kPrefetchOffTheMainThreadCheckWillCreateURLLoaderFactory;
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kPrefetchPrerenderIntegration);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kPrefetchProxy);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kPrefetchRequestStatusListenerAsync);
@@ -380,7 +381,6 @@ CONTENT_EXPORT BASE_DECLARE_FEATURE(kAccessibilityDeprecateTypeAnnounce);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kAccessibilityExtendedSelection);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kAccessibilityImeGetFormattedText);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kAccessibilityImproveLiveRegionAnnounce);
-CONTENT_EXPORT BASE_DECLARE_FEATURE(kAccessibilityMeterEventsOnAndroid);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kAccessibilityRequestLayoutBasedActions);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(
     kAccessibilityRequestScopedContentChangedEvents);

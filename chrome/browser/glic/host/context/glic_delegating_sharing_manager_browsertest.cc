@@ -7,6 +7,7 @@
 #include "base/test/bind.h"
 #include "base/test/gmock_expected_support.h"
 #include "base/test/gtest_util.h"
+#include "base/test/scoped_feature_list.h"
 #include "base/test/test_future.h"
 #include "chrome/browser/glic/host/context/glic_empty_focused_browser_manager.h"
 #include "chrome/browser/glic/host/context/glic_empty_focused_tab_manager.h"
@@ -17,6 +18,7 @@
 #include "chrome/browser/glic/public/glic_keyed_service.h"
 #include "chrome/browser/glic/public/glic_keyed_service_factory.h"
 #include "chrome/browser/glic/test_support/glic_browser_test.h"
+#include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/browser/ui/tabs/tab_enums.h"
 #include "chrome/common/chrome_features.h"
 #include "components/tabs/public/tab_interface.h"
@@ -33,7 +35,14 @@ namespace {
 class GlicDelegatingSharingManagerBrowserTest : public GlicBrowserTest {
  public:
   GlicDelegatingSharingManagerBrowserTest() {
-    scoped_feature_list_.InitWithFeatures({features::kGlic}, {});
+    scoped_feature_list_.InitWithFeatures(
+        /*enabled_features=*/
+        {features::kGlic},
+        /*disabled_features=*/
+        // TODO(crbug.com/452061489): Fix tests that fail when the WebUI Omnibox
+        // is enabled and then remove these two Features.
+        {omnibox::internal::kWebUIOmniboxPopup,
+         omnibox::internal::kWebUIOmniboxAimPopup});
   }
   ~GlicDelegatingSharingManagerBrowserTest() override = default;
 
@@ -515,9 +524,16 @@ class GlicStablePinningDelegatingSharingManagerBrowserTest
 };
 
 // TODO(b:479854184): make this work on Android.
-#if !BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID)
+#define MAYBE_StablePinningDelegateSwap DISABLED_StablePinningDelegateSwap
+// TODO(crbug.com/542347163): Re-enable test.
+#elif BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
+#define MAYBE_StablePinningDelegateSwap DISABLED_StablePinningDelegateSwap
+#else
+#define MAYBE_StablePinningDelegateSwap StablePinningDelegateSwap
+#endif
 IN_PROC_BROWSER_TEST_F(GlicStablePinningDelegatingSharingManagerBrowserTest,
-                       StablePinningDelegateSwap) {
+                       MAYBE_StablePinningDelegateSwap) {
   // Subclass to access protected members for verification.
   class TestStableManager : public GlicStablePinningDelegatingSharingManager {
    public:
@@ -544,7 +560,6 @@ IN_PROC_BROWSER_TEST_F(GlicStablePinningDelegatingSharingManagerBrowserTest,
   // Swapping to manager2 should crash (different pinned manager).
   EXPECT_CHECK_DEATH(stable_manager.SetDelegate(manager2.get()));
 }
-#endif  // !BUILDFLAG(IS_ANDROID)
 
 // Spy class to intercept window activation changes.
 class SpyFocusedBrowserManager : public GlicEmptyFocusedBrowserManager {

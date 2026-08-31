@@ -15,17 +15,6 @@ namespace multistep_filter {
 // ENUMS
 // =============================================================================
 
-// LINT.IfChange(MultistepFilterApplicationOutcome)
-// Records the overall technical filter application outcome after a user accepts
-// a Multistep Filter suggestion.
-enum class MultistepFilterApplicationOutcome {
-  kAllFiltersApplied = 0,
-  kNotAllFiltersApplied = 1,
-  kAbandonedBeforeVerification = 2,
-  kMaxValue = kAbandonedBeforeVerification,
-};
-// LINT.ThenChange(//tools/metrics/histograms/metadata/multistep_filter/enums.xml:MultistepFilterApplicationOutcome)
-
 // LINT.IfChange(MultistepFilterFacetType)
 // If you add a new facet here, also update `MapStringToFacetType` in
 // `multistep_filter_metrics_util.h/cc`.
@@ -77,6 +66,17 @@ enum class MultistepFilterPostSuggestionApplicationUserEngagement {
   kMaxValue = kAbandonedAfterSessionWindowSessionOverride,
 };
 // LINT.ThenChange(//tools/metrics/histograms/metadata/multistep_filter/enums.xml:MultistepFilterPostSuggestionApplicationUserEngagement)
+
+// LINT.IfChange(MultistepFilterUserBehaviorAfterIgnore)
+// Records the user's manual filtering behavior after ignoring or dismissing
+// a Multistep Filter suggestion.
+enum class MultistepFilterUserBehaviorAfterIgnore {
+  kDidNotFilterFurther = 0,
+  kAppliedSameFilters = 1,
+  kAppliedDifferentFilters = 2,
+  kMaxValue = kAppliedDifferentFilters,
+};
+// LINT.ThenChange(//tools/metrics/histograms/metadata/multistep_filter/enums.xml:MultistepFilterUserBehaviorAfterIgnore)
 
 // LINT.IfChange(MultistepFilterRetentionState)
 // If you add a new retention state here, also update `GetRetentionState` and
@@ -173,6 +173,9 @@ inline constexpr char kMultistepFilterTimeSuggestionShownToAcceptedHistogram[] =
 inline constexpr char
     kMultistepFilterPostSuggestionApplicationUserEngagementHistogram[] =
         "MultistepFilter.PostSuggestionApplication.UserEngagement";
+
+inline constexpr char kMultistepFilterUserBehaviorAfterIgnoreHistogram[] =
+    "MultistepFilter.UserBehaviorAfterIgnore";
 
 // =============================================================================
 // TASK TYPE NAMES

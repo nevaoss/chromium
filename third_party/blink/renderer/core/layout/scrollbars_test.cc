@@ -2662,8 +2662,8 @@ TEST_P(ScrollbarsTest, AutosizeTest) {
     Compositor().BeginFrame();
     EXPECT_FALSE(layout_viewport->VerticalScrollbar());
     EXPECT_FALSE(layout_viewport->HorizontalScrollbar());
-    EXPECT_EQ(100, frame_view->FrameRect().width());
-    EXPECT_EQ(150, frame_view->FrameRect().height());
+    EXPECT_EQ(100, frame_view->Width());
+    EXPECT_EQ(150, frame_view->Height());
   }
 
   // Subsequent autosizes should be stable. Specifically checking the condition
@@ -2673,8 +2673,8 @@ TEST_P(ScrollbarsTest, AutosizeTest) {
     Compositor().BeginFrame();
     EXPECT_FALSE(layout_viewport->VerticalScrollbar());
     EXPECT_FALSE(layout_viewport->HorizontalScrollbar());
-    EXPECT_EQ(100, frame_view->FrameRect().width());
-    EXPECT_EQ(150, frame_view->FrameRect().height());
+    EXPECT_EQ(100, frame_view->Width());
+    EXPECT_EQ(150, frame_view->Height());
   }
 
   // Try again.
@@ -2683,9 +2683,49 @@ TEST_P(ScrollbarsTest, AutosizeTest) {
     Compositor().BeginFrame();
     EXPECT_FALSE(layout_viewport->VerticalScrollbar());
     EXPECT_FALSE(layout_viewport->HorizontalScrollbar());
-    EXPECT_EQ(100, frame_view->FrameRect().width());
-    EXPECT_EQ(150, frame_view->FrameRect().height());
+    EXPECT_EQ(100, frame_view->Width());
+    EXPECT_EQ(150, frame_view->Height());
   }
+}
+
+TEST_P(ScrollbarsTest, AutosizeHeightOverflowWithOverlayScrollbar) {
+  ScopedAutoSizeUsesScrollWidthForOverflowForTest scoped_feature(true);
+  ENABLE_OVERLAY_SCROLLBARS(true);
+  WebView().EnableAutoResizeMode(gfx::Size(25, 25), gfx::Size(800, 600));
+
+  SimRequest resource("https://example.com/test.html", "text/html");
+  LoadURL("https://example.com/test.html");
+  resource.Complete(R"HTML(
+    <!doctype html>
+    <style>
+      html, body { margin: 0; }
+      main { width: 316px; height: 650px; }
+    </style>
+    <main></main>
+  )HTML");
+
+  test::RunPendingTasks();
+
+  LocalFrameView* frame_view = WebView().MainFrameImpl()->GetFrameView();
+  ScrollableArea* layout_viewport = frame_view->LayoutViewport();
+
+  auto expect_stable_size = [&] {
+    Scrollbar* vertical_scrollbar = layout_viewport->VerticalScrollbar();
+    EXPECT_TRUE(vertical_scrollbar);
+    if (vertical_scrollbar) {
+      EXPECT_TRUE(vertical_scrollbar->IsOverlayScrollbar());
+    }
+    EXPECT_FALSE(layout_viewport->HorizontalScrollbar());
+    EXPECT_EQ(316, frame_view->Width());
+    EXPECT_EQ(600, frame_view->Height());
+  };
+
+  expect_stable_size();
+
+  // Verify that another autosize doesn't grow the width.
+  frame_view->SetNeedsLayout();
+  Compositor().BeginFrame();
+  expect_stable_size();
 }
 
 TEST_P(ScrollbarsTest, AutosizeAlmostRemovableScrollbar) {

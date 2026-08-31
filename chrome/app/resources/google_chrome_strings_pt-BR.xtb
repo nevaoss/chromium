@@ -31,6 +31,7 @@
 <translation id="1290883685122687410">Erro de configuração: <ph name="METAINSTALLER_EXIT_CODE" />. <ph name="WINDOWS_ERROR" /></translation>
 <translation id="1302523850133262269">Aguarde enquanto o Chrome instala as últimas atualizações do sistema.</translation>
 <translation id="1330562121671411446">Detectar idioma</translation>
+<translation id="1333654552732143316">Iniciar o Chrome</translation>
 <translation id="1341711321000856656">Mude para outro perfil do Chrome para conferir as senhas dele</translation>
 <translation id="1343830902827845050">Faça login no Chrome</translation>
 <translation id="1356661055722410047">Novidade! Agora é possível traduzir textos e imagens na tela.</translation>
@@ -77,6 +78,7 @@
 <translation id="1698376642261615901">O Google Chrome é um navegador que executa páginas e aplicativos da web em alta velocidade. É rápido, estável e fácil de usar. Navegue pela web de forma segura com proteção contra malware e phishing integrada ao Google Chrome.</translation>
 <translation id="1713301662689114961">{0,plural, =1{O Chrome será reiniciado em 1 hora}one{O Chrome será reiniciado em # hora}other{O Chrome será reiniciado em # horas}}</translation>
 <translation id="1722488837206509557">Assim, você pode selecionar os dispositivos disponíveis e mostrar conteúdo neles.</translation>
+<translation id="1724094881572874997">Para proteger seu trabalho no Chrome, a organização poderá visualizar ou gerenciar algumas informações quando você fizer login neste navegador.</translation>
 <translation id="177180974022074201">Teste com o Gemini no Chrome</translation>
 <translation id="1786003790898721085">Verifique se sua conta está conectada ao Chrome no <ph name="TARGET_DEVICE_NAME" /> e tente fazer o envio novamente.</translation>
 <translation id="1786044937610313874">Abrir atalhos no Chrome</translation>
@@ -315,7 +317,6 @@ Se esta página não funcionar como o esperado, ative a otimização.</translati
 <translation id="4149882025268051530">Houve uma falha no instalador ao descompactar o arquivo. Baixe o Google Chrome novamente.</translation>
 <translation id="415112847282352845">Para acessar seus endereços e muito mais em todos os seus dispositivos, faça login no Chrome. O endereço será salvo na sua Conta do Google depois que você fizer login.</translation>
 <translation id="4153934450158521343">O Chrome será fechado em breve, e os dados serão excluídos</translation>
-<translation id="4159985264221160808">Para proteger seu trabalho no Chrome, a organização poderá acessar ou gerenciar algumas informações</translation>
 <translation id="4173512894976930765">Os sites provavelmente funcionarão como esperado. Sua conta será desconectada da maioria dos sites quando você fechar todas as janelas do Chrome, exceto sua Conta do Google, se tiver feito login no Chrome.</translation>
 <translation id="4175922240926474352">O Chrome bloqueou o download porque o site não está usando uma conexão segura e o arquivo pode ter sido adulterado</translation>
 <translation id="4191857738314598978">{0,plural, =1{Reiniciar o Chrome em 1 dia}one{Reiniciar o Chrome em # dia}other{Reiniciar o Chrome em # dias}}</translation>
@@ -346,7 +347,6 @@ Se esta página não funcionar como o esperado, ative a otimização.</translati
 <translation id="4437295824090654417">Compartilhe este documento com o Gemini no Chrome para obter uma visão geral rápida e fazer perguntas complementares</translation>
 <translation id="4450664632294415862">Chrome - Login na rede - <ph name="PAGE_TITLE" /></translation>
 <translation id="4458462641685292929">Outra operação está em andamento no Google Chrome. Tente novamente mais tarde.</translation>
-<translation id="4459234553906210702">A medição de anúncios permite que os sites que você visita solicitem informações do Chrome, ajudando a medir o desempenho dos anúncios. Ela também restringe o rastreamento entre sites transferindo o mínimo de informações possível entre eles.</translation>
 <translation id="4493028449971051158">Erro de inicialização: execute o instalador como admin.</translation>
 <translation id="4501471624619070934">A instalação falhou porque o acesso está restrito neste país.</translation>
 <translation id="4571503333518166079">Acessar as configurações de notificação do Chrome</translation>
@@ -379,7 +379,6 @@ Se esta página não funcionar como o esperado, ative a otimização.</translati
 <translation id="4885446229353981848">Sempre mostrar o atalho do Google Lens</translation>
 <translation id="4891791193823137474">Executar o Google Chrome em segundo plano</translation>
 <translation id="4895437082222824641">Abrir link em nova &amp;guia do Chrome</translation>
-<translation id="4896867431081882115">Defina o Chrome como o navegador padrão para acessar com facilidade seus recursos favoritos. O Chrome será fixado na barra de tarefas para agilizar o seu acesso.</translation>
 <translation id="4904953848704395458">Abra o Gemini no Chrome com um atalho do teclado.</translation>
 <translation id="4918086044614829423">Aceitar</translation>
 <translation id="4918844574251943176">Imagem copiada</translation>
@@ -414,6 +413,7 @@ Se esta página não funcionar como o esperado, ative a otimização.</translati
 <translation id="521447420733633466">Se você compartilha um dispositivo, seus amigos e familiares podem navegar separadamente e configurar o Chrome da maneira que quiserem</translation>
 <translation id="5234764350956374838">Dispensar</translation>
 <translation id="5239627039202700673">Use o Chrome sempre que clicar em links de mensagens, documentos e outros apps.</translation>
+<translation id="524751727772074981">Pergunte o que quiser, onde estiver, com o Gemini no Chrome</translation>
 <translation id="5251420635869119124">Convidados podem usar o Google Chrome sem deixar nada para trás.</translation>
 <translation id="5271833978500241046">Use com outros recursos do Gemini no Chrome</translation>
 <translation id="5286907366254680517">Detectado</translation>
@@ -740,6 +740,7 @@ Se esta página não funcionar como o esperado, ative a otimização.</translati
 <translation id="8367705492654390392">Pergunte o que quiser</translation>
 <translation id="8367950957770994118">Abra o Gemini no Chrome com rapidez sempre que precisar</translation>
 <translation id="8370517070665726704">Copyright <ph name="YEAR" /> Google LLC. Todos os direitos reservados.</translation>
+<translation id="8370748943308169953">QR code para fazer login no Chrome como <ph name="USER_NAME" /></translation>
 <translation id="8377158135256176353">Ativar/desativar o Gemini no Chrome Canary</translation>
 <translation id="8387459386171870978">Continuar usando o Chrome</translation>
 <translation id="8394720698884623075">Confere se os URLs estão em uma lista de sites não seguros armazenada no Chrome</translation>

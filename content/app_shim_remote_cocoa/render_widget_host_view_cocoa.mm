@@ -55,6 +55,7 @@
 #include "ui/events/keycodes/dom/dom_code.h"
 #include "ui/events/keycodes/dom/keycode_converter.h"
 #include "ui/events/platform/platform_event_source.h"
+#include "ui/gfx/geometry/clamp_float_geometry.h"
 #include "ui/gfx/mac/coordinate_conversion.h"
 #include "ui/gfx/native_ui_types.h"
 
@@ -225,6 +226,15 @@ void ExtractUnderlines(NSAttributedString* string,
 - (void)candidateListTouchBarItem:(NSCandidateListTouchBarItem*)anItem
     changedCandidateListVisibility:(BOOL)isVisible;
 @end
+
+namespace {
+
+gfx::PointF GetSanitizedFlippedPoint(NSPoint point, CGFloat height) {
+  return gfx::PointF(gfx::ClampFloatGeometry(point.x),
+                     gfx::ClampFloatGeometry(height - point.y));
+}
+
+}  // namespace
 
 @implementation RenderWidgetHostViewCocoa {
   // Dummy host and host helper that are always valid (see comments below about
@@ -420,6 +430,7 @@ static NSWindow* __weak _deferredResignKeyWindow;
     _host = host;
     _hostHelper = hostHelper;
     _canBeKeyView = YES;
+    _supportsAutoFill = YES;
     _isStylusEnteringProximity = false;
     _keyboardLockActive = false;
     _textInputType = ui::TEXT_INPUT_TYPE_NONE;
@@ -1763,7 +1774,8 @@ static NSWindow* __weak _deferredResignKeyWindow;
 // three fingers.
 - (void)quickLookWithEvent:(NSEvent*)event {
   NSPoint point = [self convertPoint:[event locationInWindow] fromView:nil];
-  gfx::PointF rootPoint(point.x, NSHeight([self frame]) - point.y);
+  gfx::PointF rootPoint =
+      GetSanitizedFlippedPoint(point, NSHeight([self frame]));
   _host->LookUpDictionaryOverlayAtPoint(rootPoint);
 }
 
@@ -1923,6 +1935,11 @@ static NSWindow* __weak _deferredResignKeyWindow;
   // during layout, and we don't explicitly listen for re-layout of parent
   // views.
   [self sendViewBoundsInWindowToHost];
+  // Update screen properties in case the window moved to a different display.
+  // AppKit only dispatches NSWindowDidChangeScreenNotification when crossing
+  // physical NSScreens, which won't fire for virtual displays (e.g. in Headless
+  // Mode).
+  [self updateScreenProperties];
 }
 
 - (void)setFrame:(NSRect)r {
@@ -2362,8 +2379,8 @@ extern NSString* NSTextInputReplacementRangeAttributeName;
   // the renderer.
   thePoint = [self.window convertPointFromScreen:thePoint];
   thePoint = [self convertPoint:thePoint fromView:nil];
-  thePoint.y = NSHeight([self frame]) - thePoint.y;
-  gfx::PointF rootPoint(thePoint.x, thePoint.y);
+  gfx::PointF rootPoint =
+      GetSanitizedFlippedPoint(thePoint, NSHeight([self frame]));
 
   uint32_t index = UINT32_MAX;
   _host->SyncGetCharacterIndexAtPoint(rootPoint, &index);

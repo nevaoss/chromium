@@ -2729,7 +2729,8 @@ TEST_F(RenderWidgetHostTest, SetAndCommitExternallySourcedComposition) {
   ui::ImeTextSpan ime_text_span;
   ime_text_span.end_offset = length;
   ime_text_span.underline_style = ui::ImeTextSpan::UnderlineStyle::kDot;
-  host_->SetExternallySourcedComposition(text, {ime_text_span}, node_id);
+  host_->SetExternallySourcedComposition(text, {ime_text_span}, node_id,
+                                         /*on_complete=*/base::OnceClosure());
 
   {
     MockWidgetInputHandler::MessageVector dispatched_messages =
@@ -2744,7 +2745,8 @@ TEST_F(RenderWidgetHostTest, SetAndCommitExternallySourcedComposition) {
         blink::mojom::ImeState::kNone, node_id.target_element_dom_id));
   }
 
-  host_->CommitExternallySourcedComposition(text, node_id);
+  host_->CommitExternallySourcedComposition(
+      text, node_id, /*on_complete=*/base::OnceClosure());
 
   {
     MockWidgetInputHandler::MessageVector dispatched_messages =
@@ -2757,6 +2759,21 @@ TEST_F(RenderWidgetHostTest, SetAndCommitExternallySourcedComposition) {
     EXPECT_TRUE(ime_message->Matches(
         text, std::vector<ui::ImeTextSpan>(), gfx::Range::InvalidRange(), 0, 0,
         blink::mojom::ImeState::kNone, node_id.target_element_dom_id));
+  }
+}
+
+TEST_F(RenderWidgetHostTest, PasteIntoNode) {
+  std::u16string text = u"hello";
+  GlobalDOMNodeId node_id;
+  node_id.target_element_dom_id = blink::DOMNodeIdType(123);
+
+  host_->PasteIntoNode(text, node_id);
+
+  {
+    MockWidgetInputHandler::MessageVector dispatched_messages =
+        host_->mock_render_input_router()->GetAndResetDispatchedMessages();
+    ASSERT_EQ(1u, dispatched_messages.size());
+    EXPECT_EQ("PasteIntoNode", dispatched_messages[0]->name());
   }
 }
 

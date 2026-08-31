@@ -368,7 +368,7 @@ export class NtpSearchboxElement extends NtpSearchboxElementBase implements
 
     if (this.cyclingPlaceholders) {
       waitForLazyRender().then(async () => {
-        const {config} = await this.pageHandler().getPlaceholderConfig();
+        const {config} = await this.pageHandler().getCyclingPlaceholderConfig();
         const texts = config.texts;
         if (texts.length < 2) {
           // Need at least 2 placeholders to cycle. If fewer, disable cycling
@@ -795,6 +795,11 @@ export class NtpSearchboxElement extends NtpSearchboxElementBase implements
     this.setInputText('');
   }
 
+  protected onSearchboxInputPasted_() {
+    chrome.histograms.recordCount('NewTabPage.Realbox.Paste', 1);
+    chrome.histograms.recordUserAction('NewTabPage.Realbox.Paste');
+  }
+
   protected onSearchboxInputFilesPasted_(e: CustomEvent<{files: FileList}>) {
     this.processFiles_(e.detail.files, ComposeboxContextAddedMethod.COPY_PASTE);
   }
@@ -870,10 +875,7 @@ export class NtpSearchboxElement extends NtpSearchboxElementBase implements
   }
 
   protected computePlaceholderText_(placeholderText: string): string {
-    if (placeholderText) {
-      return placeholderText;
-    }
-    return this.i18n('searchBoxHint');
+    return placeholderText || '';
   }
 }
 

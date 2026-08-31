@@ -21,6 +21,7 @@
 #include "base/sequence_checker.h"
 #include "base/strings/strcat.h"
 #include "base/task/single_thread_task_runner.h"
+#include "base/task/thread_pool.h"
 #include "base/time/time.h"
 #include "base/types/expected.h"
 #include "components/optimization_guide/core/delivery/model_util.h"
@@ -30,7 +31,6 @@
 #include "components/optimization_guide/core/model_execution/on_device_model_names.h"
 #include "components/optimization_guide/core/model_execution/performance_class.h"
 #include "components/optimization_guide/core/model_execution/usage_tracker.h"
-#include "components/optimization_guide/core/optimization_guide_constants.h"
 #include "components/optimization_guide/core/optimization_guide_enums.h"
 #include "components/optimization_guide/core/optimization_guide_features.h"
 #include "components/optimization_guide/public/mojom/model_broker.mojom-shared.h"
@@ -147,7 +147,11 @@ std::optional<OnDeviceBaseModelSpec> GetOnDeviceBaseModelSpecFromManifest(
   if (!selected_performance_hint) {
     return std::nullopt;
   }
-  return OnDeviceBaseModelSpec(*name, *version, *selected_performance_hint);
+  return OnDeviceBaseModelSpec{
+      .model_name = *name,
+      .model_version = *version,
+      .selected_performance_hint = *selected_performance_hint,
+  };
 }
 
 base::DictValue MakeOverrideManifest() {
@@ -203,19 +207,10 @@ std::ostream& operator<<(std::ostream& out, OnDeviceModelStatus status) {
       return out << "Insufficient Disk Space";
     case OnDeviceModelStatus::kNoOnDeviceFeatureUsed:
       return out << "No On-device Feature Used";
+    case OnDeviceModelStatus::kInsufficientDiskSpaceForCaches:
+      return out << "Insufficient Disk Space For Caches";
   }
 }
-
-OnDeviceBaseModelSpec::OnDeviceBaseModelSpec(
-    const std::string& model_name,
-    const std::string& model_version,
-    proto::OnDeviceModelPerformanceHint selected_performance_hint)
-    : model_name(model_name),
-      model_version(model_version),
-      selected_performance_hint(selected_performance_hint) {}
-OnDeviceBaseModelSpec::~OnDeviceBaseModelSpec() = default;
-OnDeviceBaseModelSpec::OnDeviceBaseModelSpec(const OnDeviceBaseModelSpec&) =
-    default;
 
 bool OnDeviceBaseModelSpec::operator==(
     const OnDeviceBaseModelSpec& other) const {
@@ -449,6 +444,13 @@ void OnDeviceModelComponentStateManager::SetReady(
           "OptimizationGuide.OnDeviceModel.NewModelInstalled",
           ConvertModelNameToEnum(model_spec->model_name));
     }
+    base::ThreadPool::PostTaskAndReplyWithResult(
+        FROM_HERE, {base::MayBlock()},
+        base::BindOnce(&OnDeviceModelComponentStateManager::CheckCachesExist,
+                       install_dir),
+        base::BindOnce(
+            &OnDeviceModelComponentStateManager::OnCachesExistChecked,
+            weak_ptr_factory_.GetWeakPtr()));
   }
 
   NotifyStateChanged();
@@ -706,6 +708,11 @@ OnDeviceModelComponentStateManager::GetOnDeviceModelState() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   if (GetState() != nullptr) {
+    if (registration_criteria_ && !GetState()->has_caches() &&
+        registration_criteria_->is_disk_space_too_low_for_caches()) {
+      return base::unexpected(
+          OnDeviceModelStatus::kInsufficientDiskSpaceForCaches);
+    }
     return std::cref(*GetState());
   }
   if (!registration_criteria_) {
@@ -735,6 +742,28 @@ OnDeviceModelStatus
 OnDeviceModelComponentStateManager::GetOnDeviceModelStatus() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return GetOnDeviceModelState().error_or(OnDeviceModelStatus::kReady);
+}
+
+// static
+bool OnDeviceModelComponentStateManager::CheckCachesExist(
+    const base::FilePath& install_dir) {
+  return base::GetFileSize(install_dir.Append(kWeightCacheFile)).value_or(0) >
+             0 ||
+         base::GetFileSize(install_dir.Append(kProgramCacheFile)).value_or(0) >
+             0;
+}
+
+void OnDeviceModelComponentStateManager::OnCachesExistChecked(
+    bool caches_exist) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (!state_) {
+    return;
+  }
+  OnDeviceModelStatus old_status = GetOnDeviceModelStatus();
+  state_->set_has_caches(caches_exist);
+  if (old_status != GetOnDeviceModelStatus()) {
+    NotifyStateChanged();
+  }
 }
 
 }  // namespace optimization_guide

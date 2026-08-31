@@ -69,6 +69,10 @@ std::string InvocationSourceToString(
       return "NtpActionChips";
     case LensOverlayInvocationSource::kAppBarAimButton:
       return "AppBarAimButton";
+    case LensOverlayInvocationSource::kOmniboxEverywhereComposebox:
+      return "OmniboxEverywhereComposebox";
+    case LensOverlayInvocationSource::kOmniboxPopupButton:
+      return "OmniboxPopupButton";
   }
 }
 
@@ -482,6 +486,7 @@ void RecordTimeToFirstInteraction(
       event.SetOmnibox(time_to_first_interaction.InMilliseconds());
       break;
     case lens::LensOverlayInvocationSource::kOmniboxPageAction:
+    case lens::LensOverlayInvocationSource::kOmniboxPopupButton:
       event.SetOmniboxPageAction(time_to_first_interaction.InMilliseconds());
       break;
     case lens::LensOverlayInvocationSource::kOmniboxContextualSuggestion:
@@ -514,6 +519,7 @@ void RecordTimeToFirstInteraction(
       // cobrowse toolbar button flow do not use the Lens Overlay Controller.
       break;
     case LensOverlayInvocationSource::kContextualTasksComposebox:
+    case LensOverlayInvocationSource::kOmniboxEverywhereComposebox:
       // TODO(crbug.com/469460311): Add metrics for Contextual Tasks lens
       // button.
       break;

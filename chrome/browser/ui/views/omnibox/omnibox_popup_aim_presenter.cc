@@ -57,7 +57,7 @@ std::string_view OmniboxPopupAimPresenter::GetPopupMetricPrefix() const {
 
 void OmniboxPopupAimPresenter::LogResultToContentReadyMetric(
     base::TimeTicks /*result_ready_time*/,
-    bool /*success*/) {
+    bool /*is_first_show*/) {
   // The AIM popup calculates its ready state inherently differently than
   // standard dropdowns. We explicitly override this metric to a no-op here to
   // prevent logging garbage data and to avoid polluting standard WebUI
@@ -150,9 +150,11 @@ void OmniboxPopupAimPresenter::OnFileSelectionClosed() {
   // We set `is_restoring_focus_after_file_selection_` to true and start
   // observing the FocusManager to intercept the upcoming focus restoration.
   is_restoring_focus_after_file_selection_ = true;
-  auto* location_bar_view = static_cast<LocationBarView*>(location_bar());
-  if (location_bar_view && location_bar_view->GetWidget()) {
-    if (auto* fm = location_bar_view->GetWidget()->GetFocusManager()) {
+  if (!location_bar()) {
+    return;
+  }
+  if (views::Widget* location_bar_widget = delegate().GetLocationBarWidget()) {
+    if (auto* fm = location_bar_widget->GetFocusManager()) {
       focus_manager_observation_.Observe(fm);
     }
   }
@@ -166,28 +168,41 @@ void OmniboxPopupAimPresenter::OnDidChangeFocus(views::View* focused_before,
     return;
   }
 
-  auto* location_bar_view = static_cast<LocationBarView*>(location_bar());
   // When the file picker closes and the window re-activates, `FocusManager`
-  // attempts to restore focus back to the native omnibox text field. We
+  // attempts to restore focus to the location bar. We
   // intercept this and redirect focus back to the WebUI popup.
-  if (location_bar_view && focused_now == location_bar_view->omnibox_view()) {
-    auto* fm = location_bar_view->GetWidget()->GetFocusManager();
+  if (location_bar() &&
+      focused_now == delegate().GetLocationBarFocusRestoreView()) {
+    auto* fm = delegate().GetLocationBarWidget()->GetFocusManager();
     if (fm && fm->focus_change_reason() ==
                   views::FocusManager::FocusChangeReason::kFocusRestore) {
-      // Defer `RequestFocus` asynchronously to prevent re-entrant activation in
-      // wm::FocusController.
+      // Defer `FinishFocusRestoration` asynchronously to prevent re-entrant
+      // widget activation and focus shifts while `views::FocusManager` is in
+      // the middle of restoring window focus.
       base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-          FROM_HERE, base::BindOnce(&OmniboxPopupAimPresenter::RequestFocus,
-                                    weak_factory_.GetWeakPtr()));
+          FROM_HERE,
+          base::BindOnce(&OmniboxPopupAimPresenter::FinishFocusRestoration,
+                         weak_factory_.GetWeakPtr()));
+      return;
     }
-  } else {
-    // Focus intentionally went to a completely different view (e.g., a toolbar
-    // button). We should ensure the popup closes.
-    controller()->popup_state_manager()->SetPopupState(
-        OmniboxPopupState::kNone);
   }
 
+  // Focus intentionally went to a completely different view (e.g., a toolbar
+  // button). We should ensure the popup closes.
+  controller()->popup_state_manager()->SetPopupState(OmniboxPopupState::kNone);
+
   // Reset state and stop observing focus transitions.
+  ResetFocusRestorationState();
+}
+
+void OmniboxPopupAimPresenter::FinishFocusRestoration() {
+  // Activate popup widget and focus WebContents.
+  RequestFocus();
+  // Focus the WebUI's text input element.
+  if (auto* content =
+          static_cast<OmniboxAimPopupWebUIContent*>(GetWebUIContent())) {
+    content->FocusInput();
+  }
   ResetFocusRestorationState();
 }
 

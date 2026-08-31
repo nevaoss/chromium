@@ -80,6 +80,7 @@ source_set("impl") {
   deps = [
     ":renderer_context_menu",
     "//base",
+    "//base:i18n",
     "//chrome/browser/app_mode",
     "//chrome/browser/ui",
     "//chrome/common",
@@ -385,6 +386,7 @@ if (!is_android) {
       "//chrome/browser/spellchecker",
       "//chrome/browser/sync",
       "//chrome/browser/ui:ui_features",
+      "//chrome/browser/ui/browser_web_contents_delegate",
       "//chrome/browser/ui/lens",
       "//chrome/browser/ui/side_panel",
       "//chrome/browser/ui/side_panel:side_panel_views_dependent",

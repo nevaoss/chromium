@@ -47,7 +47,7 @@ namespace dictation {
 
 SessionController::SessionController(SessionControllerDelegate& delegate)
     : delegate_(delegate) {
-  VT_LOG() << "=== Session Started";
+  VT_LOG(GetBrowserContext()) << "=== Session Started";
 }
 
 SessionController::~SessionController() {
@@ -56,24 +56,29 @@ SessionController::~SessionController() {
   if (attached_stream_provider_) {
     EndDictationStream();
   }
-  VT_LOG() << "=== Session Ended";
+  VT_LOG(GetBrowserContext()) << "=== Session Ended";
 }
 
-void SessionController::Initialize() {
+void SessionController::ResetUi() {
   ui_ = delegate_->CreateUi(*this);
 }
 
 void SessionController::StartDictationStream(
     const TargetDetails& target_details,
     DictationStreamStartTrigger trigger) {
-  VT_LOG() << "Starting DictationStream on target " << target_details.target_id;
+  VT_LOG(GetBrowserContext())
+      << "Starting DictationStream on target " << target_details.target_id;
   // TODO(b/525856380): Add support for "swapping in" a new stream. That is,
   // end the current stream and start a new one without entering the
   // finalization state which could flash states the UI.
   CHECK(state_ == SessionState::kInactive ||
         state_ == SessionState::kFinalizing);
-  CHECK(!is_shutting_down_);
   CHECK(!attached_stream_provider_);
+
+  if (is_shutting_down_) {
+    VT_LOG(GetBrowserContext()) << "\tAborting session shutdown";
+    is_shutting_down_ = false;
+  }
 
   Observe(content::WebContents::FromRenderFrameHost(
       target_details.target_id.document.AsRenderFrameHostIfValid()));
@@ -89,6 +94,10 @@ void SessionController::StartDictationStream(
   last_used_target_details_ = target_details;
 
   MoveToState(SessionState::kStreamInitializing);
+
+  if (ui_) {
+    ui_->OnStartedStream(target_details.target_id);
+  }
 }
 
 void SessionController::OnFocusChangedInPage(
@@ -154,7 +163,7 @@ void SessionController::PrimaryPageChanged(content::Page& page) {
 }
 
 void SessionController::EndDictationStream() {
-  VT_LOG() << __func__;
+  VT_LOG(GetBrowserContext()) << __func__;
   CHECK(attached_stream_provider_);
   CHECK(state_ == SessionState::kStreamInitializing ||
         state_ == SessionState::kTranscribing);
@@ -182,7 +191,7 @@ void SessionController::UiRequestEndActiveStream() {
 }
 
 void SessionController::FinalizeAndShutdown() {
-  VT_LOG() << __func__;
+  VT_LOG(GetBrowserContext()) << __func__;
   is_shutting_down_ = true;
   if (attached_stream_provider_) {
     EndDictationStream();
@@ -293,7 +302,8 @@ void SessionController::MoveToState(SessionState new_state) {
     return;
   }
 
-  VT_LOG() << "SessionState: " << state_ << " --> " << new_state;
+  VT_LOG(GetBrowserContext())
+      << "SessionState: " << state_ << " --> " << new_state;
 
   using enum SessionState;
 #if DCHECK_IS_ON()
@@ -331,6 +341,10 @@ void SessionController::EndSessionAsynchronously() {
 
 void SessionController::PurgeToDeleteStreamProviders() {
   to_delete_stream_providers_.clear();
+}
+
+content::BrowserContext* SessionController::GetBrowserContext() const {
+  return delegate_->GetBrowserContext();
 }
 
 }  // namespace dictation

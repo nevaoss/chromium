@@ -76,6 +76,10 @@ class UnboundWidgetInputHandler : public blink::mojom::WidgetInputHandler {
                      ImeCommitTextCallback callback) override {
     DLOG(WARNING) << "Input request on unbound interface";
   }
+  void PasteIntoNode(const std::u16string& text,
+                     const blink::DOMNodeIdType& target_dom_node_id) override {
+    DLOG(WARNING) << "Input request on unbound interface";
+  }
   void ImeFinishComposingText(bool keep_selection) override {
     DLOG(WARNING) << "Input request on unbound interface";
   }
@@ -339,10 +343,7 @@ blink::mojom::InputEventResultState RenderInputRouter::FilterInputEvent(
   // Right after a navigation, RenderWidgetHost keeps the InputRouter inactive
   // while browser paint-holding is active.  This is equivalent to a
   // non-existent input event consumer.
-  bool filter_for_paint_holding =
-      base::FeatureList::IsEnabled(
-          blink::features::kDropInputEventsWhilePaintHolding) &&
-      input_router_ && !input_router_->IsActive();
+  bool filter_for_paint_holding = input_router_ && !input_router_->IsActive();
   if (event.GetType() == WebInputEvent::Type::kGestureScrollBegin) {
     // If we filter a GSB for paint holding, we'd like to receive a new one -
     // see IsWheelScrollInProgress. Note that we leave is_in_gesture_scroll_ set

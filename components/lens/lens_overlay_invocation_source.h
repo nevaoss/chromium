@@ -93,7 +93,13 @@ enum class LensOverlayInvocationSource {
   // The AIM button on the App Bar in Chrome iOS.
   kAppBarAimButton = 22,
 
-  kMaxValue = kAppBarAimButton
+  // The everywhere omnibox contextual composebox.
+  kOmniboxEverywhereComposebox = 23,
+
+  // The popup button in the omnibox.
+  kOmniboxPopupButton = 24,
+
+  kMaxValue = kOmniboxPopupButton
 };
 // LINT.ThenChange(//tools/metrics/histograms/metadata/lens/enums.xml:LensOverlayInvocationSource)
 // When adding a value here, also update:

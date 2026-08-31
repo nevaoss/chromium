@@ -33,6 +33,7 @@
 <translation id="1290883685122687410">સેટઅપ કરવામાં ભૂલ: <ph name="METAINSTALLER_EXIT_CODE" />. <ph name="WINDOWS_ERROR" /></translation>
 <translation id="1302523850133262269">કૃપા કરીને Chrome નવીનતમ સિસ્ટમ અપડેટ્સ ઇન્સ્ટોલ કરે ત્યાં સુધી રાહ જુઓ.</translation>
 <translation id="1330562121671411446">ભાષા શોધો</translation>
+<translation id="1333654552732143316">Chrome શરૂ કરો</translation>
 <translation id="1341711321000856656">તમે બીજી Chrome પ્રોફાઇલમાંથી પાસવર્ડ જુઓ પર સ્વિચ કરી શકો છો</translation>
 <translation id="1343830902827845050">Chromeમાં સાઇન ઇન કરો</translation>
 <translation id="1356661055722410047">નવું! તમે તમારી સ્ક્રીન પર ટેક્સ્ટ અને છબીઓનો અનુવાદ કરી શકો છો</translation>
@@ -81,6 +82,7 @@
 <translation id="1698376642261615901">Google Chrome એ એક એવું વેબ બ્રાઉઝર છે જે પ્રકાશની ગતિએ વેબપૃષ્ઠો અને એપ્લિકેશંસને ચલાવે છે. તે ઝડપી, સ્થિર અને ઉપયોગમાં સરળ છે. Google Chrome માં નિર્મિત મૉલવેર અને ફિશીંગ સુરક્ષા સાથે વેબને વધુ સુરક્ષિત રૂપે બ્રાઉઝ કરો.</translation>
 <translation id="1713301662689114961">{0,plural, =1{Chrome એક કલાકમાં ફરીથી લૉન્ચ થશે}one{Chrome # કલાકમાં ફરીથી લૉન્ચ થશે}other{Chrome # કલાકમાં ફરીથી લૉન્ચ થશે}}</translation>
 <translation id="1722488837206509557">આ તમને ઉપલબ્ધ ડિવાઇસમાંથી પસંદ કરવાની અને તેમના પર કન્ટેન્ટ બતાવવાની મંજૂરી આપશે.</translation>
+<translation id="1724094881572874997">Chrome પર તમારા કાર્યને સુરક્ષિત રાખવા માટે, જ્યારે તમે Chromeમાં સાઇન ઇન કરેલું હોય, ત્યારે તમારી સંસ્થા અમુક માહિતી જોઈ અથવા મેનેજ કરી શકશે.</translation>
 <translation id="177180974022074201">Gemini in Chrome વડે અજમાવી જુઓ</translation>
 <translation id="1786003790898721085">ખાતરી કરો કે તમે તમારા <ph name="TARGET_DEVICE_NAME" /> પર Chromeમાં સાઇન ઇન કર્યું છે અને પછી ફરીથી મોકલવાનો પ્રયાસ કરો.</translation>
 <translation id="1786044937610313874">શૉર્ટકટ Chromeમાં ખુલે છે</translation>
@@ -200,6 +202,7 @@
 <translation id="2969728957078202736"><ph name="PAGE_TITLE" /> - નેટવર્ક સાઇન ઇન - Chrome</translation>
 <translation id="2970681950995291301">Chromeમાંથી તમારા Google એકાઉન્ટને કાઢી નાખવા માટે, સેટિંગ પેજમાં જઈને Chromeમાંથી સાઇન આઉટ કરો</translation>
 <translation id="2976869732253036751">તમારા ફોન પર Chrome વડે કિંમત ટ્રૅક કરવા સંબંધિત અલર્ટ મેળવો</translation>
+<translation id="2985091279808606502">આ સાઇટ માટે Chromeને સ્થાનિક નેટવર્કની પરવાનગીની જરૂર છે</translation>
 <translation id="2991167882679440829">તમારા Google એકાઉન્ટમાં તમે સાચવેલા તમારા પાસવર્ડ અને Chromeનો અન્ય ડેટા આ ડિવાઇસમાંથી કાઢી નાખવામાં આવશે. Chromeમાં તેનો ફરીથી ઉપયોગ કરવા માટે, પાછું સાઇન ઇન કરો.</translation>
 <translation id="2994465299455873643">એન્ક્રિપ્શનની સેવાઓ અને <ph name="BROWSER_NAME" />ને રિકવર કરવા માટે કોઈ સલામત રીત પ્રદાન કરે છે, જો તેની તારીખ સિંકમાં ન રહે. જો આ સેવાને બંધ કરવામાં આવે, તો કદાચ <ph name="BROWSER_NAME" /> એન્ક્રિપ્ટેડ ડેટાનો ઍક્સેસ ગુમાવી શકે છે તેમજ કદાચ <ph name="BROWSER_NAME" /> પોતાને રિકવર ન પણ કરી શકે.</translation>
 <translation id="3003694935412297923">બધા કામ</translation>
@@ -262,6 +265,7 @@
 <translation id="3595784445906693824">નવી પ્રોફાઇલમાં Chromeમાં સાઇન ઇન કરીએ?</translation>
 <translation id="3596080736082218006">{COUNT,plural, =0{અપડેટ લાગુ કરવા માટે તમે Chromeને ફરીથી લૉન્ચ કરો એવું તમારા વ્યવસ્થાપક ઇચ્છે છે}=1{અપડેટ લાગુ કરવા માટે તમે Chromeને ફરીથી લૉન્ચ કરો એવું તમારા વ્યવસ્થાપક ઇચ્છે છે. તમારી છુપી વિન્ડો ફરીથી ખૂલશે નહીં.}one{અપડેટ લાગુ કરવા માટે તમે Chromeને ફરીથી લૉન્ચ કરો એવું તમારા વ્યવસ્થાપક ઇચ્છે છે. તમારી # છુપી વિન્ડો ફરીથી ખૂલશે નહીં.}other{અપડેટ લાગુ કરવા માટે તમે Chromeને ફરીથી લૉન્ચ કરો એવું તમારા વ્યવસ્થાપક ઇચ્છે છે. તમારી # છુપી વિન્ડો ફરીથી ખૂલશે નહીં.}}</translation>
 <translation id="3597003331831379823">વધારેલા વિશેષાધિકારો સાથે સેટઅપ ચલાવવામાં નિષ્ફળ રહ્યાં. <ph name="METAINSTALLER_ERROR" /></translation>
+<translation id="3598673391539778844">સિસ્ટમ ટ્રેમાં Gemini in Chrome બતાવો</translation>
 <translation id="3622716124581627104">વસ્તુઓ અથવા સ્થાનોને ઓળખો અને ટેક્સ્ટને કૉપિ કરો અથવા અનુવાદિત કરો. જ્યારે તમે Google Lensનો ઉપયોગ કરો, ત્યારે આ પેજનો સ્ક્રીનશૉટ Googleને મોકલવામાં આવે છે. <ph name="LEARN_MORE" /></translation>
 <translation id="3622797965165704966">હવે તમારા Google એકાઉન્ટ સાથે અને શેર કરેલા કમ્પ્યુટર પર Chromeનો ઉપયોગ કરવો વધુ સરળ છે.</translation>
 <translation id="3635073343384702370">જ્યારે તમે તમારા પાસવર્ડ સાચવો ત્યારે Chrome તેને ચેક કરી શકે છે</translation>
@@ -317,7 +321,6 @@
 <translation id="4149882025268051530">ઇન્સ્ટૉલર આર્કાઇવને અનકોમ્પ્રેસ કરવામાં નિષ્ફળ. કૃપા કરીને Google Chrome ફરીથી ડાઉનલોડ કરો.</translation>
 <translation id="415112847282352845">તમારા બધા ડિવાઇસ પર તમારા ઍડ્રેસ અને બીજું ઘણું મેળવવા માટે, Chromeમાં સાઇન ઇન કરો. તમે સાઇન ઇન કરો તે પછી આ ઍડ્રેસ તમારા Google એકાઉન્ટમાં સાચવવામાં આવશે.</translation>
 <translation id="4153934450158521343">Chrome ટૂંક સમયમાં જ બંધ થશે અને ડેટા ડિલીટ કરશે</translation>
-<translation id="4159985264221160808">Chrome પર તમારા કાર્યને સુરક્ષિત રાખવા માટે, તમારી સંસ્થા અમુક માહિતી જોઈ અથવા મેનેજ કરી શકશે</translation>
 <translation id="4173512894976930765">સાઇટ અપેક્ષા મુજબ કામ કરે તેમ બની શકે છે. જો તમે Chromeમાં સાઇન ઇન કર્યું હોય, તો જ્યારે તમે તમારા Google એકાઉન્ટ સિવાયની બધી Chrome વિન્ડો બંધ કરશો, ત્યારે તમે મોટાભાગની સાઇટમાંથી સાઇન આઉટ થઈ જશો.</translation>
 <translation id="4175922240926474352">Chrome દ્વારા આ ડાઉનલોડ બ્લૉક કરવામાં આવ્યું કારણ કે આ સાઇટ કોઈ સુરક્ષિત કનેક્શનનો ઉપયોગ કરી રહી નથી તેમજ ફાઇલ સાથે ચેડાં કરવામાં આવ્યા હોઈ શકે છે</translation>
 <translation id="4191857738314598978">{0,plural, =1{એક દિવસની અંદર Chromeને ફરીથી લૉન્ચ કરો}one{# દિવસની અંદર Chromeને ફરીથી લૉન્ચ કરો}other{# દિવસની અંદર Chromeને ફરીથી લૉન્ચ કરો}}</translation>
@@ -348,7 +351,6 @@
 <translation id="4437295824090654417">ઝડપી ઓવરવ્યૂ મેળવવા અને ફૉલોઅપ પ્રશ્નો પૂછવા માટે, આ દસ્તાવેજને Gemini in Chrome સાથે શેર કરો</translation>
 <translation id="4450664632294415862">Chrome - નેટવર્ક સાઇન ઇન - <ph name="PAGE_TITLE" /></translation>
 <translation id="4458462641685292929">Google Chrome પર બીજી ક્રિયા ચાલુ છે. કૃપા કરીને પછીથી ફરી પ્રયાસ કરો.</translation>
-<translation id="4459234553906210702">Ad measurement તમે જેની મુલાકાત લો છો તે સાઇટને Chrome પાસેથી માહિતીની વિનંતી કરવાની મંજૂરી આપે છે, જે સાઇટને તેની જાહેરાતોનું કાર્યપ્રદર્શન માપવામાં સહાય કરે છે. Ad measurement સાઇટ વચ્ચે શક્ય તેટલી ઓછી માહિતી ટ્રાન્સફર કરીને, સાઇટ દ્વારા પરસ્પરના ટ્રૅકિંગને પ્રતિબંધિત કરે છે.</translation>
 <translation id="4493028449971051158">સ્ટાર્ટઅપ દરમિયાન ભૂલ: કૃપા કરીને ઇન્સ્ટૉલરને ઍડમિનિસ્ટ્રેટર તરીકે ચલાવો.</translation>
 <translation id="4501471624619070934">ઇન્સ્ટૉલેશન નિષ્ફળ ગયું કારણ કે આ દેશમાં ઍક્સેસ પ્રતિબંધિત છે.</translation>
 <translation id="4571503333518166079">Chromeની નોટિફિકેશનની સેટિંગ પર જાઓ</translation>
@@ -381,7 +383,6 @@
 <translation id="4885446229353981848">હંમેશાં Google Lens શૉર્ટકટ બતાવો</translation>
 <translation id="4891791193823137474">Google Chrome ને પૃષ્ટભૂમિમાં ચાલવા દો</translation>
 <translation id="4895437082222824641">નવા Chrome &amp;ટૅબમાં લિંક ખોલો</translation>
-<translation id="4896867431081882115">Chromeને તમારા ડિફૉલ્ટ બ્રાઉઝર તરીકે સેટ કરીને તમે જાણતા હો, તમને ગમતી હોય અને તમને વિશ્વાસપાત્ર હોય એવી સુવિધાઓનો સરળતાથી ઍક્સેસ મેળવો. ઝડપી ઍક્સેસ માટે Chromeને તમારા ટાસ્કબાર પર પિન કરવામાં આવશે.</translation>
 <translation id="4904953848704395458">કીબોર્ડ શૉર્ટકટ વડે Chromeમાં Gemini ખોલો.</translation>
 <translation id="4918086044614829423">સ્વીકારો</translation>
 <translation id="4918844574251943176">છબી કૉપિ કરી</translation>
@@ -418,6 +419,7 @@
 <translation id="521447420733633466">જો તમે ડિવાઇસ શેર કરતા હો, તો મિત્રો અને કુટુંબીજનો અલગ-અલગ બ્રાઉઝ કરી શકે છે અને તેઓ તેમને જોઈએ તે પ્રમાણે Chromeનું સેટઅપ કરી શકે છે</translation>
 <translation id="5234764350956374838">કાઢી નાખો</translation>
 <translation id="5239627039202700673">જ્યારે પણ તમે મેસેજ, દસ્તાવેજો અને અન્ય ઍપમાંની લિંક પર ક્લિક કરો, ત્યારે Chromeનો ઉપયોગ કરો</translation>
+<translation id="524751727772074981">Gemini in Chromium વડે તમે જ્યાં પણ હો, ત્યાંથી કંઈપણ પૂછો</translation>
 <translation id="5251420635869119124">અતિથિઓ કંઈપણ પાછળ છોડ્યાં વિના Chrome નો ઉપયોગ કરી શકે છે.</translation>
 <translation id="5271833978500241046">Chromeમાં Geminiની અન્ય સુવિધાઓની સાથે તેનો ઉપયોગ કરો</translation>
 <translation id="5286907366254680517">ભાળ મળી</translation>
@@ -723,6 +725,7 @@ Google Chrome તમારા સેટિંગને રિકવર કરી
 <translation id="8113883687556086139">તમારા <ph name="ACCOUNT_EMAIL" /> એકાઉન્ટમાં Chrome ડેટાનો ઉપયોગ કરવા અને તેને સાચવવા માટે, આ તમે જ છો તેની ચકાસણી કરો</translation>
 <translation id="8115695070094288807">Chromeને તમારું બનાવી રહ્યા છીએ...</translation>
 <translation id="8118331347066725040">'Lens વડે શોધો' માટે પ્રતિસાદ મોકલો</translation>
+<translation id="812930250799242837"><ph name="USER_NAME" />, Googleની મેમ્બરશિપ તરીકે સાઇન ઇન કર્યું,. એકાઉન્ટ મેનૂ ખોલો</translation>
 <translation id="8129812357326543296">&amp;Google Chrome વિશે</translation>
 <translation id="813913629614996137">પ્રારંભ કરી રહ્યું છે...</translation>
 <translation id="8162006532256575008">કોઈ એકાઉન્ટ વિના Chromeનો ઉપયોગ કરો</translation>
@@ -745,6 +748,7 @@ Google Chrome તમારા સેટિંગને રિકવર કરી
 <translation id="8367705492654390392">કંઈપણ પૂછો</translation>
 <translation id="8367950957770994118">જ્યારે પણ તમને Gemini in Chromeની જરૂર પડે, ત્યારે તેને ઝડપથી ખોલો</translation>
 <translation id="8370517070665726704">કૉપિરાઇટ <ph name="YEAR" /> Google LLC. સર્વાધિકાર સુરક્ષિત.</translation>
+<translation id="8370748943308169953"><ph name="USER_NAME" /> તરીકે Chromeમાં સાઇન ઇન કરવા માટેનો QR કોડ</translation>
 <translation id="8377158135256176353">Chrome Canaryમાં Gemini ટૉગલ કરો</translation>
 <translation id="8387459386171870978">Chromeનો ઉપયોગ કરવાનું ચાલુ રાખો</translation>
 <translation id="8394720698884623075">URLsને Chromeમાં સ્ટોર કરેલી અસુરક્ષિત સાઇટની સૂચિ સાથે સરખાવીને ચેક કરે છે</translation>
@@ -756,6 +760,7 @@ Google Chrome તમારા સેટિંગને રિકવર કરી
 
 જ્યાં સુધી તમે અમુક બુકમાર્ક ડિલીટ ન કરો, ત્યાં સુધી નવા બુકમાર્ક તમારા એકાઉન્ટમાં સાચવી શકાશે નહીં. જો તમે હમણાં જ સાઇન આઉટ કરશો, તો ન સચવાયેલા બુકમાર્ક ડિલીટ કરવામાં આવશે.</translation>
 <translation id="8458117863387545390">તમારા ફોન પર Chrome મેળવો</translation>
+<translation id="848851325211467878"><ph name="USER_NAME" />, <ph name="USER_EMAIL" />, Google મેમ્બરશિપ તરીકે સાઇન ઇન કર્યું. એકાઉન્ટ મેનૂ ખોલો</translation>
 <translation id="8496177819998570653">Google P&amp;assword Manager</translation>
 <translation id="8498858610309223613">Google Chrome માટેનું વિશેષ સુરક્ષા અપડેટ હમણાં જ લાગુ કરવામાં આવ્યું. ફરી શરૂ કરો અને અમે તમારાં ટૅબની પુનઃસ્થાપના કરીશું.</translation>
 <translation id="8521348052903287641">mDNS ટ્રાફિકને મંજૂરી આપવા માટે Google Chrome Dev માટે ઇનબાઉન્ડ નિયમ.</translation>
@@ -791,6 +796,7 @@ Google Chrome તમારા સેટિંગને રિકવર કરી
 <translation id="8821043148920470810">Google Chromeની ભાવિ અપડેટ મેળવવા માટે, તમારે Windows 10 કે તે પછીના વર્ઝન પર અપડેટ કરવું જરૂરી રહેશે. આ કમ્પ્યુટર Windows 7નો ઉપયોગ કરે છે.</translation>
 <translation id="8823341990149967727">Chrome જૂનું થઈ ગયું છે</translation>
 <translation id="8834965163890861871">Google Chrome પાસવર્ડમાં ફેરફાર કરવાનો પ્રયાસ કરે છે. આની મંજૂરી આપવા માટે તમારો Windows પાસવર્ડ લખો.</translation>
+<translation id="8841151363570555833">Mac મેનૂ બારમાં Gemini in Chrome બતાવો</translation>
 <translation id="8851180723659088381">{NUM_EXTENSIONS,plural, =1{Chrome તેને કાઢી નાખવાનો સુઝાવ તમને આપે છે}one{Chrome તેને કાઢી નાખવાનો સુઝાવ તમને આપે છે}other{Chrome તેમને કાઢી નાખવાનો સુઝાવ તમને આપે છે}}</translation>
 <translation id="8862326446509486874">તમારી પાસે સિસ્ટમ-સ્તરનાં ઇન્સ્ટોલ માટે ઉચિત અધિકારો નથી. એડમિન તરીકે ઇન્સ્ટૉલરને ફરીથી ચલાવવનો પ્રયાસ કરો.</translation>
 <translation id="8865415417596392024">તમારા એકાઉન્ટમાંનો Chrome ડેટા</translation>

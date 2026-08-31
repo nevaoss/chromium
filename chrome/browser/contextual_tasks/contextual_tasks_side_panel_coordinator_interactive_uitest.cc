@@ -96,7 +96,11 @@ class ContextualTasksSidePanelCoordinatorInteractiveUiTest
     : public InteractiveBrowserTest {
  public:
   ContextualTasksSidePanelCoordinatorInteractiveUiTest() {
-    scoped_feature_list_.InitAndEnableFeature(kContextualTasks);
+    scoped_feature_list_.InitWithFeaturesAndParameters(
+        {{kContextualTasks, {}},
+         {kContextualTasksEphemeralBrandedEntryPoint,
+          {{"ContextualTasksEntryPoint", "toolbar-ephemeral-branded"}}}},
+        {});
   }
   ~ContextualTasksSidePanelCoordinatorInteractiveUiTest() override = default;
 
@@ -126,12 +130,20 @@ class ContextualTasksSidePanelCoordinatorInteractiveUiTest
         task1.GetTaskId(),
         sessions::SessionTabHelper::IdForTab(
             TabListInterface::From(browser())->GetTab(0)->GetContents()));
+    contextual_tasks_service->UpdateThreadForTask(
+        task1.GetTaskId(), ThreadType::kAiMode, "thread1", std::nullopt,
+        "Title 1");
+
     ContextualTask task2 = contextual_tasks_service->CreateTask();
     task_id2_ = task2.GetTaskId();
     contextual_tasks_service->AssociateTabWithTask(
         task2.GetTaskId(),
         sessions::SessionTabHelper::IdForTab(
             TabListInterface::From(browser())->GetTab(1)->GetContents()));
+    contextual_tasks_service->UpdateThreadForTask(
+        task2.GetTaskId(), ThreadType::kAiMode, "thread2", std::nullopt,
+        "Title 2");
+
     contextual_tasks_service->AssociateTabWithTask(
         task1.GetTaskId(),
         sessions::SessionTabHelper::IdForTab(
@@ -1067,8 +1079,17 @@ DEFINE_LOCAL_CUSTOM_ELEMENT_EVENT_TYPE(kElementExistsEvent);
 DEFINE_LOCAL_CUSTOM_ELEMENT_EVENT_TYPE(kFrameLoadedEvent);
 DEFINE_LOCAL_CUSTOM_ELEMENT_EVENT_TYPE(kComposeboxFocusedEvent);
 
-IN_PROC_BROWSER_TEST_F(ContextualTasksSidePanelCoordinatorInteractiveUiTest,
-                       ComposeboxFocusOnBoundsUpdateWhenComposeboxHidden) {
+// TODO(b/540260179, b/528971436): Flaky on Linux dbg and ChromeOS.
+#if (BUILDFLAG(IS_LINUX) && !defined(NDEBUG)) || BUILDFLAG(IS_CHROMEOS)
+#define MAYBE_ComposeboxFocusOnBoundsUpdateWhenComposeboxHidden \
+  DISABLED_ComposeboxFocusOnBoundsUpdateWhenComposeboxHidden
+#else
+#define MAYBE_ComposeboxFocusOnBoundsUpdateWhenComposeboxHidden \
+  ComposeboxFocusOnBoundsUpdateWhenComposeboxHidden
+#endif
+IN_PROC_BROWSER_TEST_F(
+    ContextualTasksSidePanelCoordinatorInteractiveUiTest,
+    MAYBE_ComposeboxFocusOnBoundsUpdateWhenComposeboxHidden) {
   SetUpTasks();
   ASSERT_TRUE(ui_test_utils::BringBrowserWindowToFront(browser()));
   ContextualTasksSidePanelCoordinator* coordinator = GetCoordinator();

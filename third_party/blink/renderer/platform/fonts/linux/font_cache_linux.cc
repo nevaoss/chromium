@@ -33,7 +33,7 @@
 #include "ui/gfx/font_fallback_linux.h"
 
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
-#include "third_party/blink/renderer/platform/text/unicode_range.h"
+#include "third_party/blink/renderer/platform/text/neva/unicode_range.h"
 #endif
 
 namespace blink {

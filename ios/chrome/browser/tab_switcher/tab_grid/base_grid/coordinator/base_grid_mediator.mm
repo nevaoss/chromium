@@ -39,7 +39,6 @@
 #import "ios/chrome/browser/saved_tab_groups/model/tab_group_service.h"
 #import "ios/chrome/browser/saved_tab_groups/model/tab_group_service_factory.h"
 #import "ios/chrome/browser/saved_tab_groups/model/tab_group_sync_service_factory.h"
-#import "ios/chrome/browser/shared/coordinator/scene/scene_controller.h"
 #import "ios/chrome/browser/shared/coordinator/scene/scene_state.h"
 #import "ios/chrome/browser/shared/model/browser/browser.h"
 #import "ios/chrome/browser/shared/model/browser/browser_list.h"
@@ -301,6 +300,7 @@ web::WebState* WebStateWithSnapshotID(WebStateList& web_state_list,
 
   configuration.selectAllButton = !allItemsSelected;
   configuration.deselectAllButton = allItemsSelected;
+  configuration.exitTabGridButton = YES;
   configuration.closeSelectedTabsButton = selectedItemsCount > 0;
   configuration.shareButton = selectedShareableItemsCount > 0;
   configuration.addToButton = selectedItemsCount > 0;

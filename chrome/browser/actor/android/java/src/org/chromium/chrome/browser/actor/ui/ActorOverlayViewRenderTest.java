@@ -134,16 +134,10 @@ public class ActorOverlayViewRenderTest {
     @MediumTest
     @Feature({"RenderTest"})
     public void testActorOverlay() throws Exception {
-        ThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    mCoordinator.getMediator().setOverlayVisible(true);
-                });
+        ThreadUtils.runOnUiThreadBlocking(() -> mCoordinator.getMediator().setOverlayVisible(true));
 
         CriteriaHelper.pollUiThread(
-                () -> {
-                    return mParentView.getChildAt(0) != null
-                            && mParentView.getChildAt(0).getWidth() > 0;
-                },
+                () -> mParentView.getChildAt(0) != null && mParentView.getChildAt(0).getWidth() > 0,
                 "View did not get layout dimensions");
 
         mRenderTestRule.render(mParentView, "actor_overlay_default");
@@ -166,10 +160,7 @@ public class ActorOverlayViewRenderTest {
                 });
 
         CriteriaHelper.pollUiThread(
-                () -> {
-                    return mParentView.getChildAt(0) != null
-                            && mParentView.getChildAt(0).getWidth() > 0;
-                },
+                () -> mParentView.getChildAt(0) != null && mParentView.getChildAt(0).getWidth() > 0,
                 "View did not get layout dimensions");
 
         mRenderTestRule.render(mParentView, "actor_overlay_side_ui");
@@ -182,14 +173,11 @@ public class ActorOverlayViewRenderTest {
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
                     mCoordinator.getMediator().setOverlayVisible(true);
-                    mCoordinator.getView().setHovered(true);
+                    mParentView.findViewById(R.id.actor_overlay).setHovered(true);
                 });
 
         CriteriaHelper.pollUiThread(
-                () -> {
-                    return mParentView.getChildAt(0) != null
-                            && mParentView.getChildAt(0).getWidth() > 0;
-                },
+                () -> mParentView.getChildAt(0) != null && mParentView.getChildAt(0).getWidth() > 0,
                 "View did not get layout dimensions");
 
         mRenderTestRule.render(mParentView, "actor_overlay_hovered");
@@ -208,10 +196,7 @@ public class ActorOverlayViewRenderTest {
                 });
 
         CriteriaHelper.pollUiThread(
-                () -> {
-                    return mParentView.getChildAt(0) != null
-                            && mParentView.getChildAt(0).getWidth() > 0;
-                },
+                () -> mParentView.getChildAt(0) != null && mParentView.getChildAt(0).getWidth() > 0,
                 "View did not get layout dimensions");
 
         mRenderTestRule.render(mParentView, "actor_overlay_with_take_over_button");

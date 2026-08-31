@@ -16,7 +16,6 @@ import org.chromium.build.annotations.MonotonicNonNull;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.NullUnmarked;
 import org.chromium.build.annotations.Nullable;
-import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.fullscreen.FullscreenManager;
 import org.chromium.chrome.browser.fullscreen.FullscreenOptions;
 import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
@@ -24,6 +23,10 @@ import org.chromium.chrome.browser.lifecycle.PauseResumeWithNativeObserver;
 import org.chromium.chrome.browser.tab.CurrentTabObserver;
 import org.chromium.chrome.browser.tab.EmptyTabObserver;
 import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.AnchorSide;
+import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.SideUiSpecs;
+import org.chromium.chrome.browser.ui.side_ui.SideUiObserver;
+import org.chromium.chrome.browser.ui.side_ui.SideUiStateProvider;
 import org.chromium.components.browser_ui.widget.TouchEventObserver;
 import org.chromium.components.browser_ui.widget.TouchEventProvider;
 import org.chromium.content_public.browser.RenderWidgetHostView;
@@ -41,6 +44,15 @@ import org.chromium.ui.modelutil.PropertyModelChangeProcessor;
 public class HistoryNavigationCoordinator
         implements InsetObserver.WindowInsetObserver, PauseResumeWithNativeObserver {
     private final Runnable mUpdateNavigationStateRunnable = this::onNavigationStateChanged;
+    private final SideUiObserver mSideUiObserver =
+            new SideUiObserver() {
+                @Override
+                public void onSideUiSpecsChanged(SideUiSpecs sideUiSpecs) {
+                    updateSideUiWidths(
+                            sideUiSpecs.getWidth(AnchorSide.LEFT),
+                            sideUiSpecs.getWidth(AnchorSide.RIGHT));
+                }
+            };
 
     private WindowAndroid mWindow;
     private ViewGroup mParentView;
@@ -60,6 +72,10 @@ public class HistoryNavigationCoordinator
     private TouchEventProvider mTouchEventProvider;
 
     private @Nullable Boolean mForceFeatureEnabledForTesting;
+
+    private int mLeftSideUiWidth;
+    private int mRightSideUiWidth;
+    private @Nullable SideUiStateProvider mSideUiStateProvider;
 
     /**
      * Creates the coordinator for gesture navigation and initializes internal objects.
@@ -217,10 +233,7 @@ public class HistoryNavigationCoordinator
             return mEnabled;
         }
 
-        if (ChromeFeatureList.sActivateHistoryNavigationCoordinatorInGestureNavMode.isEnabled()) {
-            return true;
-        }
-        return !UiUtils.isGestureNavigationMode(mWindow.getWindow());
+        return true;
     }
 
     @Override
@@ -263,6 +276,32 @@ public class HistoryNavigationCoordinator
         }
     }
 
+    /** Sets the {@link SideUiStateProvider} to observe side UI width changes. */
+    public void setSideUiStateProvider(SideUiStateProvider provider) {
+        if (mSideUiStateProvider != null) {
+            mSideUiStateProvider.removeObserver(mSideUiObserver);
+        }
+        mSideUiStateProvider = provider;
+        mSideUiStateProvider.addObserver(mSideUiObserver);
+        SideUiSpecs currentSpecs = provider.getCurrentSideUiSpecs();
+        if (currentSpecs != null) {
+            updateSideUiWidths(
+                    currentSpecs.getWidth(AnchorSide.LEFT),
+                    currentSpecs.getWidth(AnchorSide.RIGHT));
+        }
+    }
+
+    private void updateSideUiWidths(int leftWidth, int rightWidth) {
+        mLeftSideUiWidth = leftWidth;
+        mRightSideUiWidth = rightWidth;
+        if (mNavigationLayout != null) {
+            mNavigationLayout.setSideUiWidths(leftWidth, rightWidth);
+        }
+        if (mNavigationHandler != null) {
+            mNavigationHandler.setSideUiWidths(leftWidth, rightWidth);
+        }
+    }
+
     /** Initialize {@link NavigationHandler} object. */
     @EnsuresNonNull("mNavigationHandler")
     void initNavigationHandler() {
@@ -276,6 +315,7 @@ public class HistoryNavigationCoordinator
                         mNavigationLayout,
                         mBackActionDelegate,
                         mNavigationLayout::willNavigate);
+        mNavigationHandler.setSideUiWidths(mLeftSideUiWidth, mRightSideUiWidth);
         mTouchEventProvider.addTouchEventObserver(mNavigationHandler);
     }
 
@@ -347,6 +387,10 @@ public class HistoryNavigationCoordinator
     /** Destroy HistoryNavigationCoordinator object. */
     @SuppressWarnings("NullAway")
     public void destroy() {
+        if (mSideUiStateProvider != null) {
+            mSideUiStateProvider.removeObserver(mSideUiObserver);
+            mSideUiStateProvider = null;
+        }
         if (mCurrentTabObserver != null) {
             mCurrentTabObserver.destroy();
             mCurrentTabObserver = null;

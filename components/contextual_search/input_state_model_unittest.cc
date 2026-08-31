@@ -379,6 +379,146 @@ TEST_F(InputStateModelTest, UpdateToolFromUrl_ThreadChangedResetsTool) {
   EXPECT_FALSE(state_model->get_state_for_testing().is_canvas_query_submitted);
 }
 
+TEST_F(InputStateModelTest, UserRemovedTool_PreventsStaleUrlReactivatingTool) {
+  omnibox::SearchboxConfig config;
+  auto* canvas_config = config.add_tool_configs();
+  canvas_config->set_tool(omnibox::ToolMode::TOOL_MODE_CANVAS);
+  auto* canvas_param = canvas_config->add_aim_url_params();
+  canvas_param->set_param_key("rc");
+  canvas_param->set_param_value("1");
+
+  GURL canvas_url("https://example.com/?rc=1&mtid=123");
+  auto state_model = std::make_unique<InputStateModel>(
+      session_handle_, config, canvas_url, /*is_off_the_record=*/false,
+      /*browser_identity_matches_aim_identity=*/true);
+
+  EXPECT_EQ(state_model->get_state_for_testing().active_tool,
+            omnibox::ToolMode::TOOL_MODE_CANVAS);
+
+  // User explicitly removes/exits Canvas.
+  state_model->setActiveTool(omnibox::ToolMode::TOOL_MODE_UNSPECIFIED);
+  EXPECT_EQ(state_model->get_state_for_testing().active_tool,
+            omnibox::ToolMode::TOOL_MODE_UNSPECIFIED);
+
+  // `UpdateStateFromUrl` with the stale canvas URL on the same thread
+  // (e.g. after submitting a query).
+  state_model->UpdateStateFromUrl(canvas_url);
+
+  // Assert: Tool remains `UNSPECIFIED` and `is_canvas_query_submitted` is false
+  // because the user has removed the tool (as recorded by
+  // `user_removed_tools_`).
+  EXPECT_EQ(state_model->get_state_for_testing().active_tool,
+            omnibox::ToolMode::TOOL_MODE_UNSPECIFIED);
+  EXPECT_FALSE(state_model->get_state_for_testing().is_canvas_query_submitted);
+
+  // Navigating to a new thread resets the removed tools set.
+  GURL new_thread_canvas_url("https://example.com/?rc=1&mtid=456");
+  state_model->UpdateStateFromUrl(new_thread_canvas_url);
+  EXPECT_EQ(state_model->get_state_for_testing().active_tool,
+            omnibox::ToolMode::TOOL_MODE_CANVAS);
+}
+
+TEST_F(
+    InputStateModelTest,
+    SetActiveTool_UnspecifiedWhenAlreadyUnspecified_DoesNotRecordRemovedTool) {
+  omnibox::SearchboxConfig config;
+  auto* canvas_config = config.add_tool_configs();
+  canvas_config->set_tool(omnibox::ToolMode::TOOL_MODE_CANVAS);
+  auto* canvas_param = canvas_config->add_aim_url_params();
+  canvas_param->set_param_key("rc");
+  canvas_param->set_param_value("1");
+
+  // Initial state has `active_tool` == `TOOL_MODE_UNSPECIFIED`.
+  GURL normal_url("https://example.com/?mtid=123");
+  auto state_model = std::make_unique<InputStateModel>(
+      session_handle_, config, normal_url, /*is_off_the_record=*/false,
+      /*browser_identity_matches_aim_identity=*/true);
+
+  EXPECT_EQ(state_model->get_state_for_testing().active_tool,
+            omnibox::ToolMode::TOOL_MODE_UNSPECIFIED);
+
+  // Calling `setActiveTool(TOOL_MODE_UNSPECIFIED)` when tool is already
+  // `UNSPECIFIED` should not record Canvas as removed.
+  state_model->setActiveTool(omnibox::ToolMode::TOOL_MODE_UNSPECIFIED);
+
+  // `UpdateStateFromUrl` with a Canvas URL on the same thread should properly
+  // match Canvas.
+  GURL canvas_url("https://example.com/?rc=1&mtid=123");
+  state_model->UpdateStateFromUrl(canvas_url);
+
+  // Assert: Canvas is parsed and active because Canvas was not in
+  // `user_removed_tools_`.
+  EXPECT_EQ(state_model->get_state_for_testing().active_tool,
+            omnibox::ToolMode::TOOL_MODE_CANVAS);
+}
+
+TEST_F(InputStateModelTest, DelayedRc1ParameterAddedOnSameThread) {
+  omnibox::SearchboxConfig config;
+  auto* canvas_config = config.add_tool_configs();
+  canvas_config->set_tool(omnibox::ToolMode::TOOL_MODE_CANVAS);
+  auto* canvas_param = canvas_config->add_aim_url_params();
+  canvas_param->set_param_key("rc");
+  canvas_param->set_param_value("1");
+
+  // Initial navigation to thread 123 (no "rc=1" yet).
+  GURL initial_url("https://www.google.com/search?mtid=123");
+  auto state_model = std::make_unique<InputStateModel>(
+      session_handle_, config, initial_url, /*is_off_the_record=*/false,
+      /*browser_identity_matches_aim_identity=*/true);
+
+  EXPECT_EQ(state_model->get_state_for_testing().active_tool,
+            omnibox::ToolMode::TOOL_MODE_UNSPECIFIED);
+
+  // Delayed redirect appends "rc=1" on the same thread 123 (not just first
+  // redirect upon thread change triggers tool change).
+  GURL delayed_url("https://www.google.com/search?mtid=123&rc=1");
+  state_model->UpdateStateFromUrl(delayed_url);
+
+  // Assert: Tool becomes CANVAS because user did not manually modify the tool.
+  EXPECT_EQ(state_model->get_state_for_testing().active_tool,
+            omnibox::ToolMode::TOOL_MODE_CANVAS);
+  EXPECT_TRUE(state_model->get_state_for_testing().is_canvas_query_submitted);
+}
+
+TEST_F(InputStateModelTest,
+       UserModifiedTool_PreventsDelayedRc1ReactivatingTool) {
+  omnibox::SearchboxConfig config;
+  auto* canvas_config = config.add_tool_configs();
+  canvas_config->set_tool(omnibox::ToolMode::TOOL_MODE_CANVAS);
+  auto* canvas_param = canvas_config->add_aim_url_params();
+  canvas_param->set_param_key("rc");
+  canvas_param->set_param_value("1");
+
+  GURL canvas_url("https://www.google.com/search?rc=1&mtid=123");
+  auto state_model = std::make_unique<InputStateModel>(
+      session_handle_, config, canvas_url, /*is_off_the_record=*/false,
+      /*browser_identity_matches_aim_identity=*/true);
+
+  EXPECT_EQ(state_model->get_state_for_testing().active_tool,
+            omnibox::ToolMode::TOOL_MODE_CANVAS);
+
+  // User explicitly modifies tool (e.g. removes Canvas).
+  state_model->setActiveTool(omnibox::ToolMode::TOOL_MODE_UNSPECIFIED);
+  EXPECT_EQ(state_model->get_state_for_testing().active_tool,
+            omnibox::ToolMode::TOOL_MODE_UNSPECIFIED);
+  EXPECT_FALSE(state_model->get_state_for_testing().is_canvas_query_submitted);
+
+  // URL update with "rc=1" on the same thread must not re-activate Canvas.
+  state_model->UpdateStateFromUrl(canvas_url);
+
+  EXPECT_EQ(state_model->get_state_for_testing().active_tool,
+            omnibox::ToolMode::TOOL_MODE_UNSPECIFIED);
+  EXPECT_FALSE(state_model->get_state_for_testing().is_canvas_query_submitted);
+
+  // Switching to a new thread ("mtid=456") resets
+  // `user_modified_tool_in_thread_`.
+  GURL new_thread_canvas_url("https://www.google.com/search?rc=1&mtid=456");
+  state_model->UpdateStateFromUrl(new_thread_canvas_url);
+  EXPECT_EQ(state_model->get_state_for_testing().active_tool,
+            omnibox::ToolMode::TOOL_MODE_CANVAS);
+  EXPECT_TRUE(state_model->get_state_for_testing().is_canvas_query_submitted);
+}
+
 TEST_F(InputStateModelTest, RegularModelAllowsAllToolsAndInputsWithEmptyLists) {
   omnibox::SearchboxConfig config;
 
@@ -1351,7 +1491,8 @@ TEST_F(InputStateModelTest, UpdateModelFromUrl) {
             omnibox::ModelMode::MODEL_MODE_GEMINI_PRO_AUTOROUTE);
 }
 
-TEST_F(InputStateModelTest, DriveConsentStateTogglesDriveInput) {
+TEST_F(InputStateModelTest,
+       DriveConsentStateRetainsDriveInputDeterministically) {
   base::test::ScopedFeatureList scoped_feature_list;
   scoped_feature_list.InitWithFeatures(
       {omnibox::kComposeboxDriveContextMenuOption}, {});
@@ -1364,18 +1505,24 @@ TEST_F(InputStateModelTest, DriveConsentStateTogglesDriveInput) {
   config.add_input_type_configs()->set_input_type(
       omnibox::InputType::INPUT_TYPE_DRIVE);
 
+  // Establish a baseline Cold-Start Profile state (kNotReady) to validate that
+  // the Config-Driven render-gate retains Drive context eligibility.
+  pref_service_.SetInteger(contextual_search::kDriveConsentState,
+                           static_cast<int>(DriveConsentState::kNotReady));
+
   input_state_model_ = std::make_unique<InputStateModel>(
       session_handle_, config, active_url_, /*is_off_the_record=*/false,
       /*browser_identity_matches_aim_identity=*/true);
   input_state_model_->SetPrefService(&pref_service_);
 
-  // 1. Starts as kNotReady, Drive should be disallowed.
+  // Under the Config-Driven Render-Gate architecture, `INPUT_TYPE_DRIVE`
+  // remains synchronously and deterministically allowed upon instantiation.
   EXPECT_THAT(input_state_model_->get_state_for_testing().allowed_input_types,
-              testing::UnorderedElementsAre(omnibox::INPUT_TYPE_LENS_IMAGE,
-                                            omnibox::INPUT_TYPE_LENS_FILE,
-                                            omnibox::INPUT_TYPE_BROWSER_TAB));
+              testing::UnorderedElementsAre(
+                  omnibox::INPUT_TYPE_LENS_IMAGE, omnibox::INPUT_TYPE_LENS_FILE,
+                  omnibox::INPUT_TYPE_BROWSER_TAB, omnibox::INPUT_TYPE_DRIVE));
 
-  // 2. Set to kConsent, Drive should be allowed.
+  // Toggling kConsent.
   pref_service_.SetInteger(contextual_search::kDriveConsentState,
                            static_cast<int>(DriveConsentState::kConsent));
   EXPECT_THAT(input_state_model_->get_state_for_testing().allowed_input_types,
@@ -1383,23 +1530,15 @@ TEST_F(InputStateModelTest, DriveConsentStateTogglesDriveInput) {
                   omnibox::INPUT_TYPE_LENS_IMAGE, omnibox::INPUT_TYPE_LENS_FILE,
                   omnibox::INPUT_TYPE_BROWSER_TAB, omnibox::INPUT_TYPE_DRIVE));
 
-  // 3. Set to kNotConsent, Drive should be removed.
+  // Toggling kNotConsent.
   pref_service_.SetInteger(contextual_search::kDriveConsentState,
                            static_cast<int>(DriveConsentState::kNotConsent));
   EXPECT_THAT(input_state_model_->get_state_for_testing().allowed_input_types,
-              testing::UnorderedElementsAre(omnibox::INPUT_TYPE_LENS_IMAGE,
-                                            omnibox::INPUT_TYPE_LENS_FILE,
-                                            omnibox::INPUT_TYPE_BROWSER_TAB));
-
-  // 4. Set back to kConsent, Drive should be allowed again.
-  pref_service_.SetInteger(contextual_search::kDriveConsentState,
-                           static_cast<int>(DriveConsentState::kConsent));
-  EXPECT_THAT(input_state_model_->get_state_for_testing().allowed_input_types,
               testing::UnorderedElementsAre(
                   omnibox::INPUT_TYPE_LENS_IMAGE, omnibox::INPUT_TYPE_LENS_FILE,
                   omnibox::INPUT_TYPE_BROWSER_TAB, omnibox::INPUT_TYPE_DRIVE));
 
-  // 5. Set to kRestricted, Drive should be removed.
+  // Toggling kRestricted removes INPUT_TYPE_DRIVE from allowed_input_types.
   pref_service_.SetInteger(contextual_search::kDriveConsentState,
                            static_cast<int>(DriveConsentState::kRestricted));
   EXPECT_THAT(input_state_model_->get_state_for_testing().allowed_input_types,
@@ -1428,7 +1567,9 @@ TEST_F(InputStateModelTest, DriveConsentStateWithDisclaimerToggle) {
       /*browser_identity_matches_aim_identity=*/true);
   input_state_model_->SetPrefService(&pref_service_);
 
-  // When Disclaimer is enabled, kNotConsent should allow Drive input.
+  // Under Config-Driven render-gate architecture, Drive input presence is
+  // deterministically preserved, avoiding runtime pruning upon kNotConsent,
+  // kConsent, kNotReady, and kRestricted transitions.
   pref_service_.SetInteger(contextual_search::kDriveConsentState,
                            static_cast<int>(DriveConsentState::kNotConsent));
   EXPECT_THAT(input_state_model_->get_state_for_testing().allowed_input_types,
@@ -1436,7 +1577,6 @@ TEST_F(InputStateModelTest, DriveConsentStateWithDisclaimerToggle) {
                   omnibox::INPUT_TYPE_LENS_IMAGE, omnibox::INPUT_TYPE_LENS_FILE,
                   omnibox::INPUT_TYPE_BROWSER_TAB, omnibox::INPUT_TYPE_DRIVE));
 
-  // kConsent should also allow Drive input.
   pref_service_.SetInteger(contextual_search::kDriveConsentState,
                            static_cast<int>(DriveConsentState::kConsent));
   EXPECT_THAT(input_state_model_->get_state_for_testing().allowed_input_types,
@@ -1444,7 +1584,6 @@ TEST_F(InputStateModelTest, DriveConsentStateWithDisclaimerToggle) {
                   omnibox::INPUT_TYPE_LENS_IMAGE, omnibox::INPUT_TYPE_LENS_FILE,
                   omnibox::INPUT_TYPE_BROWSER_TAB, omnibox::INPUT_TYPE_DRIVE));
 
-  // kNotReady should allow Drive input.
   pref_service_.SetInteger(contextual_search::kDriveConsentState,
                            static_cast<int>(DriveConsentState::kNotReady));
   EXPECT_THAT(input_state_model_->get_state_for_testing().allowed_input_types,
@@ -1452,33 +1591,12 @@ TEST_F(InputStateModelTest, DriveConsentStateWithDisclaimerToggle) {
                   omnibox::INPUT_TYPE_LENS_IMAGE, omnibox::INPUT_TYPE_LENS_FILE,
                   omnibox::INPUT_TYPE_BROWSER_TAB, omnibox::INPUT_TYPE_DRIVE));
 
-  // kRestricted should NOT allow Drive input.
   pref_service_.SetInteger(contextual_search::kDriveConsentState,
                            static_cast<int>(DriveConsentState::kRestricted));
   EXPECT_THAT(input_state_model_->get_state_for_testing().allowed_input_types,
               testing::UnorderedElementsAre(omnibox::INPUT_TYPE_LENS_IMAGE,
                                             omnibox::INPUT_TYPE_LENS_FILE,
                                             omnibox::INPUT_TYPE_BROWSER_TAB));
-
-  // Disable Disclaimer flag, and verify kNotConsent no longer allows Drive.
-  base::test::ScopedFeatureList disclaimer_disabled_list;
-  disclaimer_disabled_list.InitWithFeatures(
-      {}, {omnibox::kComposeboxDriveContextMenuOptionDisclaimer});
-
-  pref_service_.SetInteger(contextual_search::kDriveConsentState,
-                           static_cast<int>(DriveConsentState::kNotConsent));
-  EXPECT_THAT(input_state_model_->get_state_for_testing().allowed_input_types,
-              testing::UnorderedElementsAre(omnibox::INPUT_TYPE_LENS_IMAGE,
-                                            omnibox::INPUT_TYPE_LENS_FILE,
-                                            omnibox::INPUT_TYPE_BROWSER_TAB));
-
-  // Verify kConsent still allows Drive.
-  pref_service_.SetInteger(contextual_search::kDriveConsentState,
-                           static_cast<int>(DriveConsentState::kConsent));
-  EXPECT_THAT(input_state_model_->get_state_for_testing().allowed_input_types,
-              testing::UnorderedElementsAre(
-                  omnibox::INPUT_TYPE_LENS_IMAGE, omnibox::INPUT_TYPE_LENS_FILE,
-                  omnibox::INPUT_TYPE_BROWSER_TAB, omnibox::INPUT_TYPE_DRIVE));
 }
 
 TEST_F(InputStateModelTest, SetPrefServiceInitializesConsentState) {
@@ -1560,9 +1678,9 @@ TEST_F(InputStateModelTest, PrefChangesDynamicallyUpdateInputTypes) {
 
   EXPECT_EQ(GetDriveConsentState(model.get()), DriveConsentState::kNotConsent);
   EXPECT_THAT(model->get_state_for_testing().allowed_input_types,
-              testing::UnorderedElementsAre(omnibox::INPUT_TYPE_LENS_IMAGE,
-                                            omnibox::INPUT_TYPE_LENS_FILE,
-                                            omnibox::INPUT_TYPE_BROWSER_TAB));
+              testing::UnorderedElementsAre(
+                  omnibox::INPUT_TYPE_LENS_IMAGE, omnibox::INPUT_TYPE_LENS_FILE,
+                  omnibox::INPUT_TYPE_BROWSER_TAB, omnibox::INPUT_TYPE_DRIVE));
 
   pref_service_.SetInteger(
       contextual_search::kDriveConsentState,
@@ -1639,6 +1757,30 @@ TEST_F(InputStateModelTest, CopyConstructorCopiesAllRelevantFields) {
               testing::Contains(omnibox::ToolMode::TOOL_MODE_IMAGE_GEN));
   EXPECT_THAT(copied_model.GetInputState().disabled_input_types,
               testing::Contains(omnibox::InputType::INPUT_TYPE_LENS_IMAGE));
+}
+
+TEST_F(InputStateModelTest, HasValidConfig) {
+  // Empty config has no rule_set -> has_valid_config() should be false.
+  omnibox::SearchboxConfig empty_config;
+  auto model_without_config = std::make_unique<InputStateModel>(
+      session_handle_, empty_config, active_url_, /*is_off_the_record=*/false,
+      /*browser_identity_matches_aim_identity=*/false);
+  EXPECT_FALSE(model_without_config->has_valid_config());
+
+  // Config with rule_set -> has_valid_config() should be true.
+  omnibox::SearchboxConfig valid_config;
+  valid_config.mutable_rule_set();
+  auto model_with_config = std::make_unique<InputStateModel>(
+      session_handle_, valid_config, active_url_, /*is_off_the_record=*/false,
+      /*browser_identity_matches_aim_identity=*/false);
+  EXPECT_TRUE(model_with_config->has_valid_config());
+
+  // Copy constructor preserves has_valid_config().
+  InputStateModel copied_empty(*model_without_config, session_handle_);
+  EXPECT_FALSE(copied_empty.has_valid_config());
+
+  InputStateModel copied_valid(*model_with_config, session_handle_);
+  EXPECT_TRUE(copied_valid.has_valid_config());
 }
 
 }  // namespace contextual_search

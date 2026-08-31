@@ -20,6 +20,7 @@
 #include "components/omnibox/browser/aim_eligibility_service.h"
 #include "components/omnibox/browser/omnibox_field_trial.h"
 #include "components/omnibox/common/omnibox_features.h"
+#include "components/search/search.h"
 #include "ui/base/l10n/l10n_util.h"
 
 namespace {
@@ -32,11 +33,11 @@ namespace omnibox {
 namespace internal {
 
 // If enabled, shows the omnibox suggestions in the popup in WebUI.
-BASE_FEATURE(kWebUIOmniboxPopup, DISABLED);
+BASE_FEATURE(kWebUIOmniboxPopup, ENABLED);
 
 // If enabled, Omnibox popup will transition to AI-Mode with the compose-box
 // panel taking up the whole of the popup, covering the location bar completely.
-BASE_FEATURE(kWebUIOmniboxAimPopup, DISABLED);
+BASE_FEATURE(kWebUIOmniboxAimPopup, ENABLED);
 
 // If enabled, the Omnibox Popup will enable a different UI state when on a
 // webpage.
@@ -82,6 +83,13 @@ BASE_FEATURE(kWebUIOmniboxFullPopup, DISABLED);
 BASE_FEATURE(kWebUIOmniboxFullPopupDoubleClick, ENABLED);
 // If enabled, enables OmniboxEverywhere popup triggered by shortcut.
 BASE_FEATURE(kOmniboxEverywhere, DISABLED);
+// Controls showing the profile picker menu on profile avatar click in
+// OmniboxEverywhere.
+const base::FeatureParam<bool> kOmniboxEverywhereProfilePickerParam{
+    &kOmniboxEverywhere, "ProfilePicker", false};
+// Controls showing most visited tiles in OmniboxEverywhere.
+const base::FeatureParam<bool> kOmniboxEverywhereMostVisitedParam{
+    &kOmniboxEverywhere, "MostVisited", true};
 // Enables the WebUI for omnibox suggestions without modifying the popup UI.
 BASE_FEATURE(kWebUIOmniboxPopupDebug, DISABLED);
 // Enables side-by-side comparison omnibox suggestions in WebUI and Views.
@@ -134,7 +142,6 @@ omnibox::NTPComposeboxConfig GetNTPComposeboxConfig() {
   auto* composebox = default_config.mutable_composebox();
 
   auto* image_upload = composebox->mutable_image_upload();
-  image_upload->set_enable_webp_encoding(false);
   image_upload->set_downscale_max_image_size(1500000);
   image_upload->set_downscale_max_image_width(1600);
   image_upload->set_downscale_max_image_height(1600);
@@ -263,6 +270,19 @@ bool IsAimPopupEnabled(Profile* profile) {
   auto* aim_service = AimEligibilityServiceFactory::GetForProfile(profile);
   return aim_service && aim_service->IsAimEligible() &&
          aim_service->IsFuseboxEligible();
+}
+
+bool IsOmniboxEverywhereEnabled(Profile* profile) {
+  if (!profile) {
+    return false;
+  }
+
+  if (!base::FeatureList::IsEnabled(kOmniboxEverywhere)) {
+    return false;
+  }
+
+  return search::DefaultSearchProviderIsGoogle(
+      TemplateURLServiceFactory::GetForProfile(profile));
 }
 
 bool IsContentSharingEnabled(

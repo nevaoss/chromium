@@ -96,7 +96,7 @@
 
 #error-container {
   display: none;
-  font-size: 18px;
+  font-size: var(--cr-composebox-font-size, 18px);
 }
 
 #error-container:not([hidden]) {
@@ -123,6 +123,14 @@
    * parent so they are in sync.
    */
   transition: var(--submit-enabled-transition, 255ms);
+}
+
+#closeButton.icon-clear {
+  --cr-icon-image: var(--cr-composebox-cancel-icon, url(//resources/images/icon_clear_old.svg));
+}
+
+:host-context([webui-rounded-icons]) #closeButton.icon-clear {
+  --cr-icon-image: var(--cr-composebox-cancel-icon, url(//resources/images/icon_clear.svg));
 }
 
 #bottomActions {

@@ -13,8 +13,10 @@
 #import "ios/chrome/browser/shared/ui/util/uikit_ui_util.h"
 #import "ios/chrome/browser/signin/model/constants.h"
 #import "ios/chrome/browser/signin/model/signin_util.h"
+#import "ios/chrome/browser/signin/ui/avatar/ai_tier_avatar_view.h"
 #import "ios/chrome/common/ui/colors/semantic_color_names.h"
 #import "ios/chrome/common/ui/table_view/table_view_cells_constants.h"
+#import "ios/chrome/common/ui/util/constraints_ui_util.h"
 #import "ios/chrome/grit/ios_strings.h"
 #import "ui/base/l10n/l10n_util.h"
 #import "ui/base/l10n/l10n_util_mac.h"
@@ -50,18 +52,23 @@ UIImage* GetEnterpriseIcon() {
   NSString* _name;
   // Email subtitle displayed in secondary label.
   NSString* _email;
-  // The account avatar.
-  UIImageView* _imageView;
+  // The avatar view.
+  AITierAvatarView* _avatarView;
   // Whether to use large margin.
   BOOL _useLargeMargins;
   // The constraint for the top padding.
   NSLayoutConstraint* _topPaddingConstraint;
   // Management label.
   UILabel* _managementLabel;
+  // The full name of the AI tier.
+  NSString* _aiTierFullName;
 }
 
 - (instancetype)initWithFrame:(CGRect)frame
                   avatarImage:(UIImage*)avatarImage
+              showsAITierRing:(BOOL)showsAITierRing
+               aiTierFullName:(NSString*)aiTierFullName
+         subscriptionChipView:(UIView*)subscriptionChipView
                          name:(NSString*)name
                         email:(NSString*)email
         managementDescription:(NSString*)managementDescription
@@ -71,6 +78,7 @@ UIImage* GetEnterpriseIcon() {
     CHECK(avatarImage);
     CHECK(email);
     _avatarImage = avatarImage;
+    _aiTierFullName = [aiTierFullName copy];
     _name = name ? name : email;
     _email = name ? email : nil;
     _useLargeMargins = useLargeMargins;
@@ -79,13 +87,13 @@ UIImage* GetEnterpriseIcon() {
     self.accessibilityIdentifier =
         CentralAccountViewAccessibilityIdentifier(email);
 
-    _imageView = [[UIImageView alloc] initWithImage:_avatarImage];
-    // Creates the image rounded corners.
-    _imageView.layer.cornerRadius =
-        GetSizeForIdentityAvatarSize(IdentityAvatarSize::Large).width / 2.0f;
-    _imageView.clipsToBounds = YES;
-    _imageView.translatesAutoresizingMaskIntoConstraints = NO;
-    [self addSubview:_imageView];
+    CGFloat avatarDiameter =
+        GetSizeForIdentityAvatarSize(IdentityAvatarSize::Large).width;
+    _avatarView =
+        [[AITierAvatarView alloc] initWithAvatarImage:_avatarImage
+                                       avatarDiameter:avatarDiameter
+                                      showsAITierRing:showsAITierRing];
+    [self addSubview:_avatarView];
 
     UILabel* nameLabel = [[UILabel alloc] init];
     nameLabel.text = _name;
@@ -116,7 +124,7 @@ UIImage* GetEnterpriseIcon() {
             : (kTableViewLargeVerticalSpacing + kTableViewVerticalSpacing);
 
     if (managementDescription) {
-      CHECK_GT(managementDescription.length, 0u, base::NotFatalUntil::M140);
+      CHECK_GT(managementDescription.length, 0u);
       UIImage* managementIcon = GetEnterpriseIcon();
       UIImageView* managementIconView =
           [[UIImageView alloc] initWithImage:managementIcon];
@@ -180,36 +188,54 @@ UIImage* GetEnterpriseIcon() {
                                         constant:bottomMargin]
           .active = YES;
     }
-    _topPaddingConstraint = [_imageView.topAnchor
+    _topPaddingConstraint = [_avatarView.topAnchor
         constraintEqualToAnchor:self.topAnchor
                        constant:(_useLargeMargins
                                      ? kTableViewLargeVerticalSpacing
                                      : kTopLargePadding)];
+    AddSameConstraintsToSidesWithInsets(
+        nameLabel, self, LayoutSides::kHorizontal,
+        NSDirectionalEdgeInsets{0, kTableViewHorizontalSpacing, 0,
+                                kTableViewHorizontalSpacing});
+    AddSameConstraintsToSides(emailLabel, nameLabel, LayoutSides::kHorizontal);
     [NSLayoutConstraint activateConstraints:@[
-      [_imageView.centerXAnchor constraintEqualToAnchor:self.centerXAnchor],
+      [_avatarView.centerXAnchor constraintEqualToAnchor:self.centerXAnchor],
       _topPaddingConstraint,
-      [_imageView.widthAnchor
-          constraintEqualToConstant:GetSizeForIdentityAvatarSize(
-                                        IdentityAvatarSize::Large)
-                                        .width],
-      [_imageView.heightAnchor constraintEqualToAnchor:_imageView.widthAnchor],
-
-      [nameLabel.topAnchor constraintEqualToAnchor:_imageView.bottomAnchor
-                                           constant:kTableViewVerticalSpacing],
-      [nameLabel.leadingAnchor
-          constraintEqualToAnchor:self.leadingAnchor
-                         constant:kTableViewHorizontalSpacing],
-      [nameLabel.trailingAnchor
-          constraintEqualToAnchor:self.trailingAnchor
-                         constant:-kTableViewHorizontalSpacing],
-
       [emailLabel.topAnchor constraintEqualToAnchor:nameLabel.bottomAnchor
-                                              constant:kLabelVerticalSpacing],
-      [emailLabel.leadingAnchor
-          constraintEqualToAnchor:nameLabel.leadingAnchor],
-      [emailLabel.trailingAnchor
-          constraintEqualToAnchor:nameLabel.trailingAnchor],
+                                           constant:kLabelVerticalSpacing],
     ]];
+
+    if (subscriptionChipView) {
+      // We track whether user interacts with this chip as if it were a button.
+      // So we disable any accessibility features it may have on its own.
+      UITapGestureRecognizer* tapRecognizer = [[UITapGestureRecognizer alloc]
+          initWithTarget:self
+                  action:@selector(subscriptionChipTapped:)];
+      [subscriptionChipView addGestureRecognizer:tapRecognizer];
+      subscriptionChipView.userInteractionEnabled = YES;
+      subscriptionChipView.isAccessibilityElement = NO;
+      subscriptionChipView.accessibilityElementsHidden = YES;
+
+      [self addSubview:subscriptionChipView];
+      subscriptionChipView.translatesAutoresizingMaskIntoConstraints = NO;
+
+      [NSLayoutConstraint activateConstraints:@[
+        [subscriptionChipView.topAnchor
+            constraintEqualToAnchor:_avatarView.bottomAnchor
+                           constant:4.0],
+        [subscriptionChipView.centerXAnchor
+            constraintEqualToAnchor:self.centerXAnchor],
+        [nameLabel.topAnchor
+            constraintEqualToAnchor:subscriptionChipView.bottomAnchor
+                           constant:kTableViewVerticalSpacing],
+      ]];
+    } else {
+      [NSLayoutConstraint activateConstraints:@[
+        [nameLabel.topAnchor constraintEqualToAnchor:_avatarView.bottomAnchor
+                                            constant:kTableViewVerticalSpacing],
+      ]];
+    }
+
     [self updateFrame];
   }
   return self;
@@ -218,25 +244,64 @@ UIImage* GetEnterpriseIcon() {
 #pragma mark - UIAccessibility
 
 - (NSString*)accessibilityLabel {
-  if (_name) {
+  NSString* aiTierString = nil;
+  if (_aiTierFullName.length > 0) {
+    aiTierString = l10n_util::GetNSStringF(
+        IDS_IOS_ACCOUNT_VIEW_ACCESSIBILITY_LABEL_MEMBERSHIPS_AI_TIER,
+        base::SysNSStringToUTF16(_aiTierFullName));
+  }
+
+  if (_email != nil) {
+    // Both name and email are present.
     if ([self managed]) {
-      return l10n_util::GetNSStringF(
-          IDS_IOS_ACCOUNT_VIEW_ACCESSIBILITY_LABEL_NAME_MANAGED_STATUS,
-          base::SysNSStringToUTF16(_name), base::SysNSStringToUTF16(_email),
-          base::SysNSStringToUTF16([self managementDescription]));
+      if (aiTierString) {
+        return l10n_util::GetNSStringF(
+            IDS_IOS_ACCOUNT_VIEW_ACCESSIBILITY_LABEL_NAME_MANAGED_STATUS_AI_TIER,
+            base::SysNSStringToUTF16(_name), base::SysNSStringToUTF16(_email),
+            base::SysNSStringToUTF16([self managementDescription]),
+            base::SysNSStringToUTF16(aiTierString));
+      } else {
+        return l10n_util::GetNSStringF(
+            IDS_IOS_ACCOUNT_VIEW_ACCESSIBILITY_LABEL_NAME_MANAGED_STATUS,
+            base::SysNSStringToUTF16(_name), base::SysNSStringToUTF16(_email),
+            base::SysNSStringToUTF16([self managementDescription]));
+      }
     } else {
-      return l10n_util::GetNSStringF(
-          IDS_IOS_ACCOUNT_VIEW_ACCESSIBILITY_LABEL_NAME,
-          base::SysNSStringToUTF16(_name), base::SysNSStringToUTF16(_email));
+      if (aiTierString) {
+        return l10n_util::GetNSStringF(
+            IDS_IOS_ACCOUNT_VIEW_ACCESSIBILITY_LABEL_NAME_AI_TIER,
+            base::SysNSStringToUTF16(_name), base::SysNSStringToUTF16(_email),
+            base::SysNSStringToUTF16(aiTierString));
+      } else {
+        return l10n_util::GetNSStringF(
+            IDS_IOS_ACCOUNT_VIEW_ACCESSIBILITY_LABEL_NAME,
+            base::SysNSStringToUTF16(_name), base::SysNSStringToUTF16(_email));
+      }
     }
   } else {
+    // Only email is present (stored in _name).
     if ([self managed]) {
-      return l10n_util::GetNSStringF(
-          IDS_IOS_ACCOUNT_VIEW_ACCESSIBILITY_LABEL_MANAGED_STATUS,
-          base::SysNSStringToUTF16(_email),
-          base::SysNSStringToUTF16([self managementDescription]));
+      if (aiTierString) {
+        return l10n_util::GetNSStringF(
+            IDS_IOS_ACCOUNT_VIEW_ACCESSIBILITY_LABEL_MANAGED_STATUS_AI_TIER,
+            base::SysNSStringToUTF16(_name),
+            base::SysNSStringToUTF16([self managementDescription]),
+            base::SysNSStringToUTF16(aiTierString));
+      } else {
+        return l10n_util::GetNSStringF(
+            IDS_IOS_ACCOUNT_VIEW_ACCESSIBILITY_LABEL_MANAGED_STATUS,
+            base::SysNSStringToUTF16(_name),
+            base::SysNSStringToUTF16([self managementDescription]));
+      }
     } else {
-      return _email;
+      if (aiTierString) {
+        return l10n_util::GetNSStringF(
+            IDS_IOS_ACCOUNT_VIEW_ACCESSIBILITY_LABEL_AI_TIER,
+            base::SysNSStringToUTF16(_name),
+            base::SysNSStringToUTF16(aiTierString));
+      } else {
+        return _name;
+      }
     }
   }
 }
@@ -256,12 +321,20 @@ UIImage* GetEnterpriseIcon() {
   return _avatarImage;
 }
 
+- (UIView*)avatarView {
+  return _avatarView;
+}
+
 - (NSString*)name {
   return _name;
 }
 
 - (NSString*)email {
   return _email;
+}
+
+- (NSString*)aiTierFullName {
+  return _aiTierFullName;
 }
 
 - (BOOL)managed {
@@ -277,6 +350,12 @@ UIImage* GetEnterpriseIcon() {
       (_useLargeMargins ? kTableViewLargeVerticalSpacing : kTopLargePadding);
   _topPaddingConstraint.constant = topPadding - existingPadding;
   [self updateFrame];
+}
+
+#pragma mark - Private
+
+- (void)subscriptionChipTapped:(UITapGestureRecognizer*)sender {
+  [self.delegate centralAccountViewDidTapAISubscriptionChip:self];
 }
 
 @end

@@ -337,6 +337,9 @@ PrefixSize GetV5PrefixSizeForThreatType(SBThreatType threat_type);
 // Get the name of a v5 list.
 std::string GetV5ListName(const ListIdentifier& list_identifier);
 
+// Returns the SBThreatType corresponding to a given ListIdentifier.
+SBThreatType GetSBThreatTypeForList(const ListIdentifier& list_id);
+
 // Represents the state of each store.
 using StoreStateMap = std::unordered_map<ListIdentifier, std::string>;
 
@@ -419,8 +422,12 @@ class SBProtocolManagerUtil {
                               std::string* canonicalized_query);
 
   // This method returns the host suffix combinations from the hostname in the
-  // URL, as described here:
+  // URL, as described here for v4:
   // https://developers.google.com/safe-browsing/v4/urls-hashing
+  // In v5, the base component is the eTLD+1 rather than TLD+1:
+  // https://developers.google.com/safe-browsing/reference/URLs.and.Hashing
+  // Note: `host` must be canonicalized before calling this method.
+  // TODO(crbug.com/372395685): make description v5-only
   static void GenerateHostVariantsToCheck(const std::string& host,
                                           std::vector<std::string>* hosts);
 
@@ -493,7 +500,7 @@ class SBProtocolManagerUtil {
   FRIEND_TEST_ALL_PREFIXES(SBProtocolManagerUtilTest, TestBackOffLogic);
   FRIEND_TEST_ALL_PREFIXES(SBProtocolManagerUtilTest,
                            TestGetRequestUrlAndUpdateHeaders);
-  FRIEND_TEST_ALL_PREFIXES(SBProtocolManagerUtilTest, UrlParsing);
+  FRIEND_TEST_ALL_PREFIXES(SBProtocolManagerUtilUrlParsingTest, UrlParsing);
   FRIEND_TEST_ALL_PREFIXES(SBProtocolManagerUtilTest, CanonicalizeUrl);
 
   // Composes a URL using |prefix|, |method| (e.g.: encodedFullHashes).

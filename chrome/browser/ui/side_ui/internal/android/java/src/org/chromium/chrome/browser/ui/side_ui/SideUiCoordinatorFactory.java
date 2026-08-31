@@ -15,8 +15,10 @@ import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider;
 import org.chromium.chrome.browser.browser_controls.TopControlsStacker;
+import org.chromium.chrome.browser.fullscreen.FullscreenManager;
 import org.chromium.chrome.browser.layouts.LayoutStateProvider;
 import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
+import org.chromium.chrome.browser.tabmodel.IncognitoStateProvider;
 import org.chromium.chrome.browser.ui.side_panel.AndroidSidePanelEnabledFn;
 import org.chromium.chrome.browser.ui.vertical_tabs.VerticalTabUtils;
 
@@ -34,6 +36,7 @@ public final class SideUiCoordinatorFactory {
      * @param layoutStateProviderSupplier Supplier for the {@link LayoutStateProvider}.
      * @param browserControlsStateProvider The {@link BrowserControlsStateProvider} to adjust for
      *     top controls changes.
+     * @param fullscreenManager The {@link FullscreenManager} for observing tab fullscreen mode.
      * @param topControlsStacker The {@link TopControlsStacker} to calculate heights for top
      *     controls.
      * @param anchorContainerParent The {@link ViewGroup} that is the parent for the side UI
@@ -44,6 +47,7 @@ public final class SideUiCoordinatorFactory {
      *     container.
      * @param tabStripBottomPxSupplier The supplier for the Side UI's top margin added for tab
      *     strip.
+     * @param incognitoStateProvider The {@link IncognitoStateProvider} to observe incognito state.
      * @return The newly-created {@link SideUiCoordinator}, or {@code null} if it was not created.
      */
     @Nullable
@@ -52,12 +56,14 @@ public final class SideUiCoordinatorFactory {
             ActivityLifecycleDispatcher lifecycleDispatcher,
             OneshotSupplier<LayoutStateProvider> layoutStateProviderSupplier,
             BrowserControlsStateProvider browserControlsStateProvider,
+            FullscreenManager fullscreenManager,
             TopControlsStacker topControlsStacker,
             @Nullable ViewGroup anchorContainerParent,
             @Nullable ViewStub leftAnchorContainerStub,
             @Nullable ViewStub rightAnchorContainerStub,
             @Nullable ViewStub webContentHairlineContainerStub,
-            @Nullable NonNullObservableSupplier<Integer> tabStripBottomPxSupplier) {
+            @Nullable NonNullObservableSupplier<Integer> tabStripBottomPxSupplier,
+            IncognitoStateProvider incognitoStateProvider) {
         if (!AndroidSidePanelEnabledFn.isEnabled()
                 && !VerticalTabUtils.isVerticalTabsEligible(parentActivity)) {
             return null;
@@ -76,11 +82,13 @@ public final class SideUiCoordinatorFactory {
                 lifecycleDispatcher,
                 layoutStateProviderSupplier,
                 browserControlsStateProvider,
+                fullscreenManager,
                 topControlsStacker,
                 anchorContainerParent,
                 leftAnchorContainerStub,
                 rightAnchorContainerStub,
                 webContentHairlineContainerStub,
-                tabStripBottomPxSupplier);
+                tabStripBottomPxSupplier,
+                incognitoStateProvider);
     }
 }

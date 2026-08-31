@@ -33,6 +33,7 @@
 <translation id="1290883685122687410">පිහිටුවීමේ දෝෂයකි: <ph name="METAINSTALLER_EXIT_CODE" />. <ph name="WINDOWS_ERROR" /></translation>
 <translation id="1302523850133262269">කරුණාකර Chrome නවතම පද්ධති යාවත්කාලීන ස්ථාපනය කරන අතරතුර රැඳී සිටින්න.</translation>
 <translation id="1330562121671411446">භාෂාව අනාවරණය කරන්න</translation>
+<translation id="1333654552732143316">Chrome ආරම්භ කරන්න</translation>
 <translation id="1341711321000856656">ඔබට වෙනත් Chrome පැතිකඩකින් මුරපද බැලීමට මාරු විය හැක</translation>
 <translation id="1343830902827845050">Chrome වෙත පුරනය වන්න</translation>
 <translation id="1356661055722410047">අලුත්! ඔබට ඔබේ තිරයේ ඇති පෙළ සහ පින්තූර දෙකම පරිවර්තනය කළ හැක</translation>
@@ -81,6 +82,7 @@
 <translation id="1698376642261615901">Google Chrome යනු ආලෝකයේ වේගය, ස්ථාවරත්වය, සහ භාවිතයට පහසුව සහිත වෙබ් පිටු හා යෙදුම් ධාවනය වන වෙබ් බ්‍රව්සරයකි. Google Chrome තුළට සවි කරන ලද මැල්වෙයා සහ ෆිෂිං සහිත වෙබ් වඩා ආරක්ෂිත බ්‍රව්ස් කරන්න.</translation>
 <translation id="1713301662689114961">{0,plural, =1{Chrome පැයකින් යළි දියත් වෙයි}one{Chrome පැය # කින් යළි දියත් වෙයි}other{Chrome පැය # කින් යළි දියත් වෙයි}}</translation>
 <translation id="1722488837206509557">මෙය ඔබට පවතින උපාංගවලින් තේරීමට සහ ඒවායේ අන්තර්ගතය පෙන්වීමට ඉඩ දෙනු ඇත.</translation>
+<translation id="1724094881572874997">Chrome හි ඔබේ වැඩ සුරක්ෂිත කිරීමට, ඔබ Chrome වෙත පුරනය වී ඇති විට ඔබේ සංවිධානයට ඇතැම් තොරතුරු බැලීමට හෝ කළමනාකරණය කිරීමට හැකි වනු ඇත.</translation>
 <translation id="177180974022074201">Chrome හි Gemini සමග උත්සාහ කරන්න</translation>
 <translation id="1786003790898721085">ඔබ ඔබගේ <ph name="TARGET_DEVICE_NAME" /> හි Chrome වෙත පුරා ඇති බව සහතික කර ගෙන අනතුරුව නැවත යැවීමට උත්සාහ කරන්න.</translation>
 <translation id="1786044937610313874">කෙටිමං Chrome හි විවෘත වේ</translation>
@@ -200,6 +202,7 @@
 <translation id="2969728957078202736"><ph name="PAGE_TITLE" /> - ජාල පුරනය - Chrome</translation>
 <translation id="2970681950995291301">Chrome වෙතින් ඔබේ Google ගිණුම ඉවත් කිරීමට, සැකසීම් පිටුව තුළින් Chrome වෙතින් වරන්න</translation>
 <translation id="2976869732253036751">ඔබේ දුරකථනයෙන් Chrome සමග මිල නිරීක්ෂණ ඇඟවීම් ලබා ගන්න</translation>
+<translation id="2985091279808606502">මෙම වෙබ් අඩවිය සඳහා Chrome හට ස්ථානික ජාල අවසරය අවශ්‍යයි</translation>
 <translation id="2991167882679440829">ඔබේ Google ගිණුමේ සුරකින ලද ඔබේ මුරපද සහ අනෙකුත් Chrome දත්ත මෙම උපාංගයෙන් ඉවත් කරනු ලැබේ. ඒවා නැවත Chrome තුළ භාවිතා කිරීමට, නැවත පුරන්න.</translation>
 <translation id="2994465299455873643"><ph name="BROWSER_NAME" /> යල් පැන ගියහොත් එය ප්‍රතිසාධනය කිරීම සඳහා සංකේතන සේවා සහ ආරක්ෂිත ක්‍රමයක් සපයයි. මෙම සේවාව අබල කර ඇත්නම්, <ph name="BROWSER_NAME" /> හට සංකේතිත දත්ත වෙත ප්‍රවේශය අහිමි විය හැකි අතර, <ph name="BROWSER_NAME" /> හට ප්‍රතිසාධනය වීමට නොහැකි විය හැක.</translation>
 <translation id="3003694935412297923">සියලු කාර්යයන්</translation>
@@ -262,6 +265,7 @@
 <translation id="3595784445906693824">Chrome වෙත නව පැතිකඩකින් පුරන්නද?</translation>
 <translation id="3596080736082218006">{COUNT,plural, =0{යාවත්කාලීනයක් යෙදීමට ඔබ Chrome නැවත ආරම්භ කිරීම පරිපාලකයාට අවශ්‍ය වේ}=1{යාවත්කාලීනයක් යෙදීමට ඔබ Chrome නැවත ආරම්භ කිරීම පරිපාලකයාට අවශ්‍ය වේ. ඔබේ අප්‍රසිද්ධ කවුළුව යළි විවෘත නොවෙයි.}one{යාවත්කාලීනයක් යෙදීමට ඔබ Chrome නැවත ආරම්භ කිරීම පරිපාලකයාට අවශ්‍ය වේ. ඔබේ අප්‍රසිද්ධ කවුළු # යළි විවෘත නොවෙයි.}other{යාවත්කාලීනයක් යෙදීමට ඔබ Chrome නැවත ආරම්භ කිරීම පරිපාලකයාට අවශ්‍ය වේ. ඔබේ අප්‍රසිද්ධ කවුළු # යළි විවෘත නොවෙයි.}}</translation>
 <translation id="3597003331831379823">උසස් වරප්‍රසාද සහිත පිහිටුවීම් ධාවනය කිරීමට අසමත් විය. <ph name="METAINSTALLER_ERROR" /></translation>
+<translation id="3598673391539778844">පද්ධති තැටියේ Chrome තුළ Gemini පෙන්වන්න</translation>
 <translation id="3622716124581627104">දේවල් හෝ ස්ථාන හඳුනාගෙන පෙළ පිටපත් කරන්න හෝ පරිවර්තනය කරන්න. ඔබ Google Lens භාවිත කරන විට, පිටුවේ තිර රුවක් Google වෙත යවනු ලැබේ. <ph name="LEARN_MORE" /></translation>
 <translation id="3622797965165704966">දැන් Chrome ඔබගේ Google ගිණුම සහ බෙදාගත් පරිගණක මත භාවිතා කිරීමට වඩාත් පහසුයි.</translation>
 <translation id="3635073343384702370">ඔබ ඒවා සුරකින විට Chrome හට ඔබේ මුරපද පරීක්ෂා කළ හැක</translation>
@@ -316,7 +320,6 @@
 <translation id="4149882025268051530">ස්ථාපකයට සංරක්ෂකය විහිදුවිය නොහැකි විය. කරුණාකර නැවත Google Chrome බාගන්න.</translation>
 <translation id="415112847282352845">ඔබේ සියලු උපාංග මත ඔබේ ලිපින සහ තවත් දේ ලබා ගැනීමට, Chrome වෙත පුරන්න. ඔබ පුරනය වූ පසු මෙම ලිපිනය ඔබේ Google ගිණුම තුළ සුරකිනු ලැබේ.</translation>
 <translation id="4153934450158521343">Chrome ඉක්මනින් වසා දත්ත මකනු ඇත</translation>
-<translation id="4159985264221160808">Chrome හි ඔබේ වැඩ සුරක්ෂිත කිරීමට, ඔබේ සංවිධානයට ඇතැම් තොරතුරු බැලීමට හෝ කළමනාකරණය කිරීමට හැකි වනු ඇත</translation>
 <translation id="4173512894976930765">අඩවි අපේක්ෂා කළ පරිදි ක්‍රියා කරනු ඇත. ඔබ Chrome වෙත පුරනය වී ඇත්නම් ඔබේ Google ගිණුම හැර, ඔබ සියලු Chrome කවුළු වසා දැමූ විට ඔබ බොහෝ අඩවි වලින් වරනු ඇත.</translation>
 <translation id="4175922240926474352">වෙබ් අඩවිය සුරක්ෂිත සබැඳුමක් භාවිතා නොකරන නිසා සහ ගොනුව විකෘති වී ඇති නිසා Chrome මෙම බාගැනීම අවහිර කර ඇත</translation>
 <translation id="4191857738314598978">{0,plural, =1{දිනයක් ඇතුළත Chrome යළි දියත් කරන්න}one{දින # ක් ඇතුළත Chrome යළි දියත් කරන්න}other{දින # ක් ඇතුළත Chrome යළි දියත් කරන්න}}</translation>
@@ -347,7 +350,6 @@
 <translation id="4437295824090654417">ඉක්මන් දළ විශ්ලේෂණයක් ලබා ගැනීමට සහ පසු විපරම් ප්‍රශ්න ඇසීමට මෙම ලේඛනය Chrome හි Gemini සමග බෙදා ගන්න</translation>
 <translation id="4450664632294415862">Chrome - ජාල පුරනය - <ph name="PAGE_TITLE" /></translation>
 <translation id="4458462641685292929">Google Chrome මත තවත් මෙහෙයුමක් ක්‍රියාත්මක වෙමින් පවතී. පසුව නැවත උත්සාහ කරන්න.</translation>
-<translation id="4459234553906210702">වෙළඳ දැන්වීම් මිනුම ඔබ පිවිසෙන අඩවිවලට Chrome වෙතින් තොරතුරු ඉල්ලීමට ඉඩදෙන අතර එය අඩවියට ඔවුන්ගේ වෙළඳ දැන්වීම්වල කාර්ය සාධනය මැනීමට උපකාරී වේ. වෙළඳ දැන්වීම් මිනුම අඩවි අතර හැකි තරම් අඩුවෙන් තතු මාරු කිරීමෙන් හරස්-අඩවි ලුහුබැඳීම සීමා කරයි.</translation>
 <translation id="4493028449971051158">ආරම්භක දෝෂය: ස්ථාපකය පරිපාලක ලෙස ධාවනය කරන්න.</translation>
 <translation id="4501471624619070934">මෙම රට තුළ ප්‍රවේශය සීමා කර ඇති නිසා ස්ථාපනය අසමත් විය.</translation>
 <translation id="4571503333518166079">Chrome දැනුම් දීම් සැකසීම්වලට යන්න</translation>
@@ -380,7 +382,6 @@
 <translation id="4885446229353981848">සැම විට ම Google Lens කෙටිමඟ පෙන්වන්න</translation>
 <translation id="4891791193823137474">Google Chrome හට පසුබිමේ ක්‍රියාත්මක වීමට ඉඩ දෙන්න</translation>
 <translation id="4895437082222824641">සබැඳිය නව Chrome ප&amp;ටිත්තක විවෘත කරන්න</translation>
-<translation id="4896867431081882115">ඔබේ පෙරනිමි බ්‍රව්සරය ලෙස Chrome සැකසීමෙන් ඔබ දන්නා, ආදරය කරන සහ විශ්වාස කරන විශේෂාංග වෙත පහසු ප්‍රවේශයක් ලබා ගන්න. ඉක්මන් ප්‍රවේශය සඳහා Chrome ඔබේ කාර්ය තීරුවට අමුණනු ලැබේ.</translation>
 <translation id="4904953848704395458">යතුරු පුවරු කෙටිමඟක් සමග Chrome තුළ Gemini විවෘත කරන්න.</translation>
 <translation id="4918086044614829423">පිළිගන්න</translation>
 <translation id="4918844574251943176">රූපය පිටපත් කරන ලදි</translation>
@@ -417,6 +418,7 @@
 <translation id="521447420733633466">ඔබ උපාංගයක් බෙදා ගන්නේ නම්, මිතුරන්ට සහ පවුලේ අයට වෙන්ව බ්‍රවුස් කළ හැකි අතර ඔවුනට අවශ්‍ය ආකාරයට Chrome පිහිටුවිය හැකිය.</translation>
 <translation id="5234764350956374838">ඉවත් කරන්න</translation>
 <translation id="5239627039202700673">ඔබ පණිවුඩ, ලේඛන, සහ වෙනත් යෙදුම්වල සබැඳි ක්ලික් කරන ඕනෑම වේලාවක Chrome භාවිත කරන්න</translation>
+<translation id="524751727772074981">ඔබ සිටින තැනම සිට, Chrome හි Gemini සමග ඕනෑම දෙයක් අසන්න</translation>
 <translation id="5251420635869119124">අමුත්තන්ට කිසිවක් තබා යෑමෙන් තොරව Chrome භාවිත කළ හැක.</translation>
 <translation id="5271833978500241046">Chrome හි අනෙකුත් Gemini විශේෂාංග සමග ඒවා භාවිතා කරන්න</translation>
 <translation id="5286907366254680517">අනාවරණය විය</translation>
@@ -721,6 +723,7 @@ Google Chrome හට ඔබගේ සැකසුම් ප්‍රතිසා
 <translation id="8113883687556086139">ඔබේ ගිණුමේ, <ph name="ACCOUNT_EMAIL" /> Chrome දත්ත භාවිතා කර සුරැකීමට එය ඔබම බව සත්‍යාපනය කරන්න</translation>
 <translation id="8115695070094288807">Chrome ඔබේ කර ගනිමින්...</translation>
 <translation id="8118331347066725040">Lens සමග සෙවීම සඳහා ප්‍රතිපෝෂණය යවන්න</translation>
+<translation id="812930250799242837"><ph name="USER_NAME" />, Google සාමාජිකත්වය ලෙස පුරනය වී ඇත. ගිණුම් මෙනුව විවෘත කරන්න</translation>
 <translation id="8129812357326543296">&amp;Google Chrome පිළිබඳ</translation>
 <translation id="813913629614996137">මුල පුරමින්…</translation>
 <translation id="8162006532256575008">ගිණුමක් නොමැතිව Chrome භාවිත කරන්න</translation>
@@ -743,6 +746,7 @@ Google Chrome හට ඔබගේ සැකසුම් ප්‍රතිසා
 <translation id="8367705492654390392">කිසිවක් අසන්න</translation>
 <translation id="8367950957770994118">ඔබට අවශ්‍ය විටෙක Chrome තුළ Gemini ඉක්මනින් විවෘත කරන්න</translation>
 <translation id="8370517070665726704">ප්‍රකාශන හිමිකම <ph name="YEAR" /> Google LLC. සියලුම හිමිකම් ඇවිරිණි.</translation>
+<translation id="8370748943308169953"><ph name="USER_NAME" /> ලෙස Chrome වෙත පුරනය වීමට QR කේතය</translation>
 <translation id="8377158135256176353">Chrome කැනරි හි Gemini ටොගල් කරන්න</translation>
 <translation id="8387459386171870978">Chrome භාවිතා කිරීම දිගටම කරගෙන යන්න</translation>
 <translation id="8394720698884623075">Chrome තුළ ගබඩා කර ඇති අනාරක්ෂිත වෙබ් අඩවි ලැයිස්තුවක් සමඟ URL පරීක්ෂා කරයි.</translation>
@@ -754,6 +758,7 @@ Google Chrome හට ඔබගේ සැකසුම් ප්‍රතිසා
 
 ඔබ සමහරක් මකන තෙක් නව පිටුසන් ඔබේ ගිණුමේ සුරැකිය නොහැක. ඔබ දැන් වරන්නේ නම්, නොසුරැකූ පිටු සලකුණු මකනු ලැබේ.</translation>
 <translation id="8458117863387545390">ඔබේ දුරකථනය මත Chrome ලබා ගන්න</translation>
+<translation id="848851325211467878"><ph name="USER_NAME" />, <ph name="USER_EMAIL" />, Google සාමාජිකත්වය ලෙස පුරනය විය. ගිණුම් මෙනුව විවෘත කරන්න</translation>
 <translation id="8496177819998570653">Google මුරපද කළමනාකරු</translation>
 <translation id="8498858610309223613">Google Chrome සඳහා විශේෂ ආරක්‍ෂක යාවත්කාලීනයක් දැන් යොදා ගත්තා. දැන් යළි අරඹන්න, අපි ඔබේ පටිති ප්‍රතිසාධන කරන්නම්.</translation>
 <translation id="8521348052903287641">mDNS තදබදයට ඉඩ දීමට Google Chrome Dev සඳහා බන්ධිත රීතිය.</translation>
@@ -789,6 +794,7 @@ Google Chrome හට ඔබගේ සැකසුම් ප්‍රතිසා
 <translation id="8821043148920470810">අනාගත Google Chrome යාවත්කාලීන ලබා ගැනීමට, ඔබට Windows 10 හෝ ඊට පසු අවශ්‍ය වේ. මෙම පරිගණකය Windows 7 භාවිතා කරයි.</translation>
 <translation id="8823341990149967727">Chrome යල් පැන ගොස් ඇත</translation>
 <translation id="8834965163890861871">Google Chrome මුරපද සංස්කරණ කිරීමට උත්සහ කරයි. එයට ඉඩදීම සඳහා Windows මුරපදය යොදන්න.</translation>
+<translation id="8841151363570555833">Mac මෙනු තීරුවේ Chrome තුළ Gemini පෙන්වන්න</translation>
 <translation id="8851180723659088381">{NUM_EXTENSIONS,plural, =1{Chrome ඔබ එය ඉවත් කිරීම නිර්දේශ කරයි}one{Chrome ඔබ ඒවා ඉවත් කිරීම නිර්දේශ කරයි}other{Chrome ඔබ ඒවා ඉවත් කිරීම නිර්දේශ කරයි}}</translation>
 <translation id="8862326446509486874">ඔබට පද්ධති මට්ටමේ ස්ථානපයකට අයිතිය නැත. නැවත පරිපාලක වශයෙන් ස්ථාපකය ධාවනය කිරීමට උත්සාහ කරන්න.</translation>
 <translation id="8865415417596392024">ඔබේ ගිණුමේ Chrome දත්ත</translation>

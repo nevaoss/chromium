@@ -15,7 +15,8 @@
 #include "chrome/browser/net/storage_test_utils.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/top_level_storage_access_api/top_level_storage_access_permission_context.h"
-#include "chrome/browser/ui/browser.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/ui_test_utils.h"
@@ -24,6 +25,7 @@
 #include "components/content_settings/core/common/content_settings.h"
 #include "components/content_settings/core/common/content_settings_types.h"
 #include "components/content_settings/core/common/cookie_settings_base.h"
+#include "components/content_settings/core/common/features.h"
 #include "components/content_settings/core/common/pref_names.h"
 #include "components/metrics/content/subprocess_metrics_provider.h"
 #include "components/permissions/test/mock_permission_prompt_factory.h"
@@ -298,7 +300,7 @@ class InsecureRequestStorageAccessForBaseBrowserTest
 
   void SetUp() override {
     features_.InitAndEnableFeature(
-        blink::features::kStorageAccessAPIRelatedWebsiteSets);
+        content_settings::features::kStorageAccessAPIRelatedWebsiteSets);
     InProcessBrowserTest::SetUp();
   }
 
@@ -455,7 +457,8 @@ class RequestStorageAccessForEnabledBrowserTest
  public:
   std::vector<base::test::FeatureRefAndParams> GetEnabledFeatures()
       const override {
-    return {{blink::features::kStorageAccessAPIRelatedWebsiteSets, {}}};
+    return {
+        {content_settings::features::kStorageAccessAPIRelatedWebsiteSets, {}}};
   }
 };
 
@@ -640,7 +643,15 @@ class RequestStorageAccessForWithFirstPartySetsBrowserTest
  public:
   std::vector<base::test::FeatureRefAndParams> GetEnabledFeatures()
       const override {
-    return {{blink::features::kStorageAccessAPIRelatedWebsiteSets, {}}};
+    return {
+        {content_settings::features::kStorageAccessAPIRelatedWebsiteSets, {}}};
+  }
+
+  std::vector<base::test::FeatureRef> GetDisabledFeatures() const override {
+    // TODO(crbug.com/452061489): Fix tests that fail when the WebUI Omnibox is
+    // enabled and then remove this.
+    return {omnibox::internal::kWebUIOmniboxPopup,
+            omnibox::internal::kWebUIOmniboxAimPopup};
   }
 
   RequestStorageAccessForWithFirstPartySetsBrowserTest() {
@@ -666,10 +677,11 @@ class RequestStorageAccessForWithFirstPartySetsBrowserTest
                       R"(, "serviceSites": ["https://)", kHostB, R"("]})"}));
   }
 
-  permissions::MockPermissionPromptFactory MakePromptFactory(Browser& browser) {
+  permissions::MockPermissionPromptFactory MakePromptFactory(
+      BrowserWindowInterface& browser) {
     return permissions::MockPermissionPromptFactory(
         permissions::PermissionRequestManager::FromWebContents(
-            browser.tab_strip_model()->GetActiveWebContents()));
+            browser.GetTabStripModel()->GetActiveWebContents()));
   }
 
  private:

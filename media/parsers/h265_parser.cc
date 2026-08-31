@@ -193,14 +193,20 @@ uint8_t H265ScalingListData::GetScalingList32x32EntryInRasterOrder(
 }
 
 H265SPS::H265SPS() = default;
-
+H265SPS::H265SPS(const H265SPS&) = default;
+H265SPS& H265SPS::operator=(const H265SPS&) = default;
 H265SPS::H265SPS(H265SPS&&) noexcept = default;
+H265SPS& H265SPS::operator=(H265SPS&&) noexcept = default;
 
 H265ProfileTierLevel::H265ProfileTierLevel() = default;
 
 H265VUIParameters::H265VUIParameters() = default;
-
+H265VUIParameters::H265VUIParameters(const H265VUIParameters&) = default;
+H265VUIParameters& H265VUIParameters::operator=(const H265VUIParameters&) =
+    default;
 H265VUIParameters::H265VUIParameters(H265VUIParameters&&) noexcept = default;
+H265VUIParameters& H265VUIParameters::operator=(H265VUIParameters&&) noexcept =
+    default;
 
 H265PPS::H265PPS() = default;
 
@@ -1156,6 +1162,11 @@ H265Parser::Result H265Parser::ParseSliceHeader(const H265NALU& nalu,
       std::min(shdr->temporal_id, sps->sps_max_sub_layers_minus1);
 
   if (!shdr->first_slice_segment_in_pic_flag) {
+    if (validate_extended_bitstream_ && !prior_shdr) {
+      DVLOG(1) << "First slice segment in picture must have "
+               << "first_slice_segment_in_pic_flag equal to 1";
+      return kInvalidStream;
+    }
     if (pps->dependent_slice_segments_enabled_flag)
       READ_BOOL_OR_RETURN(&shdr->dependent_slice_segment_flag);
     READ_BITS_OR_RETURN(base::bits::Log2Ceiling(sps->pic_size_in_ctbs_y),

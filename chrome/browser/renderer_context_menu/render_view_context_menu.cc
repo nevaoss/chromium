@@ -16,9 +16,11 @@
 
 #include "base/check.h"
 #include "base/command_line.h"
+#include "base/containers/fixed_flat_map.h"
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
+#include "base/i18n/break_iterator.h"
 #include "base/i18n/rtl.h"
 #include "base/logging.h"
 #include "base/metrics/field_trial.h"
@@ -29,6 +31,7 @@
 #include "base/observer_list.h"
 #include "base/strings/escape.h"
 #include "base/strings/strcat.h"
+#include "base/strings/string_tokenizer.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/system/sys_info.h"
@@ -145,6 +148,7 @@
 #include "chrome/browser/web_applications/web_app_icon_manager.h"
 #include "chrome/browser/web_applications/web_app_provider.h"
 #include "chrome/browser/web_applications/web_app_registrar.h"
+#include "chrome/common/channel_info.h"
 #include "chrome/common/chrome_constants.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/common/chrome_render_frame.mojom.h"
@@ -167,6 +171,7 @@
 #include "components/contextual_tasks/public/features.h"
 #include "components/custom_handlers/protocol_handler.h"
 #include "components/download/public/common/download_url_parameters.h"
+#include "components/enterprise/isolated_mode/settings.h"
 #include "components/google/core/common/google_util.h"
 #include "components/guest_view/browser/guest_view_base.h"
 #include "components/language/core/browser/language_model_manager.h"
@@ -425,6 +430,9 @@ base::OnceCallback<void(RenderViewContextMenu*)>* GetMenuShownCallback() {
   return callback.get();
 }
 
+// This IDC_ "value" is a sentinel for the UMA max value.
+constexpr int kUmaMaxValueKey = 0;
+
 // LINT.IfChange(GlicWebContentsContextMenuResult)
 enum class GlicWebContentsContextMenuResult {
   kShownAndIgnored = 0,
@@ -471,14 +479,16 @@ enum class UmaEnumIdLookupType {
   ContextSpecificEnumId,
 };
 
-const std::map<int, int>& GetIdcToUmaMap(UmaEnumIdLookupType type) {
+// Returns the UMA enum value for `key` in the map for `type`, or -1 if not
+// found.
+int UmaEnumForCommand(int key, UmaEnumIdLookupType type) {
   // These maps are from IDC_* -> UMA value. Never alter UMA ids. You may remove
   // items, but add a line to keep the old value from being reused.
 
   // LINT.IfChange(RenderViewContextMenuItem)
   // These UMA values are for the RenderViewContextMenuItem enum, used for
   // the RenderViewContextMenu.Shown and RenderViewContextMenu.Used histograms.
-  static const base::NoDestructor<std::map<int, int>> kGeneralMap(
+  static constexpr auto kGeneralMap = base::MakeFixedFlatMap<int, int>(
       {// NB: UMA values for 0 and 1 are detected using
        // RenderViewContextMenu::IsContentCustomCommandId() and
        // ContextMenuMatcher::IsExtensionsCustomCommandId()
@@ -613,7 +623,7 @@ const std::map<int, int>& GetIdcToUmaMap(UmaEnumIdLookupType type) {
        {IDC_CONTENT_CONTEXT_SAVEVIDEOFRAMEAS, 141},
        {IDC_CONTENT_CONTEXT_SEARCHLENSFORVIDEOFRAME, 142},
        {IDC_CONTENT_CONTEXT_SEARCHWEBFORVIDEOFRAME, 143},
-       {IDC_CONTENT_CONTEXT_AUTOFILL_FALLBACK_PLUS_ADDRESS, 145},
+       // Removed: {IDC_CONTENT_CONTEXT_AUTOFILL_FALLBACK_PLUS_ADDRESS, 145},
        // Removed: {IDC_CONTENT_CONTEXT_AUTOFILL_FALLBACK_PASSWORDS, 146},
        {IDC_CONTENT_CONTEXT_AUTOFILL_FALLBACK_PASSWORDS_SELECT_PASSWORD, 147},
        {IDC_CONTENT_CONTEXT_AUTOFILL_FALLBACK_PASSWORDS_IMPORT_PASSWORDS, 148},
@@ -640,19 +650,20 @@ const std::map<int, int>& GetIdcToUmaMap(UmaEnumIdLookupType type) {
        {IDC_CONTENT_CONTEXT_ADD_LINK_TO_READING_LIST, 166},
        {IDC_SPELLCHECK_REMOVE_FROM_DICTIONARY, 167},
        {IDC_CONTENT_CONTEXT_SAVE_TO_MEMORY_BANKS, 168},
+       {IDC_CONTENT_CONTEXT_OPENLINK_ISOLATED, 169},
        // To add new items:
        //   - Add one more line above this comment block, using the UMA value
        //     from the line below this comment block.
        //   - Increment the UMA value in that latter line.
        //   - Add the new item to the RenderViewContextMenuItem enum in
        //     tools/metrics/histograms/metadata/ui/enums.xml.
-       {0, 169}});
+       {kUmaMaxValueKey, 170}});
   // LINT.ThenChange(//tools/metrics/histograms/metadata/ui/enums.xml:RenderViewContextMenuItem)
 
   // LINT.IfChange(ContextMenuOptionDesktop)
   // These UMA values are for the ContextMenuOptionDesktop enum, used for
   // the ContextMenu.SelectedOptionDesktop histograms.
-  static const base::NoDestructor<std::map<int, int>> kSpecificMap(
+  static constexpr auto kSpecificMap = base::MakeFixedFlatMap<int, int>(
       {{IDC_CONTENT_CONTEXT_OPENLINKNEWTAB, 0},
        {IDC_CONTENT_CONTEXT_OPENLINKOFFTHERECORD, 1},
        {IDC_CONTENT_CONTEXT_COPYLINKLOCATION, 2},
@@ -686,22 +697,31 @@ const std::map<int, int>& GetIdcToUmaMap(UmaEnumIdLookupType type) {
        {IDC_CONTENT_CONTEXT_OPENLINKSPLITVIEW, 31},
        {IDC_CONTENT_CONTEXT_GLICSHAREIMAGE, 32},
        {IDC_SPELLCHECK_REMOVE_FROM_DICTIONARY, 33},
+       {IDC_CONTENT_CONTEXT_OPENLINK_ISOLATED, 34},
        // To add new items:
        //   - Add one more line above this comment block, using the UMA value
        //     from the line below this comment block.
        //   - Increment the UMA value in that latter line.
        //   - Add the new item to the ContextMenuOptionDesktop enum in
        //     tools/metrics/histograms/metadata/ui/enums.xml.
-       {0, 33}});
+       {kUmaMaxValueKey, 35}});
   // LINT.ThenChange(//tools/metrics/histograms/metadata/ui/enums.xml:ContextMenuOptionDesktop)
 
-  return *(type == UmaEnumIdLookupType::GeneralEnumId ? kGeneralMap
-                                                      : kSpecificMap);
+  switch (type) {
+    case UmaEnumIdLookupType::GeneralEnumId: {
+      auto it = kGeneralMap.find(key);
+      return it != kGeneralMap.end() ? it->second : -1;
+    }
+    case UmaEnumIdLookupType::ContextSpecificEnumId: {
+      auto it = kSpecificMap.find(key);
+      return it != kSpecificMap.end() ? it->second : -1;
+    }
+  }
+  NOTREACHED();
 }
 
 int GetUmaValueMax(UmaEnumIdLookupType type) {
-  // The IDC_ "value" of 0 is really a sentinel for the UMA max value.
-  return GetIdcToUmaMap(type).find(0)->second;
+  return UmaEnumForCommand(kUmaMaxValueKey, type);
 }
 
 // Collapses large ranges of ids before looking for UMA enum.
@@ -732,7 +752,7 @@ int CollapseCommandsForUMA(int id) {
   return id;
 }
 
-// Returns UMA enum value for command specified by |id| or -1 if not found.
+// Returns UMA enum value for command specified by `id` or -1 if not found.
 int FindUMAEnumValueForCommand(int id, UmaEnumIdLookupType type) {
   if (RenderViewContextMenu::IsContentCustomCommandId(id)) {
     return 0;
@@ -743,13 +763,7 @@ int FindUMAEnumValueForCommand(int id, UmaEnumIdLookupType type) {
   }
 
   id = CollapseCommandsForUMA(id);
-  const auto& map = GetIdcToUmaMap(type);
-  auto it = map.find(id);
-  if (it == map.end()) {
-    return -1;
-  }
-
-  return it->second;
+  return UmaEnumForCommand(id, type);
 }
 
 // Returns true if the command id is for opening a link.
@@ -757,6 +771,7 @@ bool IsCommandForOpenLink(int id) {
   return id == IDC_CONTENT_CONTEXT_OPENLINKNEWTAB ||
          id == IDC_CONTENT_CONTEXT_OPENLINKNEWWINDOW ||
          id == IDC_CONTENT_CONTEXT_OPENLINKOFFTHERECORD ||
+         id == IDC_CONTENT_CONTEXT_OPENLINK_ISOLATED ||
          id == IDC_CONTENT_CONTEXT_OPENLINKSPLITVIEW ||
          (id >= IDC_OPEN_LINK_IN_PROFILE_FIRST &&
           id <= IDC_OPEN_LINK_IN_PROFILE_LAST);
@@ -809,7 +824,7 @@ void AddAvatarToLastMenuItem(const gfx::Image& icon,
 
 void OnBrowserCreated(const GURL& link_url,
                       url::Origin initiator_origin,
-                      Browser* browser) {
+                      BrowserWindowInterface* browser) {
   if (!browser) {
     // TODO(crbug.com/40242414): Make sure we do something or log an error if
     // opening a browser window was not possible.
@@ -1347,8 +1362,12 @@ void RenderViewContextMenu::InitMenu() {
   } else {
     show_glic = !params_.selection_text.empty() || !params_.link_url.is_empty();
   }
+  show_glic = show_glic && !use_simplified_menu_for_text_selection;
 
-  if (show_glic && !use_simplified_menu_for_text_selection) {
+  const bool glic_below_search =
+      base::FeatureList::IsEnabled(features::kGlicContextMenuBelowSearch);
+
+  if (show_glic && !glic_below_search) {
     MaybeAppendOpenGlicItem(/*add_separator=*/false);
   }
 
@@ -1361,6 +1380,10 @@ void RenderViewContextMenu::InitMenu() {
        params_.page_url != chrome::kChromeUIPasswordManagerCheckupURL &&
        params_.page_url != chrome::kChromeUIPasswordManagerSettingsURL)) {
     AppendSearchProvider();
+  }
+
+  if (show_glic && glic_below_search) {
+    MaybeAppendOpenGlicItem(/*add_separator=*/false);
   }
 
   if (!use_simplified_menu_for_text_selection &&
@@ -1408,14 +1431,26 @@ void RenderViewContextMenu::InitMenu() {
   }
 #endif  // !BUILDFLAG(IS_CHROMEOS)
 
-  // Spell check and writing direction options are not currently supported by
-  // pepper plugins.
-  if (editable && params_.misspelled_word.empty() &&
-      !content_type_->SupportsGroup(
-          ContextMenuContentType::ITEM_GROUP_MEDIA_PLUGIN)) {
+  // Spell check, language settings, and writing direction.
+  if (editable && params_.misspelled_word.empty()) {
     menu_model_.AddSeparator(ui::NORMAL_SEPARATOR);
-    AppendLanguageSettings();
-    AppendPlatformEditableItems();
+
+    // Spell check and language settings are not supported by media plugins.
+    if (!content_type_->SupportsGroup(
+            ContextMenuContentType::ITEM_GROUP_MEDIA_PLUGIN)) {
+      AppendLanguageSettings();
+    }
+
+    // Only append writing direction options if they are supported by
+    // the focused element (HTML text fields or editable plugins).
+    if ((params_.writing_direction_default &
+         blink::ContextMenuData::kCheckableMenuItemEnabled) ||
+        (params_.writing_direction_left_to_right &
+         blink::ContextMenuData::kCheckableMenuItemEnabled) ||
+        (params_.writing_direction_right_to_left &
+         blink::ContextMenuData::kCheckableMenuItemEnabled)) {
+      AppendPlatformEditableItems();
+    }
   }
 
   if (content_type_->SupportsGroup(
@@ -1590,7 +1625,7 @@ void RenderViewContextMenu::RecordUsedItem(int id) {
   int enum_id =
       FindUMAEnumValueForCommand(id, UmaEnumIdLookupType::GeneralEnumId);
   if (enum_id == -1) {
-    NOTREACHED() << "Update GetIdcToUmaMap. Unhandled IDC: " << id;
+    NOTREACHED() << "Update UmaEnumForCommand(). Unhandled IDC: " << id;
   }
 
   UMA_HISTOGRAM_EXACT_LINEAR(
@@ -1602,6 +1637,18 @@ void RenderViewContextMenu::RecordUsedItem(int id) {
   if (id == IDC_CONTENT_CONTEXT_SEARCHWEBFOR) {
     base::RecordAction(base::UserMetricsAction(
         "RenderViewContextMenu.Used.IDC_CONTENT_CONTEXT_SEARCHWEBFOR"));
+    base::i18n::BreakIterator break_iter(params_.selection_text,
+                                         base::i18n::BreakIterator::BREAK_WORD);
+    if (break_iter.Init()) {
+      int word_count = 0;
+      while (break_iter.Advance()) {
+        if (break_iter.IsWord()) {
+          word_count++;
+        }
+      }
+      base::UmaHistogramCounts1000(
+          "RenderViewContextMenu.SelectedTextWordCount.SearchWeb", word_count);
+    }
   }
 
   // Log other situations.
@@ -1655,56 +1702,56 @@ void RenderViewContextMenu::RecordUsedItem(int id) {
     return;
   }
 
+  const int uma_value_max =
+      GetUmaValueMax(UmaEnumIdLookupType::ContextSpecificEnumId);
   if (content_type_->SupportsGroup(
           ContextMenuContentType::ITEM_GROUP_MEDIA_VIDEO)) {
-    UMA_HISTOGRAM_EXACT_LINEAR(
-        "ContextMenu.SelectedOptionDesktop.Video", enum_id,
-        GetUmaValueMax(UmaEnumIdLookupType::ContextSpecificEnumId));
+    UMA_HISTOGRAM_EXACT_LINEAR("ContextMenu.SelectedOptionDesktop.Video",
+                               enum_id, uma_value_max);
   } else if (content_type_->SupportsGroup(
                  ContextMenuContentType::ITEM_GROUP_LINK) &&
              content_type_->SupportsGroup(
                  ContextMenuContentType::ITEM_GROUP_MEDIA_IMAGE)) {
-    UMA_HISTOGRAM_EXACT_LINEAR(
-        "ContextMenu.SelectedOptionDesktop.ImageLink", enum_id,
-        GetUmaValueMax(UmaEnumIdLookupType::ContextSpecificEnumId));
+    UMA_HISTOGRAM_EXACT_LINEAR("ContextMenu.SelectedOptionDesktop.ImageLink",
+                               enum_id, uma_value_max);
   } else if (content_type_->SupportsGroup(
                  ContextMenuContentType::ITEM_GROUP_MEDIA_IMAGE)) {
-    UMA_HISTOGRAM_EXACT_LINEAR(
-        "ContextMenu.SelectedOptionDesktop.Image", enum_id,
-        GetUmaValueMax(UmaEnumIdLookupType::ContextSpecificEnumId));
+    UMA_HISTOGRAM_EXACT_LINEAR("ContextMenu.SelectedOptionDesktop.Image",
+                               enum_id, uma_value_max);
   } else if (!params_.misspelled_word.empty()) {
     UMA_HISTOGRAM_EXACT_LINEAR(
         "ContextMenu.SelectedOptionDesktop.MisspelledWord", enum_id,
-        GetUmaValueMax(UmaEnumIdLookupType::ContextSpecificEnumId));
+        uma_value_max);
   } else if ((!params_.selection_text.empty() ||
               params_.annotation_type.has_value()) &&
              params_.media_type == ContextMenuDataMediaType::kNone) {
     // Probably just text.
-    UMA_HISTOGRAM_EXACT_LINEAR(
-        "ContextMenu.SelectedOptionDesktop.SelectedText", enum_id,
-        GetUmaValueMax(UmaEnumIdLookupType::ContextSpecificEnumId));
+    UMA_HISTOGRAM_EXACT_LINEAR("ContextMenu.SelectedOptionDesktop.SelectedText",
+                               enum_id, uma_value_max);
   } else {
-    UMA_HISTOGRAM_EXACT_LINEAR(
-        "ContextMenu.SelectedOptionDesktop.Other", enum_id,
-        GetUmaValueMax(UmaEnumIdLookupType::ContextSpecificEnumId));
+    UMA_HISTOGRAM_EXACT_LINEAR("ContextMenu.SelectedOptionDesktop.Other",
+                               enum_id, uma_value_max);
   }
 }
 
 void RenderViewContextMenu::RecordShownItem(int id, bool is_submenu) {
   // The "RenderViewContextMenu.Shown" histogram is not recorded for submenus.
-  if (!is_submenu) {
-    int enum_id =
-        FindUMAEnumValueForCommand(id, UmaEnumIdLookupType::GeneralEnumId);
-    if (enum_id != -1) {
-      UMA_HISTOGRAM_EXACT_LINEAR(
-          "RenderViewContextMenu.Shown", enum_id,
-          GetUmaValueMax(UmaEnumIdLookupType::GeneralEnumId));
-    } else {
-      // Just warning here. It's harder to maintain list of all possibly
-      // visible items than executable items.
-      DLOG(ERROR) << "Update GetIdcToUmaMap. Unhandled IDC: " << id;
-    }
+  if (is_submenu) {
+    return;
   }
+
+  int enum_id =
+      FindUMAEnumValueForCommand(id, UmaEnumIdLookupType::GeneralEnumId);
+  if (enum_id == -1) {
+    // Just warning here. It's harder to maintain list of all possibly
+    // visible items than executable items.
+    DLOG(ERROR) << "Update UmaEnumForCommand(). Unhandled IDC: " << id;
+    return;
+  }
+
+  UMA_HISTOGRAM_EXACT_LINEAR(
+      "RenderViewContextMenu.Shown", enum_id,
+      GetUmaValueMax(UmaEnumIdLookupType::GeneralEnumId));
 }
 
 bool RenderViewContextMenu::IsHTML5Fullscreen() const {
@@ -1978,6 +2025,20 @@ void RenderViewContextMenu::AppendLinkItems() {
             features::IsRoundedIconsEnabled() ? kIncognitoIcon
                                               : kIncognitoRefreshMenuOldIcon);
       }
+    }
+
+    bool isolated_mode_enabled =
+        enterprise_isolated_mode::IsolatedModeReplacesIncognito(
+            *GetProfile()->GetPrefs(), chrome::GetChannel());
+
+    if (show_open_link_off_the_record && isolated_mode_enabled) {
+      AddItemWithOptionalIcon(IDC_CONTENT_CONTEXT_OPENLINK_ISOLATED,
+                              features::IsMenuSimplificationEnabled()
+                                  ? IDS_CONTENT_CONTEXT_OPENLINK_ISOLATED_V2
+                                  : IDS_CONTENT_CONTEXT_OPENLINK_ISOLATED,
+                              features::IsRoundedIconsEnabled()
+                                  ? vector_icons::kDomainIcon
+                                  : vector_icons::kBusinessChromeRefreshOldIcon);
     }
 
     AppendOpenInWebAppLinkItems();
@@ -2469,6 +2530,9 @@ void RenderViewContextMenu::AppendPluginItems() {
 void RenderViewContextMenu::AppendPageItems() {
   AppendExitFullscreenItem();
 
+  const bool glic_below_search =
+      base::FeatureList::IsEnabled(features::kGlicContextMenuBelowSearch);
+
   if (features::IsMenuSimplificationEnabled() &&
       params_.selection_text.empty() && !params_.is_editable) {
     // Navigation
@@ -2485,22 +2549,28 @@ void RenderViewContextMenu::AppendPageItems() {
     AppendLiveCaptionItem();
     menu_model_.AddSeparator(ui::NORMAL_SEPARATOR);
 
-    // Ask gemini
-    size_t count_before = menu_model_.GetItemCount();
-    MaybeAppendOpenGlicItem();
-    // Remove separator to group with Lens
-    if (menu_model_.GetItemCount() > count_before &&
-        menu_model_.GetTypeAt(menu_model_.GetItemCount() - 1) ==
-            ui::MenuModel::TYPE_SEPARATOR) {
-      menu_model_.RemoveItemAt(menu_model_.GetItemCount() - 1);
-    }
+    if (!glic_below_search) {
+      // Ask gemini
+      MaybeAppendOpenGlicItem(/*add_separator=*/false);
 
-    // Save to Memory Banks
-    AppendSaveToMemoryBanksItem();
+      // Save to Memory Banks
+      AppendSaveToMemoryBanksItem();
 
-    // Search with google lens
-    if (IsRegionSearchEnabled()) {
-      AppendRegionSearchItem();
+      // Search with google lens
+      if (IsRegionSearchEnabled()) {
+        AppendRegionSearchItem();
+      }
+    } else {
+      // Search with google lens
+      if (IsRegionSearchEnabled()) {
+        AppendRegionSearchItem();
+      }
+
+      // Ask gemini
+      MaybeAppendOpenGlicItem(/*add_separator=*/false);
+
+      // Save to Memory Banks
+      AppendSaveToMemoryBanksItem();
     }
 
     // Open in reading mode & Listen to this page
@@ -2535,7 +2605,9 @@ void RenderViewContextMenu::AppendPageItems() {
   menu_model_.AddItemWithStringId(IDC_FORWARD, IDS_CONTENT_CONTEXT_FORWARD);
   menu_model_.AddItemWithStringId(IDC_RELOAD, IDS_CONTENT_CONTEXT_RELOAD);
   menu_model_.AddSeparator(ui::NORMAL_SEPARATOR);
-  MaybeAppendOpenGlicItem();
+  if (!glic_below_search) {
+    MaybeAppendOpenGlicItem();
+  }
   menu_model_.AddItemWithStringId(IDC_SAVE_PAGE,
                                   IDS_CONTENT_CONTEXT_SAVEPAGEAS);
   menu_model_.AddItemWithStringId(IDC_PRINT, IDS_CONTENT_CONTEXT_PRINT);
@@ -2549,6 +2621,9 @@ void RenderViewContextMenu::AppendPageItems() {
 
     if (IsRegionSearchEnabled()) {
       AppendRegionSearchItem();
+    }
+    if (glic_below_search) {
+      MaybeAppendOpenGlicItem(/*add_separator=*/false);
     }
 
     if (experiment_group ==
@@ -2568,6 +2643,9 @@ void RenderViewContextMenu::AppendPageItems() {
     if (!features::IsMenuSimplificationEnabled()) {
       if (IsRegionSearchEnabled()) {
         AppendRegionSearchItem();
+      }
+      if (glic_below_search) {
+        MaybeAppendOpenGlicItem(/*add_separator=*/false);
       }
     }
     if (!use_simplified_text_selection) {
@@ -2705,11 +2783,15 @@ void RenderViewContextMenu::AppendPartialTranslateItem() {
   const std::u16string printable_selection_text = PrintableSelectionText();
   std::u16string label;
 
-  if (is_menu_simplification_enabled && !printable_selection_text.empty()) {
-    label = l10n_util::GetStringFUTF16(
-        IDS_CONTENT_CONTEXT_PARTIAL_TRANSLATE_SELECTION,
-        printable_selection_text,
-        GetTargetLanguageDisplayName(/*is_full_page_translation=*/false));
+  if (is_menu_simplification_enabled) {
+    if (printable_selection_text.empty()) {
+      label =
+          l10n_util::GetStringUTF16(IDS_CONTENT_CONTEXT_PARTIAL_TRANSLATE_V2);
+    } else {
+      label = l10n_util::GetStringFUTF16(
+          IDS_CONTENT_CONTEXT_PARTIAL_TRANSLATE_SELECTION_V2,
+          printable_selection_text);
+    }
   } else {
     label = l10n_util::GetStringFUTF16(
         IDS_CONTENT_CONTEXT_PARTIAL_TRANSLATE,
@@ -2758,16 +2840,8 @@ void RenderViewContextMenu::AppendReadAnythingItem() {
 
   // Show Read Anything option if it's not already open in the side panel.
   if (IsNormalBrowser() && !IsReadAnythingEntryShowing(GetBrowser())) {
-    std::u16string label;
-    const std::u16string printable_selection_text = PrintableSelectionText();
-    if (is_menu_simplification_enabled && !printable_selection_text.empty()) {
-      label = l10n_util::GetStringFUTF16(
-          IDS_CONTENT_CONTEXT_READING_MODE_SELECTION, printable_selection_text);
-    } else {
-      label = l10n_util::GetStringUTF16(IDS_CONTENT_CONTEXT_READING_MODE);
-    }
-
-    menu_model_.AddItem(IDC_CONTENT_CONTEXT_OPEN_IN_READING_MODE, label);
+    menu_model_.AddItemWithStringId(IDC_CONTENT_CONTEXT_OPEN_IN_READING_MODE,
+                                    IDS_CONTENT_CONTEXT_READING_MODE);
 
     if (is_menu_simplification_enabled) {
       menu_model_.SetIconForCommandId(
@@ -2778,7 +2852,7 @@ void RenderViewContextMenu::AppendReadAnythingItem() {
                                          ui::kColorMenuIcon, kTabMenuIconSize));
     }
 
-    if (features::IsImprovedReadAloudEnabled()) {
+    if (features::IsReadAnythingImprovedUiEnabled()) {
       menu_model_.AddItemWithStringId(IDC_CONTENT_CONTEXT_LISTEN_TO_THIS_PAGE,
                                       IDS_CONTENT_CONTEXT_LISTEN_TO_THIS_PAGE);
       if (is_menu_simplification_enabled) {
@@ -2919,10 +2993,15 @@ void RenderViewContextMenu::AppendSpellingAndSearchSuggestionItems() {
       !features::IsMenuSimplificationEnabled()) {
     bool show_glic =
         !params_.selection_text.empty() || !params_.link_url.is_empty();
-    if (show_glic) {
+    const bool glic_below_search =
+        base::FeatureList::IsEnabled(features::kGlicContextMenuBelowSearch);
+    if (show_glic && !glic_below_search) {
       MaybeAppendOpenGlicItem(/*add_separator=*/false);
     }
     AppendSearchProvider();
+    if (show_glic && glic_below_search) {
+      MaybeAppendOpenGlicItem(/*add_separator=*/false);
+    }
     menu_model_.AddSeparator(ui::NORMAL_SEPARATOR);
   }
   bool render_separator = false;
@@ -3027,9 +3106,16 @@ void RenderViewContextMenu::AppendOtherEditableItems() {
 
   if (features::IsMenuSimplificationEnabled() &&
       !params_.selection_text.empty()) {
+    const bool glic_below_search =
+        base::FeatureList::IsEnabled(features::kGlicContextMenuBelowSearch);
     menu_model_.AddSeparator(ui::NORMAL_SEPARATOR);
-    MaybeAppendOpenGlicItem(/*add_separator=*/false);
+    if (!glic_below_search) {
+      MaybeAppendOpenGlicItem(/*add_separator=*/false);
+    }
     AppendSearchProvider();
+    if (glic_below_search) {
+      MaybeAppendOpenGlicItem(/*add_separator=*/false);
+    }
     AppendPrintItem();
     if (CanPartiallyTranslateTargetLanguage()) {
       AppendPartialTranslateItem();
@@ -3307,6 +3393,10 @@ bool RenderViewContextMenu::IsCommandIdEnabled(int id) const {
     navigation_allowed = false;
   }
 #endif
+  bool isolated_mode_enabled =
+      enterprise_isolated_mode::IsolatedModeReplacesIncognito(
+          *GetProfile()->GetPrefs(), chrome::GetChannel());
+
   switch (id) {
     case IDC_BACK:
       return embedder_web_contents_->GetController().CanGoBack();
@@ -3452,9 +3542,15 @@ bool RenderViewContextMenu::IsCommandIdEnabled(int id) const {
     case IDC_CONTENT_CONTEXT_SELECTALL:
       return !!(params_.edit_flags & ContextMenuDataEditFlags::kCanSelectAll);
 
-    case IDC_CONTENT_CONTEXT_OPENLINKOFFTHERECORD:
+    case IDC_CONTENT_CONTEXT_OPENLINKOFFTHERECORD: {
       return navigation_allowed &&
-             IsOpenLinkOTREnabled(GetProfile(), params_.link_url);
+             IsOpenLinkOTREnabled(GetProfile(), params_.link_url) &&
+             !isolated_mode_enabled;
+    }
+
+    case IDC_CONTENT_CONTEXT_OPENLINK_ISOLATED: {
+      return navigation_allowed && isolated_mode_enabled;
+    }
 
     case IDC_PRINT:
       return IsPrintPreviewEnabled();
@@ -3697,6 +3793,7 @@ void RenderViewContextMenu::ExecuteCommand(int id, int event_flags) {
           /*started_from_context_menu=*/true);
       break;
 
+    case IDC_CONTENT_CONTEXT_OPENLINK_ISOLATED:
     case IDC_CONTENT_CONTEXT_OPENLINKOFFTHERECORD:
       // Pass along the |referring_url| so we can show it in browser UI. Note
       // that this won't and shouldn't be sent via the referrer header.
@@ -4774,8 +4871,7 @@ void RenderViewContextMenu::ExecOpenLinkInProfile(int profile_index) {
   base::FilePath profile_path = profile_link_paths_[profile_index];
   profiles::SwitchToProfile(
       profile_path, false,
-      base::BindRepeating(OnBrowserCreated, params_.link_url,
-                          params_.frame_origin));
+      base::BindOnce(OnBrowserCreated, params_.link_url, params_.frame_origin));
 }
 
 #if BUILDFLAG(ENABLE_COMPOSE)
@@ -4812,12 +4908,14 @@ void RenderViewContextMenu::ExecOpenCompose() {
 
 void RenderViewContextMenu::ExecOpenInReadAnything() {
   read_anything::ReadAnythingEntryPointController::ShowUI(
-      GetBrowser(), ReadAnythingOpenTrigger::kReadAnythingContextMenu);
+      GetBrowser(),
+      read_anything::mojom::ReadAnythingOpenTrigger::kReadAnythingContextMenu);
 }
 
 void RenderViewContextMenu::ExecListenToThisPage() {
   read_anything::ReadAnythingEntryPointController::ShowUI(
-      GetBrowser(), ReadAnythingOpenTrigger::kListenToThisPageContextMenu);
+      GetBrowser(), read_anything::mojom::ReadAnythingOpenTrigger::
+                        kListenToThisPageContextMenu);
 }
 
 void RenderViewContextMenu::ExecSaveToMemoryBanks() {
@@ -4831,8 +4929,11 @@ void RenderViewContextMenu::ExecSaveToMemoryBanks() {
   std::string selected_text = base::UTF16ToUTF8(params_.selection_text);
 
   if (!selected_text.empty()) {
-    context_hub_service->SaveTextSelection(params_.page_url, tab_title,
-                                           selected_text, base::DoNothing());
+    context_hub_service->SaveMemoryBankEntry(
+        context_hub::MemoryBankEntry(
+            context_hub::MemoryBankType::kTextSelection, params_.page_url,
+            std::move(tab_title), std::move(selected_text)),
+        base::DoNothing());
     return;
   }
 
@@ -4848,8 +4949,11 @@ void RenderViewContextMenu::ExecSaveToMemoryBanks() {
              std::string title,
              std::unique_ptr<content_extraction::InnerTextResult> result) {
             if (service && result && !result->inner_text.empty()) {
-              service->SaveTab(url, title, result->inner_text,
-                               base::DoNothing());
+              service->SaveMemoryBankEntry(
+                  context_hub::MemoryBankEntry(
+                      context_hub::MemoryBankType::kTab, std::move(url),
+                      std::move(title), std::move(result->inner_text)),
+                  base::DoNothing());
             }
           },
           context_hub_service->GetWeakPtr(), params_.page_url, tab_title));
@@ -5419,11 +5523,6 @@ void RenderViewContextMenu::MaybeAppendOpenGlicItem(bool add_separator) {
   if (!IsNormalBrowser()) {
     return;
   }
-  if (content_type_->SupportsGroup(
-          ContextMenuContentType::ITEM_GROUP_GLICSHAREIMAGE) &&
-      CanAppendGlicShareImageItem()) {
-    return;
-  }
 
   if (IsPasswordField()) {
     return;
@@ -5876,12 +5975,19 @@ void RenderViewContextMenu::AppendLensGeminiSection() {
 }
 
 void RenderViewContextMenu::AppendRevisedTextSelectionSection() {
+  const bool glic_below_search =
+      base::FeatureList::IsEnabled(features::kGlicContextMenuBelowSearch);
   if (!params_.link_url.is_empty()) {
     // Link + Selection case
     AppendCopyItem();
     AppendLinkToTextItems();
-    MaybeAppendOpenGlicItem(/*add_separator=*/false);
+    if (!glic_below_search) {
+      MaybeAppendOpenGlicItem(/*add_separator=*/false);
+    }
     AppendSearchProvider();
+    if (glic_below_search) {
+      MaybeAppendOpenGlicItem(/*add_separator=*/false);
+    }
     AppendSaveToMemoryBanksItem();
     AppendPrintItem();
 
@@ -5898,8 +6004,13 @@ void RenderViewContextMenu::AppendRevisedTextSelectionSection() {
 
     menu_model_.AddSeparator(ui::NORMAL_SEPARATOR);
 
-    MaybeAppendOpenGlicItem(/*add_separator=*/false);
+    if (!glic_below_search) {
+      MaybeAppendOpenGlicItem(/*add_separator=*/false);
+    }
     AppendSearchProvider();
+    if (glic_below_search) {
+      MaybeAppendOpenGlicItem(/*add_separator=*/false);
+    }
     AppendReadAnythingItem();
     AppendSaveToMemoryBanksItem();
 

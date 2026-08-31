@@ -73,7 +73,14 @@ class MockSearchboxPage : public searchbox::mojom::Page {
               (searchbox::mojom::SelectionDirection,
                searchbox::mojom::SelectionStep));
   MOCK_METHOD(void, OpenCurrentSelection, (WindowOpenDisposition));
+  MOCK_METHOD(void, ResetPopupToInitialState, ());
   MOCK_METHOD(void, SetAimButtonVisible, (bool visible));
+  MOCK_METHOD(void,
+              SetAimButtonConfig,
+              (const std::string&,
+               const std::string&,
+               const std::string&,
+               const GURL&));
   MOCK_METHOD(void, SetInputText, (const std::string& input_text));
   MOCK_METHOD(void,
               SetThumbnail,
@@ -133,6 +140,8 @@ class MockOmniboxPopupPage : public omnibox_popup::mojom::Page {
               (omnibox_popup::mojom::OmniboxInputStatePtr state),
               (override));
   MOCK_METHOD(void, SetFocus, (bool is_focused), (override));
+  MOCK_METHOD(void, ClearAutocompleteMatches, (), (override));
+  MOCK_METHOD(void, ClearPopup, (ClearPopupCallback callback), (override));
 };
 #endif
 
@@ -160,6 +169,13 @@ class MockOmniboxEditModel : public OmniboxEditModel {
   // OmniboxEditModel:
   MOCK_METHOD(void, SetUserText, (const std::u16string&), (override));
   MOCK_METHOD(void, OpenAiMode, (AimActivation), (override));
+  MOCK_METHOD(void, OnPaste, (), (override));
+  MOCK_METHOD(bool,
+              OnAfterPossibleChange,
+              (const OmniboxView::StateChanges& state_changes,
+               bool allow_keyword_ui_change),
+              (override));
+  MOCK_METHOD(void, OnChanged, (), (override));
 };
 
 class MockLensSearchboxClient : public LensSearchboxClient {

@@ -240,10 +240,17 @@ ContextualTasksComposeboxHandler::ContextualTasksComposeboxHandler(
   // Set the callback for getting suggest inputs from the session.
   // The session is owned by WebUI controller and accessed via callback.
   // It is safe to use Unretained because omnibox client is owned by `this`.
-  static_cast<ContextualTasksOmniboxClient*>(client())
-      ->SetSuggestInputsCallback(base::BindRepeating(
-          &ContextualTasksComposeboxHandler::GetSuggestInputs,
-          base::Unretained(this)));
+  auto* omnibox_client = static_cast<ContextualTasksOmniboxClient*>(client());
+  omnibox_client->SetSuggestInputsCallback(
+      base::BindRepeating(&ContextualTasksComposeboxHandler::GetSuggestInputs,
+                          base::Unretained(this)));
+  omnibox_client->SetHasPreviousSubmittedThreadContextCallback(
+      base::BindRepeating(&ContextualTasksComposeboxHandler::
+                              SessionHandleHasPreviousSubmittedThreadContext,
+                          base::Unretained(this)));
+  omnibox_client->SetHasAutoSuggestedTabCallback(base::BindRepeating(
+      &ContextualTasksComposeboxHandler::HasAutoSuggestedTab,
+      base::Unretained(this)));
 
   InitializeInputStateModel();
 }
@@ -341,29 +348,32 @@ void ContextualTasksComposeboxHandler::StartPlatformVoiceRecognition() {
 }
 
 void ContextualTasksComposeboxHandler::SetActiveToolMode(
-    omnibox::ToolMode tool) {
+    omnibox::ToolMode tool,
+    bool is_set_by_server) {
   omnibox::ToolMode previous_tool =
       input_state_model_ ? input_state_model_->GetInputState().active_tool
                          : omnibox::ToolMode::TOOL_MODE_UNSPECIFIED;
 
-  ContextualSearchboxHandler::SetActiveToolMode(tool);
-
-  // Send an AIM query to notify AIM webpage (client side) of previous
-  // tool (`tool_mode`) and the newly changed tool (`new_tool_mode`).
-  // This path runs when a tool is added (or swapped), or removed.
-  // This causes side effects on AIM webpage; e.g., Canvas chip
-  // removed in Chrome -> Canvas popup is removed in AIM webpage.
-  auto request_info =
-      std::make_unique<contextual_search::ContextualSearchContextController::
-                           CreateClientToAimRequestInfo>();
-  request_info->exit_tool_info =
-      contextual_search::ContextualSearchContextController::
-          CreateClientToAimRequestInfo::ExitToolInfo{
-              .tool_mode = previous_tool,
-              .new_tool_mode = tool,
-          };
-  contextual_tasks::FinalizeAndSendAimQuery(
-      std::move(request_info), GetContextualSessionHandle(), web_ui_interface_);
+  ContextualSearchboxHandler::SetActiveToolMode(tool, is_set_by_server);
+  if (!is_set_by_server) {
+    // Send an AIM query to notify AIM webpage (client side) of previous
+    // tool (`tool_mode`) and the newly changed tool (`new_tool_mode`).
+    // This path runs when a tool is added (or swapped), or removed.
+    // This causes side effects on AIM webpage; e.g., Canvas chip
+    // removed in Chrome -> Canvas popup is removed in AIM webpage.
+    auto request_info =
+        std::make_unique<contextual_search::ContextualSearchContextController::
+                             CreateClientToAimRequestInfo>();
+    request_info->exit_tool_info =
+        contextual_search::ContextualSearchContextController::
+            CreateClientToAimRequestInfo::ExitToolInfo{
+                .tool_mode = previous_tool,
+                .new_tool_mode = tool,
+            };
+    contextual_tasks::FinalizeAndSendAimQuery(std::move(request_info),
+                                              GetContextualSessionHandle(),
+                                              web_ui_interface_);
+  }
 }
 
 void ContextualTasksComposeboxHandler::SubmitQuery(
@@ -376,7 +386,7 @@ void ContextualTasksComposeboxHandler::SubmitQuery(
     bool is_voice_search) {
   CreateAndSendQueryMessage(query_text, is_voice_search);
   // TODO(crbug.com/469535685): This should reflect the response from the
-  // webview when PostMessageToWebview provides one.
+  // webview when PostAimMessage provides one.
 }
 
 void ContextualTasksComposeboxHandler::CreateAndSendQueryMessage(
@@ -558,6 +568,13 @@ void ContextualTasksComposeboxHandler::InitializeInputStateModel() {
       user_data->set_input_state_model(std::move(current_input_state));
       input_state_model_ = user_data->input_state_model();
 
+      smart_tab_sharing_active_for_thread_ =
+          input_state_model_->IsSmartTabSharingActive();
+      if (auto* session_handle = GetContextualSessionHandle()) {
+        session_handle->set_smart_tab_sharing_active(
+            input_state_model_->IsSmartTabSharingActive());
+      }
+
       input_state_subscription_ =
           input_state_model_->subscribe(base::BindRepeating(
               &ContextualTasksComposeboxHandler::OnInputStateChanged,
@@ -613,8 +630,7 @@ void ContextualTasksComposeboxHandler::InitializeInputStateModel() {
         }
       }
       if (!submitted_tabs.empty()) {
-        SearchboxHandler::page_->SetAimThreadRestoredTabs(
-            std::move(submitted_tabs));
+        SetAimThreadRestoredTabs(std::move(submitted_tabs));
       }
     }
   }
@@ -637,14 +653,17 @@ void ContextualTasksComposeboxHandler::InitializeInputStateModel() {
 
 bool ContextualTasksComposeboxHandler::IsContextualSearchTabSharingEligible()
     const {
-  if (!profile_ || profile_->IsOffTheRecord()) {
-    return false;
-  }
-  return contextual_tasks::EntryPointEligibilityManager::IsEligible(profile_);
+  return contextual_tasks::IsTabSharingEligible(profile_);
 }
 
 void ContextualTasksComposeboxHandler::SetAimThreadRestoredTabs(
     std::vector<searchbox::mojom::TabInfoPtr> tabs) {
+  if (!IsContextualSearchTabSharingEligible()) {
+    if (SearchboxHandler::page_) {
+      SearchboxHandler::page_->SetAimThreadRestoredTabs({});
+    }
+    return;
+  }
   if (SearchboxHandler::page_) {
     SearchboxHandler::page_->SetAimThreadRestoredTabs(std::move(tabs));
   }
@@ -883,7 +902,10 @@ void ContextualTasksComposeboxHandler::FileSelectionCanceled() {
 void ContextualTasksComposeboxHandler::AddTabContext(
     int32_t tab_id,
     bool delay_upload,
+    searchbox::mojom::TabAttachmentSource source,
     AddTabContextCallback callback) {
+  // `source` is ignored here as contextual tasks composebox does not need to
+  // preserve tab origin across sessions in the same way as WebuiOmniboxHandler.
   if (!IsContextualSearchTabSharingEligible()) {
     std::move(callback).Run(base::unexpected(
         contextual_search::ContextUploadErrorType::kBrowserProcessingError));
@@ -1143,6 +1165,12 @@ void ContextualTasksComposeboxHandler::DeleteContext(
   }
 }
 
+bool ContextualTasksComposeboxHandler::HasAutoSuggestedTab() {
+  auto* auto_suggestion_manager = web_ui_interface_->GetAutoSuggestionManager();
+  return auto_suggestion_manager &&
+         auto_suggestion_manager->GetCurrentSuggestion() != nullptr;
+}
+
 void ContextualTasksComposeboxHandler::MaybeTriggerLens() {
 #if !BUILDFLAG(IS_ANDROID)
   if (!omnibox::kAskGCoBrowseWithVisualSelection.Get()) {
@@ -1163,6 +1191,22 @@ void ContextualTasksComposeboxHandler::MaybeTriggerLens() {
 
 void ContextualTasksComposeboxHandler::UpdateSuggestedTabContext(
     const contextual_tasks::SuggestedTabInfo* suggested_tab) {
+  std::optional<std::string> invocation_source;
+#if !BUILDFLAG(IS_ANDROID)
+  if (auto* controller = GetLensSearchController()) {
+    if (controller->invocation_source().has_value()) {
+      invocation_source = lens::InvocationSourceToString(
+          controller->invocation_source().value());
+    }
+  }
+#endif
+
+  if (!IsContextualSearchTabSharingEligible()) {
+    SearchboxHandler::page_->UpdateAutoSuggestedTabContext(nullptr,
+                                                           invocation_source);
+    return;
+  }
+
   // Always use the passed info as the result of the manager's filtering.
   searchbox::mojom::TabInfoPtr filtered_suggestion;
   const bool is_tab_suggestion_enabled =
@@ -1176,16 +1220,6 @@ void ContextualTasksComposeboxHandler::UpdateSuggestedTabContext(
     filtered_suggestion->url = suggested_tab->url;
     filtered_suggestion->last_active = suggested_tab->last_active;
   }
-
-  std::optional<std::string> invocation_source;
-#if !BUILDFLAG(IS_ANDROID)
-  if (auto* controller = GetLensSearchController()) {
-    if (controller->invocation_source().has_value()) {
-      invocation_source = lens::InvocationSourceToString(
-          controller->invocation_source().value());
-    }
-  }
-#endif
 
   SearchboxHandler::page_->UpdateAutoSuggestedTabContext(
       std::move(filtered_suggestion), invocation_source);

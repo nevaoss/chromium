@@ -74,6 +74,7 @@ export function getHtml(this: OmniboxComposeboxElement) {
       <div id="inputContainer" part="input-container">
         <cr-composebox-input id="composeboxInput"
             exportparts="text-container, icon-container, mirror, input, smart-compose, cancel, action-icon, cancel-icon"
+            .composeboxSkillsEnabled="${this.composeboxSkillsEnabled}"
             .disableCaretColorAnimation="${this.disableCaretColorAnimation}"
             .showDropdown="${this.showDropdown}"
             .inputPlaceholder="${this.inputPlaceholder}"
@@ -141,6 +142,12 @@ export function getHtml(this: OmniboxComposeboxElement) {
                     .smartTabSharingActive="${this.smartTabSharingActive}">
                 </cr-composebox-contextual-entrypoint-button>
               ` : ''}
+              ${this.isLensSearchChipShown_ ? html`
+                <cr-composebox-lens-search id="lensSearchChip"
+                    class="upload-button contextual-chip"
+                    @lens-search-click="${this.onLensSearchClick_}">
+                </cr-composebox-lens-search>
+              ` : ''}
               ${this.searchboxLayoutMode !== 'Compact' &&
                 this.inToolMode ? html`
                 <cr-composebox-tool-chip
@@ -154,7 +161,7 @@ export function getHtml(this: OmniboxComposeboxElement) {
           ` : ''}
           ${this.shouldShowVoiceSearchAtBottom() ? html`
             <cr-icon-button id="voiceSearchButton" class="voice-icon" part="voice-icon"
-                iron-icon="cr:mic" @click="${this.onVoiceSearchButtonClick}"
+                iron-icon="cr:mic-filled" @click="${this.onVoiceSearchButtonClick}"
                 title="${this.i18n('voiceSearchButtonLabel')}">
             </cr-icon-button>
           ` : ''}

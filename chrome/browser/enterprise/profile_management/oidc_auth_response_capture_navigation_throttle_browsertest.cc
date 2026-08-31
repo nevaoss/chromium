@@ -17,7 +17,7 @@
 #include "chrome/browser/enterprise/signin/oidc_authentication_signin_interceptor_factory.h"
 #include "chrome/browser/enterprise/signin/oidc_metrics_utils.h"
 #include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/ui/browser.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/signin/dice_web_signin_interceptor_delegate.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/test/base/in_process_browser_test.h"
@@ -170,6 +170,7 @@ class OidcAuthResponseCaptureNavigationThrottleTest
                       OidcInterceptionCallback oidc_callback) {
           ValidateOidcTokens(oidc_tokens, expected_oidc_tokens);
           std::move(oidc_callback).Run();
+          return true;
         });
   }
 
@@ -292,6 +293,29 @@ IN_PROC_BROWSER_TEST_F(OidcAuthResponseCaptureNavigationThrottleTest,
 }
 
 IN_PROC_BROWSER_TEST_F(OidcAuthResponseCaptureNavigationThrottleTest,
+                       HeaderInterceptionNoIntercept) {
+  content::MockNavigationHandle navigation_handle(
+      GURL(kHeaderInterceptionTestUrl), main_frame());
+  navigation_handle.set_response_headers(BuildExampleResponseHeader());
+
+  auto* oidc_interceptor = GetMockOidcInterceptor();
+  EXPECT_CALL(*oidc_interceptor,
+              MaybeInterceptOidcAuthentication(
+                  web_contents(), _, kExampleIdIssuer, kExampleIdSubject, _, _))
+      .WillOnce(testing::Return(false));
+
+  content::MockNavigationThrottleRegistry registry(
+      &navigation_handle,
+      content::MockNavigationThrottleRegistry::RegistrationMode::kHold);
+  OidcAuthResponseCaptureNavigationThrottle::MaybeCreateAndAdd(registry);
+  ASSERT_EQ(1u, registry.throttles().size());
+  auto* throttle = registry.throttles().back().get();
+
+  EXPECT_EQ(NavigationThrottle::PROCEED,
+            throttle->WillProcessResponse().action());
+}
+
+IN_PROC_BROWSER_TEST_F(OidcAuthResponseCaptureNavigationThrottleTest,
                        HeaderInterceptionInvalidUrl) {
   content::MockNavigationHandle navigation_handle(
       GURL("https://invalidurl/register"), main_frame());
@@ -349,7 +373,7 @@ IN_PROC_BROWSER_TEST_F(OidcAuthResponseCaptureNavigationThrottleTest,
 
 IN_PROC_BROWSER_TEST_F(OidcAuthResponseCaptureNavigationThrottleTest,
                        NoServiceForGuestMode) {
-  Browser* guest_browser = CreateGuestBrowser();
+  BrowserWindowInterface* guest_browser = CreateGuestBrowser();
   ASSERT_NE(guest_browser, nullptr);
   TestNoServiceForInvalidProfile(guest_browser->GetProfile());
 }

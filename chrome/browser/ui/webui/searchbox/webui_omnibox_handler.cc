@@ -14,9 +14,8 @@
 #include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
 #include "chrome/browser/contextual_tasks/active_task_context_provider.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/search_engines/ai_mode_button_service_factory.h"
 #include "chrome/browser/ui/bookmarks/bookmark_stats.h"
-#include "chrome/browser/ui/browser.h"
-#include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/contextual_search/searchbox_context_data.h"
@@ -32,6 +31,7 @@
 #include "chrome/browser/ui/tab_ui_helper.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/views/location_bar/selected_keyword_view.h"
+#include "chrome/browser/ui/views/omnibox/omnibox_view_views.h"
 #include "chrome/browser/ui/webui/cr_components/searchbox/contextual_searchbox_handler.h"
 #include "chrome/browser/ui/webui/cr_components/searchbox/searchbox_omnibox_client.h"
 #include "chrome/browser/ui/webui/metrics_reporter/metrics_reporter.h"
@@ -63,17 +63,21 @@
 #include "components/omnibox/common/omnibox_features.h"
 #include "components/prefs/pref_service.h"
 #include "components/profile_metrics/browser_profile_type.h"
+#include "components/search_engines/ai_mode_button_service.h"
 #include "components/search_engines/template_url_service.h"
 #include "components/strings/grit/components_strings.h"
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/web_contents.h"
+#include "net/base/url_util.h"
 #include "net/cookies/cookie_util.h"
 #include "third_party/metrics_proto/omnibox_focus_type.pb.h"
 #include "third_party/omnibox_proto/types.pb.h"
 #include "ui/base/l10n/l10n_util.h"
+#include "ui/base/ui_base_features.h"
 #include "ui/base/webui/resource_path.h"
 #include "ui/base/window_open_disposition_utils.h"
+#include "ui/views/widget/widget.h"
 
 namespace {
 
@@ -124,11 +128,22 @@ WebuiOmniboxHandler::WebuiOmniboxHandler(
   auto* aim_eligibility_service =
       AimEligibilityServiceFactory::GetForProfile(Profile::FromWebUI(web_ui));
   if (aim_eligibility_service) {
+    // `base::Unretained(this)` is safe here (and below) because `this` owns
+    // the subscriptions and will automatically unsubscribe them when the
+    // destructor for this class is invoked (thereby preventing any access to
+    // freed memory).
     aim_eligibility_subscription_ =
         aim_eligibility_service->RegisterEligibilityChangedCallback(
             base::BindRepeating(
                 &WebuiOmniboxHandler::OnAimPopupEligibilityChanged,
                 base::Unretained(this)));
+  }
+  if (auto* ai_mode_button_service =
+          AiModeButtonServiceFactory::GetForProfile(profile_)) {
+    ai_mode_config_subscription_ =
+        ai_mode_button_service->RegisterOnConfigChanged(base::BindRepeating(
+            &WebuiOmniboxHandler::OnAiModeButtonConfigChanged,
+            base::Unretained(this)));
   }
   pref_change_registrar_.Init(profile_->GetPrefs());
   pref_change_registrar_.Add(
@@ -191,18 +206,46 @@ void WebuiOmniboxHandler::ActivateKeyword(
   }
 }
 
+void WebuiOmniboxHandler::QueryAutocomplete(
+    int32_t query_id,
+    const std::u16string& input,
+    bool prevent_inline_autocomplete,
+    uint32_t cursor_position,
+    omnibox::SuggestInventory suggest_inventory,
+    bool is_on_focus,
+    const std::string& keyword,
+    searchbox::mojom::InputMethod input_method) {
+  SearchboxHandler::QueryAutocomplete(
+      query_id, input, prevent_inline_autocomplete, cursor_position,
+      suggest_inventory, is_on_focus, keyword, input_method);
+
+  if (auto* view = edit_model()->view()) {
+    view->SetWindowTextAndCaretPos(input, cursor_position,
+                                   /*update_popup=*/false,
+                                   /*notify_text_changed=*/false);
+  }
+}
+
 void WebuiOmniboxHandler::OpenLensSearch() {
   edit_model()->OpenLensSearch();
 }
 
-void WebuiOmniboxHandler::AddTabContext(int32_t tab_id,
-                                        bool delay_upload,
-                                        AddTabContextCallback callback) {
+void WebuiOmniboxHandler::AddTabContext(
+    int32_t tab_id,
+    bool delay_upload,
+    searchbox::mojom::TabAttachmentSource source,
+    AddTabContextCallback callback) {
+  if (!contextual_search::ContextualSearchService::IsContextSharingEnabled(
+          profile_->GetPrefs())) {
+    std::move(callback).Run(base::unexpected(
+        contextual_search::ContextUploadErrorType::kBrowserProcessingError));
+    return;
+  }
   auto* browser_window_interface =
       webui::GetBrowserWindowInterface(web_contents_.get());
   const tabs::TabHandle handle = tabs::TabHandle(tab_id);
   tabs::TabInterface* const tab = handle.Get();
-  if (!tab) {
+  if (!tab || tab->GetProfile() != profile_) {
     std::move(callback).Run(base::unexpected(
         contextual_search::ContextUploadErrorType::kBrowserProcessingError));
     return;
@@ -224,6 +267,7 @@ void WebuiOmniboxHandler::AddTabContext(int32_t tab_id,
   tab_attachment->tab_id = tab_id;
   tab_attachment->title = base::UTF16ToUTF8(TabUIHelper::From(tab)->GetTitle());
   tab_attachment->url = tab->GetContents()->GetLastCommittedURL();
+  tab_attachment->source = source;
   context->file_infos.push_back(
       searchbox::mojom::SearchContextAttachment::NewTabAttachment(
           std::move(tab_attachment)));
@@ -283,6 +327,10 @@ void WebuiOmniboxHandler::OpenCurrentSelection(
   page_->OpenCurrentSelection(disposition);
 }
 
+void WebuiOmniboxHandler::ResetPopupToInitialState() {
+  page_->ResetPopupToInitialState();
+}
+
 void WebuiOmniboxHandler::SetAimButtonVisible(bool visible) {
   page_->SetAimButtonVisible(visible);
 }
@@ -317,22 +365,64 @@ WebuiOmniboxHandler::CreateAutocompleteMatch(
   if (mojom_match &&
       match.suggestion_group_id == omnibox::GroupId::GROUP_CONTEXTUAL_SEARCH) {
     mojom_match.value()->icon_path =
-        searchbox_internal::kReplyRotated180IconResourceName;
+        omnibox::kAskGSwapSuggestionIcon.Get()
+            ? searchbox_internal::kSearchSparkIconResourceName
+            : searchbox_internal::kReplyRotated180IconResourceName;
   }
 
-  mojom_match.value()->has_instant_keyword =
-      match.HasInstantKeyword(turl_service);
-  if (mojom_match && !match.HasInstantKeyword(turl_service) && edit_model() &&
-      edit_model()->IsPopupControlPresentOnMatch(
-          OmniboxPopupSelection{line, OmniboxPopupSelection::KEYWORD_MODE})) {
-    const auto names = SelectedKeywordView::GetKeywordLabelNames(
-        match.associated_keyword, turl_service);
-    mojom_match.value()->keyword_chip_hint = base::UTF16ToUTF8(names.full_name);
-    mojom_match.value()->keyword_chip_a11y =
-        l10n_util::GetStringFUTF8(IDS_ACC_KEYWORD_MODE, names.short_name);
+  if (mojom_match) {
+    // Get keyword state from .cc source of truth.
+    KeywordState keyword_state;
+    std::u16string keyword;
+    std::u16string keyword_placeholder;
+    match.GetKeywordUiState(turl_service,
+                            controller_->client()->IsHistoryEmbeddingsEnabled(),
+                            &keyword_state, &keyword, &keyword_placeholder);
+
+    // Map the .cc `KeywordState` to mojom `KeywordType`. The .cc `KeywordState`
+    // does not distinguish between hint (aka chip) and instant keywords. It
+    // also has a 0-none value; whereas mojom simply nulls the `keyword_model`
+    // field for this case. The mojom approach is clearer and the .cc should
+    // mimic it.
+    searchbox::mojom::KeywordType keyword_type;
+    bool has_keyword = false;
+    if (keyword_state == KeywordState::kKeyword) {
+      keyword_type = searchbox::mojom::KeywordType::kInKeyword;
+      has_keyword = true;
+    } else if (match.HasInstantKeyword(turl_service)) {
+      keyword_type = searchbox::mojom::KeywordType::kInstant;
+      has_keyword = true;
+    } else if (keyword_state == KeywordState::kHint ||
+               !match.associated_keyword.empty()) {
+      keyword_type = searchbox::mojom::KeywordType::kChip;
+      has_keyword = true;
+    }
+
+    // Populate `keyword_model`.
+    if (has_keyword) {
+      auto keyword_model = searchbox::mojom::MatchKeywordModel::New();
+      keyword_model->type = keyword_type;
+      keyword_model->keyword = base::UTF16ToUTF8(keyword);
+      keyword_model->placeholder = base::UTF16ToUTF8(keyword_placeholder);
+      const auto names =
+          SelectedKeywordView::GetKeywordLabelNames(keyword, turl_service);
+      keyword_model->chip_hint = base::UTF16ToUTF8(names.full_name);
+      keyword_model->chip_a11y =
+          l10n_util::GetStringFUTF8(IDS_ACC_KEYWORD_MODE, names.short_name);
+      mojom_match.value()->keyword_model = std::move(keyword_model);
+    }
   }
 
   return mojom_match;
+}
+
+bool WebuiOmniboxHandler::ShouldShowFirstContextualDescription() const {
+  return omnibox::kAskGShowFirstDescription.Get() &&
+         autocomplete_controller() &&
+         autocomplete_controller()
+             ->GetSuggestionGroupHeaderText(
+                 omnibox::GroupId::GROUP_CONTEXTUAL_SEARCH)
+             .empty();
 }
 
 void WebuiOmniboxHandler::OnFocusChanged(bool focused) {
@@ -496,6 +586,33 @@ void WebuiOmniboxHandler::OnAimPopupEligibilityChanged() {
   page_->UpdateAimPopupEligibility(
       omnibox::IsAimPopupEnabled(profile_) &&
       profile_->GetPrefs()->GetBoolean(omnibox::kShowAiModeOmniboxButton));
+}
+
+void WebuiOmniboxHandler::OnAiModeButtonConfigChanged(
+    const AiModeButtonUiConfig* config) {
+  if (!config) {
+    return;
+  }
+  GURL compose_icon(
+      features::IsWebUIRoundedIconsEnabled()
+          ? "chrome://resources/cr_components/searchbox/icons/search_spark.svg"
+          : "chrome://resources/cr_components/searchbox/icons/"
+            "search_spark_old.svg");
+  std::string favicon_url(config->favicon_url);
+  if (config->id != SearchEngineType::SEARCH_ENGINE_GOOGLE &&
+      !favicon_url.empty()) {
+    GURL chrome_favicon_url("chrome://favicon2/");
+    chrome_favicon_url =
+        net::AppendQueryParameter(chrome_favicon_url, "iconUrl", favicon_url);
+    chrome_favicon_url =
+        net::AppendQueryParameter(chrome_favicon_url, "size", "32");
+    chrome_favicon_url =
+        net::AppendQueryParameter(chrome_favicon_url, "scaleFactor", "2x");
+    compose_icon = chrome_favicon_url;
+  }
+  page_->SetAimButtonConfig(
+      base::UTF16ToUTF8(config->text), base::UTF16ToUTF8(config->tooltip),
+      base::UTF16ToUTF8(config->a11y_label), compose_icon);
 }
 
 void WebuiOmniboxHandler::OnNavigationFinished(

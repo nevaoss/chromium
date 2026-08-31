@@ -7,6 +7,7 @@
 
 #include "chrome/browser/contextual_tasks/contextual_tasks_cookie_synchronizer.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service.h"
+#include "components/contextual_search/contextual_search_session_handle.h"
 #include "testing/gmock/include/gmock/gmock.h"
 
 namespace contextual_tasks {
@@ -29,17 +30,6 @@ class MockContextualTasksUiService : public ContextualTasksUiService {
                const std::optional<base::Uuid>& old_task_id,
                const std::optional<base::Uuid>& new_task_id,
                bool is_shown_in_tab),
-              (override));
-  MOCK_METHOD(void,
-              OnWebUIReady,
-              (BrowserWindowInterface * browser_window_interface,
-               const base::Uuid& task_id,
-               content::WebContents* web_contents),
-              (override));
-  MOCK_METHOD(void,
-              OnWebUIDestroyed,
-              (BrowserWindowInterface * browser_window_interface,
-               const std::optional<base::Uuid>& task_id),
               (override));
   MOCK_METHOD(
       void,

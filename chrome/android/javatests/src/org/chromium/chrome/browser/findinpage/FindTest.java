@@ -61,7 +61,6 @@ import org.chromium.chrome.test.util.MenuUtils;
 import org.chromium.content_public.browser.test.util.TouchCommon;
 import org.chromium.content_public.browser.test.util.UiUtils;
 import org.chromium.ui.base.DeviceFormFactor;
-import org.chromium.ui.base.DeviceInput;
 
 /** Find in page tests. */
 @RunWith(ChromeJUnit4ClassRunner.class)
@@ -78,8 +77,6 @@ public class FindTest {
 
     @Before
     public void setUp() throws Exception {
-        DeviceInput.setSupportsKeyboardForTesting(false);
-        DeviceInput.setSupportsPrecisionPointerForTesting(false);
         mActivityTestRule.waitForActivityNativeInitializationComplete();
         mPage = mActivityTestRule.startOnBlankPage();
 
@@ -244,6 +241,7 @@ public class FindTest {
     @Test
     @MediumTest
     @Feature({"FindInPage"})
+    @DisableIf.Device(DeviceFormFactor.ONLY_TABLET)
     public void testFindNext() {
         String query = "pitts";
         loadTestAndVerifyFindInPage(query, "1/7");
@@ -259,6 +257,7 @@ public class FindTest {
     @Test
     @MediumTest
     @Feature({"FindInPage"})
+    @DisableIf.Device(DeviceFormFactor.ONLY_TABLET)
     public void testFindNextPrevious() {
         String query = "pitts";
         loadTestAndVerifyFindInPage(query, "1/7");
@@ -452,6 +451,27 @@ public class FindTest {
 
         Assert.assertEquals(View.GONE, findToolbar.getVisibility());
         Assert.assertFalse(findQueryText.hasFocus());
+    }
+
+    @Test
+    @MediumTest
+    @Feature({"FindInPage"})
+    public void testFindQueryRetainsFocusOnEnter() {
+        mActivityTestRule.loadUrl(mActivityTestRule.getTestServer().getURL(FILEPATH));
+        findInPageFromMenu();
+
+        final EditText findQueryText = getFindQueryText();
+        Assert.assertTrue("FindQuery should have focus initially", findQueryText.hasFocus());
+
+        KeyUtils.singleKeyEventView(
+                InstrumentationRegistry.getInstrumentation(), findQueryText, KeyEvent.KEYCODE_T);
+
+        KeyUtils.singleKeyEventView(
+                InstrumentationRegistry.getInstrumentation(),
+                findQueryText,
+                KeyEvent.KEYCODE_ENTER);
+
+        Assert.assertTrue("FindQuery should retain focus after Enter", findQueryText.hasFocus());
     }
 
     /** Verify "Find in page" isn't dismissed when ESCAPE is pressed w/ modifiers. */

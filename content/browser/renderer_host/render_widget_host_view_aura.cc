@@ -867,8 +867,10 @@ gfx::Rect RenderWidgetHostViewAura::GetViewBoundsWithoutTransform() {
 void RenderWidgetHostViewAura::UpdateBackgroundColor() {
   CHECK(GetBackgroundColor());
 
-  SkColor color = *GetBackgroundColor();
-  window_->layer()->AsSolidColor()->SetColor(SkColor4f::FromColor(color));
+  SkColor4f background_color =
+      SkColor4f::FromColor(GetBackgroundColor().value());
+  window_->layer()->SetFillsBoundsOpaquely(background_color.isOpaque());
+  window_->layer()->AsSurface()->SetBackgroundColor(background_color);
 }
 
 #if BUILDFLAG(IS_WIN)
@@ -2932,6 +2934,7 @@ RenderWidgetHostViewAura::~RenderWidgetHostViewAura() {
   delegated_frame_host_.reset();
   window_observer_.reset();
   if (window_) {
+    aura::client::SetFocusChangeObserver(window_, nullptr);
     if (window_->GetHost())
       window_->GetHost()->RemoveObserver(this);
     UnlockPointer();
@@ -2978,9 +2981,11 @@ void RenderWidgetHostViewAura::CreateAuraWindow(aura::client::WindowType type) {
   display_observer_.emplace(this);
 
   window_->SetType(type);
-  window_->Init(ui::LAYER_SOLID_COLOR);
-  window_->layer()->AsSolidColor()->SetColor(SkColor4f::FromColor(
-      GetBackgroundColor() ? *GetBackgroundColor() : SK_ColorWHITE));
+  window_->Init(ui::LAYER_SURFACE);
+  SkColor4f background_color = SkColor4f::FromColor(
+      GetBackgroundColor() ? *GetBackgroundColor() : SK_ColorWHITE);
+  window_->layer()->SetFillsBoundsOpaquely(background_color.isOpaque());
+  window_->layer()->AsSurface()->SetBackgroundColor(background_color);
   UpdateFrameSinkIdRegistration();
 }
 

@@ -1042,13 +1042,22 @@ void GaiaScreenHandler::CompleteAuthentication(
     if (features::IsManagedLocalPinAndPasswordEnabled()) {
       user_context->SetScrapedSamlPasswords(std::move(scraped_saml_passwords));
       user_context->SetRequiresPasswordConfirmation(true);
-      if (!auth_factor_editor_) {
-        auth_factor_editor_ =
-            std::make_unique<AuthFactorEditor>(UserDataAuthClient::Get());
+      // For device ephemeral users, immediately show the saml confirm password
+      // screen if it is required.
+      if (user_manager::UserManager::Get()->IsUserNonCryptohomeDataEphemeral(
+              user_context->GetAccountId())) {
+        LoginDisplayHost::default_host()
+            ->GetSigninUI()
+            ->ShowSamlConfirmPassword(std::move(user_context));
+      } else {
+        if (!auth_factor_editor_) {
+          auth_factor_editor_ =
+              std::make_unique<AuthFactorEditor>(UserDataAuthClient::Get());
+        }
+        auth_factor_editor_->GetAuthFactorsConfiguration(
+            std::move(user_context),
+            base::BindOnce(&OnGetAuthFactorsConfiguration));
       }
-      auth_factor_editor_->GetAuthFactorsConfiguration(
-          std::move(user_context),
-          base::BindOnce(&OnGetAuthFactorsConfiguration));
     } else {
       LoginDisplayHost::default_host()->GetSigninUI()->SAMLConfirmPassword(
           std::move(scraped_saml_passwords), std::move(user_context));
@@ -1276,8 +1285,7 @@ void GaiaScreenHandler::StartClearingCookies(
   cookies_cleared_ = false;
   LOG_ASSERT(Profile::FromWebUI(web_ui()) ==
              Profile::FromBrowserContext(
-                 BrowserContextHelper::Get()
-                     ->DeprecatedGetOrCreateSigninBrowserContext()));
+                 BrowserContextHelper::Get()->GetSigninBrowserContext()));
   SigninProfileHandler::Get()->ClearSigninProfile(
       base::BindOnce(&GaiaScreenHandler::OnCookiesCleared,
                      weak_factory_.GetWeakPtr(), std::move(on_clear_callback)));

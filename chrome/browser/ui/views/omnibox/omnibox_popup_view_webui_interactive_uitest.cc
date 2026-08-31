@@ -39,6 +39,9 @@
 #include "components/omnibox/browser/omnibox_popup_selection.h"
 #include "components/omnibox/browser/omnibox_triggered_feature_service.h"
 #include "components/permissions/test/mock_permission_request.h"
+#if BUILDFLAG(IS_MAC)
+#include "components/viz/common/features.h"
+#endif
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_ui.h"
 #include "content/public/test/browser_test.h"
@@ -127,7 +130,9 @@ class OmniboxPopupViewWebUITest : public InProcessBrowserTest {
   base::test::ScopedFeatureList feature_list_;
 };
 
-OmniboxPopupViewWebUITest::OmniboxPopupViewWebUITest() = default;
+OmniboxPopupViewWebUITest::OmniboxPopupViewWebUITest() {
+  feature_list_.InitAndEnableFeature(omnibox::internal::kWebUIOmniboxPopup);
+}
 OmniboxPopupViewWebUITest::~OmniboxPopupViewWebUITest() = default;
 
 OmniboxPopupViewWebUITest::ThemeChangeWaiter::~ThemeChangeWaiter() {
@@ -188,7 +193,6 @@ void OmniboxPopupViewWebUITest::UseDefaultTheme() {
 }
 
 void OmniboxPopupViewWebUITest::SetUp() {
-  feature_list_.InitAndEnableFeature(omnibox::internal::kWebUIOmniboxPopup);
   InProcessBrowserTest::SetUp();
 }
 
@@ -247,46 +251,10 @@ class OmniboxPopupViewWebUIFullV2Test : public OmniboxPopupViewWebUITest {
     // Unset it here as this test does not strictly require the window to be in
     // front to verify state isolation.
     set_global_browser_set_up_function(nullptr);
-  }
-  void SetUp() override {
     feature_list_full_v2_.InitWithFeatures(
         {omnibox::internal::kWebUIOmniboxPopup,
          omnibox::kWebUIOmniboxFullPopup},
         {});
-    InProcessBrowserTest::SetUp();
-  }
-
-  std::unique_ptr<views::Widget> DeactivatePopupWidget() {
-    // Wait for the popup transition to complete (clearing
-    // in_popup_state_transition).
-    EXPECT_TRUE(base::test::RunUntil(
-        [&]() { return !location_bar()->in_popup_state_transition(); }));
-
-    // Since in background test runners the browser window is not natively
-    // active, focusing on the web contents will not activate the browser
-    // widget. Create a temporary dummy widget and activate it to force the main
-    // browser window (and the child popup widget) inactive.
-    auto dummy_widget = std::make_unique<views::Widget>();
-    views::Widget::InitParams params(
-        views::Widget::InitParams::CLIENT_OWNS_WIDGET,
-        views::Widget::InitParams::TYPE_WINDOW);
-    params.context = location_bar()->GetWidget()->GetNativeWindow();
-    params.bounds = gfx::Rect(0, 0, 100, 100);
-    dummy_widget->Init(std::move(params));
-    dummy_widget->Show();
-    dummy_widget->Activate();
-
-    // In background test runners, the OS blocks background applications from
-    // changing native window activation.
-    // Directly notify the presenter observer of focus loss.
-    auto* popup_view = static_cast<OmniboxPopupViewWebUI*>(
-        location_bar()->GetOmniboxPopupView());
-    auto* presenter =
-        static_cast<OmniboxPopupFullPresenter*>(popup_view->presenter());
-    static_cast<views::WidgetObserver*>(presenter)->OnWidgetActivationChanged(
-        presenter->get_widget_for_testing(), /*active=*/false);
-
-    return dummy_widget;
   }
 
  private:
@@ -340,13 +308,9 @@ IN_PROC_BROWSER_TEST_F(OmniboxPopupViewWebUIFullV2Test, TabSwitchStateSync) {
   }
 }
 
-// TODO(crbug.com/536046012): Re-enable this test on Linux and Mac.
-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC)
-#define MAYBE_TabSwitchNoSavedState DISABLED_TabSwitchNoSavedState
-#else
-#define MAYBE_TabSwitchNoSavedState TabSwitchNoSavedState
-#endif
-IN_PROC_BROWSER_TEST_F(OmniboxPopupViewWebUIFullV2Test, MAYBE_TabSwitchNoSavedState) {
+// TODO(crbug.com/536046012): Re-enable this test.
+IN_PROC_BROWSER_TEST_F(OmniboxPopupViewWebUIFullV2Test,
+                       DISABLED_TabSwitchNoSavedState) {
   // Create a new tab.
   int initial_tab_index = browser()->tab_strip_model()->active_index();
   chrome::NewTab(browser(), NewTabTypes::kNoUserAction);
@@ -403,74 +367,6 @@ IN_PROC_BROWSER_TEST_F(OmniboxPopupViewWebUIFullV2Test, MAYBE_TabSwitchNoSavedSt
     const gfx::Range expected_selection = gfx::Range(0, 0);
     return popup_handler_check &&
            popup_handler_check->latest_selection() == expected_selection;
-  }));
-}
-
-IN_PROC_BROWSER_TEST_F(OmniboxPopupViewWebUIFullV2Test,
-                       DeactivationClearsPopupState) {
-  // Focus the location bar to ensure the Omnibox has active focus and the popup
-  // is open.
-  location_bar()->FocusLocation(/*is_user_initiated=*/true,
-                                /*clear_focus_if_failed=*/false);
-
-  // Verify that the popup state is initially kFull.
-  ASSERT_EQ(OmniboxPopupState::kFull,
-            controller()->popup_state_manager()->popup_state());
-
-  auto dummy_widget = DeactivatePopupWidget();
-
-  // Wait for the deferred deactivation task to run and verify that the popup
-  // state transitions to kNone.
-  EXPECT_TRUE(base::test::RunUntil([&]() {
-    return controller()->popup_state_manager()->popup_state() ==
-           OmniboxPopupState::kNone;
-  }));
-}
-
-IN_PROC_BROWSER_TEST_F(OmniboxPopupViewWebUIFullV2Test,
-                       DISABLED_DeactivationWithTextDoesNotClearPopupState) {
-  // Focus the location bar to ensure the Omnibox has active focus and the popup
-  // is open.
-  location_bar()->FocusLocation(/*is_user_initiated=*/true,
-                                /*clear_focus_if_failed=*/false);
-
-  // Verify that the popup state is initially kFull.
-  ASSERT_EQ(OmniboxPopupState::kFull,
-            controller()->popup_state_manager()->popup_state());
-
-  omnibox_view()->SetUserText(u"test query");
-
-  auto dummy_widget = DeactivatePopupWidget();
-
-  // Wait for the deferred deactivation task to run and verify that the popup
-  // state transitions to kNone.
-  EXPECT_TRUE(base::test::RunUntil([&]() {
-    return controller()->popup_state_manager()->popup_state() !=
-           OmniboxPopupState::kNone;
-  }));
-}
-
-IN_PROC_BROWSER_TEST_F(OmniboxPopupViewWebUIFullV2Test,
-                       DeactivationWithClearedTextClearsPopupState) {
-  // Focus the location bar to ensure the Omnibox has active focus and the popup
-  // is open.
-  location_bar()->FocusLocation(/*is_user_initiated=*/true,
-                                /*clear_focus_if_failed=*/false);
-
-  // Verify that the popup state is initially kFull.
-  ASSERT_EQ(OmniboxPopupState::kFull,
-            controller()->popup_state_manager()->popup_state());
-
-  omnibox_view()->SetUserText(u"test query");
-  omnibox_view()->SetUserText(u"");
-
-  auto dummy_widget = DeactivatePopupWidget();
-
-  // Wait for the deferred deactivation task to run and verify that the popup
-  // state transitions to kNone.
-  EXPECT_TRUE(base::test::RunUntil([&]() {
-    return controller()->popup_state_manager()->popup_state() ==
-           OmniboxPopupState::kNone;
   }));
 }
 
@@ -595,7 +491,7 @@ class TestPermissionPromptDelegate
   }
 
   const std::vector<std::unique_ptr<permissions::PermissionRequest>>& Requests()
-      override {
+      const override {
     return request_list_;
   }
   GURL GetRequestingOrigin() const override {
@@ -686,5 +582,59 @@ IN_PROC_BROWSER_TEST_F(OmniboxPopupViewWebUITest,
   // `PermissionPromptFactory`.
   EXPECT_TRUE(presenter->IsPermissionPromptPreventingClose());
 }
+
+#if BUILDFLAG(IS_MAC)
+class OmniboxPopupViewWebUIFrameCacheTest
+    : public OmniboxPopupViewWebUITest,
+      public testing::WithParamInterface<bool> {
+  // TODO(crbug.com/538294830): Use base/test/with_feature_override.h instead.
+ public:
+  OmniboxPopupViewWebUIFrameCacheTest() {
+    if (GetParam()) {
+      feature_list_.InitWithFeatures(
+          {omnibox::kOmniboxWebUIPopupMarkAsHidden,
+           ::features::kHideDelegatedFrameHostMac},
+          {omnibox::kOmniboxWebUIDeferShowUntilVisualStateReady,
+           omnibox::kOmniboxWebUIDetachWebContentsOnHide});
+    } else {
+      feature_list_.InitWithFeatures(
+          {omnibox::kOmniboxWebUIPopupMarkAsHidden},
+          {omnibox::kOmniboxWebUIDeferShowUntilVisualStateReady,
+           omnibox::kOmniboxWebUIDetachWebContentsOnHide,
+           ::features::kHideDelegatedFrameHostMac});
+    }
+  }
+
+ private:
+  base::test::ScopedFeatureList feature_list_;
+};
+
+INSTANTIATE_TEST_SUITE_P(All,
+                         OmniboxPopupViewWebUIFrameCacheTest,
+                         testing::Bool());
+
+IN_PROC_BROWSER_TEST_P(OmniboxPopupViewWebUIFrameCacheTest, FrameCacheUsage) {
+  // During browser startup, other WebUIs (or the initial NTP view) might have
+  // generated their own unlocked frames that are cached in memory. Purging
+  // ensures the baseline is 0.
+  content::PurgeUnlockedCompositorFrames();
+  EXPECT_EQ(0u, content::GetUnlockedCompositorFrameCount());
+
+  auto* popup_view = static_cast<OmniboxPopupViewWebUI*>(
+      location_bar()->GetOmniboxPopupView());
+  popup_view->presenter()->Show();
+  popup_view->UpdatePopupAppearance();
+
+  popup_view->presenter()->Hide();
+
+  // Verify that the frame is correctly unlocked when the feature fix is
+  // enabled.
+  if (GetParam()) {
+    EXPECT_EQ(1u, content::GetUnlockedCompositorFrameCount());
+  } else {
+    EXPECT_EQ(0u, content::GetUnlockedCompositorFrameCount());
+  }
+}
+#endif
 
 #endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)

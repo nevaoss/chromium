@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "base/test/scoped_feature_list.h"
 #include "chrome/browser/ash/login/test/guest_session_mixin.h"
 #include "chrome/browser/chromeos/network/network_portal_signin_window.h"
 #include "chrome/browser/profiles/profile.h"
@@ -16,12 +17,27 @@
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
 #include "content/public/test/test_navigation_observer.h"
+#include "net/http/http_status_code.h"
+#include "net/test/embedded_test_server/controllable_http_response.h"
+#include "net/test/embedded_test_server/http_request.h"
+#include "net/test/embedded_test_server/http_response.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "url/gurl.h"
 
 namespace chromeos {
 
-using NetworkPortalSigninWindowAshBrowserTest = InProcessBrowserTest;
+class NetworkPortalSigninWindowAshBrowserTest : public InProcessBrowserTest {
+ public:
+  NetworkPortalSigninWindowAshBrowserTest() {
+    // TODO(crbug.com/452061489): Fix the tests that fail when WebUI Omnibox is
+    // enabled and then remove this.
+    webui_omnibox_feature_list_.InitFromCommandLine(
+        "", "WebUIOmniboxPopup,WebUIOmniboxAimPopup");
+  }
+
+ protected:
+  base::test::ScopedFeatureList webui_omnibox_feature_list_;
+};
 
 IN_PROC_BROWSER_TEST_F(NetworkPortalSigninWindowAshBrowserTest,
                        IsCaptivePortalWindow) {
@@ -79,8 +95,17 @@ IN_PROC_BROWSER_TEST_F(NetworkPortalSigninWindowAshBrowserTest,
 
 class NetworkPortalSigninWindowAshGuestBrowserTest
     : public MixinBasedInProcessBrowserTest {
+ public:
+  NetworkPortalSigninWindowAshGuestBrowserTest() {
+    // TODO(crbug.com/452061489): Fix the tests that fail when WebUI Omnibox is
+    // enabled and then remove this.
+    webui_omnibox_feature_list_.InitFromCommandLine(
+        "", "WebUIOmniboxPopup,WebUIOmniboxAimPopup");
+  }
+
  protected:
   ash::GuestSessionMixin guest_session_{&mixin_host_};
+  base::test::ScopedFeatureList webui_omnibox_feature_list_;
 };
 
 IN_PROC_BROWSER_TEST_F(NetworkPortalSigninWindowAshGuestBrowserTest,
@@ -126,6 +151,78 @@ IN_PROC_BROWSER_TEST_F(NetworkPortalSigninWindowAshGuestBrowserTest,
   Navigate(&source_params);
   EXPECT_EQ(source_params.browser, browser);
   EXPECT_EQ(source_params.tabstrip_index, -1);
+}
+
+// Tests that a link opened in a new tab from a sandboxed subframe within a
+// captive portal sign-in window respects the iframe's sandbox restrictions.
+// Specifically, because the iframe is sandboxed against top-level navigation
+// (kTopNavigation), captive portal navigation restrictions must not rewrite the
+// navigation to CURRENT_TAB (which would allow a sandbox escape). Instead, the
+// browser falls back to NEW_POPUP and opens a new popup window, preserving the
+// current URL of the captive portal sign-in window.
+IN_PROC_BROWSER_TEST_F(NetworkPortalSigninWindowAshBrowserTest,
+                       NavigateNewTabFromSandboxedSubframe) {
+  net::test_server::ControllableHttpResponse embedder_response(
+      embedded_test_server(), "/embedder.html");
+  net::test_server::ControllableHttpResponse iframe_response(
+      embedded_test_server(), "/iframe.html");
+  net::test_server::ControllableHttpResponse target_response(
+      embedded_test_server(), "/target.html");
+  ASSERT_TRUE(embedded_test_server()->Start());
+
+  auto* portal_signin_window = NetworkPortalSigninWindow::Get();
+  GURL start_url = embedded_test_server()->GetURL("/embedder.html");
+
+  portal_signin_window->Show(start_url);
+
+  embedder_response.WaitForRequest();
+  embedder_response.Send(
+      net::HTTP_OK, "text/html",
+      "<html><body>"
+      "<iframe id='iframe' sandbox='allow-scripts allow-popups' "
+      "src='/iframe.html'></iframe>"
+      "</body></html>");
+  embedder_response.Done();
+
+  iframe_response.WaitForRequest();
+  iframe_response.Send(
+      net::HTTP_OK, "text/html",
+      "<html><body>"
+      "<a id='link' href='/target.html' target='_blank'>Click me</a>"
+      "</body></html>");
+  iframe_response.Done();
+
+  content::WebContents* web_contents =
+      portal_signin_window->GetWebContentsForTesting();
+  ASSERT_TRUE(web_contents);
+
+  content::WaitForLoadStop(web_contents);
+  EXPECT_EQ(web_contents->GetLastCommittedURL(), start_url);
+
+  content::RenderFrameHost* iframe_rfh = content::ChildFrameAt(web_contents, 0);
+  ASSERT_TRUE(iframe_rfh);
+  EXPECT_EQ(iframe_rfh->GetLastCommittedURL(),
+            embedded_test_server()->GetURL("/iframe.html"));
+
+  content::WebContentsAddedObserver web_contents_added_observer;
+
+  EXPECT_TRUE(
+      content::ExecJs(iframe_rfh, "document.getElementById('link').click();"));
+
+  target_response.WaitForRequest();
+  target_response.Send(net::HTTP_OK, "text/html",
+                       "<html><body>Target</body></html>");
+  target_response.Done();
+
+  content::WebContents* new_contents =
+      web_contents_added_observer.GetWebContents();
+  ASSERT_TRUE(new_contents);
+
+  EXPECT_EQ(web_contents->GetLastCommittedURL(), start_url);
+
+  content::WaitForLoadStop(new_contents);
+  EXPECT_EQ(new_contents->GetLastCommittedURL(),
+            embedded_test_server()->GetURL("/target.html"));
 }
 
 }  // namespace chromeos

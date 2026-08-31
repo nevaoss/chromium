@@ -56,7 +56,6 @@
 #if BUILDFLAG(IS_WIN) && BUILDFLAG(GOOGLE_CHROME_BRANDING)
 #include "chrome/browser/metrics/chrome_metrics_service_accessor.h"
 #include "chrome/browser/win/installer_downloader/installer_downloader_controller.h"
-#include "chrome/browser/win/installer_downloader/installer_downloader_feature.h"
 #include "chrome/browser/win/installer_downloader/installer_downloader_infobar_delegate.h"
 #endif
 
@@ -210,20 +209,15 @@ void GlobalFeatures::PostBrowserProcessInitCore() {
 
   application_locale_storage_ = std::make_unique<ApplicationLocaleStorage>();
 
-  glic::GlicGlobalEnabling::Delegate glic_enabling_delegate;
-  glic_global_enabling_ =
-      std::make_unique<glic::GlicGlobalEnabling>(glic_enabling_delegate);
+  glic_global_enabling_ = std::make_unique<glic::GlicGlobalEnabling>();
 
 #if BUILDFLAG(IS_WIN) && BUILDFLAG(GOOGLE_CHROME_BRANDING)
-  if (base::FeatureList::IsEnabled(
-          installer_downloader::kInstallerDownloader)) {
-    installer_downloader_controller_ = std::make_unique<
-        installer_downloader::InstallerDownloaderController>(
-        base::BindRepeating(
-            &installer_downloader::InstallerDownloaderInfoBarDelegate::Show),
-        base::BindRepeating(static_cast<bool (*)()>(
-            &ChromeMetricsServiceAccessor::IsMetricsAndCrashReportingEnabled)));
-  }
+  installer_downloader_controller_ = std::make_unique<
+      installer_downloader::InstallerDownloaderController>(
+      base::BindRepeating(
+          &installer_downloader::InstallerDownloaderInfoBarDelegate::Show),
+      base::BindRepeating(static_cast<bool (*)()>(
+          &ChromeMetricsServiceAccessor::IsMetricsAndCrashReportingEnabled)));
 #endif
 
   optimization_guide_global_feature_ =

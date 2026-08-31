@@ -44,6 +44,7 @@
 #include "third_party/blink/public/common/loader/loader_constants.h"
 #include "third_party/blink/public/mojom/frame/user_activation_update_types.mojom.h"
 #include "third_party/blink/public/mojom/security_context/insecure_request_policy.mojom.h"
+#include "third_party/perfetto/include/perfetto/tracing/track.h"
 
 namespace content {
 
@@ -123,7 +124,9 @@ FrameTreeNodeId::Generator FrameTreeNode::frame_tree_node_id_generator_;
 // static
 FrameTreeNode* FrameTreeNode::GloballyFindByID(
     FrameTreeNodeId frame_tree_node_id) {
-  CHECK_CURRENTLY_ON(BrowserThread::UI, base::NotFatalUntil::M152);
+  // TODO(crbug.com/541051793): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
   FrameTreeNodeIdMap* nodes = g_frame_tree_node_id_map.Pointer();
   auto it = nodes->find(frame_tree_node_id);
   return it == nodes->end() ? nullptr : it->second;
@@ -173,7 +176,7 @@ FrameTreeNode::FrameTreeNode(
           ComputeFencedFrameStatus(frame_tree, parent_, frame_policy)),
       render_manager_(this, frame_tree.manager_delegate()) {
   TRACE_EVENT_BEGIN("navigation.debug", "FrameTreeNode",
-                    perfetto::Track::FromPointer(this),
+                    perfetto::NamedTrack::FromPointer("FrameTreeNode", this),
                     "frame_tree_node_when_created", this);
   std::pair<FrameTreeNodeIdMap::iterator, bool> result =
       g_frame_tree_node_id_map.Get().insert(
@@ -312,7 +315,8 @@ FrameTreeNode::~FrameTreeNode() {
   CHECK(!current_frame_host() || !IsLoading(), base::NotFatalUntil::M152);
 
   // Matches the TRACE_EVENT_BEGIN in the constructor.
-  TRACE_EVENT_END("navigation.debug", perfetto::Track::FromPointer(this));
+  TRACE_EVENT_END("navigation.debug",
+                  perfetto::NamedTrack::FromPointer("FrameTreeNode", this));
 }
 
 void FrameTreeNode::MaybeRemoveFromLastCommittedEntry() {

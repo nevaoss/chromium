@@ -50,9 +50,12 @@ class OmniboxSuggestionsDropdownEmbedderImpl
                 ComponentCallbacks {
     private final SettableNonNullObservableSupplier<OmniboxAlignment> mOmniboxAlignmentSupplier =
             ObservableSuppliers.createNonNull(OmniboxAlignment.UNSPECIFIED);
+    private final OmniboxResourceProvider mResourceProvider;
     private final WindowAndroid mWindowAndroid;
     private final View mAnchorView;
     private final View mAlignmentView;
+    private final Supplier<Integer> mAlignmentViewTargetWidthSupplier;
+    private final Supplier<Integer> mAlignmentViewLeftOffsetSupplier;
     private final boolean mForcePhoneStyleOmnibox;
     private final Supplier<@ControlsPosition Integer> mControlsPositionSupplier;
     private final Supplier<Integer> mKeyboardHeightSupplier;
@@ -74,6 +77,7 @@ class OmniboxSuggestionsDropdownEmbedderImpl
     private final Supplier<@FuseboxLayoutMode Integer> mFuseboxLayoutModeSupplier;
 
     /**
+     * @param resourceProvider Resource cache for fast resource lookup.
      * @param windowAndroid Window object in which the dropdown will be displayed.
      * @param anchorView View to which the dropdown should be "anchored" i.e. vertically positioned
      *     next to and matching the width of. This must be a descendant of the top-level content
@@ -81,6 +85,11 @@ class OmniboxSuggestionsDropdownEmbedderImpl
      * @param alignmentView View to which: 1. The dropdown should be horizontally aligned to when
      *     its width is smaller than the anchor view. 2. The dropdown should vertically align to
      *     during animations. This must be a descendant of the anchor view.
+     * @param alignmentViewTargetWidthSupplier Supplier of the target width for the alignment view,
+     *     allowing popover mode to publish target width without mutating layout parameters on the
+     *     alignment view directly (which would cause double margin counting on focus).
+     * @param alignmentViewLeftOffsetSupplier Supplier of the left offset for the alignment view,
+     *     allowing popover mode to publish horizontal shifts.
      * @param baseChromeLayout The base view hosting Chrome that certain views (e.g. the omnibox
      *     suggestion list) will position themselves relative to. If null, the content view will be
      *     used.
@@ -97,9 +106,12 @@ class OmniboxSuggestionsDropdownEmbedderImpl
      * @param topInsetProvider Provider for edge-to-edge top inset changes.
      */
     OmniboxSuggestionsDropdownEmbedderImpl(
+            OmniboxResourceProvider resourceProvider,
             WindowAndroid windowAndroid,
             View anchorView,
             View alignmentView,
+            Supplier<Integer> alignmentViewTargetWidthSupplier,
+            Supplier<Integer> alignmentViewLeftOffsetSupplier,
             boolean forcePhoneStyleOmnibox,
             @Nullable View baseChromeLayout,
             Supplier<@ControlsPosition Integer> controlsPositionSupplier,
@@ -108,9 +120,12 @@ class OmniboxSuggestionsDropdownEmbedderImpl
             Supplier<@FuseboxState Integer> fuseboxStateSupplier,
             Supplier<@FuseboxLayoutMode Integer> fuseboxLayoutModeSupplier,
             TopInsetProvider topInsetProvider) {
+        mResourceProvider = resourceProvider;
         mWindowAndroid = windowAndroid;
         mAnchorView = anchorView;
         mAlignmentView = alignmentView;
+        mAlignmentViewTargetWidthSupplier = alignmentViewTargetWidthSupplier;
+        mAlignmentViewLeftOffsetSupplier = alignmentViewLeftOffsetSupplier;
         mForcePhoneStyleOmnibox = forcePhoneStyleOmnibox;
         mControlsPositionSupplier = controlsPositionSupplier;
         mKeyboardHeightSupplier = keyboardHeightSupplier;
@@ -303,7 +318,7 @@ class OmniboxSuggestionsDropdownEmbedderImpl
                                     .getDimensionPixelSize(
                                             R.dimen.omnibox_suggestion_list_toolbar_overlap);
                 }
-                sideSpacing = OmniboxResourceProvider.getDropdownSideSpacing(mContext);
+                sideSpacing = mResourceProvider.getDropdownSideSpacing();
             } else {
                 // Case 4: Fusebox on tablet. The width of the dropdown should match the alignment
                 // view's width exactly (0 side spacing), and its top should be exactly below the
@@ -318,12 +333,19 @@ class OmniboxSuggestionsDropdownEmbedderImpl
 
             // Tablet positioning logic common between fusebox and non-fusebox cases.
             ViewUtils.getRelativeLayoutPosition(mAnchorView, mAlignmentView, mPositionArray);
-            width = mAlignmentView.getMeasuredWidth() + 2 * sideSpacing;
+            int targetWidth = mAlignmentViewTargetWidthSupplier.get();
+            width = targetWidth + 2 * sideSpacing;
+            int leftOffset = mAlignmentViewLeftOffsetSupplier.get();
             if (mAnchorView.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL) {
                 // The view will be shifted to the left, so the adjustment needs to be negative.
-                left = -(mAnchorView.getMeasuredWidth() - width - mPositionArray[0] + sideSpacing);
+                left =
+                        -(mAnchorView.getMeasuredWidth()
+                                - width
+                                - mPositionArray[0]
+                                + sideSpacing
+                                - leftOffset);
             } else {
-                left = mPositionArray[0] - sideSpacing;
+                left = mPositionArray[0] - sideSpacing + leftOffset;
             }
             // Ensures full-width dropdown on narrow windows with popover suggestions.
             if (mFuseboxLayoutModeSupplier.get() == FuseboxLayoutMode.SUGGESTIONS_POPOVER

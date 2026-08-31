@@ -102,7 +102,9 @@ import org.chromium.components.prefs.PrefService;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.ui.KeyboardVisibilityDelegate;
 import org.chromium.ui.base.ApplicationViewportInsetTracker;
+import org.chromium.ui.base.DeviceFormFactor;
 import org.chromium.ui.base.LocalizationUtils;
+import org.chromium.ui.base.ViewAndroidDelegate;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.insets.InsetObserver;
 import org.chromium.ui.mojom.VirtualKeyboardMode;
@@ -317,6 +319,8 @@ public class CompositorViewHolderUnitTest {
         IBinder windowToken = mock(IBinder.class);
         when(mContainerView.getWindowToken()).thenReturn(windowToken);
         when(mContentView.getWindowToken()).thenReturn(windowToken);
+        ViewAndroidDelegate viewDelegate = ViewAndroidDelegate.createBasicDelegate(mContentView);
+        when(mWebContents.getViewAndroidDelegate()).thenReturn(viewDelegate);
     }
 
     @After
@@ -793,6 +797,66 @@ public class CompositorViewHolderUnitTest {
         verify(mWebContents, never())
                 .setSize(fullViewportWidth, fullViewportHeight + KEYBOARD_HEIGHT);
         verify(mWebContents, never()).setSize(fullViewportWidth, adjustedHeight);
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.VIRTUAL_KEYBOARD_RESIZES_CONTENT_TRANSIENT_OVERSHOOT_FIX)
+    public void
+            testWebContentResizeTriggeredDueToKeyboardTransition_resizesContent_hasNoTransientOvershoot() {
+        mCompositorViewHolder.updateVirtualKeyboardMode(VirtualKeyboardMode.RESIZES_CONTENT);
+        reset(mWebContents);
+
+        int fullViewportHeight = 941;
+        int fullViewportWidth = 1080;
+        int adjustedHeight = fullViewportHeight - KEYBOARD_HEIGHT;
+
+        when(mCompositorViewHolder.getWidth()).thenReturn(fullViewportWidth);
+
+        // Establish the baseline viewport size before keyboard insets change.
+        when(mMockKeyboard.isKeyboardShowing(any())).thenReturn(false);
+        when(mMockKeyboard.calculateTotalKeyboardHeight(any())).thenReturn(0);
+        when(mCompositorViewHolder.getHeight()).thenReturn(fullViewportHeight);
+        mCompositorViewHolder.updateWebContentsSize(mTab);
+        reset(mWebContents);
+
+        // Keyboard show: browser controls hide (simulating transient height increase) before
+        // layout applies the reduced view height.
+        when(mMockKeyboard.isKeyboardShowing(any())).thenReturn(true);
+        when(mMockKeyboard.calculateTotalKeyboardHeight(any())).thenReturn(KEYBOARD_HEIGHT);
+        when(mCompositorViewHolder.getHeight()).thenReturn(fullViewportHeight + 100);
+        mKeyboardInsetSupplier.set(0);
+        mCompositorViewHolder.updateWebContentsSize(mTab);
+
+        // Verify that transient height increases caused by browser controls hiding before the
+        // WindowAndroid layout completes are clamped to the stable closed WebContents height.
+        verify(mWebContents, never())
+                .setSize(fullViewportWidth, fullViewportHeight + 100 - TOOLBAR_HEIGHT);
+
+        // Once the keyboard inset arrives, it should resize to the adjusted height.
+        when(mCompositorViewHolder.getHeight()).thenReturn(adjustedHeight);
+        mKeyboardInsetSupplier.set(KEYBOARD_HEIGHT);
+        mCompositorViewHolder.updateWebContentsSize(mTab);
+        verify(mWebContents, atLeast(1))
+                .setSize(fullViewportWidth, adjustedHeight - TOOLBAR_HEIGHT);
+
+        // Keyboard hide: browser controls show (simulating transient height decrease) before
+        // layout applies the restored view height.
+        when(mMockKeyboard.isKeyboardShowing(any())).thenReturn(false);
+        when(mMockKeyboard.calculateTotalKeyboardHeight(any())).thenReturn(0);
+        when(mCompositorViewHolder.getHeight()).thenReturn(adjustedHeight - 100);
+        mKeyboardInsetSupplier.set(0);
+        mCompositorViewHolder.updateWebContentsSize(mTab);
+
+        // Verify that transient height decreases caused by browser controls showing before the
+        // WindowAndroid layout completes are clamped to the stable open WebContents height.
+        verify(mWebContents, never())
+                .setSize(fullViewportWidth, adjustedHeight - 100 - TOOLBAR_HEIGHT);
+
+        // After layout restoration, size should restore cleanly.
+        when(mCompositorViewHolder.getHeight()).thenReturn(fullViewportHeight);
+        mCompositorViewHolder.updateWebContentsSize(mTab);
+        verify(mWebContents, atLeast(1))
+                .setSize(fullViewportWidth, fullViewportHeight - TOOLBAR_HEIGHT);
     }
 
     @Test
@@ -1428,6 +1492,37 @@ public class CompositorViewHolderUnitTest {
     }
 
     @Test
+    @DisableFeatures(ChromeFeatureList.ENABLE_ANDROID_SIDE_PANEL)
+    @EnableFeatures(ChromeFeatureList.ANDROID_VERTICAL_TABS)
+    @Config(qualifiers = "sw600dp")
+    public void testOnSideUiSpecsChanged_updateWebContentsSize_verticalTabs() {
+        when(mResources.getInteger(R.integer.min_screen_width_bucket))
+                .thenReturn(DeviceFormFactor.SCREEN_BUCKET_TABLET);
+        when(mWindowAndroid.getActivity()).thenReturn(new WeakReference<>(mActivity));
+        mCompositorViewHolder.onNativeLibraryReady(
+                mWindowAndroid, /* tabContentManager= */ null, mPrefService);
+        reset(mWebContents);
+
+        int viewportHeight = 941;
+        int viewportWidth = 1080;
+        when(mCompositorViewHolder.getWidth()).thenReturn(viewportWidth);
+        when(mCompositorViewHolder.getHeight()).thenReturn(viewportHeight);
+
+        int startContainerWidth = 100;
+        int endContainerWidth = 200;
+        SideUiSpecs currentSideUiSpecs = new SideUiSpecs(startContainerWidth, endContainerWidth);
+        when(mSideUiStateProvider.getCurrentSideUiSpecs()).thenReturn(currentSideUiSpecs);
+
+        // Make SideUiStateProvider available.
+        mSideUiStateProviderSupplier.set(mSideUiStateProvider);
+        runCurrentTasks();
+
+        // Verify that web contents width is updated when vertical tabs is enabled on tablet.
+        verify(mWebContents, atLeastOnce())
+                .setSize(viewportWidth - (startContainerWidth + endContainerWidth), viewportHeight);
+    }
+
+    @Test
     @EnableFeatures(ChromeFeatureList.ENABLE_ANDROID_SIDE_PANEL)
     public void testOnSideUiSpecsChanged_updateContentOffsetX() {
         doTestOnSideUiSpecsChanged_updateContentOffsetX(/* shouldBeRtl= */ false);
@@ -1443,6 +1538,8 @@ public class CompositorViewHolderUnitTest {
         // Setup.
         LocalizationUtils.setRtlForTesting(shouldBeRtl);
         reset(mWebContents);
+        ViewAndroidDelegate viewDelegate = ViewAndroidDelegate.createBasicDelegate(mContentView);
+        when(mWebContents.getViewAndroidDelegate()).thenReturn(viewDelegate);
 
         // Arbitrary Side UI width.
         int leftContainerWidth = 50;
@@ -1460,6 +1557,7 @@ public class CompositorViewHolderUnitTest {
         // Verify that RTL does not affect the offset (i.e. always contentOffsetx == left)
         int expectedContentOffsetX = leftContainerWidth;
         verify(mLayoutManager).setContentOffsetX(expectedContentOffsetX);
+        verify(mContentView, atLeastOnce()).setContentOffsetXPix(expectedContentOffsetX);
     }
 
     @Test
@@ -1617,7 +1715,7 @@ public class CompositorViewHolderUnitTest {
         mTabModelSelector.getModel(false).setIndex(1, TabSelectionType.FROM_USER);
         mCompositorViewHolder.onContentChanged();
 
-        // With our fix, the stale scroll state should be cleared immediately upon tab switch.
+        // Verify that active scroll motion state is cleared immediately upon tab switch.
         assertFalse(mCompositorViewHolder.getInMotionSupplier().get());
 
         // Capture the observer on the new tab

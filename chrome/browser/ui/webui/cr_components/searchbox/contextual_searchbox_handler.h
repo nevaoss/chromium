@@ -48,6 +48,17 @@
 #include "components/contextual_search/footprints/public/drive_disclaimer_controller.h"
 #endif
 
+class DesktopMediaPickerController;
+class DesktopMediaPickerFactory;
+
+namespace content {
+struct DesktopMediaID;
+}
+
+namespace content::desktop_capture {
+class ScreenshotCaptureRequest;
+}
+
 class Profile;
 class ContextualSearchboxTabFaviconHelper;
 class SkBitmap;
@@ -84,6 +95,20 @@ class ContextualOmniboxClient : public SearchboxOmniboxClient {
   void SetSuggestInputsCallback(GetSuggestInputsCallback callback) {
     suggest_inputs_callback_ = std::move(callback);
   }
+  using HasPreviousSubmittedThreadContextCallback =
+      base::RepeatingCallback<bool()>;
+  using HasAutoSuggestedTabCallback = base::RepeatingCallback<bool()>;
+  void SetHasPreviousSubmittedThreadContextCallback(
+      HasPreviousSubmittedThreadContextCallback callback) {
+    has_previous_submitted_thread_context_callback_ = std::move(callback);
+  }
+  void SetHasAutoSuggestedTabCallback(HasAutoSuggestedTabCallback callback) {
+    has_auto_suggested_tab_callback_ = std::move(callback);
+  }
+
+  bool HasPreviousSubmittedThreadContext() const override;
+  bool HasAutoSuggestedTab() const override;
+
   std::optional<lens::proto::LensOverlaySuggestInputs>
   GetLensOverlaySuggestInputsForTesting() const {
     return GetLensOverlaySuggestInputs();
@@ -95,6 +120,9 @@ class ContextualOmniboxClient : public SearchboxOmniboxClient {
 
  private:
   GetSuggestInputsCallback suggest_inputs_callback_;
+  HasPreviousSubmittedThreadContextCallback
+      has_previous_submitted_thread_context_callback_;
+  HasAutoSuggestedTabCallback has_auto_suggested_tab_callback_;
 };
 
 // This just allows declaration in class to avoid cluttering global namespace.
@@ -113,6 +141,11 @@ class ContextualSearchboxHandler
 #endif
 {
  public:
+  struct ProcessedScreenshot {
+    std::vector<uint8_t> png_bytes;
+    std::optional<std::string> thumbnail_data_url;
+  };
+
   using RecontextualizeTabCallback = base::OnceCallback<void(bool)>;
 
   explicit ContextualSearchboxHandler(
@@ -136,6 +169,7 @@ class ContextualSearchboxHandler
                       AddFileContextCallback callback) override;
   void AddTabContext(int32_t tab_id,
                      bool delay_upload,
+                     searchbox::mojom::TabAttachmentSource source,
                      AddTabContextCallback callback) override;
   void OnDriveUploadClicked(OnDriveUploadClickedCallback callback) override;
   void DeleteContext(const base::UnguessableToken& file_token,
@@ -168,9 +202,15 @@ class ContextualSearchboxHandler
   void GetDriveDisclaimerStatus(
       GetDriveDisclaimerStatusCallback callback) override;
   void OnDriveDisclaimerAccepted() override;
+  void StartScreenshare(bool prefer_entire_screen,
+                        StartScreenshareCallback callback) override;
 #if !BUILDFLAG(IS_ANDROID)
   bool has_drive_picker_deactivation_blocker_for_testing() const {
     return drive_picker_deactivation_blocker_ != nullptr;
+  }
+  void set_desktop_media_picker_factory_for_testing(
+      DesktopMediaPickerFactory* factory) {
+    picker_factory_ = factory;
   }
 #endif
   void QueryAutocomplete(int32_t query_id,
@@ -178,7 +218,9 @@ class ContextualSearchboxHandler
                          bool prevent_inline_autocomplete,
                          uint32_t cursor_position,
                          omnibox::SuggestInventory suggest_inventory,
-                         bool is_on_focus) override;
+                         bool is_on_focus,
+                         const std::string& keyword,
+                         searchbox::mojom::InputMethod input_method) override;
 
 #if !BUILDFLAG(IS_ANDROID)
   // drive_picker_host::mojom::DrivePickerResultHandler:
@@ -200,6 +242,8 @@ class ContextualSearchboxHandler
 
   // Returns the list of selected tab IDs that should be transferred.
   virtual std::vector<int32_t> GetSelectedTabIds() const;
+
+  virtual bool SessionHandleHasPreviousSubmittedThreadContext();
 
   // Continues the process of adding tab context for a given `tab_id`.
   // This method is used when a `context_token` has already been generated
@@ -253,9 +297,11 @@ class ContextualSearchboxHandler
 
   // Resets `input_state_model_`.
   void ResetInputStateModel();
-  void SetActiveToolMode(omnibox::ToolMode tool) override;
+  void SetActiveToolMode(omnibox::ToolMode tool,
+                         bool is_set_by_server) override;
   void RecordToolSelectionAction(omnibox::ToolMode tool) override;
-  void SetActiveModelMode(omnibox::ModelMode model) override;
+  void SetActiveModelMode(omnibox::ModelMode model,
+                          bool is_set_by_aim) override;
   void RecordModelSelectionAction(omnibox::ModelMode model) override;
   void ActivateMetricsFunnel(const std::string& funnel_name) override;
 
@@ -263,6 +309,14 @@ class ContextualSearchboxHandler
       const contextual_search::InputState& state) {
     OnInputStateChanged(state);
   }
+
+#if !BUILDFLAG(IS_ANDROID)
+  bool ShouldOpenInLensSidePanelForTesting(
+      content::WebContents* active_web_contents,
+      contextual_search::ContextualSearchSessionHandle* session_handle) {
+    return ShouldOpenInLensSidePanel(active_web_contents, session_handle);
+  }
+#endif
 
   // Map of context tokens (frontend) to tab IDs (backend);
   // used for determining which tabs to underline based on frontend changes, and
@@ -463,9 +517,26 @@ class ContextualSearchboxHandler
 
 #if !BUILDFLAG(IS_ANDROID)
   void OnDrivePickerDisconnected();
-  void OnDriveDisclaimerChecked(
+  void UpdateDriveConsentPref(
+      drive_picker::DriveDisclaimerController::DisclaimerStatus status);
+  void ShowDrivePicker(
       drive_picker::DriveDisclaimerController::DisclaimerStatus status);
   drive_picker::DriveDisclaimerController* GetDriveDisclaimerController();
+
+  void FallbackToChromeDefaultPicker(bool prefer_entire_screen,
+                                     StartScreenshareCallback callback);
+  void OnChromeDefaultPickerResults(StartScreenshareCallback callback,
+                                    const std::string& err,
+                                    content::DesktopMediaID source);
+  void CaptureAndUploadScreenshot(content::DesktopMediaID source,
+                                  StartScreenshareCallback callback);
+  void OnScreenshotCaptured(StartScreenshareCallback callback,
+                            const SkBitmap& bitmap);
+  void OnScreenshotRequestCreated(
+      std::unique_ptr<content::desktop_capture::ScreenshotCaptureRequest>
+          request);
+  void OnScreenshotProcessed(StartScreenshareCallback callback,
+                             ProcessedScreenshot result);
 
   mojo::Receiver<drive_picker_host::mojom::DrivePickerResultHandler>
       drive_picker_result_handler_receiver_{this};
@@ -478,6 +549,12 @@ class ContextualSearchboxHandler
   // Keeps the AIM popup open while the Google Drive picker is active.
   std::unique_ptr<OmniboxPopupDeactivationBlocker>
       drive_picker_deactivation_blocker_;
+
+  std::unique_ptr<DesktopMediaPickerController> screenshare_picker_controller_;
+  raw_ptr<DesktopMediaPickerFactory> picker_factory_ = nullptr;
+  std::unique_ptr<content::desktop_capture::ScreenshotCaptureRequest>
+      active_screenshot_request_;
+  bool is_capturing_ = false;
 #endif
 
   OnDriveUploadClickedCallback drive_upload_click_callback_;

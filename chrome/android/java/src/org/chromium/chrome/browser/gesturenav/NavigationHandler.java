@@ -113,6 +113,9 @@ class NavigationHandler implements TouchEventObserver {
     private int mDownWidth;
     private int mDownHeight;
 
+    private int mLeftSideUiWidth;
+    private int mRightSideUiWidth;
+
     private @GestureState int mState;
 
     private final PropertyModel mModel;
@@ -199,6 +202,10 @@ class NavigationHandler implements TouchEventObserver {
         if (GestureNavigationUtils.shouldAnimateBackForwardTransitions()) {
             onGestureEnd(OverscrollActivationStatus.RESET);
         } else {
+            // No mTabOnBackGestureHandler to cancel here: it is only created under
+            // GestureNavigationUtils#allowTransition, whose first condition is
+            // shouldAnimateBackForwardTransitions(), and that value is constant for
+            // the lifetime of the process.
             mBackGestureForTabHistoryInProgress = false;
         }
         mTab = tab;
@@ -232,11 +239,22 @@ class NavigationHandler implements TouchEventObserver {
      * @see GestureDetector#SimpleOnGestureListener#onDown(MotionEvent)
      */
     public boolean onDown() {
+        if (!isStopped()) {
+            // The previous gesture was never released. This happens on the web page
+            // overscroll path, where SwipeRefreshHandler#start calls startGesture()
+            // (i.e. this method) and triggerUi() again for the next swipe without a
+            // release() in between, e.g. when the RenderWidgetHostView that owns
+            // OverscrollRefresh is replaced mid-gesture. End the previous gesture
+            // here, so that the state triggerUi() is about to overwrite
+            // (mInitiatingEdge, mPullOffsetX and mTabOnBackGestureHandler) does not
+            // outlive it: pull() would otherwise keep driving the previous native
+            // gesture with the new edge, which is crbug.com/530682179.
+            onGestureEnd(OverscrollActivationStatus.RESET);
+        }
         mDownWidth = mParentView.getWidth();
         mDownHeight = mParentView.getHeight();
-        if (isStopped()) {
-            mTriggerUiCallSource = TriggerUiCallSource.NO_TRIGGER;
-        }
+        mTriggerUiCallSource = TriggerUiCallSource.NO_TRIGGER;
+        mPullOffsetX = 0.f;
         mState = GestureState.STARTED;
         return true;
     }
@@ -285,9 +303,16 @@ class NavigationHandler implements TouchEventObserver {
         return mTab != null && !mTab.isDestroyed();
     }
 
+    void setSideUiWidths(int leftWidth, int rightWidth) {
+        mLeftSideUiWidth = leftWidth;
+        mRightSideUiWidth = rightWidth;
+    }
+
     private boolean shouldTriggerUi(float sX, float dX, float dY) {
+        boolean isLeftEdge = sX < (mLeftSideUiWidth + mEdgeWidthPx);
+        boolean isRightEdge = (mParentView.getWidth() - mRightSideUiWidth - mEdgeWidthPx) < sX;
         return Math.abs(dX) > Math.abs(dY) * WEIGTHED_TRIGGER_THRESHOLD
-                && (sX < mEdgeWidthPx || (mParentView.getWidth() - mEdgeWidthPx) < sX);
+                && (isLeftEdge || isRightEdge);
     }
 
     /**
@@ -376,9 +401,9 @@ class NavigationHandler implements TouchEventObserver {
     }
 
     private boolean canNavigate(boolean forward) {
-        // Navigating back is considered always possible (actual navigation, closing
-        // tab, or exiting app).
-        return !forward || (mTab != null && mTab.canGoForward());
+        if (mTab == null) return false;
+        if (forward) return mTab.canGoForward();
+        return mBackActionDelegate.getBackActionType(mTab) != ActionType.NONE;
     }
 
     /**
@@ -454,6 +479,8 @@ class NavigationHandler implements TouchEventObserver {
         if (GestureNavigationUtils.shouldAnimateBackForwardTransitions()) {
             onGestureEnd(OverscrollActivationStatus.RESET);
         } else {
+            // See setTab() for why there is no mTabOnBackGestureHandler to cancel on
+            // this branch.
             if (mState == GestureState.DRAGGED) {
                 mModel.set(ACTION, GestureAction.RESET_BUBBLE);
             }
@@ -506,9 +533,11 @@ class NavigationHandler implements TouchEventObserver {
         if (mState == GestureState.DRAGGED) {
             mModel.set(BUBBLE_OFFSET, mPullOffsetX);
         }
-        if (mTabOnBackGestureHandler != null) {
-            mTabOnBackGestureHandler.onBackProgressed(
-                    getProgress(), mInitiatingEdge, isForward(), false);
+        if (mTabOnBackGestureHandler != null
+                && !mTabOnBackGestureHandler.onBackProgressed(
+                        getProgress(), mInitiatingEdge, isForward(), false)) {
+            // The gesture is ours again, so navigate() must stop deferring to native.
+            mTabOnBackGestureHandler = null;
         }
     }
 

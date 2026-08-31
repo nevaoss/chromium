@@ -15,7 +15,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -47,7 +47,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -68,7 +68,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -100,7 +100,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -114,6 +114,59 @@
         "args": [
           "--use-simulator-cache",
           "--platform",
+          "iPad Pro 13-inch (M4)",
+          "--version",
+          "18.5",
+          "--use-simulator-cache",
+          "--out-dir",
+          "${ISOLATED_OUTDIR}",
+          "--xcode-build-version",
+          "27a5237l",
+          "--xctest"
+        ],
+        "merge": {
+          "script": "//testing/merge_scripts/standard_isolated_script_merge.py"
+        },
+        "module_name": "//base:base_unittests",
+        "module_scheme": "gtest",
+        "name": "base_unittests iPad Pro 13-inch (M4) 18.5",
+        "resultdb": {
+          "enable": true,
+          "has_native_resultdb_integration": true
+        },
+        "swarming": {
+          "cipd_packages": [
+            {
+              "cipd_package": "infra/tools/mac_toolchain/${platform}",
+              "location": ".",
+              "revision": "git_revision:07e67ff89ff11ed0e3071867ed6bb49319a91b05"
+            }
+          ],
+          "dimensions": {
+            "cpu": "arm64",
+            "os": "Mac-26",
+            "pool": "chromium.tests.iosbeta"
+          },
+          "named_caches": [
+            {
+              "name": "runtime_ios_18_5",
+              "path": "Runtime-ios-18.5"
+            },
+            {
+              "name": "xcode_ios_27a5237l",
+              "path": "Xcode.app"
+            }
+          ],
+          "service_account": "chromium-tester@chops-service-accounts.iam.gserviceaccount.com"
+        },
+        "test": "base_unittests",
+        "test_id_prefix": "ninja://base:base_unittests/",
+        "variant_id": "iPad Pro 13-inch (M4) 18.5"
+      },
+      {
+        "args": [
+          "--use-simulator-cache",
+          "--platform",
           "iPhone 15",
           "--version",
           "18.5",
@@ -121,7 +174,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -153,7 +206,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -174,7 +227,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -206,7 +259,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -227,7 +280,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -259,7 +312,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -280,7 +333,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -312,7 +365,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -333,7 +386,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -365,7 +418,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -379,6 +432,59 @@
         "args": [
           "--use-simulator-cache",
           "--platform",
+          "iPad Pro 13-inch (M4)",
+          "--version",
+          "18.5",
+          "--use-simulator-cache",
+          "--out-dir",
+          "${ISOLATED_OUTDIR}",
+          "--xcode-build-version",
+          "27a5237l",
+          "--xctest"
+        ],
+        "merge": {
+          "script": "//testing/merge_scripts/standard_isolated_script_merge.py"
+        },
+        "module_name": "//components:components_unittests",
+        "module_scheme": "gtest",
+        "name": "components_unittests iPad Pro 13-inch (M4) 18.5",
+        "resultdb": {
+          "enable": true,
+          "has_native_resultdb_integration": true
+        },
+        "swarming": {
+          "cipd_packages": [
+            {
+              "cipd_package": "infra/tools/mac_toolchain/${platform}",
+              "location": ".",
+              "revision": "git_revision:07e67ff89ff11ed0e3071867ed6bb49319a91b05"
+            }
+          ],
+          "dimensions": {
+            "cpu": "arm64",
+            "os": "Mac-26",
+            "pool": "chromium.tests.iosbeta"
+          },
+          "named_caches": [
+            {
+              "name": "runtime_ios_18_5",
+              "path": "Runtime-ios-18.5"
+            },
+            {
+              "name": "xcode_ios_27a5237l",
+              "path": "Xcode.app"
+            }
+          ],
+          "service_account": "chromium-tester@chops-service-accounts.iam.gserviceaccount.com"
+        },
+        "test": "components_unittests",
+        "test_id_prefix": "ninja://components:components_unittests/",
+        "variant_id": "iPad Pro 13-inch (M4) 18.5"
+      },
+      {
+        "args": [
+          "--use-simulator-cache",
+          "--platform",
           "iPhone 15",
           "--version",
           "18.5",
@@ -386,7 +492,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -418,7 +524,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -439,7 +545,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -471,7 +577,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -492,7 +598,60 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
+          "--xctest"
+        ],
+        "merge": {
+          "script": "//testing/merge_scripts/standard_isolated_script_merge.py"
+        },
+        "module_name": "//third_party/crashpad/crashpad:crashpad_tests",
+        "module_scheme": "gtest",
+        "name": "crashpad_tests iPhone 15 18.5",
+        "resultdb": {
+          "enable": true,
+          "has_native_resultdb_integration": true
+        },
+        "swarming": {
+          "cipd_packages": [
+            {
+              "cipd_package": "infra/tools/mac_toolchain/${platform}",
+              "location": ".",
+              "revision": "git_revision:07e67ff89ff11ed0e3071867ed6bb49319a91b05"
+            }
+          ],
+          "dimensions": {
+            "cpu": "arm64",
+            "os": "Mac-26",
+            "pool": "chromium.tests.iosbeta"
+          },
+          "named_caches": [
+            {
+              "name": "runtime_ios_18_5",
+              "path": "Runtime-ios-18.5"
+            },
+            {
+              "name": "xcode_ios_27a5237l",
+              "path": "Xcode.app"
+            }
+          ],
+          "service_account": "chromium-tester@chops-service-accounts.iam.gserviceaccount.com"
+        },
+        "test": "crashpad_tests",
+        "test_id_prefix": "ninja://third_party/crashpad/crashpad:crashpad_tests/",
+        "variant_id": "iPhone 15 18.5"
+      },
+      {
+        "args": [
+          "--use-simulator-cache",
+          "--platform",
+          "iPhone 15",
+          "--version",
+          "18.5",
+          "--use-simulator-cache",
+          "--out-dir",
+          "${ISOLATED_OUTDIR}",
+          "--xcode-build-version",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -524,7 +683,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -545,7 +704,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -577,7 +736,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -591,6 +750,59 @@
         "args": [
           "--use-simulator-cache",
           "--platform",
+          "iPad Pro 13-inch (M4)",
+          "--version",
+          "18.5",
+          "--use-simulator-cache",
+          "--out-dir",
+          "${ISOLATED_OUTDIR}",
+          "--xcode-build-version",
+          "27a5237l",
+          "--xctest"
+        ],
+        "merge": {
+          "script": "//testing/merge_scripts/standard_isolated_script_merge.py"
+        },
+        "module_name": "//ui/gfx:gfx_unittests",
+        "module_scheme": "gtest",
+        "name": "gfx_unittests iPad Pro 13-inch (M4) 18.5",
+        "resultdb": {
+          "enable": true,
+          "has_native_resultdb_integration": true
+        },
+        "swarming": {
+          "cipd_packages": [
+            {
+              "cipd_package": "infra/tools/mac_toolchain/${platform}",
+              "location": ".",
+              "revision": "git_revision:07e67ff89ff11ed0e3071867ed6bb49319a91b05"
+            }
+          ],
+          "dimensions": {
+            "cpu": "arm64",
+            "os": "Mac-26",
+            "pool": "chromium.tests.iosbeta"
+          },
+          "named_caches": [
+            {
+              "name": "runtime_ios_18_5",
+              "path": "Runtime-ios-18.5"
+            },
+            {
+              "name": "xcode_ios_27a5237l",
+              "path": "Xcode.app"
+            }
+          ],
+          "service_account": "chromium-tester@chops-service-accounts.iam.gserviceaccount.com"
+        },
+        "test": "gfx_unittests",
+        "test_id_prefix": "ninja://ui/gfx:gfx_unittests/",
+        "variant_id": "iPad Pro 13-inch (M4) 18.5"
+      },
+      {
+        "args": [
+          "--use-simulator-cache",
+          "--platform",
           "iPhone 15",
           "--version",
           "18.5",
@@ -598,7 +810,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -630,7 +842,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -651,7 +863,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -683,7 +895,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -704,7 +916,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -736,7 +948,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -757,7 +969,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -789,7 +1001,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -803,7 +1015,7 @@
         "args": [
           "--use-simulator-cache",
           "--platform",
-          "iPad Air 11-inch (M2)",
+          "iPad Pro 13-inch (M4)",
           "--version",
           "18.5",
           "--xcodebuild-sim-runner",
@@ -813,7 +1025,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -821,7 +1033,7 @@
         },
         "module_name": "//ios/chrome/test/earl_grey2:ios_chrome_bookmarks_eg2tests_module",
         "module_scheme": "xctest",
-        "name": "ios_chrome_bookmarks_eg2tests_module iPad Air (6th generation) 18.5",
+        "name": "ios_chrome_bookmarks_eg2tests_module iPad Pro 13-inch (M4) 18.5",
         "resultdb": {
           "enable": true,
           "has_native_resultdb_integration": true
@@ -845,7 +1057,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -854,7 +1066,7 @@
         },
         "test": "ios_chrome_bookmarks_eg2tests_module",
         "test_id_prefix": "ninja://ios/chrome/test/earl_grey2:ios_chrome_bookmarks_eg2tests_module/",
-        "variant_id": "iPad Air (6th generation) 18.5"
+        "variant_id": "iPad Pro 13-inch (M4) 18.5"
       },
       {
         "args": [
@@ -870,7 +1082,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -902,7 +1114,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -919,7 +1131,7 @@
           "2",
           "--use-simulator-cache",
           "--platform",
-          "iPad Air 11-inch (M2)",
+          "iPad Pro 13-inch (M4)",
           "--version",
           "18.5",
           "--xcodebuild-sim-runner",
@@ -929,7 +1141,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -937,7 +1149,7 @@
         },
         "module_name": "//ios/chrome/test/earl_grey2:ios_chrome_integration_eg2tests_module",
         "module_scheme": "xctest",
-        "name": "ios_chrome_integration_eg2tests_module iPad Air (6th generation) 18.5",
+        "name": "ios_chrome_integration_eg2tests_module iPad Pro 13-inch (M4) 18.5",
         "resultdb": {
           "enable": true,
           "has_native_resultdb_integration": true
@@ -961,7 +1173,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -970,7 +1182,7 @@
         },
         "test": "ios_chrome_integration_eg2tests_module",
         "test_id_prefix": "ninja://ios/chrome/test/earl_grey2:ios_chrome_integration_eg2tests_module/",
-        "variant_id": "iPad Air (6th generation) 18.5"
+        "variant_id": "iPad Pro 13-inch (M4) 18.5"
       },
       {
         "args": [
@@ -988,7 +1200,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -1020,7 +1232,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -1037,7 +1249,7 @@
           "2",
           "--use-simulator-cache",
           "--platform",
-          "iPad Air 11-inch (M2)",
+          "iPad Pro 13-inch (M4)",
           "--version",
           "18.5",
           "--xcodebuild-sim-runner",
@@ -1047,7 +1259,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -1055,7 +1267,7 @@
         },
         "module_name": "//ios/chrome/test/earl_grey2:ios_chrome_settings_eg2tests_module",
         "module_scheme": "xctest",
-        "name": "ios_chrome_settings_eg2tests_module iPad Air (6th generation) 18.5",
+        "name": "ios_chrome_settings_eg2tests_module iPad Pro 13-inch (M4) 18.5",
         "resultdb": {
           "enable": true,
           "has_native_resultdb_integration": true
@@ -1079,7 +1291,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -1088,7 +1300,7 @@
         },
         "test": "ios_chrome_settings_eg2tests_module",
         "test_id_prefix": "ninja://ios/chrome/test/earl_grey2:ios_chrome_settings_eg2tests_module/",
-        "variant_id": "iPad Air (6th generation) 18.5"
+        "variant_id": "iPad Pro 13-inch (M4) 18.5"
       },
       {
         "args": [
@@ -1106,7 +1318,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -1138,7 +1350,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -1153,7 +1365,7 @@
         "args": [
           "--use-simulator-cache",
           "--platform",
-          "iPad Air 11-inch (M2)",
+          "iPad Pro 13-inch (M4)",
           "--version",
           "18.5",
           "--xcodebuild-sim-runner",
@@ -1163,7 +1375,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -1171,7 +1383,7 @@
         },
         "module_name": "//ios/chrome/test/earl_grey2:ios_chrome_signin_eg2tests_module",
         "module_scheme": "xctest",
-        "name": "ios_chrome_signin_eg2tests_module iPad Air (6th generation) 18.5",
+        "name": "ios_chrome_signin_eg2tests_module iPad Pro 13-inch (M4) 18.5",
         "resultdb": {
           "enable": true,
           "has_native_resultdb_integration": true
@@ -1195,7 +1407,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -1204,7 +1416,7 @@
         },
         "test": "ios_chrome_signin_eg2tests_module",
         "test_id_prefix": "ninja://ios/chrome/test/earl_grey2:ios_chrome_signin_eg2tests_module/",
-        "variant_id": "iPad Air (6th generation) 18.5"
+        "variant_id": "iPad Pro 13-inch (M4) 18.5"
       },
       {
         "args": [
@@ -1220,7 +1432,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -1252,7 +1464,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -1267,7 +1479,7 @@
         "args": [
           "--use-simulator-cache",
           "--platform",
-          "iPad Air 11-inch (M2)",
+          "iPad Pro 13-inch (M4)",
           "--version",
           "18.5",
           "--xcodebuild-sim-runner",
@@ -1277,7 +1489,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -1285,7 +1497,7 @@
         },
         "module_name": "//ios/chrome/test/earl_grey2:ios_chrome_smoke_eg2tests_module",
         "module_scheme": "xctest",
-        "name": "ios_chrome_smoke_eg2tests_module iPad Air (6th generation) 18.5",
+        "name": "ios_chrome_smoke_eg2tests_module iPad Pro 13-inch (M4) 18.5",
         "resultdb": {
           "enable": true,
           "has_native_resultdb_integration": true
@@ -1309,7 +1521,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -1317,7 +1529,7 @@
         },
         "test": "ios_chrome_smoke_eg2tests_module",
         "test_id_prefix": "ninja://ios/chrome/test/earl_grey2:ios_chrome_smoke_eg2tests_module/",
-        "variant_id": "iPad Air (6th generation) 18.5"
+        "variant_id": "iPad Pro 13-inch (M4) 18.5"
       },
       {
         "args": [
@@ -1333,7 +1545,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -1365,7 +1577,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -1381,7 +1593,7 @@
           "2",
           "--use-simulator-cache",
           "--platform",
-          "iPad Air 11-inch (M2)",
+          "iPad Pro 13-inch (M4)",
           "--version",
           "18.5",
           "--xcodebuild-sim-runner",
@@ -1391,7 +1603,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -1399,7 +1611,7 @@
         },
         "module_name": "//ios/chrome/test/earl_grey2:ios_chrome_ui_eg2tests_module",
         "module_scheme": "xctest",
-        "name": "ios_chrome_ui_eg2tests_module iPad Air (6th generation) 18.5",
+        "name": "ios_chrome_ui_eg2tests_module iPad Pro 13-inch (M4) 18.5",
         "resultdb": {
           "enable": true,
           "has_native_resultdb_integration": true
@@ -1423,7 +1635,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -1432,7 +1644,7 @@
         },
         "test": "ios_chrome_ui_eg2tests_module",
         "test_id_prefix": "ninja://ios/chrome/test/earl_grey2:ios_chrome_ui_eg2tests_module/",
-        "variant_id": "iPad Air (6th generation) 18.5"
+        "variant_id": "iPad Pro 13-inch (M4) 18.5"
       },
       {
         "args": [
@@ -1450,7 +1662,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -1482,7 +1694,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -1504,7 +1716,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -1536,7 +1748,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -1550,6 +1762,59 @@
         "args": [
           "--use-simulator-cache",
           "--platform",
+          "iPad Pro 13-inch (M4)",
+          "--version",
+          "18.5",
+          "--use-simulator-cache",
+          "--out-dir",
+          "${ISOLATED_OUTDIR}",
+          "--xcode-build-version",
+          "27a5237l",
+          "--xctest"
+        ],
+        "merge": {
+          "script": "//testing/merge_scripts/standard_isolated_script_merge.py"
+        },
+        "module_name": "//ios/chrome/test:ios_chrome_unittests",
+        "module_scheme": "gtest",
+        "name": "ios_chrome_unittests iPad Pro 13-inch (M4) 18.5",
+        "resultdb": {
+          "enable": true,
+          "has_native_resultdb_integration": true
+        },
+        "swarming": {
+          "cipd_packages": [
+            {
+              "cipd_package": "infra/tools/mac_toolchain/${platform}",
+              "location": ".",
+              "revision": "git_revision:07e67ff89ff11ed0e3071867ed6bb49319a91b05"
+            }
+          ],
+          "dimensions": {
+            "cpu": "arm64",
+            "os": "Mac-26",
+            "pool": "chromium.tests.iosbeta"
+          },
+          "named_caches": [
+            {
+              "name": "runtime_ios_18_5",
+              "path": "Runtime-ios-18.5"
+            },
+            {
+              "name": "xcode_ios_27a5237l",
+              "path": "Xcode.app"
+            }
+          ],
+          "service_account": "chromium-tester@chops-service-accounts.iam.gserviceaccount.com"
+        },
+        "test": "ios_chrome_unittests",
+        "test_id_prefix": "ninja://ios/chrome/test:ios_chrome_unittests/",
+        "variant_id": "iPad Pro 13-inch (M4) 18.5"
+      },
+      {
+        "args": [
+          "--use-simulator-cache",
+          "--platform",
           "iPhone 15",
           "--version",
           "18.5",
@@ -1557,7 +1822,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -1589,7 +1854,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -1610,7 +1875,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -1642,7 +1907,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -1656,7 +1921,7 @@
         "args": [
           "--use-simulator-cache",
           "--platform",
-          "iPad Air 11-inch (M2)",
+          "iPad Pro 13-inch (M4)",
           "--version",
           "18.5",
           "--xcodebuild-sim-runner",
@@ -1666,7 +1931,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -1674,7 +1939,7 @@
         },
         "module_name": "//ios/chrome/test/earl_grey2:ios_chrome_web_eg2tests_module",
         "module_scheme": "xctest",
-        "name": "ios_chrome_web_eg2tests_module iPad Air (6th generation) 18.5",
+        "name": "ios_chrome_web_eg2tests_module iPad Pro 13-inch (M4) 18.5",
         "resultdb": {
           "enable": true,
           "has_native_resultdb_integration": true
@@ -1698,7 +1963,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -1707,7 +1972,7 @@
         },
         "test": "ios_chrome_web_eg2tests_module",
         "test_id_prefix": "ninja://ios/chrome/test/earl_grey2:ios_chrome_web_eg2tests_module/",
-        "variant_id": "iPad Air (6th generation) 18.5"
+        "variant_id": "iPad Pro 13-inch (M4) 18.5"
       },
       {
         "args": [
@@ -1723,7 +1988,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -1755,7 +2020,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -1777,7 +2042,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -1809,7 +2074,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -1831,7 +2096,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -1863,7 +2128,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -1884,7 +2149,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -1916,7 +2181,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -1930,6 +2195,59 @@
         "args": [
           "--use-simulator-cache",
           "--platform",
+          "iPad Pro 13-inch (M4)",
+          "--version",
+          "18.5",
+          "--use-simulator-cache",
+          "--out-dir",
+          "${ISOLATED_OUTDIR}",
+          "--xcode-build-version",
+          "27a5237l",
+          "--xctest"
+        ],
+        "merge": {
+          "script": "//testing/merge_scripts/standard_isolated_script_merge.py"
+        },
+        "module_name": "//ios/chrome/test/extensions:ios_credential_provider_extension_unittests",
+        "module_scheme": "gtest",
+        "name": "ios_credential_provider_extension_unittests iPad Pro 13-inch (M4) 18.5",
+        "resultdb": {
+          "enable": true,
+          "has_native_resultdb_integration": true
+        },
+        "swarming": {
+          "cipd_packages": [
+            {
+              "cipd_package": "infra/tools/mac_toolchain/${platform}",
+              "location": ".",
+              "revision": "git_revision:07e67ff89ff11ed0e3071867ed6bb49319a91b05"
+            }
+          ],
+          "dimensions": {
+            "cpu": "arm64",
+            "os": "Mac-26",
+            "pool": "chromium.tests.iosbeta"
+          },
+          "named_caches": [
+            {
+              "name": "runtime_ios_18_5",
+              "path": "Runtime-ios-18.5"
+            },
+            {
+              "name": "xcode_ios_27a5237l",
+              "path": "Xcode.app"
+            }
+          ],
+          "service_account": "chromium-tester@chops-service-accounts.iam.gserviceaccount.com"
+        },
+        "test": "ios_credential_provider_extension_unittests",
+        "test_id_prefix": "ninja://ios/chrome/test/extensions:ios_credential_provider_extension_unittests/",
+        "variant_id": "iPad Pro 13-inch (M4) 18.5"
+      },
+      {
+        "args": [
+          "--use-simulator-cache",
+          "--platform",
           "iPhone 15",
           "--version",
           "18.5",
@@ -1937,7 +2255,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -1969,7 +2287,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -1990,7 +2308,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -2022,7 +2340,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -2043,7 +2361,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -2075,7 +2393,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -2097,7 +2415,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -2129,7 +2447,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -2150,7 +2468,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -2182,7 +2500,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -2196,6 +2514,59 @@
         "args": [
           "--use-simulator-cache",
           "--platform",
+          "iPad Pro 13-inch (M4)",
+          "--version",
+          "18.5",
+          "--use-simulator-cache",
+          "--out-dir",
+          "${ISOLATED_OUTDIR}",
+          "--xcode-build-version",
+          "27a5237l",
+          "--xctest"
+        ],
+        "merge": {
+          "script": "//testing/merge_scripts/standard_isolated_script_merge.py"
+        },
+        "module_name": "//ios/web:ios_web_inttests",
+        "module_scheme": "gtest",
+        "name": "ios_web_inttests iPad Pro 13-inch (M4) 18.5",
+        "resultdb": {
+          "enable": true,
+          "has_native_resultdb_integration": true
+        },
+        "swarming": {
+          "cipd_packages": [
+            {
+              "cipd_package": "infra/tools/mac_toolchain/${platform}",
+              "location": ".",
+              "revision": "git_revision:07e67ff89ff11ed0e3071867ed6bb49319a91b05"
+            }
+          ],
+          "dimensions": {
+            "cpu": "arm64",
+            "os": "Mac-26",
+            "pool": "chromium.tests.iosbeta"
+          },
+          "named_caches": [
+            {
+              "name": "runtime_ios_18_5",
+              "path": "Runtime-ios-18.5"
+            },
+            {
+              "name": "xcode_ios_27a5237l",
+              "path": "Xcode.app"
+            }
+          ],
+          "service_account": "chromium-tester@chops-service-accounts.iam.gserviceaccount.com"
+        },
+        "test": "ios_web_inttests",
+        "test_id_prefix": "ninja://ios/web:ios_web_inttests/",
+        "variant_id": "iPad Pro 13-inch (M4) 18.5"
+      },
+      {
+        "args": [
+          "--use-simulator-cache",
+          "--platform",
           "iPhone 15",
           "--version",
           "18.5",
@@ -2203,7 +2574,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -2235,7 +2606,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -2256,7 +2627,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -2288,7 +2659,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -2302,7 +2673,7 @@
         "args": [
           "--use-simulator-cache",
           "--platform",
-          "iPad Air 11-inch (M2)",
+          "iPad Pro 13-inch (M4)",
           "--version",
           "18.5",
           "--xcodebuild-sim-runner",
@@ -2312,7 +2683,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -2320,7 +2691,7 @@
         },
         "module_name": "//ios/web/shell/test:ios_web_shell_eg2tests_module",
         "module_scheme": "xctest",
-        "name": "ios_web_shell_eg2tests_module iPad Air (6th generation) 18.5",
+        "name": "ios_web_shell_eg2tests_module iPad Pro 13-inch (M4) 18.5",
         "resultdb": {
           "enable": true,
           "has_native_resultdb_integration": true
@@ -2344,7 +2715,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -2352,7 +2723,7 @@
         },
         "test": "ios_web_shell_eg2tests_module",
         "test_id_prefix": "ninja://ios/web/shell/test:ios_web_shell_eg2tests_module/",
-        "variant_id": "iPad Air (6th generation) 18.5"
+        "variant_id": "iPad Pro 13-inch (M4) 18.5"
       },
       {
         "args": [
@@ -2368,7 +2739,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -2400,7 +2771,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -2421,7 +2792,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -2453,7 +2824,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -2467,6 +2838,59 @@
         "args": [
           "--use-simulator-cache",
           "--platform",
+          "iPad Pro 13-inch (M4)",
+          "--version",
+          "18.5",
+          "--use-simulator-cache",
+          "--out-dir",
+          "${ISOLATED_OUTDIR}",
+          "--xcode-build-version",
+          "27a5237l",
+          "--xctest"
+        ],
+        "merge": {
+          "script": "//testing/merge_scripts/standard_isolated_script_merge.py"
+        },
+        "module_name": "//ios/web:ios_web_unittests",
+        "module_scheme": "gtest",
+        "name": "ios_web_unittests iPad Pro 13-inch (M4) 18.5",
+        "resultdb": {
+          "enable": true,
+          "has_native_resultdb_integration": true
+        },
+        "swarming": {
+          "cipd_packages": [
+            {
+              "cipd_package": "infra/tools/mac_toolchain/${platform}",
+              "location": ".",
+              "revision": "git_revision:07e67ff89ff11ed0e3071867ed6bb49319a91b05"
+            }
+          ],
+          "dimensions": {
+            "cpu": "arm64",
+            "os": "Mac-26",
+            "pool": "chromium.tests.iosbeta"
+          },
+          "named_caches": [
+            {
+              "name": "runtime_ios_18_5",
+              "path": "Runtime-ios-18.5"
+            },
+            {
+              "name": "xcode_ios_27a5237l",
+              "path": "Xcode.app"
+            }
+          ],
+          "service_account": "chromium-tester@chops-service-accounts.iam.gserviceaccount.com"
+        },
+        "test": "ios_web_unittests",
+        "test_id_prefix": "ninja://ios/web:ios_web_unittests/",
+        "variant_id": "iPad Pro 13-inch (M4) 18.5"
+      },
+      {
+        "args": [
+          "--use-simulator-cache",
+          "--platform",
           "iPhone 15",
           "--version",
           "18.5",
@@ -2474,7 +2898,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -2506,7 +2930,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -2527,7 +2951,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -2559,7 +2983,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -2580,7 +3004,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -2612,7 +3036,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -2626,6 +3050,59 @@
         "args": [
           "--use-simulator-cache",
           "--platform",
+          "iPad Pro 13-inch (M4)",
+          "--version",
+          "18.5",
+          "--use-simulator-cache",
+          "--out-dir",
+          "${ISOLATED_OUTDIR}",
+          "--xcode-build-version",
+          "27a5237l",
+          "--xctest"
+        ],
+        "merge": {
+          "script": "//testing/merge_scripts/standard_isolated_script_merge.py"
+        },
+        "module_name": "//ios/web_view/test:ios_web_view_inttests",
+        "module_scheme": "gtest",
+        "name": "ios_web_view_inttests iPad Pro 13-inch (M4) 18.5",
+        "resultdb": {
+          "enable": true,
+          "has_native_resultdb_integration": true
+        },
+        "swarming": {
+          "cipd_packages": [
+            {
+              "cipd_package": "infra/tools/mac_toolchain/${platform}",
+              "location": ".",
+              "revision": "git_revision:07e67ff89ff11ed0e3071867ed6bb49319a91b05"
+            }
+          ],
+          "dimensions": {
+            "cpu": "arm64",
+            "os": "Mac-26",
+            "pool": "chromium.tests.iosbeta"
+          },
+          "named_caches": [
+            {
+              "name": "runtime_ios_18_5",
+              "path": "Runtime-ios-18.5"
+            },
+            {
+              "name": "xcode_ios_27a5237l",
+              "path": "Xcode.app"
+            }
+          ],
+          "service_account": "chromium-tester@chops-service-accounts.iam.gserviceaccount.com"
+        },
+        "test": "ios_web_view_inttests",
+        "test_id_prefix": "ninja://ios/web_view/test:ios_web_view_inttests/",
+        "variant_id": "iPad Pro 13-inch (M4) 18.5"
+      },
+      {
+        "args": [
+          "--use-simulator-cache",
+          "--platform",
           "iPhone 15",
           "--version",
           "18.5",
@@ -2633,7 +3110,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -2665,7 +3142,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -2686,7 +3163,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -2718,7 +3195,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -2739,7 +3216,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -2771,7 +3248,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -2785,6 +3262,59 @@
         "args": [
           "--use-simulator-cache",
           "--platform",
+          "iPad Pro 13-inch (M4)",
+          "--version",
+          "18.5",
+          "--use-simulator-cache",
+          "--out-dir",
+          "${ISOLATED_OUTDIR}",
+          "--xcode-build-version",
+          "27a5237l",
+          "--xctest"
+        ],
+        "merge": {
+          "script": "//testing/merge_scripts/standard_isolated_script_merge.py"
+        },
+        "module_name": "//ios/web_view/test:ios_web_view_unittests",
+        "module_scheme": "gtest",
+        "name": "ios_web_view_unittests iPad Pro 13-inch (M4) 18.5",
+        "resultdb": {
+          "enable": true,
+          "has_native_resultdb_integration": true
+        },
+        "swarming": {
+          "cipd_packages": [
+            {
+              "cipd_package": "infra/tools/mac_toolchain/${platform}",
+              "location": ".",
+              "revision": "git_revision:07e67ff89ff11ed0e3071867ed6bb49319a91b05"
+            }
+          ],
+          "dimensions": {
+            "cpu": "arm64",
+            "os": "Mac-26",
+            "pool": "chromium.tests.iosbeta"
+          },
+          "named_caches": [
+            {
+              "name": "runtime_ios_18_5",
+              "path": "Runtime-ios-18.5"
+            },
+            {
+              "name": "xcode_ios_27a5237l",
+              "path": "Xcode.app"
+            }
+          ],
+          "service_account": "chromium-tester@chops-service-accounts.iam.gserviceaccount.com"
+        },
+        "test": "ios_web_view_unittests",
+        "test_id_prefix": "ninja://ios/web_view/test:ios_web_view_unittests/",
+        "variant_id": "iPad Pro 13-inch (M4) 18.5"
+      },
+      {
+        "args": [
+          "--use-simulator-cache",
+          "--platform",
           "iPhone 15",
           "--version",
           "18.5",
@@ -2792,7 +3322,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -2824,7 +3354,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -2845,7 +3375,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -2877,7 +3407,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -2898,7 +3428,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -2930,7 +3460,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -2951,7 +3481,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "experiment_percentage": 100,
@@ -2984,7 +3514,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -3005,7 +3535,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -3037,7 +3567,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -3058,7 +3588,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -3090,7 +3620,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -3104,6 +3634,59 @@
         "args": [
           "--use-simulator-cache",
           "--platform",
+          "iPad Pro 13-inch (M4)",
+          "--version",
+          "18.5",
+          "--use-simulator-cache",
+          "--out-dir",
+          "${ISOLATED_OUTDIR}",
+          "--xcode-build-version",
+          "27a5237l",
+          "--xctest"
+        ],
+        "merge": {
+          "script": "//testing/merge_scripts/standard_isolated_script_merge.py"
+        },
+        "module_name": "//skia:skia_unittests",
+        "module_scheme": "gtest",
+        "name": "skia_unittests iPad Pro 13-inch (M4) 18.5",
+        "resultdb": {
+          "enable": true,
+          "has_native_resultdb_integration": true
+        },
+        "swarming": {
+          "cipd_packages": [
+            {
+              "cipd_package": "infra/tools/mac_toolchain/${platform}",
+              "location": ".",
+              "revision": "git_revision:07e67ff89ff11ed0e3071867ed6bb49319a91b05"
+            }
+          ],
+          "dimensions": {
+            "cpu": "arm64",
+            "os": "Mac-26",
+            "pool": "chromium.tests.iosbeta"
+          },
+          "named_caches": [
+            {
+              "name": "runtime_ios_18_5",
+              "path": "Runtime-ios-18.5"
+            },
+            {
+              "name": "xcode_ios_27a5237l",
+              "path": "Xcode.app"
+            }
+          ],
+          "service_account": "chromium-tester@chops-service-accounts.iam.gserviceaccount.com"
+        },
+        "test": "skia_unittests",
+        "test_id_prefix": "ninja://skia:skia_unittests/",
+        "variant_id": "iPad Pro 13-inch (M4) 18.5"
+      },
+      {
+        "args": [
+          "--use-simulator-cache",
+          "--platform",
           "iPhone 15",
           "--version",
           "18.5",
@@ -3111,7 +3694,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -3143,7 +3726,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -3164,7 +3747,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -3196,7 +3779,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -3217,7 +3800,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -3249,7 +3832,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -3270,7 +3853,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -3302,7 +3885,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -3316,6 +3899,59 @@
         "args": [
           "--use-simulator-cache",
           "--platform",
+          "iPad Pro 13-inch (M4)",
+          "--version",
+          "18.5",
+          "--use-simulator-cache",
+          "--out-dir",
+          "${ISOLATED_OUTDIR}",
+          "--xcode-build-version",
+          "27a5237l",
+          "--xctest"
+        ],
+        "merge": {
+          "script": "//testing/merge_scripts/standard_isolated_script_merge.py"
+        },
+        "module_name": "//ui/base:ui_base_unittests",
+        "module_scheme": "gtest",
+        "name": "ui_base_unittests iPad Pro 13-inch (M4) 18.5",
+        "resultdb": {
+          "enable": true,
+          "has_native_resultdb_integration": true
+        },
+        "swarming": {
+          "cipd_packages": [
+            {
+              "cipd_package": "infra/tools/mac_toolchain/${platform}",
+              "location": ".",
+              "revision": "git_revision:07e67ff89ff11ed0e3071867ed6bb49319a91b05"
+            }
+          ],
+          "dimensions": {
+            "cpu": "arm64",
+            "os": "Mac-26",
+            "pool": "chromium.tests.iosbeta"
+          },
+          "named_caches": [
+            {
+              "name": "runtime_ios_18_5",
+              "path": "Runtime-ios-18.5"
+            },
+            {
+              "name": "xcode_ios_27a5237l",
+              "path": "Xcode.app"
+            }
+          ],
+          "service_account": "chromium-tester@chops-service-accounts.iam.gserviceaccount.com"
+        },
+        "test": "ui_base_unittests",
+        "test_id_prefix": "ninja://ui/base:ui_base_unittests/",
+        "variant_id": "iPad Pro 13-inch (M4) 18.5"
+      },
+      {
+        "args": [
+          "--use-simulator-cache",
+          "--platform",
           "iPhone 15",
           "--version",
           "18.5",
@@ -3323,7 +3959,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -3355,7 +3991,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -3376,7 +4012,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -3408,7 +4044,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],
@@ -3429,7 +4065,7 @@
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "27a5228h",
+          "27a5237l",
           "--xctest"
         ],
         "merge": {
@@ -3461,7 +4097,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_27a5228h",
+              "name": "xcode_ios_27a5237l",
               "path": "Xcode.app"
             }
           ],

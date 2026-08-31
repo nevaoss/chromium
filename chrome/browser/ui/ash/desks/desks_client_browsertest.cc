@@ -96,7 +96,6 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
-#include "chrome/browser/ui/tabs/tab_group_model.h"
 #include "chrome/browser/ui/web_applications/test/web_app_browsertest_util.h"
 #include "chrome/browser/web_applications/test/web_app_install_test_utils.h"
 #include "chrome/test/base/ash/util/ash_test_util.h"
@@ -495,6 +494,10 @@ class DesksClientTest : public extensions::PlatformAppBrowserTest {
     std::vector<base::test::FeatureRef> disabled_features = {
         ash::features::kDeskTemplateSync};
     scoped_feature_list_.InitWithFeatures(enabled_features, disabled_features);
+    // TODO(crbug.com/452061489): Fix tests that fail when the WebUI Omnibox is
+    // enabled and then remove this.
+    webui_omnibox_feature_list_.InitFromCommandLine(
+        "", "WebUIOmniboxPopup,WebUIOmniboxAimPopup");
 
     // Suppress the multitask menu nudge as we'll be checking the stacking order
     // and the count of the active desk children.
@@ -581,6 +584,7 @@ class DesksClientTest : public extensions::PlatformAppBrowserTest {
 
  private:
   base::test::ScopedFeatureList scoped_feature_list_;
+  base::test::ScopedFeatureList webui_omnibox_feature_list_;
 };
 
 // Tests that a browser's urls can be captured correctly in the desk template.
@@ -1151,8 +1155,9 @@ IN_PROC_BROWSER_TEST_F(DesksClientTest,
   ASSERT_TRUE(new_browser);
 
   std::vector<tab_groups::TabGroupInfo> got_tab_groups =
-      chrome_desks_util::ConvertTabGroupsToTabGroupInfos(
-          new_browser->GetTabStripModel()->group_model());
+      CHECK_DEREF(
+          ash::BrowserController::GetInstance()->GetDelegate(new_browser))
+          .GetTabGroupInfos();
 
   EXPECT_FALSE(got_tab_groups.empty());
 
@@ -1309,7 +1314,7 @@ IN_PROC_BROWSER_TEST_F(DesksClientTest, LaunchTemplateWithPWA) {
 
   Browser* pwa_browser = ash::test::InstallAndLaunchPWA(
       profile(), GURL(kExampleUrl1), /*launch_in_browser=*/false);
-  ASSERT_TRUE(pwa_browser->is_type_app());
+  ASSERT_EQ(pwa_browser->GetType(), BrowserWindowInterface::Type::TYPE_APP);
   aura::Window* pwa_window = pwa_browser->GetWindow()->GetNativeWindow();
   const gfx::Rect pwa_bounds(50, 50, 500, 500);
   pwa_window->SetBounds(pwa_bounds);
@@ -1358,7 +1363,7 @@ IN_PROC_BROWSER_TEST_F(DesksClientTest, LaunchTemplateWithMissingPWA) {
 
   Browser* pwa_browser = ash::test::InstallAndLaunchPWA(
       profile(), GURL(kExampleUrl1), /*launch_in_browser=*/false);
-  ASSERT_TRUE(pwa_browser->is_type_app());
+  ASSERT_EQ(pwa_browser->GetType(), BrowserWindowInterface::Type::TYPE_APP);
   aura::Window* pwa_window = pwa_browser->GetWindow()->GetNativeWindow();
   const gfx::Rect pwa_bounds(50, 50, 500, 500);
   pwa_window->SetBounds(pwa_bounds);
@@ -1405,7 +1410,7 @@ IN_PROC_BROWSER_TEST_F(DesksClientTest, LaunchTemplateWithOutOfScopeURL) {
 
   Browser* pwa_browser = ash::test::InstallAndLaunchPWA(
       profile(), GURL(kYoutubeUrl), /*launch_in_browser=*/false);
-  ASSERT_TRUE(pwa_browser->is_type_app());
+  ASSERT_EQ(pwa_browser->GetType(), BrowserWindowInterface::Type::TYPE_APP);
   aura::Window* pwa_window = pwa_browser->GetWindow()->GetNativeWindow();
   const std::string* app_name =
       pwa_window->GetProperty(app_restore::kBrowserAppNameKey);
@@ -2028,7 +2033,7 @@ IN_PROC_BROWSER_TEST_F(DesksClientTest, SystemUIBrowserWindowRestorationTest) {
 IN_PROC_BROWSER_TEST_F(DesksClientTest, SystemUILaunchTemplateWithPWA) {
   Browser* pwa_browser = ash::test::InstallAndLaunchPWA(
       profile(), GURL(kExampleUrl1), /*launch_in_browser=*/false);
-  ASSERT_TRUE(pwa_browser->is_type_app());
+  ASSERT_EQ(pwa_browser->GetType(), BrowserWindowInterface::Type::TYPE_APP);
   aura::Window* pwa_window = pwa_browser->GetWindow()->GetNativeWindow();
   const gfx::Rect pwa_bounds(50, 50, 500, 500);
   pwa_window->SetBounds(pwa_bounds);

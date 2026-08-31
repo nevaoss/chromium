@@ -75,6 +75,7 @@ BASE_DECLARE_FEATURE(kWebUIOmniboxDynamicAiModeButton);
 BASE_DECLARE_FEATURE(kOmniboxKeepOpenOnFileSelection);
 
 extern const base::FeatureParam<bool> kWebUIOmniboxPopupDebugSxSParam;
+extern const base::FeatureParam<bool> kOmniboxEverywhereProfilePickerParam;
 
 // The serialized base64 encoded `omnibox::NTPComposeboxConfig`.
 extern const base::FeatureParam<std::string> kConfigParam;
@@ -91,6 +92,8 @@ extern const base::FeatureParam<bool> kShowComposeboxZps;
 // Whether to show the + entrypoint and contextual input menu in the realbox and
 // composebox.
 extern const base::FeatureParam<bool> kShowContextMenu;
+// Controls showing most visited tiles in OmniboxEverywhere.
+extern const base::FeatureParam<bool> kOmniboxEverywhereMostVisitedParam;
 // Whether or not to show a description in the context menu entrypoint, or just
 // the icon.
 // TODO (crbug.com/509939902): Remove this when finch experiment reference
@@ -144,6 +147,11 @@ bool IsAimPopupFeatureEnabled();
 // eligibility.
 bool IsAimPopupEnabled(Profile* profile);
 bool ShouldShowAimContextMenuOption(Profile* profile);
+
+// Returns true if the Omnibox Everywhere feature is fully enabled for the given
+// `profile`. This checks both the base::Feature flag and that Google is the
+// default search provider.
+bool IsOmniboxEverywhereEnabled(Profile* profile);
 
 // Returns true if search content sharing is permitted by enterprise policy.
 bool IsContentSharingEnabled(

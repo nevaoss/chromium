@@ -47,7 +47,6 @@ class AppRuntimePermissionPrompt : public permissions::PermissionPrompt {
 
   bool IsAskPrompt() const override;
   std::optional<gfx::Rect> GetViewBoundsInScreen() const override;
-  bool ShouldFinalizeRequestAfterDecided() const override;
 
   std::vector<permissions::ElementAnchoredBubbleVariant> GetPromptVariants()
       const override;

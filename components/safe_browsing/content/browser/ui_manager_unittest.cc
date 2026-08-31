@@ -96,7 +96,8 @@ class TestSafeBrowsingBlockingPage : public SafeBrowsingBlockingPage {
   TestSafeBrowsingBlockingPage(BaseUIManager* manager,
                                content::WebContents* web_contents,
                                const GURL& main_frame_url,
-                               const UnsafeResourceList& unsafe_resources)
+                               const UnsafeResourceList& unsafe_resources,
+                               bool is_proceed_anyway_disabled = false)
       : SafeBrowsingBlockingPage(
             manager,
             web_contents,
@@ -117,14 +118,14 @@ class TestSafeBrowsingBlockingPage : public SafeBrowsingBlockingPage {
             BaseSafeBrowsingErrorUI::SBErrorDisplayOptions(
                 BaseBlockingPage::IsMainPageResourceLoadPending(
                     unsafe_resources),
-                false,                 // is_extended_reporting_opt_in_allowed
-                false,                 // is_off_the_record
-                false,                 // is_extended_reporting_enabled
-                false,                 // is_extended_reporting_policy_managed
-                false,                 // is_enhanced_protection_enabled
-                false,                 // is_proceed_anyway_disabled
-                false,                 // should_open_links_in_new_tab
-                true,                  // always_show_back_to_safety
+                false,  // is_extended_reporting_opt_in_allowed
+                false,  // is_off_the_record
+                false,  // is_extended_reporting_enabled
+                false,  // is_extended_reporting_policy_managed
+                false,  // is_enhanced_protection_enabled
+                is_proceed_anyway_disabled,  // is_proceed_anyway_disabled
+                false,                       // should_open_links_in_new_tab
+                true,                        // always_show_back_to_safety
                 false,                 // is_enhanced_protection_message_enabled
                 false,                 // is_safe_browsing_managed
                 "cpn_safe_browsing"),  // help_center_article_link
@@ -132,7 +133,7 @@ class TestSafeBrowsingBlockingPage : public SafeBrowsingBlockingPage {
             /*navigation_observer_manager=*/nullptr,
             /*metrics_collector=*/nullptr,
             /*trigger_manager=*/nullptr,
-            /*is_proceed_anyway_disabled=*/false,
+            is_proceed_anyway_disabled,
             /*is_safe_browsing_surveys_enabled=*/true,
             /*trust_safety_sentiment_service_trigger=*/base::NullCallback(),
             /*ignore_auto_revocation_notifications_trigger=*/
@@ -282,6 +283,14 @@ class SafeBrowsingUIManagerTest : public content::RenderViewHostTestHarness {
     ui_manager_->AddToAllowlistUrlSet(GURL(url), /*navigation_id=*/std::nullopt,
                                       web_contents(), pending,
                                       SBThreatType::SB_THREAT_TYPE_URL_MALWARE);
+  }
+
+  void RemoveAllowlistUrlSetThreatType(const GURL& url,
+                                       bool from_pending_only,
+                                       SBThreatType threat_type) {
+    ui_manager_->RemoveAllowlistUrlSetThreatType(
+        url, /*navigation_id=*/std::nullopt, web_contents(), from_pending_only,
+        threat_type);
   }
 
   security_interstitials::UnsafeResource MakeUnsafeResource(
@@ -748,6 +757,95 @@ TEST_F(SafeBrowsingUIManagerTest, AllowlistViewSource) {
   content::WebContentsTester::For(web_contents())->CommitPendingNavigation();
   EXPECT_TRUE(IsAllowlistedForMalware(view_source_url));
   EXPECT_FALSE(IsAllowlistedForMalware(kBadURL));
+}
+
+TEST_F(SafeBrowsingUIManagerTest, RemoveAllowlistUrlSetThreatType_Pending) {
+  const GURL url("https://suspicious.com");
+  ui_manager()->AddToAllowlistUrlSet(
+      url, /*navigation_id=*/std::nullopt, web_contents(), /*is_pending=*/true,
+      SBThreatType::SB_THREAT_TYPE_WARNABLE_SUSPICIOUS_SITE);
+
+  SBThreatType threat_type;
+  EXPECT_TRUE(ui_manager()->IsUrlAllowlistedOrPendingForWebContents(
+      url, /*entry=*/nullptr, web_contents(), /*allowlist_only=*/false,
+      &threat_type));
+  EXPECT_EQ(threat_type, SBThreatType::SB_THREAT_TYPE_WARNABLE_SUSPICIOUS_SITE);
+
+  // Calling RemoveAllowlistUrlSetThreatType with a non-matching threat type
+  // (e.g. SB_THREAT_TYPE_URL_MALWARE) does not remove the entry.
+  RemoveAllowlistUrlSetThreatType(url, /*from_pending_only=*/true,
+                                  SBThreatType::SB_THREAT_TYPE_URL_MALWARE);
+  EXPECT_TRUE(ui_manager()->IsUrlAllowlistedOrPendingForWebContents(
+      url, /*entry=*/nullptr, web_contents(), /*allowlist_only=*/false,
+      &threat_type));
+
+  // Calling RemoveAllowlistUrlSetThreatType with the matching threat type
+  // removes it.
+  RemoveAllowlistUrlSetThreatType(
+      url, /*from_pending_only=*/true,
+      SBThreatType::SB_THREAT_TYPE_WARNABLE_SUSPICIOUS_SITE);
+  EXPECT_FALSE(ui_manager()->IsUrlAllowlistedOrPendingForWebContents(
+      url, /*entry=*/nullptr, web_contents(), /*allowlist_only=*/false,
+      &threat_type));
+}
+
+TEST_F(SafeBrowsingUIManagerTest, RemoveAllowlistUrlSetThreatType_NonPending) {
+  const GURL url("https://suspicious.com");
+  ui_manager()->AddToAllowlistUrlSet(
+      url, /*navigation_id=*/std::nullopt, web_contents(), /*is_pending=*/false,
+      SBThreatType::SB_THREAT_TYPE_WARNABLE_SUSPICIOUS_SITE);
+
+  SBThreatType threat_type;
+  EXPECT_TRUE(ui_manager()->IsUrlAllowlistedOrPendingForWebContents(
+      url, /*entry=*/nullptr, web_contents(), /*allowlist_only=*/true,
+      &threat_type));
+  EXPECT_EQ(threat_type, SBThreatType::SB_THREAT_TYPE_WARNABLE_SUSPICIOUS_SITE);
+
+  // Calling with from_pending_only=true does not remove a non-pending entry.
+  RemoveAllowlistUrlSetThreatType(
+      url, /*from_pending_only=*/true,
+      SBThreatType::SB_THREAT_TYPE_WARNABLE_SUSPICIOUS_SITE);
+  EXPECT_TRUE(ui_manager()->IsUrlAllowlistedOrPendingForWebContents(
+      url, /*entry=*/nullptr, web_contents(), /*allowlist_only=*/true,
+      &threat_type));
+
+  // Non-matching threat type does not remove the non-pending entry.
+  RemoveAllowlistUrlSetThreatType(url, /*from_pending_only=*/false,
+                                  SBThreatType::SB_THREAT_TYPE_URL_MALWARE);
+  EXPECT_TRUE(ui_manager()->IsUrlAllowlistedOrPendingForWebContents(
+      url, /*entry=*/nullptr, web_contents(), /*allowlist_only=*/true,
+      &threat_type));
+
+  // Matching threat type with from_pending_only=false removes it.
+  RemoveAllowlistUrlSetThreatType(
+      url, /*from_pending_only=*/false,
+      SBThreatType::SB_THREAT_TYPE_WARNABLE_SUSPICIOUS_SITE);
+  EXPECT_FALSE(ui_manager()->IsUrlAllowlistedOrPendingForWebContents(
+      url, /*entry=*/nullptr, web_contents(), /*allowlist_only=*/true,
+      &threat_type));
+}
+
+TEST_F(SafeBrowsingUIManagerTest,
+       ProceedAnywayDisabled_CommandReceivedDoesNotAllowlist) {
+  security_interstitials::UnsafeResource resource =
+      MakeUnsafeResourceAndStartNavigation(kBadURL);
+  resource.threat_source = ThreatSource::LOCAL_PVER4;
+  std::vector<security_interstitials::UnsafeResource> resources = {resource};
+  TestSafeBrowsingBlockingPage blocking_page(
+      ui_manager(), web_contents(), GURL(kBadURL), resources,
+      /*is_proceed_anyway_disabled=*/true);
+
+  // 1. Verify frontend string population: disableKeyboardOverride must be true.
+  base::DictValue load_time_data;
+  blocking_page.sb_error_ui()->PopulateStringsForHtml(load_time_data);
+  std::optional<bool> disable_keyboard =
+      load_time_data.FindBool("disableKeyboardOverride");
+  ASSERT_TRUE(disable_keyboard.has_value());
+  EXPECT_TRUE(disable_keyboard.value());
+
+  // 2. Verify backend command handling: CMD_PROCEED (1) must not allowlist URL.
+  blocking_page.CommandReceived("1");
+  EXPECT_FALSE(IsAllowlisted(resource));
 }
 
 }  // namespace safe_browsing

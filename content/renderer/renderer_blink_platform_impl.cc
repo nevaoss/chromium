@@ -124,7 +124,6 @@
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
 #include "content/child/font_data/font_data_manager.h"
-#include "skia/ext/font_utils.h"
 #endif
 
 #if BUILDFLAG(IS_MAC)
@@ -231,10 +230,7 @@ RendererBlinkPlatformImpl::RendererBlinkPlatformImpl(
 #else   // !BUILDFLAG(IS_NEVA_APPRUNTIME)
     if (features::IsFontDataServiceEnabled() && sandboxEnabled()) {
 #endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
-      sk_sp<font_data_service::FontDataManager> font_data_manager =
-          sk_make_sp<font_data_service::FontDataManager>();
-
-      skia::OverrideDefaultSkFontMgr(font_data_manager);
+      font_data_service::FontDataManager::CreateAndInitialize();
     }
 #endif
   }
@@ -974,12 +970,6 @@ void RendererBlinkPlatformImpl::WorkerContextCreated(
     const v8::Local<v8::Context>& worker) {
   GetContentClient()->renderer()->DidInitializeWorkerContextOnWorkerThread(
       worker);
-}
-
-bool RendererBlinkPlatformImpl::AllowScriptExtensionForServiceWorker(
-    const blink::WebSecurityOrigin& script_origin) {
-  return GetContentClient()->renderer()->AllowScriptExtensionForServiceWorker(
-      script_origin);
 }
 
 blink::ProtocolHandlerSecurityLevel

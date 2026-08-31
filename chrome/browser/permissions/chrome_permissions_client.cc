@@ -75,6 +75,7 @@
 #include "components/site_engagement/content/site_engagement_service.h"
 #include "components/subresource_filter/content/browser/subresource_filter_content_settings_manager.h"
 #include "components/subresource_filter/content/browser/subresource_filter_profile_context.h"
+#include "components/tabs/public/tab_interface.h"
 #include "components/unified_consent/pref_names.h"
 #include "components/version_info/version_info.h"
 #include "content/public/browser/navigation_controller.h"
@@ -149,6 +150,12 @@ const url::Origin& GetNtpOrigin() {
 const url::Origin& GetOmniboxPopupOrigin() {
   static const base::NoDestructor<url::Origin> origin(
       url::Origin::Create(GURL(chrome::kChromeUIOmniboxPopupURL)));
+  return *origin;
+}
+
+const url::Origin& GetOmniboxEverywhereOrigin() {
+  static const base::NoDestructor<url::Origin> origin(
+      url::Origin::Create(GURL(chrome::kChromeUIOmniboxEverywhereURL)));
   return *origin;
 }
 
@@ -247,8 +254,11 @@ void ShowInfobar(content::WebContents* web_contents) {
     auto* browser_infobar_manager =
         infobars::BrowserInfoBarManager::From(g_browser_process);
     if (browser_infobar_manager) {
-      browser_infobar_manager->Show(
-          web_contents, infobars::InfoBarDelegate::PAGE_INFO_INFOBAR_DELEGATE);
+      auto* tab = tabs::TabInterface::MaybeGetFromContents(web_contents);
+      if (tab) {
+        browser_infobar_manager->Show(
+            tab, infobars::InfoBarDelegate::PAGE_INFO_INFOBAR_DELEGATE);
+      }
     }
   } else {
     infobars::ContentInfoBarManager* infobar_manager =
@@ -726,11 +736,12 @@ bool ChromePermissionsClient::CanBypassEmbeddingOriginCheck(
     return true;
   }
 
-  // Omnibox Popup and Contextual Tasks:
+  // Omnibox Popup, Omnibox Everywhere, and Contextual Tasks:
   // Bypass embedding origin check as the `requesting_origin` will later be
   // transformed to the DSE origin in `GetCanonicalOriginOverride()`.
   if (embedder == GetContextualTasksOrigin() ||
-      embedder == GetOmniboxPopupOrigin()) {
+      embedder == GetOmniboxPopupOrigin() ||
+      embedder == GetOmniboxEverywhereOrigin()) {
     return true;
   }
 
@@ -761,24 +772,17 @@ std::optional<GURL> ChromePermissionsClient::GetCanonicalOriginOverride(
 
   // Contextual Tasks:
   // Transform chrome:// origins to the DSE origin so that permissions are
-  // stored under and shared with the DSE. If the embedder is contextual tasks
-  // without the requester being the contextual tasks, do not override the URL.
-  // Only if the embedder is the contextual tasks AND the requester is the
-  // contextual tasks, override the canonical origin to be 'google.com'.
-  if (embedder == GetContextualTasksOrigin()) {
-    if (requester == GetContextualTasksOrigin()) {
-      return GURL(UIThreadSearchTermsData().GoogleBaseURLValue())
-          .DeprecatedGetOriginAsURL();
-    }
-    // The contextual tasks WebUI does not allow 3P origins and there is no
-    // plan to. It is therefore okay to return requesting_origin here.
-    return requesting_origin;
+  // stored under and shared with the DSE.
+  if (embedder == requester && embedder == GetContextualTasksOrigin()) {
+    return GURL(UIThreadSearchTermsData().GoogleBaseURLValue())
+        .DeprecatedGetOriginAsURL();
   }
 
   // Omnibox:
   // Transform chrome:// origins to the DSE origin so that permissions are
   // stored under and shared with the DSE.
-  if (requester == embedder && requester == GetOmniboxPopupOrigin()) {
+  if (requester == embedder && (requester == GetOmniboxPopupOrigin() ||
+                                requester == GetOmniboxEverywhereOrigin())) {
     return GURL(UIThreadSearchTermsData().GoogleBaseURLValue())
         .DeprecatedGetOriginAsURL();
   }
@@ -816,8 +820,9 @@ std::optional<GURL> ChromePermissionsClient::GetEmbeddingOriginOverride(
   }
 
   if (embedder == GetContextualTasksOrigin() ||
-      embedder == GetOmniboxPopupOrigin()) {
-    // Omnibox Popup and Contextual Tasks:
+      embedder == GetOmniboxPopupOrigin() ||
+      embedder == GetOmniboxEverywhereOrigin()) {
+    // Omnibox Popup, Omnibox Everywhere, and Contextual Tasks:
     // Use the WebContents origin as the embedding origin.
     // Note that the embedding origin is later transformed to the DSE origin via
     // `GetCanonicalOriginOverride()`.
@@ -919,7 +924,8 @@ bool ChromePermissionsClient::
     IsPrivilegedInternalWebUIForUIRouting(  // overloaded private version
         const url::Origin& embedding_origin) {
   return embedding_origin == GetContextualTasksOrigin() ||
-         embedding_origin == GetOmniboxPopupOrigin();
+         embedding_origin == GetOmniboxPopupOrigin() ||
+         embedding_origin == GetOmniboxEverywhereOrigin();
 }
 
 #if BUILDFLAG(IS_ANDROID)
@@ -989,11 +995,20 @@ ChromePermissionsClient::CreatePrompt(
     permissions::PermissionPrompt::Delegate* delegate) {
   return CreatePermissionPrompt(web_contents, delegate);
 }
+
+std::unique_ptr<
+    permissions::EmbeddedPermissionPromptFlowModel::PromptContentScrim>
+ChromePermissionsClient::CreatePromptContentScrim(
+    content::WebContents* web_contents,
+    permissions::EmbeddedPermissionPromptFlowModel* flow_model) {
+  CHECK(web_contents);
+  return CreatePermissionPromptContentScrim(*web_contents, flow_model);
+}
 #endif
 
 bool ChromePermissionsClient::HasDevicePermission(
     ContentSettingsType type) const {
-#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_CHROMEOS)
   return system_permission_settings::IsAllowed(type);
 #else
   return PermissionsClient::HasDevicePermission(type);
@@ -1002,7 +1017,7 @@ bool ChromePermissionsClient::HasDevicePermission(
 
 bool ChromePermissionsClient::CanRequestDevicePermission(
     ContentSettingsType type) const {
-#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_CHROMEOS)
   return system_permission_settings::CanPrompt(type);
 #else
   return PermissionsClient::CanRequestDevicePermission(type);

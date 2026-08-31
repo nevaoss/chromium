@@ -7,13 +7,13 @@
 #include <algorithm>
 #include <memory>
 #include <optional>
+#include <ranges>
 #include <set>
 #include <utility>
 #include <variant>
 
 #include "base/auto_reset.h"
 #include "base/check.h"
-#include "base/containers/adapters.h"
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
@@ -30,7 +30,9 @@
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_init_state.h"
 #include "chrome/browser/ui/browser_window.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
+#include "chrome/browser/ui/browser_window/public/create_browser_window.h"
 #include "chrome/browser/ui/sad_tab_helper.h"
 #include "chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_utils.h"
 #include "chrome/browser/ui/tabs/split_tab_util.h"
@@ -52,6 +54,7 @@
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
 #include "chrome/browser/ui/web_applications/web_app_launch_utils.h"
 #include "chrome/browser/ui/web_applications/web_app_tabbed_utils.h"
+#include "chrome/browser/ui/window_feature_controller/window_feature_controller.h"
 #include "chrome/browser/web_applications/web_app_helpers.h"
 #include "chrome/browser/web_applications/web_app_provider.h"
 #include "chrome/browser/web_applications/web_app_registrar.h"
@@ -100,6 +103,10 @@
 #include "ui/aura/env.h"                            // nogncheck
 #include "ui/aura/window.h"                         // nogncheck
 #include "ui/wm/core/window_modality_controller.h"  // nogncheck
+#endif
+
+#if BUILDFLAG(IS_LINUX)
+#include "ui/views/widget/desktop_aura/desktop_drag_drop_client_ozone.h"
 #endif
 
 using content::OpenURLParams;
@@ -459,9 +466,10 @@ TabDragController::Liveness TabDragController::Init(
   //    scenarios.
   // 2. The dragged tab strip exists in a PWA, and any of the dragged views
   //    are the Pinned Home tab.
-  Browser* source_browser = BrowserView::GetBrowserViewForNativeWindow(
-                                source_context->GetWidget()->GetNativeWindow())
-                                ->browser();
+  BrowserWindowInterface* source_browser =
+      BrowserView::GetBrowserViewForNativeWindow(
+          source_context->GetWidget()->GetNativeWindow())
+          ->browser();
   if (ash::boca::OnTaskLockedController::From(source_browser)
           ->is_locked_for_on_task()) {
     ref->detach_behavior_ = DetachBehavior::kNotDetachable;
@@ -1023,6 +1031,10 @@ TabDragController::Liveness TabDragController::ContinueDragging(
       views::Widget* browser_widget = GetAttachedBrowserWidget();
       gfx::Rect bounds = browser_widget->GetWindowBoundsInScreen();
       if (bounds.size() != new_size) {
+        browser_widget->GetRootView()->SetSize(new_size);
+        browser_widget->LayoutRootViewIfNecessary();
+        const gfx::Vector2d drag_offset = CalculateWindowDragOffset();
+        bounds.set_origin(point_in_screen - drag_offset);
         bounds.set_size(new_size);
         browser_widget->SetBounds(bounds);
       }
@@ -1393,15 +1405,28 @@ void TabDragController::AttachToNewContext(
   // the new model.
   CHECK(GetViewsMatchingDraggedContents(attached_context_).empty());
 
-  selection_model_before_attach_ = attached_context_->GetTabStripModel()
-                                       ->selection_model()
-                                       .GetListSelectionModel();
+  TabStripModel* tab_strip_model = attached_context_->GetTabStripModel();
+  selection_model_before_attach_ =
+      tab_strip_model->selection_model().GetListSelectionModel();
 
   // Insert at any valid index in the tabstrip. We'll fix up the insertion
   // index in MoveAttached() later, if we're transitioning to kDraggingTabs;
   // if we're transitioning to kDraggingWindow this is the correct index, 0.
-  size_t index =
-      attached_context_->GetTabStripModel()->IndexOfFirstNonPinnedTab();
+  size_t index = tab_strip_model->IndexOfFirstNonPinnedTab();
+  // When focus mode is active, initial insertion of attached dragged unpinned
+  // tabs should target the focused group's range to prevent index desync.
+  // Pinned tabs cannot be inserted into tab groups.
+  const std::optional<tab_groups::TabGroupId> focused_group =
+      tab_strip_model->GetFocusedGroup();
+  if (focused_group.has_value() &&
+      !drag_data_.group_header_drag_data_.has_value() &&
+      !std::ranges::any_of(drag_data_.tab_drag_data_, &TabDragData::pinned)) {
+    const TabGroup* group =
+        tab_strip_model->group_model()->GetTabGroup(*focused_group);
+    if (group && group->ListTabs().length() > 0) {
+      index = group->ListTabs().start();
+    }
+  }
 
   base::AutoReset<bool> setter(&is_mutating_, true);
 
@@ -1429,13 +1454,16 @@ void TabDragController::AttachToNewContext(
                              });
       CHECK(it != drag_data_.tab_drag_data_.end());
       TabDragData& tab_data = *it;
+      std::optional<tab_groups::TabGroupId> group_for_tab = std::nullopt;
       if (tab_data.pinned) {
         add_types |= AddTabTypes::ADD_PINNED;
+      } else {
+        group_for_tab = focused_group;
       }
 
       const size_t inserted_index =
           attached_context_->GetTabStripModel()->InsertDetachedTabAt(
-              index, std::move(tab->get()->tab), add_types);
+              index, std::move(tab->get()->tab), add_types, group_for_tab);
       CHECK_EQ(inserted_index, index);
       update_sad_tab.Run(index);
       index++;
@@ -1670,7 +1698,8 @@ TabDragController::DetachIntoNewBrowserAndRunMoveLoop(
         drag_data_.attached_views());
   }
 
-  Browser* browser = CreateBrowserForDrag(attached_context_, new_size);
+  BrowserWindowInterface* browser =
+      CreateBrowserForDrag(attached_context_, new_size);
 
   BrowserView* const dragged_browser_view =
       BrowserView::GetBrowserViewForBrowser(browser);
@@ -1755,6 +1784,13 @@ TabDragController::DetachIntoNewBrowserAndRunMoveLoop(
       current_state_ = DragState::kWaitingForWindowToShow;
       VisibilityWaiter waiter(dragged_widget);
 
+#if BUILDFLAG(IS_LINUX)
+      // VisibilityWaiter runs a kNestableTasksAllowed loop while the user holds
+      // the pointer button, before the move loop's own suppression scope is
+      // established; suppress data drags for its duration as well.
+      auto suppress_data_drag =
+          views::DesktopDragDropClientOzone::ScopedSuppressForWindowMove();
+#endif
       base::WeakPtr<TabDragController> ref(weak_factory_.GetWeakPtr());
       waiter.Wait();
       if (!ref) {
@@ -2109,7 +2145,8 @@ void TabDragController::RestoreInitialSelection() {
   // the tabs from initial_selection_model_ as it was created with the tabs
   // still there.
   ui::ListSelectionModel selection_model = initial_selection_model_;
-  for (const TabDragData& data : base::Reversed(drag_data_.tab_drag_data_)) {
+  for (const TabDragData& data :
+       std::views::reverse(drag_data_.tab_drag_data_)) {
     if (data.source_model_index.has_value()) {
       selection_model.DecrementFrom(data.source_model_index.value());
     }
@@ -2395,7 +2432,7 @@ void TabDragController::CompleteDrag() {
   // This means when dragging tabs out to create a new window, a home tab
   // needs to be added.
   if (is_dragging_new_browser_) {
-    Browser* new_browser =
+    BrowserWindowInterface* new_browser =
         BrowserView::GetBrowserViewForNativeWindow(
             attached_context_->GetWidget()->GetNativeWindow())
             ->browser();
@@ -2495,7 +2532,7 @@ void TabDragController::BringWindowUnderPointToFront(
   // it in order to avoid stacking the browser window on top of the phantom
   // drag widget created by DragWindowController in a second display.
   for (aura::Window* window :
-       base::Reversed(browser_window->parent()->children())) {
+       std::views::reverse(browser_window->parent()->children())) {
     // If the iteration reached the recipient browser window then it is
     // already topmost and it is safe to return with no stacking change.
     if (window == browser_window) {
@@ -2647,7 +2684,7 @@ void TabDragController::AdjustTabBoundsForDrag(
 }
 
 std::optional<webapps::AppId> TabDragController::GetControllingAppForDrag(
-    Browser* browser) {
+    BrowserWindowInterface* browser) {
   content::WebContents* active_contents = drag_data_.source_dragged_contents();
   if (!base::FeatureList::IsEnabled(
           features::kTearOffWebAppTabOpensWebAppWindow) ||
@@ -2666,8 +2703,9 @@ std::optional<webapps::AppId> TabDragController::GetControllingAppForDrag(
   return all_controlling_apps.begin()->first;
 }
 
-Browser* TabDragController::CreateBrowserForDrag(TabDragContext* source,
-                                                 gfx::Size initial_size) {
+BrowserWindowInterface* TabDragController::CreateBrowserForDrag(
+    TabDragContext* source,
+    gfx::Size initial_size) {
   source->GetWidget()
       ->GetCompositor()
       ->RequestSuccessfulPresentationTimeForNextFrame(base::BindOnce(
@@ -2681,35 +2719,37 @@ Browser* TabDragController::CreateBrowserForDrag(TabDragContext* source,
           base::TimeTicks::Now()));
 
   // Find if there's a controlling app, and thus we should open an app window.
-  Browser* from_browser = BrowserView::GetBrowserViewForNativeWindow(
-                              GetAttachedBrowserWidget()->GetNativeWindow())
-                              ->browser();
+  BrowserWindowInterface* from_browser =
+      BrowserView::GetBrowserViewForNativeWindow(
+          GetAttachedBrowserWidget()->GetNativeWindow())
+          ->browser();
 
   const std::optional<webapps::AppId> controlling_app =
       GetControllingAppForDrag(from_browser);
   const bool open_as_web_app = controlling_app.has_value();
 
-  Browser::CreateParams create_params =
-      open_as_web_app ? Browser::CreateParams::CreateForApp(
+  BrowserWindowCreateParams create_params =
+      open_as_web_app ? BrowserWindowCreateParams::CreateForApp(
                             web_app::GenerateApplicationNameFromAppId(
                                 controlling_app.value()),
                             /* trusted_source=*/true, gfx::Rect(),
                             from_browser->GetProfile(),
                             /* user_gesture=*/true)
-                      : BrowserInitState::From(from_browser)->create_params();
-
+                      : BrowserInitState::From(from_browser)
+                            ->browser_window_create_params()
+                            .Clone();
   // Web app windows have their own initial size independent of the source
   // browser window.
   if (!open_as_web_app) {
     create_params.initial_bounds = gfx::Rect(initial_size);
   }
-  create_params.user_gesture = true;
+  create_params.from_user_gesture = true;
   create_params.in_tab_dragging = true;
 #if BUILDFLAG(IS_CHROMEOS)
   // Do not copy attached window's restore id as this will cause Full Restore to
   // restore the newly created browser using the original browser's stored data.
   // See crbug.com/40181917 and crbug.com/40227947 for details.
-  create_params.restore_id = Browser::kDefaultRestoreId;
+  create_params.restore_id = BrowserWindowCreateParams::kDefaultRestoreId;
 
   // Open the window in the same display.
   display::Display display = display::Screen::Get()->GetDisplayNearestWindow(
@@ -2732,7 +2772,8 @@ Browser* TabDragController::CreateBrowserForDrag(TabDragContext* source,
   create_params.user_title = std::string();
 
   base::TimeTicks now = base::TimeTicks::Now();
-  Browser* browser = Browser::Create(create_params);
+  BrowserWindowInterface* browser =
+      CreateBrowserWindow(std::move(create_params));
   if (auto* manager = InitialWebUIWindowMetricsManager::From(browser)) {
     manager->SetWindowCreationInfo(
         waap::NewWindowCreationSource::kDragToNewWindow, now);
@@ -2844,7 +2885,7 @@ bool TabDragController::CanAttachTo(gfx::NativeWindow window) {
   if (!other_browser_view || other_browser_view->GetWidget()->IsClosed()) {
     return false;
   }
-  Browser* other_browser = other_browser_view->browser();
+  BrowserWindowInterface* other_browser = other_browser_view->browser();
 
   // Do not allow dragging into a window with a modal dialog, it causes a
   // weird behavior.  See crbug.com/40348569
@@ -2853,7 +2894,7 @@ bool TabDragController::CanAttachTo(gfx::NativeWindow window) {
     return false;
   }
 #else
-  TabStripModel* model = other_browser->tab_strip_model();
+  TabStripModel* model = other_browser->GetTabStripModel();
   DCHECK(model);
 
   const int active_index = model->active_index();
@@ -2890,14 +2931,16 @@ bool TabDragController::CanAttachTo(gfx::NativeWindow window) {
 #endif  // BUILDFLAG(USE_AURA)
 
   // We don't allow drops on windows that don't have tabstrips.
-  if (!other_browser->SupportsWindowFeature(
-          Browser::WindowFeature::kFeatureTabStrip)) {
+  if (!WindowFeatureController::From(other_browser)
+           ->SupportsWindowFeature(
+               WindowFeatureController::WindowFeature::kFeatureTabStrip)) {
     return false;
   }
 
-  Browser* browser = BrowserView::GetBrowserViewForNativeWindow(
-                         GetAttachedBrowserWidget()->GetNativeWindow())
-                         ->browser();
+  BrowserWindowInterface* browser =
+      BrowserView::GetBrowserViewForNativeWindow(
+          GetAttachedBrowserWidget()->GetNativeWindow())
+          ->browser();
 
   // Profiles must be the same.
   if (other_browser->GetProfile() != browser->GetProfile()) {
@@ -2905,9 +2948,10 @@ bool TabDragController::CanAttachTo(gfx::NativeWindow window) {
   }
 
   // Ensure that browser types and app names are the same.
-  if (other_browser->type() != browser->type() ||
-      (browser->is_type_app() &&
-       browser->app_name() != other_browser->app_name())) {
+  if (other_browser->GetType() != browser->GetType() ||
+      (browser->GetType() == BrowserWindowInterface::Type::TYPE_APP &&
+       BrowserInitState::From(browser)->create_params().app_name !=
+           BrowserInitState::From(other_browser)->create_params().app_name)) {
     return false;
   }
 
@@ -2955,9 +2999,10 @@ void TabDragController::MaybePauseTrackingSavedTabGroup() {
     return;
   }
 
-  Browser* const browser = BrowserView::GetBrowserViewForNativeWindow(
-                               GetAttachedBrowserWidget()->GetNativeWindow())
-                               ->browser();
+  BrowserWindowInterface* const browser =
+      BrowserView::GetBrowserViewForNativeWindow(
+          GetAttachedBrowserWidget()->GetNativeWindow())
+          ->browser();
 
   tab_groups::TabGroupSyncService* tab_group_service =
       tab_groups::TabGroupSyncServiceFactory::GetForProfile(
@@ -2977,9 +3022,10 @@ void TabDragController::MaybeResumeTrackingSavedTabGroup() {
     return;
   }
 
-  Browser* const browser = BrowserView::GetBrowserViewForNativeWindow(
-                               GetAttachedBrowserWidget()->GetNativeWindow())
-                               ->browser();
+  BrowserWindowInterface* const browser =
+      BrowserView::GetBrowserViewForNativeWindow(
+          GetAttachedBrowserWidget()->GetNativeWindow())
+          ->browser();
 
   tab_groups::TabGroupSyncService* tab_group_service =
       tab_groups::TabGroupSyncServiceFactory::GetForProfile(

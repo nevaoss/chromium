@@ -13,6 +13,9 @@ source_set("buttons") {
     "toolbar_button_visibility.h",
     "toolbar_buttons_utils.h",
     "toolbar_buttons_utils.mm",
+    "toolbar_element_with_background.h",
+    "toolbar_navigation_buttons_container.h",
+    "toolbar_navigation_buttons_container.mm",
     "toolbar_tab_grid_badge_button.h",
     "toolbar_tab_grid_badge_button.mm",
   ]
@@ -26,6 +29,7 @@ source_set("buttons") {
     "//ios/chrome/browser/intelligence/features",
     "//ios/chrome/browser/location_bar/ui_bundled:utils",
     "//ios/chrome/browser/shared/public/commands",
+    "//ios/chrome/browser/shared/public/features",
     "//ios/chrome/browser/shared/ui/elements",
     "//ios/chrome/browser/shared/ui/elements/gradient",
     "//ios/chrome/browser/shared/ui/symbols",

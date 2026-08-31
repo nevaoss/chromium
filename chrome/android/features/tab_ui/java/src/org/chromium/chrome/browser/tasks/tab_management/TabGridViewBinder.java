@@ -48,7 +48,6 @@ import org.chromium.components.browser_ui.util.TextResolver;
 import org.chromium.components.tab_groups.TabGroupColorId;
 import org.chromium.ui.modelutil.PropertyKey;
 import org.chromium.ui.modelutil.PropertyModel;
-import org.chromium.ui.widget.ChromeImageView;
 import org.chromium.ui.widget.ViewLookupCachingFrameLayout;
 
 /**
@@ -113,6 +112,8 @@ public class TabGridViewBinder {
             TabCardViewBinderUtils.detachTabGroupColorView(container);
 
             tabGridView.clearHighlight();
+            tabGridView.updateActionButtonBackground(
+                    /* isSelected= */ false, /* isIncognito= */ false);
         }
     }
 
@@ -252,13 +253,16 @@ public class TabGridViewBinder {
         } else if (TabProperties.IS_SELECTED == propertyKey
                 || TabProperties.TAB_ACTION_BUTTON_DATA == propertyKey
                 || TabProperties.TAB_GROUP_CARD_COLOR == propertyKey) {
+            boolean isSelected = model.get(TabProperties.IS_SELECTED);
+            boolean isIncognito = model.get(TabProperties.IS_INCOGNITO);
             ((TabGridView) view)
                     .setTabActionButtonTint(
                             TabCardThemeUtil.getActionButtonTintList(
                                     view.getContext(),
-                                    model.get(TabProperties.IS_INCOGNITO),
-                                    model.get(TabProperties.IS_SELECTED),
+                                    isIncognito,
+                                    isSelected,
                                     model.get(TabProperties.TAB_GROUP_CARD_COLOR)));
+            ((TabGridView) view).updateActionButtonBackground(isSelected, isIncognito);
         } else if (TabProperties.TAB_CARD_LABEL_DATA == propertyKey) {
             updateTabCardLabel(view, model.get(TabProperties.TAB_CARD_LABEL_DATA));
         } else if (TabProperties.HIGHLIGHT_STATE == propertyKey) {
@@ -335,12 +339,11 @@ public class TabGridViewBinder {
             }
 
             TextResolver contentDescriptionResolver =
-                    (context) -> {
-                        return context.getString(
-                                R.string.accessibility_tab_price_card,
-                                priceDrop.previousPrice,
-                                priceDrop.price);
-                    };
+                    (Context context) ->
+                            context.getString(
+                                    R.string.accessibility_tab_price_card,
+                                    priceDrop.previousPrice,
+                                    priceDrop.price);
             PriceDropTextResolver priceDropResolver =
                     new PriceDropTextResolver(priceDrop.price, priceDrop.previousPrice);
             TabCardLabelData labelData =
@@ -442,7 +445,7 @@ public class TabGridViewBinder {
         View cardView = rootView.fastFindViewById(R.id.card_view);
         TextView titleView = rootView.fastFindViewById(R.id.tab_title);
         TabThumbnailView thumbnail = rootView.fastFindViewById(R.id.tab_thumbnail);
-        ChromeImageView backgroundView = rootView.fastFindViewById(R.id.background_view);
+        ImageView backgroundView = rootView.fastFindViewById(R.id.background_view);
         ImageView mediaIndicator = rootView.fastFindViewById(R.id.media_indicator_icon);
 
         cardView.getBackground().mutate();
@@ -542,12 +545,6 @@ public class TabGridViewBinder {
 
     static void setThumbnailFetcherForTesting(ThumbnailFetcher fetcher) {
         sThumbnailFetcherForTesting = fetcher;
-        ResettersForTesting.register(
-                new Runnable() {
-                    @Override
-                    public void run() {
-                        sThumbnailFetcherForTesting = null;
-                    }
-                });
+        ResettersForTesting.register(() -> sThumbnailFetcherForTesting = null);
     }
 }

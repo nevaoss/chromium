@@ -583,7 +583,7 @@
 <translation id="3588034708467091142">Asegúrate de ter conexión a Internet e téntao de novo.</translation>
 <translation id="3594280220611906414"><ph name="USER_FRIENDLY_APN_NAME" /> é o nome fácil de usar de <ph name="APN_NAME" />.</translation>
 <translation id="3595596368722241419">Batería completa</translation>
-<translation id="3600339377155080675">Proxectar pantalla</translation>
+<translation id="3600339377155080675">Duplicar a pantalla</translation>
 <translation id="3602290021589620013">Previsualizar</translation>
 <translation id="3603829704940252505">Avatar</translation>
 <translation id="3604713164406837697">Cambiar fondo de pantalla</translation>
@@ -1831,7 +1831,6 @@ Descarga o modelo de transcrición (ocupa un máximo de 100 MB) para ver estas 
 <translation id="9082718469794970195">Usar este vídeo</translation>
 <translation id="9088306295921699330">En uso</translation>
 <translation id="9088994563996376283">Simplificar</translation>
-<translation id="9095775724867566971">Pluginvm</translation>
 <translation id="909856219855259344">Máis información sobre a data de restablecemento</translation>
 <translation id="9100765901046053179">Configuración avanzada</translation>
 <translation id="910415269708673980">Actualiza o tícket de <ph name="PRINCIPAL_NAME" /></translation>

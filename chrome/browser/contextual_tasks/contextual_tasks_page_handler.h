@@ -18,7 +18,6 @@
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/remote.h"
-#include "third_party/lens_server_proto/aim_communication.pb.h"
 #include "ui/base/interaction/element_tracker.h"
 
 namespace base {
@@ -26,7 +25,10 @@ class Uuid;
 }
 
 namespace lens {
+class ClientToAimMessage;
+class InjectInput;
 class InputPlateParametersRequest;
+class UpdateThreadContextLibrary;
 }
 
 namespace contextual_tasks {
@@ -68,6 +70,7 @@ class ContextualTasksPageHandler
   void OpenMyActivityUi() override;
   void OpenFeedbackUi() override;
   void OpenOnboardingHelpUi() override;
+  void OpenOverflowMenuHelpUi() override;
   void OpenUrl(const GURL& url, WindowOpenDisposition disposition) override;
   void MoveTaskUiToNewTab() override;
   void OnTabClickedFromSourcesMenu(int32_t tab_id, const GURL& url) override;
@@ -79,6 +82,7 @@ class ContextualTasksPageHandler
                              GetCommonSearchParamsCallback callback) override;
   void OnboardingTooltipDismissed() override;
   void LensSearchTooltipDismissed() override;
+  void AskGTooltipDismissed() override;
   void ReopenTabs() override;
   void PinSidePanel() override;
   void UnpinSidePanel() override;
@@ -92,9 +96,10 @@ class ContextualTasksPageHandler
   void CloseWindow(
       const contextual_tasks::ContextualWindowId& window_id) override;
   void MaybeTriggerPinningPromo() override;
-  void ShowPageInfoBubble() override;
+  void ShowPageInfoBubble(bool is_pointer_interaction) override;
+  void OnLogoPointerDown() override;
   void CreateNewThread() override;
-  void PostMessageToWebview(const lens::ClientToAimMessage& message);
+  void PostAimMessage(const lens::ClientToAimMessage& message);
 
   // contextual_tasks::ContextualTasksService::Observer:
   void OnTaskAdded(

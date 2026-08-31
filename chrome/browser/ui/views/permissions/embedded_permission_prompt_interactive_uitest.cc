@@ -420,7 +420,6 @@ class EmbeddedPermissionPromptInteractiveTest
                       permissions::PermissionRequestManager::FromWebContents(
                           browser()->tab_strip_model()->GetActiveWebContents());
                   manager->Dismiss(/*prompt_options=*/std::monostate());
-                  manager->FinalizeCurrentRequests();
                 })));
 
     RunTestSequence(std::move(steps));
@@ -1194,7 +1193,6 @@ IN_PROC_BROWSER_TEST_P(EmbeddedPermissionPromptInteractiveTest,
 
         // Need to close the permission prompt before the test shuts down.
         manager->Dismiss(/*prompt_options=*/std::monostate());
-        manager->FinalizeCurrentRequests();
       }));
 }
 
@@ -1216,8 +1214,33 @@ IN_PROC_BROWSER_TEST_P(EmbeddedPermissionPromptInteractiveTest,
 
         // Need to close the permission prompt before the test shuts down.
         manager->Dismiss(/*prompt_options=*/std::monostate());
-        manager->FinalizeCurrentRequests();
       }));
+}
+
+IN_PROC_BROWSER_TEST_P(
+    EmbeddedPermissionPromptInteractiveTest,
+    TestWindowMiddlePositioningClampedToContainerBoundsOnSmallWindow) {
+  // Set the browser window to a small size so prompt bounds exceed container
+  // bound in `kWindowMiddle` mode.
+  BrowserView::GetBrowserViewForBrowser(browser())->GetWidget()->SetBounds(
+      {10, 10, 500, 200});
+
+  RunTestSequence(
+      InstrumentTab(kWebContentsElementId),
+      NavigateWebContents(kWebContentsElementId, GetURL()),
+      ExecuteJs(kWebContentsElementId, "setFontSizeSmall"),
+      ClickOnPEPCElement("microphone"),
+      InAnyContext(WaitForShow(EmbeddedPermissionPromptBaseView::kMainViewId)),
+      InAnyContext(CheckView(
+          EmbeddedPermissionPromptBaseView::kMainViewId,
+          [this](views::View* view) {
+            content::WebContents* web_contents =
+                browser()->tab_strip_model()->GetActiveWebContents();
+            gfx::Rect container_bounds = web_contents->GetContainerBounds();
+            gfx::Rect prompt_bounds = view->GetBoundsInScreen();
+            return prompt_bounds.x() >= container_bounds.x() &&
+                   prompt_bounds.y() >= container_bounds.y();
+          })));
 }
 
 class EmbeddedPermissionPromptPositioningInteractiveTest
@@ -1313,7 +1336,6 @@ IN_PROC_BROWSER_TEST_P(EmbeddedPermissionPromptPositioningInteractiveTest,
               permissions::PermissionRequestManager::FromWebContents(
                   browser()->tab_strip_model()->GetActiveWebContents());
           manager->Dismiss(/*prompt_options=*/std::monostate());
-          manager->FinalizeCurrentRequests();
 
           zoom::ZoomController* zoom_controller =
               zoom::ZoomController::FromWebContents(
@@ -1374,9 +1396,49 @@ IN_PROC_BROWSER_TEST_P(EmbeddedPermissionPromptPositioningInteractiveTest,
               permissions::PermissionRequestManager::FromWebContents(
                   browser()->tab_strip_model()->GetActiveWebContents());
           manager->Dismiss(/*prompt_options=*/std::monostate());
-          manager->FinalizeCurrentRequests();
         }));
   }
+}
+
+IN_PROC_BROWSER_TEST_P(EmbeddedPermissionPromptPositioningInteractiveTest,
+                       TestPositioningClampedToContainerBoundsOnSmallWindow) {
+  BrowserView::GetBrowserViewForBrowser(browser())->GetWidget()->SetBounds(
+      {10, 10, 500, 200});
+
+  RunTestSequence(
+      InstrumentTab(kWebContentsElementId),
+      NavigateWebContents(kWebContentsElementId, GetURL()),
+      ExecuteJs(kWebContentsElementId, "setFontSizeSmall"),
+      ClickOnPEPCElement("microphone"),
+      InAnyContext(WaitForShow(EmbeddedPermissionPromptBaseView::kMainViewId)),
+      InAnyContext(CheckView(
+          EmbeddedPermissionPromptBaseView::kMainViewId,
+          [this](views::View* view) {
+            content::WebContents* web_contents =
+                browser()->tab_strip_model()->GetActiveWebContents();
+            gfx::Rect container_bounds = web_contents->GetContainerBounds();
+            gfx::Rect prompt_bounds = view->GetBoundsInScreen();
+            return prompt_bounds.x() >= container_bounds.x() &&
+                   prompt_bounds.y() >= container_bounds.y();
+          })));
+}
+
+IN_PROC_BROWSER_TEST_P(EmbeddedPermissionPromptPositioningInteractiveTest,
+                       TestNullContentsWebViewHandling) {
+  // Construct a standalone frameless widget context where `ContentsWebView` is
+  // absent. Ensure its absences (null value) is properly handled.
+  views::Widget::InitParams params(
+      views::Widget::InitParams::CLIENT_OWNS_WIDGET,
+      views::Widget::InitParams::TYPE_WINDOW_FRAMELESS);
+  params.context = browser()->GetWindow()->GetNativeWindow();
+  auto widget = std::make_unique<views::Widget>();
+  widget->Init(std::move(params));
+
+  RunTestSequence(
+      InstrumentTab(kWebContentsElementId),
+      NavigateWebContents(kWebContentsElementId, GetURL()),
+      ClickOnPEPCElement("microphone"),
+      InAnyContext(WaitForShow(EmbeddedPermissionPromptBaseView::kMainViewId)));
 }
 
 // A test suite for running policy-related interactive tests. This test suite
@@ -1515,7 +1577,6 @@ IN_PROC_BROWSER_TEST_P(EmbeddedPermissionPromptInteractiveTest,
         auto* manager = permissions::PermissionRequestManager::FromWebContents(
             browser()->tab_strip_model()->GetActiveWebContents());
         manager->Dismiss(/*prompt_options=*/std::monostate());
-        manager->FinalizeCurrentRequests();
       }));
 }
 
@@ -1571,7 +1632,6 @@ IN_PROC_BROWSER_TEST_P(EmbeddedPermissionPromptInteractiveTest,
         auto* manager = permissions::PermissionRequestManager::FromWebContents(
             browser()->tab_strip_model()->GetActiveWebContents());
         manager->Dismiss(/*prompt_options=*/std::monostate());
-        manager->FinalizeCurrentRequests();
       }));
 }
 
@@ -1676,7 +1736,7 @@ IN_PROC_BROWSER_TEST_P(EmbeddedPermissionPromptInteractiveTest,
 
   TestScrimDelegate delegate;
   auto scrim_view = std::make_unique<EmbeddedPermissionPromptContentScrimView>(
-      delegate.GetWeakPtr(), test_web_contents.get(),
+      delegate.GetWeakPtr(), *test_web_contents.get(),
       /*should_dismiss_on_click=*/true);
 
   // The scrim's layer rounded corner radius should match the radii of the

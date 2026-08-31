@@ -46,6 +46,7 @@
   // Observer for auth service status changes.
   std::unique_ptr<AuthenticationServiceObserverBridge>
       _authServiceObserverBridge;
+  BOOL _isShutdown;
 }
 
 - (instancetype)initWithBrowser:(Browser*)browser
@@ -56,8 +57,8 @@
         (id<SigninPromoViewMediatorDelegate>)signinPromoViewMediatorDelegate
            accountSettingsPresenter:
                (id<AccountSettingsPresenter>)accountSettingsPresenter {
-  CHECK(browser, base::NotFatalUntil::M145);
-  CHECK(syncService, base::NotFatalUntil::M145);
+  CHECK(browser);
+  CHECK(syncService);
   self = [super init];
   if (self) {
     _delegate = delegate;
@@ -96,10 +97,14 @@
 }
 
 - (void)dealloc {
-  CHECK(!_authServiceObserverBridge, base::NotFatalUntil::M152);
+  [self shutdown];
 }
 
 - (void)shutdown {
+  if (_isShutdown) {
+    return;
+  }
+  _isShutdown = YES;
   [_signinPromoViewMediator disconnect];
   _signinPromoViewMediator = nil;
   _browser = nullptr;
@@ -190,10 +195,8 @@
 #pragma mark - SigninPromoViewConsumer
 
 - (void)configureSigninPromoWithConfigurator:
-            (SigninPromoViewConfigurator*)configurator
-                             identityChanged:(BOOL)identityChanged {
-  [self.delegate configureSigninPromoWithConfigurator:configurator
-                                      identityChanged:identityChanged];
+    (SigninPromoViewConfigurator*)configurator {
+  [self.delegate configureSigninPromoWithConfigurator:configurator];
 }
 
 - (void)promoProgressStateDidChange {

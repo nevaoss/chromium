@@ -8,3 +8,7 @@ export {ComposeboxProxyImpl} from '//resources/cr_components/composebox/composeb
 export {SearchboxBrowserProxy} from '//resources/cr_components/searchbox/searchbox_browser_proxy.js';
 export {OmniboxEverywhereAppElement} from './app.js';
 export {OmniboxEverywhereComposeboxElement} from './composebox.js';
+export {OmniboxEverywhereOmniboxElement} from './omnibox.js';
+export {OmniboxEverywhereProfileIconElement} from './profile_icon.js';
+export {getContextMenuDialog, UnboundedMenuManager, updateUnboundedElementVisibility} from './unbounded_utils.js';
+export type {UnboundedElement} from './unbounded_utils.js';

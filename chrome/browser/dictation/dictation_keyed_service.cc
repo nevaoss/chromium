@@ -4,13 +4,15 @@
 
 #include "chrome/browser/dictation/dictation_keyed_service.h"
 
+#include "base/check.h"
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
-#include "base/strings/utf_string_conversions.h"
+#include "chrome/browser/dictation/application_registration_delegate.h"
 #include "chrome/browser/dictation/connector_component_extension.h"
 #include "chrome/browser/dictation/dictation_keyed_service_factory.h"
 #include "chrome/browser/dictation/features.h"
 #include "chrome/browser/dictation/listener_stream_provider.h"
+#include "chrome/browser/dictation/logging.h"
 #include "chrome/browser/dictation/metrics.h"
 #include "chrome/browser/dictation/onboarding_manager.h"
 #include "chrome/browser/dictation/session_controller.h"
@@ -83,15 +85,16 @@ DictationKeyedService* DictationKeyedService::Get(
 
 DictationKeyedService::SessionState::SessionState(
     SessionControllerDelegate& delegate,
-    const TargetDetails& target_details)
-    : controller_(delegate), target_details_(target_details) {}
+    tabs::TabInterface& tab)
+    : controller_(delegate), tab_(tab.GetWeakPtr()) {}
 
 DictationKeyedService::SessionState::~SessionState() = default;
 
 DictationKeyedService::DictationKeyedService(Profile* profile)
     : profile_(profile),
       connector_extension_(profile),
-      onboarding_manager_(*this, *profile->GetPrefs()) {
+      onboarding_manager_(*this, *profile->GetPrefs()),
+      log_buffer_(profile) {
   CHECK(base::FeatureList::IsEnabled(kDictation));
   pref_change_registrar_.Init(profile_->GetPrefs());
   pref_change_registrar_.Add(
@@ -104,12 +107,21 @@ DictationKeyedService::DictationKeyedService(Profile* profile)
       profile_->GetPrefs()->GetInteger(prefs::kVoiceTypingSettings) ==
       kVoiceTypingSettingsDisabled;
   RecordDictationIsEnabledOnProfileInit(!disabled_by_policy);
+
+  UpdateHotkeyManager();
 }
 
 DictationKeyedService::~DictationKeyedService() = default;
 
 void DictationKeyedService::Shutdown() {
   EndSession();
+  // Ensure accelerators are unregistered safely before UI objects are
+  // destroyed.
+  local_hotkey_manager_.reset();
+}
+
+content::BrowserContext* DictationKeyedService::GetBrowserContext() const {
+  return profile_;
 }
 
 std::unique_ptr<StreamProvider> DictationKeyedService::CreateStreamProvider(
@@ -120,8 +132,7 @@ std::unique_ptr<StreamProvider> DictationKeyedService::CreateStreamProvider(
 std::unique_ptr<SessionUi> DictationKeyedService::CreateUi(
     SessionController& controller) const {
   CHECK(session_);
-  tabs::TabInterface* tab =
-      GetTabFromTargetId(session_->target_details_.target_id);
+  tabs::TabInterface* tab = session_->tab_.get();
 
   // We must have a tab since this is called synchronously from session
   // creation.
@@ -134,23 +145,41 @@ void DictationKeyedService::StartSession(
     tabs::TabInterface& tab,
     const TargetDetails& target_details,
     DictationSessionEntryPoint entry_point) {
-  CHECK(IsEnabled());
+  CHECK(IsEnabledAndReady());
   CHECK(!session_);
 
   if (onboarding_manager_.ShowOnboardingIfNeeded(tab, target_details,
                                                  entry_point)) {
-    // If onboarding is shown, it will call StartSession again if needed.
+    // If onboarding is shown, it will call DidCompleteOnboarding if needed.
     return;
   }
 
   RecordDictationSessionStartSource(entry_point);
 
-  session_.emplace(*this, target_details);
+  session_.emplace(*this, tab);
 
-  session_->controller_.Initialize();
+  session_->controller_.ResetUi();
 
   session_->controller_.StartDictationStream(
       target_details, DictationStreamStartTrigger::kSessionStart);
+}
+
+void DictationKeyedService::DidCompleteOnboarding(
+    tabs::TabInterface& tab,
+    const TargetDetails& target_details,
+    DictationSessionEntryPoint entry_point) {
+  if (!IsEnabledAndReady()) {
+    return;
+  }
+  UpdateHotkeyManager();
+  StartSession(tab, target_details, entry_point);
+}
+
+void DictationKeyedService::StartSessionForTesting(  // IN-TEST
+    tabs::TabInterface& tab,
+    const TargetDetails& target_details,
+    DictationSessionEntryPoint entry_point) {
+  StartSession(tab, target_details, entry_point);
 }
 
 void DictationKeyedService::EndSession() {
@@ -158,28 +187,117 @@ void DictationKeyedService::EndSession() {
 }
 
 bool DictationKeyedService::ShouldShowContextMenuItem() const {
-  if (!IsEnabled()) {
-    return false;
-  }
-  return !session_;
+  return IsEnabledAndReady();
 }
 
-void DictationKeyedService::ContextMenuHandler(
-    const TargetDetails& target_details) {
-  // Policy could have changed to disabled while the context menu was open.
-  if (!IsEnabled()) {
-    return;
-  }
-
+void DictationKeyedService::TriggerSession(
+    const TargetDetails& target_details,
+    DictationSessionEntryPoint entry_point) {
   tabs::TabInterface* tab = GetTabFromTargetId(target_details.target_id);
   if (!tab) {
     return;
   }
 
-  StartSession(*tab, target_details, DictationSessionEntryPoint::kContextMenu);
+  if (!session_) {
+    VT_LOG(profile_) << "Starting new session";
+    StartSession(*tab, target_details, entry_point);
+  } else {
+    // Always stop existing stream before starting a new one.
+    if (session_->controller_.attached_stream_provider()) {
+      session_->controller_.EndDictationStream();
+    }
+
+    tabs::TabInterface* old_tab = session_->tab_.get();
+    bool tab_changed = (tab != old_tab);
+
+    if (tab_changed) {
+      VT_LOG(profile_) << "Moving session to new tab: " << tab;
+      session_->tab_ = tab->GetWeakPtr();
+      session_->controller_.ResetUi();
+    }
+
+    VT_LOG(profile_) << "Starting in existing session";
+    DictationStreamStartTrigger trigger;
+    switch (entry_point) {
+      case DictationSessionEntryPoint::kContextMenu:
+        trigger = DictationStreamStartTrigger::kContextMenuExistingSession;
+        break;
+      case DictationSessionEntryPoint::kHotkeyToggle:
+        trigger = DictationStreamStartTrigger::kHotkeyToggleExistingSession;
+        break;
+    }
+    session_->controller_.StartDictationStream(target_details, trigger);
+  }
 }
 
-bool DictationKeyedService::IsEnabled() const {
+void DictationKeyedService::ContextMenuHandler(
+    const TargetDetails& target_details) {
+  // Policy could have changed to disabled while the context menu was open.
+  if (!IsEnabledAndReady()) {
+    return;
+  }
+
+  TriggerSession(target_details, DictationSessionEntryPoint::kContextMenu);
+}
+
+void DictationKeyedService::ToggleHotkeyHandler() {
+  CHECK(IsEnabledAndReady(), base::NotFatalUntil::M155);
+
+  CHECK(profile_->GetPrefs()->GetBoolean(
+      prefs::kPrefDictationOnboardingCompleted));
+
+  BrowserWindowInterface* active_browser =
+      GlobalBrowserCollection::GetInstance()->GetLastActiveBrowser();
+  if (!active_browser || active_browser->GetProfile() != profile_) {
+    return;
+  }
+
+  tabs::TabInterface* active_tab = active_browser->GetActiveTabInterface();
+  if (!active_tab) {
+    return;
+  }
+
+  if (session_) {
+    tabs::TabInterface* old_tab = session_->tab_.get();
+    bool tab_changed = (active_tab != old_tab);
+
+    if (!tab_changed && session_->controller_.attached_stream_provider()) {
+      session_->controller_.EndDictationStream();
+      return;
+    }
+  }
+
+  content::WebContents* web_contents = active_tab->GetContents();
+  if (!web_contents) {
+    return;
+  }
+
+  content::RenderFrameHost* focused_frame = web_contents->GetFocusedFrame();
+  if (!focused_frame) {
+    return;
+  }
+
+  content::EditableLevel editable_level =
+      focused_frame->GetFocusedEditableLevel();
+  if (editable_level == content::EditableLevel::kNotEditable) {
+    return;
+  }
+
+  blink::DOMNodeIdType node_id = focused_frame->GetFocusedDOMNodeId();
+  if (node_id.is_null()) {
+    return;
+  }
+
+  content::GlobalDOMNodeId global_id{focused_frame->GetWeakDocumentPtr(),
+                                     node_id};
+
+  TargetDetails target_details(
+      global_id, editable_level == content::EditableLevel::kRichlyEditable);
+
+  TriggerSession(target_details, DictationSessionEntryPoint::kHotkeyToggle);
+}
+
+bool DictationKeyedService::IsEnabledAndReady() const {
   CHECK(profile_);
   bool disabled_by_policy =
       profile_->GetPrefs()->GetInteger(prefs::kVoiceTypingSettings) ==
@@ -190,8 +308,25 @@ bool DictationKeyedService::IsEnabled() const {
 }
 
 void DictationKeyedService::OnPrefChanged() {
-  if (!IsEnabled()) {
+  if (!IsEnabledAndReady()) {
     EndSession();
+  }
+  UpdateHotkeyManager();
+}
+
+void DictationKeyedService::DidInstallConnector() {
+  UpdateHotkeyManager();
+}
+
+void DictationKeyedService::UpdateHotkeyManager() {
+  bool onboarding_completed = profile_->GetPrefs()->GetBoolean(
+      prefs::kPrefDictationOnboardingCompleted);
+
+  if (!IsEnabledAndReady() || !onboarding_completed) {
+    local_hotkey_manager_.reset();
+  } else if (!local_hotkey_manager_) {
+    local_hotkey_manager_ = std::make_unique<LocalHotkeyManager>(
+        profile_, std::make_unique<ApplicationRegistrationDelegate>());
   }
 }
 

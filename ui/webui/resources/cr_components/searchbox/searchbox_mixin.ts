@@ -9,8 +9,9 @@ import {isMac} from '//resources/js/platform.js';
 import {hasKeyModifiers} from '//resources/js/util.js';
 import type {CrLitElement, PropertyValues} from '//resources/lit/v3_0/lit.rollup.js';
 import {NavigationPredictor} from '//resources/mojo/components/omnibox/browser/omnibox.mojom-webui.js';
-import type {AutocompleteMatch, AutocompleteResult, PageHandlerInterface} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
-import {SelectionLineState, SuggestInventory} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import {KeywordType} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import type {AutocompleteMatch, AutocompleteResult, InputKeywordModel, PageHandlerInterface} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import {InputMethod, SelectionLineState, SuggestInventory} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 
 import type {SearchboxDropdownElement} from './searchbox_dropdown.js';
 import type {SearchboxInputElement} from './searchbox_input.js';
@@ -57,6 +58,10 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
           type: Number,
         },
 
+        inputKeywordModel: {
+          type: Object,
+        },
+
         /** The aria description to include on the input element. */
         searchboxAriaDescription: {
           type: String,
@@ -89,6 +94,7 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
     accessor result: AutocompleteResult|null = null;
     accessor selectedMatch: AutocompleteMatch|null = null;
     accessor selectedMatchIndex: number = -1;
+    accessor inputKeywordModel: InputKeywordModel|null = null;
     accessor inputAriaLive: string = '';
     accessor searchboxIcon: string = '';
     accessor showThumbnail: boolean = false;
@@ -138,6 +144,11 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
       if (changedPrivateProperties.has('result') ||
           changedPrivateProperties.has('selectedMatchIndex')) {
         this.selectedMatch = this.computeSelectedMatch_();
+      }
+      if (changedPrivateProperties.has('result') ||
+          changedPrivateProperties.has('selectedMatchIndex') ||
+          changedPrivateProperties.has('selectedMatch')) {
+        this.inputKeywordModel = this.computeInputKeywordModelFromMatch_();
       }
     }
 
@@ -201,9 +212,12 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
           this.getInputElement().inputElement.value === input ?
           this.getInputElement().inputElement.selectionStart || 0 :
           input.length;
+      const keyword = this.inputKeywordModel?.type === KeywordType.kInKeyword ?
+          this.inputKeywordModel.keyword :
+          '';
       this.pageHandler().queryAutocomplete(
           this.activeQueryId, input, preventInlineAutocomplete, cursorPosition,
-          SuggestInventory.kDefault, isOnFocus);
+          SuggestInventory.kDefault, isOnFocus, keyword, InputMethod.kKeyboard);
 
       this.dispatchEvent(new CustomEvent('query-autocomplete', {
         bubbles: true,
@@ -234,14 +248,14 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
             shiftKey: e.shiftKey,
           },
           /*viaKeyboard=*/ e instanceof KeyboardEvent);
-      this.getInputElement().setInput({
-        text: match.fillIntoEdit,
-        inline: '',
-        moveCursorToEnd: true,
-      });
-      const isBackgroundTab = this.isBackgroundTabNavigation(e);
 
+      const isBackgroundTab = this.isBackgroundTabNavigation(e);
       if (!isBackgroundTab) {
+        this.getInputElement().setInput({
+          text: this.computeMatchFillIntoEdit_(match),
+          inline: '',
+          moveCursorToEnd: true,
+        });
         this.clearAutocompleteMatches();
       }
       e.preventDefault();
@@ -307,7 +321,7 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
         // empty input will change to the value of the first result.
         await this.getDropdownElement().selectIndex(this.selectedMatchIndex);
         this.getInputElement().setInput({
-          text: this.selectedMatch!.fillIntoEdit,
+          text: this.computeMatchFillIntoEdit_(this.selectedMatch!),
           inline: '',
           moveCursorToEnd: true,
         });
@@ -320,7 +334,7 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
       }
     }
 
-    onInputFocusChanged(e: CustomEvent<{value: string}>) {
+    onInputFocusChanged(e: CustomEvent<{value: string, isOnFocus: boolean}>) {
       if (this.shouldAppendDotComOnCtrlEnter()) {
         this.controlKeyState_ = ControlKeyState.UP;
       }
@@ -328,11 +342,7 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
         return;
       }
       const input = e.detail.value;
-      // Empty input is only a partially accurate heuristic for determining if
-      // this is a focus input. E.g.: In the non-NTP omnibox, focus inputs will
-      // be non-empty. That's ok for now, because webUI omnibox focus is still
-      // handled by `OmniboxViewViews` and not searchbox_mixin.
-      const isOnFocus = !input;
+      const isOnFocus = e.detail.isOnFocus;
       this.queryAutocomplete(
           input, /*preventInlineAutocomplete=*/ false, isOnFocus);
     }
@@ -340,14 +350,38 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
     onSearchboxInputTextUpdated(
         e: CustomEvent<{value: string, isComposing: boolean}>) {
       const input = e.detail.value;
-      // For now, skip autocompletion and clear matches when the trimmed input
-      // is empty. But empty inputs in keyword mode will need to show results.
-      if (input.trim()) {
+
+      if (this.shouldAcceptSpaceAtEndKeywordEntry(input)) {
+        this.inputKeywordModel = {
+          ...this.inputKeywordModel!,
+          type: KeywordType.kInKeyword,
+        };
+        this.getInputElement().setInputText('');
+        this.queryAutocomplete(
+            '', /*preventInlineAutocomplete=*/ false, /*isOnFocus=*/ false);
+        return;
+      }
+
+      if (this.shouldAcceptQuestionMarkKeywordEntry(input)) {
+        this.inputKeywordModel = {
+          type: KeywordType.kInKeyword,
+          keyword: '?',
+          displayText: '',
+        };
+        this.getInputElement().setInputText('');
+        this.queryAutocomplete(
+            '', /*preventInlineAutocomplete=*/ false, /*isOnFocus=*/ false);
+        return;
+      }
+
+      const isEmpty = !input.trim() &&
+          this.inputKeywordModel?.type !== KeywordType.kInKeyword;
+      if (isEmpty) {
+        this.clearAutocompleteMatches();
+      } else {
         this.queryAutocomplete(
             input, /*preventInlineAutocomplete=*/ e.detail.isComposing,
             /*isOnFocus=*/ false);
-      } else {
-        this.clearAutocompleteMatches();
       }
     }
 
@@ -360,7 +394,8 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
         return;
       }
 
-      if (this.lastQueriedInput === '') {
+      if (this.lastQueriedInput === '' &&
+          this.inputKeywordModel?.type !== KeywordType.kInKeyword) {
         // Clear the input as well as the matches if the input was empty when
         // the matches arrived.
         this.getInputElement().setInput({text: '', inline: ''});
@@ -435,12 +470,42 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
     }
 
     hasMatches(): boolean {
-      return this.result !== null && !!this.result.matches &&
+      return !!this.result && !!this.result.matches &&
           this.result.matches.length > 0;
     }
 
     async handleKeyNavigation(e: KeyboardEvent) {
-      if (e.key === 'Backspace' || e.key === 'Tab') {
+      if (e.key === 'Backspace') {
+        const inputEl = this.getInputElement().inputElement;
+        const cursorAtStart =
+            inputEl.selectionStart === 0 && inputEl.selectionEnd === 0;
+        if (this.inputKeywordModel?.type === KeywordType.kInKeyword &&
+            cursorAtStart) {
+          const remainingText = inputEl.value;
+          // TODO(b:504669216): Restoring keyword text correctly is more
+          //   complicated than just prepending keyword and a space.
+          const restoredKeywordText = this.inputKeywordModel.keyword + ' ';
+          const restoredText = restoredKeywordText + remainingText;
+          const newCursorPos = restoredKeywordText.length;
+
+          this.inputKeywordModel = null;
+
+          this.getInputElement().setInput({
+            text: restoredText,
+            inline: '',
+            moveCursorToEnd: false,
+          });
+          inputEl.setSelectionRange(newCursorPos, newCursorPos);
+
+          this.queryAutocomplete(
+              restoredText, /*preventInlineAutocomplete=*/ true,
+              /*isOnFocus=*/ false);
+          e.preventDefault();
+        }
+        return;
+      }
+
+      if (e.key === 'Tab') {
         return;
       }
 
@@ -566,7 +631,7 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
       }
 
       // Update the input.
-      const newFill = this.selectedMatch!.fillIntoEdit;
+      const newFill = this.computeMatchFillIntoEdit_(this.selectedMatch!);
       const newInline = this.selectedMatchIndex === 0 &&
               this.selectedMatch!.allowedToBeDefaultMatch ?
           this.selectedMatch!.inlineAutocompletion :
@@ -597,10 +662,32 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
       const input = this.getInputElement();
       assert(input);
       input.setInput({
-        text: this.selectedMatch!.fillIntoEdit,
+        text: this.computeMatchFillIntoEdit_(this.selectedMatch!),
         inline: '',
         moveCursorToEnd: true,
       });
+    }
+
+    onKeywordClick(e: Event) {
+      const match =
+          (e as CustomEvent<{match?: AutocompleteMatch}>).detail.match;
+      assert(match?.keywordModel);
+      this.inputKeywordModel = {
+        type: KeywordType.kInKeyword,
+        keyword: match.keywordModel.keyword,
+        displayText: match.keywordModel.chipHint,
+      };
+      this.getInputElement().setInputText('');
+    }
+
+    private computeMatchFillIntoEdit_(match: AutocompleteMatch): string {
+      if (this.inputKeywordModel?.type === KeywordType.kInKeyword) {
+        const keyword = this.inputKeywordModel.keyword;
+        if (keyword && match.fillIntoEdit.startsWith(keyword + ' ')) {
+          return match.fillIntoEdit.substring(keyword.length + 1);
+        }
+      }
+      return match.fillIntoEdit;
     }
 
     private computeSelectedMatch_() {
@@ -608,6 +695,84 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
         return null;
       }
       return this.result.matches[this.selectedMatchIndex] || null;
+    }
+
+    private computeInputKeywordModelFromMatch_(): InputKeywordModel|null {
+      // If there are no results, the input should not be kicked out of keyword
+      // mode.
+      if (!this.selectedMatch &&
+          this.inputKeywordModel?.type === KeywordType.kInKeyword) {
+        return this.inputKeywordModel;
+      }
+      if (!this.selectedMatch?.keywordModel) {
+        return null;
+      }
+      return {
+        type: this.selectedMatch.keywordModel.type,
+        keyword: this.selectedMatch.keywordModel.keyword,
+        displayText: this.selectedMatch.keywordModel.chipHint,
+      };
+    }
+
+    private shouldAcceptSpaceAtEndKeywordEntry(input: string): boolean {
+      // Cursor must be at end.
+      if (this.getInputElement().inputElement.selectionStart !== input.length) {
+        return false;
+      }
+
+      // Input must end in space.
+      if (!input.endsWith(' ') && !input.endsWith('\u3000')) {
+        return false;
+      }
+
+      // Chip must be shown.
+      if (this.inputKeywordModel?.type !== KeywordType.kChip) {
+        return false;
+      }
+
+      // Input must match keyword.
+      if (input.slice(0, -1) !== this.inputKeywordModel.keyword) {
+        return false;
+      }
+
+      // Space must have been typed, not backspaced to a space. E.g. 'keyword
+      // q<backspace>' should not accept keyword mode.
+      // TODO(b/504669216): this isn't handled yet.
+
+      // Space must have been typed, not pasted.
+      // TODO(b/504669216): webUI doesn't track paste state yet.
+
+      // Space triggering must be enabled.
+      // TODO(b/504669216): webUI isn't aware of
+      //   `kKeywordSpaceTriggeringEnabled` pref.
+
+      return true;
+    }
+
+    private shouldAcceptQuestionMarkKeywordEntry(input: string): boolean {
+      // Input must be '?'.
+      if (input !== '?') {
+        return false;
+      }
+
+      // Cursor must be after '?'.
+      if (this.getInputElement().inputElement.selectionStart !== 1) {
+        return false;
+      }
+
+      // Must not already be in keyword mode.
+      if (this.inputKeywordModel?.type === KeywordType.kInKeyword) {
+        return false;
+      }
+
+      // Input must have been typed, not backspaced to '?'. E.g. '?q<backspace>'
+      // should not enter keyword mode.
+      // TODO(b/504669216): this isn't handled yet.
+
+      // Input must have been typed, not pasted.
+      // TODO(b/504669216): webUI doesn't track paste state yet.
+
+      return true;
     }
 
     private computeInputAriaLive_(): string {
@@ -630,6 +795,7 @@ export interface SearchboxMixinInterface {
   searchboxAriaDescription: string;
   selectedMatch: AutocompleteMatch|null;
   selectedMatchIndex: number;
+  inputKeywordModel: InputKeywordModel|null;
   showThumbnail: boolean;
 
   clearAutocompleteMatches(): void;
@@ -649,6 +815,7 @@ export interface SearchboxMixinInterface {
   onInputWrapperKeydown(e: KeyboardEvent): void;
   onMatchClick(): void;
   onMatchFocusin(e: CustomEvent<number>): void;
+  onKeywordClick(e: Event): void;
   openCtrlEnterMatch(matchIndex: number): void;
   onSearchboxInputTextUpdated(
       e: CustomEvent<{value: string, isComposing: boolean}>): void;

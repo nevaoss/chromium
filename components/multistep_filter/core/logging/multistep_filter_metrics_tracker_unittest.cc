@@ -18,6 +18,7 @@
 #include "components/multistep_filter/core/data_models/suggestion_user_decision.h"
 #include "components/multistep_filter/core/logging/multistep_filter_metrics.h"
 #include "components/multistep_filter/core/prefs/retention_state_snapshot.h"
+#include "components/multistep_filter/core/verification/suggestion_application_result.h"
 #include "components/ukm/test_ukm_recorder.h"
 #include "services/metrics/public/cpp/ukm_builders.h"
 #include "testing/gmock/include/gmock/gmock.h"
@@ -61,12 +62,19 @@ void SetupAcceptedAndLandedSession(MultistepFilterMetricsTracker& tracker,
   tracker.OnNavigationFinished(landing_metadata);
 }
 
+void SetupIgnoredSuggestionSession(MultistepFilterMetricsTracker& tracker,
+                                   const UrlFilterSuggestion& suggestion) {
+  TriggerInitialNavigation(tracker);
+  tracker.OnSuggestionShown(suggestion, RetentionStateSnapshot());
+  tracker.OnSuggestionUserInteraction(SuggestionUserDecision::kIgnored);
+}
+
 void SetupPostSuggestionApplicationSession(
     MultistepFilterMetricsTracker& tracker,
     const UrlFilterSuggestion& suggestion) {
   SetupAcceptedAndLandedSession(tracker, suggestion);
-  tracker.OnSuggestionApplicationAnnotationExtractionFinished(
-      /*was_applied_successfully=*/true);
+  tracker.OnSuggestionApplicationFinished(
+      SuggestionApplicationResult::kAllFiltersApplied);
 }
 
 UrlFilterSuggestion CreateSuggestionWithAttributes(
@@ -79,9 +87,8 @@ UrlFilterSuggestion CreateSuggestionWithAttributes(
   params.task_type = std::move(task_type);
   params.extraction_timestamp = base::Time::Now();
   for (const auto& [key, val] : attrs) {
-    params.attribute_ui_labels.emplace_back(
-        FilterSuggestionCandidateAttribute(key, base::UTF8ToUTF16(key)),
-        FilterAttribute(key, val));
+    params.attribute_ui_labels.emplace_back(FilterSuggestionCandidateAttribute(
+        key, base::UTF8ToUTF16(key), base::UTF8ToUTF16(val)));
   }
   return UrlFilterSuggestion(std::move(params));
 }
@@ -115,7 +122,7 @@ void VerifyAcceptanceRetentionHistograms(
 void VerifyApplicationOutcomeRetentionHistograms(
     const base::HistogramTester& histogram_tester,
     base::span<const std::string_view> expected_slices,
-    MultistepFilterApplicationOutcome expected_outcome,
+    SuggestionApplicationResult expected_outcome,
     int expected_count = 1) {
   for (const auto& slice : kAllRetentionSlices) {
     std::string name = base::StrCat(
@@ -425,22 +432,21 @@ TEST_F(MultistepFilterMetricsTrackerTest,
     task_environment_.FastForwardBy(base::Milliseconds(2000));
     metadata.navigation_finish_time = base::TimeTicks::Now();
     tracker.OnNavigationFinished(metadata);
-    tracker.OnSuggestionApplicationAnnotationExtractionFinished(
-        /*was_applied_successfully=*/true);
+    tracker.OnSuggestionApplicationFinished(
+        SuggestionApplicationResult::kAllFiltersApplied);
   }
 
-  EXPECT_THAT(histogram_tester.GetAllSamples(
-                  kMultistepFilterApplicationOutcomeHistogram),
-              BucketsAre(Bucket(
-                  MultistepFilterApplicationOutcome::kAllFiltersApplied, 1)));
+  EXPECT_THAT(
+      histogram_tester.GetAllSamples(
+          kMultistepFilterApplicationOutcomeHistogram),
+      BucketsAre(Bucket(SuggestionApplicationResult::kAllFiltersApplied, 1)));
   EXPECT_THAT(
       histogram_tester.GetAllSamples(
           "MultistepFilter.ApplicationOutcome.ByTask.SEARCH_ACCOMMODATIONS"),
-      BucketsAre(
-          Bucket(MultistepFilterApplicationOutcome::kAllFiltersApplied, 1)));
+      BucketsAre(Bucket(SuggestionApplicationResult::kAllFiltersApplied, 1)));
   VerifyApplicationOutcomeRetentionHistograms(
       histogram_tester, {kRetentionSliceFirstImpression},
-      MultistepFilterApplicationOutcome::kAllFiltersApplied);
+      SuggestionApplicationResult::kAllFiltersApplied);
   histogram_tester.ExpectUniqueTimeSample(
       kMultistepFilterTimeSuggestionAcceptanceToAppliedHistogram,
       base::Milliseconds(2000), 1);
@@ -465,8 +471,8 @@ TEST_F(MultistepFilterMetricsTrackerTest,
   task_environment_.FastForwardBy(base::Milliseconds(1500));
   metadata.navigation_finish_time = base::TimeTicks::Now();
   tracker.OnNavigationFinished(metadata);
-  tracker.OnSuggestionApplicationAnnotationExtractionFinished(
-      /*was_applied_successfully=*/true);
+  tracker.OnSuggestionApplicationFinished(
+      SuggestionApplicationResult::kAllFiltersApplied);
   histogram_tester.ExpectUniqueTimeSample(
       kMultistepFilterTimeSuggestionAcceptanceToAppliedHistogram,
       base::Milliseconds(2000), 1);
@@ -484,22 +490,22 @@ TEST_F(MultistepFilterMetricsTrackerTest,
     FilterNavigationMetadata metadata = CreateDefaultMetadata();
     metadata.applied_suggestion = suggestion;
     tracker.OnNavigationFinished(metadata);
-    tracker.OnSuggestionApplicationAnnotationExtractionFinished(
-        /*was_applied_successfully=*/false);
+    tracker.OnSuggestionApplicationFinished(
+        SuggestionApplicationResult::kFailedNoExtractedAnnotations);
 
     EXPECT_THAT(
         histogram_tester.GetAllSamples(
             kMultistepFilterApplicationOutcomeHistogram),
         BucketsAre(Bucket(
-            MultistepFilterApplicationOutcome::kNotAllFiltersApplied, 1)));
+            SuggestionApplicationResult::kFailedNoExtractedAnnotations, 1)));
     EXPECT_THAT(
         histogram_tester.GetAllSamples(
             "MultistepFilter.ApplicationOutcome.ByTask.SEARCH_ACCOMMODATIONS"),
         BucketsAre(Bucket(
-            MultistepFilterApplicationOutcome::kNotAllFiltersApplied, 1)));
+            SuggestionApplicationResult::kFailedNoExtractedAnnotations, 1)));
     VerifyApplicationOutcomeRetentionHistograms(
         histogram_tester, {kRetentionSliceFirstImpression},
-        MultistepFilterApplicationOutcome::kNotAllFiltersApplied);
+        SuggestionApplicationResult::kFailedNoExtractedAnnotations);
     histogram_tester.ExpectTotalCount(
         kMultistepFilterTimeSuggestionAcceptanceToAppliedHistogram, 0);
   }
@@ -512,14 +518,13 @@ TEST_F(MultistepFilterMetricsTrackerTest,
     metadata.applied_suggestion = suggestion;
     metadata.is_error_page_navigation = true;
     tracker.OnNavigationFinished(metadata);
-    tracker.OnSuggestionApplicationAnnotationExtractionFinished(
-        /*was_applied_successfully=*/true);
+    tracker.OnSuggestionApplicationFinished(
+        SuggestionApplicationResult::kAllFiltersApplied);
 
     EXPECT_THAT(
         histogram_tester.GetAllSamples(
             kMultistepFilterApplicationOutcomeHistogram),
-        BucketsAre(Bucket(
-            MultistepFilterApplicationOutcome::kNotAllFiltersApplied, 1)));
+        BucketsAre(Bucket(SuggestionApplicationResult::kFailedErrorPage, 1)));
     histogram_tester.ExpectTotalCount(
         kMultistepFilterTimeSuggestionAcceptanceToAppliedHistogram, 0);
   }
@@ -532,21 +537,33 @@ TEST_F(MultistepFilterMetricsTrackerTest,
        ErrorPageNavigationFlushesImmediately) {
   UrlFilterSuggestion suggestion = CreateSuggestion("SEARCH_ACCOMMODATIONS");
   base::HistogramTester histogram_tester;
+  ukm::TestAutoSetUkmRecorder ukm_recorder;
   {
     MultistepFilterMetricsTracker tracker;
     FilterNavigationMetadata metadata = CreateDefaultMetadata();
     metadata.applied_suggestion = suggestion;
     metadata.is_error_page_navigation = true;
+    metadata.ukm_source_id = 123;
     tracker.OnNavigationFinished(metadata);
 
     EXPECT_THAT(
         histogram_tester.GetAllSamples(
             kMultistepFilterApplicationOutcomeHistogram),
-        BucketsAre(Bucket(
-            MultistepFilterApplicationOutcome::kNotAllFiltersApplied, 1)));
+        BucketsAre(Bucket(SuggestionApplicationResult::kFailedErrorPage, 1)));
   }
   histogram_tester.ExpectTotalCount(
       kMultistepFilterPostSuggestionApplicationUserEngagementHistogram, 0);
+
+  std::vector<raw_ptr<const ukm::mojom::UkmEntry, VectorExperimental>> entries =
+      ukm_recorder.GetEntriesByName(
+          ukm::builders::MultistepFilter_ApplicationSession::kEntryName);
+  ASSERT_EQ(1u, entries.size());
+  const ukm::mojom::UkmEntry* entry = entries[0];
+  ukm_recorder.ExpectEntryMetric(
+      entry,
+      ukm::builders::MultistepFilter_ApplicationSession::
+          kApplicationOutcomeName,
+      std::to_underlying(SuggestionApplicationResult::kFailedErrorPage));
 }
 
 // Tests that calling annotation extraction finished without a session records
@@ -555,8 +572,8 @@ TEST_F(MultistepFilterMetricsTrackerTest,
        ApplicationFinishedWithoutSessionRecordsNoSamples) {
   base::HistogramTester histogram_tester;
   MultistepFilterMetricsTracker tracker;
-  tracker.OnSuggestionApplicationAnnotationExtractionFinished(
-      /*was_applied_successfully=*/true);
+  tracker.OnSuggestionApplicationFinished(
+      SuggestionApplicationResult::kAllFiltersApplied);
 
   histogram_tester.ExpectTotalCount(kMultistepFilterApplicationOutcomeHistogram,
                                     0);
@@ -586,15 +603,15 @@ TEST_F(MultistepFilterMetricsTrackerTest,
       histogram_tester.GetAllSamples(
           kMultistepFilterApplicationOutcomeHistogram),
       BucketsAre(Bucket(
-          MultistepFilterApplicationOutcome::kAbandonedBeforeVerification, 1)));
+          SuggestionApplicationResult::kAbandonedBeforeVerification, 1)));
   EXPECT_THAT(
       histogram_tester.GetAllSamples(
           "MultistepFilter.ApplicationOutcome.ByTask.SEARCH_ACCOMMODATIONS"),
       BucketsAre(Bucket(
-          MultistepFilterApplicationOutcome::kAbandonedBeforeVerification, 1)));
+          SuggestionApplicationResult::kAbandonedBeforeVerification, 1)));
   VerifyApplicationOutcomeRetentionHistograms(
       histogram_tester, {kRetentionSliceFirstImpression},
-      MultistepFilterApplicationOutcome::kAbandonedBeforeVerification);
+      SuggestionApplicationResult::kAbandonedBeforeVerification);
   EXPECT_THAT(
       histogram_tester.GetAllSamples(
           kMultistepFilterPostSuggestionApplicationUserEngagementHistogram),
@@ -622,15 +639,15 @@ TEST_F(MultistepFilterMetricsTrackerTest,
       histogram_tester.GetAllSamples(
           kMultistepFilterApplicationOutcomeHistogram),
       BucketsAre(Bucket(
-          MultistepFilterApplicationOutcome::kAbandonedBeforeVerification, 1)));
+          SuggestionApplicationResult::kAbandonedBeforeVerification, 1)));
   EXPECT_THAT(
       histogram_tester.GetAllSamples(
           "MultistepFilter.ApplicationOutcome.ByTask.SEARCH_ACCOMMODATIONS"),
       BucketsAre(Bucket(
-          MultistepFilterApplicationOutcome::kAbandonedBeforeVerification, 1)));
+          SuggestionApplicationResult::kAbandonedBeforeVerification, 1)));
   VerifyApplicationOutcomeRetentionHistograms(
       histogram_tester, {kRetentionSliceFirstImpression},
-      MultistepFilterApplicationOutcome::kAbandonedBeforeVerification);
+      SuggestionApplicationResult::kAbandonedBeforeVerification);
   EXPECT_THAT(
       histogram_tester.GetAllSamples(
           kMultistepFilterPostSuggestionApplicationUserEngagementHistogram),
@@ -659,7 +676,7 @@ TEST_F(MultistepFilterMetricsTrackerTest,
       histogram_tester.GetAllSamples(
           kMultistepFilterApplicationOutcomeHistogram),
       BucketsAre(Bucket(
-          MultistepFilterApplicationOutcome::kAbandonedBeforeVerification, 1)));
+          SuggestionApplicationResult::kAbandonedBeforeVerification, 1)));
 
   EXPECT_THAT(
       histogram_tester.GetAllSamples(
@@ -759,8 +776,8 @@ TEST_F(MultistepFilterMetricsTrackerTest,
   {
     MultistepFilterMetricsTracker tracker;
     tracker.OnNavigationFinished(metadata);
-    tracker.OnSuggestionApplicationAnnotationExtractionFinished(
-        /*was_applied_successfully=*/true);
+    tracker.OnSuggestionApplicationFinished(
+        SuggestionApplicationResult::kAllFiltersApplied);
   }
 
   histogram_tester.ExpectUniqueSample(
@@ -802,8 +819,7 @@ TEST_F(MultistepFilterMetricsTrackerTest,
       entry,
       ukm::builders::MultistepFilter_ApplicationSession::
           kApplicationOutcomeName,
-      std::to_underlying(
-          MultistepFilterApplicationOutcome::kAllFiltersApplied));
+      std::to_underlying(SuggestionApplicationResult::kAllFiltersApplied));
   ukm_recorder.ExpectEntryMetric(
       entry,
       ukm::builders::MultistepFilter_ApplicationSession::
@@ -844,8 +860,8 @@ TEST_F(MultistepFilterMetricsTrackerTest,
   {
     MultistepFilterMetricsTracker tracker;
     tracker.OnNavigationFinished(metadata);
-    tracker.OnSuggestionApplicationAnnotationExtractionFinished(
-        /*was_applied_successfully=*/false);
+    tracker.OnSuggestionApplicationFinished(
+        SuggestionApplicationResult::kFailedNoExtractedAnnotations);
   }
 
   histogram_tester.ExpectTotalCount(
@@ -884,7 +900,7 @@ TEST_F(MultistepFilterMetricsTrackerTest,
       ukm::builders::MultistepFilter_ApplicationSession::
           kApplicationOutcomeName,
       std::to_underlying(
-          MultistepFilterApplicationOutcome::kNotAllFiltersApplied));
+          SuggestionApplicationResult::kFailedNoExtractedAnnotations));
   EXPECT_EQ(nullptr,
             ukm_recorder.GetEntryMetric(
                 entry, ukm::builders::MultistepFilter_ApplicationSession::
@@ -993,13 +1009,13 @@ TEST_F(MultistepFilterMetricsTrackerTest,
       tracker.OnSuggestionShown(suggestion, RetentionStateSnapshot());
       tracker.OnSuggestionUserInteraction(SuggestionUserDecision::kAccepted);
       tracker.OnNavigationFinished(landing_metadata);
-      tracker.OnSuggestionApplicationAnnotationExtractionFinished(
-          /*was_applied_successfully=*/true);
+      tracker.OnSuggestionApplicationFinished(
+          SuggestionApplicationResult::kAllFiltersApplied);
     }
 
     VerifyApplicationOutcomeRetentionHistograms(
         histogram_tester, {kRetentionSliceFirstImpression},
-        MultistepFilterApplicationOutcome::kAllFiltersApplied);
+        SuggestionApplicationResult::kAllFiltersApplied);
   }
 
   // Scenario 2: AcceptedLastTime + AcceptedAtLeastOnce.
@@ -1016,14 +1032,14 @@ TEST_F(MultistepFilterMetricsTrackerTest,
       tracker.OnSuggestionShown(suggestion, snapshot);
       tracker.OnSuggestionUserInteraction(SuggestionUserDecision::kAccepted);
       tracker.OnNavigationFinished(landing_metadata);
-      tracker.OnSuggestionApplicationAnnotationExtractionFinished(
-          /*was_applied_successfully=*/true);
+      tracker.OnSuggestionApplicationFinished(
+          SuggestionApplicationResult::kAllFiltersApplied);
     }
 
     VerifyApplicationOutcomeRetentionHistograms(
         histogram_tester,
         {kRetentionSliceAcceptedLastTime, kRetentionSliceAcceptedAtLeastOnce},
-        MultistepFilterApplicationOutcome::kAllFiltersApplied);
+        SuggestionApplicationResult::kAllFiltersApplied);
   }
 
   // Scenario 3: RejectedLastTime + SawCuesButNeverAccepted.
@@ -1039,14 +1055,14 @@ TEST_F(MultistepFilterMetricsTrackerTest,
     tracker.OnSuggestionShown(suggestion, snapshot);
     tracker.OnSuggestionUserInteraction(SuggestionUserDecision::kAccepted);
     tracker.OnNavigationFinished(landing_metadata);
-    tracker.OnSuggestionApplicationAnnotationExtractionFinished(
-        /*was_applied_successfully=*/false);
+    tracker.OnSuggestionApplicationFinished(
+        SuggestionApplicationResult::kFailedNoExtractedAnnotations);
 
     VerifyApplicationOutcomeRetentionHistograms(
         histogram_tester,
         {kRetentionSliceRejectedLastTime,
          kRetentionSliceSawCuesButNeverAccepted},
-        MultistepFilterApplicationOutcome::kNotAllFiltersApplied);
+        SuggestionApplicationResult::kFailedNoExtractedAnnotations);
   }
 
   // Scenario 4: RejectedLastTime + AcceptedAtLeastOnce.
@@ -1063,14 +1079,14 @@ TEST_F(MultistepFilterMetricsTrackerTest,
       tracker.OnSuggestionShown(suggestion, snapshot);
       tracker.OnSuggestionUserInteraction(SuggestionUserDecision::kAccepted);
       tracker.OnNavigationFinished(landing_metadata);
-      tracker.OnSuggestionApplicationAnnotationExtractionFinished(
-          /*was_applied_successfully=*/true);
+      tracker.OnSuggestionApplicationFinished(
+          SuggestionApplicationResult::kAllFiltersApplied);
     }
 
     VerifyApplicationOutcomeRetentionHistograms(
         histogram_tester,
         {kRetentionSliceRejectedLastTime, kRetentionSliceAcceptedAtLeastOnce},
-        MultistepFilterApplicationOutcome::kAllFiltersApplied);
+        SuggestionApplicationResult::kAllFiltersApplied);
   }
 }
 
@@ -1098,12 +1114,12 @@ TEST_F(MultistepFilterMetricsTrackerTest,
     landing_metadata.url = GURL("https://example.com/landing");
     landing_metadata.applied_suggestion = suggestion;
     tracker.OnNavigationFinished(landing_metadata);
-    tracker.OnSuggestionApplicationAnnotationExtractionFinished(
-        /*was_applied_successfully=*/true);
+    tracker.OnSuggestionApplicationFinished(
+        SuggestionApplicationResult::kAllFiltersApplied);
   }
   VerifyApplicationOutcomeRetentionHistograms(
       histogram_tester, {kRetentionSliceFirstImpression},
-      MultistepFilterApplicationOutcome::kAllFiltersApplied);
+      SuggestionApplicationResult::kAllFiltersApplied);
 }
 
 // Tests that showing a suggestion while another is already cached flushes the
@@ -1402,8 +1418,8 @@ TEST_F(MultistepFilterMetricsTrackerTest,
   {
     MultistepFilterMetricsTracker tracker;
     SetupAcceptedAndLandedSession(tracker, suggestion);
-    tracker.OnSuggestionApplicationAnnotationExtractionFinished(
-        /*was_applied_successfully=*/false);
+    tracker.OnSuggestionApplicationFinished(
+        SuggestionApplicationResult::kFailedNoExtractedAnnotations);
 
     task_environment_.FastForwardBy(base::Seconds(10));
     FilterNavigationMetadata back_metadata = CreateDefaultMetadata();
@@ -1474,8 +1490,8 @@ TEST_F(MultistepFilterMetricsTrackerTest,
     landing_metadata2.was_filter_initiated_navigation = true;
     tracker.OnNavigationFinished(landing_metadata2);
 
-    tracker.OnSuggestionApplicationAnnotationExtractionFinished(
-        /*was_applied_successfully=*/true);
+    tracker.OnSuggestionApplicationFinished(
+        SuggestionApplicationResult::kAllFiltersApplied);
 
     histogram_tester.ExpectUniqueSample(
         kMultistepFilterPostSuggestionApplicationUserEngagementHistogram,
@@ -1524,6 +1540,237 @@ TEST_F(MultistepFilterMetricsTrackerTest, SessionIdsMatch) {
   ASSERT_NE(nullptr, app_session_id);
 
   EXPECT_EQ(*ui_session_id, *app_session_id);
+}
+
+// Tests that the post-ignore session is flushed with kDidNotFilterFurther when
+// the tab is closed.
+TEST_F(MultistepFilterMetricsTrackerTest,
+       PostIgnore_DidNotFilterFurther_TabClosed) {
+  base::HistogramTester histogram_tester;
+  UrlFilterSuggestion suggestion = CreateSuggestion("SEARCH_ACCOMMODATIONS");
+  {
+    MultistepFilterMetricsTracker tracker;
+    SetupIgnoredSuggestionSession(tracker, suggestion);
+  }
+  histogram_tester.ExpectUniqueSample(
+      kMultistepFilterUserBehaviorAfterIgnoreHistogram,
+      MultistepFilterUserBehaviorAfterIgnore::kDidNotFilterFurther, 1);
+}
+
+// Tests that the post-ignore session is flushed with kDidNotFilterFurther when
+// the user navigates away.
+TEST_F(MultistepFilterMetricsTrackerTest,
+       PostIgnore_DidNotFilterFurther_NavigateAway) {
+  base::HistogramTester histogram_tester;
+  UrlFilterSuggestion suggestion = CreateSuggestion("SEARCH_ACCOMMODATIONS");
+  {
+    MultistepFilterMetricsTracker tracker;
+    SetupIgnoredSuggestionSession(tracker, suggestion);
+    FilterNavigationMetadata metadata = CreateDefaultMetadata();
+    metadata.url = GURL("https://different.com");
+    tracker.OnNavigationFinished(metadata);
+  }
+  histogram_tester.ExpectUniqueSample(
+      kMultistepFilterUserBehaviorAfterIgnoreHistogram,
+      MultistepFilterUserBehaviorAfterIgnore::kDidNotFilterFurther, 1);
+}
+
+// Tests that the post-ignore session is flushed with kAppliedSameFilters when
+// the user navigates to a page that matches the suggestion.
+TEST_F(MultistepFilterMetricsTrackerTest, PostIgnore_AppliedSameFilters) {
+  base::HistogramTester histogram_tester;
+  UrlFilterSuggestion suggestion = CreateSuggestionWithAttributes(
+      "SEARCH_ACCOMMODATIONS",
+      {{"DATE_CHECKIN", "2026-07-20"}, {"LOCATION_DESTINATION", "Paris"}});
+  {
+    MultistepFilterMetricsTracker tracker;
+    SetupIgnoredSuggestionSession(tracker, suggestion);
+    FilterNavigationMetadata metadata = CreateDefaultMetadata();
+    metadata.url =
+        GURL("https://trigger.com/search?checkin=2026-07-20&dest=Paris");
+    tracker.OnNavigationFinished(metadata);
+    FilterAnnotation annotation(
+        base::Uuid::GenerateRandomV4(), "SEARCH_ACCOMMODATIONS", "trigger.com",
+        base::Time::Now(),
+        {FilterAttribute("DATE_CHECKIN", "2026-07-20"),
+         FilterAttribute("LOCATION_DESTINATION", "Paris")});
+    tracker.OnExtractionFinished(metadata, annotation);
+  }
+  histogram_tester.ExpectUniqueSample(
+      kMultistepFilterUserBehaviorAfterIgnoreHistogram,
+      MultistepFilterUserBehaviorAfterIgnore::kAppliedSameFilters, 1);
+}
+
+// Tests that the post-ignore session is flushed with kAppliedDifferentFilters
+// when the user navigates to a page that has the same keys but different values
+// as the suggestion.
+TEST_F(MultistepFilterMetricsTrackerTest,
+       PostIgnore_AppliedSameKeysDifferentValues) {
+  base::HistogramTester histogram_tester;
+  UrlFilterSuggestion suggestion = CreateSuggestionWithAttributes(
+      "SEARCH_ACCOMMODATIONS",
+      {{"DATE_CHECKIN", "2026-07-20"}, {"LOCATION_DESTINATION", "Paris"}});
+  {
+    MultistepFilterMetricsTracker tracker;
+    SetupIgnoredSuggestionSession(tracker, suggestion);
+    FilterNavigationMetadata metadata = CreateDefaultMetadata();
+    metadata.url =
+        GURL("https://trigger.com/search?checkin=2026-07-22&dest=London");
+    tracker.OnNavigationFinished(metadata);
+    FilterAnnotation annotation(
+        base::Uuid::GenerateRandomV4(), "SEARCH_ACCOMMODATIONS", "trigger.com",
+        base::Time::Now(),
+        {FilterAttribute("DATE_CHECKIN", "2026-07-22"),
+         FilterAttribute("LOCATION_DESTINATION", "London")});
+    tracker.OnExtractionFinished(metadata, annotation);
+  }
+  histogram_tester.ExpectUniqueSample(
+      kMultistepFilterUserBehaviorAfterIgnoreHistogram,
+      MultistepFilterUserBehaviorAfterIgnore::kAppliedDifferentFilters, 1);
+}
+
+// Tests that the post-ignore session is flushed with kAppliedDifferentFilters
+// when the user navigates to a page that has a subset of the keys from the
+// suggestion.
+TEST_F(MultistepFilterMetricsTrackerTest,
+       PostIgnore_AppliedDifferentFilters_Subset) {
+  base::HistogramTester histogram_tester;
+  UrlFilterSuggestion suggestion = CreateSuggestionWithAttributes(
+      "SEARCH_ACCOMMODATIONS",
+      {{"DATE_CHECKIN", "2026-07-20"}, {"LOCATION_DESTINATION", "Paris"}});
+  {
+    MultistepFilterMetricsTracker tracker;
+    SetupIgnoredSuggestionSession(tracker, suggestion);
+
+    FilterNavigationMetadata metadata = CreateDefaultMetadata();
+    metadata.url = GURL("https://trigger.com/search?checkin=2026-07-20");
+    tracker.OnNavigationFinished(metadata);
+
+    FilterAnnotation annotation(
+        base::Uuid::GenerateRandomV4(), "SEARCH_ACCOMMODATIONS", "trigger.com",
+        base::Time::Now(), {FilterAttribute("DATE_CHECKIN", "2026-07-20")});
+    tracker.OnExtractionFinished(metadata, annotation);
+  }
+  histogram_tester.ExpectUniqueSample(
+      kMultistepFilterUserBehaviorAfterIgnoreHistogram,
+      MultistepFilterUserBehaviorAfterIgnore::kAppliedDifferentFilters, 1);
+}
+
+// Tests that the post-ignore session is flushed with kAppliedSameFilters when
+// the user navigates to a page that has a superset of the keys from the
+// suggestion.
+TEST_F(MultistepFilterMetricsTrackerTest,
+       PostIgnore_AppliedSupersetFilters_IsSameFilters) {
+  base::HistogramTester histogram_tester;
+  UrlFilterSuggestion suggestion = CreateSuggestionWithAttributes(
+      "SEARCH_ACCOMMODATIONS", {{"DATE_CHECKIN", "2026-07-20"}});
+  {
+    MultistepFilterMetricsTracker tracker;
+    SetupIgnoredSuggestionSession(tracker, suggestion);
+
+    FilterNavigationMetadata metadata = CreateDefaultMetadata();
+    metadata.url =
+        GURL("https://trigger.com/search?checkin=2026-07-20&dest=Paris");
+    tracker.OnNavigationFinished(metadata);
+
+    FilterAnnotation annotation(
+        base::Uuid::GenerateRandomV4(), "SEARCH_ACCOMMODATIONS", "trigger.com",
+        base::Time::Now(),
+        {FilterAttribute("DATE_CHECKIN", "2026-07-20"),
+         FilterAttribute("LOCATION_DESTINATION", "Paris")});
+    tracker.OnExtractionFinished(metadata, annotation);
+  }
+  histogram_tester.ExpectUniqueSample(
+      kMultistepFilterUserBehaviorAfterIgnoreHistogram,
+      MultistepFilterUserBehaviorAfterIgnore::kAppliedSameFilters, 1);
+}
+
+// Tests that the post-ignore session is not flushed with kDidNotFilterFurther
+// when the user navigates to within the same page.
+TEST_F(MultistepFilterMetricsTrackerTest, PostIgnore_PreservedSamePage) {
+  base::HistogramTester histogram_tester;
+  UrlFilterSuggestion suggestion = CreateSuggestion("SEARCH_ACCOMMODATIONS");
+  {
+    MultistepFilterMetricsTracker tracker;
+    SetupIgnoredSuggestionSession(tracker, suggestion);
+    FilterNavigationMetadata metadata = CreateDefaultMetadata();
+    metadata.url = GURL("https://trigger.com/page");
+    metadata.prev_url = GURL("https://trigger.com/page");
+    metadata.is_same_document_navigation = true;
+    tracker.OnNavigationFinished(metadata);
+    tracker.OnExtractionFinished(metadata, std::nullopt);
+    histogram_tester.ExpectTotalCount(
+        kMultistepFilterUserBehaviorAfterIgnoreHistogram, 0);
+    FilterNavigationMetadata metadata2 = CreateDefaultMetadata();
+    metadata2.url = GURL("https://different.com");
+    tracker.OnNavigationFinished(metadata2);
+  }
+  histogram_tester.ExpectUniqueSample(
+      kMultistepFilterUserBehaviorAfterIgnoreHistogram,
+      MultistepFilterUserBehaviorAfterIgnore::kDidNotFilterFurther, 1);
+}
+
+// Tests that the post-ignore session is flushed with kDidNotFilterFurther when
+// the user navigates to an error page.
+TEST_F(MultistepFilterMetricsTrackerTest,
+       PostIgnore_DidNotFilterFurther_ErrorPage) {
+  base::HistogramTester histogram_tester;
+  UrlFilterSuggestion suggestion = CreateSuggestion("SEARCH_ACCOMMODATIONS");
+  {
+    MultistepFilterMetricsTracker tracker;
+    SetupIgnoredSuggestionSession(tracker, suggestion);
+    FilterNavigationMetadata metadata = CreateDefaultMetadata();
+    metadata.url = GURL("https://trigger.com/search");
+    metadata.is_error_page_navigation = true;
+    tracker.OnNavigationFinished(metadata);
+    histogram_tester.ExpectUniqueSample(
+        kMultistepFilterUserBehaviorAfterIgnoreHistogram,
+        MultistepFilterUserBehaviorAfterIgnore::kDidNotFilterFurther, 1);
+  }
+}
+
+// Tests that the post-ignore session is flushed with kDidNotFilterFurther when
+// the user navigates to a filter-initiated navigation.
+TEST_F(MultistepFilterMetricsTrackerTest,
+       PostIgnore_DidNotFilterFurther_FilterInitiatedNavigation) {
+  base::HistogramTester histogram_tester;
+  UrlFilterSuggestion suggestion = CreateSuggestion("SEARCH_ACCOMMODATIONS");
+  {
+    MultistepFilterMetricsTracker tracker;
+    SetupIgnoredSuggestionSession(tracker, suggestion);
+    FilterNavigationMetadata metadata = CreateDefaultMetadata();
+    metadata.url = GURL("https://trigger.com/search");
+    metadata.was_filter_initiated_navigation = true;
+    metadata.applied_suggestion = CreateSuggestion("SEARCH_ACCOMMODATIONS");
+    tracker.OnNavigationFinished(metadata);
+    histogram_tester.ExpectUniqueSample(
+        kMultistepFilterUserBehaviorAfterIgnoreHistogram,
+        MultistepFilterUserBehaviorAfterIgnore::kDidNotFilterFurther, 1);
+  }
+}
+
+// Tests that the post-ignore session is flushed with kDidNotFilterFurther when
+// a new suggestion is shown and ignored (overwriting the active session).
+TEST_F(MultistepFilterMetricsTrackerTest,
+       PostIgnore_OverwrittenByNewIgnoredSuggestion) {
+  base::HistogramTester histogram_tester;
+  UrlFilterSuggestion suggestion1 = CreateSuggestion("SEARCH_ACCOMMODATIONS");
+  UrlFilterSuggestion suggestion2 = CreateSuggestion("SEARCH_FLIGHTS");
+  {
+    MultistepFilterMetricsTracker tracker;
+    SetupIgnoredSuggestionSession(tracker, suggestion1);
+    RetentionStateSnapshot snapshot;
+    tracker.OnSuggestionShown(suggestion2, snapshot);
+    tracker.OnSuggestionUserInteraction(SuggestionUserDecision::kIgnored);
+    histogram_tester.ExpectBucketCount(
+        kMultistepFilterUserBehaviorAfterIgnoreHistogram,
+        MultistepFilterUserBehaviorAfterIgnore::kDidNotFilterFurther, 1);
+  }
+  histogram_tester.ExpectTotalCount(
+      kMultistepFilterUserBehaviorAfterIgnoreHistogram, 2);
+  histogram_tester.ExpectBucketCount(
+      kMultistepFilterUserBehaviorAfterIgnoreHistogram,
+      MultistepFilterUserBehaviorAfterIgnore::kDidNotFilterFurther, 2);
 }
 
 }  // namespace

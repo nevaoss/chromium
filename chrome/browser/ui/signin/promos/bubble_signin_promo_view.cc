@@ -153,6 +153,20 @@ int GetSubtitleID(bool is_signin_promo,
             break;
         }
       } break;
+      case signin::SignInPromoType::kComposeboxDriveContextMenuOption: {
+        switch (signed_in_state) {
+          case SignedInState::kSignedOut:
+          case SignedInState::kWebOnlySignedIn:
+          case SignedInState::kSignInPending:
+            // TODO(crbug.com/545561312): Verify whether the pending state needs
+            // a different string.
+            return IDS_COMPOSEBOX_DRIVE_CONTEXT_MENU_OPTION_SIGNIN_PROMO_SUBTITLE;
+          case SignedInState::kSignedIn:
+          case SignedInState::kSyncing:
+          case SignedInState::kSyncPaused:
+            break;
+        }
+      } break;
     }
   }
 
@@ -266,6 +280,7 @@ void IncrementContextualPromoDismissCountPerSignedOutProfile(
               1);
     case signin::SignInPromoType::kExtension:
     case signin::SignInPromoType::kSendTabToSelf:
+    case signin::SignInPromoType::kComposeboxDriveContextMenuOption:
       NOTREACHED();
   }
 }
@@ -302,6 +317,7 @@ void IncrementContextualPromoDismissCountPerAccount(
       break;
     case signin::SignInPromoType::kExtension:
     case signin::SignInPromoType::kSendTabToSelf:
+    case signin::SignInPromoType::kComposeboxDriveContextMenuOption:
       NOTREACHED();
   }
 }

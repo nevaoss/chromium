@@ -152,7 +152,7 @@
 #include "components/offline_pages/core/client_namespace_constants.h"  // nogncheck crbug.com/40147906
 #endif
 
-#if BUILDFLAG(ENTERPRISE_CONTENT_ANALYSIS)
+#if BUILDFLAG(ENTERPRISE_CONTENT_ANALYSIS) || BUILDFLAG(IS_ANDROID)
 #include "components/enterprise/connectors/core/cloud_content_scanning/binary_upload_service.h"  // nogncheck crbug.com/40147906
 #include "components/enterprise/obfuscation/core/download_obfuscator.h"  // nogncheck crbug.com/40147906
 #endif
@@ -917,7 +917,7 @@ bool ChromeDownloadManagerDelegate::IsDownloadReadyForCompletion(
     DownloadItem* item,
     base::OnceClosure internal_complete_callback) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
-#if BUILDFLAG(ENTERPRISE_CONTENT_ANALYSIS)
+#if BUILDFLAG(ENTERPRISE_CONTENT_ANALYSIS) || BUILDFLAG(IS_ANDROID)
   if (item->GetDangerType() == download::DOWNLOAD_DANGER_TYPE_USER_VALIDATED) {
     // For obfuscated files, deobfuscate after validation.
     enterprise_obfuscation::DownloadObfuscationData* obfuscation_data =
@@ -1031,7 +1031,7 @@ bool ChromeDownloadManagerDelegate::IsDownloadReadyForCompletion(
   return true;
 }
 
-#if BUILDFLAG(ENTERPRISE_CONTENT_ANALYSIS)
+#if BUILDFLAG(ENTERPRISE_CONTENT_ANALYSIS) || BUILDFLAG(IS_ANDROID)
 void ChromeDownloadManagerDelegate::OnDeobfuscationComplete(
     uint32_t download_id,
     base::OnceClosure callback,
@@ -1085,7 +1085,8 @@ bool ChromeDownloadManagerDelegate::ShouldOpenDownload(
     content::DownloadOpenDelayedCallback callback) {
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
   if (extensions::util::IsExtensionDownload(*item) &&
-      !extensions::WebstoreInstaller::GetAssociatedApproval(*item)) {
+      !extensions::WebstoreInstaller::GetAssociatedApproval(*item) &&
+      !profile_->IsOffTheRecord()) {
     scoped_refptr<CrxInstaller> installer(
         download_crx_util::CreateCrxInstaller(profile_, *item));
 
@@ -1116,7 +1117,7 @@ bool ChromeDownloadManagerDelegate::ShouldOpenDownload(
 
 bool ChromeDownloadManagerDelegate::ShouldObfuscateDownload(
     download::DownloadItem* item) {
-#if BUILDFLAG(ENTERPRISE_CONTENT_ANALYSIS)
+#if BUILDFLAG(ENTERPRISE_CONTENT_ANALYSIS) || BUILDFLAG(IS_ANDROID)
   if (!base::FeatureList::IsEnabled(
           enterprise_obfuscation::kEnterpriseFileObfuscation)) {
     return false;
@@ -2372,9 +2373,7 @@ void ChromeDownloadManagerDelegate::CheckSavePackageAllowed(
   DCHECK(download_item);
   DCHECK(download_item->IsSavePackageDownload());
 
-#if (BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || \
-     BUILDFLAG(IS_MAC)) &&                                                 \
-    BUILDFLAG(SAFE_BROWSING_AVAILABLE)
+#if BUILDFLAG(SAFE_BROWSING_AVAILABLE)
   std::optional<enterprise_connectors::AnalysisSettings> settings =
       safe_browsing::ShouldUploadBinaryForDeepScanning(download_item);
 
@@ -2398,7 +2397,7 @@ void ChromeDownloadManagerDelegate::CheckSavePackageAllowed(
       return;
     }
   }
-#endif
+#endif  // BUILDFLAG(SAFE_BROWSING_AVAILABLE)
   std::move(callback).Run(true);
 }
 

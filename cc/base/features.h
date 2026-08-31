@@ -15,6 +15,7 @@
 namespace features {
 
 CC_BASE_EXPORT BASE_DECLARE_FEATURE(kComputeRasterTranslateForExternalScale);
+CC_BASE_EXPORT BASE_DECLARE_FEATURE(kSizeOopifEffectSurfacesAtExternalScale);
 
 // When enabled, the scheduler will allow deferring impl invalidation frames
 // for N frames (default 1) to reduce contention with main frames, allowing
@@ -70,14 +71,15 @@ CC_BASE_EXPORT extern const base::FeatureParam<double>
 // image map.
 CC_BASE_EXPORT BASE_DECLARE_FEATURE(kPreserveDiscardableImageMapQuality);
 
-// When enabled, the scroll jank v4 metric handles slow-path scrolls more
-// reliably. Specifically, we send GSEs to the main thread if the corresponding
-// GSUs were also routed to the main thread.
-CC_BASE_EXPORT BASE_DECLARE_FEATURE(kScrollEndRepaintFollowsScrollUpdate);
-
 // Kill switch for a bunch of optimizations for cc-slimming project.
 // Please see crbug.com/335450599 for more details.
 CC_BASE_EXPORT BASE_DECLARE_FEATURE(kCCSlimming);
+
+// Android Webview Memory Multiplier configurations.
+CC_BASE_EXPORT BASE_DECLARE_FEATURE(kWebViewMemoryMultiplier);
+CC_BASE_EXPORT extern const base::FeatureParam<int> kWebViewMemoryMultiplierParam;
+CC_BASE_EXPORT extern const base::FeatureParam<int> kWebViewMemoryMultiplierSoftPercentageParam;
+
 // Check if the above feature is enabled. For performance purpose.
 CC_BASE_EXPORT bool IsCCSlimmingEnabled();
 
@@ -267,15 +269,14 @@ CC_BASE_EXPORT BASE_DECLARE_FEATURE_PARAM(
 CC_BASE_EXPORT BASE_DECLARE_FEATURE(
     kScrollJankV4MetricFastScrollContinuityRequiresSameDirection);
 
-// When disabled, `cc::ScrollJankV4FrameStageCalculator` relies on the
-// timestamps of arrival of individual `cc::ScrollEventMetrics` in the renderer
-// compositor (`scroll_event_metrics->GetDispatchStageTimestamp(
-// cc::EventMetrics::DispatchStage::kGenerated)`) when calculating the
-// `ScrollJankV4Frame::Stage`s that happened in a single frame. When enabled,
-// `cc::ScrollJankV4FrameStageCalculator` uses the scroll IDs
-// (`scroll_event_metrics->scroll_begin_arrival_timestamp()`) instead.
+#if BUILDFLAG(IS_ANDROID)
+// When enabled, the V4 scroll jank metric will report statistics via
+// `View.reportAppJankStats()` on Android at the end of each damaging scroll.
 CC_BASE_EXPORT BASE_DECLARE_FEATURE(
-    kUseScrollIdToCalculateScrollJankV4FrameStages);
+    kScrollJankV4MetricReportAndroidAppJankStats);
+
+bool ShouldScrollJankV4MetricReportAndroidAppJankStats();
+#endif
 
 // When enabled, AsyncLayerTreeFrameSink will generate its own BeginFrameArgs
 // when auto_needs_begin_frame_ is enabled.
@@ -315,6 +316,11 @@ CC_BASE_EXPORT BASE_DECLARE_FEATURE(kResourcePoolPreferExactSizeReuse);
 // not occur otherwise.
 CC_BASE_EXPORT BASE_DECLARE_FEATURE(kSendEarlyFinalBeginMainFrame);
 CC_BASE_EXPORT bool SendEarlyFinalBeginMainFrameIsEnabled();
+
+// When enabled, rounded corner radii are populated in HitTestRegion
+// submissions (cc side) and used for point containment checks in HitTestQuery
+// (viz side).
+CC_BASE_EXPORT BASE_DECLARE_FEATURE(kVizHitTestRoundedCorners);
 
 }  // namespace features
 

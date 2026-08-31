@@ -150,9 +150,13 @@ class TestBrowsingDataRemoverDelegate : public MockBrowsingDataRemoverDelegate {
       uint64_t data_type_mask =
           (storage ? BrowsingDataRemover::DATA_TYPE_DOM_STORAGE |
                          BrowsingDataRemover::DATA_TYPE_PRIVACY_SANDBOX |
-                         BrowsingDataRemover::DATA_TYPE_DEVICE_BOUND_SESSIONS
+                         BrowsingDataRemover::DATA_TYPE_DEVICE_BOUND_SESSIONS |
+                         BrowsingDataRemover::
+                             DATA_TYPE_DECLARATIVE_PERFORMANCE_OBSERVER
                    : 0) |
-          (cache ? BrowsingDataRemover::DATA_TYPE_CACHE : 0);
+          (cache ? BrowsingDataRemover::DATA_TYPE_CACHE |
+                       BrowsingDataRemover::DATA_TYPE_LOGICAL_CLEAR
+                 : 0);
       data_type_mask &=
           ~BrowsingDataRemover::DATA_TYPE_PRIVACY_SANDBOX_INTERNAL;
       data_type_mask &=

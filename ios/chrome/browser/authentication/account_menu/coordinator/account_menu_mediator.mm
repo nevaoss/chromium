@@ -13,7 +13,10 @@
 #import "base/metrics/user_metrics_action.h"
 #import "base/strings/sys_string_conversions.h"
 #import "components/prefs/pref_service.h"
+#import "components/signin/public/base/signin_switches.h"
 #import "components/signin/public/identity_manager/objc/identity_manager_observer_bridge.h"
+#import "components/subscription_eligibility/objc/subscription_eligibility_observer_bridge.h"
+#import "components/subscription_eligibility/subscription_eligibility_service.h"
 #import "google_apis/gaia/gaia_id.h"
 #import "ios/chrome/browser/authentication/account_menu/coordinator/account_menu_mediator_delegate.h"
 #import "ios/chrome/browser/authentication/account_menu/public/account_menu_constants.h"
@@ -42,10 +45,12 @@
 #import "ios/chrome/browser/signin/model/authentication_service_observer_bridge.h"
 #import "ios/chrome/browser/signin/model/avatar/avatar_provider.h"
 #import "ios/chrome/browser/sync/model/sync_observer_bridge.h"
+#import "ios/public/provider/chrome/browser/intelligence/signin/signin_ai_logo.h"
 
 @interface AccountMenuMediator () <AuthenticationFlowDelegate,
                                    AuthenticationServiceObserving,
                                    IdentityManagerObserving,
+                                   SubscriptionEligibilityServiceObserving,
                                    SyncObserverModelBridge>
 
 // Redefine as readwrite.
@@ -54,15 +59,21 @@
 @end
 
 @implementation AccountMenuMediator {
+  raw_ptr<signin::AvatarProvider> _avatarProvider;
   // Account manager service to retrieve Chrome identities.
   raw_ptr<ChromeAccountManagerService> _accountManagerService;
   raw_ptr<AuthenticationService> _authenticationService;
   raw_ptr<signin::IdentityManager> _identityManager;
   std::unique_ptr<signin::IdentityManagerObserverBridge>
       _identityManagerObserver;
+  std::unique_ptr<
+      subscription_eligibility::SubscriptionEligibilityObserverBridge>
+      _subscriptionEligibilityObserver;
   std::unique_ptr<AuthenticationServiceObserverBridge>
       _authServiceObserverBridge;
   raw_ptr<PrefService> _prefs;
+  raw_ptr<subscription_eligibility::SubscriptionEligibilityService>
+      _subscriptionEligibilityService;
   // The access point from which this account menu was triggered.
   AccountMenuAccessPoint _accessPoint;
   raw_ptr<syncer::SyncService> _syncService;
@@ -83,10 +94,14 @@
 
   // Records the displayed primary account info by the view. Used to limit the
   // view updates to only when one of these values is updated.
+
+  // The displayed primary account. Not nil.
   NSString* _primaryAccountDisplayedEmail;
-  // The name may be nil if it has not yet been fetched.
+  // The name of the primary account. It may be nil.
   NSString* _primaryAccountDisplayedUserFullName;
+  // The version of the avatar currently displayed. Not nil.
   UIImage* _primaryAccountDisplayedAvatar;
+  NSString* _primaryAccountDisplayedAITierFullName;
   // The URL which the the account menu was viewed from when
   // AccountMenuAccessPoint::kWeb.
   GURL _url;
@@ -101,9 +116,13 @@
                         authService:(AuthenticationService*)authService
                     identityManager:(signin::IdentityManager*)identityManager
                               prefs:(PrefService*)prefs
+     subscriptionEligibilityService:
+         (subscription_eligibility::SubscriptionEligibilityService*)
+             subscriptionEligibilityService
                         accessPoint:(AccountMenuAccessPoint)accessPoint
                                 URL:(const GURL&)url
-               prepareChangeProfile:(ProceduralBlock)prepareChangeProfile {
+               prepareChangeProfile:(ProceduralBlock)prepareChangeProfile
+                     avatarProvider:(signin::AvatarProvider*)avatarProvider {
   CHECK(authService->SigninEnabled(), base::NotFatalUntil::M152);
   self = [super init];
   if (self) {
@@ -111,19 +130,26 @@
     CHECK(accountManagerService);
     CHECK(authService);
     CHECK(identityManager);
+    CHECK(avatarProvider);
+    CHECK(subscriptionEligibilityService, base::NotFatalUntil::M156);
     _blockUpdates = NO;
     _userInteractionsBlocked = NO;
     _identities = [NSMutableArray array];
+    _avatarProvider = avatarProvider;
     _accountManagerService = accountManagerService;
     _authenticationService = authService;
     _identityManager = identityManager;
     _identityManagerObserver =
         std::make_unique<signin::IdentityManagerObserverBridge>(
             _identityManager, self);
+    _subscriptionEligibilityObserver = std::make_unique<
+        subscription_eligibility::SubscriptionEligibilityObserverBridge>(
+        subscriptionEligibilityService, self);
     _authServiceObserverBridge =
         std::make_unique<AuthenticationServiceObserverBridge>(
             _authenticationService, self);
     _prefs = prefs;
+    _subscriptionEligibilityService = subscriptionEligibilityService;
     _accessPoint = accessPoint;
     base::UmaHistogramEnumeration("Signin.IOSAccountMenu.Opened", _accessPoint);
     _url = url;
@@ -146,11 +172,14 @@
   _identityManagerObserver.reset();
   _authServiceObserverBridge.reset();
   _syncObserver.reset();
+  _subscriptionEligibilityObserver.reset();
   _blockUpdates = YES;
+  _avatarProvider = nullptr;
   _accountManagerService = nullptr;
   _authenticationService = nullptr;
   _identityManager = nullptr;
   _prefs = nullptr;
+  _subscriptionEligibilityService = nullptr;
   _syncService = nullptr;
   _identities = nil;
   _primaryIdentityBeforeSignin = nullptr;
@@ -175,15 +204,13 @@
 }
 
 - (UIImage*)imageForGaiaID:(const GaiaId&)gaiaID {
-  return GetApplicationContext()
-      ->GetIdentityAvatarProvider()
-      ->GetIdentityAvatar([self identityForGaiaID:gaiaID],
-                          IdentityAvatarSize::TableViewIcon);
+  return _avatarProvider->GetIdentityAvatar([self identityForGaiaID:gaiaID],
+                                            IdentityAvatarSize::TableViewIcon);
 }
 
 - (BOOL)isGaiaIDManaged:(const GaiaId&)gaiaID {
   id<SystemIdentity> identity = [self identityForGaiaID:gaiaID];
-  CHECK(identity, base::NotFatalUntil::M147);
+  CHECK(identity);
   if (std::optional<BOOL> managed = IsIdentityManaged(identity);
       managed.has_value()) {
     return managed.value();
@@ -207,10 +234,28 @@
 }
 
 - (UIImage*)primaryAccountAvatar {
-  return GetApplicationContext()
-      ->GetIdentityAvatarProvider()
-      ->GetIdentityAvatar(_primaryIdentityBeforeSignin,
-                          IdentityAvatarSize::Large);
+  return _avatarProvider->GetIdentityAvatar(_primaryIdentityBeforeSignin,
+                                            IdentityAvatarSize::Large);
+}
+
+- (BOOL)primaryAccountAvatarNeedsRing {
+  return self.AITier > 0;
+}
+
+- (NSString*)primaryAccountAITierFullName {
+  NSInteger AITier = self.AITier;
+  if (AITier <= 0) {
+    return nil;
+  }
+  return ios::provider::GetAITierFullName(AITier);
+}
+
+- (NSString*)primaryAccountAITierName {
+  NSInteger AITier = self.AITier;
+  if (AITier <= 0) {
+    return nil;
+  }
+  return ios::provider::GetAITierName(AITier);
 }
 
 - (NSString*)managementDescription {
@@ -268,6 +313,11 @@
   }
   _error = newError;
   [self.consumer updateErrorSection:_error];
+  if (_subscriptionEligibilityService->GetAiSubscriptionTier() > 0 &&
+      IsAiSubscriptionAvatarRingIOSEnabled()) {
+    // We may need to add/remove the AI Tier rings and chip.
+    [self.consumer updatePrimaryAccount];
+  }
 }
 
 #pragma mark - AccountMenuMutator
@@ -328,18 +378,40 @@
   }
   switch (_error.errorType) {
     case syncer::SyncService::UserActionableError::kSignInNeedsUpdate: {
-      if (_authenticationService->HasCachedMDMErrorForIdentity(
-              _primaryIdentityBeforeSignin)) {
-        base::RecordAction(
-            base::UserMetricsAction("Signin_AccountMenu_ErrorButton_MDM"));
-        [self.syncErrorSettingsCommandHandler
-            openMDMErrodDialogWithSystemIdentity:_primaryIdentityBeforeSignin];
-      } else {
+      BOOL isMDMError = NO;
+      if (!base::FeatureList::IsEnabled(
+              switches::kHandleMdmErrorsForDasherAccounts)) {
+        isMDMError = _authenticationService->HasCachedMDMErrorForIdentity(
+            _primaryIdentityBeforeSignin);
+      }
+      if (!isMDMError) {
         base::RecordAction(
             base::UserMetricsAction("Signin_AccountMenu_ErrorButton_Reauth"));
         self.userInteractionsBlocked = YES;
         [self.syncErrorSettingsCommandHandler openPrimaryAccountReauthDialog];
+      } else {
+        base::RecordAction(
+            base::UserMetricsAction("Signin_AccountMenu_ErrorButton_MDM"));
+        self.userInteractionsBlocked = YES;
+        __weak __typeof(self) weakSelf = self;
+        [self.syncErrorSettingsCommandHandler
+            openMDMErrorDialogWithSystemIdentity:_primaryIdentityBeforeSignin
+                                      completion:^{
+                                        [weakSelf accountMenuIsUsable];
+                                      }];
       }
+      break;
+    }
+    case syncer::SyncService::UserActionableError::kDeviceManagementError: {
+      base::RecordAction(
+          base::UserMetricsAction("Signin_AccountMenu_ErrorButton_MDM"));
+      self.userInteractionsBlocked = YES;
+      __weak __typeof(self) weakSelf = self;
+      [self.syncErrorSettingsCommandHandler
+          openMDMErrorDialogWithSystemIdentity:_primaryIdentityBeforeSignin
+                                    completion:^{
+                                      [weakSelf accountMenuIsUsable];
+                                    }];
       break;
     }
     case syncer::SyncService::UserActionableError::kNeedsPassphrase:
@@ -462,16 +534,17 @@
     // The mediator was disconnected. No need to update it.
     return;
   }
-  CHECK(_primaryIdentityBeforeSignin, base::NotFatalUntil::M140);
+  CHECK(_primaryIdentityBeforeSignin);
   _authenticationFlow = nil;
   if (success) {
-    CHECK(identity, base::NotFatalUntil::M145);
+    CHECK(identity);
     [_delegate mediatorWantsToBeDismissed:self
                     withCancelationReason:cancelationReason
                            signedIdentity:identity
                           userTappedClose:NO];
   } else if (_accountManagerService->IsValidIdentity(
-                 _primaryIdentityBeforeSignin.gaiaId)) {
+                 _primaryIdentityBeforeSignin.gaiaId) &&
+             _authenticationService->SigninEnabled()) {
     // If the sign-in failed, sign back in previous account if possible and
     // restart using the account menu.
     _authenticationService->SignIn(
@@ -538,6 +611,16 @@
 }
 
 #pragma mark - Private
+
+- (NSInteger)AITier {
+  if (_error || !IsAiSubscriptionAvatarRingIOSEnabled()) {
+    // In case of error, we do not want to display any AI Tier information. Even
+    // in the case where the error does not impact the tier feature access. That
+    // ensures the Account Menu and the NTP displays are consistent.
+    return 0;
+  }
+  return _subscriptionEligibilityService->GetAiSubscriptionTier();
+}
 
 // Updates the identity list in `_identities`, and sends an notification to
 // the consumer.
@@ -647,7 +730,11 @@
 - (BOOL)primaryAccountInfoChanged {
   if (_primaryAccountDisplayedAvatar != self.primaryAccountAvatar ||
       _primaryAccountDisplayedUserFullName != self.primaryAccountUserFullName ||
-      _primaryAccountDisplayedEmail != self.primaryAccountEmail) {
+      _primaryAccountDisplayedEmail != self.primaryAccountEmail ||
+      !([_primaryAccountDisplayedAITierFullName
+            isEqualToString:self.primaryAccountAITierFullName] ||
+        (_primaryAccountDisplayedAITierFullName == nil &&
+         self.primaryAccountAITierFullName == nil))) {
     [self recordPrimaryAccountDisplayedInfo];
     return YES;
   }
@@ -659,6 +746,7 @@
   _primaryAccountDisplayedEmail = self.primaryAccountEmail;
   _primaryAccountDisplayedUserFullName = self.primaryAccountUserFullName;
   _primaryAccountDisplayedAvatar = self.primaryAccountAvatar;
+  _primaryAccountDisplayedAITierFullName = self.primaryAccountAITierFullName;
 }
 
 // Returns whether this mediator is disconnected
@@ -666,6 +754,12 @@
   // The account manager service is set in init and reset in `disconnect`. So
   // this property correctly reflects whether the mediator is disconnected.
   return !_accountManagerService;
+}
+
+#pragma mark - SubscriptionEligibilityServiceObserving
+
+- (void)aiSubscriptionTierDidUpdate:(int32_t)newSubscriptionTier {
+  [self.consumer updatePrimaryAccount];
 }
 
 @end

@@ -101,6 +101,7 @@ constexpr uint32_t kMaxXdgToplevelDragVersion = 1;
 constexpr uint32_t kMaxXdgOutputManagerVersion = 3;
 constexpr uint32_t kMaxKeyboardShortcutsInhibitManagerVersion = 1;
 constexpr uint32_t kMaxWpContentTypeVersion = 1;
+constexpr uint32_t kMaxFixesVersion = 2;
 
 int64_t ConvertTimespecToMicros(const struct timespec& ts) {
   // On 32-bit systems, the calculation cannot overflow int64_t.
@@ -150,6 +151,9 @@ WaylandConnection::WaylandConnection() = default;
 #endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
 
 WaylandConnection::~WaylandConnection() {
+  if (fixes_ && registry_) {
+    wl_fixes_destroy_registry(fixes_.get(), registry_.get());
+  }
   if (wayland_output_manager() && wayland_output_manager()->wayland_screen()) {
     wayland_output_manager()->wayland_screen()->ResetConnection();
   }
@@ -663,6 +667,11 @@ void WaylandConnection::OnGlobalRemove(void* data,
   if (self->output_manager_) {
     self->output_manager_->RemoveWaylandOutput(name);
   }
+
+  if (self->fixes_ && wl::get_version_of_object(self->fixes_.get()) >=
+                          WL_FIXES_ACK_GLOBAL_REMOVE_SINCE_VERSION) {
+    wl_fixes_ack_global_remove(self->fixes_.get(), registry, name);
+  }
 }
 
 // static
@@ -872,6 +881,13 @@ void WaylandConnection::HandleGlobal(wl_registry* registry,
     }
     if (output_manager_) {
       output_manager_->InitializeAllXdgOutputs();
+    }
+  } else if (!fixes_ && UNSAFE_TODO(strcmp(interface, "wl_fixes")) == 0) {
+    fixes_ =
+        wl::Bind<wl_fixes>(registry, name, std::min(version, kMaxFixesVersion));
+    if (!fixes_) {
+      LOG(ERROR) << "Failed to bind to wl_fixes global";
+      return;
     }
   }
 

@@ -471,6 +471,11 @@ static_library("browser") {
     ]
   } else {
     deps += [ "//components/keep_alive_registry" ]
+    sources += [
+      "suggest_inventory_fallback_prompts.h",
+      "suggest_inventory_fallback_utils.cc",
+      "suggest_inventory_fallback_utils.h",
+    ]
   }
 
   # GeolocationHeaderService is not supported on iOS due to dependencies on
@@ -624,6 +629,7 @@ if (is_android) {
       "android/java/res/drawable/omnibox_dangerous.xml",
       "android/java/res/drawable/omnibox_no_encryption.xml",
       "android/java/res/drawable/omnibox_not_secure_warning.xml",
+      "android/java/res/drawable/shield_question.xml",
       "android/java/res/values-sw600dp/dimens.xml",
       "android/java/res/values/colors.xml",
       "android/java/res/values/dimens.xml",
@@ -655,6 +661,7 @@ if (is_android) {
     deps = [
       ":java_resources",
       "//chrome/browser/flags:java",
+      "//components/browser_ui/styles/android:java_resources",
       "//components/embedder_support/android:util_java",
       "//components/security_state/core:security_state_enums_java",
       "//third_party/androidx:androidx_annotation_annotation_java",
@@ -669,6 +676,7 @@ if (is_android) {
       "android/java/src/org/chromium/components/omnibox/AutocompleteRequestType.java",
       "android/java/src/org/chromium/components/omnibox/AutocompleteResult.java",
       "android/java/src/org/chromium/components/omnibox/OmniboxFocusReason.java",
+      "android/java/src/org/chromium/components/omnibox/PageClassificationUtils.java",
       "android/java/src/org/chromium/components/omnibox/TextSelection.java",
       "android/java/src/org/chromium/components/omnibox/ToolModeUtils.java",
       "android/java/src/org/chromium/components/omnibox/action/OmniboxAction.java",
@@ -718,6 +726,7 @@ if (is_android) {
     sources = [
       "android/java/src/org/chromium/components/omnibox/AutocompleteInputUnitTest.java",
       "android/java/src/org/chromium/components/omnibox/AutocompleteResultUnitTest.java",
+      "android/java/src/org/chromium/components/omnibox/PageClassificationUtilsUnitTest.java",
       "android/java/src/org/chromium/components/omnibox/SecurityStatusIconUnitTest.java",
       "android/java/src/org/chromium/components/omnibox/ToolModeUtilsUnitTest.java",
     ]
@@ -738,6 +747,7 @@ if (is_android) {
       "//third_party/junit",
       "//third_party/metrics_proto:metrics_proto_java",
       "//third_party/mockito:mockito_java",
+      "//url:gurl_junit_test_support",
       "//url:url_java",
     ]
   }
@@ -1020,6 +1030,10 @@ source_set("unit_tests") {
     "//url",
   ]
 
+  if (!is_android) {
+    sources += [ "suggest_inventory_fallback_utils_unittest.cc" ]
+  }
+
   if ((!is_android || enable_vr) && !is_ios) {
     sources += [ "location_bar_model_util_unittest.cc" ]
     deps += [
@@ -1033,10 +1047,14 @@ source_set("unit_tests") {
   # //content
   if (!is_ios) {
     sources += [
+      "fusebox_action_mojo_utils_unittest.cc",
       "geolocation_header_service_unittest.cc",
       "history_cluster_provider_unittest.cc",
     ]
     deps += [
+      ":fusebox_action_mojo_bindings",
+      ":fusebox_action_mojo_test_utils",
+      ":fusebox_action_mojo_utils",
       "//components/permissions:test_support",
       "//content/test:test_support",
       "//services/device/public/cpp:test_support",
@@ -1130,6 +1148,41 @@ mojom("mojo_bindings") {
         traits_sources = [ "searchbox_mojom_traits.cc" ]
         traits_deps = [ "//third_party/omnibox_proto" ]
       },
+    ]
+  }
+}
+
+if (!is_ios) {
+  mojom("fusebox_action_mojo_bindings") {
+    sources = [ "fusebox_action.mojom" ]
+    webui_module_path = "/"
+    public_deps = [
+      ":mojo_bindings",
+      "//components/omnibox/composebox:mojo_bindings",
+    ]
+  }
+
+  source_set("fusebox_action_mojo_utils") {
+    sources = [
+      "fusebox_action_mojo_utils.cc",
+      "fusebox_action_mojo_utils.h",
+    ]
+    deps = [
+      ":fusebox_action_mojo_bindings",
+      ":mojo_bindings",
+      "//third_party/omnibox_proto",
+    ]
+  }
+
+  source_set("fusebox_action_mojo_test_utils") {
+    testonly = true
+    sources = [
+      "fusebox_action_mojo_test_utils.cc",
+      "fusebox_action_mojo_test_utils.h",
+    ]
+    deps = [
+      ":fusebox_action_mojo_bindings",
+      ":mojo_bindings",
     ]
   }
 }

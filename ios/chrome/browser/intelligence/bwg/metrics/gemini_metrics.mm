@@ -96,6 +96,8 @@ const char kFirstRunPromoActionHistogram[] = "IOS.Gemini.FRE.PromoAction";
 
 const char kFirstRunConsentActionHistogram[] = "IOS.Gemini.FRE.ConsentAction";
 
+const char kGeminiLiveFREOutcomeHistogram[] = "IOS.Gemini.Live.FREOutcome";
+
 const char kGeminiInvocationPageTypeHistogram[] =
     "IOS.Gemini.InvocationPageType";
 
@@ -151,6 +153,12 @@ const char kPromptTabsAttachedCountHistogram[] =
     "IOS.Gemini.Prompt.TabsAttachedCount";
 
 const char kPromptMultiTabUsedHistogram[] = "IOS.Gemini.Prompt.MultiTabUsed";
+
+const char kBlockQuerySubmissionWhileLoadingHistogram[] =
+    "IOS.Gemini.BlockQuerySubmissionWhileLoading";
+
+const char kShowPageLoadingSnackbarOnOpeningInvocationHistogram[] =
+    "IOS.Gemini.ShowPageLoadingSnackbarOnOpeningInvocation";
 
 const char kResponseGeneratedImageIncluded[] =
     "IOS.Gemini.Response.GeneratedImage.Included";
@@ -265,6 +273,63 @@ void RecordFirstRunConsentAction(IOSGeminiFirstRunAction action) {
       break;
   }
   base::UmaHistogramEnumeration(kFirstRunConsentActionHistogram, action);
+}
+
+void RecordLiveFREOutcome(IOSGeminiLiveFREOutcome outcome) {
+  base::UmaHistogramEnumeration(kGeminiLiveFREOutcomeHistogram, outcome);
+}
+
+void RecordLiveButtonTapped() {
+  base::RecordAction(base::UserMetricsAction("MobileGeminiLiveButtonTapped"));
+}
+
+void RecordLiveSessionStarted() {
+  base::RecordAction(base::UserMetricsAction("MobileGeminiLiveSessionStarted"));
+}
+
+void RecordLiveOSMicPromptShown() {
+  base::RecordAction(
+      base::UserMetricsAction("MobileGeminiLiveOSMicPromptShown"));
+}
+
+void RecordLiveOSMicPromptAllowed() {
+  base::RecordAction(
+      base::UserMetricsAction("MobileGeminiLiveOSMicPromptAllowed"));
+}
+
+void RecordLiveOSMicPromptDenied() {
+  base::RecordAction(
+      base::UserMetricsAction("MobileGeminiLiveOSMicPromptDenied"));
+}
+
+void RecordLiveChromeMicPromptShown() {
+  base::RecordAction(
+      base::UserMetricsAction("MobileGeminiLiveChromeMicPromptShown"));
+}
+
+void RecordLiveChromeMicPromptAllowed() {
+  base::RecordAction(
+      base::UserMetricsAction("MobileGeminiLiveChromeMicPromptAllowed"));
+}
+
+void RecordLiveChromeMicPromptDenied() {
+  base::RecordAction(
+      base::UserMetricsAction("MobileGeminiLiveChromeMicPromptDenied"));
+}
+
+void RecordLiveSettingsRedirectShown() {
+  base::RecordAction(
+      base::UserMetricsAction("MobileGeminiLiveSettingsRedirectShown"));
+}
+
+void RecordLiveSettingsRedirectOpenSettings() {
+  base::RecordAction(
+      base::UserMetricsAction("MobileGeminiLiveSettingsRedirectOpenSettings"));
+}
+
+void RecordLiveSettingsRedirectCancel() {
+  base::RecordAction(
+      base::UserMetricsAction("MobileGeminiLiveSettingsRedirectCancel"));
 }
 
 void RecordGeminiInvocationPageType(IOSGeminiInvocationPageType page_type) {
@@ -423,6 +488,33 @@ void RecordGeminiTabPickerOpened() {
 
 void RecordGeminiTabPickerDismissed() {
   base::RecordAction(base::UserMetricsAction("MobileGeminiTabPickerDismissed"));
+}
+
+void RecordGeminiTabPickerErrorAttachmentLimit() {
+  base::RecordAction(
+      base::UserMetricsAction("MobileGeminiTabPickerErrorAttachmentLimit"));
+}
+
+void RecordGeminiTabPickerErrorCannotReloadTab() {
+  base::RecordAction(
+      base::UserMetricsAction("MobileGeminiTabPickerErrorCannotReloadTab"));
+}
+
+void RecordGeminiTabPickerErrorCannotAttachTab() {
+  base::RecordAction(
+      base::UserMetricsAction("MobileGeminiTabPickerErrorCannotAttachTab"));
+}
+
+void RecordGeminiTabDetached() {
+  base::RecordAction(base::UserMetricsAction("MobileGeminiTabDetached"));
+}
+
+void RecordGeminiActiveTabAttached() {
+  base::RecordAction(base::UserMetricsAction("MobileGeminiActiveTabAttached"));
+}
+
+void RecordGeminiActiveTabDetached() {
+  base::RecordAction(base::UserMetricsAction("MobileGeminiActiveTabDetached"));
 }
 
 void RecordResponseLatency(base::TimeDelta latency,
@@ -780,4 +872,14 @@ void RecordGeminiLiveTurnCount(int turn_count) {
 void RecordGeminiLiveAccumulatedDuration(base::TimeDelta duration) {
   base::UmaHistogramLongTimes(kGeminiLiveAccumulatedDurationHistogram,
                               duration);
+}
+
+void RecordBlockQuerySubmissionWhileLoading(bool block_submission) {
+  base::UmaHistogramBoolean(kBlockQuerySubmissionWhileLoadingHistogram,
+                            block_submission);
+}
+
+void RecordShowPageLoadingSnackbarOnOpeningInvocation(bool show_snackbar) {
+  base::UmaHistogramBoolean(
+      kShowPageLoadingSnackbarOnOpeningInvocationHistogram, show_snackbar);
 }

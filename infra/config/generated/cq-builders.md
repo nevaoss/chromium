@@ -105,8 +105,11 @@ builder.
 
   Location filters:
   * [`//chrome/browser/ai/.+`](https://cs.chromium.org/chromium/src/chrome/browser/ai/)
+  * [`//components/on_device_translation/.+`](https://cs.chromium.org/chromium/src/components/on_device_translation/)
   * [`//components/optimization_guide/.+`](https://cs.chromium.org/chromium/src/components/optimization_guide/)
   * [`//services/on_device_model/.+`](https://cs.chromium.org/chromium/src/services/on_device_model/)
+  * [`//third_party/blink/web_tests/external/wpt/ai/.+`](https://cs.chromium.org/chromium/src/third_party/blink/web_tests/external/wpt/ai/)
+  * [`//third_party/blink/web_tests/AIExpectations.*`](https://cs.chromium.org/search?q=+file:third_party/blink/web_tests/AIExpectations.*)
 
   This builder is only run when the CL owner is in the group:
   * [`google/optimization-guide-try-opt-in@google.com`](https://chrome-infra-auth.appspot.com/auth/lookup?p=google/optimization-guide-try-opt-in@google.com)
@@ -115,8 +118,37 @@ builder.
 
   Location filters:
   * [`//chrome/browser/ai/.+`](https://cs.chromium.org/chromium/src/chrome/browser/ai/)
+  * [`//components/on_device_translation/.+`](https://cs.chromium.org/chromium/src/components/on_device_translation/)
   * [`//components/optimization_guide/.+`](https://cs.chromium.org/chromium/src/components/optimization_guide/)
   * [`//services/on_device_model/.+`](https://cs.chromium.org/chromium/src/services/on_device_model/)
+  * [`//third_party/blink/web_tests/external/wpt/ai/.+`](https://cs.chromium.org/chromium/src/third_party/blink/web_tests/external/wpt/ai/)
+  * [`//third_party/blink/web_tests/AIExpectations.*`](https://cs.chromium.org/search?q=+file:third_party/blink/web_tests/AIExpectations.*)
+
+  This builder is only run when the CL owner is in the group:
+  * [`google/optimization-guide-try-opt-in@google.com`](https://chrome-infra-auth.appspot.com/auth/lookup?p=google/optimization-guide-try-opt-in@google.com)
+
+* [optimization_guide-mac-x64](https://ci.chromium.org/p/chrome/builders/try/optimization_guide-mac-x64) ([definition](https://source.corp.google.com/search?q=+file:/try/.*\.star$+""optimization_guide-mac-x64""))
+
+  Location filters:
+  * [`//chrome/browser/ai/.+`](https://cs.chromium.org/chromium/src/chrome/browser/ai/)
+  * [`//components/on_device_translation/.+`](https://cs.chromium.org/chromium/src/components/on_device_translation/)
+  * [`//components/optimization_guide/.+`](https://cs.chromium.org/chromium/src/components/optimization_guide/)
+  * [`//services/on_device_model/.+`](https://cs.chromium.org/chromium/src/services/on_device_model/)
+  * [`//third_party/blink/web_tests/external/wpt/ai/.+`](https://cs.chromium.org/chromium/src/third_party/blink/web_tests/external/wpt/ai/)
+  * [`//third_party/blink/web_tests/AIExpectations.*`](https://cs.chromium.org/search?q=+file:third_party/blink/web_tests/AIExpectations.*)
+
+  This builder is only run when the CL owner is in the group:
+  * [`google/optimization-guide-try-opt-in@google.com`](https://chrome-infra-auth.appspot.com/auth/lookup?p=google/optimization-guide-try-opt-in@google.com)
+
+* [optimization_guide-win-arm64](https://ci.chromium.org/p/chrome/builders/try/optimization_guide-win-arm64) ([definition](https://source.corp.google.com/search?q=+file:/try/.*\.star$+""optimization_guide-win-arm64""))
+
+  Location filters:
+  * [`//chrome/browser/ai/.+`](https://cs.chromium.org/chromium/src/chrome/browser/ai/)
+  * [`//components/on_device_translation/.+`](https://cs.chromium.org/chromium/src/components/on_device_translation/)
+  * [`//components/optimization_guide/.+`](https://cs.chromium.org/chromium/src/components/optimization_guide/)
+  * [`//services/on_device_model/.+`](https://cs.chromium.org/chromium/src/services/on_device_model/)
+  * [`//third_party/blink/web_tests/external/wpt/ai/.+`](https://cs.chromium.org/chromium/src/third_party/blink/web_tests/external/wpt/ai/)
+  * [`//third_party/blink/web_tests/AIExpectations.*`](https://cs.chromium.org/search?q=+file:third_party/blink/web_tests/AIExpectations.*)
 
   This builder is only run when the CL owner is in the group:
   * [`google/optimization-guide-try-opt-in@google.com`](https://chrome-infra-auth.appspot.com/auth/lookup?p=google/optimization-guide-try-opt-in@google.com)
@@ -125,8 +157,11 @@ builder.
 
   Location filters:
   * [`//chrome/browser/ai/.+`](https://cs.chromium.org/chromium/src/chrome/browser/ai/)
+  * [`//components/on_device_translation/.+`](https://cs.chromium.org/chromium/src/components/on_device_translation/)
   * [`//components/optimization_guide/.+`](https://cs.chromium.org/chromium/src/components/optimization_guide/)
   * [`//services/on_device_model/.+`](https://cs.chromium.org/chromium/src/services/on_device_model/)
+  * [`//third_party/blink/web_tests/external/wpt/ai/.+`](https://cs.chromium.org/chromium/src/third_party/blink/web_tests/external/wpt/ai/)
+  * [`//third_party/blink/web_tests/AIExpectations.*`](https://cs.chromium.org/search?q=+file:third_party/blink/web_tests/AIExpectations.*)
 
   This builder is only run when the CL owner is in the group:
   * [`google/optimization-guide-try-opt-in@google.com`](https://chrome-infra-auth.appspot.com/auth/lookup?p=google/optimization-guide-try-opt-in@google.com)
@@ -675,6 +710,11 @@ builder.
   Location filters:
   * [`//chrome/enterprise_companion/.+`](https://cs.chromium.org/chromium/src/chrome/enterprise_companion/)
 
+* [linux-full-remote-rel](https://ci.chromium.org/p/chromium/builders/try/linux-full-remote-rel) ([definition](https://cs.chromium.org/search?q=+file:/try/.*\.star$+""linux-full-remote-rel""))
+
+  Location filters:
+  * [`//build/conifg/siso/.+`](https://cs.chromium.org/chromium/src/build/conifg/siso/)
+
 * [linux-headless-shell-rel](https://ci.chromium.org/p/chromium/builders/try/linux-headless-shell-rel) ([definition](https://cs.chromium.org/search?q=+file:/try/.*\.star$+""linux-headless-shell-rel""))
 
   Location filters:
@@ -714,6 +754,11 @@ builder.
   * [`//components/tracing/.+`](https://cs.chromium.org/chromium/src/components/tracing/)
   * [`//content/browser/tracing/.+`](https://cs.chromium.org/chromium/src/content/browser/tracing/)
   * [`//services/tracing/.+`](https://cs.chromium.org/chromium/src/services/tracing/)
+
+* [linux-rel-cft](https://ci.chromium.org/p/chromium/builders/try/linux-rel-cft) ([definition](https://cs.chromium.org/search?q=+file:/try/.*\.star$+""linux-rel-cft""))
+
+  Location filters:
+  * [`//.*chrome_for_testing.*`](https://cs.chromium.org/search?q=+file:.*chrome_for_testing.*)
 
 * [linux-updater-try-builder-dbg](https://ci.chromium.org/p/chromium/builders/try/linux-updater-try-builder-dbg) ([definition](https://cs.chromium.org/search?q=+file:/try/.*\.star$+""linux-updater-try-builder-dbg""))
 
@@ -874,6 +919,11 @@ builder.
   Location filters:
   * [`//chrome/build/mac-arm.pgo.txt`](https://cs.chromium.org/search?q=+file:chrome/build/mac-arm.pgo.txt)
 
+* [mac-rel-cft](https://ci.chromium.org/p/chromium/builders/try/mac-rel-cft) ([definition](https://cs.chromium.org/search?q=+file:/try/.*\.star$+""mac-rel-cft""))
+
+  Location filters:
+  * [`//.*chrome_for_testing.*`](https://cs.chromium.org/search?q=+file:.*chrome_for_testing.*)
+
 * [mac-updater-try-builder-dbg](https://ci.chromium.org/p/chromium/builders/try/mac-updater-try-builder-dbg) ([definition](https://cs.chromium.org/search?q=+file:/try/.*\.star$+""mac-updater-try-builder-dbg""))
 
   Location filters:
@@ -952,6 +1002,11 @@ builder.
   Location filters:
   * [`//chrome/enterprise_companion/.+`](https://cs.chromium.org/chromium/src/chrome/enterprise_companion/)
 
+* [win-rel-cft](https://ci.chromium.org/p/chromium/builders/try/win-rel-cft) ([definition](https://cs.chromium.org/search?q=+file:/try/.*\.star$+""win-rel-cft""))
+
+  Location filters:
+  * [`//.*chrome_for_testing.*`](https://cs.chromium.org/search?q=+file:.*chrome_for_testing.*)
+
 * [win-updater-try-builder-dbg](https://ci.chromium.org/p/chromium/builders/try/win-updater-try-builder-dbg) ([definition](https://cs.chromium.org/search?q=+file:/try/.*\.star$+""win-updater-try-builder-dbg""))
 
   Location filters:
@@ -1025,34 +1080,6 @@ by CQ. These are often used to test new configurations before they are added
 as required builders.
 
 ### chrome
-* [ai_wpt-mac-arm64](https://ci.chromium.org/p/chrome/builders/try/ai_wpt-mac-arm64) ([definition](https://source.corp.google.com/search?q=+file:/try/.*\.star$+""ai_wpt-mac-arm64""))
-  * Experiment percentage: 100.0
-
-  Location filters:
-  * [`//chrome/browser/ai/.+`](https://cs.chromium.org/chromium/src/chrome/browser/ai/)
-  * [`//components/on_device_translation/.+`](https://cs.chromium.org/chromium/src/components/on_device_translation/)
-  * [`//components/optimization_guide/.+`](https://cs.chromium.org/chromium/src/components/optimization_guide/)
-  * [`//services/on_device_model/.+`](https://cs.chromium.org/chromium/src/services/on_device_model/)
-  * [`//third_party/blink/web_tests/external/wpt/ai/.+`](https://cs.chromium.org/chromium/src/third_party/blink/web_tests/external/wpt/ai/)
-  * [`//third_party/blink/web_tests/AIExpectations.*`](https://cs.chromium.org/search?q=+file:third_party/blink/web_tests/AIExpectations.*)
-
-  This builder is only run when the CL owner is in the group:
-  * [`google/optimization-guide-try-opt-in@google.com`](https://chrome-infra-auth.appspot.com/auth/lookup?p=google/optimization-guide-try-opt-in@google.com)
-
-* [ai_wpt-mac-x64](https://ci.chromium.org/p/chrome/builders/try/ai_wpt-mac-x64) ([definition](https://source.corp.google.com/search?q=+file:/try/.*\.star$+""ai_wpt-mac-x64""))
-  * Experiment percentage: 100.0
-
-  Location filters:
-  * [`//chrome/browser/ai/.+`](https://cs.chromium.org/chromium/src/chrome/browser/ai/)
-  * [`//components/on_device_translation/.+`](https://cs.chromium.org/chromium/src/components/on_device_translation/)
-  * [`//components/optimization_guide/.+`](https://cs.chromium.org/chromium/src/components/optimization_guide/)
-  * [`//services/on_device_model/.+`](https://cs.chromium.org/chromium/src/services/on_device_model/)
-  * [`//third_party/blink/web_tests/external/wpt/ai/.+`](https://cs.chromium.org/chromium/src/third_party/blink/web_tests/external/wpt/ai/)
-  * [`//third_party/blink/web_tests/AIExpectations.*`](https://cs.chromium.org/search?q=+file:third_party/blink/web_tests/AIExpectations.*)
-
-  This builder is only run when the CL owner is in the group:
-  * [`google/optimization-guide-try-opt-in@google.com`](https://chrome-infra-auth.appspot.com/auth/lookup?p=google/optimization-guide-try-opt-in@google.com)
-
 * [linux-perf-trigger](https://ci.chromium.org/p/chrome/builders/try/linux-perf-trigger) ([definition](https://source.corp.google.com/search?q=+file:/try/.*\.star$+""linux-perf-trigger""))
   * Experiment percentage: 100.0
 
@@ -1068,9 +1095,6 @@ as required builders.
 
 * [ios-simulator-exp](https://ci.chromium.org/p/chromium/builders/try/ios-simulator-exp) ([definition](https://cs.chromium.org/search?q=+file:/try/.*\.star$+""ios-simulator-exp""))
   * Experiment percentage: 5.0
-
-* [linux-full-remote-rel](https://ci.chromium.org/p/chromium/builders/try/linux-full-remote-rel) ([definition](https://cs.chromium.org/search?q=+file:/try/.*\.star$+""linux-full-remote-rel""))
-  * Experiment percentage: 10.0
 
 * [tricium-clang-tidy](https://ci.chromium.org/p/chromium/builders/try/tricium-clang-tidy) ([definition](https://cs.chromium.org/search?q=+file:/try/.*\.star$+""tricium-clang-tidy""))
   * Experiment percentage: 100.0

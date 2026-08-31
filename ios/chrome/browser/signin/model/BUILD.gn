@@ -196,6 +196,28 @@ source_set("authentication_service_factory") {
   ]
 }
 
+source_set("account_preview_data_service_factory") {
+  sources = [
+    "account_preview_data_service_factory.h",
+    "account_preview_data_service_factory.mm",
+  ]
+  deps = [
+    ":model",
+    "//base",
+    "//components/pref_registry",
+    "//components/prefs",
+    "//components/signin/core/browser",
+    "//components/signin/ios/browser",
+    "//components/signin/public/base:signin_switches",
+    "//ios/chrome/browser/metrics/model:profile_metrics_service_factory",
+    "//ios/chrome/browser/shared/model/profile",
+    "//ios/chrome/browser/shared/model/profile:profile_keyed_service_factory",
+    "//ios/chrome/browser/sync/model",
+    "//ios/chrome/common",
+    "//services/network/public/cpp",
+  ]
+}
+
 source_set("signin_util") {
   sources = [
     "signin_util.h",
@@ -210,9 +232,14 @@ source_set("signin_util") {
     "//base",
     "//components/prefs",
     "//components/signin/public/identity_manager",
+    "//components/subscription_eligibility",
     "//ios/chrome/browser/shared/model/application_context",
     "//ios/chrome/browser/shared/model/prefs:pref_names",
+    "//ios/chrome/browser/shared/model/profile",
+    "//ios/chrome/browser/shared/public/features",
     "//ios/chrome/browser/shared/public/features:system_flags",
+    "//ios/chrome/browser/shared/ui/symbols",
+    "//ios/chrome/browser/subscription_eligibility/model",
     "//ios/public/provider/chrome/browser/signin:signin_error_api",
     "//ios/public/provider/chrome/browser/signin:signin_identity_api",
   ]
@@ -327,6 +354,7 @@ source_set("fake_system_identity_manager") {
     "//components/signin/public/identity_manager:test_support",
     "//google_apis",
     "//ios/chrome/browser/signin/model:constants",
+    "//ios/chrome/common/ui/util",
     "//ios/public/provider/chrome/browser/signin:signin_error_api",
     "//ui/base",
     "//ui/base:test_support",
@@ -345,6 +373,7 @@ source_set("fake_account_details_view_controller") {
     ":system_identity",
     "//base",
     "//ios/chrome/browser/signin/model:test_constants",
+    "//ios/chrome/common/ui/util",
   ]
   frameworks = [ "UIKit.framework" ]
 }

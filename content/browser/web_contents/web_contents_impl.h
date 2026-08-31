@@ -49,6 +49,7 @@
 #include "content/browser/renderer_host/render_view_host_delegate.h"
 #include "content/browser/renderer_host/render_view_host_impl.h"
 #include "content/browser/renderer_host/render_widget_host_delegate.h"
+#include "content/browser/renderer_host/text_input_manager.h"
 #include "content/browser/renderer_host/visible_time_request_trigger.h"
 #include "content/browser/web_contents/file_chooser_impl.h"
 #include "content/browser/web_contents/slow_web_preference_cache.h"
@@ -228,6 +229,7 @@ class CONTENT_EXPORT WebContentsImpl
       public ui::NativeThemeObserver,
       public ui::ColorProviderSourceObserver,
       public SlowWebPreferenceCacheObserver,
+      public TextInputManager::Observer,
       public input::RenderWidgetHostInputEventRouter::Delegate,
       public base::trace_event::TraceSessionObserver {
  public:
@@ -378,6 +380,13 @@ class CONTENT_EXPORT WebContentsImpl
   // See docs/frame_trees.md for more details.
   FrameTree& GetPrimaryFrameTree() { return primary_frame_tree_; }
 
+  // The privileged-contents declaration this WebContents was created with,
+  // or nullopt for ordinary WebContents. Immutable for the lifetime of the
+  // WebContents. See WebContents::PrivilegedParams.
+  const std::optional<PrivilegedParams>& privileged_params() const {
+    return privileged_params_;
+  }
+
   // Whether the initial empty page of this view has been accessed by another
   // page, making it unsafe to show the pending URL. Always false after the
   // first commit.
@@ -523,6 +532,7 @@ class CONTENT_EXPORT WebContentsImpl
   base::TerminationStatus GetCrashedStatus() override;
   int GetCrashedErrorCode() override;
   bool IsBeingDestroyed() override;
+  bool IsPrivileged() override;
   void NotifyNavigationStateChanged(InvalidateTypes changed_flags) override;
   void OnAudioStateChanged() override;
   base::TimeTicks GetLastActiveTimeTicks() override;
@@ -1123,10 +1133,13 @@ class CONTENT_EXPORT WebContentsImpl
       NavigationHandle* navigation_handle) override;
   void NotifyChangedNavigationState(InvalidateTypes changed_flags) override;
   bool ShouldAllowRendererInitiatedCrossProcessNavigation(
+      RenderFrameHostImpl* render_frame_host,
       bool is_outermost_main_frame_navigation) override;
   const blink::UserAgentOverride& GetUserAgentOverride(
       FrameTree& frame_tree) override;
   void CreateThrottlesForNavigation(
+      NavigationThrottleRegistry& registry) override;
+  void CreateThrottlesForCommitWithoutUrlLoader(
       NavigationThrottleRegistry& registry) override;
   std::vector<std::unique_ptr<CommitDeferringCondition>>
   CreateDeferringConditionsForNavigationCommit(
@@ -1219,6 +1232,10 @@ class CONTENT_EXPORT WebContentsImpl
                                         bool show_selection_menu) override;
   const std::optional<gfx::Rect> GetTextSelectionBounds(
       RenderFrameHost* render_frame_host) const override;
+  const std::optional<gfx::Point> GetFocusSelectionPoint(
+      RenderFrameHost* render_frame_host) const override;
+  base::CallbackListSubscription RegisterFocusSelectionBoundsChanged(
+      FocusSelectionBoundsChangedCallback callback) override;
   input::RenderWidgetHostInputEventRouter* GetInputEventRouter() override;
   void GetRenderWidgetHostAtPointAsynchronously(
       RenderWidgetHostViewBase* root_view,
@@ -1289,6 +1306,7 @@ class CONTENT_EXPORT WebContentsImpl
       bool proceed,
       bool* proceed_to_fire_unload) override;
   void CancelModalDialogsForRenderManager() override;
+  void NotifyPrimaryPageWillBeDeactivated(PageImpl& page) override;
   void NotifySwappedFromRenderManager(RenderFrameHostImpl* old_frame,
                                       RenderFrameHostImpl* new_frame) override;
   void NotifySwappedFromRenderManagerWithoutFallbackContent(
@@ -1338,6 +1356,8 @@ class CONTENT_EXPORT WebContentsImpl
   void SetFocusedFrame(FrameTreeNode* node, SiteInstanceGroup* source) override;
   FrameTree* GetOwnedDocumentPictureInPictureFrameTree() override;
   FrameTree* GetDocumentPictureInPictureOpenerFrameTree() override;
+  std::optional<int64_t> GetPrivilegedContentsFeatureId() override;
+  bool DoesWebContentsDisallowServiceWorkerControl() override;
 
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
   // content::RenderProcessHostCreationObserver
@@ -1367,6 +1387,11 @@ class CONTENT_EXPORT WebContentsImpl
   gfx::ColorSpace GetOutputColorSpace(gfx::ContentColorUsage color_usage,
                                       bool needs_alpha) override;
 #endif  // BUILDFLAG(IS_ANDROID)
+
+  // TextInputManager::Observer implementation:
+  void OnSelectionBoundsChanged(
+      TextInputManager* text_input_manager,
+      RenderWidgetHostViewBase* updated_view) override;
 
   //  RenderWidgetHostInputEventRouter::Delegate -------------------------------
   input::TouchEmulator* GetTouchEmulator(bool create_if_necessary) override;
@@ -1681,6 +1706,10 @@ class CONTENT_EXPORT WebContentsImpl
     return current_fullscreen_frame_id_;
   }
 
+  void set_target_network_for_testing(net::handles::NetworkHandle network) {
+    target_network_ = network;
+  }
+
   ui::mojom::VirtualKeyboardMode GetVirtualKeyboardMode() const;
 
   const std::optional<base::Location>& ownership_location() const {
@@ -1707,6 +1736,9 @@ class CONTENT_EXPORT WebContentsImpl
   // Called when the number of active capturers for this WebContents has
   // changed.
   void OnCapturerCountChanged();
+
+  // base::trace_event::TraceSessionObserver implementation:
+  void OnStart(const perfetto::DataSourceBase::StartArgs&) override;
 
  private:
   using FrameTreeIterationCallback = base::FunctionRef<void(FrameTree&)>;
@@ -2319,6 +2351,9 @@ class CONTENT_EXPORT WebContentsImpl
   void RecursivelyConstructAXTree(ui::AXNode* node,
                                   std::vector<ui::AXNodeData>& nodes);
 
+  void StartRecordingAccessibilityEvents(ui::AXApiType::Type api_type,
+                                         ui::AXEventCallback callback);
+
   // Performs some checks before sending user interaction notification to
   // observers for a given `WebInputEvent`.
   void HandleUserInteractionForInputEvent(
@@ -2341,6 +2376,8 @@ class CONTENT_EXPORT WebContentsImpl
   // Apply the cached primary subframe importance to the primary frame tree.
   void ApplyPrimaryPageSubframeImportance();
 #endif
+
+  void OnFocusSelectionBoundsChangedSubscriptionRemoved();
 
   // Data for core operation ---------------------------------------------------
 
@@ -2414,6 +2451,9 @@ class CONTENT_EXPORT WebContentsImpl
   // Helps connect to embedder when embedded in a SurfaceEmbed plugin.
   // nullptr if not embedded.
   std::unique_ptr<SurfaceEmbedConnectorImpl> surface_embed_connector_;
+
+  // WebContents that are embedded in this WebContents via SurfaceEmbed.
+  std::vector<base::WeakPtr<WebContents>> surface_embed_children_;
 
   // Helper classes ------------------------------------------------------------
 
@@ -2510,9 +2550,14 @@ class CONTENT_EXPORT WebContentsImpl
       delegated_ink_point_renderer_;
 
   // The visibility of the WebContents. Initialized from
-  // |CreateParams::initially_hidden|. Updated from
+  // `CreateParams::initially_hidden` and
+  // `CreateParams::initially_hidden_but_painting`. Updated from
   // UpdateWebContentsVisibility(), WasShown(), WasHidden(), WasOccluded().
   Visibility visibility_ = Visibility::VISIBLE;
+
+  // Whether this WebContents was created with
+  // `CreateParams::initially_hidden_but_painting`.
+  bool initially_hidden_but_painting_ = false;
 
   // Whether there has been a call to UpdateWebContentsVisibility(VISIBLE).
   bool did_first_set_visible_ = false;
@@ -2644,6 +2689,11 @@ class CONTENT_EXPORT WebContentsImpl
   std::unique_ptr<WakeLockContextHost> wake_lock_context_host_;
   bool enable_wake_locks_ = true;
 
+  // Set at creation from CreateParams::privileged_params and never
+  // mutated afterwards; unset for ordinary WebContents. See
+  // WebContents::PrivilegedParams.
+  std::optional<PrivilegedParams> privileged_params_;
+
   // The last set/computed value of WebPreferences for this WebContents, either
   // set directly through SetWebPreferences, or set after recomputing values
   // from ComputeWebPreferences.
@@ -2668,6 +2718,14 @@ class CONTENT_EXPORT WebContentsImpl
 
   // Enables ui::kAXModeBasic for the duration of a recording session.
   std::unique_ptr<ScopedAccessibilityMode> recording_mode_;
+
+  // Holds the state for an accessibility event recording session for a hidden
+  // WebContents until accessibility is enabled when shown.
+  struct PendingRecording {
+    ui::AXApiType::Type api_type;
+    ui::AXEventCallback callback;
+  };
+  std::optional<PendingRecording> pending_recording_;
 
   // Monitors power levels for audio streams associated with this WebContents.
   AudioStreamMonitor audio_stream_monitor_;
@@ -2704,6 +2762,9 @@ class CONTENT_EXPORT WebContentsImpl
   // IME-related state for RenderWidgetHosts on the inner WebContents is tracked
   // by the TextInputManager in the outer WebContents.
   std::unique_ptr<TextInputManager> text_input_manager_;
+
+  base::RepeatingCallbackList<void(RenderWidgetHostView*)>
+      focus_selection_bounds_changed_callback_list_;
 
   // Tests can set this to true in order to force this web contents to always
   // return nullptr for the above `text_input_manager_`, effectively blocking
@@ -2843,7 +2904,6 @@ class CONTENT_EXPORT WebContentsImpl
 
   viz::FrameSinkId xr_render_target_;
 
-
   // Background color of the page set by the embedder to be passed to all
   // renderers attached to this WebContents, for use in the main frame.
   // It is used when the page has not loaded enough to know a background
@@ -2913,8 +2973,6 @@ class CONTENT_EXPORT WebContentsImpl
   void SetDragSource(const DragId& drag_id,
                      const GlobalRenderFrameHostToken& source_rfh_token);
 
-  // base::trace_event::TraceSessionObserver implementation:
-  void OnStart(const perfetto::DataSourceBase::StartArgs&) override;
 
   std::optional<DragId> active_drag_id_;
 

@@ -33,6 +33,7 @@ Maaaring hindi available ang ilang tampok at hindi mase-save ang mga pagbabago s
 <translation id="1290883685122687410">Error sa pag-set up: <ph name="METAINSTALLER_EXIT_CODE" />. <ph name="WINDOWS_ERROR" /></translation>
 <translation id="1302523850133262269">Mangyaring maghintay habang ini-install ng Chrome ang mga pinakabagong update sa system.</translation>
 <translation id="1330562121671411446">I-detect ang wika</translation>
+<translation id="1333654552732143316">Simulan ang Chrome</translation>
 <translation id="1341711321000856656">Puwede kang lumipat para makita ang mga password mula sa ibang profile sa Chrome</translation>
 <translation id="1343830902827845050">Mag-sign in sa Chrome</translation>
 <translation id="1356661055722410047">Bago! Puwede kang magsalin ng text at mga larawan sa iyong screen</translation>
@@ -81,6 +82,7 @@ Maaaring hindi available ang ilang tampok at hindi mase-save ang mga pagbabago s
 <translation id="1698376642261615901">Ang Google Chrome ay isang web browser na nagpapatakbo ng mga webpage at application nang kasingbilis ng kidlat. Mabilis ito, matatag, at madaling gamitin. I-browse ang web nang mas ligtas na may proteksyon sa malware at phishing na isinama sa Google Chrome.</translation>
 <translation id="1713301662689114961">{0,plural, =1{Muling ilulunsad ang Chrome sa loob ng isang oras}one{Muling ilulunsad ang Chrome sa loob ng # oras}other{Muling ilulunsad ang Chrome sa loob ng # na oras}}</translation>
 <translation id="1722488837206509557">Magbibigay-daan ito sa iyong pumili mula sa mga available na device at magpakita ng content sa mga ito.</translation>
+<translation id="1724094881572874997">Para ma-secure ang iyong trabaho sa Chrome, matitingnan o mapapamahalaan ng organisasyon mo ang ilang partikular na impormasyon kapag naka-sign in ka sa Chrome.</translation>
 <translation id="177180974022074201">Subukan sa Gemini sa Chrome</translation>
 <translation id="1786003790898721085">Tiyaking naka-sign in ka sa Chrome sa iyong <ph name="TARGET_DEVICE_NAME" /> at pagkatapos ay subukang ipadala ulit.</translation>
 <translation id="1786044937610313874">Magbubukas ang mga shortcut sa Chrome</translation>
@@ -200,6 +202,7 @@ Kung hindi gumagana ang page na ito gaya ng inaasahan, subukang payagan ang pag-
 <translation id="2969728957078202736"><ph name="PAGE_TITLE" /> - Pag-sign in sa Network - Chrome</translation>
 <translation id="2970681950995291301">Para alisin ang iyong Google Account sa Chrome, mag-sign out sa Chrome sa page na Mga Setting</translation>
 <translation id="2976869732253036751">Makatanggap ng mga alerto sa pagsubaybay sa presyo gamit ang Chrome sa iyong telepono</translation>
+<translation id="2985091279808606502">Kailangan ng Chrome ng pahintulot sa lokal na network para sa site na ito</translation>
 <translation id="2991167882679440829">Aalisin sa device na ito ang iyong mga password at iba pang data sa Chrome na na-save mo sa iyong Google Account. Para magamit ulit ang mga ito sa Chrome, mag-sign in ulit.</translation>
 <translation id="2994465299455873643">Nagbibigay ng mga serbisyo ng pag-encrypt at ligtas na paraan ng pag-recover ng <ph name="BROWSER_NAME" /> kung maluluma na ito. Kung naka-disable ang serbisyong ito, posibleng mawalan ng access ang <ph name="BROWSER_NAME" /> sa naka-encrypt na data, at posibleng hindi ma-recover ng <ph name="BROWSER_NAME" /> ang sarili nito.</translation>
 <translation id="3003694935412297923">Lahat ng gawain</translation>
@@ -262,6 +265,7 @@ Kung hindi gumagana ang page na ito gaya ng inaasahan, subukang payagan ang pag-
 <translation id="3595784445906693824">Mag-sign in sa Chrome sa bagong profile?</translation>
 <translation id="3596080736082218006">{COUNT,plural, =0{Ipinag-aatas ng iyong administrator na ilunsad mo ulit ang Chrome para mailapat ang isang update}=1{Ipinag-aatas ng iyong administrator na ilunsad mo ulit ang Chrome para mailapat ang isang update. Hindi bubukas ulit ang iyong Incognito window.}one{Ipinag-aatas ng iyong administrator na ilunsad mo ulit ang Chrome para mailapat ang isang update. Hindi bubukas ulit ang iyong # Incognito window.}other{Ipinag-aatas ng iyong administrator na ilunsad mo ulit ang Chrome para mailapat ang isang update. Hindi bubukas ulit ang iyong # na Incognito window.}}</translation>
 <translation id="3597003331831379823">Hindi napagana ang pag-set up na may mga mas mataas na pribilehiyo. <ph name="METAINSTALLER_ERROR" /></translation>
+<translation id="3598673391539778844">Ipakita ang Gemini sa Chrome sa system tray</translation>
 <translation id="3622716124581627104">Tukuyin ang mga bagay o lugar at kopyahin o isalin ang text. Kapag ginamit mo ang Google Lens, magpapadala ng screenshot ng page sa Google. <ph name="LEARN_MORE" /></translation>
 <translation id="3622797965165704966">Ngayon, mas madali nang gamitin ang Chrome sa iyong Google Account at sa mga nakabahaging computer.</translation>
 <translation id="3635073343384702370">Masusuri ng Chrome ang iyong mga password kapag na-save mo ang mga ito</translation>
@@ -317,7 +321,6 @@ Kung hindi gumagana ang page na ito gaya ng inaasahan, subukang payagan ang pag-
 <translation id="4149882025268051530">Nabigo ang installer sa pag-uncompress ng archive. Paki-download muli ang Google Chrome.</translation>
 <translation id="415112847282352845">Para makuha ang iyong mga address at higit pa sa lahat ng device mo, mag-sign in sa Chrome. Mase-save ang address na ito sa iyong Google Account pagkatapos mong mag-sign in.</translation>
 <translation id="4153934450158521343">Magsasara at magde-delete na ng data ang Chrome sa ilang saglit</translation>
-<translation id="4159985264221160808">Para ma-secure ang iyong trabaho sa Chrome, matitingnan o mapapamahalaan ng organisasyon mo ang ilang partikular na impormasyon</translation>
 <translation id="4173512894976930765">Malamang na gagana ang mga site na gaya ng inaasahan. Masa-sign out ka sa karamihan ng mga site kapag isinara mo ang lahat ng window ng Chrome, maliban sa iyong Google Account kung naka-sign in ka sa Chrome.</translation>
 <translation id="4175922240926474352">Na-block ng Chrome ang pag-download na ito dahil hindi gumagamit ng secure na koneksyon ang site at posibleng na-tamper ang file</translation>
 <translation id="4191857738314598978">{0,plural, =1{Muling ilunsad ang Chrome sa loob ng isang araw}one{Muling ilunsad ang Chrome sa loob ng # araw}other{Muling ilunsad ang Chrome sa loob ng # na araw}}</translation>
@@ -348,7 +351,6 @@ Kung hindi gumagana ang page na ito gaya ng inaasahan, subukang payagan ang pag-
 <translation id="4437295824090654417">I-share ang dokumentong ito sa Gemini sa Chrome para makakuha ng mabilisang pangkalahatang-ideya at magtanong ng mga follow-up na tanong</translation>
 <translation id="4450664632294415862">Chrome - Pag-sign in sa Network - <ph name="PAGE_TITLE" /></translation>
 <translation id="4458462641685292929">May kasalukuyang isinasagawang isa pang pagpapatakbo sa Google Chrome. Pakisubukang muli sa ibang pagkakataon.</translation>
-<translation id="4459234553906210702">Nagbibigay-daan ang pagsukat ng ad sa mga site na binibisita mo na humiling ng impormasyon mula sa Chrome na tumutulong sa site na sukatin ang performance ng mga ad ng mga ito. Pinaghihigpitan ng pagsukat ng ad ang cross-site na pagsubaybay sa pamamagitan ng paglilipat ng kaunting impormasyon hangga't posible sa pagitan ng mga site.</translation>
 <translation id="4493028449971051158">Nagkaroon ng error sa startup: patakbuhin ang installer bilang administrator.</translation>
 <translation id="4501471624619070934">Hindi na-install dahil pinaghihigpitan ang access sa bansang ito.</translation>
 <translation id="4571503333518166079">Pumunta sa mga setting ng notification ng Chrome</translation>
@@ -381,7 +383,6 @@ Kung hindi gumagana ang page na ito gaya ng inaasahan, subukang payagan ang pag-
 <translation id="4885446229353981848">Palaging ipakita ang shortcut ng Google Lens</translation>
 <translation id="4891791193823137474">Hayaan ang Google Chrome na tumakbo sa background</translation>
 <translation id="4895437082222824641">Buksan ang link sa bagong &amp;tab ng Chrome</translation>
-<translation id="4896867431081882115">Magkaroon ng madaling access sa mga feature na alam, gusto, at pinagkakatiwalaan mo sa pamamagitan ng pagtatakda sa Chrome bilang default browser mo. Ipi-pin ang Chrome sa iyong taskbar para sa mabilis na pag-access.</translation>
 <translation id="4904953848704395458">Buksan ang Gemini sa Chrome gamit ang keyboard shortcut.</translation>
 <translation id="4918086044614829423">Tanggapin</translation>
 <translation id="4918844574251943176">Nakopya na ang larawan</translation>
@@ -418,6 +419,7 @@ Maaaring hindi available ang ilang tampok. Mangyaring tumukoy ng ibang direktory
 <translation id="521447420733633466">Kung magpapahiram ka ng device, puwedeng mag-browse nang hiwalay ang mga kaibigan at kapamilya, at puwede nilang i-set up ang Chrome sa paraang gusto nila</translation>
 <translation id="5234764350956374838">Huwag pansinin</translation>
 <translation id="5239627039202700673">Gamitin ang Chrome sa tuwing magki-click ka ng mga link sa mga mensahe, dokumento, at iba pang app</translation>
+<translation id="524751727772074981">Magtanong, nasaan ka man, gamit ang Gemini sa Chrome</translation>
 <translation id="5251420635869119124">Makakagamit ng Chrome ang mga bisita nang hindi nag-iiwan ng anumang bakas.</translation>
 <translation id="5271833978500241046">Gamitin ang mga ito kasama ng iba pang feature ng Gemini sa Chrome</translation>
 <translation id="5286907366254680517">Na-detect</translation>
@@ -723,6 +725,7 @@ Hindi magawang bawiin ng Google Chrome ang iyong mga setting.</translation>
 <translation id="8113883687556086139">I-verify na ikaw ito para magamit at ma-save ang data sa Chrome sa iyong account, <ph name="ACCOUNT_EMAIL" /></translation>
 <translation id="8115695070094288807">Ginagawang iyo ang Chrome...</translation>
 <translation id="8118331347066725040">Magpadala ng feedback para sa paghahanap gamit ang Lens</translation>
+<translation id="812930250799242837">Naka-sign in bilang si <ph name="USER_NAME" />, membership sa Google. Buksan ang menu ng account</translation>
 <translation id="8129812357326543296">Tungkol sa &amp;Google Chrome</translation>
 <translation id="813913629614996137">Sinisimulan...</translation>
 <translation id="8162006532256575008">Gamitin ang Chrome nang Walang Account</translation>
@@ -745,6 +748,7 @@ Hindi magawang bawiin ng Google Chrome ang iyong mga setting.</translation>
 <translation id="8367705492654390392">Magtanong ng kahit na ano</translation>
 <translation id="8367950957770994118">Mabilisang buksan ang Gemini sa Chrome sa tuwing kailangan mo ito</translation>
 <translation id="8370517070665726704">Copyright <ph name="YEAR" /> Google LLC. Nakalaan ang lahat ng karapatan.</translation>
+<translation id="8370748943308169953">QR code para mag-sign in sa Chrome bilang <ph name="USER_NAME" /></translation>
 <translation id="8377158135256176353">I-toggle ang Gemini sa Chrome Canary</translation>
 <translation id="8387459386171870978">Ipagpatuloy ang paggamit ng Chrome</translation>
 <translation id="8394720698884623075">Sinusuri ang mga URL sa pamamagitan ng listahan ng mga hindi ligtas na site na naka-store sa Chrome</translation>
@@ -756,6 +760,7 @@ Hindi magawang bawiin ng Google Chrome ang iyong mga setting.</translation>
 
 Hindi mase-save ang mga bagong bookmark sa iyong account hangga't hindi ka nagde-delete ng ilan. Kung magsa-sign out ka ngayon, made-delete ang mga hindi na-save na bookmark.</translation>
 <translation id="8458117863387545390">I-download ang Chrome sa iyong telepono</translation>
+<translation id="848851325211467878">Naka-sign in bilang si <ph name="USER_NAME" />, <ph name="USER_EMAIL" />, membership sa Google. Buksan ang menu ng account</translation>
 <translation id="8496177819998570653">Google P&amp;assword Manager</translation>
 <translation id="8498858610309223613">Naglapat ng espesyal na update sa seguridad para sa Google Chrome. Mag-restart na at ire-restore namin ang iyong mga tab.</translation>
 <translation id="8521348052903287641">Inbound na panuntunan para sa Google Chrome Dev upang payagan ang trapiko ng mDNS.</translation>
@@ -791,6 +796,7 @@ Hindi mase-save ang mga bagong bookmark sa iyong account hangga't hindi ka nagde
 <translation id="8821043148920470810">Para makatanggap ng mga update sa Google Chrome sa hinaharap, mangangailangan ka ng Windows 10 o mas bago. Ang computer na ito ay gumagamit ng Windows 7.</translation>
 <translation id="8823341990149967727">Luma na ang Chrome</translation>
 <translation id="8834965163890861871">Sinusubukan ng Google Chrome na i-edit ang mga password. I-type ang iyong password sa Windows para payagan ito.</translation>
+<translation id="8841151363570555833">Ipakita ang Gemini sa Chrome sa menu bar ng Mac</translation>
 <translation id="8851180723659088381">{NUM_EXTENSIONS,plural, =1{Inirerekomenda ng Chrome na alisin mo ito}one{Inirerekomenda ng Chrome na alisin mo ang mga ito}other{Inirerekomenda ng Chrome na alisin mo ang mga ito}}</translation>
 <translation id="8862326446509486874">Wala kang naaangkop na mga karapatan para sa pag-install sa antas ng system. Subukan muling patakbuhin ang installer bilang Administrator.</translation>
 <translation id="8865415417596392024">Data ng Chrome sa iyong account</translation>

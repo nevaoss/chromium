@@ -158,7 +158,10 @@ public class HubToolbarViewUnitTest {
         mColorMixer =
                 spy(
                         new HubColorMixerImpl(
-                                mActivity, ObservableSuppliers.alwaysTrue(), mFocusedPaneSupplier));
+                                mActivity,
+                                ObservableSuppliers.alwaysTrue(),
+                                mFocusedPaneSupplier,
+                                ObservableSuppliers.alwaysNull()));
         mPropertyModel =
                 new PropertyModel.Builder(HubToolbarProperties.ALL_KEYS)
                         .with(COLOR_MIXER, mColorMixer)
@@ -453,6 +456,23 @@ public class HubToolbarViewUnitTest {
         assertEquals(
                 ColorStateList.valueOf(SemanticColorUtils.getColorSurfaceContainerHigh(mActivity)),
                 backgroundDrawable.getColor());
+    }
+
+    @Test
+    public void testUpdateCloseButtonColorScheme() {
+        if (mIsXrDevice) return;
+
+        ImageView closeButton = mToolbarContainer.findViewById(R.id.toolbar_close_button);
+
+        forceSetColorScheme(HubColorScheme.INCOGNITO);
+        assertEquals(
+                ColorStateList.valueOf(mActivity.getColor(R.color.default_icon_color_light)),
+                closeButton.getImageTintList());
+
+        forceSetColorScheme(HubColorScheme.DEFAULT);
+        assertEquals(
+                ColorStateList.valueOf(SemanticColorUtils.getDefaultIconColor(mActivity)),
+                closeButton.getImageTintList());
     }
 
     @Test

@@ -52,9 +52,9 @@ bool OmniboxEverywhereService::IsPopupVisible() const {
   return controller() && controller()->IsVisible();
 }
 
-void OmniboxEverywhereService::SetIsNavigating(bool is_navigating) {
-  if (controller() && controller()->ui_manager()) {
-    controller()->ui_manager()->SetIsNavigating(is_navigating);
+void OmniboxEverywhereService::ShowProfilePicker() {
+  if (controller()) {
+    controller()->ShowProfilePicker();
   }
 }
 
@@ -73,7 +73,6 @@ void OmniboxEverywhereService::OnDrivePickerClosed() {
 void OmniboxEverywhereService::OpenUrl(const GURL& url,
                                        WindowOpenDisposition disposition,
                                        ui::PageTransition transition) {
-  SetIsNavigating(true);
   HidePopup();
 
   auto* browser_collection = ProfileBrowserCollection::GetForProfile(profile_);

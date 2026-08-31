@@ -134,7 +134,8 @@ void ContextualSearchOpenLensAction::Execute(ExecutionContext& context) const {
   } else if (context.client_->ShouldOpenCoBrowsePanel()) {
     context.client_->OpenCoBrowsePanel();
   } else {
-    context.client_->OpenLensOverlay(/*show=*/true);
+    context.client_->OpenLensOverlay(
+        /*show=*/true, lens::LensOverlayInvocationSource::kOmniboxPageAction);
   }
 }
 
@@ -145,7 +146,9 @@ const gfx::VectorIcon& ContextualSearchOpenLensAction::GetVectorIcon() const {
                  .open_lens_action_ui_tweaks
              ? vector_icons::kGoogleLensLogoIcon
              : (omnibox::kAskGSwapIcon.Get()
-                    ? omnibox::kSearchSparkIcon
+                    ? (features::IsRoundedIconsEnabled()
+                           ? omnibox::kSearchSparkIcon
+                           : omnibox::kSearchSparkOldIcon)
                     : vector_icons::kGoogleLensMonochromeLogoIcon);
 
 #else

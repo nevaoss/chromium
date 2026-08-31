@@ -80,8 +80,6 @@ BASE_DECLARE_FEATURE(kModelQualityLogging);
 COMPONENT_EXPORT(OPTIMIZATION_GUIDE_FEATURES)
 BASE_DECLARE_FEATURE(kLogOnDeviceMetricsOnStartup);
 COMPONENT_EXPORT(OPTIMIZATION_GUIDE_FEATURES)
-BASE_DECLARE_FEATURE(kTextSafetyClassifier);
-COMPONENT_EXPORT(OPTIMIZATION_GUIDE_FEATURES)
 BASE_DECLARE_FEATURE(kTextSafetyScanLanguageDetection);
 COMPONENT_EXPORT(OPTIMIZATION_GUIDE_FEATURES)
 BASE_DECLARE_FEATURE(kOnDeviceModelFetchPerformanceClassEveryStartup);
@@ -358,6 +356,10 @@ base::TimeDelta GetOnDeviceModelRetentionTime();
 COMPONENT_EXPORT(OPTIMIZATION_GUIDE_FEATURES)
 base::ByteSize GetDiskSpaceRequiredForOnDeviceModelInstall();
 
+// Return the disk space required to retain the on device model.
+COMPONENT_EXPORT(OPTIMIZATION_GUIDE_FEATURES)
+base::ByteSize GetDiskSpaceRequiredForOnDeviceModelRetain();
+
 // Whether there is enough free disk space to allow on-device model
 // installation.
 COMPONENT_EXPORT(OPTIMIZATION_GUIDE_FEATURES)
@@ -370,25 +372,22 @@ COMPONENT_EXPORT(OPTIMIZATION_GUIDE_FEATURES)
 bool IsFreeDiskSpaceTooLowForOnDeviceModelInstall(
     base::ByteSize free_disk_space_bytes);
 
+// Whether on-device model session creation is gated on sufficient disk space to
+// build execution caches.
+COMPONENT_EXPORT(OPTIMIZATION_GUIDE_FEATURES)
+BASE_DECLARE_FEATURE(kOnDeviceModelCachesDiskSpaceCheck);
+
+// Whether there is too little disk space to build caches for the
+// on-device model installed.
+COMPONENT_EXPORT(OPTIMIZATION_GUIDE_FEATURES)
+bool IsFreeDiskSpaceTooLowForOnDeviceModelCachesBuild(
+    base::ByteSize free_disk_space_bytes);
+
 // Whether there is enough free disk space to allow on-device model
 // installation proactively in background.
 COMPONENT_EXPORT(OPTIMIZATION_GUIDE_FEATURES)
 bool IsFreeDiskSpaceSufficientForBackgroundOnDeviceModelInstall(
     base::ByteSize free_disk_space_bytes);
-
-// Returns true if unsafe content should be removed.
-COMPONENT_EXPORT(OPTIMIZATION_GUIDE_FEATURES)
-bool GetOnDeviceModelRetractUnsafeContent();
-
-// Whether we should initiate download of the text safety classifier model.
-COMPONENT_EXPORT(OPTIMIZATION_GUIDE_FEATURES)
-bool ShouldUseTextSafetyClassifierModel();
-
-// This is the minimum required reliability threshold for language detection to
-// be considered reliable enough for the text safety classifier. Clamped to the
-// range [0, 1].
-COMPONENT_EXPORT(OPTIMIZATION_GUIDE_FEATURES)
-double GetOnDeviceModelLanguageDetectionMinimumReliability();
 
 // These params configure the repetition checker. See HasRepeatingSuffix() in
 // repetition_checker.h for explanation. A value of 2 for num repeats and 16 for
@@ -430,6 +429,11 @@ std::optional<base::TimeDelta> GetMainFrameGetAIPageContentTimeout();
 // An empty return value indicates no timeout should be applied.
 COMPONENT_EXPORT(OPTIMIZATION_GUIDE_FEATURES)
 std::optional<base::TimeDelta> GetAIPageContentGetImageBytesTimeout();
+
+// Overrides the Optimization Guide Service URL that the PredictionModelFetcher
+// will request remote models and host features from.
+inline constexpr char kOptimizationGuideServiceGetModelsURLSwitch[] =
+    "optimization-guide-service-get-models-url";
 
 }  // namespace features
 }  // namespace optimization_guide

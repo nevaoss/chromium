@@ -15,6 +15,7 @@ import android.widget.PopupWindow.OnDismissListener;
 import androidx.annotation.VisibleForTesting;
 
 import org.chromium.base.ContextUtils;
+import org.chromium.base.MathUtils;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.ui.modelutil.PropertyModelChangeProcessor;
@@ -52,13 +53,15 @@ class PageZoomIndicatorMediator {
 
     /** Sets the initial state of the model. */
     protected void pushProperties() {
-        // We must first fetch the current zoom factor for the given web contents.
-        double currentZoomFactor = mManager.getZoomLevel();
+        updateZoomPercentage();
         mDefaultZoomFactor = mManager.getDefaultZoomLevel();
-        updateZoomPercentageText(currentZoomFactor);
-
         mModel.set(PageZoomProperties.DEFAULT_ZOOM_FACTOR, mDefaultZoomFactor);
+    }
 
+    /** Updates the zoom percentage text and button states for the current zoom factor. */
+    void updateZoomPercentage() {
+        double currentZoomFactor = mManager.getZoomLevel();
+        updateZoomPercentageText(currentZoomFactor);
         updateButtonStates(currentZoomFactor);
     }
 
@@ -97,7 +100,7 @@ class PageZoomIndicatorMediator {
                         ViewGroup.LayoutParams.WRAP_CONTENT);
         popupWindow.setElevation(
                 view.getContext().getResources().getDimension(R.dimen.dropdown_elevation));
-        popupWindow.setFocusable(true);
+        popupWindow.setFocusable(false);
         popupWindow.setOutsideTouchable(true);
         popupWindow.setOnDismissListener(onDismissListener);
 
@@ -127,15 +130,17 @@ class PageZoomIndicatorMediator {
     }
 
     private void updateButtonStates(double newZoomFactor) {
+        double roundedZoomFactor = MathUtils.roundTwoDecimalPlaces(newZoomFactor);
+
         // If the new zoom factor is greater than the minimum zoom factor, enable decrease button.
         mModel.set(
                 PageZoomProperties.DECREASE_ZOOM_ENABLED,
-                newZoomFactor > AVAILABLE_ZOOM_FACTORS[0]);
+                roundedZoomFactor > AVAILABLE_ZOOM_FACTORS[0]);
 
         // If the new zoom factor is less than the maximum zoom factor, enable increase button.
         mModel.set(
                 PageZoomProperties.INCREASE_ZOOM_ENABLED,
-                newZoomFactor < AVAILABLE_ZOOM_FACTORS[AVAILABLE_ZOOM_FACTORS.length - 1]);
+                roundedZoomFactor < AVAILABLE_ZOOM_FACTORS[AVAILABLE_ZOOM_FACTORS.length - 1]);
     }
 
     private void updateZoomPercentageText(double newZoomFactor) {

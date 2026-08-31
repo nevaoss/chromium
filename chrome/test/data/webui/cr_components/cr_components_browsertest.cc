@@ -133,6 +133,11 @@ IN_PROC_BROWSER_TEST_F(CrComponentsSearchboxTest, SearchboxMixinTest) {
   RunTest("cr_components/searchbox/searchbox_mixin_test.js", "mocha.run()");
 }
 
+IN_PROC_BROWSER_TEST_F(CrComponentsSearchboxTest, SearchboxUtilsTest) {
+  set_test_loader_host(chrome::kChromeUINewTabPageHost);
+  RunTest("cr_components/searchbox/searchbox_utils_test.js", "mocha.run()");
+}
+
 class CrComponentsHistoryClustersTest : public WebUIMochaBrowserTest {
  protected:
   CrComponentsHistoryClustersTest() {
@@ -229,6 +234,11 @@ IN_PROC_BROWSER_TEST_F(CrComponentsMostVisitedTest, ExpandableTiles) {
 IN_PROC_BROWSER_TEST_F(CrComponentsMostVisitedTest, ShortcutsAutoRemovalToast) {
   RunTest("cr_components/most_visited_test.js",
           "runMochaSuite('ShortcutsAutoRemovalToast');");
+}
+
+IN_PROC_BROWSER_TEST_F(CrComponentsMostVisitedTest, NonEditable) {
+  RunTest("cr_components/most_visited_test.js",
+          "runMochaSuite('NonEditable');");
 }
 
 typedef WebUIMochaBrowserTest CrComponentsThemeColorPickerTest;

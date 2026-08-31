@@ -49,7 +49,15 @@ class OmniboxPopupHandler : public omnibox_popup::mojom::PageHandler {
   void LogEscapeAction(
       omnibox_popup::mojom::OmniboxEscapeAction action) override;
   void OnInputCleared(uint32_t sequence_number) override;
+  void OnPaste(const std::string& text,
+               const gfx::Range& selection,
+               uint32_t sequence_number) override;
   void RequestInputState() override;
+  void OpenAimPopup(bool via_keyboard) override;
+  void OnCutOrCopy(uint32_t sequence_number,
+                   bool is_cut,
+                   const std::string& full_text,
+                   const gfx::Range& selection) override;
 
   // omnibox_popup::mojom::Page:
   void OnShow();
@@ -60,8 +68,12 @@ class OmniboxPopupHandler : public omnibox_popup::mojom::PageHandler {
                      const std::string& full_url,
                      bool is_focused,
                      const std::string& permanent_display_text,
-                     bool show_full_url);
+                     bool show_full_url,
+                     bool query_zps,
+                     searchbox::mojom::InputKeywordModelPtr keyword_model);
   void SetFocus(bool is_focused);
+  void ClearAutocompleteMatches();
+  void ClearPopup(base::OnceClosure callback);
 
   const gfx::Range& latest_selection() const { return latest_selection_; }
   bool show_full_url() const { return show_full_url_; }

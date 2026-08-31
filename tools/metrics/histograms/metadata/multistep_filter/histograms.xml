@@ -179,7 +179,7 @@ found in the LICENSE file.
 </histogram>
 
 <histogram name="MultistepFilter.ApplicationOutcome"
-    enum="MultistepFilterApplicationOutcome" expires_after="2026-12-15">
+    enum="SuggestionApplicationResult" expires_after="2026-12-15">
   <owner>adigupt@google.com</owner>
   <owner>chrome-multistep-filter-eng@google.com</owner>
   <summary>
@@ -204,7 +204,7 @@ found in the LICENSE file.
 
 <histogram
     name="MultistepFilter.ApplicationOutcome.ByRetention.{RetentionSlice}"
-    enum="MultistepFilterApplicationOutcome" expires_after="2026-12-15">
+    enum="SuggestionApplicationResult" expires_after="2026-12-15">
   <owner>adigupt@google.com</owner>
   <owner>chrome-multistep-filter-eng@google.com</owner>
   <summary>
@@ -230,7 +230,7 @@ found in the LICENSE file.
 </histogram>
 
 <histogram name="MultistepFilter.ApplicationOutcome.ByTask.{TaskType}"
-    enum="MultistepFilterApplicationOutcome" expires_after="2026-12-15">
+    enum="SuggestionApplicationResult" expires_after="2026-12-15">
   <owner>adigupt@google.com</owner>
   <owner>chrome-multistep-filter-eng@google.com</owner>
   <summary>
@@ -461,6 +461,18 @@ found in the LICENSE file.
     Measures the time elapsed (in milliseconds) from when the Multistep Filter
     suggestion UI cue is shown to when the user accepts it. Recorded when the
     user selects the &quot;Accept&quot; action.
+  </summary>
+</histogram>
+
+<histogram name="MultistepFilter.UserBehaviorAfterIgnore"
+    enum="MultistepFilterUserBehaviorAfterIgnore" expires_after="2026-12-15">
+  <owner>adigupt@google.com</owner>
+  <owner>chrome-multistep-filter-eng@google.com</owner>
+  <summary>
+    Records user manual filtering behavior on the same site after they ignored
+    or dismissed a Multistep Filter suggestion. Recorded when the user manually
+    applies filters (same or different) or leaves the site/closes the tab
+    without filtering.
   </summary>
 </histogram>
 

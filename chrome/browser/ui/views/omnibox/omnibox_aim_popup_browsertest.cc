@@ -17,6 +17,7 @@
 #include "chrome/browser/ui/views/location_bar/location_bar_view.h"
 #include "chrome/browser/ui/views/omnibox/omnibox_aim_popup_webui_content.h"
 #include "chrome/browser/ui/views/omnibox/omnibox_popup_aim_presenter.h"
+#include "chrome/browser/ui/views/omnibox/omnibox_popup_closer.h"
 #include "chrome/browser/ui/views/omnibox/omnibox_view_views.h"
 #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
 #include "chrome/test/base/in_process_browser_test.h"
@@ -151,6 +152,29 @@ class OmniboxAimPopupBrowserTest : public InProcessBrowserTest {
                   ->popup_state_manager()
                   ->popup_state(),
               expected_state);
+  }
+
+  void VerifyFocusRestoredToWebUIInput(OmniboxPopupAimPresenter* presenter,
+                                       OmniboxAimPopupWebUIContent* content) {
+    // Wait until focus is redirected from the location bar to the popup's
+    // WebUI content view in Views.
+    ASSERT_TRUE(base::test::RunUntil(
+        [&]() { return presenter->GetWebUIContent()->HasFocus(); }));
+
+    // Wait until the Mojo IPC reaches the WebUI DOM and focuses the input
+    // element inside the shadow root.
+    ASSERT_TRUE(base::test::RunUntil([&]() {
+      return content::EvalJs(
+                 content->GetWebContents(),
+                 "(function() {"
+                 "  const app = document.querySelector('omnibox-aim-app');"
+                 "  const box = app && app.shadowRoot && "
+                 "              "
+                 "app.shadowRoot.querySelector('cr-omnibox-composebox');"
+                 "  return !!box && box.isFocusInInput();"
+                 "})()")
+          .ExtractBool();
+    }));
   }
 
  private:
@@ -627,7 +651,8 @@ IN_PROC_BROWSER_TEST_P(OmniboxAimPopupKeepOpenBrowserTest,
 // and that it is cleaned up when focus is restored to the Omnibox.
 IN_PROC_BROWSER_TEST_P(OmniboxAimPopupKeepOpenBrowserTest,
                        FileSelectionFocusRestorationPreventsPopupClose) {
-  ASSERT_TRUE(ShowPopupAndGetWebUIContent());
+  auto* content = ShowPopupAndGetWebUIContent();
+  ASSERT_TRUE(content);
   auto* presenter = location_bar()->GetOmniboxPopupAimPresenter();
   ASSERT_TRUE(presenter);
   EXPECT_EQ(location_bar()
@@ -660,6 +685,8 @@ IN_PROC_BROWSER_TEST_P(OmniboxAimPopupKeepOpenBrowserTest,
       return !presenter->is_restoring_focus_after_file_selection();
     }));
 
+    VerifyFocusRestoredToWebUIInput(presenter, content);
+
     // Deactivate the widget again. Because the restoration flag has been reset,
     // this deactivation should now close the popup.
     DeactivatePresenterAndVerifyState(presenter, OmniboxPopupState::kNone);
@@ -676,7 +703,8 @@ IN_PROC_BROWSER_TEST_P(OmniboxAimPopupKeepOpenBrowserTest,
 IN_PROC_BROWSER_TEST_P(
     OmniboxAimPopupKeepOpenBrowserTest,
     ActivationChangedAfterFileSelectionClosedPreservesPopup) {
-  ASSERT_TRUE(ShowPopupAndGetWebUIContent());
+  auto* content = ShowPopupAndGetWebUIContent();
+  ASSERT_TRUE(content);
   auto* presenter = location_bar()->GetOmniboxPopupAimPresenter();
   ASSERT_TRUE(presenter);
   EXPECT_EQ(location_bar()
@@ -721,6 +749,8 @@ IN_PROC_BROWSER_TEST_P(
     ASSERT_TRUE(base::test::RunUntil([&]() {
       return !presenter->is_restoring_focus_after_file_selection();
     }));
+
+    VerifyFocusRestoredToWebUIInput(presenter, content);
   } else {
     // When feature is disabled, deactivation closes the popup.
     DeactivatePresenterAndVerifyState(presenter, OmniboxPopupState::kNone);
@@ -785,7 +815,7 @@ class TestPermissionPromptDelegate
   }
 
   const std::vector<std::unique_ptr<permissions::PermissionRequest>>& Requests()
-      override {
+      const override {
     return request_list_;
   }
   GURL GetRequestingOrigin() const override {
@@ -863,15 +893,15 @@ IN_PROC_BROWSER_TEST_F(OmniboxAimPopupBrowserTest,
   auto* web_contents = browser()->tab_strip_model()->GetActiveWebContents();
   TestPermissionPromptDelegate test_delegate(web_contents);
 
-  // Directly call PermissionPromptFactory::CreatePermissionPrompt
+  // Directly call `PermissionPromptFactory::CreatePermissionPrompt`
   // synchronously.
   CreatePermissionPrompt(web_contents, &test_delegate);
 
-  // Presenter MUST be locked synchronously by PermissionPromptFactory!
+  // Presenter MUST be locked synchronously by `PermissionPromptFactory`.
   EXPECT_TRUE(presenter->IsPermissionPromptPreventingClose());
 
-  // Deactivating the widget while permission prompt is active should NOT close
-  // the popup.
+  // Deactivating the widget via `OnWidgetActivationChanged` while permission
+  // prompt is active should NOT close the popup.
   static_cast<views::WidgetObserver*>(presenter)->OnWidgetActivationChanged(
       nullptr, /*active=*/false);
   EXPECT_EQ(location_bar()
@@ -879,6 +909,20 @@ IN_PROC_BROWSER_TEST_F(OmniboxAimPopupBrowserTest,
                 ->popup_state_manager()
                 ->popup_state(),
             OmniboxPopupState::kAim);
+
+  // `OmniboxPopupCloser::CloseWithReason(kBlur)` close event must
+  // also be ignored while permission prompt is showing.
+  if (auto* popup_closer = location_bar()
+                               ->GetOmniboxController()
+                               ->client()
+                               ->GetOmniboxPopupCloser()) {
+    popup_closer->CloseWithReason(omnibox::PopupCloseReason::kBlur);
+    EXPECT_EQ(location_bar()
+                  ->GetOmniboxController()
+                  ->popup_state_manager()
+                  ->popup_state(),
+              OmniboxPopupState::kAim);
+  }
 }
 
 // Verifies that when the Omnibox popup is closed, creating a permission prompt
@@ -931,4 +975,23 @@ IN_PROC_BROWSER_TEST_F(
 
   // Presenter MUST NOT be locked if prompt creation returned `nullptr`.
   EXPECT_FALSE(presenter->IsPermissionPromptPreventingClose());
+}
+
+// Verifies that when `kWebUIOmniboxFullPopup` is enabled, `OmniboxPopupCloser`
+// transitions `kFull` popup state to `kNone` on `CloseWithReason(kRevertAll)`.
+IN_PROC_BROWSER_TEST_F(OmniboxAimPopupBrowserTest,
+                       PopupCloserTransitionsFullPopupStateToNone) {
+  auto* state_manager =
+      location_bar()->GetOmniboxController()->popup_state_manager();
+  ASSERT_TRUE(state_manager);
+
+  state_manager->SetPopupState(OmniboxPopupState::kFull);
+  EXPECT_EQ(state_manager->popup_state(), OmniboxPopupState::kFull);
+
+  auto* popup_closer =
+      location_bar()->GetOmniboxController()->client()->GetOmniboxPopupCloser();
+  ASSERT_TRUE(popup_closer);
+  popup_closer->CloseWithReason(omnibox::PopupCloseReason::kRevertAll);
+
+  EXPECT_EQ(state_manager->popup_state(), OmniboxPopupState::kNone);
 }

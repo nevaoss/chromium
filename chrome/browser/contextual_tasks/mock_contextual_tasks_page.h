@@ -31,7 +31,7 @@ class MockContextualTasksPage : public mojom::Page {
               (override));
   MOCK_METHOD(void, OnSidePanelStateChanged, (), (override));
   MOCK_METHOD(void,
-              PostMessageToWebview,
+              PostAimMessage,
               (const std::vector<uint8_t>& message),
               (override));
   MOCK_METHOD(void, OnHandshakeComplete, (), (override));
@@ -82,6 +82,28 @@ class MockContextualTasksPage : public mojom::Page {
 
  private:
   mojo::Receiver<mojom::Page> receiver_{this};
+};
+class MockContextualTasksExtensionPage : public mojom::ExtensionPage {
+ public:
+  MockContextualTasksExtensionPage();
+  ~MockContextualTasksExtensionPage() override;
+
+  mojo::PendingRemote<mojom::ExtensionPage> BindAndGetRemote();
+
+  MOCK_METHOD(void,
+              PostAimMessage,
+              (const std::vector<uint8_t>& message),
+              (override));
+  MOCK_METHOD(void, OnHandshakeComplete, (), (override));
+  MOCK_METHOD(void, HideInput, (), (override));
+  MOCK_METHOD(void, RestoreInput, (), (override));
+  MOCK_METHOD(void, EnterBasicMode, (), (override));
+  MOCK_METHOD(void, ExitBasicMode, (), (override));
+  MOCK_METHOD(void, LockInput, (), (override));
+  MOCK_METHOD(void, UnlockInput, (), (override));
+
+ private:
+  mojo::Receiver<mojom::ExtensionPage> receiver_{this};
 };
 
 }  // namespace contextual_tasks

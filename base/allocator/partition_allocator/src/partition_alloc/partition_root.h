@@ -66,6 +66,7 @@
 
 namespace partition_alloc::internal {
 
+template <bool>
 class BatchFreeQueue;
 class PartitionRootEnumerator;
 struct SlotSpanMetadata;
@@ -108,7 +109,7 @@ struct PartitionOptions {
   // positive of the plugin, since constexpr implies inline.
   inline constexpr PartitionOptions();
   inline constexpr PartitionOptions(const PartitionOptions& other);
-  inline PA_CONSTEXPR_DTOR ~PartitionOptions();
+  inline constexpr ~PartitionOptions();
 
   enum class AllowToggle : uint8_t {
     kDisallowed,
@@ -167,14 +168,12 @@ struct PartitionOptions {
   ThreadIsolationOption thread_isolation;
 #endif
 
-  EnableToggle free_with_size = kDisabled;
-  EnableToggle strict_free_size_check = kEnabled;
 };
 
 constexpr PartitionOptions::PartitionOptions() = default;
 constexpr PartitionOptions::PartitionOptions(const PartitionOptions& other) =
     default;
-PA_CONSTEXPR_DTOR PartitionOptions::~PartitionOptions() = default;
+constexpr PartitionOptions::~PartitionOptions() = default;
 
 // When/if free lists should be "straightened" when calling
 // PartitionRoot::PurgeMemory(..., accounting_only=false).
@@ -222,7 +221,6 @@ class alignas(internal::kPartitionCachelineSize)
 #endif  // PA_BUILDFLAG(USE_PARTITION_COOKIE)
 #if PA_BUILDFLAG(ENABLE_BACKUP_REF_PTR_SUPPORT)
     bool brp_enabled_ = false;
-    size_t in_slot_metadata_size = 0;
 #endif  // PA_BUILDFLAG(ENABLE_BACKUP_REF_PTR_SUPPORT)
 
     internal::pool_handle pool_handle = internal::pool_handle::kNullPoolHandle;
@@ -255,9 +253,6 @@ class alignas(internal::kPartitionCachelineSize)
 #if PA_CONFIG(MOVE_METADATA_OUT_OF_GIGACAGE)
     std::ptrdiff_t metadata_offset_ = 0;
 #endif
-
-    bool enable_free_with_size = false;
-    bool enable_strict_free_size_check = true;
   };
 
   Settings settings_;
@@ -353,7 +348,7 @@ class alignas(internal::kPartitionCachelineSize)
   size_t scheduler_loop_quarantine_branch_capacity_in_bytes_ = 0;
   internal::SchedulerLoopQuarantineRoot scheduler_loop_quarantine_root_;
   internal::GlobalSchedulerLoopQuarantineBranch scheduler_loop_quarantine_;
-  internal::GlobalSchedulerLoopQuarantineBranch
+  internal::SanitizedObjectSchedulerLoopQuarantineBranch
       scheduler_loop_quarantine_for_advanced_memory_safety_checks_;
 
   static constexpr internal::base::TimeDelta kMaxPurgeDuration =
@@ -611,8 +606,10 @@ class alignas(internal::kPartitionCachelineSize)
   // Caller is responsible to persist `purge_state` when calling this
   // periodically.
   // For single-time use, prefer one-param version.
-  PA_NOINLINE void PurgeMemory(int flags, PurgeState& purge_state);
-  PA_NOINLINE void PurgeMemory(int flags);
+  // Returns what was freed, see PurgeResult. Callers that do not care about
+  // the outcome can ignore it.
+  PA_NOINLINE PurgeResult PurgeMemory(int flags, PurgeState& purge_state);
+  PA_NOINLINE PurgeResult PurgeMemory(int flags);
 
   // Reduces the size of the empty slot spans ring, until the dirty size is <=
   // |limit|.
@@ -912,6 +909,11 @@ class alignas(internal::kPartitionCachelineSize)
   PA_ALWAYS_INLINE internal::SchedulerLoopQuarantineRoot&
   GetSchedulerLoopQuarantineRoot();
 
+  PA_ALWAYS_INLINE void SchedulerLoopQuarantine(
+      internal::SlotStart slot_start,
+      SlotSpanMetadata* slot_span,
+      const internal::BucketSizeDetails& size_details);
+
   PA_ALWAYS_INLINE AllocationNotificationData
   CreateAllocationNotificationData(void* object,
                                    size_t size,
@@ -943,13 +945,15 @@ class alignas(internal::kPartitionCachelineSize)
 #endif  // PA_CONFIG(USE_PARTITION_ROOT_ENUMERATOR)
 
   std::atomic<uint64_t> intended_leak_size_;
+  std::atomic<uint64_t> total_aligned_alloc_wasted_bytes_{0};
 
   friend class internal::ThreadCache;
+  template <bool>
   friend class internal::BatchFreeQueue;
 #if PA_BUILDFLAG(ENABLE_BACKUP_REF_PTR_SUPPORT)
   friend class internal::InSlotMetadata;
 #endif  // PA_BUILDFLAG(ENABLE_BACKUP_REF_PTR_SUPPORT)
-  template <bool>
+  template <bool, bool>
   friend class internal::SchedulerLoopQuarantineBranch;
 };
 

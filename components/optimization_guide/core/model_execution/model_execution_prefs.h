@@ -23,7 +23,10 @@ enum class ModelExecutionEnterprisePolicyValue {
   kAllowWithoutLogging = 1,
   kDisable = 2,
 };
-// LINT.ThenChange(/chrome/browser/resources/settings/ai_page/constants.ts:ModelExecutionEnterprisePolicyValue)
+// LINT.ThenChange(
+//    //chrome/browser/resources/settings/ai_page/constants.ts:ModelExecutionEnterprisePolicyValue,
+//    //chrome/browser/ui/android/autofill/internal/java/src/org/chromium/chrome/browser/ui/autofill/AtMemoryBottomSheetMediator.java:AllowLogging
+// )
 
 enum class GenAILocalFoundationalModelEnterprisePolicySettings {
   kAllowed = 0,
@@ -52,6 +55,8 @@ extern const char kOnDevicePerformanceClassVersion[];
 COMPONENT_EXPORT(OPTIMIZATION_GUIDE_FEATURES)
 extern const char kOnDeviceVramMb[];
 COMPONENT_EXPORT(OPTIMIZATION_GUIDE_FEATURES)
+extern const char kOnDevicePerformanceClassGPUId[];
+COMPONENT_EXPORT(OPTIMIZATION_GUIDE_FEATURES)
 extern const char kLastUsageByFeature[];
 COMPONENT_EXPORT(OPTIMIZATION_GUIDE_FEATURES)
 extern const char kLastTimeEligibleForOnDeviceModelDownload[];
@@ -65,6 +70,9 @@ bool IsLocalFoundationalModelEnterprisePolicyAllowed();
 
 COMPONENT_EXPORT(OPTIMIZATION_GUIDE_FEATURES)
 extern const char kOnDeviceAiUserSettingsEnabled[];
+
+COMPONENT_EXPORT(OPTIMIZATION_GUIDE_FEATURES)
+extern const char kEmbeddingApiModelDownloadEligible[];
 
 COMPONENT_EXPORT(OPTIMIZATION_GUIDE_FEATURES)
 extern const char kManifestAssetLedger[];

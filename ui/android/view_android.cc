@@ -253,7 +253,7 @@ void ViewAndroid::SetAnchorRect(const JavaRef<jobject>& anchor,
     return;
 
   float dip_scale = GetDipScale();
-  int left_margin = std::round(bounds_dip.x() * dip_scale);
+  int left_margin = std::round(content_offset_x() + bounds_dip.x() * dip_scale);
   // Note that content_offset() is in CSS scale and bounds_dip is in DIP scale
   // (i.e., CSS pixels * page scale factor), but the height of browser control
   // is not affected by page scale factor. Thus, content_offset() in CSS scale
@@ -832,6 +832,17 @@ void ViewAndroid::OnPointerLockRelease() {
 bool ViewAndroid::IsCheckHitEligible() const {
   return !base::FeatureList::IsEnabled(kCheckHitEligibility) ||
          hit_test_callback_.is_null() || hit_test_callback_.Run();
+}
+
+void ViewAndroid::ReportScrollJankStats(uint32_t total_frames,
+                                        uint32_t janky_frames) {
+  JNIEnv* env = AttachCurrentThread();
+  ScopedJavaLocalRef<jobject> delegate(GetViewAndroidDelegate(env));
+  if (delegate.is_null()) {
+    return;
+  }
+  Java_ViewAndroidDelegate_reportScrollJankStats(env, delegate, total_frames,
+                                                 janky_frames);
 }
 
 }  // namespace ui

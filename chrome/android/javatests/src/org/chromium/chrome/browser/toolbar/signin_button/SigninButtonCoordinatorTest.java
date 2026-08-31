@@ -6,6 +6,7 @@ package org.chromium.chrome.browser.toolbar.signin_button;
 
 import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.action.ViewActions.click;
+import static androidx.test.espresso.assertion.ViewAssertions.doesNotExist;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
 import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static androidx.test.espresso.matcher.ViewMatchers.isEnabled;
@@ -40,6 +41,7 @@ import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.base.test.util.Restriction;
 import org.chromium.chrome.R;
+import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.flags.ChromeSwitches;
 import org.chromium.chrome.browser.preferences.Pref;
 import org.chromium.chrome.browser.profiles.ProfileManager;
@@ -72,6 +74,7 @@ import org.chromium.ui.widget.ChromeImageButton;
 @DoNotBatch(reason = "This test relies on native initialization")
 @CommandLineFlags.Add({ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE})
 @EnableFeatures({SigninFeatures.SIGNIN_LEVEL_UP_BUTTON, SigninFeatures.PROFILE_DISC_ON_ALL_PAGES})
+@DisableFeatures(ChromeFeatureList.SETTINGS_IN_TAB) // crbug.com/521895796
 public class SigninButtonCoordinatorTest {
 
     // Mock sign-in environment needs to be destroyed after ChromeTabbedActivity in case there are
@@ -360,6 +363,21 @@ public class SigninButtonCoordinatorTest {
         mPage.loadWebPageProgrammatically(ContentUrlConstants.ABOUT_BLANK_DISPLAY_URL);
 
         onView(withId(R.id.signin_button)).check(matches(not(isDisplayed())));
+    }
+
+    @Test
+    @MediumTest
+    @DisableFeatures(SigninFeatures.PROFILE_DISC_ON_ALL_PAGES)
+    public void testSigninButton_InflatesAndShowsWhenNavigatingToNtp() {
+        // Start on a non-NTP page so button should not be inflated.
+        WebPageStation blankPage = mActivityTestRule.startOnBlankPage();
+        onView(withId(R.id.signin_button)).check(doesNotExist());
+
+        // Navigate to the NTP. This triggers updateButtonVisibility -> inflation.
+        blankPage.loadPageProgrammatically(
+                getOriginalNativeNtpUrl(), RegularNewTabPageStation.newBuilder());
+
+        ViewUtils.waitForVisibleView(withId(R.id.signin_button));
     }
 
     @Test

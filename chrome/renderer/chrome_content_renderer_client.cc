@@ -31,6 +31,7 @@
 #include "base/threading/thread_restrictions.h"
 #include "base/time/time.h"
 #include "base/values.h"
+#include "build/branding_buildflags.h"
 #include "build/build_config.h"
 #include "chrome/common/buildflags.h"
 #include "chrome/common/channel_info.h"
@@ -177,7 +178,6 @@
 #include "third_party/blink/public/web/web_plugin.h"
 #include "third_party/blink/public/web/web_plugin_container.h"
 #include "third_party/blink/public/web/web_plugin_params.h"
-#include "third_party/blink/public/web/web_script_controller.h"
 #include "third_party/blink/public/web/web_security_policy.h"
 #include "third_party/blink/public/web/web_view.h"
 #include "ui/base/l10n/l10n_util.h"
@@ -555,6 +555,19 @@ void ChromeContentRendererClient::RenderThreadStarted() {
       WebString::FromAscii(dom_distiller::kDomDistillerScheme));
   // TODO(nyquist): Add test to ensure this happens when the flag is set.
   WebSecurityPolicy::RegisterURLSchemeAsDisplayIsolated(dom_distiller_scheme);
+
+#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || \
+    BUILDFLAG(IS_WIN)
+  if (base::FeatureList::IsEnabled(features::kGoogleChromeScheme)) {
+#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+    WebSecurityPolicy::RegisterURLSchemeAsDirectLaunch(
+        WebString::FromAscii("google-chrome"));
+#else
+    WebSecurityPolicy::RegisterURLSchemeAsDirectLaunch(
+        WebString::FromAscii("chromium"));
+#endif
+  }
+#endif
 
 #if BUILDFLAG(IS_ANDROID)
   WebSecurityPolicy::RegisterURLSchemeAsAllowedForReferrer(
@@ -1471,14 +1484,6 @@ void ChromeContentRendererClient::
   }
 }
 
-bool ChromeContentRendererClient::AllowScriptExtensionForServiceWorker(
-    const url::Origin& script_origin) {
-#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
-  return script_origin.scheme() == extensions::kExtensionScheme;
-#else
-  return false;
-#endif
-}
 
 void ChromeContentRendererClient::
     WillInitializeServiceWorkerContextOnWorkerThread() {
@@ -1513,11 +1518,12 @@ void ChromeContentRendererClient::WillEvaluateServiceWorkerOnWorkerThread(
       ->WillEvaluateServiceWorkerOnWorkerThread(
           context_proxy, v8_context, service_worker_version_id,
           service_worker_scope, script_url, service_worker_token);
-#endif
-  if (AllowScriptExtensionForServiceWorker(url::Origin::Create(script_url))) {
+  if (url::Origin::Create(script_url).scheme() ==
+      extensions::kExtensionScheme) {
     BenchmarkingBindings::InstallConditionally(v8_context);
     LoadTimesBindings::Install(v8_context);
   }
+#endif
 }
 
 void ChromeContentRendererClient::DidStartServiceWorkerContextOnWorkerThread(

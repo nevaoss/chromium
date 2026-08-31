@@ -844,8 +844,6 @@ gpu::SharedImageCapabilities SharedImageFactory::MakeCapabilities() {
       gl::GetANGLEImplementation() == gl::ANGLEImplementation::kMetal;
   const bool is_skia_graphite =
       gr_context_type_ == GrContextType::kGraphiteDawn;
-  shared_image_caps.supports_luminance_shared_images =
-      !is_angle_metal && !is_skia_graphite;
   shared_image_caps.supports_r16_shared_images =
       is_angle_metal || is_skia_graphite;
   shared_image_caps.disable_webgpu_shared_images =
@@ -1059,6 +1057,16 @@ void SharedImageFactory::LogGetFactoryFailed(gpu::SharedImageUsageSet usage,
     return;
   }
 #endif  // BUILDFLAG(IS_LINUX)
+
+#if BUILDFLAG(IS_WIN)
+  // Suppress dumps for LayerTreeHostUIResourceBitmap for kNone GrContextType
+  // on Windows.
+  if (context_state_->gr_context_type() == GrContextType::kNone &&
+      new_debug_label.find("LayerTreeHostUIResourceBitmap") !=
+          std::string::npos) {
+    return;
+  }
+#endif  // BUILDFLAG(IS_WIN)
 
   SCOPED_CRASH_KEY_STRING64("SIFactory", "DebugLabel", new_debug_label);
   SCOPED_CRASH_KEY_STRING64("SIFactory", "Format", format.ToString());

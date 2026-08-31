@@ -168,6 +168,7 @@ class MockAutocompleteProviderClient
   MOCK_CONST_METHOD0(IsPagePaywalled, std::optional<bool>());
   MOCK_METHOD(bool, ShouldSendContextualUrlSuggestParam, (), (const));
   MOCK_METHOD(bool, ShouldSendPageTitleSuggestParam, (), (const));
+  MOCK_METHOD(bool, IsWebUiNtpEnabledForDesktopAndroid, (), (const, override));
   MOCK_CONST_METHOD1(GetLensSuggestInputsWhenReady,
                      base::CallbackListSubscription(
                          LensOverlaySuggestInputsCallback callback));
@@ -221,7 +222,10 @@ class MockAutocompleteProviderClient
   MOCK_METHOD0(OpenIncognitoClearBrowsingDataDialog, void());
   MOCK_METHOD0(CloseIncognitoWindows, void());
   MOCK_METHOD0(PromptPageTranslation, void());
-  MOCK_METHOD1(OpenLensOverlay, void(bool));
+  MOCK_METHOD(void,
+              OpenLensOverlay,
+              (bool show, lens::LensOverlayInvocationSource invocation_source),
+              (override));
   MOCK_METHOD(bool, ShouldOpenCoBrowsePanel, (), (const, override));
   MOCK_METHOD(void, OpenCoBrowsePanel, (), (override));
   MOCK_METHOD(bool, ShouldOpenComposeboxForAskG, (), (const, override));

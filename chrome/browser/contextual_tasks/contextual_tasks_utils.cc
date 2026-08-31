@@ -11,6 +11,8 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/timer/elapsed_timer.h"
 #include "build/build_config.h"
+#include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
+#include "chrome/browser/contextual_tasks/aim_message_poster.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks.mojom.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_panel_host.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui.h"
@@ -23,14 +25,15 @@
 #if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/ui/actions/chrome_action_id.h"
 #include "chrome/browser/ui/browser_actions.h"
-#include "components/omnibox/common/omnibox_features.h"
 #include "chrome/browser/ui/toolbar/pinned_toolbar/pinned_toolbar_actions_model.h"
+#include "components/omnibox/common/omnibox_features.h"
 #endif
 #include "chrome/common/webui_url_constants.h"
 #include "components/contextual_search/contextual_search_metrics_recorder.h"
 #include "components/contextual_search/contextual_search_session_handle.h"
 #include "components/contextual_tasks/public/features.h"
 #include "components/contextual_tasks/public/prefs.h"
+#include "components/omnibox/browser/aim_eligibility_service.h"
 #include "components/omnibox/browser/location_bar_model_util.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_ui.h"
@@ -121,6 +124,21 @@ ContextualTasksUIInterface* GetWebUiInterface(
   return controller->GetAs<ContextualTasksUI>();
 }
 
+bool IsTabSharingEligible(Profile* profile) {
+  // Forcing entry point eligibility should ONLY be used for local testing and
+  // debugging purposes to bypass server and backend eligibility checks.
+  if (base::FeatureList::IsEnabled(
+          kContextualTasksForceEntryPointEligibility)) {
+    return true;
+  }
+  if (!profile || profile->IsOffTheRecord()) {
+    return false;
+  }
+  auto* aim_service = AimEligibilityServiceFactory::GetForProfile(profile);
+  return aim_service && aim_service->IsAimEligible() &&
+         aim_service->IsFuseboxEligible();
+}
+
 bool IsValidUrlForSuggestedTab(const GURL& url,
                                Profile* profile,
                                SiteExclusionDetail& site_exclusion_detail) {
@@ -162,14 +180,14 @@ std::unique_ptr<contextual_search::ContextualSearchContextController::
 PrepareClientToAimRequestInfo(
     const std::string& query,
     contextual_search::ContextualSearchSessionHandle* session_handle,
-    ContextualTasksUIInterface* web_ui_interface,
+    AimMessagePoster* message_poster,
     omnibox::ToolMode active_tool,
     omnibox::ModelMode active_model,
     std::optional<int64_t> active_tab_context_id,
     std::optional<base::UnguessableToken> overlay_token,
     bool is_voice_search,
     const std::map<std::string, std::string>& additional_cgi_params) {
-  CHECK(web_ui_interface);
+  CHECK(message_poster);
   auto info =
       std::make_unique<contextual_search::ContextualSearchContextController::
                            CreateClientToAimRequestInfo>();
@@ -203,7 +221,7 @@ PrepareClientToAimRequestInfo(
     const contextual_search::FileInfo* file_info =
         session_handle->GetController()->GetFileInfo(token);
     if (file_info && file_info->GetInjectedInputId().has_value()) {
-      SendInjectedInputRemovedUpdate(web_ui_interface,
+      SendInjectedInputRemovedUpdate(message_poster,
                                      file_info->GetInjectedInputId().value());
     }
   }
@@ -228,21 +246,20 @@ void FinalizeAndSendAimQuery(
     std::unique_ptr<contextual_search::ContextualSearchContextController::
                         CreateClientToAimRequestInfo> request_info,
     contextual_search::ContextualSearchSessionHandle* session_handle,
-    ContextualTasksUIInterface* web_ui_interface) {
-  if (!session_handle || !web_ui_interface) {
+    AimMessagePoster* message_poster) {
+  if (!session_handle || !message_poster) {
     return;
   }
 
   lens::ClientToAimMessage client_to_page_message =
       session_handle->CreateClientToAimRequest(std::move(request_info));
 
-  web_ui_interface->PostMessageToWebview(client_to_page_message);
+  message_poster->PostAimMessage(client_to_page_message);
 }
 
-void SendInjectedInputRemovedUpdate(
-    ContextualTasksUIInterface* web_ui_interface,
-    const std::string& id) {
-  CHECK(web_ui_interface);
+void SendInjectedInputRemovedUpdate(AimMessagePoster* message_poster,
+                                    const std::string& id) {
+  CHECK(message_poster);
 
   lens::ClientToAimMessage client_to_aim_message;
   lens::InjectedInputUpdate* injected_input_update =
@@ -252,7 +269,7 @@ void SendInjectedInputRemovedUpdate(
       lens::InjectedInputUpdatePayload::UpdateType::
           InjectedInputUpdatePayload_UpdateType_REMOVED);
 
-  web_ui_interface->PostMessageToWebview(client_to_aim_message);
+  message_poster->PostAimMessage(client_to_aim_message);
 }
 
 bool ShouldShowSidePanel() {
@@ -316,12 +333,12 @@ bool GetEffectivePinState(Profile* profile) {
 #if !BUILDFLAG(IS_ANDROID)
 void UpdatePinButtonVisibilityState(BrowserWindowInterface* browser_window,
                                     bool eligible) {
-  if (!browser_window || !browser_window->GetActions()) {
+  if (!browser_window || !BrowserActions::From(browser_window)) {
     return;
   }
 
   actions::ActionItem* const scope_action =
-      browser_window->GetActions()->root_action_item();
+      BrowserActions::From(browser_window)->root_action_item();
   if (!scope_action) {
     return;
   }
@@ -345,5 +362,32 @@ void UpdatePinButtonVisibilityState(BrowserWindowInterface* browser_window,
   }
 }
 #endif
+
+lens::ClientToAimMessage GetHandshakeMessageProto() {
+  lens::ClientToAimMessage message;
+  lens::HandshakePing* ping = message.mutable_handshake_ping();
+  ping->add_capabilities(lens::FeatureCapability::DEFAULT);
+  ping->add_capabilities(lens::FeatureCapability::OPEN_THREADS_VIEW);
+  ping->add_capabilities(lens::FeatureCapability::COBROWSING_DISPLAY_CONTROL);
+  if (base::FeatureList::IsEnabled(kContextualTasksContextLibrary)) {
+    ping->add_capabilities(lens::FeatureCapability::THREAD_CONTEXT_LIBRARY);
+  }
+  if (base::FeatureList::IsEnabled(kEnableNotifyZeroStateRenderedCapability)) {
+    ping->add_capabilities(lens::FeatureCapability::NOTIFY_ZERO_STATE_RENDERED);
+  }
+  if (ShouldEnableLockAndUnlockInputCapability()) {
+    ping->add_capabilities(lens::FeatureCapability::UNLOCK_INPUT);
+    ping->add_capabilities(lens::FeatureCapability::LOCK_INPUT);
+  }
+  return message;
+}
+
+std::vector<uint8_t> GetSerializedHandshakeMessage() {
+  lens::ClientToAimMessage message = GetHandshakeMessageProto();
+  const size_t size = message.ByteSizeLong();
+  std::vector<uint8_t> serialized_message(size);
+  message.SerializeToArray(serialized_message.data(), size);
+  return serialized_message;
+}
 
 }  // namespace contextual_tasks

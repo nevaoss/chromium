@@ -49,6 +49,7 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
+#include "chrome/browser/ui/browser_window/public/create_browser_window.h"
 #include "chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_utils.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/zoom/chrome_zoom_level_prefs.h"
@@ -105,10 +106,10 @@
 #include "chrome/browser/resource_coordinator/tab_manager.h"
 #include "chrome/browser/resource_coordinator/time.h"
 #include "chrome/browser/resource_coordinator/utils.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_tabstrip.h"
 #include "chrome/browser/ui/browser_window.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/browser/ui/tabs/saved_tab_groups/tab_group_sync_service_initialized_observer.h"
 #include "chrome/browser/ui/tabs/split_tab_metrics.h"
@@ -394,8 +395,9 @@ IN_PROC_BROWSER_TEST_F(ExtensionTabsTest, GetWindow) {
 
   // Check window type.
   EXPECT_EQ("normal", GetWindowType(browser_window_interface(), extension));
-  Browser* test_browser = Browser::Create(
-      Browser::CreateParams(Browser::TYPE_POPUP, profile(), true));
+  BrowserWindowInterface* test_browser = CreateBrowserWindow(
+      BrowserWindowCreateParams(BrowserWindowInterface::TYPE_POPUP, profile(),
+                                /*from_user_gesture=*/true));
   EXPECT_EQ("popup", GetWindowType(test_browser, extension));
   DevToolsWindow* devtools = DevToolsWindowTesting::OpenDevToolsWindowSync(
       GetTabListInterface()->GetTab(0)->GetContents(), false /* is_docked */);
@@ -403,15 +405,18 @@ IN_PROC_BROWSER_TEST_F(ExtensionTabsTest, GetWindow) {
             GetWindowType(DevToolsWindowTesting::Get(devtools)->browser(),
                           extension));
   DevToolsWindowTesting::CloseDevToolsWindowSync(devtools);
-  test_browser = Browser::Create(Browser::CreateParams::CreateForApp(
-      "test-app", true, gfx::Rect(), profile(), true));
+  test_browser = CreateBrowserWindow(BrowserWindowCreateParams::CreateForApp(
+      "test-app", /*trusted_source=*/true, gfx::Rect(), profile(),
+      /*user_gesture=*/true));
   EXPECT_EQ("app", GetWindowType(test_browser, extension));
-  test_browser = Browser::Create(Browser::CreateParams::CreateForAppPopup(
-      "test-app-popup", true, gfx::Rect(), profile(), true));
+  test_browser =
+      CreateBrowserWindow(BrowserWindowCreateParams::CreateForAppPopup(
+          "test-app-popup", /*trusted_source=*/true, gfx::Rect(), profile(),
+          /*user_gesture=*/true));
   EXPECT_EQ("popup", GetWindowType(test_browser, extension));
 
   // Incognito.
-  Browser* incognito_browser = CreateIncognitoBrowser();
+  BrowserWindowInterface* incognito_browser = CreateIncognitoBrowser();
   int incognito_window_id = ExtensionTabUtil::GetWindowId(incognito_browser);
 
   // Without "include_incognito".
@@ -434,7 +439,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionTabsTest, GetWindow) {
 
 IN_PROC_BROWSER_TEST_F(ExtensionTabsTest, GetCurrentWindow) {
   int window_id = ExtensionTabUtil::GetWindowId(browser_window_interface());
-  Browser* new_browser = CreateBrowser(profile());
+  BrowserWindowInterface* new_browser = CreateBrowser(profile());
   int new_id = ExtensionTabUtil::GetWindowId(new_browser);
 
   // Get the current window using new_browser.
@@ -484,7 +489,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionTabsTestWithApps, MAYBE_GetAllWindows) {
   window_ids.insert(ExtensionTabUtil::GetWindowId(browser_window_interface()));
 
   for (size_t i = 0; i < NUM_WINDOWS - 1; ++i) {
-    Browser* new_browser = CreateBrowser(profile());
+    BrowserWindowInterface* new_browser = CreateBrowser(profile());
     window_ids.insert(ExtensionTabUtil::GetWindowId(new_browser));
   }
 
@@ -551,7 +556,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionTabsTestWithApps, GetAllWindowsAllTypes) {
   window_ids.insert(ExtensionTabUtil::GetWindowId(browser_window_interface()));
 
   for (size_t i = 0; i < NUM_WINDOWS - 1; ++i) {
-    Browser* new_browser = CreateBrowser(profile());
+    BrowserWindowInterface* new_browser = CreateBrowser(profile());
     window_ids.insert(ExtensionTabUtil::GetWindowId(new_browser));
   }
 
@@ -641,7 +646,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionTabsTest, UpdateNoPermissions) {
 
 IN_PROC_BROWSER_TEST_F(ExtensionTabsTest,
                        DisallowNonIncognitoUrlInIncognitoWindow) {
-  Browser* incognito = CreateIncognitoBrowser();
+  BrowserWindowInterface* incognito = CreateIncognitoBrowser();
 
   auto update_tab_function = base::MakeRefCounted<TabsUpdateFunction>();
   scoped_refptr<const Extension> extension(ExtensionBuilder("Test").Build());
@@ -693,7 +698,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionTabsTest, DefaultToIncognitoWhenItIsForced) {
   EXPECT_TRUE(api_test_utils::GetBoolean(result, "incognito"));
 
   // Now try creating a window from incognito window.
-  Browser* incognito_browser = CreateIncognitoBrowser();
+  BrowserWindowInterface* incognito_browser = CreateIncognitoBrowser();
   // Run without an explicit "incognito" param.
   function = base::MakeRefCounted<WindowsCreateFunction>();
   function->SetRenderFrameHost(GetTabListInterface()
@@ -767,7 +772,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionTabsTest,
   EXPECT_TRUE(api_test_utils::GetBoolean(result, "incognito"));
 
   // Now try creating a window from incognito window.
-  Browser* incognito_browser = CreateIncognitoBrowser();
+  BrowserWindowInterface* incognito_browser = CreateIncognitoBrowser();
   // Run without an explicit "incognito" param.
   function = base::MakeRefCounted<WindowsCreateFunction>();
   function->set_extension(extension.get());
@@ -799,7 +804,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionTabsTest,
       keys::kIncognitoModeIsForced));
 
   // Now try opening a normal window from incognito window.
-  Browser* incognito_browser = CreateIncognitoBrowser();
+  BrowserWindowInterface* incognito_browser = CreateIncognitoBrowser();
   // Run with an explicit "incognito" param.
   function = base::MakeRefCounted<WindowsCreateFunction>();
   function->set_extension(extension.get());
@@ -815,7 +820,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionTabsTest,
   static const char kArgs[] =
       "[{\"url\": \"about:blank\", \"incognito\": true }]";
 
-  Browser* incognito_browser = CreateIncognitoBrowser();
+  BrowserWindowInterface* incognito_browser = CreateIncognitoBrowser();
   // Disable Incognito mode.
   IncognitoModePrefs::SetAvailability(
       profile()->GetPrefs(), policy::IncognitoModeAvailability::kDisabled);
@@ -880,7 +885,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionTabsTest, QueryAllTabsWithDevTools) {
   std::set<int> window_ids;
   window_ids.insert(ExtensionTabUtil::GetWindowId(browser_window_interface()));
   for (size_t i = 0; i < kNumWindows - 1; ++i) {
-    Browser* new_browser = CreateBrowser(profile());
+    BrowserWindowInterface* new_browser = CreateBrowser(profile());
     window_ids.insert(ExtensionTabUtil::GetWindowId(new_browser));
   }
 
@@ -931,8 +936,9 @@ IN_PROC_BROWSER_TEST_F(ExtensionTabsTest, DontCreateTabInClosingPopupWindow) {
   // Test creates new popup window, closes it right away and then tries to open
   // a new tab in it. Tab should not be opened in the popup window, but in a
   // tabbed browser window.
-  Browser* popup_browser = Browser::Create(
-      Browser::CreateParams(Browser::TYPE_POPUP, profile(), true));
+  BrowserWindowInterface* popup_browser = CreateBrowserWindow(
+      BrowserWindowCreateParams(BrowserWindowInterface::TYPE_POPUP, profile(),
+                                /*from_user_gesture=*/true));
   int window_id = ExtensionTabUtil::GetWindowId(popup_browser);
   chrome::CloseWindow(popup_browser);
 
@@ -1235,7 +1241,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionWindowCreateTest, MAYBE_AcceptState) {
           ChromeExtensionFunctionDetails(function.get()), window_id, &error);
   ASSERT_TRUE(new_controller);
   EXPECT_TRUE(error.empty());
-  Browser* new_browser = new_controller->GetBrowser();
+  BrowserWindowInterface* new_browser = new_controller->GetBrowser();
   ASSERT_TRUE(new_browser);
 
 // TODO(crbug.com/40254339): Remove this workaround if this wait is no longer
@@ -1676,7 +1682,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionApiTabsIwaMoveTest, CannotMoveIwaTab) {
   int iwa_tab_id =
       ExtensionTabUtil::GetTabId(iwa_tab_list->GetTab(0)->GetContents());
 
-  Browser* normal_browser = CreateBrowser(profile());
+  BrowserWindowInterface* normal_browser = CreateBrowser(profile());
   int target_window_id = ExtensionTabUtil::GetWindowId(normal_browser);
 
   auto function = base::MakeRefCounted<TabsMoveFunction>();
@@ -1700,7 +1706,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionApiTabsIwaMoveTest,
   int iwa_tab_id =
       ExtensionTabUtil::GetTabId(iwa_tab_list->GetTab(0)->GetContents());
 
-  Browser* normal_browser = CreateBrowser(profile());
+  BrowserWindowInterface* normal_browser = CreateBrowser(profile());
   int target_window_id = ExtensionTabUtil::GetWindowId(normal_browser);
 
   auto function = base::MakeRefCounted<TabsGroupFunction>();
@@ -1876,8 +1882,8 @@ IN_PROC_BROWSER_TEST_F(ExtensionTabsTestWithApps, MAYBE_FilteredEvents) {
       " \"minWidth\": 200, \"minHeight\": 200,"
       " \"maxWidth\": 400, \"maxHeight\": 400}}");
 
-  Browser* browser_window =
-      Browser::Create(Browser::CreateParams(profile(), true));
+  BrowserWindowInterface* browser_window = CreateBrowserWindow(
+      BrowserWindowCreateParams(profile(), /*from_user_gesture=*/true));
   AddBlankTabAndShow(browser_window);
 
   DevToolsWindow* devtools_window =

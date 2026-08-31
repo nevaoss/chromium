@@ -432,6 +432,25 @@ suite('NewTabPageRealboxNextTest', () => {
     assertFalse(pasteEvent.defaultPrevented);
     assertFalse(openComposeboxCalled);
     assertTrue(realbox.$.input.preventInlineAutocomplete(''));
+    assertEquals(1, metrics.count('NewTabPage.Realbox.Paste', 1));
+    assertEquals(1, metrics.count('NewTabPage.Realbox.Paste', 0));
+  });
+
+  test('pasting into realbox records NewTabPage.Realbox.Paste', async () => {
+    realbox = await createAndAppendRealbox();
+    assertEquals(0, metrics.count('NewTabPage.Realbox.Paste'));
+
+    const pasteEvent = new ClipboardEvent('paste', {
+      clipboardData: new DataTransfer(),
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+    });
+    realbox.$.input.inputElement.dispatchEvent(pasteEvent);
+    await microtasksFinished();
+
+    assertEquals(1, metrics.count('NewTabPage.Realbox.Paste', 1));
+    assertEquals(1, metrics.count('NewTabPage.Realbox.Paste', 0));
   });
 
   test('useWebKitSearchboxIcons with compose button enabled', async () => {
@@ -441,12 +460,16 @@ suite('NewTabPageRealboxNextTest', () => {
       colorSourceIsBaseline: false,
     });
     await microtasksFinished();
+    const expectedVoiceIcon =
+        document.documentElement.hasAttribute('webui-rounded-icons') ?
+        'mic.svg' :
+        'mic_old.svg';
 
     const buttonsToTest = [
       {
         selector: '#voiceSearchButton',
-        iconUrl:
-            'url("chrome://resources/cr_components/searchbox/icons/mic.svg")',
+        iconUrl: `url("chrome://resources/cr_components/searchbox/icons/${
+            expectedVoiceIcon}")`,
       },
       {
         selector: '#lensSearchButton',
@@ -1120,7 +1143,11 @@ suite('NewTabPageRealboxNextTest', () => {
       testProxy.callbackRouterRemote.onInputStateChanged(newInputState);
       await testProxy.callbackRouterRemote.$.flushForTesting();
       await microtasksFinished();
-      const inputState = realbox['inputState_'];
+      const contextualEntrypoint =
+          realbox.shadowRoot.querySelector<ContextualEntrypointAndMenuElement>(
+              '#context')!;
+      assertTrue(!!contextualEntrypoint);
+      const inputState = contextualEntrypoint.inputState;
       assertTrue(!!inputState);
       assertEquals(ToolMode.kDeepSearch, inputState.allowedTools[0]);
       assertEquals(ModelMode.kUnspecified, inputState.activeModel);

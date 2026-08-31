@@ -151,21 +151,21 @@ BASE_FEATURE(kContextualTasksCustomNlmUi, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kContextualTasksBackButtonExpandsSidePanel,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+// When enabled, close tab actions can expand the side panel.
+BASE_FEATURE(kContextualTasksCloseTabExpandsSidePanel,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Enables the use of APC comparison for webpages in the recontextualization
 // flow.
 BASE_FEATURE(kContextualTasksWebpageApcComparison,
              base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Enables Java Fusebox on Android. Meant to be used as a fallback until WebUI
-// based fusebox is fully functional.
-BASE_FEATURE(kContextualTasksJavaFusebox, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables overriding side panel to show Bottom Sheet on demand.
 BASE_FEATURE(kContextualTasksOverrideShowBottomSheetOnLargeScreen,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables prefetching of cookies for contextual tasks.
-BASE_FEATURE(kContextualTasksCookiePrefetch, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kContextualTasksCookiePrefetch, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kAimTriggeredThreadLinks, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -375,6 +375,9 @@ const base::FeatureParam<double> kContextualTasksContextLoggingSampleRate{
     &kContextualTasksContextLogging, "ContextualTasksContextLoggingSampleRate",
     1.0};
 
+const base::FeatureParam<int> kMinQueryWords{
+    &kContextualTasksContext, "ContextualTasksContextMinQueryWords", 3};
+
 const base::FeatureParam<bool> kSendContextualInputUploadTypeInSearchUrl{
     &kContextualTasksSendContextualInputUploadType, "send_in_search_url", true};
 
@@ -461,6 +464,16 @@ const base::FeatureParam<std::string> kContextualTasksHelpUrl(
     "ContextualTasksHelpUrl",
     "https://support.google.com/websearch/");
 
+const base::FeatureParam<std::string> kContextualTasksOverflowMenuHelpUrl(
+    &kContextualTasks,
+    "ContextualTasksOverflowMenuHelpUrl",
+    "https://support.google.com/chrome/answer/17025061");
+
+const base::FeatureParam<std::string> kContextualTasksTabHelpUrl(
+    &kContextualTasks,
+    "ContextualTasksTabHelpUrl",
+    "https://support.google.com/chrome/answer/17025061");
+
 const base::FeatureParam<bool> kEnableProtectedPageError(
     &kContextualTasks,
     "ContextualTasksEnableProtectedPageError",
@@ -501,6 +514,16 @@ const base::FeatureParam<int>
         &kContextualTasksShowOnboardingTooltip,
         "ContextualTasksLensSearchTooltipSessionImpressionCap",
         1);
+
+const base::FeatureParam<int> kContextualTasksAskGTooltipDismissedCap(
+    &kContextualTasksShowOnboardingTooltip,
+    "ContextualTasksAskGTooltipDismissedCap", 1);
+
+const base::FeatureParam<int>
+    kContextualTasksAskGTooltipSessionImpressionCap(
+        &kContextualTasksShowOnboardingTooltip,
+        "ContextualTasksAskGTooltipSessionImpressionCap",
+        10);
 
 const base::FeatureParam<int> kContextualTasksOnboardingTooltipImpressionDelay(
     &kContextualTasksShowOnboardingTooltip,
@@ -584,6 +607,23 @@ int GetContextualTasksLensSearchTooltipSessionImpressionCap() {
     return 0;
   }
   return kContextualTasksLensSearchTooltipSessionImpressionCap.Get();
+}
+
+int GetContextualTasksAskGTooltipDismissedCap() {
+  if (!base::FeatureList::IsEnabled(kContextualTasksShowOnboardingTooltip)) {
+    return 0;
+  }
+  if (base::FeatureList::IsEnabled(kContextualTasksBypassDismissedCap)) {
+    return std::numeric_limits<int>::max();
+  }
+  return kContextualTasksAskGTooltipDismissedCap.Get();
+}
+
+int GetContextualTasksAskGTooltipSessionImpressionCap() {
+  if (!base::FeatureList::IsEnabled(kContextualTasksShowOnboardingTooltip)) {
+    return 0;
+  }
+  return kContextualTasksAskGTooltipSessionImpressionCap.Get();
 }
 
 int GetContextualTasksOnboardingTooltipImpressionDelay() {
@@ -740,6 +780,14 @@ std::string GetContextualTasksHelpUrl() {
   return kContextualTasksHelpUrl.Get();
 }
 
+std::string GetContextualTasksOverflowMenuHelpUrl() {
+  return kContextualTasksOverflowMenuHelpUrl.Get();
+}
+
+std::string GetContextualTasksTabHelpUrl() {
+  return kContextualTasksTabHelpUrl.Get();
+}
+
 bool GetEnableContextualTasksSmartCompose() {
   return base::FeatureList::IsEnabled(kContextualTasks) &&
          kEnableContextualTasksSmartCompose.Get();
@@ -813,7 +861,8 @@ bool IsContextualTasksSidePanelRearchitectureEnabled() {
 
 bool IsContextualTasksUIEnabled() {
   return base::FeatureList::IsEnabled(kContextualTasksSidePanel) ||
-         base::FeatureList::IsEnabled(kContextualTasks);
+         base::FeatureList::IsEnabled(kContextualTasks) ||
+         base::FeatureList::IsEnabled(kContextualTasksRearchitecture);
 }
 
 namespace flag_descriptions {
@@ -851,14 +900,15 @@ const char kContextualTasksSuggestionsEnabledName[] =
 const char kContextualTasksSuggestionsEnabledDescription[] =
     "Enables suggestions for contextual tasks.";
 
-const char kContextualTasksJavaFuseboxName[] = "Contextual Tasks Java Fusebox";
-const char kContextualTasksJavaFuseboxDescription[] =
-    "Enables Java Fusebox for contextual tasks.";
-
 const char kContextualTasksBackButtonExpandsSidePanelName[] =
     "Contextual Tasks Back Button Expands Side Panel";
 const char kContextualTasksBackButtonExpandsSidePanelDescription[] =
     "Enables expanding the side panel on back navigations.";
+
+const char kContextualTasksCloseTabExpandsSidePanelName[] =
+    "Contextual Tasks Close Tab Expands Side Panel";
+const char kContextualTasksCloseTabExpandsSidePanelDescription[] =
+    "Enables expanding the contextual tasks side panel on close tab actions.";
 
 const char kContextualTasksOverrideShowBottomSheetOnLargeScreenName[] =
     "Override Show Bottom Sheet On Large Screen for Contextual Tasks";

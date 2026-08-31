@@ -61,6 +61,10 @@ class InputStateModel {
     return weak_ptr_factory_.GetWeakPtr();
   }
 
+  // Returns true if this model was initialized with a valid, non-empty
+  // searchbox config.
+  bool has_valid_config() const { return has_valid_config_; }
+
   // Returns the current input types from the session handle.
   static std::vector<InputType> GetCurrentInputTypes(
       const contextual_search::ContextualSearchSessionHandle* session_handle);
@@ -175,6 +179,7 @@ class InputStateModel {
   PrefChangeRegistrar pref_change_registrar_;
   const bool is_off_the_record_;
   const bool browser_identity_matches_aim_identity_;
+  bool has_valid_config_ = false;
   GURL current_url_;
 
   // Configured input types from the searchbox configuration.
@@ -190,6 +195,16 @@ class InputStateModel {
   DriveConsentState drive_consent_state_ = DriveConsentState::kNotReady;
 
   bool is_smart_tab_sharing_active_ = false;
+
+  // Each URL change causes `UpdateStateFromUrl()` to run.
+  // Only changing threads requires reading tool param from URL to initialize
+  // tool state. Once the user modifies the tool, the initial tool state is
+  // invalid, and therefore, this flag is set to `true` so Chrome knows to no
+  // longer read and set the initial tool from the URL. Cannot just read tool
+  // from URL when thread URL is changed (to change threads), since tool URL
+  // param is added a few URL changes AFTER the thread URL is changed (to change
+  // threads).
+  bool user_modified_tool_in_thread_ = false;
 
   base::WeakPtrFactory<InputStateModel> weak_ptr_factory_{this};
 };

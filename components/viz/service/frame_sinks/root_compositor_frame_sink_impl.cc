@@ -469,12 +469,14 @@ void RootCompositorFrameSinkImpl::ForceImmediateDrawAndSwapIfPossible() {
   display_->ForceImmediateDrawAndSwapIfPossible();
 }
 
-#if BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_MAC)
 void RootCompositorFrameSinkImpl::UpdateRefreshRate(float refresh_rate) {
   if (external_begin_frame_source_)
     external_begin_frame_source_->UpdateRefreshRate(refresh_rate);
 }
+#endif  // BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_MAC)
 
+#if BUILDFLAG(IS_ANDROID)
 void RootCompositorFrameSinkImpl::SetAdaptiveRefreshRateInfo(
     mojom::AdaptiveRefreshRateInfoPtr info) {
   supports_adaptive_refresh_rate_ =
@@ -525,6 +527,11 @@ void RootCompositorFrameSinkImpl::SetSupportedRefreshRates(
   for (float rate : supported_refresh_rates) {
     const base::TimeDelta interval = base::Hertz(rate);
     exact_supported_refresh_rates_[interval] = rate;
+  }
+
+  if (!exact_supported_refresh_rates_.empty() && display_) {
+    display_->NotifyMinSupportedVsyncInterval(
+        exact_supported_refresh_rates_.begin()->first);
   }
 
   UpdateFrameIntervalDeciderSettings();

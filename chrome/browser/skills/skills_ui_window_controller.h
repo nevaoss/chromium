@@ -9,6 +9,8 @@
 #include <string>
 
 #include "base/callback_list.h"
+#include "base/containers/flat_map.h"
+#include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "chrome/browser/ui/toasts/api/toast_id.h"
@@ -36,14 +38,26 @@ class SkillsUiWindowController {
   void OnSkillDeleted(std::string_view skill_id);
 
   // Shows a toast for the given ToastId.
-  void ShowToast(ToastId toast_id);
+  // The callback is resolved when the toast is closed, returning whether the
+  // action was clicked.
+  void ShowToast(ToastId toast_id,
+                 const std::string& skill_id = "",
+                 base::OnceCallback<void(bool)> callback = {});
 
   // Called after a skill deletion has been undone from the UI.
   void UndoLastSkillRemoval();
   // Invokes last saved skill in sidepanel.
   void InvokeLastSavedSkill();
   // Invokes the skill with skill_id in sidepanel.
-  void InvokeSkill(std::string_view skill_id);
+  void InvokeSkill(std::string_view skill_id,
+                   std::string_view skill_name,
+                   std::string_view skill_icon);
+
+  // Stash the metadata for the last saved skill, so it can be invoked if the
+  // toast action is clicked.
+  void StoreLastSavedSkillMetadata(std::string_view skill_id,
+                                   std::string_view skill_name,
+                                   std::string_view skill_icon);
 
  private:
   // Shows after a skill is saved or deleted. Takes in toast params to display.
@@ -53,8 +67,18 @@ class SkillsUiWindowController {
   const raw_ptr<BrowserWindowInterface> browser_window_interface_;
   ::ui::ScopedUnownedUserData<SkillsUiWindowController> scoped_data_holder_;
   std::string last_saved_skill_id_;
+  std::string last_saved_skill_name_;
+  std::string last_saved_skill_icon_;
   std::string last_deleted_skill_id_;
   std::set<std::string> pending_deletions_;
+
+  // Tracks whether the user clicked the action button (e.g., "Undo") on the
+  // active toast.
+  bool action_clicked_ = false;
+  // Maps skill IDs to their deletion completion callbacks. This ensures the
+  // correct callback is invoked when a specific toast is closed.
+  base::flat_map<std::string, base::OnceCallback<void(bool)>>
+      skills_v2_delete_callbacks_;
 
   base::WeakPtrFactory<SkillsUiWindowController> weak_factory_{this};
 };

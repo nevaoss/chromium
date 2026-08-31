@@ -31,6 +31,7 @@
 <translation id="1290883685122687410">Błąd konfiguracji: <ph name="METAINSTALLER_EXIT_CODE" />. <ph name="WINDOWS_ERROR" /></translation>
 <translation id="1302523850133262269">Poczekaj, aż Chrome zainstaluje najnowsze aktualizacje systemu.</translation>
 <translation id="1330562121671411446">Wykryj język</translation>
+<translation id="1333654552732143316">Uruchom Chrome</translation>
 <translation id="1341711321000856656">Możesz przełączyć się na wyświetlanie haseł z innego profilu Chrome</translation>
 <translation id="1343830902827845050">Zaloguj się w Chrome</translation>
 <translation id="1356661055722410047">Nowość! Możesz tłumaczyć tekst i obrazy na ekranie</translation>
@@ -77,6 +78,7 @@
 <translation id="1698376642261615901">Google Chrome jest przeglądarką internetową, w której witryny internetowe i aplikacje są szybkie jak błyskawica. Jest szybka, stabilna i łatwa w obsłudze. Dzięki wbudowanej ochronie przed złośliwym oprogramowaniem i wyłudzaniem informacji przeglądanie internetu przy użyciu przeglądarki Google Chrome jest bezpieczniejsze.</translation>
 <translation id="1713301662689114961">{0,plural, =1{Chrome uruchomi się ponownie za godzinę}few{Chrome uruchomi się ponownie za # godziny}many{Chrome uruchomi się ponownie za # godzin}other{Chrome uruchomi się ponownie za # godziny}}</translation>
 <translation id="1722488837206509557">Umożliwi Ci to wybranie dostępnych urządzeń i wyświetlanie na nich treści.</translation>
+<translation id="1724094881572874997">Aby zabezpieczyć Twoją pracę w Chrome, Twoja organizacja będzie mogła wyświetlać określone informacje lub nimi zarządzać, gdy zalogujesz się w Chrome.</translation>
 <translation id="177180974022074201">Wypróbuj z Gemini w Chrome</translation>
 <translation id="1786003790898721085">Najpierw zaloguj się w Chrome na swoim urządzeniu <ph name="TARGET_DEVICE_NAME" />, a potem ponów próbę wysyłania.</translation>
 <translation id="1786044937610313874">Skróty otwierają się w Chrome</translation>
@@ -196,6 +198,7 @@ Jeśli ta strona nie działa zgodnie z oczekiwaniami, spróbuj zezwolić na opt
 <translation id="2969728957078202736"><ph name="PAGE_TITLE" /> – logowanie do sieci – Chrome</translation>
 <translation id="2970681950995291301">Aby usunąć swoje konto Google z Chrome, wyloguj się z Chrome na stronie Ustawienia</translation>
 <translation id="2976869732253036751">Otrzymuj alerty o śledzeniu cen w Chrome na telefonie</translation>
+<translation id="2985091279808606502">Ta strona musi mieć w Chrome dostęp do sieci lokalnej</translation>
 <translation id="2991167882679440829">Hasła i inne dane z Chrome zapisane na koncie Google zostaną usunięte z tego urządzenia. Aby znowu korzystać z nich w Chrome, zaloguj się ponownie.</translation>
 <translation id="2994465299455873643">Zapewnia usługi szyfrowania i bezpieczny sposób przywracania <ph name="BROWSER_NAME" /> w razie utraty ważności. Jeśli ta usługa zostanie wyłączona, <ph name="BROWSER_NAME" /> może utracić dostęp do zaszyfrowanych danych i nie być w stanie przeprowadzić samoczynnego przywracania.<ph name="BROWSER_NAME" /></translation>
 <translation id="3003694935412297923">Wszystkie zadania</translation>
@@ -258,6 +261,7 @@ Jeśli ta strona nie działa zgodnie z oczekiwaniami, spróbuj zezwolić na opt
 <translation id="3595784445906693824">Czy chcesz zalogować się w Chrome w nowym profilu?</translation>
 <translation id="3596080736082218006">{COUNT,plural, =0{Administrator wymaga ponownego uruchomienia Chrome, by przeglądarka mogła zainstalować aktualizację}=1{Administrator wymaga ponownego uruchomienia Chrome, by przeglądarka mogła zainstalować aktualizację. Okno incognito nie otworzy się ponownie.}few{Administrator wymaga ponownego uruchomienia Chrome, by przeglądarka mogła zainstalować aktualizację. # okna incognito nie otworzą się ponownie.}many{Administrator wymaga ponownego uruchomienia Chrome, by przeglądarka mogła zainstalować aktualizację. # okien incognito nie otworzy się ponownie.}other{Administrator wymaga ponownego uruchomienia Chrome, by przeglądarka mogła zainstalować aktualizację. # okna incognito nie otworzy się ponownie.}}</translation>
 <translation id="3597003331831379823">Nie udało się uruchomić konfiguracji z podwyższonymi uprawnieniami. <ph name="METAINSTALLER_ERROR" /></translation>
+<translation id="3598673391539778844">Pokaż Gemini w Chrome w obszarze powiadomień</translation>
 <translation id="3622716124581627104">Rozpoznawaj obiekty lub miejsca i kopiuj lub tłumacz tekst. Gdy używasz Obiektywu Google, do Google jest wysyłany zrzut ekranu ze strony. <ph name="LEARN_MORE" /></translation>
 <translation id="3622797965165704966">Korzystanie z Chrome na wspólnych komputerach i przy użyciu konta Google jest teraz jeszcze łatwiejsze.</translation>
 <translation id="3635073343384702370">Chrome może sprawdzać Twoje hasła, gdy je zapiszesz</translation>
@@ -312,7 +316,6 @@ Jeśli ta strona nie działa zgodnie z oczekiwaniami, spróbuj zezwolić na opt
 <translation id="4149882025268051530">Instalator nie może prawidłowo rozpakować archiwum. Pobierz Google Chrome ponownie.</translation>
 <translation id="415112847282352845">Aby mieć dostęp do adresów oraz innych ustawień i danych na wszystkich swoich urządzeniach, zaloguj się w Chrome. Ten adres zostanie zapisany na Twoim koncie Google, gdy się zalogujesz.</translation>
 <translation id="4153934450158521343">Przeglądarka Chrome zostanie wkrótce zamknięta, a dane zostaną usunięte</translation>
-<translation id="4159985264221160808">Aby zabezpieczyć Twoją pracę w Chrome, Twoja organizacja będzie mogła wyświetlać określone informacje lub nimi zarządzać</translation>
 <translation id="4173512894976930765">Strony będą prawdopodobnie działać zgodnie z oczekiwaniami. Gdy zamkniesz wszystkie okna Chrome, nastąpi wylogowanie z większości stron. Jeśli będziesz zalogowany(-a) w Chrome, nie wylogujemy Cię z konta Google.</translation>
 <translation id="4175922240926474352">Pobieranie zostało zablokowane przez Chrome, ponieważ strona nie korzysta z bezpiecznego połączenia, a plik mógł zostać zmodyfikowany</translation>
 <translation id="4191857738314598978">{0,plural, =1{Ponowne uruchomienie Chrome nastąpi w ciągu 1 dnia}few{Ponowne uruchomienie Chrome nastąpi w ciągu # dni}many{Ponowne uruchomienie Chrome nastąpi w ciągu # dni}other{Ponowne uruchomienie Chrome nastąpi w ciągu # dnia}}</translation>
@@ -343,7 +346,6 @@ Jeśli ta strona nie działa zgodnie z oczekiwaniami, spróbuj zezwolić na opt
 <translation id="4437295824090654417">Udostępnij ten dokument Gemini w Chrome, aby uzyskać szybki przegląd i zadać dodatkowe pytania</translation>
 <translation id="4450664632294415862">Chrome – logowanie do sieci – <ph name="PAGE_TITLE" /></translation>
 <translation id="4458462641685292929">Google Chrome wykonuje teraz inną operację. Spróbuj ponownie później.</translation>
-<translation id="4459234553906210702">W ramach pomiaru skuteczności reklam odwiedzane przez Ciebie witryny mogą prosić Chrome o dostęp do potrzebnych w tym celu informacji. Pomiar skuteczności reklam ogranicza śledzenie w witrynach, ponieważ pomiędzy poszczególnymi stronami przenoszona jest możliwie najmniejsza ilość informacji.</translation>
 <translation id="4493028449971051158">Błąd uruchamiania: uruchom instalator z uprawnieniami administratora.</translation>
 <translation id="4501471624619070934">Ze względu na ograniczenie dostępu w tym kraju instalacja się nie udała.</translation>
 <translation id="4571503333518166079">Otwórz ustawienia powiadomień Chrome</translation>
@@ -376,7 +378,6 @@ Jeśli ta strona nie działa zgodnie z oczekiwaniami, spróbuj zezwolić na opt
 <translation id="4885446229353981848">Zawsze pokazuj skrót do Obiektywu Google</translation>
 <translation id="4891791193823137474">Zezwalaj przeglądarce Google Chrome na działanie w tle</translation>
 <translation id="4895437082222824641">O&amp;twórz link w nowej karcie Chrome</translation>
-<translation id="4896867431081882115">Ustaw Chrome jako przeglądarkę domyślną, aby mieć łatwy dostęp do znanych, lubianych i zaufanych funkcji. Przeglądarka Chrome zostanie przypięta do paska zadań, aby była łatwo dostępna.</translation>
 <translation id="4904953848704395458">Otwieraj Gemini w Chrome za pomocą skrótu klawiszowego.</translation>
 <translation id="4918086044614829423">Akceptuj</translation>
 <translation id="4918844574251943176">Zdjęcie zostało skopiowane</translation>
@@ -411,6 +412,7 @@ Jeśli ta strona nie działa zgodnie z oczekiwaniami, spróbuj zezwolić na opt
 <translation id="521447420733633466">Jeśli dzielisz urządzenie ze znajomymi lub rodziną, wszyscy możecie niezależnie przeglądać internet i skonfigurować Chrome po swojemu</translation>
 <translation id="5234764350956374838">Zamknij</translation>
 <translation id="5239627039202700673">Używaj Chrome, zawsze gdy klikasz linki w wiadomościach, dokumentach i w innych aplikacjach</translation>
+<translation id="524751727772074981">Gemini w Chrome – zapytaj o cokolwiek, gdziekolwiek jesteś</translation>
 <translation id="5251420635869119124">Goście mogą korzystać z Chrome, nie pozostawiając żadnych danych.</translation>
 <translation id="5271833978500241046">Używaj ich razem z innymi funkcjami Gemini w Chrome</translation>
 <translation id="5286907366254680517">Wykryto</translation>
@@ -714,6 +716,7 @@ Jeśli ta strona nie działa zgodnie z oczekiwaniami, spróbuj zezwolić na opt
 <translation id="8113883687556086139">Potwierdź swoją tożsamość, aby móc zapisywać dane z Chrome na koncie <ph name="ACCOUNT_EMAIL" /> i ich używać</translation>
 <translation id="8115695070094288807">Dostosowuję Chrome…</translation>
 <translation id="8118331347066725040">Prześlij opinię na temat wyszukiwania z użyciem Obiektywu</translation>
+<translation id="812930250799242837">Zalogowano jako <ph name="USER_NAME" />, subskrypcja Google. Otwórz menu konta</translation>
 <translation id="8129812357326543296">&amp;Google Chrome – informacje</translation>
 <translation id="813913629614996137">Inicjuję…</translation>
 <translation id="8162006532256575008">Używaj Chrome bez konta</translation>
@@ -736,6 +739,7 @@ Jeśli ta strona nie działa zgodnie z oczekiwaniami, spróbuj zezwolić na opt
 <translation id="8367705492654390392">Zapytaj, o co chcesz</translation>
 <translation id="8367950957770994118">Szybko otwieraj Gemini w Chrome, kiedy tylko go potrzebujesz</translation>
 <translation id="8370517070665726704">Copyright <ph name="YEAR" /> Google LLC. Wszelkie prawa zastrzeżone.</translation>
+<translation id="8370748943308169953">Kod QR do logowania się w Chrome jako <ph name="USER_NAME" /></translation>
 <translation id="8377158135256176353">Włącz lub wyłącz Gemini w Chrome Canary</translation>
 <translation id="8387459386171870978">Nadal korzystaj z Chrome</translation>
 <translation id="8394720698884623075">Sprawdza, czy URL jest na liście potencjalnie niebezpiecznych stron zapisanej w Chrome.</translation>
@@ -747,6 +751,7 @@ Jeśli ta strona nie działa zgodnie z oczekiwaniami, spróbuj zezwolić na opt
 
 Dopóki nie usuniesz niektórych zakładek, nie będzie można zapisywać nowych na Twoim koncie. Jeśli wylogujesz się teraz, niezapisane zakładki zostaną usunięte.</translation>
 <translation id="8458117863387545390">Pobierz Chrome na telefon</translation>
+<translation id="848851325211467878">Zalogowano jako <ph name="USER_NAME" />, <ph name="USER_EMAIL" />, subskrypcja Google. Otwórz menu konta</translation>
 <translation id="8496177819998570653">Menedżer &amp;haseł Google</translation>
 <translation id="8498858610309223613">Właśnie została zastosowana specjalna aktualizacja zabezpieczeń Google Chrome. Uruchom ponownie Chrome teraz. Karty zostaną przywrócone.</translation>
 <translation id="8521348052903287641">Reguła dla ruchu przychodzącego w wersji deweloperskiej Google Chrome zezwalająca na ruch mDNS.</translation>
@@ -782,6 +787,7 @@ Dopóki nie usuniesz niektórych zakładek, nie będzie można zapisywać nowych
 <translation id="8821043148920470810">Aby w przyszłości otrzymywać aktualizacje Google Chrome, musisz mieć system Windows 10 lub nowszy. Na tym komputerze jest zainstalowany system Windows 7.</translation>
 <translation id="8823341990149967727">Chrome jest nieaktualny</translation>
 <translation id="8834965163890861871">Google Chrome próbuje edytować hasła. Aby na to zezwolić, podaj swoje hasło do systemu Windows.</translation>
+<translation id="8841151363570555833">Pokaż Gemini w Chrome na pasku menu Maca</translation>
 <translation id="8851180723659088381">{NUM_EXTENSIONS,plural, =1{Chrome zaleca jego usunięcie}few{Chrome zaleca ich usunięcie}many{Chrome zaleca ich usunięcie}other{Chrome zaleca ich usunięcie}}</translation>
 <translation id="8862326446509486874">Nie masz odpowiednich uprawnień do przeprowadzenia instalacji na poziomie systemowym. Uruchom ponownie program instalacyjny jako administrator.</translation>
 <translation id="8865415417596392024">Dane z Chrome na Twoim koncie</translation>

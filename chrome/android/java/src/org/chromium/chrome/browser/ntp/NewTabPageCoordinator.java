@@ -224,6 +224,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
     private @Nullable NtpSigninPromoCoordinator mSigninPromoCoordinator;
 
     private @Nullable Boolean mIsWhiteBackgroundOnSearchBoxApplied;
+    private @Nullable Boolean mIsWhiteBackgroundOnComposeplateApplied;
 
     /**
      * Constructor of the NewTabPageCoordinator.
@@ -368,7 +369,9 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
         mContextMenuStartPosition =
                 ReturnToChromeUtil.calculateContextMenuStartPosition(mActivity.getResources());
 
-        if (mIsLff) {
+        if (mIsLff
+                || NewTabPageUtils.getPaddingStyleForAurora()
+                        != NewTabPageUtils.PaddingStyle.DEFAULT) {
             mDisplayStyleObserver = this::onDisplayStyleChanged;
             mUiConfig.addObserver(mDisplayStyleObserver);
         } else {
@@ -559,11 +562,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
         mComposeplateCoordinator.setComposeplateButtonClickListener(
                 this::onComposeplateButtonClicked);
 
-        if (shouldApplyWhiteBackgroundOnSearchBox()) {
-            // It is safe to call mComposeplateCoordinator.applyWhiteBackground() again since it is
-            // no-op if the white background has been applied.
-            mComposeplateCoordinator.applyWhiteBackground(/* apply= */ true);
-        }
+        updateComposeplateBackground();
     }
 
     private void onComposeplateButtonClicked(View view) {
@@ -975,6 +974,10 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
             mNtpSearchBox.setTopMargin(topMargin);
         }
 
+        setLogoTopMargin();
+    }
+
+    void setLogoTopMargin() {
         if (mLogoCoordinator != null) {
             mLogoCoordinator.setTopMargin(getLogoTopMargin());
         }
@@ -996,7 +999,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
             return LogoUtils.getTopMarginForDoodle(resources);
         }
 
-        return resources.getDimensionPixelSize(R.dimen.ntp_logo_margin_top);
+        return LogoUtils.getTopMarginForLogo(resources);
     }
 
     /**
@@ -1452,7 +1455,12 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
     }
 
     private void onDisplayStyleChanged(UiConfig.DisplayStyle newDisplayStyle) {
-        if (!mIsLff) return;
+        if (!mIsLff) {
+            // Logo and Doodle have different top margin on landscape and portrait modes on phones,
+            // update when the screen rotates.
+            setLogoTopMargin();
+            return;
+        }
 
         updateDoodleOnTablet();
         updateSearchBoxTwoSideMargin();
@@ -1521,39 +1529,48 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
 
     /** Called when a customized background image is selected or deselected. */
     void onCustomizedBackgroundChanged() {
-        boolean applyWhiteBackgroundOnSearchBox = shouldApplyWhiteBackgroundOnSearchBox();
-
-        // If shouldn't apply a white background and the background hasn't been updated before,
-        // returns now.
-        if (mIsWhiteBackgroundOnSearchBoxApplied == null && !applyWhiteBackgroundOnSearchBox) {
-            return;
-        }
-
-        // If composeplate view flags haven't been initialized yet, returns now.
-        if (mCanShowComposeplateButton == null) {
-            return;
-        }
-
-        // If the background has been updated before and it should remain the same, returns now.
-        if (mIsWhiteBackgroundOnSearchBoxApplied != null
-                && mIsWhiteBackgroundOnSearchBoxApplied == applyWhiteBackgroundOnSearchBox) {
-            return;
-        }
-
-        // If the fake search box hasn't been initialized, returns now. It is fine to skip here
+        // If composeplate view flags haven't been initialized yet or the fake search box hasn't
+        // been initialized, returns now.
+        // It is fine to skip applyWhiteBackground() on the search box
         // because applyWhiteBackground() will be called immediately after the mNtpSearchBox
         // is initialized.
-        if (mNtpSearchBox == null) return;
-
-        mIsWhiteBackgroundOnSearchBoxApplied = applyWhiteBackgroundOnSearchBox;
-
-        if (mNtpSearchBox != null) {
-            mNtpSearchBox.applyWhiteBackground(applyWhiteBackgroundOnSearchBox);
+        if (mCanShowComposeplateButton == null || mNtpSearchBox == null) {
+            return;
         }
 
-        if (mComposeplateCoordinator != null) {
-            mComposeplateCoordinator.applyWhiteBackground(applyWhiteBackgroundOnSearchBox);
+        updateSearchBoxBackground();
+        updateComposeplateBackground();
+    }
+
+    private void updateSearchBoxBackground() {
+        boolean desiredState = shouldApplyWhiteBackgroundOnSearchBox();
+        if (shouldUpdateBackground(desiredState, mIsWhiteBackgroundOnSearchBoxApplied)) {
+            mIsWhiteBackgroundOnSearchBoxApplied = desiredState;
+            assertNonNull(mNtpSearchBox);
+            mNtpSearchBox.applyWhiteBackground(desiredState);
         }
+    }
+
+    private void updateComposeplateBackground() {
+        if (mComposeplateCoordinator == null) return;
+
+        boolean desiredState = NtpCustomizationUtils.shouldApplyWhiteBackgroundOnComposeplate();
+        if (shouldUpdateBackground(desiredState, mIsWhiteBackgroundOnComposeplateApplied)) {
+            mIsWhiteBackgroundOnComposeplateApplied = desiredState;
+            mComposeplateCoordinator.applyWhiteBackground(desiredState);
+        }
+    }
+
+    private boolean shouldUpdateBackground(boolean desiredState, @Nullable Boolean currentState) {
+        // On initial creation, update the background if a customized image is selected or if
+        // NTP Aurora is enabled to configure the dynamic background and shadow on startup.
+        if (currentState == null) {
+            // When NTP Aurora is launched, remove `|| NewTabPageUtils.isNtpAuroraEnabled()` here
+            // and change the default background in the layout XML directly.
+            return desiredState || NewTabPageUtils.isNtpAuroraEnabled();
+        }
+        // If the background has been updated before and it should remain the same, returns false.
+        return desiredState != currentState;
     }
 
     /** Returns the top inset of the NTP. */
@@ -1607,7 +1624,19 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
         mCanShowComposeplateButton = enabled;
     }
 
+    @Nullable Boolean getIsComposeplateEnabledForTesting() {
+        return mCanShowComposeplateButton;
+    }
+
     @Nullable ComposeplateCoordinator getComposeplateCoordinatorForTesting() {
         return mComposeplateCoordinator;
+    }
+
+    void setIsWhiteBackgroundOnSearchBoxApplied(Boolean applied) {
+        mIsWhiteBackgroundOnSearchBoxApplied = applied;
+    }
+
+    void setIsWhiteBackgroundOnComposeplateApplied(Boolean applied) {
+        mIsWhiteBackgroundOnComposeplateApplied = applied;
     }
 }

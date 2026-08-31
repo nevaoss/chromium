@@ -19,6 +19,7 @@ import android.graphics.RectF;
 import android.os.Handler;
 import android.os.SystemClock;
 import android.view.View;
+import android.view.View.OnClickListener;
 
 import androidx.annotation.ColorInt;
 import androidx.annotation.VisibleForTesting;
@@ -71,7 +72,6 @@ import org.chromium.chrome.browser.ui.theme.ChromeSemanticColorUtils;
 import org.chromium.chrome.browser.user_education.UserEducationHelper;
 import org.chromium.chrome.tab_ui.R;
 import org.chromium.components.browser_ui.styles.ChromeColors;
-import org.chromium.components.browser_ui.widget.MenuOrKeyboardActionController.MenuOrKeyboardActionHandler;
 import org.chromium.components.feature_engagement.Tracker;
 import org.chromium.ui.base.DeviceFormFactor;
 
@@ -104,6 +104,7 @@ public abstract class TabSwitcherPaneBase extends PaneBase
             ObservableSuppliers.createNonNull(false);
     protected final SettableNonNullObservableSupplier<Boolean> mIsAnimatingSupplier =
             ObservableSuppliers.createNonNull(false);
+    private final OnClickListener mNewTabButtonClickListener;
     private final SettableNullableObservableSupplier<View> mOverlayViewSupplier =
             ObservableSuppliers.createNullable();
     private final Callback<Boolean> mVisibilityObserver = this::onVisibilityChanged;
@@ -176,7 +177,8 @@ public abstract class TabSwitcherPaneBase extends PaneBase
             MonotonicObservableSupplier<EdgeToEdgeController> edgeToEdgeSupplier,
             MonotonicObservableSupplier<CompositorViewHolder> compositorViewHolderSupplier,
             TabGroupCreationUiDelegate tabGroupCreationUiDelegate,
-            NonNullObservableSupplier<Boolean> xrSpaceModeObservableSupplier) {
+            NonNullObservableSupplier<Boolean> xrSpaceModeObservableSupplier,
+            OnClickListener newTabButtonClickListener) {
         super(paneId, context, onToolbarAlphaChange);
         mMenuButtonVisible = shouldShowMenuButton(context);
         mFactory = factory;
@@ -187,33 +189,31 @@ public abstract class TabSwitcherPaneBase extends PaneBase
         mCompositorViewHolderSupplier = compositorViewHolderSupplier;
         mUiFlow = tabGroupCreationUiDelegate;
         mXrSpaceModeObservableSupplier = xrSpaceModeObservableSupplier;
+        mNewTabButtonClickListener = newTabButtonClickListener;
         mIsBottomBarEnabledOnGts =
                 BottomBarConfigUtils.isBottomBarEnabled(context)
                         && BottomBarConfigUtils.shouldShowOnGts();
         mBottomBarHeight = BottomBarUtils.getBottomBarHeight(context);
 
         mMenuOrKeyboardActionHandler =
-                new MenuOrKeyboardActionHandler() {
-                    @Override
-                    public boolean handleMenuOrKeyboardAction(int id, boolean fromMenu) {
-                        if (id == R.id.menu_select_tabs) {
-                            @Nullable TabSwitcherPaneCoordinator coordinator =
-                                    mTabSwitcherPaneCoordinatorSupplier.get();
-                            if (coordinator == null) return false;
+                (int id, boolean _) -> {
+                    if (id == R.id.menu_select_tabs) {
+                        @Nullable TabSwitcherPaneCoordinator coordinator =
+                                mTabSwitcherPaneCoordinatorSupplier.get();
+                        if (coordinator == null) return false;
 
-                            coordinator.showTabListEditor();
-                            RecordUserAction.record("MobileMenuSelectTabs");
-                            return true;
-                        } else if (id == R.id.new_tab_group_menu_id) {
-                            mUiFlow.newTabGroupFlow();
-                            RecordUserAction.record("MobileMenuNewTabGroup");
-                            if (mTracker != null) {
-                                mTracker.notifyEvent("tab_switcher_add_to_group_clicked");
-                            }
-                            return true;
+                        coordinator.showTabListEditor();
+                        RecordUserAction.record("MobileMenuSelectTabs");
+                        return true;
+                    } else if (id == R.id.new_tab_group_menu_id) {
+                        mUiFlow.newTabGroupFlow();
+                        RecordUserAction.record("MobileMenuNewTabGroup");
+                        if (mTracker != null) {
+                            mTracker.notifyEvent("tab_switcher_add_to_group_clicked");
                         }
-                        return false;
+                        return true;
                     }
+                    return false;
                 };
 
         mManualSearchBoxAnimationSupplier =
@@ -222,6 +222,15 @@ public abstract class TabSwitcherPaneBase extends PaneBase
         mSearchBoxVisibilityFractionSupplier =
                 mTabSwitcherPaneCoordinatorSupplier.createTransitiveNonNull(
                         0.0f, TabSwitcherPaneCoordinator::getSearchBoxVisibilityFractionSupplier);
+    }
+
+    @Override
+    public boolean createNewTab() {
+        if (mNewTabButtonClickListener != null) {
+            mNewTabButtonClickListener.onClick(null);
+            return true;
+        }
+        return false;
     }
 
     @Override
@@ -467,8 +476,8 @@ public abstract class TabSwitcherPaneBase extends PaneBase
                         viewportRect.bottom = windowViewportRect.bottom;
                     }
 
-                    int initialLeftOffset = 0;
-                    int finalLeftOffset = 0;
+                    int initialLeftOffset;
+                    int finalLeftOffset;
                     int initialTopOffset = 0;
                     int finalTopOffset = 0;
                     if (isShrink) {
@@ -709,8 +718,7 @@ public abstract class TabSwitcherPaneBase extends PaneBase
         if (mWaitForTabStateInitializedStartTimeMs != null) {
             RecordHistogram.recordTimesHistogram(
                     "Android.GridTabSwitcher.TimeToTabStateInitializedFromShown",
-                    SystemClock.elapsedRealtime()
-                            - mWaitForTabStateInitializedStartTimeMs.longValue());
+                    SystemClock.elapsedRealtime() - mWaitForTabStateInitializedStartTimeMs);
             mWaitForTabStateInitializedStartTimeMs = null;
         }
     }

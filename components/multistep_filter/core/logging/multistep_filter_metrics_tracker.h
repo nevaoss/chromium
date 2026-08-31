@@ -14,6 +14,7 @@
 #include "components/multistep_filter/core/data_models/url_filter_suggestion.h"
 #include "components/multistep_filter/core/logging/multistep_filter_metrics.h"
 #include "components/multistep_filter/core/prefs/retention_state_snapshot.h"
+#include "components/multistep_filter/core/verification/suggestion_application_result.h"
 #include "services/metrics/public/cpp/ukm_source_id.h"
 
 namespace multistep_filter {
@@ -111,8 +112,8 @@ class MultistepFilterMetricsTracker {
     bool is_error_page = false;
     base::TimeTicks application_navigation_finish_time;
     base::TimeDelta suggestion_accepted_to_applied_latency;
-    MultistepFilterApplicationOutcome outcome =
-        MultistepFilterApplicationOutcome::kAbandonedBeforeVerification;
+    SuggestionApplicationResult outcome =
+        SuggestionApplicationResult::kAbandonedBeforeVerification;
     // True if the suggestion was successfully applied and we are now tracking
     // post-application user engagement.
     bool is_applied = false;
@@ -142,6 +143,13 @@ class MultistepFilterMetricsTracker {
     kNavigationBack,
     // A new suggestion application overrode the active session.
     kSessionOverride,
+  };
+
+  // Tracks the lifecycle of a suggestion impression that was ignored or
+  // dismissed by the user (i.e. not accepted).
+  struct IgnoredImpressionTracker {
+    // The suggestion that was shown to the user and ignored or dismissed.
+    UrlFilterSuggestion suggestion;
   };
 
   MultistepFilterMetricsTracker();
@@ -182,13 +190,24 @@ class MultistepFilterMetricsTracker {
   // If successful, this starts a post-application session to track behavior
   // within a session window (controlled by
   // `kMultistepFilterPostApplicationSessionDuration`).
-  void OnSuggestionApplicationAnnotationExtractionFinished(
-      bool was_applied_successfully);
+  // Triggered when suggestion application finishes (either successfully or with
+  // a failure).
+  void OnSuggestionApplicationFinished(SuggestionApplicationResult result);
+
+  // Triggered when the filter attributes are extracted from the landing
+  // page. This is used to determine whether the user applied filters on the
+  // landing page after ignoring a multistep filter suggestion.
+  void OnExtractionFinished(const FilterNavigationMetadata& metadata,
+                            const std::optional<FilterAnnotation>& annotation);
 
  private:
   // Internal helper to calculate and flush metrics for pending suggestion UI
   // sessions.
   void FlushSuggestionUiSession(SuggestionUserDecision final_decision);
+
+  // Internal helper to flush metrics for ignored suggestion impressions.
+  void FlushIgnoredImpressionSession(
+      MultistepFilterUserBehaviorAfterIgnore outcome);
 
   // Internal helper to flush metrics for the suggestion application and
   // engagement session (e.g. on tab close, new navigation, or extraction
@@ -229,6 +248,16 @@ class MultistepFilterMetricsTracker {
   // if the navigation was aborted or not filter-initiated.
   std::optional<PendingSuggestionApplicationMetrics>
       pending_suggestion_application_metrics_;
+
+  // An ignored impression session begins when a suggestion is ignored or
+  // dismissed. It tracks the suggestion that was ignored. The session is
+  // flushed (logging the post-ignore outcome) when:
+  // - The tab is closed.
+  // - A navigation occurs to an error page, a different host, or is
+  //   filter-initiated.
+  // - OnExtractionFinished is called (for manual same-host filtering check).
+  // - A new suggestion is ignored (overwriting the active ignored session).
+  std::optional<IgnoredImpressionTracker> ignored_impression_;
 };
 
 }  // namespace multistep_filter

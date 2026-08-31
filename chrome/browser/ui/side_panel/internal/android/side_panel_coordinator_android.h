@@ -49,8 +49,8 @@ class SidePanelCoordinatorAndroid : public SidePanelUIBase {
   SidePanelCoordinatorAndroid& operator=(const SidePanelCoordinatorAndroid&) =
       delete;
 
-  // Implements Java `SidePanelCoordinatorAndroid.Natives`. These methods are
-  // called from Java via JNI, see `SidePanelCoordinatorAndroidImpl.java`.
+  // Implements Java `SidePanelCoordinatorAndroidBridge.Natives`. These methods
+  // are called from Java via JNI, see `SidePanelCoordinatorAndroidBridge.java`.
   void Init();
   void Destroy();
   void ClosePanel();
@@ -78,8 +78,8 @@ class SidePanelCoordinatorAndroid : public SidePanelUIBase {
   // Called when a tab is closed (destroyed).
   void OnTabClosed(TabAndroid* tab);
 
-  // Called when a tab is detached from this window's tab strip for reparenting
-  // into another window.
+  // Called when the given `tab` is removed from this window's TabModel and
+  // _has_ become the active tab of another window.
   void OnTabReparented(TabAndroid* tab);
 
   /////////////////////////////////////////////////////////////////
@@ -96,6 +96,16 @@ class SidePanelCoordinatorAndroid : public SidePanelUIBase {
   // `SidePanelContainerCoordinator#configDeferredViewReplacementForTesting`
   // for detailed documentation.
   void ConfigDeferredViewReplacementForTesting(bool enable);
+
+  // See the Java
+  // `SidePanelContainerCoordinator#simulateAutoCloseConditionForTesting`
+  // for documentation.
+  void SimulateAutoCloseConditionForTesting();
+
+  // See the Java
+  // `SidePanelContainerCoordinator#simulateAutoRestoreConditionForTesting`
+  // for documentation.
+  void SimulateAutoRestoreConditionForTesting();
 
   SidePanelState GetStateForTesting();
   int GetContainerWidthForTesting();
@@ -129,9 +139,7 @@ class SidePanelCoordinatorAndroid : public SidePanelUIBase {
   // Delegates to `SidePanelRegistry::ClearCachedEntryViews` in all
   // `SidePanelRegistry` instances accessible from this class, including
   // the window-scoped registry and all contextual (tab-scoped) registries.
-  void ClearCachedEntryViews();
-
-  void ClearDeferredEntryForTab(const tabs::TabHandle& tab_handle);
+  void ClearCachedEntryViews(bool include_active_entry = false);
 
   UniqueKey GetCurrentKeyNonNull() const;
   SidePanelEntry* GetEntryForCurrentKeyNonNull() const;

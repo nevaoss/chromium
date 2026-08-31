@@ -46,7 +46,9 @@
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+#include "chrome/browser/ui/browser_window/public/create_browser_window.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
+#include "chrome/browser/ui/layout_constants.h"
 #include "chrome/browser/ui/profiles/profile_colors_util.h"
 #include "chrome/browser/ui/profiles/profile_view_utils.h"
 #include "chrome/browser/ui/signin/dice_migration_service.h"
@@ -282,7 +284,7 @@ class MockBatchUploadDelegate : public BatchUploadDelegate {
     // a "Cancel" event.
     ON_CALL(*this, ShowBatchUploadDialog)
         .WillByDefault(
-            [&](Browser* browser,
+            [&](BrowserWindowInterface* browser,
                 const std::vector<syncer::LocalDataDescription>&
                     local_data_description_list,
                 BatchUploadService::EntryPoint entry_point,
@@ -293,7 +295,7 @@ class MockBatchUploadDelegate : public BatchUploadDelegate {
 
   MOCK_METHOD(void,
               ShowBatchUploadDialog,
-              (Browser*,
+              (BrowserWindowInterface*,
                std::vector<syncer::LocalDataDescription>,
                BatchUploadService::EntryPoint,
                BatchUploadSelectedDataTypeItemsCallback),
@@ -1041,11 +1043,13 @@ IN_PROC_BROWSER_TEST_P(AvatarToolbarButtonBrowserTest, SigninBrowser) {
   // Create a portal signin browser which will not be the Incognito browser.
   Profile::OTRProfileID profile_id(
       Profile::OTRProfileID::CreateUniqueForCaptivePortal());
-  Browser* browser1 = Browser::Create(
-      Browser::CreateParams(browser()->GetProfile()->GetOffTheRecordProfile(
-                                profile_id,
-                                /*create_if_needed=*/true),
-                            true));
+  Browser* browser1 =
+      CreateBrowserWindow(BrowserWindowCreateParams(
+                              browser()->GetProfile()->GetOffTheRecordProfile(
+                                  profile_id,
+                                  /*create_if_needed=*/true),
+                              /*from_user_gesture=*/true))
+          ->GetBrowserForMigrationOnly();
   AddBlankTabAndShow(browser1);
   AvatarToolbarButtonTestAccessor avatar_accessor1(browser1);
   // On ChromeOS, captive portal signin windows show a
@@ -1951,8 +1955,8 @@ TEST_WITH_SIGNED_IN_FROM_PRE(IN_PROC_BROWSER_TEST_P,
                              PromoNotShownWhenPromotionsDisabled) {
   SetupRequirementsForPromoType(GetAvatarPromoType());
 
-  TestingBrowserProcess::GetGlobal()->local_state()->SetBoolean(
-      prefs::kPromotionsEnabled, false);
+  g_browser_process->local_state()->SetBoolean(prefs::kPromotionsEnabled,
+                                               false);
   AvatarToolbarButtonInterface* avatar =
       GetAvatarToolbarButtonInterface(browser());
   AvatarToolbarButtonTestAccessor avatar_accessor(browser());
@@ -2557,6 +2561,13 @@ class MAYBE_AvatarToolbarButtonSignedOutPromoBrowserTest
         /*disabled_features=*/{});
   }
 
+  void SetUpDefaultCommandLine(base::CommandLine* command_line) override {
+    AvatarToolbarButtonWithInteractiveFeaturePromoBrowserTest::
+        SetUpDefaultCommandLine(command_line);
+    command_line->RemoveSwitch(
+        switches::kDisableSigninPromoOnAvatarPillForTesting);
+  }
+
  private:
   base::test::ScopedFeatureList scoped_feature_list_;
 };
@@ -2598,6 +2609,12 @@ class
         /*enabled_features=*/{syncer::kReplaceSyncPromosWithSignInPromos,
                               switches::kSigninPromoOnAvatarPill},
         /*disabled_features=*/{});
+  }
+
+  void SetUpDefaultCommandLine(base::CommandLine* command_line) override {
+    InProcessBrowserTest::SetUpDefaultCommandLine(command_line);
+    command_line->RemoveSwitch(
+        switches::kDisableSigninPromoOnAvatarPillForTesting);
   }
 
   // AvatarToolbarButtonInterfaceBaseBrowserTest
@@ -4079,7 +4096,7 @@ IN_PROC_BROWSER_TEST_P(AvatarToolbarButtonPasskeyUnlockErrorBrowserTest,
   AvatarToolbarButtonTestAccessor avatar_accessor(browser());
   ASSERT_TRUE(base::test::RunUntil([browser = browser()]() {
     InitialWebUIManager* manager = InitialWebUIManager::From(browser);
-    return !manager || !manager->IsShowPending();
+    return !manager || !manager->IsInitialWebUIPending();
   }));
   SigninWithImageAndClearGreetingAndSyncPromo(browser(), avatar,
                                               u"test@gmail.com");

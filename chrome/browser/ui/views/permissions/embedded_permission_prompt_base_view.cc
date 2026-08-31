@@ -5,8 +5,6 @@
 #include "chrome/browser/ui/views/permissions/embedded_permission_prompt_base_view.h"
 
 #include "base/functional/callback_helpers.h"
-#include "chrome/browser/ui/browser.h"
-#include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/views/chrome_layout_provider.h"
 #include "chrome/browser/ui/views/chrome_widget_sublevel.h"
@@ -86,14 +84,6 @@ int GetPermissionIconSize() {
   return 20;
 }
 
-views::View* GetContentsWebView(gfx::NativeWindow native_window) {
-  auto* tracker = views::ElementTrackerViews::GetInstance();
-  auto* widget = views::Widget::GetWidgetForNativeWindow(native_window);
-  return tracker->GetFirstMatchingView(
-      ContentsWebView::kContentsWebViewElementId,
-      tracker->GetContextForWidget(widget));
-}
-
 }  // namespace
 
 EmbeddedPermissionPromptBaseView::EmbeddedPermissionPromptBaseView(
@@ -125,9 +115,6 @@ EmbeddedPermissionPromptBaseView::EmbeddedPermissionPromptBaseView(
           .value_or(1.0f);
   element_rect_ = gfx::ScaleToEnclosedRect(element_rect_, 1.f / scale_factor);
 
-  // Convert the position into screen coordinates.
-  auto* content_view = GetContentsWebView(GetNativeWindow());
-  views::View::ConvertRectToScreen(content_view, &element_rect_);
 }
 
 EmbeddedPermissionPromptBaseView::~EmbeddedPermissionPromptBaseView() {
@@ -456,20 +443,26 @@ gfx::Rect EmbeddedPermissionPromptBaseView::GetBubbleBounds() {
   gfx::Rect container_bounds = web_contents->GetContainerBounds();
   gfx::Rect prompt_bounds;
 
+  // Convert `element_rect_` (web-contents-relative) to screen coordinates
+  // dynamically
+  gfx::Rect screen_element_rect = element_rect_;
+  screen_element_rect.Offset(container_bounds.origin().OffsetFromOrigin());
+
+  // TODO(crbug.com/537445211): Clean up dead `kNearElement` experiment logic.
   if (GetPromptPosition() == PermissionElementPromptPosition::kNearElement) {
     // First, attempt to position the prompt below the PEPC, if it would not
     // overflow the container bounds.
     prompt_bounds = gfx::Rect(
-        element_rect_.bottom_center().x() - default_bounds.width() / 2,
-        element_rect_.bottom_center().y(), default_bounds.width(),
+        screen_element_rect.bottom_center().x() - default_bounds.width() / 2,
+        screen_element_rect.bottom_center().y(), default_bounds.width(),
         default_bounds.height());
 
     if (prompt_bounds.x() < container_bounds.x()) {
       // Align the prompt on the left side of the element.
-      prompt_bounds.set_x(element_rect_.x());
+      prompt_bounds.set_x(screen_element_rect.x());
     } else if (prompt_bounds.right() > container_bounds.right()) {
       // Align the prompt on the right side of the element.
-      prompt_bounds.set_x(element_rect_.right() - default_bounds.width());
+      prompt_bounds.set_x(screen_element_rect.right() - default_bounds.width());
     }
 
     if (container_bounds.Contains(prompt_bounds)) {
@@ -478,34 +471,46 @@ gfx::Rect EmbeddedPermissionPromptBaseView::GetBubbleBounds() {
 
     // Second, attempt to position the prompt above the PEPC, if it would not
     // overflow the container bounds.
-    prompt_bounds =
-        gfx::Rect(element_rect_.top_center().x() - default_bounds.width() / 2,
-                  element_rect_.top_center().y() - default_bounds.height(),
-                  default_bounds.width(), default_bounds.height());
+    prompt_bounds = gfx::Rect(
+        screen_element_rect.top_center().x() - default_bounds.width() / 2,
+        screen_element_rect.top_center().y() - default_bounds.height(),
+        default_bounds.width(), default_bounds.height());
 
     if (prompt_bounds.x() < container_bounds.x()) {
       // Align the prompt on the left side of the element.
-      prompt_bounds.set_x(element_rect_.x());
+      prompt_bounds.set_x(screen_element_rect.x());
     } else if (prompt_bounds.right() > container_bounds.right()) {
       // Align the prompt on the right side of the element.
-      prompt_bounds.set_x(element_rect_.right() - default_bounds.width());
+      prompt_bounds.set_x(screen_element_rect.right() - default_bounds.width());
     }
 
     if (container_bounds.Contains(prompt_bounds)) {
       return prompt_bounds;
     }
-    // Otherwise, default to kWindowMiddle placement logic.
+
+    // Clamp top-left position so prompt doesn't bleed off-screen,
+    // avoiding switching to `kWindowMiddle` or shrinking width/height
+    // which triggers container layout recursion.
+    if (prompt_bounds.x() < container_bounds.x()) {
+      prompt_bounds.set_x(container_bounds.x());
+    }
+    if (prompt_bounds.y() < container_bounds.y()) {
+      prompt_bounds.set_y(container_bounds.y());
+    }
+    return prompt_bounds;
   }
 
-  // At this point we're either in the kWindowMiddle case or the kNearElement
-  // case after failing to place the prompt near the element.
+  // `kWindowMiddle` case:
   prompt_bounds = gfx::Rect(
       container_bounds.CenterPoint().x() - default_bounds.width() / 2,
       container_bounds.CenterPoint().y() - default_bounds.height() / 2,
       default_bounds.width(), default_bounds.height());
 
-  // Do not allow the prompt to be positioned above the container bounds as it
-  // can overlap and potentially obfuscate browser UI.
+  // Do not allow the prompt to be positioned above or to the left of the
+  // container bounds as it can overlap and potentially obfuscate browser UI.
+  if (prompt_bounds.x() < container_bounds.x()) {
+    prompt_bounds.set_x(container_bounds.x());
+  }
   if (prompt_bounds.y() < container_bounds.y()) {
     prompt_bounds.set_y(container_bounds.y());
   }

@@ -84,6 +84,9 @@ class ContextualTasksSidePanelCoordinator
     // The entry source that triggered this task's panel.
     ContextualTasksPanelController::EntrySource entry_source =
         ContextualTasksPanelController::EntrySource::kOther;
+
+    // The time when this task's panel was opened.
+    base::TimeTicks open_time_ticks;
   };
 
   DECLARE_USER_DATA(ContextualTasksSidePanelCoordinator);
@@ -110,9 +113,11 @@ class ContextualTasksSidePanelCoordinator
   void AddObserver(ContextualTasksPanelController::Observer* observer) override;
   void RemoveObserver(
       ContextualTasksPanelController::Observer* observer) override;
-  void Show(bool transition_from_tab,
-            omnibox::ChromeAimEntryPoint entry_point,
-            bool use_no_animation = false) override;
+  void Show(
+      bool transition_from_tab,
+      omnibox::ChromeAimEntryPoint entry_point,
+      bool use_no_animation = false,
+      std::optional<base::TimeTicks> open_time_ticks = std::nullopt) override;
   void Close() override;
   void OpenInZeroState() override;
   bool IsPanelOpenForContextualTask() const override;
@@ -142,7 +147,8 @@ class ContextualTasksSidePanelCoordinator
   void MoveTaskUiToNewTab() override;
   void NotifyExpandToFullTabStateChanged() override;
   bool CanExpandToFullTab() const override;
-  void ShowPageInfoBubble() override;
+  void ShowPageInfoBubble(bool is_pointer_interaction) override;
+  void OnLogoPointerDown() override;
 
   // ContextualTasksPanelHost::Observer:
   void OnSurfaceStateChanged(
@@ -222,6 +228,12 @@ class ContextualTasksSidePanelCoordinator
 
   // Disassociate the tab from the task if it's associated with it.
   void DisassociateTabFromTask(content::WebContents* web_contents);
+
+  // Disassociate all tabs associated with the current task, or the active tab
+  // if no current task exists. Under kToolbarEphemeralBranded mode, active
+  // tasks with conversation threads are preserved on panel close to allow
+  // ephemeral button resume.
+  void DisassociateAllTabsFromCurrentTask();
 
   // Update open state of the panel.
   void UpdateOpenState(bool is_open);

@@ -19,6 +19,7 @@
 #include "chrome/browser/dictation/stream_provider.h"
 #include "chrome/browser/dictation/target.h"
 #include "chrome/common/extensions/api/dictation_private.h"
+#include "content/public/browser/global_dom_node_id.h"
 #include "testing/gmock/include/gmock/gmock.h"
 
 class Profile;
@@ -83,6 +84,11 @@ void ExtensionSendStreamStateUpdate(
 void ExtensionWaitForStreamStart(Profile* profile,
                                  DictationMultiplexer::StreamId stream_id);
 
+// Blocks until the extension has received the OnEndStream event for the given
+// stream ID.
+void ExtensionWaitForStreamEnd(Profile* profile,
+                               DictationMultiplexer::StreamId stream_id);
+
 // Blocks until the extension has received the OnStartStream event for the given
 // stream ID, and returns the DictationContext containing the page context
 // passed to the extension, or nullopt if no context was passed.
@@ -125,6 +131,10 @@ class MockSessionUi : public SessionUi {
   MOCK_METHOD(void, OnError, (StreamType stream_type), (override));
   MOCK_METHOD(void, OnStopped, (), (override));
   MOCK_METHOD(void, UpdateAudioLevel, (float audio_level), (override));
+  MOCK_METHOD(void,
+              OnStartedStream,
+              (content::GlobalDOMNodeId target_id),
+              (override));
 };
 
 class MockSessionControllerDelegate : public SessionControllerDelegate {
@@ -132,6 +142,10 @@ class MockSessionControllerDelegate : public SessionControllerDelegate {
   MockSessionControllerDelegate();
   ~MockSessionControllerDelegate() override;
 
+  MOCK_METHOD(content::BrowserContext*,
+              GetBrowserContext,
+              (),
+              (const, override));
   MOCK_METHOD(std::unique_ptr<StreamProvider>,
               CreateStreamProvider,
               (SessionController & controller),
@@ -153,6 +167,8 @@ class MockDictationKeyedService : public DictationKeyedService {
       SessionController& controller) const override;
   std::unique_ptr<SessionUi> CreateUi(
       SessionController& controller) const override;
+
+  MOCK_METHOD(void, ToggleHotkeyHandler, (), (override));
 };
 
 }  // namespace dictation

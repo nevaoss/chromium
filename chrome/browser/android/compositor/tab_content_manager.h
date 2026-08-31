@@ -25,9 +25,6 @@ namespace cc::slim {
 class Layer;
 }
 
-namespace sync_sessions {
-class SessionSyncService;
-}
 
 namespace ui {
 class UIResourceProvider;
@@ -62,6 +59,8 @@ class TabContentManager : public thumbnail::ThumbnailCacheObserver {
 
   // Get the live layer from the cache.
   scoped_refptr<cc::slim::Layer> GetLiveLayer(int tab_id);
+
+  TabAndroid* GetTab(int tab_id);
 
   // Returns the static ThumbnailLayer for a `tab_id`. Note that the lifecycle
   // of the thumbnail is managed by the ThumbnailCache and not the
@@ -109,10 +108,6 @@ class TabContentManager : public thumbnail::ThumbnailCacheObserver {
   void OnThumbnailAddedToCache(thumbnail::TabId tab_id) override;
   void OnFinishedThumbnailRead(thumbnail::TabId tab_id) override;
 
-  static void CompressScreenshotForSyncForTesting(
-      const SkBitmap& bitmap,
-      base::OnceCallback<void(std::string)> callback);
-
  private:
   class TabReadbackRequest;
   // TODO(crbug.com/41314695) check sizes and consider using base::flat_map if
@@ -141,10 +136,6 @@ class TabContentManager : public thumbnail::ThumbnailCacheObserver {
                            bool need_downsampling,
                            bool result,
                            const SkBitmap& bitmap);
-
-  sync_sessions::SessionSyncService* GetSessionSyncService(int tab_id);
-
-  void AddTabScreenshotToSync(int tab_id, std::string compressed_data);
 
   absl::flat_hash_map<thumbnail::TabId,
                       base::WeakPtr<thumbnail::ThumbnailCaptureTracker>>

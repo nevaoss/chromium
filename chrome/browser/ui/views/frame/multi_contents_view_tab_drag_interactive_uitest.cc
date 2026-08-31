@@ -6,6 +6,7 @@
 #include "build/build_config.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
+#include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/browser/ui/tabs/features.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/multi_contents_drop_target_view.h"
@@ -56,6 +57,13 @@ class MultiContentsViewTabDragEntrypointsUiTest
         {tabs::kSplitViewHorizontal, {}}};
   }
 
+  const std::vector<base::test::FeatureRef> GetDisabledFeatures() override {
+    // TODO(crbug.com/452061489): Fix tests that fail when the WebUI Omnibox is
+    // enabled and then remove this.
+    return {omnibox::internal::kWebUIOmniboxPopup,
+            omnibox::internal::kWebUIOmniboxAimPopup};
+  }
+
   gfx::Point GetPointForDropSide(MultiContentsDropTargetView::DropSide side) {
     const gfx::Rect bounds = GetBrowserView().GetBoundsInScreen();
     switch (side) {
@@ -100,10 +108,15 @@ class MultiContentsViewTabDragEntrypointsUiTest
   }
 
   auto NameTabViewAt(std::string_view name, int index) {
-    return NameView(name, base::BindLambdaForTesting([this, index]() {
-                      return GetBrowserView().tab_strip_view()->GetTabAnchorViewAt(
-                          index);
-                    }));
+    return NameView(
+        name, base::BindLambdaForTesting([this, index]() {
+          return GetBrowserView().tab_strip_view()->GetTabAnchorView(
+              GetBrowserView()
+                  .browser()
+                  ->tab_strip_model()
+                  ->GetTabAtIndex(index)
+                  ->GetHandle());
+        }));
   }
 
   auto WaitTime(base::TimeDelta timeout) {

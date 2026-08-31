@@ -109,6 +109,7 @@
 #import "mojo/public/cpp/base/big_buffer.h"
 #import "net/base/apple/url_conversions.h"
 #import "net/base/url_util.h"
+#import "third_party/lens_server_proto/aim_communication.pb.h"
 #import "third_party/omnibox_proto/chrome_aim_entry_point.pb.h"
 #import "third_party/omnibox_proto/model_config.pb.h"
 #import "third_party/omnibox_proto/model_mode.pb.h"
@@ -538,6 +539,7 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
         result.identifier = item.driveIdentifier;
         result.fileName = item.title;
         result.mimeType = item.driveMimeType;
+        result.icon = item.leadingIconImage;
         [driveItems addObject:result];
         break;
       }
@@ -601,7 +603,8 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   for (ComposeboxPickerDriveResult* driveItem in attachments.driveItems) {
     [self processDriveFileWithIdentifier:driveItem.identifier
                                     name:driveItem.fileName
-                                mimeType:driveItem.mimeType];
+                                mimeType:driveItem.mimeType
+                                    icon:driveItem.icon];
   }
 
   // TODO(crbug.com/512774045): update attachment is called in both embedded an
@@ -1081,12 +1084,9 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   }
 
   bool use_apc_v2 = IsComposeboxAimRichAPCExtractionEnabled();
-  PageContextWrapperConfig config =
-      PageContextWrapperConfigBuilder()
-          .SetGraftCrossOriginFrameContent(use_apc_v2)
-          .SetUseRichExtraction(use_apc_v2)
-          .SetExtractPaidContent(use_apc_v2)
-          .Build();
+  PageContextWrapperConfig config = PageContextWrapperConfigBuilder()
+                                        .SetDefaultRichExtraction(use_apc_v2)
+                                        .Build();
 
   PageContextWrapper* pageContextWrapper = [[PageContextWrapper alloc]
         initWithWebState:webState
@@ -1872,7 +1872,8 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
 
 - (void)processDriveFileWithIdentifier:(NSString*)identifier
                                   name:(NSString*)name
-                              mimeType:(NSString*)mimeType {
+                              mimeType:(NSString*)mimeType
+                                  icon:(UIImage*)icon {
   DCHECK_CALLED_ON_VALID_SEQUENCE(_sequenceChecker);
   if ([_items assetAlreadyLoaded:identifier]) {
     return;
@@ -1890,6 +1891,7 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   item.title = name;
   item.driveIdentifier = identifier;
   item.driveMimeType = mimeType;
+  item.leadingIconImage = icon;
 
   [self addItem:item];
 
@@ -2088,7 +2090,10 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   BOOL forceDisableShortcuts =
       base::FeatureList::IsEnabled(kHideFuseboxVoiceLensActions);
   BOOL hasVisibleContent = compactMode ? _hasText : hasContent;
-  BOOL showShortcuts = !hasVisibleContent && !canSend && !forceDisableShortcuts;
+  // Note: Temporarily disable shortcuts for cobrowse.
+  // See http://crbug.com/539904096 for more details.
+  BOOL showShortcuts = !hasVisibleContent && !canSend &&
+                       !forceDisableShortcuts && !self.isCobrowse;
   // Hide the plus button is different from !allowsMultimodalActions. When the
   // plus button is hidden, the user can still use multimodal actions from other
   // sources such as drag and drop.
@@ -2160,6 +2165,8 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
        trailingAction);
 
   [self.consumer updateVisibleControls:visibleControls];
+  BOOL shouldDisableSending = !_modeHolder.isRegularSearch && !canSend;
+  [self.consumer disableSending:shouldDisableSending];
 }
 
 /// Updates the consumer whether to show in compact mode.

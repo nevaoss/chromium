@@ -58,6 +58,7 @@
 #include "components/page_content_annotations/core/page_embeddings_common.h"
 #include "components/passage_embeddings/core/passage_embeddings_types.h"
 #include "components/prefs/pref_service.h"
+#include "components/sessions/content/session_tab_helper.h"
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/common/url_constants.h"
@@ -355,10 +356,9 @@ bool ContextualTasksContextService::GetIsSmartTabSharingEnabled(
     return false;
   }
   // Users can open the Contextual Tasks side panel even when they are not
-  // eligible for cobrowsing (and thus not eligible to add tabs or use Smart Tab
-  // Sharing). Explicitly check entry point eligibility here so Smart Tab
-  // Sharing UI and features are hidden when ineligible.
-  if (!EntryPointEligibilityManager::IsEligible(profile)) {
+  // eligible for cobrowsing. Explicitly check tab sharing eligibility here
+  // so Smart Tab Sharing UI and features are hidden when ineligible.
+  if (!contextual_tasks::IsTabSharingEligible(profile)) {
     return false;
   }
   if (profile->GetPrefs() &&
@@ -401,16 +401,24 @@ void ContextualTasksContextService::GetRelevantTabsForQuery(
         callback) {
   base::TimeTicks now = tick_clock_->NowTicks();
 
-  std::optional<base::WeakPtr<content::WebContents>> active_tab_at_query_time;
-  if (content::WebContents* web_contents = GetActiveTabWebContents()) {
-    active_tab_at_query_time = web_contents->GetWeakPtr();
-  }
-
   AUTO_CONTEXT_LOG(base::StringPrintf("Processing query %s in mode %d", query,
                                       options.tab_selection_mode));
 
   if (query.empty()) {
     AUTO_CONTEXT_LOG("Query is empty");
+    RecordContextDeterminationStatus(ContextDeterminationStatus::kQueryEmpty);
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE,
+        base::BindOnce(std::move(callback),
+                       std::vector<base::WeakPtr<content::WebContents>>()));
+    return;
+  }
+
+  if (auto query_word_count = GetWordCount(query);
+      query_word_count < kMinQueryWords.Get()) {
+    AUTO_CONTEXT_LOG("Query has too few words.");
+    RecordContextDeterminationStatus(
+        ContextDeterminationStatus::kQueryTooFewWords);
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE,
         base::BindOnce(std::move(callback),
@@ -441,6 +449,11 @@ void ContextualTasksContextService::GetRelevantTabsForQuery(
         *options.tab_selection_timeout);
   }
 
+  std::optional<base::WeakPtr<content::WebContents>> active_tab_at_query_time;
+  if (content::WebContents* web_contents = GetActiveTabWebContents()) {
+    active_tab_at_query_time = web_contents->GetWeakPtr();
+  }
+
   // TODO: crbug.com/452036470 - De-couple embeddings and recency signal
   // computation.
   passage_embeddings::Embedder::Job job = embedder_->ComputePassagesEmbeddings(
@@ -465,7 +478,8 @@ void ContextualTasksContextService::GetRelevantTabsForConversationThread(
                           std::move(callback));
 }
 
-void ContextualTasksContextService::OnTypedQuery() {
+void ContextualTasksContextService::OnTypedQuery(
+    base::WeakPtr<BrowserWindowInterface> browser_window_interface) {
   if (!embedder_model_version_) {
     // Do not queue if embedder is not available.
     return;
@@ -473,6 +487,7 @@ void ContextualTasksContextService::OnTypedQuery() {
 
   // Process embeddings for all tabs as the user has intent to call
   // `GetRelevantTabsForQuery` soon.
+  WarmupAllEligibleTabs(browser_window_interface);
   page_embeddings_service_->ProcessEmbeddingsOnDemand();
 }
 
@@ -706,6 +721,45 @@ ContextualTasksContextService::GetAllEligibleTabs(
       });
   site_exclusion_detail.RecordAllTabsMetrics();
   return all_tabs;
+}
+
+void ContextualTasksContextService::WarmupAllEligibleTabs(
+    base::WeakPtr<BrowserWindowInterface> browser_window_interface) {
+  if (!page_embeddings_service_) {
+    return;
+  }
+  ForEachCurrentBrowserWindowInterfaceOrderedByActivation(
+      [this, browser_window_interface](BrowserWindowInterface* browser) {
+        if (browser->GetProfile() != profile_) {
+          return true;
+        }
+        if (browser_window_interface &&
+            browser != browser_window_interface.get()) {
+          return true;
+        }
+        TabListInterface* tab_list = TabListInterface::From(browser);
+        CHECK(tab_list);
+        for (int i = 0; i < tab_list->GetTabCount(); i++) {
+          tabs::TabInterface* tab = tab_list->GetTab(i);
+          content::WebContents* web_contents =
+              tab ? tab->GetContents() : nullptr;
+          if (!web_contents) {
+            continue;
+          }
+          GURL url = web_contents->GetLastCommittedURL();
+          SiteExclusionDetail site_exclusion_detail;
+          if (!IsValidUrlForSuggestedTab(url, profile_,
+                                         site_exclusion_detail)) {
+            continue;
+          }
+          if (auto* session_helper =
+                  sessions::SessionTabHelper::FromWebContents(web_contents)) {
+            page_embeddings_service_->WarmupEmbeddingsForRestoredTab(
+                web_contents, session_helper->session_id().id());
+          }
+        }
+        return !browser_window_interface;
+      });
 }
 
 content::WebContents* ContextualTasksContextService::GetQueryContextualizingTab(

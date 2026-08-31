@@ -412,7 +412,14 @@ bool IsInitialSetup(const WizardContext& wizard_context) {
 }
 
 void InvalidateTokenAndRequestSignout(const WizardContext& wizard_context) {
-  CHECK(wizard_context.extra_factors_token.has_value());
+  if (!wizard_context.extra_factors_token.has_value()) {
+    // If there is no token, we can just sign out. This can happen when the user
+    // is ephemeral.
+    LOG(WARNING) << "No extra factors token to invalidate, directly requesting "
+                    "sign out.";
+    session_manager::SessionManager::Get()->RequestSignOut();
+    return;
+  }
   ash::AuthSessionStorage::Get()->Invalidate(
       wizard_context.extra_factors_token.value(),
       base::BindOnce(&session_manager::SessionManager::RequestSignOut,
@@ -1758,8 +1765,16 @@ void WizardController::OnSamlConfirmPasswordScreenExit(
     case SamlConfirmPasswordScreen::Result::kSuccess:
       switch (wizard_context_->knowledge_factor_setup.auth_setup_flow) {
         case WizardContext::AuthChangeFlow::kInitialSetup:
-          // Continue initial setup by showing other auth factors flows.
-          ShowPinSetupScreenAsMainFactor();
+          // `user_context` is only set on the wizard context for pre-cryptohome
+          // SAML confirm password screen exit. This can happen when the user is
+          // ephemeral as we always show the confirm password screen for
+          // ephemeral users before cryptohome mount.
+          if (wizard_context_->user_context != nullptr) {
+            CompleteLogin();
+          } else {
+            // Continue initial setup by showing other auth factors flows.
+            ShowPinSetupScreenAsMainFactor();
+          }
           break;
         case WizardContext::AuthChangeFlow::kRecovery:
         case WizardContext::AuthChangeFlow::kReauthentication:

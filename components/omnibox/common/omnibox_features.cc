@@ -192,13 +192,13 @@ BASE_FEATURE(kHideAimEntrypointOnUserInput,
 BASE_FEATURE(kHideAimEntrypointForUrlSuggestions, DISABLED);
 
 // When enabled, the multimodal input button is shown in the Omnibox.
-BASE_FEATURE(kOmniboxMultimodalInput, DISABLED);
+BASE_FEATURE(kOmniboxMultimodalInput, ENABLED);
 
 // An additional gate to the behavior of OmniboxMultimodalInput on desktop.
-BASE_FEATURE(kAndroidDesktopAimGate, DISABLED);
+BASE_FEATURE(kAndroidDesktopAimGate, ENABLED);
 
 // Enables the AIM entrypoint for third party search engines.
-BASE_FEATURE(kAim3pEntrypoint, DISABLED);
+BASE_FEATURE(kAim3pEntrypoint, ENABLED);
 const base::FeatureParam<bool> kAim3pEntrypointDebug{
     &kAim3pEntrypoint, "Aim3pEntrypointDebug", false};
 
@@ -214,6 +214,10 @@ BASE_FEATURE(kOmniboxAimDeferShowUntilVisualStateReady, ENABLED);
 // painted a clean frame, avoiding the issue of the popup being shown with a
 // stale frame.
 BASE_FEATURE(kOmniboxWebUIDeferShowUntilVisualStateReady, DISABLED);
+// When enabled, the Omnibox Full WebUI popup will defer showing until the
+// WebUI has painted a clean frame, avoiding the issue of the popup being shown
+// with a stale frame.
+BASE_FEATURE(kOmniboxFullWebUIDeferShowUntilVisualStateReady, ENABLED);
 // If enabled, stabilizes the popup showing behavior on startup by forcing
 // layout with a 1px height and hiding it initially to avoid visual artifacts.
 BASE_FEATURE(kOmniboxWebUIPopupStabilizeStartupShow, ENABLED);
@@ -222,10 +226,13 @@ BASE_FEATURE(kOmniboxAimDetachWebContentsOnHide, ENABLED);
 // When enabled, the Omnibox WebUI popup will detach its web contents when
 // hidden.
 BASE_FEATURE(kOmniboxWebUIDetachWebContentsOnHide, ENABLED);
+// When enabled, the Omnibox Full WebUI popup will detach its web contents
+// when hidden.
+BASE_FEATURE(kOmniboxFullWebUIDetachWebContentsOnHide, ENABLED);
 
 // When enabled, the Omnibox WebUI popup will mark its web contents as hidden
 // when hidden, to unlock frames from compositor cache.
-BASE_FEATURE(kOmniboxWebUIPopupMarkAsHidden, DISABLED);
+BASE_FEATURE(kOmniboxWebUIPopupMarkAsHidden, ENABLED);
 
 // When enabled, the WebUI searchbox will bypass OmniboxController and
 // OmniboxEditModel.
@@ -385,10 +392,6 @@ BASE_FEATURE(kEnableSiteSearchAllowUserOverridePolicy, ENABLED);
 // Enables preconnecting to omnibox suggestions that are not only Search types.
 BASE_FEATURE(kPreconnectNonSearchOmniboxSuggestions, ENABLED);
 
-// When enabled, unblocks omnibox height on small form factor devices, allowing
-// users to type in multiline / longer text.
-BASE_FEATURE(kMultilineEditField, "OmniboxMultilineEditField", ENABLED);
-
 // Controls whether the composebox
 BASE_FEATURE(kComposeboxUsesChromeComposeClient, ENABLED);
 
@@ -416,6 +419,9 @@ const base::FeatureParam<int> kComposeboxDriveConsentProductId{
 const base::FeatureParam<std::string> kComposeboxDriveConsentEntrypointId{
     &kComposeboxDriveContextMenuOptionDisclaimer, "entrypoint_id", "aim-drive"};
 
+// Whether to enable the signin promo for the Google Drive context menu option.
+BASE_FEATURE(kComposeboxDriveContextMenuOptionSigninPromo, DISABLED);
+
 // Whether to force the Google Drive disclaimer to be accepted. This flag is
 // only used for testing purposes since dasher accounts are not allowed to
 // consent via pContext.
@@ -442,6 +448,8 @@ BASE_FEATURE(kOmniboxDebugLogs, base::FEATURE_DISABLED_BY_DEFAULT);
 //  - No live transcription below the new recording animation.
 BASE_FEATURE(kVoiceSearchCoherenceComposeboxes,
              base::FEATURE_ENABLED_BY_DEFAULT);
+
+BASE_FEATURE(kDrivePickerV2Scope, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables voice search coherence (as described above) only for cobrowsing.
 // Overrides the default (default was all surfaces enabled).
@@ -498,8 +506,9 @@ BASE_FEATURE(kServeJavaCachedZeroSuggest, ENABLED);
 // of the Omnibox suggestion list to the top during any re-layout.
 BASE_FEATURE(kResetSuggestionsScroll, DISABLED);
 
-// If enabled, the UrlBar context menu will use ListMenu instead of MenuItem.
-BASE_FEATURE(kOmniboxListMenuContextMenu, ENABLED);
+// Kill switch for special handling for session-less voice search queries
+// (e.g. from NTP fakebox). This special case was added to address b/541295247.
+BASE_FEATURE(kOmniboxSessionlessVoiceSearch, ENABLED);
 
 namespace android {
 static int64_t JNI_OmniboxFeatureMap_GetNativeMap(JNIEnv* env) {
@@ -521,15 +530,14 @@ static int64_t JNI_OmniboxFeatureMap_GetNativeMap(JNIEnv* env) {
       &kOmniboxSiteSearch,
       &kOmniboxMultimodalInput,
       &kAndroidDesktopAimGate,
-      &kMultilineEditField,
       &kServeJavaCachedZeroSuggest,
       &kAIMSuppressVerbatimMatch,
       &kResetSuggestionsScroll,
-      &kOmniboxListMenuContextMenu,
       &kExactMatchFavicons,
       &kStarterPackExpansion,
       &kOmniboxSearchPrefetchOnEnterKeyDown,
-      &kOmniboxAimImageDownscaling};
+      &kOmniboxAimImageDownscaling,
+      &kOmniboxSessionlessVoiceSearch};
   static base::NoDestructor<base::android::FeatureMap> kFeatureMap(
       kFeaturesExposedToJava);
   return reinterpret_cast<int64_t>(kFeatureMap.get());
@@ -585,8 +593,21 @@ const base::FeatureParam<bool> kAskGLensChipRoute{
     &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGLensChipRoute", false};
 const base::FeatureParam<bool> kAskGSwapIcon{
     &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGSwapIcon", false};
+const base::FeatureParam<bool> kAskGSwapSuggestionIcon{
+    &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGSwapSuggestionIcon", false};
 const base::FeatureParam<bool> kAskGCurrentTabChip{
     &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGCurrentTabChip", false};
+const base::FeatureParam<bool> kAskGLensIcon{
+    &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGLensIcon", false};
+const base::FeatureParam<bool> kAskGLensSearchHintText{
+    &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGLensSearchHintText", false};
+const base::FeatureParam<bool> kAskGShowFirstDescription{
+    &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGShowFirstDescription", false};
+const base::FeatureParam<bool> kAskGComposeboxLensChip{
+    &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGComposeboxLensChip", false};
+const base::FeatureParam<bool> kAskGBlockAutoTabZeroStateSuggestions{
+    &kWebUIOmniboxAskGAboutThisPage,
+    "Omnibox_AskGBlockAutoTabZeroStateSuggestions", false};
 // Note: no new flags beyond this point.
 
 namespace flag_descriptions {

@@ -40,8 +40,8 @@ class SessionController : public SessionUiDelegate,
   SessionController(const SessionController&) = delete;
   SessionController& operator=(const SessionController&) = delete;
 
-  // Called by the service when it's ready for the session to start.
-  void Initialize();
+  // Called by the service to prime the session for a new UI.
+  void ResetUi();
 
   // SessionUiDelegate:
   void UiRequestEndSession() override;
@@ -85,6 +85,7 @@ class SessionController : public SessionUiDelegate,
   void MoveToState(SessionState new_state);
   void EndSessionAsynchronously();
   void PurgeToDeleteStreamProviders();
+  content::BrowserContext* GetBrowserContext() const;
 
   const base::raw_ref<SessionControllerDelegate> delegate_;
 

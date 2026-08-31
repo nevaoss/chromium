@@ -210,18 +210,15 @@ if (is_chromeos) {
   platform_pak_locales -= [
     "af",
     "am",
-    "bn",
     "et",
     "fil",
-    "gu",
-    "kn",
     "lv",
-    "ml",
-    "mr",
-    "sl",
     "sw",
-    "ta",
-    "te",
+  ]
+  platform_pak_locales += [
+    "gl",
+    "or",
+    "pa",
   ]
 }
 
@@ -257,6 +254,27 @@ if (is_android) {
 
 locales_without_pseudolocales = platform_pak_locales - pseudolocales
 locales_with_pseudolocales = platform_pak_locales
+
+# locales used for typical .xtb files.
+xtb_locales = all_chrome_locales - pseudolocales - [
+                "en-US",
+                "he",
+                "nb",
+              ] +
+              [
+                "iw",
+                "no",
+              ]
+if (is_ios) {
+  xtb_locales -= [
+    "es-MX",
+    "pt",
+  ]
+  xtb_locales += [
+    "es-419",
+    "pt-BR",
+  ]
+}
 
 declare_args() {
   # We want to give pseudolocales to everyone except end-users (devs & QA). Note

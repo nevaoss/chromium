@@ -86,6 +86,13 @@ public class ToolbarTablet extends ToolbarLayout {
     private ImageButton mBookmarkButton;
     private View mFixedHeightBackground;
 
+    /**
+     * The inner layout containing toolbar components, used to apply horizontal padding to. The
+     * padding used to set to ToolbarTablet, but it caused a transparent gap on the left when
+     * Fusebox gets enabled and turned the background transparent.
+     */
+    private View mToolbarTabletLayout;
+
     private boolean mIsInTabSwitcherMode;
     private boolean mToolbarButtonsVisible;
     private boolean mOptionalButtonForciblyHidden;
@@ -113,6 +120,7 @@ public class ToolbarTablet extends ToolbarLayout {
     private @Nullable View mGlicDivider;
     private boolean mShouldShowGlicButton;
     private boolean mHasSpaceToShowGlicButton = true;
+    private boolean mIsGlicUiVisible;
     private View.@Nullable OnClickListener mGlicClickListener;
     private View.@Nullable OnLongClickListener mGlicLongClickListener;
 
@@ -145,6 +153,7 @@ public class ToolbarTablet extends ToolbarLayout {
 
         mBookmarkButton = findViewById(R.id.bookmark_button);
         mFixedHeightBackground = findViewById(R.id.toolbar_tablet_fixed_height_bg);
+        mToolbarTabletLayout = findViewById(R.id.toolbar_tablet_layout);
 
         // Initialize values needed for showing/hiding toolbar buttons when the activity size
         // changes.
@@ -284,6 +293,9 @@ public class ToolbarTablet extends ToolbarLayout {
         ImageViewCompat.setImageTintList(mHomeButton, activityFocusTint);
         if (mOptionalButton != null && mOptionalButtonUsesTint) {
             ImageViewCompat.setImageTintList(mOptionalButton, activityFocusTint);
+        }
+        if (mGlicActionChip != null) {
+            ImageViewCompat.setImageTintList(mGlicActionChip, activityFocusTint);
         }
     }
 
@@ -451,7 +463,7 @@ public class ToolbarTablet extends ToolbarLayout {
         mToolbarWidthConsumers[ToolbarComponentId.TAB_SWITCHER] = tabSwitcherButtonCoordinator;
         mToolbarWidthConsumers[ToolbarComponentId.MENU] = menuButtonCoordinator;
         mToolbarWidthConsumers[ToolbarComponentId.PADDING] =
-                new ToolbarPaddingWidthConsumer(this, mStartPaddingWithButtons);
+                new ToolbarPaddingWidthConsumer(mToolbarTabletLayout, mStartPaddingWithButtons);
     }
 
     @Override
@@ -539,9 +551,8 @@ public class ToolbarTablet extends ToolbarLayout {
     }
 
     private int getControlContainerMargin() {
-        View toolbarTabletLayout = findViewById(R.id.toolbar_tablet_layout);
-        if (toolbarTabletLayout == null) return 0;
-        var lp = (MarginLayoutParams) toolbarTabletLayout.getLayoutParams();
+        if (mToolbarTabletLayout == null) return 0;
+        var lp = (MarginLayoutParams) mToolbarTabletLayout.getLayoutParams();
         return lp != null ? lp.leftMargin + lp.rightMargin : 0;
     }
 
@@ -674,6 +685,24 @@ public class ToolbarTablet extends ToolbarLayout {
     }
 
     /**
+     * Updates the Glic button tooltip and content description based on the Glic panel open/closed
+     * state.
+     */
+    public void setGlicPanelIsOpen(boolean isOpen) {
+        mIsGlicUiVisible = isOpen;
+        if (mGlicActionChip == null) return;
+        String tooltip =
+                getContext()
+                        .getString(
+                                isOpen
+                                        ? R.string.glic_tab_strip_button_tooltip_close
+                                        : R.string.glic_tab_strip_button_tooltip);
+
+        mGlicActionChip.setContentDescription(tooltip);
+        super.setTooltipText(mGlicActionChip, tooltip);
+    }
+
+    /**
      * Ensure {@link ToolbarWidthConsumer} for Glic button pinned on the tab strip (moved to the
      * toolbar when the tab strip becomes hidden) is installed.
      */
@@ -746,8 +775,7 @@ public class ToolbarTablet extends ToolbarLayout {
                 mGlicActionChip = (ImageButton) glicActionChipStub.inflate();
                 mGlicActionChip.setOnClickListener(mGlicClickListener);
                 mGlicActionChip.setImageResource(R.drawable.ic_spark_24dp);
-                mGlicActionChip.setContentDescription(
-                        getContext().getString(R.string.glic_tab_strip_button_tooltip));
+                setGlicPanelIsOpen(mIsGlicUiVisible);
                 ImageViewCompat.setImageTintList(mGlicActionChip, getButtonTintList());
             }
             ImageButton actionChip = assumeNonNull(mGlicActionChip);
@@ -771,7 +799,7 @@ public class ToolbarTablet extends ToolbarLayout {
         return mGlicActionChip;
     }
 
-    private class ToolbarPaddingWidthConsumer implements ToolbarWidthConsumer {
+    private static class ToolbarPaddingWidthConsumer implements ToolbarWidthConsumer {
         private final View mToolbarView;
         private final int mHorizontalPadding;
         private boolean mHasSpaceToShow;
@@ -797,7 +825,10 @@ public class ToolbarTablet extends ToolbarLayout {
             assert availableWidth >= 0;
             int paddingWidth = Math.min(availableWidth, 2 * mHorizontalPadding);
             mToolbarView.setPaddingRelative(
-                    paddingWidth / 2, getPaddingTop(), paddingWidth / 2, getPaddingBottom());
+                    paddingWidth / 2,
+                    mToolbarView.getPaddingTop(),
+                    paddingWidth / 2,
+                    mToolbarView.getPaddingBottom());
             mHasSpaceToShow = paddingWidth > 0;
             return paddingWidth;
         }
@@ -919,11 +950,11 @@ public class ToolbarTablet extends ToolbarLayout {
     private void setStartPaddingBasedOnButtonVisibility(boolean buttonsVisible) {
         buttonsVisible = buttonsVisible || mHomeButton.getVisibility() == View.VISIBLE;
 
-        this.setPaddingRelative(
+        mToolbarTabletLayout.setPaddingRelative(
                 buttonsVisible ? mStartPaddingWithButtons : mStartPaddingWithoutButtons,
-                getPaddingTop(),
-                ViewCompat.getPaddingEnd(this),
-                getPaddingBottom());
+                mToolbarTabletLayout.getPaddingTop(),
+                ViewCompat.getPaddingEnd(mToolbarTabletLayout),
+                mToolbarTabletLayout.getPaddingBottom());
     }
 
     /**
@@ -1070,9 +1101,13 @@ public class ToolbarTablet extends ToolbarLayout {
         mToolbarWidthConsumers[ToolbarComponentId.MENU] = coordinator;
     }
 
+    void setToolbarTabletLayoutForTesting(View view) {
+        mToolbarTabletLayout = view;
+    }
+
     void ensurePaddingWidthConsumer() {
         mToolbarWidthConsumers[ToolbarComponentId.PADDING] =
-                new ToolbarPaddingWidthConsumer(this, mStartPaddingWithButtons);
+                new ToolbarPaddingWidthConsumer(mToolbarTabletLayout, mStartPaddingWithButtons);
     }
 
     void ensureLocationBarMidWidthConsumer() {

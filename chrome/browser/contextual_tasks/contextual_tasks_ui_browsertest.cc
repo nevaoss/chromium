@@ -16,6 +16,7 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks.mojom.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_composebox_handler.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_cookie_synchronizer.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_eligibility_manager.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_panel_controller.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_types.h"
@@ -28,8 +29,8 @@
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/signin/identity_test_environment_profile_adaptor.h"
 #include "chrome/browser/tab_list/tab_list_interface.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/lens/lens_search_controller.h"
 #include "chrome/browser/ui/tabs/public/tab_features.h"
 #include "chrome/common/webui_url_constants.h"
@@ -82,7 +83,7 @@ class MockContextualTasksPage : public contextual_tasks::mojom::Page {
   MOCK_METHOD(void, SetThreadTitle, (const std::string& title), (override));
   MOCK_METHOD(void, OnSidePanelStateChanged, (), (override));
   MOCK_METHOD(void,
-              PostMessageToWebview,
+              PostAimMessage,
               (const std::vector<uint8_t>& message),
               (override));
   MOCK_METHOD(void, OnHandshakeComplete, (), (override));
@@ -250,9 +251,20 @@ class ContextualTasksUIBrowserTest : public InProcessBrowserTest {
     InProcessBrowserTest::TearDownOnMainThread();
   }
 
-  void TriggerOnInnerWebContentsCreated(content::WebContents* inner) {
-    controller_->OnInnerWebContentsCreated(inner);
+  void TriggerOnInnerWebContentsCreated(ContextualTasksUI* controller,
+                                        content::WebContents* inner) {
+    controller->OnInnerWebContentsCreated(inner);
   }
+
+  void TriggerOnInnerWebContentsCreated(content::WebContents* inner) {
+    TriggerOnInnerWebContentsCreated(controller_.get(), inner);
+  }
+
+  void TriggerUpdateZoom(ContextualTasksUI* controller) {
+    controller->UpdateZoom();
+  }
+
+  void TriggerUpdateZoom() { TriggerUpdateZoom(controller_.get()); }
 
   ContextualTasksComposeboxHandler* GetComposeboxHandler() {
     return static_cast<ContextualTasksComposeboxHandler*>(
@@ -295,8 +307,8 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksUIBrowserTest,
   // Expect OnSidePanelStateChanged to be called on the page.
   EXPECT_CALL(mock_page, OnSidePanelStateChanged()).Times(1);
 
-  // Expect PostMessageToWebview to be called with the correct display mode.
-  EXPECT_CALL(mock_page, PostMessageToWebview(_))
+  // Expect PostAimMessage to be called with the correct display mode.
+  EXPECT_CALL(mock_page, PostAimMessage(_))
       .WillOnce([&run_loop](const std::vector<uint8_t>& message) {
         lens::ClientToAimMessage client_message;
         ASSERT_TRUE(
@@ -332,7 +344,7 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksUIBrowserTest,
 
   base::RunLoop run_loop;
   EXPECT_CALL(mock_page, OnSidePanelStateChanged()).Times(1);
-  EXPECT_CALL(mock_page, PostMessageToWebview(_))
+  EXPECT_CALL(mock_page, PostAimMessage(_))
       .WillOnce([&run_loop](const std::vector<uint8_t>& message) {
         lens::ClientToAimMessage client_message;
         ASSERT_TRUE(
@@ -684,7 +696,7 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksNoMockBrowserTest, CanZoom) {
 
 IN_PROC_BROWSER_TEST_F(ContextualTasksNoMockBrowserTest,
                        IncognitoDoesNotCrash) {
-  Browser* incognito_browser = CreateIncognitoBrowser();
+  BrowserWindowInterface* incognito_browser = CreateIncognitoBrowser();
   EXPECT_TRUE(ui_test_utils::NavigateToURL(
       incognito_browser, GURL(chrome::kChromeUINewTabPageURL)));
   EXPECT_TRUE(ui_test_utils::NavigateToURL(
@@ -1024,4 +1036,44 @@ IN_PROC_BROWSER_TEST_F(
   // This should return early and not crash.
   CallOnContextRetrievedForActiveTab(null_browser, tab_id, url,
                                      std::move(context));
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksUIBrowserTest,
+                       UpdateZoom_UpdatesInnerWebContentsZoomMode) {
+  // Test in tab mode. IsShownInTab() returns true.
+  std::unique_ptr<content::WebContents> inner_contents =
+      content::WebContents::Create(
+          content::WebContents::CreateParams(browser()->GetProfile()));
+
+  TriggerOnInnerWebContentsCreated(inner_contents.get());
+  TriggerUpdateZoom();
+
+  auto* inner_zoom_controller =
+      zoom::ZoomController::FromWebContents(inner_contents.get());
+  ASSERT_TRUE(inner_zoom_controller);
+  EXPECT_EQ(zoom::ZoomController::ZoomMode::ZOOM_MODE_DEFAULT,
+            inner_zoom_controller->zoom_mode());
+
+  // Test in side panel mode, since this WebUI is not added to the tab strip,
+  // IsShownInTab() returns false.
+  std::unique_ptr<content::WebContents> side_panel_contents =
+      content::WebContents::Create(
+          content::WebContents::CreateParams(browser()->GetProfile()));
+  auto side_panel_web_ui = std::make_unique<content::TestWebUI>();
+  side_panel_web_ui->set_web_contents(side_panel_contents.get());
+  auto side_panel_controller =
+      std::make_unique<ContextualTasksUI>(side_panel_web_ui.get());
+
+  std::unique_ptr<content::WebContents> side_panel_inner_contents =
+      content::WebContents::Create(
+          content::WebContents::CreateParams(browser()->GetProfile()));
+  TriggerOnInnerWebContentsCreated(side_panel_controller.get(),
+                                   side_panel_inner_contents.get());
+  TriggerUpdateZoom(side_panel_controller.get());
+
+  auto* side_panel_inner_zoom_controller =
+      zoom::ZoomController::FromWebContents(side_panel_inner_contents.get());
+  ASSERT_TRUE(side_panel_inner_zoom_controller);
+  EXPECT_EQ(zoom::ZoomController::ZoomMode::ZOOM_MODE_DISABLED,
+            side_panel_inner_zoom_controller->zoom_mode());
 }

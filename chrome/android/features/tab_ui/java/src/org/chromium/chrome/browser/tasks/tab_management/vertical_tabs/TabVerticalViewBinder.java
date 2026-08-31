@@ -8,12 +8,14 @@ import static androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PAR
 import static androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.UNSET;
 
 import android.animation.ObjectAnimator;
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.content.res.Resources;
 import android.graphics.Color;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.InsetDrawable;
 import android.view.MotionEvent;
 import android.view.TouchDelegate;
 import android.view.View;
@@ -24,7 +26,6 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.ColorInt;
-import androidx.annotation.VisibleForTesting;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.view.ViewCompat;
 import androidx.core.widget.ImageViewCompat;
@@ -37,16 +38,22 @@ import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.R.string;
 import org.chromium.chrome.browser.actor.ui.ActorUiTabController.UiTabState;
 import org.chromium.chrome.browser.actor.ui.TabIndicatorStatus;
+import org.chromium.chrome.browser.incognito.IncognitoUtils;
 import org.chromium.chrome.browser.tab.MediaState;
 import org.chromium.chrome.browser.tab.TabUtils;
+import org.chromium.chrome.browser.tab_ui.TabCardThemeUtil;
 import org.chromium.chrome.browser.tasks.tab_management.TabActionButtonData;
+import org.chromium.chrome.browser.tasks.tab_management.TabActionListener;
 import org.chromium.chrome.browser.tasks.tab_management.TabListViewBinderUtils;
 import org.chromium.chrome.browser.tasks.tab_management.TabProperties;
 import org.chromium.chrome.browser.tasks.tab_management.TabUiThemeUtil;
+import org.chromium.chrome.browser.tasks.tab_management.vertical_tabs.VerticalTabHoverCardController.TabHoverCardListener;
 import org.chromium.chrome.browser.tasks.tab_management.vertical_tabs.VerticalTabListProperties.RailCollapseState;
 import org.chromium.chrome.browser.ui.vertical_tabs.VerticalTabUtils;
 import org.chromium.chrome.tab_ui.R;
+import org.chromium.components.browser_ui.styles.ChromeColors;
 import org.chromium.components.browser_ui.styles.SemanticColorUtils;
+import org.chromium.components.browser_ui.util.motion.MotionEventInfo;
 import org.chromium.components.tab_groups.TabGroupColorPickerUtils;
 import org.chromium.ui.base.DeviceFormFactor;
 import org.chromium.ui.base.ViewUtils;
@@ -60,7 +67,7 @@ class TabVerticalViewBinder {
     private static final float ROTATION_EXPANDED = 180f;
     private static final float ACTUATION_SPINNER_ROTATION_DEGREES = 360f;
     private static final long ACTUATION_SPINNER_DURATION_MS = 2000L;
-    @VisibleForTesting static final long CHEVRON_ANIMATION_DURATION_MS = 200L;
+    static final long CHEVRON_ANIMATION_DURATION_MS = 200L;
 
     // Public Entry-Point Binders
 
@@ -71,15 +78,19 @@ class TabVerticalViewBinder {
      * @param view the root ViewGroup representing the standard tab row item.
      * @param propertyKey the specific property key to bind, or null to bind all properties.
      */
-    public static void bindTab(PropertyModel model, ViewGroup view, PropertyKey propertyKey) {
+    static void bindTab(PropertyModel model, ViewGroup view, PropertyKey propertyKey) {
 
         bindCommonProperties(model, view, propertyKey);
 
         if (TabProperties.TITLE == propertyKey) {
             updateTitle(R.id.tab_title, model, view);
-        } else if (TabProperties.IS_SELECTED == propertyKey) {
+            updateParentPadding(model, view, /* isHeader= */ false);
+        } else if (TabProperties.IS_SELECTED == propertyKey
+                || TabProperties.IS_MULTI_SELECTED == propertyKey
+                || TabProperties.IS_INCOGNITO == propertyKey) {
             updateRegularColors(model, view);
             updateIcons(model, view);
+            updateParentPadding(model, view, /* isHeader= */ false);
         } else if (TabProperties.TAB_ACTION_BUTTON_DATA == propertyKey) {
             View actionButton = view.findViewById(R.id.action_button);
             if (actionButton != null) {
@@ -89,36 +100,17 @@ class TabVerticalViewBinder {
             updateIcons(model, view);
         } else if (TabProperties.TAB_GROUP_ID == propertyKey) {
             updateChildRowPadding(model, view);
-        } else if (TabProperties.CONTENT_DESCRIPTION_TEXT_RESOLVER == propertyKey) {
-            TabListViewBinderUtils.updateContentDescription(model, view);
-        } else if (TabProperties.ACCESSIBILITY_DELEGATE == propertyKey) {
-            view.setAccessibilityDelegate(model.get(TabProperties.ACCESSIBILITY_DELEGATE));
-        } else if (TabProperties.ACTION_BUTTON_DESCRIPTION_TEXT_RESOLVER == propertyKey) {
-            @Nullable View actionButton = view.findViewById(R.id.action_button);
-            if (actionButton != null) {
-                TabListViewBinderUtils.updateActionButtonContentDescription(model, actionButton);
-            }
-        } else if (TabProperties.MEDIA_INDICATOR == propertyKey) {
-            ImageView mediaIndicator = view.findViewById(R.id.media_indicator_icon);
-            if (mediaIndicator != null) {
-                @MediaState int mediaState = model.get(TabProperties.MEDIA_INDICATOR);
-                if (mediaState != MediaState.NONE) {
-                    mediaIndicator.setImageResource(TabUtils.getMediaIndicatorDrawable(mediaState));
-                }
-            }
-            updateIcons(model, view);
-        } else if (TabProperties.ACTOR_UI_STATE == propertyKey) {
-            TabListViewBinderUtils.setupActorIndicator(model, view);
-            updateIcons(model, view);
         } else if (TabProperties.RAIL_COLLAPSE_STATE == propertyKey) {
             updateTabItemSize(
                     model,
                     view,
                     ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT);
+                    view.getContext()
+                            .getResources()
+                            .getDimensionPixelSize(R.dimen.vertical_tab_item_height));
             updateTitle(R.id.tab_title, model, view);
             updateChildRowPadding(model, view);
-            updateParentPadding(model, view);
+            updateParentPadding(model, view, /* isHeader= */ false);
             updateIcons(model, view);
         }
     }
@@ -130,23 +122,33 @@ class TabVerticalViewBinder {
      * @param view the root ViewGroup representing the pinned tab row item.
      * @param propertyKey the specific property key to bind, or null to bind all properties.
      */
-    public static void bindPinnedTab(PropertyModel model, ViewGroup view, PropertyKey propertyKey) {
+    static void bindPinnedTab(PropertyModel model, ViewGroup view, PropertyKey propertyKey) {
         if (view.getId() == R.id.hidden_pinned_tab) {
             return;
         }
         bindCommonProperties(model, view, propertyKey);
 
+        Resources resources = view.getContext().getResources();
+        int pinnedHeight = resources.getDimensionPixelSize(R.dimen.vertical_tab_pinned_item_height);
+        int expandedWidth =
+                VerticalTabUtils.isAutoResizeEnabled()
+                        ? ViewGroup.LayoutParams.MATCH_PARENT
+                        : resources.getDimensionPixelSize(R.dimen.vertical_tab_pinned_item_width);
+        ViewGroup.LayoutParams params = view.getLayoutParams();
+        if (params != null && params.height != pinnedHeight) {
+            updateTabItemSize(model, view, expandedWidth, pinnedHeight);
+        }
+
         if (TabProperties.TITLE == propertyKey) {
-            view.setContentDescription(model.get(TabProperties.TITLE));
-        } else if (TabProperties.IS_SELECTED == propertyKey) {
+            if (model.get(TabProperties.CONTENT_DESCRIPTION_TEXT_RESOLVER) == null) {
+                view.setContentDescription(model.get(TabProperties.TITLE));
+            }
+        } else if (TabProperties.IS_SELECTED == propertyKey
+                || TabProperties.IS_MULTI_SELECTED == propertyKey
+                || TabProperties.IS_INCOGNITO == propertyKey) {
             updatePinnedColors(model, view);
         } else if (TabProperties.RAIL_COLLAPSE_STATE == propertyKey) {
-            Resources resources = view.getContext().getResources();
-            updateTabItemSize(
-                    model,
-                    view,
-                    resources.getDimensionPixelSize(R.dimen.vertical_tab_pinned_item_width),
-                    resources.getDimensionPixelSize(R.dimen.vertical_tab_pinned_item_height));
+            updateTabItemSize(model, view, expandedWidth, pinnedHeight);
             updateChildRowPadding(model, view);
         }
     }
@@ -158,16 +160,16 @@ class TabVerticalViewBinder {
      * @param view the root ViewGroup representing the tab group header row item.
      * @param propertyKey the specific property key to bind.
      */
-    public static void bindTabGroupHeader(
-            PropertyModel model, ViewGroup view, PropertyKey propertyKey) {
+    static void bindTabGroupHeader(PropertyModel model, ViewGroup view, PropertyKey propertyKey) {
         bindCommonProperties(model, view, propertyKey);
 
         if (TabProperties.TITLE == propertyKey) {
             updateTitle(R.id.group_title, model, view);
-        } else if (TabProperties.TAB_GROUP_CARD_COLOR == propertyKey) {
+            updateParentPadding(model, view, /* isHeader= */ true);
+        } else if (TabProperties.TAB_GROUP_CARD_COLOR == propertyKey
+                || TabProperties.IS_INCOGNITO == propertyKey) {
             updateGroupHeaderColors(model, view);
         } else if (TabProperties.CONTENT_DESCRIPTION_TEXT_RESOLVER == propertyKey) {
-            TabListViewBinderUtils.updateContentDescription(model, view);
             updateAccessibilityDelegate(model, view);
         } else if (TabProperties.IS_COLLAPSED == propertyKey) {
             updateChevronRotation(model, view);
@@ -178,9 +180,19 @@ class TabVerticalViewBinder {
                     model,
                     view,
                     ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT);
+                    view.getContext()
+                            .getResources()
+                            .getDimensionPixelSize(R.dimen.vertical_tab_item_height));
             updateTitle(R.id.group_title, model, view);
             updateChildRowPadding(model, view);
+            updateParentPadding(model, view, /* isHeader= */ true);
+            updateGroupHeaderIcons(model, view, view.isHovered());
+        } else if (TabProperties.TAB_ACTION_BUTTON_DATA == propertyKey) {
+            View menuButton = view.findViewById(R.id.menu_button);
+            if (menuButton != null) {
+                TabListViewBinderUtils.bindActionButton(
+                        model, menuButton, model.get(TabProperties.TAB_ACTION_BUTTON_DATA));
+            }
         }
     }
 
@@ -200,19 +212,62 @@ class TabVerticalViewBinder {
         } else if (TabProperties.IS_LOADING == propertyKey) {
             updateIcons(model, view);
         } else if (TabProperties.TAB_CLICK_LISTENER == propertyKey) {
-            TabListViewBinderUtils.setNullableClickListener(
-                    model.get(TabProperties.TAB_CLICK_LISTENER), view, model);
+            setNullableClickListener(model.get(TabProperties.TAB_CLICK_LISTENER), view, model);
         } else if (TabProperties.TAB_LONG_CLICK_LISTENER == propertyKey) {
             TabListViewBinderUtils.setNullableLongClickListener(
                     model.get(TabProperties.TAB_LONG_CLICK_LISTENER), view, model);
         } else if (TabProperties.TAB_CONTEXT_CLICK_LISTENER == propertyKey) {
             TabListViewBinderUtils.setNullableContextClickListener(
                     model.get(TabProperties.TAB_CONTEXT_CLICK_LISTENER), view, model);
+        } else if (TabProperties.MEDIA_INDICATOR == propertyKey) {
+            updateMediaIndicator(model, view);
+            updateIcons(model, view);
+        } else if (TabProperties.ACTOR_UI_STATE == propertyKey) {
+            TabListViewBinderUtils.setupActorIndicator(model, view);
+            updateIcons(model, view);
+        } else if (TabProperties.CONTENT_DESCRIPTION_TEXT_RESOLVER == propertyKey) {
+            TabListViewBinderUtils.updateContentDescription(model, view);
+        } else if (TabProperties.ACCESSIBILITY_DELEGATE == propertyKey) {
+            view.setAccessibilityDelegate(model.get(TabProperties.ACCESSIBILITY_DELEGATE));
+        } else if (TabProperties.IS_GLIC_ACTIVE == propertyKey) {
+            boolean isGlicActive = TabListViewBinderUtils.setupGlicIndicator(model, view);
+            updateGlicIndicatorBar(isGlicActive, view);
+        } else if (TabProperties.ACTION_BUTTON_DESCRIPTION_TEXT_RESOLVER == propertyKey) {
+            View button = view.findViewById(R.id.action_button);
+            if (button == null) button = view.findViewById(R.id.menu_button);
+            if (button != null) {
+                TabListViewBinderUtils.updateActionButtonContentDescription(model, button);
+            }
+        }
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private static void setNullableClickListener(
+            @Nullable TabActionListener listener, View view, PropertyModel propertyModel) {
+        if (listener == null) {
+            view.setOnTouchListener(null);
+            view.setOnClickListener(null);
+        } else {
+            // A passive tracker that records the last MotionEvent state but does not consume the
+            // touch. This ensures standard Android view ripples and other touch handling remain
+            // fully intact.
+            final MotionEventInfo[] lastMotion = new MotionEventInfo[1];
+            view.setOnTouchListener(
+                    (View v, MotionEvent event) -> {
+                        lastMotion[0] = MotionEventInfo.fromMotionEvent(event);
+                        return false;
+                    });
+
+            view.setOnClickListener(
+                    (View v) ->
+                            listener.run(
+                                    view, propertyModel.get(TabProperties.TAB_ID), lastMotion[0]));
         }
     }
 
     // Icon Update Helpers.
-    // Icons priority when rail is collapsed: action > ai > media > loading > favicon
+    // Icons priority when rail is collapsed: action > recording/sharing media > ai actuation >
+    // standard media > loading > favicon
 
     private static void updateFaviconImage(PropertyModel model, ViewGroup view) {
         @Nullable ImageView faviconView = view.findViewById(R.id.tab_favicon);
@@ -226,14 +281,14 @@ class TabVerticalViewBinder {
         updateIcons(model, view, view.isHovered());
     }
 
-    // TODO(crbug.com/527641177): Add icons for pinned tab and check priorities.
     private static void updateIcons(PropertyModel model, ViewGroup view, boolean isHovered) {
         boolean isRailCollapsed =
                 model.get(TabProperties.RAIL_COLLAPSE_STATE) == RailCollapseState.COLLAPSED;
+        boolean isPinned = TabProperties.isPinnedTab(model);
+        boolean isIconCompact = isRailCollapsed || isPinned;
         boolean isSelected = model.get(TabProperties.IS_SELECTED);
 
         View actionButton = view.findViewById(R.id.action_button);
-        View aiIndicatorLine = view.findViewById(R.id.ai_indicator);
         View actuationSpark = view.findViewById(R.id.actuation_spark);
         ImageView actuationSpinner = view.findViewById(R.id.actuation_spinner);
         ImageView mediaIndicator = view.findViewById(R.id.media_indicator_icon);
@@ -242,16 +297,17 @@ class TabVerticalViewBinder {
 
         // 1. Resolve independent "wanted" states
         TabActionButtonData actionData = model.get(TabProperties.TAB_ACTION_BUTTON_DATA);
+        // Close button is always visible on touch devices, but only visible on select/hover on
+        // desktop.
         boolean actionWanted =
                 actionButton != null
                         && actionData != null
-                        && (isRailCollapsed
-                                ? (isSelected && isHovered)
-                                : (isSelected || isHovered));
+                        && (isIconCompact
+                                ? (isSelected && (!DeviceInfo.isDesktop() || isHovered))
+                                : (!DeviceInfo.isDesktop() || isSelected || isHovered));
         @Nullable UiTabState actorState = model.get(TabProperties.ACTOR_UI_STATE);
-        boolean aiWanted =
-                aiIndicatorLine != null
-                        && actuationSpark != null
+        boolean actorActuationWanted =
+                actuationSpark != null
                         && actuationSpinner != null
                         && actorState != null
                         && actorState.tabIndicator != TabIndicatorStatus.NONE;
@@ -263,18 +319,29 @@ class TabVerticalViewBinder {
                         && model.get(TabProperties.FAVICON_FETCHER) != null
                         && !loadingWanted;
 
-        // 2. Apply priority rules for collapsed state
-        if (isRailCollapsed) {
+        // 2. Apply priority rules for collapsed state.
+        // Priority: Close > Recording/Sharing Media > AI Actuation > Standard Media >
+        // Loading/Favicon.
+        if (isIconCompact) {
+            boolean isRecordingOrSharing =
+                    mediaState == MediaState.RECORDING || mediaState == MediaState.SHARING;
+            boolean recordingOrSharingWanted = mediaWanted && isRecordingOrSharing;
+            boolean standardMediaWanted = mediaWanted && !isRecordingOrSharing;
+
             if (actionWanted) {
-                aiWanted = false;
+                actorActuationWanted = false;
                 mediaWanted = false;
                 loadingWanted = false;
                 faviconWanted = false;
-            } else if (aiWanted) {
+            } else if (recordingOrSharingWanted) {
+                actorActuationWanted = false;
+                loadingWanted = false;
+                faviconWanted = false;
+            } else if (actorActuationWanted) {
                 mediaWanted = false;
                 loadingWanted = false;
                 faviconWanted = false;
-            } else if (mediaWanted) {
+            } else if (standardMediaWanted) {
                 loadingWanted = false;
                 faviconWanted = false;
             }
@@ -286,37 +353,36 @@ class TabVerticalViewBinder {
         if (actionButton != null) {
             updateViewConstraints(
                     actionButton,
-                    isRailCollapsed,
+                    isIconCompact,
                     UNSET,
                     UNSET,
                     PARENT_ID,
                     /* marginStartDimenId= */ 0,
                     /* marginEndDimenId= */ 0);
-            actionButton.setVisibility(actionWanted ? View.VISIBLE : View.INVISIBLE);
-            if (DeviceFormFactor.isTablet() && !DeviceInfo.isDesktop()) {
+            actionButton.setVisibility(actionWanted ? View.VISIBLE : View.GONE);
+            if (DeviceFormFactor.isNonMultiDisplayContextOnTablet(view.getContext())) {
                 setActionButtonTouchDelegate(view, actionButton, actionWanted);
             }
         }
 
-        // AI Indicator
-        if (aiIndicatorLine != null && actuationSpark != null && actuationSpinner != null) {
-            updateAiAnimations(model, actuationSpark, actuationSpinner, aiWanted);
+        // Actor Actuation Indicator Icons
+        if (actuationSpark != null && actuationSpinner != null) {
+            updateActorAnimations(model, actuationSpark, actuationSpinner, actorActuationWanted);
             updateViewConstraints(
                     actuationSpark,
-                    isRailCollapsed,
+                    isIconCompact,
                     UNSET,
                     R.id.media_indicator_icon,
                     UNSET,
                     /* marginStartDimenId= */ 0,
                     /* marginEndDimenId= */ R.dimen.vertical_tab_item_media_indicator_margin_end);
-            aiIndicatorLine.setVisibility(aiWanted ? View.VISIBLE : View.GONE);
         }
 
         // Media Indicator
         if (mediaIndicator != null) {
             updateViewConstraints(
                     mediaIndicator,
-                    isRailCollapsed,
+                    isIconCompact,
                     UNSET,
                     R.id.action_button,
                     UNSET,
@@ -330,7 +396,7 @@ class TabVerticalViewBinder {
         if (faviconContainer != null && (loadingWanted || faviconWanted)) {
             updateViewConstraints(
                     faviconContainer,
-                    isRailCollapsed,
+                    isIconCompact,
                     PARENT_ID,
                     UNSET,
                     UNSET,
@@ -341,8 +407,12 @@ class TabVerticalViewBinder {
         // Loading Spinner
         if (spinner != null) {
             if (loadingWanted) {
-                spinner.setIndicatorColor(
-                        SemanticColorUtils.getDefaultIconColorAccent1(view.getContext()));
+                boolean isIncognito = isIncognito(model);
+                int spinnerColor =
+                        isIncognito
+                                ? view.getContext().getColor(R.color.default_icon_color_blue_light)
+                                : SemanticColorUtils.getDefaultIconColorAccent1(view.getContext());
+                spinner.setIndicatorColor(spinnerColor);
                 spinner.show();
             } else {
                 spinner.setVisibility(View.GONE);
@@ -393,14 +463,53 @@ class TabVerticalViewBinder {
                 });
     }
 
-    private static void updateAiAnimations(
+    /** Updates the visibility of the Glic indicator bar on the tab row. */
+    private static void updateGlicIndicatorBar(boolean isGlicActive, View view) {
+        View glicIndicatorView = view.findViewById(R.id.ai_indicator);
+        if (glicIndicatorView == null) return;
+
+        glicIndicatorView.setVisibility(isGlicActive ? View.VISIBLE : View.GONE);
+    }
+
+    /**
+     * Updates the media indicator icon drawable based on the current media state of the tab.
+     *
+     * @param model the model containing the tab properties.
+     * @param view the root ViewGroup representing the tab row item.
+     */
+    private static void updateMediaIndicator(PropertyModel model, ViewGroup view) {
+        ImageView mediaIndicator = view.findViewById(R.id.media_indicator_icon);
+        if (mediaIndicator != null) {
+            @MediaState int mediaState = model.get(TabProperties.MEDIA_INDICATOR);
+            if (mediaState != MediaState.NONE) {
+                mediaIndicator.setImageResource(TabUtils.getMediaIndicatorDrawable(mediaState));
+            }
+            boolean isIncognito = isIncognito(model);
+            boolean isSelected = model.get(TabProperties.IS_SELECTED);
+            Context context = view.getContext();
+
+            @ColorInt
+            int defaultIconColor =
+                    getActionButtonTintList(context, isSelected, isIncognito).getDefaultColor();
+
+            ImageViewCompat.setImageTintList(
+                    mediaIndicator,
+                    ColorStateList.valueOf(
+                            TabUtils.getMediaIndicatorTintColor(
+                                    context, mediaState, defaultIconColor)));
+        }
+    }
+
+    private static void updateActorAnimations(
             PropertyModel model,
             View actuationSpark,
             ImageView actuationSpinner,
-            boolean aiWanted) {
+            boolean actorActuationWanted) {
         @Nullable UiTabState state = model.get(TabProperties.ACTOR_UI_STATE);
         boolean isDynamic =
-                aiWanted && state != null && state.tabIndicator == TabIndicatorStatus.DYNAMIC;
+                actorActuationWanted
+                        && state != null
+                        && state.tabIndicator == TabIndicatorStatus.DYNAMIC;
 
         ObjectAnimator animator = (ObjectAnimator) actuationSpinner.getTag(R.id.actuation_spinner);
 
@@ -438,13 +547,13 @@ class TabVerticalViewBinder {
 
     private static void updateViewConstraints(
             View view,
-            boolean isRailCollapsed,
+            boolean isIconCompact,
             int startToStart,
             int endToStart,
             int endToEnd,
             int marginStartDimenId,
             int marginEndDimenId) {
-        if (isRailCollapsed) {
+        if (isIconCompact) {
             configureConstraints(
                     view,
                     /* startToStart= */ PARENT_ID,
@@ -494,90 +603,157 @@ class TabVerticalViewBinder {
 
     // Row-Specific Layout Color Binder Helpers
 
-    private static void updateRegularColors(PropertyModel model, ViewGroup view) {
+    /**
+     * Updates the selected visual/accessibility state, background color tints, website favicon, and
+     * media indicator for both standard and pinned vertical tab rows.
+     *
+     * <p>If active tab selection or multi-selection is enabled on this tab row, resolves and
+     * mutates the background drawable with the selection color matching the current incognito
+     * state. Otherwise, reverts the background color to the provided default background tint.
+     *
+     * @param model the model containing the tab properties.
+     * @param view the root ViewGroup representing the tab row item.
+     * @param defaultBgColor the background tint to restore when this tab is neither active nor
+     *     multi-selected.
+     */
+    private static void updateSelectionAndBackground(
+            PropertyModel model, ViewGroup view, @Nullable ColorStateList defaultBgColor) {
         boolean isSelected = model.get(TabProperties.IS_SELECTED);
+        boolean isMultiSelected = model.get(TabProperties.IS_MULTI_SELECTED);
+        boolean isIncognito = isIncognito(model);
         Context context = view.getContext();
-        view.setSelected(isSelected);
+        view.setSelected(isSelected || isMultiSelected);
+
+        ColorStateList tintList;
+        if (isSelected || isMultiSelected) {
+            tintList = getBackgroundTintList(context, isSelected, isMultiSelected, isIncognito);
+        } else {
+            tintList = defaultBgColor;
+        }
 
         @Nullable Drawable bg = view.getBackground();
         if (bg != null) {
             bg.mutate();
-            ViewCompat.setBackgroundTintList(view, getBackgroundTintList(context, isSelected));
+            ViewCompat.setBackgroundTintList(view, tintList);
         }
+        updateFaviconImage(model, view);
+        updateMediaIndicator(model, view);
+        setupTabHoverListener(model, view, /* defaultBackgroundColor= */ tintList);
+    }
+
+    /**
+     * Updates the selection state, background tint, text colors, and action button tints for a
+     * standard vertical tab row view.
+     *
+     * <p>When the active tab model is incognito (in a shared window), dark incognito palette colors
+     * are dynamically bound for background tints, title text, and action buttons. When unselected,
+     * the background remains transparent and title/action button colors use muted incognito tints.
+     * When selected, a dark surface tint is applied with high-contrast text and icon colors.
+     *
+     * @param model the model containing the tab properties.
+     * @param view the root ViewGroup representing the standard tab row item.
+     */
+    private static void updateRegularColors(PropertyModel model, ViewGroup view) {
+        updateSelectionAndBackground(model, view, ColorStateList.valueOf(Color.TRANSPARENT));
+        boolean isRailCollapsed =
+                model.get(TabProperties.RAIL_COLLAPSE_STATE) == RailCollapseState.COLLAPSED;
+        updateBackgroundInsets(view, isRailCollapsed);
+
+        boolean isSelected = model.get(TabProperties.IS_SELECTED);
+        boolean isIncognito = isIncognito(model);
+        Context context = view.getContext();
 
         TextView titleView = view.findViewById(R.id.tab_title);
-        titleView.setTextColor(getTextColor(context, isSelected));
+        titleView.setTextColor(getTextColor(context, isSelected, isIncognito));
 
         @Nullable ImageView actionButton = view.findViewById(R.id.action_button);
         if (actionButton != null) {
             ImageViewCompat.setImageTintList(
-                    actionButton, getActionButtonTintList(context, isSelected));
+                    actionButton, getActionButtonTintList(context, isSelected, isIncognito));
         }
-        updateFaviconImage(model, view);
-        setupTabHoverListener(
-                model,
-                view,
-                /* defaultBackgroundColor= */ ColorStateList.valueOf(Color.TRANSPARENT));
     }
 
     /**
      * Updates the background tint and website favicon specifically for a pinned tab row view.
-     * Clears background tints when unselected, to allow the solid XML container drawable to render.
+     *
+     * <p>In regular mode, unselected pinned tabs clear background tints (set to {@code null}) to
+     * allow the solid XML container drawable to render. In incognito mode on foldables (shared
+     * window), unselected pinned tabs use the dark baseline surface container high tint ({@link
+     * R.color#gm3_baseline_surface_container_high_dark}) to provide a distinct pill container
+     * without dynamic colors, and selected pinned tabs use the dark surface background tint.
      *
      * @param model the model containing the tab properties.
      * @param view the root ViewGroup representing the pinned tab row item.
      */
     private static void updatePinnedColors(PropertyModel model, ViewGroup view) {
-        boolean isSelected = model.get(TabProperties.IS_SELECTED);
-        Context context = view.getContext();
-        view.setSelected(isSelected);
-
-        @Nullable Drawable bg = view.getBackground();
-        if (bg != null) {
-            bg.mutate();
-            ColorStateList tintList =
-                    isSelected ? getBackgroundTintList(context, /* isSelected= */ true) : null;
-            ViewCompat.setBackgroundTintList(view, tintList);
-        }
-        updateFaviconImage(model, view);
-        setupTabHoverListener(model, view, /* defaultBackgroundColor= */ null);
+        boolean isIncognito = isIncognito(model);
+        @Nullable ColorStateList defaultBackgroundColor =
+                isIncognito
+                        ? ColorStateList.valueOf(
+                                view.getContext()
+                                        .getColor(R.color.gm3_baseline_surface_container_high_dark))
+                        : null;
+        updateSelectionAndBackground(model, view, defaultBackgroundColor);
     }
 
     /**
-     * Updates the background tint color specifically for the tab group header row view, dynamically
-     * resolving the group color ID using TabGroupColorPickerUtils.
+     * Updates the background tint, title text color, and chevron icon tint specifically for the tab
+     * group header row view.
+     *
+     * <p>Dynamically resolves group color tints and foreground text/icon colors using {@link
+     * TabGroupColorPickerUtils} with the {@code isIncognito} parameter. If no explicit group color
+     * ID is set on an incognito group header, fallback card background and title colors from {@link
+     * TabCardThemeUtil} are applied so the header matches the dark incognito styling.
      *
      * @param model the model containing the tab group properties.
      * @param view the root ViewGroup representing the tab group header row item.
      */
     private static void updateGroupHeaderColors(PropertyModel model, ViewGroup view) {
         @Nullable Integer colorId = model.get(TabProperties.TAB_GROUP_CARD_COLOR);
+        boolean isIncognito = isIncognito(model);
+        boolean isRailCollapsed =
+                model.get(TabProperties.RAIL_COLLAPSE_STATE) == RailCollapseState.COLLAPSED;
         Context context = view.getContext();
+        updateBackgroundInsets(view, isRailCollapsed);
 
         @Nullable Drawable bg = view.getBackground();
-        if (bg != null && colorId != null) {
-            bg.mutate();
-            int backgroundColor =
-                    TabGroupColorPickerUtils.getTabGroupColorPickerItemColor(
-                            context, colorId, /* isIncognito= */ false);
-            ViewCompat.setBackgroundTintList(view, ColorStateList.valueOf(backgroundColor));
-
-            @ColorInt
-            int foregroundColor =
-                    TabGroupColorPickerUtils.getTabGroupColorPickerItemTextColor(
-                            context, colorId, /* isIncognito= */ false);
-
-            TextView titleView = view.findViewById(R.id.group_title);
-            if (titleView != null) {
-                titleView.setTextColor(foregroundColor);
-            }
-
-            @Nullable ImageView expandChevron = view.findViewById(R.id.expand_chevron);
-            if (expandChevron != null) {
-                ImageViewCompat.setImageTintList(
-                        expandChevron, ColorStateList.valueOf(foregroundColor));
-            }
+        if (bg == null || (colorId == null && !isIncognito)) {
+            return;
         }
+        bg.mutate();
+        int backgroundColor =
+                colorId != null
+                        ? TabGroupColorPickerUtils.getTabGroupColorPickerItemColor(
+                                context, colorId, isIncognito)
+                        : TabCardThemeUtil.getCardViewBackgroundColor(
+                                context, isIncognito, /* isSelected= */ false, /* colorId= */ null);
+        ViewCompat.setBackgroundTintList(view, ColorStateList.valueOf(backgroundColor));
+
+        @ColorInt
+        int foregroundColor =
+                colorId != null
+                        ? TabGroupColorPickerUtils.getTabGroupColorPickerItemTextColor(
+                                context, colorId, isIncognito)
+                        : TabCardThemeUtil.getTitleTextColor(
+                                context, isIncognito, /* isSelected= */ false, /* colorId= */ null);
+
+        TextView titleView = view.findViewById(R.id.group_title);
+        if (titleView != null) {
+            titleView.setTextColor(foregroundColor);
+        }
+
+        @Nullable ImageView expandChevron = view.findViewById(R.id.expand_chevron);
+        if (expandChevron != null) {
+            ImageViewCompat.setImageTintList(
+                    expandChevron, ColorStateList.valueOf(foregroundColor));
+        }
+
+        @Nullable ImageView menuButton = view.findViewById(R.id.menu_button);
+        if (menuButton != null) {
+            ImageViewCompat.setImageTintList(menuButton, ColorStateList.valueOf(foregroundColor));
+        }
+
+        setupTabGroupHeaderHoverListener(model, view);
     }
 
     private static void updateTabItemSize(
@@ -674,9 +850,18 @@ class TabVerticalViewBinder {
                             .getDimensionPixelSize(R.dimen.vertical_tab_child_nesting_margin);
         }
 
+        boolean isPinned = TabProperties.isPinnedTab(model);
+        int marginBottom =
+                view.getResources()
+                        .getDimensionPixelSize(
+                                isPinned
+                                        ? R.dimen.vertical_tab_pinned_item_margin_bottom
+                                        : R.dimen.vertical_tab_item_margin_bottom);
+
         if (view.getLayoutParams() instanceof ViewGroup.MarginLayoutParams params) {
-            if (params.getMarginStart() != marginStart) {
+            if (params.getMarginStart() != marginStart || params.bottomMargin != marginBottom) {
                 params.setMarginStart(marginStart);
+                params.bottomMargin = marginBottom;
                 view.setLayoutParams(params);
             }
         }
@@ -690,7 +875,6 @@ class TabVerticalViewBinder {
      * explicitly computed as: (rail_collapsed_width - tab_item_collapsed_size) / 2 -
      * rail_horizontal_margin.
      */
-    @VisibleForTesting
     static int getCollapsedChildMarginStart(Context context) {
         Resources resources = context.getResources();
         int railWidth =
@@ -701,11 +885,12 @@ class TabVerticalViewBinder {
         return (railWidth - itemSize) / 2 - railStartMargin;
     }
 
-    private static void updateParentPadding(PropertyModel model, ViewGroup view) {
+    private static void updateParentPadding(PropertyModel model, ViewGroup view, boolean isHeader) {
         boolean isRailCollapsed =
                 model.get(TabProperties.RAIL_COLLAPSE_STATE) == RailCollapseState.COLLAPSED;
         Context context = view.getContext();
         Resources resources = context.getResources();
+        updateBackgroundInsets(view, isRailCollapsed);
         if (isRailCollapsed) {
             view.setPadding(0, 0, 0, 0);
         } else {
@@ -713,25 +898,112 @@ class TabVerticalViewBinder {
                     resources.getDimensionPixelSize(R.dimen.vertical_tab_item_padding_horizontal);
             int paddingVertical =
                     resources.getDimensionPixelSize(R.dimen.vertical_tab_item_padding_vertical);
-            view.setPaddingRelative(0, paddingVertical, paddingHorizontal, paddingVertical);
+            int paddingStart = isHeader ? paddingHorizontal : 0;
+            view.setPaddingRelative(
+                    paddingStart, paddingVertical, paddingHorizontal, paddingVertical);
+        }
+    }
+
+    private static void updateBackgroundInsets(View view, boolean isRailCollapsed) {
+        Context context = view.getContext();
+        int targetInset =
+                isRailCollapsed
+                        ? 0
+                        : context.getResources()
+                                .getDimensionPixelSize(
+                                        R.dimen.vertical_tab_item_touch_target_inset);
+        Drawable currentBg = view.getBackground();
+        if (currentBg == null) return;
+
+        if (currentBg instanceof InsetDrawable insetDrawable) {
+            if (targetInset == 0 && insetDrawable.getDrawable() != null) {
+                view.setBackground(insetDrawable.getDrawable());
+            }
+        } else if (targetInset > 0) {
+            view.setBackground(new InsetDrawable(currentBg, 0, targetInset, 0, targetInset));
         }
     }
 
     // Theme & Color Utility Methods
 
-    private static ColorStateList getBackgroundTintList(Context context, boolean isSelected) {
-        return isSelected
-                ? ColorStateList.valueOf(SemanticColorUtils.getColorSurface(context))
-                : ColorStateList.valueOf(Color.TRANSPARENT);
+    /**
+     * Returns whether incognito color styling should be applied for the given tab model.
+     *
+     * <p>Incognito colors are only applied dynamically when incognito tabs share an activity window
+     * with regular tabs (e.g. foldables and phones where {@link
+     * IncognitoUtils#shouldOpenIncognitoAsWindow()} is false). When incognito runs in a dedicated
+     * window with an activity-level incognito theme, standard theme colors are used instead.
+     */
+    private static boolean isIncognito(PropertyModel model) {
+        return !IncognitoUtils.shouldOpenIncognitoAsWindow()
+                && model.get(TabProperties.IS_INCOGNITO);
     }
 
-    private static @ColorInt int getTextColor(Context context, boolean isSelected) {
-        return isSelected
-                ? SemanticColorUtils.getColorOnSurface(context)
-                : SemanticColorUtils.getDefaultTextColorSecondary(context);
+    /**
+     * Resolves the background tint list for a vertical tab row based on active selection,
+     * multi-selection, and incognito state.
+     *
+     * @param context the context to retrieve theme colors from.
+     * @param isSelected whether the tab item is currently active/selected.
+     * @param isMultiSelected whether the tab item is currently in the multi-selection set.
+     * @param isIncognito whether incognito dark mode colors should be applied.
+     * @return a {@link ColorStateList} with transparent background for unselected tabs, dark
+     *     surface tint for selected incognito tabs, surface color for selected regular tabs, and
+     *     multi-selected tab container tint for multi-selected tabs.
+     */
+    private static ColorStateList getBackgroundTintList(
+            Context context, boolean isSelected, boolean isMultiSelected, boolean isIncognito) {
+        if (!isSelected && !isMultiSelected) {
+            return ColorStateList.valueOf(Color.TRANSPARENT);
+        }
+        if (isSelected) {
+            int color =
+                    isIncognito
+                            ? context.getColor(R.color.default_bg_color_dark)
+                            : SemanticColorUtils.getColorSurface(context);
+            return ColorStateList.valueOf(color);
+        }
+        int color = TabUiThemeUtil.getTabStripMultiSelectedTabColor(context, isIncognito);
+        return ColorStateList.valueOf(color);
     }
 
-    private static ColorStateList getActionButtonTintList(Context context, boolean isSelected) {
+    /**
+     * Resolves the title text color for a vertical tab row based on selection and incognito state.
+     *
+     * @param context the context to retrieve theme colors from.
+     * @param isSelected whether the tab item is currently active/selected.
+     * @param isIncognito whether incognito dark mode colors should be applied.
+     * @return text color integer supporting high-contrast white text in incognito or theme surface
+     *     text.
+     */
+    private static @ColorInt int getTextColor(
+            Context context, boolean isSelected, boolean isIncognito) {
+        if (isSelected) {
+            return isIncognito
+                    ? context.getColor(R.color.default_text_color_light)
+                    : SemanticColorUtils.getColorOnSurface(context);
+        } else {
+            return isIncognito
+                    ? context.getColor(R.color.incognito_tab_title_color)
+                    : SemanticColorUtils.getDefaultTextColorSecondary(context);
+        }
+    }
+
+    /**
+     * Resolves the tint list for the action/close button based on selection and incognito state.
+     *
+     * @param context the context to retrieve theme colors from.
+     * @param isSelected whether the tab item is currently active/selected.
+     * @param isIncognito whether incognito dark mode colors should be applied.
+     * @return a {@link ColorStateList} for the action button icon.
+     */
+    private static ColorStateList getActionButtonTintList(
+            Context context, boolean isSelected, boolean isIncognito) {
+        if (isIncognito) {
+            return isSelected
+                    ? ChromeColors.getPrimaryIconTint(context, /* isIncognito= */ true)
+                    : context.getColorStateList(R.color.incognito_tab_action_button_color);
+        }
         return ColorStateList.valueOf(
                 isSelected
                         ? SemanticColorUtils.getDefaultIconColor(context)
@@ -740,76 +1012,151 @@ class TabVerticalViewBinder {
 
     // Gesture & Interaction Layout Helpers
 
-    private static void setupTabHoverListener(
-            PropertyModel model, ViewGroup view, @Nullable ColorStateList defaultBackgroundColor) {
-        @Nullable ImageView actionButton = view.findViewById(R.id.action_button);
-
-        view.setOnHoverListener(
+    /**
+     * Helper to orchestrate hover enter and exit between a parent view and an optional child
+     * button. Prevents the parent from firing a visual "exit" when the mouse moves over the child
+     * button.
+     */
+    private static void setupHoverOrchestration(
+            ViewGroup parentView,
+            @Nullable View childButton,
+            Runnable onHoverEnter,
+            Runnable onHoverExit) {
+        parentView.setOnHoverListener(
                 (v, motionEvent) -> {
-                    boolean isSelected = model.get(TabProperties.IS_SELECTED);
                     switch (motionEvent.getAction()) {
                         case MotionEvent.ACTION_HOVER_ENTER:
-                            // TODO(crbug.com/533531896): Handle clearing all backgrounds before
-                            // showing tab background.
-                            // TODO(crbug.com/527641177): Maybe show a darker background color for
-                            // action button when it's being hovered?
-                            if (!isSelected) {
-                                ViewCompat.setBackgroundTintList(
-                                        view,
-                                        ColorStateList.valueOf(
-                                                TabUiThemeUtil.getHoveredTabContainerColor(
-                                                        view.getContext(),
-                                                        /* isIncognito= */ false)));
-                            }
-                            updateIcons(model, view, /* isHovered= */ true);
+                            onHoverEnter.run();
                             return true;
                         case MotionEvent.ACTION_HOVER_EXIT:
                             float x = motionEvent.getX();
                             float y = motionEvent.getY();
-                            if (x < 0 || x >= view.getWidth() || y < 0 || y >= view.getHeight()) {
-                                if (!isSelected) {
-                                    ViewCompat.setBackgroundTintList(view, defaultBackgroundColor);
-                                }
-                                updateIcons(model, view, /* isHovered= */ false);
+                            if (x < 0
+                                    || x >= parentView.getWidth()
+                                    || y < 0
+                                    || y >= parentView.getHeight()) {
+                                onHoverExit.run();
                             }
                             return true;
                     }
                     return false;
                 });
 
-        if (actionButton != null) {
-            actionButton.setOnHoverListener(
+        if (childButton != null) {
+            childButton.setOnHoverListener(
                     (v, motionEvent) -> {
                         int action = motionEvent.getAction();
                         if (action == MotionEvent.ACTION_HOVER_ENTER) {
                             v.setHovered(true);
-                            if (!model.get(TabProperties.IS_SELECTED)) {
-                                ViewCompat.setBackgroundTintList(
-                                        view,
-                                        ColorStateList.valueOf(
-                                                TabUiThemeUtil.getHoveredTabContainerColor(
-                                                        view.getContext(),
-                                                        /* isIncognito= */ false)));
-                            }
-                            updateIcons(model, view, /* isHovered= */ true);
+                            onHoverEnter.run();
                             return true;
                         } else if (action == MotionEvent.ACTION_HOVER_EXIT) {
                             v.setHovered(false);
                             float xInView = v.getLeft() + motionEvent.getX();
                             float yInView = v.getTop() + motionEvent.getY();
                             if (xInView < 0
-                                    || xInView >= view.getWidth()
+                                    || xInView >= parentView.getWidth()
                                     || yInView < 0
-                                    || yInView >= view.getHeight()) {
-                                if (!model.get(TabProperties.IS_SELECTED)) {
-                                    ViewCompat.setBackgroundTintList(view, defaultBackgroundColor);
-                                }
-                                updateIcons(model, view, /* isHovered= */ false);
+                                    || yInView >= parentView.getHeight()) {
+                                onHoverExit.run();
                             }
                             return true;
                         }
                         return false;
                     });
+        }
+    }
+
+    private static void applyHoverBackgroundState(
+            PropertyModel model,
+            ViewGroup view,
+            boolean isHovered,
+            @Nullable ColorStateList defaultBackgroundColor) {
+        boolean isSelected = model.get(TabProperties.IS_SELECTED);
+        boolean isMultiSelected = model.get(TabProperties.IS_MULTI_SELECTED);
+
+        if (isHovered) {
+            // TODO(crbug.com/533531896): Handle clearing all backgrounds before
+            // showing tab background.
+            // TODO(crbug.com/527641177): Maybe show a darker background color for
+            // action button when it's being hovered?
+            if (!isSelected && !isMultiSelected) {
+                ViewCompat.setBackgroundTintList(
+                        view,
+                        ColorStateList.valueOf(
+                                TabUiThemeUtil.getHoveredTabContainerColor(
+                                        view.getContext(), isIncognito(model))));
+            } else if (isMultiSelected && !isSelected) {
+                ViewCompat.setBackgroundTintList(
+                        view,
+                        ColorStateList.valueOf(
+                                TabUiThemeUtil.getTabStripMultiSelectedHoveredTabColor(
+                                        view.getContext(), isIncognito(model))));
+            }
+        } else {
+            if (!isSelected) {
+                ViewCompat.setBackgroundTintList(view, defaultBackgroundColor);
+            }
+        }
+    }
+
+    /**
+     * Configures mouse hover listeners for the tab row view and optional action button.
+     *
+     * <p>When hovered while unselected, applies {@link TabUiThemeUtil#getHoveredTabContainerColor}
+     * corresponding to the current incognito state, and restores {@code defaultBackgroundColor} on
+     * exit.
+     *
+     * @param model the model containing the tab properties.
+     * @param view the root ViewGroup representing the tab row item.
+     * @param defaultBackgroundColor the background tint list to restore on hover exit.
+     */
+    private static void setupTabHoverListener(
+            PropertyModel model, ViewGroup view, @Nullable ColorStateList defaultBackgroundColor) {
+        @Nullable ImageView actionButton = view.findViewById(R.id.action_button);
+
+        Runnable onHoverEnter =
+                () -> {
+                    applyHoverBackgroundState(
+                            model, view, /* isHovered= */ true, defaultBackgroundColor);
+                    updateIcons(model, view, /* isHovered= */ true);
+                    notifyHoverChange(model, view, /* isHovered= */ true);
+                };
+
+        Runnable onHoverExit =
+                () -> {
+                    applyHoverBackgroundState(model, view, false, defaultBackgroundColor);
+                    updateIcons(model, view, /* isHovered= */ false);
+                    notifyHoverChange(model, view, /* isHovered= */ false);
+                };
+
+        setupHoverOrchestration(view, actionButton, onHoverEnter, onHoverExit);
+    }
+
+    private static void setupTabGroupHeaderHoverListener(PropertyModel model, ViewGroup view) {
+        @Nullable View menuButton = view.findViewById(R.id.menu_button);
+
+        Runnable onHoverEnter = () -> updateGroupHeaderIcons(model, view, /* isHovered= */ true);
+        Runnable onHoverExit = () -> updateGroupHeaderIcons(model, view, /* isHovered= */ false);
+
+        setupHoverOrchestration(view, menuButton, onHoverEnter, onHoverExit);
+    }
+
+    private static void updateGroupHeaderIcons(
+            PropertyModel model, ViewGroup view, boolean isHovered) {
+        boolean isRailCollapsed =
+                model.get(TabProperties.RAIL_COLLAPSE_STATE) == RailCollapseState.COLLAPSED;
+        View menuButton = view.findViewById(R.id.menu_button);
+        if (menuButton != null) {
+            menuButton.setVisibility(!isRailCollapsed && isHovered ? View.VISIBLE : View.GONE);
+        }
+    }
+
+    private static void notifyHoverChange(PropertyModel model, View view, boolean isHovered) {
+        TabHoverCardListener listener = model.get(TabProperties.TAB_HOVER_CARD_LISTENER);
+        if (listener != null) {
+            int tabId = model.get(TabProperties.TAB_ID);
+            listener.onTabHoverCardStateChanged(tabId, view, isHovered);
         }
     }
 }

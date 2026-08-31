@@ -8,10 +8,9 @@
 #import <UIKit/UIKit.h>
 
 #import "ios/chrome/browser/keyboard/ui_bundled/key_command_actions.h"
-#import "ios/chrome/browser/keyboard/ui_bundled/responder_chaining.h"
 #import "ios/chrome/browser/tab_switcher/ui_bundled/tab_grid/tab_grid_paging.h"
 
-@class LayoutState;
+@class SceneLayoutState;
 @class TabGridNewTabButton;
 @protocol TabGridToolbarsGridDelegate;
 
@@ -31,7 +30,7 @@
 //   Tab Groups page: [                                                  ]
 //   Remote page:     [                                                  ]
 //   Selection mode:  [CloseTabButton       shareButton       AddToButton]
-@interface TabGridBottomToolbar : UIView <KeyCommandActions, ResponderChaining>
+@interface TabGridBottomToolbar : UIView <KeyCommandActions>
 
 // This property together with `mode` and self.traitCollection control the items
 // shown in toolbar and its background color. Setting this property will also
@@ -51,7 +50,7 @@
 // Whether the the scrolled to edge background should be hidden.
 @property(nonatomic, assign) BOOL hideScrolledToEdgeBackground;
 // The layout state.
-@property(nonatomic, weak) LayoutState* layoutState;
+@property(nonatomic, weak) SceneLayoutState* layoutState;
 
 // Sets `enabled` on the new tab button.
 - (void)setNewTabButtonEnabled:(BOOL)enabled;

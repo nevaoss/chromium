@@ -17,6 +17,7 @@ export function createAutocompleteMatch(
     isSearchType: false,
     isEnterpriseSearchAggregatorPeopleType: false,
     swapContentsAndDescription: false,
+    showContextualDescription: false,
     supportsDeletion: false,
     suggestionGroupId: -1,
     contents: '',
@@ -38,9 +39,7 @@ export function createAutocompleteMatch(
     isWeatherAnswerSuggestion: null,
     answer: null,
     tailSuggestCommonPrefix: null,
-    hasInstantKeyword: false,
-    keywordChipHint: '',
-    keywordChipA11y: '',
+    keywordModel: null,
     ...config,
   };
 }

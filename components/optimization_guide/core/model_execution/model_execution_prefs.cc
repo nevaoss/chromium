@@ -81,6 +81,10 @@ const char kOnDevicePerformanceClassVersion[] =
 // Stores the device VRAM in MB.
 const char kOnDeviceVramMb[] = "optimization_guide.on_device.vram_mb";
 
+// Stores the id of the GPU performance class was last checked on.
+const char kOnDevicePerformanceClassGPUId[] =
+    "optimization_guide.on_device.performance_class_gpu_id";
+
 // Timestamps for the last time each features was used while on-device eligible.
 // Used to decide which models are worth fetching.
 const char kLastUsageByFeature[] =
@@ -103,6 +107,11 @@ const char kGenAILocalFoundationalModelEnterprisePolicySettings[] =
 const char kOnDeviceAiUserSettingsEnabled[] =
     "optimization_guide.on_device_foundational_model_user_settings";
 
+// Boolean pref indicating whether the AI embeddings model is eligible for
+// download.
+const char kEmbeddingApiModelDownloadEligible[] =
+    "optimization_guide.on_device.embedding_api_model_download_eligible";
+
 // A dictionary pref that tracks the state of assets managed by the manifest.
 const char kManifestAssetLedger[] =
     "optimization_guide.model_execution.manifest_asset_ledger";
@@ -117,6 +126,8 @@ void RegisterLocalStatePrefs(PrefRegistrySimple* registry) {
   registry->RegisterStringPref(localstate::kOnDevicePerformanceClassVersion,
                                std::string());
   registry->RegisterUint64Pref(localstate::kOnDeviceVramMb, 0);
+  registry->RegisterStringPref(localstate::kOnDevicePerformanceClassGPUId,
+                               std::string());
   registry->RegisterTimePref(
       localstate::kLastTimeEligibleForOnDeviceModelDownload, base::Time::Min());
   registry->RegisterDictionaryPref(localstate::kOnDeviceModelValidationResult);
@@ -127,6 +138,8 @@ void RegisterLocalStatePrefs(PrefRegistrySimple* registry) {
       localstate::kGenAILocalFoundationalModelEnterprisePolicySettings, 0);
   registry->RegisterBooleanPref(localstate::kOnDeviceAiUserSettingsEnabled,
                                 true);
+  registry->RegisterBooleanPref(localstate::kEmbeddingApiModelDownloadEligible,
+                                false);
   registry->RegisterDictionaryPref(localstate::kManifestAssetLedger);
 }
 

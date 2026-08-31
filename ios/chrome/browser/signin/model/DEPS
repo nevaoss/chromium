@@ -10,6 +10,7 @@ include_rules = [
   "+ios/chrome/browser/content_settings/model",
   "+ios/chrome/browser/crash_report/model",
   "+ios/chrome/browser/policy/model",
+  "+ios/chrome/browser/subscription_eligibility/model",
   "+ios/chrome/browser/sync/model",
   "+ios/chrome/browser/tabs/model/tabs_dependency_installer.h",
   "+ios/chrome/browser/web/model",

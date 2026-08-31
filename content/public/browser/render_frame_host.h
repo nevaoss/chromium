@@ -19,6 +19,7 @@
 #include "build/buildflag.h"
 #include "content/common/content_export.h"
 #include "content/public/browser/back_forward_cache.h"
+#include "content/public/browser/editable_level.h"
 #include "content/public/browser/frame_tree_node_id.h"
 #include "content/public/browser/web_exposed_isolation_level.h"
 #include "content/public/common/bindings_policy.h"
@@ -33,6 +34,7 @@
 #include "services/network/public/cpp/permissions_policy/permissions_policy_declaration.h"
 #include "services/network/public/mojom/permissions_policy/permissions_policy_feature.mojom-forward.h"
 #include "services/network/public/mojom/web_sandbox_flags.mojom-forward.h"
+#include "third_party/blink/public/common/dom/dom_node_id.h"
 #include "third_party/blink/public/common/frame/frame_owner_element_type.h"
 #include "third_party/blink/public/common/tokens/tokens.h"
 #include "third_party/blink/public/mojom/devtools/console_message.mojom-forward.h"
@@ -222,6 +224,18 @@ class CONTENT_EXPORT RenderFrameHost : public IPC::Listener {
 
   // Returns the route id for this frame.
   virtual int GetRoutingID() const = 0;
+
+  // Returns the ID of the NavigationHandle that created the document that this
+  // RenderFrameHost represents, if there was such a navigation. The value is
+  // assigned after receiving the DidCommitNavigation IPC. It is not updated
+  // after same-document navigations (which may have their own navigation
+  // IDs).
+  //
+  // Returns 0 if this RenderFrameHost is for an initial empty document of a
+  // frame, and thus was not created for a navigation. This may later change to
+  // a non-zero value if the RenderFrameHost is reused for a navigation to a
+  // non-initial document.
+  virtual int64_t GetNavigationId() const = 0;
 
   // Returns the frame token for this frame.
   virtual const blink::LocalFrameToken& GetFrameToken() const = 0;
@@ -444,6 +458,13 @@ class CONTENT_EXPORT RenderFrameHost : public IPC::Listener {
   // than the frame hosting content, as explained above. For associating data
   // with a single document, DocumentUserData can be used.
   virtual FrameTreeNodeId GetFrameTreeNodeId() const = 0;
+
+  // Returns the DOMNodeId of the focused editable element in this frame, or
+  // an invalid ID if none is focused or editable.
+  virtual blink::DOMNodeIdType GetFocusedDOMNodeId() const = 0;
+
+  // Returns the editability level of the focused element in this frame.
+  virtual EditableLevel GetFocusedEditableLevel() const = 0;
 
   // Used for devtools instrumentation and trace-ability. The token is
   // propagated to Blink's LocalFrame and both Blink and content/
@@ -813,6 +834,11 @@ class CONTENT_EXPORT RenderFrameHost : public IPC::Listener {
   // DisallowActivationReasonId.kMinEmbedderDisallowActivationReason.
   virtual bool IsInactiveAndDisallowActivation(uint64_t reason) = 0;
 
+  // Returns whether the frame is focused. A frame is considered focused when it
+  // is the parent chain of the focused frame within the frame tree. In
+  // addition, its associated RenderWidgetHost has to be focused.
+  virtual bool IsFocused() = 0;
+
   // Get the number of proxies to this frame, in all processes. Exposed for
   // use by resource metrics.
   virtual size_t GetProxyCount() = 0;
@@ -1126,6 +1152,10 @@ class CONTENT_EXPORT RenderFrameHost : public IPC::Listener {
   // enables a set of additional features that can be used with MojoJs. For
   // example, helper methods for MojoJs to better work with Web API objects.
   virtual void EnableMojoJsBindings(mojom::ExtraMojoJsFeaturesPtr features) = 0;
+
+  // Indicates that this frame wants stack traces included in console error
+  // notifications (`untrusted_stack_trace` in `DidAddMessageToConsole`).
+  virtual void SetWantErrorMessageStackTrace() = 0;
 
   // Whether the current document is loaded inside iframe credentialless.
   // Updated on every cross-document navigation.

@@ -62,7 +62,6 @@
 #include "chrome/browser/ui/hats/hats_service_factory.h"
 #include "chrome/browser/ui/tabs/public/tab_features.h"
 #include "chrome/browser/ui/views/new_tab_footer/footer_controller.h"
-#include "chrome/browser/ui/views/side_panel/customize_chrome/customize_chrome_utils.h"
 #include "chrome/browser/ui/webui/new_tab_footer/new_tab_footer_helper.h"
 #include "chrome/browser/ui/webui/new_tab_page/new_tab_page_ui.h"
 #include "chrome/browser/ui/webui/util/webui_util_desktop.h"
@@ -78,6 +77,7 @@
 #include "components/keyed_service/core/service_access_type.h"
 #include "components/ntp_tiles/tile_type.h"
 #include "components/omnibox/browser/omnibox.mojom.h"
+#include "components/omnibox/common/composebox_features.h"
 #include "components/prefs/pref_service.h"
 #include "components/prefs/scoped_user_pref_update.h"
 #include "components/search/ntp_features.h"
@@ -110,13 +110,14 @@
 #include "ui/native_theme/native_theme.h"
 
 #if !BUILDFLAG(IS_ANDROID)
-#include "chrome/browser/ui/browser.h"
-#include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/user_education/browser_user_education_interface.h"
+#include "chrome/browser/ui/views/side_panel/customize_chrome/customize_chrome_utils.h"
 #include "components/user_education/webui/help_bubble_handler.h"  // nogncheck
 #include "ui/webui/tracked_element/tracked_element_handler.h"
 #include "ui/webui/tracked_element/tracked_element_web_ui.h"
+#else
+#include "chrome/browser/flags/android/chrome_feature_list.h"
 #endif
 
 namespace {
@@ -221,8 +222,11 @@ new_tab_page::mojom::ThemePtr MakeTheme(
     bool use_alternate_logo =
         theme_provider && theme_provider->GetDisplayProperty(
                               ThemeProperties::NTP_LOGO_ALTERNATE) == 1;
-// TODO(b/502297163): Implement for Android.
-#if !BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID)
+    use_alternate_logo =
+        use_alternate_logo ||
+        base::FeatureList::IsEnabled(chrome::android::kWebUiAndroidTheming);
+#else
     use_alternate_logo =
         use_alternate_logo || (!theme_service->GetIsGrayscale() &&
                                theme_service->GetUserColor().has_value());
@@ -1182,7 +1186,8 @@ void NewTabPageHandler::CanShowRealboxContextMenuAnimation(
       prefs->GetDict(prefs::kContextMenuAnimationState);
 
   int lifetime_count = state_dict.FindInt("realbox_lifetime_count").value_or(0);
-  if (lifetime_count >= 20) {
+  if (lifetime_count >=
+      omnibox::kContextMenuAnimationLifetimeLimit.Get()) {
     std::move(callback).Run(false);
     return;
   }
@@ -1198,11 +1203,19 @@ void NewTabPageHandler::CanShowRealboxContextMenuAnimation(
     daily_count = 0;
   }
 
-  bool can_show = daily_count < 5;
+  bool can_show =
+      daily_count < omnibox::kContextMenuAnimationDailyLimit.Get();
   std::move(callback).Run(can_show);
 }
 
-void NewTabPageHandler::RecordRealboxContextMenuAnimationImpression() {
+void NewTabPageHandler::RecordRealboxContextMenuAnimationImpression(
+    bool shown) {
+  base::UmaHistogramBoolean("Omnibox.ContextMenu.AnimationShown.NTP", shown);
+
+  if (!shown) {
+    return;
+  }
+
   PrefService* prefs = profile_->GetPrefs();
   const base::DictValue& state_dict =
       prefs->GetDict(prefs::kContextMenuAnimationState);
@@ -1219,7 +1232,10 @@ void NewTabPageHandler::RecordRealboxContextMenuAnimationImpression() {
     daily_count = 0;
   }
 
-  if (lifetime_count < 20 && daily_count < 5) {
+  if (lifetime_count <
+          omnibox::kContextMenuAnimationLifetimeLimit.Get() &&
+      daily_count <
+          omnibox::kContextMenuAnimationDailyLimit.Get()) {
     daily_count++;
     lifetime_count++;
 

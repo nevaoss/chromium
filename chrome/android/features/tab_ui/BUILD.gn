@@ -11,6 +11,9 @@ import("//tools/grit/grit_rule.gni")
 java_strings_grd("java_strings_grd") {
   defines = chrome_grit_defines
   grd_file = "java/strings/android_chrome_tab_ui_strings.grd"
+  inputs = process_file_template(
+          xtb_locales,
+          [ "java/strings/translations/android_chrome_tab_ui_strings_{{source_name_part}}.xtb" ])
 }
 
 android_resources("java_resources") {
@@ -26,6 +29,7 @@ android_resources("java_resources") {
     "java/res/color-night/tab_group_favicon_quater_empty_fill_color.xml",
     "java/res/color-night/tab_hover_card_bg_color.xml",
     "java/res/color/incognito_tab_highlight_card_bg_color.xml",
+    "java/res/color/incognito_vertical_tabs_button_background_color.xml",
     "java/res/color/tab_group_dialog_bg_color.xml",
     "java/res/color/tab_group_favicon_quater_empty_fill_color.xml",
     "java/res/color/tab_highlight_card_bg_color.xml",
@@ -60,6 +64,7 @@ android_resources("java_resources") {
     "java/res/drawable/tab_group_color_background.xml",
     "java/res/drawable/tab_group_dialog_color_icon.xml",
     "java/res/drawable/tab_group_favicon_quarter_bg.xml",
+    "java/res/drawable/tab_group_hover_card_background.xml",
     "java/res/drawable/tab_group_list_bottom_item_background.xml",
     "java/res/drawable/tab_group_list_empty_state_illustration.xml",
     "java/res/drawable/tab_group_list_normal_item_background.xml",
@@ -67,10 +72,10 @@ android_resources("java_resources") {
     "java/res/drawable/tab_group_list_top_item_background.xml",
     "java/res/drawable/tab_group_share_notice_bottom_sheet_illustration_bg.xml",
     "java/res/drawable/tab_group_start_icon_bg.xml",
-    "java/res/drawable/tab_hover_card_background.xml",
     "java/res/drawable/tab_label_background.xml",
     "java/res/drawable/tab_label_icon_background.xml",
     "java/res/drawable/tab_list_editor_share_icon.xml",
+    "java/res/drawable/tab_search_empty_state.xml",
     "java/res/drawable/tab_search_overlay_panel_bg.xml",
     "java/res/drawable/tab_strip_fading_edge_end.xml",
     "java/res/drawable/tab_strip_fading_edge_start.xml",
@@ -115,6 +120,7 @@ android_resources("java_resources") {
     "java/res/layout/tab_group_color_picker_container.xml",
     "java/res/layout/tab_group_favicon_cluster.xml",
     "java/res/layout/tab_group_favicon_quarter.xml",
+    "java/res/layout/tab_group_hover_card_holder.xml",
     "java/res/layout/tab_group_list.xml",
     "java/res/layout/tab_group_list_bottom_sheet.xml",
     "java/res/layout/tab_group_new_group_row.xml",

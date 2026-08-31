@@ -67,6 +67,7 @@
 #include "net/traffic_annotation/network_traffic_annotation.h"
 #include "net/url_request/referrer_policy.h"
 #include "services/metrics/public/cpp/ukm_source_id.h"
+#include "services/network/public/cpp/shared_url_loader_factory.h"
 #include "third_party/perfetto/include/perfetto/tracing/track.h"
 
 #if BUILDFLAG(IS_ANDROID)
@@ -936,6 +937,15 @@ const GURL& DownloadItemImpl::GetURL() const {
 
 const std::vector<GURL>& DownloadItemImpl::GetUrlChain() const {
   return request_info_.url_chain;
+}
+
+bool DownloadItemImpl::IsUrlTruncated() const {
+  return url_truncated_;
+}
+
+void DownloadItemImpl::SetURLLoaderFactory(
+    scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory) {
+  url_loader_factory_ = std::move(url_loader_factory);
 }
 
 const GURL& DownloadItemImpl::GetOriginalUrl() const {
@@ -2430,7 +2440,7 @@ void DownloadItemImpl::TransitionTo(DownloadInternalState new_state) {
 
   if (IsDownloadDone(GetURL(), InternalToExternalState(new_state),
                      last_reason_)) {
-    TruncateDataUrlAtTheEndIfNeeded(&request_info_.url_chain);
+    url_truncated_ |= TruncateDataUrlAtTheEndIfNeeded(&request_info_.url_chain);
   }
   DCHECK(IsSavePackageDownload()
              ? IsValidSavePackageStateTransition(old_state, new_state)
@@ -2657,6 +2667,10 @@ void DownloadItemImpl::ResumeInterruptedDownload(
   download_params->set_hash_of_partial_file(GetHash());
   download_params->set_hash_state(std::move(hash_state_));
   download_params->set_guid(guid_);
+
+  if (url_loader_factory_) {
+    download_params->set_url_loader_factory(url_loader_factory_->Clone());
+  }
   if (!HasStrongValidators() &&
       base::FeatureList::IsEnabled(
           features::kAllowDownloadResumptionWithoutStrongValidators)) {

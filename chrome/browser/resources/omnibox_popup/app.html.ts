@@ -2,10 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {html, nothing} from '//resources/lit/v3_0/lit.rollup.js';
+import {html} from '//resources/lit/v3_0/lit.rollup.js';
 
 import type {OmniboxPopupAppElement} from './app.js';
-import {getHtml as getContextualEntrypointHtml} from './app_contextual_entrypoint.html.js';
 
 export function getHtml(this: OmniboxPopupAppElement) {
   // clang-format off
@@ -20,7 +19,7 @@ export function getHtml(this: OmniboxPopupAppElement) {
       @dom-change="${this.onDropdownDomChange_}"
       ?hidden="${!this.hasVisibleMatches_}">
   </cr-searchbox-dropdown>
-  ${this.showContextEntrypoint_ ? getContextualEntrypointHtml.call(this) : nothing}
+  <omnibox-popup-contextual-entrypoint></omnibox-popup-contextual-entrypoint>
 </div>
 <!--_html_template_end_-->`;
   // clang-format on

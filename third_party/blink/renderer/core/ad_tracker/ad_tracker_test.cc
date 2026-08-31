@@ -15,6 +15,7 @@
 #include "components/subresource_filter/core/mojom/subresource_filter.mojom.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/common/features.h"
+#include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
 #include "third_party/blink/renderer/core/dom/element_traversal.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
@@ -28,6 +29,7 @@
 #include "third_party/blink/renderer/platform/testing/runtime_enabled_features_test_helpers.h"
 #include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
+#include "third_party/blink/renderer/platform/wtf/text/format.h"
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wshorten-64-to-32"
@@ -1122,14 +1124,14 @@ TEST_P(AdTrackerVanillaOrAdSimTest, StyleTagAddedByScript) {
 
   main_resource_->Complete(IsAdRun() ? kPageWithAdScript
                                      : kPageWithVanillaScript);
-  script.Complete(UNSAFE_TODO(String::Format(
+  script.Complete(Format(
       R"SCRIPT(
         let style = document.createElement("style");
-        let text = document.createTextNode(`%s`);
+        let text = document.createTextNode(`{}`);
         style.appendChild(text);
         document.head.appendChild(style);
       )SCRIPT",
-      kStylesheetWithVanillaResources)));
+      kStylesheetWithVanillaResources));
 
   // Wait for stylesheet to fetch resources.
   ad_tracker_->WaitForSubresource(vanilla_font_url);
@@ -3180,6 +3182,45 @@ TEST_F(AdTrackerSimTest, IgnoreMonkeyPatchHeuristic_FirstProxiedCall_IsNotAd) {
   EXPECT_FALSE(ad_tracker_->last_is_ad_script_in_stack_result());
 }
 
+// Tests that the heuristic correctly ignores the first call to a monkeypatched
+// API from a non-ad script when using an ES6 Proxy. This prevents
+// misattributing the call to the ad script, which is likely acting only as a
+// proxy.
+TEST_F(AdTrackerSimTest, IgnoreMonkeyPatchHeuristic_Proxy_IsNotAd) {
+  String ad_script_url = "https://example.com/script.js?ad=true";
+  String vanilla_script_url = "https://example.com/script.js";
+  SimSubresourceRequest ad_script(ad_script_url, "text/javascript");
+  SimSubresourceRequest vanilla_script(vanilla_script_url, "text/javascript");
+
+  main_resource_->Complete(R"HTML(
+    <body><script src="script.js?ad=true"></script>
+          <script src="script.js"></script></body>
+  )HTML");
+
+  // The ad script monkeypatches history.pushState using a Proxy.
+  ad_script.Complete(R"SCRIPT(
+    const proxyHandler = {
+      apply: function(target, thisArg, argumentsList) {
+        return target.apply(thisArg, argumentsList);
+      }
+    };
+    window.history.pushState = new Proxy(window.history.pushState, proxyHandler);
+  )SCRIPT");
+
+  // The vanilla script calls the now-monkeypatched API. The call stack will
+  // have the ad script's wrapper at the top.
+  vanilla_script.Complete(R"SCRIPT(
+    window.history.pushState({}, '', '/new-url');
+  )SCRIPT");
+
+  base::RunLoop().RunUntilIdle();
+
+  // The IsAdScriptInStack check is triggered by the pushState implementation.
+  // The heuristic identifies the monkeypatch and, for this first call, assumes
+  // the ad script is a proxy and returns false.
+  EXPECT_FALSE(ad_tracker_->last_is_ad_script_in_stack_result());
+}
+
 // Tests that the monkey-patch heuristic correctly distinguishes between the
 // actual monkey-patched API function and a different function that happens
 // to share the same internal name and script ID.
@@ -3983,6 +4024,55 @@ TEST_F(AdTrackerDisabledSimTest, VerifyAdTrackingDisabled) {
   EXPECT_FALSE(GetDocument().GetFrame()->IsAdFrame());
 }
 
+TEST_F(AdTrackerSimTest, RegressionTest_AsyncStackExternalScriptMonkeyPatch) {
+  String ad_script_url = "https://example.com/ad_script.js?ad=true";
+  String vanilla_script_url = "https://example.com/vanilla_script.js";
+  String target_script_url = "https://example.com/target_script.js";
+
+  SimSubresourceRequest ad_script(ad_script_url, "text/javascript");
+  SimSubresourceRequest vanilla_script(vanilla_script_url, "text/javascript");
+  SimSubresourceRequest target_script(target_script_url, "text/javascript");
+  SimSubresourceRequest target_image("https://example.com/target_image.png",
+                                     "image/png");
+
+  main_resource_->Complete(R"HTML(
+    <body>
+      <script src="ad_script.js?ad=true"></script>
+      <script src="vanilla_script.js"></script>
+    </body>
+  )HTML");
+
+  ad_script.Complete(R"SCRIPT(
+    const originalAppendChild = Node.prototype.appendChild;
+    Node.prototype.appendChild = function(...args) {
+      return originalAppendChild.apply(this, args);
+    };
+  )SCRIPT");
+
+  vanilla_script.Complete(R"SCRIPT(
+    const script = document.createElement("script");
+    script.src = "target_script.js";
+    document.body.appendChild(script);
+  )SCRIPT");
+
+  ad_tracker_->WaitForSubresource(target_script_url);
+  target_script.Complete(R"SCRIPT(
+    const img = document.createElement('img');
+    img.src = 'target_image.png';
+    document.body.appendChild(img);
+  )SCRIPT");
+
+  ad_tracker_->WaitForSubresource("https://example.com/target_image.png");
+  target_image.Complete("data");
+
+  EXPECT_TRUE(ad_tracker_->RequestWithUrlTaggedAsAd(ad_script_url));
+  EXPECT_FALSE(ad_tracker_->RequestWithUrlTaggedAsAd(vanilla_script_url));
+
+  EXPECT_FALSE(ad_tracker_->RequestWithUrlTaggedAsAd(target_script_url));
+  EXPECT_FALSE(ad_tracker_->RequestWithUrlTaggedAsAd(
+      "https://example.com/target_image.png"));
+}
+
 INSTANTIATE_TEST_SUITE_P(All,
                          AdTrackerVanillaOrAdSimTest,
                          ::testing::Values(true, false));
@@ -4414,28 +4504,22 @@ TEST(AdTrackerTest, AdScriptAncestry_ScriptIdFromDifferentTracker) {
 
   // Register `script_id_a` in `ad_tracker_a`, which is the only tracker to
   // learn about this script id.
-  ad_tracker_a->RegisterAdScript(
-      page_holder_a->GetFrame().DomWindow()->GetIsolate()->GetCurrentContext(),
+  ad_tracker_a->RegisterScript(
+      ToScriptStateForMainWorld(&page_holder_a->GetFrame())->GetContext(),
       script_id_a, std::nullopt);
 
-  // Get the `script_a` identifier.
-  AdScriptIdentifier id_a(v8_inspector::V8DebuggerId(), script_id_a,
-                          "script_a");
-
-  // In `ad_tracker_b`, register `script_id_b` with `id_a` as parent.
-  // `ad_tracker_b` doesn't actually know about `id_a` though.
+  // In `ad_tracker_b`, register `script_id_b` with `script_id_a` as parent.
+  // `ad_tracker_b` doesn't actually know about `script_id_a` though.
   V8ScriptId script_id_b(2001);
-  ad_tracker_b->RegisterAdScript(
-      page_holder_b->GetFrame().DomWindow()->GetIsolate()->GetCurrentContext(),
-      script_id_b, id_a);
+  ad_tracker_b->RegisterScript(
+      ToScriptStateForMainWorld(&page_holder_b->GetFrame())->GetContext(),
+      script_id_b, script_id_a);
 
   // Register `script_id_c` with `script_id_b` as parent in `ad_tracker_b`.
   V8ScriptId script_id_c(3001);
-  AdScriptIdentifier id_b(v8_inspector::V8DebuggerId(), script_id_b,
-                          "script_b");
-  ad_tracker_b->RegisterAdScript(
-      page_holder_b->GetFrame().DomWindow()->GetIsolate()->GetCurrentContext(),
-      script_id_c, id_b);
+  ad_tracker_b->RegisterScript(
+      ToScriptStateForMainWorld(&page_holder_b->GetFrame())->GetContext(),
+      script_id_c, script_id_b);
 
   // `ad_tracker_b` knows `script_id_c` and `script_id_b`, but not
   // `script_id_a`. `GetAncestry(script_id_c)` should return a chain of length 2

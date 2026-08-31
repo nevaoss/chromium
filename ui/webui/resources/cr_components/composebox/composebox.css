@@ -131,6 +131,7 @@
 :host([energy-effect-enabled]) {
   --box-shadow-energy-effect: 0 4px 18px -2px rgba(60, 64, 67, 0.12);
   box-shadow: none;
+  position: relative;
 }
 
 :host([energy-effect-animation-enabled]) {
@@ -141,10 +142,10 @@
   /* Energy Effect Box Shadow */
   --box-shadow-energy-effect-no-alpha: 0 4px 18px -2px rgba(60, 64, 67, 0);
   --box-shadow-animation-duration: 650ms;
-
   position: relative;
 }
 
+:host([energy-effect-enabled])::after,
 :host([energy-effect-animation-enabled])::after {
   content: '';
   position: absolute;
@@ -349,7 +350,7 @@ search-animated-glow {
 
 #lensIcon {
   --cr-icon-button-icon-size: 20px;
-  --cr-icon-image: url(//resources/cr_components/searchbox/icons/camera.svg);
+  --cr-icon-image: var(--camera-icon-url, url(//resources/cr_components/searchbox/icons/camera.svg));
   bottom: var(--input-bottom-spacing);
   display: none;
   opacity: 1;

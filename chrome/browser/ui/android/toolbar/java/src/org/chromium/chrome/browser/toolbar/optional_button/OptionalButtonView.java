@@ -9,6 +9,7 @@ import static org.chromium.build.NullUtil.assumeNonNull;
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.content.res.Resources;
+import android.graphics.Paint;
 import android.graphics.drawable.Drawable;
 import android.os.Handler;
 import android.transition.ChangeBounds;
@@ -47,6 +48,7 @@ import org.chromium.base.ThreadUtils;
 import org.chromium.build.annotations.MonotonicNonNull;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
+import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.toolbar.R;
 import org.chromium.chrome.browser.toolbar.ToolbarVariationUtils;
 import org.chromium.chrome.browser.toolbar.adaptive.AdaptiveToolbarButtonVariant;
@@ -130,15 +132,12 @@ class OptionalButtonView extends FrameLayout implements TransitionListener {
     private @Nullable OnBeforeWidthTransitionCallback mOnBeforeWidthTransitionCallback;
     private @Nullable BooleanSupplier mIsAnimationAllowedPredicate;
     private final Runnable mCollapseActionChipRunnable =
-            new Runnable() {
-                @Override
-                public void run() {
-                    assumeNonNull(mIsAnimationAllowedPredicate);
-                    if (mIsAnimationAllowedPredicate.getAsBoolean()) {
-                        animateActionChipCollapse();
-                    } else {
-                        showIcon(false);
-                    }
+            () -> {
+                assumeNonNull(mIsAnimationAllowedPredicate);
+                if (mIsAnimationAllowedPredicate.getAsBoolean()) {
+                    animateActionChipCollapse();
+                } else {
+                    showIcon(false);
                 }
             };
 
@@ -415,15 +414,15 @@ class OptionalButtonView extends FrameLayout implements TransitionListener {
         int paddingTopRes;
         int paddingStartRes;
 
-        if (buttonSpec.hasErrorBadge()) {
+        if (buttonSpec.hasAiTierRing()) {
+            paddingBottomRes = R.dimen.optional_toolbar_phone_button_with_ai_ring_padding_vertical;
+            paddingTopRes = R.dimen.optional_toolbar_phone_button_with_ai_ring_padding_vertical;
+            paddingStartRes = R.dimen.optional_toolbar_phone_button_with_ai_ring_padding_start;
+        } else if (buttonSpec.hasErrorBadge()) {
             paddingBottomRes =
                     R.dimen.optional_toolbar_phone_button_with_error_badge_padding_bottom;
             paddingTopRes = R.dimen.toolbar_phone_optional_button_foreground_vertical_padding;
             paddingStartRes = R.dimen.toolbar_phone_optional_button_foreground_start_padding;
-        } else if (buttonSpec.hasAiTierRing()) {
-            paddingBottomRes = R.dimen.optional_toolbar_phone_button_with_ai_ring_padding_vertical;
-            paddingTopRes = R.dimen.optional_toolbar_phone_button_with_ai_ring_padding_vertical;
-            paddingStartRes = R.dimen.optional_toolbar_phone_button_with_ai_ring_padding_start;
         } else {
             paddingBottomRes = R.dimen.toolbar_phone_optional_button_foreground_vertical_padding;
             paddingTopRes = R.dimen.toolbar_phone_optional_button_foreground_vertical_padding;
@@ -1215,5 +1214,34 @@ class OptionalButtonView extends FrameLayout implements TransitionListener {
         }
 
         return mForegroundColorTint;
+    }
+
+    @Override
+    public boolean hasOverlappingRendering() {
+        if (ChromeFeatureList.sOptionalButtonNoHardwareLayerKillswitch.isEnabled()) {
+            return false;
+        } else {
+            return super.hasOverlappingRendering();
+        }
+    }
+
+    @Override
+    public void setLayerType(int layerType, @Nullable Paint paint) {
+        if (ChromeFeatureList.sOptionalButtonNoHardwareLayerKillswitch.isEnabled()) {
+            if (layerType == LAYER_TYPE_HARDWARE && (getWidth() <= 0 || getHeight() <= 0)) {
+                layerType = LAYER_TYPE_NONE;
+            }
+        }
+        super.setLayerType(layerType, paint);
+    }
+
+    @Override
+    protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+        super.onLayout(changed, left, top, right, bottom);
+        if (ChromeFeatureList.sOptionalButtonNoHardwareLayerKillswitch.isEnabled()) {
+            if (getLayerType() == LAYER_TYPE_HARDWARE && (getWidth() <= 0 || getHeight() <= 0)) {
+                super.setLayerType(LAYER_TYPE_NONE, null);
+            }
+        }
     }
 }

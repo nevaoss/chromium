@@ -462,14 +462,16 @@ gfx::NativeViewAccessible WebView::GetNativeViewAccessible() {
     if (host_view) {
       gfx::NativeViewAccessible accessible =
           host_view->GetNativeViewAccessible();
-      // |accessible| needs to know whether this is the primary WebContents.
-      if (is_primary_web_contents_for_window_) {
-        if (auto* ax_platform_node =
-                ui::AXPlatformNode::FromNativeViewAccessible(accessible)) {
-          ax_platform_node->GetDelegate()->SetIsPrimaryWebContentsForWindow();
+      if (accessible) {
+        // |accessible| needs to know whether this is the primary WebContents.
+        if (is_primary_web_contents_for_window_) {
+          if (auto* ax_platform_node =
+                  ui::AXPlatformNode::FromNativeViewAccessible(accessible)) {
+            ax_platform_node->GetDelegate()->SetIsPrimaryWebContentsForWindow();
+          }
         }
+        return accessible;
       }
-      return accessible;
     }
   }
   return View::GetNativeViewAccessible();
@@ -632,12 +634,10 @@ void WebView::UpdateCrashedOverlayView() {
 }
 
 void WebView::UpdateNativeViewHostAccessibleParent() {
-  // Updates the parent accessible object on the NativeView. As WebView
-  // overrides GetNativeViewAccessible() to return the accessible from the
-  // WebContents, it needs to ensure the accessible from the parent is set on
-  // the NativeView.
-  View* parent =
-      ::features::IsAccessibilityTreeForViewsEnabled() ? this : this->parent();
+  // The NativeView needs the accessible of an ancestor that platform APIs
+  // expose. That is never the web view itself, because its own accessible
+  // belongs to the web contents.
+  View* parent = this->parent();
   if (!parent) {
     return;
   }
@@ -648,8 +648,20 @@ void WebView::NotifyAccessibilityWebContentsChanged() {
   if (!lock_child_ax_tree_id_override_) {
     content::RenderFrameHost* rfh =
         web_contents() ? web_contents()->GetPrimaryMainFrame() : nullptr;
-    GetViewAccessibility().SetChildTreeID(rfh ? rfh->GetAXTreeID()
-                                              : ui::AXTreeIDUnknown());
+    const ui::AXTreeID child_tree_id =
+        rfh ? rfh->GetAXTreeID() : ui::AXTreeIDUnknown();
+    if (child_tree_id != ui::AXTreeIDUnknown()) {
+      GetViewAccessibility().SetChildTreeID(child_tree_id);
+    } else {
+      GetViewAccessibility().RemoveChildTreeID();
+    }
+
+    // The WebView is the ignored host of the web content accessibility tree.
+    // It shouldn't be exposed to platform APIs.
+    if (ViewAccessibility::IsViewsAccessibilityTreeEnabled()) {
+      GetViewAccessibility().SetIsIgnored(
+          GetViewAccessibility().GetChildTreeID() != ui::AXTreeIDUnknown());
+    }
   }
   NotifyAccessibilityEventDeprecated(ax::mojom::Event::kChildrenChanged, false);
 }

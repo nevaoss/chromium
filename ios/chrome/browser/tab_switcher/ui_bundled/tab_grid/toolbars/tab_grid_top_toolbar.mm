@@ -30,6 +30,7 @@
 #import "ios/chrome/browser/tab_switcher/ui_bundled/tab_grid/toolbars/tab_grid_toolbar_scrolling_background.h"
 #import "ios/chrome/browser/tab_switcher/ui_bundled/tab_grid/toolbars/tab_grid_toolbars_grid_delegate.h"
 #import "ios/chrome/browser/tab_switcher/ui_bundled/tab_grid/toolbars/tab_grid_toolbars_utils.h"
+#import "ios/chrome/common/ui/colors/semantic_color_names.h"
 #import "ios/chrome/common/ui/util/constraints_ui_util.h"
 #import "ios/chrome/grit/ios_strings.h"
 #import "ui/base/device_form_factor.h"
@@ -95,9 +96,6 @@ CGFloat HorizontalMargin() {
   BOOL _scrolledToEdge;
   TabGridToolbarBackground* _backgroundView;
   TabGridToolbarScrollingBackground* _scrollBackgroundView;
-
-  // Configures the responder following the receiver in the responder chain.
-  UIResponder* _followingNextResponder;
 
   // The button to access the page action menu.
   PageActionMenuEntrypointView* _pageActionMenuEntrypointView;
@@ -515,10 +513,19 @@ CGFloat HorizontalMargin() {
   _exitTabGridButton.accessibilityIdentifier =
       kTabGridExitTabGridButtonIdentifier;
 
-  _exitSelectionButton = [self
-      createButtonWithImage:nil
-                      title:l10n_util::GetNSString(IDS_IOS_TAB_GRID_DONE_BUTTON)
-             targetSelector:@selector(exitSelectionButtonTapped:)];
+  if (@available(iOS 26, *)) {
+    _exitSelectionButton =
+        [self createButtonWithImage:DefaultDoneButtonForToolbar()
+                              title:nil
+                     targetSelector:@selector(exitSelectionButtonTapped:)];
+    _exitSelectionButton.tintColor = [UIColor colorNamed:kBlueColor];
+  } else {
+    _exitSelectionButton =
+        [self createButtonWithImage:nil
+                              title:l10n_util::GetNSString(
+                                        IDS_IOS_TAB_GRID_DONE_BUTTON)
+                     targetSelector:@selector(exitSelectionButtonTapped:)];
+  }
   _exitSelectionButton.accessibilityIdentifier =
       kTabGridExitSelectionButtonIdentifier;
 
@@ -750,17 +757,15 @@ CGFloat HorizontalMargin() {
     _scrollBackgroundView = [[TabGridToolbarScrollingBackground alloc] init];
     _scrollBackgroundView.translatesAutoresizingMaskIntoConstraints = NO;
     [self insertSubview:_scrollBackgroundView atIndex:0];
-    AddSameConstraintsToSides(
-        self, _scrollBackgroundView,
-        LayoutSides::kLeading | LayoutSides::kBottom | LayoutSides::kTrailing);
+    AddSameConstraintsToSides(self, _scrollBackgroundView,
+                              LayoutSides::kBottom | LayoutSides::kHorizontal);
   } else {
     _backgroundView =
         [[TabGridToolbarBackground alloc] initWithFrame:self.frame];
     _backgroundView.translatesAutoresizingMaskIntoConstraints = NO;
     [self addSubview:_backgroundView];
-    AddSameConstraintsToSides(
-        self, _backgroundView,
-        LayoutSides::kLeading | LayoutSides::kBottom | LayoutSides::kTrailing);
+    AddSameConstraintsToSides(self, _backgroundView,
+                              LayoutSides::kBottom | LayoutSides::kHorizontal);
   }
 
   // A non-nil UIImage has to be added in the background of the toolbar to
@@ -788,20 +793,10 @@ CGFloat HorizontalMargin() {
                                  animated:animated];
 }
 
-#pragma mark - ResponderChaining
-
-- (void)respondBeforeResponder:(UIResponder*)nextResponder {
-  _followingNextResponder = nextResponder;
-}
-
 #pragma mark - UIResponder
 
 - (NSArray<UIKeyCommand*>*)keyCommands {
   return @[ UIKeyCommand.cr_closeAll, UIKeyCommand.cr_close ];
-}
-
-- (UIResponder*)nextResponder {
-  return _followingNextResponder;
 }
 
 - (BOOL)canPerformAction:(SEL)action withSender:(id)sender {

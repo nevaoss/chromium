@@ -14,7 +14,7 @@ export function getHtml(this: ComposeboxVoiceSearchElement) {
         class="${this.shouldShowErrorScrim_() ? 'has-error' : ''}">
       <div id="error-container" ?hidden="${!this.shouldShowErrorScrim_()}">
         <span id="error-message">${this.errorMessage_}</span>
-        ${this.detailedError_ === VoiceSearchError.NO_MATCH ?
+        ${this.detailedError === VoiceSearchError.NO_MATCH ?
             html`<a id="tryAgainLink" href="#"
                 @click="${this.onTryAgainClick_}"
               >${this.i18n('tryAgain')}
@@ -50,7 +50,7 @@ export function getHtml(this: ComposeboxVoiceSearchElement) {
           html`<div id="bottomActions"
               class="${this.shouldShowErrorScrim_() ? 'hidden' : ''}">
             <cr-icon-button id="stopButton" part="voice-stop-button"
-                iron-icon="composebox:stop"
+                iron-icon="composebox:stop-filled"
                  title="${this.i18n('voiceStop')}"
                 @click="${this.onStopClick_}"
             ></cr-icon-button>

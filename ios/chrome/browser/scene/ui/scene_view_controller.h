@@ -16,8 +16,7 @@
 @class AssistantContainerViewController;
 @protocol GeminiCommands;
 @class LayoutGuideCenter;
-@class LayoutState;
-@protocol ResponderChaining;
+@class SceneLayoutState;
 @protocol SceneMutator;
 @protocol SceneViewControllerDelegate;
 
@@ -29,7 +28,7 @@
                                           SceneConsumer>
 
 // The layout state to observe.
-@property(nonatomic, weak) LayoutState* layoutState;
+@property(nonatomic, weak) SceneLayoutState* layoutState;
 
 // This view controller's LayoutGuideCenter.
 @property(nonatomic, strong) LayoutGuideCenter* layoutGuideCenter;
@@ -45,10 +44,10 @@
 @property(nonatomic, weak) id<GeminiCommands> geminiHandler;
 
 // Sets the app bar.
-- (void)setAppBar:(UIViewController<ResponderChaining>*)appBar;
+- (void)setAppBar:(UIViewController*)appBar;
 
-// Sets the TabGrid.
-- (void)setTabGrid:(UIViewController<ResponderChaining>*)tabGrid;
+// Sets the TabGrid view controller.
+- (void)setTabGrid:(UIViewController*)tabGridViewController;
 
 @end
 

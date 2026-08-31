@@ -33,6 +33,7 @@
 #include "ui/base/hit_test.h"
 #include "ui/base/ime/input_method.h"
 #include "ui/base/mojom/dialog_button.mojom.h"
+#include "ui/base/ui_base_features.h"
 #include "ui/color/color_provider_key.h"
 #include "ui/compositor/layer.h"
 #include "ui/compositor/recyclable_compositor_mac.h"
@@ -716,9 +717,9 @@ void NativeWidgetMacNSWindowHost::UpdateCompositorProperties() {
   gfx::Size content_bounds_in_pixels =
       gfx::ToRoundedSize(gfx::ConvertSizeToPixels(
           content_bounds_in_screen_.size(), display_.device_scale_factor()));
-  compositor_->UpdateSurface(content_bounds_in_pixels,
-                             display_.device_scale_factor(),
-                             display_.GetColorSpaces(), display_.id());
+  compositor_->UpdateSurface(
+      content_bounds_in_pixels, display_.device_scale_factor(),
+      display_.GetColorSpaces(), display_.id(), display_.display_frequency());
 }
 
 void NativeWidgetMacNSWindowHost::DestroyCompositor() {
@@ -1068,6 +1069,16 @@ ui::TextInputClient* NativeWidgetMacNSWindowHost::GetTextInputClient() {
   return text_input_host_->GetTextInputClient();
 }
 
+void NativeWidgetMacNSWindowHost::SetLayerAndCompositorOpaque(bool opaque) {
+  if (layer()) {
+    layer()->SetFillsBoundsOpaquely(opaque);
+  }
+  if (compositor_) {
+    compositor_->compositor()->SetBackgroundColor(opaque ? SK_ColorWHITE
+                                                         : SK_ColorTRANSPARENT);
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // NativeWidgetMacNSWindowHost, remote_cocoa::ApplicationHost::Observer:
 void NativeWidgetMacNSWindowHost::OnApplicationHostDestroying(
@@ -1146,7 +1157,13 @@ void NativeWidgetMacNSWindowHost::OnSpaceActivationChanged(
 }
 
 void NativeWidgetMacNSWindowHost::OnWindowNativeThemeChanged() {
-  ui::NativeTheme::GetInstanceForNativeUi()->NotifyOnNativeThemeUpdated();
+  if (base::FeatureList::IsEnabled(::features::kThemeChangeOptimization)) {
+    if (Widget* widget = GetWidget()) {
+      widget->ScheduleThemeChanged();
+    }
+  } else {
+    ui::NativeTheme::GetInstanceForNativeUi()->NotifyOnNativeThemeUpdated();
+  }
 }
 
 void NativeWidgetMacNSWindowHost::OnScrollEvent(
@@ -1503,9 +1520,9 @@ void NativeWidgetMacNSWindowHost::OnWindowDisplayChanged(
   gfx::Size content_bounds_in_pixels =
       gfx::ToRoundedSize(gfx::ConvertSizeToPixels(
           content_bounds_in_screen_.size(), display_.device_scale_factor()));
-  compositor_->UpdateSurface(content_bounds_in_pixels,
-                             display_.device_scale_factor(),
-                             display_.GetColorSpaces(), display_.id());
+  compositor_->UpdateSurface(
+      content_bounds_in_pixels, display_.device_scale_factor(),
+      display_.GetColorSpaces(), display_.id(), display_.display_frequency());
 }
 
 void NativeWidgetMacNSWindowHost::OnWindowWillClose() {

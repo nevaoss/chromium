@@ -4,6 +4,11 @@
 
 #include "chrome/browser/dictation/target.h"
 
+#include "base/check.h"
+#include "base/functional/bind.h"
+#include "base/functional/callback_helpers.h"
+#include "base/location.h"
+#include "base/task/sequenced_task_runner.h"
 #include "chrome/browser/dictation/features.h"
 #include "content/public/browser/focused_node_details.h"
 #include "content/public/browser/render_frame_host.h"
@@ -11,6 +16,27 @@
 #include "ui/base/ime/ime_text_span.h"
 
 namespace dictation {
+
+namespace {
+
+std::u16string RemovePrefix(const std::u16string& text,
+                            const std::u16string& prefix) {
+  size_t prefix_len = 0;
+  while (prefix_len < text.length() && prefix_len < prefix.length() &&
+         text[prefix_len] == prefix[prefix_len]) {
+    prefix_len++;
+  }
+  return text.substr(prefix_len);
+}
+
+void CompleteAsync(base::OnceClosure on_complete) {
+  if (on_complete) {
+    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, std::move(on_complete));
+  }
+}
+
+}  // namespace
 
 TargetDetails::TargetDetails() = default;
 TargetDetails::TargetDetails(const content::GlobalDOMNodeId& target_id,
@@ -52,19 +78,69 @@ content::RenderWidgetHost* Target::GetRenderWidgetHost() const {
 }
 
 void Target::SetComposition(const std::u16string& text, bool is_final) {
+  QueuedOperation op{
+      .type = is_final ? QueuedOperation::Type::kSetFinalComposition
+                       : QueuedOperation::Type::kSetPartialComposition,
+      .text = text,
+  };
+  if (is_waiting_on_operation_completion_) {
+    // Intentionally overwrites any other pending operation.
+    CHECK(!queued_operation_ || !queued_operation_->on_commit_complete);
+    queued_operation_ = std::move(op);
+    return;
+  }
+
+  ExecuteOperation(std::move(op));
+}
+
+void Target::CommitComposition(const std::u16string& text,
+                               base::OnceClosure on_commit_complete) {
+  QueuedOperation op{
+      .type = QueuedOperation::Type::kCommitComposition,
+      .text = text,
+      .on_commit_complete = std::move(on_commit_complete),
+  };
+  if (is_waiting_on_operation_completion_) {
+    // Intentionally overwrites any other pending operation.
+    CHECK(!queued_operation_ || !queued_operation_->on_commit_complete);
+    queued_operation_ = std::move(op);
+    return;
+  }
+
+  ExecuteOperation(std::move(op));
+}
+
+void Target::ExecuteSetComposition(const std::u16string& text,
+                                   bool is_final,
+                                   base::OnceClosure operation_complete) {
+  base::ScopedClosureRunner scoped_operation_complete(
+      std::move(operation_complete));
+
   if (!is_final && !kShowPartials.Get()) {
     return;
   }
 
-  if (has_lost_focus_during_composition_) {
+  if (has_lost_focus_during_composition_ || paste_fallback_required_) {
     // The associated element lost focus, and whatever text we composed was
-    // committed. Don't begin a new composition in this state, and instead only
+    // committed. Or we can't compose further due to the need to switch to
+    // pasting. Don't begin a new composition in this state, and instead only
     // commit the final text when the stream completes.
     return;
   }
 
-  // TODO(crbug.com/537833858): Fallback to pasting if a `richly_editable()`
-  // target would need multi-line insertion.
+  if (richly_editable() && text.find(u'\n') != std::u16string::npos) {
+    // Some sites cannot handle multiline IME composition with their
+    // contenteditables. See https://crbug.com/537833858 . We fallback to
+    // pasting in this case.
+    // TODO(b/540009971): For simplicity, we'll just cancel the existing
+    // composition, if any, but we'll need to handle this more robustly if we
+    // want to show partial transcripts.
+    paste_fallback_required_ = true;
+    last_sent_composition_ = u"";
+    CommitExternallySourcedComposition(u"",
+                                       scoped_operation_complete.Release());
+    return;
+  }
 
   // Specify an ImeTextSpan for the entire text to make it look like a user
   // typing without a visual difference for the composition.
@@ -77,40 +153,97 @@ void Target::SetComposition(const std::u16string& text, bool is_final) {
 
   last_sent_composition_ = text;
 
-  SetExternallySourcedComposition(text, {text_span});
+  SetExternallySourcedComposition(text, {text_span},
+                                  scoped_operation_complete.Release());
 }
 
-void Target::CommitComposition(const std::u16string& text) {
-  // If we've lost focus, then some of the previously composed text has already
-  // been committed. Determine what has already been sent to avoid duplication.
-  // TODO(b/529388448): This will be incorrect if the stream rewrites text. We
-  // should instead determine the last composition range and replace the text in
-  // that range.
-  std::u16string text_to_commit = text;
-  if (has_lost_focus_during_composition_) {
-    size_t prefix_len = 0;
-    while (prefix_len < text.length() &&
-           prefix_len < last_sent_composition_.length() &&
-           text[prefix_len] == last_sent_composition_[prefix_len]) {
-      prefix_len++;
-    }
-    text_to_commit = text.substr(prefix_len);
+void Target::ExecuteCommitComposition(const std::u16string& text,
+                                      base::OnceClosure operation_complete) {
+  if (paste_fallback_required_) {
+    PasteIntoNode(text);
+    CompleteAsync(std::move(operation_complete));
+    return;
   }
 
-  CommitExternallySourcedComposition(text_to_commit);
+  // If we've lost focus, then some of the previously composed text has already
+  // been committed. Determine what has already been sent to avoid duplication.
+  // TODO(b/539566748): This will be incorrect if the stream rewrites text. We
+  // should instead determine the last composition range and replace the text in
+  // that range.
+  std::u16string text_to_commit =
+      has_lost_focus_during_composition_
+          ? RemovePrefix(text, last_sent_composition_)
+          : text;
+
+  if (richly_editable() && text_to_commit.find(u'\n') != std::u16string::npos) {
+    PasteIntoNode(text_to_commit);
+    CompleteAsync(std::move(operation_complete));
+    return;
+  }
+
+  CommitExternallySourcedComposition(text_to_commit,
+                                     std::move(operation_complete));
+}
+
+void Target::ExecuteOperation(QueuedOperation op) {
+  is_waiting_on_operation_completion_ = true;
+
+  base::OnceClosure operation_complete =
+      base::BindOnce(&Target::OnOperationComplete, weak_factory_.GetWeakPtr(),
+                     std::move(op.on_commit_complete));
+
+  switch (op.type) {
+    case QueuedOperation::Type::kSetPartialComposition:
+      ExecuteSetComposition(op.text, /*is_final=*/false,
+                            std::move(operation_complete));
+      break;
+    case QueuedOperation::Type::kSetFinalComposition:
+      ExecuteSetComposition(op.text, /*is_final=*/true,
+                            std::move(operation_complete));
+      break;
+    case QueuedOperation::Type::kCommitComposition:
+      ExecuteCommitComposition(op.text, std::move(operation_complete));
+      break;
+  }
+}
+
+void Target::OnOperationComplete(base::OnceClosure on_commit_complete) {
+  is_waiting_on_operation_completion_ = false;
+
+  CompleteAsync(std::move(on_commit_complete));
+
+  if (queued_operation_.has_value()) {
+    QueuedOperation op = std::move(*queued_operation_);
+    queued_operation_.reset();
+    ExecuteOperation(std::move(op));
+  }
 }
 
 void Target::SetExternallySourcedComposition(
     const std::u16string& text,
-    const std::vector<ui::ImeTextSpan>& spans) {
+    const std::vector<ui::ImeTextSpan>& spans,
+    base::OnceClosure on_complete) {
   if (content::RenderWidgetHost* rwh = GetRenderWidgetHost()) {
-    rwh->SetExternallySourcedComposition(text, spans, global_dom_node_id());
+    rwh->SetExternallySourcedComposition(text, spans, global_dom_node_id(),
+                                         std::move(on_complete));
+  } else {
+    CompleteAsync(std::move(on_complete));
   }
 }
 
-void Target::CommitExternallySourcedComposition(const std::u16string& text) {
+void Target::CommitExternallySourcedComposition(const std::u16string& text,
+                                                base::OnceClosure on_complete) {
   if (content::RenderWidgetHost* rwh = GetRenderWidgetHost()) {
-    rwh->CommitExternallySourcedComposition(text, global_dom_node_id());
+    rwh->CommitExternallySourcedComposition(text, global_dom_node_id(),
+                                            std::move(on_complete));
+  } else {
+    CompleteAsync(std::move(on_complete));
+  }
+}
+
+void Target::PasteIntoNode(const std::u16string& text) {
+  if (content::RenderWidgetHost* rwh = GetRenderWidgetHost()) {
+    rwh->PasteIntoNode(text, global_dom_node_id());
   }
 }
 

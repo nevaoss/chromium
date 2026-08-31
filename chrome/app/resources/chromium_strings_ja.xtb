@@ -21,6 +21,7 @@
 <translation id="1203500561924088507">インストールいただきありがとうございます。<ph name="BUNDLE_NAME" /> を使用するにはブラウザを再起動してください。</translation>
 <translation id="1232234696885483911">画像検索を開くと、ページのタイトル、URL、コンテンツ（PDF を含む）が自動的にサーバーに送信されます。<ph name="LEARN_MORE" /></translation>
 <translation id="123265588161106468">Chromium にログイン中は、Google アカウントのパスワードやその他の設定を使用できます。この設定を変更するには、[Chromium のアカウント設定] に移動してください。</translation>
+<translation id="1244381985120794049">Mac のメニューバーに Gemini in Chromium を表示する</translation>
 <translation id="1257483544893909270">Gemini in Chromium で画面の一部を選択するときに、キーボード ショートカットを使用します。</translation>
 <translation id="1262876892872089030">Chromium を高速に保つため、このタブがアクティブでないときにメモリを解放しました。このサイトを常にアクティブにするよう選択できます。</translation>
 <translation id="1265577313130862557">危険なファイルであるため、このダウンロードは Chromium でブロックされました</translation>
@@ -53,6 +54,7 @@
 <translation id="1623563412065267963">スマートフォンの Chromium アプリで Google を最大限に活用できます</translation>
 <translation id="1625909126243026060">Chromium のプライバシーとセキュリティに関する重要な設定を確認します</translation>
 <translation id="1640672724030957280">ダウンロードしています...</translation>
+<translation id="1665602916345474427"><ph name="USER_NAME" />、<ph name="USER_EMAIL" />（メンバーシップ）としてログインしています。アカウント メニューを開く</translation>
 <translation id="1708414395296835197">メッセージ、ドキュメント、他のアプリのリンクをクリックしたときに、常に Chromium で開くことができます。タスクバーにも固定されます。</translation>
 <translation id="1709772298389099340"><ph name="BROWSER_NAME" /> に権限昇格を提供します。</translation>
 <translation id="1722488837206509557">これにより、利用可能なデバイスから選択してコンテンツを表示できるようになります。</translation>
@@ -68,7 +70,6 @@
 <translation id="1820835682567584003">Chromium が <ph name="AUTHENTICATION_PURPOSE" /></translation>
 <translation id="183031085822326697">次回 <ph name="DEVICE_TYPE" /> で Chromium を開いたときに、Google パスワード マネージャーを使用するよう求めるメッセージが表示されます。</translation>
 <translation id="1838374766361614909">検索をクリア</translation>
-<translation id="1846849503013521481">Chromium での作業を保護するため、組織は特定の情報を表示または管理できます</translation>
 <translation id="18552579716432081">閲覧履歴データをこのデバイスからのみ削除して、Google アカウントに残すには、<ph name="BEGIN_LINK" />Chromium からログアウト<ph name="END_LINK" />します。</translation>
 <translation id="1857749206890802997">スマートフォンに Chromium をダウンロードして、外出先でタブグループを開いたり、新しいタブグループを作成したりできます。</translation>
 <translation id="185970820835152459">ログインする Google アカウントを管理できます。Google アカウントは、Chromium ブラウザ、Play ストア、Gmail などで使用されます。家族など、あなた以外の人のアカウントを追加する場合は、<ph name="DEVICE_TYPE" /> に新しいユーザーを追加してください。<ph name="LINK_BEGIN" />詳細<ph name="LINK_END" /></translation>
@@ -150,6 +151,7 @@
 <translation id="2635452620547538388">アカウント「<ph name="ACCOUNT_EMAIL" />」で Chromium のデータを使用、保存するには、本人確認を行ってください</translation>
 <translation id="2636783171884046627">Gemini in Chromium を終了するか、Gemini in Chromium に戻るときに、キーボード ショートカットを使用します。</translation>
 <translation id="2637732208198500597">{COUNT,plural, =0{高度な保護機能を使用している場合は、アップデートを適用するために Chromium を再起動する必要があります}=1{高度な保護機能を使用している場合は、アップデートを適用するために Chromium を再起動する必要があります。シークレット ウィンドウは、再起動後は自動的には開きません。}other{高度な保護機能を使用している場合は、アップデートを適用するために Chromium を再起動する必要があります。現在開いている # 個のシークレット ウィンドウは、再起動後は自動的には開きません。}}</translation>
+<translation id="263863604136125912">Chromium を起動</translation>
 <translation id="2648074677641340862">インストール中にオペレーティング システム エラーが発生しました。Chromium をダウンロードし直してください。</translation>
 <translation id="2661879430930417727">デバイスを共有している場合でも、友だちや家族はそれぞれ Chromium を自分専用のブラウザとして自分用の設定をして使うことができます</translation>
 <translation id="2676569452213089702">Chromium を最小化している場合でも、デバイスのさまざまな場所から Gemini in Chromium にすばやくアクセスできます。</translation>
@@ -255,6 +257,7 @@
 
           **質問の提案:** スクリーンショットの理解を深めるためにユーザーが質問しそうな項目を箇条書きで 3～5 つ生成します。視覚的なオブジェクトやそのデザイン、または配置に関する具体的な質問が 1 つ以上含まれます。</translation>
 <translation id="3848258323044014972"><ph name="PAGE_TITLE" /> - Chromium</translation>
+<translation id="387514319934708384">このサイトを利用するには、Chromium でローカル ネットワークの使用を許可する必要があります</translation>
 <translation id="3885770153807205175">言語選択ツール</translation>
 <translation id="388648406173476553">Chromium をカスタマイズ、制御します。確認の必要な項目があります。クリックして詳細をご覧ください。</translation>
 <translation id="3889543394854987837">Chromium を開いてブラウジングを始めるには、名前をクリックしてください。</translation>
@@ -302,7 +305,6 @@
 <translation id="4304713468139749426">パスワード マネージャー</translation>
 <translation id="4334241893986177674">このスクリーンショットを検索</translation>
 <translation id="4384331407722351213">Windows の起動時に Chromium を自動で起動する</translation>
-<translation id="4384993550046411228">Chromium を既定のブラウザに設定すると、お馴染みの信頼できる機能を簡単に利用できるようになります。Chromium はタスクバーに固定され、すばやくアクセスできます。</translation>
 <translation id="4400772909124543403">利用できるアップデートはありません</translation>
 <translation id="4407044323746248786">今すぐ Chromium を終了しますか？</translation>
 <translation id="4413205837991854510">画像検索のショートカットを常に表示する</translation>
@@ -333,6 +335,7 @@
 <translation id="4625064703209785397">Chromium の V8 エンジンでサイトを高速化する（攻撃に対する Chromium の耐性は若干低下します）</translation>
 <translation id="4665829708273112819">警告: 拡張機能による閲覧履歴の記録を Chromium で停止することはできません。シークレット モードでこの拡張機能を無効にするには、このオプションの選択を解除してください。</translation>
 <translation id="4673151026126227699">Chromium の使用状況レポートを送信する場合は、アクセスした URL がこのレポートに含められます</translation>
+<translation id="4673710618874938871"><ph name="USER_NAME" />（メンバーシップ）としてログインしています。アカウント メニューを開く</translation>
 <translation id="4677944499843243528">プロフィールは、別のコンピュータ（<ph name="HOST_NAME" />）の別の Chromium プロセス（<ph name="PROCESS_ID" />）で使用されているようです。Chromium はプロフィールが破損しないようにプロフィールをロックしています。他のプロセスがこのプロフィールを使用していないことが確実であれば、プロフィールのロックを解除して Chromium を再起動できます。</translation>
 <translation id="4680828127924988555">インストールをキャンセル</translation>
 <translation id="469259825538636168">Chromium データの一部が Google アカウントにまだ保存されていません。数分待ってからログアウトしてください。今すぐログアウトすると、このデータは削除されます。</translation>
@@ -568,6 +571,7 @@
 <translation id="7173822816570314652"><ph name="TIMEOUT_DURATION" /> 使用しなかったため、Chromium のデータは組織によって削除されます。これには、履歴、自動入力、ダウンロードが含まれます。</translation>
 <translation id="718435575166326686">このサイトを利用するには、Chromium でカメラの使用を許可する必要があります</translation>
 <translation id="7196312274710523067">Chromium を起動できませんでした。もう一度お試しください。</translation>
+<translation id="7204669035546236137">Gemini in Chromium なら、その場で何でも質問できます</translation>
 <translation id="7213008767289637091">Chromium を Dock に追加すると、いつでもすばやくアクセスできます</translation>
 <translation id="7213407614656404070">メッセージ、ドキュメント、他のアプリのリンクをクリックしたときに、常に Chromium で開くよう設定できます</translation>
 <translation id="7216228761061470870">パソコンで画像検索を使用すると、ページのタイトル、URL、コンテンツ（PDF を含む）がサーバーに送信されます</translation>
@@ -577,7 +581,6 @@
 <translation id="7288567540154601580">タブと拡張機能</translation>
 <translation id="7295544978856094497">{NUM_EXTENSIONS,plural, =1{削除することをおすすめします}other{削除することをおすすめします}}</translation>
 <translation id="7296334833518879294">システム音声を共有するには、[システム設定] を開き、Chromium に [システムオーディオ録音のみ] を許可してください。その後、Chromium を再起動する必要があります。</translation>
-<translation id="7309928523159922338">広告の測定により、アクセスしたサイトは、サイトが広告のパフォーマンスを測定する際に役立つ Chromium の情報をリクエストできます。広告の測定は、サイト間で転送する情報をできるだけ少なくすることで、クロスサイト トラッキングを制限します。</translation>
 <translation id="731795002583552498">Chromium を更新しています</translation>
 <translation id="7318036098707714271">ユーザー設定ファイルが壊れているか無効です。
 
@@ -589,6 +592,7 @@
 <translation id="7368826207863345663">今後、Chromium のアップデートを受信するには、macOS 13 以降が必要となります。このコンピュータでは macOS 12 が実行されています。</translation>
 <translation id="7376384068949534168">最近アクセスしていないため、Chromium で <ph name="PERMISSION_1" /> と <ph name="PERMISSION_2" /> の権限を削除しました。</translation>
 <translation id="73786666777299047">Chrome ウェブストアを開きます</translation>
+<translation id="7394275517973019558">システムトレイに Gemini in Chromium を表示する</translation>
 <translation id="7407655596887111931">Chromium を既定のブラウザに設定しました</translation>
 <translation id="7413153308467572558">前回開いていたページを開く: Chromium で再起動するたびにタブが復元されます。この機能をオフにするには、</translation>
 <translation id="7427879960656355200">Chromium にパスワードをインポート</translation>
@@ -623,6 +627,7 @@
 <translation id="7745317241717453663">このデバイスから閲覧データを削除します。後でデータを取得するには、<ph name="USER_EMAIL" /> として Chromium にログインしてください。</translation>
 <translation id="7747138024166251722">インストーラーの一時ディレクトリを作成できませんでした。ディスクの空き領域とソフトウェアのインストール許可があることを確認してください。</translation>
 <translation id="7750130090210923118">デフォルトの Chromium にリセット</translation>
+<translation id="7752521946322750699">Chromium での作業を保護するため、Chromium へのログイン中、組織は特定の情報を表示または管理できます。</translation>
 <translation id="7781047659465034537">Chromium を既定に設定してタスクバーに固定する</translation>
 <translation id="7786760609782648049">Chromium を高速化する</translation>
 <translation id="7790626492778995050"><ph name="PAGE_TITLE" /> - Chromium Canary</translation>
@@ -675,6 +680,7 @@
 <translation id="8286943863733751221">安全でないサイトやダウンロードが見つかると <ph name="BEGIN_LINK" />Chromium が警告<ph name="END_LINK" />します</translation>
 <translation id="8295827201165805317">最近アクセスしていないため、Chromium で<ph name="PERMISSION" />の権限を削除しました。</translation>
 <translation id="8296236834352487533">Chromium iOS アプリで、カメラに映ったものを購入、翻訳、特定できます</translation>
+<translation id="8310603974518734211"><ph name="USER_NAME" /> として Chromium にログインするための QR コード</translation>
 <translation id="8313851650939857356">起動エラー: <ph name="STARTUP_ERROR" />。</translation>
 <translation id="8318772038038596122"><ph name="TIMEOUT_DURATION" /> 使用しなかったため、Chromium は組織によって終了されます。</translation>
 <translation id="8321888067342493336">画像として保存</translation>

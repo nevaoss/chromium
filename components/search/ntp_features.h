@@ -25,6 +25,17 @@ BASE_DECLARE_FEATURE(kCustomizeChromeSidePanelExtensionsCard);
 BASE_DECLARE_FEATURE(kCustomizeChromeWallpaperSearch);
 BASE_DECLARE_FEATURE(kCustomizeChromeWallpaperSearchButton);
 BASE_DECLARE_FEATURE(kCustomizeChromeWallpaperSearchInspirationCard);
+enum class EnergyEffectVariant {
+  // Default (M149 / 12% shadow)
+  kEnergyEffectOriginal = 0,
+  // Variant 1 (20% shadow)
+  kEnergyEffectDarkerShadow = 1,
+  // Variant 2 (reduced original shadow + darker border)
+  kPreEnergyEffectWithBorder = 2,
+  // Variant 4 (Fusebox shadow @ 16%)
+  kEnergyEffectFusebox = 3,
+};
+
 BASE_DECLARE_FEATURE(kEnergyEffect);
 BASE_DECLARE_FEATURE(kEnergyEffectAnimation);
 BASE_DECLARE_FEATURE(kRealboxCr23Theming);
@@ -268,6 +279,16 @@ extern const base::FeatureParam<bool> kNtpNextDisablementParam;
 // added from an action chip.
 extern const base::FeatureParam<bool> kAddTabUploadDelayOnActionChipClick;
 
+// Parameter determining the maximum number of small action chips to show.
+extern const base::FeatureParam<int> kNtpMaxSmallChips;
+
+// Parameter determining if in test mode for small action chips.
+extern const base::FeatureParam<bool> kNtpScaledActionChipsSmallInTestMode;
+
+// Parameter determining if fallback action chips should be shown.
+// Used for local testing.
+extern const base::FeatureParam<bool> kNtpScaledActionChipsShowFallback;
+
 // Parameter determining the minimum amount of time that must pass before
 // shortcuts staleness counters will be incremented.
 extern const base::FeatureParam<base::TimeDelta>
@@ -346,6 +367,8 @@ int GetMaxEnterpriseShortcuts();
 base::TimeDelta GetBookmarkBarMinStalenessTimeInterval();
 
 int GetBookmarkBarCountThreshold();
+
+extern const base::FeatureParam<EnergyEffectVariant> kEnergyEffectVariantParam;
 
 }  // namespace ntp_features
 

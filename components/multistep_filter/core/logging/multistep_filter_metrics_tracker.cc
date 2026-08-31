@@ -20,6 +20,7 @@
 #include "components/multistep_filter/core/logging/multistep_filter_metrics_util.h"
 #include "components/multistep_filter/core/multistep_filter_util.h"
 #include "components/multistep_filter/core/prefs/multistep_filter_retention_prefs.h"
+#include "components/multistep_filter/core/verification/filter_application_verifier.h"
 #include "services/metrics/public/cpp/metrics_utils.h"
 #include "services/metrics/public/cpp/ukm_builders.h"
 #include "services/metrics/public/cpp/ukm_recorder.h"
@@ -68,6 +69,20 @@ void LogAcceptanceHistogram(std::string_view base_histogram,
       });
 }
 
+bool IsTechnicalFailureOutcome(SuggestionApplicationResult outcome) {
+  switch (outcome) {
+    case SuggestionApplicationResult::kNotAllFiltersApplied:
+    case SuggestionApplicationResult::kFailedErrorPage:
+    case SuggestionApplicationResult::kFailedNoExtractedAnnotations:
+    case SuggestionApplicationResult::kFailedCountMismatch:
+    case SuggestionApplicationResult::kFailedAttributeMismatch:
+      return true;
+    case SuggestionApplicationResult::kAllFiltersApplied:
+    case SuggestionApplicationResult::kAbandonedBeforeVerification:
+      return false;
+  }
+}
+
 // Logs the overall technical filter application outcome after a user accepts
 // a Multistep Filter suggestion.
 // "All filter facets successfully applied" (kAllFiltersApplied) means that
@@ -107,7 +122,7 @@ void LogApplicationOutcome(
       });
 
   const bool is_success =
-      session.outcome == MultistepFilterApplicationOutcome::kAllFiltersApplied;
+      session.outcome == SuggestionApplicationResult::kAllFiltersApplied;
 
   if (is_success) {
     size_t count = session.suggestion.attribute_ui_labels.size();
@@ -146,19 +161,21 @@ void LogApplicationOutcomeWhenSessionIsFlushed(
 
   switch (trigger) {
     case kApplicationFailure:
-      session.outcome = MultistepFilterApplicationOutcome::kNotAllFiltersApplied;
-      LogApplicationOutcome(session);
-      return;
+      // An application failure flush requires that a specific technical failure
+      // outcome was set on the session before flushing.
+      CHECK(IsTechnicalFailureOutcome(session.outcome));
+      break;
     case kTabClosed:
     case kSessionOverride:
     case kNavigationBack:
     case kNavigationFromBrowserContext:
     case kNavigationFromPageContext:
-      session.outcome = MultistepFilterApplicationOutcome::kAbandonedBeforeVerification;
-      LogApplicationOutcome(session);
-      return;
+      session.outcome =
+          SuggestionApplicationResult::kAbandonedBeforeVerification;
+      break;
   }
-  NOTREACHED();
+
+  LogApplicationOutcome(session);
 }
 
 void LogSuggestionUiShown(
@@ -363,7 +380,7 @@ void LogSuggestionApplicationSessionUkm(
           std::to_underlying(GetRetentionState(session.retention_snapshot)))
       .SetApplicationOutcome(std::to_underlying(session.outcome));
 
-  if (session.outcome == MultistepFilterApplicationOutcome::kAllFiltersApplied) {
+  if (session.outcome == SuggestionApplicationResult::kAllFiltersApplied) {
     builder.SetNumOfFilterFacetsAppliedSuccessfully(std::min<int64_t>(
         session.suggestion.attribute_ui_labels.size(),
         kMultistepFilterMaxFacetsShownUkmClampingLimit.Get()));
@@ -396,6 +413,10 @@ MultistepFilterMetricsTracker::~MultistepFilterMetricsTracker() {
     FlushSuggestionApplicationSession(
         SuggestionApplicationSessionFlushTrigger::kTabClosed,
         base::TimeTicks::Now());
+  }
+  if (ignored_impression_.has_value()) {
+    FlushIgnoredImpressionSession(
+        MultistepFilterUserBehaviorAfterIgnore::kDidNotFilterFurther);
   }
 }
 
@@ -431,6 +452,8 @@ void MultistepFilterMetricsTracker::OnNavigationFinished(
             metadata.navigation_finish_time, suggestion_accepted_time),
     };
     if (current_application_session_->is_error_page) {
+      current_application_session_->outcome =
+          SuggestionApplicationResult::kFailedErrorPage;
       FlushSuggestionApplicationSession(
           SuggestionApplicationSessionFlushTrigger::kApplicationFailure,
           metadata.navigation_finish_time);
@@ -447,6 +470,16 @@ void MultistepFilterMetricsTracker::OnNavigationFinished(
       FlushSuggestionUiSession(SuggestionUserDecision::kIgnored);
     } else {
       current_ui_session_->is_preserved_same_page = true;
+    }
+  }
+
+  if (ignored_impression_.has_value()) {
+    bool is_same_host =
+        metadata.url.host() == ignored_impression_->suggestion.triggering_host;
+    if (metadata.is_error_page_navigation || !is_same_host ||
+        metadata.was_filter_initiated_navigation) {
+      FlushIgnoredImpressionSession(
+          MultistepFilterUserBehaviorAfterIgnore::kDidNotFilterFurther);
     }
   }
 }
@@ -513,6 +546,13 @@ void MultistepFilterMetricsTracker::OnSuggestionUserInteraction(
     case SuggestionUserDecision::kDismissed:
     case SuggestionUserDecision::kSettingsOpened:
     case SuggestionUserDecision::kIgnored:
+      if (ignored_impression_.has_value()) {
+        FlushIgnoredImpressionSession(
+            MultistepFilterUserBehaviorAfterIgnore::kDidNotFilterFurther);
+      }
+      ignored_impression_ = IgnoredImpressionTracker{
+          .suggestion = current_ui_session_->suggestion,
+      };
       break;
   }
   current_ui_session_->user_decision = decision;
@@ -526,21 +566,60 @@ void MultistepFilterMetricsTracker::OnPreservedSuggestionCleared() {
   }
 }
 
-void MultistepFilterMetricsTracker::
-    OnSuggestionApplicationAnnotationExtractionFinished(
-        bool was_applied_successfully) {
+void MultistepFilterMetricsTracker::OnSuggestionApplicationFinished(
+    SuggestionApplicationResult result) {
   if (!current_application_session_.has_value()) {
     return;
   }
-  if (was_applied_successfully) {
-    current_application_session_->is_applied = true;
-    current_application_session_->outcome =
-        MultistepFilterApplicationOutcome::kAllFiltersApplied;
+  current_application_session_->outcome = result;
+  current_application_session_->is_applied =
+      result == SuggestionApplicationResult::kAllFiltersApplied;
+  if (current_application_session_->is_applied) {
     LogApplicationOutcome(*current_application_session_);
   } else {
+    // In case of application failure, flush the session immediately.
     FlushSuggestionApplicationSession(
         SuggestionApplicationSessionFlushTrigger::kApplicationFailure,
         base::TimeTicks::Now());
+  }
+}
+
+void MultistepFilterMetricsTracker::OnExtractionFinished(
+    const FilterNavigationMetadata& metadata,
+    const std::optional<FilterAnnotation>& annotation) {
+  if (!ignored_impression_.has_value()) {
+    return;
+  }
+
+  FilterApplicationVerifier::Result result = FilterApplicationVerifier::Verify(
+      ignored_impression_->suggestion, annotation);
+
+  bool is_same_page =
+      metadata.is_same_document_navigation || metadata.url == metadata.prev_url;
+
+  switch (result.outcome) {
+    case SuggestionApplicationResult::kAllFiltersApplied:
+      FlushIgnoredImpressionSession(
+          MultistepFilterUserBehaviorAfterIgnore::kAppliedSameFilters);
+      break;
+    case SuggestionApplicationResult::kFailedAttributeMismatch:
+    case SuggestionApplicationResult::kFailedCountMismatch:
+      FlushIgnoredImpressionSession(
+          MultistepFilterUserBehaviorAfterIgnore::kAppliedDifferentFilters);
+      break;
+    case SuggestionApplicationResult::kFailedNoExtractedAnnotations:
+      // If the user reloaded or navigated within the same document, they are
+      // still on the target page and might manually apply filters later. Delay
+      // logging kDidNotFilterFurther until they navigate away.
+      if (!is_same_page) {
+        FlushIgnoredImpressionSession(
+            MultistepFilterUserBehaviorAfterIgnore::kDidNotFilterFurther);
+      }
+      break;
+    case SuggestionApplicationResult::kNotAllFiltersApplied:
+    case SuggestionApplicationResult::kAbandonedBeforeVerification:
+    case SuggestionApplicationResult::kFailedErrorPage:
+      NOTREACHED();
   }
 }
 
@@ -616,6 +695,13 @@ void MultistepFilterMetricsTracker::MaybeFlushSessionOnNavigation(
     trigger = kNavigationFromPageContext;
   }
   FlushSuggestionApplicationSession(trigger, metadata.navigation_start_time);
+}
+
+void MultistepFilterMetricsTracker::FlushIgnoredImpressionSession(
+    MultistepFilterUserBehaviorAfterIgnore outcome) {
+  base::UmaHistogramEnumeration(
+      kMultistepFilterUserBehaviorAfterIgnoreHistogram, outcome);
+  ignored_impression_.reset();
 }
 
 }  // namespace multistep_filter

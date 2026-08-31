@@ -148,15 +148,8 @@ class CORE_EXPORT HTMLImageElement
       const RespectImageOrientationEnum) const override;
 
   // public so that HTMLPictureElement can call this as well.
-  // `should_reset_image_replacement` determines whether we should reset any
-  // active image replacement associated with this image if the selected URL
-  // is different from the previous URL. We typically set this to false if the
-  // source change is triggered by a sizing related change.
-  using ShouldResetImageReplacement =
-      base::StrongAlias<class ShouldResetImageReplacementTag, bool>;
-  void SelectSourceURL(
-      ImageLoader::UpdateFromElementBehavior,
-      ShouldResetImageReplacement should_reset_image_replacement);
+  void SelectSourceURL(ImageLoader::UpdateFromElementBehavior behavior =
+                           ImageLoader::kUpdateNormal);
 
   void SetIsFallbackImage() { is_fallback_image_ = true; }
 
@@ -213,6 +206,10 @@ class CORE_EXPORT HTMLImageElement
   // Uses the element's current document if |document| is not specified.
   void ResetImageReplacement(Document* document = nullptr);
   void StartImageReplacement();
+
+  bool replacedByUserAgent() const;
+  DEFINE_ATTRIBUTE_EVENT_LISTENER(uareplacestart, kUareplacestart)
+  DEFINE_ATTRIBUTE_EVENT_LISTENER(uareplaceend, kUareplaceend)
 
  protected:
   // Controls how an image element appears in the layout. See:
@@ -272,6 +269,7 @@ class CORE_EXPORT HTMLImageElement
   Image* ImageContents() override;
 
   void ResetFormOwner();
+  bool IsUrlInCandidateSet(const AtomicString& url) const;
   ImageCandidate FindBestFitImageFromPictureParent();
   void SetBestFitURLAndDPRFromImageCandidate(const ImageCandidate&);
   gfx::Size DensityCorrectedIntrinsicDimensions() const;

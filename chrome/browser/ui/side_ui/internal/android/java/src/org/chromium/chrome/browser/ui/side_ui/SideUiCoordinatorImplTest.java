@@ -54,10 +54,12 @@ import org.chromium.base.test.RobolectricUtil;
 import org.chromium.base.test.util.DisabledTest;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider;
 import org.chromium.chrome.browser.browser_controls.TopControlsStacker;
+import org.chromium.chrome.browser.fullscreen.FullscreenManager;
 import org.chromium.chrome.browser.layouts.LayoutStateProvider;
 import org.chromium.chrome.browser.layouts.LayoutStateProvider.LayoutStateObserver;
 import org.chromium.chrome.browser.layouts.LayoutType;
 import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
+import org.chromium.chrome.browser.tabmodel.IncognitoStateProvider;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.AnchorSide;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.HeightType;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.SideUiId;
@@ -81,12 +83,14 @@ public class SideUiCoordinatorImplTest {
 
     @Mock private ActivityLifecycleDispatcher mActivityLifecycleDispatcher;
     @Mock private BrowserControlsStateProvider mBrowserControlsStateProvider;
+    @Mock private FullscreenManager mFullscreenManager;
     @Mock private LayoutStateProvider mLayoutStateProvider;
     @Mock private TopControlsStacker mTopControlsStacker;
     @Mock private ViewStub mLeftAnchorContainerStub;
     @Mock private ViewStub mRightAnchorContainerStub;
     @Mock private ViewStub mWebContentHairlineContainerStub;
     @Mock private SideUiObserver mSideUiObserver;
+    @Mock private IncognitoStateProvider mIncognitoStateProvider;
 
     @Captor private ArgumentCaptor<LayoutStateObserver> mLayoutStateObserverCaptor;
 
@@ -145,12 +149,14 @@ public class SideUiCoordinatorImplTest {
                         mActivityLifecycleDispatcher,
                         mLayoutStateProviderSupplier,
                         mBrowserControlsStateProvider,
+                        mFullscreenManager,
                         mTopControlsStacker,
                         anchorContainerParent,
                         mLeftAnchorContainerStub,
                         mRightAnchorContainerStub,
                         mWebContentHairlineContainerStub,
-                        mTabStripBottomPxSupplier);
+                        mTabStripBottomPxSupplier,
+                        mIncognitoStateProvider);
 
         // Initialize the SideUiContainer View.
         mSideUiContainerView = new View(mTestActivity);
@@ -168,6 +174,7 @@ public class SideUiCoordinatorImplTest {
         // The constructor is invoked in setUp().
 
         verify(mActivityLifecycleDispatcher).register(mCoordinator);
+        verify(mFullscreenManager).addObserver(mCoordinator);
         assertEquals(1, mTabStripBottomPxSupplier.getObserverCount());
     }
 
@@ -178,6 +185,7 @@ public class SideUiCoordinatorImplTest {
         mCoordinator.destroy();
 
         verify(mActivityLifecycleDispatcher).unregister(mCoordinator);
+        verify(mFullscreenManager).removeObserver(mCoordinator);
         verify(mLayoutStateProvider).removeObserver(any());
         assertEquals(0, mTabStripBottomPxSupplier.getObserverCount());
     }
@@ -955,5 +963,50 @@ public class SideUiCoordinatorImplTest {
 
         // Verifies changes in both width/height suppressed animation.
         verify(mSideUiObserver, never()).onTransitionBegun(any());
+    }
+
+    @Test
+    public void testFullscreenEvents_TriggerUiUpdate() {
+        var sideUiContainer =
+                new TestSideUiContainer(
+                        mCoordinator, mSideUiContainerView, SideUiId.SIDE_PANEL, AnchorSide.RIGHT);
+        mCoordinator.registerSideUiContainer(sideUiContainer);
+        mCoordinator.updateUi(
+                new UiUpdateRequest(sideUiContainer.getSideUiId(), /* suppressAnimations= */ true));
+
+        // When entering fullscreen, getPersistentFullscreenMode returns true.
+        doReturn(true).when(mFullscreenManager).getPersistentFullscreenMode();
+        mCoordinator.onEnterFullscreen(/* tab= */ null, /* options= */ null);
+
+        // Container determineShowableSize received isFullscreen = true.
+        assertTrue(sideUiContainer.mLastIsFullscreen);
+
+        // When exiting fullscreen, getPersistentFullscreenMode returns false.
+        doReturn(false).when(mFullscreenManager).getPersistentFullscreenMode();
+        mCoordinator.onExitFullscreen(/* tab= */ null);
+
+        assertFalse(sideUiContainer.mLastIsFullscreen);
+    }
+
+    @Test
+    public void testUpdateUi_FullscreenMode_GivesMarginForTopControlsZero() {
+        int topControlsTotalHeight = 56;
+        doReturn(topControlsTotalHeight)
+                .when(mTopControlsStacker)
+                .getVisibleTopControlsTotalHeight();
+
+        var sideUiContainer =
+                new TestSideUiContainer(
+                        mCoordinator, mSideUiContainerView, SideUiId.SIDE_PANEL, AnchorSide.RIGHT);
+        sideUiContainer.mHeightType = HeightType.WEB_CONTENTS;
+        mCoordinator.registerSideUiContainer(sideUiContainer);
+
+        doReturn(true).when(mFullscreenManager).getPersistentFullscreenMode();
+        mCoordinator.updateUi(
+                new UiUpdateRequest(sideUiContainer.getSideUiId(), /* suppressAnimations= */ true));
+
+        MarginLayoutParams rightLayoutParams =
+                (MarginLayoutParams) mRightAnchorContainer.getLayoutParams();
+        assertEquals(0, rightLayoutParams.topMargin);
     }
 }

@@ -25,6 +25,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import org.chromium.base.CallbackController;
 import org.chromium.base.CallbackUtils;
+import org.chromium.base.DeviceInfo;
 import org.chromium.base.Log;
 import org.chromium.base.TimeUtils;
 import org.chromium.base.TraceEvent;
@@ -36,6 +37,7 @@ import org.chromium.base.supplier.OneshotSupplier;
 import org.chromium.build.annotations.EnsuresNonNull;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
+import org.chromium.cc.input.BrowserControlsState;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.app.feed.FeedActionDelegateImpl;
 import org.chromium.chrome.browser.back_press.BackPressManager;
@@ -105,6 +107,7 @@ import org.chromium.chrome.browser.url_constants.UrlConstantResolver;
 import org.chromium.chrome.browser.url_constants.UrlConstantResolverFactory;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController;
 import org.chromium.components.browser_ui.styles.SemanticColorUtils;
+import org.chromium.components.browser_ui.util.BrowserControlsVisibilityDelegate;
 import org.chromium.components.browser_ui.util.FirstDrawDetector;
 import org.chromium.components.embedder_support.util.UrlConstants;
 import org.chromium.components.feature_engagement.EventConstants;
@@ -159,6 +162,7 @@ public class NewTabPage
     protected final NewTabPageManagerImpl mNewTabPageManager;
     protected final TileGroup.Delegate mTileGroupDelegate;
     private final boolean mIsLff;
+    private final boolean mIsNtpCustomizationSyncEnabled;
     private final BrowserControlsStateProvider mBrowserControlsStateProvider;
     private final BottomSheetController mBottomSheetController;
     private final NewTabPageLayout mNewTabPageLayout;
@@ -346,6 +350,8 @@ public class NewTabPage
 
             // If not visible when loading completes, wait until onShown is received.
             if (!mTab.isHidden()) recordNtpShown();
+
+            maybeUpdateCustomBackgroundFromDeviceSync();
         }
 
         @Override
@@ -455,6 +461,7 @@ public class NewTabPage
         mBrowserControlsStateProvider = browserControlsStateProvider;
         mBottomSheetController = bottomSheetController;
         mIsInNightMode = isInNightMode;
+        mIsNtpCustomizationSyncEnabled = NtpCustomizationUtils.isNTPCustomizationSyncEnabled();
         mTabStripHeightSupplier = tabStripHeightSupplier;
         mTopInsetProvider = topInsetProvider;
 
@@ -487,6 +494,7 @@ public class NewTabPage
                         if (mIsLoaded) {
                             recordNtpShown();
                         }
+                        maybeUpdateCustomBackgroundFromDeviceSync();
                         mNewTabPageCoordinator.maybeUpdateHomeModules(mIsLoaded);
                         mNewTabPageCoordinator.onSwitchToForeground();
                     }
@@ -507,6 +515,7 @@ public class NewTabPage
                 new PauseResumeWithNativeObserver() {
                     @Override
                     public void onResumeWithNative() {
+                        maybeUpdateCustomBackgroundFromDeviceSync();
                         mNewTabPageCoordinator.maybeUpdateHomeModules(mIsLoaded);
                     }
 
@@ -623,9 +632,21 @@ public class NewTabPage
                     if (mRecordedFcp) return;
                     mRecordedFcp = true;
                     long durationMs = SystemClock.uptimeMillis() - mNavigationStartMs;
-                    RecordHistogram.recordMediumTimesHistogram(
-                            "NewTabPage.LoadTime.FirstContentfulPaint",
-                            durationMs);
+                    if (DeviceInfo.isDesktop()) {
+                        // Keep collecting this histogram for Android desktop to avoid losing data.
+                        // TODO(crbug.com/531793117): Remove this histogram once we have finished
+                        // the study for Android desktop.
+                        RecordHistogram.recordMediumTimesHistogram(
+                                "NewTabPage.LoadTime.FirstContentfulPaint", durationMs);
+                    }
+                    // LINT.IfChange(page_load_histogram)
+                    RecordHistogram.recordCustomTimesHistogram(
+                            "NewTabPage.LoadTime.FirstContentfulPaint2",
+                            durationMs,
+                            10,
+                            10 * TimeUtils.MILLISECONDS_PER_MINUTE,
+                            100);
+                    // LINT.ThenChange(/components/page_load_metrics/browser/page_load_metrics_util.h:page_load_histogram)
                 });
     }
 
@@ -741,6 +762,40 @@ public class NewTabPage
                 };
         NtpCustomizationConfigManager.getInstance()
                 .addListener(mHomepageStateListener, mContext, /* skipNotify= */ false);
+    }
+
+    /**
+     * Compares standard SharedPreferences with our active in-memory cached state and applies
+     * updates from background sync.
+     *
+     * <p>This method is invoked during:
+     *
+     * <ul>
+     *   <li>Cold/Warm Starts (via {@link #onLoadingComplete} and {@link EmptyTabObserver#onShown}):
+     *       Updating background state once native initialization and page loading finish.
+     *   <li>Hot Starts / Foregrounding (via {@link
+     *       PauseResumeWithNativeObserver#onResumeWithNative}): When returning to an already-loaded
+     *       NTP.
+     *   <li>Tab Switching (via {@link EmptyTabObserver#onShown}): When switching back to an
+     *       already-loaded NTP tab.
+     * </ul>
+     */
+    private void maybeUpdateCustomBackgroundFromDeviceSync() {
+        if (!mIsNtpCustomizationSyncEnabled) {
+            return;
+        }
+
+        // Defer background state updates until native initialization has completed.
+        // During Cold/Warm starts, onResumeWithNative and onShown run early while native
+        // initialization is still in-flight. Skipping early calls prevents tearing down the
+        // Activity mid-startup. Once native initialization finishes, subsequent checks trigger
+        // cleanly.
+        if (mActivityLifecycleDispatcher == null
+                || !mActivityLifecycleDispatcher.isNativeInitializationFinished()) {
+            return;
+        }
+
+        NtpCustomizationConfigManager.getInstance().maybeApplyBackgroundUpdateFromDeviceSync();
     }
 
     private void onBackgroundChangedImpl(boolean applyWhiteBackgroundOnSearchBox) {
@@ -1365,6 +1420,17 @@ public class NewTabPage
             if (!(provider instanceof BrowserControlsVisibilityManager)) return;
 
             BrowserControlsVisibilityManager manager = (BrowserControlsVisibilityManager) provider;
+
+            // If browser controls are locked persistently in the SHOWN state (e.g., during layout
+            // transitions or background tab creation animations), ignore scroll events to prevent
+            // hiding the bottom controls.
+            BrowserControlsVisibilityDelegate visibilityDelegate =
+                    manager.getBrowserVisibilityDelegate();
+            if (visibilityDelegate != null
+                    && visibilityDelegate.get() == BrowserControlsState.SHOWN) {
+                return;
+            }
+
             int bottomControlsHeight = manager.getBottomControlsHeight();
             if (bottomControlsHeight <= 0) return;
 

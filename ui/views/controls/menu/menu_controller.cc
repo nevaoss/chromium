@@ -814,8 +814,8 @@ void MenuController::Cancel(ExitType type) {
     // triggers deleting us.
     DCHECK(selected);
     showing_ = false;
-    delegate_->OnMenuClosed(internal::MenuControllerDelegate::NOTIFY_DELEGATE,
-                            selected->GetRootMenuItem(), accept_event_flags_);
+    delegate()->OnMenuClosed(internal::MenuControllerDelegate::NOTIFY_DELEGATE,
+                             selected->GetRootMenuItem(), accept_event_flags_);
     // WARNING: the call to MenuClosed deletes us.
     return;
   }
@@ -825,7 +825,7 @@ void MenuController::Cancel(ExitType type) {
   // the drag operation completes. For non-dragging cases it is possible that
   // the release of ViewsDelegate leads immediately to shutdown, which can
   // trigger nested calls to Cancel. We want to reject these to prevent
-  // attempting a nested tear down of this and |delegate_|.
+  // attempting a nested tear down of this and the delegate.
   if (type == ExitType::kAll) {
     showing_ = false;
   }
@@ -842,7 +842,6 @@ void MenuController::Cancel(ExitType type) {
 void MenuController::AddNestedDelegate(
     internal::MenuControllerDelegate* delegate) {
   delegate_stack_.push_back(delegate);
-  delegate_ = delegate;
 }
 
 bool MenuController::IsCombobox() const {
@@ -864,7 +863,14 @@ bool MenuController::IsContextMenu() const {
 
 void MenuController::SelectItemAndOpenSubmenu(MenuItemView* item) {
   DCHECK(item);
+  auto this_ref = AsWeakPtr();
   SetSelection(item, SELECTION_OPEN_SUBMENU | SELECTION_UPDATE_IMMEDIATELY);
+
+  // Accessibility events fired as a result of the selection changing may have
+  // closed the menu and deleted `this`. Guard against that.
+  if (!this_ref) {
+    return;
+  }
 
   // If `item` has not a submenu, hot track `item`'s initial focusable button
   // if any.
@@ -1348,6 +1354,7 @@ int MenuController::OnDragUpdated(SubmenuView* source,
   }
   MenuDelegate::DropPosition drop_position = MenuDelegate::DropPosition::kNone;
   int drop_operation = ui::DragDropTypes::DRAG_NONE;
+  auto this_ref = AsWeakPtr();
   if (menu_item) {
     gfx::Point menu_item_loc(event.location());
     View::ConvertPointToTarget(source, menu_item, &menu_item_loc);
@@ -1382,6 +1389,11 @@ int MenuController::OnDragUpdated(SubmenuView* source,
     }
   } else {
     SetSelection(source->GetMenuItem(), SELECTION_OPEN_SUBMENU);
+  }
+  // Accessibility events fired as a result of the selection changing may have
+  // closed the menu and deleted `this`. Guard against that.
+  if (!this_ref) {
+    return drop_operation;
   }
   SetDropMenuItem(menu_item, drop_position);
   last_drop_operation_ = drop_operation;
@@ -1423,7 +1435,7 @@ views::View::DropCallback MenuController::GetDropCallback(
     showing_ = false;
     SetExitType(ExitType::kAll);
 
-    delegate_->OnMenuClosed(
+    delegate()->OnMenuClosed(
         internal::MenuControllerDelegate::DONT_NOTIFY_DELEGATE,
         item->GetRootMenuItem(), accept_event_flags_);
   }
@@ -2107,9 +2119,8 @@ MenuController::MenuController(bool for_drop,
     : for_drop_(for_drop),
       result_(nullptr),
       active_mouse_view_tracker_(std::make_unique<ViewTracker>()),
-      delegate_(delegate),
       alert_animation_(this) {
-  delegate_stack_.push_back(delegate_.get());
+  delegate_stack_.push_back(delegate);
   active_instance_ = this;
 }
 
@@ -2278,7 +2289,7 @@ bool MenuController::ShowSiblingMenu(SubmenuView* source,
     return false;
   }
 
-  delegate_->SiblingMenuCreated(alt_menu);
+  delegate()->SiblingMenuCreated(alt_menu);
 
   // If the delegate returns a menu, they must also return a button.
   CHECK(button);
@@ -2652,7 +2663,7 @@ void MenuController::MenuChildrenChanged(MenuItemView* item) {
     }
   }
   // Setting the selection can indirectly destroy this object via accessibility
-  // system callbacks and activation changes. This should be rare bug must be
+  // system callbacks and activation changes. This should be rare but must be
   // protected against.
   const auto weak_this = AsWeakPtr();
   SetSelection(item, SELECTION_OPEN_SUBMENU | SELECTION_UPDATE_IMMEDIATELY);
@@ -3304,7 +3315,14 @@ void MenuController::OpenSubmenuChangeSelectionIfCan() {
   }
 
   // Show the sub-menu.
+  auto this_ref = AsWeakPtr();
   SetSelection(item, SELECTION_OPEN_SUBMENU | SELECTION_UPDATE_IMMEDIATELY);
+
+  // Accessibility events fired as a result of the selection changing may have
+  // closed the menu and deleted `this`. Guard against that.
+  if (!this_ref) {
+    return;
+  }
 
   MenuItemView* to_select = nullptr;
   if (!item->GetSubmenu()->GetMenuItems().empty()) {
@@ -3621,7 +3639,7 @@ void MenuController::SetExitType(ExitType type) {
 void MenuController::ExitMenu() {
   bool nested = delegate_stack_.size() > 1;
   // ExitTopMostMenu unwinds nested delegates
-  internal::MenuControllerDelegate* delegate = delegate_;
+  internal::MenuControllerDelegate* delegate = this->delegate();
   int accept_event_flags = accept_event_flags_;
   // Since |delegate| may delete this, get a weak pointer first, and ensure
   // |result| is safe from deletion (it can be freed but will be quarantined).
@@ -3684,7 +3702,6 @@ raw_ptr<MenuItemView> MenuController::ExitTopMostMenu() {
     // Even though the menus are nested, there may not be nested delegates.
     if (delegate_stack_.size() > 1) {
       delegate_stack_.pop_back();
-      delegate_ = delegate_stack_.back().get();
     }
   } else {
 #if defined(USE_AURA)
@@ -3768,7 +3785,14 @@ void MenuController::SetInitialHotTrackedView(
   if (!item) {
     return;
   }
+  auto this_ref = AsWeakPtr();
   SetSelection(item, SELECTION_DEFAULT);
+
+  // Accessibility events fired as a result of the selection changing may have
+  // closed the menu and deleted `this`. Guard against that.
+  if (!this_ref) {
+    return;
+  }
   View* hot_view =
       GetInitialFocusableView(item, direction == INCREMENT_SELECTION_DOWN);
   SetHotTrackedButton(Button::AsButton(hot_view));

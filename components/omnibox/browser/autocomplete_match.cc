@@ -531,7 +531,7 @@ const gfx::VectorIcon& AutocompleteMatch::GetVectorIcon(
   if (suggest_template.has_value() && suggest_template->has_type_icon()) {
     // Update this assertion and the switch below whenever values are added.
     static_assert(omnibox::SuggestTemplateInfo::IconType_MAX ==
-                  omnibox::SuggestTemplateInfo::DRAFT_SPARK);
+                  omnibox::SuggestTemplateInfo::INK_PEN);
     switch (suggest_template->type_icon()) {
       case omnibox::SuggestTemplateInfo::ICON_TYPE_UNSPECIFIED:
         // When not specified, fall back on regular match icon logic below.
@@ -558,6 +558,13 @@ const gfx::VectorIcon& AutocompleteMatch::GetVectorIcon(
         return features::IsRoundedIconsEnabled()
                    ? omnibox::kSubdirectoryArrowRightIcon
                    : omnibox::kSubdirectoryArrowRightOldIcon;
+      case omnibox::SuggestTemplateInfo::GLOBE_WITH_SEARCH_LOOP:
+      case omnibox::SuggestTemplateInfo::BANANA:
+      case omnibox::SuggestTemplateInfo::DRAFT_SPARK:
+      case omnibox::SuggestTemplateInfo::LIGHTBULB:
+      case omnibox::SuggestTemplateInfo::ATTACH_FILE:
+      case omnibox::SuggestTemplateInfo::SCHOOL:
+      case omnibox::SuggestTemplateInfo::INK_PEN:
       default:
         // Out of range value defaults to search loupe.
         return features::IsRoundedIconsEnabled()
@@ -1223,10 +1230,10 @@ url_formatter::FormatUrlTypes AutocompleteMatch::GetFormatTypes(
 // static
 void AutocompleteMatch::LogSearchEngineUsed(
     const AutocompleteMatch& match,
-    TemplateURLService* template_url_service) {
+    const TemplateURLService* template_url_service) {
   DCHECK(template_url_service);
 
-  TemplateURL* template_url = match.GetTemplateURL(template_url_service);
+  const TemplateURL* template_url = match.GetTemplateURL(template_url_service);
   if (!template_url) {
     return;
   }
@@ -1319,7 +1326,7 @@ void AutocompleteMatch::LogSearchEngineUsed(
 
 void AutocompleteMatch::ComputeStrippedDestinationURL(
     const AutocompleteInput& input,
-    TemplateURLService* template_url_service) {
+    const TemplateURLService* template_url_service) {
   // Other than document suggestions, computing `stripped_destination_url` will
   // have the same result during a match's lifecycle, so it's safe to skip
   // re-computing it if it's already computed. Document provider and history
@@ -1373,7 +1380,7 @@ bool AutocompleteMatch::ShouldHideBasedOnStarterPack(
 }
 
 void AutocompleteMatch::GetKeywordUiState(
-    TemplateURLService* template_url_service,
+    const TemplateURLService* template_url_service,
     bool is_history_embeddings_enabled,
     KeywordState* keyword_state,
     std::u16string* keyword_out,
@@ -1392,7 +1399,7 @@ void AutocompleteMatch::GetKeywordUiState(
 }
 
 bool AutocompleteMatch::IsExplicitlyInvokedKeyword(
-    TemplateURLService* template_url_service) const {
+    const TemplateURLService* template_url_service) const {
   if (keyword.empty() ||
       !ui::PageTransitionCoreTypeIs(transition, ui::PAGE_TRANSITION_KEYWORD) ||
       template_url_service == nullptr) {
@@ -1418,6 +1425,9 @@ std::u16string AutocompleteMatch::GetKeywordPlaceholder(
   }
   if (!history_embeddings::GetFeatureParameters().omnibox_scoped) {
     return std::u16string();
+  }
+  if (template_url->CreatedByEnterpriseSearchAggregatorPolicy()) {
+    return l10n_util::GetStringUTF16(IDS_OMNIBOX_GEMINI_SCOPE_PLACEHOLDER_TEXT);
   }
   int message_id;
   switch (template_url->starter_pack_id()) {
@@ -1453,13 +1463,17 @@ TemplateURL* AutocompleteMatch::GetTemplateURL(
   return GetTemplateURLWithKeyword(template_url_service, keyword, "");
 }
 
+const TemplateURL* AutocompleteMatch::GetTemplateURL(
+    const TemplateURLService* template_url_service) const {
+  return GetTemplateURLWithKeyword(template_url_service, keyword, "");
+}
+
 template_url_starter_pack_data::StarterPackId AutocompleteMatch::StarterPackId(
     const TemplateURLService* template_url_service) const {
   if (!from_keyword) {
     return template_url_starter_pack_data::StarterPackId::kNone;
   }
-  const TemplateURL* turl =
-      GetTemplateURLWithKeyword(template_url_service, keyword, "");
+  const TemplateURL* turl = GetTemplateURL(template_url_service);
   return turl ? turl->starter_pack_id()
               : template_url_starter_pack_data::StarterPackId::kNone;
 }

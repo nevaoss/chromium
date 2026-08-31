@@ -11,8 +11,8 @@
 #include <vector>
 
 #include "base/time/time.h"
-#include "components/metrics/private_metrics/private_insights/events/contextual_cue_log_event.pb.h"
 #include "components/optimization_guide/proto/features/contextual_cueing.pb.h"
+#include "components/private_insights/events/contextual_cue_log_event.pb.h"
 #include "components/tabs/public/tab_interface.h"
 #include "services/metrics/public/cpp/ukm_source_id.h"
 
@@ -64,6 +64,11 @@ void RecordCueShownToPrivateInsights(
 void RecordCueingInteractionToPrivateInsights(
     Profile* profile,
     const std::string& cue_id,
+    CueTargetType cue_type,
+    const optimization_guide::proto::ContextualCue& cue,
+    tabs::TabInterface* active_tab,
+    const std::vector<tabs::TabHandle>& tabs_to_show,
+    const std::vector<optimization_guide::proto::Tab>& background_tabs,
     ContextualCueingInteraction interaction_type,
     const std::string& cuj);
 
@@ -71,7 +76,8 @@ namespace internal {
 
 // Builds the event structure without logging it.
 // Exposed here so it can be verified in lightweight unit tests.
-private_insights::events::ContextualCueLogEvent CreateContextualCueShownEvent(
+private_insights::events::ContextualCueLogEvent CreateContextualCueLogEvent(
+    private_insights::events::ContextualCueLogEvent::EventType event_type,
     const std::string& cue_id,
     CueTargetType cue_type,
     const optimization_guide::proto::ContextualCue& cue,

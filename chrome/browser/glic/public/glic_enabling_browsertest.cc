@@ -26,7 +26,6 @@
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/profiles/profile_test_util.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/tabs/tab_strip.h"
 #include "chrome/common/chrome_features.h"
@@ -557,9 +556,8 @@ class GlicEnablingSystemRequirementsTest
 
 IN_PROC_BROWSER_TEST_P(GlicEnablingSystemRequirementsTest,
                        IsSystemRequirementMet) {
-  GlicGlobalEnabling::Delegate delegate;
   EXPECT_EQ(GetParam().expected_result,
-            GlicGlobalEnabling(delegate).IsSystemRequirementMet());
+            GlicGlobalEnabling().IsSystemRequirementMet());
 }
 
 INSTANTIATE_TEST_SUITE_P(

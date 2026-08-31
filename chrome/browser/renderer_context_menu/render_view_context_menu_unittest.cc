@@ -16,6 +16,7 @@
 #include "base/memory/raw_ptr.h"
 #include "base/run_loop.h"
 #include "base/strings/utf_string_conversions.h"
+#include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
 #include "build/build_config.h"
 #include "build/buildflag.h"
@@ -42,7 +43,6 @@
 #include "chrome/browser/sync/send_tab_to_self_sync_service_factory.h"
 #include "chrome/browser/sync/sync_service_factory.h"
 #include "chrome/browser/translate/chrome_translate_client.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/test/mock_browser_window_interface.h"
 #include "chrome/browser/ui/chrome_pages.h"
@@ -58,7 +58,6 @@
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/test/base/chrome_render_view_host_test_harness.h"
 #include "chrome/test/base/search_test_utils.h"
-#include "chrome/test/base/test_browser_window.h"
 #include "chrome/test/base/testing_browser_process.h"
 #include "chrome/test/base/testing_profile.h"
 #include "components/autofill/content/browser/test_autofill_client_injector.h"
@@ -1000,6 +999,22 @@ TEST_F(RenderViewContextMenuPrefsTest,
   EXPECT_TRUE(net::GetValueForKeyInQuery(delegate.last_navigation_params()->url,
                                          "source", &source_param));
   EXPECT_EQ("chrome.ctxt", source_param);
+}
+
+TEST_F(RenderViewContextMenuPrefsTest, SearchWebForLogsSelectedTextWordCount) {
+  base::HistogramTester histogram_tester;
+  content::RenderFrameHost& main_frame = *web_contents()->GetPrimaryMainFrame();
+
+  SetUserSelectedDefaultSearchProvider("https://www.google.com/search", true);
+
+  content::ContextMenuParams params = CreateParams(MenuItem::SELECTION);
+  params.selection_text = u"Search for multiple words in selection";
+  auto menu = std::make_unique<TestRenderViewContextMenu>(main_frame, params);
+  menu->Init();
+  menu->ExecuteCommand(IDC_CONTENT_CONTEXT_SEARCHWEBFOR, 0);
+
+  histogram_tester.ExpectUniqueSample(
+      "RenderViewContextMenu.SelectedTextWordCount.SearchWeb", 6, 1);
 }
 
 TEST_F(RenderViewContextMenuPrefsTest,
@@ -2333,7 +2348,7 @@ class RenderViewContextMenuListenToThisPageTest
 
 TEST_F(RenderViewContextMenuListenToThisPageTest, MenuItemPresentWhenEnabled) {
   base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndEnableFeature(features::kImprovedReadAloud);
+  feature_list.InitAndEnableFeature(features::kReadAnythingImprovedUi);
 
   content::ContextMenuParams params = CreateParams(MenuItem::PAGE);
   TestRenderViewContextMenu menu(*web_contents()->GetPrimaryMainFrame(),
@@ -2346,7 +2361,7 @@ TEST_F(RenderViewContextMenuListenToThisPageTest, MenuItemPresentWhenEnabled) {
 
 TEST_F(RenderViewContextMenuListenToThisPageTest, MenuItemAbsentWhenDisabled) {
   base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndDisableFeature(features::kImprovedReadAloud);
+  feature_list.InitAndDisableFeature(features::kReadAnythingImprovedUi);
 
   content::ContextMenuParams params = CreateParams(MenuItem::PAGE);
   TestRenderViewContextMenu menu(*web_contents()->GetPrimaryMainFrame(),

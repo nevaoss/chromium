@@ -121,7 +121,7 @@ class SessionMetricsProfileAgentTest : public PlatformTest {
     SimulateActiveDayForTime(time, scene_state, activation_level);
   }
 
-  void SimulateActiveDayForTime(const base::Time& time,
+  void SimulateActiveDayForTime(base::Time time,
                                 SceneState* scene_state,
                                 SceneActivationLevel activation_level =
                                     SceneActivationLevelForegroundInactive) {
@@ -414,4 +414,6 @@ TEST_F(SessionMetricsProfileAgentTest, ActiveDaysCount) {
   histogram_tester.ExpectTotalCount(kActiveDays7Histogram, 9);
   histogram_tester.ExpectTotalCount(kActiveDays14Histogram, 9);
   histogram_tester.ExpectTotalCount(kActiveDays28Histogram, 9);
+  EXPECT_EQ(
+      local_state()->GetInteger(prefs::kLastRecordedActiveDaysInPast28Days), 8);
 }

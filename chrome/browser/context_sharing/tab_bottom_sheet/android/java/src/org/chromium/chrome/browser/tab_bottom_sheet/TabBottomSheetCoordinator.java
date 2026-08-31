@@ -56,10 +56,6 @@ public class TabBottomSheetCoordinator {
     private static final float FLING_VELOCITY_THRESHOLD_DP = 50f;
     private static final float SCROLL_DISTANCE_THRESHOLD_DP = 100f;
 
-    // Can be modified later to be set dynamically based on device
-    private static final float FULL_HEIGHT_RATIO = 0.7f;
-    private static final float SMALL_SCREEN_HEIGHT_RATIO = 0.9f;
-
     // Interface used by the manager to monitor events related to the state of the
     // bottom sheet.
     interface SheetEventsCallback {
@@ -97,6 +93,7 @@ public class TabBottomSheetCoordinator {
     private @Nullable TabBottomSheetPeekView mPeekView;
     private @Nullable PeekViewManager mPeekViewManager;
     private @Nullable PropertyModelChangeProcessor mPeekViewChangeProcessor;
+    private @Nullable ResizingStrategy mResizingStrategy;
 
     private boolean mIsShowingTabBottomSheet;
     private boolean mExpectingLayoutChange;
@@ -222,7 +219,7 @@ public class TabBottomSheetCoordinator {
         mSheetContent =
                 provider.createContent(
                         mContentView,
-                        FULL_HEIGHT_RATIO,
+                        TabBottomSheetUtils.getFullHeightRatio(),
                         mCoBrowseViews.getBackgroundColor(),
                         mContentView
                                 .getResources()
@@ -232,6 +229,11 @@ public class TabBottomSheetCoordinator {
         mViewBinder =
                 PropertyModelChangeProcessor.create(
                         mModel, mContentView, TabBottomSheetViewBinder::bind);
+        if (canResizeWebView()) {
+            WebViewResizingHelper helper = mCoBrowseViews.getWebViewResizingHelper();
+            assert helper != null : "WebViewResizingHelper must not be null when resizing WebView";
+            mResizingStrategy = ResizingStrategyFactory.create(helper);
+        }
     }
 
     private void onSheetContentShown(boolean animate, boolean startsExpanded) {
@@ -337,6 +339,9 @@ public class TabBottomSheetCoordinator {
             mPeekViewManager.destroy();
             mPeekViewManager = null;
         }
+        if (mResizingStrategy != null) {
+            mResizingStrategy.destroy();
+        }
         mPeekView = null;
         mSheetEventsCallback = null;
 
@@ -350,7 +355,7 @@ public class TabBottomSheetCoordinator {
     }
 
     private void setupPeekView(boolean startsExpanded) {
-        mPeekViewManager = mCoBrowseViews.getPeekViewManager();
+        mPeekViewManager = mCoBrowseViews.getOrCreatePeekViewManager();
         if (mPeekViewManager != null) {
             PropertyModel model = mPeekViewManager.getModel();
             mPeekView =
@@ -414,7 +419,8 @@ public class TabBottomSheetCoordinator {
                 }
 
                 if (canResizeWebView()) {
-                    mMediator.onSheetResizingStatusChanged(state == SheetState.SCROLLING);
+                    assert mResizingStrategy != null;
+                    mResizingStrategy.onSheetResizingStatusChanged(state == SheetState.SCROLLING);
                 }
 
                 if (state != SheetState.SCROLLING && state != SheetState.NONE) {
@@ -466,9 +472,19 @@ public class TabBottomSheetCoordinator {
             @Override
             public void onSheetOffsetChanged(float heightFraction, float offsetPx) {
                 if (mBottomSheetController.getSheetState() == SheetState.SCROLLING) {
-                    mMediator.onSheetOffsetChanged(offsetPx, isPastHalfAndLessThanFull(offsetPx));
+                    mMediator.onSheetOffsetChanged(offsetPx);
                     if (canResizeWebView()) {
-                        mMediator.updatePlaceholderHeight(offsetPx - mWebUiTopMargin);
+                        assert mSheetContent != null;
+                        assert mResizingStrategy != null;
+                        float peekHeight = mSheetContent.getPeekHeight();
+                        float halfRatio = mSheetContent.getHalfHeightRatio();
+                        float halfHeight = mBottomSheetController.getContainerHeight() * halfRatio;
+                        float fullHeight = mBottomSheetController.getMaxOffset();
+                        mResizingStrategy.onSheetOffsetChanged(
+                                offsetPx - mWebUiTopMargin,
+                                peekHeight - mWebUiTopMargin,
+                                halfHeight,
+                                fullHeight);
                     }
                 }
             }
@@ -674,25 +690,7 @@ public class TabBottomSheetCoordinator {
     }
 
     private float getDefaultHeightRatio() {
-        Configuration configuration = mContext.getResources().getConfiguration();
-        if (configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
-            return SMALL_SCREEN_HEIGHT_RATIO;
-        }
-        return isKeyboardShowing() ? SMALL_SCREEN_HEIGHT_RATIO : FULL_HEIGHT_RATIO;
-    }
-
-    private boolean isPastHalfAndLessThanFull(float offsetPx) {
-        if (mSheetContent == null || mBottomSheetController == null) return false;
-
-        if (mBottomSheetController.isSmallScreen()) return false;
-
-        float halfRatio = mSheetContent.getHalfHeightRatio();
-        if (halfRatio == BottomSheetContent.HeightMode.DISABLED) return false;
-
-        float halfOffset = mBottomSheetController.getContainerHeight() * halfRatio;
-        float fullOffset = mBottomSheetController.getMaxOffset();
-
-        return offsetPx > halfOffset && offsetPx < fullOffset;
+        return TabBottomSheetUtils.getDefaultHeightRatio(mContext, isKeyboardShowing());
     }
 
     private void updateRoundingEdges() {

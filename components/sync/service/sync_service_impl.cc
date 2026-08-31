@@ -382,7 +382,9 @@ void SyncServiceImpl::Initialize(DataTypeController::TypeVector controllers) {
   const bool is_sync_feature_requested_for_metrics =
       IsLocalSyncEnabled() ||
 #if BUILDFLAG(IS_CHROMEOS)
-      !user_settings_->IsSyncFeatureDisabledViaDashboard();
+      (!user_settings_->IsSyncFeatureDisabledViaDashboard() &&
+       (!base::FeatureList::IsEnabled(kReplaceSyncPromosWithSignInPromos) ||
+        HasSyncConsent()));
 #else
       HasSyncConsent();
 #endif  // BUILDFLAG(IS_CHROMEOS)
@@ -917,6 +919,14 @@ SyncService::UserActionableError SyncServiceImpl::GetUserActionableError()
 #endif  // !BUILDFLAG(IS_IOS) && !BUILDFLAG(IS_ANDROID)
 
   if (GetAuthError().state() != GoogleServiceAuthError::NONE) {
+#if BUILDFLAG(IS_IOS)
+    if (GetAuthError().state() ==
+            GoogleServiceAuthError::DEVICE_MANAGEMENT_ERROR &&
+        base::FeatureList::IsEnabled(
+            switches::kHandleMdmErrorsForDasherAccounts)) {
+      return UserActionableError::kDeviceManagementError;
+    }
+#endif  // BUILDFLAG(IS_IOS)
     return UserActionableError::kSignInNeedsUpdate;
   }
   if (last_actionable_error_.action == UPGRADE_CLIENT) {
@@ -1235,6 +1245,18 @@ void SyncServiceImpl::OnNewInvalidatedDataTypes() {
   NotifyObservers();
 }
 
+void SyncServiceImpl::FetchAccessToken(
+    base::OnceCallback<void(signin::AccessTokenInfo)> callback) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  if (!auth_manager_) {
+    std::move(callback).Run(signin::AccessTokenInfo());
+    return;
+  }
+
+  auth_manager_->FetchAccessToken(std::move(callback));
+}
+
 void SyncServiceImpl::OnConfigureDone(
     const DataTypeManager::ConfigureResult& result) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -1354,7 +1376,10 @@ void SyncServiceImpl::SyncAuthCredentialsChanged() {
 
   if (!engine_) {
     TryStart();
-  } else {
+  } else if (!base::FeatureList::IsEnabled(kSyncUsePropagatedAccessToken)) {
+    // When kSyncUsePropagatedAccessToken is enabled, access tokens are fetched
+    // on demand and propagated via SyncCycle when needed rather than cached in
+    // the network sync layer.
     // If the engine already exists, just propagate the new credentials.
     SyncCredentials credentials = auth_manager_->GetCredentials();
     if (credentials.access_token_info.token.empty()) {
@@ -1996,10 +2021,15 @@ SyncServiceImpl::CreateDeviceStatisticsRequest(const CoreAccountInfo& account,
       MakeUserAgentForSync(channel_), account, url);
 }
 
-std::vector<std::string>
-SyncServiceImpl::GetCurrentDeviceCacheGuidsForDeviceStatistics() {
-  return SyncTransportDataPrefs::GetCacheGuidsForAllGaiaIds(
+base::flat_set<std::string>
+SyncServiceImpl::GetCurrentDeviceCacheGuidsForAllGaiaIds() const {
+  return SyncTransportDataPrefs::GetCurrentDeviceCacheGuidsForAllGaiaIds(
       sync_client_->GetPrefService());
+}
+
+base::flat_set<std::string>
+SyncServiceImpl::GetCurrentDeviceCacheGuidsForDeviceStatistics() {
+  return GetCurrentDeviceCacheGuidsForAllGaiaIds();
 }
 
 void SyncServiceImpl::OnAccountsInCookieUpdatedWithCallback(

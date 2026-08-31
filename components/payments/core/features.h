@@ -32,6 +32,9 @@ BASE_DECLARE_FEATURE(kWebPaymentsJustInTimePaymentApp);
 // Used to test icon refetch for JIT installed apps with missing icons.
 BASE_DECLARE_FEATURE(kAllowJITInstallationWhenAppIconIsMissing);
 
+// Delays the dimming dialog background when the UI is skipped.
+BASE_DECLARE_FEATURE(kDelayNativePaymentAppScrimShow);
+
 // Used to reject the apps with partial delegation.
 BASE_DECLARE_FEATURE(kEnforceFullDelegation);
 
@@ -62,6 +65,13 @@ BASE_DECLARE_FEATURE(kPaymentRequestMandatoryPaymentAppUi);
 
 // Used to control whether camera access is allowed in Payment Handler windows.
 BASE_DECLARE_FEATURE(kPaymentHandlerCameraAccess);
+
+// Used to control whether camera access with interactive permission prompt
+// and indicator is allowed in Payment Handler windows.
+BASE_DECLARE_FEATURE(kPaymentHandlerCameraAccessUx);
+
+// Used to control whether SPC supports validating locale.
+BASE_DECLARE_FEATURE(kSPCLocaleValidation);
 
 }  // namespace features
 }  // namespace payments

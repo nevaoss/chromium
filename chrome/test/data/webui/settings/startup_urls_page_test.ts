@@ -7,62 +7,16 @@ import 'chrome://settings/settings.js';
 
 import {webUIListenerCallback} from 'chrome://resources/js/cr.js';
 import {keyEventOn} from 'chrome://webui-test/keyboard_mock_interactions.js';
-import type {SettingsStartupUrlDialogElement, SettingsStartupUrlEntryElement, SettingsStartupUrlsPageElement, StartupUrlsPageBrowserProxy} from 'chrome://settings/settings.js';
+import type {SettingsStartupUrlDialogElement, SettingsStartupUrlEntryElement, SettingsStartupUrlsPageElement, StartupPageInfo} from 'chrome://settings/settings.js';
 import {EDIT_STARTUP_URL_EVENT, PrefsBrowserProxy, PrefService, StartupUrlsPageBrowserProxyImpl} from 'chrome://settings/settings.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {microtasksFinished} from 'chrome://webui-test/test_util.js';
-import {TestBrowserProxy} from 'chrome://webui-test/test_browser_proxy.js';
 
 import {TestPrefsBrowserProxy} from './test_prefs_browser_proxy.js';
+import {TestStartupUrlsPageBrowserProxy} from './test_startup_urls_page_browser_proxy.js';
 
 // clang-format on
 
-class TestStartupUrlsPageBrowserProxy extends TestBrowserProxy implements
-    StartupUrlsPageBrowserProxy {
-  private urlIsValid_: boolean = true;
-
-  constructor() {
-    super([
-      'addStartupPage',
-      'editStartupPage',
-      'loadStartupPages',
-      'removeStartupPage',
-      'useCurrentPages',
-      'validateStartupPage',
-    ]);
-  }
-
-  setUrlValidity(isValid: boolean) {
-    this.urlIsValid_ = isValid;
-  }
-
-  addStartupPage(url: string) {
-    this.methodCalled('addStartupPage', url);
-    return Promise.resolve(this.urlIsValid_);
-  }
-
-  editStartupPage(modelIndex: number, url: string) {
-    this.methodCalled('editStartupPage', [modelIndex, url]);
-    return Promise.resolve(this.urlIsValid_);
-  }
-
-  loadStartupPages() {
-    this.methodCalled('loadStartupPages');
-  }
-
-  removeStartupPage(modelIndex: number) {
-    this.methodCalled('removeStartupPage', modelIndex);
-  }
-
-  useCurrentPages() {
-    this.methodCalled('useCurrentPages');
-  }
-
-  validateStartupPage(url: string) {
-    this.methodCalled('validateStartupPage', url);
-    return Promise.resolve(this.urlIsValid_);
-  }
-}
 
 suite('StartupUrlDialog', function() {
   let dialog: SettingsStartupUrlDialogElement;
@@ -115,6 +69,7 @@ suite('StartupUrlDialog', function() {
     // Assert that the text field is pre-populated.
     const inputElement = dialog.$.url;
     assertTrue(!!inputElement);
+    assertTrue(!!dialog.model);
     assertEquals(dialog.model.url, inputElement.value);
   });
 
@@ -322,10 +277,15 @@ suite('StartupUrlsPage', function() {
     assertFalse(!!page.shadowRoot.querySelector('#addPage'));
     assertFalse(!!page.shadowRoot.querySelector('#useCurrentPages'));
   });
+
+  // Test that 'focusgroup' is leveraged to trigger arrow button navigation
+  // within the list.
+  test('FocusgroupAttribute', function() {
+    assertEquals('toolbar block', page.$.list.getAttribute('focusgroup'));
+  });
 });
 
-/** @return {!StartupPageInfo} */
-function createSampleUrlEntry() {
+function createSampleUrlEntry(): StartupPageInfo {
   return {
     modelIndex: 2,
     title: 'Test page',

@@ -4,19 +4,20 @@
 
 package org.chromium.chrome.browser.omnibox.suggestions;
 
+import static org.chromium.build.NullUtil.assumeNonNull;
+
 import android.graphics.Color;
 import android.view.View;
 import android.view.ViewGroup;
 
 import androidx.annotation.ColorInt;
+import androidx.annotation.Px;
 
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.chrome.browser.omnibox.R;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxLayoutMode;
 import org.chromium.chrome.browser.omnibox.styles.OmniboxResourceProvider;
 import org.chromium.chrome.browser.ui.theme.BrandedColorScheme;
-import org.chromium.chrome.browser.ui.vertical_tabs.VerticalTabUtils;
-import org.chromium.ui.base.ViewUtils;
 import org.chromium.ui.modelutil.ListObservable;
 import org.chromium.ui.modelutil.MVCListAdapter.ModelList;
 import org.chromium.ui.modelutil.PropertyKey;
@@ -28,11 +29,6 @@ import org.chromium.ui.modelutil.PropertyModelChangeProcessor;
 class SuggestionListViewBinder
         implements PropertyModelChangeProcessor.ViewBinder<
                 PropertyModel, SuggestionListViewBinder.SuggestionListViewHolder, PropertyKey> {
-    private final OmniboxResourceProvider mResourceProvider;
-
-    public SuggestionListViewBinder(OmniboxResourceProvider resourceProvider) {
-        mResourceProvider = resourceProvider;
-    }
 
     /** Holds the view components needed to renderer the suggestion list. */
     public static class SuggestionListViewHolder {
@@ -51,13 +47,18 @@ class SuggestionListViewBinder
      */
     @Override
     public void bind(PropertyModel model, SuggestionListViewHolder view, PropertyKey propertyKey) {
+        // The resource provider must be set before any other properties are set and binded b/c
+        // some properties depend on it.
+        view.dropdown.setResourceProvider(model.get(SuggestionListProperties.RESOURCE_PROVIDER));
+
         if (SuggestionListProperties.ACTIVITY_WINDOW_FOCUSED.equals(propertyKey)) {
             updateContainerVisibility(model, view);
-        } else if (SuggestionListProperties.ALLOW_PARKING_AT_SENTINEL.equals(propertyKey)) {
-            view.dropdown.setAllowParkingAtSentinel(
-                    model.get(SuggestionListProperties.ALLOW_PARKING_AT_SENTINEL));
+        } else if (SuggestionListProperties.SELECTION_MODE.equals(propertyKey)) {
+            view.dropdown.setSelectionMode(model.get(SuggestionListProperties.SELECTION_MODE));
         } else if (SuggestionListProperties.ALPHA.equals(propertyKey)) {
             view.dropdown.setChildAlpha(model.get(SuggestionListProperties.ALPHA));
+        } else if (SuggestionListProperties.APPLY_VERTICAL_PADDING.equals(propertyKey)) {
+            updateVerticalPadding(model, view);
         } else if (SuggestionListProperties.CHILD_TRANSLATION_Y.equals(propertyKey)) {
             view.dropdown.translateChildrenVertical(
                     model.get(SuggestionListProperties.CHILD_TRANSLATION_Y));
@@ -123,6 +124,9 @@ class SuggestionListViewBinder
                     model.get(SuggestionListProperties.OMNIBOX_SESSION_ACTIVE));
         } else if (SuggestionListProperties.RESET_SELECTION.equals(propertyKey)) {
             view.dropdown.resetSelection();
+        } else if (SuggestionListProperties.RESOURCE_PROVIDER.equals(propertyKey)) {
+            view.dropdown.setResourceProvider(
+                    model.get(SuggestionListProperties.RESOURCE_PROVIDER));
         } else if (SuggestionListProperties.SUGGESTION_MODELS.equals(propertyKey)) {
             ModelList listItems = model.get(SuggestionListProperties.SUGGESTION_MODELS);
             listItems.addObserver(
@@ -143,7 +147,8 @@ class SuggestionListViewBinder
             // When the suggestions list is installed for the first time, it may already contain
             // elements. Be sure to capture and reflect this fact appropriately.
             updateContainerVisibility(model, view);
-        } else if (SuggestionListProperties.APPLY_MARGIN_FOR_LEFT_SIDE_BAR.equals(propertyKey)) {
+        } else if (SuggestionListProperties.APPLY_MARGIN_FOR_LEFT_SIDE_BAR.equals(propertyKey)
+                || SuggestionListProperties.LEFT_SIDE_BAR_MARGIN_PX.equals(propertyKey)) {
             updateContainerMargin(model, view);
         }
     }
@@ -152,8 +157,8 @@ class SuggestionListViewBinder
         @FuseboxLayoutMode int layoutMode = model.get(SuggestionListProperties.FUSEBOX_LAYOUT_MODE);
         @ColorInt
         int backgroundColor =
-                mResourceProvider.getSuggestionBackgroundColor(
-                        layoutMode, /* isDropdownContainer= */ true);
+                getResourceProvider(model)
+                        .getSuggestionBackgroundColor(layoutMode, /* isDropdownContainer= */ true);
 
         holder.dropdown.setBackgroundColor(backgroundColor);
 
@@ -163,6 +168,17 @@ class SuggestionListViewBinder
         } else {
             holder.container.setBackgroundColor(backgroundColor);
         }
+    }
+
+    private static void updateVerticalPadding(PropertyModel model, SuggestionListViewHolder holder) {
+        boolean applyVerticalPadding = model.get(SuggestionListProperties.APPLY_VERTICAL_PADDING);
+        @Px
+        int topPadding =
+                applyVerticalPadding ? getResourceProvider(model).getDropdownTopPadding() : 0;
+        @Px
+        int bottomPadding =
+                applyVerticalPadding ? getResourceProvider(model).getDropdownBottomPadding() : 0;
+        holder.dropdown.setVerticalPadding(topPadding, bottomPadding);
     }
 
     private static void updateContainerVisibility(
@@ -183,6 +199,10 @@ class SuggestionListViewBinder
         updateContainerMargin(model, holder);
     }
 
+    private static OmniboxResourceProvider getResourceProvider(PropertyModel model) {
+        return assumeNonNull(model.get(SuggestionListProperties.RESOURCE_PROVIDER));
+    }
+
     private static void updateContainerMargin(
             PropertyModel model, SuggestionListViewHolder holder) {
         OmniboxSuggestionsContainer container = holder.container;
@@ -193,15 +213,9 @@ class SuggestionListViewBinder
                             ViewGroup.LayoutParams.MATCH_PARENT,
                             ViewGroup.LayoutParams.WRAP_CONTENT);
         }
-        // TODO(crbug.com/521986417): Consider plumbing SideUiStateProvider to get the
-        // Vertical Tabs panel width. Using the constant works for now since the width is
-        // fixed in MVP.
         boolean applyMargin = model.get(SuggestionListProperties.APPLY_MARGIN_FOR_LEFT_SIDE_BAR);
-        int leftMargin =
-                applyMargin
-                        ? ViewUtils.dpToPx(
-                                container.getContext(), VerticalTabUtils.SIDE_UI_CONTAINER_WIDTH_DP)
-                        : 0;
+        int marginPx = model.get(SuggestionListProperties.LEFT_SIDE_BAR_MARGIN_PX);
+        int leftMargin = applyMargin ? marginPx : 0;
         if (layoutParams.leftMargin != leftMargin) {
             layoutParams.leftMargin = leftMargin;
             container.setLayoutParams(layoutParams);

@@ -17,6 +17,7 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
+#include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/browser/ui/tabs/features.h"
 #include "chrome/browser/ui/tabs/split_tab_menu_model.h"
 #include "chrome/browser/ui/tabs/split_tab_util.h"
@@ -61,6 +62,7 @@
 #include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/controls/menu/menu_item_view.h"
 #include "ui/views/controls/menu/submenu_view.h"
+#include "ui/views/interaction/view_focus_observer.h"
 #include "ui/webui/tracked_element/tracked_element_handler.h"
 #include "ui/webui/tracked_element/tracked_element_web_ui.h"
 #include "url/gurl.h"
@@ -135,6 +137,10 @@ class SplitTabButtonInteractiveTest
       features.push_back(::features::kWebUIReloadButton);
       features.push_back(::features::kWebUISplitTabsButton);
     }
+    // TODO(crbug.com/452061489): Fix tests that fail when the WebUI Omnibox is
+    // enabled and then remove these.
+    features.push_back(omnibox::internal::kWebUIOmniboxPopup);
+    features.push_back(omnibox::internal::kWebUIOmniboxAimPopup);
     return features;
   }
 
@@ -632,8 +638,12 @@ IN_PROC_BROWSER_TEST_P(SplitTabButtonInteractiveTest, EnterSplitView) {
       WaitForShow(kToolbarSplitTabsToolbarButtonElementId),
       WaitForElementNonzeroSize(kToolbarSplitTabsToolbarButtonElementId),
       WaitForAXNode(), DoWaitForLayout(), WaitForTabCount(1),
+      ObserveState(
+          views::test::kCurrentFocusedViewId,
+          BrowserView::GetBrowserViewForBrowser(browser())->GetWidget()),
       ClickSplitTabButton(), WaitForTabCount(2), CheckTabInSplit(0, true),
-      CheckTabInSplit(1, true));
+      CheckTabInSplit(1, true),
+      WaitForState(views::test::kCurrentFocusedViewId, kOmniboxElementId));
 }
 
 IN_PROC_BROWSER_TEST_P(SplitTabButtonInteractiveTest, ToggleMenu) {

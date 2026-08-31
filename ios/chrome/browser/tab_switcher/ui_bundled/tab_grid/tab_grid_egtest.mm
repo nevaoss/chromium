@@ -360,6 +360,23 @@ std::unique_ptr<net::test_server::HttpResponse> HandleRequest(
       assertWithMatcher:grey_sufficientlyVisible()];
 }
 
+// Tests that pressing a TabGrid keyboard shortcut (such as Cmd+1 to switch to
+// the Incognito panel) when the tab grid is not visible does not trigger the
+// TabGrid page change.
+- (void)testShortcutIgnoredWhenTabGridNotVisible {
+  [[EarlGrey selectElementWithMatcher:chrome_test_util::ShowTabsButton()]
+      assertWithMatcher:grey_sufficientlyVisible()];
+
+  // Send Cmd+1 (which is the shortcut for TabGridPageIncognitoTabs).
+  [ChromeEarlGrey simulatePhysicalKeyboardEvent:@"1"
+                                          flags:UIKeyModifierCommand];
+
+  // Open the TabGrid and verify it opened to the Regular Tabs panel.
+  [ChromeEarlGreyUI openTabGrid];
+  [[EarlGrey selectElementWithMatcher:TabGridOpenTabsPanelButton()]
+      assertWithMatcher:grey_sufficientlyVisible()];
+}
+
 // Tests that tapping on the first cell shows that tab.
 - (void)testTappingOnFirstCell {
   [ChromeEarlGreyUI openTabGrid];

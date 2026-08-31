@@ -22,7 +22,6 @@
 #include "components/sessions/core/session_id.h"
 #include "mojo/public/cpp/base/big_buffer.h"
 #include "third_party/lens_server_proto/lens_overlay_request_id.pb.h"
-#include "third_party/lens_server_proto/modality_chip_props.pb.h"
 
 class GURL;
 class PrefService;
@@ -32,8 +31,10 @@ struct ThreadTurn;
 }  // namespace contextual_tasks
 
 namespace lens {
-enum class MimeType;
+class ClientToAimMessage;
 struct ContextualInputData;
+class ModalityChipProps;
+enum class MimeType;
 namespace proto {
 class LensOverlaySuggestInputs;
 }  // namespace proto
@@ -99,11 +100,20 @@ class ContextualSearchSessionHandle {
   }
   void set_smart_tab_sharing_active(std::optional<bool> active);
 
-  bool smart_tab_sharing_toggled_off_in_thread() const {
-    return smart_tab_sharing_toggled_off_in_thread_;
+  bool smart_tab_sharing_toggled_since_last_turn() const {
+    return smart_tab_sharing_toggled_since_last_turn_;
   }
-  void set_smart_tab_sharing_toggled_off_in_thread(bool toggled_off) {
-    smart_tab_sharing_toggled_off_in_thread_ = toggled_off;
+  void set_smart_tab_sharing_toggled_since_last_turn(bool toggled) {
+    smart_tab_sharing_toggled_since_last_turn_ = toggled;
+  }
+
+  const std::vector<lens::LensOverlayRequestId>&
+  sts_toggled_removed_contexts() const {
+    return sts_toggled_removed_contexts_;
+  }
+  void set_sts_toggled_removed_contexts(
+      std::vector<lens::LensOverlayRequestId> contexts) {
+    sts_toggled_removed_contexts_ = std::move(contexts);
   }
 
   std::optional<lens::LensOverlayInvocationSource> invocation_source() const {
@@ -124,7 +134,7 @@ class ContextualSearchSessionHandle {
 
   // Returns the ContextualSearchMetricsRecorder reference held by this handle
   // or nullptr if the session is not valid.
-  ContextualSearchMetricsRecorder* GetMetricsRecorder() const;
+  virtual ContextualSearchMetricsRecorder* GetMetricsRecorder() const;
 
   // Notifies the session handle that the session has started.
   virtual void NotifySessionStarted();
@@ -279,6 +289,10 @@ class ContextualSearchSessionHandle {
   // confirmation that they are available on the server.
   std::vector<base::UnguessableToken> GetSubmittedContextTokens() const;
 
+  // Returns true if any context tokens were submitted in any query in this
+  // session.
+  bool has_submitted_context() const { return has_submitted_context_; }
+
   // Clears the list of submitted context tokens for this particular instance of
   // the session. This is intended to be invoked when the server has responded
   // that it has received the submitted context.
@@ -357,6 +371,9 @@ class ContextualSearchSessionHandle {
   // the contextual tasks ui.
   std::vector<base::UnguessableToken> submitted_context_tokens_;
 
+  // Whether any context tokens were submitted in a query in this session.
+  bool has_submitted_context_ = false;
+
   // Map of tab session IDs to their latest submitted token and request ID.
   // Tracks active tabs in the session to detect their deletion or removal.
   std::map<SessionID,
@@ -393,10 +410,16 @@ class ContextualSearchSessionHandle {
   // Whether smart tab sharing is active for this session.
   std::optional<bool> smart_tab_sharing_active_;
 
-  // Whether smart tab sharing was explicitly toggled off since the last
-  // query submission and we need to clear the context on next query submission.
+  // Whether smart tab sharing was toggled since the last query submission
+  // (either smart tab sharing to manual or manual to smart tab sharing) and we
+  // need to clear the context on next query submission.
   // This is reset after the next query submission.
-  bool smart_tab_sharing_toggled_off_in_thread_ = false;
+  bool smart_tab_sharing_toggled_since_last_turn_ = false;
+
+  // Request IDs of submitted and uploaded contexts collected when Smart Tab
+  // Sharing was toggled, to be sent to AIM via `removed_contexts` on the next
+  // query submission turn.
+  std::vector<lens::LensOverlayRequestId> sts_toggled_removed_contexts_;
 
   // This needs to be the last member to ensure all outstanding WeakPtrs are
   // invalidated before the rest of the members.

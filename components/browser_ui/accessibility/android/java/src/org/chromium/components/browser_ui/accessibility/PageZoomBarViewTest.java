@@ -162,6 +162,11 @@ public class PageZoomBarViewTest {
                     public boolean isCurrentTabNull() {
                         return false;
                     }
+
+                    @Override
+                    public boolean canShowPopupWindow() {
+                        return true;
+                    }
                 };
 
         ThreadUtils.runOnUiThreadBlocking(

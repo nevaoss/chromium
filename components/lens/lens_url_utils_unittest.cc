@@ -118,6 +118,11 @@ INSTANTIATE_TEST_SUITE_P(
         InvocationSourceParamTestCase{
             lens::LensOverlayInvocationSource::kNtpActionChips, "ntpac"},
         InvocationSourceParamTestCase{
-            lens::LensOverlayInvocationSource::kAppBarAimButton, "abab"}));
+            lens::LensOverlayInvocationSource::kAppBarAimButton, "abab"},
+        InvocationSourceParamTestCase{
+            lens::LensOverlayInvocationSource::kOmniboxEverywhereComposebox,
+            "oecb"},
+        InvocationSourceParamTestCase{
+            lens::LensOverlayInvocationSource::kOmniboxPopupButton, "obpb"}));
 
 }  // namespace lens

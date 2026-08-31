@@ -42,7 +42,7 @@ gfx::Image WebosResourceDelegate::GetNativeImageNamed(int resource_id) {
   return gfx::Image();
 }
 
-base::RefCountedStaticMemory* WebosResourceDelegate::LoadDataResourceBytes(
+scoped_refptr<base::RefCountedMemory> WebosResourceDelegate::LoadDataResourceBytes(
     int resource_id,
     ui::ResourceScaleFactor scale_factor) {
   return nullptr;

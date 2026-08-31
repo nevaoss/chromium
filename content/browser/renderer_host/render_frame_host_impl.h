@@ -125,6 +125,7 @@
 #include "net/net_buildflags.h"
 #include "services/device/public/mojom/vibration_manager.mojom.h"
 #include "services/metrics/public/cpp/ukm_source_id.h"
+#include "services/network/public/cpp/connection_allowlist.h"
 #include "services/network/public/cpp/cross_origin_embedder_policy.h"
 #include "services/network/public/cpp/cross_origin_opener_policy.h"
 #include "services/network/public/cpp/permissions_policy/permissions_policy.h"
@@ -269,6 +270,9 @@ class UkmRecorder;
 namespace features {
 
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kDoNotEvictOnAXLocationChange);
+
+CONTENT_EXPORT BASE_DECLARE_FEATURE(
+    kDefaultToMainFrameFocusWhenNoSubframeFocused);
 
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kEnforceUserActivationForBeforeUnload);
 }  // namespace features
@@ -472,6 +476,7 @@ class CONTENT_EXPORT RenderFrameHostImpl
   // RenderFrameHost
   const blink::StorageKey& GetStorageKey() const override;
   int GetRoutingID() const override;
+  int64_t GetNavigationId() const override;
   const blink::LocalFrameToken& GetFrameToken() const override;
   const perfetto::Track& GetTracingTrack() const override;
   const base::UnguessableToken& GetReportingSource() override;
@@ -504,6 +509,8 @@ class CONTENT_EXPORT RenderFrameHostImpl
   // TODO (crbug.com/1251545) : Frame tree node id should only be known for
   // subframes. As such, update this method.
   FrameTreeNodeId GetFrameTreeNodeId() const override;
+  blink::DOMNodeIdType GetFocusedDOMNodeId() const override;
+  EditableLevel GetFocusedEditableLevel() const override;
   const base::UnguessableToken& GetDevToolsFrameToken() override;
   std::optional<base::UnguessableToken> GetEmbeddingToken() override;
   const std::string& GetFrameName() override;
@@ -647,6 +654,10 @@ class CONTENT_EXPORT RenderFrameHostImpl
   //   the navigation actually commits.
   // - the RenderFrameHost is speculative
   const blink::DocumentToken& GetDocumentToken() const;
+
+  const base::UnguessableToken& current_initiator_state_token() const {
+    return current_initiator_state_token_;
+  }
 
   // Retrieving the document token is disallowed during times when the result
   // might be misleading / confusing (kPendingCommit or kSpeculative).
@@ -792,6 +803,15 @@ class CONTENT_EXPORT RenderFrameHostImpl
   void PerformAction(const ui::AXActionData& data) override;
   bool RequiresPerformActionPointInPixels() const override;
 
+  // Returns whether or not this RenderFrameHost is a descendant of |ancestor|.
+  // This is equivalent to check that |ancestor| is reached by iterating on
+  // GetParent().
+  // This is a strict relationship, a RenderFrameHost is never an ancestor of
+  // itself.
+  // This does not consider inner frame trees (i.e. not accounting for fenced
+  // frames or GuestView).
+  bool IsDescendantOfWithinFrameTree(RenderFrameHostImpl* ancestor);
+
   // Creates a RenderFrame in the renderer process.
   bool CreateRenderFrame(
       const std::optional<blink::FrameToken>& previous_frame_token,
@@ -928,17 +948,6 @@ class CONTENT_EXPORT RenderFrameHostImpl
   // Set the URL of the document represented by this RenderFrameHost. Called
   // when the navigation commits. See also `GetLastCommittedURL`.
   void SetLastCommittedUrl(const GURL& url);
-
-  // RenderFrameHost represents a document in a frame. It is either:
-  // 1. The initial empty document,
-  // 2. A document created by a navigation.
-  //
-  // In case of (2), this returns the ID of the navigation who created this
-  // document.
-  //
-  // Note 1: This is updated after receiving DidCommitNavigation IPC.
-  // Note 2: Same-document navigation are not updating this field.
-  int64_t navigation_id() const { return navigation_id_; }
 
   // The most recent non-net-error URL to commit in this frame.  In almost all
   // cases, use GetLastCommittedURL instead.
@@ -1507,6 +1516,13 @@ class CONTENT_EXPORT RenderFrameHostImpl
   // a renderer.
   void UpdateAXTreeData();
 
+  // Clears the embedder parent AX tree id from this frame's
+  // BrowserAccessibilityManager. Unlike UpdateAXTreeData() this does not
+  // re-derive the id from the surface-embed connector, so it can be called
+  // while the connector is still alive to drop the id before the connector goes
+  // away.
+  void ClearEmbedderAXTreeData();
+
   // Updating focus in the presence of multiple frame trees requires multiple
   // focus changes. The existence of this class will defer UpdateAXTreeData()
   // until this process has finished and the focus states are consistent.
@@ -1541,7 +1557,7 @@ class CONTENT_EXPORT RenderFrameHostImpl
   // Indicates that this process wants the |untrusted_stack_trace| parameter of
   // FrameHost.DidAddMessageToConsole() to be filled in as much as possible for
   // log_level == kError messages.
-  void SetWantErrorMessageStackTrace();
+  void SetWantErrorMessageStackTrace() override;
 
   // Listens to the change events of the cookies associated with the domain of
   // the specified URL during initialization. It also contains the information
@@ -1700,10 +1716,7 @@ class CONTENT_EXPORT RenderFrameHostImpl
 
   // END IPC REVIEW BOUNDARY
 
-  // Returns whether the frame is focused. A frame is considered focused when it
-  // is the parent chain of the focused frame within the frame tree. In
-  // addition, its associated RenderWidgetHost has to be focused.
-  bool IsFocused();
+  bool IsFocused() override;
 
   // Sets the WebUI owned by `request` as the WebUI for this RenderFrameHost,
   // which is based on the provided `request`'s URL.
@@ -2356,6 +2369,14 @@ class CONTENT_EXPORT RenderFrameHostImpl
     return required_csp_.get();
   }
 
+  // The Connection-Allowlist required of documents framed by this one, via the
+  // `connectionallowlist` attribute (Connection-Allowlist embedded
+  // enforcement). Used to propagate the requirement to descendant frames.
+  const std::optional<network::ConnectionAllowlist>&
+  required_connection_allowlist() const {
+    return required_connection_allowlist_;
+  }
+
   bool IsCredentialless() const override;
 
   bool IsLastCrossDocumentNavigationStartedByUser() const override;
@@ -2425,10 +2446,6 @@ class CONTENT_EXPORT RenderFrameHostImpl
   }
 
   int renderer_exit_count() const { return renderer_exit_count_; }
-
-  std::unique_ptr<base::UnguessableToken> TakeSandboxOriginToken() {
-    return std::move(sandbox_origin_token_);
-  }
 
   // Returns the sandbox origin token that was last consumed by
   // `SetOriginDependentStateOfNewFrame()`, for verification in tests.
@@ -2569,6 +2586,7 @@ class CONTENT_EXPORT RenderFrameHostImpl
   void UpdateFaviconURL(std::vector<blink::mojom::FaviconURLPtr> favicon_urls,
                         blink::mojom::FaviconUpdateReason reason) override;
   void DownloadURL(blink::mojom::DownloadURLParamsPtr params) override;
+  void ShowCaptionSettings() override;
   void FocusedElementChanged(
       bool is_editable_element,
       bool is_richly_editable_element,
@@ -2679,6 +2697,13 @@ class CONTENT_EXPORT RenderFrameHostImpl
       mojo::PendingAssociatedRemote<blink::mojom::UnboundedSurfaceClient>
           client,
       const gfx::Rect& bounds) override;
+  enum class UnboundedElementAuth {
+    kDenied,
+    kAllowedOpenWeb,
+    kAllowedPrivileged,
+  };
+  UnboundedElementAuth GetUnboundedElementAuth() const;
+
   UnboundedSurfaceWindow* GetUnboundedSurfaceWindow();
   RenderWidgetHostViewBase* GetUnboundedSurfaceRootView(
       RenderWidgetHostViewBase** out_parent_view = nullptr);
@@ -3017,7 +3042,7 @@ class CONTENT_EXPORT RenderFrameHostImpl
   // origin when the frame is sandboxed (i.e., has the `kOrigin` sandbox flag).
   // For child iframes, the token is passed in from frame creation. For
   // sandboxed popups via `window.open()`, it is null here and generated
-  // on-demand, then stored in `sandbox_origin_token_` to be sent to the
+  // on-demand, then stored in `PageImpl` to be sent to the
   // renderer.
   void SetOriginDependentStateOfNewFrame(
       RenderFrameHostImpl* creator_frame,
@@ -3462,6 +3487,8 @@ class CONTENT_EXPORT RenderFrameHostImpl
   FRIEND_TEST_ALL_PREFIXES(RenderFrameHostImplTest, NavigationStateKeepAlive);
   FRIEND_TEST_ALL_PREFIXES(RenderFrameHostImplTest,
                            CreateNewWindowInvalidDisposition);
+  FRIEND_TEST_ALL_PREFIXES(RenderFrameHostImplTest,
+                           InvalidConnectionAllowlistAttributeIsBadMessage);
   FRIEND_TEST_ALL_PREFIXES(RenderFrameHostImplBrowserTest,
                            FindImmediateLocalRoots);
   FRIEND_TEST_ALL_PREFIXES(RenderFrameHostImplBrowserTest,
@@ -3593,7 +3620,6 @@ class CONTENT_EXPORT RenderFrameHostImpl
   FRIEND_TEST_ALL_PREFIXES(
       NavigationSuddenTerminationDisablerTypeBrowserTest,
       NavigationSuddenTerminationDisablerTypeRecordUmaActivation);
-  FRIEND_TEST_ALL_PREFIXES(NavigationRequestTest, SharedStorageWritable);
   FRIEND_TEST_ALL_PREFIXES(WebContentsImplBrowserTest, SetTitleOnPagehide);
   FRIEND_TEST_ALL_PREFIXES(SitePerProcessBrowserTest,
                            DetachedIframePagehideHandlerABCB);
@@ -3653,14 +3679,6 @@ class CONTENT_EXPORT RenderFrameHostImpl
       bool is_credentialless,
       std::optional<base::UnguessableToken> fenced_frame_nonce_for_navigation);
 
-  // Returns whether or not this RenderFrameHost is a descendant of |ancestor|.
-  // This is equivalent to check that |ancestor| is reached by iterating on
-  // GetParent().
-  // This is a strict relationship, a RenderFrameHost is never an ancestor of
-  // itself.
-  // This does not consider inner frame trees (i.e. not accounting for fenced
-  // frames or GuestView).
-  bool IsDescendantOfWithinFrameTree(RenderFrameHostImpl* ancestor);
 
   // mojom::FrameHost:
   void CreateNewWindow(mojom::CreateNewWindowParamsPtr params,
@@ -3996,8 +4014,7 @@ class CONTENT_EXPORT RenderFrameHostImpl
   // Update this frame's last committed origin. This will also update the origin
   // and the "has_potentially_trustworthy_unique_origin" bit in the
   // FrameReplicationState.
-  void SetLastCommittedOrigin(const url::Origin& origin,
-                              bool is_potentially_trustworthy_unique_origin);
+  void SetLastCommittedOrigin(const url::Origin& origin);
 
   // Stores a snapshot of the inherited base URL from the initiator's
   // FrameLoadRequest, if this document inherited one (e.g., about:srcdoc).
@@ -4309,12 +4326,18 @@ class CONTENT_EXPORT RenderFrameHostImpl
 
   // Sets |policy_container_host_| and associates it with the current frame.
   // |policy_container_host| must not be nullptr.
+  // `current_initiator_state_token_` will also be set to
+  // `new_initiator_state_token` to reflect the update of policies in the
+  // RenderFrameHost.
   void SetPolicyContainerHost(
-      scoped_refptr<PolicyContainerHost> policy_container_host);
+      scoped_refptr<PolicyContainerHost> policy_container_host,
+      const base::UnguessableToken& new_initiator_state_token);
 
   // PolicyContainerHost::Client:
   void DidChangeReferrerPolicy(
       network::mojom::ReferrerPolicy referrer_policy) final;
+  void DidUpdateInitiatorStateToken(
+      const base::UnguessableToken& new_initiator_state_token) final;
 
   // Initializes |local_network_access_request_policy_|. Constructor helper.
   void InitializeLocalNetworkAccessRequestPolicy();
@@ -5048,6 +5071,9 @@ class CONTENT_EXPORT RenderFrameHostImpl
   // The editability level of the focused element in this frame's document.
   EditableLevel focused_editable_level_ = EditableLevel::kNotEditable;
 
+  // The DOMNodeId of the focused editable element in this frame's document.
+  blink::DOMNodeIdType focused_editable_dom_node_id_;
+
   std::unique_ptr<PendingNavigation> pending_navigate_;
 
   // Renderer-side states that blocks fast shutdown of the frame.
@@ -5427,6 +5453,11 @@ class CONTENT_EXPORT RenderFrameHostImpl
   // stored when the frame commits the navigation.
   network::mojom::ContentSecurityPolicyPtr required_csp_;
 
+  // The Connection-Allowlist this document requires of the documents it frames
+  // (Connection-Allowlist embedded enforcement), stored when the frame commits
+  // the navigation so descendant frames can inherit it.
+  std::optional<network::ConnectionAllowlist> required_connection_allowlist_;
+
   // The PolicyContainerHost for the current document, containing security
   // policies that apply to it. It should never be null if the RenderFrameHost
   // is displaying a document. Its lifetime should coincide with the lifetime of
@@ -5442,6 +5473,17 @@ class CONTENT_EXPORT RenderFrameHostImpl
   // PolicyContainer. Cf. the documentation string of the PolicyContainerHost
   // class for more information.
   scoped_refptr<PolicyContainerHost> policy_container_host_;
+
+  // Used to identify the current state of the RenderFrameHost and retrieve an
+  // InitiatorNavigationState to pass to navigations started from this
+  // RenderFrameHost in this state. Note that this doesn't always correspond to
+  // the InitiatorNavigationState set at the time this document was created,
+  // because it could've changed with dynamic CSP policies set via meta tags,
+  // or the referrer policy being updated in the renderer process.
+  // TODO(crbug.com/510258191): Actually have the InitiatorNavigationState be
+  // indexed on an initiator state token, once the initiator state token is
+  // properly set in the browser and renderer processes.
+  base::UnguessableToken current_initiator_state_token_;
 
   // The current document's HTTP response head. This is used by back-forward
   // cache, for navigating a second time toward the same document.
@@ -5631,21 +5673,6 @@ class CONTENT_EXPORT RenderFrameHostImpl
       tracing_track_;
 
   base::MemoryConsumerRegistration memory_consumer_registration_;
-
-  // Token used to deterministically generate the opaque origin for the initial
-  // empty document of a sandboxed popup (e.g.,
-  // `window.open('', '', 'sandbox=allow-scripts')`). Sent to the renderer via
-  // `mojom::CreateNewWindowReply` and `mojom::CreateViewParams` so both
-  // processes derive the same origin.
-  //
-  // Generated on-demand in `SetOriginDependentStateOfNewFrame()`
-  // when the main frame is sandboxed. Consumed (reset to nullptr) by
-  // `TakeSandboxOriginToken()` when building the reply.
-  //
-  // TODO(crbug.com/489973915): Move this to PageImpl, as it is only needed
-  // for main frames (popups). For iframes, the token is consumed immediately
-  // in `SetOriginDependentStateOfNewFrame()` and does not need to be stored.
-  std::unique_ptr<base::UnguessableToken> sandbox_origin_token_;
 
   // Stores the sandbox origin token value after it is consumed by
   // `SetOriginDependentStateOfNewFrame()`, for use in tests to verify the

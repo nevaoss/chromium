@@ -594,6 +594,119 @@ TEST_P(GLES2DecoderTest, TexImage2DGLError) {
       texture->GetLevelSize(GL_TEXTURE_2D, level, &width, &height, nullptr));
 }
 
+TEST_P(GLES2DecoderManualInitTest,
+       TexImage2DUnpackOverlappingRowsWorkaroundGLError) {
+  gpu::GpuDriverBugWorkarounds workarounds;
+  workarounds.unpack_overlapping_rows_separately_unpack_buffer = true;
+  InitState init;
+  init.gl_version = "OpenGL ES 3.0";
+  init.context_type = CONTEXT_TYPE_OPENGLES3;
+  InitDecoderWithWorkarounds(init, workarounds);
+
+  const GLsizei kWidth = 2;
+  const GLsizei kHeight = 2;
+  const GLint kRowLength = 1;
+  const GLenum kFormat = GL_RGBA;
+  const GLenum kType = GL_UNSIGNED_BYTE;
+  const GLint kBufferSize = 16;
+
+  DoBindTexture(GL_TEXTURE_2D, client_texture_id_, kServiceTextureId);
+
+  cmds::PixelStorei pixel_store_cmd;
+  pixel_store_cmd.Init(GL_UNPACK_ROW_LENGTH, kRowLength);
+  EXPECT_EQ(error::kNoError, ExecuteCmd(pixel_store_cmd));
+
+  EXPECT_CALL(*gl_, PixelStorei(GL_UNPACK_ROW_LENGTH, kRowLength))
+      .Times(1)
+      .RetiresOnSaturation();
+  EXPECT_CALL(*gl_, PixelStorei(GL_UNPACK_IMAGE_HEIGHT, 0))
+      .Times(1)
+      .RetiresOnSaturation();
+  DoBindBuffer(GL_PIXEL_UNPACK_BUFFER, client_buffer_id_, kServiceBufferId);
+  DoBufferData(GL_PIXEL_UNPACK_BUFFER, kBufferSize);
+
+  TextureManager* manager = group().texture_manager();
+  TextureRef* texture_ref = manager->GetTexture(client_texture_id_);
+  ASSERT_TRUE(texture_ref != nullptr);
+  Texture* texture = texture_ref->texture();
+
+  EXPECT_CALL(*gl_, PixelStorei(_, _)).Times(AnyNumber());
+  EXPECT_CALL(*gl_, BindBuffer(GL_PIXEL_UNPACK_BUFFER, _)).Times(AnyNumber());
+  EXPECT_CALL(*gl_, TexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, kWidth, kHeight, 0,
+                               kFormat, kType, nullptr))
+      .Times(1)
+      .RetiresOnSaturation();
+  EXPECT_CALL(
+      *gl_, TexSubImage2D(GL_TEXTURE_2D, 0, 0, _, kWidth, 1, kFormat, kType, _))
+      .Times(kHeight)
+      .RetiresOnSaturation();
+  EXPECT_CALL(*gl_, GetError())
+      .WillOnce(Return(GL_NO_ERROR))
+      .WillOnce(Return(GL_NO_ERROR))
+      .WillOnce(Return(GL_OUT_OF_MEMORY))
+      .RetiresOnSaturation();
+  cmds::TexImage2D cmd;
+  cmd.Init(GL_TEXTURE_2D, 0, GL_RGBA, kWidth, kHeight, kFormat, kType, 0, 0);
+  EXPECT_EQ(error::kNoError, ExecuteCmd(cmd));
+  EXPECT_FALSE(texture->IsLevelCleared(GL_TEXTURE_2D, 0));
+  EXPECT_FALSE(texture->SafeToRenderFrom());
+  EXPECT_EQ(GL_OUT_OF_MEMORY, GetGLError());
+}
+
+TEST_P(GLES2DecoderManualInitTest, TexImage2DUnpackAlignmentWorkaroundGLError) {
+  gpu::GpuDriverBugWorkarounds workarounds;
+  workarounds.unpack_alignment_workaround_with_unpack_buffer = true;
+  InitState init;
+  init.gl_version = "OpenGL ES 3.0";
+  init.context_type = CONTEXT_TYPE_OPENGLES3;
+  InitDecoderWithWorkarounds(init, workarounds);
+
+  const GLsizei kWidth = 2;
+  const GLsizei kHeight = 2;
+  const GLenum kFormat = GL_RGB;
+  const GLenum kType = GL_UNSIGNED_BYTE;
+  // Padded row size 8 (alignment 4), unpadded row size 6; pixels_size = 14.
+  const GLint kBufferSize = 14;
+
+  DoBindTexture(GL_TEXTURE_2D, client_texture_id_, kServiceTextureId);
+
+  EXPECT_CALL(*gl_, PixelStorei(GL_UNPACK_ROW_LENGTH, 0))
+      .Times(1)
+      .RetiresOnSaturation();
+  EXPECT_CALL(*gl_, PixelStorei(GL_UNPACK_IMAGE_HEIGHT, 0))
+      .Times(1)
+      .RetiresOnSaturation();
+  DoBindBuffer(GL_PIXEL_UNPACK_BUFFER, client_buffer_id_, kServiceBufferId);
+  DoBufferData(GL_PIXEL_UNPACK_BUFFER, kBufferSize);
+
+  TextureManager* manager = group().texture_manager();
+  TextureRef* texture_ref = manager->GetTexture(client_texture_id_);
+  ASSERT_TRUE(texture_ref != nullptr);
+  Texture* texture = texture_ref->texture();
+
+  EXPECT_CALL(*gl_, PixelStorei(_, _)).Times(AnyNumber());
+  EXPECT_CALL(*gl_, BindBuffer(GL_PIXEL_UNPACK_BUFFER, _)).Times(AnyNumber());
+  EXPECT_CALL(*gl_, TexImage2D(GL_TEXTURE_2D, 0, GL_RGB, kWidth, kHeight, 0,
+                               kFormat, kType, nullptr))
+      .Times(1)
+      .RetiresOnSaturation();
+  EXPECT_CALL(
+      *gl_, TexSubImage2D(GL_TEXTURE_2D, 0, 0, _, kWidth, _, kFormat, kType, _))
+      .Times(2)
+      .RetiresOnSaturation();
+  EXPECT_CALL(*gl_, GetError())
+      .WillOnce(Return(GL_NO_ERROR))
+      .WillOnce(Return(GL_NO_ERROR))
+      .WillOnce(Return(GL_OUT_OF_MEMORY))
+      .RetiresOnSaturation();
+  cmds::TexImage2D cmd;
+  cmd.Init(GL_TEXTURE_2D, 0, GL_RGB, kWidth, kHeight, kFormat, kType, 0, 0);
+  EXPECT_EQ(error::kNoError, ExecuteCmd(cmd));
+  EXPECT_FALSE(texture->IsLevelCleared(GL_TEXTURE_2D, 0));
+  EXPECT_FALSE(texture->SafeToRenderFrom());
+  EXPECT_EQ(GL_OUT_OF_MEMORY, GetGLError());
+}
+
 TEST_P(GLES2DecoderTest, TexSubImage2DGLErrorDoesNotMarkLevelAsCleared) {
   DoBindTexture(GL_TEXTURE_2D, client_texture_id_, kServiceTextureId);
   DoTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0,
@@ -4307,6 +4420,7 @@ TEST_P(GLES3DecoderTest, ImmutableTextureBaseLevelMaxLevelClamping) {
   GLsizei kDepth = 20;
   GLint kClampedBaseLevel = kLevels - 1;
   GLint kClampedMaxLevel = kLevels - 1;
+  GLint kMax3DLevel = 10;  // log2(kMax3DTextureSize (1024))
 
   DoBindTexture(kTarget, client_texture_id_, kServiceTextureId);
   TextureRef* texture_ref =
@@ -4314,9 +4428,10 @@ TEST_P(GLES3DecoderTest, ImmutableTextureBaseLevelMaxLevelClamping) {
   ASSERT_TRUE(texture_ref != nullptr);
   Texture* texture = texture_ref->texture();
 
-  // Before TexStorage3D call, base/max levels are not clamped.
+  // Before TexStorage3D call, base/max levels are clamped to target max levels.
   {
-    EXPECT_CALL(*gl_, TexParameteri(kTarget, GL_TEXTURE_BASE_LEVEL, kBaseLevel))
+    EXPECT_CALL(*gl_,
+                TexParameteri(kTarget, GL_TEXTURE_BASE_LEVEL, kMax3DLevel))
         .Times(1)
         .RetiresOnSaturation();
     cmds::TexParameteri cmd;
@@ -4324,7 +4439,7 @@ TEST_P(GLES3DecoderTest, ImmutableTextureBaseLevelMaxLevelClamping) {
     EXPECT_EQ(error::kNoError, ExecuteCmd(cmd));
   }
   {
-    EXPECT_CALL(*gl_, TexParameteri(kTarget, GL_TEXTURE_MAX_LEVEL, kMaxLevel))
+    EXPECT_CALL(*gl_, TexParameteri(kTarget, GL_TEXTURE_MAX_LEVEL, kMax3DLevel))
         .Times(1)
         .RetiresOnSaturation();
     cmds::TexParameteri cmd;
@@ -4332,8 +4447,8 @@ TEST_P(GLES3DecoderTest, ImmutableTextureBaseLevelMaxLevelClamping) {
     EXPECT_EQ(error::kNoError, ExecuteCmd(cmd));
   }
   EXPECT_EQ(GL_NO_ERROR, GetGLError());
-  EXPECT_EQ(kBaseLevel, texture->base_level());
-  EXPECT_EQ(kMaxLevel, texture->max_level());
+  EXPECT_EQ(kMax3DLevel, texture->base_level());
+  EXPECT_EQ(kMax3DLevel, texture->max_level());
 
   {
     EXPECT_CALL(*gl_, TexStorage3D(kTarget, kLevels, kInternalFormat, kWidth,
@@ -4420,7 +4535,9 @@ TEST_P(GLES3DecoderTest, ClearRenderableLevelsWithOutOfRangeBaseLevel) {
   ASSERT_TRUE(texture_ref != nullptr);
 
   {
-    EXPECT_CALL(*gl_, TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 55));
+    // GL_TEXTURE_2D max levels is log2(kMaxTextureSize (2048)) = 11.
+    // 55 is clamped to 11.
+    EXPECT_CALL(*gl_, TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 11));
     cmds::TexParameteri cmd;
     cmd.Init(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 55);
     EXPECT_EQ(error::kNoError, ExecuteCmd(cmd));
@@ -4473,6 +4590,85 @@ TEST_P(GLES3DecoderNPOTImmutableTest,
   cmds::TexParameteri param_cmd;
   param_cmd.Init(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 1);
   EXPECT_EQ(error::kLostContext, ExecuteCmd(param_cmd));
+}
+
+class GLES3DecoderReattachTextureAfterLayerIncreaseTest
+    : public GLES3DecoderManualInitTest {};
+
+INSTANTIATE_TEST_SUITE_P(Service,
+                         GLES3DecoderReattachTextureAfterLayerIncreaseTest,
+                         ::testing::Bool());
+
+TEST_P(GLES3DecoderReattachTextureAfterLayerIncreaseTest,
+       ReattachTextureAfterLayerIncrease) {
+  InitState init;
+  init.gl_version = "OpenGL ES 3.0";
+  init.context_type = CONTEXT_TYPE_OPENGLES3;
+  gpu::GpuDriverBugWorkarounds workarounds;
+  workarounds.reattach_texture_to_fbo_after_layer_increase = GetParam();
+  InitDecoderWithWorkarounds(init, workarounds);
+
+  const GLenum kTarget = GL_TEXTURE_2D_ARRAY;
+  const GLint kLevel = 0;
+  const GLint kInternalFormat = GL_RGBA8;
+  const GLsizei kWidth = 4;
+  const GLsizei kHeight = 4;
+  const GLsizei kDepth = 1;
+  const GLsizei kNewDepth = 2;
+  const GLenum kFormat = GL_RGBA;
+  const GLenum kType = GL_UNSIGNED_BYTE;
+
+  DoBindTexture(kTarget, client_texture_id_, kServiceTextureId);
+  DoTexImage3D(kTarget, kLevel, kInternalFormat, kWidth, kHeight, kDepth, 0,
+               kFormat, kType, 0, 0);
+
+  DoBindFramebuffer(GL_FRAMEBUFFER, client_framebuffer_id_,
+                    kServiceFramebufferId);
+
+  EXPECT_CALL(*gl_,
+              FramebufferTextureLayer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                                      kServiceTextureId, kLevel, 0))
+      .Times(1)
+      .RetiresOnSaturation();
+  cmds::FramebufferTextureLayer attach_cmd;
+  attach_cmd.Init(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, client_texture_id_,
+                  kLevel, 0);
+  EXPECT_EQ(error::kNoError, ExecuteCmd(attach_cmd));
+  EXPECT_EQ(GL_NO_ERROR, GetGLError());
+
+  // Calling TexImage3D with increased depth should trigger detach, TexImage3D,
+  // and re-attach when the workaround is enabled.
+  EXPECT_CALL(*gl_, BindFramebufferEXT(_, _)).Times(::testing::AnyNumber());
+  ::testing::InSequence sequence;
+  if (GetParam()) {
+    EXPECT_CALL(*gl_, FramebufferTextureLayer(GL_FRAMEBUFFER,
+                                              GL_COLOR_ATTACHMENT0, 0, 0, 0))
+        .Times(1)
+        .RetiresOnSaturation();
+  }
+  EXPECT_CALL(*gl_, GetError())
+      .WillOnce(Return(GL_NO_ERROR))
+      .RetiresOnSaturation();
+  EXPECT_CALL(*gl_, TexImage3D(kTarget, kLevel, _, kWidth, kHeight, kNewDepth,
+                               0, kFormat, kType, _))
+      .Times(1)
+      .RetiresOnSaturation();
+  EXPECT_CALL(*gl_, GetError())
+      .WillOnce(Return(GL_NO_ERROR))
+      .RetiresOnSaturation();
+  if (GetParam()) {
+    EXPECT_CALL(*gl_,
+                FramebufferTextureLayer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                                        kServiceTextureId, kLevel, 0))
+        .Times(1)
+        .RetiresOnSaturation();
+  }
+
+  cmds::TexImage3D cmd;
+  cmd.Init(kTarget, kLevel, kInternalFormat, kWidth, kHeight, kNewDepth,
+           kFormat, kType, 0, 0);
+  EXPECT_EQ(error::kNoError, ExecuteCmd(cmd));
+  EXPECT_EQ(GL_NO_ERROR, GetGLError());
 }
 
 // TODO(gman): Complete this test.

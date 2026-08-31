@@ -34,18 +34,6 @@ RealtimeEventUploadHelper::~RealtimeEventUploadHelper() = default;
 
 std::optional<RealtimeEventUploadHelper::ReportingContext>
 RealtimeEventUploadHelper::PrepareUpload(bool per_profile) {
-  // For new realtime reporting features, we only support the Protobuf pipeline.
-  // Therefore, if kUploadRealtimeReportingEventsUsingProto is not enabled, we
-  // must abort the upload entirely to prevent crashing the underlying
-  // CloudPolicyClient, which strictly enforces this flag.
-  if (!base::FeatureList::IsEnabled(
-          policy::kUploadRealtimeReportingEventsUsingProto)) {
-    VLOG_POLICY(1, REPORTING)
-        << "Real time reporting proto feature is not enabled. Skipping "
-        << reporting_scope_ << " " << event_name_ << " report upload.";
-    return std::nullopt;
-  }
-
   enterprise_connectors::RealtimeReportingClientBase*
       real_time_reporting_client = GetRealTimeReportingClient();
 
@@ -69,8 +57,15 @@ RealtimeEventUploadHelper::PrepareUpload(bool per_profile) {
                           std::move(dm_token.value()), per_profile};
 }
 
+bool RealtimeEventUploadHelper::IsRealTimeReportingClientAvailable() const {
+  return GetRealTimeReportingClient() != nullptr;
+}
+
+bool RealtimeEventUploadHelper::IsEligibleForUpload(bool per_profile) const {
+  return GetDMToken(per_profile).has_value();
+}
 std::optional<std::string> RealtimeEventUploadHelper::GetDMToken(
-    bool per_profile) {
+    bool per_profile) const {
 #if BUILDFLAG(IS_CHROMEOS)
   // On ChromeOS, we must always use the profile DM token because
   // BrowserDMTokenStorage does not exist, and policy::GetDMToken(nullptr)
@@ -92,7 +87,7 @@ std::optional<std::string> RealtimeEventUploadHelper::GetDMToken(
 }
 
 enterprise_connectors::RealtimeReportingClientBase*
-RealtimeEventUploadHelper::GetRealTimeReportingClient() {
+RealtimeEventUploadHelper::GetRealTimeReportingClient() const {
   if (profile_) {
     return enterprise_connectors::RealtimeReportingClientFactory::GetForProfile(
         profile_);

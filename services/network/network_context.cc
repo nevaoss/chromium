@@ -44,6 +44,7 @@
 #include "base/task/task_traits.h"
 #include "base/task/thread_pool.h"
 #include "base/time/time.h"
+#include "base/trace_event/trace_event.h"
 #include "base/types/optional_util.h"
 #include "build/build_config.h"
 #include "build/chromecast_buildflags.h"
@@ -786,6 +787,7 @@ NetworkContext::NetworkContext(
       prefetch_cache_(prefetch_enabled_ ? std::make_unique<PrefetchCache>()
                                         : nullptr),
       variations_headers_(std::move(params_->initial_variations_headers)) {
+  TRACE_EVENT0("loading", "NetworkContext::NetworkContext");
 
   if (features::ShouldBindNetworkContextDirectReceiver()) {
     receiver_.emplace<DirectReceiver>(mojo::DirectReceiverKey{}, this);
@@ -1001,6 +1003,7 @@ NetworkContext::NetworkContext(
            net::handles::kInvalidNetworkHandle)),
       prefetch_cache_(prefetch_enabled_ ? std::make_unique<PrefetchCache>()
                                         : nullptr) {
+  TRACE_EVENT0("loading", "NetworkContext::NetworkContext");
 
   if (features::ShouldBindNetworkContextDirectReceiver()) {
     receiver_.emplace<DirectReceiver>(mojo::DirectReceiverKey{}, this);
@@ -1041,6 +1044,11 @@ void NetworkContext::CreateNetLogEntriesForActiveWebSockets(
 
 NetworkContext::~NetworkContext() {
   is_destructing_ = true;
+
+  // Clear pending HttpCacheDataRemovers and counters explicitly to cancel
+  // any in-flight background operations and avoid callback races.
+  http_cache_data_removers_.clear();
+  http_cache_data_counters_.clear();
 
   // May be nullptr in tests.
   if (network_service_) {
@@ -1253,7 +1261,7 @@ void NetworkContext::GetRestrictedCookieManager(
           cookie_manager_->cookie_settings(), origin, isolation_info,
           cookie_setting_overrides, devtools_cookie_setting_overrides,
           std::move(cookie_observer), std::move(first_party_set_metadata),
-          network_service_->metrics_updater());
+          network_service_->GetMetricsUpdater());
 
   auto callback = base::BindOnce(&NetworkContext::OnRCMDisconnect,
                                  base::Unretained(this), ptr.get());
@@ -2161,7 +2169,8 @@ void NetworkContext::CreateWebSocket(
     mojo::PendingRemote<mojom::WebSocketAuthenticationHandler> auth_handler,
     mojo::PendingRemote<mojom::TrustedHeaderClient> header_client,
     const std::optional<base::UnguessableToken>& throttling_profile_id,
-    const base::UnguessableToken& network_restrictions_id) {
+    const base::UnguessableToken& network_restrictions_id,
+    mojom::IPAddressSpace target_address_space) {
 #if BUILDFLAG(ENABLE_WEBSOCKETS)
   if (!websocket_factory_) {
     websocket_factory_ = std::make_unique<WebSocketFactory>(this);
@@ -2176,7 +2185,7 @@ void NetworkContext::CreateWebSocket(
       static_cast<net::NetworkTrafficAnnotationTag>(traffic_annotation),
       std::move(handshake_client), std::move(url_loader_network_observer),
       std::move(auth_handler), std::move(header_client), throttling_profile_id,
-      network_restrictions_id);
+      network_restrictions_id, target_address_space);
 #endif  // BUILDFLAG(ENABLE_WEBSOCKETS)
 }
 
@@ -2191,6 +2200,7 @@ void NetworkContext::CreateWebTransport(
         anticipated_concurrent_incoming_unidirectional_streams,
     std::optional<uint16_t>
         anticipated_concurrent_incoming_bidirectional_streams,
+    std::vector<net::HttpRequestHeaders::HeaderKeyValuePair> additional_headers,
     mojo::PendingRemote<mojom::WebTransportHandshakeClient>
         pending_handshake_client,
     mojo::PendingRemote<mojom::URLLoaderNetworkServiceObserver>
@@ -2208,8 +2218,8 @@ void NetworkContext::CreateWebTransport(
   web_transports_.insert(std::make_unique<WebTransport>(
       url, origin, key, fingerprints, application_protocols, congestion_control,
       anticipated_concurrent_incoming_unidirectional_streams,
-      anticipated_concurrent_incoming_bidirectional_streams, this,
-      std::move(pending_handshake_client),
+      anticipated_concurrent_incoming_bidirectional_streams,
+      std::move(additional_headers), this, std::move(pending_handshake_client),
       std::move(url_loader_network_observer),
       std::move(client_security_state)));
 }
@@ -2288,7 +2298,7 @@ void NetworkContext::CreateHostResolver(
     // different overrides.  But since this is only used for special cases for
     // now, much easier to create entirely separate net::HostResolver instances.
     net::HostResolver::ManagerOptions options;
-    options.insecure_dns_client_enabled = true;
+    options.insecure_dns_mode = net::InsecureDnsMode::kEnabledBuiltIn;
     // Assume additional types are unnecessary for these special cases.
     options.additional_types_via_insecure_dns_enabled = false;
     options.dns_config_overrides = config_overrides.value();
@@ -2838,14 +2848,17 @@ size_t NetworkContext::NumOpenWebTransports() const {
   return std::ranges::count(web_transports_, false, &WebTransport::torn_down);
 }
 
-bool NetworkContext::AllURLLoaderFactoriesAreBoundToNetworkForTesting(
+WebTransport* NetworkContext::GetWebTransportForTesting() {
+  CHECK_EQ(web_transports_.size(), 1u);
+  return web_transports_.begin()->get();
+}
+
+size_t NetworkContext::CountURLLoaderFactoriesBoundToNetworkForTesting(
     net::handles::NetworkHandle target_network) const {
-  for (const auto& factory : url_loader_factories_) {
-    if (factory->GetBoundNetworkForTesting() != target_network) {
-      return false;
-    }
-  }
-  return true;
+  return std::ranges::count_if(
+      url_loader_factories_, [target_network](const auto& factory) {
+        return factory->GetBoundNetworkForTesting() == target_network;
+      });
 }
 
 void NetworkContext::OnHttpAuthDynamicParamsChanged(
@@ -3623,6 +3636,7 @@ void NetworkContext::EnsureMounted(network::TransferableDirectory* directory) {
 #endif  // BUILDFLAG(IS_DIRECTORY_TRANSFER_REQUIRED)
 
 void NetworkContext::InitializeCorsParams() {
+  TRACE_EVENT0("loading", "NetworkContext::InitializeCorsParams");
   for (const auto& pattern : params_->cors_origin_access_list) {
     cors_origin_access_list_.SetAllowListForOrigin(pattern->source_origin,
                                                    pattern->allow_patterns);
@@ -3884,11 +3898,6 @@ void NetworkContext::Prefetch(
       client->BindNewPipeAndPassRemote(), traffic_annotation);
 }
 
-void NetworkContext::GetBoundNetworkForTesting(
-    GetBoundNetworkForTestingCallback callback) {
-  std::move(callback).Run(url_request_context()->bound_network());
-}
-
 void NetworkContext::GetDeviceBoundSessionManager(
     mojo::PendingReceiver<network::mojom::DeviceBoundSessionManager>
         device_bound_session_manager) {
@@ -3955,18 +3964,26 @@ bool NetworkContext::IsNetworkForNetworkRestrictionsIdAndUrlAllowed(
   auto restriction_allowed = [&](const NetworkRestriction& r, bool enforced) {
     const auto& patterns = enforced ? r.enforced_allowlisted_patterns
                                     : r.report_only_allowlisted_patterns;
-    const auto& redirect_behavior = enforced ? r.enforced_redirect_behavior
-                                             : r.report_only_redirect_behavior;
+    if (!patterns.has_value()) {
+      // A null pattern implies the response does not contain the corresponding
+      // header at all. No restriction should be applied.
+      return true;
+    }
 
     if (is_redirect) {
+      // For redirects, the URL is not matched against the patterns. Connection
+      // allowlist's redirect directive specifies the behavior.
+      const auto& redirect_behavior = enforced
+                                          ? r.enforced_redirect_behavior
+                                          : r.report_only_redirect_behavior;
       return redirect_behavior == ConnectionAllowlist::RedirectBehavior::kAllow;
     }
-    return !patterns.has_value() ||
-           std::ranges::any_of(
-               *patterns,
-               [&url](
-                   const std::unique_ptr<url_pattern::SimpleUrlPatternMatcher>&
-                       matcher) { return matcher->Match(url); });
+
+    // Match the URL against the patterns.
+    return std::ranges::any_of(
+        *patterns,
+        [&url](const std::unique_ptr<url_pattern::SimpleUrlPatternMatcher>&
+                   matcher) { return matcher->Match(url); });
   };
 
   // First, check against the report-only allowlist, reporting violations:
@@ -4063,6 +4080,7 @@ bool NetworkContext::IsHostResolutionForNetworkRestrictionsIdAndHostAllowed(
 }
 
 void NetworkContext::InitializePrefetchURLLoaderFactory() {
+  TRACE_EVENT0("loading", "NetworkContext::InitializePrefetchURLLoaderFactory");
   auto pending_receiver =
       prefetch_url_loader_factory_remote_.BindNewPipeAndPassReceiver();
   CreateURLLoaderFactory(std::move(pending_receiver),
@@ -4082,6 +4100,11 @@ void NetworkContext::SetVariationsHeaders(
     variations::mojom::VariationsHeadersPtr variations_headers) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   variations_headers_ = std::move(variations_headers);
+}
+
+void NetworkContext::SetExpectedTargetNetworkForTesting(
+    std::optional<int64_t> target_network) {
+  url_request_context_->set_expected_target_network_for_testing(target_network);
 }
 
 bool NetworkContext::HasCookieAccessForDeviceBoundSession(

@@ -10,24 +10,22 @@
 #import "ios/chrome/browser/app_bar/ui/app_bar_consumer.h"
 #import "ios/chrome/browser/fullscreen/model/fullscreen_browser_agent_observer_bridge.h"
 #import "ios/chrome/browser/fullscreen/ui_bundled/fullscreen_ui_element.h"
-#import "ios/chrome/browser/keyboard/ui_bundled/responder_chaining.h"
 
 @protocol AppBarMutator;
 @protocol GeminiCommands;
 @class LayoutGuideCenter;
-@class LayoutState;
 @protocol SceneCommands;
+@class SceneLayoutState;
 @protocol TabGridCommands;
 
 // View controller for the App Bar.
 @interface AppBarViewController
     : UIViewController <AppBarConsumer,
                         FullscreenBrowserAgentObserving,
-                        FullscreenUIElement,
-                        ResponderChaining>
+                        FullscreenUIElement>
 
 // The layout state.
-@property(nonatomic, weak) LayoutState* layoutState;
+@property(nonatomic, weak) SceneLayoutState* layoutState;
 
 // The mutator.
 @property(nonatomic, weak) id<AppBarMutator> mutator;

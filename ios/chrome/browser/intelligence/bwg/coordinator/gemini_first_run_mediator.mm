@@ -137,6 +137,26 @@ const CGFloat kPromoMaxImpressionCount = 3;
                       country:nsCountry];
 }
 
+- (BOOL)shouldShowPromoForFirstRunType:(GeminiFirstRunType)firstRunType {
+  return self.shouldShowPromo && (firstRunType != GeminiFirstRunType::kLive);
+}
+
+- (BOOL)shouldShowBrandingHeaderForFirstRunType:
+    (GeminiFirstRunType)firstRunType {
+  return firstRunType != GeminiFirstRunType::kLive;
+}
+
+- (std::vector<GeminiFirstRunStepIdentifier>)stepsForFirstRunType:
+    (GeminiFirstRunType)firstRunType {
+  // Using std::vector to avoid boxing C++ enum class values into NSNumber.
+  std::vector<GeminiFirstRunStepIdentifier> steps;
+  if ([self shouldShowPromoForFirstRunType:firstRunType]) {
+    steps.push_back(GeminiFirstRunStepIdentifier::kPromo);
+  }
+  steps.push_back(GeminiFirstRunStepIdentifier::kConsent);
+  return steps;
+}
+
 #pragma mark - Private
 
 - (void)logPromoShown {
@@ -183,8 +203,7 @@ const CGFloat kPromoMaxImpressionCount = 3;
 #pragma mark - GeminiFirstRunMutator
 
 - (BOOL)shouldShowImageRemixRow {
-  return IsGeminiImageRemixToolShowFRERowEnabled() &&
-         gemini::IsFeatureAvailable(gemini::Feature::kImageRemix,
+  return gemini::IsFeatureAvailable(gemini::Feature::kImageRemix,
                                     _identityManager);
 }
 
@@ -250,6 +269,50 @@ const CGFloat kPromoMaxImpressionCount = 3;
     void (^completion)(BOOL) = _FRECompletion;
     _FRECompletion = nil;
     completion(success);
+  }
+}
+
+// Handles tap on a consent link action.
+- (void)didTapConsentLinkWithAction:(NSString*)actionString {
+  RecordFirstRunConsentAction(IOSGeminiFirstRunAction::kLinkClick);
+  if ([actionString isEqualToString:kGeminiFirstFootnoteLinkAction]) {
+    [self openNewTabWithURL:GURL(kFirstFootnoteLinkURL)];
+  } else if ([actionString isEqualToString:kGeminiSecondFootnoteLinkAction]) {
+    [self openNewTabWithURL:GURL(kSecondFootnoteLinkURL)];
+  } else if ([actionString
+                 isEqualToString:kGeminiSecondBoxLinkActionManagedAccount]) {
+    [self openNewTabWithURL:GURL(kSecondBoxLinkURLManagedAccount)];
+  } else if ([actionString isEqualToString:
+                               kGeminiSecondBoxLink1ActionNonManagedAccount]) {
+    [self openNewTabWithURL:GURL(kSecondBoxLink1URLNonManagedAccount)];
+  } else if ([actionString isEqualToString:
+                               kGeminiSecondBoxLink2ActionNonManagedAccount]) {
+    [self openNewTabWithURL:GURL(kSecondBoxLink2URLNonManagedAccount)];
+  } else if ([actionString
+                 isEqualToString:kGeminiLivePrivacyNoticeLinkAction]) {
+    [self openNewTabWithURL:GURL(kLivePrivacyNoticeLinkURL)];
+  } else if ([actionString isEqualToString:kGeminiLiveLearnMoreLinkAction]) {
+    [self openNewTabWithURL:GURL(kLiveLearnMoreLinkURL)];
+  } else if ([actionString
+                 isEqualToString:kGeminiLivePrivacyPolicyLinkAction]) {
+    [self openNewTabWithURL:GURL(kLivePrivacyPolicyLinkURL)];
+  } else if ([actionString
+                 isEqualToString:kGeminiLivePrivacyHubManagedLinkAction]) {
+    [self openNewTabWithURL:GURL(kLivePrivacyHubManagedLinkURL)];
+  } else if ([actionString isEqualToString:kGeminiKoreanTermsLinkAction]) {
+    [self openNewTabWithURL:GURL(kKoreanTermsFootnoteLinkURL)];
+  } else if ([actionString isEqualToString:kGeminiWatchLinkAction]) {
+    [self openNewTabWithURL:GURL(kWatchLinkURL)];
+  } else if ([actionString
+                 isEqualToString:kGeminiDataGovernanceManagedLinkAction]) {
+    [self openNewTabWithURL:GURL(kDataGovernanceManagedLinkURL)];
+  } else if ([actionString isEqualToString:kGeminiActivityLinkAction]) {
+    [self openNewTabWithURL:GURL(kActivityLinkURL)];
+  } else if ([actionString isEqualToString:kGeminiChoicesLinkAction]) {
+    [self openNewTabWithURL:GURL(kChoicesLinkURL)];
+  } else if ([actionString
+                 isEqualToString:kGeminiConnectedServicesLinkAction]) {
+    [self openNewTabWithURL:GURL(kConnectedServicesLinkURL)];
   }
 }
 

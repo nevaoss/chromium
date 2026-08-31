@@ -14,18 +14,31 @@
 #include "chrome/browser/platform_experience/delegated_tasks/delegated_task.h"
 #include "url/gurl.h"
 
+// LINT.IfChange(SearchPromotionExitCode)
+enum class SearchPromotionExitCode {
+  // Pre-execution registration errors:
+  kInvalidExtensionId = 100,
+  kInvalidPostInstallUrl = 101,
+  kRegistryWriteFailed = 102,
+
+  // Arm A:
+  kUrlLaunchFailed = 103,
+  kUrlLaunchSuccess = 104,
+
+  // Arm B:
+  kTimeout = 105,
+  kSuccessBackground = 106,
+  kSuccessWithForegroundFallback = 107,
+  kForegroundFallbackLaunchFailed = 108,
+};
+// LINT.ThenChange(//tools/metrics/histograms/metadata/search/enums.xml:SearchPromotionExitCode)
+
+// Returns the string/variant name for the given exit code.
+std::string_view SearchPromotionExitCodeToString(SearchPromotionExitCode code);
+
 namespace base {
 class CommandLine;
 }
-
-enum class SearchPromotionExitCode {
-  kInvalidExtensionId = 100,
-  kInvalidPostInstallUrl = 101,
-  kForegroundFallbackLaunchFailed = 102,
-  kTimeout = 103,
-  kSuccessBackground = 104,
-  kSuccessWithForegroundFallback = 105,
-};
 
 class RegisterSearchPromotionTask : public platform_experience::DelegatedTask {
  public:
@@ -45,8 +58,6 @@ class RegisterSearchPromotionTask : public platform_experience::DelegatedTask {
 
   static std::unique_ptr<RegisterSearchPromotionTask> FromCommandLine(
       const base::CommandLine& command_line);
-
-  static std::optional<SearchPromotionExitCode> ParseExitCode(int exit_code);
 
   const GURL& post_install_url() const { return post_install_url_; }
   std::string_view extension_id() const { return extension_id_; }

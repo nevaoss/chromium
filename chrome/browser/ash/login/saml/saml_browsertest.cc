@@ -71,7 +71,6 @@
 #include "chrome/browser/ash/profiles/profile_helper.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/content_settings/host_content_settings_map_factory.h"
-#include "chrome/browser/enterprise/connectors/device_trust/common/metrics_utils.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_key.h"
 #include "chrome/browser/profiles/profile_manager.h"
@@ -113,6 +112,7 @@
 #include "components/content_settings/core/browser/host_content_settings_map.h"
 #include "components/content_settings/core/common/content_settings.h"
 #include "components/content_settings/core/common/content_settings_types.h"
+#include "components/enterprise/device_trust/core/metrics_utils.h"
 #include "components/policy/core/browser/browser_policy_connector.h"
 #include "components/policy/core/browser/url_list/url_list_policy_pref_names.h"
 #include "components/policy/core/common/cloud/test/policy_builder.h"
@@ -2886,6 +2886,40 @@ class SamlTestWithManagedLocalPinAndPassword : public SAMLPolicyTest {
       recovery_setup_result_test_future_;
   base::test::ScopedFeatureList scoped_feature_list_;
 };
+
+class SamlTestWithEphemeralUser
+    : public SamlTestWithManagedLocalPinAndPassword {
+ public:
+  SamlTestWithEphemeralUser() = default;
+  ~SamlTestWithEphemeralUser() override = default;
+
+  void SetUpInProcessBrowserTestFixture() override {
+    std::unique_ptr<ScopedDevicePolicyUpdate> device_policy_update =
+        device_state_.RequestDevicePolicyUpdate();
+    device_policy_update->policy_payload()
+        ->mutable_ephemeral_users_enabled()
+        ->set_ephemeral_users_enabled(true);
+    device_policy_update.reset();
+    SamlTestWithManagedLocalPinAndPassword::SetUpInProcessBrowserTestFixture();
+  }
+};
+
+IN_PROC_BROWSER_TEST_F(
+    SamlTestWithEphemeralUser,
+    CompletesLoginOnSamlConfirmPasswordScreenForEphemeralUser) {
+  ShowGAIALoginForm();
+  LogInWithSAMLUsingTemplate(saml_test_users::kSixthUserCorpExampleTestEmail,
+                             kSixthSAMLUserGaiaId, kTestAuthSIDCookie1,
+                             kTestAuthLSIDCookie1, kSamlLoginNoPasswordTemplate,
+                             /*use_password=*/false, /*submit=*/true);
+
+  OobeScreenWaiter(SamlConfirmPasswordView::kScreenId).Wait();
+  SetManualPasswords(test::kGaiaPassword, test::kGaiaPassword);
+
+  test::WaitForPrimaryUserSessionStart();
+  ExpectCanUnlockWithPassword(saml_test_users::kSixthUserCorpExampleTestEmail,
+                              kSixthSAMLUserGaiaId, test::kGaiaPassword);
+}
 
 IN_PROC_BROWSER_TEST_F(SamlTestWithManagedLocalPinAndPassword,
                        SkipsSamlConfirmPasswordScreenOnPolicySet) {

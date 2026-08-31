@@ -113,6 +113,13 @@ BASE_FEATURE(kCaptureHandleForStandalonePwasAndIwas,
 // Enable project Crostini, Linux VMs on Chrome OS.
 BASE_FEATURE(kCrostini, base::FEATURE_DISABLED_BY_DEFAULT);
 
+// If enabled, use the restricted/unified locked state controller.
+BASE_FEATURE(kUseUnifiedLockedStateController,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsUseUnifiedLockedStateControllerEnabled() {
+  return base::FeatureList::IsEnabled(kUseUnifiedLockedStateController);
+}
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
 // Enables stricter cryptography settings for CNSA2 compliance. This is not
@@ -191,6 +198,8 @@ bool RemoteActorCredentialSharingEnabled() {
 
 // Controls the enablement of structured metrics on Windows, Linux, and Mac.
 BASE_FEATURE(kChromeStructuredMetrics, base::FEATURE_ENABLED_BY_DEFAULT);
+
+BASE_FEATURE(kDeferSpellcheckInitialization, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Moves the Extensions "puzzle piece" icon from the title bar into the app menu
 // for web app windows.
@@ -343,6 +352,10 @@ BASE_FEATURE(kGlicHandoffButtonResetFocusAndHoverStatus,
 
 // If enabled, hide handoff button when omnibox popup is opened.
 BASE_FEATURE(kGlicHandoffButtonHideWhenOmniboxPopupOpened,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
+// If enabled, hide handoff button when tab modal UI is shown.
+BASE_FEATURE(kGlicHandoffButtonHideWhenModalUIShown,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 // If enabled, the magic cursor is shown during actuation for mouse movements
@@ -779,9 +792,6 @@ BASE_FEATURE_PARAM(std::string,
                    &kGlicLearnMoreURLConfig,
                    "glic-experimental-triggering-toggle-learn-more-url",
                    "https://support.google.com/chrome?p=gemini_spark");
-// WARNING: If this URL is changed, update the substring match check in the
-// accessibility script injected in
-// chrome/browser/resources/glic/experimental_opt_in/experimental_opt_in.ts
 BASE_FEATURE_PARAM(std::string,
                    kGlicExperimentalTriggeringSafetyURL,
                    &kGlicLearnMoreURLConfig,
@@ -792,18 +802,12 @@ BASE_FEATURE_PARAM(std::string,
 // ("use-policy" and "unexpected_results") to apply accessibility labels.
 // Finch configurations overriding these URLs should retain these substrings
 // or update the WebUI logic accordingly.
-// WARNING: If this URL is changed, update the substring match check in the
-// accessibility script injected in
-// chrome/browser/resources/glic/experimental_opt_in/experimental_opt_in.ts
 BASE_FEATURE_PARAM(
     std::string,
     kGlicWebActuationToggleConsiderSafelyURL,
     &kGlicLearnMoreURLConfig,
     "glic-actuation-on-web-toggle-things-to-consider-safely-url",
     "https://policies.google.com/terms/generative-ai/use-policy");
-// WARNING: If this URL is changed, update the substring match check in the
-// accessibility script injected in
-// chrome/browser/resources/glic/experimental_opt_in/experimental_opt_in.ts
 BASE_FEATURE_PARAM(
     std::string,
     kGlicWebActuationToggleConsiderUnexpectedResultsURL,
@@ -832,6 +836,7 @@ const base::FeatureParam<std::string> kGlicApiAllowedOrigins{
     &kGlicCSPConfig, "glic-api-allowed-origins",
     // Space-delimited set of origins allowed to have API access.
     "https://gemini.google.com "
+    "https://gemini.corp.google.com "
     "https://gemini-autopush.corp.google.com "
     "https://gemini-staging.corp.google.com "
     "https://gemini-preprod.corp.google.com"};
@@ -1039,6 +1044,8 @@ const base::FeatureParam<bool> kGlicButtonContainerBackground{
     &kGlicButtonPressedState, "glic-button-container-background", false};
 const base::FeatureParam<bool> kGlicButtonPressedForceSolidIcon{
     &kGlicButtonPressedState, "glic-button-pressed-force-solid-icon", true};
+const base::FeatureParam<bool> kGlicButtonCustomThemeFallback{
+    &kGlicButtonPressedState, "custom-theme-fallback", true};
 
 BASE_FEATURE(kGlicShareImage, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicShareImageNoNewConversation,
@@ -1106,11 +1113,10 @@ const base::FeatureParam<int> kGlicGuestUrlPresetType{
 
 BASE_FEATURE(kGlicContextualCueBubble, base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kGlicClientZoomControl, base::FEATURE_ENABLED_BY_DEFAULT);
 
 
 // Enables the `google-chrome://` URI scheme.
-BASE_FEATURE(kGoogleChromeScheme, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGoogleChromeScheme, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Controls whether the Google Search AI Mode Workspace link (Connected Apps) is
 // shown in AI Settings. Acts as a killswitch.
@@ -1282,7 +1288,7 @@ BASE_FEATURE(kHttpsFirstModeForAdvancedProtectionUsers,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kHttpsFirstModeDefaultSettingPairsWithEsb,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables HTTPS-First Mode for engaged sites. No-op if HttpsFirstModeV2 or
 // HTTPS-Upgrades is disabled.
@@ -1381,6 +1387,10 @@ BASE_FEATURE(kIsolatedWebAppDevMode, base::FEATURE_DISABLED_BY_DEFAULT);
 // Enables the chrome://iwa-dev WebUI page.
 BASE_FEATURE(kIsolatedWebAppDevUi, base::FEATURE_DISABLED_BY_DEFAULT);
 
+// Enables fast update checks for Isolated Web Apps, reducing the update check
+// interval to 1 minute.
+BASE_FEATURE(kIsolatedWebAppFastUpdateCheck, base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Enables users on unmanaged devices to install Isolated Web Apps.
 BASE_FEATURE(kIsolatedWebAppUnmanagedInstall,
 #if BUILDFLAG(IS_CHROMEOS)
@@ -1414,6 +1424,18 @@ constexpr base::FeatureParam<int> kLinuxLowMemoryMonitorCriticalLevel{
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
 BASE_FEATURE(kListWebAppsSwitch, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif
+
+// When enabled, keyed services are instantiated lazily rather than eagerly at
+// startup.
+BASE_FEATURE(kLazyKeyedServiceInstantiation, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// When enabled, autofill and password manager keyed services are instantiated
+// lazily.
+BASE_FEATURE_PARAM(bool,
+                   kLazyKeyedServiceInstantiationAutofillAndPassword,
+                   &features::kLazyKeyedServiceInstantiation,
+                   "autofill_and_password",
+                   true);
 
 // Enables the use of system notification centers instead of using the Message
 // Center for displaying the toasts. The feature is hardcoded to enabled for
@@ -1454,11 +1476,6 @@ BASE_FEATURE(kOomIntervention, base::FEATURE_ENABLED_BY_DEFAULT);
 // Changes behavior of App Launch Prefetch to ignore chrome browser launches
 // after acquiry of the singleton.
 BASE_FEATURE(kOverridePrefetchOnSingleton, base::FEATURE_DISABLED_BY_DEFAULT);
-#endif
-
-#if BUILDFLAG(IS_CHROMEOS)
-// Enable support for "Plugin VMs" on Chrome OS.
-BASE_FEATURE(kPluginVm, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif
 
 // Allows Chrome to do preconnect when prerender fails.
@@ -1635,6 +1652,18 @@ const base::FeatureParam<base::TimeDelta> kSCTLogMaxIngestionRandomDelay{
 // down, and retry indefinitely (crbug.com/484218883). The boost is dropped once
 // the worker reaches RUNNING or stops.
 BASE_FEATURE(kServiceWorkerForegroundOnExtensionStartup,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
+// When enabled, a performance manager voter keeps the renderer process of an
+// extension service worker at foreground priority for as long as the worker
+// lives, but only when the extension holds the `webRequestBlocking` permission.
+// Those workers synchronously gate navigations and network requests, so letting
+// their process drop to background priority (EcoQoS on Windows) stalls the
+// browsing session (crbug.com/484218883). This is the narrowly scoped
+// counterpart to performance_manager::features::kExtensionServiceWorkerVoter,
+// which boosts every extension service worker and regressed performance metrics
+// (crbug.com/493556675).
+BASE_FEATURE(kExtensionServiceWorkerPriorityVoter,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Alternative to switches::kSitePerProcess, for turning on full site isolation.
@@ -1968,7 +1997,7 @@ const base::FeatureParam<base::TimeDelta>
 // When this is enabled, the `BrowserView` will not show until the reload button
 // has finished loading.
 const base::FeatureParam<bool> kWebUIReloadButtonDeferBrowserViewShow{
-    &kWebUIReloadButton, "WebUIReloadButtonDeferBrowserViewShow", true};
+    &kWebUIReloadButton, "WebUIReloadButtonDeferBrowserViewShow", false};
 // When this is enabled, the WebUI toolbar will be pre-warmed during browser
 // initialization.
 const base::FeatureParam<bool> kWebUIReloadButtonPrewarmWebUI{
@@ -1986,6 +2015,10 @@ const base::FeatureParam<bool> kWebUIReloadButtonProfilePrewarming{
 // first non-empty paint.
 const base::FeatureParam<bool> kWebUIReloadButtonKeepVisibleUntilPaint{
     &kWebUIReloadButton, "WebUIReloadButtonKeepVisibleUntilPaint", false};
+// When enabled, bypasses creating URL loader throttles for WebUI resources
+// during startup.
+const base::FeatureParam<bool> kWebUIReloadButtonBypassLoaderThrottles{
+    &kWebUIReloadButton, "WebUIReloadButtonBypassLoaderThrottles", false};
 // When enabled, the split tabs button will be replaced with WebUI loaded from
 // chrome://webui-toolbar.top-chrome.
 // crbug.com/470039098
@@ -2021,6 +2054,7 @@ BASE_FEATURE(kWebUIPinnedToolbarActions, base::FEATURE_DISABLED_BY_DEFAULT);
 // When enabled, the extensions container will be replaced with WebUI loaded
 // from chrome://webui-toolbar.top-chrome.
 BASE_FEATURE(kWebUIExtensionsContainer, base::FEATURE_DISABLED_BY_DEFAULT);
+
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 // Enables the User-Agent override fix for SearchPrefetch. This will work only

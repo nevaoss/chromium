@@ -23,6 +23,7 @@ Certaines fonctionnalités ne seront peut-être pas disponibles et les modificat
 <translation id="1203500561924088507">Merci pour l'installation. Vous devez redémarrer votre navigateur avant d'utiliser <ph name="BUNDLE_NAME" />.</translation>
 <translation id="1232234696885483911">Lorsque vous ouvrez la recherche d'images, le titre de la page, l'URL et le contenu, y compris les fichiers PDF, seront automatiquement envoyés au serveur. <ph name="LEARN_MORE" /></translation>
 <translation id="123265588161106468">Pendant votre connexion, vous pouvez utiliser vos mots de passe et bien plus encore à partir de votre compte Google dans Chromium. Pour modifier ceci, accédez à « Votre compte dans Chromium ».</translation>
+<translation id="1244381985120794049">Afficher Gemini dans Chromium dans la barre de menu Mac</translation>
 <translation id="1257483544893909270">Pour sélectionner une partie de l'écran dans Gemini dans Chromium, utilisez un raccourci-clavier.</translation>
 <translation id="1262876892872089030">Pendant que cet onglet était inactif, de la mémoire a été libérée pour maintenir la rapidité de Chromium. Vous pouvez choisir de toujours exclure ce site de l'inactivité.</translation>
 <translation id="1265577313130862557">Chromium a bloqué ce téléchargement, car le fichier est dangereux</translation>
@@ -55,6 +56,7 @@ Certaines fonctionnalités ne seront peut-être pas disponibles et les modificat
 <translation id="1623563412065267963">Tirez le meilleur parti de Google avec l'appli Chromium sur votre téléphone</translation>
 <translation id="1625909126243026060">Passer en revue les principaux paramètres de confidentialité et de sécurité dans Chromium</translation>
 <translation id="1640672724030957280">Téléchargement en cours…</translation>
+<translation id="1665602916345474427">Connecté en tant que <ph name="USER_NAME" />, <ph name="USER_EMAIL" />, avec abonnement. Ouvrir le menu du compte</translation>
 <translation id="1708414395296835197">Vous pouvez utiliser Chromium chaque fois que vous cliquez sur des liens dans des messages, des documents et d'autres applis. Il sera également épinglé à votre barre des tâches.</translation>
 <translation id="1709772298389099340">Fournit des privilèges élevés pour <ph name="BROWSER_NAME" />.</translation>
 <translation id="1722488837206509557">Cela vous permettra de sélectionner parmi les appareils accessibles et d'y afficher du contenu.</translation>
@@ -70,7 +72,6 @@ Certaines fonctionnalités ne seront peut-être pas disponibles et les modificat
 <translation id="1820835682567584003">Chromium essaie de <ph name="AUTHENTICATION_PURPOSE" /></translation>
 <translation id="183031085822326697">La prochaine fois que vous ouvrirez Chromium sur votre <ph name="DEVICE_TYPE" />, une invite vous proposera d'utiliser le gestionnaire de mots de passe Google.</translation>
 <translation id="1838374766361614909">Effacer les termes de recherche</translation>
-<translation id="1846849503013521481">Pour sécuriser votre travail sur Chromium, votre organisation pourra afficher ou gérer certaines informations</translation>
 <translation id="18552579716432081">Pour supprimer les données de navigation de cet appareil uniquement, tout en les conservant dans votre compte Google, <ph name="BEGIN_LINK" />déconnectez-vous de Chromium<ph name="END_LINK" />.</translation>
 <translation id="1857749206890802997">Téléchargez Chromium sur votre téléphone pour ouvrir ou créer de nouveaux groupes d'onglets en déplacement.</translation>
 <translation id="185970820835152459">Vous pouvez gérer les comptes Google auxquels vous êtes connecté. Vos comptes Google sont utilisés par le navigateur Chronium, par Play Store, par Gmail et autres. Si vous voulez ajouter un compte pour quelqu'un d'autre, comme un membre de votre famille, ajoutez plutôt une nouvelle personne à votre <ph name="DEVICE_TYPE" />. <ph name="LINK_BEGIN" />En savoir plus<ph name="LINK_END" /></translation>
@@ -152,6 +153,7 @@ Certaines fonctionnalités ne seront peut-être pas disponibles et les modificat
 <translation id="2635452620547538388">Confirmez votre identité pour utiliser et enregistrer les données Chromium dans votre compte, <ph name="ACCOUNT_EMAIL" /></translation>
 <translation id="2636783171884046627">Pour quitter Gemini dans Chromium ou y revenir, utilisez un raccourci-clavier.</translation>
 <translation id="2637732208198500597">{COUNT,plural, =0{La protection avancée nécessite que vous relanciez Chromium pour appliquer une mise à jour}=1{La protection avancée nécessite que vous relanciez Chromium pour appliquer une mise à jour. Votre fenêtre de navigation privée ne sera pas rouverte.}one{La protection avancée nécessite que vous relanciez Chromium pour appliquer une mise à jour. # fenêtre de navigation privée ne sera pas rouverte.}other{La protection avancée nécessite que vous relanciez Chromium pour appliquer une mise à jour. Vos # fenêtres de navigation privée ne seront pas rouvertes.}}</translation>
+<translation id="263863604136125912">Lancer Chromium</translation>
 <translation id="2648074677641340862">Une erreur de système d'exploitation s'est produite pendant l'installation. Veuillez télécharger de nouveau Chromium.</translation>
 <translation id="2661879430930417727">Si vous partagez un appareil avec vos proches, ceux-ci peuvent configurer Chromium comme bon leur semble et naviguer sur le Web de façon autonome.</translation>
 <translation id="2676569452213089702">Accédez facilement à Gemini dans Chromium sur votre appareil, même si Chromium est réduit.</translation>
@@ -257,6 +259,7 @@ Certaines fonctionnalités ne seront peut-être pas disponibles et les modificat
 
           **Suggérer des questions :** génère une liste à puces de trois à cinq questions stimulantes qu'un utilisateur pourrait poser pour mieux comprendre la capture d'écran. Ces questions doivent inclure au moins une question portant précisément sur un objet visuel, sa conception ou son emplacement.</translation>
 <translation id="3848258323044014972"><ph name="PAGE_TITLE" /> – Chromium</translation>
+<translation id="387514319934708384">Chromium requiert l'autorisation d'accéder au réseau local pour ce site</translation>
 <translation id="3885770153807205175">Sélecteur de langue</translation>
 <translation id="388648406173476553">Personnaliser et gérer Chromium. Votre attention est requise – cliquez pour plus de détails.</translation>
 <translation id="3889543394854987837">Cliquez sur votre nom pour ouvrir Chromium et commencer à naviguer.</translation>
@@ -304,7 +307,6 @@ Certaines fonctionnalités ne seront peut-être pas disponibles et les modificat
 <translation id="4304713468139749426">Gestionnaire de mots de passe</translation>
 <translation id="4334241893986177674">Recherchez dans cette capture d'écran</translation>
 <translation id="4384331407722351213">Lancer Chromium au démarrage de Windows</translation>
-<translation id="4384993550046411228">Accédez facilement aux fonctionnalités que vous connaissez et aimez, et auxquelles vous faites confiance en définissant Chromium comme navigateur par défaut. Chromium sera épinglé à votre barre des tâches pour un accès rapide.</translation>
 <translation id="4400772909124543403">Aucune mise à jour n'est proposée</translation>
 <translation id="4407044323746248786">Quitter Chromium quand même?</translation>
 <translation id="4413205837991854510">Toujours afficher le raccourci de la recherche d'images</translation>
@@ -335,6 +337,7 @@ Certaines fonctionnalités ne seront peut-être pas disponibles et les modificat
 <translation id="4625064703209785397">Accélère les sites avec le moteur V8 de Chromium, mais rend Chromium légèrement moins résistant aux attaques</translation>
 <translation id="4665829708273112819">Avertissement : Chromium ne peut pas empêcher les extensions d'enregistrer votre historique de navigation. Pour désactiver cette extension en mode de navigation privée, désélectionnez cette option.</translation>
 <translation id="4673151026126227699">Si vous partagez aussi les rapports d'utilisation de Chromium, ceux-ci incluent les URL des pages que vous visitez</translation>
+<translation id="4673710618874938871">Connecté en tant que <ph name="USER_NAME" />, avec abonnement. Ouvrir le menu du compte</translation>
 <translation id="4677944499843243528">Le profil semble être utilisé par un autre processus de Chromium (<ph name="PROCESS_ID" />) sur un autre ordinateur (<ph name="HOST_NAME" />). Chromium a verrouillé ce profil pour éviter qu'il ne soit endommagé. Si vous êtes sûr qu'aucun autre processus n'utilise ce profil, vous pouvez le déverrouiller et relancer Chromium.</translation>
 <translation id="4680828127924988555">Annuler l'installation</translation>
 <translation id="469259825538636168">Certaines de vos données Chromium n'ont pas encore été enregistrées dans votre compte Google. Essayez d'attendre quelques minutes avant de vous déconnecter. Si vous vous déconnectez maintenant, ces données seront supprimées.</translation>
@@ -572,6 +575,7 @@ Vous ne pouvez pas enregistrer de nouveaux favoris dans votre compte tant que vo
 <translation id="7173822816570314652">Votre organisation supprime les données Chromium lorsqu'elles ne sont pas utilisées pour <ph name="TIMEOUT_DURATION" />. Cela peut inclure l'historique, le remplissage automatique et les téléchargements.</translation>
 <translation id="718435575166326686">Chromium requiert l'autorisation d'accéder à l'appareil photo pour ce site</translation>
 <translation id="7196312274710523067">Impossible de lancer Chromium. Réessayez.</translation>
+<translation id="7204669035546236137">Posez n'importe quelle question, où que vous soyez, avec Gemini dans Chromium</translation>
 <translation id="7213008767289637091">Gardez Chromium dans le Dock pour y accéder rapidement à tout moment</translation>
 <translation id="7213407614656404070">Utilisez Chromium chaque fois que vous cliquez sur des liens dans des messages, des documents et d'autres applications</translation>
 <translation id="7216228761061470870">Lorsque vous utilisez la recherche d'images sur un ordinateur, le titre de la page, l'URL et le contenu, y compris les fichiers PDF, sont envoyés au serveur</translation>
@@ -581,7 +585,6 @@ Vous ne pouvez pas enregistrer de nouveaux favoris dans votre compte tant que vo
 <translation id="7288567540154601580">Onglets et extensions</translation>
 <translation id="7295544978856094497">{NUM_EXTENSIONS,plural, =1{Chromium vous recommande de la retirer}one{Chromium vous recommande de la retirer}other{Chromium vous recommande de les retirer}}</translation>
 <translation id="7296334833518879294">Pour partager l'audio du système, ouvrez les paramètres système et autorisez « Enregistrement audio du système uniquement » pour Chromium. Vous devrez ensuite redémarrer Chromium.</translation>
-<translation id="7309928523159922338">La mesure des annonces permet aux sites que vous visitez de demander des informations à Chromium afin de leur permettre de mesurer la performance de leurs annonces. La mesure des annonces limite les suivis intersites en transférant le moins d'informations possible entre les sites.</translation>
 <translation id="731795002583552498">Mise à jour de Chromium en cours…</translation>
 <translation id="7318036098707714271">Votre fichier de préférences est corrompu ou invalide.
 
@@ -593,6 +596,7 @@ Chromium est incapable de récupérer vos paramètres.</translation>
 <translation id="7368826207863345663">Vous devez disposer de macOS 13 ou d'une version ultérieure pour recevoir les futures mises à jour de Chromium. Cet ordinateur fonctionne sous macOS 12.</translation>
 <translation id="7376384068949534168">Vous n'avez pas effectué de visite récemment. Chromium a retiré <ph name="PERMISSION_1" /> et <ph name="PERMISSION_2" />.</translation>
 <translation id="73786666777299047">Ouvrir la boutique en ligne Chrome Web Store</translation>
+<translation id="7394275517973019558">Afficher Gemini dans Chromium dans la barre d'état système</translation>
 <translation id="7407655596887111931">Chromium est désormais votre navigateur par défaut</translation>
 <translation id="7413153308467572558">Reprenez là où vous en étiez : Chromium restaure vos onglets à chaque redémarrage. Pour désactiver cette option, accédez à</translation>
 <translation id="7427879960656355200">Importer des mots de passe dans Chromium</translation>
@@ -627,6 +631,7 @@ Chromium est incapable de récupérer vos paramètres.</translation>
 <translation id="7745317241717453663">Cette action entraînera la suppression de vos données de navigation sur cet appareil. Pour récupérer vos données plus tard, connectez-vous à Chromium en tant que <ph name="USER_EMAIL" />.</translation>
 <translation id="7747138024166251722">Le programme d'installation n'a pas pu créer de répertoire temporaire. Vérifiez que le disque a suffisamment d'espace libre et que vous disposez des autorisations nécessaires pour installer le logiciel.</translation>
 <translation id="7750130090210923118">Réinitialiser à Chromium par défaut</translation>
+<translation id="7752521946322750699">Afin de sécuriser votre travail sur Chromium, votre organisation pourra consulter ou gérer certaines informations lorsque vous êtes connecté à Chromium.</translation>
 <translation id="7781047659465034537">Définissez Chromium comme navigateur par défaut et épinglez-le à la barre des tâches</translation>
 <translation id="7786760609782648049">Rendre Chromium plus rapide</translation>
 <translation id="7790626492778995050"><ph name="PAGE_TITLE" /> - Chromium Canary</translation>
@@ -679,6 +684,7 @@ Chromium est incapable de récupérer vos paramètres.</translation>
 <translation id="8286943863733751221"><ph name="BEGIN_LINK" />Chromium vous avertit<ph name="END_LINK" /> au sujet des sites et des téléchargements dangereux</translation>
 <translation id="8295827201165805317">Vous n'avez pas effectué de visite récemment. Chromium a retiré <ph name="PERMISSION" />.</translation>
 <translation id="8296236834352487533">Magasinez, traduisez et identifiez ce que vous voyez avec votre appareil photo dans l'appli Chromium iOS</translation>
+<translation id="8310603974518734211">Code QR pour se connecter à Chromium en tant que <ph name="USER_NAME" /></translation>
 <translation id="8313851650939857356">Erreur de démarrage : <ph name="STARTUP_ERROR" />.</translation>
 <translation id="8318772038038596122">Votre organisation ferme Chromium lorsqu'il n'est pas utilisé pendant <ph name="TIMEOUT_DURATION" />.</translation>
 <translation id="8321888067342493336">Enregistrer en tant qu'image</translation>

@@ -27,14 +27,13 @@ class OmniboxEverywhereService : public KeyedService {
 
   void HidePopup();
   bool IsPopupVisible() const;
+  void ShowProfilePicker();
   void OpenUrl(const GURL& url,
                WindowOpenDisposition disposition,
                ui::PageTransition transition = ui::PAGE_TRANSITION_LINK);
 
   // KeyedService:
   void Shutdown() override;
-
-  void SetIsNavigating(bool is_navigating);
 
   void OnDrivePickerOpened();
   void OnDrivePickerClosed();

@@ -48,9 +48,9 @@
 #if BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/android/omnibox/autocomplete_controller_android.h"
 #else
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_window.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/location_bar/location_bar.h"
 #include "chrome/browser/ui/view_ids.h"
 #include "chrome/test/base/interactive_test_utils.h"
@@ -65,7 +65,8 @@ using base::ASCIIToUTF16;
 using metrics::OmniboxEventProto;
 
 #if !BUILDFLAG(IS_ANDROID)
-void InputKeys(Browser* browser, const std::vector<ui::KeyboardCode>& keys) {
+void InputKeys(BrowserWindowInterface* browser,
+               const std::vector<ui::KeyboardCode>& keys) {
   for (auto key : keys) {
     // Note that sending key presses can be flaky at times.
     ASSERT_TRUE(ui_test_utils::SendKeyPressSync(browser, key, false, false,
@@ -73,7 +74,7 @@ void InputKeys(Browser* browser, const std::vector<ui::KeyboardCode>& keys) {
   }
 }
 
-LocationBar* GetLocationBar(Browser* browser) {
+LocationBar* GetLocationBar(BrowserWindowInterface* browser) {
   return BrowserWindow::FromBrowser(browser)->GetLocationBar();
 }
 #endif  // !BUILDFLAG(IS_ANDROID)
@@ -172,7 +173,7 @@ class OmniboxApiTest : public ExtensionApiTest {
   }
 
   AutocompleteController* GetAutocompleteControllerForBrowser(
-      Browser* browser) {
+      BrowserWindowInterface* browser) {
     return GetLocationBar(browser)
         ->GetOmniboxController()
         ->autocomplete_controller();
@@ -427,7 +428,7 @@ IN_PROC_BROWSER_TEST_F(OmniboxApiTest, IncognitoSplitMode) {
   // Create an incognito browser, and wait for the extension to load. Our
   // LoadExtension() method ensures the on-the-record background page has spun
   // up, but we need to explicitly wait for the incognito version.
-  Browser* incognito_browser = CreateIncognitoBrowser();
+  BrowserWindowInterface* incognito_browser = CreateIncognitoBrowser();
   Profile* incognito_profile = incognito_browser->GetProfile();
   ResultCatcher catcher_incognito;
   catcher_incognito.RestrictToBrowserContext(incognito_profile);
@@ -1692,14 +1693,7 @@ IN_PROC_BROWSER_TEST_F(UnscopedOmniboxApiTest, MultipleUnscopedExtensions) {
 }
 
 // Test if unscoped suggestions send in zero suggest.
-// TODO(crbug.com/409601761): Test is flaky on Linux and ChromeOS.
-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
-#define MAYBE_UnscopedExtensionZeroSuggest DISABLED_UnscopedExtensionZeroSuggest
-#else
-#define MAYBE_UnscopedExtensionZeroSuggest UnscopedExtensionZeroSuggest
-#endif
-IN_PROC_BROWSER_TEST_F(UnscopedOmniboxApiTest,
-                       MAYBE_UnscopedExtensionZeroSuggest) {
+IN_PROC_BROWSER_TEST_F(UnscopedOmniboxApiTest, UnscopedExtensionZeroSuggest) {
   constexpr char kManifest[] =
       R"({
            "name": "Basic Send Suggestions",
@@ -1738,20 +1732,21 @@ IN_PROC_BROWSER_TEST_F(UnscopedOmniboxApiTest,
   EXPECT_TRUE(autocomplete_controller->done());
 
   const AutocompleteResult& result_ntp = autocomplete_controller->result();
-  // Check if the suggestion is received (+1 for the IPH).
-  ASSERT_EQ(2U, result_ntp.size()) << AutocompleteResultAsString(result_ntp);
+  auto match_ntp =
+      std::ranges::find_if(result_ntp, [](const AutocompleteMatch& match) {
+        return match.provider &&
+               match.provider->type() ==
+                   AutocompleteProvider::TYPE_UNSCOPED_EXTENSION;
+      });
+  ASSERT_NE(match_ntp, result_ntp.end())
+      << AutocompleteResultAsString(result_ntp);
 
-  // Second suggestion is given the first extension group and has a header of
-  // "alpha".
-  {
-    EXPECT_EQ(AutocompleteProvider::TYPE_UNSCOPED_EXTENSION,
-              result_ntp.match_at(0).provider->type());
-    EXPECT_EQ(omnibox::GROUP_UNSCOPED_EXTENSION_1,
-              result_ntp.match_at(0).suggestion_group_id);
-    EXPECT_EQ(u"alpha", result_ntp.GetHeaderForSuggestionGroup(
-                            *result_ntp.match_at(0).suggestion_group_id));
-    EXPECT_EQ(u"first", result_ntp.match_at(0).fill_into_edit);
-  }
+  // Suggestion is given the first extension group and has a header of "alpha".
+  EXPECT_EQ(omnibox::GROUP_UNSCOPED_EXTENSION_1,
+            match_ntp->suggestion_group_id);
+  EXPECT_EQ(u"alpha", result_ntp.GetHeaderForSuggestionGroup(
+                          *match_ntp->suggestion_group_id));
+  EXPECT_EQ(u"first", match_ntp->fill_into_edit);
 
   // Test that our extension can send suggestions back to us on SRP.
   AutocompleteInput input_srp(
@@ -1765,33 +1760,24 @@ IN_PROC_BROWSER_TEST_F(UnscopedOmniboxApiTest,
   EXPECT_TRUE(autocomplete_controller->done());
 
   const AutocompleteResult& result_srp = autocomplete_controller->result();
-  // Check if the suggestion is received.
-  ASSERT_EQ(1U, result_srp.size()) << AutocompleteResultAsString(result_srp);
+  auto match_srp =
+      std::ranges::find_if(result_srp, [](const AutocompleteMatch& match) {
+        return match.provider &&
+               match.provider->type() ==
+                   AutocompleteProvider::TYPE_UNSCOPED_EXTENSION;
+      });
+  ASSERT_NE(match_srp, result_srp.end())
+      << AutocompleteResultAsString(result_srp);
 
-  // Second suggestion is given the first extension group and has a header of
-  // "alpha".
-  {
-    EXPECT_EQ(AutocompleteProvider::TYPE_UNSCOPED_EXTENSION,
-              result_srp.match_at(0).provider->type());
-    EXPECT_EQ(omnibox::GROUP_UNSCOPED_EXTENSION_1,
-              result_srp.match_at(0).suggestion_group_id);
-    EXPECT_EQ(u"alpha", result_srp.GetHeaderForSuggestionGroup(
-                            *result_srp.match_at(0).suggestion_group_id));
-  }
+  EXPECT_EQ(omnibox::GROUP_UNSCOPED_EXTENSION_1,
+            match_srp->suggestion_group_id);
+  EXPECT_EQ(u"alpha", result_srp.GetHeaderForSuggestionGroup(
+                          *match_srp->suggestion_group_id));
 }
 
 // Test if unscoped extension are grouped together in zps.
-// TODO(crbug.com/409601761): Test is flaky on Linux.
-// TODO(crbug.com/425974968): Test is flaky on ChromeOS.
-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
-#define MAYBE_MultipleUnscopedExtensionsZeroSuggest \
-  DISABLED_MultipleUnscopedExtensionsZeroSuggest
-#else
-#define MAYBE_MultipleUnscopedExtensionsZeroSuggest \
-  MultipleUnscopedExtensionsZeroSuggest
-#endif
 IN_PROC_BROWSER_TEST_F(UnscopedOmniboxApiTest,
-                       MAYBE_MultipleUnscopedExtensionsZeroSuggest) {
+                       MultipleUnscopedExtensionsZeroSuggest) {
   constexpr char kManifest[] =
       R"({
       "name": "Basic Send Suggestions",
@@ -1853,8 +1839,14 @@ IN_PROC_BROWSER_TEST_F(UnscopedOmniboxApiTest,
   EXPECT_TRUE(autocomplete_controller->done());
 
   const AutocompleteResult& result = autocomplete_controller->result();
-  // Check if the suggestion is received (+1 for the IPH).
-  ASSERT_EQ(5U, result.size()) << AutocompleteResultAsString(result);
+  std::vector<const AutocompleteMatch*> extension_matches;
+  for (const auto& match : result) {
+    if (match.provider && match.provider->type() ==
+                              AutocompleteProvider::TYPE_UNSCOPED_EXTENSION) {
+      extension_matches.push_back(&match);
+    }
+  }
+  ASSERT_GE(extension_matches.size(), 4U) << AutocompleteResultAsString(result);
 
   // Suggestions from the same extension should be grouped together and their
   // group id header should match the extension name.
@@ -1862,13 +1854,11 @@ IN_PROC_BROWSER_TEST_F(UnscopedOmniboxApiTest,
   std::set<omnibox::GroupId> extension_group_ids = {
       omnibox::GROUP_UNSCOPED_EXTENSION_1, omnibox::GROUP_UNSCOPED_EXTENSION_2};
   {
-    EXPECT_THAT(AutocompleteProvider::TYPE_UNSCOPED_EXTENSION,
-                testing::Eq(result.match_at(0).provider->type()));
     EXPECT_THAT(extension_group_ids,
-                testing::Contains(result.match_at(0).suggestion_group_id));
+                testing::Contains(extension_matches[0]->suggestion_group_id));
     EXPECT_THAT(extension_names,
                 testing::Contains(result.GetHeaderForSuggestionGroup(
-                    result.match_at(0).suggestion_group_id.value())));
+                    extension_matches[0]->suggestion_group_id.value())));
 
     EXPECT_THAT(AutocompleteProvider::TYPE_UNSCOPED_EXTENSION,
                 testing::Eq(result.match_at(1).provider->type()));

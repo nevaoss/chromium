@@ -12,8 +12,8 @@
  * these Mojo-based searchbox types.
  */
 
-import type {AutocompleteMatch, AutocompleteResult, PageHandlerInterface} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
-import {PageCallbackRouter, PageHandlerFactory, PageHandlerRemote} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import type {AutocompleteMatch, AutocompleteResult, MatchKeywordModel, PageHandlerInterface} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import {KeywordType, PageCallbackRouter, PageHandlerFactory, PageHandlerRemote} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 
 export function createAutocompleteMatch(
     modifiers: Partial<AutocompleteMatch> = {}): AutocompleteMatch {
@@ -25,6 +25,7 @@ export function createAutocompleteMatch(
     isSearchType: false,
     isEnterpriseSearchAggregatorPeopleType: false,
     swapContentsAndDescription: false,
+    showContextualDescription: false,
     supportsDeletion: false,
     suggestionGroupId: -1,
     contents: '',
@@ -46,9 +47,7 @@ export function createAutocompleteMatch(
     isWeatherAnswerSuggestion: null,
     answer: null,
     tailSuggestCommonPrefix: null,
-    hasInstantKeyword: false,
-    keywordChipHint: '',
-    keywordChipA11y: '',
+    keywordModel: null,
   };
 
   return Object.assign(base, modifiers);
@@ -80,6 +79,19 @@ export function createSearchMatchForTesting(
     fillIntoEdit: 'hello world',
     type: 'search-what-you-typed',
   });
+
+  return Object.assign(base, modifiers);
+}
+
+export function createMatchKeywordModelForTesting(
+    modifiers: Partial<MatchKeywordModel> = {}): MatchKeywordModel {
+  const base = {
+    type: KeywordType.kChip,
+    chipHint: '',
+    chipA11y: '',
+    placeholder: '',
+    keyword: '',
+  };
 
   return Object.assign(base, modifiers);
 }

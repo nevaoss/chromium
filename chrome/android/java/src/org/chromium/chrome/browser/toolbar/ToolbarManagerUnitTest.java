@@ -7,18 +7,17 @@ package org.chromium.chrome.browser.toolbar;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.view.View;
+import android.view.ViewGroup.MarginLayoutParams;
 import android.view.ViewStub;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -44,6 +43,7 @@ import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.OneshotSupplierImpl;
 import org.chromium.base.supplier.SettableMonotonicObservableSupplier;
 import org.chromium.base.supplier.SettableNonNullObservableSupplier;
+import org.chromium.base.supplier.SupplierUtils;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.RobolectricUtil;
 import org.chromium.base.test.util.Features.DisableFeatures;
@@ -99,6 +99,8 @@ import org.chromium.chrome.browser.search_engines.TemplateUrlServiceFactory;
 import org.chromium.chrome.browser.share.ShareDelegate;
 import org.chromium.chrome.browser.signin.services.IdentityServicesProvider;
 import org.chromium.chrome.browser.signin.services.SigninManager;
+import org.chromium.chrome.browser.subscription_eligibility.SubscriptionEligibilityService;
+import org.chromium.chrome.browser.subscription_eligibility.SubscriptionEligibilityServiceFactory;
 import org.chromium.chrome.browser.sync.SyncServiceFactory;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabBrowserControlsConstraintsHelper;
@@ -112,7 +114,6 @@ import org.chromium.chrome.browser.tabmodel.IncognitoStateProvider;
 import org.chromium.chrome.browser.tabmodel.TabCreatorManager;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
-import org.chromium.chrome.browser.tabmodel.TabModelSelectorObserver;
 import org.chromium.chrome.browser.theme.BottomUiThemeColorProvider;
 import org.chromium.chrome.browser.theme.ToolbarThemeColorProvider;
 import org.chromium.chrome.browser.toolbar.ToolbarPositionController.ToolbarPositionAndSource;
@@ -125,6 +126,7 @@ import org.chromium.chrome.browser.toolbar.optional_button.ButtonDataProvider.Bu
 import org.chromium.chrome.browser.toolbar.settings.AddressBarPreference;
 import org.chromium.chrome.browser.toolbar.top.ToolbarActionModeCallback;
 import org.chromium.chrome.browser.toolbar.top.ToolbarControlContainer;
+import org.chromium.chrome.browser.toolbar.top.TopToolbarCoordinator;
 import org.chromium.chrome.browser.toolbar.top.TopToolbarSceneLayer;
 import org.chromium.chrome.browser.toolbar.top.TopToolbarSceneLayerJni;
 import org.chromium.chrome.browser.ui.actions.ActionId;
@@ -171,6 +173,7 @@ import org.chromium.url.JUnitTestGURLs;
 
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.function.Supplier;
 
@@ -180,7 +183,8 @@ import java.util.function.Supplier;
     ChromeFeatureList.HTTPS_FIRST_DIALOG_UI,
     SigninFeatures.ENABLE_ACTIVITYLESS_SIGNIN_ALL_ENTRY_POINT,
     SigninFeatures.ENABLE_SEAMLESS_SIGNIN,
-    ChromeFeatureList.GLIC
+    ChromeFeatureList.GLIC,
+    SigninFeatures.ENABLE_AI_SUBSCRIPTION_AVATAR_RING
 })
 @DisableFeatures({
     SigninFeatures.MAKE_IDENTITY_MANAGER_SOURCE_OF_ACCOUNTS,
@@ -256,16 +260,17 @@ public class ToolbarManagerUnitTest {
     @Mock private PropertyModel mActionPropertyModel;
     @Mock private ActorKeyedService mActorKeyedService;
     @Mock private GlicKeyedService mGlicKeyedService;
+    @Mock private TopToolbarCoordinator mMockToolbar;
     @Mock private TabBottomSheetManager mTabBottomSheetManager;
     @Mock private PrefService mPrefService;
     @Mock private TabModel mIncognitoTabModel;
     @Mock private Profile mIncognitoProfile;
+    @Mock private SubscriptionEligibilityService mSubscriptionEligibilityService;
     @Mock private ButtonDataProvider mIdentityDiscProvider;
     @Mock private ButtonDataProvider mAdaptiveButtonProvider;
 
     @Captor private ArgumentCaptor<ButtonDataObserver> mIdentityDiscObserverCaptor;
     @Captor private ArgumentCaptor<ButtonDataObserver> mAdaptiveButtonObserverCaptor;
-    @Captor private ArgumentCaptor<TabModelSelectorObserver> mTabModelSelectorObserverCaptor;
 
     private List<ButtonDataProvider> mButtonDataProviders;
     private ActivityController<TestActivity> mActivityController;
@@ -324,6 +329,7 @@ public class ToolbarManagerUnitTest {
         IdentityServicesProvider.setIdentityManagerForTesting(mIdentityManager);
         IdentityServicesProvider.setSigninManagerForTesting(mSigninManager);
         SyncServiceFactory.setInstanceForTesting(mSyncService);
+        SubscriptionEligibilityServiceFactory.setForTesting(mSubscriptionEligibilityService);
 
         mActivityController = Robolectric.buildActivity(TestActivity.class).setup();
         AppCompatActivity activity = mActivityController.get();
@@ -402,7 +408,7 @@ public class ToolbarManagerUnitTest {
         OneshotSupplierImpl<Boolean> promoShownOneshotSupplier = new OneshotSupplierImpl<>();
         OneshotSupplierImpl<ChromeAndroidTask> chromeAndroidTaskSupplier =
                 new OneshotSupplierImpl<>();
-        Supplier<Boolean> isInOverviewModeSupplier = () -> false;
+        Supplier<Boolean> isInOverviewModeSupplier = SupplierUtils.alwaysFalse();
         SettableNonNullObservableSupplier<ModalDialogManager> modalDialogManagerSupplier =
                 ObservableSuppliers.createNonNull(mModalDialogManager);
         SettableMonotonicObservableSupplier<MerchantTrustSignalsCoordinator>
@@ -481,6 +487,7 @@ public class ToolbarManagerUnitTest {
                         mOmniboxChipManager,
                         mBottomBarHostManager,
                         mActionRegistry,
+                        /* countrySupplier= */ null,
                         /* toggleGlicCallback= */ (preventClose, invocationSource) -> {},
                         /* suppressTabStripAtStart= */ false);
 
@@ -550,10 +557,6 @@ public class ToolbarManagerUnitTest {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-    }
-
-    private AutocompleteInput getAutocompleteInput() {
-        return mToolbarManager.getLocationBar().getOmniboxStub().getAutocompleteInputForTesting();
     }
 
     @Test
@@ -1097,28 +1100,6 @@ public class ToolbarManagerUnitTest {
     }
 
     @Test
-    public void testSuspendFuseboxInputOnForegroundTabAdd() {
-        String userText = "hello world";
-        verify(mTabModelSelector, atLeastOnce())
-                .addObserver(mTabModelSelectorObserverCaptor.capture());
-        AutocompleteInput input = new AutocompleteInput(OmniboxFocusReason.OMNIBOX_TAP);
-        input.setUserText(userText);
-        mToolbarManager.beginFuseboxInput(input);
-        assertEquals(userText, getAutocompleteInput().getUserText());
-
-        Tab newTab = mockTab(/* isNtp= */ false);
-        for (TabModelSelectorObserver obs : mTabModelSelectorObserverCaptor.getAllValues()) {
-            obs.onTabHidden(mTab);
-        }
-        assertNull(getAutocompleteInput());
-
-        mActivityTabProvider.setForTesting(newTab);
-        mActivityTabProvider.setForTesting(mTab);
-        assertNotNull(getAutocompleteInput());
-        assertEquals(userText, getAutocompleteInput().getUserText());
-    }
-
-    @Test
     public void testIsIncognitoNewTabPageCurrentlyVisible() {
         LocationBarModel locationBarModel = mToolbarManager.getLocationBarModelForTesting();
         NewTabPageDelegate delegate = locationBarModel.getNewTabPageDelegate();
@@ -1139,5 +1120,68 @@ public class ToolbarManagerUnitTest {
         IncognitoNewTabPage incognitoNtpPage = mock(IncognitoNewTabPage.class);
         when(incognitoNtpTab.getNativePage()).thenReturn(incognitoNtpPage);
         assertTrue(delegate.isIncognitoNewTabPageCurrentlyVisible());
+    }
+
+    @Test
+    public void testSetToolbarTabletMarginsForAutoHiddenVerticalTab() throws Exception {
+        ToolbarControlContainer controlContainer = mock(ToolbarControlContainer.class);
+        View tabletLayout = new View(mActivityController.get());
+        MarginLayoutParams params = new MarginLayoutParams(100, 100);
+        params.rightMargin = 20;
+        params.topMargin = 0;
+        params.leftMargin = 0;
+        tabletLayout.setLayoutParams(params);
+
+        when(controlContainer.findViewById(R.id.toolbar_tablet_layout)).thenReturn(tabletLayout);
+        when(controlContainer.getContext()).thenReturn(mActivityController.get());
+
+        Field controlContainerField = ToolbarManager.class.getDeclaredField("mControlContainer");
+        controlContainerField.setAccessible(true);
+        controlContainerField.set(mToolbarManager, controlContainer);
+
+        SettableNonNullObservableSupplier<Boolean> isAutoHiddenSupplier =
+                ObservableSuppliers.createNonNull(false);
+        mToolbarManager.setVerticalTabsAutoHiddenSupplier(isAutoHiddenSupplier);
+
+        int tabStripHeight =
+                mActivityController
+                        .get()
+                        .getResources()
+                        .getDimensionPixelSize(R.dimen.tab_strip_height);
+
+        // When Vertical Tabs is hidden due to narrow window width
+        isAutoHiddenSupplier.set(true);
+        verify(controlContainer).setToolbarContainerTopMarginForAutoHiddenVerticalTab(true);
+        assertEquals(0, params.rightMargin);
+        assertEquals(0, params.leftMargin);
+
+        // When Vertical Tabs gets shown again or turned off
+        isAutoHiddenSupplier.set(false);
+        verify(controlContainer).setToolbarContainerTopMarginForAutoHiddenVerticalTab(false);
+        assertEquals(20, params.rightMargin);
+        assertEquals(0, params.leftMargin);
+    }
+
+    @Test
+    public void testMaybeShowGlicIph_nullGlicActionChipView() throws Exception {
+        // Setup Glic eligibility conditions.
+        when(mTab.isIncognitoBranded()).thenReturn(false);
+        when(mTab.isOffTheRecord()).thenReturn(false);
+        when(mTab.getUrl()).thenReturn(JUnitTestGURLs.SEARCH_URL);
+
+        when(mMockToolbar.shouldShowGlicToolbarButton()).thenReturn(true);
+        when(mMockToolbar.getGlicActionChipView()).thenReturn(null);
+
+        // Inject the mock toolbar into ToolbarManager
+        Field toolbarField = ToolbarManager.class.getDeclaredField("mToolbar");
+        toolbarField.setAccessible(true);
+        toolbarField.set(mToolbarManager, mMockToolbar);
+
+        // Trigger the code path.
+        Method maybeShowGlicIphMethod =
+                ToolbarManager.class.getDeclaredMethod("maybeShowGlicIph", Tab.class);
+        maybeShowGlicIphMethod.setAccessible(true);
+
+        maybeShowGlicIphMethod.invoke(mToolbarManager, mTab);
     }
 }

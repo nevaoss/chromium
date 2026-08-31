@@ -26,7 +26,7 @@ import androidx.core.view.WindowInsetsCompat;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.context_sharing.R;
-import org.chromium.chrome.browser.ui.side_panel_container.SidePanelContainerCoordinator;
+import org.chromium.chrome.browser.ui.side_panel.SidePanelContainerCoordinator;
 import org.chromium.components.thinwebview.ThinWebView;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.ui.animation.AnimationHandler;
@@ -36,6 +36,7 @@ import org.chromium.ui.base.WindowAndroid.ActivityStateObserver;
 import org.chromium.ui.insets.InsetObserver;
 import org.chromium.ui.insets.InsetObserver.WindowInsetsAnimationListener;
 import org.chromium.ui.util.CommonOnLayoutChangeListeners;
+import org.chromium.ui.util.TimeoutRunnable;
 
 import java.util.List;
 
@@ -49,6 +50,11 @@ public class WebViewResizingHelper {
     }
 
     private static final int RESIZING_ANIMATION_DURATION_MS = 150;
+    private static final int TIMEOUT_RUNNABLE_TIMEOUT_MS = 150;
+    private static final int FADE_ANIMATION_DELAY_MS = 250;
+    // Epsilon tolerance in pixels to prevent false size-changed detections caused by DP-to-PX
+    // integer rounding.
+    private static final int EPSILON_PX = 2;
 
     private final AnimationHandler mAnimationHandler = new AnimationHandler();
 
@@ -141,7 +147,7 @@ public class WebViewResizingHelper {
                 res.getDimensionPixelSize(R.dimen.tab_bottom_sheet_resizing_fade_offset);
         mMinHeight = res.getDimensionPixelSize(R.dimen.tab_bottom_sheet_peek_height_total);
         mResizingContainer.addView(mResizingPlaceholder);
-        mResizingPlaceholder.setVisibility(View.GONE);
+        mResizingPlaceholder.setVisibility(View.INVISIBLE);
 
         ColorDrawable background = new ColorDrawable();
         background.setColor(backgroundColor);
@@ -196,7 +202,7 @@ public class WebViewResizingHelper {
     public void reset() {
         mResizingContainer.removeAllViews();
         mResizingContainer.addView(mResizingPlaceholder);
-        mResizingPlaceholder.setVisibility(View.GONE);
+        mResizingPlaceholder.setVisibility(View.INVISIBLE);
         mThinWebView = null;
         mIsViewportSizeFixed = false;
         mPauseInsetUpdates = false;
@@ -291,6 +297,7 @@ public class WebViewResizingHelper {
         valueAnimator.addListener(
                 onAnimationEnd(
                         () -> {
+                            if (!mIsViewportSizeFixed) return;
                             webView.setVisibility(View.INVISIBLE);
                             webView.setAlpha(1f);
                         }));
@@ -306,9 +313,37 @@ public class WebViewResizingHelper {
     private void disableResizingMode() {
         if (mThinWebView == null) return;
 
+        mIsViewportSizeFixed = false;
+        mAnimationHandler.forceFinishAnimation();
+        boolean sizeChanged = updateBounds(/* ignoreCache= */ true);
+
+        View webView = mThinWebView.getView();
+        webView.setAlpha(0f);
+        webView.setVisibility(View.VISIBLE);
+
+        if (sizeChanged) {
+            TimeoutRunnable timeoutRunnable =
+                    new TimeoutRunnable(
+                            this::onNextFrameAfterResize,
+                            this::onNextFrameAfterResize,
+                            TIMEOUT_RUNNABLE_TIMEOUT_MS);
+            timeoutRunnable.startTimeout();
+            mThinWebView.runOnNextFrame(timeoutRunnable);
+        } else {
+            onNextFrameAfterResize();
+        }
+    }
+
+    private void onNextFrameAfterResize() {
+        if (mThinWebView == null || mIsViewportSizeFixed) return;
+
         View webView = mThinWebView.getView();
 
         ValueAnimator valueAnimator = ValueAnimator.ofFloat(0.f, 1.f);
+        // TODO(crbug.com/540352621): Fix this via a synchronization mechanism between the WebUI and
+        // the Android UI.
+        // Delay to allow CSS/JS layout pass and reflow to settle.
+        valueAnimator.setStartDelay(FADE_ANIMATION_DELAY_MS);
         valueAnimator.setDuration(RESIZING_ANIMATION_DURATION_MS);
         valueAnimator.addUpdateListener(
                 animator -> {
@@ -317,24 +352,23 @@ public class WebViewResizingHelper {
                     webView.setAlpha(value);
                 });
         valueAnimator.addListener(
-                onAnimationEnd(() -> mResizingPlaceholder.setVisibility(View.GONE)));
+                onAnimationEnd(
+                        () -> {
+                            mResizingPlaceholder.setVisibility(View.INVISIBLE);
+                            webView.setVisibility(View.VISIBLE);
+                            webView.setAlpha(1f);
+                        }));
 
         mAnimationHandler.startAnimation(valueAnimator);
-
-        mIsViewportSizeFixed = false;
-        updateBounds();
-
-        webView.setAlpha(0f);
-        webView.setVisibility(View.VISIBLE);
     }
 
-    private void updateBounds() {
-        updateBounds(/* ignoreCache= */ false);
+    private boolean updateBounds() {
+        return updateBounds(/* ignoreCache= */ false);
     }
 
-    private void updateBounds(boolean ignoreCache) {
+    private boolean updateBounds(boolean ignoreCache) {
         if (mPauseInsetUpdates || isActivityInactive(mWindowAndroid)) {
-            return;
+            return false;
         }
 
         if (mThinWebView != null) {
@@ -350,13 +384,11 @@ public class WebViewResizingHelper {
         }
 
         if (mWebContents == null || mWebContents.isDestroyed()) {
-            return;
+            return false;
         }
 
         @Px int resizingContainerWidth = mResizingContainer.getMeasuredWidth();
         @Px int resizingContainerHeight = mResizingContainer.getMeasuredHeight();
-        @Px int webContentsWidth = ViewUtils.dpToPx(mContext, mWebContents.getWidth());
-        @Px int webContentsHeight = ViewUtils.dpToPx(mContext, mWebContents.getHeight());
 
         // TODO(crbug.com/524719583): Make this feature-agnostic.
         if (mIsSidePanel) {
@@ -369,13 +401,18 @@ public class WebViewResizingHelper {
                 resizingContainerHeight = getDecorViewHeight();
             }
         } else if (resizingContainerWidth == 0 || resizingContainerHeight == 0) {
-            return;
+            return false;
         }
 
-        if (!ignoreCache
-                && resizingContainerWidth == webContentsWidth
-                && resizingContainerHeight == webContentsHeight) {
-            return;
+        @Px int currentWidth = ViewUtils.dpToPx(mContext, mWebContents.getWidth());
+        @Px int currentHeight = ViewUtils.dpToPx(mContext, mWebContents.getHeight());
+
+        boolean sizeChanged =
+                !isApproxEqual(resizingContainerWidth, currentWidth, EPSILON_PX)
+                        || !isApproxEqual(resizingContainerHeight, currentHeight, EPSILON_PX);
+
+        if (!ignoreCache && !sizeChanged) {
+            return false;
         }
 
         if (mThinWebView != null) {
@@ -383,5 +420,11 @@ public class WebViewResizingHelper {
         } else {
             mWebContents.setSize(resizingContainerWidth, resizingContainerHeight);
         }
+
+        return sizeChanged;
+    }
+
+    private static boolean isApproxEqual(int a, int b, int epsilon) {
+        return Math.abs(a - b) <= epsilon;
     }
 }

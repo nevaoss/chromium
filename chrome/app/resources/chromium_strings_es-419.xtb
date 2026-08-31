@@ -21,6 +21,7 @@
 <translation id="1203500561924088507">Gracias por instalar <ph name="BUNDLE_NAME" />. Debes reiniciar tu navegador antes de usarlo.</translation>
 <translation id="1232234696885483911">Cuando abras la Búsqueda con imágenes, el título de la página, la URL y el contenido, incluidos los archivos PDF, se enviarán automáticamente al servidor. <ph name="LEARN_MORE" /></translation>
 <translation id="123265588161106468">Mientras tengas acceso, podrás usar las contraseñas y otros elementos de tu Cuenta de Google en Chromium. Para cambiar esta opción, ve a "Tu cuenta en Chromium".</translation>
+<translation id="1244381985120794049">Mostrar Gemini en Chromium en la barra de menú de Mac</translation>
 <translation id="1257483544893909270">Para seleccionar una parte de la pantalla en Gemini en Chromium, usa la combinación de teclas.</translation>
 <translation id="1262876892872089030">Mientras esta pestaña estaba inactiva, se liberó memoria para mantener Chromium rápido. Puedes elegir que este sitio nunca esté inactivo.</translation>
 <translation id="1265577313130862557">Chromium bloqueó esta descarga porque el archivo es peligroso</translation>
@@ -54,6 +55,7 @@
 <translation id="1623563412065267963">Obtén lo mejor de Google con la app de Chromium en tu teléfono</translation>
 <translation id="1625909126243026060">Revisa los controles de seguridad y privacidad más importantes en Chromium</translation>
 <translation id="1640672724030957280">Descargando...</translation>
+<translation id="1665602916345474427">Accediste como <ph name="USER_NAME" />, <ph name="USER_EMAIL" />, membresía. Abrir el menú de la cuenta</translation>
 <translation id="1708414395296835197">Puedes usar Chromium cada vez que hagas clic en vínculos de mensajes, documentos y otras apps. También se fijará a la barra de tareas.</translation>
 <translation id="1709772298389099340">Otorga privilegios elevados para <ph name="BROWSER_NAME" />.</translation>
 <translation id="1722488837206509557">Esto te permitirá seleccionar dispositivos disponibles y mostrar contenido en ellos.</translation>
@@ -69,7 +71,6 @@
 <translation id="1820835682567584003">Chromium está intentando <ph name="AUTHENTICATION_PURPOSE" /></translation>
 <translation id="183031085822326697">La próxima vez que abras Chromium en tu <ph name="DEVICE_TYPE" />, verás un mensaje para usar el Administrador de contraseñas de Google.</translation>
 <translation id="1838374766361614909">Borrar la búsqueda</translation>
-<translation id="1846849503013521481">Para proteger tu trabajo en Chromium, tu organización podrá ver o administrar cierta información</translation>
 <translation id="18552579716432081">Para borrar los datos de navegación solo en este dispositivo y conservarlos en tu Cuenta de Google, <ph name="BEGIN_LINK" />sal de Chromium<ph name="END_LINK" />.</translation>
 <translation id="1857749206890802997">Descarga Chromium en tu teléfono para abrir o crear nuevos grupos de pestañas estés donde estés.</translation>
 <translation id="185970820835152459">Puedes administrar las Cuentas de Google a las que accediste. Tus Cuentas de Google se usan en el navegador Chromium, Play Store, Gmail y otros servicios. Si quieres agregar una cuenta de otra persona, como la de un miembro de la familia, agrega a una persona nueva a tu <ph name="DEVICE_TYPE" />. <ph name="LINK_BEGIN" />Más información<ph name="LINK_END" /></translation>
@@ -151,6 +152,7 @@
 <translation id="2635452620547538388">Verifica tu identidad para usar y guardar datos de Chromium en tu cuenta, <ph name="ACCOUNT_EMAIL" /></translation>
 <translation id="2636783171884046627">Para salir de Gemini en Chromium o volver a él, usa la combinación de teclas.</translation>
 <translation id="2637732208198500597">{COUNT,plural, =0{La Protección avanzada requiere que reinicies Chromium para aplicar una actualización}=1{La Protección avanzada requiere que reinicies Chromium para aplicar una actualización. No se volverá a abrir la ventana de incógnito.}other{La Protección avanzada requiere que reinicies Chromium para aplicar una actualización. No se volverán a abrir las # ventanas de incógnito.}}</translation>
+<translation id="263863604136125912">Iniciar Chromium</translation>
 <translation id="2648074677641340862">Se produjo un error del sistema operativo durante la instalación. Descarga Chromium nuevamente.</translation>
 <translation id="2661879430930417727">Si compartes un dispositivo, tus amigos y familiares podrán navegar de forma independiente y configurar Chromium según sus preferencias.</translation>
 <translation id="2676569452213089702">Accede fácilmente a Gemini en Chromium en todo tu dispositivo, incluso si Chromium está minimizado.</translation>
@@ -254,6 +256,7 @@
 
           **Sugerir preguntas:** Genera una lista con viñetas de 3 a 5 preguntas que inviten a la reflexión que un usuario podría hacer para comprender mejor la captura de pantalla. Estas preguntas deben incluir al menos una que sea específicamente sobre un objeto visual, su diseño o su ubicación.</translation>
 <translation id="3848258323044014972"><ph name="PAGE_TITLE" /> - Chromium</translation>
+<translation id="387514319934708384">Chromium necesita permiso de acceso a la red local para este sitio</translation>
 <translation id="3885770153807205175">Selector de idioma</translation>
 <translation id="388648406173476553">Personaliza y controla Chromium. Una alerta necesita tu atención. Haz clic para ver los detalles.</translation>
 <translation id="3889543394854987837">Haz clic en tu nombre para abrir Chromium y empezar a navegar.</translation>
@@ -301,7 +304,6 @@
 <translation id="4304713468139749426">Administrador de contraseñas</translation>
 <translation id="4334241893986177674">Buscar esta captura de pantalla</translation>
 <translation id="4384331407722351213">Ejecutar Chromium cuando se inicie Windows</translation>
-<translation id="4384993550046411228">Establece Chromium como tu navegador predeterminado para acceder fácilmente a las funciones que conoces, te encantan y en las que confías. Chromium se fijará a la barra de tareas para que puedas acceder rápidamente.</translation>
 <translation id="4400772909124543403">No hay actualizaciones disponibles</translation>
 <translation id="4407044323746248786">¿Deseas salir de Chromium de todos modos?</translation>
 <translation id="4413205837991854510">Mostrar siempre el atajo de Búsqueda con imágenes</translation>
@@ -332,6 +334,7 @@
 <translation id="4625064703209785397">Acelera los sitios con el motor V8 de Chromium, pero reduce ligeramente la resistencia de Chromium a los ataques</translation>
 <translation id="4665829708273112819">Advertencia: Chromium no puede evitar que las extensiones registren tu historial de navegación. Para inhabilitar esta extensión en modo Incógnito, anula la selección de esta opción.</translation>
 <translation id="4673151026126227699">Si también compartes los informes de uso de Chromium, estos incluirán las URLs que visites</translation>
+<translation id="4673710618874938871">Accediste como <ph name="USER_NAME" />, membresía. Abrir el menú de la cuenta</translation>
 <translation id="4677944499843243528">Parece que otro proceso de Chromium (<ph name="PROCESS_ID" />) está utilizando el perfil en otra computadora (<ph name="HOST_NAME" />). Chromium bloqueó el perfil para que no se dañe. Si puedes confirmar que ningún otro proceso está utilizando este perfil, puedes desbloquearlo y volver a iniciar Chromium.</translation>
 <translation id="4680828127924988555">Cancelar la instalación</translation>
 <translation id="469259825538636168">Aún no se guardaron algunos de tus datos de Chromium en tu Cuenta de Google. Espera unos minutos antes de salir. Si sales ahora, se borrarán estos datos.</translation>
@@ -567,6 +570,7 @@ No se pueden guardar nuevos favoritos en tu cuenta hasta que borres algunos. Si 
 <translation id="7173822816570314652">Tu organización borra los datos de Chromium cuando no se usan durante <ph name="TIMEOUT_DURATION" />. Esto puede incluir el historial, los datos de Autocompletar y las descargas.</translation>
 <translation id="718435575166326686">Chromium necesita permiso de acceso a la cámara para este sitio.</translation>
 <translation id="7196312274710523067">No se pudo iniciar Chromium. Vuelve a intentarlo.</translation>
+<translation id="7204669035546236137">Pregunta lo que quieras, donde estés, con Gemini en Chromium</translation>
 <translation id="7213008767289637091">Mantén Chromium en el Dock para acceder rápidamente en cualquier momento</translation>
 <translation id="7213407614656404070">Usa Chromium cada vez que hagas clic en vínculos de mensajes, documentos y otras apps</translation>
 <translation id="7216228761061470870">Cuando usas la Búsqueda con imágenes en la computadora, el título de la página, la URL y el contenido, incluidos los archivos PDF, se envían al servidor</translation>
@@ -576,7 +580,6 @@ No se pueden guardar nuevos favoritos en tu cuenta hasta que borres algunos. Si 
 <translation id="7288567540154601580">Pestañas y extensiones</translation>
 <translation id="7295544978856094497">{NUM_EXTENSIONS,plural, =1{Chromium te recomienda quitarla}other{Chromium te recomienda quitarlas}}</translation>
 <translation id="7296334833518879294">Para compartir el audio del sistema, abre la configuración del sistema y permite la opción "Solo grabación de audio del sistema" para Chromium. Luego, deberás reiniciar Chromium.</translation>
-<translation id="7309928523159922338">La medición de anuncios les permite a los sitios que visitas solicitar información a Chromium a fin de medir el rendimiento de los anuncios. La medición de anuncios restringe el seguimiento entre sitios web, ya que se transfiere la menor cantidad de información posible entre sitios.</translation>
 <translation id="731795002583552498">Actualizando Chromium</translation>
 <translation id="7318036098707714271">Tu archivo de preferencias está dañado o no es válido. Chromium no puede recuperar tu configuración.</translation>
 <translation id="734373864078049451">Aquí puedes encontrar tus páginas web, favoritos y otros contenidos de Chromium.</translation>
@@ -586,6 +589,7 @@ No se pueden guardar nuevos favoritos en tu cuenta hasta que borres algunos. Si 
 <translation id="7368826207863345663">Para obtener las próximas actualizaciones de Chromium, necesitarás macOS 13 o versiones posteriores. Esta computadora usa macOS 12.</translation>
 <translation id="7376384068949534168">No lo visitaste recientemente. Chromium quitó los permisos de <ph name="PERMISSION_1" /> y <ph name="PERMISSION_2" />.</translation>
 <translation id="73786666777299047">Abrir Chrome Web Store</translation>
+<translation id="7394275517973019558">Mostrar Gemini en Chromium en la bandeja del sistema</translation>
 <translation id="7407655596887111931">Chromium ahora es tu navegador predeterminado</translation>
 <translation id="7413153308467572558">Retoma tu actividad desde donde la dejaste: Chromium restablece tus pestañas cada vez que reinicias. Para desactivar esta opción, ve a</translation>
 <translation id="7427879960656355200">Importar contraseñas a Chromium</translation>
@@ -620,6 +624,7 @@ No se pueden guardar nuevos favoritos en tu cuenta hasta que borres algunos. Si 
 <translation id="7745317241717453663">Esta acción borrará tus datos de navegación de este dispositivo. Si más adelante deseas recuperarlos, accede a tu cuenta en Chromium como <ph name="USER_EMAIL" />.</translation>
 <translation id="7747138024166251722">El instalador no pudo crear un directorio temporal. Verifique si hay espacio disponible en el disco y cuenta con permiso para instalar software.</translation>
 <translation id="7750130090210923118">Restablecer Chromium predeterminado</translation>
+<translation id="7752521946322750699">Para proteger tu trabajo en Chromium, tu organización podrá ver o administrar cierta información cuando accedas a Chromium.</translation>
 <translation id="7781047659465034537">Establece Chromium como navegador predeterminado y fíjalo a la barra de tareas</translation>
 <translation id="7786760609782648049">Haz que Chromium sea más rápido</translation>
 <translation id="7790626492778995050"><ph name="PAGE_TITLE" />: Chromium Canary</translation>
@@ -672,6 +677,7 @@ No se pueden guardar nuevos favoritos en tu cuenta hasta que borres algunos. Si 
 <translation id="8286943863733751221"><ph name="BEGIN_LINK" />Chromium te advierte<ph name="END_LINK" /> sobre descargas y sitios no seguros</translation>
 <translation id="8295827201165805317">No lo visitaste recientemente. Chromium quitó el permiso de <ph name="PERMISSION" />.</translation>
 <translation id="8296236834352487533">Compra, identifica y traduce lo que ves con la cámara en la app de Chromium para iOS</translation>
+<translation id="8310603974518734211">Código QR para acceder a Chromium como <ph name="USER_NAME" /></translation>
 <translation id="8313851650939857356">Error de inicio: <ph name="STARTUP_ERROR" />.</translation>
 <translation id="8318772038038596122">Tu organización cierra Chromium cuando no se usa durante <ph name="TIMEOUT_DURATION" />.</translation>
 <translation id="8321888067342493336">Guardar como imagen</translation>

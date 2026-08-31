@@ -205,6 +205,11 @@ InputStateModel::InputStateModel(
       browser_identity_matches_aim_identity_(
           browser_identity_matches_aim_identity),
       current_url_(active_url) {
+  // Track whether the model was constructed with a valid, non-empty searchbox
+  // configuration. Models created with an empty config can be invalidated once
+  // a populated config becomes available.
+  has_valid_config_ = config.has_rule_set();
+
   SearchboxConfig mutable_config = config;
   MaybePopulateBrowserTabInputTypeRule(&mutable_config);
 
@@ -303,6 +308,7 @@ InputStateModel::InputStateModel(
   state_ = new_input_state_model.state_;
   rule_set_ = new_input_state_model.rule_set_;
   configured_input_types_ = new_input_state_model.configured_input_types_;
+  has_valid_config_ = new_input_state_model.has_valid_config_;
   is_smart_tab_sharing_active_ =
       new_input_state_model.is_smart_tab_sharing_active_;
   permanently_disabled_tools_ =
@@ -312,6 +318,8 @@ InputStateModel::InputStateModel(
   if (new_input_state_model.pref_service_) {
     SetPrefService(new_input_state_model.pref_service_);
   }
+  user_modified_tool_in_thread_ =
+      new_input_state_model.user_modified_tool_in_thread_;
 }
 
 InputStateModel::~InputStateModel() = default;
@@ -435,6 +443,12 @@ void InputStateModel::notifySubscribers() {
 }
 
 void InputStateModel::setActiveTool(ToolMode tool) {
+  if (tool != state_.active_tool) {
+    user_modified_tool_in_thread_ = true;
+  }
+  if (tool == omnibox::ToolMode::TOOL_MODE_UNSPECIFIED) {
+    state_.is_canvas_query_submitted = false;
+  }
   updateSelectedState(tool, state_.active_model);
 }
 
@@ -446,25 +460,38 @@ void InputStateModel::UpdateStateFromUrl(const GURL& url) {
   auto matched_tool =
       GetActiveToolFromUrl(url, state_.tool_configs, state_.allowed_tools);
 
-  bool thread_changed = GetThreadId(url) != GetThreadId(current_url_);
+  auto prev_thread_id = GetThreadId(current_url_);
+  auto new_thread_id = GetThreadId(url);
+
+  bool thread_changed = prev_thread_id != new_thread_id;
+
   current_url_ = url;
+  // If thread changes, be prepared to listen to any subsequent URL changes that
+  // could include changes in the tool param (due to thread change).
+  if (thread_changed) {
+    user_modified_tool_in_thread_ = false;
+  }
 
-  ToolMode new_tool = matched_tool.value_or(
-      thread_changed ? ToolMode::TOOL_MODE_UNSPECIFIED : state_.active_tool);
+  ToolMode new_tool = state_.active_tool;
 
-  bool new_canvas_submitted =
-      thread_changed ? false : state_.is_canvas_query_submitted;
-  if (matched_tool.has_value()) {
-    new_canvas_submitted = (*matched_tool == ToolMode::TOOL_MODE_CANVAS);
+  // If the user has modified the tool in the thread, do not use tool from URL
+  // params until user changes the thread, as that will dirty the tool state
+  // with outdated tools that are only relevant at initialization.
+  if (matched_tool.has_value() && !user_modified_tool_in_thread_) {
+    new_tool = *matched_tool;
+  } else if (thread_changed) {
+    new_tool = ToolMode::TOOL_MODE_UNSPECIFIED;
   }
 
   auto matched_model =
       GetActiveModelFromUrl(url, state_.model_configs, state_.allowed_models);
   ModelMode new_model = matched_model.value_or(state_.active_model);
 
-  if (new_model != state_.active_model || new_tool != state_.active_tool ||
-      new_canvas_submitted != state_.is_canvas_query_submitted) {
-    state_.is_canvas_query_submitted = new_canvas_submitted;
+  state_.is_canvas_query_submitted =
+      (new_tool == omnibox::ToolMode::TOOL_MODE_CANVAS);
+
+  if (thread_changed || new_model != state_.active_model ||
+      new_tool != state_.active_tool) {
     updateSelectedState(new_tool, new_model);
   }
 }
@@ -545,18 +572,9 @@ bool InputStateModel::IsDriveSupported() const {
   bool feature_enabled =
       base::FeatureList::IsEnabled(omnibox::kComposeboxDriveContextMenuOption);
 
-  // If the disclaimer flag is enabled, then the user can see Drive in the menu
-  // even if they have not consented, since selecting it will trigger the
-  // disclaimer flow. Otherwise, the user must have consented to see Drive in
-  // the menu. In either case, we do not show Drive if the user is restricted.
-  bool consented =
-      drive_consent_state_ == DriveConsentState::kConsent ||
-      base::FeatureList::IsEnabled(omnibox::kForceDriveDisclaimerAccepted) ||
-      (base::FeatureList::IsEnabled(
-           omnibox::kComposeboxDriveContextMenuOptionDisclaimer) &&
-       drive_consent_state_ != DriveConsentState::kRestricted);
+  bool is_restricted = drive_consent_state_ == DriveConsentState::kRestricted;
 
-  return identity_matches && !incognito && feature_enabled && consented;
+  return identity_matches && !incognito && feature_enabled && !is_restricted;
 }
 
 // Helper to check if search content sharing is enabled based on the

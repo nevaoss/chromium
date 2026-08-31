@@ -23,6 +23,9 @@ enum class AppBarPosition;
 // The position of the app bar.
 @property(nonatomic, assign) AppBarPosition appBarPosition;
 
+// Indicates whether the assistant container is invoked.
+@property(nonatomic, assign) BOOL assistantContainerInvoked;
+
 // Sets the App Bar view to be contained.
 - (void)setAppBar:(UIView*)appBar;
 

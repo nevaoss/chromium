@@ -702,7 +702,11 @@ void WidgetBase::OnCommitRequested() {
 }
 
 void WidgetBase::DidBeginMainFrame() {
+  base::WeakPtr<WidgetBase> weak_this = weak_ptr_factory_.GetWeakPtr();
   UpdateTextInputState();
+  if (!weak_this) {
+    return;
+  }
   client_->DidBeginMainFrame();
 }
 
@@ -1400,6 +1404,7 @@ void WidgetBase::ClearTextInputState() {
 }
 
 void WidgetBase::ShowVirtualKeyboardOnElementFocus() {
+  base::WeakPtr<WidgetBase> weak_this = weak_ptr_factory_.GetWeakPtr();
 #if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_IOS_TVOS)
   // On ChromeOS, virtual keyboard is triggered only when users leave the
   // mouse button or the finger and a text input element is focused at that
@@ -1411,6 +1416,9 @@ void WidgetBase::ShowVirtualKeyboardOnElementFocus() {
 #else
   ShowVirtualKeyboard();
 #endif
+  if (!weak_this) {
+    return;
+  }
 
 // TODO(rouslan): Fix ChromeOS and Windows 8 behavior of autofill popup with
 // virtual keyboard.
@@ -1483,8 +1491,7 @@ void WidgetBase::UpdateCompositionInfo(bool immediate_request) {
     frame_widget->UpdateCursorAnchorInfo(/*update_requested=*/true);
     return;
   }
-  if (mojom::blink::WidgetInputHandlerHost* host =
-          widget_input_handler_manager_->GetWidgetInputHandlerHost()) {
+  if (auto host = widget_input_handler_manager_->GetWidgetInputHandlerHost()) {
     host->ImeCompositionRangeChanged(composition_range_,
                                      composition_character_bounds_);
   }
@@ -1662,7 +1669,7 @@ void WidgetBase::ImeSetComposition(
     // If we failed to set the composition text, then we need to let the browser
     // process to cancel the input method's ongoing composition session, to make
     // sure we are in a consistent state.
-    if (mojom::blink::WidgetInputHandlerHost* host =
+    if (auto host =
             widget_input_handler_manager_->GetWidgetInputHandlerHost()) {
       host->ImeCancelComposition();
     }
@@ -1699,6 +1706,15 @@ void WidgetBase::ImeCommitText(const String& text,
   }
   input_handler_.set_handling_input_event(false);
   UpdateCompositionInfo(false /* not an immediate request */);
+}
+
+void WidgetBase::PasteIntoNode(const String& text,
+                               DOMNodeIdType target_dom_node_id) {
+  FrameWidget* frame_widget = client_->FrameWidget();
+  if (!frame_widget) {
+    return;
+  }
+  frame_widget->PasteIntoNode(text, target_dom_node_id);
 }
 
 void WidgetBase::ImeFinishComposingText(bool keep_selection) {
@@ -1766,7 +1782,7 @@ void WidgetBase::FlushInputProcessedCallback() {
 }
 
 void WidgetBase::CancelComposition() {
-  if (mojom::blink::WidgetInputHandlerHost* host =
+  if (auto host =
           widget_input_handler_manager_->GetWidgetInputHandlerHost()) {
     host->ImeCancelComposition();
   }

@@ -28,7 +28,6 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/ui/actions/chrome_action_id.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/toolbar/pinned_toolbar/pinned_toolbar_actions_model.h"
 #include "chrome/browser/ui/user_education/browser_user_education_interface.h"
@@ -395,7 +394,7 @@ void ContextualTasksPageHandler::ShowThreadHistory() {
   // Send a message to AIM to open the threads view.
   lens::ClientToAimMessage message;
   message.mutable_open_threads_view()->mutable_payload();
-  PostMessageToWebview(message);
+  PostAimMessage(message);
 }
 
 void ContextualTasksPageHandler::IsShownInTab(IsShownInTabCallback callback) {
@@ -441,6 +440,17 @@ void ContextualTasksPageHandler::OpenOnboardingHelpUi() {
   OpenUrlWithDisposition(
       web_ui_controller_->GetProfile(),
       GURL(contextual_tasks::GetContextualTasksOnboardingTooltipHelpUrl()),
+      WindowOpenDisposition::NEW_FOREGROUND_TAB, browser);
+}
+
+void ContextualTasksPageHandler::OpenOverflowMenuHelpUi() {
+  BrowserWindowInterface* browser = web_ui_controller_->GetBrowser();
+  if (!browser) {
+    return;
+  }
+  OpenUrlWithDisposition(
+      web_ui_controller_->GetProfile(),
+      GURL(contextual_tasks::GetContextualTasksOverflowMenuHelpUrl()),
       WindowOpenDisposition::NEW_FOREGROUND_TAB, browser);
 }
 
@@ -604,11 +614,20 @@ void ContextualTasksPageHandler::LensSearchTooltipDismissed() {
       count + 1);
 }
 
+void ContextualTasksPageHandler::AskGTooltipDismissed() {
+  PrefService* prefs = web_ui_controller_->GetProfile()->GetPrefs();
+  int count = prefs->GetInteger(
+      contextual_tasks::kContextualTasksAskGTooltipDismissedCount);
+  prefs->SetInteger(
+      contextual_tasks::kContextualTasksAskGTooltipDismissedCount,
+      count + 1);
+}
+
 void ContextualTasksPageHandler::ReopenTabs() {
   // TODO(crbug.com/489832161): Implement tab restoration logic.
 }
 
-void ContextualTasksPageHandler::PostMessageToWebview(
+void ContextualTasksPageHandler::PostAimMessage(
     const lens::ClientToAimMessage& message) {
   DCHECK(web_ui_controller_->GetPageRemote());
   if (!web_ui_controller_->GetPageRemote()) {
@@ -617,7 +636,7 @@ void ContextualTasksPageHandler::PostMessageToWebview(
 
   const size_t size = message.ByteSizeLong();
   if (size == 0) {
-    LOG(WARNING) << "PostMessageToWebview called with an empty message.";
+    LOG(WARNING) << "PostAimMessage called with an empty message.";
     return;
   }
   std::vector<uint8_t> serialized_message(size);
@@ -626,10 +645,10 @@ void ContextualTasksPageHandler::PostMessageToWebview(
     return;
   }
 
-  OMNIBOX_LOG_WITH_PROTO("PostMessageToWebview", message,
+  OMNIBOX_LOG_WITH_PROTO("PostAimMessage", message,
                          std::string("lens.chrome.ClientToAimMessage"));
 
-  web_ui_controller_->GetPageRemote()->PostMessageToWebview(serialized_message);
+  web_ui_controller_->GetPageRemote()->PostAimMessage(serialized_message);
 }
 
 void ContextualTasksPageHandler::OnTaskAdded(
@@ -697,15 +716,18 @@ void ContextualTasksPageHandler::OnReceivedUpdatedThreadContextLibrary(
   std::vector<contextual_search::FileInfo> submitted_context;
   if (handle) {
     submitted_context = handle->GetSubmittedContextFileInfos();
+  }
+
+  std::vector<contextual_tasks::UrlResource> committed_context =
+      contextual_tasks::ConvertAiModeContextToUrlResources(message,
+                                                           submitted_context);
+  if (handle && !committed_context.empty()) {
     // Now that we have extracted the submitted contexts and are ready to update
     // the context in the ContextualTask, we can clear out the submitted context
     // from the ContextualSearchSessionHandle.
     handle->ClearSubmittedContextTokens();
   }
 
-  std::vector<contextual_tasks::UrlResource> committed_context =
-      contextual_tasks::ConvertAiModeContextToUrlResources(message,
-                                                           submitted_context);
   contextual_tasks_service_->SetUrlResourcesFromServer(*task_id,
                                                        committed_context);
 
@@ -983,12 +1005,22 @@ void ContextualTasksPageHandler::MaybeTriggerPinningPromo() {
 #endif
 }
 
-void ContextualTasksPageHandler::ShowPageInfoBubble() {
+void ContextualTasksPageHandler::ShowPageInfoBubble(
+    bool is_pointer_interaction) {
   if (!contextual_tasks::IsContextualTasksSidePanelRearchitectureEnabled()) {
     return;
   }
   if (panel_controller_) {
-    panel_controller_->ShowPageInfoBubble();
+    panel_controller_->ShowPageInfoBubble(is_pointer_interaction);
+  }
+}
+
+void ContextualTasksPageHandler::OnLogoPointerDown() {
+  if (!contextual_tasks::IsContextualTasksSidePanelRearchitectureEnabled()) {
+    return;
+  }
+  if (panel_controller_) {
+    panel_controller_->OnLogoPointerDown();
   }
 }
 

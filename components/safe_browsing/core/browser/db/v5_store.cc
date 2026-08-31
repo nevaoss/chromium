@@ -59,6 +59,23 @@ void RecordApplyUpdateResult(const std::string& base_metric,
   RecordEnumWithAndWithoutSuffix(base_metric + kApplyUpdate, result, file_path);
 }
 
+void RecordUpdateCategory(SafeBrowsingUpdateCategory category,
+                          const base::FilePath& file_path) {
+  std::string suffix = GetUmaSuffixForStore(file_path);
+  base::UmaHistogramEnumeration("SafeBrowsing.V5Update.Category", category);
+  base::UmaHistogramEnumeration("SafeBrowsing.V5Update.Category" + suffix,
+                                category);
+
+  std::string sb_store_suffix = suffix;
+  // Trim _v5 from the end of the metric for the SB histograms so they match v4.
+  if (base::EndsWith(sb_store_suffix, "_v5", base::CompareCase::SENSITIVE)) {
+    sb_store_suffix = sb_store_suffix.substr(0, sb_store_suffix.length() - 3);
+  }
+  base::UmaHistogramEnumeration("SafeBrowsing.SBUpdate.Category", category);
+  base::UmaHistogramEnumeration(
+      "SafeBrowsing.SBUpdate.Category" + sb_store_suffix, category);
+}
+
 void RecordApplyUpdateDuration(const std::string& base_metric,
                                base::TimeDelta elapsed) {
   base::UmaHistogramTimes(base_metric + ".ApplyUpdateDuration", elapsed);
@@ -200,6 +217,12 @@ V5StoreReadResult V5Store::ReadFromDisk() {
   V4ToV5MigrationResult migration_result = AttemptV4ToV5Migration();
   base::UmaHistogramEnumeration("SafeBrowsing.V5Store.V4ToV5MigrationResult",
                                 migration_result);
+
+  if (migration_result == V4ToV5MigrationResult::kV4StoreNotFound) {
+    is_new_database_ = true;
+  } else if (migration_result != V4ToV5MigrationResult::kDiskAlreadyV5) {
+    is_first_update_after_v4_migration_ = true;
+  }
 
   switch (migration_result) {
     case V4ToV5MigrationResult::kDiskAlreadyV5:
@@ -461,14 +484,18 @@ V5Store::ConvertExtensionsBlocklistFromV4ToV5(
     return ConvertExtensionBlocklistV4ToV5Result::kReadV4Failed;
   }
 
+  base::TimeDelta checksum_duration;
+
   // Verify V4 checksum if provided and not empty. For the purposes of the disk
   // migration, we don't fail when the checksum is missing, because
   // `V4Store::VerifyChecksum` allows it. `V5Store::VerifyChecksum` may end up
   // being different.
   if (checksum_sha256 && !checksum_sha256->empty()) {
+    base::ElapsedTimer checksum_timer;
     std::array<uint8_t, crypto::hash::kSha256Size> calculated_checksum;
     crypto::hash::Hash(crypto::hash::HashKind::kSha256,
                        base::as_byte_span(v4_data), calculated_checksum);
+    checksum_duration += checksum_timer.Elapsed();
     if (checksum_sha256->size() != crypto::hash::kSha256Size ||
         base::as_byte_span(*checksum_sha256) != calculated_checksum) {
       return ConvertExtensionBlocklistV4ToV5Result::kV4ChecksumMismatch;
@@ -492,10 +519,16 @@ V5Store::ConvertExtensionsBlocklistFromV4ToV5(
   *file_size = v5_hash_data.size();
 
   if (checksum_sha256 && !checksum_sha256->empty()) {
+    base::ElapsedTimer checksum_timer;
     std::array<uint8_t, crypto::hash::kSha256Size> v5_checksum;
     crypto::hash::Hash(crypto::hash::HashKind::kSha256,
                        base::as_byte_span(v5_hash_data), v5_checksum);
+    checksum_duration += checksum_timer.Elapsed();
     checksum_sha256->assign(v5_checksum.begin(), v5_checksum.end());
+
+    base::UmaHistogramTimes(
+        "SafeBrowsing.V5Store.ConvertExtensionBlocklistV4ToV5.ChecksumDuration",
+        checksum_duration);
   }
 
   return ConvertExtensionBlocklistV4ToV5Result::kSuccess;
@@ -575,6 +608,28 @@ void V5Store::ApplyUpdate(
   bool is_full_update = !v5_response->partial_update();
   std::string metric = is_full_update ? "SafeBrowsing.V5ProcessFullUpdate"
                                       : "SafeBrowsing.V5ProcessPartialUpdate";
+
+  SafeBrowsingUpdateCategory category;
+  if (is_first_update_after_v4_migration_) {
+    category = is_full_update
+                   ? SafeBrowsingUpdateCategory::kPostMigrationFullUpdate
+                   : SafeBrowsingUpdateCategory::kPostMigrationPartialUpdate;
+  } else if (is_new_database_) {
+    category = is_full_update
+                   ? SafeBrowsingUpdateCategory::kNewDatabaseFullUpdate
+                   : SafeBrowsingUpdateCategory::kNewDatabasePartialUpdate;
+  } else {
+    category = is_full_update
+                   ? SafeBrowsingUpdateCategory::kRegularFullUpdate
+                   : SafeBrowsingUpdateCategory::kRegularPartialUpdate;
+  }
+  RecordUpdateCategory(category, store_path_);
+
+  // Reset back to false even if the update ends up failing later. Most cases
+  // are expected to succeed, and cleaner metrics are preferred (only one
+  // "non-regular" log per client in general cases).
+  is_first_update_after_v4_migration_ = false;
+  is_new_database_ = false;
 
   base::expected<SBStorePtr, V5ApplyUpdateResult> update_result =
       ApplyUpdateInternal(std::move(v5_response), metric);

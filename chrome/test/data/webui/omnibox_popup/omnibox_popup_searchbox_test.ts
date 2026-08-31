@@ -2,15 +2,44 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {omniboxPopupBrowserProxyFactory, OmniboxPopupPageHandlerRemote, sanitizeTextForPaste, SearchboxBrowserProxy, stripJavascriptSchemas} from 'chrome://omnibox-popup.top-chrome/omnibox_popup.js';
-import type {OmniboxPopupPageRemote, OmniboxPopupSearchboxElement} from 'chrome://omnibox-popup.top-chrome/omnibox_popup.js';
+import {OmniboxEscapeAction, omniboxPopupBrowserProxyFactory, OmniboxPopupPageHandlerRemote, sanitizeTextForPaste, SearchboxBrowserProxy, stripJavascriptSchemas} from 'chrome://omnibox-popup.top-chrome/omnibox_popup.js';
+import type {OmniboxInputState, OmniboxPopupContextualEntrypointButtonElement, OmniboxPopupPageRemote, OmniboxPopupSearchboxElement} from 'chrome://omnibox-popup.top-chrome/omnibox_popup.js';
 import {createAutocompleteResultForTesting, createSearchMatchForTesting} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
-import {SelectionLineState} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
+import {RenderType, SelectionLineState, SideType} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import type {TabInfo} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {TestMock} from 'chrome://webui-test/test_mock.js';
-import {microtasksFinished} from 'chrome://webui-test/test_util.js';
+import {$$, isVisible, microtasksFinished} from 'chrome://webui-test/test_util.js';
 
-import {TestSearchboxBrowserProxy} from './test_searchbox_browser_proxy.js';
+import {createDefaultInputState, TestSearchboxBrowserProxy} from './test_searchbox_browser_proxy.js';
+
+function getContextualEntrypointButton(searchbox: OmniboxPopupSearchboxElement):
+    OmniboxPopupContextualEntrypointButtonElement|null {
+  const popupEntrypoint = $$(searchbox, 'omnibox-popup-contextual-entrypoint');
+  if (!popupEntrypoint) {
+    return null;
+  }
+  return $$<OmniboxPopupContextualEntrypointButtonElement>(
+      popupEntrypoint, 'omnibox-popup-contextual-entrypoint-button');
+}
+
+function createDefaultOmniboxInputState(overrides?: Partial<OmniboxInputState>):
+    OmniboxInputState {
+  return {
+    sequenceNumber: 1,
+    text: '',
+    selection: {start: 0, end: 0},
+    userInputInProgress: false,
+    fullUrl: '',
+    isFocused: false,
+    permanentDisplayText: '',
+    showFullUrl: false,
+    queryZps: false,
+    keywordModel: null,
+    ...overrides,
+  };
+}
 
 suite('OmniboxPopupSearchboxTest', function() {
   let searchbox: OmniboxPopupSearchboxElement;
@@ -21,6 +50,14 @@ suite('OmniboxPopupSearchboxTest', function() {
 
   setup(async () => {
     document.body.innerHTML = window.trustedTypes!.emptyHTML;
+    loadTimeData.overrideValues({
+      hideClassicContextButton: false,
+      composeboxShowContextMenuDescription: false,
+      omniboxShowContextButtonSuggestionLabel: false,
+      addContext: 'Add tabs and more',
+      contextButtonShapeIsOblong: false,
+      contextualMenuUsePecApi: false,
+    });
     testProxy = new TestSearchboxBrowserProxy();
     SearchboxBrowserProxy.setInstance(testProxy);
     handler = TestMock.fromClass(OmniboxPopupPageHandlerRemote);
@@ -36,16 +73,9 @@ suite('OmniboxPopupSearchboxTest', function() {
   test('HandlesSetInputState', async () => {
     // Set the input state via Mojo.
     const testText = 'test input';
-    callbackRouter.setInputState({
-      sequenceNumber: 1,
+    callbackRouter.setInputState(createDefaultOmniboxInputState({
       text: testText,
-      selection: {start: 0, end: 0},
-      userInputInProgress: false,
-      fullUrl: '',
-      isFocused: false,
-      permanentDisplayText: '',
-      showFullUrl: false,
-    });
+    }));
     await microtasksFinished();
 
     // Ensure input element was updated with correct text and selection.
@@ -61,22 +91,45 @@ suite('OmniboxPopupSearchboxTest', function() {
     assertEquals(1, testProxy.handler.getCallCount('stopAutocomplete'));
   });
 
+  test('EnterKeySubmitsVerbatimMatchWhenNoMatchSelected', async () => {
+    callbackRouter.setInputState(createDefaultOmniboxInputState({
+      text: 'chrome://version',
+    }));
+    await microtasksFinished();
+
+    assertEquals(-1, searchbox.selectedMatchIndex);
+
+    await searchbox.handleKeyNavigation(new KeyboardEvent('keydown', {
+      key: 'Enter',
+      cancelable: true,
+    }));
+    await microtasksFinished();
+
+    const [line, url, areMatchesShowing, mouseButton, modifiers, viaKeyboard] =
+        await testProxy.handler.whenCalled('openAutocompleteMatch');
+    assertEquals(-1, line);
+    assertEquals('', url);
+    assertFalse(areMatchesShowing);
+    assertEquals(0, mouseButton);
+    assertFalse(modifiers.altKey);
+    assertFalse(modifiers.ctrlKey);
+    assertFalse(modifiers.metaKey);
+    assertFalse(modifiers.shiftKey);
+    assertTrue(viaKeyboard);
+  });
+
   test('HandlesSelectionChange', async () => {
     // Focus the input so it's the active element.
     const input = searchbox.$.input.inputElement;
     input.focus();
     await microtasksFinished();
     // Set some text in the omnibox popup via Mojo.
-    callbackRouter.setInputState({
+    callbackRouter.setInputState(createDefaultOmniboxInputState({
       sequenceNumber: 123,
       text: 'test text',
-      selection: {start: 0, end: 0},
       userInputInProgress: true,
-      fullUrl: '',
       isFocused: true,
-      permanentDisplayText: '',
-      showFullUrl: false,
-    });
+    }));
     await microtasksFinished();
 
     // Send `focusin` event to clear `pendingFocusSelection_`.
@@ -120,16 +173,10 @@ suite('OmniboxPopupSearchboxTest', function() {
     await microtasksFinished();
 
     // Set the input state via Mojo.
-    callbackRouter.setInputState({
-      sequenceNumber: 1,
+    callbackRouter.setInputState(createDefaultOmniboxInputState({
       text: 'test text',
       selection: {start: 1, end: 4},
-      userInputInProgress: false,
-      fullUrl: '',
-      isFocused: false,
-      permanentDisplayText: '',
-      showFullUrl: false,
-    });
+    }));
     await microtasksFinished();
 
     // Ensure selection was applied immediately regardless of focus.
@@ -138,52 +185,41 @@ suite('OmniboxPopupSearchboxTest', function() {
   });
 
   test('RejectsFocusWhenUserInputInProgress', async () => {
-    callbackRouter.setInputState({
-      sequenceNumber: 1,
+    callbackRouter.setInputState(createDefaultOmniboxInputState({
       text: 'edited text',
-      selection: {start: 0, end: 0},
       userInputInProgress: true,
-      fullUrl: '',
       isFocused: true,
-      permanentDisplayText: '',
-      showFullUrl: false,
-    });
+    }));
     await microtasksFinished();
 
     searchbox.onInputFocusChanged(new CustomEvent(
-        'input-focus-changed', {detail: {value: 'edited text'}}));
+        'input-focus-changed',
+        {detail: {value: 'edited text', isOnFocus: true}}));
     assertEquals(0, testProxy.handler.getCallCount('queryAutocomplete'));
     assertFalse(searchbox.dropdownIsVisible);
 
-    callbackRouter.setInputState({
+    callbackRouter.setInputState(createDefaultOmniboxInputState({
       sequenceNumber: 2,
       text: 'permanent text',
-      selection: {start: 0, end: 0},
-      userInputInProgress: false,
-      fullUrl: '',
       isFocused: true,
       permanentDisplayText: '',
-      showFullUrl: false,
-    });
+    }));
     await microtasksFinished();
 
     searchbox.onInputFocusChanged(new CustomEvent(
-        'input-focus-changed', {detail: {value: 'permanent text'}}));
+        'input-focus-changed',
+        {detail: {value: 'permanent text', isOnFocus: true}}));
     assertEquals(1, testProxy.handler.getCallCount('queryAutocomplete'));
   });
 
   test('IgnoresStaleAutocompleteResults', async () => {
     // Simulate user typing a custom query.
-    callbackRouter.setInputState({
-      sequenceNumber: 1,
+    callbackRouter.setInputState(createDefaultOmniboxInputState({
       text: 'custom draft',
       selection: {start: 12, end: 12},
       userInputInProgress: true,
-      fullUrl: '',
       isFocused: true,
-      permanentDisplayText: '',
-      showFullUrl: false,
-    });
+    }));
     await microtasksFinished();
 
     // Send a stale autocomplete result (from an older query, e.g. "stale").
@@ -211,16 +247,11 @@ suite('OmniboxPopupSearchboxTest', function() {
     input.focus();
     await microtasksFinished();
 
-    callbackRouter.setInputState({
-      sequenceNumber: 1,
+    callbackRouter.setInputState(createDefaultOmniboxInputState({
       text: 'CJK text',
-      selection: {start: 0, end: 0},
       userInputInProgress: true,
-      fullUrl: '',
       isFocused: true,
-      permanentDisplayText: '',
-      showFullUrl: false,
-    });
+    }));
     await microtasksFinished();
     handler.reset();
 
@@ -255,17 +286,12 @@ suite('OmniboxPopupSearchboxTest', function() {
     input.focus();
     await microtasksFinished();
 
-
-    callbackRouter.setInputState({
-      sequenceNumber: 1,
+    callbackRouter.setInputState(createDefaultOmniboxInputState({
       text: 'test.com',
       selection: {start: 0, end: 4},
-      userInputInProgress: false,
       fullUrl: full_url,
       isFocused: true,
-      permanentDisplayText: '',
-      showFullUrl: false,
-    });
+    }));
     await microtasksFinished();
     handler.reset();
 
@@ -275,32 +301,21 @@ suite('OmniboxPopupSearchboxTest', function() {
 
   test('HandlesSetInputStateFocus', async () => {
     // Set isFocused = true.
-    callbackRouter.setInputState({
-      sequenceNumber: 1,
+    callbackRouter.setInputState(createDefaultOmniboxInputState({
       text: 'test text',
-      selection: {start: 0, end: 0},
-      userInputInProgress: false,
-      fullUrl: '',
       isFocused: true,
-      permanentDisplayText: '',
-      showFullUrl: false,
-    });
+    }));
     await microtasksFinished();
 
     // Verify input element is focused.
     assertEquals(searchbox.$.input, searchbox.shadowRoot.activeElement);
 
     // Set isFocused = false.
-    callbackRouter.setInputState({
+    callbackRouter.setInputState(createDefaultOmniboxInputState({
       sequenceNumber: 2,
       text: 'test text',
-      selection: {start: 0, end: 0},
-      userInputInProgress: false,
-      fullUrl: '',
       isFocused: false,
-      permanentDisplayText: '',
-      showFullUrl: false,
-    });
+    }));
     await microtasksFinished();
 
     // Verify input element is blurred.
@@ -318,16 +333,13 @@ suite('OmniboxPopupSearchboxTest', function() {
     // Test revert is called with active sequence number (42) after receiving
     // state.
     handler.reset();
-    callbackRouter.setInputState({
+    callbackRouter.setInputState(createDefaultOmniboxInputState({
       sequenceNumber: 42,
       text: 'hello',
       selection: {start: 5, end: 5},
       userInputInProgress: true,
-      fullUrl: '',
       isFocused: true,
-      permanentDisplayText: '',
-      showFullUrl: false,
-    });
+    }));
     await microtasksFinished();
 
     searchbox.revert();
@@ -339,16 +351,11 @@ suite('OmniboxPopupSearchboxTest', function() {
 
   test('SubsequentSelectionChangesNotIgnoredAfterFocus', async () => {
     // Set the input state via Mojo with isFocused = true.
-    callbackRouter.setInputState({
-      sequenceNumber: 1,
+    callbackRouter.setInputState(createDefaultOmniboxInputState({
       text: 'hello world',
-      selection: {start: 0, end: 0},
-      userInputInProgress: false,
-      fullUrl: '',
       isFocused: true,
-      permanentDisplayText: '',
-      showFullUrl: false,
-    });
+    }));
+    await microtasksFinished();
     await microtasksFinished();
 
     // The input should be focused.
@@ -386,16 +393,12 @@ suite('OmniboxPopupSearchboxTest', function() {
   });
 
   test('ClearsInputTextAndNotifiesHandler', async () => {
-    callbackRouter.setInputState({
+    callbackRouter.setInputState(createDefaultOmniboxInputState({
       sequenceNumber: 5,
       text: 'hello',
       selection: {start: 0, end: 5},
-      userInputInProgress: false,
-      fullUrl: '',
       isFocused: true,
-      permanentDisplayText: '',
-      showFullUrl: false,
-    });
+    }));
     await microtasksFinished();
     handler.reset();
 
@@ -412,16 +415,11 @@ suite('OmniboxPopupSearchboxTest', function() {
     Object.defineProperty(
         document, 'visibilityState', {value: 'hidden', configurable: true});
 
-    callbackRouter.setInputState({
-      sequenceNumber: 1,
+    callbackRouter.setInputState(createDefaultOmniboxInputState({
       text: 'test',
       selection: {start: 0, end: 4},
-      userInputInProgress: false,
-      fullUrl: '',
       isFocused: true,
-      permanentDisplayText: '',
-      showFullUrl: false,
-    });
+    }));
     await microtasksFinished();
 
     const input = searchbox.$.input.inputElement;
@@ -470,16 +468,12 @@ suite('OmniboxPopupSearchboxTest', function() {
     // Mock `handler.requestInputState()` to simulate C++ responding with
     // initial state.
     handler.requestInputState = () => {
-      callbackRouter.setInputState({
-        sequenceNumber: 1,
+      callbackRouter.setInputState(createDefaultOmniboxInputState({
         text: testText,
         selection: {start: 0, end: testText.length},
-        userInputInProgress: false,
-        fullUrl: '',
         isFocused: true,
         permanentDisplayText: testText,
-        showFullUrl: false,
-      });
+      }));
     };
 
     // Attach searchbox to DOM.
@@ -524,6 +518,73 @@ suite('OmniboxPopupSearchboxTest', function() {
 
     assertTrue(pasteEvent.defaultPrevented);
     assertEquals('https://example.com', searchbox.$.input.inputElement.value);
+  });
+
+  test('HandlesCopy', async () => {
+    callbackRouter.setInputState(createDefaultOmniboxInputState({
+      sequenceNumber: 7,
+      text: 'hello world',
+      selection: {start: 0, end: 11},
+      isFocused: true,
+    }));
+    await microtasksFinished();
+    handler.reset();
+
+    const copyEvent = new ClipboardEvent('copy', {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+    });
+
+    searchbox.$.input.dispatchEvent(copyEvent);
+    await microtasksFinished();
+
+    assertTrue(copyEvent.defaultPrevented);
+    assertEquals(1, handler.getCallCount('onCutOrCopy'));
+    const [sequenceNumber, isCut, fullText, selection] =
+        handler.getArgs('onCutOrCopy')[0];
+    assertEquals(7, sequenceNumber);
+    assertFalse(isCut);
+    assertEquals('hello world', fullText);
+    assertEquals(0, selection.start);
+    assertEquals(11, selection.end);
+  });
+
+  test('HandlesCut', async () => {
+    callbackRouter.setInputState(createDefaultOmniboxInputState({
+      sequenceNumber: 8,
+      text: 'hello world',
+      selection: {start: 0, end: 5},
+      isFocused: true,
+    }));
+    await microtasksFinished();
+    handler.reset();
+
+    const cutEvent = new ClipboardEvent('cut', {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+    });
+
+    searchbox.$.input.dispatchEvent(cutEvent);
+    await microtasksFinished();
+
+    assertTrue(cutEvent.defaultPrevented);
+    assertEquals(1, handler.getCallCount('onCutOrCopy'));
+    const [sequenceNumber, isCut, fullText, selection] =
+        handler.getArgs('onCutOrCopy')[0];
+    assertEquals(8, sequenceNumber);
+    assertTrue(isCut);
+    assertEquals('hello world', fullText);
+    assertEquals(0, selection.start);
+    assertEquals(5, selection.end);
+
+    // Verify local input element was updated to remaining text (" world")
+    // and caret moved to start of cut position (0, 0).
+    const input = searchbox.$.input.inputElement;
+    assertEquals(' world', input.value);
+    assertEquals(0, input.selectionStart);
+    assertEquals(0, input.selectionEnd);
   });
 
   test('StripSchemasUnsafeForPaste', () => {
@@ -635,6 +696,22 @@ suite('OmniboxPopupSearchboxTest', function() {
     // Initial state: nothing selected.
     assertEquals(-1, searchbox.selectedMatchIndex);
 
+    // Populate autocomplete result so match index 2 is valid and not out of
+    // bounds.
+    searchbox.activeQueryId = 0;
+    searchbox.lastQueriedInput = '';
+    testProxy.page.autocompleteResultChanged(
+        createAutocompleteResultForTesting({
+          queryId: 0,
+          input: '',
+          matches: [
+            createSearchMatchForTesting(),
+            createSearchMatchForTesting(),
+            createSearchMatchForTesting(),
+          ],
+        }));
+    await microtasksFinished();
+
     testProxy.handler.reset();
 
     // Change selection to a valid match index.
@@ -683,9 +760,8 @@ suite('OmniboxPopupSearchboxTest', function() {
     assertTrue(searchbox.dropdownIsVisible);
 
     // Focus stays inside wrapper.
-    const matchesEl = searchbox.$.matches;
     searchbox.$.inputWrapper.dispatchEvent(new FocusEvent('focusout', {
-      relatedTarget: matchesEl,
+      relatedTarget: searchbox.$.matches,
       bubbles: true,
       composed: true,
     }));
@@ -703,122 +779,929 @@ suite('OmniboxPopupSearchboxTest', function() {
     }));
     await microtasksFinished();
 
-    // Verify matches are cleared and dropdown is hidden.
+    // Verify matches are cleared, dropdown is hidden, and selection is reset to
+    // (0, 0).
     assertFalse(searchbox.dropdownIsVisible);
     assertEquals(0, handler.getCallCount('revert'));
+    assertEquals(0, searchbox.getInputElement().inputElement.selectionStart);
+    assertEquals(0, searchbox.getInputElement().inputElement.selectionEnd);
   });
 
  test('ComputePlaceholderText_OnTabSwitchAndStateReset', async () => {
-    // Initial NTP tab state (empty input, empty `permanentDisplayText`,
-    // unfocused).
-    callbackRouter.setInputState({
-      sequenceNumber: 1,
-      text: '',
-      selection: {start: 0, end: 0},
-      userInputInProgress: false,
-      fullUrl: '',
-      isFocused: false,
-      permanentDisplayText: '',
-      showFullUrl: false,
-    });
-    await microtasksFinished();
-    await searchbox.$.input.updateComplete;
+   // Initial NTP tab state (empty input, empty `permanentDisplayText`,
+   // unfocused).
+   callbackRouter.setInputState(createDefaultOmniboxInputState());
+   await microtasksFinished();
+   await searchbox.$.input.updateComplete;
 
-    // Placeholder must always be empty.
-    assertEquals('', searchbox.$.input.inputElement.placeholder);
+   // Placeholder must always be empty.
+   assertEquals('', searchbox.$.input.inputElement.placeholder);
 
-    // Switch to regular URL tab (permanentDisplayText set, focused).
-    callbackRouter.setInputState({
-      sequenceNumber: 2,
-      text: 'chrome://version',
-      selection: {start: 16, end: 16},
-      userInputInProgress: false,
-      fullUrl: 'chrome://version',
-      isFocused: true,
-      permanentDisplayText: 'chrome://version',
-      showFullUrl: false,
-    });
-    await microtasksFinished();
-    await searchbox.$.input.updateComplete;
+   // Switch to regular URL tab (permanentDisplayText set, focused).
+   callbackRouter.setInputState(createDefaultOmniboxInputState({
+     sequenceNumber: 2,
+     text: 'chrome://version',
+     selection: {start: 16, end: 16},
+     fullUrl: 'chrome://version',
+     isFocused: true,
+     permanentDisplayText: 'chrome://version',
+   }));
+   await microtasksFinished();
+   await searchbox.$.input.updateComplete;
 
-    // Placeholder must always be empty.
-    assertEquals('', searchbox.$.input.inputElement.placeholder);
-  });
+   // Placeholder must always be empty.
+   assertEquals('', searchbox.$.input.inputElement.placeholder);
+ });
 
-  test('TabSwitchInputStateIsolationAndReset', async () => {
-    // Simulate Tab 1 (NTP) state with active user draft.
-    callbackRouter.setInputState({
-      sequenceNumber: 10,
-      text: 'user search query',
-      selection: {start: 17, end: 17},
-      userInputInProgress: true,
-      fullUrl: '',
-      isFocused: true,
-      permanentDisplayText: '',
-      showFullUrl: false,
-    });
-    await microtasksFinished();
+ test('TabSwitchInputStateIsolationAndReset', async () => {
+   // Simulate Tab 1 (NTP) state with active user draft.
+   callbackRouter.setInputState(createDefaultOmniboxInputState({
+     sequenceNumber: 10,
+     text: 'user search query',
+     selection: {start: 17, end: 17},
+     userInputInProgress: true,
+     isFocused: true,
+   }));
+   await microtasksFinished();
 
-    assertEquals('user search query', searchbox.$.input.inputElement.value);
-    assertEquals('user search query', searchbox.lastQueriedInput);
-    assertEquals(17, searchbox.$.input.inputElement.selectionStart);
-    assertEquals(17, searchbox.$.input.inputElement.selectionEnd);
+   assertEquals('user search query', searchbox.$.input.inputElement.value);
+   assertEquals('user search query', searchbox.lastQueriedInput);
+   assertEquals(17, searchbox.$.input.inputElement.selectionStart);
+   assertEquals(17, searchbox.$.input.inputElement.selectionEnd);
 
-    // Tab switch to Tab 2 (non-NTP) with permanent URL.
-    callbackRouter.setInputState({
-      sequenceNumber: 11,
-      text: 'https://chromium.org',
-      selection: {start: 20, end: 20},
-      userInputInProgress: false,
-      fullUrl: 'https://chromium.org',
-      isFocused: true,
-      permanentDisplayText: 'https://chromium.org',
-      showFullUrl: false,
-    });
-    await microtasksFinished();
+   // Tab switch to Tab 2 (non-NTP) with permanent URL.
+   callbackRouter.setInputState(createDefaultOmniboxInputState({
+     sequenceNumber: 11,
+     text: 'https://chromium.org',
+     selection: {start: 20, end: 20},
+     fullUrl: 'https://chromium.org',
+     isFocused: true,
+     permanentDisplayText: 'https://chromium.org',
+   }));
+   await microtasksFinished();
 
-    assertEquals('https://chromium.org', searchbox.$.input.inputElement.value);
-    assertEquals('https://chromium.org', searchbox.lastQueriedInput);
-    assertEquals(20, searchbox.$.input.inputElement.selectionStart);
-    assertEquals(20, searchbox.$.input.inputElement.selectionEnd);
-  });
+   assertEquals('https://chromium.org', searchbox.$.input.inputElement.value);
+   assertEquals('https://chromium.org', searchbox.lastQueriedInput);
+   assertEquals(20, searchbox.$.input.inputElement.selectionStart);
+   assertEquals(20, searchbox.$.input.inputElement.selectionEnd);
+ });
 
-  test('KeepsDropdownOpenOnBackgroundTabNavigation', async () => {
-    // Set some input text to query autocomplete.
-    const mockInput = searchbox.$.input;
-    mockInput.inputElement.value = 'test';
-    mockInput.inputElement.dispatchEvent(new Event('test', {bubbles: true}));
+ test('KeepsDropdownOpenOnBackgroundTabNavigation', async () => {
+   // Set some input text to query autocomplete.
+   const mockInput = searchbox.$.input;
+   mockInput.inputElement.value = 'test';
+   mockInput.inputElement.dispatchEvent(new Event('test', {bubbles: true}));
 
-    // Simulate autocomplete results to open the dropdown.
-    searchbox.onAutocompleteResultChanged(createAutocompleteResultForTesting({
-      queryId: searchbox.activeQueryId,
-      input: 'test',
-      matches: [createSearchMatchForTesting(), createSearchMatchForTesting()],
-    }));
-    await microtasksFinished();
-    assertTrue(searchbox.dropdownIsVisible);
+   // Simulate autocomplete results.
+   searchbox.lastQueriedInput = 'test';
+   searchbox.onAutocompleteResultChanged(createAutocompleteResultForTesting({
+     queryId: searchbox.activeQueryId,
+     input: 'test',
+     matches: [
+       createSearchMatchForTesting({
+         allowedToBeDefaultMatch: true,
+         inlineAutocompletion: 'ing',
+         fillIntoEdit: 'testing',
+       }),
+       createSearchMatchForTesting(),
+     ],
+   }));
+   await microtasksFinished();
+   assertTrue(searchbox.dropdownIsVisible);
+   assertEquals('testing', searchbox.getInputElement().getInputValue());
+   assertEquals('test', searchbox.getInputElement().lastInput()?.text);
+   assertEquals('ing', searchbox.getInputElement().lastInput()?.inline);
 
-    // Simulate `Enter` with Alt + Shift keys (background tab).
-    searchbox.navigateToMatch(
-        0,
-        new KeyboardEvent(
-            'keydown', {key: 'Enter', altKey: true, shiftKey: true}));
-    await microtasksFinished();
-    assertTrue(searchbox.dropdownIsVisible);
+   // Simulate `Enter` with Alt + Shift keys (background tab).
+   searchbox.navigateToMatch(
+       0,
+       new KeyboardEvent(
+           'keydown', {key: 'Enter', altKey: true, shiftKey: true}));
+   await microtasksFinished();
+   assertTrue(searchbox.dropdownIsVisible);
+   assertEquals('testing', searchbox.getInputElement().getInputValue());
+   assertEquals('test', searchbox.getInputElement().lastInput()?.text);
+   assertEquals('ing', searchbox.getInputElement().lastInput()?.inline);
 
-    // Simulate `Enter` with Meta key and without Shift key (background tab).
-    searchbox.navigateToMatch(
-        0,
-        new KeyboardEvent(
-            'keydown', {key: 'Enter', metaKey: true, shiftKey: false}));
-    await microtasksFinished();
-    assertTrue(searchbox.dropdownIsVisible);
+   // Simulate `Enter` with Meta key and without Shift key (background tab).
+   searchbox.navigateToMatch(
+       0,
+       new KeyboardEvent(
+           'keydown', {key: 'Enter', metaKey: true, shiftKey: false}));
+   await microtasksFinished();
+   assertTrue(searchbox.dropdownIsVisible);
+   assertEquals('testing', searchbox.getInputElement().getInputValue());
+   assertEquals('test', searchbox.getInputElement().lastInput()?.text);
+   assertEquals('ing', searchbox.getInputElement().lastInput()?.inline);
 
-    // Simulate a normal Enter key (foreground tab).
-    searchbox.navigateToMatch(0, new KeyboardEvent('keydown', {key: 'Enter'}));
-    await microtasksFinished();
+   // Simulate a normal Enter key (foreground tab).
+   searchbox.navigateToMatch(0, new KeyboardEvent('keydown', {key: 'Enter'}));
+   await microtasksFinished();
 
-    // Dropdown should now be closed.
-    assertFalse(searchbox.dropdownIsVisible);
-  });
+   // Dropdown should now be closed.
+   assertFalse(searchbox.dropdownIsVisible);
+ });
+
+ test('IgnoreOutOfBoundsMatchIndexChange', async () => {
+   assertEquals(-1, searchbox.selectedMatchIndex);
+
+   searchbox.activeQueryId = 0;
+   searchbox.lastQueriedInput = '';
+   testProxy.page.autocompleteResultChanged(createAutocompleteResultForTesting({
+     queryId: 0,
+     input: '',
+     matches: [
+       createSearchMatchForTesting(),
+     ],
+   }));
+   await microtasksFinished();
+
+   testProxy.handler.reset();
+
+   // Set an out-of-bounds index.
+   searchbox.selectedMatchIndex = 5;
+   await microtasksFinished();
+
+   // Verify handler was not notified because index is out of bounds.
+   assertEquals(0, testProxy.handler.getCallCount('setPopupSelection'));
+ });
+
+ test('InputWrapperFocusout_NullRelatedTarget', async () => {
+   searchbox.activeQueryId = 0;
+   searchbox.lastQueriedInput = 'hello';
+   testProxy.page.autocompleteResultChanged(createAutocompleteResultForTesting({
+     queryId: 0,
+     input: 'hello',
+     matches: [createSearchMatchForTesting()],
+   }));
+   await microtasksFinished();
+   assertTrue(searchbox.dropdownIsVisible);
+
+   // DOM focusout with `relatedTarget: null` is ignored because window-level
+   // focus loss is managed via Mojo IPC (SetFocus).
+   searchbox.$.inputWrapper.dispatchEvent(new FocusEvent('focusout', {
+     relatedTarget: null,
+     bubbles: true,
+     composed: true,
+   }));
+   await microtasksFinished();
+   assertTrue(searchbox.dropdownIsVisible);
+
+   // Receiving `setFocus(false)` via Mojo IPC triggers focus-loss cleanup.
+   callbackRouter.setFocus(false);
+   await microtasksFinished();
+   assertFalse(searchbox.dropdownIsVisible);
+ });
+
+ test('EscapeStagedUnwinding', async () => {
+   // Stage 1 (`kRevertTemporaryText`):
+   searchbox.getInputElement().inputElement.value = 'a';
+   searchbox.lastQueriedInput = 'a';
+   searchbox.activeQueryId = 0;
+   testProxy.page.autocompleteResultChanged(createAutocompleteResultForTesting({
+     input: 'a',
+     matches: [
+       createSearchMatchForTesting({
+         allowedToBeDefaultMatch: true,
+         fillIntoEdit: 'a',
+         inlineAutocompletion: '',
+       }),
+       createSearchMatchForTesting({
+         allowedToBeDefaultMatch: false,
+         fillIntoEdit: 'suggestion-1',
+       }),
+     ],
+   }));
+   await microtasksFinished();
+   assertTrue(searchbox.dropdownIsVisible);
+
+   searchbox.selectedMatchIndex = 1;
+   searchbox.getInputElement().inputElement.value = 'suggestion-1';
+   await microtasksFinished();
+
+   await searchbox.handleKeyNavigation(new KeyboardEvent('keydown', {
+     key: 'Escape',
+     cancelable: true,
+   }));
+   await microtasksFinished();
+
+   assertEquals('a', searchbox.getInputElement().inputElement.value);
+   assertEquals(0, searchbox.selectedMatchIndex);
+   assertTrue(searchbox.dropdownIsVisible);
+   assertEquals(1, handler.getCallCount('logEscapeAction'));
+   assertEquals(
+       OmniboxEscapeAction.kRevertTemporaryText,
+       handler.getArgs('logEscapeAction')[0]);
+
+   handler.reset();
+   testProxy.handler.reset();
+
+   // Stage 2 (`kClosePopup`):
+   await searchbox.handleKeyNavigation(new KeyboardEvent('keydown', {
+     key: 'Escape',
+     cancelable: true,
+   }));
+   await microtasksFinished();
+
+   assertFalse(searchbox.dropdownIsVisible);
+   assertEquals(1, testProxy.handler.getCallCount('stopAutocomplete'));
+   assertTrue(testProxy.handler.getArgs('stopAutocomplete')[0]);
+   assertEquals(1, handler.getCallCount('logEscapeAction'));
+   assertEquals(
+       OmniboxEscapeAction.kClosePopup, handler.getArgs('logEscapeAction')[0]);
+
+   handler.reset();
+   testProxy.handler.reset();
+
+   // Stage 3 (`kClearUserInput` - elided URL where showFullUrl is false):
+   const permanentDisplayText = 'example.com';
+   const fullUrl = 'https://example.com/';
+   callbackRouter.setInputState(createDefaultOmniboxInputState({
+     sequenceNumber: 5,
+     text: 'dirty input',
+     selection: {start: 1, end: 1},
+     userInputInProgress: true,
+     fullUrl: fullUrl,
+     isFocused: true,
+     permanentDisplayText: permanentDisplayText,
+   }));
+   await microtasksFinished();
+
+   await searchbox.handleKeyNavigation(new KeyboardEvent('keydown', {
+     key: 'Escape',
+     cancelable: true,
+   }));
+   await microtasksFinished();
+
+   assertEquals(
+       permanentDisplayText, searchbox.getInputElement().inputElement.value);
+   assertEquals(0, searchbox.getInputElement().inputElement.selectionStart);
+   assertEquals(
+       permanentDisplayText.length,
+       searchbox.getInputElement().inputElement.selectionEnd);
+   assertEquals(1, handler.getCallCount('revert'));
+   assertEquals(5, handler.getArgs('revert')[0]);
+   assertEquals(1, handler.getCallCount('logEscapeAction'));
+   assertEquals(
+       OmniboxEscapeAction.kClearUserInput,
+       handler.getArgs('logEscapeAction')[0]);
+
+   handler.reset();
+   testProxy.handler.reset();
+
+   // Stage 3 (`kClearUserInput` - unelided URL where showFullUrl is true):
+   callbackRouter.setInputState(createDefaultOmniboxInputState({
+     sequenceNumber: 6,
+     text: 'dirty input',
+     selection: {start: 1, end: 1},
+     userInputInProgress: true,
+     fullUrl: fullUrl,
+     isFocused: true,
+     permanentDisplayText: permanentDisplayText,
+     showFullUrl: true,
+   }));
+   await microtasksFinished();
+
+   await searchbox.handleKeyNavigation(new KeyboardEvent('keydown', {
+     key: 'Escape',
+     cancelable: true,
+   }));
+   await microtasksFinished();
+
+   assertEquals('example.com', searchbox.getInputElement().inputElement.value);
+   assertEquals(0, searchbox.getInputElement().inputElement.selectionStart);
+   assertEquals(
+       permanentDisplayText.length,
+       searchbox.getInputElement().inputElement.selectionEnd);
+   assertEquals(1, handler.getCallCount('revert'));
+   assertEquals(6, handler.getArgs('revert')[0]);
+   assertEquals(1, handler.getCallCount('logEscapeAction'));
+   assertEquals(
+       OmniboxEscapeAction.kClearUserInput,
+       handler.getArgs('logEscapeAction')[0]);
+
+   handler.reset();
+   testProxy.handler.reset();
+
+   // Stage 4 (`kBlur`):
+   await searchbox.handleKeyNavigation(new KeyboardEvent('keydown', {
+     key: 'Escape',
+     cancelable: true,
+   }));
+   await microtasksFinished();
+
+   assertEquals(1, handler.getCallCount('closeUI'));
+   assertEquals(1, handler.getCallCount('logEscapeAction'));
+   assertEquals(
+       OmniboxEscapeAction.kBlur, handler.getArgs('logEscapeAction')[0]);
+ });
+
+ test('EscapeStagedUnwinding_ClearedInputNonEmptyUrl', async () => {
+   // Input was manually cleared ('') on a page with a non-empty permanent URL.
+   // ESC should restore the permanent URL ('example.com') without closing UI.
+   const permanentDisplayText = 'example.com';
+   callbackRouter.setInputState(createDefaultOmniboxInputState({
+     sequenceNumber: 8,
+     userInputInProgress: true,
+     fullUrl: 'https://example.com/',
+     isFocused: true,
+     permanentDisplayText: permanentDisplayText,
+   }));
+   await microtasksFinished();
+
+   await searchbox.handleKeyNavigation(new KeyboardEvent('keydown', {
+     key: 'Escape',
+     cancelable: true,
+   }));
+   await microtasksFinished();
+
+   assertEquals(
+       permanentDisplayText, searchbox.getInputElement().inputElement.value);
+   assertEquals(0, handler.getCallCount('closeUI'));
+   assertEquals(1, handler.getCallCount('revert'));
+   assertEquals(1, handler.getCallCount('logEscapeAction'));
+   assertEquals(
+       OmniboxEscapeAction.kClearUserInput,
+       handler.getArgs('logEscapeAction')[0]);
+ });
+
+ test('EscapeStagedUnwinding_EmptyPermanentUrl', async () => {
+   // Scenario 1: Typed text on NTP ('dirty NTP input').
+   // 1st ESC reverts text to empty string without closing UI.
+   callbackRouter.setInputState(createDefaultOmniboxInputState({
+     sequenceNumber: 6,
+     text: 'dirty NTP input',
+     selection: {start: 1, end: 1},
+     userInputInProgress: true,
+     isFocused: true,
+   }));
+   await microtasksFinished();
+
+   await searchbox.handleKeyNavigation(new KeyboardEvent('keydown', {
+     key: 'Escape',
+     cancelable: true,
+   }));
+   await microtasksFinished();
+
+   assertEquals('', searchbox.getInputElement().inputElement.value);
+   assertEquals(1, handler.getCallCount('revert'));
+   assertEquals(6, handler.getArgs('revert')[0]);
+   assertEquals(0, handler.getCallCount('closeUI'));
+   assertEquals(1, handler.getCallCount('logEscapeAction'));
+   assertEquals(
+       OmniboxEscapeAction.kClearUserInput,
+       handler.getArgs('logEscapeAction')[0]);
+
+   handler.reset();
+   testProxy.handler.reset();
+
+   // Scenario 2: Input was already empty ('') on NTP after clearing.
+   // 1st ESC clears user input AND closes UI immediately (avoiding empty ->
+   // empty no-op).
+   callbackRouter.setInputState(createDefaultOmniboxInputState({
+     sequenceNumber: 7,
+     userInputInProgress: true,
+     isFocused: true,
+   }));
+   await microtasksFinished();
+
+   await searchbox.handleKeyNavigation(new KeyboardEvent('keydown', {
+     key: 'Escape',
+     cancelable: true,
+   }));
+   await microtasksFinished();
+
+   assertEquals('', searchbox.getInputElement().inputElement.value);
+   assertEquals(1, handler.getCallCount('revert'));
+   assertEquals(7, handler.getArgs('revert')[0]);
+   assertEquals(1, handler.getCallCount('closeUI'));
+   assertEquals(1, handler.getCallCount('logEscapeAction'));
+   assertEquals(
+       OmniboxEscapeAction.kClearUserInput,
+       handler.getArgs('logEscapeAction')[0]);
+ });
+
+ test('EscapeIgnoredDuringIMEComposition', async () => {
+   searchbox.lastQueriedInput = 'a';
+   searchbox.activeQueryId = 0;
+   testProxy.page.autocompleteResultChanged(createAutocompleteResultForTesting({
+     input: 'a',
+     matches: [
+       createSearchMatchForTesting({
+         allowedToBeDefaultMatch: true,
+         fillIntoEdit: 'autocomplete.com',
+         inlineAutocompletion: 'utocomplete.com',
+       }),
+     ],
+   }));
+   await microtasksFinished();
+   assertTrue(searchbox.dropdownIsVisible);
+
+   // Press Escape while IME composition is active (isComposing: true).
+   await searchbox.handleKeyNavigation(new KeyboardEvent('keydown', {
+     key: 'Escape',
+     isComposing: true,
+     cancelable: true,
+   }));
+   await microtasksFinished();
+
+   // Escape should be ignored so the OS IME engine can handle it.
+   // Popup should remain open and logEscapeAction should not be called.
+   assertTrue(searchbox.dropdownIsVisible);
+   assertEquals(0, handler.getCallCount('logEscapeAction'));
+ });
+
+ test('SecondarySideShows', async () => {
+   // Ensure `canShowSecondarySide` is set to true.
+   searchbox.canShowSecondarySide = true;
+   await microtasksFinished();
+
+   const matches = [
+     createSearchMatchForTesting({suggestionGroupId: 1}),
+     createSearchMatchForTesting({suggestionGroupId: 100}),
+   ];
+   const suggestionGroupsMap = {
+     1: {
+       header: 'Primary',
+       renderType: RenderType.kDefaultVertical,
+       sideType: SideType.kDefaultPrimary,
+     },
+     100: {
+       header: 'Secondary',
+       renderType: RenderType.kDefaultVertical,
+       sideType: SideType.kSecondary,
+     },
+   };
+
+   searchbox.onAutocompleteResultChanged(createAutocompleteResultForTesting({
+     queryId: searchbox.activeQueryId,
+     sequenceId: 1001,
+     input: 'test',
+     matches: matches,
+     suggestionGroupsMap: suggestionGroupsMap,
+   }));
+   await microtasksFinished();
+
+   assertTrue(searchbox.hasSecondarySide);
+
+   // Verify `secondary-side` element is rendered and visible.
+   assertTrue(isVisible($$(searchbox.$.matches, '.secondary-side')));
+
+   // Verify secondary side is hidden when `canShowSecondarySide` is false.
+   searchbox.canShowSecondarySide = false;
+   await microtasksFinished();
+   assertFalse(isVisible($$(searchbox.$.matches, '.secondary-side')));
+ });
+
+ test('OpensAimPopupWhenComposeButtonClicked', async () => {
+   searchbox.onAutocompleteResultChanged(createAutocompleteResultForTesting({
+     queryId: searchbox.activeQueryId,
+     sequenceId: 456,
+     input: 'test',
+     matches: [createSearchMatchForTesting()],
+   }));
+   await microtasksFinished();
+   assertTrue(searchbox.dropdownIsVisible);
+
+   const composeButton = searchbox.$.composeButton;
+   assertTrue(!!composeButton);
+   composeButton.$.composeButton.dispatchEvent(new MouseEvent('click', {
+     bubbles: true,
+     composed: true,
+     detail: 1,
+   }));
+   await microtasksFinished();
+
+   assertFalse(searchbox.dropdownIsVisible);
+   const viaKeyboard = await handler.whenCalled('openAimPopup');
+   assertFalse(viaKeyboard);
+ });
+
+ test('OpensAimPopupWhenComposeButtonKeyboardActivated', async () => {
+   searchbox.onAutocompleteResultChanged(createAutocompleteResultForTesting({
+     queryId: searchbox.activeQueryId,
+     sequenceId: 789,
+     input: 'test',
+     matches: [createSearchMatchForTesting()],
+   }));
+   await microtasksFinished();
+   assertTrue(searchbox.dropdownIsVisible);
+
+   const composeButton = searchbox.$.composeButton;
+   assertTrue(!!composeButton);
+   composeButton.$.composeButton.dispatchEvent(new MouseEvent('click', {
+     bubbles: true,
+     composed: true,
+     detail: 0,
+   }));
+   await microtasksFinished();
+
+   assertFalse(searchbox.dropdownIsVisible);
+   const viaKeyboard = await handler.whenCalled('openAimPopup');
+   assertTrue(viaKeyboard);
+ });
+
+ test('OnPaste', async () => {
+   const input = searchbox.getInputElement().inputElement;
+   input.focus();
+
+   const dataTransfer = new DataTransfer();
+   dataTransfer.setData('text/plain', 'https://example.com');
+   const pasteEvent = new ClipboardEvent('paste', {
+     clipboardData: dataTransfer,
+     bubbles: true,
+     cancelable: true,
+     composed: true,
+   });
+
+   input.dispatchEvent(pasteEvent);
+   await microtasksFinished();
+
+   assertEquals('https://example.com', input.value);
+   assertEquals(1, handler.getCallCount('onPaste'));
+   const [pastedText, selection, sequenceNum] = handler.getArgs('onPaste')[0];
+   assertEquals('https://example.com', pastedText);
+   assertEquals(19, selection.start);
+   assertEquals(19, selection.end);
+   assertEquals(0, sequenceNum);
+
+   assertEquals(1, testProxy.handler.getCallCount('queryAutocomplete'));
+   const [_queryId, queryText, preventInline, _cursorPos, _inventory, isOnFocus] =
+       testProxy.handler.getArgs('queryAutocomplete')[0];
+   assertEquals('https://example.com', queryText);
+   assertTrue(preventInline);
+   assertFalse(isOnFocus);
+ });
+
+ suite('ContextEntrypoint', () => {
+   test('CurrentTabChipShown', async () => {
+     loadTimeData.overrideValues({
+       composeboxShowCurrentTabChip: true,
+       composeboxShowLensSearchChip: true,
+     });
+
+     document.body.innerHTML = window.trustedTypes!.emptyHTML;
+     searchbox = document.createElement('omnibox-popup-searchbox');
+     document.body.appendChild(searchbox);
+     searchbox.dropdownIsVisible = true;
+     testProxy.initVisibilityPrefs();
+     await microtasksFinished();
+
+     const mockTab: TabInfo = {
+       tabId: 1,
+       title: 'Tab 1',
+       url: 'https://tab1.com/',
+       showInCurrentTabChip: true,
+       showInPreviousTabChip: false,
+       lastActive: {internalValue: 1n},
+     };
+
+     testProxy.handler.setPromiseResolveFor('getRecentTabs', {tabs: [mockTab]});
+     testProxy.page.updateLensSearchEligibility(true);
+     testProxy.page.updateContentSharingPolicy(true);
+
+     const result = createAutocompleteResultForTesting({
+       input: '',
+       matches: [],
+     });
+     testProxy.page.autocompleteResultChanged(result);
+     await microtasksFinished();
+
+     callbackRouter.onShow();
+     await testProxy.handler.whenCalled('getRecentTabs');
+     await microtasksFinished();
+
+     const popupEntrypoint =
+         $$(searchbox, 'omnibox-popup-contextual-entrypoint');
+     assertTrue(!!popupEntrypoint);
+     const chip = $$(popupEntrypoint, 'composebox-current-tab-chip');
+     assertTrue(!!chip);
+     assertTrue(isVisible(chip));
+   });
+
+   test('LensIconShown', async () => {
+     loadTimeData.overrideValues({
+       composeboxShowLensIcon: true,
+     });
+
+     document.body.innerHTML = window.trustedTypes!.emptyHTML;
+     searchbox = document.createElement('omnibox-popup-searchbox');
+     document.body.appendChild(searchbox);
+     searchbox.dropdownIsVisible = true;
+     testProxy.initVisibilityPrefs();
+     await microtasksFinished();
+
+     testProxy.page.updateLensSearchEligibility(true);
+
+     const result = createAutocompleteResultForTesting({
+       input: '',
+       matches: [],
+     });
+     testProxy.page.autocompleteResultChanged(result);
+     await microtasksFinished();
+
+     callbackRouter.onShow();
+     await microtasksFinished();
+
+     const popupEntrypoint =
+         $$(searchbox, 'omnibox-popup-contextual-entrypoint');
+     assertTrue(!!popupEntrypoint);
+     assertTrue(isVisible($$(popupEntrypoint, '#lensSearchIcon')));
+   });
+
+   suite('TallSearchbox', () => {
+     let localSearchbox: OmniboxPopupSearchboxElement;
+
+     setup(async () => {
+       document.body.innerHTML = window.trustedTypes!.emptyHTML;
+       loadTimeData.overrideValues({
+         omniboxAimPopupEnabled: true,
+         omniboxShowContextButtonSuggestionLabel: false,
+         hideClassicContextButton: false,
+         contextualMenuUsePecApi: false,
+         searchboxLayoutMode: 'TallBottomContext',
+       });
+
+       localSearchbox = document.createElement('omnibox-popup-searchbox');
+       localSearchbox.dropdownIsVisible = true;
+       document.body.appendChild(localSearchbox);
+       await microtasksFinished();
+       testProxy.initVisibilityPrefs();
+       await microtasksFinished();
+     });
+
+     test('ContextMenuEntrypointHiddenWhenDisabled', async () => {
+       testProxy.page.updateAimPopupEligibility(false);
+       await microtasksFinished();
+       assertFalse(!!getContextualEntrypointButton(localSearchbox));
+     });
+
+     test('ShowContextButtonText', async () => {
+       const contextualEntrypoint =
+           getContextualEntrypointButton(localSearchbox);
+       assertTrue(!!contextualEntrypoint);
+       if (contextualEntrypoint) {
+         const innerEntrypoint =
+             $$(contextualEntrypoint,
+                'cr-composebox-contextual-entrypoint-button');
+         assertTrue(!!innerEntrypoint);
+         assertFalse(!!$$(innerEntrypoint, '#description'));
+       }
+
+       document.body.innerHTML = window.trustedTypes!.emptyHTML;
+       loadTimeData.overrideValues({
+         omniboxAimPopupEnabled: true,
+         omniboxShowContextButtonSuggestionLabel: false,
+         hideClassicContextButton: false,
+         contextualMenuUsePecApi: false,
+         composeboxShowContextMenuDescription: true,
+         searchboxLayoutMode: 'TallBottomContext',
+       });
+       localSearchbox = document.createElement('omnibox-popup-searchbox');
+       localSearchbox.dropdownIsVisible = true;
+       document.body.appendChild(localSearchbox);
+       await microtasksFinished();
+
+       testProxy.initVisibilityPrefs();
+       testProxy.page.updateAimPopupEligibility(true);
+       await microtasksFinished();
+
+       const contextualEntrypoint2 =
+           getContextualEntrypointButton(localSearchbox);
+       assertTrue(!!contextualEntrypoint2);
+       if (contextualEntrypoint2) {
+         const newInnerEntrypoint =
+             $$(contextualEntrypoint2,
+                'cr-composebox-contextual-entrypoint-button');
+         assertTrue(!!newInnerEntrypoint);
+         const description = $$(newInnerEntrypoint, '#description');
+         assertTrue(!!description);
+         assertEquals('Add tabs and more', description.textContent.trim());
+       }
+     });
+
+     test('HideClassicContextButton', async () => {
+       const contextualEntrypoint =
+           getContextualEntrypointButton(localSearchbox);
+       assertTrue(!!contextualEntrypoint);
+       assertTrue(isVisible(contextualEntrypoint));
+
+       document.body.innerHTML = window.trustedTypes!.emptyHTML;
+       loadTimeData.overrideValues({
+         omniboxShowContextButtonSuggestionLabel: false,
+         hideClassicContextButton: true,
+         contextualMenuUsePecApi: false,
+       });
+       localSearchbox = document.createElement('omnibox-popup-searchbox');
+       localSearchbox.dropdownIsVisible = true;
+       document.body.appendChild(localSearchbox);
+       await microtasksFinished();
+
+       testProxy.initVisibilityPrefs();
+       testProxy.page.updateAimPopupEligibility(true);
+       await microtasksFinished();
+
+       assertFalse(!!getContextualEntrypointButton(localSearchbox));
+     });
+   });
+
+   suite('AimEligibility', () => {
+     let localSearchbox: OmniboxPopupSearchboxElement;
+
+     setup(async () => {
+       document.body.innerHTML = window.trustedTypes!.emptyHTML;
+       loadTimeData.overrideValues({
+         hideClassicContextButton: false,
+         contextualMenuUsePecApi: false,
+         searchboxLayoutMode: 'TallBottomContext',
+       });
+       localSearchbox = document.createElement('omnibox-popup-searchbox');
+       localSearchbox.dropdownIsVisible = true;
+       document.body.appendChild(localSearchbox);
+       await microtasksFinished();
+
+       testProxy.initVisibilityPrefs();
+       await microtasksFinished();
+     });
+
+     test('AimEligibility', async () => {
+       testProxy.page.updateAimPopupEligibility(false);
+       await microtasksFinished();
+       let contextualEntrypoint = getContextualEntrypointButton(localSearchbox);
+       assertFalse(!!contextualEntrypoint);
+
+       testProxy.page.updateAimPopupEligibility(true);
+       await microtasksFinished();
+       contextualEntrypoint = getContextualEntrypointButton(localSearchbox);
+       assertTrue(!!contextualEntrypoint);
+       assertTrue(isVisible(contextualEntrypoint));
+
+       testProxy.page.updateAimPopupEligibility(false);
+       await microtasksFinished();
+       contextualEntrypoint = getContextualEntrypointButton(localSearchbox);
+       assertFalse(!!contextualEntrypoint);
+     });
+
+     test('DisallowedInputsHidesEntrypoint', async () => {
+       document.body.innerHTML = window.trustedTypes!.emptyHTML;
+       loadTimeData.overrideValues({
+         hideClassicContextButton: false,
+         contextualMenuUsePecApi: true,
+         searchboxLayoutMode: 'TallBottomContext',
+       });
+       localSearchbox = document.createElement('omnibox-popup-searchbox');
+       document.body.appendChild(localSearchbox);
+       localSearchbox.dropdownIsVisible = true;
+
+       testProxy.initVisibilityPrefs();
+       testProxy.page.updateAimPopupEligibility(true);
+       await microtasksFinished();
+
+       testProxy.page.onInputStateChanged({
+         ...createDefaultInputState(),
+         allowedModels: [],
+         allowedTools: [],
+         allowedInputTypes: [],
+       });
+       await microtasksFinished();
+
+       const popupEntrypoint =
+           $$(localSearchbox, 'omnibox-popup-contextual-entrypoint');
+       assertTrue(!!popupEntrypoint);
+       const contextualEntrypoint =
+           $$(popupEntrypoint, 'omnibox-popup-contextual-entrypoint-button');
+       assertFalse(!!contextualEntrypoint);
+     });
+   });
+ });
+
+ test('HandlesClearPopup', async () => {
+   // Populate autocomplete result to show dropdown.
+   searchbox.onAutocompleteResultChanged(createAutocompleteResultForTesting({
+     queryId: searchbox.activeQueryId,
+     sequenceId: 123,
+     input: 'test',
+     matches: [createSearchMatchForTesting()],
+   }));
+   await microtasksFinished();
+   assertTrue(searchbox.dropdownIsVisible);
+
+   // Trigger clearPopup callback from Mojo.
+   callbackRouter.clearPopup();
+   await microtasksFinished();
+
+   // Ensure result is null, dropdown is closed, and input text is cleared.
+   assertFalse(searchbox.dropdownIsVisible);
+   assertFalse(!!searchbox.result);
+   assertEquals('', searchbox.$.input.lastInput()?.text ?? '');
+ });
+
+ test('ClearsAutocompleteMatchesOnSetInputState', async () => {
+   // Populate autocomplete result to show dropdown.
+   searchbox.onAutocompleteResultChanged(createAutocompleteResultForTesting({
+     queryId: searchbox.activeQueryId,
+     sequenceId: 123,
+     input: 'test',
+     matches: [createSearchMatchForTesting()],
+   }));
+   await microtasksFinished();
+   assertTrue(searchbox.dropdownIsVisible);
+
+   // Update input state via Mojo (simulating tab switch / state reset).
+   callbackRouter.setInputState(createDefaultOmniboxInputState({
+     text: 'new tab input',
+     isFocused: true,
+   }));
+   await microtasksFinished();
+
+   // Ensure matches and dropdown are cleared for the new input state.
+   assertFalse(searchbox.dropdownIsVisible);
+   assertFalse(!!searchbox.result);
+ });
+
+ suite('InputIconState', () => {
+   test('InputMatchUpdatesWithSelectedMatch', async () => {
+     const navMatch = createSearchMatchForTesting({
+       contents: 'example.com',
+       destinationUrl: 'https://example.com/',
+       isSearchType: false,
+       type: 'history-url',
+     });
+     const searchMatch = createSearchMatchForTesting({
+       contents: 'example query',
+       destinationUrl: 'https://www.google.com/search?q=example',
+       isSearchType: true,
+       type: 'search-what-you-typed',
+     });
+
+     searchbox.activeQueryId = 0;
+     const result = createAutocompleteResultForTesting({
+       input: 'example',
+       matches: [navMatch, searchMatch],
+       queryId: 0,
+     });
+     testProxy.page.autocompleteResultChanged(result);
+     await microtasksFinished();
+
+     // With selectedMatchIndex === -1 while typing, input's selectedMatch
+     // should be null.
+     assertEquals(-1, searchbox.selectedMatchIndex);
+     assertEquals(null, searchbox.$.input.selectedMatch);
+
+     // When navigating to match 1, input's selectedMatch should be match 1.
+     searchbox.selectedMatchIndex = 1;
+     await microtasksFinished();
+     assertEquals(
+         searchbox.result!.matches[1], searchbox.$.input.selectedMatch);
+     assertEquals('example query', searchbox.$.input.selectedMatch?.contents);
+
+     // When navigating to match 0, input's selectedMatch should be match 0.
+     searchbox.selectedMatchIndex = 0;
+     await microtasksFinished();
+     assertEquals(
+         searchbox.result!.matches[0], searchbox.$.input.selectedMatch);
+     assertEquals('example.com', searchbox.$.input.selectedMatch?.contents);
+
+     // When navigating back to unselected, input's selectedMatch should return
+     // to null.
+     searchbox.selectedMatchIndex = -1;
+     await microtasksFinished();
+     assertEquals(null, searchbox.$.input.selectedMatch);
+   });
+
+   test('UneditedPageUrlProvidesPageUrl', async () => {
+     // When input is unedited on a regular webpage URL (e.g. badssl or initial
+     // page focus):
+     callbackRouter.setInputState(createDefaultOmniboxInputState({
+       userInputInProgress: false,
+       permanentDisplayText: 'https://expired.badssl.com/',
+       fullUrl: 'https://expired.badssl.com/',
+     }));
+     await microtasksFinished();
+
+     // pageUrl should be passed to input element while selectedMatch is null.
+     assertEquals('https://expired.badssl.com/', searchbox.$.input.pageUrl);
+     assertEquals(null, searchbox.$.input.selectedMatch);
+
+     // On NTP, pageUrl should be empty (to show Super G default icon).
+     callbackRouter.setInputState(createDefaultOmniboxInputState({
+       userInputInProgress: false,
+       permanentDisplayText: 'chrome://newtab',
+       fullUrl: 'chrome://newtab/',
+     }));
+     await microtasksFinished();
+     assertEquals('', searchbox.$.input.pageUrl);
+     assertEquals(null, searchbox.$.input.selectedMatch);
+
+     // When the user starts typing (userInputInProgress becomes true), pageUrl
+     // becomes empty.
+     callbackRouter.setInputState(createDefaultOmniboxInputState({
+       userInputInProgress: true,
+       text: 'search query',
+     }));
+     await microtasksFinished();
+     assertEquals('', searchbox.$.input.pageUrl);
+     assertEquals(null, searchbox.$.input.selectedMatch);
+   });
+ });
 });

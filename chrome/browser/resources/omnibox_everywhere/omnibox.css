@@ -6,11 +6,13 @@
  * #type=style-lit
  * #import=//resources/cr_elements/cr_icons_lit.css.js
  * #import=//resources/cr_components/composebox/composebox_shared_style.css.js
+ * #import=./searchbox_shared_style.css.js
  * #scheme=relative
- * #include=cr-icons-lit composebox-shared-style
+ * #include=cr-icons-lit composebox-shared-style searchbox-shared-style
  * #css_wrapper_metadata_end */
 
 :host {
+  -webkit-app-region: drag;
   /* Embedders should define --cr-searchbox-min-width. */
   --cr-searchbox-width: var(--cr-searchbox-min-width);
   --cr-searchbox-border-radius: calc(0.5 * var(--cr-searchbox-height));
@@ -26,11 +28,14 @@
       --color-searchbox-results-foreground, #1f1f1f);
   --color-searchbox-selection-background: rgba(26, 115, 232, 0.2);
   --color-searchbox-selection-foreground: #1f1f1f;
-  border: var(--cr-searchbox-border, none);
+  --cr-composebox-background-color: var(--color-searchbox-background);
+  border: var(--cr-searchbox-border, 2px solid transparent);
+  box-sizing: border-box;
 
   border-radius: var(--cr-searchbox-border-radius);
   font-size: var(--cr-searchbox-font-size, 16px);
-  height: var(--cr-searchbox-height);
+  height: auto;
+  min-height: var(--cr-searchbox-height);
   width: var(--cr-searchbox-width);
   z-index: 99;
 }
@@ -98,18 +103,22 @@
   width: 100%;
 }
 
-:host([ntp-realbox-next-enabled]) #inputWrapper {
+:host([in-voice-search-mode]) #inputWrapper {
+  display: none;
+}
+
+:host([is-fusebox-enabled]) #inputWrapper {
   /* Elements like the IPH must overflow. */
   overflow: visible;
 }
 
-:host([ntp-realbox-next-enabled]) .dropdownContainer {
+:host([is-fusebox-enabled]) .dropdownContainer {
   border-radius: 0 0 var(--cr-searchbox-border-radius)
       var(--cr-searchbox-border-radius);
   overflow: hidden;
 }
 
-:host([ntp-realbox-next-enabled]) .contextualEntrypointContainer {
+:host([is-fusebox-enabled]) .contextualEntrypointContainer {
   overflow: visible;
   left: unset;
   position: relative;
@@ -127,12 +136,16 @@ cr-searchbox-input::part(searchbox-input) {
   padding-inline-end: 16px;
 }
 
-:host([ntp-realbox-next-enabled])
-    cr-searchbox-input::part(searchbox-input) {
-  padding-inline-start: 24px;
+:host([is-fusebox-enabled]) cr-searchbox-input::part(searchbox-input) {
+  padding-inline-start: 12px;
+  padding-inline-end: 64px;
 }
 
-:host([multi-line-enabled][ntp-realbox-next-enabled])
+:host cr-searchbox-input::part(searchbox-input) {
+  padding-inline-end: 110px;
+}
+
+:host([multi-line-enabled][is-fusebox-enabled])
     cr-searchbox-input::part(searchbox-input) {
   padding-bottom: 10px;
   padding-top: 16px;
@@ -144,90 +157,19 @@ cr-searchbox-input::part(searchbox-input) {
   color: var(--color-searchbox-selection-foreground);
 }
 
-:host(:not([ntp-realbox-next-enabled])) cr-searchbox-input::part(icon) {
+:host(:not([is-fusebox-enabled])) cr-searchbox-input::part(icon) {
   align-self: center;
 }
 
 .searchbox-icon-button {
-  background-color: transparent;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: 21px 21px;
-  border: none;
-  border-radius: 2px;
-  cursor: pointer;
-  height: 100%;
-  outline: none;
-  padding: 0;
-  pointer-events: auto;
-  position: static;
   right: 16px;
   width: var(--cr-searchbox-icon-width);
-  z-index: 100;
 }
 
-/* When voice/lens icons are monochrome, they are webkit mask images.
- * Webkit mask images hide borders so container rules are created to
- * show focus borders on these icons. */
-.searchbox-icon-button-container {
-  align-items: center;
-  border-radius: 50%;
-  display: flex;
-  flex-shrink: 0;
-  height: 36px;
-  justify-content: center;
-  position: relative;
-  width: 36px;
-  z-index: 100;
-}
-
-:host(:not([ntp-realbox-next-enabled])) .searchbox-icon-button-container {
+:host(:not([is-fusebox-enabled])) .searchbox-icon-button-container {
   align-self: center;
 }
 
-@media (forced-colors: active) {
-  .searchbox-icon-button-container {
-    background-color: ButtonText;
-  }
-  .searchbox-icon-button-container:focus-within {
-    outline: 2px solid Highlight;
-    outline-offset: 2px;
-  }
-}
-
-:host-context(.focus-outline-visible)
-    .searchbox-icon-button-container:focus-within {
-  box-shadow: 0 0 0 2px var(--cr-focus-outline-color);
-}
-
-:host(:not([use-webkit-search-icons_])) #voiceSearchButton {
-  background-image: url(//resources/cr_components/searchbox/icons/mic.svg);
-}
-
-:host(:not([use-webkit-search-icons_])) #lensSearchButton {
-  background-image: url(//resources/cr_components/searchbox/icons/camera.svg);
-}
-
-:host([use-webkit-search-icons_]) #voiceSearchButton {
-  -webkit-mask-image: url(//resources/cr_components/searchbox/icons/mic.svg);
-}
-
-:host([use-webkit-search-icons_]) #lensSearchButton {
-  -webkit-mask-image: url(//resources/cr_components/searchbox/icons/camera.svg);
-}
-
-:host([use-webkit-search-icons_]) #voiceSearchButton,
-:host([use-webkit-search-icons_]) #lensSearchButton {
-  -webkit-mask-position: center;
-  -webkit-mask-repeat: no-repeat;
-  -webkit-mask-size: 21px 21px;
-  background-color: var(--color-searchbox-lens-voice-icon-background);
-}
-
-:host([use-webkit-search-icons_][compose-button-enabled]) #voiceSearchButton,
-:host([use-webkit-search-icons_][compose-button-enabled]) #lensSearchButton {
-  background-color: #1F1F1F;
-}
 
 :host([compose-button-enabled][searchbox-lens-search-enabled_]) {
   --cr-searchbox-voice-icon-offset: calc(
@@ -235,20 +177,18 @@ cr-searchbox-input::part(searchbox-input) {
       var(--cr-searchbox-icon-width) + var(--cr-compose-button-width));
 }
 
-:host([ntp-realbox-next-enabled])
-    cr-searchbox-input::part(searchbox-input)::placeholder {
-  color: var(
-      --cr-composebox-input-placeholder-color,
+cr-searchbox-input::part(searchbox-input)::placeholder {
+  color: var(--cr-composebox-input-placeholder-color,
       var(--color-composebox-type-ahead));
   font-weight: 400;
 }
 
-:host([ntp-realbox-next-enabled])
-    cr-searchbox-input::part(searchbox-input):focus::placeholder {
+/* cr-searchbox-input hides placeholder on focus by default; override here. */
+cr-searchbox-input::part(searchbox-input):focus::placeholder {
   visibility: visible;
 }
 
-:host([ntp-realbox-next-enabled]) {
+:host([is-fusebox-enabled]) {
   --cr-searchbox-border-radius: 30px;
   --cr-searchbox-dropdown-padding-bottom: 10px;
   --cr-searchbox-dropdown-padding-top: 10px;
@@ -268,7 +208,7 @@ cr-searchbox-input::part(searchbox-input) {
   --search-animated-glow-drag-drop-placeholder-top: 16px;
 }
 
-:host-context([energy-effect-enabled_]):host([ntp-realbox-next-enabled]) {
+:host-context([energy-effect-enabled_]):host([is-fusebox-enabled]) {
   --cr-searchbox-border-radius: 28px;
   --cr-searchbox-border: 1px solid var(--color-searchbox-border);
 }
@@ -280,41 +220,35 @@ cr-searchbox-dropdown::part(dropdown-content) {
   gap: unset;
   margin-bottom: unset;
   overflow: unset;
+  padding-bottom: 0;
   padding-top: unset;
 }
 
-:host([ntp-realbox-next-enabled])
+:host([is-fusebox-enabled])
     cr-composebox-contextual-entrypoint-and-menu::part(
         context-menu-entrypoint-icon) {
   --cr-icon-button-icon-size: 24px;
-  --cr-icon-button-margin-start: 2px;
+  --cr-icon-button-margin-start: 0;
   --cr-icon-button-size: 36px;
 }
 
-:host([ntp-realbox-next-enabled]:not(
-    [context-menu-glif-animation-state='ineligible']))
-    cr-composebox-contextual-entrypoint-and-menu::part(
-        context-menu-entrypoint-icon) {
-  /* Account for the margin of the glow container */
-  --cr-icon-button-margin-start: 0px;
+.contextualEntrypointContainer,
+.context-menu-container,
+cr-composebox-contextual-entrypoint-and-menu {
+  position: relative;
+  z-index: var(--cr-composebox-context-menu-z-index, 1001);
 }
 
-:host([ntp-realbox-next-enabled]) .context-menu-container {
-  padding-block: 10px;
+:host([is-fusebox-enabled]) .context-menu-container {
+  padding-block: 0;
 }
 
-:host([ntp-realbox-next-enabled]) cr-composebox-contextual-entrypoint-and-menu {
+:host([is-fusebox-enabled]) cr-composebox-contextual-entrypoint-and-menu {
   color: var(--color-searchbox-results-foreground);
   padding-inline-end: 6px;
   padding-inline-start: 8px;
   position: relative;
-  z-index: 100;
-}
-
-:host-context(
-    [ntp-realbox-next-enabled][context-menu-glif-animation-state='ineligible'])
-    cr-composebox-contextual-entrypoint-and-menu {
-  padding-inline-end: 14px;
+  z-index: var(--cr-composebox-context-menu-z-index, 1001);
 }
 
 #inputContainer {
@@ -326,104 +260,104 @@ cr-searchbox-dropdown::part(dropdown-content) {
   width: 100%;
 }
 
-:host([ntp-realbox-next-enabled][dropdown-is-visible]),
-:host([ntp-realbox-next-enabled]:not([context-files-count_='0'])) {
+:host([is-fusebox-enabled][dropdown-is-visible]),
+:host([is-fusebox-enabled]:not([context-files-count_='0'])) {
   box-shadow: none;
 }
 
-.searchbox-icon-button-container.lens {
-  margin-inline-end: 10px;
-}
-
-.searchbox-icon-button-container.voice {
-  margin-inline-end: 4px;
-}
-
-:host([ntp-realbox-next-enabled]) .searchbox-icon-button-container.lens:hover,
-:host([ntp-realbox-next-enabled]) .searchbox-icon-button-container.voice:hover {
+:host([is-fusebox-enabled]) .searchbox-icon-button-container.lens:hover,
+:host([is-fusebox-enabled]) .searchbox-icon-button-container.voice:hover {
   background-color: var(--color-new-tab-page-realbox-next-icon-hover);
   border-radius: 50%;
 }
 
-:host([ntp-realbox-next-enabled]) cr-searchbox-input {
-  --cr-searchbox-icon-left-position: 20px;
+:host([is-fusebox-enabled]) cr-searchbox-input {
+  --cr-searchbox-icon-container-size: 36px;
+  --cr-searchbox-icon-left-position: 16px;
 }
 
-:host([ntp-realbox-next-enabled]) cr-searchbox-input::part(icon) {
+:host([is-fusebox-enabled]) cr-searchbox-input::part(icon) {
   display: flex;
 }
 
-:host([ntp-realbox-next-enabled]) .searchbox-icon-button-container {
+:host([is-fusebox-enabled]) .searchbox-icon-button-container {
   top: 10px;
 }
 
-:host([ntp-realbox-next-enabled][compose-button-enabled]
+:host([is-fusebox-enabled][compose-button-enabled]
     [searchbox-lens-search-enabled_]) .searchbox-icon-button-container.lens {
   inset-inline-end: calc(
       var(--cr-searchbox-icon-spacing) + var(--cr-compose-button-width));
 }
 
-:host([ntp-realbox-next-enabled][compose-button-enabled]
+:host([is-fusebox-enabled][compose-button-enabled]
     [searchbox-lens-search-enabled_]) .searchbox-icon-button-container.voice {
   inset-inline-end: calc(var(--cr-searchbox-voice-lens-size)
       + var(--cr-searchbox-icon-spacing) + var(--cr-compose-button-width));
 }
 
-:host([ntp-realbox-next-enabled][is-dragging-file]) {
+:host([is-fusebox-enabled][is-dragging-file]) {
   --cr-searchbox-compose-button-z-index: 99;
 }
 
-:host([ntp-realbox-next-enabled][is-dragging-file])
+:host([is-fusebox-enabled][is-dragging-file])
     cr-searchbox-input::part(searchbox-input),
-:host([ntp-realbox-next-enabled][is-dragging-file])
+:host([is-fusebox-enabled][is-dragging-file])
     cr-searchbox-input::part(icon),
-:host([ntp-realbox-next-enabled][is-dragging-file])
+:host([is-fusebox-enabled][is-dragging-file])
     .searchbox-icon-button-container,
-:host([ntp-realbox-next-enabled][is-dragging-file]) .searchbox-icon-button {
+:host([is-fusebox-enabled][is-dragging-file]) .searchbox-icon-button {
   opacity: 0;
 }
 
-:host([ntp-realbox-next-enabled][dropdown-is-visible]) .dropdownContainer {
-  padding-bottom: 10px;
-}
 
-:host([ntp-realbox-next-enabled])
-    .contextualEntrypointContainerCompact {
+:host([is-fusebox-enabled]) .contextualEntrypointContainerCompact {
   box-shadow: none;
   width: auto;
 }
 
-:host([ntp-realbox-next-enabled]) #composeButton {
+:host([is-fusebox-enabled]) #composeButton {
   top: 10px;
-  margin-inline-end: 10px;
+  margin-inline-end: 58px;
 }
 
 #bottomControls {
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
-  padding-inline-start: 10px;
-  padding-inline-end: 16px;
   padding-block: 8px;
-  width: 100%;
-  box-sizing: border-box;
 }
 
 #bottomControls #context {
   --contextual-entrypoint-and-carousel-context-entrypoint-padding-inline-start:
-      0;
+    0;
   padding-inline-start: 0;
-}
-
-#actionButtons {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 12px;
 }
 
 #bottomControls .searchbox-icon-button-container {
   inset-inline-end: unset;
   top: 0;
 }
+
+/* TODO(crbug.com/532200145): Refine the selectors. New interactive elements
+ * must be added to this list because the root container has
+ * '-webkit-app-region: drag' enabled; otherwise, clicks will be swallowed by
+ * the window drag handler. */
+cr-searchbox-input::part(searchbox-input),
+cr-searchbox-dropdown::part(dropdown-content),
+cr-searchbox-compose-button::part(compose-button),
+#composeButton,
+#context,
+#contextEntrypoint,
+cr-composebox-contextual-entrypoint-and-menu,
+cr-composebox-contextual-entrypoint-button,
+.searchbox-icon-button,
+#voiceSearchButton,
+#lensSearchButton,
+#profileIcon,
+#screenshotMenu {
+  -webkit-app-region: no-drag;
+}
+
+cr-searchbox-input::part(icon) {
+  -webkit-app-region: drag;
+  -webkit-user-drag: none;
+}
+

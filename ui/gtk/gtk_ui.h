@@ -104,6 +104,7 @@ class GtkUi : public ui::LinuxUiAndTheme {
   void GetInactiveSelectionFgColor(SkColor* color) const override;
   bool PreferDarkTheme() const override;
   void SetDarkTheme(bool dark) override;
+  void SetColorScheme(std::optional<bool> prefer_dark) override;
   void SetAccentColor(std::optional<SkColor> accent_color) override;
   std::unique_ptr<ui::NavButtonProvider> CreateNavButtonProvider(
       ui::FrameType type) override;
@@ -128,6 +129,14 @@ class GtkUi : public ui::LinuxUiAndTheme {
   // Sanitizes the "gtk-key-theme-name" setting in GtkSettings if it is unsafe.
   // Returns true if the setting was modified.
   bool SanitizeKeyThemeName();
+
+  // Sanitizes the "gtk-cursor-theme-name" setting in GtkSettings if it is
+  // unsafe. Returns true if the setting was modified.
+  bool SanitizeCursorThemeName();
+
+  // Sanitizes the "gtk-cursor-theme-size" setting in GtkSettings if it is
+  // unsafe. Returns true if the setting was modified.
+  bool SanitizeCursorThemeSize();
 
   void OnKeyThemeNameChanged(GtkSettings* settings, GtkParamSpec* param);
 

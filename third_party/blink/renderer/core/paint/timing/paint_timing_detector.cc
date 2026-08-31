@@ -192,7 +192,7 @@ bool PaintTimingDetector::NotifyBackgroundImagePaint(
   }
 
   auto& paint_timing = PaintTiming::From(object->GetDocument());
-  paint_timing.GetImageElementTiming()->NotifyBackgroundImagePainted(
+  paint_timing.GetImageElementTiming()->NotifyBackgroundImagePaint(
       node, style_image, current_paint_chunk_properties, image_border);
 
   if (!IsBackgroundImageContentful(*object, image)) {
@@ -271,20 +271,12 @@ void PaintTimingDetector::NotifyInteractionTriggeredVideoSrcChange(
 
 void PaintTimingDetector::NotifyImageFinished(const LayoutObject& object,
                                               const MediaTiming* media_timing) {
-  paint_timing_->GetImageElementTiming()->NotifyImageFinished(object,
-                                                              media_timing);
-  if (IgnorePaintTimingScope::ShouldIgnore()) {
-    return;
-  }
   image_paint_timing_detector_->NotifyImageFinished(object, media_timing);
 }
 
 void PaintTimingDetector::NotifyBackgroundImageFinished(
     const StyleFetchedImage* image) {
-  // TODO(crbug.com/535432431): Paint Timing (ImagePaintTimingDetector)
-  // currently gets the background image timestamp information from Element
-  // Timing. This should be inverted.
-  paint_timing_->GetImageElementTiming()->NotifyBackgroundImageFinished(image);
+  image_paint_timing_detector_->NotifyBackgroundImageFinished(image);
 }
 
 void PaintTimingDetector::NotifyImageRemoved(
@@ -296,15 +288,21 @@ void PaintTimingDetector::NotifyImageRemoved(
 }
 
 void PaintTimingDetector::OnInputOrScroll() {
-  // Notify `PaintTiming` so it can notify its clients.
-  if (LocalDOMWindow* window = DomWindow()) {
-    PaintTiming::From(CHECK_DEREF(window->document())).OnInputOrScroll();
+  LocalDOMWindow* window = DomWindow();
+  if (SoftNavigationHeuristics* heuristics =
+          window ? window->GetSoftNavigationHeuristics() : nullptr) {
+    heuristics->OnInputOrScroll();
   }
 
   if (did_notify_first_input_or_scroll_) {
     return;
   }
   did_notify_first_input_or_scroll_ = true;
+
+  // Notify `PaintTiming` so it can shut down hard navigation LCP.
+  if (window) {
+    PaintTiming::From(CHECK_DEREF(window->document())).OnInputOrScroll();
+  }
 
   // TODO(crbug.com/454082773): We should compare the presentation
   // time to the input time to avoid ignoring candidates that were presented

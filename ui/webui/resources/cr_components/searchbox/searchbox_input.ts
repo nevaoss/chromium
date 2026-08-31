@@ -10,7 +10,7 @@ import {assert} from '//resources/js/assert.js';
 import {loadTimeData} from '//resources/js/load_time_data.js';
 import {MetricsReporterImpl} from '//resources/js/metrics_reporter/metrics_reporter.js';
 import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
-import type {AutocompleteMatch, PageCallbackRouter} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import type {AutocompleteMatch, InputKeywordModel, PageCallbackRouter} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 
 import {SearchboxBrowserProxy} from './searchbox_browser_proxy.js';
 import type {SearchboxIconElement} from './searchbox_icon.js';
@@ -69,6 +69,13 @@ export class SearchboxInputElement extends SearchboxInputElementBase {
       searchboxAriaDescription: {type: String},
       searchboxIcon: {type: String},
       selectedMatch: {type: Object},
+      /**
+       * The URL of the current webpage when focused in the searchbox before
+       * typing, used to load the page's favicon. Empty when typing, on the NTP,
+       * or for consumers that do not provide a page URL.
+       */
+      pageUrl: {type: String},
+      inputKeywordModel: {type: Object},
       inputHasMatches: {type: Boolean},
       allowFilePaste: {type: Boolean},
     };
@@ -81,6 +88,8 @@ export class SearchboxInputElement extends SearchboxInputElementBase {
   accessor searchboxAriaDescription: string = '';
   accessor searchboxIcon: string = '';
   accessor selectedMatch: AutocompleteMatch|null = null;
+  accessor pageUrl: string = '';
+  accessor inputKeywordModel: InputKeywordModel|null = null;
   accessor inputHasMatches: boolean = false;
   accessor allowFilePaste: boolean = false;
 
@@ -241,7 +250,6 @@ export class SearchboxInputElement extends SearchboxInputElementBase {
   }
 
   protected onInputKeydown_(e: KeyboardEvent) {
-    this.fire('input-keydown', {key: e.key});
     // Ignore this event if the input does not have any inline autocompletion.
     if (!this.lastInput_.inline) {
       return;
@@ -279,7 +287,14 @@ export class SearchboxInputElement extends SearchboxInputElementBase {
           metricsReporter.mark('CharTyped');
         }
       }
+      // The above code already updated the text and selection. Prevent default
+      // keydown handling muddling the updated state.
       e.preventDefault();
+      // The above code already identified this is a text-changing keydown event
+      // and fired 'searchbox-input-text-updated' to update state accordingly
+      // text update. Prevent event bubbling from triggering other custom
+      // keydown handlers treating this as a generic keydown event.
+      e.stopPropagation();
     }
   }
 
@@ -289,7 +304,9 @@ export class SearchboxInputElement extends SearchboxInputElementBase {
     }
 
     // User is tabbing into the input element.
-    this.fire('input-focus-changed', {value: this.$.input.value});
+    this.fire(
+        'input-focus-changed',
+        {value: this.$.input.value, isOnFocus: !this.$.input.value});
   }
 
   protected onInputMousedown_(e: MouseEvent|null) {
@@ -297,10 +314,13 @@ export class SearchboxInputElement extends SearchboxInputElementBase {
     if (e && e.button !== 0) {
       return;
     }
-    this.fire('input-focus-changed', {value: this.$.input.value});
+    this.fire(
+        'input-focus-changed',
+        {value: this.$.input.value, isOnFocus: !this.$.input.value});
   }
 
   protected onInputPaste_(e: ClipboardEvent) {
+    this.fire('searchbox-input-pasted');
     if (this.allowFilePaste && e.clipboardData?.files &&
         e.clipboardData.files.length > 0) {
       e.preventDefault();
