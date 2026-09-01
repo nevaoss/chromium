@@ -1186,17 +1186,9 @@ void WaylandEventSource::ProcessPointerScrollData() {
     pointer_frames_.push_back(
         std::make_unique<FrameData>(event, base::NullCallback()));
   } else if (pointer_scroll_data_->axis_source) {
-#if BUILDFLAG(IS_WEBOS)
-    // FIXME(neva): WL_POINTER_AXIS_SOURCE_WHEEL_TILT is unrecognized by
-    // libwayland version supplied by webOS
-    if (*pointer_scroll_data_->axis_source == WL_POINTER_AXIS_SOURCE_WHEEL) {
-#else
     if (*pointer_scroll_data_->axis_source == WL_POINTER_AXIS_SOURCE_WHEEL ||
         *pointer_scroll_data_->axis_source ==
             WL_POINTER_AXIS_SOURCE_WHEEL_TILT) {
-<<<<<<< HEAD
-#endif  // BUILDFLAG(IS_WEBOS)
-=======
       float dx = pointer_scroll_data_->dx;
       float dy = pointer_scroll_data_->dy;
       if (IsWaylandUnscaledTouchpadScrollingEnabled() &&
@@ -1211,7 +1203,6 @@ void WaylandEventSource::ProcessPointerScrollData() {
         dx = dx / kAxisValueScale * MouseWheelEvent::kWheelDelta;
         dy = dy / kAxisValueScale * MouseWheelEvent::kWheelDelta;
       }
->>>>>>> 154.0.8024.0~1
       MouseWheelEvent event(
           gfx::ToRoundedVector2d(gfx::Vector2dF(dx, dy)),
           pointer_location_, pointer_location_, timestamp, flags, 0);
