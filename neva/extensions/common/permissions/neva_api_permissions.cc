@@ -55,6 +55,9 @@ constexpr extensions::APIPermissionInfo::InitInfo permissions_to_register[] = {
     {APIPermissionID::kWebNavigation, "webNavigation",
      extensions::APIPermissionInfo::kFlagRequiresManagementUIWarning},
 
+    {APIPermissionID::kTab, "tabs",
+     extensions::APIPermissionInfo::kFlagRequiresManagementUIWarning},
+
     // Register private permissions.
 
     // Full url access permissions.
