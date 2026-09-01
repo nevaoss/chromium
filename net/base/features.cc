@@ -381,19 +381,6 @@ inline constexpr auto kMigrateSessionsOnNetworkChangeV2Default =
 BASE_FEATURE(kMigrateSessionsOnNetworkChangeV2,
              kMigrateSessionsOnNetworkChangeV2Default);
 
-<<<<<<< HEAD
-#if BUILDFLAG(IS_LINUX)
-// TODO(neva): Please remove this block after wam_demo crash issue
-// has been resolved on both PC and OSE.
-#if BUILDFLAG(IS_NEVA_APPRUNTIME)
-BASE_FEATURE(kAddressTrackerLinuxIsProxied, base::FEATURE_DISABLED_BY_DEFAULT);
-#else   // BUILDFLAG(IS_NEVA_APPRUNTIME)
-BASE_FEATURE(kAddressTrackerLinuxIsProxied, base::FEATURE_ENABLED_BY_DEFAULT);
-#endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
-#endif  // BUILDFLAG(IS_LINUX)
-
-=======
->>>>>>> 154.0.8024.0~1
 // Enables binding of cookies to the port that originally set them by default.
 BASE_FEATURE(kEnablePortBoundCookies, base::FEATURE_DISABLED_BY_DEFAULT);
 
