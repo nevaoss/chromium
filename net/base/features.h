@@ -251,15 +251,6 @@ NET_EXPORT extern const base::FeatureParam<int> kObservationBufferSize;
 NET_EXPORT extern const base::FeatureParam<base::TimeDelta>
     kEffectiveConnectionTypeRecomputationInterval;
 
-// When disabled, HttpContentDisposition incorrectly handles multiple
-// comma-delimited Content-Disposition lines, treating them all as a single
-// Content-Disposition string.
-//
-// This is a temporary escape valve in case the fix for
-// https://crbug.com/517466133 causes issues.
-// TODO(crbug.com/519218483): Remove this in late Q3/Q4 2026.
-NET_EXPORT BASE_DECLARE_FEATURE(kOnlyParseFirstContentDisposition);
-
 // Splits cache entries by the request's includeCredentials.
 NET_EXPORT BASE_DECLARE_FEATURE(kSplitCacheByIncludeCredentials);
 
@@ -453,13 +444,6 @@ NET_EXPORT BASE_DECLARE_FEATURE_PARAM(size_t, kMaxReportBodySizeKB);
 // false. This is needed as a workaround to set this value to true on Android
 // but not on WebView (until crbug.com/1430082 has been fixed).
 NET_EXPORT BASE_DECLARE_FEATURE(kMigrateSessionsOnNetworkChangeV2);
-
-#if BUILDFLAG(IS_LINUX)
-// AddressTrackerLinux will not run inside the network service in this
-// configuration, which will improve the Linux network service sandbox.
-// TODO(crbug.com/40220507): remove this.
-NET_EXPORT BASE_DECLARE_FEATURE(kAddressTrackerLinuxIsProxied);
-#endif  // BUILDFLAG(IS_LINUX)
 
 // Enables binding of cookies to the port that originally set them by default.
 NET_EXPORT BASE_DECLARE_FEATURE(kEnablePortBoundCookies);

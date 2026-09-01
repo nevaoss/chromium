@@ -322,7 +322,7 @@ void Window::Init(ui::LayerType layer_type) {
   layer()->SetVisible(false);
   layer()->set_delegate(this);
   if (auto* surface = layer()->AsSurface()) {
-    surface->SetBackgroundColor(SkColors::kWhite);
+    surface->SetFallbackBackgroundColor(SkColors::kWhite);
   }
 
   UpdateLayerName();
@@ -1144,6 +1144,9 @@ void Window::GetDebugInfo(const aura::Window* active_window,
       break;
     case ui::LAYER_SURFACE:
       *out << " layer(surface ";
+      break;
+    case ui::LAYER_WITH_EXTERNAL_TEXTURE:
+      *out << " layer(with_external_texture ";
       break;
   }
 

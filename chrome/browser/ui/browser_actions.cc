@@ -22,6 +22,7 @@
 #include "chrome/app/chrome_command_ids.h"
 #include "chrome/app/vector_icons/vector_icons.h"
 #include "chrome/browser/browsing_data/browsing_data_important_sites_util.h"
+#include "chrome/browser/contextual_cueing/contextual_cueing_controller.h"
 #include "chrome/browser/contextual_cueing/features.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_side_panel_coordinator.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_utils.h"
@@ -873,7 +874,7 @@ void BrowserActions::InitializePageActionIconActions() {
               bwi))
           .SetActionId(kActionFind)
           .SetText(BrowserActions::GetCleanTitleAndTooltipText(
-              l10n_util::GetStringUTF16(IDS_FIND_AND_EDIT_MENU)))
+              l10n_util::GetStringUTF16(IDS_FIND)))
           .SetTooltipText(l10n_util::GetStringUTF16(IDS_TOOLTIP_FIND))
           .SetImage(ui::ImageModel::FromVectorIcon(
               features::IsRoundedIconsEnabled()
@@ -1084,6 +1085,11 @@ void BrowserActions::InitializeChromeMenuActions() {
                 bwi))
             .SetActionId(kActionToggleVerticalTabs)
             .SetText(l10n_util::GetStringUTF16(IDS_SWITCH_TO_VERTICAL_TAB))
+            .SetTooltipText(
+                l10n_util::GetStringUTF16(IDS_SWITCH_TO_VERTICAL_TAB))
+            .SetImage(ui::ImageModel::FromVectorIcon(
+                features::IsRoundedIconsEnabled() ? kDockToRightIcon
+                                                  : kDockToLeftOldIcon))
             .Build());
 
     root_action_item_->AddChild(
@@ -1446,6 +1452,12 @@ void BrowserActions::InitializeChromeMenuActions() {
               },
               bwi))
           .SetActionId(kActionBookmarkThisTab)
+          .SetText(BrowserActions::GetCleanTitleAndTooltipText(
+              l10n_util::GetStringUTF16(IDS_BOOKMARK_THIS_TAB)))
+          .SetTooltipText(BrowserActions::GetCleanTitleAndTooltipText(
+              l10n_util::GetStringUTF16(IDS_BOOKMARK_THIS_TAB)))
+          .SetImage(ui::ImageModel::FromVectorIcon(omnibox::kStarIcon,
+                                                   ui::kColorIcon))
           .Build());
 
   root_action_item_->AddChild(
@@ -1628,6 +1640,8 @@ void BrowserActions::InitializeChromeMenuActions() {
             content::Profiling::Toggle();
           }))
           .SetActionId(kActionProfilingEnabled)
+          .SetText(l10n_util::GetStringUTF16(IDS_PROFILING_ENABLED))
+          .SetTooltipText(l10n_util::GetStringUTF16(IDS_PROFILING_ENABLED))
           .Build());
 
   root_action_item_->AddChild(
@@ -2107,6 +2121,14 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
               },
               bwi))
           .SetActionId(actions::kActionCut)
+          .SetText(BrowserActions::GetCleanTitleAndTooltipText(
+              l10n_util::GetStringUTF16(IDS_CUT)))
+          .SetTooltipText(BrowserActions::GetCleanTitleAndTooltipText(
+              l10n_util::GetStringUTF16(IDS_CUT)))
+          .SetImage(ui::ImageModel::FromVectorIcon(
+              features::IsRoundedIconsEnabled() ? kContentCutIcon
+                                                : kCutMenuOldIcon))
+          .SetAccelerator(GetAcceleratorForCommandId(IDC_CUT))
           .Build());
   root_action_item_->AddChild(
       actions::ActionItem::Builder(
@@ -2117,6 +2139,14 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
               },
               bwi))
           .SetActionId(actions::kActionCopy)
+          .SetText(BrowserActions::GetCleanTitleAndTooltipText(
+              l10n_util::GetStringUTF16(IDS_COPY)))
+          .SetTooltipText(BrowserActions::GetCleanTitleAndTooltipText(
+              l10n_util::GetStringUTF16(IDS_COPY)))
+          .SetImage(ui::ImageModel::FromVectorIcon(
+              features::IsRoundedIconsEnabled() ? vector_icons::kContentCopyIcon
+                                                : kCopyMenuOldIcon))
+          .SetAccelerator(GetAcceleratorForCommandId(IDC_COPY))
           .Build());
   root_action_item_->AddChild(
       actions::ActionItem::Builder(
@@ -2127,6 +2157,14 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
               },
               bwi))
           .SetActionId(actions::kActionPaste)
+          .SetText(BrowserActions::GetCleanTitleAndTooltipText(
+              l10n_util::GetStringUTF16(IDS_PASTE)))
+          .SetTooltipText(BrowserActions::GetCleanTitleAndTooltipText(
+              l10n_util::GetStringUTF16(IDS_PASTE)))
+          .SetImage(ui::ImageModel::FromVectorIcon(
+              features::IsRoundedIconsEnabled() ? kContentPasteIcon
+                                                : kPasteMenuOldIcon))
+          .SetAccelerator(GetAcceleratorForCommandId(IDC_PASTE))
           .Build());
   root_action_item_->AddChild(
       actions::ActionItem::Builder(
@@ -2162,6 +2200,7 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
                     ? vector_icons::kArrowBackIcon
                     : vector_icons::kArrowBackOldIcon,
                 ui::kColorIcon))
+            .SetVisible(false)
             .Build());
   }
 
@@ -2196,7 +2235,7 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
         kCustomPinnedActionToolbarButtonFactoryKey,
         std::make_unique<CreateCustomPinnedActionToolbarButtonCallback>(
             base::BindRepeating(
-                [](Browser* browser, actions::ActionId action_id,
+                [](BrowserWindowInterface* browser, actions::ActionId action_id,
                    base::WeakPtr<PinnedToolbarActionsContainer> container)
                     -> std::unique_ptr<PinnedActionToolbarButton> {
                   return std::make_unique<AiOverlayToolbarButton>(
@@ -2251,9 +2290,8 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
                   auto* service =
                       glic::GlicKeyedService::Get(bwi->GetProfile());
                   if (service) {
-                    service->ToggleUI(
-                        bwi, /*prevent_close=*/true,
-                        glic::mojom::InvocationSource::kThreeDotsMenu);
+                    service->ShowUI(
+                        bwi, glic::mojom::InvocationSource::kThreeDotsMenu);
                   }
                 },
                 bwi),
@@ -2348,8 +2386,24 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
 
   if (base::FeatureList::IsEnabled(contextual_cueing::kContextualCueingV2)) {
     root_action_item_->AddChild(
-        actions::ActionItem::Builder()
-            // Anchored message icon, strings and callback are set at cue time.
+        actions::ActionItem::Builder(
+            base::BindRepeating(
+                [](BrowserWindowInterface* bwi, actions::ActionItem* item,
+                   actions::ActionInvocationContext context) {
+                  if (!bwi) {
+                    return;
+                  }
+                  auto* tab = bwi->GetActiveTabInterface();
+                  if (!tab) {
+                    return;
+                  }
+                  auto* controller =
+                      tab->GetTabFeatures()->contextual_cueing_controller();
+                  if (controller) {
+                    controller->OnActionInvoked();
+                  }
+                },
+                bwi))
             .SetActionId(kActionAnchoredContextualCue)
             .Build());
   }
@@ -2699,6 +2753,15 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
               },
               bwi))
           .SetActionId(kActionExit)
+          .SetText(BrowserActions::GetCleanTitleAndTooltipText(
+              l10n_util::GetStringUTF16(IDS_EXIT)))
+          .SetTooltipText(BrowserActions::GetCleanTitleAndTooltipText(
+              l10n_util::GetStringUTF16(IDS_EXIT)))
+          .SetImage(ui::ImageModel::FromVectorIcon(
+              features::IsRoundedIconsEnabled() ? kExitToAppIcon
+                                                : kExitMenuOldIcon,
+              ui::kColorIcon))
+          .SetAccelerator(GetAcceleratorForCommandId(IDC_EXIT))
           .Build());
 
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN)
@@ -2771,6 +2834,13 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
               },
               bwi))
           .SetActionId(kActionNameWindow)
+          .SetText(BrowserActions::GetCleanTitleAndTooltipText(
+              l10n_util::GetStringUTF16(IDS_NAME_WINDOW)))
+          .SetTooltipText(BrowserActions::GetCleanTitleAndTooltipText(
+              l10n_util::GetStringUTF16(IDS_NAME_WINDOW)))
+          .SetImage(ui::ImageModel::FromVectorIcon(
+              features::IsRoundedIconsEnabled() ? kWebAssetIcon
+                                                : kNameWindowOldIcon))
           .Build());
 
   root_action_item_->AddChild(
@@ -3079,6 +3149,12 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
               },
               bwi))
           .SetActionId(kActionBookmarkAllTabs)
+          .SetText(BrowserActions::GetCleanTitleAndTooltipText(
+              l10n_util::GetStringUTF16(IDS_BOOKMARK_ALL_TABS)))
+          .SetTooltipText(BrowserActions::GetCleanTitleAndTooltipText(
+              l10n_util::GetStringUTF16(IDS_BOOKMARK_ALL_TABS)))
+          .SetImage(
+              ui::ImageModel::FromVectorIcon(kHotelClassIcon, ui::kColorIcon))
           .Build());
 
   root_action_item_->AddChild(
@@ -3542,6 +3618,15 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
               },
               bwi))
           .SetActionId(kActionSavePage)
+          .SetText(BrowserActions::GetCleanTitleAndTooltipText(
+              l10n_util::GetStringUTF16(IDS_SAVE_PAGE)))
+          .SetTooltipText(BrowserActions::GetCleanTitleAndTooltipText(
+              l10n_util::GetStringUTF16(IDS_SAVE_PAGE)))
+          .SetImage(ui::ImageModel::FromVectorIcon(
+              features::IsRoundedIconsEnabled()
+                  ? kFileSaveIcon
+                  : kFileSaveChromeRefreshOldIcon))
+          .SetAccelerator(GetAcceleratorForCommandId(IDC_SAVE_PAGE))
           .Build());
 
 #if BUILDFLAG(ENABLE_PRINTING)
@@ -3623,6 +3708,14 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
               },
               bwi))
           .SetActionId(kActionCreateShortcut)
+          .SetText(BrowserActions::GetCleanTitleAndTooltipText(
+              l10n_util::GetStringUTF16(IDS_ADD_TO_OS_LAUNCH_SURFACE)))
+          .SetTooltipText(BrowserActions::GetCleanTitleAndTooltipText(
+              l10n_util::GetStringUTF16(IDS_ADD_TO_OS_LAUNCH_SURFACE)))
+          .SetImage(ui::ImageModel::FromVectorIcon(
+              features::IsRoundedIconsEnabled()
+                  ? kDriveShortcutIcon
+                  : kDriveShortcutChromeRefreshOldIcon))
           .Build());
 
   root_action_item_->AddChild(
@@ -3754,6 +3847,15 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
               },
               bwi))
           .SetActionId(kActionOptions)
+          .SetText(BrowserActions::GetCleanTitleAndTooltipText(
+              l10n_util::GetStringUTF16(IDS_SETTINGS)))
+          .SetTooltipText(BrowserActions::GetCleanTitleAndTooltipText(
+              l10n_util::GetStringUTF16(IDS_SETTINGS)))
+          .SetImage(ui::ImageModel::FromVectorIcon(
+              features::IsRoundedIconsEnabled() ? kSettingsIcon
+                                                : kSettingsMenuOldIcon,
+              ui::kColorIcon))
+          .SetAccelerator(GetAcceleratorForCommandId(IDC_OPTIONS))
           .Build());
 
   root_action_item_->AddChild(
@@ -3940,6 +4042,14 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
           .SetActionId(kActionShowGoogleLensShortcut)
           .Build());
 
+  const gfx::VectorIcon& lens_icon =
+#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+      vector_icons::kGoogleLensMonochromeLogoIcon;
+#else
+      features::IsRoundedIconsEnabled()
+          ? vector_icons::kSearchIcon
+          : vector_icons::kSearchChromeRefreshOldIcon;
+#endif
   root_action_item_->AddChild(
       actions::ActionItem::Builder(
           base::BindRepeating(
@@ -3952,6 +4062,11 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
               },
               bwi))
           .SetActionId(kActionShowLensOverlayFromAppMenu)
+          .SetText(l10n_util::GetStringUTF16(
+              lens::GetLensOverlayEntrypointLabelAltIds()))
+          .SetTooltipText(l10n_util::GetStringUTF16(
+              lens::GetLensOverlayEntrypointLabelAltIds()))
+          .SetImage(ui::ImageModel::FromVectorIcon(lens_icon, ui::kColorIcon))
           .Build());
 
   root_action_item_->AddChild(
@@ -4156,6 +4271,13 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
               },
               bwi))
           .SetActionId(kActionSharingHubScreenshot)
+          .SetText(BrowserActions::GetCleanTitleAndTooltipText(
+              l10n_util::GetStringUTF16(IDS_SHARING_HUB_SCREENSHOT_LABEL)))
+          .SetTooltipText(BrowserActions::GetCleanTitleAndTooltipText(
+              l10n_util::GetStringUTF16(IDS_SHARING_HUB_SCREENSHOT_LABEL)))
+          .SetImage(ui::ImageModel::FromVectorIcon(
+              features::IsRoundedIconsEnabled() ? kScreenshotRegionIcon
+                                                : kSharingHubScreenshotOldIcon))
           .Build());
 
   root_action_item_->AddChild(
@@ -4437,6 +4559,13 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
               },
               bwi))
           .SetActionId(kActionPerformance)
+          .SetText(BrowserActions::GetCleanTitleAndTooltipText(
+              l10n_util::GetStringUTF16(IDS_SHOW_PERFORMANCE)))
+          .SetTooltipText(BrowserActions::GetCleanTitleAndTooltipText(
+              l10n_util::GetStringUTF16(IDS_SHOW_PERFORMANCE)))
+          .SetImage(ui::ImageModel::FromVectorIcon(
+              features::IsRoundedIconsEnabled() ? kSpeedIcon
+                                                : kPerformanceOldIcon))
           .Build());
 
 #if BUILDFLAG(ENABLE_SPELLCHECK) && !BUILDFLAG(IS_MAC)

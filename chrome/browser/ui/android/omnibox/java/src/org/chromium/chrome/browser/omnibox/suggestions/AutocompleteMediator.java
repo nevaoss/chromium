@@ -171,7 +171,7 @@ class AutocompleteMediator
     private final SettableNonNullObservableSupplier<Integer> mRoundSidesSupplier =
             ObservableSuppliers.createNonNull(RoundSides.TOP_AND_BOTTOM);
     private final Callback<@ControlsPosition Integer> mToolbarPositionChangedCallback =
-            this::onToolbarPositionChanged;
+            _ -> onToolbarPositionChanged();
     private final Callback<@AutocompleteRequestType Integer> mOnAutocompleteRequestTypeChanged =
             this::onAutocompleteRequestTypeChanged;
     private final Callback<@Nullable SiteSearchData> mOnSiteSearchDataChanged =
@@ -1083,7 +1083,6 @@ class AutocompleteMediator
      * parameter on regular web search URLs.
      *
      * @param suggestion The chosen omnibox suggestion.
-     * @param matchIndex The index of the chosen omnibox suggestion.
      * @param url The URL associated with the suggestion to navigate to.
      * @return The url to navigate to.
      */
@@ -1571,6 +1570,7 @@ class AutocompleteMediator
      * @param eventTime The timestamp when the navigation was triggered.
      * @param openInNewTab Whether the URL will be loaded in a new tab.
      * @param openInNewWindow Whether the URL will be loaded in a new window.
+     * @return Whether navigation was successfully dispatched for the suggestion.
      */
     /* package */ boolean loadUrlForOmniboxMatch(
             int matchIndex, long eventTime, boolean openInNewTab, boolean openInNewWindow) {
@@ -2156,8 +2156,7 @@ class AutocompleteMediator
                 mContext);
     }
 
-    private void onToolbarPositionChanged(@ControlsPosition Integer newPosition) {
-        mListPropertyModel.set(SuggestionListProperties.TOOLBAR_POSITION, newPosition);
+    private void onToolbarPositionChanged() {
         if (isInInputSession()) {
             // Hacky solution: rebuild the list if we're active when the position changes,
             // triggering recalculation of refine arrow icon. TODO(http://crbug.com/446058347):

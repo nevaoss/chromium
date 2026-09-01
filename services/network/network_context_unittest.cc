@@ -66,7 +66,6 @@
 #include "components/prefs/testing_pref_service.h"
 #include "components/variations/net/variations_http_headers.h"
 #include "crypto/scoped_fake_unexportable_key_provider.h"
-#include "crypto/sha2.h"
 #include "mojo/public/cpp/bindings/self_owned_receiver.h"
 #include "mojo/public/cpp/system/data_pipe_utils.h"
 #include "mojo/public/cpp/system/functions.h"
@@ -1811,8 +1810,8 @@ TEST_F(NetworkContextTest, SetHttpCacheMaxSizeAfterBackendInit) {
   context_params->file_paths.reset();
   context_params->http_cache_enabled = true;
 
-  const base::ByteSize kInitialSize = base::MiBU(20);
-  const base::ByteSize kNewSize = base::MiBU(10);
+  const base::ByteSize kInitialSize = base::MiB(20);
+  const base::ByteSize kNewSize = base::MiB(10);
   context_params->http_cache_max_size =
       base::checked_cast<int32_t>(kInitialSize.InBytes());
 
@@ -1844,8 +1843,8 @@ TEST_F(NetworkContextTest, SetHttpCacheMaxSizeBeforeUnforcedBackendInit) {
   context_params->file_paths.reset();
   context_params->http_cache_enabled = true;
 
-  const base::ByteSize kInitialSize = base::MiBU(20);
-  const base::ByteSize kNewSize = base::MiBU(10);
+  const base::ByteSize kInitialSize = base::MiB(20);
+  const base::ByteSize kNewSize = base::MiB(10);
   context_params->http_cache_max_size =
       base::checked_cast<int32_t>(kInitialSize.InBytes());
 
@@ -1884,8 +1883,8 @@ TEST_F(NetworkContextTest, SetHttpCacheMaxSizeBeforeForcedBackendInit) {
   context_params->file_paths.reset();
   context_params->http_cache_enabled = true;
 
-  const base::ByteSize kInitialSize = base::MiBU(20);
-  const base::ByteSize kNewSize = base::MiBU(10);
+  const base::ByteSize kInitialSize = base::MiB(20);
+  const base::ByteSize kNewSize = base::MiB(10);
   context_params->http_cache_max_size =
       base::checked_cast<int32_t>(kInitialSize.InBytes());
 
@@ -1924,7 +1923,7 @@ TEST_F(NetworkContextTest, SetHttpCacheMaxSizeNoCache) {
                          ->GetCache());
 
   // Ensure this doesn't crash when the internal `GetCache()` returns nullptr.
-  network_context->SetHttpCacheMaxSize(base::MiBU(10), true);
+  network_context->SetHttpCacheMaxSize(base::MiB(10), true);
   task_environment_.RunUntilIdle();
 }
 #endif  // BUILDFLAG(IS_ANDROID)

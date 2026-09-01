@@ -112,11 +112,7 @@ export function webFormElementToFormData(
   const controlElements =
       getFormControlElements(formElement) as FormControlElement[];
 
-  let iframeElements = extractChildFrames &&
-          autofillFormFeaturesApi.getFunction(
-              'isAutofillAcrossIframesEnabled')() ?
-      getIframeElements(formElement) :
-      [];
+  let iframeElements = extractChildFrames ? getIframeElements(formElement) : [];
 
   // To avoid performance bottlenecks, do not keep child frames if their
   // quantity exceeds the allowed threshold.
@@ -221,11 +217,7 @@ export function webFormControlElementToFormField(
     field.max_length = 0;
   }
 
-  if (inferenceUtil.isAutofillableInputElement(element)) {
-    field.is_checkable = inferenceUtil.isCheckableElement(element);
-  } else if (inferenceUtil.isTextAreaElement(element)) {
-    // Nothing more to do in this case.
-  } else {
+  if (inferenceUtil.isSelectElement(element)) {
     fillUtil.getOptionStringsFromElement(element as HTMLSelectElement, field);
   }
 

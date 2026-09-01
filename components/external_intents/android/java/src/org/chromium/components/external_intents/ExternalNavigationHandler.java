@@ -1772,18 +1772,32 @@ public class ExternalNavigationHandler implements ExternalNavigationHelper {
     // A new auxiliary browsing context navigation starting in the browser in desktop windowing
     // should not be captured.
     private boolean isDesktopBrowserAuxiliaryNavigation(ExternalNavigationParams params) {
-        // TODO(crbug.com/424781882): open discussion on whether self navigations in auxiliary page
-        // should be capturable or not. If opening apps is desirable, add
-        // `isInitialNavigationInFrame()`.
         WebContents webContents = mDelegate.getWebContents();
         if (params.isInDesktopWindowingMode()
                 && params.isTabInBrowser()
+                && params.isInitialNavigationInFrame()
                 && webContents != null
                 && webContents.hasOpener()
                 && mDelegate.wasTabLaunchedFromLinkCreatingNewForegroundTab()
                 && UrlUtilities.isHttpOrHttps(params.getUrl())) {
             if (debug()) {
                 Log.i(TAG, "Auxiliary browsing context navigation from browser is not overridden.");
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private boolean isDesktopBrowserSameTabNavigation(ExternalNavigationParams params) {
+        // Same-tab navigations (identified when !isInitialNavigationInFrame() is true) are blocked
+        // from capturing to align with desktop behavior. Initial navigations in new tabs or windows
+        // remain capturable.
+        if (params.isInDesktopWindowingMode()
+                && params.isTabInBrowser()
+                && !params.isInitialNavigationInFrame()
+                && UrlUtilities.isHttpOrHttps(params.getUrl())) {
+            if (debug()) {
+                Log.i(TAG, "Same-tab navigation in desktop browser is not overridden.");
             }
             return true;
         }
@@ -1860,6 +1874,10 @@ public class ExternalNavigationHandler implements ExternalNavigationHelper {
         }
 
         if (isDesktopBrowserAuxiliaryNavigation(params)) {
+            return OverrideUrlLoadingResult.forNoOverride();
+        }
+
+        if (isDesktopBrowserSameTabNavigation(params)) {
             return OverrideUrlLoadingResult.forNoOverride();
         }
 
@@ -2250,7 +2268,7 @@ public class ExternalNavigationHandler implements ExternalNavigationHelper {
 
     /**
      * If the given URL is to Google Play, extracts the package name and referrer tracking code from
-     * the {@param url} and returns as a Pair in that order. Otherwise returns null.
+     * the {@code url} and returns as a Pair in that order. Otherwise returns null.
      */
     private @Nullable String maybeGetPlayStoreAppId(GURL url) {
         if (!PLAY_HOSTNAME.equals(url.getHost()) || !url.getPath().startsWith(PLAY_APP_PATH)) {
@@ -2959,8 +2977,9 @@ public class ExternalNavigationHandler implements ExternalNavigationHelper {
     }
 
     /**
-     * Checks whether {@param intent} is for an Instant App. Considers both package and actions that
+     * Checks whether {@code intent} is for an Instant App. Considers both package and actions that
      * would resolve to Supervisor.
+     *
      * @return Whether the given intent is going to open an Instant App.
      */
     private static boolean isIntentToInstantApp(Intent intent) {

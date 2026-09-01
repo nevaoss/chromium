@@ -34,9 +34,9 @@ struct TestKey {
 
 const TestKey kTestKeys[] = {
     {"RSA", "client_1.pem", "client_1.pk8", EVP_PKEY_RSA},
-    {"ECDSA_P256", "client_4.pem", "client_4.pk8", EVP_PKEY_EC},
-    {"ECDSA_P384", "client_5.pem", "client_5.pk8", EVP_PKEY_EC},
-    {"ECDSA_P521", "client_6.pem", "client_6.pk8", EVP_PKEY_EC},
+    {"ECDSA_P256", "client_p256.pem", "client_p256.pk8", EVP_PKEY_EC},
+    {"ECDSA_P384", "client_p384.pem", "client_p384.pk8", EVP_PKEY_EC},
+    {"ECDSA_P521", "client_p521.pem", "client_p521.pk8", EVP_PKEY_EC},
 };
 
 std::string TestKeyToString(const testing::TestParamInfo<TestKey>& params) {
@@ -82,5 +82,24 @@ INSTANTIATE_TEST_SUITE_P(All,
                          SSLPlatformKeyNSSTest,
                          testing::ValuesIn(kTestKeys),
                          TestKeyToString);
+
+TEST(SSLPlatformKeyNSSInvalidTest, UnsupportedKeyType) {
+  if (!NSS_VersionCheck("3.103")) {
+    GTEST_SKIP() << "Prior to NSS 3.103, NSS could not import X25519 keys";
+  }
+
+  crypto::ScopedTestNSSDB test_db;
+  ScopedCERTCertificate nss_cert;
+  scoped_refptr<X509Certificate> cert = ImportClientCertAndKeyFromFile(
+      GetTestCertsDirectory(), "client_x25519.pem", "client_x25519.pk8",
+      test_db.slot(), &nss_cert);
+  ASSERT_TRUE(cert);
+  ASSERT_TRUE(nss_cert);
+
+  // Look up the key.
+  scoped_refptr<SSLPrivateKey> key =
+      FetchClientCertPrivateKey(cert.get(), nss_cert.get(), nullptr);
+  EXPECT_FALSE(key);
+}
 
 }  // namespace net

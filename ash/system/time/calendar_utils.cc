@@ -18,15 +18,27 @@
 #include "base/i18n/icubridge/calendar.h"
 #include "base/i18n/icubridge/date_time_formatter.h"
 #include "base/i18n/icubridge/icu_bridge.h"
+#include "base/i18n/number_formatting.h"
 #include "base/i18n/time_formatting.h"
-#include "base/strings/string_number_conversions.h"
-#include "base/strings/utf_string_conversions.h"
-#include "base/time/time.h"
-#include "components/user_manager/user_type.h"
+#include "third_party/icu/source/common/unicode/uchar.h"
 #include "ui/chromeos/styles/cros_tokens_color_mappings.h"
 #include "ui/views/layout/table_layout.h"
 
 namespace ash::calendar_utils {
+
+namespace {
+
+std::u16string KeepOnlyDigits(const std::u16string& str) {
+  std::u16string result;
+  for (char16_t c : str) {
+    if (u_isdigit(c)) {
+      result.push_back(c);
+    }
+  }
+  return result;
+}
+
+}  // namespace
 
 bool IsMultiCalendarEnabled() {
   return features::IsMultiCalendarSupportEnabled();
@@ -163,14 +175,23 @@ std::u16string GetTwelveHourClockHours(const base::Time date) {
 }
 
 std::u16string GetTwentyFourHourClockHours(const base::Time date) {
-  return calendar_utils::FormatDate(
-      DateHelper::GetInstance()->twenty_four_hour_clock_hours_formatter(),
-      date);
+  return KeepOnlyDigits(
+      base::i18n::IcuBridge::GetInstance().date_time_formatter().Format(
+          date,
+          base::i18n::datetime_options::T::Short()
+              .with_hour_clock_type(base::k24HourClock)
+              .with_time_precision(
+                  base::i18n::DateTimeFormatterOptions::TimePrecision::kHour)));
 }
 
 std::u16string GetMinutes(const base::Time date) {
-  return calendar_utils::FormatDate(
-      DateHelper::GetInstance()->minutes_formatter(), date);
+  base::Time::Exploded exploded;
+  (date + GetTimeDifference(date)).UTCExplode(&exploded);
+  std::u16string first_digit = (exploded.minute < 10)
+                                   ? base::FormatNumber(0)
+                                   : base::FormatNumber(exploded.minute / 10);
+  std::u16string second_digit = base::FormatNumber(exploded.minute % 10);
+  return first_digit + second_digit;
 }
 
 std::u16string FormatTwelveHourClockTimeInterval(const base::Time& start_time,

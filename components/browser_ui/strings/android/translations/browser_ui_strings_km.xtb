@@ -83,6 +83,7 @@
 <translation id="1818308510395330587">ដើម្បី​អនុញ្ញាតឱ្យ <ph name="APP_NAME" /> ប្រើ AR អ្នកក៏ត្រូវបើក​កាមេរ៉ា​នៅក្នុង​<ph name="BEGIN_LINK" />ការកំណត់ Android<ph name="END_LINK" /> ផងដែរ។</translation>
 <translation id="1822318649925991542">ប្ដូរ​ទីតាំង ដើម្បី​ប្ដូរបទពិសោធរុករក​របស់អ្នក​តាមបំណង</translation>
 <translation id="1848033246551405023">ពុម្ព​អក្សរ Sans Serif</translation>
+<translation id="1861244985839668297">នៅពេលបើក គេហទំព័រអាចស្នើសុំប្រើឧបករណ៍ HID បាន។ នៅពេល​បិទ គេហទំព័រ​មិនអាចប្រើ​ឧបករណ៍ HID បានទេ។</translation>
 <translation id="1861262398884155592">ថត​នេះ​ទទេ</translation>
 <translation id="1881806992065048905">សន្លឹក​ខាងក្រោមនៃ​រូបរាង​ទំព័រ​ផ្ទាំងថ្មី</translation>
 <translation id="1887786770086287077">ការចូល​ប្រើ​ទីតាំងត្រូវបាន​បិទ​សម្រាប់​ឧបករណ៍​នេះ។ សូម​បើក​វា​នៅក្នុង<ph name="BEGIN_LINK" />ការ​កំណត់ Android<ph name="END_LINK" /> ។</translation>
@@ -590,7 +591,6 @@
 <translation id="7053983685419859001">ទប់ស្កាត់</translation>
 <translation id="7055552182600664515">ដើម្បីចាក់​ខ្លឹមសារ​ដែលត្រូវបាន​ការពារ​ដោយសិទ្ធិ​អ្នកនិពន្ធ គេហទំព័រ​ប្រហែលជាត្រូវប្រើ​សេវាកម្ម​ការពារខ្លឹមសារ។ <ph name="BEGIN_LINK" />ស្វែងយល់បន្ថែម<ph name="END_LINK" /></translation>
 <translation id="7066151586745993502">{NUM_SELECTED,plural, =1{បានជ្រើសរើស 1}other{បានជ្រើសរើស #}}</translation>
-<translation id="708014373017851679">'<ph name="APP_NAME" />' ហួសសម័យ​ហើយ។ សូមដំឡើង​កំណែ​កម្មវិធីនេះ។</translation>
 <translation id="7084115944294706056">ជ្រើសរើស​ទីតាំង​របារអាសយដ្ឋាន</translation>
 <translation id="7087918508125750058">បានជ្រើស​រើស <ph name="ITEM_COUNT" />។ ជម្រើស​មាននៅក្បែរ​ផ្នែកខាងលើ​អេក្រង់</translation>
 <translation id="7141896414559753902">ទប់​ស្កាត់​ទំព័រ​មិន​ឱ្យ​បង្ហាញ​ផ្ទាំង​ផុស និង​ការ​បញ្ជូន​បន្ត (បាន​ណែនាំ)</translation>

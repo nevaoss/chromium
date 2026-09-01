@@ -5,17 +5,18 @@
 import 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
 
 import type {AppearanceMenuElement} from 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
-import {DEFAULT_SETTINGS, ReadAnythingSettingsChange, ToolbarEvent} from 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
+import {DEFAULT_SETTINGS, ReadAnythingSettingsChange, ToolbarEvent, VisualBrowserProxyImpl} from 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
 import {assertEquals, assertFalse, assertNotEquals, assertTrue} from 'chrome-untrusted://webui-test/chai_assert.js';
 import {microtasksFinished} from 'chrome-untrusted://webui-test/test_util.js';
 
 import {assertCheckMarksForDropdown, assertTestSettingsAreNotDefaultSettings, mockMetrics, stubAnimationFrame, TEST_RANDOM_VALUE_SETTINGS} from './common.js';
-import {FakeReadingMode} from './fake_reading_mode.js';
 import type {TestMetricsBrowserProxy} from './test_metrics_browser_proxy.js';
+import {TestVisualBrowserProxy} from './test_visual_browser_proxy.js';
 
 suite('AppearanceMenuElement', () => {
   let appearanceMenu: AppearanceMenuElement;
   let metrics: TestMetricsBrowserProxy;
+  let visualBrowserProxy: TestVisualBrowserProxy;
 
   suiteSetup(() => {
     assertTestSettingsAreNotDefaultSettings();
@@ -23,9 +24,10 @@ suite('AppearanceMenuElement', () => {
 
   setup(() => {
     document.body.innerHTML = window.trustedTypes!.emptyHTML;
-    const readingMode = new FakeReadingMode();
-    chrome.readingMode = readingMode as unknown as typeof chrome.readingMode;
     metrics = mockMetrics();
+
+    visualBrowserProxy = new TestVisualBrowserProxy();
+    VisualBrowserProxyImpl.setInstance(visualBrowserProxy);
 
     appearanceMenu = document.createElement('appearance-menu');
     document.body.appendChild(appearanceMenu);
@@ -36,7 +38,7 @@ suite('AppearanceMenuElement', () => {
   });
 
   test('theme prop update changes selected items', async () => {
-    const yellowTheme = chrome.readingMode.yellowTheme;
+    const yellowTheme = visualBrowserProxy.getYellowTheme();
     appearanceMenu.settingsPrefs = {
       ...appearanceMenu.settingsPrefs,
       theme: yellowTheme,
@@ -55,26 +57,25 @@ suite('AppearanceMenuElement', () => {
     document.addEventListener(
         ToolbarEvent.CLOSE_ALL_MENUS, () => closeAllMenusCount += 1);
 
-    let calledTheme = -1;
-    chrome.readingMode.onThemeChange = (val: number) => calledTheme = val;
-
     const themesToTest = [
-      chrome.readingMode.defaultTheme,
-      chrome.readingMode.lightTheme,
-      chrome.readingMode.darkTheme,
-      chrome.readingMode.yellowTheme,
-      chrome.readingMode.blueTheme,
-      chrome.readingMode.highContrastTheme,
-      chrome.readingMode.lowContrastLightTheme,
-      chrome.readingMode.lowContrastDarkTheme,
+      visualBrowserProxy.getDefaultTheme(),
+      visualBrowserProxy.getLightTheme(),
+      visualBrowserProxy.getDarkTheme(),
+      visualBrowserProxy.getYellowTheme(),
+      visualBrowserProxy.getBlueTheme(),
+      visualBrowserProxy.getHighContrastTheme(),
+      visualBrowserProxy.getLowContrastLightTheme(),
+      visualBrowserProxy.getLowContrastDarkTheme(),
     ];
 
     for (const testTheme of themesToTest) {
+      visualBrowserProxy.resetResolver('onThemeChange');
       appearanceMenu.$.menu.dispatchEvent(
           new CustomEvent(ToolbarEvent.THEME, {detail: {data: testTheme}}));
       await microtasksFinished();
 
-      assertEquals(testTheme, calledTheme);
+      assertEquals(
+          testTheme, await visualBrowserProxy.whenCalled('onThemeChange'));
       const selectedItems = appearanceMenu.$.menu.menuGroups[1]!.items.filter(
           item => item.selected);
       assertEquals(1, selectedItems.length);
@@ -90,7 +91,7 @@ suite('AppearanceMenuElement', () => {
   });
 
   test('restores saved color option', async () => {
-    const color = chrome.readingMode.yellowTheme;
+    const color = visualBrowserProxy.getYellowTheme();
     const startingSelected =
         appearanceMenu.$.menu.menuGroups[1]!.items.find(item => item.selected);
     assertNotEquals(color, startingSelected?.data);
@@ -124,14 +125,14 @@ suite('AppearanceMenuElement', () => {
 
   test('presentation prop update changes selected items', async () => {
     appearanceMenu.presentationState =
-        chrome.readingMode.inImmersiveOverlayPresentationState;
+        visualBrowserProxy.getInImmersiveOverlayPresentationState();
     await microtasksFinished();
 
     const selectedItems = appearanceMenu.$.menu.menuGroups[0]!.items.filter(
         item => item.selected);
     assertEquals(1, selectedItems.length);
     assertEquals(
-        chrome.readingMode.inImmersiveOverlayPresentationState,
+        visualBrowserProxy.getInImmersiveOverlayPresentationState(),
         selectedItems[0]!.data);
   });
 
@@ -140,16 +141,9 @@ suite('AppearanceMenuElement', () => {
     document.addEventListener(
         ToolbarEvent.CLOSE_ALL_MENUS, () => closeAllMenusCount += 1);
 
-    const sidePanelState = chrome.readingMode.inSidePanelPresentationState;
+    const sidePanelState = visualBrowserProxy.getInSidePanelPresentationState();
     const immersiveState =
-        chrome.readingMode.inImmersiveOverlayPresentationState;
-    chrome.readingMode.togglePresentation = () => {
-      if (appearanceMenu.presentationState === sidePanelState) {
-        appearanceMenu.presentationState = immersiveState;
-      } else if (appearanceMenu.presentationState === immersiveState) {
-        appearanceMenu.presentationState = sidePanelState;
-      }
-    };
+        visualBrowserProxy.getInImmersiveOverlayPresentationState();
 
     appearanceMenu.presentationState = sidePanelState;
     await microtasksFinished();
@@ -159,22 +153,17 @@ suite('AppearanceMenuElement', () => {
     await microtasksFinished();
 
     assertEquals(0, closeAllMenusCount);
-    assertEquals(immersiveState, appearanceMenu.presentationState);
-    let selectedItems = appearanceMenu.$.menu.menuGroups[0]!.items.filter(
-        item => item.selected);
-    assertEquals(1, selectedItems.length);
-    assertEquals(immersiveState, selectedItems[0]!.data);
+    assertEquals(1, visualBrowserProxy.getCallCount('togglePresentation'));
+
+    appearanceMenu.presentationState = immersiveState;
+    await microtasksFinished();
 
     appearanceMenu.$.menu.dispatchEvent(new CustomEvent(
         ToolbarEvent.PRESENTATION_CHANGE, {detail: {data: sidePanelState}}));
     await microtasksFinished();
 
     assertEquals(0, closeAllMenusCount);
-    assertEquals(sidePanelState, appearanceMenu.presentationState);
-    selectedItems = appearanceMenu.$.menu.menuGroups[0]!.items.filter(
-        item => item.selected);
-    assertEquals(1, selectedItems.length);
-    assertEquals(sidePanelState, selectedItems[0]!.data);
+    assertEquals(2, visualBrowserProxy.getCallCount('togglePresentation'));
   });
 
   test('can be closed programatically', () => {

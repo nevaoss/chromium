@@ -15,6 +15,7 @@ namespace android_webview::features {
 // alongside the definition of their values in the .cc file.
 
 // Alphabetical:
+BASE_DECLARE_FEATURE(kCreateSpareRendererForDefaultProfile);
 BASE_DECLARE_FEATURE(kPostChromiumStartupInWebViewConstructor);
 BASE_DECLARE_FEATURE(kPrerender2WarmUpCompositorForWebView);
 BASE_DECLARE_FEATURE(kStartupNonBlockingWebViewConstructor);
@@ -31,6 +32,8 @@ extern const base::FeatureParam<int> kWebViewCacheSizeLimitMinimum;
 extern const base::FeatureParam<int> kWebViewCacheSizeLimitMaximum;
 extern const base::FeatureParam<double> kWebViewCodeCacheSizeLimitMultiplier;
 BASE_DECLARE_FEATURE(kWebViewContentRestrictionSupport);
+extern const base::FeatureParam<base::TimeDelta>
+    kWebViewContentRestrictionTimeout;
 BASE_DECLARE_FEATURE(kWebViewCookieManagerSimplerUrlFixups);
 BASE_DECLARE_FEATURE(kWebViewCppMetricsFiltering);
 BASE_DECLARE_FEATURE(kWebViewCrossOriginAllowlistApi);
@@ -97,6 +100,7 @@ BASE_DECLARE_FEATURE(kWebViewSetDownloadFaviconsEnabled);
 BASE_DECLARE_FEATURE(kWebViewSingleSharedContextState);
 BASE_DECLARE_FEATURE(kWebViewSkipInterceptsForPrefetch);
 BASE_DECLARE_FEATURE(kWebViewStaticMethodsNotTriggerStartup);
+BASE_DECLARE_FEATURE(kWebViewSubFrameCreatedDoNotUpdateClientMap);
 BASE_DECLARE_FEATURE(kWebViewTestFeature);
 BASE_DECLARE_FEATURE(kWebViewTestNonembeddedLowEntropySource);
 BASE_DECLARE_FEATURE(kWebViewUnreducedProductVersion);

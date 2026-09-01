@@ -97,6 +97,7 @@ BASE_DECLARE_FEATURE(kHideAimEntrypointOnUserInput);
 BASE_DECLARE_FEATURE(kHideAimEntrypointForUrlSuggestions);
 BASE_DECLARE_FEATURE(kOmniboxMultimodalInput);
 BASE_DECLARE_FEATURE(kAndroidDesktopAimGate);
+BASE_DECLARE_FEATURE(kOmniboxDebounceKeyboardVisibility);
 BASE_DECLARE_FEATURE(kAim3pEntrypoint);
 extern const base::FeatureParam<bool> kAim3pEntrypointDebug;
 
@@ -284,6 +285,8 @@ extern const base::FeatureParam<bool> kAskGComposeboxLensChip;
 // when we have auto added tabs so we can show the user contextual suggestions
 // from the auto added tabs instead.
 extern const base::FeatureParam<bool> kAskGBlockAutoTabZeroStateSuggestions;
+// Whether to use "Ask about this page" placeholder text in omnibox composebox.
+extern const base::FeatureParam<bool> kAskGComposeboxPlaceholder;
 // Whether to bypass the Lens privacy notice.
 extern const base::FeatureParam<bool> kAskGBypassPrivacyNotice;
 // Note: no new flags beyond this point.

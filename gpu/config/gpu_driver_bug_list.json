@@ -3202,24 +3202,12 @@
     {
       "id": 437,
       "cr_bugs": [ 372358970 ],
-      "description": "AV1 RTC decoding may crash driver on some of the Intel devices",
+      "description": "AV1 RTC decoding may crash driver on some of the Intel devices with old drivers",
       "os": {
         "type": "win"
       },
       "vendor_id": "0x8086",
       "multi_gpu_category": "any",
-      "intel_gpu_series": [
-        "tigerlake",
-        "rocketlake",
-        "dg1",
-        "alderlake",
-        "alchemist",
-        "raptorlake",
-        "meteorlake",
-        "arrowlake",
-        "lunarlake",
-        "battlemage"
-      ],
       "features": [
         "use_first_valid_ref_for_av1_invalid_ref"
       ],
@@ -3854,6 +3842,15 @@
       "gl_vendor": "ARM.*",
       "features": [
         "flush_queries_before_deleting_or_unbinding_fbo"
+      ]
+    },
+    {
+      "id": 489,
+      "cr_bugs": [530045332],
+      "description": "Lose context when 3D texture depth increases on Qualcomm GPUs",
+      "gl_vendor": "Qualcomm.*",
+      "features": [
+        "lose_gl_context_when_increase_texture_3d_depth"
       ]
     }
   ]

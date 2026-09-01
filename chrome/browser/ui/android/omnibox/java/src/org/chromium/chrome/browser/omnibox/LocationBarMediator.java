@@ -102,10 +102,10 @@ import org.chromium.chrome.browser.preferences.Pref;
 import org.chromium.chrome.browser.prefetch.settings.PreloadPagesSettingsBridge;
 import org.chromium.chrome.browser.prefetch.settings.PreloadPagesState;
 import org.chromium.chrome.browser.profiles.Profile;
-import org.chromium.chrome.browser.tab.EmptyTabObserver;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.Tab.LoadUrlResult;
 import org.chromium.chrome.browser.tab.TabLaunchType;
+import org.chromium.chrome.browser.tab.TabObserver;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.theme.ThemeUtils;
 import org.chromium.chrome.browser.toolbar.ToolbarVariationUtils;
@@ -248,6 +248,7 @@ class LocationBarMediator
     private final @Nullable PageZoomIndicatorCoordinator mPageZoomIndicatorCoordinator;
     private final @Nullable LocationBarFocusScrimHandler mScrimHandler;
     private @Nullable Callback<Boolean> mScrimVisibilityObserver;
+
     private final boolean mIsTablet;
     private final BooleanSupplier mIsToolbarMicEnabledSupplier;
     private final SettableNonNullObservableSupplier<Boolean> mBackPressStateSupplier =
@@ -685,7 +686,14 @@ class LocationBarMediator
 
         if (!mUrlFocusedWithoutAnimations) handleUrlFocusAnimation(hasFocus);
 
-        // Upgrade to at least DRAFTING because we have focus now.
+        if (hasFocus
+                && mCurrentInput != null
+                && displayStateEquals(DisplayState.DRAFTING_NO_FOCUS)) {
+            mCurrentInput.setSelection(TextSelection.SELECT_ALL);
+            pushUrlBarDataFromCurrentInput();
+        }
+
+        // DisplayState transition. Upgrade to at least DRAFTING because we have focus now.
         if (mCurrentInput != null && hasFocus) {
             if (mCurrentInput.getDisplayState() != DisplayState.SUGGESTIONS) {
                 mCurrentInput.setDisplayState(DisplayState.DRAFTING);
@@ -1087,7 +1095,7 @@ class LocationBarMediator
 
                 if (omniboxLoadUrlParams.callback != null) {
                     currentTab.addObserver(
-                            new EmptyTabObserver() {
+                            new TabObserver() {
                                 @Override
                                 public void onLoadUrl(
                                         Tab tab,
@@ -1722,7 +1730,11 @@ class LocationBarMediator
         }
         mToolbarParent = null;
         mLocationBarLayout.setReparentedToPopover(false);
-        mUrlCoordinator.finishReparenting(/* postReparentingFocus= */ mCurrentInput != null);
+        boolean postReparentingFocus =
+                mCurrentInput != null
+                        && mCurrentInput.getDisplayState() != DisplayState.DRAFTING_NO_FOCUS
+                        && mCurrentInput.getDisplayState() != DisplayState.WEBSITE;
+        mUrlCoordinator.finishReparenting(postReparentingFocus);
         mIsReparenting = false;
     }
 
@@ -1770,8 +1782,16 @@ class LocationBarMediator
             if (mCurrentInput == null) {
                 beginOrResumeInput(/* activateNewSession= */ true);
             }
+            // TODO(b/548102274): See about removing this special casing for the DisplayState. I
+            // think we should aim to remove all end/begin/suspend calls from the focus sequence,
+            // because different focus change causes need to be handled differently. E.g., defocus
+            // via scrim click should not detach the session, while defocus via tab change should.
         } else {
-            endInput();
+            if (displayStateEquals(DisplayState.DRAFTING) && userTextDiffersFromInitial()) {
+                enterDraftingNoFocus();
+            } else if (!displayStateEquals(DisplayState.DRAFTING_NO_FOCUS)) {
+                endInput();
+            }
         }
 
         for (UrlFocusChangeListener listener : mUrlFocusChangeListeners) {
@@ -1844,6 +1864,7 @@ class LocationBarMediator
      * @param button The {@link View} of the button to show. Returns An animator to run for the
      *     given view when showing buttons in the unfocused location bar. This should also be used
      *     to create animators for showing toolbar buttons.
+     * @return Animator for showing the button during tablet unfocus.
      */
     /* package */ ObjectAnimator createShowButtonAnimatorForTablet(View button) {
         assert mIsTablet;
@@ -1861,6 +1882,7 @@ class LocationBarMediator
      * @param button The {@link View} of the button to hide. Returns An animator to run for the
      *     given view when hiding buttons in the unfocused location bar. This should also be used to
      *     create animators for hiding toolbar buttons.
+     * @return Animator for hiding the button during tablet unfocus.
      */
     /* package */ ObjectAnimator createHideButtonAnimatorForTablet(View button) {
         assert mIsTablet;
@@ -2289,7 +2311,7 @@ class LocationBarMediator
     }
 
     /**
-     * @see FuseboxAttachmentChangeListener#onAttachmentsListChanged()
+     * @see FuseboxAttachmentChangeListener#onAttachmentListChanged()
      */
     @Override
     public void onAttachmentListChanged() {
@@ -2402,12 +2424,14 @@ class LocationBarMediator
      */
     @VisibleForTesting
     boolean shouldShowInstallButton() {
-        if (mUrlHasFocus || mIsUrlFocusChangeInProgress) return false;
+        if (mUrlHasFocus
+                || mIsUrlFocusChangeInProgress
+                || mLocationBarDataProvider.currentUrlHasInstalledApp()) {
+            return false;
+        }
 
         WebContents webContents = getWebContentsForCurrentTab();
-        if (webContents == null) return false;
-
-        return AppBannerManager.isProbablyPromotable(webContents);
+        return webContents != null && AppBannerManager.isProbablyPromotable(webContents);
     }
 
     /**
@@ -2922,6 +2946,7 @@ class LocationBarMediator
 
     @Override
     public void onUrlChanged(boolean isTabChanging) {
+        updateInstallButtonVisibility(/* notifyEmbedder= */ true);
         if (isTabChanging) {
             var currentSession = FuseboxSessionState.from(mLocationBarDataProvider);
             if (currentSession == null || !currentSession.isSessionActive()) {
@@ -2937,6 +2962,12 @@ class LocationBarMediator
                 maybeShowOrClearCursorInLocationBar();
             }
         } else {
+            // TODO(b/548102100): See if we can remove this desktop guard.
+            // When the url changes via a link click, page reload, home button press, etc, we want
+            // to end the input session and exit drafting w/o focus mode.
+            if (OmniboxCapabilities.isDesktopPlatform()) {
+                endInput();
+            }
             updateUrl();
         }
 
@@ -3020,7 +3051,8 @@ class LocationBarMediator
                                 && input.getAutocompleteState() == AutocompleteState.ENABLED);
         if (shouldAnimateFocus && !mIsReparenting) {
             handleUrlFocusAnimation(/* hasFocus= */ true);
-        } else if (input.getAutocompleteState() != AutocompleteState.STANDBY_NO_FOCUS) {
+        } else if (input.getAutocompleteState() != AutocompleteState.STANDBY_NO_FOCUS
+                && input.getDisplayState() != DisplayState.DRAFTING_NO_FOCUS) {
             mUrlCoordinator.requestFocus();
         }
 
@@ -3049,7 +3081,11 @@ class LocationBarMediator
             input.setDisplayState(DisplayState.DRAFTING);
         }
 
-        if (input.getAutocompleteState() == AutocompleteState.ENABLED && input.hasPreviewText()) {
+        if (input.getDisplayState() == DisplayState.DRAFTING_NO_FOCUS) {
+            // Do not modify or change the input properties. We already committed the text and set
+            // selection on entering DRAFTING_NO_FOCUS. @see #enterDraftingNoFocus().
+        } else if (input.getAutocompleteState() == AutocompleteState.ENABLED
+                && input.hasPreviewText()) {
             // TODO(https://crbug.com/540458873): Should not commit preview text here, but instead
             // retain it. When resumed, use it to calculate the autocomplete text and update urlbar.
             input.commitPreviewText();
@@ -3095,7 +3131,61 @@ class LocationBarMediator
         state.deactivate();
         updateUrl();
         mSelectionController.reset();
+        clearUrlBarFocus();
+    }
+
+    @Override
+    public void onScrimClicked() {
+        if (OmniboxCapabilities.isDesktopPlatform() && userTextDiffersFromInitial()) {
+            enterDraftingNoFocus();
+        } else {
+            endInput();
+        }
+    }
+
+    /** Enter the DRAFTING_NO_FOCUS state, executing all necessary and convenient pre-processing */
+    @VisibleForTesting
+    /* package */ void enterDraftingNoFocus() {
+        assert mCurrentInput != null;
+        if (displayStateEquals(DisplayState.DRAFTING_NO_FOCUS)) return;
+
+        // We set the selection to SELECT_END so that on resume, when we set the selection to
+        // SELECT_ALL in @see #beginOrResumeInput(boolean), a view update actually occurs (the
+        // UrlBarMediator guards against duplicate updates.
+        mCurrentInput
+                .commitPreviewText()
+                .setSelection(TextSelection.SELECT_END)
+                .setAutocompleteState(AutocompleteState.STANDBY);
+        pushUrlBarDataFromCurrentInput();
+
+        // TODO(b/550394727): Fix committing preview text on defocus via window change.
+        // Clicking another window doesn't seem to commit the preview text. It looks like preview
+        // text is null.
+
+        mCurrentInput.setDisplayState(DisplayState.DRAFTING_NO_FOCUS);
+
+        // TODO(b/548101684): Figure out why the url text isn't highlighted on refocus if we put
+        // this focus clearing in call @see #onDisplayStateChanged(int). First verify the truth of
+        // this.
+        clearUrlBarFocus();
+    }
+
+    /** True when the current input is non-null and the input display state matches the argument. */
+    private boolean displayStateEquals(@DisplayState int displayState) {
+        return mCurrentInput != null && mCurrentInput.getDisplayState() == displayState;
+    }
+
+    /** True when the current input is non-null & the user text differs from the initial text. */
+    @VisibleForTesting
+    /* package */ boolean userTextDiffersFromInitial() {
+        return mCurrentInput != null
+                && !mCurrentInput.getUserText().equals(mCurrentInput.getInitialUserText());
+    }
+
+    /** Clear focus from the url bar if we haven't already. */
+    private void clearUrlBarFocus() {
         if (mUrlHasFocus) {
+            // Triggers @see #onUrlFocusChange(UrlBarFocusChangeInfo) setting mUrlHasFocus to false.
             mUrlCoordinator.clearFocus();
             // Focus a different view when the UrlBar loses focus to sever any lingering IME
             // connections. Without this, there are cases where typing with a hardware keyboard can

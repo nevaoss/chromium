@@ -27,8 +27,8 @@
 #include "build/build_config.h"
 #include "chrome/browser/feature_engagement/tracker_factory.h"
 #include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
 #include "chrome/browser/ui/views/user_education/impl/browser_feature_promo_controller_browsertest_base.h"
@@ -90,14 +90,6 @@ using test::kSnoozeIPHFeature;
 using test::kTestIPHFeature;
 using test::kTestTutorialIdentifier;
 using test::kTutorialIPHFeature;
-
-// Helper class that provides pass-throughs for protected members of
-// FeaturePromoController[Common].
-class BrowserFeaturePromoControllerTestHelper
-    : public BrowserFeaturePromoController {
- public:
-  using BrowserFeaturePromoController::GetFocusHelpBubbleScreenReaderHint;
-};
 
 BASE_FEATURE(kOneOffIPHFeature,
              "TEST_AnyContextIPHFeature",
@@ -270,18 +262,14 @@ IN_PROC_BROWSER_TEST_F(BrowserFeaturePromoControllerTest,
 
 IN_PROC_BROWSER_TEST_F(BrowserFeaturePromoControllerTest,
                        GetFocusHelpBubbleScreenReaderHint) {
-  EXPECT_TRUE(static_cast<const BrowserFeaturePromoControllerTestHelper*>(
-                  controller_.get())
-                  ->GetFocusHelpBubbleScreenReaderHint(
-                      FeaturePromoSpecification::PromoType::kToast,
-                      GetAnchorElement(), browser_view())
-                  .empty());
-  EXPECT_FALSE(static_cast<const BrowserFeaturePromoControllerTestHelper*>(
-                   controller_.get())
-                   ->GetFocusHelpBubbleScreenReaderHint(
-                       FeaturePromoSpecification::PromoType::kSnooze,
-                       GetAnchorElement(), browser_view())
-                   .empty());
+  EXPECT_TRUE(
+      GetFocusHelpBubbleScreenReaderHint(
+          FeaturePromoSpecification::PromoType::kToast, GetAnchorElement())
+          .empty());
+  EXPECT_FALSE(
+      GetFocusHelpBubbleScreenReaderHint(
+          FeaturePromoSpecification::PromoType::kSnooze, GetAnchorElement())
+          .empty());
 }
 
 IN_PROC_BROWSER_TEST_F(BrowserFeaturePromoControllerTest, ShowsStartupBubble) {

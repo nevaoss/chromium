@@ -81,6 +81,7 @@ import org.chromium.base.DeviceInfo;
 import org.chromium.base.MathUtils;
 import org.chromium.base.Token;
 import org.chromium.base.supplier.ObservableSuppliers;
+import org.chromium.base.supplier.SupplierUtils;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.Feature;
 import org.chromium.base.test.util.Features.DisableFeatures;
@@ -909,7 +910,10 @@ public class StripLayoutHelperTest {
         StripLayoutTab[] stripTabs = mStripLayoutHelper.getStripLayoutTabsForTesting();
         assertEquals(1, stripTabs.length);
         assertTrue("Tab should be a placeholder.", stripTabs[0].getIsPlaceholder());
-        assertNull("Placeholder alert state should be null.", stripTabs[0].getAlertState());
+        assertEquals(
+                "Placeholder alert state should be NONE.",
+                TabAlert.NONE,
+                stripTabs[0].getAlertState());
 
         // Add a tab with alert state to the tab model and update the tab model in the strip.
         MockTabModel tabModel = new MockTabModel(mProfile, null);
@@ -926,7 +930,7 @@ public class StripLayoutHelperTest {
         assertEquals(1, stripTabs.length);
         assertEquals(
                 "Alert state should be propagated to the former placeholder.",
-                Integer.valueOf(TabAlert.MEDIA_RECORDING),
+                TabAlert.MEDIA_RECORDING,
                 stripTabs[0].getAlertState());
         assertFalse("Tab should no longer be a placeholder.", stripTabs[0].getIsPlaceholder());
     }
@@ -939,19 +943,19 @@ public class StripLayoutHelperTest {
 
         Tab tab0 = mModel.getTabAt(0);
 
-        // Initially alert state should be null.
-        assertNull("Initial alert state should be null.", tabs[0].getAlertState());
+        // Initially alert state should be NONE.
+        assertEquals("Initial alert state should be NONE.", TabAlert.NONE, tabs[0].getAlertState());
 
         // Update to ACTOR_WAITING_ON_USER.
         mStripLayoutHelper.onAlertStateChanged(tab0, TabAlert.ACTOR_WAITING_ON_USER);
         assertEquals(
                 "Alert state should be ACTOR_WAITING_ON_USER.",
-                Integer.valueOf(TabAlert.ACTOR_WAITING_ON_USER),
+                TabAlert.ACTOR_WAITING_ON_USER,
                 tabs[0].getAlertState());
 
-        // Update to null.
-        mStripLayoutHelper.onAlertStateChanged(tab0, null);
-        assertNull("Alert state should be null.", tabs[0].getAlertState());
+        // Update to NONE.
+        mStripLayoutHelper.onAlertStateChanged(tab0, TabAlert.NONE);
+        assertEquals("Alert state should be NONE.", TabAlert.NONE, tabs[0].getAlertState());
     }
 
     @Test
@@ -969,8 +973,8 @@ public class StripLayoutHelperTest {
         mStripLayoutHelper.onAlertStateChanged(tab1, tab1.getAlertState());
 
         // Verify initial state.
-        assertEquals(Integer.valueOf(TabAlert.AUDIO_PLAYING), tabs[0].getAlertState());
-        assertEquals(Integer.valueOf(TabAlert.MEDIA_RECORDING), tabs[1].getAlertState());
+        assertEquals(TabAlert.AUDIO_PLAYING, tabs[0].getAlertState());
+        assertEquals(TabAlert.MEDIA_RECORDING, tabs[1].getAlertState());
 
         // Force rebuild.
         mStripLayoutHelper.setStripLayoutTabsForTesting(new StripLayoutTab[0]);
@@ -984,11 +988,11 @@ public class StripLayoutHelperTest {
         // Verify alert state is persistent.
         assertEquals(
                 "Alert state should be preserved.",
-                Integer.valueOf(TabAlert.AUDIO_PLAYING),
+                TabAlert.AUDIO_PLAYING,
                 newTabs[0].getAlertState());
         assertEquals(
                 "Alert state should be preserved.",
-                Integer.valueOf(TabAlert.MEDIA_RECORDING),
+                TabAlert.MEDIA_RECORDING,
                 newTabs[1].getAlertState());
     }
 
@@ -5158,7 +5162,7 @@ public class StripLayoutHelperTest {
                         mWindowAndroid,
                         mActionConfirmationManager,
                         mDataSharingTabManager,
-                        /* tabStripVisibleSupplier= */ () -> true,
+                        /* tabStripVisibleSupplier= */ SupplierUtils.alwaysTrue(),
                         mBottomSheetController,
                         mMultiInstanceManager,
                         ObservableSuppliers.createMonotonic(mShareDelegate),
@@ -5764,8 +5768,6 @@ public class StripLayoutHelperTest {
     @Test
     public void testHandleGroupTitleClick_Collapse() {
         // Initialize with 4 tabs. Group first three tabs.
-        HistogramWatcher histogramWatcher =
-                HistogramWatcher.newSingleRecordWatcher("Android.TabStrip.TabGroupCollapsed", true);
         initializeTest(false, false, 3, 4);
         mStripLayoutHelper.onSizeChanged(
                 STRIP_WIDTH, STRIP_HEIGHT, false, TIMESTAMP, PADDING_LEFT, PADDING_RIGHT, 0f);
@@ -5779,16 +5781,11 @@ public class StripLayoutHelperTest {
         // Verify the proper event was sent to the TabModel.
         verify(mModel)
                 .setTabGroupCollapsed(TAB_GROUP_ID_1, /* isCollapsed= */ true, /* animate= */ true);
-        // Verify we record the correct metric.
-        histogramWatcher.assertExpected("Should record true, since we're collapsing.");
     }
 
     @Test
     public void testHandleGroupTitleClick_Expand() {
         // Initialize with 4 tabs. Group first three tabs.
-        HistogramWatcher histogramWatcher =
-                HistogramWatcher.newSingleRecordWatcher(
-                        "Android.TabStrip.TabGroupCollapsed", false);
         initializeTest(false, false, 3, 4);
         mStripLayoutHelper.onSizeChanged(
                 STRIP_WIDTH, STRIP_HEIGHT, false, TIMESTAMP, PADDING_LEFT, PADDING_RIGHT, 0f);
@@ -5805,8 +5802,6 @@ public class StripLayoutHelperTest {
         verify(mModel)
                 .setTabGroupCollapsed(
                         TAB_GROUP_ID_1, /* isCollapsed= */ false, /* animate= */ true);
-        // Verify we record the correct metric.
-        histogramWatcher.assertExpected("Should record false, since we're expanding.");
     }
 
     @Test

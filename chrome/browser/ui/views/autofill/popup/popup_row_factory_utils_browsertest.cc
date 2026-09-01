@@ -16,7 +16,7 @@
 #include "build/branding_buildflags.h"
 #include "chrome/browser/ui/autofill/autofill_popup_controller.h"
 #include "chrome/browser/ui/autofill/mock_autofill_popup_controller.h"
-#include "chrome/browser/ui/browser.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/test/test_browser_ui.h"
 #include "chrome/browser/ui/views/autofill/popup/mock_accessibility_selection_delegate.h"
 #include "chrome/browser/ui/views/autofill/popup/mock_selection_delegate.h"
@@ -189,7 +189,44 @@ struct AtMemoryTestParam {
   base::RepeatingCallback<Suggestion()> generator;
 };
 
+Suggestion CreateAtMemorySearchResultSuggestion() {
+  MemorySearchResult entry(MemoryDataType::kPassportNumber, u"Passport Number",
+                           u"987654321");
+  entry.metadata_list.emplace_back(MemoryDataType::kPassportName, u"Name",
+                                   u"John Doe");
+  entry.sources.emplace_back(MemoryEntrySourceType::kGmail);
+  return AtMemoryManager::TransformResultIntoSuggestion(entry, "en-US");
+}
+
+Suggestion CreateAtMemoryAddressSearchResultTwoLinesNoOverflowSuggestion() {
+  MemorySearchResult entry(MemoryDataType::kAddressFull, u"Address",
+                           u"123 Long Street Name, Suite 100, San Francisco");
+  entry.metadata_list.emplace_back(MemoryDataType::kNameFull, u"Name",
+                                   u"John Doe");
+  entry.sources.emplace_back(MemoryEntrySourceType::kGmail);
+  return AtMemoryManager::TransformResultIntoSuggestion(entry, "en-US");
+}
+
+Suggestion CreateAtMemoryAddressSearchResultTwoLinesOverflowSuggestion() {
+  MemorySearchResult entry(
+      MemoryDataType::kAddressFull, u"Address",
+      u"123 Very Long Street Name, Suite 100, Building A, San Francisco, "
+      u"California 94107");
+  entry.metadata_list.emplace_back(MemoryDataType::kNameFull, u"Name",
+                                   u"John Doe");
+  entry.sources.emplace_back(MemoryEntrySourceType::kGmail);
+  return AtMemoryManager::TransformResultIntoSuggestion(entry, "en-US");
+}
+
 const AtMemoryTestParam kAtMemorySuggestions[] = {
+    {"AtMemory_search_result",
+     base::BindRepeating(&CreateAtMemorySearchResultSuggestion)},
+    {"AtMemory_address_search_result_2lines_no_overflow",
+     base::BindRepeating(
+         &CreateAtMemoryAddressSearchResultTwoLinesNoOverflowSuggestion)},
+    {"AtMemory_address_search_result_2lines_overflow",
+     base::BindRepeating(
+         &CreateAtMemoryAddressSearchResultTwoLinesOverflowSuggestion)},
     {"AtMemory_source_attribution",
      base::BindRepeating(&AtMemoryManager::CreateSourceAttributionSuggestion)},
     {"AtMemory_fetching",
@@ -235,7 +272,7 @@ class PopupRowViewTestBase : public UiBrowserTest {
     widget_ = CreateWidget();
 
     content::WebContents* web_contents =
-        browser()->tab_strip_model()->GetActiveWebContents();
+        browser()->GetTabStripModel()->GetActiveWebContents();
     ON_CALL(controller(), GetWebContents()).WillByDefault(Return(web_contents));
   }
 
@@ -409,7 +446,7 @@ IN_PROC_BROWSER_TEST_F(CreatePopupRowViewTest, FreeformFooter) {
 IN_PROC_BROWSER_TEST_F(CreatePopupRowViewTest, AutofillAiSourceAttribution) {
   Suggestion suggestion(u"From Photos · LR1234567 · Sweden",
                         SuggestionType::kAutofillAiSourceAttribution);
-  suggestion.trailing_icon = Suggestion::Icon::kOpenInNew;
+  suggestion.icon = Suggestion::Icon::kSpark;
   CreateRowView(std::move(suggestion), /*selected_cell=*/std::nullopt,
                 /*filter_match=*/std::nullopt);
   ShowAndVerifyUi();

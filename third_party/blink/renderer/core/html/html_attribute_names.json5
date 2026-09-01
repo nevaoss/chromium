@@ -220,7 +220,6 @@
     "oncuechange",
     "oncut",
     "ondblclick",
-    "ondismiss",
     "ondrag",
     "ondragend",
     "ondragenter",
@@ -287,7 +286,6 @@
     "onratechange",
     "onreset",
     "onresize",
-    "onresolve",
     "onscroll",
     "onscrollend",
     "onsearch",
@@ -390,12 +388,16 @@
     "step",
     "style",
     "summary",
+<<<<<<< HEAD
 ///@name IS_NEVA_APPRUNTIME
 ///@{
     "sensitive",
     // Neva system keyboard
     "systemkeyboard",
 ///@}
+=======
+    "switch",
+>>>>>>> 154.0.8024.0~1
     "tabindex",
     "target",
     "text",

@@ -70,6 +70,7 @@
 <translation id="1110994991967754504">צריך לבחור את ההרשאה של <ph name="PERMISSION_NAME" /></translation>
 <translation id="1113000785583998331">‏לשמור את מספר ה-IBAN?</translation>
 <translation id="1113869188872983271">&amp;ביטול של שינוי סדר</translation>
+<translation id="1117709830616495622">‏מופעל על ידי AI מותאם אישית עם Gemini.</translation>
 <translation id="111897705806685148">שימוש במפתח גישה ממכשיר אחר</translation>
 <translation id="1119009590493440389">‏‫<ph name="MANAGE_SYNC_FOCUSED_FRIENDLY_MATCH_TEXT" />. כדי לקבוע איזה מידע מ-Chrome יישמר בחשבון Google, צריך ללחוץ על Tab ואז על Enter</translation>
 <translation id="1121990216147052230">תיצור לי רשימת משימות</translation>
@@ -1170,6 +1171,7 @@
 <translation id="3005723025932146533">הצגת עותק שמור</translation>
 <translation id="300580149047131921">בשימוש לאחרונה</translation>
 <translation id="3006864083554020786">כתובת מגורים</translation>
+<translation id="3008410317623852235">‏עכשיו אפשר למצוא ולמלא מידע מ-Gmail ועוד.</translation>
 <translation id="3009036448238594149">‏<ph name="ACTION_IN_SUGGEST_FOCUSED_FRIENDLY_MATCH_TEXT" />, צריך להקיש על מקש Tab כדי לעיין בפעולות הזמינות, ואז על Enter כדי לבצע את הפעולה שנבחרה.</translation>
 <translation id="3010991137650052245">כדי שאפשר יהיה להשתמש ב<ph name="PERMISSION" /> באתר הזה, צריך להעניק ל-<ph name="SHORT_PRODUCT_NAME" /> גישה</translation>
 <translation id="3014726756341138577">תכונות מתקדמות למדפסת</translation>
@@ -2323,6 +2325,7 @@ Del</translation>
 <translation id="4941627891654116707">גודל גופן</translation>
 <translation id="4943620199112228840">שימוש במיקרופונים</translation>
 <translation id="4943872375798546930">אין תוצאות</translation>
+<translation id="494701040141924538">הבנתי, אפשר לסגור את ההודעה</translation>
 <translation id="495170559598752135">פעולות</translation>
 <translation id="4953689047182316270">להגיב לאירועי נגישות</translation>
 <translation id="4954505713046251871">‏כדי לקבל הצעות ולשפר את התכונה הזו, כתובת ה-URL ותוכן הדף יישלחו אל Google</translation>
@@ -3556,7 +3559,7 @@ Del</translation>
 <translation id="7064851114919012435">פרטים ליצירת קשר</translation>
 <translation id="7070144569727915108">הגדרות המערכת</translation>
 <translation id="70705239631109039">החיבור שלך לא מאובטח לחלוטין</translation>
-<translation id="7074595960655571061">‏כדי שמלא אמצעי תשלום אוטומטית בקופה, כדאי לשמור אותם ב-Chrome. <ph name="LINK_TEXT" /></translation>
+<translation id="7074595960655571061">‏כדי למלא אמצעי תשלום אוטומטית בקופה, כדאי לשמור אותם ב-Chrome. <ph name="LINK_TEXT" /></translation>
 <translation id="7075452647191940183">הבקשה גדולה מדי</translation>
 <translation id="7075513071073410194">‏PKCS #1 MD5 עם הצפנת RSA</translation>
 <translation id="7075896597860500885">לא מומלץ להעתיק מהאתר הזה</translation>
@@ -4303,6 +4306,7 @@ Del</translation>
 <translation id="8350416046273606058">קיצור הדרך לא יכול להכיל רווחים: '<ph name="SHORTCUT_NAME" />'</translation>
 <translation id="8351131234907093545">יצירת הערה</translation>
 <translation id="8352849934814541340">האדמין של המכשיר הזה התקין אפליקציות שמספקות פונקציות נוספות. לאפליקציות יש גישה לחלק מהנתונים שלך.</translation>
+<translation id="8353273112634584260">‏מופעל על ידי AI מותאם אישית עם Gemini. יכול להיות שהבקשות שלך, כותרות הדפים וכתובות ה-URL ייבדקו כדי לייעל את המילוי האוטומטי המשופר.</translation>
 <translation id="8355270400102541638">ההקשר המקומי של הקריסה:</translation>
 <translation id="8362914115861174987">תרגום ל</translation>
 <translation id="8363502534493474904">לכבות את מצב הטיסה</translation>

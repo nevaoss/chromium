@@ -45,7 +45,6 @@
 #include "chrome/browser/ui/ash/test_util.h"
 #include "chrome/browser/ui/bookmarks/bookmark_bar.h"
 #include "chrome/browser/ui/bookmarks/bookmark_bar_controller.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
@@ -215,6 +214,99 @@ IN_PROC_BROWSER_TEST_P(BrowserFrameViewChromeOSTest, NonClientHitTest) {
     EXPECT_NE(old_bounds, frame_view->bounds());
   }
   EXPECT_EQ(HTCLIENT, frame_view->NonClientHitTest(top_edge));
+}
+
+// Tests that caption buttons match tabstrip preferred height in restored,
+// maximized, and immersive fullscreen states.
+IN_PROC_BROWSER_TEST_P(BrowserFrameViewChromeOSTest,
+                       CaptionButtonHeightInRestoredMaximizedAndFullscreen) {
+  BrowserView* browser_view = BrowserView::GetBrowserViewForBrowser(browser());
+  views::Widget* widget = browser_view->GetWidget();
+  BrowserFrameViewChromeOS* frame_view = GetFrameViewChromeOS(browser_view);
+
+  const int tabstrip_height =
+      browser_view->GetFrameElementInfo().tabstrip_preferred_height;
+  ASSERT_GT(tabstrip_height, 0);
+
+  // In restored state, caption button container height is the max of the
+  // tabstrip height and the default restored button layout height.
+  widget->Restore();
+  views::test::RunScheduledLayout(widget);
+  const int expected_restored_height =
+      std::max(tabstrip_height,
+               views::GetCaptionButtonLayoutSize(
+                   views::CaptionButtonLayoutSize::kBrowserCaptionRestored)
+                   .height());
+  EXPECT_EQ(expected_restored_height,
+            frame_view->caption_button_container()->bounds().height());
+
+  // In restored state, buttons should be vertically centered within the
+  // restored container height.
+  const int expected_restored_center_y = expected_restored_height / 2;
+  for (views::View* button :
+       frame_view->caption_button_container()->children()) {
+    if (button->GetVisible()) {
+      EXPECT_NEAR(expected_restored_center_y,
+                  button->bounds().CenterPoint().y(), 1);
+    }
+  }
+
+  // In maximized state, caption button container height should stretch to match
+  // the tabstrip height (stretched to fill the header rather than 34px).
+  widget->Maximize();
+  views::test::RunScheduledLayout(widget);
+  EXPECT_EQ(tabstrip_height,
+            frame_view->caption_button_container()->bounds().height());
+
+  // In maximized state, buttons should be vertically centered within the
+  // tabstrip / header height.
+  const int expected_center_y = tabstrip_height / 2;
+  for (views::View* button :
+       frame_view->caption_button_container()->children()) {
+    if (button->GetVisible()) {
+      EXPECT_NEAR(expected_center_y, button->bounds().CenterPoint().y(), 1);
+    }
+  }
+
+  // In immersive fullscreen state, caption button container height should
+  // match the tabstrip height both before and during revealed state, and
+  // buttons should be centered.
+  auto* const immersive_mode_controller =
+      ImmersiveModeController::From(browser());
+  auto tester = std::make_unique<ImmersiveModeTester>(browser());
+  EnterImmersiveFullscreenMode(browser());
+  tester->WaitForRevealStarted();
+  tester->WaitForRevealEnded();
+  tester.reset();
+
+  // Before revealed state: immersive frame is not revealed.
+  EXPECT_FALSE(immersive_mode_controller->IsRevealed());
+  views::test::RunScheduledLayout(widget);
+  EXPECT_EQ(tabstrip_height,
+            frame_view->caption_button_container()->bounds().height());
+  for (views::View* button :
+       frame_view->caption_button_container()->children()) {
+    if (button->GetVisible()) {
+      EXPECT_NEAR(expected_center_y, button->bounds().CenterPoint().y(), 1);
+    }
+  }
+
+  // During revealed state: immersive frame is revealed.
+  std::unique_ptr<ImmersiveRevealedLock> revealed_lock =
+      immersive_mode_controller->GetRevealedLock(
+          ImmersiveModeController::ANIMATE_REVEAL_NO);
+  EXPECT_TRUE(immersive_mode_controller->IsRevealed());
+  views::test::RunScheduledLayout(widget);
+  EXPECT_EQ(tabstrip_height,
+            frame_view->caption_button_container()->bounds().height());
+  for (views::View* button :
+       frame_view->caption_button_container()->children()) {
+    if (button->GetVisible()) {
+      EXPECT_NEAR(expected_center_y, button->bounds().CenterPoint().y(), 1);
+    }
+  }
+  revealed_lock.reset();
+  ExitImmersiveFullscreenMode(browser());
 }
 
 // Regression test for crbug.com/40945061. Asserts that the content window
@@ -390,7 +482,7 @@ class WebAppFrameViewChromeOSTest
 
   static SkColor GetThemeColor() { return SK_ColorBLUE; }
 
-  raw_ptr<Browser, DanglingUntriaged> app_browser_ = nullptr;
+  raw_ptr<BrowserWindowInterface, DanglingUntriaged> app_browser_ = nullptr;
   raw_ptr<BrowserView, DanglingUntriaged> browser_view_ = nullptr;
   raw_ptr<chromeos::DefaultFrameHeader, DanglingUntriaged> frame_header_ =
       nullptr;
@@ -466,7 +558,7 @@ class WebAppFrameViewChromeOSTest
             views::ElementTrackerViews::GetContextForView(browser_view_)));
   }
 
-  BrowserView* CreateWebAppPopup(Browser* parent_browser) {
+  BrowserView* CreateWebAppPopup(BrowserWindowInterface* parent_browser) {
     NavigateParams navigate_params(parent_browser, GetAppURL(),
                                    ui::PAGE_TRANSITION_LINK);
     navigate_params.disposition = WindowOpenDisposition::NEW_POPUP;
@@ -496,7 +588,7 @@ class WebAppFrameViewChromeOSTest
   }
 
   ContentSettingImageView* GrantGeolocationPermission() {
-    content::RenderFrameHost* frame = app_browser_->tab_strip_model()
+    content::RenderFrameHost* frame = app_browser_->GetTabStripModel()
                                           ->GetActiveWebContents()
                                           ->GetPrimaryMainFrame();
     content_settings::PageSpecificContentSettings* content_settings =
@@ -610,7 +702,7 @@ IN_PROC_BROWSER_TEST_P(WebAppFrameViewChromeOSTest, IsToolbarButtonProvider) {
 IN_PROC_BROWSER_TEST_P(WebAppFrameViewChromeOSTest, ShowManagePasswordsIcon) {
   SetUpWebApp();
   content::WebContents* web_contents =
-      app_browser_->tab_strip_model()->GetActiveWebContents();
+      app_browser_->GetTabStripModel()->GetActiveWebContents();
   IconLabelBubbleView* manage_passwords_icon =
       GetPageActionView(kActionShowPasswordsBubbleOrPage);
 
@@ -633,7 +725,7 @@ IN_PROC_BROWSER_TEST_P(WebAppFrameViewChromeOSTest, ShowManagePasswordsIcon) {
 IN_PROC_BROWSER_TEST_P(WebAppFrameViewChromeOSTest, ShowZoomIcon) {
   SetUpWebApp();
   content::WebContents* web_contents =
-      app_browser_->tab_strip_model()->GetActiveWebContents();
+      app_browser_->GetTabStripModel()->GetActiveWebContents();
   zoom::ZoomController* zoom_controller =
       zoom::ZoomController::FromWebContents(web_contents);
   IconLabelBubbleView* zoom_icon = GetPageActionView(kActionShowZoomBubble);
@@ -854,7 +946,7 @@ IN_PROC_BROWSER_TEST_P(BrowserFrameViewChromeOSTest,
   // make sure that test covers production scenario.
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GURL("about:blank")));
   ASSERT_TRUE(content::WaitForLoadStop(
-      browser()->tab_strip_model()->GetActiveWebContents()));
+      browser()->GetTabStripModel()->GetActiveWebContents()));
 
   EnterImmersiveFullscreenMode(browser());
 
@@ -1884,7 +1976,7 @@ IN_PROC_BROWSER_TEST_P(BrowserFrameViewAshAvatarTest,
 
   const auto app_id = web_app::test::InstallDummyWebApp(
       primary_user_profile, "test_browser_app", GURL("https://test.org"));
-  Browser* app_browser =
+  BrowserWindowInterface* app_browser =
       web_app::LaunchWebAppBrowser(primary_user_profile, app_id);
   BrowserView* browser_view =
       BrowserView::GetBrowserViewForBrowser(app_browser);

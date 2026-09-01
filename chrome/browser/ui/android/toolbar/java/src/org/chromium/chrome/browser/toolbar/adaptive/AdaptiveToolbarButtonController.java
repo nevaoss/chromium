@@ -39,8 +39,8 @@ import org.chromium.chrome.browser.lifecycle.ConfigurationChangedObserver;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.settings.SettingsNavigationFactory;
 import org.chromium.chrome.browser.tab.CurrentTabObserver;
-import org.chromium.chrome.browser.tab.EmptyTabObserver;
 import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.tab.TabObserver;
 import org.chromium.chrome.browser.toolbar.R;
 import org.chromium.chrome.browser.toolbar.adaptive.AdaptiveToolbarStatePredictor.UiState;
 import org.chromium.chrome.browser.toolbar.adaptive.settings.AdaptiveToolbarSettingsFragment;
@@ -393,7 +393,6 @@ public class AdaptiveToolbarButtonController
             mGlicKeyedService.addAllowedChangedObserver(this);
         }
 
-        if (!AdaptiveToolbarFeatures.isCustomizationEnabled()) return;
         mAdaptiveToolbarStatePredictor.recomputeUiState(mUiStateCallback);
         AdaptiveToolbarStats.recordSelectedSegmentFromSegmentationPlatformAsync(
                 mContext, mAdaptiveToolbarStatePredictor);
@@ -434,7 +433,6 @@ public class AdaptiveToolbarButtonController
         assert mAdaptiveToolbarStatePredictor != null;
         if (ADAPTIVE_TOOLBAR_CUSTOMIZATION_SETTINGS.equals(key)
                 || ADAPTIVE_TOOLBAR_CUSTOMIZATION_ENABLED.equals(key)) {
-            assert AdaptiveToolbarFeatures.isCustomizationEnabled();
             mAdaptiveToolbarStatePredictor.recomputeUiState(mUiStateCallback);
         }
     }
@@ -475,7 +473,7 @@ public class AdaptiveToolbarButtonController
         mPageLoadMetricsRecorder =
                 new CurrentTabObserver(
                         tabSupplier,
-                        new EmptyTabObserver() {
+                        new TabObserver() {
                             @Override
                             public void onDidStartNavigationInPrimaryMainFrame(
                                     Tab tab, NavigationHandle navigationHandle) {

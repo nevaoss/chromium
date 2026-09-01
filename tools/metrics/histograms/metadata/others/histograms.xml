@@ -582,7 +582,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="ClientHints.AcceptCHFrame" enum="AcceptCHFrameRestart"
-    expires_after="2026-12-20">
+    expires_after="2027-02-21">
   <owner>victortan@chromium.org</owner>
   <owner>miketaylr@chromium.org</owner>
   <owner>katabolism-finch@google.com</owner>
@@ -2959,6 +2959,17 @@ chromium-metrics-reviews@google.com.
   </token>
 </histogram>
 
+<histogram name="Mojo.Ipcz.BufferPoolAllocateBlockResult" enum="BooleanSuccess"
+    expires_after="2027-02-01">
+  <owner>pasko@chromium.org</owner>
+  <owner>nafisabedin@google.com</owner>
+  <summary>
+    Logs whether an ipcz BufferPool successfully allocated a fixed-size shared
+    memory block from its block allocator pools. Logged on every block
+    allocation attempt in BufferPool::AllocateBlock. Subsampled to 1/1000.
+  </summary>
+</histogram>
+
 <histogram name="Mojo.SharedMemoryVersion.SharedMemoryAllocationSucceeded"
     enum="Boolean" expires_after="2025-11-09">
   <owner>olivierli@chromium.org</owner>
@@ -4972,6 +4983,16 @@ useful for Chirp alerts (go/crca-alerts). -->
   </summary>
 </histogram>
 
+<histogram name="SpellCheck.Browser.InitForRendererTime" units="ms"
+    expires_after="2027-03-01">
+  <owner>sisidovski@chromium.org</owner>
+  <owner>chrome-loading@google.com</owner>
+  <summary>
+    Logs the time taken to run SpellcheckService::InitForRenderer. This is
+    recorded whenever a new renderer process is created.
+  </summary>
+</histogram>
+
 <histogram name="SpellCheck.CheckedWords" units="words"
     expires_after="2024-12-01">
   <owner>shend@chromium.org</owner>
@@ -5025,6 +5046,17 @@ useful for Chirp alerts (go/crca-alerts). -->
     The number of misspelled words within a session.
 
     Warning: this histogram was expired from M83 to M107; data may be missing.
+  </summary>
+</histogram>
+
+<histogram name="SpellCheck.Renderer.InitializeTime" units="ms"
+    expires_after="2027-03-01">
+  <owner>sisidovski@chromium.org</owner>
+  <owner>chrome-loading@google.com</owner>
+  <summary>
+    Logs the time taken to run SpellCheck::Initialize on the renderer main
+    thread. This encompasses the construction of the custom dictionary and takes
+    place during renderer initialization.
   </summary>
 </histogram>
 

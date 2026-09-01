@@ -38,8 +38,9 @@ import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider;
 import org.chromium.chrome.browser.browser_controls.BrowserStateBrowserControlsVisibilityDelegate;
 import org.chromium.chrome.browser.browserservices.intents.BrowserServicesIntentDataProvider;
-import org.chromium.chrome.browser.tab.EmptyTabObserver;
+import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.tab.TabObserver;
 import org.chromium.chrome.browser.tabmodel.IncognitoStateProvider;
 import org.chromium.chrome.browser.theme.ThemeColorProvider;
 import org.chromium.chrome.browser.toolbar.back_button.BackButtonCoordinator;
@@ -58,6 +59,7 @@ import org.chromium.components.embedder_support.util.Origin;
 import org.chromium.components.url_formatter.UrlFormatter;
 import org.chromium.components.webapps.WebappsUtils;
 import org.chromium.content_public.browser.NavigationHandle;
+import org.chromium.ui.base.DeviceFormFactor;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.display.DisplayAndroid;
 import org.chromium.ui.display.DisplayUtil;
@@ -81,8 +83,9 @@ import java.util.function.Supplier;
  */
 @NullMarked
 @RequiresApi(api = Build.VERSION_CODES.VANILLA_ICE_CREAM)
-public class WebAppHeaderLayoutCoordinator extends EmptyTabObserver
-        implements DesktopWindowStateManager.AppHeaderObserver,
+public class WebAppHeaderLayoutCoordinator
+        implements TabObserver,
+                DesktopWindowStateManager.AppHeaderObserver,
                 WebAppHeaderDelegate,
                 BrowserControlsStateProvider.Observer,
                 ThemeColorProvider.TintObserver {
@@ -131,6 +134,7 @@ public class WebAppHeaderLayoutCoordinator extends EmptyTabObserver
     private @Nullable ChromeImageButton mToggleButtonView;
     private @Nullable TextView mAppOriginView;
     private @Nullable String mAppOrigin;
+    private @Nullable Tab mObservedTab;
     private final Callback<@Nullable Tab> mOnTabUpdate;
     private final BrowserServicesIntentDataProvider mBrowserServicesIntentDataProvider;
 
@@ -222,8 +226,15 @@ public class WebAppHeaderLayoutCoordinator extends EmptyTabObserver
     }
 
     private void onTabUpdate(@Nullable Tab tab) {
-        if (tab != null) {
-            tab.addObserver(this);
+        if (mObservedTab == tab) {
+            return;
+        }
+        if (mObservedTab != null) {
+            mObservedTab.removeObserver(this);
+        }
+        mObservedTab = tab;
+        if (mObservedTab != null) {
+            mObservedTab.addObserver(this);
         }
     }
 
@@ -261,18 +272,26 @@ public class WebAppHeaderLayoutCoordinator extends EmptyTabObserver
         onAndroidControlsVisibilityChanged(
                 mBrowserControlsStateProvider.getAndroidControlsVisibility());
 
-        if (mIsTWA && mClientPackageName != null) {
-            // Show origin only for TWA Installer installed apps.
-            // TODO: WebappsUtils.isTwaInstallerPackage is an async call, so if navigation finishes
-            // before this completes, we might miss showing the origin on the first navigation
-            WebappsUtils.isTwaInstallerPackage(
-                    mClientPackageName,
-                    (isTwaInstallerPackage) -> {
-                        if (isTwaInstallerPackage) {
-                            assert mView != null;
-                            mAppOriginView = (TextView) mView.findViewById(R.id.origin);
-                        }
-                    });
+        if (mIsTWA) {
+            // Show origin for Android large form factors for TWAs.
+            if (ChromeFeatureList.sDesktopAndroidTWADisclosures.isEnabled()
+                    && DeviceFormFactor.isWindowOnTablet(mActivityWindowAndroid)) {
+                mAppOriginView = (TextView) mView.findViewById(R.id.origin);
+            } else if (mClientPackageName != null) {
+                // Show origin only for TWA Installer installed apps.
+                // TODO(crbug.com/545324369): Remove this code once the
+                // DESKTOP_ANDROID_TWA_DISCLOSURES feature flag is enabled by default,
+                // in which case, we will no longer have to worry about the
+                // installer package check.
+                WebappsUtils.isTwaInstallerPackage(
+                        mClientPackageName,
+                        (isTwaInstallerPackage) -> {
+                            if (isTwaInstallerPackage) {
+                                assert mView != null;
+                                mAppOriginView = (TextView) mView.findViewById(R.id.origin);
+                            }
+                        });
+            }
         }
 
         mMediator
@@ -667,9 +686,9 @@ public class WebAppHeaderLayoutCoordinator extends EmptyTabObserver
             mMenuButtonCoordinator = null;
         }
 
-        final var tab = mTabSupplier.get();
-        if (tab != null) {
-            tab.removeObserver(this);
+        if (mObservedTab != null) {
+            mObservedTab.removeObserver(this);
+            mObservedTab = null;
         }
         mTabSupplier.removeObserver(mOnTabUpdate);
     }

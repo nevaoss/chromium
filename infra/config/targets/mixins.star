@@ -1192,6 +1192,30 @@ targets.mixin(
     ),
 )
 
+# Restricts Linux GPU High Tier Gemma 4 AI WPT tasks to NVIDIA and AMD discrete
+# GPUs to prevent VK_ERROR_DEVICE_LOST failures on Intel integrated graphics
+# (see https://crbug.com/547936735).
+targets.mixin(
+    name = "linux_gpu_high_tier_gemma4_ai_wpt_dimensions",
+    swarming = targets.swarming(
+        dimensions = {
+            "gpu": "10de|1002",
+        },
+    ),
+)
+
+# Restricts Windows GPU Gemma 4 AI WPT tasks to NVIDIA discrete GPUs
+# to prevent D3D12 vision compilation crashes on AMD integrated graphics
+# (see https://crbug.com/547946848).
+targets.mixin(
+    name = "win_gpu_gemma4_ai_wpt_dimensions",
+    swarming = targets.swarming(
+        dimensions = {
+            "gpu": "10de",
+        },
+    ),
+)
+
 targets.mixin(
     name = "linux_amd_780m_experimental",
     swarming = targets.swarming(
@@ -2261,28 +2285,12 @@ targets.mixin(
     name = "xcode_27_beta",
     args = [
         "--xcode-build-version",
-        "27a5237l",
+        "27a5252f",
     ],
     swarming = targets.swarming(
         named_caches = [
             swarming.cache(
-                name = "xcode_ios_27a5237l",
-                path = "Xcode.app",
-            ),
-        ],
-    ),
-)
-
-targets.mixin(
-    name = "xcode_17a400",
-    args = [
-        "--xcode-build-version",
-        "17a400",
-    ],
-    swarming = targets.swarming(
-        named_caches = [
-            swarming.cache(
-                name = "xcode_ios_17a400",
+                name = "xcode_ios_27a5252f",
                 path = "Xcode.app",
             ),
         ],

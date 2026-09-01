@@ -455,6 +455,21 @@ public class SettingsSearchCoordinator
         // When SlidingPaneLayout finishes its initial layout or switches between single and
         // two-column mode, re-evaluate whether search should be in single or multi-column layout.
         onConfigurationChangedInternal();
+        updateSingleColumnSearchBoxVisibility();
+    }
+
+    @Override
+    public void onSlideStateUpdated(@MultiColumnSettings.SlideState int state) {
+        updateSingleColumnSearchBoxVisibility();
+    }
+
+    private void updateSingleColumnSearchBoxVisibility() {
+        if (mUseMultiColumn || mFragmentState != FS_SETTINGS) return;
+
+        View searchBox = findViewById(R.id.search_box);
+        if (searchBox == null) return;
+
+        searchBox.setVisibility(isShowingMainSettings() ? View.VISIBLE : View.GONE);
     }
 
     @Override
@@ -963,6 +978,7 @@ public class SettingsSearchCoordinator
         updateHelpMenuVisibility();
         adjustTalkbackTraversalOrder(searchBox);
         logExitReason();
+        RecentSearchQueue.getInstance().flushIfDirty();
     }
 
     private void logExitReason() {
@@ -1123,7 +1139,7 @@ public class SettingsSearchCoordinator
     }
 
     public void deleteRecentSearches() {
-        RecentSearchQueue.getInstance().clear();
+        RecentSearchQueue.getInstance().clearAndPersist();
         clearFragment(R.drawable.settings_zero_state, /* addToBackStack= */ false, emptyRunnable());
     }
 
@@ -1832,6 +1848,10 @@ public class SettingsSearchCoordinator
             params.setBottomCornerRadius((int) style.getBottomRadius());
             return defaultRes;
         }
+    }
+
+    public void onStop() {
+        RecentSearchQueue.getInstance().flushIfDirty();
     }
 
     public void onSaveInstanceState(Bundle outState) {

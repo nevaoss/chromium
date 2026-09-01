@@ -10,10 +10,12 @@
 #include "base/containers/flat_set.h"
 #include "base/feature_list.h"
 #include "base/metrics/field_trial_params.h"
+#include "build/build_config.h"
 
 namespace features {
 
 BASE_DECLARE_FEATURE(kGlicAndroidSidePanel);
+BASE_DECLARE_FEATURE(kGlicDragAndDropFileUploadAndroid);
 
 BASE_DECLARE_FEATURE(kGlicClearTurnIdOnPanelWillOpen);
 BASE_DECLARE_FEATURE(kGlicChromeStatusIcon);
@@ -125,6 +127,10 @@ BASE_DECLARE_FEATURE(kGlicNoWebUiLoader);
 BASE_DECLARE_FEATURE(kGlicGeminiEnterpriseSettingsEnabled);
 BASE_DECLARE_FEATURE(kGlicGeminiEnterpriseConsentEnabled);
 
+BASE_DECLARE_FEATURE(kGlicMarketingAutoOpen);
+extern const base::FeatureParam<std::string> kGlicMarketingUrlAllowlist;
+extern const base::FeatureParam<int> kGlicMarketingAutoOpenMaxCount;
+
 BASE_DECLARE_FEATURE(kGlicHotkeyLocalScope);
 
 BASE_DECLARE_FEATURE(kGlicPasteEligibilityCheck);
@@ -140,8 +146,11 @@ BASE_DECLARE_FEATURE(kGlicStructuredYieldMetadata);
 BASE_DECLARE_FEATURE(kGlicEnableMojoJs);
 
 BASE_DECLARE_FEATURE(kGlicNoWebview);
+BASE_DECLARE_FEATURE(kGlicDisconnectedWebview);
 
 BASE_DECLARE_FEATURE(kGlicShakeTrigger);
+
+BASE_DECLARE_FEATURE(kGlicAndroidTablet);
 
 }  // namespace features
 

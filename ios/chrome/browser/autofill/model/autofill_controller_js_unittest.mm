@@ -142,8 +142,8 @@ enum ExtractMask {
 NSArray* GetFormFieldAttributeListsToCheck() {
   return @[
     @"identifier", @"name", @"form_control_type", @"autocomplete_attribute",
-    @"max_length", @"should_autocomplete", @"is_checkable", @"value",
-    @"option_values", @"option_texts"
+    @"max_length", @"should_autocomplete", @"value", @"option_values",
+    @"option_texts"
   ];
 }
 
@@ -167,7 +167,6 @@ NSArray* GetTestFormInputElementWithLabelFromPrevious() {
           @"undefined", @"autocomplete_attribute",
           @"undefined", @"max_length",
           @"true", @"should_autocomplete",
-          @"false", @"is_checkable",
           @"'John'", @"value",
           @"'John'", @"value_option_text",
           @"undefined", @"option_values",
@@ -189,7 +188,6 @@ NSArray* GetTestFormInputElementWithLabelFromEnclosingLabelBefore() {
           @"undefined", @"autocomplete_attribute",
           @"undefined", @"max_length",
           @"true", @"should_autocomplete",
-          @"false", @"is_checkable",
           @"'John'", @"value",
           @"'John'", @"value_option_text",
           @"undefined", @"option_values",
@@ -209,7 +207,6 @@ NSArray* GetTestFormInputElementWithLabelFromPreviousSpan() {
           @"undefined", @"autocomplete_attribute",
           @"undefined", @"max_length",
           @"true", @"should_autocomplete",
-          @"false", @"is_checkable",
           @"'John'", @"value",
           @"'John'", @"value_option_text",
           @"undefined", @"option_values",
@@ -230,7 +227,6 @@ NSArray* GetTestFormInputElementWithLabelFromPreviousParagraph() {
           @"undefined", @"autocomplete_attribute",
           @"undefined", @"max_length",
           @"true", @"should_autocomplete",
-          @"false", @"is_checkable",
           @"'john@example.com'", @"value",
           @"'john@example.com'", @"value_option_text",
           @"undefined", @"option_values",
@@ -250,7 +246,6 @@ NSArray* GetTestFormInputElementWithLabelFromPreviousLabel() {
           @"undefined", @"autocomplete_attribute",
           @"undefined", @"max_length",
           @"true", @"should_autocomplete",
-          @"false", @"is_checkable",
           @"'12345678'", @"value",
           @"'12345678'", @"value_option_text",
           @"undefined", @"option_values",
@@ -271,7 +266,6 @@ NSArray* GetTestFormInputElementWithLabelFromPreviousLabelOtherIgnored() {
           @"'off'", @"autocomplete_attribute",
           @"undefined", @"max_length",
           @"false", @"should_autocomplete",
-          @"false", @"is_checkable",
           @"'www.jogh.blog'", @"value",
           @"'www.jogh.blog'", @"value_option_text",
           @"undefined", @"option_values",
@@ -292,7 +286,6 @@ NSArray* GetTestFormInputElementWithLabelFromPreviousTextSpanBr() {
           @"undefined", @"autocomplete_attribute",
           @"undefined", @"max_length",
           @"true", @"should_autocomplete",
-          @"false", @"is_checkable",
           @"''", @"value",
           @"''", @"value_option_text",
           @"undefined", @"option_values",
@@ -312,7 +305,6 @@ NSArray* GetTestFormInputElementWithLabelFromPreviousTextBrAndSpan() {
           @"'off'", @"autocomplete_attribute",
           @"undefined", @"max_length",
           @"false", @"should_autocomplete",
-          @"false", @"is_checkable",
           @"''", @"value",
           @"''", @"value_option_text",
           @"undefined", @"option_values",
@@ -336,7 +328,6 @@ NSArray* GetTestFormInputElementWithLabelFromListItem() {
           @"undefined", @"autocomplete_attribute",
           @"undefined", @"max_length",
           @"true", @"should_autocomplete",
-          @"false", @"is_checkable",
           @"'415'", @"value",
           @"'415'", @"value_option_text",
           @"undefined", @"option_values",
@@ -350,7 +341,6 @@ NSArray* GetTestFormInputElementWithLabelFromListItem() {
           @"undefined", @"autocomplete_attribute",
           @"undefined", @"max_length",
           @"true", @"should_autocomplete",
-          @"false", @"is_checkable",
           @"'555'", @"value",
           @"'555'", @"value_option_text",
           @"undefined", @"option_values",
@@ -364,7 +354,6 @@ NSArray* GetTestFormInputElementWithLabelFromListItem() {
           @"undefined", @"autocomplete_attribute",
           @"undefined", @"max_length",
           @"true", @"should_autocomplete",
-          @"false", @"is_checkable",
           @"'1212'", @"value",
           @"'1212'", @"value_option_text",
           @"undefined", @"option_values",
@@ -393,7 +382,6 @@ NSArray* GetTestFormInputElementWithLabelFromTableColumnTD() {
           @"undefined", @"autocomplete_attribute",
           @"undefined", @"max_length",
           @"true", @"should_autocomplete",
-          @"false", @"is_checkable",
           @"'John'", @"value",
           @"'John'", @"value_option_text",
           @"undefined", @"option_values",
@@ -407,7 +395,6 @@ NSArray* GetTestFormInputElementWithLabelFromTableColumnTD() {
           @"undefined", @"autocomplete_attribute",
           @"undefined", @"max_length",
           @"true", @"should_autocomplete",
-          @"false", @"is_checkable",
           @"'john@example.com'", @"value",
           @"'john@example.com'", @"value_option_text",
           @"undefined", @"option_values",
@@ -437,7 +424,6 @@ NSArray* GetTestFormInputElementWithLabelFromTableColumnTH() {
           @"undefined", @"autocomplete_attribute",
           @"undefined", @"max_length",
           @"true", @"should_autocomplete",
-          @"false", @"is_checkable",
           @"'John'", @"value",
           @"'John'", @"value_option_text",
           @"undefined", @"option_values",
@@ -451,7 +437,6 @@ NSArray* GetTestFormInputElementWithLabelFromTableColumnTH() {
           @"undefined", @"autocomplete_attribute",
           @"undefined", @"max_length",
           @"true", @"should_autocomplete",
-          @"false", @"is_checkable",
           @"'john@example.com'", @"value",
           @"'john@example.com'", @"value_option_text",
           @"undefined", @"option_values",
@@ -475,7 +460,6 @@ NSArray* GetTestFormInputElementWithLabelFromTableNested() {
           @"undefined", @"autocomplete_attribute",
           @"undefined", @"max_length",
           @"true", @"should_autocomplete",
-          @"false", @"is_checkable",
           @"'John'", @"value",
           @"'John'", @"value_option_text",
           @"undefined", @"option_values",
@@ -502,7 +486,6 @@ NSArray* GetTestFormInputElementWithLabelFromTableRow() {
           @"undefined", @"autocomplete_attribute",
           @"undefined", @"max_length",
           @"true", @"should_autocomplete",
-          @"false", @"is_checkable",
           @"'John'", @"value",
           @"'John'", @"value_option_text",
           @"undefined", @"option_values",
@@ -526,7 +509,6 @@ NSArray* GetTestFormInputElementWithLabelFromDivTable() {
           @"undefined", @"autocomplete_attribute",
           @"undefined", @"max_length",
           @"true", @"should_autocomplete",
-          @"false", @"is_checkable",
           @"'John'", @"value",
           @"'John'", @"value_option_text",
           @"undefined", @"option_values",
@@ -560,7 +542,6 @@ NSArray* GetTestFormInputElementWithLabelFromDefinitionList() {
           @"undefined", @"autocomplete_attribute",
           @"undefined", @"max_length",
           @"true", @"should_autocomplete",
-          @"false", @"is_checkable",
           @"'Tennis'", @"value",
           @"'Tennis'", @"value_option_text",
           @"undefined", @"option_values",
@@ -584,7 +565,6 @@ NSArray* GetTestFormSelectElement() {
           @"undefined", @"autocomplete_attribute",
           @"0", @"max_length",
           @"true", @"should_autocomplete",
-          @"undefined", @"is_checkable",
           @"'CA'", @"value",
           @"'California'", @"value_option_text",
           @[@"'CA'", @"'TX'"], @"option_values",
@@ -614,7 +594,6 @@ NSArray* GetTestFormSelectElementWithOptgroup() {
           @"undefined", @"autocomplete_attribute",
           @"0", @"max_length",
           @"true", @"should_autocomplete",
-          @"undefined", @"is_checkable",
           @"'8.01.1'", @"value",
           @"'Lecture 01: Powers of Ten'", @"value_option_text",
           @[@"'8.01.1'",
@@ -1704,7 +1683,6 @@ TEST_F(AutofillControllerJsTest, ExtractForms) {
         @"pattern_attribute" : @".*",
         @"placeholder_attribute" : @"",
         @"should_autocomplete" : @true,
-        @"is_checkable" : @false,
         @"is_focusable" : @true,
         @"is_user_edited_deprecated" : @false,
         @"value" : @"John",
@@ -1722,7 +1700,6 @@ TEST_F(AutofillControllerJsTest, ExtractForms) {
         @"pattern_attribute" : @"",
         @"placeholder_attribute" : @"",
         @"should_autocomplete" : @true,
-        @"is_checkable" : @false,
         @"is_focusable" : @true,
         @"is_user_edited_deprecated" : @false,
         @"value" : @"John",
@@ -1740,7 +1717,6 @@ TEST_F(AutofillControllerJsTest, ExtractForms) {
         @"pattern_attribute" : @"",
         @"placeholder_attribute" : @"",
         @"should_autocomplete" : @true,
-        @"is_checkable" : @false,
         @"is_focusable" : @true,
         @"is_user_edited_deprecated" : @false,
         @"value" : @"john@example.com",
@@ -1759,7 +1735,6 @@ TEST_F(AutofillControllerJsTest, ExtractForms) {
         @"placeholder_attribute" : @"",
         @"autocomplete_attribute" : @"off",
         @"should_autocomplete" : @false,
-        @"is_checkable" : @false,
         @"is_focusable" : @true,
         @"is_user_edited_deprecated" : @false,
         @"value" : @"",
@@ -2073,6 +2048,76 @@ TEST_F(AutofillControllerJsTest, SanitizedFieldIsEmpty) {
                          test[0]]);
     EXPECT_NSEQ(result, test[1]);
   }
+}
+
+// Tests that scrollFieldIntoView scrolls the target field into view.
+TEST_F(AutofillControllerJsTest, ScrollFieldIntoView) {
+  web::test::LoadHtml(@"<html><body>"
+                       "<input type='text' name='first' id='first' />"
+                       "<div style='height: 3000px;'></div>"
+                       "<input type='text' name='second' id='second' />"
+                       "</body></html>",
+                      web_state());
+
+  // Extract forms to assign unique renderer IDs.
+  ExecuteJavaScript(@"__gCrWeb.getRegisteredApi('autofill')."
+                    @"getFunction('extractForms')(false)");
+
+  // Initial scroll position should be at the top.
+  NSNumber* initialY = ExecuteJavaScript(@"window.scrollY");
+  EXPECT_EQ(0, [initialY intValue]);
+
+  // Scroll the second element (renderer ID 2) into view.
+  ExecuteJavaScript(@"__gCrWeb.getRegisteredApi('autofill')."
+                    @"getFunction('scrollFieldIntoView')(2)");
+
+  EXPECT_TRUE(WaitUntilConditionOrTimeout(kWaitForJSCompletionTimeout, ^bool {
+    NSNumber* scrolledY = ExecuteJavaScript(@"window.scrollY");
+    return [scrolledY intValue] > 0;
+  }));
+}
+
+// Tests that scrollFieldIntoView safely no-ops for a non-existent renderer ID.
+TEST_F(AutofillControllerJsTest, ScrollFieldIntoViewNonExistentRendererId) {
+  web::test::LoadHtml(@"<html><body>"
+                       "<input type='text' name='first' id='first' />"
+                       "<div style='height: 3000px;'></div>"
+                       "<input type='text' name='second' id='second' />"
+                       "</body></html>",
+                      web_state());
+
+  // Extract forms to assign unique renderer IDs.
+  ExecuteJavaScript(@"__gCrWeb.getRegisteredApi('autofill')."
+                    @"getFunction('extractForms')(false)");
+
+  // Attempt to scroll a non-existent element (renderer ID 99999) into view.
+  ExecuteJavaScript(@"__gCrWeb.getRegisteredApi('autofill')."
+                    @"getFunction('scrollFieldIntoView')(99999)");
+
+  NSNumber* scrollY = ExecuteJavaScript(@"window.scrollY");
+  EXPECT_EQ(0, [scrollY intValue]);
+}
+
+// Tests that scrollFieldIntoView does not scroll when the target is in a
+// non-scrollable overflow: hidden container.
+TEST_F(AutofillControllerJsTest, ScrollFieldIntoViewOverflowHidden) {
+  web::test::LoadHtml(
+      @"<html><body>"
+       "<div style='height: 100px; overflow: hidden;'>"
+       "  <div style='height: 3000px;'></div>"
+       "  <input type='text' name='hidden_input' id='hidden_input' />"
+       "</div>"
+       "</body></html>",
+      web_state());
+
+  ExecuteJavaScript(@"__gCrWeb.getRegisteredApi('autofill')."
+                    @"getFunction('extractForms')(false)");
+
+  ExecuteJavaScript(@"__gCrWeb.getRegisteredApi('autofill')."
+                    @"getFunction('scrollFieldIntoView')(1)");
+
+  NSNumber* scrollY = ExecuteJavaScript(@"window.scrollY");
+  EXPECT_EQ(0, [scrollY intValue]);
 }
 
 }  // namespace

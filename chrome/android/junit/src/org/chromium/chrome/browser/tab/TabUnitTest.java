@@ -93,7 +93,7 @@ public class TabUnitTest {
     @Mock private AutofillProvider mAutofillProvider;
     @Mock private Profile mProfile;
     @Mock private WindowAndroid mWindowAndroid;
-    @Mock private EmptyTabObserver mObserver;
+    @Mock private TabObserver mObserver;
     @Mock private Context mContext;
     @Mock private WeakReference<Context> mWeakReferenceContext;
     @Mock private WeakReference<Activity> mWeakReferenceActivity;
@@ -136,8 +136,7 @@ public class TabUnitTest {
                 .thenReturn(mSelectionPopupController);
 
         mTab =
-                new TabImpl(
-                        TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI, /* isArchived= */ false) {
+                new TabImpl(TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI) {
                     @Override
                     public boolean isInitialized() {
                         return true;
@@ -389,8 +388,7 @@ public class TabUnitTest {
         doReturn(mChromeActivity).when(mWeakReferenceContext).get();
 
         mTab =
-                new TabImpl(
-                        TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI, /* isArchived= */ false) {
+                new TabImpl(TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI) {
                     @Override
                     public WindowAndroid getWindowAndroid() {
                         return mWindowAndroid;
@@ -407,6 +405,11 @@ public class TabUnitTest {
                     @Override
                     public boolean isNativePage() {
                         return true;
+                    }
+
+                    @Override
+                    public boolean isHidden() {
+                        return false;
                     }
 
                     @Override
@@ -478,8 +481,7 @@ public class TabUnitTest {
         when(mPrefs.getBoolean(TabImpl.AUTOFILL_PREF_USES_VIRTUAL_STRUCTURE)).thenReturn(false);
 
         TabImpl tab =
-                new TabImpl(
-                        TAB1_ID, mProfile, TabLaunchType.FROM_RESTORE, /* isArchived= */ false) {
+                new TabImpl(TAB1_ID, mProfile, TabLaunchType.FROM_RESTORE) {
                     @Override
                     public boolean isInitialized() {
                         return true;
@@ -536,8 +538,7 @@ public class TabUnitTest {
         when(mPrefs.getBoolean(TabImpl.AUTOFILL_PREF_USES_VIRTUAL_STRUCTURE)).thenReturn(true);
 
         TabImpl tab =
-                new TabImpl(
-                        TAB1_ID, mProfile, TabLaunchType.FROM_RESTORE, /* isArchived= */ false) {
+                new TabImpl(TAB1_ID, mProfile, TabLaunchType.FROM_RESTORE) {
                     @Override
                     public boolean isInitialized() {
                         return true;
@@ -581,8 +582,7 @@ public class TabUnitTest {
         when(mPrefs.getBoolean(TabImpl.AUTOFILL_PREF_USES_VIRTUAL_STRUCTURE)).thenReturn(true);
 
         TabImpl tab =
-                new TabImpl(
-                        TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI, /* isArchived= */ false) {
+                new TabImpl(TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI) {
                     @Override
                     public boolean isInitialized() {
                         return true;
@@ -595,7 +595,7 @@ public class TabUnitTest {
     @Test
     @SmallTest
     public void testDefaultInvalidTimestamp() {
-        Tab tab = new TabImpl(1, mProfile, TabLaunchType.FROM_LINK, /* isArchived= */ false);
+        Tab tab = new TabImpl(1, mProfile, TabLaunchType.FROM_LINK);
         assertThat(tab.getTimestampMillis(), equalTo(TabImpl.INVALID_TIMESTAMP));
     }
 
@@ -605,8 +605,7 @@ public class TabUnitTest {
         when(mSecurityStateModelNatives.getSecurityLevelForWebContents(mWebContents))
                 .thenReturn(ConnectionSecurityLevel.NONE);
         TabImpl tab =
-                new TabImpl(
-                        TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI, /* isArchived= */ false) {
+                new TabImpl(TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI) {
                     @Override
                     public boolean isInitialized() {
                         return true;
@@ -633,8 +632,7 @@ public class TabUnitTest {
         when(mSecurityStateModelNatives.getSecurityLevelForWebContents(mWebContents))
                 .thenReturn(ConnectionSecurityLevel.NONE);
         TabImpl tab =
-                new TabImpl(
-                        TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI, /* isArchived= */ false) {
+                new TabImpl(TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI) {
                     @Override
                     public boolean isInitialized() {
                         return true;
@@ -670,8 +668,7 @@ public class TabUnitTest {
                 .thenReturn(ConnectionSecurityLevel.NONE);
         when(mWebContents.getThemeColor()).thenReturn(Color.RED);
         TabImpl tab =
-                new TabImpl(
-                        TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI, /* isArchived= */ false) {
+                new TabImpl(TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI) {
                     @Override
                     public boolean isInitialized() {
                         return true;
@@ -730,8 +727,7 @@ public class TabUnitTest {
     public void testStopOffscreenRendering_DestroyedWindow_PassesNullToWebContents() {
         TabImplJni.setInstanceForTesting(mNativeMock);
         TabImpl tab =
-                new TabImpl(
-                        TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI, /* isArchived= */ false) {
+                new TabImpl(TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI) {
                     @Override
                     public boolean isInitialized() {
                         return true;
@@ -758,8 +754,7 @@ public class TabUnitTest {
     public void testStopOffscreenRendering_ValidWindow_PassesWindowToWebContents() {
         TabImplJni.setInstanceForTesting(mNativeMock);
         TabImpl tab =
-                new TabImpl(
-                        TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI, /* isArchived= */ false) {
+                new TabImpl(TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI) {
                     @Override
                     public boolean isInitialized() {
                         return true;
@@ -791,8 +786,7 @@ public class TabUnitTest {
         when(mProfile.isOffTheRecord()).thenReturn(true);
 
         TabImpl tab =
-                new TabImpl(
-                        TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI, /* isArchived= */ false) {
+                new TabImpl(TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI) {
                     @Override
                     public boolean isInitialized() {
                         return true;
@@ -820,8 +814,7 @@ public class TabUnitTest {
         when(mProfile.isOffTheRecord()).thenReturn(false);
 
         TabImpl tab =
-                new TabImpl(
-                        TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI, /* isArchived= */ false) {
+                new TabImpl(TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI) {
                     @Override
                     public boolean isInitialized() {
                         return true;
@@ -847,8 +840,7 @@ public class TabUnitTest {
         when(frozenNativePage.getUrl()).thenReturn("chrome://history");
 
         mTab =
-                new TabImpl(
-                        TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI, /* isArchived= */ false) {
+                new TabImpl(TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI) {
                     private NativePage mCurrentNativePage = frozenNativePage;
 
                     @Override

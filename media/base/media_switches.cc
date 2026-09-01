@@ -359,6 +359,12 @@ namespace media {
 // Whether we should allow color space changes to flush AcceleratedVideoDecoder.
 BASE_FEATURE(kAVDColorSpaceChanges, base::FEATURE_ENABLED_BY_DEFAULT);
 
+// Controls whether VideoFrameConverter accurately maps RGB to YUV color spaces
+// instead of always coercing to Rec.601.
+// TODO(crbug.com/467555325): Remove after M153 reaches stable.
+BASE_FEATURE(kAccurateVideoFrameConverterColorSpace,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 // Controls whether AOM/VPX decoders should use the presentation thread type.
 BASE_FEATURE(kAomVpxUsePresentationThreadType,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -543,9 +549,6 @@ BASE_FEATURE(kDocumentPictureInPictureReparenting,
              base::FEATURE_DISABLED_BY_DEFAULT
 #endif
 );
-
-// Enables support for >8 audio channel layouts (i.e., 5.1.4 and 7.1.4).
-BASE_FEATURE(kEnableHighChannelLayouts, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Controls whether the Mirroring Service will fetch, analyze, and store
 // information on the quality of the session using RTCP logs.
@@ -1086,7 +1089,7 @@ BASE_FEATURE(kWebRTCHardwareVideoEncoderFrameDrop,
 BASE_FEATURE(kWebRTCLogColorSpace, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kWebRtcAudioNeuralResidualEchoEstimation,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kWebRtcVoiceIsolationDenoiser, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -1164,10 +1167,6 @@ BASE_FEATURE(kUseOutOfProcessVideoDecoding,
 #endif
 );
 
-// Use shared image interface to transport video frame resources.
-// TODO(crbug.com/457296322): Enable after fixing issue where SharedImages are
-// missing from the SharedImageManager.
-BASE_FEATURE(kUseSharedImageInOOPVDProcess, base::FEATURE_ENABLED_BY_DEFAULT);
 
 #endif  // BUILDFLAG(ALLOW_OOP_VIDEO_DECODER)
 
@@ -1273,6 +1272,12 @@ BASE_FEATURE(kAllowMediaCodecSoftwareDecoder,
 
 // Enables media capturing to continue in the background.
 BASE_FEATURE(kAndroidEnableBackgroundMediaCapturing,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Enables WebRTC to suspend when the screen is turned off on Android.
+// Owner: seannli@google.com
+// Expiry: When Android provides a dedicated API for system suspend.
+BASE_FEATURE(kAndroidSuspendWebRtcOnScreenOff,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables zero-copy video capture on Android.

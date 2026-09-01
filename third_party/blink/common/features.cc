@@ -172,6 +172,15 @@ BASE_FEATURE(kBackForwardCacheDWCOnJavaScriptExecution,
 BASE_FEATURE(kBackForwardCachePauseMicrotasks,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+// When enabled, JavaScript network requests with "Cache-Control: no-store"
+// headers from domains specified in `kBackForwardCacheCCNSAllowedDomains` will
+// not disable Back/Forward cache.
+BASE_FEATURE(kBackForwardCacheCCNSAllowlist, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE_PARAM(std::string,
+                   kBackForwardCacheCCNSAllowedDomains,
+                   &kBackForwardCacheCCNSAllowlist,
+                   "");
+
 // Enable background resource fetch in Blink. See https://crbug.com/1379780 for
 // more details.
 BASE_FEATURE(kBackgroundResourceFetch, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -2377,6 +2386,11 @@ BASE_FEATURE(kWebUIBypassMojoConnections, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kWebRtcUseCaptureBeginTimestamp, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kWebRtcPqcForDtls, base::FEATURE_ENABLED_BY_DEFAULT);
+
+// TODO(crbug.com/501209160): Remove this kill switch after confirming the
+// standards-compliant behavior does not cause regressions.
+BASE_FEATURE(kWebRtcSuppressDtlsStateChangeOnClose,
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kWebRtcUseMediaThreadTypes, base::FEATURE_DISABLED_BY_DEFAULT);
 

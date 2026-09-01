@@ -179,7 +179,7 @@ class MockToolbarUIDelegate
 
   MOCK_METHOD(void,
               OnLhsChipMousePressed,
-              (toolbar_ui_api::mojom::LhsChipIdentifier),
+              (toolbar_ui_api::mojom::LhsChipIdentifier, bool),
               (override));
   MOCK_METHOD(void,
               OnLhsChipClicked,
@@ -316,6 +316,8 @@ class WebUIToolbarUIBrowserTest : public InProcessBrowserTest,
             ->GetFeatures()
             .browser_command_controller());
   }
+
+  OmniboxController* GetOmniboxController() override { return nullptr; }
 
   content::TestWebUI* web_ui() { return web_ui_.get(); }
   WebUIToolbarUI* ui() { return ui_.get(); }

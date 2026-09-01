@@ -86,7 +86,6 @@
 #include "components/omnibox/browser/page_classification_functions.h"
 #include "components/omnibox/browser/search_provider.h"
 #include "components/omnibox/browser/searchbox_utils.h"
-#include "components/omnibox/browser/suggestion_answer.h"
 #include "components/omnibox/browser/vector_icons.h"  // nogncheck
 #include "components/omnibox/browser/verbatim_match.h"
 #include "components/omnibox/common/omnibox_feature_configs.h"
@@ -124,8 +123,8 @@
 #include "url/url_util.h"
 
 #if !BUILDFLAG(IS_ANDROID)
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/contextual_search/desktop_query_contextualizer_delegate.h"  // nogncheck
 #include "chrome/browser/ui/contextual_search/searchbox_context_data.h"
 #include "chrome/browser/ui/hats/hats_service.h"
@@ -804,10 +803,11 @@ void OmniboxEditModel::PopulateActiveTabContext() {
     return;
   }
 
-  Browser* browser = static_cast<ChromeOmniboxClient*>(client)->browser();
+  BrowserWindowInterface* browser =
+      static_cast<ChromeOmniboxClient*>(client)->browser();
   SearchboxContextData* searchbox_context_data =
       browser ? browser->GetFeatures().searchbox_context_data() : nullptr;
-  TabStripModel* tab_strip = browser ? browser->tab_strip_model() : nullptr;
+  TabStripModel* tab_strip = browser ? browser->GetTabStripModel() : nullptr;
   tabs::TabInterface* tab = tab_strip ? tab_strip->GetActiveTab() : nullptr;
   content::WebContents* web_contents = tab ? tab->GetContents() : nullptr;
 
@@ -1680,13 +1680,15 @@ bool OmniboxEditModel::OnAfterPossibleChange(
     view_->UpdatePopup();
   }
   if (allow_exact_keyword_match_) {
-    SetKeywordInfo(keyword_state_, keyword_, keyword_placeholder_,
-                   OmniboxEventProto::SPACE_IN_MIDDLE);
-    const TemplateURL* turl = controller_->client()
-                                  ->GetTemplateURLService()
-                                  ->GetTemplateURLForKeyword(keyword_);
-    EmitEnteredKeywordModeHistogram(OmniboxEventProto::SPACE_IN_MIDDLE, turl,
-                                    !user_text_.empty());
+    if (is_keyword_selected()) {
+      SetKeywordInfo(keyword_state_, keyword_, keyword_placeholder_,
+                     OmniboxEventProto::SPACE_IN_MIDDLE);
+      const TemplateURL* turl = controller_->client()
+                                    ->GetTemplateURLService()
+                                    ->GetTemplateURLForKeyword(keyword_);
+      EmitEnteredKeywordModeHistogram(OmniboxEventProto::SPACE_IN_MIDDLE, turl,
+                                      !user_text_.empty());
+    }
     allow_exact_keyword_match_ = false;
   }
 
@@ -3088,8 +3090,10 @@ bool OmniboxEditModel::ShouldAcceptKeywordAfterInsertingSpaceInMiddle(
   std::u16string keyword;
   base::TrimWhitespace(new_text.substr(0, space_position), base::TRIM_LEADING,
                        &keyword);
-  if (!autocomplete_controller()->keyword_provider()->GetTemplateUrlForText(
-          keyword, controller_->client()->GetTemplateURLService())) {
+  const TemplateURL* turl =
+      autocomplete_controller()->keyword_provider()->GetTemplateUrlForText(
+          keyword, controller_->client()->GetTemplateURLService());
+  if (!turl || turl->keyword() != keyword) {
     return false;
   }
 

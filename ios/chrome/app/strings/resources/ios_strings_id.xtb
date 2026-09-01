@@ -1294,6 +1294,7 @@
 <translation id="5238596603078743134"><ph name="BEGIN_BOLD" /><ph name="USERNAME" /><ph name="END_BOLD" /> kini dapat menggunakan nama pengguna dan sandi Anda saat dia menggunakan Pengelola Sandi Google untuk login ke <ph name="BEGIN_BOLD" /><ph name="WEBSITE" /><ph name="END_BOLD" />.</translation>
 <translation id="5241106044372754566"><ph name="NAME" />, <ph name="EMAIL" />, dikelola oleh organisasi Anda saat ini dipilih. Pilih akun.</translation>
 <translation id="5242899254250321823">Ubah sandi di situs</translation>
+<translation id="524751727772074981">Tanya apa saja, langsung dari tempat Anda berada, dengan Gemini di Chrome</translation>
 <translation id="5248640482715684545">Situs ini mencoba membuka aplikasi lain.</translation>
 <translation id="5250371859659394278">Dari sumber tidak dikenal</translation>
 <translation id="525510229763628836">Diperkecil</translation>
@@ -1310,6 +1311,7 @@
 <translation id="5300589172476337783">Tampilkan</translation>
 <translation id="5311061401280561833">Akses kamera dan mikrofon diizinkan</translation>
 <translation id="5313967007315987356">Tambahkan situs</translation>
+<translation id="5315029634103634221">Gemini adalah AI dan dapat membuat kesalahan. <ph name="BEGIN_LINK" />Selengkapnya tentang data relevan yang dikirim ke Google<ph name="END_LINK" /></translation>
 <translation id="5315870524563628285">Tidak ada yang diimpor</translation>
 <translation id="5316356981864168850"><ph name="INDEX" /> dari <ph name="NUM_SUGGESTIONS" /></translation>
 <translation id="5317780077021120954">Simpan</translation>

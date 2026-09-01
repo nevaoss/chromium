@@ -145,7 +145,7 @@ class AppMenuModelTest : public InProcessBrowserTest,
 class TestAppMenuModel : public AppMenuModel {
  public:
   TestAppMenuModel(ui::AcceleratorProvider* provider,
-                   Browser* browser,
+                   BrowserWindowInterface* browser,
                    AppMenuIconController* app_menu_icon_controller)
       : AppMenuModel(provider, browser, app_menu_icon_controller) {}
 
@@ -175,7 +175,7 @@ class TestAppMenuModel : public AppMenuModel {
 class TestLogMetricsAppMenuModel : public AppMenuModel {
  public:
   TestLogMetricsAppMenuModel(ui::AcceleratorProvider* provider,
-                             Browser* browser)
+                             BrowserWindowInterface* browser)
       : AppMenuModel(provider, browser) {}
 
   void ExecuteCommand(int command_id, int event_flags) override {
@@ -916,15 +916,17 @@ class TabSearchMenuModelTest : public AppMenuModelTest {
     AppMenuModelTest::SetUpOnMainThread();
     // This is necessary because the global features that GlicEnabling depends
     // on are not initialized for glic.
-    glic::GlicEnabling::SetBypassEnablementChecksForTesting(true);
+    scoped_glic_bypass_.emplace();
   }
 
   void TearDownOnMainThread() override {
-    glic::GlicEnabling::SetBypassEnablementChecksForTesting(false);
+    scoped_glic_bypass_.reset();
     AppMenuModelTest::TearDownOnMainThread();
   }
 
  private:
+  std::optional<glic::GlicEnabling::ScopedBypassEnablementChecksForTesting>
+      scoped_glic_bypass_;
   base::test::ScopedFeatureList glic_enabled_feature_list_;
 };
 

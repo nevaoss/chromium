@@ -11,6 +11,8 @@
 #include "base/memory/ptr_util.h"
 #include "base/memory/raw_ptr.h"
 #include "base/metrics/histogram_functions.h"
+#include "base/no_destructor.h"
+#include "base/strings/pattern.h"
 #include "base/strings/strcat.h"
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
@@ -25,6 +27,7 @@
 #include "chrome/browser/glic/host/glic_guest_observer.h"
 #include "chrome/browser/glic/host/glic_page_handler.h"
 #include "chrome/browser/glic/host/glic_ui.h"
+#include "chrome/browser/glic/host/guest_util_internal.h"
 #include "chrome/browser/glic/host/host.h"
 #include "chrome/browser/glic/public/features.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
@@ -45,6 +48,7 @@
 #include "components/guest_view/browser/guest_view_base.h"
 #include "components/guest_view/browser/guest_view_manager.h"
 #include "components/guest_view/buildflags/buildflags.h"
+#include "components/origin_matcher/origin_matcher.h"
 #include "components/prefs/pref_service.h"
 #include "components/skills/features.h"
 #include "components/tabs/public/tab_interface.h"
@@ -83,7 +87,6 @@
 #include "components/guest_view/browser/slim_web_view/slim_web_view_guest.h"  // nogncheck
 #endif
 
-#if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/ui/tabs/page_context_eligibility_helper.h"
 #include "components/optimization_guide/content/browser/page_context_eligibility.h"
 #include "components/tabs/public/tab_interface.h"
@@ -93,11 +96,9 @@
 #include "ui/base/clipboard/clipboard_metadata.h"
 #include "ui/base/clipboard/clipboard_monitor.h"
 #include "ui/base/clipboard/clipboard_observer.h"
-#endif
 
 namespace glic {
 
-#if !BUILDFLAG(IS_ANDROID)
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
 enum class GlicPasteFormat {
@@ -117,7 +118,6 @@ enum class GlicPasteFailedEligibilityReason {
   kCrossProfile = 2,
   kMaxValue = kCrossProfile,
 };
-#endif
 
 namespace {
 
@@ -232,6 +232,32 @@ class WebviewWebContentsObserver : public content::WebContentsObserver,
   }
 };
 
+// Caches an OriginMatcher parsed from a space-separated origin list string.
+// In production, feature parameters are fixed at startup, but unit tests
+// frequently reconfigure parameters across test cases (e.g., via
+// base::test::ScopedFeatureList). Updating the matcher whenever the parameter
+// string changes prevents stale matcher state and test contamination.
+class CachedOriginMatcher {
+ public:
+  bool Matches(const std::string& allowed_origins_param,
+               const url::Origin& origin) {
+    if (cached_param_ != allowed_origins_param) {
+      cached_param_ = allowed_origins_param;
+      matcher_ = origin_matcher::OriginMatcher();
+      for (const std::string& allowed :
+           base::SplitString(allowed_origins_param, " ", base::TRIM_WHITESPACE,
+                             base::SPLIT_WANT_NONEMPTY)) {
+        matcher_.AddRuleFromString(allowed);
+      }
+    }
+    return matcher_.Matches(origin);
+  }
+
+ private:
+  std::string cached_param_;
+  origin_matcher::OriginMatcher matcher_;
+};
+
 }  // namespace
 
 bool IsGlicGuest(content::WebContents* web_contents) {
@@ -300,12 +326,71 @@ bool IsOriginAllowedGlicApi(const url::Origin& origin) {
     return true;
   }
   std::string api_allowed_origins = features::kGlicApiAllowedOrigins.Get();
-  if (!api_allowed_origins.empty()) {
-    for (const std::string& allowed :
-         base::SplitString(api_allowed_origins, " ", base::TRIM_WHITESPACE,
-                           base::SPLIT_WANT_NONEMPTY)) {
-      url::Origin allowed_origin = url::Origin::Create(GURL(allowed));
-      if (!allowed_origin.opaque() && allowed_origin.IsSameOriginWith(origin)) {
+  if (api_allowed_origins.empty()) {
+    return false;
+  }
+
+  static base::NoDestructor<CachedOriginMatcher> cached_matcher;
+  return cached_matcher->Matches(api_allowed_origins, origin);
+}
+
+bool IsGuestOriginAllowed(const url::Origin& origin) {
+  if (origin.opaque()) {
+    return false;
+  }
+  if (IsOriginAllowedGlicApi(origin)) {
+    return true;
+  }
+
+  // Allow login/auth origins.
+  if (origin.scheme() == url::kHttpsScheme &&
+      (origin.DomainIs("login.corp.google.com") ||
+       origin.DomainIs("accounts.google.com") ||
+       origin.DomainIs("accounts.googlers.com") ||
+       origin.DomainIs("gaiastaging.corp.google.com"))) {
+    return true;
+  }
+
+  std::string allowed_origins = GetGlicAllowedOrigins();
+  if (allowed_origins.empty()) {
+    return false;
+  }
+
+  static base::NoDestructor<CachedOriginMatcher> cached_matcher;
+  return cached_matcher->Matches(allowed_origins, origin);
+}
+
+bool IsAdminBlockedUrl(const GURL& url) {
+  if (!base::FeatureList::IsEnabled(features::kGlicCaaGuestError)) {
+    return false;
+  }
+  auto* command_line = base::CommandLine::ForCurrentProcess();
+  std::string admin_blocked_redirect_patterns =
+      command_line->GetSwitchValueASCII(::switches::kGlicAdminRedirectPatterns);
+  if (admin_blocked_redirect_patterns.empty()) {
+    admin_blocked_redirect_patterns =
+        features::kGlicCaaGuestRedirectPatterns.Get();
+  }
+  if (admin_blocked_redirect_patterns.empty()) {
+    return false;
+  }
+  std::string url_spec = url.spec();
+  for (const std::string& pattern :
+       base::SplitString(admin_blocked_redirect_patterns, " ",
+                         base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY)) {
+    if (base::MatchPattern(url_spec, pattern)) {
+      return true;
+    }
+    GURL pattern_gurl(pattern);
+    if (pattern_gurl.is_valid()) {
+      if (pattern_gurl.scheme() == url.scheme() &&
+          (pattern_gurl.host() == url.host() ||
+           base::MatchPattern(url.host(), pattern_gurl.host())) &&
+          (!pattern_gurl.has_port() || pattern_gurl.port() == url.port()) &&
+          (pattern_gurl.path().empty() || pattern_gurl.path() == "/" ||
+           base::MatchPattern(url.path(),
+                              base::StrCat({pattern_gurl.path(), "*"})) ||
+           base::MatchPattern(url.path(), pattern_gurl.path()))) {
         return true;
       }
     }
@@ -431,6 +516,19 @@ content::WebContents* GetGlicGuestWebContents(
   return data ? data->guest_contents() : nullptr;
 }
 
+Host* GetGlicHostForGuest(content::WebContents* guest_contents) {
+  if (!IsGlicGuest(guest_contents)) {
+    return nullptr;
+  }
+  content::WebContents* top =
+      guest_view::GuestViewBase::GetTopLevelWebContents(guest_contents);
+  if (!top) {
+    return nullptr;
+  }
+  auto* glic_ui = GlicUI::From(top);
+  return glic_ui ? glic_ui->host() : nullptr;
+}
+
 bool OnGuestAdded(content::WebContents* guest_contents) {
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
   if (!extensions::WebViewGuest::FromWebContents(guest_contents)) {
@@ -479,12 +577,7 @@ bool OnGuestAdded(content::WebContents* guest_contents) {
     // Apply the persisted zoom level to the guest WebContents.
     if (Profile* profile =
             Profile::FromBrowserContext(top->GetBrowserContext())) {
-      // LINT.IfChange(GlicZoomFactors)
-      int zoom_percent = std::clamp(
-          profile->GetPrefs()->GetInteger(prefs::kGlicZoomLevel), 100, 200);
-      double zoom_factor = zoom_percent / 100.0;
-      // LINT.ThenChange(//chrome/browser/resources/glic/webview.ts:GlicZoomFactors,
-      // //chrome/browser/glic/host/glic_page_handler.cc:GlicZoomFactors)
+      double zoom_factor = GetZoomFactor(profile->GetPrefs());
       double zoom_level = blink::ZoomFactorToZoomLevel(zoom_factor);
       content::HostZoomMap::SetZoomLevel(guest_contents, zoom_level);
     }
@@ -568,6 +661,8 @@ void PopulateGlobalClientInitialState(mojom::WebClientInitialState* state,
       pref_service->GetBoolean(prefs::kGlicTabContextEnabled);
   state->os_location_permission_enabled =
       system_permission_settings::IsAllowed(ContentSettingsType::GEOLOCATION);
+
+  state->zoom_factor = GetZoomFactor(pref_service);
 
 #if !BUILDFLAG(IS_ANDROID)
   state->hotkey = GetHotkeyString();
@@ -693,7 +788,14 @@ void PopulateGlobalClientInitialState(mojom::WebClientInitialState* state,
       glic::prefs::GetFileUploadAllowedCapability(profile->GetPrefs());
 }
 
-#if !BUILDFLAG(IS_ANDROID)
+double GetZoomFactor(PrefService* pref_service) {
+  // LINT.IfChange(GlicZoomFactors)
+  int zoom_percent =
+      std::clamp(pref_service->GetInteger(prefs::kGlicZoomLevel), 100, 200);
+  return zoom_percent / 100.0;
+  // LINT.ThenChange(//chrome/browser/resources/glic/webview.ts:GlicZoomFactors,
+  // //chrome/browser/glic/host/glic_page_handler.cc:GlicZoomFactors)
+}
 
 void LogPasteAttempt(const content::ClipboardEndpoint& source,
                      const ui::ClipboardMetadata& metadata) {
@@ -863,6 +965,5 @@ bool IsClipboardPasteAllowed(const content::ClipboardEndpoint& source,
       GlicPasteFailedEligibilityReason::kPageContextInvalidated);
   return false;
 }
-#endif
 
 }  // namespace glic

@@ -2640,17 +2640,10 @@ const CSSValue* ColumnRuleColor::CSSValueFromComputedStyleInternal(
   // For 'column-rule-color' we only apply :visited styles when one color is
   // supplied by the author rather than a list of colors.
   if (allow_visited_style && style.ColumnRuleColor().HasSingleValue()) {
-    // With GapDecorations enabled, `ColumnRuleColor` is a list. We need to make
-    // sure that when `allow_visited_style` is true, we return a list like we do
-    // when `allow_visited_style` is false.
-    if (RuntimeEnabledFeatures::CSSGapDecorationEnabled()) {
-      CSSValueList* wrapper_list = CSSValueList::CreateCommaSeparated();
-      wrapper_list->Append(
-          *cssvalue::CSSColor::Create(style.VisitedDependentColor(*this)));
-      return wrapper_list;
-    }
-
-    return cssvalue::CSSColor::Create(style.VisitedDependentColor(*this));
+    CSSValueList* wrapper_list = CSSValueList::CreateCommaSeparated();
+    wrapper_list->Append(
+        *cssvalue::CSSColor::Create(style.VisitedDependentColor(*this)));
+    return wrapper_list;
   }
 
   return ComputedStyleUtils::ValueForGapDecorationColorDataList(
@@ -3229,7 +3222,7 @@ void Content::ApplyValue(StyleResolverState& state,
               ? g_empty_atom
               : counter_value->ListStyleName(),
           AtomicString(counter_value->Separator()),
-          counter_value->GetTreeScope(),
+          counter_value->GetPopulatedTreeScope(),
           counter_value->ListStyleIsSymbolsFunction()
               ? &counter_value->ListStyleSymbolsFunction()
               : nullptr);
@@ -3285,7 +3278,7 @@ void Content::ApplyValue(StyleResolverState& state,
                 ? g_empty_atom
                 : counter_value->ListStyleName(),
             AtomicString(counter_value->Separator()),
-            counter_value->GetTreeScope(),
+            counter_value->GetPopulatedTreeScope(),
             counter_value->ListStyleIsSymbolsFunction()
                 ? &counter_value->ListStyleSymbolsFunction()
                 : nullptr);
@@ -6698,7 +6691,7 @@ void ListStyleType::ApplyValue(StyleResolverState& state,
     state.SetHasTreeScopedReference();
   }
   builder.SetListStyleType(ListStyleTypeData::CreateCounterStyle(
-      custom_ident_value.Value(), custom_ident_value.GetTreeScope()));
+      custom_ident_value.Value(), custom_ident_value.GetPopulatedTreeScope()));
 }
 
 bool MarginBlockEnd::IsLayoutDependent(const ComputedStyle* style,
@@ -8129,9 +8122,7 @@ const CSSValue* ViewTransitionClass::CSSValueFromComputedStyleInternal(
   }
   CSSValueList* ident_list = CSSValueList::CreateSpaceSeparated();
   for (const auto& class_name : view_transition_class->GetNames()) {
-    auto* value =
-        MakeGarbageCollected<CSSCustomIdentValue>(class_name->GetName());
-    value->EnsureScopedValue(class_name->GetTreeScope());
+    auto* value = MakeGarbageCollected<CSSCustomIdentValue>(*class_name);
     ident_list->Append(*value);
   }
   return ident_list;

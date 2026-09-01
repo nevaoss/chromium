@@ -20,6 +20,8 @@ build_webui("build") {
     "app/app_style_updater.ts",
     "app/read_anything_toolbar.html.ts",
     "app/read_anything_toolbar.ts",
+    "app/visual_browser_proxy.ts",
+    "content/content_browser_proxy.ts",
     "content/content_controller.ts",
     "content/readability_content_processing.ts",
     "content/readability_image_classifier.ts",
@@ -59,6 +61,7 @@ build_webui("build") {
     "menus/simple_action_menu.ts",
     "menus/text_menu.html.ts",
     "menus/text_menu.ts",
+    "read_aloud/audio_browser_proxy.ts",
     "read_aloud/highlighter.ts",
     "read_aloud/language_menu.html.ts",
     "read_aloud/language_menu.ts",
@@ -117,6 +120,7 @@ build_webui("build") {
     "//ui/webui/resources/mojo:build_ts",
   ]
   ts_definitions = [
+    "//tools/typescript/definitions/chrome_event.d.ts",
     "//tools/typescript/definitions/metrics_private.d.ts",
     "//tools/typescript/definitions/pending.d.ts",
     "app/read_anything.d.ts",
@@ -126,6 +130,10 @@ build_webui("build") {
         rebase_path(
             "$root_gen_dir/chrome/browser/resources/side_panel/shared/tsc/*",
             target_gen_dir) ]
+
+  mojo_files_deps =
+      [ "//chrome/browser/ui/webui/user_education:mojo_bindings_ts__generator" ]
+  mojo_files = [ "$root_gen_dir/chrome/browser/ui/webui/user_education/user_education.mojom-webui.ts" ]
 
   webui_context_type = "untrusted"
   optimize = optimize_webui

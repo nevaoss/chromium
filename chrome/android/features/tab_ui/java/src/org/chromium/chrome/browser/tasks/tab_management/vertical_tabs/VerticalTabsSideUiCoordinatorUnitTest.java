@@ -242,6 +242,22 @@ public class VerticalTabsSideUiCoordinatorUnitTest {
 
     @Test
     @SmallTest
+    public void testDetermineShowableSize_collapsedState_autoResizeDisabled() {
+        mCollapseController.requestRailCollapseStateChangeByUser(
+                RailCollapseState.EXPANDED, RailCollapseState.COLLAPSED);
+
+        // Available width smaller than expanded rail width (240dp), but >= collapsed rail width
+        // (76dp)
+        assertEquals(
+                new SideUiSize(mCollapsedRailWidth, HeightType.TOOLBAR),
+                mCoordinator.determineShowableSize(
+                        /* availableWidth= */ mCollapsedRailWidth + 10,
+                        /* windowWidth= */ mWideWindowWidth,
+                        /* isFullscreen= */ false));
+    }
+
+    @Test
+    @SmallTest
     @EnableFeatures({ChromeFeatureList.ANDROID_VERTICAL_TABS + ":auto_resize/true"})
     public void testDetermineShowableSize_autoResize() {
         assertEquals(
@@ -532,7 +548,7 @@ public class VerticalTabsSideUiCoordinatorUnitTest {
     @Test
     @SmallTest
     @EnableFeatures({ChromeFeatureList.ANDROID_VERTICAL_TABS + ":auto_resize/true"})
-    public void testAutoResizingWindow_ScalesWidthWithWindow() {
+    public void testAutoResize_ScalesWidthWithWindow() {
         setWindowWidthPx(mMediumWindowWidth);
         int minWebContentsWidthPx =
                 ViewUtils.dpToPx(mActivity, SideUiCoordinator.MIN_WEB_CONTENTS_WIDTH_DP);
@@ -553,12 +569,34 @@ public class VerticalTabsSideUiCoordinatorUnitTest {
     @Test
     @SmallTest
     @EnableFeatures({ChromeFeatureList.ANDROID_VERTICAL_TABS + ":auto_resize/true"})
-    public void testWindowWidthBelowMinWebContents_HidesVT() {
+    public void testAutoResize_BelowMinWebContents_HidesVerticalTabs() {
         @Px int hiddenWindowWidth = ViewUtils.dpToPx(mActivity, 400);
         setWindowWidthPx(hiddenWindowWidth);
         assertShowableWidth(0, hiddenWindowWidth);
         verify(mMockTabListCoordinator).setRailCollapseState(RailCollapseState.COLLAPSED);
         verify(mMockTabListCoordinator).setCollapseButtonEnabled(false);
+    }
+
+    @Test
+    @SmallTest
+    @EnableFeatures({ChromeFeatureList.ANDROID_VERTICAL_TABS + ":auto_resize/true"})
+    public void testAutoResize_NarrowWindowThreshold_CollapsesRail() {
+        // Threshold: max(412 + 92, round(92 / 0.2)) = 504dp.
+        // 503dp (< 504dp) -> Narrow: Rail collapses and collapse button is disabled.
+        @Px int narrowWidthPx = ViewUtils.dpToPx(mActivity, 503);
+        setWindowWidthPx(narrowWidthPx);
+        assertShowableWidth(mCollapsedRailWidth, narrowWidthPx);
+        verify(mMockTabListCoordinator).setRailCollapseState(RailCollapseState.COLLAPSED);
+        verify(mMockTabListCoordinator).setCollapseButtonEnabled(false);
+
+        // 504dp (>= 504dp) -> Not narrow: Rail expands with auto-resize width (92dp) and button is
+        // enabled.
+        @Px int wideWidthPx = ViewUtils.dpToPx(mActivity, 504);
+        setWindowWidthPx(wideWidthPx);
+        @Px int expectedExpandedWidthPx = ViewUtils.dpToPx(mActivity, 92);
+        assertShowableWidth(expectedExpandedWidthPx, wideWidthPx);
+        verify(mMockTabListCoordinator).setRailCollapseState(RailCollapseState.EXPANDED);
+        verify(mMockTabListCoordinator).setCollapseButtonEnabled(true);
     }
 
     @Test
@@ -579,6 +617,25 @@ public class VerticalTabsSideUiCoordinatorUnitTest {
 
         when(mMockTabListCoordinator.getView()).thenReturn(null);
         assertFalse(mCoordinator.containsKeyboardFocus());
+    }
+
+    @Test
+    @SmallTest
+    public void testOpenKeyboardFocusedContextMenu_DelegatesToTabListCoordinator() {
+        // Without focus, returns false without delegating.
+        assertFalse(mCoordinator.openKeyboardFocusedContextMenu());
+        verify(mMockTabListCoordinator, never()).openKeyboardFocusedContextMenu();
+
+        // With focus, delegates to tab list coordinator.
+        mTabListView.setFocusableInTouchMode(true);
+        mTabListView.requestFocus();
+
+        when(mMockTabListCoordinator.openKeyboardFocusedContextMenu()).thenReturn(true);
+        assertTrue(mCoordinator.openKeyboardFocusedContextMenu());
+        verify(mMockTabListCoordinator).openKeyboardFocusedContextMenu();
+
+        when(mMockTabListCoordinator.openKeyboardFocusedContextMenu()).thenReturn(false);
+        assertFalse(mCoordinator.openKeyboardFocusedContextMenu());
     }
 
     private void assertShowableWidth(@Px int expectedWidth, @Px int windowWidth) {

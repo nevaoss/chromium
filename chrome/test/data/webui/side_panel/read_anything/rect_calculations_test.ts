@@ -2,16 +2,20 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {calculateTextBounds, getMostCommonPitch, isRectMostlyVisible, isRectVisible, MOSTLY_VISIBLE_PERCENT} from 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
+import {calculateTextBounds, ContentBrowserProxyImpl, getMostCommonPitch, isRectMostlyVisible, isRectVisible, MOSTLY_VISIBLE_PERCENT, VisualBrowserProxyImpl} from 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome-untrusted://webui-test/chai_assert.js';
 
 import {setWindowSize} from './common.js';
-import {FakeReadingMode} from './fake_reading_mode.js';
+import {TestContentBrowserProxy} from './test_content_browser_proxy.js';
+import {TestVisualBrowserProxy} from './test_visual_browser_proxy.js';
 
 suite('RectCalculations', () => {
+  let visualBrowserProxy: TestVisualBrowserProxy;
+
   setup(() => {
-    const readingMode = new FakeReadingMode();
-    chrome.readingMode = readingMode as unknown as typeof chrome.readingMode;
+    visualBrowserProxy = new TestVisualBrowserProxy();
+    VisualBrowserProxyImpl.setInstance(visualBrowserProxy);
+    ContentBrowserProxyImpl.setInstance(new TestContentBrowserProxy());
   });
 
   suite('isRectVisible', () => {
@@ -152,8 +156,8 @@ suite('RectCalculations', () => {
 
     test('simple text returns bounds', () => {
       container.textContent = 'Hello world';
-      chrome.readingMode.fontSize = 12;
-      chrome.readingMode.lineSpacing = chrome.readingMode.standardLineSpacing;
+      visualBrowserProxy.fontSize = 12;
+      visualBrowserProxy.lineSpacing = visualBrowserProxy.standardLineSpacing;
 
       const result = calculateTextBounds(container, 500);
 
@@ -184,8 +188,8 @@ suite('RectCalculations', () => {
       container.appendChild(line1);
       container.appendChild(line2);
 
-      chrome.readingMode.fontSize = 10;
-      chrome.readingMode.lineSpacing = chrome.readingMode.standardLineSpacing;
+      visualBrowserProxy.fontSize = 10;
+      visualBrowserProxy.lineSpacing = visualBrowserProxy.standardLineSpacing;
 
       const result = calculateTextBounds(container, 500);
 
@@ -210,9 +214,9 @@ suite('RectCalculations', () => {
           container.appendChild(line1);
           container.appendChild(line2);
 
-          chrome.readingMode.fontSize = 1;
-          chrome.readingMode.lineSpacing =
-              chrome.readingMode.veryLooseLineSpacing;
+          visualBrowserProxy.fontSize = 1;
+          visualBrowserProxy.lineSpacing =
+              visualBrowserProxy.veryLooseLineSpacing;
 
           const result = calculateTextBounds(container, 500);
 
@@ -235,8 +239,8 @@ suite('RectCalculations', () => {
       container.appendChild(line1);
       container.appendChild(line2);
 
-      chrome.readingMode.fontSize = 5;
-      chrome.readingMode.lineSpacing = chrome.readingMode.standardLineSpacing;
+      visualBrowserProxy.fontSize = 5;
+      visualBrowserProxy.lineSpacing = visualBrowserProxy.standardLineSpacing;
 
       const result = calculateTextBounds(container, 500);
 
@@ -259,8 +263,8 @@ suite('RectCalculations', () => {
       container.appendChild(line1);
       container.appendChild(line2);
 
-      chrome.readingMode.fontSize = 2;
-      chrome.readingMode.lineSpacing = chrome.readingMode.veryLooseLineSpacing;
+      visualBrowserProxy.fontSize = 2;
+      visualBrowserProxy.lineSpacing = visualBrowserProxy.veryLooseLineSpacing;
 
       const result = calculateTextBounds(container, 500);
 

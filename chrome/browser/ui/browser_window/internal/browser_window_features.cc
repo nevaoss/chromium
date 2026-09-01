@@ -10,6 +10,7 @@
 #include "base/containers/to_vector.h"
 #include "base/feature_list.h"
 #include "base/memory/ptr_util.h"
+#include "base/metrics/histogram_functions.h"
 #include "base/no_destructor.h"
 #include "chrome/browser/actor/ui/actor_border_view_controller.h"
 #include "chrome/browser/actor/ui/actor_ui_window_controller.h"
@@ -206,6 +207,7 @@
 #include "chrome/browser/extensions/extension_browser_window_helper.h"
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
+#include "chrome/browser/ui/extensions/settings_overridden_params_providers.h"
 #include "chrome/browser/ui/search_engines/default_search_extension_controlled_controller.h"
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
 
@@ -285,7 +287,9 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
         BookmarkMergedSurfaceServiceFactory::GetForProfile(profile);
     if (merged_bookmarks_service != nullptr) {
       bookmarks_service_feature_ =
-          std::make_unique<BookmarksServiceFeature>(merged_bookmarks_service);
+          GetUserDataFactory().CreateInstance<BookmarksServiceFeature>(
+              *browser, merged_bookmarks_service,
+              browser->GetUnownedUserDataHost());
     }
   }
 
@@ -468,9 +472,11 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
 #if defined(USE_AURA)
-  overscroll_pref_manager_ = std::make_unique<OverscrollPrefManager>(
-      tab_strip_model_,
-      browser->GetType() == BrowserWindowInterface::Type::TYPE_DEVTOOLS);
+  overscroll_pref_manager_ =
+      GetUserDataFactory().CreateInstance<OverscrollPrefManager>(
+          *browser, tab_strip_model_,
+          browser->GetType() == BrowserWindowInterface::Type::TYPE_DEVTOOLS,
+          browser->GetUnownedUserDataHost());
 #endif  // defined(USE_AURA)
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
@@ -519,7 +525,8 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
   {
     auto adapter = std::make_unique<TabDragWindowAdapterImpl>(browser);
     tab_drag_service_feature_ =
-        std::make_unique<TabDragServiceFeature>(std::move(adapter));
+        GetUserDataFactory().CreateInstance<TabDragServiceFeature>(
+            *browser, std::move(adapter), browser->GetUnownedUserDataHost());
   }
 
   tab_group_deletion_dialog_controller_ =
@@ -536,9 +543,11 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
           browser, tab_strip_model_));
 
   tab_strip_ui_controller_ =
-      std::make_unique<tabs_api::TabStripUIControllerImpl>(
+      GetUserDataFactory().CreateInstance<tabs_api::TabStripUIControllerImpl>(
+          *browser,
           std::make_unique<tabs_api::TabStripUIControllerInjectorImpl>(
-              browser, tab_strip_model_));
+              browser, tab_strip_model_),
+          browser->GetUnownedUserDataHost());
 
   if (TabsFromOtherDevicesSidePanelCoordinator::IsSupported(profile)) {
     tabs_from_other_devices_side_panel_coordinator_ =
@@ -573,7 +582,8 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
       if (glic::GlicKeyedService* glic_service =
               glic::GlicKeyedService::Get(profile)) {
         glic_iph_controller_ =
-            std::make_unique<glic::GlicIphController>(browser, *glic_service);
+            GetUserDataFactory().CreateInstance<glic::GlicIphController>(
+                *browser, browser, *glic_service);
         glic_split_button_controller_ =
             std::make_unique<glic::GlicSplitButtonController>(browser,
                                                               glic_service);
@@ -739,6 +749,14 @@ void BrowserWindowFeatures::InitPostWindowConstruction(Browser* browser) {
 
 #if BUILDFLAG(ENABLE_EXTENSIONS) && (BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC))
   if (browser_view) {
+    if (!browser_->GetProfile()->IsOffTheRecord()) {
+      base::UmaHistogramBoolean(
+          "Extensions.SettingsOverridden."
+          "UnacknowledgedMatchingDseExtensionPresent",
+          settings_overridden_params::HasUnacknowledgedMatchingDseExtension(
+              browser_->GetProfile()));
+    }
+
     if (base::FeatureList::IsEnabled(
             extensions_features::kSearchEngineExplicitChoiceDialog)) {
       default_search_extension_controlled_controller_ =
@@ -756,8 +774,9 @@ void BrowserWindowFeatures::InitPostWindowConstruction(Browser* browser) {
           browser->GetUnownedUserDataHost());
 
   if (browser_view) {
-    devtools_ui_controller_ = std::make_unique<DevtoolsUIController>(
-        browser_, browser_view->GetContentsContainerViews());
+    devtools_ui_controller_ =
+        GetUserDataFactory().CreateInstance<DevtoolsUIController>(
+            *browser, browser_, browser_view->GetContentsContainerViews());
   }
 
   // Must be before exclusive_access_manager_ (whose construction calls
@@ -1035,8 +1054,10 @@ void BrowserWindowFeatures::InitPostWindowConstruction(Browser* browser) {
 
     if (browser_view) {
       split_tab_highlight_controller_ =
-          std::make_unique<split_tabs::SplitTabHighlightController>(
-              browser_view->browser(), browser_view->multi_contents_view());
+          GetUserDataFactory()
+              .CreateInstance<split_tabs::SplitTabHighlightController>(
+                  *browser, browser_view->browser(),
+                  browser_view->multi_contents_view());
     }
 
     if (base::FeatureList::IsEnabled(

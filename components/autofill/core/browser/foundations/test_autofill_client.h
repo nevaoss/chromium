@@ -451,6 +451,11 @@ class TestAutofillClientTemplate : public T {
     return autofill_iph_showing_ == AutofillClient::IphFeature::kAutofillAi;
   }
 
+  bool IsShowingWalletDirectOffersIph() {
+    return autofill_iph_showing_ ==
+           AutofillClient::IphFeature::kWalletDirectOffers;
+  }
+
   void NotifyIphFeatureUsed(AutofillClient::IphFeature feature) override {
     if (notify_iph_feature_used_mock_callback_) {
       notify_iph_feature_used_mock_callback_->Run(feature);
@@ -541,10 +546,6 @@ class TestAutofillClientTemplate : public T {
 
   bool ShouldFormatForLargeKeyboardAccessory() const override {
     return format_for_large_keyboard_accessory_;
-  }
-
-  bool IsAndroidLargeFormFactor() const override {
-    return is_device_large_form_factor_;
   }
 
   bool SupportsDeviceReauth() const override { return supports_device_reauth_; }
@@ -766,10 +767,6 @@ class TestAutofillClientTemplate : public T {
     format_for_large_keyboard_accessory_ = format_for_large_keyboard_accessory;
   }
 
-  void set_is_device_large_form_factor(bool is_device_large_form_factor) {
-    is_device_large_form_factor_ = is_device_large_form_factor;
-  }
-
   void set_app_locale(std::string app_locale) {
     app_locale_ = std::move(app_locale);
   }
@@ -958,8 +955,6 @@ class TestAutofillClientTemplate : public T {
   bool should_save_autofill_profiles_ = true;
 
   bool format_for_large_keyboard_accessory_ = false;
-
-  bool is_device_large_form_factor_ = false;
 
   std::string app_locale_ = "en-US";
 

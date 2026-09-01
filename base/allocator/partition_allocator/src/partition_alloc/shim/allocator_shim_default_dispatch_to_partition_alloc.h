@@ -69,6 +69,11 @@ class PartitionAllocFunctionsInternal {
                         AllocToken alloc_token,
                         void* context);
 
+  static void* MemalignUnchecked(size_t alignment,
+                                 size_t size,
+                                 AllocToken alloc_token,
+                                 void* context);
+
   static void* AlignedAlloc(size_t size,
                             size_t alignment,
                             AllocToken alloc_token,
@@ -142,6 +147,7 @@ class PartitionAllocFunctionsInternal {
         &Calloc,                    // alloc_zero_initialized_function
         &CallocUnchecked,           // alloc_zero_initialized_unchecked_function
         &Memalign,                  // alloc_aligned_function
+        &MemalignUnchecked,         // alloc_aligned_unchecked_function
         &Realloc,                   // realloc_function
         &ReallocUnchecked,          // realloc_unchecked_function
         &Free,                      // free_function
@@ -249,6 +255,8 @@ PA_ALWAYS_INLINE void ConfigurePartitionsForTesting() {
       partition_alloc::internal::SchedulerLoopQuarantineConfig();
 
   auto eventually_zero_freed_memory = EventuallyZeroFreedMemory(false);
+  auto enable_tighter_aligned_alloc_bound =
+      EnableTighterAlignedAllocBound(false);
 
   ConfigurePartitions(
       enable_brp, brp_extra_extras_size, enable_memory_tagging,
@@ -256,7 +264,7 @@ PA_ALWAYS_INLINE void ConfigurePartitionsForTesting() {
       scheduler_loop_quarantine_global_config,
       scheduler_loop_quarantine_thread_local_config,
       scheduler_loop_quarantine_for_advanced_memory_safety_checks_config,
-      eventually_zero_freed_memory);
+      eventually_zero_freed_memory, enable_tighter_aligned_alloc_bound);
 }
 #endif  // PA_BUILDFLAG(USE_PARTITION_ALLOC_AS_MALLOC)
 

@@ -82,6 +82,7 @@ import org.chromium.chrome.browser.tab.Tab.SelectionStateSupplier;
 import org.chromium.chrome.browser.tab.Tab.TabLoadStatus;
 import org.chromium.chrome.browser.tabmodel.TabClosureParams;
 import org.chromium.chrome.browser.tabmodel.TabModel;
+import org.chromium.chrome.browser.tabmodel.TabModelType;
 import org.chromium.chrome.browser.tabwindow.TabWindowManager;
 import org.chromium.chrome.browser.ui.native_page.FrozenNativePage;
 import org.chromium.chrome.browser.ui.native_page.NativePage;
@@ -164,6 +165,12 @@ class TabImpl implements Tab, TabInternal {
 
     private static final String PRODUCT_VERSION = VersionInfo.getProductVersion();
 
+    /**
+     * An Application {@link Context} configured with night mode disabled to avoid leaking an {@link
+     * Activity}.
+     */
+    private static @Nullable Context sThemedApplicationContext;
+
     // LINT.IfChange(DiscardReason)
 
     @IntDef({DiscardReason.ON_DEMAND, DiscardReason.APPEND_NAVIGATION, DiscardReason.COUNT})
@@ -182,12 +189,6 @@ class TabImpl implements Tab, TabInternal {
     /** Unique id of this tab (within its container). */
     private final int mId;
 
-    /** Whether the tab is archived. */
-    private final boolean mIsArchived;
-
-    // TODO(crbug.com/466371728): For debugging only. Remove after the bug is fixed.
-    private boolean mInitializedWithWindowAndroid;
-
     /** The Profile associated with this tab. */
     private final Profile mProfile;
 
@@ -196,12 +197,6 @@ class TabImpl implements Tab, TabInternal {
 
     /** Whether or not this tab is a part of multi selection. */
     private @Nullable SelectionStateSupplier mSelectionStateSupplier;
-
-    /**
-     * An Application {@link Context}. Unlike {@link #mActivity}, this is the only one that is
-     * publicly exposed to help prevent leaking the {@link Activity}.
-     */
-    private final Context mThemedApplicationContext;
 
     /** Gives {@link Tab} a way to interact with the Android window. */
     private @Nullable WindowAndroid mWindowAndroid;
@@ -328,7 +323,7 @@ class TabImpl implements Tab, TabInternal {
     private @Nullable Token mTabGroupId;
     private boolean mTabHasSensitiveContent;
     private boolean mIsPinned;
-    private @Nullable @TabAlert Integer mAlertState;
+    private @TabAlert int mAlertState = TabAlert.NONE;
     private @MediaState int mMediaState;
     private @TabUserAgent int mUserAgent = TabUserAgent.DEFAULT;
 
@@ -422,27 +417,12 @@ class TabImpl implements Tab, TabInternal {
      * @param id The id this tab should be identified with.
      * @param profile The profile associated with this Tab.
      * @param launchType Type indicating how this tab was launched.
-     * @param isArchived Whether the tab is archived.
      */
     @SuppressLint("HandlerLeak")
-    TabImpl(int id, Profile profile, @TabLaunchType int launchType, boolean isArchived) {
+    TabImpl(int id, Profile profile, @TabLaunchType int launchType) {
         mId = TabIdManager.getInstance().generateValidId(id);
         mProfile = profile;
         mRootId = mId;
-        mIsArchived = isArchived;
-
-        // Override the configuration for night mode to always stay in light mode until all UIs in
-        // Tab are inflated from activity context instead of application context. This is to
-        // avoid getting the wrong night mode state when application context inherits a system UI
-        // mode different from the UI mode we need.
-        // TODO(crbug.com/41445155): Remove this once Tab UIs are all inflated from
-        // activity.
-        mThemedApplicationContext =
-                NightModeUtils.wrapContextWithNightModeConfig(
-                        ContextUtils.getApplicationContext(),
-                        ActivityUtils.getThemeId(),
-                        /* nightMode= */ false);
-
         mLaunchType = launchType;
 
         mAttachStateChangeListener =
@@ -514,10 +494,12 @@ class TabImpl implements Tab, TabInternal {
 
     @Override
     public Context getContext() {
-        if (getWindowAndroid() == null) return mThemedApplicationContext;
+        if (getWindowAndroid() == null) {
+            return getThemedApplicationContext();
+        }
         Context context = getWindowAndroid().getContext().get();
         assumeNonNull(context);
-        return context == context.getApplicationContext() ? mThemedApplicationContext : context;
+        return context == context.getApplicationContext() ? getThemedApplicationContext() : context;
     }
 
     @Override
@@ -540,9 +522,17 @@ class TabImpl implements Tab, TabInternal {
             updateWindowAndroid(window);
 
             // Reload the NativePage (if any), since the old NativePage has a reference to the old
-            // activity.
+            // activity. If hidden, freeze the native page to avoid eager instantiation of
+            // background native pages.
             if (isNativePage()) {
-                maybeShowNativePage(getUrl().getSpec(), true, PdfUtils.getPdfInfo(getNativePage()));
+                if (isHidden()) {
+                    freezeNativePage();
+                } else {
+                    maybeShowNativePage(
+                            getUrl().getSpec(),
+                            /* forceReload= */ true,
+                            PdfUtils.getPdfInfo(getNativePage()));
+                }
             }
         } else {
             updateIsDetachedFromActivity(window);
@@ -642,8 +632,27 @@ class TabImpl implements Tab, TabInternal {
         return mTitle;
     }
 
-    Context getThemedApplicationContext() {
-        return mThemedApplicationContext;
+    /** Returns an Application {@link Context} configured with night mode disabled. */
+    static Context getThemedApplicationContext() {
+        if (sThemedApplicationContext == null) {
+            // Override the configuration for night mode to always stay in light mode until all UIs
+            // in Tab are inflated from activity context instead of application context. This is to
+            // avoid getting the wrong night mode state when application context inherits a system
+            // UI mode different from the UI mode we need.
+            // TODO(crbug.com/41445155): Remove this once Tab UIs are all inflated from activity.
+            sThemedApplicationContext =
+                    NightModeUtils.wrapContextWithNightModeConfig(
+                            ContextUtils.getApplicationContext(),
+                            ActivityUtils.getThemeId(),
+                            /* nightMode= */ false);
+        }
+        return sThemedApplicationContext;
+    }
+
+    /** Sets the themed application context for testing. */
+    static void setThemedApplicationContextForTesting(@Nullable Context context) {
+        sThemedApplicationContext = context;
+        ResettersForTesting.register(() -> sThemedApplicationContext = null);
     }
 
     @Override
@@ -731,6 +740,17 @@ class TabImpl implements Tab, TabInternal {
     @Override
     public boolean isIncognitoBranded() {
         return mProfile.isIncognitoBranded();
+    }
+
+    @Override
+    public @TabModelType int getTabModelType() {
+        return mDelegateFactory != null
+                ? mDelegateFactory.getTabModelType()
+                : TabModelType.STANDARD;
+    }
+
+    private boolean isDormant() {
+        return TabModel.isDormantTabModel(getTabModelType());
     }
 
     @Override
@@ -1006,7 +1026,7 @@ class TabImpl implements Tab, TabInternal {
     }
 
     private void triggerUpdatesOnAppendingNavigation(@Nullable String title) {
-        RewindableIterator<TabObserver> observers = getTabObservers();
+        RewindableIterator<TabObserver> observers = getRewindableTabObservers();
         while (observers.hasNext()) {
             observers.next().onUrlUpdated(this);
         }
@@ -1026,8 +1046,12 @@ class TabImpl implements Tab, TabInternal {
         if (isDestroyed()) {
             Log.e(TAG, "loadIfNeeded called on a destroyed tab");
             return false;
-        } else if (mIsArchived) {
-            Log.e(TAG, "loadIfNeeded called on an archived tab");
+        } else if (isDormant()) {
+            Log.e(
+                    TAG,
+                    "loadIfNeeded called on a dormant tab (tabModelType="
+                            + getTabModelType()
+                            + ")");
             return false;
         }
 
@@ -1038,16 +1062,14 @@ class TabImpl implements Tab, TabInternal {
                 Log.e(
                         TAG,
                         "Tab couldn't be loaded because WindowAndroid was null for native page."
-                                + " mIsArchived: %b, mInitializedWithWindowAndroid: %b",
-                        mIsArchived,
-                        mInitializedWithWindowAndroid);
+                                + " tabModelType: %d",
+                        getTabModelType());
             } else {
                 Log.e(
                         TAG,
                         "Tab couldn't be loaded because WindowAndroid had no Activity for native"
-                                + " page. mIsArchived: %b, mInitializedWithWindowAndroid: %b",
-                        mIsArchived,
-                        mInitializedWithWindowAndroid);
+                                + " page. tabModelType: %d",
+                        getTabModelType());
             }
             return false;
         }
@@ -1127,9 +1149,8 @@ class TabImpl implements Tab, TabInternal {
     @Override
     public void stopLoading() {
         if (isLoading()) {
-            RewindableIterator<TabObserver> observers = getTabObservers();
-            while (observers.hasNext()) {
-                observers.next().onPageLoadFinished(this, getUrl());
+            for (TabObserver observer : getTabObservers()) {
+                observer.onPageLoadFinished(this, getUrl());
             }
         }
         if (getWebContents() != null) getWebContents().stop();
@@ -1471,7 +1492,8 @@ class TabImpl implements Tab, TabInternal {
 
     /**
      * Initializes {@link Tab} with {@code webContents}. If {@code webContents} is {@code null} a
-     * new {@link WebContents} will be created for this {@link Tab}.
+     * new {@link WebContents} will be created for this {@link Tab} either immediately or on first
+     * show. {@link WebContents} must always be null for dormant tabs.
      *
      * @param parent The tab that caused this tab to be opened.
      * @param creationState State in which the tab is created.
@@ -1514,7 +1536,9 @@ class TabImpl implements Tab, TabInternal {
 
         // If applicable set up for a lazy background tab load.
         mPendingLoadParams = loadUrlParams;
-        if (loadUrlParams != null) {
+        boolean hasPendingLoadUrlParams = loadUrlParams != null;
+        if (hasPendingLoadUrlParams) {
+            assumeNonNull(loadUrlParams);
             mUrl = new GURL(loadUrlParams.getUrl());
             setTitle(pendingTitle != null ? pendingTitle : mUrl.getSpec());
         }
@@ -1545,37 +1569,37 @@ class TabImpl implements Tab, TabInternal {
 
         RevenueStats.getInstance().tabCreated(this);
 
-        boolean needsInitWebContents = true;
-        boolean createWebContents = webContents == null && !mIsArchived;
         // Headless and archived tabs will never load and thus don't need a WebContents. The reason
         // all tabs need a WebContents is when used in C++ via BrowserWindowInterface. Since
         // headless and archived tabs are not associated with a window they can avoid initializing
-        // tabs with WebContents.
-        mInitializedWithWindowAndroid = mWindowAndroid != null;
-        if (mIsContentViewDeferred) {
+        // tabs with WebContents. We also skip this logic if LoadAllTabsAtStartup is not enabled
+        // which controls `mIsContentViewDeferred`.
+        boolean eligibleToCreateWebContents = webContents == null && !isDormant();
+        boolean needsToCallInitWebContents = true;
+        if (mIsContentViewDeferred && !isDormant()) {
             if (mWebContentsState != null) {
                 assert webContents == null;
 
                 unfreezeContents(/* noRenderer= */ true);
                 webContents = getWebContents();
                 // unfreezeContents() already called initWebContents().
-                needsInitWebContents = false;
+                needsToCallInitWebContents = false;
                 assert webContents != null;
-            } else if (getPendingLoadParams() != null) {
+            } else if (hasPendingLoadUrlParams) {
                 assert webContents == null;
 
                 webContents =
                         WebContentsFactory.createWebContents(
                                 mProfile, isHidden(), initializeRenderer);
-            } else if (createWebContents) {
+            } else if (eligibleToCreateWebContents) {
                 webContents =
                         WebContentsFactory.createWebContents(
                                 mProfile, initiallyHidden, initializeRenderer);
             }
             assert webContents != null;
         } else if (mWebContentsState == null
-                && getPendingLoadParams() == null
-                && createWebContents) {
+                && !hasPendingLoadUrlParams
+                && eligibleToCreateWebContents) {
             // If there is a frozen WebContentsState or a pending lazy load, skip creating a new
             // WebContents. Restoring will be done when showing the tab in the foreground. It is
             // also correct to not create a WebContents if one was provided to this method.
@@ -1585,9 +1609,13 @@ class TabImpl implements Tab, TabInternal {
                             mProfile, initiallyHidden, initializeRenderer);
         }
 
-        // Initialization logic that requires a WebContents to have been created.
+        // WebContents may still be null at this point if:
+        // 1. The tab is dormant, or
+        // 2. The tab is in the content view deferred state and will be restored from either a
+        //    WebContentsState or pending LoadUrlParams.
         if (webContents != null) {
-            if (needsInitWebContents) {
+            assert !isDormant() : "Dormant tabs must never have WebContents initialized.";
+            if (needsToCallInitWebContents) {
                 initWebContents(webContents);
             }
             // Avoid an empty title by updating the title here. This could happen if restoring from
@@ -1597,7 +1625,7 @@ class TabImpl implements Tab, TabInternal {
                 updateTitle();
             }
 
-            if (!createWebContents && webContents.shouldShowLoadingUI()) {
+            if (!eligibleToCreateWebContents && webContents.shouldShowLoadingUI()) {
                 didStartPageLoad(webContents.getVisibleUrl());
             }
         }
@@ -1651,11 +1679,19 @@ class TabImpl implements Tab, TabInternal {
     }
 
     /**
-     * @return An {@link ObserverList.RewindableIterator} instance that points to all of the current
-     *     {@link TabObserver}s on this class. Note that calling {@link java.util.Iterator#remove()}
-     *     will throw an {@link UnsupportedOperationException}.
+     * Returns an {@link Iterable} that contains all of the current {@link TabObserver}s on this
+     * class.
      */
-    ObserverList.RewindableIterator<TabObserver> getTabObservers() {
+    Iterable<TabObserver> getTabObservers() {
+        return mObservers;
+    }
+
+    /**
+     * Returns an {@link ObserverList.RewindableIterator} instance that points to all of the current
+     * {@link TabObserver}s on this class. Note that calling {@link java.util.Iterator#remove()}
+     * will throw an {@link UnsupportedOperationException}.
+     */
+    ObserverList.RewindableIterator<TabObserver> getRewindableTabObservers() {
         return mObservers.rewindableIterator();
     }
 
@@ -2084,8 +2120,9 @@ class TabImpl implements Tab, TabInternal {
             return;
         }
         mThemeColor = themeColor;
-        RewindableIterator<TabObserver> observers = getTabObservers();
-        while (observers.hasNext()) observers.next().onDidChangeThemeColor(this, themeColor);
+        for (TabObserver observer : getTabObservers()) {
+            observer.onDidChangeThemeColor(this, themeColor);
+        }
     }
 
     /** Update the title for the current page if changed. */
@@ -2137,14 +2174,15 @@ class TabImpl implements Tab, TabInternal {
     void handleTabCrash() {
         mIsLoading = false;
 
-        RewindableIterator<TabObserver> observers = getTabObservers();
         // When the renderer crashes for a hidden spare tab, we can skip notifying the observers to
         // crash the underlying tab. This is because it is safe to keep the spare tab around without
         // a renderer process, and since the tab is hidden, we don't need to show a sad tab. When
         // the spare tab is used for navigation it will create a new renderer process.
         // TODO(crbug.com/40268909): Make this logic more robust for all hidden tab cases.
         if (!WarmupManager.getInstance().isSpareTab(this)) {
-            while (observers.hasNext()) observers.next().onCrash(this);
+            for (TabObserver observer : getTabObservers()) {
+                observer.onCrash(this);
+            }
         }
         mIsBeingRestored = false;
     }
@@ -2266,9 +2304,9 @@ class TabImpl implements Tab, TabInternal {
     }
 
     private void setupContentView(WebContents webContents) {
-        ContentView cv = ContentView.createContentView(mThemedApplicationContext, webContents);
-        cv.setContentDescription(
-                mThemedApplicationContext.getString(R.string.accessibility_content_view));
+        Context context = getThemedApplicationContext();
+        ContentView cv = ContentView.createContentView(context, webContents);
+        cv.setContentDescription(context.getString(R.string.accessibility_content_view));
         if (ChromeFeatureList.isEnabled(
                 ChromeFeatureList.ANNOTATED_PAGE_CONTENTS_VIRTUAL_STRUCTURE)) {
             cv.setVirtualStructureProvider(new PageContentProtoViewStructureBuilder());
@@ -2306,6 +2344,7 @@ class TabImpl implements Tab, TabInternal {
      * @param webContents The WebContents object that will initialize all the browser components.
      */
     private void initWebContents(WebContents webContents) {
+        assert !isDormant() : "Dormant tabs must never initialize WebContents.";
         try {
             TraceEvent.begin("ChromeTab.initWebContents");
             WebContents oldWebContents = mWebContents;
@@ -2313,7 +2352,7 @@ class TabImpl implements Tab, TabInternal {
 
             if (mIsContentViewDeferred) {
                 DeferredContentViewStub stub =
-                        new DeferredContentViewStub(mThemedApplicationContext, webContents);
+                        new DeferredContentViewStub(getThemedApplicationContext(), webContents);
                 mContentView = stub;
                 webContents.setDelegates(
                         PRODUCT_VERSION,
@@ -2411,10 +2450,12 @@ class TabImpl implements Tab, TabInternal {
     }
 
     private void updateWebContentsDelegate() {
+        assert mDelegateFactory != null;
+        assert !isDormant() : "Dormant tabs must never create a WebContentsDelegate.";
+
         if (mWebContentsDelegate != null) {
             mWebContentsDelegate.destroy();
         }
-        assumeNonNull(mDelegateFactory);
         TabWebContentsDelegateAndroid delegate = mDelegateFactory.createWebContentsDelegate(this);
         mWebContentsDelegate = new TabWebContentsDelegateAndroidImpl(this, delegate);
     }
@@ -2503,16 +2544,14 @@ class TabImpl implements Tab, TabInternal {
     }
 
     private void notifyPageTitleChanged() {
-        RewindableIterator<TabObserver> observers = getTabObservers();
-        while (observers.hasNext()) {
-            observers.next().onTitleUpdated(this);
+        for (TabObserver observer : getTabObservers()) {
+            observer.onTitleUpdated(this);
         }
     }
 
     private void notifyFaviconChanged() {
-        RewindableIterator<TabObserver> observers = getTabObservers();
-        while (observers.hasNext()) {
-            observers.next().onFaviconUpdated(this, null, null);
+        for (TabObserver observer : getTabObservers()) {
+            observer.onFaviconUpdated(this, null, null);
         }
     }
 
@@ -3138,14 +3177,13 @@ class TabImpl implements Tab, TabInternal {
     }
 
     @Override
-    public @Nullable @TabAlert Integer getAlertState() {
+    public @TabAlert int getAlertState() {
         return mAlertState;
     }
 
     @CalledByNative
-    public void onAlertStateChanged(
-            @JniType("std::optional<int32_t>") @Nullable @TabAlert Integer alertState) {
-        if (Objects.equals(mAlertState, alertState)) return;
+    public void onAlertStateChanged(@TabAlert int alertState) {
+        if (mAlertState == alertState) return;
         mAlertState = alertState;
         for (TabObserver observer : mObservers) {
             observer.onAlertStateChanged(this, alertState);
@@ -3337,7 +3375,7 @@ class TabImpl implements Tab, TabInternal {
     }
 
     boolean isArchivedForTesting() {
-        return mIsArchived;
+        return getTabModelType() == TabModelType.ARCHIVED;
     }
 
     @NativeMethods

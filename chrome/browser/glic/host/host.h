@@ -112,7 +112,8 @@ class Host : public GlicSharingManagerProvider {
 
     virtual void OnWebClientCleared() = 0;
     virtual void PrepareForOpen() = 0;
-    virtual void OnUserInputSubmitted(mojom::WebClientMode mode) = 0;
+    virtual void OnUserInputSubmitted(mojom::WebClientMode mode,
+                                      mojom::PromptType prompt_type) = 0;
 
     virtual void OnInteractionModeChange(mojom::WebClientMode new_mode) = 0;
     virtual GlicInstanceMetrics& instance_metrics() = 0;
@@ -249,6 +250,8 @@ class Host : public GlicSharingManagerProvider {
 
   InstanceId GetInstanceId() const;
 
+  void OnGuestNavigationBlocked(
+      mojom::GuestPageType page_type = mojom::GuestPageType::kLoadError);
   WebUIContentsContainer* contents_container() { return contents_.get(); }
   std::unique_ptr<content::WebContents> ReleaseWebContents();
   void ReclaimWebContents(std::unique_ptr<content::WebContents> web_contents);

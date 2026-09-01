@@ -14,7 +14,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 import android.app.Activity;
-import android.graphics.drawable.ColorDrawable;
 
 import androidx.test.ext.junit.rules.ActivityScenarioRule;
 import androidx.test.filters.SmallTest;
@@ -56,7 +55,7 @@ import java.util.function.Supplier;
 
 /** Unit tests for the {@link BookmarkBarContextMenuMediator}. */
 @RunWith(BaseRobolectricTestRunner.class)
-@DisableFeatures({ChromeFeatureList.BOOKMARKS_BAR_NTP, ChromeFeatureList.SUBMENUS_IN_APP_MENU})
+@DisableFeatures({ChromeFeatureList.BOOKMARKS_BAR_NTP, ChromeFeatureList.FLYOUT_IN_BOOKMARKS_BAR})
 @EnableFeatures(ChromeFeatureList.BOOKMARKS_BAR_CONTEXT_MENU)
 public class BookmarkBarContextMenuMediatorTest {
     @Rule
@@ -166,7 +165,10 @@ public class BookmarkBarContextMenuMediatorTest {
 
     @Test
     @SmallTest
-    @EnableFeatures({ChromeFeatureList.BOOKMARKS_BAR_NTP, ChromeFeatureList.SUBMENUS_IN_APP_MENU})
+    @EnableFeatures({
+        ChromeFeatureList.BOOKMARKS_BAR_NTP,
+        ChromeFeatureList.FLYOUT_IN_BOOKMARKS_BAR
+    })
     public void testBookmarkItem_NtpAndSubmenuFeatureEnabled() {
         doReturn(JUnitTestGURLs.URL_1).when(mCurrentTab).getUrl();
 
@@ -206,22 +208,27 @@ public class BookmarkBarContextMenuMediatorTest {
         assertEquals(
                 mActivity.getString(R.string.contextmenu_always_hide_bookmarks_bar),
                 submenuItems.get(0).model.get(ListMenuItemProperties.TITLE));
-        assertFalse(
-                submenuItems.get(0).model.get(ListMenuItemProperties.START_ICON_DRAWABLE)
-                        instanceof ColorDrawable);
-        assertNotNull(submenuItems.get(0).model.get(ListMenuItemProperties.START_ICON_DRAWABLE));
+        assertEquals(
+                R.drawable.material_ic_check_24dp,
+                submenuItems.get(0).model.get(ListMenuItemProperties.END_ICON_ID));
+        assertTrue(submenuItems.get(0).model.get(ListMenuItemProperties.CHECKABLE));
+        assertTrue(submenuItems.get(0).model.get(ListMenuItemProperties.CHECKED));
         assertEquals(
                 mActivity.getString(R.string.contextmenu_always_show_bookmarks_bar),
                 submenuItems.get(1).model.get(ListMenuItemProperties.TITLE));
-        assertTrue(
-                submenuItems.get(1).model.get(ListMenuItemProperties.START_ICON_DRAWABLE)
-                        instanceof ColorDrawable);
+        assertEquals(
+                android.R.color.transparent,
+                submenuItems.get(1).model.get(ListMenuItemProperties.END_ICON_ID));
+        assertTrue(submenuItems.get(1).model.get(ListMenuItemProperties.CHECKABLE));
+        assertFalse(submenuItems.get(1).model.get(ListMenuItemProperties.CHECKED));
         assertEquals(
                 mActivity.getString(R.string.contextmenu_only_show_bookmarks_bar_on_ntp),
                 submenuItems.get(2).model.get(ListMenuItemProperties.TITLE));
-        assertTrue(
-                submenuItems.get(2).model.get(ListMenuItemProperties.START_ICON_DRAWABLE)
-                        instanceof ColorDrawable);
+        assertEquals(
+                android.R.color.transparent,
+                submenuItems.get(2).model.get(ListMenuItemProperties.END_ICON_ID));
+        assertTrue(submenuItems.get(2).model.get(ListMenuItemProperties.CHECKABLE));
+        assertFalse(submenuItems.get(2).model.get(ListMenuItemProperties.CHECKED));
     }
 
     @Test
@@ -556,7 +563,10 @@ public class BookmarkBarContextMenuMediatorTest {
 
     @Test
     @SmallTest
-    @EnableFeatures({ChromeFeatureList.BOOKMARKS_BAR_NTP, ChromeFeatureList.SUBMENUS_IN_APP_MENU})
+    @EnableFeatures({
+        ChromeFeatureList.BOOKMARKS_BAR_NTP,
+        ChromeFeatureList.FLYOUT_IN_BOOKMARKS_BAR
+    })
     public void testEmptySpaceContextMenu_NtpAndSubmenuFeatureEnabled() {
         doReturn(JUnitTestGURLs.URL_1).when(mCurrentTab).getUrl();
 
@@ -584,12 +594,18 @@ public class BookmarkBarContextMenuMediatorTest {
         assertEquals(
                 mActivity.getString(R.string.contextmenu_always_hide_bookmarks_bar),
                 submenuItems.get(0).model.get(ListMenuItemProperties.TITLE));
+        assertTrue(submenuItems.get(0).model.get(ListMenuItemProperties.CHECKABLE));
+        assertTrue(submenuItems.get(0).model.get(ListMenuItemProperties.CHECKED));
         assertEquals(
                 mActivity.getString(R.string.contextmenu_always_show_bookmarks_bar),
                 submenuItems.get(1).model.get(ListMenuItemProperties.TITLE));
+        assertTrue(submenuItems.get(1).model.get(ListMenuItemProperties.CHECKABLE));
+        assertFalse(submenuItems.get(1).model.get(ListMenuItemProperties.CHECKED));
         assertEquals(
                 mActivity.getString(R.string.contextmenu_only_show_bookmarks_bar_on_ntp),
                 submenuItems.get(2).model.get(ListMenuItemProperties.TITLE));
+        assertTrue(submenuItems.get(2).model.get(ListMenuItemProperties.CHECKABLE));
+        assertFalse(submenuItems.get(2).model.get(ListMenuItemProperties.CHECKED));
     }
 
     // Tests for actions of the items in the context menu.
@@ -886,7 +902,10 @@ public class BookmarkBarContextMenuMediatorTest {
 
     @Test
     @SmallTest
-    @EnableFeatures({ChromeFeatureList.BOOKMARKS_BAR_NTP, ChromeFeatureList.SUBMENUS_IN_APP_MENU})
+    @EnableFeatures({
+        ChromeFeatureList.BOOKMARKS_BAR_NTP,
+        ChromeFeatureList.FLYOUT_IN_BOOKMARKS_BAR
+    })
     public void testSubmenuClickAlwaysHideBookmarksBar() {
         doReturn(JUnitTestGURLs.URL_1).when(mCurrentTab).getUrl();
         ModelList list = mMediator.buildBookmarksBarEmptySpaceContextMenuModelList(mBookmarkModel);
@@ -903,7 +922,10 @@ public class BookmarkBarContextMenuMediatorTest {
 
     @Test
     @SmallTest
-    @EnableFeatures({ChromeFeatureList.BOOKMARKS_BAR_NTP, ChromeFeatureList.SUBMENUS_IN_APP_MENU})
+    @EnableFeatures({
+        ChromeFeatureList.BOOKMARKS_BAR_NTP,
+        ChromeFeatureList.FLYOUT_IN_BOOKMARKS_BAR
+    })
     public void testSubmenuClickAlwaysShowBookmarksBar() {
         doReturn(JUnitTestGURLs.URL_1).when(mCurrentTab).getUrl();
         ModelList list = mMediator.buildBookmarksBarEmptySpaceContextMenuModelList(mBookmarkModel);
@@ -920,7 +942,10 @@ public class BookmarkBarContextMenuMediatorTest {
 
     @Test
     @SmallTest
-    @EnableFeatures({ChromeFeatureList.BOOKMARKS_BAR_NTP, ChromeFeatureList.SUBMENUS_IN_APP_MENU})
+    @EnableFeatures({
+        ChromeFeatureList.BOOKMARKS_BAR_NTP,
+        ChromeFeatureList.FLYOUT_IN_BOOKMARKS_BAR
+    })
     public void testSubmenuClickOnlyShowOnNTP() {
         doReturn(JUnitTestGURLs.URL_1).when(mCurrentTab).getUrl();
         ModelList list = mMediator.buildBookmarksBarEmptySpaceContextMenuModelList(mBookmarkModel);

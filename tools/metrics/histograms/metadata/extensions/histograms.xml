@@ -710,58 +710,32 @@ This is emitted for two scenarios when a worker may be unregistered:
   </summary>
 </histogram>
 
+<histogram name="Extensions.ContentVerification.VerifyFailedOnFileType"
+    enum="VerifiedFileType" expires_after="2027-08-19">
+  <owner>rdevlin.cronin@chromium.org</owner>
+  <owner>extensions-core@chromium.org</owner>
+  <summary>
+    The type of file content verification failed to verify. Emitted at the time
+    content verification fails, once per file that failed.
+  </summary>
+</histogram>
+
 <histogram
-    name="Extensions.ContentVerification.VerifyFailedOnFileMV2{VerifiedFileType}"
-    enum="ContentVerifyJobResult" expires_after="2026-06-08">
+    name="Extensions.ContentVerification.VerifyFailedOnFile{VerifiedFileType}"
+    enum="ContentVerifyJobResult" expires_after="2027-08-19">
   <owner>rdevlin.cronin@chromium.org</owner>
   <owner>extensions-core@chromium.org</owner>
   <summary>
     The content verification failure reason for why a {VerifiedFileType} failed.
-    Emitted when content verification fails for a {VerifiedFileType} in a
-    manifest V2 extension.
+    Emitted when content verification fails for a {VerifiedFileType}.
   </summary>
   <token key="VerifiedFileType" variants="VerifiedFileType">
     <variant name=""/>
   </token>
-</histogram>
-
-<histogram
-    name="Extensions.ContentVerification.VerifyFailedOnFileMV3{VerifiedFileType}"
-    enum="ContentVerifyJobResult" expires_after="2026-06-08">
-  <owner>rdevlin.cronin@chromium.org</owner>
-  <owner>extensions-core@chromium.org</owner>
-  <summary>
-    The content verification failure reason for why a {VerifiedFileType} failed.
-    Emitted when content verification fails for a {VerifiedFileType} in a
-    manifest V3 extension.
-  </summary>
-  <token key="VerifiedFileType" variants="VerifiedFileType">
-    <variant name=""/>
-  </token>
-</histogram>
-
-<histogram name="Extensions.ContentVerification.VerifyFailedOnFileTypeMV2"
-    enum="VerifiedFileType" expires_after="2026-06-08">
-  <owner>rdevlin.cronin@chromium.org</owner>
-  <owner>extensions-core@chromium.org</owner>
-  <summary>
-    The type of file content verification failed to verify in an MV2 extension.
-    Emitted at the time content verification fails, once per file that failed.
-  </summary>
-</histogram>
-
-<histogram name="Extensions.ContentVerification.VerifyFailedOnFileTypeMV3"
-    enum="VerifiedFileType" expires_after="2026-06-08">
-  <owner>rdevlin.cronin@chromium.org</owner>
-  <owner>extensions-core@chromium.org</owner>
-  <summary>
-    The type of file content verification failed to verify in an MV3 extension.
-    Emitted at the time content verification fails, once per file that failed.
-  </summary>
 </histogram>
 
 <histogram name="Extensions.ContentVerification.VerifyJobResult"
-    enum="ContentVerifyJobResult" expires_after="2027-03-01">
+    enum="ContentVerifyJobResult" expires_after="2027-08-19">
   <owner>rdevlin.cronin@chromium.org</owner>
   <owner>extensions-core@chromium.org</owner>
   <summary>
@@ -769,28 +743,6 @@ This is emitted for two scenarios when a worker may be unregistered:
     extension (independent of manifest version). Emitted when the job is
     complete. A content verification job is started for a given extension
     resource request.
-  </summary>
-</histogram>
-
-<histogram name="Extensions.ContentVerification.VerifyJobResultMV2"
-    enum="ContentVerifyJobResult" expires_after="2026-07-01">
-  <owner>rdevlin.cronin@chromium.org</owner>
-  <owner>extensions-core@chromium.org</owner>
-  <summary>
-    Reports the result of a given content verification job succeeded for a
-    Manifest Version 2 extension. Emitted when the job is complete. A content
-    verification job is started for a given extension resource request.
-  </summary>
-</histogram>
-
-<histogram name="Extensions.ContentVerification.VerifyJobResultMV3"
-    enum="ContentVerifyJobResult" expires_after="2026-07-01">
-  <owner>rdevlin.cronin@chromium.org</owner>
-  <owner>extensions-core@chromium.org</owner>
-  <summary>
-    Reports the result of a given content verification job succeeded for a
-    Manifest Version 3 extension. Emitted when the job is complete. A content
-    verification job is started for a given extension resource request.
   </summary>
 </histogram>
 
@@ -2806,7 +2758,7 @@ This is emitted for two scenarios when a worker may be unregistered:
 </histogram>
 
 <histogram name="Extensions.Functions.SynchronousExecutionTime" units="ms"
-    expires_after="2026-12-20">
+    expires_after="2027-02-21">
   <owner>rdevlin.cronin@chromium.org</owner>
   <owner>extensions-core@chromium.org</owner>
   <summary>
@@ -3894,7 +3846,7 @@ This is emitted for two scenarios when a worker may be unregistered:
 </histogram>
 
 <histogram name="Extensions.Printing.UsesSupportedMargins" enum="Boolean"
-    expires_after="2026-12-06">
+    expires_after="2027-08-01">
   <owner>nmuggli@google.com</owner>
   <owner>msisov@igalia.com</owner>
   <summary>
@@ -3904,7 +3856,7 @@ This is emitted for two scenarios when a worker may be unregistered:
 </histogram>
 
 <histogram name="Extensions.Printing.UsesSupportedPrintScaling" enum="Boolean"
-    expires_after="2026-10-01">
+    expires_after="2027-08-01">
   <owner>nmuggli@google.com</owner>
   <owner>msisov@igalia.com</owner>
   <summary>
@@ -4569,6 +4521,20 @@ This is emitted for two scenarios when a worker may be unregistered:
   <summary>
     Records whether any search parameters are missing when populating the values
     for the Explicit Choice dialog.
+  </summary>
+</histogram>
+
+<histogram
+    name="Extensions.SettingsOverridden.UnacknowledgedMatchingDseExtensionPresent"
+    enum="BooleanPresent" expires_after="2027-02-01">
+  <owner>yeroshkin@google.com</owner>
+  <owner>top-chrome-desktop-ui@google.com</owner>
+  <summary>
+    Recorded on browser window initialization on Windows and Mac. Records true
+    if an installed extension controls the Default Search Engine (DSE), the
+    extension's search engine matches the user's existing engine, and the user
+    has not acknowledged the settings bubble (ack_settings_bubble). This detects
+    the impacted state associated with crbug.com/540532980.
   </summary>
 </histogram>
 

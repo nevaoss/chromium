@@ -136,13 +136,7 @@ bool DeserializeSection5(base::PickleIterator* iter,
                          FormFieldData* field_data) {
   bool is_checked = false;
   bool is_checkable = false;
-  const bool success =
-      iter->ReadBool(&is_checked) && iter->ReadBool(&is_checkable);
-
-  if (success)
-    SetCheckStatus(field_data, is_checkable, is_checked);
-
-  return success;
+  return iter->ReadBool(&is_checked) && iter->ReadBool(&is_checkable);
 }
 
 bool DeserializeSection6(base::PickleIterator* iter,
@@ -443,10 +437,8 @@ std::optional<FormControlType> StringToFormControlTypeDiscouraged(
     FormControlType type = static_cast<FormControlType>(i);
     if (mojom::IsKnownEnumValue(type) &&
         type_string == FormControlTypeToString(type) &&
-        ((type != FormControlType::kInputCheckbox &&
-          type != FormControlType::kInputRadio) ||
-         !base::FeatureList::IsEnabled(
-             features::kAutofillIgnoreCheckableElements))) {
+        (type != FormControlType::kInputCheckbox &&
+         type != FormControlType::kInputRadio)) {
       return type;
     }
   }

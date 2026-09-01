@@ -480,6 +480,7 @@ scoped_refptr<VideoFrame> VideoFrame::WrapSharedImage(
   }
 
   frame->acquire_sync_token_ = sync_token;
+  frame->set_color_space(shared_image->color_space());
   frame->shared_image_ = shared_image->MakeUnowned();
   if (shared_image_release_cb) {
     frame->SetReleaseMailboxCB(std::move(shared_image_release_cb));
@@ -522,8 +523,8 @@ scoped_refptr<VideoFrame> VideoFrame::WrapMappableSharedImage(
   }
   uint64_t modifier = gfx::NativePixmapHandle::kNoModifier;
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
-  bool is_native_buffer = !shared_image->IsSharedMemoryForVideoFrame();
-  if (is_native_buffer) {
+  if (shared_image->GetGpuMemoryBufferType() ==
+      gfx::GpuMemoryBufferType::NATIVE_PIXMAP) {
     const auto gmb_handle = shared_image->CloneGpuMemoryBufferHandle();
     if (gmb_handle.is_null() ||
         gmb_handle.native_pixmap_handle().planes.empty()) {
@@ -571,6 +572,7 @@ scoped_refptr<VideoFrame> VideoFrame::WrapMappableSharedImage(
   // Note that we cannot use |shared_image|->MakeUnowned() here since MappableSI
   // owns a MappableBuffer internally, which we cannot create an unowned
   // reference to.
+  frame->set_color_space(shared_image->color_space());
   frame->shared_image_ = std::move(shared_image);
   return frame;
 }

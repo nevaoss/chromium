@@ -1329,6 +1329,10 @@
       status: "experimental",
     },
     {
+      name: "ConstructableStylesheetCache",
+      status: "stable",
+    },
+    {
       name: "ContactsManager",
       status:  {"Android": "stable", "default": "test"},
     },
@@ -1345,10 +1349,6 @@
       origin_trial_feature_name: "ContainerTiming",
       origin_trial_allows_third_party: true,
       status: "experimental",
-    },
-    {
-      name: "ContainerTimingPrepaintTraversal",
-      depends_on: ["ContainerTiming"],
     },
     {
       name: "ContentIndex",
@@ -1627,17 +1627,6 @@
       status: "stable",
     },
     {
-      // https://chromestatus.com/feature/5157805733183488
-      name: "CSSGapDecoration",
-      status: "stable",
-      depends_on: ["CSSGridGapSuppression"],
-    },
-    {
-      // https://chromestatus.com/feature/5157805733183488
-      name: "CSSGridGapSuppression",
-      status: "stable",
-    },
-    {
       name: "CSSGridLanesLayout",
       status: "experimental",
       public: true,
@@ -1804,6 +1793,15 @@
     {
       name: "CSSPositionStickyStaticScrollPosition",
       status: "test",
+    },
+    {
+      // The @private rule declares lexically-scoped custom properties that are
+      // visible only within the enclosing style rule and the elements it
+      // matches, with their names rewritten so they are never observable as
+      // author custom properties.
+      // crbug.com/542651959
+      name: "CSSPrivate",
+      status: "experimental",
     },
     // https://drafts.csswg.org/css-values-5/#progress
     // progress()
@@ -2210,11 +2208,6 @@
     {
       name: "DesktopPWAsAdditionalWindowingControls",
       status: "experimental",
-      origin_trial_feature_name: "DesktopPWAsAdditionalWindowingControls",
-      origin_trial_os: ["win", "mac", "linux", "chromeos"],
-      origin_trial_allows_third_party: true,
-      base_feature_status: "enabled",
-      copied_from_base_feature_if: "overridden",
     },
     {
       name: "DesktopPWAsAdditionalWindowingControlsOnMove",
@@ -2788,6 +2781,13 @@
       base_feature: "none",
     },
     {
+      name: "FedCmIdentityHandler",
+      depends_on: ["FedCm"],
+      public: true,
+      status: "test",
+      base_feature: "none",
+    },
+    {
       name: "FedCmIdPRegistration",
       depends_on: ["FedCm"],
       public: true,
@@ -3003,6 +3003,10 @@
       // CustomizableCombobox features.
       name: "FilteringPrimitives",
       implied_by: ["FilterableSelect", "CustomizableCombobox"],
+    },
+    {
+      name: "FindBufferCollapseSkippedSpace",
+      status: "stable",
     },
     {
       name: "FindBufferMatchAcrossIgnoredNodes",
@@ -3996,10 +4000,10 @@
     {
       name: "MediaCaptionSettingsButton",
       status: {
-        "Win": "experimental",
-        "Mac": "experimental",
-        "Linux": "experimental",
-        "ChromeOS": "experimental",
+        "Win": "stable",
+        "Mac": "stable",
+        "Linux": "stable",
+        "ChromeOS": "stable",
       },
     },
     {
@@ -5130,7 +5134,6 @@
     },
     {
       name: "RequestStorageAccessFor",
-      status: "stable",
       base_feature: "none",
     },
     {
@@ -5182,6 +5185,12 @@
       base_feature: "none",
     },
     {
+      // Non-standard RTCConfiguration.iceTransports alias. Off by default
+      // (alias removed). Enable via Finch to restore if sites break.
+      // https://crbug.com/488071544
+      name: "RTCConfigurationIceTransports",
+    },
+    {
       name: "RTCDataChannelPriority",
       status: "experimental",
     },
@@ -5211,6 +5220,10 @@
     },
     {
       name: "RTCEncodedVideoFrameAdditionalMetadata",
+      status: "experimental",
+    },
+    {
+      name: "RTCEncodedVideoFrameConstructor",
       status: "experimental",
     },
     // Enables the use of jitterBufferTarget attribute in WebRTC.
@@ -5722,7 +5735,7 @@
     {
       name: "SingleAxisScrollContainersForScrollSnap",
       depends_on: ["SingleAxisScrollContainers"],
-      status: "test",
+      status: "experimental",
     },
     {
       name: "SkipAd",
@@ -6070,6 +6083,10 @@
     },
     {
       name: "SvgSupportMediaFragments",
+      status: "experimental",
+    },
+    {
+      name: "SVGTextPathSideAttribute",
       status: "experimental",
     },
     {
@@ -6973,6 +6990,10 @@
       implied_by: ["WebGPUMapSyncOnWorkers"],
     },
     {
+      name: "WebHaptics",
+      status: "experimental",
+    },
+    {
       name: "WebHID",
       status: {"Android": "experimental", "default": "stable"},
     },
@@ -7200,6 +7221,21 @@
     {
       name: "WebViewEnvReorderFix",
       status: "stable",
+    },
+    {
+      // Kill switch for sizing and placing WebVTT cue boxes by the computed
+      // position alignment instead of the CSS text alignment.
+      // Spec: https://w3c.github.io/webvtt/#cue-computed-position-alignment
+      name: "WebVTTCueLayoutByPositionAlignment",
+      status: "stable",
+    },
+    {
+      name: "WebVTTLineAndPositionAlignment",
+      status: "experimental",
+      // No base::Feature while experimental: avoids a mutable-constant
+      // binary-size cost on Android. Add one (for the Finch killswitch)
+      // when this ships.
+      base_feature: "none",
     },
     {
       name: "WebVTTRegions",

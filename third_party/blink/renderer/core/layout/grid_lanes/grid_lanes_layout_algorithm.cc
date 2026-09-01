@@ -74,6 +74,20 @@ GridLanesLayoutAlgorithm::GridLanesLayoutAlgorithm(
   }
 }
 
+GridLineResolver GridLanesLayoutAlgorithm::BuildGridLineResolver(
+    const GridArea& subgrid_area,
+    const GridLineResolver* parent_line_resolver,
+    bool can_inherit_line_names_from_parent) const {
+  DCHECK(parent_line_resolver);
+
+  // TODO(yanlingwang): Handle automatic repetitions for grid-lanes
+  // subgrids.
+  return GridLineResolver(Style(), *parent_line_resolver, subgrid_area,
+                          /*column_auto_repetitions=*/0,
+                          /*row_auto_repetitions=*/0,
+                          can_inherit_line_names_from_parent);
+}
+
 MinMaxSizesResult GridLanesLayoutAlgorithm::ComputeMinMaxSizes(
     const MinMaxSizesFloatInput&) {
   // If the intrinsic inline size has been overridden, use the provided value.
@@ -252,9 +266,7 @@ const LayoutResult* GridLanesLayoutAlgorithm::Layout() {
     ApplyTrackReverseOverflowShift(layout_data, total_intrinsic_block_size);
 
     // TODO(javiercon): Handle gap decorations in fragmented grid lanes.
-    if (!has_block_fragmentation &&
-        RuntimeEnabledFeatures::CSSGapDecorationEnabled() &&
-        style.HasGapRule()) {
+    if (!has_block_fragmentation && style.HasGapRule()) {
       gap_accumulator.emplace();
       gap_accumulator->BuildMainGaps(track_collection);
     }
@@ -491,22 +503,6 @@ LayoutUnit AlignContentOffset(
       break;
   }
   return is_fill_reverse ? adjusted_offset - free_space : adjusted_offset;
-}
-
-// Returns the margin on the baseline side of `item` for baseline alignment
-// calculations.
-//
-// TODO(almaher): We need to incorporate `StartExtraMargin`/`EndExtraMargin`
-// for subgrid baseline scenarios.
-LayoutUnit GetBaselineSideMargin(const GridItemData& item,
-                                 const BoxStrut& margins,
-                                 GridTrackSizingDirection track_direction) {
-  const bool is_for_columns = track_direction == kForColumns;
-  const bool is_last_baseline = item.IsLastBaselineSpecified(track_direction);
-  if (is_last_baseline) {
-    return is_for_columns ? margins.inline_end : margins.block_end;
-  }
-  return is_for_columns ? margins.inline_start : margins.block_start;
 }
 
 LayoutUnit CalculateSynthesizedBaselineShim(
@@ -1347,6 +1343,9 @@ void GridLanesLayoutAlgorithm::RunGridLanesPlacementPhase(
     // offset of the item.
     LogicalRect containing_grid_area;
 
+    // Iterating `grid_items` directly skips items subgridded to this
+    // container, so every item here can be wrapped in a `SubgriddedItemData`
+    // against this container's layout data.
     const ConstraintSpace space =
         is_for_layout
             ? CreateConstraintSpaceForLayout(
@@ -1358,10 +1357,8 @@ void GridLanesLayoutAlgorithm::RunGridLanesPlacementPhase(
                   /*opt_child_block_offset=*/std::nullopt,
                   opt_fixed_inline_size)
             : CreateConstraintSpaceForMeasure(
-                  grid_lanes_item.is_subgridded_to_parent_grid
-                      ? sizing_subtree.LookupSubgriddedItemData(grid_lanes_item)
-                      : SubgriddedItemData(grid_lanes_item, &layout_data,
-                                           container_writing_mode),
+                  SubgriddedItemData(grid_lanes_item, &layout_data,
+                                     container_writing_mode),
                   CalculateItemInlineContribution(
                       sizing_subtree, grid_lanes_item, *sizing_constraint),
                   /*make_grid_axis_definite=*/true,
@@ -1559,9 +1556,12 @@ void GridLanesLayoutAlgorithm::RunGridLanesPlacementPhase(
           item_index, child_layout_subtree, out_grid_lanes);
 
       // Update auto-placement cursor after we have determined the item's final
-      // placement.
-      running_positions.UpdateAutoPlacementCursor(
-          grid_lanes_item.resolved_position, grid_axis_direction);
+      // placement; the cursor should only move after an auto-placed item is
+      // placed.
+      if (grid_lanes_item.is_auto_placed) {
+        running_positions.UpdateAutoPlacementCursor(
+            grid_lanes_item.resolved_position, grid_axis_direction);
+      }
     }
 
     if (placement_phase == PlacementPhase::kCalculateBaselines) {
@@ -1581,8 +1581,13 @@ void GridLanesLayoutAlgorithm::RunGridLanesPlacementPhase(
       const LogicalBoxFragment baseline_fragment(
           grid_lanes_item.BaselineWritingDirection(grid_axis_direction),
           physical_fragment);
-      const LayoutUnit extra_margin =
-          GetBaselineSideMargin(grid_lanes_item, margins, grid_axis_direction);
+      const LayoutUnit extra_margin = GetExtraMarginForBaseline(
+          ComputeMarginsFor(
+              space, item_style,
+              grid_lanes_item.BaselineWritingDirection(grid_axis_direction)),
+          SubgriddedItemData(grid_lanes_item, &layout_data,
+                             container_writing_mode),
+          grid_axis_direction, container_writing_mode);
 
       StoreItemBaseline(baseline_fragment, grid_axis_direction,
                         style.GetFontBaseline(), extra_margin, layout_data,
@@ -1652,6 +1657,44 @@ void GridLanesLayoutAlgorithm::RunGridLanesPlacementPhase(
             start_offset_in_stacking_axis, item_moved_to_earlier_opening);
       }
     }
+  }
+
+  // Subgridded items are skipped by the placement loop above, so measure them
+  // separately during the baseline pass and store their baselines here.
+  if (placement_phase == PlacementPhase::kCalculateBaselines) {
+    StoreSubgriddedItemBaselines(grid_items, sizing_subtree, layout_data,
+                                 *sizing_constraint);
+  }
+}
+
+void GridLanesLayoutAlgorithm::StoreSubgriddedItemBaselines(
+    GridItems& grid_items,
+    const GridSizingSubtree& sizing_subtree,
+    GridLayoutData& layout_data,
+    SizingConstraint sizing_constraint) {
+  const auto grid_axis_direction = Style().GridLanesTrackSizingDirection();
+
+  for (auto& grid_lanes_item : grid_items.ItemsSubgriddedToParent()) {
+    // `IsConsideredForSizing()` is false for an item that is itself a subgrid
+    // in its subgridded axis, which contributes no baseline of its own; the
+    // items it holds are visited by this loop instead.
+    if (!grid_lanes_item.IsBaselineSpecified(grid_axis_direction) ||
+        !grid_lanes_item.IsConsideredForSizing(grid_axis_direction)) {
+      continue;
+    }
+
+    // Resolve the item's container-space set indices before measuring.
+    Node().ComputeSetIndicesForSubgrid(grid_lanes_item, layout_data);
+
+    const SubgriddedItemData subgridded_item =
+        sizing_subtree.LookupSubgriddedItemData(grid_lanes_item);
+    const auto measure_space = CreateConstraintSpaceForMeasure(subgridded_item);
+    const LayoutResult* measure_result = LayoutItemForMeasureWithFallback(
+        sizing_subtree, &grid_lanes_item, measure_space, sizing_constraint);
+    MeasureAndStoreItemBaseline(
+        *measure_result, grid_lanes_item, subgridded_item, measure_space,
+        grid_axis_direction, grid_lanes_item.parent_grid_font_baseline,
+        GetConstraintSpace().GetWritingMode(), layout_data);
   }
 }
 
@@ -1763,9 +1806,11 @@ LayoutUnit GridLanesLayoutAlgorithm::ComputeSharedBaselineForGroup(
     const auto space_for_measure =
         CreateConstraintSpaceForMeasure(subgridded_item);
     const BoxStrut margins = ComputeMarginsFor(
-        space_for_measure, group_item->node.Style(), GetConstraintSpace());
+        space_for_measure, group_item->node.Style(),
+        group_item->BaselineWritingDirection(grid_axis_direction));
     const LayoutUnit extra_margin =
-        GetBaselineSideMargin(*group_item, margins, grid_axis_direction);
+        GetExtraMarginForBaseline(margins, subgridded_item, grid_axis_direction,
+                                  GetConstraintSpace().GetWritingMode());
 
     const LayoutResult* result = LayoutItemForMeasureWithFallback(
         sizing_subtree, group_item, space_for_measure, sizing_constraint);
@@ -2045,8 +2090,12 @@ void GridLanesLayoutAlgorithm::MeasureVirtualGridLanesItems(
         min_max_contribution = result.sizes;
 
         if (item_data.IsBaselineAligned(grid_axis_direction)) {
-          const LayoutUnit extra_margin =
-              GetBaselineSideMargin(item_data, margins, grid_axis_direction);
+          const LayoutUnit extra_margin = GetExtraMarginForBaseline(
+              ComputeMarginsFor(
+                  space, item_style,
+                  item_data.BaselineWritingDirection(grid_axis_direction)),
+              subgridded_item, grid_axis_direction,
+              GetConstraintSpace().GetWritingMode());
 
           const LayoutUnit min_shim = CalculateSynthesizedBaselineShim(
               item_data, min_max_contribution.min_size, grid_axis_direction,
@@ -2072,7 +2121,7 @@ void GridLanesLayoutAlgorithm::MeasureVirtualGridLanesItems(
 
         LayoutUnit block_contribution = ComputeGridLanesItemBlockContribution(
             sizing_subtree, grid_axis_direction, sizing_constraint, space,
-            &item_data, needs_intrinsic_track_size, margins, shared_baseline,
+            &item_data, needs_intrinsic_track_size, shared_baseline,
             baseline_shim);
         min_max_contribution =
             MinMaxSizes(block_contribution, block_contribution);
@@ -2338,7 +2387,6 @@ LayoutUnit GridLanesLayoutAlgorithm::ComputeGridLanesItemBlockContribution(
     const ConstraintSpace space_for_measure,
     GridItemData* grid_lanes_item,
     const bool needs_intrinsic_track_size,
-    const BoxStrut& margins,
     LayoutUnit shared_baseline,
     LayoutUnit& baseline_shim) const {
   DCHECK(grid_lanes_item);
@@ -2363,8 +2411,18 @@ LayoutUnit GridLanesLayoutAlgorithm::ComputeGridLanesItemBlockContribution(
     const LayoutUnit baseline = GetLogicalBaseline(
         baseline_fragment, grid_lanes_item->parent_grid_font_baseline,
         grid_lanes_item->IsLastBaselineSpecified(track_direction));
-    const LayoutUnit extra_margin =
-        GetBaselineSideMargin(*grid_lanes_item, margins, track_direction);
+    const SubgriddedItemData subgridded_item =
+        grid_lanes_item->is_subgridded_to_parent_grid
+            ? sizing_subtree.LookupSubgriddedItemData(*grid_lanes_item)
+            : SubgriddedItemData(*grid_lanes_item, &sizing_subtree.LayoutData(),
+                                 GetConstraintSpace().GetWritingMode());
+
+    const LayoutUnit extra_margin = GetExtraMarginForBaseline(
+        ComputeMarginsFor(
+            space_for_measure, grid_lanes_item->node.Style(),
+            grid_lanes_item->BaselineWritingDirection(track_direction)),
+        subgridded_item, track_direction,
+        GetConstraintSpace().GetWritingMode());
     baseline_shim = shared_baseline - baseline - extra_margin;
     return baseline_fragment.BlockSize() + baseline_shim;
   }
@@ -2495,6 +2553,21 @@ GridSizingTree GridLanesLayoutAlgorithm::ComputeGridLanesSizingTree(
         sizing_constraint, &sizing_tree,
         /*needs_intrinsic_track_size=*/false,
         /*only_for_grid_axis=*/needs_additional_pass_for_column_subtree);
+  }
+
+  // Resolve deferred nested-subgrid baselines bottom-up so that each subgrid
+  // sees finalized children before the final top-down alignment reads them.
+  if (sizing_constraint == SizingConstraint::kLayout &&
+      sizing_tree.HasDeferredSubgridBaseline()) {
+    ForEachSubgrid(GridSizingSubtree(&sizing_tree), *this,
+                   [&](const GridLayoutAlgorithm& subgrid_algorithm,
+                       const GridSizingSubtree& subgrid_subtree,
+                       const SubgriddedItemData& /*subgrid_data*/) {
+                     subgrid_algorithm.ResolveBaselinesInStandaloneAxes(
+                         subgrid_subtree, &sizing_tree,
+                         SizingConstraint::kLayout,
+                         /*is_measure_after_layout=*/true);
+                   });
   }
 
   CompleteFinalBaselineAlignment(&sizing_tree);
@@ -2727,10 +2800,17 @@ void GridLanesLayoutAlgorithm::CompleteTrackSizingAlgorithm(
   ValidateMinMaxSizesCache(Node(), sizing_subtree,
                            Style().GridLanesTrackSizingDirection());
 
-  // TODO(almaher): When a grid subgrid is under grid-lanes, we may need to
-  // call `ComputeBaselineAlignment` here for the subgrid's track direction, as
-  // `GridLayoutAlgorithm` does. Revisit when testing grid-lanes baselines with
-  // subgrid.
+  // Compute standalone-axis baselines for subgrids during track sizing, so
+  // nested subgrid leaf baselines are available and deferred subgrid baselines
+  // are flagged before the final alignment pass.
+  if (sizing_subtree.FirstChild()) {
+    const GridLayoutTree* layout_tree = sizing_tree->FinalizeTree();
+    for (auto track_direction : {kForColumns, kForRows}) {
+      ComputeBaselineAlignmentForEachSubgrid(sizing_subtree, *this, layout_tree,
+                                             track_direction,
+                                             sizing_constraint);
+    }
+  }
 
   CompleteTrackSizingAlgorithm(sizing_subtree, sizing_constraint,
                                needs_intrinsic_track_size, only_for_grid_axis,
@@ -2895,7 +2975,8 @@ void GridLanesLayoutAlgorithm::ComputeBaselineAlignment(
   // way once we support grid lanes subgrids.
   ComputeBaselineAlignmentForEachSubgrid(sizing_subtree, *this, layout_tree,
                                          /*opt_track_direction=*/std::nullopt,
-                                         SizingConstraint::kLayout);
+                                         SizingConstraint::kLayout,
+                                         /*is_measure_after_layout=*/true);
 }
 
 void GridLanesLayoutAlgorithm::ComputeSizingTreeInGridAxis(

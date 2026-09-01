@@ -1497,6 +1497,10 @@ TEST_P(PartitionAllocWithSizedFreeTest, AllocSizes) {
     // Do we correctly get a null for a failed allocation?
     EXPECT_EQ(nullptr, allocator.root()->Alloc<AllocFlags::kReturnNull>(
                            3u * 1024 * 1024 * 1024, type_name));
+    EXPECT_EQ(nullptr, allocator.root()->AlignedAlloc<AllocFlags::kReturnNull>(
+                           64, 3u * 1024 * 1024 * 1024));
+    EXPECT_EQ(nullptr, allocator.root()->Realloc<AllocFlags::kReturnNull>(
+                           nullptr, 3u * 1024 * 1024 * 1024, type_name));
   }
 }
 
@@ -2873,9 +2877,23 @@ TEST_P(PartitionAllocDeathTest, SuspendTagCheckingScope) {
 TEST_P(PartitionAllocDeathTest, LargeAllocs) {
   // Largest alloc.
   EXPECT_DEATH(allocator.root()->Alloc(static_cast<size_t>(-1), type_name), "");
+  EXPECT_DEATH(allocator.root()->AlignedAlloc(64, static_cast<size_t>(-1)), "");
+  void* ptr = allocator.root()->Alloc(16, type_name);
+  EXPECT_DEATH(
+      allocator.root()->Realloc(ptr, static_cast<size_t>(-1), type_name), "");
+  EXPECT_DEATH(
+      allocator.root()->Realloc(nullptr, static_cast<size_t>(-1), type_name),
+      "");
   // And the smallest allocation we expect to die.
   // TODO(bartekn): Separate into its own test, as it wouldn't run (same below).
   EXPECT_DEATH(allocator.root()->Alloc(MaxAllocationSize() + 1, type_name), "");
+  EXPECT_DEATH(allocator.root()->AlignedAlloc(64, MaxAllocationSize() + 1), "");
+  EXPECT_DEATH(
+      allocator.root()->Realloc(ptr, MaxAllocationSize() + 1, type_name), "");
+  EXPECT_DEATH(
+      allocator.root()->Realloc(nullptr, MaxAllocationSize() + 1, type_name),
+      "");
+  allocator.root()->Free(ptr);
 }
 
 // These tests don't work deterministically when BRP is enabled on certain
@@ -4190,6 +4208,35 @@ TEST_P(PartitionAllocTest, IntendedLeak) {
             UntagPtr(slot_span->get_freelist_head()));
 }
 
+TEST_P(PartitionAllocTest, IntendedLeakWithoutTypeIdHint) {
+  PartitionOptions opts = GetCommonPartitionOptions();
+  opts.thread_cache = PartitionOptions::kDisabled;
+  opts.backup_ref_ptr = PartitionOptions::kDisabled;
+  std::unique_ptr<PartitionRoot> root = CreateCustomTestRoot(opts, {});
+
+  void* ptr_to_keep_slot_span = root->Alloc(kTestAllocSize, type_name);
+  void* ptr = root->Alloc(kTestAllocSize, type_name);
+
+  constexpr const uint8_t kAnyDummyValue = 0x12u;
+  PA_UNSAFE_TODO(memset(ptr, kAnyDummyValue, kTestAllocSize));
+
+  auto* slot_span =
+      SlotSpan::FromSlotStart(SlotStart::Unchecked(ptr).Untag(), root.get());
+
+  root->Free<FreeFlags::kIntendedLeak>(ptr);
+
+  EXPECT_NE(SlotStart::Unchecked(ptr).Untag().value(),
+            UntagPtr(slot_span->get_freelist_head()));
+
+  uint64_t value_after_intended_leaked = *reinterpret_cast<uint64_t*>(ptr);
+  EXPECT_EQ(value_after_intended_leaked & internal::kIntendedLeakQuarantineMask,
+            internal::kIntendedLeakQuarantineMarker);
+  EXPECT_EQ((value_after_intended_leaked & ~internal::kIntendedLeakQuarantineMask) >> 8u,
+            internal::kIntendedLeakUnknownTypeId);
+
+  root->Free(ptr_to_keep_slot_span);
+}
+
 TEST_P(PartitionAllocTest, ZapOnFree) {
   void* ptr = allocator.root()->Alloc(1, type_name);
   EXPECT_TRUE(ptr);
@@ -4599,6 +4646,91 @@ TEST_P(PartitionAllocWithFreeWithSizeAndAlignmentTest,
   EXPECT_GT(wasted_after, wasted_before);
 
   GetParam().free_func(allocator.root(), ptr, kSize, kReqAlignment);
+}
+
+TEST_P(PartitionAllocWithFreeWithSizeAndAlignmentTest,
+       AlignedAllocPowerOfTwoDoesNotAllocate2PageSize) {
+  allocator.root()->SetUseTighterAlignedAllocBoundForTesting(true);
+  // Test power-of-two requested sizes with alignments <= PartitionPageSize().
+  const struct {
+    size_t requested_size;
+    size_t alignment;
+  } kTestCases[] = {
+      {512, 64}, {512, 128}, {1024, 64}, {1024, 256}, {2048, 128}, {4096, 512},
+  };
+
+  for (const auto& test_case : kTestCases) {
+    // Allocate multiple pointers to ensure that subsequent slots in the slot
+    // span (at non-zero slot offsets) also guarantee alignment.
+    std::vector<void*> allocated_ptrs;
+    for (int i = 0; i < 3; ++i) {
+      void* ptr = allocator.root()->AlignedAlloc(test_case.alignment,
+                                                 test_case.requested_size);
+      ASSERT_TRUE(ptr);
+      allocated_ptrs.push_back(ptr);
+
+      // 1. Verify strict pointer alignment.
+      EXPECT_EQ(0u, UntagPtr(ptr) & (test_case.alignment - 1))
+          << i << "-th allocation of size=" << test_case.requested_size
+          << ", alignment=" << test_case.alignment;
+
+      // 2. Verify that the assigned bucket slot size is strictly smaller than
+      // double the requested size (which was the old power-of-two behavior when
+      // extras were added).
+      auto* slot_span =
+          SlotSpanMetadata::FromObjectInnerPtr(ptr, allocator.root());
+      size_t actual_slot_size = slot_span->bucket->slot_size;
+      EXPECT_LT(actual_slot_size, test_case.requested_size * 2)
+          << "Failed savings check for size=" << test_case.requested_size
+          << ", alignment=" << test_case.alignment;
+
+      // 3. Verify exact expected slot size based on AlignUp.
+      size_t raw_size =
+          allocator.root()->AdjustSizeForExtrasAdd(test_case.requested_size);
+      size_t aligned_raw_size =
+          internal::base::bits::AlignUp(raw_size, test_case.alignment);
+      size_t expected_bucket_size = SizeToBucketSize(aligned_raw_size);
+      EXPECT_EQ(expected_bucket_size, actual_slot_size);
+    }
+
+    // 4. Verify clean deallocation (tests both standard Free and Free with
+    // size/alignment hints via test parameterization).
+    for (void* ptr : allocated_ptrs) {
+      GetParam().free_func(allocator.root(), ptr, test_case.requested_size,
+                           test_case.alignment);
+    }
+  }
+}
+
+TEST_P(PartitionAllocWithFreeWithSizeAndAlignmentTest,
+       AlignedAllocTighterBound) {
+  // requested_size = 70,000, alignment = 16,384.
+  // Legacy power-of-two mode rounds 70,000 + extras to 131,072 (128 KiB).
+  // Tighter bound mode rounds 70,000 + extras to AlignUp(70,000 + extras,
+  // 16,384) = 81,920 (80 KiB). This holds true for all possible extras_size
+  // values (0, 8, 16, 32).
+  constexpr size_t kSize = 70000;
+  constexpr size_t kReqAlignment = 16384;
+
+  // 1. Legacy behavior (Power-of-two rounding)
+  allocator.root()->SetUseTighterAlignedAllocBoundForTesting(false);
+  void* ptr_legacy = allocator.root()->AlignedAlloc(kReqAlignment, kSize);
+  ASSERT_TRUE(ptr_legacy);
+  size_t slot_size_legacy = PartitionRoot::GetUsableSize(ptr_legacy);
+  GetParam().free_func(allocator.root(), ptr_legacy, kSize, kReqAlignment);
+
+  // 2. Tighter bound behavior (AlignUp)
+  allocator.root()->SetUseTighterAlignedAllocBoundForTesting(true);
+  void* ptr_tighter = allocator.root()->AlignedAlloc(kReqAlignment, kSize);
+  ASSERT_TRUE(ptr_tighter);
+  size_t slot_size_tighter = PartitionRoot::GetUsableSize(ptr_tighter);
+  GetParam().free_func(allocator.root(), ptr_tighter, kSize, kReqAlignment);
+
+  // Tighter bound allocation capacity must be strictly smaller than legacy
+  // power-of-two rounding.
+  EXPECT_LT(slot_size_tighter, slot_size_legacy);
+  EXPECT_EQ(slot_size_tighter,
+            allocator.root()->AdjustSizeForExtrasSubtract(81920u));
 }
 
 // Test that the optimized `GetSlotNumber` implementation produces valid

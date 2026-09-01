@@ -159,15 +159,6 @@ class PrefetchContainerTestBase : public PrefetchingMetricsTestBase,
         std::move(prefetch_request), std::move(pre_prefetch_container));
   }
 
-  std::unique_ptr<PrefetchContainer> CreateBrowserContextPrefetchContainer(
-      const GURL& prefetch_url,
-      const net::HttpRequestHeaders& additional_headers = {},
-      bool should_append_additional_headers = true) {
-    return PrefetchContainer::CreateForTesting(
-        CreateBrowserContextPrefetchRequest(prefetch_url, additional_headers,
-                                            should_append_additional_headers));
-  }
-
   std::unique_ptr<const PrefetchRequest> CreateBrowserContextPrefetchRequest(
       const GURL& prefetch_url,
       const net::HttpRequestHeaders& additional_headers = {},
@@ -175,7 +166,7 @@ class PrefetchContainerTestBase : public PrefetchingMetricsTestBase,
     return PrefetchRequest::CreateBrowserInitiatedWithoutWebContents(
         browser_context(), prefetch_url,
         PrefetchType(PreloadingTriggerType::kEmbedder,
-                     /*use_prefetch_proxy=*/true),
+                     /*use_prefetch_proxy=*/false),
         test::kPreloadingEmbedderHistogramSuffixForTesting,
         blink::mojom::Referrer(),
         /*javascript_enabled=*/true,
@@ -946,7 +937,7 @@ TEST_P(PrefetchContainerTest, BlockUntilHeadHistograms) {
           .blocked_duration = std::nullopt,
       },
       {.prefetch_type = PrefetchType(PreloadingTriggerType::kEmbedder,
-                                     /*use_prefetch_proxy=*/true),
+                                     /*use_prefetch_proxy=*/false),
        .is_served = false,
        .is_nav_prerender = false,
        .blocked_duration = base::Milliseconds(20)},

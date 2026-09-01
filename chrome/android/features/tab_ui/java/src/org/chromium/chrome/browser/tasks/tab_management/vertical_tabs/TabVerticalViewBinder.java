@@ -21,7 +21,6 @@ import android.view.MotionEvent;
 import android.view.TouchDelegate;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.animation.LinearInterpolator;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -39,7 +38,6 @@ import org.chromium.base.DeviceInfo;
 import org.chromium.base.Token;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
-import org.chromium.chrome.R.string;
 import org.chromium.chrome.browser.actor.ui.ActorUiTabController.UiTabState;
 import org.chromium.chrome.browser.actor.ui.TabIndicatorStatus;
 import org.chromium.chrome.browser.incognito.IncognitoUtils;
@@ -60,7 +58,6 @@ import org.chromium.components.browser_ui.styles.SemanticColorUtils;
 import org.chromium.components.browser_ui.util.TextResolver;
 import org.chromium.components.browser_ui.util.motion.MotionEventInfo;
 import org.chromium.components.tab_groups.TabGroupColorPickerUtils;
-import org.chromium.ui.base.DeviceFormFactor;
 import org.chromium.ui.base.ViewUtils;
 import org.chromium.ui.modelutil.PropertyKey;
 import org.chromium.ui.modelutil.PropertyModel;
@@ -149,7 +146,7 @@ class TabVerticalViewBinder {
                         ? ViewGroup.LayoutParams.MATCH_PARENT
                         : resources.getDimensionPixelSize(R.dimen.vertical_tab_pinned_item_width);
         ViewGroup.LayoutParams params = view.getLayoutParams();
-        if (params != null && params.height != pinnedHeight) {
+        if (params != null && (params.height != pinnedHeight || params.width != expandedWidth)) {
             updateTabItemSize(model, view, expandedWidth, pinnedHeight);
         }
 
@@ -181,12 +178,9 @@ class TabVerticalViewBinder {
         } else if (TabProperties.TAB_GROUP_CARD_COLOR == propertyKey
                 || TabProperties.IS_INCOGNITO == propertyKey) {
             updateGroupHeaderColors(model, view);
-        } else if (TabProperties.CONTENT_DESCRIPTION_TEXT_RESOLVER == propertyKey) {
-            updateAccessibilityDelegate(model, view);
         } else if (TabProperties.IS_COLLAPSED == propertyKey) {
             updateChevronRotation(model, view);
             updateContentDescription(model, view);
-            updateAccessibilityDelegate(model, view);
         } else if (TabProperties.RAIL_COLLAPSE_STATE == propertyKey) {
             int itemHeight =
                     view.getContext()
@@ -373,9 +367,7 @@ class TabVerticalViewBinder {
                     /* marginStartDimenId= */ 0,
                     /* marginEndDimenId= */ 0);
             actionButton.setVisibility(actionWanted ? View.VISIBLE : View.GONE);
-            if (DeviceFormFactor.isNonMultiDisplayContextOnTablet(view.getContext())) {
-                setActionButtonTouchDelegate(view, actionButton, actionWanted);
-            }
+            setActionButtonTouchDelegate(view, actionButton, actionWanted);
         }
 
         // Actor Actuation Indicator Icons
@@ -456,11 +448,19 @@ class TabVerticalViewBinder {
                     Rect rect = new Rect();
                     actionButton.getHitRect(rect);
                     Resources res = view.getResources();
+                    boolean isTablet = isTablet(view.getContext());
                     int minTouchTargetWidthPx =
-                            res.getDimensionPixelSize(R.dimen.min_touch_target_size);
+                            res.getDimensionPixelSize(
+                                    isTablet
+                                            ? R.dimen
+                                                    .vertical_tab_action_button_touch_target_width_tablet
+                                            : R.dimen.vertical_tab_action_button_touch_target_size);
                     int minTouchTargetHeightPx =
                             res.getDimensionPixelSize(
-                                    R.dimen.vertical_tab_action_button_touch_target_height);
+                                    isTablet
+                                            ? R.dimen
+                                                    .vertical_tab_action_button_touch_target_height_tablet
+                                            : R.dimen.vertical_tab_action_button_touch_target_size);
 
                     if (rect.width() < minTouchTargetWidthPx) {
                         int deltaX = (minTouchTargetWidthPx - rect.width()) / 2;
@@ -869,27 +869,6 @@ class TabVerticalViewBinder {
         }
     }
 
-    private static void updateAccessibilityDelegate(PropertyModel model, View view) {
-        view.setAccessibilityDelegate(
-                new View.AccessibilityDelegate() {
-                    @Override
-                    public void onInitializeAccessibilityNodeInfo(
-                            View host, AccessibilityNodeInfo info) {
-                        super.onInitializeAccessibilityNodeInfo(host, info);
-                        boolean isCollapsed = model.get(TabProperties.IS_COLLAPSED);
-                        String actionLabel =
-                                host.getContext()
-                                        .getString(
-                                                isCollapsed
-                                                        ? string.accessibility_expand_section
-                                                        : string.accessibility_collapse_section);
-                        info.addAction(
-                                new AccessibilityNodeInfo.AccessibilityAction(
-                                        AccessibilityNodeInfo.ACTION_CLICK, actionLabel));
-                    }
-                });
-    }
-
     private static void updateChildRowPadding(PropertyModel model, View view) {
         boolean isInGroup = model.get(TabProperties.TAB_GROUP_ID) != null;
         boolean isRailCollapsed =
@@ -1168,11 +1147,12 @@ class TabVerticalViewBinder {
     }
 
     /**
-     * Configures mouse hover listeners for the tab row view and optional action button.
+     * Configures mouse hover and keyboard focus listeners for the tab row view and optional action
+     * button.
      *
      * <p>When hovered while unselected, applies {@link TabUiThemeUtil#getHoveredTabContainerColor}
      * corresponding to the current incognito state, and restores {@code defaultBackgroundColor} on
-     * exit.
+     * exit. Hover card display is triggered when either mouse hover or keyboard focus is active.
      *
      * @param model the model containing the tab properties.
      * @param view the root ViewGroup representing the tab row item.
@@ -1199,8 +1179,17 @@ class TabVerticalViewBinder {
                 };
 
         setupHoverOrchestration(view, actionButton, onHoverEnter, onHoverExit);
+
+        view.setOnFocusChangeListener((v, hasFocus) -> notifyHoverChange(model, v, hasFocus));
     }
 
+    /**
+     * Configures mouse hover and keyboard focus listeners for the tab group header row view and
+     * optional menu button.
+     *
+     * @param model the model containing the tab group properties.
+     * @param view the root ViewGroup representing the tab group header row item.
+     */
     private static void setupTabGroupHeaderHoverListener(PropertyModel model, ViewGroup view) {
         @Nullable View menuButton = view.findViewById(R.id.menu_button);
 
@@ -1216,6 +1205,9 @@ class TabVerticalViewBinder {
                 };
 
         setupHoverOrchestration(view, menuButton, onHoverEnter, onHoverExit);
+
+        view.setOnFocusChangeListener(
+                (v, hasFocus) -> notifyGroupHeaderHoverChange(model, v, hasFocus));
     }
 
     private static void updateGroupHeaderIcons(
@@ -1228,7 +1220,10 @@ class TabVerticalViewBinder {
         }
     }
 
-    /** Notifies {@link TabHoverCardListener} of hover state transitions on tab items. */
+    /**
+     * Notifies {@link TabHoverCardListener} of hover or keyboard focus state transitions on tab
+     * items.
+     */
     private static void notifyHoverChange(PropertyModel model, View view, boolean isHovered) {
         TabHoverCardListener listener = model.get(TabProperties.TAB_HOVER_CARD_LISTENER);
         if (listener != null) {
@@ -1237,7 +1232,10 @@ class TabVerticalViewBinder {
         }
     }
 
-    /** Notifies {@link TabHoverCardListener} of hover state transitions on tab group headers. */
+    /**
+     * Notifies {@link TabHoverCardListener} of hover or keyboard focus state transitions on tab
+     * group headers.
+     */
     private static void notifyGroupHeaderHoverChange(
             PropertyModel model, View view, boolean isHovered) {
         TabHoverCardListener listener = model.get(TabProperties.TAB_HOVER_CARD_LISTENER);

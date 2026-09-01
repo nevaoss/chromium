@@ -39,12 +39,15 @@ class COMPOSITOR_EXPORT LayerSurface : public Layer {
   ~LayerSurface() override;
 
   // Layer:
-  bool HasExternalContent() const override;
   std::unique_ptr<Layer> Clone() const override;
   bool ShouldSchedulePaint() const override;
 
-  void SetBackgroundColor(SkColor4f color);
-  SkColor4f GetBackgroundColor() const;
+  // Sets the background color used as a fallback when the surface content
+  // is unavailable (e.g. before the initial frame is produced, during surface
+  // eviction, or if unresolved in Viz), or as a gutter color if the content
+  // does not cover the layer's entire bounds (during fast-resizing).
+  void SetFallbackBackgroundColor(SkColor4f color);
+  SkColor4f GetFallbackBackgroundColor() const;
 
   // Begins showing content from a surface with a particular ID.
   // TODO(crbug.com/40285157): With surface sync, size shouldn't rely on

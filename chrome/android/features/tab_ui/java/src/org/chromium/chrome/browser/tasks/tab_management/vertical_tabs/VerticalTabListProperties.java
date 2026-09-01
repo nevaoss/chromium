@@ -53,11 +53,11 @@ public class VerticalTabListProperties {
     public static final PropertyModel.WritableBooleanPropertyKey IS_INCOGNITO_BUTTON_VISIBLE =
             new PropertyModel.WritableBooleanPropertyKey();
     public static final PropertyModel.WritableObjectPropertyKey<View.OnClickListener>
-            ON_GRID_CLICK_LISTENER = new PropertyModel.WritableObjectPropertyKey<>();
-    public static final PropertyModel.WritableObjectPropertyKey<View.OnClickListener>
             ON_SEARCH_CLICK_LISTENER = new PropertyModel.WritableObjectPropertyKey<>();
     public static final PropertyModel.WritableObjectPropertyKey<View.OnClickListener>
             ON_NEW_TAB_CLICK_LISTENER = new PropertyModel.WritableObjectPropertyKey<>();
+    public static final PropertyModel.WritableObjectPropertyKey<View.OnClickListener>
+            ON_INCOGNITO_CLICK_LISTENER = new PropertyModel.WritableObjectPropertyKey<>();
     public static final PropertyModel.WritableObjectPropertyKey<View.OnClickListener>
             ON_COLLAPSE_CLICK_LISTENER = new PropertyModel.WritableObjectPropertyKey<>();
     public static final PropertyModel.WritableObjectPropertyKey<
@@ -69,9 +69,9 @@ public class VerticalTabListProperties {
                 IS_COLLAPSE_BUTTON_ENABLED,
                 IS_INCOGNITO,
                 IS_INCOGNITO_BUTTON_VISIBLE,
-                ON_GRID_CLICK_LISTENER,
                 ON_SEARCH_CLICK_LISTENER,
                 ON_NEW_TAB_CLICK_LISTENER,
+                ON_INCOGNITO_CLICK_LISTENER,
                 ON_COLLAPSE_CLICK_LISTENER,
                 EXPAND_OR_COLLAPSE_ON_HOVER_LISTENER
             };

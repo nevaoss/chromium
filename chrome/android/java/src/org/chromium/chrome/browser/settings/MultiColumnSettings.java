@@ -36,10 +36,12 @@ import org.chromium.build.annotations.EnsuresNonNull;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.R;
+import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.settings.search.EmptyFragment;
 import org.chromium.chrome.browser.settings.search.SettingsSearchCoordinator;
 import org.chromium.components.browser_ui.settings.EmbeddableSettingsPage;
+import org.chromium.components.browser_ui.settings.SettingsNavigation;
 import org.chromium.components.browser_ui.settings.search.SettingsIndexData;
 import org.chromium.ui.KeyboardVisibilityDelegate;
 
@@ -78,7 +80,7 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
     /** Represents the current state of sliding pane. */
     @IntDef({SlideState.CLOSING, SlideState.CLOSED, SlideState.OPENING, SlideState.OPENED})
     @Retention(RetentionPolicy.SOURCE)
-    @interface SlideState {
+    public @interface SlideState {
         int CLOSING = 0;
         int CLOSED = 1;
         int OPENING = 2;
@@ -107,6 +109,8 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
     private @Nullable Profile mProfile;
 
     private @Nullable Context mThemedContext;
+
+    private @Nullable String mInitialUrl;
 
     @Override
     public void onAttach(Context context) {
@@ -152,6 +156,16 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
         return mMainSettings;
     }
 
+    /** Sets the initial settings URL for tab-based navigation. */
+    public void setInitialUrl(@Nullable String initialUrl) {
+        mInitialUrl = initialUrl;
+    }
+
+    /** Returns the initial settings URL for tab-based navigation. */
+    public @Nullable String getInitialUrl() {
+        return mInitialUrl;
+    }
+
     // Fragment data passed as extras of Intent via SettingsNavigation.
     private static class FragmentData {
         public final @Nullable Fragment fragment;
@@ -179,6 +193,28 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
             }
             return processed.fragment;
         }
+
+        // Under SettingsInTab mode, check if an initial settings URL was
+        // set (e.g. "chrome://settings/appearance"). If present, instantiate
+        // the target fragment directly as the initial detail fragment rather
+        // than defaulting to Account/GoogleServices.
+        if (ChromeFeatureList.sSettingsInTabUrlNav.isEnabled() && mInitialUrl != null) {
+            String initialUrl = mInitialUrl;
+            mInitialUrl = null;
+            var fragmentClass = SettingsFragmentRegistry.getFragmentClassForUrl(initialUrl);
+
+            if (fragmentClass != null && !MainSettings.class.equals(fragmentClass)) {
+                Bundle args = SettingsFragmentRegistry.parseUrlArguments(initialUrl);
+                Fragment initialDetailFragment =
+                        Fragment.instantiate(requireContext(), fragmentClass.getName(), args);
+
+                if (getSlidingPaneLayout() != null) {
+                    getSlidingPaneLayout().openPane();
+                }
+                return initialDetailFragment;
+            }
+        }
+
         // When SettingsInTab is enabled in single-column mode, do not instantiate an initial detail
         // fragment if no sub-fragment intent was specified. Returning null prevents
         // PreferenceHeaderFragmentCompat from calling openPane() on SlidingPaneLayout, keeping
@@ -188,6 +224,7 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
         if (SettingsInTab.isEnabled() && !isTwoColumn()) {
             return null;
         }
+
         return super.onCreateInitialDetailFragment();
     }
 
@@ -227,9 +264,64 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
         getSlidingPaneLayout().openPane();
     }
 
-    /** Whether the detail panel is open. */
+    /**
+     * Whether the detail panel is visible (slid in) or not (slid out). Always returns true when the
+     * layout is in two column mode.
+     */
     public boolean isLayoutOpen() {
-        return getSlidingPaneLayout().isOpen();
+        if (isTwoColumn()) {
+            return true;
+        }
+        SlidingPaneLayout slidingPane = getSlidingPaneLayout();
+        // In single-column mode, once laid out, SlidingPaneLayout determines whether the detail
+        // pane is open (slid in) or closed.
+        if (ViewCompat.isLaidOut(slidingPane)) {
+            return slidingPane.isOpen();
+        }
+        // Before the initial layout pass in single-column mode, SlidingPaneLayout.isOpen() defaults
+        // to true because isSlideable() is initially false (!mCanSlide). In that pre-layout state,
+        // check if a detail fragment is actually present and added in the detail container.
+        Fragment detail = getChildFragmentManager().findFragmentById(R.id.preferences_detail);
+        return detail != null && detail.isAdded();
+    }
+
+    @Override
+    public boolean onPreferenceStartFragment(
+            PreferenceFragmentCompat caller, Preference preference) {
+        // Under SettingsInTab mode, preference selection in the primary
+        // navigation header (e.g. clicking "Appearance" or "Privacy" in the
+        // left column of MultiColumnSettings) must be routed through
+        // Tab.loadUrl() rather than directly triggering showDetailFragment().
+        //
+        // This ensures the target fragment class and arguments are translated
+        // into a canonical chrome://settings/<path> URL string, pushing a new
+        // NavigationEntry onto WebContents navigation history, updating the
+        // Omnibox URL, and synchronizing browser Back/Forward navigation.
+        if (!SettingsInTab.isEnabled() || !ChromeFeatureList.sSettingsInTabUrlNav.isEnabled()) {
+            return super.onPreferenceStartFragment(caller, preference);
+        }
+
+        String fragmentClassName = preference.getFragment();
+        if (fragmentClassName == null) {
+            return super.onPreferenceStartFragment(caller, preference);
+        }
+
+        Class<? extends Fragment> fragmentClass;
+        try {
+            fragmentClass = Class.forName(fragmentClassName).asSubclass(Fragment.class);
+        } catch (ClassNotFoundException ignored) {
+            // Fall back to super method if fragment class cannot be loaded.
+            return super.onPreferenceStartFragment(caller, preference);
+        }
+
+        SettingsNavigation navigation =
+                SettingsNavigationFactory.createSettingsNavigation(requireContext());
+        if (navigation == null) {
+            return super.onPreferenceStartFragment(caller, preference);
+        }
+
+        navigation.startSettings(requireContext(), fragmentClass, preference.getExtras());
+        return true;
     }
 
     /** Shows a fragment inside the detail pane (`preferences_detail`). */
@@ -269,7 +361,11 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
             transaction.addToBackStack(tag);
         }
         transaction.commit();
+        // Execute the transaction synchronously so the detail fragment is attached to
+        // R.id.preferences_detail before updateHeaderPaneFocusability() evaluates isLayoutOpen().
+        fragmentManager.executePendingTransactions();
         getSlidingPaneLayout().open();
+        updateHeaderPaneFocusability();
 
         // When navigating in Single Activity mode, the new fragment's view might not be
         // laid out yet when it requests focus. If it requests focus while it has zero
@@ -448,11 +544,38 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
                 });
         view.post(
                 () -> {
+                    updateHeaderPaneFocusability();
                     for (Observer o : mObservers) o.onHeaderLayoutUpdated();
                     if (mOnCreateViewRunnable != null) mOnCreateViewRunnable.run();
                 });
         mDetailView = detailView;
         return view;
+    }
+
+    /**
+     * Updates descendant focusability and accessibility for the header pane. When the detail pane
+     * is opened in single-column mode, the header pane is hidden behind the detail pane, so its
+     * descendants must be blocked from keyboard focus and hidden from accessibility to prevent
+     * keyboard tab navigation and screen readers from traversing obscured header items.
+     */
+    void updateHeaderPaneFocusability() {
+        // May be called before the view is inflated.
+        if (getView() == null) return;
+
+        View headerView = getView().findViewById(R.id.preferences_header);
+        // View may not exist in tests.
+        if (headerView == null) return;
+
+        ViewGroup headerGroup = (ViewGroup) headerView;
+        boolean isHeaderObscured = !isTwoColumn() && isLayoutOpen();
+        if (isHeaderObscured) {
+            headerGroup.setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);
+            headerGroup.setImportantForAccessibility(
+                    View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
+        } else {
+            headerGroup.setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);
+            headerGroup.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_AUTO);
+        }
     }
 
     /** Sets the Profile required for generating the search index. Called by the host Activity. */
@@ -558,6 +681,7 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
                 int oldTop,
                 int oldRight,
                 int oldBottom) {
+            updateHeaderPaneFocusability();
             boolean prevSlideable = mSlideable;
             mSlideable = getSlidingPaneLayout().isSlideable();
             if (prevSlideable != mSlideable) {
@@ -595,6 +719,7 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
             @SlideState int prevState = mState;
             mState = SlideState.OPENED;
             mOffset = 0f;
+            updateHeaderPaneFocusability();
             maybeNotifyObserver(prevState, mState);
         }
 
@@ -603,6 +728,7 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
             @SlideState int prevState = mState;
             mState = SlideState.CLOSED;
             mOffset = 1f;
+            updateHeaderPaneFocusability();
             maybeNotifyObserver(prevState, mState);
         }
 
@@ -977,7 +1103,13 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
                             }
                         });
 
-        requireActivity().getOnBackPressedDispatcher().addCallback(this, mOnBackPressedCallback);
+        // For SettingsInTabUrlNav, rely on the Chrome Navigation Stack to handle detailFragment
+        // loading.
+        if (!ChromeFeatureList.sSettingsInTabUrlNav.isEnabled()) {
+            requireActivity()
+                    .getOnBackPressedDispatcher()
+                    .addCallback(this, mOnBackPressedCallback);
+        }
 
         mCanBeBackToMain = getSlidingPaneLayout().isSlideable() && !getSlidingPaneLayout().isOpen();
         mSlideStateTracker = new SlideStateTracker();
@@ -986,6 +1118,7 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
 
         @SlideState
         int initState = getSlidingPaneLayout().isOpen() ? SlideState.OPENED : SlideState.CLOSED;
+        updateHeaderPaneFocusability();
         for (Observer o : mObservers) {
             o.onSlideStateUpdated(initState);
         }

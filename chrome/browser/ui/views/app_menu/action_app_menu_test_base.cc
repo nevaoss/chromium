@@ -47,17 +47,54 @@ void ActionAppMenuTestBase::SetUp() {
                        .Build());
   };
 
+  add_action(kActionNewTab, u"New Tab");
+  add_action(kActionNewWindow, u"New Window");
+  add_action(kActionNewIncognitoWindow, u"New Incognito Window");
   add_action(kActionShowPasswordManager, u"Password Manager");
   add_action(kActionShowHistory, u"History");
   add_action(kActionRecentTabsSubmenu, u"Recent Tabs");
+  add_action(kActionShowDownloads, u"Downloads");
   add_action(kActionManageExtensions, u"Extensions");
+  add_action(kActionBookmarksSubmenu, u"Bookmarks and Lists");
+  add_action(kActionBookmarkThisTab, u"Bookmark This Tab");
+  add_action(kActionBookmarkAllTabs, u"Bookmark All Tabs");
+  add_action(kActionClearBrowsingData, u"Clear Browsing Data");
   add_action(kActionPrint, u"Print");
+  add_action(kActionOpenGlic, u"Open Glic");
+  add_action(kActionShowLensOverlayFromAppMenu, u"Lens Overlay");
+  add_action(kActionShowTranslate, u"Translate");
+  add_action(kActionFindAndEditSubmenu, u"Find and edit");
   add_action(kActionFind, u"Find");
+  add_action(actions::kActionCut, u"Cut");
+  add_action(actions::kActionCopy, u"Copy");
+  add_action(actions::kActionPaste, u"Paste");
+  add_action(kActionSaveAndShareSubmenu, u"Save and share");
+  add_action(kActionRouteMedia, u"Cast");
+  add_action(kActionSavePage, u"Save page");
+  add_action(kActionCreateShortcut, u"Create shortcut");
+  add_action(kActionCopyUrl, u"Copy link");
+  add_action(kActionSendTabToSelf, u"Send to your devices");
+  add_action(kActionQrCodeGenerator, u"Create QR Code");
+  add_action(kActionSharingHubScreenshot, u"Screenshot");
+  add_action(kActionDeveloperSubmenu, u"More tools");
+  add_action(kActionTabSearch, u"Search tabs");
+  add_action(kActionNameWindow, u"Name window");
+  add_action(kActionToggleVerticalTabs, u"Toggle vertical tabs");
+  add_action(kActionSidePanelShowCustomizeChrome, u"Customize Chrome");
+  add_action(kActionShowReadingModeSidePanel, u"Reading mode");
+  add_action(kActionPerformance, u"Performance");
+  add_action(kActionTaskManagerAppMenu, u"Task manager");
+  add_action(kActionDevTools, u"Developer tools");
+  add_action(kActionProfilingEnabled, u"Profiling enabled");
+  add_action(kActionShowChromeLabs, u"Chrome Labs");
   add_action(kActionRecentTabsSeeDeviceTabs, u"See Device Tabs");
   add_action(kActionRecentTabsLoginForDeviceTabs, u"Login for Device Tabs");
   add_action(kActionSidePanelShowHistoryCluster, u"History Clusters");
   add_action(kActionSidePanelShowTabsFromOtherDevices,
              u"Tabs from Other Devices");
+  add_action(kActionOptions, u"Settings");
+  add_action(kActionHelpSubmenu, u"Help");
+  add_action(kActionExit, u"Exit");
 
   actions::ActionManager::Get().AddAction(std::move(root));
 

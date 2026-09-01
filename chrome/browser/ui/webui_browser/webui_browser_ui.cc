@@ -214,7 +214,7 @@ void WebUIBrowserUI::BindInterface(
   if (window) {
     BrowserWindowInterface* browser_window = window->browser();
     if (browser_window) {
-      auto* feature = browser_window->GetFeatures().bookmarks_service_feature();
+      auto* feature = BookmarksServiceFeature::From(browser_window);
       if (feature) {
         feature->Accept(std::move(receiver));
       }
@@ -247,8 +247,7 @@ void WebUIBrowserUI::BindInterface(
 
 void WebUIBrowserUI::BindInterface(
     mojo::PendingReceiver<tabs_api::mojom::TabDragService> receiver) {
-  auto* tab_drag_service_feature =
-      browser_->GetFeatures().tab_drag_service_feature();
+  auto* tab_drag_service_feature = TabDragServiceFeature::From(browser_);
   CHECK(tab_drag_service_feature) << "Browser missing TabDragService";
   tab_drag_service_feature->AcceptDragService(
       std::move(receiver), web_ui()->GetWebContents()->GetNativeView());
@@ -256,7 +255,7 @@ void WebUIBrowserUI::BindInterface(
 
 void WebUIBrowserUI::BindInterface(
     mojo::PendingReceiver<tabs_api::mojom::TabStripUIController> receiver) {
-  auto* ui_controller = browser_->GetFeatures().tab_strip_ui_controller();
+  auto* ui_controller = tabs_api::TabStripUIControllerImpl::From(browser_);
   CHECK(ui_controller) << "Browser missing TabStripUIController";
   ui_controller->Bind(std::move(receiver));
 }

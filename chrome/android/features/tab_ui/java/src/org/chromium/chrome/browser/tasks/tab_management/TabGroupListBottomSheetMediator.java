@@ -11,7 +11,6 @@ import org.chromium.base.Token;
 import org.chromium.base.metrics.RecordUserAction;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
-import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tabmodel.TabGroupUtils.TabGroupCreationCallback;
 import org.chromium.chrome.browser.tabmodel.TabGroupUtils.TabMovedCallback;
@@ -23,7 +22,6 @@ import org.chromium.components.browser_ui.bottomsheet.BottomSheetController;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController.SheetState;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController.StateChangeReason;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetObserver;
-import org.chromium.components.browser_ui.bottomsheet.EmptyBottomSheetObserver;
 import org.chromium.components.tab_group_sync.SavedTabGroup;
 import org.chromium.components.tab_group_sync.TabGroupSyncService;
 import org.chromium.ui.modelutil.MVCListAdapter;
@@ -41,7 +39,6 @@ import java.util.Set;
  */
 @NullMarked
 public class TabGroupListBottomSheetMediator {
-
     private final BottomSheetController mBottomSheetController;
     private final TabGroupListBottomSheetCoordinatorDelegate mDelegate;
     private final ModelList mModelList;
@@ -54,7 +51,7 @@ public class TabGroupListBottomSheetMediator {
     private boolean mCurrentlyShowing;
 
     private final BottomSheetObserver mBottomSheetObserver =
-            new EmptyBottomSheetObserver() {
+            new BottomSheetObserver() {
 
                 @Override
                 public void onSheetClosed(@StateChangeReason int reason) {
@@ -64,6 +61,7 @@ public class TabGroupListBottomSheetMediator {
                     mCurrentlyShowing = false;
                     mBottomSheetController.removeObserver(mBottomSheetObserver);
                     mModelList.clear();
+                    mDelegate.invalidateContentHeight();
                 }
 
                 @Override
@@ -123,6 +121,7 @@ public class TabGroupListBottomSheetMediator {
      * @param tabs The tabs to be added to a tab group.
      */
     void requestShowContent(List<Tab> tabs) {
+        mDelegate.invalidateContentHeight();
         // Populate the list of tabs before sending the show-content request to the delegate.
         // This allows us to know the height of the bottom sheet.
         populateList(tabs);
@@ -184,10 +183,7 @@ public class TabGroupListBottomSheetMediator {
 
     private void populateRegularTabGroups(List<Tab> tabs, @Nullable Token groupToFilter) {
         GroupWindowChecker windowChecker = new GroupWindowChecker(mTabGroupSyncService, mTabModel);
-        List<SavedTabGroup> sortedTabGroups =
-                windowChecker.getSortedGroupList(
-                        this::shouldShowGroupByState,
-                        (a, b) -> Long.compare(b.updateTimeMs, a.updateTimeMs));
+        List<SavedTabGroup> sortedTabGroups = windowChecker.getDefaultSortedGroupList();
 
         for (SavedTabGroup tabGroup : sortedTabGroups) {
             if (tabGroup.localId != null
@@ -253,13 +249,5 @@ public class TabGroupListBottomSheetMediator {
                 numGroups == 1 && (isSingleTabToBeMoved || groupToNotBeIncluded != null);
 
         return (numGroups == 0 || singleGroupPredicate || numGroups > 1) && mShowNewGroup;
-    }
-
-    private boolean shouldShowGroupByState(@GroupWindowState int groupWindowState) {
-        if (ChromeFeatureList.sCrossWindowTabGroupOperations.isEnabled()) {
-            return groupWindowState != GroupWindowState.HIDDEN;
-        }
-        return groupWindowState != GroupWindowState.IN_ANOTHER
-                && groupWindowState != GroupWindowState.HIDDEN;
     }
 }

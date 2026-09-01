@@ -81,8 +81,6 @@ enum class ItemIdentifier {
   BOOL _recentFillsAreVisible;
   // The current error type.
   AtMemoryErrorType _errorType;
-  // Represents the table view background style.
-  AtMemoryBackgroundStyle _backgroundStyle;
 }
 
 #pragma mark - UIViewController
@@ -221,8 +219,9 @@ enum class ItemIdentifier {
 #pragma mark - TableViewLinkHeaderFooterItemDelegate
 
 - (void)view:(TableViewLinkHeaderFooterView*)view didTapLinkURL:(CrURL*)URL {
-  CHECK(URL.gurl == GURL(kAIDisclosureURL));
-  // TODO(crbug.com/546671261): Open Enhanced Autofill details page.
+  if (URL.gurl == GURL(kAIDisclosureURL)) {
+    [self.atMemoryHandler openManageEnhancedAutofillDetails];
+  }
 }
 
 #pragma mark - Actions
@@ -272,6 +271,7 @@ enum class ItemIdentifier {
     }
     [_dataSource applySnapshot:snapshot animatingDifferences:YES];
   }
+  [self updateTableViewBackgroundStyle];
 }
 
 - (void)setFetchingSubtitle {
@@ -287,24 +287,10 @@ enum class ItemIdentifier {
   [self createSnapshotForSearchResultsState];
 }
 
-- (void)updateTableViewBackgroundStyle:(AtMemoryBackgroundStyle)style {
-  _backgroundStyle = style;
-  switch (style) {
-    case AtMemoryBackgroundStyle::kEmptyStyle:
-      [self setEmptyTableViewBackground];
-      break;
-    case AtMemoryBackgroundStyle::kDefaultStyle:
-      self.tableView.backgroundView = nil;
-      break;
-  }
-}
-
 #pragma mark - Private
 
 // Creates the `snapshot` for the initial state.
 - (void)createSnapshotForInitialState {
-  [self updateTableViewBackgroundStyle:_backgroundStyle];
-
   NSDiffableDataSourceSnapshot* snapshot =
       [[NSDiffableDataSourceSnapshot alloc] init];
 
@@ -319,6 +305,7 @@ enum class ItemIdentifier {
   }
 
   [_dataSource applySnapshot:snapshot animatingDifferences:YES];
+  [self updateTableViewBackgroundStyle];
 }
 
 // Creates the `snapshot` for the error states.
@@ -354,11 +341,11 @@ enum class ItemIdentifier {
   [self appendNoticeSectionToSnapshot:snapshot];
 
   [_dataSource applySnapshot:snapshot animatingDifferences:YES];
+  [self updateTableViewBackgroundStyle];
 }
 
 // Creates the diffable data source snapshot for the search state.
 - (void)createSnapshotForSearchState {
-  self.tableView.backgroundView = nil;
   NSDiffableDataSourceSnapshot* snapshot =
       [[NSDiffableDataSourceSnapshot alloc] init];
   [snapshot appendSectionsWithIdentifiers:@[
@@ -374,6 +361,7 @@ enum class ItemIdentifier {
 
   [self appendNoticeSectionToSnapshot:snapshot];
   [_dataSource applySnapshot:snapshot animatingDifferences:YES];
+  [self updateTableViewBackgroundStyle];
 }
 
 // Populates `snapshot` for the fetching state.
@@ -392,6 +380,7 @@ enum class ItemIdentifier {
 
   [self appendNoticeSectionToSnapshot:snapshot];
   [_dataSource applySnapshot:snapshot animatingDifferences:YES];
+  [self updateTableViewBackgroundStyle];
 }
 
 // Populates `snapshot` for the search results state.
@@ -408,6 +397,7 @@ enum class ItemIdentifier {
                  @(static_cast<int>(SectionIdentifier::kSearchResultsSection))];
 
   [_dataSource applySnapshot:snapshot animatingDifferences:YES];
+  [self updateTableViewBackgroundStyle];
 }
 
 // Appends the notice section and item to `snapshot` if the notice is visible.
@@ -422,6 +412,19 @@ enum class ItemIdentifier {
                                            ItemIdentifier::kNoticeItem)) ]
              intoSectionWithIdentifier:@(static_cast<int>(
                                            SectionIdentifier::kNoticeSection))];
+}
+
+// Displays the empty state background if the table view has no data to display.
+- (void)updateTableViewBackgroundStyle {
+  if (!_dataSource) {
+    return;
+  }
+
+  if (_dataSource.snapshot.sectionIdentifiers.count == 0) {
+    [self setEmptyTableViewBackground];
+    return;
+  }
+  self.tableView.backgroundView = nil;
 }
 
 // Sets the table view background to the empty state.
@@ -481,9 +484,15 @@ enum class ItemIdentifier {
                                     (AtMemorySearchItem*)itemIdentifier {
   TableViewCellContentConfiguration* configuration =
       [[TableViewCellContentConfiguration alloc] init];
+
   configuration.title = itemIdentifier.title;
+  configuration.titleNumberOfLines = 2;
+  configuration.titleLineBreakMode = NSLineBreakByTruncatingTail;
   configuration.titleColor = [UIColor colorNamed:kTextPrimaryColor];
+
   configuration.subtitle = itemIdentifier.subtitle;
+  configuration.subtitleNumberOfLines = 1;
+  configuration.subtitleLineBreakMode = NSLineBreakByTruncatingTail;
 
   if (itemIdentifier.icon) {
     ColorfulSymbolContentConfiguration* symbolConfiguration =

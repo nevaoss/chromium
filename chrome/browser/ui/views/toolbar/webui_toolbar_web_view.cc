@@ -297,6 +297,11 @@ class WebUIToolbarInternalWebView : public views::WebView {
     return true;
   }
 
+  void OnBlur() override {
+    views::WebView::OnBlur();
+    webui_toolbar_web_view_->OnBlur();
+  }
+
   std::optional<GURL> ConsumeDroppedUrl(const gfx::PointF& point) {
     std::optional<GURL> url;
     if (GetLocalBounds().Contains(gfx::ToRoundedPoint(point)) &&
@@ -382,7 +387,7 @@ WebUIToolbarWebView::WebUIToolbarWebView(
                   /*label=*/std::u16string(),
                   /*description=*/std::u16string()),
               /*is_clickable=*/false, /*is_text_dangerous=*/false,
-              /*is_visible=*/true),
+              /*is_visible=*/true, /*is_context_menu_visible=*/false),
           /*activity_indicators=*/
           std::vector<toolbar_ui_api::mojom::ContentSettingImageStatePtr>(),
           /*permission_dashboard=*/nullptr);
@@ -464,6 +469,9 @@ WebUIToolbarWebView::WebUIToolbarWebView(
 }
 
 WebUIToolbarWebView::~WebUIToolbarWebView() {
+  if (auto* ui = GetWebUIToolbarUI()) {
+    ui->DependenciesDestroying();
+  }
   if (web_contents()) {
     web_contents()->RemoveUserData(
         WebUIToolbarUIDependencyProviderUserData::UserDataKey());
@@ -563,6 +571,13 @@ void WebUIToolbarWebView::PreferredSizeChanged() {
   // Overflow state of buttons needs to be recomputed.
   UpdateButtonOverflowState();
   View::PreferredSizeChanged();
+}
+
+void WebUIToolbarWebView::OnBlur() {
+  View::OnBlur();
+  if (location_bar_) {
+    location_bar_->OnBlur();
+  }
 }
 
 void WebUIToolbarWebView::HandleContextMenu(
@@ -964,6 +979,10 @@ WebUIToolbarWebView::GetIconTableFetcher() {
 
 CommandUpdater* WebUIToolbarWebView::GetCommandUpdater() {
   return browser_->GetFeatures().browser_command_controller();
+}
+
+OmniboxController* WebUIToolbarWebView::GetOmniboxController() {
+  return location_bar_ ? location_bar_->GetOmniboxController() : nullptr;
 }
 
 toolbar_ui_api::mojom::NavigationControlsStatePtr
@@ -1460,9 +1479,10 @@ void WebUIToolbarWebView::OnLocationBarFocusWithinChanged(bool focused) {
 }
 
 void WebUIToolbarWebView::OnLhsChipMousePressed(
-    toolbar_ui_api::mojom::LhsChipIdentifier identifier) {
+    toolbar_ui_api::mojom::LhsChipIdentifier identifier,
+    bool is_middle_click) {
   if (location_bar_) {
-    location_bar_->OnLhsChipMousePressed(identifier);
+    location_bar_->OnLhsChipMousePressed(identifier, is_middle_click);
   }
 }
 

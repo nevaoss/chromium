@@ -2101,7 +2101,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Enterprise.Dlp.ConfidentialContentsCount" units="entries"
-    expires_after="2026-12-20">
+    expires_after="2027-02-21">
   <owner>aidazolic@chromium.org</owner>
   <owner>chromeos-dlp@google.com</owner>
   <summary>
@@ -3395,7 +3395,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Enterprise.MachineLevelUserCloudPolicyEnrollment.DMTokenDeletion"
-    enum="BooleanSuccess" expires_after="2026-10-01">
+    enum="BooleanSuccess" expires_after="2027-02-21">
   <owner>igorruvinov@chromium.org</owner>
   <owner>zmin@chromium.org</owner>
   <summary>
@@ -4240,6 +4240,16 @@ chromium-metrics-reviews@google.com.
     Records when the Enterprise Signals Disclaimer modal dialog is shown on
     browser startup for managed profiles missing device signals collection
     consent.
+  </summary>
+</histogram>
+
+<histogram name="Enterprise.SignalsDisclaimer.NotShownReason"
+    enum="EnterpriseSignalsDisclaimerNotShownReason" expires_after="2027-04-01">
+  <owner>ssolarewicz@chromium.org</owner>
+  <owner>cec-growth@google.com</owner>
+  <summary>
+    Records the reason why the Enterprise Signals Disclaimer modal dialog was
+    not shown on browser activation.
   </summary>
 </histogram>
 
@@ -5130,7 +5140,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Enterprise.{UploadEvent}.Throttled" enum="BooleanHit"
-    expires_after="2026-10-04">
+    expires_after="2027-10-04">
   <owner>alxchn@chromium.org</owner>
   <owner>cbe-cep-eng@google.com</owner>
   <summary>

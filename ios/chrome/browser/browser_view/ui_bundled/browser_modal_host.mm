@@ -656,11 +656,6 @@ const char kChromeAppStoreUrl[] =
                              browser:_browser
                               params:params
                             delegate:self.passwordControllerDelegate];
-  // TODO(crbug.com/544600794): don't pass the handler. Get it from the
-  // coordinator.
-  _credentialSuggestionBottomSheetCoordinator
-      .browserCoordinatorCommandsHandler =
-      HandlerForProtocol(self.dispatcher, BrowserCoordinatorCommands);
   [_credentialSuggestionBottomSheetCoordinator start];
 }
 
@@ -1291,11 +1286,6 @@ const char kChromeAppStoreUrl[] =
                              browser:_browser
                          requestInfo:std::move(requestInfo)
                             delegate:self.passwordControllerDelegate];
-  // TODO(crbug.com/544600794): don't pass the handler. Get it from the
-  // coordinator.
-  _credentialSuggestionBottomSheetCoordinator
-      .browserCoordinatorCommandsHandler =
-      HandlerForProtocol(self.dispatcher, BrowserCoordinatorCommands);
   [_credentialSuggestionBottomSheetCoordinator start];
 }
 
@@ -1334,11 +1324,6 @@ const char kChromeAppStoreUrl[] =
           initWithBaseViewController:_baseViewController
                              browser:_browser
                             callback:std::move(callback)];
-
-  // TODO(crbug.com/544594469): don't pass the handler. Get it from the
-  // coordinator.
-  _passkeyIncognitoCoordinator.passkeyClientHandler =
-      HandlerForProtocol(self.dispatcher, IOSPasskeyClientCommands);
 
   [_passkeyIncognitoCoordinator start];
 }

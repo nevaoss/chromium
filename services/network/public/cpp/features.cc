@@ -490,8 +490,10 @@ BASE_FEATURE_PARAM(bool,
                    "url_loader",
                    true);
 
+// TODO(crbug.com/549684526): Enable this universally across all platforms as
+// there is no reason to keep the disabled behavior.
 BASE_FEATURE(kUseUnexportableKeyServiceInBrowserProcess,
-#if BUILDFLAG(IS_WIN)
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
              base::FEATURE_ENABLED_BY_DEFAULT
 #else
              base::FEATURE_DISABLED_BY_DEFAULT
@@ -534,7 +536,7 @@ BASE_FEATURE_PARAM(int,
                    kDurableMessagesGlobalBufferSize,
                    &kDurableMessages,
                    /*name=*/"max_global_buffer_size",
-                   /*default_value=*/base::MiBU(350).InBytes());
+                   /*default_value=*/base::MiB(350).InBytes());
 
 BASE_FEATURE(kReportingApiEnableVariationsHeaders,
              base::FEATURE_ENABLED_BY_DEFAULT);

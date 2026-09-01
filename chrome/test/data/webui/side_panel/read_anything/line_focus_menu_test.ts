@@ -5,18 +5,19 @@
 import 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
 
 import type {LineFocusMenuElement} from 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
-import {LineFocusMovement, LineFocusStyle, ReadAnythingSettingsChange, ToolbarEvent} from 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
+import {LINE_FOCUS_FEATURE_NAME, LineFocusMovement, LineFocusStyle, ReadAnythingSettingsChange, ToolbarEvent, userEducationProxyFactory} from 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
 import {loadTimeData} from 'chrome-untrusted://resources/js/load_time_data.js';
-import {assertEquals, assertFalse, assertTrue} from 'chrome-untrusted://webui-test/chai_assert.js';
+import {assertDeepEquals, assertEquals, assertFalse, assertTrue} from 'chrome-untrusted://webui-test/chai_assert.js';
 import {microtasksFinished} from 'chrome-untrusted://webui-test/test_util.js';
 
 import {assertCheckMarksForDropdown, assertTestSettingsAreNotDefaultSettings, mockMetrics, stubAnimationFrame} from './common.js';
-import {FakeReadingMode} from './fake_reading_mode.js';
 import type {TestMetricsBrowserProxy} from './test_metrics_browser_proxy.js';
+import {TestUserEducationBrowserProxy} from './test_user_education_browser_proxy.js';
 
 suite('LineFocusMenuElement', () => {
   let lineFocusMenu: LineFocusMenuElement;
   let metrics: TestMetricsBrowserProxy;
+  let userEducationProxy: TestUserEducationBrowserProxy;
 
   suiteSetup(() => {
     assertTestSettingsAreNotDefaultSettings();
@@ -25,9 +26,9 @@ suite('LineFocusMenuElement', () => {
   setup(() => {
     // Clearing the DOM should always be done first.
     document.body.innerHTML = window.trustedTypes!.emptyHTML;
-    const readingMode = new FakeReadingMode();
-    chrome.readingMode = readingMode as unknown as typeof chrome.readingMode;
     metrics = mockMetrics();
+    userEducationProxy = new TestUserEducationBrowserProxy();
+    userEducationProxyFactory.setInstance(userEducationProxy);
 
     lineFocusMenu = document.createElement('line-focus-menu');
     document.body.appendChild(lineFocusMenu);
@@ -44,18 +45,18 @@ suite('LineFocusMenuElement', () => {
   });
 
   test('notifies of feature use if enabled on close', async () => {
-    let featureUsed = false;
-    chrome.readingMode.onLineFocusFeatureUsed = () => {
-      featureUsed = true;
-    };
-
     lineFocusMenu.close();
-    assertFalse(featureUsed);
+    assertEquals(
+        0, userEducationProxy.getCallCount('notifyNewBadgeFeatureUsed'));
 
     lineFocusMenu.lineFocusEnabled = true;
     await microtasksFinished();
     lineFocusMenu.close();
-    assertTrue(featureUsed);
+    assertEquals(
+        1, userEducationProxy.getCallCount('notifyNewBadgeFeatureUsed'));
+    assertDeepEquals(
+        [LINE_FOCUS_FEATURE_NAME],
+        userEducationProxy.getArgs('notifyNewBadgeFeatureUsed'));
   });
 
   test('line focus style prop update changes selected items', async () => {

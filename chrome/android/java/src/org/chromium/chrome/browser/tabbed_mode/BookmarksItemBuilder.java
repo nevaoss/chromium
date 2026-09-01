@@ -4,6 +4,8 @@
 
 package org.chromium.chrome.browser.tabbed_mode;
 
+import static org.chromium.chrome.browser.bookmarks.R.dimen.bookmarks_bar_context_menu_end_icon_padding;
+
 import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.Color;
@@ -163,10 +165,12 @@ public class BookmarksItemBuilder implements Destroyable {
                                     AppMenuHandler.AppMenuItemType.DIVIDER,
                                     AppMenuItemUtils.buildModelForDivider(R.id.divider_line_id)));
 
-                    if (ChromeFeatureList.sBookmarksBarNTP.isEnabled()) {
-                        submenuItems.add(buildBookmarkBarVisibilityParentItem());
-                    } else {
-                        submenuItems.add(buildToggleBookmarksBarItem());
+                    if (BookmarkBarUtils.isDeviceBookmarkBarCompatible(mContext)) {
+                        if (ChromeFeatureList.sBookmarksBarNTP.isEnabled()) {
+                            submenuItems.add(buildBookmarkBarVisibilityParentItem());
+                        } else {
+                            submenuItems.add(buildToggleBookmarksBarItem());
+                        }
                     }
 
                     // TODO(crbug.com/521223427): Implement dynamic updates so that we don't
@@ -426,17 +430,18 @@ public class BookmarksItemBuilder implements Destroyable {
                     items.add(
                             buildBookmarkBarStateItem(
                                     R.id.bookmark_bar_state_always_hide_menu_id,
-                                    R.string.bookmark_bar_setting_always_hide,
+                                    R.string.menu_bookmark_bar_setting_always_hide,
                                     visibilityState == BookmarkBarVisibilityState.ALWAYS_HIDE));
                     items.add(
                             buildBookmarkBarStateItem(
                                     R.id.bookmark_bar_state_always_show_menu_id,
-                                    R.string.bookmark_bar_setting_always_show,
+                                    R.string.menu_bookmark_bar_setting_always_show,
                                     visibilityState == BookmarkBarVisibilityState.ALWAYS_SHOW));
                     items.add(
                             buildBookmarkBarStateItem(
                                     R.id.bookmark_bar_state_only_ntp_menu_id,
-                                    R.string.bookmark_bar_setting_only_show_bookmarks_bar_on_ntp,
+                                    R.string
+                                            .menu_bookmark_bar_setting_only_show_bookmarks_bar_on_ntp,
                                     visibilityState
                                             == BookmarkBarVisibilityState.ONLY_SHOW_ON_NTP));
                     return items;
@@ -456,18 +461,29 @@ public class BookmarksItemBuilder implements Destroyable {
 
     private ListItem buildBookmarkBarStateItem(
             @IdRes int id, @StringRes int titleRes, boolean isSelected) {
+        int iconMarginStartPx =
+                mContext.getResources()
+                        .getDimensionPixelSize(bookmarks_bar_context_menu_end_icon_padding);
         PropertyModel model =
                 AppMenuItemUtils.buildModelForStandardMenuItem(
                         mContext,
                         mAppMenuItemTheme,
                         id,
                         titleRes,
-                        isSelected ? R.drawable.material_ic_check_24dp : Resources.ID_NULL,
+                        Resources.ID_NULL,
                         mIsMenuIconAtStart);
-        if (!isSelected) {
-            model.set(AppMenuItemProperties.ICON, new ColorDrawable(Color.TRANSPARENT));
+        model.set(AppMenuItemProperties.END_ICON_MARGIN_START, iconMarginStartPx);
+        model.set(AppMenuItemProperties.TITLE_MAX_LINES, 2);
+        if (isSelected) {
+            model.set(
+                    AppMenuItemProperties.END_ICON,
+                    AppCompatResources.getDrawable(mContext, R.drawable.material_ic_check_24dp));
+        } else {
+            model.set(AppMenuItemProperties.END_ICON, new ColorDrawable(Color.TRANSPARENT));
         }
-        return AppMenuItemUtils.createStandardListItem(model, /* showIcon= */ true);
+        model.set(AppMenuItemProperties.CHECKABLE, true);
+        model.set(AppMenuItemProperties.CHECKED, isSelected);
+        return AppMenuItemUtils.createStandardListItem(model, /* showIcon= */ false);
     }
 
     private ListItem buildBookmarkThisPageItem() {

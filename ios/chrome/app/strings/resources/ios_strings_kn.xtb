@@ -1294,6 +1294,7 @@
 <translation id="5238596603078743134"><ph name="BEGIN_BOLD" /><ph name="USERNAME" /><ph name="END_BOLD" /> ಅವರು <ph name="BEGIN_BOLD" /><ph name="WEBSITE" /><ph name="END_BOLD" /> ಗೆ ಸೈನ್ ಇನ್ ಮಾಡಲು Google Password Manager ಅನ್ನು ಬಳಸುವಾಗ, ಅವರು ನಿಮ್ಮ ಬಳಕೆದಾರರ ಹೆಸರು ಮತ್ತು ಪಾಸ್‌ವರ್ಡ್ ಅನ್ನು ಬಳಸಬಹುದು.</translation>
 <translation id="5241106044372754566"><ph name="NAME" />, <ph name="EMAIL" />, ಪ್ರಸ್ತುತ ಆಯ್ಕೆ ಮಾಡಲಾದ ನಿಮ್ಮ ಸಂಸ್ಥೆಯಿಂದ ನಿರ್ವಹಿಸಲ್ಪಡುತ್ತದೆ. ಖಾತೆಯೊಂದನ್ನು ಆಯ್ಕೆಮಾಡಿ.</translation>
 <translation id="5242899254250321823">ವೆಬ್‌ಸೈಟ್‌ನಲ್ಲಿ ಪಾಸ್‌ವರ್ಡ್‌ ಅನ್ನು ಬದಲಾಯಿಸಿ</translation>
+<translation id="524751727772074981">ನೀವು ಎಲ್ಲಿದ್ದರೂ, Chrome ನಲ್ಲಿ Gemini ಮೂಲಕ ಏನನ್ನಾದರೂ ಕೇಳಿ</translation>
 <translation id="5248640482715684545">ಈ ಸೈಟ್ ಇನ್ನೊಂದು ಆ್ಯಪ್‌ ತೆರೆಯಲು ಪ್ರಯತ್ನಿಸುತ್ತಿದೆ.</translation>
 <translation id="5250371859659394278">ಅಜ್ಞಾತ ಮೂಲಗಳಿಂದ</translation>
 <translation id="525510229763628836">ಮಿನಿಮೈಸ್ ಮಾಡಲಾಗಿದೆ</translation>
@@ -1310,6 +1311,7 @@
 <translation id="5300589172476337783">ತೋರಿಸಿ</translation>
 <translation id="5311061401280561833">ಕ್ಯಾಮರಾ ಮತ್ತು ಮೈಕ್ರೊಫೋನ್ ಆ್ಯಕ್ಸೆಸ್‌ ಅನ್ನು ಅನುಮತಿಸಲಾಗಿದೆ</translation>
 <translation id="5313967007315987356">ಸೈಟ್ ಸೇರಿಸಿ</translation>
+<translation id="5315029634103634221">Gemini ಎಂಬುದು AI ಆಗಿದ್ದು, ತಪ್ಪುಗಳನ್ನು ಮಾಡಬಹುದು. <ph name="BEGIN_LINK" />Google ಗೆ ಕಳುಹಿಸಲಾದ ಸಂಬಂಧಿತ ಡೇಟಾ ಕುರಿತು ಇನ್ನಷ್ಟು ಮಾಹಿತಿ<ph name="END_LINK" /></translation>
 <translation id="5315870524563628285">ಇಂಪೋರ್ಟ್ ಮಾಡಿಕೊಳ್ಳಲು ಏನೂ ಇಲ್ಲ</translation>
 <translation id="5316356981864168850"><ph name="NUM_SUGGESTIONS" /> ರಲ್ಲಿ <ph name="INDEX" /></translation>
 <translation id="5317780077021120954">ಸೇವ್ ಮಾಡಿ</translation>

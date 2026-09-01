@@ -961,19 +961,19 @@ For more settings that use data to improve your Chrome experience, go to <ph nam
       <message name="IDS_APPEARANCE_SETTINGS" desc="Title for Appearance settings.">
         Appearance
       </message>
-      <message name="IDS_BOOKMARK_BAR_SETTINGS_TITLE" desc="Title for the bookmarks bar settings page." translateable="false">
-        Bookmarks Bar
+      <message name="IDS_BOOKMARK_BAR_SETTINGS_TITLE" desc="Title for the bookmarks bar settings page.">
+        Bookmarks bar
       </message>
       <message name="IDS_BOOKMARK_BAR_SETTING" desc="Title for the bookmark bar setting.">
         Show bookmarks bar
       </message>
-      <message name="IDS_BOOKMARK_BAR_SETTING_ALWAYS_SHOW" desc="Title for option to always show the bookmark bar." translateable="false">
+      <message name="IDS_BOOKMARK_BAR_SETTING_ALWAYS_SHOW" desc="Title for option to always show the bookmark bar.">
         Always show
       </message>
-      <message name="IDS_BOOKMARK_BAR_SETTING_ONLY_SHOW_BOOKMARKS_BAR_ON_NTP" desc="Title for option to only show the bookmark bar on the new tab page." translateable="false">
-        Only Show on New Tab Page
+      <message name="IDS_BOOKMARK_BAR_SETTING_ONLY_SHOW_BOOKMARKS_BAR_ON_NTP" desc="Title for option to only show the bookmark bar on the new tab page.">
+        Only show on New Tab Page
       </message>
-      <message name="IDS_BOOKMARK_BAR_SETTING_ALWAYS_HIDE" desc="Title for option to always hide the bookmark bar." translateable="false">
+      <message name="IDS_BOOKMARK_BAR_SETTING_ALWAYS_HIDE" desc="Title for option to always hide the bookmark bar.">
         Always hide
       </message>
       <message name="IDS_BOOKMARK_BAR_SETTING_SUBTITLE" desc="Subtitle hint for the bookmark bar setting.">
@@ -2252,7 +2252,10 @@ Your Google account may have other forms of browsing history like searches and a
         Some data isn\u2019t saved yet
       </message>
       <message name="IDS_SIGN_OUT_UNSAVED_DATA_MESSAGE" desc="Body of a dialog shown to users when they sign out of Chrome but Chrome hasn't synced some data yet, which is permanently deleted if the user proceeds.">
-        Some of your Chrome data hasn\u2019t been saved in your Google Account yet. Try waiting a few minutes before signing out.\n\nIf you sign out now, this data will be deleted.
+        Some of your Chrome data hasn\u2019t been saved in your Google Account yet. Try waiting a few minutes before signing out. If you sign out now, the unsaved data will be deleted.
+      </message>
+      <message name="IDS_SIGN_OUT_UNSAVED_DATA_MESSAGE_WITH_CHECKBOX" desc="Body of a dialog shown to users when they sign out of Chrome but Chrome hasn't synced some data yet, which is permanently deleted if the user proceeds. Additionally informs users that they can delete other data by selecting the checkboxes that follow this message.">
+        \n\nYou can also remove this data from this device:
       </message>
       <message name="IDS_SIGN_OUT_TITLE" desc="The text is displayed as the title of a dialog to confirm if the user wants to sign out of Chrome. The user can cancel and stay signed in, or confirm and sign out.">
         Sign out of Chrome?
@@ -2264,10 +2267,16 @@ Your Google account may have other forms of browsing history like searches and a
         Remove extensions and delete the data that they saved on this device
       </message>
       <message name="IDS_SIGN_OUT_REMOVE_EXTENSIONS_CHECKBOX_SUBTITLE" desc="Checkbox subtitle text in the sign-out dialog allowing users to remove extensions associated with their signed in account from this device. Explains what data will be deleted.">
-        Your extensions are saved in your Google Account, but any data they\u2019ve saved only on this device may be deleted.
+        Your extensions are saved in your Google Account, but any data they\u2019ve saved only on this device may be deleted
       </message>
       <message name="IDS_SIGN_OUT_UNSAVED_DATA_PRIMARY_BUTTON" desc="Button title of a dialog shown to users when they sign out of Chrome but Chrome hasn't synced some data yet, which is permanently deleted if the user proceeds by pressing this button">
         Delete and sign out
+      </message>
+      <message name="IDS_SIGN_OUT_DELETE_BROWSING_DATA_CHECKBOX_TITLE" desc="Checkbox title in the sign-out dialog allowing users to delete browsing data from this device.">
+        Delete browsing data from this device
+      </message>
+      <message name="IDS_SIGN_OUT_DELETE_BROWSING_DATA_CHECKBOX_SUBTITLE" desc="Checkbox subtitle in the sign-out dialog explaining what browsing data is.">
+        Browsing data includes your browsing history, cookies and other site data, cached images and files, and open tabs
       </message>
 
       <!-- Sync strings -->
@@ -2347,7 +2356,7 @@ Your Google account may have other forms of browsing history like searches and a
         Open new Incognito window
       </message>
       <message name="IDS_ACCOUNT_SETTINGS_SWITCH_TO_INCOGNITO_SUMMARY" desc="Summary description for the Switch to Incognito preference in settings. Informs the user that it will open a new incognito window and offers a 'Learn more' link.">
-        Others who use this device won't see your activity, so you can browse more privately. <ph name="BEGIN_LINK">&lt;link&gt;</ph>Learn more<ph name="END_LINK">&lt;/link&gt;</ph>
+        When you're browsing in Incognito, others who use this device won't see your activity, so you can browse more privately. <ph name="BEGIN_LINK">&lt;link&gt;</ph>Learn more<ph name="END_LINK">&lt;/link&gt;</ph>
       </message>
       <message name="IDS_SYNC_ENCRYPTION" desc="Preference category name for sync encryption. [CHAR_LIMIT=32]">
         Encryption
@@ -2728,6 +2737,15 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       <message name="IDS_MENU_BACK_BUTTON_IPH_TEXT" desc="Message on the generic text buble to educate users on the menu back button">
         Open the menu to go back
       </message>
+      <message name="IDS_MENU_BOOKMARK_BAR_SETTING_ALWAYS_SHOW" desc="App menu flyout option to always show the bookmark bar.">
+        Always show
+      </message>
+      <message name="IDS_MENU_BOOKMARK_BAR_SETTING_ONLY_SHOW_BOOKMARKS_BAR_ON_NTP" desc="App menu flyout option to only show the bookmark bar on the new tab page.">
+        Only show on New Tab Page
+      </message>
+      <message name="IDS_MENU_BOOKMARK_BAR_SETTING_ALWAYS_HIDE" desc="App menu flyout option to always hide the bookmark bar.">
+        Always hide
+      </message>
       <message name="IDS_ACCESSIBILITY_MENU_SHARE_VIA" desc="Content description share current page via the most recently used application menu item">
         Share via <ph name="APPLICATION">%s<ex>Gmail</ex></ph>
       </message>
@@ -3028,9 +3046,7 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       </message>
 
       <!-- Add to Home screen strings -->
-      <message name="IDS_MENU_OPEN_WEBAPK" desc="Menu item for opening the installed WebAPK associated with the current PWA. [CHAR_LIMIT=27]">
-        Open <ph name="WEBAPK_NAME">%1$s<ex>Telegram</ex></ph>
-      </message>
+
       <message name="IDS_OPEN_WEBAPK_FAILED" desc="Opening of a WebAPK failed.">
         Could not open app
       </message>
@@ -4315,13 +4331,13 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       <message name="IDS_CONTEXTMENU_SHOW_BOOKMARKS_BAR" desc="Menu item for showing the bookmarks bar. [CHAR_LIMIT=27]">
         Show bookmarks bar
       </message>
-      <message name="IDS_CONTEXTMENU_ALWAYS_HIDE_BOOKMARKS_BAR" desc="Menu item for always hiding the bookmarks bar. [CHAR_LIMIT=27]" translateable="false">
+      <message name="IDS_CONTEXTMENU_ALWAYS_HIDE_BOOKMARKS_BAR" desc="Menu item for always hiding the bookmarks bar. [CHAR_LIMIT=27]">
         Always hide
       </message>
-      <message name="IDS_CONTEXTMENU_ALWAYS_SHOW_BOOKMARKS_BAR" desc="Menu item for always showing the bookmarks bar. [CHAR_LIMIT=27]" translateable="false">
+      <message name="IDS_CONTEXTMENU_ALWAYS_SHOW_BOOKMARKS_BAR" desc="Menu item for always showing the bookmarks bar. [CHAR_LIMIT=27]">
         Always show
       </message>
-      <message name="IDS_CONTEXTMENU_ONLY_SHOW_BOOKMARKS_BAR_ON_NTP" desc="Menu item for only showing the bookmarks bar on the new tab page. [CHAR_LIMIT=27]" translateable="false">
+      <message name="IDS_CONTEXTMENU_ONLY_SHOW_BOOKMARKS_BAR_ON_NTP" desc="Menu item for only showing the bookmarks bar on the new tab page. [CHAR_LIMIT=27]">
         Only show on New Tab Page
       </message>
       <message name="IDS_CONTEXTMENU_EDIT_BOOKMARK_ELLIPSIS" desc="Menu item for editing a bookmark from the context menu. [CHAR_LIMIT=27]">
@@ -5033,6 +5049,18 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       </message>
       <message name="IDS_PDF_FIT_WIDTH" desc="Menu option to fit the PDF page width to the screen.">
         Fit to width
+      </message>
+      <message name="IDS_PDF_UNSAVED_CHANGES_DIALOG_RELOAD_TITLE" desc="Title for the dialog shown when a user tries to reload a PDF page with unsaved changes.">
+        Reload site?
+      </message>
+      <message name="IDS_PDF_UNSAVED_CHANGES_DIALOG_MESSAGE" desc="Message of the dialog shown when leaving or reloading a PDF document with unsaved changes.">
+        Changes you made may not be saved.
+      </message>
+      <message name="IDS_PDF_UNSAVED_CHANGES_DIALOG_CANCEL_BUTTON" desc="Button text to cancel leaving or reloading the PDF document with unsaved changes.">
+        Cancel
+      </message>
+      <message name="IDS_PDF_UNSAVED_CHANGES_DIALOG_RELOAD_BUTTON" desc="Button text for the dialog to confirm reloading the PDF document.">
+        Reload
       </message>
       <message name="IDS_PDF_CANNOT_EDIT_PDF" desc="Toast message shown when a PDF document cannot be edited.">
         Cannot edit PDF
@@ -5796,6 +5824,20 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
         Connect
       </message>
       <message name="IDS_SERIAL_CHOOSER_DIALOG_FOOTNOTE_TEXT" desc="This text is shown at the bottom of the serial chooser dialog with a link to part of its text.">
+        <ph name="BEGIN_LINK">&lt;link&gt;</ph>Get help<ph name="END_LINK">&lt;/link&gt;</ph>
+      </message>
+
+      <!-- WebHID device chooser strings -->
+      <message name="IDS_HID_CHOOSER_DIALOG_PROMPT" desc="The label that is used to introduce HID device chooser details to the user in a popup.">
+        <ph name="SITE">%1$s<ex>https://www.google.com</ex></ph> wants to connect
+      </message>
+      <message name="IDS_HID_CHOOSER_DIALOG_NO_DEVICES_FOUND_PROMPT" desc="The label shown to the user to inform them that no HID devices were found matching the requirements that the application provided.">
+        No compatible devices found
+      </message>
+      <message name="IDS_HID_CHOOSER_DIALOG_CONNECT_BUTTON_TEXT" desc="Label on the button that closes the HID device chooser popup and allows the requesting site access to the selected device.">
+        Connect
+      </message>
+      <message name="IDS_HID_CHOOSER_DIALOG_FOOTNOTE_TEXT" desc="This text is shown at the bottom of the HID chooser dialog with a link to part of its text.">
         <ph name="BEGIN_LINK">&lt;link&gt;</ph>Get help<ph name="END_LINK">&lt;/link&gt;</ph>
       </message>
 
@@ -7888,46 +7930,46 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       </message>
 
       <!-- Immersive Playback Confirmation strings -->
-      <message name="IDS_IMMERSIVE_PLAYBACK_CONFIRMATION_MESSAGE" desc="Message in the snackbar asking the user if they want to view the video in immersive mode." translateable="false">
-        View this video in immersive mode?
+      <message name="IDS_IMMERSIVE_PLAYBACK_CONFIRMATION_MESSAGE" desc="Message in the snackbar asking the user if they want to view the video in immersive mode.">
+        Watch with immersive playback?
       </message>
-      <message name="IDS_IMMERSIVE_PLAYBACK_CONFIRMATION_YES" desc="Text for the positive button in the snackbar to proceed to format selection." translateable="false">
+      <message name="IDS_IMMERSIVE_PLAYBACK_CONFIRMATION_YES" desc="Text for the positive button in the snackbar to proceed to format selection.">
         Yes
       </message>
-      <message name="IDS_IMMERSIVE_PLAYBACK_CONFIRMATION_FORMAT_TITLE" desc="Title of the dialog for selecting immersive playback format." translateable="false">
-        Format
+      <message name="IDS_IMMERSIVE_PLAYBACK_CONFIRMATION_FORMAT_TITLE" desc="Title of the dialog for selecting immersive playback format.">
+        Immersive format
       </message>
-      <message name="IDS_IMMERSIVE_PLAYBACK_CONFIRMATION_OPTION_RECOMMENDED" desc="Option for detected custom projection in the immersive playback confirmation dialog." translateable="false">
+      <message name="IDS_IMMERSIVE_PLAYBACK_CONFIRMATION_OPTION_RECOMMENDED" desc="Option for detected custom projection in the immersive playback confirmation dialog.">
         Detected
       </message>
-      <message name="IDS_IMMERSIVE_PLAYBACK_FORMAT_STANDARD" desc="Standard immersive playback format description." translateable="false">
+      <message name="IDS_IMMERSIVE_PLAYBACK_FORMAT_STANDARD" desc="Standard immersive playback format description.">
         Standard
       </message>
-      <message name="IDS_IMMERSIVE_PLAYBACK_FORMAT_STEREOSCOPIC" desc="Stereoscopic immersive playback format description." translateable="false">
+      <message name="IDS_IMMERSIVE_PLAYBACK_FORMAT_STEREOSCOPIC" desc="Stereoscopic immersive playback format description.">
         Stereoscopic
       </message>
-      <message name="IDS_IMMERSIVE_PLAYBACK_FORMAT_360" desc="360° immersive playback format description." translateable="false">
+      <message name="IDS_IMMERSIVE_PLAYBACK_FORMAT_360" desc="360° immersive playback format description.">
         360°
       </message>
-      <message name="IDS_IMMERSIVE_PLAYBACK_FORMAT_360_STEREOSCOPIC" desc="360° stereoscopic immersive playback format description." translateable="false">
+      <message name="IDS_IMMERSIVE_PLAYBACK_FORMAT_360_STEREOSCOPIC" desc="360° stereoscopic immersive playback format description.">
         360° Stereoscopic
       </message>
-      <message name="IDS_IMMERSIVE_PLAYBACK_FORMAT_180" desc="180° immersive playback format description." translateable="false">
+      <message name="IDS_IMMERSIVE_PLAYBACK_FORMAT_180" desc="180° immersive playback format description.">
         180°
       </message>
-      <message name="IDS_IMMERSIVE_PLAYBACK_FORMAT_180_STEREOSCOPIC" desc="180° stereoscopic immersive playback format description." translateable="false">
+      <message name="IDS_IMMERSIVE_PLAYBACK_FORMAT_180_STEREOSCOPIC" desc="180° stereoscopic immersive playback format description.">
         180° Stereoscopic
       </message>
-      <message name="IDS_IMMERSIVE_PLAYBACK_CONFIRMATION_OK" desc="Text for the positive button in the format selection dialog." translateable="false">
+      <message name="IDS_IMMERSIVE_PLAYBACK_CONFIRMATION_OK" desc="Text for the positive button in the format selection dialog.">
         OK
       </message>
-      <message name="IDS_IMMERSIVE_PLAYBACK_CONFIRMATION_CANCEL" desc="Text for the negative button in the format selection dialog." translateable="false">
+      <message name="IDS_IMMERSIVE_PLAYBACK_CONFIRMATION_CANCEL" desc="Text for the negative button in the format selection dialog.">
         Cancel
       </message>
-      <message name="IDS_ACCESSIBILITY_IMMERSIVE_VIDEO_FORMAT" desc="Content description for a button that opens the format selection popup in immersive video playback." translateable="false">
+      <message name="IDS_ACCESSIBILITY_IMMERSIVE_VIDEO_FORMAT" desc="Content description for a button that opens the format selection popup in immersive video playback.">
         Select video format
       </message>
-      <message name="IDS_ACCESSIBILITY_EXIT_IMMERSIVE_PLAYBACK" desc="Content description for a button that exits immersive video playback." translateable="false">
+      <message name="IDS_ACCESSIBILITY_EXIT_IMMERSIVE_PLAYBACK" desc="Content description for a button that exits immersive video playback.">
         Exit immersive playback
       </message>
 

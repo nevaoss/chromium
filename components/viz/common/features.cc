@@ -65,6 +65,33 @@ BASE_FEATURE(kUseDrmBlackFullscreenOptimization,
 #if BUILDFLAG(IS_ANDROID)
 BASE_FEATURE(kUseFrameIntervalDeciderAdaptiveFrameRate,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+// If enabled, `ExternalBeginFrameSourceAndroid::AChoreographerImpl` derives a
+// VSync interval from the frame timelines that the OS provided via the callback
+// registered through `AChoreographer_postVsyncCallback` (as long as the OS
+// provided at least two timelines) and populates
+// `BeginFrameArgs::deadline_derived_interval`. `AChoreographerImpl` might snap
+// this timeline-derived interval to the closest display-supported interval in
+// `Display.getSupportedRefreshRates()` depending on
+// `kCalculateDeadlineDerivedIntervalSnapToleranceParam`.
+BASE_FEATURE(kCalculateDeadlineDerivedInterval,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Specifies how far `ExternalBeginFrameSourceAndroid::AChoreographerImpl` can
+// snap from the timeline-derived VSync interval to a display-supported VSync
+// interval, as a fraction of the timeline-derived VSync interval (e.g. 0.1
+// means 10%). Given a timeline-derived interval TDI, display-supported interval
+// DSI and snap tolerance ST, `AChoreographerImpl` will snap TDI to DSI if:
+//
+// `|TDI - DSI| <= ST * TDI`
+//
+// If this parameter is zero (`ST = 0`), `AChoreographerImpl` won't snap at all.
+const base::FeatureParam<double>
+    kCalculateDeadlineDerivedIntervalSnapToleranceParam = {
+        &kCalculateDeadlineDerivedInterval,
+        "snap_tolerance",
+        0.0,
+};
 #endif
 
 BASE_FEATURE(kUseMultipleOverlays,
@@ -307,6 +334,11 @@ BASE_FEATURE(kEvictionUnlocksResources, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kSingleVideoFrameRateThrottling,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+// If enabled, FrameIntervalDecider will attempt to match mixed fixed-rate
+// content intervals (e.g. video coexisting with stepped compositor animations)
+// using a common integer multiple (LCM).
+BASE_FEATURE(kMixedFixedIntervalMatcher, base::FEATURE_DISABLED_BY_DEFAULT);
+
 // If enabled, the FrameEvictionManager scales its limit of max number of saved
 // frames dynamically based on memory pressure.
 BASE_FEATURE(kScalableFrameEviction, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -411,6 +443,10 @@ bool IsVizWithIoMessagePumpEnabled() {
 
 bool IsUsingVizFrameSubmissionForWebView() {
   return base::FeatureList::IsEnabled(kVizFrameSubmissionForWebView);
+}
+
+bool IsMixedFixedIntervalMatcherEnabled() {
+  return base::FeatureList::IsEnabled(kMixedFixedIntervalMatcher);
 }
 
 bool ShouldWebRtcLogCapturePipeline() {

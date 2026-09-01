@@ -161,6 +161,10 @@ class SupervisedUserTestEnvironment {
   // Simulators of parental controls. Instance methods use services from this
   // test environment, while static methods are suitable for heavier testing
   // profile use.
+  void EnableSupervisedAccount();
+  void DisableSupervisedAccount();
+  static void EnableSupervisedAccount(
+      signin::IdentityManager* identity_manager);
 
   // SetWebFilterType methods simulate the custodian modifying "Google Chrome
   // and Web" settings.

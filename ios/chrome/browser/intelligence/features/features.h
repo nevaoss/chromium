@@ -394,6 +394,14 @@ extern const char kGeminiContextualSuggestionsCuesAllowGpuExecutionParam[];
 // contextual suggestions cues.
 bool IsGeminiContextualSuggestionsCuesAllowGpuExecutionEnabled();
 
+// Feature parameter for using Title and URL only (matching Desktop) for
+// category classification.
+extern const char kGeminiContextualSuggestionsCuesTitleAndUrlOnlyParam[];
+
+// Returns true if category classification should only use Title and URL
+// instead of extracting APC and generating passages.
+bool IsGeminiContextualSuggestionsCuesTitleAndUrlOnlyEnabled();
+
 #pragma mark - Debugging Features
 
 // Holds the variations of the BWG Promo Consent flow for debugging.
@@ -451,10 +459,19 @@ bool IsGeminiCoordinatorTeardownFixEnabled();
 // Feature flag to enable the Gemini FRE experiment.
 BASE_DECLARE_FEATURE(kGeminiFREExperiment);
 
+// Variations of the Lightweight FRE promo title/string.
+enum class GeminiLightweightFREVariant {
+  kConvenience = 0,
+  kPageSharing = 1,
+  kDiverse = 2,
+};
+
 // Feature parameter for Gemini FRE experiment variations.
 extern const char kGeminiFREExperimentParam[];
 extern const char kGeminiFREExperimentParamVisualRich[];
-extern const char kGeminiFREExperimentParamLightweight[];
+extern const char kGeminiFREExperimentParamLightweightConvenience[];
+extern const char kGeminiFREExperimentParamLightweightPageSharing[];
+extern const char kGeminiFREExperimentParamLightweightDiverse[];
 
 // Returns true if the Gemini FRE experiment is enabled (any variation).
 bool IsGeminiFREExperimentEnabled();
@@ -462,8 +479,11 @@ bool IsGeminiFREExperimentEnabled();
 // Returns true if the Visual Rich variant is enabled.
 bool IsGeminiVisualRichFREEnabled();
 
-// Returns true if the Lightweight variant is enabled.
+// Returns true if any Lightweight variant is enabled.
 bool IsGeminiLightweightFREEnabled();
+
+// Returns the specific Lightweight variant configured for the experiment.
+GeminiLightweightFREVariant GetGeminiLightweightFREVariant();
 
 // Feature flag for Gemini Experimental Guided Onboarding.
 // Meant for experiments only.

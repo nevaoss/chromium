@@ -1783,6 +1783,17 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Android.ComposeboxQueryController.OnInputStateChangedDuration"
+    units="ms" expires_after="2027-08-21">
+  <owner>skym@chromium.org</owner>
+  <owner>chrome-mobile-search@google.com</owner>
+  <summary>
+    Records the duration to construct the Java InputState object and dispatch
+    onInputStateChanged from the C++ ComposeboxQueryControllerBridge. Recorded
+    whenever the input state changes and is pushed to Java.
+  </summary>
+</histogram>
+
 <histogram name="Android.Compositor.IsRequestingOpaqueSurface" enum="Boolean"
     expires_after="2025-04-13">
   <owner>wenyufu@chromium.org</owner>
@@ -1883,29 +1894,6 @@ chromium-metrics-reviews@google.com.
 
     This is recorded every time a metrics log is created.
   </summary>
-</histogram>
-
-<histogram name="Android.DarkTheme.AutoDarkMode.SettingsChangeSource{NewState}"
-    enum="AndroidAutoDarkModeSettingsChangeSource" expires_after="2023-04-01">
-  <owner>nemco@google.com</owner>
-  <owner>wenyufu@chromium.org</owner>
-  <owner>clank-app-team@google.com</owner>
-  <summary>
-    Source that changed the auto dark web content settings. This includes both
-    changes to global theme settings as well as individual site exceptions. This
-    histogram does not take into account whether the browser UI theme is dark or
-    not (e.g. browser theme could be &quot;light&quot; and user could still
-    change auto dark mode state in site settings). Recorded when the auto dark
-    web content settings changes including {NewState}
-  </summary>
-  <token key="NewState">
-    <variant name=".Disabled"
-        summary="default value change to Blocked, or a site exception is
-                 added."/>
-    <variant name=".Enabled"
-        summary="default value change to Allowed, or a site exception is
-                 removed."/>
-  </token>
 </histogram>
 
 <histogram name="Android.DarkTheme.EnabledState" enum="BooleanEnabled"
@@ -3440,7 +3428,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.Messages.Enqueued" enum="MessageIdentifier"
-    expires_after="2026-12-20">
+    expires_after="2027-02-21">
   <owner>aishwaryarj@google.com</owner>
   <owner>src/components/messages/OWNERS</owner>
   <summary>
@@ -3463,7 +3451,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.Messages.Enqueued.Visible" enum="MessageIdentifier"
-    expires_after="2026-12-20">
+    expires_after="2027-02-21">
   <owner>aishwaryarj@google.com</owner>
   <owner>src/components/messages/OWNERS</owner>
   <summary>
@@ -4143,6 +4131,28 @@ chromium-metrics-reviews@google.com.
     cold start. Logged once per cold start.
 
     Note: There is a recording gap between: 2026.07-2026.08.
+  </summary>
+</histogram>
+
+<histogram name="Android.Omnibox.MobileFusebox.ReanchorViews.Duration"
+    units="ms" expires_after="2027-10-01">
+  <owner>skym@chromium.org</owner>
+  <owner>chrome-mobile-search@google.com</owner>
+  <improvement direction="LOWER_IS_BETTER"/>
+  <summary>
+    Records the duration of reanchorViewsForCompactFusebox in FuseboxViewBinder
+    when updating layout constraints. Recorded each time the binder reanchors
+    views.
+  </summary>
+</histogram>
+
+<histogram name="Android.Omnibox.MobileFusebox.SetActiveModelSource"
+    enum="SetActiveModelSource" expires_after="2027-03-20">
+  <owner>skym@chromium.org</owner>
+  <owner>chrome-mobile-search@google.com</owner>
+  <summary>
+    Records the trigger source when setting the active model (or skipping
+    setting when redundant) on the Composebox query controller in Fusebox.
   </summary>
 </histogram>
 
@@ -6036,7 +6046,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.Survey.ShowSurveyStatus"
-    enum="SurveyPresentationStatusCode" expires_after="2026-12-20">
+    enum="SurveyPresentationStatusCode" expires_after="2027-02-21">
   <owner>wenyufu@chromium.org</owner>
   <owner>aishwaryarj@google.com</owner>
   <owner>clank-app-team@google.com</owner>
@@ -6490,7 +6500,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.TabStrip.PlaceholderStripLeftoverTabsCount"
-    units="tabs" expires_after="2025-02-09">
+    units="tabs" expires_after="2026-12-31">
   <owner>nemco@google.com</owner>
   <owner>skavuluru@google.com</owner>
   <owner>twellington@chromium.org</owner>
@@ -6510,7 +6520,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Android.TabStrip.PlaceholderStripTabsCreatedDuringRestoreCount"
-    units="tabs" expires_after="2025-02-09">
+    units="tabs" expires_after="2026-12-31">
   <owner>nemco@google.com</owner>
   <owner>skavuluru@google.com</owner>
   <owner>twellington@chromium.org</owner>
@@ -6529,7 +6539,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.TabStrip.PlaceholderStripTabsNeededDuringRestoreCount"
-    units="tabs" expires_after="2024-05-05">
+    units="tabs" expires_after="2026-12-31">
   <owner>nemco@google.com</owner>
   <owner>skavuluru@google.com</owner>
   <owner>twellington@chromium.org</owner>
@@ -6548,7 +6558,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.TabStrip.PlaceholderStripVisibleDuration" units="ms"
-    expires_after="2025-01-19">
+    expires_after="2026-12-31">
   <owner>nemco@google.com</owner>
   <owner>skavuluru@google.com</owner>
   <owner>twellington@chromium.org</owner>
@@ -6568,22 +6578,8 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Android.TabStrip.TabGroupCollapsed" enum="Boolean"
-    expires_after="2025-11-09">
-  <owner>nemco@google.com</owner>
-  <owner>skavuluru@google.com</owner>
-  <owner>zheliooo@google.com</owner>
-  <summary>
-    Recorded when the user clicks on the tab group title indicator to collapse
-    or expand it. True if the user is collapsing a group and false if a user is
-    expanding it. We don't record when the collapsed state changes
-    automatically. e.g. Selecting a tab automatically expands its group and
-    groups created through sync are automatically collapsed.
-  </summary>
-</histogram>
-
 <histogram name="Android.TabStrip.TempBackgroundTimedOut" enum="Boolean"
-    expires_after="2026-07-05">
+    expires_after="2026-12-31">
   <owner>nemco@google.com</owner>
   <owner>skavuluru@google.com</owner>
   <summary>
@@ -6871,6 +6867,17 @@ chromium-metrics-reviews@google.com.
   <summary>
     Tracks the outcome of a drag-and-drop interaction session in Vertical Tabs.
     Recorded when the drag interaction ends (finger is lifted).
+  </summary>
+</histogram>
+
+<histogram name="Android.VerticalTabs.DragDropTimeToUngroup" units="ms"
+    expires_after="2027-07-22">
+  <owner>agazal@google.com</owner>
+  <owner>kije@chromium.org</owner>
+  <summary>
+    Records the duration (in milliseconds) between when a tab was grouped via
+    drag and drop and when it was subsequently ungrouped (dragged back out) in
+    Vertical Tabs.
   </summary>
 </histogram>
 
@@ -8497,7 +8504,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.WebView.NonEmbeddedMetrics.HistogramRecordAge"
-    units="minutes" expires_after="2026-12-20">
+    units="minutes" expires_after="2027-02-21">
   <owner>ntfschr@chromium.org</owner>
   <owner>src/android_webview/OWNERS</owner>
   <summary>
@@ -8510,7 +8517,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.WebView.NonEmbeddedMetrics.NumHistograms"
-    units="histograms" expires_after="2026-12-20">
+    units="histograms" expires_after="2027-02-21">
   <owner>ntfschr@chromium.org</owner>
   <owner>src/android_webview/OWNERS</owner>
   <summary>
@@ -8522,7 +8529,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Android.WebView.NonEmbeddedMetrics.ParsingLogResult"
     enum="AndroidWebViewNonEmbeddedMetricsParsingLogResult"
-    expires_after="2026-12-20">
+    expires_after="2027-02-21">
   <owner>ntfschr@chromium.org</owner>
   <owner>src/android_webview/OWNERS</owner>
   <summary>
@@ -8534,7 +8541,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.WebView.NonEmbeddedMetrics.TransmissionResult"
-    enum="AndroidWebViewDevUiMetricsTransmission" expires_after="2026-12-20">
+    enum="AndroidWebViewDevUiMetricsTransmission" expires_after="2027-02-21">
   <owner>ntfschr@chromium.org</owner>
   <owner>src/android_webview/OWNERS</owner>
   <summary>

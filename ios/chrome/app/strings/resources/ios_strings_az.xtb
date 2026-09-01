@@ -1294,6 +1294,7 @@
 <translation id="5238596603078743134"><ph name="BEGIN_BOLD" /><ph name="USERNAME" /><ph name="END_BOLD" /> Google Parol Meneceri ilə <ph name="BEGIN_BOLD" /><ph name="WEBSITE" /><ph name="END_BOLD" /> veb-saytına daxil olduqda istifadəçi adı və parolunuzdan istifadə edə bilər.</translation>
 <translation id="5241106044372754566"><ph name="NAME" />, <ph name="EMAIL" />, hazırda seçilmiş təşkilatınız tərəfindən idarə olunur. Hesab seçin.</translation>
 <translation id="5242899254250321823">Veb-saytda parolu dəyişin</translation>
+<translation id="524751727772074981">Chrome-da Gemini ilə istədiyinizi soruşun</translation>
 <translation id="5248640482715684545">Bu sayt başqa tətbiq açmağa çalışır.</translation>
 <translation id="5250371859659394278">Naməlum mənbədən</translation>
 <translation id="525510229763628836">Kiçildildi</translation>
@@ -1310,6 +1311,7 @@
 <translation id="5300589172476337783">Göstərin</translation>
 <translation id="5311061401280561833">Kamera və mikrofona giriş icazəsi verilib</translation>
 <translation id="5313967007315987356">Sayt əlavə edin</translation>
+<translation id="5315029634103634221">Gemini AI-dır və səhv edə bilər. <ph name="BEGIN_LINK" />Google-a göndərilən müvafiq data haqqında ətraflı məlumat<ph name="END_LINK" /></translation>
 <translation id="5315870524563628285">İmport etmək üçün heç nə yoxdur</translation>
 <translation id="5316356981864168850"><ph name="INDEX" />/<ph name="NUM_SUGGESTIONS" /></translation>
 <translation id="5317780077021120954">Yadda saxlayın</translation>

@@ -7,6 +7,8 @@ package org.chromium.chrome.browser.bookmarks;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 
@@ -406,6 +408,7 @@ public class BookmarkManagerCoordinatorTest {
         View searchBoxView = mCoordinator.getView().findViewById(R.id.desktop_search_box_row);
         assertNotNull(searchBoxView);
         assertEquals(View.GONE, searchBoxView.getVisibility());
+        assertNull(mCoordinator.getSearchBoxChangeProcessorForTesting());
     }
 
     @Test
@@ -416,6 +419,7 @@ public class BookmarkManagerCoordinatorTest {
         View searchBoxView = mCoordinator.getView().findViewById(R.id.desktop_search_box_row);
         assertNotNull(searchBoxView);
         assertEquals(View.VISIBLE, searchBoxView.getVisibility());
+        assertNotNull(mCoordinator.getSearchBoxChangeProcessorForTesting());
     }
 
     @Test
@@ -426,6 +430,7 @@ public class BookmarkManagerCoordinatorTest {
         View searchBoxView = mCoordinator.getView().findViewById(R.id.desktop_search_box_row);
         assertNotNull(searchBoxView);
         assertEquals(View.GONE, searchBoxView.getVisibility());
+        assertNull(mCoordinator.getSearchBoxChangeProcessorForTesting());
 
         // Resize to wide screen (1200dp).
         RuntimeEnvironment.setQualifiers("w1200dp-h1000dp");
@@ -433,6 +438,7 @@ public class BookmarkManagerCoordinatorTest {
                 .getComponentCallbacksForTesting()
                 .onConfigurationChanged(mActivity.getResources().getConfiguration());
         assertEquals(View.VISIBLE, searchBoxView.getVisibility());
+        assertNotNull(mCoordinator.getSearchBoxChangeProcessorForTesting());
 
         // Resize back to narrow screen (800dp).
         RuntimeEnvironment.setQualifiers("w800dp-h1000dp");
@@ -440,5 +446,64 @@ public class BookmarkManagerCoordinatorTest {
                 .getComponentCallbacksForTesting()
                 .onConfigurationChanged(mActivity.getResources().getConfiguration());
         assertEquals(View.GONE, searchBoxView.getVisibility());
+        assertNull(mCoordinator.getSearchBoxChangeProcessorForTesting());
+    }
+
+    @Test
+    @Config(qualifiers = "w839dp")
+    @Features.EnableFeatures({ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_LAYOUT})
+    public void testDesktopToolbarSmallScreen_belowThreshold() {
+        recreateCoordinatorForDesktop();
+        assertTrue(
+                mCoordinator
+                        .getToolbarCoordinatorForTesting()
+                        .getMediatorForTesting()
+                        .isSmallScreenForTesting());
+    }
+
+    @Test
+    @Config(qualifiers = "w840dp")
+    @Features.EnableFeatures({ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_LAYOUT})
+    public void testDesktopToolbarSmallScreen_atThreshold() {
+        recreateCoordinatorForDesktop();
+        assertFalse(
+                mCoordinator
+                        .getToolbarCoordinatorForTesting()
+                        .getMediatorForTesting()
+                        .isSmallScreenForTesting());
+    }
+
+    @Test
+    @Config(qualifiers = "w800dp-h1000dp")
+    @Features.EnableFeatures({ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_LAYOUT})
+    public void testDesktopToolbarSmallScreen_resize() {
+        recreateCoordinatorForDesktop();
+        assertTrue(
+                mCoordinator
+                        .getToolbarCoordinatorForTesting()
+                        .getMediatorForTesting()
+                        .isSmallScreenForTesting());
+
+        // Resize to wide screen (1200dp).
+        RuntimeEnvironment.setQualifiers("w1200dp-h1000dp");
+        mCoordinator
+                .getComponentCallbacksForTesting()
+                .onConfigurationChanged(mActivity.getResources().getConfiguration());
+        assertFalse(
+                mCoordinator
+                        .getToolbarCoordinatorForTesting()
+                        .getMediatorForTesting()
+                        .isSmallScreenForTesting());
+
+        // Resize back to narrow screen (800dp).
+        RuntimeEnvironment.setQualifiers("w800dp-h1000dp");
+        mCoordinator
+                .getComponentCallbacksForTesting()
+                .onConfigurationChanged(mActivity.getResources().getConfiguration());
+        assertTrue(
+                mCoordinator
+                        .getToolbarCoordinatorForTesting()
+                        .getMediatorForTesting()
+                        .isSmallScreenForTesting());
     }
 }

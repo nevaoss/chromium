@@ -1034,13 +1034,6 @@ public final class ProductionSupportedFlagList {
                 "Enables text formatting information to be surfaced as Spans on"
                     + " AccessibilityNodeInfo text for consumption by ATs like screen readers."),
         Flag.baseFeature(
-                ContentFeatures.SPARE_RENDERER_PROCESS_PRIORITY,
-                "When enabled, sends the spare renderer information when setting the priority of"
-                        + " renderers. Currently only Android handles the spare renderer"
-                        + " information in priority. The target priority of a spare renderer in"
-                        + " Android is decided by the feature parameters in"
-                        + " ContentFeatureList.java."),
-        Flag.baseFeature(
                 ContentFeatures.WEBVIEW_ASYNC_DRAW_ONLY,
                 "Disable synchronous draw. Experiment to reduce ANRs."),
         Flag.baseFeature(
@@ -1235,9 +1228,7 @@ public final class ProductionSupportedFlagList {
 
         // Features for PerfCombined2025_WebView study
         Flag.baseFeature("ReducePPMs"),
-        Flag.baseFeature("GCOnArrayBufferAllocationFailure"),
         Flag.baseFeature("RemoveCancelledScriptedIdleTasks"),
-        Flag.baseFeature("SlimDirectReceiverIpc"),
         Flag.baseFeature("MemoryCacheChangeStrongReferencePruneDelay"),
         Flag.baseFeature("MemoryCacheStrongReference"),
         Flag.baseFeature("ReleaseResourceStrongReferencesOnMemoryPressure"),
@@ -1462,10 +1453,17 @@ public final class ProductionSupportedFlagList {
                 "Enables draining the prefetch queue before loading the URL in the WebView"
                         + " navigate method"),
         Flag.baseFeature(
+                AwFeatures.CREATE_SPARE_RENDERER_FOR_DEFAULT_PROFILE,
+                "When enabled, creates a spare renderer process for the default WebView profile."),
+        Flag.baseFeature(
                 AwFeatures.WEBVIEW_SINGLE_SHARED_CONTEXT_STATE,
                 "Allows Webview to allocate and share a single shared context for all the"
                         + " webview instances."),
         Flag.baseFeature("ComponentsBase32InRust", "Enables the Rust-based Base32 implementation."),
+        Flag.baseFeature(
+                AwFeatures.WEBVIEW_SUB_FRAME_CREATED_DO_NOT_UPDATE_CLIENT_MAP,
+                "When enabled, the browser ignores SubFrameCreated IPC and does not update"
+                        + " RfhToIoThreadClientMap."),
         // Add new commandline switches and features above. The final entry should have a
         // trailing comma for cleaner diffs.
     };

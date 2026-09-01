@@ -1294,6 +1294,7 @@
 <translation id="5238596603078743134"><ph name="BEGIN_BOLD" /><ph name="USERNAME" /><ph name="END_BOLD" /> <ph name="BEGIN_BOLD" /><ph name="WEBSITE" /><ph name="END_BOLD" /> saytiga kirishda Google Parollar menejeri orqali login va parolingizdan foydalanishi mumkin.</translation>
 <translation id="5241106044372754566">Joriy tanlangan <ph name="NAME" />, <ph name="EMAIL" /> hisobi tashkilot boshqaruvida. Hisobni tanlang.</translation>
 <translation id="5242899254250321823">Saytdagi parolni yangilash</translation>
+<translation id="524751727772074981">Chrome ichida Gemini yordamchisiga istalgan savolni bering</translation>
 <translation id="5248640482715684545">Bu sayt boshqa ilovani ochishga urinmoqda.</translation>
 <translation id="5250371859659394278">Nomaʼlum manbadan</translation>
 <translation id="525510229763628836">Yigʻilgan</translation>
@@ -1310,6 +1311,7 @@
 <translation id="5300589172476337783">Ko‘rsatish</translation>
 <translation id="5311061401280561833">Kamera va mikrofondan foydalanishga ruxsat berildi</translation>
 <translation id="5313967007315987356">Sayt qo‘shish</translation>
+<translation id="5315029634103634221">Gemini bu – AI va u xato qilishi mumkin. <ph name="BEGIN_LINK" />Googlega yuboriladigan tegishli maʼlumotlar haqida batafsil<ph name="END_LINK" /></translation>
 <translation id="5315870524563628285">Import qilinadigan kontaktlar yoʻq</translation>
 <translation id="5316356981864168850"><ph name="INDEX" /> / <ph name="NUM_SUGGESTIONS" /></translation>
 <translation id="5317780077021120954">Saqlash</translation>

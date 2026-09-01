@@ -77,7 +77,6 @@
 #include "chrome/browser/themes/theme_service_factory.h"
 #include "chrome/browser/themes/theme_syncable_service.h"
 #include "chrome/browser/trusted_vault/trusted_vault_encryption_keys_tab_helper.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_active_state_manager/browser_active_state_manager.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_window/public/browser_collection_observer.h"
@@ -2437,8 +2436,8 @@ IN_PROC_BROWSER_TEST_F(ProfilePickerCreationFlowBrowserTest,
           .WithCookie()
           .Build("joe.consumer@gmail.com"));
   MakeHistorySyncOptinUiAvailable(*identity_manager, account_info);
-  ASSERT_TRUE(
-      identity_manager->HasAccountWithRefreshToken(account_info.account_id));
+  ASSERT_TRUE(identity_manager->HasAccountWithRefreshToken(
+      account_info.GetAccountId()));
 
   // Simulate the Dice "ENABLE_SYNC" header parameter, resulting in sync
   // confirmation screen getting displayed.
@@ -2512,8 +2511,8 @@ IN_PROC_BROWSER_TEST_F(ProfilePickerCreationFlowBrowserTest,
           .Build("joe.consumer@gmail.com"));
   MakeHistorySyncOptinUiAvailable(*identity_manager, account_info);
 
-  ASSERT_TRUE(
-      identity_manager->HasAccountWithRefreshToken(account_info.account_id));
+  ASSERT_TRUE(identity_manager->HasAccountWithRefreshToken(
+      account_info.GetAccountId()));
 
   // Simulate the Dice "ENABLE_SYNC" header parameter, resulting in sync
   // confirmation screen getting displayed.
@@ -2618,7 +2617,7 @@ IN_PROC_BROWSER_TEST_F(ProfilePickerCreationFlowBrowserTest,
       FinishDiceSignIn(default_profile, "joe@gmail.com", "Joe");
   IdentityManagerFactory::GetForProfile(default_profile)
       ->GetPrimaryAccountMutator()
-      ->SetPrimaryAccount(default_account_info.account_id,
+      ->SetPrimaryAccount(default_account_info.GetAccountId(),
                           signin::ConsentLevel::kSync,
                           signin_metrics::AccessPoint::kStartPage);
 
@@ -2637,7 +2636,7 @@ IN_PROC_BROWSER_TEST_F(ProfilePickerCreationFlowBrowserTest,
       FinishDiceSignIn(second_profile, "joe.secondary@gmail.com", "Joe");
   IdentityManagerFactory::GetForProfile(second_profile)
       ->GetPrimaryAccountMutator()
-      ->SetPrimaryAccount(second_profile_info.account_id,
+      ->SetPrimaryAccount(second_profile_info.GetAccountId(),
                           signin::ConsentLevel::kSync,
                           signin_metrics::AccessPoint::kStartPage);
 
@@ -3086,7 +3085,7 @@ IN_PROC_BROWSER_TEST_F(ProfilePickerCreationFlowBrowserTest,
       browser(), GURL(chrome::kChromeUIProfilePickerUrl)));
 
   content::WebContents* contents =
-      browser()->tab_strip_model()->GetActiveWebContents();
+      browser()->GetTabStripModel()->GetActiveWebContents();
   ProfilePickerHandler* handler = contents->GetWebUI()
                                       ->GetController()
                                       ->GetAs<ProfilePickerUI>()
@@ -3579,14 +3578,14 @@ IN_PROC_BROWSER_TEST_F(ProfilePickerEnterpriseCreationFlowBrowserTest,
           .WithAccessPoint(signin_metrics::AccessPoint::kUserManager)
           .Build("joe.acme@gmail.com"));
   MakeHistorySyncOptinUiAvailable(*identity_manager, account_info);
-  ASSERT_TRUE(
-      identity_manager->HasAccountWithRefreshToken(account_info.account_id));
+  ASSERT_TRUE(identity_manager->HasAccountWithRefreshToken(
+      account_info.GetAccountId()));
 
   signin::UpdateAccountInfoForAccount(
       identity_manager,
       /*account_info=*/FillAccountInfo(account_info, "Joe", "acme.com"));
   identity_manager->GetPrimaryAccountMutator()->SetPrimaryAccount(
-      account_info.account_id, signin::ConsentLevel::kSignin,
+      account_info.GetAccountId(), signin::ConsentLevel::kSignin,
       signin_metrics::AccessPoint::kUserManager);
 
   // Redirect the web contents to a the two factor intersitial authentication

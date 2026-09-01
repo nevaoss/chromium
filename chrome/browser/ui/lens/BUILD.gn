@@ -2,7 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//components/lens/features.gni")
 import("//pdf/features.gni")
+
+assert(enable_lens_overlay_backend,
+       "Lens backend logic is not supported on regular Mobile Android.")
 
 source_set("backend_logic_public") {
   sources = [
@@ -264,6 +268,7 @@ if (!is_android) {
       "//components/lens:features",
       "//components/lens/proto/server:proto",
       "//components/metrics_services_manager",
+      "//components/omnibox/common:features",
       "//components/optimization_guide/content/browser",
       "//components/optimization_guide/content/browser:page_context_eligibility",
       "//components/prefs",
@@ -333,6 +338,7 @@ if (!is_android) {
       ":lens",
       "//base/test:test_support",
       "//components/contextual_search:test_support",
+      "//components/omnibox/common:features",
       "//components/tabs:test_support",
       "//google_apis/common",
       "//testing/gtest",
@@ -397,6 +403,7 @@ if (!is_android) {
       "//components/lens:enterprise_policy",
       "//components/lens:features",
       "//components/lens/proto/server:proto",
+      "//components/omnibox/common:features",
       "//components/permissions:test_support",
       "//components/prefs",
       "//components/renderer_context_menu",
@@ -472,6 +479,7 @@ if (!is_android) {
       "//components/feature_engagement/public",
       "//components/lens:enterprise_policy",
       "//components/lens:features",
+      "//components/omnibox/common:features",
       "//components/prefs",
       "//components/search_engines",
       "//components/user_education/views",
@@ -529,6 +537,7 @@ if (!is_android) {
       "//components/lens:enterprise_policy",
       "//components/lens:features",
       "//components/omnibox/browser:test_support",
+      "//components/omnibox/common:features",
       "//components/optimization_guide/content/browser:page_context_eligibility",
       "//components/tabs:test_support",
       "//content/public/browser",

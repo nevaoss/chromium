@@ -13,11 +13,13 @@ import org.chromium.base.Token;
 import org.chromium.base.metrics.RecordUserAction;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
+import org.chromium.chrome.browser.actor.ui.ActorUiTabController.UiTabState;
 import org.chromium.chrome.browser.tab.MediaState;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabId;
 import org.chromium.chrome.browser.tab.TabLaunchType;
 import org.chromium.chrome.browser.tab.TabSelectionType;
+import org.chromium.chrome.browser.tab.TabUtils;
 import org.chromium.chrome.browser.tab_ui.ThumbnailProvider;
 import org.chromium.chrome.browser.tabmodel.TabGroupUtils;
 import org.chromium.chrome.browser.tabmodel.TabList;
@@ -27,6 +29,7 @@ import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.url.GURL;
 
 import java.util.List;
+import java.util.Objects;
 
 /**
  * {@link TabListMediator.TabListLayoutType#GROUPED} implementation of {@link
@@ -52,6 +55,16 @@ class GroupedLayoutDelegate extends TabListLayoutDelegate {
     @Override
     boolean requiresThumbnailUpdateOnSelect() {
         return true;
+    }
+
+    @Override
+    boolean supportsTabGroups() {
+        return true;
+    }
+
+    @Override
+    boolean isChildTabRepresentedByGroupCard(Tab tab) {
+        return mMediator.getCurrentTabModelChecked().isTabInTabGroup(tab);
     }
 
     @Override
@@ -127,6 +140,27 @@ class GroupedLayoutDelegate extends TabListLayoutDelegate {
         }
     }
 
+    @Override
+    void tabClosureUndone(Tab tab) {
+        super.tabClosureUndone(tab);
+
+        TabModel tabModel = mMediator.getCurrentTabModelChecked();
+        int filterIndex = tabModel.representativeIndexOf(tab);
+        if (filterIndex == TabList.INVALID_TAB_INDEX
+                || !tabModel.isTabInTabGroup(tab)
+                || filterIndex >= mModelList.size()) {
+            return;
+        }
+        Tab currentGroupSelectedTab = tabModel.getRepresentativeTabAt(filterIndex);
+        assumeNonNull(currentGroupSelectedTab);
+
+        int tabListModelIndex = mModelList.indexOfNthTabCard(filterIndex);
+        assert mModelList.indexFromTabId(currentGroupSelectedTab.getId()) == tabListModelIndex;
+
+        // TODO(crbug.com/549722494): Clean up updateTab() calls.
+        mMediator.updateTab(tabListModelIndex, currentGroupSelectedTab, false, false);
+    }
+
     /**
      * Resolves the UI index in {@link #mModelList} for the given tab ID, falling back to finding
      * the containing tab group card if the tab is a non-representative member of a group.
@@ -156,6 +190,17 @@ class GroupedLayoutDelegate extends TabListLayoutDelegate {
     }
 
     @Override
+    void recordTabSelection(int tabId) {
+        // Tab switching metrics for GROUPED layout (GTS) are filtered out here and tracked at the
+        // pane/switcher level (see HubTabSwitcherMetricsRecorder#onTabSelected).
+        //
+        // In GTS, components can switch to a different TabModel before switching tabs, whereas
+        // TabListMediator only contains tabs that are in the same TabModel. Additionally, for
+        // MobileTabSwitched, GTS must account for MobileTabReturnedToCurrentTab (returning to the
+        // same tab as before entering the switcher), which is not tracked at this level.
+    }
+
+    @Override
     void onFaviconUpdated(Tab updatedTab, @Nullable Bitmap icon, @Nullable GURL iconUrl) {
         if (mMediator.isTabInTabGroup(updatedTab)) {
             @Nullable Pair<Integer, Tab> indexAndTab =
@@ -165,12 +210,68 @@ class GroupedLayoutDelegate extends TabListLayoutDelegate {
             PropertyModel model = mModelList.get(indexAndTab.first).model;
             Tab representativeTab = indexAndTab.second;
 
-            if (mThumbnailProvider != null) {
-                mMediator.updateThumbnailFetcher(model, representativeTab.getId());
-            }
+            mMediator.updateThumbnailFetcher(model, representativeTab.getId());
             mMediator.updateFaviconForTab(model, representativeTab, icon, iconUrl);
         } else {
             super.onFaviconUpdated(updatedTab, icon, iconUrl);
+        }
+    }
+
+    @Override
+    void onUrlUpdated(Tab updatedTab) {
+        if (mMediator.isTabInTabGroup(updatedTab)) {
+            @Nullable Pair<Integer, Tab> indexAndTab =
+                    mMediator.getIndexAndTabForTabGroupId(updatedTab.getTabGroupId());
+            if (indexAndTab == null) return;
+
+            PropertyModel model = mModelList.get(indexAndTab.first).model;
+            Tab representativeTab = indexAndTab.second;
+            if (!TabUtils.isValid(representativeTab) || model == null) return;
+
+            model.set(
+                    TabProperties.URL_DOMAIN, mMediator.getDomainForTab(representativeTab, model));
+            mMediator.updateThumbnailFetcher(model, representativeTab.getId());
+            mMediator.updateFaviconForTab(model, representativeTab, null, null);
+        } else {
+            super.onUrlUpdated(updatedTab);
+        }
+    }
+
+    @Override
+    void onMediaStateChanged(Tab updatedTab, @MediaState int mediaState) {
+        if (mMediator.isTabInTabGroup(updatedTab)) {
+            Token tabGroupId = updatedTab.getTabGroupId();
+            assumeNonNull(tabGroupId);
+            @Nullable Pair<Integer, Tab> indexAndTab =
+                    mMediator.getIndexAndTabForTabGroupId(tabGroupId);
+            if (indexAndTab == null) return;
+
+            PropertyModel model = mModelList.get(indexAndTab.first).model;
+            if (model == null || model.get(TabProperties.USE_SHRINK_CLOSE_ANIMATION)) {
+                return;
+            }
+            Tab representativeTab = indexAndTab.second;
+            model.set(
+                    TabProperties.MEDIA_INDICATOR,
+                    mMediator.getTabListMediaIndicator(representativeTab, model));
+            mMediator.updateDescriptionString(model);
+        } else {
+            super.onMediaStateChanged(updatedTab, mediaState);
+        }
+    }
+
+    /**
+     * When a tab in a tab group changes Actor UI state, refresh the group card thumbnail to reflect
+     * the update.
+     */
+    @Override
+    void onUiTabStateChanged(Tab updatedTab, UiTabState state) {
+        if (mMediator.isTabInTabGroup(updatedTab)) {
+            int index = mMediator.getIndexForTabIdWithRelatedTabs(updatedTab.getId());
+            if (index != TabModel.INVALID_TAB_INDEX) {
+                PropertyModel groupModel = mModelList.get(index).model;
+                mMediator.updateThumbnailFetcher(groupModel, groupModel.get(TabProperties.TAB_ID));
+            }
         }
     }
 
@@ -213,19 +314,24 @@ class GroupedLayoutDelegate extends TabListLayoutDelegate {
         mMediator.updateThumbnailFetcher(model, tab.getId());
     }
 
+    /**
+     * When a tab moves within its tab group, only the group card thumbnail needs to be updated to
+     * reflect the new tab ordering.
+     */
     @Override
     public void didMoveWithinGroup(Tab movedTab, int tabModelOldIndex, int tabModelNewIndex) {
-        if (mThumbnailProvider != null) {
-            int indexInModel = getUiIndexForTab(movedTab.getId());
-            if (indexInModel == TabModel.INVALID_TAB_INDEX) return;
-
-            TabModel tabModel = mMediator.getCurrentTabModelChecked();
-            Tab lastShownTab =
-                    tabModel.getRepresentativeTabAt(tabModel.representativeIndexOf(movedTab));
-            assumeNonNull(lastShownTab);
-            PropertyModel model = mModelList.get(indexInModel).model;
-            mMediator.updateThumbnailFetcher(model, lastShownTab.getId());
+        if (mThumbnailProvider == null) {
+            return;
         }
+        int indexInModel = getUiIndexForTab(movedTab.getId());
+        if (indexInModel == TabModel.INVALID_TAB_INDEX) return;
+
+        TabModel tabModel = mMediator.getCurrentTabModelChecked();
+        Tab lastShownTab =
+                tabModel.getRepresentativeTabAt(tabModel.representativeIndexOf(movedTab));
+        assumeNonNull(lastShownTab);
+        PropertyModel model = mModelList.get(indexInModel).model;
+        mMediator.updateThumbnailFetcher(model, lastShownTab.getId());
     }
 
     @Override
@@ -377,5 +483,23 @@ class GroupedLayoutDelegate extends TabListLayoutDelegate {
             mMediator.updateTabGroupProperties(destinationTab, model, colorId);
             mMediator.updateFaviconForTab(model, groupTab, null, null);
         }
+    }
+
+    @Override
+    void onTabSelectionToggled(PropertyModel model, int tabId, boolean wasSelected) {
+        // Reset thumbnail to ensure the color of the blank tab slots is correct.
+        TabModel tabModel = mMediator.getCurrentTabModelChecked();
+        Tab tab = tabModel.getTabById(tabId);
+        if (tab != null && tabModel.isTabInTabGroup(tab)) {
+            mMediator.updateThumbnailFetcher(model, tabId);
+        }
+    }
+
+    @Override
+    boolean areTabsInSameGroup(int previousTabId, Tab newTab) {
+        Tab previousTab = mMediator.getCurrentTabModelChecked().getTabById(previousTabId);
+        return previousTab != null
+                && previousTab.getTabGroupId() != null
+                && Objects.equals(previousTab.getTabGroupId(), newTab.getTabGroupId());
     }
 }

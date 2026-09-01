@@ -47,6 +47,7 @@
 #include "chrome/browser/subscription_eligibility/subscription_eligibility_service_factory.h"
 #include "chrome/browser/sync/sync_service_factory.h"
 #include "chrome/browser/ui/managed_ui.h"
+#include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/browser/ui/side_panel/side_panel_prefs.h"
 #include "chrome/browser/ui/tabs/features.h"
 #include "chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_utils.h"
@@ -1658,6 +1659,7 @@ void AddAutofillStrings(content::WebUIDataSource* html_source,
       {"enableProfilesSublabel", IDS_AUTOFILL_ENABLE_PROFILES_TOGGLE_SUBLABEL},
       {"enableGmailOtpFillingTitle",
        IDS_AUTOFILL_GMAIL_OTP_FILLING_TOGGLE_TITLE},
+      {"gmailOtpRequiredTitle", IDS_AUTOFILL_GMAIL_OTP_REQUIRED_TITLE},
       {"emailVerificationLabel",
        IDS_AUTOFILL_SETTINGS_EMAIL_VERIFICATION_LABEL},
       {"emailVerificationSectionTitle",
@@ -2080,6 +2082,18 @@ void AddAutofillStrings(content::WebUIDataSource* html_source,
           l10n_util::GetStringUTF16(IDS_SETTINGS_OPENS_IN_NEW_TAB)));
   html_source->AddString("gmailOtpFillingLearnMoreUrl",
                          chrome::kGmailOtpFillingLearnMoreURL);
+
+  html_source->AddString(
+      "gmailOtpRequiredStep1",
+      l10n_util::GetStringFUTF16(
+          IDS_AUTOFILL_GMAIL_OTP_REQUIRED_STEP_1, chrome::kGmailSettingsURL,
+          l10n_util::GetStringUTF16(IDS_SETTINGS_OPENS_IN_NEW_TAB)));
+  html_source->AddString(
+      "gmailOtpRequiredStep2",
+      l10n_util::GetStringFUTF16(
+          IDS_AUTOFILL_GMAIL_OTP_REQUIRED_STEP_2,
+          chrome::kGmailSmartFeaturesURL,
+          l10n_util::GetStringUTF16(IDS_SETTINGS_OPENS_IN_NEW_TAB)));
 
   auto* autofill_client =
       autofill::ContentAutofillClient::FromWebContents(web_contents);
@@ -3180,8 +3194,27 @@ void AddSearchStrings(content::WebUIDataSource* html_source, Profile* profile) {
        IDS_SETTINGS_CONTROLLED_BY_EXTENSION_WITH_DISABLE_AND_MANAGE_OPTION},
       {"controlledByExtensionWithoutDisableOption",
        IDS_SETTINGS_CONTROLLED_BY_EXTENSION_WITH_MANAGE_OPTION},
+      {"omniboxEverywhereTitle", IDS_SETTINGS_OMNIBOX_EVERYWHERE_TITLE},
+      {"omniboxEverywhereToggleTitle", IDS_SETTINGS_OMNIBOX_EVERYWHERE_TOGGLE},
+      {"omniboxEverywhereToggleSublabel",
+       IDS_SETTINGS_OMNIBOX_EVERYWHERE_TOGGLE_SUBLABEL},
+      {"omniboxEverywhereShortcutTitle",
+       IDS_SETTINGS_OMNIBOX_EVERYWHERE_SHORTCUT_TITLE},
+      {"omniboxEverywhereShortcutSublabel",
+       IDS_SETTINGS_OMNIBOX_EVERYWHERE_SHORTCUT_SUBLABEL},
+      {"omniboxEverywhereShowShortcutsTitle",
+       IDS_SETTINGS_OMNIBOX_EVERYWHERE_SHOW_SHORTCUTS_TITLE},
+      {"omniboxEverywhereShowShortcutsSublabel",
+       IDS_SETTINGS_OMNIBOX_EVERYWHERE_SHOW_SHORTCUTS_SUBLABEL},
   };
   html_source->AddLocalizedStrings(kLocalizedStrings);
+  // The Omnibox Everywhere settings section is displayed whenever a profile is
+  // eligible, regardless of whether the user currently has the feature toggled
+  // on or off.
+  html_source->AddBoolean("omniboxEverywhereSettingsEnabled",
+                          omnibox::IsOmniboxEverywhereEligible(profile));
+  html_source->AddString("omniboxEverywhereLearnMoreURL",
+                         chrome::kOmniboxLearnMoreURL);
   html_source->AddString("searchExplanationLearnMoreURL",
                          chrome::kOmniboxLearnMoreURL);
 

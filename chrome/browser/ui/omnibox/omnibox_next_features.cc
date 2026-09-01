@@ -10,9 +10,13 @@
 #include "base/feature_list.h"
 #include "base/metrics/field_trial_params.h"
 #include "base/metrics/histogram_functions.h"
+#include "build/build_config.h"
 #include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
+#include "chrome/browser/browser_process.h"
+#include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/search_engines/ai_mode_button_service_factory.h"
 #include "chrome/browser/search_engines/template_url_service_factory.h"
+#include "chrome/browser/ui/omnibox/omnibox_everywhere/omnibox_everywhere_prefs.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/contextual_search/contextual_search_metrics_recorder.h"
 #include "components/contextual_search/contextual_search_service.h"
@@ -20,6 +24,7 @@
 #include "components/omnibox/browser/aim_eligibility_service.h"
 #include "components/omnibox/browser/omnibox_field_trial.h"
 #include "components/omnibox/common/omnibox_features.h"
+#include "components/prefs/pref_service.h"
 #include "components/search/search.h"
 #include "ui/base/l10n/l10n_util.h"
 
@@ -41,7 +46,7 @@ BASE_FEATURE(kWebUIOmniboxAimPopup, ENABLED);
 
 // If enabled, the Omnibox Popup will enable a different UI state when on a
 // webpage.
-BASE_FEATURE(kWebUIOmniboxSimplification, DISABLED);
+BASE_FEATURE(kWebUIOmniboxSimplification, ENABLED);
 
 }  // namespace internal
 
@@ -59,7 +64,7 @@ const base::FeatureParam<AddContextButtonVariant>
 // If true, hides the "Add Context" button in the "classic" popup.
 const base::FeatureParam<bool> kHideClassicContextButton{
     &internal::kWebUIOmniboxSimplification, "Omnibox_HideClassicContextButton",
-    true};
+    false};
 
 // When enabled, clicking aim button in omnibox always navigates directly to
 // g.com/aimode, e.g. instead of opening the AI Mode popup
@@ -109,7 +114,8 @@ BASE_FEATURE(kEnergyEffectInOmnibox, ENABLED);
 BASE_FEATURE(kWebUIOmniboxDynamicAiModeButton, DISABLED);
 
 // If enabled, prevents closing the AIM popup while file chooser is open.
-BASE_FEATURE(kOmniboxKeepOpenOnFileSelection, ENABLED);
+// Disabled due to focus restoration and popup deactivation issues.
+BASE_FEATURE(kOmniboxKeepOpenOnFileSelection, DISABLED);
 
 // Decodes a proto object from its serialized Base64 string representation.
 // Returns true if decoding and parsing succeed, false otherwise.
@@ -272,8 +278,9 @@ bool IsAimPopupEnabled(Profile* profile) {
          aim_service->IsFuseboxEligible();
 }
 
-bool IsOmniboxEverywhereEnabled(Profile* profile) {
-  if (!profile) {
+bool IsOmniboxEverywhereEligible(Profile* profile) {
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+  if (!profile || profile->IsOffTheRecord()) {
     return false;
   }
 
@@ -283,6 +290,22 @@ bool IsOmniboxEverywhereEnabled(Profile* profile) {
 
   return search::DefaultSearchProviderIsGoogle(
       TemplateURLServiceFactory::GetForProfile(profile));
+#else
+  return false;
+#endif  // BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+}
+
+bool IsOmniboxEverywhereEnabled(Profile* profile) {
+  if (!IsOmniboxEverywhereEligible(profile)) {
+    return false;
+  }
+
+  if (g_browser_process && g_browser_process->local_state()) {
+    return g_browser_process->local_state()->GetBoolean(
+        omnibox_everywhere::prefs::kOmniboxEverywhereEnabled);
+  }
+
+  return true;
 }
 
 bool IsContentSharingEnabled(
@@ -387,10 +410,10 @@ const base::FeatureParam<bool> kShowContextMenuHeaders(
     true);
 const base::FeatureParam<bool> kContextButtonHasBackground{
     &internal::kWebUIOmniboxSimplification,
-    "Omnibox_ContextButtonHasBackground", false};
+    "Omnibox_ContextButtonHasBackground", true};
 const base::FeatureParam<bool> kContextButtonShapeIsOblong{
     &internal::kWebUIOmniboxSimplification,
-    "Omnibox_ContextButtonShapeIsOblong", false};
+    "Omnibox_ContextButtonShapeIsOblong", true};
 const base::FeatureParam<bool> kContextButtonShowSuggestionLabel{
     &internal::kWebUIOmniboxSimplification,
     "Omnibox_ContextButtonShowSuggestionLabel", false};

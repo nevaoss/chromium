@@ -367,11 +367,6 @@ targets.legacy_basic_suite(
                 "--test-launcher-jobs=1",
             ],
         ),
-        "rust_gtest_interop_unittests": targets.legacy_test_config(
-            skylab = targets.skylab(
-                autotest_name = "chromium",
-            ),
-        ),
         "sql_unittests": targets.legacy_test_config(
             skylab = targets.skylab(
                 autotest_name = "chromium",
@@ -528,12 +523,6 @@ targets.legacy_basic_suite(
             ),
             experiment_percentage = 100,
         ),
-        "rust_gtest_interop_unittests": targets.legacy_test_config(
-            skylab = targets.skylab(
-                autotest_name = "chromium",
-                timeout_sec = 5400,
-            ),
-        ),
         "sql_unittests": targets.legacy_test_config(
             skylab = targets.skylab(
                 autotest_name = "chromium",
@@ -670,8 +659,6 @@ targets.legacy_basic_suite(
         ),
         "perfetto_unittests": targets.legacy_test_config(),
         "puffin_unittests": targets.legacy_test_config(),
-        # TODO(crbug.com/40274401): Enable this.
-        # "rust_gtest_interop_unittests": None,
         "services_unittests": targets.legacy_test_config(),
         "shell_dialogs_unittests": targets.legacy_test_config(),
         "skia_unittests": targets.legacy_test_config(),
@@ -1526,9 +1513,25 @@ targets.legacy_basic_suite(
 )
 
 targets.legacy_basic_suite(
+    name = "chrome_ai_wpt_tests_manifest_gemma4_suite",
+    tests = {
+        "chrome_ai_wpt_tests_manifest_cpu_gemma4": _CHROME_AI_WPT_TEST_CONFIG,
+        "chrome_ai_wpt_tests_manifest_gpu_high_tier_gemma4": _CHROME_AI_WPT_GPU_HIGH_TIER_TEST_CONFIG,
+        "chrome_ai_wpt_tests_manifest_gpu_low_tier_gemma4": _CHROME_AI_WPT_TEST_CONFIG,
+    },
+)
+
+targets.legacy_basic_suite(
     name = "chrome_ai_wpt_tests_manifest_cpu_suite",
     tests = {
         "chrome_ai_wpt_tests_manifest_cpu": _CHROME_AI_WPT_TEST_CONFIG,
+    },
+)
+
+targets.legacy_basic_suite(
+    name = "chrome_ai_wpt_tests_manifest_cpu_gemma4_suite",
+    tests = {
+        "chrome_ai_wpt_tests_manifest_cpu_gemma4": _CHROME_AI_WPT_TEST_CONFIG,
     },
 )
 
@@ -1540,9 +1543,23 @@ targets.legacy_basic_suite(
 )
 
 targets.legacy_basic_suite(
+    name = "chrome_ai_wpt_tests_manifest_gpu_high_tier_gemma4_suite",
+    tests = {
+        "chrome_ai_wpt_tests_manifest_gpu_high_tier_gemma4": _CHROME_AI_WPT_GPU_HIGH_TIER_TEST_CONFIG,
+    },
+)
+
+targets.legacy_basic_suite(
     name = "chrome_ai_wpt_tests_manifest_gpu_low_tier_suite",
     tests = {
         "chrome_ai_wpt_tests_manifest_gpu_low_tier": _CHROME_AI_WPT_TEST_CONFIG,
+    },
+)
+
+targets.legacy_basic_suite(
+    name = "chrome_ai_wpt_tests_manifest_gpu_low_tier_gemma4_suite",
+    tests = {
+        "chrome_ai_wpt_tests_manifest_gpu_low_tier_gemma4": _CHROME_AI_WPT_TEST_CONFIG,
     },
 )
 

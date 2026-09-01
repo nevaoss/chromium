@@ -73,15 +73,11 @@ crbug.com/508127830 [ iOS27 Device ] MultitaskingWindowTestCase/testStatusBarTap
 crbug.com/508127830 [ iOS27 Device ] MultitaskingWindowTestCase/testStatusBarTapToWindowedModeAndReturnToFullscreen [ Pass Failure ]
 crbug.com/508127830 [ iOS27 Device ] SearchEngineTestCase/testOpenSecondWindow [ Pass Failure ]
 
-# Gardening suppression 2026-07-29
-crbug.com/540429004 [ iPhone15 ] XCallbackURLEGTest/testIncognitoTextSearchWithProfileSwitch [ Skip ]
-
 # Gardening suppression 2026-07-31
 crbug.com/541234788 [ iPhone Simulator ] SaveToDriveTestCase/testDownloadToDriveAppUninstalledUpdatesButton [ Pass Failure ]
 crbug.com/541234336 CardUnmaskAuthenticationSelectionEgtest/testDismissInputViaSwipe [ Pass Failure ]
 crbug.com/541236854 ComposeboxTestCase/testAttachUnrealizedTab [ Pass Failure ]
 crbug.com/541236775 OmniboxHardwareKeyboardInteractionTestCase/testHardwareLeftRightArrowKey [ Pass Failure ]
-crbug.com/540429004 XCallbackURLEGTest/testTextSearchWithProfileSwitch [ Pass Failure ]
 crbug.com/541290681 SafariDataImportTestCase/testPasswordConflictResolution [ Pass Failure ]
 
 # Gardening suppression 2026-08-06
@@ -96,3 +92,13 @@ crbug.com/437843552 [ Simulator ] HistorySystemEGTest/testSearchSyncedHistory [ 
 crbug.com/545634498 [ iPad Device ] HistorySystemEGTest/testSearchSyncedHistory [ Pass Failure ]
 crbug.com/545633687 [ Simulator ] TabGroupsEGTest/testReopenGroupFromAnotherWindow [ Pass Failure ]
 crbug.com/545633687 [ iPad Device ] TabGroupsEGTest/testReopenGroupFromAnotherWindow [ Pass Failure ]
+
+# Gardening suppression 2026-08-20
+crbug.com/549761710 InternalDiscoverFeedTestCase/testFeedAblationHidesFeed [ Pass Failure ]
+
+# Gardening suppression 2026-08-21
+crbug.com/550305483 [ iPad Device ] TabStripSharedGroupTestCase/testTabStripSharedGroupDeleteSharedGroup [ Pass Failure ]
+crbug.com/550305489 [ iPad Device ] TabStripSharedGroupTestCase/testTabStripSharedGroupLeaveSharedGroup [ Pass Failure ]
+
+# Gardening suppression 2026-08-24
+crbug.com/552121965 [ iOS26.5 iPad ] ChildWindowOpenByDOMTestCase/testWindowClosedWithoutName [ Failure ]

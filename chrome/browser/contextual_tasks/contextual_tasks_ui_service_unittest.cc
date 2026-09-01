@@ -626,9 +626,8 @@ TEST_F(
       blink::mojom::WindowFeatures()));
 }
 
-TEST_F(
-    ContextualTasksUiServiceTest,
-    HandleNavigation_AiPage_CobrowseIneligible_WithAttachedTab_NotIntercepted) {
+TEST_F(ContextualTasksUiServiceTest,
+       HandleNavigation_AiPage_CobrowseIneligible_WithAttachedTab_Intercepted) {
   base::test::ScopedFeatureList scoped_feature_list(kContextualTasksSidePanel);
   GURL ai_url(kAiPageUrl);
   ON_CALL(*aim_eligibility_service_, IsAimUrl(_, _))
@@ -658,14 +657,17 @@ TEST_F(
   helper->SetTaskSession(std::nullopt, std::move(mock_session),
                          /*input_state_model=*/nullptr);
 
-  EXPECT_CALL(*service_for_nav_, OnNavigationToAiPageIntercepted(_, _, _))
-      .Times(0);
+  base::RunLoop run_loop;
+  EXPECT_CALL(*service_for_nav_, OnNavigationToAiPageIntercepted(ai_url, _, _))
+      .WillOnce(testing::InvokeWithoutArgs(&run_loop, &base::RunLoop::Quit));
 
-  EXPECT_FALSE(service_for_nav_->HandleNavigation(
+  EXPECT_TRUE(service_for_nav_->HandleNavigation(
       CreateOpenUrlParams(ai_url, false), web_contents.get(),
       /*is_from_embedded_page=*/false, /*from_can_create_window=*/false,
       /*is_same_site_or_from_ui=*/true, false, std::nullopt, std::nullopt,
       blink::mojom::WindowFeatures()));
+
+  run_loop.Run();
 }
 
 TEST_F(
@@ -2395,6 +2397,60 @@ TEST_F(ContextualTasksUiServiceTest, ForcedEmbeddedPageHostOverride) {
   // Clearing the override should return to the default state.
   contextual_tasks::SetForcedEmbeddedPageHostOverride("");
   EXPECT_EQ("", contextual_tasks::GetForcedEmbeddedPageHost());
+}
+
+TEST_F(ContextualTasksUiServiceTest,
+       AddRequiredSidePanelUrlChanges_WithHostOverride) {
+  auto web_contents = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), content::SiteInstance::Create(profile_.get()));
+
+  contextual_tasks::SetForcedEmbeddedPageHostOverride("test.google.com");
+
+  GURL url("https://www.google.com/search?q=test");
+  GURL new_url = ContextualTasksUiService::AddRequiredSidePanelUrlChanges(
+      url, web_contents.get());
+
+  EXPECT_EQ("test.google.com", new_url.host());
+  std::string gsc_val;
+  EXPECT_TRUE(net::GetValueForKeyInQuery(new_url, "gsc", &gsc_val));
+  EXPECT_EQ("2", gsc_val);
+  std::string q_val;
+  EXPECT_TRUE(net::GetValueForKeyInQuery(new_url, "q", &q_val));
+  EXPECT_EQ("test", q_val);
+
+  contextual_tasks::SetForcedEmbeddedPageHostOverride("");
+}
+
+TEST_F(ContextualTasksUiServiceTest,
+       AddRequiredSidePanelUrlChanges_SignInDomain_NotOverridden) {
+  auto web_contents = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), content::SiteInstance::Create(profile_.get()));
+
+  contextual_tasks::SetForcedEmbeddedPageHostOverride("test.google.com");
+
+  GURL signin_url("https://login.corp.google.com/signin");
+  GURL new_url = ContextualTasksUiService::AddRequiredSidePanelUrlChanges(
+      signin_url, web_contents.get());
+
+  EXPECT_EQ("login.corp.google.com", new_url.host());
+
+  contextual_tasks::SetForcedEmbeddedPageHostOverride("");
+}
+
+TEST_F(ContextualTasksUiServiceTest,
+       AddRequiredSidePanelUrlChanges_NonHttpOrHttps_NotOverridden) {
+  auto web_contents = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), content::SiteInstance::Create(profile_.get()));
+
+  contextual_tasks::SetForcedEmbeddedPageHostOverride("test.google.com");
+
+  GURL webui_url("chrome://contextual-tasks/?chrome_task_id=123");
+  GURL new_url = ContextualTasksUiService::AddRequiredSidePanelUrlChanges(
+      webui_url, web_contents.get());
+
+  EXPECT_EQ(webui_url, new_url);
+
+  contextual_tasks::SetForcedEmbeddedPageHostOverride("");
 }
 
 TEST_F(ContextualTasksUiServiceTest, HandleNavigation_DisplayUrlRewritten) {

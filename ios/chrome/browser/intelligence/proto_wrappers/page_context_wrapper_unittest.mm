@@ -56,6 +56,8 @@
 #import "components/prefs/testing_pref_service.h"
 #import "components/safe_browsing/ios/browser/safe_browsing_url_allow_list.h"
 #import "ios/chrome/browser/intelligence/features/features.h"
+#import "ios/chrome/browser/intelligence/proto_wrappers/annotated_page_content_extraction_utils.h"
+#import "ios/chrome/browser/intelligence/proto_wrappers/frame_grafter.h"
 #import "ios/chrome/browser/intelligence/proto_wrappers/page_context_extractor_java_script_feature.h"
 #import "ios/chrome/browser/intelligence/proto_wrappers/page_context_utils.h"
 #import "ios/chrome/browser/intelligence/proto_wrappers/page_context_wrapper_config.h"
@@ -104,8 +106,16 @@
 - (void)setBoxesToRedactForTesting:(const std::vector<CGRect>&)boxes;
 - (const std::vector<CGRect>&)boxesToRedactForTesting;
 - (optimization_guide::proto::PageContext*)pageContextForTesting;
+- (optimization_guide::proto::AnnotatedPageContent*)rootAPCNodeForTesting;
+- (FrameGrafter&)grafterForTesting;
 - (BOOL)shouldRedactDecisionForScreenshot:
     (optimization_guide::proto::RedactionDecision)decision;
+- (void)populateForRichExtractionWithValue:(const base::DictValue&)value
+                            securityOrigin:(const url::Origin&)securityOrigin
+                               isMainFrame:(BOOL)isMainFrame
+                           localFrameToken:
+                               (std::optional<autofill::LocalFrameToken>)
+                                   localFrameToken;
 @end
 
 namespace {
@@ -258,7 +268,6 @@ class PageContextWrapperTest : public PlatformTest,
     std::vector<base::test::FeatureRef> disabled_features;
     std::vector<base::test::FeatureRef> enabled_features;
     enabled_features.push_back(kPageActionMenu);
-    enabled_features.push_back(autofill::features::kAutofillAcrossIframesIos);
     if (IsRefactored()) {
       enabled_features.push_back(kPageContextExtractorRefactored);
     } else {
@@ -1958,8 +1967,9 @@ TEST_P(PageContextWrapperTest,
 
   const auto& annotated_page_content = page_context->annotated_page_content();
   const auto& root_node = annotated_page_content.root_node();
-  // Expect text node, iframe_a node, and a placeholder for iframe_b.
-  ASSERT_EQ(root_node.children_nodes_size(), 3);
+  // Expect text node and iframe_a node. Orphan iframe_b is dropped to prevent
+  // duplicate node_id collisions.
+  ASSERT_EQ(root_node.children_nodes_size(), 2);
 
   const optimization_guide::proto::ContentNode* text_node = nullptr;
   const optimization_guide::proto::ContentNode* iframe_a_node = nullptr;
@@ -1980,7 +1990,7 @@ TEST_P(PageContextWrapperTest,
 
   ASSERT_TRUE(text_node);
   ASSERT_TRUE(iframe_a_node);
-  ASSERT_TRUE(iframe_b_node);
+  EXPECT_FALSE(iframe_b_node);
 
   // Verify main frame text.
   EXPECT_EQ(text_node->content_attributes().text_data().text_content(),
@@ -1999,27 +2009,11 @@ TEST_P(PageContextWrapperTest,
   const auto& iframe_a_text_node = iframe_a_root_node.children_nodes(0);
   EXPECT_EQ(iframe_a_text_node.content_attributes().text_data().text_content(),
             "Child frame cross-origin text A");
-
-  // Verify iframe B is nested inside the main frame content instead of frame A
-  // because the frame B was left orphan by the grafter.
-  EXPECT_EQ(iframe_b_node->content_attributes().attribute_type(),
-            optimization_guide::proto::CONTENT_ATTRIBUTE_IFRAME);
-  const auto& iframe_b_frame_data =
-      iframe_b_node->content_attributes().iframe_data().frame_data();
-  EXPECT_EQ(iframe_b_frame_data.title(), "Child Cross Origin B");
-  EXPECT_EQ(iframe_b_frame_data.url(), iframe_b_url.spec());
-  ASSERT_EQ(iframe_b_node->children_nodes_size(), 1);
-  const auto& iframe_b_root_node = iframe_b_node->children_nodes(0);
-  ASSERT_EQ(iframe_b_root_node.children_nodes_size(), 1);
-  const auto& iframe_b_text_node = iframe_b_root_node.children_nodes(0);
-  EXPECT_EQ(iframe_b_text_node.content_attributes().text_data().text_content(),
-            "Child frame cross-origin text B");
 }
 
 // Tests that extraction with frame grafting works across origins with a complex
 // frame structure. Remote frame registration is disabled for Iframe D to make
-// it an unregistered frame that should be directly grafted under the main
-// frame.
+// it an unregistered frame that should be dropped.
 //      +----------------------------------+
 //      | Main page (Origin M)             |  - Main frame (Origin M)
 //      |                                  |    |
@@ -2160,7 +2154,9 @@ TEST_P(PageContextWrapperTest,
 
   const auto& annotated_page_content = page_context->annotated_page_content();
   const auto& root_node = annotated_page_content.root_node();
-  ASSERT_EQ(root_node.children_nodes_size(), 4);
+  // Expect 3 children: main text node, iframe_a node, and iframe_c node.
+  // Orphan iframe_d is dropped to prevent duplicate node_id collisions.
+  ASSERT_EQ(root_node.children_nodes_size(), 3);
 
   const optimization_guide::proto::ContentNode* iframe_a_node = nullptr;
   const optimization_guide::proto::ContentNode* iframe_c_node = nullptr;
@@ -2288,11 +2284,11 @@ TEST_P(PageContextWrapperTest, PopulatePageContextWithRegistrationFailure) {
   // We expect:
   // 1. Main Text.
   // 2. Empty placeholder node (from main frame's iframe tag).
-  // 3. Child frame content node (orphan).
-  ASSERT_EQ(root_node.children_nodes_size(), 3);
+  // Orphan/unregistered child frame is dropped from the tree.
+  ASSERT_EQ(root_node.children_nodes_size(), 2);
 
-  // Verify that the content of the unregistered frame was still added despite
-  // the timeout in the default location (as a children of the root node).
+  // Verify that the content of the unregistered frame was dropped rather than
+  // appended directly to the root node.
   bool found_unregistered_frame_text = false;
   for (const auto& node : root_node.children_nodes()) {
     if (node.content_attributes().has_iframe_data()) {
@@ -2308,7 +2304,7 @@ TEST_P(PageContextWrapperTest, PopulatePageContextWithRegistrationFailure) {
       }
     }
   }
-  EXPECT_TRUE(found_unregistered_frame_text);
+  EXPECT_FALSE(found_unregistered_frame_text);
 }
 
 // Tests extraction on a complex page with Rich Extraction.
@@ -2851,6 +2847,171 @@ TEST_P(PageContextWrapperTest,
   EXPECT_EQ(
       inner_p.children_nodes(0).content_attributes().text_data().text_content(),
       "Child frame 3 text");
+}
+
+// Tests that when populating for rich extraction, a valid child frame is
+// grafted into the main frame, while a child frame without a LocalFrameToken
+// (std::nullopt) is dropped and not appended to the root node.
+TEST_P(PageContextWrapperTest,
+       PopulateForRichExtraction_ChildFrameWithoutTokenDropped) {
+  if (!IsRefactored()) {
+    return;
+  }
+
+  PageContextWrapperConfig config =
+      PageContextWrapperConfigBuilder().SetUseRichExtraction(true).Build();
+
+  PageContextWrapper* wrapper =
+      [[PageContextWrapper alloc] initWithWebState:web_state()
+                                            config:config
+                                completionCallback:base::DoNothing()];
+
+  const std::string valid_child_remote_id = std::string(32, 'a');
+  const std::string valid_child_local_id = std::string(32, 'b');
+  autofill::LocalFrameToken main_token(base::UnguessableToken::Create());
+  autofill::RemoteFrameToken valid_child_remote_token(
+      *autofill::DeserializeJavaScriptFrameId(valid_child_remote_id));
+  autofill::LocalFrameToken valid_child_local_token(
+      *autofill::DeserializeJavaScriptFrameId(valid_child_local_id));
+
+  // Main Frame: Contains a text paragraph and an iframe placeholder.
+  base::DictValue main_dict = base::test::ParseJsonDict(base::StringPrintf(
+      R"({
+        "rootNode": {
+          "contentAttributes": {
+            "domNodeId": 1,
+            "attributeType": %d
+          },
+          "childrenNodes": [
+            {
+              "contentAttributes": {
+                "domNodeId": 2,
+                "attributeType": %d
+              },
+              "childrenNodes": [{
+                "contentAttributes": {
+                  "domNodeId": 3,
+                  "attributeType": %d,
+                  "textInfo": { "textContent": "Main frame text" }
+                }
+              }]
+            },
+            {
+              "contentAttributes": {
+                "domNodeId": 4,
+                "attributeType": %d,
+                "iframeData": {
+                  "remoteFrameToken": {
+                    "value": "%s"
+                  },
+                  "url": "https://valid.example.com/"
+                }
+              }
+            }
+          ]
+        }
+      })",
+      optimization_guide::proto::CONTENT_ATTRIBUTE_ROOT,
+      optimization_guide::proto::CONTENT_ATTRIBUTE_PARAGRAPH,
+      optimization_guide::proto::CONTENT_ATTRIBUTE_TEXT,
+      optimization_guide::proto::CONTENT_ATTRIBUTE_IFRAME,
+      valid_child_remote_id.c_str()));
+  [wrapper populateForRichExtractionWithValue:main_dict
+                               securityOrigin:url::Origin()
+                                  isMainFrame:YES
+                              localFrameToken:main_token];
+
+  // Working Child Frame (with a valid LocalFrameToken).
+  base::DictValue valid_child_dict =
+      base::test::ParseJsonDict(base::StringPrintf(
+          R"({
+    "rootNode": {
+      "contentAttributes": {
+        "domNodeId": 1,
+        "attributeType": %d
+      },
+      "childrenNodes": [{
+        "contentAttributes": {
+          "domNodeId": 2,
+          "attributeType": %d,
+          "textInfo": { "textContent": "Valid child text" }
+        }
+      }]
+    }
+  })",
+          optimization_guide::proto::CONTENT_ATTRIBUTE_ROOT,
+          optimization_guide::proto::CONTENT_ATTRIBUTE_TEXT));
+  [wrapper populateForRichExtractionWithValue:valid_child_dict
+                               securityOrigin:url::Origin::Create(GURL(
+                                                  "https://valid.example.com/"))
+                                  isMainFrame:NO
+                              localFrameToken:valid_child_local_token];
+
+  // Null-Token Child Frame (with std::nullopt).
+  base::DictValue null_token_child_dict =
+      base::test::ParseJsonDict(base::StringPrintf(
+          R"({
+    "rootNode": {
+      "contentAttributes": {
+        "domNodeId": 1,
+        "attributeType": %d
+      },
+      "childrenNodes": [{
+        "contentAttributes": {
+          "domNodeId": 2,
+          "attributeType": %d,
+          "textInfo": { "textContent": "Null token frame text" }
+        }
+      }]
+    }
+  })",
+          optimization_guide::proto::CONTENT_ATTRIBUTE_ROOT,
+          optimization_guide::proto::CONTENT_ATTRIBUTE_TEXT));
+  [wrapper populateForRichExtractionWithValue:null_token_child_dict
+                               securityOrigin:url::Origin::Create(GURL(
+                                                  "https://null.example.com/"))
+                                  isMainFrame:NO
+                              localFrameToken:std::nullopt];
+
+  // Resolve frame grafting.
+  autofill::ChildFrameRegistrar* registrar =
+      autofill::ChildFrameRegistrar::GetOrCreateForWebState(web_state());
+  ASSERT_TRUE(registrar);
+  registrar->RegisterMapping(valid_child_remote_token, valid_child_local_token);
+
+  optimization_guide::proto::AnnotatedPageContent* apc =
+      [wrapper rootAPCNodeForTesting];
+  ASSERT_TRUE(apc);
+
+  ResolveCrossSiteFrameContent([wrapper grafterForTesting], registrar,
+                               /*include_same_site_only=*/false, apc);
+
+  // Verify the entire tree makeup:
+  // Root contains exactly 2 children: (1) Main text paragraph, (2) Grafted
+  // iframe. The null-token frame is completely dropped and does not appear in
+  // the tree.
+  const auto& root_node = apc->root_node();
+  ASSERT_EQ(root_node.children_nodes_size(), 2);
+
+  // Child 0: Main frame paragraph
+  EXPECT_EQ(root_node.children_nodes(0)
+                .children_nodes(0)
+                .content_attributes()
+                .text_data()
+                .text_content(),
+            "Main frame text");
+
+  // Child 1: Valid grafted iframe
+  const auto& iframe_node = root_node.children_nodes(1);
+  EXPECT_EQ(iframe_node.content_attributes().attribute_type(),
+            optimization_guide::proto::CONTENT_ATTRIBUTE_IFRAME);
+  ASSERT_EQ(iframe_node.children_nodes_size(), 1);
+  EXPECT_EQ(iframe_node.children_nodes(0)
+                .children_nodes(0)
+                .content_attributes()
+                .text_data()
+                .text_content(),
+            "Valid child text");
 }
 
 // Tests that the ancestor mapping is correct.
@@ -4417,6 +4578,133 @@ TEST_P(PageContextWrapperTest,
   EXPECT_TRUE(table_node.content_attributes().has_table_data());
   EXPECT_EQ(table_node.content_attributes().table_data().table_name(),
             "MY TABLE NAME");
+}
+
+// Tests that elements with CSS table display properties (display: table,
+// display: table-row, display: table-cell, display: table-header-group) are
+// extracted as TABLE, TABLE_ROW, and TABLE_CELL nodes.
+TEST_P(PageContextWrapperTest, PopulatePageContext_RichExtraction_CssTable) {
+  if (!IsRefactored()) {
+    GTEST_SKIP() << "ApcV2 not supported for the non-refactored APC wrapper";
+  }
+
+  auto page_structure = HtmlPage(
+      "CssTable",
+      RawHtml("<div style=\"display: table;\">"
+              "  <div style=\"display: table-caption;\">CSS Table Caption</div>"
+              "  <div style=\"display: table-header-group;\">"
+              "    <div style=\"display: table-row;\">"
+              "      <div style=\"display: table-cell;\">Header Cell</div>"
+              "    </div>"
+              "  </div>"
+              "  <div style=\"display: table-row;\">"
+              "    <div style=\"display: table-cell;\">Body Cell</div>"
+              "  </div>"
+              "</div>"));
+
+  std::string main_html = page_helper_->Build(page_structure);
+  web::test::LoadHtml(base::SysUTF8ToNSString(main_html),
+                      test_server_.GetURL(kMainPagePath), web_state());
+
+  PageContextWrapperConfigBuilder builder;
+  builder.SetUseRefactoredExtractor(IsRefactored());
+  builder.SetUseRichExtraction(true);
+
+  PageContextWrapperCallbackResponse response = RunPageContextWrapperWithConfig(
+      web_state(), builder.Build(), ^(PageContextWrapper* wrapper) {
+        wrapper.shouldGetAnnotatedPageContent = YES;
+      });
+
+  ASSERT_TRUE(response.has_value());
+  const auto& page_context = *response.value();
+  const auto& root_node = page_context.annotated_page_content().root_node();
+
+  ASSERT_EQ(root_node.children_nodes_size(), 1);
+  const auto& table_node = root_node.children_nodes(0);
+  EXPECT_EQ(table_node.content_attributes().attribute_type(),
+            optimization_guide::proto::CONTENT_ATTRIBUTE_TABLE);
+  EXPECT_TRUE(table_node.content_attributes().has_table_data());
+  EXPECT_EQ(table_node.content_attributes().table_data().table_name(),
+            "CSS Table Caption");
+
+  bool found_caption_text = false;
+  bool found_header_row = false;
+  bool found_body_row = false;
+
+  for (const auto& child : table_node.children_nodes()) {
+    if (child.content_attributes().attribute_type() ==
+            optimization_guide::proto::CONTENT_ATTRIBUTE_TEXT &&
+        child.content_attributes().text_data().text_content() ==
+            "CSS Table Caption") {
+      found_caption_text = true;
+    } else if (child.content_attributes().attribute_type() ==
+               optimization_guide::proto::CONTENT_ATTRIBUTE_TABLE_ROW) {
+      if (child.content_attributes().table_row_data().type() ==
+          optimization_guide::proto::TABLE_ROW_TYPE_HEADER) {
+        found_header_row = true;
+        ASSERT_GE(child.children_nodes_size(), 1);
+        EXPECT_EQ(child.children_nodes(0).content_attributes().attribute_type(),
+                  optimization_guide::proto::CONTENT_ATTRIBUTE_TABLE_CELL);
+      } else if (child.content_attributes().table_row_data().type() ==
+                 optimization_guide::proto::TABLE_ROW_TYPE_BODY) {
+        found_body_row = true;
+        ASSERT_GE(child.children_nodes_size(), 1);
+        EXPECT_EQ(child.children_nodes(0).content_attributes().attribute_type(),
+                  optimization_guide::proto::CONTENT_ATTRIBUTE_TABLE_CELL);
+      }
+    }
+  }
+
+  EXPECT_TRUE(found_caption_text);
+  EXPECT_TRUE(found_header_row);
+  EXPECT_TRUE(found_body_row);
+}
+
+// Tests that elements with ARIA table roles (role="table", role="row",
+// role="cell") are extracted as TABLE structures.
+TEST_P(PageContextWrapperTest, PopulatePageContext_RichExtraction_AriaTable) {
+  if (!IsRefactored()) {
+    GTEST_SKIP() << "ApcV2 not supported for the non-refactored APC wrapper";
+  }
+
+  auto page_structure =
+      HtmlPage("AriaTable", RawHtml("<div role=\"table\">"
+                                    "  <div role=\"row\">"
+                                    "    <div role=\"cell\">Aria Cell</div>"
+                                    "  </div>"
+                                    "</div>"));
+
+  std::string main_html = page_helper_->Build(page_structure);
+  web::test::LoadHtml(base::SysUTF8ToNSString(main_html),
+                      test_server_.GetURL(kMainPagePath), web_state());
+
+  PageContextWrapperConfigBuilder builder;
+  builder.SetUseRefactoredExtractor(IsRefactored());
+  builder.SetUseRichExtraction(true);
+
+  PageContextWrapperCallbackResponse response = RunPageContextWrapperWithConfig(
+      web_state(), builder.Build(), ^(PageContextWrapper* wrapper) {
+        wrapper.shouldGetAnnotatedPageContent = YES;
+      });
+
+  ASSERT_TRUE(response.has_value());
+  const auto& page_context = *response.value();
+  const auto& root_node = page_context.annotated_page_content().root_node();
+
+  ASSERT_EQ(root_node.children_nodes_size(), 1);
+  const auto& table_node = root_node.children_nodes(0);
+  EXPECT_EQ(table_node.content_attributes().attribute_type(),
+            optimization_guide::proto::CONTENT_ATTRIBUTE_TABLE);
+
+  ASSERT_EQ(table_node.children_nodes_size(), 1);
+  const auto& row_node = table_node.children_nodes(0);
+  EXPECT_EQ(row_node.content_attributes().attribute_type(),
+            optimization_guide::proto::CONTENT_ATTRIBUTE_TABLE_ROW);
+
+  ASSERT_EQ(row_node.children_nodes_size(), 1);
+  const auto& cell_node = row_node.children_nodes(0);
+  EXPECT_EQ(cell_node.content_attributes().attribute_type(),
+            optimization_guide::proto::CONTENT_ATTRIBUTE_TABLE_CELL);
 }
 
 // Tests the extraction of form control attributes (input, textarea, select,
@@ -7973,6 +8261,11 @@ TEST_P(PageContextWrapperTest, PopulatePageContext_ApcVersionAndMode) {
 // 2. Cross-site iframes are not extracted.
 // 3. Unresolved cross-site iframe placeholders are redacted in APCv2.
 TEST_P(PageContextWrapperTest, ExtractPageContext_SameSiteOnly) {
+  if (!IsRefactored()) {
+    GTEST_SKIP()
+        << "Frame grafter not supported for the non-refactored APC wrapper";
+  }
+
   auto page_structure = HtmlPage(
       "Main", Paragraph("Main frame text"),
       Iframe(TestOrigin::kCrossA,
@@ -8115,6 +8408,11 @@ TEST_P(PageContextWrapperTest, ExtractPageContext_SameSiteOnly) {
 // 1. Same-site cross-origin subdomain iframes are extracted and grafted.
 // 2. Cross-site iframes are ALSO extracted and grafted (not skipped/redacted).
 TEST_P(PageContextWrapperTest, ExtractPageContext_SameSiteOnlyDisabled) {
+  if (!IsRefactored()) {
+    GTEST_SKIP()
+        << "Frame grafter not supported for the non-refactored APC wrapper";
+  }
+
   auto page_structure = HtmlPage(
       "Main", Paragraph("Main frame text"),
       Iframe(TestOrigin::kCrossA,

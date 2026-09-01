@@ -18,6 +18,7 @@
 #include "base/memory/raw_ptr.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/user_metrics.h"
+#include "base/notimplemented.h"
 #include "base/notreached.h"
 #include "base/rand_util.h"
 #include "base/strings/string_util.h"
@@ -102,7 +103,7 @@
 #include "components/autofill/content/browser/content_autofill_driver_factory.h"
 #include "components/autofill/content/browser/content_identity_credential_delegate.h"
 #include "components/autofill/content/browser/integrators/email_verifier/email_verifier_delegate.h"
-#include "components/autofill/core/browser/actor/actor_key_metrics_recorder.h"
+#include "components/autofill/core/browser/actor/actor_autofill_manager.h"
 #include "components/autofill/core/browser/at_memory/at_memory_enablement_utils.h"
 #include "components/autofill/core/browser/at_memory/at_memory_manager.h"
 #include "components/autofill/core/browser/autofill_type.h"
@@ -258,6 +259,11 @@ const base::Feature& GetFeature(AutofillClient::IphFeature iph_feature) {
   switch (iph_feature) {
     case AutofillClient::IphFeature::kAutofillAi:
       return feature_engagement::kIPHAutofillAiOptInFeature;
+    case AutofillClient::IphFeature::kWalletDirectOffers:
+      // TODO(crbug.com/546252995): Implement IPH bubble for Wallet Direct
+      // Offers.
+      NOTIMPLEMENTED();
+      return feature_engagement::kIPHAutofillAiOptInFeature;
   }
   NOTREACHED();
 }
@@ -265,6 +271,11 @@ const base::Feature& GetFeature(AutofillClient::IphFeature iph_feature) {
 ui::ElementIdentifier GetElementId(AutofillClient::IphFeature iph_feature) {
   switch (iph_feature) {
     case AutofillClient::IphFeature::kAutofillAi:
+      return PopupViewViews::kAutofillAiOptInIphElementId;
+    case AutofillClient::IphFeature::kWalletDirectOffers:
+      // TODO(crbug.com/546252995): Implement IPH bubble for Wallet Direct
+      // Offers.
+      NOTIMPLEMENTED();
       return PopupViewViews::kAutofillAiOptInIphElementId;
   }
   NOTREACHED();
@@ -1012,14 +1023,11 @@ void ChromeAutofillClient::TriggerAutofillAiFillingJourneySurvey(
 
 bool ChromeAutofillClient::IsTabInActorMode() const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (base::FeatureList::IsEnabled(features::debug::kAutofillForceActorMode)) {
-    return true;
-  }
-  return active_actor_task_.has_value();
+  return actor_autofill_manager_ && actor_autofill_manager_->IsTabInActorMode();
 }
 
-ActorKeyMetricsRecorder* ChromeAutofillClient::GetActorKeyMetricsRecorder() {
-  return actor_key_metrics_recorder_.get();
+ActorAutofillManager* ChromeAutofillClient::GetActorAutofillManager() {
+  return actor_autofill_manager_.get();
 }
 
 bool ChromeAutofillClient::IsAutofillEnabled() const {
@@ -1120,16 +1128,6 @@ ChromeAutofillClient::GetFormInteractionsUkmLogger() {
 
 const AutofillAblationStudy& ChromeAutofillClient::GetAblationStudy() const {
   return ablation_study_;
-}
-
-bool ChromeAutofillClient::IsAndroidLargeFormFactor() const {
-#if BUILDFLAG(IS_ANDROID)
-  if (base::WeakPtr<ManualFillingController> controller =
-          ManualFillingController::Get(web_contents())) {
-    return controller->IsLargeFormFactor();
-  }
-#endif
-  return false;
 }
 
 #if BUILDFLAG(IS_ANDROID)
@@ -1311,7 +1309,7 @@ ChromeAutofillClient::ChromeAutofillClient(content::WebContents* web_contents)
   }
 
   form_predictions_tracker_ = std::make_unique<FormPredictionsTracker>(this);
-  actor_key_metrics_recorder_ = std::make_unique<ActorKeyMetricsRecorder>(this);
+  actor_autofill_manager_ = std::make_unique<ActorAutofillManager>(this);
 
   // Notify the EntityDataManager about the availability of device re-auth.
   // This information is injected through the client because the device
@@ -1639,10 +1637,17 @@ ToastController* ChromeAutofillClient::GetToastController() {
 }
 
 void ChromeAutofillClient::OnActorTaskStateChange(actor::ActorTask& task) {
+  // TODO(crbug.com/551883788): Move this logic to ActorAutofillManager.
+  if (!actor_autofill_manager_) {
+    return;
+  }
   const actor::TaskId task_id = task.id();
   const actor::ActorTask::State state = task.GetState();
 
-  if (active_actor_task_ && *active_actor_task_ != task_id) {
+  std::optional<actor::TaskId> active_task =
+      actor_autofill_manager_->active_actor_task();
+
+  if (active_task && *active_task != task_id) {
     // The update is for an actor that isn't working on the current tab.
     return;
   }
@@ -1651,7 +1656,7 @@ void ChromeAutofillClient::OnActorTaskStateChange(actor::ActorTask& task) {
   // TODO(crbug.com/472336281): The state changes leading to the task
   // completion should be issued before the `ActorTask` gets removed.
   if (actor::ActorTask::IsCompletedState(state)) {
-    active_actor_task_.reset();
+    actor_autofill_manager_->set_active_actor_task(std::nullopt);
     return;
   }
 
@@ -1664,7 +1669,7 @@ void ChromeAutofillClient::OnActorTaskStateChange(actor::ActorTask& task) {
 
   // If the task was just created, known forms should be reparsed to ensure that
   // actor specific behaviors are in place.
-  if (!active_actor_task_.has_value()) {
+  if (!active_task.has_value()) {
     for (AutofillDriver* driver :
          GetAutofillDriverFactory().GetExistingDrivers()) {
       driver->GetAutofillManager().ReparseKnownForms();
@@ -1673,7 +1678,7 @@ void ChromeAutofillClient::OnActorTaskStateChange(actor::ActorTask& task) {
 
   // TODO(crbug.com/469428128): Evaluate whether
   // `actor::ActorTask::State::kCreated` state should enable the actor mode.
-  active_actor_task_ = task_id;
+  actor_autofill_manager_->set_active_actor_task(task_id);
 }
 
 void ChromeAutofillClient::OpenGeminiInSidebar(const std::u16string& prompt) {

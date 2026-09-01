@@ -40,9 +40,6 @@ namespace extensions_features {
 // Controls the limit for action.setBadgeText() API input.
 BASE_DECLARE_FEATURE(kApiActionSetBadgeTextByteLimit);
 
-// Controls the limit for alarms.create() API input.
-BASE_DECLARE_FEATURE(kApiAlarmsCreateLengthLimit);
-
 // Controls the availability of SplitView Extension APIs.
 BASE_DECLARE_FEATURE(kApiTabsSplitView);
 
@@ -155,6 +152,12 @@ BASE_DECLARE_FEATURE(kCWSReviewPromptingNativeUI);
 // If enabled, <webview>s will be allowed to request permission from an
 // embedding Chrome App to request access to Human Interface Devices.
 BASE_DECLARE_FEATURE(kEnableWebHidInWebView);
+
+// If enabled, extensions can opt in to asynchronous listener registration via
+// the `background.async_listener_registration` manifest key to defer event
+// dispatch on worker start until the extension signals that its listeners are
+// registered.
+BASE_DECLARE_FEATURE(kExtensionAsyncListenerRegistration);
 
 // If enabled, JS content scripts injected at document start will be compiled
 // in a background thread.

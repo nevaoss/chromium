@@ -51,6 +51,14 @@ public class FuseboxMetrics {
     static final String FILE_ATTACHMENT_SIZE_LIMIT_CHECK_HISTOGRAM =
             "Omnibox.MobileFusebox.AttachmentSizeLimitCheck";
 
+    @VisibleForTesting
+    /* package */ static final String SET_ACTIVE_MODEL_SOURCE_HISTOGRAM =
+            "Android.Omnibox.MobileFusebox.SetActiveModelSource";
+
+    @VisibleForTesting
+    /* package */ static final String REANCHOR_VIEWS_DURATION_HISTOGRAM =
+            "Android.Omnibox.MobileFusebox.ReanchorViews.Duration";
+
     // LINT.IfChange(ToolMode)
     @VisibleForTesting /* package */ static final int TOOL_MODE_HISTOGRAM_BOUND = 12;
     // LINT.ThenChange(//tools/metrics/histograms/metadata/omnibox/enums.xml:OmniboxToolMode)
@@ -58,6 +66,25 @@ public class FuseboxMetrics {
     @VisibleForTesting /* package */ static final int MODEL_MODE_HISTOGRAM_BOUND = 8;
 
     // LINT.ThenChange(//tools/metrics/histograms/metadata/omnibox/enums.xml:OmniboxModelMode)
+
+    // LINT.IfChange(SetActiveModelSource)
+    @IntDef({
+        SetActiveModelSource.RESET_FROM_ACTIVATE_SEARCH,
+        SetActiveModelSource.SKIPPED_FROM_ACTIVATE_SEARCH,
+        SetActiveModelSource.SET_FROM_MODEL_SELECTION,
+        SetActiveModelSource.COUNT
+    })
+    @Retention(RetentionPolicy.SOURCE)
+    @Target({ElementType.TYPE_USE})
+    @NullMarked
+    public @interface SetActiveModelSource {
+        int RESET_FROM_ACTIVATE_SEARCH = 0;
+        int SKIPPED_FROM_ACTIVATE_SEARCH = 1;
+        int SET_FROM_MODEL_SELECTION = 2;
+        int COUNT = 3;
+    }
+
+    // LINT.ThenChange(//tools/metrics/histograms/metadata/android/enums.xml:SetActiveModelSource)
 
     // LINT.IfChange(AiModeActivationSource)
     @IntDef({
@@ -139,6 +166,16 @@ public class FuseboxMetrics {
                 "Omnibox.MobileFusebox.AiModeActivationSource",
                 aiModeActivationSource,
                 AiModeActivationSource.COUNT);
+    }
+
+    static void notifySetActiveModelSource(@SetActiveModelSource int source) {
+        RecordHistogram.recordEnumeratedHistogram(
+                SET_ACTIVE_MODEL_SOURCE_HISTOGRAM, source, SetActiveModelSource.COUNT);
+    }
+
+    static void recordReanchorViewsDuration(long startTime) {
+        RecordHistogram.recordTimesHistogram(
+                REANCHOR_VIEWS_DURATION_HISTOGRAM, SystemClock.elapsedRealtime() - startTime);
     }
 
     static void notifyAttachmentSizeLimitCheck(@FuseboxAttachmentSizeLimitCheck int result) {

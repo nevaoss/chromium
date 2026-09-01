@@ -60,7 +60,6 @@
 #include "chrome/browser/icon_manager.h"
 #include "chrome/browser/lifetime/application_lifetime.h"
 #include "chrome/browser/lifetime/browser_shutdown.h"
-#include "chrome/browser/lifetime/switch_utils.h"
 #include "chrome/browser/media/audio_process_ml_model_forwarder.h"
 #include "chrome/browser/media/chrome_media_session_client.h"
 #include "chrome/browser/media/router/providers/cast/dual_media_sink_service.h"
@@ -85,6 +84,7 @@
 #include "chrome/browser/serial/serial_policy_allowed_ports.h"
 #include "chrome/browser/shell_integration.h"
 #include "chrome/browser/site_isolation/prefs_observer.h"
+#include "chrome/browser/speech/speech_recognition_small_expert_model_installer.h"
 #include "chrome/browser/ssl/secure_origin_prefs_observer.h"
 #include "chrome/browser/startup_data.h"
 #include "chrome/browser/status_icons/status_tray.h"
@@ -96,7 +96,6 @@
 #include "chrome/common/chrome_constants.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/common/chrome_paths.h"
-#include "chrome/common/chrome_switches.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/common/url_constants.h"
 #include "chrome/grit/branded_strings.h"
@@ -151,14 +150,12 @@
 #include "content/public/browser/service_worker_context.h"
 #include "content/public/browser/storage_partition.h"
 #include "content/public/common/buildflags.h"
-#include "content/public/common/content_switches.h"
 #include "extensions/buildflags/buildflags.h"
 #include "extensions/common/constants.h"
 #include "media/media_buildflags.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "printing/buildflags/buildflags.h"
 #include "services/network/public/cpp/features.h"
-#include "services/network/public/cpp/network_switches.h"
 #include "ui/base/idle/idle.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/ui_base_features.h"
@@ -169,7 +166,6 @@
 #include "chrome/browser/browser_features.h"
 #include "chrome/browser/os_crypt/app_bound_encryption_provider_win.h"
 #include "chrome/installer/util/install_util.h"
-#include "components/app_launch_prefetch/app_launch_prefetch.h"
 #include "components/os_crypt/async/browser/dpapi_key_provider.h"
 #elif BUILDFLAG(IS_MAC)
 #include "chrome/browser/chrome_browser_main_mac.h"
@@ -182,6 +178,7 @@
 
 #if BUILDFLAG(IS_CHROMEOS)
 #include "ash/constants/ash_pref_names.h"
+#include "chrome/browser/ash/extensions/chromeos_extensions_browser_api_provider.h"
 #include "chrome/browser/media_galleries/media_file_system_registry.h"
 #include "components/password_manager/core/common/password_manager_pref_names.h"
 #include "components/soda/soda_installer_impl_chromeos.h"
@@ -425,12 +422,14 @@ void BrowserProcessImpl::Init() {
   extensions_browser_client_->AddAPIProvider(
       std::make_unique<
           controlled_frame::ControlledFrameExtensionsBrowserAPIProvider>());
+#endif  // BUILDFLAG(ENABLE_EXTENSIONS)
 #if BUILDFLAG(IS_CHROMEOS)
+  extensions_browser_client_->AddAPIProvider(
+      std::make_unique<ash::ChromeOSExtensionsBrowserAPIProvider>());
   extensions_browser_client_->AddAPIProvider(
       std::make_unique<
           chromeos::ChromeOSTelemetryExtensionsBrowserAPIProvider>());
 #endif  // BUILDFLAG(IS_CHROMEOS)
-#endif  // BUILDFLAG(ENABLE_EXTENSIONS)
 
   extensions::ExtensionsBrowserClient::Set(extensions_browser_client_.get());
 #endif  // BUILDFLAG(ENABLE_EXTENSIONS_CORE)
@@ -618,9 +617,9 @@ void BrowserProcessImpl::StartTearDown() {
   }
 #endif  // !BUILDFLAG(IS_CHROMEOS)
 
-  // |hid_system_tray_icon_| and |usb_system_tray_icon_| must be destroyed
-  // before |system_notification_helper_| for ChromeOS and |status_tray_| for
-  // non-ChromeOS.
+  // `hid_system_tray_icon_` and `usb_system_tray_icon_` must be destroyed
+  // before `system_notification_helper_` for ChromeOS and `status_tray_` for
+  // non-ChromeOS, and before `profile_manager_`.
   hid_system_tray_icon_.reset();
   usb_system_tray_icon_.reset();
 
@@ -1347,6 +1346,13 @@ GlobalFeatures* BrowserProcessImpl::GetFeatures() {
   return features_.get();
 }
 
+#if !BUILDFLAG(IS_ANDROID)
+speech::SpeechRecognitionSmallExpertModelInstaller*
+BrowserProcessImpl::speech_recognition_small_expert_model_installer() {
+  return speech_recognition_small_expert_model_installer_.get();
+}
+#endif
+
 DownloadRequestLimiter* BrowserProcessImpl::download_request_limiter() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!download_request_limiter_.get()) {
@@ -1689,6 +1695,8 @@ void BrowserProcessImpl::PreMainMessageLoopRun() {
 
 #if !BUILDFLAG(IS_ANDROID)
   screen_ai_download_ = screen_ai::ScreenAIInstallState::Create();
+  speech_recognition_small_expert_model_installer_ =
+      std::make_unique<speech::SpeechRecognitionSmallExpertModelInstaller>();
 #endif
 
   base::FilePath user_data_dir;
@@ -1942,44 +1950,8 @@ bool BrowserProcessImpl::IsRunningInBackground() const {
 }
 
 void BrowserProcessImpl::RestartBackgroundInstance() {
-  base::CommandLine* old_cl = base::CommandLine::ForCurrentProcess();
-  auto new_cl = std::make_unique<base::CommandLine>(old_cl->GetProgram());
-
-  base::CommandLine::SwitchMap switches = old_cl->GetSwitches();
-  switches::RemoveSwitchesForAutostart(&switches);
-
-  // Append the rest of the switches (along with their values, if any)
-  // to the new command line
-  for (const auto& it : switches) {
-    const auto& switch_name = it.first;
-    const auto& switch_value = it.second;
-    if (switch_value.empty()) {
-      new_cl->AppendSwitch(switch_name);
-    } else {
-      new_cl->AppendSwitchNative(switch_name, switch_value);
-    }
-  }
-
-  // Switches to add when auto-restarting Chrome.
-  static constexpr const char* kSwitchesToAddOnAutorestart[] = {
-      switches::kNoStartupWindow};
-
-  // Ensure that our desired switches are set on the new process.
-  for (const char* switch_to_add : kSwitchesToAddOnAutorestart) {
-    if (!new_cl->HasSwitch(switch_to_add)) {
-      new_cl->AppendSwitch(switch_to_add);
-    }
-  }
-
-#if BUILDFLAG(IS_WIN)
-  new_cl->AppendArgNative(app_launch_prefetch::GetPrefetchSwitch(
-      app_launch_prefetch::SubprocessType::kBrowserBackground));
-#endif  // BUILDFLAG(IS_WIN)
-
-  DLOG(WARNING) << "Shutting down current instance of the browser.";
-  chrome::AttemptExit();
-
-  upgrade_util::SetNewCommandLine(std::move(new_cl));
+  DLOG(WARNING) << "Detected update. Restarting background browser instance.";
+  chrome::AttemptRestartWithMode(chrome::RelaunchMode::kBackground);
 }
 
 void BrowserProcessImpl::OnAutoupdateTimer() {

@@ -271,7 +271,8 @@ void LensOverlayController::CloseUI() {
       Profile::FromBrowserContext(tab_->GetContents()->GetBrowserContext());
   if (lens::features::IsLensOverlayNonBlockingPrivacyNoticeEnabled() &&
       !lens::DidUserGrantLensOverlayNeededPermissions(profile) &&
-      !user_interacted_without_accepting_privacy_notice) {
+      !user_interacted_without_accepting_privacy_notice &&
+      !ShouldHideNonBlockingPrivacyNotice()) {
     lens::RecordNonBlockingPrivacyNoticeAccepted(
         lens::LensOverlayNonBlockingPrivacyNoticeUserAction::
             kClosedWithoutAccepting,
@@ -729,7 +730,8 @@ void LensOverlayController::ShowUI(
   Profile* profile =
       Profile::FromBrowserContext(tab_->GetContents()->GetBrowserContext());
   if (lens::features::IsLensOverlayNonBlockingPrivacyNoticeEnabled() &&
-      !lens::DidUserGrantLensOverlayNeededPermissions(profile)) {
+      !lens::DidUserGrantLensOverlayNeededPermissions(profile) &&
+      !ShouldHideNonBlockingPrivacyNotice()) {
     lens::RecordNonBlockingPrivacyNoticeToBeShown(invocation_source);
   }
 
@@ -1411,6 +1413,12 @@ bool LensOverlayController::CoBrowsePanelWithLensOverlayEnabled() const {
              lens::LensOverlayInvocationSource::kOmniboxPageAction;
 }
 
+bool LensOverlayController::ShouldHideNonBlockingPrivacyNotice() const {
+  return invocation_source_ ==
+             lens::LensOverlayInvocationSource::kOmniboxPopupButton ||
+         CoBrowsePanelWithLensOverlayEnabled();
+}
+
 bool LensOverlayController::ShouldShowPreselectionBubble() {
   return !pending_region_ && (!IsResultsSidePanelShowing() ||
                               CoBrowsePanelWithLensOverlayEnabled());
@@ -1465,8 +1473,14 @@ void LensOverlayController::OnFullscreenStateChanged() {
   if (lens::features::GetLensOverlayEnableInFullscreen()) {
     return;
   }
-  // If there is top chrome we can keep the overlay open.
-  if (tab_->GetBrowserWindowInterface()->IsTabStripVisible()) {
+  // If there is top chrome and we are not in tab fullscreen we can keep the
+  // overlay open.
+  auto* const exclusive_access_manager =
+      ExclusiveAccessManager::From(tab_->GetBrowserWindowInterface());
+  if (tab_->GetBrowserWindowInterface()->IsTabStripVisible() &&
+      exclusive_access_manager &&
+      !exclusive_access_manager->fullscreen_controller()
+           ->IsWindowFullscreenForTabOrPending()) {
     return;
   }
   lens_search_controller_->CloseLensSync(
@@ -2323,9 +2337,12 @@ void LensOverlayController::MaybeGrantLensOverlayPermissionsForSession(
     GetLensOverlayQueryController()->GrantPermissionForSession();
     GetLensQueryFlowRouter()->MaybeResumeQueryFlow();
     user_interacted_without_accepting_privacy_notice = true;
-    lens::RecordNonBlockingPrivacyNoticeAccepted(
-        lens::LensOverlayNonBlockingPrivacyNoticeUserAction::kLensInteraction,
-        effective_invocation_source);
+
+    if (!ShouldHideNonBlockingPrivacyNotice()) {
+      lens::RecordNonBlockingPrivacyNoticeAccepted(
+          lens::LensOverlayNonBlockingPrivacyNoticeUserAction::kLensInteraction,
+          effective_invocation_source);
+    }
   }
 }
 

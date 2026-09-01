@@ -145,6 +145,8 @@ class TestNetworkContext : public mojom::NetworkContext {
       const base::flat_map<std::string, std::string>& endpoints) override {}
   void SendReportsAndRemoveSource(
       const base::UnguessableToken& reporting_source) override {}
+  void SendReportsForSource(
+      const base::UnguessableToken& reporting_source) override {}
   void QueueReport(
       const std::string& type,
       const std::string& group,
@@ -365,7 +367,8 @@ class TestNetworkContext : public mojom::NetworkContext {
       const std::string& realm,
       LookupProxyAuthCredentialsCallback callback) override {}
 #endif
-  void SetSharedDictionaryCacheMaxSize(uint64_t cache_max_size) override {}
+  void SetSharedDictionaryCacheMaxSize(
+      std::optional<uint64_t> cache_max_size) override {}
   void ClearSharedDictionaryCache(
       base::Time start_time,
       base::Time end_time,

@@ -112,11 +112,6 @@ ash/webui/personalization_app/mojom/personalization_app.mojom -->
   <int value="1" label="New Mexico"/>
 </enum>
 
-<enum name="AmbientUiMode">
-  <int value="0" label="Lock Screen"/>
-  <int value="1" label="In Session Idle"/>
-</enum>
-
 <enum name="AmbientVideoSessionStatus">
   <int value="0" label="Success"/>
   <int value="1" label="Failed"/>
@@ -1670,15 +1665,6 @@ ash/webui/personalization_app/mojom/personalization_app.mojom -->
   <int value="5" label="Accelerator"/>
 </enum>
 
-<enum name="NotificationImageDragEndState">
-<!-- Defined in ash/system/message_center/ash_notification_drag_controller.h -->
-
-  <int value="0" label="InterruptedByNewDrag"/>
-  <int value="1" label="Cancelled"/>
-  <int value="2" label="CompletedWithDrop"/>
-  <int value="3" label="CompletedWithoutDrop"/>
-</enum>
-
 <enum name="NotificationViewType">
   <int value="0" label="Simple (no image, action buttons) and ungrouped"/>
   <int value="1" label="Simple (no image, action buttons) and grouped"/>
@@ -2677,12 +2663,6 @@ chromeos/ash/components/peripheral_notification/peripheral_notification_manager.
   <int value="3" label="Session exit due to shutdown"/>
   <int value="4" label="Session exit due to unspecified reasons"/>
   <int value="5" label="Session exit due to converting to tablet mode"/>
-</enum>
-
-<enum name="SwipeHomeToOverviewResult">
-  <int value="0" label="Remained on the home screen"/>
-  <int value="1" label="Transitioned to overview"/>
-  <int value="2" label="Went back on the home screen"/>
 </enum>
 
 <enum name="TasksUserAction">

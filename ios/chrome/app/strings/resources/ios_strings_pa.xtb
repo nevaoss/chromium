@@ -1294,6 +1294,7 @@
 <translation id="5238596603078743134"><ph name="BEGIN_BOLD" /><ph name="USERNAME" /><ph name="END_BOLD" /> ਵੱਲੋਂ ਹੁਣ <ph name="BEGIN_BOLD" /><ph name="WEBSITE" /><ph name="END_BOLD" /> ਵਿੱਚ ਸਾਈਨ-ਇਨ ਕਰਨ ਲਈ Google Password Manager ਦੀ ਵਰਤੋਂ ਕਰਨ 'ਤੇ ਤੁਹਾਡੇ ਵਰਤੋਂਕਾਰ ਨਾਮ ਅਤੇ ਪਾਸਵਰਡ ਦੀ ਵਰਤੋਂ ਕੀਤੀ ਜਾ ਸਕਦੀ ਹੈ।</translation>
 <translation id="5241106044372754566"><ph name="NAME" />, <ph name="EMAIL" />, ਇਸ ਵੇਲੇ ਚੁਣੀ ਗਈ ਤੁਹਾਡੀ ਸੰਸਥਾ ਵੱਲੋਂ ਪ੍ਰਬੰਧਿਤ ਹੈ। ਕੋਈ ਖਾਤਾ ਚੁਣੋ।</translation>
 <translation id="5242899254250321823">ਵੈੱਬਸਾਈਟ 'ਤੇ ਪਾਸਵਰਡ ਬਦਲੋ</translation>
+<translation id="524751727772074981">Chrome ਵਿੱਚ Gemini ਨਾਲ, ਕਿਤੇ ਵੀ, ਕਦੇ ਵੀ, ਕੁਝ ਵੀ ਪੁੱਛੋ</translation>
 <translation id="5248640482715684545">ਇਹ ਸਾਈਟ ਕੋਈ ਹੋਰ ਐਪਲੀਕੇਸ਼ਨ ਖੋਲ੍ਹਣ ਦੀ ਕੋਸ਼ਿਸ਼ ਕਰ ਰਹੀ ਹੈ।</translation>
 <translation id="5250371859659394278">ਕਿਸੇ ਅਗਿਆਤ ਸਰੋਤ ਤੋਂ</translation>
 <translation id="525510229763628836">ਛੋਟੀ ਕੀਤੀ ਗਈ</translation>
@@ -1310,6 +1311,7 @@
 <translation id="5300589172476337783">ਦਿਖਾਓ</translation>
 <translation id="5311061401280561833">ਕੈਮਰੇ ਅਤੇ ਮਾਈਕ੍ਰੋਫ਼ੋਨ ਤੱਕ ਪਹੁੰਚ ਦੀ ਆਗਿਆ ਦਿੱਤੀ ਗਈ</translation>
 <translation id="5313967007315987356">ਸਾਈਟ ਜੋੜੋ</translation>
+<translation id="5315029634103634221">Gemini ਇੱਕ AI ਹੈ ਅਤੇ ਇਹ ਗਲਤੀਆਂ ਕਰ ਸਕਦਾ ਹੈ। <ph name="BEGIN_LINK" />Google ਨੂੰ ਭੇਜੇ ਗਏ ਸੰਬੰਧਿਤ ਡਾਟੇ ਬਾਰੇ ਹੋਰ ਜਾਣਕਾਰੀ<ph name="END_LINK" /></translation>
 <translation id="5315870524563628285">ਆਯਾਤ ਕਰਨ ਲਈ ਕੁਝ ਨਹੀਂ</translation>
 <translation id="5316356981864168850"><ph name="NUM_SUGGESTIONS" /> ਵਿੱਚੋਂ <ph name="INDEX" /></translation>
 <translation id="5317780077021120954">ਰੱਖਿਅਤ ਕਰੋ</translation>

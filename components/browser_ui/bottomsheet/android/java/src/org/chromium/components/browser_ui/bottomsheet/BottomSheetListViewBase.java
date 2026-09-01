@@ -69,14 +69,13 @@ public abstract class BottomSheetListViewBase implements BottomSheetContent {
     private @Nullable RecyclerView mSheetItemListView;
 
     private final BottomSheetObserver mBottomSheetObserver =
-            new EmptyBottomSheetObserver() {
+            new BottomSheetObserver() {
                 @Override
                 public void onSheetClosed(@BottomSheetController.StateChangeReason int reason) {
                     if (mBottomSheetController.getCurrentSheetContent()
                             != BottomSheetListViewBase.this) {
                         return;
                     }
-                    super.onSheetClosed(reason);
                     assert mDismissHandler != null;
                     mDismissHandler.onResult(reason);
                     mBottomSheetController.removeObserver(mBottomSheetObserver);
@@ -89,7 +88,6 @@ public abstract class BottomSheetListViewBase implements BottomSheetContent {
                             != BottomSheetListViewBase.this) {
                         return;
                     }
-                    super.onSheetStateChanged(newState, reason);
                     BottomSheetListViewBase.this.onSheetStateChanged(newState, reason);
                     if (newState == BottomSheetController.SheetState.FULL) {
                         // The list of items should be scrollable in full state.
@@ -102,7 +100,9 @@ public abstract class BottomSheetListViewBase implements BottomSheetContent {
                         // until the user scrolls to the top.
                         assumeNonNull(mSheetItemListView).suppressLayout(true);
                     }
-                    if (newState != BottomSheetController.SheetState.HIDDEN) return;
+                    if (newState != BottomSheetController.SheetState.HIDDEN) {
+                        return;
+                    }
                     // This is a fail-safe for cases where onSheetClosed isn't triggered.
                     assumeNonNull(mDismissHandler);
                     mDismissHandler.onResult(BottomSheetController.StateChangeReason.NONE);
@@ -254,7 +254,7 @@ public abstract class BottomSheetListViewBase implements BottomSheetContent {
         }
         @Px int requiredMaxHeight = getHeightWhenFullyExtendedPx();
         if (UiAndroidFeatureList.sBottomSheetRemeasureFix.isEnabled()
-                || requiredMaxHeight <= mBottomSheetController.getContainerHeight()) {
+                || requiredMaxHeight <= getAvailableSheetHeight()) {
             return requiredMaxHeight;
         }
         remeasure();
@@ -366,7 +366,7 @@ public abstract class BottomSheetListViewBase implements BottomSheetContent {
 
     protected boolean isFullyExtended() {
         return mBottomSheetController.getCurrentOffset()
-                == Math.min(getMaximumSheetHeightPx(), mBottomSheetController.getContainerHeight());
+                == Math.min(getMaximumSheetHeightPx(), getAvailableSheetHeight());
     }
 
     private @Px int getInsetDisplayWidthPx() {
@@ -419,21 +419,23 @@ public abstract class BottomSheetListViewBase implements BottomSheetContent {
     @Override
     public float getFullHeightRatio() {
         // WRAP_CONTENT would be the right fit but this disables the HALF state.
-        return Math.min(getMaximumSheetHeightPx(), mBottomSheetController.getContainerHeight())
-                / (float) mBottomSheetController.getContainerHeight();
+        float maxAvailable = getAvailableSheetHeight();
+        if (maxAvailable <= 0) return HeightMode.DEFAULT;
+        return Math.min(getMaximumSheetHeightPx(), maxAvailable) / maxAvailable;
     }
 
     @Override
     public float getHalfHeightRatio() {
         // Disable the half state when touch exploration is enabled.
         if (skipHalfStateOnScrollingDown()) return HeightMode.DISABLED;
-        return Math.min(getDesiredSheetHeightPx(), mBottomSheetController.getContainerHeight())
-                / (float) mBottomSheetController.getContainerHeight();
+        float maxAvailable = getAvailableSheetHeight();
+        if (maxAvailable <= 0) return HeightMode.DISABLED;
+        return Math.min(getDesiredSheetHeightPx(), maxAvailable) / maxAvailable;
     }
 
-    @Override
-    public boolean hideOnScroll() {
-        return false;
+    private @Px int getAvailableSheetHeight() {
+        int maxHeight = mBottomSheetController.getMaxSheetHeight();
+        return maxHeight > 0 ? maxHeight : mBottomSheetController.getContainerHeight();
     }
 
     @Override

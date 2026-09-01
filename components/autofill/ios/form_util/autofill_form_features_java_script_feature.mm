@@ -17,11 +17,6 @@ const char kFeaturesScriptName[] = "autofill_form_features";
 web::JavaScriptFeature::FeatureScript::PlaceholderReplacements
 GetReplacements() {
   return @{
-    @"gCrWebPlaceholderAutofillAcrossIframesEnabled" :
-            base::FeatureList::IsEnabled(
-                autofill::features::kAutofillAcrossIframesIos)
-        ? @"true"
-        : @"false",
     @"gCrWebPlaceholderAutofillAcrossIframesThrottling" :
             base::FeatureList::IsEnabled(
                 autofill::features::kAutofillAcrossIframesIosThrottling)
@@ -30,11 +25,6 @@ GetReplacements() {
     @"gCrWebPlaceholderAutofillDisallowMoreHyphenLikeLabels" :
             base::FeatureList::IsEnabled(
                 autofill::features::kAutofillDisallowMoreHyphenLikeLabels)
-        ? @"true"
-        : @"false",
-    @"gCrWebPlaceholderAutofillIgnoreCheckableElements" :
-            base::FeatureList::IsEnabled(
-                autofill::features::kAutofillIgnoreCheckableElements)
         ? @"true"
         : @"false",
     @"gCrWebPlaceholderAutofillSupportDateInput" :

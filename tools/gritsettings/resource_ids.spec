@@ -697,7 +697,7 @@
     "includes": [4510],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/organizer_panel/resources.grd": {
-    "META": {"sizes": {"includes": [10]}},
+    "META": {"sizes": {"includes": [50]}},
     "includes": [4515],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/password_manager/resources.grd": {
@@ -946,6 +946,10 @@
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/ttc/resources/resources.grd": {
     "META": {"sizes": {"includes": [30]}},
     "includes": [5370],
+  },
+  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/geic/resources.grd": {
+    "META": {"sizes": {"includes": [20]}},
+    "includes": [5400],
   },
   # END chrome/ WebUI resources section
 
@@ -1598,6 +1602,9 @@
   "chromeos/ash/experiences/arc/input_overlay/resources/input_overlay_resources.grd": {
     # Big alignment at start of section.
     "includes": [9010],
+  },
+  "chromeos/ash/experiences/extensions/chromeos_extensions_resources.grd": {
+    "includes": [9015],
   },
   "<(SHARED_INTERMEDIATE_DIR)/ash/webui/os_feedback_ui/resources/resources.grd": {
     "META": {"sizes": {"includes": [50],}},
