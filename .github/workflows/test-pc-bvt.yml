@@ -31,7 +31,7 @@ jobs:
         run: ./test-pc-bvt.py
 
   rolling-test-pc-bvt:
-    name: BVT test for rolling PC build
+    name: BVT tests for rolling PC build
     if: >-
       (github.ref_name == 'neva-main-rolling' ||
       startsWith(github.ref_name, 'rolling/')) &&
