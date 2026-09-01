@@ -31,7 +31,7 @@ jobs:
         run: ./test-pc-frt.py
 
   rolling-test-pc-frt:
-    name: FRT test for PC build
+    name: FRT tests for rolling PC build
     if: >-
       (github.ref_name == 'neva-main-rolling' ||
       startsWith(github.ref_name, 'rolling/')) &&
