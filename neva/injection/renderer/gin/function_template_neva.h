@@ -34,8 +34,7 @@ v8::Local<v8::FunctionTemplate> CreateConstructorTemplate(
 
   v8::Local<v8::FunctionTemplate> tmpl = v8::FunctionTemplate::New(
       isolate, &internal::Dispatcher<Sig>::DispatchToCallback,
-      ConvertToV8<v8::Local<v8::External>>(isolate,
-                                           holder->GetHandle(isolate)));
+      ConvertToV8(isolate, holder).ToLocalChecked());
   return tmpl;
 }
 
