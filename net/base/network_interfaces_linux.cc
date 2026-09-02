@@ -252,7 +252,12 @@ bool GetNetworkList(NetworkInterfaceList* networks, int policy) {
 #if BUILDFLAG(IS_LINUX)
   // If NetworkChangeNotifier already maintains a map owner in this process, use
   // it.
+  // TODO(neva): Workaround to fix webruntime crash caused by enabling
+  // AddressTrackerLinuxIsProxied feature by default in the upstream CL
+  // http://crrev.com/c/7887860. We'll revise this issue in NEVA-8175.
+#if !BUILDFLAG(IS_NEVA_APPRUNTIME)
   map_owner = NetworkChangeNotifier::GetAddressMapOwner();
+#endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
 #endif  // BUILDFLAG(IS_LINUX)
   if (!map_owner) {
     // If there is no existing map_owner, create an AddressTrackerLinux and
@@ -261,7 +266,12 @@ bool GetNetworkList(NetworkInterfaceList* networks, int policy) {
     temp_tracker->Init();
     map_owner = &temp_tracker.value();
   }
+  // TODO(neva): Workaround to fix webruntime crash caused by enabling
+  // AddressTrackerLinuxIsProxied feature by default in the upstream CL
+  // http://crrev.com/c/7887860. We'll revise this issue in NEVA-8175.
+#if !BUILDFLAG(IS_NEVA_APPRUNTIME)
   CHECK(map_owner);
+#endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
 
   return internal::GetNetworkListImpl(
       networks, policy, map_owner->GetOnlineLinks(), map_owner->GetAddressMap(),
