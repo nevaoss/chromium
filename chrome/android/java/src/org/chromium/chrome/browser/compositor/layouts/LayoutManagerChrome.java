@@ -25,7 +25,7 @@ import org.chromium.base.supplier.NonNullObservableSupplier;
 import org.chromium.build.annotations.Initializer;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
-import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider;
+import org.chromium.chrome.browser.browser_controls.BrowserControlsVisibilityManager;
 import org.chromium.chrome.browser.device.DeviceClassManager;
 import org.chromium.chrome.browser.fullscreen.FullscreenManager;
 import org.chromium.chrome.browser.hub.HubLayout;
@@ -102,7 +102,7 @@ public class LayoutManagerChrome extends LayoutManagerImpl implements Accessibil
      * @param tabSwitcherSupplier Supplier for an interface to talk to the Grid Tab Switcher. Used
      *     to create TabSwitcherLayout if it has value.
      * @param tabModelSelectorSupplier Supplier for an interface to talk to the Tab Model Selector.
-     * @param tabContentManagerSupplier Supplier of the {@link TabContentManager} instance.
+     * @param tabContentManagerSupplier Supplier of the manager providing tab thumbnail snapshots.
      * @param toolbarThemeColorProvider {@link ThemeColorProvider} for the toolbar.
      * @param hubLayoutDependencyHolder The dependency holder for creating {@link HubLayout}.
      */
@@ -188,7 +188,7 @@ public class LayoutManagerChrome extends LayoutManagerImpl implements Accessibil
             NonNullObservableSupplier<Integer> bottomControlsOffsetSupplier) {
         Context context = mHost.getContext();
         LayoutRenderHost renderHost = mHost.getLayoutRenderHost();
-        BrowserControlsStateProvider browserControlsStateProvider =
+        BrowserControlsVisibilityManager browserControlsVisibilityManager =
                 mHost.getBrowserControlsManager();
 
         // Build Layouts
@@ -197,7 +197,7 @@ public class LayoutManagerChrome extends LayoutManagerImpl implements Accessibil
                         context,
                         this,
                         renderHost,
-                        browserControlsStateProvider,
+                        browserControlsVisibilityManager,
                         this,
                         toolbarThemeColorProvider,
                         bottomControlsOffsetSupplier,
@@ -236,8 +236,14 @@ public class LayoutManagerChrome extends LayoutManagerImpl implements Accessibil
     public void showLayout(int layoutType, boolean animate) {
         if (mDestroyChecker.isDestroyed()) return;
 
-        if (layoutType == LayoutType.HUB && mHubLayout == null) {
-            initHubLayout();
+        if (layoutType == LayoutType.HUB) {
+            if (TabSwitcherUtils.isGridTabSwitcherDisabled()) {
+                throw new IllegalStateException(
+                        "Hub should not be shown when Grid Tab Switcher is disabled.");
+            }
+            if (mHubLayout == null) {
+                initHubLayout();
+            }
         }
         super.showLayout(layoutType, animate);
     }

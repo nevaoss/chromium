@@ -26,7 +26,6 @@ source_set("prefs") {
 }
 source_set("read_anything") {
   sources = [
-    "read_anything_controller.cc",
     "read_anything_controller.h",
     "read_anything_entry_point_controller.cc",
     "read_anything_entry_point_controller.h",
@@ -89,6 +88,7 @@ source_set("read_anything") {
     "//chrome/browser/ui/side_panel",
     "//chrome/browser/ui/side_panel:side_panel_views_dependent",
     "//chrome/browser/ui/user_education",
+    "//chrome/browser/ui/views/frame:contents_web_view",
     "//chrome/browser/ui/views/interaction",
     "//chrome/browser/ui/views/page_action",
     "//chrome/browser/ui/views/side_panel",
@@ -97,7 +97,33 @@ source_set("read_anything") {
     "//components/language/core/browser",
     "//components/language/core/common",
     "//components/page_load_metrics/browser",
+
+    # Temporarily added to avoid build flakiness while we untangle a circular
+    # dependency
+    "//components/user_education/webui:mojo_bindings",
     "//services/metrics/public/cpp:metrics_cpp",
+  ]
+}
+
+source_set("impl") {
+  # TODO(https://crbug.com/552467653): Migrate additional implementation-
+  # specific cc files to this project to reduce overall dependencies of the
+  # main project above.
+  sources = [ "read_anything_controller.cc" ]
+  deps = [
+    ":read_anything",
+    "//chrome/app:command_ids",
+    "//chrome/browser/translate",
+    "//chrome/browser/ui:accelerator_utils_headers",
+    "//chrome/browser/ui:ui_features",
+    "//chrome/browser/ui:view_ids",
+    "//chrome/browser/ui/find_bar",
+    "//chrome/browser/ui/side_panel",
+    "//chrome/browser/ui/side_panel:side_panel_views_dependent",
+    "//chrome/browser/ui/tabs:tab_model",
+    "//chrome/browser/ui/tabs:tab_strip",
+    "//chrome/browser/ui/user_education",
+    "//chrome/browser/ui/webui/side_panel/read_anything",
   ]
 }
 

@@ -41,11 +41,6 @@ BASE_DECLARE_FEATURE(kActorLoginSyncsPasswordPermissions);
 BASE_DECLARE_FEATURE(kActorLoginQualityLogs);
 #endif  // !BUILDFLAG(IS_IOS)
 
-#if BUILDFLAG(IS_ANDROID)
-// Enables filling of OTPs received via SMS on Android.
-BASE_DECLARE_FEATURE(kAndroidSmsOtpFilling);
-#endif  // BUILDFLAG(IS_ANDROID)
-
 // Enables using clientside form classifier predictions for password forms.
 BASE_DECLARE_FEATURE(kApplyClientsideModelPredictionsForPasswordTypes);
 
@@ -112,6 +107,9 @@ BASE_DECLARE_FEATURE(kEnablePasswordManagerMojoApiPhase2);
 
 // Enables the Desktop Trusted Vault unlock UI flow.
 BASE_DECLARE_FEATURE(kTrustedVaultDesktopUnlock);
+
+// Enables the Desktop Passkey unlock promo card UI flow.
+BASE_DECLARE_FEATURE(kPasskeyUnlockPromo);
 #endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
 
 // Cross domain credential data is not previewed by the manual fallback
@@ -165,6 +163,12 @@ BASE_DECLARE_FEATURE(kPassDeletionOriginToAndroidBackend);
 // The minimum GMS version required to send deletion origin to Android Backend.
 extern const base::FeatureParam<int> kPassDeletionOriginMinGmsVersion;
 #endif  // BUILDFLAG(IS_ANDROID)
+
+#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)  // Desktop
+// Enables displaying a warning banner for compromised credentials in the
+// password details card.
+BASE_DECLARE_FEATURE(kPasswordCompromiseWarningInDetailsCard);
+#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
 
 // Populate the `date_last_filled` timestamp for passwords.
 BASE_DECLARE_FEATURE(kPasswordDateLastFilled);

@@ -20,6 +20,6 @@ cr-tabs[inert] {
   opacity: 0.6;
 }
 
-#error-message {
+.error-message {
   margin-top: 8px;
 }

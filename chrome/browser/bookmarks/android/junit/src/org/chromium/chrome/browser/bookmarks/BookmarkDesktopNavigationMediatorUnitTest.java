@@ -14,6 +14,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.content.Context;
+import android.content.res.Configuration;
 import android.graphics.drawable.Drawable;
 
 import androidx.test.core.app.ApplicationProvider;
@@ -304,6 +305,66 @@ public class BookmarkDesktopNavigationMediatorUnitTest {
     public void testOnFolderStateSet_noRedirectOnSmallScreen() {
         mMediator.onFolderStateSet(mBookmarkModel.getRootFolderId());
         verify(mBookmarkDelegate, never()).replaceFolder(any());
+    }
+
+    @Test
+    @Config(qualifiers = "w600dp")
+    public void testOnConfigurationChanged_redirectsFromRootWhenTransitioningToWide() {
+        mMediator.onFolderStateSet(mBookmarkModel.getRootFolderId());
+        verify(mBookmarkDelegate, never()).replaceFolder(any());
+
+        Configuration wideConfig = new Configuration();
+        wideConfig.screenWidthDp = 1000;
+        mMediator.onConfigurationChanged(wideConfig);
+        verify(mBookmarkDelegate).replaceFolder(mBookmarkModel.getDesktopFolderId());
+    }
+
+    @Test
+    @Config(qualifiers = "w600dp")
+    public void testOnConfigurationChanged_noRedirectWhenRemainingOnSmallScreen() {
+        mMediator.onFolderStateSet(mBookmarkModel.getRootFolderId());
+        verify(mBookmarkDelegate, never()).replaceFolder(any());
+
+        Configuration smallConfig = new Configuration();
+        smallConfig.screenWidthDp = 600;
+        mMediator.onConfigurationChanged(smallConfig);
+        verify(mBookmarkDelegate, never()).replaceFolder(any());
+    }
+
+    @Test
+    @Config(qualifiers = "w600dp")
+    public void testOnConfigurationChanged_noRedirectFromNonRoot() {
+        mMediator.onFolderStateSet(mBookmarkModel.getOtherFolderId());
+
+        Configuration wideConfig = new Configuration();
+        wideConfig.screenWidthDp = 1000;
+        mMediator.onConfigurationChanged(wideConfig);
+        verify(mBookmarkDelegate, never()).replaceFolder(any());
+    }
+
+    @Test
+    public void testOnFolderStateSet_withStaleAccountFolder_refreshesAndRedirectsToLocalFolder() {
+        // Start with active account folders.
+        mBookmarkModel.setAreAccountBookmarkFoldersActive(true);
+        mMediator.bookmarkModelChanged();
+
+        // Account desktop folder is currently the first folder item.
+        BookmarkId accountDesktopId = mBookmarkModel.getAccountDesktopFolderId();
+        assertEquals(
+                accountDesktopId,
+                mModelList.get(1).model.get(BookmarkDesktopNavigationProperties.BOOKMARK_ID));
+
+        // Simulate sign-out: account bookmark folders become inactive/removed in the model.
+        mBookmarkModel.setAreAccountBookmarkFoldersActive(false);
+
+        // BookmarkManagerMediator falls back to root folder and calls onFolderStateSet(root)
+        // BEFORE BookmarkDesktopNavigationMediator's BookmarkModelObserver receives the event.
+        mMediator.onFolderStateSet(mBookmarkModel.getRootFolderId());
+
+        // Verify that replaceFolder was called with local desktop folder, NOT the stale account
+        // folder.
+        verify(mBookmarkDelegate).replaceFolder(mBookmarkModel.getDesktopFolderId());
+        verify(mBookmarkDelegate, never()).replaceFolder(accountDesktopId);
     }
 
     private void assertFolderItem(

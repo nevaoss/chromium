@@ -11,6 +11,7 @@
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/new_tab_page/prefs/ntp_pref_names.h"
 #include "chrome/browser/profiles/profile.h"
+#include "components/pref_registry/pref_registry_syncable.h"
 #include "components/prefs/pref_registry_simple.h"
 #include "components/prefs/pref_service.h"
 #include "ui/base/accelerators/accelerator.h"
@@ -41,12 +42,18 @@ void RegisterLocalStatePrefs(PrefRegistrySimple* registry) {
       std::to_underlying(ShowShortcutsPrefValue::kUnset));
   registry->RegisterBooleanPref(kOmniboxEverywhereEnabled, true);
   registry->RegisterBooleanPref(kOmniboxEverywhereBackgroundMode, false);
+  registry->RegisterBooleanPref(kOmniboxEverywhereLaunchOnStartup, false);
 #if BUILDFLAG(IS_MAC)
   registry->RegisterBooleanPref(kOmniboxEverywhereEphemeralModel, true);
 #else
   registry->RegisterBooleanPref(kOmniboxEverywhereEphemeralModel, false);
 #endif
   registry->RegisterFilePathPref(kLastTargetProfileDir, base::FilePath());
+}
+
+void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
+  registry->RegisterBooleanPref(kFreDismissed, false);
+  registry->RegisterIntegerPref(kFreImpressionCount, 0);
 }
 
 ui::Accelerator GetDefaultOmniboxEverywhereHotkey() {

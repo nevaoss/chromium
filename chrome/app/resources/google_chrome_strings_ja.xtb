@@ -86,6 +86,7 @@
 <translation id="1821644463306970002">{NUM_TABS,plural, =1{ブラウザの動作を遅くしているタブを一時停止することをおすすめします}other{ブラウザの動作を遅くしているタブを一時停止することをおすすめします}}</translation>
 <translation id="1832046143430087831">Chrome の V8 エンジンでサイトを高速化する（攻撃に対する Chrome の耐性は若干低下します）。この設定はオフになっています。</translation>
 <translation id="1838374766361614909">検索をクリア</translation>
+<translation id="1842869163383855194">Chrome を最小化している場合でも、デバイスのさまざまな場所から「Chrome で検索」にすばやくアクセスできます。</translation>
 <translation id="1843347690926158494">Google レンズでこのタブを検索</translation>
 <translation id="1849248141818021764">パスフレーズを知っているユーザーだけが暗号化されたデータを見ることができます。パスフレーズは Google には送信されず、保存されることもありません。パスフレーズを忘れた場合や、この設定を変更する場合は、<ph name="BEGIN_LINK" />アカウントの Chrome データを削除<ph name="END_LINK" />する必要があります。</translation>
 <translation id="1856809424654973980">Chrome アプリで、ブラウジングを外出先でも続けられます</translation>
@@ -322,6 +323,7 @@
 <translation id="4173512894976930765">ほとんどの場合、サイトは適切に機能します。Chrome のウィンドウをすべて閉じると、ほとんどのサイトからログアウトします。ただし Chrome にログインしている場合、Google アカウントからはログアウトしません。</translation>
 <translation id="4175922240926474352">このダウンロードは Chrome でブロックされました。サイトで安全な接続が使用されておらず、ファイルが改ざんされている可能性があります</translation>
 <translation id="4191857738314598978">{0,plural, =1{1 日以内に Chrome を再起動してください}other{# 日以内に Chrome を再起動してください}}</translation>
+<translation id="4222394563269716113">キーボード ショートカットを使用して「Chrome で検索」を開きます。</translation>
 <translation id="4222932583846282852">キャンセルしています...</translation>
 <translation id="4224210481850767180">インストールをキャンセルしました。</translation>
 <translation id="4242034826641750751">このサイトを利用するには、Chrome でカメラとマイクの使用を許可する必要があります</translation>
@@ -347,6 +349,7 @@
 <translation id="4427306783828095590">保護強化機能により、フィッシングを防ぎ、不正なソフトウェアをより強力にブロックします</translation>
 <translation id="4434353761996769206">インストーラー エラー: <ph name="INSTALLER_ERROR" /></translation>
 <translation id="4437295824090654417">このドキュメントを Gemini in Chrome と共有すると、概要の確認や追加の質問ができます</translation>
+<translation id="4447327682081576371">「Chrome で検索」を Mac のメニューバーに表示して、キーボード ショートカットをオンにする</translation>
 <translation id="4450664632294415862">Chrome - ネットワークにログイン - <ph name="PAGE_TITLE" /></translation>
 <translation id="4458462641685292929">Google Chrome で別の処理が行われています。しばらくしてからもう一度お試しください。</translation>
 <translation id="4493028449971051158">起動エラー: 管理者としてインストーラを実行してください。</translation>
@@ -432,6 +435,7 @@
 <translation id="5402307365844630024">Gemini in Chrome Beta を切り替える</translation>
 <translation id="541844421954567481"><ph name="DEVICE_TYPE" /> の Chrome アプリで、パスワードやタブなどを外出先でも利用できます</translation>
 <translation id="5430073640787465221">ユーザー設定ファイルが壊れているか無効です。設定を復元できません。</translation>
+<translation id="545114101312117217">「Chrome で検索」からショートカットに簡単にアクセスできます</translation>
 <translation id="5465210843490471889"><ph name="START_GLIC_STYLING" />Gemini<ph name="END_GLIC_STYLING" /> を使用する Chrome プロファイルを選択してください</translation>
 <translation id="547202872422499512">Windows の起動時に Chrome を自動で起動して、すぐにブラウジングを開始できるようになりました。この動作は設定でオフにできます。</translation>
 <translation id="5486346529181556467">有害と思われるサイトを報告すると、他のユーザーのオンライン セキュリティの向上に役立てられます。詳しくは、<ph name="BEGIN_LINK" />Google の安全でないサイトに関するポリシー<ph name="END_LINK" />をご覧ください。</translation>
@@ -448,7 +452,6 @@
 <translation id="5649156266046089790">Chrome プロフィールを使うと、Chrome のあらゆる項目や設定を個別に管理できます。友達や家族のプロフィールを作成したり、仕事とプライベートでプロフィールを使い分けたりできます。</translation>
 <translation id="5655063652337498476">iOS 版 Chrome で、外出先でもカメラで商品を検索したり、値下げをトラッキングしたりできます。</translation>
 <translation id="565744775970812598"><ph name="FILE_NAME" /> は危険なファイルの可能性があるため、Chrome でブロックしました。</translation>
-<translation id="566040795510471729">Chrome をカスタマイズ(&amp;U)</translation>
 <translation id="566568153320186256">バックグラウンド アクティビティと視覚効果（スムーズ スクロールや動画フレームレートなど）を制限することで、バッテリーを節約します。<ph name="BEGIN_LINK" />省エネモードの詳細<ph name="END_LINK" /></translation>
 <translation id="567202749201779594">アカウントの Chrome データを消去</translation>
 <translation id="5678190148303298925">{COUNT,plural, =0{管理者が、このアップデートを適用するために Chrome を再起動するよう求めています}=1{管理者が、このアップデートを適用するために Chrome を再起動するよう求めています。シークレット ウィンドウは、再起動後は自動的には開きません。}other{管理者が、このアップデートを適用するために Chrome を再起動するよう求めています。現在開いている # 個のシークレット ウィンドウは、再起動後は自動的には開きません。}}</translation>
@@ -618,7 +621,6 @@
 <translation id="7161904924553537242">Google Chrome へようこそ</translation>
 <translation id="7193885263065350793"><ph name="TIMEOUT_DURATION" /> 使用しなかったため、Chrome は組織によって終了されます。</translation>
 <translation id="7242029209006116544">現在、管理対象アカウントでログインしており、あなたの Google Chrome プロファイルを管理者が制御できる状態になっています。あなたの Chrome データ（アプリ、ブックマーク、履歴、パスワードなどの設定）は永続的に <ph name="USER_NAME" /> に関連付けられます。このデータは Google アカウントのダッシュボードを介して削除できますが、このデータを別のアカウントに関連付けることはできなくなります。新しいプロファイルを作成して、既存の Chrome データを別に保管することができます。<ph name="LEARN_MORE" /></translation>
-<translation id="7257689164441568409">Gemini in Chrome を終了するか、Gemini in Chrome に戻るときに、キーボード ショートカットを使用します。</translation>
 <translation id="7274402351400635015">メッセージ、ドキュメント、他のアプリのリンクをクリックしたときに、常に Chrome で開くことができます。タスクバーにも固定されます。</translation>
 <translation id="7285616922384953075">Chrome は <ph name="MANAGER" /> によって管理されています</translation>
 <translation id="7285990705317078173">スマートフォンに Chrome をダウンロードして、価格をトラッキングしたり、サイトで値下げがあった際に通知を受け取ったりできます</translation>
@@ -676,7 +678,6 @@
 <translation id="7777080907402804672">画像に有効な説明が設定されていない場合に、Chrome で説明を自動的に生成できるよう Google に画像が送信されます。この機能は設定でいつでも無効にできます。</translation>
 <translation id="778331955594035129">このサイトを利用するには、Chrome で位置情報の使用を許可する必要があります</translation>
 <translation id="7787950393032327779">プロファイルは、別のコンピュータ（<ph name="HOST_NAME" />）の別の Google Chrome プロセス（<ph name="PROCESS_ID" />）で使用されているようです。Chrome はプロファイルが破損しないようにプロファイルをロックしています。他のプロセスがこのプロファイルを使用していないことが確実であれば、プロファイルのロックを解除して Chrome を再起動できます。</translation>
-<translation id="7792336732117553384">Chrome プロフィールを管理(&amp;M)</translation>
 <translation id="7801699035218095297">Google Chrome がパスワードをコピーしようとしています。続行するには、Windows のパスワードを入力してください。</translation>
 <translation id="7804364787702057554">Chrome のアカウント設定</translation>
 <translation id="7804947029129221742">検索エンジンが Chrome の外部から変更されました。ユーザーを保護するため、Chrome で元のデフォルトにリセットしました。<ph name="LEARN_MORE_LINK" /></translation>
@@ -718,6 +719,8 @@
 <translation id="8074398340364918139">Chrome の特定の機能や拡張機能を検索するには、アドレスバーに該当のショートカットを入力して、選択したキーボードキーを押します</translation>
 <translation id="8077579734294125741">その他の Chrome プロファイル</translation>
 <translation id="8086881907087796310">パソコンがハードウェアの最小要件を満たしていないため、インストールできませんでした。</translation>
+<translation id="8093772166980702367">システムトレイに「Chrome で検索」を表示して、キーボード ショートカットをオンにする</translation>
+<translation id="8110438089258398864">Google 検索の AI モードを再度開いて、ブラウジング中に質問できます</translation>
 <translation id="8113883687556086139">アカウント「<ph name="ACCOUNT_EMAIL" />」で Chrome のデータを使用、保存するには、本人確認を行ってください</translation>
 <translation id="8115695070094288807">Chrome をカスタマイズしています...</translation>
 <translation id="8118331347066725040">Google レンズでの検索に関するフィードバックを送信する</translation>
@@ -746,6 +749,7 @@
 <translation id="8370517070665726704">Copyright <ph name="YEAR" /> Google LLC. All rights reserved.</translation>
 <translation id="8370748943308169953"><ph name="USER_NAME" /> として Chrome にログインするための QR コード</translation>
 <translation id="8377158135256176353">Gemini in Chrome Canary を切り替える</translation>
+<translation id="8380754585531979907">キーボードを使用して、Gemini in Chrome と開いているタブを切り替えます。</translation>
 <translation id="8387459386171870978">Chrome を引き続き使用</translation>
 <translation id="8394720698884623075">Chrome に保存されている安全でないサイトのリストと URL を照合します</translation>
 <translation id="8403038600646341038">パソコンの画面に表示された Chrome のロゴ。</translation>
@@ -767,6 +771,7 @@
 <translation id="856656450041460113">言語リストを検索</translation>
 <translation id="8575047640889685742"><ph name="BEGIN_LINK" />独自のパスフレーズ<ph name="END_LINK" />を使用して Google アカウントの Chrome データをすべて暗号化する。暗号化の対象に Google Pay のお支払い方法と住所は含まれません。また、Chrome の閲覧履歴は同期されません。</translation>
 <translation id="8590782867495422699">Google 検索の AI モードを再度開く</translation>
+<translation id="8598779894319572882">ツールバーの [Google 検索の AI モード] ボタンから Google 検索の AI モードを再度開いて、ブラウジング中に質問できます</translation>
 <translation id="8601359445272098721">New! [画面を翻訳] ボタンを選択して、画面上のテキストや画像を翻訳できるようになりました</translation>
 <translation id="8614913330719544658">Google Chrome が応答しません。今すぐ再起動しますか？</translation>
 <translation id="8623450603356630491">スマートフォンで Chrome にログイン</translation>

@@ -8,6 +8,8 @@
 #include "partition_alloc/buildflags.h"
 
 #if PA_BUILDFLAG(USE_ALLOCATOR_SHIM)
+#include <limits>
+
 #include "partition_alloc/partition_alloc.h"
 #include "partition_alloc/partition_alloc_base/component_export.h"
 #include "partition_alloc/shim/allocator_dispatch.h"
@@ -21,6 +23,7 @@ inline constexpr size_t kNumPartitions = 2;
 inline constexpr size_t kNumPartitions = 1;
 #endif
 inline constexpr size_t kDefaultPartitionIndex = 0;
+inline constexpr size_t kPointerPartitionIndex = 1;
 
 namespace internal {
 
@@ -30,13 +33,13 @@ class PA_COMPONENT_EXPORT(ALLOCATOR_SHIM) PartitionAllocMalloc {
   // allocators are effectively set in stone.
   static bool AllocatorConfigurationFinalized();
 
-  // TODO(crbug.com/477186304): Remove default value for `alloc_token`, once all
-  // callers are updated and verified to make configuration for all roots.
+  // TODO(crbug.com/477186304): Remove default value for `partition_index`, once
+  // all callers are updated and verified to make configuration for all roots.
   static partition_alloc::PartitionRoot* Allocator(
-      AllocToken alloc_token = AllocToken(kDefaultPartitionIndex));
+      size_t partition_index = kDefaultPartitionIndex);
   // May return |nullptr|, will never return the same pointer as  |Allocator()|.
   static partition_alloc::PartitionRoot* OriginalAllocator(
-      AllocToken alloc_token = AllocToken(kDefaultPartitionIndex));
+      size_t partition_index = kDefaultPartitionIndex);
   // Returns the dedicated PartitionRoot for allocations that are intended to be
   // quarantined and leaked upon free. Will never return nullptr, and will never
   // return the same pointer as |Allocator()|. Allocations routed here are never
@@ -267,6 +270,17 @@ PA_ALWAYS_INLINE void ConfigurePartitionsForTesting() {
       eventually_zero_freed_memory, enable_tighter_aligned_alloc_bound);
 }
 #endif  // PA_BUILDFLAG(USE_PARTITION_ALLOC_AS_MALLOC)
+
+// AllocToken with TypeHashPointerSplit mode assigns the bottom
+// half ID-space for pointer-less types and the top half for
+// pointer-containing types. In practice this is just the first bit is zero if
+// pointer-less. See: https://clang.llvm.org/docs/AllocToken.html
+inline constexpr size_t kAllocTokenHasPointerBit =
+    static_cast<size_t>(1) << (std::numeric_limits<size_t>::digits - 1);
+
+PA_ALWAYS_INLINE bool AllocTokenHasPointerValue(AllocToken alloc_token) {
+  return (alloc_token.value() & kAllocTokenHasPointerBit) != 0;
+}
 
 }  // namespace allocator_shim
 

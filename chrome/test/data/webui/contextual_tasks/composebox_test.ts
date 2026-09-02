@@ -747,9 +747,9 @@ suite('ContextualTasksComposeboxTest', () => {
     const [toolMode] =
         await mockSearchboxPageHandler.whenCalled('setActiveToolMode');
     assertEquals(1, toolMode);
-    const [, isSetByServer] =
+    const [, isSetByAim] =
         mockSearchboxPageHandler.getArgs('setActiveToolMode')[0];
-    assertTrue(isSetByServer);
+    assertTrue(isSetByAim);
 
     const [modelMode] =
         await mockSearchboxPageHandler.whenCalled('setActiveModelMode');
@@ -1471,6 +1471,25 @@ suite('ContextualTasksComposeboxTest', () => {
           assertEquals('', innerComposebox.inputPlaceholderOverride);
           assertEquals(
               initialPlaceholder, inputElement.getAttribute('placeholder'));
+        });
+
+        test('lens search tooltip showing reflects attribute', async () => {
+          const {wrapper} = parts;
+
+          assertFalse(wrapper.isLensSearchTooltipShowing);
+          assertFalse(wrapper.hasAttribute('is-lens-search-tooltip-showing'));
+
+          wrapper.isLensSearchTooltipShowing = true;
+          await wrapper.updateComplete;
+
+          assertTrue(wrapper.isLensSearchTooltipShowing);
+          assertTrue(wrapper.hasAttribute('is-lens-search-tooltip-showing'));
+
+          wrapper.isLensSearchTooltipShowing = false;
+          await wrapper.updateComplete;
+
+          assertFalse(wrapper.isLensSearchTooltipShowing);
+          assertFalse(wrapper.hasAttribute('is-lens-search-tooltip-showing'));
         });
 
         test('ClearInputAndFocusClearsMatchesOnSubmit', () => {

@@ -50,6 +50,9 @@ class BrowserElements;
 class BrowserFocusController;
 class BrowserInstantController;
 class BrowserLiveTabContext;
+namespace sessions {
+class LiveTabContext;
+}
 class BrowserLocationBarModelDelegate;
 class BrowserSelectFileDialogController;
 class BrowserSyncedWindowDelegate;
@@ -113,6 +116,7 @@ class TabsFromOtherDevicesSidePanelCoordinator;
 class ToastController;
 class ToastService;
 class TranslateBubbleController;
+class UIControllerFactory;
 class UnloadController;
 class UpgradeNotificationController;
 class VerticalTabIphController;
@@ -319,18 +323,6 @@ class BrowserWindowFeatures {
     return browser_command_controller_.get();
   }
 
-  BrowserSelectFileDialogController* browser_select_file_dialog_controller() {
-    return browser_select_file_dialog_controller_.get();
-  }
-
-  media_router::CastBrowserController* cast_browser_controller() {
-    return cast_browser_controller_.get();
-  }
-
-  ContentsBorderController* contents_border_controller() {
-    return contents_border_controller_.get();
-  }
-
   BrowserContentSettingBubbleModelDelegate*
   content_setting_bubble_model_delegate() {
     return content_setting_bubble_model_delegate_.get();
@@ -356,12 +348,6 @@ class BrowserWindowFeatures {
     return extension_side_panel_manager_.get();
   }
 
-  FindBarOwner* find_bar_owner() { return find_bar_owner_.get(); }
-
-  FullscreenControlHost* fullscreen_control_host() {
-    return fullscreen_control_host_.get();
-  }
-
   // Get the FindBarController for this browser window, creating it if it does
   // not yet exist.
   FindBarController* GetFindBarController();
@@ -373,25 +359,7 @@ class BrowserWindowFeatures {
   // Returns true if a FindBarController exists for this browser window.
   bool HasFindBarController() const;
 
-  HistoryClustersSidePanelCoordinator*
-  history_clusters_side_panel_coordinator() {
-    return history_clusters_side_panel_coordinator_.get();
-  }
-
-  ImmersiveModeController* immersive_mode_controller() {
-    return immersive_mode_controller_.get();
-  }
-
-  IncognitoClearBrowsingDataDialogCoordinator*
-  incognito_clear_browsing_data_dialog_coordinator() {
-    return incognito_clear_browsing_data_dialog_coordinator_.get();
-  }
-
-  lens::LensRegionSearchController* lens_region_search_controller() {
-    return lens_region_search_controller_.get();
-  }
-
-  BrowserLiveTabContext* live_tab_context() { return live_tab_context_.get(); }
+  sessions::LiveTabContext* live_tab_context();
 
   // Returns the LocationBar for this browser window. Currently delegates to
   // BrowserWindow::GetLocationBar() via downcast, but should eventually become
@@ -410,49 +378,12 @@ class BrowserWindowFeatures {
   }
 #endif
 
-  memory_saver::MemorySaverBubbleController* memory_saver_bubble_controller() {
-    return memory_saver_bubble_controller_.get();
-  }
-
-  tab_groups::MostRecentSharedTabUpdateStore*
-  most_recent_shared_tab_update_store() {
-    return most_recent_shared_tab_update_store_.get();
-  }
-
-  new_tab_footer::NewTabFooterController* new_tab_footer_controller() {
-    return new_tab_footer_controller_.get();
-  }
-
-  omnibox::OmniboxPopupCloser* omnibox_popup_closer() {
-    return omnibox_popup_closer_.get();
-  }
-
   PinnedToolbarActions* pinned_toolbar_actions() {
     return pinned_toolbar_actions_;
   }
 
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
-  ProfileCustomizationBubbleSyncController*
-  profile_customization_bubble_sync_controller() {
-    return profile_customization_bubble_sync_controller_.get();
-  }
-#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
-
   ProfileMenuCoordinator* profile_menu_coordinator() {
     return profile_menu_coordinator_.get();
-  }
-
-  SearchboxContextData* searchbox_context_data() {
-    return searchbox_context_data_.get();
-  }
-
-  SessionServiceBrowserHelper* session_service_browser_helper() {
-    return session_service_browser_helper_.get();
-  }
-
-  tab_groups::SharedTabGroupFeedbackController*
-  shared_tab_group_feedback_controller() {
-    return shared_tab_group_feedback_controller_.get();
   }
 
   // TODO(crbug.com/346158959): For historical reasons, side_panel_ui is an
@@ -471,45 +402,16 @@ class BrowserWindowFeatures {
     return synced_window_delegate_.get();
   }
 
-  tab_groups::DeletionDialogController* tab_group_deletion_dialog_controller() {
-    return tab_group_deletion_dialog_controller_.get();
-  }
-
   TabMenuModelDelegate* tab_menu_model_delegate() {
     return tab_menu_model_delegate_.get();
   }
 
   TabStripModel* tab_strip_model() { return tab_strip_model_; }
 
-  // Only fetch the tab_strip_service to register a pending receiver.
-  TabStripServiceFeature* tab_strip_service_feature() {
-    return tab_strip_service_feature_.get();
-  }
-
-  TabsFromOtherDevicesSidePanelCoordinator*
-  tabs_from_other_devices_side_panel_coordinator() {
-    return tabs_from_other_devices_side_panel_coordinator_.get();
-  }
-
   // Returns a pointer to the ToastController for the browser window. This can
   // return nullptr for non-normal browser windows because toasts are not
   // supported for those cases.
   ToastController* toast_controller();
-
-  // Returns a pointer to the ToastService for the browser window. This can
-  // return nullptr for non-normal browser windows because toasts are not
-  // supported for those cases.
-  ToastService* toast_service() { return toast_service_.get(); }
-
-  WebUIBrowserExclusiveAccessContext* webui_browser_exclusive_access_context() {
-    return webui_browser_exclusive_access_context_.get();
-  }
-
-#if BUILDFLAG(IS_CHROMEOS)
-  chromeos::LockedStateController* locked_state_controller() {
-    return locked_state_controller_.get();
-  }
-#endif  // BUILDFLAG(IS_CHROMEOS)
 
   static ui::UserDataFactoryWithOwner<BrowserWindowInterface>&
   GetUserDataFactoryForTesting();
@@ -714,6 +616,7 @@ class BrowserWindowFeatures {
   std::unique_ptr<tab_groups::SharedTabGroupFeedbackController>
       shared_tab_group_feedback_controller_;
   std::unique_ptr<SidePanelCoordinator> side_panel_coordinator_;
+  std::unique_ptr<UIControllerFactory> ui_controller_factory_;
   std::unique_ptr<skills::SkillsUiWindowController>
       skills_ui_window_controller_;
   std::unique_ptr<split_tabs::SplitTabHighlightController>

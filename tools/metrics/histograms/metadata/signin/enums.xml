@@ -900,7 +900,7 @@ chromium-metrics-reviews@google.com.
   <int value="76" label="Auth Service (Tasks Client)"/>
   <int value="77" label="YouTube Music"/>
   <int value="78" label="Contextual Tasks"/>
-  <int value="79" label="Enterprise Plus Address"/>
+  <int value="79" label="(Obsolete) Enterprise Plus Address"/>
   <int value="80" label="Glic User Status"/>
   <int value="81" label="Devtools Gdp"/>
   <int value="82" label="Ash Drive Integration"/>
@@ -1578,6 +1578,11 @@ chromium-metrics-reviews@google.com.
              passwords sign-in promo">
     User tapped on the 'Undo' button in a snackbar shown right after signin
     through autofill and passwords promo. (Android only).
+  </int>
+  <int value="47" label="User declined the enterprise signals disclaimer">
+    User tapped 'Sign out' on the enterprise signals disclaimer or dismissed it
+    by sliding down, using back press or by tapping outside of the dialog.
+    (Android only).
   </int>
 </enum>
 

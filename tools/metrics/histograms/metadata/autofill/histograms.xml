@@ -2023,7 +2023,8 @@ Called by update_autofill_enums.py. This is a manual comment.-->
   <owner>chrome-autofill-alerts@google.com</owner>
   <summary>
     Records user interactions with the private inference notice in the Autofill
-    AI popup on Desktop, Android infobar/accessory, and iOS infobar.
+    AI popup on Desktop, Android infobar/accessory, and iOS bottom
+    sheet/infobar.
   </summary>
 </histogram>
 
@@ -2554,6 +2555,15 @@ Called by update_autofill_enums.py. This is a manual comment.-->
     Records whether a suggestion was filled after accepting the AtMemory
     suggestion. Recorded after the popup is hidden and all fetching and
     authentication calls finished.
+  </summary>
+</histogram>
+
+<histogram name="Autofill.AtMemory.UiSessionOutcome"
+    enum="AutofillAtMemoryUiSessionOutcome" expires_after="2027-08-24">
+  <owner>ireneuszszulc@google.com</owner>
+  <owner>chrome-autofill-alerts@google.com</owner>
+  <summary>
+    Emits key terminal outcome of an AtMemory UI session when the session ends.
   </summary>
 </histogram>
 
@@ -6384,6 +6394,17 @@ Called by update_autofill_enums.py. This is a manual comment.-->
     Real-time duration of the asynchronous attempt to retrieve sms one time
     token from the GMSCore backend. Only recorded when the asynchronous job has
     returned successfully. This is currently only recorded on Android.
+  </summary>
+</histogram>
+
+<histogram name="Autofill.OneTimeTokens.FieldDetectionToTickleLatency"
+    units="ms" expires_after="2027-08-01">
+  <owner>kazinova@google.com</owner>
+  <owner>src/components/one_time_tokens/OWNERS</owner>
+  <summary>
+    Records the latency between detecting an OTP field on a web page and
+    receiving a push notification (tickle) from the backend. Recorded when a
+    tickle arrives after an OTP field was detected.
   </summary>
 </histogram>
 

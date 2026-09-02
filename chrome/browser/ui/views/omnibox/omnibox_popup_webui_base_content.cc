@@ -234,11 +234,11 @@ void OmniboxPopupWebUIBaseContent::ResizeDueToAutoResize(
   is_window_resizing_ = false;
 
   if (popup_presenter_->ShouldDeferUntilVisualStateReady().has_value() ||
-      is_resizing) {
+      is_resizing || !popup_presenter_->ShouldDebounceResize()) {
     debounce_resize_timer_.Stop();
     popup_presenter_->OnContentHeightChanged(new_size.height());
   } else {
-    // Debounce the resize event by 2 frame's time (assuming 60 Hz) to avoid
+        // Debounce the resize event by 2 frame's time (assuming 60 Hz) to avoid
     // flickering issues when the renderer sends a transient initial size.
     // The issue is manifested as the popup being clipped at the top.
     // This happens when:

@@ -79,7 +79,6 @@
 #include "components/vector_icons/vector_icons.h"
 #include "content/public/browser/web_ui_data_source.h"
 #include "content/public/common/url_constants.h"
-#include "third_party/omnibox_proto/answer_type.pb.h"
 #include "third_party/omnibox_proto/chrome_searchbox_stats.pb.h"
 #include "third_party/omnibox_proto/groups.pb.h"
 #include "third_party/omnibox_proto/input_type.pb.h"
@@ -561,6 +560,9 @@ base::DictValue SearchboxHandler::GetWebUIDataSourceDict(
 #endif
   dict.Set("contextualMenuUsePecApi",
            base::FeatureList::IsEnabled(omnibox::kAimUsePecApi));
+  dict.Set(
+      "useSearchboxConfigIconIds",
+      base::FeatureList::IsEnabled(omnibox::kAimUseSearchboxConfigIconIds));
   dict.Set("ShowContextMenuHeaders",
            ntp_composebox::kShowContextMenuHeaders.Get());
   dict.Set("composeboxSmartTabSharingVisible",
@@ -871,6 +873,27 @@ bool SearchboxHandler::ShouldShowFirstContextualDescription() const {
   return false;
 }
 
+bool SearchboxHandler::SupportsKeywordMode() const {
+  return false;
+}
+
+void SearchboxHandler::OverrideIconPaths(
+    const AutocompleteMatch& match,
+    searchbox::mojom::AutocompleteMatch* mojom_match) const {
+  // For enterprise search aggregator people suggestions, use branded icon if
+  // branded build.
+  if (match.enterprise_search_aggregator_type ==
+      AutocompleteMatch::EnterpriseSearchAggregatorType::PEOPLE) {
+    mojom_match->is_enterprise_search_aggregator_people_type = true;
+#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+    mojom_match->icon_path =
+        base::FeatureList::IsEnabled(omnibox::kUseAgentspace25Logo)
+            ? kGoogleAgentspace25IconResourceName
+            : kGoogleAgentspaceIconResourceName;
+#endif
+  }
+}
+
 std::optional<searchbox::mojom::AutocompleteMatchPtr>
 SearchboxHandler::CreateAutocompleteMatch(
     const AutocompleteMatch& match,
@@ -928,18 +951,7 @@ SearchboxHandler::CreateAutocompleteMatch(
           : turl_service->GetTemplateURLForKeyword(match.associated_keyword);
   mojom_match->icon_path = AutocompleteIconToResourceName(
       match.GetVectorIcon(is_bookmarked, associated_keyword_turl));
-  // For enterprise search aggregator people suggestions, use branded icon if
-  // branded build.
-  if (match.enterprise_search_aggregator_type ==
-      AutocompleteMatch::EnterpriseSearchAggregatorType::PEOPLE) {
-    mojom_match->is_enterprise_search_aggregator_people_type = true;
-#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
-    mojom_match->icon_path =
-        base::FeatureList::IsEnabled(omnibox::kUseAgentspace25Logo)
-            ? kGoogleAgentspace25IconResourceName
-            : kGoogleAgentspaceIconResourceName;
-#endif
-  }
+  OverrideIconPaths(match, mojom_match.get());
   mojom_match->icon_url = match.icon_url;
   // For featured enterprise search suggestions, use template url to generate
   // the proper icon url.
@@ -967,7 +979,6 @@ SearchboxHandler::CreateAutocompleteMatch(
   mojom_match->is_rich_suggestion =
       !mojom_match->image_url.empty() ||
       match.type == AutocompleteMatchType::CALCULATOR ||
-      match.answer_type != omnibox::ANSWER_TYPE_UNSPECIFIED ||
       match.enterprise_search_aggregator_type ==
           AutocompleteMatch::EnterpriseSearchAggregatorType::PEOPLE;
   if (!match.from_keyword) {
@@ -1016,6 +1027,42 @@ SearchboxHandler::CreateAutocompleteMatch(
   if (match.suggest_template && match.suggest_template->has_fusebox_action()) {
     mojom_match->fusebox_action = fusebox_action::SyncFuseboxActionProtoToMojo(
         match.suggest_template->fusebox_action());
+  }
+
+  if (SupportsKeywordMode()) {
+    KeywordState keyword_state;
+    std::u16string keyword;
+    std::u16string keyword_placeholder;
+    match.GetKeywordUiState(turl_service,
+                            client() && client()->IsHistoryEmbeddingsEnabled(),
+                            &keyword_state, &keyword, &keyword_placeholder);
+
+    searchbox::mojom::KeywordType keyword_type;
+    bool has_keyword = false;
+    if (keyword_state == KeywordState::kKeyword) {
+      keyword_type = searchbox::mojom::KeywordType::kInKeyword;
+      has_keyword = true;
+    } else if (match.HasInstantKeyword(turl_service)) {
+      keyword_type = searchbox::mojom::KeywordType::kInstant;
+      has_keyword = true;
+    } else if (keyword_state == KeywordState::kHint ||
+               !match.associated_keyword.empty()) {
+      keyword_type = searchbox::mojom::KeywordType::kChip;
+      has_keyword = true;
+    }
+
+    // Populate `keyword_model`.
+    if (has_keyword) {
+      auto keyword_model = searchbox::mojom::MatchKeywordModel::New();
+      keyword_model->type = keyword_type;
+      keyword_model->keyword = base::UTF16ToUTF8(keyword);
+      keyword_model->placeholder = base::UTF16ToUTF8(keyword_placeholder);
+      const auto names = searchbox::GetKeywordLabelNames(keyword, turl_service);
+      keyword_model->chip_hint = base::UTF16ToUTF8(names.full_name);
+      keyword_model->chip_a11y =
+          l10n_util::GetStringFUTF8(IDS_ACC_KEYWORD_MODE, names.short_name);
+      mojom_match->keyword_model = std::move(keyword_model);
+    }
   }
 
   return mojom_match;
@@ -1212,6 +1259,7 @@ void SearchboxHandler::QueryAutocomplete(
       input_with_keyword, cursor_position, page_classification,
       ChromeAutocompleteSchemeClassifier(profile_));
   autocomplete_input.set_current_url(client()->GetURL());
+  autocomplete_input.set_current_title(client()->GetTitle());
   autocomplete_input.set_focus_type(
       is_on_focus ? metrics::OmniboxFocusType::INTERACTION_FOCUS
                   : metrics::OmniboxFocusType::INTERACTION_DEFAULT);
@@ -1395,13 +1443,8 @@ void SearchboxHandler::SetPopupSelection(
     searchbox::mojom::OmniboxPopupSelectionPtr selection) {
   if (!base::FeatureList::IsEnabled(
           omnibox::kWebUISearchboxWithoutModelController)) {
-    OmniboxPopupSelection popup_selection =
-        ConvertSelection(std::move(selection));
-    const AutocompleteResult& result = autocomplete_controller()->result();
-    if (popup_selection.line == OmniboxPopupSelection::kNoMatch ||
-        popup_selection.IsControlPresentOnMatch(result)) {
-      edit_model()->SetPopupSelection(popup_selection, false, false, false);
-    }
+    edit_model()->SetPopupSelection(ConvertSelection(std::move(selection)),
+                                    false, false, false);
   }
 }
 

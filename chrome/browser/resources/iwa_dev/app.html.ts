@@ -17,13 +17,17 @@ export function getHtml(this: IwaDevAppElement) {
       aria-label="Learn more about Isolated Web Apps">Learn more</a>
 </div>
 ${!this.devModeEnabled_ ? html`
-  <div id="error-message">
-    <p>Isolated Web App Developer Mode is disabled.</p>
-    <p>To use this page, please enable the
-      <a href="chrome://flags#enable-isolated-web-app-dev-mode">
-        Isolated Web App Developer Mode
-      </a> flag.
-    </p>
+  <div id="dev-mode-disabled-message">
+    ${this.devToolsRestrictedByAdmin_ ? html`
+      <p>Isolated Web App Developer Mode is disabled by your administrator.</p>
+    ` : html`
+      <p>Isolated Web App Developer Mode is disabled.</p>
+      <p>To use this page, please enable the
+        <a href="chrome://flags#enable-isolated-web-app-dev-mode" target="_blank">
+          Isolated Web App Developer Mode
+        </a> flag.
+      </p>
+    `}
   </div>
 ` : html`
   <div id="content">
@@ -34,7 +38,8 @@ ${!this.devModeEnabled_ ? html`
         </h2>
         <cr-button class="action-button" id="installButton"
             @click="${this.onOpenInstallDialogClick_}">
-          + Install
+          <cr-icon class="icon-16" icon="cr:add" slot="prefix-icon"></cr-icon>
+          Install
         </cr-button>
       </div>
       ${this.installedApps_.length === 0 ? html`
@@ -49,6 +54,7 @@ ${!this.devModeEnabled_ ? html`
               .isUpdating="${this.updatingAppIds_.includes(item.appId)}"
               role="listitem"
               @request-update="${this.onRequestUpdate_}"
+              @request-update-options="${this.onRequestUpdateOptions_}"
               @request-uninstall="${this.onRequestUninstall_}">
           </installed-app-list-item>
         `)}
@@ -64,6 +70,20 @@ ${!this.devModeEnabled_ ? html`
           @request-install-from-update-manifest="${
             this.onRequestInstallFromUpdateManifest_}">
       </iwa-dev-install-dialog>
+      ${this.selectedAppForUpdateOptions_ ? html`
+        <iwa-dev-update-options-dialog id="updateOptionsDialog"
+            .app="${this.selectedAppForUpdateOptions_}"
+            .currentPinnedVersion="${
+              this.getPinnedVersion_(this.selectedAppForUpdateOptions_.appId)}"
+            .currentAllowDowngrades="${
+              this.getAllowDowngrades_(
+                  this.selectedAppForUpdateOptions_.appId)}"
+            @close="${this.onUpdateOptionsDialogClose_}"
+            @request-parse-update-manifest-from-url="${
+              this.onRequestParseUpdateManifestFromUrl_}"
+            @update-options-saved="${this.onUpdateOptionsSaved_}">
+        </iwa-dev-update-options-dialog>
+      ` : ''}
       <cr-toast id="toast" duration="3000">
         <div>${this.toastMessage_}</div>
       </cr-toast>

@@ -22,6 +22,28 @@ chromium-metrics-reviews@google.com.
 
 <histograms>
 
+<variants name="ActivityReportDomain">
+  <variant name="" summary="Recorded across all app states."/>
+  <variant name=".Assistant"
+      summary="Recorded while the Assistant UI is active. This histogram only
+               receives data from users on iOS 27 and later."/>
+  <variant name=".NTP"
+      summary="Recorded while the New Tab Page is active. This histogram only
+               receives data from users on iOS 27 and later."/>
+  <variant name=".Settings"
+      summary="Recorded while Settings UI is active. This histogram only
+               receives data from users on iOS 27 and later."/>
+  <variant name=".Signin"
+      summary="Recorded while the sign-in screen is active. This histogram
+               only receives data from users on iOS 27 and later."/>
+  <variant name=".Tab"
+      summary="Recorded while a browser tab is active. This histogram only
+               receives data from users on iOS 27 and later."/>
+  <variant name=".TabGrid"
+      summary="Recorded while the tab grid UI is active. This histogram only
+               receives data from users on iOS 27 and later."/>
+</variants>
+
 <variants name="AppVersion">
   <variant name=""
       summary="Recorded when the current app version number matches the last
@@ -42,6 +64,11 @@ chromium-metrics-reviews@google.com.
 </variants>
 
 <!-- LINT.ThenChange(//ios/chrome/browser/contextual_panel/model/contextual_panel_item_type.h:ContextualPanelItemType) -->
+
+<variants name="IOSFrameType">
+  <variant name="MainFrame" summary="Main frame of the webpage"/>
+  <variant name="SubFrame" summary="Subframes (iframes) of the webpage"/>
+</variants>
 
 <variants name="IOSSaveToDriveQueryTypeVariant">
   <variant name="CreateFolder"
@@ -225,6 +252,52 @@ chromium-metrics-reviews@google.com.
 </variants>
 
 <!-- LINT.ThenChange(/ios/chrome/browser/promos_manager/model/constants.h:Promo) -->
+
+<histogram name="IOS.Actor.PageStability.Outcome"
+    enum="IOSPageStabilityOutcome" expires_after="2027-02-25">
+  <owner>kaklilu@google.com</owner>
+  <owner>bling-ai-foundations@google.com</owner>
+  <summary>
+    Records the final outcome of an iOS page stability monitoring check.
+
+    Page stability indicates that the web page is 'stable' (i.e. DOM mutations
+    have ceased or settled within configured thresholds) so that the Actor can
+    safely interact with, or extract content from, the page without race
+    conditions or layout shifts.
+
+    This metric is recorded once per page stability check when monitoring
+    terminates.
+  </summary>
+</histogram>
+
+<histogram name="IOS.Actor.PageStability.TimeFromMonitoringToStable" units="ms"
+    expires_after="2027-02-25">
+  <owner>kaklilu@google.com</owner>
+  <owner>bling-ai-foundations@google.com</owner>
+  <summary>
+    The duration from when active page stability monitoring starts until page
+    stability is reached. Excludes any initial observation delay. This metric is
+    not recorded if monitoring times out or aborts (e.g., due to frame
+    destruction).
+  </summary>
+</histogram>
+
+<histogram name="IOS.Actor.PageStability.TotalTimeTo{Outcome}" units="ms"
+    expires_after="2027-02-25">
+  <owner>kaklilu@google.com</owner>
+  <owner>bling-ai-foundations@google.com</owner>
+  <summary>
+    The duration from when stability monitoring is requested until {Outcome}.
+  </summary>
+  <token key="Outcome">
+    <variant name="Stable"
+        summary="page stability is reached. Not recorded for timeouts or
+                 aborted checks"/>
+    <variant name="WebFrameGoingAway"
+        summary="the check is aborted because the monitored web frame was
+                 destroyed"/>
+  </token>
+</histogram>
 
 <histogram name="IOS.AIHub.Action" enum="IOSAIHubAction"
     expires_after="2027-02-07">
@@ -1500,6 +1573,16 @@ chromium-metrics-reviews@google.com.
   </token>
 </histogram>
 
+<histogram name="IOS.DefaultBrowserPromo.OverflowMenu"
+    enum="IOSDefaultBrowserPromoOverflowMenuAction" expires_after="2027-02-14">
+  <owner>cheickcisse@google.com</owner>
+  <owner>bling-mony-pod@google.com</owner>
+  <summary>
+    Records the action taken by the user on the Default Browser Overflow Menu
+    Promo (No Action, Hidden, or Tapped).
+  </summary>
+</histogram>
+
 <histogram name="IOS.DefaultBrowserPromo.SetUpList.Action"
     enum="IOSDefaultBrowserFullscreenPromoAction" expires_after="2026-12-16">
   <owner>pabouchard@google.com</owner>
@@ -2252,7 +2335,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.FileUploadPanel.NilImageInfo.{InfoKey}" enum="Boolean"
-    expires_after="2026-09-04">
+    expires_after="2027-08-24">
   <owner>qpubert@google.com</owner>
   <owner>olivierrobin@chromium.org</owner>
   <owner>bling-team@google.com</owner>
@@ -2481,8 +2564,8 @@ chromium-metrics-reviews@google.com.
     between the a user's first interaction with the page and the page receiving
     the input event for this interaction. This histogram captures the First
     Input Delay time for user's subframes that is loaded from the Back/Forward
-    cache. This histogram's understanding of First Contentful Paint differs from
-    the traditional understanding because it does not aggregate and compare the
+    cache. This histogram's understanding of First Input Delay differs from the
+    traditional understanding because it does not aggregate and compare the
     First Input Delay times across the frames on a page.
   </summary>
 </histogram>
@@ -2502,6 +2585,25 @@ chromium-metrics-reviews@google.com.
     does not aggregate and compare the First Input Delay times across the frames
     on a page.
   </summary>
+</histogram>
+
+<histogram name="IOS.Frame.InteractionToNextPaint.{FrameType}" units="ms"
+    expires_after="2027-03-30">
+  <owner>jfle@google.com</owner>
+  <owner>bling-fundamentals@google.com</owner>
+  <summary>
+    Interaction to Next Paint (INP) is a Core Web Vital metric that assesses
+    responsiveness by observing the latency of all click, tap, and keyboard
+    interactions throughout a user's visit to a page, capturing the 98th
+    percentile latency (discarding outliers).
+
+    Note that this histogram captures INP isolated to the {FrameType} and does
+    not aggregate interactions across all frames on the page.
+
+    Recorded when the page is navigated away from or the web state is destroyed,
+    for each {FrameType} where user interactions occurred.
+  </summary>
+  <token key="FrameType" variants="IOSFrameType"/>
 </histogram>
 
 <histogram name="IOS.Fullscreen.State" enum="CrFullscreenState"
@@ -4347,8 +4449,9 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="IOS.MetricKit.{MXVersion}ApplicationHangTime" units="ms"
-    expires_after="never">
+<histogram
+    name="IOS.MetricKit.{MXVersion}ApplicationHangTime{ActivityReportDomain}"
+    units="ms" expires_after="never">
 <!-- expires-never: guiding metric (internal: go/chrome-browser-guiding-metrics) -->
 
   <owner>justincohen@chromium.org</owner>
@@ -4385,10 +4488,13 @@ chromium-metrics-reviews@google.com.
 
     {MXVersion}
 
+    {ActivityReportDomain}
+
     This histogram is of special interest to the chrome-analysis-team@. Do not
     change its semantics or retire it without talking to them first.
   </summary>
   <token key="MXVersion" variants="MXVersion"/>
+  <token key="ActivityReportDomain" variants="ActivityReportDomain"/>
 </histogram>
 
 <histogram name="IOS.MetricKit.{MXVersion}ApplicationResumeTime" units="ms"
@@ -4413,8 +4519,9 @@ chromium-metrics-reviews@google.com.
   <token key="MXVersion" variants="MXVersion"/>
 </histogram>
 
-<histogram name="IOS.MetricKit.{MXVersion}AverageSuspendedMemory" units="MB"
-    expires_after="2027-01-31">
+<histogram
+    name="IOS.MetricKit.{MXVersion}AverageSuspendedMemory{ActivityReportDomain}"
+    units="MB" expires_after="2027-01-31">
   <owner>justincohen@chromium.org</owner>
   <owner>olivierrobin@chromium.org</owner>
   <summary>
@@ -4432,11 +4539,15 @@ chromium-metrics-reviews@google.com.
     be later than the user activity it corresponds to.
 
     {MXVersion}
+
+    {ActivityReportDomain}
   </summary>
   <token key="MXVersion" variants="MXVersion"/>
+  <token key="ActivityReportDomain" variants="ActivityReportDomain"/>
 </histogram>
 
-<histogram name="IOS.MetricKit.{MXVersion}BackgroundExitData"
+<histogram
+    name="IOS.MetricKit.{MXVersion}BackgroundExitData{ActivityReportDomain}"
     enum="MetricKitExitData" expires_after="never">
 <!-- expires-never: guiding metric (internal: go/chrome-browser-guiding-metrics) -->
 
@@ -4466,14 +4577,18 @@ chromium-metrics-reviews@google.com.
 
     {MXVersion}
 
+    {ActivityReportDomain}
+
     This histogram is of special interest to the chrome-analysis-team@. Do not
     change its semantics or retire it without talking to them first.
   </summary>
   <token key="MXVersion" variants="MXVersion"/>
+  <token key="ActivityReportDomain" variants="ActivityReportDomain"/>
 </histogram>
 
-<histogram name="IOS.MetricKit.{MXVersion}BackgroundTimePerDay" units="ms"
-    expires_after="2027-07-20">
+<histogram
+    name="IOS.MetricKit.{MXVersion}BackgroundTimePerDay{ActivityReportDomain}"
+    units="ms" expires_after="2027-07-20">
   <owner>justincohen@chromium.org</owner>
   <owner>olivierrobin@chromium.org</owner>
   <summary>
@@ -4492,12 +4607,15 @@ chromium-metrics-reviews@google.com.
     be later than the user activity it corresponds to.
 
     {MXVersion}
+
+    {ActivityReportDomain}
   </summary>
   <token key="MXVersion" variants="MXVersion"/>
+  <token key="ActivityReportDomain" variants="ActivityReportDomain"/>
 </histogram>
 
-<histogram name="IOS.MetricKit.{MXVersion}CPUTimePerDay" units="s"
-    expires_after="2027-02-07">
+<histogram name="IOS.MetricKit.{MXVersion}CPUTimePerDay{ActivityReportDomain}"
+    units="s" expires_after="2027-02-07">
   <owner>justincohen@chromium.org</owner>
   <owner>bling-fundamentals@google.com</owner>
   <summary>
@@ -4514,8 +4632,11 @@ chromium-metrics-reviews@google.com.
     be later than the user activity it corresponds to.
 
     {MXVersion}
+
+    {ActivityReportDomain}
   </summary>
   <token key="MXVersion" variants="MXVersion"/>
+  <token key="ActivityReportDomain" variants="ActivityReportDomain"/>
 </histogram>
 
 <histogram name="IOS.MetricKit.{MXVersion}ExtendedLaunch" units="ms"
@@ -4554,7 +4675,8 @@ chromium-metrics-reviews@google.com.
   <token key="MXVersion" variants="MXVersion"/>
 </histogram>
 
-<histogram name="IOS.MetricKit.{MXVersion}ForegroundExitData"
+<histogram
+    name="IOS.MetricKit.{MXVersion}ForegroundExitData{ActivityReportDomain}"
     enum="MetricKitExitData" expires_after="never">
 <!-- expires-never: guiding metric (internal: go/chrome-browser-guiding-metrics) -->
 
@@ -4586,14 +4708,18 @@ chromium-metrics-reviews@google.com.
 
     {MXVersion}
 
+    {ActivityReportDomain}
+
     This histogram is of special interest to the chrome-analysis-team@. Do not
     change its semantics or retire it without talking to them first.
   </summary>
   <token key="MXVersion" variants="MXVersion"/>
+  <token key="ActivityReportDomain" variants="ActivityReportDomain"/>
 </histogram>
 
-<histogram name="IOS.MetricKit.{MXVersion}ForegroundTimePerDay" units="s"
-    expires_after="2026-10-25">
+<histogram
+    name="IOS.MetricKit.{MXVersion}ForegroundTimePerDay{ActivityReportDomain}"
+    units="s" expires_after="2026-10-25">
   <owner>justincohen@chromium.org</owner>
   <owner>olivierrobin@chromium.org</owner>
   <summary>
@@ -4615,8 +4741,11 @@ chromium-metrics-reviews@google.com.
     be later than the user activity it corresponds to.
 
     {MXVersion}
+
+    {ActivityReportDomain}
   </summary>
   <token key="MXVersion" variants="MXVersion"/>
+  <token key="ActivityReportDomain" variants="ActivityReportDomain"/>
 </histogram>
 
 <histogram name="IOS.MetricKit.{MXVersion}OptimizedTimeToFirstDraw" units="ms"
@@ -4645,8 +4774,9 @@ chromium-metrics-reviews@google.com.
   <token key="MXVersion" variants="MXVersion"/>
 </histogram>
 
-<histogram name="IOS.MetricKit.{MXVersion}PeakMemoryUsage" units="MB"
-    expires_after="2027-01-31">
+<histogram
+    name="IOS.MetricKit.{MXVersion}PeakMemoryUsage{ActivityReportDomain}"
+    units="MB" expires_after="2027-01-31">
   <owner>justincohen@chromium.org</owner>
   <owner>olivierrobin@chromium.org</owner>
   <summary>
@@ -4669,8 +4799,11 @@ chromium-metrics-reviews@google.com.
     be later than the user activity it corresponds to.
 
     {MXVersion}
+
+    {ActivityReportDomain}
   </summary>
   <token key="MXVersion" variants="MXVersion"/>
+  <token key="ActivityReportDomain" variants="ActivityReportDomain"/>
 </histogram>
 
 <histogram name="IOS.MetricKit.{MXVersion}TimeToFirstDraw" units="ms"
@@ -6381,7 +6514,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.ReaderMode.Distiller.Result"
-    enum="ReaderModeDistillerOutcome" expires_after="2026-10-04">
+    enum="ReaderModeDistillerOutcome" expires_after="2027-08-24">
   <owner>fernandex@google.com</owner>
   <owner>qpubert@google.com</owner>
   <owner>bling-squid-squad@google.com</owner>

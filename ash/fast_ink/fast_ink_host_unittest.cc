@@ -15,8 +15,6 @@
 #include "ash/frame_sink/test/frame_sink_host_test_base.h"
 #include "ash/frame_sink/test/test_begin_frame_source.h"
 #include "ash/frame_sink/test/test_layer_tree_frame_sink.h"
-#include "ash/frame_sink/ui_resource.h"
-#include "ash/frame_sink/ui_resource_manager.h"
 #include "ash/test/ash_test_base.h"
 #include "ash/test/ash_test_helper.h"
 #include "base/logging.h"
@@ -54,8 +52,12 @@ class FastInkHostFrameSubmissionTest
     : public FrameSinkHostTestBase<FastInkHost>,
       public ::testing::WithParamInterface<FastInkHostTestParams> {
  public:
+  FastInkHostFrameSubmissionTest() = default;
+
+  const FastInkHostTestParams& test_params() const { return GetParam(); }
+
   void SetUp() override {
-    SetDisplaySpecs(GetParam().first_display_specs);
+    SetDisplaySpecs(test_params().first_display_specs);
     FrameSinkHostTestBase<FastInkHost>::SetUp();
   }
 };
@@ -65,7 +67,7 @@ TEST_P(FastInkHostFrameSubmissionTest,
   // Request the first frame.
   OnBeginFrame();
 
-  const auto& params = GetParam();
+  const auto& params = test_params();
 
   SCOPED_TRACE(base::StringPrintf(
       "Test params: first_display_specs=%s | auto_update=%s | content_rect=%s "
@@ -131,8 +133,8 @@ INSTANTIATE_TEST_SUITE_P(
     /* no prefix */,
     FastInkHostFrameSubmissionTest,
     testing::Values(
-        // When auto updating surface, we update the full surface, ignoring the
-        // content_rect.
+        // When auto updating surface, we update the full surface, ignoring
+        // the content_rect.
         FastInkHostTestParams{
             .first_display_specs = "1000x500",
             .auto_update = true,

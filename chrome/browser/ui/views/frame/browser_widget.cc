@@ -175,9 +175,8 @@ void BrowserWidget::InitBrowserWidget() {
       browser->GetType() == BrowserWindowInterface::Type::TYPE_APP ||
       browser->GetType() == BrowserWindowInterface::Type::TYPE_APP_POPUP;
 
-  params.session_data = browser->GetFeatures()
-                            .session_service_browser_helper()
-                            ->platform_session_data();
+  params.session_data =
+      SessionServiceBrowserHelper::From(browser)->platform_session_data();
 #endif
 
   if (browser_native_widget_->ShouldRestorePreviousBrowserWidgetState()) {
@@ -217,6 +216,14 @@ void BrowserWidget::InitBrowserWidget() {
   }
 
   Init(std::move(params));
+
+  if (auto* const glass_frame_service = GlassFrameService::GetInstance()) {
+    glass_frame_subscription_ =
+        glass_frame_service->RegisterGlassFrameEligibilityChangedCallback(
+            browser_view_->browser(),
+            base::BindRepeating(&BrowserWidget::OnGlassFrameEligibilityChanged,
+                                base::Unretained(this)));
+  }
 
 #if BUILDFLAG(IS_LINUX)
   SelectNativeTheme();
@@ -517,6 +524,13 @@ ui::ColorProviderKey BrowserWidget::GetColorProviderKey() const {
   }
 #endif
 
+  if (auto* const glass_frame_service = GlassFrameService::GetInstance()) {
+    if (glass_frame_service->IsBrowserWindowEligible(
+            browser_view_->browser())) {
+      key.frame_style = ui::ColorProviderKey::FrameStyle::kGlass;
+    }
+  }
+
   return key;
 }
 
@@ -561,6 +575,12 @@ void BrowserWidget::OnTouchUiChanged() {
     non_client_view()->InvalidateLayout();
   }
   GetRootView()->InvalidateLayout();
+}
+
+void BrowserWidget::OnGlassFrameEligibilityChanged(bool is_eligible) {
+  // TODO(crbug.com/40280130): Update to NotifyColorProviderChanged() once it
+  // properly triggers ThemeChanged().
+  ThemeChanged();
 }
 
 bool BrowserWidget::RegenerateFrameOnThemeChange(

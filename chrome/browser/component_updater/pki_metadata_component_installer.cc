@@ -100,8 +100,12 @@ const int64_t kMaxSupportedSignerSetCompatibilityVersion = 1;
 // Ignore any MtcMetadata component update data that is older than this amount.
 // The MTC Metadata has a short useful lifetime, and since it impacts Trust
 // Anchor ID data that is sent over the wire, using a stale update would just
-// result in sending useless data for TAIs that don't work anymore.
-constexpr base::TimeDelta kMaxMtcMetadataAge = base::Days(7);
+// result in sending TAIs with landmarks that aren't usable anymore (although
+// they still indicate support for the corresponding standalone ID, at that
+// point it's better to switch to only sending the standalone ID instead.)
+//
+// CQRP draft policy allows up to 47 days as the max cert lifetime.
+constexpr base::TimeDelta kMaxMtcMetadataAge = base::Days(47);
 
 const base::FilePath::CharType kCTConfigProtoFileName[] =
     FILE_PATH_LITERAL("ct_config.pb");
@@ -155,14 +159,9 @@ network::mojom::CTLogInfo::LogType ProtoLogTypeToLogType(
 // Converts a protobuf repeated bytes array to an array of uint8_t arrays.
 std::vector<std::vector<uint8_t>> BytesArrayFromProtoBytes(
     const google::protobuf::RepeatedPtrField<std::string>& proto_bytes) {
-  std::vector<std::vector<uint8_t>> bytes;
-  bytes.reserve(proto_bytes.size());
-  std::ranges::transform(
-      proto_bytes, std::back_inserter(bytes), [](const std::string& element) {
-        const auto bytes = base::as_byte_span(element);
-        return std::vector<uint8_t>(bytes.begin(), bytes.end());
-      });
-  return bytes;
+  return base::ToVector(proto_bytes, [](const std::string& element) {
+    return base::ToVector(base::as_byte_span(element));
+  });
 }
 
 // Converts a protobuf repeated bytes array to an array of SHA256HashValues.

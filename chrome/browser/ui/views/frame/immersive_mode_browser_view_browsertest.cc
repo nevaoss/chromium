@@ -15,7 +15,6 @@
 #include "chrome/browser/ui/find_bar/find_bar.h"
 #include "chrome/browser/ui/find_bar/find_bar_controller.h"
 #include "chrome/browser/ui/immersive/immersive_mode_controller.h"
-#include "chrome/browser/ui/tabs/features.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
 #include "chrome/browser/ui/views/bubble/webui_bubble_manager.h"
 #include "chrome/browser/ui/views/frame/browser_frame_view_chromeos.h"
@@ -294,8 +293,7 @@ IN_PROC_BROWSER_TEST_P(ImmersiveModeBrowserViewTest,
   // Make sure the fullscreen control popup doesn't show up.
   ui::MouseEvent mouse_move(ui::EventType::kMouseMoved, gfx::Point(1, 1),
                             gfx::Point(), base::TimeTicks(), 0, 0);
-  auto* const fullscreen_control_host =
-      browser()->GetFeatures().fullscreen_control_host();
+  auto* const fullscreen_control_host = FullscreenControlHost::From(browser());
   ASSERT_NE(fullscreen_control_host, nullptr);
   fullscreen_control_host->OnMouseEvent(mouse_move);
   EXPECT_FALSE(fullscreen_control_host->IsVisible());
@@ -322,8 +320,7 @@ IN_PROC_BROWSER_TEST_P(ImmersiveModeBrowserViewTest,
   // Make sure the fullscreen control popup doesn't show up.
   ui::MouseEvent mouse_move(ui::EventType::kMouseMoved, gfx::Point(1, 1),
                             gfx::Point(), base::TimeTicks(), 0, 0);
-  auto* const fullscreen_control_host =
-      browser()->GetFeatures().fullscreen_control_host();
+  auto* const fullscreen_control_host = FullscreenControlHost::From(browser());
   ASSERT_NE(fullscreen_control_host, nullptr);
   fullscreen_control_host->OnMouseEvent(mouse_move);
   EXPECT_FALSE(fullscreen_control_host->IsVisible());
@@ -436,19 +433,12 @@ IN_PROC_BROWSER_TEST_P(ImmersiveModeBrowserViewTest,
 class ImmersiveModeBrowserViewVerticalTabsTest
     : public ImmersiveModeBrowserViewTest {
  public:
-  ImmersiveModeBrowserViewVerticalTabsTest() {
-    scoped_feature_list_.InitAndEnableFeature(tabs::kVerticalTabs);
-  }
-
   void SetUpOnMainThread() override {
     ImmersiveModeBrowserViewTest::SetUpOnMainThread();
     tabs::VerticalTabStripStateController::From(browser())
         ->SetVerticalTabsEnabled(true);
     RunScheduledLayouts();
   }
-
- private:
-  base::test::ScopedFeatureList scoped_feature_list_;
 };
 
 IN_PROC_BROWSER_TEST_P(ImmersiveModeBrowserViewVerticalTabsTest,

@@ -21,21 +21,13 @@ BASE_FEATURE_PARAM(bool,
                    &kSplitViewHorizontal,
                    "split_view_horizontal_direct_access",
                    false);
-
-BASE_FEATURE(kSplitViewTabRestore, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE_PARAM(bool,
+                   kSplitViewHorizontalDirectTabAccess,
+                   &kSplitViewHorizontal,
+                   "split_view_horizontal_direct_tab_access",
+                   false);
 
 BASE_FEATURE(kTabSearchCjkWordBoundary, base::FEATURE_DISABLED_BY_DEFAULT);
-
-BASE_FEATURE(kVerticalTabs, base::FEATURE_DISABLED_BY_DEFAULT);
-
-BASE_FEATURE(kVerticalTabsLaunch, base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE_PARAM(bool,
-                   kVerticalTabsToggleInTabContextMenu,
-                   &kVerticalTabsLaunch,
-                   "toggle_in_tab_context_menu",
-                   true);
-
-BASE_FEATURE(kVerticalTabsPreviewBadge, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kVerticalTabsNewBadge, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -99,22 +91,19 @@ BASE_FEATURE(kTabStripUnification, base::FEATURE_DISABLED_BY_DEFAULT);
 // newly opened tab to close that tab and return focus to the opener tab.
 BASE_FEATURE(kBackToOpener, base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kMigrateEverythingMenuPinnedToTabstrip,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
 bool IsSplitViewHorizontalIndirectAccessEnabled() {
   return base::FeatureList::IsEnabled(kSplitViewHorizontal) &&
          !kSplitViewHorizontalDirectAccess.Get();
 }
 
-bool IsVerticalTabsFeatureEnabled() {
-  return base::FeatureList::IsEnabled(kVerticalTabs) ||
-         base::FeatureList::IsEnabled(kVerticalTabsLaunch);
+bool IsSplitViewHorizontalDirectAccessEnabledForTab() {
+  return base::FeatureList::IsEnabled(kSplitViewHorizontal) &&
+         (kSplitViewHorizontalDirectAccess.Get() ||
+          kSplitViewHorizontalDirectTabAccess.Get());
 }
 
 bool IsVerticalTabsExpandOnHoverFeatureEnabled() {
-  return IsVerticalTabsFeatureEnabled() &&
-         base::FeatureList::IsEnabled(kVerticalTabsExpandOnHover);
+  return base::FeatureList::IsEnabled(kVerticalTabsExpandOnHover);
 }
 
 bool IsExpandOnHoverClickDelayEnabled() {

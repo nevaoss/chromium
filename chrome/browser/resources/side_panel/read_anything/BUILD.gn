@@ -34,6 +34,8 @@ build_webui("build") {
     "content/selection_controller.ts",
     "menus/appearance_menu.html.ts",
     "menus/appearance_menu.ts",
+    "menus/audio_menu.html.ts",
+    "menus/audio_menu.ts",
     "menus/color_menu.html.ts",
     "menus/color_menu.ts",
     "menus/font_menu.html.ts",
@@ -130,10 +132,6 @@ build_webui("build") {
         rebase_path(
             "$root_gen_dir/chrome/browser/resources/side_panel/shared/tsc/*",
             target_gen_dir) ]
-
-  mojo_files_deps =
-      [ "//chrome/browser/ui/webui/user_education:mojo_bindings_ts__generator" ]
-  mojo_files = [ "$root_gen_dir/chrome/browser/ui/webui/user_education/user_education.mojom-webui.ts" ]
 
   webui_context_type = "untrusted"
   optimize = optimize_webui

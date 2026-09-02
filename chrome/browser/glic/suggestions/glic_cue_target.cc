@@ -83,6 +83,10 @@ contextual_cueing::CueTargetType GlicCueTarget::GetType() const {
   return contextual_cueing::CueTargetType::kGlic;
 }
 
+bool GlicCueTarget::RequiresModelExecution() const {
+  return true;
+}
+
 void GlicCueTarget::CheckEligibility(
     base::WeakPtr<content::WebContents> web_contents,
     contextual_cueing::CueIntrusiveness intrusiveness,
@@ -191,6 +195,11 @@ void GlicCueTarget::InvokeGlic(contextual_cueing::CueActionData data,
                                           GlicPinTrigger::kContextualCue);
 
   if (should_autosubmit) {
+    if (!GlicEnabling::HasConsentedForProfile(glic_keyed_service_->profile()) &&
+        base::FeatureList::IsEnabled(
+            features::kGlicMessageFirstFreForContextualCue)) {
+      options.fre_override = mojom::FreOverride::kTrustFirstInline;
+    }
     glic_keyed_service_->InvokeWithAutoSubmit(
         InvokeWithAutoSubmitPasskeyProvider::GetPassKey(), std::move(options));
   } else {
@@ -215,7 +224,7 @@ ui::ImageModel GlicCueTarget::GetOmniboxChipIcon() const {
 #else
   return ui::ImageModel::FromVectorIcon(
       glic::GlicVectorIconManager::GetVectorIcon(IDR_GLIC_BUTTON_VECTOR_ICON),
-      ui::kColorSysOnSurface, 18);
+      ui::kColorSysOnSurface, 16);
 #endif
 }
 

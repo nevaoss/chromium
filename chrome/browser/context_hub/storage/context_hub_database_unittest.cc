@@ -16,6 +16,7 @@
 #include "sql/statement.h"
 #include "sql/test/scoped_error_expecter.h"
 #include "sql/test/test_helpers.h"
+#include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "url/gurl.h"
 
@@ -252,6 +253,28 @@ TEST_F(ContextHubDatabaseTest, GetNonExistentMemoryBankEntry) {
   EXPECT_FALSE(db_->GetMemoryBankEntry(999).has_value());
 }
 
+// Tests updating annotations for a memory bank entry.
+TEST_F(ContextHubDatabaseTest, UpdateMemoryBankEntryAnnotations) {
+  ASSERT_TRUE(db_->Init(GetDbPath()));
+
+  MemoryBankEntry data = CreateTestData();
+  EXPECT_TRUE(db_->AddOrUpdateMemoryBankEntry(data));
+
+  std::vector<MemoryBankEntry> all_entries = db_->GetAllMemoryBankEntries();
+  ASSERT_EQ(all_entries.size(), 1u);
+  int64_t id = all_entries[0].id;
+
+  EXPECT_TRUE(db_->UpdateMemoryBankEntryAnnotations(
+      id, {"tagA", "tagB"}, "Updated Note", "Updated Collection"));
+
+  std::optional<MemoryBankEntry> retrieved = db_->GetMemoryBankEntry(id);
+  ASSERT_TRUE(retrieved.has_value());
+  EXPECT_EQ(retrieved->tab_title, data.tab_title);
+  EXPECT_EQ(retrieved->note, "Updated Note");
+  EXPECT_EQ(retrieved->collection, "Updated Collection");
+  EXPECT_THAT(retrieved->tags, testing::ElementsAre("tagA", "tagB"));
+}
+
 // Tests retrieving all memory bank entries.
 TEST_F(ContextHubDatabaseTest, GetAllMemoryBankEntries) {
   ASSERT_TRUE(db_->Init(GetDbPath()));
@@ -328,6 +351,49 @@ TEST_F(ContextHubDatabaseTest, MaxEntriesLimitRejectsNewEntries) {
 
   // Table should still contain only 2 entries.
   EXPECT_EQ(db_->GetAllMemoryBankEntries().size(), 2u);
+}
+
+// Tests retrieving all unique tags.
+TEST_F(ContextHubDatabaseTest, GetAllMemoryBankTags) {
+  ASSERT_TRUE(db_->Init(GetDbPath()));
+  EXPECT_TRUE(db_->GetAllMemoryBankTags().empty());
+
+  MemoryBankEntry entry1 = CreateTestData();
+  entry1.url = GURL("https://example.com/1");
+  entry1.tags = {"tag1", "tag2"};
+  EXPECT_TRUE(db_->AddOrUpdateMemoryBankEntry(entry1));
+
+  MemoryBankEntry entry2 = CreateTestData();
+  entry2.url = GURL("https://example.com/2");
+  entry2.tags = {"tag2", "tag3"};
+  EXPECT_TRUE(db_->AddOrUpdateMemoryBankEntry(entry2));
+
+  std::vector<std::string> tags = db_->GetAllMemoryBankTags();
+  EXPECT_THAT(tags, testing::UnorderedElementsAre("tag1", "tag2", "tag3"));
+}
+
+// Tests retrieving all unique collections.
+TEST_F(ContextHubDatabaseTest, GetAllMemoryBankCollections) {
+  ASSERT_TRUE(db_->Init(GetDbPath()));
+  EXPECT_TRUE(db_->GetAllMemoryBankCollections().empty());
+
+  MemoryBankEntry entry1 = CreateTestData();
+  entry1.url = GURL("https://example.com/1");
+  entry1.collection = "Research";
+  EXPECT_TRUE(db_->AddOrUpdateMemoryBankEntry(entry1));
+
+  MemoryBankEntry entry2 = CreateTestData();
+  entry2.url = GURL("https://example.com/2");
+  entry2.collection = "Recipes";
+  EXPECT_TRUE(db_->AddOrUpdateMemoryBankEntry(entry2));
+
+  MemoryBankEntry entry3 = CreateTestData();
+  entry3.url = GURL("https://example.com/3");
+  entry3.collection = "Research";
+  EXPECT_TRUE(db_->AddOrUpdateMemoryBankEntry(entry3));
+
+  std::vector<std::string> collections = db_->GetAllMemoryBankCollections();
+  EXPECT_THAT(collections, testing::ElementsAre("Recipes", "Research"));
 }
 
 }  // namespace context_hub

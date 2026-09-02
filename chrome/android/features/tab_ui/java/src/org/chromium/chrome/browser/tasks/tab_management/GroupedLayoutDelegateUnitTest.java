@@ -20,6 +20,11 @@ import static org.chromium.chrome.browser.tasks.tab_management.TabListModel.Card
 import static org.chromium.chrome.browser.tasks.tab_management.TabListModel.CardProperties.ModelType.TAB;
 
 import android.util.Pair;
+import android.view.View;
+import android.view.accessibility.AccessibilityNodeInfo;
+import android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction;
+
+import androidx.test.core.app.ApplicationProvider;
 
 import org.junit.Before;
 import org.junit.Rule;
@@ -41,6 +46,8 @@ import org.chromium.chrome.browser.tab.TabSelectionType;
 import org.chromium.chrome.browser.tab_ui.ThumbnailProvider;
 import org.chromium.chrome.browser.tabmodel.TabList;
 import org.chromium.chrome.browser.tabmodel.TabModel;
+import org.chromium.chrome.browser.tasks.tab_management.TabListMediator.TabGridAccessibilityHelper;
+import org.chromium.chrome.tab_ui.R;
 import org.chromium.components.tab_groups.TabGroupColorId;
 import org.chromium.ui.modelutil.MVCListAdapter.ListItem;
 import org.chromium.ui.modelutil.PropertyModel;
@@ -56,6 +63,7 @@ public class GroupedLayoutDelegateUnitTest {
 
     @Mock private TabListMediator mMediator;
     @Mock private ThumbnailProvider mThumbnailProvider;
+    @Mock private TabGridAccessibilityHelper mAccessibilityHelper;
     @Mock private Tab mTab1;
     @Mock private Tab mTab2;
     @Mock private Tab mTab3;
@@ -891,6 +899,42 @@ public class GroupedLayoutDelegateUnitTest {
 
         when(mTabModel.getTabById(TAB1_ID)).thenReturn(null);
         assertFalse(mDelegate.areTabsInSameGroup(TAB1_ID, mTab2));
+    }
+
+    @Test
+    public void testPerformReorderAction() {
+        createAndAddPropertyModel(TAB1_ID);
+        createAndAddPropertyModel(TAB2_ID);
+
+        View view = new View(ApplicationProvider.getApplicationContext());
+        when(mAccessibilityHelper.getPositionsOfReorderAction(view, R.id.move_tab_up))
+                .thenReturn(new Pair<>(1, 0));
+        when(mAccessibilityHelper.isReorderAction(R.id.move_tab_up)).thenReturn(true);
+        mDelegate.setAccessibilityHelper(mAccessibilityHelper);
+
+        var userActionTester = new UserActionTester();
+        assertTrue(
+                mDelegate.performAccessibilityAction(
+                        view, R.id.move_tab_up, /* args= */ null, /* model= */ null));
+        assertEquals(TAB2_ID, mModelList.get(0).model.get(TabProperties.TAB_ID));
+        assertEquals(TAB1_ID, mModelList.get(1).model.get(TabProperties.TAB_ID));
+        assertTrue(
+                userActionTester.getActions().contains("TabGrid.AccessibilityDelegate.Reordered"));
+    }
+
+    @Test
+    public void testPopulateAccessibilityNodeInfo_CallsHelper() {
+        PropertyModel model = createAndAddPropertyModel(TAB1_ID);
+
+        View view = new View(ApplicationProvider.getApplicationContext());
+        AccessibilityNodeInfo info = AccessibilityNodeInfo.obtain();
+        AccessibilityAction action = new AccessibilityAction(R.id.move_tab_up, "Move Up");
+        when(mAccessibilityHelper.getPotentialActionsForView(view)).thenReturn(List.of(action));
+        mDelegate.setAccessibilityHelper(mAccessibilityHelper);
+
+        mDelegate.populateAccessibilityNodeInfo(view, info, model);
+
+        assertTrue(info.getActionList().contains(action));
     }
 
     private PropertyModel createAndAddPropertyModel(int tabId) {

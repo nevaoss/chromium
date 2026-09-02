@@ -78,6 +78,7 @@ class SaveUpdateAddressProfileFlowManager;
 class AutofillMessageController;
 class AutofillDialogController;
 class TouchToFillAutofillController;
+class EmailVerificationBottomSheetBridge;
 #endif
 
 class ActorAutofillManager;
@@ -87,6 +88,7 @@ class EmailVerificationPopupController;
 class EmailVerifierDelegate;
 class FormFieldData;
 class OtpFieldDetector;
+class OtpMetricsTracker;
 class ChromeOtpPhishGuardDelegate;
 class LogRouter;
 enum class SuggestionType;
@@ -232,6 +234,7 @@ class ChromeAutofillClient : public ContentAutofillClient {
       const FieldTypeSet& triggering_field_types) final;
   bool IsTabInActorMode() const final;
   ActorAutofillManager* GetActorAutofillManager() final;
+  int64_t GetNavigationId() const final;
   bool IsAutofillEnabled() const final;
   bool IsAutofillProfileEnabled() const final;
   bool IsAutofillTypeBlockedByPolicy(
@@ -355,6 +358,7 @@ class ChromeAutofillClient : public ContentAutofillClient {
       override;
 
   OtpFieldDetector* GetOtpFieldDetector() override;
+  OtpMetricsTracker* GetOtpMetricsTracker() override;
   OtpPhishGuardDelegate* GetOtpPhishGuardDelegate() override;
 
   FormPredictionsTracker* GetFormPredictionsTracker() override;
@@ -439,6 +443,8 @@ class ChromeAutofillClient : public ContentAutofillClient {
       autofill_snackbar_controller_impl_;
   std::unique_ptr<TouchToFillAutofillController>
       touch_to_fill_autofill_controller_;
+  std::unique_ptr<EmailVerificationBottomSheetBridge>
+      email_verification_bottom_sheet_bridge_;
 #else   // BUILDFLAG(IS_ANDROID)
   std::unique_ptr<AutofillFieldPromoController>
       autofill_field_promo_controller_;
@@ -451,6 +457,7 @@ class ChromeAutofillClient : public ContentAutofillClient {
 
   ContentIdentityCredentialDelegate identity_credential_delegate_;
   std::unique_ptr<OtpFieldDetector> otp_field_detector_;
+  std::unique_ptr<OtpMetricsTracker> otp_metrics_tracker_;
   std::unique_ptr<EmailVerifierDelegate> email_verifier_delegate_;
   std::unique_ptr<ChromeOtpPhishGuardDelegate> otp_phish_guard_delegate_;
 

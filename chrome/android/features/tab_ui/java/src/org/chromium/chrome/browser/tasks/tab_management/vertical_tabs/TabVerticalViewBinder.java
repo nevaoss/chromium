@@ -136,19 +136,14 @@ class TabVerticalViewBinder {
         bindCommonProperties(model, view, propertyKey);
 
         Resources resources = view.getContext().getResources();
+        boolean isTablet = isTablet(view.getContext());
         int pinnedHeight =
                 resources.getDimensionPixelSize(
-                        isTablet(view.getContext())
+                        isTablet
                                 ? R.dimen.vertical_tab_pinned_item_height_tablet
                                 : R.dimen.vertical_tab_pinned_item_height);
-        int expandedWidth =
-                VerticalTabUtils.isAutoResizeEnabled()
-                        ? ViewGroup.LayoutParams.MATCH_PARENT
-                        : resources.getDimensionPixelSize(R.dimen.vertical_tab_pinned_item_width);
-        ViewGroup.LayoutParams params = view.getLayoutParams();
-        if (params != null && (params.height != pinnedHeight || params.width != expandedWidth)) {
-            updateTabItemSize(model, view, expandedWidth, pinnedHeight);
-        }
+        int expandedWidth = ViewGroup.LayoutParams.MATCH_PARENT;
+        updateTabItemSize(model, view, expandedWidth, pinnedHeight);
 
         if (TabProperties.TITLE == propertyKey || TabProperties.IS_PINNED == propertyKey) {
             updateContentDescription(model, view);
@@ -214,7 +209,19 @@ class TabVerticalViewBinder {
      * @param propertyKey the specific property key to bind.
      */
     private static void bindCommonProperties(
-            PropertyModel model, ViewGroup view, PropertyKey propertyKey) {
+            PropertyModel model, ViewGroup view, @Nullable PropertyKey propertyKey) {
+        if (view.getVisibility() != View.VISIBLE) {
+            view.setVisibility(View.VISIBLE);
+        }
+        if (view.getAlpha() != 1.0f) {
+            view.setAlpha(1.0f);
+        }
+        // Since TAB_CONTEXT_CLICK_LISTENER is now disabled for Vertical Tabs, consume context
+        // clicks at the child tab item level so performContextClick() does not bubble up to the
+        // parent RecyclerView's context click listener. Tab item right-clicks are handled via the
+        // RecyclerView's onInterceptTouchEvent.
+        view.setOnContextClickListener(v -> true);
+
         if (TabProperties.FAVICON_FETCHER == propertyKey) {
             updateFaviconImage(model, view);
         } else if (TabProperties.IS_LOADING == propertyKey) {
@@ -765,6 +772,8 @@ class TabVerticalViewBinder {
         if (menuButton != null) {
             ImageViewCompat.setImageTintList(menuButton, ColorStateList.valueOf(foregroundColor));
         }
+
+        view.setForegroundTintList(ColorStateList.valueOf(foregroundColor));
     }
 
     private static void updateTabItemSize(
@@ -775,20 +784,30 @@ class TabVerticalViewBinder {
         ViewGroup.LayoutParams params = view.getLayoutParams();
         if (params == null) return;
 
-        int collapsedSize =
-                context.getResources()
-                        .getDimensionPixelSize(
-                                isTablet(context)
-                                        ? R.dimen.vertical_tab_item_collapsed_size_tablet
-                                        : R.dimen.vertical_tab_item_collapsed_size);
-        int width = isRailCollapsed ? collapsedSize : expandedWidth;
-        int height = isRailCollapsed ? collapsedSize : expandedHeight;
+        int width = isRailCollapsed ? getCollapsedTabItemWidth(context) : expandedWidth;
+        int height = isRailCollapsed ? getCollapsedTabItemHeight(context) : expandedHeight;
 
         if (params.width != width || params.height != height) {
             params.width = width;
             params.height = height;
             view.setLayoutParams(params);
         }
+    }
+
+    private static int getCollapsedTabItemWidth(Context context) {
+        return context.getResources()
+                .getDimensionPixelSize(
+                        isTablet(context)
+                                ? R.dimen.vertical_tab_item_collapsed_width_tablet
+                                : R.dimen.vertical_tab_item_collapsed_size);
+    }
+
+    private static int getCollapsedTabItemHeight(Context context) {
+        return context.getResources()
+                .getDimensionPixelSize(
+                        isTablet(context)
+                                ? R.dimen.vertical_tab_item_collapsed_height_tablet
+                                : R.dimen.vertical_tab_item_collapsed_size);
     }
 
     private static void updateTitle(int titleViewId, PropertyModel model, ViewGroup view) {
@@ -874,17 +893,19 @@ class TabVerticalViewBinder {
         boolean isRailCollapsed =
                 model.get(TabProperties.RAIL_COLLAPSE_STATE) == RailCollapseState.COLLAPSED;
 
+        boolean isPinned = TabProperties.isPinnedTab(model);
+        Context context = view.getContext();
+        boolean isTablet = isTablet(context);
+
         int marginStart = 0;
         if (isRailCollapsed) {
-            marginStart = getCollapsedChildMarginStart(view.getContext());
+            marginStart = getCollapsedChildMarginStart(context);
         } else if (isInGroup) {
             marginStart =
                     view.getResources()
                             .getDimensionPixelSize(R.dimen.vertical_tab_child_nesting_margin);
         }
 
-        boolean isPinned = TabProperties.isPinnedTab(model);
-        Context context = view.getContext();
         int marginBottom =
                 isPinned
                         ? view.getResources()
@@ -892,7 +913,7 @@ class TabVerticalViewBinder {
                                         R.dimen.vertical_tab_pinned_item_margin_bottom)
                         : view.getResources()
                                 .getDimensionPixelSize(
-                                        isTablet(context)
+                                        isTablet
                                                 ? R.dimen.vertical_tab_item_margin_bottom_tablet
                                                 : R.dimen.vertical_tab_item_margin_bottom);
 
@@ -915,17 +936,13 @@ class TabVerticalViewBinder {
      */
     @VisibleForTesting
     static int getCollapsedChildMarginStart(Context context) {
-        Resources resources = context.getResources();
         int railWidth =
                 ViewUtils.dpToPx(context, VerticalTabUtils.SIDE_UI_CONTAINER_COLLAPSED_WIDTH_DP);
-        int itemSize =
-                resources.getDimensionPixelSize(
-                        isTablet(context)
-                                ? R.dimen.vertical_tab_item_collapsed_size_tablet
-                                : R.dimen.vertical_tab_item_collapsed_size);
+        int itemWidth = getCollapsedTabItemWidth(context);
         int railStartMargin =
-                resources.getDimensionPixelSize(R.dimen.vertical_tabs_rail_horizontal_margin);
-        return (railWidth - itemSize) / 2 - railStartMargin;
+                context.getResources()
+                        .getDimensionPixelSize(R.dimen.vertical_tabs_rail_horizontal_margin);
+        return (railWidth - itemWidth) / 2 - railStartMargin;
     }
 
     private static void updateParentPadding(PropertyModel model, ViewGroup view, boolean isHeader) {

@@ -3,10 +3,15 @@
 // found in the LICENSE file.
 
 import type {VisualBrowserProxy} from 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
+import {FakeChromeEvent} from 'chrome-untrusted://webui-test/fake_chrome_event.js';
 import {TestBrowserProxy} from 'chrome-untrusted://webui-test/test_browser_proxy.js';
 
 export class TestVisualBrowserProxy extends TestBrowserProxy implements
     VisualBrowserProxy {
+  onPinStateReceived = new FakeChromeEvent();
+  onPresentationStateReceived = new FakeChromeEvent();
+  restoreSettingsFromPrefs = new FakeChromeEvent();
+
   inSidePanelPresentationState: number = 1;
   inImmersiveOverlayPresentationState: number = 2;
   inHiddenPresentationState: number = 3;
@@ -33,7 +38,7 @@ export class TestVisualBrowserProxy extends TestBrowserProxy implements
   activeDistillationMethod: number = 0;
   distillationTypeScreen2x: number = 0;
   distillationTypeReadability: number = 1;
-  lineFocusEnabled: boolean = false;
+  lineFocusEnabled: boolean = true;
   lineFocusOn: boolean = false;
   lineFocusOff: number = 50;
   lineFocusSmallStaticWindow: number = 51;
@@ -46,7 +51,6 @@ export class TestVisualBrowserProxy extends TestBrowserProxy implements
   lineFocusCursorLine: number = 58;
   lineFocusValue: number = 50;
   lineFocusLastNonDisabledValue: number = 50;
-  immersiveEnabled: boolean = true;
   activePresentationState: number = 1;
   pdf: boolean = false;
   keyPointsSection: boolean = false;
@@ -120,7 +124,6 @@ export class TestVisualBrowserProxy extends TestBrowserProxy implements
       'getLastNonDisabledLineFocus',
       'isLineFocusOn',
       'close',
-      'isImmersiveEnabled',
       'isReadAnythingImprovedUiEnabled',
       'isImagesEnabled',
       'isLinksEnabled',
@@ -352,11 +355,6 @@ export class TestVisualBrowserProxy extends TestBrowserProxy implements
 
   togglePresentation(): void {
     this.methodCalled('togglePresentation');
-  }
-
-  isImmersiveEnabled(): boolean {
-    this.methodCalled('isImmersiveEnabled');
-    return this.immersiveEnabled;
   }
 
   isImagesEnabled(): boolean {

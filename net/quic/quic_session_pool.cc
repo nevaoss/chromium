@@ -55,6 +55,7 @@
 #include "net/log/net_log_capture_mode.h"
 #include "net/log/net_log_event_type.h"
 #include "net/log/net_log_source_type.h"
+#include "net/nqe/network_quality_estimator.h"
 #include "net/quic/address_utils.h"
 #include "net/quic/crypto/proof_verifier_chromium.h"
 #include "net/quic/properties_based_quic_server_info.h"
@@ -693,12 +694,14 @@ QuicSessionPool::QuicSessionPool(
     SCTAuditingDelegate* sct_auditing_delegate,
     SocketPerformanceWatcherFactory* socket_performance_watcher_factory,
     QuicCryptoClientStreamFactory* quic_crypto_client_stream_factory,
+    NetworkQualityEstimator* network_quality_estimator,
     QuicContext* quic_context)
     : net_log_(
           NetLogWithSource::Make(net_log, NetLogSourceType::QUIC_SESSION_POOL)),
       host_resolver_(host_resolver),
       client_socket_factory_(client_socket_factory),
       http_server_properties_(http_server_properties),
+      network_quality_estimator_(network_quality_estimator),
       cert_verifier_(cert_verifier),
       transport_security_state_(transport_security_state),
       proxy_delegate_(proxy_delegate),
@@ -1027,7 +1030,8 @@ std::unique_ptr<QuicSessionAttempt> QuicSessionPool::CreateSessionAttempt(
     bool use_dns_aliases,
     std::set<std::string> dns_aliases,
     MultiplexedSessionCreationInitiator session_creation_initiator,
-    std::optional<ConnectionManagementConfig> connection_management_config) {
+    std::optional<ConnectionManagementConfig> connection_management_config,
+    bool is_stale) {
   CHECK(!HasActiveSession(session_key));
   CHECK(!HasActiveJob(session_key));
 
@@ -1042,7 +1046,7 @@ std::unique_ptr<QuicSessionAttempt> QuicSessionPool::CreateSessionAttempt(
       std::move(dns_aliases),
       CreateCryptoConfigHandle(QuicCryptoClientConfigKey(session_key)),
       session_creation_initiator, quic_connection_reuse_details,
-      connection_management_config);
+      connection_management_config, is_stale);
 }
 
 void QuicSessionPool::OnSessionGoingAway(QuicChromiumClientSession* session) {
@@ -2501,6 +2505,21 @@ const base::TimeDelta* QuicSessionPool::GetServerNetworkStatsSmoothedRtt(
     return nullptr;
   }
   return &(stats->srtt);
+}
+
+std::optional<base::TimeDelta> QuicSessionPool::GetSmoothedRtt(
+    const quic::QuicServerId& server_id,
+    const NetworkAnonymizationKey& network_anonymization_key,
+    const ProxyChain& proxy_chain) const {
+  const base::TimeDelta* srtt = GetServerNetworkStatsSmoothedRtt(
+      server_id, network_anonymization_key, proxy_chain);
+  if (srtt && srtt->is_positive()) {
+    return *srtt;
+  }
+  if (network_quality_estimator_) {
+    return network_quality_estimator_->GetTransportRTT();
+  }
+  return std::nullopt;
 }
 
 bool QuicSessionPool::WasQuicRecentlyBroken(

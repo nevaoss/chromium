@@ -107,6 +107,8 @@ class COMPOSITOR_EXPORT Layer : public LayerAnimationDelegate {
   const LayerSurface* AsSurface() const;
   LayerWithExternalTexture* AsWithExternalTexture();
   const LayerWithExternalTexture* AsWithExternalTexture() const;
+  LayerNotDrawn* AsNotDrawn();
+  const LayerNotDrawn* AsNotDrawn() const;
 
   Layer(const Layer&) = delete;
   Layer& operator=(const Layer&) = delete;
@@ -373,13 +375,15 @@ class COMPOSITOR_EXPORT Layer : public LayerAnimationDelegate {
   float GetTargetOpacity() const;
 
   // Set a layer mask for a layer.
-  // Note the provided layer mask can neither have a layer mask itself nor can
-  // it have any children. The ownership of |layer_mask| will not be
-  // transferred with this call.
-  // Furthermore: A mask layer can only be set to one layer.
-  void SetMaskLayer(Layer* layer_mask);
-  Layer* layer_mask_layer() { return layer_mask_; }
-  const Layer* layer_mask_layer() const { return layer_mask_; }
+  // - Callers are responsible for updating the mask layer's bounds and
+  //   scheduling paint invalidations on the mask layer when needed.
+  // - The provided layer mask can neither have a layer mask itself nor can it
+  //   have any children.
+  // - The ownership of `layer_mask` will not be transferred with this call.
+  // - A mask layer can only be set to one layer.
+  void SetMaskLayer(LayerTextured* layer_mask);
+  LayerTextured* layer_mask_layer() { return layer_mask_; }
+  const LayerTextured* layer_mask_layer() const { return layer_mask_; }
 
   // Sets the visibility of the Layer. A Layer itself may be visible but not
   // fully visible in the layer tree.  This happens if any ancestor of a
@@ -473,8 +477,7 @@ class COMPOSITOR_EXPORT Layer : public LayerAnimationDelegate {
   // SchedulePaint() for that.
   void ScheduleDraw();
 
-  // Uses damaged rectangles recorded in |damaged_region_| to invalidate the
-  // |cc_layer_|.
+  // Commits damaged rectangles to the |cc_layer_| and updates visual state.
   void SendDamagedRects();
 
   void CompleteAllAnimations();
@@ -542,14 +545,12 @@ class COMPOSITOR_EXPORT Layer : public LayerAnimationDelegate {
   virtual void HandleDeviceScaleFactorChange();
 
   // Called when a paint is scheduled (from Layer::SchedulePaint()).
-  virtual void OnPaintScheduled() {}
+  virtual void OnPaintScheduled() = 0;
 
-  // Returns true if the accumulated damage should be committed to the
-  // cc::Layer.
-  virtual bool ShouldCommitDamage() const;
-
-  // Commits the damage to the cc::Layer.
-  virtual void CommitDamage(const cc::Region& damage);
+  // Commits the damage recorded in `damaged_region_` to the cc::Layer. Damage
+  // is accumulated by calls to SchedulePaint() and is only accumulated for
+  // LayerTextured and LayerWithExternalTexture layers.
+  virtual void CommitDamage();
 
   void Destroy();
   virtual void Reset() = 0;
@@ -725,7 +726,8 @@ class COMPOSITOR_EXPORT Layer : public LayerAnimationDelegate {
   bool fills_bounds_opaquely_ = true;
 
   // Union of damaged rects, in layer space, that SetNeedsDisplayRect should
-  // be called on.
+  // be called on. Damage is accumulated by calls to SchedulePaint() and is only
+  // accumulated for LayerTextured and LayerWithExternalTexture layers.
   cc::Region damaged_region_;
 
   float background_blur_sigma_ = 0.0f;
@@ -746,7 +748,7 @@ class COMPOSITOR_EXPORT Layer : public LayerAnimationDelegate {
   gfx::Point layer_offset_;
 
   // The associated mask layer with this layer.
-  raw_ptr<Layer> layer_mask_ = nullptr;
+  raw_ptr<LayerTextured> layer_mask_ = nullptr;
   // The back link from the mask layer to it's associated masked layer.
   // We keep this reference for the case that if the mask layer gets deleted
   // while attached to the main layer before the main layer is deleted.

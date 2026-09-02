@@ -120,7 +120,7 @@ std::optional<ParsedPolicyEntry> ParsePolicyEntry(const base::Value& entry) {
            AutofillClient::AutofillPolicyDataCategory::kIdentityDocs,
            AutofillClient::AutofillPolicyDataCategory::kTravel,
            AutofillClient::AutofillPolicyDataCategory::kShopping});
-      // LINT.ThenChange(//components/autofill/core/browser/foundations/autofill_client.h:AutofillPolicyDataCategory,//components/autofill/core/browser/permissions/autofill_policy_service_unittest.cc:AutofillPolicyDataCategory)
+      // LINT.ThenChange(//components/autofill/core/browser/foundations/autofill_client.h:AutofillPolicyDataCategory,//components/autofill/core/browser/permissions/autofill_policy_service_unittest.cc:AutofillPolicyDataCategory,//chrome/browser/resources/settings/autofill_page/policy_utils.ts:AutofillPolicyDataCategory)
     }
   }
   return ParsedPolicyEntry{std::move(pattern), std::move(categories)};
@@ -175,6 +175,14 @@ bool AutofillPolicyService::IsAutofillTypeBlockedByPolicyFromPref(
     return true;
   }
 
+  return IsAutofillTypeDisabledByEnterprisePolicy(prefs, url, category);
+}
+
+// static
+bool AutofillPolicyService::IsAutofillTypeDisabledByEnterprisePolicy(
+    const PrefService& prefs,
+    const GURL& url,
+    AutofillClient::AutofillPolicyDataCategory category) {
   if (!base::FeatureList::IsEnabled(
           features::kAutofillEnableAutofillSettingsEnterprisePolicy)) {
     return false;

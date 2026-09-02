@@ -105,6 +105,8 @@ import org.chromium.chrome.browser.history.HistoryManagerUtils;
 import org.chromium.chrome.browser.homepage.HomepageManager;
 import org.chromium.chrome.browser.homepage.HomepageManager.HomepageStateListener;
 import org.chromium.chrome.browser.homepage.HomepagePolicyManager;
+import org.chromium.chrome.browser.hub.HubExitNavigationHelper;
+import org.chromium.chrome.browser.hub.HubManager;
 import org.chromium.chrome.browser.keyboard_accessory.ManualFillingComponent;
 import org.chromium.chrome.browser.keyboard_accessory.ManualFillingComponentSupplier;
 import org.chromium.chrome.browser.layouts.LayoutStateProvider;
@@ -129,6 +131,7 @@ import org.chromium.chrome.browser.omnibox.OmniboxChipManager;
 import org.chromium.chrome.browser.omnibox.OmniboxStub;
 import org.chromium.chrome.browser.omnibox.OverrideUrlLoadingDelegateImpl;
 import org.chromium.chrome.browser.omnibox.UrlFocusChangeListener;
+import org.chromium.chrome.browser.omnibox.fusebox.FuseboxControls;
 import org.chromium.chrome.browser.omnibox.status.SiteControlsIphController;
 import org.chromium.chrome.browser.omnibox.suggestions.OmniboxSuggestionsDropdownScrollListener;
 import org.chromium.chrome.browser.omnibox.suggestions.action.OmniboxActionDelegateImpl;
@@ -269,6 +272,7 @@ import org.chromium.ui.base.ActivityResultTracker;
 import org.chromium.ui.base.ActivityWindowAndroid;
 import org.chromium.ui.base.BackGestureEventSwipeEdge;
 import org.chromium.ui.base.DeviceFormFactor;
+import org.chromium.ui.base.DeviceInput;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.display.DisplayUtil;
 import org.chromium.ui.modaldialog.ModalDialogManager;
@@ -297,7 +301,8 @@ public class ToolbarManager
                 ThemeColorObserver,
                 TintObserver,
                 MenuButtonDelegate,
-                TabObscuringHandler.Observer {
+                TabObscuringHandler.Observer,
+                FuseboxControls {
     private final LocationBarEmbedderUiOverrides mLocationBarEmbedderUiOverrides =
             new LocationBarEmbedderUiOverrides().setIsMainBrowserOmnibox();
     private final IncognitoStateProvider mIncognitoStateProvider;
@@ -506,6 +511,7 @@ public class ToolbarManager
     private @Nullable UndoBarThrottle mUndoBarThrottle;
     private final @Nullable BottomBarHostManager mBottomBarHostManager;
     private final @Nullable OneshotSupplier<String> mCountrySupplier;
+    private final @Nullable OneshotSupplier<HubManager> mHubManagerSupplier;
 
     private OverridableTabCount mOverridableTabCount;
     private int mIncognitoNtpViewIdForA11y = View.NO_ID;
@@ -515,6 +521,7 @@ public class ToolbarManager
     private final NonNullObservableSupplier<Boolean> mXrSpaceModeObservableSupplier;
     private final SettableNonNullObservableSupplier<Float>
             mNtpSearchBoxTransitionPercentageSupplier = ObservableSuppliers.createNonNull(0f);
+    private @Nullable HubExitNavigationHelper mHubExitNavigationHelper;
 
     private static class TabObscuringCallback implements Callback<Boolean> {
         private final TabObscuringHandler mTabObscuringHandler;
@@ -836,7 +843,8 @@ public class ToolbarManager
             @Nullable ActionRegistry actionRegistry,
             @Nullable OneshotSupplier<String> countrySupplier,
             GlicButtonDelegate toggleGlicCallback,
-            boolean suppressTabStripAtStart) {
+            boolean suppressTabStripAtStart,
+            @Nullable OneshotSupplier<HubManager> hubManagerSupplier) {
         TraceEvent.begin("ToolbarManager.ToolbarManager");
         mActionRegistry = actionRegistry;
         mCountrySupplier = countrySupplier;
@@ -881,6 +889,7 @@ public class ToolbarManager
         mProfileSupplier = profileSupplier;
         mChromeAndroidTaskSupplier = chromeAndroidTaskSupplier;
         mBottomBarHostManager = bottomBarHostManager;
+        mHubManagerSupplier = hubManagerSupplier;
 
         mToolbarLayout = mActivity.findViewById(R.id.toolbar);
         NewTabPageDelegate ntpDelegate = createNewTabPageDelegate();
@@ -1122,7 +1131,7 @@ public class ToolbarManager
                                     if (tabBottomSheetManager != null) {
                                         tabBottomSheetManager.setSheetExpanded(false);
                                     }
-                                    mToolbarTabController.openHomepage();
+                                    runOrDeferAfterHubExit(mToolbarTabController::openHomepage);
                                 }
 
                                 Tracker tracker =
@@ -1995,6 +2004,29 @@ public class ToolbarManager
         }
     }
 
+    private void runOrDeferAfterHubExit(Runnable action) {
+        Tab currentTab = mLocationBarModel.getTab();
+        HubManager hubManager = mHubManagerSupplier != null ? mHubManagerSupplier.get() : null;
+        if (mLayoutStateProvider != null
+                && mLayoutStateProvider.isLayoutVisible(LayoutType.HUB)
+                && hubManager != null) {
+            boolean isIncognito =
+                    mIncognitoStateProvider != null
+                            && mIncognitoStateProvider.isIncognitoSelected();
+            if (currentTab == null || currentTab.isClosing() || currentTab.isDestroyed()) {
+                HomepageManager.getInstance().openHomepage(null, mTabCreatorManager, isIncognito);
+                return;
+            }
+            if (mHubExitNavigationHelper == null) {
+                mHubExitNavigationHelper =
+                        new HubExitNavigationHelper(mLayoutStateProvider, hubManager);
+            }
+            mHubExitNavigationHelper.runOrDefer(currentTab, action);
+        } else {
+            action.run();
+        }
+    }
+
     private void initializeToolbarPositionController() {
         if (!ToolbarPositionController.isToolbarPositionCustomizationEnabled(
                 mActivity, mIsCustomTab)) {
@@ -2704,7 +2736,8 @@ public class ToolbarManager
                                                         selectionDropdownMenuDelegate,
                                                         mTabModelSelector,
                                                         mModalDialogManagerSupplier.get(),
-                                                        cleanup));
+                                                        cleanup,
+                                                        /* isWebApp= */ false));
                 if (mExtensionsToolbarCoordinator != null) {
                     mToolbar.setExtensionsToolbarCoordinator(mExtensionsToolbarCoordinator);
                 }
@@ -2956,6 +2989,10 @@ public class ToolbarManager
         if (mTemplateUrlObserver != null) {
             mTemplateUrlService.removeObserver(mTemplateUrlObserver);
             mTemplateUrlObserver = null;
+        }
+        if (mHubExitNavigationHelper != null) {
+            mHubExitNavigationHelper.destroy();
+            mHubExitNavigationHelper = null;
         }
         if (mLayoutStateProvider != null) {
             mLayoutStateProvider.removeObserver(mLayoutStateObserver);
@@ -3431,18 +3468,21 @@ public class ToolbarManager
      *
      * @param input The AutocompleteInput to start the session with.
      */
+    @Override
     public void beginFuseboxInput(AutocompleteInput input) {
         if (mIsDestroyed || mLocationBar == null || mLocationBar.getOmniboxStub() == null) return;
         assumeNonNull(mLocationBar.getOmniboxStub()).beginInput(input);
     }
 
     /** End the current fusebox input session. */
+    @Override
     public void endFuseboxInput() {
         if (mIsDestroyed || mLocationBar == null || mLocationBar.getOmniboxStub() == null) return;
         assumeNonNull(mLocationBar.getOmniboxStub()).endInput();
     }
 
     /** Suspend the current fusebox input session. */
+    @Override
     public void suspendFuseboxInput() {
         if (mIsDestroyed || mLocationBar == null || mLocationBar.getOmniboxStub() == null) return;
         assumeNonNull(mLocationBar.getOmniboxStub()).suspendInput();
@@ -3716,7 +3756,7 @@ public class ToolbarManager
         if (!mIsTablet) return;
         if (!UrlUtilities.isNtpUrl(mLocationBarModel.getCurrentGurl())) return;
 
-        if (mActivity.getResources().getConfiguration().keyboard == Configuration.KEYBOARD_QWERTY) {
+        if (DeviceInput.supportsAlphabeticKeyboard()) {
             mLocationBar.showUrlBarCursorWithoutFocusAnimations();
         }
     }
@@ -4041,5 +4081,9 @@ public class ToolbarManager
                 profile,
                 mTabModelSelectorSupplier,
                 TabWindowManagerSingleton.getInstance());
+    }
+
+    @Nullable HubExitNavigationHelper getHubExitNavigationHelperForTesting() {
+        return mHubExitNavigationHelper;
     }
 }

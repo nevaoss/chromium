@@ -26,6 +26,7 @@
 #include "chrome/app/vector_icons/vector_icons.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/defaults.h"
+#include "chrome/browser/enterprise/isolated_mode/isolated_mode_settings_service_factory.h"
 #include "chrome/browser/enterprise/util/managed_browser_utils.h"
 #include "chrome/browser/extensions/extension_ui_util.h"
 #include "chrome/browser/feedback/report_unsafe_site_dialog.h"
@@ -118,7 +119,6 @@
 #include "components/dom_distiller/content/browser/uma_helper.h"
 #include "components/dom_distiller/core/dom_distiller_features.h"
 #include "components/dom_distiller/core/url_utils.h"
-#include "components/enterprise/isolated_mode/settings.h"
 #include "components/feature_engagement/public/event_constants.h"
 #include "components/feature_engagement/public/feature_constants.h"
 #include "components/lens/lens_features.h"
@@ -1217,18 +1217,11 @@ void ToolsMenuModel::Build(BrowserWindowInterface* browser) {
                                     : kDockToRightOldIcon
           : features::IsRoundedIconsEnabled() ? kDockToRightIcon
                                               : kDockToLeftOldIcon);
-      const bool use_preview_badge =
-          base::FeatureList::IsEnabled(tabs::kVerticalTabsPreviewBadge);
-      const ui::NewBadgeType badge_type = use_preview_badge
-                                              ? ui::NewBadgeType::kPreview
-                                              : ui::NewBadgeType::kNew;
       const user_education::DisplayNewBadge show_badge =
-          UserEducationService::MaybeShowNewBadge(
-              browser->GetProfile(), use_preview_badge
-                                         ? tabs::kVerticalTabsPreviewBadge
-                                         : tabs::kVerticalTabsNewBadge);
+          UserEducationService::MaybeShowNewBadge(browser->GetProfile(),
+                                                  tabs::kVerticalTabsNewBadge);
       SetIsNewFeatureAt(GetIndexOfCommandId(IDC_TOGGLE_VERTICAL_TABS).value(),
-                        show_badge, badge_type);
+                        show_badge, ui::NewBadgeType::kNew);
     }
   }
 
@@ -2195,6 +2188,10 @@ void AppMenuModel::LogMenuAction(AppMenuAction action_id) {
 }
 
 // Note: When adding new menu items please place under an appropriate section.
+// Capitalization Policy (go/chrome-capitalization):
+// In-browser 3-dot app menus use sentence case across all platforms, including
+// macOS. Native macOS system menus (the main menu bar and right-click context
+// menus) use Title Case separately.
 // Menu is organised as follows:
 // - Extension toolbar overflow.
 // - Global browser errors and warnings.
@@ -2256,7 +2253,7 @@ void AppMenuModel::Build() {
 
     bool isolated_mode_enabled =
         enterprise_isolated_mode::IsolatedModeReplacesIncognito(
-            *browser_->GetProfile()->GetPrefs(), chrome::GetChannel());
+            browser_->GetProfile());
 
     if (isolated_mode_enabled) {
       AddItemWithStringIdAndVectorIcon(

@@ -18,7 +18,6 @@
 #include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
 #include "ui/base/unowned_user_data/scoped_unowned_user_data.h"
 
-class Browser;
 class TabStripModel;
 
 namespace content {
@@ -69,13 +68,12 @@ class UnloadController : public WebContentsCollection::Observer,
     // Returns true if standard beforeunload handling should be skipped for this
     // tab (e.g., when a custom confirmation dialog or background task manages
     // it).
-    virtual bool ShouldSkipBeforeUnload(
-        content::WebContents* contents) const = 0;
+    virtual bool ShouldSkipBeforeUnload(content::WebContents* contents) = 0;
 
     // Returns true if a custom confirmation dialog should be displayed before
     // unloading this tab.
     virtual bool ShouldShowCustomConfirmation(
-        content::WebContents* contents) const = 0;
+        content::WebContents* contents) = 0;
 
     // Displays the custom confirmation dialog. Returns true if the confirmation
     // dialog was shown and will intercept unload.
@@ -109,7 +107,7 @@ class UnloadController : public WebContentsCollection::Observer,
   bool CanCloseContents(content::WebContents* contents);
 
   // Returns true if we need to run unload events for the |contents|.
-  bool ShouldRunUnloadEventsHelper(content::WebContents* contents) const;
+  bool ShouldRunUnloadEventsHelper(content::WebContents* contents);
 
   // Helper function to run beforeunload listeners on a WebContents.
   // Returns true if |contents| beforeunload listeners were invoked.
@@ -338,7 +336,7 @@ class UnloadController : public WebContentsCollection::Observer,
     return !on_close_confirmed_.is_null();
   }
 
-  const raw_ptr<Browser> browser_;
+  const raw_ptr<BrowserWindowInterface> browser_;
 
   ui::ScopedUnownedUserData<UnloadController> scoped_unowned_user_data_;
 

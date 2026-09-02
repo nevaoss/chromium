@@ -4,23 +4,23 @@
 
 import 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
 
-import {KEYBOARD_NAV_CLASS, LINE_FOCUS_FEATURE_NAME, MENU_SHOW_DELAY_MS, ReadAnythingSettingsChange, SUBMENU_SHOW_DELAY_MS, userEducationProxyFactory, VisualBrowserProxyImpl} from 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
+import {KEYBOARD_NAV_CLASS, LINE_FOCUS_FEATURE_NAME, MENU_SHOW_DELAY_MS, ReadAnythingSettingsChange, SUBMENU_SHOW_DELAY_MS, userEducationProxyFactory} from 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
 import type {SettingsMenuElement} from 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
 import {SettingsOption, ToolbarEvent} from 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
 import {assertDeepEquals, assertEquals, assertFalse, assertNotEquals, assertTrue} from 'chrome-untrusted://webui-test/chai_assert.js';
 import {keyDownOn} from 'chrome-untrusted://webui-test/keyboard_mock_interactions.js';
 import {MockTimer} from 'chrome-untrusted://webui-test/mock_timer.js';
+import {TestUserEducationMixedTrustHandler} from 'chrome-untrusted://webui-test/test_user_education_mixed_trust_handler.js';
 import {eventToPromise, microtasksFinished} from 'chrome-untrusted://webui-test/test_util.js';
 
-import {mockMetrics} from './common.js';
+import {setupTestEnvironment} from './common.js';
 import type {TestMetricsBrowserProxy} from './test_metrics_browser_proxy.js';
-import {TestUserEducationBrowserProxy} from './test_user_education_browser_proxy.js';
-import {TestVisualBrowserProxy} from './test_visual_browser_proxy.js';
+import type {TestVisualBrowserProxy} from './test_visual_browser_proxy.js';
 
 suite('SettingsMenuElement', () => {
   let settingsMenu: SettingsMenuElement;
   let metrics: TestMetricsBrowserProxy;
-  let userEducationProxy: TestUserEducationBrowserProxy;
+  let userEducationHandler: TestUserEducationMixedTrustHandler;
   let visualBrowserProxy: TestVisualBrowserProxy;
 
   function queryLinksToggle(): HTMLButtonElement|null {
@@ -31,13 +31,11 @@ suite('SettingsMenuElement', () => {
   }
 
   setup(async () => {
-    document.body.innerHTML = window.trustedTypes!.emptyHTML;
-    visualBrowserProxy = new TestVisualBrowserProxy();
-    VisualBrowserProxyImpl.setInstance(visualBrowserProxy);
-    visualBrowserProxy.lineFocusEnabled = true;
-    metrics = mockMetrics();
-    userEducationProxy = new TestUserEducationBrowserProxy();
-    userEducationProxyFactory.setInstance(userEducationProxy);
+    const result = setupTestEnvironment({lineFocusEnabled: true});
+    visualBrowserProxy = result.visualBrowserProxy;
+    metrics = result.metrics;
+    userEducationHandler = new TestUserEducationMixedTrustHandler();
+    userEducationProxyFactory.setInstance({handler: userEducationHandler});
 
     settingsMenu = document.createElement('settings-menu');
     settingsMenu.id = 'settingsMenu';
@@ -482,7 +480,6 @@ suite('SettingsMenuElement', () => {
       'LINE_FOCUS is not in top level menu when isReadAnythingImprovedUiEnabled is true',
       async () => {
         visualBrowserProxy.readAnythingImprovedUiEnabled = true;
-        visualBrowserProxy.lineFocusEnabled = true;
         settingsMenu.settingsPrefs = {...settingsMenu.settingsPrefs};
         await microtasksFinished();
 
@@ -572,18 +569,18 @@ suite('SettingsMenuElement', () => {
   test('requests line focus new badge on open', async () => {
     settingsMenu.close();
     await microtasksFinished();
-    userEducationProxy.setNewBadgeResponse(LINE_FOCUS_FEATURE_NAME, true);
+    userEducationHandler.setNewBadgeResponse(LINE_FOCUS_FEATURE_NAME, true);
     // Since setup creates a menu, clear out the number of requests.
-    userEducationProxy.reset();
+    userEducationHandler.reset();
     const anchor = document.createElement('div');
     document.body.appendChild(anchor);
-    assertEquals(0, userEducationProxy.getCallCount('maybeShowNewBadgeFor'));
+    assertEquals(0, userEducationHandler.getCallCount('maybeShowNewBadgeFor'));
     settingsMenu.open(anchor);
     await microtasksFinished();
-    assertEquals(1, userEducationProxy.getCallCount('maybeShowNewBadgeFor'));
+    assertEquals(1, userEducationHandler.getCallCount('maybeShowNewBadgeFor'));
     assertDeepEquals(
         [LINE_FOCUS_FEATURE_NAME],
-        userEducationProxy.getArgs('maybeShowNewBadgeFor'));
+        userEducationHandler.getArgs('maybeShowNewBadgeFor'));
     assertTrue(settingsMenu.showLineFocusNewBadge);
   });
 });

@@ -34,11 +34,11 @@ bool ShouldApplyFakeboxBackgroundAndShadow() {
 }
 
 // Helper function to resolve dynamic fakebox background color. The fakebox
-// background color is dependent on if kNewTabPageUICleanup is enabled.
+// background color is dependent on if `kNewTabPageUICleanup` is enabled.
 UIColor* DynamicFakeboxColor(NSString* solid_color_name,
                              NSString* gradient_color_name) {
   if (ShouldApplyFakeboxBackgroundAndShadow()) {
-    return [UIColor colorNamed:kPrimaryBackgroundColor];
+    return [UIColor colorNamed:kNTPRedesignFakeboxBackgroundColor];
   }
   return UIAccessibilityIsReduceTransparencyEnabled()
              ? [UIColor colorNamed:solid_color_name]
@@ -143,7 +143,10 @@ UIColor* FakeboxBottomColor() {
                         delay:0
                       options:UIViewAnimationOptionCurveEaseOut
                    animations:^{
-                     CGFloat alpha = highlighted ? kFakeboxHighlightAlpha : 0;
+                     CGFloat baseAlpha = IsChromeNextIaEnabled()
+                                             ? 0.08
+                                             : kFakeboxHighlightAlpha;
+                     CGFloat alpha = highlighted ? baseAlpha : 0;
                      self->_fakeLocationBarHighlightView.backgroundColor =
                          [UIColor colorWithWhite:0 alpha:alpha];
                    }
@@ -152,7 +155,10 @@ UIColor* FakeboxBottomColor() {
 
 - (void)updateColorsWithProgress:(CGFloat)progress
                     colorPalette:(NewTabPageColorPalette*)colorPalette {
-  UIColor* pinnedColor = [UIColor colorNamed:kTextfieldBackgroundColor];
+  UIColor* pinnedColor =
+      (IsChromeNextIaEnabled() && IsNewTabPagePinnedOmniboxColorUpdateEnabled())
+          ? [UIColor colorNamed:kTextfieldBackgroundColor]
+          : [UIColor colorNamed:kSolidWhiteColor];
 
   // Use a quadratic curve interpolation.
   progress = progress * progress;

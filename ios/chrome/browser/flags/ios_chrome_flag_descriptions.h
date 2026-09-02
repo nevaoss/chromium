@@ -133,6 +133,12 @@ inline constexpr char kAtMemoryContextMenuEntryPointName[] =
 inline constexpr char kAtMemoryContextMenuEntryPointDescription[] =
     "Enables an entry point in the edit context menu for the AtMemory feature.";
 
+inline constexpr char kAutofillAddChromeUserContextFieldsName[] =
+    "Add client type and version to request context in Payments calls";
+inline constexpr char kAutofillAddChromeUserContextFieldsDescription[] =
+    "When enabled, calls to Google Payments include the Chrome client type and "
+    "major version, instead of parsing the user agent.";
+
 inline constexpr char kAutofillAiAlwaysShowPrivateAiNoticeName[] =
     "Autofill AI always show Private AI notice";
 inline constexpr char kAutofillAiAlwaysShowPrivateAiNoticeDescription[] =
@@ -270,11 +276,18 @@ inline constexpr char kAutofillEnableWalletBrandingV2Description[] =
     "Google Pay and Google Wallet into consistency with branding requirements.";
 
 inline constexpr char kAutofillEnableWalletReminderNoticeName[] =
-    "Enable Wallet Reminder Notice";
+    "Enable Wallet Reminder Notice for cards";
 inline constexpr char kAutofillEnableWalletReminderNoticeDescription[] =
-    "When enabled, shows the Wallet Reminder Notice after payment form "
-    "submission if higher-priority Autofill features (such as mandatory "
-    "re-auth, VCN, or card save) do not take precedence.";
+    "When enabled, shows the Wallet Reminder Notice for cards after "
+    "payment form submission if higher-priority Autofill features (such "
+    "as mandatory re-auth, VCN, or card save) do not take precedence.";
+
+inline constexpr char kAutofillEnableWalletReminderNoticePublicPassName[] =
+    "Enable Wallet Reminder Notice for public passes";
+inline constexpr char
+    kAutofillEnableWalletReminderNoticePublicPassDescription[] =
+        "When enabled, shows the Wallet Reminder Notice after submitting a "
+        "form with a public pass.";
 
 inline constexpr char kAutofillManualTestingDataName[] =
     "Autofill manual testing data";
@@ -459,6 +472,12 @@ inline constexpr char kComposeboxDevToolsDescription[] =
     "Enables development tools for the composebox, allowing simulation of "
     "delays and failures.";
 
+inline constexpr char kComposeboxDriveContextMenuOptionDisclaimerName[] =
+    "Enable Composebox Drive disclaimer";
+inline constexpr char kComposeboxDriveContextMenuOptionDisclaimerDescription[] =
+    "Enables Google Drive disclaimer and ConsentKit flow before attaching "
+    "Drive files in Composebox.";
+
 inline constexpr char kComposeboxDriveContextMenuOptionName[] =
     "Enable Composebox Drive option";
 inline constexpr char kComposeboxDriveContextMenuOptionDescription[] =
@@ -490,6 +509,11 @@ inline constexpr char kComposeboxServerSideStateName[] =
 inline constexpr char kComposeboxServerSideStateDescription[] =
     "When enabled, the server side state will be used in the composebox";
 
+inline constexpr char kComposeboxVerbatimSuggestionInAIMName[] =
+    "Enable verbatim suggestion in AIM in composebox";
+inline constexpr char kComposeboxVerbatimSuggestionInAIMDescription[] =
+    "When enabled, the verbatim suggestion will appear in AIM";
+
 inline constexpr char kConsistentLogoDoodleHeightName[] =
     "Consistent NTP Logo and Doodle Height";
 inline constexpr char kConsistentLogoDoodleHeightDescription[] =
@@ -506,6 +530,12 @@ inline constexpr char kContentPushNotificationsName[] =
     "Content Push Notifications";
 inline constexpr char kContentPushNotificationsDescription[] =
     "Enables the content push notifications.";
+
+inline constexpr char kContextManagementInComposeboxName[] =
+    "Context management in the Composebox assistant AIM";
+inline constexpr char kContextManagementInComposeboxDescription[] =
+    "When Enabled, it ensures that removed tab context are removed from AIM "
+    "even when submitted.";
 
 inline constexpr char kContextualTasksName[] = "Enables the contextual tasks";
 inline constexpr char kContextualTasksDescription[] =
@@ -585,6 +615,11 @@ inline constexpr char kDefaultBrowserPromoIpadInstructionsDescription[] =
     "When enabled, displays default browser promo instructions specifically "
     "adapted for iPad.";
 
+inline constexpr char kDefaultBrowserPromoOverflowMenuName[] =
+    "Default Browser Promo in Overflow Menu";
+inline constexpr char kDefaultBrowserPromoOverflowMenuDescription[] =
+    "When enabled, shows the Default Browser Promo in the Overflow Menu.";
+
 inline constexpr char kDefaultBrowserPromoPropensityModelName[] =
     "Default Browser promo propensity model";
 inline constexpr char kDefaultBrowserPromoPropensityModelDescription[] =
@@ -631,6 +666,11 @@ inline constexpr char kDisplayTracingName[] = "Display Tracing";
 inline constexpr char kDisplayTracingDescription[] =
     "Enables display and input latency tracing instrumentation on view "
     "controllers.";
+
+inline constexpr char kDomainLevelSitePermissionsName[] =
+    "Domain Level Site Permissions";
+inline constexpr char kDomainLevelSitePermissionsDescription[] =
+    "Enables domain level site permissions.";
 
 inline constexpr char kDownloadAutoDeletionClearFilesOnEveryStartupName[] =
     "Enable Download Auto-Deletion Testing Mode";
@@ -852,6 +892,10 @@ inline constexpr char kGaiaAuthFetcherDontSendSIDCookiesDescription[] =
 inline constexpr char kGeminiActorName[] = "Gemini Actor";
 inline constexpr char kGeminiActorDescription[] = "Enables the Gemini Actor.";
 
+inline constexpr char kGeminiAureusName[] = "Gemini Aureus";
+inline constexpr char kGeminiAureusDescription[] =
+    "Enables Project Aureus quota enforcement and usage limits for Gemini.";
+
 inline constexpr char kGeminiBackendMigrationName[] =
     "Gemini Backend Migration";
 inline constexpr char kGeminiBackendMigrationDescription[] =
@@ -894,6 +938,11 @@ inline constexpr char kGeminiFREExperimentDescription[] =
 inline constexpr char kGeminiFRERefactorName[] = "Gemini FRE Refactor";
 inline constexpr char kGeminiFRERefactorDescription[] =
     "Enables the refactored Gemini First Run Experience UI.";
+
+inline constexpr char kGeminiInsightsChipAblationName[] =
+    "Gemini Insights Chip Ablation";
+inline constexpr char kGeminiInsightsChipAblationDescription[] =
+    "When enabled, the generic Gemini suggestion chip is disabled.";
 
 inline constexpr char kGeminiLiveDormantReasonsName[] =
     "Gemini Live Dormant Reasons";
@@ -986,6 +1035,11 @@ inline constexpr char kHttpsUpgradesDescription[] =
 inline constexpr char kIOSActorToolsName[] = "iOS Actor Tools";
 inline constexpr char kIOSActorToolsDescription[] =
     "Enables all actor tools on iOS.";
+
+inline constexpr char kIOSBackendPromoCustomUIName[] =
+    "IOS Backend Promo Custom UI";
+inline constexpr char kIOSBackendPromoCustomUIDescription[] =
+    "Enables custom UI presentation for Backend Promo (GNP) messages.";
 
 inline constexpr char kIOSBackendPromoServiceIntegrationName[] =
     "IOS Backend Promo Service Integration";
@@ -1444,6 +1498,12 @@ inline constexpr char kNewTabPageFieldTrialName[] =
 inline constexpr char kNewTabPageFieldTrialDescription[] =
     "Enables new tab page features that are available on first run for new "
     "Chrome iOS users.";
+
+inline constexpr char kNewTabPagePinnedOmniboxColorUpdateName[] =
+    "New Tab Page pinned omnibox color update";
+inline constexpr char kNewTabPagePinnedOmniboxColorUpdateDescription[] =
+    "Updates the pinned omnibox colors on the New Tab Page to match the "
+    "updated omnibox introduced behind New Tab Page UI cleanup.";
 
 inline constexpr char kNewTabPageRedesignName[] = "New Tab Page Redesign";
 inline constexpr char kNewTabPageRedesignDescription[] =
@@ -1997,11 +2057,6 @@ inline constexpr char kViewCertificateInformationName[] =
     "View Certificate Information";
 inline constexpr char kViewCertificateInformationDescription[] =
     "Enables viewing detailed certificate information in Page Info.";
-
-inline constexpr char kVoiceSearchMicPermissionsName[] =
-    "Voice Search Microphone Permissions";
-inline constexpr char kVoiceSearchMicPermissionsDescription[] =
-    "Enables microphone permissions optimizations for voice search.";
 
 inline constexpr char kWaitThresholdMillisecondsForCapabilitiesApiName[] =
     "Maximum wait time (in seconds) for a response from the Account "

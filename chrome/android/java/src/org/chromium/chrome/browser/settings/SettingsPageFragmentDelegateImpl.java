@@ -89,6 +89,7 @@ public class SettingsPageFragmentDelegateImpl
     private @Nullable SettingsHostFragment mSettingsHostFragment;
     private FragmentManager.@Nullable FragmentLifecycleCallbacks mTitleUpdaterLifecycleCallbacks;
     private FragmentManager.@Nullable FragmentLifecycleCallbacks mSettingsMetricsReporter;
+    private FragmentManager.@Nullable FragmentLifecycleCallbacks mOptionsMenuLifecycleCallbacks;
     private @Nullable Toolbar mToolbar;
     private @Nullable MultiColumnTitleUpdater mMultiColumnTitleUpdater;
     private @Nullable SettingsSearchCoordinator mSearchCoordinator;
@@ -126,6 +127,20 @@ public class SettingsPageFragmentDelegateImpl
 
     @Override
     public void initSettings(ViewGroup containerView, String initialUrl) {
+        initSettingsInternal(containerView, initialUrl, /* attachToContainer= */ false);
+    }
+
+    /**
+     * Initializes settings and attaches the host fragment directly to the container for testing in
+     * standalone test activities (like {@code SettingsInTabTestActivity}) where there is only one
+     * tab, multi-tab recreation is not a concern, and tests expect synchronous initialization.
+     */
+    public void initSettingsForTesting(ViewGroup containerView, String initialUrl) {
+        initSettingsInternal(containerView, initialUrl, /* attachToContainer= */ true);
+    }
+
+    private void initSettingsInternal(
+            ViewGroup containerView, String initialUrl, boolean attachToContainer) {
         if (!initialUrl.isEmpty()) {
             mPendingUrl = initialUrl;
         }
@@ -167,6 +182,16 @@ public class SettingsPageFragmentDelegateImpl
         mSettingsMetricsReporter = new SettingsMetricsReporter(mainFragmentTag);
         fragmentManager.registerFragmentLifecycleCallbacks(
                 mSettingsMetricsReporter, /* recursive= */ true);
+
+        mOptionsMenuLifecycleCallbacks =
+                new FragmentManager.FragmentLifecycleCallbacks() {
+                    @Override
+                    public void onFragmentResumed(FragmentManager fm, Fragment f) {
+                        updateOptionsMenu();
+                    }
+                };
+        fragmentManager.registerFragmentLifecycleCallbacks(
+                mOptionsMenuLifecycleCallbacks, /* recursive= */ true);
 
         // Inflate the settings layout into the container view. Ensure it has the right theme.
         // TODO(crbug.com/521895796): Rename settings_activity.xml since with settings-in-a-tab it
@@ -229,12 +254,22 @@ public class SettingsPageFragmentDelegateImpl
             // created during attachment (e.g. MainSettings) have their dependencies attached
             // before creating their preferences.
             mSettingsHostFragment.setDependencyProvider(dependencyProvider);
-            // Add the fragment without a container using two-parameter add() to prevent multiple
-            // settings tabs from colliding on the same container ID during activity recreation.
-            fragmentManager
-                    .beginTransaction()
-                    .add(mSettingsHostFragment, mFragmentTag)
-                    .commitAllowingStateLoss();
+            if (attachToContainer) {
+                // In standalone test activities, attach directly to the container because tests
+                // expect immediate view attachment.
+                fragmentManager
+                        .beginTransaction()
+                        .add(fragmentContainer.getId(), mSettingsHostFragment, mFragmentTag)
+                        .commitAllowingStateLoss();
+            } else {
+                // Add the fragment without a container using two-parameter add() to prevent
+                // multiple settings tabs from colliding on the same container ID during activity
+                // recreation.
+                fragmentManager
+                        .beginTransaction()
+                        .add(mSettingsHostFragment, mFragmentTag)
+                        .commitAllowingStateLoss();
+            }
             // Execute the transaction so mSettingsHostFragment creates its view and getView() is
             // non-null below.
             fragmentManager.executePendingTransactions();
@@ -380,6 +415,11 @@ public class SettingsPageFragmentDelegateImpl
         fragmentManager.unregisterFragmentLifecycleCallbacks(mSettingsMetricsReporter);
         mSettingsMetricsReporter = null;
 
+        if (mOptionsMenuLifecycleCallbacks != null) {
+            fragmentManager.unregisterFragmentLifecycleCallbacks(mOptionsMenuLifecycleCallbacks);
+            mOptionsMenuLifecycleCallbacks = null;
+        }
+
         MultiColumnSettings multiColumnSettings = getMultiColumnSettings();
         if (multiColumnSettings != null) {
             if (mMultiColumnTitleUpdater != null) {
@@ -403,14 +443,26 @@ public class SettingsPageFragmentDelegateImpl
         }
 
         if (mSettingsHostFragment != null) {
-            mSettingsHostFragment.setSaveInstanceStateCallback(null);
-            if (ChromeFeatureList.sSettingsInTabUrlNav.isEnabled()) {
-                mSettingsHostFragment.setSettingsNavigation(null);
+            boolean isUrlNavEnabled = ChromeFeatureList.sSettingsInTabUrlNav.isEnabled();
+            // Because the SettingsHostFragment is identified by mFragmentTag (derived from Tab ID),
+            // a new SettingsPage instantiated for the same Tab will adopt this fragment. If the
+            // Tab's current native page is a SettingsPage, it means this Tab has already
+            // transitioned to a new SettingsPage instance that has adopted our fragment. This can
+            // happen during url navigation after a chrome session has been restored (e.g.,
+            // navigating to a previous page in the Chrome navigation stack). In that case, do not
+            // destroy the shared host fragment or clear its callbacks.
+            boolean isAdoptedByNewPage =
+                    isUrlNavEnabled && mTab.getNativePage() instanceof SettingsPage;
+            if (!isAdoptedByNewPage) {
+                mSettingsHostFragment.setSaveInstanceStateCallback(null);
+                if (isUrlNavEnabled) {
+                    mSettingsHostFragment.setSettingsNavigation(null);
+                }
+                fragmentManager
+                        .beginTransaction()
+                        .remove(mSettingsHostFragment)
+                        .commitAllowingStateLoss();
             }
-            fragmentManager
-                    .beginTransaction()
-                    .remove(mSettingsHostFragment)
-                    .commitAllowingStateLoss();
         }
         mSettingsHostFragment = null;
         mToolbar = null;

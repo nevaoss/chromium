@@ -27,6 +27,7 @@
 #include "chrome/browser/ui/views/omnibox/omnibox_popup_presenter_base.h"
 #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
 #include "chrome/browser/ui/webui/searchbox/searchbox_test_utils.h"
+#include "chrome/common/chrome_features.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "components/lens/lens_features.h"
 #include "content/public/test/browser_test.h"
@@ -132,7 +133,7 @@ IN_PROC_BROWSER_TEST_F(OmniboxPopupFileSelectorBrowserTest,
   // Verify that the unsupported "text/plain" file information was successfully
   // injected into the SearchboxContextData for the frontend to handle.
   SearchboxContextData* searchbox_context_data =
-      browser()->GetFeatures().searchbox_context_data();
+      SearchboxContextData::From(browser());
   ASSERT_TRUE(searchbox_context_data);
 
   auto context = searchbox_context_data->TakePendingContext();
@@ -215,7 +216,7 @@ IN_PROC_BROWSER_TEST_F(OmniboxPopupFileSelectorBrowserTest,
 
   // Assert.
   SearchboxContextData* searchbox_context_data =
-      browser()->GetFeatures().searchbox_context_data();
+      SearchboxContextData::From(browser());
   ASSERT_TRUE(searchbox_context_data);
 
   auto context = searchbox_context_data->TakePendingContext();
@@ -259,7 +260,7 @@ IN_PROC_BROWSER_TEST_F(OmniboxPopupFileSelectorBrowserTest,
 
   // Assert.
   SearchboxContextData* searchbox_context_data =
-      browser()->GetFeatures().searchbox_context_data();
+      SearchboxContextData::From(browser());
   ASSERT_TRUE(searchbox_context_data);
 
   auto context = searchbox_context_data->TakePendingContext();
@@ -303,7 +304,7 @@ IN_PROC_BROWSER_TEST_F(OmniboxPopupFileSelectorBrowserTest,
 
   // Assert.
   SearchboxContextData* searchbox_context_data =
-      browser()->GetFeatures().searchbox_context_data();
+      SearchboxContextData::From(browser());
   ASSERT_TRUE(searchbox_context_data);
 
   auto context = searchbox_context_data->TakePendingContext();
@@ -323,7 +324,8 @@ class OmniboxPopupFileSelectorAimBrowserTest : public InProcessBrowserTest {
         {omnibox::internal::kWebUIOmniboxAimPopup,
          omnibox::internal::kWebUIOmniboxPopup,
          omnibox::kOmniboxKeepOpenOnFileSelection},
-        {lens::features::kLensSendRawFileMediaTypes});
+        {lens::features::kLensSendRawFileMediaTypes,
+         features::kWebUILocationBar});
   }
 
   void SetUpOnMainThread() override {
@@ -384,7 +386,8 @@ class OmniboxPopupFileSelectorClassicWebuiBrowserTest
         {omnibox::internal::kWebUIOmniboxPopup,
          omnibox::kOmniboxKeepOpenOnFileSelection},
         {omnibox::internal::kWebUIOmniboxAimPopup,
-         lens::features::kLensSendRawFileMediaTypes});
+         lens::features::kLensSendRawFileMediaTypes,
+         features::kWebUILocationBar});
   }
 
   void SetUpOnMainThread() override {

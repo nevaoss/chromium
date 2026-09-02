@@ -44,6 +44,7 @@ class COMPOSITOR_EXPORT LayerTextured : public Layer,
   // committed and a draw is scheduled.
   void AddDeferredPaintRequest();
   void RemoveDeferredPaintRequest();
+  bool IsPaintDeferred() const;
 
   // Layer:
   std::unique_ptr<Layer> Clone() const override;
@@ -62,8 +63,7 @@ class COMPOSITOR_EXPORT LayerTextured : public Layer,
  protected:
   // Layer:
   void OnPaintScheduled() override;
-  bool ShouldCommitDamage() const override;
-  void CommitDamage(const cc::Region& damage) override;
+  void CommitDamage() override;
   void Reset() override;
 
  private:

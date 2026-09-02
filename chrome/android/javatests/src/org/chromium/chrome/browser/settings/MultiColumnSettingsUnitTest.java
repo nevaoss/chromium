@@ -15,9 +15,11 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.os.Bundle;
+import android.util.DisplayMetrics;
 import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.FrameLayout;
 
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -47,6 +49,7 @@ import org.chromium.base.test.params.ParameterAnnotations.UseRunnerDelegate;
 import org.chromium.base.test.params.ParameterSet;
 import org.chromium.base.test.params.ParameterizedRunner;
 import org.chromium.base.test.util.Batch;
+import org.chromium.base.test.util.CriteriaHelper;
 import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.base.test.util.Restriction;
@@ -68,7 +71,9 @@ import org.chromium.ui.base.DeviceFormFactor;
 import org.chromium.ui.test.util.BlankUiTestActivity;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * TODO(crbug.com/493130564): Revert to regular runner after
@@ -263,6 +268,89 @@ public class MultiColumnSettingsUnitTest {
             assertSame(fragment4.getPageTitle(), title1.titleSupplier);
             assertEquals(0, title1.backStackCount);
         }
+    }
+
+    @Test
+    @SmallTest
+    @UiThreadTest
+    public void testFragmentTracker_RestoreTitles_WithUnmatchedUuid() {
+        ObserverList<MultiColumnSettings.Observer> observers = new ObserverList<>();
+        var fragmentManager = new TestFragmentManager();
+
+        var fragmentTracker = new MultiColumnSettings.FragmentTracker(observers);
+
+        var fragment1 = new TestFragment();
+        fragmentTracker.onFragmentResumed(fragmentManager, fragment1);
+
+        var fragment2 = new TestFragment();
+        fragmentManager.addBackStack();
+        fragmentTracker.onFragmentResumed(fragmentManager, fragment2);
+
+        var fragment3 = new TestFragment();
+        fragmentManager.addBackStack();
+        fragmentTracker.onFragmentResumed(fragmentManager, fragment3);
+
+        assertEquals(3, fragmentTracker.mTitles.size());
+
+        Bundle bundle = new Bundle();
+        fragmentTracker.saveTitles(bundle);
+
+        // Simulate activity recreation where fragment2 was an intermediate fragment replaced
+        // in-place without backstack, and fragment2Replacement (like EmptyFragment) was restored
+        // from backstack instead.
+        var fragment2Replacement = new TestFragment();
+        Map<String, EmbeddableSettingsPage> uuidMap = new HashMap<>();
+        uuidMap.put(MultiColumnSettings.getUUID(fragment1), fragment1);
+        uuidMap.put(MultiColumnSettings.getUUID(fragment2Replacement), fragment2Replacement);
+        uuidMap.put(MultiColumnSettings.getUUID(fragment3), fragment3);
+
+        var newFragmentTracker = new MultiColumnSettings.FragmentTracker(observers);
+        newFragmentTracker.restoreTitles(bundle, uuidMap);
+
+        assertEquals(3, newFragmentTracker.mTitles.size());
+        assertSame(fragment1.getPageTitle(), newFragmentTracker.mTitles.get(0).titleSupplier);
+        assertEquals(0, newFragmentTracker.mTitles.get(0).backStackCount);
+
+        assertSame(
+                fragment2Replacement.getPageTitle(),
+                newFragmentTracker.mTitles.get(1).titleSupplier);
+        assertEquals(1, newFragmentTracker.mTitles.get(1).backStackCount);
+
+        assertSame(fragment3.getPageTitle(), newFragmentTracker.mTitles.get(2).titleSupplier);
+        assertEquals(2, newFragmentTracker.mTitles.get(2).backStackCount);
+    }
+
+    @Test
+    @SmallTest
+    @UiThreadTest
+    public void testFragmentTracker_RestoreTitles_WithMissingUuidAndNoReplacement() {
+        ObserverList<MultiColumnSettings.Observer> observers = new ObserverList<>();
+        var fragmentManager = new TestFragmentManager();
+
+        var fragmentTracker = new MultiColumnSettings.FragmentTracker(observers);
+
+        var fragment1 = new TestFragment();
+        fragmentTracker.onFragmentResumed(fragmentManager, fragment1);
+
+        var fragment2 = new TestFragment();
+        fragmentManager.addBackStack();
+        fragmentTracker.onFragmentResumed(fragmentManager, fragment2);
+
+        Bundle bundle = new Bundle();
+        fragmentTracker.saveTitles(bundle);
+
+        // Only fragment1 is present in uuidMap, fragment2 is completely missing with no
+        // replacement.
+        Map<String, EmbeddableSettingsPage> uuidMap = new HashMap<>();
+        uuidMap.put(MultiColumnSettings.getUUID(fragment1), fragment1);
+
+        var newFragmentTracker = new MultiColumnSettings.FragmentTracker(observers);
+        // Must not crash with NullPointerException. See https://crbug.com/542323396
+        newFragmentTracker.restoreTitles(bundle, uuidMap);
+
+        assertEquals(1, newFragmentTracker.mTitles.size());
+        assertSame(fragment1.getPageTitle(), newFragmentTracker.mTitles.get(0).titleSupplier);
+        assertEquals(0, newFragmentTracker.mTitles.get(0).backStackCount);
     }
 
     @Test
@@ -586,6 +674,112 @@ public class MultiColumnSettingsUnitTest {
                             View.IMPORTANT_FOR_ACCESSIBILITY_AUTO,
                             headerGroup.getImportantForAccessibility());
                 });
+    }
+
+    @Test
+    @SmallTest
+    @Restriction({DeviceFormFactor.TABLET_OR_DESKTOP})
+    @EnableFeatures({ChromeFeatureList.SETTINGS_IN_TAB})
+    public void testEmptyBackStack_InTwoColumnMode_EnsuresInitialDetailFragment() {
+        mBlankUiActivityTestRule.launchActivity(null);
+        BlankUiTestActivity activity = mBlankUiActivityTestRule.getActivity();
+
+        ThreadUtils.runOnUiThreadBlocking(
+                () -> {
+                    TestMultiColumnSettings settings = new TestMultiColumnSettings();
+                    settings.setIsTwoColumnForTesting(true);
+
+                    activity.getSupportFragmentManager()
+                            .beginTransaction()
+                            .add(android.R.id.content, settings)
+                            .commitNow();
+
+                    // Open a detail fragment with addToBackStack=true.
+                    settings.showDetailFragment(new TestFragment(), true, null);
+                    settings.getChildFragmentManager().executePendingTransactions();
+                    assertEquals(1, settings.getChildFragmentManager().getBackStackEntryCount());
+
+                    // Pop the back stack so entry count becomes 0.
+                    settings.getChildFragmentManager().popBackStackImmediate();
+                    assertEquals(0, settings.getChildFragmentManager().getBackStackEntryCount());
+
+                    // The initial detail fragment should be re-populated in two-column mode.
+                    assertNotNull(
+                            "Detail fragment should be present in two-column mode when back stack"
+                                    + " is empty",
+                            settings.getChildFragmentManager()
+                                    .findFragmentById(R.id.preferences_detail));
+                });
+    }
+
+    @Test
+    @SmallTest
+    @Restriction({DeviceFormFactor.TABLET_OR_DESKTOP})
+    @EnableFeatures({ChromeFeatureList.SETTINGS_IN_TAB})
+    public void testEmptyBackStack_InSingleColumnMode_ClosesSlidingPane() {
+        mBlankUiActivityTestRule.launchActivity(null);
+        BlankUiTestActivity activity = mBlankUiActivityTestRule.getActivity();
+
+        final TestMultiColumnSettings[] settingsHolder = new TestMultiColumnSettings[1];
+        ThreadUtils.runOnUiThreadBlocking(
+                () -> {
+                    DisplayMetrics metrics = activity.getResources().getDisplayMetrics();
+                    int narrowWidth =
+                            (int)
+                                    TypedValue.applyDimension(
+                                            TypedValue.COMPLEX_UNIT_DIP, 400, metrics);
+                    FrameLayout container = new FrameLayout(activity);
+                    container.setId(View.generateViewId());
+                    activity.setContentView(
+                            container,
+                            new ViewGroup.LayoutParams(
+                                    narrowWidth, ViewGroup.LayoutParams.MATCH_PARENT));
+
+                    TestMultiColumnSettings settings = new TestMultiColumnSettings();
+                    settingsHolder[0] = settings;
+                    settings.setIsTwoColumnForTesting(false);
+
+                    activity.getSupportFragmentManager()
+                            .beginTransaction()
+                            .add(container.getId(), settings)
+                            .commitNow();
+                });
+
+        // Wait for the layout and measure pass to complete so SlidingPaneLayout evaluates
+        // isSlideable() with the narrow container width.
+        CriteriaHelper.pollUiThread(
+                () -> settingsHolder[0].getSlidingPaneLayout().isSlideable(),
+                "SlidingPaneLayout should become slideable with narrow container");
+
+        ThreadUtils.runOnUiThreadBlocking(
+                () -> {
+                    TestMultiColumnSettings settings = settingsHolder[0];
+                    // Open a detail fragment with addToBackStack=true.
+                    settings.showDetailFragment(new TestFragment(), true, null);
+                    settings.getChildFragmentManager().executePendingTransactions();
+                });
+
+        // Wait for the detail pane to slide open.
+        CriteriaHelper.pollUiThread(
+                () -> settingsHolder[0].getSlidingPaneLayout().isOpen(),
+                "SlidingPaneLayout should open when detail fragment is shown");
+
+        ThreadUtils.runOnUiThreadBlocking(
+                () -> {
+                    assertEquals(
+                            1,
+                            settingsHolder[0].getChildFragmentManager().getBackStackEntryCount());
+                    // Pop the back stack so entry count becomes 0.
+                    settingsHolder[0].getChildFragmentManager().popBackStackImmediate();
+                    assertEquals(
+                            0,
+                            settingsHolder[0].getChildFragmentManager().getBackStackEntryCount());
+                });
+
+        // In single-column mode, SlidingPaneLayout should close when detail is popped.
+        CriteriaHelper.pollUiThread(
+                () -> !settingsHolder[0].getSlidingPaneLayout().isOpen(),
+                "SlidingPaneLayout closes when detail fragment is popped in single-column mode");
     }
 
     @Test

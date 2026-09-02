@@ -4,8 +4,6 @@
 
 package org.chromium.chrome.browser.omnibox;
 
-import android.content.ClipData;
-import android.content.ClipboardManager;
 import android.content.Context;
 import android.text.Spanned;
 import android.text.TextUtils;
@@ -16,7 +14,6 @@ import androidx.annotation.VisibleForTesting;
 import androidx.fragment.app.Fragment;
 
 import org.chromium.base.Callback;
-import org.chromium.base.ContextUtils;
 import org.chromium.build.annotations.EnsuresNonNullIf;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
@@ -32,9 +29,11 @@ import org.chromium.chrome.browser.settings.SettingsNavigationFactory;
 import org.chromium.chrome.browser.ui.theme.BrandedColorScheme;
 import org.chromium.components.browser_ui.styles.SemanticColorUtils;
 import org.chromium.components.omnibox.AutocompleteInput;
+import org.chromium.components.omnibox.AutocompleteInput.DisplayState;
 import org.chromium.components.omnibox.OmniboxFeatures;
 import org.chromium.components.omnibox.OmniboxUrlEmphasizer.UrlEmphasisSpan;
 import org.chromium.components.omnibox.TextSelection;
+import org.chromium.ui.base.Clipboard;
 import org.chromium.ui.base.DeviceFormFactor;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.url.GURL;
@@ -58,6 +57,8 @@ class UrlBarMediator implements UrlBarTextContextMenuDelegate {
     private boolean mShowOriginOnly;
     private final @Nullable Callback<String> mTextChangeListener;
     private final @Nullable Callback<UrlBarTextChangeInfo> mRichTextChangeListener;
+    private final Callback<@DisplayState Integer> mDisplayStateObserver =
+            this::onDisplayStateChanged;
 
     /**
      * Creates a URLBarMediator.
@@ -80,6 +81,7 @@ class UrlBarMediator implements UrlBarTextContextMenuDelegate {
         mRichTextChangeListener = richTextChangeListener;
 
         mModel.set(UrlBarProperties.TEXT_CONTEXT_MENU_DELEGATE, this);
+        mModel.set(UrlBarProperties.ALLOW_MULTILINE_INPUT, false);
         mModel.set(UrlBarProperties.HAS_URL_SUGGESTIONS, false);
         mModel.set(UrlBarProperties.TEXT_CHANGE_LISTENER, this::onTextChanged);
         mModel.set(UrlBarProperties.RICH_TEXT_CHANGE_LISTENER, this::onRichTextChanged);
@@ -95,6 +97,9 @@ class UrlBarMediator implements UrlBarTextContextMenuDelegate {
     }
 
     public void destroy() {
+        if (mCurrentInput != null) {
+            mCurrentInput.getDisplayStateSupplier().removeObserver(mDisplayStateObserver);
+        }
         mModel.set(UrlBarProperties.TEXT_CONTEXT_MENU_DELEGATE, null);
         mModel.set(UrlBarProperties.TEXT_CHANGE_LISTENER, null);
         mModel.set(UrlBarProperties.MANAGE_SEARCH_ENGINES_CALLBACK, null);
@@ -102,16 +107,30 @@ class UrlBarMediator implements UrlBarTextContextMenuDelegate {
 
     /** Signals that the Omnibox input session has begun. */
     void beginInput(FuseboxSessionState sessionState) {
+        if (mCurrentInput != null) {
+            mCurrentInput.getDisplayStateSupplier().removeObserver(mDisplayStateObserver);
+        }
         mCurrentInput = sessionState.getAutocompleteInput();
+        mCurrentInput
+                .getDisplayStateSupplier()
+                .addSyncObserverAndCallIfNonNull(mDisplayStateObserver);
         pushCurrentInputToModel();
     }
 
     /** Signals that the Omnibox input session has ended. */
     void endInput() {
         if (!isInInputSession()) return;
-        var data = UrlBarData.forUrl(mCurrentInput.getPageUrl());
-        setUrlBarData(data, ScrollType.SCROLL_TO_TLD, TextSelection.SELECT_END);
+        mCurrentInput.getDisplayStateSupplier().removeObserver(mDisplayStateObserver);
+        mModel.set(UrlBarProperties.ALLOW_MULTILINE_INPUT, false);
+        var pageUrl = mCurrentInput.getPageUrl();
         mCurrentInput = null;
+        var data = UrlBarData.forUrl(pageUrl);
+        setUrlBarData(data, ScrollType.SCROLL_TO_TLD, TextSelection.SELECT_END);
+    }
+
+    private void onDisplayStateChanged(@DisplayState int displayState) {
+        boolean allowMultiline = displayState == DisplayState.SUGGESTIONS;
+        mModel.set(UrlBarProperties.ALLOW_MULTILINE_INPUT, allowMultiline);
     }
 
     /* package */ void pushCurrentInputToModel() {
@@ -135,7 +154,7 @@ class UrlBarMediator implements UrlBarTextContextMenuDelegate {
     }
 
     @EnsuresNonNullIf("mCurrentInput")
-    private boolean isInInputSession() {
+    /* package */ boolean isInInputSession() {
         return mCurrentInput != null;
     }
 
@@ -152,6 +171,9 @@ class UrlBarMediator implements UrlBarTextContextMenuDelegate {
         }
         if (mTextChangeListener != null) {
             mTextChangeListener.onResult(text);
+        }
+        if (isInInputSession()) {
+            mSelection = mCurrentInput.getSelection();
         }
         updateShowHintText(text);
     }
@@ -430,20 +452,8 @@ class UrlBarMediator implements UrlBarTextContextMenuDelegate {
 
     @Override
     public @Nullable String getTextToPaste() {
-        Context context = ContextUtils.getApplicationContext();
-
-        ClipboardManager clipboard =
-                (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
-        ClipData clipData = clipboard.getPrimaryClip();
-        if (clipData == null) return null;
-
-        StringBuilder builder = new StringBuilder();
-        for (int i = 0; i < clipData.getItemCount(); i++) {
-            builder.append(clipData.getItemAt(i).coerceToText(context));
-        }
-
-        String stringToPaste = sanitizeTextForPaste(builder.toString());
-        return stringToPaste;
+        String text = Clipboard.getInstance().getCoercedText();
+        return text != null ? sanitizeTextForPaste(text) : null;
     }
 
     /**

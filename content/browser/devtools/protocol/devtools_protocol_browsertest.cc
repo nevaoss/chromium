@@ -3136,7 +3136,7 @@ IN_PROC_BROWSER_TEST_F(DevToolsProtocolTest, SetAndGetCookies) {
 }
 
 IN_PROC_BROWSER_TEST_F(DevToolsProtocolTest,
-                       ClearBrowserCookiesWithAllCookieAccess) {
+                       ClearBrowserCookies) {
   ASSERT_TRUE(embedded_test_server()->Start());
   GURL main_page_url = embedded_test_server()->GetURL("a.test", "/title1.html");
   NavigateToURLBlockUntilNavigationsComplete(shell(), main_page_url, 1);
@@ -3168,6 +3168,43 @@ IN_PROC_BROWSER_TEST_F(DevToolsProtocolTest,
   EXPECT_FALSE(error());
 
   cookies = SendCommandSync("Network.getAllCookies")->FindList("cookies");
+  ASSERT_TRUE(cookies);
+  EXPECT_TRUE(cookies->empty());
+}
+
+IN_PROC_BROWSER_TEST_F(DevToolsProtocolTest,
+                       StorageClearCookies) {
+  ASSERT_TRUE(embedded_test_server()->Start());
+  GURL main_page_url = embedded_test_server()->GetURL("a.test", "/title1.html");
+  NavigateToURLBlockUntilNavigationsComplete(shell(), main_page_url, 1);
+  Attach();
+
+  // Set cookies on two different hosts via the protocol.
+  base::DictValue set_cookies_params;
+  base::ListValue cookies_list;
+  base::DictValue cookie_a;
+  cookie_a.Set("name", "cookie_a");
+  cookie_a.Set("value", "value_a");
+  cookie_a.Set("url", embedded_test_server()->GetURL("a.test", "/").spec());
+  cookies_list.Append(std::move(cookie_a));
+  base::DictValue cookie_b;
+  cookie_b.Set("name", "cookie_b");
+  cookie_b.Set("value", "value_b");
+  cookie_b.Set("url", embedded_test_server()->GetURL("b.test", "/").spec());
+  cookies_list.Append(std::move(cookie_b));
+  set_cookies_params.Set("cookies", std::move(cookies_list));
+  SendCommandSync("Network.setCookies", std::move(set_cookies_params));
+  EXPECT_FALSE(error());
+
+  const base::ListValue* cookies =
+      SendCommandSync("Storage.getCookies")->FindList("cookies");
+  ASSERT_TRUE(cookies);
+  EXPECT_EQ(2u, cookies->size());
+
+  SendCommandSync("Storage.clearCookies");
+  EXPECT_FALSE(error());
+
+  cookies = SendCommandSync("Storage.getCookies")->FindList("cookies");
   ASSERT_TRUE(cookies);
   EXPECT_TRUE(cookies->empty());
 }
@@ -3220,19 +3257,9 @@ IN_PROC_BROWSER_TEST_F(DevToolsProtocolTest, CookiePermissions) {
   SendCommandSync("Network.deleteCookies", std::move(del_params));
   EXPECT_FALSE(error());
 
-  // Try to clear browser cookies.
-  SendCommandSync("Network.clearBrowserCookies");
-  EXPECT_FALSE(error());
-
-  // Verify a.test cookie is gone.
-  const base::ListValue* cookies =
-      SendCommandSync("Network.getAllCookies")->FindList("cookies");
-  ASSERT_TRUE(cookies);
-  EXPECT_EQ(0u, cookies->size());
-
   Detach();
 
-  // Verify b.test cookie is still there.
+  // Verify b.test cookie is still there (deleteCookies respected permissions).
   GURL url_b_echo =
       embedded_test_server()->GetURL("b.test", "/echoheader?Cookie");
   EXPECT_TRUE(NavigateToURL(shell(), url_b_echo));
@@ -3240,6 +3267,20 @@ IN_PROC_BROWSER_TEST_F(DevToolsProtocolTest, CookiePermissions) {
       EvalJs(shell()->web_contents(), "document.body.innerText")
           .ExtractString();
   EXPECT_THAT(content, testing::HasSubstr("foo=bar"));
+
+  // Clear browser cookies: partition-wide clearing clears all cookies
+  // regardless of not_attachable_hosts_.
+  Attach();
+  SendCommandSync("Network.clearBrowserCookies");
+  EXPECT_FALSE(error());
+  Detach();
+
+  // Verify b.test cookie is now deleted.
+  EXPECT_TRUE(NavigateToURL(shell(), url_b_echo));
+  content =
+      EvalJs(shell()->web_contents(), "document.body.innerText")
+          .ExtractString();
+  EXPECT_THAT(content, testing::Not(testing::HasSubstr("foo=bar")));
 }
 
 IN_PROC_BROWSER_TEST_F(DevToolsProtocolTest,
@@ -4028,6 +4069,85 @@ IN_PROC_BROWSER_TEST_F(DevToolsDownloadContentTest, DeniedDownload) {
   ASSERT_EQ(download::DownloadItem::CANCELLED, download->GetState());
 }
 
+// A stale DevTools session must not reset a newer session's download path when
+// it detaches from the same browser context.
+IN_PROC_BROWSER_TEST_F(DevToolsDownloadContentTest,
+                       OlderSessionDetachPreservesNewerAllowPath) {
+  base::ScopedAllowBlockingForTesting allow_blocking;
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  const base::FilePath older_download_path =
+      temp_dir.GetPath().AppendASCII("older");
+  const base::FilePath newer_download_path =
+      temp_dir.GetPath().AppendASCII("newer");
+  SetupEnsureNoPendingDownloads();
+  NavigateToURLBlockUntilNavigationsComplete(shell(), GURL("about:blank"), 1);
+
+  TestDevToolsProtocolClient older_client;
+  older_client.AttachToBrowserTarget();
+  base::DictValue older_params;
+  older_params.Set("behavior", "allow");
+  older_params.Set("downloadPath", older_download_path.AsUTF8Unsafe());
+  EXPECT_TRUE(older_client.SendCommandSync("Browser.setDownloadBehavior",
+                                           std::move(older_params)));
+
+  TestDevToolsProtocolClient newer_client;
+  newer_client.AttachToBrowserTarget();
+  base::DictValue newer_params;
+  newer_params.Set("behavior", "allow");
+  newer_params.Set("downloadPath", newer_download_path.AsUTF8Unsafe());
+  EXPECT_TRUE(newer_client.SendCommandSync("Browser.setDownloadBehavior",
+                                           std::move(newer_params)));
+
+  older_client.DetachProtocolClient();
+
+  download::DownloadItem* download = StartDownloadAndReturnItem(
+      shell(), embedded_test_server()->GetURL("/download/download-test.lib"));
+  WaitForCompletion(download);
+  EXPECT_EQ(newer_download_path.AppendASCII("download-test.lib"),
+            download->GetTargetFilePath());
+  EXPECT_FALSE(
+      base::PathExists(older_download_path.AppendASCII("download-test.lib")));
+  EXPECT_TRUE(base::PathExists(download->GetTargetFilePath()));
+  EXPECT_TRUE(EnsureNoPendingDownloads());
+
+  newer_client.DetachProtocolClient();
+}
+
+// Detaching the current owner restores the default behavior instead of
+// reviving an older session's override.
+IN_PROC_BROWSER_TEST_F(DevToolsDownloadContentTest,
+                       CurrentSessionDetachRestoresDefaultBehavior) {
+  base::ScopedAllowBlockingForTesting allow_blocking;
+  SetupEnsureNoPendingDownloads();
+  NavigateToURLBlockUntilNavigationsComplete(shell(), GURL("about:blank"), 1);
+
+  TestDevToolsProtocolClient older_client;
+  older_client.AttachToBrowserTarget();
+  base::DictValue params;
+  params.Set("behavior", "deny");
+  EXPECT_TRUE(older_client.SendCommandSync("Browser.setDownloadBehavior",
+                                           params.Clone()));
+
+  TestDevToolsProtocolClient newer_client;
+  newer_client.AttachToBrowserTarget();
+  EXPECT_TRUE(newer_client.SendCommandSync("Browser.setDownloadBehavior",
+                                           std::move(params)));
+
+  newer_client.DetachProtocolClient();
+
+  download::DownloadItem* download = StartDownloadAndReturnItem(
+      shell(), embedded_test_server()->GetURL(
+                   content::SlowDownloadHttpResponse::kUnknownSizeUrl));
+  EXPECT_EQ(download::DownloadItem::IN_PROGRESS, download->GetState());
+  download->Cancel(true);
+  DownloadTestFlushObserver flush_observer(DownloadManagerForShell(shell()));
+  flush_observer.WaitForFlush();
+  EXPECT_TRUE(EnsureNoPendingDownloads());
+
+  older_client.DetachProtocolClient();
+}
+
 // Check that defaulting downloads works as expected.
 IN_PROC_BROWSER_TEST_F(DevToolsDownloadContentTest, DefaultDownload) {
   base::ScopedAllowBlockingForTesting allow_blocking;
@@ -4341,6 +4461,43 @@ class SystemTracingDevToolsProtocolTest : public DevToolsProtocolTest {
 IN_PROC_BROWSER_TEST_F(SystemTracingDevToolsProtocolTest,
                        StartSystemTracingFailsWhenSystemConsumerDisabled) {
   EXPECT_FALSE(StartSystemTrace());
+}
+
+IN_PROC_BROWSER_TEST_F(SystemTracingDevToolsProtocolTest,
+                       StartSystemTracingRequiresTrustedClient) {
+  SetIsTrusted(false);
+  EXPECT_FALSE(StartSystemTrace());
+  EXPECT_THAT(
+      error()->FindInt("code"),
+      testing::Optional(static_cast<int>(crdtp::DispatchCode::SERVER_ERROR)));
+  EXPECT_EQ(*error()->FindString("message"),
+            "System backend is not allowed for the current client");
+}
+
+IN_PROC_BROWSER_TEST_F(DevToolsProtocolTest,
+                       TracingAutoBackendNonChromeSourceRequiresTrustedClient) {
+  perfetto::TraceConfig perfetto_config;
+  perfetto_config.add_buffers()->set_size_kb(1024);
+  perfetto_config.add_data_sources()->mutable_config()->set_name(
+      "linux.ftrace");
+  std::string perfetto_config_encoded =
+      base::Base64Encode(perfetto_config.SerializeAsString());
+
+  base::DictValue params;
+  params.Set("perfettoConfig", perfetto_config_encoded);
+  params.Set("transferMode", "ReturnAsStream");
+  params.Set("tracingBackend", "auto");
+
+  SetIsTrusted(false);
+  NavigateToURLBlockUntilNavigationsComplete(shell(), GURL("about:blank"), 1);
+  Attach();
+
+  EXPECT_FALSE(SendCommandSync("Tracing.start", std::move(params)));
+  EXPECT_THAT(
+      error()->FindInt("code"),
+      testing::Optional(static_cast<int>(crdtp::DispatchCode::SERVER_ERROR)));
+  EXPECT_EQ(*error()->FindString("message"),
+            "System backend is not allowed for the current client");
 }
 
 #if BUILDFLAG(IS_POSIX)

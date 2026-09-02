@@ -21,6 +21,7 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service_factory.h"
 #include "chrome/browser/devtools/features.h"
+#include "chrome/browser/dictation/features.h"
 #include "chrome/browser/feature_engagement/tracker_factory.h"
 #include "chrome/browser/glic/host/glic.mojom.h"
 #include "chrome/browser/glic/public/features.h"
@@ -38,6 +39,7 @@
 #include "chrome/browser/ui/chrome_pages.h"
 #include "chrome/browser/ui/feature_first_run/autofill_ai_first_run_dialog.h"
 #include "chrome/browser/ui/navigator/browser_navigator.h"
+#include "chrome/browser/ui/navigator/browser_navigator_params.h"
 #include "chrome/browser/ui/page_action/page_action_icon_type.h"
 #include "chrome/browser/ui/performance_controls/performance_controls_metrics.h"
 #include "chrome/browser/ui/singleton_tabs.h"
@@ -47,6 +49,7 @@
 #include "chrome/browser/ui/tabs/split_tab_menu_model.h"
 #include "chrome/browser/ui/tabs/split_view_iph_controller.h"
 #include "chrome/browser/ui/tabs/tab_group_model.h"
+#include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/toolbar/app_menu_model.h"
 #include "chrome/browser/ui/toolbar/bookmark_sub_menu_model.h"
 #include "chrome/browser/ui/toolbar/pinned_toolbar/pinned_toolbar_actions_model.h"
@@ -74,6 +77,7 @@
 #include "chrome/browser/ui/views/user_education/impl/browser_user_education_context.h"
 #include "chrome/browser/ui/views/user_education/ios_promo_bubble_view.h"
 #include "chrome/browser/ui/views/web_apps/web_app_install_dialog_delegate.h"
+#include "chrome/browser/ui/web_applications/app_browser_controller.h"
 #include "chrome/browser/ui/webui/customize_buttons/customize_buttons_handler.h"
 #include "chrome/browser/ui/webui/history/history_ui.h"
 #include "chrome/browser/ui/webui/new_tab_page/new_tab_page_ui.h"
@@ -157,9 +161,9 @@
 #include "chrome/browser/ui/search_promotion/search_promotion_manager_factory.h"
 #endif  // BUILDFLAG(IS_WIN)
 
-#if BUILDFLAG(ENABLE_EXTENSIONS)
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 #include "chrome/browser/ui/webui/extensions_zero_state_promo/zero_state_promo_ui.h"
-#endif  // BUILDFLAG(ENABLE_EXTENSIONS)
+#endif  // BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 
 #if BUILDFLAG(ENABLE_PDF_INK2)
 #include "chrome/browser/pdf/pdf_help_bubble_handler_factory.h"
@@ -267,7 +271,7 @@ BrowserView& GetBrowserView(ContextPtr context) {
 }
 
 // Convenience method to get the browser from the context.
-Browser* GetBrowser(ContextPtr context) {
+BrowserWindowInterface* GetBrowser(ContextPtr context) {
   return GetBrowserView(context).browser();
 }
 
@@ -278,10 +282,8 @@ CreateNavigationAction(GURL target) {
       [](GURL url, ContextPtr ctx,
          user_education::FeaturePromoHandle promo_handle) {
         auto* browser = GetBrowser(ctx);
-        NavigateParams params(browser->GetProfile(), url,
-                              ui::PAGE_TRANSITION_LINK);
+        NavigateParams params(browser, url, ui::PAGE_TRANSITION_LINK);
         params.disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
-        params.browser = browser;
         Navigate(&params);
       },
       std::move(target));
@@ -404,7 +406,7 @@ void MaybeRegisterChromeFeaturePromos(
                 }
                 return elements[0];
               }))
-          .SetMetadata(151, "adigupt@google.com",
+          .SetMetadata(151, "jihadghanna@google.com",
                        "Triggered on first time feature usage to educate users "
                        "about Multistep Filter.")));
 
@@ -464,7 +466,7 @@ void MaybeRegisterChromeFeaturePromos(
           base::BindRepeating(
               [](ContextPtr ctx,
                  user_education::FeaturePromoHandle promo_handle) {
-                Browser* const browser = GetBrowser(ctx);
+                BrowserWindowInterface* const browser = GetBrowser(ctx);
                 TabStripModel* const tab_strip_model =
                     browser->GetTabStripModel();
                 if (!tab_strip_model) {
@@ -576,6 +578,19 @@ void MaybeRegisterChromeFeaturePromos(
                        "Triggered after autofill popup appears for a card "
                        "enrolled in card info retrieval.")));
 
+  // kIPHAutofillWalletDirectOffersFeature:
+  registry.RegisterFeature(std::move(
+      FeaturePromoSpecification::CreateForToastPromo(
+          feature_engagement::kIPHAutofillWalletDirectOffersFeature,
+          autofill::PopupViewViews::kAutofillWalletDirectOffersIphElementId,
+          IDS_AUTOFILL_WALLET_DIRECT_OFFERS_IPH_BUBBLE_LABEL,
+          IDS_AUTOFILL_WALLET_DIRECT_OFFERS_IPH_BUBBLE_LABEL_SCREENREADER,
+          FeaturePromoSpecification::AcceleratorInfo())
+          .SetBubbleArrow(HelpBubbleArrow::kTopLeft)
+          .SetMetadata(156, "wilsonlow@google.com",
+                       "Triggered when a merchant promo code field is visible "
+                       "and direct offers from Google Wallet are available.")));
+
   // kIPHAutofillDisabledVirtualCardSuggestionFeature:
   registry.RegisterFeature(std::move(
       FeaturePromoSpecification::CreateForToastPromo(
@@ -661,7 +676,7 @@ void MaybeRegisterChromeFeaturePromos(
           base::BindRepeating(
               [](ContextPtr ctx,
                  user_education::FeaturePromoHandle promo_handle) {
-                Browser* const browser = GetBrowser(ctx);
+                BrowserWindowInterface* const browser = GetBrowser(ctx);
                 if (!search::DefaultSearchProviderIsGoogle(
                         browser->GetProfile())) {
                   return;
@@ -680,7 +695,7 @@ void MaybeRegisterChromeFeaturePromos(
                       tab_strip_model->GetActiveWebContents();
                   if (web_contents &&
                       web_contents->GetURL() != chrome::GetNewTabURL(browser)) {
-                    NavigateParams params(browser->GetProfile(),
+                    NavigateParams params(browser,
                                           chrome::ChromeUINewTabPageURLAsGURL(),
                                           ui::PAGE_TRANSITION_LINK);
                     params.disposition =
@@ -735,7 +750,7 @@ void MaybeRegisterChromeFeaturePromos(
                        "Attempts to trigger when a user is on the NTP and the "
                        "Realbox contextual entrypoint button is displayed.")));
 
-#if BUILDFLAG(ENABLE_EXTENSIONS)
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
   // kIPHExtensionsMenuFeature:
   registry.RegisterFeature(std::move(
       FeaturePromoSpecification::CreateForSnoozePromo(
@@ -769,7 +784,7 @@ void MaybeRegisterChromeFeaturePromos(
           base::BindRepeating(
               [](ContextPtr ctx,
                  user_education::FeaturePromoHandle promo_handle) {
-                Browser* const browser = GetBrowser(ctx);
+                BrowserWindowInterface* const browser = GetBrowser(ctx);
                 if (browser) {
                   chrome::ShowExtensions(browser);
                 }
@@ -825,7 +840,7 @@ void MaybeRegisterChromeFeaturePromos(
                   ExtensionsMenuModel::kVisitChromeWebStoreMenuItem)));
       break;
   }
-#endif
+#endif  // BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 
   // kIPHTabAudioMutingFeature:
   registry.RegisterFeature(std::move(
@@ -1208,7 +1223,7 @@ void MaybeRegisterChromeFeaturePromos(
           base::BindRepeating(
               [](ContextPtr ctx,
                  user_education::FeaturePromoHandle promo_handle) {
-                Browser* const browser = GetBrowser(ctx);
+                BrowserWindowInterface* const browser = GetBrowser(ctx);
                 auto* service =
                     contextual_tasks::ContextualTasksUiServiceFactory::
                         GetForBrowserContext(browser->GetProfile());
@@ -1483,9 +1498,8 @@ void MaybeRegisterChromeFeaturePromos(
 
                   tab_groups::MostRecentSharedTabUpdateStore*
                       most_recent_shared_tab_update_store =
-                          browser_view->browser()
-                              ->GetFeatures()
-                              .most_recent_shared_tab_update_store();
+                          tab_groups::MostRecentSharedTabUpdateStore::From(
+                              browser_view->browser());
 
                   if (!most_recent_shared_tab_update_store ||
                       !most_recent_shared_tab_update_store->HasUpdate()) {
@@ -1665,7 +1679,7 @@ void MaybeRegisterChromeFeaturePromos(
           base::BindRepeating(
               [](ContextPtr ctx,
                  user_education::FeaturePromoHandle promo_handle) {
-                Browser* const browser = GetBrowser(ctx);
+                BrowserWindowInterface* const browser = GetBrowser(ctx);
                 if (!browser) {
                   return;
                 }
@@ -1691,7 +1705,7 @@ void MaybeRegisterChromeFeaturePromos(
           base::BindRepeating(
               [](ContextPtr ctx,
                  user_education::FeaturePromoHandle promo_handle) {
-                if (Browser* const browser = GetBrowser(ctx)) {
+                if (BrowserWindowInterface* const browser = GetBrowser(ctx)) {
                   browser->GetProfile()->GetPrefs()->SetBoolean(
                       prefs::kTabScrollButtonsPinnedToTabstrip, false);
                 }
@@ -2071,7 +2085,7 @@ void MaybeRegisterChromeFeaturePromos(
           base::BindRepeating(
               [](ContextPtr ctx,
                  user_education::FeaturePromoHandle /*promo_handle*/) {
-                Browser* browser = GetBrowser(ctx);
+                BrowserWindowInterface* browser = GetBrowser(ctx);
                 if (browser) {
                   // Delegate execution to the active SearchPromotionManager
                   // service to trigger the relevant promotion action
@@ -2565,13 +2579,6 @@ void MaybeRegisterChromeNewBadges(user_education::NewBadgeRegistry& registry) {
                                "Shown in the contextual menu.")));
 
   registry.RegisterFeature(user_education::NewBadgeSpecification(
-      tabs::kVerticalTabsPreviewBadge,
-      user_education::Metadata(146, "stluong@chromium.org",
-                               "Show the preview badge in the system context "
-                               "menu to toggle the horizontal tab strip "
-                               "to be a vertical tab strip")));
-
-  registry.RegisterFeature(user_education::NewBadgeSpecification(
       tabs::kVerticalTabsNewBadge,
       user_education::Metadata(147, "stluong@chromium.org",
                                "Show the new badge in the system context menu "
@@ -2595,6 +2602,11 @@ void MaybeRegisterChromeNewBadges(user_education::NewBadgeRegistry& registry) {
       user_education::Metadata(
           153, "kristislee@google.com",
           "Shown on the Line Focus menu item in Reading Mode settings menu.")));
+
+  registry.RegisterFeature(user_education::NewBadgeSpecification(
+      dictation::kDictation,
+      user_education::Metadata(153, "amyasinghal@google.com",
+                               "Shown on the Dictation context menu item.")));
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
   registry.RegisterFeature(user_education::NewBadgeSpecification(

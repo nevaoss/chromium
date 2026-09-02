@@ -117,8 +117,8 @@ PA_ALWAYS_INLINE void BatchFreeQueue<true>::Purge() {
     auto size_details = root_->SlotSpanToBucketSizeDetails(entry.slot_span);
 #if PA_BUILDFLAG(ENABLE_BACKUP_REF_PTR_SUPPORT)
     if (root_->brp_enabled()) {
-      auto* metadata = PartitionRoot::InSlotMetadataPointerFromSlotStartAndSize(
-          entry.slot_start, size_details.slot_size);
+      auto* metadata =
+          InSlotMetadata::From({entry.slot_start, size_details.slot_size});
       if (metadata->IsAlive()) {
         // Since `FreeNoHooksImmediateInternal()` checks double-free, see if
         // the object is still alive.
@@ -200,14 +200,18 @@ void SchedulerLoopQuarantineBranch<thread_bound, for_sanitized_objects>::
   enable_zapping_ = config.enable_zapping;
   leak_on_destruction_ = config.leak_on_destruction;
   bool old_pause_in_between_tasks = pause_in_between_tasks_;
-  bool old_purge_control_enabled =
-      enable_task_controlled_purge_ || pause_in_between_tasks_;
+  bool old_exclude_non_ipc_tasks = exclude_non_ipc_tasks_;
+  bool old_purge_control_enabled = enable_task_controlled_purge_ ||
+                                   pause_in_between_tasks_ ||
+                                   exclude_non_ipc_tasks_;
 
   enable_task_controlled_purge_ = config.enable_task_controlled_purge;
   pause_in_between_tasks_ = config.pause_in_between_tasks;
+  exclude_non_ipc_tasks_ = config.exclude_non_ipc_tasks;
 
-  bool new_purge_control_enabled =
-      enable_task_controlled_purge_ || pause_in_between_tasks_;
+  bool new_purge_control_enabled = enable_task_controlled_purge_ ||
+                                   pause_in_between_tasks_ ||
+                                   exclude_non_ipc_tasks_;
 
   if constexpr (kThreadBound) {
     if (task_nesting_depth_ > 0) {
@@ -218,6 +222,14 @@ void SchedulerLoopQuarantineBranch<thread_bound, for_sanitized_objects>::
       } else if (!new_purge_control_enabled && old_purge_control_enabled) {
         for (int i = 0; i < task_nesting_depth_; ++i) {
           AllowScanlessPurge();
+        }
+      }
+      if (!is_outermost_task_mojo_ipc_) {
+        if (exclude_non_ipc_tasks_ && !old_exclude_non_ipc_tasks) {
+          ++pause_quarantine_;
+        } else if (!exclude_non_ipc_tasks_ && old_exclude_non_ipc_tasks) {
+          PA_DCHECK(pause_quarantine_ > 0);
+          --pause_quarantine_;
         }
       }
     } else {

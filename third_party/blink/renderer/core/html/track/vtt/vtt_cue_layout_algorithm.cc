@@ -98,12 +98,13 @@ PhysicalSize VttCueLayoutAlgorithm::FirstInlineBoxSize(
   // The snap-to-lines step is the first line box size, per spec step 2:
   // https://w3c.github.io/webvtt/#apply-webvtt-cue-settings
   //
-  // This equals the VTTCueBox border-box height (a block container whose
-  // height is the sum of its line boxes), so stepping by this value places
-  // adjacent cues exactly touching - which PhysicalRect::Intersects() treats
-  // as non-overlapping (it requires a non-zero intersection area). N cues of
-  // line-height H therefore pack into exactly H*N pixels without gaps or
-  // false overlaps.
+  // For a single-line cue this equals the VTTCueBox border-box height; for
+  // wrapped cues the border box is the sum of all line boxes and the overlap
+  // loop will advance by one line at a time. Stepping by this value places
+  // adjacent single-line cues exactly touching - which
+  // PhysicalRect::Intersects() treats as non-overlapping (it requires a
+  // non-zero intersection area). N single-line cues of line-height H therefore
+  // pack into exactly H*N pixels without gaps or false overlaps.
   //
   // The VTTCueBackgroundBox kBox fragment may be taller than the line box on
   // some platforms (e.g. font-metrics ink overflow on Linux), but it is an
@@ -111,6 +112,16 @@ PhysicalSize VttCueLayoutAlgorithm::FirstInlineBoxSize(
   // line-height, not its border-box height. Using the kBox size as the step
   // would leave gaps between cues and prevent the maximum number of cues from
   // fitting in the rendering area.
+#if DCHECK_IS_ON()
+  // The equality "first line box == visual cue row height" holds only while
+  // VTTCueBackgroundBox is a non-atomic inline. If the UA style ever makes it
+  // an atomic inline (e.g. inline-block), its border box could grow past the
+  // line box and adjacent cues would visually overlap at this step size.
+  if (const LayoutObject* background = cue_box.SlowFirstChild()) {
+    DCHECK(!IsA<VTTCueBackgroundBox>(background->GetNode()) ||
+           background->IsLayoutInline());
+  }
+#endif
   return cursor.CurrentItem()->Size();
 }
 
@@ -243,8 +254,12 @@ void VttCueLayoutAlgorithm::AdjustPositionWithSnapToLines() {
   //
   // 11.3. Let max dimension be full dimension - (2 * margin).
   //
-  // TODO(crbug.com/1012242): Remove this. The latest specification does not
-  // have these steps.
+  // The latest specification does not have these margin steps, but they
+  // cannot simply be removed: Chromecast sets text_track_margin_percentage=5
+  // (cast_content_browser_client.cc) for TV title-safe captions; everywhere
+  // else the pref defaults to 0 and these steps are no-ops.
+  // TODO(crbug.com/1012242): Resolve with Cast owners (move the margin to a
+  // Cast-side mechanism, or keep it as the old spec's UA-defined margin).
   const auto* settings = cue_.GetDocument().GetSettings();
   const double margin_ratio =
       settings ? settings->GetTextTrackMarginPercentage() / 100.0 : 0;
@@ -287,8 +302,8 @@ void VttCueLayoutAlgorithm::AdjustPositionWithSnapToLines() {
   // area and a height of margin at the bottom of the rendering area.
   //        Vertical: Let title area be a box that covers all of the video's
   // rendering area except for a width of margin at the left ...
-  // TODO(crbug.com/1012242): Remove this. The latest specification does not
-  // have margins.
+  // The latest specification does not have margins; kept for Chromecast - see
+  // the margin comment in ComputeInitialPositionAdjustment().
   if (is_horizontal) {
     title_area.ContractEdges(margin_, LayoutUnit(), margin_, LayoutUnit());
   } else {

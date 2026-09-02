@@ -11,6 +11,7 @@
 #import "base/functional/bind.h"
 #import "base/memory/raw_ptr.h"
 #import "base/memory/scoped_refptr.h"
+#import "base/rand_util.h"
 #import "base/test/metrics/histogram_tester.h"
 #import "base/test/scoped_feature_list.h"
 #import "base/test/task_environment.h"
@@ -32,6 +33,7 @@
 #import "ios/chrome/browser/credential_exchange/model/credential_import_manager_swift.h"
 #import "ios/chrome/browser/credential_exchange/model/features.h"
 #import "ios/chrome/browser/credential_exchange/model/import_stats.h"
+#import "ios/chrome/browser/data_import/public/passkey_import_item.h"
 #import "ios/chrome/browser/passwords/model/ios_chrome_account_password_store_factory.h"
 #import "ios/chrome/browser/passwords/model/ios_chrome_profile_password_store_factory.h"
 #import "ios/chrome/browser/shared/model/profile/test/test_profile_ios.h"
@@ -241,6 +243,104 @@ TEST_F(CredentialImporterTest, ImportsPasskeyWithHmacSecret) {
       webauthn::passkey_model_utils::DecryptWebauthnCredentialSpecificsData(
           TestTrustedVaultKey(), passkeys[0], &decrypted));
   EXPECT_EQ(decrypted.hmac_secret(), "01234567890123456789012345678901");
+}
+
+TEST_F(CredentialImporterTest, ImportsPasskeyWithLargeBlob) {
+  CredentialExchangePasskey* passkey = CreateTestPasskey();
+  passkey.largeBlob = ToNSData("large_blob");
+  passkey.largeBlobUncompressedSize = @(100);
+
+  [importer_ onCredentialsTranslatedWithPasswords:@[]
+                                         passkeys:@[ passkey ]
+                              exporterDisplayName:@""
+                                            stats:[[ImportStats alloc] init]];
+
+  FakePasskeyModelObserver observer(passkey_model_.get());
+
+  [importer_
+      startImportingCredentialsWithTrustedVaultKeys:{TestTrustedVaultKey()}];
+
+  ASSERT_TRUE(observer.WaitForPasskeysChanged());
+  ASSERT_FALSE(passkey_model_->IsEmpty());
+  auto passkeys = passkey_model_->GetPasskeys(
+      webauthn::PasskeyModel::AnyRp(),
+      webauthn::PasskeyModel::ShadowedCredentials::kExclude);
+  ASSERT_THAT(passkeys, SizeIs(1));
+  sync_pb::WebauthnCredentialSpecifics_Encrypted decrypted;
+  EXPECT_TRUE(
+      webauthn::passkey_model_utils::DecryptWebauthnCredentialSpecificsData(
+          TestTrustedVaultKey(), passkeys[0], &decrypted));
+  EXPECT_EQ(decrypted.large_blob(), "large_blob");
+  EXPECT_EQ(decrypted.large_blob_uncompressed_size(), 100u);
+}
+
+TEST_F(CredentialImporterTest, ImportsPasskeyWithEmptyLargeBlob) {
+  CredentialExchangePasskey* passkey = CreateTestPasskey();
+  passkey.largeBlob = [NSData data];
+  passkey.largeBlobUncompressedSize = @(0);
+
+  [importer_ onCredentialsTranslatedWithPasswords:@[]
+                                         passkeys:@[ passkey ]
+                              exporterDisplayName:@""
+                                            stats:[[ImportStats alloc] init]];
+
+  FakePasskeyModelObserver observer(passkey_model_.get());
+
+  [importer_
+      startImportingCredentialsWithTrustedVaultKeys:{TestTrustedVaultKey()}];
+
+  ASSERT_TRUE(observer.WaitForPasskeysChanged());
+  ASSERT_FALSE(passkey_model_->IsEmpty());
+  auto passkeys = passkey_model_->GetPasskeys(
+      webauthn::PasskeyModel::AnyRp(),
+      webauthn::PasskeyModel::ShadowedCredentials::kExclude);
+  ASSERT_THAT(passkeys, SizeIs(1));
+  sync_pb::WebauthnCredentialSpecifics_Encrypted decrypted;
+  EXPECT_TRUE(
+      webauthn::passkey_model_utils::DecryptWebauthnCredentialSpecificsData(
+          TestTrustedVaultKey(), passkeys[0], &decrypted));
+  EXPECT_TRUE(decrypted.has_large_blob());
+  EXPECT_EQ(decrypted.large_blob(), "");
+  EXPECT_TRUE(decrypted.has_large_blob_uncompressed_size());
+  EXPECT_EQ(decrypted.large_blob_uncompressed_size(), 0u);
+}
+
+TEST_F(CredentialImporterTest, ConflictPasskeyPassesCreationDateToUI) {
+  // Add an existing passkey to trigger a conflict.
+  sync_pb::WebauthnCredentialSpecifics existing_passkey;
+  existing_passkey.set_sync_id(base::RandBytesAsString(16));
+  existing_passkey.set_credential_id(base::RandBytesAsString(16));
+  existing_passkey.set_rp_id("example.com");
+  existing_passkey.set_user_id("user_id");
+  passkey_model_->AddNewPasskeyForTesting(existing_passkey);
+
+  NSDate* creationDate = [NSDate dateWithTimeIntervalSince1970:1700000000];
+  CredentialExchangePasskey* passkey = CreateTestPasskey();
+  passkey.creationDate = creationDate;
+
+  [importer_ onCredentialsTranslatedWithPasswords:@[]
+                                         passkeys:@[ passkey ]
+                              exporterDisplayName:@""
+                                            stats:[[ImportStats alloc] init]];
+
+  __block base::test::TestFuture<NSArray<PasskeyImportItem*>*> future;
+  OCMExpect([importer_delegate_
+                showConflictResolutionScreenWithPasswords:[OCMArg any]
+                                                 passkeys:[OCMArg any]])
+      .andDo(^(NSInvocation* invocation) {
+        __unsafe_unretained NSArray<PasskeyImportItem*>* items = nil;
+        [invocation getArgument:&items atIndex:3];
+        future.SetValue(items);
+      });
+
+  [importer_
+      startImportingCredentialsWithTrustedVaultKeys:{TestTrustedVaultKey()}];
+
+  NSArray<PasskeyImportItem*>* items = future.Get();
+  ASSERT_EQ(items.count, 1u);
+  EXPECT_TRUE([items.firstObject.creationDate isEqualToDate:creationDate]);
+
+  EXPECT_OCMOCK_VERIFY(importer_delegate_);
 }
 
 TEST_F(CredentialImporterTest, DoesNotImportInvalidPassword) {
@@ -515,6 +615,8 @@ TEST_F(CredentialImporterFidoExtensionsDisabledTest,
   CredentialExchangePasskey* passkey = CreateTestPasskey();
   passkey.hmacSecret = ToNSData("01234567890123456789012345678901");
   passkey.hmacSecretAlgorithm = @"sha256";
+  passkey.largeBlob = ToNSData("large_blob_data");
+  passkey.largeBlobUncompressedSize = @(100);
 
   [importer_ onCredentialsTranslatedWithPasswords:@[]
                                          passkeys:@[ passkey ]
@@ -537,6 +639,8 @@ TEST_F(CredentialImporterFidoExtensionsDisabledTest,
       webauthn::passkey_model_utils::DecryptWebauthnCredentialSpecificsData(
           TestTrustedVaultKey(), passkeys[0], &decrypted));
   EXPECT_FALSE(decrypted.has_hmac_secret());
+  EXPECT_FALSE(decrypted.has_large_blob());
+  EXPECT_FALSE(decrypted.has_large_blob_uncompressed_size());
 }
 
 }  // namespace

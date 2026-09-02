@@ -297,13 +297,16 @@ void OnLocalStatePrefsLoaded();
 static const int kUpdateCheckIntervalHours = 6;
 #endif
 
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_OZONE)
-// How long to wait for the File thread to complete during EndSession, on Linux
-// and Windows. We have a timeout here because we're unable to run the UI
-// messageloop and there's some deadlock risk. Our only option is to exit
+// LINT.IfChange(EndSessionTimeout)
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_OZONE) || BUILDFLAG(IS_MAC)
+// How long to wait for the File thread to complete during EndSession on
+// Windows, Linux, and macOS. A timeout is used here because the UI message
+// loop cannot run and there is some deadlock risk. The only option is to exit
 // anyway.
+// Note: On macOS, shutdown_watchdog_mac.cc relies on this timeout budget.
 static constexpr base::TimeDelta kEndSessionTimeout = base::Seconds(10);
 #endif
+// LINT.ThenChange(//chrome/browser/shutdown_watchdog_mac.cc:EndSessionTimeout)
 
 using content::BrowserThread;
 using content::ChildProcessSecurityPolicy;
@@ -490,6 +493,14 @@ void BrowserProcessImpl::Init() {
       metrics::prefs::kMetricsReportingEnabled,
       base::BindRepeating(&metrics::ApplyMetricsReportingPolicy));
 
+#if !BUILDFLAG(IS_ANDROID)
+  pref_change_registrar_.Add(
+      prefs::kDevToolsRemoteDebuggingAllowed,
+      base::BindRepeating(
+          &BrowserProcessImpl::OnDevToolsRemoteDebuggingAllowedChanged,
+          base::Unretained(this)));
+#endif
+
 #if BUILDFLAG(IS_WIN)
   // If the user pref on disk differs from the actual trusted state, it means
   // either the registry was modified out-of-band, or the untrusted JSON was
@@ -522,10 +533,11 @@ void BrowserProcessImpl::Init() {
 #if BUILDFLAG(IS_ANDROID)
   webauthn::WebAuthnClientAndroid::SetClient(
       std::make_unique<ChromeWebAuthnClientAndroid>());
+#endif
+
   accessibility_prefs_controller_ =
       std::make_unique<accessibility::AccessibilityPrefsController>(
           local_state());
-#endif
 
 #if !BUILDFLAG(IS_ANDROID)
 #if BUILDFLAG(IS_CHROMEOS)
@@ -909,16 +921,17 @@ void BrowserProcessImpl::EndSession() {
   }
 #endif
 
-  // We must write that the profile and metrics service shutdown cleanly,
-  // otherwise on startup we'll think we crashed. So we block until done and
-  // then proceed with normal shutdown.
+  // The profile and metrics service must be recorded as shutting down cleanly,
+  // otherwise startup will treat it as a crash. The thread blocks until done
+  // and then proceeds with normal shutdown.
   //
   // If you change the condition here, be sure to also change
   // ProfileBrowserTests to match.
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_OZONE)
+  // LINT.IfChange(EndSessionPlatforms)
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_OZONE) || BUILDFLAG(IS_MAC)
   // Do a best-effort wait on the successful countdown of rundown tasks. Note
-  // that if we don't complete "quickly enough", Windows will terminate our
-  // process.
+  // that if shutdown does not complete quickly enough, the OS (Windows or
+  // macOS/launchd) will terminate the process.
   //
   // On Windows, we previously posted a message to FILE and then ran a nested
   // message loop, waiting for that message to be processed until quitting.
@@ -933,6 +946,7 @@ void BrowserProcessImpl::EndSession() {
 #else
   NOTIMPLEMENTED();
 #endif
+  // LINT.ThenChange(//chrome/browser/profiles/profile_browsertest.cc:EndSessionPlatforms)
 }
 
 metrics_services_manager::MetricsServicesManager*
@@ -1084,21 +1098,42 @@ void BrowserProcessImpl::CreateDevToolsProtocolHandler() {
     case RemoteDebuggingServer::NotStartedReason::kNotRequested:
       break;
     case RemoteDebuggingServer::NotStartedReason::kDisabledByPolicy:
-      UNSAFE_TODO(fputs(
-          "\nDevTools remote debugging is disallowed by the system admin.\n",
-          stderr));
+      fprintf(
+          stderr, "%s",
+          "\nDevTools remote debugging is disallowed by the system admin.\n");
       fflush(stderr);
       break;
     case RemoteDebuggingServer::NotStartedReason::kDisabledByDefaultUserDataDir:
-      UNSAFE_TODO(fputs(
+      fprintf(
+          stderr, "%s",
           "\nDevTools remote debugging requires a non-default data directory. "
-          "Specify this using --user-data-dir.\n",
-          stderr));
+          "Specify this using --user-data-dir.\n");
       fflush(stderr);
       break;
   }
 #endif
 }
+
+#if !BUILDFLAG(IS_ANDROID)
+void BrowserProcessImpl::OnDevToolsRemoteDebuggingAllowedChanged() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  // On policy change to disallowed, immediately shut down the server cancelling
+  // all active debugging sessions, while keeping listeners alive. Also clear
+  // the user preference so that when the policy is dynamically allowed again,
+  // the UI reflects the disabled state and an explicit user action is required
+  // to restart.
+  if (!local_state()->GetBoolean(prefs::kDevToolsRemoteDebuggingAllowed)) {
+    local_state()->ClearPref(prefs::kDevToolsRemoteDebuggingEnabled);
+    if (remote_debugging_server_) {
+      remote_debugging_server_->StopServer();
+      fprintf(
+          stderr, "%s",
+          "\nDevTools remote debugging is disallowed by the system admin.\n");
+      fflush(stderr);
+    }
+  }
+}
+#endif
 
 void BrowserProcessImpl::CreateDevToolsAutoOpener() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);

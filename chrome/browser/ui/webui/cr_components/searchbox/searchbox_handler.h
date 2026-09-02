@@ -187,8 +187,7 @@ class SearchboxHandler : public searchbox::mojom::PageHandler,
                    bool shift_key,
                    bool is_voice_search) override {}
   void OpenLensSearch() override {}
-  void SetActiveToolMode(omnibox::ToolMode tool,
-                         bool is_set_by_server) override {}
+  void SetActiveToolMode(omnibox::ToolMode tool, bool is_set_by_aim) override {}
   void RecordToolSelectionAction(omnibox::ToolMode tool) override {}
   void SetActiveModelMode(omnibox::ModelMode model,
                           bool is_set_by_aim) override {}
@@ -211,6 +210,8 @@ class SearchboxHandler : public searchbox::mojom::PageHandler,
   void GetSmartTabSharingActive(
       GetSmartTabSharingActiveCallback callback) override;
 #endif
+  void DismissFre() override {}
+  void OpenHotkeySettings() override {}
   void set_delegate(Delegate* delegate) { omnibox_delegate_ = delegate; }
 
  protected:
@@ -294,12 +295,16 @@ class SearchboxHandler : public searchbox::mojom::PageHandler,
       const omnibox::GroupConfigMap& suggestion_groups_map,
       const TemplateURLService* turl_service) const;
   virtual bool ShouldShowFirstContextualDescription() const;
-  virtual std::optional<searchbox::mojom::AutocompleteMatchPtr>
-  CreateAutocompleteMatch(const AutocompleteMatch& match,
-                          size_t line,
-                          bookmarks::BookmarkModel* bookmark_model,
-                          const omnibox::GroupConfigMap& suggestion_groups_map,
-                          const TemplateURLService* turl_service) const;
+  virtual bool SupportsKeywordMode() const;
+  virtual void OverrideIconPaths(
+      const AutocompleteMatch& match,
+      searchbox::mojom::AutocompleteMatch* mojom_match) const;
+  std::optional<searchbox::mojom::AutocompleteMatchPtr> CreateAutocompleteMatch(
+      const AutocompleteMatch& match,
+      size_t line,
+      bookmarks::BookmarkModel* bookmark_model,
+      const omnibox::GroupConfigMap& suggestion_groups_map,
+      const TemplateURLService* turl_service) const;
   virtual WindowOpenDisposition ComputeWindowOpenDisposition(
       uint8_t mouse_button,
       bool alt_key,

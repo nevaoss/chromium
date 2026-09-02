@@ -6,8 +6,10 @@
 
 #include <set>
 
+#include "base/files/scoped_temp_dir.h"
 #include "base/functional/callback_helpers.h"
 #include "base/test/scoped_feature_list.h"
+#include "base/test/scoped_path_override.h"
 #include "base/test/test_future.h"
 #include "build/build_config.h"
 #include "chrome/browser/global_features.h"
@@ -21,6 +23,7 @@
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/browser/ui/webui/top_chrome/webui_contents_wrapper.h"
 #include "chrome/common/chrome_constants.h"
+#include "chrome/common/chrome_paths.h"
 #include "chrome/test/base/testing_browser_process.h"
 #include "chrome/test/base/testing_profile.h"
 #include "chrome/test/base/testing_profile_manager.h"
@@ -31,6 +34,10 @@
 #include "components/search_engines/template_url_service.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/views/test/widget_activation_waiter.h"
+
+#if BUILDFLAG(IS_WIN)
+#include "base/base_paths_win.h"
+#endif
 
 namespace {
 
@@ -223,6 +230,69 @@ TEST_F(OmniboxEverywhereControllerTest, MAYBE_OnInvokePersistentModeToggling) {
   views::test::WaitForWidgetActive(widget, true);
   EXPECT_TRUE(controller.ui_manager()->IsActive());
   EXPECT_EQ(widget->GetZOrderLevel(), ui::ZOrderLevel::kNormal);
+}
+
+// Tests that calling Hide() directly on the controller deactivates the widget
+// while keeping it visible in persistent mode.
+#if BUILDFLAG(IS_WIN)
+#define MAYBE_HidePersistentMode HidePersistentMode
+#else
+#define MAYBE_HidePersistentMode DISABLED_HidePersistentMode
+#endif
+TEST_F(OmniboxEverywhereControllerTest, MAYBE_HidePersistentMode) {
+  TestingBrowserProcess::GetGlobal()->GetTestingLocalState()->SetBoolean(
+      omnibox_everywhere::prefs::kOmniboxEverywhereEphemeralModel, false);
+
+  FakeGlobalAcceleratorListener fake_listener;
+  omnibox_everywhere::OmniboxEverywhereController controller(
+      base::BindRepeating(
+          [](Profile* profile) -> std::unique_ptr<WebUIContentsWrapper> {
+            return std::make_unique<TestWebUIContentsWrapper>(profile);
+          }),
+      &fake_listener);
+
+  EXPECT_FALSE(controller.IsVisible());
+
+  controller.OnInvoke(omnibox_everywhere::InvocationSource::kGlobalHotkey,
+                      profile_.get(), GetContext());
+  EXPECT_TRUE(controller.IsVisible());
+  views::Widget* widget = controller.ui_manager()->widget();
+  ASSERT_TRUE(widget);
+  views::test::WaitForWidgetActive(widget, true);
+  EXPECT_TRUE(controller.ui_manager()->IsActive());
+
+  controller.Hide();
+  EXPECT_TRUE(controller.IsVisible());
+  EXPECT_FALSE(controller.ui_manager()->IsActive());
+  EXPECT_EQ(widget->GetZOrderLevel(), ui::ZOrderLevel::kNormal);
+}
+
+// Tests that calling Hide() directly on the controller closes the widget
+// in ephemeral mode.
+TEST_F(OmniboxEverywhereControllerTest, HideEphemeralMode) {
+  TestingBrowserProcess::GetGlobal()->GetTestingLocalState()->SetBoolean(
+      omnibox_everywhere::prefs::kOmniboxEverywhereEphemeralModel, true);
+
+  FakeGlobalAcceleratorListener fake_listener;
+  omnibox_everywhere::OmniboxEverywhereController controller(
+      base::BindRepeating(
+          [](Profile* profile) -> std::unique_ptr<WebUIContentsWrapper> {
+            return std::make_unique<TestWebUIContentsWrapper>(profile);
+          }),
+      &fake_listener);
+
+  EXPECT_FALSE(controller.IsVisible());
+
+  controller.OnInvoke(omnibox_everywhere::InvocationSource::kGlobalHotkey,
+                      profile_.get(), GetContext());
+  EXPECT_TRUE(controller.IsVisible());
+  views::Widget* widget = controller.ui_manager()->widget();
+  ASSERT_TRUE(widget);
+  views::test::WaitForWidgetActive(widget, true);
+  EXPECT_TRUE(controller.ui_manager()->IsActive());
+
+  controller.Hide();
+  EXPECT_FALSE(controller.IsVisible());
 }
 
 TEST_F(OmniboxEverywhereControllerTest, NonGoogleDseBlocksOnInvoke) {
@@ -672,12 +742,24 @@ TEST_F(OmniboxEverywhereControllerTest,
   EXPECT_TRUE(controller.IsVisible());
 }
 
+#if BUILDFLAG(IS_WIN)
 TEST_F(OmniboxEverywhereControllerTest, CreateStartMenuShortcut) {
+  base::ScopedTempDir user_data_dir;
+  ASSERT_TRUE(user_data_dir.CreateUniqueTempDir());
+  base::ScopedPathOverride user_data_override(chrome::DIR_USER_DATA,
+                                              user_data_dir.GetPath());
+
+  base::ScopedTempDir start_menu_dir;
+  ASSERT_TRUE(start_menu_dir.CreateUniqueTempDir());
+  base::ScopedPathOverride start_menu_override(base::DIR_START_MENU,
+                                               start_menu_dir.GetPath());
+
   omnibox_everywhere::OmniboxEverywhereController controller;
   base::test::TestFuture<bool> future;
   controller.CreateStartMenuShortcut(future.GetCallback());
-  EXPECT_FALSE(future.Get());
+  EXPECT_TRUE(future.Get());
 }
+#endif
 
 TEST_F(OmniboxEverywhereControllerTest, PinToTaskbar) {
   omnibox_everywhere::OmniboxEverywhereController controller;

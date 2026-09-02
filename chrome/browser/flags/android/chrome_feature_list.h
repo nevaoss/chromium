@@ -104,9 +104,9 @@ BASE_DECLARE_FEATURE(kBookmarksBarContextMenu);
 BASE_DECLARE_FEATURE(kBookmarksBarNTP);
 BASE_DECLARE_FEATURE(kBottomSheetAsBrowserControls);
 BASE_DECLARE_FEATURE(kBottomSheetOnDesktopWindowing);
-BASE_DECLARE_FEATURE(kBottomSheetTypes);
 BASE_DECLARE_FEATURE(kBrowserControlsDebugging);
 BASE_DECLARE_FEATURE(kBrowserControlsEarlyResize);
+BASE_DECLARE_FEATURE(kBrowserControlsHidingToken);
 BASE_DECLARE_FEATURE(kBrowserControlsPersistsOnCvh);
 BASE_DECLARE_FEATURE(kBrowserControlsRenderDrivenShowConstraint);
 BASE_DECLARE_FEATURE(kCCTAdaptiveButton);
@@ -172,7 +172,9 @@ BASE_DECLARE_FEATURE(kDefaultBrowserPromoEntryPoint);
 BASE_DECLARE_FEATURE(kDefaultBrowserPromoFre);
 BASE_DECLARE_FEATURE(kDeferNavigationStateChanged);
 BASE_DECLARE_FEATURE(kDesktopAndroidLinkCapturing);
+BASE_DECLARE_FEATURE(kDesktopAndroidTWADeleteBrowserData);
 BASE_DECLARE_FEATURE(kDesktopAndroidTWADisclosures);
+BASE_DECLARE_FEATURE(kDesktopAndroidTWADisclosuresHelpLink);
 BASE_DECLARE_FEATURE(kDesktopUAOnConnectedDisplay);
 BASE_DECLARE_FEATURE(kDeviceAuthenticatorAndroidx);
 BASE_DECLARE_FEATURE(kDisableGridTabSwitcher);
@@ -443,6 +445,11 @@ inline constexpr base::FeatureParam<bool> kTouchToSearchCalloutIph(
 inline constexpr base::FeatureParam<bool>
     kTouchToSearchCalloutSnippetAsSubtitle(&kTouchToSearchCallout,
                                            "snippet_as_subtitle",
+                                           /*default_value=*/false);
+
+inline constexpr base::FeatureParam<bool>
+    kXplatSyncedSetupThemesObservationOnly(&kXplatSyncedSetupThemes,
+                                           "observation_only",
                                            /*default_value=*/false);
 
 }  // namespace chrome::android

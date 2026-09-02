@@ -100,7 +100,11 @@ source_set("launch_utils") {
 
 source_set("impl") {
   sources = []
-  deps = [ "//chrome/browser/ui/browser_window:create_browser_window" ]
+  deps = [
+    "//chrome/browser/banners",
+    "//chrome/browser/ui:browser_window_state",
+    "//chrome/browser/ui/browser_window:create_browser_window",
+  ]
 
   if (!is_android) {
     sources += [ "web_app_dialog_utils.cc" ]
@@ -182,6 +186,7 @@ source_set("impl") {
       "//chrome/browser/ui/profiles",
       "//chrome/browser/ui/tabs:tab_menu",
       "//chrome/browser/ui/views/web_apps:web_app_blocked_migration_infobar_delegate",
+      "//chrome/browser/ui/window_feature_controller",
       "//chrome/browser/ui/window_metadata",
       "//chrome/browser/web_applications:features",
       "//chrome/browser/web_applications/app_service",
@@ -293,6 +298,7 @@ source_set("browser_tests") {
     "//chrome/browser/preloading:test_support",
     "//chrome/browser/shortcuts",
     "//chrome/browser/themes",
+    "//chrome/browser/ui:tab_ui_helper",
     "//chrome/browser/ui:ui_features",
     "//chrome/browser/ui/browser_ui_controller",
     "//chrome/browser/ui/browser_web_contents_delegate",

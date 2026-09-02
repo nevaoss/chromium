@@ -52,6 +52,7 @@
 #include "components/password_manager/core/browser/password_manager_test_utils.h"
 #include "components/password_manager/core/browser/password_store/password_form_converters.h"
 #include "components/password_manager/core/browser/password_store/password_store_interface.h"
+#include "components/password_manager/core/browser/password_string.h"
 #include "components/password_manager/core/common/password_manager_pref_names.h"
 #include "components/personal_context/core/mock_personal_context_eligibility_service.h"
 #include "components/personal_context/core/personal_context_prefs.h"
@@ -539,7 +540,7 @@ IN_PROC_BROWSER_TEST_P(PasswordManualFallbackTest,
   password_manager::PasswordStoreWaiter add_waiter(password_store);
   password_manager::PasswordForm existing_form;
   existing_form.username_value = u"username";
-  existing_form.password_value = u"password";
+  existing_form.password_value = password_manager::PasswordString(u"password");
   existing_form.signon_realm = "http://test.com";
   existing_form.url = GURL(existing_form.signon_realm);
   password_store->AddLogin(password_manager::FromPasswordForm(existing_form));
@@ -958,7 +959,7 @@ class SelectPasswordFallbackMetricsTest
     password_manager::PasswordStoreWaiter add_waiter(password_store);
     password_manager::PasswordForm form;
     form.username_value = u"username";
-    form.password_value = u"password";
+    form.password_value = password_manager::PasswordString(u"password");
     form.signon_realm = "http://example.com";
     form.url = GURL(form.signon_realm);
     password_store->AddLogin(password_manager::FromPasswordForm(form));
@@ -1069,8 +1070,8 @@ class AtMemoryContextMenuManagerTest
   base::test::ScopedFeatureList scoped_feature_list_;
 };
 
-// Checks if the context menu model contains the @memory manual fallback entries
-// with correct UI strings. `arg` must be of type `ui::SimpleMenuModel`.
+// Checks if the context menu model contains the AtMemory manual fallback
+// entries with correct UI strings. `arg` must be of type `ui::SimpleMenuModel`.
 testing::AssertionResult ContainsAtMemoryFallback(
     const ui::SimpleMenuModel& arg) {
   for (size_t i = 0; i < arg.GetItemCount(); i++) {
@@ -1108,7 +1109,7 @@ IN_PROC_BROWSER_TEST_F(AtMemoryContextMenuManagerTest,
   form.signon_realm = "http://test.com";
   form.url = GURL(form.signon_realm);
   form.username_value = u"username";
-  form.password_value = u"password";
+  form.password_value = password_manager::PasswordString(u"password");
   password_store->AddLogin(password_manager::FromPasswordForm(form));
   add_waiter.WaitOrReturn();
 
@@ -1152,7 +1153,8 @@ IN_PROC_BROWSER_TEST_F(AtMemoryContextMenuManagerTest,
   ASSERT_FALSE(ContainsAtMemoryFallback(*menu_model()));
 }
 
-// Checks if the context menu model contains ONLY @memory manual fallback entry.
+// Checks if the context menu model contains ONLY AtMemory manual fallback
+// entry.
 testing::AssertionResult ContainsOnlyAtMemoryFallback(
     const ui::SimpleMenuModel& arg) {
   if (arg.GetItemCount() != 2) {

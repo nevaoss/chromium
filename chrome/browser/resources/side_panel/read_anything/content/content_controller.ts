@@ -166,6 +166,14 @@ export class ContentController {
   // mapping for text selection via its index in this array.
   private renderedTextNodes_: Node[] = [];
 
+  constructor() {
+    this.contentBrowserProxy_.onImageDownloaded.addListener(
+        this.onImageDownloaded.bind(this));
+    this.contentBrowserProxy_.onNodeWillBeDeleted.addListener(
+        this.onNodeWillBeDeleted.bind(this));
+    this.contentBrowserProxy_.showEmpty.addListener(this.setEmpty.bind(this));
+  }
+
   getState(): ContentState {
     return this.currentState_;
   }
@@ -427,10 +435,6 @@ export class ContentController {
         this.mapBlockToAxNodes_(node, segments);
       }
     }
-
-    // After populating the NodeStore, trigger a selection update to synchronize
-    // any existing selection state.
-    this.contentBrowserProxy_.updateSelection();
   }
 
   private mapBlockToAxNodes_(node: Text, segments: Array<{

@@ -467,6 +467,23 @@ class ReadAnythingAppControllerTest : public ChromeRenderViewTest {
         is_pdf, is_docs, model().GetCurrentlyVisibleNodes());
   }
 
+  struct V8Environment {
+    explicit V8Environment(blink::WebLocalFrame* frame)
+        : isolate(frame->GetAgentGroupScheduler()->Isolate()),
+          handle_scope(isolate),
+          context(frame->MainWorldScriptContext()),
+          context_scope(context) {}
+
+    raw_ptr<v8::Isolate> isolate;
+    v8::HandleScope handle_scope;
+    v8::Local<v8::Context> context;
+    v8::Context::Scope context_scope;
+  };
+
+  std::unique_ptr<V8Environment> SetUpV8Environment() {
+    return std::make_unique<V8Environment>(GetMainFrame());
+  }
+
   static constexpr ui::AXNodeID kId1 = 2;
   static constexpr ui::AXNodeID kId2 = 3;
   static constexpr ui::AXNodeID kId3 = 4;
@@ -1920,6 +1937,73 @@ TEST_F(ReadAnythingAppControllerTest, IsOverline) {
   EXPECT_EQ(false, controller().IsOverline(3));
 }
 
+TEST_F(ReadAnythingAppControllerTest, GetTextDirection) {
+  ui::AXNodeData node1;
+  node1.id = 2;
+  node1.AddIntAttribute(
+      ax::mojom::IntAttribute::kTextDirection,
+      static_cast<int32_t>(ax::mojom::WritingDirection::kLtr));
+
+  ui::AXNodeData node2;
+  node2.id = 3;
+  node2.AddIntAttribute(
+      ax::mojom::IntAttribute::kTextDirection,
+      static_cast<int32_t>(ax::mojom::WritingDirection::kRtl));
+
+  ui::AXNodeData node3;
+  node3.id = 4;
+  node3.AddIntAttribute(
+      ax::mojom::IntAttribute::kTextDirection,
+      static_cast<int32_t>(ax::mojom::WritingDirection::kTtb));
+
+  ui::AXNodeData node4;
+  node4.id = 5;
+  node4.AddIntAttribute(
+      ax::mojom::IntAttribute::kTextDirection,
+      static_cast<int32_t>(ax::mojom::WritingDirection::kBtt));
+
+  ui::AXNodeData node5;
+  node5.id = 6;
+
+  ui::AXNodeData root;
+  root.id = 1;
+  root.child_ids = {node1.id, node2.id, node3.id, node4.id, node5.id};
+  SendUpdateWithNodes({std::move(root), std::move(node1), std::move(node2),
+                       std::move(node3), std::move(node4), std::move(node5)});
+
+  OnAXTreeDistilled(tree_id_, {});
+  EXPECT_EQ("ltr", controller().GetTextDirection(2));
+  EXPECT_EQ("rtl", controller().GetTextDirection(3));
+  EXPECT_EQ("auto", controller().GetTextDirection(4));
+  EXPECT_EQ("auto", controller().GetTextDirection(5));
+  EXPECT_EQ("", controller().GetTextDirection(6));
+}
+
+TEST_F(ReadAnythingAppControllerTest, GetLanguage) {
+  ui::AXNodeData node1;
+  node1.id = 2;
+  node1.AddStringAttribute(ax::mojom::StringAttribute::kLanguage, "en");
+
+  ui::AXNodeData node2;
+  node2.id = 3;
+  node2.AddStringAttribute(ax::mojom::StringAttribute::kLanguage, "es");
+
+  ui::AXNodeData node3;
+  node3.id = 4;
+
+  ui::AXNodeData root;
+  root.id = 1;
+  root.AddStringAttribute(ax::mojom::StringAttribute::kLanguage, "zh");
+  root.child_ids = {node1.id, node2.id, node3.id};
+  SendUpdateWithNodes(
+      {std::move(root), std::move(node1), std::move(node2), std::move(node3)});
+
+  ProcessDisplayNodes({2, 3, 4});
+  EXPECT_EQ("en", controller().GetLanguage(2));
+  EXPECT_EQ("es", controller().GetLanguage(3));
+  EXPECT_EQ("zh", controller().GetLanguage(4));
+}
+
 TEST_F(ReadAnythingAppControllerTest, IsLeafNode) {
   ui::AXNodeData node1;
   node1.id = 2;
@@ -2348,10 +2432,7 @@ TEST_F(ReadAnythingAppControllerTest, GetImageBitmap_ValidNode) {
   bitmap.allocN32Pixels(10, 10);
   controller().OnImageDataDownloaded(tree_id_, 2, bitmap);
 
-  v8::Isolate* isolate = GetMainFrame()->GetAgentGroupScheduler()->Isolate();
-  v8::HandleScope handle_scope(isolate);
-  v8::Local<v8::Context> context = GetMainFrame()->MainWorldScriptContext();
-  v8::Context::Scope context_scope(context);
+  auto v8_env = SetUpV8Environment();
 
   v8::Local<v8::Value> result = controller().GetImageBitmap(2);
   EXPECT_FALSE(result->IsUndefined());
@@ -5142,6 +5223,88 @@ TEST_F(
   EXPECT_TRUE(model().requires_post_process_selection());
 }
 
+TEST_F(ReadAnythingAppControllerReadabilityTest,
+       GetDomDistillerAnchors_ReturnsCorrectMapping) {
+  std::string url = "https://www.google.com";
+  std::string link_text = "Google Homepage";
+  std::string title_text = "Google Search Tooltip";
+  std::string text_before = "Visit ";
+  std::string text_after = " now.";
+
+  ui::AXNodeData text_prev;
+  text_prev.id = 2;
+  text_prev.role = ax::mojom::Role::kStaticText;
+  text_prev.SetName(text_before);
+
+  ui::AXNodeData link_node;
+  link_node.id = 3;
+  link_node.role = ax::mojom::Role::kLink;
+  link_node.SetName(link_text);
+  link_node.AddStringAttribute(ax::mojom::StringAttribute::kUrl, url);
+  link_node.AddStringAttribute(ax::mojom::StringAttribute::kHtmlId,
+                               "link-id-1");
+  link_node.AddStringAttribute(ax::mojom::StringAttribute::kLinkTarget,
+                               "_blank");
+  link_node.AddStringAttribute(ax::mojom::StringAttribute::kTooltip,
+                               title_text);
+
+  ui::AXNodeData text_next;
+  text_next.id = 4;
+  text_next.role = ax::mojom::Role::kStaticText;
+  text_next.SetName(text_after);
+
+  ui::AXNodeData root;
+  root.id = 1;
+  root.role = ax::mojom::Role::kRootWebArea;
+  root.child_ids = {text_prev.id, link_node.id, text_next.id};
+
+  SendUpdateWithNodes({std::move(root), std::move(text_prev),
+                       std::move(link_node), std::move(text_next)});
+  model().set_should_extract_anchors_from_tree_for_readability(true);
+  model().ProcessAXTreeAnchors();
+  auto v8_env = SetUpV8Environment();
+  v8::MicrotasksScope microtasks_scope(
+      v8_env->isolate, v8_env->context->GetMicrotaskQueue(),
+      v8::MicrotasksScope::kDoNotRunMicrotasks);
+
+  v8::Local<v8::Value> result = controller().GetDomDistillerAnchors();
+
+  // Verify that the result is a V8 object mapping URLs to arrays of anchor
+  // objects extracted from the active accessibility tree.
+  ASSERT_TRUE(result->IsObject());
+  v8::Local<v8::Object> result_obj = result.As<v8::Object>();
+  gin::Dictionary result_dict(v8_env->isolate, result_obj);
+  v8::Local<v8::Value> array_val;
+
+  // Verify that the object contains an entry for the anchor URL.
+  EXPECT_TRUE(result_dict.Get(url, &array_val));
+  ASSERT_TRUE(array_val->IsArray());
+  v8::Local<v8::Array> array = array_val.As<v8::Array>();
+  EXPECT_EQ(array->Length(), 1u);
+
+  // Verify that the link object properties match the AX node data.
+  v8::Local<v8::Value> item = array->Get(v8_env->context, 0).ToLocalChecked();
+  ASSERT_TRUE(item->IsObject());
+  v8::Local<v8::Object> link_obj = item.As<v8::Object>();
+  gin::Dictionary link_dict(v8_env->isolate, link_obj);
+  int axId;
+  EXPECT_TRUE(link_dict.Get("axId", &axId));
+  EXPECT_EQ(axId, 3);
+  std::string htmlId, target, title, text, textBefore, textAfter;
+  EXPECT_TRUE(link_dict.Get("htmlId", &htmlId));
+  EXPECT_EQ(htmlId, "link-id-1");
+  EXPECT_TRUE(link_dict.Get("target", &target));
+  EXPECT_EQ(target, "_blank");
+  EXPECT_TRUE(link_dict.Get("title", &title));
+  EXPECT_EQ(title, title_text);
+  EXPECT_TRUE(link_dict.Get("text", &text));
+  EXPECT_EQ(text, link_text);
+  EXPECT_TRUE(link_dict.Get("textBefore", &textBefore));
+  EXPECT_EQ(textBefore, text_before);
+  EXPECT_TRUE(link_dict.Get("textAfter", &textAfter));
+  EXPECT_EQ(textAfter, text_after);
+}
+
 TEST_F(ReadAnythingAppControllerScreen2xTest,
        AccessibilityReceivedAfterDistillingOnSameTree_DoesNotCrash) {
   std::vector<int> child_ids = SendSimpleUpdateAndGetChildIds();
@@ -5910,13 +6073,10 @@ TEST_F(ReadAnythingAppControllerReadabilitySelectTextTest,
 
   controller().OnRenderedTextBlocksAvailable({u"Hello world"});
 
-  v8::Isolate* isolate = GetMainFrame()->GetAgentGroupScheduler()->Isolate();
-  v8::HandleScope handle_scope(isolate);
-  v8::Local<v8::Context> context = GetMainFrame()->MainWorldScriptContext();
-  v8::Context::Scope context_scope(context);
+  auto v8_env = SetUpV8Environment();
 
   v8::MicrotasksScope microtasks_scope(
-      isolate, context->GetMicrotaskQueue(),
+      v8_env->isolate, v8_env->context->GetMicrotaskQueue(),
       v8::MicrotasksScope::kDoNotRunMicrotasks);
 
   v8::Local<v8::Value> result = controller().GetAXMapping(0);
@@ -5926,10 +6086,10 @@ TEST_F(ReadAnythingAppControllerReadabilitySelectTextTest,
   EXPECT_EQ(array->Length(), 1u);
 
   // Verify the dictionary contents
-  v8::Local<v8::Value> item = array->Get(context, 0).ToLocalChecked();
+  v8::Local<v8::Value> item = array->Get(v8_env->context, 0).ToLocalChecked();
   ASSERT_TRUE(item->IsObject());
   v8::Local<v8::Object> obj = item.As<v8::Object>();
-  gin::Dictionary dict(isolate, obj);
+  gin::Dictionary dict(v8_env->isolate, obj);
   int axNodeId, start, end, axNodeOffset;
   EXPECT_TRUE(dict.Get("axNodeId", &axNodeId));
   EXPECT_TRUE(dict.Get("start", &start));
@@ -6446,4 +6606,10 @@ TEST_F(ReadAnythingAppControllerTest,
 
   // Verify that node ID 2 WAS added to displayed_nodes_pending_deletion_.
   EXPECT_TRUE(IsNodePendingDeletion(2));
+}
+
+TEST_F(ReadAnythingAppControllerTest, ScreenAIServiceReady_UpdatesModel) {
+  EXPECT_FALSE(model().is_screen_ai_service_ready());
+  controller().ScreenAIServiceReady();
+  EXPECT_TRUE(model().is_screen_ai_service_ready());
 }

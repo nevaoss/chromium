@@ -7,7 +7,6 @@ package org.chromium.chrome.browser.sync.settings;
 import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.action.ViewActions.click;
 import static androidx.test.espresso.action.ViewActions.pressKey;
-import static androidx.test.espresso.action.ViewActions.replaceText;
 import static androidx.test.espresso.assertion.ViewAssertions.doesNotExist;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
 import static androidx.test.espresso.intent.Intents.intended;
@@ -18,7 +17,6 @@ import static androidx.test.espresso.matcher.ViewMatchers.hasFocus;
 import static androidx.test.espresso.matcher.ViewMatchers.hasSibling;
 import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
-import static androidx.test.espresso.matcher.ViewMatchers.withParent;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
 
 import static org.hamcrest.CoreMatchers.allOf;
@@ -30,7 +28,10 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import static org.chromium.components.browser_ui.widget.highlight.ViewHighlighterTestUtils.isHighlighted;
+import static org.chromium.chrome.browser.settings.SettingsSearchTestUtils.assertNoSearchResultsFound;
+import static org.chromium.chrome.browser.settings.SettingsSearchTestUtils.clickSearchResult;
+import static org.chromium.chrome.browser.settings.SettingsSearchTestUtils.highlighted;
+import static org.chromium.chrome.browser.settings.SettingsSearchTestUtils.typeSearchQuery;
 import static org.chromium.ui.test.util.ViewUtils.onViewWaiting;
 
 import static java.util.Map.entry;
@@ -405,6 +406,10 @@ public class ManageSyncSettingsTest {
     @Test
     @LargeTest
     @Feature({"Sync"})
+    @DisableFeatures({
+        SigninFeatures.SIGN_OUT_OF_CHROME,
+        SigninFeatures.SIGN_OUT_DELETES_BROWSING_DATA
+    })
     public void testPressingSignOut() {
         mSyncTestRule.setUpAccountAndSignInForTesting();
 
@@ -414,6 +419,27 @@ public class ManageSyncSettingsTest {
 
         onView(withId(R.id.recycler_view)).perform(RecyclerViewActions.scrollToLastPosition());
         onView(withId(R.id.sign_out_button)).perform(click());
+        Assert.assertNull(mSyncTestRule.getSigninTestRule().getPrimaryAccount());
+    }
+
+    @Test
+    @LargeTest
+    @Feature({"Sync"})
+    @EnableFeatures({
+        SigninFeatures.SIGN_OUT_OF_CHROME,
+        SigninFeatures.SIGN_OUT_DELETES_BROWSING_DATA
+    })
+    @Restriction(DeviceFormFactor.DESKTOP)
+    public void testPressingSignOut_desktopSignOut() {
+        mSyncTestRule.setUpAccountAndSignInForTesting();
+
+        Assert.assertNotNull(mSyncTestRule.getSigninTestRule().getPrimaryAccount());
+
+        startManageSyncPreferences();
+
+        onView(withId(R.id.recycler_view)).perform(RecyclerViewActions.scrollToLastPosition());
+        onView(withId(R.id.sign_out_button)).perform(click());
+        onView(withText(R.string.sign_out)).inRoot(isDialog()).perform(click());
         Assert.assertNull(mSyncTestRule.getSigninTestRule().getPrimaryAccount());
     }
 
@@ -1651,61 +1677,52 @@ public class ManageSyncSettingsTest {
 
     @Test
     @SmallTest
-    public void testSearchEncryption_signedIn() {
+    public void testSearchHistoryAndTabs_signedIn() {
         mSettingsSearchTestRule.startSettingsActivity();
         mSyncTestRule.setUpAccountAndSignInForTesting();
 
-        onView(withId(R.id.search_box)).perform(click());
-        onView(withId(R.id.search_query)).perform(replaceText("encryption"));
+        typeSearchQuery("history and tabs");
+        clickSearchResult(R.string.account_section_history_toggle);
 
-        onViewWaiting(allOf(withId(android.R.id.title), withText(R.string.sync_encryption)))
-                .perform(click());
-
-        onView(
-                        allOf(
-                                withText(R.string.account_settings_title),
-                                withParent(withId(R.id.action_bar))))
-                .check(matches(isDisplayed()));
-
-        onView(highlighted(withText(R.string.sync_encryption))).check(matches(isDisplayed()));
+        onView(highlighted(R.string.account_section_history_toggle)).check(matches(isDisplayed()));
     }
 
     @Test
     @SmallTest
-    public void testSearchPersonalizationAndLinking_signedIn() {
+    public void testSearchHistoryAndTabs_signedOut() {
+        mSettingsSearchTestRule.startSettingsActivity();
+
+        typeSearchQuery("history and tabs");
+
+        assertNoSearchResultsFound();
+    }
+
+    @Test
+    @SmallTest
+    public void testSearchPersonalizationAndLinkingTitle_signedIn_nonEea() {
+        when(mRegionalCapabilities.isInEeaCountry()).thenReturn(false);
         mSettingsSearchTestRule.startSettingsActivity();
         mSyncTestRule.setUpAccountAndSignInForTesting();
 
-        onView(withId(R.id.search_box)).perform(click());
-        onView(withId(R.id.search_query)).perform(replaceText("personalization"));
+        typeSearchQuery("personalization");
 
         onViewWaiting(withText(R.string.sign_in_personalize_google_services_title))
-                .perform(click());
-
-        onView(
-                        allOf(
-                                withText(R.string.account_settings_title),
-                                withParent(withId(R.id.action_bar))))
-                .check(matches(isDisplayed()));
-
-        onView(highlighted(withText(R.string.sign_in_personalize_google_services_title)))
                 .check(matches(isDisplayed()));
     }
 
     @Test
     @SmallTest
-    public void testSearchPersonalizationAndLinking_signedOut() {
+    public void testSearchPersonalizationAndLinkingTitle_signedIn_eea() {
+        when(mRegionalCapabilities.isInEeaCountry()).thenReturn(true);
         mSettingsSearchTestRule.startSettingsActivity();
+        mSyncTestRule.setUpAccountAndSignInForTesting();
 
-        onView(withId(R.id.search_box)).perform(click());
-        onView(withId(R.id.search_query)).perform(replaceText("personalization"));
+        typeSearchQuery("linking");
 
-        onViewWaiting(withText(R.string.search_in_settings_no_match)).check(matches(isDisplayed()));
+        onViewWaiting(withText(R.string.sign_in_personalize_google_services_title_eea))
+                .check(matches(isDisplayed()));
     }
 
-    private static Matcher<View> highlighted(Matcher<View> childMatcher) {
-        return allOf(hasDescendant(childMatcher), isHighlighted());
-    }
 
     private void assertOpensIncognitoSession(
             boolean openAsWindow, Matcher<Intent> expectedIntentMatcher) {

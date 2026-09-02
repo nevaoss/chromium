@@ -2722,7 +2722,7 @@ void View::AddLayerToRegionImpl(
 
   CreateOrDestroyLayer();
 
-  if (layer()->type() != ui::LAYER_SOLID_COLOR) {
+  if (!layer()->AsSolidColor()) {
     layer()->SetFillsBoundsOpaquely(false);
   }
 }
@@ -3824,7 +3824,7 @@ void View::ReparentLayer(ui::Layer* parent_layer) {
 void View::CreateMaskLayer() {
   DCHECK(layer());
   mask_layer_ = std::make_unique<views::ViewMaskLayer>(clip_path_, this);
-  layer()->SetMaskLayer(mask_layer_->layer());
+  layer()->SetMaskLayer(mask_layer_->layer()->AsTextured());
 }
 
 // Layout ----------------------------------------------------------------------

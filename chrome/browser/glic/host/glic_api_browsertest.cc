@@ -32,6 +32,7 @@
 #include "chrome/browser/glic/glic_pref_names.h"
 #include "chrome/browser/glic/glic_profile_manager.h"
 #include "chrome/browser/glic/glic_user_status_code.h"
+#include "chrome/browser/glic/glic_warming_checks.h"
 #include "chrome/browser/glic/host/auth_controller.h"
 #include "chrome/browser/glic/host/context/glic_tab_data.h"
 #include "chrome/browser/glic/host/context/glic_tab_favicon_observer.h"
@@ -39,6 +40,7 @@
 #include "chrome/browser/glic/host/glic_features.mojom-features.h"
 #include "chrome/browser/glic/host/glic_skills_manager.h"
 #include "chrome/browser/glic/host/glic_web_contents_warming_pool.h"
+#include "chrome/browser/glic/host/guest_util.h"
 #include "chrome/browser/glic/host/host.h"
 #include "chrome/browser/glic/host/webui_contents_container.h"
 #include "chrome/browser/glic/public/features.h"
@@ -75,6 +77,7 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
 #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
 #include "chrome/browser/ui/chrome_pages.h"
+#include "chrome/browser/ui/navigator/browser_navigator_params.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/common/chrome_switches.h"
 #include "chrome/common/webui_url_constants.h"
@@ -114,8 +117,10 @@
 #include "content/public/common/content_features.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
+#include "content/public/test/test_navigation_observer.h"
 #include "google_apis/gaia/gaia_auth_util.h"
 #include "mojo/public/cpp/base/big_buffer.h"
+#include "net/base/net_errors.h"
 #include "services/network/test/test_url_loader_factory.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "third_party/blink/public/common/features.h"
@@ -200,50 +205,6 @@ using ::testing::IsEmpty;
 using ::testing::Pair;
 using ::testing::UnorderedElementsAre;
 
-std::vector<std::string> GetTestSuiteNames() {
-  std::vector<std::string> names = {
-      "GlicApiTest",
-      "GlicApiTestNoFloatyOrLiveMode",
-      "GlicApiTestForNoWebUiLoader",
-      "GlicApiTestWithFastTimeout",
-      "GlicApiTestWithWebContentsWarming",
-      "GlicApiTestWithPixelOutput",
-      "GlicApiTestWithContextualCueing",
-      "GlicApiTestWithGeminiActOnWebPolicy",
-      "GlicApiMultiProfileTest",
-      "GlicApiTestWithDefaultTabContextDisabled",
-      "GlicApiTestWithBlankInstanceDelay",
-      "GlicApiTestWithDefaultTabContextEnabled",
-      "GlicApiTestWithWebActuationSettingDisabled",
-      "GlicApiTestWithWebActuationSettingEnabled",
-      "GlicApiTestWithProcessCounterAbuseVerdictDisabled",
-      "GlicApiScrollToTest",
-      "GlicApiTestWithExperimentalTriggeringScreenshot",
-      "GlicApiUnresponsiveTest",
-      "GlicApiTestGeminiEnterpriseSettingsOverride",
-      "GlicApiTestGeminiEnterpriseSettingsDisabled",
-      "GlicApiTestGeminiEnterpriseSettingsPolicy",
-      "GlicApiTestGeminiEnterpriseSettingsPolicyUnset",
-      "GlicApiTestWithMqlsIdGetterDisabled",
-      "GlicApiTestWithSkills",
-      "GlicApiTestWithSkillsDisabled",
-      "GlicApiTestWithMqlsIdGetterEnabled",
-      "GlicApiTestWithCachedUserProfile",
-      "GlicApiTestRuntimeFeatureOff",
-      "GlicOnboardingApiTest",
-      "GlicApiTestSystemSettingsTest",
-      "GlicGetHostCapabilityApiTest",
-      "GlicApiTestUserStatusCheckTest",
-      "GlicApiTestWithPixelOutput",
-      "GlicApiTestWithNewTabDaisyChain",
-#if !BUILDFLAG(IS_ANDROID)
-      "GlicApiTestWithFileUploadPolicyEnabled",
-#endif
-  };
-
-  return names;
-}
-
 std::string GlicTabId(tabs::TabHandle tab_handle) {
   return base::NumberToString(tab_handle.raw_value());
 }
@@ -316,7 +277,8 @@ class GlicApiTest : public GlicApiBrowserTest,
                     public WithTestParams,
                     public GlicApiTestPasskeys {
  public:
-  GlicApiTest() : GlicApiBrowserTest("./glic_api_browsertest.js") {
+  GlicApiTest()
+      : GlicApiBrowserTest(GlicTestJsPath("./glic_api_browsertest.js")) {
     embedded_test_server()->RegisterRequestHandler(
         base::BindRepeating(&SorryPageRequestHandler));
     scoped_vmodule_switches_.InitWithSwitches("*glic*=1");
@@ -672,7 +634,7 @@ class GlicOnboardingApiTest : public GlicApiTest {
   }
 
   void TearDownOnMainThread() override {
-    GlicProfileManager::ForceConnectionTypeForTesting(std::nullopt);
+    ForceConnectionTypeForTesting(std::nullopt);
     GlicApiTest::TearDownOnMainThread();
   }
 };
@@ -1153,7 +1115,7 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testGetZoomLevel) {
 
   // Zoom in and confirm that the observer is notified of the new state, i.e.
   // zoom level of 1.1.
-  instance->host().Zoom(mojom::ZoomAction::kZoomIn);
+  instance->host().Zoom(mojom::ZoomAction::kZoomIn, ZoomSource::kHotkey);
   ContinueJsTest();
 }
 
@@ -2661,8 +2623,10 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, MAYBE_testCreateTabByClickingOnLink) {
   AudioDucker* audio_ducker =
       AudioDucker::GetForPage(FindGlicGuestMainFrame()->GetPage());
   ASSERT_TRUE(audio_ducker);
-  ASSERT_EQ(audio_ducker->GetAudioDuckingState(),
-            AudioDucker::AudioDuckingState::kDucking);
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    return audio_ducker->GetAudioDuckingState() ==
+           AudioDucker::AudioDuckingState::kDucking;
+  }));
 #endif
 
   ContinueJsTest();
@@ -3087,7 +3051,13 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, MAYBE_testSorryPageBeforeInitialize) {
   });
 }
 
-IN_PROC_BROWSER_TEST_P(GlicApiTest, testSorryPageAfterInitialize) {
+#if defined(SLOW_BINARY)
+// Flaky on slow builds.
+#define MAYBE_testSorryPageAfterInitialize DISABLED_testSorryPageAfterInitialize
+#else
+#define MAYBE_testSorryPageAfterInitialize testSorryPageAfterInitialize
+#endif
+IN_PROC_BROWSER_TEST_P(GlicApiTest, MAYBE_testSorryPageAfterInitialize) {
   ASSERT_OK_AND_ASSIGN(auto* instance, OpenGlicForActiveTab());
   ExecuteJsTest({
       .params = base::Value(base::DictValue().Set(
@@ -3253,7 +3223,7 @@ class GlicGetHostCapabilityApiTest : public GlicApiBrowserTest,
                                      public GlicApiTestPasskeys {
  public:
   GlicGetHostCapabilityApiTest()
-      : GlicApiBrowserTest("./glic_api_browsertest.js") {
+      : GlicApiBrowserTest(GlicTestJsPath("./glic_api_browsertest.js")) {
     std::vector<base::test::FeatureRefAndParams> enabled_features = {
         {features::kGlic, {}},
         {features::kGlicProcessCounterAbuseVerdict, {}},
@@ -3332,6 +3302,11 @@ IN_PROC_BROWSER_TEST_P(GlicGetHostCapabilityApiTest, testGetHostCapabilities) {
   if (base::FeatureList::IsEnabled(features::kFedCmEmbedderInitiatedLogin)) {
     expected_capabilities.Append(
         std::to_underlying(mojom::HostCapability::kAutoLoginSignInWithGoogle));
+  }
+  if (base::FeatureList::IsEnabled(
+          features::kGlicActorAutofillOneTimePassword)) {
+    expected_capabilities.Append(
+        std::to_underlying(mojom::HostCapability::kAttemptOtpFilling));
   }
   if (base::FeatureList::IsEnabled(features::kGlicWebDragAndDropFileUpload)) {
     expected_capabilities.Append(
@@ -3454,10 +3429,11 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testInitializeFails) {
       histogram_tester.GetAllSamplesForPrefix("Glic.Fre.PanelWebUiState"),
       UnorderedElementsAre(
           Pair("Glic.Fre.PanelWebUiState",
-               BucketsAre(
-                   Bucket(1 /*kBeginLoad*/, 1), Bucket(2 /*kShowLoading*/, 1),
-                   Bucket(4 /*kFinishLoading*/, 1), Bucket(5 /*kError*/, 1),
-                   Bucket(13 /*kGuestError*/, 1))),
+               BucketsAre(Bucket(mojom::WebUiState::kBeginLoad, 1),
+                          Bucket(mojom::WebUiState::kShowLoading, 1),
+                          Bucket(mojom::WebUiState::kFinishLoading, 1),
+                          Bucket(mojom::WebUiState::kWarmed, 1),
+                          Bucket(mojom::WebUiState::kError, 1))),
           Pair("Glic.Fre.PanelWebUiState.Error",
                BucketsAre(Bucket(6 /*CLIENT_ERROR*/, 1)))));
 
@@ -3489,21 +3465,6 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testReloadWebUi) {
     return instance->host().GetPageHandlersForTesting().size() == 1;
   }));
   ASSERT_TRUE(instance->host().GetPrimaryPageHandlerForTesting());
-}
-
-// Checks that all tests in glic_api_browsertest.ts have a corresponding
-// test case in this file.
-// TODO(crbug.com/460826483): Enable on CrOS.
-// TODO(crbug.com/508123456): Enable on Android once all disabled createTab
-// tests are fixed and re-enabled.
-#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID)
-#define MAYBE_testAllTestsAreRegistered DISABLED_testAllTestsAreRegistered
-#else
-#define MAYBE_testAllTestsAreRegistered testAllTestsAreRegistered
-#endif
-IN_PROC_BROWSER_TEST_P(GlicApiTest, MAYBE_testAllTestsAreRegistered) {
-  ASSERT_OK(OpenGlicForActiveTab());
-  AssertAllTestsRegistered(GetTestSuiteNames());
 }
 
 IN_PROC_BROWSER_TEST_P(GlicApiTest, testDoNothing) {
@@ -3564,6 +3525,29 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testCookieSyncFails) {
 
   histogram_tester.ExpectBucketCount("Glic.PanelWebUiState.Error",
                                      2 /*COOKIE_SYNC_ERROR*/, 1);
+}
+
+IN_PROC_BROWSER_TEST_P(GlicApiTest, testUnallowedOriginNavigationBlocked) {
+  ASSERT_OK_AND_ASSIGN(auto* instance, OpenGlicForActiveTab());
+  ASSERT_OK(WaitForGlicClient(instance));
+
+  content::WebContents* guest_contents = instance->host().web_client_contents();
+  ASSERT_TRUE(guest_contents);
+  GURL initial_url = guest_contents->GetLastCommittedURL();
+
+  GURL unallowed_url =
+      embedded_test_server()->GetURL("b.com", "/test_data/page.html");
+
+  content::TestNavigationObserver observer(guest_contents);
+  ASSERT_TRUE(content::ExecJs(
+      guest_contents,
+      content::JsReplace("location.href = $1;", unallowed_url.spec())));
+  observer.Wait();
+
+  EXPECT_FALSE(observer.last_navigation_succeeded());
+  EXPECT_EQ(initial_url, guest_contents->GetLastCommittedURL());
+  // The client should still be connected, as no navigation took place.
+  ASSERT_OK(WaitForGlicClient(instance));
 }
 
 IN_PROC_BROWSER_TEST_P(GlicApiTest, testGetUserProfileInfo) {

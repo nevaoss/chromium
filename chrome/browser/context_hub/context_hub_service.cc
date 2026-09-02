@@ -8,6 +8,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 #include "base/barrier_callback.h"
 #include "base/check_deref.h"
@@ -152,6 +153,9 @@ ThirdPartyData::GroupType ToThirdPartyGroupType(
     case optimization_guide::proto::BrowserBasedTodosResponse::
         GROUP_TYPE_UNFINISHED:
       return ThirdPartyData::GroupType::kUnfinishedAction;
+    case optimization_guide::proto::BrowserBasedTodosResponse::
+        GROUP_TYPE_SHOPPING_CART:
+      return ThirdPartyData::GroupType::kShoppingCart;
     case optimization_guide::proto::BrowserBasedTodosResponse::
         GROUP_TYPE_UNSPECIFIED:
     default:
@@ -467,21 +471,19 @@ void ContextHubService::OnAllAutoTodosFetchedForTabBasedTodos(
     if (tab->GetVisibility() == content::Visibility::VISIBLE) {
       continue;
     }
-    // Only consider tabs that haven't been active in the last
-    // kTabBasedTodosInactivityThreshold.
-    // TODO(crbug.com/543502228): Also include tabs that the user may have
-    // clicked but were not in the foreground for long enough to be considered
-    // used.
-    if (!tab->GetLastActiveTime().is_null() &&
-        (base::Time::Now() - tab->GetLastActiveTime()) >
-            features::kTabBasedTodosInactivityThreshold.Get()) {
-      SessionID session_id = sessions::SessionTabHelper::IdForTab(tab.get());
-      int64_t tab_id = session_id.is_valid() ? session_id.id() : -1;
-      if (tab_id != -1 && cached_tab_ids.contains(tab_id)) {
-        continue;
-      }
-      eligible_tabs.push_back(std::move(tab));
+    // Only consider tabs that have a valid last active time.
+    // All tabs are sent to the model and filtered out by varying time
+    // thresholds based on group type. This will be simplified in the future to
+    // a lightweight pre-classifier.
+    if (tab->GetLastActiveTime() <= base::Time::UnixEpoch()) {
+      continue;
     }
+    SessionID session_id = sessions::SessionTabHelper::IdForTab(tab.get());
+    int64_t tab_id = session_id.is_valid() ? session_id.id() : -1;
+    if (tab_id != -1 && cached_tab_ids.contains(tab_id)) {
+      continue;
+    }
+    eligible_tabs.push_back(std::move(tab));
   }
 
   if (eligible_tabs.empty()) {
@@ -537,8 +539,8 @@ void ContextHubService::OnTabContextsFetched(
 
   // Add all eligible tabs to the pending MES requests queue.
   for (auto& [tab, page_context] : tab_contexts) {
-    if (tab.id != -1 && tab.url.is_valid() && !tab.last_active_time.is_null() &&
-        page_context) {
+    if (tab.id != -1 && tab.url.is_valid() &&
+        tab.last_active_time > base::Time::UnixEpoch() && page_context) {
       pending_tab_todos_requests_.emplace(std::move(tab),
                                           std::move(*page_context));
     }
@@ -582,6 +584,10 @@ void ContextHubService::ProcessNextTabBasedTodosMesBatch() {
     tab_proto->set_url(tab.url.spec());
     tab_proto->set_last_active_timestamp_ms(
         tab.last_active_time.InMillisecondsSinceUnixEpoch());
+    if (tab.last_foreground_duration.is_positive()) {
+      tab_proto->set_last_foreground_duration_ms(
+          tab.last_foreground_duration.InMilliseconds());
+    }
     *tab_proto->mutable_page_context() = std::move(page_context);
 
     int64_t tab_id = tab.id;
@@ -830,6 +836,17 @@ void ContextHubService::SaveMemoryBankEntry(
   memory_bank_->SaveMemoryBankEntry(std::move(entry), std::move(callback));
 }
 
+void ContextHubService::UpdateMemoryBankEntryAnnotations(
+    int64_t id,
+    std::vector<std::string> tags,
+    std::optional<std::string> note,
+    std::optional<std::string> collection,
+    MemoryBank::OperationCompleteCallback callback) {
+  memory_bank_->UpdateEntryAnnotations(id, std::move(tags), std::move(note),
+                                       std::move(collection),
+                                       std::move(callback));
+}
+
 void ContextHubService::DeleteEntries(
     base::span<const int64_t> ids,
     MemoryBank::OperationCompleteCallback callback) {
@@ -845,6 +862,16 @@ void ContextHubService::GetEntriesByIds(
     base::span<const int64_t> ids,
     MemoryBank::GetEntriesCallback callback) const {
   memory_bank_->GetEntriesByIds(ids, std::move(callback));
+}
+
+void ContextHubService::GetAllMemoryBankTags(
+    MemoryBank::GetStringsCallback callback) const {
+  memory_bank_->GetAllTags(std::move(callback));
+}
+
+void ContextHubService::GetAllMemoryBankCollections(
+    MemoryBank::GetStringsCallback callback) const {
+  memory_bank_->GetAllCollections(std::move(callback));
 }
 
 void ContextHubService::GetTabGroups(GetTabGroupsCallback callback) const {
@@ -907,7 +934,17 @@ void ContextHubService::OnAllTabGroupsFetchedForConfirmation(
 
 std::vector<TabGroupEntry>
 ContextHubService::GetConfirmedTabGroups() const {
-  return FromSavedTabGroups(tab_group_sync_service_->GetAllGroups());
+  std::vector<tab_groups::SavedTabGroup> groups =
+      tab_group_sync_service_->GetAllGroups();
+  // Filter out closed or remotely synced tab groups that do not have active
+  // tabs open in any browser window.
+  std::erase_if(groups, [](const tab_groups::SavedTabGroup& group) {
+    return !group.local_group_id().has_value() ||
+           !std::ranges::any_of(group.saved_tabs(), [](const auto& tab) {
+             return tab.local_tab_id().has_value();
+           });
+  });
+  return FromSavedTabGroups(groups);
 }
 
 std::optional<TabGroupEntry>

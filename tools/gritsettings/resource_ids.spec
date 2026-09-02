@@ -548,6 +548,10 @@
     "META": {"sizes": {"includes": [20],}},
     "includes": [4000],
   },
+  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/geic/resources.grd": {
+    "META": {"sizes": {"includes": [5]}},
+    "includes": [4005],
+  },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/glic/resources.grd": {
     "META": {"sizes": {"includes": [60]}},
     "includes": [4010],
@@ -597,7 +601,7 @@
     "includes": [4110],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/iwa_dev/resources.grd": {
-    "META": {"sizes": {"includes": [20]}},
+    "META": {"sizes": {"includes": [25]}},
     "includes": [4150],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/key_value_pair_viewer_shared/resources.grd": {
@@ -699,6 +703,10 @@
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/organizer_panel/resources.grd": {
     "META": {"sizes": {"includes": [50]}},
     "includes": [4515],
+  },
+  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/page_action_internals/resources.grd": {
+    "META": {"sizes": {"includes": [10]}},
+    "includes": [4518],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/password_manager/resources.grd": {
     "META": {"sizes": {"includes": [200]}},
@@ -946,10 +954,6 @@
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/ttc/resources/resources.grd": {
     "META": {"sizes": {"includes": [30]}},
     "includes": [5370],
-  },
-  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/geic/resources.grd": {
-    "META": {"sizes": {"includes": [20]}},
-    "includes": [5400],
   },
   # END chrome/ WebUI resources section
 

@@ -181,7 +181,7 @@ import org.chromium.chrome.browser.search_engines.choice_screen.ChoiceDialogCoor
 import org.chromium.chrome.browser.selection.ChromeSelectionDropdownMenuDelegate;
 import org.chromium.chrome.browser.share.ShareDelegate;
 import org.chromium.chrome.browser.share.link_to_text.LinkToTextIphController;
-import org.chromium.chrome.browser.share.send_tab_to_self.SendTabToSelfCoordinator;
+import org.chromium.chrome.browser.share.send_tab_to_self.SendTabToSelfOmniboxIphController;
 import org.chromium.chrome.browser.signin.SigninAndHistorySyncActivityLauncherImpl;
 import org.chromium.chrome.browser.signin.services.IdentityServicesProvider;
 import org.chromium.chrome.browser.status_indicator.StatusIndicatorCoordinator;
@@ -345,6 +345,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
             mOfflineIndicatorInProductHelpController;
     private @Nullable ReadAloudIphController mReadAloudIphController;
     private @Nullable ReadLaterIphController mReadLaterIphController;
+    private @Nullable SendTabToSelfOmniboxIphController mSendTabToSelfOmniboxIphController;
     private @Nullable DesktopSiteSettingsIphController mDesktopSiteSettingsIphController;
     private @Nullable PdfPageIphController mPdfPageIphController;
     private @Nullable UrlFocusChangeListener mUrlFocusChangeListener;
@@ -404,6 +405,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
     private final OneshotSupplierImpl<SideUiStateProvider> mSideUiStateProviderSupplier =
             new OneshotSupplierImpl<>();
     private @Nullable ViewMarginAdjusterForSideUi mSecondaryUiContainerMarginAdjuster;
+    private @Nullable ViewMarginAdjusterForSideUi mSheetContainerMarginAdjuster;
     private @Nullable ContextualTasksBridge mContextualTasksBridge;
     private @Nullable GlicUiCoordinator mGlicUiCoordinator;
     private @Nullable ForcedSigninController mForcedSigninController;
@@ -492,6 +494,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
      * @param tabProvider The {@link ActivityTabProvider} to get current tab of the activity.
      * @param profileSupplier Supplier of the currently applicable profile.
      * @param bookmarkModelSupplier Supplier of the bookmark bridge for the current profile.
+     * @param tabBookmarkerSupplier Supplier to trigger tab bookmarking workflows.
      * @param tabModelSelectorSupplier Supplies the {@link TabModelSelector}.
      * @param tabSwitcherSupplier Supplier of the {@link TabSwitcher}.
      * @param incognitoTabSwitcherSupplier Supplier of the incognito {@link TabSwitcher}.
@@ -500,6 +503,8 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
      * @param layoutStateProviderOneshotSupplier Supplier of the {@link LayoutStateProvider}.
      * @param browserControlsManager Manages the browser controls.
      * @param windowAndroid The current {@link WindowAndroid}.
+     * @param activityResultTracker Tracker dispatching activity result callbacks.
+     * @param chromeAndroidTaskSupplier Supplier for root multi-instance task coordination.
      * @param activityLifecycleDispatcher Allows observation of the activity lifecycle.
      * @param layoutManagerSupplier Supplies the {@link LayoutManager}.
      * @param menuOrKeyboardActionController Controls the menu or keyboard action controller.
@@ -510,7 +515,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
      * @param tabCreatorManagerSupplier Supplies the {@link TabCreatorManager}.
      * @param fullscreenManager Manages the fullscreen state.
      * @param compositorViewHolderSupplier Supplies the {@link CompositorViewHolder}.
-     * @param tabContentManagerSupplier Supplies the {@link TabContentManager}.
+     * @param tabContentManagerSupplier Supplier of the manager providing tab thumbnail snapshots.
      * @param snackbarManagerSupplier Supplies the {@link SnackbarManager}.
      * @param edgeToEdgeSupplier Supplies the {@link EdgeToEdgeController}.
      * @param topInsetProvider The {@link TopInsetProvider} instance.
@@ -538,7 +543,10 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
      * @param bookmarkManagerOpenerSupplier Supplies {@link BookmarkManagerOpener}.
      * @param xrSpaceModeObservableSupplier Supplies current XR space mode status. True for XR full
      *     space mode, false otherwise.
+     * @param inactivityTrackerSupplier Supplier tracking background and inactive duration.
+     * @param bottomBarHostManager Manager hosting and sizing the bottom bar container.
      * @param verticalTabsActionDelegate Delegate to handle actions from the vertical tabs UI.
+     * @param urlBarVisibleSupplier Supplier indicating if the omnibox URL bar is visible.
      */
     public TabbedRootUiCoordinator(
             AppCompatActivity activity,
@@ -851,6 +859,11 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
 
         if (mReadAloudIphController != null) {
             mReadAloudIphController.destroy();
+        }
+
+        if (mSendTabToSelfOmniboxIphController != null) {
+            mSendTabToSelfOmniboxIphController.destroy();
+            mSendTabToSelfOmniboxIphController = null;
         }
 
         if (mRootUiTabObserver != null) mRootUiTabObserver.destroy();
@@ -1606,6 +1619,12 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                         profile,
                         menuButtonView,
                         mAppMenuCoordinator.getAppMenuHandler());
+        mSendTabToSelfOmniboxIphController =
+                new SendTabToSelfOmniboxIphController(
+                        mActivity,
+                        profile,
+                        mActivityTabProvider,
+                        toolbarManager.getLocationBar().getContainerView());
         mReaderModeIphControllerSupplier.set(
                 new ReaderModeIphController(
                         mActivity,
@@ -1628,13 +1647,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         } else {
             mToolbarButtonInProductHelpController.showColdStartIph();
             mReadLaterIphController.showColdStartIph();
-            SendTabToSelfCoordinator.maybeShowOmniboxIphOnStartup(
-                    mActivity,
-                    profile,
-                    mActivityTabProvider.get(),
-                    toolbarManager.getLocationBar() == null
-                            ? null
-                            : toolbarManager.getLocationBar().getContainerView());
+            mSendTabToSelfOmniboxIphController.maybeShowIph();
             String featureName = null;
             int stringId = 0;
             int menuId = 0;
@@ -2271,14 +2284,6 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         ViewStub webContentHairlineContainerStub =
                 mActivity.findViewById(R.id.side_ui_web_content_hairline_container_stub);
 
-        NonNullObservableSupplier<Integer> stripBottomPxSupplier = null;
-        assumeNonNull(mLayoutManager);
-        StripLayoutHelperManager stripLayoutHelperManager =
-                mLayoutManager.getStripLayoutHelperManager();
-        if (stripLayoutHelperManager != null) {
-            stripBottomPxSupplier = stripLayoutHelperManager.getStripBottomPxSupplier();
-        }
-
         if (ChromeFeatureList.sTabSearchForDesktop.isEnabled()) {
             mTabSearchOverlayCoordinator =
                     new TabSearchOverlayCoordinator(
@@ -2294,7 +2299,8 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                             mCompositorViewHolderSupplier,
                             mTabGroupUiActionHandlerSupplier,
                             getDesktopWindowStateManager(),
-                            mTabObscuringHandlerSupplier.get());
+                            mTabObscuringHandlerSupplier.get(),
+                            mToolbarManager);
         }
 
         mSideUiCoordinator =
@@ -2309,7 +2315,6 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                         sideUiStartAnchorContainerStub,
                         sideUiEndAnchorContainerStub,
                         webContentHairlineContainerStub,
-                        stripBottomPxSupplier,
                         mIncognitoStateProvider);
         if (mSideUiCoordinator == null) {
             return;
@@ -2341,7 +2346,6 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                     new VerticalTabsSideUiCoordinator(
                             mActivity,
                             mSideUiCoordinator,
-                            mBrowserControlsManager.getBrowserVisibilityDelegate(),
                             new VerticalTabListCoordinator(
                                     mActivity,
                                     assumeNonNull(mTabModelSelectorSupplier.get()),
@@ -2359,6 +2363,8 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                                     canActivateTabLayoutToggleMenu(),
                                     mActivity.findViewById(
                                             R.id.vertical_tab_hover_card_holder_stub),
+                                    mActivity.findViewById(
+                                            R.id.vertical_tab_group_hover_card_holder_stub),
                                     mTabContentManagerSupplier,
                                     mUndoGroupSnackbarController),
                             mIsVerticalTabsActiveSupplier);
@@ -2388,6 +2394,12 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         View secondaryUiContainer = mActivity.findViewById(R.id.secondary_ui_container);
         mSecondaryUiContainerMarginAdjuster = new ViewMarginAdjusterForSideUi(secondaryUiContainer);
         mSideUiCoordinator.addObserver(mSecondaryUiContainerMarginAdjuster);
+
+        View sheetContainer = mActivity.findViewById(R.id.sheet_container);
+        if (sheetContainer != null) {
+            mSheetContainerMarginAdjuster = new ViewMarginAdjusterForSideUi(sheetContainer);
+            mSideUiCoordinator.addObserver(mSheetContainerMarginAdjuster);
+        }
     }
 
     @SuppressWarnings("UseSharedPreferencesManagerFromChromeCheck")
@@ -2605,6 +2617,9 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
             if (mSecondaryUiContainerMarginAdjuster != null) {
                 mSideUiCoordinator.removeObserver(mSecondaryUiContainerMarginAdjuster);
             }
+            if (mSheetContainerMarginAdjuster != null) {
+                mSideUiCoordinator.removeObserver(mSheetContainerMarginAdjuster);
+            }
             mSideUiCoordinator.destroy();
             mSideUiCoordinator = null;
         }
@@ -2702,6 +2717,8 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
      * suggestions to enable features, prefer adding them to {@link #maybeShowPromo}, which can be
      * skipped via command line, prefs or other Chrome state.
      *
+     * @param profile The current active profile.
+     * @param intentWithEffect Whether the launching intent had an effect.
      * @return whether a prompt or promo is actually displayed.
      */
     private boolean maybeShowRequiredPromptsAndPromos(Profile profile, boolean intentWithEffect) {
@@ -2977,7 +2994,10 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
     public boolean handleMenuOrKeyboardAction(int id, boolean fromMenu) {
         if (super.handleMenuOrKeyboardAction(id, fromMenu)) return true;
         if (id == R.id.switch_keyboard_focus_row) {
-            mKeyboardFocusRowManager.onKeyboardFocusRowSwitch();
+            mKeyboardFocusRowManager.onKeyboardFocusRowSwitch(/* forward= */ true);
+            return true;
+        } else if (id == R.id.switch_keyboard_focus_row_reverse) {
+            mKeyboardFocusRowManager.onKeyboardFocusRowSwitch(/* forward= */ false);
             return true;
         } else if (id == R.id.open_tab_strip_context_menu) {
             if (mVerticalTabsSideUiCoordinator != null
@@ -3209,6 +3229,11 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
     @Override
     public OneshotSupplier<SideUiStateProvider> getSideUiStateProviderSupplier() {
         return mSideUiStateProviderSupplier;
+    }
+
+    @Override
+    protected @Nullable OneshotSupplier<HubManager> getHubManagerSupplier() {
+        return mHubManagerSupplier;
     }
 
     /**

@@ -7,9 +7,9 @@
 #include "base/test/scoped_feature_list.h"
 #include "chrome/browser/preloading/preloading_features.h"
 #include "chrome/browser/preloading/prerender/prerender_manager.h"
-#include "chrome/browser/preloading/prerender/search_prewarm_progress_service.h"
-#include "chrome/browser/preloading/prerender/search_prewarm_progress_service_factory.h"
-#include "chrome/browser/preloading/prerender/search_prewarm_progress_test_utils.h"
+#include "chrome/browser/preloading/prerender/search_preload_progress_service.h"
+#include "chrome/browser/preloading/prerender/search_preload_progress_service_factory.h"
+#include "chrome/browser/preloading/prerender/search_preload_progress_test_utils.h"
 #include "chrome/browser/preloading/scoped_prewarm_feature_list.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/search_engines/template_url_service_factory.h"
@@ -77,12 +77,15 @@ class DSEPrewarmNavigationThrottleBrowserTest : public PlatformBrowserTest {
 IN_PROC_BROWSER_TEST_F(DSEPrewarmNavigationThrottleBrowserTest,
                        DISABLED_ThrottleSearchNavigationDuringPrewarm) {
   auto* profile = GetProfile();
-  auto* service = SearchPrewarmProgressServiceFactory::GetForProfile(profile);
+  auto* service = SearchPreloadProgressServiceFactory::GetForProfile(profile);
   ASSERT_TRUE(service);
   EXPECT_FALSE(service->HasOnGoingSearchPrewarm());
 
   GURL search_url = embedded_test_server()->GetURL("search.example.com",
                                                    "/title1.html?q=test");
+
+  ASSERT_TRUE(content::NavigateToURL(
+      GetWebContents(), embedded_test_server()->GetURL("/empty.html")));
 
   // When prewarm is not ongoing, navigation proceeds without being deferred.
   {

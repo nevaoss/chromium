@@ -619,6 +619,11 @@
       status: "stable",
     },
     {
+      // https://issues.chromium.org/issues/546237331
+      name: "AnimationRangeRejectRelativeLengths",
+      status: "experimental",
+    },
+    {
       // https://drafts.csswg.org/web-animations-2/#triggers
       name: "AnimationTrigger",
       status: "stable",
@@ -735,6 +740,12 @@
     },
     {
       name: "AudioVideoTracks",
+      status: "experimental",
+    },
+    {
+      // Shared MessagePort between AudioWorklet and AudioWorkletGlobalScope.
+      // https://chromestatus.com/feature/5079784523694080
+      name: "AudioWorkletSharedPort",
       status: "experimental",
     },
     {
@@ -1091,6 +1102,14 @@
       status: {"Android": "", "default": "stable"},
     },
     {
+      // Keeps the caret outside an editable atomic inline - e.g.
+      // <div contenteditable style="display:inline-block"> - for a click that
+      // landed next to the box rather than on it.
+      // https://crbug.com/40780191
+      name: "CaretOutsideEditableAtomicInline",
+      status: "stable",
+    },
+    {
       // Kill switch for changes to RenderFrameMetadataObserverImpl in connection with Engagement
       // Signals. See https://crrev.com/c/4544201 and https://crbug.com/1458640.
       name: "CCTNewRFMPushBehavior",
@@ -1310,22 +1329,15 @@
       status: "experimental",
     },
     {
-      // Enables Connection-Allowlist embedded enforcement: the
-      // `connectionallowlist` iframe content attribute (and its
-      // `connectionAllowlist` IDL reflection), by which an embedder requires a
-      // Connection-Allowlist of the document it frames. Kept separate from the
-      // `ConnectionAllowlist` feature so this in-development piece can iterate
-      // independently. See
-      // https://github.com/WICG/connection-allowlists/issues/1.
-      //
-      // Has its own `origin_trial_feature_name` so the `connectionAllowlist` IDL
-      // reflection can gate on this feature directly: that makes the Web IDL
-      // bindings generator treat it as context-dependent and emit the
-      // context-aware accessor, so the property is exposed only when embedded
-      // enforcement is actually available -- not merely when the base
-      // `ConnectionAllowlist` origin trial is enabled.
+      // Connection-Allowlist embedded enforcement: the `connectionallowlist`
+      // iframe attribute, by which an embedder requires a Connection-Allowlist
+      // of the document it frames. `base_feature_status` and
+      // `copied_from_base_feature_if` give the origin trial a Finch kill
+      // switch. See https://github.com/WICG/connection-allowlists/issues/1.
       name: "ConnectionAllowlistEmbeddedEnforcement",
       origin_trial_feature_name: "ConnectionAllowlistEmbeddedEnforcement",
+      base_feature_status: "enabled",
+      copied_from_base_feature_if: "overridden",
       status: "experimental",
     },
     {
@@ -2364,11 +2376,7 @@
       // Android P+.
       status: { "Android": "stable" },
     },
-    {
-      // https://chromestatus.com/feature/5067126381215744
-      name: "DocumentActiveViewTransition",
-      status: "stable",
-    },
+
     {
       name: "DocumentCookie",
     },
@@ -3243,7 +3251,7 @@
       // rejected with the reason provided to the abort controller, if one was
       // provided. See crbug.com/502133195
       name: "ForwardReasonToFetchBodyAbort",
-      status: "experimental",
+      status: "stable",
     },
     {
       name: "FractionalScrollOffsets",
@@ -4201,8 +4209,8 @@
       implied_by: ["SoftNavigationHeuristics"],
     },
     {
-      // NavigationState class and the :nav-source CSS pseudo-class.
-      name: "NavigationState",
+      // NavigationState class and the :navigation-source CSS pseudo-class.
+      name: "NavigationSourcePseudoClass",
       status: "experimental",
       implied_by: ["RouteMatching"],
     },
@@ -5150,7 +5158,7 @@
     },
     {
       name: "ResponsiveIframes",
-      status: "experimental",
+      status: "stable",
     },
     {
       name: "RestrictGamepadAccess",
@@ -6242,6 +6250,11 @@
       status: "stable",
     },
     {
+      // Kill switch for crbug.com/514953511.
+      name: "TextBoxTrimOnInlineBox",
+      status: "stable",
+    },
+    {
       name: "TextDetector",
       status: "experimental",
     },
@@ -6328,10 +6341,6 @@
       status: "stable",
     },
     {
-      name: "ThrottledHistoryAPIThrowsSecurityError",
-      status: "test",
-    },
-    {
       // https://drafts.csswg.org/web-animations-2/#triggers
       name: "TimelineTrigger",
       status: "stable",
@@ -6409,16 +6418,7 @@
       name: "TransferableRTCDataChannel",
       status: "stable",
     },
-    // Fixing detection of unhandled promise rejections for view-transitions
-    // created a spike in unhandled rejections for cross-document view
-    // transitions. The transition on the old document is skipped, but as the
-    // old document is only used to capture the snapshot, and a skip is
-    // imminent, the promise rejection is not indicative of unexpected behavior.
-    // crbug.com/496115780
-    {
-      name: "TransitionNavigationQuietSkip",
-      status: "stable"
-    },
+
     // This is conditionally set if the platform supports translation.
     {
       name: "TranslateService",
@@ -6677,32 +6677,12 @@
       status: "stable",
     },
     {
-      name: "ViewTransitionAsyncFinished",
-      status: "stable",
-    },
-    {
-      name: "ViewTransitionDelayUnpauseOnTeardown",
-      status: "stable",
-    },
-    {
       name: "ViewTransitionDOMCallbackAfterCommit",
-      status: "stable",
-    },
-    {
-      name: "ViewTransitionHoistBackdropFilterEffect",
       status: "stable",
     },
     {
       name: "ViewTransitionLongCallbackTimeoutForTesting",
       status: "test",
-    },
-    {
-      name: "ViewTransitionUpdateLifecycleBeforeReady",
-      status: "stable",
-    },
-    {
-      name: "ViewTransitionWaitUntil",
-      status: "stable",
     },
     {
       name: "VisibilityCollapseColumn",

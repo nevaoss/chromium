@@ -1215,6 +1215,8 @@ source_set("browser") {
     "media/capture/desktop_streams_registry_impl.cc",
     "media/capture/desktop_streams_registry_impl.h",
     "permissions/permission_descriptor_util.cc",
+    "renderer_preferences_util.cc",
+    "renderer_preferences_util.h",
     "web_contents_based_canceller.cc",
     "web_contents_based_canceller.h",
 
@@ -2299,6 +2301,10 @@ source_set("browser") {
     "webid/webid_utils.h",
     "webnn/webnn_introspection_manager_impl.cc",
     "webnn/webnn_introspection_manager_impl.h",
+    "webrtc/mock_camera_device.cc",
+    "webrtc/mock_camera_device.h",
+    "webrtc/mock_capture_device_controller.cc",
+    "webrtc/mock_capture_device_controller.h",
     "webrtc/webrtc_connections_observer.cc",
     "webrtc/webrtc_connections_observer.h",
     "webrtc/webrtc_internals.cc",
@@ -3477,7 +3483,10 @@ source_set("browser") {
   }
 
   if (is_win) {
-    deps += [ "//ui/base/ime/win" ]
+    deps += [
+      "//components/tracing:tracing_etw",
+      "//ui/base/ime/win",
+    ]
   }
 
   if (use_aura) {

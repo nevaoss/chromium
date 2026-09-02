@@ -10,11 +10,9 @@ import static org.chromium.build.NullUtil.assumeNonNull;
 import android.Manifest;
 import android.app.Activity;
 import android.content.ClipData;
-import android.content.ComponentCallbacks;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.CompressFormat;
@@ -55,8 +53,6 @@ import org.chromium.chrome.browser.omnibox.fusebox.FuseboxProperties.BackgroundS
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxProperties.PopupButtonData;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxProperties.PopupButtonType;
 import org.chromium.chrome.browser.omnibox.styles.OmniboxResourceProvider;
-import org.chromium.chrome.browser.preferences.Pref;
-import org.chromium.chrome.browser.preferences.PrefServiceUtil;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.profiles.ProfileIntentUtils;
 import org.chromium.chrome.browser.tab.Tab;
@@ -75,7 +71,7 @@ import org.chromium.components.feature_engagement.Tracker;
 import org.chromium.components.omnibox.AimModelsProto.ModelMode;
 import org.chromium.components.omnibox.AutocompleteInput;
 import org.chromium.components.omnibox.AutocompleteInput.AutocompleteState;
-import org.chromium.components.omnibox.AutocompleteInput.SiteSearchData;
+import org.chromium.components.omnibox.AutocompleteInput.DisplayState;
 import org.chromium.components.omnibox.AutocompleteRequestType;
 import org.chromium.components.omnibox.IconResourceIdsProto.IconResourceIds;
 import org.chromium.components.omnibox.InputTypeProto.InputType;
@@ -86,18 +82,14 @@ import org.chromium.components.omnibox.OmniboxFocusReason;
 import org.chromium.components.omnibox.ToolConfigProto.ToolConfig;
 import org.chromium.components.omnibox.ToolModeProto.ToolMode;
 import org.chromium.components.omnibox.ToolModeUtils;
-import org.chromium.components.prefs.PrefChangeRegistrar;
-import org.chromium.components.user_prefs.UserPrefs;
 import org.chromium.ui.base.KeyNavigationUtil;
 import org.chromium.ui.base.MimeTypeUtils;
-import org.chromium.ui.base.ViewUtils;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.modelutil.ListObservable;
 import org.chromium.ui.modelutil.ListObservable.ListObserver;
 import org.chromium.ui.modelutil.MVCListAdapter;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.ui.permissions.AndroidPermissionDelegate;
-import org.chromium.url.GURL;
 
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
@@ -108,8 +100,7 @@ import java.util.function.Supplier;
 
 /** Mediator for the Fusebox component. */
 @NullMarked
-/* package */ class FuseboxMediator
-        implements FuseboxAttachmentChangeListener, BackPressHandler, ComponentCallbacks {
+/* package */ class FuseboxMediator implements FuseboxAttachmentChangeListener, BackPressHandler {
 
     private final Context mContext;
     private final WindowAndroid mWindowAndroid;
@@ -120,9 +111,9 @@ import java.util.function.Supplier;
     private final SettableNonNullObservableSupplier<@FuseboxState Integer> mFuseboxStateSupplier;
     private final Callback<@AutocompleteRequestType Integer> mOnAutocompleteRequestTypeChanged =
             this::onAutocompleteRequestTypeChanged;
-    private final Callback<@Nullable SiteSearchData> mOnSiteSearchDataChanged =
-            this::onSiteSearchDataChanged;
     private final Callback<@AutocompleteState Integer> mOnAutocompleteStateChanged =
+            (state) -> updateFuseboxState();
+    private final Callback<@DisplayState Integer> mOnDisplayStateChanged =
             (state) -> updateFuseboxState();
     private final Callback<InputState> mOnInputStateChanged = this::onInputStateChange;
     private final Callback<List<SuggestedTabInfo>> mOnSuggestedTabsChanged =
@@ -135,16 +126,8 @@ import java.util.function.Supplier;
     private final BackPressManager mBackPressManager;
     private final SettableNonNullObservableSupplier<Boolean> mBackPressStateSupplier =
             ObservableSuppliers.createNonNull(false);
-    private final Callback<@Nullable GURL> mOnPreviewMatchUrlChanged =
-            this::onPreviewMatchUrlChanged;
-    private final SettableNonNullObservableSupplier<Boolean> mActivationChipVisibilitySupplier;
-    private final Runnable mOnActivationChipClickedWithQuery;
-    private final Runnable mClearUrlBarTextRunnable;
-    private final Supplier<String> mUrlBarTextSupplier;
     private final boolean mIsDesktopPlatform;
     private final SettableNonNullObservableSupplier<Boolean> mHasAttachmentsSupplier;
-    private final NonNullObservableSupplier<Boolean> mWindowHasFocusSupplier;
-    private final Callback<Boolean> mOnWindowFocusChanged = hasFocus -> updateActivationChip();
     private final OmniboxResourceProvider mResourceProvider;
     private @Nullable AttachmentsSelectionController mSelectionController;
 
@@ -159,8 +142,6 @@ import java.util.function.Supplier;
     private boolean mPopupItemSelected;
     private @Nullable Runnable mOnFirstPickerInteractionCanceledCallback;
     private boolean mNeedUnfocusOnCancel;
-    private boolean mShouldBeCompact;
-    @VisibleForTesting /* package */ @Nullable PrefChangeRegistrar mPrefChangeRegistrar;
 
     private final ListObserver<Void> mListObserver =
             new ListObserver<>() {
@@ -189,12 +170,7 @@ import java.util.function.Supplier;
             Supplier<@Nullable View> scrimAnchorViewSupplier,
             BackPressManager backPressManager,
             @Nullable Runnable onFirstPickerInteractionCanceledCallback,
-            SettableNonNullObservableSupplier<Boolean> activationChipVisibilitySupplier,
-            Runnable onActivationChipClickedWithQuery,
-            Runnable clearUrlBarTextRunnable,
-            Supplier<String> urlBarTextSupplier,
-            SettableNonNullObservableSupplier<Boolean> hasAttachmentsSupplier,
-            NonNullObservableSupplier<Boolean> windowHasFocusSupplier) {
+            SettableNonNullObservableSupplier<Boolean> hasAttachmentsSupplier) {
         mContext = context;
         mWindowAndroid = windowAndroid;
         mPermissionDelegate = windowAndroid;
@@ -210,16 +186,8 @@ import java.util.function.Supplier;
         mScrimAnchorViewSupplier = scrimAnchorViewSupplier;
         mBackPressManager = backPressManager;
         mOnFirstPickerInteractionCanceledCallback = onFirstPickerInteractionCanceledCallback;
-        mActivationChipVisibilitySupplier = activationChipVisibilitySupplier;
-        mOnActivationChipClickedWithQuery = onActivationChipClickedWithQuery;
-        mClearUrlBarTextRunnable = clearUrlBarTextRunnable;
-        // TODO(https://crbug.com/520528598): Remove current text supplier once AutocompleteInput
-        // has uncommitted text, and use that instead.
-        mUrlBarTextSupplier = urlBarTextSupplier;
         mIsDesktopPlatform = OmniboxCapabilities.isDesktopPlatform();
         mHasAttachmentsSupplier = hasAttachmentsSupplier;
-        mWindowHasFocusSupplier = windowHasFocusSupplier;
-        mWindowHasFocusSupplier.addSyncObserver(mOnWindowFocusChanged);
 
         // Create the upload failed snackbar.
         mAttachmentUploadFailedSnackbar =
@@ -231,7 +199,6 @@ import java.util.function.Supplier;
 
         mModel.set(FuseboxProperties.PLUS_BUTTON_CLICKED, this::onPlusButtonClicked);
         mModel.set(FuseboxProperties.REQUEST_TYPE_BUTTON_CLICKED, this::onRequestTypeButtonClicked);
-        mModel.set(FuseboxProperties.ACTIVATION_CHIP_CLICKED, this::onActivationChipClicked);
 
         mModel.set(FuseboxProperties.POPUP_ATTACH_TAB_PICKER_CLICKED, this::onTabPickerClicked);
         mModel.set(FuseboxProperties.POPUP_ATTACH_CAMERA_CLICKED, this::onCameraClicked);
@@ -246,24 +213,18 @@ import java.util.function.Supplier;
         mModel.set(FuseboxProperties.POPUP_ATTACH_TAB_PICKER_VISIBLE, !mIsDesktopPlatform);
         mModel.set(FuseboxProperties.POPUP_ATTACH_CAMERA_VISIBLE, !mIsDesktopPlatform);
         mModel.set(FuseboxProperties.POPUP_ATTACH_GALLERY_VISIBLE, true);
-        mModel.set(FuseboxProperties.POPUP_TOOL_DIVIDER_VISIBLE, true);
-        mModel.set(
-                FuseboxProperties.POPUP_TOOL_HEADER_VISIBLE,
-                OmniboxFeatures.sShowModelPicker.getValue());
+        mModel.set(FuseboxProperties.POPUP_TOOL_DIVIDER_VISIBLE, false);
+        mModel.set(FuseboxProperties.POPUP_TOOL_HEADER_VISIBLE, false);
 
         mModel.set(FuseboxProperties.POPUP_MODEL_DIVIDER_VISIBLE, false);
         mModel.set(FuseboxProperties.POPUP_MODEL_HEADER_VISIBLE, false);
         mBackPressManager.addHandler(this, BackPressHandler.Type.FUSEBOX_POPUP);
         updatePlusButtonBackgroundStyle();
-        mContext.registerComponentCallbacks(this);
-        onConfigurationChanged(mContext.getResources().getConfiguration());
     }
 
     /* package */ void destroy() {
         endInput();
-        mContext.unregisterComponentCallbacks(this);
         mBackPressManager.removeHandler(this);
-        mWindowHasFocusSupplier.removeObserver(mOnWindowFocusChanged);
     }
 
     public boolean wasPopupItemSelected() {
@@ -382,19 +343,11 @@ import java.util.function.Supplier;
         mPopupItemSelected = false;
         mMetrics = session.getMetrics();
         mProfile = assertNonNull(session.getProfile());
-        if (mPrefChangeRegistrar != null) {
-            mPrefChangeRegistrar.destroy();
-            mPrefChangeRegistrar = null;
-        }
-        mPrefChangeRegistrar = PrefServiceUtil.createFor(mProfile);
-        mPrefChangeRegistrar.addObserver(
-                Pref.SHOW_AI_MODE_OMNIBOX_BUTTON, this::updateActivationChip);
         setController(session.getComposeboxQueryControllerBridge());
         setModelList(session.getFuseboxAttachmentModelList());
         setAutocompleteInput(session.getAutocompleteInput());
         onAttachmentsChanged();
         updateFuseboxState();
-        updateActivationChip();
         updateSnackbarStyling();
     }
 
@@ -407,20 +360,14 @@ import java.util.function.Supplier;
         mProfile = null;
         mMetrics = null;
         mIsTextWrapping = false;
-        if (mPrefChangeRegistrar != null) {
-            mPrefChangeRegistrar.destroy();
-            mPrefChangeRegistrar = null;
-        }
         updateFuseboxState();
-        updateActivationChip();
     }
 
     private void setAutocompleteInput(@Nullable AutocompleteInput input) {
         if (mInput != null) {
             mInput.getRequestTypeSupplier().removeObserver(mOnAutocompleteRequestTypeChanged);
-            mInput.getSiteSearchDataSupplier().removeObserver(mOnSiteSearchDataChanged);
             mInput.getAutocompleteStateSupplier().removeObserver(mOnAutocompleteStateChanged);
-            mInput.getPreviewMatchUrlSupplier().removeObserver(mOnPreviewMatchUrlChanged);
+            mInput.getDisplayStateSupplier().removeObserver(mOnDisplayStateChanged);
         }
         mInput = input;
         if (mInput == null) {
@@ -439,12 +386,10 @@ import java.util.function.Supplier;
 
             mInput.getRequestTypeSupplier()
                     .addSyncObserverAndCallIfNonNull(mOnAutocompleteRequestTypeChanged);
-            mInput.getSiteSearchDataSupplier()
-                    .addSyncObserverAndCallIfNonNull(mOnSiteSearchDataChanged);
             mInput.getAutocompleteStateSupplier()
                     .addSyncObserverAndCallIfNonNull(mOnAutocompleteStateChanged);
-            mInput.getPreviewMatchUrlSupplier()
-                    .addSyncObserverAndCallIfNonNull(mOnPreviewMatchUrlChanged);
+            mInput.getDisplayStateSupplier()
+                    .addSyncObserverAndCallIfNonNull(mOnDisplayStateChanged);
         }
     }
 
@@ -549,7 +494,8 @@ import java.util.function.Supplier;
         boolean showRequestTypeButton = shouldShowRequestTypeButton();
         if (!isInInputSession()) {
             targetState = FuseboxState.DISABLED;
-        } else if (mInput.getAutocompleteState() == AutocompleteState.STANDBY_NO_FOCUS) {
+        } else if (mInput.getAutocompleteState() == AutocompleteState.STANDBY_NO_FOCUS
+                || mInput.getDisplayState() == DisplayState.DRAFTING_NO_FOCUS) {
             targetState = FuseboxState.DISABLED;
         } else {
             boolean isPopover =
@@ -643,7 +589,6 @@ import java.util.function.Supplier;
         updateModelForCurrentTab();
         updateModelForRecentTabs();
         if (OmniboxFeatures.sShowModelPicker.getValue()
-                && OmniboxFeatures.sModelPickerOptimizations.getValue()
                 && mComposeboxQueryControllerBridge != null) {
             InputState inputState = mComposeboxQueryControllerBridge.getInputStateSupplier().get();
             if (inputState != null) {
@@ -807,6 +752,7 @@ import java.util.function.Supplier;
     private void addTabAttachment(Tab tab, @FuseboxAttachmentButtonType int source) {
         if (!isInInputSession()) return;
         mMetrics.notifyAttachmentButtonUsed(source);
+        mPopupItemSelected = true;
         maybeActivateAiMode(AiModeActivationSource.IMPLICIT);
 
         if (!FuseboxTabUtils.isTabActive(tab)) {
@@ -923,6 +869,7 @@ import java.util.function.Supplier;
         // tabIds will be null when the activity finishes with cancel using the back button.
         if (tabIds == null) return;
         updateCurrentlyAttachedTabs(new HashSet<>(tabIds));
+        mPopupItemSelected = true;
         if (mModelList.size() != 0) {
             maybeActivateAiMode(AiModeActivationSource.IMPLICIT);
         }
@@ -1063,7 +1010,6 @@ import java.util.function.Supplier;
             }
         }
 
-        updateActivationChip();
         if (OmniboxFeatures.sShowModelPicker.getValue()) {
             if (!isInInputSession()) return;
             InputState inputState = mComposeboxQueryControllerBridge.getInputStateSupplier().get();
@@ -1076,61 +1022,6 @@ import java.util.function.Supplier;
         }
 
         updatePlusButtonBackgroundStyle();
-    }
-
-    private void onSiteSearchDataChanged(@Nullable SiteSearchData siteSearchData) {
-        updateActivationChip();
-    }
-
-    private void onPreviewMatchUrlChanged(@Nullable GURL url) {
-        updateActivationChip();
-    }
-
-    /* package */ void updateActivationChip() {
-        boolean showActivationChip =
-                isInInputSession()
-                        && mWindowHasFocusSupplier.get()
-                        && mModel.get(FuseboxProperties.FUSEBOX_LAYOUT_MODE)
-                                == FuseboxLayoutMode.SUGGESTIONS_POPOVER
-                        && mInput.getRequestType() == AutocompleteRequestType.SEARCH
-                        && mInput.getSiteSearchData() == null
-                        && (mInput.getPreviewMatchUrl() == null || mInput.isInZeroPrefixContext());
-        if (mProfile != null
-                && !UserPrefs.get(mProfile).getBoolean(Pref.SHOW_AI_MODE_OMNIBOX_BUTTON)) {
-            showActivationChip = false;
-        }
-        mModel.set(FuseboxProperties.ACTIVATION_CHIP_VISIBLE, showActivationChip);
-        mActivationChipVisibilitySupplier.set(showActivationChip);
-    }
-
-    /* package */ void updateActivationChipCompact() {
-        boolean isCompact = mModel.get(FuseboxProperties.ACTIVATION_CHIP_COMPACT);
-
-        if (isCompact == mShouldBeCompact) return;
-        mModel.set(FuseboxProperties.ACTIVATION_CHIP_COMPACT, mShouldBeCompact);
-    }
-
-    // ComponentCallbacks implementation.
-
-    @Override
-    public void onConfigurationChanged(Configuration newConfig) {
-        int screenWidthPx = ViewUtils.dpToPx(mContext, newConfig.screenWidthDp);
-        int maxCompactWidthPx =
-                mResourceProvider.getDimen(R.dimen.fusebox_compact_activation_chip_width);
-        mShouldBeCompact = screenWidthPx <= maxCompactWidthPx && mIsDesktopPlatform;
-        updateActivationChipCompact();
-    }
-
-    @Override
-    public void onLowMemory() {}
-
-    void onActivationChipSelectionChanged(boolean selected) {
-        mModel.set(FuseboxProperties.ACTIVATION_CHIP_SELECTED, selected);
-        if (selected && isInInputSession()) {
-            if (isUrlBarTextUnchanged() && !TextUtils.isEmpty(mUrlBarTextSupplier.get())) {
-                mClearUrlBarTextRunnable.run();
-            }
-        }
     }
 
     private void updatePopupButtonEnabledStates() {
@@ -1188,6 +1079,9 @@ import java.util.function.Supplier;
                             /* hasColor= */ true));
         }
 
+        boolean showTools = !toolButtons.isEmpty();
+        mModel.set(FuseboxProperties.POPUP_TOOL_DIVIDER_VISIBLE, showTools);
+        mModel.set(FuseboxProperties.POPUP_TOOL_HEADER_VISIBLE, false);
         mModel.set(FuseboxProperties.POPUP_TOOL_BUTTON_DATA_LIST, toolButtons);
     }
 
@@ -1326,30 +1220,6 @@ import java.util.function.Supplier;
                 /* errorId= */ android.R.string.cancel);
     }
 
-    void onActivationChipClicked() {
-        if (!isInInputSession()) return;
-
-        activateAiMode(AutocompleteRequestType.AI_MODE, AiModeActivationSource.DEDICATED_BUTTON);
-        if (isUrlBarTextUnchanged()) {
-            mClearUrlBarTextRunnable.run();
-        } else if (!TextUtils.isEmpty(mUrlBarTextSupplier.get())) {
-            // TODO(https://crbug.com/520528598): Call commit on the AutocompleteInput and then
-            // reimplement this runnable to navigate via the current input state, instead of reading
-            // from the views.
-            mOnActivationChipClickedWithQuery.run();
-        }
-
-        // Enable autocomplete only after updating the request type and URL text so suggestions
-        // are not fetched or shown with stale search state.
-        mInput.setAutocompleteState(AutocompleteState.ENABLED);
-    }
-
-    private boolean isUrlBarTextUnchanged() {
-        String currentUrlBarText = mUrlBarTextSupplier.get();
-        String initialUserText = assumeNonNull(mInput).getInitialUserText();
-        return TextUtils.equals(currentUrlBarText, initialUserText);
-    }
-
     @VisibleForTesting
     /* package */ void fetchAttachmentDetails(
             Uri uri,
@@ -1417,9 +1287,16 @@ import java.util.function.Supplier;
     private void updateModelForPopupInputState(InputState inputState) {
         assert OmniboxFeatures.sShowModelPicker.getValue();
 
+        boolean disableTabsForCanvas = OmniboxFeatures.sOmniboxDisableTabsForCanvas.isEnabled();
+        boolean isCanvasActive =
+                mInput != null && mInput.getRequestType() == AutocompleteRequestType.CANVAS;
+        boolean hasAttachedTabs = mModelList != null && !mModelList.getAttachedTabIds().isEmpty();
+
         // TODO(https://crbug.com/480976526): Control visibility as well.
         boolean tabsEnabled =
-                !inputState.disabledInputTypes.contains(InputType.INPUT_TYPE_BROWSER_TAB_VALUE);
+                !(disableTabsForCanvas && isCanvasActive)
+                        && !inputState.disabledInputTypes.contains(
+                                InputType.INPUT_TYPE_BROWSER_TAB_VALUE);
         boolean imagesEnabled =
                 !inputState.disabledInputTypes.contains(InputType.INPUT_TYPE_LENS_IMAGE_VALUE);
         boolean filesEnabled =
@@ -1453,7 +1330,11 @@ import java.util.function.Supplier;
                     mInput != null
                             && ToolModeUtils.getRequestTypeForToolMode(toolMode)
                                     == mInput.getRequestType();
-            boolean enabled = inputState.isToolEnabled(toolMode);
+            boolean enabled =
+                    inputState.isToolEnabled(toolMode)
+                            && (!disableTabsForCanvas
+                                    || !hasAttachedTabs
+                                    || toolMode != ToolMode.TOOL_MODE_CANVAS_VALUE);
             boolean hasColor =
                     toolMode == ToolMode.TOOL_MODE_IMAGE_GEN_VALUE
                             || toolMode == ToolMode.TOOL_MODE_IMAGE_GEN_UPLOAD_VALUE;
@@ -1470,6 +1351,11 @@ import java.util.function.Supplier;
                             hasColor));
         }
 
+        boolean showTools = !toolButtonDataList.isEmpty();
+        mModel.set(FuseboxProperties.POPUP_TOOL_DIVIDER_VISIBLE, showTools);
+        mModel.set(
+                FuseboxProperties.POPUP_TOOL_HEADER_VISIBLE,
+                showTools && !TextUtils.isEmpty(inputState.getToolsSectionConfig().getHeader()));
         mModel.set(FuseboxProperties.POPUP_TOOL_BUTTON_DATA_LIST, toolButtonDataList);
 
         // The InputState is always targeting an AI Mode request and what would be possible, but the

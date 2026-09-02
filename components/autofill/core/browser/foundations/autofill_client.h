@@ -143,6 +143,7 @@ class FormDataImporter;
 class FormFieldData;
 class LogManager;
 class OtpFieldDetector;
+class OtpMetricsTracker;
 class OtpPhishGuardDelegate;
 class FormPredictionsTracker;
 struct PasswordFormClassification;
@@ -180,6 +181,7 @@ class AutofillClient {
  public:
   // Categories of Autofill data that can be blocked or allowed on specific GURL
   // patterns by enterprise policies.
+  // GENERATED_JAVA_ENUM_PACKAGE: org.chromium.components.autofill
   // LINT.IfChange(AutofillPolicyDataCategory)
   enum class AutofillPolicyDataCategory {
     // Address, name, email, phone, and profile configuration details.
@@ -255,6 +257,7 @@ class AutofillClient {
 
   // These values are persisted to logs. Entries should not be renumbered and
   // numeric values should never be reused.
+  // GENERATED_JAVA_ENUM_PACKAGE: org.chromium.components.autofill
   // LINT.IfChange(EvpPermissionUiStatus)
   enum class EmailVerificationPermissionUiStatus {
     kAllowed = 0,
@@ -714,6 +717,9 @@ class AutofillClient {
   // Returns the `ActorAutofillManager` for the current tab (if one exists).
   virtual ActorAutofillManager* GetActorAutofillManager();
 
+  // Returns the navigation ID associated with the main frame of the client.
+  virtual int64_t GetNavigationId() const;
+
   // Returns true if either Profile or CreditCard Autofill is enabled.
   virtual bool IsAutofillEnabled() const = 0;
 
@@ -899,6 +905,10 @@ class AutofillClient {
 
   // May return null on platforms where OTPs are not supported.
   virtual OtpFieldDetector* GetOtpFieldDetector();
+
+  // Returns the OtpMetricsTracker for the current tab. May return null on
+  // platforms where it is not supported or when the feature is disabled.
+  virtual OtpMetricsTracker* GetOtpMetricsTracker();
 
   // Returns the delegate for OTP phish guard, which can be used to perform
   // security checks before offering an OTP. May return nullptr.

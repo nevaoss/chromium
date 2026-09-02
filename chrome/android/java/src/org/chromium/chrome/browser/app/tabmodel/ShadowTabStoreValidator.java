@@ -7,6 +7,7 @@ package org.chromium.chrome.browser.app.tabmodel;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.chrome.browser.app.tabmodel.TabStoreMetricsService.MetricsBucket;
 import org.chromium.chrome.browser.profiles.Profile;
+import org.chromium.chrome.browser.tab.WebContentsState;
 import org.chromium.chrome.browser.tabmodel.AccumulatingTabCreator;
 import org.chromium.chrome.browser.tabmodel.AccumulatingTabCreator.CreateFrozenTabArguments;
 import org.chromium.chrome.browser.tabmodel.PersistentStoreMigrationManager;
@@ -43,6 +44,7 @@ public class ShadowTabStoreValidator {
     private final StoreMetricsObserver mShadowObserver;
     private final String mWindowTag;
     private final String mOrchestratorTag;
+    private final boolean mIsShadowStoreCaughtUpAtStart;
 
     /**
      * @param profile The profile associated with this validator.
@@ -80,6 +82,9 @@ public class ShadowTabStoreValidator {
         authoritativeStore.addObserver(mAuthoritativeObserver);
         shadowStore.addObserver(mShadowObserver);
 
+        // Retrieve shadow store catch up state prior to any clearing operation.
+        mIsShadowStoreCaughtUpAtStart = mPersistentStoreMigrationManager.isShadowStoreCaughtUp();
+
         if (!isTabStateStoreShadowing()) {
             shadowTabCreator.stopRecording();
             authoritativeTabCreator.stopRecording();
@@ -96,8 +101,9 @@ public class ShadowTabStoreValidator {
         recordDiffMetrics();
 
         for (CreateFrozenTabArguments arguments : mShadowTabCreator.createFrozenTabArgumentsList) {
-            if (arguments.state != null && arguments.state.contentsState != null) {
-                arguments.state.contentsState.destroy();
+            WebContentsState webContentsState = arguments.state.contentsState;
+            if (webContentsState != null) {
+                webContentsState.destroy();
             }
         }
         mShadowTabCreator.createNewTabArgumentsList.clear();
@@ -112,8 +118,11 @@ public class ShadowTabStoreValidator {
     }
 
     private void recordDiffMetrics() {
-        boolean isShadowStoreCaughtUp = mPersistentStoreMigrationManager.isShadowStoreCaughtUp();
-        if (!isShadowStoreCaughtUp || !isTabStateStoreShadowing()) return;
+        if (!mIsShadowStoreCaughtUpAtStart || !isTabStateStoreShadowing()) return;
+        if (mShadowStore instanceof TabStateStore tabStateStore
+                && tabStateStore.hasLoadWarnings()) {
+            return;
+        }
 
         List<TabCreationData> authoritativeFrozenData =
                 mAuthoritativeTabCreator.getFrozenTabCreationData();
@@ -128,7 +137,6 @@ public class ShadowTabStoreValidator {
                         authoritativeNewTabData,
                         mShadowTabCreator.createFrozenTabArgumentsList,
                         mShadowTabCreator.createNewTabArgumentsList,
-                        isShadowStoreCaughtUp,
                         mAuthoritativeTabCreator.getRegularFallbackTabs());
     }
 

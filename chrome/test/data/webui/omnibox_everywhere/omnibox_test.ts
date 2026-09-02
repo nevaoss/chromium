@@ -15,7 +15,8 @@ import type {SearchAnimatedGlowElement} from 'chrome://resources/cr_components/s
 import {GlowAnimationState} from 'chrome://resources/cr_components/search/constants.js';
 import {createAutocompleteResultForTesting, createSearchMatchForTesting} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
-import type {PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerRemote as SearchboxPageHandlerRemote} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import type {PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerRemote as SearchboxPageHandlerRemote, SelectedFileInfo} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import type {UnguessableToken} from 'chrome://resources/mojo/mojo/public/mojom/base/unguessable_token.mojom-webui.js';
 import type {Url} from 'chrome://resources/mojo/url/mojom/url.mojom-webui.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {TestMock} from 'chrome://webui-test/test_mock.js';
@@ -1058,6 +1059,8 @@ suite('OmniboxEverywhereAppTest', () => {
       profileName: 'Test Profile',
       profileEmail: 'test@example.com',
       omniboxEverywhereProfilePickerEnabled: false,
+      omniboxEverywhereShowShortcuts: true,
+      initialShowFre: false,
       composeboxCancelButtonTitle: 'Close AI Mode',
       composeboxCancelButtonTitleInput: 'Clear text',
     });
@@ -1309,6 +1312,8 @@ suite('OmniboxEverywhereAppTest', () => {
     assertFalse(voiceSearch.classList.contains('permission-prompt-showing'));
   });
 
+  // TODO(crbug.com/552283274): Flaky on Mac.
+  // <if expr="not is_macosx">
   test(
       'open-voice-search reflects attribute on app and hides MV tiles and ' +
           'content',
@@ -1316,6 +1321,8 @@ suite('OmniboxEverywhereAppTest', () => {
         document.body.innerHTML = window.trustedTypes!.emptyHTML;
         loadTimeData.overrideValues({
           omniboxEverywhereMostVisitedEnabled: true,
+          omniboxEverywhereShowShortcuts: true,
+          initialShowFre: false,
         });
         const appWithMv = document.createElement('omnibox-everywhere-app');
         document.body.appendChild(appWithMv);
@@ -1359,6 +1366,7 @@ suite('OmniboxEverywhereAppTest', () => {
         assertEquals('block', window.getComputedStyle(content).display);
         assertEquals('flex', window.getComputedStyle(mvContainer).display);
       });
+  // </if>
 
   test(
       'close-composebox event exits composebox mode and focuses searchbox',
@@ -1461,6 +1469,75 @@ suite('OmniboxEverywhereAppTest', () => {
         await microtasksFinished();
 
         assertFalse(app.hasAttribute('show-voice-search-overlay_'));
+      });
+
+  test('addFileContext Mojo event updates composebox thumbnail', async () => {
+    const omniboxElement =
+        app.shadowRoot.querySelector('omnibox-everywhere-omnibox')!;
+    const mockToken: UnguessableToken = '1234567890ABCDEF1234567890ABCDEF';
+
+    omniboxElement.dispatchEvent(new CustomEvent('open-composebox', {
+      detail: {
+        text: '',
+        mode: 0,
+        model: 0,
+        smartTabSharingActive: false,
+        files: [],
+      },
+      bubbles: true,
+      composed: true,
+    }));
+    await microtasksFinished();
+
+    const composeboxElement =
+        app.shadowRoot.querySelector('omnibox-everywhere-composebox')!;
+    assertTrue(!!composeboxElement);
+    assertEquals(0, composeboxElement.files.size);
+
+    const fileInfo = {
+      fileName: 'Screenshot.png',
+      mimeType: 'image/png',
+      imageDataUrl: 'data:image/png;base64,image_data',
+      isDeletable: true,
+      selectionTime: new Date(),
+      thumbnailUrl: null,
+    };
+    testProxy.page.addFileContext(mockToken, fileInfo as SelectedFileInfo);
+    await testProxy.page.$.flushForTesting();
+
+    assertEquals(1, composeboxElement.files.size);
+    const updatedFile = Array.from(composeboxElement.files.values())[0]!;
+    assertEquals('data:image/png;base64,image_data', updatedFile.dataUrl);
+  });
+
+  test(
+      'addFileContext Mojo event automatically opens composebox when in ' +
+          'omnibox mode',
+      async () => {
+        assertFalse(
+            !!app.shadowRoot.querySelector('omnibox-everywhere-composebox'));
+
+        const mockToken: UnguessableToken = 'FEDCBA0987654321FEDCBA0987654321';
+        const fileInfo = {
+          fileName: 'Screenshot.png',
+          mimeType: 'image/png',
+          imageDataUrl: 'data:image/png;base64,image_data_buffered',
+          isDeletable: true,
+          selectionTime: new Date(),
+          thumbnailUrl: null,
+        };
+
+        // Mojo event arrives while in standard omnibox mode.
+        testProxy.page.addFileContext(mockToken, fileInfo as SelectedFileInfo);
+        await testProxy.page.$.flushForTesting();
+        await microtasksFinished();
+
+        const composeboxElement =
+            app.shadowRoot.querySelector('omnibox-everywhere-composebox')!;
+        assertTrue(!!composeboxElement);
+        assertEquals(1, composeboxElement.files.size);
+        const file = Array.from(composeboxElement.files.values())[0]!;
+        assertEquals('data:image/png;base64,image_data_buffered', file.dataUrl);
       });
 });
 

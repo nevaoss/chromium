@@ -223,8 +223,7 @@ std::optional<AutofillProfile> GetTestAddressByGUID(
 void PossiblyRemoveAutofillWarnings(std::vector<Suggestion>& suggestions) {
   auto is_warning = [](const Suggestion& suggestion) {
     const SuggestionType type = suggestion.type;
-    return type == SuggestionType::kInsecureContextPaymentDisabledMessage ||
-           type == SuggestionType::kMixedFormMessage;
+    return type == SuggestionType::kInsecureContextPaymentDisabledMessage;
   };
   if (std::ranges::find_if(suggestions, std::not_fn(is_warning)) ==
       suggestions.end()) {
@@ -302,7 +301,6 @@ bool HasAutofillSuggestionsForA11y(SuggestionType type) {
     case SuggestionType::kManageLoyaltyCard:
     case SuggestionType::kManageEnhancedAutofill:
     case SuggestionType::kMaximizeCreditCardBenefitsEntry:
-    case SuggestionType::kMixedFormMessage:
     case SuggestionType::kPasswordEntry:
     case SuggestionType::kPasswordFieldByFieldFilling:
     case SuggestionType::kPendingStateSignin:
@@ -410,7 +408,6 @@ bool AutofillExternalDelegate::IsAutofillAndFirstLayerSuggestionId(
     case SuggestionType::kManageEnhancedAutofill:
     case SuggestionType::kMaximizeCreditCardBenefitsEntry:
     case SuggestionType::kMerchantPromoCodeEntry:
-    case SuggestionType::kMixedFormMessage:
     case SuggestionType::kPasswordEntry:
     case SuggestionType::kPasswordFieldByFieldFilling:
     case SuggestionType::kPendingStateSignin:
@@ -717,29 +714,29 @@ void AutofillExternalDelegate::OnSuggestionsShown(
 
 void AutofillExternalDelegate::OnSuggestionsHidden(
     SuggestionHidingReason reason) {
-  if (AtMemoryManager* am = manager_->client().GetAtMemoryManager()) {
-    am->OnPopupHidden();
+  if (AtMemoryManager* amm = manager_->client().GetAtMemoryManager()) {
+    amm->OnPopupHidden();
   }
   manager_->OnSuggestionsHidden(reason);
 }
 
 bool AutofillExternalDelegate::OnFilterChanged(const std::u16string& filter) {
-  if (AtMemoryManager* am = manager_->client().GetAtMemoryManager()) {
-    return am->OnFilterChanged(filter);
+  if (AtMemoryManager* amm = manager_->client().GetAtMemoryManager()) {
+    return amm->OnFilterChanged(filter);
   }
   return false;
 }
 
 bool AutofillExternalDelegate::OnSearchSubmitted(const std::u16string& filter) {
-  if (AtMemoryManager* am = manager_->client().GetAtMemoryManager()) {
-    return am->OnSearchSubmitted(filter);
+  if (AtMemoryManager* amm = manager_->client().GetAtMemoryManager()) {
+    return amm->OnSearchSubmitted(filter);
   }
   return false;
 }
 
 bool AutofillExternalDelegate::IsSearching() const {
-  if (const AtMemoryManager* am = manager_->client().GetAtMemoryManager()) {
-    return am->IsSearching();
+  if (const AtMemoryManager* amm = manager_->client().GetAtMemoryManager()) {
+    return amm->IsSearching();
   }
   return false;
 }
@@ -830,9 +827,8 @@ void AutofillExternalDelegate::DidSelectSuggestion(
           FillingProduct::kLoyaltyCard, LOYALTY_MEMBERSHIP_ID);
       break;
     case SuggestionType::kAtMemorySearchResult:
-      manager_->client().GetAtMemoryManager()->FillOrPreviewSearchResult(
-          mojom::ActionPersistence::kPreview, last_query_.form_id,
-          last_query_.field_id, suggestion);
+      NOTIMPLEMENTED()
+          << "Previewing for AtMemory is not implemented: b/540805115";
       break;
     case SuggestionType::kWebauthnPasskeyQrCode:
     case SuggestionType::kWebauthnSignInWithAnotherDevice:
@@ -874,7 +870,6 @@ void AutofillExternalDelegate::DidSelectSuggestion(
     case SuggestionType::kManageLoyaltyCard:
     case SuggestionType::kManageEnhancedAutofill:
     case SuggestionType::kMaximizeCreditCardBenefitsEntry:
-    case SuggestionType::kMixedFormMessage:
     // So far OTP suggestions are only available on Android, so no preview
     // is needed. This needs to be changed once Desktop suggestions and UI
     // are implemented.
@@ -1073,7 +1068,6 @@ void AutofillExternalDelegate::DidAcceptSuggestion(
       return;
     }
     case SuggestionType::kInsecureContextPaymentDisabledMessage:
-    case SuggestionType::kMixedFormMessage:
       // If the selected element is a warning we don't want to do anything.
       break;
     case SuggestionType::kAddressEntryOnTyping:
@@ -1161,9 +1155,9 @@ void AutofillExternalDelegate::DidAcceptSuggestion(
       break;
     case SuggestionType::kAtMemorySearchResult: {
       const IsAsync is_async =
-          manager_->client().GetAtMemoryManager()->FillOrPreviewSearchResult(
-              mojom::ActionPersistence::kFill, last_query_.form_id,
-              last_query_.field_id, suggestion, metadata);
+          manager_->client().GetAtMemoryManager()->FillSearchResult(
+              *manager_, last_query_.form_id, last_query_.field_id, suggestion,
+              metadata);
       if (is_async) {
         manager_->client().UpdateAutofillSuggestions(
             PrepareLoadingStateSuggestions(
@@ -1193,8 +1187,8 @@ void AutofillExternalDelegate::DidAcceptSuggestion(
                                                 last_query_.field_id);
       break;
     case SuggestionType::kAtMemorySearchAffordance:
-      if (AtMemoryManager* am = manager_->client().GetAtMemoryManager()) {
-        am->OnSearchSubmitted(suggestion.main_text.value);
+      if (AtMemoryManager* amm = manager_->client().GetAtMemoryManager()) {
+        amm->OnSearchSubmitted(suggestion.main_text.value);
       }
       // The popup remains open to show search results once the query completes.
       return;
@@ -1375,7 +1369,6 @@ bool AutofillExternalDelegate::RemoveSuggestion(const Suggestion& suggestion) {
     case SuggestionType::kManageEnhancedAutofill:
     case SuggestionType::kMaximizeCreditCardBenefitsEntry:
     case SuggestionType::kMerchantPromoCodeEntry:
-    case SuggestionType::kMixedFormMessage:
     case SuggestionType::kOneTimePasswordEntry:
     case SuggestionType::kPasswordEntry:
     case SuggestionType::kPasswordFieldByFieldFilling:

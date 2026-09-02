@@ -112,6 +112,18 @@ bool ContextHubDatabase::AddOrUpdateMemoryBankEntry(
   return memory_bank_table_.AddOrUpdateEntry(entry);
 }
 
+bool ContextHubDatabase::UpdateMemoryBankEntryAnnotations(
+    int64_t id,
+    const std::vector<std::string>& tags,
+    const std::optional<std::string>& note,
+    const std::optional<std::string>& collection) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (!db_ || !db_->is_open()) {
+    return false;
+  }
+  return memory_bank_table_.UpdateEntryAnnotations(id, tags, note, collection);
+}
+
 std::optional<MemoryBankEntry> ContextHubDatabase::GetMemoryBankEntry(
     int64_t id) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -136,6 +148,22 @@ std::vector<MemoryBankEntry> ContextHubDatabase::GetAllMemoryBankEntries() {
     return {};
   }
   return memory_bank_table_.GetAllEntries();
+}
+
+std::vector<std::string> ContextHubDatabase::GetAllMemoryBankTags() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (!db_ || !db_->is_open()) {
+    return {};
+  }
+  return memory_bank_table_.GetAllTags();
+}
+
+std::vector<std::string> ContextHubDatabase::GetAllMemoryBankCollections() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (!db_ || !db_->is_open()) {
+    return {};
+  }
+  return memory_bank_table_.GetAllCollections();
 }
 
 bool ContextHubDatabase::DeleteMemoryBankEntries(

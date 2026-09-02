@@ -66,6 +66,7 @@
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/grit/branded_strings.h"
 #include "chrome/grit/browser_resources.h"
+#include "chrome/grit/generated_resources.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "chrome/test/interaction/interactive_browser_test.h"
 #include "chrome/test/user_education/interactive_feature_promo_test.h"
@@ -360,6 +361,7 @@ class FirstRunInteractiveUiBaseTest
             [&](FirstRunVersion::Legacy) {
               disabled_features.push_back(switches::kFirstRunDesktopRefresh);
               disabled_features.push_back(switches::kFirstRunDesktopRevamp);
+              disabled_features.push_back(switches::kPreFirstRunDesktopRefresh);
             },
             [&](FirstRunVersion::Refreshed refreshed) {
               enabled_features.push_back(
@@ -369,7 +371,9 @@ class FirstRunInteractiveUiBaseTest
                          refreshed.variant)}}});
               enabled_features.push_back(
                   {switches::kFirstRunDesktopChoiceScreenRefresh, {}});
+
               disabled_features.push_back(switches::kFirstRunDesktopRevamp);
+              disabled_features.push_back(switches::kPreFirstRunDesktopRefresh);
             },
             [&](FirstRunVersion::Revamped revamped) {
               enabled_features.push_back(
@@ -389,6 +393,8 @@ class FirstRunInteractiveUiBaseTest
                 disabled_features.push_back(
                     switches::kFirstRunDesktopRevampSound);
               }
+
+              disabled_features.push_back(switches::kPreFirstRunDesktopRefresh);
             },
             [&](FirstRunVersion::PreFirstRunRefreshed) {
               enabled_features.push_back(
@@ -3795,6 +3801,20 @@ IN_PROC_BROWSER_TEST_P(PreFirstRunRefreshPolicyInteractiveUiTest,
   histogram_tester().ExpectUniqueSample(
       "ProfilePicker.FirstRun.ExitStatus",
       ProfilePicker::FirstRunExitStatus::kCompleted, 1);
+
+  if (signin_util::IsForceSigninEnabled()) {
+    histogram_tester().ExpectUniqueSample(
+        "ProfilePicker.FirstRun.FinishReason",
+        ProfilePicker::FirstRunFinishReason::kForceSignin, 1);
+    EXPECT_TRUE(IsProfileNameDefault());
+  } else {
+    histogram_tester().ExpectUniqueSample(
+        "ProfilePicker.FirstRun.FinishReason",
+        ProfilePicker::FirstRunFinishReason::kSkippedByPolicies, 1);
+    EXPECT_EQ(l10n_util::GetStringUTF16(
+                  IDS_SIGNIN_DICE_WEB_INTERCEPT_ENTERPRISE_PROFILE_NAME),
+              GetProfileName());
+  }
 }
 
 INSTANTIATE_TEST_SUITE_P(,

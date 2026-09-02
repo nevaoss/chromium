@@ -260,7 +260,7 @@ chromium-metrics-reviews@google.com.
     expires_after="2027-01-10">
   <owner>kevers@chromium.org</owner>
   <owner>dmangal@microsoft.com</owner>
-  <owner>animations-dev@chromium.org</owner>
+  <owner>blink-interactions-team@google.com</owner>
   <summary>
     Records the type of animation (all types, SVG, composited, non-composited)
     when an animation starts. This helps track usage patterns of different
@@ -273,7 +273,7 @@ chromium-metrics-reviews@google.com.
 <histogram name="Blink.Animation.CompositedAnimationFailureReason"
     enum="CompositorAnimationsFailureReason" expires_after="2027-02-14">
   <owner>smcgruer@chromium.org</owner>
-  <owner>animations-dev@chromium.org</owner>
+  <owner>blink-interactions-team@google.com</owner>
   <summary>
     Reasons an Animation is not suitable for running on the compositor thread.
 
@@ -289,10 +289,26 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram
+    name="Blink.Animation.RangeOffsetHasRelativeOrElementDependentLength"
+    enum="Boolean" expires_after="2027-08-20">
+  <owner>kevers@chromium.org</owner>
+  <owner>blink-interactions-team@google.com</owner>
+  <summary>
+    Records whether a script-provided animation range offset contains a relative
+    or element-dependent length and would be rejected if the experimental
+    behavior were enabled. A false sample represents an absolute length or
+    percentage. Recorded each time Blink converts a valid animation range offset
+    supplied through the Web Animations API, before the runtime feature controls
+    whether a TypeError is thrown. This measures the compatibility risk of
+    rejecting relative and element-dependent offsets.
+  </summary>
+</histogram>
+
 <histogram name="Blink.Animation.SDA.BoundaryMisalignment"
     units="16ths of a pixel" expires_after="2024-09-01">
   <owner>kevers@chromium.org</owner>
-  <owner>animations-dev@chromium.org</owner>
+  <owner>blink-interactions-team@google.com</owner>
   <summary>
     Unexpected misalignment of a phase boundary when aligned to a scroll-
     boundary measured in 16ths of a pixel. Recorded each time phase calculation

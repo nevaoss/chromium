@@ -23,6 +23,7 @@ import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.ui.base.ResourceBundle;
 
+import java.util.ArrayDeque;
 import java.util.concurrent.CountDownLatch;
 
 /** Controller responsible for managing WebView startup lifecycle and tasks. */
@@ -45,11 +46,6 @@ public class StartupController {
         /** Returns the function table pointer for software drawing. */
         long getDrawSWFunctionTable();
 
-        // TODO(elabadysayed): Centralize target SDK gated features in a single place and
-        // allow overriding them for testing instead of checking them across glue and Aw layers.
-        /** Returns whether simplified dark mode is enabled. */
-        boolean isSimplifiedDarkModeEnabled();
-
         /** Initializes thread-unsafe singletons in the glue layer. */
         void initThreadUnsafeSingletons();
 
@@ -62,11 +58,15 @@ public class StartupController {
     }
 
     private final Delegate mDelegate;
+    private final StartupTasksRunner.Delegate mStartupTasksRunnerDelegate;
 
     private final CountDownLatch mNonUiThreadCapableStartupTasksLatch = new CountDownLatch(1);
+    private @Nullable StartupTasksRunner mStartupTasksRunner;
 
-    public StartupController(Delegate delegate) {
+    public StartupController(
+            Delegate delegate, StartupTasksRunner.Delegate startupTasksRunnerDelegate) {
         mDelegate = delegate;
+        mStartupTasksRunnerDelegate = startupTasksRunnerDelegate;
     }
 
     // These are startup tasks that can either run during provider init or during `startChromium`.
@@ -109,7 +109,41 @@ public class StartupController {
         }
     }
 
-    public void preBrowserProcessStartTask() {
+    /**
+     * Runs startup tasks synchronously or asynchronously depending on call site and thread.
+     * Initializes StartupTasksRunner on the first call.
+     */
+    public void runStartupTasks(
+            @StartupCallSite int callSite,
+            boolean triggeredFromUIThread,
+            @StartupTasksRunner.StartupRequestMode int chromiumFirstStartupRequestMode) {
+        StartupTasksRunner runner = initializeStartupTasksRunner(chromiumFirstStartupRequestMode);
+        runner.run(callSite, triggeredFromUIThread);
+    }
+
+    private StartupTasksRunner initializeStartupTasksRunner(
+            @StartupTasksRunner.StartupRequestMode int chromiumFirstStartupRequestMode) {
+        if (mStartupTasksRunner != null) {
+            return mStartupTasksRunner;
+        }
+        ArrayDeque<Runnable> preBrowserProcessStartTasks = new ArrayDeque<>();
+        ArrayDeque<Runnable> postBrowserProcessStartTasks = new ArrayDeque<>();
+
+        preBrowserProcessStartTasks.addLast(this::preBrowserProcessStartTask);
+        preBrowserProcessStartTasks.addLast(AwBrowserProcess::runPreBrowserProcessStart);
+        postBrowserProcessStartTasks.addLast(this::immediatePostBrowserProcessStartTask);
+        postBrowserProcessStartTasks.addLast(this::postBrowserProcessStartTask);
+
+        mStartupTasksRunner =
+                new StartupTasksRunner(
+                        mStartupTasksRunnerDelegate,
+                        preBrowserProcessStartTasks,
+                        postBrowserProcessStartTasks,
+                        chromiumFirstStartupRequestMode);
+        return mStartupTasksRunner;
+    }
+
+    private void preBrowserProcessStartTask() {
         if (WebViewCachedFlags.get()
                 .isCachedFeatureEnabled(AwFeatures.WEBVIEW_MOVE_WORK_TO_PROVIDER_INIT)) {
             PostTask.postTask(
@@ -147,11 +181,23 @@ public class StartupController {
         AwBrowserProcess.finishVariationsInit();
     }
 
+    /** Runs immediate post-browser startup tasks following BrowserProcess init. */
+    private void immediatePostBrowserProcessStartTask() {
+        AwBrowserProcess.finishBrowserProcessStart();
+        // TODO(crbug.com/332706093): See if this can be moved before loading native.
+        if (!WebViewCachedFlags.get()
+                .isCachedFeatureEnabled(AwFeatures.WEBVIEW_BACKGROUND_CLASS_PRELOADING)) {
+            AwClassPreloader.preloadClasses();
+        }
+
+        AwBrowserProcess.doNetworkInitializations(ContextUtils.getApplicationContext());
+    }
+
     /**
      * Runs post-browser-process startup tasks that need to run on the UI thread before and after
      * Chromium initialization is complete.
      */
-    public void postBrowserProcessStartTask() {
+    private void postBrowserProcessStartTask() {
         ThreadUtils.assertOnUiThread();
 
         AwBrowserProcess.initializeMetricsLogUploader();
@@ -166,13 +212,14 @@ public class StartupController {
             AwDevToolsServer.setRemoteDebuggingEnabled(true);
         }
 
-        if (mDelegate.isSimplifiedDarkModeEnabled()) {
-            AwDarkMode.enableSimplifiedDarkMode();
+        if (CompatQuirks.isEnabled(CompatQuirks.Quirk.LEGACY_DARK_MODE)) {
+            AwDarkMode.enableLegacyDarkMode();
         }
 
         AwBrowserProcess.maybeEnableSafeBrowsingFromGms();
         AwBrowserProcess.setupSupervisedUser();
         AwBrowserProcess.handleMinidumpsAndSetMetricsConsent(/* updateMetricsConsent= */ true);
+        AwBrowserProcess.startObservingOsAccessibilitySettingChanges();
 
         AwBrowserProcess.postBackgroundTasks();
 

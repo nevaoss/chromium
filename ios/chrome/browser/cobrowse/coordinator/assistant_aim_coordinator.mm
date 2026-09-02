@@ -115,7 +115,7 @@ class AssistantAIMUIStateProvider
   self = [super initWithBaseViewController:viewController browser:browser];
   if (self) {
     _activityReporter =
-        [[ActivityReporter alloc] initWithDomain:ActivityReportDomainCobrowse];
+        [[ActivityReporter alloc] initWithDomain:ActivityReportDomainAssistant];
   }
   return self;
 }
@@ -268,6 +268,10 @@ class AssistantAIMUIStateProvider
     [self dismissAssistantContainerAnimated:YES completion:nil];
     [_activityReporter reportInactive];
   }
+}
+
+- (void)loadIfNecessary {
+  [_mediator loadIfNecessary];
 }
 
 #pragma mark - CobrowseBrowserAgent::UIStateProvider

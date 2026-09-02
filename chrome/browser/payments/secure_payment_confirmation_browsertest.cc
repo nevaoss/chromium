@@ -30,6 +30,7 @@
 #include "components/payments/core/features.h"
 #include "components/payments/core/native_error_strings.h"
 #include "components/payments/core/secure_payment_confirmation_credential.h"
+#include "components/payments/core/secure_payment_confirmation_metrics.h"
 #include "components/webdata/common/web_data_results.h"
 #include "components/webdata_services/web_data_service_wrapper_factory.h"
 #include "content/public/common/content_features.h"
@@ -45,13 +46,17 @@
 namespace payments {
 
 SecurePaymentConfirmationTest::SecurePaymentConfirmationTest() {
-  feature_list_.InitWithFeatures(
-      /*enabled_features=*/{::features::kSecurePaymentConfirmation,
-                            ::features::kSecurePaymentConfirmationDebug},
-      // TODO(crbug.com/40868539): Refactor code to allow mocking out the
-      // credential store APIs.
+  // TODO(crbug.com/40868539): Refactor code to allow mocking out the credential
+  // store APIs for saving and discovering credentials.
+  feature_list_.InitWithFeaturesAndParameters(
+      /*enabled_features=*/
+      {{::features::kSecurePaymentConfirmation, {}},
+       {::features::kSecurePaymentConfirmationDebug, {}},
+       {features::kSecurePaymentConfirmationCredentialDiscoveryMode,
+        {{"mode", features::CredentialDiscoveryModeToString(
+                      features::CredentialDiscoveryMode::kUserDatabaseOnly)}}}},
       /*disabled_features=*/{
-          features::kSecurePaymentConfirmationUseCredentialStoreAPIs,
+          features::kSecurePaymentConfirmationStoreCredentialsInOS,
           features::kSPCLocaleValidation});
 }
 
@@ -601,6 +606,7 @@ class SecurePaymentConfirmationLocaleFeatureEnabledTest
 
 IN_PROC_BROWSER_TEST_F(SecurePaymentConfirmationLocaleFeatureEnabledTest,
                        Show_LocaleMatches) {
+  base::HistogramTester histogram_tester;
   ResetEventWaiterForSingleEvent(TestEvent::kUIDisplayed);
   ExecuteScriptAsync(GetActiveWebContents(),
                      "getSecurePaymentConfirmationStatusWithLocale(['en-US'])");
@@ -611,14 +617,42 @@ IN_PROC_BROWSER_TEST_F(SecurePaymentConfirmationLocaleFeatureEnabledTest,
   EXPECT_EQ(
       GetCancelErrorMessage(),
       content::EvalJs(GetActiveWebContents(), "getOutstandingStatusPromise()"));
+
+  histogram_tester.ExpectUniqueSample(
+      "PaymentRequest.SecurePaymentConfirmation.LocaleOutcome",
+      SecurePaymentConfirmationLocaleOutcome::kMatch, 1);
 }
 
 IN_PROC_BROWSER_TEST_F(SecurePaymentConfirmationLocaleFeatureEnabledTest,
                        Show_LocaleMismatch) {
+  base::HistogramTester histogram_tester;
   EXPECT_EQ(
       GetLocaleMismatchErrorMessage(),
       content::EvalJs(GetActiveWebContents(),
                       "getSecurePaymentConfirmationStatusWithLocale(['fr'])"));
+
+  histogram_tester.ExpectUniqueSample(
+      "PaymentRequest.SecurePaymentConfirmation.LocaleOutcome",
+      SecurePaymentConfirmationLocaleOutcome::kNoMatch, 1);
+}
+
+IN_PROC_BROWSER_TEST_F(SecurePaymentConfirmationLocaleFeatureEnabledTest,
+                       Show_LocaleNotProvided) {
+  base::HistogramTester histogram_tester;
+  ResetEventWaiterForSingleEvent(TestEvent::kUIDisplayed);
+  ExecuteScriptAsync(GetActiveWebContents(),
+                     "getSecurePaymentConfirmationStatusWithLocale()");
+  WaitForObservedEvent();
+
+  EXPECT_TRUE(database_write_responded_);
+  test_controller()->CloseDialog();
+  EXPECT_EQ(
+      GetCancelErrorMessage(),
+      content::EvalJs(GetActiveWebContents(), "getOutstandingStatusPromise()"));
+
+  histogram_tester.ExpectUniqueSample(
+      "PaymentRequest.SecurePaymentConfirmation.LocaleOutcome",
+      SecurePaymentConfirmationLocaleOutcome::kLocaleNotProvided, 1);
 }
 
 IN_PROC_BROWSER_TEST_F(SecurePaymentConfirmationLocaleFeatureEnabledTest,

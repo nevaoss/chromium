@@ -14,14 +14,13 @@ import {CrWebApi, gCrWeb} from '//ios/web/public/js_messaging/resources/gcrweb.j
 declare const gCrWebPlaceholderAutofillAcrossIframesThrottling: boolean;
 declare const gCrWebPlaceholderAutofillDisallowMoreHyphenLikeLabels: boolean;
 declare const gCrWebPlaceholderAutofillSupportDateInput: boolean;
-declare const gCrWebPlaceholderAutofillCorrectUserEditedBitInParsedField:
-    boolean;
 declare const gCrWebPlaceholderAutofillAllowDefaultPreventedSubmission: boolean;
 declare const gCrWebPlaceholderAutofillDedupeFormSubmission: boolean;
 declare const gCrWebPlaceholderAutofillEmailVerification: boolean;
 declare const gCrWebPlaceholderAutofillReportFormSubmissionErrors: boolean;
 declare const gCrWebPlaceholderAutofillCountFormSubmissionInRenderer: boolean;
 declare const gCrWebPlaceholderAutofillTrackPasswordFieldsIos: boolean;
+declare const gCrWebPlaceholderAutofillSupportContentEditable: boolean;
 
 // LINT.IfChange(autofill_across_iframes_ios_throttling)
 /**
@@ -51,16 +50,6 @@ function isAutofillSupportDateInputEnabled(): boolean {
   return gCrWebPlaceholderAutofillSupportDateInput;
 }
 // LINT.ThenChange(//components/autofill/ios/common/features.mm:autofill_support_date_input)
-
-// LINT.IfChange(autofill_correct_user_edited_bit_in_parsed_field)
-/**
- * Enables correctly setting the is_user_edited_deprecated bit in the parsed
- * form fields instead of using true by default.
- */
-function isAutofillCorrectUserEditedBitInParsedField(): boolean {
-  return gCrWebPlaceholderAutofillCorrectUserEditedBitInParsedField;
-}
-// LINT.ThenChange(//components/autofill/ios/common/features.mm:autofill_correct_user_edited_bit_in_parsed_field)
 
 // LINT.IfChange(autofill_allow_default_prevented_submission)
 /**
@@ -119,6 +108,15 @@ function isAutofillTrackPasswordFieldsEnabled(): boolean {
 }
 // LINT.ThenChange(//components/autofill/ios/common/features.mm:autofill_track_password_fields_ios)
 
+// LINT.IfChange(autofill_support_content_editable_ios)
+/**
+ * Whether or not contenteditable support is enabled.
+ */
+function isAutofillSupportContentEditableEnabled(): boolean {
+  return gCrWebPlaceholderAutofillSupportContentEditable;
+}
+// LINT.ThenChange(//components/autofill/ios/common/features.mm:autofill_support_content_editable_ios)
+
 // Expose globally via `gCrWeb` under the 'autofill_form_features' API name.
 const autofillFormFeatures = new CrWebApi('autofill_form_features');
 
@@ -130,9 +128,6 @@ autofillFormFeatures.addFunction(
     isAutofillDisallowMoreHyphenLikeLabelsEnabled);
 autofillFormFeatures.addFunction(
     'isAutofillSupportDateInputEnabled', isAutofillSupportDateInputEnabled);
-autofillFormFeatures.addFunction(
-    'isAutofillCorrectUserEditedBitInParsedField',
-    isAutofillCorrectUserEditedBitInParsedField);
 autofillFormFeatures.addFunction(
     'isAutofillAllowDefaultPreventedSubmission',
     isAutofillAllowDefaultPreventedSubmission);
@@ -150,5 +145,8 @@ autofillFormFeatures.addFunction(
 autofillFormFeatures.addFunction(
     'isAutofillTrackPasswordFieldsEnabled',
     isAutofillTrackPasswordFieldsEnabled);
+autofillFormFeatures.addFunction(
+    'isAutofillSupportContentEditableEnabled',
+    isAutofillSupportContentEditableEnabled);
 
 gCrWeb.registerApi(autofillFormFeatures);

@@ -247,7 +247,7 @@ chromium-metrics-reviews@google.com.
 
 <!-- LINT.IfChange(KeyboardShortcutsSemanticMeaning) -->
 
-<histogram name="Accessibility.Android.KeyboardShortcut.{ScreenReaderState}7"
+<histogram name="Accessibility.Android.KeyboardShortcut.{ScreenReaderState}8"
     enum="KeyboardShortcutsSemanticMeaning" expires_after="2027-06-01">
   <owner>mschillaci@google.com</owner>
   <owner>katie@chromium.org</owner>
@@ -2433,6 +2433,39 @@ recorded in the same way, even if they fit the naming pattern. -->
     <variant name="SelectToSpeak"
         summary="Select-to-speak enabed (on ChromeOS only)"/>
   </token>
+</histogram>
+
+<histogram name="Accessibility.PdfHeuristics.HeadingClassifier"
+    enum="PdfAccessibilityHeadingClassifier" expires_after="2027-08-01">
+  <owner>kristislee@google.com</owner>
+  <owner>komo-eng@google.com</owner>
+  <owner>chrome-a11y-core@google.com</owner>
+  <summary>
+    Records the heuristic classification rule used to identify a text block as a
+    heading in an untagged PDF document.
+  </summary>
+</histogram>
+
+<histogram name="Accessibility.PdfHeuristics.HeadingToBodySizeRatioMax"
+    units="ratio * 100" expires_after="2027-08-01">
+  <owner>kristislee@google.com</owner>
+  <owner>komo-eng@google.com</owner>
+  <owner>chrome-a11y-core@google.com</owner>
+  <summary>
+    Records the maximum font-size ratio (heading size divided by body baseline)
+    observed on an individual page.
+  </summary>
+</histogram>
+
+<histogram name="Accessibility.PdfHeuristics.HeadingToBodySizeRatioMin"
+    units="ratio * 100" expires_after="2027-08-01">
+  <owner>kristislee@google.com</owner>
+  <owner>komo-eng@google.com</owner>
+  <owner>chrome-a11y-core@google.com</owner>
+  <summary>
+    Records the minimum font-size ratio (heading size divided by body baseline)
+    observed on an individual page.
+  </summary>
 </histogram>
 
 <histogram name="Accessibility.PdfOcr.CrosSelectToSpeak.PagesOcred"

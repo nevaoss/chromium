@@ -130,6 +130,8 @@ BASE_FEATURE(kWebAuthnEnclaveAttestation,
 BASE_FEATURE(kWebAuthnCrossDeviceFallbackUrl,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+BASE_FEATURE(kWebAuthnRemoteClientDataJson, base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Enabled by default in M149. Remove in or after M152.
 BASE_FEATURE(kWebAuthnIWARemoteDesktopAllowedOriginsPolicy,
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -180,5 +182,9 @@ BASE_FEATURE(kWebAuthnGpmPasskeyEmbeddedRecoveryUrl,
 COMPONENT_EXPORT(FIDO_PUBLIC)
 BASE_FEATURE(kWebAuthnEnclaveUseAuthDataFromEnclave,
              base::FEATURE_ENABLED_BY_DEFAULT);
+
+// Enabled by default in M152. Remove in or after M155.
+COMPONENT_EXPORT(FIDO_PUBLIC)
+BASE_FEATURE(kWebAuthnModalProviderIcons, base::FEATURE_ENABLED_BY_DEFAULT);
 
 }  // namespace device

@@ -202,6 +202,10 @@ bool UnpinnedTabContainerView::IsViewDragging(
 
 bool UnpinnedTabContainerView::ShouldAnimateOpacityForAddAndRemove(
     const views::View& child_view) const {
+  if (collection_node_ &&
+      collection_node_->orientation() == TabStripOrientation::kHorizontal) {
+    return false;
+  }
   // Only animate opacity for tab views.
   return views::IsViewClass<TabView>(&child_view);
 }
@@ -219,6 +223,12 @@ UnpinnedTabContainerView::GetAvailableMainAxisSpaceOverride() const {
 
 gfx::Size UnpinnedTabContainerView::GetTargetPreferredSize() const {
   return layout_manager_->GetTargetPreferredSize();
+}
+
+int UnpinnedTabContainerView::GetUnconstrainedPreferredWidth() const {
+  return static_cast<UnpinnedTabContainerViewLayout*>(
+             layout_manager_->target_layout_manager())
+      ->GetUnconstrainedPreferredWidth(this);
 }
 
 void UnpinnedTabContainerView::ResetCollectionNode() {

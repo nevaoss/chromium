@@ -15,7 +15,6 @@ import android.graphics.drawable.Drawable;
 import android.view.View;
 
 import androidx.annotation.VisibleForTesting;
-import androidx.viewpager.widget.ViewPager;
 
 import org.chromium.base.Callback;
 import org.chromium.base.TraceEvent;
@@ -89,14 +88,6 @@ public class KeyboardAccessoryCoordinator implements KeyboardAccessoryVisualStat
      * Describes a delegate manages all known tabs and is responsible to determine the active tab.
      */
     public interface TabSwitchingDelegate {
-        /**
-         * The {@link KeyboardAccessoryData.Tab} passed into this function will be completely
-         * removed from the tab layout.
-         *
-         * @param tab The tab to be removed.
-         */
-        void removeTab(KeyboardAccessoryData.Tab tab);
-
         /**
          * Clears all currently known tabs and adds the given tabs as replacement.
          *
@@ -451,10 +442,6 @@ public class KeyboardAccessoryCoordinator implements KeyboardAccessoryVisualStat
      */
     public boolean hasActiveTab() {
         return mMediator.hasActiveTab();
-    }
-
-    public ViewPager.OnPageChangeListener getOnPageChangeListener() {
-        return mButtonGroup.getStablePageChangeListener();
     }
 
     public KeyboardAccessoryMediator getMediatorForTesting() {

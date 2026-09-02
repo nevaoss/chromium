@@ -1232,9 +1232,9 @@ BASE_FEATURE(kPlatformHEVCEncoderSupport, base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_APPLE) || BUILDFLAG(IS_ANDROID)
 
 #if BUILDFLAG(IS_APPLE)
-// Enables HEVC Main10 (10-bit) hardware accelerated encoding on macOS.
-BASE_FEATURE(kPlatformHEVCMain10EncoderSupport,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+// Enables HEVC high-bit-depth hardware accelerated encoding on macOS. Covers
+// Main10 (10-bit 4:2:0) and RExt 8/10-bit 4:2:2 and 4:4:4.
+BASE_FEATURE(kPlatformHEVCHbdEncoderSupport, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_APPLE)
 
 #endif  // BUILDFLAG(ENABLE_PLATFORM_HEVC)
@@ -1249,6 +1249,20 @@ BASE_FEATURE(kSymphoniaMp3Decoding, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kSymphoniaPcmDecoding, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kSymphoniaVorbisDecoding, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(ENABLE_SYMPHONIA)
+
+#if BUILDFLAG(ENABLE_SYMPHONIA_DEMUXER)
+// Enables the use of Symphonia for container demuxing.
+// Owner: jophba@chromium.org
+// TODO(crbug.com/550619039, jophba): Consider for removal in M177.
+BASE_FEATURE(kSymphoniaDemuxing, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kSymphoniaAacDemuxing, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kSymphoniaFlacDemuxing, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kSymphoniaIsomDemuxing, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kSymphoniaMkvDemuxing, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kSymphoniaMp3Demuxing, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kSymphoniaOggDemuxing, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kSymphoniaRiffDemuxing, base::FEATURE_DISABLED_BY_DEFAULT);
+#endif  // BUILDFLAG(ENABLE_SYMPHONIA_DEMUXER)
 
 #if BUILDFLAG(IS_ANDROID)
 // Allows audio playback capture on Android.
@@ -1301,9 +1315,9 @@ BASE_FEATURE(kContextMenuPictureInPictureAndroid,
 BASE_FEATURE(kFullscreenVideoPictureInPicture,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
-// Enables block model (LinearBlock) on supported devices.
-// TODO(crbug.com/327625558): Currently block model is buggy and can't be
-// enabled, we need to test it again when Android 17 is released.
+// Enables block model on supported devices.
+// Block model is only supported on Android 17 26Q4+ where the feature is
+// properly supported by the framework.
 BASE_FEATURE(kMediaCodecBlockModel, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables output-side block model (OutputFrame) on supported devices.

@@ -186,7 +186,8 @@ std::vector<TestParams> GetTestParams() {
 class SessionAttemptHelper : public QuicSessionAttempt::Delegate {
  public:
   SessionAttemptHelper(QuicSessionPool* pool,
-                       quic::ParsedQuicVersion quic_version)
+                       quic::ParsedQuicVersion quic_version,
+                       bool is_stale = false)
       : pool_(pool),
         quic_endpoint(quic_version,
                       IPEndPoint(IPAddress::IPv4Localhost(),
@@ -210,7 +211,7 @@ class SessionAttemptHelper : public QuicSessionAttempt::Delegate {
         /*dns_resolution_end_time=*/base::TimeTicks(),
         /*dns_resolution_details=*/std::nullopt, /*use_dns_aliases=*/true,
         /*dns_aliases=*/{}, MultiplexedSessionCreationInitiator::kUnknown,
-        /*connection_management_config=*/std::nullopt);
+        /*connection_management_config=*/std::nullopt, is_stale);
   }
 
   SessionAttemptHelper(const SessionAttemptHelper&) = delete;
@@ -323,6 +324,7 @@ class MockQuicSessionPool : public QuicSessionPool {
       SCTAuditingDelegate* sct_auditing_delegate,
       SocketPerformanceWatcherFactory* socket_performance_watcher_factory,
       QuicCryptoClientStreamFactory* quic_crypto_client_stream_factory,
+      NetworkQualityEstimator* network_quality_estimator,
       QuicContext* context)
       : QuicSessionPool(net_log,
                         host_resolver,
@@ -335,6 +337,7 @@ class MockQuicSessionPool : public QuicSessionPool {
                         sct_auditing_delegate,
                         socket_performance_watcher_factory,
                         quic_crypto_client_stream_factory,
+                        network_quality_estimator,
                         context) {}
 
   MockQuicSessionPool(const MockQuicSessionPool&) = delete;
@@ -1079,6 +1082,38 @@ TEST_P(QuicSessionPoolTest, RequireConfirmationAsyncQuicSession) {
   EXPECT_TRUE(stream.get());
 
   QuicChromiumClientSession* session = GetActiveSession(kDefaultDestination);
+  EXPECT_TRUE(session->require_confirmation());
+}
+
+TEST_P(QuicSessionPoolTest, RequireConfirmationStaleAttempt) {
+  crypto_client_stream_factory_.set_handshake_mode(
+      MockCryptoClientStream::ZERO_RTT);
+  Initialize();
+  pool_->set_has_quic_ever_worked_on_current_network(true);
+
+  ProofVerifyDetailsChromium verify_details = DefaultProofVerifyDetails();
+  crypto_client_stream_factory_.AddProofVerifyDetails(&verify_details);
+
+  MockQuicData socket_data(version_);
+  socket_data.AddReadPauseForever();
+  client_maker_.SetEncryptionLevel(quic::ENCRYPTION_ZERO_RTT);
+  socket_data.AddWrite(SYNCHRONOUS, ConstructInitialSettingsPacket());
+  socket_data.AddSocketDataToFactory(socket_factory_.get());
+
+  SessionAttemptHelper session_attempt(pool_.get(), version_,
+                                       /*is_stale=*/true);
+
+  EXPECT_THAT(session_attempt.Start(), IsError(ERR_IO_PENDING));
+
+  crypto_client_stream_factory_.WaitForStreams(1);
+
+  crypto_client_stream_factory_.last_stream()
+      ->NotifySessionOneRttKeyAvailable();
+
+  EXPECT_THAT(session_attempt.result(), testing::Optional(IsOk()));
+
+  QuicChromiumClientSession* session = GetActiveSession(kDefaultDestination);
+  EXPECT_TRUE(session);
   EXPECT_TRUE(session->require_confirmation());
 }
 
@@ -2881,7 +2916,8 @@ TEST_P(QuicSessionPoolTest, CloseSessionDuringCreation) {
       cert_verifier_.get(), &transport_security_state_, proxy_delegate_.get(),
       /*sct_auditing_delegate=*/nullptr,
       /*SocketPerformanceWatcherFactory*/ nullptr,
-      &crypto_client_stream_factory_, &context_);
+      &crypto_client_stream_factory_,
+      /*network_quality_estimator=*/nullptr, &context_);
 
   ProofVerifyDetailsChromium verify_details = DefaultProofVerifyDetails();
   crypto_client_stream_factory_.AddProofVerifyDetails(&verify_details);
@@ -15305,48 +15341,6 @@ TEST_P(QuicSessionPoolTest, EchWithQuicFromHttpsRecord) {
             config.ech_config_list);
 }
 
-// Test that, when ECH is disabled, neither ECH nor ECH GREASE are configured.
-TEST_P(QuicSessionPoolTest, EchDisabled) {
-  quic_params_->supported_versions = {version_};
-  HostResolverEndpointResult endpoint;
-  endpoint.ip_endpoints = {IPEndPoint(IPAddress::IPv4Localhost(), 0)};
-  endpoint.metadata.supported_protocol_alpns = {quic::AlpnForVersion(version_)};
-  endpoint.metadata.ech_config_list = {1, 2, 3, 4};
-
-  host_resolver_ = std::make_unique<MockHostResolver>();
-  host_resolver_->rules()->AddRule(
-      kDefaultServerHostName,
-      MockHostResolverBase::RuleResolver::RuleResult({endpoint}));
-
-  SSLContextConfig ssl_config;
-  ssl_config.ech_enabled = false;
-  ssl_config_service_.UpdateSSLConfigAndNotify(ssl_config);
-
-  Initialize();
-  ProofVerifyDetailsChromium verify_details = DefaultProofVerifyDetails();
-  crypto_client_stream_factory_.AddProofVerifyDetails(&verify_details);
-
-  MockQuicData socket_data(version_);
-  socket_data.AddReadPauseForever();
-  socket_data.AddWrite(SYNCHRONOUS, ConstructInitialSettingsPacket());
-  socket_data.AddSocketDataToFactory(socket_factory_.get());
-
-  RequestBuilder builder(this);
-  builder.quic_version = quic::ParsedQuicVersion::Unsupported();
-  builder.require_dns_https_alpn = true;
-  EXPECT_EQ(ERR_IO_PENDING, builder.CallRequest());
-  ASSERT_THAT(callback_.WaitForResult(), IsOk());
-
-  QuicChromiumClientSession* session = GetActiveSession(
-      kDefaultDestination, PRIVACY_MODE_DISABLED, NetworkAnonymizationKey(),
-      ProxyChain::Direct(), SessionUsage::kDestination,
-      /*require_dns_https_alpn=*/true);
-  ASSERT_TRUE(session);
-  quic::QuicSSLConfig config = session->GetSSLConfig();
-  EXPECT_TRUE(config.ech_config_list.empty());
-  EXPECT_FALSE(config.ech_grease_enabled);
-}
-
 // Test that, when EchMode is kDisabled for the host, neither ECH nor ECH GREASE
 // are configured.
 TEST_P(QuicSessionPoolTest, EchModeDisabledForHost) {
@@ -15468,9 +15462,9 @@ TEST_P(QuicSessionPoolTest, EchDisabledSvcbOptional) {
       MockHostResolverBase::RuleResolver::RuleResult(std::move(endpoints)));
 
   // But this client is not ECH-capable, so the connection should succeed.
-  SSLContextConfig ssl_config;
-  ssl_config.ech_enabled = false;
-  ssl_config_service_.UpdateSSLConfigAndNotify(ssl_config);
+  ssl_config_service_.SetEchModeGetter(
+      std::make_unique<TestStaticEchModeGetter>(EchMode::kDisabled,
+                                                kDefaultServerHostName));
 
   Initialize();
   ProofVerifyDetailsChromium verify_details = DefaultProofVerifyDetails();

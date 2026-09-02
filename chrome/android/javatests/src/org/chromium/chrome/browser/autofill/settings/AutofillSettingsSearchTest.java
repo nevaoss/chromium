@@ -5,10 +5,7 @@
 package org.chromium.chrome.browser.autofill.settings;
 
 import static androidx.test.espresso.Espresso.onView;
-import static androidx.test.espresso.action.ViewActions.click;
-import static androidx.test.espresso.action.ViewActions.replaceText;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
-import static androidx.test.espresso.matcher.ViewMatchers.hasDescendant;
 import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withParent;
@@ -17,8 +14,10 @@ import static androidx.test.espresso.matcher.ViewMatchers.withText;
 import static org.hamcrest.CoreMatchers.allOf;
 import static org.mockito.Mockito.when;
 
-import static org.chromium.components.browser_ui.widget.highlight.ViewHighlighterTestUtils.isHighlighted;
-import static org.chromium.ui.test.util.ViewUtils.onViewWaiting;
+import static org.chromium.chrome.browser.settings.SettingsSearchTestUtils.assertNoSearchResultsFound;
+import static org.chromium.chrome.browser.settings.SettingsSearchTestUtils.clickSearchResult;
+import static org.chromium.chrome.browser.settings.SettingsSearchTestUtils.highlighted;
+import static org.chromium.chrome.browser.settings.SettingsSearchTestUtils.typeSearchQuery;
 
 import android.view.View;
 
@@ -89,11 +88,7 @@ public class AutofillSettingsSearchTest {
     public void testSearchAutofillAndPasswords() {
         searchSettings("autofill");
 
-        onViewWaiting( // Wait for debounce and Search results to appear.
-                        allOf(
-                                withId(android.R.id.title),
-                                withText(R.string.autofill_and_passwords_settings_title)))
-                .perform(click());
+        clickSearchResult(R.string.autofill_and_passwords_settings_title);
 
         assertAutofillAndPasswordsOpened();
     }
@@ -103,15 +98,10 @@ public class AutofillSettingsSearchTest {
     public void testSearchPasswordManager() {
         searchSettings("password");
 
-        onViewWaiting( // Wait for debounce and Search results to appear.
-                        allOf(
-                                withId(android.R.id.title),
-                                withText(R.string.password_manager_settings_title)))
-                .perform(click());
+        clickSearchResult(R.string.password_manager_settings_title);
 
         assertAutofillAndPasswordsOpened();
-        onView(highlighted(withText(R.string.password_manager_settings_title)))
-                .check(matches(isDisplayed()));
+        onView(highlighted(R.string.password_manager_settings_title)).check(matches(isDisplayed()));
     }
 
     @Test
@@ -119,15 +109,10 @@ public class AutofillSettingsSearchTest {
     public void testSearchPayment() {
         searchSettings("payment");
 
-        onViewWaiting( // Wait for debounce and Search results to appear.
-                        allOf(
-                                withId(android.R.id.title),
-                                withText(R.string.autofill_payments_title)))
-                .perform(click());
+        clickSearchResult(R.string.autofill_payments_title);
 
         assertAutofillAndPasswordsOpened();
-        onView(highlighted(withText(R.string.autofill_payments_title)))
-                .check(matches(isDisplayed()));
+        onView(highlighted(R.string.autofill_payments_title)).check(matches(isDisplayed()));
     }
 
     @Test
@@ -135,15 +120,11 @@ public class AutofillSettingsSearchTest {
     public void testSearchSaveAndFillPaymentMethods() {
         searchSettings("payment");
 
-        onViewWaiting( // Wait for debounce and Search results to appear.
-                        allOf(
-                                withId(android.R.id.title),
-                                withText(R.string.autofill_enable_credit_cards_toggle_label)))
-                .perform(click());
+        clickSearchResult(R.string.autofill_enable_credit_cards_toggle_label);
 
         onView(actionBarTitle(withText(R.string.autofill_payments_title)))
                 .check(matches(isDisplayed()));
-        onView(highlighted(withText(R.string.autofill_enable_credit_cards_toggle_label)))
+        onView(highlighted(R.string.autofill_enable_credit_cards_toggle_label))
                 .check(matches(isDisplayed()));
     }
 
@@ -158,13 +139,11 @@ public class AutofillSettingsSearchTest {
         card.setCvc("123");
         new AutofillTestHelper().addServerCreditCard(card);
 
-        onView(withId(R.id.search_box)).perform(click());
-        onView(withId(R.id.search_query)).perform(replaceText("delete saved security codes"));
+        typeSearchQuery("delete saved security codes");
 
-        onViewWaiting(withText(R.string.autofill_settings_page_bulk_remove_cvc_label))
-                .perform(click());
+        clickSearchResult(R.string.autofill_settings_page_bulk_remove_cvc_label);
 
-        onView(highlighted(withText(R.string.autofill_settings_page_bulk_remove_cvc_label)))
+        onView(highlighted(R.string.autofill_settings_page_bulk_remove_cvc_label))
                 .check(matches(isDisplayed()));
     }
 
@@ -173,7 +152,7 @@ public class AutofillSettingsSearchTest {
     public void testSearchDeleteSavedCvcs_noMatchWithoutCards() {
         searchSettings("delete saved security codes");
 
-        onViewWaiting(withText(R.string.search_in_settings_no_match)).check(matches(isDisplayed()));
+        assertNoSearchResultsFound();
     }
 
     @Test
@@ -181,15 +160,10 @@ public class AutofillSettingsSearchTest {
     public void testSearchContact() {
         searchSettings("contact");
 
-        onViewWaiting( // Wait for debounce and Search results to appear.
-                        allOf(
-                                withId(android.R.id.title),
-                                withText(R.string.autofill_contact_info_title)))
-                .perform(click());
+        clickSearchResult(R.string.autofill_contact_info_title);
 
         assertAutofillAndPasswordsOpened();
-        onView(highlighted(withText(R.string.autofill_contact_info_title)))
-                .check(matches(isDisplayed()));
+        onView(highlighted(R.string.autofill_contact_info_title)).check(matches(isDisplayed()));
     }
 
     @Test
@@ -204,13 +178,11 @@ public class AutofillSettingsSearchTest {
                             .setBoolean(Pref.AUTOFILL_HAS_SEEN_BNPL, true);
                 });
 
-        onView(withId(R.id.search_box)).perform(click());
-        onView(withId(R.id.search_query)).perform(replaceText("show pay later options"));
+        typeSearchQuery("show pay later options");
 
-        onViewWaiting(withText(R.string.autofill_bnpl_settings_label)).perform(click());
+        clickSearchResult(R.string.autofill_bnpl_settings_label);
 
-        onView(highlighted(withText(R.string.autofill_bnpl_settings_label)))
-                .check(matches(isDisplayed()));
+        onView(highlighted(R.string.autofill_bnpl_settings_label)).check(matches(isDisplayed()));
     }
 
     @Test
@@ -225,10 +197,9 @@ public class AutofillSettingsSearchTest {
                             .setBoolean(Pref.AUTOFILL_HAS_SEEN_BNPL, true);
                 });
 
-        onView(withId(R.id.search_box)).perform(click());
-        onView(withId(R.id.search_query)).perform(replaceText("show pay later options"));
+        typeSearchQuery("show pay later options");
 
-        onViewWaiting(withText(R.string.search_in_settings_no_match)).check(matches(isDisplayed()));
+        assertNoSearchResultsFound();
     }
 
     @Test
@@ -237,7 +208,7 @@ public class AutofillSettingsSearchTest {
     public void testSearchBuyNowPayLater_noMatchWithoutPreferenceSet() {
         searchSettings("show pay later options");
 
-        onViewWaiting(withText(R.string.search_in_settings_no_match)).check(matches(isDisplayed()));
+        assertNoSearchResultsFound();
     }
 
     @Test
@@ -245,15 +216,11 @@ public class AutofillSettingsSearchTest {
     public void testSearchSaveAndFillAddresses() {
         searchSettings("save and fill address");
 
-        onViewWaiting( // Wait for debounce and Search results to appear.
-                        allOf(
-                                withId(android.R.id.title),
-                                withText(R.string.autofill_enable_profiles_toggle_label)))
-                .perform(click());
+        clickSearchResult(R.string.autofill_enable_profiles_toggle_label);
 
         onView(actionBarTitle(withText(R.string.autofill_contact_info_title)))
                 .check(matches(isDisplayed()));
-        onView(highlighted(withText(R.string.autofill_enable_profiles_toggle_label)))
+        onView(highlighted(R.string.autofill_enable_profiles_toggle_label))
                 .check(matches(isDisplayed()));
     }
 
@@ -262,12 +229,10 @@ public class AutofillSettingsSearchTest {
     public void testSearchTravel() {
         searchSettings("travel");
 
-        onViewWaiting( // Wait for debounce and Search results to appear.
-                        allOf(withId(android.R.id.title), withText(R.string.autofill_travel_title)))
-                .perform(click());
+        clickSearchResult(R.string.autofill_travel_title);
 
         assertAutofillAndPasswordsOpened();
-        onView(highlighted(withText(R.string.autofill_travel_title))).check(matches(isDisplayed()));
+        onView(highlighted(R.string.autofill_travel_title)).check(matches(isDisplayed()));
     }
 
     @Test
@@ -275,15 +240,11 @@ public class AutofillSettingsSearchTest {
     public void testSearchTravelOptIn() {
         searchSettings("travel");
 
-        onViewWaiting( // Wait for debounce and Search results to appear.
-                        allOf(
-                                withId(android.R.id.title),
-                                withText(R.string.autofill_travel_opt_in_toggle_label)))
-                .perform(click());
+        clickSearchResult(R.string.autofill_travel_opt_in_toggle_label);
 
         onView(actionBarTitle(withText(R.string.autofill_travel_title)))
                 .check(matches(isDisplayed()));
-        onView(highlighted(withText(R.string.autofill_travel_opt_in_toggle_label)))
+        onView(highlighted(R.string.autofill_travel_opt_in_toggle_label))
                 .check(matches(isDisplayed()));
     }
 
@@ -292,15 +253,10 @@ public class AutofillSettingsSearchTest {
     public void testSearchIdentity() {
         searchSettings("identity");
 
-        onViewWaiting( // Wait for debounce and Search results to appear.
-                        allOf(
-                                withId(android.R.id.title),
-                                withText(R.string.autofill_identity_docs_title)))
-                .perform(click());
+        clickSearchResult(R.string.autofill_identity_docs_title);
 
         assertAutofillAndPasswordsOpened();
-        onView(highlighted(withText(R.string.autofill_identity_docs_title)))
-                .check(matches(isDisplayed()));
+        onView(highlighted(R.string.autofill_identity_docs_title)).check(matches(isDisplayed()));
     }
 
     @Test
@@ -308,15 +264,11 @@ public class AutofillSettingsSearchTest {
     public void testSearchIdentityDocsOptIn() {
         searchSettings("identity");
 
-        onViewWaiting( // Wait for debounce and Search results to appear.
-                        allOf(
-                                withId(android.R.id.title),
-                                withText(R.string.autofill_identity_docs_opt_in_toggle_label)))
-                .perform(click());
+        clickSearchResult(R.string.autofill_identity_docs_opt_in_toggle_label);
 
         onView(actionBarTitle(withText(R.string.autofill_identity_docs_title)))
                 .check(matches(isDisplayed()));
-        onView(highlighted(withText(R.string.autofill_identity_docs_opt_in_toggle_label)))
+        onView(highlighted(R.string.autofill_identity_docs_opt_in_toggle_label))
                 .check(matches(isDisplayed()));
     }
 
@@ -325,15 +277,10 @@ public class AutofillSettingsSearchTest {
     public void testSearchAutofillSettings() {
         searchSettings("Autofill settings");
 
-        onViewWaiting( // Wait for debounce and Search results to appear.
-                        allOf(
-                                withId(android.R.id.title),
-                                withText(R.string.autofill_settings_title)))
-                .perform(click());
+        clickSearchResult(R.string.autofill_settings_title);
 
         assertAutofillAndPasswordsOpened();
-        onView(highlighted(withText(R.string.autofill_settings_title)))
-                .check(matches(isDisplayed()));
+        onView(highlighted(R.string.autofill_settings_title)).check(matches(isDisplayed()));
     }
 
     @Test
@@ -343,15 +290,10 @@ public class AutofillSettingsSearchTest {
         signInPromoDismissed(false);
         searchSettings("shopping");
 
-        onViewWaiting( // Wait for debounce and Search results to appear.
-                        allOf(
-                                withId(android.R.id.title),
-                                withText(R.string.autofill_shopping_title)))
-                .perform(click());
+        clickSearchResult(R.string.autofill_shopping_title);
 
         assertAutofillAndPasswordsOpened();
-        onView(highlighted(withText(R.string.autofill_shopping_title)))
-                .check(matches(isDisplayed()));
+        onView(highlighted(R.string.autofill_shopping_title)).check(matches(isDisplayed()));
     }
 
     @Test
@@ -360,13 +302,9 @@ public class AutofillSettingsSearchTest {
     public void testSearchShoppingOptIn() {
         searchSettings("fill shopping");
 
-        onViewWaiting( // Wait for debounce and Search results to appear.
-                        allOf(
-                                withId(android.R.id.title),
-                                withText(R.string.autofill_shopping_opt_in_toggle_label)))
-                .perform(click());
+        clickSearchResult(R.string.autofill_shopping_opt_in_toggle_label);
 
-        onView(highlighted(withText(R.string.autofill_shopping_opt_in_toggle_label)))
+        onView(highlighted(R.string.autofill_shopping_opt_in_toggle_label))
                 .check(matches(isDisplayed()));
     }
 
@@ -380,19 +318,21 @@ public class AutofillSettingsSearchTest {
 
         searchSettings("find and fill");
 
-        onViewWaiting( // Wait for debounce and Search results to appear.
-                        allOf(
-                                withId(android.R.id.title),
-                                withText(
-                                        R.string
-                                                .personal_context_autofill_settings_switch_title_android)))
-                .perform(click());
+        clickSearchResult(
+                R.string.personal_context_autofill_settings_switch_title_android);
 
-        onView(
-                        highlighted(
-                                withText(
-                                        R.string
-                                                .personal_context_autofill_settings_switch_title_android)))
+        onView(highlighted(R.string.personal_context_autofill_settings_switch_title_android))
+                .check(matches(isDisplayed()));
+    }
+
+    @Test
+    @SmallTest
+    public void testSearchCardBenefitsToggle() {
+        searchSettings("Show available card benefits");
+
+        clickSearchResult(R.string.autofill_settings_page_card_benefits_label);
+
+        onView(highlighted(R.string.autofill_settings_page_card_benefits_label))
                 .check(matches(isDisplayed()));
     }
 
@@ -406,11 +346,7 @@ public class AutofillSettingsSearchTest {
                         AutofillOptionsReferrer.SETTINGS_SEARCH);
         searchSettings("autofill");
 
-        onViewWaiting( // Wait for debounce and Search results to appear.
-                        allOf(
-                                withId(android.R.id.title),
-                                withText(R.string.autofill_settings_title)))
-                .perform(click());
+        clickSearchResult(R.string.autofill_settings_title);
 
         onView(withText(R.string.settings_autofill_service_provider)).check(matches(isDisplayed()));
         histogramWatcher.assertExpected();
@@ -429,11 +365,7 @@ public class AutofillSettingsSearchTest {
                         AutofillOptionsReferrer.SETTINGS_SEARCH);
         searchSettings("autofill");
 
-        onViewWaiting( // Wait for debounce and Search results to appear.
-                        allOf(
-                                withId(android.R.id.title),
-                                withText(R.string.autofill_options_title)))
-                .perform(click());
+        clickSearchResult(R.string.autofill_options_title);
 
         onView(withText(R.string.autofill_third_party_filling_default))
                 .check(matches(isDisplayed()));
@@ -446,15 +378,10 @@ public class AutofillSettingsSearchTest {
     public void testSearchAutofill_autofillAiDisabled() {
         searchSettings("autofill");
 
-        onViewWaiting( // Wait for debounce and Search results to appear.
-                        allOf(
-                                withId(android.R.id.title),
-                                withText(R.string.autofill_options_title)))
-                .perform(click());
+        clickSearchResult(R.string.autofill_options_title);
 
         assertAutofillAndPasswordsOpened();
-        onView(highlighted(withText(R.string.autofill_options_title)))
-                .check(matches(isDisplayed()));
+        onView(highlighted(R.string.autofill_options_title)).check(matches(isDisplayed()));
     }
 
     @Test
@@ -482,24 +409,18 @@ public class AutofillSettingsSearchTest {
                         AutofillOptionsReferrer.SETTINGS_SEARCH);
         searchSettings("Smarter form understanding");
 
-        onViewWaiting( // Wait for debounce and Search results to appear.
-                        allOf(
-                                withId(android.R.id.title),
-                                withText(R.string.settings_autofill_ai_page_title_v2)))
-                .perform(click());
+        clickSearchResult(R.string.settings_autofill_ai_page_title_v2);
 
         onView(actionBarTitle(withText(R.string.autofill_settings_title)))
                 .check(matches(isDisplayed()));
-        onView(highlighted(withText(R.string.settings_autofill_ai_page_title_v2)))
+        onView(highlighted(R.string.settings_autofill_ai_page_title_v2))
                 .check(matches(isDisplayed()));
         histogramWatcher.assertExpected();
     }
 
     private void searchSettings(String query) {
         mSettingsActivityTestRule.startSettingsActivity();
-
-        onView(withId(R.id.search_box)).perform(click());
-        onView(withId(R.id.search_query)).perform(replaceText(query));
+        typeSearchQuery(query);
     }
 
     private void assertAutofillAndPasswordsOpened() {
@@ -511,10 +432,6 @@ public class AutofillSettingsSearchTest {
 
     private static Matcher<View> actionBarTitle(Matcher<View> matcher) {
         return allOf(matcher, withParent(withId(R.id.action_bar)));
-    }
-
-    private static Matcher<View> highlighted(Matcher<View> childMatcher) {
-        return allOf(hasDescendant(childMatcher), isHighlighted());
     }
 
     private static void signInPromoDismissed(boolean value) {

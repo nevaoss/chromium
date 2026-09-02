@@ -189,13 +189,17 @@ BASE_FEATURE(kHideAimEntrypointOnUserInput,
 
 // Hides the AIM entrypoint in the Omnibox when the default suggestion is a URL.
 // Only used on desktop platforms.
-BASE_FEATURE(kHideAimEntrypointForUrlSuggestions, DISABLED);
+BASE_FEATURE(kHideAimEntrypointForUrlSuggestions, ENABLED);
 
 // When enabled, the multimodal input button is shown in the Omnibox.
 BASE_FEATURE(kOmniboxMultimodalInput, ENABLED);
 
 // An additional gate to the behavior of OmniboxMultimodalInput on desktop.
 BASE_FEATURE(kAndroidDesktopAimGate, ENABLED);
+
+// Disables tab attachments for Canvas requests and disables Canvas if tabs are
+// attached.
+BASE_FEATURE(kOmniboxDisableTabsForCanvas, ENABLED);
 
 // Enables the AIM entrypoint for third party search engines.
 BASE_FEATURE(kAim3pEntrypoint, ENABLED);
@@ -219,6 +223,12 @@ BASE_FEATURE(kOmniboxWebUIDeferShowUntilVisualStateReady, DISABLED);
 // with a stale frame.
 // TODO(b/549125538): Figure out why timeout is consistently being hit.
 BASE_FEATURE(kOmniboxFullWebUIDeferShowUntilVisualStateReady, DISABLED);
+// When enabled, the Omnibox WebUI popup will debounce auto-resize events.
+BASE_FEATURE(kOmniboxWebUIDebounceResize, ENABLED);
+// When enabled, the AIM WebUI popup will debounce auto-resize events.
+BASE_FEATURE(kOmniboxAimDebounceResize, DISABLED);
+// When enabled, the Omnibox Full WebUI popup will debounce auto-resize events.
+BASE_FEATURE(kOmniboxFullWebUIDebounceResize, ENABLED);
 // If enabled, stabilizes the popup showing behavior on startup by forcing
 // layout with a 1px height and hiding it initially to avoid visual artifacts.
 BASE_FEATURE(kOmniboxWebUIPopupStabilizeStartupShow, ENABLED);
@@ -301,6 +311,10 @@ BASE_FEATURE(kUrlScoringModel, enable_if(!IS_ANDROID));
 // suggestion iff the SearchNavigationPrefetch feature and "touch_down" param
 // are enabled.
 BASE_FEATURE(kOmniboxTouchDownTriggerForPrefetch, enable_if(IS_ANDROID));
+
+// If enabled, sets up an off-main-thread (OMT) input receiver on Android to
+// trigger prefetch requests immediately on touch down.
+BASE_FEATURE(kOmniboxPrefetchSelectedSuggestionsOmtAndroid, DISABLED);
 
 // Enables simultaneous prefetch and navigation on Enter KeyDown in Omnibox.
 BASE_FEATURE(kOmniboxSearchPrefetchOnEnterKeyDown, DISABLED);
@@ -414,6 +428,8 @@ const base::FeatureParam<int> kComposeboxDriveConsentFlowId{
 
 const base::FeatureParam<int> kComposeboxDriveConsentProductId{
     &kComposeboxDriveContextMenuOptionDisclaimer, "product_id", 89978449};
+const base::FeatureParam<int> kComposeboxDriveConsentProductSurface{
+    &kComposeboxDriveContextMenuOptionDisclaimer, "product_surface", 29};
 const base::FeatureParam<std::string> kComposeboxDriveConsentEntrypointId{
     &kComposeboxDriveContextMenuOptionDisclaimer, "entrypoint_id", "aim-drive"};
 
@@ -508,12 +524,16 @@ BASE_FEATURE(kResetSuggestionsScroll, DISABLED);
 // (e.g. from NTP fakebox). This special case was added to address b/541295247.
 BASE_FEATURE(kOmniboxSessionlessVoiceSearch, ENABLED);
 
+// Kill switch for suppressing status icon during HTTP/HTTPS navigation.
+BASE_FEATURE(kSuppressStatusIconDuringHttpNavigation, ENABLED);
+
 namespace android {
 static int64_t JNI_OmniboxFeatureMap_GetNativeMap(JNIEnv* env) {
   static const base::Feature* const kFeaturesExposedToJava[] = {
       &kDiagnostics,
       &kForceAndroidRealbox,
       &kOmniboxTouchDownTriggerForPrefetch,
+      &kOmniboxPrefetchSelectedSuggestionsOmtAndroid,
       &kOmniboxAsyncViewInflation,
       &kOmniboxFuseboxAsyncInflation,
       &kRichAutocompletion,
@@ -536,7 +556,9 @@ static int64_t JNI_OmniboxFeatureMap_GetNativeMap(JNIEnv* env) {
       &kOmniboxSearchPrefetchOnEnterKeyDown,
       &kOmniboxAimImageDownscaling,
       &kOmniboxDebounceKeyboardVisibility,
-      &kOmniboxSessionlessVoiceSearch};
+      &kOmniboxDisableTabsForCanvas,
+      &kOmniboxSessionlessVoiceSearch,
+      &kSuppressStatusIconDuringHttpNavigation};
   static base::NoDestructor<base::android::FeatureMap> kFeatureMap(
       kFeaturesExposedToJava);
   return reinterpret_cast<int64_t>(kFeatureMap.get());
@@ -611,6 +633,8 @@ const base::FeatureParam<bool> kAskGComposeboxPlaceholder{
     &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGComposeboxPlaceholder", false};
 const base::FeatureParam<bool> kAskGBypassPrivacyNotice{
     &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGBypassPrivacyNotice", false};
+const base::FeatureParam<bool> kAskGShowChip{
+    &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGShowChip", false};
 
 // Note: no new flags beyond this point.
 

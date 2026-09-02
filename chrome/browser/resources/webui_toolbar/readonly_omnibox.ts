@@ -22,7 +22,7 @@ import {BrowserProxyImpl, INVALID_FOCUS_REQUEST_HANDLE} from './browser_proxy.js
 import type {BrowserProxy, FocusRequestHandle} from './browser_proxy.js';
 import {getCss} from './readonly_omnibox.css.js';
 import {getHtml} from './readonly_omnibox.html.js';
-import {getEventDispositionFlags} from './toolbar_button.js';
+import {BUTTON_LEFT, BUTTON_RIGHT, getEventDispositionFlags} from './toolbar_button.js';
 
 export interface ReadonlyOmniboxElement {
   $: {
@@ -185,7 +185,12 @@ enum UnelisionGesture {
 function isOnlyLeftButton(event: MouseEvent): boolean {
   // Left button has button # 0, and mask 1. We allow it to be both on
   // and off in buttons to handle both mousedown and mouseup.
-  return event.button === 0 && (event.buttons === 0 || event.buttons === 1);
+  return event.button === BUTTON_LEFT &&
+      (event.buttons === 0 || event.buttons === 1);
+}
+
+function isRightButton(event: MouseEvent): boolean {
+  return event.button === BUTTON_RIGHT;
 }
 
 function copyMaybeSelection(selection: MojomRange|null): MojomRange|null {
@@ -651,11 +656,13 @@ export class ReadonlyOmniboxElement extends CrLitElement {
       }
     }
 
-    this.inputDelegate_.handlePointer(this, {
-      isPointerDown: true,
-      startZeroSuggest: false,
-      selection: this.getMojoSelection(),
-    });
+    if (!isRightButton(event)) {
+      this.inputDelegate_.handlePointer(this, {
+        isPointerDown: true,
+        startZeroSuggest: false,
+        selection: this.getMojoSelection(),
+      });
+    }
   }
 
   private onInputMouseUp(event: MouseEvent): void {
@@ -695,11 +702,13 @@ export class ReadonlyOmniboxElement extends CrLitElement {
 
     const zeroSuggest = isOnlyLeftButton(event) &&
         (this.selectAllOnMouseRelease_ || this.userText.length === 0);
-    this.inputDelegate_.handlePointer(this, {
-      isPointerDown: false,
-      startZeroSuggest: zeroSuggest,
-      selection: this.getMojoSelection(),
-    });
+    if (!isRightButton(event)) {
+      this.inputDelegate_.handlePointer(this, {
+        isPointerDown: false,
+        startZeroSuggest: zeroSuggest,
+        selection: this.getMojoSelection(),
+      });
+    }
 
     this.selectAllOnMouseRelease_ = false;
     this.updateAdjustedCopyResult_();
@@ -987,7 +996,8 @@ export class ReadonlyOmniboxElement extends CrLitElement {
     return this.adjustedCopyResult?.pageTitle || '';
   }
 
-  private populateDataTransfer_(dataTransfer: DataTransfer): boolean {
+  private populateDataTransfer_(
+      dataTransfer: DataTransfer, forClipboard: boolean): boolean {
     const input = this.$.textInput.inputElement;
     const selectionStart = input.selectionStart!;
     const selectionEnd = input.selectionEnd!;
@@ -995,7 +1005,7 @@ export class ReadonlyOmniboxElement extends CrLitElement {
     if (selectionStart !== selectionEnd && this.adjustedCopyResult) {
       dataTransfer.setData('text/plain', this.adjustedCopyResult.adjustedText);
 
-      if (this.adjustedCopyResult.adjustedUrl) {
+      if (this.adjustedCopyResult.adjustedUrl && !forClipboard) {
         dataTransfer.setData(
             'text/uri-list', this.adjustedCopyResult.adjustedUrl);
       }
@@ -1007,7 +1017,8 @@ export class ReadonlyOmniboxElement extends CrLitElement {
   private onDragStart_(e: DragEvent): void {
     this.isDraggingFromSelf_ = true;
 
-    if (e.dataTransfer && this.populateDataTransfer_(e.dataTransfer)) {
+    if (e.dataTransfer &&
+        this.populateDataTransfer_(e.dataTransfer, /*forClipboard=*/ false)) {
       e.dataTransfer.effectAllowed = 'copy';
 
       if (this.adjustedCopyResult?.adjustedUrl) {
@@ -1021,13 +1032,15 @@ export class ReadonlyOmniboxElement extends CrLitElement {
   }
 
   private onInputCopy_(e: ClipboardEvent): void {
-    if (e.clipboardData && this.populateDataTransfer_(e.clipboardData)) {
+    if (e.clipboardData &&
+        this.populateDataTransfer_(e.clipboardData, /*forClipboard=*/ true)) {
       e.preventDefault();
     }
   }
 
   private onInputCut_(e: ClipboardEvent): void {
-    if (e.clipboardData && this.populateDataTransfer_(e.clipboardData)) {
+    if (e.clipboardData &&
+        this.populateDataTransfer_(e.clipboardData, /*forClipboard=*/ true)) {
       e.preventDefault();
       // Go via execCommand to keep Ctrl-Z happy.
       document.execCommand('delete');

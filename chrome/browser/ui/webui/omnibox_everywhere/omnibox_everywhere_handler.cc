@@ -13,12 +13,15 @@
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
+#include "chrome/browser/ui/chrome_pages.h"
+#include "chrome/browser/ui/omnibox/omnibox_everywhere/omnibox_everywhere_prefs.h"
 #include "chrome/browser/ui/omnibox/omnibox_everywhere_service.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/browser/ui/profiles/profile_picker.h"
 #include "chrome/browser/ui/webui/cr_components/searchbox/searchbox_omnibox_client.h"
 #include "chrome/browser/ui/webui/metrics_reporter/metrics_reporter.h"
 #include "chrome/browser/ui/webui/webui_embedding_context.h"
+#include "chrome/common/webui_url_constants.h"
 #include "components/omnibox/browser/aim_eligibility_service.h"
 #include "components/omnibox/browser/omnibox_pref_names.h"
 #include "components/omnibox/browser/searchbox.mojom-shared.h"
@@ -124,6 +127,16 @@ OmniboxEverywhereHandler::OmniboxEverywhereHandler(
       omnibox::kShowAiModeOmniboxButton,
       base::BindRepeating(&OmniboxEverywhereHandler::OnAimEligibilityChanged,
                           base::Unretained(this)));
+  pref_change_registrar_.Add(
+      omnibox_everywhere::prefs::kFreDismissed,
+      base::BindRepeating(&OmniboxEverywhereHandler::UpdatePromoState,
+                          base::Unretained(this)));
+  pref_change_registrar_.Add(
+      omnibox_everywhere::prefs::kFreImpressionCount,
+      base::BindRepeating(&OmniboxEverywhereHandler::UpdatePromoState,
+                          base::Unretained(this)));
+
+  UpdatePromoState();
 }
 
 OmniboxEverywhereHandler::~OmniboxEverywhereHandler() = default;
@@ -229,56 +242,6 @@ void OmniboxEverywhereHandler::ActivateKeyword(
   // handled directly by the frontend SearchboxMixin via `onKeywordClick`.
 }
 
-// TODO(crbug.com/550402735): Combine into SearchboxHandler for clean reuse.
-std::optional<searchbox::mojom::AutocompleteMatchPtr>
-OmniboxEverywhereHandler::CreateAutocompleteMatch(
-    const AutocompleteMatch& match,
-    size_t line,
-    bookmarks::BookmarkModel* bookmark_model,
-    const omnibox::GroupConfigMap& suggestion_groups_map,
-    const TemplateURLService* turl_service) const {
-  auto mojom_match = SearchboxHandler::CreateAutocompleteMatch(
-      match, line, bookmark_model, suggestion_groups_map, turl_service);
-
-  if (mojom_match) {
-    KeywordState keyword_state;
-    std::u16string keyword;
-    std::u16string keyword_placeholder;
-    match.GetKeywordUiState(turl_service,
-                            client()->IsHistoryEmbeddingsEnabled(),
-                            &keyword_state, &keyword, &keyword_placeholder);
-
-    searchbox::mojom::KeywordType keyword_type;
-    bool has_keyword = false;
-    if (keyword_state == KeywordState::kKeyword) {
-      keyword_type = searchbox::mojom::KeywordType::kInKeyword;
-      has_keyword = true;
-    } else if (match.HasInstantKeyword(turl_service)) {
-      keyword_type = searchbox::mojom::KeywordType::kInstant;
-      has_keyword = true;
-    } else if (keyword_state == KeywordState::kHint ||
-               !match.associated_keyword.empty()) {
-      keyword_type = searchbox::mojom::KeywordType::kChip;
-      has_keyword = true;
-    }
-
-    // Populate `keyword_model`.
-    if (has_keyword) {
-      auto keyword_model = searchbox::mojom::MatchKeywordModel::New();
-      keyword_model->type = keyword_type;
-      keyword_model->keyword = base::UTF16ToUTF8(keyword);
-      keyword_model->placeholder = base::UTF16ToUTF8(keyword_placeholder);
-      const auto names = searchbox::GetKeywordLabelNames(keyword, turl_service);
-      keyword_model->chip_hint = base::UTF16ToUTF8(names.full_name);
-      keyword_model->chip_a11y =
-          l10n_util::GetStringFUTF8(IDS_ACC_KEYWORD_MODE, names.short_name);
-      mojom_match.value()->keyword_model = std::move(keyword_model);
-    }
-  }
-
-  return mojom_match;
-}
-
 void OmniboxEverywhereHandler::OnAimEligibilityChanged() {
   if (page()) {
     page()->UpdateAimPopupEligibility(
@@ -296,4 +259,29 @@ void OmniboxEverywhereHandler::OpenUrl(
     service_->OpenUrl(url, disposition, ui::PAGE_TRANSITION_LINK,
                       std::move(navigation_handle_callback));
   }
+}
+
+bool OmniboxEverywhereHandler::SupportsKeywordMode() const {
+  return true;
+}
+
+void OmniboxEverywhereHandler::UpdatePromoState() {
+  bool fre_enabled =
+      base::FeatureList::IsEnabled(omnibox::kOmniboxEverywhereFre);
+  bool fre_dismissed = profile_->GetPrefs()->GetBoolean(
+      omnibox_everywhere::prefs::kFreDismissed);
+  int impressions = profile_->GetPrefs()->GetInteger(
+      omnibox_everywhere::prefs::kFreImpressionCount);
+  bool show_fre = fre_enabled && !fre_dismissed &&
+                  (impressions < omnibox_everywhere::prefs::kMaxFreImpressions);
+  page()->SetShowFre(show_fre);
+}
+
+void OmniboxEverywhereHandler::DismissFre() {
+  profile_->GetPrefs()->SetBoolean(omnibox_everywhere::prefs::kFreDismissed,
+                                   true);
+}
+
+void OmniboxEverywhereHandler::OpenHotkeySettings() {
+  chrome::ShowSettingsSubPageForProfile(profile_, chrome::kSearchSubPage);
 }

@@ -12,6 +12,7 @@
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "chrome/browser/glic/host/glic.mojom.h"
+#include "chrome/browser/glic/host/glic_webui.mojom.h"
 #include "chrome/browser/glic/host/host.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/remote.h"
@@ -46,7 +47,7 @@ class GlicPageHandler : public glic::mojom::PageHandler,
 
   void NotifyWindowIntentToShow();
 
-  void Zoom(mojom::ZoomAction zoom_action);
+  void Zoom(mojom::ZoomAction zoom_action, ZoomSource source);
 
   Host& host();
 
@@ -87,11 +88,11 @@ class GlicPageHandler : public glic::mojom::PageHandler,
 
   void OnWebUiStateChanged(glic::mojom::WebUiState new_state) override;
 
+  // Host::Observer implementation.
+  void ClientReadyToShow(const mojom::OpenPanelInfo& open_info) override;
+
   // PanelStateObserver implementation.
   void PanelStateChanged(const glic::mojom::PanelState& panel_state) override;
-
-  // Host::Observer implementation.
-  void WebClientStateChanged(mojom::WebClientState state) override;
 
   void UpdatePageState(mojom::PanelStateKind panelStateKind);
 

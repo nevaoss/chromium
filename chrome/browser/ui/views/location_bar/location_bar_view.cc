@@ -176,6 +176,13 @@ int IncrementalMinimumWidth(const views::View* view) {
 // The padding between the content setting icons and other trailing decorations.
 constexpr int kContentSettingIntraItemPadding = 8;
 
+// Capsule dimensions and padding for the elevated page action toolbar.
+constexpr int kPageActionCapsuleEdgePadding = 2;
+constexpr int kPageActionCapsuleVerticalPadding = 2;
+
+// Default margins for standard page actions when capsule is inactive.
+constexpr int kPageActionDefaultChipEdgePadding = 5;
+constexpr int kPageActionDefaultIconEdgePadding = 4;
 }  // namespace
 
 using content::WebContents;
@@ -690,14 +697,6 @@ gfx::Size LocationBarView::CalculatePreferredSize(
   }
 
   const int min_width = GetMinimumSize().width();
-  if (base::FeatureList::IsEnabled(features::kOmniboxResizingPrioritization)) {
-    // If space is bounded, take all available space down to the min width.
-    if (available_size.width().is_bounded()) {
-      return gfx::Size(std::max(min_width, available_size.width().value()),
-                       height);
-    }
-  }
-
   const int inset_width = GetInsets().width();
   const int padding =
       GetLayoutConstant(LayoutConstant::kLocationBarElementPadding);
@@ -843,16 +842,35 @@ void LocationBarView::Layout(PassKey) {
     }
   };
 
-  // When the AIM page action is shown as the right-most page action in the
-  // location bar, it should be positioned flush against the right edge of the
-  // location bar.
-  constexpr int kTrailingEdgePaddingForAim = 5;
-  add_trailing_decoration(page_action_container_,
-                          /*intra_item_padding=*/0,
-                          /*edge_padding=*/
-                          GetPageActionInfo().is_aim_last_visible_page_action
-                              ? kTrailingEdgePaddingForAim
-                              : trailing_decorations_edge_padding);
+  if (features::IsPageActionsElevatedToolbarEnabled()) {
+    if (page_action_container_ && page_action_container_->GetVisible()) {
+      const bool is_capsule_active = page_action_container_->IsCapsuleActive();
+      const int capsule_height =
+          page_actions::PageActionContainerView::GetCapsuleHeight();
+      const int edge_padding =
+          is_capsule_active ? kPageActionCapsuleEdgePadding
+                            : (page_action_container_->IsFirstVisibleViewChip()
+                                   ? kPageActionDefaultChipEdgePadding
+                                   : kPageActionDefaultIconEdgePadding);
+      trailing_decorations.AddDecoration(
+          is_capsule_active ? kPageActionCapsuleVerticalPadding
+                            : vertical_padding,
+          is_capsule_active ? capsule_height : location_height,
+          /*auto_collapse=*/false, /*max_fraction=*/0,
+          /*intra_item_padding=*/0, edge_padding, page_action_container_);
+    }
+  } else {
+    // When the AIM page action is shown as the right-most page action in the
+    // location bar, it should be positioned flush against the right edge of the
+    // location bar.
+    constexpr int kTrailingEdgePaddingForAim = 5;
+    add_trailing_decoration(page_action_container_,
+                            /*intra_item_padding=*/0,
+                            /*edge_padding=*/
+                            GetPageActionInfo().is_aim_last_visible_page_action
+                                ? kTrailingEdgePaddingForAim
+                                : trailing_decorations_edge_padding);
+  }
   add_trailing_decoration(ai_mode_hint_label_, /*intra_item_padding=*/0,
                           /*edge_padding=*/trailing_decorations_edge_padding);
   for (ContentSettingImageView* view :
@@ -1795,12 +1813,21 @@ void LocationBarView::ValidatePopupState(OmniboxPopupState state) {
           << " aim=" << aim_is_shown;
       break;
     case OmniboxPopupState::kClassic:
-    case OmniboxPopupState::kFull:
-      DCHECK(classic_is_open && !aim_is_shown)
+    case OmniboxPopupState::kFull: {
+      // When the omnibox loses focus (e.g. when another window is activated),
+      // the popup widget is closed immediately, before the popup state manager
+      // finishes updating its state to kNone. If a synchronous UI event (like
+      // a theme change on window activation) triggers validation during this
+      // window, `classic_is_open` may already be false while `state` is still
+      // `kClassic` or `kFull`.
+      const bool classic_is_expected =
+          classic_is_open || (omnibox_view_ && !omnibox_view_->HasFocus());
+      DCHECK(classic_is_expected && !aim_is_shown)
           << "Widget state mismatch in "
           << (state == OmniboxPopupState::kClassic ? "kClassic" : "kFull")
           << ": classic=" << classic_is_open << " aim=" << aim_is_shown;
       break;
+    }
     case OmniboxPopupState::kAim:
       DCHECK(!classic_is_open && aim_is_shown)
           << "Widget state mismatch in kAim: classic=" << classic_is_open
@@ -2072,7 +2099,7 @@ void LocationBarView::OnLocationIconDragged(const ui::MouseEvent& event) {
     return;
   }
 
-  if (auto* popup_closer = browser_->GetFeatures().omnibox_popup_closer()) {
+  if (auto* popup_closer = omnibox::OmniboxPopupCloser::From(browser_)) {
     popup_closer->CloseWithReason(
         omnibox::PopupCloseReason::kLocationIconDragged);
   }

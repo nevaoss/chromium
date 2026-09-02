@@ -222,6 +222,19 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
         // two-column mode, fallback to super.onCreateInitialDetailFragment() to populate the
         // default detail pane.
         if (SettingsInTab.isEnabled() && !isTwoColumn()) {
+            // Remove any existing stale detail fragments (e.g. after a sign-out or when returning
+            // to root settings in single-column mode) and clear the back stack so that stale
+            // detail fragments are not resurrected when transitioning to two-column mode.
+            getChildFragmentManager()
+                    .popBackStackImmediate(null, FragmentManager.POP_BACK_STACK_INCLUSIVE);
+            Fragment currentDetail =
+                    getChildFragmentManager().findFragmentById(R.id.preferences_detail);
+            if (currentDetail != null) {
+                getChildFragmentManager()
+                        .beginTransaction()
+                        .remove(currentDetail)
+                        .commitAllowingStateLoss();
+            }
             return null;
         }
 
@@ -269,6 +282,9 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
      * layout is in two column mode.
      */
     public boolean isLayoutOpen() {
+        // getView() may be null in tests before the fragment's view is created.
+        if (getView() == null) return false;
+
         if (isTwoColumn()) {
             return true;
         }
@@ -624,7 +640,8 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
 
     /** Returns whether the current layout is in two-column mode. */
     boolean isTwoColumn() {
-        SlidingPaneLayout slidingPane = getSlidingPaneLayout();
+        // getView() may be null in tests before the fragment's view is created.
+        SlidingPaneLayout slidingPane = getView() != null ? getSlidingPaneLayout() : null;
         // If SlidingPaneLayout has already completed layout, use its computed slideable state.
         if (slidingPane != null
                 && ViewCompat.isLaidOut(slidingPane)
@@ -775,6 +792,10 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
         }
 
         void updateEnabledState() {
+            // This method may be called from delayed tasks that outlive the view, for example the
+            // postDelayed() call in onViewCreated().
+            if (getView() == null) return;
+
             // Trigger closePane() when
             // - the first page was the main menu, or main menu is not yet created
             //   after activity restart.
@@ -792,7 +813,7 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
     }
 
     // Workaround for fragment identifying issue.
-    private static @Nullable String getUUID(Fragment fragment) {
+    static @Nullable String getUUID(Fragment fragment) {
         // This function depends on internal structure of Fragment.toString().
         // In fragment, an UUID is assigned, which survives at activity recreation.
         // The expected format begins with "<classname>{<hash>} (<UUID>...".
@@ -1005,14 +1026,56 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
             }
             assert uuids.length == backStackCounts.length;
 
+            // Tracks created fragments that haven't been matched to a saved title yet. Under normal
+            // navigation, fragments match their saved UUIDs directly. However, if an intermediate
+            // fragment was replaced in-place without adding to the back stack (e.g.
+            // SearchResultsPreferenceFragment replacing EmptyFragment), its UUID will not be in
+            // uuidMap upon activity recreation, and the original back stack fragment
+            // (EmptyFragment) will be left in remainingMap to be matched as a fallback. See
+            // https://crbug.com/542323396
+            Map<String, EmbeddableSettingsPage> remainingMap = new HashMap<>(uuidMap);
+            Title[] restoredTitles = new Title[uuids.length];
+            List<Integer> unmatchedIndices = new ArrayList<>();
+
             for (int i = 0; i < uuids.length; ++i) {
                 String uuid = uuids[i];
                 int backStackCount = backStackCounts[i];
-                var page = uuidMap.get(uuid);
-                assert page != null;
-                mTitles.add(
-                        new Title(
-                                uuid, page.getPageTitle(), backStackCount, page.getMainMenuKey()));
+                EmbeddableSettingsPage page = remainingMap.remove(uuid);
+                if (page != null) {
+                    restoredTitles[i] =
+                            new Title(
+                                    uuid,
+                                    page.getPageTitle(),
+                                    backStackCount,
+                                    page.getMainMenuKey());
+                } else {
+                    unmatchedIndices.add(i);
+                }
+            }
+
+            // Match any remaining unmatched titles with remaining recreated fragments.
+            var remainingEntries = new ArrayList<>(remainingMap.entrySet());
+            remainingEntries.sort(Map.Entry.comparingByKey());
+            int pageIndex = 0;
+            for (int index : unmatchedIndices) {
+                if (pageIndex < remainingEntries.size()) {
+                    var entry = remainingEntries.get(pageIndex++);
+                    String uuid = entry.getKey();
+                    EmbeddableSettingsPage page = entry.getValue();
+                    int backStackCount = backStackCounts[index];
+                    restoredTitles[index] =
+                            new Title(
+                                    uuid,
+                                    page.getPageTitle(),
+                                    backStackCount,
+                                    page.getMainMenuKey());
+                }
+            }
+
+            for (Title title : restoredTitles) {
+                if (title != null) {
+                    mTitles.add(title);
+                }
             }
         }
     }
@@ -1043,6 +1106,16 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
                 super.onCreate(savedInstanceState);
             } finally {
                 fragmentManager.unregisterFragmentLifecycleCallbacks(uuidMapCreator);
+            }
+            // Also collect any fragments already present in FragmentManager that may not have
+            // been captured by the lifecycle callbacks.
+            for (Fragment f : fragmentManager.getFragments()) {
+                if (f instanceof EmbeddableSettingsPage page) {
+                    String uuid = getUUID(f);
+                    if (uuid != null) {
+                        uuidMapCreator.mMap.putIfAbsent(uuid, page);
+                    }
+                }
             }
             mFragmentTracker.restoreTitles(savedInstanceState, uuidMapCreator.mMap);
         } else {
@@ -1084,6 +1157,8 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
         getChildFragmentManager()
                 .addOnBackStackChangedListener(
                         () -> {
+                            // This listener can outlive the View lifecycle.
+                            if (getView() == null) return;
                             // On some specific devices, FragmentManager's BackStackChangedListener
                             // seems to be called *before* the back stack is updated, specifically
                             // if this is triggered from the system back button and the fragment
@@ -1100,6 +1175,22 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
                                 getSlidingPaneLayout()
                                         .postDelayed(
                                                 mOnBackPressedCallback::updateEnabledState, 100);
+                            }
+                            // When the back stack becomes empty (e.g. after popping a detail
+                            // fragment added in single-column mode or finishing a subpage):
+                            // - In two-column mode, populate the initial detail fragment so the
+                            //   detail pane does not remain blank.
+                            // - In single-column mode, close the sliding pane and restore header
+                            //   focusability when no detail fragment remains.
+                            if (getChildFragmentManager().getBackStackEntryCount() == 0) {
+                                if (isTwoColumn()) {
+                                    ensureInitialDetailFragment();
+                                } else if (getChildFragmentManager()
+                                                .findFragmentById(R.id.preferences_detail)
+                                        == null) {
+                                    getSlidingPaneLayout().closePane();
+                                    updateHeaderPaneFocusability();
+                                }
                             }
                         });
 

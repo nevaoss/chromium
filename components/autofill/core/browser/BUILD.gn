@@ -508,11 +508,11 @@ static_library("browser") {
     "at_memory/at_memory_enablement_utils.h",
     "at_memory/at_memory_manager.cc",
     "at_memory/at_memory_manager.h",
-    "at_memory/at_memory_manager_state.h",
     "at_memory/at_memory_metrics_recorder.cc",
     "at_memory/at_memory_metrics_recorder.h",
     "at_memory/at_memory_persisted_state_manager.cc",
     "at_memory/at_memory_persisted_state_manager.h",
+    "at_memory/at_memory_search_state.h",
     "at_memory/autofill_data_provider.cc",
     "at_memory/autofill_data_provider.h",
     "autofill_ai_form_rationalization.cc",
@@ -558,6 +558,8 @@ static_library("browser") {
     "data_manager/autofill_ai/entity_data_manager.h",
     "data_manager/autofill_ai/entity_instance_cleaner.cc",
     "data_manager/autofill_ai/entity_instance_cleaner.h",
+    "data_manager/autofill_ai/entity_suppression_entry.cc",
+    "data_manager/autofill_ai/entity_suppression_entry.h",
     "data_manager/autofill_ai/entity_suppression_manager.h",
     "data_manager/autofill_ai/in_memory_entity_suppression_manager.cc",
     "data_manager/autofill_ai/in_memory_entity_suppression_manager.h",
@@ -816,6 +818,8 @@ static_library("browser") {
     "integrators/at_memory/at_memory_query_service.h",
     "integrators/at_memory/at_memory_string_filtering_util.cc",
     "integrators/at_memory/at_memory_string_filtering_util.h",
+    "integrators/at_memory/logging_util.cc",
+    "integrators/at_memory/logging_util.h",
     "integrators/at_memory/memory_data_type.h",
     "integrators/at_memory/memory_data_type_util.cc",
     "integrators/at_memory/memory_data_type_util.h",
@@ -848,6 +852,8 @@ static_library("browser") {
     "integrators/one_time_tokens/otp_manager.h",
     "integrators/one_time_tokens/otp_manager_impl.cc",
     "integrators/one_time_tokens/otp_manager_impl.h",
+    "integrators/one_time_tokens/otp_metrics_tracker.cc",
+    "integrators/one_time_tokens/otp_metrics_tracker.h",
     "integrators/one_time_tokens/otp_phish_guard_delegate.h",
     "integrators/one_time_tokens/otp_suggestion.cc",
     "integrators/one_time_tokens/otp_suggestion.h",
@@ -1147,7 +1153,8 @@ static_library("browser") {
     "strike_databases/autofill_ai/autofill_ai_save_strike_database_by_host.cc",
     "strike_databases/autofill_ai/autofill_ai_save_strike_database_by_host.h",
     "strike_databases/autofill_ai/autofill_ai_update_strike_database.h",
-    "strike_databases/email_verification_strike_database.h",
+    "strike_databases/evp/email_verification_not_signed_in_strike_database.h",
+    "strike_databases/evp/email_verification_strike_database.h",
     "strike_databases/payments/credit_card_save_strike_database.cc",
     "strike_databases/payments/credit_card_save_strike_database.h",
     "strike_databases/payments/cvc_storage_strike_database.cc",
@@ -1994,6 +2001,7 @@ source_set("unit_tests") {
     "data_manager/addresses/home_and_work_metadata_store_unittest.cc",
     "data_manager/autofill_ai/entity_data_manager_unittest.cc",
     "data_manager/autofill_ai/entity_instance_cleaner_unittest.cc",
+    "data_manager/autofill_ai/entity_suppression_entry_unittest.cc",
     "data_manager/autofill_ai/in_memory_entity_suppression_manager_unittest.cc",
     "data_manager/payments/payments_data_manager_test_base.cc",
     "data_manager/payments/payments_data_manager_test_base.h",
@@ -2112,6 +2120,7 @@ source_set("unit_tests") {
     "integrators/one_time_tokens/metrics/otp_form_event_logger_unittest.cc",
     "integrators/one_time_tokens/otp_field_detector_unittest.cc",
     "integrators/one_time_tokens/otp_manager_impl_unittest.cc",
+    "integrators/one_time_tokens/otp_metrics_tracker_unittest.cc",
     "integrators/one_time_tokens/otp_suggestion_unittest.cc",
     "integrators/optimization_guide/autofill_optimization_guide_decider_unittest.cc",
     "integrators/personal_context/personal_context_autofill_util_unittest.cc",
@@ -2206,7 +2215,8 @@ source_set("unit_tests") {
     "single_field_fillers/payments/merchant_promo_code_manager_unittest.cc",
     "single_field_fillers/single_field_fill_router_unittest.cc",
     "strike_databases/autofill_ai/autofill_ai_save_strike_database_by_host_unittest.cc",
-    "strike_databases/email_verification_strike_database_unittest.cc",
+    "strike_databases/evp/email_verification_not_signed_in_strike_database_unittest.cc",
+    "strike_databases/evp/email_verification_strike_database_unittest.cc",
     "strike_databases/payments/payments_churned_users_strike_database_unittest.cc",
     "strike_databases/payments/virtual_card_enrollment_strike_database_unittest.cc",
     "studies/autofill_ablation_study_unittest.cc",
@@ -2347,6 +2357,7 @@ source_set("unit_tests") {
     ":test_support",
     ":unit_tests_bundle_data",
     "//base",
+    "//base/i18n:test_support",
     "//base/test:test_support",
     "//base/version_info",
     "//components/autofill/core/browser/actor:unit_tests",
@@ -2445,7 +2456,7 @@ source_set("unit_tests") {
     deps += [ "//components/variations/service" ]
   }
 
-  if (!is_ios && !is_fuchsia) {
+  if (!is_fuchsia) {
     deps += [ "//components/autofill/core/browser/at_memory/policy:unit_tests" ]
   }
 

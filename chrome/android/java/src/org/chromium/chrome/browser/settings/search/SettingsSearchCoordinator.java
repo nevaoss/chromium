@@ -280,6 +280,12 @@ public class SettingsSearchCoordinator
     @SuppressWarnings("unchecked")
     @VisibleForTesting(otherwise = PRIVATE)
     @Nullable <T extends View> T findViewById(int id) {
+        // Preference header and detail panes (e.g. R.id.preferences_header) are hosted
+        // inside MultiColumnSettings, which is not in mActionBar's direct ancestor tree.
+        if (mMultiColumnSettings != null && mMultiColumnSettings.getView() != null) {
+            T view = (T) mMultiColumnSettings.getView().findViewById(id);
+            if (view != null) return view;
+        }
         if (mActionBar.getRootView() != null) {
             View parent = mActionBar;
             while (parent.getParent() != null && parent.getParent() instanceof View p) {
@@ -473,6 +479,11 @@ public class SettingsSearchCoordinator
     }
 
     @Override
+    public void onDetailLayoutUpdated() {
+        updateSearchUiWidth();
+    }
+
+    @Override
     public void onAccessibilityStateChanged(
             AccessibilityState.State oldAccessibilityState,
             AccessibilityState.State newAccessibilityState) {
@@ -657,7 +668,8 @@ public class SettingsSearchCoordinator
         if (toolbarTitle == null) return;
 
         if (toolbarTitle.getId() == View.NO_ID) toolbarTitle.setId(View.generateViewId());
-        View headerPane = requireViewById(R.id.preferences_header);
+        View headerPane = findViewById(R.id.preferences_header);
+        if (headerPane == null) return;
 
         // Multi-column mode adjusts the traversal order:
         // Before: Toolbar(icon > title > search UI > menu) > header pane > detail pane.
@@ -996,6 +1008,16 @@ public class SettingsSearchCoordinator
 
     /** Update the visibility of the help menu on the toolbar. */
     public void updateHelpMenuVisibility() {
+        // SettingsInTab does not show a help icon / options menu.
+        if (SettingsInTab.isEnabled()) {
+            ViewGroup menuView = (ViewGroup) getHelpMenuView();
+            if (menuView != null) {
+                menuView.setVisibility(View.GONE);
+            }
+            updateSearchUiWidth();
+            return;
+        }
+
         ViewGroup menuView = (ViewGroup) getHelpMenuView();
         if (menuView == null) {
             mHandler.post(this::updateHelpMenuVisibility);
@@ -1171,15 +1193,22 @@ public class SettingsSearchCoordinator
 
             int detailPaneWidth = detailPane.getWidth();
             if (detailPaneWidth == 0) {
-                mHandler.post(this::updateSearchUiWidth);
+                // If the detail pane is not laid out yet, defer until onDetailLayoutUpdated()
+                // is called by MultiColumnSettings. Don't post to mHandler to prevent a busy loop.
                 return;
             }
             int maxDetailWidthPx = getPixelSize(R.dimen.settings_min_multi_column_screen_width);
             int minGapPx = getPixelSize(R.dimen.settings_multi_column_pane_gap);
             int excessPx = detailPaneWidth - maxDetailWidthPx - minGapPx * 2;
             int gapPx = (excessPx > 0 ? excessPx / 2 : 0) + minGapPx;
-            View actionBar = requireViewById(R.id.action_bar);
-            int actionBarEndMargin = gapPx - getPixelSize(R.dimen.settings_menu_icon_margin);
+            Toolbar actionBar = requireViewById(R.id.action_bar);
+            // SettingsInTab does not have a menu icon, but Toolbar has an internal
+            // contentInsetEnd and padding that must be accounted for so the search box aligns
+            // with the preference items in the detail pane.
+            int actionBarEndMargin =
+                    SettingsInTab.isEnabled()
+                            ? gapPx - actionBar.getContentInsetEnd() - actionBar.getPaddingEnd()
+                            : gapPx - getPixelSize(R.dimen.settings_menu_icon_margin);
             updateView(actionBar, 0, actionBarEndMargin, LayoutParams.MATCH_PARENT);
             int searchUiWidth = detailPaneWidth - gapPx * 2 - getMenuWidth();
             updateView(searchBox, 0, 0, searchUiWidth);
@@ -1260,9 +1289,15 @@ public class SettingsSearchCoordinator
         if (isOnWideScreen) {
             int itemMargin = getPixelSize(R.dimen.settings_item_margin);
             margin += itemMargin;
-            // The menu icon on the right pushes the UI to left. Adjust the margin.
-            startMargin = margin + menuWidth - itemMargin;
-            endMargin = margin - (menuWidth - itemMargin);
+            if (menuWidth > 0) {
+                // The menu icon on the right pushes the UI to left. Adjust the margin.
+                startMargin = margin + menuWidth - itemMargin;
+                endMargin = margin - (menuWidth - itemMargin);
+            } else {
+                // SettingsInTab does not have a menu icon, so don't adjust the margin.
+                startMargin = margin;
+                endMargin = margin;
+            }
         } else {
             // On narrow screens (e.g. phone portrait mode), the search query container is
             // placed inside the toolbar (mActionBar) and requires extra end margin to avoid
@@ -1476,6 +1511,8 @@ public class SettingsSearchCoordinator
      * only when we are in the main Settings state, not during Search or Results.
      */
     private boolean shouldShowHelpMenu() {
+        if (SettingsInTab.isEnabled()) return false;
+
         return mFragmentState == FS_SETTINGS;
     }
 

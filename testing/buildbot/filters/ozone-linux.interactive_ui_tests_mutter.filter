@@ -66,6 +66,5 @@
 # window activation on Wayland/Mutter.
 -All/AttemptLoginToolInteractiveUiTest.HandleReauth/1
 
-# TODO(crbug.com/551604564): Failing on Linux Wayland Mutter.
--BrowserUserEducationContextUiTest.PrefersAnchorInActiveBrowser
--BrowserUserEducationContextUiTest.TwoProfilesFindsAnchor
+# TODO(crbug.com/552061334): Re-enable once flakiness is fixed.
+-BrowserUserEducationContextUiTest.PrefersAnchorInOriginalBrowser

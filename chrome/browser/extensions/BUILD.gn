@@ -152,6 +152,8 @@ source_set("extensions") {
     "api/sessions/session_id.h",
     "api/sessions/sessions_api.cc",
     "api/sessions/sessions_api.h",
+    "api/side_panel/side_panel_service.cc",
+    "api/side_panel/side_panel_service.h",
     "api/storage/managed_value_store_cache.cc",
     "api/storage/managed_value_store_cache.h",
     "api/storage/policy_value_store.cc",
@@ -608,6 +610,7 @@ source_set("extensions") {
     "//components/spellcheck/browser",
     "//components/supervised_user/core/browser",
     "//components/tabs:public",
+    "//components/universal_optout",
     "//components/update_client",
     "//components/update_client:common_impl",
     "//components/user_prefs",
@@ -825,8 +828,6 @@ source_set("extensions") {
       "api/settings_private/settings_private_event_router.h",
       "api/settings_private/settings_private_event_router_factory.cc",
       "api/settings_private/settings_private_event_router_factory.h",
-      "api/side_panel/side_panel_service.cc",
-      "api/side_panel/side_panel_service.h",
       "api/system_private/system_private_api.cc",
       "api/system_private/system_private_api.h",
       "app_tab_helper.cc",
@@ -1667,6 +1668,7 @@ static_library("test_support") {
     "//chrome/browser/ui/toolbar",
     "//chrome/browser/ui/webui:theme_source",
     "//chrome/test/base:chrome_test_utils",
+    "//chrome/test/base:testing_browser_process",
     "//chrome/test/base:testing_profile",
     "//components/crx_file",
     "//components/feed:feature_list",
@@ -2319,6 +2321,7 @@ source_set("browser_tests") {
   defines = [ "HAS_OUT_OF_PROC_TEST_RUNNER" ]
 
   sources = [
+    "alert_apitest.cc",
     "all_urls_apitest.cc",
     "api/alarms/alarms_apitest.cc",
     "api/bookmarks/bookmarks_apitest.cc",
@@ -2440,6 +2443,7 @@ source_set("browser_tests") {
     "extension_keybinding_browsertest.cc",
     "extension_modules_apitest.cc",
     "extension_override_apitest.cc",
+    "extension_secure_context_browsertest.cc",
     "extension_tab_util_browsertest.cc",
     "extension_unload_browsertest.cc",
     "extension_url_loader_throttle_browsertest.cc",
@@ -2504,6 +2508,7 @@ source_set("browser_tests") {
     "//chrome/browser:platform_util_internal",
     "//chrome/browser/autocomplete:aim_eligibility_service",
     "//chrome/browser/bookmarks",
+    "//chrome/browser/content_settings",
     "//chrome/browser/content_settings:content_settings_factory",
     "//chrome/browser/devtools",
     "//chrome/browser/devtools:test_support",
@@ -2696,14 +2701,8 @@ source_set("browser_tests") {
   if (enable_extensions) {
     sources += [
       # TODO(crbug.com/469417243): Move to BUILD.gn files closer to sources.
-      "//chrome/browser/notifications/notification_permission_context_apitest.cc",
-      "//chrome/browser/page_load_metrics/observers/serp_page_load_metrics_observer_browsertest.cc",
-      "//chrome/browser/safe_browsing/extension_telemetry/extension_telemetry_service_browsertest.cc",
-      "//chrome/browser/ui/views/autofill/popup/custom_cursor_suppressor_browsertest.cc",
-      "//chrome/browser/ui/views/user_education/recent_session_observer_impl_browsertest.cc",
       "//chrome/browser/web_applications/isolated_web_apps/window_management/isolated_web_apps_close_window_browsertest.cc",
       "ai_language_model_browsertest.cc",
-      "alert_apitest.cc",
       "api/activity_log_private/activity_log_private_apitest.cc",
       "api/autofill_private/autofill_private_api_browsertest.cc",
       "api/autofill_private/autofill_private_apitest.cc",

@@ -218,6 +218,14 @@ const LayerWithExternalTexture* Layer::AsWithExternalTexture() const {
   return As<LayerWithExternalTexture>();
 }
 
+LayerNotDrawn* Layer::AsNotDrawn() {
+  return As<LayerNotDrawn>();
+}
+
+const LayerNotDrawn* Layer::AsNotDrawn() const {
+  return As<LayerNotDrawn>();
+}
+
 Layer::Layer(LayerType type)
     : type_(type),
       subpixel_position_offset_(
@@ -297,7 +305,7 @@ std::unique_ptr<Layer> Layer::Clone() const {
   clone->SetName(name_);
 
   // TODO(crbug.com/522627357): Move to LayerSolidColor.
-  if (type() != LAYER_SOLID_COLOR) {
+  if (!AsSolidColor()) {
     clone->SetFillsBoundsOpaquely(fills_bounds_opaquely_);
   }
 
@@ -646,27 +654,23 @@ void Layer::SetLayerInverted(bool inverted) {
   SetLayerFilters();
 }
 
-void Layer::SetMaskLayer(Layer* layer_mask) {
+void Layer::SetMaskLayer(LayerTextured* layer_mask) {
   if (layer_mask_ == layer_mask)
     return;
-  // The provided mask should not have a layer mask itself.
-  DCHECK(!layer_mask ||
-         (!layer_mask->layer_mask_layer() && layer_mask->children().empty()));
   DCHECK(!layer_mask_back_link_);
-  DCHECK(!layer_mask || layer_mask->type() == LAYER_TEXTURED);
-  // Masks must be backed by a PictureLayer.
-  DCHECK(!layer_mask || layer_mask->AsTextured()->content_layer());
   // We need to de-reference the currently linked object so that no problem
   // arises if the mask layer gets deleted before this object.
   if (layer_mask_) {
     layer_mask_->layer_mask_back_link_ = nullptr;
   }
   layer_mask_ = layer_mask;
-  cc_layer_->SetMaskLayer(layer_mask ? layer_mask->AsTextured()->content_layer()
-                                     : nullptr);
+  cc_layer_->SetMaskLayer(layer_mask ? layer_mask->content_layer() : nullptr);
   // We need to reference the linked object so that it can properly break the
   // link to us when it gets deleted.
   if (layer_mask) {
+    // The provided mask should not have a layer mask itself.
+    DCHECK(!layer_mask->layer_mask_layer() && layer_mask->children().empty());
+    DCHECK(!layer_mask->IsPaintDeferred());
     // A `layer_mask` of this would lead to recursion.
     CHECK(layer_mask != this);
 
@@ -1055,9 +1059,6 @@ bool Layer::SchedulePaint(const gfx::Rect& invalid_rect) {
   }
 
   damaged_region_.Union(invalid_rect);
-  if (layer_mask_)
-    layer_mask_->damaged_region_.Union(invalid_rect);
-
   OnPaintScheduled();
   return true;
 }
@@ -1079,22 +1080,19 @@ void Layer::SendDamagedRects() {
   if (delegate_)
     delegate_->UpdateVisualState();
 
-  if (!ShouldCommitDamage()) {
+  CommitDamage();
+}
+
+void Layer::CommitDamage() {
+  if (damaged_region_.IsEmpty()) {
     return;
   }
 
-  CommitDamage(damaged_region_);
-  damaged_region_.Clear();
-}
-
-void Layer::CommitDamage(const cc::Region& damage) {
-  for (gfx::Rect damaged_rect : damage) {
+  for (gfx::Rect damaged_rect : damaged_region_) {
     cc_layer_->SetNeedsDisplayRect(damaged_rect);
   }
-}
 
-bool Layer::ShouldCommitDamage() const {
-  return !damaged_region_.IsEmpty();
+  damaged_region_.Clear();
 }
 
 void Layer::CompleteAllAnimations() {

@@ -23,7 +23,6 @@
 #include "chrome/browser/media/webrtc/media_capture_devices_dispatcher.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/browser/ui/tabs/split_tab_metrics.h"
 #include "chrome/browser/ui/tabs/tab_enums.h"
@@ -504,7 +503,7 @@ IN_PROC_BROWSER_TEST_F(PermissionRequestManagerOmniboxEverywhereBrowserTest,
       browser(), GURL(chrome::kChromeUIOmniboxEverywhereURL)));
 
   content::WebContents* web_contents =
-      browser()->tab_strip_model()->GetActiveWebContents();
+      browser()->GetTabStripModel()->GetActiveWebContents();
   auto* manager =
       permissions::PermissionRequestManager::FromWebContents(web_contents);
 
@@ -514,7 +513,7 @@ IN_PROC_BROWSER_TEST_F(PermissionRequestManagerOmniboxEverywhereBrowserTest,
       ContentSettingsType::MEDIASTREAM_MIC, omnibox_url, omnibox_url);
   auto request = std::make_unique<permissions::MockPermissionRequest>(
       canonical_origin, permissions::RequestType::kMicStream,
-      permissions::PermissionRequestGestureType::GESTURE);
+      /*embedded_permission_element_initiated=*/true);
   manager->AddRequest(web_contents->GetPrimaryMainFrame(), std::move(request));
 
   bubble_factory()->WaitForPermissionBubble();
@@ -525,6 +524,82 @@ IN_PROC_BROWSER_TEST_F(PermissionRequestManagerOmniboxEverywhereBrowserTest,
                   ShouldCurrentRequestUsePermissionElementSecondaryUI(
                       manager, web_contents));
   EXPECT_NE(nullptr, manager->GetEmbeddedPromptFlowModel());
+
+  manager->Dismiss(/*prompt_options=*/std::monostate());
+  EXPECT_TRUE(base::test::RunUntil(
+      [manager]() { return !manager->IsRequestInProgress(); }));
+}
+
+// Request via omnibox everywhere even when blocked. PEPC should still be used.
+IN_PROC_BROWSER_TEST_F(PermissionRequestManagerOmniboxEverywhereBrowserTest,
+                       OmniboxEverywherePromptsEvenWhenPermissionBlocked) {
+  const GURL kOmniboxUrl(chrome::kChromeUIOmniboxEverywhereURL);
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), kOmniboxUrl));
+
+  content::WebContents* web_contents =
+      browser()->GetTabStripModel()->GetActiveWebContents();
+  auto* manager =
+      permissions::PermissionRequestManager::FromWebContents(web_contents);
+
+  // Set the permission to `BLOCKED` beforehand.
+  HostContentSettingsMap* hcsm =
+      HostContentSettingsMapFactory::GetForProfile(browser()->GetProfile());
+  hcsm->SetContentSettingDefaultScope(kOmniboxUrl, kOmniboxUrl,
+                                      ContentSettingsType::MEDIASTREAM_MIC,
+                                      CONTENT_SETTING_BLOCK);
+
+  // Request mic permission from the surface.
+  GURL canonical_origin = permissions::PermissionUtil::GetCanonicalOrigin(
+      ContentSettingsType::MEDIASTREAM_MIC, kOmniboxUrl, kOmniboxUrl);
+  auto request = std::make_unique<permissions::MockPermissionRequest>(
+      canonical_origin, permissions::RequestType::kMicStream,
+      /*embedded_permission_element_initiated=*/true);
+  manager->AddRequest(web_contents->GetPrimaryMainFrame(), std::move(request));
+
+  bubble_factory()->WaitForPermissionBubble();
+
+  // Verify it still uses the embedded permission prompt flow model despite
+  // being blocked.
+  ASSERT_TRUE(manager->IsRequestInProgress());
+  EXPECT_TRUE(permissions::PermissionUtil::
+                  ShouldCurrentRequestUsePermissionElementSecondaryUI(
+                      manager, web_contents));
+  EXPECT_NE(nullptr, manager->GetEmbeddedPromptFlowModel());
+  EXPECT_EQ(1, bubble_factory()->show_count());
+
+  manager->Dismiss(/*prompt_options=*/std::monostate());
+  EXPECT_TRUE(base::test::RunUntil(
+      [manager]() { return !manager->IsRequestInProgress(); }));
+}
+
+// NTP, omnibox, and contextual tasks (not including Omnibox Everywhere)
+// should not use embedded permission prompt when `kEmbeddedPermissionEnabled`
+// flag is disabled since the `kEmbeddedPermissionEnabled` flag controls if PEPC
+// shows ONLY on omnibox, NTP, and contextual tasks.
+IN_PROC_BROWSER_TEST_F(PermissionRequestManagerOmniboxEverywhereBrowserTest,
+                       OtherSurfacesDoNotUseEmbeddedPromptWhenFlagDisabled) {
+  GURL ntp_url = chrome::ChromeUINewTabPageURLAsGURL();
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), ntp_url));
+
+  content::WebContents* web_contents =
+      browser()->GetTabStripModel()->GetActiveWebContents();
+  auto* manager =
+      permissions::PermissionRequestManager::FromWebContents(web_contents);
+
+  GURL canonical_origin = permissions::PermissionUtil::GetCanonicalOrigin(
+      ContentSettingsType::MEDIASTREAM_MIC, ntp_url, ntp_url);
+  auto request = std::make_unique<permissions::MockPermissionRequest>(
+      canonical_origin, permissions::RequestType::kMicStream,
+      permissions::PermissionRequestGestureType::GESTURE);
+  manager->AddRequest(web_contents->GetPrimaryMainFrame(), std::move(request));
+
+  bubble_factory()->WaitForPermissionBubble();
+
+  EXPECT_TRUE(manager->IsRequestInProgress());
+  EXPECT_FALSE(permissions::PermissionUtil::
+                   ShouldCurrentRequestUsePermissionElementSecondaryUI(
+                       manager, web_contents));
+  EXPECT_EQ(nullptr, manager->GetEmbeddedPromptFlowModel());
 
   manager->Dismiss(/*prompt_options=*/std::monostate());
   EXPECT_TRUE(base::test::RunUntil(

@@ -83,7 +83,6 @@
 // OmniboxComposeboxHandler, which are dedicated to the desktop Omnibox Popup
 // and not compiled on Android.
 #if !BUILDFLAG(IS_ANDROID)
-#include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/omnibox/omnibox_tab_helper.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
@@ -1066,6 +1065,7 @@ class WebuiOmniboxHandlerPublic : public WebuiOmniboxHandler {
   using SearchboxHandler::autocomplete_controller;
   using SearchboxHandler::autocomplete_controller_observation_;
   using SearchboxHandler::client;
+  using SearchboxHandler::CreateAutocompleteMatch;
   using SearchboxHandler::omnibox_controller;
   using SearchboxHandler::OpenMatch;
   using SearchboxHandler::SetAutocompleteControllerForTesting;

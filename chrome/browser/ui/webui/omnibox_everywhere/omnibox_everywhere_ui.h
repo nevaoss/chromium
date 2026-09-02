@@ -116,6 +116,9 @@ class OmniboxEverywhereUI
       base::WeakPtr<ContextualSearchboxHandler> source_handler) override;
   void OnScreensharePickerOpened() override;
   void OnScreensharePickerClosed() override;
+  void ShowRegionSelectOverlay(const SkBitmap& screenshot,
+                               const RegionCaptureSource& source,
+                               RegionSelectedCallback callback) override;
   void OnScreenshotMenuClosed();
 
   // ui::SimpleMenuModel::Delegate:

@@ -6,6 +6,7 @@
 
 #import <Cocoa/Cocoa.h>
 
+#include "base/apple/foundation_util.h"
 #include "base/test/scoped_feature_list.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -107,21 +108,17 @@ TEST_P(BrowserAccessibilityCocoaTest, TestHasDefaultAction) {
   ui::AXTreeUpdate update;
   update.root_id = root.id;
   update.nodes.push_back(root);
-  ui::AXTree tree(update);
 
   TestAXNodeIdDelegate node_id_delegate;
   std::unique_ptr<MockBrowserAccessibilityManagerMac> mock_manager =
       std::make_unique<MockBrowserAccessibilityManagerMac>(
           update, node_id_delegate, nullptr);
 
-  std::unique_ptr<BrowserAccessibility> accessibility =
-      BrowserAccessibility::Create(mock_manager.get(), tree.root());
-
-  ui::AXPlatformNodeMac* platform_node = static_cast<ui::AXPlatformNodeMac*>(
-      AXPlatformNodeMac::GetFromUniqueId(root.id));
+  BrowserAccessibility* accessibility =
+      mock_manager->GetBrowserAccessibilityRoot();
   BrowserAccessibilityCocoa* node =
-      [[BrowserAccessibilityCocoa alloc] initWithObject:accessibility.get()
-                                       withPlatformNode:platform_node];
+      base::apple::ObjCCastStrict<BrowserAccessibilityCocoa>(
+          accessibility->GetNativeViewAccessible().Get());
 
   EXPECT_CALL(*mock_manager, DoDefaultAction(::testing::Ref(*accessibility)))
       .Times(1);
@@ -150,21 +147,17 @@ TEST_P(BrowserAccessibilityCocoaTest, TestNoDefaultAction) {
   ui::AXTreeUpdate update;
   update.root_id = root.id;
   update.nodes.push_back(root);
-  ui::AXTree tree(update);
 
   TestAXNodeIdDelegate node_id_delegate;
   std::unique_ptr<MockBrowserAccessibilityManagerMac> mock_manager =
       std::make_unique<MockBrowserAccessibilityManagerMac>(
           update, node_id_delegate, nullptr);
 
-  std::unique_ptr<BrowserAccessibility> accessibility =
-      BrowserAccessibility::Create(mock_manager.get(), tree.root());
-
-  ui::AXPlatformNodeMac* platform_node = static_cast<ui::AXPlatformNodeMac*>(
-      AXPlatformNodeMac::GetFromUniqueId(root.id));
+  BrowserAccessibility* accessibility =
+      mock_manager->GetBrowserAccessibilityRoot();
   BrowserAccessibilityCocoa* node =
-      [[BrowserAccessibilityCocoa alloc] initWithObject:accessibility.get()
-                                       withPlatformNode:platform_node];
+      base::apple::ObjCCastStrict<BrowserAccessibilityCocoa>(
+          accessibility->GetNativeViewAccessible().Get());
 
   EXPECT_CALL(*mock_manager, DoDefaultAction(::testing::Ref(*accessibility)))
       .Times(0);
@@ -220,5 +213,51 @@ TEST_P(BrowserAccessibilityCocoaTest, TestNoNodeForDefaultAction) {
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
   [node accessibilityPerformAction:NSAccessibilityPressAction];
 #pragma clang diagnostic pop
+}
+
+TEST_P(BrowserAccessibilityCocoaTest, AXPressAdvertisementMatchesExecution) {
+  AXNodeData root_data;
+  root_data.id = 1;
+  root_data.role = ax::mojom::Role::kListBox;
+  root_data.child_ids = {2, 3};
+
+  AXNodeData data_2;
+  data_2.id = 2;
+  data_2.role = ax::mojom::Role::kListBoxOption;
+
+  AXNodeData data_3;
+  data_3.id = 3;
+  data_3.role = ax::mojom::Role::kListBoxOption;
+  data_3.SetDefaultActionVerb(ax::mojom::DefaultActionVerb::kOpen);
+
+  AXTreeUpdate update;
+  update.root_id = root_data.id;
+  update.nodes = {root_data, data_2, data_3};
+
+  TestAXNodeIdDelegate node_id_delegate;
+  auto manager = std::make_unique<MockBrowserAccessibilityManagerMac>(
+      update, node_id_delegate, nullptr);
+  BrowserAccessibility* node_2 = manager->GetFromID(data_2.id);
+  BrowserAccessibility* node_3 = manager->GetFromID(data_3.id);
+  ASSERT_NE(node_2, nullptr);
+  ASSERT_NE(node_3, nullptr);
+  EXPECT_TRUE(node_2->IsClickable());
+  EXPECT_TRUE(node_3->IsClickable());
+
+  BrowserAccessibilityCocoa* cocoa_node_2 =
+      base::apple::ObjCCastStrict<BrowserAccessibilityCocoa>(
+          node_2->GetNativeViewAccessible().Get());
+  BrowserAccessibilityCocoa* cocoa_node_3 =
+      base::apple::ObjCCastStrict<BrowserAccessibilityCocoa>(
+          node_3->GetNativeViewAccessible().Get());
+
+  EXPECT_FALSE([[cocoa_node_2 internalAccessibilityActionNames]
+      containsObject:NSAccessibilityPressAction]);
+  EXPECT_TRUE([[cocoa_node_3 internalAccessibilityActionNames]
+      containsObject:NSAccessibilityPressAction]);
+
+  EXPECT_CALL(*manager, DoDefaultAction(::testing::Ref(*node_3)));
+  EXPECT_FALSE([cocoa_node_2 accessibilityPerformPress]);
+  [cocoa_node_3 accessibilityPerformPress];
 }
 }  // namespace ui

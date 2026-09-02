@@ -54,6 +54,7 @@ source_set("enterprise") {
     "//chrome/browser:main_extra_parts",
     "//chrome/browser/enterprise/browser_management:management_identity",
     "//chrome/browser/enterprise/core",
+    "//chrome/browser/enterprise/isolated_mode",
     "//chrome/browser/profiles",
     "//chrome/browser/profiles:profile_util",
     "//chrome/browser/signin",

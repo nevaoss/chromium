@@ -52,6 +52,7 @@
 #include "partition_alloc/partition_lock.h"
 #include "partition_alloc/reservation_offset_table.h"
 #include "partition_alloc/scheduler_loop_quarantine.h"
+#include "partition_alloc/slot_address_and_size.h"
 #include "partition_alloc/thread_cache.h"
 
 // When a memory tool is replacing malloc to keep aligned behaviour working we
@@ -562,8 +563,7 @@ class alignas(internal::kPartitionCachelineSize)
 #if PA_BUILDFLAG(ENABLE_BACKUP_REF_PTR_SUPPORT)
   // Actual free operation on BRP dequarantine.
   PA_ALWAYS_INLINE static void FreeAfterBRPQuarantine(
-      internal::UntaggedSlotStart slot_start,
-      size_t slot_size);
+      SlotAddressAndSize slot_and_size);
 #endif  // PA_BUILDFLAG(ENABLE_BACKUP_REF_PTR_SUPPORT)
 
   PA_ALWAYS_INLINE size_t
@@ -589,10 +589,6 @@ class alignas(internal::kPartitionCachelineSize)
   PA_NOINLINE size_t AllocationCapacityFromRequestedSize(size_t size) const;
 
 #if PA_BUILDFLAG(ENABLE_BACKUP_REF_PTR_SUPPORT)
-  PA_ALWAYS_INLINE static internal::InSlotMetadata*
-  InSlotMetadataPointerFromSlotStartAndSize(
-      internal::UntaggedSlotStart slot_start,
-      size_t slot_size);
   PA_ALWAYS_INLINE internal::InSlotMetadata*
   InSlotMetadataPointerFromObjectForTesting(void* object) const;
 #endif  // PA_BUILDFLAG(ENABLE_BACKUP_REF_PTR_SUPPORT)
@@ -783,8 +779,6 @@ class alignas(internal::kPartitionCachelineSize)
   PAGE_ALLOCATOR_CONSTANTS_DECLARE_CONSTEXPR
   size_t MetadataOffset() const;
 #endif  // PA_CONFIG(MOVE_METADATA_OUT_OF_GIGACAGE)
-
-  PA_NOINLINE static void CheckMetadataIntegrity(const void* object);
 
   // Returns `slot_size` of the bucket for `requested_size` memory allocation.
   PA_NOINLINE size_t

@@ -27,6 +27,7 @@
 #include "chrome/browser/actor/tools/move_mouse_tool_request.h"
 #include "chrome/browser/actor/tools/navigate_tool_request.h"
 #include "chrome/browser/actor/tools/page_tool_request.h"
+#include "chrome/browser/actor/tools/perform_search_tool_request.h"
 #include "chrome/browser/actor/tools/script_tool_request.h"
 #include "chrome/browser/actor/tools/scroll_to_tool_request.h"
 #include "chrome/browser/actor/tools/scroll_tool_request.h"
@@ -586,6 +587,14 @@ std::unique_ptr<ToolRequest> MakeHistoryForwardRequest(TabInterface& tab) {
       tab.GetHandle(), HistoryToolRequest::Direction::kForward);
 }
 
+std::unique_ptr<ToolRequest> MakeHistoryReloadRequest(TabInterface& tab,
+                                                      bool bypass_cache) {
+  HistoryToolRequest::Direction direction =
+      bypass_cache ? HistoryToolRequest::Direction::kReloadBypassingCache
+                   : HistoryToolRequest::Direction::kReload;
+  return std::make_unique<HistoryToolRequest>(tab.GetHandle(), direction);
+}
+
 std::unique_ptr<ToolRequest> MakeMouseMoveRequest(content::RenderFrameHost& rfh,
                                                   int content_node_id) {
   return std::make_unique<MoveMouseToolRequest>(
@@ -602,6 +611,11 @@ std::unique_ptr<ToolRequest> MakeNavigateRequest(TabInterface& tab,
                                                  std::string_view target_url) {
   return std::make_unique<NavigateToolRequest>(tab.GetHandle(),
                                                GURL(target_url));
+}
+std::unique_ptr<ToolRequest> MakePerformSearchRequest(TabInterface& tab,
+                                                      std::string_view query) {
+  return std::make_unique<PerformSearchToolRequest>(tab.GetHandle(),
+                                                    std::string(query));
 }
 std::unique_ptr<ToolRequest> MakeTypeRequest(content::RenderFrameHost& rfh,
                                              int content_node_id,

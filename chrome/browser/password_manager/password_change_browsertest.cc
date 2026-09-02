@@ -35,6 +35,7 @@
 #include "chrome/browser/ui/passwords/manage_passwords_ui_controller.h"
 #include "chrome/browser/ui/passwords/password_change_ui_controller.h"
 #include "chrome/browser/ui/passwords/ui_utils.h"
+#include "chrome/browser/ui/tabs/tab_enums.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/views/passwords/password_bubble_view_base.h"
 #include "chrome/browser/ui/views/passwords/password_change/password_change_toast.h"
@@ -61,6 +62,7 @@
 #include "components/password_manager/core/browser/password_form_manager.h"
 #include "components/password_manager/core/browser/password_store/password_form_converters.h"
 #include "components/password_manager/core/browser/password_store/test_password_store.h"
+#include "components/password_manager/core/browser/password_string.h"
 #include "components/password_manager/core/common/password_manager_pref_names.h"
 #include "components/password_manager/core/common/password_manager_ui.h"
 #include "components/prefs/pref_service.h"
@@ -74,6 +76,7 @@
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/events/test/test_event.h"
 #include "ui/views/controls/button/image_button.h"
+#include "ui/views/controls/button/md_text_button.h"
 #include "ui/views/test/button_test_api.h"
 #include "url/origin.h"
 
@@ -157,13 +160,13 @@ class PasswordChangeBrowserTest : public PasswordManagerBrowserTestBase {
   password_manager::PasswordForm CreatePasswordForm(
       const GURL& url,
       const std::u16string& username,
-      const std::u16string& password,
+      std::u16string password,
       const std::string& change_pwd_path = "") {
     password_manager::PasswordForm form;
     form.url = GURL(url);
     form.signon_realm = url.GetWithEmptyPath().spec();
     form.username_value = username;
-    form.password_value = password;
+    form.password_value = password_manager::PasswordString(std::move(password));
     if (!change_pwd_path.empty()) {
       form.change_password_url =
           embedded_test_server()->GetURL(url.host(), change_pwd_path);
@@ -584,7 +587,7 @@ IN_PROC_BROWSER_TEST_F(PasswordChangeBrowserTest, OldPasswordIsUpdated) {
       base::UTF16ToUTF8(form.username_value),
       base::UTF16ToUTF8(static_cast<PasswordChangeDelegateImpl*>(delegate)
                             ->generated_password()),
-      base::UTF16ToUTF8(form.password_value),
+      base::UTF16ToUTF8(form.password_value.value()),
       password_manager::PasswordForm::Type::kChangeSubmission);
 }
 

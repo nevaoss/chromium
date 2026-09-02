@@ -233,6 +233,14 @@ impl LookupInfo {
         Some(info)
     }
 
+    pub(crate) fn new_subst(table_data: &[u8]) -> Option<Self> {
+        Self::new(&LookupData {
+            offset: 0,
+            is_subst: true,
+            table_data: FontData::new(table_data),
+        })
+    }
+
     pub fn props(&self) -> u32 {
         self.props
     }
@@ -255,6 +263,13 @@ impl LookupInfo {
         use_hot_subtable_cache: bool,
     ) -> Option<()> {
         let glyph = ctx.buffer.cur(0).glyph_id;
+        if let [subtable_info] = self.subtables.as_slice() {
+            // The lookup digest is the union of the subtable digests, so for
+            // a single subtable it equals this subtable's digest, which the
+            // caller has already tested; skip the redundant retest.
+            let is_cached = use_hot_subtable_cache && (self.subtable_cache_user_idx == Some(0));
+            return subtable_info.apply(ctx, table_data, is_cached);
+        }
         for (subtable_idx, subtable_info) in self.subtables.iter().enumerate() {
             if !subtable_info.digest.may_have(glyph) {
                 continue;

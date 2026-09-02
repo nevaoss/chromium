@@ -698,10 +698,6 @@ void LogPresentingErrorPageFailedWithError(NSError* error) {
   // navigation. WKWebView allows multiple provisional navigations, while
   // Navigation Manager has only one pending navigation.
   if (item) {
-    if (!self.pendingNavigationInfo.unsafeRedirect) {
-      item->SetVirtualURL(webViewURL);
-      item->SetURL(webViewURL);
-    }
     // Redirects (3xx response code), must change POST requests to GETs.
     item->SetPostData(nil);
     item->ResetHttpRequestHeaders();
@@ -891,15 +887,16 @@ void LogPresentingErrorPageFailedWithError(NSError* error) {
               ->mime_type());
     }
 
-    if ((pendingURL == webViewURL) || (context->IsLoadingHtmlString())) {
+    if (context->IsLoadingHtmlString() ||
+        (pendingItem &&
+         ((pendingURL == webViewURL) || (context->GetUrl() == webViewURL)))) {
       // Commit navigation if at least one of these is true:
-      //  - Navigation has pending item (this should always be true, but
-      //    pending item may not exist due to crbug.com/925304).
-      //  - Navigation is loadHTMLString:baseURL: navigation, which does not
-      //    create a pending item, but modifies committed item instead.
-      //  - Transition type is reload with Legacy Navigation Manager (Legacy
-      //    Navigation Manager does not create pending item for reload due to
-      //    crbug.com/676129)
+      //  - Navigation is a `loadHTMLString:baseURL:` navigation, which does not
+      //    create a pending item, but modifies the committed item instead.
+      //  - Navigation has a pending item (this should always be true, but
+      //    pending item may not exist due to crbug.com/925304) whose initial
+      //    URL (`pendingURL`) or redirected URL (`context->GetUrl()`) matches
+      //    `webViewURL`.
       context->SetHasCommitted(true);
     }
     self.webStateImpl->SetContentsMimeType(
@@ -1591,11 +1588,9 @@ void LogPresentingErrorPageFailedWithError(NSError* error) {
 - (BOOL)shouldRenderResponse:(WKNavigationResponse*)WKResponse
                  HTTPHeaders:(net::HttpResponseHeaders*)headers {
   if (headers) {
-    std::string contentDisposition =
-        headers->GetNormalizedHeader("content-disposition")
-            .value_or(std::string());
-    net::HttpContentDisposition parsedContentDisposition(contentDisposition,
-                                                         std::string());
+    net::HttpContentDisposition parsedContentDisposition(
+        *headers,
+        /*referrer_charset=*/std::string());
     if (parsedContentDisposition.is_attachment()) {
       return NO;
     }
@@ -2567,7 +2562,14 @@ void LogPresentingErrorPageFailedWithError(NSError* error) {
   [self resetDocumentSpecificState];
 
   [self.delegate navigationHandlerDidStartLoading:self];
-  self.navigationManagerImpl->CommitPendingItem(context->ReleaseItem());
+  std::unique_ptr<web::NavigationItemImpl> item = context->ReleaseItem();
+  if (item && item->GetURL() != context->GetUrl()) {
+    if (item->GetVirtualURL() == item->GetURL()) {
+      item->SetVirtualURL(context->GetUrl());
+    }
+    item->SetURL(context->GetUrl());
+  }
+  self.navigationManagerImpl->CommitPendingItem(std::move(item));
   if (context->IsLoadingHtmlString()) {
     self.navigationManagerImpl->GetLastCommittedItem()->SetURL(
         context->GetUrl());

@@ -36,8 +36,6 @@ export function createAutocompleteMatch(
     type: '',
     isContextualSuggestion: false,
     isRichSuggestion: false,
-    isWeatherAnswerSuggestion: null,
-    answer: null,
     tailSuggestCommonPrefix: null,
     keywordModel: null,
     fuseboxAction: null,
@@ -82,6 +80,7 @@ export class ComposeboxProxyImpl implements ComposeboxProxy {
     return this.searchboxCallbackRouter.updateSmartTabSharingActive.addListener(
         callback);
   }
+
   // </if>
 
   static getInstance(): ComposeboxProxyImpl {

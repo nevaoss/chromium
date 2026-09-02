@@ -504,6 +504,8 @@ component("base") {
     "memory_coordinator/memory_consumer_registry_destruction_observer.h",
     "memory_coordinator/memory_coordinator_features.cc",
     "memory_coordinator/memory_coordinator_features.h",
+    "memory_coordinator/memory_limit.cc",
+    "memory_coordinator/memory_limit.h",
     "memory_coordinator/multi_memory_consumer.cc",
     "memory_coordinator/multi_memory_consumer.h",
     "memory_coordinator/traits.cc",
@@ -2390,16 +2392,6 @@ component("base") {
         "profiler/suspendable_thread_delegate_mac.h",
       ]
     }
-    if (!use_allocator_shim) {
-      sources -= [
-        "sampling_heap_profiler/poisson_allocation_sampler.cc",
-        "sampling_heap_profiler/poisson_allocation_sampler.h",
-        "sampling_heap_profiler/sampling_heap_churn_profiler.cc",
-        "sampling_heap_profiler/sampling_heap_churn_profiler.h",
-        "sampling_heap_profiler/sampling_heap_profiler.cc",
-        "sampling_heap_profiler/sampling_heap_profiler.h",
-      ]
-    }
 
     frameworks += [
       "Foundation.framework",
@@ -3828,6 +3820,7 @@ test("base_unittests") {
     "memory_coordinator/async_memory_consumer_registration_unittest.cc",
     "memory_coordinator/memory_consumer_registry_unittest.cc",
     "memory_coordinator/memory_consumer_unittest.cc",
+    "memory_coordinator/memory_limit_unittest.cc",
     "memory_coordinator/multi_memory_consumer_unittest.cc",
     "message_loop/message_pump_glib_unittest.cc",
     "message_loop/message_pump_unittest.cc",
@@ -4461,6 +4454,7 @@ test("base_unittests") {
       "//base/android/linker:ashmem",
       "//base/test:test_support_java",
       "//third_party/jni_zero",
+      "//third_party/jni_zero/test:jni_zero_unittests_sources",
     ]
   }
 
@@ -4868,6 +4862,7 @@ if (enable_nocompile_tests) {
       "task/task_traits_nocompile.nc",
       "test/bind_test_nocompile.nc",
       "thread_annotations_nocompile.nc",
+      "threading/sequence_bound_nocompile.nc",
       "traits_bag_nocompile.nc",
       "types/expected_macros_nocompile.nc",
       "types/optional_util_nocompile.nc",
@@ -6237,6 +6232,7 @@ if (is_android) {
       "android/junit/src/org/chromium/base/CollectionUtilTest.java",
       "android/junit/src/org/chromium/base/CommandLineTest.java",
       "android/junit/src/org/chromium/base/ContentUriUtilsUnitTest.java",
+      "android/junit/src/org/chromium/base/DeviceInfoUnitTest.java",
       "android/junit/src/org/chromium/base/DiscardableReferencePoolTest.java",
       "android/junit/src/org/chromium/base/FeatureOverridesUnitTest.java",
       "android/junit/src/org/chromium/base/FileUtilsTest.java",

@@ -69,6 +69,7 @@
 #include "components/tab_groups/tab_group_id.h"
 #include "components/tab_groups/tab_group_visual_data.h"
 #include "components/tabs/public/split_tab_data.h"
+#include "components/tabs/public/tab_context_menu_command.h"
 #include "components/tabs/public/tab_group.h"
 #include "components/tabs/public/tab_interface.h"
 #include "components/tabs/public/tab_network_state.h"
@@ -119,20 +120,12 @@ TabStripUserGestureDetails GetGestureDetail(const ui::Event& event) {
 ////////////////////////////////////////////////////////////////////////////////
 // BrowserTabStripController, public:
 
-BrowserTabStripController::BrowserTabStripController(
-    TabStripModel* model,
-    BrowserView* browser_view,
-    std::unique_ptr<TabMenuModelFactory> menu_model_factory_override)
+BrowserTabStripController::BrowserTabStripController(TabStripModel* model,
+                                                     BrowserView* browser_view)
     : model_(model),
       tabstrip_(nullptr),
       browser_view_(browser_view),
-      hover_tab_selector_(model),
-      menu_model_factory_(std::move(menu_model_factory_override)) {
-  if (!menu_model_factory_) {
-    // Use the default one.
-    menu_model_factory_ = std::make_unique<TabMenuModelFactory>();
-  }
-}
+      hover_tab_selector_(model) {}
 
 BrowserTabStripController::~BrowserTabStripController() {
   // When we get here the TabStrip is being deleted. We need to explicitly
@@ -437,14 +430,13 @@ void BrowserTabStripController::ShowContextMenuForTab(
   context_menu_controller_ = std::make_unique<TabContextMenuController>(
       model_->GetTabAtIndex(tab_index.value())->GetHandle(), this);
 
-  auto model = menu_model_factory_->Create(
+  auto model = std::make_unique<TabMenuModel>(
       context_menu_controller_.get(),
       GetBrowserWindowInterface()->GetFeatures().tab_menu_model_delegate(),
       model_, tab_index.value());
 
-  ui::SimpleMenuModel* model_ptr = model.get();
-  context_menu_controller_->LoadModel(
-      std::move(model), menu_model_factory_->AsTabMenuModel(model_ptr));
+  TabMenuModel* model_ptr = model.get();
+  context_menu_controller_->LoadModel(std::move(model), model_ptr);
 
   context_menu_controller_->RunMenuAt(p, source_type, tabstrip_->GetWidget());
   base::UmaHistogramEnumeration("TabStrip.Tab.Views.ActivationAction",
@@ -912,9 +904,9 @@ bool BrowserTabStripController::GetContextMenuAccelerator(
   auto* const app_controller =
       web_app::AppBrowserController::From(GetBrowserWindowInterface());
   auto* system_app = app_controller ? app_controller->system_app() : nullptr;
-  if (system_app &&
-      !system_app->ShouldShowTabContextMenuShortcut(
-          GetBrowserWindowInterface()->GetProfile(), command_id)) {
+  if (system_app && !system_app->ShouldShowTabContextMenuShortcut(
+                        GetBrowserWindowInterface()->GetProfile(),
+                        static_cast<tabs::TabContextMenuCommand>(command_id))) {
     return false;
   }
 #endif  // BUILDFLAG(IS_CHROMEOS)

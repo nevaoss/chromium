@@ -35,6 +35,9 @@ BASE_FEATURE(kMVTInBottomSheet, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kNewTabPageUICleanup, base::FEATURE_DISABLED_BY_DEFAULT);
 
+BASE_FEATURE(kNewTabPagePinnedOmniboxColorUpdate,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 BASE_FEATURE(kAimButtonRefactor, base::FEATURE_DISABLED_BY_DEFAULT);
 
 #pragma mark - Feature parameters
@@ -66,14 +69,6 @@ BASE_FEATURE_PARAM(int,
                    &kNewTabPageUICleanup,
                    kNewTabPageUICleanupArmParam,
                    static_cast<int>(NTPUICleanupVariation::kTightPadding));
-
-const char kNewTabPageRedesignStaticFakeboxParam[] = "static-fakebox";
-
-BASE_FEATURE_PARAM(bool,
-                   kNewTabPageRedesignStaticFakeboxParamFeature,
-                   &kNewTabPageRedesign,
-                   kNewTabPageRedesignStaticFakeboxParam,
-                   false);
 
 const char kAimButtonRefactorArmParam[] = "aim-button-refactor-arm";
 
@@ -149,11 +144,6 @@ bool IsNTPRedesignEnabled() {
          ui::GetDeviceFormFactor() != ui::DEVICE_FORM_FACTOR_TABLET;
 }
 
-bool IsNTPRedesignStaticFakeboxEnabled() {
-  return IsNTPRedesignEnabled() &&
-         kNewTabPageRedesignStaticFakeboxParamFeature.Get();
-}
-
 NTPUICleanupVariation GetNewTabPageUICleanupVariation() {
   if (base::FeatureList::IsEnabled(kNewTabPageUICleanup)) {
     return static_cast<NTPUICleanupVariation>(
@@ -172,4 +162,8 @@ bool IsNewTabPageUICleanupEnabled() {
 bool IsNewTabPageUICleanupFakeboxOnlyEnabled() {
   return GetNewTabPageUICleanupVariation() ==
          NTPUICleanupVariation::kFakeboxBackgroundAndShadow;
+}
+
+bool IsNewTabPagePinnedOmniboxColorUpdateEnabled() {
+  return base::FeatureList::IsEnabled(kNewTabPagePinnedOmniboxColorUpdate);
 }

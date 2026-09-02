@@ -278,6 +278,11 @@ constexpr base::TimeDelta kCompositorLockTimeout = base::Milliseconds(150);
 BASE_FEATURE(kSanitizeRedirectUrlsDuringNavigation,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+// Killswitch to replace the current NavigationEntry for same-URL navigations
+// recovering from an error document. See https://crbug.com/396645696.
+BASE_FEATURE(kReplaceEntryWhenRecoveringFromError,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 const base::FeatureParam<bool> kDeferSpeculativeRFHWaitUntilFinalResponse{
     &features::kDeferSpeculativeRFHCreation, "wait_until_final_response",
     false};
@@ -1404,7 +1409,8 @@ std::unique_ptr<NavigationRequest> NavigationRequest::CreateRendererInitiated(
           /*is_initial_webui=*/false,
           /*isolated_app_policy=*/std::nullopt,
           /*internal_scroll_to_text_fragment=*/std::nullopt,
-          /*is_secure_context_root=*/false);
+          /*is_secure_context_root=*/false,
+          blink::mojom::ScriptInjectionPolicy::kNone);
 #if !BUILDFLAG(IS_ANDROID)
   CHECK(!GetContentClient()->browser()->IsInitialWebUIURL(common_params->url));
 #endif
@@ -1577,7 +1583,8 @@ NavigationRequest::CreateForSynchronousRendererCommit(
           /*is_initial_webui=*/false,
           /*isolated_app_policy=*/std::nullopt,
           /*internal_scroll_to_text_fragment=*/std::nullopt,
-          /*is_secure_context_root=*/false);
+          /*is_secure_context_root=*/false,
+          blink::mojom::ScriptInjectionPolicy::kNone);
   blink::mojom::BeginNavigationParamsPtr begin_params =
       blink::mojom::BeginNavigationParams::New();
   std::unique_ptr<NavigationRequest> navigation_request(new NavigationRequest(
@@ -4117,6 +4124,45 @@ bool NavigationRequest::IsAdTaggedByHostFilter() const {
   return ad_status_ == AdStatus::kAdTaggedByHostFilter;
 }
 
+bool NavigationRequest::HasSameSiteAdAncestor() {
+  if (!base::FeatureList::IsEnabled(features::kExcludeAdsFromOriginIsolation)) {
+    return false;
+  }
+
+  std::optional<url::Origin> target_origin =
+      state_ < WILL_PROCESS_RESPONSE ? GetTentativeOriginAtRequestTime()
+                                     : GetOriginToCommit();
+  if (!target_origin.has_value()) {
+    return false;
+  }
+
+  for (RenderFrameHostImpl* ancestor_rfh = frame_tree_node_->parent();
+       ancestor_rfh; ancestor_rfh = ancestor_rfh->GetParent()) {
+    if (!ancestor_rfh->IsAdFrame()) {
+      continue;
+    }
+
+    // Check if the ancestor was forced site-keyed by default. Under
+    // OriginKeyedProcessesByDefault, kSiteKeyedByDefault is assigned to an ad
+    // frame only when its URL matched the ad host filter list (which excludes
+    // script-tagged ads).
+    const SiteInfo& ancestor_site_info =
+        ancestor_rfh->GetSiteInstance()->GetSiteInfo();
+    if (ancestor_site_info.agent_cluster_key().oac_status() !=
+        AgentClusterKey::OACStatus::kSiteKeyedByDefault) {
+      continue;
+    }
+
+    const url::Origin& ancestor_origin = ancestor_rfh->GetLastCommittedOrigin();
+    if (net::SchemefulSite::IsSameSite(ancestor_origin,
+                                       target_origin.value())) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 void NavigationRequest::CheckForIsolationOptIn(const GURL& url) {
   // Check whether an origin-keyed agent cluster is explicitly requested, either
   // opting in or out, before attempting to isolate it. If an explicit request
@@ -4178,7 +4224,7 @@ void NavigationRequest::AddOriginAgentClusterStateIfNecessary(
   }
 
   if (!oac_isolation_state.has_value() && response() &&
-      IsAdTaggedByHostFilter() &&
+      (IsAdTaggedByHostFilter() || HasSameSiteAdAncestor()) &&
       SiteIsolationPolicy::AreOriginAgentClustersEnabledByDefault(
           isolation_context.browser_context()) &&
       SiteIsolationPolicy::AreOriginKeyedProcessesEnabledByDefault(
@@ -4612,8 +4658,15 @@ UrlInfo NavigationRequest::GetUrlInfo() {
   url_info_init.WithOACHeaderRequest(oac_header_request)
       .WithCOOPSiteIsolation(ShouldRequestSiteIsolationForCOOP())
       .WithWebExposedIsolationInfo(web_exposed_isolation_info)
-      .WithEmbedderIsolationInfo(embedder_isolation_info_)
-      .WithIsAdTaggedByHostFilter(response() && IsAdTaggedByHostFilter());
+      .WithEmbedderIsolationInfo(embedder_isolation_info_);
+
+  if (base::FeatureList::IsEnabled(features::kExcludeAdsFromOriginIsolation)) {
+    // When excluding ads from origin isolation, an ad navigation is treated as
+    // site-keyed either if its URL matches the ad host filter list, or if it is
+    // same-site to an ancestor ad frame that was forced site-keyed.
+    url_info_init.WithIsAdTaggedForSiteKeying(
+        (response() && IsAdTaggedByHostFilter()) || HasSameSiteAdAncestor());
+  }
 
   // Compute the CrossOriginIsolationKey for the navigation.
   std::optional<AgentClusterKey::CrossOriginIsolationKey>
@@ -6827,7 +6880,8 @@ void NavigationRequest::CommitErrorPage(
       previous_origin.GetTupleOrPrecursorTupleIfOpaque().IsValid() &&
       commit_params_->origin_to_commit.GetTupleOrPrecursorTupleIfOpaque() ==
           previous_origin.GetTupleOrPrecursorTupleIfOpaque();
-  if (!is_error_page_with_same_precursor) {
+  if (!is_error_page_with_same_precursor ||
+      base::FeatureList::IsEnabled(kReplaceEntryWhenRecoveringFromError)) {
     commit_params_->force_new_document_sequence_number = true;
   } else {
     // We only preserve the document sequence number for temporary errors that
@@ -7178,7 +7232,9 @@ void NavigationRequest::CommitNavigation() {
         previous_origin.GetTupleOrPrecursorTupleIfOpaque().IsValid() &&
         commit_params_->origin_to_commit.GetTupleOrPrecursorTupleIfOpaque() ==
             previous_origin.GetTupleOrPrecursorTupleIfOpaque();
-    if (is_cross_origin_navigation && !compatible_with_error_page) {
+    if (is_cross_origin_navigation &&
+        (!compatible_with_error_page ||
+         base::FeatureList::IsEnabled(kReplaceEntryWhenRecoveringFromError))) {
       commit_params_->force_new_document_sequence_number = true;
     }
   }
@@ -8335,6 +8391,12 @@ void NavigationRequest::SetupConnectionAllowlistEmbeddedEnforcement() {
   }
 }
 
+void NavigationRequest::LogConnectionAllowlistEmbeddedEnforcementUseCounter(
+    blink::mojom::WebFeature feature) {
+  GetContentClient()->browser()->LogWebFeatureForCurrentPage(GetParentFrame(),
+                                                             feature);
+}
+
 NavigationRequest::ConnectionAllowlistEmbeddedEnforcementResult
 NavigationRequest::CheckConnectionAllowlistEmbeddedEnforcement() {
   if (!base::FeatureList::IsEnabled(network::features::kConnectionAllowlists)) {
@@ -8350,6 +8412,12 @@ NavigationRequest::CheckConnectionAllowlistEmbeddedEnforcement() {
   if (!required_connection_allowlist_) {
     return ConnectionAllowlistEmbeddedEnforcementResult::ALLOW_RESPONSE;
   }
+
+  // The embedder required a Connection-Allowlist of this frame. Recorded here
+  // rather than in Setup() so that it counts requirements that actually reach
+  // a response and produce one of the outcomes counted below.
+  LogConnectionAllowlistEmbeddedEnforcementUseCounter(
+      blink::mojom::WebFeature::kConnectionAllowlistEmbeddedEnforcement);
 
   // Resolve the deferred `response-origin` token (which could not be resolved
   // in the renderer) against the framed document's origin. Local-scheme
@@ -8412,6 +8480,9 @@ NavigationRequest::CheckConnectionAllowlistEmbeddedEnforcement() {
     if (!GetURL().SchemeIsLocal()) {
       enforce_required_connection_allowlist_ = true;
     }
+    LogConnectionAllowlistEmbeddedEnforcementUseCounter(
+        blink::mojom::WebFeature::
+            kConnectionAllowlistEmbeddedEnforcementAllowedByOptIn);
     return ConnectionAllowlistEmbeddedEnforcementResult::ALLOW_RESPONSE;
   }
 
@@ -8437,6 +8508,9 @@ NavigationRequest::CheckConnectionAllowlistEmbeddedEnforcement() {
       response()->parsed_headers->connection_allowlists.enforced;
   if (delivered && network::ConnectionAllowlistSubsumes(
                        *required_connection_allowlist_, *delivered)) {
+    LogConnectionAllowlistEmbeddedEnforcementUseCounter(
+        blink::mojom::WebFeature::
+            kConnectionAllowlistEmbeddedEnforcementAllowedByDeliveredAllowlist);
     return ConnectionAllowlistEmbeddedEnforcementResult::ALLOW_RESPONSE;
   }
 
@@ -8444,6 +8518,10 @@ NavigationRequest::CheckConnectionAllowlistEmbeddedEnforcement() {
       *this,
       devtools_instrumentation::ConnectionAllowlistEmbeddedEnforcementIssue::
           kEmbeddingRequirementNotSatisfied);
+
+  LogConnectionAllowlistEmbeddedEnforcementUseCounter(
+      blink::mojom::WebFeature::kConnectionAllowlistEmbeddedEnforcementBlocked);
+
   return ConnectionAllowlistEmbeddedEnforcementResult::BLOCK_RESPONSE;
 }
 
@@ -11722,11 +11800,12 @@ bool NavigationRequest::ShouldReplaceCurrentEntryForSameUrlNavigation() const {
     return false;
   }
 
-  // Only (1) cross-document navigations and (2) same-document navigations from
-  // browser UI (e.g., address bar or bookmark) need to consider replacing the
-  // entry for same URL cases. Reloads and history navigations have special
-  // handling and don't need to. Note that same-document navigations with
-  // fragments from browser UI are not treated as reloads.
+  // Only (1) cross-document navigations, (2) same-document navigations from
+  // browser UI (e.g., address bar or bookmark), and (3) navigations recovering
+  // from an error document need to consider replacing the entry for same URL
+  // cases. Reloads and history navigations have special handling and don't need
+  // to. Note that same-document navigations with fragments from browser UI are
+  // not treated as reloads.
   // Note that for same document navigation, even though the navigation request
   // starts with should_replace_current_entry, no new history entry is created.
   // With the logic in RenderFrameImpl::MakeDidCommitProvisionalLoadParams, we
@@ -11740,7 +11819,11 @@ bool NavigationRequest::ShouldReplaceCurrentEntryForSameUrlNavigation() const {
        blink::mojom::NavigationType::SAME_DOCUMENT) &&
       ((transition & ui::PAGE_TRANSITION_FROM_ADDRESS_BAR) ||
        PageTransitionCoreTypeIs(transition, ui::PAGE_TRANSITION_AUTO_BOOKMARK));
+  const bool is_navigating_from_error =
+      base::FeatureList::IsEnabled(kReplaceEntryWhenRecoveringFromError) &&
+      frame_tree_node_->current_frame_host()->IsErrorDocument();
   if (!is_same_document_navigation_from_browser_ui &&
+      !is_navigating_from_error &&
       (common_params_->navigation_type !=
        blink::mojom::NavigationType::DIFFERENT_DOCUMENT)) {
     return false;
@@ -11833,7 +11916,7 @@ bool NavigationRequest::ShouldReplaceCurrentEntryForFailedNavigation() const {
   //   renderer before we moved the replacement conversion here. As in
   //   ShouldReplaceCurrentEntryForSameUrlNavigation(), only replace for the
   //   same-URL case when the initiator is same-origin to the target frame.
-  // TODO(crbug.com/40755155): Reconsider whether these two cases should
+  // TODO(crbug.com/396645696): Reconsider whether these two cases should
   // do replacement or not, since we're just preserving old behavior here.
   return is_reload_or_history ||
          (common_params_->url ==

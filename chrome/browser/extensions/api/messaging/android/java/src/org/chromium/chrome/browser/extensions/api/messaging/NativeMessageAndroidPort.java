@@ -4,12 +4,14 @@
 
 package org.chromium.chrome.browser.extensions.api.messaging;
 
+import android.os.Bundle;
 import android.os.RemoteException;
 
 import androidx.annotation.VisibleForTesting;
 
 import org.jni_zero.CalledByNative;
 import org.jni_zero.JNINamespace;
+import org.jni_zero.JniType;
 import org.jni_zero.NativeMethods;
 
 import org.chromium.base.Log;
@@ -18,6 +20,7 @@ import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.profiles.Profile;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -89,8 +92,11 @@ public class NativeMessageAndroidPort {
     // to the external app. Returns an error message if the connection immediately fails, or null on
     // success.
     @CalledByNative
-    public @Nullable String connectToApp(
-            Profile profile, String packageName, String extensionId, boolean isVerifiedExtension) {
+    public @JniType("std::optional<std::string>") @Nullable String connectToApp(
+            @JniType("Profile*") Profile profile,
+            @JniType("std::string") String packageName,
+            @JniType("std::string") String extensionId,
+            boolean isVerifiedExtension) {
         NativeMessagingManager manager = NativeMessagingManager.getForProfile(profile);
         return manager.addPort(packageName, extensionId, isVerifiedExtension, this);
     }
@@ -119,7 +125,7 @@ public class NativeMessageAndroidPort {
     // Called to send a message to the external app. If this port is not yet connected to the app's
     // `mRemotePort` receiver then the message is put in a pending queue.
     @CalledByNative
-    public void forwardMessageToApp(String message) {
+    public void forwardMessageToApp(@JniType("std::string") String message) {
         if (mRemotePort != null) {
             send(message);
         } else {
@@ -182,7 +188,12 @@ public class NativeMessageAndroidPort {
     private void send(String message) {
         assert mRemotePort != null;
         try {
-            mRemotePort.postMessage(message);
+            // TODO(crbug.com/515159909): Handle messages that exceed Binder transaction size limits
+            // by putting them into SharedMemory instead of byte[].
+            MessagePayload payload = new MessagePayload();
+            payload.setInlineBytes(message.getBytes(StandardCharsets.UTF_8));
+            Bundle extras = new Bundle();
+            mRemotePort.postMessage(payload, extras);
         } catch (RemoteException e) {
             Log.w(TAG, "Failed to post message to external app", e);
             closeChannel("Error when communicating with the native messaging host.");
@@ -194,12 +205,14 @@ public class NativeMessageAndroidPort {
     interface Natives {
         // Forwards a message received from the external Android app to the C++
         // NativeMessageAndroidPort, which delivers it to the extension.
-        void postMessageFromApp(long nativeNativeMessageAndroidPort, String message);
+        void postMessageFromApp(
+                long nativeNativeMessageAndroidPort, @JniType("std::string") String message);
 
         // Notifies the C++ NativeMessageAndroidPort that the channel has been closed
         // (e.g. by the app, due to an error, or during teardown), closing the port
         // and dispatching any error message to the extension.
-        void closeChannel(long nativeNativeMessageAndroidPort, String errorMessage);
+        void closeChannel(
+                long nativeNativeMessageAndroidPort, @JniType("std::string") String errorMessage);
     }
 
     // A helper that receives calls from the external app back to the browser
@@ -217,14 +230,19 @@ public class NativeMessageAndroidPort {
         // IExtensionNativeMessageCallback.onMessage implementation. Called on a
         // binder thread so post a task to the UI thread where `mPort` lives.
         @Override
-        public void onMessage(String message) {
-            if (message != null) {
-                ThreadUtils.postOnUiThread(
-                        () -> {
-                            if (mPort != null) {
-                                mPort.postMessageFromApp(message);
-                            }
-                        });
+        public void onMessage(MessagePayload payload, Bundle extras) {
+            if (payload != null) {
+                // TODO(crbug.com/515159909): Support extracting messages from SharedMemory.
+                byte[] messageBytes = payload.getInlineBytes();
+                if (messageBytes != null) {
+                    String message = new String(messageBytes, StandardCharsets.UTF_8);
+                    ThreadUtils.postOnUiThread(
+                            () -> {
+                                if (mPort != null) {
+                                    mPort.postMessageFromApp(message);
+                                }
+                            });
+                }
             }
         }
 

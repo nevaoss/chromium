@@ -77,6 +77,7 @@ import org.chromium.chrome.browser.tabmodel.TabModelSelectorObserver;
 import org.chromium.chrome.browser.tabmodel.TabModelSelectorTabModelObserver;
 import org.chromium.chrome.browser.tabmodel.TabModelUtils;
 import org.chromium.chrome.browser.tabwindow.TabWindowManager;
+import org.chromium.chrome.browser.tasks.tab_management.NestedTabReorderUtils;
 import org.chromium.chrome.browser.tasks.tab_management.StaticPinnedTabsMediator;
 import org.chromium.chrome.browser.tasks.tab_management.TabActionButtonData;
 import org.chromium.chrome.browser.tasks.tab_management.TabActionButtonData.TabActionButtonType;
@@ -314,6 +315,7 @@ public class VerticalTabListCoordinator {
             SettableNonNullObservableSupplier<Integer> verticalTabsWidthSupplier,
             @Nullable BooleanSupplier canActivateTabLayoutToggleMenuSupplier,
             @Nullable ViewStub tabHoverCardViewStub,
+            @Nullable ViewStub tabGroupHoverCardViewStub,
             Supplier<TabContentManager> tabContentManagerSupplier,
             @Nullable UndoBarThrottle undoBarThrottle) {
         mCanActivateTabLayoutToggleMenuSupplier = canActivateTabLayoutToggleMenuSupplier;
@@ -402,6 +404,7 @@ public class VerticalTabListCoordinator {
                 new VerticalTabHoverCardController(
                         mContainerView,
                         tabHoverCardViewStub,
+                        tabGroupHoverCardViewStub,
                         tabModelSelector,
                         nullableSupplier,
                         this::isAnyContextMenuShowing);
@@ -637,17 +640,7 @@ public class VerticalTabListCoordinator {
         pinnedTabsRecyclerView.setupCustomItemAnimator(/* useClipAnimations= */ true);
         mPinnedLayoutManager = new GridLayoutManager(activity, getSpanCount());
         pinnedTabsRecyclerView.setLayoutManager(mPinnedLayoutManager);
-        pinnedTabsRecyclerView.addItemDecoration(
-                new RecyclerView.ItemDecoration() {
-                    @Override
-                    public void getItemOffsets(
-                            Rect outRect,
-                            View view,
-                            RecyclerView parent,
-                            RecyclerView.State state) {
-                        calculatePinnedTabItemOffsets(outRect, view, parent);
-                    }
-                });
+        pinnedTabsRecyclerView.addItemDecoration(createPinnedTabItemDecoration());
 
         mPinnedDropIndicatorDecoration = new VerticalTabPinnedDropIndicatorDecoration(activity);
         pinnedTabsRecyclerView.addItemDecoration(mPinnedDropIndicatorDecoration);
@@ -701,7 +694,9 @@ public class VerticalTabListCoordinator {
                             ListObservable source, int index, int count, @Nullable Void payload) {}
 
                     @Override
-                    public void onItemMoved(ListObservable source, int curIndex, int newIndex) {}
+                    public void onItemMoved(ListObservable source, int curIndex, int newIndex) {
+                        mPinnedTabsRecyclerView.invalidateItemDecorations();
+                    }
                 };
         pinnedTabsModelList.addObserver(mPinnedTabsListObserver);
         mReorderStrategy =
@@ -725,7 +720,8 @@ public class VerticalTabListCoordinator {
                         mModelList,
                         pinnedTabsModelList,
                         mRecyclerView,
-                        pinnedTabsRecyclerView);
+                        pinnedTabsRecyclerView,
+                        mTabHoverCardController);
         mContainerView.setKeyEventListener(mKeyboardHandler);
 
         mTabModelSelectorObserver =
@@ -1286,12 +1282,6 @@ public class VerticalTabListCoordinator {
                                         tabGroupId,
                                         startPoint,
                                         groupDragShadowView);
-                        if (dragStarted
-                                && !TabProperties.isTabGroupCollapsed(model)
-                                && !groupTabs.isEmpty()) {
-                            int repTabId = groupTabs.get(0).getId();
-                            recyclerView.post(() -> toggleTabGroupExpansion(repTabId));
-                        }
                     } else {
                         mLastDraggedGroupId = null;
                         View gridCardView = buildGridCardDragShadow(activity, model);
@@ -1612,11 +1602,27 @@ public class VerticalTabListCoordinator {
             }
 
             @Override
+            public boolean handleDragEnter(View view) {
+                if (view != recyclerView) {
+                    return true;
+                }
+                return handleDragEnter();
+            }
+
+            @Override
             public boolean handleDragEnter() {
                 dragHandler.showDragShadow(recyclerView, false);
                 updateSingleTabListMinHeight(model, /* useMinHeight= */ false);
                 touchHelperCallback.restoreDraggedItem(/* isOSNewWindowDrop= */ false);
                 return true;
+            }
+
+            @Override
+            public boolean handleDragExit(View view) {
+                if (view != recyclerView) {
+                    return true;
+                }
+                return handleDragExit();
             }
 
             @Override
@@ -1643,16 +1649,7 @@ public class VerticalTabListCoordinator {
                 touchHelperCallback.restoreDraggedItem(isOSNewWindowDrop);
                 itemTouchHelper.onExternalDragStop(/* recoverItem= */ false);
 
-                if (mLastDraggedGroupId != null) {
-                    Token groupId = mLastDraggedGroupId;
-                    mLastDraggedGroupId = null;
-                    TabModel tabModel = mTabModelSelector.getCurrentModel();
-                    if (tabModel != null) {
-                        // Always expand tab group on drop.
-                        tabModel.setTabGroupCollapsed(
-                                groupId, /* isCollapsed= */ false, /* animate= */ false);
-                    }
-                }
+                mLastDraggedGroupId = null;
                 dragHandler.setDragHandlerDelegate(nonOriginatingDelegate);
                 return true;
             }
@@ -1731,10 +1728,6 @@ public class VerticalTabListCoordinator {
             }
         }
 
-        if (!VerticalTabUtils.isAutoResizeEnabled()) {
-            return DEFAULT_GRID_SPAN_COUNT;
-        }
-
         int containerWidth = mContainerView.getWidth();
         if (containerWidth <= 0) return DEFAULT_GRID_SPAN_COUNT;
 
@@ -1743,69 +1736,15 @@ public class VerticalTabListCoordinator {
         int availableWidth = containerWidth - paddingStart - paddingEnd;
 
         Resources res = mContainerView.getContext().getResources();
-        int minItemWidth = res.getDimensionPixelSize(R.dimen.vertical_tab_pinned_item_min_width);
-        int minHorizontalGap = res.getDimensionPixelSize(R.dimen.vertical_tab_pinned_item_gap);
-        if (minItemWidth <= 0) return DEFAULT_GRID_SPAN_COUNT;
-
-        float spansFittingWidth =
-                (float) (availableWidth + minHorizontalGap) / (minItemWidth + minHorizontalGap)
-                        + SPAN_CALCULATION_EPSILON;
-        int maxFitSpans =
-                Math.clamp((int) Math.floor(spansFittingWidth), 1, MAX_SINGLE_ROW_SPAN_COUNT);
-
+        boolean isTablet = VerticalTabUtils.isTablet(mContainerView.getContext());
         int pinnedTabCount = mPinnedTabsModelList != null ? mPinnedTabsModelList.size() : 0;
-        if (pinnedTabCount <= 0) {
-            return maxFitSpans;
-        }
-
-        // Uses integer ceiling division (A + B - 1) / B instead of A / B (which truncates and
-        // would yield 0 rows when pinnedTabCount < maxFitSpans) to calculate the full number of
-        // rows needed, balancing tabs evenly across rows.
-        int rows = (pinnedTabCount + maxFitSpans - 1) / maxFitSpans;
-        int columns = (pinnedTabCount + rows - 1) / rows;
-        return Math.clamp(columns, 1, maxFitSpans);
+        return calculateBalancedSpanCount(availableWidth, pinnedTabCount, res, isTablet);
     }
 
     private void updatePinnedLayoutSpanCount() {
         if (mPinnedLayoutManager == null) return;
         mPinnedLayoutManager.setSpanCount(getSpanCount());
         mPinnedTabsRecyclerView.invalidateItemDecorations();
-    }
-
-    /**
-     * Distributes inter-item horizontal gaps evenly across grid columns without outer margins,
-     * ensuring identical visual item widths since RecyclerView does not support layout_weight.
-     */
-    private void calculatePinnedTabItemOffsets(Rect outRect, View view, RecyclerView parent) {
-        if (!VerticalTabUtils.isAutoResizeEnabled()) {
-            outRect.set(0, 0, 0, 0);
-            return;
-        }
-        int position = parent.getChildAdapterPosition(view);
-        if (position == RecyclerView.NO_POSITION) {
-            position = parent.indexOfChild(view);
-        }
-        if (position == RecyclerView.NO_POSITION) return;
-        int spanCount = mPinnedLayoutManager.getSpanCount();
-        if (spanCount <= 1) {
-            outRect.left = 0;
-            outRect.right = 0;
-            return;
-        }
-        int minHorizontalGap =
-                parent.getContext()
-                        .getResources()
-                        .getDimensionPixelSize(R.dimen.vertical_tab_pinned_item_gap);
-        int column = position % spanCount;
-        if (view.getLayoutParams() instanceof GridLayoutManager.LayoutParams gridLp
-                && gridLp.getSpanIndex() >= 0) {
-            column = gridLp.getSpanIndex();
-        }
-        int left = column * minHorizontalGap / spanCount;
-        int right = minHorizontalGap - (column + 1) * minHorizontalGap / spanCount;
-        boolean isRtl = LocalizationUtils.isLayoutRtl();
-        outRect.left = isRtl ? right : left;
-        outRect.right = isRtl ? left : right;
     }
 
     private boolean openContextMenuForFocusedItem(RecyclerView recyclerView) {
@@ -1886,13 +1825,36 @@ public class VerticalTabListCoordinator {
      * group creation callback.
      */
     private void showTabGroupHeaderContextMenuForGroupId(Token tabGroupId) {
-        int index = mModelList.indexFromTabGroupId(tabGroupId);
-        if (index == TabModel.INVALID_TAB_INDEX) return;
+        mRecyclerView.post(
+                () -> {
+                    TabModel currentModel = mTabModelSelector.getCurrentModel();
+                    if (currentModel == null || !currentModel.tabGroupExists(tabGroupId)) {
+                        return;
+                    }
 
-        RecyclerView.ViewHolder holder = mRecyclerView.findViewHolderForAdapterPosition(index);
-        if (holder == null) return;
+                    int index = mModelList.indexFromTabGroupId(tabGroupId);
+                    if (index == TabModel.INVALID_TAB_INDEX) return;
 
-        showTabGroupHeaderContextMenu(getItemViewAnchorRectProvider(holder.itemView), tabGroupId);
+                    RecyclerView.ViewHolder holder =
+                            mRecyclerView.findViewHolderForAdapterPosition(index);
+                    if (holder == null) {
+                        mRecyclerView.scrollToPosition(index);
+                        mRecyclerView.post(
+                                () -> {
+                                    RecyclerView.ViewHolder retryHolder =
+                                            mRecyclerView.findViewHolderForAdapterPosition(index);
+                                    if (retryHolder != null) {
+                                        showTabGroupHeaderContextMenu(
+                                                getItemViewAnchorRectProvider(retryHolder.itemView),
+                                                tabGroupId);
+                                    }
+                                });
+                        return;
+                    }
+
+                    showTabGroupHeaderContextMenu(
+                            getItemViewAnchorRectProvider(holder.itemView), tabGroupId);
+                });
     }
 
     private void showTabGroupHeaderContextMenu(RectProvider rectProvider, Token tabGroupId) {
@@ -1904,7 +1866,7 @@ public class VerticalTabListCoordinator {
                             mWindowAndroid,
                             mDataSharingTabManager,
                             /* reorderFunction= */ (groupId, toPrevious) ->
-                                    VerticalTabReorderUtils.reorderTabGroup(
+                                    NestedTabReorderUtils.reorderTabGroup(
                                             mTabModelSelector.getCurrentModel(),
                                             groupId,
                                             toPrevious),
@@ -1946,7 +1908,7 @@ public class VerticalTabListCoordinator {
                             activity,
                             /* tabBookmarkerSupplier= */ null,
                             /* reorderFunction= */ (info, toPrevious) ->
-                                    VerticalTabReorderUtils.reorderTabById(
+                                    NestedTabReorderUtils.reorderTabById(
                                             mTabModelSelector.getCurrentModel(),
                                             mPinnedTabsModelList,
                                             mModelList,
@@ -2027,11 +1989,8 @@ public class VerticalTabListCoordinator {
                     mLastTouchPoint.set((int) e.getX(), (int) e.getY());
                 }
 
-                // Intercept mouse right-clicks. While setOnContextClickListener works for
-                // empty background space (where no child views capture the event), actual
-                // tab row child views swallow right-clicks internally without bubbling them
-                // up to the parent (recyclerView), causing
-                // recyclerView.setOnContextClickListener to be skipped.
+                // Intercept mouse right-clicks directly on child tab items before interactive
+                // sub-views (like buttons or click listeners) consume the touch sequence.
                 if ((e.getButtonState() & MotionEvent.BUTTON_SECONDARY) != 0) {
                     View childView = rv.findChildViewUnder(e.getX(), e.getY());
                     if (childView != null) {
@@ -2112,15 +2071,19 @@ public class VerticalTabListCoordinator {
     private View.OnContextClickListener createEmptySpaceContextClickListener(
             Activity activity, View targetView) {
         return v -> {
+            // If the click landed on an actual child item, onInterceptTouchEvent already
+            // handled it. Only show the empty space menu if there is no child view under the
+            // cursor.
             if (targetView instanceof RecyclerView rv) {
-                return handleContextMenuInteraction(
-                        activity, rv, mLastTouchPoint.x, mLastTouchPoint.y);
-            } else {
-                showEmptySpaceContextMenu(
-                        calculateTouchAnchor(targetView, mLastTouchPoint.x, mLastTouchPoint.y),
-                        activity);
-                return true;
+                View childView = rv.findChildViewUnder(mLastTouchPoint.x, mLastTouchPoint.y);
+                if (childView != null) {
+                    return true;
+                }
             }
+            showEmptySpaceContextMenu(
+                    calculateTouchAnchor(targetView, mLastTouchPoint.x, mLastTouchPoint.y),
+                    activity);
+            return true;
         };
     }
 
@@ -2213,6 +2176,79 @@ public class VerticalTabListCoordinator {
         return groupHeaderView;
     }
 
+    /**
+     * Calculates the grid column span count for pinned tabs based on available width and tab count.
+     */
+    @VisibleForTesting
+    static int calculateBalancedSpanCount(
+            int availableWidth, int pinnedTabCount, Resources res, boolean isTablet) {
+        int minItemWidth =
+                res.getDimensionPixelSize(
+                        isTablet
+                                ? R.dimen.vertical_tab_pinned_item_min_width_tablet
+                                : R.dimen.vertical_tab_pinned_item_min_width);
+        int minHorizontalGap = res.getDimensionPixelSize(R.dimen.vertical_tab_pinned_item_gap);
+        if (minItemWidth <= 0) return DEFAULT_GRID_SPAN_COUNT;
+
+        float spansFittingWidth =
+                (float) (availableWidth + minHorizontalGap) / (minItemWidth + minHorizontalGap)
+                        + SPAN_CALCULATION_EPSILON;
+        int maxFitSpans =
+                Math.clamp((int) Math.floor(spansFittingWidth), 1, MAX_SINGLE_ROW_SPAN_COUNT);
+
+        if (pinnedTabCount <= 0) {
+            return maxFitSpans;
+        }
+
+        // Uses integer ceiling division (A + B - 1) / B instead of A / B (which truncates and
+        // would yield 0 rows when pinnedTabCount < maxFitSpans) to calculate the full number of
+        // rows needed, balancing tabs evenly across rows.
+        int rows = (pinnedTabCount + maxFitSpans - 1) / maxFitSpans;
+        int columns = (pinnedTabCount + rows - 1) / rows;
+        return Math.clamp(columns, 1, maxFitSpans);
+    }
+
+    @VisibleForTesting
+    static RecyclerView.ItemDecoration createPinnedTabItemDecoration() {
+        return new RecyclerView.ItemDecoration() {
+            @Override
+            public void getItemOffsets(
+                    Rect outRect, View view, RecyclerView parent, RecyclerView.State state) {
+                calculatePinnedTabItemOffsets(outRect, view, parent);
+            }
+        };
+    }
+
+    /**
+     * Distributes inter-item horizontal gaps evenly across grid columns without outer margins,
+     * ensuring identical visual item widths since RecyclerView does not support layout_weight.
+     */
+    private static void calculatePinnedTabItemOffsets(
+            Rect outRect, View view, RecyclerView parent) {
+        int position = parent.getChildAdapterPosition(view);
+        if (position == RecyclerView.NO_POSITION) {
+            position = parent.indexOfChild(view);
+        }
+        if (position == RecyclerView.NO_POSITION) return;
+        if (!(parent.getLayoutManager() instanceof GridLayoutManager gridLayoutManager)) return;
+        int spanCount = gridLayoutManager.getSpanCount();
+        if (spanCount <= 1) {
+            outRect.left = 0;
+            outRect.right = 0;
+            return;
+        }
+        int minHorizontalGap =
+                parent.getContext()
+                        .getResources()
+                        .getDimensionPixelSize(R.dimen.vertical_tab_pinned_item_gap);
+        int column = position % spanCount;
+        int left = column * minHorizontalGap / spanCount;
+        int right = minHorizontalGap - (column + 1) * minHorizontalGap / spanCount;
+        boolean isRtl = LocalizationUtils.isLayoutRtl();
+        outRect.left = isRtl ? right : left;
+        outRect.right = isRtl ? left : right;
+    }
+
     @Nullable TabStripContextMenuCoordinator getTabStripContextMenuCoordinatorForTesting() {
         return mTabStripContextMenuCoordinator;
     }
@@ -2249,6 +2285,15 @@ public class VerticalTabListCoordinator {
     boolean handleContextMenuInteractionForTesting(
             Activity activity, RecyclerView recyclerView, float localX, float localY) {
         return handleContextMenuInteraction(activity, recyclerView, localX, localY);
+    }
+
+    void showTabGroupHeaderContextMenuForGroupIdForTesting(Token tabGroupId) {
+        showTabGroupHeaderContextMenuForGroupId(tabGroupId);
+    }
+
+    View.OnContextClickListener createEmptySpaceContextClickListenerForTesting(
+            Activity activity, View targetView) {
+        return createEmptySpaceContextClickListener(activity, targetView);
     }
 
     GridLayoutManager getPinnedLayoutManagerForTesting() {

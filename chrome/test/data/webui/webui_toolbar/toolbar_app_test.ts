@@ -12,7 +12,7 @@ import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_as
 import {TestSearchboxBrowserProxy} from 'chrome://webui-test/cr_components/searchbox/test_searchbox_browser_proxy.js';
 import {TestBrowserProxy} from 'chrome://webui-test/test_browser_proxy.js';
 import {microtasksFinished} from 'chrome://webui-test/test_util.js';
-import {BrowserProxyImpl, INVALID_FOCUS_REQUEST_HANDLE, resetInitialStateForTesting, SearchboxBrowserProxy, TrackedElementManager} from 'chrome://webui-toolbar.top-chrome/app.js';
+import {BrowserProxyImpl, INVALID_FOCUS_REQUEST_HANDLE, resetInitialStateForTesting, SearchboxBrowserProxy, SecurityChipRole, TrackedElementManager} from 'chrome://webui-toolbar.top-chrome/app.js';
 import type {LhsChipIdentifier, ToolbarAppElement} from 'chrome://webui-toolbar.top-chrome/app.js';
 import type {BrowserProxy, FocusRequestListener, NavigationControlsStateListener} from 'chrome://webui-toolbar.top-chrome/browser_proxy.js';
 import {AvatarToolbarButtonState} from 'chrome://webui-toolbar.top-chrome/shared/toolbar_ui_api_data_model.mojom-webui.js';
@@ -163,6 +163,7 @@ function createMockNavigationState() {
           isTextDangerous: false,
           isVisible: true,
           accessibilityState: {
+            role: SecurityChipRole.kButton,
             label: '',
             description: '',
           },
@@ -442,7 +443,7 @@ suite('ToolbarAppTest', () => {
     await microtasksFinished();
 
     // Verify it is not initialized yet (since it's waiting for Mojo update)
-    assertEquals(10, startTrackingCalls.length);
+    assertEquals(11, startTrackingCalls.length);
     assertEquals(
         1, browserProxy.toolbarUIHandler.getCallCount('onPageInitialized'));
 
@@ -450,7 +451,7 @@ suite('ToolbarAppTest', () => {
     browserProxy.fireNavigationStateListener([], createMockNavigationState());
     await microtasksFinished();
 
-    assertEquals(19, startTrackingCalls.length);
+    assertEquals(20, startTrackingCalls.length);
     assertEquals(
         2, browserProxy.toolbarUIHandler.getCallCount('onPageInitialized'));
   });
@@ -735,5 +736,58 @@ suite('ToolbarAppTest', () => {
     await microtasksFinished();
 
     assertEquals(window.innerWidth - app.clientWidth, app.getAvailableWidth());
+  });
+
+  test('AvatarButtonAnchorHighlightDoesNotPulse', async () => {
+    app = document.createElement('toolbar-app');
+    document.body.appendChild(app);
+    await microtasksFinished();
+
+    const avatarButton = app.shadowRoot.querySelector('avatar-button')!;
+    const innerChip = avatarButton.shadowRoot.querySelector('#button')!;
+    const visualTarget =
+        innerChip.shadowRoot!.querySelector('.iph-visual-target')!;
+    assertTrue(!!visualTarget);
+
+    avatarButton.classList.add('anchor-highlight');
+    await microtasksFinished();
+
+    assertEquals(
+        'none',
+        window.getComputedStyle(visualTarget, '::before').animationName);
+    assertEquals(
+        '1',
+        getComputedStyle(innerChip)
+            .getPropertyValue('--toolbar-chip-highlight-opacity')
+            .trim());
+
+    avatarButton.classList.remove('anchor-highlight');
+  });
+
+  test('AvatarButtonHelpBubbleActivatesPulseAnimation', async () => {
+    app = document.createElement('toolbar-app');
+    document.body.appendChild(app);
+    await microtasksFinished();
+
+    const avatarButton = app.shadowRoot.querySelector('avatar-button')!;
+    const innerChip = avatarButton.shadowRoot.querySelector('#button')!;
+    const visualTarget =
+        innerChip.shadowRoot!.querySelector('.iph-visual-target')!;
+    assertTrue(!!visualTarget);
+
+    avatarButton.hasHelpBubble = true;
+    await microtasksFinished();
+
+    assertTrue(innerChip.classList.contains('help-anchor-highlight'));
+    assertEquals(
+        'pulse',
+        window.getComputedStyle(visualTarget, '::before').animationName);
+    assertEquals(
+        '1', window.getComputedStyle(visualTarget, '::before').opacity);
+
+    avatarButton.hasHelpBubble = false;
+    await microtasksFinished();
+
+    assertFalse(innerChip.classList.contains('help-anchor-highlight'));
   });
 });

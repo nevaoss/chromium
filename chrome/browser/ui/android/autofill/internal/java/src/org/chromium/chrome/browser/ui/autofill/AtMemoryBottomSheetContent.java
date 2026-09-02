@@ -10,6 +10,7 @@ import android.view.View.MeasureSpec;
 
 import androidx.annotation.ColorInt;
 
+import org.chromium.base.supplier.NonNullObservableSupplier;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.ui.autofill.internal.R;
@@ -17,7 +18,7 @@ import org.chromium.components.browser_ui.bottomsheet.BottomSheetContent;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController;
 import org.chromium.components.browser_ui.styles.SemanticColorUtils;
 
-/** Implements the content for the @memory bottom sheet. */
+/** Implements the content for the AtMemory bottom sheet. */
 @NullMarked
 class AtMemoryBottomSheetContent implements BottomSheetContent {
     private final AtMemoryBottomSheetView mView;
@@ -55,6 +56,11 @@ class AtMemoryBottomSheetContent implements BottomSheetContent {
     @Override
     public boolean hasCustomScrimLifecycle() {
         return false;
+    }
+
+    @Override
+    public boolean showHandlebar() {
+        return true;
     }
 
     @Override
@@ -109,6 +115,21 @@ class AtMemoryBottomSheetContent implements BottomSheetContent {
     @Override
     public @ColorInt int getSheetBackgroundColorOverride() {
         return SemanticColorUtils.getDefaultBgColor(getContentView().getContext());
+    }
+
+    @Override
+    public NonNullObservableSupplier<Boolean> getBackPressStateChangedSupplier() {
+        return mView.getBackPressStateChangedSupplier();
+    }
+
+    @Override
+    public void onBackPressed() {
+        handleBackPress();
+    }
+
+    @Override
+    public boolean handleBackPress() {
+        return mView.onBackPressed();
     }
 
     // Measures the content height to achieve a wrap-content effect for the bottom sheet.

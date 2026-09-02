@@ -28,6 +28,8 @@
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/user_education/browser_user_education_interface.h"
 #include "chrome/browser/ui/view_ids.h"
+#include "chrome/browser/ui/webui/side_panel/read_anything/read_anything_untrusted_ui.h"
+#include "chrome/browser/ui/webui/top_chrome/webui_contents_wrapper.h"
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/feature_engagement/public/feature_constants.h"
@@ -115,10 +117,6 @@ ReadAnythingController::ReadAnythingController(
               tab,
               side_panel_registry)),
       distillation_state_locked_for_testing_(freeze_distillation_for_testing_) {
-  // This controller should only be instantiated if
-  // IsImmersiveReadAnythingEnabled is enabled
-  CHECK(features::IsImmersiveReadAnythingEnabled());
-
   // Point the FindBar to IRM's WebContents, if it's open. We already call
   // MaybeUpdateFindBarController when IRM opens and closes, but if IRM is open
   // on a split view, it can stay open even if the tab is not active, so we need

@@ -686,7 +686,21 @@ Called by update_autofill_enums.py.-->
   <int value="0" label="Typed trigger"/>
   <int value="1" label="Context menu"/>
   <int value="2" label="Keyboard shortcut"/>
+  <int value="3" label="Double Ctrl"/>
 </enum>
+
+<!-- LINT.IfChange(AutofillAtMemoryUiSessionOutcome) -->
+
+<enum name="AutofillAtMemoryUiSessionOutcome">
+  <int value="0" label="Dismissed before query"/>
+  <int value="1" label="Dismissed before results"/>
+  <int value="2" label="Dismissed empty results"/>
+  <int value="3" label="Dismissed results before acceptance"/>
+  <int value="4" label="Suggestion accepted but not filled"/>
+  <int value="5" label="Suggestion filled"/>
+</enum>
+
+<!-- LINT.ThenChange(//components/autofill/core/browser/at_memory/at_memory_metrics_recorder.h:AtMemoryUiSessionOutcome) -->
 
 <enum name="AutofillAutocompleteState">
   <int value="0" label="None"/>
@@ -4517,6 +4531,7 @@ Called by update_autofill_enums.py.-->
   <int value="23" label="AtMemory context menu"/>
   <int value="24" label="AtMemory inactivity nudge"/>
   <int value="25" label="AtMemory keyboard shortcut"/>
+  <int value="26" label="AtMemory double Ctrl"/>
 </enum>
 
 <!-- LINT.ThenChange(/components/autofill/core/common/mojom/autofill_types.mojom:AutofillSuggestionTriggerSource) -->
@@ -6081,7 +6096,7 @@ Called by update_autofill_enums.py.-->
   <int value="45" label="Title"/>
   <int value="46" label="Separator"/>
   <int value="47" label="Undo"/>
-  <int value="48" label="Mixed form message"/>
+  <int value="48" label="(Obsolete) Mixed form message"/>
   <int value="49" label="Devtools test addresses"/>
   <int value="50" label="Devtools test address entry"/>
   <int value="51" label="Devtools test address by country entry"/>

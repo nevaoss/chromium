@@ -20,11 +20,12 @@
 #include "chrome/browser/ui/tabs/split_tab_util.h"
 #include "chrome/browser/ui/tabs/tab_group_model.h"
 #include "chrome/browser/ui/tabs/tab_group_theme.h"
-#include "chrome/browser/ui/tabs/tab_menu_model_factory.h"
+#include "chrome/browser/ui/tabs/tab_menu_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_model_delegate.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
 #include "chrome/browser/ui/ui_features.h"
+#include "chrome/browser/ui/views/frame/base_tab_strip_region_view.h"
 #include "chrome/browser/ui/views/frame/browser_frame_view.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/glass_frame_service.h"
@@ -36,9 +37,11 @@
 #include "chrome/browser/ui/views/tabs/common/tab_view.h"
 #include "chrome/browser/ui/views/tabs/groups/tab_group_accessibility.h"
 #include "chrome/browser/ui/views/tabs/groups/tab_group_editor_bubble_view.h"
+#include "chrome/browser/ui/views/tabs/horizontal/horizontal_tab_closing_helper.h"
 #include "chrome/browser/ui/views/tabs/tab/tab_context_menu_controller.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/tabs/public/tab_collection_types.h"
+#include "components/tabs/public/tab_context_menu_command.h"
 #include "components/tabs/public/tab_group.h"
 #include "components/tabs/public/tab_interface.h"
 #include "ui/base/l10n/l10n_util.h"
@@ -57,7 +60,7 @@ TabStripCollectionController::TabStripCollectionController(
     RootTabCollectionNode& root_node,
     TabDragHandler& drag_handler,
     TabHoverCardController* hover_card_controller,
-    std::unique_ptr<TabMenuModelFactory> menu_model_factory_override)
+    TabStripOrientation orientation)
     : model_(model),
       browser_view_(browser_view),
       root_node_(root_node),
@@ -65,10 +68,9 @@ TabStripCollectionController::TabStripCollectionController(
       hover_card_controller_(hover_card_controller) {
   CHECK(browser_view_);
 
-  if (menu_model_factory_override) {
-    menu_model_factory_ = std::move(menu_model_factory_override);
-  } else {
-    menu_model_factory_ = std::make_unique<TabMenuModelFactory>();
+  if (orientation == TabStripOrientation::kHorizontal) {
+    tab_closing_helper_ =
+        std::make_unique<HorizontalTabClosingHelper>(root_node);
   }
 
   if (GlassFrameService* service = GlassFrameService::GetInstance()) {
@@ -288,6 +290,10 @@ void TabStripCollectionController::SelectTab(
 void TabStripCollectionController::CloseTab(
     const tabs::TabInterface* tab_interface,
     CloseTabSource source) {
+  if (tab_closing_helper_ && source != CloseTabSource::kFromNonUIEvent) {
+    tab_closing_helper_->MaybeEnterTabClosingMode(std::nullopt, source);
+  }
+
   model_->delegate()->CloseTab(tab_interface, source);
 }
 
@@ -439,7 +445,7 @@ void TabStripCollectionController::ShowTabContextMenu(
   context_menu_controller_ =
       std::make_unique<TabContextMenuController>(tab->GetHandle(), this);
 
-  auto model = menu_model_factory_->Create(
+  auto model = std::make_unique<TabMenuModel>(
       context_menu_controller_.get(),
       browser_view_->browser()->GetFeatures().tab_menu_model_delegate(), model_,
       tab_index.value());
@@ -454,10 +460,9 @@ void TabStripCollectionController::ShowTabContextMenu(
       base::BindRepeating(&TabStripCollectionController::OnTabContextMenuClosed,
                           base::Unretained(this));
 
-  ui::SimpleMenuModel* model_ptr = model.get();
-  context_menu_controller_->LoadModel(
-      std::move(model), menu_model_factory_->AsTabMenuModel(model_ptr),
-      std::move(on_menu_closed));
+  TabMenuModel* model_ptr = model.get();
+  context_menu_controller_->LoadModel(std::move(model), model_ptr,
+                                      std::move(on_menu_closed));
 
   context_menu_controller_->RunMenuAt(point, source_type,
                                       collection_node->view()->GetWidget());
@@ -533,7 +538,8 @@ bool TabStripCollectionController::GetContextMenuAccelerator(
           ? web_app::AppBrowserController::From(browser)->system_app()
           : nullptr;
   if (system_app && !system_app->ShouldShowTabContextMenuShortcut(
-                        browser->GetProfile(), command_id)) {
+                        browser->GetProfile(),
+                        static_cast<tabs::TabContextMenuCommand>(command_id))) {
     return false;
   }
 #endif  // BUILDFLAG(IS_CHROMEOS)

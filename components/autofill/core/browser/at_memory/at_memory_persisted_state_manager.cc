@@ -4,74 +4,132 @@
 
 #include "components/autofill/core/browser/at_memory/at_memory_persisted_state_manager.h"
 
+#include <algorithm>
 #include <utility>
 
 #include "base/check.h"
+#include "base/containers/span.h"
+#include "components/autofill/core/common/autofill_features.h"
 
 namespace autofill {
+
+namespace {
+
+// Returns a pointer to the parent suggestion within `suggestions` that contains
+// `suggestion` in its children, or `nullptr` if none is found.
+const Suggestion* FindParentSuggestion(
+    const Suggestion& suggestion,
+    base::span<const Suggestion> suggestions) {
+  const auto it =
+      std::ranges::find_if(suggestions, [&suggestion](const Suggestion& entry) {
+        return std::ranges::contains(entry.children, suggestion);
+      });
+  return it != suggestions.end() ? &(*it) : nullptr;
+}
+
+// Returns the primary parent suggestion for `accepted_suggestion` if it is a
+// child suggestion in `search_state` or `previously_filled_suggestions`.
+// Otherwise returns `accepted_suggestion` itself.
+const Suggestion& GetSuggestionToStore(
+    const Suggestion& accepted_suggestion,
+    const std::optional<AtMemorySearchState>& search_state,
+    base::span<const Suggestion> previously_filled_suggestions) {
+  if (search_state) {
+    if (const Suggestion* parent = FindParentSuggestion(
+            accepted_suggestion, search_state->suggestions)) {
+      return *parent;
+    }
+  }
+  if (const Suggestion* parent = FindParentSuggestion(
+          accepted_suggestion, previously_filled_suggestions)) {
+    return *parent;
+  }
+  return accepted_suggestion;
+}
+
+}  // namespace
 
 AtMemoryPersistedStateManager::AtMemoryPersistedStateManager() = default;
 AtMemoryPersistedStateManager::~AtMemoryPersistedStateManager() = default;
 
-const std::optional<AtMemoryManagerState>&
-AtMemoryPersistedStateManager::GetInitialStateForField(
-    const FieldGlobalId& field_id) {
+const std::optional<AtMemorySearchState>&
+AtMemoryPersistedStateManager::GetStateForField(
+    const FieldGlobalId& field_id,
+    const url::Origin& field_origin) {
   if (field_id_ != field_id) {
     field_id_ = field_id;
-    state_.reset();
+    field_origin_ = field_origin;
+    search_state_.reset();
   }
-  return state_;
+  return search_state_;
 }
 
 void AtMemoryPersistedStateManager::OnFilterChanged(
     std::u16string_view filter) {
   CHECK(field_id_);
   if (filter.empty()) {
-    state_.reset();
+    search_state_.reset();
     return;
   }
-  if (!state_) {
-    state_.emplace();
+  if (!search_state_) {
+    search_state_.emplace();
   }
-  state_->filter = filter;
-  state_->suggestions.clear();
-  state_->is_searching = false;
+  search_state_->filter = filter;
+  search_state_->suggestions.clear();
+  search_state_->is_searching = false;
 }
 
 void AtMemoryPersistedStateManager::OnFilterSubmitted(
     const std::u16string& filter) {
   CHECK(field_id_);
-  if (!state_) {
-    state_.emplace();
+  if (!search_state_) {
+    search_state_.emplace();
   }
-  state_->filter = filter;
-  state_->is_searching = true;
+  search_state_->filter = filter;
+  search_state_->is_searching = true;
 }
 
 void AtMemoryPersistedStateManager::OnSuggestionsChanged(
     std::vector<Suggestion> suggestions) {
-  if (!state_) {
+  if (!search_state_) {
     return;
   }
-  state_->suggestions = std::move(suggestions);
+  search_state_->suggestions = std::move(suggestions);
 }
 
-void AtMemoryPersistedStateManager::OnSuggestionAccepted() {
+void AtMemoryPersistedStateManager::OnSuggestionAccepted(
+    const Suggestion& suggestion) {
+  if (base::FeatureList::IsEnabled(
+          features::kAutofillAtMemoryPreviouslyFilled)) {
+    const Suggestion& suggestion_to_store = GetSuggestionToStore(
+        suggestion, search_state_, previously_filled_suggestions_);
+    const auto it =
+        std::ranges::find(previously_filled_suggestions_, suggestion_to_store);
+    if (it != previously_filled_suggestions_.end()) {
+      std::rotate(it, it + 1, previously_filled_suggestions_.end());
+    } else {
+      if (previously_filled_suggestions_.size() >=
+          kMaxPreviouslyFilledSuggestions) {
+        previously_filled_suggestions_.erase(
+            previously_filled_suggestions_.begin());
+      }
+      previously_filled_suggestions_.push_back(suggestion_to_store);
+    }
+  }
   field_id_ = FieldGlobalId();
-  state_.reset();
+  search_state_.reset();
 }
 
 bool AtMemoryPersistedStateManager::IsSearching() const {
-  return state_ && state_->is_searching;
+  return search_state_ && search_state_->is_searching;
 }
 
 void AtMemoryPersistedStateManager::StopSearching() {
-  if (state_) {
-    if (state_->is_searching) {
-      state_->suggestions.clear();
-    }
-    state_->is_searching = false;
+  if (!search_state_ || !search_state_->is_searching) {
+    return;
   }
+  search_state_->suggestions.clear();
+  search_state_->is_searching = false;
 }
 
 }  // namespace autofill

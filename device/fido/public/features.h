@@ -97,6 +97,11 @@ BASE_DECLARE_FEATURE(kWebAuthnEnclaveAttestation);
 COMPONENT_EXPORT(FIDO_PUBLIC)
 BASE_DECLARE_FEATURE(kWebAuthnCrossDeviceFallbackUrl);
 
+// Support the WebAuthn remoteClientDataJSON extension, which lets an authorized
+// remote desktop client supply the clientDataJSON for a request.
+COMPONENT_EXPORT(FIDO_PUBLIC)
+BASE_DECLARE_FEATURE(kWebAuthnRemoteClientDataJson);
+
 // Enables support for the WebAuthenticationRemoteDesktopAllowedOrigins
 // enterprise policy for Isolated Web Apps.
 COMPONENT_EXPORT(FIDO_PUBLIC)
@@ -153,6 +158,12 @@ BASE_DECLARE_FEATURE(kWebAuthnGpmPasskeyEmbeddedRecoveryUrl);
 // during MakeCredential.
 COMPONENT_EXPORT(FIDO_PUBLIC)
 BASE_DECLARE_FEATURE(kWebAuthnEnclaveUseAuthDataFromEnclave);
+
+// Displays provider-specific vector icons (Google Password Manager,
+// Apple Passwords, Windows Hello, etc.) for passkey credentials in modal
+// requests.
+COMPONENT_EXPORT(FIDO_PUBLIC)
+BASE_DECLARE_FEATURE(kWebAuthnModalProviderIcons);
 
 }  // namespace device
 

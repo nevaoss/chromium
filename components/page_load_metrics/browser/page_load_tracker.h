@@ -230,7 +230,7 @@ class PageLoadTracker : public PageLoadMetricsUpdateDispatcher::Client,
   void OnMainFrameMetadataChanged() override;
   void OnSubframeMetadataChanged(content::RenderFrameHost* rfh,
                                  const mojom::FrameMetadata& metadata) override;
-  void OnSoftNavigationCommit(
+  void OnSoftNavigationFirstContentfulPaint(
       const mojom::SoftNavigationMetrics& soft_navigation_metrics) override;
   void OnSoftNavigationCompleted(
       const SoftNavigationData& soft_navigation_data) override;
@@ -340,6 +340,8 @@ class PageLoadTracker : public PageLoadMetricsUpdateDispatcher::Client,
 
   void OnLoadedResource(
       const ExtraRequestCompleteInfo& extra_request_complete_info);
+  void DidLoadResourceFromMemoryCache(
+      const MemoryResourceLoadInfo& memory_resource_load_info);
 
   void FrameReceivedUserActivation(content::RenderFrameHost* rfh);
   void FrameDisplayStateChanged(content::RenderFrameHost* render_frame_host,

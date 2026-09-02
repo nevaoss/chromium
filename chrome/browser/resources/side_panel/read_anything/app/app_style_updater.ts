@@ -11,11 +11,6 @@ import {AudioBrowserProxyImpl} from '../read_aloud/audio_browser_proxy.js';
 import type {VisualBrowserProxy} from './visual_browser_proxy.js';
 import {VisualBrowserProxyImpl} from './visual_browser_proxy.js';
 
-// Constants for styling the app when page zoom changes.
-const OVERFLOW_X_TYPICAL = 'hidden';
-const OVERFLOW_X_SCROLL = 'scroll';
-const MIN_WIDTH_TYPICAL = 'auto';
-const MIN_WIDTH_OVERFLOW = 'fit-content';
 // Empty state colors.
 const EMPTY_STATE_HEADING = 'var(--color-read-anything-foreground';
 const EMPTY_STATE_BODY_DEFAULT =
@@ -54,9 +49,6 @@ const ON_AUDIO_PLAYER_FOCUS_OUTLINE =
     'var(--color-read-anything-on-audio-player-focus-outline';
 const AUDIO_CONTROLS_ICON = 'var(--color-read-anything-audio-controls-icon';
 const FULL_PAGE_SCROLLBAR = 'var(--color-read-anything-full-page-scrollbar';
-// Toolbar icon colors for when the immersive flag is disabled.
-const LEGACY_TOOLBAR_ICON = 'var(--color-sys-on-surface-subtle)';
-const LEGACY_PLAYPAUSE_ICON = 'var(--color-sys-primary)';
 // Line focus styles.
 // Determined by experimentation to balance visibility without risking
 // obstructing any text.
@@ -151,20 +143,10 @@ export class AppStyleUpdater {
     // Since the window line focus scrim goes into the toolbar area, update the
     // toolbar icons as needed to maintain visibility on top of the dark scrim.
     const isWindow = type === LineFocusType.WINDOW;
-    if (this.visualBrowserProxy_.isImmersiveEnabled()) {
-      const colorSuffix =
-          isWindow ? ColorSuffix.DARK : this.getCurrentColorSuffix_();
-      this.setStyle_(
-          '--toolbar-icon-color', this.getToolbarIconColor_(colorSuffix));
-    } else {
-      const iconColor = isWindow ? this.getToolbarIconColor_(ColorSuffix.DARK) :
-                                   LEGACY_TOOLBAR_ICON;
-      this.setStyle_('--legacy-toolbar-icon-color', iconColor);
-      const playPauseColor = isWindow ?
-          this.getLineFocusColor_(ColorSuffix.DARK) :
-          LEGACY_PLAYPAUSE_ICON;
-      this.setStyle_('--legacy-audio-player-icon-color', playPauseColor);
-    }
+    const colorSuffix =
+        isWindow ? ColorSuffix.DARK : this.getCurrentColorSuffix_();
+    this.setStyle_(
+        '--toolbar-icon-color', this.getToolbarIconColor_(colorSuffix));
   }
 
   setLineFocusHeight() {
@@ -221,22 +203,6 @@ export class AppStyleUpdater {
         this.getCurrentHighlightColor_(this.getCurrentColorSuffix_()));
   }
 
-  resetToolbar() {
-    this.setStyle_('--app-overflow-x', OVERFLOW_X_TYPICAL);
-    this.setStyle_('--container-min-width', MIN_WIDTH_TYPICAL);
-  }
-
-  overflowToolbar(shouldScroll: boolean) {
-    this.setStyle_(
-        '--app-overflow-x',
-        shouldScroll ? OVERFLOW_X_SCROLL : OVERFLOW_X_TYPICAL);
-    this.setStyle_(
-        // When we scroll, we should allow the container to expand and scroll
-        // horizontally.
-        '--container-min-width',
-        shouldScroll ? MIN_WIDTH_OVERFLOW : MIN_WIDTH_TYPICAL);
-  }
-
   setTheme() {
     const colorSuffix = this.getCurrentColorSuffix_();
     this.setStyle_('--background-color', this.getBackgroundColor_(colorSuffix));
@@ -291,6 +257,12 @@ export class AppStyleUpdater {
     this.setStyle_(
         '--audio-controls-icon-color',
         this.getAudioControlsIconColor_(colorSuffix));
+    this.setStyle_(
+        '--toggle-inactive-background-color',
+        this.getToggleInactiveBackgroundColor_(colorSuffix));
+    this.setStyle_(
+        '--toggle-active-background-color',
+        this.getToggleActiveBackgroundColor_(colorSuffix));
     this.setStyle_(
         '--color-read-anything-full-page-scrollbar',
         this.getFullPageScrollbarColor_(colorSuffix));
@@ -432,5 +404,23 @@ export class AppStyleUpdater {
     return (colorSuffix === ColorSuffix.DEFAULT) ?
         `${FULL_PAGE_SCROLLBAR})` :
         `${FULL_PAGE_SCROLLBAR}${colorSuffix})`;
+  }
+
+  private getToggleInactiveBackgroundColor_(colorSuffix: ColorSuffix): string {
+    if (colorSuffix === ColorSuffix.BLUE) {
+      return `${AUDIO_PLAYER_ICON}${colorSuffix})`;
+    }
+    return (colorSuffix === ColorSuffix.DEFAULT) ?
+        `${AUDIO_PLAYER_BACKGROUND})` :
+        `${AUDIO_PLAYER_BACKGROUND}${colorSuffix})`;
+  }
+
+  private getToggleActiveBackgroundColor_(colorSuffix: ColorSuffix): string {
+    if (colorSuffix === ColorSuffix.BLUE) {
+      return `${AUDIO_PLAYER_BACKGROUND}${colorSuffix})`;
+    }
+    return (colorSuffix === ColorSuffix.DEFAULT) ?
+        `${AUDIO_PLAYER_ICON})` :
+        `${AUDIO_PLAYER_ICON}${colorSuffix})`;
   }
 }

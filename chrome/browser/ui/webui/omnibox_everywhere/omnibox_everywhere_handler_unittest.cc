@@ -11,6 +11,7 @@
 #include "base/memory/raw_ptr.h"
 #include "base/test/scoped_feature_list.h"
 #include "chrome/browser/bookmarks/bookmark_model_factory.h"
+#include "chrome/browser/ui/omnibox/omnibox_everywhere/omnibox_everywhere_prefs.h"
 #include "chrome/browser/ui/omnibox/omnibox_everywhere_service.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/browser/ui/webui/searchbox/contextual_searchbox_test_utils.h"
@@ -19,6 +20,7 @@
 #include "components/bookmarks/test/bookmark_test_helpers.h"
 #include "components/omnibox/browser/autocomplete_match.h"
 #include "components/omnibox/browser/searchbox.mojom.h"
+#include "components/prefs/pref_service.h"
 #include "components/search_engines/template_url.h"
 #include "components/search_engines/template_url_data.h"
 #include "components/search_engines/template_url_service.h"
@@ -54,6 +56,12 @@ class MockOmniboxEverywhereService : public OmniboxEverywhereService {
   MOCK_METHOD(void, OnDrivePickerClosed, (), (override));
 };
 
+class OmniboxEverywhereHandlerPublic : public OmniboxEverywhereHandler {
+ public:
+  using OmniboxEverywhereHandler::OmniboxEverywhereHandler;
+  using SearchboxHandler::CreateAutocompleteMatch;
+};
+
 class OmniboxEverywhereHandlerTest
     : public ContextualSearchboxHandlerTestHarness {
  public:
@@ -77,7 +85,7 @@ class OmniboxEverywhereHandlerTest
     web_ui_.set_web_contents(web_contents());
     mock_service_ = std::make_unique<MockOmniboxEverywhereService>(profile());
 
-    handler_ = std::make_unique<OmniboxEverywhereHandler>(
+    handler_ = std::make_unique<OmniboxEverywhereHandlerPublic>(
         handler_remote_.BindNewPipeAndPassReceiver(), page_.BindAndGetRemote(),
         /*metrics_reporter=*/nullptr, &web_ui_, mock_service_.get(),
         base::BindRepeating(
@@ -98,7 +106,7 @@ class OmniboxEverywhereHandlerTest
   std::unique_ptr<MockOmniboxEverywhereService> mock_service_;
   testing::NiceMock<MockSearchboxPage> page_;
   mojo::Remote<searchbox::mojom::PageHandler> handler_remote_;
-  std::unique_ptr<OmniboxEverywhereHandler> handler_;
+  std::unique_ptr<OmniboxEverywhereHandlerPublic> handler_;
 };
 
 TEST_F(OmniboxEverywhereHandlerTest,
@@ -244,6 +252,36 @@ TEST_F(OmniboxEverywhereHandlerTest, OpenUrlForwardsToService) {
 
   handler_->OpenUrl(test_url, WindowOpenDisposition::CURRENT_TAB,
                     base::NullCallback());
+}
+
+TEST_F(OmniboxEverywhereHandlerTest, DismissPromoUpdatesFrePreference) {
+  EXPECT_FALSE(profile()->GetPrefs()->GetBoolean(
+      omnibox_everywhere::prefs::kFreDismissed));
+
+  handler_->DismissFre();
+
+  EXPECT_TRUE(profile()->GetPrefs()->GetBoolean(
+      omnibox_everywhere::prefs::kFreDismissed));
+}
+
+TEST_F(OmniboxEverywhereHandlerTest, FrePromoStateGatedByImpressionCount) {
+  profile()->GetPrefs()->SetInteger(
+      omnibox_everywhere::prefs::kFreImpressionCount,
+      omnibox_everywhere::prefs::kMaxFreImpressions);
+
+  testing::NiceMock<MockSearchboxPage> mock_page;
+  EXPECT_CALL(mock_page, SetShowFre(false));
+
+  mojo::Remote<searchbox::mojom::PageHandler> test_handler_remote;
+  auto handler = std::make_unique<OmniboxEverywhereHandler>(
+      test_handler_remote.BindNewPipeAndPassReceiver(),
+      mock_page.BindAndGetRemote(), /*metrics_reporter=*/nullptr, &web_ui_,
+      mock_service_.get(),
+      base::BindRepeating(
+          []() -> contextual_search::ContextualSearchSessionHandle* {
+            return nullptr;
+          }));
+  mock_page.FlushForTesting();
 }
 
 }  // namespace

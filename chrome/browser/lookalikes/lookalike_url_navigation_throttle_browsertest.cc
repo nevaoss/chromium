@@ -15,6 +15,7 @@
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/simple_test_clock.h"
+#include "base/test/test_future.h"
 #include "build/build_config.h"
 #include "chrome/browser/history/history_service_factory.h"
 #include "chrome/browser/history/history_test_utils.h"
@@ -27,7 +28,9 @@
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/navigator/browser_navigator_params.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
+#include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/ui_test_utils.h"
@@ -121,6 +124,10 @@ void SetEngagementScore(BrowserWindowInterface* browser,
                         double score) {
   site_engagement::SiteEngagementService::Get(browser->GetProfile())
       ->ResetBaseScoreForURL(url, score);
+  base::test::TestFuture<const std::vector<lookalikes::DomainInfo>&> configured;
+  LookalikeUrlServiceFactory::GetForProfile(browser->GetProfile())
+      ->ForceUpdateEngagedSites(configured.GetCallback());
+  EXPECT_TRUE(configured.Wait());
 }
 
 bool IsUrlShowing(BrowserWindowInterface* browser) {

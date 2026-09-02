@@ -62,18 +62,33 @@ export function getHtml(this: SaveToMemoryBankElement) {
               ${
       this.isAddingCollection ? html`
                 <cr-input class="collection-input"
+                    autofocus
                     placeholder="New collection..."
                     .value="${this.newCollectionInput}"
                     @value-changed="${this.onNewCollectionValueChanged}"
+                    @blur="${this.onNewCollectionBlur}"
                     @keydown="${this.onNewCollectionKeydown}">
                 </cr-input>
               ` :
                                 html`
                 <select class="md-select" .value="${this.collection}"
                     @change="${this.onCollectionChange}">
-                  ${this.collections.map(col => html`
-                    <option value="${col}">${col}</option>
-                  `)}
+                  ${
+                                    this.collections.length === 0 ? html`
+                    <option value="" disabled selected>
+                      No collections yet
+                    </option>
+                  ` :
+                                                                    html`
+                    <option value="" ?selected="${
+  !this.collection}">None</option>
+                    ${this.collections.map(col => html`
+                      <option value="${col}"
+                          ?selected="${col === this.collection}">
+                        ${col}
+                      </option>
+                    `)}
+                  `}
                 </select>
               `}
             </div>
@@ -89,25 +104,57 @@ export function getHtml(this: SaveToMemoryBankElement) {
               </cr-icon-button>
             </div>
             <div class="filter-chips-row">
-              ${this.tags.map(tag => html`
+              ${
+      this.tags.map(tag => html`
                 <div class="filter-chip">
-                  <span class="chip-text">${tag}</span>
+                  <span class="chip-text" title="${tag}">${tag}</span>
                   <cr-icon-button class="chip-close-btn" iron-icon="cr:close"
                       data-tag="${tag}"
-                      aria-label="${'Remove tag ' + tag}"
+                      aria-label="${
+                               'Remove tag ' +
+          tag}"
                       @click="${this.onRemoveTagClick}">
                   </cr-icon-button>
                 </div>
               `)}
               ${
-      this.isCreatingCustomTag ? html`
-                <cr-input class="tag-input" placeholder="Add tag..."
-                    .value="${this.newTagInput}"
-                    @value-changed="${this.onNewTagValueChanged}"
-                    @keydown="${this.onNewTagKeydown}">
-                </cr-input>
+      this.isCreatingCustomTag ?
+      html`
+                <div class="tag-input-container">
+                  <cr-input class="tag-input"
+                      autofocus
+                      placeholder="Add tag..."
+                      .value="${this.newTagInput}"
+                      @value-changed="${this.onNewTagValueChanged}"
+                      @blur="${this.onNewTagBlur}"
+                      @keydown="${this.onNewTagKeydown}">
+                  </cr-input>
+                  ${
+          this.filteredTags_.length > 0 ?
+          html`
+                    <div class="suggestions-dropdown tag-suggestions"
+                        role="listbox">
+                      ${
+              this.filteredTags_.map(
+                  (tag, index) => html`
+                        <div class="suggestion-item ${
+                      index ===
+                      this.highlightedTagIndex ? 'highlighted' : ''}"
+                            role="option"
+                            data-tag="${tag}"
+                            title="${tag}"
+                            aria-selected="${
+                      index === this.highlightedTagIndex}"
+                            @mousedown="${this.onTagSuggestionMousedown}">
+                          ${tag}
+                        </div>
+                      `)}
+                    </div>
+                  ` :
+          ''}
+                </div>
               ` :
-                                 ''}
+      ''}
             </div>
           </div>
 

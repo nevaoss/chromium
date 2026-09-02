@@ -6,8 +6,11 @@ package org.chromium.chrome.browser.tab_ui;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -88,8 +91,8 @@ public class TabSwitcherUtilsUnitTest {
     }
 
     @Test
-    public void testOpenTabGroupDialog_nullGroup() {
-        TabSwitcherUtils.openTabGroupDialog(
+    public void testFocusTabGroup_nullGroup() {
+        TabSwitcherUtils.focusTabGroup(
                 SYNC_GROUP_ID1,
                 mTabGroupSyncService,
                 mTabGroupUiActionHandler,
@@ -100,7 +103,7 @@ public class TabSwitcherUtilsUnitTest {
     }
 
     @Test
-    public void testOpenTabGroupDialog_currentlyHidden() {
+    public void testFocusTabGroup_currentlyHidden() {
         SavedTabGroup syncGroup1 = new SavedTabGroup();
         syncGroup1.syncId = SYNC_GROUP_ID1;
         SavedTabGroup syncGroup2 = new SavedTabGroup();
@@ -111,13 +114,13 @@ public class TabSwitcherUtilsUnitTest {
                         invocation -> {
                             Mockito.reset(mTabGroupSyncService);
                             when(mTabGroupSyncService.getGroup(SYNC_GROUP_ID1))
-                                    .thenReturn(syncGroup2);
+                                     .thenReturn(syncGroup2);
                             return null;
                         })
                 .when(mTabGroupUiActionHandler)
                 .openTabGroup(SYNC_GROUP_ID1);
 
-        TabSwitcherUtils.openTabGroupDialog(
+        TabSwitcherUtils.focusTabGroup(
                 SYNC_GROUP_ID1,
                 mTabGroupSyncService,
                 mTabGroupUiActionHandler,
@@ -128,13 +131,13 @@ public class TabSwitcherUtilsUnitTest {
     }
 
     @Test
-    public void testOpenTabGroupDialog_invalidRoot() {
+    public void testFocusTabGroup_invalidRoot() {
         SavedTabGroup syncGroup = new SavedTabGroup();
         syncGroup.localId = new LocalTabGroupId(TAB_GROUP_ID_1);
         when(mTabGroupSyncService.getGroup(SYNC_GROUP_ID1)).thenReturn(syncGroup);
         when(mTabModel.getGroupLastShownTabId(TAB_GROUP_ID_1)).thenReturn(INVALID_TAB_ID);
 
-        TabSwitcherUtils.openTabGroupDialog(
+        TabSwitcherUtils.focusTabGroup(
                 SYNC_GROUP_ID1,
                 mTabGroupSyncService,
                 mTabGroupUiActionHandler,
@@ -146,13 +149,13 @@ public class TabSwitcherUtilsUnitTest {
     }
 
     @Test
-    public void testOpenTabGroupDialog_alreadyOpen() {
+    public void testFocusTabGroup_alreadyOpen() {
         SavedTabGroup syncGroup = new SavedTabGroup();
         syncGroup.localId = new LocalTabGroupId(TAB_GROUP_ID_1);
         when(mTabGroupSyncService.getGroup(SYNC_GROUP_ID1)).thenReturn(syncGroup);
         when(mTabModel.getGroupLastShownTabId(TAB_GROUP_ID_1)).thenReturn(TAB_ID_1);
 
-        TabSwitcherUtils.openTabGroupDialog(
+        TabSwitcherUtils.focusTabGroup(
                 SYNC_GROUP_ID1,
                 mTabGroupSyncService,
                 mTabGroupUiActionHandler,
@@ -181,5 +184,51 @@ public class TabSwitcherUtilsUnitTest {
 
         DeviceInfo.setIsDesktopForTesting(false);
         assertFalse(TabSwitcherUtils.isGridTabSwitcherDisabled());
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.DISABLE_GRID_TAB_SWITCHER)
+    public void testNavigateToTabSwitcher_disabledOnDesktop_runsCallbackAndDoesNotShowHub() {
+        DeviceInfo.setIsDesktopForTesting(true);
+        when(mLayoutManager.isLayoutVisible(LayoutType.HUB)).thenReturn(false);
+        Runnable callback = mock(Runnable.class);
+
+        TabSwitcherUtils.navigateToTabSwitcher(mLayoutManager, /* animate= */ false, callback);
+
+        verify(callback).run();
+        verify(mLayoutManager, never()).showLayout(eq(LayoutType.HUB), anyBoolean());
+    }
+
+    @Test
+    public void testNavigateToTabSwitcher_enabledOnPhone_showsHub() {
+        DeviceInfo.setIsDesktopForTesting(false);
+        when(mLayoutManager.isLayoutVisible(LayoutType.HUB)).thenReturn(false);
+        Runnable callback = mock(Runnable.class);
+
+        TabSwitcherUtils.navigateToTabSwitcher(mLayoutManager, /* animate= */ false, callback);
+
+        verify(mLayoutManager).showLayout(eq(LayoutType.HUB), eq(false));
+        verify(callback, never()).run();
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.DISABLE_GRID_TAB_SWITCHER)
+    public void testFocusTabGroup_disabledOnDesktop_selectsTabAndDoesNotOpenDialog() {
+        DeviceInfo.setIsDesktopForTesting(true);
+        SavedTabGroup syncGroup = new SavedTabGroup();
+        syncGroup.localId = new LocalTabGroupId(TAB_GROUP_ID_1);
+        when(mTabGroupSyncService.getGroup(SYNC_GROUP_ID1)).thenReturn(syncGroup);
+        when(mTabModel.getGroupLastShownTabId(TAB_GROUP_ID_1)).thenReturn(TAB_ID_1);
+        when(mTabModel.indexOf(mTab)).thenReturn(0);
+
+        TabSwitcherUtils.focusTabGroup(
+                SYNC_GROUP_ID1,
+                mTabGroupSyncService,
+                mTabGroupUiActionHandler,
+                mTabModel,
+                mRequestOpenTabGroupDialog);
+
+        verify(mTabModel).setIndex(eq(0), eq(TabSelectionType.FROM_USER));
+        verifyNoInteractions(mRequestOpenTabGroupDialog);
     }
 }

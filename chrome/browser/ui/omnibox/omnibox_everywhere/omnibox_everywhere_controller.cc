@@ -342,12 +342,11 @@ void OmniboxEverywhereController::OnInvoke(InvocationSource source,
     case InvocationSource::kGlobalHotkey:
     case InvocationSource::kStatusTrayIcon:
       if (ui_manager_->profile() == profile) {
-        if (prefs::IsEphemeralModelEnabled() && ui_manager_->IsVisible()) {
-          Close();
-          return;
-        }
-        if (!prefs::IsEphemeralModelEnabled() && ui_manager_->IsActive()) {
-          ui_manager_->Demote();
+        const bool should_dismiss = prefs::IsEphemeralModelEnabled()
+                                        ? ui_manager_->IsVisible()
+                                        : ui_manager_->IsActive();
+        if (should_dismiss) {
+          Hide();
           return;
         }
       }
@@ -362,6 +361,14 @@ void OmniboxEverywhereController::OnInvoke(InvocationSource source,
 
 void OmniboxEverywhereController::Close() {
   ui_manager_->Close();
+}
+
+void OmniboxEverywhereController::Hide() {
+  if (prefs::IsEphemeralModelEnabled()) {
+    Close();
+  } else {
+    ui_manager_->Demote();
+  }
 }
 
 bool OmniboxEverywhereController::IsVisible() const {
@@ -433,9 +440,20 @@ void OmniboxEverywhereController::ExecuteCommand(
 
 void OmniboxEverywhereController::CreateStartMenuShortcut(
     base::OnceCallback<void(bool)> callback) {
+#if BUILDFLAG(IS_WIN)
+  if (callback) {
+    shortcut_helper_
+        .AsyncCall(&OmniboxEverywhereShortcutHelperWin::CreateStartMenuShortcut)
+        .Then(std::move(callback));
+  } else {
+    shortcut_helper_.AsyncCall(base::IgnoreResult(
+        &OmniboxEverywhereShortcutHelperWin::CreateStartMenuShortcut));
+  }
+#else
   if (callback) {
     std::move(callback).Run(false);
   }
+#endif
 }
 
 void OmniboxEverywhereController::OfferPinToTaskbar(

@@ -233,6 +233,7 @@ bool GtkInitFromCommandLine(int* argc, char** argv) {
   // This prevents GTK from calling setlocale(LC_ALL, ""), which potentially
   // overwrites the LC_NUMERIC locale to something other than "C".
   gtk_disable_setlocale();
+  InstallGtkSettingsInterceptor();
   return GtkInitCheck(argc, argv);
 }
 
@@ -839,13 +840,14 @@ double GetOpacityFromContext(GtkStyleContext* context) {
 }
 
 bool IsValidThemeName(ThemeProperty property, const char* theme) {
-  const bool is_key_theme = property == ThemeProperty::kKeyThemeName;
+  const bool is_optional = property == ThemeProperty::kKeyThemeName ||
+                           property == ThemeProperty::kCursorThemeName;
   if (!theme) {
-    return is_key_theme;
+    return is_optional;
   }
   std::string_view theme_str(theme);
   if (theme_str.empty()) {
-    return is_key_theme;
+    return is_optional;
   }
   return ui::IsValidCursorThemeName(theme_str);
 }
@@ -877,6 +879,14 @@ void GtkSettingsSetProperty(GObject* object,
                             GParamSpec* pspec) {
   if (pspec && pspec->name) {
     std::string_view prop_name(pspec->name);
+    if (prop_name == "gtk-modules") {
+      GValue sanitized_value = G_VALUE_INIT;
+      g_value_init(&sanitized_value, G_TYPE_STRING);
+      g_value_set_string(&sanitized_value, "");
+      g_orig_set_property(object, property_id, &sanitized_value, pspec);
+      g_value_unset(&sanitized_value);
+      return;
+    }
     std::optional<ThemeProperty> property;
     if (prop_name == "gtk-theme-name") {
       property = ThemeProperty::kThemeName;

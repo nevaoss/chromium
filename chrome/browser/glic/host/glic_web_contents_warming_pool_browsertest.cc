@@ -10,6 +10,9 @@
 #include "base/test/test_future.h"
 #include "chrome/browser/glic/glic_pref_names.h"
 #include "chrome/browser/glic/glic_profile_manager.h"
+#include "chrome/browser/glic/glic_warming_checks.h"
+#include "chrome/browser/glic/host/glic_ui.h"
+#include "chrome/browser/glic/host/glic_web_client_manager.h"
 #include "chrome/browser/glic/host/webui_contents_container.h"
 #include "chrome/browser/glic/public/glic_keyed_service.h"
 #include "chrome/browser/glic/service/glic_instance_coordinator_impl.h"
@@ -102,17 +105,50 @@ IN_PROC_BROWSER_TEST_F(GlicWarmingPoolBrowserTest, MAYBE_BackfillWarming) {
             base::Milliseconds(90));  // Allow slight scheduling leeway.
 }
 
+// TODO(b/496609005): Skip on ChromeOS due to profile ineligibility timeouts.
+#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_WIN)
+#define MAYBE_WarmedContainerConnects DISABLED_WarmedContainerConnects
+#else
+#define MAYBE_WarmedContainerConnects WarmedContainerConnects
+#endif
+IN_PROC_BROWSER_TEST_F(GlicWarmingPoolBrowserTest,
+                       MAYBE_WarmedContainerConnects) {
+  // 1. Wait for initial preload to complete.
+  ASSERT_TRUE(
+      RunUntil([this]() { return pool().HasWarmedContainerForTesting(); },
+               "Wait for initial cold warming"));
+
+  // 2. Verify that guest is created and loaded.
+  auto* warmed_container = pool().GetWarmedContainerForTesting();
+  ASSERT_TRUE(warmed_container);
+  auto* glic_ui = GlicUI::From(warmed_container->web_contents());
+  ASSERT_TRUE(glic_ui);
+
+  ASSERT_TRUE(RunUntil(
+      [glic_ui]() -> bool {
+        auto* guest_contents =
+            glic_ui->web_client_manager()->web_client_contents();
+        return guest_contents != nullptr && !guest_contents->IsLoading();
+      },
+      "Wait for guest web contents to load"));
+
+  // 3. Open glic. This should use the warmed container.
+  ASSERT_OK(OpenGlicForActiveTab());
+
+  // 4. Verify that client connects.
+  ASSERT_OK(WaitForGlicClient());
+}
+
 class GlicWarmingCellularBrowserTest : public GlicWarmingPoolBrowserTest {
  public:
   void SetUp() override {
-    GlicProfileManager::ForceConnectionTypeForTesting(
-        net::NetworkChangeNotifier::CONNECTION_3G);
+    ForceConnectionTypeForTesting(net::NetworkChangeNotifier::CONNECTION_3G);
     GlicWarmingPoolBrowserTest::SetUp();
   }
 
   void TearDown() override {
     GlicWarmingPoolBrowserTest::TearDown();
-    GlicProfileManager::ForceConnectionTypeForTesting(std::nullopt);
+    ForceConnectionTypeForTesting(std::nullopt);
   }
 };
 
@@ -188,8 +224,7 @@ IN_PROC_BROWSER_TEST_F(GlicWarmingPoolBrowserTest, IncognitoCheck) {
   Profile* incognito =
       GetProfile()->GetPrimaryOTRProfile(/*create_if_needed=*/true);
   base::test::TestFuture<GlicPrewarmingChecksResult> future;
-  GlicProfileManager::GetInstance()->ShouldPreloadForProfile(
-      incognito, future.GetCallback());
+  ShouldPreloadForProfile(incognito, future.GetCallback());
   EXPECT_EQ(future.Get(), GlicPrewarmingChecksResult::kProfileNotEligible);
 }
 

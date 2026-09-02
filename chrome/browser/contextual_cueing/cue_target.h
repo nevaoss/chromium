@@ -31,7 +31,8 @@ namespace contextual_cueing {
 enum class CueTargetType {
   kGlic = 0,
   kTestSource = 1,
-  kMaxValue = kTestSource
+  kIndigo = 2,
+  kMaxValue = kIndigo
 };
 // LINT.ThenChange(//tools/metrics/histograms/metadata/contextual_cueing/enums.xml:CueTargetType)
 
@@ -74,6 +75,15 @@ class CueTarget {
   // Returns the unique identifier for this target. Used as the key for UCB
   // scoring, backoff tracking, and metrics (impressions, clicks, dismissals).
   virtual CueTargetType GetType() const = 0;
+
+  // Whether this target relies on the backend Model Execution Service (MES)
+  // to generate cue content rather than generating content locally.
+  virtual bool RequiresModelExecution() const = 0;
+
+  // Returns true if this target supports the given intrusiveness level.
+  // Targets requiring MES are restricted to kLoud only. Non-MES targets
+  // can override SupportsIntrusivenessImpl() to declare supported levels.
+  bool SupportsIntrusiveness(CueIntrusiveness intrusiveness) const;
 
   // Synchronous profile-level gate (e.g., feature disabled, panel already
   // open). Called by the controller before constructing the async barrier.
@@ -147,6 +157,11 @@ class CueTarget {
 
   virtual optimization_guide::proto::ContextualCueingSurface GetSurface()
       const = 0;
+
+ protected:
+  // Default for non-MES targets is to allow both kLoud and kQuiet.
+  // Subclasses may override to customize.
+  virtual bool SupportsIntrusivenessImpl(CueIntrusiveness intrusiveness) const;
 };
 
 }  // namespace contextual_cueing

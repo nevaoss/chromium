@@ -789,6 +789,10 @@ mojom("media_types") {
           cpp = "::media::SVCScalabilityMode"
         },
         {
+          mojom = "media.mojom.VideoChromaSampling"
+          cpp = "::media::VideoChromaSampling"
+        },
+        {
           mojom = "media.mojom.VideoRotation"
           cpp = "::media::VideoRotation"
         },

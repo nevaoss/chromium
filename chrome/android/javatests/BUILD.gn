@@ -962,19 +962,6 @@ android_library("chrome_test_java_org.chromium.chrome.browser.metrics") {
   deps = [ ":chrome_test_java_helper" ]
 }
 
-android_library("chrome_test_java_org.chromium.chrome.browser.native_page") {
-  resources_package = "org.chromium.chrome"
-
-  sources = [ "src/org/chromium/chrome/browser/native_page/NativePageReparentingTest.java" ]
-
-  deps = [
-    ":chrome_test_java_helper",
-    "//chrome/android/feed:chrome_feed_java_resources",
-    "//chrome/browser/ui/android/night_mode:java",
-    "//third_party/androidx:androidx_recyclerview_recyclerview_java",
-  ]
-}
-
 android_library("chrome_test_java_org.chromium.chrome.browser.notifications") {
   resources_package = "org.chromium.chrome"
 
@@ -1307,6 +1294,7 @@ android_library("chrome_test_java_org.chromium.chrome.browser.settings") {
 
   deps = [
     ":chrome_test_java_helper",
+    "//chrome/browser/settings:settings_in_tab_java",
     "//chrome/browser/ui/android/toolbar:optional_button_java",
     "//third_party/androidx:androidx_slidingpanelayout_slidingpanelayout_java",
   ]
@@ -1324,11 +1312,11 @@ android_library("chrome_test_java_org.chromium.chrome.browser.share") {
     "//chrome/browser/share/android/javatests/src/org/chromium/chrome/browser/share/scroll_capture/ScrollCaptureCallbackRenderTest.java",
     "//chrome/browser/share/android/javatests/src/org/chromium/chrome/browser/share/send_tab_to_self/SendTabToSelfBottomSheetRenderTest.java",
     "//chrome/browser/share/android/javatests/src/org/chromium/chrome/browser/share/send_tab_to_self/SendTabToSelfCoordinatorTest.java",
+    "//chrome/browser/share/android/javatests/src/org/chromium/chrome/browser/share/send_tab_to_self/SendTabToSelfNotificationTest.java",
     "//chrome/browser/share/android/javatests/src/org/chromium/chrome/browser/share/share_sheet/ShareSheetTest.java",
     "src/org/chromium/chrome/browser/share/ShareButtonControllerTest.java",
     "src/org/chromium/chrome/browser/share/ShareDelegateImplIntegrationTest.java",
     "src/org/chromium/chrome/browser/share/ShareDelegateImplTest.java",
-    "src/org/chromium/chrome/browser/share/send_tab_to_self/SendTabToSelfNotificationTest.java",
   ]
 
   deps = [
@@ -1446,6 +1434,7 @@ android_library("chrome_test_java_org.chromium.chrome.browser.sync") {
     "//base:supplier_java",
     "//chrome/browser/ui/android/extensions:java",
     "//chrome/browser/user_education:java",
+    "//components/messages/android:manager_java",
     "//components/sync/android:sync_java",
     "//extensions/buildflags:buildflags_java",
   ]
@@ -1609,6 +1598,7 @@ android_library("chrome_test_java_org.chromium.chrome.browser.tasks") {
     "//chrome/browser/educational_tip:java",
     "//chrome/browser/hub/internal:java",
     "//chrome/browser/ui/vertical_tabs:java",
+    "//components/tabs/public/android:java",
     "//ui/accessibility:ui_accessibility_test_support_java",
   ]
 }

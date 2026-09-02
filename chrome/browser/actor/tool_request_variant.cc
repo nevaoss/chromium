@@ -57,6 +57,9 @@ void ConvertToVariantFn::Apply(const ExitFullscreenToolRequest& tr) {
   var_ = ToolRequestVariant(tr);
 }
 #endif
+void ConvertToVariantFn::Apply(const FindAndHighlightToolRequest& tr) {
+  var_ = ToolRequestVariant(tr);
+}
 void ConvertToVariantFn::Apply(const HistoryToolRequest& tr) {
   var_ = ToolRequestVariant(tr);
 }
@@ -72,6 +75,9 @@ void ConvertToVariantFn::Apply(const MoveMouseToolRequest& tr) {
   var_ = ToolRequestVariant(tr);
 }
 void ConvertToVariantFn::Apply(const NavigateToolRequest& tr) {
+  var_ = ToolRequestVariant(tr);
+}
+void ConvertToVariantFn::Apply(const PerformSearchToolRequest& tr) {
   var_ = ToolRequestVariant(tr);
 }
 void ConvertToVariantFn::Apply(const RemoveBookmarkToolRequest& tr) {

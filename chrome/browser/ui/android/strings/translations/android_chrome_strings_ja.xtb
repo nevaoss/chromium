@@ -31,6 +31,7 @@
 <translation id="1105960400813249514">スクリーン キャプチャ</translation>
 <translation id="1108214977745280468">ページの関連情報を表示</translation>
 <translation id="1108938384783527433">履歴の同期</translation>
+<translation id="1109663842695712985">Chrome データの一部が Google アカウントにまだ保存されていません。数分待ってからログアウトしてください。今すぐログアウトすると、保存されていないデータは削除されます。</translation>
 <translation id="1111673857033749125">他のデバイスに保存されているブックマークがここに表示されます。</translation>
 <translation id="1123537484474186311"><ph name="TAB_TITLE" />、ピクチャー イン ピクチャーのタブ</translation>
 <translation id="1126696498560056882">このデバイスのアカウントを管理</translation>
@@ -78,6 +79,7 @@
 <translation id="1263231323834454256">リーディング リスト</translation>
 <translation id="1269129608791067105">履歴はここに表示されます</translation>
 <translation id="1280921956537356716">ヒントの通知をオンにする</translation>
+<translation id="1287449971634955609">拡張機能と、このデバイスに保存されている拡張機能のデータを削除する</translation>
 <translation id="1289129165308566697">他のデバイスでの履歴を表示</translation>
 <translation id="129553762522093515">最近閉じたタブ</translation>
 <translation id="1298077576058087471">最大 60% のデータを節約、今日のニュースもチェック</translation>
@@ -115,6 +117,7 @@ Chrome を使いやすくするためにデータを使用するその他の設�
 <translation id="1413446866325418126">Google アカウントにデータを保存する</translation>
 <translation id="1414919006379339073">現在のウィンドウを閉じる</translation>
 <translation id="1416550906796893042">アプリケーションのバージョン</translation>
+<translation id="1426410128494586442">はい</translation>
 <translation id="1430915738399379752">印刷</translation>
 <translation id="1432581352905426595">検索エンジンを管理</translation>
 <translation id="1435593198351412143">PDF を自動的に開く</translation>
@@ -155,6 +158,7 @@ Chrome を使いやすくするためにデータを使用するその他の設�
 <translation id="1598163867407640634"><ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> を使用して <ph name="SITE_ETLD_PLUS_ONE" /> を利用</translation>
 <translation id="1598770407402123677"><ph name="TAB_TITLE" />、録画中の固定のタブ</translation>
 <translation id="1600756129506222718"><ph name="TAB_TITLE" />、共有タブ</translation>
+<translation id="1601378265092360672">閲覧データには、閲覧履歴、Cookie やその他のサイトデータ、キャッシュされた画像とファイル、開いているタブが含まれます</translation>
 <translation id="160275202205869636">オンにすると、Google アカウントのデータが使用、保存されます。オフにすると、データはこのデバイスのみに保存されます。</translation>
 <translation id="1628019612362412531">{NUM_SELECTED,plural, =1{選択された 1 件のアイテムを削除します}other{選択された # 件のアイテムを削除します}}</translation>
 <translation id="1639239467298939599">読み込んでいます</translation>
@@ -186,6 +190,7 @@ Chrome を使いやすくするためにデータを使用するその他の設�
 <translation id="1778457539567749232">未読にする</translation>
 <translation id="1779766957982586368">ウィンドウを閉じる</translation>
 <translation id="1780023393214832643">パスワードを <ph name="USERNAME" /> に保存しました</translation>
+<translation id="1789543093145556097">常に非表示</translation>
 <translation id="1791662854739702043">インストール先</translation>
 <translation id="1792959175193046959">デフォルトのダウンロード保存先はいつでも変更できます</translation>
 <translation id="1796666869097395659">後で戻るにはタブを最小化します</translation>
@@ -341,6 +346,7 @@ Chrome を使いやすくするためにデータを使用するその他の設�
 <translation id="2385605401818128172">多くの通知を送信しているサイトを確認して、通知をブロックできます</translation>
 <translation id="2386938421315164605">トピックの表示と非表示を切り替えます</translation>
 <translation id="2390510615457643724"><ph name="FILE_NAME" /><ph name="FILE_SIZE" />を再ダウンロードしますか？</translation>
+<translation id="2391579633712104609">180°</translation>
 <translation id="2392369802118427583">有効にする</translation>
 <translation id="2393980685134835044"><ph name="TAB_TITLE" />、選択されたピクチャー イン ピクチャーのシークレット タブ</translation>
 <translation id="2397175985681716533"><ph name="TAB_TITLE" />、録画中のシークレット タブ</translation>
@@ -414,7 +420,7 @@ Chrome を使いやすくするためにデータを使用するその他の設�
 <translation id="2656405586795711023">ウェブアプリ</translation>
 <translation id="2664252182805397291">サイトを表示</translation>
 <translation id="2666092431469916601">上部</translation>
-<translation id="2669454659051515572">ダウンロードしたファイルは、このデバイスを使用するすべてのユーザーが確認できます</translation>
+<translation id="2669454659051515572">ダウンロードしたファイルは、このデバイスのすべてのユーザーが確認できます</translation>
 <translation id="2677748264148917807">このページを離れる</translation>
 <translation id="2687009626279857299">このデバイスでは動作を停止しました</translation>
 <translation id="2693387519545954740"><ph name="TAB_TITLE" />、音声ありのタブ</translation>
@@ -522,6 +528,7 @@ Chrome を使いやすくするためにデータを使用するその他の設�
 <translation id="3075397426753215787">デバイスを選択します。</translation>
 <translation id="3080375898390966733">Google レンズでタブを検索</translation>
 <translation id="3080525922482950719">ページを保存して、後で読んだり、オフラインで読んだりできます</translation>
+<translation id="3082989400996696487">新しいタブページにのみ表示</translation>
 <translation id="3087734570205094154">下部</translation>
 <translation id="3091010850649238832">クリップボードの内容を表示</translation>
 <translation id="3098745985164956033">正確な説明を生成するため、画像が Google に送信される場合があります</translation>
@@ -557,6 +564,7 @@ Chrome を使いやすくするためにデータを使用するその他の設�
 <translation id="3254409185687681395">このページをブックマークに追加します</translation>
 <translation id="3265093782546847662"><ph name="DOMAIN" /> のすべてのページ</translation>
 <translation id="3268048651973962414">上にドラッグすると検索結果を確認できます</translation>
+<translation id="3268205181992599708">音声を使用するにはマイクを有効にしてください</translation>
 <translation id="3269093882174072735">画像を読み込む</translation>
 <translation id="3280562213547448728">音声検索</translation>
 <translation id="3282801380074962248">セクションを展開</translation>
@@ -624,6 +632,7 @@ Chrome を使いやすくするためにデータを使用するその他の設�
 <translation id="3557336313807607643">連絡先に追加</translation>
 <translation id="3560831525486613327">新しいタブページを開く</translation>
 <translation id="3563767357928833671">クリップボードの内容が表示されています</translation>
+<translation id="356407858591811361">新しいシークレット ウィンドウを開く</translation>
 <translation id="3566639033325271639">設定を更新</translation>
 <translation id="3568945271227339929">不正使用されたパスワードはありません</translation>
 <translation id="3575464060651642446">このデバイスのパスワードを確認しています…</translation>
@@ -767,6 +776,7 @@ Chrome を使いやすくするためにデータを使用するその他の設�
 <translation id="4164642020717536140">高速で安全なウェブ ブラウジング</translation>
 <translation id="4165077084524712774">その他のツール</translation>
 <translation id="4170577491341606575">データを取得しています\u2026</translation>
+<translation id="4172051516777682613">常に表示</translation>
 <translation id="4176838562184310003">Chrome が正常にシャットダウンしませんでした。開いていたウィンドウとタブを復元できる場合があります。復元時に一部のウィンドウが最小化されることがあります。</translation>
 <translation id="4177222230309051052">すべてのブックマークにアクセス</translation>
 <translation id="417865198503699526">設定を検索</translation>
@@ -782,6 +792,7 @@ Chrome を使いやすくするためにデータを使用するその他の設�
 <translation id="4209029522667123437"><ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> • このサイトで使用</translation>
 <translation id="4214315110991671325">Cookie を許可すると、Chrome がプリロードの際に Cookie を使用します。</translation>
 <translation id="421517251707893998">[このショートカットを固定] をタップ</translation>
+<translation id="421590277191613555"><ph name="GROUP_DESCRIPTION" /> - <ph name="COLLAPSED_STATE" /></translation>
 <translation id="4216511743389425832">このページを読み上げ</translation>
 <translation id="4217657297368492684"><ph name="TAB_TITLE" />、選択されたピクチャー イン ピクチャーの固定シークレット タブ</translation>
 <translation id="4225895483398857530">ツールバー ショートカット</translation>
@@ -801,6 +812,7 @@ Chrome を使いやすくするためにデータを使用するその他の設�
 <translation id="4285846616383034558">Cookie、キャッシュ、その他のサイトデータ</translation>
 <translation id="4291407919474070700"><ph name="BEGIN_LINK" />Android の設定で画面ロックをオンにする<ph name="END_LINK" /></translation>
 <translation id="4293154608148215505">スマートフォン</translation>
+<translation id="4295640788982898778">拡張機能は Google アカウントに保存されていますが、このデバイスにのみ保存されているデータは削除される可能性があります</translation>
 <translation id="4296252229500326964">新しいシークレット タブ</translation>
 <translation id="4298161202289999785"><ph name="TAB_TITLE" />、複数選択されたシークレット タブ</translation>
 <translation id="4298388696830689168">リンク済みのサイト</translation>
@@ -824,6 +836,7 @@ Chrome を使いやすくするためにデータを使用するその他の設�
 <translation id="4358630185957185589">Google レンズを開く</translation>
 <translation id="435863252455918214">Chrome メインメニューで拡張機能を管理</translation>
 <translation id="4359809482106103048">安全に関する概要</translation>
+<translation id="4374192654218566997">\n\nこのデバイスから次のデータも削除できます。</translation>
 <translation id="4378154925671717803">電話</translation>
 <translation id="4380055775103003110">問題が解消しない場合は、<ph name="SITE_ETLD_PLUS_ONE" /> で続行するための別の方法をお試しください。</translation>
 <translation id="4384468725000734951">検索に Sogou を使用します</translation>
@@ -885,7 +898,6 @@ Chrome を使いやすくするためにデータを使用するその他の設�
 <translation id="4599585406846903742">1 ページ表示</translation>
 <translation id="4601095002996233687">不審なダウンロードを詳しくスキャンします。</translation>
 <translation id="4606559747793337066">ページのリンクを非公開でプリロードするように求めるメッセージがサイトまたはアプリに表示された場合、Chrome は Cookie を使用せずに Google サーバーを経由してページを暗号化し、プリロードします。その結果、プリロードされたサイトでユーザーの ID が非表示になります。</translation>
-<translation id="4616150815774728855"><ph name="WEBAPK_NAME" /> を起動</translation>
 <translation id="4619615317237390068">他のデバイスからのタブ</translation>
 <translation id="4624065194742029982">Chrome のシークレット モード</translation>
 <translation id="4634124774493850572">パスワードを使用</translation>
@@ -979,6 +991,7 @@ Chrome を使いやすくするためにデータを使用するその他の設�
 <translation id="4961107849584082341">このページを任意の言語に翻訳できます</translation>
 <translation id="4964614743143953889">安全でないサイトやダウンロードが見つかると Chrome が警告します</translation>
 <translation id="496607651705915226">Google アカウントに新しいパスワードを保存して使用するには、Google Play 開発者サービスを更新してください</translation>
+<translation id="4971526871834232950"><ph name="GROUP_DESCRIPTION" /> - <ph name="TABS_DESCRIPTION" /></translation>
 <translation id="4971753085054504448">さらに結果を表示するには、条件を変えて検索するか、Chrome の全履歴を開いてみてください。</translation>
 <translation id="497421865427891073">次に進む</translation>
 <translation id="497983151715419057">アクティブでないタブとグループをここで確認できます</translation>
@@ -1051,6 +1064,7 @@ Chrome を使いやすくするためにデータを使用するその他の設�
 <translation id="5267572070504076962">セーフ ブラウジングをオンにすると危険なサイトから保護されます</translation>
 <translation id="5273031377282080577">管理者がこの設定を管理しています。</translation>
 <translation id="5284295735376057059">ドキュメント プロパティ</translation>
+<translation id="5286907366254680517">検出しました</translation>
 <translation id="5290322819358431297">パスワードを自動入力</translation>
 <translation id="5292796745632149097">送信先</translation>
 <translation id="5301876394151419436"><ph name="EMAIL" /> でログインしています。同期は [設定] でいつでも停止できます。Google では、履歴に基づいて検索やその他のサービスをパーソナライズすることがあります。</translation>
@@ -1531,6 +1545,7 @@ Chrome を使いやすくするためにデータを使用するその他の設�
 <translation id="7117485132243600300">フォローしているコンテンツ、おすすめのトピックと検索候補を管理します</translation>
 <translation id="7119984597597798764"><ph name="INSTANCE_TITLE" /> を閉じる</translation>
 <translation id="7121179479711575744">Chrome にログイン</translation>
+<translation id="7130633106249192408">このデバイスから閲覧データを削除する</translation>
 <translation id="7136694880210472378">デフォルトに設定</translation>
 <translation id="7136902389402789299">{NUM_SITES,plural, =1{1 件のサイトの権限を確認しました}other{# 件のサイトの権限を確認しました}}</translation>
 <translation id="7138678301420049075">その他</translation>
@@ -1690,6 +1705,7 @@ Chrome を使いやすくするためにデータを使用するその他の設�
 <translation id="7714077993070342304">Chrome メニューを開く</translation>
 <translation id="7733878270780732638">デバイスに十分な容量がありません。</translation>
 <translation id="7740287852186792672">検索結果</translation>
+<translation id="7740996059027112821">標準</translation>
 <translation id="774403695779169686"><ph name="TAB_TITLE" />、選択された共有シークレット タブ</translation>
 <translation id="774876555279732384">自動入力サービスは <ph name="BEGIN_LINK" />Android 設定<ph name="END_LINK" />でも管理できます。</translation>
 <translation id="7758884017823246335">サイト内検索を追加</translation>
@@ -1822,6 +1838,7 @@ Chrome を使いやすくするためにデータを使用するその他の設�
 <translation id="8223642481677794647">フィードカード メニュー</translation>
 <translation id="82296173028782770">検索語句「<ph name="SEARCH_QUERY" />」を編集します</translation>
 <translation id="8236097722223016103">ブックマークに追加</translation>
+<translation id="8236917170563564587">代わりにこのタブを共有</translation>
 <translation id="8243077599929149377">ユーザー名を追加</translation>
 <translation id="8244387390464017490">新しいタブページを編集</translation>
 <translation id="8244444485683708655">カメラの写真を添付</translation>
@@ -1851,6 +1868,7 @@ Chrome を使いやすくするためにデータを使用するその他の設�
 <translation id="834313815369870491">翻訳しないサイト</translation>
 <translation id="8348215005712416247"><ph name="TAB_TITLE" />、複数選択された録画中の固定のシークレット タブ</translation>
 <translation id="8348430946834215779">可能な限り HTTPS を使用し、HTTPS をサポートしていないサイトは読み込む前に警告を表示します</translation>
+<translation id="8349305172487531364">ブックマーク バー</translation>
 <translation id="8354977102499939946">音声ですばやく検索します。このショートカットは [設定] で編集できます。</translation>
 <translation id="8361737703487394103">特定のタブに移動する（1～8）</translation>
 <translation id="8368001212524806591">価格のトラッキング</translation>

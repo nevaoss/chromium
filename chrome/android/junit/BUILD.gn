@@ -321,7 +321,6 @@ if (is_android) {
       "//components/payments/content/android:service_java",
       "//components/payments/content/android/ui:java",
       "//components/payments/mojom:mojom_java",
-      "//components/plus_addresses/android:java",
       "//components/policy/android:policy_java",
       "//components/power_bookmarks/core:proto_java",
       "//components/prefs/android:java",
@@ -517,6 +516,9 @@ if (is_android) {
       "src/org/chromium/chrome/browser/autofill/AutofillUiUtilsTest.java",
       "src/org/chromium/chrome/browser/autofill/CardUnmaskBridgeTest.java",
       "src/org/chromium/chrome/browser/autofill/GoogleWalletLauncherTest.java",
+      "src/org/chromium/chrome/browser/autofill/email_verification/EmailVerificationBottomSheetBridgeTest.java",
+      "src/org/chromium/chrome/browser/autofill/email_verification/EmailVerificationBottomSheetCoordinatorTest.java",
+      "src/org/chromium/chrome/browser/autofill/email_verification/EmailVerificationBottomSheetMediatorTest.java",
       "src/org/chromium/chrome/browser/autofill/iban/AutofillSaveIbanBottomSheetBridgeTest.java",
       "src/org/chromium/chrome/browser/autofill/iban/AutofillSaveIbanBottomSheetContentTest.java",
       "src/org/chromium/chrome/browser/autofill/iban/AutofillSaveIbanBottomSheetCoordinatorTest.java",
@@ -791,8 +793,11 @@ if (is_android) {
       ":chrome_junit_tests_helper",
       "//chrome/android:chrome_java",
       "//chrome/browser/tabpersistence:java",
+      "//chrome/browser/ui/android/extensions:java",
       "//chrome/browser/ui/android/toolbar:adaptive_features_java",
+      "//chrome/browser/ui/android/toolbar:java",
       "//chrome/browser/ui/android/toolbar:optional_button_java",
+      "//chrome/browser/ui/android/web_app_header:java",
     ]
   }
 
@@ -994,6 +999,7 @@ if (is_android) {
       "src/org/chromium/chrome/browser/ntp/NewTabPageLocationPolicyManagerUnitTest.java",
       "src/org/chromium/chrome/browser/ntp/NewTabPageUtilUnitTest.java",
       "src/org/chromium/chrome/browser/ntp/RecentTabsCoordinatorUnitTest.java",
+      "src/org/chromium/chrome/browser/ntp/RecentTabsGroupViewUnitTest.java",
       "src/org/chromium/chrome/browser/ntp/RecentTabsPageUnitTest.java",
       "src/org/chromium/chrome/browser/ntp/search/SearchBoxContainerViewUnitTest.java",
       "src/org/chromium/chrome/browser/ntp/search/SearchBoxMediatorUnitTest.java",
@@ -1164,6 +1170,7 @@ if (is_android) {
       "//chrome/browser/share/android/javatests/src/org/chromium/chrome/browser/share/send_tab_to_self/OtherDevicesShortcutControllerTest.java",
       "//chrome/browser/share/android/javatests/src/org/chromium/chrome/browser/share/send_tab_to_self/SendTabToSelfAndroidBridgeTest.java",
       "//chrome/browser/share/android/javatests/src/org/chromium/chrome/browser/share/send_tab_to_self/SendTabToSelfGestureDetectorTest.java",
+      "//chrome/browser/share/android/javatests/src/org/chromium/chrome/browser/share/send_tab_to_self/SendTabToSelfOmniboxIphControllerTest.java",
       "//chrome/browser/share/android/javatests/src/org/chromium/chrome/browser/share/share_sheet/ChromeProvidedSharingOptionsProviderTest.java",
       "//chrome/browser/share/android/javatests/src/org/chromium/chrome/browser/share/share_sheet/ShareSheetCoordinatorTest.java",
       "//chrome/browser/share/android/javatests/src/org/chromium/chrome/browser/share/share_sheet/ShareSheetLinkToggleCoordinatorTest.java",
@@ -1197,7 +1204,10 @@ if (is_android) {
       "src/org/chromium/chrome/browser/signin/SigninBridgeTest.java",
     ]
 
-    deps = [ ":chrome_junit_tests_helper" ]
+    deps = [
+      ":chrome_junit_tests_helper",
+      "//chrome/browser/settings:settings_in_tab_java",
+    ]
   }
 
   robolectric_library(
@@ -1351,6 +1361,7 @@ if (is_android) {
       "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/IncognitoTabSwitcherPaneUnitTest.java",
       "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/LocalTabGroupListBottomSheetRowMediatorUnitTest.java",
       "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/NestedLayoutDelegateUnitTest.java",
+      "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/NestedTabReorderUtilsUnitTest.java",
       "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/PersistentVersioningMessageMediatorUnitTest.java",
       "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/PriceWelcomeMessageControllerUnitTest.java",
       "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/RecyclerViewScrollerUnitTest.java",
@@ -1446,7 +1457,6 @@ if (is_android) {
       "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/vertical_tabs/VerticalTabPinnedDropIndicatorDecorationUnitTest.java",
       "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/vertical_tabs/VerticalTabRailCollapseControllerUnitTest.java",
       "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/vertical_tabs/VerticalTabRailLayoutUnitTest.java",
-      "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/vertical_tabs/VerticalTabReorderUtilsUnitTest.java",
       "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/vertical_tabs/VerticalTabUtilsUnitTest.java",
       "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/vertical_tabs/VerticalTabsSideUiCoordinatorUnitTest.java",
       "//chrome/android/features/tab_ui/junit/src/org/chromium/chrome/browser/tasks/tab_management/ArchivedTabsCardViewBinderUnitTest.java",
@@ -1495,6 +1505,8 @@ if (is_android) {
       "//base:holder_java",
       "//chrome/android:chrome_java",
       "//chrome/browser/actor/android:java",
+      "//chrome/browser/magic_stack/android:java",
+      "//chrome/browser/segmentation_platform:client_util_java",
       "//chrome/browser/settings:search_java",
       "//chrome/browser/tab:java",
       "//chrome/browser/tab_group_suggestion:java",
@@ -1557,6 +1569,7 @@ if (is_android) {
       "src/org/chromium/chrome/browser/webapps/WebApkIntentDataProviderFactoryTest.java",
       "src/org/chromium/chrome/browser/webapps/WebApkShareTargetUtilTest.java",
       "src/org/chromium/chrome/browser/webapps/WebApkSyncServiceTest.java",
+      "src/org/chromium/chrome/browser/webapps/WebApkUninstallTrackerTest.java",
       "src/org/chromium/chrome/browser/webapps/WebApkUpdateManagerUnitTest.java",
       "src/org/chromium/chrome/browser/webapps/WebappActivityTest.java",
       "src/org/chromium/chrome/browser/webapps/WebappAuthenticatorTest.java",
@@ -1731,6 +1744,7 @@ if (is_android) {
       "//components/dom_distiller/content/browser/android:dom_distiller_content_java",
       "//components/dom_distiller/core/android:dom_distiller_core_java",
       "//components/dom_distiller/core/mojom:mojom_java",
+      "//components/thin_webview:factory_java",
       "//third_party/androidx:androidx_pdf_pdf_viewer_fragment_java",
       "//ui/accessibility:ui_accessibility_test_support_java",
       "//ui/android:ui_android_features_java",

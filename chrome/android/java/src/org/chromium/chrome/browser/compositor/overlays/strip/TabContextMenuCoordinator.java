@@ -365,7 +365,7 @@ public class TabContextMenuCoordinator extends TabStripReorderingHelper<AnchorIn
             } else if (menuId == R.id.toggle_tab_layout_menu_id) {
                 boolean isEnablingVerticalTabs = tabStripLayout == TabStripLayoutType.HORIZONTAL;
                 VerticalTabUtils.recordLayoutToggle(
-                        LayoutSwitchEntryPoint.TAB_CONTEXT_MENU, isEnablingVerticalTabs);
+                        activity, LayoutSwitchEntryPoint.TAB_CONTEXT_MENU, isEnablingVerticalTabs);
                 if (activity instanceof MenuOrKeyboardActionController controller) {
                     controller.onMenuOrKeyboardAction(
                             R.id.toggle_tab_layout_menu_id, /* fromMenu= */ false);
@@ -799,9 +799,8 @@ public class TabContextMenuCoordinator extends TabStripReorderingHelper<AnchorIn
         submenuItems.addAll(potentialGroups);
 
         String title =
-                mActivity
-                        .getResources()
-                        .getQuantityString(R.plurals.add_tab_to_group_menu_item, tabs.size());
+                TabGroupUiUtils.getAddToGroupMenuItemTitle(
+                        mActivity, groupToNotBeIncluded, tabs.size());
         return new ListItemBuilder()
                 .withTitle(title)
                 .withIsIncognito(isIncognito)
@@ -1278,17 +1277,16 @@ public class TabContextMenuCoordinator extends TabStripReorderingHelper<AnchorIn
     }
 
     private List<ListItem> createReorderItems(AnchorInfo anchorInfo, boolean isIncognito) {
+        boolean isVerticalTabs = mTabStripLayout == TabStripLayoutType.VERTICAL;
+        int moveStartPlural = isVerticalTabs ? R.plurals.move_tabs_up : R.plurals.move_tabs_left;
+        int moveEndPlural = isVerticalTabs ? R.plurals.move_tabs_down : R.plurals.move_tabs_right;
+        int count = anchorInfo.getAllTabIds().size();
         return createReorderItems(
                 anchorInfo,
-                mActivity
-                        .getResources()
-                        .getQuantityString(
-                                R.plurals.move_tabs_left, anchorInfo.getAllTabIds().size()),
-                mActivity
-                        .getResources()
-                        .getQuantityString(
-                                R.plurals.move_tabs_right, anchorInfo.getAllTabIds().size()),
-                isIncognito);
+                mActivity.getResources().getQuantityString(moveStartPlural, count),
+                mActivity.getResources().getQuantityString(moveEndPlural, count),
+                isIncognito,
+                isVerticalTabs);
     }
 
     /** Ungroups any tabs in {@code tabs} which are currently in a group. */

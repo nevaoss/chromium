@@ -316,6 +316,10 @@ ActorAutofillManager* AutofillClient::GetActorAutofillManager() {
   return nullptr;
 }
 
+int64_t AutofillClient::GetNavigationId() const {
+  return 0;
+}
+
 std::unique_ptr<device_reauth::DeviceAuthenticator>
 AutofillClient::GetDeviceAuthenticator(std::string histogram) const {
   return nullptr;
@@ -449,6 +453,10 @@ void AutofillClient::ShowEmailVerificationPopup(
 }
 
 OtpFieldDetector* AutofillClient::GetOtpFieldDetector() {
+  return nullptr;
+}
+
+OtpMetricsTracker* AutofillClient::GetOtpMetricsTracker() {
   return nullptr;
 }
 

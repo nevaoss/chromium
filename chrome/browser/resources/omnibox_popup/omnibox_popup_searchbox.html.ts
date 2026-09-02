@@ -52,9 +52,21 @@ export function getHtml(this: OmniboxPopupSearchboxElement) {
           </div>
         ` :
                                                                     ''}
+        ${
+      this.omniboxPopupDebugEnabled_ ? html`
+          <div slot="action-buttons"
+              class="searchbox-icon-button-container debug">
+            <button id="debugButton" class="searchbox-icon-button"
+                @click="${this.onDebugClick_}"
+                title="Inspect WebUI Omnibox">
+            </button>
+          </div>
+        ` :
+                                       ''}
         <cr-searchbox-compose-button id="composeButton" slot="compose-button"
             ?dynamic="${this.searchboxDynamicAnimation_}"
             ?has-user-input="${this.hasUserInput_}"
+            ?virtual-focus-enabled="${this.virtualFocusEnabled}"
             ?hidden="${!this.aimButtonVisible_}"
             label-text="${this.aimButtonConfig_.text}"
             tooltip-title="${this.aimButtonConfig_.title}"

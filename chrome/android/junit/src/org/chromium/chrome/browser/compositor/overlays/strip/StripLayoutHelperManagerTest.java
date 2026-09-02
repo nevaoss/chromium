@@ -211,7 +211,6 @@ public class StripLayoutHelperManagerTest {
     private static final float SCREEN_HEIGHT = 1600.f;
     private static final float VISIBLE_VIEWPORT_Y = 200.f;
     private static final int ORIENTATION = 2;
-    private static final float BUTTON_END_PADDING = 8.f;
     private static final int TAB_STRIP_HEIGHT_PX = 40;
     private static final int FADE_TRANSITION_DURATION_MS = 200;
 
@@ -261,6 +260,7 @@ public class StripLayoutHelperManagerTest {
         }
         TabStripSceneLayer.setTestFlag(false);
         CompositorAnimationHandler.setTestingMode(false);
+        DeviceInfo.resetIsDesktopForTesting();
     }
 
     private void initializeTest() {
@@ -633,6 +633,25 @@ public class StripLayoutHelperManagerTest {
     public void testGetFadeTransitionThresholdDp_TabSearchEnabled() {
         // Base (236) + Tab Search Button (48) = 284
         int expectedThresholdDp = 284;
+        assertEquals(expectedThresholdDp, mStripLayoutHelperManager.getFadeTransitionThresholdDp());
+    }
+
+    @Test
+    public void testGetFadeTransitionThresholdDp_DesktopDensity() {
+        DeviceInfo.setIsDesktopForTesting(true);
+        initializeTest();
+        // Base Desktop threshold: 2 * minTabWidth(68) - tabOverlap(28) + newTabButton(32) = 140dp.
+        int expectedThresholdDp = 140;
+        assertEquals(expectedThresholdDp, mStripLayoutHelperManager.getFadeTransitionThresholdDp());
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.TAB_SEARCH_FOR_DESKTOP)
+    public void testGetFadeTransitionThresholdDp_DesktopDensity_TabSearchEnabled() {
+        DeviceInfo.setIsDesktopForTesting(true);
+        initializeTest();
+        // Base (140) + Tab Search Button (32) = 172
+        int expectedThresholdDp = 172;
         assertEquals(expectedThresholdDp, mStripLayoutHelperManager.getFadeTransitionThresholdDp());
     }
 
@@ -1276,18 +1295,6 @@ public class StripLayoutHelperManagerTest {
                 scrimOpacity,
                 scrimOpacityCaptor.getValue(),
                 0.01f);
-    }
-
-    @Test
-    public void testStripBottomPxSupplier_onLayerYOffsetChanged() {
-        int yOffsetPx = 10;
-        int visibleHeightPx = 40;
-        mStripLayoutHelperManager.onLayerYOffsetChanged(yOffsetPx, visibleHeightPx);
-
-        assertEquals(
-                "Unexpected bottom px value.",
-                (Integer) (yOffsetPx + visibleHeightPx),
-                mStripLayoutHelperManager.getStripBottomPxSupplier().get());
     }
 
     @Test

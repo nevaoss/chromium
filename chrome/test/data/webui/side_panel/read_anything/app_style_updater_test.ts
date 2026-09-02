@@ -1,15 +1,13 @@
 // Copyright 2024 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-import {AppStyleUpdater, AudioBrowserProxyImpl, BrowserProxy, ContentBrowserProxyImpl, LineFocusType, VisualBrowserProxyImpl} from 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
+import {AppStyleUpdater, LineFocusType} from 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
 import type {AppElement} from 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
 import {assertEquals, assertGT, assertNotEquals, assertStringContains} from 'chrome-untrusted://webui-test/chai_assert.js';
 
-import {createApp} from './common.js';
-import {TestAudioBrowserProxy} from './test_audio_browser_proxy.js';
-import {TestColorUpdaterBrowserProxy} from './test_color_updater_browser_proxy.js';
-import {TestContentBrowserProxy} from './test_content_browser_proxy.js';
-import {TestVisualBrowserProxy} from './test_visual_browser_proxy.js';
+import {setupAppTestEnvironment} from './common.js';
+import type {TestAudioBrowserProxy} from './test_audio_browser_proxy.js';
+import type {TestVisualBrowserProxy} from './test_visual_browser_proxy.js';
 
 suite('AppStyleUpdater', () => {
   let app: AppElement;
@@ -32,16 +30,10 @@ suite('AppStyleUpdater', () => {
   }
 
   setup(async () => {
-    // Clearing the DOM should always be done first.
-    document.body.innerHTML = window.trustedTypes!.emptyHTML;
-    BrowserProxy.setInstance(new TestColorUpdaterBrowserProxy());
-    visualBrowserProxy = new TestVisualBrowserProxy();
-    VisualBrowserProxyImpl.setInstance(visualBrowserProxy);
-    audioBrowserProxy = new TestAudioBrowserProxy();
-    AudioBrowserProxyImpl.setInstance(audioBrowserProxy);
-    ContentBrowserProxyImpl.setInstance(new TestContentBrowserProxy());
-
-    app = await createApp();
+    const result = await setupAppTestEnvironment();
+    app = result.app;
+    visualBrowserProxy = result.visualBrowserProxy;
+    audioBrowserProxy = result.audioBrowserProxy;
     updater = new AppStyleUpdater(app);
   });
 
@@ -56,7 +48,6 @@ suite('AppStyleUpdater', () => {
   });
 
   test('setPaddingForLineFocus sets top and bottom padding', () => {
-    visualBrowserProxy.lineFocusEnabled = true;
     const padding = 50;
 
     updater.setPaddingForLineFocus(padding);
@@ -77,8 +68,6 @@ suite('AppStyleUpdater', () => {
   });
 
   test('setLineFocusStyle with no line focus hides view', () => {
-    visualBrowserProxy.lineFocusEnabled = true;
-
     updater.setLineFocusStyle(LineFocusType.NONE);
 
     assertEquals('none', app.style.getPropertyValue('--line-focus-display'));
@@ -88,7 +77,6 @@ suite('AppStyleUpdater', () => {
   });
 
   test('setLineFocusStyle with line focus off hides view', () => {
-    visualBrowserProxy.lineFocusEnabled = true;
     visualBrowserProxy.colorTheme = visualBrowserProxy.lowContrastDarkTheme;
 
     updater.setLineFocusStyle(LineFocusType.NONE);
@@ -100,7 +88,6 @@ suite('AppStyleUpdater', () => {
   });
 
   test('setLineFocusStyle with line focus line shows view', () => {
-    visualBrowserProxy.lineFocusEnabled = true;
     visualBrowserProxy.colorTheme = visualBrowserProxy.lowContrastDarkTheme;
 
     updater.setLineFocusStyle(LineFocusType.LINE);
@@ -114,8 +101,6 @@ suite('AppStyleUpdater', () => {
   });
 
   test('setLineFocusStyle with line focus window shows view', () => {
-    visualBrowserProxy.lineFocusEnabled = true;
-
     updater.setLineFocusStyle(LineFocusType.WINDOW);
 
     assertNotEquals('none', app.style.getPropertyValue('--line-focus-display'));
@@ -124,7 +109,6 @@ suite('AppStyleUpdater', () => {
   });
 
   test('setLineFocusStyle with line focus window does not set height', () => {
-    visualBrowserProxy.lineFocusEnabled = true;
     updater.setLineFocusStyle(LineFocusType.WINDOW);
     assertEquals('', app.style.getPropertyValue('--line-focus-height'));
   });
@@ -132,7 +116,6 @@ suite('AppStyleUpdater', () => {
   test(
       'setLineFocusStyle sets different background and shadow for different types',
       () => {
-        visualBrowserProxy.lineFocusEnabled = true;
         updater.setLineFocusStyle(LineFocusType.WINDOW);
         const windowShadow = app.style.getPropertyValue('--line-focus-shadow');
         const windowBg = app.style.getPropertyValue('--line-focus-bg');
@@ -149,21 +132,20 @@ suite('AppStyleUpdater', () => {
       'setLineFocusStyle does not update toolbar colors if line focus is ' +
           'disabled',
       () => {
+        const initialColor = 'rgb(255, 0, 0)';
+        app.style.setProperty('--toolbar-icon-color', initialColor);
         visualBrowserProxy.lineFocusEnabled = false;
+
         updater.setLineFocusStyle(LineFocusType.WINDOW);
-        assertEquals('', app.style.getPropertyValue('--toolbar-icon-color'));
+
         assertEquals(
-            '', app.style.getPropertyValue('--legacy-toolbar-icon-color'));
-        assertEquals(
-            '', app.style.getPropertyValue('--legacy-audio-player-icon-color'));
+            initialColor, app.style.getPropertyValue('--toolbar-icon-color'));
       });
 
   test(
       'setLineFocusStyle sets dark toolbar icon color in immersive mode for ' +
           'window line focus',
       () => {
-        visualBrowserProxy.lineFocusEnabled = true;
-        visualBrowserProxy.immersiveEnabled = true;
         updater.setLineFocusStyle(LineFocusType.WINDOW);
         assertEquals(
             'var(--color-read-anything-toolbar-icon-dark)',
@@ -174,43 +156,11 @@ suite('AppStyleUpdater', () => {
       'setLineFocusStyle sets themed toolbar icon color in immersive mode ' +
           'for non-window line focus',
       () => {
-        visualBrowserProxy.lineFocusEnabled = true;
-        visualBrowserProxy.immersiveEnabled = true;
         visualBrowserProxy.colorTheme = visualBrowserProxy.yellowTheme;
         updater.setLineFocusStyle(LineFocusType.LINE);
         assertEquals(
             'var(--color-read-anything-toolbar-icon-yellow)',
             app.style.getPropertyValue('--toolbar-icon-color'));
-      });
-
-  test(
-      'setLineFocusStyle sets dark legacy toolbar icon colors for window ' +
-          'line focus',
-      () => {
-        visualBrowserProxy.lineFocusEnabled = true;
-        visualBrowserProxy.immersiveEnabled = false;
-        updater.setLineFocusStyle(LineFocusType.WINDOW);
-        assertEquals(
-            'var(--color-read-anything-toolbar-icon-dark)',
-            app.style.getPropertyValue('--legacy-toolbar-icon-color'));
-        assertEquals(
-            'var(--color-read-anything-line-focus-dark)',
-            app.style.getPropertyValue('--legacy-audio-player-icon-color'));
-      });
-
-  test(
-      'setLineFocusStyle sets default legacy toolbar icon colors for ' +
-          'non-window line focus',
-      () => {
-        visualBrowserProxy.lineFocusEnabled = true;
-        visualBrowserProxy.immersiveEnabled = false;
-        updater.setLineFocusStyle(LineFocusType.LINE);
-        assertEquals(
-            'var(--color-sys-on-surface-subtle)',
-            app.style.getPropertyValue('--legacy-toolbar-icon-color'));
-        assertEquals(
-            'var(--color-sys-primary)',
-            app.style.getPropertyValue('--legacy-audio-player-icon-color'));
       });
 
   test('setLineFocusPos sets y position', () => {
@@ -344,32 +294,6 @@ suite('AppStyleUpdater', () => {
     visualBrowserProxy.colorTheme = visualBrowserProxy.lightTheme;
     updater.setHighlight();
     assertEquals('transparent', computeStyle('--current-highlight-bg-color'));
-  });
-
-  test('overflow toolbar changes style based on input', () => {
-    updater.overflowToolbar(true);
-    const scrollOverflow = computeStyle('--app-overflow-x');
-    const scrollMinWidth = computeStyle('--container-min-width');
-
-    updater.overflowToolbar(false);
-    const noScrollOverflow = computeStyle('--app-overflow-x');
-    const noScrollMinWidth = computeStyle('--container-min-width');
-
-    assertNotEquals(scrollOverflow, noScrollOverflow);
-    assertNotEquals(scrollMinWidth, noScrollMinWidth);
-  });
-
-  test('overflow toolbar without scrolling is same as resetting', () => {
-    updater.overflowToolbar(false);
-    const noScrollOverflow = computeStyle('--app-overflow-x');
-    const noScrollMinWidth = computeStyle('--container-min-width');
-
-    updater.resetToolbar();
-    const resetOverflow = computeStyle('--app-overflow-x');
-    const resetMinWidth = computeStyle('--container-min-width');
-
-    assertEquals(resetOverflow, noScrollOverflow);
-    assertEquals(resetMinWidth, noScrollMinWidth);
   });
 
   test('color theme', () => {
@@ -795,6 +719,136 @@ suite('AppStyleUpdater', () => {
         computeStyle('--audio-controls-icon-color'));
   });
 
+  test('toggle colors change with theme', () => {
+    const expectedDefaultInactiveBg = 'rgb(1, 1, 1)';
+    const expectedLightInactiveBg = 'rgb(2, 2, 2)';
+    const expectedDarkInactiveBg = 'rgb(3, 3, 3)';
+    const expectedYellowInactiveBg = 'rgb(4, 4, 4)';
+    const expectedBlueInactiveBg = 'rgb(5, 5, 5)';
+    const expectedHighContrastInactiveBg = 'rgb(6, 6, 6)';
+    const expectedLowContrastLightInactiveBg = 'rgb(7, 7, 7)';
+    const expectedLowContrastDarkInactiveBg = 'rgb(8, 8, 8)';
+
+    const expectedDefaultActiveBg = 'rgb(17, 17, 17)';
+    const expectedLightActiveBg = 'rgb(18, 18, 18)';
+    const expectedDarkActiveBg = 'rgb(19, 19, 19)';
+    const expectedYellowActiveBg = 'rgb(20, 20, 20)';
+    const expectedBlueActiveBg = 'rgb(21, 21, 21)';
+    const expectedHighContrastActiveBg = 'rgb(22, 22, 22)';
+    const expectedLowContrastLightActiveBg = 'rgb(23, 23, 23)';
+    const expectedLowContrastDarkActiveBg = 'rgb(24, 24, 24)';
+
+    updateStyles({
+      '--color-read-anything-audio-player-background':
+          expectedDefaultInactiveBg,
+      '--color-read-anything-audio-player-background-light':
+          expectedLightInactiveBg,
+      '--color-read-anything-audio-player-background-dark':
+          expectedDarkInactiveBg,
+      '--color-read-anything-audio-player-background-yellow':
+          expectedYellowInactiveBg,
+      '--color-read-anything-audio-player-background-blue':
+          expectedBlueInactiveBg,
+      '--color-read-anything-audio-player-background-high-contrast':
+          expectedHighContrastInactiveBg,
+      '--color-read-anything-audio-player-background-low-contrast-light':
+          expectedLowContrastLightInactiveBg,
+      '--color-read-anything-audio-player-background-low-contrast-dark':
+          expectedLowContrastDarkInactiveBg,
+
+      '--color-read-anything-audio-player-icon': expectedDefaultActiveBg,
+      '--color-read-anything-audio-player-icon-light': expectedLightActiveBg,
+      '--color-read-anything-audio-player-icon-dark': expectedDarkActiveBg,
+      '--color-read-anything-audio-player-icon-yellow': expectedYellowActiveBg,
+      '--color-read-anything-audio-player-icon-blue': expectedBlueActiveBg,
+      '--color-read-anything-audio-player-icon-high-contrast':
+          expectedHighContrastActiveBg,
+      '--color-read-anything-audio-player-icon-low-contrast-light':
+          expectedLowContrastLightActiveBg,
+      '--color-read-anything-audio-player-icon-low-contrast-dark':
+          expectedLowContrastDarkActiveBg,
+    });
+
+    // Default theme
+    visualBrowserProxy.colorTheme = visualBrowserProxy.defaultTheme;
+    updater.setTheme();
+    assertEquals(
+        expectedDefaultInactiveBg,
+        computeStyle('--toggle-inactive-background-color'));
+    assertEquals(
+        expectedDefaultActiveBg,
+        computeStyle('--toggle-active-background-color'));
+
+    // Light theme
+    visualBrowserProxy.colorTheme = visualBrowserProxy.lightTheme;
+    updater.setTheme();
+    assertEquals(
+        expectedLightInactiveBg,
+        computeStyle('--toggle-inactive-background-color'));
+    assertEquals(
+        expectedLightActiveBg,
+        computeStyle('--toggle-active-background-color'));
+
+    // Dark theme
+    visualBrowserProxy.colorTheme = visualBrowserProxy.darkTheme;
+    updater.setTheme();
+    assertEquals(
+        expectedDarkInactiveBg,
+        computeStyle('--toggle-inactive-background-color'));
+    assertEquals(
+        expectedDarkActiveBg, computeStyle('--toggle-active-background-color'));
+
+    // Yellow theme
+    visualBrowserProxy.colorTheme = visualBrowserProxy.yellowTheme;
+    updater.setTheme();
+    assertEquals(
+        expectedYellowInactiveBg,
+        computeStyle('--toggle-inactive-background-color'));
+    assertEquals(
+        expectedYellowActiveBg,
+        computeStyle('--toggle-active-background-color'));
+
+    // Blue theme
+    visualBrowserProxy.colorTheme = visualBrowserProxy.blueTheme;
+    updater.setTheme();
+    assertEquals(
+        expectedBlueActiveBg,
+        computeStyle('--toggle-inactive-background-color'));
+    assertEquals(
+        expectedBlueInactiveBg,
+        computeStyle('--toggle-active-background-color'));
+
+    // High contrast theme
+    visualBrowserProxy.colorTheme = visualBrowserProxy.highContrastTheme;
+    updater.setTheme();
+    assertEquals(
+        expectedHighContrastInactiveBg,
+        computeStyle('--toggle-inactive-background-color'));
+    assertEquals(
+        expectedHighContrastActiveBg,
+        computeStyle('--toggle-active-background-color'));
+
+    // LowContrast light theme
+    visualBrowserProxy.colorTheme = visualBrowserProxy.lowContrastLightTheme;
+    updater.setTheme();
+    assertEquals(
+        expectedLowContrastLightInactiveBg,
+        computeStyle('--toggle-inactive-background-color'));
+    assertEquals(
+        expectedLowContrastLightActiveBg,
+        computeStyle('--toggle-active-background-color'));
+
+    // LowContrast dark theme
+    visualBrowserProxy.colorTheme = visualBrowserProxy.lowContrastDarkTheme;
+    updater.setTheme();
+    assertEquals(
+        expectedLowContrastDarkInactiveBg,
+        computeStyle('--toggle-inactive-background-color'));
+    assertEquals(
+        expectedLowContrastDarkActiveBg,
+        computeStyle('--toggle-active-background-color'));
+  });
+
   test('toolbar icon colors change with theme', () => {
     const expectedDefaultToolbarIcon = 'rgb(1, 1, 1)';
     const expectedLightToolbarIcon = 'rgb(2, 2, 2)';
@@ -871,7 +925,6 @@ suite('AppStyleUpdater', () => {
       'setTheme does not update toolbar icon color if line focus is enabled ' +
           'and a visible window',
       () => {
-        visualBrowserProxy.lineFocusEnabled = true;
         app.style.setProperty('--line-focus-display', 'block');
         app.style.setProperty('--line-focus-bg', 'none');
         const initialColor = 'rgb(255, 0, 0)';
@@ -887,7 +940,6 @@ suite('AppStyleUpdater', () => {
       'setTheme updates toolbar icon color if line focus is enabled but ' +
           'display is none',
       () => {
-        visualBrowserProxy.lineFocusEnabled = true;
         app.style.setProperty('--line-focus-display', 'none');
         app.style.setProperty('--line-focus-bg', 'none');
         const initialColor = 'rgb(255, 0, 0)';
@@ -908,7 +960,6 @@ suite('AppStyleUpdater', () => {
       'setTheme updates toolbar icon color if line focus is enabled and a ' +
           'a visible line',
       () => {
-        visualBrowserProxy.lineFocusEnabled = true;
         app.style.setProperty('--line-focus-display', 'none');
         app.style.setProperty(
             '--line-focus-bg', 'var(--color-read-anything-line-focus-dark)');

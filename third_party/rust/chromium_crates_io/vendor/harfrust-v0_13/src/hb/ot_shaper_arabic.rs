@@ -284,20 +284,27 @@ pub struct arabic_shape_plan_t {
     // having to do a "if (... < NONE) ..." and just rely on the fact that
     // mask_array[NONE] == 0.
     mask_array: [hb_mask_t; ARABIC_FEATURES.len() + 1],
+    do_fallback: bool,
     has_stch: bool,
+    fallback_plan: once_cell::race::OnceBox<Option<super::ot_shaper_arabic_fallback::FallbackPlan>>,
 }
 
 pub fn data_create_arabic(plan: &hb_ot_shape_plan_t) -> arabic_shape_plan_t {
     let has_stch = plan.ot_map.get_1_mask(hb_tag_t::new(b"stch")) != 0;
+    let mut do_fallback = plan.script == Some(script::ARABIC);
 
     let mut mask_array = [0; ARABIC_FEATURES.len() + 1];
     for i in 0..ARABIC_FEATURES.len() {
         mask_array[i] = plan.ot_map.get_1_mask(ARABIC_FEATURES[i]);
+        do_fallback &=
+            feature_is_syriac(ARABIC_FEATURES[i]) || plan.ot_map.needs_fallback(ARABIC_FEATURES[i]);
     }
 
     arabic_shape_plan_t {
         mask_array,
+        do_fallback,
         has_stch,
+        fallback_plan: once_cell::race::OnceBox::new(),
     }
 }
 
@@ -417,11 +424,24 @@ pub fn setup_masks_inner(
 }
 
 fn arabic_fallback_shape(
-    _: &hb_ot_shape_plan_t,
-    _: &mut FontFuncsDispatch,
-    _: &mut hb_buffer_t,
+    plan: &hb_ot_shape_plan_t,
+    font_funcs: &mut FontFuncsDispatch,
+    buffer: &mut hb_buffer_t,
 ) -> bool {
-    false
+    let arabic_plan = plan.data::<arabic_shape_plan_t>();
+    if !arabic_plan.do_fallback {
+        return false;
+    }
+
+    let fallback_plan = arabic_plan.fallback_plan.get_or_init(|| {
+        Box::new(super::ot_shaper_arabic_fallback::FallbackPlan::new(
+            plan, font_funcs,
+        ))
+    });
+    if let Some(fallback_plan) = fallback_plan {
+        fallback_plan.apply(font_funcs, buffer);
+    }
+    true
 }
 
 // Stretch feature: "stch".
@@ -505,9 +525,9 @@ fn apply_stch(face: &mut FontFuncsDispatch, buffer: &mut hb_buffer_t) {
 
             // Yay, justification!
 
-            let mut w_total = 0; // Total to be filled
-            let mut w_fixed = 0; // Sum of fixed tiles
-            let mut w_repeating = 0; // Sum of repeating tiles
+            let mut w_total: i32 = 0; // Total to be filled
+            let mut w_fixed: i32 = 0; // Sum of fixed tiles
+            let mut w_repeating: i32 = 0; // Sum of repeating tiles
             let mut n_repeating: i32 = 0;
 
             let end = i;
@@ -516,9 +536,9 @@ fn apply_stch(face: &mut FontFuncsDispatch, buffer: &mut hb_buffer_t) {
                 let width = face.advance_width(buffer.info[i].as_glyph());
 
                 if buffer.info[i].arabic_shaping_action() == arabic_action_t::STRETCHING_FIXED {
-                    w_fixed += width;
+                    w_fixed = w_fixed.saturating_add(width);
                 } else {
-                    w_repeating += width;
+                    w_repeating = w_repeating.saturating_add(width);
                     n_repeating += 1;
                 }
             }
@@ -531,7 +551,7 @@ fn apply_stch(face: &mut FontFuncsDispatch, buffer: &mut hb_buffer_t) {
                     || is_word_category(buffer.info[context - 1].general_category()))
             {
                 context -= 1;
-                w_total += buffer.pos[context].x_advance;
+                w_total = w_total.saturating_add(buffer.pos[context].x_advance);
             }
 
             i += 1; // Don't touch i again.
@@ -539,19 +559,23 @@ fn apply_stch(face: &mut FontFuncsDispatch, buffer: &mut hb_buffer_t) {
             // Number of additional times to repeat each repeating tile.
             let mut n_copies: i32 = 0;
 
-            let mut w_remaining = w_total - w_fixed;
+            let mut w_remaining = w_total.saturating_sub(w_fixed);
             if w_remaining > w_repeating && w_repeating > 0 {
                 n_copies = w_remaining / (w_repeating) - 1;
             }
 
             // See if we can improve the fit by adding an extra repeat and squeezing them together a bit.
             let mut extra_repeat_overlap = 0;
-            let shortfall = w_remaining - w_repeating * (n_copies + 1);
+            let shortfall =
+                i64::from(w_remaining) - i64::from(w_repeating) * i64::from(n_copies + 1);
             if shortfall > 0 && n_repeating > 0 {
                 n_copies += 1;
-                let excess = (n_copies + 1) * w_repeating - w_remaining;
+                let excess =
+                    i64::from(n_copies + 1) * i64::from(w_repeating) - i64::from(w_remaining);
                 if excess > 0 {
-                    extra_repeat_overlap = excess / (n_copies * n_repeating);
+                    extra_repeat_overlap = super::clamp_i64_to_i32(
+                        excess / (i64::from(n_copies) * i64::from(n_repeating)),
+                    );
                     w_remaining = 0;
                 }
             }
@@ -575,9 +599,9 @@ fn apply_stch(face: &mut FontFuncsDispatch, buffer: &mut hb_buffer_t) {
 
                     for n in 0..repeat {
                         if rtl {
-                            x_offset -= width;
+                            x_offset = x_offset.saturating_sub(width);
                             if n > 0 {
-                                x_offset += extra_repeat_overlap;
+                                x_offset = x_offset.saturating_add(extra_repeat_overlap);
                             }
                         }
 
@@ -589,10 +613,10 @@ fn apply_stch(face: &mut FontFuncsDispatch, buffer: &mut hb_buffer_t) {
                         buffer.pos[j] = buffer.pos[k - 1];
 
                         if !rtl {
-                            x_offset += width;
+                            x_offset = x_offset.saturating_add(width);
 
                             if n > 0 {
-                                x_offset -= extra_repeat_overlap;
+                                x_offset = x_offset.saturating_sub(extra_repeat_overlap);
                             }
                         }
                     }

@@ -48,6 +48,10 @@
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/infobars/infobar_container_view.h"
 #include "chrome/browser/ui/views/site_data/page_specific_site_data_dialog_controller.h"
+
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+#include "chrome/browser/ui/views/session_restore_infobar/session_restore_infobar_manager.h"
+#endif
 #include "chrome/grit/generated_resources.h"
 #include "chrome/test/base/chrome_test_path_utils.h"
 #include "chrome/test/base/in_process_browser_test.h"
@@ -171,7 +175,9 @@ class InfoBarUiTest : public TestInfoBar,
            {"MigratedPageInfo", "true"},
            {"MigratedGoogleApiKeys", "true"},
            {"MigratedObsoleteSystem", "true"},
-           {"MigratedThemeInstalled", "true"}});
+           {"MigratedThemeInstalled", "true"},
+           {"MigratedExtensionDevTools", "true"},
+           {"MigratedAutomation", "true"}});
     } else {
       feature_list_.InitAndDisableFeature(
           infobars::kCentralizedInfoBarFramework);
@@ -229,6 +235,10 @@ void InfoBarUiTest::ShowUi(const std::string& name) {
           {"automation", IBD::AUTOMATION_INFOBAR_DELEGATE},
           {"tab_sharing", IBD::TAB_SHARING_INFOBAR_DELEGATE},
 
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+          {"session_restore", IBD::SESSION_RESTORE_INFOBAR_DELEGATE},
+#endif
+
 #if BUILDFLAG(ENABLE_PLUGINS)
           {"reload_plugin", IBD::RELOAD_PLUGIN_INFOBAR_DELEGATE},
 #endif  // BUILDFLAG(ENABLE_PLUGINS)
@@ -249,9 +259,19 @@ void InfoBarUiTest::ShowUi(const std::string& name) {
       break;
 
     case IBD::EXTENSION_DEV_TOOLS_INFOBAR_DELEGATE:
-      extension_dev_tools_subscription_ =
-          extensions::ExtensionDevToolsInfoBarDelegate::Create(
-              "id", "Extension", base::DoNothing());
+      if (infobars::IsInfoBarMigrated(
+              infobars::InfoBarDelegate::
+                  EXTENSION_DEV_TOOLS_INFOBAR_DELEGATE)) {
+        if (auto* browser_infobar_manager =
+                infobars::BrowserInfoBarManager::From(g_browser_process)) {
+          browser_infobar_manager->ShowGlobally(
+              infobars::InfoBarDelegate::EXTENSION_DEV_TOOLS_INFOBAR_DELEGATE);
+        }
+      } else {
+        extension_dev_tools_subscription_ =
+            extensions::ExtensionDevToolsInfoBarDelegate::Create(
+                "id", "Extension", base::DoNothing());
+      }
       break;
 
     case IBD::INCOGNITO_CONNECTABILITY_INFOBAR_DELEGATE: {
@@ -368,8 +388,16 @@ void InfoBarUiTest::ShowUi(const std::string& name) {
       break;
 
     case IBD::OSCRYPTASYNC_AVAILABILITY_INFOBAR_DELEGATE:
-      OSCryptAsyncAvailabilityInfoBarDelegate::CreateForTest(
-          GetInfoBarManager());
+      if (infobars::IsInfoBarMigrated(
+              IBD::OSCRYPTASYNC_AVAILABILITY_INFOBAR_DELEGATE)) {
+        if (auto* browser_infobar_manager =
+                infobars::BrowserInfoBarManager::From(g_browser_process)) {
+          browser_infobar_manager->Show(
+              GetTab(), IBD::OSCRYPTASYNC_AVAILABILITY_INFOBAR_DELEGATE);
+        }
+      } else {
+        OSCryptAsyncAvailabilityInfoBarDelegate::Create(GetInfoBarManager());
+      }
       break;
 
     case IBD::PAGE_INFO_INFOBAR_DELEGATE:
@@ -387,7 +415,12 @@ void InfoBarUiTest::ShowUi(const std::string& name) {
       break;
 
     case IBD::AUTOMATION_INFOBAR_DELEGATE:
-      AutomationInfoBarDelegate::Create();
+      if (infobars::IsInfoBarMigrated(IBD::AUTOMATION_INFOBAR_DELEGATE)) {
+        infobars::BrowserInfoBarManager::From(g_browser_process)
+            ->ShowGlobally(IBD::AUTOMATION_INFOBAR_DELEGATE);
+      } else {
+        AutomationInfoBarDelegate::Create();
+      }
       break;
 
     case IBD::TAB_SHARING_INFOBAR_DELEGATE:
@@ -406,6 +439,15 @@ void InfoBarUiTest::ShowUi(const std::string& name) {
           /*ui=*/&mock_tab_sharing_ui_views_,
           TabSharingInfoBarDelegate::TabShareType::CAPTURE);
       break;
+
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+    case IBD::SESSION_RESTORE_INFOBAR_DELEGATE:
+      session_restore_infobar::SessionRestoreInfoBarManager::GetInstance()
+          ->ShowInfoBar(*browser()->GetProfile(),
+                        session_restore_infobar::InfobarMessageType::
+                            kTurnOffFromRestart);
+      break;
+#endif
 
     default:
       ADD_FAILURE() << "Unhandled infobar " << name;
@@ -500,6 +542,12 @@ IN_PROC_BROWSER_TEST_P(InfoBarUiTest, InvokeUi_oscryptasync_availability) {
 IN_PROC_BROWSER_TEST_P(InfoBarUiTest, InvokeUi_page_info) {
   ShowAndVerifyUi();
 }
+
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+IN_PROC_BROWSER_TEST_P(InfoBarUiTest, InvokeUi_session_restore) {
+  ShowAndVerifyUi();
+}
+#endif
 
 #if BUILDFLAG(IS_WIN)
 // TODO(crbug.com/40261456): This test case has been frequently failing on

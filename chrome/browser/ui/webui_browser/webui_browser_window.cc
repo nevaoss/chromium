@@ -33,6 +33,7 @@
 #include "chrome/browser/ui/tabs/public/tab_features.h"
 #include "chrome/browser/ui/unload_controller.h"
 #include "chrome/browser/ui/views/find_bar_host.h"
+#include "chrome/browser/ui/views/find_bar_owner.h"
 #include "chrome/browser/ui/views/zoom/zoom_view_controller.h"
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
 #include "chrome/browser/ui/webui/webui_toolbar/webui_toolbar_extensions_container.h"
@@ -133,7 +134,8 @@ class WebUIBrowserWindow::WidgetDelegate : public views::WidgetDelegate {
   raw_ptr<WebUIBrowserWebContentsDelegate> web_contents_delegate_;
 };
 
-WebUIBrowserWindow::WebUIBrowserWindow(Browser* browser) : browser_(browser) {
+WebUIBrowserWindow::WebUIBrowserWindow(BrowserWindowInterface* browser)
+    : browser_(browser) {
   // GuestContents is not approved for use in production. Restrict its
   // proxy content feature kAttachUnownedInnerWebContents to development,
   // canary, and test builds.
@@ -1067,8 +1069,7 @@ views::NativeWidget* WebUIBrowserWindow::CreateNativeWidget() {
 #endif
 
 std::unique_ptr<FindBar> WebUIBrowserWindow::CreateFindBar() {
-  return std::make_unique<FindBarHost>(
-      browser_->GetFeatures().find_bar_owner());
+  return std::make_unique<FindBarHost>(FindBarOwner::From(browser_));
 }
 
 web_modal::WebContentsModalDialogHost*
@@ -1107,7 +1108,7 @@ void WebUIBrowserWindow::ShowHatsDialog(
 }
 
 ExclusiveAccessContext* WebUIBrowserWindow::GetExclusiveAccessContext() {
-  return browser_->GetFeatures().webui_browser_exclusive_access_context();
+  return WebUIBrowserExclusiveAccessContext::From(browser_);
 }
 
 std::string WebUIBrowserWindow::GetWorkspace() const {

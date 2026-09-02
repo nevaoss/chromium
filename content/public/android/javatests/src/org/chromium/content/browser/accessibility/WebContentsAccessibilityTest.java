@@ -219,7 +219,7 @@ public class WebContentsAccessibilityTest {
     private static final String INPUT_RANGE_VALUE_MISMATCH =
             "Value for <input type='range'> is incorrect, did you honor 'step' value?";
     private static final String INPUT_RANGE_EVENT_ERROR =
-            "TYPE_VIEW_SCROLLED event not received before timeout.";
+            "TYPE_WINDOW_CONTENT_CHANGED event not received before timeout.";
     private static final String CACHING_ERROR = "AccessibilityNodeInfo cache has stale data";
     private static final String NODE_EXTRAS_UNCLIPPED_ERROR =
             "AccessibilityNodeInfo object should have unclipped bounds in extras bundle";
@@ -246,6 +246,38 @@ public class WebContentsAccessibilityTest {
 
     // Constant values for unit tests
     private static final int UNSUPPRESSED_EXPECTED_COUNT = 15;
+
+    // Text formatting histogram names
+    private static final String HISTO_TEXT_FORMATTING_TOTAL_DURATION =
+            "Accessibility.Android.TextFormatting.Performance.TotalDuration";
+    private static final String HISTO_TEXT_FORMATTING_TOTAL_DURATION_NO_STYLE =
+            "Accessibility.Android.TextFormatting.Performance.TotalDuration.NoStyleData";
+    private static final String HISTO_TEXT_FORMATTING_CHECK_AX_FOCUS_DURATION =
+            "Accessibility.Android.TextFormatting.Performance.CheckAXFocusDuration";
+    private static final String HISTO_TEXT_FORMATTING_CHECK_AX_FOCUS_DURATION_NO_STYLE =
+            "Accessibility.Android.TextFormatting.Performance.CheckAXFocusDuration.NoStyleData";
+    private static final String HISTO_TEXT_FORMATTING_GET_TEXT_CONTENT_DURATION =
+            "Accessibility.Android.TextFormatting.Performance.GetTextContentDuration";
+    private static final String HISTO_TEXT_FORMATTING_GET_TEXT_CONTENT_DURATION_NO_STYLE =
+            "Accessibility.Android.TextFormatting.Performance.GetTextContentDuration.NoStyleData";
+    private static final String HISTO_TEXT_FORMATTING_TO_JAVA_DATA_DURATION =
+            "Accessibility.Android.TextFormatting.Performance.ToJavaDataDuration";
+    private static final String HISTO_TEXT_FORMATTING_TO_JAVA_DATA_DURATION_NO_STYLE =
+            "Accessibility.Android.TextFormatting.Performance.ToJavaDataDuration.NoStyleData";
+    private static final String HISTO_TEXT_FORMATTING_SET_ANI_TEXT_DURATION =
+            "Accessibility.Android.TextFormatting.Performance.SetAniTextDuration";
+    private static final String HISTO_TEXT_FORMATTING_SET_ANI_TEXT_DURATION_NO_STYLE =
+            "Accessibility.Android.TextFormatting.Performance.SetAniTextDuration.NoStyleData";
+    private static final String HISTO_TEXT_FORMATTING_DURATION_FOR_RANGE_COUNT_11_TO_20 =
+            "Accessibility.Android.TextFormatting.Performance.DurationForRangeCount.11To20";
+    private static final String HISTO_TEXT_FORMATTING_RANGES_TOTAL_COUNT =
+            "Accessibility.Android.TextFormatting.Ranges.TotalCount";
+    private static final String HISTO_TEXT_FORMATTING_RANGES_COUNT_FOR_TEXT_LENGTH_26_TO_50 =
+            "Accessibility.Android.TextFormatting.Ranges.CountForTextLength.26To50";
+    private static final String HISTO_TEXT_FORMATTING_TEXT_LENGTH =
+            "Accessibility.Android.TextFormatting.TextLength";
+    private static final String HISTO_TEXT_FORMATTING_TEXT_LENGTH_NO_STYLE =
+            "Accessibility.Android.TextFormatting.TextLength.NoStyleData";
 
     private AccessibilityNodeInfoCompat mNodeInfo;
     private AccessibilityContentShellTestData mTestData;
@@ -451,9 +483,11 @@ public class WebContentsAccessibilityTest {
     private void scrollRangeAndWaitForEvent(
             int viewId, AccessibilityNodeInfoCompat.AccessibilityActionCompat scrollAction)
             throws ExecutionException {
+        mTestData.setTypeWindowContentChangedCount(0);
         performActionOnUiThread(viewId, scrollAction, new Bundle());
-        CriteriaHelper.pollUiThread(() -> mTestData.hasReceivedEvent(), INPUT_RANGE_EVENT_ERROR);
-        mTestData.setReceivedEvent(false);
+        CriteriaHelper.pollUiThread(
+            () -> mTestData.getTypeWindowContentChangedCount() > 0,
+            INPUT_RANGE_EVENT_ERROR);
     }
 
     private ClipboardManager getClipboardManager() {
@@ -2254,8 +2288,9 @@ public class WebContentsAccessibilityTest {
                 0,
                 OFFSET_TYPE_TEXT);
 
-        // 4. Moving forward with extended selection on input1 advances from the local
-        // selection cursor (1 -> 2).
+        // 4. Moving forward with extended selection on input1 should fail as we are already at the
+        // end of the node.
+        // TODO(crbug.com/548749861): Fix this, the correct expectation is action failure.
         moveAtGranularityAndAssertBounds(
                 input1Vvid,
                 ACTION_NEXT_AT_MOVEMENT_GRANULARITY,
@@ -2778,12 +2813,8 @@ public class WebContentsAccessibilityTest {
 
         // Perform a series of slider increments and check results.
         for (int i = 1; i <= 10; i++) {
-            // Increment our slider using action, and poll until we receive the scroll event.
-            Assert.assertTrue(
-                    performActionOnUiThread(
-                            inputNodeVirtualViewId, ACTION_SCROLL_FORWARD, new Bundle()));
-            CriteriaHelper.pollUiThread(
-                    () -> mTestData.hasReceivedEvent(), INPUT_RANGE_EVENT_ERROR);
+            // Increment our slider using action, and poll until we receive the event.
+            scrollRangeAndWaitForEvent(inputNodeVirtualViewId, ACTION_SCROLL_FORWARD);
 
             // Refresh our node info to get the latest RangeInfo child object.
             mNodeInfo = createAccessibilityNodeInfo(inputNodeVirtualViewId);
@@ -2794,19 +2825,12 @@ public class WebContentsAccessibilityTest {
                     20 + i,
                     mNodeInfo.getRangeInfo().getCurrent(),
                     0.001);
-
-            // Reset polling value for next test
-            mTestData.setReceivedEvent(false);
         }
 
         // Perform a series of slider decrements and check results.
         for (int i = 1; i <= 20; i++) {
-            // Decrement our slider using action, and poll until we receive the scroll event.
-            Assert.assertTrue(
-                    performActionOnUiThread(
-                            inputNodeVirtualViewId, ACTION_SCROLL_BACKWARD, new Bundle()));
-            CriteriaHelper.pollUiThread(
-                    () -> mTestData.hasReceivedEvent(), INPUT_RANGE_EVENT_ERROR);
+            // Decrement our slider using action, and poll until we receive the event.
+            scrollRangeAndWaitForEvent(inputNodeVirtualViewId, ACTION_SCROLL_BACKWARD);
 
             // Refresh our node info to get the latest RangeInfo child object.
             mNodeInfo = createAccessibilityNodeInfo(inputNodeVirtualViewId);
@@ -2817,9 +2841,6 @@ public class WebContentsAccessibilityTest {
                     30 - i,
                     mNodeInfo.getRangeInfo().getCurrent(),
                     0.001);
-
-            // Reset polling value for next test
-            mTestData.setReceivedEvent(false);
         }
     }
 
@@ -3401,8 +3422,8 @@ public class WebContentsAccessibilityTest {
     }
 
     /**
-     * Test |AccessibilityNodeInfo| object actions for node is specifically user scrollable,
-     * and not just programmatically scrollable.
+     * Test |AccessibilityNodeInfo| object actions for node is specifically user scrollable, and not
+     * just programmatically scrollable.
      */
     @Test
     @SmallTest
@@ -4890,8 +4911,8 @@ public class WebContentsAccessibilityTest {
     }
 
     /**
-     * Test that the performAction for ACTION_CLEAR_ACCESSIBILITY_FOCUS works properly
-     * with accessibility.
+     * Test that the performAction for ACTION_CLEAR_ACCESSIBILITY_FOCUS works properly with
+     * accessibility.
      */
     @Test
     @SmallTest
@@ -5217,12 +5238,18 @@ public class WebContentsAccessibilityTest {
     public void testPerformAction_nextHtmlElement_gridCellDelegation() throws Throwable {
         // Build an ARIA grid where each cell contains a single interactive link.
         setupTestWithHTML(
-                "<div role='grid'>"
-                + "  <div role='row'>"
-                + "    <span role='gridcell' id='cell1'><a id='link1' href='#'>Link 1</a></span>"
-                + "    <span role='gridcell' id='cell2'><a id='link2' href='#'>Link 2</a></span>"
-                + "  </div>"
-                + "</div>");
+                """
+                <div role="grid">
+                  <div role="row">
+                    <span role="gridcell" id="cell1">
+                      <a id="link1" href="#">Link 1</a>
+                    </span>
+                    <span role="gridcell" id="cell2">
+                      <a id="link2" href="#">Link 2</a>
+                    </span>
+                  </div>
+                </div>
+                """);
 
         // Find the inner link nodes
         int vvid1 = waitForNodeMatching(sViewIdResourceNameMatcher, "link1");
@@ -6011,39 +6038,24 @@ public class WebContentsAccessibilityTest {
 
         var histogramWatcher =
                 HistogramWatcher.newBuilder()
-                        .expectAnyRecord(
-                                "Accessibility.Android.TextFormatting.Performance.TotalDuration")
-                        .expectNoRecords(
-                                "Accessibility.Android.TextFormatting.Performance.TotalDuration.NoStyleData")
-                        .expectAnyRecord(
-                                "Accessibility.Android.TextFormatting.Performance.CheckAXFocusDuration")
-                        .expectNoRecords(
-                                "Accessibility.Android.TextFormatting.Performance.CheckAXFocusDuration.NoStyleData")
-                        .expectAnyRecord(
-                                "Accessibility.Android.TextFormatting.Performance.GetTextContentDuration")
-                        .expectNoRecords(
-                                "Accessibility.Android.TextFormatting.Performance.GetTextContentDuration.NoStyleData")
-                        .expectAnyRecord(
-                                "Accessibility.Android.TextFormatting.Performance.ToJavaDataDuration")
-                        .expectNoRecords(
-                                "Accessibility.Android.TextFormatting.Performance.ToJavaDataDuration.NoStyleData")
-                        .expectAnyRecord(
-                                "Accessibility.Android.TextFormatting.Performance.SetAniTextDuration")
-                        .expectNoRecords(
-                                "Accessibility.Android.TextFormatting.Performance.SetAniTextDuration.NoStyleData")
-                        .expectAnyRecord(
-                                "Accessibility.Android.TextFormatting.Performance.DurationForRangeCount.11To20")
+                        .expectAnyRecord(HISTO_TEXT_FORMATTING_TOTAL_DURATION)
+                        .expectNoRecords(HISTO_TEXT_FORMATTING_TOTAL_DURATION_NO_STYLE)
+                        .expectAnyRecord(HISTO_TEXT_FORMATTING_CHECK_AX_FOCUS_DURATION)
+                        .expectNoRecords(HISTO_TEXT_FORMATTING_CHECK_AX_FOCUS_DURATION_NO_STYLE)
+                        .expectAnyRecord(HISTO_TEXT_FORMATTING_GET_TEXT_CONTENT_DURATION)
+                        .expectNoRecords(HISTO_TEXT_FORMATTING_GET_TEXT_CONTENT_DURATION_NO_STYLE)
+                        .expectAnyRecord(HISTO_TEXT_FORMATTING_TO_JAVA_DATA_DURATION)
+                        .expectNoRecords(HISTO_TEXT_FORMATTING_TO_JAVA_DATA_DURATION_NO_STYLE)
+                        .expectAnyRecord(HISTO_TEXT_FORMATTING_SET_ANI_TEXT_DURATION)
+                        .expectNoRecords(HISTO_TEXT_FORMATTING_SET_ANI_TEXT_DURATION_NO_STYLE)
+                        .expectAnyRecord(HISTO_TEXT_FORMATTING_DURATION_FOR_RANGE_COUNT_11_TO_20)
                         .expectIntRecord(
-                                "Accessibility.Android.TextFormatting.Ranges.TotalCount",
+                                HISTO_TEXT_FORMATTING_RANGES_TOTAL_COUNT, expectedRangeCount)
+                        .expectIntRecord(
+                                HISTO_TEXT_FORMATTING_RANGES_COUNT_FOR_TEXT_LENGTH_26_TO_50,
                                 expectedRangeCount)
-                        .expectIntRecord(
-                                "Accessibility.Android.TextFormatting.Ranges.CountForTextLength.26To50",
-                                expectedRangeCount)
-                        .expectIntRecord(
-                                "Accessibility.Android.TextFormatting.TextLength",
-                                expectedString.length())
-                        .expectNoRecords(
-                                "Accessibility.Android.TextFormatting.TextLength.NoStyleData")
+                        .expectIntRecord(HISTO_TEXT_FORMATTING_TEXT_LENGTH, expectedString.length())
+                        .expectNoRecords(HISTO_TEXT_FORMATTING_TEXT_LENGTH_NO_STYLE)
                         .build();
 
         mNodeInfo = createAccessibilityNodeInfo(vvid);
@@ -6064,30 +6076,19 @@ public class WebContentsAccessibilityTest {
 
         var histogramWatcher =
                 HistogramWatcher.newBuilder()
-                        .expectNoRecords(
-                                "Accessibility.Android.TextFormatting.Performance.TotalDuration")
-                        .expectAnyRecord(
-                                "Accessibility.Android.TextFormatting.Performance.TotalDuration.NoStyleData")
-                        .expectNoRecords(
-                                "Accessibility.Android.TextFormatting.Performance.CheckAXFocusDuration")
-                        .expectAnyRecord(
-                                "Accessibility.Android.TextFormatting.Performance.CheckAXFocusDuration.NoStyleData")
-                        .expectNoRecords(
-                                "Accessibility.Android.TextFormatting.Performance.GetTextContentDuration")
-                        .expectAnyRecord(
-                                "Accessibility.Android.TextFormatting.Performance.GetTextContentDuration.NoStyleData")
-                        .expectNoRecords(
-                                "Accessibility.Android.TextFormatting.Performance.ToJavaDataDuration")
-                        .expectAnyRecord(
-                                "Accessibility.Android.TextFormatting.Performance.ToJavaDataDuration.NoStyleData")
-                        .expectNoRecords(
-                                "Accessibility.Android.TextFormatting.Performance.SetAniTextDuration")
-                        .expectAnyRecord(
-                                "Accessibility.Android.TextFormatting.Performance.SetAniTextDuration.NoStyleData")
-                        .expectNoRecords("Accessibility.Android.TextFormatting.TextLength")
+                        .expectNoRecords(HISTO_TEXT_FORMATTING_TOTAL_DURATION)
+                        .expectAnyRecord(HISTO_TEXT_FORMATTING_TOTAL_DURATION_NO_STYLE)
+                        .expectNoRecords(HISTO_TEXT_FORMATTING_CHECK_AX_FOCUS_DURATION)
+                        .expectAnyRecord(HISTO_TEXT_FORMATTING_CHECK_AX_FOCUS_DURATION_NO_STYLE)
+                        .expectNoRecords(HISTO_TEXT_FORMATTING_GET_TEXT_CONTENT_DURATION)
+                        .expectAnyRecord(HISTO_TEXT_FORMATTING_GET_TEXT_CONTENT_DURATION_NO_STYLE)
+                        .expectNoRecords(HISTO_TEXT_FORMATTING_TO_JAVA_DATA_DURATION)
+                        .expectAnyRecord(HISTO_TEXT_FORMATTING_TO_JAVA_DATA_DURATION_NO_STYLE)
+                        .expectNoRecords(HISTO_TEXT_FORMATTING_SET_ANI_TEXT_DURATION)
+                        .expectAnyRecord(HISTO_TEXT_FORMATTING_SET_ANI_TEXT_DURATION_NO_STYLE)
+                        .expectNoRecords(HISTO_TEXT_FORMATTING_TEXT_LENGTH)
                         .expectIntRecord(
-                                "Accessibility.Android.TextFormatting.TextLength.NoStyleData",
-                                expectedText.length())
+                                HISTO_TEXT_FORMATTING_TEXT_LENGTH_NO_STYLE, expectedText.length())
                         .build();
 
         mNodeInfo = createAccessibilityNodeInfo(vvid);
@@ -6110,31 +6111,18 @@ public class WebContentsAccessibilityTest {
 
         var histogramWatcher =
                 HistogramWatcher.newBuilder()
-                        .expectAnyRecord(
-                                "Accessibility.Android.TextFormatting.Performance.TotalDuration")
-                        .expectNoRecords(
-                                "Accessibility.Android.TextFormatting.Performance.TotalDuration.NoStyleData")
-                        .expectAnyRecord(
-                                "Accessibility.Android.TextFormatting.Performance.CheckAXFocusDuration")
-                        .expectNoRecords(
-                                "Accessibility.Android.TextFormatting.Performance.CheckAXFocusDuration.NoStyleData")
-                        .expectAnyRecord(
-                                "Accessibility.Android.TextFormatting.Performance.ToJavaDataDuration")
-                        .expectNoRecords(
-                                "Accessibility.Android.TextFormatting.Performance.ToJavaDataDuration.NoStyleData")
-                        .expectAnyRecord(
-                                "Accessibility.Android.TextFormatting.Performance.GetTextContentDuration")
-                        .expectNoRecords(
-                                "Accessibility.Android.TextFormatting.Performance.GetTextContentDuration.NoStyleData")
-                        .expectAnyRecord(
-                                "Accessibility.Android.TextFormatting.Performance.SetAniTextDuration")
-                        .expectNoRecords(
-                                "Accessibility.Android.TextFormatting.Performance.SetAniTextDuration.NoStyleData")
-                        .expectIntRecord(
-                                "Accessibility.Android.TextFormatting.TextLength",
-                                expectedText.length())
-                        .expectNoRecords(
-                                "Accessibility.Android.TextFormatting.TextLength.NoStyleData")
+                        .expectAnyRecord(HISTO_TEXT_FORMATTING_TOTAL_DURATION)
+                        .expectNoRecords(HISTO_TEXT_FORMATTING_TOTAL_DURATION_NO_STYLE)
+                        .expectAnyRecord(HISTO_TEXT_FORMATTING_CHECK_AX_FOCUS_DURATION)
+                        .expectNoRecords(HISTO_TEXT_FORMATTING_CHECK_AX_FOCUS_DURATION_NO_STYLE)
+                        .expectAnyRecord(HISTO_TEXT_FORMATTING_TO_JAVA_DATA_DURATION)
+                        .expectNoRecords(HISTO_TEXT_FORMATTING_TO_JAVA_DATA_DURATION_NO_STYLE)
+                        .expectAnyRecord(HISTO_TEXT_FORMATTING_GET_TEXT_CONTENT_DURATION)
+                        .expectNoRecords(HISTO_TEXT_FORMATTING_GET_TEXT_CONTENT_DURATION_NO_STYLE)
+                        .expectAnyRecord(HISTO_TEXT_FORMATTING_SET_ANI_TEXT_DURATION)
+                        .expectNoRecords(HISTO_TEXT_FORMATTING_SET_ANI_TEXT_DURATION_NO_STYLE)
+                        .expectIntRecord(HISTO_TEXT_FORMATTING_TEXT_LENGTH, expectedText.length())
+                        .expectNoRecords(HISTO_TEXT_FORMATTING_TEXT_LENGTH_NO_STYLE)
                         .build();
 
         mNodeInfo = createAccessibilityNodeInfo(vvid);
@@ -6166,6 +6154,7 @@ public class WebContentsAccessibilityTest {
 
     /**
      * Helper method to perform a series of events that trigger histograms being tracked.
+     *
      * @throws Throwable error on focusNode
      */
     private void performHistogramActions() throws Throwable {
@@ -6322,10 +6311,10 @@ public class WebContentsAccessibilityTest {
         Assert.assertFalse(FOCUSING_ERROR, rootNodeInfo.isAccessibilityFocused());
 
         // Perform click action on the button, which disables the button and clears DOM focus.
-        Assert.assertTrue(
-                performActionOnUiThread(btnVvid, ACTION_CLICK, null, () -> true));
+        Assert.assertTrue(performActionOnUiThread(btnVvid, ACTION_CLICK, null, () -> true));
 
-        // Verify that root does not gain accessibility focus and the button retains accessibility focus.
+        // Verify that root does not gain accessibility focus and the button retains accessibility
+        // focus.
         CriteriaHelper.pollUiThread(
                 () -> {
                     AccessibilityNodeInfoCompat currentRoot = createAccessibilityNodeInfo(rootVvid);
@@ -6339,9 +6328,9 @@ public class WebContentsAccessibilityTest {
     }
 
     /**
-     * Test that when content height dynamically expands via JavaScript,
-     * the updated scroll dimensions cause ACTION_SCROLL_FORWARD and ACTION_SCROLL_DOWN
-     * to be added to the AccessibilityNodeInfo.
+     * Test that when content height dynamically expands via JavaScript, the updated scroll
+     * dimensions cause ACTION_SCROLL_FORWARD and ACTION_SCROLL_DOWN to be added to the
+     * AccessibilityNodeInfo.
      */
     @Test
     @SmallTest
@@ -6364,7 +6353,8 @@ public class WebContentsAccessibilityTest {
                 mActivityTestRule.getWebContents(),
                 "document.getElementById('inner').style.height = '1000px';");
 
-        // Verify that the container node's scroll actions are updated to include scroll forward and down.
+        // Verify that the container node's scroll actions are updated to include scroll forward and
+        // down.
         CriteriaHelper.pollUiThread(
                 () -> {
                     AccessibilityNodeInfoCompat updated = createAccessibilityNodeInfo(vvId);
@@ -6374,4 +6364,32 @@ public class WebContentsAccessibilityTest {
                 },
                 "Scroll forward action was not added after expanding content height");
     }
+
+    @Test
+    @SmallTest
+    public void testFocusableContainerWithAriaLabelAndTextChildrenIsLeaf() throws Throwable {
+        setupTestWithHTML(
+                """
+                <div id="ex1" tabindex="0" aria-label="Custom Graph Label">Default Text</div>
+                <div id="ex2" tabindex="0">Only Tabindex Text</div>
+                """);
+
+        int ex1Vvid = waitForNodeMatching(sViewIdResourceNameMatcher, "ex1");
+        int ex2Vvid = waitForNodeMatching(sViewIdResourceNameMatcher, "ex2");
+
+        AccessibilityNodeInfoCompat ex1NodeInfo = createAccessibilityNodeInfo(ex1Vvid);
+        Assert.assertNotNull(NODE_TIMEOUT_ERROR, ex1NodeInfo);
+        Assert.assertEquals(
+                "Focusable div with aria-label and only text children should have 0 children",
+                0,
+                ex1NodeInfo.getChildCount());
+
+        AccessibilityNodeInfoCompat ex2NodeInfo = createAccessibilityNodeInfo(ex2Vvid);
+        Assert.assertNotNull(NODE_TIMEOUT_ERROR, ex2NodeInfo);
+        Assert.assertEquals(
+                "Focusable div with only text children should have 0 children",
+                0,
+                ex2NodeInfo.getChildCount());
+    }
 }
+

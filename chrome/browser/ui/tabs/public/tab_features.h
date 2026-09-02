@@ -161,6 +161,10 @@ namespace permissions {
 class PermissionIndicatorsTabData;
 }  // namespace permissions
 
+namespace webapps {
+class AppBannerManagerDesktop;
+}  // namespace webapps
+
 #if !BUILDFLAG(IS_ANDROID)
 namespace skills {
 class SkillsUpdateObserver;
@@ -256,12 +260,6 @@ class TabFeatures {
   SetCustomizeChromeSidePanelControllerForTesting(
       std::unique_ptr<customize_chrome::SidePanelController>
           customize_chrome_side_panel_controller);
-
-  // TODO(crbug.com/447418049): This will be removed in the future when
-  // ownership of this controller is migrated to ReadAnythingController.
-  ReadAnythingSidePanelController* read_anything_side_panel_controller() {
-    return read_anything_side_panel_controller_.get();
-  }
 
   commerce::CommerceUiTabHelper* commerce_ui_tab_helper() {
     return commerce_ui_tab_helper_.get();
@@ -420,9 +418,6 @@ class TabFeatures {
   // Responsible for managing the read anything (Reading mode) feature.
   std::unique_ptr<ReadAnythingController> read_anything_controller_;
 
-  std::unique_ptr<ReadAnythingSidePanelController>
-      read_anything_side_panel_controller_;
-
   // Responsible for commerce related features.
   std::unique_ptr<commerce::CommerceUiTabHelper> commerce_ui_tab_helper_;
   std::unique_ptr<commerce::InStockNotificationManager>
@@ -480,6 +475,12 @@ class TabFeatures {
   // Responsible for managing the "File System Access" page action.
   std::unique_ptr<FileSystemAccessPageActionController>
       file_system_access_page_action_controller_;
+
+  // Manages web app banners. Null when web apps are not user-installable in
+  // this profile. Declared before the page-action controllers because
+  // PwaInstallPageAction observes the AppBannerManager, so the manager must
+  // outlive it.
+  std::unique_ptr<webapps::AppBannerManagerDesktop> app_banner_manager_;
 
   // Responsible for managing all page actions of a tab. Other controllers
   // interact with this to have their feature's page action shown.

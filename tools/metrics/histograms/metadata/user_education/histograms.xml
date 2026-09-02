@@ -35,6 +35,8 @@ chromium-metrics-reviews@google.com.
       summary="For Compose feature; shown on autofill popup."/>
   <variant name="CrossDeviceSigninFromDesktop"
       summary="Shown on the sign-in with your phone profile menu item."/>
+  <variant name="Dictation"
+      summary="Dictation entry point in the context menu."/>
   <variant name="Glic" summary="Glic toggle on settings page."/>
   <variant name="GlicAppMenuNewBadge"
       summary="Glic menu item in the three dot menu."/>
@@ -69,9 +71,6 @@ chromium-metrics-reviews@google.com.
   <variant name="TabstripDeclutter"
       summary="Promotion for Close Unused Tabs in the app menu."/>
   <variant name="VerticalTabsNewBadge"
-      summary="Promotion for toggling to the vertical tab strip in the system
-               context menu."/>
-  <variant name="VerticalTabsPreviewBadge"
       summary="Promotion for toggling to the vertical tab strip in the system
                context menu."/>
 </variants>
