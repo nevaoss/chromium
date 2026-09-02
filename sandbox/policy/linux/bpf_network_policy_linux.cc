@@ -181,7 +181,14 @@ ResultExpr RestrictSocketForNetworkService() {
   // some systems.
 #if BUILDFLAG(IS_LINUX)
   // AddressTrackerLinux is brokered on Linux.
+  // TODO(neva): Workaround to fix webruntime crash caused by enabling
+  // AddressTrackerLinuxIsProxied feature by default in the upstream CL
+  // http://crrev.com/c/7887860. We'll revise this issue in NEVA-8175.
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  bool use_netlink_in_network_service = true;
+#else   // !BUILDFLAG(IS_NEVA_APPRUNTIME)
   bool use_netlink_in_network_service = false;
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
 #else   // !BUILDFLAG(IS_LINUX)
   // TODO(crbug.com/40220507): remove the netlink allowance when
   // AddressTrackerLinux no longer runs in the network service on ChromeOS.

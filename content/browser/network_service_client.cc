@@ -137,9 +137,14 @@ NetworkServiceClient::~NetworkServiceClient() {
   if (IsOutOfProcessNetworkService()) {
     net::CertDatabase::GetInstance()->RemoveObserver(this);
 #if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_LINUX)
+    // TODO(neva): Workaround to fix webruntime crash caused by enabling
+    // AddressTrackerLinuxIsProxied feature by default in the upstream CL
+    // http://crrev.com/c/7887860. We'll revise this issue in NEVA-8175.
+#if !BUILDFLAG(IS_NEVA_APPRUNTIME)
     net::NetworkChangeNotifier::RemoveConnectionTypeObserver(this);
     net::NetworkChangeNotifier::RemoveMaxBandwidthObserver(this);
     net::NetworkChangeNotifier::RemoveIPAddressObserver(this);
+#endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
 #endif  // BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_LINUX)
   }
 }
@@ -220,6 +225,10 @@ NetworkServiceClient::BindURLLoaderNetworkServiceObserver() {
 void NetworkServiceClient::OnNetworkServiceInitialized(
     network::mojom::NetworkService* service) {
 #if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_LINUX)
+  // TODO(neva): Workaround to fix webruntime crash caused by enabling
+  // AddressTrackerLinuxIsProxied feature by default in the upstream CL
+  // http://crrev.com/c/7887860. We'll revise this issue in NEVA-8175.
+#if !BUILDFLAG(IS_NEVA_APPRUNTIME)
   if (IsOutOfProcessNetworkService()) {
     DCHECK(!net::NetworkChangeNotifier::CreateIfNeeded());
     service->GetNetworkChangeManager(
@@ -248,6 +257,7 @@ void NetworkServiceClient::OnNetworkServiceInitialized(
     net::NetworkChangeNotifier::AddMaxBandwidthObserver(this);
     net::NetworkChangeNotifier::AddIPAddressObserver(this);
   }
+#endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
 #endif  // BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_LINUX)
 }
 

@@ -405,8 +405,13 @@ NetworkService::NetworkService(
   if (registry_) {
     mojo::SetDefaultProcessErrorHandler(base::BindRepeating(&HandleBadMessage));
 #if BUILDFLAG(IS_LINUX)
+    // TODO(neva): Workaround to fix webruntime crash caused by enabling
+    // AddressTrackerLinuxIsProxied feature by default in the upstream CL
+    // http://crrev.com/c/7887860. We'll revise this issue in NEVA-8175.
+#if !BUILDFLAG(IS_NEVA_APPRUNTIME)
     net::NetworkChangeNotifier::SetFactory(
         new network::NetworkChangeNotifierPassiveFactory());
+#endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
 #endif
   }
 
