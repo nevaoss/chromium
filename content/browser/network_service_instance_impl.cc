@@ -390,6 +390,10 @@ network::mojom::NetworkServiceParamsPtr CreateNetworkServiceParams() {
       GetContentClient()->browser()->IsFirstPartySetsEnabled();
 
 #if BUILDFLAG(IS_LINUX)
+  // TODO(neva): Workaround to fix webruntime crash caused by enabling
+  // AddressTrackerLinuxIsProxied feature by default in the upstream CL
+  // http://crrev.com/c/7887860. We'll revise this issue in NEVA-8175.
+#if !BUILDFLAG(IS_NEVA_APPRUNTIME)
   if (IsOutOfProcessNetworkService()) {
     auto [address_map, online_links] =
         net::NetworkChangeNotifier::GetAddressMapOwner()
@@ -399,6 +403,7 @@ network::mojom::NetworkServiceParamsPtr CreateNetworkServiceParams() {
         network::mojom::InitialAddressMap::New(std::move(address_map),
                                                std::move(online_links));
   }
+#endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
 #endif  // BUILDFLAG(IS_LINUX)
 
 #if BUILDFLAG(IS_CHROMEOS)
