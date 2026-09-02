@@ -117,7 +117,10 @@ constexpr CGFloat kFakeboxPlusLeadingSpace = 18.0;
 constexpr CGFloat kOmniboxImageLeadingSpace = 22.0;
 constexpr CGFloat kOmniboxPlusLeadingSpace = 26.0;
 constexpr CGFloat kFakeboxImageSize = 20.0;
+// TODO(crbug.com/542594099): Remove the "UICleanup" suffix once
+// `kNewTabPageUICleanup` launches.
 constexpr CGFloat kFakeboxImageSizeUICleanup = 24.0;
+constexpr CGFloat kSymbolActionPointSizeUICleanup = 19.0;
 
 // The spacing between the items in the button stack.
 constexpr CGFloat kButtonSpacing = 9.0;
@@ -309,8 +312,12 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
                      (BOOL)useNewBadgeForCustomizationMenu {
   self = [super initWithFrame:CGRectZero];
   if (self) {
+    self.translatesAutoresizingMaskIntoConstraints = NO;
     _fakeLocationBar = [[FakeLocationBarView alloc] init];
-    self.clipsToBounds = YES;
+    if (!(IsNewTabPageUICleanupEnabled() ||
+          IsNewTabPageUICleanupFakeboxOnlyEnabled())) {
+      self.clipsToBounds = YES;
+    }
     _useNewBadgeForLensButton = useNewBadgeForLensButton;
     _useNewBadgeForCustomizationMenu = useNewBadgeForCustomizationMenu;
     _lastAnimationPercent = 0;
@@ -1393,7 +1400,7 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
   self.plusButton.accessibilityLabel = l10n_util::GetNSString(
       IDS_IOS_COMPOSEBOX_ADD_ATTACHMENT_BUTTON_ACCESSIBILITY_LABEL);
   CGFloat symbolPointSize = IsNewTabPageUICleanupEnabled()
-                                ? kFakeboxImageSizeUICleanup
+                                ? kSymbolActionPointSizeUICleanup
                                 : kSymbolActionPointSize;
   [self.plusButton setImage:SymbolWithPointSize(SymbolPlus, symbolPointSize)
                    forState:UIControlStateNormal];
@@ -1502,8 +1509,8 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
   _hintLabelFontSmall = PreferredFontForTextStyleWithMaxCategory(
       LocationBarFontTextStyle(),
       self.traitCollection.preferredContentSizeCategory, maxCategory);
-  CGFloat bigFontSize = _hintLabelFontSmall.pointSize /
-                        (1.0 - content_suggestions::kHintTextScale);
+  CGFloat bigFontSize =
+      _hintLabelFontSmall.pointSize / (1.0 - [self hintTextScale]);
   _hintLabelFontBig = [_hintLabelFontSmall fontWithSize:bigFontSize];
   self.searchHintLabel.font =
       [self hintLabelFontForPercent:_lastAnimationPercent];
@@ -1515,6 +1522,14 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
     return _hintLabelFontSmall;
   }
   return _hintLabelFontBig;
+}
+
+// Returns the scale factor for the hint label based on whether
+// `kNewTabPageUICleanup` is enabled.
+- (CGFloat)hintTextScale {
+  return IsNewTabPageUICleanupEnabled()
+             ? content_suggestions::kHintTextScaleUICleanup
+             : content_suggestions::kHintTextScale;
 }
 
 // Scale the the hint label down to at most content_suggestions::kHintTextScale.
@@ -1548,7 +1563,7 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
 
   // When unpinned, the bigger font is used and scaling is applied depending on
   // the animation percent.
-  _currentHintLabelScale = 1 - (content_suggestions::kHintTextScale * percent);
+  _currentHintLabelScale = 1 - ([self hintTextScale] * percent);
   searchHintLabel.transform = CGAffineTransformMakeScale(
       _currentHintLabelScale, _currentHintLabelScale);
 }
@@ -2131,10 +2146,10 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
   self.fakeOmniboxContainer.hidden =
       CanShowTabStrip(self) &&
       (self.searchEngineLogoState == SearchEngineLogoState::kNone);
-  [self layoutIfNeeded];
   self.headerViewHeightConstraint.constant =
       content_suggestions::HeightForLogoHeader(self.searchEngineLogoState,
                                                self.traitCollection);
+  [self layoutIfNeeded];
 }
 
 - (void)addConstraintsForLogoView:(UIView*)logoView

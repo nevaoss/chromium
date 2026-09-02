@@ -98,7 +98,9 @@
 
 #if !BUILDFLAG(IS_ANDROID)
 #include "base/base64.h"
-#include "base/task/bind_post_task.h"
+#if BUILDFLAG(IS_MAC)
+#include "base/mac/mac_util.h"
+#endif
 #include "chrome/browser/media/webrtc/desktop_media_picker.h"
 #include "chrome/browser/media/webrtc/desktop_media_picker_controller.h"
 #include "chrome/browser/media/webrtc/desktop_media_picker_factory_impl.h"
@@ -126,6 +128,7 @@
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/desktop_capture.h"
 #include "content/public/browser/storage_partition.h"
+#include "mojo/public/cpp/bindings/callback_helpers.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/gfx/codec/png_codec.h"
 #include "ui/views/widget/widget.h"
@@ -569,13 +572,15 @@ ContextualSearchboxHandler::ContextualSearchboxHandler(
     Profile* profile,
     content::WebContents* web_contents,
     std::unique_ptr<OmniboxClient> client,
-    GetSessionHandleCallback get_session_callback)
+    GetSessionHandleCallback get_session_callback,
+    ScreenshareDelegate* screenshare_delegate)
     : SearchboxHandler(std::move(pending_searchbox_handler),
                        std::move(pending_page),
                        profile,
                        web_contents,
                        std::move(client)),
-      get_session_callback_(std::move(get_session_callback)) {
+      get_session_callback_(std::move(get_session_callback)),
+      screenshare_delegate_(screenshare_delegate) {
   InitializeInputStateModel();
   tab_favicon_helper_ = std::make_unique<ContextualSearchboxTabFaviconHelper>();
 
@@ -701,6 +706,11 @@ ContextualSearchboxHandler::~ContextualSearchboxHandler() {
     std::move(drive_upload_click_callback_)
         .Run(searchbox::mojom::DriveUploadResponse::New());
   }
+#if !BUILDFLAG(IS_ANDROID)
+  if (is_capturing_ || screenshare_picker_controller_) {
+    NotifyScreensharePickerClosed();
+  }
+#endif
   // Ensure any selected tabs are cleared when shutting down.
   if (base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox)) {
     if (auto* active_task_context_provider = GetActiveTaskContextProvider()) {
@@ -1721,7 +1731,8 @@ void ContextualSearchboxHandler::DeleteContext(
 }
 
 void ContextualSearchboxHandler::DeleteTabContext(int32_t tab_id) {
-  if (!omnibox::IsTabDeselectionInComposeboxEnabled()) {
+  if (!omnibox::IsTabDeselectionInComposeboxEnabled() ||
+      !SessionID::IsValidValue(tab_id)) {
     return;
   }
 
@@ -1944,6 +1955,7 @@ void ContextualSearchboxHandler::OnDriveDisclaimerAccepted() {
 
 void ContextualSearchboxHandler::QueryAutocomplete(
     int32_t query_id,
+    std::optional<int32_t> tab_id,
     const std::u16string& input,
     bool prevent_inline_autocomplete,
     uint32_t cursor_position,
@@ -1959,7 +1971,7 @@ void ContextualSearchboxHandler::QueryAutocomplete(
   }
 
   SearchboxHandler::QueryAutocomplete(
-      query_id, input, prevent_inline_autocomplete, cursor_position,
+      query_id, tab_id, input, prevent_inline_autocomplete, cursor_position,
       suggest_inventory, is_on_focus, keyword, input_method);
 }
 
@@ -2169,7 +2181,7 @@ void ContextualSearchboxHandler::ComputeAndOpenQueryUrl(
             [](base::WeakPtr<ContextualSearchboxHandler> self,
                WindowOpenDisposition disposition, GURL url) {
               if (self) {
-                self->OpenUrl(url, disposition);
+                self->ProcessContextAndOpenUrl(url, disposition);
               }
             },
             weak_ptr_factory_.GetWeakPtr(), disposition));
@@ -2234,38 +2246,12 @@ void ContextualSearchboxHandler::UploadTabContext(
   }
 }
 
-void ContextualSearchboxHandler::OpenUrl(
+void ContextualSearchboxHandler::ProcessContextAndOpenUrl(
     GURL url,
     const WindowOpenDisposition disposition) {
   if (!url.is_valid()) {
     return;
   }
-
-#if !BUILDFLAG(IS_ANDROID)
-  // When the everywhere Omnibox is enabled, check to see if the current web
-  // contents is the everywhere omnibox popup -- if so redirect the open to
-  // the everywhere service.
-  // TODO(crbug.com/526405104): This should probably be moved to the client and
-  // be based on the page classification. The service's impl should also
-  // correctly pass on context like done below.
-  if (base::FeatureList::IsEnabled(omnibox::kOmniboxEverywhere)) {
-    if (web_contents_->GetVisibleURL().host() ==
-        chrome::kChromeUIOmniboxEverywhereHost) {
-      if (auto* service =
-              OmniboxEverywhereServiceFactory::GetForProfile(profile_)) {
-        base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-            FROM_HERE,
-            base::BindOnce(
-                [](OmniboxEverywhereService* service, const GURL& url,
-                   WindowOpenDisposition disposition) {
-                  service->OpenUrl(url, disposition, ui::PAGE_TRANSITION_LINK);
-                },
-                base::Unretained(service), url, disposition));
-        return;
-      }
-    }
-  }
-#endif
 
   auto* contextual_session_handle = GetContextualSessionHandle();
 
@@ -2321,6 +2307,20 @@ void ContextualSearchboxHandler::OpenUrl(
       },
       std::move(new_contextual_session_handle),
       std::move(new_input_state_model), std::move(selected_tab_ids));
+
+  OpenUrl(url, disposition, std::move(navigation_handle_callback));
+  if (base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox)) {
+    ClearFiles(/*should_block_auto_suggested_tabs=*/false,
+               /*query_submitted=*/true);
+  }
+  contextual_session_handle->ClearSubmittedContextTokens();
+}
+
+void ContextualSearchboxHandler::OpenUrl(
+    GURL url,
+    const WindowOpenDisposition disposition,
+    base::OnceCallback<void(content::NavigationHandle&)>
+        navigation_handle_callback) {
   // TODO(crbug.com/469137247): Consider moving this logic to the specific
   // subclasses that have aim navigation.
   bool should_open_url = true;
@@ -2356,7 +2356,7 @@ void ContextualSearchboxHandler::OpenUrl(
         active_tab ? active_tab->GetContents() : nullptr;
 
     if (ShouldOpenInLensSidePanel(active_web_contents,
-                                  contextual_session_handle)) {
+                                  GetContextualSessionHandle())) {
       // Open in AIM in lens side panel.
       if (auto* lens_search_controller =
               LensSearchController::FromWebUIWebContents(active_web_contents)) {
@@ -2371,7 +2371,6 @@ void ContextualSearchboxHandler::OpenUrl(
                 : AutocompleteMatchType::Type::SEARCH_WHAT_YOU_TYPED,
             /*is_zero_prefix_suggestion=*/query_text.empty());
         active_web_contents->Focus();
-        contextual_session_handle->ClearSubmittedContextTokens();
         return;
       }
     }
@@ -2394,7 +2393,6 @@ void ContextualSearchboxHandler::OpenUrl(
                                   ui::PAGE_TRANSITION_LINK, false);
     web_contents_->OpenURL(params, std::move(navigation_handle_callback));
   }
-  contextual_session_handle->ClearSubmittedContextTokens();
 }
 
 std::optional<base::Uuid> ContextualSearchboxHandler::GetTaskId() const {
@@ -2494,6 +2492,19 @@ ContextualSearchboxHandler::GetDriveDisclaimerController() {
 }
 #endif  // !BUILDFLAG(IS_ANDROID)
 
+// TODO(crbug.com/549716561): Refactor screensharing and screenshot capture
+// logic out of ContextualSearchboxHandler into a dedicated controller (similar
+// to DrivePickerHostController).
+void ContextualSearchboxHandler::ShowScreenshotMenu(
+    const gfx::Rect& anchor_rect) {
+  if (screenshare_delegate_) {
+    screenshare_delegate_->ShowScreenshotMenu(anchor_rect,
+                                              weak_ptr_factory_.GetWeakPtr());
+  } else {
+    OnScreenshotMenuClosed();
+  }
+}
+
 void ContextualSearchboxHandler::StartScreenshare(
     bool prefer_entire_screen,
     StartScreenshareCallback callback) {
@@ -2502,13 +2513,89 @@ void ContextualSearchboxHandler::StartScreenshare(
     std::move(callback).Run(std::nullopt);
     return;
   }
-  FallbackToChromeDefaultPicker(prefer_entire_screen, std::move(callback));
+  bool use_native_picker = false;
+#if BUILDFLAG(IS_MAC)
+  if (base::mac::MacOSMajorVersion() >= 14) {
+    use_native_picker =
+        base::FeatureList::IsEnabled(media::kUseSCContentSharingPicker);
+  }
+#endif
+
+  if (!use_native_picker) {
+    FallbackToChromeDefaultPicker(prefer_entire_screen, std::move(callback));
+    return;
+  }
+
+  content::DesktopMediaID::Type target_capture_type =
+      prefer_entire_screen ? content::DesktopMediaID::TYPE_SCREEN
+                           : content::DesktopMediaID::TYPE_WINDOW;
+
+  auto [picker_selected_callback, remaining_callback] =
+      base::SplitOnceCallback(std::move(callback));
+  auto [picker_cancelled_callback, fallback_callback] =
+      base::SplitOnceCallback(std::move(remaining_callback));
+
+  content::GetIOThreadTaskRunner({})->PostTask(
+      FROM_HERE,
+      base::BindOnce(
+          &content::desktop_capture::OpenNativeScreenCapturePicker,
+          target_capture_type,
+          BindToUIThread(&ContextualSearchboxHandler::OnNativePickerCreated),
+          BindToUIThread(
+              &ContextualSearchboxHandler::OnNativePickerSourceSelected,
+              target_capture_type, std::move(picker_selected_callback)),
+          BindToUIThread(&ContextualSearchboxHandler::OnNativePickerCancelled,
+                         std::move(picker_cancelled_callback)),
+          BindToUIThread(
+              &ContextualSearchboxHandler::FallbackToChromeDefaultPicker,
+              prefer_entire_screen, std::move(fallback_callback))));
+#else
+  std::move(callback).Run(std::nullopt);
+#endif
+}
+
+void ContextualSearchboxHandler::CaptureRegionScreenshot(
+    CaptureRegionScreenshotCallback callback) {
+#if !BUILDFLAG(IS_ANDROID)
+  if (screenshare_picker_controller_ || is_capturing_) {
+    std::move(callback).Run(std::nullopt);
+    return;
+  }
+  NotifyScreensharePickerOpened();
+  // Captures the full virtual desktop across all connected monitors
+  // (webrtc::kFullDesktopScreenId = -1).
+  constexpr content::DesktopMediaID::Id kFullDesktopScreenId = -1;
+  content::DesktopMediaID source(content::DesktopMediaID::TYPE_SCREEN,
+                                 kFullDesktopScreenId);
+  CaptureAndUploadScreenshot(source, std::move(callback));
 #else
   std::move(callback).Run(std::nullopt);
 #endif
 }
 
 #if !BUILDFLAG(IS_ANDROID)
+void ContextualSearchboxHandler::OnNativePickerCreated(
+    content::DesktopMediaID::Id /*session_id*/) {
+  NotifyScreensharePickerOpened();
+}
+
+void ContextualSearchboxHandler::OnNativePickerSourceSelected(
+    content::DesktopMediaID::Type capture_type,
+    StartScreenshareCallback callback,
+    webrtc::DesktopCapturer::Source selected_source) {
+  content::DesktopMediaID media_id(capture_type, selected_source.id);
+#if BUILDFLAG(IS_MAC)
+  media_id.id_type = content::DesktopMediaID::IdType::kNativePickerSession;
+#endif
+  CaptureAndUploadScreenshot(media_id, std::move(callback));
+}
+
+void ContextualSearchboxHandler::OnNativePickerCancelled(
+    StartScreenshareCallback callback) {
+  NotifyScreensharePickerClosed();
+  std::move(callback).Run(std::nullopt);
+}
+
 void ContextualSearchboxHandler::FallbackToChromeDefaultPicker(
     bool prefer_entire_screen,
     StartScreenshareCallback callback) {
@@ -2548,7 +2635,9 @@ void ContextualSearchboxHandler::FallbackToChromeDefaultPicker(
   screenshare_picker_controller_->Show(
       picker_params, sources,
       base::BindOnce(&ContextualSearchboxHandler::OnChromeDefaultPickerResults,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)),
+      base::BindOnce(&ContextualSearchboxHandler::NotifyScreensharePickerOpened,
+                     weak_ptr_factory_.GetWeakPtr()));
 }
 
 void ContextualSearchboxHandler::OnChromeDefaultPickerResults(
@@ -2557,6 +2646,7 @@ void ContextualSearchboxHandler::OnChromeDefaultPickerResults(
     content::DesktopMediaID source) {
   screenshare_picker_controller_.reset();
   if (source.is_null()) {
+    NotifyScreensharePickerClosed();
     std::move(callback).Run(std::nullopt);
     return;
   }
@@ -2567,47 +2657,40 @@ void ContextualSearchboxHandler::CaptureAndUploadScreenshot(
     content::DesktopMediaID source,
     StartScreenshareCallback callback) {
   is_capturing_ = true;
-  auto captured_callback = base::BindPostTask(
-      content::GetUIThreadTaskRunner({}),
+  auto safe_callback = mojo::WrapCallbackWithDefaultInvokeIfNotRun(
+      std::move(callback), std::nullopt);
+  active_screenshot_request_ = content::desktop_capture::CaptureScreenshot(
+      source,
       base::BindOnce(&ContextualSearchboxHandler::OnScreenshotCaptured,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
-
-  content::GetIOThreadTaskRunner({})->PostTaskAndReplyWithResult(
-      FROM_HERE,
-      base::BindOnce(&content::desktop_capture::CaptureScreenshot, source,
-                     std::move(captured_callback)),
-      base::BindOnce(&ContextualSearchboxHandler::OnScreenshotRequestCreated,
-                     weak_ptr_factory_.GetWeakPtr()));
+                     weak_ptr_factory_.GetWeakPtr(), std::move(safe_callback)));
+  if (!active_screenshot_request_) {
+    NotifyScreensharePickerClosed();
+    is_capturing_ = false;
+  }
 }
 
 void ContextualSearchboxHandler::OnScreenshotCaptured(
     StartScreenshareCallback callback,
     const SkBitmap& bitmap) {
-  is_capturing_ = false;
   active_screenshot_request_.reset();
+  NotifyScreensharePickerClosed();
   if (bitmap.empty()) {
+    is_capturing_ = false;
     std::move(callback).Run(std::nullopt);
     return;
   }
 
   base::ThreadPool::PostTaskAndReplyWithResult(
-      FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
+      FROM_HERE, {base::TaskPriority::USER_VISIBLE},
       base::BindOnce(&ProcessScreenshotInBackground, bitmap),
       base::BindOnce(&ContextualSearchboxHandler::OnScreenshotProcessed,
                      weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
 }
 
-void ContextualSearchboxHandler::OnScreenshotRequestCreated(
-    std::unique_ptr<content::desktop_capture::ScreenshotCaptureRequest>
-        request) {
-  if (is_capturing_) {
-    active_screenshot_request_ = std::move(request);
-  }
-}
-
 void ContextualSearchboxHandler::OnScreenshotProcessed(
     StartScreenshareCallback callback,
     ProcessedScreenshot result) {
+  is_capturing_ = false;
   if (result.png_bytes.empty()) {
     std::move(callback).Run(std::nullopt);
     return;
@@ -2640,5 +2723,17 @@ void ContextualSearchboxHandler::OnScreenshotProcessed(
           },
           std::move(callback), weak_ptr_factory_.GetWeakPtr(),
           std::move(file_info_mojom)));
+}
+
+void ContextualSearchboxHandler::NotifyScreensharePickerOpened() {
+  if (screenshare_delegate_) {
+    screenshare_delegate_->OnScreensharePickerOpened();
+  }
+}
+
+void ContextualSearchboxHandler::NotifyScreensharePickerClosed() {
+  if (screenshare_delegate_) {
+    screenshare_delegate_->OnScreensharePickerClosed();
+  }
 }
 #endif

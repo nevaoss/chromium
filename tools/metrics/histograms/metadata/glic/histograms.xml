@@ -1720,7 +1720,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Glic.Instance.UninterruptedActiveDuration" units="ms"
-    expires_after="2026-10-04">
+    expires_after="2027-10-04">
   <owner>birnie@google.com</owner>
   <owner>perrier@google.com</owner>
   <summary>
@@ -1909,6 +1909,27 @@ chromium-metrics-reviews@google.com.
   </summary>
   <token key="InvocationSource" variants="GlicInvocationSource"/>
   <token key="Visibility" variants="Visibility"/>
+</histogram>
+
+<histogram name="Glic.Invoke.Duration" units="ms" expires_after="2027-06-01">
+  <owner>wry@chromium.org</owner>
+  <owner>glic-dev@google.com</owner>
+  <summary>
+    Records the duration of a Glic invocation, measured from when the invocation
+    handler is started until it completes (successfully or not).
+  </summary>
+</histogram>
+
+<histogram name="Glic.Invoke.Duration.{InvocationSource}" units="ms"
+    expires_after="2027-06-01">
+  <owner>wry@chromium.org</owner>
+  <owner>glic-dev@google.com</owner>
+  <summary>
+    Records the duration of a Glic invocation, measured from when the invocation
+    handler is started until it completes (successfully or not), sliced by the
+    invocation source.
+  </summary>
+  <token key="InvocationSource" variants="GlicInvocationSource"/>
 </histogram>
 
 <histogram name="Glic.Invoke.InvocationSource" enum="GlicInvocationSource"
@@ -3258,6 +3279,17 @@ chromium-metrics-reviews@google.com.
     for a given number of attached tabs. Recorded after each turn.
   </summary>
   <token key="AttachedTabCount" variants="AttachedTabCount"/>
+</histogram>
+
+<histogram name="Glic.Turn.PromptType" enum="GlicPromptType"
+    expires_after="2027-03-01">
+  <owner>basiaz@google.com</owner>
+  <owner>birnie@google.com</owner>
+  <summary>
+    Recorded when user input is submitted for a turn in a Glic instance.
+    Indicates the submission prompt type (e.g. typed text, zero state
+    suggestions, auto prompt, audio).
+  </summary>
 </histogram>
 
 <histogram name="Glic.Turn.ResponseStartTime" units="ms"

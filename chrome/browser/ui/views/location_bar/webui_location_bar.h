@@ -25,7 +25,6 @@
 #include "ui/base/interaction/element_tracker.h"
 #include "ui/views/mouse_constants.h"
 
-class Browser;
 class BrowserWindowInterface;
 class OmniboxController;
 class OmniboxPopupView;
@@ -45,11 +44,13 @@ class Point;
 
 // A LocationBar implementation using WebUI.
 class WebUILocationBar : public LocationBar,
+                         public LocationBarTesting,
                          public ContentSettingImageViewDelegate,
                          public WebUIReadOnlyOmnibox::UpdatePropagator,
                          public OmniboxPopupPresenterDelegate {
  public:
-  WebUILocationBar(Browser* browser, LocationBarView::Delegate* delegate);
+  WebUILocationBar(BrowserWindowInterface* browser,
+                   LocationBarView::Delegate* delegate);
   ~WebUILocationBar() override;
 
   void Init(WebUIToolbarControlDelegate* delegate);
@@ -67,6 +68,7 @@ class WebUILocationBar : public LocationBar,
   base::expected<std::monostate, mojo_base::mojom::ErrorPtr> OnOmniboxAction(
       toolbar_ui_api::mojom::OmniboxActionPtr action);
   void SetFocusWithin(bool focused);
+  void OnBlur();
 
   void HandleContextMenu(views::Widget* widget,
                          const gfx::Point& point,
@@ -77,6 +79,7 @@ class WebUILocationBar : public LocationBar,
   void FocusLocation(bool is_user_initiated,
                      bool clear_focus_if_failed) override;
   void FocusSearch() override;
+
   void UpdateFocusBehavior(bool toolbar_visible) override;
   void UpdateContentSettingsIcons() override;
   void SaveStateToContents(content::WebContents* contents) override;
@@ -118,10 +121,13 @@ class WebUILocationBar : public LocationBar,
   void ResetTabState(content::WebContents* contents) override;
   bool HasSecurityStateChanged() override;
   LocationBarTesting* GetLocationBarForTesting() override;
+  bool TestContentSettingImagePressed(size_t index) override;
+  bool IsContentSettingBubbleShowing(size_t index) override;
 
   // Left hand side (LHS) chip events (called from WebUIToolbarWebView)
   void OnLhsChipMousePressed(
-      toolbar_ui_api::mojom::LhsChipIdentifier identifier);
+      toolbar_ui_api::mojom::LhsChipIdentifier identifier,
+      bool is_middle_click);
   void OnLhsChipClicked(toolbar_ui_api::mojom::LhsChipIdentifier identifier,
                         bool is_mouse_interaction);
   void OnLhsChipPointerEntered(
@@ -163,6 +169,8 @@ class WebUILocationBar : public LocationBar,
   void SetSuppressionThresholdForTesting(base::TimeDelta threshold);
 
  private:
+  void OnMiddleClickPaste(base::TimeTicks event_timestamp, std::u16string text);
+
   friend class WebUILocationBarTest;
   friend class WebUIPermissionChipTest;
 
@@ -184,6 +192,8 @@ class WebUILocationBar : public LocationBar,
   // pushes it to the WebUI.
   void UpdateLhsChipsState(bool icon_known = false);
 
+  void UpdatePageActions(content::WebContents* contents);
+
   // Updates the state of the content setting models (e.g. camera, microphone,
   // sensors) to reflect status on the current page. Pushes the updated
   // right-hand side content setting states to the WebUI. Returns true if the
@@ -198,6 +208,8 @@ class WebUILocationBar : public LocationBar,
   void OnIconFetched(const gfx::Image& image);
 
   void ShowPageInfoBubble();
+  void OnPageInfoBubbleClosed(views::Widget::ClosedReason closed_reason,
+                              bool reload_prompt);
 
   raw_ptr<BrowserWindowInterface> browser_ = nullptr;
   raw_ptr<LocationBarView::Delegate> delegate_ = nullptr;

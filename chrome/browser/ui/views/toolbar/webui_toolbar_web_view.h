@@ -188,6 +188,7 @@ class WebUIToolbarWebView
   std::unique_ptr<toolbar_ui_api::IconTableFetcher> GetIconTableFetcher()
       override;
   CommandUpdater* GetCommandUpdater() override;
+  OmniboxController* GetOmniboxController() override;
 
   // ToolbarUIService::ToolbarUIServiceDelegate:
   void HandleContextMenu(toolbar_ui_api::mojom::ContextMenuType menu_type,
@@ -226,7 +227,8 @@ class WebUIToolbarWebView
   void MoveExtensionActionBy(const std::string& extension_id,
                              int32_t delta) override;
   void OnLhsChipMousePressed(
-      toolbar_ui_api::mojom::LhsChipIdentifier identifier) override;
+      toolbar_ui_api::mojom::LhsChipIdentifier identifier,
+      bool is_middle_click) override;
   void OnLhsChipClicked(toolbar_ui_api::mojom::LhsChipIdentifier identifier,
                         bool is_mouse_interaction) override;
   void OnLhsChipPointerEntered(
@@ -272,6 +274,7 @@ class WebUIToolbarWebView
       const views::SizeBounds& available_size) const override;
   void OnBoundsChanged(const gfx::Rect& previous_bounds) override;
   void PreferredSizeChanged() override;
+  void OnBlur() override;
 
   // content::WebContentsObserver:
   void DidStartNavigation(

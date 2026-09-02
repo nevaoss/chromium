@@ -146,6 +146,11 @@ void ChromeBrowserFieldTrials::RegisterFeatureOverrides(
   feature_overrides.EnableFeature(
       media::kAndroidEnableBackgroundMediaCapturing);
 
+  // Enable WebRTC suspend on screen off for desktop devices.
+  // TODO(crbug.com/533876870): Remove once Android provides a dedicated API to
+  // notify WebRTC of system suspend or lid close events.
+  feature_overrides.EnableFeature(media::kAndroidSuspendWebRtcOnScreenOff);
+
   // TODO(crbug.com/422903297): Remove when tablet rollout is complete.
   feature_overrides.EnableFeature(features::kRendererProcessLimitOnAndroid);
   // Enable V8 optimizations for high-end Android Desktop devices.
@@ -204,14 +209,13 @@ void ChromeBrowserFieldTrials::RegisterFeatureOverrides(
   // on desktop Android ahead of NDK r30 rollout across the rest of Android.
   feature_overrides.EnableFeature(media::kNdkVideoEncodeAcceleratorNativeSvc);
 
-  // Enables uninterrupted audio on headphone unplug for desktop Android; other
-  // Android form factors retain pause-on-unplug for privacy considerations.
-  feature_overrides.EnableFeature(media::kNoPauseMediaOnHeadphoneUnplug);
+  // Disables fullscreen video picture-in-picture on desktop Android for desktop
+  // behavior parity; deprecates the fullscreen -> swipe home -> enter PiP path.
+  feature_overrides.DisableFeature(media::kFullscreenVideoPictureInPicture);
 
-  // Pauses media on system sleep on desktop Android as a workaround for missing
-  // lid-close/suspend detection APIs (crbug.com/505630217); not needed on other
-  // form factors.
-  feature_overrides.EnableFeature(media::kPauseMediaOnSystemSleepAndroid);
+  // Enforces 2-pixel even boundary alignment for YUV SurfaceControl overlays
+  // on desktop Android as a native workaround for Intel hardware scalers.
+  feature_overrides.EnableFeature(features::kAndroidYuvOverlayEvenAlignment);
 
   // Enable by default for desktop platforms, pending a phone / foldable /
   // tablet rollout using the same flag.

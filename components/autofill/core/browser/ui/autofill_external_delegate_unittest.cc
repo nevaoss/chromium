@@ -27,6 +27,9 @@
 #include "base/uuid.h"
 #include "build/branding_buildflags.h"
 #include "build/build_config.h"
+#if BUILDFLAG(IS_ANDROID)
+#include "base/android/device_info.h"
+#endif
 #include "components/autofill/core/browser/autofill_trigger_source.h"
 #include "components/autofill/core/browser/data_manager/addresses/address_data_manager.h"
 #include "components/autofill/core/browser/data_manager/payments/payments_data_manager.h"
@@ -105,6 +108,7 @@
 #include "components/strings/grit/components_strings.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/cleanup/cleanup.h"
 #include "third_party/abseil-cpp/absl/container/flat_hash_map.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/gfx/geometry/rect.h"
@@ -1368,7 +1372,8 @@ TEST_F(AutofillExternalDelegateTest, AtMemoryRemoteQuery_UnsupportedQuery) {
                     IDS_AUTOFILL_AT_MEMORY_UNSUPPORTED_QUERY_TITLE)),
                 HasLabel(l10n_util::GetStringUTF16(
                     IDS_AUTOFILL_AT_MEMORY_UNSUPPORTED_QUERY_DESCRIPTION)),
-                testing::Field(&Suggestion::type, SuggestionType::kOpenGemini),
+                testing::Field(&Suggestion::type,
+                               SuggestionType::kAtMemoryOpenGemini),
                 testing::Field(&Suggestion::icon, Suggestion::Icon::kSpark))));
       });
 
@@ -1480,7 +1485,7 @@ TEST_P(AutofillExternalDelegateAtMemoryGenericErrorTest,
 TEST_F(AutofillExternalDelegateTest, AtMemoryAcceptOpenGeminiSuggestion) {
   IssueOnQuery();
 
-  Suggestion suggestion(SuggestionType::kOpenGemini);
+  Suggestion suggestion(SuggestionType::kAtMemoryOpenGemini);
   suggestion.payload = Suggestion::OpenGeminiPayload(u"test prompt");
 
   EXPECT_CALL(autofill_client(),
@@ -4979,11 +4984,14 @@ TEST_F(AutofillExternalDelegateTest,
   OnSuggestionsReturned(queried_field(), {});
 }
 
+#if BUILDFLAG(IS_ANDROID)
 TEST_F(AutofillExternalDelegateTest,
-       ExternalDelegateDoesNotHideSuggestionsOnLargeFormFactor) {
+       ExternalDelegateDoesNotHideSuggestionsOnAndroidDesktop) {
+  base::android::device_info::set_is_desktop_for_testing(true);
+  absl::Cleanup reset =
+      &base::android::device_info::reset_is_desktop_for_testing;
   IssueOnQuery();
 
-  autofill_client().set_is_device_large_form_factor(true);
   base::test::ScopedFeatureList feature_list;
   feature_list.InitAndEnableFeature(
       features::kAutofillAndroidKeyboardAccessoryDynamicPositioning);
@@ -4993,6 +5001,7 @@ TEST_F(AutofillExternalDelegateTest,
   // Return empty suggestions.
   OnSuggestionsReturned(queried_field(), {});
 }
+#endif
 
 // Tests that the "Maximize rewards" suggestion functions properly when the
 // user clicks it.

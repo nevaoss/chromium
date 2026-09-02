@@ -1294,6 +1294,7 @@
 <translation id="5238596603078743134"><ph name="BEGIN_BOLD" /><ph name="USERNAME" /><ph name="END_BOLD" /> agora pode utilizar o teu nome de usuario e contrasinal para iniciar sesión en <ph name="BEGIN_BOLD" /><ph name="WEBSITE" /><ph name="END_BOLD" /> se usa o xestor de contrasinais de Google.</translation>
 <translation id="5241106044372754566"><ph name="NAME" />, <ph name="EMAIL" />, perfil xestionado pola túa organización, actualmente seleccionado. Escolle unha conta.</translation>
 <translation id="5242899254250321823">Cambiar contrasinal no sitio web</translation>
+<translation id="524751727772074981">Fai preguntas desde onde esteas con Gemini en Chrome</translation>
 <translation id="5248640482715684545">Este sitio está tentando abrir outra aplicación.</translation>
 <translation id="5250371859659394278">Dunha fonte descoñecida</translation>
 <translation id="525510229763628836">Minimizada</translation>
@@ -1310,6 +1311,7 @@
 <translation id="5300589172476337783">Mostrar</translation>
 <translation id="5311061401280561833">Permitiuse o acceso á cámara e ao micrófono</translation>
 <translation id="5313967007315987356">Engadir sitio</translation>
+<translation id="5315029634103634221">Gemini é unha IA e pode cometer erros. <ph name="BEGIN_LINK" />Máis información sobre os datos relevantes que se envían a Google<ph name="END_LINK" /></translation>
 <translation id="5315870524563628285">Non hai nada para importar</translation>
 <translation id="5316356981864168850"><ph name="INDEX" /> de <ph name="NUM_SUGGESTIONS" /></translation>
 <translation id="5317780077021120954">Gardar</translation>

@@ -4,22 +4,24 @@
 
 import 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
 
-import {KEYBOARD_NAV_CLASS, MENU_SHOW_DELAY_MS, ReadAnythingSettingsChange, SUBMENU_SHOW_DELAY_MS} from 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
+import {KEYBOARD_NAV_CLASS, LINE_FOCUS_FEATURE_NAME, MENU_SHOW_DELAY_MS, ReadAnythingSettingsChange, SUBMENU_SHOW_DELAY_MS, userEducationProxyFactory, VisualBrowserProxyImpl} from 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
 import type {SettingsMenuElement} from 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
 import {SettingsOption, ToolbarEvent} from 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
-import {assertEquals, assertFalse, assertNotEquals, assertTrue} from 'chrome-untrusted://webui-test/chai_assert.js';
+import {assertDeepEquals, assertEquals, assertFalse, assertNotEquals, assertTrue} from 'chrome-untrusted://webui-test/chai_assert.js';
 import {keyDownOn} from 'chrome-untrusted://webui-test/keyboard_mock_interactions.js';
 import {MockTimer} from 'chrome-untrusted://webui-test/mock_timer.js';
 import {eventToPromise, microtasksFinished} from 'chrome-untrusted://webui-test/test_util.js';
 
 import {mockMetrics} from './common.js';
-import {FakeReadingMode} from './fake_reading_mode.js';
 import type {TestMetricsBrowserProxy} from './test_metrics_browser_proxy.js';
-
+import {TestUserEducationBrowserProxy} from './test_user_education_browser_proxy.js';
+import {TestVisualBrowserProxy} from './test_visual_browser_proxy.js';
 
 suite('SettingsMenuElement', () => {
   let settingsMenu: SettingsMenuElement;
   let metrics: TestMetricsBrowserProxy;
+  let userEducationProxy: TestUserEducationBrowserProxy;
+  let visualBrowserProxy: TestVisualBrowserProxy;
 
   function queryLinksToggle(): HTMLButtonElement|null {
     const actionMenu = settingsMenu.$.lazyMenu.get();
@@ -30,10 +32,12 @@ suite('SettingsMenuElement', () => {
 
   setup(async () => {
     document.body.innerHTML = window.trustedTypes!.emptyHTML;
-    const readingMode = new FakeReadingMode();
-    chrome.readingMode = readingMode as unknown as typeof chrome.readingMode;
-    chrome.readingMode.isLineFocusEnabled = true;
+    visualBrowserProxy = new TestVisualBrowserProxy();
+    VisualBrowserProxyImpl.setInstance(visualBrowserProxy);
+    visualBrowserProxy.lineFocusEnabled = true;
     metrics = mockMetrics();
+    userEducationProxy = new TestUserEducationBrowserProxy();
+    userEducationProxyFactory.setInstance(userEducationProxy);
 
     settingsMenu = document.createElement('settings-menu');
     settingsMenu.id = 'settingsMenu';
@@ -47,10 +51,8 @@ suite('SettingsMenuElement', () => {
     await microtasksFinished();
   });
 
-  test('click outside fires close-all-menus event', () => {
-    let closeWasCalled = false;
-    document.addEventListener(
-        ToolbarEvent.CLOSE_ALL_MENUS, () => closeWasCalled = true);
+  test('click outside fires close-all-menus event', async () => {
+    const whenFired = eventToPromise(ToolbarEvent.CLOSE_ALL_MENUS, document);
 
     document.dispatchEvent(new PointerEvent('click', {
       bubbles: true,
@@ -58,9 +60,7 @@ suite('SettingsMenuElement', () => {
       cancelable: true,
       view: window,
     }));
-    assertTrue(
-        closeWasCalled,
-        'Clicking outside should fire the close-all-menus event');
+    await whenFired;
   });
 
   test('click inside does NOT fires close-all-menus event', () => {
@@ -120,8 +120,7 @@ suite('SettingsMenuElement', () => {
       });
 
   test('with improved ui flag enabled', async () => {
-    chrome.readingMode.isReadAnythingImprovedUiEnabled = true;
-    chrome.readingMode.isImmersiveEnabled = true;
+    visualBrowserProxy.readAnythingImprovedUiEnabled = true;
     settingsMenu.isImmersiveMode = true;
     await microtasksFinished();
 
@@ -141,15 +140,10 @@ suite('SettingsMenuElement', () => {
     const targetItem = menuItems.find(item => item.id === SettingsOption.LINKS);
     assertTrue(!!targetItem);
 
-    let linksEventWasFired = false;
-    settingsMenu.addEventListener(
-        ToolbarEvent.LINKS, () => linksEventWasFired = true);
-    let linkEnabledTogled = false;
-    chrome.readingMode.onLinksEnabledToggled = () => linkEnabledTogled = true;
-
+    const whenFired = eventToPromise(ToolbarEvent.LINKS, settingsMenu);
     targetItem.click();
-    assertTrue(linksEventWasFired);
-    assertTrue(linkEnabledTogled);
+    await whenFired;
+    assertEquals(1, visualBrowserProxy.getCallCount('onLinksEnabledToggled'));
     assertEquals(
         ReadAnythingSettingsChange.LINKS_ENABLED_CHANGE,
         await metrics.whenCalled('recordTextSettingsChange'));
@@ -164,16 +158,10 @@ suite('SettingsMenuElement', () => {
         menuItems.find(item => item.id === SettingsOption.IMAGES);
     assertTrue(!!targetItem);
 
-    let imagesEventWasFired = false;
-    settingsMenu.addEventListener(
-        ToolbarEvent.IMAGES, () => imagesEventWasFired = true);
-    let imagesEnabledTogled = false;
-    chrome.readingMode.onImagesEnabledToggled = () => imagesEnabledTogled =
-        true;
-
+    const whenFired = eventToPromise(ToolbarEvent.IMAGES, settingsMenu);
     targetItem.click();
-    assertTrue(imagesEventWasFired);
-    assertTrue(imagesEnabledTogled);
+    await whenFired;
+    assertEquals(1, visualBrowserProxy.getCallCount('onImagesEnabledToggled'));
     assertEquals(
         ReadAnythingSettingsChange.IMAGES_ENABLED_CHANGE,
         await metrics.whenCalled('recordTextSettingsChange'));
@@ -196,16 +184,8 @@ suite('SettingsMenuElement', () => {
     assertTrue(!!toggle);
     assertTrue(toggle.disabled);
 
-    let imagesEventWasFired = false;
-    settingsMenu.addEventListener(
-        ToolbarEvent.IMAGES, () => imagesEventWasFired = true);
-    let imagesEnabledTogled = false;
-    chrome.readingMode.onImagesEnabledToggled = () => imagesEnabledTogled =
-        true;
-
     targetItem.click();
-    assertFalse(imagesEventWasFired);
-    assertFalse(imagesEnabledTogled);
+    assertEquals(0, visualBrowserProxy.getCallCount('onImagesEnabledToggled'));
   });
 
   test('links toggle is disabled when speech is active', async () => {
@@ -223,15 +203,8 @@ suite('SettingsMenuElement', () => {
     assertTrue(!!toggle);
     assertTrue(toggle.disabled);
 
-    let linksEventWasFired = false;
-    settingsMenu.addEventListener(
-        ToolbarEvent.LINKS, () => linksEventWasFired = true);
-    let linkEnabledTogled = false;
-    chrome.readingMode.onLinksEnabledToggled = () => linkEnabledTogled = true;
-
     targetItem.click();
-    assertFalse(linksEventWasFired);
-    assertFalse(linkEnabledTogled);
+    assertEquals(0, visualBrowserProxy.getCallCount('onLinksEnabledToggled'));
   });
 
   test('moving the mouse removes keyboard-nav class', () => {
@@ -387,7 +360,6 @@ suite('SettingsMenuElement', () => {
   });
 
   test('links toggle has separator when visible', async () => {
-    chrome.readingMode.isReadabilityEnabled = true;
     settingsMenu.settingsPrefs = {...settingsMenu.settingsPrefs};
     await microtasksFinished();
 
@@ -451,7 +423,6 @@ suite('SettingsMenuElement', () => {
   });
 
   test('only first toggle has separator', async () => {
-    chrome.readingMode.isReadabilityEnabled = true;
     settingsMenu.isImmersiveMode = true;
     settingsMenu.settingsPrefs = {...settingsMenu.settingsPrefs};
     await microtasksFinished();
@@ -483,34 +454,20 @@ suite('SettingsMenuElement', () => {
   });
 
   test(
-      'improved ui menu requires both isReadAnythingImprovedUiEnabled and ' +
-          'isImmersiveEnabled',
-      async () => {
-        chrome.readingMode.isReadAnythingImprovedUiEnabled = true;
-        chrome.readingMode.isImmersiveEnabled = false;
+      'improved ui menu requires isReadAnythingImprovedUiEnabled', async () => {
+        visualBrowserProxy.readAnythingImprovedUiEnabled = true;
         settingsMenu.settingsPrefs = {...settingsMenu.settingsPrefs};
         await microtasksFinished();
 
         const actionMenu = settingsMenu.$.lazyMenu.get();
         let menuItems = Array.from(
             actionMenu.querySelectorAll<HTMLButtonElement>('.menu-row'));
-        assertTrue(
-            !menuItems.find(item => item.id === SettingsOption.APPEARANCE));
-        assertTrue(!!menuItems.find(item => item.id === SettingsOption.COLOR));
 
-        chrome.readingMode.isReadAnythingImprovedUiEnabled = true;
-        chrome.readingMode.isImmersiveEnabled = true;
-        settingsMenu.settingsPrefs = {...settingsMenu.settingsPrefs};
-        await microtasksFinished();
-
-        menuItems = Array.from(
-            actionMenu.querySelectorAll<HTMLButtonElement>('.menu-row'));
         assertTrue(
             !!menuItems.find(item => item.id === SettingsOption.APPEARANCE));
         assertTrue(!menuItems.find(item => item.id === SettingsOption.COLOR));
 
-        chrome.readingMode.isReadAnythingImprovedUiEnabled = false;
-        chrome.readingMode.isImmersiveEnabled = true;
+        visualBrowserProxy.readAnythingImprovedUiEnabled = false;
         settingsMenu.settingsPrefs = {...settingsMenu.settingsPrefs};
         await microtasksFinished();
 
@@ -524,9 +481,8 @@ suite('SettingsMenuElement', () => {
   test(
       'LINE_FOCUS is not in top level menu when isReadAnythingImprovedUiEnabled is true',
       async () => {
-        chrome.readingMode.isReadAnythingImprovedUiEnabled = true;
-        chrome.readingMode.isImmersiveEnabled = true;
-        chrome.readingMode.isLineFocusEnabled = true;
+        visualBrowserProxy.readAnythingImprovedUiEnabled = true;
+        visualBrowserProxy.lineFocusEnabled = true;
         settingsMenu.settingsPrefs = {...settingsMenu.settingsPrefs};
         await microtasksFinished();
 
@@ -538,7 +494,7 @@ suite('SettingsMenuElement', () => {
       });
 
   test('translate action fires event when clicked', async () => {
-    chrome.readingMode.isReadAnythingTranslateEntryPointEnabled = true;
+    visualBrowserProxy.translateEntryPointEnabled = true;
     settingsMenu.settingsPrefs = {...settingsMenu.settingsPrefs};
     await microtasksFinished();
 
@@ -557,7 +513,7 @@ suite('SettingsMenuElement', () => {
   });
 
   test('clicking translate closes open submenu', async () => {
-    chrome.readingMode.isReadAnythingTranslateEntryPointEnabled = true;
+    visualBrowserProxy.translateEntryPointEnabled = true;
     settingsMenu.settingsPrefs = {...settingsMenu.settingsPrefs};
     await microtasksFinished();
 
@@ -613,16 +569,21 @@ suite('SettingsMenuElement', () => {
         assertFalse(!!badge);
       });
 
-  test('requests line focus new badge on open', () => {
-    let requested = false;
-    chrome.readingMode.requestShouldShowLineFocusNewBadge = () => {
-      requested = true;
-    };
+  test('requests line focus new badge on open', async () => {
+    settingsMenu.close();
+    await microtasksFinished();
+    userEducationProxy.setNewBadgeResponse(LINE_FOCUS_FEATURE_NAME, true);
+    // Since setup creates a menu, clear out the number of requests.
+    userEducationProxy.reset();
     const anchor = document.createElement('div');
     document.body.appendChild(anchor);
-
+    assertEquals(0, userEducationProxy.getCallCount('maybeShowNewBadgeFor'));
     settingsMenu.open(anchor);
-
-    assertTrue(requested);
+    await microtasksFinished();
+    assertEquals(1, userEducationProxy.getCallCount('maybeShowNewBadgeFor'));
+    assertDeepEquals(
+        [LINE_FOCUS_FEATURE_NAME],
+        userEducationProxy.getArgs('maybeShowNewBadgeFor'));
+    assertTrue(settingsMenu.showLineFocusNewBadge);
   });
 });

@@ -1294,6 +1294,7 @@
 <translation id="5238596603078743134">Google Password Manager ব্যবহার করে <ph name="BEGIN_BOLD" /><ph name="WEBSITE" /><ph name="END_BOLD" />-এ সাইন-ইন করার সময় <ph name="BEGIN_BOLD" /><ph name="USERNAME" /><ph name="END_BOLD" /> এখন আপনার ইউজারনেম ও পাসওয়ার্ড ব্যবহার করতে পারবেন।</translation>
 <translation id="5241106044372754566"><ph name="NAME" />, <ph name="EMAIL" />, আপনার সংস্থা ম্যানেজ করে যা বর্তমানে বেছে নেওয়া হয়েছে। একটি অ্যাকাউন্ট বেছে নিন।</translation>
 <translation id="5242899254250321823">ওয়েবসাইটে পাসওয়ার্ড পরিবর্তন করুন</translation>
+<translation id="524751727772074981">Chrome-এ Gemini দিয়ে যেখানে আছেন সেখান থেকেই প্রশ্ন করুন</translation>
 <translation id="5248640482715684545">এই সাইটটি অন্য একটি অ্যাপ্লিকেশন খোলার চেষ্টা করছে।</translation>
 <translation id="5250371859659394278">কোনও একটি অজানা সোর্স থেকে</translation>
 <translation id="525510229763628836">ছোট করা হয়েছে</translation>
@@ -1310,6 +1311,7 @@
 <translation id="5300589172476337783">দেখান</translation>
 <translation id="5311061401280561833">ক্যামেরা ও মাইক্রোফোন অ্যাক্সেসের অনুমতি আছে</translation>
 <translation id="5313967007315987356">সাইট যোগ করুন</translation>
+<translation id="5315029634103634221">Gemini হল AI এবং এটি ভুল করতে পারে। <ph name="BEGIN_LINK" />Google-এ পাঠানো প্রাসঙ্গিক ডেটা সম্পর্কে আরও তথ্য<ph name="END_LINK" /></translation>
 <translation id="5315870524563628285">ইমপোর্ট করার জন্য কিছুই নেই</translation>
 <translation id="5316356981864168850"><ph name="NUM_SUGGESTIONS" />-এর <ph name="INDEX" /></translation>
 <translation id="5317780077021120954">সেভ করুন</translation>

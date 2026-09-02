@@ -1289,6 +1289,7 @@ if (_is_default_toolchain) {
       "//chrome/browser/xsurface_provider:junit",
       "//components/browser_ui/accessibility/android:junit",
       "//components/browser_ui/modaldialog/android:junit",
+      "//components/browser_ui/notifications/android:junit",
       "//components/browser_ui/site_settings/android:junit",
       "//components/cached_flags:junit",
       "//components/enterprise/browser/reporting/android:junit",
@@ -1497,6 +1498,7 @@ if (_is_default_toolchain) {
       "javatests:chrome_test_java_org.chromium.chrome.browser.incognito",
       "javatests:chrome_test_java_org.chromium.chrome.browser.media",
       "javatests:chrome_test_java_org.chromium.chrome.browser.metrics",
+      "javatests:chrome_test_java_org.chromium.chrome.browser.native_page",
       "javatests:chrome_test_java_org.chromium.chrome.browser.notifications",
       "javatests:chrome_test_java_org.chromium.chrome.browser.ntp",
       "javatests:chrome_test_java_org.chromium.chrome.browser.offlinepages",
@@ -2245,13 +2247,6 @@ if (_is_default_toolchain) {
 
     if (dfmify_dev_ui) {
       deps += [ "//chrome/android/modules/dev_ui/provider:java" ]
-    }
-
-    if (use_mlkit_for_aicore) {
-      # The lib must be in the base module so that MlKitInitProvider is merged
-      # into the base manifest, where it is removed via tools:node="remove" (see
-      # AndroidManifest.xml) to keep MLKit off the startup critical path.
-      deps += [ "//third_party/android_deps:com_google_mlkit_common_java" ]
     }
 
     srcjar_deps = [
@@ -3074,6 +3069,7 @@ if (_is_default_toolchain) {
       "java/src/org/chromium/chrome/browser/datareduction/DataSaverOSSetting.java",
       "java/src/org/chromium/chrome/browser/device_dialog/ChromeBluetoothChooserAndroidDelegate.java",
       "java/src/org/chromium/chrome/browser/device_dialog/ChromeBluetoothScanningPromptAndroidDelegate.java",
+      "java/src/org/chromium/chrome/browser/device_dialog/HidChooserDialog.java",
       "java/src/org/chromium/chrome/browser/device_dialog/SerialChooserDialog.java",
       "java/src/org/chromium/chrome/browser/device_dialog/UsbChooserDialog.java",
       "java/src/org/chromium/chrome/browser/devtools/DevToolsActivity.java",

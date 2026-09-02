@@ -6,6 +6,7 @@
 
 #include "base/feature_list.h"
 #include "base/strings/utf_string_conversions.h"
+#include "chrome/app/vector_icons/vector_icons.h"
 #include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/contextual_search/contextual_search_service_factory.h"
@@ -14,6 +15,8 @@
 #include "chrome/browser/profiles/profile_attributes_storage.h"
 #include "chrome/browser/profiles/profile_avatar_icon_util.h"
 #include "chrome/browser/profiles/profile_manager.h"
+#include "chrome/browser/ui/omnibox/omnibox_everywhere/omnibox_everywhere_prefs.h"
+#include "chrome/browser/ui/omnibox/omnibox_everywhere_service.h"
 #include "chrome/browser/ui/omnibox/omnibox_everywhere_service_factory.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/browser/ui/search/most_visited_metrics_logger.h"
@@ -37,19 +40,32 @@
 #include "components/favicon_base/favicon_url_parser.h"
 #include "components/lens/lens_features.h"
 #include "components/omnibox/browser/aim_eligibility_service.h"
+#include "components/omnibox/browser/omnibox_pref_names.h"
 #include "components/omnibox/common/composebox_features.h"
 #include "components/omnibox/common/omnibox_features.h"
 #include "components/search/ntp_features.h"
 #include "components/strings/grit/components_strings.h"
+#include "components/vector_icons/vector_icons.h"
 #include "content/public/browser/web_ui.h"
 #include "content/public/browser/web_ui_data_source.h"
 #include "services/network/public/mojom/content_security_policy.mojom.h"
 #include "ui/base/accelerators/accelerator.h"
 #include "ui/base/l10n/l10n_util.h"
+#include "ui/base/models/image_model.h"
+#include "ui/base/mojom/menu_source_type.mojom.h"
 #include "ui/strings/grit/ui_strings.h"
+#include "ui/views/controls/menu/menu_item_view.h"
+#include "ui/views/view.h"
+#include "ui/views/widget/widget.h"
 #include "ui/webui/webui_util.h"
 
 namespace {
+
+enum ScreenshotMenuCommand {
+  kScreenshotEntireScreen = 1,
+  kScreenshotWindow,
+  kScreenshotRegion,
+};
 
 bool IsAimEligible(Profile* profile) {
   auto* aim_eligibility_service =
@@ -63,9 +79,14 @@ bool IsFuseboxEligible(Profile* profile) {
              ->IsFuseboxEligible();
 }
 
-void AddMostVisitedSourceStrings(content::WebUIDataSource* source) {
+void AddMostVisitedSourceStrings(content::WebUIDataSource* source,
+                                 Profile* profile) {
   source->AddBoolean("omniboxEverywhereMostVisitedEnabled",
                      omnibox::kOmniboxEverywhereMostVisitedParam.Get());
+  source->AddBoolean(
+      "omniboxEverywhereShowShortcuts",
+      omnibox_everywhere::prefs::IsOmniboxEverywhereShortcutsVisible(
+          profile, g_browser_process->local_state()));
 
   static constexpr webui::LocalizedString kMostVisitedStrings[] = {
       {"addLinkTitle", IDS_NTP_CUSTOM_LINKS_ADD_SHORTCUT_TITLE},
@@ -118,6 +139,7 @@ void AddMostVisitedSourceStrings(content::WebUIDataSource* source) {
   source->AddInteger("prefetchStartTimeThreshold", 0);
   source->AddBoolean("prefetchTriggerEnabled", false);
   source->AddBoolean("prerenderOnPressEnabled", false);
+  source->AddBoolean("mostVisitedHighDpiFaviconsEnabled", true);
 }
 
 }  // namespace
@@ -180,18 +202,27 @@ OmniboxEverywhereUI::OmniboxEverywhereUI(content::WebUI* web_ui)
   source->AddString("profileAvatarUrl", profile_avatar_url);
   source->AddBoolean("omniboxEverywhereProfilePickerEnabled",
                      omnibox::kOmniboxEverywhereProfilePickerParam.Get());
-  source->AddLocalizedString("profileButtonLabel",
-                             IDS_OVERFLOW_MENU_ITEM_TEXT_PROFILE);
-  source->AddLocalizedString("searchBoxHintAskOrType",
-                             IDS_NTP_SEARCH_BOX_PLACEHOLDER_ASK_OR_TYPE);
-  source->AddLocalizedString("shareScreenshotLabel",
-                             IDS_OMNIBOX_EVERYWHERE_SHARE_SCREENSHOT);
-  source->AddLocalizedString("screenshotWindowLabel",
-                             IDS_OMNIBOX_EVERYWHERE_WINDOW);
-  source->AddLocalizedString("screenshotEntireScreenLabel",
-                             IDS_OMNIBOX_EVERYWHERE_ENTIRE_SCREEN);
-  source->AddLocalizedString("screenshotRegionLabel",
-                             IDS_OMNIBOX_EVERYWHERE_REGION);
+  static constexpr webui::LocalizedString kStrings[] = {
+      {"loomniboxFreAcceptHotkey", IDS_LOOMNIBOX_FRE_ACCEPT_HOTKEY},
+      {"loomniboxFreCloseButtonAria", IDS_LOOMNIBOX_FRE_CLOSE_BUTTON_ARIA},
+      {"loomniboxFreEditOwn", IDS_LOOMNIBOX_FRE_KEYBOARD_OPTION_EDIT_OWN},
+      {"loomniboxFreKeyboardBadgeOption",
+       IDS_LOOMNIBOX_FRE_KEYBOARD_BADGE_OPTION},
+      {"loomniboxFreKeyboardBadgeSpace",
+       IDS_LOOMNIBOX_FRE_KEYBOARD_BADGE_SPACE},
+      {"loomniboxFreKeyboardPrimary", IDS_LOOMNIBOX_FRE_KEYBOARD_PRIMARY},
+      {"loomniboxFreLensPrimary", IDS_LOOMNIBOX_FRE_LENS_PRIMARY},
+      {"loomniboxFreLensSecondary", IDS_LOOMNIBOX_FRE_LENS_SECONDARY},
+      {"loomniboxFreOr", IDS_LOOMNIBOX_FRE_OR},
+      {"loomniboxFreTitle", IDS_LOOMNIBOX_FRE_TITLE},
+      {"profileButtonLabel", IDS_OVERFLOW_MENU_ITEM_TEXT_PROFILE},
+      {"screenshotEntireScreenLabel", IDS_OMNIBOX_EVERYWHERE_ENTIRE_SCREEN},
+      {"screenshotRegionLabel", IDS_OMNIBOX_EVERYWHERE_REGION},
+      {"screenshotWindowLabel", IDS_OMNIBOX_EVERYWHERE_WINDOW},
+      {"searchBoxHintAskOrType", IDS_NTP_SEARCH_BOX_PLACEHOLDER_ASK_OR_TYPE},
+      {"shareScreenshotLabel", IDS_OMNIBOX_EVERYWHERE_SHARE_SCREENSHOT},
+  };
+  source->AddLocalizedStrings(kStrings);
 
   // Sanitized image and favicon source initialization
   content::URLDataSource::Add(profile_,
@@ -254,9 +285,12 @@ OmniboxEverywhereUI::OmniboxEverywhereUI(content::WebUI* web_ui)
   source->AddBoolean("composeboxShowImageSuggest",
                      omnibox::kShowComposeboxImageSuggestions.Get());
 
-  AddMostVisitedSourceStrings(source);
+  AddMostVisitedSourceStrings(source, profile_);
 
-  source->AddBoolean("searchboxShowComposeEntrypoint", IsAimEligible(profile_));
+  source->AddBoolean(
+      "searchboxShowComposeEntrypoint",
+      IsAimEligible(profile_) &&
+          profile_->GetPrefs()->GetBoolean(omnibox::kShowAiModeOmniboxButton));
   source->AddBoolean("isFuseboxEnabled", IsFuseboxEligible(profile_));
   source->AddBoolean("ntpRealboxDynamicAiModeButton",
                      IsFuseboxEligible(profile_) &&
@@ -339,7 +373,8 @@ void OmniboxEverywhereUI::CreatePageHandler(
           &OmniboxEverywhereUI::GetOrCreateContextualSessionHandle,
           base::Unretained(this)),
       base::BindRepeating(&OmniboxEverywhereUI::ClearContextualSessionHandle,
-                          base::Unretained(this)));
+                          base::Unretained(this)),
+      this);
 }
 
 void OmniboxEverywhereUI::BindInterface(
@@ -368,7 +403,25 @@ void OmniboxEverywhereUI::CreatePageHandler(
       metrics_reporter_service->metrics_reporter(), web_ui(), service,
       base::BindRepeating(
           &OmniboxEverywhereUI::GetOrCreateContextualSessionHandle,
-          base::Unretained(this)));
+          base::Unretained(this)),
+      this);
+}
+
+void OmniboxEverywhereUI::OnScreensharePickerOpened() {
+  if (auto* service =
+          OmniboxEverywhereServiceFactory::GetForProfile(profile_)) {
+    service->OnScreensharePickerOpened();
+    // The popup widget must remain alive while the picker or screenshot capture
+    // is in flight so the WebUI handler can asynchronously receive the captured
+    // bitmap and attach it as context.
+  }
+}
+
+void OmniboxEverywhereUI::OnScreensharePickerClosed() {
+  if (auto* service =
+          OmniboxEverywhereServiceFactory::GetForProfile(profile_)) {
+    service->OnScreensharePickerClosed();
+  }
 }
 
 void OmniboxEverywhereUI::BindInterface(
@@ -432,6 +485,119 @@ OmniboxEverywhereUI::GetOrCreateContextualSessionHandle() {
 
 void OmniboxEverywhereUI::ClearContextualSessionHandle() {
   shared_session_handle_.reset();
+}
+
+// Shows a native Views menu rather than a WebUI <cr-action-menu> so that the
+// menu:
+// 1. Is not clipped by the Omnibox Everywhere WebUI popup widget bounds.
+// 2. Can intelligently flip and position across monitor/screen boundaries.
+// 3. Matches native TopChrome menu styling, accessibility, and keyboard
+//    traversal.
+void OmniboxEverywhereUI::ShowScreenshotMenu(
+    const gfx::Rect& anchor_rect,
+    base::WeakPtr<ContextualSearchboxHandler> source_handler) {
+  if (screenshot_menu_runner_ && screenshot_menu_runner_->IsRunning()) {
+    if (source_handler) {
+      source_handler->OnScreenshotMenuClosed();
+    }
+    return;
+  }
+  content::WebContents* web_contents = web_ui()->GetWebContents();
+  if (!web_contents) {
+    if (source_handler) {
+      source_handler->OnScreenshotMenuClosed();
+    }
+    return;
+  }
+  views::Widget* widget = views::Widget::GetWidgetForNativeWindow(
+      web_contents->GetTopLevelNativeWindow());
+  if (!widget || !widget->GetContentsView()) {
+    if (source_handler) {
+      source_handler->OnScreenshotMenuClosed();
+    }
+    return;
+  }
+
+  active_screenshot_handler_ = std::move(source_handler);
+  OnScreensharePickerOpened();
+
+  screenshot_menu_model_ = std::make_unique<ui::SimpleMenuModel>(this);
+  screenshot_menu_model_->AddTitle(
+      l10n_util::GetStringUTF16(IDS_OMNIBOX_EVERYWHERE_SHARE_SCREENSHOT));
+  screenshot_menu_model_->AddItemWithIcon(
+      kScreenshotEntireScreen,
+      l10n_util::GetStringUTF16(IDS_OMNIBOX_EVERYWHERE_ENTIRE_SCREEN),
+      ui::ImageModel::FromVectorIcon(vector_icons::kScreenShareIcon,
+                                     ui::kColorMenuIcon, 16));
+  screenshot_menu_model_->AddItemWithIcon(
+      kScreenshotWindow,
+      l10n_util::GetStringUTF16(IDS_OMNIBOX_EVERYWHERE_WINDOW),
+      ui::ImageModel::FromVectorIcon(kDesktopWindowsIcon, ui::kColorMenuIcon,
+                                     16));
+  screenshot_menu_model_->AddItemWithIcon(
+      kScreenshotRegion,
+      l10n_util::GetStringUTF16(IDS_OMNIBOX_EVERYWHERE_REGION),
+      ui::ImageModel::FromVectorIcon(kScreenshotRegionIcon, ui::kColorMenuIcon,
+                                     16));
+
+  menu_model_adapter_ = std::make_unique<views::MenuModelAdapter>(
+      screenshot_menu_model_.get(),
+      base::BindRepeating(&OmniboxEverywhereUI::OnScreenshotMenuClosed,
+                          weak_factory_.GetWeakPtr()));
+  std::unique_ptr<views::MenuItemView> menu = menu_model_adapter_->CreateMenu();
+
+  screenshot_menu_runner_ = std::make_unique<views::MenuRunner>(
+      std::move(menu),
+      views::MenuRunner::HAS_MNEMONICS | views::MenuRunner::CONTEXT_MENU);
+
+  gfx::Rect screen_rect =
+      anchor_rect + web_contents->GetContainerBounds().OffsetFromOrigin();
+
+  screenshot_menu_runner_->RunMenuAt(widget, nullptr, screen_rect,
+                                     views::MenuAnchorPosition::kTopLeft,
+                                     ui::mojom::MenuSourceType::kNone);
+}
+
+void OmniboxEverywhereUI::OnScreenshotMenuClosed() {
+  OnScreensharePickerClosed();
+  if (active_screenshot_handler_) {
+    active_screenshot_handler_->OnScreenshotMenuClosed();
+  }
+  active_screenshot_handler_.reset();
+}
+
+void OmniboxEverywhereUI::ExecuteCommand(int command_id, int event_flags) {
+  if (!active_screenshot_handler_) {
+    return;
+  }
+  switch (command_id) {
+    case kScreenshotEntireScreen:
+      active_screenshot_handler_->StartScreenshare(
+          /*prefer_entire_screen=*/true, base::DoNothing());
+      break;
+    case kScreenshotWindow:
+      active_screenshot_handler_->StartScreenshare(
+          /*prefer_entire_screen=*/false, base::DoNothing());
+      break;
+    case kScreenshotRegion:
+      // TODO(crbug.com/532198850): Region capture currently falls back to
+      // window capture pending region selection support.
+      active_screenshot_handler_->StartScreenshare(
+          /*prefer_entire_screen=*/false, base::DoNothing());
+      break;
+  }
+}
+
+bool OmniboxEverywhereUI::IsCommandIdChecked(int command_id) const {
+  return false;
+}
+
+bool OmniboxEverywhereUI::IsCommandIdEnabled(int command_id) const {
+  return true;
+}
+
+bool OmniboxEverywhereUI::IsCommandIdVisible(int command_id) const {
+  return true;
 }
 
 WEB_UI_CONTROLLER_TYPE_IMPL(OmniboxEverywhereUI)

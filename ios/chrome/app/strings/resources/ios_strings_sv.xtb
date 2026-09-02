@@ -1294,6 +1294,7 @@
 <translation id="5238596603078743134"><ph name="BEGIN_BOLD" /><ph name="USERNAME" /><ph name="END_BOLD" /> kan nu använda ditt användarnamn och lösenord när hen loggar in på <ph name="BEGIN_BOLD" /><ph name="WEBSITE" /><ph name="END_BOLD" /> med Google Lösenordshantering.</translation>
 <translation id="5241106044372754566"><ph name="NAME" />, <ph name="EMAIL" />, som hanteras av organisationen, är valt just nu. Välj ett konto.</translation>
 <translation id="5242899254250321823">Ändra lösenordet på webbplatsen</translation>
+<translation id="524751727772074981">Fråga vad du vill, precis där du är, med Gemini i Chrome</translation>
 <translation id="5248640482715684545">Webbplatsen försöker öppna ett annat program.</translation>
 <translation id="5250371859659394278">Från en okänd källa</translation>
 <translation id="525510229763628836">Minimerat</translation>
@@ -1310,6 +1311,7 @@
 <translation id="5300589172476337783">Visa</translation>
 <translation id="5311061401280561833">Kamera- och mikrofonåtkomst har tillåtits</translation>
 <translation id="5313967007315987356">Lägg till webbplats</translation>
+<translation id="5315029634103634221">Gemini är AI och den kan göra misstag. <ph name="BEGIN_LINK" />Mer om relevant data som skickas till Google<ph name="END_LINK" /></translation>
 <translation id="5315870524563628285">Inget att importera</translation>
 <translation id="5316356981864168850"><ph name="INDEX" /> av <ph name="NUM_SUGGESTIONS" /></translation>
 <translation id="5317780077021120954">Spara</translation>

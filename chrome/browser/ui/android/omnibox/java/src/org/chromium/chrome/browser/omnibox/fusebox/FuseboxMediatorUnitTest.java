@@ -65,6 +65,7 @@ import org.chromium.base.FeatureOverrides;
 import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.SettableMonotonicObservableSupplier;
 import org.chromium.base.supplier.SettableNonNullObservableSupplier;
+import org.chromium.base.supplier.SupplierUtils;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.RobolectricUtil;
 import org.chromium.base.test.util.HistogramWatcher;
@@ -79,6 +80,7 @@ import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxLay
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxState;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.PopupState;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxMetrics.FuseboxAttachmentButtonType;
+import org.chromium.chrome.browser.omnibox.fusebox.FuseboxMetrics.SetActiveModelSource;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxProperties.BackgroundStyle;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxProperties.PopupButtonData;
 import org.chromium.chrome.browser.omnibox.styles.OmniboxResourceProvider;
@@ -125,7 +127,9 @@ import org.chromium.ui.KeyboardVisibilityDelegate;
 import org.chromium.ui.base.MimeTypeUtils;
 import org.chromium.ui.base.TestActivity;
 import org.chromium.ui.base.WindowAndroid;
+import org.chromium.ui.modelutil.PropertyKey;
 import org.chromium.ui.modelutil.PropertyModel;
+import org.chromium.ui.modelutil.PropertyObservable.PropertyObserver;
 import org.chromium.ui.test.util.MockitoHelper;
 import org.chromium.url.GURL;
 import org.chromium.url.JUnitTestGURLs;
@@ -174,6 +178,7 @@ public class FuseboxMediatorUnitTest {
     @Mock private Runnable mOnRemoveRunnable;
     @Mock private FuseboxAttachmentModelList mFuseboxAttachmentModelList;
     @Mock private Tab mTab;
+    @Mock private PropertyObserver<PropertyKey> mPropertyObserver;
 
     @Captor private ArgumentCaptor<Intent> mIntentCaptor;
     @Captor private ArgumentCaptor<WindowAndroid.IntentCallback> mIntentCallbackCaptor;
@@ -284,7 +289,7 @@ public class FuseboxMediatorUnitTest {
                         mPopupStateSupplier,
                         mSnackbarManager,
                         mScrimManager,
-                        () -> null,
+                        SupplierUtils.ofNull(),
                         mBackPressManager,
                         mOnFirstPickerInteractionCanceledCallback,
                         mActivationChipVisibilitySupplier,
@@ -485,7 +490,7 @@ public class FuseboxMediatorUnitTest {
 
     @Test
     public void testAutocompleteStateChange_updatesFuseboxState() {
-        mInput.setAutocompleteState(AutocompleteState.STANDBY);
+        mInput.setAutocompleteState(AutocompleteState.STANDBY_NO_FOCUS);
         recreateMediator();
         assertEquals(FuseboxState.DISABLED, mModel.get(FuseboxProperties.FUSEBOX_STATE));
 
@@ -493,6 +498,9 @@ public class FuseboxMediatorUnitTest {
         assertEquals(FuseboxState.COMPACT, mModel.get(FuseboxProperties.FUSEBOX_STATE));
 
         mInput.setAutocompleteState(AutocompleteState.STANDBY);
+        assertEquals(FuseboxState.COMPACT, mModel.get(FuseboxProperties.FUSEBOX_STATE));
+
+        mInput.setAutocompleteState(AutocompleteState.STANDBY_NO_FOCUS);
         assertEquals(FuseboxState.DISABLED, mModel.get(FuseboxProperties.FUSEBOX_STATE));
     }
 
@@ -631,11 +639,11 @@ public class FuseboxMediatorUnitTest {
     }
 
     @Test
-    public void updateFuseboxState_standby_isDisabled() {
+    public void updateFuseboxState_standby_isCompact() {
         mInput.setAutocompleteState(AutocompleteState.STANDBY);
         recreateMediator();
 
-        assertEquals(FuseboxState.DISABLED, mModel.get(FuseboxProperties.FUSEBOX_STATE));
+        assertEquals(FuseboxState.COMPACT, mModel.get(FuseboxProperties.FUSEBOX_STATE));
     }
 
     @Test
@@ -1097,11 +1105,11 @@ public class FuseboxMediatorUnitTest {
     }
 
     @Test
-    public void attachmentsVisibility_hiddenWhenInStandby() {
+    public void attachmentsVisibility_hiddenWhenInStandbyNoFocus() {
         addAttachment("title", "token1", FuseboxAttachmentType.ATTACHMENT_TAB);
         assertTrue(mModel.get(FuseboxProperties.ATTACHMENTS_VISIBLE));
 
-        mInput.setAutocompleteState(AutocompleteState.STANDBY);
+        mInput.setAutocompleteState(AutocompleteState.STANDBY_NO_FOCUS);
         assertFalse(mModel.get(FuseboxProperties.ATTACHMENTS_VISIBLE));
         assertEquals(FuseboxState.DISABLED, mModel.get(FuseboxProperties.FUSEBOX_STATE));
 
@@ -2635,6 +2643,20 @@ public class FuseboxMediatorUnitTest {
     }
 
     @Test
+    public void activationChip_restoredSessionWithPreviewMatchUrl() {
+        mModel.set(FuseboxProperties.FUSEBOX_LAYOUT_MODE, FuseboxLayoutMode.SUGGESTIONS_POPOVER);
+        mInput.setRequestType(AutocompleteRequestType.SEARCH);
+        mInput.setInitialUserText("page.com");
+        mInput.setUserText("page.com");
+        mInput.setPreviewMatchUrl(new GURL("https://page.com"));
+
+        // When beginning input with an existing session (e.g. tab restoration),
+        // activation chip should immediately become visible.
+        mMediator.beginInput(createSession());
+        assertTrue(mModel.get(FuseboxProperties.ACTIVATION_CHIP_VISIBLE));
+    }
+
+    @Test
     public void onConfigurationChanged_updatesActivationChipCompact() {
         OmniboxCapabilities.setIsDesktopPlatformForTesting(true);
         recreateMediator();
@@ -2959,5 +2981,264 @@ public class FuseboxMediatorUnitTest {
         assertNotNull(models);
         assertFalse(tools.isEmpty());
         assertEquals(2, models.size());
+    }
+
+    @Test
+    public void testOnInputStateChange_unknownIconResourceIds() {
+        OmniboxFeatures.sShowModelPicker.setForTesting(true);
+        recreateMediator();
+
+        int unknownIconId = 9999;
+        ModelConfig configAuto =
+                ModelConfig.newBuilder()
+                        .setModelValue(ModelMode.MODEL_MODE_GEMINI_PRO_AUTOROUTE_VALUE)
+                        .setMenuLabel("Auto")
+                        .setIcon(Icon.newBuilder().setIconIdValue(unknownIconId).build())
+                        .build();
+        ModelConfig configPro =
+                ModelConfig.newBuilder()
+                        .setModelValue(ModelMode.MODEL_MODE_GEMINI_PRO_VALUE)
+                        .setMenuLabel("Pro")
+                        .build();
+        ToolConfig deepSearchConfig =
+                ToolConfig.newBuilder()
+                        .setTool(ToolMode.TOOL_MODE_DEEP_SEARCH)
+                        .setMenuLabel("Deep Search")
+                        .setIcon(Icon.newBuilder().setIconIdValue(unknownIconId).build())
+                        .build();
+
+        InputState state =
+                new InputState.Builder()
+                        .withActiveTool(ToolMode.TOOL_MODE_DEEP_SEARCH_VALUE)
+                        .withAllowedTools(ToolMode.TOOL_MODE_DEEP_SEARCH_VALUE)
+                        .withActiveModel(ModelMode.MODEL_MODE_GEMINI_PRO_AUTOROUTE_VALUE)
+                        .withAllowedModels(
+                                ModelMode.MODEL_MODE_GEMINI_PRO_AUTOROUTE_VALUE,
+                                ModelMode.MODEL_MODE_GEMINI_PRO_VALUE)
+                        .withModelConfigs(
+                                new byte[][] {configAuto.toByteArray(), configPro.toByteArray()})
+                        .withToolConfigs(new byte[][] {deepSearchConfig.toByteArray()})
+                        .build();
+
+        mInputStateSupplier.set(state);
+        mMediator.onPlusButtonClicked();
+
+        List<PopupButtonData> tools = mModel.get(FuseboxProperties.POPUP_TOOL_BUTTON_DATA_LIST);
+        List<PopupButtonData> models = mModel.get(FuseboxProperties.POPUP_MODEL_BUTTON_DATA_LIST);
+        assertEquals(unknownIconId, tools.get(1).iconId);
+        assertEquals(unknownIconId, models.get(0).iconId);
+    }
+
+    @Test
+    public void testActivateSearchMode_deduplicatesSetActiveModel_whenOptimizationsEnabled() {
+        OmniboxFeatures.sModelPickerOptimizations.setForTesting(true);
+        OmniboxFeatures.sShowModelPicker.setForTesting(true);
+        recreateMediator();
+
+        ModelConfig proConfig =
+                ModelConfig.newBuilder()
+                        .setModelValue(ModelMode.MODEL_MODE_GEMINI_PRO_VALUE)
+                        .setMenuLabel("Pro")
+                        .build();
+        InputState state =
+                new InputState.Builder()
+                        .withActiveModel(ModelMode.MODEL_MODE_GEMINI_PRO_VALUE)
+                        .withDefaultModel(ModelMode.MODEL_MODE_GEMINI_PRO_VALUE)
+                        .withAllowedModels(ModelMode.MODEL_MODE_GEMINI_PRO_VALUE)
+                        .withModelConfigs(new byte[][] {proConfig.toByteArray()})
+                        .build();
+        mInputStateSupplier.set(state);
+
+        // Switch to AI mode via request type button.
+        mModel.get(FuseboxProperties.REQUEST_TYPE_BUTTON_CLICKED).run();
+        assertEquals(AutocompleteRequestType.AI_MODE, mModel.get(FuseboxProperties.REQUEST_TYPE));
+        clearInvocations(mComposeboxQueryControllerBridge);
+
+        HistogramWatcher histogramWatcher =
+                HistogramWatcher.newSingleRecordWatcher(
+                        FuseboxMetrics.SET_ACTIVE_MODEL_SOURCE_HISTOGRAM,
+                        SetActiveModelSource.SKIPPED_FROM_ACTIVATE_SEARCH);
+
+        // Switch back to search mode. Since active model is already default, setActiveModel is
+        // skipped.
+        mModel.get(FuseboxProperties.REQUEST_TYPE_BUTTON_CLICKED).run();
+        assertEquals(AutocompleteRequestType.SEARCH, mModel.get(FuseboxProperties.REQUEST_TYPE));
+        verify(mComposeboxQueryControllerBridge, never()).setActiveModel(anyInt());
+        histogramWatcher.assertExpected();
+    }
+
+    @Test
+    public void
+            testActivateSearchMode_doesNotDeduplicateSetActiveModel_whenOptimizationsDisabled() {
+        OmniboxFeatures.sModelPickerOptimizations.setForTesting(false);
+        OmniboxFeatures.sShowModelPicker.setForTesting(true);
+        recreateMediator();
+
+        ModelConfig proConfig =
+                ModelConfig.newBuilder()
+                        .setModelValue(ModelMode.MODEL_MODE_GEMINI_PRO_VALUE)
+                        .setMenuLabel("Pro")
+                        .build();
+        InputState state =
+                new InputState.Builder()
+                        .withActiveModel(ModelMode.MODEL_MODE_GEMINI_PRO_VALUE)
+                        .withDefaultModel(ModelMode.MODEL_MODE_GEMINI_PRO_VALUE)
+                        .withAllowedModels(ModelMode.MODEL_MODE_GEMINI_PRO_VALUE)
+                        .withModelConfigs(new byte[][] {proConfig.toByteArray()})
+                        .build();
+        mInputStateSupplier.set(state);
+
+        // Switch to AI mode via request type button.
+        mModel.get(FuseboxProperties.REQUEST_TYPE_BUTTON_CLICKED).run();
+        assertEquals(AutocompleteRequestType.AI_MODE, mModel.get(FuseboxProperties.REQUEST_TYPE));
+        clearInvocations(mComposeboxQueryControllerBridge);
+
+        HistogramWatcher histogramWatcher =
+                HistogramWatcher.newSingleRecordWatcher(
+                        FuseboxMetrics.SET_ACTIVE_MODEL_SOURCE_HISTOGRAM,
+                        SetActiveModelSource.RESET_FROM_ACTIVATE_SEARCH);
+
+        // Switch back to search mode. Optimizations disabled, so setActiveModel is called.
+        mModel.get(FuseboxProperties.REQUEST_TYPE_BUTTON_CLICKED).run();
+        assertEquals(AutocompleteRequestType.SEARCH, mModel.get(FuseboxProperties.REQUEST_TYPE));
+        verify(mComposeboxQueryControllerBridge)
+                .setActiveModel(ModelMode.MODEL_MODE_GEMINI_PRO_VALUE);
+        histogramWatcher.assertExpected();
+    }
+
+    @Test
+    public void testSetModelMode_recordsHistogram() {
+        OmniboxFeatures.sShowModelPicker.setForTesting(true);
+        recreateMediator();
+
+        ModelConfig proConfig =
+                ModelConfig.newBuilder()
+                        .setModelValue(ModelMode.MODEL_MODE_GEMINI_PRO_VALUE)
+                        .setMenuLabel("Pro")
+                        .build();
+        ModelConfig autoConfig =
+                ModelConfig.newBuilder()
+                        .setModelValue(ModelMode.MODEL_MODE_GEMINI_PRO_AUTOROUTE_VALUE)
+                        .setMenuLabel("Auto")
+                        .build();
+        InputState state =
+                new InputState.Builder()
+                        .withActiveModel(ModelMode.MODEL_MODE_GEMINI_PRO_VALUE)
+                        .withDefaultModel(ModelMode.MODEL_MODE_GEMINI_PRO_VALUE)
+                        .withAllowedModels(
+                                ModelMode.MODEL_MODE_GEMINI_PRO_VALUE,
+                                ModelMode.MODEL_MODE_GEMINI_PRO_AUTOROUTE_VALUE)
+                        .withModelConfigs(
+                                new byte[][] {proConfig.toByteArray(), autoConfig.toByteArray()})
+                        .build();
+        mInputStateSupplier.set(state);
+        mMediator.onPlusButtonClicked();
+
+        HistogramWatcher histogramWatcher =
+                HistogramWatcher.newSingleRecordWatcher(
+                        FuseboxMetrics.SET_ACTIVE_MODEL_SOURCE_HISTOGRAM,
+                        SetActiveModelSource.SET_FROM_MODEL_SELECTION);
+
+        List<PopupButtonData> models = mModel.get(FuseboxProperties.POPUP_MODEL_BUTTON_DATA_LIST);
+        models.get(1).onClicked.run();
+
+        histogramWatcher.assertExpected();
+    }
+
+    @Test
+    public void
+            testOnInputStateChange_deduplicatesRequestTypeButtonText_whenOptimizationsEnabled() {
+        OmniboxFeatures.sShowModelPicker.setForTesting(true);
+        OmniboxFeatures.sModelPickerOptimizations.setForTesting(true);
+        recreateMediator();
+
+        ToolConfig canvasConfig =
+                ToolConfig.newBuilder()
+                        .setTool(ToolMode.TOOL_MODE_CANVAS)
+                        .setMenuLabel("Canvas Menu")
+                        .setChipLabel("Canvas Chip")
+                        .build();
+        InputState state1 =
+                new InputState.Builder()
+                        .withActiveTool(ToolMode.TOOL_MODE_CANVAS_VALUE)
+                        .withAllowedTools(ToolMode.TOOL_MODE_CANVAS_VALUE)
+                        .withToolConfigs(new byte[][] {canvasConfig.toByteArray()})
+                        .build();
+
+        mInputStateSupplier.set(state1);
+        assertEquals("Canvas Chip", mModel.get(FuseboxProperties.REQUEST_TYPE_BUTTON_TEXT));
+
+        mModel.addObserver(mPropertyObserver);
+
+        // Emit another InputState with the same active tool / button text.
+        InputState state2 =
+                new InputState.Builder()
+                        .withActiveTool(ToolMode.TOOL_MODE_CANVAS_VALUE)
+                        .withAllowedTools(ToolMode.TOOL_MODE_CANVAS_VALUE)
+                        .withToolConfigs(new byte[][] {canvasConfig.toByteArray()})
+                        .build();
+        mInputStateSupplier.set(state2);
+
+        // Should not notify observer since button text has not changed.
+        verify(mPropertyObserver, never())
+                .onPropertyChanged(eq(mModel), eq(FuseboxProperties.REQUEST_TYPE_BUTTON_TEXT));
+    }
+
+    @Test
+    public void testOnInputStateChange_updatesRequestTypeButtonText_whenOptimizationsDisabled() {
+        OmniboxFeatures.sShowModelPicker.setForTesting(true);
+        OmniboxFeatures.sModelPickerOptimizations.setForTesting(false);
+        recreateMediator();
+
+        ToolConfig canvasConfig =
+                ToolConfig.newBuilder()
+                        .setTool(ToolMode.TOOL_MODE_CANVAS)
+                        .setMenuLabel("Canvas Menu")
+                        .setChipLabel("Canvas Chip")
+                        .build();
+        InputState state1 =
+                new InputState.Builder()
+                        .withActiveTool(ToolMode.TOOL_MODE_CANVAS_VALUE)
+                        .withAllowedTools(ToolMode.TOOL_MODE_CANVAS_VALUE)
+                        .withToolConfigs(new byte[][] {canvasConfig.toByteArray()})
+                        .build();
+
+        mInputStateSupplier.set(state1);
+        assertEquals("Canvas Chip", mModel.get(FuseboxProperties.REQUEST_TYPE_BUTTON_TEXT));
+
+        ToolConfig deepSearchConfig =
+                ToolConfig.newBuilder()
+                        .setTool(ToolMode.TOOL_MODE_DEEP_SEARCH)
+                        .setMenuLabel("Deep Search")
+                        .setChipLabel("Deep Search Chip")
+                        .build();
+        InputState state2 =
+                new InputState.Builder()
+                        .withActiveTool(ToolMode.TOOL_MODE_DEEP_SEARCH_VALUE)
+                        .withAllowedTools(ToolMode.TOOL_MODE_DEEP_SEARCH_VALUE)
+                        .withToolConfigs(new byte[][] {deepSearchConfig.toByteArray()})
+                        .build();
+        mInputStateSupplier.set(state2);
+        assertEquals("Deep Search Chip", mModel.get(FuseboxProperties.REQUEST_TYPE_BUTTON_TEXT));
+    }
+
+    @Test
+    public void
+            testOnAutocompleteRequestTypeChanged_deduplicatesRequestTypeButtonText_whenModelPickerDisabled() {
+        OmniboxFeatures.sShowModelPicker.setForTesting(false);
+        OmniboxFeatures.sModelPickerOptimizations.setForTesting(true);
+        recreateMediator();
+
+        mInput.setRequestType(AutocompleteRequestType.AI_MODE);
+        assertEquals(
+                mContext.getString(R.string.ai_mode_entrypoint_label),
+                mModel.get(FuseboxProperties.REQUEST_TYPE_BUTTON_TEXT));
+
+        mModel.addObserver(mPropertyObserver);
+
+        // Calling setRequestType with the same type should not re-set button text.
+        mInput.setRequestType(AutocompleteRequestType.AI_MODE);
+        verify(mPropertyObserver, never())
+                .onPropertyChanged(eq(mModel), eq(FuseboxProperties.REQUEST_TYPE_BUTTON_TEXT));
     }
 }

@@ -14,8 +14,8 @@
 #include "chrome/browser/sync/sync_service_factory.h"
 #include "chrome/browser/themes/theme_service.h"
 #include "chrome/browser/themes/theme_service_factory.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/test/test_browser_dialog.h"
 #include "chrome/browser/ui/test/test_browser_ui.h"
 #include "chrome/browser/ui/ui_features.h"
@@ -766,7 +766,7 @@ class ProfileMenuViewPixelTest
     if (GetParam().with_local_data == WithLocalData::kWithBookmarksLocalData) {
       browser()->GetProfile()->GetPrefs()->SetString(
           prefs::kGoogleServicesLastSyncingGaiaId,
-          account_info.gaia.ToString());
+          account_info.GetGaiaId().ToString());
     }
 
     if (GetParam().with_ai_avatar_ring) {
@@ -781,7 +781,7 @@ class ProfileMenuViewPixelTest
 
     if (GetParam().with_account_preview_preference) {
       signin::AccountPreviewDataService::AccountPreviewPreference pref{
-          .gaia_id = GaiaId(account_info.gaia),
+          .gaia_id = GaiaId(account_info.GetGaiaId()),
           .preferred_data_types =
               {
                   {syncer::PASSWORDS, signin::SyncDataQuartile::kAboveQ3},

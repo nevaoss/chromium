@@ -331,6 +331,7 @@
 #include "third_party/blink/public/mojom/window_features/window_features.mojom.h"
 #include "third_party/perfetto/include/perfetto/tracing/track.h"
 #include "third_party/perfetto/include/perfetto/tracing/track_event_args.h"
+#include "ui/accessibility/accessibility_features.h"
 #include "ui/accessibility/ax_action_handler_registry.h"
 #include "ui/accessibility/ax_common.h"
 #include "ui/accessibility/ax_location_and_scroll_updates.h"
@@ -1290,14 +1291,15 @@ bool BoostRendererInitiatedNavigation() {
 }
 
 std::optional<std::string_view> GetHostnameMinusRegistry(const GURL& url) {
-  const size_t registry_length =
-      net::registry_controlled_domains::GetRegistryLength(
+  ASSIGN_OR_RETURN(
+      const size_t registry_length,
+      net::registry_controlled_domains::GetRegistry(
           url, net::registry_controlled_domains::EXCLUDE_UNKNOWN_REGISTRIES,
-          net::registry_controlled_domains::EXCLUDE_PRIVATE_REGISTRIES);
+          net::registry_controlled_domains::EXCLUDE_PRIVATE_REGISTRIES)
+          .transform(&std::string_view::size));
 
   const std::string_view hostname = url.host();
-  if (registry_length == 0 || registry_length == std::string::npos ||
-      registry_length >= hostname.length()) {
+  if (registry_length == 0 || registry_length >= hostname.length()) {
     return std::nullopt;
   }
 
@@ -13768,6 +13770,14 @@ bool RenderFrameHostImpl::IsFullCookieAccessAllowed() {
       GetLastCommittedURL(), GetStorageKey(), GetCookieSettingOverrides());
 }
 
+bool RenderFrameHostImpl::IsStorageAccessRestricted() {
+  return GetLastCommittedOrigin().opaque() || IsCredentialless() ||
+         IsNestedWithinFencedFrame() ||
+         IsSandboxed(
+             network::mojom::WebSandboxFlags::kStorageAccessByUserActivation) ||
+         GetStorageKey().ForbidsUnpartitionedStorageAccess();
+}
+
 void RenderFrameHostImpl::BindBlobUrlStoreAssociatedReceiver(
     mojo::PendingAssociatedReceiver<blink::mojom::BlobURLStore> receiver) {
   CHECK_CURRENTLY_ON(BrowserThread::UI);
@@ -14656,6 +14666,15 @@ ui::AXTreeID RenderFrameHostImpl::GetParentAXTreeID() {
     }
     CHECK(AccessibilityIsRootFrame())
         << "Child frame requires a parent, root=" << GetLastCommittedURL();
+    // With ViewsAX enabled, the Views tree is above the web content tree. Only
+    // the primary main frame takes a place in it, so a prerendered or cached
+    // main frame must not name a parent.
+    if (::features::IsAccessibilityTreeForViewsEnabled() &&
+        IsInPrimaryMainFrame()) {
+      RenderWidgetHostViewBase* view = GetView();
+      return view ? view->AccessibilityGetParentAXTreeID()
+                  : ui::AXTreeIDUnknown();
+    }
     return ui::AXTreeIDUnknown();
   }
   // TODO(accessibility) The following check fails when running this test with
@@ -19171,11 +19190,14 @@ void RenderFrameHostImpl::EnableMojoJsBindings(
 
 void RenderFrameHostImpl::EnableMojoJsBindingsWithBroker(
     mojo::PendingRemote<blink::mojom::BrowserInterfaceBroker> broker) {
-  // This method should only be called on RenderFrameHost that has an associated
-  // WebUI, because it needs to transfer the broker's ownership to its
-  // WebUIController. EnableMojoJsBindings does this differently and can be
-  // called before the WebUI object is created.
-  CHECK(GetWebUI());
+  // For a frame with an associated WebUI, the broker implementation is owned
+  // by its WebUIController. Any other frame must be allowlisted by the
+  // embedder, exactly like EnableMojoJsBindings; the (embedder-side) caller
+  // owns the broker implementation and must keep it alive for as long as the
+  // document may use it.
+  CHECK(
+      GetWebUI() ||
+      GetContentClient()->browser()->ShouldAllowMojoJsBindingsForFrame(*this));
   GetFrameBindingsControl()->EnableMojoJsBindingsWithBroker(std::move(broker));
 }
 

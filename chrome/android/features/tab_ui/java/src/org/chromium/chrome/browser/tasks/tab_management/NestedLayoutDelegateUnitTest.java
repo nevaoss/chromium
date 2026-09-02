@@ -14,6 +14,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import static org.chromium.chrome.browser.tasks.tab_management.TabListModel.CardProperties.CARD_TYPE;
@@ -35,6 +36,7 @@ import org.mockito.junit.MockitoRule;
 
 import org.chromium.base.Token;
 import org.chromium.base.test.BaseRobolectricTestRunner;
+import org.chromium.base.test.util.UserActionTester;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.tab.MediaState;
 import org.chromium.chrome.browser.tab.Tab;
@@ -77,8 +79,11 @@ public class NestedLayoutDelegateUnitTest {
         when(mTabModel.getTabGroupColorWithFallback(any(Token.class)))
                 .thenReturn(TabGroupColorId.BLUE);
         when(mTab1.getId()).thenReturn(TAB1_ID);
+        when(mTab1.isInitialized()).thenReturn(true);
         when(mTab2.getId()).thenReturn(TAB2_ID);
+        when(mTab2.isInitialized()).thenReturn(true);
         when(mTab3.getId()).thenReturn(TAB3_ID);
+        when(mTab3.isInitialized()).thenReturn(true);
     }
 
     @Test
@@ -89,6 +94,32 @@ public class NestedLayoutDelegateUnitTest {
     @Test
     public void testRequiresThumbnailUpdateOnSelect() {
         assertFalse(mDelegate.requiresThumbnailUpdateOnSelect());
+    }
+
+    @Test
+    public void testRecordTabSelection_Vertical_StandardTab() {
+        when(mMediator.getComponentId()).thenReturn(TabComponentId.VERTICAL_TABS);
+        when(mTabModel.getTabById(TAB1_ID)).thenReturn(mTab1);
+        when(mTab1.getIsPinned()).thenReturn(false);
+
+        var userActionTester = new UserActionTester();
+        mDelegate.recordTabSelection(TAB1_ID);
+
+        assertTrue(userActionTester.getActions().contains("MobileTabSwitched.VerticalTabs"));
+        userActionTester.tearDown();
+    }
+
+    @Test
+    public void testRecordTabSelection_Vertical_PinnedTab() {
+        when(mMediator.getComponentId()).thenReturn(TabComponentId.VERTICAL_TABS);
+        when(mTabModel.getTabById(TAB1_ID)).thenReturn(mTab1);
+        when(mTab1.getIsPinned()).thenReturn(true);
+
+        var userActionTester = new UserActionTester();
+        mDelegate.recordTabSelection(TAB1_ID);
+
+        assertTrue(userActionTester.getActions().contains("MobileTabSwitched.VerticalTabsPinned"));
+        userActionTester.tearDown();
     }
 
     @Test
@@ -199,6 +230,16 @@ public class NestedLayoutDelegateUnitTest {
     }
 
     @Test
+    public void testTabClosureUndone() {
+        setupTabsInModel(mTab1);
+        when(mTab1.getTabGroupId()).thenReturn(null);
+
+        mDelegate.tabClosureUndone(mTab1);
+
+        verify(mMediator).addTabInfoToModelForTab(eq(mTab1), eq(0), anyBoolean());
+    }
+
+    @Test
     public void testOnFaviconUpdated() {
         PropertyModel model = addTabToModelList(TAB1_ID, null);
 
@@ -212,6 +253,54 @@ public class NestedLayoutDelegateUnitTest {
         mDelegate.onFaviconUpdated(mTab1, null, null);
 
         verify(mMediator, never()).updateFaviconForTab(any(), any(), any(), any());
+    }
+
+    @Test
+    public void testOnUrlUpdated() {
+        PropertyModel model = addTabToModelList(TAB1_ID, null);
+        when(mMediator.getDomainForTab(mTab1, model)).thenReturn("example.com");
+
+        mDelegate.onUrlUpdated(mTab1);
+
+        assertEquals("example.com", model.get(TabProperties.URL_DOMAIN));
+        verify(mMediator).updateThumbnailFetcher(model, TAB1_ID);
+        verify(mMediator).updateFaviconForTab(model, mTab1, null, null);
+    }
+
+    @Test
+    public void testOnUrlUpdated_NotFound() {
+        mDelegate.onUrlUpdated(mTab1);
+
+        verify(mMediator, never()).getDomainForTab(any(), any());
+        verify(mMediator, never()).updateThumbnailFetcher(any(), anyInt());
+        verify(mMediator, never()).updateFaviconForTab(any(), any(), any(), any());
+    }
+
+    @Test
+    public void testOnMediaStateChanged() {
+        PropertyModel model = addTabToModelList(TAB1_ID, null);
+        when(mMediator.getTabListMediaIndicator(mTab1, model)).thenReturn(MediaState.AUDIBLE);
+
+        mDelegate.onMediaStateChanged(mTab1, MediaState.AUDIBLE);
+
+        assertEquals(MediaState.AUDIBLE, model.get(TabProperties.MEDIA_INDICATOR));
+    }
+
+    @Test
+    public void testOnMediaStateChanged_UseShrinkCloseAnimation() {
+        PropertyModel model = addTabToModelList(TAB1_ID, null);
+        model.set(TabProperties.USE_SHRINK_CLOSE_ANIMATION, true);
+
+        mDelegate.onMediaStateChanged(mTab1, MediaState.AUDIBLE);
+
+        verify(mMediator, never()).getTabListMediaIndicator(any(), any());
+    }
+
+    @Test
+    public void testOnMediaStateChanged_NotFound() {
+        mDelegate.onMediaStateChanged(mTab1, MediaState.AUDIBLE);
+
+        verify(mMediator, never()).getTabListMediaIndicator(any(), any());
     }
 
     @Test
@@ -249,13 +338,23 @@ public class NestedLayoutDelegateUnitTest {
     }
 
     @Test
+    public void testSupportsTabGroups() {
+        assertTrue(mDelegate.supportsTabGroups());
+    }
+
+    @Test
+    public void testIsChildTabRepresentedByGroupCard() {
+        assertFalse(mDelegate.isChildTabRepresentedByGroupCard(mTab1));
+    }
+
+    @Test
     public void testPrepareTabCloseAnimation_LastTab() {
         addTabToModelList(TAB1_ID, null);
         addTabToModelList(TAB2_ID, null);
 
-        View parentView = new FrameLayout(ApplicationProvider.getApplicationContext());
+        FrameLayout parentView = new FrameLayout(ApplicationProvider.getApplicationContext());
         View closeButton = new View(ApplicationProvider.getApplicationContext());
-        ((FrameLayout) parentView).addView(closeButton);
+        parentView.addView(closeButton);
 
         mDelegate.prepareTabCloseAnimation(closeButton, 1);
 
@@ -267,9 +366,9 @@ public class NestedLayoutDelegateUnitTest {
         addTabToModelList(TAB1_ID, null);
         addTabToModelList(TAB2_ID, null);
 
-        View parentView = new FrameLayout(ApplicationProvider.getApplicationContext());
+        FrameLayout parentView = new FrameLayout(ApplicationProvider.getApplicationContext());
         View closeButton = new View(ApplicationProvider.getApplicationContext());
-        ((FrameLayout) parentView).addView(closeButton);
+        parentView.addView(closeButton);
 
         mDelegate.prepareTabCloseAnimation(closeButton, 0);
 
@@ -715,6 +814,29 @@ public class NestedLayoutDelegateUnitTest {
         assertEquals(0, mDelegate.getUiIndexForTab(TAB1_ID));
         assertEquals(1, mDelegate.getUiIndexForTab(TAB2_ID));
         assertEquals(TabModel.INVALID_TAB_INDEX, mDelegate.getUiIndexForTab(3));
+    }
+
+    @Test
+    public void testGetGroupCardTypeAndIsGroupCollapsed() {
+        assertEquals(TAB_GROUP, mDelegate.getGroupCardType());
+
+        when(mTabModel.getTabGroupCollapsed(TAB_GROUP_ID)).thenReturn(true);
+        assertTrue(mDelegate.isGroupCollapsed(TAB_GROUP_ID));
+
+        when(mTabModel.getTabGroupCollapsed(TAB_GROUP_ID)).thenReturn(false);
+        assertFalse(mDelegate.isGroupCollapsed(TAB_GROUP_ID));
+    }
+
+    @Test
+    public void testOnTabSelectionToggled_NoOp() {
+        PropertyModel model = new PropertyModel(TabProperties.ALL_KEYS_TAB_GRID);
+        mDelegate.onTabSelectionToggled(model, TAB1_ID, /* wasSelected= */ false);
+        verifyNoInteractions(mMediator);
+    }
+
+    @Test
+    public void testAreTabsInSameGroup_ReturnsFalse() {
+        assertFalse(mDelegate.areTabsInSameGroup(TAB1_ID, mTab2));
     }
 
     private PropertyModel addTabToModelList(int tabId, @Nullable Token tabGroupId) {

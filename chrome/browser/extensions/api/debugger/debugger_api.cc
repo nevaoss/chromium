@@ -118,6 +118,8 @@ constexpr char kDebuggerDisabledByScreenshotPolicy[] =
     "Screenshot capture is restricted by policy.";
 constexpr char kDebuggerDisabledByTargetDlpPolicy[] =
     "Screenshot capture is restricted on this target.";
+constexpr char kDebuggerDisabledByPolicyBlockedHosts[] =
+    "Host access is restricted by policy.";
 
 constexpr char kTabTargetType[] = "tab";
 constexpr char kBackgroundPageTargetType[] = "background page";
@@ -217,14 +219,6 @@ bool ExtensionMayAttachToURL(const Extension& extension,
 
   if (extension.permissions_data()->IsRestrictedUrl(url_for_restriction_check,
                                                     error)) {
-    return false;
-  }
-
-  // Policy blocked hosts supersede the `debugger` permission.
-  if (extension.permissions_data()->IsPolicyBlockedHost(url) ||
-      extension.permissions_data()->IsPolicyBlockedHost(
-          url_for_restriction_check)) {
-    *error = kRestrictedError;
     return false;
   }
 
@@ -496,7 +490,6 @@ class ExtensionDevToolsClientHost : public content::DevToolsAgentHostClient,
   bool MayAttachToRenderFrameHost(
       content::RenderFrameHost* render_frame_host) override;
   bool MayAttachToURL(const GURL& url, bool is_webui) override;
-  bool MayAccessAllCookies() override;
   bool IsTrusted() override;
   bool MayReadLocalFiles() override;
   bool MayWriteLocalFiles() override;
@@ -811,10 +804,6 @@ bool ExtensionDevToolsClientHost::MayAttachToURL(const GURL& url,
                                            &error);
 }
 
-bool ExtensionDevToolsClientHost::MayAccessAllCookies() {
-  return false;
-}
-
 bool ExtensionDevToolsClientHost::IsTrusted() {
   return ExtensionIsTrusted(*extension_);
 }
@@ -876,8 +865,7 @@ bool DebuggerFunction::InitAgentHost(std::string* error) {
             ->GetBackgroundHostForExtension(*debuggee_.extension_id);
     if (extension_host) {
       const GURL& url = extension_host->GetLastCommittedURL();
-      if (extension()->permissions_data()->IsRestrictedUrl(url, error) ||
-          extension()->permissions_data()->IsPolicyBlockedHost(url)) {
+      if (extension()->permissions_data()->IsRestrictedUrl(url, error)) {
         return false;
       }
       agent_host_ =
@@ -968,6 +956,14 @@ ExtensionFunction::ResponseAction DebuggerAttachFunction::Run() {
   std::optional<Attach::Params> params = Attach::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
 
+  // Attaching the debugger grants raw CDP access, which cannot be safely
+  // restricted to specific hosts. Reject if the extension has any runtime
+  // blocked hosts configured by enterprise policy.
+  // Details: crbug.com/533240995
+  if (!extension()->permissions_data()->policy_blocked_hosts().is_empty()) {
+    return RespondNow(Error(kDebuggerDisabledByPolicyBlockedHosts));
+  }
+
   CopyDebuggee(&debuggee_, params->target);
   std::string error;
   if (!InitAgentHost(&error)) {
@@ -988,12 +984,14 @@ ExtensionFunction::ResponseAction DebuggerAttachFunction::Run() {
 
   // Attaching the debugger grants screenshot capabilities, so reject if
   // screenshot capture is disabled globally by enterprise policy.
+  // Details: crbug.com/533240995
   if (profile->GetPrefs()->GetBoolean(prefs::kDisableScreenshots)) {
     return RespondNow(Error(kDebuggerDisabledByScreenshotPolicy));
   }
 
   // Reject if screenshot capture is restricted on this specific target (e.g.
   // by Data Leak Prevention (DLP) policy).
+  // Details: crbug.com/533240995
   content::WebContents* web_contents = agent_host_->GetWebContents();
   if (web_contents && !ExtensionsBrowserClient::Get()
                            ->IsScreenshotRestricted(web_contents)

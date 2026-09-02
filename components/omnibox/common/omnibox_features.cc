@@ -217,7 +217,8 @@ BASE_FEATURE(kOmniboxWebUIDeferShowUntilVisualStateReady, DISABLED);
 // When enabled, the Omnibox Full WebUI popup will defer showing until the
 // WebUI has painted a clean frame, avoiding the issue of the popup being shown
 // with a stale frame.
-BASE_FEATURE(kOmniboxFullWebUIDeferShowUntilVisualStateReady, ENABLED);
+// TODO(b/549125538): Figure out why timeout is consistently being hit.
+BASE_FEATURE(kOmniboxFullWebUIDeferShowUntilVisualStateReady, DISABLED);
 // If enabled, stabilizes the popup showing behavior on startup by forcing
 // layout with a 1px height and hiding it initially to avoid visual artifacts.
 BASE_FEATURE(kOmniboxWebUIPopupStabilizeStartupShow, ENABLED);
@@ -237,6 +238,9 @@ BASE_FEATURE(kOmniboxWebUIPopupMarkAsHidden, ENABLED);
 // When enabled, the WebUI searchbox will bypass OmniboxController and
 // OmniboxEditModel.
 BASE_FEATURE(kWebUISearchboxWithoutModelController, DISABLED);
+
+// If enabled, debounces soft keyboard show/hide transitions in the Omnibox.
+BASE_FEATURE(kOmniboxDebounceKeyboardVisibility, DISABLED);
 
 // Feature used to default typed navigations to use HTTPS instead of HTTP.
 // This only applies to navigations that don't have a scheme such as
@@ -443,7 +447,7 @@ BASE_FEATURE(kOmniboxDebugLogs, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kVoiceSearchCoherenceComposeboxes,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kDrivePickerV2Scope, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kDrivePickerV2Scope, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables voice search coherence (as described above) only for cobrowsing.
 // Overrides the default (default was all surfaces enabled).
@@ -531,6 +535,7 @@ static int64_t JNI_OmniboxFeatureMap_GetNativeMap(JNIEnv* env) {
       &kStarterPackExpansion,
       &kOmniboxSearchPrefetchOnEnterKeyDown,
       &kOmniboxAimImageDownscaling,
+      &kOmniboxDebounceKeyboardVisibility,
       &kOmniboxSessionlessVoiceSearch};
   static base::NoDestructor<base::android::FeatureMap> kFeatureMap(
       kFeaturesExposedToJava);
@@ -602,6 +607,8 @@ const base::FeatureParam<bool> kAskGComposeboxLensChip{
 const base::FeatureParam<bool> kAskGBlockAutoTabZeroStateSuggestions{
     &kWebUIOmniboxAskGAboutThisPage,
     "Omnibox_AskGBlockAutoTabZeroStateSuggestions", false};
+const base::FeatureParam<bool> kAskGComposeboxPlaceholder{
+    &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGComposeboxPlaceholder", false};
 const base::FeatureParam<bool> kAskGBypassPrivacyNotice{
     &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGBypassPrivacyNotice", false};
 

@@ -388,7 +388,7 @@
 <translation id="4918844574251943176">Изображение скопировано.</translation>
 <translation id="4926882258455737990">Чтобы использовать Gemini в Chrome в другом аккаунте Google, <ph name="BEGIN_LINK" />создайте профиль<ph name="END_LINK" /> и войдите в нужный аккаунт.</translation>
 <translation id="492720062778050435">Chrome рекомендует проверить это расширение.</translation>
-<translation id="4953650215774548573">Сделать Google Chrome браузером по умолчанию</translation>
+<translation id="4953650215774548573">Сделайте Google Chrome браузером по умолчанию</translation>
 <translation id="495931528404527476">В Chrome</translation>
 <translation id="4969674060580488087">Chrome OS Flex не удалось выполнить синхронизацию, так как учетные данные устарели.</translation>
 <translation id="4970761609246024540">Представляем профили Chrome</translation>
@@ -510,6 +510,7 @@
 <translation id="6166185671393271715">Импорт паролей в Chrome</translation>
 <translation id="6169866489629082767"><ph name="PAGE_TITLE" /> - Google Chrome</translation>
 <translation id="6173637689840186878"><ph name="PAGE_TITLE" /> – Google Chrome (бета-версия)</translation>
+<translation id="6177442314419606057">Поиск в Chrome</translation>
 <translation id="6180522807229584611">Для работы этой вкладки используются дополнительные ресурсы. Разрешите Chrome сделать ее неактивной, и производительность повысится.</translation>
 <translation id="6182736845697986886">Выполнить установку не удалось из-за внутренней ошибки сервера.</translation>
 <translation id="6192058120268468905">Ваш аккаунт в Chrome</translation>
@@ -719,6 +720,7 @@
 <translation id="8074398340364918139">Для поиска определенной функции или расширения Chrome введите в адресной строке назначенное сочетание клавиш, а затем выбранную клавишу.</translation>
 <translation id="8077579734294125741">Другие профили Chrome</translation>
 <translation id="8086881907087796310">Установка не удалась, так как аппаратное обеспечение компьютера не соответствует минимальным требованиям.</translation>
+<translation id="8110438089258398864">Вы можете снова открыть режим ИИ в Google Поиске, чтобы задавать вопросы во время просмотра сайтов.</translation>
 <translation id="8113883687556086139">Подтвердите свою личность, чтобы использовать и сохранять данные Chrome в аккаунте <ph name="ACCOUNT_EMAIL" />.</translation>
 <translation id="8115695070094288807">Настраиваем Chrome для вас…</translation>
 <translation id="8118331347066725040">Оставьте отзыв о поиске с помощью Объектива</translation>
@@ -768,6 +770,7 @@
 <translation id="856656450041460113">Поиск по списку языков</translation>
 <translation id="8575047640889685742">Шифровать все данные Chrome в аккаунте Google с помощью <ph name="BEGIN_LINK" />собственной кодовой фразы<ph name="END_LINK" />. Сведения о способах оплаты и адресах из Google Pay не будут шифроваться, а история браузера Chrome – синхронизироваться.</translation>
 <translation id="8590782867495422699">Открыть режим ИИ в Google Поиске</translation>
+<translation id="8598779894319572882">Вы можете снова открыть режим ИИ в Google Поиске с помощью соответствующей кнопки на панели инструментов, чтобы задавать вопросы во время просмотра сайтов</translation>
 <translation id="8601359445272098721">Новая функция! Теперь, нажав кнопку "Перевести текст на экране", вы можете переводить и текст, и изображения на экране.</translation>
 <translation id="8614913330719544658">Google Chrome не отвечает. Перезапустить сейчас?</translation>
 <translation id="8623450603356630491">Войдите в Chrome на телефоне</translation>

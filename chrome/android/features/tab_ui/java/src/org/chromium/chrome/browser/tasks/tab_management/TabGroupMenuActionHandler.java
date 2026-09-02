@@ -9,6 +9,7 @@ import android.content.Context;
 import androidx.annotation.VisibleForTesting;
 
 import org.chromium.base.Token;
+import org.chromium.base.metrics.RecordUserAction;
 import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.SettableMonotonicObservableSupplier;
 import org.chromium.build.annotations.NullMarked;
@@ -123,5 +124,23 @@ public class TabGroupMenuActionHandler {
         TabGroupCreationDialogManager manager =
                 new TabGroupCreationDialogManager(mContext, mModalDialogManager, null);
         manager.showDialog(tabGroupId, mTabModel);
+    }
+
+    /**
+     * Handles the "Add to existing group" action for the given tab and group ID.
+     *
+     * @param tab The tab to be added to an existing group.
+     * @param groupId The target tab group ID.
+     * @return Whether the action was handled.
+     */
+    public boolean handleAddToExistingGroupAction(Tab tab, Token groupId) {
+        RecordUserAction.record("MobileMenuAddToExistingGroup");
+        TabGroupUiUtils.addTabsToGroup(
+                mTabModel,
+                List.of(tab),
+                groupId,
+                /* tabMovedCallback= */ null,
+                /* bringToFront= */ true);
+        return true;
     }
 }

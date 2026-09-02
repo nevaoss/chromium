@@ -131,6 +131,8 @@ class ChromePermissionsClient : public permissions::PermissionsClient {
   bool IsPrivilegedInternalWebUIForUIRouting(
       content::WebContents* web_contents) override;
 
+  bool IsOmniboxEverywhere(content::WebContents* web_contents) override;
+
 #if BUILDFLAG(IS_ANDROID)
   bool IsDseOrigin(content::BrowserContext* browser_context,
                    const url::Origin& origin) override;
@@ -162,7 +164,16 @@ class ChromePermissionsClient : public permissions::PermissionsClient {
 
   bool HasDevicePermission(ContentSettingsType type) const override;
   bool CanRequestDevicePermission(ContentSettingsType type) const override;
-
+  bool IsPermissionBlockedByDevicePolicy(
+      content::WebContents* web_contents,
+      PermissionSetting setting,
+      const content_settings::SettingInfo& info,
+      ContentSettingsType type) const override;
+  bool IsPermissionAllowedByDevicePolicy(
+      content::WebContents* web_contents,
+      PermissionSetting setting,
+      const content_settings::SettingInfo& info,
+      ContentSettingsType type) const override;
   bool IsSystemDenied(ContentSettingsType type) const override;
   bool CanPromptSystemPermission(ContentSettingsType type) const override;
   bool IsActorOperatingOnWebContents(

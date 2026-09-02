@@ -68,10 +68,13 @@ class PermissionsClient {
   // Return the permissions client.
   static PermissionsClient* Get();
 
-  // It returns whether the embedded permission prompt is enabled
-  // allowlisted surfaces, such as new tab page, contextual tasks, and omnibox
-  // popup.
-  static bool AllowEmbeddedPermissionPromptForAllowlistedSurfaces();
+  // Returns true if the surface is omnibox everywhere, or if the embedded
+  // permission prompt flag is enabled for allowlisted surfaces (such as
+  // contextual tasks, NTP, omnibox popup).
+  static bool AllowEmbeddedPermissionPromptForSurface(
+      content::WebContents* web_contents);
+
+  virtual bool IsOmniboxEverywhere(content::WebContents* web_contents);
 
   // Retrieves the HostContentSettingsMap for this context. The returned pointer
   // has the same lifetime as |browser_context|.
@@ -339,7 +342,21 @@ class PermissionsClient {
   // capability to sites.
   virtual bool CanRequestDevicePermission(ContentSettingsType type) const;
 
+  // Returns true if the |type| can be blocked by device policy, for example, by
+  // the custodian of a supervised user.
+  virtual bool IsPermissionBlockedByDevicePolicy(
+      content::WebContents* web_contents,
+      PermissionSetting setting,
+      const content_settings::SettingInfo& info,
+      ContentSettingsType type) const;
 
+  // Returns true if the |type| can be allowed by device policy, for example
+  // admins can use the whitelist to allow device access without prompt.
+  virtual bool IsPermissionAllowedByDevicePolicy(
+      content::WebContents* web_contents,
+      PermissionSetting setting,
+      const content_settings::SettingInfo& info,
+      ContentSettingsType type) const;
 
   // Returns true if the system blocks the access to the specified content type
   // permission.

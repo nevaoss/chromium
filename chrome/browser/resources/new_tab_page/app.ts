@@ -2,15 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import './action_chips/action_chips.js';
-import './iframe.js';
 import './logo.js';
 import './ntp_composebox.js';
 import './ntp_searchbox.js';
 import '/strings.m.js';
 import 'chrome://new-tab-page/shared/customize_buttons/customize_buttons.js';
-import 'chrome://resources/cr_elements/cr_button/cr_button.js';
-import 'chrome://resources/cr_elements/cr_toast/cr_toast.js';
 import 'chrome://resources/cr_components/composebox/threads_rail.js';
 import 'chrome://resources/cr_components/composebox/composebox_voice_search.js';
 import 'chrome://resources/cr_components/search/animated_glow.js';
@@ -21,7 +17,6 @@ import {ColorChangeUpdater} from 'chrome://resources/cr_components/color_change_
 import {GlifAnimationState} from 'chrome://resources/cr_components/composebox/common.js';
 import type {ComposeboxState} from 'chrome://resources/cr_components/composebox/common.js';
 import {VoiceSearchAction as ComposeVoiceSearchAction} from 'chrome://resources/cr_components/composebox/composebox.js';
-import {ModelMode, ToolMode} from 'chrome://resources/cr_components/composebox/composebox_query.mojom-webui.js';
 import type {ComposeboxVoiceSearchElement, VoicePermissionPromptState} from 'chrome://resources/cr_components/composebox/composebox_voice_search.js';
 import {HelpBubbleMixinLit} from 'chrome://resources/cr_components/help_bubble/help_bubble_mixin_lit.js';
 import type {SearchAnimatedGlowElement} from 'chrome://resources/cr_components/search/animated_glow.js';
@@ -37,6 +32,8 @@ import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {getTrustedScriptURL} from 'chrome://resources/js/static_types.js';
 import {CrLitElement} from 'chrome://resources/lit/v3_0/lit.rollup.js';
 import type {PropertyValues} from 'chrome://resources/lit/v3_0/lit.rollup.js';
+import type {FuseboxAction} from 'chrome://resources/mojo/components/omnibox/browser/fusebox_action.mojom-webui.js';
+import {SearchboxOverride} from 'chrome://resources/mojo/components/omnibox/browser/fusebox_action.mojom-webui.js';
 import type {PageCallbackRouter as SearchboxPageCallbackRouter} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import type {SkColor} from 'chrome://resources/mojo/skia/public/mojom/skcolor.mojom-webui.js';
 
@@ -50,8 +47,6 @@ import {SidePanelOpenTrigger} from './customize_buttons.mojom-webui.js';
 import {CustomizeButtonsProxy} from './customize_buttons_proxy.js';
 import {CustomizeChromeSection} from './customize_chrome.mojom-webui.js';
 import {CustomizeDialogPage} from './customize_dialog_types.js';
-import type {FuseboxAction} from './fusebox_action.mojom-webui.js';
-import {QueryActionOverride, SearchboxOverride} from './fusebox_action.mojom-webui.js';
 import type {IframeElement} from './iframe.js';
 import type {LogoElement} from './logo.js';
 import {recordBoolean, recordDuration, recordEnumeration, recordLinearValue, recordLoadDuration, recordSparseValueWithPersistentHash} from './metrics_utils.js';
@@ -988,21 +983,11 @@ export class AppElement extends AppElementBase {
       return;
     }
     this.pageHandler_.onContextualSearchIPHEngaged();
-    // Minimal state mapping, not a route classifier: a hint suggestion is
-    // shown as the Composebox placeholder instead of populating the input.
-    const isHintAction =
-        detail.fuseboxAction?.queryActionOverride === QueryActionOverride.kHint;
-    this.openComposebox_({
-      text: isHintAction ? '' : detail.suggestion,
-      files: detail.files,
-      mode: detail.fuseboxAction?.preselectedTool ?? ToolMode.kUnspecified,
-      model: detail.fuseboxAction?.preselectedModel ?? ModelMode.kUnspecified,
-      suggestInventory: detail.fuseboxAction?.preferredInventory ?? undefined,
-      // <if expr="not is_android">
-      smartTabSharingActive: false,
-      // </if>
-    });
-    this.handleFuseboxAction_(detail.fuseboxAction, detail.suggestion);
+    if (this.hasRealboxOverride(detail.fuseboxAction)) {
+      this.$.searchbox.handleFuseboxAction(detail.fuseboxAction);
+      return;
+    }
+    this.openComposeboxForActionChip_(detail);
   }
 
   // The Composebox is the only searchbox surface supported for action chip
@@ -1012,22 +997,21 @@ export class AppElement extends AppElementBase {
     if (!action || action.searchboxOverride === null) {
       return false;
     }
-    return action.searchboxOverride !== SearchboxOverride.kComposebox;
+    return action.searchboxOverride === SearchboxOverride.kUnspecified;
   }
 
   protected onOpenComposebox_(e: CustomEvent<ComposeboxState>) {
     this.openComposebox_(e.detail);
   }
 
-  protected async handleFuseboxAction_(
-      action: FuseboxAction|undefined, suggestion: string) {
-    if (action) {
-      await this.updateComplete;
-      const composebox =
-          this.shadowRoot?.querySelector<NtpComposeboxElement>('#composebox');
-      if (composebox) {
-        await composebox.handleFuseboxAction(action, suggestion);
-      }
+  private async openComposeboxForActionChip_(detail: ActionChipClickDetail) {
+    this.composeboxState_ = null;
+    this.ensureComposeboxOpen_();
+    await this.updateComplete;
+    const composebox =
+        this.shadowRoot?.querySelector<NtpComposeboxElement>('#composebox');
+    if (composebox) {
+      await composebox.handleFuseboxAction(detail);
     }
   }
 
@@ -1037,6 +1021,10 @@ export class AppElement extends AppElementBase {
 
   protected openComposebox_(state: ComposeboxState) {
     this.composeboxState_ = state;
+    this.ensureComposeboxOpen_();
+  }
+
+  private ensureComposeboxOpen_() {
     if (!this.showComposebox_) {
       this.showComposebox_ = true;
     }
@@ -1868,6 +1856,10 @@ export class AppElement extends AppElementBase {
         element.removeAttribute('inert');
       }
     });
+  }
+
+  private hasRealboxOverride(action?: FuseboxAction): boolean {
+    return !!action && action?.searchboxOverride === SearchboxOverride.kRealbox;
   }
 }
 

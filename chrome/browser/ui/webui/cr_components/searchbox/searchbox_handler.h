@@ -119,6 +119,7 @@ class SearchboxHandler : public searchbox::mojom::PageHandler,
   // searchbox::mojom::PageHandler:
   void OnFocusChanged(bool focused) override;
   void QueryAutocomplete(int32_t query_id,
+                         std::optional<int32_t> tab_id,
                          const std::u16string& input,
                          bool prevent_inline_autocomplete,
                          uint32_t cursor_position,
@@ -198,9 +199,13 @@ class SearchboxHandler : public searchbox::mojom::PageHandler,
   void OnDriveDisclaimerAccepted() override;
   void OnDriveUploadClicked(OnDriveUploadClickedCallback callback) override;
   void OpenProfilePicker() override {}
+  void ShowScreenshotMenu(const gfx::Rect& anchor_rect) override {}
+  virtual void OnScreenshotMenuClosed();
   void GetPageClassification(GetPageClassificationCallback callback) override;
   void StartScreenshare(bool prefer_entire_screen,
-                        StartScreenshareCallback callback) override {}
+                        StartScreenshareCallback callback) override;
+  void CaptureRegionScreenshot(
+      CaptureRegionScreenshotCallback callback) override;
 #if !BUILDFLAG(IS_ANDROID)
   void SetSmartTabSharingActive(bool active) override;
   void GetSmartTabSharingActive(

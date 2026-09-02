@@ -9,7 +9,6 @@
 #include <tuple>
 #include <utility>
 
-#include "base/at_exit.h"
 #include "base/base_switches.h"
 #include "base/check.h"
 #include "base/command_line.h"
@@ -365,6 +364,16 @@ void DeleteMediaHistoryDatabase(const base::FilePath& profile_path) {
   base::UmaHistogramBoolean("Media.MediaHistory.DatabaseExists",
                             base::PathExists(db_path));
   sql::Database::Delete(db_path);
+}
+
+constexpr base::FilePath::CharType kAccessibilityAnnotatorDatabaseFileName[] =
+    FILE_PATH_LITERAL("AccessibilityAnnotatorDB");
+
+void DeleteAccessibilityAnnotatorDatabase(const base::FilePath& profile_path) {
+  auto db_path = profile_path.Append(kAccessibilityAnnotatorDatabaseFileName);
+  if (base::PathExists(db_path)) {
+    sql::Database::Delete(db_path);
+  }
 }
 
 void DeleteDeprecatedPrivacySandboxData(const base::FilePath& profile_path) {
@@ -986,22 +995,7 @@ void ChromeBrowserMainParts::RecordBrowserStartupTime() {
 // -----------------------------------------------------------------------------
 // TODO(viettrungluu): move more/rest of BrowserMain() into BrowserMainParts.
 
-#if BUILDFLAG(IS_WIN)
-#define DLLEXPORT __declspec(dllexport)
 
-// We use extern C for the prototype DLLEXPORT to avoid C++ name mangling.
-extern "C" {
-DLLEXPORT void __cdecl RelaunchChromeBrowserWithNewCommandLineIfNeeded();
-}
-
-DLLEXPORT void __cdecl RelaunchChromeBrowserWithNewCommandLineIfNeeded() {
-  // Need an instance of AtExitManager to handle singleton creations and
-  // deletions.  We need this new instance because, the old instance created
-  // in ChromeMain() got destructed when the function returned.
-  base::AtExitManager exit_manager;
-  upgrade_util::RelaunchChromeBrowserWithNewCommandLineIfNeeded();
-}
-#endif
 
 // content::BrowserMainParts implementation ------------------------------------
 
@@ -1617,6 +1611,15 @@ void ChromeBrowserMainParts::PostProfileInit(Profile* profile,
       {base::MayBlock(), base::TaskPriority::BEST_EFFORT,
        base::TaskShutdownBehavior::SKIP_ON_SHUTDOWN},
       base::BindOnce(&DeleteMediaHistoryDatabase, profile->GetPath()));
+
+  // Delete the deprecated AccessibilityAnnotatorDB if it still exists.
+  // TODO(crbug.com/531591319): Remove this in August 2027.
+  base::ThreadPool::PostTask(
+      FROM_HERE,
+      {base::MayBlock(), base::TaskPriority::BEST_EFFORT,
+       base::TaskShutdownBehavior::SKIP_ON_SHUTDOWN},
+      base::BindOnce(&DeleteAccessibilityAnnotatorDatabase,
+                     profile->GetPath()));
 
   // Delete the deprecated Privacy Sandbox data if they still exist.
   // TODO(crbug.com/462465887): Remove this in August 2028.

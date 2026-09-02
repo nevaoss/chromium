@@ -425,14 +425,6 @@
     "expires": "Dec 1, 2026"
   },
   {
-    "prefix": "container-timing-pre-paint-traversal",
-    "owners": [ "jdapena@igalia.com" ],
-    "platforms": ["Linux", "Mac", "Win"],
-    "bases": [ "external/wpt/container-timing/" ],
-    "args": [ "--enable-features=ContainerTimingPrepaintTraversal" ],
-    "expires": "Nov 1, 2026"
-  },
-  {
     "prefix": "controls-refresh-hc",
     "owners": [
       "masonf@chromium.org",
@@ -1175,7 +1167,7 @@
       "cbiesinger@chromium.org",
       "goto@chromium.org"
     ],
-    "expires": "Aug 1, 2026"
+    "expires": "Feb 1, 2027"
   },
   {
     "prefix": "fedcm-register",
@@ -1383,8 +1375,7 @@
     ],
     "args": [
       "--force-high-contrast",
-      "--enable-blink-features=ForcedColors",
-      "--enable-blink-features=CSSGapDecoration"
+      "--enable-blink-features=ForcedColors"
     ],
     "expires": "Jul 1, 2027"
   },
@@ -5038,15 +5029,6 @@
     "expires": "never"
   },
   {
-    "prefix": "disable-tcp-port-randomization-mac",
-    "owners": ["arichiv@chromium.org", "awillia@chromium.org"],
-    "platforms": ["Mac"],
-    "bases": ["external/wpt/resource-timing/response-status-code.html"],
-    "exclusive_tests": "ALL",
-    "args": ["--disable-features=TcpPortRandomizationMac"],
-    "expires": "Oct 31, 2026"
-  },
-  {
     "prefix": "disable-css-line-clamp-longhands",
     "platforms": [
       "Linux"
@@ -5123,5 +5105,25 @@
       "--disable-blink-features=ElementCanvasTransform"
     ],
     "expires": "Jan 1, 2027"
+  },
+  {
+    "prefix": "static-routing-api-devtools-improvement",
+    "platforms": [
+      "Linux",
+      "Mac",
+      "Win"
+    ],
+    "bases": [
+      "http/tests/inspector-protocol/service-worker/tentative/static-router/receive-typed-router-rules-on-update.js"
+    ],
+    "exclusive_tests": "ALL",
+    "args": [
+      "--enable-features=ServiceWorkerStaticRouterTypedRulesForDevTools"
+    ],
+    "owners": [
+      "yyanagisawa@chromium.org",
+      "tnak@chromium.org"
+    ],
+    "expires": "Jul 1, 2027"
   }
 ]

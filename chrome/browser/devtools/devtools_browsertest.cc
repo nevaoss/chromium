@@ -47,6 +47,7 @@
 #include "chrome/browser/devtools/features.h"
 #include "chrome/browser/devtools/protocol/browser_handler.h"
 #include "chrome/browser/devtools/remote_debugging_server.h"
+#include "chrome/browser/infobars/infobar_features.h"
 #include "chrome/browser/lifetime/browser_shutdown.h"
 #include "chrome/browser/policy/chrome_browser_policy_connector.h"
 #include "chrome/browser/policy/developer_tools_policy_handler.h"
@@ -100,8 +101,8 @@
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/child_process_data.h"
-#include "content/public/browser/content_browser_client.h"
 #include "content/public/browser/devtools_agent_host.h"
+#include "content/public/browser/devtools_agent_host_client.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/render_widget_host.h"
 #include "content/public/browser/render_widget_host_view.h"
@@ -2928,6 +2929,39 @@ IN_PROC_BROWSER_TEST_F(DevToolsTest, PolicyDisallowedCloseConnection) {
   EXPECT_FALSE(DevToolsWindow::FindDevToolsWindow(agent_host.get()));
 }
 
+// Tests that when a DevToolsAgentHost has an attached client without a
+// DevToolsWindow (e.g., remote debugging or automation sessions), changing
+// the developer tools policy to disallowed forcefully detaches the session.
+IN_PROC_BROWSER_TEST_F(DevToolsTest, PolicyDisallowedDetachesAttachedClient) {
+  ASSERT_TRUE(NavigateToURL(GetActiveWebContents(), GURL("about:blank")));
+  content::WebContents* web_contents = GetWebContentsAt(0);
+  auto agent_host = GetOrCreateDevToolsHostForWebContents(web_contents);
+
+  class TestClient : public content::DevToolsAgentHostClient {
+   public:
+    void DispatchProtocolMessage(content::DevToolsAgentHost* host,
+                                 base::span<const uint8_t> message) override {}
+    void AgentHostClosed(content::DevToolsAgentHost* host) override {
+      closed_ = true;
+    }
+    bool closed() const { return closed_; }
+
+   private:
+    bool closed_ = false;
+  };
+
+  TestClient client;
+  EXPECT_TRUE(agent_host->AttachClient(&client));
+  EXPECT_TRUE(agent_host->IsAttached());
+
+  // Policy change must forcefully detach all active sessions from the agent
+  // host even without a DevToolsWindow frontend.
+  DisallowDevTools(browser_window_interface());
+
+  EXPECT_FALSE(agent_host->IsAttached());
+  EXPECT_TRUE(client.closed());
+}
+
 using ManifestLocation = extensions::mojom::ManifestLocation;
 class DevToolsDisallowedForForceInstalledExtensionsPolicyTest
     : public extensions::ExtensionBrowserTest {
@@ -4642,10 +4676,24 @@ IN_PROC_BROWSER_TEST_F(DevToolsProcessPerSiteUpToMainFrameThresholdTest,
             webcontents2->GetPrimaryMainFrame()->GetProcess());
 }
 
+// Runs against the legacy and the centralized infobar; behavior must match.
 class DevToolsProcessPerSiteTest
-    : public DevToolsProcessPerSiteUpToMainFrameThresholdTest {
+    : public DevToolsProcessPerSiteUpToMainFrameThresholdTest,
+      public testing::WithParamInterface<bool> {
  public:
-  DevToolsProcessPerSiteTest() = default;
+  DevToolsProcessPerSiteTest() {
+    if (GetParam()) {
+      scoped_feature_list_.InitWithFeaturesAndParameters(
+          {{::features::kDevToolsSharedProcessInfobar, {}},
+           {infobars::kCentralizedInfoBarFramework,
+            {{"MigratedDevToolsSharedProcess", "true"}}}},
+          {});
+    } else {
+      scoped_feature_list_.InitWithFeatures(
+          {::features::kDevToolsSharedProcessInfobar},
+          {infobars::kCentralizedInfoBarFramework});
+    }
+  }
 
   ~DevToolsProcessPerSiteTest() override = default;
 
@@ -4654,9 +4702,16 @@ class DevToolsProcessPerSiteTest
   }
 
  private:
-  base::test::ScopedFeatureList scoped_feature_list_{
-      ::features::kDevToolsSharedProcessInfobar};
+  base::test::ScopedFeatureList scoped_feature_list_;
 };
+
+INSTANTIATE_TEST_SUITE_P(All,
+                         DevToolsProcessPerSiteTest,
+                         testing::Bool(),
+                         [](const testing::TestParamInfo<bool>& info) {
+                           return info.param ? "MigratedInfobar"
+                                             : "LegacyInfobar";
+                         });
 
 // TODO(https://crbug.com/328693031): Flaky on Linux dbg.
 #if BUILDFLAG(IS_LINUX) && !defined(NDEBUG)
@@ -4664,7 +4719,7 @@ class DevToolsProcessPerSiteTest
 #else
 #define MAYBE_DevToolsSharedProcessInfobar DevToolsSharedProcessInfobar
 #endif
-IN_PROC_BROWSER_TEST_F(DevToolsProcessPerSiteTest,
+IN_PROC_BROWSER_TEST_P(DevToolsProcessPerSiteTest,
                        MAYBE_DevToolsSharedProcessInfobar) {
   const GURL url = embedded_test_server()->GetURL("foo.test", "/hello.html");
 
@@ -4739,7 +4794,7 @@ class ActiveTabChangedObserver : public TabStripModelObserver {
 #else
 #define MAYBE_PausedDebuggerFocus PausedDebuggerFocus
 #endif
-IN_PROC_BROWSER_TEST_F(DevToolsProcessPerSiteTest, MAYBE_PausedDebuggerFocus) {
+IN_PROC_BROWSER_TEST_P(DevToolsProcessPerSiteTest, MAYBE_PausedDebuggerFocus) {
   const GURL url = embedded_test_server()->GetURL("foo.test", "/hello.html");
 
   auto* tab_strip_model = browser()->tab_strip_model();

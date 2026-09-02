@@ -718,7 +718,7 @@
 <translation id="3349031117032695619">ポップアップのブロック</translation>
 <translation id="3350976670663926380">編集内容を保存しました</translation>
 <translation id="3353037916374303415"><ph name="EMAIL" />。このアカウントは管理対象です。</translation>
-<translation id="3365529507898144230">フォトに保存</translation>
+<translation id="3365529507898144230">写真に保存</translation>
 <translation id="3371831930909698441">翻訳が利用可能です。画面の下の方にオプションがあります。</translation>
 <translation id="3377063233124932127">保存したブックマークやパスワードなどが上部に表示されます。</translation>
 <translation id="3378214228000661758">次のパスキーを作成</translation>
@@ -1294,6 +1294,7 @@
 <translation id="5238596603078743134"><ph name="BEGIN_BOLD" /><ph name="USERNAME" /><ph name="END_BOLD" /> さんが Google パスワード マネージャーを使用して <ph name="BEGIN_BOLD" /><ph name="WEBSITE" /><ph name="END_BOLD" /> にログインする際に、あなたのユーザー名とパスワードを使用できるようになりました。</translation>
 <translation id="5241106044372754566"><ph name="NAME" />（<ph name="EMAIL" />）、組織によって管理されており、現在選択されています。アカウントを選択してください。</translation>
 <translation id="5242899254250321823">ウェブサイトでパスワードを変更</translation>
+<translation id="524751727772074981">Gemini in Chrome なら、その場で何でも質問できます</translation>
 <translation id="5248640482715684545">このサイトは別のアプリケーションを開こうとしています。</translation>
 <translation id="5250371859659394278">提供元不明のアプリから</translation>
 <translation id="525510229763628836">最小化</translation>

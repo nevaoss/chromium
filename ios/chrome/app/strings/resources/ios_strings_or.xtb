@@ -1294,6 +1294,7 @@
 <translation id="5238596603078743134"><ph name="BEGIN_BOLD" /><ph name="WEBSITE" /><ph name="END_BOLD" />ରେ ସାଇନ ଇନ କରିବାକୁ <ph name="BEGIN_BOLD" /><ph name="USERNAME" /> <ph name="END_BOLD" /> Google Password Manager ବ୍ୟବହାର କଲେ ସେ ବର୍ତ୍ତମାନ ଆପଣଙ୍କ ୟୁଜରନେମ ଏବଂ ପାସୱାର୍ଡ ବ୍ୟବହାର କରିପାରିବେ।</translation>
 <translation id="5241106044372754566"><ph name="NAME" />, <ph name="EMAIL" />, ବର୍ତ୍ତମାନ ଚୟନିତ ଆପଣଙ୍କ ସଂସ୍ଥା ଦ୍ୱାରା ପରିଚାଳିତ। ଏକ ଆକାଉଣ୍ଟ ବାଛନ୍ତୁ।</translation>
 <translation id="5242899254250321823">ୱେବସାଇଟରେ ପାସୱାର୍ଡ ପରିବର୍ତ୍ତନ କରନ୍ତୁ</translation>
+<translation id="524751727772074981">Chromeରେ Gemini ମାଧ୍ୟମରେ ଆପଣ ଯେଉଁଠାରେ ଅଛନ୍ତି ସେଠାରେ ଯାହା ବି ଚାହିଁବେ ପଚାରନ୍ତୁ</translation>
 <translation id="5248640482715684545">ଏହି ସାଇଟ ଅନ୍ୟ ଏକ ଆପ୍ଲିକେସନ ଖୋଲିବା ପାଇଁ ଚେଷ୍ଟା କରୁଛି।</translation>
 <translation id="5250371859659394278">ଏକ ଅଜଣା ସୋର୍ସରୁ</translation>
 <translation id="525510229763628836">ଛୋଟ କରାଯାଇଛି</translation>
@@ -1310,6 +1311,7 @@
 <translation id="5300589172476337783">ପ୍ରଦର୍ଶନ କରନ୍ତୁ</translation>
 <translation id="5311061401280561833">କେମେରା ଏବଂ ମାଇକ୍ରୋଫୋନ ଆକ୍ସେସ ପାଇଁ ଅନୁମତି ଦିଆଯାଇଛି</translation>
 <translation id="5313967007315987356">ସାଇଟ୍ ଯୋଗ କରନ୍ତୁ</translation>
+<translation id="5315029634103634221">Gemini ହେଉଛି AI ଏବଂ ଏହା ଭୁଲ କରିପାରେ। <ph name="BEGIN_LINK" />Googleକୁ ପଠାଯାଇଥିବା ପ୍ରାସଙ୍ଗିକ ଡାଟା ବିଷୟରେ ଅଧିକ<ph name="END_LINK" /></translation>
 <translation id="5315870524563628285">ଇମ୍ପୋର୍ଟ କରିବା ପାଇଁ କିଛି ନାହିଁ</translation>
 <translation id="5316356981864168850"><ph name="NUM_SUGGESTIONS" />ରୁ <ph name="INDEX" /></translation>
 <translation id="5317780077021120954">ସେଭ କରନ୍ତୁ</translation>

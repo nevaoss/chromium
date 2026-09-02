@@ -19,6 +19,11 @@ BASE_FEATURE_PARAM(bool,
                    false);
 
 BASE_FEATURE_PARAM(bool,
+                   kMigratedDevToolsSharedProcess,
+                   &kCentralizedInfoBarFramework,
+                   false);
+
+BASE_FEATURE_PARAM(bool,
                    kMigratedGoogleApiKeys,
                    &kCentralizedInfoBarFramework,
                    false);
@@ -59,11 +64,18 @@ BASE_FEATURE_PARAM(bool,
                    &kCentralizedInfoBarFramework,
                    false);
 
+BASE_FEATURE_PARAM(bool,
+                   kMigratedThemeInstalled,
+                   &kCentralizedInfoBarFramework,
+                   false);
+
 const base::FeatureParam<bool>* GetInfoBarMigrationParam(
     InfoBarDelegate::InfoBarIdentifier infobar_id) {
   switch (infobar_id) {
     case InfoBarDelegate::COLLECTED_COOKIES_INFOBAR_DELEGATE:
       return &kMigratedCollectedCookies;
+    case InfoBarDelegate::DEV_TOOLS_SHARED_PROCESS_DELEGATE:
+      return &kMigratedDevToolsSharedProcess;
     case InfoBarDelegate::GOOGLE_API_KEYS_INFOBAR_DELEGATE:
       return &kMigratedGoogleApiKeys;
     case InfoBarDelegate::INSTALLER_DOWNLOADER_INFOBAR_DELEGATE:
@@ -82,6 +94,8 @@ const base::FeatureParam<bool>* GetInfoBarMigrationParam(
       return &kMigratedPinInfoBar;
     case InfoBarDelegate::LOCAL_TEST_POLICIES_APPLIED_INFOBAR:
       return &kMigratedLocalTestPolicies;
+    case InfoBarDelegate::THEME_INSTALLED_INFOBAR_DELEGATE:
+      return &kMigratedThemeInstalled;
     default:
       return nullptr;
   }

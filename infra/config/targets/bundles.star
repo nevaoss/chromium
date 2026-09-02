@@ -1404,7 +1404,6 @@ targets.bundle(
         "content_unittests",
         "interactive_ui_tests",
         "net_unittests",
-        "rust_gtest_interop_unittests",
         "unit_tests",
     ],
     per_test_modifications = {
@@ -1469,7 +1468,6 @@ targets.bundle(
         "base_unittests",
         "content_unittests",
         "net_unittests",
-        "rust_gtest_interop_unittests",
         "unit_tests",
     ],
 )
@@ -1482,7 +1480,6 @@ targets.bundle(
         "content_unittests",
         "interactive_ui_tests",
         "net_unittests",
-        "rust_gtest_interop_unittests",
         "unit_tests",
     ],
     per_test_modifications = {
@@ -1493,7 +1490,7 @@ targets.bundle(
         ),
         "interactive_ui_tests": targets.mixin(
             swarming = targets.swarming(
-                shards = 3,
+                shards = 4,
             ),
         ),
     },
@@ -2817,7 +2814,6 @@ targets.bundle(
         "ozone_gl_unittests",
         "ozone_unittests",
         "perfetto_unittests",
-        "rust_gtest_interop_unittests",
         "services_unittests",
         "shell_dialogs_unittests",
         "skia_unittests",
@@ -4303,13 +4299,13 @@ targets.bundle(
         "android_webview_gpu_telemetry_tests",
         "gpu_passthrough_ganesh_telemetry_tests",
         "gpu_passthrough_telemetry_tests",
-        "gpu_webcodecs_validating_ganesh_telemetry_test",
         "gpu_webgl2_conformance_gles_passthrough_telemetry_tests",
         "gpu_webgl2_conformance_validating_telemetry_tests",
         "gpu_webgl_conformance_gles_passthrough_ganesh_telemetry_tests",
         "gpu_webgl_conformance_gles_passthrough_telemetry_tests",
         "gpu_webgl_conformance_validating_ganesh_telemetry_tests",
-        "gpu_webrtc_validating_ganesh_telemetry_test",
+        "webcodecs_validating_ganesh_tests",
+        "webrtc_validating_ganesh_tests",
     ],
     per_test_modifications = {
         "gpu_process_launch_tests": targets.remove(
@@ -4661,24 +4657,6 @@ targets.bundle(
     },
 )
 
-# TODO(crbug.com/541312843): Update this to properly include validating/ganesh
-# in the suite name.
-targets.bundle(
-    name = "gpu_webcodecs_validating_ganesh_telemetry_test",
-    targets = [
-        "webcodecs_tests",
-    ],
-    per_test_modifications = {
-        "webcodecs_tests": [
-            targets.mixin(
-                args = [
-                    "--extra-browser-args=--use-cmd-decoder=validating --disable-skia-graphite",
-                ],
-            ),
-        ],
-    },
-)
-
 targets.bundle(
     name = "gpu_webcodecs_validating_graphite_telemetry_test",
     targets = [
@@ -4810,24 +4788,6 @@ targets.bundle(
                 android_swarming = targets.swarming(
                     shards = 6,
                 ),
-            ),
-        ],
-    },
-)
-
-# TODO(crbug.com/541312843): Actually include validating/ganesh in the suite
-# name.
-targets.bundle(
-    name = "gpu_webrtc_validating_ganesh_telemetry_test",
-    targets = [
-        "webrtc_tests",
-    ],
-    per_test_modifications = {
-        "webrtc_tests": [
-            targets.mixin(
-                args = [
-                    "--extra-browser-args=--use-cmd-decoder=validating --disable-skia-graphite",
-                ],
             ),
         ],
     },
@@ -5442,8 +5402,6 @@ targets.bundle(
         "ios_testing_unittests",
         "net_unittests",
         "rlz_unittests",
-        # TODO(https://bugs.chromium.org/p/gn/issues/detail?id=340): Enable this.
-        # "rust_gtest_interop_unittests",
         "services_unittests",
         "sql_unittests",
         "url_unittests",
@@ -6010,8 +5968,6 @@ targets.bundle(
         "crashpad_tests",
         "device_unittests",
         "net_unittests",
-        # TODO(crbug.com/40274401): Enable this.
-        # "rust_gtest_interop_unittests",
     ],
 )
 
@@ -6352,31 +6308,6 @@ targets.bundle(
         "gold_common_pytype",
         "gpu_pytype",
         "testing_pytype",
-    ],
-)
-
-# Rust tests run on all targets.
-targets.bundle(
-    name = "rust_common_gtests",
-    targets = [
-        "base_unittests",
-        "rust_gtest_interop_unittests",
-        "test_cpp_including_rust_unittests",
-    ],
-)
-
-# Rust tests run on non-cross builds.
-targets.bundle(
-    name = "rust_host_gtests",
-    targets = [
-        "rust_common_gtests",
-    ],
-)
-
-targets.bundle(
-    name = "rust_native_tests",
-    targets = [
-        "build_rust_tests",
     ],
 )
 

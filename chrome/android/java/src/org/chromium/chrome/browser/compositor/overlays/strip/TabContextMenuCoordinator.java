@@ -8,8 +8,6 @@ import static org.chromium.build.NullUtil.assumeNonNull;
 import static org.chromium.chrome.browser.multiwindow.MultiInstanceManager.PersistedInstanceType.ACTIVE;
 import static org.chromium.chrome.browser.share.ShareDelegate.ShareOrigin.TAB_STRIP_CONTEXT_MENU;
 import static org.chromium.chrome.browser.tabmodel.TabGroupUtils.createNewGroupForTabs;
-import static org.chromium.chrome.browser.tabmodel.TabGroupUtils.mergeTabsToDest;
-import static org.chromium.chrome.browser.tasks.tab_management.GroupWindowState.IN_CURRENT_CLOSING;
 import static org.chromium.ui.listmenu.BasicListMenu.buildMenuDivider;
 
 import android.app.Activity;
@@ -63,8 +61,8 @@ import org.chromium.chrome.browser.tabwindow.TabWindowManager;
 import org.chromium.chrome.browser.tabwindow.TabWindowManagerUtils;
 import org.chromium.chrome.browser.tabwindow.WindowId;
 import org.chromium.chrome.browser.tasks.tab_management.GroupWindowChecker;
-import org.chromium.chrome.browser.tasks.tab_management.GroupWindowState;
 import org.chromium.chrome.browser.tasks.tab_management.TabGroupListBottomSheetCoordinator;
+import org.chromium.chrome.browser.tasks.tab_management.TabGroupUiUtils;
 import org.chromium.chrome.browser.tasks.tab_management.TabShareUtils;
 import org.chromium.chrome.browser.tasks.tab_management.TabStripReorderingHelper;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
@@ -1115,12 +1113,7 @@ public class TabContextMenuCoordinator extends TabStripReorderingHelper<AnchorIn
             List<Tab> tabs, @Nullable Token groupToNotBeIncluded) {
         GroupWindowChecker windowChecker =
                 new GroupWindowChecker(mTabGroupSyncService, getTabModel());
-        List<SavedTabGroup> sortedTabGroups =
-                windowChecker.getSortedGroupList(
-                        groupWindowState ->
-                                groupWindowState != IN_CURRENT_CLOSING
-                                        && groupWindowState != GroupWindowState.HIDDEN,
-                        (a, b) -> Long.compare(b.updateTimeMs, a.updateTimeMs));
+        List<SavedTabGroup> sortedTabGroups = windowChecker.getDefaultSortedGroupList();
 
         List<ListItem> result = new ArrayList<>();
 
@@ -1134,15 +1127,10 @@ public class TabContextMenuCoordinator extends TabStripReorderingHelper<AnchorIn
 
             TabWindowManager tabWindowManager = TabWindowManagerSingleton.getInstance();
             @WindowId int windowId = tabWindowManager.findWindowIdForTabGroup(groupId);
-            assumeNonNull(mMultiInstanceManager);
-            boolean isGroupInCurrentWindow =
-                    windowId == mMultiInstanceManager.getCurrentInstanceId();
             if (!activeInstanceIds.contains(windowId)) {
                 continue; // Skip groups w/o active window.
             }
 
-            @Nullable Integer firstTabInGroupTabId = tabGroup.savedTabs.get(0).localId;
-            assert firstTabInGroupTabId != null : "Tab groups shouldn't be empty";
             String label =
                     TabWindowManagerUtils.getTabGroupTitleInAnyWindow(
                             mActivity, tabWindowManager, groupId, /* isIncognito= */ false);
@@ -1159,23 +1147,12 @@ public class TabContextMenuCoordinator extends TabStripReorderingHelper<AnchorIn
                                 tabs.size() > 1,
                                 false,
                                 mTabStripLayout);
-                        if (isGroupInCurrentWindow) {
-                            // If the tab is already in the current window,
-                            // then just merge it to the group.
-                            mergeTabsToDest(
-                                    tabs,
-                                    firstTabInGroupTabId,
-                                    getTabModel(),
-                                    /* tabMovedCallback= */ null);
-                        } else {
-                            ungroupTabs(tabs);
-                            mMultiInstanceOrchestrator.moveTabsToWindowByIdChecked(
-                                    windowId,
-                                    tabs,
-                                    /* destTabIndex= */ TabList.INVALID_TAB_INDEX,
-                                    /* destGroupTabId= */ firstTabInGroupTabId,
-                                    /* bringToFront= */ true);
-                        }
+                        TabGroupUiUtils.addTabsToGroup(
+                                getTabModel(),
+                                tabs,
+                                groupId,
+                                /* tabMovedCallback= */ null,
+                                /* bringToFront= */ true);
                     };
             result.add(
                     new ListItemBuilder()
@@ -1203,7 +1180,6 @@ public class TabContextMenuCoordinator extends TabStripReorderingHelper<AnchorIn
                 continue;
             }
 
-            int tabIdInGroup = getTabModel().getGroupLastShownTabId(groupId);
             OnClickListener clickListener =
                     (v) -> {
                         recordMenuAction(
@@ -1211,8 +1187,12 @@ public class TabContextMenuCoordinator extends TabStripReorderingHelper<AnchorIn
                                 tabs.size() > 1,
                                 true,
                                 mTabStripLayout);
-                        mergeTabsToDest(
-                                tabs, tabIdInGroup, getTabModel(), /* tabMovedCallback= */ null);
+                        TabGroupUiUtils.addTabsToGroup(
+                                getTabModel(),
+                                tabs,
+                                groupId,
+                                /* tabMovedCallback= */ null,
+                                /* bringToFront= */ true);
                     };
             result.add(
                     new ListItemBuilder()

@@ -1294,6 +1294,7 @@
 <translation id="5238596603078743134"><ph name="BEGIN_BOLD" /><ph name="USERNAME" /><ph name="END_BOLD" />, <ph name="BEGIN_BOLD" /><ph name="WEBSITE" /><ph name="END_BOLD" />‌కు సైన్ ఇన్ చేయడానికి Google Password Managerను ఉపయోగించినప్పుడు, వారు ఇప్పుడు మీ యూజర్‌నేమ్‌ను, పాస్‌వర్డ్‌ను ఉపయోగించవచ్చు.</translation>
 <translation id="5241106044372754566">ప్రస్తుతం <ph name="NAME" />, <ph name="EMAIL" />, ప్రస్తుతంఎంపిక చేయబడింది, ఇది మీ సంస్థ ద్వారా మేనేజ్ చేయబడుతోంది. ఒక ఖాతాను ఎంచుకోండి.</translation>
 <translation id="5242899254250321823">వెబ్‌సైట్‌లో పాస్‌వర్డ్‌ను మార్చండి</translation>
+<translation id="524751727772074981">Chromeలో Geminiతో, మీరు ఎక్కడ ఉన్నా సరే, ఏదైనా అడగండి</translation>
 <translation id="5248640482715684545">ఈ సైట్ మరొక యాప్‌ను తెరవడానికి ట్రై చేస్తోంది.</translation>
 <translation id="5250371859659394278">తెలియని సోర్స్ నుండి డౌన్‌లోడ్ అవుతోంది</translation>
 <translation id="525510229763628836">కుదించబడింది</translation>
@@ -1310,6 +1311,7 @@
 <translation id="5300589172476337783">చూపించు</translation>
 <translation id="5311061401280561833">కెమెరా, మైక్రోఫోన్ యాక్సెస్ అనుమతించబడ్డాయి</translation>
 <translation id="5313967007315987356">సైట్‌ను జోడించండి</translation>
+<translation id="5315029634103634221">Gemini అనేది AI, అది పొరపాట్లు చేయవచ్చు. <ph name="BEGIN_LINK" />Googleకు పంపే సంబంధిత డేటా గురించి మరింత సమాచారం<ph name="END_LINK" /></translation>
 <translation id="5315870524563628285">దిగుమతి చేయడానికి ఏవీ లేవు</translation>
 <translation id="5316356981864168850"><ph name="NUM_SUGGESTIONS" />లో <ph name="INDEX" /></translation>
 <translation id="5317780077021120954">సేవ్ చేయండి</translation>

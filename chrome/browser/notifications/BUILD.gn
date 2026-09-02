@@ -628,7 +628,7 @@ if (!is_android) {
 if (is_android) {
   android_library("java") {
     sources = [
-      "android/java/src/org/chromium/chrome/browser/notifications/ChromeNotificationWrapperCompatBuilder.java",
+      "android/java/src/org/chromium/chrome/browser/notifications/ChromeNotificationWrapperBuilder.java",
       "android/java/src/org/chromium/chrome/browser/notifications/NotificationBuilderBase.java",
       "android/java/src/org/chromium/chrome/browser/notifications/NotificationConstants.java",
       "android/java/src/org/chromium/chrome/browser/notifications/NotificationIntentInterceptor.java",
@@ -667,6 +667,7 @@ if (is_android) {
       "//content/public/android:content_main_dex_java",
       "//third_party/androidx:androidx_annotation_annotation_java",
       "//third_party/androidx:androidx_core_core_java",
+      "//third_party/androidx:androidx_media_media_java",
       "//third_party/jni_zero:jni_zero_java",
       "//ui/android:ui_no_recycler_view_java",
     ]

@@ -173,6 +173,8 @@ std::unique_ptr<Layer> Layer::Create(LayerType type) {
       return std::make_unique<LayerNinePatch>();
     case LAYER_SURFACE:
       return std::make_unique<LayerSurface>();
+    case LAYER_WITH_EXTERNAL_TEXTURE:
+      return std::make_unique<LayerWithExternalTexture>();
   }
 }
 
@@ -208,33 +210,18 @@ const LayerSurface* Layer::AsSurface() const {
   return As<LayerSurface>();
 }
 
+LayerWithExternalTexture* Layer::AsWithExternalTexture() {
+  return As<LayerWithExternalTexture>();
+}
+
+const LayerWithExternalTexture* Layer::AsWithExternalTexture() const {
+  return As<LayerWithExternalTexture>();
+}
+
 Layer::Layer(LayerType type)
     : type_(type),
-      compositor_(nullptr),
-      parent_(nullptr),
       subpixel_position_offset_(
-          std::make_unique<SubpixelPositionOffsetCache>()),
-      visible_(true),
-      fills_bounds_opaquely_(true),
-      background_blur_sigma_(0.0f),
-      layer_saturation_(0.0f),
-      layer_brightness_(0.0f),
-      layer_grayscale_(0.0f),
-      layer_inverted_(false),
-      layer_blur_sigma_(0.0f),
-      layer_sepia_(0.0f),
-      layer_hue_rotation_(0.0f),
-      layer_mask_(nullptr),
-      layer_mask_back_link_(nullptr),
-      zoom_(1),
-      zoom_inset_(0),
-      owner_(nullptr),
-      cc_layer_(nullptr),
-      device_scale_factor_(1.0f),
-      cache_render_surface_requests_(0),
-      backdrop_filter_quality_(1.0f),
-      trilinear_filtering_request_(0) {
-}
+          std::make_unique<SubpixelPositionOffsetCache>()) {}
 
 Layer::~Layer() {
   CHECK(!cc_layer_);
@@ -965,6 +952,7 @@ void Layer::SwitchToLayer(scoped_refptr<cc::Layer> new_layer) {
   }
   cc_layer_->ClearDebugInfo();
 
+  new_layer->SetBounds(cc_layer_->bounds());
   new_layer->SetOpacity(cc_layer_->opacity());
   new_layer->SetTransform(cc_layer_->transform());
   new_layer->SetPosition(cc_layer_->position());
@@ -998,6 +986,7 @@ void Layer::SwitchToLayer(scoped_refptr<cc::Layer> new_layer) {
 
   SetLayerFilters();
   SetLayerBackgroundFilters();
+  RecomputeDrawsContentAndUVRect();
 }
 
 void Layer::SetBackdropFilterQuality(const float quality) {
@@ -1058,11 +1047,6 @@ void Layer::RemoveTrilinearFilteringRequest() {
 
 base::WeakPtr<Layer> Layer::AsWeakPtr() {
   return weak_ptr_factory_.GetWeakPtr();
-}
-
-
-bool Layer::HasExternalContent() const {
-  return false;
 }
 
 bool Layer::SchedulePaint(const gfx::Rect& invalid_rect) {

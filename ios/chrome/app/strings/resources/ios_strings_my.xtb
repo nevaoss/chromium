@@ -1294,6 +1294,7 @@
 <translation id="5238596603078743134"><ph name="BEGIN_BOLD" /><ph name="USERNAME" /><ph name="END_BOLD" /> က <ph name="BEGIN_BOLD" /><ph name="WEBSITE" /><ph name="END_BOLD" /> သို့ လက်မှတ်ထိုးဝင်ရန် Google Password Manager သုံးသောအခါ သင့်အသုံးပြုသူအမည်နှင့် စကားဝှက်တို့ကို ယခုသုံးနိုင်သည်။</translation>
 <translation id="5241106044372754566">လက်ရှိရွေးချယ်ထားသော သင့်အဖွဲ့အစည်းက စီမံခန့်ခွဲသည့် <ph name="NAME" />၊ <ph name="EMAIL" />။ အကောင့်ရွေးပါ။</translation>
 <translation id="5242899254250321823">ဝဘ်ဆိုက်ပေါ်ရှိ စကားဝှက်ပြောင်းရန်</translation>
+<translation id="524751727772074981">Chrome ရှိ Gemini ဖြင့် ရောက်ရာနေရာမှ ဘာမဆို မေးပါ</translation>
 <translation id="5248640482715684545">ဤဝဘ်ဆိုက်က အပလီကေးရှင်းနောက်တစ်ခုကို ဖွင့်ရန် ကြိုးပမ်းနေသည်။</translation>
 <translation id="5250371859659394278">မူရင်းမသိရှိသော ရင်းမြစ်မှ</translation>
 <translation id="525510229763628836">ချုံ့ထားသည်</translation>
@@ -1310,6 +1311,7 @@
 <translation id="5300589172476337783">ပြရန်</translation>
 <translation id="5311061401280561833">ကင်မရာနှင့် မိုက်ခရိုဖုန်း သုံးခွင့်ပြုထားသည်</translation>
 <translation id="5313967007315987356">ဆိုက်အား ထည့်ရန်</translation>
+<translation id="5315029634103634221">Gemini သည် AI ဖြစ်ပြီး အမှားများ ပြုလုပ်နိုင်သည်။ <ph name="BEGIN_LINK" />Google ထံပို့သော သက်ဆိုင်ရာဒေတာများအကြောင်း ပိုမိုသိရှိရန်<ph name="END_LINK" /></translation>
 <translation id="5315870524563628285">ထည့်သွင်းစရာ မရှိပါ</translation>
 <translation id="5316356981864168850"><ph name="NUM_SUGGESTIONS" /> အနက် <ph name="INDEX" /></translation>
 <translation id="5317780077021120954">သိမ်းရန်</translation>

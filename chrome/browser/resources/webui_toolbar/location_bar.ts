@@ -11,7 +11,6 @@ import '/shared/permission_dashboard.js';
 import '//resources/cr_elements/cr_icon_button/cr_icon_button.js';
 
 import {loadTimeData} from '//resources/js/load_time_data.js';
-import {TrackedElementManager} from '//resources/js/tracked_element/tracked_element_manager.js';
 import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
 import type {PropertyValues} from '//resources/lit/v3_0/lit.rollup.js';
 import type {LocationBarState} from '/shared/toolbar_ui_api_data_model.mojom-webui.js';
@@ -103,6 +102,7 @@ export class LocationBarElement extends CrLitElement implements
         isClickable: false,
         isTextDangerous: false,
         isVisible: true,
+        isContextMenuVisible: false,
       },
       activityIndicators: [],
       permissionDashboard: null,
@@ -114,19 +114,15 @@ export class LocationBarElement extends CrLitElement implements
   accessor isPopupOpen: boolean = false;
   accessor touchUi: boolean = false;
 
-  private trackedElementManager_: TrackedElementManager;
   private browserProxy_: BrowserProxy = BrowserProxyImpl.getInstance();
   private focusState_: boolean = false;
 
   constructor() {
     super();
-    this.trackedElementManager_ = TrackedElementManager.getInstance();
   }
 
   override connectedCallback() {
     super.connectedCallback();
-    this.trackedElementManager_.startTracking(
-        this.$.omnibox, 'kOmniboxElementId');
     // Need to use focusin/focusout and not focus/blur here since we
     // specifically want the events from child elements.
     this.addEventListener('focusin', this.onFocusin_.bind(this));
@@ -137,7 +133,6 @@ export class LocationBarElement extends CrLitElement implements
 
   override disconnectedCallback() {
     super.disconnectedCallback();
-    this.trackedElementManager_.stopTracking(this.$.omnibox);
   }
 
   override willUpdate(changedProperties: PropertyValues<this>): void {
@@ -244,11 +239,6 @@ export class LocationBarElement extends CrLitElement implements
 
   controlsToAddToOverflowMenu(): string[] {
     return [];
-  }
-
-  consumeNeedsLayout(): boolean {
-    // The minimum and preferred sizes of this control do not change.
-    return false;
   }
 
   // Sets the width to include all remaining unclaimed space on the toolbar.

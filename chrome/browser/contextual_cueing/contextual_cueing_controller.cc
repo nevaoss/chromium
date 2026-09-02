@@ -71,7 +71,6 @@
 #include "content/public/browser/navigation_entry.h"
 #include "content/public/browser/render_frame_host.h"
 #include "third_party/re2/src/re2/re2.h"
-#include "ui/actions/actions.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/menus/simple_menu_model.h"
 
@@ -212,6 +211,39 @@ ContextualCueingController::~ContextualCueingController() {
     page_content_annotations_service_->RemoveObserver(
         page_content_annotations::AnnotationType::kCategoryClassifier, this);
   }
+}
+
+ContextualCueingController::ActiveCueData::ActiveCueData(
+    CueTargetType cue_type,
+    optimization_guide::proto::ContextualCue cue,
+    std::vector<tabs::TabHandle> tabs_to_show,
+    std::vector<optimization_guide::proto::Tab> background_tabs,
+    std::string cuj,
+    CueActionData action_data,
+    std::string cue_id)
+    : cue_type(cue_type),
+      cue(std::move(cue)),
+      tabs_to_show(std::move(tabs_to_show)),
+      background_tabs(std::move(background_tabs)),
+      cuj(std::move(cuj)),
+      action_data(std::move(action_data)),
+      cue_id(std::move(cue_id)) {}
+
+ContextualCueingController::ActiveCueData::~ActiveCueData() = default;
+ContextualCueingController::ActiveCueData::ActiveCueData(
+    const ActiveCueData&) = default;
+ContextualCueingController::ActiveCueData&
+ContextualCueingController::ActiveCueData::operator=(
+    const ActiveCueData&) = default;
+
+void ContextualCueingController::OnActionInvoked() {
+  if (!active_cue_data_) {
+    return;
+  }
+  OnCueClicked(active_cue_data_->cue_type, active_cue_data_->cue,
+               active_cue_data_->tabs_to_show,
+               active_cue_data_->background_tabs, active_cue_data_->cuj,
+               active_cue_data_->action_data, active_cue_data_->cue_id);
 }
 
 // static
@@ -360,6 +392,7 @@ void ContextualCueingController::OnTabDetached(
     tabs::TabInterface* tab,
     tabs::TabInterface::DetachReason reason) {
   tab_list_observation_.Reset();
+  side_panel_shown_subscription_ = {};
   if (!dependencies_.empty()) {
     HideCue();
   }
@@ -367,6 +400,9 @@ void ContextualCueingController::OnTabDetached(
 
 void ContextualCueingController::OnTabInserted(tabs::TabInterface* tab) {
   ObserveTabList();
+  if (active_cue_data_) {
+    ObserveSidePanel();
+  }
 }
 
 void ContextualCueingController::ObserveTabList() {
@@ -561,6 +597,22 @@ void ContextualCueingController::InitiateModelExecutionRequest(
 
   ukm::SourceId source_id = GetTabSourceId();
 
+  if (!sync_service_ ||
+      !sync_service_->GetUserSettings()->GetSelectedTypes().Has(
+          syncer::UserSelectableType::kHistory)) {
+    CUEING_LOG("History sync is off.");
+    RecordContextualCueingDecision(source_id,
+                                   ContextualCueingDecision::kHistorySyncOff);
+    return;
+  }
+
+  if (IsUserSubjectToAgeRestrictions()) {
+    CUEING_LOG("User subject to age restrictions.");
+    RecordContextualCueingDecision(
+        source_id, ContextualCueingDecision::kAgeRestrictionEnforced);
+    return;
+  }
+
   if (!optimization_guide_keyed_service_) {
     RecordContextualCueingDecision(
         source_id, ContextualCueingDecision::kModelExecutionUnavailable);
@@ -666,10 +718,9 @@ void ContextualCueingController::OnModelExecutionResponseReceived(
     std::vector<optimization_guide::proto::Tab> background_tabs,
     optimization_guide::OptimizationGuideModelExecutionResult result,
     std::unique_ptr<optimization_guide::ModelQualityLogEntry> log_entry) {
-  if (!tab_->IsActivated() ||
-      !tab_->GetContents() ||
-      !AreTabsEqual(active_tab, GetTabProtoFromWebContents(
-                                    tab_->GetContents()))) {
+  if (!tab_->IsActivated() || !tab_->GetContents() ||
+      !AreTabsEqual(active_tab,
+                    GetTabProtoFromWebContents(tab_->GetContents()))) {
     CUEING_LOG(
         "Model execution returned but tab for generated cue is no longer "
         "active.");
@@ -728,6 +779,14 @@ void ContextualCueingController::OnModelExecutionResponseReceived(
     CUEING_LOG(base::StringPrintf("No CueTarget registered for '%s'",
                                   GetName(*target_type)));
     OnShowCueFailed(ContextualCueingDecision::kTargetFeatureNotRegistered);
+    return;
+  }
+
+  if (!sync_service_ ||
+      !sync_service_->GetUserSettings()->GetSelectedTypes().Has(
+          syncer::UserSelectableType::kHistory)) {
+    CUEING_LOG("History sync is off.");
+    OnShowCueFailed(ContextualCueingDecision::kHistorySyncOff);
     return;
   }
 
@@ -799,16 +858,6 @@ ContextualCueingDecision ContextualCueingController::IsAllowedToShowCue() {
     return ContextualCueingDecision::kNoActiveTab;
   }
   ukm::SourceId source_id = GetTabSourceId();
-
-  if (!sync_service_ ||
-      !sync_service_->GetUserSettings()->GetSelectedTypes().Has(
-          syncer::UserSelectableType::kHistory)) {
-    CUEING_LOG("History sync is off.");
-    // If history sync is off, we cannot proceed to generate or show the cue.
-    RecordContextualCueingDecision(source_id,
-                                   ContextualCueingDecision::kHistorySyncOff);
-    return ContextualCueingDecision::kHistorySyncOff;
-  }
 
   // Check if the user has opted out of contextual cues.
   PrefService* pref_service = tab_->GetProfile()->GetPrefs();
@@ -954,9 +1003,6 @@ void ContextualCueingController::ShowCue(
   CueActionData action_data =
       target.CueActionDataFromResponse(cue, tabs_to_show);
 
-  auto* window = tab_->GetBrowserWindowInterface();
-  CHECK(window);
-
   base::TimeDelta show_latency;
   base::Time page_load_time = tab_->GetContents()
                                   ->GetController()
@@ -974,7 +1020,7 @@ void ContextualCueingController::ShowCue(
 
   dependencies_.clear();
   for (const auto& handle : tabs_to_show) {
-    if (handle.Get() && handle.Get()->GetContents()) {
+    if (handle.Get() && handle.Get() != tab_ && handle.Get()->GetContents()) {
       dependencies_.insert(
           sessions::SessionTabHelper::IdForTab(handle.Get()->GetContents()));
     }
@@ -985,18 +1031,9 @@ void ContextualCueingController::ShowCue(
   NOTIMPLEMENTED()
       << "Contextual cueing anchored message UI is not implemented for Android";
 #else
-  auto* action = actions::ActionManager::Get().FindAction(
-      kActionAnchoredContextualCue,
-      window->GetFeatures().browser_actions()->root_action_item());
-  CHECK(action);
-
   const auto& strings = cue.anchored_message_cue();
-  action->SetText(base::UTF8ToUTF16(strings.action_text()));
-  action->SetImage(target.GetOmniboxChipIcon());
-  action->SetInvokeActionCallback(base::BindRepeating(
-      &ContextualCueingController::OnCueClicked, weak_ptr_factory_.GetWeakPtr(),
-      cue_type, cue, tabs_to_show, background_tabs, cue.suggested_cuj(),
-      action_data, cue_id));
+  active_cue_data_.emplace(cue_type, cue, tabs_to_show, background_tabs,
+                           cue.suggested_cuj(), action_data, cue_id);
 
   page_actions::PageActionController* page_action_controller =
       tab_->GetTabFeatures()->page_action_controller();
@@ -1022,13 +1059,12 @@ void ContextualCueingController::ShowCue(
   page_action_controller->OverrideAccessibleName(
       kActionAnchoredContextualCue, base::UTF8ToUTF16(strings.action_text()));
   page_action_controller->OverrideTooltip(
-      kActionAnchoredContextualCue,
-      base::UTF8ToUTF16(strings.action_text()));
+      kActionAnchoredContextualCue, base::UTF8ToUTF16(strings.action_text()));
 
   auto menu_model = std::make_unique<ContextualCueingMenuModel>(
       tab_->GetProfile(), weak_ptr_factory_.GetWeakPtr(), cue_type, cue,
       tabs_to_show, background_tabs, cue.suggested_cuj(),
-      std::move(action_data), cue_id);
+      std::move(action_data), cue_id, target.SupportsEditPrompt());
   page_action_controller->SetAnchoredMessageAction(
       kActionAnchoredContextualCue,
       page_actions::AnchoredMessageActionIconType::kMenu,
@@ -1197,9 +1233,7 @@ void ContextualCueingController::OnCueClicked(
     std::vector<optimization_guide::proto::Tab> background_tabs,
     std::string cuj,
     CueActionData action,
-    std::string cue_id,
-    actions::ActionItem*,
-    actions::ActionInvocationContext) {
+    std::string cue_id) {
   CUEING_LOG(
       base::StringPrintf("Cue type '%s' was clicked", GetName(cue_type)));
 #if !BUILDFLAG(IS_ANDROID)
@@ -1287,6 +1321,7 @@ base::TimeDelta ContextualCueingController::ExtractCueShownDuration() {
 
 void ContextualCueingController::HideCue() {
 #if !BUILDFLAG(IS_ANDROID)
+  active_cue_data_.reset();
   dependencies_.clear();
   page_actions::PageActionController* page_action_controller =
       tab_->GetTabFeatures()->page_action_controller();

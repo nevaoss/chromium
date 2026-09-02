@@ -162,11 +162,11 @@ import org.chromium.chrome.browser.signin.services.WebSigninBridge;
 import org.chromium.chrome.browser.tab.AccessibilityVisibilityHandler;
 import org.chromium.chrome.browser.tab.AutofillSessionLifetimeController;
 import org.chromium.chrome.browser.tab.CurrentTabObserver;
-import org.chromium.chrome.browser.tab.EmptyTabObserver;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabLaunchType;
 import org.chromium.chrome.browser.tab.TabObscuringHandler;
 import org.chromium.chrome.browser.tab.TabObscuringHandlerSupplier;
+import org.chromium.chrome.browser.tab.TabObserver;
 import org.chromium.chrome.browser.tab_ui.RecyclerViewPosition;
 import org.chromium.chrome.browser.tab_ui.TabContentManager;
 import org.chromium.chrome.browser.tab_ui.TabSwitcher;
@@ -227,7 +227,6 @@ import org.chromium.components.browser_ui.bottomsheet.BottomSheetController;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController.SheetState;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetControllerFactory;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetObserver;
-import org.chromium.components.browser_ui.bottomsheet.EmptyBottomSheetObserver;
 import org.chromium.components.browser_ui.bottomsheet.ExpandedSheetHelper;
 import org.chromium.components.browser_ui.bottomsheet.ManagedBottomSheetController;
 import org.chromium.components.browser_ui.desktop_windowing.DesktopWindowStateManager;
@@ -1498,7 +1497,7 @@ public class RootUiCoordinator
         CurrentTabObserver observer =
                 new CurrentTabObserver(
                         mActivityTabProvider.asObservable(),
-                        new EmptyTabObserver() {
+                        new TabObserver() {
                             @Override
                             public void onDidFinishNavigationInPrimaryMainFrame(
                                     Tab tab, NavigationHandle navigationHandle) {
@@ -1540,8 +1539,7 @@ public class RootUiCoordinator
                             /* itemDelegate= */ null,
                             mShareDelegateSupplier,
                             ChromeContextMenuPopulator.ContextMenuMode.THIN_WEB_VIEW,
-                            /* customContentActions= */ Collections.emptyList(),
-                            getLeftSideUiWidthSupplier());
+                            /* customContentActions= */ Collections.emptyList());
             mEphemeralTabCoordinatorSupplier.set(
                     new EphemeralTabCoordinator(
                             mActivity,
@@ -1788,8 +1786,8 @@ public class RootUiCoordinator
                                     assertNonNull(mDeviceLockActivityLauncherSupplier.get()),
                                     profileSupplier,
                                     getBottomSheetControllerSupplier().asNonNull(),
-                                    mModalDialogManagerSupplier.get(),
-                                    mSnackbarManagerSupplier.get(),
+                                    mModalDialogManagerSupplier,
+                                    mSnackbarManagerSupplier,
                                     SigninAccessPoint.WEB_SIGNIN));
         }
         if (SigninFeatureMap.isEnabled(SigninFeatures.ENABLE_SEAMLESS_SIGNIN)) {
@@ -1803,8 +1801,8 @@ public class RootUiCoordinator
                                     assertNonNull(mDeviceLockActivityLauncherSupplier.get()),
                                     profileSupplier,
                                     getBottomSheetControllerSupplier().asNonNull(),
-                                    mModalDialogManagerSupplier.get(),
-                                    mSnackbarManagerSupplier.get(),
+                                    mModalDialogManagerSupplier,
+                                    mSnackbarManagerSupplier,
                                     SigninAccessPoint.EXTENSIONS));
         }
     }
@@ -2804,7 +2802,7 @@ public class RootUiCoordinator
         if (bottomSheetController == null) return;
 
         mBottomSheetObserver =
-                new EmptyBottomSheetObserver() {
+                new BottomSheetObserver() {
                     private boolean mOpened;
 
                     @Override
@@ -3044,21 +3042,5 @@ public class RootUiCoordinator
      */
     protected @Nullable OneshotSupplier<SideUiStateProvider> getSideUiStateProviderSupplier() {
         return null;
-    }
-
-    /**
-     * Returns the supplier for the left side UI width in px.
-     *
-     * <p>If the current Activity does not have left side UI, the supplier will always supply 0
-     *
-     * <p>NOTE: Always prefer {@link SideUiStateProvider} rather than this supplier. This supplier
-     * is created because some components can't depend on {@link SideUiStateProvider}, such as
-     * {@link ContextMenuPopulatorFactory}.
-     *
-     * <p>TOOD(crbug.com/543470110): Fix the dependency issue and remove this supplier.
-     */
-    @Deprecated
-    public Supplier<Integer> getLeftSideUiWidthSupplier() {
-        return () -> 0;
     }
 }

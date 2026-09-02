@@ -131,7 +131,6 @@ source_set("impl") {
     "//chrome/browser/ui/webui/policy",
     "//chrome/browser/updates/announcement_notification",
     "//chrome/browser/webauthn",
-    "//components/accessibility_annotator/core:prefs",
     "//components/blocked_content",
     "//components/bookmarks/common",
     "//components/breadcrumbs/core:status",
@@ -360,8 +359,8 @@ source_set("impl") {
       "//chrome/browser/os_crypt",
       "//chrome/browser/webnn",
       "//chrome/browser/win",
-      "//components/os_crypt/async/browser",
-      "//components/os_crypt/async/browser:dpapi_key_provider",
+      "//components/os_crypt/browser",
+      "//components/os_crypt/browser:dpapi_key_provider",
     ]
   }
 
@@ -392,6 +391,7 @@ source_set("impl") {
       "//chrome/browser/search_engine_choice",
       "//chrome/browser/search_engines",
       "//chrome/browser/sharing_hub",
+      "//chrome/browser/speech",
       "//chrome/browser/ui/commerce",
       "//chrome/browser/ui/extensions",
       "//chrome/browser/ui/omnibox/omnibox_everywhere:prefs",

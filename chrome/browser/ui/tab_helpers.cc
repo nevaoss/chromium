@@ -36,6 +36,8 @@
 #include "chrome/browser/finds/core/finds_features.h"
 #include "chrome/browser/finds/core/finds_tab_helper.h"
 #include "chrome/browser/finds/finds_service_factory.h"
+#include "chrome/browser/glic/glic_marketing_page_tab_helper.h"
+#include "chrome/browser/glic/public/features.h"
 #include "chrome/browser/history/history_tab_helper.h"
 #include "chrome/browser/history/top_sites_factory.h"
 #include "chrome/browser/history_clusters/history_clusters_tab_helper.h"
@@ -72,7 +74,6 @@
 #include "chrome/browser/sessions/session_tab_helper_factory.h"
 #include "chrome/browser/site_protection/site_protection_metrics_observer.h"
 #include "chrome/browser/ssl/chrome_security_blocking_page_factory.h"
-#include "chrome/browser/ssl/connection_help_tab_helper.h"
 #include "chrome/browser/ssl/https_only_mode_tab_helper.h"
 #include "chrome/browser/storage_access_api/storage_access_api_service_factory.h"
 #include "chrome/browser/storage_access_api/storage_access_api_service_impl.h"
@@ -186,12 +187,10 @@
 #include "content/public/common/content_features.h"
 #else
 #include "chrome/browser/banners/app_banner_manager_desktop.h"
-#include "chrome/browser/tab_contents/form_interaction_tab_helper.h"
 #include "chrome/browser/ui/bookmarks/bookmark_tab_helper.h"
 #include "chrome/browser/ui/javascript_dialogs/javascript_tab_modal_dialog_manager_delegate_desktop.h"
 #include "chrome/browser/ui/read_anything/read_anything_side_panel_controller.h"
 #include "chrome/browser/ui/search/search_tab_helper.h"
-#include "chrome/browser/ui/sync/browser_synced_tab_delegate.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/uma_browsing_activity_observer.h"
 #include "components/image_fetcher/core/image_fetcher_service.h"
@@ -337,6 +336,9 @@ void TabHelpers::AttachTabHelpers(WebContents* web_contents,
   // infobars::ContentInfoBarManager comes before common tab helpers since
   // ChromeSubresourceFilterClient has it as a dependency.
   infobars::ContentInfoBarManager::CreateForWebContents(web_contents);
+  if (base::FeatureList::IsEnabled(features::kGlicMarketingAutoOpen)) {
+    glic::GlicMarketingPageTabHelper::CreateForWebContents(web_contents);
+  }
 
   Profile* profile =
       Profile::FromBrowserContext(web_contents->GetBrowserContext());
@@ -440,7 +442,6 @@ void TabHelpers::AttachTabHelpers(WebContents* web_contents,
       web_contents, profile->IsOffTheRecord(),
       commerce::ShoppingServiceFactory::GetForBrowserContext(profile),
       ISOLATED_WORLD_ID_CHROME_INTERNAL);
-  ConnectionHelpTabHelper::CreateForWebContents(web_contents);
   content_settings::PageSpecificContentSettings::CreateForWebContents(
       web_contents,
       std::make_unique<PageSpecificContentSettingsDelegate>(web_contents));
@@ -722,8 +723,6 @@ void TabHelpers::AttachTabHelpers(WebContents* web_contents,
     webapps::AppBannerManagerDesktop::CreateForWebContents(web_contents);
   }
   BookmarkTabHelper::CreateForWebContents(web_contents);
-  BrowserSyncedTabDelegate::CreateForWebContents(web_contents);
-  FormInteractionTabHelper::CreateForWebContents(web_contents);
   javascript_dialogs::TabModalDialogManager::CreateForWebContents(
       web_contents,
       std::make_unique<JavaScriptTabModalDialogManagerDelegateDesktop>(

@@ -47,6 +47,7 @@
 #include "chrome/browser/media/unified_autoplay_config.h"
 #include "chrome/browser/media/webrtc/capture_policy_utils.h"
 #include "chrome/browser/media/webrtc/media_capture_devices_dispatcher.h"
+#include "chrome/browser/media/webrtc/permission_bubble_media_access_handler.h"
 #include "chrome/browser/memory/enterprise_memory_limit_pref_observer.h"
 #include "chrome/browser/metrics/chrome_metrics_service_client.h"
 #include "chrome/browser/metrics/tab_stats/tab_stats_tracker.h"
@@ -107,7 +108,6 @@
 #include "chrome/common/buildflags.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/common/secure_origin_allowlist.h"
-#include "components/accessibility_annotator/core/prefs.h"
 #include "components/autofill/core/common/autofill_prefs.h"
 #include "components/blocked_content/safe_browsing_triggered_popup_blocker.h"
 #include "components/breadcrumbs/core/breadcrumbs_status.h"
@@ -313,6 +313,7 @@
 #include "chrome/browser/screen_ai/pref_names.h"
 #include "chrome/browser/search_engine_choice/search_engine_choice_dialog_service.h"
 #include "chrome/browser/signin/signin_promo.h"
+#include "chrome/browser/speech/speech_recognition_small_expert_model_installer.h"
 #include "chrome/browser/task_manager/task_manager_interface.h"
 #include "chrome/browser/themes/theme_syncable_service.h"
 #include "chrome/browser/ui/commerce/commerce_ui_tab_helper.h"
@@ -539,6 +540,7 @@
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 #include "chrome/browser/browser_switcher/browser_switcher_prefs.h"
 #include "chrome/browser/enterprise/signin/enterprise_signin_prefs.h"
+#include "chrome/browser/lifetime/scheduled_restart_manager.h"
 #endif
 
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
@@ -858,6 +860,12 @@ constexpr char kLastSeenFeedType[] = "feedv2.last_seen_feed_type";
 // Deprecated 05/2026.
 constexpr char kShouldShowRemoteAnnotatorFirstRunInfo[] =
     "accessibility_annotator.should_show_remote_annotator_first_run_info";
+
+// Deprecated 08/2026.
+constexpr char kUkmLoggingUserSecret[] =
+    "accessibility_annotator.ukm_logging_user_secret";
+constexpr char kUkmLoggingUserSecretCreationTime[] =
+    "accessibility_annotator.ukm_logging_user_secret_creation_time";
 
 // Deprecated 05/2026.
 constexpr char kHttpCacheFinchExperimentGroups[] =
@@ -1410,6 +1418,10 @@ void RegisterProfilePrefsForMigration(
   registry->RegisterBooleanPref(kShowRollbackUiModeB, false);
   registry->RegisterBooleanPref(kBlockAll3pcToggleEnabled, false);
   registry->RegisterBooleanPref(kTrackingProtection3pcdEnabled, false);
+
+  // Deprecated 08/2026.
+  registry->RegisterStringPref(kUkmLoggingUserSecret, std::string());
+  registry->RegisterTimePref(kUkmLoggingUserSecretCreationTime, base::Time());
 }
 
 }  // namespace
@@ -1539,6 +1551,8 @@ void RegisterLocalState(PrefRegistrySimple* registry) {
   PerformanceInterventionMetricsReporter::RegisterLocalStatePrefs(registry);
   RegisterBrowserPrefs(registry);
   speech::SodaInstaller::RegisterLocalStatePrefs(registry);
+  speech::SpeechRecognitionSmallExpertModelInstaller::RegisterLocalStatePrefs(
+      registry);
   StartupBrowserCreator::RegisterLocalStatePrefs(registry);
   task_manager::TaskManagerInterface::RegisterPrefs(registry);
   UpgradeDetector::RegisterPrefs(registry);
@@ -1554,6 +1568,7 @@ void RegisterLocalState(PrefRegistrySimple* registry) {
 #endif  // BUILDFLAG(ENABLE_ON_DEVICE_TRANSLATION)
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+  scheduled_restart::ScheduledRestartManager::RegisterLocalStatePrefs(registry);
   WhatsNewUI::RegisterLocalStatePrefs(registry);
 #endif
 
@@ -1755,7 +1770,6 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
   // User prefs. Please keep this list alphabetized.
   AccessibilityLabelsService::RegisterProfilePrefs(registry);
   AccessibilityUIMessageHandler::RegisterProfilePrefs(registry);
-  accessibility_annotator::prefs::RegisterProfilePrefs(registry);
   AimEligibilityService::RegisterProfilePrefs(registry);
   AnnouncementNotificationService::RegisterProfilePrefs(registry);
   autofill::prefs::RegisterProfilePrefs(registry);
@@ -1824,6 +1838,7 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
   payments::RegisterProfilePrefs(registry);
   performance_manager::user_tuning::prefs::RegisterProfilePrefs(registry);
   permissions::RegisterProfilePrefs(registry);
+  PermissionBubbleMediaAccessHandler::RegisterProfilePrefs(registry);
   PlatformNotificationServiceImpl::RegisterProfilePrefs(registry);
   policy::URLBlocklistManager::RegisterProfilePrefs(registry);
   PolicyUI::RegisterProfilePrefs(registry);
@@ -2747,6 +2762,10 @@ void MigrateObsoleteProfilePrefs(PrefService* profile_prefs,
   profile_prefs->ClearPref(kShowRollbackUiModeB);
   profile_prefs->ClearPref(kBlockAll3pcToggleEnabled);
   profile_prefs->ClearPref(kTrackingProtection3pcdEnabled);
+
+  // Added 08/2026.
+  profile_prefs->ClearPref(kUkmLoggingUserSecret);
+  profile_prefs->ClearPref(kUkmLoggingUserSecretCreationTime);
 
   // Please don't delete the following line. It is used by PRESUBMIT.py.
   // END_MIGRATE_OBSOLETE_PROFILE_PREFS

@@ -23,7 +23,7 @@ import {isMac} from '//resources/js/platform.js';
 import type {PropertyValues} from '//resources/lit/v3_0/lit.rollup.js';
 import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
 import {SelectionLineState} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
-import type {AutocompleteMatch, PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerInterface as SearchboxPageHandlerInterface} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import type {PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerInterface as SearchboxPageHandlerInterface} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import type {Url} from '//resources/mojo/url/mojom/url.mojom-webui.js';
 
 import {browserProxyFactory, OmniboxEscapeAction} from './omnibox_popup.mojom-webui.js';
@@ -249,6 +249,8 @@ export class OmniboxPopupSearchboxElement extends
   private popupListenerIds_: number[] = [];
   // Sequence number of the current content state received from C++.
   private currentSequenceNum_: number = 0;
+  // Tab ID associated with the current input state.
+  private tabId_: number = 0;
   // True if the user has modified the text in the input field (e.g., typed or
   // deleted characters), as opposed to displaying permanent text set from C++.
   protected accessor userInputInProgress_: boolean = false;
@@ -280,7 +282,7 @@ export class OmniboxPopupSearchboxElement extends
   // executing. Used to suppress recording spurious history edits when input
   // text updates programmatically during undo/redo execution.
   private isUndoRedo_: boolean = false;
-  // Observes resize events on input element to evaluate AIM button
+  // Observes resize events on `#inputWrapper` to evaluate AIM button
   // expanded/collapsed state.
   private inputResizeObserver_: ResizeObserver|null = null;
   // Cached width of the AIM button in its expanded state (when rendered as
@@ -355,7 +357,7 @@ export class OmniboxPopupSearchboxElement extends
     this.inputResizeObserver_ = new ResizeObserver(() => {
       this.updateAimButtonCollapse_();
     });
-    this.inputResizeObserver_.observe(this.$.input.inputElement);
+    this.inputResizeObserver_.observe(this.$.inputWrapper);
 
     // When `selectAllOnMouseRelease_` is true (set during `onInputMousedown_`
     // when the input is focused and the selection is collapsed), prevent the
@@ -466,6 +468,10 @@ export class OmniboxPopupSearchboxElement extends
 
   override getWrapperElement(): HTMLElement {
     return this.$.inputWrapper;
+  }
+
+  override getTabId(): number|null {
+    return this.tabId_ || null;
   }
 
   override pageHandler(): SearchboxPageHandlerInterface {
@@ -781,6 +787,7 @@ export class OmniboxPopupSearchboxElement extends
     this.userInputInProgress_ = state.userInputInProgress;
     this.hasUserInput_ = !!state.text.trim();
     this.currentSequenceNum_ = state.sequenceNumber;
+    this.tabId_ = state.tabId;
     this.fullUrl_ = state.fullUrl;
     this.lastQueriedInput = state.text;
     this.permanentDisplayText_ = state.permanentDisplayText;
@@ -870,8 +877,9 @@ export class OmniboxPopupSearchboxElement extends
     await this.updateComplete;
   }
   /**
-   * Resets selection range, blurs input, and clears autocomplete matches when
-   * focus is lost to external targets or when clicking outside.
+   * Resets selection range, blurs input, clears autocomplete matches, and
+   * resets AIM button visibility when focus is lost to external targets or when
+   * clicking outside.
    */
   private handleFocusLost_() {
     this.getInputElement().setSelectionRange(0, 0);
@@ -881,6 +889,10 @@ export class OmniboxPopupSearchboxElement extends
     // select_all_on_mouse_release_ (in omnibox_view_views) to be set to the
     // correct value.
     this.clearAutocompleteMatches();
+    // Due to inconsistent focus detection, resetting AIM button visibility
+    // here is necessary in order to guarantee that the AIM button is hidden
+    // when the user defocuses the Omnibox.
+    this.aimButtonVisible_ = false;
   }
 
   /**
@@ -1148,18 +1160,6 @@ export class OmniboxPopupSearchboxElement extends
         this.textfieldModel_.canUndo(), this.textfieldModel_.canRedo());
   }
 
-  override computeMatchFillIntoEdit(match: AutocompleteMatch) {
-    const isDefaultMatch =
-        this.selectedMatchIndex === 0 && match.allowedToBeDefaultMatch;
-    // If default match, restore the original input text plus the inline
-    // autocompletion. If URL, it should not have https:// prepended to it.
-    if (isDefaultMatch && this.lastQueriedInput) {
-      return this.lastQueriedInput + match.inlineAutocompletion;
-    }
-
-    return super.computeMatchFillIntoEdit(match);
-  }
-
   override handleKeyNavigation(e: KeyboardEvent) {
     // Ignore key navigation (including ESC) during active IME text composition
     // (e.g. Japanese/Chinese/Korean) so the OS IME engine handles the key
@@ -1171,11 +1171,6 @@ export class OmniboxPopupSearchboxElement extends
     if (e.key === 'Escape') {
       e.preventDefault();
       this.handleEscapeKey_();
-      return;
-    }
-
-    if (e.key === 'Tab' && this.$.input === this.shadowRoot?.activeElement &&
-        this.acceptInlineAutocomplete(e)) {
       return;
     }
 
@@ -1194,6 +1189,17 @@ export class OmniboxPopupSearchboxElement extends
             shiftKey: e.shiftKey,
           },
           /*viaKeyboard=*/ true);
+      return;
+    }
+
+    if (e.key === 'Tab' && this.$.input === this.shadowRoot?.activeElement) {
+      if (!e.shiftKey &&
+          this.keywordModeManager.acceptTab(
+              this.selectedMatch, this.selectedMatchIndex)) {
+        e.preventDefault();
+        return;
+      }
+      this.acceptInlineAutocomplete(e);
       return;
     }
 

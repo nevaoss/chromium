@@ -67,9 +67,9 @@ DelegatedFrameHost::DelegatedFrameHost(const viz::FrameSinkId& frame_sink_id,
   CHECK(host_frame_sink_manager_);
   frame_evictor_->SetVisible(client_->DelegatedFrameHostIsVisible());
 
-  stale_content_layer_ = std::make_unique<ui::LayerSolidColor>();
+  stale_content_layer_ = std::make_unique<ui::LayerWithExternalTexture>();
   stale_content_layer_->SetVisible(false);
-  stale_content_layer_->SetColor(SkColors::kTransparent);
+  stale_content_layer_->SetFillsBoundsOpaquely(false);
 }
 
 DelegatedFrameHost::~DelegatedFrameHost() {
@@ -110,8 +110,8 @@ void DelegatedFrameHost::WasShown(
                cc::DeadlinePolicy::UseDefaultDeadline());
 
   // Remove stale content that might be displayed.
-  if (stale_content_layer_->HasExternalContent()) {
-    stale_content_layer_->SetShowSolidColorContent();
+  if (stale_content_layer_->HasTransferableResource()) {
+    stale_content_layer_->ClearTexture();
     stale_content_layer_->SetVisible(false);
   }
 
@@ -383,7 +383,7 @@ void DelegatedFrameHost::EmbedSurface(
           cc::DeadlinePolicy::UseSpecifiedDeadline(*force_specified_deadline_);
     }
     current_frame_size_in_dip_ = surface_dip_size_;
-    client_->GetDelegatedFrameHostLayer()->SetBackgroundColor(
+    client_->GetDelegatedFrameHostLayer()->SetFallbackBackgroundColor(
         SkColor4f::FromColor(GetGutterColor()));
     client_->GetDelegatedFrameHostLayer()->SetShowSurface(
         new_primary_surface_id, current_frame_size_in_dip_, deadline_policy,
@@ -478,7 +478,7 @@ void DelegatedFrameHost::EvictDelegatedFrame(
   // white screens from being displayed during various animations such as the
   // CrOS overview mode.
   if (client_->ShouldShowStaleContentOnEviction() &&
-      !stale_content_layer_->HasExternalContent()) {
+      !stale_content_layer_->HasTransferableResource()) {
     SetFrameEvictionStateAndNotifyObservers(
         FrameEvictionState::kPendingEvictionRequests);
     auto callback =
@@ -546,7 +546,7 @@ void DelegatedFrameHost::DidCopyStaleContent(
 
 // TODO(crbug.com/40812011): This DCHECK occasionally gets hit on Chrome OS.
 #if !BUILDFLAG(IS_CHROMEOS)
-  CHECK(!stale_content_layer_->HasExternalContent());
+  CHECK(!stale_content_layer_->HasTransferableResource());
 #endif
   stale_content_layer_->SetVisible(true);
   stale_content_layer_->SetBounds(gfx::Rect(surface_dip_size_));
@@ -558,7 +558,7 @@ void DelegatedFrameHost::ContinueDelegatedFrameEviction(
     const std::vector<viz::SurfaceId>& surface_ids) {
   // Reset primary surface.
   if (HasPrimarySurface()) {
-    client_->GetDelegatedFrameHostLayer()->SetBackgroundColor(
+    client_->GetDelegatedFrameHostLayer()->SetFallbackBackgroundColor(
         SkColor4f::FromColor(GetGutterColor()));
     client_->GetDelegatedFrameHostLayer()->SetShowSurface(
         viz::SurfaceId(), current_frame_size_in_dip_,
@@ -728,8 +728,9 @@ void DelegatedFrameHost::TakeFallbackContentFrom(DelegatedFrameHost* other) {
       viz::ParentLocalSurfaceIdAllocator::InvalidLocalSurfaceId();
 
   if (!HasPrimarySurface()) {
-    client_->GetDelegatedFrameHostLayer()->SetBackgroundColor(
-        other->client_->GetDelegatedFrameHostLayer()->GetBackgroundColor());
+    client_->GetDelegatedFrameHostLayer()->SetFallbackBackgroundColor(
+        other->client_->GetDelegatedFrameHostLayer()
+            ->GetFallbackBackgroundColor());
     client_->GetDelegatedFrameHostLayer()->SetShowSurface(
         desired_fallback, other->client_->GetDelegatedFrameHostLayer()->size(),
         cc::DeadlinePolicy::UseDefaultDeadline(),

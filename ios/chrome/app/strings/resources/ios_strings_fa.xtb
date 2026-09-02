@@ -1294,6 +1294,7 @@
 <translation id="5238596603078743134">‏‫<ph name="BEGIN_BOLD" /><ph name="USERNAME" /><ph name="END_BOLD" /> اکنون می‌تواند هنگام ورود به سیستم <ph name="BEGIN_BOLD" /><ph name="WEBSITE" /><ph name="END_BOLD" /> بااستفاده از «مدیر گذرواژه Google»، نام کاربری و گذرواژه شما را به‌کار ببرد.</translation>
 <translation id="5241106044372754566">‫<ph name="NAME" />،‏ <ph name="EMAIL" />، توسط سازمانتان مدیریت می‌شود، اکنون انتخاب شده است. حسابی انتخاب کنید.</translation>
 <translation id="5242899254250321823">تغییر دادن گذرواژه در وب‌سایت</translation>
+<translation id="524751727772074981">‏در همان جایی که هستید، درباره هر چیزی از «Gemini در Chrome» بپرسید</translation>
 <translation id="5248640482715684545">این سایت تلاش می‌کند برنامه دیگری را باز کند.</translation>
 <translation id="5250371859659394278">از منبع ناشناخته</translation>
 <translation id="525510229763628836">کوچک‌شده</translation>
@@ -1310,6 +1311,7 @@
 <translation id="5300589172476337783">نمایش</translation>
 <translation id="5311061401280561833">دسترسی به دوربین و میکروفون مجاز است</translation>
 <translation id="5313967007315987356">افزودن سایت</translation>
+<translation id="5315029634103634221">‏‫Gemini هوشواره است و ممکن است اشتباه کند. <ph name="BEGIN_LINK" />اطلاعات بیشتر درباره داده‌های مربوط که به Google ارسال می‌شود<ph name="END_LINK" /></translation>
 <translation id="5315870524563628285">چیزی برای وارد کردن نیست</translation>
 <translation id="5316356981864168850">‫<ph name="INDEX" /> از <ph name="NUM_SUGGESTIONS" /></translation>
 <translation id="5317780077021120954">ذخیره</translation>

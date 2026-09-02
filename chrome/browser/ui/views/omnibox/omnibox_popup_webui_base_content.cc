@@ -169,6 +169,33 @@ void OmniboxPopupWebUIBaseContent::ShowUI() {
   }
   SetWebContents(contents_wrapper_->web_contents());
 
+  // Pre-initialize the presenter's content height and preferred size from
+  // RenderWidgetHostView when Full WebUI is enabled.
+  //
+  // When switching between WebUI popups (e.g. `kFull` <-> `kAim`), the incoming
+  // WebContents was already loaded and rendered, with no subsequent DOM
+  // changes. Because Blink's auto-resize mechanism suppresses emitting a new
+  // `ResizeDueToAutoResize` IPC when the content dimensions have not changed,
+  // the presenter's `content_height_` and `views::WebView` preferred size
+  // would otherwise remain uninitialized (0). This would leave the popup
+  // widget collapsed or cause it to close until a new DOM change occurs.
+  //
+  // Pre-populating the height directly from `GetViewBounds()` immediately
+  // restores the cached height to `views::WebView` and the presenter on show.
+  if (base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxFullPopup)) {
+    if (auto* web_contents = GetWrappedWebContents()) {
+      if (auto* rwhv = web_contents->GetRenderWidgetHostView()) {
+        gfx::Size view_size = rwhv->GetViewBounds().size();
+        if (view_size.height() > 1) {
+          SetPreferredSize(view_size);
+          if (popup_presenter_) {
+            popup_presenter_->OnContentHeightChanged(view_size.height());
+          }
+        }
+      }
+    }
+  }
+
 #if BUILDFLAG(IS_MAC)
   UpdateAutoFill();
 #endif
@@ -281,7 +308,7 @@ void OmniboxPopupWebUIBaseContent::LoadContent() {
                                      browser);
     tab_selection_listener_ =
         std::make_unique<OmniboxPopupTabSelectionListener>(
-            weak_factory_.GetWeakPtr(), browser->tab_strip_model());
+            weak_factory_.GetWeakPtr(), browser->GetTabStripModel());
   }
   // Make the OmniboxController available to the OmniboxPopupUI.
   OmniboxPopupWebContentsHelper::CreateForWebContents(GetWebContents());
@@ -321,11 +348,15 @@ void OmniboxPopupWebUIBaseContent::Detach() {
     if (auto* web_contents = GetWebContents()) {
       if (auto* rwh =
               web_contents->GetPrimaryMainFrame()->GetRenderWidgetHost()) {
+        // Forward a mouse leave event to clear any hover states when the popup
+        // is detached so suggestions do not stay visually hovered on restore.
         blink::WebMouseEvent mouse_event(
             blink::WebInputEvent::Type::kMouseLeave,
             blink::WebInputEvent::kNoModifiers, base::TimeTicks::Now());
         rwh->ForwardMouseEvent(mouse_event);
       }
+      // For popups that don't receive focus (ex: Classic WebUI Omnibox Popup),
+      // clear any focused element so stale focus states are not retained.
       if (popup_presenter_ && !popup_presenter_->ShouldReceiveFocus()) {
         web_contents->ClearFocusedElement();
       }

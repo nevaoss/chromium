@@ -440,6 +440,24 @@ targets.legacy_matrix_compound_suite(
                 "CROS_LKGM",
             ],
         ),
+        "chromeos_chrome_disabled_tast_tests": targets.legacy_matrix_config(
+            mixins = [
+                "skylab-20-tests-per-shard",
+                "skylab-rdb-tast",
+            ],
+            variants = [
+                "CROS_LKGM",
+            ],
+        ),
+        "chromeos_chrome_flaky_tast_tests": targets.legacy_matrix_config(
+            mixins = [
+                "skylab-20-tests-per-shard",
+                "skylab-rdb-tast",
+            ],
+            variants = [
+                "CROS_LKGM",
+            ],
+        ),
     },
 )
 
@@ -854,6 +872,7 @@ targets.legacy_matrix_compound_suite(
         # TODO(b:484388901): Enable GPU backend testing when the issue is fixed.
         # "litert_lm_advanced_main_legacy_tests_gpu_suite": None,
         "chrome_ai_wpt_tests_manifest_suite": None,
+        "chrome_ai_wpt_tests_manifest_gemma4_suite": None,
     },
 )
 
@@ -861,6 +880,7 @@ targets.legacy_matrix_compound_suite(
     name = "optimization_guide_win_arm64_script_tests",
     basic_suites = {
         "chrome_ai_wpt_tests_manifest_suite": None,
+        "chrome_ai_wpt_tests_manifest_gemma4_suite": None,
         "model_validation_tests_light_suite": None,
         "model_validation_tests_suite": None,
         "ondevice_stability_tests_suite": None,
@@ -928,6 +948,13 @@ targets.legacy_matrix_compound_suite(
                 "x64_ai_wpt_shards",
             ],
         ),
+        "chrome_ai_wpt_tests_manifest_cpu_gemma4_suite": targets.legacy_matrix_config(
+            mixins = [
+                "chrome-intelligence-swarming-pool",
+                "non-gce",
+                "x64_ai_wpt_shards",
+            ],
+        ),
         "chrome_ai_wpt_tests_manifest_gpu_high_tier_suite": targets.legacy_matrix_config(
             mixins = [
                 "chrome-intelligence-swarming-pool",
@@ -936,6 +963,16 @@ targets.legacy_matrix_compound_suite(
                 "linux_gpu_high_tier_ai_wpt_dimensions",
             ],
         ),
+        # TODO(crbug.com/543943930): Re-enable once LiteRT-LM WebGPU delegate
+        # dawn proc table initialization is fixed on Linux.
+        # "chrome_ai_wpt_tests_manifest_gpu_high_tier_gemma4_suite": targets.legacy_matrix_config(
+        #     mixins = [
+        #         "chrome-intelligence-swarming-pool",
+        #         "non-gce",
+        #         "x64_ai_wpt_shards",
+        #         "linux_gpu_high_tier_gemma4_ai_wpt_dimensions",
+        #     ],
+        # ),
         "chrome_ai_wpt_tests_manifest_gpu_low_tier_suite": targets.legacy_matrix_config(
             mixins = [
                 "chrome-intelligence-swarming-pool",
@@ -943,6 +980,15 @@ targets.legacy_matrix_compound_suite(
                 "x64_ai_wpt_shards",
             ],
         ),
+        # TODO(crbug.com/543943930): Re-enable once LiteRT-LM WebGPU delegate
+        # dawn proc table initialization is fixed on Linux.
+        # "chrome_ai_wpt_tests_manifest_gpu_low_tier_gemma4_suite": targets.legacy_matrix_config(
+        #     mixins = [
+        #         "chrome-intelligence-swarming-pool",
+        #         "non-gce",
+        #         "x64_ai_wpt_shards",
+        #     ],
+        # ),
         # TODO(b:484388901): Enable GPU backedn testing when the issue is fixed.
         # "litert_lm_advanced_main_legacy_tests_gpu_suite": targets.legacy_matrix_config(
         #     mixins = [
@@ -1025,6 +1071,29 @@ targets.legacy_matrix_compound_suite(
                 "chrome-intelligence-swarming-pool",
                 "non-gce",
                 "x64_ai_wpt_shards",
+            ],
+        ),
+        "chrome_ai_wpt_tests_manifest_cpu_gemma4_suite": targets.legacy_matrix_config(
+            mixins = [
+                "chrome-intelligence-swarming-pool",
+                "non-gce",
+                "x64_ai_wpt_shards",
+            ],
+        ),
+        "chrome_ai_wpt_tests_manifest_gpu_high_tier_gemma4_suite": targets.legacy_matrix_config(
+            mixins = [
+                "chrome-intelligence-swarming-pool",
+                "non-gce",
+                "x64_ai_wpt_shards",
+                "win_gpu_gemma4_ai_wpt_dimensions",
+            ],
+        ),
+        "chrome_ai_wpt_tests_manifest_gpu_low_tier_gemma4_suite": targets.legacy_matrix_config(
+            mixins = [
+                "chrome-intelligence-swarming-pool",
+                "non-gce",
+                "x64_ai_wpt_shards",
+                "win_gpu_gemma4_ai_wpt_dimensions",
             ],
         ),
         "litert_e2e_tests_cpu_suite": targets.legacy_matrix_config(

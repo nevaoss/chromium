@@ -10,9 +10,9 @@
 #include "chrome/browser/glic/test_support/glic_test_environment.h"
 #include "chrome/browser/glic/test_support/glic_test_util.h"
 #include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_command_controller.h"
 #include "chrome/browser/ui/browser_commands.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/immersive/immersive_mode_controller.h"
 #include "chrome/browser/ui/tabs/features.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
@@ -125,8 +125,15 @@ class SystemMenuModelBuilderTabStripUnificationTest
 
 // Check if the toggle tab scroll buttons pinning option exists and has the
 // right label based on relevant prefs.
+// TODO(crbug.com/549762016): Flaky on Mac builds.
+#if BUILDFLAG(IS_MAC)
+#define MAYBE_ToggleTabScrollButtonsPinning \
+  DISABLED_ToggleTabScrollButtonsPinning
+#else
+#define MAYBE_ToggleTabScrollButtonsPinning ToggleTabScrollButtonsPinning
+#endif
 IN_PROC_BROWSER_TEST_F(SystemMenuModelBuilderTabStripUnificationTest,
-                       ToggleTabScrollButtonsPinning) {
+                       MAYBE_ToggleTabScrollButtonsPinning) {
   PrefService* profile_prefs = browser()->GetProfile()->GetPrefs();
   ui::MenuModel* menu = BrowserView::GetBrowserViewForBrowser(browser())
                             ->browser_widget()

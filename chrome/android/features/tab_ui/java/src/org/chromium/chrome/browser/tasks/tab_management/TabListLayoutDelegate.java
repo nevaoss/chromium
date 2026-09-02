@@ -8,18 +8,24 @@ import static org.chromium.build.NullUtil.assumeNonNull;
 import static org.chromium.chrome.browser.tasks.tab_management.TabSwitcherMessageManager.isOnlyArchivedMsg;
 
 import android.graphics.Bitmap;
+import android.os.Bundle;
 import android.view.View;
+import android.view.accessibility.AccessibilityNodeInfo;
 
 import org.chromium.base.Token;
+import org.chromium.base.metrics.RecordUserAction;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
+import org.chromium.chrome.browser.actor.ui.ActorUiTabController.UiTabState;
 import org.chromium.chrome.browser.tab.MediaState;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabLaunchType;
 import org.chromium.chrome.browser.tab.TabSelectionType;
+import org.chromium.chrome.browser.tab.TabUtils;
 import org.chromium.chrome.browser.tabmodel.TabGroupObserver;
 import org.chromium.chrome.browser.tabmodel.TabList;
 import org.chromium.chrome.browser.tabmodel.TabModel;
+import org.chromium.chrome.browser.tasks.tab_management.TabListModel.CardProperties.ModelType;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.url.GURL;
 
@@ -48,6 +54,20 @@ abstract class TabListLayoutDelegate implements TabGroupObserver {
      * be false for layouts that do not support thumbnails (like Vertical Tabs).
      */
     abstract boolean requiresThumbnailUpdateOnSelect();
+
+    /**
+     * Whether this layout supports displaying tab groups (e.g. as group cards in GTS or group
+     * headers in Vertical Tabs). False for layouts that ignore tab groups (like Flat layout).
+     */
+    abstract boolean supportsTabGroups();
+
+    /**
+     * Whether a child tab in a tab group is represented by a group card in the UI.
+     *
+     * @param tab The {@link Tab} to check.
+     * @return Whether the tab is represented by a group card.
+     */
+    abstract boolean isChildTabRepresentedByGroupCard(Tab tab);
 
     /**
      * Resolves the visual media state indicator (e.g. playing audio) for a tab card or group
@@ -98,6 +118,15 @@ abstract class TabListLayoutDelegate implements TabGroupObserver {
     }
 
     /**
+     * Handles UI model updates when a tab closure is undone in the tab model.
+     *
+     * @param tab The {@link Tab} whose closure was undone.
+     */
+    void tabClosureUndone(Tab tab) {
+        onTabAdded(tab);
+    }
+
+    /**
      * Resolves the UI index in {@link #mModelList} of the card representing the given tab in this
      * layout.
      *
@@ -111,6 +140,28 @@ abstract class TabListLayoutDelegate implements TabGroupObserver {
      */
     int getUiIndexForTab(int tabId) {
         return mModelList.indexFromTabId(tabId);
+    }
+
+    /**
+     * Records user action metrics when a tab item is clicked in the UI list.
+     *
+     * <p>Subclasses can override to customize or suppress metrics (e.g. {@link
+     * GroupedLayoutDelegate}).
+     *
+     * @param tabId The ID of the tab that was selected.
+     */
+    void recordTabSelection(int tabId) {
+        Tab tab = mMediator.getCurrentTabModelChecked().getTabById(tabId);
+        if (tab != null
+                && tab.getIsPinned()
+                && mMediator.getComponentId() == TabComponentId.VERTICAL_TABS) {
+            RecordUserAction.record("MobileTabSwitched.VerticalTabsPinned");
+        } else {
+            RecordUserAction.record(
+                    "MobileTabSwitched."
+                            + TabUiMetricsHelper.getComponentNameForMetrics(
+                                    mMediator.getComponentId()));
+        }
     }
 
     /**
@@ -144,6 +195,45 @@ abstract class TabListLayoutDelegate implements TabGroupObserver {
         if (model == null) return;
         mMediator.updateFaviconForTab(model, updatedTab, icon, iconUrl);
     }
+
+    /**
+     * Updates the URL domain, thumbnail, and favicon for a tab or its representing card when its
+     * URL changes.
+     *
+     * @param updatedTab The {@link Tab} whose URL changed.
+     */
+    void onUrlUpdated(Tab updatedTab) {
+        @Nullable PropertyModel model = mModelList.getModelFromTabId(updatedTab.getId());
+        if (!TabUtils.isValid(updatedTab) || model == null) return;
+
+        model.set(TabProperties.URL_DOMAIN, mMediator.getDomainForTab(updatedTab, model));
+        mMediator.updateThumbnailFetcher(model, updatedTab.getId());
+        mMediator.updateFaviconForTab(model, updatedTab, null, null);
+    }
+
+    /**
+     * Updates the media indicator for a tab or its representing card when media state changes.
+     *
+     * @param updatedTab The {@link Tab} whose media state changed.
+     * @param mediaState The new {@link MediaState}.
+     */
+    void onMediaStateChanged(Tab updatedTab, @MediaState int mediaState) {
+        @Nullable PropertyModel model = mModelList.getModelFromTabId(updatedTab.getId());
+        if (model == null || model.get(TabProperties.USE_SHRINK_CLOSE_ANIMATION)) {
+            return;
+        }
+        model.set(
+                TabProperties.MEDIA_INDICATOR,
+                mMediator.getTabListMediaIndicator(updatedTab, model));
+    }
+
+    /**
+     * Handles layout-specific UI model updates when a tab's Actor UI state changes.
+     *
+     * @param updatedTab The {@link Tab} whose Actor UI state changed.
+     * @param state The new {@link UiTabState}.
+     */
+    void onUiTabStateChanged(Tab updatedTab, UiTabState state) {}
 
     /**
      * Handles UI model updates when a tab is removed for closure.
@@ -233,6 +323,48 @@ abstract class TabListLayoutDelegate implements TabGroupObserver {
     void setupGroupPropertiesForChildTab(Tab tab, PropertyModel model) {}
 
     /**
+     * Returns the {@link ModelType} for tab group cards in this layout. Flat layouts do not have
+     * tab groups and use {@link ModelType#TAB}.
+     */
+    @ModelType
+    int getGroupCardType() {
+        return ModelType.TAB;
+    }
+
+    /**
+     * Returns whether the tab group is collapsed in this layout. Flat layouts do not have tab
+     * groups and default to true.
+     *
+     * @param tabGroupId The {@link Token} identifying the tab group.
+     */
+    boolean isGroupCollapsed(Token tabGroupId) {
+        return true;
+    }
+
+    /**
+     * Called when a tab or group card's selection state is toggled in multi-select mode.
+     *
+     * @param model The {@link PropertyModel} of the toggled card.
+     * @param tabId The ID of the tab associated with the card.
+     * @param wasSelected Whether the card was selected prior to the toggle.
+     */
+    void onTabSelectionToggled(PropertyModel model, int tabId, boolean wasSelected) {}
+
+    /**
+     * Returns whether an existing card representing {@code previousTabId} and {@code newTab} are in
+     * the same tab group represented by this card, allowing the card's tab ID to be updated in
+     * place rather than resetting the list. Flat and nested layouts do not share cards across group
+     * tabs and default to false.
+     *
+     * @param previousTabId The ID of the tab currently represented by the model.
+     * @param newTab The incoming {@link Tab} to be displayed at this position.
+     * @return Whether the two tabs belong to the same group card in this layout.
+     */
+    boolean areTabsInSameGroup(int previousTabId, Tab newTab) {
+        return false;
+    }
+
+    /**
      * Adjusts the proposed insertion UI index if the tab is being moved from an earlier position.
      *
      * <p>If a tab is already present in the UI list (meaning it is being moved rather than newly
@@ -251,5 +383,29 @@ abstract class TabListLayoutDelegate implements TabGroupObserver {
             return currentIndex - 1;
         }
         return currentIndex;
+    }
+
+    /**
+     * Allows layout-specific customization of accessibility node info for a given view model.
+     *
+     * @param host The host view being initialized.
+     * @param info The {@link AccessibilityNodeInfo} being populated.
+     * @param model The {@link PropertyModel} associated with the view.
+     */
+    void populateAccessibilityNodeInfo(
+            View host, AccessibilityNodeInfo info, @Nullable PropertyModel model) {}
+
+    /**
+     * Handles layout-specific accessibility actions.
+     *
+     * @param host The host view executing the action.
+     * @param action The accessibility action ID.
+     * @param args Optional bundle arguments.
+     * @param model The {@link PropertyModel} associated with the view.
+     * @return True if the action was handled, false otherwise.
+     */
+    boolean performAccessibilityAction(
+            View host, int action, @Nullable Bundle args, @Nullable PropertyModel model) {
+        return false;
     }
 }

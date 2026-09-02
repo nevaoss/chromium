@@ -4,6 +4,7 @@
 
 module searchbox.mojom;
 
+import "components/omnibox/browser/fusebox_action.mojom";
 import "components/omnibox/browser/omnibox.mojom";
 import "components/omnibox/composebox/composebox_query.mojom";
 import "mojo/public/mojom/base/big_buffer.mojom";
@@ -113,6 +114,9 @@ struct AutocompleteMatch {
   mojo_base.mojom.String16? tail_suggest_common_prefix;
   // Keyword UI state for this match. Empty if not a keyword suggestion.
   MatchKeywordModel? keyword_model;
+  // FuseboxAction carries client behavior and configuration to apply when the
+  // user accepts a suggestion.
+  fusebox_action.mojom.FuseboxAction? fusebox_action;
 };
 
 // Information about a suggested tab in the WebUI.
@@ -325,18 +329,6 @@ enum DriveDisclaimerStatus {
   kRestricted = 2,
 };
 
-// This enum is mapped to third_party/omnibox_proto/suggest_inventory.proto.
-enum SuggestInventory {
-  kDefault = 0,
-  kTravel = 1,
-  kAimTakeover = 2,
-  kImageGenTakeover = 3,
-  kConversationStarters = 4,
-  kBrainstorm = 5,
-  kHelpMeLearn = 6,
-  kWriteOrEdit = 7,
-};
-
 // LINT.IfChange(InputMethod)
 enum InputMethod {
   kKeyboard = 1,
@@ -389,11 +381,14 @@ interface PageHandler {
 
   // Queries autocomplete matches from the browser. `cursor_position` is cursor
   // position in `input`.
+  // `tab_id` is only supported for the full WebUI Omnibox popup, where it
+  // prevents in-flight query race conditions on fast tab switching.
   QueryAutocomplete(int32 query_id,
+                    int32? tab_id,
                     mojo_base.mojom.String16 input,
                     bool prevent_inline_autocomplete,
                     uint32 cursor_position,
-                    SuggestInventory suggest_inventory,
+                    fusebox_action.mojom.SuggestInventory suggest_inventory,
                     bool is_on_focus,
                     string keyword,
                     InputMethod input_method);
@@ -565,6 +560,13 @@ interface PageHandler {
   // Opens the profile picker for switching profiles.
   OpenProfilePicker();
 
+  // Shows the native screenshot/screensharing menu anchored to `anchor_rect`.
+  // `anchor_rect` is the bounding box of the anchor element (e.g. the Lens /
+  // screenshot button) in WebContents viewport-relative DIPs. Passing a rect
+  // rather than a point allows the native menu runner to position and flip the
+  // menu without occluding the anchor element.
+  ShowScreenshotMenu(gfx.mojom.Rect anchor_rect);
+
   // Triggers screensharing (window or entire screen picker).
   // `prefer_entire_screen` is a hint indicating whether the screen picker
   // should default to selecting the entire screen (true) or a window
@@ -576,6 +578,12 @@ interface PageHandler {
   // delivered asynchronously via `Page.AddFileContext()`. It can also be used
   // to delete the context via `DeleteContext()`.
   StartScreenshare(bool prefer_entire_screen)
+      => (mojo_base.mojom.UnguessableToken? token);
+
+  // Triggers interactive region selection screenshot capture.
+  // Returns a token on success, or null if the selection was cancelled, failed
+  // to start, or if there is already an active capture session.
+  CaptureRegionScreenshot()
       => (mojo_base.mojom.UnguessableToken? token);
 
   // Gets the page classification for the current context.
@@ -684,4 +692,7 @@ interface Page {
 
   // Sets the TabInfo for the attachments restored from the AIM thread history.
   SetAimThreadRestoredTabs(array<TabInfo> tabs);
+
+  // Notifies that a native screenshot menu has closed.
+  OnScreenshotMenuClosed();
 };

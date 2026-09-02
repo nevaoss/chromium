@@ -88,11 +88,11 @@ import org.chromium.chrome.browser.WarmupManager;
 import org.chromium.chrome.browser.about_settings.AboutChromeSettings;
 import org.chromium.chrome.browser.actor.ActorMetrics;
 import org.chromium.chrome.browser.actor.ActorPictureInPictureController;
+import org.chromium.chrome.browser.actor.ActorUtils;
 import org.chromium.chrome.browser.app.appmenu.AppMenuPropertiesDelegateImpl;
 import org.chromium.chrome.browser.app.download.DownloadMessageUiDelegate;
 import org.chromium.chrome.browser.app.metrics.LaunchCauseMetrics;
 import org.chromium.chrome.browser.app.tab_activity_glue.PopupCreatorImpl;
-import org.chromium.chrome.browser.app.tab_activity_glue.ReparentingDelegateFactory;
 import org.chromium.chrome.browser.app.tab_activity_glue.TabReparentingController;
 import org.chromium.chrome.browser.app.tabmodel.AsyncTabParamsManagerSingleton;
 import org.chromium.chrome.browser.app.tabmodel.TabModelOrchestrator;
@@ -1465,7 +1465,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
                 || !GlicEnabling.isProfileEligible(
                         getProfileProviderSupplier().get().getOriginalProfile())
                 || DeviceFormFactor.isNonMultiDisplayContextOnTablet(this)
-                || ChromeFeatureList.sGlicBackgroundActuation.isEnabled()) {
+                || ActorUtils.isBackgroundActuationEnabled()) {
             return;
         }
 
@@ -2311,9 +2311,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         }
         mTabReparentingControllerSupplier.set(
                 new TabReparentingController(
-                        ReparentingDelegateFactory.createReparentingControllerDelegate(
-                                getTabModelSelector()),
-                        AsyncTabParamsManagerSingleton.getInstance()));
+                        this::getTabModelSelector, AsyncTabParamsManagerSingleton.getInstance()));
 
         // This must be initialized after initialization of tab reparenting controller.
         var windowAndroid = getWindowAndroid();

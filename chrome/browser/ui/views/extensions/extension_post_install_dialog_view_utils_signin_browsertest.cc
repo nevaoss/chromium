@@ -67,7 +67,7 @@ class ExtensionPostInstallDialogViewUtilsSignInBrowserTest
         profile(), extension, SkBitmap(),
         base::BindOnce(
             [](Browser* b) {
-              return b->tab_strip_model()->GetActiveWebContents();
+              return b->GetTabStripModel()->GetActiveWebContents();
             },
             browser()));
 
@@ -116,7 +116,7 @@ class ExtensionPostInstallDialogViewUtilsSignInBrowserTest
 
     // Initiate a sign in from the promo.
     BubbleSignInPromoForSyncableDataTypeDelegate delegate(
-        *browser()->tab_strip_model()->GetActiveWebContents(),
+        *browser()->GetTabStripModel()->GetActiveWebContents(),
         signin_metrics::AccessPoint::kExtensionInstallBubble,
         syncer::LocalDataItemModel::DataId(extension->id()));
     delegate.OnSignIn(account_info);
@@ -170,8 +170,9 @@ IN_PROC_BROWSER_TEST_F(ExtensionPostInstallDialogViewUtilsSignInBrowserTest,
           .AsPrimary(signin::ConsentLevel::kSignin)
           .WithAccessPoint(signin_metrics::AccessPoint::kExtensionInstallBubble)
           .Build("testy@mctestface.com"));
-  ASSERT_TRUE(SigninPrefs(*profile()->GetPrefs())
-                  .GetExtensionsExplicitBrowserSignin(account_info.gaia));
+  ASSERT_TRUE(
+      SigninPrefs(*profile()->GetPrefs())
+          .GetExtensionsExplicitBrowserSignin(account_info.GetGaiaId()));
 
   // Check that the user is now signed in for the browser in transport mode and
   // syncing for extensions is enabled.
@@ -230,7 +231,8 @@ IN_PROC_BROWSER_TEST_F(ExtensionPostInstallDialogViewUtilsSignInBrowserTest,
             GetAccountExtensionType(extension->id()));
 
   // This should be recorded as an extension explicit sign in.
-  EXPECT_TRUE(SigninPrefs(*profile()->GetPrefs())
-                  .GetExtensionsExplicitBrowserSignin(account_info.gaia));
+  EXPECT_TRUE(
+      SigninPrefs(*profile()->GetPrefs())
+          .GetExtensionsExplicitBrowserSignin(account_info.GetGaiaId()));
   EXPECT_TRUE(extensions::sync_util::IsSyncingExtensionsEnabled(profile()));
 }

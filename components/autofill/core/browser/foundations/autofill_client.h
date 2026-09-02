@@ -115,7 +115,7 @@ class ProfileMetricsService;
 
 namespace autofill {
 
-class ActorKeyMetricsRecorder;
+class ActorAutofillManager;
 class AutofillManager;
 class AddressNormalizer;
 class AtMemoryManager;
@@ -273,6 +273,7 @@ class AutofillClient {
   // Describes the types of Iph shown by Autofill and anchored to a field.
   enum class IphFeature {
     kAutofillAi,
+    kWalletDirectOffers,
   };
 
   // Required arguments to create a dropdown showing autofill suggestions.
@@ -710,8 +711,8 @@ class AutofillClient {
   // one exists).
   virtual bool IsTabInActorMode() const;
 
-  // Returns the `ActorKeyMetricsRecorder` for the current tab (if one exists).
-  virtual ActorKeyMetricsRecorder* GetActorKeyMetricsRecorder();
+  // Returns the `ActorAutofillManager` for the current tab (if one exists).
+  virtual ActorAutofillManager* GetActorAutofillManager();
 
   // Returns true if either Profile or CreditCard Autofill is enabled.
   virtual bool IsAutofillEnabled() const = 0;
@@ -791,11 +792,6 @@ class AutofillClient {
   // Whether we can add more information to the contents of suggestions text due
   // to the use of a large keyboard accessory view. See b/40942168.
   virtual bool ShouldFormatForLargeKeyboardAccessory() const;
-
-  // Returns true if the device is considered a large form factor for the
-  // purposes of the keyboard accessory. On Android, this considers screen
-  // dimensions and physical keyboard status.
-  virtual bool IsAndroidLargeFormFactor() const;
 
   // Returns a pointer to a DeviceAuthenticator. Might be nullptr if the given
   // platform is not supported.

@@ -25,7 +25,6 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/search_engines/template_url_service_factory.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/contextual_search/tab_contextualization_controller.h"
 #include "chrome/browser/ui/lens/lens_overlay_controller.h"
@@ -826,7 +825,7 @@ IN_PROC_BROWSER_TEST_F(
       panel_contents,
       "document.querySelector('contextual-tasks-app').shadowRoot."
       "querySelector('contextual-tasks-composebox').shadowRoot."
-      "querySelector('cr-composebox').onLensClick_()"));
+      "querySelector('#composebox').onLensClick_()"));
 
   // Wait for the invocation source to be updated to ContextualTasksComposebox.
   ASSERT_TRUE(base::test::RunUntil([&]() {
@@ -844,7 +843,7 @@ IN_PROC_BROWSER_TEST_F(
                panel_contents,
                "document.querySelector('contextual-tasks-app').shadowRoot."
                "querySelector('contextual-tasks-composebox').shadowRoot."
-               "querySelector('cr-composebox').hasFiles()")
+               "querySelector('#composebox').hasFiles()")
         .ExtractBool();
   }));
 

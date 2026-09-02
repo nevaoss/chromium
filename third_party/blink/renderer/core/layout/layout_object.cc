@@ -727,7 +727,7 @@ void LayoutObject::AddChild(LayoutObject* new_child,
     children->InsertChildNode(this, new_child, before_child);
   } else if (IsA<LayoutTextCombine>(*this)) {
     DCHECK(LayoutTextCombine::ShouldBeParentOf(*new_child)) << new_child;
-    new_child->SetStyle(Style());
+    new_child->SetStyle(&StyleRef());
     children->InsertChildNode(this, new_child, before_child);
   } else if (!IsHorizontalTypographicMode() &&
              LayoutTextCombine::ShouldBeParentOf(*new_child)) {
@@ -2904,11 +2904,11 @@ StyleDifference LayoutObject::AdjustStyleDifference(
     }
   }
 
-  // The answer to layerTypeRequired() for plugins, iframes, and canvas can
+  // The answer to LayerTypeRequired() for plugins, iframes, and canvas can
   // change without the actual style changing, since it depends on whether we
-  // decide to composite these elements. When the/ layer status of one of these
+  // decide to composite these elements. When the layer status of one of these
   // elements changes, we need to force a layout.
-  if (!diff.NeedsFullLayout() && Style() && IsBoxModelObject()) {
+  if (!diff.NeedsFullLayout() && HasStyle() && IsBoxModelObject()) {
     bool requires_layer =
         To<LayoutBoxModelObject>(this)->LayerTypeRequired() != kNoPaintLayer;
     if (HasLayer() != requires_layer)
@@ -3191,7 +3191,7 @@ void LayoutObject::UpdateFirstLineImageObservers(
   bool has_new_first_line_style =
       new_style && new_style->HasPseudoElementStyle(kPseudoIdFirstLine) &&
       BehavesLikeBlockContainer();
-  DCHECK(!has_new_first_line_style || new_style == Style());
+  DCHECK(!has_new_first_line_style || new_style == &StyleRef());
 
   if (!registered_as_first_line_image_observer_ && !has_new_first_line_style) {
     return;
@@ -3261,14 +3261,6 @@ void LayoutObject::StyleWillChange(StyleDifference diff,
       GetDocument().SetDraggableRegionsDirty(true);
     }
 
-    if (old_style->ContentVisibility() != new_style.ContentVisibility()) {
-      if (AXObjectCache* cache = GetDocument().ExistingAXObjectCache()) {
-        if (GetNode()) {
-          cache->RemoveSubtree(GetNode(), /* remove_root */ false);
-        }
-      }
-    }
-
     // Keep layer hierarchy visibility bits up to date if visibility changes.
     if (visibility_changed) {
       // We might not have an enclosing layer yet because we might not be in the
@@ -3278,34 +3270,6 @@ void LayoutObject::StyleWillChange(StyleDifference diff,
       GetDocument().GetFrame()->GetInputMethodController().DidChangeVisibility(
           *this);
     }
-  }
-
-  // Elements with non-auto touch-action will send a SetTouchAction message
-  // on touchstart in EventHandler::handleTouchEvent, and so effectively have
-  // a touchstart handler that must be reported.
-  //
-  // Since a CSS property cannot be applied directly to a text node, a
-  // handler will have already been added for its parent so ignore it.
-  //
-  // Elements may inherit touch action from parent frame, so we need to report
-  // touchstart handler if the root layout object has non-auto effective touch
-  // action.
-  const bool is_old_touch_action_auto =
-      old_style ? (old_style->EffectiveTouchAction() == TouchAction::kAuto)
-                : true;
-  const bool is_new_touch_action_auto =
-      new_style.EffectiveTouchAction() == TouchAction::kAuto;
-  if (GetNode() && is_old_touch_action_auto != is_new_touch_action_auto) {
-    EventHandlerRegistry& registry =
-        GetDocument().GetFrame()->GetEventHandlerRegistry();
-    if (is_new_touch_action_auto) {
-      registry.DidRemoveEventHandler(*GetNode(),
-                                     EventHandlerRegistry::kTouchAction);
-    } else {
-      registry.DidAddEventHandler(*GetNode(),
-                                  EventHandlerRegistry::kTouchAction);
-    }
-    MarkEffectiveAllowedTouchActionChanged();
   }
 }
 
@@ -3429,6 +3393,15 @@ void LayoutObject::StyleDidChange(
     }
   }
 
+  if (old_style &&
+      old_style->ContentVisibility() != new_style.ContentVisibility()) {
+    if (AXObjectCache* cache = GetDocument().ExistingAXObjectCache()) {
+      if (const Node* node = GetNode()) {
+        cache->RemoveSubtree(node, /* remove_root */ false);
+      }
+    }
+  }
+
   if (diff.disable_scroll_anchoring) {
     SetScrollAnchorDisablingStyleChanged(true);
   }
@@ -3497,6 +3470,32 @@ void LayoutObject::StyleDidChange(
   const bool old_style_focusability = old_style && old_style->IsFocusable();
   if (!style_focusability && old_style_focusability) {
     node_->FocusabilityLost();
+  }
+
+  // Elements with non-auto touch-action will send a SetTouchAction message on
+  // touchstart in EventHandler::handleTouchEvent, and so effectively have a
+  // touchstart handler that must be reported.
+  //
+  // Since a CSS property cannot be applied directly to a text node, a handler
+  // will have already been added for its parent so ignore it.
+  //
+  // Elements may inherit touch action from parent frame, so we need to report
+  // touchstart handler if the root layout object has non-auto touch action.
+  const bool is_old_touch_action_auto =
+      !old_style || old_style->EffectiveTouchAction() == TouchAction::kAuto;
+  const bool is_new_touch_action_auto =
+      new_style.EffectiveTouchAction() == TouchAction::kAuto;
+  if (GetNode() && is_old_touch_action_auto != is_new_touch_action_auto) {
+    EventHandlerRegistry& registry =
+        GetDocument().GetFrame()->GetEventHandlerRegistry();
+    if (is_new_touch_action_auto) {
+      registry.DidRemoveEventHandler(*GetNode(),
+                                     EventHandlerRegistry::kTouchAction);
+    } else {
+      registry.DidAddEventHandler(*GetNode(),
+                                  EventHandlerRegistry::kTouchAction);
+    }
+    MarkEffectiveAllowedTouchActionChanged();
   }
 }
 
@@ -3663,6 +3662,19 @@ gfx::QuadF LayoutObject::AncestorToLocalQuad(
   return transform_state.LastPlanarQuad();
 }
 
+LayoutObject* LayoutObject::CanvasForDrawingLayoutObject() const {
+  NOT_DESTROYED();
+  if (!IsBox()) {
+    return nullptr;
+  }
+  if (const auto* element = DynamicTo<Element>(GetNode())) {
+    if (HTMLCanvasElement* canvas = element->CanvasForDrawing()) {
+      return canvas->GetLayoutObject();
+    }
+  }
+  return nullptr;
+}
+
 void LayoutObject::MapLocalToAncestor(const LayoutBoxModelObject* ancestor,
                                       TransformState& transform_state,
                                       MapCoordinatesFlags mode) const {
@@ -3671,6 +3683,23 @@ void LayoutObject::MapLocalToAncestor(const LayoutBoxModelObject* ancestor,
            TransformState::kApplyTransformDirection);
   if (ancestor == this)
     return;
+
+  if (LayoutObject* canvas_layout_object = CanvasForDrawingLayoutObject()) {
+    bool use_transforms = !mode.Has(MapCoordinatesMode::kIgnoreTransforms);
+    const bool preserve3d = use_transforms && StyleRef().Preserves3D();
+    if (use_transforms &&
+        ShouldUseTransformFromContainer(canvas_layout_object)) {
+      gfx::Transform t;
+      GetTransformFromContainer(canvas_layout_object, PhysicalOffset(), t);
+      transform_state.ApplyTransform(
+          t, preserve3d ? TransformState::kAccumulateTransform
+                        : TransformState::kFlattenTransform);
+    }
+    if (canvas_layout_object != ancestor) {
+      canvas_layout_object->MapLocalToAncestor(ancestor, transform_state, mode);
+    }
+    return;
+  }
 
   AncestorSkipInfo skip_info(ancestor);
   const LayoutObject* container = Container(&skip_info);
@@ -3729,6 +3758,23 @@ void LayoutObject::MapAncestorToLocal(const LayoutBoxModelObject* ancestor,
            TransformState::kUnapplyInverseTransformDirection);
   if (this == ancestor)
     return;
+
+  if (LayoutObject* canvas_layout_object = CanvasForDrawingLayoutObject()) {
+    if (canvas_layout_object != ancestor) {
+      canvas_layout_object->MapAncestorToLocal(ancestor, transform_state, mode);
+    }
+    bool use_transforms = !mode.Has(MapCoordinatesMode::kIgnoreTransforms);
+    const bool preserve3d = use_transforms && StyleRef().Preserves3D();
+    if (use_transforms &&
+        ShouldUseTransformFromContainer(canvas_layout_object)) {
+      gfx::Transform t;
+      GetTransformFromContainer(canvas_layout_object, PhysicalOffset(), t);
+      transform_state.ApplyTransform(
+          t, preserve3d ? TransformState::kAccumulateTransform
+                        : TransformState::kFlattenTransform);
+    }
+    return;
+  }
 
   AncestorSkipInfo skip_info(ancestor);
   LayoutObject* container = Container(&skip_info);
@@ -4469,7 +4515,7 @@ const ComputedStyle* LayoutObject::FirstLineStyleWithoutFallback() const {
       // it.
       if (const ComputedStyle* first_line_style =
               first_line_block->GetUncachedPseudoElementStyle(
-                  StyleRequest(kPseudoIdFirstLine, Style()))) {
+                  StyleRequest(kPseudoIdFirstLine, &StyleRef()))) {
         return StyleRef().ReplaceCachedPseudoElementStyle(
             std::move(first_line_style), kPseudoIdFirstLine, g_null_atom);
       }
@@ -5295,7 +5341,7 @@ void LayoutObject::MarkSoftNavigationContextChanged() {
 
 void LayoutObject::MarkContainerTimingChanged() {
   NOT_DESTROYED();
-  DCHECK(RuntimeEnabledFeatures::ContainerTimingPrepaintTraversalEnabled(
+  DCHECK(RuntimeEnabledFeatures::ContainerTimingEnabled(
       GetDocument().GetExecutionContext()));
   SetNeedsPrePaintSubtreeWalk(
       {PrePaintSubtreeWalkReason::kContainerTimingContext});

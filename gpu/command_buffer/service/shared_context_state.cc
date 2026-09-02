@@ -1062,51 +1062,72 @@ void SharedContextState::RemoveContextLostObserver(ContextLostObserver* obs) {
   context_lost_observers_.RemoveObserver(obs);
 }
 
-void SharedContextState::PurgeMemory(int memory_limit) {
-  // Ensure the context is current before doing any GPU cleanup.
-  if (!MakeCurrent(nullptr))
+void SharedContextState::PurgeGaneshMemory(int memory_limit) {
+  DCHECK(gr_context_);
+
+  if (memory_limit <= base::kCriticalMemoryPressureThreshold) {
+    sk_surface_cache_.Clear();
+    std::optional<raster::GrShaderCache::ScopedCacheUse> cache_use;
+    // ScopedCacheUse is to avoid the empty/invalid client id DCHECKS caused
+    // while accessing GrShaderCache. Note that since the actual client_id
+    // here does not matter, we are using gpu::kDisplayCompositorClientId.
+    UseShaderCache(cache_use, kDisplayCompositorClientId);
+    gr_context_->freeGpuResources();
     return;
+  }
 
   if (base::FeatureList::IsEnabled(base::kStatefulMemoryPressure)) {
-    if (gr_context_) {
-      size_t target_resource_cache_bytes =
-          gpu::UpdateShaderCacheSizeOnMemoryLimit(max_resource_cache_bytes_,
-                                                  memory_limit);
-      gr_context_->setResourceCacheLimit(target_resource_cache_bytes);
+    size_t target_resource_cache_bytes =
+        gpu::UpdateShaderCacheSizeOnMemoryLimit(max_resource_cache_bytes_,
+                                                memory_limit);
+    size_t current_skia_usage = 0;
+    gr_context_->getResourceCacheUsage(nullptr, &current_skia_usage);
+    if (current_skia_usage > target_resource_cache_bytes) {
+      size_t bytes_to_purge = current_skia_usage - target_resource_cache_bytes;
+      gr_context_->purgeUnlockedResources(bytes_to_purge,
+                                          /*preferScratchResources=*/true);
     }
+  } else if (memory_limit <= base::kModerateMemoryPressureThreshold) {
+    sk_surface_cache_.Clear();
+    gr_context_->purgeUnlockedResources(
+        GrPurgeResourceOptions::kScratchResourcesOnly);
+  }
+}
+
+void SharedContextState::PurgeGraphiteMemory(int memory_limit) {
+  DCHECK(gpu_main_graphite_cache_controller_);
+
+  if (memory_limit <= base::kCriticalMemoryPressureThreshold) {
+    gpu_main_graphite_cache_controller_->CleanUpAllResources();
+  } else if (memory_limit <= base::kModerateMemoryPressureThreshold) {
+    gpu_main_graphite_cache_controller_->CleanUpScratchResources();
+  }
+}
+
+void SharedContextState::PurgeMemory(int memory_limit) {
+  // Ensure the context is current before doing any GPU cleanup.
+  if (!MakeCurrent(nullptr)) {
+    return;
   }
 
   if (memory_limit <= base::kCriticalMemoryPressureThreshold) {
-    // With critical pressure, purge as much as possible.
-    sk_surface_cache_.Clear();
-    {
-      std::optional<raster::GrShaderCache::ScopedCacheUse> cache_use;
-      // ScopedCacheUse is to avoid the empty/invalid client id DCHECKS caused
-      // while accessing GrShaderCache. Note that since the actual client_id
-      // here does not matter, we are using gpu::kDisplayCompositorClientId.
-      UseShaderCache(cache_use, kDisplayCompositorClientId);
-      if (gr_context_) {
-        gr_context_->freeGpuResources();
-      } else if (gpu_main_graphite_cache_controller_) {
-        gpu_main_graphite_cache_controller_->CleanUpAllResources();
-      }
-    }
-    UpdateSkiaOwnedMemorySize();
-    scratch_deserialization_buffer_.resize(0u);
+    scratch_deserialization_buffer_.clear();
     scratch_deserialization_buffer_.shrink_to_fit();
   } else if (memory_limit <= base::kModerateMemoryPressureThreshold) {
-    // With moderate pressure, clear any unlocked resources.
-    sk_surface_cache_.Clear();
-    if (gr_context_) {
-      gr_context_->purgeUnlockedResources(
-          GrPurgeResourceOptions::kScratchResourcesOnly);
-    } else if (gpu_main_graphite_cache_controller_) {
-      gpu_main_graphite_cache_controller_->CleanUpScratchResources();
-    }
-    UpdateSkiaOwnedMemorySize();
     scratch_deserialization_buffer_.resize(
         kInitialScratchDeserializationBufferSize);
     scratch_deserialization_buffer_.shrink_to_fit();
+  }
+
+  if (gr_context_) {
+    PurgeGaneshMemory(memory_limit);
+  } else if (gpu_main_graphite_cache_controller_) {
+    PurgeGraphiteMemory(memory_limit);
+  }
+
+  if (memory_limit <= base::kModerateMemoryPressureThreshold ||
+      base::FeatureList::IsEnabled(base::kStatefulMemoryPressure)) {
+    UpdateSkiaOwnedMemorySize();
   }
 
   if (transfer_cache_) {
@@ -1116,15 +1137,6 @@ void SharedContextState::PurgeMemory(int memory_limit) {
 
 void SharedContextState::OnUpdateMemoryLimit(int memory_limit) {
   if (base::FeatureList::IsEnabled(base::kStatefulMemoryPressure)) {
-    if (gr_context_) {
-      size_t target_resource_cache_bytes =
-          gpu::UpdateShaderCacheSizeOnMemoryLimit(max_resource_cache_bytes_,
-                                                  memory_limit);
-      size_t current_skia_usage = 0;
-      gr_context_->getResourceCacheUsage(nullptr, &current_skia_usage);
-      gr_context_->setResourceCacheLimit(
-          std::max(current_skia_usage, target_resource_cache_bytes));
-    }
     if (transfer_cache_) {
       transfer_cache_->OnUpdateMemoryLimit(memory_limit);
     }

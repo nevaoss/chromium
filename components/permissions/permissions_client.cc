@@ -38,9 +38,18 @@ PermissionsClient* PermissionsClient::Get() {
 }
 
 // static
-bool PermissionsClient::AllowEmbeddedPermissionPromptForAllowlistedSurfaces() {
+bool PermissionsClient::AllowEmbeddedPermissionPromptForSurface(
+    content::WebContents* web_contents) {
+  if (web_contents && Get() && Get()->IsOmniboxEverywhere(web_contents)) {
+    return true;
+  }
   return base::FeatureList::IsEnabled(
       omnibox_feature_configs::kEmbeddedPermissionEnabled);
+}
+
+bool PermissionsClient::IsOmniboxEverywhere(
+    content::WebContents* web_contents) {
+  return false;
 }
 
 double PermissionsClient::GetSiteEngagementScore(
@@ -240,7 +249,21 @@ bool PermissionsClient::CanRequestDevicePermission(
   return false;
 }
 
+bool PermissionsClient::IsPermissionAllowedByDevicePolicy(
+    content::WebContents* web_contents,
+    PermissionSetting setting,
+    const content_settings::SettingInfo& info,
+    ContentSettingsType type) const {
+  return false;
+}
 
+bool PermissionsClient::IsPermissionBlockedByDevicePolicy(
+    content::WebContents* web_contents,
+    PermissionSetting setting,
+    const content_settings::SettingInfo& info,
+    ContentSettingsType type) const {
+  return false;
+}
 
 bool PermissionsClient::IsSystemDenied(ContentSettingsType type) const {
   return false;

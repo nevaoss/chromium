@@ -6,7 +6,7 @@ import * as fill_constants from '//components/autofill/ios/form_util/resources/f
 import * as inferenceUtil from '//components/autofill/ios/form_util/resources/fill_element_inference_util.js';
 import * as fillUtil from '//components/autofill/ios/form_util/resources/fill_util.js';
 import {fieldWasEditedByUser, unownedFormElementsAndFieldSetsToFormData, wasEditedByUser, webFormElementToFormData} from '//components/autofill/ios/form_util/resources/fill_web_form.js';
-import {getFormControlElements, getFormElementFromIdentifier, getIframeElements} from '//components/autofill/ios/form_util/resources/form_utils.js';
+import {clipRect, getFormControlElements, getFormElementFromIdentifier, getIframeElements, getVisibleRectRespectingClips} from '//components/autofill/ios/form_util/resources/form_utils.js';
 import {getElementByUniqueID} from '//components/autofill/ios/form_util/resources/renderer_id.js';
 import {CrWebApi, gCrWeb} from '//ios/web/public/js_messaging/resources/gcrweb.js';
 import {isTextField, sendWebKitMessage, trim} from '//ios/web/public/js_messaging/resources/utils.js';
@@ -87,40 +87,8 @@ const autofillFormFeaturesApi =
  * @return {boolean} Whether the form is sufficiently interesting.
  */
 function isFormInteresting_(form) {
-  if (form.child_frames && form.child_frames.length > 0) {
-    return true;
-  }
-
-  // If the form has at least one field with an autocomplete attribute, or one
-  // non-checkable field, it is a candidate for autofill.
-  for (let i = 0; i < form.fields.length; ++i) {
-    if (form.fields[i]['autocomplete_attribute'] != null &&
-        form.fields[i]['autocomplete_attribute'].length > 0) {
-      return true;
-    }
-
-    if (!form.fields[i].is_checkable) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-/**
- * Returns the number of editable elements in `elements`.
- *
- * @param {Array<FormControlElement>} elements The elements to scan.
- * @return {number} The number of editable elements.
- */
-function countEditableElements_(elements) {
-  let numEditableElements = 0;
-  for (const element of elements) {
-    if (!inferenceUtil.isCheckableElement(element)) {
-      ++numEditableElements;
-    }
-  }
-  return numEditableElements;
+  return form.fields.length > 0 ||
+      (form.child_frames && form.child_frames.length > 0);
 }
 
 /**
@@ -157,12 +125,8 @@ function extractUnownedFields(restrictUnownedFieldsToFormlessCheckout) {
   const fieldsets = [];
   const unownedControlElements =
       fillUtil.getUnownedAutofillableFormFieldElements(fieldsets);
-  const numEditableUnownedElements =
-      countEditableElements_(unownedControlElements);
-  const iframeElements =
-      autofillFormFeaturesApi.getFunction('isAutofillAcrossIframesEnabled')() ?
-      getUnownedIframes() :
-      [];
+  const numEditableUnownedElements = unownedControlElements.length;
+  const iframeElements = getUnownedIframes();
   if (numEditableUnownedElements > 0 || iframeElements.length > 0) {
     const unownedForm = new fillUtil.AutofillFormData();
     const hasUnownedForm = unownedFormElementsAndFieldSetsToFormData(
@@ -228,6 +192,44 @@ function fillSpecificFormField(data) {
   return fillFormField(data, field);
 }
 
+/**
+ * Scrolls the form field identified by `fieldId` into view.
+ *
+ * @param {number} fieldId The renderer ID of the field to scroll into view.
+ */
+function scrollFieldIntoView(fieldId) {
+  const element = getElementByUniqueID(fieldId);
+  if (!element) {
+    return;
+  }
+
+  // Perform a virtual scroll check first to verify if it is scrollable into
+  // view.
+  let visibleRect = getVisibleRectRespectingClips(
+      element, /*shouldAdjustRectForScroll=*/ true);
+  if (!visibleRect) {
+    return;
+  }
+
+  const viewportWidth =
+      window.innerWidth || document.documentElement.clientWidth;
+  const viewportHeight =
+      window.innerHeight || document.documentElement.clientHeight;
+  const viewportBox = {
+    left: 0,
+    top: 0,
+    right: viewportWidth,
+    bottom: viewportHeight,
+  };
+  visibleRect = clipRect(visibleRect, viewportBox);
+  if (!visibleRect) {
+    return;
+  }
+
+  // Actually scroll the element into view.
+  element.scrollIntoView({block: 'nearest', inline: 'nearest'});
+}
+
 // Remove Autofill styling when control element is edited by the user.
 function controlElementInputListener_(evt) {
   if (evt.isTrusted) {
@@ -267,11 +269,6 @@ function fillForm(data) {
     const element = getElementByUniqueID(Number(fieldId));
 
     if (!inferenceUtil.isAutofillableElement(element)) {
-      continue;
-    }
-
-    // TODO(crbug.com/40573146): Investigate autofilling checkable elements.
-    if (inferenceUtil.isCheckableElement(element)) {
       continue;
     }
 
@@ -407,11 +404,9 @@ function extractNewForms(restrictUnownedFieldsToFormlessCheckout) {
     /** @type {HTMLFormElement} */
     const formElement = webForms[formIndex];
     const controlElements = extractAutofillableElementsInForm(formElement);
-    const numEditableElements = countEditableElements_(controlElements);
-    const hasChildFrames = autofillFormFeaturesApi.getFunction(
-                               'isAutofillAcrossIframesEnabled')() ?
-        formElement.getElementsByTagName('iframe').length > 0 :
-        false;
+    const numEditableElements = controlElements.length;
+    const hasChildFrames =
+        formElement.getElementsByTagName('iframe').length > 0;
 
     if (numEditableElements === 0 && !hasChildFrames) {
       continue;
@@ -522,8 +517,6 @@ function fillFormField(data, field) {
 
   } else if (inferenceUtil.isSelectElement(field)) {
     filled = fillUtil.setInputElementValue(data['value'], field);
-  } else if (inferenceUtil.isCheckableElement(field)) {
-    filled = fillUtil.setInputElementValue(data['is_checked'], field);
   }
   return filled;
 }
@@ -627,5 +620,6 @@ autofillAPI.addFunction('fillFormField', fillFormField);
 autofillAPI.addFunction('fillPredictionData', fillPredictionData);
 autofillAPI.addFunction('fillSpecificFormField', fillSpecificFormField);
 autofillAPI.addFunction('sanitizedFieldIsEmpty', sanitizedFieldIsEmpty);
+autofillAPI.addFunction('scrollFieldIntoView', scrollFieldIntoView);
 
 gCrWeb.registerApi(autofillAPI);

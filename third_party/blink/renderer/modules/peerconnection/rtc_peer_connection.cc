@@ -2032,15 +2032,6 @@ std::optional<webrtc::RtpTransceiverInit> ValidateRtpTransceiverInit(
     ExceptionState& exception_state,
     const RTCRtpTransceiverInit* init,
     const String kind) {
-  if (init->hasSendEncodings()) {
-    for (const auto& encoding : init->sendEncodings()) {
-      if (encoding->hasMaxBitrate() && encoding->maxBitrate() == 0) {
-        exception_state.ThrowRangeError("maxBitrate must be greater than 0.");
-        return std::nullopt;
-      }
-    }
-  }
-
   auto webrtc_init = ToRtpTransceiverInit(execution_context, init, kind);
   // Validate sendEncodings.
   for (auto& encoding : webrtc_init.send_encodings) {
@@ -3119,8 +3110,8 @@ void RTCPeerConnection::CloseInternal() {
   if (sctp_transport_) {
     sctp_transport_->Close();
   }
-  // Since Close() can trigger JS-level callbacks, iterate over a copy
-  // of the transports list.
+  // Closing a transport can invalidate its weak map entry, so iterate over a
+  // copy of the transports list.
   auto dtls_transports_copy = dtls_transports_by_native_transport_;
   for (auto& dtls_transport_iter : dtls_transports_copy) {
     // Since "value" is a WeakPtr, check if it's still valid.

@@ -23,7 +23,8 @@ import {WindowProxy} from 'chrome://resources/cr_components/composebox/window_pr
 import {GlowAnimationState, VoiceSearchState} from 'chrome://resources/cr_components/search/constants.js';
 import {createAutocompleteMatch, createAutocompleteResultForTesting} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
-import {PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerRemote as SearchboxPageHandlerRemote, SuggestInventory} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import {SuggestInventory} from 'chrome://resources/mojo/components/omnibox/browser/fusebox_action.mojom-webui.js';
+import {PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerRemote as SearchboxPageHandlerRemote} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import type {AutocompleteResult, PageRemote as SearchboxPageRemote, SelectedFileInfo} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import type {UnguessableToken} from 'chrome://resources/mojo/mojo/public/mojom/base/unguessable_token.mojom-webui.js';
 import {assertEquals, assertFalse, assertNotEquals, assertTrue} from 'chrome://webui-test/chai_assert.js';
@@ -643,8 +644,8 @@ suite('ContextualTasksComposeboxTest', () => {
     await mockSearchboxPageHandler.whenCalled('queryAutocomplete');
     const calls = mockSearchboxPageHandler.getArgs('queryAutocomplete');
     const lastCall = calls[calls.length - 1];
-    assertEquals('new query', lastCall[1]);
-    assertEquals(SuggestInventory.kDefault, lastCall[4]);
+    assertEquals('new query', lastCall[2]);
+    assertEquals(SuggestInventory.kDefault, lastCall[5]);
   });
 
   test('inputEnabled attribute reflected on composebox', async () => {
@@ -3521,7 +3522,7 @@ function createVoiceResults(transcripts: string[]): SpeechRecognitionEvent {
                             'queryAutocomplete'));
                     const queryArgs = mockSearchboxPageHandler.getArgs(
                         'queryAutocomplete')[0];
-                    assertEquals('helloworld', queryArgs[1]);
+                    assertEquals('helloworld', queryArgs[2]);
                     assertEquals(
                         0,
                         mockSearchboxPageHandler.getCallCount('submitQuery'));

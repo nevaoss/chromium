@@ -125,6 +125,7 @@
 #include "third_party/blink/renderer/core/style/filter_operations.h"
 #include "third_party/blink/renderer/core/style/style_initial_data.h"
 #include "third_party/blink/renderer/core/svg/svg_resource.h"
+#include "third_party/blink/renderer/core/url_pattern/url_pattern.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition_supplement.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition_utils.h"
@@ -752,12 +753,22 @@ MixinMap StyleEngine::EffectiveMixinsForTreeScope(TreeScope& tree_scope) {
   }
 
   MixinMap inherited_mixins = EffectiveMixinsForTreeScope(*parent_scope);
-  if (inherited_mixins.mixins.empty() &&
-      inherited_mixins.media_query_set_results.empty()) {
+  if (!inherited_mixins.HasMixins()) {
     return collection->Mixins();
   }
 
-  inherited_mixins.Merge(collection->Mixins());
+  const MixinMap& local_mixins = collection->Mixins();
+  const std::optional<uint64_t> inherited_id = inherited_mixins.map_identifier;
+  inherited_mixins.Merge(local_mixins);
+  // Merge() deliberately leaves the identifier alone, so give the combined map
+  // an identity here. If this scope contributes mixins of its own, its
+  // identifier is used for the combination, since it is reallocated whenever
+  // this scope's active stylesheets are recomputed. Otherwise the combination
+  // is just the inherited map, and we can keep (and share) the inherited
+  // identifier.
+  inherited_mixins.map_identifier = local_mixins.map_identifier.has_value()
+                                        ? local_mixins.map_identifier
+                                        : inherited_id;
   return inherited_mixins;
 }
 
@@ -1160,12 +1171,77 @@ CSSStyleSheet* StyleEngine::CreateSheet(
     PendingSheetType type,
     RenderBlockingBehavior render_blocking_behavior) {
   DCHECK(element.GetDocument() == GetDocument());
-  CSSStyleSheet* style_sheet = nullptr;
-
   if (type != PendingSheetType::kNonBlocking) {
     AddPendingBlockingSheet(element, type);
   }
 
+  CSSStyleSheet* style_sheet = nullptr;
+  CSSParserContext* inline_context = CSSStyleSheet::InlineParserContext(
+      GetDocument(), NullUrl(), GetDocument().Encoding());
+  if (StyleSheetContents* cached =
+          FindStyleSheetContents(text, inline_context)) {
+    cached->SetRenderBlocking(render_blocking_behavior);
+    style_sheet = CSSStyleSheet::CreateInline(cached, element, start_position);
+  } else {
+    auto* contents = MakeGarbageCollected<StyleSheetContents>(inline_context);
+    style_sheet =
+        CSSStyleSheet::CreateInline(contents, element, start_position);
+    contents->SetRenderBlocking(render_blocking_behavior);
+    contents->ParseString(text);
+    if (contents->IsCacheableForStyleElement()) {
+      AddStyleSheetContents(text, contents);
+    }
+  }
+
+  DCHECK(style_sheet);
+  if (!element.IsInShadowTree()) {
+    String title = element.title();
+    if (!title.empty()) {
+      style_sheet->SetTitle(title);
+      SetPreferredStylesheetSetNameIfNotSet(title);
+    }
+  }
+  return style_sheet;
+}
+
+StyleSheetContents* StyleEngine::FindStyleSheetContents(
+    const String& text,
+    const CSSParserContext* parser_context) {
+  if (!parser_context) {
+    return nullptr;
+  }
+  AtomicString key;
+  if (text.length() >= 1024) {
+    size_t digest = FastHash(text.RawByteSpan());
+    key = AtomicString(base::byte_span_from_ref(digest));
+  } else {
+    key = AtomicString(text);
+  }
+
+  auto it = text_to_sheet_cache_.find(key);
+  if (it == text_to_sheet_cache_.end()) {
+    return nullptr;
+  }
+  StyleSheetContents* contents = it->value;
+  if (!contents || !contents->IsCacheableForStyleElement() ||
+      !contents->ParserContext()) {
+    text_to_sheet_cache_.erase(it);
+    return nullptr;
+  }
+  if (*contents->ParserContext() != *parser_context) {
+    return nullptr;
+  }
+  DCHECK(contents->HasSingleOwnerDocument());
+  contents->SetIsUsedFromTextCache();
+  return contents;
+}
+
+void StyleEngine::AddStyleSheetContents(const String& text,
+                                        StyleSheetContents* contents) {
+  if (!contents || !contents->IsCacheableForStyleElement() ||
+      !contents->ParserContext()) {
+    return;
+  }
   // The style sheet text can be long; hundreds of kilobytes. In order not to
   // insert such a huge string into the AtomicString table, we take its hash
   // instead and use that. (This is not a cryptographic hash, so a page could
@@ -1183,49 +1259,7 @@ CSSStyleSheet* StyleEngine::CreateSheet(
   } else {
     key = AtomicString(text);
   }
-
-  auto result = text_to_sheet_cache_.insert(key, nullptr);
-  StyleSheetContents* contents = result.stored_value->value;
-  if (result.is_new_entry || !contents ||
-      !contents->IsCacheableForStyleElement() ||
-      contents->BaseURL() != GetDocument().BaseURL()) {
-    result.stored_value->value = nullptr;
-    style_sheet =
-        ParseSheet(element, text, start_position, render_blocking_behavior);
-    if (style_sheet->Contents()->IsCacheableForStyleElement()) {
-      result.stored_value->value = style_sheet->Contents();
-    }
-  } else {
-    DCHECK(contents);
-    DCHECK(contents->IsCacheableForStyleElement());
-    DCHECK(contents->HasSingleOwnerDocument());
-    contents->SetIsUsedFromTextCache();
-    style_sheet =
-        CSSStyleSheet::CreateInline(contents, element, start_position);
-  }
-
-  DCHECK(style_sheet);
-  if (!element.IsInShadowTree()) {
-    String title = element.title();
-    if (!title.empty()) {
-      style_sheet->SetTitle(title);
-      SetPreferredStylesheetSetNameIfNotSet(title);
-    }
-  }
-  return style_sheet;
-}
-
-CSSStyleSheet* StyleEngine::ParseSheet(
-    Element& element,
-    const String& text,
-    TextPosition start_position,
-    RenderBlockingBehavior render_blocking_behavior) {
-  CSSStyleSheet* style_sheet = nullptr;
-  style_sheet = CSSStyleSheet::CreateInline(element, NullUrl(), start_position,
-                                            GetDocument().Encoding());
-  style_sheet->Contents()->SetRenderBlocking(render_blocking_behavior);
-  style_sheet->Contents()->ParseString(text);
-  return style_sheet;
+  text_to_sheet_cache_.Set(key, contents);
 }
 
 void StyleEngine::CollectUserStyleFeaturesTo(RuleFeatureSet& features) const {
@@ -3271,6 +3305,23 @@ bool StyleEngine::EvaluateFunctionalNavigationQuery(
   return result;
 }
 
+void StyleEngine::AddURLPatternFromLocation(const AtomicString& location_name,
+                                            URLPattern* url_pattern) {
+  DCHECK(location_name.starts_with("--"));
+  if (navigation_locations_.find(location_name) !=
+      navigation_locations_.end()) {
+    // TODO(crbug.com/436805487): Handle route modificiation and removal.
+    return;
+  }
+  navigation_locations_.insert(location_name, url_pattern);
+}
+
+const URLPattern* StyleEngine::FindURLPatternByLocation(
+    const AtomicString& location_name) const {
+  const auto it = navigation_locations_.find(location_name);
+  return it == navigation_locations_.end() ? nullptr : it->value;
+}
+
 void StyleEngine::InvalidateFunctionalNavigationDependentStylesIfNeeded() {
   bool has_changes = false;
   for (auto& [exp, previous_result] : functional_navigation_query_results_) {
@@ -4803,6 +4854,7 @@ void StyleEngine::Trace(Visitor* visitor) const {
   visitor->Trace(functional_navigation_query_results_);
   visitor->Trace(random_base_value_cache_);
   visitor->Trace(element_keeps_random_caching_key_alive_);
+  visitor->Trace(navigation_locations_);
   FontSelectorClient::Trace(visitor);
 }
 

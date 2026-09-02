@@ -110,6 +110,7 @@ class BuildConfigGenerator extends DefaultTask {
     // to point to the aliased target instead.
     static final Map<String, String> ALIASED_LIBS = [
             // Use fully-qualified labels here since androidx might refer to them.
+            androidx_media3_media3_exoplayer: '//third_party/androidx:exoplayer_java',
             com_google_android_material_material: '//third_party/android_deps:material_design_java',
             com_google_android_play_feature_delivery: '//third_party/android_deps:playcore_java',
             com_google_guava_failureaccess: '//third_party/android_deps:guava_java',

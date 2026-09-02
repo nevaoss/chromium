@@ -29,7 +29,6 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/search/search.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_actions.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
@@ -62,6 +61,7 @@
 #include "chrome/browser/ui/views/frame/contents_web_view.h"
 #include "chrome/browser/ui/views/frame/toolbar_button_provider.h"
 #include "chrome/browser/ui/views/page_action/page_action_view.h"
+#include "chrome/browser/ui/views/tabs/horizontal/tab_scroll_button_container.h"
 #include "chrome/browser/ui/views/tabs/tab/tab_icon.h"
 #include "chrome/browser/ui/views/toolbar/pinned_action_toolbar_button.h"
 #include "chrome/browser/ui/views/translate/translate_bubble_view.h"
@@ -75,6 +75,7 @@
 #include "chrome/browser/ui/views/user_education/ios_promo_bubble_view.h"
 #include "chrome/browser/ui/views/web_apps/web_app_install_dialog_delegate.h"
 #include "chrome/browser/ui/webui/customize_buttons/customize_buttons_handler.h"
+#include "chrome/browser/ui/webui/history/history_ui.h"
 #include "chrome/browser/ui/webui/new_tab_page/new_tab_page_ui.h"
 #include "chrome/browser/ui/webui/password_manager/password_manager_ui.h"
 #include "chrome/browser/ui/webui/settings/settings_ui.h"
@@ -246,7 +247,7 @@ class ConditionalStep : public IfView {
 
 bool HasTabGroups(const BrowserView* browser_view) {
   return !browser_view->browser()
-              ->tab_strip_model()
+              ->GetTabStripModel()
               ->group_model()
               ->ListTabGroups()
               .empty();
@@ -465,7 +466,7 @@ void MaybeRegisterChromeFeaturePromos(
                  user_education::FeaturePromoHandle promo_handle) {
                 Browser* const browser = GetBrowser(ctx);
                 TabStripModel* const tab_strip_model =
-                    browser->tab_strip_model();
+                    browser->GetTabStripModel();
                 if (!tab_strip_model) {
                   return;
                 }
@@ -601,7 +602,6 @@ void MaybeRegisterChromeFeaturePromos(
                        "Triggered after autofill popup appears featuring an "
                        "externally-saved card.")));
 
-
   // TODO(crbug.com/404437008): Update with final IPH strings.
   // kIPHAutofillEnableLoyaltyCardsFeature:
   registry.RegisterFeature(std::move(
@@ -674,7 +674,7 @@ void MaybeRegisterChromeFeaturePromos(
                 if (!tutorial_service) {
                   return;
                 }
-                TabStripModel* tab_strip_model = browser->tab_strip_model();
+                TabStripModel* tab_strip_model = browser->GetTabStripModel();
                 if (tab_strip_model) {
                   content::WebContents* web_contents =
                       tab_strip_model->GetActiveWebContents();
@@ -877,6 +877,55 @@ void MaybeRegisterChromeFeaturePromos(
           .SetMetadata(
               142, "dewittj@chromium.org",
               "Attempts to trigger when the user is on a supported page.")));
+
+  // kIPHCriticalActionAppMenuFeature:
+  registry.RegisterFeature(std::move(
+      FeaturePromoSpecification::CreateForCustomAction(
+          feature_engagement::kIPHCriticalActionAppMenuFeature,
+          kToolbarAppMenuButtonElementId,
+          IDS_HISTORY_CRITICAL_ACTION_APP_MENU_IPH_BODY,
+          IDS_HISTORY_CRITICAL_ACTION_APP_MENU_IPH_ACTION,
+          base::BindRepeating(
+              [](ContextPtr ctx,
+                 user_education::FeaturePromoHandle promo_handle) {
+                if (auto* browser = GetBrowser(ctx)) {
+                  chrome::ShowHistory(browser);
+                }
+              }))
+          .SetAdditionalConditions(
+              std::move(AdditionalConditions()
+                            .AddAdditionalCondition(AdditionalCondition{
+                                "actor_action_logged",
+                                AdditionalConditions::Constraint::kAtLeast, 1})
+                            .AddAdditionalCondition(AdditionalCondition{
+                                "critical_action_filter_chip_iph_trigger",
+                                AdditionalConditions::Constraint::kAtMost, 0})))
+          .SetCustomActionIsDefault(true)
+          .SetBubbleArrow(HelpBubbleArrow::kTopRight)
+          .SetHighlightedMenuItem(AppMenuModel::kHistoryMenuItem)
+          .SetMetadata(
+              154, "kalinino@google.com",
+              "Triggered when the agent side panel closes after logging "
+              "critical actions for the first time.")));
+
+  // kIPHCriticalActionFilterChipFeature:
+  registry.RegisterFeature(std::move(
+      FeaturePromoSpecification::CreateForToastPromo(
+          feature_engagement::kIPHCriticalActionFilterChipFeature,
+          HistoryUI::kHistoryGeminiFilterChipElementId,
+          IDS_HISTORY_CRITICAL_ACTION_FILTER_CHIP_IPH_BODY,
+          IDS_HISTORY_CRITICAL_ACTION_FILTER_CHIP_IPH_SCREENREADER,
+          FeaturePromoSpecification::AcceleratorInfo())
+          .SetAdditionalConditions(std::move(
+              AdditionalConditions().AddAdditionalCondition(AdditionalCondition{
+                  "actor_action_logged",
+                  AdditionalConditions::Constraint::kAtLeast, 1})))
+          .SetInAnyContext(true)
+          .SetBubbleArrow(HelpBubbleArrow::kTopCenter)
+          .SetMetadata(
+              154, "kalinino@google.com",
+              "Triggered on chrome://history when agent critical actions "
+              "were logged for the first time.")));
 
   // kGlicTrustFirstOnboarding shortcut snooze IPH:
   registry.RegisterFeature(std::move(
@@ -1612,8 +1661,7 @@ void MaybeRegisterChromeFeaturePromos(
       FeaturePromoSpecification::CreateForCustomAction(
           feature_engagement::kIPHBookmarkBarSimplifiedFeature,
           kBrowserDialogAnchorElementId,
-          IDS_BOOKMARK_BAR_HIDDEN_INACTIVITY_PROMO_LABEL,
-          IDS_PROMO_UNDO_BUTTON,
+          IDS_BOOKMARK_BAR_HIDDEN_INACTIVITY_PROMO_LABEL, IDS_PROMO_UNDO_BUTTON,
           base::BindRepeating(
               [](ContextPtr ctx,
                  user_education::FeaturePromoHandle promo_handle) {
@@ -1633,6 +1681,27 @@ void MaybeRegisterChromeFeaturePromos(
           .SetMetadata(150, "jennserrano@google.com",
                        "Triggered when the bookmark bar is auto-hidden after "
                        "inactivity.")));
+
+  // kIPHTabScrollButtonFeature:
+  registry.RegisterFeature(std::move(
+      FeaturePromoSpecification::CreateForCustomAction(
+          feature_engagement::kIPHTabScrollButtonFeature,
+          TabScrollButtonContainer::kStartScrollButton, IDS_TAB_SCROLL_IPH_BODY,
+          IDS_TAB_SCROLL_IPH_HIDE_BUTTONS,
+          base::BindRepeating(
+              [](ContextPtr ctx,
+                 user_education::FeaturePromoHandle promo_handle) {
+                if (Browser* const browser = GetBrowser(ctx)) {
+                  browser->GetProfile()->GetPrefs()->SetBoolean(
+                      prefs::kTabScrollButtonsPinnedToTabstrip, false);
+                }
+              }))
+          .SetBubbleTitleText(IDS_TAB_SCROLL_IPH_TITLE)
+          .SetBubbleIcon(kLightbulbOutlineIcon)
+          .SetMetadata(
+              154, "dominicaustria@google.com",
+              "Triggered when the tab horizontal scroll buttons "
+              "become visible, and stays visible for a few sceonds.")));
 
   // kIPHMemorySaverModeFeature:
   registry.RegisterFeature(std::move(
@@ -1971,23 +2040,22 @@ void MaybeRegisterChromeFeaturePromos(
 
 #if BUILDFLAG(IS_WIN)
   // kIPHSearchPromotionFeature:
-  // Query the Finch experiment arm at registration time to decide which
-  // localized strings (Arm A promo only vs Arms B, C, D promo and install)
-  // should populate this promo bubble.
+  // Query the Finch experiment action at registration time to decide which
+  // localized strings (open only vs install) should populate this
+  // promo bubble.
   //
   // TODO(b/467255671): Re-evaluate tracking feature usage to suppress
   // the promo once experiments are complete. Similarly if launch
   // occurs the values may need changing to re-show.
-  std::string arm_str = feature_engagement::kSearchPromotionArm.Get();
+  feature_engagement::SearchPromotionAction action =
+      feature_engagement::kSearchPromotionAction.Get();
 
   int body_id = IDS_SEARCH_PROMOTION_IPH_BODY_ARM_A;
   int cta_id = IDS_SEARCH_PROMOTION_IPH_CTA_ARM_A;
   int dismiss_id = IDS_SEARCH_PROMOTION_IPH_DISMISS_ARM_A;
   int title_id = IDS_SEARCH_PROMOTION_IPH_TITLE_ARM_A;
 
-  if (arm_str == feature_engagement::kSearchPromotionArmB ||
-      arm_str == feature_engagement::kSearchPromotionArmC ||
-      arm_str == feature_engagement::kSearchPromotionArmD) {
+  if (action == feature_engagement::SearchPromotionAction::kInstall) {
     body_id = IDS_SEARCH_PROMOTION_IPH_BODY_ARM_B;
     cta_id = IDS_SEARCH_PROMOTION_IPH_CTA_ARM_B;
     dismiss_id = IDS_SEARCH_PROMOTION_IPH_DISMISS_ARM_B;
@@ -2007,7 +2075,7 @@ void MaybeRegisterChromeFeaturePromos(
                 if (browser) {
                   // Delegate execution to the active SearchPromotionManager
                   // service to trigger the relevant promotion action
-                  // corresponding to the Finch arm.
+                  // corresponding to the Finch action.
                   SearchPromotionManager* manager =
                       SearchPromotionManagerFactory::GetForProfile(
                           browser->GetProfile());
@@ -2302,57 +2370,52 @@ void MaybeRegisterChromeTutorials(
   }
 
   {  // Split view tutorial
-    auto split_view_tutorial =
-        TutorialDescription::Create<kSplitViewTutorialMetricPrefix>(
-            // Hidden step - name the last inactive tab
-            HiddenStep::WaitForShown(kBrowserViewElementId)
-                .NameElements(
-                    base::BindRepeating([](ui::InteractionSequence* sequence,
-                                           ui::TrackedElement* element) {
-                      BrowserView* const browser_view =
-                          views::AsViewClass<BrowserView>(
-                              element->AsA<views::TrackedElementViews>()
-                                  ->view());
+    auto split_view_tutorial = TutorialDescription::Create<
+        kSplitViewTutorialMetricPrefix>(
+        // Hidden step - name the last inactive tab
+        HiddenStep::WaitForShown(kBrowserViewElementId)
+            .NameElements(
+                base::BindRepeating([](ui::InteractionSequence* sequence,
+                                       ui::TrackedElement* element) {
+                  BrowserView* const browser_view =
+                      views::AsViewClass<BrowserView>(
+                          element->AsA<views::TrackedElementViews>()->view());
 
-                      SplitViewIphController* split_view_iph_controller =
-                          SplitViewIphController::From(browser_view->browser());
+                  SplitViewIphController* split_view_iph_controller =
+                      SplitViewIphController::From(browser_view->browser());
 
-                      ui::TrackedElement* last_inactive_tab_element =
-                          split_view_iph_controller->GetTabSwitchIPHAnchor(
-                              browser_view);
+                  ui::TrackedElement* last_inactive_tab_element =
+                      split_view_iph_controller->GetTabSwitchIPHAnchor(
+                          browser_view);
 
-                      sequence->NameElement(
-                          last_inactive_tab_element,
-                          std::string_view(kLastInactiveTabElementName));
-                      return true;
-                    })),
+                  sequence->NameElement(
+                      last_inactive_tab_element,
+                      std::string_view(kLastInactiveTabElementName));
+                  return true;
+                })),
 
-            // Bubble step - inactive tab to right click.
-            BubbleStep(kLastInactiveTabElementName)
-                .SetBubbleBodyText(IDS_SPLIT_VIEW_TAB_SWITCH_STEP_IPH_BODY)
-                .SetBubbleArrow(HelpBubbleArrow::kTopLeft)
-                .SetBubbleFocusOnShow(
-                    true),  // This bubble can be safely focused.
+        // Bubble step - inactive tab to right click.
+        BubbleStep(kLastInactiveTabElementName)
+            .SetBubbleBodyText(IDS_SPLIT_VIEW_TAB_SWITCH_STEP_IPH_BODY)
+            .SetBubbleArrow(HelpBubbleArrow::kTopLeft)
+            .SetBubbleFocusOnShow(true),  // This bubble can be safely focused.
 
-            HiddenStep::WaitForShown(kToolbarSplitTabsToolbarButtonElementId),
+        HiddenStep::WaitForShown(kToolbarSplitTabsToolbarButtonElementId),
 
-            // Bubble step - highlight the toolbar button.
-            BubbleStep(kToolbarSplitTabsToolbarButtonElementId)
-                .SetBubbleBodyText(IDS_SPLIT_VIEW_TOOLBAR_BUTTON_STEP_IPH_BODY)
-                .SetBubbleArrow(HelpBubbleArrow::kTopLeft)
-                .SetBubbleFocusOnShow(
-                    true),  // This bubble can be safely focused.
+        // Bubble step - highlight the toolbar button.
+        BubbleStep(kToolbarSplitTabsToolbarButtonElementId)
+            .SetBubbleBodyText(IDS_SPLIT_VIEW_TOOLBAR_BUTTON_STEP_IPH_BODY)
+            .SetBubbleArrow(HelpBubbleArrow::kTopLeft)
+            .SetBubbleFocusOnShow(true),  // This bubble can be safely focused.
 
-            HiddenStep::WaitForShown(
-                SplitTabMenuModel::kReversePositionMenuItem),
+        HiddenStep::WaitForShown(SplitTabMenuModel::kReversePositionMenuItem),
 
-            // Completion of the tutorial after split view appears.
-            BubbleStep(SplitTabMenuModel::kExitSplitMenuItem)
-                .SetBubbleTitleText(IDS_TUTORIAL_GENERIC_SUCCESS_TITLE)
-                .SetBubbleBodyText(
-                    IDS_SPLIT_VIEW_TAB_SWITCH_COMPLETION_IPH_BODY)
-                .SetBubbleArrow(HelpBubbleArrow::kLeftTop)
-                .InAnyContext());
+        // Completion of the tutorial after split view appears.
+        BubbleStep(SplitTabMenuModel::kExitSplitMenuItem)
+            .SetBubbleTitleText(IDS_TUTORIAL_GENERIC_SUCCESS_TITLE)
+            .SetBubbleBodyText(IDS_SPLIT_VIEW_TAB_SWITCH_COMPLETION_IPH_BODY)
+            .SetBubbleArrow(HelpBubbleArrow::kLeftTop)
+            .InAnyContext());
 
     split_view_tutorial.metadata.additional_description =
         "Tutorial for the Split View.";

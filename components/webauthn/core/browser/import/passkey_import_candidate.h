@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -21,6 +22,8 @@ struct PasskeyImportCandidate {
   std::vector<uint8_t> user_id;
   std::vector<uint8_t> private_key;
   int64_t creation_time = 0;
+  std::vector<uint8_t> hmac_secret;
+  std::optional<std::string> hmac_secret_algorithm;
 };
 
 }  // namespace webauthn

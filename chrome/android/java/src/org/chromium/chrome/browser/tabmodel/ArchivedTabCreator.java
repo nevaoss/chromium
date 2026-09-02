@@ -74,8 +74,7 @@ public class ArchivedTabCreator implements TabCreator, NeedsTabModel {
                         .setLaunchType(TabLaunchType.FROM_RESTORE)
                         .setTabResolver(mTabModel::getTabById)
                         .setInitiallyHidden(true)
-                        .setDelegateFactory(new HeadlessTabDelegateFactory())
-                        .setArchived(true)
+                        .setDelegateFactory(new HeadlessTabDelegateFactory(TabModelType.ARCHIVED))
                         .build();
         mTabModel.addTab(
                 tab, index, TabLaunchType.FROM_RESTORE, TabCreationState.FROZEN_FOR_LAZY_LOAD);
@@ -83,7 +82,7 @@ public class ArchivedTabCreator implements TabCreator, NeedsTabModel {
     }
 
     @Override
-    public @Nullable Tab createFrozenTab(TabState state, int id, int index) {
+    public @Nullable Tab createFrozenTab(@Nullable TabState state, int id, int index) {
         assert mTabModel != null : "Creating frozen tab before native library initialized.";
         Tab tab =
                 TabBuilder.createFromFrozenState(assumeNonNull(mTabModel.getProfile()))
@@ -93,8 +92,7 @@ public class ArchivedTabCreator implements TabCreator, NeedsTabModel {
                         .setTabResolver(mTabModel::getTabById)
                         .setInitiallyHidden(true)
                         .setTabState(state)
-                        .setDelegateFactory(new HeadlessTabDelegateFactory())
-                        .setArchived(true)
+                        .setDelegateFactory(new HeadlessTabDelegateFactory(TabModelType.ARCHIVED))
                         .build();
         mTabModel.addTab(
                 tab, index, TabLaunchType.FROM_RESTORE, TabCreationState.FROZEN_FOR_LAZY_LOAD);

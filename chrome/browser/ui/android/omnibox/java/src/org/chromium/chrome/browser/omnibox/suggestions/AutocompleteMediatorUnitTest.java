@@ -141,7 +141,6 @@ import java.util.function.Consumer;
 @Config(manifest = Config.NONE, shadows = ShadowLooper.class)
 public class AutocompleteMediatorUnitTest {
     private static final int SUGGESTION_MIN_HEIGHT = 20;
-    private static final int HEADER_MIN_HEIGHT = 15;
     private static final long TEST_EVENT_TIME = 123L;
     private static final GURL PAGE_URL = new GURL("https://www.site.com/page.html");
     private static final String PAGE_TITLE = "Page Title";
@@ -309,6 +308,8 @@ public class AutocompleteMediatorUnitTest {
      * Build a fake suggestions list with elements named 'Suggestion #', where '#' is the suggestion
      * index (1-based).
      *
+     * @param count Number of autocomplete suggestions to generate.
+     * @param prefix Text prefix to prepend to each generated suggestion query.
      * @return List of suggestions.
      */
     private List<AutocompleteMatch> buildSampleSuggestionsList(int count, String prefix) {
@@ -333,6 +334,7 @@ public class AutocompleteMediatorUnitTest {
      * @param url The URL to report as a current URL.
      * @param title The Page Title to report.
      * @param pageClassification The Page classification to report.
+     * @return A mocked FuseboxSessionState for the given input.
      */
     private FuseboxSessionState createSession(
             GURL url, String title, @PageClassification int pageClassification) {

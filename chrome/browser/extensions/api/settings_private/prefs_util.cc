@@ -25,12 +25,14 @@
 #include "chrome/browser/glic/glic_pref_names.h"
 #include "chrome/browser/metrics/profile_pref_names.h"
 #include "chrome/browser/nearby_sharing/common/nearby_share_prefs.h"
+#include "chrome/browser/new_tab_page/prefs/ntp_pref_names.h"
 #include "chrome/browser/password_manager/generated_password_leak_detection_pref.h"
 #include "chrome/browser/prefs/session_startup_pref.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/safe_browsing/generated_safe_browsing_pref.h"
 #include "chrome/browser/safe_browsing/generated_security_settings_bundle_pref.h"
 #include "chrome/browser/ssl/generated_https_first_mode_pref.h"
+#include "chrome/browser/ui/omnibox/omnibox_everywhere/omnibox_everywhere_prefs.h"
 #include "chrome/browser/ui/safety_hub/safety_hub_prefs.h"
 #include "chrome/browser/ui/tabs/tab_strip_prefs.h"
 #include "chrome/browser/ui/toolbar/toolbar_pref_names.h"
@@ -575,6 +577,14 @@ const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
   (*s_allowlist)[::prefs::kDefaultSearchProviderEnabled] =
       settings_api::PrefType::kBoolean;
   (*s_allowlist)[::omnibox::kKeywordSpaceTriggeringEnabled] =
+      settings_api::PrefType::kBoolean;
+  (*s_allowlist)[omnibox_everywhere::prefs::kOmniboxEverywhereEnabled] =
+      settings_api::PrefType::kBoolean;
+  (*s_allowlist)[omnibox_everywhere::prefs::kOmniboxEverywhereHotkey] =
+      settings_api::PrefType::kString;
+  (*s_allowlist)[omnibox_everywhere::prefs::kOmniboxEverywhereShowShortcuts] =
+      settings_api::PrefType::kNumber;
+  (*s_allowlist)[ntp_prefs::kNtpShortcutsVisible] =
       settings_api::PrefType::kBoolean;
 
   // Site Settings prefs.

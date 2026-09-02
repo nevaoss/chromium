@@ -95,7 +95,15 @@ void WebUIReadOnlyOmnibox::OnTabChanged(content::WebContents* web_contents) {
   controller()->edit_model()->RestoreState(state ? &state->model_state
                                                  : nullptr);
   if (state) {
-    selection_ = state->selection;
+    if (state->model_state.user_input_in_progress &&
+        state->model_state.user_text.empty() &&
+        state->model_state.keyword.empty()) {
+      // See comment in OmniboxEditModel::GetStateForTabSwitch() for details on
+      // this.
+      SelectAll(true);
+    } else {
+      selection_ = state->selection;
+    }
   }
 
   RequestUpdateWebUI();
@@ -565,6 +573,21 @@ void WebUIReadOnlyOmnibox::ResetBrowserVersion() {
   ui_version_ = 0;
 }
 
+void WebUIReadOnlyOmnibox::OnBlur() {
+  if (!has_focus_) {
+    return;
+  }
+  has_focus_ = false;
+  aim_hint_currently_shown_ = false;
+  controller()->edit_model()->OnWillKillFocus();
+  if (auto* popup_closer = controller()->client()->GetOmniboxPopupCloser()) {
+    popup_closer->CloseWithReason(omnibox::PopupCloseReason::kBlur);
+  }
+  controller()->edit_model()->OnKillFocus();
+  ClearAccessibilityLabel();
+  RequestUpdateWebUI();
+}
+
 base::expected<std::monostate, mojo_base::mojom::ErrorPtr>
 WebUIReadOnlyOmnibox::OnFocusChange(
     const toolbar_ui_api::mojom::OmniboxActionFocusChange& focus_change) {
@@ -585,15 +608,7 @@ WebUIReadOnlyOmnibox::OnFocusChange(
     }
     RequestUpdateWebUI();
   } else {
-    has_focus_ = false;
-    aim_hint_currently_shown_ = false;
-    controller()->edit_model()->OnWillKillFocus();
-    if (auto* popup_closer = controller()->client()->GetOmniboxPopupCloser()) {
-      popup_closer->CloseWithReason(omnibox::PopupCloseReason::kBlur);
-    }
-    controller()->edit_model()->OnKillFocus();
-    ClearAccessibilityLabel();
-    RequestUpdateWebUI();
+    OnBlur();
   }
   return base::ok(std::monostate());
 }

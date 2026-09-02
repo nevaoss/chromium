@@ -85,7 +85,6 @@ import org.chromium.chrome.browser.suggestions.SuggestionsUiDelegateImpl;
 import org.chromium.chrome.browser.suggestions.tile.Tile;
 import org.chromium.chrome.browser.suggestions.tile.TileGroup;
 import org.chromium.chrome.browser.suggestions.tile.TileGroupDelegateImpl;
-import org.chromium.chrome.browser.tab.EmptyTabObserver;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabHidingType;
 import org.chromium.chrome.browser.tab.TabObserver;
@@ -115,6 +114,7 @@ import org.chromium.components.feature_engagement.Tracker;
 import org.chromium.components.omnibox.AutocompleteInput;
 import org.chromium.components.omnibox.AutocompleteInput.AutocompleteState;
 import org.chromium.components.omnibox.AutocompleteRequestType;
+import org.chromium.components.omnibox.OmniboxFeatures;
 import org.chromium.components.omnibox.OmniboxFocusReason;
 import org.chromium.components.search_engines.TemplateUrlService;
 import org.chromium.components.search_engines.TemplateUrlService.TemplateUrlServiceObserver;
@@ -314,7 +314,10 @@ public class NewTabPage
                     focusReason = OmniboxFocusReason.NTP_AI_MODE;
                 } else if (showFuseboxPopup) {
                     focusReason = OmniboxFocusReason.FAKE_BOX_PLUS_BUTTON_TAP;
-                    autocompleteState = AutocompleteState.STANDBY_NO_FOCUS;
+                    autocompleteState =
+                            OmniboxFeatures.sFocusFuseboxFromNtpPlusButton.getValue()
+                                    ? AutocompleteState.ENABLED
+                                    : AutocompleteState.STANDBY_NO_FOCUS;
                 }
 
                 mOmniboxStub.beginInput(
@@ -487,7 +490,7 @@ public class NewTabPage
         mTemplateUrlService.addObserver(this);
 
         mTabObserver =
-                new EmptyTabObserver() {
+                new TabObserver() {
                     @Override
                     public void onShown(Tab tab, @TabSelectionType int type) {
                         // Showing the NTP is only meaningful when the page has been loaded already.
@@ -774,12 +777,12 @@ public class NewTabPage
      * <p>This method is invoked during:
      *
      * <ul>
-     *   <li>Cold/Warm Starts (via {@link #onLoadingComplete} and {@link EmptyTabObserver#onShown}):
+     *   <li>Cold/Warm Starts (via {@link #onLoadingComplete} and {@link TabObserver#onShown}):
      *       Updating background state once native initialization and page loading finish.
      *   <li>Hot Starts / Foregrounding (via {@link
      *       PauseResumeWithNativeObserver#onResumeWithNative}): When returning to an already-loaded
      *       NTP.
-     *   <li>Tab Switching (via {@link EmptyTabObserver#onShown}): When switching back to an
+     *   <li>Tab Switching (via {@link TabObserver#onShown}): When switching back to an
      *       already-loaded NTP tab.
      * </ul>
      */
@@ -798,7 +801,8 @@ public class NewTabPage
             return;
         }
 
-        NtpCustomizationConfigManager.getInstance().maybeApplyBackgroundUpdateFromDeviceSync();
+        NtpCustomizationConfigManager.getInstance()
+                .maybeApplyBackgroundUpdateFromDeviceSync(mActivity);
     }
 
     private void onBackgroundChangedImpl(boolean applyWhiteBackgroundOnSearchBox) {

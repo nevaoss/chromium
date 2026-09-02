@@ -1743,6 +1743,18 @@ void NetworkContext::SendReportsAndRemoveSource(
 #endif  // BUILDFLAG(ENABLE_REPORTING)
 }
 
+void NetworkContext::SendReportsForSource(
+    const base::UnguessableToken& reporting_source) {
+#if BUILDFLAG(ENABLE_REPORTING)
+  CHECK(!reporting_source.is_empty());
+  net::ReportingService* reporting_service =
+      url_request_context()->reporting_service();
+  if (reporting_service) {
+    reporting_service->SendReportsForSource(reporting_source);
+  }
+#endif  // BUILDFLAG(ENABLE_REPORTING)
+}
+
 void NetworkContext::QueueReport(
     const std::string& type,
     const std::string& group,
@@ -3676,7 +3688,8 @@ void NetworkContext::CreateTrustedUrlLoaderFactoryForNetworkService(
                          std::move(url_loader_factory_params));
 }
 
-void NetworkContext::SetSharedDictionaryCacheMaxSize(uint64_t cache_max_size) {
+void NetworkContext::SetSharedDictionaryCacheMaxSize(
+    std::optional<uint64_t> cache_max_size) {
   if (!shared_dictionary_manager_) {
     return;
   }

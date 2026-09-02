@@ -934,6 +934,7 @@ source_set("extensions") {
       "//chrome/browser/importer",
       "//chrome/browser/language",
       "//chrome/browser/lifetime:termination_notification",
+      "//chrome/browser/new_tab_page/prefs",
       "//chrome/browser/picture_in_picture",
       "//chrome/browser/prefs",
       "//chrome/browser/prefs:util",
@@ -950,6 +951,7 @@ source_set("extensions") {
       "//chrome/browser/ui/browser_window",
       "//chrome/browser/ui/extensions",
       "//chrome/browser/ui/hats",
+      "//chrome/browser/ui/omnibox/omnibox_everywhere:prefs",
       "//chrome/browser/ui/prefs",
       "//chrome/browser/ui/side_panel",
       "//chrome/browser/ui/side_panel:side_panel_views_dependent",
@@ -1029,6 +1031,7 @@ source_set("extensions") {
       "//components/navigation_interception",
       "//components/net_log",
       "//components/onc",
+      "//components/one_time_tokens/core/browser",
       "//components/page_load_metrics/browser",
       "//components/password_manager/content/browser",
       "//components/password_manager/core/browser",
@@ -1150,6 +1153,7 @@ source_set("extensions") {
         "//chrome/browser/chromeos/policy/dlp",
         "//chrome/browser/chromeos/upload_office_to_cloud",
         "//chrome/browser/speech",
+        "//chrome/browser/ui/views/extensions/dialogs:request_file_system_dialog",
         "//chromeos/ash/components/browser_context_helper",
         "//chromeos/ash/components/platform_keys",
         "//chromeos/components/kiosk",
@@ -1184,6 +1188,7 @@ source_set("extensions") {
           "//chrome/browser/chromeos/extensions/printing_metrics",
           "//chrome/browser/chromeos/printing",
           "//chrome/browser/pdf:pdf_pref_names",
+          "//chrome/browser/ui/views/extensions/dialogs:print_job_confirmation_dialog",
           "//chromeos/printing",
           "//printing/backend",
         ]
@@ -2084,7 +2089,7 @@ source_set("unit_tests") {
     "//components/browser_sync:switches",
     "//components/gcm_driver:test_support",
     "//components/no_state_prefetch/browser",
-    "//components/os_crypt/async/browser:test_support",
+    "//components/os_crypt/browser:test_support",
     "//components/policy/core/common:test_support",
     "//components/prefs:test_support",
     "//components/proxy_config",
@@ -2488,10 +2493,6 @@ source_set("browser_tests") {
     "web_contents_browsertest.cc",
     "webstore_installer_browsertest.cc",
     "webstore_reinstaller_browsertest.cc",
-
-    # TODO(crbug.com/469417243): Move to BUILD.gn files closer to sources.
-    "//chrome/browser/task_manager/providers/web_contents/extension_tag_browsertest.cc",
-    "//chrome/renderer/extensions/script_context_browsertest.cc",
   ]
 
   deps = [
@@ -2578,6 +2579,7 @@ source_set("browser_tests") {
     "//extensions/browser/updater",
     "//extensions/renderer",
     "//extensions/strings",
+    "//services/network/public/cpp:ip_address_space_overrides_test_utils",
     "//ui/base:ozone_buildflags",
     "//ui/base/idle",
     "//ui/base/idle:test_support",
@@ -2694,22 +2696,12 @@ source_set("browser_tests") {
   if (enable_extensions) {
     sources += [
       # TODO(crbug.com/469417243): Move to BUILD.gn files closer to sources.
-      "//chrome/browser/controlled_frame/controlled_frame_apitest.cc",
-      "//chrome/browser/controlled_frame/controlled_frame_contextmenus_browsertest.cc",
-      "//chrome/browser/controlled_frame/controlled_frame_dialog_browsertest.cc",
-      "//chrome/browser/controlled_frame/controlled_frame_disabled_permission_browsertest.cc",
-      "//chrome/browser/controlled_frame/controlled_frame_new_window_browsertest.cc",
-      "//chrome/browser/controlled_frame/controlled_frame_permission_request_browsertest.cc",
-      "//chrome/browser/controlled_frame/controlled_frame_wpt_browsertest.cc",
-      "//chrome/browser/controlled_frame/scoped_test_driver_proxy.cc",
-      "//chrome/browser/controlled_frame/scoped_test_driver_proxy.h",
       "//chrome/browser/notifications/notification_permission_context_apitest.cc",
       "//chrome/browser/page_load_metrics/observers/serp_page_load_metrics_observer_browsertest.cc",
       "//chrome/browser/safe_browsing/extension_telemetry/extension_telemetry_service_browsertest.cc",
       "//chrome/browser/ui/views/autofill/popup/custom_cursor_suppressor_browsertest.cc",
       "//chrome/browser/ui/views/user_education/recent_session_observer_impl_browsertest.cc",
       "//chrome/browser/web_applications/isolated_web_apps/window_management/isolated_web_apps_close_window_browsertest.cc",
-      "//chrome/renderer/controlled_frame/web_url_pattern_natives_browsertest.cc",
       "ai_language_model_browsertest.cc",
       "alert_apitest.cc",
       "api/activity_log_private/activity_log_private_apitest.cc",

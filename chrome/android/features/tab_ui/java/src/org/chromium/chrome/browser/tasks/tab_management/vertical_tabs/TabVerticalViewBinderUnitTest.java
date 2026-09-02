@@ -30,7 +30,6 @@ import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -53,7 +52,6 @@ import org.chromium.base.FeatureOverrides;
 import org.chromium.base.Token;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.Features.DisableFeatures;
-import org.chromium.chrome.R.string;
 import org.chromium.chrome.browser.actor.ui.ActorUiTabController.UiTabState;
 import org.chromium.chrome.browser.actor.ui.TabIndicatorStatus;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
@@ -938,6 +936,24 @@ public class TabVerticalViewBinderUnitTest {
 
     @Test
     @SmallTest
+    public void testActionButtonTouchDelegate_Desktop() {
+        DeviceInfo.setIsDesktopForTesting(true);
+        mItemView.layout(0, 0, 100, 32);
+        mCloseButton.layout(80, 8, 96, 24);
+
+        TabActionButtonData actionButtonData =
+                new TabActionButtonData(TabActionButtonType.CLOSE, mCloseListener);
+        mModel.set(TabProperties.TAB_ACTION_BUTTON_DATA, actionButtonData);
+        mModel.set(TabProperties.IS_SELECTED, true);
+
+        TabVerticalViewBinder.bindTab(mModel, mItemView, TabProperties.IS_SELECTED);
+        ShadowLooper.idleMainLooper();
+
+        assertNotNull(mItemView.getTouchDelegate());
+    }
+
+    @Test
+    @SmallTest
     public void testBindPinnedTab_FaviconAndClick() {
         ViewGroup pinnedView = inflatePinnedTabView();
         ImageView faviconView = pinnedView.findViewById(R.id.tab_favicon);
@@ -1493,6 +1509,71 @@ public class TabVerticalViewBinderUnitTest {
 
     @Test
     @SmallTest
+    public void testBindTab_Focus_NotifiesHoverCardListener() {
+        mModel.set(TabProperties.TAB_ID, TEST_HEADER_TAB_ID);
+        mModel.set(TabProperties.TAB_HOVER_CARD_LISTENER, mTabHoverCardListener);
+        mModel.set(TabProperties.IS_SELECTED, false);
+        TabVerticalViewBinder.bindTab(mModel, mItemView, TabProperties.IS_SELECTED);
+
+        // Focus gain
+        mItemView.getOnFocusChangeListener().onFocusChange(mItemView, true);
+        verify(mTabHoverCardListener)
+                .onTabHoverCardStateChanged(TEST_HEADER_TAB_ID, mItemView, /* isHovered= */ true);
+
+        // Focus loss
+        mItemView.getOnFocusChangeListener().onFocusChange(mItemView, false);
+        verify(mTabHoverCardListener)
+                .onTabHoverCardStateChanged(TEST_HEADER_TAB_ID, mItemView, /* isHovered= */ false);
+    }
+
+    @Test
+    @SmallTest
+    public void testBindPinnedTab_Focus_NotifiesHoverCardListener() {
+        ViewGroup pinnedView = inflatePinnedTabView();
+        mModel.set(TabProperties.TAB_ID, TEST_HEADER_TAB_ID);
+        mModel.set(TabProperties.TAB_HOVER_CARD_LISTENER, mTabHoverCardListener);
+        mModel.set(TabProperties.IS_SELECTED, false);
+        TabVerticalViewBinder.bindPinnedTab(mModel, pinnedView, TabProperties.IS_SELECTED);
+
+        // Focus gain
+        pinnedView.getOnFocusChangeListener().onFocusChange(pinnedView, true);
+        verify(mTabHoverCardListener)
+                .onTabHoverCardStateChanged(TEST_HEADER_TAB_ID, pinnedView, /* isHovered= */ true);
+
+        // Focus loss
+        pinnedView.getOnFocusChangeListener().onFocusChange(pinnedView, false);
+        verify(mTabHoverCardListener)
+                .onTabHoverCardStateChanged(TEST_HEADER_TAB_ID, pinnedView, /* isHovered= */ false);
+    }
+
+    @Test
+    @SmallTest
+    public void testBindTabGroupHeader_Focus_NotifiesHoverCardListener() {
+        ViewGroup headerView = inflateGroupHeaderView();
+        mModel.set(TabProperties.TAB_ID, TEST_HEADER_TAB_ID);
+        mModel.set(TabProperties.TAB_GROUP_HEADER_ID, TEST_TAB_GROUP_ID);
+        mModel.set(TabProperties.TAB_HOVER_CARD_LISTENER, mTabHoverCardListener);
+        TabActionButtonData actionButtonData =
+                new TabActionButtonData(TabActionButtonType.CLOSE, mCloseListener);
+        mModel.set(TabProperties.TAB_ACTION_BUTTON_DATA, actionButtonData);
+        TabVerticalViewBinder.bindTabGroupHeader(
+                mModel, headerView, TabProperties.TAB_ACTION_BUTTON_DATA);
+
+        // Focus gain
+        headerView.getOnFocusChangeListener().onFocusChange(headerView, true);
+        verify(mTabHoverCardListener)
+                .onTabGroupHoverCardStateChanged(
+                        TEST_HEADER_TAB_ID, TEST_TAB_GROUP_ID, headerView, /* isHovered= */ true);
+
+        // Focus loss
+        headerView.getOnFocusChangeListener().onFocusChange(headerView, false);
+        verify(mTabHoverCardListener)
+                .onTabGroupHoverCardStateChanged(
+                        TEST_HEADER_TAB_ID, TEST_TAB_GROUP_ID, headerView, /* isHovered= */ false);
+    }
+
+    @Test
+    @SmallTest
     public void testBindTabGroupHeader_CollapsedState() {
         ViewGroup headerView = inflateGroupHeaderView();
         ImageView expandChevron = headerView.findViewById(R.id.expand_chevron);
@@ -1527,48 +1608,11 @@ public class TabVerticalViewBinderUnitTest {
     public void testTabGroupHeaderAccessibilityDelegate() {
         ViewGroup headerView = inflateGroupHeaderView();
 
-        // Initially collapsed = true.
-        mModel.set(TabProperties.IS_COLLAPSED, true);
-        TabVerticalViewBinder.bindTabGroupHeader(mModel, headerView, TabProperties.IS_COLLAPSED);
+        mModel.set(TabProperties.ACCESSIBILITY_DELEGATE, mAccessibilityDelegate);
+        TabVerticalViewBinder.bindTabGroupHeader(
+                mModel, headerView, TabProperties.ACCESSIBILITY_DELEGATE);
 
-        // Get the accessibility delegate.
-        View.AccessibilityDelegate delegate = headerView.getAccessibilityDelegate();
-        assertNotNull("Accessibility delegate should be set", delegate);
-
-        AccessibilityNodeInfo nodeInfo = AccessibilityNodeInfo.obtain();
-        delegate.onInitializeAccessibilityNodeInfo(headerView, nodeInfo);
-
-        // Verify action click description is "Expand section".
-        boolean hasExpandAction = false;
-        String expandLabel = mActivity.getString(string.accessibility_expand_section);
-        for (AccessibilityNodeInfo.AccessibilityAction action : nodeInfo.getActionList()) {
-            if (action.getId() == AccessibilityNodeInfo.ACTION_CLICK) {
-                assertEquals(expandLabel, action.getLabel());
-                hasExpandAction = true;
-            }
-        }
-        assertTrue("Should contain expand click action", hasExpandAction);
-
-        // Toggle to expanded = false.
-        mModel.set(TabProperties.IS_COLLAPSED, false);
-        TabVerticalViewBinder.bindTabGroupHeader(mModel, headerView, TabProperties.IS_COLLAPSED);
-
-        delegate = headerView.getAccessibilityDelegate();
-        assertNotNull("Accessibility delegate should not be null after model update", delegate);
-
-        nodeInfo = AccessibilityNodeInfo.obtain();
-        delegate.onInitializeAccessibilityNodeInfo(headerView, nodeInfo);
-
-        // Verify action click description updates to "Collapse section".
-        boolean hasCollapseAction = false;
-        String collapseLabel = mActivity.getString(string.accessibility_collapse_section);
-        for (AccessibilityNodeInfo.AccessibilityAction action : nodeInfo.getActionList()) {
-            if (action.getId() == AccessibilityNodeInfo.ACTION_CLICK) {
-                assertEquals(collapseLabel, action.getLabel());
-                hasCollapseAction = true;
-            }
-        }
-        assertTrue("Should contain collapse click action", hasCollapseAction);
+        assertEquals(mAccessibilityDelegate, headerView.getAccessibilityDelegate());
     }
 
     @Test
@@ -1982,6 +2026,59 @@ public class TabVerticalViewBinderUnitTest {
         ViewGroup.MarginLayoutParams lp =
                 (ViewGroup.MarginLayoutParams) pinnedView.getLayoutParams();
         assertEquals(0, lp.getMarginStart());
+    }
+
+    @Test
+    @SmallTest
+    public void testBindPinnedTab_InitialBinding_AutoResizeEnabled() {
+        FeatureOverrides.overrideParam(
+                ChromeFeatureList.ANDROID_VERTICAL_TABS, VerticalTabUtils.AUTO_RESIZE_PARAM, true);
+        ViewGroup pinnedView = inflatePinnedTabView();
+        int defaultXmlWidth =
+                pinnedView
+                        .getResources()
+                        .getDimensionPixelSize(R.dimen.vertical_tab_pinned_item_width);
+        int expectedHeight =
+                pinnedView
+                        .getResources()
+                        .getDimensionPixelSize(
+                                VerticalTabUtils.isTablet(pinnedView.getContext())
+                                        ? R.dimen.vertical_tab_pinned_item_height_tablet
+                                        : R.dimen.vertical_tab_pinned_item_height);
+        pinnedView.setLayoutParams(
+                new ViewGroup.MarginLayoutParams(defaultXmlWidth, expectedHeight));
+
+        mModel.set(TabProperties.RAIL_COLLAPSE_STATE, RailCollapseState.EXPANDED);
+        TabVerticalViewBinder.bindPinnedTab(mModel, pinnedView, null);
+
+        assertEquals(ViewGroup.LayoutParams.MATCH_PARENT, pinnedView.getLayoutParams().width);
+        assertEquals(expectedHeight, pinnedView.getLayoutParams().height);
+    }
+
+    @Test
+    @SmallTest
+    public void testBindPinnedTab_InitialBinding_AutoResizeDisabled() {
+        FeatureOverrides.overrideParam(
+                ChromeFeatureList.ANDROID_VERTICAL_TABS, VerticalTabUtils.AUTO_RESIZE_PARAM, false);
+        ViewGroup pinnedView = inflatePinnedTabView();
+        int expectedWidth =
+                pinnedView
+                        .getResources()
+                        .getDimensionPixelSize(R.dimen.vertical_tab_pinned_item_width);
+        int expectedHeight =
+                pinnedView
+                        .getResources()
+                        .getDimensionPixelSize(
+                                VerticalTabUtils.isTablet(pinnedView.getContext())
+                                        ? R.dimen.vertical_tab_pinned_item_height_tablet
+                                        : R.dimen.vertical_tab_pinned_item_height);
+        pinnedView.setLayoutParams(new ViewGroup.MarginLayoutParams(expectedWidth, expectedHeight));
+
+        mModel.set(TabProperties.RAIL_COLLAPSE_STATE, RailCollapseState.EXPANDED);
+        TabVerticalViewBinder.bindPinnedTab(mModel, pinnedView, null);
+
+        assertEquals(expectedWidth, pinnedView.getLayoutParams().width);
+        assertEquals(expectedHeight, pinnedView.getLayoutParams().height);
     }
 
     @Test

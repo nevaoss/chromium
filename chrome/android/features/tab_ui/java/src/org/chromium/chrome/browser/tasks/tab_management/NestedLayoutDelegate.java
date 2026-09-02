@@ -7,8 +7,14 @@ package org.chromium.chrome.browser.tasks.tab_management;
 import static org.chromium.build.NullUtil.assumeNonNull;
 import static org.chromium.chrome.browser.tasks.tab_management.TabSwitcherMessageManager.isOnlyArchivedMsg;
 
+import android.os.Bundle;
 import android.util.SparseIntArray;
 import android.view.View;
+import android.view.accessibility.AccessibilityEvent;
+import android.view.accessibility.AccessibilityNodeInfo;
+import android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction;
+
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
 
 import org.chromium.base.Token;
 import org.chromium.build.annotations.NullMarked;
@@ -20,10 +26,12 @@ import org.chromium.chrome.browser.tabmodel.TabGroupUtils;
 import org.chromium.chrome.browser.tabmodel.TabList;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelUtils;
+import org.chromium.chrome.browser.tasks.tab_management.TabListModel.CardProperties.ModelType;
 import org.chromium.chrome.tab_ui.R;
 import org.chromium.components.tab_group_sync.EitherId.EitherGroupId;
 import org.chromium.components.tab_group_sync.LocalTabGroupId;
 import org.chromium.components.tab_groups.TabGroupColorId;
+import org.chromium.ui.accessibility.AccessibilityState;
 import org.chromium.ui.modelutil.PropertyModel;
 
 import java.util.HashMap;
@@ -46,6 +54,16 @@ class NestedLayoutDelegate extends TabListLayoutDelegate {
 
     @Override
     boolean requiresThumbnailUpdateOnSelect() {
+        return false;
+    }
+
+    @Override
+    boolean supportsTabGroups() {
+        return true;
+    }
+
+    @Override
+    boolean isChildTabRepresentedByGroupCard(Tab tab) {
         return false;
     }
 
@@ -461,5 +479,49 @@ class NestedLayoutDelegate extends TabListLayoutDelegate {
                 break;
             }
         }
+    }
+
+    @Override
+    @ModelType
+    int getGroupCardType() {
+        return ModelType.TAB_GROUP;
+    }
+
+    @Override
+    boolean isGroupCollapsed(Token tabGroupId) {
+        TabModel tabModel = mMediator.getCurrentTabModelChecked();
+        return tabModel.getTabGroupCollapsed(tabGroupId);
+    }
+
+    @Override
+    void populateAccessibilityNodeInfo(
+            View host, AccessibilityNodeInfo info, @Nullable PropertyModel model) {
+        if (model != null && TabProperties.isTabGroupHeader(model)) {
+            boolean isCollapsed = TabProperties.isTabGroupCollapsed(model);
+            info.addAction(
+                    isCollapsed
+                            ? AccessibilityAction.ACTION_EXPAND
+                            : AccessibilityAction.ACTION_COLLAPSE);
+            AccessibilityNodeInfoCompat.wrap(info)
+                    .setExpandedState(
+                            isCollapsed
+                                    ? AccessibilityNodeInfoCompat.EXPANDED_STATE_COLLAPSED
+                                    : AccessibilityNodeInfoCompat.EXPANDED_STATE_FULL);
+        }
+    }
+
+    @Override
+    boolean performAccessibilityAction(
+            View host, int action, @Nullable Bundle args, @Nullable PropertyModel model) {
+        if (action == AccessibilityAction.ACTION_EXPAND.getId()
+                || action == AccessibilityAction.ACTION_COLLAPSE.getId()) {
+            host.performClick();
+            AccessibilityEvent event =
+                    AccessibilityEvent.obtain(AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED);
+            event.setContentChangeTypes(AccessibilityEvent.CONTENT_CHANGE_TYPE_EXPANDED);
+            AccessibilityState.sendAccessibilityEvent(event);
+            return true;
+        }
+        return false;
     }
 }

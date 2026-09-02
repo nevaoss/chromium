@@ -710,8 +710,21 @@ void ReadAnythingAppController::ProcessModelUpdates() {
   }
 
   if (IsReadabilityEnabled() && model_.requires_readability_distillation()) {
-    PrepareForNewContentDistillation();
-    page_handler_->RequestReadabilityDistillation();
+    // Readability distillation is triggered immediately when the active tree
+    // changes. Subsequent page events like kLoadComplete also
+    // request distillation (primarily to handle same-document or SPA
+    // navigations where the active AXTree ID remains the same).
+    //
+    // Check if the distillation request can be safely filtered out to avoid
+    // re-distilling a page that has already successfully loaded.
+    model_.ResetDistillationCompleteIfNeeded();
+    if (model_.readability_distillation_complete_for_current_tree()) {
+      // Clear the distillation flag as no further distillation is needed.
+      model_.set_requires_readability_distillation(false);
+    } else {
+      PrepareForNewContentDistillation();
+      page_handler_->RequestReadabilityDistillation();
+    }
   }
 
   if (model_.redraw_required()) {
@@ -894,6 +907,7 @@ void ReadAnythingAppController::PrepareForNewContentDistillation() {
   active_tree_changed_start_time_ = base::TimeTicks::Now();
 
   model_.set_requires_readability_distillation(false);
+  model_.set_readability_distillation_complete_for_current_tree(false);
 
   // TODO: crbug.com/526701545: Show Loading screen when re-distilling.
 
@@ -1594,12 +1608,6 @@ gin::ObjectTemplateBuilder ReadAnythingAppController::GetObjectTemplateBuilder(
                  &ReadAnythingAppController::OnLinksEnabledToggled)
       .SetMethod("onTranslationRequested",
                  &ReadAnythingAppController::OnTranslationRequested)
-      .SetMethod("requestShouldShowLineFocusNewBadge",
-                 &ReadAnythingAppController::RequestShouldShowLineFocusNewBadge)
-      .SetMethod("onLineFocusFeatureUsed",
-                 &ReadAnythingAppController::OnLineFocusFeatureUsed)
-      .SetMethod("onImagesEnabledToggled",
-                 &ReadAnythingAppController::OnImagesEnabledToggled)
       .SetMethod("onScroll", &ReadAnythingAppController::OnScroll)
       .SetMethod("onLinkClicked", &ReadAnythingAppController::OnLinkClicked)
       .SetMethod("onLetterSpacingChange",
@@ -2301,23 +2309,6 @@ bool ReadAnythingAppController::IsReadabilitySelectTextEnabled() const {
 
 bool ReadAnythingAppController::IsLineFocusEnabled() const {
   return features::IsReadAnythingLineFocusEnabled();
-}
-
-void ReadAnythingAppController::RequestShouldShowLineFocusNewBadge() {
-  page_handler_->ShouldShowLineFocusNewBadge(base::BindOnce(
-      &ReadAnythingAppController::OnShouldShowLineFocusNewBadgeResponse,
-      weak_ptr_factory_.GetWeakPtr()));
-}
-
-void ReadAnythingAppController::OnShouldShowLineFocusNewBadgeResponse(
-    bool show) {
-  ExecuteJavaScript(
-      "chrome.readingMode.onShouldShowLineFocusNewBadgeResponse(" +
-      base::ToString(show) + ")");
-}
-
-void ReadAnythingAppController::OnLineFocusFeatureUsed() {
-  page_handler_->OnLineFocusFeatureUsed();
 }
 
 bool ReadAnythingAppController::IsGoogleDocs() const {
@@ -3368,6 +3359,22 @@ void ReadAnythingAppController::UpdateContent(const std::string& title,
     DistillNewTree();
     return;
   }
+
+  // If speech is playing, don't redraw and disrupt speech. The app will
+  // re-distill once speech pauses.
+  // TODO(b/550352614): Refactor this to use IsUpdateProcessingPaused() and set
+  // the state to kDistillationWithContent, bringing Readability into parity
+  // with Screen2x distillation PostProcessing. This needs to have it's own test
+  // to check that the state is set correctly and the pending distillations are
+  // executed.
+  if (features::IsReadAnythingImprovedUiEnabled() &&
+      read_aloud_model_.speech_playing()) {
+    model_.set_requires_readability_distillation(true);
+    VLOG(1) << "Distillation terminated because speech is playing";
+    return;
+  }
+
+  model_.set_readability_distillation_complete_for_current_tree(true);
 
   // Set both active and target distillation to readability since distillation
   // was successful.

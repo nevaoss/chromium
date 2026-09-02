@@ -221,6 +221,7 @@ template("chrome_extra_paks") {
         "$root_gen_dir/chrome/drive_picker_host_untrusted_resources.pak",
         "$root_gen_dir/chrome/feedback_resources.pak",
         "$root_gen_dir/chrome/gaia_auth_host_resources.pak",
+        "$root_gen_dir/chrome/geic_resources.pak",
         "$root_gen_dir/chrome/glic_untrusted_resources.pak",
         "$root_gen_dir/chrome/history_resources.pak",
         "$root_gen_dir/chrome/indigo_resources.pak",
@@ -268,6 +269,7 @@ template("chrome_extra_paks") {
         "//chrome/browser/actor/resources:browser_resources",
         "//chrome/browser/indigo/resources:browser_resources",
         "//chrome/browser/resources/contextual_cueing/internals:resources",
+        "//chrome/browser/resources/geic:resources",
         "//components/headless/command_handler",
         "//content/browser/tracing:resources",
       ]
@@ -391,6 +393,7 @@ template("chrome_extra_paks") {
         "$root_gen_dir/chromeos/ash/ash_resources.pak",
         "$root_gen_dir/chromeos/ash/borealis_motd_resources.pak",
         "$root_gen_dir/chromeos/ash/components/emoji/emoji.pak",
+        "$root_gen_dir/chromeos/ash/experiences/extensions/chromeos_extensions_resources.pak",
         "$root_gen_dir/chromeos/chromeos_boca_app_bundle_resources.pak",
         "$root_gen_dir/chromeos/chromeos_help_app_bundle_resources.pak",
         "$root_gen_dir/chromeos/chromeos_help_app_kids_magazine_bundle_resources.pak",
@@ -455,6 +458,7 @@ template("chrome_extra_paks") {
         "//chrome/common/chromeos/extensions:resources",
         "//chromeos/ash/components/emoji:resources",
         "//chromeos/ash/experiences/arc/input_overlay/resources",
+        "//chromeos/ash/experiences/extensions:resources",
         "//chromeos/ash/experiences/guest_os/borealis/motd/resources",
         "//chromeos/ash/resources",
         "//ui/chromeos/styles:cros_styles_resources",
@@ -497,19 +501,19 @@ template("chrome_extra_paks") {
     }
 
     if (is_win || is_mac || is_linux || is_chromeos || is_desktop_android) {
-      sources += [ "$root_gen_dir/chrome/discards_resources.pak" ]
-      deps += [ "//chrome/browser/resources/discards:resources" ]
+      sources += [
+        "$root_gen_dir/chrome/ai_overlay_dialog_untrusted_resources.pak",
+        "$root_gen_dir/chrome/discards_resources.pak",
+      ]
+      deps += [
+        "//chrome/browser/resources/discards:resources",
+        "//chrome/browser/ttc/resources",
+      ]
     }
 
     if (is_win || is_mac || is_linux || is_chromeos) {
-      sources += [
-        "$root_gen_dir/chrome/ai_overlay_dialog_untrusted_resources.pak",
-        "$root_gen_dir/chrome/skills_resources.pak",
-      ]
-      deps += [
-        "//chrome/browser/resources/skills:resources",
-        "//chrome/browser/ttc/resources",
-      ]
+      sources += [ "$root_gen_dir/chrome/skills_resources.pak" ]
+      deps += [ "//chrome/browser/resources/skills:resources" ]
     }
 
     if (enable_extensions_core) {

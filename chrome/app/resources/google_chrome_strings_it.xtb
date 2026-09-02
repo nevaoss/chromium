@@ -510,6 +510,7 @@ Se questa pagina non funziona come previsto, prova a consentire l'ottimizzazione
 <translation id="6166185671393271715">Importa le password in Chrome</translation>
 <translation id="6169866489629082767"><ph name="PAGE_TITLE" /> - Google Chrome</translation>
 <translation id="6173637689840186878"><ph name="PAGE_TITLE" /> - Google Chrome Beta</translation>
+<translation id="6177442314419606057">Cerca in Chrome</translation>
 <translation id="6180522807229584611">Questa scheda utilizza risorse aggiuntive. Per migliorare le prestazioni, consenti a Chrome di renderla inattiva.</translation>
 <translation id="6182736845697986886">Installazione non riuscita a causa di un errore interno del server di aggiornamento.</translation>
 <translation id="6192058120268468905">Il tuo account in Chrome</translation>
@@ -712,7 +713,7 @@ Se questa pagina non funziona come previsto, prova a consentire l'ottimizzazione
 <translation id="8041795619940733262">Chiedi a Google<ph name="LINE_BREAK" />informazioni su questa scheda</translation>
 <translation id="80471789339884597">L'installazione è terminata. Dovrai riavviare tutti i browser per poter utilizzare <ph name="BUNDLE_NAME" />.</translation>
 <translation id="8064015586118426197">ChromeOS Flex</translation>
-<translation id="8064965390968184078">1. Fai clic su <ph name="BUTTON_LABEL" /> qui sotto. Fai clic su <ph name="BUTTON_2" /> nelle impostazioni di Windows
+<translation id="8064965390968184078">1. Fai clic su <ph name="BUTTON_LABEL" /> qui sotto 2. Fai clic su <ph name="BUTTON_2" /> nelle impostazioni di Windows
 3. Fai clic su <ph name="BUTTON_3" /> nella notifica di Windows per fissare Chrome alla barra delle app per un accesso rapido</translation>
 <translation id="8069447462453318634">Seleziona "Fissa sulla barra degli strumenti"</translation>
 <translation id="8074398340364918139">Per cercare una funzionalità o un'estensione specifica di Chrome, digita la relativa scorciatoia nella barra degli indirizzi, seguita dal tasto della tastiera selezionato</translation>

@@ -175,7 +175,6 @@ std::u16string GetIconAccessibleName(Suggestion::Icon icon) {
     case Suggestion::Icon::kLoyalty:
     case Suggestion::Icon::kMagic:
     case Suggestion::Icon::kOfferTag:
-    case Suggestion::Icon::kOpenInNew:
     case Suggestion::Icon::kOrder:
     case Suggestion::Icon::kOrderSpark:
     case Suggestion::Icon::kPassport:
@@ -364,6 +363,7 @@ bool IsPaymentMethodSuggestion(const Suggestion& suggestion) {
     case SuggestionType::kAtMemoryGenericError:
     case SuggestionType::kAtMemoryInactivityNudge:
     case SuggestionType::kAtMemoryNoConnection:
+    case SuggestionType::kAtMemoryOpenGemini:
     case SuggestionType::kAtMemorySearchAffordance:
     case SuggestionType::kAtMemorySearchResult:
     case SuggestionType::kAtMemorySourceAttribution:
@@ -407,7 +407,6 @@ bool IsPaymentMethodSuggestion(const Suggestion& suggestion) {
     case SuggestionType::kMerchantPromoCodeEntry:
     case SuggestionType::kMixedFormMessage:
     case SuggestionType::kOneTimePasswordEntry:
-    case SuggestionType::kOpenGemini:
     case SuggestionType::kPasswordEntry:
     case SuggestionType::kPasswordFieldByFieldFilling:
     case SuggestionType::kPendingStateSignin:
@@ -595,9 +594,6 @@ std::optional<ui::ImageModel> GetIconImageModelFromIcon(Suggestion::Icon icon) {
                                           ? vector_icons::kButtonMagicIcon
                                           : vector_icons::kMagicButtonOldIcon,
                                       kIconSize);
-    case Suggestion::Icon::kOpenInNew:
-      return ImageModelFromVectorIcon(vector_icons::kOpenInNewFlippableIcon,
-                                      kChromeRefreshIconSize);
     case Suggestion::Icon::kOrder:
       return ImageModelFromVectorIcon(vector_icons::kShoppingBagIcon,
                                       kChromeRefreshIconSize);

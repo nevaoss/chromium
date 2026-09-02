@@ -238,6 +238,10 @@ cr-searchbox-dropdown::part(dropdown-content) {
   padding-top: unset;
 }
 
+omnibox-popup-contextual-entrypoint {
+  --contextual-entrypoint-and-carousel-context-menu-container-padding-inline-start: 0;
+}
+
 .searchbox-icon-button-container.lens {
   margin-inline-end: 10px;
 }
@@ -265,6 +269,11 @@ cr-searchbox-dropdown::part(dropdown-content) {
   height: 24px;
   margin-inline-end: 2px;
   top: 0;
+}
+
+:host([dropdown-is-visible]) #composeButton::part(glow-container) {
+  margin-inline-end: 9px;
+  top: -2px;
 }
 
 #composeButton::part(compose-button) {

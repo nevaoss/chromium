@@ -40,6 +40,7 @@
 #include "chrome/updater/win/ui/ui_constants.h"
 #include "chrome/updater/win/ui/ui_ctls.h"
 #include "chrome/updater/win/ui/ui_util.h"
+#include "chrome/updater/win/ui/window_impl.h"
 
 namespace updater::ui {
 
@@ -57,8 +58,8 @@ bool AreAllAppsCanceled(const std::vector<AppCompletionInfo>& apps_info) {
 // `SS_BITMAP` controls, so the dialog's dark-mode background brush cannot
 // reach them through the usual mechanism. The defaults from the `STATIC`
 // window class paint `COLOR_3DFACE` for both `WM_ERASEBKGND` and the
-// no-image case in `WM_PAINT`, which shows up as a small light-gray
-// rectangle on dark / high-contrast backgrounds.
+// no-image case in `WM_PAINT`, which shows up as an unwanted rectangle
+// on themed / high-contrast backgrounds.
 //
 // In dark / high-contrast mode this subclass:
 //   * Returns 1 from `WM_ERASEBKGND` so the parent's already-painted
@@ -78,8 +79,16 @@ LRESULT CALLBACK BitmapStaticSubclassProc(HWND hwnd,
                                           WPARAM wparam,
                                           LPARAM lparam,
                                           UINT_PTR id,
-                                          DWORD_PTR /*ref_data*/) {
-  const bool themed_bg = IsHighContrastOn() || IsDarkModeOn();
+                                          DWORD_PTR ref_data) {
+  if (msg == WM_THEMECHANGED || msg == WM_SYSCOLORCHANGE ||
+      msg == WM_SETTINGCHANGE) {
+    const bool themed_bg = IsHighContrastOn() || IsDarkModeOn();
+    ::SetWindowSubclass(hwnd, BitmapStaticSubclassProc, id,
+                        static_cast<DWORD_PTR>(themed_bg));
+    return ::DefSubclassProc(hwnd, msg, wparam, lparam);
+  }
+
+  const bool themed_bg = static_cast<bool>(ref_data);
   if (msg == WM_ERASEBKGND && themed_bg) {
     return 1;
   }
@@ -105,8 +114,10 @@ LRESULT CALLBACK BitmapStaticSubclassProc(HWND hwnd,
 void InstallBitmapStaticSubclass(HWND parent, int control_id) {
   HWND child = ::GetDlgItem(parent, control_id);
   if (child && ::IsWindow(child)) {
+    const bool themed_bg = IsHighContrastOn() || IsDarkModeOn();
     ::SetWindowSubclass(child, BitmapStaticSubclassProc,
-                        kBitmapStaticSubclassId, 0);
+                        kBitmapStaticSubclassId,
+                        static_cast<DWORD_PTR>(themed_bg));
   }
 }
 
@@ -133,9 +144,11 @@ void ProgressWnd::SetEventSink(ProgressWndEvents* events) {
   CompleteWnd::SetEventSink(events_sink_);
 }
 
-LRESULT ProgressWnd::OnSetAppLogo(UINT, WPARAM wparam, LPARAM) {
-  // Extract the `HBITMAP` handle passed in `WPARAM`.
-  SetAppLogo(reinterpret_cast<HBITMAP>(wparam));
+LRESULT ProgressWnd::OnSetAppLogo(UINT, WPARAM wparam, LPARAM lparam) {
+  // Extract the `HBITMAP` handles passed in `WPARAM` (light) and `LPARAM`
+  // (dark).
+  SetAppLogo(reinterpret_cast<HBITMAP>(wparam),
+             reinterpret_cast<HBITMAP>(lparam));
   return 0;
 }
 
@@ -153,12 +166,28 @@ RECT ProgressWnd::GetControlClientRect(HWND control) const {
   return rect;
 }
 
-void ProgressWnd::SetAppLogo(HBITMAP bitmap) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (app_logo_bmp_.get() != bitmap) {
-    app_logo_bmp_.reset(bitmap);
+HBITMAP ProgressWnd::GetCurrentAppLogoBitmap() const {
+  if (is_dark_mode()) {
+    return dark_app_logo_bmp_.is_valid() ? dark_app_logo_bmp_.get()
+                                         : light_app_logo_bmp_.get();
   }
+  return light_app_logo_bmp_.is_valid() ? light_app_logo_bmp_.get()
+                                        : dark_app_logo_bmp_.get();
+}
 
+void ProgressWnd::SetAppLogo(HBITMAP light_bitmap, HBITMAP dark_bitmap) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (light_app_logo_bmp_.get() != light_bitmap) {
+    light_app_logo_bmp_.reset(light_bitmap);
+  }
+  if (dark_app_logo_bmp_.get() != dark_bitmap) {
+    dark_app_logo_bmp_.reset(dark_bitmap);
+  }
+  UpdateAppLogo();
+}
+
+void ProgressWnd::UpdateAppLogo() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!IsWindow()) {
     return;
   }
@@ -175,14 +204,15 @@ void ProgressWnd::SetAppLogo(HBITMAP bitmap) {
     ::InvalidateRect(hwnd(), &ctl_rect, TRUE);
   };
 
-  if (!app_logo_bmp_.is_valid()) {
+  HBITMAP current_logo = GetCurrentAppLogoBitmap();
+  if (!current_logo) {
     clear_logo();
     return;
   }
 
   // Obtain the original dimensions of the cached bitmap.
   BITMAP bm = {};
-  if (::GetObject(app_logo_bmp_.get(), sizeof(bm), &bm) == 0) {
+  if (::GetObject(current_logo, sizeof(bm), &bm) == 0) {
     VLOG(1) << __func__ << " ::GetObject failed";
     clear_logo();
     return;
@@ -203,8 +233,8 @@ void ProgressWnd::SetAppLogo(HBITMAP bitmap) {
     return;
   }
 
-  HBITMAP scaled_bitmap = reinterpret_cast<HBITMAP>(::CopyImage(
-      app_logo_bmp_.get(), IMAGE_BITMAP, width_pixels, height_pixels, 0));
+  HBITMAP scaled_bitmap = reinterpret_cast<HBITMAP>(
+      ::CopyImage(current_logo, IMAGE_BITMAP, width_pixels, height_pixels, 0));
   if (!scaled_bitmap) {
     VLOG(1) << __func__ << " ::CopyImage failed to scale logo";
     clear_logo();
@@ -358,9 +388,7 @@ int ProgressWnd::GetScaledCornerRadius() const {
 void ProgressWnd::ApplyDpiScaling(int dpi) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   OmahaWnd::ApplyDpiScaling(dpi);
-  if (app_logo_bmp_.is_valid()) {
-    SetAppLogo(app_logo_bmp_.get());
-  }
+  UpdateAppLogo();
 }
 
 LRESULT ProgressWnd::OnEraseBkgnd(UINT, WPARAM wparam, LPARAM) {
@@ -390,7 +418,8 @@ LRESULT ProgressWnd::OnEraseBkgnd(UINT, WPARAM wparam, LPARAM) {
   bool painted = false;
 
   // Background image is not loaded in High Contrast Mode.
-  HBITMAP bg_bmp = IsHighContrastOn() ? nullptr : GetBackgroundBitmap();
+  HBITMAP bg_bmp =
+      is_high_contrast() ? nullptr : GetBackgroundBitmap(is_dark_mode());
   if (bg_bmp) {
     BITMAP bm = {};
     ::GetObject(bg_bmp, sizeof(bm), &bm);
@@ -416,8 +445,8 @@ LRESULT ProgressWnd::OnEraseBkgnd(UINT, WPARAM wparam, LPARAM) {
   if (!painted) {
     // Fallback to safe solid background color if loading fails.
     const COLORREF fallback_color =
-        IsHighContrastOn() ? ::GetSysColor(COLOR_WINDOW)
-                           : (IsDarkModeOn() ? kBgColorDark : kBgColorLight);
+        is_high_contrast() ? ::GetSysColor(COLOR_WINDOW)
+                           : (is_dark_mode() ? kBgColorDark : kBgColorLight);
     base::win::ScopedGDIObject<HBRUSH> fill_brush(
         ::CreateSolidBrush(fallback_color));
     ::FillRect(hdc_mem.get(), &rect, fill_brush.get());
@@ -435,7 +464,7 @@ LRESULT ProgressWnd::OnEraseBkgnd(UINT, WPARAM wparam, LPARAM) {
     base::win::ScopedGDIObject<HRGN> border_rgn(::CreateRoundRectRgn(
         0, 0, width, height, scaled_radius * 2, scaled_radius * 2));
 
-    const COLORREF border_color = IsHighContrastOn()
+    const COLORREF border_color = is_high_contrast()
                                       ? ::GetSysColor(COLOR_WINDOWTEXT)
                                       : kWindowBorderColor;
     base::win::ScopedGDIObject<HBRUSH> border_brush(
@@ -455,7 +484,7 @@ LRESULT ProgressWnd::OnEraseBkgnd(UINT, WPARAM wparam, LPARAM) {
             .BlendOp = AC_SRC_OVER,
             .BlendFlags = 0,
             .SourceConstantAlpha =
-                static_cast<BYTE>(IsHighContrastOn() ? 255 : 77),
+                static_cast<BYTE>(is_high_contrast() ? 255 : 77),
             .AlphaFormat = 0,
         };
 
@@ -472,8 +501,8 @@ LRESULT ProgressWnd::OnEraseBkgnd(UINT, WPARAM wparam, LPARAM) {
   return 1;
 }
 
-HBITMAP ProgressWnd::GetBackgroundBitmap() {
-  if (IsDarkModeOn()) {
+HBITMAP ProgressWnd::GetBackgroundBitmap(bool is_dark_mode) {
+  if (is_dark_mode) {
     if (!dark_bg_bmp_.is_valid()) {
       dark_bg_bmp_.reset(static_cast<HBITMAP>(
           ::LoadImage(CURRENT_MODULE(), MAKEINTRESOURCE(IDB_BACKGROUND_DARK),
@@ -490,36 +519,43 @@ HBITMAP ProgressWnd::GetBackgroundBitmap() {
   }
 }
 
-LRESULT ProgressWnd::OnSysColorChange(UINT, WPARAM, LPARAM) {
-  SetMsgHandled(FALSE);
-  light_bg_bmp_.reset();
-  dark_bg_bmp_.reset();
-  ::RedrawWindow(hwnd(), nullptr, nullptr,
-                 RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
-  return 0;
-}
-
 LRESULT ProgressWnd::OnSettingChange(UINT, WPARAM, LPARAM lparam) {
   SetMsgHandled(FALSE);
-  if (lparam && std::wstring_view(reinterpret_cast<LPCWSTR>(lparam)) ==
-                    L"ImmersiveColorSet") {
+  if (!lparam || std::wstring_view(reinterpret_cast<LPCWSTR>(lparam)) ==
+                     L"ImmersiveColorSet") {
+    // Refresh theme state early so `UpdateAppLogo()` (via `is_dark_mode()`)
+    // evaluates the new theme before parent and descendant layouts repaint in
+    // `OmahaWnd`. Calling `UpdateThemeState()` here is safe and idempotent,
+    // even though `OmahaWnd` will invoke it again when the message bubbles up.
+    UpdateThemeState();
     light_bg_bmp_.reset();
     dark_bg_bmp_.reset();
-    ::RedrawWindow(
-        hwnd(), nullptr, nullptr,
-        RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
+    UpdateAppLogo();
   }
   return 0;
 }
 
-HBRUSH ProgressWnd::OnCtlColorStatic(HDC dc, HWND ctl_hwnd) {
-  if (IsHighContrastOn()) {
+LRESULT ProgressWnd::OnThemeChanged(UINT, WPARAM, LPARAM) {
+  SetMsgHandled(FALSE);
+  // Refresh theme state early so `UpdateAppLogo()` (via `is_dark_mode()`)
+  // evaluates the new theme before parent and descendant layouts repaint in
+  // `OmahaWnd`. Calling `UpdateThemeState()` here is safe and idempotent,
+  // even though `OmahaWnd` will invoke it again when the message bubbles up.
+  UpdateThemeState();
+  light_bg_bmp_.reset();
+  dark_bg_bmp_.reset();
+  UpdateAppLogo();
+  return 0;
+}
+
+HBRUSH ProgressWnd::OnCtlColorStatic(HDC dc, HWND) {
+  if (is_high_contrast()) {
     ::SetTextColor(dc, ::GetSysColor(COLOR_WINDOWTEXT));
     ::SetBkColor(dc, ::GetSysColor(COLOR_WINDOW));
     ::SetBkMode(dc, TRANSPARENT);
     return ::GetSysColorBrush(COLOR_WINDOW);
   }
-  if (IsDarkModeOn()) {
+  if (is_dark_mode()) {
     ::SetTextColor(dc, kTextColorDark);
   }
   ::SetBkMode(dc, TRANSPARENT);

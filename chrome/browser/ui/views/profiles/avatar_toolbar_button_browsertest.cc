@@ -44,9 +44,9 @@
 #include "chrome/browser/sync/sync_service_factory.h"
 #include "chrome/browser/themes/theme_service.h"
 #include "chrome/browser/themes/theme_service_factory.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/create_browser_window.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/browser/ui/layout_constants.h"
@@ -98,6 +98,7 @@
 #include "components/sync/base/features.h"
 #include "components/sync/service/sync_service.h"
 #include "components/sync/test/test_sync_service.h"
+#include "components/user_education/common/user_education_class_properties.h"
 #include "components/user_education/common/user_education_features.h"
 #include "components/user_education/views/help_bubble_view.h"
 #include "content/public/browser/browser_context.h"
@@ -532,7 +533,7 @@ class AvatarToolbarButtonInterfaceBaseBrowserTest {
   AccountInfo SigninWithImage(const std::u16string& email,
                               const std::u16string& name = u"account_name") {
     AccountInfo account_info = Signin(email, name);
-    AddSignedInImage(account_info.account_id);
+    AddSignedInImage(account_info.GetAccountId());
     return account_info;
   }
 
@@ -638,7 +639,7 @@ class AvatarToolbarButtonInterfaceBaseBrowserTest {
     // Using a default name, this function is not expected to be used if we care
     // about the name.
     AccountInfo account_info = EnableSync(email, u"account_name");
-    AddSignedInImage(account_info.account_id);
+    AddSignedInImage(account_info.GetAccountId());
     return account_info;
   }
 
@@ -833,7 +834,7 @@ class AvatarToolbarButtonInterfaceBaseBrowserTest {
         CHECK(!primary_account.IsEmpty());
         GetBrowser()->GetProfile()->GetPrefs()->SetString(
             prefs::kGoogleServicesLastSyncingGaiaId,
-            primary_account.gaia.ToString());
+            primary_account.GetGaiaId().ToString());
         break;
       }
       case signin::ProfileMenuAvatarButtonPromoInfo::Type::
@@ -1044,13 +1045,11 @@ IN_PROC_BROWSER_TEST_P(AvatarToolbarButtonBrowserTest, SigninBrowser) {
   // Create a portal signin browser which will not be the Incognito browser.
   Profile::OTRProfileID profile_id(
       Profile::OTRProfileID::CreateUniqueForCaptivePortal());
-  Browser* browser1 =
-      CreateBrowserWindow(BrowserWindowCreateParams(
-                              browser()->GetProfile()->GetOffTheRecordProfile(
-                                  profile_id,
-                                  /*create_if_needed=*/true),
-                              /*from_user_gesture=*/true))
-          ->GetBrowserForMigrationOnly();
+  BrowserWindowInterface* browser1 = CreateBrowserWindow(
+      BrowserWindowCreateParams(browser()->GetProfile()->GetOffTheRecordProfile(
+                                    profile_id,
+                                    /*create_if_needed=*/true),
+                                /*from_user_gesture=*/true));
   AddBlankTabAndShow(browser1);
   AvatarToolbarButtonTestAccessor avatar_accessor1(browser1);
   // On ChromeOS, captive portal signin windows show a
@@ -1176,7 +1175,7 @@ IN_PROC_BROWSER_TEST_F(
   EXPECT_EQ(avatar_accessor.GetText(), std::u16string());
 
   // The greeting will only show when the image is loaded.
-  AddSignedInImage(account_info.account_id);
+  AddSignedInImage(account_info.GetAccountId());
   EXPECT_EQ(avatar_accessor.GetText(),
             l10n_util::GetStringFUTF16(IDS_AVATAR_BUTTON_GREETING, name));
 
@@ -1486,7 +1485,7 @@ IN_PROC_BROWSER_TEST_P(AvatarToolbarButtonBrowserTest, SignedInChangeIcon) {
       "png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAAByTg0kAAAAFElEQVR4nGNk+"
       "M/"
       "wn4GBgRGEAQAA1QMDAwYhywAAAABJRU5ErkJggg==";
-  AddAccountImage(account_info.account_id, updated_image, kUpdatedUrl);
+  AddAccountImage(account_info.GetAccountId(), updated_image, kUpdatedUrl);
 
   EXPECT_TRUE(WaitForIsSignedInImageUsed(true, updated_image, kUpdatedUrl));
 }
@@ -1516,7 +1515,7 @@ IN_PROC_BROWSER_TEST_P(AvatarToolbarButtonBrowserTest, TooltipText) {
   const std::u16string account_name(u"Account name");
   AccountInfo account_info = Signin(u"test@gmail.com", account_name);
 
-  AddSignedInImage(account_info.account_id);
+  AddSignedInImage(account_info.GetAccountId());
 
   EXPECT_TRUE(avatar_accessor.WaitForRenderedTooltipText(account_name));
 
@@ -2260,7 +2259,7 @@ TEST_WITH_SIGNED_IN_FROM_PRE(IN_PROC_BROWSER_TEST_P,
     ScopedDictPrefUpdate scoped_update(browser()->GetProfile()->GetPrefs(),
                                        "signin.accounts_metadata_dict");
     base::DictValue* account_dict =
-        scoped_update->EnsureDict(account.gaia.ToString());
+        scoped_update->EnsureDict(account.GetGaiaId().ToString());
     account_dict->Set("SyncPromoIdentityPillShownCount", 0);
   }
 
@@ -2582,6 +2581,56 @@ TEST_WITH_SIGNED_IN_FROM_PRE(
 
   EXPECT_TRUE(avatar_accessor1.GetText().empty());
   EXPECT_TRUE(avatar_accessor2.GetText().empty());
+}
+
+// Regression test for crbug.com/532899594.
+// Tests the scenario where a promo is showing in the avatar button with its
+// auto-collapse timer actively running, and an In-Product Help (IPH) promo
+// bubble is displayed attached to the avatar button.
+// This sets `kHasInProductHelpPromoKey` on the avatar button, which triggers
+// `ShowIdentityNameStateProvider::OnIPHPromoChanged(true)` and transitions
+// the button to `kShowIdentityName`.
+// This verifies that preemption by `kShowIdentityName` while the promo timer
+// is running does not hit invariant assertions or crash.
+TEST_WITH_SIGNED_IN_FROM_PRE(
+    IN_PROC_BROWSER_TEST_P,
+    MAYBE_AvatarToolbarButtonPromoClickBrowserTest,
+    IPHPromoPreemptsActiveAvatarPromoWhileTimerRunning) {
+  SetupRequirementsForPromoType(GetAvatarPromoType());
+
+  AvatarToolbarButtonTestAccessor avatar_accessor(browser());
+  ASSERT_EQ(avatar_accessor.GetText(),
+            l10n_util::GetStringFUTF16(IDS_AVATAR_BUTTON_GREETING,
+                                       test_given_name()));
+  AvatarToolbarButtonInterface* avatar =
+      GetAvatarToolbarButtonInterface(browser());
+  ASSERT_NE(avatar, nullptr);
+  avatar->ClearActiveStateForTesting();
+
+  // The greeting should be followed by the promo.
+  ASSERT_EQ(avatar_accessor.GetText(), GetExpectedPromoText());
+
+  // Simulate an IPH promo bubble attaching to the avatar button.
+  AvatarToolbarButton* avatar_button = static_cast<AvatarToolbarButton*>(
+      BrowserView::GetBrowserViewForBrowser(browser())
+          ->toolbar_button_provider()
+          ->GetAvatarToolbarButtonInterface());
+  ASSERT_NE(avatar_button, nullptr);
+
+  // Setting `kHasInProductHelpPromoKey` triggers `NotifyIPHPromoChanged(true)`.
+  // In the buggy code, this transitions to `kShowIdentityName` while
+  // `collapse_timer_` is still running, which triggers
+  // CHECK(!collapse_timer_.IsRunning()) and crashes.
+  avatar_button->SetProperty(user_education::kHasInProductHelpPromoKey, true);
+
+  // The greeting/identity text should now be shown for the IPH without
+  // crashing.
+  EXPECT_EQ(avatar_accessor.GetText(),
+            l10n_util::GetStringFUTF16(IDS_AVATAR_BUTTON_GREETING,
+                                       test_given_name()));
+
+  // Simulating the IPH promo bubble closing.
+  avatar_button->SetProperty(user_education::kHasInProductHelpPromoKey, false);
 }
 
 INSTANTIATE_TEST_SUITE_P(

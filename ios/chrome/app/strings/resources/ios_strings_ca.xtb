@@ -1294,6 +1294,7 @@
 <translation id="5238596603078743134">Ara, <ph name="BEGIN_BOLD" /><ph name="USERNAME" /><ph name="END_BOLD" /> pot fer servir el teu nom d'usuari i la teva contrasenya quan utilitzi el gestor de contrasenyes de Google per iniciar la sessió a <ph name="BEGIN_BOLD" /><ph name="WEBSITE" /><ph name="END_BOLD" />.</translation>
 <translation id="5241106044372754566"><ph name="NAME" />, <ph name="EMAIL" />, gestionat per la teva organització, està seleccionat actualment. Tria un compte.</translation>
 <translation id="5242899254250321823">Canvia la contrasenya al lloc web</translation>
+<translation id="524751727772074981">Fes una pregunta, des d'on siguis, amb Gemini a Chrome</translation>
 <translation id="5248640482715684545">Aquest lloc web està provant d'obrir una altra aplicació.</translation>
 <translation id="5250371859659394278">Des d'una font desconeguda</translation>
 <translation id="525510229763628836">Minimitzat</translation>
@@ -1310,6 +1311,7 @@
 <translation id="5300589172476337783">Mostra</translation>
 <translation id="5311061401280561833">S'ha permès l'accés a la càmera i al micròfon</translation>
 <translation id="5313967007315987356">Afegeix un lloc web</translation>
+<translation id="5315029634103634221">Gemini és una IA i pot cometre errors. <ph name="BEGIN_LINK" />Més informació sobre les dades rellevants que s'envien a Google<ph name="END_LINK" /></translation>
 <translation id="5315870524563628285">No hi ha res per importar</translation>
 <translation id="5316356981864168850"><ph name="INDEX" /> de <ph name="NUM_SUGGESTIONS" /></translation>
 <translation id="5317780077021120954">Desa</translation>

@@ -26,6 +26,7 @@ import androidx.annotation.ColorInt;
 import androidx.annotation.VisibleForTesting;
 import androidx.appcompat.app.AppCompatActivity;
 
+import org.chromium.base.ActivityState;
 import org.chromium.base.ApplicationStatus;
 import org.chromium.base.Callback;
 import org.chromium.base.CallbackUtils;
@@ -138,6 +139,7 @@ import org.chromium.chrome.browser.layouts.LayoutManager;
 import org.chromium.chrome.browser.layouts.LayoutStateProvider;
 import org.chromium.chrome.browser.layouts.LayoutType;
 import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
+import org.chromium.chrome.browser.lifecycle.PauseResumeWithNativeObserver;
 import org.chromium.chrome.browser.lifetime.ApplicationLifetime;
 import org.chromium.chrome.browser.locale.LocaleManager;
 import org.chromium.chrome.browser.metrics.UmaSessionStats;
@@ -268,7 +270,7 @@ import org.chromium.chrome.browser.user_education.UserEducationUtils.OptionalPro
 import org.chromium.chrome.browser.webapps.PwaRestorePromoUtils;
 import org.chromium.components.bookmarks.BookmarkBarVisibilityState;
 import org.chromium.components.browser_ui.accessibility.PageZoomUtils;
-import org.chromium.components.browser_ui.bottomsheet.EmptyBottomSheetObserver;
+import org.chromium.components.browser_ui.bottomsheet.BottomSheetObserver;
 import org.chromium.components.browser_ui.widget.CoordinatorLayoutForPointer;
 import org.chromium.components.browser_ui.widget.MenuOrKeyboardActionController;
 import org.chromium.components.browser_ui.widget.TouchEventObserver;
@@ -331,6 +333,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
     private @Nullable PrefChangeRegistrar mPrefChangeRegistrar;
     private @Nullable OnSharedPreferenceChangeListener mVerticalTabsPreferenceListener;
     private @Nullable Callback<Boolean> mVerticalTabsActiveObserver;
+    private @Nullable PauseResumeWithNativeObserver mPendingUnsuppressTabStripObserver;
     private @Nullable TabbedSystemUiCoordinator mSystemUiCoordinator;
     private @Nullable TabGroupSyncController mTabGroupSyncController;
     private final OneshotSupplierImpl<TabGroupUiActionHandler> mTabGroupUiActionHandlerSupplier =
@@ -808,6 +811,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                     .unregisterOnSharedPreferenceChangeListener(mVerticalTabsPreferenceListener);
             mVerticalTabsPreferenceListener = null;
         }
+        maybeClearPendingTabStripUnsuppression();
         if (mOpenInAppEntryPoint != null) {
             mOpenInAppEntryPoint.destroy();
             mOpenInAppEntryPoint = null;
@@ -1128,7 +1132,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
             var controller = getBottomSheetController();
             assert controller != null;
             controller.addObserver(
-                    new EmptyBottomSheetObserver() {
+                    new BottomSheetObserver() {
                         @Override
                         public void onSheetClosed(int reason) {
                             var bottomSheetController = getBottomSheetController();
@@ -1381,6 +1385,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                     EnterpriseSignalsDisclaimerController.maybeCreateForProfile(
                             mProfileSupplier.asNonNull().get().getOriginalProfile(),
                             assertNonNull(getBottomSheetController()),
+                            mModalDialogManagerSupplier.get(),
                             mActivity,
                             url -> CustomTabActivity.showInfoPage(mActivity, url));
         }
@@ -2034,8 +2039,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                             /* itemDelegate= */ null,
                             mShareDelegateSupplier,
                             ChromeContextMenuPopulator.ContextMenuMode.THIN_WEB_VIEW,
-                            /* customContentActions= */ Collections.emptyList(),
-                            getLeftSideUiWidthSupplier());
+                            /* customContentActions= */ Collections.emptyList());
             mCoBrowseViewFactory =
                     new CoBrowseViewFactory(
                             mActivity,
@@ -2394,12 +2398,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         // Restore the user's saved tab layout preference upon browser cold launch.
         boolean useVerticalLayoutOnLaunch = VerticalTabUtils.isVerticalTabsEnabled(mActivity);
 
-        mVerticalTabsActiveObserver =
-                active -> {
-                    var transitionCoordinator =
-                            assumeNonNull(mToolbarManager).getTabStripTransitionCoordinator();
-                    assumeNonNull(transitionCoordinator).suppressTabStrip(active);
-                };
+        mVerticalTabsActiveObserver = this::onVerticalTabsActiveChanged;
         mIsVerticalTabsActiveSupplier.addSyncObserver(mVerticalTabsActiveObserver);
 
         var transitionCoordinator =
@@ -2425,6 +2424,10 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                         boolean shouldShowVerticalTabs =
                                 VerticalTabUtils.isVerticalTabsEnabled(mActivity);
                         if (shouldShowVerticalTabs) {
+                            if (mPendingUnsuppressTabStripObserver != null) {
+                                maybeClearPendingTabStripUnsuppression();
+                                showVerticalTabs(true);
+                            }
                             var transitionCoord =
                                     assumeNonNull(mToolbarManager)
                                             .getTabStripTransitionCoordinator();
@@ -2496,6 +2499,46 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                             /* menuWidth= */ 0f);
                     return true;
                 });
+    }
+
+    private void onVerticalTabsActiveChanged(boolean active) {
+        var transitionCoordinator =
+                assumeNonNull(mToolbarManager).getTabStripTransitionCoordinator();
+        assumeNonNull(transitionCoordinator);
+        maybeClearPendingTabStripUnsuppression();
+        if (active) {
+            transitionCoordinator.suppressTabStrip(true);
+        } else {
+            int activityState = ApplicationStatus.getStateForActivity(mActivity);
+            boolean isPaused =
+                    activityState == ActivityState.PAUSED || activityState == ActivityState.STOPPED;
+            if (!isPaused) {
+                transitionCoordinator.suppressTabStrip(false);
+            } else {
+                // Until the activity is resumed, defer the transition of the tab strip back
+                // to horizontal.
+                mPendingUnsuppressTabStripObserver =
+                        new PauseResumeWithNativeObserver() {
+                            @Override
+                            public void onResumeWithNative() {
+                                transitionCoordinator.suppressTabStrip(false);
+                                mActivityLifecycleDispatcher.unregister(this);
+                                mPendingUnsuppressTabStripObserver = null;
+                            }
+
+                            @Override
+                            public void onPauseWithNative() {}
+                        };
+                mActivityLifecycleDispatcher.register(mPendingUnsuppressTabStripObserver);
+            }
+        }
+    }
+
+    private void maybeClearPendingTabStripUnsuppression() {
+        if (mPendingUnsuppressTabStripObserver == null) return;
+
+        mActivityLifecycleDispatcher.unregister(mPendingUnsuppressTabStripObserver);
+        mPendingUnsuppressTabStripObserver = null;
     }
 
     private void showVerticalTabs(boolean show) {
@@ -2937,6 +2980,10 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
             mKeyboardFocusRowManager.onKeyboardFocusRowSwitch();
             return true;
         } else if (id == R.id.open_tab_strip_context_menu) {
+            if (mVerticalTabsSideUiCoordinator != null
+                    && mVerticalTabsSideUiCoordinator.openKeyboardFocusedContextMenu()) {
+                return true;
+            }
             assumeNonNull(mLayoutManager);
             @Nullable StripLayoutHelperManager stripLayoutHelperManager =
                     mLayoutManager.getStripLayoutHelperManager();
@@ -3162,19 +3209,6 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
     @Override
     public OneshotSupplier<SideUiStateProvider> getSideUiStateProviderSupplier() {
         return mSideUiStateProviderSupplier;
-    }
-
-    @Override
-    public Supplier<Integer> getLeftSideUiWidthSupplier() {
-        return () -> {
-            var sideUiStateProvider = mSideUiStateProviderSupplier.get();
-            if (sideUiStateProvider != null) {
-                return sideUiStateProvider
-                        .getCurrentSideUiSpecs()
-                        .getWidth(SideUiCoordinator.AnchorSide.LEFT);
-            }
-            return 0;
-        };
     }
 
     /**

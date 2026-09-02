@@ -802,9 +802,7 @@ class MockAmountExtractionManager : public payments::AmountExtractionManager {
   MOCK_METHOD(DenseSet<EligibleFeature>,
               GetEligibleFeatures,
               (bool is_autofill_payments_enabled,
-               bool should_suppress_suggestions,
                const std::vector<Suggestion>& suggestions,
-               FillingProduct filling_product,
                FieldType field_type),
               (const, override));
   MOCK_METHOD(void,
@@ -1411,10 +1409,19 @@ TEST_F(BrowserAutofillManagerAtMemoryTest, AtMemoryTriggersEmptySuggestions) {
   FormData form = CreateTestAddressFormData();
   FormsSeen({form});
 
+#if !BUILDFLAG(IS_ANDROID)
+  EXPECT_CALL(password_delegate(), ShowSuggestions).Times(0);
+#else   // BUILDFLAG(IS_ANDROID)
+  EXPECT_CALL(password_delegate(), ShowKeyboardReplacingSurface).Times(0);
+#endif  // !BUILDFLAG(IS_ANDROID)
+
   // For AtMemory, the manager immediately returns empty suggestions so the UI
   // can show the search bar.
-  OnAskForValuesToFill(form, form.fields()[0],
-                       AutofillSuggestionTriggerSource::kAtMemoryTriggerString);
+  OnAskForValuesToFill(
+      form, form.fields()[0],
+      AutofillSuggestionTriggerSource::kAtMemoryContextMenu,
+      PasswordSuggestionRequest({}, form, /*username_field_id=*/{},
+                                /*password_field_id=*/{}));
   external_delegate()->CheckNoSuggestions(form.fields()[0].global_id());
 }
 
@@ -1847,6 +1854,28 @@ TEST_F(BrowserAutofillManagerTest,
 
   OnAskForValuesToFill(form, form.fields()[0]);
   EXPECT_FALSE(external_delegate()->on_suggestions_returned_seen());
+}
+
+// Tests that `GetProfileSuggestions()` does not return AddressOnTyping
+// suggestions.
+TEST_F(BrowserAutofillManagerTest,
+       GetProfileSuggestions_DoesNotReturnAddressOnTypingSuggestions) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitWithFeatures(
+      /*enabled_features=*/{features::kAutofillAddressSuggestionsOnTyping},
+      /*disabled_features=*/{features::kAutofillNewSuggestionGeneration});
+
+  AutofillProfile profile(i18n_model_definition::kLegacyHierarchyCountryCode);
+  profile.SetInfo(ADDRESS_HOME_LINE1, u"sherman wallaby 42 sidney", "en-US");
+  personal_data().test_address_data_manager().AddProfile(profile);
+
+  FormData form =
+      test::GetFormData({.fields = {{.role = UNKNOWN_TYPE, .value = u"she"}}});
+  FormsSeen({form});
+
+  EXPECT_THAT(test_api(autofill_manager())
+                  .GetProfileSuggestions(form, form.fields()[0]),
+              IsEmpty());
 }
 
 // Tests that when `features::kAutofillTrackSelectFieldEdits` is enabled,
@@ -7380,7 +7409,7 @@ TEST_P(BrowserAutofillManagerSuggestionMergingTest, MergingLogic) {
   test_api(autofill_manager())
       .OnIndividualSuggestionsGenerated(
           form, form.fields()[0],
-          AutofillSuggestionTriggerSource::kFormControlElementClicked, {},
+          AutofillSuggestionTriggerSource::kFormControlElementClicked,
           base::TimeTicks::Now(), std::move(returned_suggestions));
 
   std::vector<SuggestionType> actual_types =
@@ -7426,7 +7455,7 @@ TEST_F(BrowserAutofillManagerTest, GeneratedFillingProductMetric) {
   test_api(autofill_manager())
       .OnIndividualSuggestionsGenerated(
           form, form.fields()[0],
-          AutofillSuggestionTriggerSource::kFormControlElementClicked, {},
+          AutofillSuggestionTriggerSource::kFormControlElementClicked,
           base::TimeTicks::Now(),
           {{SuggestionGenerator::SuggestionDataSource::kAddress,
             {Suggestion(SuggestionType::kAddressEntry)}},

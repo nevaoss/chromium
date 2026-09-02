@@ -175,6 +175,7 @@ public class LocationBarModel implements ToolbarDataProvider, LocationBarDataPro
     protected GURL mVisibleGurl = GURL.emptyGURL();
     protected String mFormattedFullUrl;
     protected String mUrlForDisplay;
+    private LocationBarDataProvider.@Nullable AppInstalledDelegate mAppInstalledDelegate;
 
     // notifyUrlChanged and notifySecurityStateChanged are usually called 3 times across a same
     // document navigation. The first call is usually necessary, which updates the UrlBar to reflect
@@ -839,11 +840,14 @@ public class LocationBarModel implements ToolbarDataProvider, LocationBarDataPro
                     : R.drawable.omnibox_info;
         }
 
-        // Suppress neutral/info icon during page load to avoid transition jank if the toolbar
-        // refactor is enabled.
+        // Suppress neutral/info icon during page load to avoid transition jank before
+        // SSL state is resolved for HTTP/HTTPS URLs if the toolbar refactor is enabled.
+        // Non-HTTP(S) schemes (e.g. chrome://, file://) never transition to SECURE and
+        // should show their neutral icon immediately.
         if (ToolbarVariationUtils.isToolbarUiRefactorEnabled(mContext)
                 && securityLevel == ConnectionSecurityLevel.NONE
-                && isLoading()) {
+                && isLoading()
+                && UrlUtilities.isHttpOrHttps(getCurrentGurl())) {
             return Resources.ID_NULL;
         }
 
@@ -1044,5 +1048,15 @@ public class LocationBarModel implements ToolbarDataProvider, LocationBarDataPro
     @Override
     public NonNullObservableSupplier<@ControlsPosition Integer> getToolbarPositionSupplier() {
         return mToolbarPositionSupplier;
+    }
+
+    public void setAppInstalledDelegate(LocationBarDataProvider.AppInstalledDelegate delegate) {
+        mAppInstalledDelegate = delegate;
+    }
+
+    @Override
+    public boolean currentUrlHasInstalledApp() {
+        GURL url = getCurrentGurl();
+        return mAppInstalledDelegate != null && mAppInstalledDelegate.isAppInstalled(url);
     }
 }

@@ -7,6 +7,7 @@ package org.chromium.chrome.browser.sync.settings;
 import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.action.ViewActions.click;
 import static androidx.test.espresso.action.ViewActions.pressKey;
+import static androidx.test.espresso.action.ViewActions.replaceText;
 import static androidx.test.espresso.assertion.ViewAssertions.doesNotExist;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
 import static androidx.test.espresso.intent.Intents.intended;
@@ -17,6 +18,7 @@ import static androidx.test.espresso.matcher.ViewMatchers.hasFocus;
 import static androidx.test.espresso.matcher.ViewMatchers.hasSibling;
 import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
+import static androidx.test.espresso.matcher.ViewMatchers.withParent;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
 
 import static org.hamcrest.CoreMatchers.allOf;
@@ -28,6 +30,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import static org.chromium.components.browser_ui.widget.highlight.ViewHighlighterTestUtils.isHighlighted;
 import static org.chromium.ui.test.util.ViewUtils.onViewWaiting;
 
 import static java.util.Map.entry;
@@ -94,8 +97,9 @@ import org.chromium.chrome.browser.password_manager.PasswordManagerUtilBridge;
 import org.chromium.chrome.browser.password_manager.PasswordManagerUtilBridgeJni;
 import org.chromium.chrome.browser.profiles.ProfileManager;
 import org.chromium.chrome.browser.regional_capabilities.RegionalCapabilitiesServiceFactory;
-import org.chromium.chrome.browser.settings.SettingsActivity;
-import org.chromium.chrome.browser.settings.SettingsActivityTestRule;
+import org.chromium.chrome.browser.settings.MainSettings;
+import org.chromium.chrome.browser.settings.SettingsActivityInterface;
+import org.chromium.chrome.browser.settings.SettingsTestRule;
 import org.chromium.chrome.browser.signin.services.UnifiedConsentServiceBridge;
 import org.chromium.chrome.browser.signin.services.UnifiedConsentServiceBridgeJni;
 import org.chromium.chrome.browser.sync.SyncServiceFactory;
@@ -154,7 +158,7 @@ import java.util.Set;
 @Restriction(GmsCoreVersionRestriction.RESTRICTION_TYPE_VERSION_GE_24W15)
 @DisableFeatures(ChromeFeatureList.SETTINGS_MULTI_COLUMN)
 public class ManageSyncSettingsTest {
-    private static final int RENDER_TEST_REVISION = 10;
+    private static final int RENDER_TEST_REVISION = 11;
 
     /** Maps selected types to their Account UI element IDs. */
     private static final Map<Integer, String> ACCOUNT_UI_DATATYPES =
@@ -192,12 +196,15 @@ public class ManageSyncSettingsTest {
                             UserSelectableType.THEMES,
                             ManageSyncSettings.PREF_ACCOUNT_SECTION_THEMES_TOGGLE));
 
-    private SettingsActivity mSettingsActivity;
+    private SettingsActivityInterface mSettingsActivityInterface;
 
     private final SyncTestRule mSyncTestRule = new SyncTestRule();
 
-    private final SettingsActivityTestRule<ManageSyncSettings> mSettingsActivityTestRule =
-            new SettingsActivityTestRule<>(ManageSyncSettings.class);
+    private final SettingsTestRule<ManageSyncSettings> mSettingsTestRule =
+            new SettingsTestRule<>(ManageSyncSettings.class);
+
+    private final SettingsTestRule<MainSettings> mSettingsSearchTestRule =
+            new SettingsTestRule<>(null);
 
     // SettingsActivity needs to be initialized and destroyed with the mock
     // signin environment setup in SyncTestRule
@@ -205,7 +212,9 @@ public class ManageSyncSettingsTest {
 
     @Rule
     public final RuleChain mRuleChain =
-            RuleChain.outerRule(mSyncTestRule).around(mSettingsActivityTestRule);
+            RuleChain.outerRule(mSyncTestRule)
+                    .around(mSettingsTestRule)
+                    .around(mSettingsSearchTestRule);
 
     @Rule
     public final ChromeRenderTestRule mRenderTestRule =
@@ -453,7 +462,7 @@ public class ManageSyncSettingsTest {
                 .getSigninTestRule()
                 .removeAccount(mSyncTestRule.getSigninTestRule().getPrimaryAccount().getId());
 
-        ApplicationTestUtils.waitForActivityState(mSettingsActivity, Stage.DESTROYED);
+        ApplicationTestUtils.waitForActivityState(mSettingsTestRule.getActivity(), Stage.DESTROYED);
     }
 
     @Test
@@ -507,7 +516,7 @@ public class ManageSyncSettingsTest {
         mSyncTestRule.signOut();
         // Signing out indirectly closes the settings activity. (when
         // ManageSyncSettings detects the primary account change).
-        ApplicationTestUtils.waitForActivityState(mSettingsActivity, Stage.DESTROYED);
+        ApplicationTestUtils.waitForActivityState(mSettingsTestRule.getActivity(), Stage.DESTROYED);
 
         // Sign-in again with the same account, and open the sync settings to check that history
         // opt-in did carry over through sign-out & sign-in.
@@ -1319,7 +1328,8 @@ public class ManageSyncSettingsTest {
         // Passphrase dialog should open.
         final PassphraseDialogFragment passphraseFragment =
                 ActivityTestUtils.waitForFragment(
-                        mSettingsActivity, ManageSyncSettings.FRAGMENT_ENTER_PASSPHRASE);
+                        mSettingsTestRule.getActivity(),
+                        ManageSyncSettings.FRAGMENT_ENTER_PASSPHRASE);
         Assert.assertTrue(passphraseFragment.isAdded());
 
         // Focus on the first element that can receive focus in the passphrase dialog.
@@ -1347,7 +1357,8 @@ public class ManageSyncSettingsTest {
         // Passphrase dialog should open.
         final PassphraseDialogFragment passphraseFragment =
                 ActivityTestUtils.waitForFragment(
-                        mSettingsActivity, ManageSyncSettings.FRAGMENT_ENTER_PASSPHRASE);
+                        mSettingsTestRule.getActivity(),
+                        ManageSyncSettings.FRAGMENT_ENTER_PASSPHRASE);
         Assert.assertTrue(passphraseFragment.isAdded());
 
         // Mimic the user tapping on the positive(submit) button with an empty(wrong) passphrase.
@@ -1381,7 +1392,8 @@ public class ManageSyncSettingsTest {
         // Passphrase dialog should open.
         final PassphraseDialogFragment passphraseFragment =
                 ActivityTestUtils.waitForFragment(
-                        mSettingsActivity, ManageSyncSettings.FRAGMENT_ENTER_PASSPHRASE);
+                        mSettingsTestRule.getActivity(),
+                        ManageSyncSettings.FRAGMENT_ENTER_PASSPHRASE);
         Assert.assertTrue(passphraseFragment.isAdded());
 
         // Simulate OnPassphraseAccepted from external event by setting the passphrase
@@ -1393,8 +1405,8 @@ public class ManageSyncSettingsTest {
                     fragment.getFragmentManager().executePendingTransactions();
                     Assert.assertNull(
                             "PassphraseDialogFragment should be dismissed.",
-                            mSettingsActivity
-                                    .getFragmentManager()
+                            mSettingsActivityInterface
+                                    .getSupportFragmentManager()
                                     .findFragmentByTag(
                                             ManageSyncSettings.FRAGMENT_ENTER_PASSPHRASE));
                 });
@@ -1447,8 +1459,8 @@ public class ManageSyncSettingsTest {
     }
 
     private ManageSyncSettings startManageSyncPreferences() {
-        mSettingsActivity = mSettingsActivityTestRule.startSettingsActivity();
-        return mSettingsActivityTestRule.getFragment();
+        mSettingsActivityInterface = mSettingsTestRule.startSettingsActivity();
+        return mSettingsTestRule.getFragment();
     }
 
     private Map<Integer, ChromeSwitchPreference> getAccountDataTypes(ManageSyncSettings fragment) {
@@ -1476,7 +1488,7 @@ public class ManageSyncSettingsTest {
 
     private PassphraseCreationDialogFragment getPassphraseCreationDialogFragment() {
         return ActivityTestUtils.waitForFragment(
-                mSettingsActivity, ManageSyncSettings.FRAGMENT_CUSTOM_PASSPHRASE);
+                mSettingsTestRule.getActivity(), ManageSyncSettings.FRAGMENT_CUSTOM_PASSPHRASE);
     }
 
     private void assertPaymentsIntegrationEnabled(final boolean enabled) {
@@ -1635,6 +1647,64 @@ public class ManageSyncSettingsTest {
                         IntentMatchers.hasExtra(
                                 IntentHandler.EXTRA_OPEN_NEW_INCOGNITO_TAB, false)));
         Intents.release();
+    }
+
+    @Test
+    @SmallTest
+    public void testSearchEncryption_signedIn() {
+        mSettingsSearchTestRule.startSettingsActivity();
+        mSyncTestRule.setUpAccountAndSignInForTesting();
+
+        onView(withId(R.id.search_box)).perform(click());
+        onView(withId(R.id.search_query)).perform(replaceText("encryption"));
+
+        onViewWaiting(allOf(withId(android.R.id.title), withText(R.string.sync_encryption)))
+                .perform(click());
+
+        onView(
+                        allOf(
+                                withText(R.string.account_settings_title),
+                                withParent(withId(R.id.action_bar))))
+                .check(matches(isDisplayed()));
+
+        onView(highlighted(withText(R.string.sync_encryption))).check(matches(isDisplayed()));
+    }
+
+    @Test
+    @SmallTest
+    public void testSearchPersonalizationAndLinking_signedIn() {
+        mSettingsSearchTestRule.startSettingsActivity();
+        mSyncTestRule.setUpAccountAndSignInForTesting();
+
+        onView(withId(R.id.search_box)).perform(click());
+        onView(withId(R.id.search_query)).perform(replaceText("personalization"));
+
+        onViewWaiting(withText(R.string.sign_in_personalize_google_services_title))
+                .perform(click());
+
+        onView(
+                        allOf(
+                                withText(R.string.account_settings_title),
+                                withParent(withId(R.id.action_bar))))
+                .check(matches(isDisplayed()));
+
+        onView(highlighted(withText(R.string.sign_in_personalize_google_services_title)))
+                .check(matches(isDisplayed()));
+    }
+
+    @Test
+    @SmallTest
+    public void testSearchPersonalizationAndLinking_signedOut() {
+        mSettingsSearchTestRule.startSettingsActivity();
+
+        onView(withId(R.id.search_box)).perform(click());
+        onView(withId(R.id.search_query)).perform(replaceText("personalization"));
+
+        onViewWaiting(withText(R.string.search_in_settings_no_match)).check(matches(isDisplayed()));
+    }
+
+    private static Matcher<View> highlighted(Matcher<View> childMatcher) {
+        return allOf(hasDescendant(childMatcher), isHighlighted());
     }
 
     private void assertOpensIncognitoSession(

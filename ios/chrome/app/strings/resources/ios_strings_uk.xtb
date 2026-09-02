@@ -1294,6 +1294,7 @@
 <translation id="5238596603078743134">Тепер <ph name="BEGIN_BOLD" /><ph name="USERNAME" /><ph name="END_BOLD" /> зможе використовувати ваші ім’я користувача й пароль, коли входитиме на сайт <ph name="BEGIN_BOLD" /><ph name="WEBSITE" /><ph name="END_BOLD" /> за допомогою Google Менеджера паролів.</translation>
 <translation id="5241106044372754566">Зараз вибрано обліковий запис користувача <ph name="NAME" /> (<ph name="EMAIL" />), яким керує ваша організація. Виберіть обліковий запис.</translation>
 <translation id="5242899254250321823">Змінити пароль на вебсайті</translation>
+<translation id="524751727772074981">Ставте запитання, де б ви не були, завдяки Gemini у Chrome</translation>
 <translation id="5248640482715684545">Цей сайт намагається відкрити інший додаток.</translation>
 <translation id="5250371859659394278">З невідомого джерела</translation>
 <translation id="525510229763628836">Згорнуто</translation>
@@ -1310,6 +1311,7 @@
 <translation id="5300589172476337783">Показати</translation>
 <translation id="5311061401280561833">Доступ до камери й мікрофона надано</translation>
 <translation id="5313967007315987356">Додати сайт</translation>
+<translation id="5315029634103634221">Gemini – це штучний інтелект, і він може помилятися. <ph name="BEGIN_LINK" />Докладніше про відповідні дані, що надсилаються в Google<ph name="END_LINK" /></translation>
 <translation id="5315870524563628285">Нічого імпортувати</translation>
 <translation id="5316356981864168850"><ph name="INDEX" /> з <ph name="NUM_SUGGESTIONS" /></translation>
 <translation id="5317780077021120954">Зберегти</translation>

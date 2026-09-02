@@ -239,11 +239,14 @@ bool IsAmbientAuthAllowedForProfile(Profile* profile) {
   net::AmbientAuthAllowedProfileTypes type =
       static_cast<net::AmbientAuthAllowedProfileTypes>(local_state->GetInteger(
           prefs::kAmbientAuthenticationInPrivateModesEnabled));
-
+  // TODO(b/540249284): Temporarily Isolated mode is treated as Incognito. This
+  // should be revisited when deciding on the final integration of Isolated
+  // mode.
   if (profile->IsGuestSession()) {
     return type == net::AmbientAuthAllowedProfileTypes::kGuestAndRegular ||
            type == net::AmbientAuthAllowedProfileTypes::kAll;
-  } else if (profile->IsIncognitoProfile()) {
+  } else if (profile->IsIncognitoProfile() ||
+             profile->IsEnterpriseIsolatedModeProfile()) {
     return type == net::AmbientAuthAllowedProfileTypes::kIncognitoAndRegular ||
            type == net::AmbientAuthAllowedProfileTypes::kAll;
   }
@@ -1395,7 +1398,10 @@ void ProfileNetworkContextService::ConfigureNetworkContextParamsInternal(
     }
     const int disk_cache_size = local_state->GetInteger(prefs::kDiskCacheSize);
     network_context_params->http_cache_max_size = disk_cache_size;
-    network_context_params->shared_dictionary_cache_max_size = disk_cache_size;
+    if (disk_cache_size > 0) {
+      network_context_params->shared_dictionary_cache_max_size =
+          disk_cache_size;
+    }
 
     network_context_params->file_paths =
         ::network::mojom::NetworkContextFilePaths::New();

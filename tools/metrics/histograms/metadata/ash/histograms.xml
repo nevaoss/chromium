@@ -570,17 +570,6 @@ chromium-metrics-reviews@google.com.
   <summary>Captures usage of Alt+[ and Alt+].</summary>
 </histogram>
 
-<histogram name="Ash.AmbientMode.Activation.{TabletOrClamshellMode}"
-    enum="AmbientUiMode" expires_after="2025-06-30">
-  <owner>cowmoo@google.com</owner>
-  <owner>cros-p13n-eng@chromium.org</owner>
-  <summary>
-    Recorded whenever Ambient mode is entered from {TabletOrClamshellMode}.
-    AmbientUiMode indicates whether the user entered Ambient mode from the lock
-    screen or from screen idle.
-  </summary>
-</histogram>
-
 <histogram name="Ash.AmbientMode.AnimationSmoothness.PhotoTransition" units="%"
     expires_after="2026-09-06">
   <owner>cowmoo@google.com</owner>
@@ -603,37 +592,6 @@ chromium-metrics-reviews@google.com.
     profile type, whether the user is primary, if the user has a supported
     email, etc.
   </summary>
-</histogram>
-
-<histogram name="Ash.AmbientMode.EngagementTime.{Settings}" units="ms"
-    expires_after="2025-06-30">
-  <owner>cowmoo@google.com</owner>
-  <owner>cros-p13n-eng@google.com</owner>
-  <summary>
-    Among eligible users with ambient mode enabled, records the length of each
-    session for {Settings}. The metric is emitted when ambient mode is ended.
-  </summary>
-  <token key="Settings" variants="AmbientUiSettings"/>
-</histogram>
-
-<histogram name="Ash.AmbientMode.EngagementTime.{Settings}.{Orientation}"
-    units="ms" expires_after="2025-06-30">
-  <owner>cowmoo@google.com</owner>
-  <owner>cros-p13n-eng@google.com</owner>
-  <summary>
-    Among eligible users with ambient mode enabled, records the accumulated
-    duration spent in {Orientation} mode during a single ambient mode session
-    rendering the {Settings} UI. For example, say ambient mode starts in
-    landscape for A ms, switches to portrait for B ms, then back to landscape
-    for C ms before ambient mode ends. A + C will be emitted for landscape mode,
-    and B will be emitted for portrait mode. Emitted once per observed
-    orientation each time the user exits ambient mode.
-  </summary>
-  <token key="Orientation">
-    <variant name="Landscape" summary="landscape"/>
-    <variant name="Portrait" summary="portrait"/>
-  </token>
-  <token key="Settings" variants="AmbientUiSettings"/>
 </histogram>
 
 <histogram name="Ash.AmbientMode.EngagementTime.{TabletOrClamshellMode}"
@@ -681,18 +639,6 @@ chromium-metrics-reviews@google.com.
     Among eligible users with ambient mode enabled, records the source of
     ambient mode photos. Recorded once for every UMA upload.
   </summary>
-</histogram>
-
-<histogram name="Ash.AmbientMode.ScreenCount.{Settings}" units="int"
-    expires_after="2025-06-30">
-  <owner>cowmoo@google.com</owner>
-  <owner>cros-p13n-eng@google.com</owner>
-  <summary>
-    Among eligible users with ambient mode enabled, records the number of
-    screens present during a {Settings} ambient mode session. Emitted each time
-    ambient mode exits.
-  </summary>
-  <token key="Settings" variants="AmbientUiSettings"/>
 </histogram>
 
 <histogram name="Ash.AmbientMode.SelectedNumberOfAlbums" units="int"
@@ -1235,6 +1181,15 @@ chromium-metrics-reviews@google.com.
   <owner>cros-edu-eng@google.com</owner>
   <summary>
     Records the number of tabs shared by the provider when the session ends.
+  </summary>
+</histogram>
+
+<histogram name="Ash.Boca.OnTask.OAuthTriggered" enum="Boolean"
+    expires_after="2027-07-20">
+  <owner>aprilzhou@google.com</owner>
+  <owner>cros-edu-eng@google.com</owner>
+  <summary>
+    Records when an OAuth flow is triggered during the OnTask session.
   </summary>
 </histogram>
 
@@ -5626,26 +5581,6 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Ash.NotificationView.ImageDrag.EndState"
-    enum="NotificationImageDragEndState" expires_after="2024-09-22">
-  <owner>andrewxu@chromium.org</owner>
-  <owner>cros-status-area-eng@google.com</owner>
-  <summary>
-    Records the notification drag end state when the notification image drag
-    ends.
-  </summary>
-</histogram>
-
-<histogram name="Ash.NotificationView.ImageDrag.Start"
-    enum="NotificationCatalogName" expires_after="2024-09-22">
-  <owner>andrewxu@chromium.org</owner>
-  <owner>cros-status-area-eng@google.com</owner>
-  <summary>
-    Records the notification catalog name when the notification image drag
-    starts.
-  </summary>
-</histogram>
-
 <histogram name="Ash.NotificationView.NotificationAdded.Type"
     enum="NotificationViewType" expires_after="2026-02-01">
   <owner>newcomer@chromium.org</owner>
@@ -6396,16 +6331,6 @@ chromium-metrics-reviews@google.com.
     active. The latter can happen if a video theme is the default on that
     particular device model, or if the user had selected a video theme in the
     past when they last disabled screensaver.
-  </summary>
-</histogram>
-
-<histogram name="Ash.Personalization.App.Duration" units="ms"
-    expires_after="2025-06-30">
-  <owner>cowmoo@google.com</owner>
-  <owner>cros-p13n-eng@google.com</owner>
-  <summary>
-    Records the amount of time a user spends in the Personalization App on each
-    visit.
   </summary>
 </histogram>
 
@@ -7939,16 +7864,6 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Ash.Shelf.ShowStackedHotseat" enum="Boolean"
-    expires_after="2024-09-24">
-  <owner>jiamingc@google.com</owner>
-  <owner>cros-status-area-eng@google.com</owner>
-  <summary>
-    Show stacked hotseat app bar above the shelf button panels/system tray when
-    there is no enough space for the app bar.
-  </summary>
-</histogram>
-
 <histogram name="Ash.Shelf.ShutdownConfirmationBubble.Action"
     enum="ShutdownConfirmationBubbleAction" expires_after="2027-02-07">
   <owner>antrim@google.com</owner>
@@ -8404,18 +8319,6 @@ chromium-metrics-reviews@google.com.
   <token key="SplitViewResizeModes" variants="SplitViewResizeModes"/>
 </histogram>
 
-<histogram name="Ash.StateKeysPresent2" enum="BooleanPresent"
-    expires_after="2025-06-22">
-  <owner>igorcov@chromium.org</owner>
-  <owner>vsavu@google.com</owner>
-  <summary>
-    The presense of state keys on first device policy fetch response. It is
-    expected for state keys to be present. The histogram is logged only in case
-    of successful device policy fetch response. This is replacing the old
-    Ash.StateKeysPresent histogram because a bug made that data useless.
-  </summary>
-</histogram>
-
 <histogram name="Ash.StatusArea.TrayBackgroundView.BounceIn" units="%"
     expires_after="2026-08-30">
   <owner>newcomer@chromium.org</owner>
@@ -8510,16 +8413,6 @@ chromium-metrics-reviews@google.com.
   <summary>
     Whether or not to use the kmeans algorithm to determine the user's color
     palette. This metric is recorded once per UMA upload.
-  </summary>
-</histogram>
-
-<histogram name="Ash.SwipeHomeToOverviewGesture"
-    enum="SwipeHomeToOverviewResult" expires_after="2024-09-22">
-  <owner>andrewxu@chromium.org</owner>
-  <owner>tbarzic@chromium.org</owner>
-  <summary>
-    Boolean indicating whether a swipe from hotseat on home screen resulted in a
-    transition to overview.
   </summary>
 </histogram>
 

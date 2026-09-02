@@ -14,6 +14,7 @@ export function getHtml(this: OmniboxEverywhereAppElement) {
     <omnibox-everywhere-composebox id="composebox" searchbox-next-enabled
         searchbox-layout-mode="${this.searchboxLayoutMode_}"
         .state="${this.composeboxState_}"
+        .clearAllInputsWhenSubmittingQuery="${true}"
         @close-composebox="${this.onCloseComposebox_}"
         @composebox-submit="${this.onComposeboxSubmit_}"
         @open-voice-search="${this.onOpenVoiceSearch_}"
@@ -34,7 +35,7 @@ export function getHtml(this: OmniboxEverywhereAppElement) {
                                    this.contextManagementInComposeboxEnabled_}">
     </omnibox-everywhere-omnibox>
   `}
-  ${this.mostVisitedEnabled_ ? html`
+  ${this.mostVisitedEnabled_ && this.showShortcuts_ ? html`
     <div id="mostVisitedContainer">
       <cr-most-visited id="mostVisited" single-row non-editable hide-title></cr-most-visited>
     </div>

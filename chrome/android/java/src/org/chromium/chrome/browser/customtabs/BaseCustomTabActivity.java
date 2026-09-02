@@ -453,7 +453,7 @@ public abstract class BaseCustomTabActivity extends ChromeActivity {
                         () -> mToolbarCoordinator,
                         () -> mIntentDataProvider,
                         mBackPressManager,
-                        () -> getCustomTabActivityTabController(),
+                        this::getCustomTabActivityTabController,
                         () -> getCustomTabMinimizationManagerHolder().getMinimizationManager(),
                         () -> getCustomTabActivityNavigationController().openCurrentUrlInBrowser(),
                         getEdgeToEdgeManager(),
@@ -563,6 +563,7 @@ public abstract class BaseCustomTabActivity extends ChromeActivity {
                 getIntentDataProvider(),
                 getLifecycleDispatcher());
         new TrustedWebActivityDisclosureController(
+                getWindowAndroid(),
                 getTrustedWebActivityModel(),
                 getLifecycleDispatcher(),
                 getCurrentPageVerifier(),
@@ -999,14 +1000,13 @@ public abstract class BaseCustomTabActivity extends ChromeActivity {
         if (isTaskRoot()) {
             getProfileProviderSupplier()
                     .runSyncOrOnAvailable(
-                            (profileProvider) -> {
-                                UsageStatsService.createPageViewObserverIfEnabled(
-                                        this,
-                                        getLifecycleDispatcher(),
-                                        profileProvider.getOriginalProfile(),
-                                        getActivityTabProvider(),
-                                        getTabContentManagerSupplier());
-                            });
+                            (ProfileProvider profileProvider) ->
+                                    UsageStatsService.createPageViewObserverIfEnabled(
+                                            this,
+                                            getLifecycleDispatcher(),
+                                            profileProvider.getOriginalProfile(),
+                                            getActivityTabProvider(),
+                                            getTabContentManagerSupplier()));
         }
         if (!getIntentDataProvider().isWebappOrWebApkActivity()) {
             getCustomTabActivityTabController().finishNativeInitialization();

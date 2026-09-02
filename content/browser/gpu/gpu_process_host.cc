@@ -722,13 +722,14 @@ void GpuProcessHost::RequestWebNNCompilerContext(
     const webnn::EpDeviceInfo& target_device,
     mojo::PendingReceiver<webnn::mojom::WebNNCompilerContext>
         compiler_context_receiver,
-    mojo::PendingRemote<webnn::mojom::WebNNModelLoader> model_loader_remote) {
+    mojo::PendingRemote<webnn::mojom::WebNNModelLoader> model_loader_remote,
+    RequestWebNNCompilerContextResultCallback callback) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
 
   if (!gpu_service()) {
     LOG(ERROR) << "[WebNN] RequestWebNNCompilerContext() failed: GPU process "
                   "is not available.";
-    // Drop the pipe endpoints — peer endpoints will observe a disconnect.
+    std::move(callback).Run(false);
     return;
   }
 
@@ -738,7 +739,8 @@ void GpuProcessHost::RequestWebNNCompilerContext(
 
   webnn_compiler_process_host_->RequestCompilerContext(
       std::move(context_options), context_properties, target_device,
-      std::move(compiler_context_receiver), std::move(model_loader_remote));
+      std::move(compiler_context_receiver), std::move(model_loader_remote),
+      std::move(callback));
 }
 #endif  // BUILDFLAG(IS_WIN)
 
@@ -1398,6 +1400,12 @@ bool GpuProcessHost::LaunchGpuProcess() {
       cmd_line->AppendSwitchASCII(switches::kGpuDriverVersion,
                                   device_info.driver_version);
     }
+  }
+
+  if (kind_ == GPU_PROCESS_KIND_SANDBOXED) {
+    cmd_line->AppendSwitchASCII(
+        switches::kGpuRecentCrashCount,
+        base::NumberToString(recent_crash_count_));
   }
 
   // TODO(penghuang): Replace all GPU related switches with GpuPreferences.

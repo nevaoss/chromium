@@ -2857,6 +2857,11 @@ def CheckNoProductionCodeUsingTestOnlyFunctions(input_api, output_api):
     exclusion_pattern = input_api.re.compile(
         r'(::[A-Za-z0-9_]+(%s)|(%s))[^;]+\{' %
         (base_function_pattern, base_function_pattern))
+    # exclusion_pattern misses the closing '{' when it wraps to the next line,
+    # support an on demand multi-line check as a last step.
+    multi_line_exclusion_pattern = input_api.re.compile(
+        r'(::[A-Za-z0-9_]+(%s)|(%s))[^;]+\{' %
+        (base_function_pattern, base_function_pattern), input_api.re.DOTALL)
     # Avoid a false positive in this case, where the method name, the ::, and
     # the closing { are all on different lines due to line wrapping.
     # HelperClassForTesting::
@@ -2877,14 +2882,21 @@ def CheckNoProductionCodeUsingTestOnlyFunctions(input_api, output_api):
     for f in input_api.AffectedSourceFiles(FilterFile):
         local_path = f.LocalPath()
         in_method_defn = False
+        cached_file_lines = None
         for line_number, line in f.ChangedContents():
             if (inclusion_pattern.search(line)
                     and not comment_pattern.search(line)
                     and not exclusion_pattern.search(line)
                     and not allowlist_pattern.search(line)
                     and not in_method_defn):
-                problems.append('%s:%d\n    %s' %
-                                (local_path, line_number, line.strip()))
+                if cached_file_lines is None:
+                    cached_file_lines = input_api.ReadFile(f).splitlines()
+                full_text_from_line = '\n'.join(
+                    cached_file_lines[line_number - 1:])
+                match = multi_line_exclusion_pattern.search(full_text_from_line)
+                if not match or match.start() >= len(line):
+                    problems.append('%s:%d\n    %s' %
+                                    (local_path, line_number, line.strip()))
             in_method_defn = method_defn_pattern.search(line)
 
     if problems:
@@ -3240,6 +3252,14 @@ def CheckNoDEPSGIT(input_api, output_api):
     return []
 
 
+def _IsIgnoredLine(line: str) -> bool:
+    """Returns True if the line is a full-line comment or marked with // nocheck.
+
+    Note that GN comments (#) are not ignored.
+    """
+    return line.lstrip().startswith('//') or line.endswith(' nocheck')
+
+
 def _GetMessageForMatchingType(input_api, affected_file, line_number, line,
                                ban_rule):
     """Helper method for checking for banned constructs.
@@ -3249,14 +3269,6 @@ def _GetMessageForMatchingType(input_api, affected_file, line_number, line,
     target type name matches the text inside the line passed as parameter.
     """
     result = []
-
-    # Ignore comments about banned types.
-    if input_api.re.search(r'^ *//', line):
-        return result
-    # A // nocheck comment will bypass this error.
-    if line.endswith(' nocheck'):
-        return result
-
     matched = False
     if ban_rule.pattern[0:1] == '/':
         regex = ban_rule.pattern[1:]
@@ -3338,6 +3350,8 @@ def CheckNoBannedPatterns(input_api, output_api):
             matching_ban_rules = MatchingBanRules(f, ban_rules)
             if matching_ban_rules:
                 for line_num, line in f.ChangedContents():
+                    if _IsIgnoredLine(line):
+                        continue
                     for ban_rule in matching_ban_rules:
                         CheckForMatch(f, line_num, line, ban_rule)
 
@@ -6220,7 +6234,7 @@ def _CheckNewImagesWarning(input_api, output_api):
     return errors
 
 
-def ChecksAndroidSpecificOnUpload(input_api, output_api):
+def CheckAndroidSpecificOnUpload(input_api, output_api):
     """Groups upload checks that target android code."""
     results = []
     results.extend(_CheckAndroidCrLogUsage(input_api, output_api))
@@ -6237,7 +6251,7 @@ def ChecksAndroidSpecificOnUpload(input_api, output_api):
     return results
 
 
-def ChecksAndroidSpecificOnCommit(input_api, output_api):
+def CheckAndroidSpecificOnCommit(input_api, output_api):
     """Groups commit checks that target android code."""
     results = []
     results.extend(_CheckAndroidXmlStyle(input_api, output_api, False))
@@ -6368,7 +6382,7 @@ _NON_INCLUSIVE_TERMS = (
         True), )
 
 
-def ChecksCommon(input_api, output_api):
+def CheckCommon(input_api, output_api):
     """Checks common to both upload and commit."""
     results = []
     results.extend(
@@ -7073,51 +7087,29 @@ def CheckNoDirectRefToAndroidSidePanelCachedFlag(input_api, output_api):
     return results
 
 
-def CheckChangeOnUpload(input_api, output_api):
-    if input_api.version < [2, 0, 0]:
-        return [
-            output_api.PresubmitError(
-                'Your depot_tools is out of date. '
-                'This PRESUBMIT.py requires at least presubmit_support version 2.0.0, '
-                'but your version is %d.%d.%d' % tuple(input_api.version))
-        ]
-    results = []
-    results.extend(
-        input_api.canned_checks.CheckPatchFormatted(input_api, output_api))
-    results.extend(CheckNoMainLayoutSwitcher(input_api, output_api))
-    results.extend(
-        CheckNoDirectRefToAndroidSidePanelCachedFlag(input_api, output_api))
-    return results
+def CheckPatchFormatted(input_api, output_api):
+    """Checks that the patch is formatted properly."""
+    return input_api.canned_checks.CheckPatchFormatted(input_api, output_api)
 
 
-def CheckChangeOnCommit(input_api, output_api):
-    if input_api.version < [2, 0, 0]:
-        return [
-            output_api.PresubmitError(
-                'Your depot_tools is out of date. '
-                'This PRESUBMIT.py requires at least presubmit_support version 2.0.0, '
-                'but your version is %d.%d.%d' % tuple(input_api.version))
-        ]
+def CheckTreeIsOpenOnCommit(input_api, output_api):
+    """Makes sure the tree is 'open' before committing."""
+    return input_api.canned_checks.CheckTreeIsOpen(
+        input_api,
+        output_api,
+        json_url='https://chromium-status.appspot.com/current?format=json')
 
-    results = []
-    # Make sure the tree is 'open'.
-    results.extend(
-        input_api.canned_checks.CheckTreeIsOpen(
-            input_api,
-            output_api,
-            json_url='http://chromium-status.appspot.com/current?format=json'))
 
-    results.extend(
-        input_api.canned_checks.CheckPatchFormatted(input_api, output_api))
-    results.extend(
-        input_api.canned_checks.CheckChangeHasBugField(input_api, output_api))
-    results.extend(
-        input_api.canned_checks.CheckChangeHasNoUnwantedTags(
-            input_api, output_api))
-    results.extend(CheckNoMainLayoutSwitcher(input_api, output_api))
-    results.extend(
-        CheckNoDirectRefToAndroidSidePanelCachedFlag(input_api, output_api))
-    return results
+def CheckChangeHasBugFieldOnCommit(input_api, output_api):
+    """Checks that the commit description contains a BUG= field."""
+    return input_api.canned_checks.CheckChangeHasBugField(
+        input_api, output_api)
+
+
+def CheckChangeHasNoUnwantedTagsOnCommit(input_api, output_api):
+    """Checks that the commit description does not contain unwanted tags."""
+    return input_api.canned_checks.CheckChangeHasNoUnwantedTags(
+        input_api, output_api)
 
 
 def CheckStrings(input_api, output_api):
@@ -8554,9 +8546,13 @@ def CheckSettingsChanges(input_api, output_api):
 
     registry_filename = 'SearchIndexProviderRegistry.java'
 
-    # Filter for Java files, excluding the registry file itself.
-    is_java_file = lambda f: (f.LocalPath().endswith('.java') and not f.
-                              LocalPath().endswith(registry_filename))
+    # Filter for Java files, excluding the registry file itself and test files.
+    is_java_file = lambda f: (
+        f.LocalPath().endswith('.java')
+        and not f.LocalPath().endswith(registry_filename)
+        and not f.LocalPath().endswith(('Test.java', 'TestCase.java'))
+        and not input_api.re.search(r'[\\/](?:javatests|junit|test)[\\/]',
+                                    f.LocalPath()))
     java_files = input_api.AffectedFiles(include_deletes=False,
                                          file_filter=is_java_file)
 
@@ -8642,13 +8638,14 @@ def CheckSettingsChanges(input_api, output_api):
         content = input_api.ReadFile(f)
 
         inheritance_match = java_inheritance_re.search(content)
+        has_provider_field = bool(provider_field_re.search(content))
         # Determine if the file is a Settings screen. We use three different checks
         # to cover the different possible scenarios:
         #   1. Inheritance: Does it extend a known Settings/Preference base class?
         #   2. Field existence: Does it already define a SEARCH_INDEX_DATA_PROVIDER?
         #   3. Signature methods: Does it override onCreatePreferences or
         #      getPreferenceResource (the standard entry points for settings UIs)?
-        if not (inheritance_match or 'SEARCH_INDEX_DATA_PROVIDER' in content
+        if not (inheritance_match or has_provider_field
                 or 'onCreatePreferences' in content):
             continue
 
@@ -8660,7 +8657,7 @@ def CheckSettingsChanges(input_api, output_api):
         name_match = inheritance_match or class_name_re.search(content)
         class_name = name_match.group(1) if name_match else None
 
-        if not provider_field_re.search(content):
+        if not has_provider_field:
             problems.append(
                 f'{f.LocalPath()}:0\n'
                 f'    \tIssue:  Missing SEARCH_INDEX_DATA_PROVIDER field.\n'

@@ -56,6 +56,12 @@ BASE_FEATURE(kIPHComposeNewBadgeFeature,
 BASE_FEATURE(kIPHContextualTasksEphemeralToolbarButtonFeature,
              "IPH_ContextualTasksEphemeralToolbarButton",
              base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHCriticalActionAppMenuFeature,
+             "IPH_CriticalActionAppMenu",
+             base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHCriticalActionFilterChipFeature,
+             "IPH_CriticalActionFilterChip",
+             base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHDesktopSharedHighlightingFeature,
              "IPH_DesktopSharedHighlighting",
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -291,6 +297,9 @@ BASE_FEATURE(kIPHTabGroupsSharedTabChangedFeature,
              base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHTabGroupsSharedTabFeedbackFeature,
              "IPH_TabGroupsSharedTabFeedback",
+             base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHTabScrollButtonFeature,
+             "IPH_TabScrollButtonFeature",
              base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHTabSearchComboButtonFeature,
              "IPH_TabSearchComboButton",
@@ -1111,8 +1120,30 @@ BASE_FEATURE(kIPHSearchPromotionFeature,
              "IPH_SearchPromotionFeature",
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-constinit const base::FeatureParam<std::string> kSearchPromotionArm{
-    &kIPHSearchPromotionFeature, "arm", kSearchPromotionArmDefault};
+constexpr base::FeatureParam<SearchPromotionAction>::Option
+    kSearchPromotionActionOptions[] = {
+        {SearchPromotionAction::kOpen, kSearchPromotionActionOpen},
+        {SearchPromotionAction::kInstall, kSearchPromotionActionInstall},
+        {SearchPromotionAction::kControl, kSearchPromotionActionControl},
+};
+
+constinit const base::FeatureParam<SearchPromotionAction>
+    kSearchPromotionAction{&kIPHSearchPromotionFeature, "action",
+                           SearchPromotionAction::kDisabled,
+                           &kSearchPromotionActionOptions};
+
+constexpr base::FeatureParam<SearchPromotionCohort>::Option
+    kSearchPromotionCohortOptions[] = {
+        {SearchPromotionCohort::kAll, kSearchPromotionCohortAll},
+        {SearchPromotionCohort::kLow, kSearchPromotionCohortLow},
+        {SearchPromotionCohort::kMedium, kSearchPromotionCohortMedium},
+        {SearchPromotionCohort::kPower, kSearchPromotionCohortPower},
+};
+
+constinit const base::FeatureParam<SearchPromotionCohort>
+    kSearchPromotionCohort{&kIPHSearchPromotionFeature, "cohort",
+                           SearchPromotionCohort::kAll,
+                           &kSearchPromotionCohortOptions};
 constinit const base::FeatureParam<std::string> kSearchPromotionStoreUrl{
     &kIPHSearchPromotionFeature, "store_url",
     "https://microsoftedge.microsoft.com/addons/detail/google-search-for-edge/"

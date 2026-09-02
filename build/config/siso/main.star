@@ -8,6 +8,7 @@ load("@builtin//encoding.star", "json")
 load("@builtin//lib/gn.star", "gn")
 load("@builtin//runtime.star", "runtime")
 load("@builtin//struct.star", "module")
+load("@builtin//time.star", "time")
 load("./backend_config/backend.star", "backend")
 load("./blink_all.star", "blink_all")
 load("./config.star", "config")
@@ -48,6 +49,12 @@ def __unset_timeout(ctx, step_config):
     if not config.get(ctx, "no-remote-timeout"):
         return step_config
     for rule in step_config["rules"]:
+        # if no timeout, default is 60m timeout.
+        # better to keep longer timeout instead of using shorter timeout.
+        timeout = rule.get("timeout")
+        if timeout and \
+           time.parse_duration(timeout) > time.parse_duration("60m"):
+            continue
         rule.pop("timeout", None)
     return step_config
 
@@ -91,6 +98,16 @@ def init(ctx):
             "./obj/ash/quick_pair/repository/repository/device_image_store.o": "crbug.com/546524333",
             "./obj/chrome/browser/ash/smb_client/smb_client/smbfs_share.o": "crbug.com/548936578",
             "./obj/chrome/browser/speech/impl/cros_speech_recognition_service.o": "crbug.com/548939103",
+            "./obj/chrome/browser/ui/read_anything/read_anything/read_anything_controller.o": "crbug.com/551512262",
+            "./obj/chrome/browser/ui/read_anything/read_anything/read_anything_entry_point_controller.o": "crbug.com/551512262",
+            "./obj/chrome/browser/ui/read_anything/read_anything/read_anything_hats_survey_controller.o": "crbug.com/551512262",
+            "./obj/chrome/browser/ui/read_anything/read_anything/read_anything_immersive_overlay_view.o": "crbug.com/551512262",
+            "./obj/chrome/browser/ui/read_anything/read_anything/read_anything_immersive_web_view.o": "crbug.com/551512262",
+            "./obj/chrome/browser/ui/read_anything/read_anything/read_anything_omnibox_controller.o": "crbug.com/551512262",
+            "./obj/chrome/browser/ui/read_anything/read_anything/read_anything_side_panel_controller.o": "crbug.com/551512262",
+            "./obj/chrome/browser/ui/read_anything/read_anything/read_anything_side_panel_web_view.o": "crbug.com/551512262",
+            "./obj/chrome/browser/ui/read_anything/read_anything/read_anything_soft_navigation_observer.o": "crbug.com/551512262",
+            "./obj/chrome/browser/ui/tabs/impl/tab_features.o": "crbug.com/551670232",
             "./obj/components/exo/wayland/client_version_test/client_version_test.o": "crbug.com/548936502",
         },
         # Executables sent from Windows host to Linux workers need to set executable bit explicitly.

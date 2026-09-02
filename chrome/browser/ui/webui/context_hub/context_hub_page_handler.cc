@@ -96,12 +96,19 @@ void ContextHubPageHandler::GetAutoTodos(GetAutoTodosCallback callback) {
   context_hub::ContextHubService* service =
       ContextHubServiceFactory::GetForProfile(profile_);
   if (!service) {
-    std::move(callback).Run({}, {});
+    std::move(callback).Run({}, {}, base::Time(), base::Time());
     return;
   }
 
+  base::Time last_first_party_generation_time =
+      service->GetLastFirstPartyGenerationTime();
+  base::Time last_third_party_generation_time =
+      service->GetLastThirdPartyGenerationTime();
+
   service->GetAutoTodos(base::BindOnce(
       [](GetAutoTodosCallback callback,
+         base::Time last_first_party_generation_time,
+         base::Time last_third_party_generation_time,
          std::vector<context_hub::AutoTodoEntry> entries) {
         std::vector<context_hub::AutoTodoEntry> first_party_todos;
         std::vector<context_hub::AutoTodoEntry> third_party_todos;
@@ -115,10 +122,12 @@ void ContextHubPageHandler::GetAutoTodos(GetAutoTodosCallback callback) {
             third_party_todos.push_back(std::move(entry));
           }
         }
-        std::move(callback).Run(std::move(first_party_todos),
-                                std::move(third_party_todos));
+        std::move(callback).Run(
+            std::move(first_party_todos), std::move(third_party_todos),
+            last_first_party_generation_time, last_third_party_generation_time);
       },
-      std::move(callback)));
+      std::move(callback), last_first_party_generation_time,
+      last_third_party_generation_time));
 }
 
 void ContextHubPageHandler::UpdateAutoTodo(
@@ -237,6 +246,8 @@ void ContextHubPageHandler::GetAllMemoryBankEntries(
           mojo_entry->tab_title = entry.tab_title;
           mojo_entry->selected_text = entry.selected_text;
           mojo_entry->tags = entry.tags;
+          mojo_entry->note = entry.note;
+          mojo_entry->collection = entry.collection;
           mojo_entries.push_back(std::move(mojo_entry));
         }
         std::move(callback).Run(std::move(mojo_entries));
@@ -262,8 +273,10 @@ void ContextHubPageHandler::SaveMemoryBankEntry(
   auto* service = ContextHubServiceFactory::GetForProfile(profile_);
   if (service && annotations) {
     std::vector<std::string> tags =
-        annotations->tags.value_or(std::vector<std::string>{});
-    bool success = service->SavePendingMemoryBankEntry(tags);
+        std::move(annotations->tags).value_or(std::vector<std::string>{});
+    bool success = service->SavePendingMemoryBankEntry(
+        std::move(tags), std::move(annotations->note),
+        std::move(annotations->collection));
     std::move(callback).Run(success);
     return;
   }
@@ -357,14 +370,13 @@ void ContextHubPageHandler::RetrieveAndGroupTabs(
     return;
   }
 
-  // TODO(crbug.com/546564997): Include confirmed tab groups in the request
-  // payload for model execution workflow for regrouping.
   service->GroupTabs(
       GetOpenUngroupedTabs(tab_provider_.get()), user_command,
       base::BindOnce(
           [](RetrieveAndGroupTabsCallback callback,
              std::vector<context_hub::TabGroupEntry> groups,
-             std::vector<context_hub::TabData> ungrouped_tabs) {
+             std::vector<context_hub::TabData> ungrouped_tabs,
+             std::string text_response) {
             std::vector<browser::context_hub::mojom::TabGroupPtr> mojo_groups;
             for (const auto& group : groups) {
               auto mojo_group = browser::context_hub::mojom::TabGroup::New();
@@ -373,10 +385,18 @@ void ContextHubPageHandler::RetrieveAndGroupTabs(
               mojo_groups.push_back(std::move(mojo_group));
             }
 
-            // TODO(crbug.com/535675010): Add LLM Response.
+            browser::context_hub::mojom::ChatMessagePtr mojo_llm_response;
+            if (!text_response.empty()) {
+              mojo_llm_response =
+                  browser::context_hub::mojom::ChatMessage::New();
+              mojo_llm_response->role =
+                  browser::context_hub::mojom::ChatRole::kAssistant;
+              mojo_llm_response->content = std::move(text_response);
+            }
+
             std::move(callback).Run(std::move(mojo_groups),
                                     ToMojoTabs(ungrouped_tabs),
-                                    /*llm_response=*/nullptr);
+                                    std::move(mojo_llm_response));
           },
           std::move(callback)));
 }

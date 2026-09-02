@@ -747,9 +747,14 @@ AutofillProfile::ProfileMergeResult AutofillProfile::MergeDataFrom(
           GetAddressCountryCode(),
           usage_history().use_date() < profile.usage_history().use_date(),
           name) ||
-      !comparator.MergeEmailAddresses(profile, *this, email) ||
-      !comparator.MergeCompanyNames(profile, *this, company) ||
-      !comparator.MergePhoneNumbers(profile, *this, phone_number) ||
+      // TODO(crbug.com/453945181): Simplify this logic by returning merged
+      // objects instead of passing them by reference.
+      comparator.MergeEmailAddresses(profile, *this, email) ==
+          ProfileMergeResult::kMergeFailed ||
+      comparator.MergeCompanyNames(profile, *this, company) ==
+          ProfileMergeResult::kMergeFailed ||
+      comparator.MergePhoneNumbers(profile, *this, phone_number) ==
+          ProfileMergeResult::kMergeFailed ||
       !comparator.MergeAddresses(profile, *this, address)) {
     DUMP_WILL_BE_NOTREACHED();
     return ProfileMergeResult::kMergeFailed;

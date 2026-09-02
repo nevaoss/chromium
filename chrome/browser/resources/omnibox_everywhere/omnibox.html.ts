@@ -29,6 +29,7 @@ export function getHtml(this: OmniboxEverywhereOmniboxElement) {
           searchbox-aria-description="${this.searchboxAriaDescription}"
           searchbox-icon="${this.searchboxIcon_}"
           .selectedMatch="${this.selectedMatch}"
+          .inputKeywordModel="${this.inputKeywordModel}"
           ?input-has-matches="${this.hasMatches()}"
           ?allow-file-paste="${this.fileContextEnabled_}"
           @focusin="${this.onInputFocusin_}"
@@ -54,6 +55,7 @@ export function getHtml(this: OmniboxEverywhereOmniboxElement) {
             @selected-match-index-changed="${this.onSelectedMatchIndexChanged}"
             @match-focusin="${this.onMatchFocusin}"
             @match-click="${this.onMatchClick}"
+            @keyword-click="${this.onKeywordClick}"
             ?hidden="${!this.dropdownIsVisible}">
         </cr-searchbox-dropdown>
       </div>
@@ -109,7 +111,8 @@ export function getHtml(this: OmniboxEverywhereOmniboxElement) {
               this.showVoiceAndLensButtons_(
                   this.searchboxLensSearchEnabled_) ?
               html`
-          <div class="searchbox-icon-button-container lens">
+          <div class="searchbox-icon-button-container lens ${
+              this.isScreenshotMenuOpen ? 'menu-open' : ''}">
             <button id="lensSearchButton" class="searchbox-icon-button"
                 @click="${this.onLensSearchClick_}"
                 title="${this.i18n('lensSearchButtonLabel')}">
@@ -119,25 +122,6 @@ export function getHtml(this: OmniboxEverywhereOmniboxElement) {
               ''}
         </div>
       </div>
-      <cr-action-menu id="screenshotMenu" role-description="menu"
-          @close="${this.onScreenshotMenuClose_}">
-        <div class="menu-title">${this.i18n('shareScreenshotLabel')}</div>
-        <button class="dropdown-item" id="screenshotFullscreen"
-            @click="${this.onScreenshotEntireScreenClick_}">
-          <div class="icon entire-screen"></div>
-          ${this.i18n('screenshotEntireScreenLabel')}
-        </button>
-        <button class="dropdown-item" id="screenshotWindow"
-            @click="${this.onScreenshotWindowClick_}">
-          <div class="icon window"></div>
-          ${this.i18n('screenshotWindowLabel')}
-        </button>
-        <button class="dropdown-item" id="screenshotRegion"
-            @click="${this.onScreenshotRegionClick_}">
-          <div class="icon region"></div>
-          ${this.i18n('screenshotRegionLabel')}
-        </button>
-      </cr-action-menu>
     </div>
   `;
 }

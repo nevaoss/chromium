@@ -35,6 +35,7 @@
 #include "chrome/browser/glic/service/glic_invoke_task.h"
 #include "chrome/browser/glic/service/glic_ui_types.h"
 #include "chrome/browser/glic/service/metrics/glic_instance_helper_metrics.h"
+#include "chrome/browser/glic/service/metrics/glic_invoke_metrics.h"
 #include "chrome/browser/glic/test_support/glic_browser_test.h"
 #include "chrome/browser/glic/test_support/glic_histogram_tester.h"
 #include "chrome/browser/glic/widget/glic_floating_ui.h"
@@ -300,7 +301,8 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorUnbindOnCloseTest,
   EXPECT_EQ(instance1, instance2);
 
   // Simulate user input on tab2.
-  instance2->OnUserInputSubmitted(mojom::WebClientMode::kText);
+  instance2->OnUserInputSubmitted(mojom::WebClientMode::kText,
+                                  mojom::PromptType::kUnspecified);
 
   // Close the side panel for the active tab (tab2).
   ASSERT_OK(CloseGlicForTabAndWait(tab2));
@@ -1607,6 +1609,7 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorActuationBrowserTest,
       GlicInvokeHandler::ResolvedTarget{
           GlicInvokeHandler::TabSurface{active_tab, false}},
       std::move(options), GlicInvokeWithAutoSubmitOptions(), std::nullopt,
+      std::make_unique<GlicInvokeMetrics>(mojom::InvocationSource::kOsButton),
       base::BindLambdaForTesting([&](GlicInstance*, GlicInvokeHandler*) {
         handler_completion_future.SetValue();
       }));

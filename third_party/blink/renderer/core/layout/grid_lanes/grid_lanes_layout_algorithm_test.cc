@@ -16,7 +16,6 @@
 #include "third_party/blink/renderer/core/layout/grid_lanes/grid_lanes_break_token_data.h"
 #include "third_party/blink/renderer/core/layout/grid_lanes/grid_lanes_running_positions.h"
 #include "third_party/blink/renderer/core/layout/length_utils.h"
-#include "third_party/blink/renderer/platform/testing/runtime_enabled_features_test_helpers.h"
 
 namespace blink {
 
@@ -1681,7 +1680,20 @@ TEST_F(GridLanesLayoutAlgorithmTest, AppendSubgriddedGridLanesItems) {
 
   GridLanesNode node(GetLayoutBoxByElementId("grid-lanes"));
   GridLanesNode subgrid_node(GetLayoutBoxByElementId("subgrid"));
+  // TODO(yanlingwang): Use `BuildGridSizingTree` once `GridItemData` recognizes
+  // grid-lanes subgrids, removing this manual algorithm setup.
+  const auto space = ConstructBlockLayoutTestConstraintSpace(
+      {WritingMode::kHorizontalTb, TextDirection::kLtr},
+      LogicalSize(LayoutUnit(200), kIndefiniteSize),
+      /*stretch_inline_size_if_auto=*/true,
+      /*is_new_formatting_context=*/true);
+  const auto fragment_geometry = CalculateInitialFragmentGeometry(
+      space, subgrid_node, /*break_token=*/nullptr);
+  const GridLanesLayoutAlgorithm subgrid_algorithm(
+      {subgrid_node, fragment_geometry, space});
 
+  // TODO(yanlingwang): Create and pass the line resolver through the normal
+  // sizing-tree path once `GridItemData` recognizes grid-lanes subgrids.
   const GridLineResolver line_resolver(node.Style(), /*auto_repetitions=*/0);
   bool must_invalidate_placement_cache = false;
   auto* grid_items =
@@ -1696,13 +1708,15 @@ TEST_F(GridLanesLayoutAlgorithmTest, AppendSubgriddedGridLanesItems) {
   subgrid_item.must_consider_grid_items_for_column_sizing = true;
   subgrid_item.MaybeTranslateSpan(/*start_offset=*/0, kForColumns);
 
-  const GridLineResolver subgrid_line_resolver(subgrid_node.Style(),
-                                               /*auto_repetitions=*/0);
+  const auto subgrid_line_resolver = subgrid_algorithm.BuildGridLineResolver(
+      subgrid_item.resolved_position, &line_resolver);
+  EXPECT_EQ(subgrid_line_resolver.SubgridSpanSize(kForColumns), 2u);
+  EXPECT_FALSE(subgrid_line_resolver.HasStandaloneAxis(kForColumns));
   To<LayoutGridLanes>(subgrid_node.GetLayoutBox())
       ->SetCachedPlacementData(GridPlacementData(subgrid_line_resolver));
 
-  // TODO(yanlingwang): Use `BuildGridSizingTree` once sizing-tree recursion
-  // supports `GridLanesLayoutAlgorithm` and grid-lanes subgrid recognition.
+  // TODO(yanlingwang): Replace this manual append with `BuildGridSizingTree`
+  // once `GridItemData` recognizes grid lanes subgrids.
   AppendSubgriddedItems(node, grid_items);
 
   wtf_size_t total_count = 0;
@@ -2812,7 +2826,6 @@ TEST_F(GridLanesLayoutAlgorithmTest, ResolvedGridAxisFlipMarksPlacementDirty) {
 }
 
 TEST_F(GridLanesLayoutAlgorithmTest, GapGeometryColumn) {
-  ScopedCSSGapDecorationForTest scoped_gap_decoration(true);
   SetBodyInnerHTML(R"HTML(
     <style>
     #grid-lanes {
@@ -2867,7 +2880,6 @@ TEST_F(GridLanesLayoutAlgorithmTest, GapGeometryColumn) {
 }
 
 TEST_F(GridLanesLayoutAlgorithmTest, GapGeometryRow) {
-  ScopedCSSGapDecorationForTest scoped_gap_decoration(true);
   SetBodyInnerHTML(R"HTML(
     <style>
     #grid-lanes {
@@ -2920,7 +2932,6 @@ TEST_F(GridLanesLayoutAlgorithmTest, GapGeometryRow) {
 }
 
 TEST_F(GridLanesLayoutAlgorithmTest, GapGeometryEmptyExplicitTracks) {
-  ScopedCSSGapDecorationForTest scoped_gap_decoration(true);
   SetBodyInnerHTML(R"HTML(
     <style>
     #grid-lanes {
@@ -2956,7 +2967,6 @@ TEST_F(GridLanesLayoutAlgorithmTest, GapGeometryEmptyExplicitTracks) {
 }
 
 TEST_F(GridLanesLayoutAlgorithmTest, GapGeometrySingleTrack) {
-  ScopedCSSGapDecorationForTest scoped_gap_decoration(true);
   SetBodyInnerHTML(R"HTML(
     <style>
     #grid-lanes {
@@ -2987,7 +2997,6 @@ TEST_F(GridLanesLayoutAlgorithmTest, GapGeometrySingleTrack) {
 }
 
 TEST_F(GridLanesLayoutAlgorithmTest, GapGeometryRequiresGapRule) {
-  ScopedCSSGapDecorationForTest scoped_gap_decoration(true);
   SetBodyInnerHTML(R"HTML(
     <style>
     #grid-lanes {
@@ -3017,7 +3026,6 @@ TEST_F(GridLanesLayoutAlgorithmTest, GapGeometryRequiresGapRule) {
 }
 
 TEST_F(GridLanesLayoutAlgorithmTest, GapGeometryCollapsedAutoFitTracks) {
-  ScopedCSSGapDecorationForTest scoped_gap_decoration(true);
   SetBodyInnerHTML(R"HTML(
     <style>
     #grid-lanes {
@@ -3064,7 +3072,6 @@ TEST_F(GridLanesLayoutAlgorithmTest, GapGeometryCollapsedAutoFitTracks) {
 }
 
 TEST_F(GridLanesLayoutAlgorithmTest, GapGeometryGridAxisAlignment) {
-  ScopedCSSGapDecorationForTest scoped_gap_decoration(true);
   SetBodyInnerHTML(R"HTML(
     <style>
     #grid-lanes {
@@ -3113,7 +3120,6 @@ TEST_F(GridLanesLayoutAlgorithmTest, GapGeometryGridAxisAlignment) {
 
 // Main-gap geometry includes block-end overflow from placed items.
 TEST_F(GridLanesLayoutAlgorithmTest, GapGeometryColumnStackingAxisOverflow) {
-  ScopedCSSGapDecorationForTest scoped_gap_decoration(true);
   SetBodyInnerHTML(R"HTML(
     <style>
     #grid-lanes {
@@ -3160,7 +3166,6 @@ TEST_F(GridLanesLayoutAlgorithmTest, GapGeometryColumnStackingAxisOverflow) {
 
 // Main-gap geometry includes inline-end overflow from placed items.
 TEST_F(GridLanesLayoutAlgorithmTest, GapGeometryRowStackingAxisOverflow) {
-  ScopedCSSGapDecorationForTest scoped_gap_decoration(true);
   SetBodyInnerHTML(R"HTML(
     <style>
     #grid-lanes {

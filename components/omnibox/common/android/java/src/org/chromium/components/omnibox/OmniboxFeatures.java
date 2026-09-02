@@ -132,6 +132,9 @@ public class OmniboxFeatures {
     public static final CachedFlag sForceAndroidRealbox =
             newFlag(OmniboxFeatureList.FORCE_ANDROID_REALBOX, FeatureState.DISABLED);
 
+    public static final CachedFlag sDebounceKeyboardVisibility =
+            newFlag(OmniboxFeatureList.OMNIBOX_DEBOUNCE_KEYBOARD_VISIBILITY, FeatureState.DISABLED);
+
     public static final CachedFlag sPostDelayedTaskFocusTab =
             newFlag(OmniboxFeatureList.POST_DELAYED_TASK_FOCUS_TAB, FeatureState.ENABLED_IN_PROD);
 
@@ -182,6 +185,9 @@ public class OmniboxFeatures {
 
     public static final BooleanCachedFeatureParam sShowNtpPlusButton =
             newBooleanParam(sOmniboxMultimodalInput, "show_ntp_plus_button", false);
+
+    public static final BooleanCachedFeatureParam sFocusFuseboxFromNtpPlusButton =
+            newBooleanParam(sOmniboxMultimodalInput, "focus_fusebox_from_ntp_plus_button", false);
 
     public static final CachedFlag sAndroidDesktopAimGate =
             newFlag(OmniboxFeatureList.ANDROID_DESKTOP_AIM_GATE, FeatureState.ENABLED_IN_PROD);
@@ -333,6 +339,21 @@ public class OmniboxFeatures {
      */
     public static boolean isTouchDownTriggerForPrefetchEnabled() {
         return sTouchDownTriggerForPrefetch.isEnabled();
+    }
+
+    private static @Nullable Boolean sDebounceKeyboardVisibilityForTesting;
+
+    /** Returns whether keyboard visibility transitions should be debounced. */
+    public static boolean isDebounceKeyboardVisibilityEnabled() {
+        if (sDebounceKeyboardVisibilityForTesting != null) {
+            return sDebounceKeyboardVisibilityForTesting;
+        }
+        return sDebounceKeyboardVisibility.isEnabled();
+    }
+
+    /** Modifies the output of {@link #isDebounceKeyboardVisibilityEnabled()} for testing. */
+    public static void setDebounceKeyboardVisibilityForTesting(@Nullable Boolean value) {
+        sDebounceKeyboardVisibilityForTesting = value;
     }
 
     /**

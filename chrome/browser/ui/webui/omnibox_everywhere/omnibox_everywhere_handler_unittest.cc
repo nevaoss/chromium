@@ -10,10 +10,15 @@
 #include "base/functional/callback_helpers.h"
 #include "base/memory/raw_ptr.h"
 #include "base/test/scoped_feature_list.h"
+#include "chrome/browser/bookmarks/bookmark_model_factory.h"
 #include "chrome/browser/ui/omnibox/omnibox_everywhere_service.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/browser/ui/webui/searchbox/contextual_searchbox_test_utils.h"
 #include "chrome/browser/ui/webui/searchbox/searchbox_test_utils.h"
+#include "components/bookmarks/browser/bookmark_model.h"
+#include "components/bookmarks/test/bookmark_test_helpers.h"
+#include "components/omnibox/browser/autocomplete_match.h"
+#include "components/omnibox/browser/searchbox.mojom.h"
 #include "components/search_engines/template_url.h"
 #include "components/search_engines/template_url_data.h"
 #include "components/search_engines/template_url_service.h"
@@ -40,7 +45,9 @@ class MockOmniboxEverywhereService : public OmniboxEverywhereService {
               OpenUrl,
               (const GURL& url,
                WindowOpenDisposition disposition,
-               ui::PageTransition transition),
+               ui::PageTransition transition,
+               base::OnceCallback<void(content::NavigationHandle&)>
+                   navigation_handle_callback),
               (override));
   MOCK_METHOD(void, ShowProfilePicker, (), (override));
   MOCK_METHOD(void, OnDrivePickerOpened, (), (override));
@@ -54,6 +61,15 @@ class OmniboxEverywhereHandlerTest
     feature_list_.InitAndEnableFeature(omnibox::kOmniboxEverywhere);
   }
   ~OmniboxEverywhereHandlerTest() override = default;
+
+  TestingProfile::TestingFactories GetTestingFactories() const override {
+    auto factories =
+        ContextualSearchboxHandlerTestHarness::GetTestingFactories();
+    factories.push_back(TestingProfile::TestingFactory{
+        BookmarkModelFactory::GetInstance(),
+        BookmarkModelFactory::GetDefaultFactory()});
+    return factories;
+  }
 
   void SetUp() override {
     ContextualSearchboxHandlerTestHarness::SetUp();
@@ -91,13 +107,16 @@ TEST_F(OmniboxEverywhereHandlerTest,
   WindowOpenDisposition captured_disposition;
   ui::PageTransition captured_transition;
 
-  EXPECT_CALL(*mock_service_, OpenUrl(testing::_, testing::_, testing::_))
-      .WillOnce([&](const GURL& url, WindowOpenDisposition disposition,
-                    ui::PageTransition transition) {
-        captured_url = url;
-        captured_disposition = disposition;
-        captured_transition = transition;
-      });
+  EXPECT_CALL(*mock_service_,
+              OpenUrl(testing::_, testing::_, testing::_, testing::_))
+      .WillOnce(
+          [&](const GURL& url, WindowOpenDisposition disposition,
+              ui::PageTransition transition,
+              base::OnceCallback<void(content::NavigationHandle&)> callback) {
+            captured_url = url;
+            captured_disposition = disposition;
+            captured_transition = transition;
+          });
 
   handler_->SubmitQuery("weather today", /*mouse_button=*/0, /*alt_key=*/false,
                         /*ctrl_key=*/false, /*meta_key=*/false,
@@ -137,13 +156,16 @@ TEST_F(OmniboxEverywhereHandlerTest,
   WindowOpenDisposition captured_disposition;
   ui::PageTransition captured_transition;
 
-  EXPECT_CALL(*mock_service_, OpenUrl(testing::_, testing::_, testing::_))
-      .WillOnce([&](const GURL& url, WindowOpenDisposition disposition,
-                    ui::PageTransition transition) {
-        captured_url = url;
-        captured_disposition = disposition;
-        captured_transition = transition;
-      });
+  EXPECT_CALL(*mock_service_,
+              OpenUrl(testing::_, testing::_, testing::_, testing::_))
+      .WillOnce(
+          [&](const GURL& url, WindowOpenDisposition disposition,
+              ui::PageTransition transition,
+              base::OnceCallback<void(content::NavigationHandle&)> callback) {
+            captured_url = url;
+            captured_disposition = disposition;
+            captured_transition = transition;
+          });
 
   handler_->SubmitQuery("weather today", /*mouse_button=*/0, /*alt_key=*/false,
                         /*ctrl_key=*/false, /*meta_key=*/false,
@@ -173,6 +195,55 @@ TEST_F(OmniboxEverywhereHandlerTest, CleanupDrivePickerNotifiesService) {
   EXPECT_CALL(*mock_service_, OnDrivePickerClosed()).Times(1);
 
   handler_->CleanupDrivePicker();
+}
+
+TEST_F(OmniboxEverywhereHandlerTest, CreateAutocompleteMatchWithKeyword) {
+  TemplateURLData data;
+  data.SetShortName(u"example");
+  data.SetKeyword(u"example");
+  data.SetURL("https://example.com/search?q={searchTerms}");
+  template_url_service()->Add(std::make_unique<TemplateURL>(data));
+
+  AutocompleteMatch match;
+  match.destination_url = GURL("https://example.com");
+  match.associated_keyword = u"example";
+  match.keyword = u"example";
+
+  bookmarks::BookmarkModel* bookmark_model =
+      BookmarkModelFactory::GetForBrowserContext(profile());
+  bookmarks::test::WaitForBookmarkModelToLoad(bookmark_model);
+
+  auto mojom_match = handler_->CreateAutocompleteMatch(
+      match, 0, bookmark_model, omnibox::GroupConfigMap(),
+      template_url_service());
+
+  ASSERT_TRUE(mojom_match.has_value());
+  ASSERT_TRUE(mojom_match.value()->keyword_model);
+  EXPECT_EQ(searchbox::mojom::KeywordType::kChip,
+            mojom_match.value()->keyword_model->type);
+  EXPECT_EQ("example", mojom_match.value()->keyword_model->keyword);
+}
+
+TEST_F(OmniboxEverywhereHandlerTest, ActivateKeywordDoesNotCrash) {
+  handler_->ActivateKeyword(0, GURL("https://example.com"),
+                            base::TimeTicks::Now(), /*is_mouse_event=*/true);
+}
+
+TEST_F(OmniboxEverywhereHandlerTest, OpenUrlForwardsToService) {
+  GURL test_url("https://www.google.com");
+  EXPECT_CALL(*mock_service_,
+              OpenUrl(test_url, WindowOpenDisposition::CURRENT_TAB, testing::_,
+                      testing::_))
+      .WillOnce(
+          [&](const GURL& url, WindowOpenDisposition disposition,
+              ui::PageTransition transition,
+              base::OnceCallback<void(content::NavigationHandle&)> callback) {
+            EXPECT_TRUE(ui::PageTransitionCoreTypeIs(transition,
+                                                     ui::PAGE_TRANSITION_LINK));
+          });
+
+  handler_->OpenUrl(test_url, WindowOpenDisposition::CURRENT_TAB,
+                    base::NullCallback());
 }
 
 }  // namespace

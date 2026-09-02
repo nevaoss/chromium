@@ -602,7 +602,9 @@ static bool NeedsElementCanvasTransform(const LayoutObject& object) {
           object.GetDocument().GetExecutionContext())) {
     return false;
   }
-  return element->CanvasForDrawing() != nullptr;
+  // Note: Create a canvas transform node even if no canvas element transform
+  // is set to avoid paint invalidation from adding a canvas element transform.
+  return element->CanvasForDrawing();
 }
 static bool NeedsPaintOffsetTranslation(
     const LayoutObject& object,
@@ -1114,7 +1116,7 @@ void FragmentPaintPropertyTreeBuilder::UpdateElementCanvasTransform() {
   if (NeedsPaintPropertyUpdate()) {
     if (NeedsElementCanvasTransform(object_)) {
       const auto& element = *To<Element>(object_.GetNode());
-      const auto* canvas_transform = element.GetCanvasTransformInternal();
+      const auto* canvas_transform = element.GetUsedCanvasTransform();
       TransformPaintPropertyNode::State state{
           {canvas_transform ? *canvas_transform : gfx::Transform()}};
       state.flattens_inherited_transform =
@@ -1122,8 +1124,15 @@ void FragmentPaintPropertyTreeBuilder::UpdateElementCanvasTransform() {
       state.rendering_context_id = context_.rendering_context_id;
       state.compositor_element_id = GetCompositorElementId(
           CompositorElementIdNamespace::kElementCanvasTransform);
-      auto change = properties_->UpdateElementCanvasTransform(
-          *context_.current.transform, std::move(state));
+      const TransformPaintPropertyNodeOrAlias* parent_transform =
+          context_.current.transform;
+      if (auto* canvas_for_drawing = object_.CanvasForDrawingLayoutObject()) {
+        parent_transform = &canvas_for_drawing->FirstFragment()
+                                .ContentsProperties()
+                                .Transform();
+      }
+      auto change = properties_->UpdateElementCanvasTransform(*parent_transform,
+                                                              std::move(state));
       // Do not call `OnUpdateTransform()` here because canvas transform changes
       // do not affect the element's rendering and should not trigger a paint
       // invalidation.
@@ -1140,6 +1149,10 @@ void FragmentPaintPropertyTreeBuilder::UpdateElementCanvasTransform() {
 
   if (properties_->ElementCanvasTransform()) {
     context_.current.transform = properties_->ElementCanvasTransform();
+    if (auto* canvas_for_drawing = object_.CanvasForDrawingLayoutObject()) {
+      context_.current.clip =
+          &canvas_for_drawing->FirstFragment().ContentsProperties().Clip();
+    }
   }
 }
 
@@ -1983,6 +1996,7 @@ FragmentPaintPropertyTreeBuilder::ParentForViewTransitionPseudoEffect() const {
 }
 
 static void PopulateCanvasChildPaintState(HTMLCanvasElement* canvas,
+                                          Element* canvas_child,
                                           CanvasChildPaintState& paint_state) {
   const LayoutReplaced* replaced = To<LayoutReplaced>(canvas->GetLayoutBox());
   const ComputedStyle& style = replaced->StyleRef();
@@ -1995,6 +2009,7 @@ static void PopulateCanvasChildPaintState(HTMLCanvasElement* canvas,
                         style.GetWritingMode()),
           *replaced, style);
   paint_state.canvas_node_id = canvas->GetDomNodeId();
+  paint_state.canvas_child_node_id = canvas_child->GetDomNodeId();
   paint_state.animated_image_frame_index_map =
       canvas->GetDocument().View()->GetAnimatedImageFrameIndexes();
 }
@@ -2026,7 +2041,8 @@ static void PopulateCanvasChildState(
       transform_origin, 1.0f / object.StyleRef().EffectiveZoom());
   state.canvas_child_state->paint_state.box_size =
       gfx::SizeF(To<LayoutBox>(object).StitchedSize());
-  PopulateCanvasChildPaintState(canvas, state.canvas_child_state->paint_state);
+  PopulateCanvasChildPaintState(canvas, To<Element>(object.GetNode()),
+                                state.canvas_child_state->paint_state);
   state.canvas_child_state->content_effect = canvas_fragment.ContentsEffect();
   state.canvas_child_state->content_clip = canvas_fragment.ContentsClip();
   const auto* properties = object.FirstFragment().PaintProperties();

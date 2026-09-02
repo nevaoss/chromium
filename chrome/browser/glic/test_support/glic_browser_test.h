@@ -44,6 +44,7 @@
 #include "chrome/browser/glic/test_support/test_result.h"
 #include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
 #include "chrome/browser/ui/browser_window/public/create_browser_window.h"
 #include "chrome/browser/ui/side_panel/side_panel_ui.h"
 #include "chrome/browser/ui/side_panel/side_panel_ui_provider.h"
@@ -227,8 +228,9 @@ template <typename Trigger>
 
 [[nodiscard]] inline TestResult<> WaitForWindowActive(
     BrowserWindowInterface* browser) {
-  return RunUntilEqual([&]() { return browser->GetWindow()->IsActive(); }, true,
-                       "Window did not become active");
+  return RunUntilEqual(
+      [&]() { return GetLastActiveBrowserWindowInterfaceWithAnyProfile(); },
+      browser, "Window did not become active");
 }
 
 [[nodiscard]] inline TestResult<> WaitForSidePanelState(
@@ -352,9 +354,13 @@ class GlicBrowserTestMixin : public T {
   // closing on deactivation (if applicable).
   void ToggleGlicForActiveTab(bool prevent_close = false) {
     auto* service = GlicKeyedService::Get(T::GetProfile());
-    service->ToggleUI(
-        T::GetTabListInterface()->GetActiveTab()->GetBrowserWindowInterface(),
-        prevent_close, mojom::InvocationSource::kTopChromeButton);
+    auto* bwi =
+        T::GetTabListInterface()->GetActiveTab()->GetBrowserWindowInterface();
+    if (prevent_close) {
+      service->ShowUI(bwi, mojom::InvocationSource::kTopChromeButton);
+    } else {
+      service->ToggleUI(bwi, false, mojom::InvocationSource::kTopChromeButton);
+    }
   }
 
   // Opens the Glic UI on the active tab and returns it.
@@ -367,8 +373,8 @@ class GlicBrowserTestMixin : public T {
   [[nodiscard]] TestResult<GlicInstanceImpl*> OpenGlicForTab(
       tabs::TabInterface* tab) {
     auto* service = GlicKeyedService::Get(T::GetProfile());
-    service->ToggleUI(tab->GetBrowserWindowInterface(), /*prevent_close=*/true,
-                      mojom::InvocationSource::kTopChromeButton);
+    service->ShowUI(tab->GetBrowserWindowInterface(),
+                    mojom::InvocationSource::kTopChromeButton);
     return WaitForGlicOpen(tab);
   }
 
@@ -376,7 +382,8 @@ class GlicBrowserTestMixin : public T {
   // client handler.
   void SimulateUserInputSubmitted(
       GlicInstanceImpl* instance = nullptr,
-      mojom::WebClientMode mode = mojom::WebClientMode::kText) {
+      mojom::WebClientMode mode = mojom::WebClientMode::kText,
+      mojom::PromptType prompt_type = mojom::PromptType::kUnspecified) {
     if (!instance) {
       instance = GetOnlyGlicInstance();
     }
@@ -384,7 +391,7 @@ class GlicBrowserTestMixin : public T {
     ASSERT_OK(WaitForGlicClient(instance));
     GlicWebClientAccess* client = instance->host().GetPrimaryWebClient();
     CHECK(client);
-    client->OnUserInputSubmittedForTesting(mode);
+    client->OnUserInputSubmittedForTesting(mode, prompt_type);
   }
 
   [[nodiscard]] TestResult<> WaitForInstanceDeletion(
@@ -453,7 +460,8 @@ class GlicBrowserTestMixin : public T {
     if (!instance->conversation_id().has_value()) {
       RegisterConversation(instance, conversation_id);
     }
-    instance->OnUserInputSubmitted(mojom::WebClientMode::kText);
+    instance->OnUserInputSubmitted(mojom::WebClientMode::kText,
+                                   mojom::PromptType::kUnspecified);
   }
 
   // Keeps a blank instance alive on close without registering a conversation.
@@ -462,7 +470,8 @@ class GlicBrowserTestMixin : public T {
       instance = GetOnlyGlicInstance();
     }
     CHECK(instance);
-    instance->OnUserInputSubmitted(mojom::WebClientMode::kText);
+    instance->OnUserInputSubmitted(mojom::WebClientMode::kText,
+                                   mojom::PromptType::kUnspecified);
   }
 
   void CloseAllEmbeddersAndPreventDeletion(
@@ -473,6 +482,12 @@ class GlicBrowserTestMixin : public T {
     CHECK(instance);
     PreventDeletionOnClose(instance);
     instance->CloseAllEmbedders();
+  }
+
+  [[nodiscard]] TestResult<> CloseAllEmbeddersAndWait(
+      GlicInstanceImpl* instance = nullptr) {
+    CloseAllEmbeddersAndPreventDeletion(instance);
+    return WaitForGlicClose(instance);
   }
 
   // Opens the Glic UI on the active tab and detaches it.
@@ -553,6 +568,16 @@ class GlicBrowserTestMixin : public T {
       return base::unexpected("Failed to close Glic UI");
     }
     return base::ok();
+  }
+
+  // Waits for the Glic instance to reach the expected hibernation state.
+  [[nodiscard]] TestResult<> WaitForGlicHibernated(
+      GlicInstanceImpl* instance,
+      bool expected_hibernated = true) {
+    return RunUntilEqual<bool>(
+        [instance]() { return instance->IsHibernated(); }, expected_hibernated,
+        base::StrCat({"Instance hibernation state != ",
+                      expected_hibernated ? "true" : "false"}));
   }
 
   // Closes Glic for a given tab and waits for it to close.

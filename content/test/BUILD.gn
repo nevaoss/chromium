@@ -16,7 +16,6 @@ import("//content/public/common/features.gni")
 import("//device/vr/buildflags/buildflags.gni")
 import("//extensions/buildflags/buildflags.gni")
 import("//media/media_options.gni")
-import("//mojo/features.gni")
 import("//mojo/public/tools/bindings/mojom.gni")
 import("//neva/neva.gni")
 import("//net/features.gni")
@@ -1616,6 +1615,7 @@ test("content_browsertests") {
     "../browser/media/session/media_session_impl_visibility_browsertest.cc",
     "../browser/media/session/media_session_service_impl_browsertest.cc",
     "../browser/media/webaudio/audio_context_manager_browsertest.cc",
+    "../browser/memory/partition_alloc_support_browsertest.cc",
     "../browser/memory/scheduler_loop_quarantine_web_contents_observer_browsertest.cc",
     "../browser/memory_coordinator/memory_coordinator_browsertest.cc",
     "../browser/message_port_close_event_browsertest.cc",
@@ -1929,8 +1929,8 @@ test("content_browsertests") {
     "//components/metrics/dwa:dwa_builders",
     "//components/metrics/private_metrics",
     "//components/network_session_configurator/common",
-    "//components/os_crypt/async/browser:key_provider_interface",
-    "//components/os_crypt/async/browser:test_support",
+    "//components/os_crypt/browser:key_provider_interface",
+    "//components/os_crypt/browser:test_support",
     "//components/payments/mojom",
     "//components/performance_manager",
     "//components/permissions:permissions_common",
@@ -2412,24 +2412,6 @@ test("content_browsertests") {
     deps += [ "//components/vrp_flags" ]
   }
 
-  if ((is_win || is_chromeos || is_linux) && !is_tsan &&
-      mojo_support_legacy_core) {
-    # NOTE: We don't bother to build these tests when TSan is enabled, because
-    # they can't properly launch a child content_shell in that environment.
-    sources += [ "../browser/launch_as_mojo_client_browsertest.cc" ]
-    deps += [
-      "//components/variations",
-      "//components/variations/field_trial_config",
-      "//content/shell:shell_controller_mojom",
-      "//mojo/public/cpp/platform",
-      "//mojo/public/mojom/base",
-    ]
-    data_deps += [ "//content/shell:content_shell" ]
-    if (use_ozone) {
-      deps += [ "//ui/ozone" ]
-    }
-  }
-
   if (!is_chrome_branded) {
     # These tests depend on single process mode, which is disabled
     # in official builds.
@@ -2707,6 +2689,7 @@ test("content_unittests") {
     "../browser/media/media_power_experiment_manager_unittest.cc",
     "../browser/media/media_web_contents_observer_unittest.cc",
     "../browser/media/midi_host_unittest.cc",
+    "../browser/media/provision_fetcher_impl_unittest.cc",
     "../browser/media/session/media_players_callback_aggregator_unittest.cc",
     "../browser/media/session/media_session_controller_unittest.cc",
     "../browser/media/session/media_session_controllers_manager_unittest.cc",
@@ -3664,9 +3647,11 @@ test("content_unittests") {
 
   # HID support is not available without udev.
   is_linux_without_udev = (is_linux || is_chromeos) && !use_udev
+  if (!is_linux_without_udev) {
+    sources += [ "../browser/hid/hid_service_unittest.cc" ]
+  }
   if (!is_linux_without_udev && !is_android) {
     sources += [
-      "../browser/hid/hid_service_unittest.cc",
       "../browser/service_worker/service_worker_hid_delegate_observer_unittest.cc",
       "../browser/webauth/authenticator_impl_cable_unittest.cc",
       "../browser/webauth/authenticator_impl_pin_unittest.cc",

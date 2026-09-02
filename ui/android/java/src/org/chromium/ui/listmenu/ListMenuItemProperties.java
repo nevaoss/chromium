@@ -70,6 +70,9 @@ public class ListMenuItemProperties {
     /** The width for the end icon. */
     public static final WritableIntPropertyKey END_ICON_WIDTH = new WritableIntPropertyKey();
 
+    /** The start margin for the end icon. */
+    public static final WritableIntPropertyKey END_ICON_MARGIN_START = new WritableIntPropertyKey();
+
     public static final WritableIntPropertyKey END_ICON_ID = new WritableIntPropertyKey();
     public static final WritableIntPropertyKey GROUP_ID = new WritableIntPropertyKey();
     public static final WritableIntPropertyKey MENU_ITEM_ID = new WritableIntPropertyKey();
@@ -106,6 +109,9 @@ public class ListMenuItemProperties {
 
     public static final WritableIntPropertyKey ORDER = new WritableIntPropertyKey();
 
+    public static final WritableBooleanPropertyKey CHECKABLE = new WritableBooleanPropertyKey();
+    public static final WritableBooleanPropertyKey CHECKED = new WritableBooleanPropertyKey();
+
     public static final PropertyKey[] ALL_KEYS = {
         TITLE_ID,
         TITLE,
@@ -118,6 +124,7 @@ public class ListMenuItemProperties {
         START_ICON_BITMAP,
         START_ICON_WIDTH,
         END_ICON_WIDTH,
+        END_ICON_MARGIN_START,
         END_ICON_ID,
         GROUP_ID,
         MENU_ITEM_ID,
@@ -135,6 +142,8 @@ public class ListMenuItemProperties {
         TOUCH_LISTENER,
         GENERIC_MOTION_LISTENER,
         LONG_CLICK_LISTENER,
-        ORDER
+        ORDER,
+        CHECKABLE,
+        CHECKED
     };
 }

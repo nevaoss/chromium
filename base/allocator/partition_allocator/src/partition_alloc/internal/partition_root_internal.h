@@ -11,6 +11,7 @@
 #include "partition_alloc/address_pool_manager_types.h"
 #include "partition_alloc/allocation_guard.h"
 #include "partition_alloc/bucket_lookup.h"
+#include "partition_alloc/buildflags.h"
 #include "partition_alloc/in_slot_metadata.h"
 #include "partition_alloc/internal/partition_page_internal.h"
 #include "partition_alloc/internal/reservation_offset_table_internal.h"
@@ -103,8 +104,20 @@ PA_NOINLINE PA_MALLOC_FN void* PartitionRoot::AllocInternalForTesting(
 }
 
 PA_ALWAYS_INLINE size_t
-PartitionRoot::GetSlotUsableSize(const SlotSpanMetadata* slot_span) {
+PartitionRoot::GetSlotUsableSize(const SlotSpanMetadata* slot_span) const {
   return AdjustSizeForExtrasSubtract(slot_span->GetUtilizedSlotSize());
+}
+
+PA_ALWAYS_INLINE size_t PartitionRoot::GetSlotUsableSize(
+    const internal::BucketSizeDetails& size_details,
+    SlotSpanMetadata* slot_span) const {
+  if (size_details.slot_size <= kThreadCacheLargeSizeThreshold) [[likely]] {
+    PA_DCHECK(!slot_span->CanStoreRawSize());
+    auto usable_size = AdjustSizeForExtrasSubtract(size_details.slot_size);
+    PA_DCHECK(usable_size == GetSlotUsableSize(slot_span));
+    return usable_size;
+  }
+  return GetSlotUsableSize(slot_span);
 }
 
 PA_ALWAYS_INLINE PartitionRoot::BucketDistribution
@@ -684,10 +697,12 @@ PA_ALWAYS_INLINE void PartitionRoot::FreeNoHooksImmediateInternal(
 #if PA_BUILDFLAG(ENABLE_BACKUP_REF_PTR_SUPPORT)
     PA_CHECK(!brp_enabled());
 #endif
+    uint32_t type_id = internal::kIntendedLeakUnknownTypeId;
     if constexpr (ContainsFlags(flags, FreeFlags::kWithTypeIdHint)) {
-      Zap(slot_start, slot_span, hint.type_id);
-      RecordLeakSizePerTypeId(hint.type_id, size_details.slot_size);
+      type_id = hint.type_id;
     }
+    Zap(slot_start, slot_span, type_id);
+    RecordLeakSizePerTypeId(type_id, size_details.slot_size);
     intended_leak_size_.fetch_add(size_details.slot_size);
     return;  // Leak
   }
@@ -1122,18 +1137,6 @@ bool PartitionRoot::TryRecommitSystemPagesForDataLocked(
       address, length, accessibility_disposition, request_tagging);
 }
 
-PA_ALWAYS_INLINE size_t PartitionRoot::GetSlotUsableSize(
-    const internal::BucketSizeDetails& size_details,
-    SlotSpanMetadata* slot_span) {
-  if (size_details.slot_size <= kThreadCacheLargeSizeThreshold) [[likely]] {
-    PA_DCHECK(!slot_span->CanStoreRawSize());
-    auto usable_size = AdjustSizeForExtrasSubtract(size_details.slot_size);
-    PA_DCHECK(usable_size == GetSlotUsableSize(slot_span));
-    return usable_size;
-  }
-  return GetSlotUsableSize(slot_span);
-}
-
 // Returns the page configuration to use when mapping slot spans for a given
 // partition root. ReadWriteTagged is used on MTE-enabled systems for
 // PartitionRoots supporting it.
@@ -1535,10 +1538,10 @@ PartitionRoot::GetAdjustedSizeForAlignment(size_t alignment,
   // slot span are aligned to slot size, from the beginning of the span.
   //
   // For alignments <=PartitionPageSize(), the code below adjusts the request
-  // size to be a power of two, no less than alignment. Since slot spans are
-  // aligned to PartitionPageSize(), which is also a power of two, this will
-  // automatically guarantee alignment on the adjusted size boundary, thanks to
-  // the natural alignment described above.
+  // size to be a multiple of alignment, no less than alignment. Since slot
+  // spans are aligned to PartitionPageSize(), which is a multiple of alignment,
+  // every slot in the slot span will automatically guarantee alignment on the
+  // adjusted size boundary, thanks to the natural alignment described above.
   //
   // For alignments >PartitionPageSize(), we need to pass the request down the
   // stack to only give us a slot span aligned to this more restrictive
@@ -1559,6 +1562,7 @@ PartitionRoot::GetAdjustedSizeForAlignment(size_t alignment,
   PA_CHECK(std::has_single_bit(alignment));
   // Catch unsupported alignment requests early.
   PA_CHECK(alignment <= internal::kMaxSupportedAlignment);
+  PA_CHECK(requested_size <= MaxAllocationSize());
 
   // Memory returned by the regular allocator *always* respects |kAlignment|,
   // which is a power of two, and any valid alignment is also a power of two.
@@ -1576,13 +1580,18 @@ PartitionRoot::GetAdjustedSizeForAlignment(size_t alignment,
     if (raw_size < alignment) [[unlikely]] {
       raw_size = alignment;
     } else {
-      // PartitionAlloc only guarantees alignment for power-of-two sized
-      // allocations. To make sure this applies here, round up the allocation
-      // size.
-      raw_size = static_cast<size_t>(1)
-                 << (int{sizeof(size_t) * 8} - std::countl_zero(raw_size - 1));
+      if (settings_.use_tighter_aligned_alloc_bound) {
+        raw_size = internal::base::bits::AlignUp(raw_size, alignment);
+      } else {
+        // PartitionAlloc only guarantees alignment for power-of-two sized
+        // allocations. To make sure this applies here, round up the allocation
+        // size.
+        raw_size = static_cast<size_t>(1) << (int{sizeof(size_t) * 8} -
+                                              std::countl_zero(raw_size - 1));
+        PA_DCHECK(std::has_single_bit(raw_size));
+      }
     }
-    PA_DCHECK(std::has_single_bit(raw_size));
+    PA_DCHECK(raw_size % alignment == 0);
     // Adjust back, because AllocInternalNoHooks/Alloc will adjust it again.
     adjusted_size = AdjustSizeForExtrasSubtract(raw_size);
     // TODO(crbug.com/491627887): Remove this metric once we've confirmed the
@@ -1601,6 +1610,20 @@ template <AllocFlags flags>
 PA_ALWAYS_INLINE void* PartitionRoot::AlignedAllocInline(
     size_t alignment,
     size_t requested_size) {
+  // Reject excessive allocation sizes early before
+  // GetAdjustedSizeForAlignment() performs power-of-two size rounding, which
+  // would otherwise risk integer overflow or shifting by 32 bits on 32-bit
+  // platforms. Other allocation paths (Alloc, Realloc(nullptr, ...)) do not
+  // perform prior size adjustment and are checked downstream in
+  // PartitionDirectMap.
+  if (requested_size > MaxAllocationSize()) [[unlikely]] {
+    if constexpr (ContainsFlags(flags, AllocFlags::kReturnNull)) {
+      return nullptr;
+    }
+    internal::PartitionExcessiveAllocationSize(requested_size);
+    PA_NOTREACHED();
+  }
+
   auto adjusted_size = GetAdjustedSizeForAlignment(alignment, requested_size);
 
   // Overflow check. adjusted_size must be larger or equal to requested_size.

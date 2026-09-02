@@ -334,4 +334,69 @@ TEST_F(PopupRowFactoryUtilsTest, RemoveAutofillAiRowView) {
       row_view().GetContentView().children().front()));
 }
 
+// Tests that when a `Suggestion` has `kAtMemorySearchResult` type, the
+// custom horizontal spacing between labels in the same row is applied.
+TEST_F(PopupRowFactoryUtilsTest, AtMemorySearchResultLabelsHorizontalSpacing) {
+  Suggestion suggestion(u"Main", SuggestionType::kAtMemorySearchResult);
+  suggestion.labels = {
+      {Suggestion::Text(u"Part1"), Suggestion::Text(u"Part2")}};
+  ShowSuggestion(suggestion);
+
+  views::Label* label1 =
+      FindLabelWithText(&row_view().GetContentView(), u"Part1");
+  ASSERT_THAT(label1, NotNull());
+
+  auto* container = views::AsViewClass<views::BoxLayoutView>(label1->parent());
+  ASSERT_THAT(container, NotNull());
+  EXPECT_EQ(container->GetBetweenChildSpacing(), 4);
+}
+
+// Tests that `kAtMemorySearchResult` suggestions have a multiline main text
+// label with max 2 lines and extra vertical padding when labels are present so
+// the row height isn't crammed.
+TEST_F(PopupRowFactoryUtilsTest, AtMemorySearchResultMultiLineAndHeight) {
+  EXPECT_CALL(controller(), GetMainFillingProduct())
+      .WillRepeatedly(testing::Return(FillingProduct::kAddress));
+
+  Suggestion suggestion(
+      u"Very long search result text that spans multiple lines",
+      SuggestionType::kAtMemorySearchResult);
+  suggestion.labels = {{Suggestion::Text(u"Label text")}};
+  ShowSuggestion(suggestion);
+
+  views::Label* label = FindLabelWithText(
+      &row_view().GetContentView(),
+      u"Very long search result text that spans multiple lines");
+  ASSERT_THAT(label, NotNull());
+  EXPECT_TRUE(label->GetMultiLine());
+  EXPECT_EQ(label->GetMaxLines(), 2u);
+  EXPECT_EQ(label->GetMaximumWidth(), 236);
+  EXPECT_EQ(label->GetHorizontalAlignment(), gfx::ALIGN_TO_HEAD);
+
+  gfx::Insets insets = row_view().GetContentView().GetInsideBorderInsets();
+  EXPECT_EQ(insets.top(), 8);
+  EXPECT_EQ(insets.bottom(), 8);
+}
+
+// Tests that `kAtMemorySearchResult` suggestions with short main text do not
+// get extra vertical padding.
+TEST_F(PopupRowFactoryUtilsTest, AtMemorySearchResultShortTextNoExtraPadding) {
+  EXPECT_CALL(controller(), GetMainFillingProduct())
+      .WillRepeatedly(testing::Return(FillingProduct::kAddress));
+
+  Suggestion suggestion(u"Paris", SuggestionType::kAtMemorySearchResult);
+  suggestion.labels = {{Suggestion::Text(u"Label text")}};
+  ShowSuggestion(suggestion);
+
+  views::Label* label =
+      FindLabelWithText(&row_view().GetContentView(), u"Paris");
+  ASSERT_THAT(label, NotNull());
+  EXPECT_TRUE(label->GetMultiLine());
+  EXPECT_EQ(label->GetMaxLines(), 2u);
+
+  gfx::Insets insets = row_view().GetContentView().GetInsideBorderInsets();
+  EXPECT_EQ(insets.top(), 0);
+  EXPECT_EQ(insets.bottom(), 0);
+}
+
 }  // namespace autofill

@@ -5,9 +5,9 @@
 import {isMac} from '//resources/js/platform.js';
 import {OmniboxEscapeAction, omniboxPopupBrowserProxyFactory, OmniboxPopupPageHandlerRemote, sanitizeTextForPaste, SearchboxBrowserProxy, stripJavascriptSchemas} from 'chrome://omnibox-popup.top-chrome/omnibox_popup.js';
 import type {OmniboxInputState, OmniboxPopupContextualEntrypointButtonElement, OmniboxPopupPageRemote, OmniboxPopupSearchboxElement} from 'chrome://omnibox-popup.top-chrome/omnibox_popup.js';
-import {createAutocompleteResultForTesting, createSearchMatchForTesting} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
+import {createAutocompleteResultForTesting, createMatchKeywordModelForTesting, createSearchMatchForTesting} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
-import {RenderType, SelectionLineState, SideType} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import {KeywordType, RenderType, SelectionLineState, SideType} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import type {TabInfo} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {TestMock} from 'chrome://webui-test/test_mock.js';
@@ -29,6 +29,7 @@ function createDefaultOmniboxInputState(overrides?: Partial<OmniboxInputState>):
     OmniboxInputState {
   return {
     sequenceNumber: 1,
+    tabId: 0,
     text: '',
     selection: {start: 0, end: 0},
     userInputInProgress: false,
@@ -1394,8 +1395,15 @@ suite('OmniboxPopupSearchboxTest', function() {
    assertEquals(0, sequenceNum);
 
    assertEquals(1, testProxy.handler.getCallCount('queryAutocomplete'));
-   const [_queryId, queryText, preventInline, _cursorPos, _inventory, isOnFocus] =
-       testProxy.handler.getArgs('queryAutocomplete')[0];
+   const [
+     _queryId,
+     _tabId,
+     queryText,
+     preventInline,
+     _cursorPos,
+     _inventory,
+     isOnFocus,
+   ] = testProxy.handler.getArgs('queryAutocomplete')[0];
    assertEquals('https://example.com', queryText);
    assertTrue(preventInline);
    assertFalse(isOnFocus);
@@ -2052,8 +2060,15 @@ suite('OmniboxPopupSearchboxTest', function() {
    assertEquals(11, searchbox.getInputElement().inputElement.selectionStart);
    assertEquals(11, searchbox.getInputElement().inputElement.selectionEnd);
    assertEquals(1, testProxy.handler.getCallCount('queryAutocomplete'));
-   const [_queryId, queryText, preventInline, cursorPos, _inventory, isOnFocus] =
-       testProxy.handler.getArgs('queryAutocomplete')[0];
+   const [
+     _queryId,
+     _tabId,
+     queryText,
+     preventInline,
+     cursorPos,
+     _inventory,
+     isOnFocus,
+   ] = testProxy.handler.getArgs('queryAutocomplete')[0];
    assertEquals('youtube.com', queryText);
    assertFalse(preventInline);
    assertEquals(11, cursorPos);
@@ -2082,5 +2097,113 @@ suite('OmniboxPopupSearchboxTest', function() {
    assertTrue(!!lastInput);
    assertEquals('', lastInput.inline);
    assertEquals('you', lastInput.text);
+ });
+
+ test('TabKeyPrioritizesKeywordEntryOverInlineAutocomplete', async () => {
+   const keyword = 'youtube.com';
+   const match = createSearchMatchForTesting({
+     allowedToBeDefaultMatch: true,
+     contents: 'youtube',
+     keywordModel: createMatchKeywordModelForTesting({
+       type: KeywordType.kChip,
+       keyword,
+       chipHint: 'Search YouTube',
+     }),
+   });
+   searchbox.activeQueryId = 0;
+   searchbox.onAutocompleteResultChanged(createAutocompleteResultForTesting({
+     queryId: 0,
+     input: 'you',
+     matches: [match],
+   }));
+   await microtasksFinished();
+
+   searchbox.focusInput();
+   searchbox.getInputElement().setInput({
+     text: 'you',
+     inline: 'tube.com',
+   });
+   await microtasksFinished();
+
+   const tabEvent = new KeyboardEvent('keydown', {
+     key: 'Tab',
+     cancelable: true,
+     bubbles: true,
+   });
+   await searchbox.handleKeyNavigation(tabEvent);
+   await microtasksFinished();
+
+   assertTrue(tabEvent.defaultPrevented);
+   assertTrue(searchbox.inputKeywordModel !== null);
+   assertEquals(KeywordType.kInKeyword, searchbox.inputKeywordModel.type);
+   assertEquals(keyword, searchbox.inputKeywordModel.keyword);
+   assertEquals('', searchbox.getInputElement().inputElement.value);
+ });
+
+ test('TabKeyFallsBackToInlineAutocompleteWhenNoKeywordChip', async () => {
+   const match = createSearchMatchForTesting({
+     allowedToBeDefaultMatch: true,
+     contents: 'youtube.com',
+   });
+   searchbox.activeQueryId = 0;
+   searchbox.onAutocompleteResultChanged(createAutocompleteResultForTesting({
+     queryId: 0,
+     input: 'you',
+     matches: [match],
+   }));
+   await microtasksFinished();
+
+   searchbox.focusInput();
+   searchbox.getInputElement().setInput({
+     text: 'you',
+     inline: 'tube.com',
+   });
+   await microtasksFinished();
+
+   const tabEvent = new KeyboardEvent('keydown', {
+     key: 'Tab',
+     cancelable: true,
+     bubbles: true,
+   });
+   await searchbox.handleKeyNavigation(tabEvent);
+   await microtasksFinished();
+
+   assertTrue(tabEvent.defaultPrevented);
+   assertEquals(null, searchbox.inputKeywordModel);
+   assertEquals('youtube.com', searchbox.getInputElement().inputElement.value);
+ });
+
+ test('FocusLostHidesAimButton', async () => {
+   // Explicitly set focus and enable AIM button visibility.
+   callbackRouter.setFocus(true);
+   testProxy.page.setAimButtonVisible(true);
+   await microtasksFinished();
+
+   const composeButton = searchbox.$.composeButton;
+   assertTrue(!!composeButton);
+   assertTrue(isVisible(composeButton));
+
+   // When focus is lost, AIM button should be hidden.
+   callbackRouter.setFocus(false);
+   await microtasksFinished();
+
+   assertFalse(isVisible(composeButton));
+
+   // Refocus, then type text into the Omnibox.
+   callbackRouter.setFocus(true);
+   searchbox.getInputElement().setInputText('temporary text');
+   testProxy.page.setAimButtonVisible(true);
+   await microtasksFinished();
+
+   assertTrue(isVisible(composeButton));
+
+   // If focus is lost with temporary text in the Omnibox, then AIM button
+   // should be hidden.
+   callbackRouter.setFocus(false);
+   await microtasksFinished();
+
+   assertFalse(isVisible(composeButton));
+   assertEquals(
+       'temporary text', searchbox.getInputElement().inputElement.value);
  });
 });

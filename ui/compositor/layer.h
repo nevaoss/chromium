@@ -105,6 +105,8 @@ class COMPOSITOR_EXPORT Layer : public LayerAnimationDelegate {
   const LayerNinePatch* AsNinePatch() const;
   LayerSurface* AsSurface();
   const LayerSurface* AsSurface() const;
+  LayerWithExternalTexture* AsWithExternalTexture();
+  const LayerWithExternalTexture* AsWithExternalTexture() const;
 
   Layer(const Layer&) = delete;
   Layer& operator=(const Layer&) = delete;
@@ -450,10 +452,6 @@ class COMPOSITOR_EXPORT Layer : public LayerAnimationDelegate {
   const std::string& name() const { return name_; }
   void SetName(const std::string& name);
 
-  // Returns true if the layer has external content, such as a surface layer or
-  // an external texture.
-  virtual bool HasExternalContent() const;
-
   // Returns true if the layer should schedule a paint when requested. By
   // default, this is true for layers with painted content or external
   // transferable resources, but false for layers that do not draw or draw
@@ -554,7 +552,7 @@ class COMPOSITOR_EXPORT Layer : public LayerAnimationDelegate {
   virtual void CommitDamage(const cc::Region& damage);
 
   void Destroy();
-  virtual void Reset() {}
+  virtual void Reset() = 0;
 
  private:
   friend class LayerOwner;
@@ -695,9 +693,9 @@ class COMPOSITOR_EXPORT Layer : public LayerAnimationDelegate {
 
   const LayerType type_;
 
-  raw_ptr<Compositor> compositor_;
+  raw_ptr<Compositor> compositor_ = nullptr;
 
-  raw_ptr<Layer> parent_;
+  raw_ptr<Layer> parent_ = nullptr;
 
   // This layer's children, in bottom-to-top stacking order.
   std::vector<raw_ptr<Layer, VectorExperimental>> children_;
@@ -716,7 +714,7 @@ class COMPOSITOR_EXPORT Layer : public LayerAnimationDelegate {
   std::unique_ptr<SubpixelPositionOffsetCache> subpixel_position_offset_;
 
   // Visibility of this layer. See SetVisible/IsVisible for more details.
-  bool visible_;
+  bool visible_ = true;
 
   // Whether or not the layer wants to receive hit testing events. When set to
   // false, the layer will be ignored in hit testing even if it is visible. It
@@ -724,42 +722,42 @@ class COMPOSITOR_EXPORT Layer : public LayerAnimationDelegate {
   bool accept_events_ = true;
 
   // See SetFillsBoundsOpaquely().
-  bool fills_bounds_opaquely_;
+  bool fills_bounds_opaquely_ = true;
 
   // Union of damaged rects, in layer space, that SetNeedsDisplayRect should
   // be called on.
   cc::Region damaged_region_;
 
-  float background_blur_sigma_;
+  float background_blur_sigma_ = 0.0f;
 
   bool background_inverted_ = false;
 
   // Several variables which will change the visible representation of
   // the layer.
-  float layer_saturation_;
-  float layer_brightness_;
-  float layer_grayscale_;
-  bool layer_inverted_;
-  float layer_blur_sigma_;
-  float layer_sepia_;
-  float layer_hue_rotation_;
+  float layer_saturation_ = 0.0f;
+  float layer_brightness_ = 0.0f;
+  float layer_grayscale_ = 0.0f;
+  bool layer_inverted_ = false;
+  float layer_blur_sigma_ = 0.0f;
+  float layer_sepia_ = 0.0f;
+  float layer_hue_rotation_ = 0.0f;
   std::unique_ptr<cc::FilterOperation::Matrix> layer_custom_color_matrix_;
   // Offset to apply when drawing pixels for the layer.
   gfx::Point layer_offset_;
 
   // The associated mask layer with this layer.
-  raw_ptr<Layer> layer_mask_;
+  raw_ptr<Layer> layer_mask_ = nullptr;
   // The back link from the mask layer to it's associated masked layer.
   // We keep this reference for the case that if the mask layer gets deleted
   // while attached to the main layer before the main layer is deleted.
-  raw_ptr<Layer> layer_mask_back_link_;
+  raw_ptr<Layer> layer_mask_back_link_ = nullptr;
 
   // The zoom factor to scale the layer by.  Zooming is disabled when this is
   // set to 1.
-  float zoom_;
+  float zoom_ = 1.0f;
 
   // Width of the border in pixels, where the scaling is blended.
-  int zoom_inset_;
+  int zoom_inset_ = 0;
 
   // Shape of the window.
   std::unique_ptr<ShapeRects> alpha_shape_;
@@ -771,23 +769,23 @@ class COMPOSITOR_EXPORT Layer : public LayerAnimationDelegate {
   base::ObserverList<LayerObserver>::UncheckedAndDanglingUntriaged
       observer_list_;
 
-  raw_ptr<LayerOwner> owner_;
+  raw_ptr<LayerOwner> owner_ = nullptr;
 
   scoped_refptr<LayerAnimator> animator_;
 
   // TODO(crbug.com/522627357): Move it subclasses and expose via a virtual
   // getter.
-  raw_ptr<cc::Layer> cc_layer_;
+  raw_ptr<cc::Layer> cc_layer_ = nullptr;
 
   // A cached copy of |Compositor::device_scale_factor()|.
-  float device_scale_factor_;
+  float device_scale_factor_ = 1.0f;
 
   // The counter to maintain how many cache render surface requests we have. If
   // the value > 0, means we need to cache the render surface. If the value
   // == 0, means we should not cache the render surface.
-  unsigned cache_render_surface_requests_;
+  unsigned cache_render_surface_requests_ = 0;
 
-  float backdrop_filter_quality_;
+  float backdrop_filter_quality_ = 1.0f;
 
   // True when SetBackdropFilterBounds() has been called explicitly, preventing
   // automatic bounds recomputation. Cleared by ClearBackdropFilterBounds().
@@ -797,7 +795,7 @@ class COMPOSITOR_EXPORT Layer : public LayerAnimationDelegate {
   // the value > 0, means we need to perform trilinear filtering on the layer.
   // If the value == 0, means we should not perform trilinear filtering on the
   // layer.
-  unsigned trilinear_filtering_request_;
+  unsigned trilinear_filtering_request_ = 0;
 
   // If true, scroll updates will not use the impl-side fast-path, and will be
   // applied to the main layer tree.

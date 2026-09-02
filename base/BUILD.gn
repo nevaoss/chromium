@@ -277,7 +277,6 @@ component("base") {
     "base64url.cc",
     "base64url.h",
     "base_switches.h",
-    "big_endian.h",
     "bit_cast.h",
     "bits.h",
     "byte_size.cc",
@@ -762,6 +761,7 @@ component("base") {
     "synchronization/lock_metrics_recorder.h",
     "synchronization/lock_metrics_recorder_tags.h",
     "synchronization/lock_subtle.h",
+    "synchronization/tagged_metric_lock.h",
     "synchronization/waitable_event.cc",
     "synchronization/waitable_event.h",
     "synchronization/waitable_event_watcher.h",
@@ -1306,6 +1306,8 @@ component("base") {
       "android/scoped_input_event.h",
       "android/scoped_service_binding_batch.cc",
       "android/scoped_service_binding_batch.h",
+      "android/screen_state_receiver.cc",
+      "android/screen_state_receiver.h",
       "android/self_compaction_manager.cc",
       "android/self_compaction_manager.h",
       "android/shared_preferences/shared_preferences_manager.cc",
@@ -1371,6 +1373,7 @@ component("base") {
       ":memory_jni",
       ":path_utils_jni",
       ":process_launcher_jni",
+      ":screen_state_receiver_jni",
       ":sys_utils_jni",
       ":system_jni($default_toolchain)",
       ":tasks_jni",
@@ -3263,7 +3266,7 @@ executable("containers_memory_benchmark") {
 
 test("base_perftests") {
   sources = [
-    "big_endian_perftest.cc",
+    "byte_conversions_perftest.cc",
     "hash/hash_perftest.cc",
     "json/json_perftest.cc",
     "memory/shared_memory_region_perftest.cc",
@@ -3932,6 +3935,7 @@ test("base_unittests") {
     "synchronization/condition_variable_unittest.cc",
     "synchronization/lock_metrics_recorder_unittest.cc",
     "synchronization/lock_unittest.cc",
+    "synchronization/tagged_metric_lock_unittest.cc",
     "synchronization/waitable_event_unittest.cc",
     "synchronization/waitable_event_watcher_unittest.cc",
     "sys_byteorder_unittest.cc",
@@ -4130,6 +4134,7 @@ test("base_unittests") {
     ":rust_feature_unittests",
     ":sanitizer_buildflags",
     "//base/allocator:buildflags",
+    "//base/i18n:test_support",
     "//base/i18n:unittests",
     "//base/i18n/icubridge:unittests",
     "//base/logging/rust_logger:unittests",
@@ -5524,11 +5529,17 @@ if (is_android) {
     ]
   }
 
+  generate_jni("screen_state_receiver_jni") {
+    sources = [ "android/java/src/org/chromium/base/ScreenStateReceiver.java" ]
+  }
+
   android_library("screen_state_receiver_java") {
     sources = [ "android/java/src/org/chromium/base/ScreenStateReceiver.java" ]
+    srcjar_deps = [ ":screen_state_receiver_jni" ]
     deps = [
       ":tasks_java",
       "//third_party/androidx:androidx_annotation_annotation_java",
+      "//third_party/jni_zero:jni_zero_java",
     ]
   }
 
@@ -5860,6 +5871,9 @@ if (is_android) {
       "android/java/src/org/chromium/base/BindingRequestQueue.java",
       "android/java/src/org/chromium/base/PasswordEchoSettingDelegate.java",
       "android/java/src/org/chromium/base/SelectionActionMenuClientWrapper.java",
+      "android/java/src/org/chromium/base/hid/HidDevice.java",
+      "android/java/src/org/chromium/base/hid/HidDeviceListener.java",
+      "android/java/src/org/chromium/base/hid/HidManager.java",
       "android/java/src/org/chromium/base/serial/SerialManager.java",
       "android/java/src/org/chromium/base/serial/SerialPort.java",
       "android/java/src/org/chromium/base/serial/SerialPortListener.java",

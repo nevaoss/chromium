@@ -12,6 +12,7 @@
 #include "chrome/browser/android/tab_android.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_tab_visit_tracker.h"
 #include "chrome/browser/enterprise/data_protection/data_protection_navigation_controller.h"
+#include "chrome/browser/enterprise/reporting/saas_usage/saas_usage_navigation_observer.h"
 #include "chrome/browser/enterprise/util/managed_browser_utils.h"
 #include "chrome/browser/flags/android/chrome_feature_list.h"
 #include "chrome/browser/glic/public/features.h"
@@ -25,6 +26,7 @@
 #include "chrome/browser/preloading/new_tab_page_preload/new_tab_page_preload_pipeline_manager.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ssl/ask_before_http_dialog_controller.h"
+#include "chrome/browser/ssl/connection_help_tab_helper.h"
 #include "chrome/browser/ssl/security_state_event_observer.h"
 #include "chrome/browser/sync/sessions/sync_sessions_router_tab_helper.h"
 #include "chrome/browser/sync/sessions/sync_sessions_web_contents_router_factory.h"
@@ -34,11 +36,13 @@
 #include "chrome/browser/ui/side_panel/internal/android/dev/side_panel_tab_scoped_dev_feature.h"
 #include "chrome/browser/ui/side_panel/side_panel_registry.h"
 #include "chrome/browser/ui/side_panel/side_panel_ui.h"
+#include "chrome/browser/ui/tabs/page_context_eligibility_helper.h"
 #include "chrome/browser/ui/webui/webui_embedding_context.h"
 #include "chrome/common/buildflags.h"
 #include "chrome/common/chrome_features.h"
 #include "components/actor/core/actor_features.h"
 #include "components/contextual_tasks/public/features.h"
+#include "components/enterprise/browser/reporting/reporting_features.h"
 #include "components/enterprise/data_protection/features.h"
 #include "components/favicon/content/content_favicon_driver.h"
 #include "components/search/ntp_features.h"
@@ -71,6 +75,10 @@ TabFeatures::TabFeatures(content::WebContents* web_contents, Profile* profile) {
 
   security_state_event_observer_ =
       std::make_unique<SecurityStateEventObserver>(web_contents);
+
+  connection_help_tab_helper_ =
+      GetUserDataFactory().CreateInstance<ConnectionHelpTabHelper>(
+          *tab, *tab, web_contents);
 
   if (base::FeatureList::IsEnabled(net::features::kVerifyQWACs)) {
     qwac_web_contents_observer_ =
@@ -138,6 +146,11 @@ TabFeatures::TabFeatures(content::WebContents* web_contents, Profile* profile) {
 
   glic_instance_helper_ =
       GetUserDataFactory().CreateInstance<glic::GlicInstanceHelper>(*tab, tab);
+
+  page_context_eligibility_helper_ =
+      GetUserDataFactory().CreateInstance<tabs::PageContextEligibilityHelper>(
+          *tab, *tab);
+
   if (base::FeatureList::IsEnabled(features::kGlicAndroidSidePanel) &&
       AndroidSidePanelEnabledFn::IsEnabled()) {
     glic_side_panel_coordinator_ =
@@ -158,6 +171,12 @@ TabFeatures::TabFeatures(content::WebContents* web_contents, Profile* profile) {
         std::make_unique<customize_chrome::SidePanelControllerAndroid>(*tab);
   }
 #endif
+
+  if (base::FeatureList::IsEnabled(enterprise_reporting::kSaasUsageReporting)) {
+    saas_usage_navigation_observer_ =
+        std::make_unique<enterprise_reporting::SaasUsageNavigationObserver>(
+            web_contents);
+  }
 }
 
 TabFeatures::~TabFeatures() = default;

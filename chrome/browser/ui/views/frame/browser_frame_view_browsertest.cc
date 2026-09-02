@@ -10,8 +10,8 @@
 #include "chrome/browser/themes/theme_service.h"
 #include "chrome/browser/themes/theme_service_factory.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/layout_constants.h"
 #include "chrome/browser/ui/page_action/page_action_icon_type.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
@@ -95,13 +95,13 @@ class BrowserFrameViewBrowserTest : public extensions::ExtensionBrowserTest {
 
     std::unique_ptr<web_app::WebAppInstallInfo> web_app_info =
         web_app::test::GetInstallInfoForCurrentManifest(
-            browser()->tab_strip_model()->GetActiveWebContents()->GetWeakPtr(),
+            browser()->GetTabStripModel()->GetActiveWebContents()->GetWeakPtr(),
             manifest);
 
     webapps::AppId app_id =
         web_app::test::InstallWebApp(profile(), std::move(web_app_info));
     app_browser_ = web_app::LaunchWebAppBrowser(profile(), app_id);
-    web_contents_ = app_browser_->tab_strip_model()->GetActiveWebContents();
+    web_contents_ = app_browser_->GetTabStripModel()->GetActiveWebContents();
     // Ensure the main page has loaded and is ready for ExecJs DOM
     // manipulation.
     ASSERT_TRUE(content::NavigateToURL(web_contents_, manifest.start_url));
@@ -118,7 +118,8 @@ class BrowserFrameViewBrowserTest : public extensions::ExtensionBrowserTest {
 
  protected:
   SkColor app_theme_color_ = SK_ColorBLUE;
-  raw_ptr<Browser, AcrossTasksDanglingUntriaged> app_browser_ = nullptr;
+  raw_ptr<BrowserWindowInterface, AcrossTasksDanglingUntriaged> app_browser_ =
+      nullptr;
   raw_ptr<BrowserView, AcrossTasksDanglingUntriaged> app_browser_view_ =
       nullptr;
   raw_ptr<content::WebContents, AcrossTasksDanglingUntriaged> web_contents_ =

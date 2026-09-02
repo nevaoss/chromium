@@ -83,6 +83,7 @@
 <translation id="1818308510395330587">Да бисте дозволили да <ph name="APP_NAME" /> користи ПР, укључите и камеру у <ph name="BEGIN_LINK" />Android подешавањима<ph name="END_LINK" />.</translation>
 <translation id="1822318649925991542">Промените положај да бисте прилагодили доживљај прегледања</translation>
 <translation id="1848033246551405023">Фонт Sans Serif</translation>
+<translation id="1861244985839668297">Када је укључено, сајтови могу да траже да користе HID уређаје. Када је искључено, сајтови не могу да користе HID уређаје.</translation>
 <translation id="1861262398884155592">Овај фолдер је празан</translation>
 <translation id="1881806992065048905">Доња табела за изглед странице нове картице</translation>
 <translation id="1887786770086287077">Приступ локацији је искључен за овај уређај. Укључите га у <ph name="BEGIN_LINK" />Android подешавањима<ph name="END_LINK" />.</translation>
@@ -590,7 +591,6 @@
 <translation id="7053983685419859001">Блокирај</translation>
 <translation id="7055552182600664515">Да би пуштали садржај заштићен ауторским правима, сајтови ће можда морати да користе услугу заштите садржаја. <ph name="BEGIN_LINK" />Сазнајте више<ph name="END_LINK" /></translation>
 <translation id="7066151586745993502">{NUM_SELECTED,plural, =1{Изабрано: 1}one{Изабрано: #}few{Изабрано: #}other{Изабрано: #}}</translation>
-<translation id="708014373017851679">Апликација <ph name="APP_NAME" /> је застарела. Ажурирајте апликацију.</translation>
 <translation id="7084115944294706056">Одаберите место траке за адресу</translation>
 <translation id="7087918508125750058">Изабрали сте <ph name="ITEM_COUNT" />. Опције су доступне при врху екрана</translation>
 <translation id="7141896414559753902">Блокирај приказивање искачућих прозора и преусмеравања на сајтовима (препоручено)</translation>

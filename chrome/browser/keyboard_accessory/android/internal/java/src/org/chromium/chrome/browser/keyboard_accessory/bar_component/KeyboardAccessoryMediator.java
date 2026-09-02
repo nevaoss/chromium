@@ -24,8 +24,10 @@ import android.content.Context;
 
 import androidx.annotation.StringRes;
 
+import org.chromium.base.DeviceInfo;
 import org.chromium.base.ObserverList;
 import org.chromium.base.TraceEvent;
+import org.chromium.base.TriState;
 import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
@@ -98,12 +100,12 @@ class KeyboardAccessoryMediator
     private final AccessorySheetCoordinator.SheetVisibilityDelegate mSheetVisibilityDelegate;
     private final TabSwitchingDelegate mTabSwitcher;
     private final Supplier<Integer> mBackgroundColorSupplier;
-    private final Supplier<Boolean> mIsLargeFormFactorSupplier;
     private final Profile mProfile;
     private final @Nullable ActionConfirmationDialog mDialog;
-    private @Nullable Boolean mHasFilteredTouchEvent;
     private final ObserverList<KeyboardAccessoryVisualStateProvider.Observer> mVisualObservers =
             new ObserverList<>();
+
+    private @TriState int mHasFilteredTouchEvent;
 
     KeyboardAccessoryMediator(
             Context context,
@@ -115,7 +117,6 @@ class KeyboardAccessoryMediator
             TabSwitchingDelegate tabSwitcher,
             KeyboardAccessoryButtonGroupCoordinator.SheetOpenerCallbacks sheetOpenerCallbacks,
             Supplier<Integer> backgroundColorSupplier,
-            Supplier<Boolean> isLargeFormFactorSupplier,
             Runnable dismissRunnable) {
         mContext = context;
         mModel = model;
@@ -124,7 +125,6 @@ class KeyboardAccessoryMediator
         mSheetVisibilityDelegate = sheetVisibilityDelegate;
         mTabSwitcher = tabSwitcher;
         mBackgroundColorSupplier = backgroundColorSupplier;
-        mIsLargeFormFactorSupplier = isLargeFormFactorSupplier;
         mDialog =
                 modalDialogManager != null
                         ? new ActionConfirmationDialog(context, modalDialogManager)
@@ -477,12 +477,12 @@ class KeyboardAccessoryMediator
         if (mModel.get(DISMISS_ITEM) != null) {
             mModel.get(DISMISS_ITEM).setEnabled(true);
         }
-        if (!(mHasFilteredTouchEvent == null || mHasFilteredTouchEvent)) {
+        if (mHasFilteredTouchEvent == TriState.FALSE) {
             // Log the metric if the accessory received touch events, but none of them were
             // filtered.
             ManualFillingMetricsRecorder.recordHasFilteredTouchEvents(false);
         }
-        mHasFilteredTouchEvent = null;
+        mHasFilteredTouchEvent = TriState.NOT_SET;
     }
 
     @Override
@@ -535,16 +535,16 @@ class KeyboardAccessoryMediator
 
     private void onTouchEvent(boolean eventFiltered) {
         if (!eventFiltered) {
-            if (mHasFilteredTouchEvent == null) {
-                mHasFilteredTouchEvent = false;
+            if (mHasFilteredTouchEvent == TriState.NOT_SET) {
+                mHasFilteredTouchEvent = TriState.FALSE;
             }
             return;
         }
-        if (mHasFilteredTouchEvent == null || !mHasFilteredTouchEvent) {
+        if (mHasFilteredTouchEvent != TriState.TRUE) {
             // Log the metric if none of the previous touch events were filtered.
             ManualFillingMetricsRecorder.recordHasFilteredTouchEvents(true);
         }
-        mHasFilteredTouchEvent = true;
+        mHasFilteredTouchEvent = TriState.TRUE;
     }
 
     /**
@@ -672,7 +672,7 @@ class KeyboardAccessoryMediator
     }
 
     private boolean showFloatingKeyboardAccessory() {
-        return mIsLargeFormFactorSupplier.get()
+        return DeviceInfo.isDesktop()
                 && ChromeFeatureList.isEnabled(
                         ChromeFeatureList.AUTOFILL_ANDROID_DESKTOP_KEYBOARD_ACCESSORY_REVAMP);
     }

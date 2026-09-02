@@ -2019,7 +2019,6 @@ interface Document : Node
     method releaseEvents
     method replaceChildren
     method requestStorageAccess
-    method requestStorageAccessFor
     method startViewTransition
     method webkitCancelFullScreen
     method webkitExitFullscreen
@@ -2734,7 +2733,6 @@ interface Fence
 interface FencedFrameConfig
     attribute @@toStringTag
     method constructor
-    method setSharedStorageContext
 interface FetchLaterResult
     attribute @@toStringTag
     getter activated
@@ -9008,6 +9006,9 @@ interface SVGTextPathElement : SVGTextContentElement
     attribute TEXTPATH_METHODTYPE_ALIGN
     attribute TEXTPATH_METHODTYPE_STRETCH
     attribute TEXTPATH_METHODTYPE_UNKNOWN
+    attribute TEXTPATH_SIDETYPE_LEFT
+    attribute TEXTPATH_SIDETYPE_RIGHT
+    attribute TEXTPATH_SIDETYPE_UNKNOWN
     attribute TEXTPATH_SPACINGTYPE_AUTO
     attribute TEXTPATH_SPACINGTYPE_EXACT
     attribute TEXTPATH_SPACINGTYPE_UNKNOWN

@@ -21,7 +21,7 @@
 #include "chrome/browser/extensions/extension_browsertest.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/renderer_context_menu/render_view_context_menu_test_util.h"
-#include "chrome/browser/ui/browser.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/web_applications/test/isolated_web_app_test_utils.h"
 #include "chrome/browser/web_applications/isolated_web_apps/isolated_web_app_url_info.h"
@@ -570,12 +570,12 @@ IN_PROC_BROWSER_TEST_F(ProtocolHandlerRegistryOTRBrowserTest,
   ASSERT_TRUE(embedded_test_server()->Start());
   GURL handler_url = embedded_test_server()->GetURL("/custom_handler.html");
 
-  Browser* incognito_browser = CreateIncognitoBrowser();
+  BrowserWindowInterface* incognito_browser = CreateIncognitoBrowser();
   AddProtocolHandler("news", handler_url, incognito_browser->GetProfile());
 
   ASSERT_TRUE(
       ui_test_utils::NavigateToURL(incognito_browser, GURL("news:test")));
-  EXPECT_EQ(handler_url, incognito_browser->tab_strip_model()
+  EXPECT_EQ(handler_url, incognito_browser->GetTabStripModel()
                              ->GetActiveWebContents()
                              ->GetLastCommittedURL());
 }
@@ -615,12 +615,12 @@ IN_PROC_BROWSER_TEST_F(ProtocolHandlerRegistryOTRBrowserTest,
                              ->GetActiveWebContents()
                              ->GetLastCommittedURL());
 
-  Browser* incognito_browser = CreateIncognitoBrowser();
+  BrowserWindowInterface* incognito_browser = CreateIncognitoBrowser();
   EXPECT_FALSE(
       GetRegistry(incognito_browser->GetProfile())->IsHandledProtocol("news"));
   ASSERT_TRUE(
       ui_test_utils::NavigateToURL(incognito_browser, GURL("news:test")));
-  EXPECT_NE(handler_url, incognito_browser->tab_strip_model()
+  EXPECT_NE(handler_url, incognito_browser->GetTabStripModel()
                              ->GetActiveWebContents()
                              ->GetLastCommittedURL());
 }
@@ -635,9 +635,10 @@ IN_PROC_BROWSER_TEST_F(ChromeRegisterProtocolHandlerIsolatedWebAppsTest,
   ASSERT_OK_AND_ASSIGN(web_app::IsolatedWebAppUrlInfo url_info,
                        app->Install(profile()));
 
-  Browser* browser = LaunchWebAppBrowserAndWait(url_info.app_id());
+  BrowserWindowInterface* browser =
+      LaunchWebAppBrowserAndWait(url_info.app_id());
   content::WebContents* web_contents =
-      browser->tab_strip_model()->GetActiveWebContents();
+      browser->GetTabStripModel()->GetActiveWebContents();
 
   GURL protocol_url =
       url_info.origin().GetURL().Resolve("/index.html?params=%s");

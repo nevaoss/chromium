@@ -83,6 +83,7 @@
 <translation id="1818308510395330587">Để cho phép <ph name="APP_NAME" /> sử dụng công nghệ thực tế tăng cường (AR), hãy bật cả máy ảnh trong phần <ph name="BEGIN_LINK" />Cài đặt Android<ph name="END_LINK" />.</translation>
 <translation id="1822318649925991542">Di chuyển để tuỳ chỉnh trải nghiệm duyệt web của bạn</translation>
 <translation id="1848033246551405023">Phông chữ Sans Serif</translation>
+<translation id="1861244985839668297">Khi bạn bật tuỳ chọn này, các trang web có thể yêu cầu sử dụng thiết bị HID. Khi bạn tắt tuỳ chọn này, các trang web không thể sử dụng thiết bị HID.</translation>
 <translation id="1861262398884155592">Thư mục này trống</translation>
 <translation id="1881806992065048905">Bảng giao diện trang thẻ mới ở dưới cùng</translation>
 <translation id="1887786770086287077">Đã tắt quyền truy cập vị trí đối với thiết bị này. Hãy bật trong <ph name="BEGIN_LINK" />Cài đặt Android<ph name="END_LINK" />.</translation>
@@ -590,7 +591,6 @@
 <translation id="7053983685419859001">Chặn</translation>
 <translation id="7055552182600664515">Để phát nội dung được bảo vệ bản quyền, các trang web có thể cần dùng một dịch vụ bảo vệ nội dung <ph name="BEGIN_LINK" />Tìm hiểu thêm<ph name="END_LINK" /></translation>
 <translation id="7066151586745993502">{NUM_SELECTED,plural, =1{Đã chọn 1 mục}other{Đã chọn # mục}}</translation>
-<translation id="708014373017851679">"<ph name="APP_NAME" />" đã lỗi thời. Vui lòng cập nhật ứng dụng.</translation>
 <translation id="7084115944294706056">Chọn vị trí thanh địa chỉ</translation>
 <translation id="7087918508125750058">Đã chọn <ph name="ITEM_COUNT" /> mục. Bạn có thể sử dụng các tùy chọn ở gần đầu màn hình</translation>
 <translation id="7141896414559753902">Chặn trang web hiển thị cửa sổ bật lên và liên kết chuyển hướng (khuyên dùng)</translation>

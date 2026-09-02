@@ -30,11 +30,11 @@
 #include "chrome/browser/translate/chrome_translate_client.h"
 #include "chrome/browser/translate/translate_service.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_actions.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/content_settings/content_setting_bubble_model.h"
 #include "chrome/browser/ui/layout_constants.h"
@@ -64,6 +64,7 @@
 #include "chrome/browser/ui/views/location_bar/location_bar_actions.h"
 #include "chrome/browser/ui/views/location_bar/location_bar_layout.h"
 #include "chrome/browser/ui/views/location_bar/location_bar_util.h"
+#include "chrome/browser/ui/views/location_bar/location_icon_state_helper.h"
 #include "chrome/browser/ui/views/location_bar/location_icon_view.h"
 #include "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.h"
 #include "chrome/browser/ui/views/location_bar/selected_keyword_view.h"
@@ -100,12 +101,10 @@
 #include "components/contextual_search/input_state_model.h"
 #include "components/favicon/content/content_favicon_driver.h"
 #include "components/lens/lens_features.h"
-#include "components/omnibox/browser/autocomplete_classifier.h"
 #include "components/omnibox/browser/location_bar_model.h"
 #include "components/omnibox/browser/omnibox_client.h"
 #include "components/omnibox/browser/omnibox_field_trial.h"
 #include "components/omnibox/browser/omnibox_prefs.h"
-#include "components/omnibox/browser/omnibox_text_util.h"
 #include "components/omnibox/browser/page_classification_functions.h"
 #include "components/omnibox/browser/vector_icons.h"
 #include "components/omnibox/common/input_state.h"
@@ -115,7 +114,6 @@
 #include "components/prefs/pref_service.h"
 #include "components/search_engines/template_url_service.h"
 #include "components/security_state/core/security_state.h"
-#include "content/public/browser/child_process_security_policy.h"
 #include "content/public/browser/navigation_entry.h"
 #include "content/public/browser/render_widget_host_view.h"
 #include "content/public/browser/web_contents.h"
@@ -125,7 +123,6 @@
 #include "third_party/skia/include/core/SkColor.h"
 #include "ui/accessibility/ax_enums.mojom.h"
 #include "ui/actions/actions.h"
-#include "ui/base/clipboard/clipboard.h"
 #include "ui/base/dragdrop/drag_drop_types.h"
 #include "ui/base/ime/input_method.h"
 #include "ui/base/ime/virtual_keyboard_controller.h"
@@ -187,7 +184,7 @@ using views::View;
 
 // LocationBarView -----------------------------------------------------------
 
-LocationBarView::LocationBarView(Browser* browser,
+LocationBarView::LocationBarView(BrowserWindowInterface* browser,
                                  Profile* profile,
                                  CommandUpdater* command_updater,
                                  Delegate* delegate,
@@ -1744,6 +1741,13 @@ void LocationBarView::OnPopupStateChanged(OmniboxPopupState old_state,
       }
       break;
     case OmniboxPopupState::kNone:
+      if (base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxFullPopup)) {
+        // When the popup is closed, remove focus from the location bar.
+        if (GetFocusManager()) {
+          GetFocusManager()->ClearFocus();
+        }
+        GetOmniboxController()->edit_model()->OnKillFocus();
+      }
       break;
   }
 
@@ -1841,6 +1845,14 @@ void LocationBarView::OnChanged() {
   TRACE_EVENT("omnibox", "LocationBarView::OnChanged");
   // Ensure that background colors get updated on tab-switch.
   RefreshBackground();
+
+  // In Full WebUI Omnibox popup mode, ensure the focus ring's visibility
+  // matches the final tab focus state on tab switches.
+  if (base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxFullPopup) &&
+      views::FocusRing::Get(this)) {
+    views::FocusRing::Get(this)->Refresh();
+  }
+
   location_icon_view_->Update(
       /*suppress_animations=*/false, GetOmniboxController()->IsPopupOpen());
   clear_all_button_->SetVisible(
@@ -2037,14 +2049,10 @@ void LocationBarView::OnLocationIconGestureEvent(ui::GestureEvent* event) {
 
 void LocationBarView::OnLocationIconPressed(const ui::MouseEvent& event) {
   // "Paste-and-Go" behavior should take priority over all other interactions.
-  if (event.IsOnlyMiddleMouseButton() &&
-      ui::Clipboard::IsMiddleClickPasteEnabled() &&
-      ui::Clipboard::IsSupportedClipboardBuffer(
-          ui::ClipboardBuffer::kSelection)) {
-    ui::Clipboard::GetForCurrentThread()->ReadText(
-        ui::ClipboardBuffer::kSelection, /* data_dst = */ std::nullopt,
-        base::BindOnce(&LocationBarView::OnMiddleClickPaste,
-                       weak_factory_.GetWeakPtr(), event.time_stamp()));
+  if (location_bar::InitiateMiddleClickPasteIfSupported(
+          event.IsOnlyMiddleMouseButton(),
+          base::BindOnce(&LocationBarView::OnMiddleClickPaste,
+                         weak_factory_.GetWeakPtr(), event.time_stamp()))) {
     return;
   }
 
@@ -2053,22 +2061,10 @@ void LocationBarView::OnLocationIconPressed(const ui::MouseEvent& event) {
 
 void LocationBarView::OnMiddleClickPaste(base::TimeTicks event_timestamp,
                                          std::u16string text) {
-  text = omnibox::SanitizeTextForPaste(text);
-
-  if (!GetOmniboxController()->edit_model()->CanPasteAndGo(text)) {
-    return;
-  }
-
-  AutocompleteMatch match;
-  AutocompleteClassifierFactory::GetForProfile(GetProfile())
-      ->Classify(text, false, false, metrics::OmniboxEventProto::BLANK, &match,
-                 nullptr);
-  if (!content::ChildProcessSecurityPolicy::GetInstance()->IsWebSafeScheme(
-          std::string(match.destination_url.scheme()))) {
-    return;
-  }
-
-  GetOmniboxController()->edit_model()->PasteAndGo(text, event_timestamp);
+  location_bar::ExecutePasteAndGo(
+      *GetOmniboxController(),
+      AutocompleteClassifierFactory::GetForProfile(GetProfile()), text,
+      event_timestamp);
 }
 
 void LocationBarView::OnLocationIconDragged(const ui::MouseEvent& event) {

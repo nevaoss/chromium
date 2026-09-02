@@ -5,6 +5,10 @@
 #ifndef CHROME_BROWSER_UI_OMNIBOX_OMNIBOX_EVERYWHERE_SERVICE_H_
 #define CHROME_BROWSER_UI_OMNIBOX_OMNIBOX_EVERYWHERE_SERVICE_H_
 
+#include <memory>
+
+#include "base/functional/callback.h"
+#include "base/functional/callback_helpers.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "components/keyed_service/core/keyed_service.h"
@@ -13,9 +17,20 @@
 #include "url/gurl.h"
 
 class Profile;
+class ScopedProfileKeepAlive;
+
+namespace user_education {
+class FeaturePromoController;
+}
+
+namespace content {
+class NavigationHandle;
+}
 
 namespace omnibox_everywhere {
 class OmniboxEverywhereController;
+class OmniboxEverywhereUIManager;
+class OmniboxEverywhereFeaturePromoController;
 }
 
 class OmniboxEverywhereService : public KeyedService {
@@ -25,24 +40,48 @@ class OmniboxEverywhereService : public KeyedService {
   OmniboxEverywhereService& operator=(const OmniboxEverywhereService&) = delete;
   ~OmniboxEverywhereService() override;
 
+  user_education::FeaturePromoController* feature_promo_controller();
+  const user_education::FeaturePromoController* feature_promo_controller()
+      const;
+
   virtual void HidePopup();
   virtual bool IsPopupVisible() const;
+  virtual bool IsPopupVisibleForProfile() const;
   virtual void ShowProfilePicker();
-
+  virtual void OnDrivePickerOpened();
+  virtual void OnDrivePickerClosed();
+  void OnScreensharePickerOpened();
+  void OnScreensharePickerClosed();
+  void OpenUrl(const GURL& url,
+               WindowOpenDisposition disposition,
+               ui::PageTransition transition);
   virtual void OpenUrl(const GURL& url,
                        WindowOpenDisposition disposition,
-                       ui::PageTransition transition);
+                       ui::PageTransition transition,
+                       base::OnceCallback<void(content::NavigationHandle&)>
+                           navigation_handle_callback);
+
+  // Acquires a ScopedProfileKeepAlive for this profile while the popup widget
+  // is active or being shown. Returns true if profile keep alive was acquired
+  // successfully, false otherwise.
+  bool AcquireProfileKeepAlive();
+
+  // Releases the ScopedProfileKeepAlive when the popup widget is hidden or
+  // closed.
+  void ReleaseProfileKeepAlive();
 
   // KeyedService:
   void Shutdown() override;
 
-  virtual void OnDrivePickerOpened();
-  virtual void OnDrivePickerClosed();
-
  private:
   omnibox_everywhere::OmniboxEverywhereController* controller() const;
+  omnibox_everywhere::OmniboxEverywhereUIManager* ui_manager() const;
 
   raw_ptr<Profile> profile_;
+  std::unique_ptr<omnibox_everywhere::OmniboxEverywhereFeaturePromoController>
+      feature_promo_controller_;
+
+  std::unique_ptr<ScopedProfileKeepAlive> profile_keep_alive_;
 
   base::WeakPtrFactory<OmniboxEverywhereService> weak_factory_{this};
 };

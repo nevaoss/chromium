@@ -1916,6 +1916,11 @@ HTMLElement* Element::GetOpenPopoverTarget() const {
     return nullptr;
   }
   CHECK_EQ(popover->GetPopoverData()->invoker(), this);
+  if (FlatTreeTraversal::Contains(*popover, *this)) {
+    // See crbug.com/542274292: if the popover contains its own invoker,
+    // returning the popover will lead to loops.
+    return nullptr;
+  }
   return popover;
 }
 
@@ -2080,21 +2085,28 @@ void Element::HandlePointerEventsForInterestFor(
   }
 }
 
+void Element::HandleFocusEventsForInterestFor(FocusEvent* focus_event) {
+  if (!focus_event || !focus_event->isTrusted()) {
+    return;
+  }
+  if (focus_event->sourceCapabilities() &&
+      focus_event->sourceCapabilities()->firesTouchEvents()) {
+    return;
+  }
+  const AtomicString& type = focus_event->type();
+  if (type == event_type_names::kFocusin) {
+    HandleInterestForHoverOrFocus(InterestSource::kFocus);
+  } else if (type == event_type_names::kFocusout) {
+    HandleInterestForHoverOrFocus(InterestSource::kBlur);
+  }
+}
+
 void Element::DefaultEventHandler(Event& event) {
-  if (InterestForElement() || SourceInterestInvoker() ||
-      GetInterestState() != InterestState::kNoInterest) [[unlikely]] {
+  if (event.isTrusted() && (InterestForElement() || SourceInterestInvoker() ||
+                            GetInterestState() != InterestState::kNoInterest))
+      [[unlikely]] {
     // Handle new `interestfor` activation via keyboard or long-press.
-    String type = event.type();
-    if (auto* focus_event = DynamicTo<FocusEvent>(event);
-        focus_event &&
-        (!focus_event->sourceCapabilities() ||
-         !focus_event->sourceCapabilities()->firesTouchEvents())) {
-      if (type == event_type_names::kFocusin) {
-        HandleInterestForHoverOrFocus(InterestSource::kFocus);
-      } else if (type == event_type_names::kFocusout) {
-        HandleInterestForHoverOrFocus(InterestSource::kBlur);
-      }
-    }
+    HandleFocusEventsForInterestFor(DynamicTo<FocusEvent>(event));
 
     // For long presses on buttons, no context menu will be generated, because
     // the UA stylesheet adds `user-select:none` in this case. However, this
@@ -2107,7 +2119,7 @@ void Element::DefaultEventHandler(Event& event) {
     // InterestState::kExplicitInterest.
     if (auto* button = DynamicTo<HTMLButtonElement>(this);
         button && IsA<GestureEvent>(event) &&
-        type == event_type_names::kGesturelongpress &&
+        event.type() == event_type_names::kGesturelongpress &&
         GetInterestState() == InterestState::kNoInterest) {
       // The pointer event manager will send a `pointerup` at the end of
       // this long-press, and (without intervention) that will immediately
@@ -4201,7 +4213,14 @@ Node::InsertionNotificationRequest Element::InsertedInto(
   // the checks will be re-run when slot assignment completes.
   auto* parent = ParentOrShadowHostElement();
   if (parent && parent->IsCanvasOrInCanvasSubtree()) {
-    SetIsInCanvasSubtree(true);
+    const bool is_light_dom_child_of_shadow_host =
+        parent->GetShadowRoot() && &insertion_point == parent;
+    const auto* slot = ToHTMLSlotElementIfSupportsAssignmentOrNull(*parent);
+    const bool is_inactive_fallback_content =
+        slot && !slot->AssignedNodesNoRecalc().empty();
+    if (!is_light_dom_child_of_shadow_host && !is_inactive_fallback_content) {
+      SetIsInCanvasSubtree(true);
+    }
   } else if (!parent && insertion_point.IsDocumentNode()) {
     auto* owner = GetDocument().LocalOwner();
     if (owner && owner->IsCanvasOrInCanvasSubtree()) {
@@ -4361,16 +4380,27 @@ void Element::VerifySubtreeIsInCanvas(bool value) {
     // in an iframe or nested), we should set the expected value back to true.
     value = true;
   }
+  // Traverse flat-tree children:
+  // 1. If this element is a shadow host, traverse its shadow root (slotted
+  //    light DOM children will be reached via <slot>).
+  // 2. If this element is a slot with assigned nodes, traverse its assigned
+  //    nodes (skipping inactive fallback content).
+  // 3. Otherwise, traverse DOM children (for a slot with no assigned nodes,
+  //    this visits active fallback content).
   if (ShadowRoot* shadow_root = GetShadowRoot()) {
     for (Element& child : ElementTraversal::ChildrenOf(*shadow_root)) {
       child.VerifySubtreeIsInCanvas(value);
     }
-  }
-  if (auto* slot = ToHTMLSlotElementIfSupportsAssignmentOrNull(*this)) {
+  } else if (auto* slot = ToHTMLSlotElementIfSupportsAssignmentOrNull(*this);
+             slot && !slot->AssignedNodesNoRecalc().empty()) {
     for (Node* node : slot->AssignedNodesNoRecalc()) {
       if (auto* child = DynamicTo<Element>(node)) {
         child->VerifySubtreeIsInCanvas(value);
       }
+    }
+  } else {
+    for (Element& child : ElementTraversal::ChildrenOf(*this)) {
+      child.VerifySubtreeIsInCanvas(value);
     }
   }
   if (const auto* frame_owner = DynamicTo<HTMLFrameOwnerElement>(this)) {
@@ -4384,13 +4414,6 @@ void Element::VerifySubtreeIsInCanvas(bool value) {
     for (PseudoElement* pseudo_element : rare_data->GetPseudoElements()) {
       pseudo_element->VerifySubtreeIsInCanvas(value);
     }
-  }
-
-  for (Element& child : ElementTraversal::ChildrenOf(*this)) {
-    if (child.AssignedSlotWithoutRecalc()) {
-      continue;
-    }
-    child.VerifySubtreeIsInCanvas(value);
   }
 }
 #endif
@@ -4413,23 +4436,28 @@ void Element::SetIsInCanvasSubtree(bool value) {
     value = true;
   }
 
+  // Traverse flat-tree children:
+  // 1. If this element is a shadow host, traverse its shadow root (slotted
+  //    light DOM children will be reached via <slot>).
+  // 2. If this element is a slot with assigned nodes, traverse its assigned
+  //    nodes (skipping inactive fallback content).
+  // 3. Otherwise, traverse DOM children (for a slot with no assigned nodes,
+  //    this visits active fallback content).
   if (ShadowRoot* shadow_root = GetShadowRoot()) {
     for (Element& child : ElementTraversal::ChildrenOf(*shadow_root)) {
       child.SetIsInCanvasSubtree(value);
     }
-  }
-  if (auto* slot = ToHTMLSlotElementIfSupportsAssignmentOrNull(*this)) {
+  } else if (auto* slot = ToHTMLSlotElementIfSupportsAssignmentOrNull(*this);
+             slot && !slot->AssignedNodesNoRecalc().empty()) {
     for (Node* node : slot->AssignedNodesNoRecalc()) {
       if (auto* child = DynamicTo<Element>(node)) {
         child->SetIsInCanvasSubtree(value);
       }
     }
-  }
-  for (Element& child : ElementTraversal::ChildrenOf(*this)) {
-    if (!child.IsPseudoElement() && child.AssignedSlotWithoutRecalc()) {
-      continue;
+  } else {
+    for (Element& child : ElementTraversal::ChildrenOf(*this)) {
+      child.SetIsInCanvasSubtree(value);
     }
-    child.SetIsInCanvasSubtree(value);
   }
   if (const NodeRareData* rare_data = RareData()) {
     for (PseudoElement* pseudo_element : rare_data->GetPseudoElements()) {
@@ -4443,13 +4471,7 @@ bool Element::ComputeIsInCanvasSubtree() const {
   const Element* parent = nullptr;
   if (document.IsFlatTreeTraversalForbidden() ||
       document.IsInSlotAssignmentRecalc()) {
-    if (IsPseudoElement()) {
-      parent = ParentOrShadowHostElement();
-    } else if (const auto* slot = AssignedSlotWithoutRecalc()) {
-      parent = slot;
-    } else {
-      parent = ParentOrShadowHostElement();
-    }
+    parent = GetStyleRecalcParent();
   } else {
     parent = FlatTreeTraversal::ParentElementSkippingSlots(*this);
   }
@@ -4457,7 +4479,7 @@ bool Element::ComputeIsInCanvasSubtree() const {
     return parent->IsCanvasOrInCanvasSubtree();
   }
 
-  if (!isConnected()) {
+  if (!isConnected() || !IsDocumentElement()) {
     return false;
   }
 
@@ -4519,7 +4541,9 @@ const gfx::Transform* Element::GetUsedCanvasTransform() const {
   if (IsInCanvasSubtree() &&
       RuntimeEnabledFeatures::ElementCanvasTransformEnabled(
           GetExecutionContext())) {
-    return GetCanvasTransformInternal();
+    if (HasCanvasTransform() && CanvasForDrawing()) {
+      return GetCanvasTransformInternal();
+    }
   }
   return nullptr;
 }
@@ -8053,8 +8077,6 @@ void Element::ChildrenChanged(const ChildrenChange& change) {
   if (GetDocument().HasDirAttribute()) {
     AdjustDirectionalityIfNeededAfterChildrenChanged(change);
   }
-
-  AdjustContainerTimingIfNeededAfterChildrenChanged(change);
 }
 
 void Element::FinishParsingChildren() {
@@ -10551,7 +10573,7 @@ HTMLCanvasElement* Element::CanvasForDrawing() const {
           GetDocument().GetExecutionContext())) {
     return nullptr;
   }
-  if (!isConnected() || !IsInCanvasSubtree()) {
+  if (!isConnected() || !IsInCanvasSubtree() || IsPseudoElement()) {
     return nullptr;
   }
 
@@ -13020,9 +13042,14 @@ void AllSourceInterestInvokersRecursive(
     sources.insert(upstream);
     AllSourceInterestInvokersRecursive(*upstream, sources);
   }
-  if (Element* parent = target.parentElement();
+  if (Element* parent = FlatTreeTraversal::ParentElement(target);
       parent && !sources.Contains(parent)) {
     AllSourceInterestInvokersRecursive(*parent, sources);
+  } else if (target.isConnected()) {
+    if (Element* owner = target.GetDocument().LocalOwner();
+        owner && !sources.Contains(owner)) {
+      AllSourceInterestInvokersRecursive(*owner, sources);
+    }
   }
 }
 
@@ -13053,9 +13080,15 @@ void Element::HandleInterestForHoverOrFocus(InterestSource source) {
   if (!IsInTreeScope() || !GetDocument().IsActive()) {
     return;
   }
-  for (Node& node : FlatTreeTraversal::InclusiveAncestorsOf(*this)) {
-    if (Element* element = DynamicTo<Element>(node)) {
-      element->ScheduleInterestChangesIfNeeded(source);
+  Element* element = this;
+  while (element) {
+    element->ScheduleInterestChangesIfNeeded(source);
+    if (Element* parent = FlatTreeTraversal::ParentElement(*element)) {
+      element = parent;
+    } else if (element->isConnected()) {
+      element = element->GetDocument().LocalOwner();
+    } else {
+      break;
     }
   }
 }
@@ -13975,105 +14008,9 @@ Element* Element::ImplicitAnchorElement() const {
   return nullptr;
 }
 
-bool Element::RecalcSelfOrAncestorHasContainerTiming() const {
-  DCHECK(RuntimeEnabledFeatures::ContainerTimingEnabled(GetExecutionContext()));
-  if (IsHTMLElement()) {
-    if (FastHasAttribute(html_names::kContainertimingAttr)) {
-      return true;
-    } else if (HasContainerTimingIgnoreAttribute()) {
-      return false;
-    }
-  }
-  Node* parent = parentNode();
-  if (parent && parent->SelfOrAncestorHasContainerTiming()) {
-    return true;
-  }
-  return false;
-}
-
-void Element::UpdateDescendantHasContainerTiming(bool has_container_timing) {
-  DCHECK(RuntimeEnabledFeatures::ContainerTimingEnabled(GetExecutionContext()));
-  Element* element = ElementTraversal::FirstChild(*this);
-  while (element) {
-    if (element->IsHTMLElement()) {
-      if (element->FastHasAttribute(html_names::kContainertimingAttr) ||
-          element->HasContainerTimingIgnoreAttribute()) {
-        element = ElementTraversal::NextSkippingChildren(*element, this);
-        continue;
-      }
-    }
-    if (!has_container_timing) {
-      if (!element->SelfOrAncestorHasContainerTiming() ||
-          element->RecalcSelfOrAncestorHasContainerTiming()) {
-        element = ElementTraversal::NextSkippingChildren(*element, this);
-        continue;
-      }
-      element->ClearSelfOrAncestorHasContainerTiming();
-    } else {
-      if (element->SelfOrAncestorHasContainerTiming() ||
-          !element->RecalcSelfOrAncestorHasContainerTiming()) {
-        element = ElementTraversal::NextSkippingChildren(*element, this);
-        continue;
-      }
-      element->SetSelfOrAncestorHasContainerTiming();
-    }
-    element = ElementTraversal::Next(*element, this);
-  }
-}
-
 bool Element::HasContainerTimingIgnoreAttribute() const {
   return FastHasAttribute(html_names::kContainertimingignoreAttr) ||
          FastHasAttribute(html_names::kContainertimingIgnoreAttr);
-}
-
-bool Element::DoesChildContainerTimingNeedChange(const Node& node) const {
-  auto* element = DynamicTo<Element>(node);
-  if (element && element->IsHTMLElement() &&
-      (element->FastHasAttribute(html_names::kContainertimingAttr) ||
-       element->HasContainerTimingIgnoreAttribute())) {
-    return false;
-  }
-  return SelfOrAncestorHasContainerTiming() !=
-         node.SelfOrAncestorHasContainerTiming();
-}
-
-bool Element::ShouldAdjustContainerTimingForInsert(
-    const ChildrenChange& change) const {
-  if (change.type ==
-      ChildrenChangeType::kFinishedBuildingDocumentFragmentTree) {
-    for (Node& child : NodeTraversal::ChildrenOf(*this)) {
-      if (DoesChildContainerTimingNeedChange(child)) {
-        return true;
-      }
-    }
-    return false;
-  }
-  return DoesChildContainerTimingNeedChange(*change.sibling_changed);
-}
-
-void Element::AdjustContainerTimingIfNeededAfterChildrenChanged(
-    const ChildrenChange& change) {
-  if (!RuntimeEnabledFeatures::ContainerTimingEnabled(GetExecutionContext())) {
-    return;
-  }
-
-  // Prepaint mode does not maintain the SelfOrAncestorHasContainerTiming() node
-  // flag: newly inserted subtrees are attributed by the pre-paint attribution
-  // tracker on the next walk (new LayoutObjects default their
-  // ContainerTimingChanged bit to true, and the paint-invalidation walk reaches
-  // them), so this O(subtree) DOM traversal is unnecessary.
-  if (RuntimeEnabledFeatures::ContainerTimingPrepaintTraversalEnabled(
-          GetExecutionContext())) {
-    return;
-  }
-
-  if (!change.IsChildInsertion() ||
-      !ShouldAdjustContainerTimingForInsert(change)) {
-    return;
-  }
-
-  UpdateDescendantHasContainerTiming(
-      SelfOrAncestorHasContainerTiming() /* has_container_timing */);
 }
 
 void Element::SetHTMLUnsafeWithoutTrustedTypes(

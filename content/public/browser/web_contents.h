@@ -762,6 +762,10 @@ class WebContents : public PageNavigator, public base::SupportsUserData {
 
   virtual ui::AXMode GetAccessibilityMode() = 0;
 
+  // Notifies this WebContents that the platform accessibility parent of its
+  // primary main frame may have changed.
+  virtual void NotifyAccessibilityParentChanged() = 0;
+
   // Forces a reset of accessibility state in the instance's renderers.
   // Observers will receive a new accessibility tree.
   virtual void ResetAccessibility() = 0;
@@ -1692,11 +1696,13 @@ class WebContents : public PageNavigator, public base::SupportsUserData {
   // since the last navigation.
   virtual bool CompletedFirstVisuallyNonEmptyPaint() = 0;
 
-  // TODO(crbug.com/41379215): This is a simple mitigation to validate
-  // that an action that requires a user gesture actually has one in the
-  // trustworthy browser process, rather than relying on the untrustworthy
-  // renderer. This should be eventually merged into and accounted for in the
-  // user activation work: crbug.com/848778
+  // TODO(crbug.com/550284226): This is a simple mitigation to validate that an
+  // action that requires a user gesture actually has one in the trustworthy
+  // browser process, rather than relying on the untrustworthy renderer. This
+  // should be merged with the trusted user activation states tracked at frame
+  // granularity: crbug.com/40091540
+  //
+  // This is a page-wide signal and must not be used for frame-scoped actions.
   virtual bool HasRecentInteraction() = 0;
 
   // Returns the time ticks of the last user interaction.

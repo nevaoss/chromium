@@ -694,6 +694,18 @@
       <message name="IDS_IOS_AUTOFILL_AI_PREVIOUSLY_FILLED_SECTION_TITLE" desc="Title for the previously filled section in the Autofill AI suggestions popup. [iOS only]">
         Previously filled
       </message>
+      <message name="IDS_IOS_AUTOFILL_AI_PRIVATE_INFERENCE_NOTICE_GOT_IT" desc="Primary button label for the Private Inference notice bottom sheet. [iOS only]">
+        Got it
+      </message>
+      <message name="IDS_IOS_AUTOFILL_AI_PRIVATE_INFERENCE_NOTICE_SETTINGS" desc="Secondary button label for the Private Inference notice bottom sheet. [iOS only]">
+        Settings
+      </message>
+      <message name="IDS_IOS_AUTOFILL_AI_PRIVATE_INFERENCE_NOTICE_SUBTITLE" desc="Subtitle of the bottom sheet notice for Autofill AI Private Inference. [iOS only]">
+        Chrome can now detect and fill more forms with smarter form understanding. To do this, page content and URLs can be processed in a private space in the cloud. Manage in settings.
+      </message>
+      <message name="IDS_IOS_AUTOFILL_AI_PRIVATE_INFERENCE_NOTICE_TITLE" desc="Title of the bottom sheet notice for Autofill AI Private Inference. [iOS only]">
+        Smarter autofill, kept private
+      </message>
       <message name="IDS_IOS_AUTOFILL_AI_SAVED_LOCALLY_FOOTER" desc="The notice text displayed in the footer when the Autofill AI entity (ex. Passport, Vehicle info etc.) is saved locally. [iOS only]">
           Your info is saved to your device
       </message>
@@ -1498,6 +1510,15 @@
       <message name="IDS_IOS_BWG_IPH_TEXT" desc="Text for the BWG In-Product Help bubble.">
           You can open Gemini here
       </message>
+      <message name="IDS_IOS_BWG_LIGHTWEIGHT_PROMO_CONVENIENCE_TITLE" desc="Convenience variant main title text for the Lightweight Gemini First Run Experience.">
+          Ask anything, right where you are, with Gemini in Chrome
+      </message>
+      <message name="IDS_IOS_BWG_LIGHTWEIGHT_PROMO_DIVERSE_TITLE" desc="Diverse variant main title text for the Lightweight Gemini First Run Experience.">
+          Shop, plan and do more with Gemini in Chrome
+      </message>
+      <message name="IDS_IOS_BWG_LIGHTWEIGHT_PROMO_PAGE_SHARING_TITLE" desc="Page sharing variant main title text for the Lightweight Gemini First Run Experience.">
+          Ask about anything on your page with Gemini in Chrome
+      </message>
       <message name="IDS_IOS_BWG_LOCATION_BACK_BUTTON_TITLE" desc="The back button text of BWG location settings page.">
         Gemini
       </message>
@@ -1525,11 +1546,20 @@
       <message name="IDS_IOS_BWG_PROMO_CAROUSEL_GEMINI_IN_CHROME" desc="Product branding suffix text for the Gemini Promo carousel slide titles.">
           Gemini in Chrome
       </message>
+      <message name="IDS_IOS_BWG_PROMO_CAROUSEL_PLANNING_ANIMATION_ACCESSIBILITY_LABEL" desc="Accessibility label for the third Gemini Promo carousel slide animation.">
+          Prompt: Add this to my calendar, 3 of 3
+      </message>
       <message name="IDS_IOS_BWG_PROMO_CAROUSEL_PLANNING_TITLE" desc="Planning slide title text prefix for the Gemini Promo carousel.">
           Plan your weekend with
       </message>
+      <message name="IDS_IOS_BWG_PROMO_CAROUSEL_SHOPPING_ANIMATION_ACCESSIBILITY_LABEL" desc="Accessibility label for the second Gemini Promo carousel slide animation.">
+          Prompt: Which should I buy? 2 of 3
+      </message>
       <message name="IDS_IOS_BWG_PROMO_CAROUSEL_SHOPPING_TITLE" desc="Shopping slide title text prefix for the Gemini Promo carousel.">
           Shop confidently with
+      </message>
+      <message name="IDS_IOS_BWG_PROMO_CAROUSEL_SUMMARIZE_ANIMATION_ACCESSIBILITY_LABEL" desc="Accessibility label for the first Gemini Promo carousel slide animation.">
+          Prompt: Summarize this article, 1 of 3
       </message>
       <message name="IDS_IOS_BWG_PROMO_CAROUSEL_SUMMARIZE_TITLE" desc="Summarize slide title text prefix for the Gemini Promo carousel.">
           Sum it up with
@@ -1576,7 +1606,7 @@
       <message name="IDS_IOS_BWG_SETTINGS_PAGE_CONTENT_SHARING_TITLE" desc="The title text of page content sharing row in BWG settings page.">
         Share current tab
       </message>
-      <message name="IDS_IOS_BWG_VISUAL_RICH_PRIMARY_BUTTON" desc="Primary button text for the Visual Rich Gemini FRE page.">
+      <message name="IDS_IOS_BWG_VISUAL_RICH_PRIMARY_BUTTON" desc="Primary button text for the Gemini first run experience.">
           Start using Gemini
       </message>
       <message name="IDS_IOS_CALL_OMNIBOX_ACTION" desc="Call suggestion action button [iOS only]">
@@ -1830,6 +1860,9 @@
       </message>
       <message name="IDS_IOS_COMPOSEBOX_MODEL_SELECTOR_TITLE" desc="Title for the contextual menu section for selecting the AI model to us. [iOS only].">
         Gemini <ph name="VERSION_NUMBER">$1<ex>3</ex></ph> models
+      </message>
+      <message name="IDS_IOS_COMPOSEBOX_REMOVE_TOOL_ACCESSIBILITY_LABEL" desc="The accessibility announcement read by VoiceOver for the button that removes or deselects an active AI tool or feature chip (such as Canvas, Create, or Deep Search) from the composebox query when tapped. [iOS only].">
+        Remove <ph name="TOOL_NAME">$1<ex>Canvas</ex></ph>
       </message>
       <message name="IDS_IOS_COMPOSEBOX_SELECT_TAB_ACTION" desc="The contextual menu option for opening the tab picker for selection. [iOS only].">
         Tabs

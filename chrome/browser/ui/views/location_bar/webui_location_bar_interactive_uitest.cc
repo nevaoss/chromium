@@ -14,8 +14,8 @@
 #include "chrome/browser/autocomplete/shortcuts_backend_factory.h"
 #include "chrome/browser/history/history_service_factory.h"
 #include "chrome/browser/ui/accelerator_utils.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/toolbar_button_provider.h"
 #include "chrome/browser/ui/views/omnibox/omnibox_popup_aim_presenter.h"
@@ -65,7 +65,7 @@ DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kAimPopupWebViewId);
 DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kWebUIToolbarId);
 
 const WebContentsInteractionTestUtil::DeepQuery kOmniboxInputDeepQuery = {
-    "toolbar-app", "location-bar", "readonly-omnibox", "#textInput"};
+    "toolbar-app", "location-bar", "readonly-omnibox", "#textInput", "#input"};
 const WebContentsInteractionTestUtil::DeepQuery kOmniboxAdditionalText = {
     "toolbar-app", "location-bar", "readonly-omnibox", "#additionalText"};
 const WebContentsInteractionTestUtil::DeepQuery kOmniboxInlineAutocomplete = {

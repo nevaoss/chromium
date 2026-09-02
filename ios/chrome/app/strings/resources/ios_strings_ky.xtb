@@ -1294,6 +1294,7 @@
 <translation id="5238596603078743134"><ph name="BEGIN_BOLD" /><ph name="USERNAME" /><ph name="END_BOLD" /> эми <ph name="BEGIN_BOLD" /><ph name="WEBSITE" /><ph name="END_BOLD" /> вебсайтына Сырсөздөрдү башкаргычтын жардамы менен кирүүдө колдонуучу атыңызды жана сырсөзүңүздү колдоно алат.</translation>
 <translation id="5241106044372754566"><ph name="NAME" />, <ph name="EMAIL" /> аккаунтун учурда уюмуңуз тескейт. Аккаунт тандаңыз.</translation>
 <translation id="5242899254250321823">Вебсайттагы сырсөзүңүздү өзгөртүңүз</translation>
+<translation id="524751727772074981">Chrome'догу Gemini'дан каалаган нерсе жөнүндө сураңыз</translation>
 <translation id="5248640482715684545">Бул сайт башка колдонмону ачууга аракет кылып жатат.</translation>
 <translation id="5250371859659394278">Белгисиз булактан</translation>
 <translation id="525510229763628836">Кичирейтилди</translation>
@@ -1310,6 +1311,7 @@
 <translation id="5300589172476337783">Көрсөтүү</translation>
 <translation id="5311061401280561833">Камера менен микрофонду колдонууга уруксат берилди</translation>
 <translation id="5313967007315987356">Сайт кошуу</translation>
+<translation id="5315029634103634221">Gemini – жасалма интеллект жана ката кетириши мүмкүн. <ph name="BEGIN_LINK" />Google'га жөнөтүлгөн тиешелүү нерселер тууралуу кеңири маалымат<ph name="END_LINK" /></translation>
 <translation id="5315870524563628285">Өткөрүп алууга эч нерсе жок</translation>
 <translation id="5316356981864168850"><ph name="NUM_SUGGESTIONS" /> ичинен <ph name="INDEX" /></translation>
 <translation id="5317780077021120954">Сактоо</translation>

@@ -1294,6 +1294,7 @@
 <translation id="5238596603078743134"><ph name="BEGIN_BOLD" /><ph name="USERNAME" /><ph name="END_BOLD" /> හට <ph name="BEGIN_BOLD" /><ph name="WEBSITE" /><ph name="END_BOLD" /> වෙත පුරන්නට Google මුරපද කළමනාකරු භාවිත කරන විට දැන් ඔබේ පරිශීලක නාමය සහ මුරපදය භාවිත කළ හැක.</translation>
 <translation id="5241106044372754566"><ph name="NAME" />, <ph name="EMAIL" />, දැනට තෝරාගෙන ඇති ඔබේ සංවිධානය විසින් කළමනාකරණය කරනු ලැබේ. ගිණුමක් තෝරා ගන්න.</translation>
 <translation id="5242899254250321823">වෙබ් අඩවිය මත මුරපදය වෙනස් කරන්න</translation>
+<translation id="524751727772074981">ඔබ සිටින තැනම සිට, Chrome හි Gemini සමග ඕනෑම දෙයක් අසන්න</translation>
 <translation id="5248640482715684545">මෙම වෙබ් අඩවිය වෙනත් යෙදුමක් විවෘත කිරීමට උත්සාහ කරයි.</translation>
 <translation id="5250371859659394278">නොදන්නා මූලාශ්‍රයකින්</translation>
 <translation id="525510229763628836">කුඩා කරන ලදි</translation>
@@ -1310,6 +1311,7 @@
 <translation id="5300589172476337783">පෙන්වන්න</translation>
 <translation id="5311061401280561833">කැමරා සහ මයික්‍රෆෝන ප්‍රවේශයට ඉඩ දෙන ලදි</translation>
 <translation id="5313967007315987356">අඩවිය එක් කරන්න</translation>
+<translation id="5315029634103634221">Gemini යනු AI තාක්ෂණයක් වන බැවින් වැරදි සිදු වීමට ඉඩ ඇත. <ph name="BEGIN_LINK" />Google වෙත යවන ලද අදාළ දත්ත ගැන වැඩිදුර<ph name="END_LINK" /></translation>
 <translation id="5315870524563628285">ආයාත කිරීමට කිසිවක් නැත</translation>
 <translation id="5316356981864168850"><ph name="NUM_SUGGESTIONS" />න් <ph name="INDEX" /></translation>
 <translation id="5317780077021120954">සුරකින්න</translation>

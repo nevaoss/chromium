@@ -25,7 +25,6 @@
 #include "base/task/sequenced_task_runner.h"
 #include "base/test/task_environment.h"
 #include "build/build_config.h"
-#include "mojo/core/embedder/embedder.h"
 #include "mojo/core/handle_signals_state.h"
 #include "mojo/core/test/mojo_test_base.h"
 #include "mojo/core/test/test_utils.h"
@@ -505,13 +504,9 @@ TEST_P(MultiprocessMessagePipeTestWithPipeCount, PlatformHandlePassing) {
 }
 
 // Android multi-process tests are not executing the new process. This is flaky.
-INSTANTIATE_TEST_SUITE_P(
-    PipeCount,
-    MultiprocessMessagePipeTestWithPipeCount,
-    // TODO(https://crbug.com/439305148): Enable the 250 pipe case when
-    // ChannelPosix is fixed to safely support chunking of many-handle messages
-    // across multiple sendmsg() calls, rather than crashing the sender.
-    testing::Values(1u, 64u, 128u /*, 250u*/));
+INSTANTIATE_TEST_SUITE_P(PipeCount,
+                         MultiprocessMessagePipeTestWithPipeCount,
+                         testing::Values(1u, 64u, 128u, 255u));
 #endif
 
 DEFINE_TEST_CLIENT_WITH_PIPE(CheckMessagePipe, MultiprocessMessagePipeTest, h) {
@@ -1376,14 +1371,6 @@ DEFINE_TEST_CLIENT_TEST_WITH_PIPE(SpotaneouslyDyingProcess,
 
   VerifyEcho(parent, "!");
   WriteMessageWithHandles(parent, "receiver", &receiver, 1);
-
-  if (!IsMojoIpczEnabled()) {
-    // Wait for the pipe to actually appear as remote. Before this happens, it's
-    // possible for message transmission to be deferred to the IO thread, and
-    // sudden termination might preempt that work. Note that this is unnecessary
-    // (and PEER_REMOTE signals are unsupported anyway) with MojoIpcz.
-    WaitForSignals(sender, MOJO_HANDLE_SIGNAL_PEER_REMOTE);
-  }
 
   WriteMessage(sender, "ok");
   MojoClose(sender);

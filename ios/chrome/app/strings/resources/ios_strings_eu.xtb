@@ -1294,6 +1294,7 @@
 <translation id="5238596603078743134">Orain, <ph name="BEGIN_BOLD" /><ph name="USERNAME" /><ph name="END_BOLD" /> erabiltzaileak zure erabiltzaile-izena eta pasahitza erabil ditzake <ph name="BEGIN_BOLD" /><ph name="WEBSITE" /><ph name="END_BOLD" /> webgunean saioa hasteko Google-ren Pasahitz-kudeatzailea darabilenean.</translation>
 <translation id="5241106044372754566"><ph name="NAME" /> (<ph name="EMAIL" />) hautatuta dago. Erakundeak kudeatzen du. Aukeratu kontu bat.</translation>
 <translation id="5242899254250321823">Aldatu pasahitza webgunean</translation>
+<translation id="524751727772074981">Galdetu edozer gauza, zauden tokitik bertatik, Chrome-ko Gemini-rekin</translation>
 <translation id="5248640482715684545">Webgunea beste aplikazio bat irekitzen saiatzen ari da.</translation>
 <translation id="5250371859659394278">Iturburu ezezagun batetik abiarazi delako</translation>
 <translation id="525510229763628836">Minimizatuta</translation>
@@ -1310,6 +1311,7 @@
 <translation id="5300589172476337783">Erakutsi</translation>
 <translation id="5311061401280561833">Kamera eta mikrofonoa erabiltzeko baimenak eman dira</translation>
 <translation id="5313967007315987356">Gehitu webgunea</translation>
+<translation id="5315029634103634221">Gemini AA da, eta baliteke akatsak egitea. <ph name="BEGIN_LINK" />Google-ri bidaltzen zaizkion datu garrantzitsuei buruzko informazio gehiago<ph name="END_LINK" /></translation>
 <translation id="5315870524563628285">Ez dago ezer inportatzeko</translation>
 <translation id="5316356981864168850"><ph name="NUM_SUGGESTIONS" /> posiziotatik <ph name="INDEX" />garrena</translation>
 <translation id="5317780077021120954">Gorde</translation>

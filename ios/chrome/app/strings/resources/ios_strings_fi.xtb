@@ -1294,6 +1294,7 @@
 <translation id="5238596603078743134"><ph name="BEGIN_BOLD" /><ph name="USERNAME" /><ph name="END_BOLD" /> voi nyt käyttää käyttäjätunnustasi ja salasanaasi, kun hän kirjautuu osoitteeseen <ph name="BEGIN_BOLD" /><ph name="WEBSITE" /><ph name="END_BOLD" /> Googlen Salasanojen avulla.</translation>
 <translation id="5241106044372754566"><ph name="NAME" />, <ph name="EMAIL" />, organisaatiosi hallinnoima, tällä hetkellä valittu. Valitse tili.</translation>
 <translation id="5242899254250321823">Vaihda salasana verkkosivustolla</translation>
+<translation id="524751727772074981">Kysy mitä tahansa Gemini in Chromella</translation>
 <translation id="5248640482715684545">Sivusto yrittää avata toista sovellusta.</translation>
 <translation id="5250371859659394278">Tuntemattomasta lähteestä</translation>
 <translation id="525510229763628836">Pienennetty</translation>
@@ -1310,6 +1311,7 @@
 <translation id="5300589172476337783">Näytä</translation>
 <translation id="5311061401280561833">Pääsy kameraan ja mikrofoniin myönnetty</translation>
 <translation id="5313967007315987356">Lisää sivusto</translation>
+<translation id="5315029634103634221">Gemini on tekoäly ja voi tehdä virheitä. <ph name="BEGIN_LINK" />Lisätietoa Googlelle lähetetystä relevantista datasta<ph name="END_LINK" /></translation>
 <translation id="5315870524563628285">Ei tuotavia tietoja</translation>
 <translation id="5316356981864168850"><ph name="INDEX" />/<ph name="NUM_SUGGESTIONS" /></translation>
 <translation id="5317780077021120954">Tallenna</translation>

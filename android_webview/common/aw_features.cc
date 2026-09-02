@@ -12,6 +12,10 @@ namespace android_webview::features {
 
 // Alphabetical:
 
+// When enabled, creates a spare renderer for the default webview profile
+BASE_FEATURE(kCreateSpareRendererForDefaultProfile,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Post Chromium startup in the WebView constructor. Only has any effect
 // when kStartupNonBlockingWebViewConstructor is enabled.
 BASE_FEATURE(kPostChromiumStartupInWebViewConstructor,
@@ -86,6 +90,12 @@ const base::FeatureParam<double> kWebViewCodeCacheSizeLimitMultiplier{
 // Enables content restriction support in WebView.
 BASE_FEATURE(kWebViewContentRestrictionSupport,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Timeout duration for content restriction classification requests before
+// we give up and assume the platform is non-responsive.
+const base::FeatureParam<base::TimeDelta> kWebViewContentRestrictionTimeout{
+    &kWebViewContentRestrictionSupport, "WebViewContentRestrictionTimeout",
+    base::Seconds(10)};
 
 // Enables a simpler URL fixup implementation for URLs passed to CookieManager.
 BASE_FEATURE(kWebViewCookieManagerSimplerUrlFixups,
@@ -203,7 +213,7 @@ const base::FeatureParam<bool> kWebViewHttpCacheQuotaApiForceBackendInit{
     &kWebViewHttpCacheQuotaApi, "ForceBackendInit", true};
 
 // This enables WebView's hyperlink context menu.
-BASE_FEATURE(kWebViewHyperlinkContextMenu, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kWebViewHyperlinkContextMenu, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Controls whether we ignore duplicate navigations or not, in favor of
 // preserving the already ongoing navigation.
@@ -387,6 +397,13 @@ BASE_FEATURE(kWebViewSkipInterceptsForPrefetch,
 // When enabled, certain static methods in SharedStatics do not trigger startup.
 BASE_FEATURE(kWebViewStaticMethodsNotTriggerStartup,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Kill switch for updating RfhToIoThreadClientMap on SubFrameCreated IPC.
+// When enabled, the map is not updated from the SubFrameCreated IPC.
+// TODO(crbug.com/497094708): Remove this flag and apply
+// https://crrev.com/c/8159020 in ~5 months (~January 2027).
+BASE_FEATURE(kWebViewSubFrameCreatedDoNotUpdateClientMap,
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // A Feature used for WebView variations tests. Not used in production. Please
 // do not clean up this stale feature: we intentionally keep this feature flag

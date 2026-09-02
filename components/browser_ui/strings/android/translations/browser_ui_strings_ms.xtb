@@ -83,6 +83,7 @@
 <translation id="1818308510395330587">Untuk membolehkan <ph name="APP_NAME" /> menggunakan AR, hidupkan juga kamera dalam <ph name="BEGIN_LINK" />Tetapan Android<ph name="END_LINK" />.</translation>
 <translation id="1822318649925991542">Tukar kedudukan untuk menyesuaikan pengalaman penyemakan imbas anda</translation>
 <translation id="1848033246551405023">Fon Sans Serif</translation>
+<translation id="1861244985839668297">Apabila dihidupkan, laman dapat meminta untuk menggunakan peranti HID. Apabila dimatikan, laman tidak dapat menggunakan peranti HID.</translation>
 <translation id="1861262398884155592">Folder ini kosong</translation>
 <translation id="1881806992065048905">Helaian bawah penampilan halaman tab baharu</translation>
 <translation id="1887786770086287077">Akses lokasi dimatikan untuk peranti ini. Hidupkannya dalam <ph name="BEGIN_LINK" />Tetapan Android<ph name="END_LINK" />.</translation>
@@ -590,7 +591,6 @@
 <translation id="7053983685419859001">Sekat</translation>
 <translation id="7055552182600664515">Untuk memainkan kandungan yang dilindungi oleh hak cipta, laman mungkin perlu menggunakan perkhidmatan perlindungan kandungan. <ph name="BEGIN_LINK" />Ketahui lebih lanjut<ph name="END_LINK" /></translation>
 <translation id="7066151586745993502">{NUM_SELECTED,plural, =1{1 dipilih}other{# dipilih}}</translation>
-<translation id="708014373017851679">'<ph name="APP_NAME" />' sudah lapuk. Sila kemas kinikan apl.</translation>
 <translation id="7084115944294706056">Pilih kedudukan bar alamat</translation>
 <translation id="7087918508125750058"><ph name="ITEM_COUNT" /> dipilih. Pilihan tersedia berhampiran bahagian atas skrin</translation>
 <translation id="7141896414559753902">Sekat tapak daripada memaparkan tetingkap timbul dan ubah hala (disyorkan)</translation>

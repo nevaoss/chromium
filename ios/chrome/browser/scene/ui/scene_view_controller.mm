@@ -621,6 +621,9 @@ inline LayoutStateScenePassKey PassKey() {
 // Updates the layout of the scene views depending on the active layout strategy
 // (Constraints vs. Frames).
 - (void)updateLayoutForViews {
+  if (!self.isViewLoaded || !self.view.window) {
+    return;
+  }
   AppBarPosition position = self.layoutState.appBarPosition;
   _appBar.view.hidden = (position == AppBarPosition::kNone);
   if (IsFullscreenRefactoringEnabled()) {
@@ -632,8 +635,6 @@ inline LayoutStateScenePassKey PassKey() {
 
 // Applies Auto Layout constraints to views.
 - (void)applyConstraintsForLayoutWithPosition:(AppBarPosition)position {
-  UIView* view = self.view;
-
   // Ensure default constraints are active to avoid leaving the view
   // unconstrained if `_appBar` is hidden or missing.
   if (position == AppBarPosition::kNone || !_appBar) {
@@ -641,10 +642,7 @@ inline LayoutStateScenePassKey PassKey() {
       [self setupDefaultConstraints];
       [NSLayoutConstraint activateConstraints:_baseAssistantConstraints];
     }
-    return;
   }
-
-  [view layoutIfNeeded];
 }
 
 // Applies manual frames to views by combining insets from App Bar and Side

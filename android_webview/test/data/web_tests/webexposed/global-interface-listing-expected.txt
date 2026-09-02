@@ -957,6 +957,9 @@ interface CSSPositionValue : CSSStyleValue
     method constructor
     setter x
     setter y
+interface CSSPrivateRule : CSSRule
+    attribute @@toStringTag
+    method constructor
 interface CSSPropertyRule : CSSRule
     attribute @@toStringTag
     getter inherits
@@ -2156,7 +2159,6 @@ interface Document : Node
     method releaseEvents
     method replaceChildren
     method requestStorageAccess
-    method requestStorageAccessFor
     method setSequentialFocusStartingPoint
     method startViewTransition
     method webkitCancelFullScreen
@@ -2900,7 +2902,6 @@ interface Fence
 interface FencedFrameConfig
     attribute @@toStringTag
     method constructor
-    method setSharedStorageContext
 interface FetchLaterResult
     attribute @@toStringTag
     getter activated
@@ -3254,6 +3255,7 @@ interface GPUQueue
     method constructor
     method copyElementImageToTexture
     method copyExternalImageToTexture
+    method drawElementImageToTexture
     method onSubmittedWorkDone
     method submit
     method writeBuffer
@@ -4473,6 +4475,7 @@ interface HTMLInputElement : HTMLElement
     getter size
     getter src
     getter step
+    getter switch
     getter type
     getter useMap
     getter validationMessage
@@ -4533,6 +4536,7 @@ interface HTMLInputElement : HTMLElement
     setter size
     setter src
     setter step
+    setter switch
     setter type
     setter useMap
     setter value
@@ -6754,6 +6758,7 @@ interface Navigator
     method getGamepads
     method getUserMedia
     method javaEnabled
+    method playHaptics
     method queryHandwritingRecognizer
     method requestMIDIAccess
     method requestMediaKeySystemAccess
@@ -9249,11 +9254,15 @@ interface SVGTextPathElement : SVGTextContentElement
     attribute TEXTPATH_METHODTYPE_ALIGN
     attribute TEXTPATH_METHODTYPE_STRETCH
     attribute TEXTPATH_METHODTYPE_UNKNOWN
+    attribute TEXTPATH_SIDETYPE_LEFT
+    attribute TEXTPATH_SIDETYPE_RIGHT
+    attribute TEXTPATH_SIDETYPE_UNKNOWN
     attribute TEXTPATH_SPACINGTYPE_AUTO
     attribute TEXTPATH_SPACINGTYPE_EXACT
     attribute TEXTPATH_SPACINGTYPE_UNKNOWN
     getter href
     getter method
+    getter side
     getter spacing
     getter startOffset
     method constructor
@@ -10258,7 +10267,9 @@ interface VTTCue : TextTrackCue
     attribute @@toStringTag
     getter align
     getter line
+    getter lineAlign
     getter position
+    getter positionAlign
     getter region
     getter size
     getter snapToLines
@@ -10268,7 +10279,9 @@ interface VTTCue : TextTrackCue
     method getCueAsHTML
     setter align
     setter line
+    setter lineAlign
     setter position
+    setter positionAlign
     setter region
     setter size
     setter snapToLines

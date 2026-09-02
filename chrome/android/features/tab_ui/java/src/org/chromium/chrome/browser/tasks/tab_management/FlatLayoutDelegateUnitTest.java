@@ -25,6 +25,7 @@ import org.mockito.junit.MockitoRule;
 
 import org.chromium.base.Token;
 import org.chromium.base.test.BaseRobolectricTestRunner;
+import org.chromium.base.test.util.UserActionTester;
 import org.chromium.chrome.browser.tab.MediaState;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabLaunchType;
@@ -32,6 +33,7 @@ import org.chromium.chrome.browser.tab.TabSelectionType;
 import org.chromium.chrome.browser.tabmodel.TabGroupObserver;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tasks.tab_management.TabListMediator.TabGridDialogHandler;
+import org.chromium.chrome.browser.tasks.tab_management.TabListModel.CardProperties.ModelType;
 import org.chromium.ui.modelutil.MVCListAdapter.ListItem;
 import org.chromium.ui.modelutil.PropertyModel;
 
@@ -63,7 +65,9 @@ public class FlatLayoutDelegateUnitTest {
 
         when(mMediator.getCurrentTabModelChecked()).thenReturn(mTabModel);
         when(mTab1.getId()).thenReturn(TAB1_ID);
+        when(mTab1.isInitialized()).thenReturn(true);
         when(mTab2.getId()).thenReturn(TAB2_ID);
+        when(mTab2.isInitialized()).thenReturn(true);
     }
 
     @Test
@@ -74,6 +78,19 @@ public class FlatLayoutDelegateUnitTest {
     @Test
     public void testRequiresThumbnailUpdateOnSelect() {
         assertTrue(mDelegate.requiresThumbnailUpdateOnSelect());
+    }
+
+    @Test
+    public void testRecordTabSelection() {
+        when(mMediator.getComponentId()).thenReturn(TabComponentId.TAB_GRID_DIALOG_FROM_STRIP);
+        when(mTabModel.getTabById(TAB1_ID)).thenReturn(mTab1);
+
+        var userActionTester = new UserActionTester();
+        mDelegate.recordTabSelection(TAB1_ID);
+
+        assertTrue(
+                userActionTester.getActions().contains("MobileTabSwitched.TabGridDialogFromStrip"));
+        userActionTester.tearDown();
     }
 
     @Test
@@ -138,6 +155,16 @@ public class FlatLayoutDelegateUnitTest {
     }
 
     @Test
+    public void testTabClosureUndone() {
+        addTabsToModelList(TAB1_ID);
+        when(mMediator.getRelatedTabsForId(TAB1_ID)).thenReturn(List.of(mTab1, mTab2));
+
+        mDelegate.tabClosureUndone(mTab2);
+
+        verify(mMediator).addTabCardToModel(mTab2, 1);
+    }
+
+    @Test
     public void testOnFaviconUpdated() {
         addTabsToModelList(TAB1_ID);
         PropertyModel model = mModelList.get(0).model;
@@ -152,6 +179,57 @@ public class FlatLayoutDelegateUnitTest {
         mDelegate.onFaviconUpdated(mTab1, null, null);
 
         verify(mMediator, never()).updateFaviconForTab(any(), any(), any(), any());
+    }
+
+    @Test
+    public void testOnUrlUpdated() {
+        addTabsToModelList(TAB1_ID);
+        PropertyModel model = mModelList.get(0).model;
+        when(mMediator.getDomainForTab(mTab1, model)).thenReturn("example.com");
+
+        mDelegate.onUrlUpdated(mTab1);
+
+        assertEquals("example.com", model.get(TabProperties.URL_DOMAIN));
+        verify(mMediator).updateThumbnailFetcher(model, TAB1_ID);
+        verify(mMediator).updateFaviconForTab(model, mTab1, null, null);
+    }
+
+    @Test
+    public void testOnUrlUpdated_NotFound() {
+        mDelegate.onUrlUpdated(mTab1);
+
+        verify(mMediator, never()).getDomainForTab(any(), any());
+        verify(mMediator, never()).updateThumbnailFetcher(any(), anyInt());
+        verify(mMediator, never()).updateFaviconForTab(any(), any(), any(), any());
+    }
+
+    @Test
+    public void testOnMediaStateChanged() {
+        addTabsToModelList(TAB1_ID);
+        PropertyModel model = mModelList.get(0).model;
+        when(mMediator.getTabListMediaIndicator(mTab1, model)).thenReturn(MediaState.AUDIBLE);
+
+        mDelegate.onMediaStateChanged(mTab1, MediaState.AUDIBLE);
+
+        assertEquals(MediaState.AUDIBLE, model.get(TabProperties.MEDIA_INDICATOR));
+    }
+
+    @Test
+    public void testOnMediaStateChanged_UseShrinkCloseAnimation() {
+        addTabsToModelList(TAB1_ID);
+        PropertyModel model = mModelList.get(0).model;
+        model.set(TabProperties.USE_SHRINK_CLOSE_ANIMATION, true);
+
+        mDelegate.onMediaStateChanged(mTab1, MediaState.AUDIBLE);
+
+        verify(mMediator, never()).getTabListMediaIndicator(any(), any());
+    }
+
+    @Test
+    public void testOnMediaStateChanged_NotFound() {
+        mDelegate.onMediaStateChanged(mTab1, MediaState.AUDIBLE);
+
+        verify(mMediator, never()).getTabListMediaIndicator(any(), any());
     }
 
     @Test
@@ -170,6 +248,16 @@ public class FlatLayoutDelegateUnitTest {
         mDelegate.onTabClose(mTab2);
 
         assertModelListTabIds(TAB1_ID);
+    }
+
+    @Test
+    public void testSupportsTabGroups() {
+        assertFalse(mDelegate.supportsTabGroups());
+    }
+
+    @Test
+    public void testIsChildTabRepresentedByGroupCard() {
+        assertFalse(mDelegate.isChildTabRepresentedByGroupCard(mTab1));
     }
 
     @Test
@@ -379,6 +467,24 @@ public class FlatLayoutDelegateUnitTest {
         assertEquals(0, mDelegate.getUiIndexForTab(TAB1_ID));
         assertEquals(1, mDelegate.getUiIndexForTab(TAB2_ID));
         assertEquals(TabModel.INVALID_TAB_INDEX, mDelegate.getUiIndexForTab(3));
+    }
+
+    @Test
+    public void testGetGroupCardTypeAndIsGroupCollapsed() {
+        assertEquals(ModelType.TAB, mDelegate.getGroupCardType());
+        assertTrue(mDelegate.isGroupCollapsed(TAB_GROUP_ID));
+    }
+
+    @Test
+    public void testOnTabSelectionToggled_NoOp() {
+        PropertyModel model = new PropertyModel(TabProperties.ALL_KEYS_TAB_GRID);
+        mDelegate.onTabSelectionToggled(model, TAB1_ID, /* wasSelected= */ false);
+        verifyNoInteractions(mMediator);
+    }
+
+    @Test
+    public void testAreTabsInSameGroup_ReturnsFalse() {
+        assertFalse(mDelegate.areTabsInSameGroup(TAB1_ID, mTab2));
     }
 
     private void addTabsToModelList(int... tabIds) {

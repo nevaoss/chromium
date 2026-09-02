@@ -42,6 +42,7 @@ public class VoiceRecognitionUtil {
      *
      * <p>Note: this check does not perform strict policy checking.
      *
+     * @param androidPermissionDelegate Delegate used to query runtime permissions.
      * @return true if all the conditions permit execution of a voice search.
      */
     public static boolean isVoiceSearchEnabled(
@@ -84,7 +85,7 @@ public class VoiceRecognitionUtil {
         // Fail if strict policy checking is requested but we do not have the way to verify.
         if (strictPolicyCheck && prefService == null) return false;
 
-        return prefService == null || prefService.getBoolean(Pref.MANAGED_AUDIO_CAPTURE_ALLOWED);
+        return prefService == null || prefService.getBoolean(Pref.AUDIO_CAPTURE_ALLOWED);
     }
 
     /**

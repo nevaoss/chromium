@@ -864,7 +864,7 @@
 <translation id="3888863481921783344">Dit wordt gebruikt om je mogelijke genodigden voor je evenement te tonen.</translation>
 <translation id="3891414008432200754">Prijs</translation>
 <translation id="3892144330757387737">Hier vind je je geschiedenis</translation>
-<translation id="3892695492576181257">Als deze instelling aanstaat, wordt je activiteit 18 maanden opgeslagen in de Gemini Apps-activiteit. Je kunt dit wijzigen naar 3 of 36 maanden. Google gebruikt je activiteit om zijn services (waaronder Gemini-modellen) te ontwikkelen en te verbeteren, en om Google, zijn gebruikers en het publiek te beschermen met de hulp van menselijke reviewers. Gegevens die door menselijke reviewers worden beoordeeld, worden losgekoppeld van je account en worden 3 jaar bewaard.</translation>
+<translation id="3892695492576181257">Als deze instelling aanstaat, wordt je activiteit 18 maanden opgeslagen in de Gemini Apps-activiteit. Je kunt dit wijzigen naar 3 of 36 maanden. Google gebruikt je activiteit om zijn services (waaronder Gemini-modellen) te ontwikkelen en te verbeteren, en om Google, zijn gebruikers en het publiek te beschermen met de hulp van menselijke reviewers. Gegevens die door dienstverleners worden beoordeeld, worden losgekoppeld van je account en worden 3 jaar bewaard.</translation>
 <translation id="3893858854379998374">Verwijder je ongebruikte bookmarks om bookmarks op te slaan in je account</translation>
 <translation id="3897092660631435901">Menu</translation>
 <translation id="3904270275864974753">Carrousel bewerken</translation>
@@ -1294,6 +1294,7 @@
 <translation id="5238596603078743134"><ph name="BEGIN_BOLD" /><ph name="USERNAME" /><ph name="END_BOLD" /> kan nu je gebruikersnaam en wachtwoord gebruiken als die Google Wachtwoordmanager gebruikt om in te loggen bij <ph name="BEGIN_BOLD" /><ph name="WEBSITE" /><ph name="END_BOLD" />.</translation>
 <translation id="5241106044372754566"><ph name="NAME" />, <ph name="EMAIL" />, beheerd door je organisatie, is op dit moment geselecteerd. Kies een account.</translation>
 <translation id="5242899254250321823">Wachtwoord wijzigen op website</translation>
+<translation id="524751727772074981">Stel een vraag met Gemini in Chrome, zonder je tabblad te verlaten</translation>
 <translation id="5248640482715684545">Deze site probeert een andere app te openen.</translation>
 <translation id="5250371859659394278">Vanuit een onbekende bron</translation>
 <translation id="525510229763628836">Geminimaliseerd</translation>

@@ -51,6 +51,8 @@ import type {PresentationMenuElement} from '../menus/presentation_menu.js';
 import type {RateMenuElement} from '../menus/rate_menu.js';
 import type {SettingsMenuElement} from '../menus/settings_menu.js';
 import type {TextMenuElement} from '../menus/text_menu.js';
+import type {AudioBrowserProxy} from '../read_aloud/audio_browser_proxy.js';
+import {AudioBrowserProxyImpl} from '../read_aloud/audio_browser_proxy.js';
 import {getCurrentSpeechRate} from '../read_aloud/speech_presentation_rules.js';
 import type {VoiceSelectionMenuElement} from '../read_aloud/voice_selection_menu.js';
 import {minOverflowLengthToScroll, openMenu, spinnerDebounceTimeout} from '../shared/common.js';
@@ -60,6 +62,8 @@ import {ReadAnythingLogger, SpeechControls, TimeFrom} from '../shared/read_anyth
 
 import {getCss} from './read_anything_toolbar.css.js';
 import {getHtml} from './read_anything_toolbar.html.js';
+import type {VisualBrowserProxy} from './visual_browser_proxy.js';
+import {VisualBrowserProxyImpl} from './visual_browser_proxy.js';
 
 export interface ReadAnythingToolbarElement {
   $: {
@@ -177,7 +181,6 @@ export class ReadAnythingToolbarElement extends ReadAnythingToolbarElementBase {
       lineFocusStyle: {type: Object},
       lineFocusEnabled: {type: Boolean},
       lineFocusMovement: {type: Number},
-      showLineFocusNewBadge: {type: Boolean},
       webuiRoundedIconsEnabled_: {type: Boolean},
       isAiPlaybackActive: {type: Boolean},
       isAiPlaybackUiEnabled_: {type: Boolean},
@@ -210,9 +213,6 @@ export class ReadAnythingToolbarElement extends ReadAnythingToolbarElementBase {
   accessor lineFocusStyle: LineFocusStyle|null = null;
   accessor lineFocusEnabled: boolean = false;
   accessor lineFocusMovement: LineFocusMovement|null = null;
-  // TODO(crbug.com/543113387): Remove this when the WebUI new badge supports
-  // auto-disappearing logic itself.
-  accessor showLineFocusNewBadge: boolean = false;
   accessor isAiPlaybackActive: boolean = false;
   protected accessor hideSpinner_: boolean = true;
   protected accessor isImmersiveEnabled_: boolean = false;
@@ -222,16 +222,7 @@ export class ReadAnythingToolbarElement extends ReadAnythingToolbarElementBase {
   protected accessor speechRate_: number = 1;
   // Buttons on the toolbar that open a menu of options.
   protected accessor textStyleOptions_: MenuButton[] = [];
-  protected accessor textStyleToggles_: ToggleButton[] = [
-    {
-      id: LINK_TOGGLE_BUTTON_ID,
-      icon: chrome.readingMode.linksEnabled?
-      LINKS_ENABLED_ICON: LINKS_DISABLED_ICON,
-      title: chrome.readingMode.linksEnabled?
-           loadTimeData.getString('disableLinksLabel'):
-               loadTimeData.getString('enableLinksLabel'),
-    },
-  ];
+  protected accessor textStyleToggles_: ToggleButton[] = [];
   protected accessor areFontsLoaded_: boolean = false;
   protected accessor webuiRoundedIconsEnabled_: boolean =
       loadTimeData.getBoolean('webuiRoundedIconsEnabled');
@@ -246,23 +237,28 @@ export class ReadAnythingToolbarElement extends ReadAnythingToolbarElementBase {
   private wasSpeechActive_: boolean = false;
   private spinnerDebouncerCallbackHandle_?: number;
   private logger_: ReadAnythingLogger = ReadAnythingLogger.getInstance();
+  private visualBrowserProxy_: VisualBrowserProxy =
+      VisualBrowserProxyImpl.getInstance();
+  private audioBrowserProxy_: AudioBrowserProxy =
+      AudioBrowserProxyImpl.getInstance();
 
   // Corresponds to UI setup being complete on the toolbar when
   // connectedCallback has finished executing.
   private isSetupComplete_: boolean = false;
 
   protected isFontSizeDefault_(): boolean {
-    return chrome.readingMode.fontSize === 2.0;
+    return this.visualBrowserProxy_.getFontSize() ===
+        this.visualBrowserProxy_.getDefaultFontSize();
   }
 
   isReadingModeInactive(): boolean {
     return this.presentationState ===
-        chrome.readingMode.inHiddenPresentationState;
+        this.visualBrowserProxy_.getInHiddenPresentationState();
   }
 
   isReadingModeInSidePanel(): boolean {
     return this.presentationState ===
-        chrome.readingMode.inSidePanelPresentationState;
+        this.visualBrowserProxy_.getInSidePanelPresentationState();
   }
 
   constructor() {
@@ -270,18 +266,29 @@ export class ReadAnythingToolbarElement extends ReadAnythingToolbarElementBase {
     this.constructorTime_ = Date.now();
     this.logger_.logTimeFrom(
         TimeFrom.TOOLBAR, this.startTime_, this.constructorTime_);
-    this.isImmersiveEnabled_ = chrome.readingMode.isImmersiveEnabled;
+    this.isImmersiveEnabled_ = this.visualBrowserProxy_.isImmersiveEnabled();
     this.isAiPlaybackUiEnabled_ =
-        chrome.readingMode.isReadAnythingReadAloudExperimentalPlaybackUiEnabled;
+        this.visualBrowserProxy_
+            .isReadAnythingReadAloudExperimentalPlaybackUiEnabled();
 
-    this.textStyleToggles_.push({
-      id: IMAGES_TOGGLE_BUTTON_ID,
-      icon: chrome.readingMode.imagesEnabled ? IMAGES_ENABLED_ICON :
-                                               IMAGES_DISABLED_ICON,
-      title: chrome.readingMode.imagesEnabled ?
-          loadTimeData.getString('disableImagesLabel') :
-          loadTimeData.getString('enableImagesLabel'),
-    });
+    this.textStyleToggles_ = [
+      {
+        id: LINK_TOGGLE_BUTTON_ID,
+        icon: this.visualBrowserProxy_.isLinksEnabled() ? LINKS_ENABLED_ICON :
+                                                          LINKS_DISABLED_ICON,
+        title: this.visualBrowserProxy_.isLinksEnabled() ?
+            loadTimeData.getString('disableLinksLabel') :
+            loadTimeData.getString('enableLinksLabel'),
+      },
+      {
+        id: IMAGES_TOGGLE_BUTTON_ID,
+        icon: this.visualBrowserProxy_.isImagesEnabled() ? IMAGES_ENABLED_ICON :
+                                                           IMAGES_DISABLED_ICON,
+        title: this.visualBrowserProxy_.isImagesEnabled() ?
+            loadTimeData.getString('disableImagesLabel') :
+            loadTimeData.getString('enableImagesLabel'),
+      },
+    ];
   }
 
   override connectedCallback() {
@@ -483,7 +490,7 @@ export class ReadAnythingToolbarElement extends ReadAnythingToolbarElementBase {
               this.$.letterSpacingMenu.open(target),
         },
     );
-    if (chrome.readingMode.isLineFocusEnabled) {
+    if (this.visualBrowserProxy_.isLineFocusEnabled()) {
       this.textStyleOptions_.push({
         id: 'line-focus',
         icon: loadTimeData.getBoolean('webuiRoundedIconsEnabled') ?
@@ -509,7 +516,7 @@ export class ReadAnythingToolbarElement extends ReadAnythingToolbarElementBase {
   }
 
   protected onCloseClick_() {
-    chrome.readingMode.close();
+    this.visualBrowserProxy_.close();
   }
 
   // Loading the fonts stylesheet can take a while, especially with slow
@@ -521,7 +528,7 @@ export class ReadAnythingToolbarElement extends ReadAnythingToolbarElementBase {
     link.rel = 'preload';
     link.as = 'style';
     link.href = 'https://fonts.googleapis.com/css?family=';
-    link.href += chrome.readingMode.allFonts.join('|');
+    link.href += this.visualBrowserProxy_.getAllFonts().join('|');
     link.href = link.href.replace(' ', '+');
 
     link.addEventListener('load', () => {
@@ -563,7 +570,7 @@ export class ReadAnythingToolbarElement extends ReadAnythingToolbarElementBase {
   restoreSettingsFromPrefs() {
     this.updateLinkToggleButton();
     this.updateImagesToggleButton();
-    this.setFont_(chrome.readingMode.fontName);
+    this.setFont_(this.visualBrowserProxy_.getFontName());
     this.speechRate_ = getCurrentSpeechRate();
   }
 
@@ -645,7 +652,7 @@ export class ReadAnythingToolbarElement extends ReadAnythingToolbarElementBase {
     const changedHighlight = event.detail.data;
     if (!this.isImmersiveEnabled_) {
       this.setHighlightButtonIcon_(
-          changedHighlight !== chrome.readingMode.noHighlighting);
+          changedHighlight !== this.audioBrowserProxy_.getNoHighlighting());
     }
   }
 
@@ -678,7 +685,7 @@ export class ReadAnythingToolbarElement extends ReadAnythingToolbarElementBase {
   }
 
   private setFont_(font: string) {
-    this.style.fontFamily = chrome.readingMode.getValidatedFontName(font);
+    this.style.fontFamily = this.visualBrowserProxy_.getValidatedFontName(font);
   }
 
   protected onFontChange_(event: CustomEvent<{data: string}>) {
@@ -711,7 +718,7 @@ export class ReadAnythingToolbarElement extends ReadAnythingToolbarElementBase {
     this.logger_.logTextSettingsChange(
         ReadAnythingSettingsChange.LINKS_ENABLED_CHANGE);
 
-    chrome.readingMode.onLinksEnabledToggled();
+    this.visualBrowserProxy_.onLinksEnabledToggled();
     this.fire(ToolbarEvent.LINKS);
     this.updateLinkToggleButton();
   }
@@ -720,7 +727,7 @@ export class ReadAnythingToolbarElement extends ReadAnythingToolbarElementBase {
     this.logger_.logTextSettingsChange(
         ReadAnythingSettingsChange.IMAGES_ENABLED_CHANGE);
 
-    chrome.readingMode.onImagesEnabledToggled();
+    this.visualBrowserProxy_.onImagesEnabledToggled();
     this.fire(ToolbarEvent.IMAGES);
     this.updateImagesToggleButton();
   }
@@ -729,9 +736,10 @@ export class ReadAnythingToolbarElement extends ReadAnythingToolbarElementBase {
     const button = this.shadowRoot.getElementById(LINK_TOGGLE_BUTTON_ID) as
         CrIconButtonElement;
     if (button) {
-      button.ironIcon = chrome.readingMode.linksEnabled ? LINKS_ENABLED_ICON :
-                                                          LINKS_DISABLED_ICON;
-      const linkStatusLabel = chrome.readingMode.linksEnabled ?
+      button.ironIcon = this.visualBrowserProxy_.isLinksEnabled() ?
+          LINKS_ENABLED_ICON :
+          LINKS_DISABLED_ICON;
+      const linkStatusLabel = this.visualBrowserProxy_.isLinksEnabled() ?
           loadTimeData.getString('disableLinksLabel') :
           loadTimeData.getString('enableLinksLabel');
       button.title = linkStatusLabel;
@@ -743,9 +751,10 @@ export class ReadAnythingToolbarElement extends ReadAnythingToolbarElementBase {
     const button = this.shadowRoot?.getElementById(IMAGES_TOGGLE_BUTTON_ID) as
         CrIconButtonElement;
     if (button) {
-      button.ironIcon = chrome.readingMode.imagesEnabled ? IMAGES_ENABLED_ICON :
-                                                           IMAGES_DISABLED_ICON;
-      const imageStatusLabel = chrome.readingMode.imagesEnabled ?
+      button.ironIcon = this.visualBrowserProxy_.isImagesEnabled() ?
+          IMAGES_ENABLED_ICON :
+          IMAGES_DISABLED_ICON;
+      const imageStatusLabel = this.visualBrowserProxy_.isImagesEnabled() ?
           loadTimeData.getString('disableImagesLabel') :
           loadTimeData.getString('enableImagesLabel');
       button.title = imageStatusLabel;
@@ -789,10 +798,10 @@ export class ReadAnythingToolbarElement extends ReadAnythingToolbarElementBase {
   private updateFontSize_(increase: boolean) {
     this.logger_.logTextSettingsChange(
         ReadAnythingSettingsChange.FONT_SIZE_CHANGE);
-    const startingSize = chrome.readingMode.fontSize;
-    chrome.readingMode.onFontSizeChanged(increase);
+    const startingSize = this.visualBrowserProxy_.getFontSize();
+    this.visualBrowserProxy_.onFontSizeChanged(increase);
     this.fire(ToolbarEvent.FONT_SIZE);
-    if (startingSize !== chrome.readingMode.fontSize) {
+    if (startingSize !== this.visualBrowserProxy_.getFontSize()) {
       this.announceSizeChage(increase);
     }
     this.requestUpdate();
@@ -802,7 +811,7 @@ export class ReadAnythingToolbarElement extends ReadAnythingToolbarElementBase {
   protected onFontResetClick_() {
     this.logger_.logTextSettingsChange(
         ReadAnythingSettingsChange.FONT_SIZE_CHANGE);
-    chrome.readingMode.onFontSizeReset();
+    this.visualBrowserProxy_.onFontSizeReset();
     this.fire(ToolbarEvent.FONT_SIZE);
     this.requestUpdate();
   }
@@ -812,7 +821,7 @@ export class ReadAnythingToolbarElement extends ReadAnythingToolbarElementBase {
         this.isSpeechActive ? SpeechControls.PAUSE : SpeechControls.PLAY);
     if (this.isSpeechActive) {
       this.logger_.logSpeechStopSource(
-          chrome.readingMode.pauseButtonStopSource);
+          this.audioBrowserProxy_.getPauseButtonStopSource());
     }
     this.fire(ToolbarEvent.PLAY_PAUSE);
   }
@@ -881,10 +890,10 @@ export class ReadAnythingToolbarElement extends ReadAnythingToolbarElementBase {
   }
 
   protected onTranslationRequested_() {
-    if (!chrome.readingMode.isReadAnythingTranslateEntryPointEnabled) {
+    if (!this.visualBrowserProxy_.isReadAnythingTranslateEntryPointEnabled()) {
       return;
     }
-    chrome.readingMode.onTranslationRequested();
+    this.visualBrowserProxy_.onTranslationRequested();
   }
 
   protected onOpenSettingsSubmenu_(event: CustomEvent<{

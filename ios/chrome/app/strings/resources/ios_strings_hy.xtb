@@ -1294,6 +1294,7 @@
 <translation id="5238596603078743134">Այժմ <ph name="BEGIN_BOLD" /><ph name="USERNAME" /><ph name="END_BOLD" /> օգտատերը կարող է օգտագործել ձեր օգտանունն ու գաղտնաբառը, երբ Google գաղտնաբառերի կառավարչի օգնությամբ մուտք է գործում <ph name="BEGIN_BOLD" /><ph name="WEBSITE" /><ph name="END_BOLD" /> կայքում։</translation>
 <translation id="5241106044372754566"><ph name="NAME" />, <ph name="EMAIL" />, կառավարվում է ձեր կազմակերպության կողմից, որն այս պահին ընտրված է։ Ընտրեք հաշիվ։</translation>
 <translation id="5242899254250321823">Փոխել գաղտնաբառը կայքում</translation>
+<translation id="524751727772074981">Հարցրեք ցանկացած բան ցանկացած տեղում «Gemini-ը Chrome-ում» մոդելի միջոցով</translation>
 <translation id="5248640482715684545">Այս կայքը փորձում է այլ հավելված բացել։</translation>
 <translation id="5250371859659394278">Անհայտ աղբյուրից</translation>
 <translation id="525510229763628836">Ծալված է</translation>
@@ -1310,6 +1311,7 @@
 <translation id="5300589172476337783">Ցույց տալ</translation>
 <translation id="5311061401280561833">Տեսախցիկի և խոսափողի օգտագործումը թույլատրված է</translation>
 <translation id="5313967007315987356">Ավելացնել կայք</translation>
+<translation id="5315029634103634221">Gemini-ը արհեստական բանականություն է և կարող է սխալներ թույլ տալ։ <ph name="BEGIN_LINK" />Իմանալ ավելին Google-ին ուղարկվող առնչվող տվյալների մասին<ph name="END_LINK" /></translation>
 <translation id="5315870524563628285">Ներմուծելու ոչինչ չկա</translation>
 <translation id="5316356981864168850"><ph name="INDEX" />՝ <ph name="NUM_SUGGESTIONS" />-ից</translation>
 <translation id="5317780077021120954">Պահել</translation>

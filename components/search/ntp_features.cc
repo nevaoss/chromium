@@ -169,9 +169,6 @@ BASE_FEATURE(kNtpModulesMaxColumnCount, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kNtpModulesLoadedWithOtherModulesMaxInstanceCount,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-// If enabled, modules will be able to be reordered via dragging and dropping
-BASE_FEATURE(kNtpModulesDragAndDrop, base::FEATURE_DISABLED_BY_DEFAULT);
-
 // If enabled, modules will be loaded but not shown. This is useful to determine
 // if a user would have seen modules in order to counterfactually log or
 // trigger.
@@ -198,6 +195,10 @@ BASE_FEATURE(kNtpOutlookCalendarModule,
              base::FEATURE_ENABLED_BY_DEFAULT);
 #endif
 
+// If enabled, richer suggestions (e.g. image grids) for tools such as Create
+// Image will be shown in the NTP Composebox.
+BASE_FEATURE(kNtpRichImageSuggestions, base::FEATURE_DISABLED_BY_DEFAULT);
+
 // If enabled, scaled merchandising action chips (e.g., dynamic tool
 // suggestions and resource pickers) will be shown on the NTP.
 BASE_FEATURE(kNtpScaledActionChips, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -216,6 +217,9 @@ BASE_FEATURE(kNtpSharepointModule,
 // If enabled, shortcuts will be shown.
 // This is a kill switch. Keep indefinitely.
 BASE_FEATURE(kNtpShortcuts, base::FEATURE_ENABLED_BY_DEFAULT);
+
+// If enabled, high-DPI favicons are fetched for Most Visited tiles.
+BASE_FEATURE(kNtpMostVisitedHighDpiFavicons, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // If enabled, the Tab Resumption module will be shown.
 BASE_FEATURE(kNtpMostRelevantTabResumptionModule,

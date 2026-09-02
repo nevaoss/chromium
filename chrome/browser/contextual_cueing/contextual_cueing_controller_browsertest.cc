@@ -26,6 +26,7 @@
 #include "chrome/browser/private_insights/private_insights_service_factory.h"
 #include "chrome/browser/signin/signin_browser_test_base.h"
 #include "chrome/browser/sync/sync_service_factory.h"
+#include "chrome/browser/ui/browser_actions.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
@@ -1234,11 +1235,11 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
     return state_observer.GetCurrentPageActionState().anchored_message_showing;
   }));
 
-  // 7. Click again while anchored message is shown to invoke the cue and hide it.
+  // 7. Click again while anchored message is shown to invoke the cue and hide
+  // it.
   action->InvokeAction();
-  ASSERT_TRUE(base::test::RunUntil([&]() {
-    return !state_observer.GetCurrentPageActionState().showing;
-  }));
+  ASSERT_TRUE(base::test::RunUntil(
+      [&]() { return !state_observer.GetCurrentPageActionState().showing; }));
   EXPECT_EQ(tooltip_observer.tooltip_, u"");
 }
 
@@ -2102,5 +2103,220 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
           kProactiveCueInteractionName,
       static_cast<int64_t>(ContextualCueingInteraction::kCueEditPrompt));
 }
+
+IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
+                       TabMovedToNewWindowMaintainsContextualCue) {
+#if BUILDFLAG(IS_ANDROID)
+  GTEST_SKIP()
+      << "Contextual cueing anchored message not implemented for Android";
+#endif
+
+  ASSERT_FALSE(cue_target()->HasClickData());
+
+  ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
+      browser(), GURL("https://www.activetab.com/abc"),
+      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
+
+  page_actions::PageActionController* first_controller =
+      GetPageActionController();
+  CHECK(first_controller);
+  page_actions::PageActionObserver first_observer(kActionAnchoredContextualCue);
+  first_observer.RegisterAsPageActionObserver(*first_controller);
+
+  base::HistogramTester histogram_tester;
+  ukm::TestAutoSetUkmRecorder ukm_recorder;
+
+  SeedExecutionResult(MakeCompleteResponse());
+  SimulateFilterPassed();
+  optimization_guide::RetryForHistogramUntilCountReached(
+      &histogram_tester, "ContextualCueing.V2.Decision", 1);
+
+  histogram_tester.ExpectUniqueSample("ContextualCueing.V2.Decision",
+                                      ContextualCueingDecision::kSuccess, 1);
+
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    return first_observer.GetCurrentPageActionState().anchored_message_showing;
+  }));
+
+  // Create second browser and move the active tab to it.
+  Browser* second_browser = CreateBrowser(browser()->GetProfile());
+  std::unique_ptr<tabs::TabModel> detached_tab =
+      browser()->tab_strip_model()->DetachTabAtForInsertion(/*index=*/1);
+  second_browser->tab_strip_model()->InsertDetachedTabAt(
+      /*index=*/0, std::move(detached_tab), AddTabTypes::ADD_ACTIVE);
+
+  page_actions::PageActionController* second_controller =
+      second_browser->GetActiveTabInterface()
+          ->GetTabFeatures()
+          ->page_action_controller();
+  CHECK(second_controller);
+  page_actions::PageActionObserver second_observer(kActionAnchoredContextualCue);
+  second_observer.RegisterAsPageActionObserver(*second_controller);
+
+  // The page action should still be showing on the tab in the second window.
+  EXPECT_TRUE(second_observer.GetCurrentPageActionState().showing);
+  EXPECT_FALSE(
+      second_observer.GetCurrentPageActionState().anchored_message_showing);
+
+  // Invoke the action on the second browser window. The first click opens the anchored message.
+  auto* action = actions::ActionManager::Get().FindAction(
+      kActionAnchoredContextualCue,
+      BrowserActions::From(second_browser)->root_action_item());
+  ASSERT_TRUE(action);
+  action->InvokeAction();
+
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    return second_observer.GetCurrentPageActionState().anchored_message_showing;
+  }));
+
+  // Second click invokes the action.
+  action->InvokeAction();
+
+  TestCueTarget* second_cue_target = static_cast<TestCueTarget*>(
+      second_browser->GetActiveTabInterface()
+          ->GetTabFeatures()
+          ->contextual_cueing_controller()
+          ->GetTarget(CueTargetType::kGlic));
+  ASSERT_TRUE(second_cue_target);
+  ASSERT_TRUE(second_cue_target->HasClickData());
+  EXPECT_EQ("Prompt",
+            std::get<GlicCueActionData>(second_cue_target->click_data).prompt);
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    return !second_observer.GetCurrentPageActionState().showing;
+  }));
+}
+
+class ContextualCueingControllerMultiSourceBrowserTest
+    : public ContextualCueingControllerBrowserTestBase {
+ public:
+  void InitializeFeatureList() override {
+    scoped_feature_list_.InitWithFeaturesAndParameters(
+        {{kContextualCueingV2,
+          {{"ContextualCueingV2DiscardShoppingPdfs", "true"},
+           {"ContextualCueingV2TabListVisibility", "always"},
+           {"ContextualCueingV2EnablePrivateInsightsLogging", "true"}}},
+         {kContextualCueingV2MultiSource, {}}},
+        /*disabled_features=*/{kContextualCueingV2EnforceAgeRestriction});
+  }
+};
+
+IN_PROC_BROWSER_TEST_F(ContextualCueingControllerMultiSourceBrowserTest,
+                       HistorySyncOff_LocalGeneratorSucceeds) {
+  base::HistogramTester histogram_tester;
+  ukm::TestAutoSetUkmRecorder ukm_recorder;
+
+  cue_target()->eligible = false;
+  auto test_source_target = std::make_unique<TestCueTarget>();
+  test_source_target->eligible = true;
+  test_source_target->generate_result =
+      MakeCompleteResponse().contextual_cues(0);
+  contextual_cueing_controller()->RegisterCueTarget(
+      CueTargetType::kTestSource, std::move(test_source_target));
+
+  EnableHistorySync(false);
+
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(
+      browser(), GURL("https://www.activetab.com/abc")));
+
+  optimization_guide::RetryForHistogramUntilCountReached(
+      &histogram_tester, "ContextualCueing.V2.Decision", 1);
+  histogram_tester.ExpectUniqueSample("ContextualCueing.V2.Decision",
+                                      ContextualCueingDecision::kSuccess, 1);
+  VerifyProactiveCueDecision(ukm_recorder, ContextualCueingDecision::kSuccess);
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualCueingControllerMultiSourceBrowserTest,
+                       HistorySyncOff_ModelExecutionTargetBlocked) {
+  base::HistogramTester histogram_tester;
+  ukm::TestAutoSetUkmRecorder ukm_recorder;
+
+  cue_target()->eligible = true;
+  cue_target()->generate_result = std::nullopt;
+  SeedExecutionResult(MakeCompleteResponse());
+
+  EnableHistorySync(false);
+
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(
+      browser(), GURL("https://www.activetab.com/abc")));
+
+  optimization_guide::RetryForHistogramUntilCountReached(
+      &histogram_tester, "ContextualCueing.V2.Decision", 1);
+  histogram_tester.ExpectUniqueSample("ContextualCueing.V2.Decision",
+                                      ContextualCueingDecision::kHistorySyncOff,
+                                      1);
+  VerifyProactiveCueDecision(ukm_recorder,
+                             ContextualCueingDecision::kHistorySyncOff);
+}
+
+class ContextualCueingControllerMultiSourceWithAgeRestrictionBrowserTest
+    : public ContextualCueingControllerBrowserTestBase {
+ public:
+  void InitializeFeatureList() override {
+    scoped_feature_list_.InitWithFeatures(
+        {kContextualCueingV2, kContextualCueingV2MultiSource,
+         kContextualCueingV2EnforceAgeRestriction},
+        /*disabled_features=*/{});
+  }
+
+  void SetUserRestriction(bool is_restricted) {
+    auto account_info = identity_test_env()->MakePrimaryAccountAvailable(
+        "user@gmail.com", signin::ConsentLevel::kSignin);
+    AccountCapabilitiesTestMutator mutator(&account_info);
+    mutator.set_can_use_model_execution_features(!is_restricted);
+    identity_test_env()->UpdateAccountInfoForAccount(account_info);
+  }
+};
+
+IN_PROC_BROWSER_TEST_F(
+    ContextualCueingControllerMultiSourceWithAgeRestrictionBrowserTest,
+    AgeRestriction_LocalGeneratorSucceeds) {
+  base::HistogramTester histogram_tester;
+  ukm::TestAutoSetUkmRecorder ukm_recorder;
+
+  cue_target()->eligible = false;
+  auto test_source_target = std::make_unique<TestCueTarget>();
+  test_source_target->eligible = true;
+  test_source_target->generate_result =
+      MakeCompleteResponse().contextual_cues(0);
+  contextual_cueing_controller()->RegisterCueTarget(
+      CueTargetType::kTestSource, std::move(test_source_target));
+
+  SetUserRestriction(/*is_restricted=*/true);
+
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(
+      browser(), GURL("https://www.activetab.com/abc")));
+
+  optimization_guide::RetryForHistogramUntilCountReached(
+      &histogram_tester, "ContextualCueing.V2.Decision", 1);
+  histogram_tester.ExpectUniqueSample("ContextualCueing.V2.Decision",
+                                      ContextualCueingDecision::kSuccess, 1);
+  VerifyProactiveCueDecision(ukm_recorder, ContextualCueingDecision::kSuccess);
+}
+
+IN_PROC_BROWSER_TEST_F(
+    ContextualCueingControllerMultiSourceWithAgeRestrictionBrowserTest,
+    AgeRestriction_ModelExecutionTargetBlocked) {
+  base::HistogramTester histogram_tester;
+  ukm::TestAutoSetUkmRecorder ukm_recorder;
+
+  cue_target()->eligible = true;
+  cue_target()->generate_result = std::nullopt;
+  SeedExecutionResult(MakeCompleteResponse());
+
+  SetUserRestriction(/*is_restricted=*/true);
+
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(
+      browser(), GURL("https://www.activetab.com/abc")));
+
+  optimization_guide::RetryForHistogramUntilCountReached(
+      &histogram_tester, "ContextualCueing.V2.Decision", 1);
+  histogram_tester.ExpectUniqueSample(
+      "ContextualCueing.V2.Decision",
+      ContextualCueingDecision::kAgeRestrictionEnforced, 1);
+  VerifyProactiveCueDecision(ukm_recorder,
+                             ContextualCueingDecision::kAgeRestrictionEnforced);
+}
+
 }  // namespace
 }  // namespace contextual_cueing

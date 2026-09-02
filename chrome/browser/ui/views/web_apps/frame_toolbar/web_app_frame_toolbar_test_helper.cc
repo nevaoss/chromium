@@ -13,7 +13,6 @@
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/test_future.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/browser/ui/views/frame/browser_frame_view.h"
@@ -68,7 +67,8 @@ webapps::AppId WebAppFrameToolbarTestHelper::InstallAndLaunchWebApp(
   webapps::AppId app_id = InstallWebApp(profile, start_url);
   content::TestNavigationObserver navigation_observer(start_url);
   navigation_observer.StartWatchingNewWebContents();
-  Browser* app_browser = web_app::LaunchWebAppBrowser(profile, app_id);
+  BrowserWindowInterface* app_browser =
+      web_app::LaunchWebAppBrowser(profile, app_id);
   navigation_observer.WaitForNavigationFinished();
 
   SetViewFromAppBrowser(app_browser);
@@ -89,7 +89,7 @@ webapps::AppId WebAppFrameToolbarTestHelper::InstallAndLaunchCustomWebApp(
                                                        std::move(web_app_info));
   content::TestNavigationObserver navigation_observer(start_url);
   navigation_observer.StartWatchingNewWebContents();
-  Browser* app_browser =
+  BrowserWindowInterface* app_browser =
       web_app::LaunchWebAppBrowser(browser->GetProfile(), app_id);
   navigation_observer.WaitForNavigationFinished();
 
@@ -357,8 +357,8 @@ void WebAppFrameToolbarTestHelper::SetOriginTextLabelForTesting(
   origin_text_view()->label_->SetText(label_text);
 }
 
-Browser* WebAppFrameToolbarTestHelper::app_browser() {
-  return app_browser_ ? app_browser_->GetBrowserForMigrationOnly() : nullptr;
+BrowserWindowInterface* WebAppFrameToolbarTestHelper::app_browser() {
+  return app_browser_;
 }
 
 void WebAppFrameToolbarTestHelper::SetViewFromAppBrowser(

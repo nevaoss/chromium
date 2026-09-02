@@ -296,7 +296,6 @@ public class SettingsPageTest {
 
     @Test
     @MediumTest
-    @Restriction(DeviceFormFactor.PHONE) // TODO(crbug.com/547765865): Fix for tablets/auto.
     public void testAccessibilityPageZoomDoesNotShowPopup() {
         mActivityTestRule.loadUrl("chrome-native://settings/");
 
@@ -309,7 +308,7 @@ public class SettingsPageTest {
         onView(withText(R.string.prefs_accessibility)).perform(click());
 
         // Verify the Accessibility preference screen is displayed.
-        onView(withText(R.string.zoom_info_preference_title)).check(matches(isDisplayed()));
+        onView(withText(R.string.page_zoom_title)).check(matches(isDisplayed()));
 
         // Verify the page zoom popup window is not permitted to show on the settings native page.
         ThreadUtils.runOnUiThreadBlocking(
@@ -324,7 +323,6 @@ public class SettingsPageTest {
     }
 
     /** Regression test for https://crbug.com/546419920. */
-    // TODO(crbug.com/547889541): Disabled on android-12l-landscape bots due to viewport height.
     @Test
     @MediumTest
     @EnableFeatures(ChromeFeatureList.YOUR_SAVED_INFO_SETTINGS_PAGE_ANDROID)
@@ -344,10 +342,16 @@ public class SettingsPageTest {
         // Verify the settings page loads by checking for a top-level preference item.
         onView(withText(searchEngineTitle)).check(matches(isDisplayed()));
 
+        // Multi-column settings has multiple RecyclerViews. Disambiguate the header
+        // RecyclerView by its parent layout rather than using hasDescendant(...), because
+        // target preferences may be scrolled off-screen and not yet attached to the hierarchy
+        // on shorter viewports (e.g., landscape foldable/tablet screens).
+        var headerRecyclerViewMatcher =
+                allOf(withId(R.id.recycler_view), isDescendantOfA(withId(R.id.preferences_header)));
+
         // Click on Search engine in the left column.
-        var searchEngineMatcher =
-                allOf(withId(R.id.recycler_view), hasDescendant(withText(searchEngineTitle)));
-        onView(searchEngineMatcher).perform(scrollTo(hasDescendant(withText(searchEngineTitle))));
+        onView(headerRecyclerViewMatcher)
+                .perform(scrollTo(hasDescendant(withText(searchEngineTitle))));
         var searchEngineInHeader =
                 allOf(
                         isDescendantOfA(withId(R.id.preferences_header)),
@@ -358,9 +362,7 @@ public class SettingsPageTest {
         onView(searchEngineInHeader).check(matches(isHighlighted()));
 
         // Click on Autofill and passwords in the left column.
-        var autofillMatcher =
-                allOf(withId(R.id.recycler_view), hasDescendant(withText(autofillTitle)));
-        onView(autofillMatcher).perform(scrollTo(hasDescendant(withText(autofillTitle))));
+        onView(headerRecyclerViewMatcher).perform(scrollTo(hasDescendant(withText(autofillTitle))));
         var autofillInHeader =
                 allOf(isDescendantOfA(withId(R.id.preferences_header)), withText(autofillTitle));
         onView(autofillInHeader).perform(click());
@@ -395,6 +397,28 @@ public class SettingsPageTest {
         // Verify the search box is automatically focused on tab switch.
         onView(withId(R.id.search_box)).check(matches(isDisplayed()));
         onView(withId(R.id.search_box)).check(matches(isFocused()));
+    }
+
+    /** Regression test for https://crbug.com/549509308. */
+    @Test
+    @MediumTest
+    public void testTwoSettingsTabs_themeChange_searchBoxRemainsVisibleOnFirstTab() {
+        // Open Tab 0 with Settings.
+        mActivityTestRule.loadUrl("chrome-native://settings/");
+        onView(withId(R.id.search_box)).check(matches(isDisplayed()));
+
+        // Open Tab 1 with Settings.
+        mActivityTestRule.loadUrlInNewTab("chrome-native://settings/");
+        onView(withId(R.id.search_box)).check(matches(isDisplayed()));
+
+        // Recreate activity (simulating theme change or OS configuration change).
+        mActivityTestRule.recreateActivity();
+
+        // Switch back to Tab 0.
+        ChromeTabUtils.switchTabInCurrentTabModel(mActivityTestRule.getActivity(), 0);
+
+        // Verify the search box is displayed on Tab 0.
+        onView(withId(R.id.search_box)).check(matches(isDisplayed()));
     }
 
     /**

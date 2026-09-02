@@ -711,23 +711,6 @@
         "autotest_name": "chromium",
         "cros_board": "betty",
         "dut_pool": "vmlab",
-        "module_name": "//testing/rust_gtest_interop:rust_gtest_interop_unittests",
-        "module_scheme": "gtest",
-        "name": "rust_gtest_interop_unittests LKGM",
-        "resultdb": {
-          "result_format": "gtest"
-        },
-        "shard_level_retries_on_ctp": 1,
-        "test": "rust_gtest_interop_unittests",
-        "test_id_prefix": "ninja://testing/rust_gtest_interop:rust_gtest_interop_unittests/",
-        "timeout_sec": 5400,
-        "use_lkgm": true,
-        "variant_id": "LKGM"
-      },
-      {
-        "autotest_name": "chromium",
-        "cros_board": "betty",
-        "dut_pool": "vmlab",
         "module_name": "//sql:sql_unittests",
         "module_scheme": "gtest",
         "name": "sql_unittests LKGM",
@@ -1250,23 +1233,6 @@
         },
         "test": "rlz_unittests",
         "test_id_prefix": "ninja://rlz:rlz_unittests/",
-        "timeout_sec": 5400,
-        "use_lkgm": true,
-        "variant_id": "LKGM"
-      },
-      {
-        "autotest_name": "chromium",
-        "cros_board": "betty",
-        "dut_pool": "vmlab",
-        "module_name": "//testing/rust_gtest_interop:rust_gtest_interop_unittests",
-        "module_scheme": "gtest",
-        "name": "rust_gtest_interop_unittests LKGM",
-        "resultdb": {
-          "result_format": "gtest"
-        },
-        "shard_level_retries_on_ctp": 1,
-        "test": "rust_gtest_interop_unittests",
-        "test_id_prefix": "ninja://testing/rust_gtest_interop:rust_gtest_interop_unittests/",
         "timeout_sec": 5400,
         "use_lkgm": true,
         "variant_id": "LKGM"
@@ -1982,22 +1948,6 @@
         "autotest_name": "chromium",
         "cros_board": "brya",
         "cros_model": "kano",
-        "module_name": "//testing/rust_gtest_interop:rust_gtest_interop_unittests",
-        "module_scheme": "gtest",
-        "name": "rust_gtest_interop_unittests LKGM",
-        "resultdb": {
-          "result_format": "gtest"
-        },
-        "shard_level_retries_on_ctp": 1,
-        "test": "rust_gtest_interop_unittests",
-        "test_id_prefix": "ninja://testing/rust_gtest_interop:rust_gtest_interop_unittests/",
-        "use_lkgm": true,
-        "variant_id": "LKGM"
-      },
-      {
-        "autotest_name": "chromium",
-        "cros_board": "brya",
-        "cros_model": "kano",
         "module_name": "//sql:sql_unittests",
         "module_scheme": "gtest",
         "name": "sql_unittests LKGM",
@@ -2575,22 +2525,6 @@
         "autotest_name": "chromium",
         "cros_board": "brya",
         "cros_model": "kano",
-        "module_name": "//testing/rust_gtest_interop:rust_gtest_interop_unittests",
-        "module_scheme": "gtest",
-        "name": "rust_gtest_interop_unittests LKGM",
-        "resultdb": {
-          "result_format": "gtest"
-        },
-        "shard_level_retries_on_ctp": 1,
-        "test": "rust_gtest_interop_unittests",
-        "test_id_prefix": "ninja://testing/rust_gtest_interop:rust_gtest_interop_unittests/",
-        "use_lkgm": true,
-        "variant_id": "LKGM"
-      },
-      {
-        "autotest_name": "chromium",
-        "cros_board": "brya",
-        "cros_model": "kano",
         "module_name": "//sql:sql_unittests",
         "module_scheme": "gtest",
         "name": "sql_unittests LKGM",
@@ -2916,6 +2850,52 @@
         "test": "chrome_all_tast_tests",
         "test_id_prefix": "ninja://chromeos:chrome_all_tast_tests/",
         "timeout_sec": 14400,
+        "use_lkgm": true,
+        "variant_id": "LKGM"
+      },
+      {
+        "args": [
+          "-retries=0"
+        ],
+        "ci_only": true,
+        "cros_board": "octopus",
+        "cros_test_max_in_shard": 20,
+        "cros_test_names_from_file": [
+          "chromeos/tast_control_disabled_tests.txt"
+        ],
+        "experiment_percentage": 100,
+        "module_name": "//chromeos:chrome_disabled_tast_tests",
+        "module_scheme": "tast",
+        "name": "chrome_disabled_tast_tests LKGM",
+        "resultdb": {
+          "result_format": "tast"
+        },
+        "test": "chrome_disabled_tast_tests",
+        "test_id_prefix": "ninja://chromeos:chrome_disabled_tast_tests/",
+        "timeout_sec": 14400,
+        "use_lkgm": true,
+        "variant_id": "LKGM"
+      },
+      {
+        "args": [
+          "-retries=2"
+        ],
+        "ci_only": true,
+        "cros_board": "octopus",
+        "cros_test_max_in_shard": 20,
+        "cros_test_names_from_file": [
+          "chromeos/tast_control_flaky_tests.txt"
+        ],
+        "module_name": "//chromeos:chrome_flaky_tast_tests",
+        "module_scheme": "tast",
+        "name": "chrome_flaky_tast_tests LKGM",
+        "resultdb": {
+          "result_format": "tast"
+        },
+        "shard_level_retries_on_ctp": 1,
+        "test": "chrome_flaky_tast_tests",
+        "test_id_prefix": "ninja://chromeos:chrome_flaky_tast_tests/",
+        "timeout_sec": 7200,
         "use_lkgm": true,
         "variant_id": "LKGM"
       }
