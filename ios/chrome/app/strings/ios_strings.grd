@@ -694,6 +694,10 @@
       <message name="IDS_IOS_AUTOFILL_AI_PREVIOUSLY_FILLED_SECTION_TITLE" desc="Title for the previously filled section in the Autofill AI suggestions popup. [iOS only]">
         Previously filled
       </message>
+      <!-- TODO(crbug.com/551864564): Make string translateable once finalized. -->
+      <message name="IDS_IOS_AUTOFILL_AI_REMOVE_ACTION" desc="Context menu option to remove an Autofill AI suggestion from personal context. [iOS only]" translateable="false">
+        Remove
+      </message>
       <message name="IDS_IOS_AUTOFILL_AI_PRIVATE_INFERENCE_NOTICE_GOT_IT" desc="Primary button label for the Private Inference notice bottom sheet. [iOS only]">
         Got it
       </message>
@@ -765,6 +769,10 @@
       </message>
       <message name="IDS_IOS_AUTOFILL_AI_VEHICLE_VIN_NAME" desc="The display name for the vehicle identification number (VIN) in Autofill AI. [iOS only]">
         VIN
+      </message>
+      <!-- TODO(crbug.com/551864564): Make string translateable once finalized. -->
+      <message name="IDS_IOS_AUTOFILL_AI_VIEW_SOURCES" desc="Context menu option to view the source documents or origins (such as Gmail or Google Photos) of an Autofill AI suggestion. [iOS only]" translateable="false">
+        View sources
       </message>
       <message name="IDS_IOS_AUTOFILL_AI_WALLET_CONNECTION_FAILURE" desc="Instructions for the user displayed in the error dialog if they attempt to access or autofill information but the request fails due to network connectivity issues.">
         Check your connection
@@ -8236,23 +8244,23 @@ Handoff must also be enabled in the General section of Settings, and your device
       <message name="IDS_IOS_SWITCH_PROFILE_SWITCH_TITLE" desc="Title for the switch profile developer panel in Settings-&gt;Switch Profile giving the list of loaded profiles [iOS only]">
         Switch to another profile
       </message>
-      <message name="IDS_IOS_SYNCED_SET_UP_SNACKBAR_APPLIED_ACTION" desc="The action button text for the snackbar shown after New Tab page preferences have been applied. [iOS only]">
+      <message name="IDS_IOS_SYNCED_SET_UP_SNACKBAR_APPLIED_ACTION" desc="The action button text for the snackbar shown after appearance preferences have been applied. [iOS only]">
         Undo
       </message>
-      <message name="IDS_IOS_SYNCED_SET_UP_SNACKBAR_APPLIED_MESSAGE_NTP" desc="The message text for the snackbar shown after New Tab page preferences have been applied. [iOS only]">
-        Applied your New Tab page preferences
+      <message name="IDS_IOS_SYNCED_SET_UP_SNACKBAR_APPLIED_MESSAGE" desc="The message text for the snackbar shown after appearance preferences have been applied. [iOS only]">
+        Applied your appearance preferences
       </message>
-      <message name="IDS_IOS_SYNCED_SET_UP_SNACKBAR_PROMO_ACTION" desc="The action button text for the snackbar that prompts the user to apply their synced New Tab page settings. [iOS only]">
+      <message name="IDS_IOS_SYNCED_SET_UP_SNACKBAR_PROMO_ACTION" desc="The action button text for the snackbar that prompts the user to apply their synced appearance settings. [iOS only]">
         Apply
       </message>
-      <message name="IDS_IOS_SYNCED_SET_UP_SNACKBAR_PROMO_MESSAGE_NTP" desc="The message text for the snackbar that prompts the user to apply their synced New Tab page settings from another device. [iOS only]">
-        Apply your New Tab page preferences?
+      <message name="IDS_IOS_SYNCED_SET_UP_SNACKBAR_PROMO_MESSAGE" desc="The message text for the snackbar that prompts the user to apply their synced appearance settings from another device. [iOS only]">
+        Apply your appearance preferences?
       </message>
-      <message name="IDS_IOS_SYNCED_SET_UP_SNACKBAR_REMOVED_ACTION" desc="The action button text for the snackbar shown after New Tab page preferences have been removed. [iOS only]">
+      <message name="IDS_IOS_SYNCED_SET_UP_SNACKBAR_REMOVED_ACTION" desc="The action button text for the snackbar shown after appearance preferences have been removed. [iOS only]">
         Redo
       </message>
-      <message name="IDS_IOS_SYNCED_SET_UP_SNACKBAR_REMOVED_MESSAGE_NTP" desc="The message text for the snackbar shown after New Tab page preferences have been removed. [iOS only]">
-        Removed your New Tab page preferences
+      <message name="IDS_IOS_SYNCED_SET_UP_SNACKBAR_REMOVED_MESSAGE" desc="The message text for the snackbar shown after appearance preferences have been removed. [iOS only]">
+        Removed your appearance preferences
       </message>
       <message name="IDS_IOS_SYNCED_SET_UP_SUBTITLE_TEXT" desc="Subtitle text on the Synced Set Up screen, indicating that the user's data is being loaded. [iOS only]">
         Getting your stuff…

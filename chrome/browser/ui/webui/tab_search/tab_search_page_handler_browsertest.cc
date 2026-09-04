@@ -214,15 +214,18 @@ class TabSearchPageHandlerTest : public InProcessBrowserTest {
         g_browser_process->profile_manager(), path);
 #endif
 
-    browser2_ = CreateBrowserForTest(profile1(), Browser::TYPE_NORMAL);
+    browser2_ =
+        CreateBrowserForTest(profile1(), BrowserWindowInterface::TYPE_NORMAL);
     browser3_ =
         CreateBrowserForTest(browser()->GetProfile()->GetPrimaryOTRProfile(
                                  /*create_if_needed=*/true),
-                             Browser::TYPE_NORMAL);
+                             BrowserWindowInterface::TYPE_NORMAL);
 #if !BUILDFLAG(IS_CHROMEOS)
-    browser4_ = CreateBrowserForTest(profile2_, Browser::TYPE_NORMAL);
+    browser4_ =
+        CreateBrowserForTest(profile2_, BrowserWindowInterface::TYPE_NORMAL);
 #endif
-    browser5_ = CreateBrowserForTest(profile1(), Browser::TYPE_POPUP);
+    browser5_ =
+        CreateBrowserForTest(profile1(), BrowserWindowInterface::TYPE_POPUP);
 
     browser1()->GetWindow()->Activate();
 
@@ -1186,8 +1189,17 @@ IN_PROC_BROWSER_TEST_F(TabSearchPageHandlerTest,
   EXPECT_EQ(1, found_ungrouped);
 }
 
+// TODO(crbug.com/537538766): Flaky on Linux and ChromeOS.
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || \
+    (BUILDFLAG(IS_WIN) && defined(ADDRESS_SANITIZER))
+#define MAYBE_RecentlyClosedTabEntriesFilterOpenTabUrls \
+  DISABLED_RecentlyClosedTabEntriesFilterOpenTabUrls
+#else
+#define MAYBE_RecentlyClosedTabEntriesFilterOpenTabUrls \
+  RecentlyClosedTabEntriesFilterOpenTabUrls
+#endif
 IN_PROC_BROWSER_TEST_F(TabSearchPageHandlerTest,
-                       RecentlyClosedTabEntriesFilterOpenTabUrls) {
+                       MAYBE_RecentlyClosedTabEntriesFilterOpenTabUrls) {
   AddTabWithTitle(browser1(), tab_url1_, kTabName1);
   AddTabWithTitle(browser1(), tab_url1_, kTabName1);
 
@@ -1281,7 +1293,15 @@ IN_PROC_BROWSER_TEST_F(TabSearchPageHandlerTest,
   handler()->GetProfileData(std::move(callback2));
 }
 
-IN_PROC_BROWSER_TEST_F(TabSearchPageHandlerTest, RecentlyClosedTabInFuture) {
+// TODO(crbug.com/537538766): Flaky on Linux and ChromeOS.
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || \
+    (BUILDFLAG(IS_WIN) && defined(ADDRESS_SANITIZER))
+#define MAYBE_RecentlyClosedTabInFuture DISABLED_RecentlyClosedTabInFuture
+#else
+#define MAYBE_RecentlyClosedTabInFuture RecentlyClosedTabInFuture
+#endif
+IN_PROC_BROWSER_TEST_F(TabSearchPageHandlerTest,
+                       MAYBE_RecentlyClosedTabInFuture) {
   AddTabWithTitle(browser1(), tab_url1_, kTabName1);
   AddTabWithTitle(browser1(), tab_url2_, kTabName2);
 
@@ -1373,8 +1393,9 @@ IN_PROC_BROWSER_TEST_F(TabSearchPageHandlerTest, MAYBE_ReplaceActiveSplitTab) {
             tabs_in_split_after_replacement[1]->GetContents()->GetURL().spec());
 }
 
-// TODO(crbug.com/537538766): Re-enable test
-#if BUILDFLAG(IS_LINUX) && defined(MEMORY_SANITIZER)
+// TODO(crbug.com/537538766): Flaky on Linux and ChromeOS.
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || \
+    (BUILDFLAG(IS_WIN) && defined(ADDRESS_SANITIZER))
 #define MAYBE_TabSearchUsedPref DISABLED_TabSearchUsedPref
 #else
 #define MAYBE_TabSearchUsedPref TabSearchUsedPref

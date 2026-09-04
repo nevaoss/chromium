@@ -529,12 +529,40 @@ class BrowserAutofillManager : public AutofillManager {
   bool MaybeShowPrivateInferenceNotice(
       base::span<const Suggestion> autofill_ai_suggestions);
 
+  // Creates passkey suggestions that will be used in
+  // `MergePasskeysAndExistingSuggestions`.
+  // TODO(crbug.com/409962888): Remove after new suggestion generation logic is
+  // launched.
+  std::vector<Suggestion> CreatePasskeySuggestionsForMerge(
+      const FormFieldData& field);
+
+  // Combines passkey suggestions and existing suggestions into a single list,
+  // prioritizing existing suggestions first.
+  static void MergePasskeysAndExistingSuggestions(
+      std::vector<Suggestion>& suggestions,
+      std::vector<Suggestion> passkey_suggestions);
+
   // Merges suggestions with `FillingProduct::kAddress` with the other
   // suggestions whose products supports merging with address suggestions (see
   // `kSupportedMerges` in `suggestion_generator.h` for more details).
-  std::vector<Suggestion> MergeWithAddressSuggestions(
-      std::map<FillingProduct, std::vector<Suggestion>>& suggestions_map,
+  static std::vector<Suggestion> MergeWithAddressSuggestions(
+      std::map<FillingProduct, std::vector<Suggestion>> suggestions_map,
+      const AutofillField* trigger_field,
       AutofillSuggestionTriggerSource trigger_source);
+
+  // Combines identity credential suggestions and existing suggestions into a
+  // single list, prioritizing identity credential suggestions first.
+  static void MergeIdentityCredentialsAndAddressSuggestions(
+      std::vector<Suggestion>& suggestions,
+      std::vector<Suggestion> identity_credential_suggestions);
+
+  // Combines autocomplete suggestions and existing suggestions into a
+  // single list, prioritizing address suggestions and filtering out
+  // autocomplete suggestions that are unlikely to match the field type.
+  static void MergeAutocompleteAndAddressSuggestions(
+      std::vector<Suggestion>& suggestions,
+      std::vector<Suggestion> autocomplete_suggestions,
+      FieldType trigger_field_type);
 
   // Generates and prioritizes different kinds of suggestions and
   // suggestion surfaces accordingly (Autofill AI, SingleFieldFiller(s), address
@@ -595,25 +623,6 @@ class BrowserAutofillManager : public AutofillManager {
   // Logs various Autofill enabled/disabled metrics when forms are seen on a
   // page for the first time.
   void LogPageLoadSettingsMetrics(bool autofill_enabled);
-
-  // Combines passkey suggestions and existing suggestions into a single list,
-  // prioritizing existing suggestions first.
-  void MergePasskeysAndExistingSuggestions(
-      std::vector<Suggestion>& suggestions,
-      std::vector<Suggestion> passkey_suggestions);
-
-  // Creates passkey suggestions that will be used in
-  // MergePasskeysAndExistingSuggestions.
-  // TODO(crbug.com/409962888): Remove after new suggestion generation logic is
-  // launched.
-  std::vector<Suggestion> CreatePasskeySuggestionsForMerge(
-      const FormFieldData& field);
-
-  // Combines identity credential suggestions and existing suggestions into a
-  // single list, prioritizing identity credential suggestions first.
-  void MergeIdentityCredentialsAndAddressSuggestions(
-      std::vector<Suggestion>& suggestion,
-      std::vector<Suggestion> identity_credential_suggestions);
 
   // Iterate through all the fields in the form to process the log events for
   // each field and record into FieldInfo UKM event.

@@ -31,7 +31,7 @@
 #include "components/autofill/core/browser/autofill_type.h"
 #include "components/autofill/core/browser/crowdsourcing/randomized_encoder.h"
 #include "components/autofill/core/browser/field_types.h"
-#include "components/autofill/core/browser/test_utils/autofill_test_utils.h"
+#include "components/autofill/core/browser/test_utils/autofill_test_util.h"
 #include "components/autofill/core/common/autofill_prefs.h"
 #include "components/autofill/core/common/field_data_manager.h"
 #include "components/autofill/core/common/form_data.h"
@@ -285,6 +285,10 @@ class MockPasswordManagerClient : public StubPasswordManagerClient {
               (override));
   MOCK_METHOD(void, ResetSubmissionTrackingAfterTouchToFill, (), (override));
   MOCK_METHOD(void, UpdateFormManagers, (), (override));
+  MOCK_METHOD(void,
+              OnPasswordFilled,
+              (PasswordManagerDriver*, const GURL&),
+              (override));
   MOCK_METHOD(void,
               AutomaticPasswordSave,
               (std::unique_ptr<PasswordFormManagerForUI>,
@@ -1679,6 +1683,37 @@ TEST_P(PasswordManagerTest,
   // Store should not change.
   task_environment_.RunUntilIdle();
   EXPECT_THAT(GetAllLoginsSync(store_.get()), expected_logins_matcher);
+  Mock::VerifyAndClearExpectations(&client_);
+}
+
+TEST_P(PasswordManagerTest, OnInformAboutUserInput_ActorFilledPassword) {
+  ON_CALL(client_, IsSavingAndFillingEnabled).WillByDefault(Return(true));
+
+  const PasswordForm saved_match(MakeSavedForm());
+  store_->AddLogin(password_manager::FromPasswordForm(saved_match));
+
+  FormData form_data = MakeSimpleFormData();
+  // Ensure initial form has no password value.
+  test_api(form_data).field(1).set_value(std::u16string());
+
+  manager()->OnPasswordFormsParsed(&driver_, {form_data});
+  ASSERT_TRUE(base::test::RunUntil(
+      [&]() { return manager()->HaveFormManagersReceivedData(&driver_); }));
+
+  auto& field = test_api(form_data).field(1);
+  field.set_value(u"p4ssword");
+  field.set_properties_mask(
+      autofill::FieldPropertiesFlags::kAutofilledActorLogin);
+
+  // Expect client_->OnPasswordFilled to be called.
+  EXPECT_CALL(client_, OnPasswordFilled(&driver_, form_data.url())).Times(1);
+
+  manager()->OnInformAboutUserInput(&driver_, form_data);
+  Mock::VerifyAndClearExpectations(&client_);
+
+  // Duplicate events should not be logged.
+  EXPECT_CALL(client_, OnPasswordFilled).Times(0);
+  manager()->OnInformAboutUserInput(&driver_, form_data);
   Mock::VerifyAndClearExpectations(&client_);
 }
 

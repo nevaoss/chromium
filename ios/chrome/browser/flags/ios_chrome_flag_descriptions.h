@@ -209,12 +209,6 @@ inline constexpr char kAutofillAmbientAutofillName[] =
 inline constexpr char kAutofillAmbientAutofillDescription[] =
     "Enables Ambient Autofill.";
 
-inline constexpr char kAutofillAndPasswordsRemoveSignInPromoName[] =
-    "Autofill and passwords remove sign-in promo";
-inline constexpr char kAutofillAndPasswordsRemoveSignInPromoDescription[] =
-    "When enabled, removes the sign-in promo component from the Autofill and "
-    "passwords settings page.";
-
 inline constexpr char kAutofillBottomSheetNewBlurName[] =
     "New Blur Method for Autofill Bottom Sheet";
 inline constexpr char kAutofillBottomSheetNewBlurDescription[] =
@@ -1056,12 +1050,6 @@ inline constexpr char kIOSBrowserEditMenuMetricsName[] =
 inline constexpr char kIOSBrowserEditMenuMetricsDescription[] =
     "Collect metrics for edit menu usage.";
 
-inline constexpr char kIOSBrowserReportIncludeAllProfilesName[] =
-    "Include all profiles in browser reports";
-inline constexpr char kIOSBrowserReportIncludeAllProfilesDescription[] =
-    "When enabled, enterprise browser reports include all profiles (instead of "
-    "only the current profile).";
-
 inline constexpr char kIOSChooseFromDriveSignedOutName[] =
     "Choose from Drive Signed Out";
 inline constexpr char kIOSChooseFromDriveSignedOutDescription[] =
@@ -1086,12 +1074,6 @@ inline constexpr char kIOSDockingPromoV2Name[] = "Docking Promo V2";
 inline constexpr char kIOSDockingPromoV2Description[] =
     "When enabled, the user will be presented an animated, instructional "
     "promo V2 showing how to move Chrome to their native iOS dock.";
-
-inline constexpr char kIOSEnableCloudProfileReportingName[] =
-    "Enable profile reporting on iOS";
-inline constexpr char kIOSEnableCloudProfileReportingDescription[] =
-    "When enabled, profile reports will be reported to the user's "
-    "organization.";
 
 inline constexpr char kIOSEnableRealtimeEventReportingName[] =
     "Enable realtime event reporting on iOS";
@@ -1498,12 +1480,6 @@ inline constexpr char kNewTabPageFieldTrialName[] =
 inline constexpr char kNewTabPageFieldTrialDescription[] =
     "Enables new tab page features that are available on first run for new "
     "Chrome iOS users.";
-
-inline constexpr char kNewTabPagePinnedOmniboxColorUpdateName[] =
-    "New Tab Page pinned omnibox color update";
-inline constexpr char kNewTabPagePinnedOmniboxColorUpdateDescription[] =
-    "Updates the pinned omnibox colors on the New Tab Page to match the "
-    "updated omnibox introduced behind New Tab Page UI cleanup.";
 
 inline constexpr char kNewTabPageRedesignName[] = "New Tab Page Redesign";
 inline constexpr char kNewTabPageRedesignDescription[] =

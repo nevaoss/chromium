@@ -56,6 +56,7 @@
 #include "build/build_config.h"
 #include "build/config/chromebox_for_meetings/buildflags.h"  // PLATFORM_CFM
 #include "chrome/browser/accessibility/caption_settings_dialog.h"
+#include "chrome/browser/actor/actor_commit_deferring_condition.h"
 #include "chrome/browser/after_startup_task_utils.h"
 #include "chrome/browser/ai/ai_manager.h"
 #include "chrome/browser/app_mode/app_mode_utils.h"
@@ -81,6 +82,7 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_url_loader_factory_interceptor.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_url_loader_throttle.h"
 #include "chrome/browser/contextual_tasks/guest_opener_user_data.h"
 #include "chrome/browser/custom_handlers/protocol_handler_registry_factory.h"
 #include "chrome/browser/data_saver/data_saver.h"
@@ -99,6 +101,7 @@
 #include "chrome/browser/favicon/favicon_utils.h"
 #include "chrome/browser/font_family_cache.h"
 #include "chrome/browser/glic/host/guest_util.h"
+#include "chrome/browser/glic/public/features.h"
 #include "chrome/browser/headless/headless_mode_util.h"
 #include "chrome/browser/hid/chrome_hid_delegate.h"
 #include "chrome/browser/history/history_service_factory.h"
@@ -188,7 +191,6 @@
 #include "chrome/browser/ssl/ssl_client_certificate_selector.h"
 #include "chrome/browser/subresource_filter/subresource_filter_navigation_download_policy.h"
 #include "chrome/browser/tab_group_sync/tab_group_sync_utils.h"
-#include "chrome/browser/task_manager/sampling/task_manager_impl.h"
 #include "chrome/browser/task_manager/task_manager_interface.h"
 #include "chrome/browser/tracing/chrome_tracing_delegate.h"
 #include "chrome/browser/translate/translate_service.h"
@@ -527,6 +529,8 @@
 #include "services/service_manager/public/mojom/interface_provider_spec.mojom.h"
 #include "storage/browser/file_system/external_mount_points.h"
 #elif BUILDFLAG(IS_ANDROID)
+#include "base/android/android_info.h"
+#include "base/android/apk_info.h"
 #include "base/android/application_status_listener.h"
 #include "base/feature_list.h"
 #include "chrome/browser/android/customtabs/client_data_header_web_contents_observer.h"  // nogncheck crbug.com/40147906
@@ -2247,7 +2251,9 @@ bool ChromeContentBrowserClient::IsWebUIAllowedToMakeNetworkRequests(
 
 bool ChromeContentBrowserClient::ShouldAllowMojoJsBindingsForFrame(
     content::RenderFrameHost& render_frame_host) {
-  if (glic::IsFrameAllowedGlicApi(render_frame_host)) {
+  content::WebContents* web_contents =
+      content::WebContents::FromRenderFrameHost(&render_frame_host);
+  if (web_contents && glic::IsGlicGuest(web_contents)) {
     return true;
   }
   // TODO(crbug.com/539909218): Prototype shortcut. Enabling MojoJS for any PWC
@@ -2259,8 +2265,6 @@ bool ChromeContentBrowserClient::ShouldAllowMojoJsBindingsForFrame(
   // `IsInPrimaryMainFrame()` because this predicate is consulted from
   // `ReadyToCommitNavigation` before the frame commits, where
   // lifecycle-dependent queries return false.
-  content::WebContents* web_contents =
-      content::WebContents::FromRenderFrameHost(&render_frame_host);
   if (!render_frame_host.GetParentOrOuterDocument() && web_contents &&
       pwc::PrivilegedWebContents::FromWebContents(web_contents)) {
     return true;
@@ -3477,7 +3481,25 @@ void ChromeContentBrowserClient::RequestPlatformLocalNetworkPermission(
   const std::vector<ContentSettingsType> types = {
       ContentSettingsType::LOCAL_NETWORK_ACCESS};
 
-  switch (permissions::ShouldRepromptUserForPermissions(&web_contents, types)) {
+  permissions::PermissionRepromptState reprompt_state =
+      permissions::ShouldRepromptUserForPermissions(&web_contents, types);
+  base::UmaHistogramEnumeration(
+      "Android.LocalNetworkAccess.PermissionRepromptState", reprompt_state);
+
+  static const base::NoDestructor<std::string> histogram_name([] {
+    std::string_view sdk_suffix = (base::android::android_info::sdk_int() >= 37)
+                                      ? "Sdk37Plus"
+                                      : "SdkPre37";
+    std::string_view target_sdk_suffix =
+        (base::android::apk_info::target_sdk_version() >= 37)
+            ? "TargetSdk37Plus"
+            : "TargetSdkPre37";
+    return base::StrCat({"Android.LocalNetworkAccess.PermissionRepromptState.",
+                         sdk_suffix, ".", target_sdk_suffix});
+  }());
+  base::UmaHistogramEnumeration(*histogram_name, reprompt_state);
+
+  switch (reprompt_state) {
     case permissions::PermissionRepromptState::kNoNeed:
       std::move(callback).Run(/*permission_granted=*/true);
       return;
@@ -5501,14 +5523,17 @@ std::vector<std::unique_ptr<content::CommitDeferringCondition>>
 ChromeContentBrowserClient::CreateCommitDeferringConditionsForNavigation(
     content::NavigationHandle* navigation_handle,
     content::CommitDeferringCondition::NavigationType navigation_type) {
-  auto conditions =
-      std::vector<std::unique_ptr<content::CommitDeferringCondition>>();
+  std::vector<std::unique_ptr<content::CommitDeferringCondition>> conditions;
 
 #if BUILDFLAG(SAFE_BROWSING_AVAILABLE)
   MaybeAddCondition(
       safe_browsing::MaybeCreateCommitDeferringCondition(*navigation_handle),
       &conditions);
 #endif
+
+  MaybeAddCondition(actor::ActorCommitDeferringCondition::MaybeCreate(
+                        *navigation_handle, navigation_type),
+                    &conditions);
 
   return conditions;
 }
@@ -6000,6 +6025,12 @@ ChromeContentBrowserClient::CreateURLLoaderThrottles(
     }
   }
 
+  if (auto contextual_tasks_throttle =
+          contextual_tasks::ContextualTasksURLLoaderThrottle::MaybeCreate(
+              profile, wc_getter)) {
+    result.push_back(std::move(contextual_tasks_throttle));
+  }
+
   return result;
 }
 
@@ -6027,6 +6058,12 @@ ChromeContentBrowserClient::CreateURLLoaderThrottlesForKeepAlive(
           profile);
       google_throttle) {
     result.push_back(std::move(google_throttle));
+  }
+
+  if (auto contextual_tasks_throttle =
+          contextual_tasks::ContextualTasksURLLoaderThrottle::MaybeCreate(
+              profile, /*wc_getter=*/{})) {
+    result.push_back(std::move(contextual_tasks_throttle));
   }
 
   return result;
@@ -6848,21 +6885,8 @@ void ChromeContentBrowserClient::OnNetworkServiceCreated(
     local_state = startup_data_.chrome_feature_list_creator()->local_state();
   }
 
-  // Create SystemNetworkContextManager if it has not been created yet. We need
-  // to set up global NetworkService state before anything else uses it and this
-  // is the first opportunity to initialize SystemNetworkContextManager with the
-  // NetworkService.
-  if (!SystemNetworkContextManager::HasInstance()) {
-    SystemNetworkContextManager::CreateInstance(local_state);
-  }
-
-  SystemNetworkContextManager::GetInstance()->OnNetworkServiceCreated(
-      network_service);
-
-  if (task_manager::TaskManagerImpl::IsCreated() &&
-      task_manager::TaskManagerImpl::GetInstance()->is_running()) {
-    network_service->EnableDataUseUpdates(true);
-  }
+  SystemNetworkContextManager::OnNetworkServiceCreated(network_service,
+                                                       local_state);
 }
 
 void ChromeContentBrowserClient::ConfigureNetworkContextParams(

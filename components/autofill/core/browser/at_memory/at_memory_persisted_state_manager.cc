@@ -10,6 +10,7 @@
 #include "base/check.h"
 #include "base/containers/span.h"
 #include "components/autofill/core/common/autofill_features.h"
+#include "components/history/core/browser/history_service.h"
 
 namespace autofill {
 
@@ -49,7 +50,13 @@ const Suggestion& GetSuggestionToStore(
 
 }  // namespace
 
-AtMemoryPersistedStateManager::AtMemoryPersistedStateManager() = default;
+AtMemoryPersistedStateManager::AtMemoryPersistedStateManager(
+    history::HistoryService* history_service) {
+  if (history_service) {
+    history_service_observation_.Observe(history_service);
+  }
+}
+
 AtMemoryPersistedStateManager::~AtMemoryPersistedStateManager() = default;
 
 const std::optional<AtMemorySearchState>&
@@ -57,6 +64,7 @@ AtMemoryPersistedStateManager::GetStateForField(
     const FieldGlobalId& field_id,
     const url::Origin& field_origin) {
   if (field_id_ != field_id) {
+    cleanup_timer_.Stop();
     field_id_ = field_id;
     field_origin_ = field_origin;
     search_state_.reset();
@@ -69,6 +77,7 @@ void AtMemoryPersistedStateManager::OnFilterChanged(
   CHECK(field_id_);
   if (filter.empty()) {
     search_state_.reset();
+    cleanup_timer_.Stop();
     return;
   }
   if (!search_state_) {
@@ -77,6 +86,7 @@ void AtMemoryPersistedStateManager::OnFilterChanged(
   search_state_->filter = filter;
   search_state_->suggestions.clear();
   search_state_->is_searching = false;
+  RestartCleanupTimer();
 }
 
 void AtMemoryPersistedStateManager::OnFilterSubmitted(
@@ -87,6 +97,7 @@ void AtMemoryPersistedStateManager::OnFilterSubmitted(
   }
   search_state_->filter = filter;
   search_state_->is_searching = true;
+  RestartCleanupTimer();
 }
 
 void AtMemoryPersistedStateManager::OnSuggestionsChanged(
@@ -95,6 +106,7 @@ void AtMemoryPersistedStateManager::OnSuggestionsChanged(
     return;
   }
   search_state_->suggestions = std::move(suggestions);
+  RestartCleanupTimer();
 }
 
 void AtMemoryPersistedStateManager::OnSuggestionAccepted(
@@ -116,8 +128,7 @@ void AtMemoryPersistedStateManager::OnSuggestionAccepted(
       previously_filled_suggestions_.push_back(suggestion_to_store);
     }
   }
-  field_id_ = FieldGlobalId();
-  search_state_.reset();
+  ResetSearchState();
 }
 
 bool AtMemoryPersistedStateManager::IsSearching() const {
@@ -130,6 +141,34 @@ void AtMemoryPersistedStateManager::StopSearching() {
   }
   search_state_->suggestions.clear();
   search_state_->is_searching = false;
+}
+
+void AtMemoryPersistedStateManager::OnHistoryDeletions(
+    history::HistoryService* history_service,
+    const history::DeletionInfo& deletion_info) {
+  Reset();
+}
+
+void AtMemoryPersistedStateManager::HistoryServiceBeingDeleted(
+    history::HistoryService* history_service) {
+  history_service_observation_.Reset();
+}
+
+void AtMemoryPersistedStateManager::Reset() {
+  ResetSearchState();
+  previously_filled_suggestions_.clear();
+}
+
+void AtMemoryPersistedStateManager::ResetSearchState() {
+  cleanup_timer_.Stop();
+  field_id_ = FieldGlobalId();
+  field_origin_ = url::Origin();
+  search_state_.reset();
+}
+
+void AtMemoryPersistedStateManager::RestartCleanupTimer() {
+  cleanup_timer_.Start(FROM_HERE, kTimeToLive, this,
+                       &AtMemoryPersistedStateManager::Reset);
 }
 
 }  // namespace autofill

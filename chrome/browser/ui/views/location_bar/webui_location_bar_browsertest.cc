@@ -1,12 +1,10 @@
-#include "content/public/test/test_navigation_observer.h"
-#include "net/test/embedded_test_server/embedded_test_server.h"
-#include "ui/base/clipboard/scoped_clipboard_writer.h"
-#include "ui/base/clipboard/test/test_clipboard.h"
 // Copyright 2026 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/ui/views/location_bar/webui_location_bar.h"
+
+#include <utility>
 
 #include "base/run_loop.h"
 #include "base/scoped_observation.h"
@@ -14,13 +12,16 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/run_until.h"
 #include "base/test/scoped_feature_list.h"
-#include "build/build_config.h"
+#include "chrome/browser/bookmarks/bookmark_model_factory.h"
+#include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
 #include "chrome/browser/ui/browser_actions.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_tabstrip.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/color/chrome_color_id.h"
+#include "chrome/browser/ui/find_bar/find_bar_controller.h"
 #include "chrome/browser/ui/interaction/browser_elements.h"
 #include "chrome/browser/ui/layout_constants.h"
 #include "chrome/browser/ui/omnibox/omnibox_view.h"
@@ -40,12 +41,19 @@
 #include "chrome/grit/generated_resources.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/ui_test_utils.h"
+#include "components/bookmarks/browser/bookmark_model.h"
+#include "components/bookmarks/test/bookmark_test_helpers.h"
 #include "components/content_settings/browser/page_specific_content_settings.h"
+#include "components/find_in_page/find_types.h"
 #include "components/tabs/public/tab_interface.h"
 #include "components/vector_icons/vector_icons.h"
 #include "content/public/common/content_features.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
+#include "content/public/test/test_navigation_observer.h"
+#include "net/test/embedded_test_server/embedded_test_server.h"
+#include "ui/base/clipboard/scoped_clipboard_writer.h"
+#include "ui/base/clipboard/test/test_clipboard.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/ui_base_features.h"
 #include "ui/color/color_id.h"
@@ -622,10 +630,9 @@ IN_PROC_BROWSER_TEST_F(WebUILocationBarBrowserTest,
   }));
 
   // Click the bookmark star button in WebUI.
-  const int bookmark_mojom_id = static_cast<int>(
+  const int kBookmarkMojomId = std::to_underlying(
       webui_toolbar::ActionIdToMojomPageActionId(kActionBookmarkThisTab));
-  const std::string kClickBookmarkScript =
-      content::JsReplace(R"(
+  const std::string kClickBookmarkScript = content::JsReplace(R"(
       (() => {
         const bookmarkIcon = Array.from(
           document.querySelector('toolbar-app')?.
@@ -633,16 +640,14 @@ IN_PROC_BROWSER_TEST_F(WebUILocationBarBrowserTest,
             shadowRoot?.querySelector('page-action-icons')?.
             shadowRoot?.querySelectorAll('page-action-icon') || []
         ).find(icon => icon.state && icon.state.pageActionId === $1);
-        const button = bookmarkIcon?.shadowRoot?.
-          querySelector('#button');
-        if (!button) {
+        if (!bookmarkIcon) {
           return false;
         }
-        button.click();
+        bookmarkIcon.$$.button.click();
         return true;
       })()
   )",
-                         bookmark_mojom_id);
+                                                              kBookmarkMojomId);
 
   // Run this in a loop since the button may not be loaded yet.
   EXPECT_TRUE(base::test::RunUntil([&]() {
@@ -663,7 +668,7 @@ IN_PROC_BROWSER_TEST_F(WebUILocationBarBrowserTest,
                bookmarkIcon.state.tooltipText === $2;
       })()
   )",
-      bookmark_mojom_id, l10n_util::GetStringUTF8(IDS_TOOLTIP_STARRED));
+      kBookmarkMojomId, l10n_util::GetStringUTF8(IDS_TOOLTIP_STARRED));
 
   // Wait for the bookmark star to be marked bookmarked in WebUI.
   EXPECT_TRUE(base::test::RunUntil([&]() {
@@ -851,6 +856,137 @@ IN_PROC_BROWSER_TEST_F(WebUILocationBarBrowserTest, MiddleClickPasteAndGo) {
                            ->tab_strip_model()
                            ->GetActiveWebContents()
                            ->GetLastCommittedURL());
+}
+
+IN_PROC_BROWSER_TEST_F(WebUILocationBarBrowserTest,
+                       PageActionBookmarkBubbleHighlight) {
+  ASSERT_TRUE(embedded_test_server()->Start());
+  const GURL url = embedded_test_server()->GetURL("/title1.html");
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url));
+
+  auto* bookmark_model =
+      BookmarkModelFactory::GetForBrowserContext(browser()->GetProfile());
+  bookmarks::test::WaitForBookmarkModelToLoad(bookmark_model);
+  bookmark_model->AddNewURL(bookmark_model->other_node(), 0, u"Title", url);
+
+  WaitForInitialWebUIToolbar(browser());
+  content::WebContents* web_contents =
+      browser()->GetTabStripModel()->GetActiveWebContents();
+
+  auto* tab = browser()->GetTabStripModel()->GetActiveTab();
+  ASSERT_TRUE(tab);
+  auto* bookmark_controller = BookmarkPageActionController::From(tab);
+  ASSERT_TRUE(bookmark_controller);
+  bookmark_controller->URLStarredChanged(web_contents, /*starred=*/true);
+  GetLocationBar()->Update(web_contents);
+
+  constexpr int kBookmarkMojomId = std::to_underlying(
+      toolbar_ui_api::mojom::PageActionId::kActionBookmarkThisTab);
+
+  const std::string check_bookmark_exists_script =
+      content::JsReplace(R"(
+      (() => {
+        const pageActions = Array.from(
+          document.querySelector('toolbar-app')?.
+            shadowRoot?.querySelector('location-bar')?.
+            shadowRoot?.querySelector('page-action-icons')?.
+            shadowRoot?.querySelectorAll('page-action-icon') || []
+        );
+        return pageActions.some(
+          icon => icon.state.pageActionId === $1);
+      })()
+  )",
+                         kBookmarkMojomId);
+
+  EXPECT_TRUE(base::test::RunUntil([&]() {
+    return content::EvalJs(GetWebUIToolbarWebContents(),
+                           check_bookmark_exists_script)
+        .ExtractBool();
+  }));
+
+  const std::string check_bookmark_is_menu_open_script =
+      content::JsReplace(R"(
+      (() => {
+        const pageActions = Array.from(
+          document.querySelector('toolbar-app')?.
+            shadowRoot?.querySelector('location-bar')?.
+            shadowRoot?.querySelector('page-action-icons')?.
+            shadowRoot?.querySelectorAll('page-action-icon') || []
+        );
+        const bookmarkIcon = pageActions.find(
+          icon => icon.state && icon.state.pageActionId === $1);
+        if (!bookmarkIcon) {
+          return false;
+        }
+        return bookmarkIcon.$$.button.hasAttribute('is-menu-open');
+      })()
+  )",
+                         kBookmarkMojomId);
+
+  EXPECT_FALSE(content::EvalJs(GetWebUIToolbarWebContents(),
+                               check_bookmark_is_menu_open_script)
+                   .ExtractBool());
+
+  // Show bookmark bubble.
+  BrowserView::GetBrowserViewForBrowser(browser())->ShowBookmarkBubble(
+      url, /*already_bookmarked=*/true);
+
+  EXPECT_TRUE(base::test::RunUntil([&]() {
+    return content::EvalJs(GetWebUIToolbarWebContents(),
+                           check_bookmark_is_menu_open_script)
+               .ExtractBool() == true;
+  }));
+}
+
+IN_PROC_BROWSER_TEST_F(WebUILocationBarBrowserTest,
+                       PageActionFindBarHighlight) {
+  WaitForInitialWebUIToolbar(browser());
+
+  const int find_mojom_id =
+      std::to_underlying(toolbar_ui_api::mojom::PageActionId::kActionFind);
+
+  const std::string check_find_is_menu_open_script =
+      content::JsReplace(R"(
+      (() => {
+        const pageActions = Array.from(
+          document.querySelector('toolbar-app')?.
+            shadowRoot?.querySelector('location-bar')?.
+            shadowRoot?.querySelector('page-action-icons')?.
+            shadowRoot?.querySelectorAll('page-action-icon') || []
+        );
+        const findIcon = pageActions.find(
+          icon => icon.state && icon.state.pageActionId === $1);
+        if (!findIcon) {
+          return false;
+        }
+        return findIcon.$$.button.hasAttribute('is-menu-open');
+      })()
+  )",
+                         find_mojom_id);
+
+  EXPECT_FALSE(content::EvalJs(GetWebUIToolbarWebContents(),
+                               check_find_is_menu_open_script)
+                   .ExtractBool());
+
+  // Show find bar.
+  auto* find_bar_controller = browser()->GetFeatures().GetFindBarController();
+  find_bar_controller->Show();
+
+  EXPECT_TRUE(base::test::RunUntil([&]() {
+    return content::EvalJs(GetWebUIToolbarWebContents(),
+                           check_find_is_menu_open_script)
+               .ExtractBool() == true;
+  }));
+
+  // Hide find bar.
+  find_bar_controller->EndFindSession(find_in_page::SelectionAction::kKeep,
+                                      find_in_page::ResultAction::kKeep);
+
+  EXPECT_TRUE(base::test::RunUntil([&]() {
+    return content::EvalJs(GetWebUIToolbarWebContents(),
+                           check_find_is_menu_open_script)
+               .ExtractBool() == false;
+  }));
 }
 
 }  // namespace

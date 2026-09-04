@@ -105,6 +105,9 @@
   <message name="IDS_ACTOR_NOTIFICATION_TITLE_WORKING_ON_TASK" desc="Notification title when the actor is actively working on a task." formatter_data="android_java">
    Working on your task
   </message>
+  <message name="IDS_ACTOR_NOTIFICATION_TITLE_PREPARING_TO_START_TASK" desc="Notification title when the actor is preparing to start a task." formatter_data="android_java">
+    Preparing to start your task…
+  </message>
   <message name="IDS_ACTOR_NOTIFICATION_TITLE_CHECK_YOUR_TASK" desc="Notification title when the actor is waiting for user input to proceed with a task." formatter_data="android_java">
    Check your task
   </message>
@@ -166,6 +169,15 @@
   </message>
   <message name="IDS_ACTOR_NOTIFICATION_LIVE_STATUS_STOPPED" desc="Status chip text displayed when an actor task is stopped." formatter_data="android_java">
     Stopped
+  </message>
+  <message name="IDS_ACTOR_NOTIFICATION_PROMPT_TOAST_TITLE" desc="Title text on a toast prompting the user to enable notifications for Actor tasks." formatter_data="android_java">
+    Get updates on your task
+  </message>
+  <message name="IDS_ACTOR_NOTIFICATION_PROMPT_TOAST_BODY" desc="Body text on a toast prompting the user to enable notifications to get updates while browsing or away." formatter_data="android_java">
+    Turn on notifications to get updates while you're browsing or away
+  </message>
+  <message name="IDS_ACTOR_NOTIFICATION_PROMPT_TOAST_MANAGE_BUTTON" desc="Button text on the toast prompting the user to enable notifications, opening the notification settings." formatter_data="android_java">
+    Manage
   </message>
 
     <!-- Glic Peek View UI State Strings -->

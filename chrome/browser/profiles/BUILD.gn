@@ -132,6 +132,7 @@ source_set("misc") {
     "//components/embedder_support",
     "//components/guest_view/buildflags",
     "//components/heavy_ad_intervention",
+    "//components/history/core/common",
     "//components/keyed_service/content",
     "//components/language/core/common",
     "//components/policy/core/browser",
@@ -143,7 +144,7 @@ source_set("misc") {
     "//components/signin/public/identity_manager",
     "//components/site_isolation",
     "//components/spellcheck:buildflags",
-    "//components/supervised_user/core/browser",
+    "//components/supervised_user/core/common",
     "//components/user_prefs",
     "//components/webui/flags",
     "//components/zoom",
@@ -687,10 +688,6 @@ source_set("profile_util_impl") {
     ]
   }
 
-  if (is_android) {
-    deps += [ "//components/supervised_user/core/browser/android" ]
-  }
-
   if (is_chromeos) {
     deps += [
       "//chrome/browser/ash/login/users",
@@ -842,6 +839,7 @@ source_set("profiles_extra_parts_impl") {
     "//chrome/browser/sync",
     "//chrome/browser/tab_group_sync:factories",
     "//chrome/browser/tips",
+    "//chrome/browser/ttc",
     "//chrome/browser/ui",
     "//chrome/browser/ui:ui_features",
     "//chrome/browser/ui/autofill",
@@ -875,6 +873,7 @@ source_set("profiles_extra_parts_impl") {
     "//components/omnibox/browser",
     "//components/optimization_guide/core",
     "//components/password_manager/content/browser",
+    "//components/password_manager/core/browser/features:password_features",
     "//components/payments/content",
     "//components/permissions:permissions_common",
     "//components/policy/content",
@@ -1065,6 +1064,7 @@ source_set("profiles_extra_parts_impl") {
   if (!is_android) {
     deps += [
       "//chrome/browser/password_manager/factories:startup_import_factory",
+      "//chrome/browser/password_manager/ode",
       "//chrome/browser/password_manager/remote_actor",
     ]
   }

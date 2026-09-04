@@ -32,27 +32,41 @@
 ///    - `Mojo<namespace><type name>Generator` (e.g. `MojoUrlMojomUrlGenerator`)
 
 public enum CommonMojoStrings {
-    static let mojo = "Mojo"
-
-    static let boolElement = "BoolElement"
-    static let int8Element = "Int8Element"
-    static let int16Element = "Int16Element"
-    static let int32Element = "Int32Element"
-    static let int64Element = "Int64Element"
-    static let uint8Element = "Uint8Element"
-    static let uint16Element = "Uint16Element"
-    static let uint32Element = "Uint32Element"
-    static let uint64Element = "Uint64Element"
-    static let floatElement = "FloatElement"
+    static let boolElement = "Bool"
+    // These integer names match the names of `namedIntegers` defined in
+    // `JavaScriptEnvironment`. Type merging requires that the two types share
+    // the same `group`.
+    static let int8Element = "Int8"
+    static let int16Element = "Int16"
+    static let int32Element = "Int32"
+    static let int64Element = "Int64"
+    static let uint8Element = "Uint8"
+    static let uint16Element = "Uint16"
+    static let uint32Element = "Uint32"
+    static let uint64Element = "Uint64"
+    static let floatElement = "Float"
+    // There exists already an `ObjectGroup` with the `group` "String"
     static let stringElement = "StringElement"
 
+
     // mojo
+    static let mojo = "Mojo"
+    static let mojoSharedBufferHandle = "MojoSharedBufferHandle"
+    static let mojoDataPipeProducerHandle = "MojoDataPipeProducerHandle"
+    static let mojoDataPipeConsumerHandle = "MojoDataPipeConsumerHandle"
     static let mojoCreateSharedBufferResult = "MojoCreateSharedBufferResult"
-    static let mojoHandle = "MojoHandle"
+    static let mojoCreateDataPipeOptions = "MojoCreateDataPipeOptions"
+    static let mojoCreateDataPipeResult = "MojoCreateDataPipeResult"
+    static let mojoWriteDataOptions = "MojoWriteDataOptions"
+    static let mojoWriteDataResult = "MojoWriteDataResult"
+    static let mojoReadDataOptions = "MojoReadDataOptions"
+    static let mojoReadDataResult = "MojoReadDataResult"
+    static let mojoDiscardDataOptions = "MojoDiscardDataOptions"
 
     // mojoBase
     static let mojoBaseMojomBigBuffer = "mojoBase.mojom.BigBuffer"
-    static let mojoBaseMojomBigBufferSharedMemoryRegion = "mojoBase.mojom.BigBufferSharedMemoryRegion"
+    static let mojoBaseMojomBigBufferSharedMemoryRegion =
+        "mojoBase.mojom.BigBufferSharedMemoryRegion"
     static let mojoBaseMojomBigString16 = "mojoBase.mojom.BigString16"
     static let mojoBaseMojomBigString = "mojoBase.mojom.BigString"
     static let mojoBaseMojomString16 = "mojoBase.mojom.String16"
@@ -68,12 +82,14 @@ public enum CommonMojoStrings {
 }
 
 public let commonMojoBuiltins: [String: ILType] = [
+    // mojo
     CommonMojoStrings.mojo: .jsMojo,
 
     // mojoBase
     CommonMojoStrings.mojoBaseMojomString16: .jsMojoBaseMojomString16Constructor,
 
-    CommonMojoStrings.mojoBaseMojomBigBufferSharedMemoryRegion: .jsMojoBaseMojomBigBufferSharedMemoryRegionConstructor,
+    CommonMojoStrings.mojoBaseMojomBigBufferSharedMemoryRegion:
+        .jsMojoBaseMojomBigBufferSharedMemoryRegionConstructor,
     CommonMojoStrings.mojoBaseMojomBigString16: .jsMojoBaseMojomBigString16Constructor,
     CommonMojoStrings.mojoBaseMojomUint128: .jsMojoBaseMojomUint128,
 
@@ -88,6 +104,7 @@ public let commonMojoBuiltins: [String: ILType] = [
 public let commonMojoCodeGenerators: [(CodeGenerator, Int)] = [
     // mojo
     (MojoObjectLiteralNoopGenerator, 1),
+    (MojoBufferSourceGenerator, 1),
 
     // mojoBase
     (MojoMojoBaseMojomBigBufferBytesGenerator, 1),
@@ -104,8 +121,6 @@ public let commonMojoCodeGenerators: [(CodeGenerator, Int)] = [
 ]
 
 public let commonMojoObjectGroups: [ObjectGroup] = [
-    .mojo,
-
     .boolElement,
     .int8Element,
     .int16Element,
@@ -119,8 +134,14 @@ public let commonMojoObjectGroups: [ObjectGroup] = [
     .stringElement,
 
     // mojo
+    .mojo,
+    .mojoSharedBufferHandle,
+    .mojoDataPipeProducerHandle,
+    .mojoDataPipeConsumerHandle,
     .mojoCreateSharedBufferResult,
-    .mojoHandle,
+    .mojoCreateDataPipeResult,
+    .mojoWriteDataResult,
+    .mojoReadDataResult,
 
     // mojoBase
     .mojoBaseMojomBigBufferSharedMemoryRegion,
@@ -139,6 +160,13 @@ public let commonMojoObjectGroups: [ObjectGroup] = [
 public let commonMojoEnumerations: [ILType] = []
 
 public let commonMojoOptionsBags: [OptionsBag] = [
+    // mojo
+    .mojoCreateDataPipeOptions,
+    .mojoWriteDataOptions,
+    .mojoReadDataOptions,
+    .mojoDiscardDataOptions,
+
+    // mojoBase
     .mojoBaseMojomBigBuffer,
 ]
 
@@ -146,14 +174,54 @@ extension ILType {
     // mojo
     public static let jsMojo: ILType = .object(
         ofGroup: CommonMojoStrings.mojo,
-        withMethods: ["createSharedBuffer"]
+        withMethods: ["createSharedBuffer", "createDataPipe"]
+    )
+    /// Although there is only one `MojoHandle` type defined in the IDL, we
+    /// define separate types for the SharedBuffer, DataPipeProducer, and
+    /// DataPipeConsumer functionalities. If Fuzzilli has what should only be
+    /// treated as a DataPipeConsumer, this approach avoids Fuzzilli from
+    /// calling irrelevant methods such as `writeData` that exist on the
+    /// `MojoHandle` type.
+    public static let jsSharedBufferHandle: ILType = .object(
+        ofGroup: CommonMojoStrings.mojoSharedBufferHandle)
+    public static let jsMojoDataPipeProducerHandle: ILType = .object(
+        ofGroup: CommonMojoStrings.mojoDataPipeProducerHandle,
+        withMethods: ["close", "writeData"]
+    )
+    public static let jsMojoDataPipeConsumerHandle: ILType = .object(
+        ofGroup: CommonMojoStrings.mojoDataPipeConsumerHandle,
+        withMethods: ["close", "readData", "queryData", "discardData"]
     )
     public static let jsMojoCreateSharedBufferResult: ILType = .object(
         ofGroup: CommonMojoStrings.mojoCreateSharedBufferResult,
         withProperties: ["result", "handle"]
     )
-    public static let jsMojoHandle: ILType = .object(
-        ofGroup: CommonMojoStrings.mojoHandle)
+    public static let jsMojoCreateDataPipeOptions: ILType = OptionsBag.mojoCreateDataPipeOptions
+        .group.instanceType
+    public static let jsMojoCreateDataPipeResult: ILType = .object(
+        ofGroup: CommonMojoStrings.mojoCreateDataPipeResult,
+        withProperties: ["result", "producer", "consumer"]
+    )
+    public static let jsMojoWriteDataOptions: ILType = OptionsBag.mojoWriteDataOptions.group
+        .instanceType
+    public static let jsMojoWriteDataResult: ILType = .object(
+        ofGroup: CommonMojoStrings.mojoWriteDataResult,
+        withProperties: ["result", "numBytes"]
+    )
+    public static let jsMojoReadDataOptions: ILType = OptionsBag.mojoReadDataOptions.group
+        .instanceType
+    public static let jsMojoReadDataResult: ILType = .object(
+        ofGroup: CommonMojoStrings.mojoReadDataResult,
+        withProperties: ["result", "numBytes"]
+    )
+    public static let jsMojoDiscardDataOptions: ILType = OptionsBag.mojoDiscardDataOptions.group
+        .instanceType
+
+    // TODO(crbug.com/554102710): Upstream `jsBufferSource` to be a builtin type in Fuzzilli
+    public static let jsBufferSource: ILType =
+        JavaScriptEnvironment.typedArrayConstructors
+        .map { jsTypedArray($0) }
+        .reduce(.jsArrayBuffer | .jsDataView, |)
 
     // These type are used to create a parameterized `jsArray`s, since the type
     // argument provided to `createJsArrayType` needs to have a group. Note
@@ -163,34 +231,36 @@ extension ILType {
     public static let jsBoolElement: ILType =
         .boolean + .object(ofGroup: CommonMojoStrings.boolElement)
     public static let jsInt8Element: ILType =
-        .integer + .object(ofGroup: CommonMojoStrings.int8Element)
+        .jsInt8 + .object(ofGroup: CommonMojoStrings.int8Element)
     public static let jsInt16Element: ILType =
-        .integer + .object(ofGroup: CommonMojoStrings.int16Element)
+        .jsInt16 + .object(ofGroup: CommonMojoStrings.int16Element)
     public static let jsInt32Element: ILType =
-        .integer + .object(ofGroup: CommonMojoStrings.int32Element)
+        .jsInt32 + .object(ofGroup: CommonMojoStrings.int32Element)
     public static let jsInt64Element: ILType =
-        .integer + .object(ofGroup: CommonMojoStrings.int64Element)
+        .bigint + .object(ofGroup: CommonMojoStrings.int64Element)
     public static let jsUint8Element: ILType =
-        .integer + .object(ofGroup: CommonMojoStrings.uint8Element)
+        .jsUint8 + .object(ofGroup: CommonMojoStrings.uint8Element)
     public static let jsUint16Element: ILType =
-        .integer + .object(ofGroup: CommonMojoStrings.uint16Element)
+        .jsUint16 + .object(ofGroup: CommonMojoStrings.uint16Element)
     public static let jsUint32Element: ILType =
-        .integer + .object(ofGroup: CommonMojoStrings.uint32Element)
+        .jsUint32 + .object(ofGroup: CommonMojoStrings.uint32Element)
+    // TODO(crbug.com/553587894): Determine a way to support uint64
     public static let jsUint64Element: ILType =
-        .integer + .object(ofGroup: CommonMojoStrings.uint64Element)
+        .bigint + .object(ofGroup: CommonMojoStrings.uint64Element)
     public static let jsFloatElement: ILType =
         .float + .object(ofGroup: CommonMojoStrings.floatElement)
     public static let jsStringElement: ILType =
         .string + .object(ofGroup: CommonMojoStrings.stringElement)
 
     // mojoBase
-    public static let jsMojoBaseMojomBigBuffer: ILType = OptionsBag.mojoBaseMojomBigBuffer.group.instanceType
+    public static let jsMojoBaseMojomBigBuffer: ILType = OptionsBag.mojoBaseMojomBigBuffer.group
+        .instanceType
 
     public static let jsMojoBaseMojomBigBufferSharedMemoryRegion: ILType = .object(
         ofGroup: CommonMojoStrings.mojoBaseMojomBigBufferSharedMemoryRegion,
         withProperties: ["bufferHandle", "size"])
     public static let jsMojoBaseMojomBigBufferSharedMemoryRegionConstructor: ILType = .constructor(
-        [.plain(.jsMojoHandle), .integer] => .jsMojoBaseMojomBigBufferSharedMemoryRegion
+        [.plain(.jsSharedBufferHandle), .integer] => .jsMojoBaseMojomBigBufferSharedMemoryRegion
     )
     public static let jsMojoBaseMojomBigString16: ILType = .object(
         ofGroup: CommonMojoStrings.mojoBaseMojomBigString16, withProperties: ["data"])
@@ -254,24 +324,80 @@ extension ObjectGroup {
         instanceType: .jsMojo,
         properties: [:],
         methods: [
-            "createSharedBuffer": [.integer] => .jsMojoCreateSharedBufferResult
+            "createSharedBuffer": [.integer] => .jsMojoCreateSharedBufferResult,
+            "createDataPipe": [.plain(.jsMojoCreateDataPipeOptions)] => .jsMojoCreateDataPipeResult,
         ]
     )
-
+    public static let mojoSharedBufferHandle = ObjectGroup(
+        name: CommonMojoStrings.mojoSharedBufferHandle,
+        instanceType: .jsSharedBufferHandle,
+        properties: [:],
+        methods: [:]
+    )
+    public static let mojoDataPipeProducerHandle = ObjectGroup(
+        name: CommonMojoStrings.mojoDataPipeProducerHandle,
+        instanceType: .jsMojoDataPipeProducerHandle,
+        properties: [:],
+        methods: [
+            "close": [] => .undefined,
+            "writeData": [
+                .plain(.jsBufferSource),
+                .either(.jsMojoWriteDataOptions, .undefined),
+            ] => .jsMojoWriteDataResult,
+        ]
+    )
+    public static let mojoDataPipeConsumerHandle = ObjectGroup(
+        name: CommonMojoStrings.mojoDataPipeConsumerHandle,
+        instanceType: .jsMojoDataPipeConsumerHandle,
+        properties: [:],
+        methods: [
+            "close": [] => .undefined,
+            "queryData": [] => .jsMojoReadDataResult,
+            "discardData": [
+                .integer,
+                .either(.jsMojoDiscardDataOptions, .undefined),
+            ] => .jsMojoReadDataResult,
+            "readData": [
+                .plain(.jsBufferSource),
+                .either(.jsMojoReadDataOptions, .undefined),
+            ] => .jsMojoReadDataResult,
+        ]
+    )
     public static let mojoCreateSharedBufferResult = ObjectGroup(
         name: CommonMojoStrings.mojoCreateSharedBufferResult,
         instanceType: .jsMojoCreateSharedBufferResult,
         properties: [
             "result": .integer,
-            "handle": .jsMojoHandle,
+            "handle": .jsSharedBufferHandle,
         ],
         methods: [:]
     )
-
-    public static let mojoHandle = ObjectGroup(
-        name: CommonMojoStrings.mojoHandle,
-        instanceType: .jsMojoHandle,
-        properties: [:],
+    public static let mojoCreateDataPipeResult = ObjectGroup(
+        name: CommonMojoStrings.mojoCreateDataPipeResult,
+        instanceType: .jsMojoCreateDataPipeResult,
+        properties: [
+            "result": .integer,
+            "producer": .jsMojoDataPipeProducerHandle,
+            "consumer": .jsMojoDataPipeConsumerHandle,
+        ],
+        methods: [:]
+    )
+    public static let mojoWriteDataResult = ObjectGroup(
+        name: CommonMojoStrings.mojoWriteDataResult,
+        instanceType: .jsMojoWriteDataResult,
+        properties: [
+            "result": .integer,
+            "numBytes": .integer,
+        ],
+        methods: [:]
+    )
+    public static let mojoReadDataResult = ObjectGroup(
+        name: CommonMojoStrings.mojoReadDataResult,
+        instanceType: .jsMojoReadDataResult,
+        properties: [
+            "result": .integer,
+            "numBytes": .integer,
+        ],
         methods: [:]
     )
 
@@ -347,7 +473,7 @@ extension ObjectGroup {
         name: CommonMojoStrings.mojoBaseMojomBigBufferSharedMemoryRegion,
         instanceType: .jsMojoBaseMojomBigBufferSharedMemoryRegion,
         properties: [
-            "bufferHandle": .jsMojoHandle,
+            "bufferHandle": .jsSharedBufferHandle,
             "size": .integer,
         ],
         methods: [:]
@@ -422,6 +548,39 @@ extension ObjectGroup {
 }
 
 extension OptionsBag {
+    // mojo
+    public static let mojoCreateDataPipeOptions = OptionsBag(
+        name: CommonMojoStrings.mojoCreateDataPipeOptions,
+        properties: [
+            "elementNumBytes": .integer,
+            "capacityNumBytes": .integer,
+        ],
+        selectionMode: .anySubset
+    )
+    public static let mojoDiscardDataOptions = OptionsBag(
+        name: CommonMojoStrings.mojoDiscardDataOptions,
+        properties: [
+            "allOrNone": .boolean
+        ],
+        selectionMode: .anySubset,
+    )
+    public static let mojoReadDataOptions = OptionsBag(
+        name: CommonMojoStrings.mojoReadDataOptions,
+        properties: [
+            "allOrNone": .boolean,
+            "peek": .boolean,
+        ],
+        selectionMode: .anySubset,
+    )
+    public static let mojoWriteDataOptions = OptionsBag(
+        name: CommonMojoStrings.mojoWriteDataOptions,
+        properties: [
+            "allOrNone": .boolean
+        ],
+        selectionMode: .anySubset,
+    )
+
+    // mojoBase
     public static let mojoBaseMojomBigBuffer = OptionsBag(
         name: CommonMojoStrings.mojoBaseMojomBigBuffer,
         properties: [
@@ -433,7 +592,7 @@ extension OptionsBag {
     )
 }
 
-//mojo
+// mojo
 /// A union in the Mojo JavaScript bindings is represented as an object literal
 /// with exactly one key-value pair, where the key is the union variant and the
 /// value is the variant's value (for example, in `big_buffer.mojom`, a
@@ -456,6 +615,31 @@ public let MojoObjectLiteralNoopGenerator = CodeGenerator(
     "MojoObjectLiteralNoopGenerator",
     inContext: .single(.objectLiteral)
 ) { b in }
+
+/// CodeGenerator producing a BufferSource (ArrayBuffer, DataView, or any TypedArray).
+public let MojoBufferSourceGenerator = CodeGenerator(
+    "MojoBufferSourceGenerator",
+    inputs: .one,
+    produces: [.jsBufferSource]
+) { b, _ in
+    enum bufferSourceKind: CaseIterable {
+        case arrayBuffer
+        case dataView
+        case typedArray
+    }
+
+    switch chooseUniform(from: bufferSourceKind.allCases) {
+    case .arrayBuffer:
+        let _ = b.findOrGenerateType(.jsArrayBuffer)
+
+    case .dataView:
+        let _ = b.findOrGenerateType(.jsDataView)
+
+    case .typedArray:
+        let variant = chooseUniform(from: JavaScriptEnvironment.typedArrayConstructors)
+        let _ = b.findOrGenerateType(ILType.jsTypedArray(variant))
+    }
+}
 
 // mojoBase
 public let MojoMojoBaseMojomBigBufferBytesGenerator = CodeGenerator(
@@ -532,7 +716,6 @@ public let MojoSkiaMojomColorToXyzMatrixArrayGenerator = CodeGenerator(
     }
     b.createArray(with: floats, elementGroupName: CommonMojoStrings.floatElement)
 }
-
 
 // url
 // TODO(http://crbug.com/514397167) determine broader URL generation strategy

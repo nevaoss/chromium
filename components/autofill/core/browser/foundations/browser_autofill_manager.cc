@@ -25,6 +25,7 @@
 #include "base/check.h"
 #include "base/check_deref.h"
 #include "base/check_op.h"
+#include "base/containers/extend.h"
 #include "base/containers/flat_map.h"
 #include "base/containers/flat_set.h"
 #include "base/containers/map_util.h"
@@ -47,7 +48,7 @@
 #include "base/strings/stringprintf.h"
 #include "base/time/time.h"
 #include "build/build_config.h"
-#include "components/autofill/core/browser/at_memory/at_memory_enablement_utils.h"
+#include "components/autofill/core/browser/at_memory/at_memory_enablement_util.h"
 #include "components/autofill/core/browser/at_memory/at_memory_manager.h"
 #include "components/autofill/core/browser/at_memory/at_memory_search_state.h"
 #include "components/autofill/core/browser/autofill_browser_util.h"
@@ -68,7 +69,7 @@
 #include "components/autofill/core/browser/data_quality/addresses/profile_token_quality.h"
 #include "components/autofill/core/browser/data_quality/autofill_data_util.h"
 #include "components/autofill/core/browser/data_quality/validation.h"
-#include "components/autofill/core/browser/field_type_utils.h"
+#include "components/autofill/core/browser/field_type_util.h"
 #include "components/autofill/core/browser/field_types.h"
 #include "components/autofill/core/browser/filling/addresses/field_filling_address_util.h"
 #include "components/autofill/core/browser/filling/autofill_ai/autofill_ai_access_manager.h"
@@ -113,7 +114,7 @@
 #include "components/autofill/core/browser/payments/credit_card_access_manager.h"
 #include "components/autofill/core/browser/payments/iban_manager.h"
 #include "components/autofill/core/browser/payments/save_and_fill_manager.h"
-#include "components/autofill/core/browser/permissions/autofill_ai/autofill_ai_permission_utils.h"
+#include "components/autofill/core/browser/permissions/autofill_ai/autofill_ai_permission_util.h"
 #include "components/autofill/core/browser/proto/api_v1.pb.h"
 #include "components/autofill/core/browser/single_field_fillers/autocomplete/autocomplete_history_manager.h"
 #include "components/autofill/core/browser/single_field_fillers/payments/merchant_promo_code_manager.h"
@@ -1245,8 +1246,8 @@ void BrowserAutofillManager::OnIndividualSuggestionsGenerated(
   }
 
   if (prioritized_suggestions.contains(FillingProduct::kAddress)) {
-    on_generate_suggestions_complete(
-        MergeWithAddressSuggestions(prioritized_suggestions, trigger_source));
+    on_generate_suggestions_complete(MergeWithAddressSuggestions(
+        std::move(prioritized_suggestions), autofill_field, trigger_source));
     return;
   }
 
@@ -1314,8 +1315,41 @@ bool BrowserAutofillManager::MaybeShowPrivateInferenceNotice(
   return false;
 }
 
+std::vector<Suggestion>
+BrowserAutofillManager::CreatePasskeySuggestionsForMerge(
+    const FormFieldData& field) {
+  if (!ShouldShowWebauthnHybridEntryPoint(field)) {
+    return {};
+  }
+  PasswordManagerDelegate* password_delegate =
+      client().GetPasswordManagerDelegate(field.global_id());
+  if (!password_delegate) {
+    return {};
+  }
+
+  // If any field **on the page** allows starting the hybrid passkey flow,
+  // these suggestions become available.
+  std::vector<Suggestion> suggestions;
+  if (std::optional<Suggestion> inline_qr_suggestion =
+          password_delegate->GetWebauthnInlineQrCodeSuggestion()) {
+    suggestions.push_back(*std::move(inline_qr_suggestion));
+  }
+  if (std::optional<Suggestion> passkey_suggestion =
+          password_delegate->GetWebauthnSignInWithAnotherDeviceSuggestion()) {
+    suggestions.push_back(*std::move(passkey_suggestion));
+  }
+  return suggestions;
+}
+
+void BrowserAutofillManager::MergePasskeysAndExistingSuggestions(
+    std::vector<Suggestion>& suggestions,
+    std::vector<Suggestion> passkey_suggestions) {
+  base::Extend(suggestions, std::move(passkey_suggestions));
+}
+
 std::vector<Suggestion> BrowserAutofillManager::MergeWithAddressSuggestions(
-    std::map<FillingProduct, std::vector<Suggestion>>& suggestions_map,
+    std::map<FillingProduct, std::vector<Suggestion>> suggestions_map,
+    const AutofillField* trigger_field,
     AutofillSuggestionTriggerSource trigger_source) {
   auto extract_vector = [&suggestions_map](FillingProduct product) {
     auto node = suggestions_map.extract(product);
@@ -1328,6 +1362,8 @@ std::vector<Suggestion> BrowserAutofillManager::MergeWithAddressSuggestions(
       extract_vector(FillingProduct::kIdentityCredential);
   std::vector<Suggestion> loyalty_card_suggestions =
       extract_vector(FillingProduct::kLoyaltyCard);
+  std::vector<Suggestion> autocomplete_suggestions =
+      extract_vector(FillingProduct::kAutocomplete);
 
   CHECK(suggestions_map.empty())
       << "Some suggestions not currently supported with addresses were "
@@ -1343,7 +1379,78 @@ std::vector<Suggestion> BrowserAutofillManager::MergeWithAddressSuggestions(
     MergeIdentityCredentialsAndAddressSuggestions(
         address_suggestions, std::move(identity_credentials_suggestions));
   }
+
+  if (!autocomplete_suggestions.empty() && trigger_field) {
+    MergeAutocompleteAndAddressSuggestions(
+        address_suggestions, std::move(autocomplete_suggestions),
+        trigger_field->Type().GetAddressType());
+  }
   return address_suggestions;
+}
+
+void BrowserAutofillManager::MergeIdentityCredentialsAndAddressSuggestions(
+    std::vector<Suggestion>& suggestions,
+    std::vector<Suggestion> identity_credential_suggestions) {
+  // TODO(crbug.com/380367784): figure out what to do when both verified
+  // and unverified suggestions point to the same email address.
+  suggestions.insert(
+      suggestions.begin(),
+      std::make_move_iterator(identity_credential_suggestions.begin()),
+      std::make_move_iterator(identity_credential_suggestions.end()));
+}
+
+void BrowserAutofillManager::MergeAutocompleteAndAddressSuggestions(
+    std::vector<Suggestion>& suggestions,
+    std::vector<Suggestion> autocomplete_suggestions,
+    FieldType trigger_field_type) {
+  if (trigger_field_type != EMAIL_ADDRESS) {
+    return;
+  }
+
+  // Avoid noise of untrusted autocomplete data by limiting the number of
+  // suggestions that can be shown when Autofill address data are shown as well.
+  constexpr size_t kMaxAutocompleteEntriesInMergedSuggestions = 3;
+
+  // Delete all autocomplete suggestions that are not a valid email address or
+  // that are duplicates to existing suggestions.
+  std::erase_if(
+      autocomplete_suggestions, [&](const Suggestion& autocomplete_suggestion) {
+        const std::u16string& autocomplete_value =
+            autocomplete_suggestion.main_text.value;
+        return !IsValidEmailAddress(autocomplete_value) ||
+               std::ranges::any_of(suggestions,
+                                   [&](const Suggestion& address_suggestion) {
+                                     return base::EqualsCaseInsensitiveASCII(
+                                         address_suggestion.main_text.value,
+                                         autocomplete_value);
+                                   });
+      });
+
+  if (autocomplete_suggestions.empty() ||
+      !base::FeatureList::IsEnabled(
+          features::kAutofillMergeAddressAndAutocompleteEmailSuggestions)) {
+    return;
+  }
+
+  // Limit number of autocomplete suggestions to
+  // `kMaxAutocompleteEntriesInMergedSuggestions`.
+  autocomplete_suggestions.erase(
+      std::ranges::next(autocomplete_suggestions.begin(),
+                        kMaxAutocompleteEntriesInMergedSuggestions,
+                        autocomplete_suggestions.end()),
+      autocomplete_suggestions.end());
+
+  autofill_metrics::LogMergedEmailSuggestionCounts(
+      /*num_address_suggestions=*/std::ranges::count_if(
+          suggestions,
+          [](const Suggestion& suggestion) {
+            return !IsManagementFooterOption(suggestion) &&
+                   GetFillingProductFromSuggestionType(suggestion.type) ==
+                       FillingProduct::kAddress;
+          }),
+      autocomplete_suggestions.size());
+
+  InsertBeforeFooter(suggestions, std::move(autocomplete_suggestions));
 }
 
 void BrowserAutofillManager::GenerateSuggestionsAndMaybeShowUIPhase1(
@@ -1511,40 +1618,6 @@ void BrowserAutofillManager::GenerateSuggestionsAndMaybeShowUIPhase2(
   client().GetAutocompleteHistoryManager()->OnGetSingleFieldSuggestions(
       form, form_structure, field, autofill_field, client(),
       std::move(on_suggestions_returned));
-}
-
-std::vector<Suggestion>
-BrowserAutofillManager::CreatePasskeySuggestionsForMerge(
-    const FormFieldData& field) {
-  if (!ShouldShowWebauthnHybridEntryPoint(field)) {
-    return {};
-  }
-  PasswordManagerDelegate* password_delegate =
-      client().GetPasswordManagerDelegate(field.global_id());
-  if (!password_delegate) {
-    return {};
-  }
-
-  // If any field **on the page** allows starting the hybrid passkey flow,
-  // these suggestions become available.
-  std::vector<Suggestion> suggestions;
-  if (std::optional<Suggestion> inline_qr_suggestion =
-          password_delegate->GetWebauthnInlineQrCodeSuggestion()) {
-    suggestions.push_back(*std::move(inline_qr_suggestion));
-  }
-  if (std::optional<Suggestion> passkey_suggestion =
-          password_delegate->GetWebauthnSignInWithAnotherDeviceSuggestion()) {
-    suggestions.push_back(*std::move(passkey_suggestion));
-  }
-  return suggestions;
-}
-
-void BrowserAutofillManager::MergePasskeysAndExistingSuggestions(
-    std::vector<Suggestion>& suggestions,
-    std::vector<Suggestion> passkey_suggestions) {
-  for (Suggestion& passkey_suggestion : passkey_suggestions) {
-    suggestions.push_back(std::move(passkey_suggestion));
-  }
 }
 
 void BrowserAutofillManager::GenerateFooter(
@@ -3088,17 +3161,6 @@ bool BrowserAutofillManager::EvaluateAblationStudy(
   }
 
   return false;
-}
-
-void BrowserAutofillManager::MergeIdentityCredentialsAndAddressSuggestions(
-    std::vector<Suggestion>& suggestion,
-    std::vector<Suggestion> identity_credential_suggestions) {
-  // TODO(crbug.com/380367784): figure out what to do when both verified
-  // and unverified suggestions point to the same email address.
-  suggestion.insert(
-      suggestion.begin(),
-      std::make_move_iterator(identity_credential_suggestions.begin()),
-      std::make_move_iterator(identity_credential_suggestions.end()));
 }
 
 std::vector<Suggestion> BrowserAutofillManager::GetAvailableSuggestions(

@@ -499,6 +499,21 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Bookmarks.Edit.{BookmarkType}.Outcome"
+    enum="BookmarkEditOutcome" expires_after="2027-01-01">
+  <owner>wylieb@google.com</owner>
+  <owner>evanluo@google.com</owner>
+  <owner>chrome-collections@google.com</owner>
+  <summary>
+    Recorded when a {BookmarkType} edit session completes, logging the terminal
+    outcome (saved, deleted, closed, or dismissed).
+  </summary>
+  <token key="BookmarkType">
+    <variant name="BookmarkFolder" summary="bookmark folder"/>
+    <variant name="BookmarkItem" summary="bookmark item"/>
+  </token>
+</histogram>
+
 <histogram name="Bookmarks.EditLocation" enum="BookmarkLaunchLocation"
     expires_after="2027-07-30">
   <owner>dfried@chromium.org</owner>
@@ -548,6 +563,17 @@ chromium-metrics-reviews@google.com.
     Records the result of the fallback to the clear text file when loading
     {BookmarksFileType} bookmarks on profile load. The encrypted file was
     supposed to be used but was missing.
+  </summary>
+</histogram>
+
+<histogram name="Bookmarks.FolderPicker.Outcome"
+    enum="BookmarkFolderPickerOutcome" expires_after="2027-01-01">
+  <owner>wylieb@google.com</owner>
+  <owner>evanluo@google.com</owner>
+  <owner>chrome-collections@google.com</owner>
+  <summary>
+    Recorded when a bookmark folder picker session completes, logging the
+    terminal outcome (moved, closed, or dismissed).
   </summary>
 </histogram>
 

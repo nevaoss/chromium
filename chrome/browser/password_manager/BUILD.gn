@@ -16,6 +16,7 @@ source_set("password_manager") {
     "password_change_delegate.h",
     "password_change_service_factory.h",
     "password_field_classification_model_handler_factory.h",
+    "password_manager_critical_action_logger.h",
   ]
 
   public_deps = [
@@ -141,6 +142,7 @@ source_set("impl") {
     "chrome_webauthn_credentials_delegate_factory.cc",
     "password_change_service_factory.cc",
     "password_field_classification_model_handler_factory.cc",
+    "password_manager_critical_action_logger.cc",
   ]
 
   public_deps = [
@@ -500,6 +502,7 @@ source_set("unit_tests") {
       "password_change/password_change_from_checkup_delegate_unittest.cc",
       "password_change/script_password_change_actuator_unittest.cc",
       "password_change_delegate_impl_unittest.cc",
+      "password_manager_critical_action_logger_unittest.cc",
       "remote_actor/remote_actor_credential_sharing_impl_unittest.cc",
     ]
     deps += [

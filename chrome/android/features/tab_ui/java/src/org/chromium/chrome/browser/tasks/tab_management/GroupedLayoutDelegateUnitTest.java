@@ -6,6 +6,8 @@ package org.chromium.chrome.browser.tasks.tab_management;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -300,11 +302,39 @@ public class GroupedLayoutDelegateUnitTest {
     }
 
     @Test
+    public void testGetIndexAndTabForTabGroupId_NullGroupId() {
+        assertNull(mDelegate.getIndexAndTabForTabGroupId(null));
+    }
+
+    @Test
+    public void testGetIndexAndTabForTabGroupId_InvalidIndex() {
+        when(mTabModel.getGroupLastShownTabId(TAB_GROUP_ID)).thenReturn(TAB1_ID);
+        when(mMediator.getIndexForTabIdWithRelatedTabs(TAB1_ID))
+                .thenReturn(TabModel.INVALID_TAB_INDEX);
+
+        assertNull(mDelegate.getIndexAndTabForTabGroupId(TAB_GROUP_ID));
+    }
+
+    @Test
+    public void testGetIndexAndTabForTabGroupId_Success() {
+        when(mTabModel.getGroupLastShownTabId(TAB_GROUP_ID)).thenReturn(TAB1_ID);
+        when(mMediator.getIndexForTabIdWithRelatedTabs(TAB1_ID)).thenReturn(0);
+        when(mMediator.getTabForIndex(0)).thenReturn(mTab1);
+        when(mTab1.getTabGroupId()).thenReturn(TAB_GROUP_ID);
+        when(mTabModel.isTabInTabGroup(mTab1)).thenReturn(true);
+
+        Pair<Integer, Tab> result = mDelegate.getIndexAndTabForTabGroupId(TAB_GROUP_ID);
+        assertNotNull(result);
+        assertEquals(0, result.first.intValue());
+        assertEquals(mTab1, result.second);
+    }
+
+    @Test
     public void testOnFaviconUpdated_InTabGroup() {
         when(mMediator.isTabInTabGroup(mTab1)).thenReturn(true);
         when(mTab1.getTabGroupId()).thenReturn(TAB_GROUP_ID);
         PropertyModel model = createAndAddPropertyModel(TAB1_ID);
-        when(mMediator.getIndexAndTabForTabGroupId(TAB_GROUP_ID)).thenReturn(new Pair<>(0, mTab1));
+        setupGetIndexAndTabForTabGroupId(TAB_GROUP_ID, 0, mTab1);
 
         mDelegate.onFaviconUpdated(mTab1, null, null);
 
@@ -316,7 +346,7 @@ public class GroupedLayoutDelegateUnitTest {
     public void testOnFaviconUpdated_InTabGroup_NotFound() {
         when(mMediator.isTabInTabGroup(mTab1)).thenReturn(true);
         when(mTab1.getTabGroupId()).thenReturn(TAB_GROUP_ID);
-        when(mMediator.getIndexAndTabForTabGroupId(TAB_GROUP_ID)).thenReturn(null);
+        setupGetIndexAndTabForTabGroupIdNotFound(TAB_GROUP_ID);
 
         mDelegate.onFaviconUpdated(mTab1, null, null);
 
@@ -349,7 +379,7 @@ public class GroupedLayoutDelegateUnitTest {
         when(mMediator.isTabInTabGroup(mTab1)).thenReturn(true);
         when(mTab1.getTabGroupId()).thenReturn(TAB_GROUP_ID);
         PropertyModel model = createAndAddPropertyModel(TAB1_ID);
-        when(mMediator.getIndexAndTabForTabGroupId(TAB_GROUP_ID)).thenReturn(new Pair<>(0, mTab1));
+        setupGetIndexAndTabForTabGroupId(TAB_GROUP_ID, 0, mTab1);
         when(mMediator.getDomainForTab(mTab1, model)).thenReturn("example.com");
 
         mDelegate.onUrlUpdated(mTab1);
@@ -363,7 +393,7 @@ public class GroupedLayoutDelegateUnitTest {
     public void testOnUrlUpdated_InTabGroup_NotFound() {
         when(mMediator.isTabInTabGroup(mTab1)).thenReturn(true);
         when(mTab1.getTabGroupId()).thenReturn(TAB_GROUP_ID);
-        when(mMediator.getIndexAndTabForTabGroupId(TAB_GROUP_ID)).thenReturn(null);
+        setupGetIndexAndTabForTabGroupIdNotFound(TAB_GROUP_ID);
 
         mDelegate.onUrlUpdated(mTab1);
 
@@ -401,7 +431,7 @@ public class GroupedLayoutDelegateUnitTest {
         when(mMediator.isTabInTabGroup(mTab1)).thenReturn(true);
         when(mTab1.getTabGroupId()).thenReturn(TAB_GROUP_ID);
         PropertyModel model = createAndAddPropertyModel(TAB1_ID);
-        when(mMediator.getIndexAndTabForTabGroupId(TAB_GROUP_ID)).thenReturn(new Pair<>(0, mTab1));
+        setupGetIndexAndTabForTabGroupId(TAB_GROUP_ID, 0, mTab1);
         when(mMediator.getTabListMediaIndicator(mTab1, model)).thenReturn(MediaState.AUDIBLE);
 
         mDelegate.onMediaStateChanged(mTab1, MediaState.AUDIBLE);
@@ -416,7 +446,7 @@ public class GroupedLayoutDelegateUnitTest {
         when(mTab1.getTabGroupId()).thenReturn(TAB_GROUP_ID);
         PropertyModel model = createAndAddPropertyModel(TAB1_ID);
         model.set(TabProperties.USE_SHRINK_CLOSE_ANIMATION, true);
-        when(mMediator.getIndexAndTabForTabGroupId(TAB_GROUP_ID)).thenReturn(new Pair<>(0, mTab1));
+        setupGetIndexAndTabForTabGroupId(TAB_GROUP_ID, 0, mTab1);
 
         mDelegate.onMediaStateChanged(mTab1, MediaState.AUDIBLE);
 
@@ -428,7 +458,7 @@ public class GroupedLayoutDelegateUnitTest {
     public void testOnMediaStateChanged_InTabGroup_NotFound() {
         when(mMediator.isTabInTabGroup(mTab1)).thenReturn(true);
         when(mTab1.getTabGroupId()).thenReturn(TAB_GROUP_ID);
-        when(mMediator.getIndexAndTabForTabGroupId(TAB_GROUP_ID)).thenReturn(null);
+        setupGetIndexAndTabForTabGroupIdNotFound(TAB_GROUP_ID);
 
         mDelegate.onMediaStateChanged(mTab1, MediaState.AUDIBLE);
 
@@ -595,8 +625,7 @@ public class GroupedLayoutDelegateUnitTest {
     public void testDidChangeTabGroupColor() {
         int index = 0;
         PropertyModel model = createAndAddPropertyModel(Tab.INVALID_TAB_ID);
-        when(mMediator.getIndexAndTabForTabGroupId(TAB_GROUP_ID))
-                .thenReturn(new Pair<>(index, mTab1));
+        setupGetIndexAndTabForTabGroupId(TAB_GROUP_ID, index, mTab1);
 
         mDelegate.didChangeTabGroupColor(TAB_GROUP_ID, TabGroupColorId.BLUE);
 
@@ -609,7 +638,7 @@ public class GroupedLayoutDelegateUnitTest {
 
     @Test
     public void testDidChangeTabGroupColor_NotFound() {
-        when(mMediator.getIndexAndTabForTabGroupId(TAB_GROUP_ID)).thenReturn(null);
+        setupGetIndexAndTabForTabGroupIdNotFound(TAB_GROUP_ID);
 
         mDelegate.didChangeTabGroupColor(TAB_GROUP_ID, TabGroupColorId.BLUE);
 
@@ -925,16 +954,79 @@ public class GroupedLayoutDelegateUnitTest {
     @Test
     public void testPopulateAccessibilityNodeInfo_CallsHelper() {
         PropertyModel model = createAndAddPropertyModel(TAB1_ID);
+        createAndAddPropertyModel(TAB2_ID);
 
         View view = new View(ApplicationProvider.getApplicationContext());
         AccessibilityNodeInfo info = AccessibilityNodeInfo.obtain();
-        AccessibilityAction action = new AccessibilityAction(R.id.move_tab_up, "Move Up");
+        AccessibilityAction action = new AccessibilityAction(R.id.move_tab_down, "Move Down");
         when(mAccessibilityHelper.getPotentialActionsForView(view)).thenReturn(List.of(action));
+        when(mAccessibilityHelper.getPositionsOfReorderAction(view, R.id.move_tab_down))
+                .thenReturn(new Pair<>(0, 1));
         mDelegate.setAccessibilityHelper(mAccessibilityHelper);
 
         mDelegate.populateAccessibilityNodeInfo(view, info, model);
 
         assertTrue(info.getActionList().contains(action));
+    }
+
+    @Test
+    public void testPopulateAccessibilityNodeInfo_PinnedTabCannotMoveToUnpinned() {
+        PropertyModel pinnedModel = createAndAddPropertyModel(TAB1_ID);
+        pinnedModel.set(TabProperties.IS_PINNED, true);
+        PropertyModel unpinnedModel = createAndAddPropertyModel(TAB2_ID);
+        unpinnedModel.set(TabProperties.IS_PINNED, false);
+
+        View view = new View(ApplicationProvider.getApplicationContext());
+        AccessibilityNodeInfo info = AccessibilityNodeInfo.obtain();
+        AccessibilityAction action = new AccessibilityAction(R.id.move_tab_down, "Move Down");
+        when(mAccessibilityHelper.getPotentialActionsForView(view)).thenReturn(List.of(action));
+        when(mAccessibilityHelper.getPositionsOfReorderAction(view, R.id.move_tab_down))
+                .thenReturn(new Pair<>(0, 1));
+        mDelegate.setAccessibilityHelper(mAccessibilityHelper);
+
+        mDelegate.populateAccessibilityNodeInfo(view, info, pinnedModel);
+
+        assertFalse(info.getActionList().contains(action));
+    }
+
+    @Test
+    public void testPopulateAccessibilityNodeInfo_UnpinnedTabCannotMoveToPinned() {
+        PropertyModel pinnedModel = createAndAddPropertyModel(TAB1_ID);
+        pinnedModel.set(TabProperties.IS_PINNED, true);
+        PropertyModel unpinnedModel = createAndAddPropertyModel(TAB2_ID);
+        unpinnedModel.set(TabProperties.IS_PINNED, false);
+
+        View view = new View(ApplicationProvider.getApplicationContext());
+        AccessibilityNodeInfo info = AccessibilityNodeInfo.obtain();
+        AccessibilityAction action = new AccessibilityAction(R.id.move_tab_up, "Move Up");
+        when(mAccessibilityHelper.getPotentialActionsForView(view)).thenReturn(List.of(action));
+        when(mAccessibilityHelper.getPositionsOfReorderAction(view, R.id.move_tab_up))
+                .thenReturn(new Pair<>(1, 0));
+        mDelegate.setAccessibilityHelper(mAccessibilityHelper);
+
+        mDelegate.populateAccessibilityNodeInfo(view, info, unpinnedModel);
+
+        assertFalse(info.getActionList().contains(action));
+    }
+
+    @Test
+    public void testPerformReorderAction_BlockedAcrossPinnedBoundary() {
+        PropertyModel pinnedModel = createAndAddPropertyModel(TAB1_ID);
+        pinnedModel.set(TabProperties.IS_PINNED, true);
+        PropertyModel unpinnedModel = createAndAddPropertyModel(TAB2_ID);
+        unpinnedModel.set(TabProperties.IS_PINNED, false);
+
+        View view = new View(ApplicationProvider.getApplicationContext());
+        when(mAccessibilityHelper.getPositionsOfReorderAction(view, R.id.move_tab_down))
+                .thenReturn(new Pair<>(0, 1));
+        when(mAccessibilityHelper.isReorderAction(R.id.move_tab_down)).thenReturn(true);
+        mDelegate.setAccessibilityHelper(mAccessibilityHelper);
+
+        assertFalse(
+                mDelegate.performAccessibilityAction(
+                        view, R.id.move_tab_down, /* args= */ null, /* model= */ null));
+        assertEquals(TAB1_ID, mModelList.get(0).model.get(TabProperties.TAB_ID));
+        assertEquals(TAB2_ID, mModelList.get(1).model.get(TabProperties.TAB_ID));
     }
 
     private PropertyModel createAndAddPropertyModel(int tabId) {
@@ -958,5 +1050,20 @@ public class GroupedLayoutDelegateUnitTest {
     private void setupRepresentativeTab(Tab tab, Tab representativeTab, int index) {
         when(mTabModel.representativeIndexOf(tab)).thenReturn(index);
         when(mTabModel.getRepresentativeTabAt(index)).thenReturn(representativeTab);
+    }
+
+    private void setupGetIndexAndTabForTabGroupId(Token tabGroupId, int index, Tab tab) {
+        int tabId = tab.getId();
+        when(mTabModel.getGroupLastShownTabId(tabGroupId)).thenReturn(tabId);
+        when(mMediator.getIndexForTabIdWithRelatedTabs(tabId)).thenReturn(index);
+        when(mMediator.getTabForIndex(index)).thenReturn(tab);
+        when(tab.getTabGroupId()).thenReturn(tabGroupId);
+        when(mTabModel.isTabInTabGroup(tab)).thenReturn(true);
+    }
+
+    private void setupGetIndexAndTabForTabGroupIdNotFound(Token tabGroupId) {
+        when(mTabModel.getGroupLastShownTabId(tabGroupId)).thenReturn(Tab.INVALID_TAB_ID);
+        when(mMediator.getIndexForTabIdWithRelatedTabs(Tab.INVALID_TAB_ID))
+                .thenReturn(TabModel.INVALID_TAB_INDEX);
     }
 }

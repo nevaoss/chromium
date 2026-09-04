@@ -12,6 +12,7 @@
 <translation id="1035113036584565771">팁 알림 프로모션 닫힘</translation>
 <translation id="1036348656032585052">사용 중지</translation>
 <translation id="1045899828449635435">아래 사이트의 데이터도 삭제하시겠습니까?</translation>
+<translation id="1049461303780085993">Chrome의 Gemini를 사용해 답변을 얻고 핵심 내용 등을 확인하세요</translation>
 <translation id="1049743911850919806">시크릿 모드</translation>
 <translation id="1052842760770519282">일부 비밀번호에 액세스할 수 없습니다</translation>
 <translation id="1057623954802068161">페이지 상단으로 스크롤</translation>
@@ -986,6 +987,7 @@ Chrome 환경을 개선하는 데 데이터를 사용하는 설정을 더 보려
 <translation id="4913169188695071480">새로고침 중지</translation>
 <translation id="4921224083091001889">모든 기기에서 비밀번호 등을 사용하려면 Chrome에 <ph name="EMAIL" /> 계정을 사용하여 로그인하세요.</translation>
 <translation id="4923173329789776645">조직에서 다운로드를 권장하지 않습니다</translation>
+<translation id="4924398189611529766">시크릿 모드로 탐색하면 이 기기를 사용하는 다른 사용자가 내 활동을 볼 수 없으므로, 비공개로 탐색할 수 있습니다. <ph name="BEGIN_LINK" />자세히 알아보기<ph name="END_LINK" /></translation>
 <translation id="4925120120285606924">스크린샷 <ph name="CURRENT_DATE_ISO" /></translation>
 <translation id="4926901776383726965">이미지와 파일을 저장하여 오프라인으로 보거나 다른 앱에서 공유할 수 있습니다.</translation>
 <translation id="492699891214363151">{BOOKMARKS_COUNT,plural, =1{북마크 1개 및 기타 항목이 이 기기에만 저장됩니다. 다른 기기에서 사용하려면 Google 계정에 저장하세요.}other{북마크 #개 및 기타 항목이 이 기기에만 저장됩니다. 다른 기기에서 사용하려면 Google 계정에 저장하세요.}}</translation>
@@ -1116,6 +1118,7 @@ Chrome 환경을 개선하는 데 데이터를 사용하는 설정을 더 보려
 <translation id="5465437530117042974">탭 하단 시트 변경사항이 닫혔습니다.</translation>
 <translation id="5469852975082458401">텍스트 커서로 페이지를 탐색할 수 있습니다. 사용 중지하려면 F7을 누르세요.</translation>
 <translation id="5471273988133666918"><ph name="TAB_TITLE" /> 탭을 이동할 수 없습니다.</translation>
+<translation id="5478718673237429220">인간 인터페이스 장치 액세스 권한 필요</translation>
 <translation id="548278423535722844">지도 앱에서 열기</translation>
 <translation id="5489222148748465285">Chrome이 계속 검색하도록 허용</translation>
 <translation id="5490848366863949315"><ph name="TAB_TITLE" />, 다중 선택된 PIP 모드 탭</translation>
@@ -1748,6 +1751,7 @@ Chrome 환경을 개선하는 데 데이터를 사용하는 설정을 더 보려
 <translation id="7851858861565204677">다른 기기</translation>
 <translation id="7853202427316060426">활동</translation>
 <translation id="7859988229622350291">번역 안 함</translation>
+<translation id="7862185352068345852">사이트에서 나가시겠습니까?</translation>
 <translation id="7866213166286285359">여기에 페이지 번역하기</translation>
 <translation id="7875915731392087153">이메일 작성</translation>
 <translation id="7876243839304621966">모두 삭제</translation>
@@ -1962,6 +1966,7 @@ Chrome 환경을 개선하는 데 데이터를 사용하는 설정을 더 보려
 <translation id="867914734596684889">북마크바 표시 또는 숨기기</translation>
 <translation id="8683039184091909753">이미지</translation>
 <translation id="8688183792442786085"><ph name="TAB_TITLE" />, 선택된 탭</translation>
+<translation id="8694622119922491927"><ph name="APP_NAME" /> 앱이 사이트에서 인간 인터페이스 장치(HID)에 액세스할 권한이 필요합니다. 나중에 설정 &gt; 앱 &gt; 특수 앱 액세스에서 이 설정을 변경할 수 있습니다.</translation>
 <translation id="8696297579102085705">기기로 보내기</translation>
 <translation id="8699120352855309748">번역할지 묻지 않을 언어</translation>
 <translation id="8700565880437506364">Chrome의 Gemini 소개</translation>

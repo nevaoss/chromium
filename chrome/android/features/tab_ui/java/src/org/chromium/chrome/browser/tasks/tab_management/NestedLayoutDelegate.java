@@ -9,6 +9,7 @@ import static org.chromium.chrome.browser.tasks.tab_management.TabSwitcherMessag
 
 import android.content.Context;
 import android.os.Bundle;
+import android.util.Pair;
 import android.util.SparseIntArray;
 import android.view.View;
 import android.view.accessibility.AccessibilityEvent;
@@ -145,6 +146,24 @@ class NestedLayoutDelegate extends TabListLayoutDelegate {
         return adjustIndexForTabMovement(mModelList.size(), targetTabCurrentIndex);
     }
 
+    /**
+     * Returns the index in {@link #mModelList} of the group header with {@code tabGroupId} and the
+     * first {@link Tab} of the group. Will be null if the header is not present, the group has no
+     * tabs, or the tab is not part of a tab group.
+     */
+    @Override
+    @Nullable Pair<Integer, Tab> getIndexAndTabForTabGroupId(@Nullable Token tabGroupId) {
+        if (tabGroupId == null) return null;
+
+        int headerIndex = mModelList.indexFromTabGroupId(tabGroupId);
+        if (headerIndex == TabModel.INVALID_TAB_INDEX) return null;
+
+        List<Tab> tabs = mMediator.getCurrentTabModelChecked().getTabsInGroup(tabGroupId);
+        if (tabs == null || tabs.isEmpty()) return null;
+
+        return Pair.create(headerIndex, tabs.get(0));
+    }
+
     @Override
     int onTabAdded(Tab tab) {
         int existingIndex = mModelList.indexFromTabId(tab.getId());
@@ -212,6 +231,8 @@ class NestedLayoutDelegate extends TabListLayoutDelegate {
             rootItemView.setTag(R.id.tab_clip_from_top, isLastTab);
         }
     }
+
+    // TabGroupObserver implementation.
 
     @Override
     public void didChangeTabGroupColor(Token tabGroupId, @TabGroupColorId int newColor) {
@@ -347,7 +368,7 @@ class NestedLayoutDelegate extends TabListLayoutDelegate {
      * Checks whether a group header card for the given {@code tabGroupId} exists in {@link
      * #mModelList}. If missing, creates and inserts a header card at {@code targetUiIndex}.
      *
-     * @param tab A representative {@link Tab} of the group used to initialize the header model.
+     * @param tab A {@link Tab} in the group used to initialize the header model.
      * @param tabGroupId The group ID token.
      * @param targetUiIndex The UI index where the header should be inserted if missing.
      * @return {@code true} if a header was created and inserted, {@code false} otherwise.
@@ -522,22 +543,8 @@ class NestedLayoutDelegate extends TabListLayoutDelegate {
             return;
         }
 
-        boolean isPinned = TabProperties.isPinnedTab(model);
-        boolean canMoveUp;
-        boolean canMoveDown;
-        if (isPinned) {
-            // Pinned tabs can move up if not the first, and down only if the next item is also
-            // pinned.
-            canMoveUp = position > 0;
-            canMoveDown =
-                    position + 1 < mModelList.size()
-                            && TabProperties.isPinnedTab(mModelList.get(position + 1).model);
-        } else {
-            // Unpinned items can move up if predecessor is not pinned, and down if not at list end.
-            canMoveUp =
-                    position > 0 && !TabProperties.isPinnedTab(mModelList.get(position - 1).model);
-            canMoveDown = position + 1 < mModelList.size();
-        }
+        boolean canMoveUp = canReorderToPosition(position, position - 1);
+        boolean canMoveDown = canReorderToPosition(position, position + 1);
 
         Context context = host.getContext();
         boolean isTabGroup = TabProperties.isTabGroupHeader(model);

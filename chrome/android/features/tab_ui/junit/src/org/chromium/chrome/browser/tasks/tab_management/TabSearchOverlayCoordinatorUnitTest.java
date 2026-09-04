@@ -24,12 +24,14 @@ import android.content.res.Configuration;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
+import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.PopupWindow;
 import android.widget.TextView;
 
@@ -75,6 +77,7 @@ import org.chromium.chrome.browser.omnibox.OverrideUrlLoadingDelegate;
 import org.chromium.chrome.browser.omnibox.UrlBar;
 import org.chromium.chrome.browser.omnibox.UrlBarCoordinator;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxControls;
+import org.chromium.chrome.browser.omnibox.suggestions.AutocompleteCoordinator;
 import org.chromium.chrome.browser.omnibox.suggestions.OmniboxLoadUrlParams;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.searchwidget.SearchUiCoordinator;
@@ -106,7 +109,6 @@ import java.util.concurrent.TimeUnit;
 
 /** Unit tests for {@link TabSearchOverlayCoordinator}. */
 @RunWith(BaseRobolectricTestRunner.class)
-@Config(manifest = Config.NONE)
 public class TabSearchOverlayCoordinatorUnitTest {
     @Rule public final MockitoRule mMockitoRule = MockitoJUnit.rule();
 
@@ -122,7 +124,10 @@ public class TabSearchOverlayCoordinatorUnitTest {
     @Mock private UrlBarCoordinator mUrlBarCoordinator;
     @Mock private View mLocationBarContainerView;
     @Mock private UrlBar mUrlBar;
-    @Mock private OmniboxStub mOmniboxStub;
+
+    @Mock(extraInterfaces = {View.OnKeyListener.class})
+    private OmniboxStub mOmniboxStub;
+
     @Mock private Profile mProfile;
     @Mock private Profile mIncognitoProfile;
     @Mock private SnackbarManager mSnackbarManager;
@@ -137,6 +142,7 @@ public class TabSearchOverlayCoordinatorUnitTest {
     @Mock private DesktopWindowStateManager mDesktopWindowStateManager;
     @Mock private AppHeaderState mAppHeaderState;
     @Mock private FuseboxControls mFuseboxControls;
+    @Mock private AutocompleteCoordinator mAutocompleteCoordinator;
 
     private final OneshotSupplierImpl<TabGroupUiActionHandler> mTabGroupUiActionHandlerSupplier =
             new OneshotSupplierImpl<>();
@@ -170,6 +176,8 @@ public class TabSearchOverlayCoordinatorUnitTest {
         when(mSearchUiCoordinator.getLocationBarCoordinator()).thenReturn(mLocationBarCoordinator);
         when(mLocationBarCoordinator.getUrlBarCoordinator()).thenReturn(mUrlBarCoordinator);
         when(mLocationBarCoordinator.getOmniboxStub()).thenReturn(mOmniboxStub);
+        when(mLocationBarCoordinator.getOmniboxSuggestionsVisualState())
+                .thenReturn(mAutocompleteCoordinator);
         when(mLocationBarCoordinator.getContainerView()).thenReturn(mLocationBarContainerView);
         when(mLocationBarContainerView.findViewById(R.id.url_bar)).thenReturn(mUrlBar);
         when(mOmniboxStub.isUrlBarFocused()).thenReturn(true);
@@ -946,6 +954,34 @@ public class TabSearchOverlayCoordinatorUnitTest {
     }
 
     @Test
+    public void testPanelTopMargin_FullscreenVsDesktopWindowing() {
+        // In fullscreen / split screen (not in desktop windowing), top margin is offset by
+        // (tabStripHeight - reservedTopPadding - hairlineGap).
+        when(mAppHeaderState.isInDesktopWindow()).thenReturn(false);
+        showOverlay();
+
+        View panelView = mPanelContainer.findViewById(R.id.tab_search_overlay_panel);
+        var params = (LinearLayout.LayoutParams) panelView.getLayoutParams();
+        int expectedMargin =
+                mActivity.getResources().getDimensionPixelSize(R.dimen.tab_strip_height)
+                        - mActivity
+                                .getResources()
+                                .getDimensionPixelSize(R.dimen.tab_strip_reserved_top_padding)
+                        - mActivity
+                                .getResources()
+                                .getDimensionPixelSize(R.dimen.tab_search_overlay_hairline_gap);
+        assertEquals(expectedMargin, params.topMargin);
+
+        // In desktop windowing mode, top margin is 0.
+        mCoordinator.hide(TabSearchDismissalReason.CLOSE_BUTTON);
+        when(mAppHeaderState.isInDesktopWindow()).thenReturn(true);
+        showOverlay();
+
+        params = (LinearLayout.LayoutParams) panelView.getLayoutParams();
+        assertEquals(0, params.topMargin);
+    }
+
+    @Test
     public void testScrimNonScrollGenericMotionEvent_ConsumedAndNotForwarded() {
         showOverlay();
         MotionEvent clickEvent =
@@ -1175,10 +1211,12 @@ public class TabSearchOverlayCoordinatorUnitTest {
         ImageButton closeButton = mPanelContainer.findViewById(R.id.tab_search_close_button);
         assertNotNull(closeButton);
         assertTrue(closeButton.isFocusable());
+        assertTrue(closeButton.isFocusableInTouchMode());
         assertTrue(closeButton.isClickable());
         assertEquals(
                 View.IMPORTANT_FOR_ACCESSIBILITY_YES, closeButton.getImportantForAccessibility());
         assertEquals(R.id.search_activity_container, closeButton.getAccessibilityTraversalBefore());
+        verify(mUrlBar).setAccessibilityTraversalAfter(R.id.tab_search_close_button);
         assertEquals(
                 mActivity.getString(R.string.close),
                 closeButton.getContentDescription().toString());
@@ -1202,5 +1240,58 @@ public class TabSearchOverlayCoordinatorUnitTest {
         mCoordinator.hide(TabSearchDismissalReason.CLOSE_BUTTON);
 
         assertNull(ViewCompat.getAccessibilityPaneTitle(panel));
+    }
+
+    @Test
+    public void testKeyNavigation_betweenUrlBarAndCloseButton() {
+        ImageButton closeButton = mPanelContainer.findViewById(R.id.tab_search_close_button);
+        assertNotNull(closeButton);
+
+        ArgumentCaptor<View.OnKeyListener> urlBarKeyListenerCaptor =
+                ArgumentCaptor.forClass(View.OnKeyListener.class);
+        verify(mUrlBar).setKeyDownListener(urlBarKeyListenerCaptor.capture());
+        View.OnKeyListener urlBarKeyListener = urlBarKeyListenerCaptor.getValue();
+        assertNotNull(urlBarKeyListener);
+
+        KeyEvent shiftTabEvent =
+                new KeyEvent(
+                        /* downTime= */ 0,
+                        /* eventTime= */ 0,
+                        KeyEvent.ACTION_DOWN,
+                        KeyEvent.KEYCODE_TAB,
+                        /* repeat= */ 0,
+                        KeyEvent.META_SHIFT_ON);
+        KeyEvent upEvent = new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_UP);
+
+        // When at the top suggestion (selectedIndex == 0), Shift+Tab and Up on UrlBar
+        // unselect the suggestion (returning focus to UrlBar) and do not focus Close button.
+        when(mAutocompleteCoordinator.getSelectedIndex()).thenReturn(0);
+        assertTrue(urlBarKeyListener.onKey(mUrlBar, KeyEvent.KEYCODE_TAB, shiftTabEvent));
+        verify(mAutocompleteCoordinator).resetSelection();
+        assertFalse(closeButton.isFocused());
+
+        // When unselected in UrlBar (selectedIndex == null), Shift+Tab and Up focus Close button.
+        when(mAutocompleteCoordinator.getSelectedIndex()).thenReturn(null);
+        assertTrue(urlBarKeyListener.onKey(mUrlBar, KeyEvent.KEYCODE_TAB, shiftTabEvent));
+        assertTrue(closeButton.isFocused());
+
+        assertTrue(urlBarKeyListener.onKey(mUrlBar, KeyEvent.KEYCODE_DPAD_UP, upEvent));
+
+        // When deeper in suggestions (selectedIndex == 1), Up delegates to omnibox stub.
+        when(mAutocompleteCoordinator.getSelectedIndex()).thenReturn(1);
+        View.OnKeyListener omniboxListener = (View.OnKeyListener) mOmniboxStub;
+        when(omniboxListener.onKey(eq(mUrlBar), eq(KeyEvent.KEYCODE_DPAD_UP), eq(upEvent)))
+                .thenReturn(true);
+        assertTrue(urlBarKeyListener.onKey(mUrlBar, KeyEvent.KEYCODE_DPAD_UP, upEvent));
+
+        // Forward Tab on Close button returns focus to UrlBar.
+        KeyEvent tabEvent = new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_TAB);
+        closeButton.dispatchKeyEvent(tabEvent);
+        verify(mUrlBar).requestFocus();
+
+        // Down arrow on Close button returns focus to UrlBar.
+        KeyEvent downEvent = new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_DOWN);
+        closeButton.dispatchKeyEvent(downEvent);
+        verify(mUrlBar, times(2)).requestFocus();
     }
 }

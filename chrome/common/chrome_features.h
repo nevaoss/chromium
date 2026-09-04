@@ -183,6 +183,10 @@ COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kForcedAppRelaunchOnPlaceholderUpdate);
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
+COMPONENT_EXPORT(CHROME_FEATURES) BASE_DECLARE_FEATURE(kGeic);
+COMPONENT_EXPORT(CHROME_FEATURES)
+extern const base::FeatureParam<std::string> kGeicGuestURL;
+
 COMPONENT_EXPORT(CHROME_FEATURES) BASE_DECLARE_FEATURE(kGlicActor);
 
 // Enables comparison of AnnotatedPageContent. This is potentially expensive for
@@ -987,8 +991,6 @@ COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kIsolatedWebAppUnmanagedInstall);
 // LINT.ThenChange(//PRESUBMIT.py)
 
-COMPONENT_EXPORT(CHROME_FEATURES) BASE_DECLARE_FEATURE(kIsolatedWebAppDevUi);
-
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kIsolatedWebAppFastUpdateCheck);
 
@@ -1016,6 +1018,11 @@ BASE_DECLARE_FEATURE(kLazyKeyedServiceInstantiation);
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE_PARAM(bool,
                            kLazyKeyedServiceInstantiationAutofillAndPassword);
+COMPONENT_EXPORT(CHROME_FEATURES)
+BASE_DECLARE_FEATURE_PARAM(bool,
+                           kLazyKeyedServiceInstantiationOptimizationGuide);
+COMPONENT_EXPORT(CHROME_FEATURES)
+BASE_DECLARE_FEATURE_PARAM(bool, kLazyKeyedServiceInstantiationExtensions);
 
 COMPONENT_EXPORT(CHROME_FEATURES) BASE_DECLARE_FEATURE(kNativeNotifications);
 

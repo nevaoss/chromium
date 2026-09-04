@@ -39,11 +39,13 @@
 #include "chrome/browser/glic/host/glic.mojom.h"
 #include "chrome/browser/glic/host/glic_features.mojom-features.h"
 #include "chrome/browser/glic/host/glic_skills_manager.h"
+#include "chrome/browser/glic/host/glic_web_client_manager.h"
 #include "chrome/browser/glic/host/glic_web_contents_warming_pool.h"
 #include "chrome/browser/glic/host/guest_util.h"
 #include "chrome/browser/glic/host/host.h"
 #include "chrome/browser/glic/host/webui_contents_container.h"
 #include "chrome/browser/glic/public/features.h"
+#include "chrome/browser/glic/public/glic_api_metrics.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/glic/public/glic_invoke_options.h"
 #include "chrome/browser/glic/public/glic_keyed_service.h"
@@ -940,8 +942,8 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testGetPinCandidatesSingleTab) {
   ExecuteJsTest();
 }
 
-// Flaky on Android.
-#if BUILDFLAG(IS_ANDROID)
+// Flaky on Android and MSan.
+#if BUILDFLAG(IS_ANDROID) || defined(MEMORY_SANITIZER)
 #define MAYBE_testGetPinCandidatesWithPanelClosed \
   DISABLED_testGetPinCandidatesWithPanelClosed
 #else
@@ -1107,7 +1109,8 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest,
       {second_tab->GetHandle()});
   ContinueJsTest();
 }
-IN_PROC_BROWSER_TEST_P(GlicApiTest, testGetZoomLevel) {
+// TODO(crbug.com/554315364): Fix flaky test.
+IN_PROC_BROWSER_TEST_P(GlicApiTest, DISABLED_testGetZoomLevel) {
   // Confirm that the observer is notified through getZoomLevel of the initial
   // state, i.e. zoom level of 1.0.
   ASSERT_OK_AND_ASSIGN(auto* instance, OpenGlicForActiveTab());
@@ -1599,31 +1602,12 @@ class GlicApiTestRuntimeFeatureOff : public GlicApiTest {
 IN_PROC_BROWSER_TEST_P(GlicApiTestRuntimeFeatureOff,
                        testErrorShownOnMojoPipeError) {
   ASSERT_OK_AND_ASSIGN(auto* instance, OpenGlicForActiveTab());
-  glic::GlicHistogramTester histogram_tester;
   ExecuteJsTest();
 
   auto* web_contents = instance->host().webui_contents();
   ASSERT_TRUE(web_contents);
 
-  // Reach in to `GlicApiHost`'s handler to call a function that's gated by
-  // a disabled feature.
-  const char* script = R"js(
-(()=>{
-  const appController = appRouter.glicController;
-  if (!appController.webview.host.handler.getModelQualityClientId) {
-    return "Method not found";
-  }
-  appController.webview.host.handler.getModelQualityClientId();
-  return "Method called";
-})()
-)js";
-  auto result = content::EvalJs(web_contents->GetPrimaryMainFrame(), script);
-  ASSERT_EQ("Method called", result.ExtractString());
-
   ASSERT_OK(WaitForWebUiState(mojom::WebUiState::kError));
-  histogram_tester.ExpectUniqueSample(
-      "Glic.Host.WebClientState.OnDestroy",
-      11 /*MOJO_PIPE_CLOSED_UNEXPECTEDLY_AFTER_INITIALIZE*/, 1);
 
   // Verify the reload button works.
   ASSERT_TRUE(content::ExecJs(web_contents,
@@ -2325,12 +2309,16 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testCreateTabSimple) {
 // foreground requests (background request gating intercepts and returns empty
 // response). Also, tab group inheritance is not supported by default on
 // Android.
-#if BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
 #define MAYBE_testActivateTabWithUrl DISABLED_testActivateTabWithUrl
+#else
+#define MAYBE_testActivateTabWithUrl testActivateTabWithUrl
+#endif
+
+#if BUILDFLAG(IS_ANDROID)
 #define MAYBE_testCreateTab DISABLED_testCreateTab
 #define MAYBE_testCreateTabInBackground DISABLED_testCreateTabInBackground
 #else
-#define MAYBE_testActivateTabWithUrl testActivateTabWithUrl
 #define MAYBE_testCreateTab testCreateTab
 #define MAYBE_testCreateTabInBackground testCreateTabInBackground
 #endif
@@ -2777,7 +2765,12 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testInitiallyNotResizable) {
 #endif
 
 #if !BUILDFLAG(IS_ANDROID)
-IN_PROC_BROWSER_TEST_P(GlicApiTest, testSetMinimumWidgetSize) {
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
+#define MAYBE_testSetMinimumWidgetSize DISABLED_testSetMinimumWidgetSize
+#else
+#define MAYBE_testSetMinimumWidgetSize testSetMinimumWidgetSize
+#endif
+IN_PROC_BROWSER_TEST_P(GlicApiTest, MAYBE_testSetMinimumWidgetSize) {
   ASSERT_OK(OpenGlicForActiveTabAndDetach());
   ExecuteJsTest();
   ASSERT_TRUE(step_data().has_value() && step_data()->is_dict());
@@ -3102,14 +3095,9 @@ IN_PROC_BROWSER_TEST_P(GlicApiTestWithFastTimeout, MAYBE_testNoClientCreated) {
 #if defined(SLOW_BINARY)
   GTEST_SKIP() << "skip timeout test for slow binary";
 #else
-  glic::GlicHistogramTester histogram_tester;
   ASSERT_OK(OpenGlicForActiveTab());
   ExecuteJsTest();
   ASSERT_OK(WaitForWebUiState(mojom::WebUiState::kError));
-  ASSERT_TRUE(base::test::RunUntil([&]() {
-    return histogram_tester.GetBucketCount("Glic.Host.WebClientState.OnDestroy",
-                                           0 /*BOOTSTRAP_PENDING*/) > 0;
-  }));
 #endif
 }
 
@@ -3119,14 +3107,9 @@ IN_PROC_BROWSER_TEST_P(GlicApiTestWithFastTimeout, MAYBE_testNoClientCreated) {
 #define MAYBE_testNoBootstrap testNoBootstrap
 #endif
 IN_PROC_BROWSER_TEST_P(GlicApiTestWithFastTimeout, MAYBE_testNoBootstrap) {
-  glic::GlicHistogramTester histogram_tester;
   ASSERT_OK(OpenGlicForActiveTab());
   ExecuteJsTest();
   ASSERT_OK(WaitForWebUiState(mojom::WebUiState::kError));
-  ASSERT_TRUE(base::test::RunUntil([&]() {
-    return histogram_tester.GetBucketCount("Glic.Host.WebClientState.OnDestroy",
-                                           0 /*BOOTSTRAP_PENDING*/) > 0;
-  }));
 }
 
 IN_PROC_BROWSER_TEST_P(GlicApiTestWithFastTimeout,
@@ -3141,8 +3124,9 @@ IN_PROC_BROWSER_TEST_P(GlicApiTestWithFastTimeout,
   });
   ASSERT_OK(WaitForWebUiState(mojom::WebUiState::kError));
   ASSERT_TRUE(base::test::RunUntil([&]() {
-    return histogram_tester.GetBucketCount("Glic.Host.WebClientState.OnDestroy",
-                                           3 /*WEB_CLIENT_NOT_INITIALIZED*/) >
+    return histogram_tester.GetBucketCount(
+               "Glic.Host.WebClientLifecycleEvent",
+               GlicWebClientLifecycleEvent::kDisconnectedBeforeInitialization) >
            0;
   }));
   ASSERT_TRUE(base::test::RunUntil([&]() {
@@ -3475,6 +3459,13 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testDoNothing) {
   ExecuteJsTest();
 }
 
+IN_PROC_BROWSER_TEST_P(GlicApiTest, testRecordUseCounter) {
+  glic::GlicHistogramTester histogram_tester;
+  ASSERT_OK(OpenGlicForActiveTab());
+  ExecuteJsTest();
+  ASSERT_OK(histogram_tester.WaitForBucketCount("Glic.Api.UseCounter", 1, 1));
+}
+
 IN_PROC_BROWSER_TEST_P(GlicApiTest, testDefaultInvocationSource) {
   ASSERT_OK(OpenGlicForActiveTab());
   ExecuteJsTest();
@@ -3501,10 +3492,9 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testNavigateToDifferentClientPage) {
   listener.WaitForWebUiState(mojom::WebUiState::kBeginLoad);
   listener.WaitForWebUiState(mojom::WebUiState::kReady);
   ExecuteJsTest({.params = base::Value(1)});  // test run count: 1.
-  histogram_tester.ExpectUniqueSample("Glic.Host.WebClientState.OnCommit",
-                                      6 /*RESPONSIVE*/, 1);
-  histogram_tester.ExpectUniqueSample("Glic.Host.WebClientState.OnDestroy",
-                                      0 /*BOOTSTRAP_PENDING*/, 1);
+  histogram_tester.ExpectBucketCount(
+      "Glic.Host.WebClientLifecycleEvent",
+      GlicWebClientLifecycleEvent::kDisconnectedOnNavigation, 1);
 }
 
 // TODO(b/544866316): Consider moving this to a different test suite
@@ -3555,6 +3545,15 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testGetUserProfileInfo) {
   ASSERT_OK(OpenGlicForActiveTab());
   ExecuteJsTest();
 
+  histogram_tester.ExpectBucketCount(
+      "Glic.Api.RequestCounts.GetUserProfileInfo",
+      glic::mojom::GlicRequestEvent::kRequestReceived, 1);
+  histogram_tester.ExpectBucketCount(
+      "Glic.Api.RequestCounts.GetUserProfileInfo",
+      glic::mojom::GlicRequestEvent::kResponseSent, 1);
+  histogram_tester.ExpectBucketCount(
+      "Glic.Api.StatusCounts.Received",
+      glic::GlicHostApiRequestId::kGetUserProfileInfo, 1);
   // Confirm that this response-receiving request gets latency metrics recorded.
   histogram_tester.ExpectTotalCount(
       "Glic.Api.RequestHostLatency.GetUserProfileInfo", 1);
@@ -4142,9 +4141,9 @@ IN_PROC_BROWSER_TEST_P(GlicApiMultiProfileTest, testGetContextCrossProfile) {
 
 IN_PROC_BROWSER_TEST_P(GlicApiTestWithWebContentsWarming,
                        testWebClientReadyOnFullLoad) {
-  ASSERT_TRUE(coordinator()
-                  .GetWebContentsWarmingPoolForTesting()
-                  .MaybeStartInitialWarming());
+  ASSERT_TRUE(
+      coordinator().GetWebContentsWarmingPoolForTesting().MaybeStartWarming(
+          GlicWarmingTrigger::kStartup));
   ASSERT_OK(RunUntilNotNull([&]() {
     return coordinator()
         .GetWebContentsWarmingPoolForTesting()
@@ -5350,9 +5349,9 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest,
 // TODO(b/498955581): Clean up glic hibernation experiments, and test in the
 // coordinator test.
 IN_PROC_BROWSER_TEST_P(GlicApiTest, testHibernateAllOnMemoryPressure) {
-  ASSERT_TRUE(coordinator()
-                  .GetWebContentsWarmingPoolForTesting()
-                  .MaybeStartInitialWarming());
+  ASSERT_TRUE(
+      coordinator().GetWebContentsWarmingPoolForTesting().MaybeStartWarming(
+          GlicWarmingTrigger::kStartup));
 
   // Open 3 instances, with instance 2 being the active one.
   tabs::TabInterface* tab1 = GetTabListInterface()->GetActiveTab();
@@ -5376,9 +5375,9 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testHibernateAllOnMemoryPressure) {
 
   // There is a warmed contents initially. It should be non-showing and
   // non-actuating.
-  ASSERT_TRUE(coordinator()
-                  .GetWebContentsWarmingPoolForTesting()
-                  .MaybeStartInitialWarming());
+  ASSERT_TRUE(
+      coordinator().GetWebContentsWarmingPoolForTesting().MaybeStartWarming(
+          GlicWarmingTrigger::kStartup));
   ASSERT_TRUE(coordinator()
                   .GetWebContentsWarmingPoolForTesting()
                   .HasWarmedContainerForTesting());

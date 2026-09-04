@@ -32,7 +32,6 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
-import org.robolectric.annotation.Config;
 
 import org.chromium.base.ContextUtils;
 import org.chromium.base.Token;
@@ -55,7 +54,6 @@ import org.chromium.ui.dragdrop.DropDataAndroid;
 
 /** Unit tests for {@link TabSwitcherDragHandler} and {@link AnimatedDragShadowBuilder}. */
 @RunWith(BaseRobolectricTestRunner.class)
-@Config(manifest = Config.NONE)
 public class TabSwitcherDragHandlerUnitTest {
     @Rule public MockitoRule mMockitoRule = MockitoJUnit.rule();
 
@@ -594,5 +592,10 @@ public class TabSwitcherDragHandlerUnitTest {
         // onDrag must complete without throwing AssertionError.
         mDragHandler.onDrag(targetView, dragEndEvent);
         verify(mDragHandlerDelegate).handleExternalDragEnd(targetView, 50f, 50f, false);
+    }
+
+    @Test
+    public void testHasActiveDragShadow() {
+        assertFalse(mDragHandler.hasActiveDragShadow());
     }
 }

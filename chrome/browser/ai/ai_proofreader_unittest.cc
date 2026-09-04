@@ -19,6 +19,7 @@
 #include "chrome/browser/ai/ai_test_utils.h"
 #include "chrome/browser/ai/features.h"
 #include "chrome/browser/optimization_guide/mock_optimization_guide_keyed_service.h"
+#include "components/optimization_guide/core/model_execution/test/feature_config_builder.h"
 #include "components/optimization_guide/core/model_execution/test/mock_on_device_capability.h"
 #include "components/optimization_guide/core/model_execution/test/substitution_builder.h"
 #include "components/optimization_guide/core/optimization_guide_proto_util.h"
@@ -75,8 +76,9 @@ class TestCreateProofreaderClient
     return receiver_.BindNewPipeAndPassRemote();
   }
 
-  void OnResult(
-      mojo::PendingRemote<::blink::mojom::AIProofreader> proofreader) override {
+  void OnResult(mojo::PendingRemote<::blink::mojom::AIProofreader> proofreader,
+                uint64_t context_window) override {
+    context_window_ = context_window;
     result_.SetValue(std::move(proofreader));
   }
 
@@ -86,9 +88,11 @@ class TestCreateProofreaderClient
   }
 
   TestFuture<CreateProofreaderResult>& result() { return result_; }
+  uint64_t context_window() const { return context_window_; }
 
  private:
   TestFuture<CreateProofreaderResult> result_;
+  uint64_t context_window_ = 0;
   mojo::Receiver<blink::mojom::AIManagerCreateProofreaderClient> receiver_{
       this};
 };
@@ -261,6 +265,16 @@ TEST_F(AIProofreaderTest, CanCreateDefaultOptions) {
     EXPECT_EQ(future.Get(),
               blink::mojom::ModelAvailabilityCheckResult::kAvailable);
   }
+}
+
+TEST_F(AIProofreaderTest, ContextWindowUsesContextLimit) {
+  TestCreateProofreaderClient client;
+  GetAIManagerRemote()->CreateProofreader(client.BindNewPipeAndPassRemote(),
+                                          GetDefaultOptions(),
+                                          /*monitor=*/mojo::NullRemote());
+  CreateProofreaderResult result = client.result().Take();
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ(client.context_window(), blink::mojom::kTinyModelMaxInputTokenSize);
 }
 
 TEST_F(AIProofreaderTest, CanCreateIsLanguagesSupported) {

@@ -4,8 +4,11 @@
 
 #import "ios/chrome/browser/composebox/shared/coordinator/composebox_picker_presenter.h"
 
+#import <AVFoundation/AVFoundation.h>
 #import <PhotosUI/PhotosUI.h>
 
+#import "base/check.h"
+#import "base/check_op.h"
 #import "base/feature_list.h"
 #import "base/memory/weak_ptr.h"
 #import "components/contextual_search/input_state_model.h"
@@ -15,6 +18,7 @@
 #import "components/prefs/pref_service.h"
 #import "ios/chrome/browser/composebox/public/composebox_input_item_source.h"
 #import "ios/chrome/browser/composebox/shared/coordinator/composebox_picker_image_result.h"
+#import "ios/chrome/browser/composebox/shared/metrics/composebox_metrics_recorder.h"
 #import "ios/chrome/browser/composebox/shared/ui/composebox_snackbar_presenter.h"
 #import "ios/chrome/browser/shared/model/browser/browser.h"
 #import "ios/chrome/browser/shared/model/profile/profile_ios.h"
@@ -61,7 +65,20 @@
 - (void)presentCameraPicker {
   if (![UIImagePickerController
           isSourceTypeAvailable:UIImagePickerControllerSourceTypeCamera]) {
+    [self.metricsRecorder
+        recordPickerOutcome:MobileFuseboxPickerOutcome::kLocalError
+          forAttachmentType:MobileFuseboxPickerAttachmentType::kCamera];
     // TODO(crbug.com/40280872): Show an error to the user.
+    return;
+  }
+
+  AVAuthorizationStatus status =
+      [AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeVideo];
+  if (status == AVAuthorizationStatusDenied ||
+      status == AVAuthorizationStatusRestricted) {
+    [self.metricsRecorder
+        recordPickerOutcome:MobileFuseboxPickerOutcome::kPermissionDenied
+          forAttachmentType:MobileFuseboxPickerAttachmentType::kCamera];
     return;
   }
 
@@ -146,15 +163,18 @@
 
 - (void)presentDriveFilePicker {
   if (!_browser) {
+    [self.metricsRecorder
+        recordPickerOutcome:MobileFuseboxPickerOutcome::kLocalError
+          forAttachmentType:MobileFuseboxPickerAttachmentType::kDrive];
     return;
   }
 
-  ProfileIOS* profile = _browser->GetProfile();
-  PrefService* prefService = profile->GetPrefs();
-  AuthenticationService* authService =
-      AuthenticationServiceFactory::GetForProfile(profile);
-  id<SystemIdentity> identity = authService->GetPrimaryIdentity();
+  CHECK_EQ(_browser->type(), Browser::Type::kRegular);
 
+  id<SystemIdentity> identity = [self driveFilePickerIdentity];
+  CHECK(identity);
+
+  PrefService* prefService = _browser->GetProfile()->GetPrefs();
   auto consentState = static_cast<contextual_search::DriveConsentState>(
       prefService->GetInteger(contextual_search::kDriveConsentState));
 
@@ -164,8 +184,7 @@
   if (base::FeatureList::IsEnabled(
           omnibox::kComposeboxDriveContextMenuOptionDisclaimer) &&
       !base::FeatureList::IsEnabled(omnibox::kForceDriveDisclaimerAccepted) &&
-      consentState != contextual_search::DriveConsentState::kConsent &&
-      identity) {
+      consentState != contextual_search::DriveConsentState::kConsent) {
     PrivacyPrimitiveConfiguration* config =
         [[PrivacyPrimitiveConfiguration alloc] init];
     config.identity = identity;
@@ -196,7 +215,10 @@
 
 - (void)privacyPrimitiveFlowCompletedWithSuccess:(BOOL)success {
   self.privacyPrimitiveService = nil;
-  if (!success || !_browser) {
+  if (!success || ![self canShowDriveFilePicker]) {
+    [self.metricsRecorder
+        recordPickerOutcome:MobileFuseboxPickerOutcome::kPermissionDenied
+          forAttachmentType:MobileFuseboxPickerAttachmentType::kDrive];
     return;
   }
   PrefService* prefs = _browser->GetProfile()->GetPrefs();
@@ -207,14 +229,19 @@
 }
 
 - (void)showDriveFilePickerInternal {
-  if (!_browser) {
+  if (!_browser || ![self canShowDriveFilePicker]) {
     return;
   }
+  [self createSnackbarPresenterIfNeeded];
+  NSUInteger maxDriveAttachmentCount =
+      [self.dataSource maxDriveAttachmentCountForPresenter:self];
   id<DriveFilePickerCommands> driveFilePickerCommands = HandlerForProtocol(
       _browser->GetCommandDispatcher(), DriveFilePickerCommands);
   [driveFilePickerCommands
       showDriveFilePickerWithComposeboxDelegate:self.delegate
-                             baseViewController:_baseViewController];
+                             baseViewController:_baseViewController
+                             maxAttachmentCount:maxDriveAttachmentCount
+                              snackbarPresenter:_snackbarPresenter];
 }
 
 #pragma mark - UIImagePickerControllerDelegate
@@ -231,15 +258,15 @@
 
   UIImage* image = info[UIImagePickerControllerOriginalImage];
   if (!image) {
+    [self.metricsRecorder
+        recordPickerOutcome:MobileFuseboxPickerOutcome::kLocalError
+          forAttachmentType:MobileFuseboxPickerAttachmentType::kCamera];
     return;
   }
 
-  [picker dismissViewControllerAnimated:YES
-                             completion:^{
-                               [weakSelf.delegate
-                                   composeboxPickerPresenterDidDissmissCamera:
-                                       weakSelf];
-                             }];
+  [self.metricsRecorder
+      recordPickerOutcome:MobileFuseboxPickerOutcome::kAttachmentAdded
+        forAttachmentType:MobileFuseboxPickerAttachmentType::kCamera];
 
   NSItemProvider* provider = [[NSItemProvider alloc] initWithObject:image];
   [self.delegate
@@ -254,6 +281,10 @@
 }
 
 - (void)imagePickerControllerDidCancel:(UIImagePickerController*)picker {
+  [self.metricsRecorder
+      recordPickerOutcome:MobileFuseboxPickerOutcome::kManualUserExit
+        forAttachmentType:MobileFuseboxPickerAttachmentType::kCamera];
+
   __weak __typeof(self) weakSelf = self;
   [picker dismissViewControllerAnimated:YES
                              completion:^{
@@ -269,7 +300,16 @@
     didFinishPicking:(NSArray<PHPickerResult*>*)results {
   [picker dismissViewControllerAnimated:YES completion:nil];
 
-  // TODO(crbug.com/506955766): Unify metrics recording and record this action.
+  if (results.count == 0) {
+    [self.metricsRecorder
+        recordPickerOutcome:MobileFuseboxPickerOutcome::kManualUserExit
+          forAttachmentType:MobileFuseboxPickerAttachmentType::kGallery];
+    return;
+  }
+
+  [self.metricsRecorder
+      recordPickerOutcome:MobileFuseboxPickerOutcome::kAttachmentAdded
+        forAttachmentType:MobileFuseboxPickerAttachmentType::kGallery];
 
   NSMutableArray<ComposeboxPickerImageResult*>* imageItems =
       [[NSMutableArray alloc] initWithCapacity:results.count];
@@ -288,10 +328,60 @@
 
 - (void)documentPicker:(UIDocumentPickerViewController*)controller
     didPickDocumentsAtURLs:(NSArray<NSURL*>*)urls {
+  if (urls.count == 0) {
+    [self.metricsRecorder
+        recordPickerOutcome:MobileFuseboxPickerOutcome::kManualUserExit
+          forAttachmentType:MobileFuseboxPickerAttachmentType::kFile];
+    return;
+  }
+
+  [self.metricsRecorder
+      recordPickerOutcome:MobileFuseboxPickerOutcome::kAttachmentAdded
+        forAttachmentType:MobileFuseboxPickerAttachmentType::kFile];
+
   [self.delegate composeboxPickerPresenter:self didPickFilesWithURLs:urls];
 }
 
+- (void)documentPickerWasCancelled:(UIDocumentPickerViewController*)controller {
+  [self.metricsRecorder
+      recordPickerOutcome:MobileFuseboxPickerOutcome::kManualUserExit
+        forAttachmentType:MobileFuseboxPickerAttachmentType::kFile];
+}
+
 #pragma mark - Private
+
+/// Returns the primary identity if the browser is regular and the user is
+/// signed in; otherwise returns nil.
+- (id<SystemIdentity>)driveFilePickerIdentity {
+  if (!_browser || _browser->type() != Browser::Type::kRegular) {
+    [self.metricsRecorder
+        recordPickerOutcome:MobileFuseboxPickerOutcome::kLocalError
+          forAttachmentType:MobileFuseboxPickerAttachmentType::kDrive];
+    return nil;
+  }
+  AuthenticationService* authService =
+      AuthenticationServiceFactory::GetForProfile(_browser->GetProfile());
+  if (!authService || !authService->HasPrimaryIdentity()) {
+    [self.metricsRecorder
+        recordPickerOutcome:MobileFuseboxPickerOutcome::kLocalError
+          forAttachmentType:MobileFuseboxPickerAttachmentType::kDrive];
+    return nil;
+  }
+
+  id<SystemIdentity> identity = authService->GetPrimaryIdentity();
+  if (identity == nil) {
+    [self.metricsRecorder
+        recordPickerOutcome:MobileFuseboxPickerOutcome::kLocalError
+          forAttachmentType:MobileFuseboxPickerAttachmentType::kDrive];
+  }
+
+  return identity;
+}
+
+/// Returns whether the Drive file picker can be presented.
+- (BOOL)canShowDriveFilePicker {
+  return [self driveFilePickerIdentity] != nil;
+}
 
 - (void)createSnackbarPresenterIfNeeded {
   if (_snackbarPresenter || !_browser) {

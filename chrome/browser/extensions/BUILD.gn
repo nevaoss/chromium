@@ -376,6 +376,8 @@ source_set("extensions") {
     "installed_loader.h",
     "launch_util.cc",
     "launch_util.h",
+    "low_trust_policy_install_block_manager.cc",
+    "low_trust_policy_install_block_manager.h",
     "managed_toolbar_pin_mode.h",
     "menu_icon_loader.h",
     "menu_manager.cc",
@@ -547,6 +549,7 @@ source_set("extensions") {
     "//chrome/browser/tab_list",
     "//chrome/browser/ui:accelerator_utils_headers",
     "//chrome/browser/ui:browser_element_identifiers",
+    "//chrome/browser/ui:browser_live_tab_context",
     "//chrome/browser/ui:incognito_allowed_url",
     "//chrome/browser/ui:recently_audible_helper",
     "//chrome/browser/ui:simple_message_box_headers",
@@ -2022,6 +2025,7 @@ source_set("unit_tests") {
     "initial_external_extension_loader_unittest.cc",
     "install_verifier_unittest.cc",
     "installed_loader_unittest.cc",
+    "low_trust_policy_install_block_manager_unittest.cc",
     "omaha_attributes_handler_unittest.cc",
     "pack_extension_unittest.cc",
     "permission_message_combinations_unittest.cc",
@@ -2057,8 +2061,8 @@ source_set("unit_tests") {
     "//base",
     "//base/test:test_config",
     "//base/test:test_support",
-    "//chrome/browser",
     "//chrome/browser:browser_process_impl",
+    "//chrome/browser:global_features",
     "//chrome/browser/background",
     "//chrome/browser/bookmarks",
     "//chrome/browser/content_settings:content_settings_factory",
@@ -2495,6 +2499,7 @@ source_set("browser_tests") {
     "wasm_mv3_browsertest.cc",
     "web_accessible_resources_browsertest.cc",
     "web_contents_browsertest.cc",
+    "webstore_domain_browsertest.cc",
     "webstore_installer_browsertest.cc",
     "webstore_reinstaller_browsertest.cc",
   ]
@@ -2541,6 +2546,7 @@ source_set("browser_tests") {
     "//chrome/browser/sync",
     "//chrome/browser/tab_list",
     "//chrome/browser/task_manager:test_support",
+    "//chrome/browser/ui:browser_live_tab_context",
     "//chrome/browser/ui:ui_features",
     "//chrome/browser/ui:view_ids",
     "//chrome/browser/ui/browser_window",
@@ -2700,8 +2706,6 @@ source_set("browser_tests") {
   # These tests don't run on desktop Android.
   if (enable_extensions) {
     sources += [
-      # TODO(crbug.com/469417243): Move to BUILD.gn files closer to sources.
-      "//chrome/browser/web_applications/isolated_web_apps/window_management/isolated_web_apps_close_window_browsertest.cc",
       "ai_language_model_browsertest.cc",
       "api/activity_log_private/activity_log_private_apitest.cc",
       "api/autofill_private/autofill_private_api_browsertest.cc",
@@ -2806,7 +2810,6 @@ source_set("browser_tests") {
       "user_script_listener_browsertest.cc",
       "user_script_world_browsertest.cc",
       "wasm_app_browsertest.cc",
-      "webstore_domain_browsertest.cc",
       "window_open_apitest.cc",
       "worker_apitest.cc",
     ]
@@ -3165,6 +3168,10 @@ source_set("browser_tests") {
         "//chrome/browser/background/extensions",
         "//chrome/browser/download/bubble",
       ]
+    }
+
+    if (enable_background_mode) {
+      sources += [ "background_app_browsertest.cc" ]
     }
 
     if (use_aura) {

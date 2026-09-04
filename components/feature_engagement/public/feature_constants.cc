@@ -125,6 +125,9 @@ BASE_FEATURE(kIPHGMCCastStartStopFeature,
 BASE_FEATURE(kIPHGMCLocalMediaCastingFeature,
              "IPH_GMCLocalMediaCasting",
              base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHGMCSaveVideoFrameFeature,
+             "IPH_GMCSaveVideoFrame",
+             base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHGlicPromoFeature,
              "IPH_GlicPromo",
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -162,6 +165,9 @@ const base::FeatureParam<base::TimeDelta> kIPHLensOverlayDelayTime{
     base::Seconds(7)};
 BASE_FEATURE(kIPHLensOverlayTranslateButtonFeature,
              "IPH_LensOverlayTranslateButton",
+             base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHOmniboxEverywhereLensPromoFeature,
+             "IPH_OmniboxEverywhereLensPromo",
              base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHTabAudioMutingFeature,
              "IPH_TabAudioMuting",
@@ -238,6 +244,9 @@ BASE_FEATURE(kIPHReadingModePresentationModeFeature,
 BASE_FEATURE(kIPHReadingModeSidePanelFeature,
              "IPH_ReadingModeSidePanel",
              base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHSendTabToSelfTutorialFeature,
+             "IPH_SendTabToSelfTutorial",
+             base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHShoppingCollectionFeature,
              "IPH_ShoppingCollectionFeature",
              base::FEATURE_ENABLED_BY_DEFAULT);

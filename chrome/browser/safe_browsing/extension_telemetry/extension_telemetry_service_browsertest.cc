@@ -7,6 +7,7 @@
 #include "base/command_line.h"
 #include "base/files/file_path.h"
 #include "base/path_service.h"
+#include "base/strings/string_util.h"
 #include "base/test/protobuf_matchers.h"
 #include "base/test/scoped_feature_list.h"
 #include "chrome/browser/enterprise/connectors/test/deep_scanning_test_utils.h"
@@ -105,6 +106,11 @@ class ExtensionTelemetryServiceBrowserTest
         /*enabled_event_names=*/{},
         /*enabled_opt_in_events=*/
         {{enterprise_connectors::kExtensionTelemetryEvent, {"*"}}});
+
+    // Set the last upload time to Now() so that StartUploadCheck (delayed by
+    // 15s at startup) does not trigger CreateAndUploadReport() and clear the
+    // collected signals in the middle of tests.
+    SetLastUploadTimeForExtensionTelemetry(*prefs(), base::Time::Now());
   }
 
   void TearDownOnMainThread() override {
@@ -597,11 +603,24 @@ IN_PROC_BROWSER_TEST_F(ExtensionTelemetryServiceBrowserTest,
   EXPECT_EQ(action_detail.redirect_url(), "http://google.com/pages/");
 }
 
+// TODO(crbug.com/444383306): Deflake this test on mac.
+#if BUILDFLAG(IS_MAC)
+#define MAYBE_DetectsAndReportsTabsApiSignal \
+  DISABLED_DetectsAndReportsTabsApiSignal
+#else
+#define MAYBE_DetectsAndReportsTabsApiSignal DetectsAndReportsTabsApiSignal
+#endif
 IN_PROC_BROWSER_TEST_F(ExtensionTelemetryServiceBrowserTest,
-                       DetectsAndReportsTabsApiSignal) {
+                       MAYBE_DetectsAndReportsTabsApiSignal) {
   SetSafeBrowsingState(browser()->GetProfile()->GetPrefs(),
                        SafeBrowsingState::ENHANCED_PROTECTION);
   ASSERT_TRUE(StartEmbeddedTestServer());
+
+  GURL google_url = embedded_test_server()->GetURL("google.com", "/empty.html");
+  GURL example_url =
+      embedded_test_server()->GetURL("example.com", "/empty.html");
+  std::string sanitized_google_url = google_url.GetWithoutFilename().spec();
+  std::string sanitized_example_url = example_url.GetWithoutFilename().spec();
 
   static constexpr char kManifest[] =
       R"({
@@ -612,57 +631,70 @@ IN_PROC_BROWSER_TEST_F(ExtensionTelemetryServiceBrowserTest,
          "host_permissions": ["<all_urls>"],
          "background": { "service_worker" : "background.js" }
        })";
-  static constexpr char kBackground[] =
+  static constexpr char kBackgroundTemplate[] =
       R"(
-        function waitForTabLoad(tabId) {
-          return new Promise((resolve) => {
-            const listener = (id, changeInfo, updatedTab) => {
-              if (id === tabId && changeInfo.status === 'complete') {
-                chrome.tabs.onUpdated.removeListener(listener);
-                resolve(updatedTab);
-              }
-            };
-            chrome.tabs.onUpdated.addListener(listener);
+        const loadedTabs = new Map();
+        const waitingResolvers = new Map();
 
-            chrome.tabs.get(tabId, (tab) => {
-              if (tab && tab.status === 'complete') {
-                chrome.tabs.onUpdated.removeListener(listener);
+        chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+          if (changeInfo.status === 'complete' && tab.url) {
+            loadedTabs.set(tabId, tab.url);
+            if (waitingResolvers.has(tabId)) {
+              const {expectedUrl, resolve} = waitingResolvers.get(tabId);
+              if (!expectedUrl || tab.url.startsWith(expectedUrl)) {
+                waitingResolvers.delete(tabId);
                 resolve(tab);
               }
-            });
+            }
+          } else if (changeInfo.status === 'loading') {
+            loadedTabs.delete(tabId);
+          }
+        });
+
+        function waitForTabLoad(tabId, expectedUrl) {
+          return new Promise((resolve) => {
+            if (loadedTabs.has(tabId) &&
+                (!expectedUrl || loadedTabs.get(tabId).startsWith(expectedUrl))) {
+              resolve();
+              return;
+            }
+            waitingResolvers.set(tabId, {expectedUrl, resolve});
           });
         }
+
+        const GOOGLE_URL = '$1';
+        const EXAMPLE_URL = '$2';
 
         chrome.test.runTests([
           async function tabOps() {
             const first_tab =
-                await chrome.tabs.create({url: 'http://www.google.com'});
-            await waitForTabLoad(first_tab.id);
+                await chrome.tabs.create({url: GOOGLE_URL});
+            await waitForTabLoad(first_tab.id, GOOGLE_URL);
 
             const second_tab =
-                await chrome.tabs.create({url: 'http://www.google.com'});
-            await waitForTabLoad(second_tab.id);
+                await chrome.tabs.create({url: GOOGLE_URL});
+            await waitForTabLoad(second_tab.id, GOOGLE_URL);
 
-            await chrome.tabs.update(second_tab.id,
-                {url: 'http://www.example.com'});
-            await waitForTabLoad(second_tab.id);
+            await chrome.tabs.update(second_tab.id, {url: EXAMPLE_URL});
+            await waitForTabLoad(second_tab.id, EXAMPLE_URL);
 
             await chrome.tabs.remove(second_tab.id);
-            chrome.test.succeed();
-          },
-          async function captureVisibleTabOp() {
+
             const newWindow =
-                await chrome.windows.create({url: 'http://www.google.com'});
-            await waitForTabLoad(newWindow.tabs[0].id);
+                await chrome.windows.create({url: GOOGLE_URL});
+            await waitForTabLoad(newWindow.tabs[0].id, GOOGLE_URL);
             await chrome.tabs.captureVisibleTab(newWindow.id);
             chrome.test.succeed();
           },
         ]);
       )";
 
+  std::string background = base::ReplaceStringPlaceholders(
+      kBackgroundTemplate, {google_url.spec(), example_url.spec()}, nullptr);
+
   extensions::TestExtensionDir test_dir;
   test_dir.WriteManifest(kManifest);
-  test_dir.WriteFile(FILE_PATH_LITERAL("background.js"), kBackground);
+  test_dir.WriteFile(FILE_PATH_LITERAL("background.js"), background);
 
   extensions::ResultCatcher result_catcher;
   const auto* extension = LoadExtension(test_dir.UnpackedPath());
@@ -710,7 +742,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionTelemetryServiceBrowserTest,
     EXPECT_EQ(call_details.count(), 2u);
     EXPECT_EQ(call_details.method(), TabsApiInfo::CREATE);
     EXPECT_EQ(call_details.current_url(), "");
-    EXPECT_EQ(call_details.new_url(), "http://www.google.com/");
+    EXPECT_EQ(call_details.new_url(), sanitized_google_url);
 
     // Check the JS call stack information.
     EXPECT_EQ(call_details.js_callstacks_size(), 2);
@@ -729,9 +761,8 @@ IN_PROC_BROWSER_TEST_F(ExtensionTelemetryServiceBrowserTest,
         tabs_api_info.call_details(1);
     EXPECT_EQ(call_details.count(), 1u);
     EXPECT_EQ(call_details.method(), TabsApiInfo::UPDATE);
-    EXPECT_EQ(call_details.current_url(), "http://www.google.com/");
-    EXPECT_EQ(call_details.new_url(), "http://www.example.com/");
-    EXPECT_EQ(call_details.js_callstacks_size(), 1);
+    EXPECT_EQ(call_details.current_url(), sanitized_google_url);
+    EXPECT_EQ(call_details.new_url(), sanitized_example_url);
 
     // Check the JS call stack information.
     EXPECT_EQ(call_details.js_callstacks_size(), 1);
@@ -745,9 +776,8 @@ IN_PROC_BROWSER_TEST_F(ExtensionTelemetryServiceBrowserTest,
         tabs_api_info.call_details(2);
     EXPECT_EQ(call_details.count(), 1u);
     EXPECT_EQ(call_details.method(), TabsApiInfo::REMOVE);
-    EXPECT_EQ(call_details.current_url(), "http://www.example.com/");
+    EXPECT_EQ(call_details.current_url(), sanitized_example_url);
     EXPECT_EQ(call_details.new_url(), "");
-    EXPECT_EQ(call_details.js_callstacks_size(), 1);
 
     // Check the JS call stack information.
     EXPECT_EQ(call_details.js_callstacks_size(), 1);
@@ -761,7 +791,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionTelemetryServiceBrowserTest,
         tabs_api_info.call_details(3);
     EXPECT_EQ(call_details.count(), 1u);
     EXPECT_EQ(call_details.method(), TabsApiInfo::CAPTURE_VISIBLE_TAB);
-    EXPECT_EQ(call_details.current_url(), "http://www.google.com/");
+    EXPECT_EQ(call_details.current_url(), sanitized_google_url);
     EXPECT_EQ(call_details.new_url(), "");
 
     // Check the JS call stack information.
@@ -769,7 +799,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionTelemetryServiceBrowserTest,
     const JSCallStack& callstack = call_details.js_callstacks(0);
     ASSERT_GE(callstack.frames_size(), 1);
     EXPECT_EQ(callstack.frames(0).script_name(), "/background.js");
-    EXPECT_EQ(callstack.frames(0).function_name(), "captureVisibleTabOp");
+    EXPECT_EQ(callstack.frames(0).function_name(), "tabOps");
   }
 
   // Verify enterprise telemetry reporting.

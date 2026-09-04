@@ -29,6 +29,8 @@
 #import "components/autofill/core/browser/form_import/addresses/autofill_save_update_address_profile_delegate_ios.h"
 #import "components/autofill/core/browser/form_import/form_data_importer.h"
 #import "components/autofill/core/browser/form_predictions_tracker.h"
+#import "components/autofill/core/browser/foundations/autofill_driver.h"
+#import "components/autofill/core/browser/foundations/autofill_manager.h"
 #import "components/autofill/core/browser/logging/log_manager.h"
 #import "components/autofill/core/browser/logging/log_router.h"
 #import "components/autofill/core/browser/payments/payments_network_interface.h"
@@ -72,6 +74,7 @@
 #import "ios/chrome/browser/autofill/model/ios_autofill_ai_model_executor_factory.h"
 #import "ios/chrome/browser/autofill/model/ios_autofill_ai_personal_context_access_manager_factory.h"
 #import "ios/chrome/browser/autofill/model/ios_autofill_entity_data_manager_factory.h"
+#import "ios/chrome/browser/autofill/model/ios_autofill_entity_suppression_manager_factory.h"
 #import "ios/chrome/browser/autofill/model/ios_autofill_field_classification_model_handler_factory.h"
 #import "ios/chrome/browser/autofill/model/ios_wallet_pass_access_manager_factory.h"
 #import "ios/chrome/browser/autofill/model/personal_data_manager_factory.h"
@@ -186,7 +189,9 @@ ChromeAutofillClientIOS::ChromeAutofillClientIOS(
   }
 
   if (autofill::IsAutofillAtMemorySearchUIEnabled(this)) {
-    at_memory_manager_ = std::make_unique<AtMemoryManager>(this);
+    at_memory_manager_ = std::make_unique<AtMemoryManager>(
+        this, ios::HistoryServiceFactory::GetForProfile(
+                  profile_, ServiceAccessType::EXPLICIT_ACCESS));
   }
 }
 
@@ -245,6 +250,11 @@ ValuablesDataManager* ChromeAutofillClientIOS::GetValuablesDataManager() {
 
 EntityDataManager* ChromeAutofillClientIOS::GetEntityDataManager() {
   return IOSAutofillEntityDataManagerFactory::GetForProfile(profile_);
+}
+
+EntitySuppressionManager*
+ChromeAutofillClientIOS::GetEntitySuppressionManager() {
+  return IOSAutofillEntitySuppressionManagerFactory::GetForProfile(profile_);
 }
 
 WalletPassAccessManager* ChromeAutofillClientIOS::GetWalletPassAccessManager() {
@@ -858,8 +868,12 @@ void ChromeAutofillClientIOS::ShowAutofillAiSaveUpdateUI() {
 }
 
 void ChromeAutofillClientIOS::OnActorTaskStateChange(bool is_actuating) {
-  // TODO(crbug.com/539473551): reparse known forms here so Autofill uses Actor
-  // specific heuristics.
+  if (is_actuating) {
+    for (AutofillDriver* driver :
+         GetAutofillDriverFactory().GetExistingDrivers()) {
+      driver->GetAutofillManager().ReparseKnownForms();
+    }
+  }
 }
 
 }  // namespace autofill

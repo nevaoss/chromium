@@ -189,7 +189,7 @@ void BrowserTabStripModelDelegate::MoveToExistingWindow(
     const std::vector<int>& indices,
     int browser_index) {
   std::vector<BrowserWindowInterface*> existing_browsers =
-      browser_->GetFeatures().tab_menu_model_delegate()->GetOtherBrowserWindows(
+      TabMenuModelDelegate::From(browser_)->GetOtherBrowserWindows(
           web_app::AppBrowserController::IsWebApp(browser_));
   size_t existing_browser_count = existing_browsers.size();
   if (static_cast<size_t>(browser_index) < existing_browser_count &&
@@ -264,7 +264,7 @@ void BrowserTabStripModelDelegate::CreateHistoricalSplit(
   sessions::TabRestoreService* service =
       TabRestoreServiceFactory::GetForProfile(browser_->GetProfile());
   if (service) {
-    service->CreateHistoricalSplit(browser_->GetFeatures().live_tab_context(),
+    service->CreateHistoricalSplit(BrowserLiveTabContext::From(browser_),
                                    split_id);
   }
 }

@@ -11,8 +11,10 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/sequenced_task_runner.h"
 #include "chrome/browser/contextual_cueing/contextual_cueing_controller.h"
+#include "chrome/browser/contextual_cueing/cue_target.h"
 #include "chrome/browser/glic/browser_ui/glic_vector_icon_manager.h"
 #include "chrome/browser/glic/resources/grit/glic_browser_resources.h"
+#include "chrome/browser/indigo/indigo_metrics.h"
 #include "chrome/browser/indigo/indigo_page_action_controller.h"
 #include "chrome/browser/indigo/indigo_service.h"
 #include "chrome/browser/indigo/indigo_service_factory.h"
@@ -85,7 +87,7 @@ void IndigoCueTarget::CheckEligibility(
     return;
   }
 
-  controller->CheckEligibility(
+  controller->CheckEligibilityForCueing(
       base::BindOnce(&IndigoCueTarget::OnEligibilityChecked,
                      weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
 }
@@ -100,7 +102,13 @@ void IndigoCueTarget::OnEligibilityChecked(EligibilityCallback callback,
 void IndigoCueTarget::GenerateContent(
     base::OnceCallback<void(
         std::optional<optimization_guide::proto::ContextualCue>)> callback) {
+  if (auto* controller = IndigoPageActionController::From(&tab_.get())) {
+    controller->RefreshDiscoverySkills();
+    controller->RecordTriggerSource();
+  }
   optimization_guide::proto::ContextualCue cue;
+  cue.set_suggested_cuj(
+      contextual_cueing::GetName(contextual_cueing::CueTargetType::kIndigo));
   auto* anchored_cue = cue.mutable_anchored_message_cue();
   anchored_cue->set_action_text(base::UTF16ToUTF8(
       l10n_util::GetStringUTF16(IDS_INDIGO_ENTRYPOINT_CHIP_TEXT)));
@@ -115,7 +123,30 @@ bool IndigoCueTarget::IsPageEligible(
   return false;
 }
 
-void IndigoCueTarget::OnClick(contextual_cueing::CueActionData data) {
+void IndigoCueTarget::OnChipShown() {
+  RecordShownEntryPoint(IndigoPageActionEntryPoint::kSuggestionChip);
+}
+
+void IndigoCueTarget::OnChipClicked() {
+  RecordClickedEntryPoint(EntryPoint::kSuggestionChip, std::nullopt);
+}
+
+void IndigoCueTarget::OnAnchoredMessageShown(
+    page_actions::PageActionPriorityCategory priority) {
+  if (auto* controller = IndigoPageActionController::From(&tab_.get())) {
+    controller->set_last_anchored_message_priority(priority);
+  }
+  if (priority == page_actions::PageActionPriorityCategory::kContextualCue) {
+    RecordShownEntryPoint(
+        IndigoPageActionEntryPoint::kProactiveAnchoredMessage);
+  } else if (priority ==
+             page_actions::PageActionPriorityCategory::kUserInteraction) {
+    RecordShownEntryPoint(IndigoPageActionEntryPoint::kReactiveAnchoredMessage);
+  }
+}
+
+void IndigoCueTarget::OnAnchoredMessageClicked(
+    contextual_cueing::CueActionData data) {
   auto* controller = IndigoPageActionController::From(&tab_.get());
   if (controller) {
     controller->InvokeAction(EntryPoint::kAnchoredMessage);

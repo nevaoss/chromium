@@ -260,12 +260,8 @@ class CachedOriginMatcher {
 }  // namespace
 
 bool IsGlicGuest(content::WebContents* web_contents) {
-  if (!web_contents ||
-      GlicGuestMarker::FromWebContents(web_contents) == nullptr) {
-    return false;
-  }
-  auto* guest_view = guest_view::GuestViewBase::FromWebContents(web_contents);
-  return guest_view && guest_view->attached();
+  return web_contents &&
+         GlicGuestMarker::FromWebContents(web_contents) != nullptr;
 }
 
 void MarkProcessAsGlic(content::RenderProcessHost* rph) {
@@ -398,9 +394,6 @@ bool IsAdminBlockedUrl(const GURL& url) {
 }
 
 bool IsFrameAllowedGlicApi(content::RenderFrameHost& frame_host) {
-  if (!base::FeatureList::IsEnabled(features::kGlicEnableMojoJs)) {
-    return false;
-  }
   content::WebContents* guest_contents =
       content::WebContents::FromRenderFrameHost(&frame_host);
   if (!guest_contents || !IsGlicGuest(guest_contents)) {
@@ -412,9 +405,6 @@ bool IsFrameAllowedGlicApi(content::RenderFrameHost& frame_host) {
 void BindGlicWebClientHandler(
     content::RenderFrameHost* rfh,
     mojo::PendingReceiver<glic::mojom::WebClientHandler> receiver) {
-  if (!base::FeatureList::IsEnabled(features::kGlicEnableMojoJs)) {
-    return;
-  }
   if (!IsFrameAllowedGlicApi(*rfh)) {
     return;
   }
@@ -429,12 +419,11 @@ void BindGlicWebClientHandler(
     return;
   }
   auto* glic_ui = GlicUI::From(top);
-  if (!glic_ui || !glic_ui->host()) {
+  if (!glic_ui) {
     return;
   }
-  glic_ui->host()->CreateWebClient(std::move(receiver));
+  glic_ui->SetPendingWebClientReceiver(std::move(receiver));
 }
-
 content::StoragePartitionConfig GetGlicStoragePartitionConfig(
     content::BrowserContext* browser_context) {
   return content::StoragePartitionConfig::Create(browser_context,
@@ -590,9 +579,7 @@ bool OnGuestAdded(content::WebContents* guest_contents) {
   guest_contents->SetUserData(
       "glic::WebviewWebContentsObserver",
       std::make_unique<WebviewWebContentsObserver>(guest_contents));
-  if (base::FeatureList::IsEnabled(features::kGlicEnableMojoJs)) {
-    glic::GlicGuestObserver::CreateForWebContents(guest_contents);
-  }
+  glic::GlicGuestObserver::CreateForWebContents(guest_contents);
   VLOG(1) << "Registered glic::WebviewWebContentsObserver for guest "
              "WebContents with url=\""
           << guest_contents->GetVisibleURL() << "\"";

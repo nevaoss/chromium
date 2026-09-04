@@ -314,6 +314,7 @@ chromium-metrics-reviews@google.com.
       summary="Cast start stop in the Zenith dialog"/>
   <variant name="IPH_GMCLocalMediaCasting"
       summary="Local media cast start in GMC"/>
+  <variant name="IPH_GMCSaveVideoFrame" summary="Save video frame in GMC"/>
   <variant name="IPH_GoogleOneOfferNotification"
       summary="show google one offer notification with a visit to Google
                Drive or Google Photo"/>
@@ -532,6 +533,8 @@ chromium-metrics-reviews@google.com.
       summary="informing user of customizing new tab page theme via NTP
                customization option in the App menu"/>
   <variant name="IPH_NewTabTip" summary="new tab tip"/>
+  <variant name="IPH_OmniboxEverywhereLensPromo"
+      summary="the Lens search feature in Omnibox Everywhere"/>
   <variant name="IPH_PageInfo" summary="opening PageInfo"/>
   <variant name="IPH_PageInfoStoreInfo" summary="PageInfoStoreInfo feature"/>
   <variant name="IPH_PageSummaryPdfMenu" summary="the analyze pdf menu item"/>
@@ -674,6 +677,8 @@ chromium-metrics-reviews@google.com.
   <variant name="IPH_SendTabToSelfOmnibox"
       summary="IPH for Send Tab to Self entry point in the omnibox long-press
                menu"/>
+  <variant name="IPH_SendTabToSelfTutorial"
+      summary="the Send Tab to Self tutorial IPH promo"/>
   <variant name="IPH_SharedHighlightingBuilder"
       summary="the in product help message to notify the user that the share
                action can preemptively share a link-to-text"/>

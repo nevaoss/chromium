@@ -135,8 +135,7 @@ struct FullscreenCommandExpectation {
 };
 
 // TODO(crbug.com/549506876): Fix test on MacOS.
-#if !BUILDFLAG(IS_MAC)
-void VerifyFullscreenCommandStates(Browser* browser) {
+void VerifyFullscreenCommandStates(BrowserWindowInterface* browser) {
   const bool is_guest = browser->GetProfile()->IsGuestSession();
   const auto commands = std::to_array<FullscreenCommandExpectation>({
       // 1. Most commands are disabled in fullscreen.
@@ -229,7 +228,6 @@ void VerifyFullscreenCommandStates(Browser* browser) {
         command.reserved_in_tab);
   }
 }
-#endif  // !BUILDFLAG(IS_MAC)
 
 }  // namespace
 
@@ -359,7 +357,7 @@ IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTest,
                        NewAvatarMenuEnabledInGuestMode) {
   EXPECT_EQ(1U, GlobalBrowserCollection::GetInstance()->GetSize());
 
-  Browser* browser = CreateGuestBrowser();
+  BrowserWindowInterface* browser = CreateGuestBrowser();
   EXPECT_TRUE(browser);
 
   const CommandUpdater* command_updater =
@@ -480,8 +478,7 @@ IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTest,
   auto params = BrowserWindowCreateParams::CreateForApp(
       "app", /*trusted_source=*/true, gfx::Rect(), browser()->GetProfile(),
       /*user_gesture=*/true);
-  Browser* app_browser =
-      CreateBrowserWindow(std::move(params))->GetBrowserForMigrationOnly();
+  BrowserWindowInterface* app_browser = CreateBrowserWindow(std::move(params));
 
   ASSERT_EQ(app_browser->GetType(), BrowserWindowInterface::Type::TYPE_APP);
 
@@ -541,7 +538,7 @@ IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTest, IncognitoCommands) {
 #if !BUILDFLAG(IS_CHROMEOS)
   // On ChromeOS, guest mode is tested in
   // BrowserCommandControllerBrowserTestChromeOSGuest.IncognitoCommands.
-  Browser* guest_browser = CreateGuestBrowser();
+  BrowserWindowInterface* guest_browser = CreateGuestBrowser();
   EXPECT_TRUE(chrome::IsCommandEnabled(guest_browser, IDC_OPTIONS));
   EXPECT_FALSE(chrome::IsCommandEnabled(guest_browser, IDC_IMPORT_SETTINGS));
   EXPECT_FALSE(chrome::IsCommandEnabled(guest_browser, IDC_PERFORMANCE));
@@ -557,7 +554,7 @@ IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTest, IncognitoCommands) {
 
 IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTest,
                        ClearBrowsingDataIsEnabledInIncognito) {
-  Browser* incognito_browser = CreateIncognitoBrowser();
+  BrowserWindowInterface* incognito_browser = CreateIncognitoBrowser();
   EXPECT_TRUE(
       chrome::IsCommandEnabled(incognito_browser, IDC_CLEAR_BROWSING_DATA));
 }
@@ -570,8 +567,7 @@ IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTest, AppFullScreen) {
   auto params = BrowserWindowCreateParams::CreateForApp(
       "app", /*trusted_source=*/true, gfx::Rect(), browser()->GetProfile(),
       /*user_gesture=*/true);
-  Browser* app_browser =
-      CreateBrowserWindow(std::move(params))->GetBrowserForMigrationOnly();
+  BrowserWindowInterface* app_browser = CreateBrowserWindow(std::move(params));
   ASSERT_EQ(app_browser->GetType(), BrowserWindowInterface::Type::TYPE_APP);
   chrome::BrowserCommandController::From(app_browser)->FullscreenStateChanged();
   EXPECT_TRUE(chrome::IsCommandEnabled(app_browser, IDC_FULLSCREEN));
@@ -585,7 +581,7 @@ IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTest, AppFullScreen) {
 #if !BUILDFLAG(IS_CHROMEOS)
 IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTest,
                        OptionsConsistency) {
-  Browser* guest_browser = CreateGuestBrowser();
+  BrowserWindowInterface* guest_browser = CreateGuestBrowser();
   ASSERT_TRUE(guest_browser);
   // Setup forced incognito mode.
   IncognitoModePrefs::SetAvailability(
@@ -645,26 +641,32 @@ IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTest,
 
 IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTest,
                        AvatarMenuAlwaysEnabledInIncognitoMode) {
-  Browser* otr_browser = CreateIncognitoBrowser();
+  BrowserWindowInterface* otr_browser = CreateIncognitoBrowser();
   const CommandUpdater* command_updater =
       chrome::BrowserCommandController::From(otr_browser);
   EXPECT_TRUE(command_updater->IsCommandEnabled(IDC_SHOW_AVATAR_MENU));
 }
 
+#if !BUILDFLAG(IS_CHROMEOS)
 // TODO(crbug.com/549506876): Fix test on MacOS.
-#if !BUILDFLAG(IS_CHROMEOS) && !BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_MAC)
+#define MAYBE_UpdateCommandsForFullscreenMode \
+  DISABLED_UpdateCommandsForFullscreenMode
+#else
+#define MAYBE_UpdateCommandsForFullscreenMode UpdateCommandsForFullscreenMode
+#endif
 IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTest,
-                       UpdateCommandsForFullscreenMode) {
+                       MAYBE_UpdateCommandsForFullscreenMode) {
   VerifyFullscreenCommandStates(browser());
 
   // Guest Profiles disallow some options.
-  Browser* guest_browser = CreateGuestBrowser();
+  BrowserWindowInterface* guest_browser = CreateGuestBrowser();
   chrome::BrowserCommandController::From(guest_browser)
       ->FullscreenStateChanged();
   EXPECT_TRUE(chrome::IsCommandEnabled(guest_browser, IDC_OPTIONS));
   EXPECT_FALSE(chrome::IsCommandEnabled(guest_browser, IDC_IMPORT_SETTINGS));
 }
-#endif  // !BUILDFLAG(IS_CHROMEOS) && !BUILDFLAG(IS_MAC)
+#endif  // !BUILDFLAG(IS_CHROMEOS)
 
 IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTest,
                        SavePageDisabledByDownloadRestrictionsPolicy) {
@@ -890,8 +892,7 @@ IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTest,
       "abcdefghaghpphfffooibmlghaeopach", /*trusted_source=*/true,
       gfx::Rect(), /* window_bounds */
       browser()->GetProfile(), /*user_gesture=*/true);
-  Browser* browser =
-      CreateBrowserWindow(std::move(params))->GetBrowserForMigrationOnly();
+  BrowserWindowInterface* browser = CreateBrowserWindow(std::move(params));
 
   chrome::BrowserCommandController* commandController =
       chrome::BrowserCommandController::From(browser);
@@ -904,8 +905,7 @@ IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTest,
       "abcdefghaghpphfffooibmlghaeopach", /*trusted_source=*/true,
       gfx::Rect(), /* window_bounds */
       browser()->GetProfile(), /*user_gesture=*/true);
-  Browser* app_browser =
-      CreateBrowserWindow(std::move(params))->GetBrowserForMigrationOnly();
+  BrowserWindowInterface* app_browser = CreateBrowserWindow(std::move(params));
 
   chrome::BrowserCommandController* commandController =
       app_browser->GetFeatures().browser_command_controller();
@@ -918,8 +918,7 @@ IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTest,
       "abcdefghaghpphfffooibmlghaeopach", /*trusted_source=*/true,
       gfx::Rect(), /* window_bounds */
       browser()->GetProfile(), /*user_gesture=*/true);
-  Browser* browser =
-      CreateBrowserWindow(std::move(params))->GetBrowserForMigrationOnly();
+  BrowserWindowInterface* browser = CreateBrowserWindow(std::move(params));
 
   chrome::BrowserCommandController* commandController =
       chrome::BrowserCommandController::From(browser);
@@ -930,8 +929,7 @@ IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTest,
                        OpenDisabledForDevToolsBrowser) {
   auto params =
       BrowserWindowCreateParams::CreateForDevTools(browser()->GetProfile());
-  Browser* browser =
-      CreateBrowserWindow(std::move(params))->GetBrowserForMigrationOnly();
+  BrowserWindowInterface* browser = CreateBrowserWindow(std::move(params));
 
   chrome::BrowserCommandController* commandController =
       chrome::BrowserCommandController::From(browser);
@@ -1016,7 +1014,7 @@ IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTestRefreshOnly,
 IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTestRefreshOnly,
                        ExecuteProfileMenuOpenGuestProfile) {
   EXPECT_TRUE(chrome::ExecuteCommand(browser(), IDC_OPEN_GUEST_PROFILE));
-  Browser* guest_browser = ui_test_utils::WaitForBrowserToOpen();
+  BrowserWindowInterface* guest_browser = ui_test_utils::WaitForBrowserToOpen();
   ASSERT_TRUE(guest_browser);
   ASSERT_TRUE(guest_browser->GetProfile()->IsGuestSession());
 }
@@ -1182,7 +1180,7 @@ IN_PROC_BROWSER_TEST_F(CreateShortcutBrowserCommandControllerNavTest,
 
 IN_PROC_BROWSER_TEST_F(CreateShortcutBrowserCommandControllerNavTest,
                        DisabledForOTRProfile) {
-  Browser* incognito_browser = CreateIncognitoBrowser();
+  BrowserWindowInterface* incognito_browser = CreateIncognitoBrowser();
   ASSERT_TRUE(incognito_browser);
   EXPECT_FALSE(
       chrome::IsCommandEnabled(incognito_browser, IDC_CREATE_SHORTCUT));
@@ -1196,7 +1194,7 @@ IN_PROC_BROWSER_TEST_F(CreateShortcutBrowserCommandControllerNavTest,
 
 IN_PROC_BROWSER_TEST_F(CreateShortcutBrowserCommandControllerNavTest,
                        DisabledForGuestProfile) {
-  Browser* guest_browser = CreateGuestBrowser();
+  BrowserWindowInterface* guest_browser = CreateGuestBrowser();
   ASSERT_TRUE(guest_browser);
   EXPECT_FALSE(chrome::IsCommandEnabled(guest_browser, IDC_CREATE_SHORTCUT));
 
@@ -1460,7 +1458,7 @@ IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTestGlic,
 
 IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTestGlic,
                        DisabledInIncognitoProfile) {
-  Browser* incognito_browser = CreateIncognitoBrowser();
+  BrowserWindowInterface* incognito_browser = CreateIncognitoBrowser();
   EXPECT_TRUE(incognito_browser->GetProfile()->IsIncognitoProfile());
   EXPECT_FALSE(
       chrome::IsCommandEnabled(incognito_browser, IDC_GLIC_TOGGLE_PIN));
@@ -1469,7 +1467,7 @@ IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTestGlic,
 #if !BUILDFLAG(IS_CHROMEOS)
 IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTestGlic,
                        DisabledInGuestProfile) {
-  Browser* guest_browser = CreateGuestBrowser();
+  BrowserWindowInterface* guest_browser = CreateGuestBrowser();
   EXPECT_TRUE(guest_browser->GetProfile()->IsGuestSession());
   EXPECT_FALSE(chrome::IsCommandEnabled(guest_browser, IDC_GLIC_TOGGLE_PIN));
 }

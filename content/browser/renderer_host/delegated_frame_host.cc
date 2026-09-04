@@ -766,6 +766,7 @@ void DelegatedFrameHost::SetIsFrameSinkIdOwner(bool is_owner) {
   }
 }
 
+<<<<<<< HEAD
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
 void DelegatedFrameHost::PerformAggressiveReleasePolicy() {
   EvictDelegatedFrame(frame_evictor_->CollectSurfaceIdsForEviction());
@@ -796,4 +797,11 @@ void DelegatedFrameHost::SuspendCompositorDrawing() {
 }
 #endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
 
+||||||| 0b93c955ccf60
+=======
+void DelegatedFrameHost::SetEvictOnHide(bool evict_on_hide) {
+  frame_evictor_->SetEvictOnHide(evict_on_hide);
+}
+
+>>>>>>> 154.0.8037.0~1
 }  // namespace content

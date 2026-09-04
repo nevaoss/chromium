@@ -11,6 +11,7 @@
 #import "base/no_destructor.h"
 #import "components/optimization_guide/core/delivery/test_optimization_guide_model_provider.h"
 #import "ios/chrome/browser/intelligence/on_device_category_classifier/in_process_category_classification_service.h"
+#import "ios/chrome/browser/intelligence/on_device_category_classifier/in_process_category_classification_service_factory.h"
 #import "ios/chrome/browser/intelligence/on_device_category_classifier/on_device_page_classification_service.h"
 #import "ios/chrome/browser/shared/model/profile/test/test_profile_ios.h"
 #import "ios/web/public/test/web_task_environment.h"
@@ -33,7 +34,7 @@ class OnDevicePageClassificationServiceFactoryTest : public PlatformTest {
   std::unique_ptr<TestProfileIOS> CreateProfile() {
     TestProfileIOS::Builder builder;
     builder.AddTestingFactory(
-        InProcessCategoryClassificationService::GetFactory(),
+        InProcessCategoryClassificationServiceFactory::GetInstance(),
         base::BindRepeating(&BuildTestInProcessClassificationService));
     return std::move(builder).Build();
   }

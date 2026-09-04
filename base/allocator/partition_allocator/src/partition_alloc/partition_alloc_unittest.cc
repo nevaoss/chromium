@@ -768,8 +768,7 @@ void FreeFullSlotSpan(PartitionRoot* root, const SlotSpan* slot_span) {
   uintptr_t address = SlotSpan::ToSlotSpanStart(slot_span, root).value();
   size_t i;
   for (i = 0; i < num_slots; ++i) {
-    root->Free(
-        internal::UntaggedSlotStart::Unchecked(address).Tag().ToObject());
+    root->Free(UntaggedSlotStart::Unchecked(address).Tag().ToObject());
     address += size;
   }
   EXPECT_TRUE(slot_span->is_empty());
@@ -4194,6 +4193,53 @@ TEST_P(PartitionAllocTest, IntendedLeakWithoutTypeIdHint) {
   root->Free(ptr_to_keep_slot_span);
 }
 
+TEST_P(PartitionAllocTest, IntendedLeakFromOwningRoot) {
+  PartitionOptions leak_opts = GetCommonPartitionOptions();
+  leak_opts.thread_cache = PartitionOptions::kDisabled;
+  leak_opts.backup_ref_ptr = PartitionOptions::kDisabled;
+  leak_opts.intended_leak = PartitionOptions::kEnabled;
+  std::unique_ptr<PartitionRoot> leak_root =
+      CreateCustomTestRoot(leak_opts, {});
+
+  void* leak_ptr_to_keep = leak_root->Alloc(kTestAllocSize, type_name);
+  void* leak_ptr = leak_root->Alloc(kTestAllocSize, type_name);
+
+  constexpr const uint8_t kAnyDummyValue = 0x12u;
+  PA_UNSAFE_TODO(memset(leak_ptr, kAnyDummyValue, kTestAllocSize));
+
+  // Flagless FreeInUnknownRoot should retire the slot because leak_root has
+  // intended_leak enabled.
+  PartitionRoot::FreeInUnknownRoot(leak_ptr);
+
+  uint64_t value_after_leak = *reinterpret_cast<uint64_t*>(leak_ptr);
+  EXPECT_EQ(value_after_leak & internal::kIntendedLeakQuarantineMask,
+            internal::kIntendedLeakQuarantineMarker);
+  EXPECT_EQ((value_after_leak & ~internal::kIntendedLeakQuarantineMask) >> 8u,
+            internal::kIntendedLeakUnknownTypeId);
+
+  // The retired slot must not be returned to the freelist.
+  auto* slot_span = SlotSpan::FromSlotStart(
+      SlotStart::Unchecked(leak_ptr).Untag(), leak_root.get());
+  EXPECT_NE(SlotStart::Unchecked(leak_ptr).Untag().value(),
+            UntagPtr(slot_span->get_freelist_head()));
+
+  // Ordinary root recycles freed slots.
+  PartitionOptions normal_opts = GetCommonPartitionOptions();
+  normal_opts.thread_cache = PartitionOptions::kDisabled;
+  normal_opts.backup_ref_ptr = PartitionOptions::kDisabled;
+  normal_opts.intended_leak = PartitionOptions::kDisabled;
+  std::unique_ptr<PartitionRoot> normal_root =
+      CreateCustomTestRoot(normal_opts, {});
+
+  void* normal_ptr = normal_root->Alloc(kTestAllocSize, type_name);
+  PartitionRoot::FreeInUnknownRoot(normal_ptr);
+  void* recycled_ptr = normal_root->Alloc(kTestAllocSize, type_name);
+  EXPECT_EQ(UntagPtr(recycled_ptr), UntagPtr(normal_ptr));
+
+  leak_root->Free(leak_ptr_to_keep);
+  normal_root->Free(recycled_ptr);
+}
+
 TEST_P(PartitionAllocTest, ZapOnFree) {
   void* ptr = allocator.root()->Alloc(1, type_name);
   EXPECT_TRUE(ptr);
@@ -4525,7 +4571,7 @@ TEST_P(PartitionAllocTest, FundamentalAlignment) {
     // C % kAlignment == (slot_size - ExtraAllocSize(allocator)) % kAlignment.
     // C % kAlignment == (-ExtraAllocSize(allocator)) % kAlignment.
     EXPECT_EQ(allocator.root()->AllocationCapacityFromSlotStart(
-                  internal::UntaggedSlotStart::Unchecked(slot_start)) %
+                  UntaggedSlotStart::Unchecked(slot_start)) %
                   fundamental_alignment,
               -ExtraAllocSize(allocator) % fundamental_alignment);
 
@@ -6003,6 +6049,29 @@ TEST_P(PartitionAllocTest, FastPathOrReturnNull) {
 }
 
 #if PA_USE_DEATH_TESTS()
+
+#if PA_CONFIG(THREAD_CACHE_SUPPORTED)
+TEST_P(PartitionAllocDeathTest, IntendedLeakCannotCoexistWithThreadCache) {
+  PartitionOptions opts = GetCommonPartitionOptions();
+  opts.thread_cache = PartitionOptions::kEnabled;
+  opts.intended_leak = PartitionOptions::kEnabled;
+  PA_EXPECT_CHECK_DEATH_WITH(
+      CreateCustomTestRoot(opts, {}),
+      "Check failed.*opts\\.thread_cache == PartitionOptions::kDisabled");
+}
+#endif  // PA_CONFIG(THREAD_CACHE_SUPPORTED)
+
+#if PA_BUILDFLAG(ENABLE_BACKUP_REF_PTR_SUPPORT)
+TEST_P(PartitionAllocDeathTest, IntendedLeakCannotCoexistWithBRP) {
+  PartitionOptions opts = GetCommonPartitionOptions();
+  opts.thread_cache = PartitionOptions::kDisabled;
+  opts.backup_ref_ptr = PartitionOptions::kEnabled;
+  opts.intended_leak = PartitionOptions::kEnabled;
+  PA_EXPECT_CHECK_DEATH_WITH(CreateCustomTestRoot(opts, {}),
+                             "Check failed.*!brp_enabled\\(\\)");
+}
+#endif  // PA_BUILDFLAG(ENABLE_BACKUP_REF_PTR_SUPPORT)
+
 // DCHECK message are stripped in official build. It causes death tests with
 // matchers to fail.
 #if !PA_BUILDFLAG(OFFICIAL) || PA_BUILDFLAG(IS_DEBUG)
@@ -6774,11 +6843,11 @@ TEST_P(PartitionAllocTest, MultipleThreadCachePerThread) {
   size_t bucket_index =
       SizeToIndex(kTestAllocSize + kExtraAllocSizeWithoutMetadata);
   size_t pos1, pos2;
-  EXPECT_TRUE(tcache1->IsInFreelist(
-      internal::SlotStart::Unchecked(ptr1).Untag(), bucket_index, pos1));
+  EXPECT_TRUE(tcache1->IsInFreelist(SlotStart::Unchecked(ptr1).Untag(),
+                                    bucket_index, pos1));
   EXPECT_EQ(pos1, 0u);
-  EXPECT_TRUE(tcache2->IsInFreelist(
-      internal::SlotStart::Unchecked(ptr2).Untag(), bucket_index, pos2));
+  EXPECT_TRUE(tcache2->IsInFreelist(SlotStart::Unchecked(ptr2).Untag(),
+                                    bucket_index, pos2));
   EXPECT_EQ(pos2, 0u);
 }
 

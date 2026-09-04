@@ -51,6 +51,7 @@ DEFINE_USER_DATA(DownloadToolbarUIController);
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/browser_accessibility_state.h"
 #include "content/public/browser/browser_thread.h"
+#include "ui/accessibility/ax_mode.h"
 #include "ui/base/interaction/element_tracker.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
@@ -620,8 +621,12 @@ void DownloadToolbarUIController::ShowDetails() {
   if (bubble_delegate_ || pending_bubble_) {
     return;
   }
-  if (use_auto_close_bubble_timer_) {
-    auto_close_bubble_timer_.Reset();
+  base::TimeDelta delay = GetAutoCloseDelay();
+  if (use_auto_close_bubble_timer_ && !delay.is_max()) {
+    auto_close_bubble_timer_.Start(
+        FROM_HERE, delay,
+        base::BindRepeating(&DownloadToolbarUIController::AutoClosePartialView,
+                            base::Unretained(this)));
   }
   ShowBubble(DownloadBubbleMode::kPartial);
 }
@@ -638,7 +643,13 @@ bool DownloadToolbarUIController::IsShowingDetails() const {
 }
 
 void DownloadToolbarUIController::OnOfflineItemsInitialized() {
-  if (bubble_contents_) {
+  // Only update models if the complete view is showing. Offline items
+  // represent past downloads from history and are never displayed in the
+  // partial view (which only shows new un-actioned downloads). Furthermore,
+  // calling GetPrimaryViewModels() for the partial view triggers the 15-second
+  // rate-limiting in GetPartialView(), which returns empty models and causes
+  // the partial view bubble to be closed prematurely.
+  if (bubble_contents_ && primary_view_mode_ == DownloadBubbleMode::kComplete) {
     bubble_contents_->info().UpdateModels(GetPrimaryViewModels());
   }
 }
@@ -1128,6 +1139,18 @@ void DownloadToolbarUIController::AutoClosePartialView() {
     return;
   }
   HideDetails();
+}
+
+base::TimeDelta DownloadToolbarUIController::GetAutoCloseDelay() const {
+  // If accessibility mode is enabled (screen reader, screen magnifier, etc.) do
+  // not auto-close on a timer to allow users sufficient time to locate and
+  // interact with it.
+  if (!content::BrowserAccessibilityState::GetInstance()
+           ->GetAccessibilityMode()
+           .is_mode_off()) {
+    return base::TimeDelta::Max();
+  }
+  return kAutoClosePartialViewDelay;
 }
 
 std::vector<DownloadUIModel::DownloadUIModelPtr>

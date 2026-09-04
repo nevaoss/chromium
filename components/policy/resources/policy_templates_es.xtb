@@ -1041,7 +1041,6 @@ A partir de la versión 147 de <ph name="PRODUCT_NAME" />, esta política dejar�
 Si se le asigna el valor False a esta política o no se define, no se capturará ningún evento.</translation>
 <translation id="1692990221685273468">Determina si el verificador de certificados integrado implementará obligatoriamente las restricciones codificadas en las anclas de confianza cargadas desde el almacén de confianza de la plataforma.</translation>
 <translation id="169467210981344373">Inhabilitar la caché de autenticación de HTTP con alcance global</translation>
-<translation id="169509902091359310">No permitir Escribir por voz.</translation>
 <translation id="1696501581280568361">Sugiere la separación de perfiles</translation>
 <translation id="1698810555265314018">Controla la resolución de impresión de imágenes cuando <ph name="PRODUCT_NAME" /> imprime PDFs con rasterización.
 
@@ -2792,17 +2791,6 @@ Si se inhabilita esta política o no se establece, los usuarios podrán transfer
       Si no se habilita esta opción, las páginas web no podrán utilizar JavaScript y los usuarios no podrán cambiar esta configuración.
 
       Si se habilita esta opción o si no se establece, las páginas web podrán utilizar JavaScript y los usuarios podrán modificar esta configuración.</translation>
-<translation id="2746385336260438202">Escribir por voz es una función basada en IA que permite a los usuarios introducir y editar texto con la voz. Se basa en modelos de IA generativa para ofrecer transcripciones y formateado de alta calidad.
-
-Si se asigna el valor 0, permite que se use la función y que Google utilice datos relevantes para mejorar sus modelos de IA. Según la función, los datos pertinentes pueden ser peticiones, entradas, resultados, materiales de origen y comentarios escritos. También es posible que los revisen un equipo de personas para mejorar los modelos de IA. 0 es el valor predeterminado, excepto en los casos indicados abajo.
-
-Si se asigna el valor 1, permite que se use la función, pero no permite que Google mejore los modelos con el contenido de los usuarios (incluyendo peticiones, entradas, resultados, materiales de origen y comentarios escritos). 1 es el valor predeterminado de los usuarios de empresa que se gestionan en la <ph name="GOOGLE_ADMIN_CONSOLE_PRODUCT_NAME" /> y de las cuentas de centro educativo que se gestionan en <ph name="GOOGLE_WORKSPACE_PRODUCT_NAME" />.
-
-Si se asigna el valor 2, no se permite la función.
-
-Si no se define esta política, su comportamiento lo determinará la política <ph name="GEN_AI_DEFAULT_SETTINGS_POLICY_NAME" />.
-
-Para obtener más información sobre el tratamiento de datos en las funciones de IA generativa, consulta https://support.google.com/chrome/a?p=generative_ai_settings.</translation>
 <translation id="274769314493317695">Si se utiliza <ph name="PRINTERS_WHITELIST" /> para la política <ph name="BULK_PRINTERS_ACCESS_MODE_POLICY_NAME" />, al establecer la política <ph name="NATIVE_PRINTERS_BULK_WHITELIST_POLICY_NAME" />, esta especifica qué impresoras pueden utilizar los usuarios. Solo las impresoras cuyos ID coincidan con los valores incluidos en la política estarán disponibles para el usuario. Los ID deben coincidir con los campos <ph name="ID_FIELD" /> o <ph name="GUID_FIELD" /> del archivo definido en la política <ph name="NATIVE_PRINTERS_BULK_CONFIGURATION_POLICY_NAME" />.
 
       Esta política está obsoleta. Usa <ph name="PRINTERS_BULK_ALLOWLIST_POLICY_NAME" /> en su lugar.</translation>
@@ -4736,7 +4724,6 @@ Consideraciones:
 <translation id="402759845255257575">No permitir que ningún sitio ejecute JavaScript</translation>
 <translation id="4027608872760987929">Habilitar proveedor de búsquedas predeterminadas</translation>
 <translation id="4030152268425532846">Inhabilitar la anulación de inicio de sesión automático</translation>
-<translation id="4042229154265896020">Permitir Escribir por voz.</translation>
 <translation id="4043796890723386527">Evita que los usuarios creen y utilicen perfiles secundarios, y que usen el modo Invitado en el navegador <ph name="LACROS_NAME" />.</translation>
 <translation id="4047633048700722778">Si se define la política, controla el filtro de URL SafeSites, que usa la API Google Safe Search para clasificar las URL como pornográficas o no.
 
@@ -4826,17 +4813,6 @@ Para obtener información detallada sobre los patrones válidos de <ph name="URL
 <translation id="4090088362777472639">El hash SHA-256 del playbook de Ansible.</translation>
 <translation id="4091040199847925434">Inhabilitar los informes sobre datos del sistema y contenido de páginas que se usan para ayudar a mejorar la función Navegación segura</translation>
 <translation id="4093058072421210667">No permitir Inserción de imágenes.</translation>
-<translation id="4096503137212127216">Esta política se puede usar para bloquear <ph name="CHROME_DEVTOOLS_NAME" /> en URLs concretas. Para obtener información sobre el formato de URL, consulta https://support.google.com/chrome/a?p=url_blocklist_filter_format.
-
-Los patrones de URL se compararán con la URL de cada fotograma de la página que se esté inspeccionando. El comportamiento resultante dependerá de si también se ha definido la política <ph name="DEVELOPER_TOOLS_AVAILABILITY_ALLOWLIST_POLICY_NAME" />.
-
-Si se define esta política y no se define <ph name="DEVELOPER_TOOLS_AVAILABILITY_ALLOWLIST_POLICY_NAME" />, cualquier coincidencia en la URL de un frame con un patrón de esta lista de bloqueadas conllevará el bloqueo de <ph name="CHROME_DEVTOOLS_NAME" /> en toda la página. Si la URL de un marco no coincide con ningún patrón, la disponibilidad se determinará según la política <ph name="DEVELOPER_TOOLS_AVAILABILITY_POLICY_NAME" />.
-
-Si se definen tanto esta política como la política <ph name="DEVELOPER_TOOLS_AVAILABILITY_ALLOWLIST_POLICY_NAME" />, la lista de permitidas tendrá prioridad. Si la URL de un frame coincide con un patrón de la lista de permitidas, se podrá usar, aunque también coincida con un patrón de esta lista de bloqueadas. Si una URL coincide con un patrón de esta lista de bloqueadas (pero no con uno de la lista de permitidas), se bloqueará. Si una URL no coincide con ninguna de las dos, se usará la política <ph name="DEVELOPER_TOOLS_AVAILABILITY_POLICY_NAME" /> como alternativa.
-
-Si no se define esta política, la disponibilidad de <ph name="CHROME_DEVTOOLS_NAME" /> se determinará según las políticas <ph name="DEVELOPER_TOOLS_AVAILABILITY_ALLOWLIST_POLICY_NAME" /> y <ph name="DEVELOPER_TOOLS_AVAILABILITY_POLICY_NAME" />.
-
-Esta política está limitada a 1000 entradas.</translation>
 <translation id="4098920079809952737">Permitir imprimir con y sin gráficos de fondo</translation>
 <translation id="410061592404122032">Preguntar siempre que un sitio quiera obtener el permiso de gestión de ventanas</translation>
 <translation id="410068710490553233">Permite iniciar sesión en más cuentas de Google</translation>
@@ -7345,7 +7321,6 @@ Cuando se define para <ph name="PRODUCT_OS_NAME" /> Kiosk, esta política habili
           Si inhabilitas esta opción, no se podrán ver las contraseñas almacenadas sin cifrar en la ventana del gestor de contraseñas.
 
           Si habilitas esta opción o si no asignas un valor a esta política, los usuarios podrán ver sus contraseñas sin cifrar en el gestor de contraseñas.</translation>
-<translation id="561873855783619782">Permitir Escribir por voz sin recogida de datos.</translation>
 <translation id="5620392548325769024">Habilitar la opción para que se muestre la página de bienvenida al abrir el navegador por primera vez después de actualizar el SO</translation>
 <translation id="5621503441067774084">Habilitar el resaltado del cursor en la pantalla de inicio de sesión</translation>
 <translation id="5622590774455244290">Las aplicaciones Android pueden aceptar esta lista voluntariamente y no se les puede forzar a que lo hagan.</translation>
@@ -10541,21 +10516,6 @@ Si no se define esta política, no se permitirán excepciones de <ph name="FLOAT
 <translation id="759957074386651883">Configuración de Navegación segura</translation>
 <translation id="7602621823177962064">Inhabilitar los informes sobre la memoria del dispositivo</translation>
 <translation id="7604169113182304895">Las aplicaciones para Android pueden aceptar esta lista voluntariamente. No se les puede forzar a que lo hagan.</translation>
-<translation id="7604302274842086162">Esta política se puede usar para permitir las <ph name="CHROME_DEVTOOLS_NAME" /> en URLs específicas.
-
-Los patrones de URL se compararán con la URL de cada marco de la página que se esté inspeccionando. El comportamiento resultante dependerá de si también se ha definido la política <ph name="DEVELOPER_TOOLS_AVAILABILITY_BLOCKLIST_POLICY_NAME" />.
-
-Si se define esta política y no se define <ph name="DEVELOPER_TOOLS_AVAILABILITY_BLOCKLIST_POLICY_NAME" />, la URL de cada marco debe coincidir con un patrón de esta lista de permitidas para que se pueda usar <ph name="CHROME_DEVTOOLS_NAME" />. Si la URL de algún marco no coincide, DevTools se bloqueará en toda la página. Para obtener información sobre el formato de URL, consulta https://support.google.com/chrome/a?p=url_blocklist_filter_format.
-
-Si se definen tanto esta política como la política <ph name="DEVELOPER_TOOLS_AVAILABILITY_BLOCKLIST_POLICY_NAME" />, esta lista de permitidas tendrá prioridad. Si la URL de un marco coincide con un patrón de esta lista de permitidas, se podrá usar, aunque también coincida con un patrón de la lista de bloqueadas. Si una URL coincide con un patrón de la lista de bloqueadas (pero no con uno de la lista de permitidas), se bloqueará. Si una URL no coincide con ninguna de las dos, se usará la política <ph name="DEVELOPER_TOOLS_AVAILABILITY_POLICY_NAME" /> como alternativa.
-
-Si no se define esta política, la disponibilidad de <ph name="CHROME_DEVTOOLS_NAME" /> se determinará según las políticas <ph name="DEVELOPER_TOOLS_AVAILABILITY_BLOCKLIST_POLICY_NAME" /> y <ph name="DEVELOPER_TOOLS_AVAILABILITY_POLICY_NAME" />.
-
-Esta política también se aplica a <ph name="CHROME_DEVTOOLS_NAME" /> que se abran para extensiones y aplicaciones web.
-
-No se admiten comodines de host generales (por ejemplo, "*" ni "[*]"). Usa la política <ph name="DEVELOPER_TOOLS_AVAILABILITY_POLICY_NAME" /> para habilitar la función de forma global.
-
-Esta política está limitada a 1000 entradas.</translation>
 <translation id="7607831126797434329">Bloquear descargas automáticas en estos sitios</translation>
 <translation id="7608186022704392724">La función de enviar PINs automáticamente cambia la forma en la que se introducen los PINs en <ph name="PRODUCT_OS_NAME" />.
           En lugar de mostrar el mismo campo de texto que se utiliza para introducir contraseñas, esta
@@ -12164,7 +12124,6 @@ En el caso de <ph name="PRODUCT_OS_NAME" />, esta política siempre es efectiva.
 <translation id="8634062512783775032">Usa <ph name="AES_KL_NAME" /> como algoritmo de cifrado para el cifrado del almacenamiento de los datos del usuario, si se admite</translation>
 <translation id="8637566476051166626">Puertos de red con permiso explícito</translation>
 <translation id="8643838501942693770">Habilitar las cookies de terceros, pero permitir al usuario cambiar este ajuste</translation>
-<translation id="8644225074581442734">Configuración de Escribir por voz</translation>
 <translation id="864611373241249369">Después de inhabilitar <ph name="LACROS_NAME" />, intentaremos migrar todos los datos.</translation>
 <translation id="8648844602494595665">Esta política controla el uso del icono del candado en el omnibox.
        A partir de Chrome M93, hay un icono nuevo en el omnibox que se usa en el caso de las conexiones seguras.

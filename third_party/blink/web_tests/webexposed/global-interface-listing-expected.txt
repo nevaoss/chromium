@@ -2610,7 +2610,6 @@ interface Element : Node
     method getAttributeNodeNS
     method getBoundingClientRect
     method getBoxQuads
-    method getCanvasTransform
     method getClientRects
     method getElementsByClassName
     method getElementsByTagName
@@ -2652,7 +2651,6 @@ interface Element : Node
     method setAttributeNS
     method setAttributeNode
     method setAttributeNodeNS
-    method setCanvasTransform
     method setHTML
     method setHTMLUnsafe
     method setPointerCapture
@@ -12771,12 +12769,20 @@ interface WebTransportDatagramDuplexStream
     getter readable
     getter writable
     method constructor
+    method createWritable
     setter incomingHighWaterMark
     setter incomingMaxAge
     setter incomingMaxBufferedDatagrams
     setter outgoingHighWaterMark
     setter outgoingMaxAge
     setter outgoingMaxBufferedDatagrams
+interface WebTransportDatagramsWritable : WritableStream
+    attribute @@toStringTag
+    getter sendGroup
+    getter sendOrder
+    method constructor
+    setter sendGroup
+    setter sendOrder
 interface WebTransportError : DOMException
     attribute @@toStringTag
     getter source
@@ -13782,6 +13788,7 @@ namespace console
     attribute propertyNamesInGlobal
     attribute testRunner
     attribute textInputController
+    getter alwaysOnTop
     getter caches
     getter clientInformation
     getter closed

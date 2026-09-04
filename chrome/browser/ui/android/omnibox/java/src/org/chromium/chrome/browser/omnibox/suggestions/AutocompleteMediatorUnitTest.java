@@ -80,7 +80,7 @@ import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxLay
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxState;
 import org.chromium.chrome.browser.omnibox.styles.OmniboxResourceProvider;
 import org.chromium.chrome.browser.omnibox.suggestions.AutocompleteCoordinator.OmniboxSuggestionsVisualStateObserver;
-import org.chromium.chrome.browser.omnibox.suggestions.SelectionController.Mode;
+import org.chromium.chrome.browser.omnibox.suggestions.SelectionController.TraversalMode;
 import org.chromium.chrome.browser.omnibox.suggestions.SuggestionCommonProperties.RoundSides;
 import org.chromium.chrome.browser.omnibox.suggestions.action.OmniboxActionDelegateImpl;
 import org.chromium.chrome.browser.omnibox.suggestions.action.OmniboxActionInSuggest;
@@ -139,7 +139,7 @@ import java.util.function.Consumer;
 
 /** Tests for {@link AutocompleteMediator}. */
 @RunWith(BaseRobolectricTestRunner.class)
-@Config(manifest = Config.NONE, shadows = ShadowLooper.class)
+@Config(shadows = ShadowLooper.class)
 public class AutocompleteMediatorUnitTest {
     private static final int SUGGESTION_MIN_HEIGHT = 20;
     private static final long TEST_EVENT_TIME = 123L;
@@ -933,6 +933,7 @@ public class AutocompleteMediatorUnitTest {
         mSuggestionsList.clear();
         mSuggestionsList.add(0, defaultMatch);
         var autocompleteInput = session.getAutocompleteInput();
+        autocompleteInput.setPageClassification(PageClassification.OTHER);
         autocompleteInput.setRequestType(AutocompleteRequestType.AI_MODE);
         mMediator.onSuggestionsReceived(AutocompleteResult.fromCache(mSuggestionsList, null), true);
         assertEquals("inline_autocomplete2", session.getAutocompleteInput().getPreviewText());
@@ -2832,9 +2833,8 @@ public class AutocompleteMediatorUnitTest {
     @Test
     @SmallTest
     public void triggerSiteSearch_NoOpsInAiMode() {
-        FuseboxSessionState session = createEmptySession();
+        FuseboxSessionState session = createSession(AutocompleteRequestType.AI_MODE);
         mMediator.beginInput(session);
-        session.getAutocompleteInput().setRequestType(AutocompleteRequestType.AI_MODE);
 
         setUpSiteSearchSpaceTrigger(
                 /* keyword= */ "test",
@@ -2858,14 +2858,14 @@ public class AutocompleteMediatorUnitTest {
         input.setUserText("");
         mMediator.onInputChanged();
         assertEquals(
-                Mode.WRAPPING_WITH_SENTINEL,
+                TraversalMode.WRAPPING_WITH_SENTINEL,
                 mListModel.get(SuggestionListProperties.SELECTION_MODE));
 
         // Prefixed -- use WRAPPING_WITH_SENTINEL mode on mobile.
         input.setUserText("test");
         mMediator.onInputChanged();
         assertEquals(
-                Mode.WRAPPING_WITH_SENTINEL,
+                TraversalMode.WRAPPING_WITH_SENTINEL,
                 mListModel.get(SuggestionListProperties.SELECTION_MODE));
     }
 
@@ -2882,20 +2882,29 @@ public class AutocompleteMediatorUnitTest {
         input.setUserText("");
         mMediator.onInputChanged();
         assertEquals(
-                Mode.SENTINEL_THEN_WRAPPING,
+                TraversalMode.SENTINEL_THEN_WRAPPING,
                 mListModel.get(SuggestionListProperties.SELECTION_MODE));
 
+        input.setPageClassification(PageClassification.OTHER);
         input.setRequestType(AutocompleteRequestType.AI_MODE);
         mMediator.onInputChanged();
         assertEquals(
-                Mode.WRAPPING_WITH_SENTINEL,
+                TraversalMode.WRAPPING_WITH_SENTINEL,
                 mListModel.get(SuggestionListProperties.SELECTION_MODE));
 
         // Prefixed -- use WRAPPING mode on desktop.
         input.setUserText("test");
         input.setRequestType(AutocompleteRequestType.SEARCH);
         mMediator.onInputChanged();
-        assertEquals(Mode.WRAPPING, mListModel.get(SuggestionListProperties.SELECTION_MODE));
+        assertEquals(
+                TraversalMode.WRAPPING, mListModel.get(SuggestionListProperties.SELECTION_MODE));
+
+        // Tab Search Overlay -- use SATURATING_WITH_SENTINEL mode on desktop.
+        input.setPageClassification(PageClassification.ANDROID_TAB_SEARCH_OVERLAY);
+        mMediator.onInputChanged();
+        assertEquals(
+                TraversalMode.SATURATING_WITH_SENTINEL,
+                mListModel.get(SuggestionListProperties.SELECTION_MODE));
     }
 
     @Test

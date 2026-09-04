@@ -9,7 +9,12 @@
 #include "base/strings/strcat.h"
 #include "base/strings/utf_string_conversions.h"
 #include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
+#include "chrome/browser/browser_process.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/profiles/profile_attributes_entry.h"
+#include "chrome/browser/profiles/profile_attributes_storage.h"
+#include "chrome/browser/profiles/profile_avatar_icon_util.h"
+#include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
@@ -34,6 +39,7 @@
 #include "content/public/browser/web_ui.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/page_transition_types.h"
+#include "ui/base/webui/web_ui_util.h"
 #include "ui/base/window_open_disposition_utils.h"
 
 namespace {
@@ -122,20 +128,26 @@ OmniboxEverywhereHandler::OmniboxEverywhereHandler(
       base::BindRepeating(&OmniboxEverywhereHandler::GetSuggestInputs,
                           base::Unretained(this)));
   autocomplete_controller_observation_.Observe(autocomplete_controller());
-  pref_change_registrar_.Init(profile_->GetPrefs());
-  pref_change_registrar_.Add(
-      omnibox::kShowAiModeOmniboxButton,
-      base::BindRepeating(&OmniboxEverywhereHandler::OnAimEligibilityChanged,
-                          base::Unretained(this)));
-  pref_change_registrar_.Add(
-      omnibox_everywhere::prefs::kFreDismissed,
-      base::BindRepeating(&OmniboxEverywhereHandler::UpdatePromoState,
-                          base::Unretained(this)));
-  pref_change_registrar_.Add(
-      omnibox_everywhere::prefs::kFreImpressionCount,
-      base::BindRepeating(&OmniboxEverywhereHandler::UpdatePromoState,
-                          base::Unretained(this)));
+  if (profile_ && profile_->GetPrefs()) {
+    pref_change_registrar_.Init(profile_->GetPrefs());
+    pref_change_registrar_.Add(
+        omnibox_everywhere::prefs::kOmniboxEverywhereShowAiMode,
+        base::BindRepeating(&OmniboxEverywhereHandler::OnShowAiModePrefChanged,
+                            base::Unretained(this)));
+    pref_change_registrar_.Add(
+        omnibox_everywhere::prefs::kFreDismissed,
+        base::BindRepeating(&OmniboxEverywhereHandler::UpdatePromoState,
+                            base::Unretained(this)));
+    pref_change_registrar_.Add(
+        omnibox_everywhere::prefs::kFreImpressionCount,
+        base::BindRepeating(&OmniboxEverywhereHandler::UpdatePromoState,
+                            base::Unretained(this)));
+  }
 
+  if (g_browser_process && g_browser_process->profile_manager()) {
+    profile_attributes_storage_observation_.Observe(
+        &g_browser_process->profile_manager()->GetProfileAttributesStorage());
+  }
   UpdatePromoState();
 }
 
@@ -242,11 +254,13 @@ void OmniboxEverywhereHandler::ActivateKeyword(
   // handled directly by the frontend SearchboxMixin via `onKeywordClick`.
 }
 
-void OmniboxEverywhereHandler::OnAimEligibilityChanged() {
+void OmniboxEverywhereHandler::OnShowAiModePrefChanged() {
   if (page()) {
-    page()->UpdateAimPopupEligibility(
-        IsAimEligible(profile_) &&
-        profile_->GetPrefs()->GetBoolean(omnibox::kShowAiModeOmniboxButton));
+    const bool show_ai_mode =
+        !profile_ || !profile_->GetPrefs() ||
+        profile_->GetPrefs()->GetBoolean(
+            omnibox_everywhere::prefs::kOmniboxEverywhereShowAiMode);
+    page()->UpdateAimPopupEligibility(IsAimEligible(profile_) && show_ai_mode);
   }
 }
 
@@ -284,4 +298,56 @@ void OmniboxEverywhereHandler::DismissFre() {
 
 void OmniboxEverywhereHandler::OpenHotkeySettings() {
   chrome::ShowSettingsSubPageForProfile(profile_, chrome::kSearchSubPage);
+}
+
+void OmniboxEverywhereHandler::OnProfileAvatarChanged(
+    const base::FilePath& profile_path) {
+  if (profile_ && profile_->GetPath() == profile_path) {
+    PushProfileInfo();
+  }
+}
+
+void OmniboxEverywhereHandler::OnProfileHighResAvatarLoaded(
+    const base::FilePath& profile_path) {
+  if (profile_ && profile_->GetPath() == profile_path) {
+    PushProfileInfo();
+  }
+}
+
+void OmniboxEverywhereHandler::OnProfileNameChanged(
+    const base::FilePath& profile_path,
+    const std::u16string& old_profile_name) {
+  if (profile_ && profile_->GetPath() == profile_path) {
+    PushProfileInfo();
+  }
+}
+
+void OmniboxEverywhereHandler::PushProfileInfo() {
+  if (!g_browser_process || !g_browser_process->profile_manager() ||
+      !profile_ || !page()) {
+    return;
+  }
+
+  ProfileAttributesEntry* entry =
+      g_browser_process->profile_manager()
+          ->GetProfileAttributesStorage()
+          .GetProfileAttributesWithPath(profile_->GetPath());
+  if (!entry) {
+    return;
+  }
+
+  gfx::Image icon =
+      profiles::GetSizedAvatarIcon(entry->GetAvatarIcon(), 48, 48);
+  std::string profile_avatar_url = webui::GetBitmapDataUrl(icon.AsBitmap());
+
+  std::u16string gaia_name = entry->GetGAIAName();
+  std::u16string profile_name = entry->GetName();
+  std::u16string display_name = profile_name;
+  if (!gaia_name.empty() && gaia_name != profile_name) {
+    display_name = gaia_name + u" • " + profile_name;
+  }
+
+  page()->UpdateProfileInfo(GURL(profile_avatar_url),
+                            base::UTF16ToUTF8(display_name),
+                            base::UTF16ToUTF8(entry->GetUserName()));
 }

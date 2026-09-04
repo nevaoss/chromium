@@ -300,6 +300,12 @@ void OmniboxPopupWebUIBaseContent::LoadContent() {
       EscClosesUI());
   contents_wrapper_->SetHost(weak_factory_.GetWeakPtr());
   SetWebContents(contents_wrapper_->web_contents());
+  if (popup_presenter_->ShouldEvictOnHide()) {
+    if (auto* rwhv =
+            contents_wrapper_->web_contents()->GetRenderWidgetHostView()) {
+      rwhv->SetEvictOnHide(true);
+    }
+  }
   // LocationBarView can be instantiated in windows that do not have a
   // Browser object (i.e Captive Portal). In that case, features depending on
   // the browser are not supported and should be skipped.
@@ -480,6 +486,10 @@ void OmniboxPopupWebUIBaseContent::OnFileChooserClosed() {
   }
   // Release the deactivation blocker since the file chooser has been closed.
   file_chooser_deactivation_blocker_.reset();
+}
+
+bool OmniboxPopupWebUIBaseContent::ShouldApplyHeightWorkarounds() const {
+  return !popup_presenter_ || popup_presenter_->ShouldApplyHeightWorkarounds();
 }
 
 BEGIN_METADATA(OmniboxPopupWebUIBaseContent)

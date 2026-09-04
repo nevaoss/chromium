@@ -316,23 +316,6 @@ public class WebViewChromiumFactoryProvider implements WebViewFactoryProvider {
         return new ContentSettingsAdapter(settings);
     }
 
-    boolean shouldEnableUserAgentReduction() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.CINNAMON_BUN) {
-            return CompatChanges.isChangeEnabled(WebSettings.ENABLE_USER_AGENT_REDUCTION);
-        } else {
-            return false;
-        }
-    }
-
-    boolean shouldEnableFileSystemAccess() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.CINNAMON_BUN) {
-            return CompatChanges.isChangeEnabled(
-                    WebChromeClient.FileChooserParams.ENABLE_FILE_SYSTEM_ACCESS);
-        } else {
-            return false;
-        }
-    }
-
     private void deleteContentsOnPackageDowngrade(PackageInfo packageInfo) {
         try (DualTraceEvent e2 =
                 DualTraceEvent.scoped(
@@ -691,7 +674,10 @@ public class WebViewChromiumFactoryProvider implements WebViewFactoryProvider {
             FlagOverrideHelper helper =
                     new FlagOverrideHelper(ProductionSupportedFlagList.sFlagList);
             helper.applyFlagOverrides(
-                    Map.of(AwFeatures.WEBVIEW_FILE_SYSTEM_ACCESS, shouldEnableFileSystemAccess()));
+                    Map.of(
+                            AwFeatures.WEBVIEW_FILE_SYSTEM_ACCESS,
+                            !CompatQuirks.isEnabled(
+                                    CompatQuirks.Quirk.DISABLE_FILESYSTEM_ACCESS_API)));
 
             // Set user-agent reduction command-line switches and feature flags for WebView.
             // We set command line switches as well because we want to read the configuration before
@@ -701,7 +687,8 @@ public class WebViewChromiumFactoryProvider implements WebViewFactoryProvider {
             // 1) ReduceUserAgentMinorVersion: Enables reduction of the user-agent minor version.
             // 2) WebViewReduceUAAndroidVersionDeviceModel: Enables reduction of the user-agent
             //    Android version and device model.
-            boolean shouldEnableUserAgentReduction = shouldEnableUserAgentReduction();
+            boolean shouldEnableUserAgentReduction =
+                    !CompatQuirks.isEnabled(CompatQuirks.Quirk.FULL_USERAGENT);
             helper.applyFlagOverrides(
                     Map.of(
                             AwFeatures.WEBVIEW_REDUCE_UA_ANDROID_VERSION_DEVICE_MODEL,
@@ -715,15 +702,16 @@ public class WebViewChromiumFactoryProvider implements WebViewFactoryProvider {
                         .appendSwitch(AwSwitches.WEBVIEW_REDUCE_UA_ANDROID_VERSION_DEVICE_MODEL);
             }
 
+            AconfigFlaggedApiDelegate delegate = AconfigFlaggedApiDelegate.getInstance();
+            boolean isNativeWebViewZygoteEnabled =
+                    delegate != null && delegate.isNativeWebViewZygoteEnabled(webViewDelegate);
+            AwBrowserProcess.setNativeWebViewZygoteEnabled(isNativeWebViewZygoteEnabled);
+
+            // This is the end of the provider initialization. All initialization logic must be
+            // before this point! Only startup metric recording should occur after this.
             setSingleton(this);
         }
-
         mStartupTimings = new FactoryStartupTimings(startTime, webViewDelegate);
-
-        AconfigFlaggedApiDelegate delegate = AconfigFlaggedApiDelegate.getInstance();
-        boolean isNativeWebViewZygoteEnabled =
-                delegate != null && delegate.isNativeWebViewZygoteEnabled(webViewDelegate);
-        AwBrowserProcess.setNativeWebViewZygoteEnabled(isNativeWebViewZygoteEnabled);
     }
 
     // The startup tasks are setup to run based on the following logic:
@@ -1160,6 +1148,14 @@ public class WebViewChromiumFactoryProvider implements WebViewFactoryProvider {
                             ? targetSdkVersion < Build.VERSION_CODES.TIRAMISU
                             : !CompatChanges.isChangeEnabled(
                                     WebSettings.ENABLE_SIMPLIFIED_DARK_MODE);
+            case CompatQuirks.Quirk.FULL_USERAGENT ->
+                    Build.VERSION.SDK_INT < Build.VERSION_CODES.CINNAMON_BUN
+                            || !CompatChanges.isChangeEnabled(
+                                    WebSettings.ENABLE_USER_AGENT_REDUCTION);
+            case CompatQuirks.Quirk.DISABLE_FILESYSTEM_ACCESS_API ->
+                    Build.VERSION.SDK_INT < Build.VERSION_CODES.CINNAMON_BUN
+                            || !CompatChanges.isChangeEnabled(
+                                    WebChromeClient.FileChooserParams.ENABLE_FILE_SYSTEM_ACCESS);
             default -> false;
         };
     }

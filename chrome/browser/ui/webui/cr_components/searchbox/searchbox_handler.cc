@@ -512,6 +512,18 @@ base::DictValue SearchboxHandler::GetWebUIDataSourceDict(
   dict.Set(
       "realboxVirtualFocusNavigation",
       base::FeatureList::IsEnabled(features::kRealboxVirtualFocusNavigation));
+  dict.Set("omniboxPopupVirtualFocusNavigation",
+           base::FeatureList::IsEnabled(
+               features::kOmniboxPopupVirtualFocusNavigation));
+  dict.Set("lensOverlayVirtualFocusNavigation",
+           base::FeatureList::IsEnabled(
+               features::kLensOverlayVirtualFocusNavigation));
+  dict.Set("omniboxEverywhereVirtualFocusNavigation",
+           base::FeatureList::IsEnabled(
+               features::kOmniboxEverywhereVirtualFocusNavigation));
+  dict.Set("webuiBrowserVirtualFocusNavigation",
+           base::FeatureList::IsEnabled(
+               features::kWebuiBrowserVirtualFocusNavigation));
 
   int max_files = omnibox::kDefaultMaxTotalInputs;
   int max_images = max_files;
@@ -976,7 +988,7 @@ SearchboxHandler::CreateAutocompleteMatch(
   mojom_match->show_contextual_description = false;
   mojom_match->type = AutocompleteMatchType::ToString(match.type);
   mojom_match->supports_deletion = match.SupportsDeletion();
-  mojom_match->is_rich_suggestion =
+  mojom_match->is_two_row_suggestion =
       !mojom_match->image_url.empty() ||
       match.type == AutocompleteMatchType::CALCULATOR ||
       match.enterprise_search_aggregator_type ==

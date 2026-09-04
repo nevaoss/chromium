@@ -229,6 +229,12 @@ BASE_FEATURE(kOmniboxWebUIDebounceResize, ENABLED);
 BASE_FEATURE(kOmniboxAimDebounceResize, DISABLED);
 // When enabled, the Omnibox Full WebUI popup will debounce auto-resize events.
 BASE_FEATURE(kOmniboxFullWebUIDebounceResize, ENABLED);
+// When enabled, height workarounds are applied for the Omnibox WebUI popup.
+BASE_FEATURE(kOmniboxWebUIHeightWorkarounds, ENABLED);
+// When enabled, height workarounds are applied for the AIM WebUI popup.
+BASE_FEATURE(kOmniboxAimHeightWorkarounds, ENABLED);
+// When enabled, height workarounds are applied for the Omnibox Full WebUI popup.
+BASE_FEATURE(kOmniboxFullWebUIHeightWorkarounds, ENABLED);
 // If enabled, stabilizes the popup showing behavior on startup by forcing
 // layout with a 1px height and hiding it initially to avoid visual artifacts.
 BASE_FEATURE(kOmniboxWebUIPopupStabilizeStartupShow, ENABLED);
@@ -244,6 +250,18 @@ BASE_FEATURE(kOmniboxFullWebUIDetachWebContentsOnHide, ENABLED);
 // When enabled, the Omnibox WebUI popup will mark its web contents as hidden
 // when hidden, to unlock frames from compositor cache.
 BASE_FEATURE(kOmniboxWebUIPopupMarkAsHidden, ENABLED);
+
+// When enabled, the Omnibox WebUI popup will evict its saved compositor frame
+// when hidden.
+BASE_FEATURE(kOmniboxWebUIEvictOnHide, DISABLED);
+
+// When enabled, the AIM WebUI popup will evict its saved compositor frame
+// when hidden.
+BASE_FEATURE(kOmniboxAimEvictOnHide, DISABLED);
+
+// When enabled, the Omnibox Full WebUI popup will evict its saved compositor
+// frame when hidden.
+BASE_FEATURE(kOmniboxFullWebUIEvictOnHide, DISABLED);
 
 // When enabled, the WebUI searchbox will bypass OmniboxController and
 // OmniboxEditModel.

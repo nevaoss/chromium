@@ -33,7 +33,10 @@
 #include "chrome/common/extensions/api/dictation_private.h"
 #include "chrome/test/base/chrome_test_utils.h"
 #include "chrome/test/interaction/interactive_browser_test.h"
+#include "content/public/browser/render_process_host.h"
+#include "content/public/common/result_codes.h"
 #include "content/public/test/browser_test.h"
+#include "content/public/test/no_renderer_crashes_assertion.h"
 #include "extensions/common/switches.h"
 #include "ui/base/interaction/element_tracker.h"
 #include "ui/base/interaction/state_observer.h"
@@ -109,28 +112,28 @@ class DictationSessionUiImplBrowserTest
     };
   }
 
-  auto CheckShowingDictationErrorToast(bool showing) {
-    return Check([this, showing]() {
+  auto CheckShowingToast(ToastId toast_id, bool showing) {
+    return Check([this, toast_id, showing]() {
       ToastController* const toast_controller =
           browser()->GetFeatures().toast_controller();
       CHECK(toast_controller);
-      const bool is_showing_dictation_error_toast =
+      const bool is_showing_toast =
           toast_controller->IsShowingToast() &&
-          toast_controller->GetCurrentToastId() == ToastId::kDictationError;
-      return is_showing_dictation_error_toast == showing;
+          toast_controller->GetCurrentToastId() == toast_id;
+      return is_showing_toast == showing;
     });
   }
 
+  auto CheckShowingDictationErrorToast(bool showing) {
+    return CheckShowingToast(ToastId::kDictationError, showing);
+  }
+
+  auto CheckShowingDictationNoMicrophoneErrorToast(bool showing) {
+    return CheckShowingToast(ToastId::kDictationNoMicrophoneError, showing);
+  }
+
   auto CheckShowingDictationStoppedToast(bool showing) {
-    return Check([this, showing]() {
-      ToastController* const toast_controller =
-          browser()->GetFeatures().toast_controller();
-      CHECK(toast_controller);
-      const bool is_showing_dictation_stopped_toast =
-          toast_controller->IsShowingToast() &&
-          toast_controller->GetCurrentToastId() == ToastId::kDictationStopped;
-      return is_showing_dictation_stopped_toast == showing;
-    });
+    return CheckShowingToast(ToastId::kDictationStopped, showing);
   }
 
   auto StartDictationStream(DictationStreamStartTrigger trigger) {
@@ -391,16 +394,25 @@ IN_PROC_BROWSER_TEST_P(DictationSessionUiImplBrowserTest,
   ASSERT_TRUE(AddTabAtIndex(1, GURL("about:blank"), ui::PAGE_TRANSITION_TYPED));
   browser()->GetTabStripModel()->ActivateTabAt(0);
 
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kFirstWebContentsElementId);
+  const GURL url =
+      embedded_test_server()->GetURL("/textinput/simple_textarea.html");
+
   // clang-format off
   RunTestSequence(
-    StartSession(),
+    InstrumentTab(kFirstWebContentsElementId),
+    NavigateWebContents(kFirstWebContentsElementId, url),
+    StartSessionWithTarget(kFirstWebContentsElementId, "#text_id"),
     ObserveSessionStateChanges(),
     WaitForShow(DictationBubbleUi::kViewElementIdForTesting),
+    InAnyContext(WaitForShow(DictationOverlayView::kViewElementIdForTesting)),
 
     // Switch to the second tab. The session should be ended but only after
     // finalization.
     SelectTab(kTabStripElementId, 1),
     WaitForHide(DictationBubbleUi::kViewElementIdForTesting),
+    InAnyContext(
+        EnsureNotPresent(DictationOverlayView::kViewElementIdForTesting)),
     CheckHasSession(true),
     CheckResult(GetSessionState(), SessionState::kFinalizing),
 
@@ -411,7 +423,9 @@ IN_PROC_BROWSER_TEST_P(DictationSessionUiImplBrowserTest,
 
     // Switch back to the first tab and ensure the UI does not reappear.
     SelectTab(kTabStripElementId, 0),
-    EnsureNotPresent(DictationBubbleUi::kViewElementIdForTesting)
+    EnsureNotPresent(DictationBubbleUi::kViewElementIdForTesting),
+    InAnyContext(
+        EnsureNotPresent(DictationOverlayView::kViewElementIdForTesting))
   );
   // clang-format on
 }
@@ -570,6 +584,34 @@ IN_PROC_BROWSER_TEST_P(DictationSessionUiImplBrowserTest,
   // clang-format on
 }
 
+IN_PROC_BROWSER_TEST_P(DictationSessionUiImplBrowserTest, TabCrashEndsSession) {
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kWebContentsElementId);
+  const GURL url =
+      embedded_test_server()->GetURL("/textinput/simple_textarea.html");
+
+  content::ScopedAllowRendererCrashes scoped_allow_renderer_crashes;
+
+  // clang-format off
+  RunTestSequence(
+    InstrumentTab(kWebContentsElementId),
+    NavigateWebContents(kWebContentsElementId, url),
+    StartSessionWithTarget(kWebContentsElementId, "#text_id"),
+    WaitForShow(DictationBubbleUi::kViewElementIdForTesting),
+
+    Do([this]{
+      web_contents()
+          ->GetPrimaryMainFrame()
+          ->GetProcess()
+          ->Shutdown(content::RESULT_CODE_KILLED);
+    }),
+
+    WaitForHide(DictationBubbleUi::kViewElementIdForTesting),
+    CheckHasSession(false),
+    CheckShowingDictationStoppedToast(true)
+  );
+  // clang-format on
+}
+
 IN_PROC_BROWSER_TEST_P(DictationSessionUiImplBrowserTest,
                        SecondWindowInvokesDictationMovesUI) {
   // Create a second browser window.
@@ -620,6 +662,51 @@ IN_PROC_BROWSER_TEST_P(DictationSessionUiImplBrowserTest,
           target_bounds = AsInstrumentedWebContents(el)
                               ->GetElementBoundsInScreen("#text_id");
         }),
+    InAnyContext(CheckElement(
+        DictationOverlayView::kViewElementIdForTesting,
+        [&target_bounds](ui::TrackedElement* el) {
+          const views::View* const overlay_view = AsView(el);
+          const gfx::Rect overlay_bounds = overlay_view->GetBoundsInScreen();
+          return target_bounds.Contains(overlay_bounds.origin());
+        }))
+  );
+  // clang-format on
+}
+
+IN_PROC_BROWSER_TEST_P(DictationSessionUiImplBrowserTest,
+                       OverlayLeftInLastPositionWhenTargetLosesFocus) {
+  if (!GetParam()) {
+    // At least until crbug.com/552154453 is addressed for the multiple stream
+    // mode, this test does not apply, as a new stream should move the overlay.
+    GTEST_SKIP() << "Does not apply if focus changes start streams.";
+  }
+
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kWebContentsElementId);
+  const GURL url =
+      embedded_test_server()->GetURL("/textinput/simple_textarea.html");
+  gfx::Rect target_bounds;
+
+  // clang-format off
+  RunTestSequence(
+    InstrumentTab(kWebContentsElementId),
+    NavigateWebContents(kWebContentsElementId, url),
+    StartSessionWithTarget(kWebContentsElementId, "#text_id"),
+    InAnyContext(WaitForShow(DictationOverlayView::kViewElementIdForTesting)),
+    WithElement(
+        kWebContentsElementId,
+        [&target_bounds](ui::TrackedElement* el) {
+          target_bounds = AsInstrumentedWebContents(el)
+                              ->GetElementBoundsInScreen("#text_id");
+        }),
+    // Focus a second textarea, causing the first textarea to lose focus.
+    ExecuteJs(kWebContentsElementId,
+              "() => {"
+              "  const textarea2 = document.createElement('textarea');"
+              "  textarea2.id = 'text_id_2';"
+              "  document.body.appendChild(textarea2);"
+              "  textarea2.focus();"
+              "}"),
+    // The overlay should remain in its last position.
     InAnyContext(CheckElement(
         DictationOverlayView::kViewElementIdForTesting,
         [&target_bounds](ui::TrackedElement* el) {
@@ -758,6 +845,33 @@ IN_PROC_BROWSER_TEST_P(DictationSessionUiImplBrowserTest,
     InAnyContext(PressButton(
         DictationOverlayView::kWaveformElementIdForTesting)),
     CheckResult(GetSessionState(), SessionState::kFinalizing)
+  );
+  // clang-format on
+}
+
+IN_PROC_BROWSER_TEST_P(DictationSessionUiImplBrowserTest,
+                       NoMicrophoneErrorShowsDedicatedToast) {
+  constexpr int kNoMicrophoneErrorCode =
+      static_cast<int>(StreamErrorReason::kNoMicrophone);
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kWebContentsElementId);
+  const GURL url =
+      embedded_test_server()->GetURL("/textinput/simple_textarea.html");
+
+  // clang-format off
+  RunTestSequence(
+    InstrumentTab(kWebContentsElementId),
+    NavigateWebContents(kWebContentsElementId, url),
+    StartSessionWithTarget(kWebContentsElementId, "#text_id"),
+    InAnyContext(WaitForShow(DictationBubbleUi::kViewElementIdForTesting)),
+    CheckShowingDictationNoMicrophoneErrorToast(false),
+
+    // Extension reports failure with numeric error code for NO_MICROPHONE.
+    ExtensionAPISetStreamState(
+        ExtensionStreamState::kFailed, kNoMicrophoneErrorCode),
+
+    InAnyContext(WaitForHide(DictationBubbleUi::kViewElementIdForTesting)),
+    CheckShowingDictationNoMicrophoneErrorToast(true),
+    Check([this] { return session_ui() == nullptr; })
   );
   // clang-format on
 }

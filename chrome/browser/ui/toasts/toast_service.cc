@@ -41,7 +41,7 @@
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/grit/branded_strings.h"
 #include "chrome/grit/generated_resources.h"
-#include "components/autofill/core/browser/at_memory/at_memory_enablement_utils.h"
+#include "components/autofill/core/browser/at_memory/at_memory_enablement_util.h"
 #include "components/autofill/core/common/autofill_features.h"
 #include "components/commerce/core/commerce_feature_list.h"
 #include "components/content_settings/core/common/content_settings_types.h"
@@ -729,6 +729,14 @@ void ToastService::RegisterToasts(
                                         ? vector_icons::kErrorIcon
                                         : vector_icons::kErrorOldIcon,
                                     IDS_DICTATION_ERROR_TOAST)
+            .Build());
+    toast_registry_->RegisterToast(
+        ToastId::kDictationNoMicrophoneError,
+        ToastSpecification::Builder(
+            features::IsRoundedIconsEnabled()
+                ? vector_icons::kErrorIcon
+                : vector_icons::kMicOffChromeRefreshOldIcon,
+            IDS_DICTATION_NO_MIC_ERROR_TOAST)
             .Build());
     toast_registry_->RegisterToast(
         ToastId::kDictationStopped,

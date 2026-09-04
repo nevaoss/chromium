@@ -16,7 +16,6 @@
 #include "chrome/browser/ui/views/tabs/common/tab_strip_layout_utils.h"
 #include "chrome/browser/ui/views/tabs/common/unpinned_tab_container_view.h"
 #include "chrome/browser/ui/views/tabs/horizontal/horizontal_tab_closing_helper.h"
-#include "chrome/browser/ui/views/tabs/tab_group_style.h"
 #include "components/tabs/public/tab_group.h"
 #include "ui/gfx/geometry/rect.h"
 #include "ui/views/layout/proposed_layout.h"
@@ -118,7 +117,14 @@ views::ProposedLayout UnpinnedTabContainerViewLayout::CalculateHorizontalLayout(
           GetClosingModeOverrideWidth(tab_container_view)) {
     available_width = std::min(*override_width, available_width);
   }
-  if (size_bounds.width().is_bounded()) {
+  // Prioritize the container's space override (available viewport/strip
+  // capacity) over size bounds which may reflect intermediate layout
+  // measurements.
+  if (const auto space_override =
+          tab_container_view->GetAvailableMainAxisSpaceOverride();
+      space_override.has_value() && space_override->is_bounded()) {
+    available_width = std::min(space_override->value(), available_width);
+  } else if (size_bounds.width().is_bounded()) {
     available_width = std::min(size_bounds.width().value(), available_width);
   }
 
@@ -133,7 +139,8 @@ views::ProposedLayout UnpinnedTabContainerViewLayout::CalculateHorizontalLayout(
   int available_for_allocation = computed_width + collection.overlap_total;
   std::vector<int> allocated_widths = CalculateProportionalChildWidths(
       available_for_allocation, collection.preferred_widths,
-      collection.min_widths, collection.total_preferred_width,
+      collection.crossover_widths, collection.min_widths,
+      collection.total_preferred_width, collection.total_crossover_width,
       collection.total_min_width);
 
   int x = 0;
@@ -157,6 +164,10 @@ views::ProposedLayout UnpinnedTabContainerViewLayout::CalculateHorizontalLayout(
     gfx::Rect bounds(child_x, 0, child_width, container_height);
 
     layouts.child_layouts.emplace_back(child, true, bounds);
+
+    if (auto* group_view = views::AsViewClass<TabGroupView>(child)) {
+      group_view->SetAvailableSpace(views::SizeBound(child_width));
+    }
 
     if (visible_index < collection.visible_children.size() - 1) {
       x += bounds.width() -

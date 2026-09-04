@@ -244,7 +244,6 @@ import java.util.function.Supplier;
 @SuppressWarnings({"ConstantConditions", "DirectInvocationOnMock"})
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(
-        manifest = Config.NONE,
         instrumentedPackages = {
             "androidx.recyclerview.widget.RecyclerView" // required to mock final
         })
@@ -3318,11 +3317,15 @@ public class TabListMediatorUnitTest {
     @Test
     public void testOnInitializeAccessibilityNodeInfo() {
         // Setup related mocks and initialize needed components.
+        when(mItemView1.getParent()).thenReturn(mRecyclerView);
+        when(mRecyclerView.getChildAdapterPosition(mItemView1)).thenReturn(0);
         AccessibilityAction action1 = new AccessibilityAction(R.id.move_tab_left, "left");
         AccessibilityAction action2 = new AccessibilityAction(R.id.move_tab_right, "right");
         AccessibilityAction action3 = new AccessibilityAction(R.id.move_tab_up, "up");
         when(mTabGridAccessibilityHelper.getPotentialActionsForView(mItemView1))
                 .thenReturn(List.of(action1, action2, action3));
+        when(mTabGridAccessibilityHelper.getPositionsOfReorderAction(eq(mItemView1), anyInt()))
+                .thenReturn(new Pair<>(0, 1));
         InOrder accessibilityNodeInfoInOrder = Mockito.inOrder(mAccessibilityNodeInfo);
         assertNull(mMediator.getAccessibilityDelegateForTesting());
         mMediator.setupAccessibilityDelegate(mTabGridAccessibilityHelper);
@@ -4642,6 +4645,7 @@ public class TabListMediatorUnitTest {
         List<Tab> tabs = List.of(mTab1, tab3);
         createTabGroup(tabs, TAB_GROUP_ID);
 
+        mMediator.resetWithListOfTabs(null, null, false);
         mMediator.resetWithListOfTabs(List.of(mTab1, mTab2), null, true);
 
         when(mTabModel.tabGroupExists(TAB_GROUP_ID)).thenReturn(true);
@@ -4651,6 +4655,7 @@ public class TabListMediatorUnitTest {
 
         // Change what the title editor will return after closure.
         when(mTabModel.getTabGroupTitle(TAB_GROUP_ID)).thenReturn("1 tab");
+        when(mTabModel.getTabsInGroup(TAB_GROUP_ID)).thenReturn(List.of(mTab1));
 
         mTabModelObserverCaptor.getValue().didRemoveTabForClosure(tab3);
 

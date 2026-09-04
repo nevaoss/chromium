@@ -134,13 +134,7 @@ IN_PROC_BROWSER_TEST_F(ReadAnythingMochaTest, Common) {
   RunSidePanelTest("side_panel/read_anything/common_test.js", "mocha.run()");
 }
 
-// TODO(crbug.com/502069860): Re-enable after fixing flakiness.
-#if BUILDFLAG(IS_WIN)
-#define MAYBE_RectCalculations DISABLED_RectCalculations
-#else
-#define MAYBE_RectCalculations RectCalculations
-#endif
-IN_PROC_BROWSER_TEST_F(ReadAnythingMochaTest, MAYBE_RectCalculations) {
+IN_PROC_BROWSER_TEST_F(ReadAnythingMochaTest, RectCalculations) {
   RunSidePanelTest("side_panel/read_anything/rect_calculations_test.js",
                    "mocha.run()");
 }
@@ -248,6 +242,16 @@ IN_PROC_BROWSER_TEST_F(ReadAnythingMochaTest, AppStyleUpdater) {
                    "mocha.run()");
 }
 
+IN_PROC_BROWSER_TEST_F(ReadAnythingMochaTest, LanguageDisplay) {
+  RunSidePanelTest("side_panel/read_anything/language_display_test.js",
+                   "mocha.run()");
+}
+
+IN_PROC_BROWSER_TEST_F(ReadAnythingMochaTest, AccentMenu) {
+  RunSidePanelTest("side_panel/read_anything/accent_menu_test.js",
+                   "mocha.run()");
+}
+
 IN_PROC_BROWSER_TEST_F(ReadAnythingMochaTest, LanguageMenu) {
   RunSidePanelTest("side_panel/read_anything/language_menu_test.js",
                    "mocha.run()");
@@ -278,13 +282,7 @@ IN_PROC_BROWSER_TEST_F(ReadAnythingMochaTest, LineFocusStyleMode) {
                    "mocha.run()");
 }
 
-// TODO(crbug.com/502069860): Re-enable after fixing flakiness.
-#if BUILDFLAG(IS_WIN)
-#define MAYBE_LineFocusMoveMode DISABLED_LineFocusMoveMode
-#else
-#define MAYBE_LineFocusMoveMode LineFocusMoveMode
-#endif
-IN_PROC_BROWSER_TEST_F(ReadAnythingMochaTest, MAYBE_LineFocusMoveMode) {
+IN_PROC_BROWSER_TEST_F(ReadAnythingMochaTest, LineFocusMoveMode) {
   RunSidePanelTest("side_panel/read_anything/line_focus_move_mode_test.js",
                    "mocha.run()");
 }
@@ -329,11 +327,6 @@ IN_PROC_BROWSER_TEST_F(ReadAnythingMochaTest, SettingsMenu) {
                    "mocha.run()");
 }
 
-IN_PROC_BROWSER_TEST_F(ReadAnythingMochaTest, ToolbarSettingsMenu) {
-  RunSidePanelTest("side_panel/read_anything/toolbar_settings_menu_test.js",
-                   "mocha.run()");
-}
-
 class ReadAnythingWithReadabilityMochaTest
     : public ReadAnythingMochaBrowserTest {
  protected:
@@ -346,14 +339,8 @@ class ReadAnythingWithReadabilityMochaTest
   base::test::ScopedFeatureList scoped_feature_list_;
 };
 
-// TODO(https://crbug.com/502274118): Flaky on some windows builders.
-#if BUILDFLAG(IS_WIN)
-#define MAYBE_ReadabilityImageClassifier DISABLED_ReadabilityImageClassifier
-#else
-#define MAYBE_ReadabilityImageClassifier ReadabilityImageClassifier
-#endif
 IN_PROC_BROWSER_TEST_F(ReadAnythingWithReadabilityMochaTest,
-                       MAYBE_ReadabilityImageClassifier) {
+                       ReadabilityImageClassifier) {
   RunSidePanelTest(
       "side_panel/read_anything/readability_image_classifier_test.js",
       "mocha.run()");

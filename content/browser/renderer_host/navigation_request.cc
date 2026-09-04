@@ -1633,6 +1633,8 @@ NavigationRequest::CreateForSynchronousRendererCommit(
       isolation_info_for_subresources;
   navigation_request->associated_rfh_type_ =
       AssociatedRenderFrameHostType::CURRENT;
+  navigation_request->initiator_state_token_to_commit_ =
+      render_frame_host->current_initiator_state_token();
   navigation_request->StartNavigation();
   CHECK(navigation_request->IsNavigationStarted());
 
@@ -10557,6 +10559,11 @@ bool NavigationRequest::IsPost() {
 
 std::string NavigationRequest::GetRequestMethod() {
   return request_method_;
+}
+
+scoped_refptr<network::ResourceRequestBody> NavigationRequest::GetPostData()
+    const {
+  return common_params_->post_data;
 }
 
 const blink::mojom::Referrer& NavigationRequest::GetReferrer() {

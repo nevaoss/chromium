@@ -13,7 +13,7 @@
 #import "base/test/ios/wait_util.h"
 #import "base/time/time.h"
 #import "components/autofill/core/browser/field_types.h"
-#import "components/autofill/core/browser/test_utils/autofill_test_utils.h"
+#import "components/autofill/core/browser/test_utils/autofill_test_util.h"
 #import "components/autofill/core/common/autofill_debug_features.h"
 #import "components/autofill/core/common/autofill_features.h"
 #import "components/autofill/ios/common/features.h"
@@ -387,8 +387,10 @@ void SlowlyTypeText(NSString* text) {
             (testPasswordSuggestionsSubtext_ConditionalPasskeyLoginEnabled)]) {
     config.features_enabled.push_back(kIOSPasskeyShim);
     config.features_enabled.push_back(kIOSPasskeyConditionalLoginWithShim);
+  } else {
+    config.features_disabled.push_back(kIOSPasskeyConditionalLoginWithShim);
   }
-
+  config.features_disabled.push_back(kIOSPasskeyModalLoginWithShim);
 
   return config;
 }

@@ -110,6 +110,7 @@ import org.chromium.chrome.browser.feedback.HelpAndFeedbackLauncherFactory;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.flags.ChromeSwitches;
 import org.chromium.chrome.browser.preferences.Pref;
+import org.chromium.chrome.browser.profiles.ProfileManager;
 import org.chromium.chrome.browser.settings.SettingsTestRule;
 import org.chromium.chrome.browser.signin.services.IdentityServicesProvider;
 import org.chromium.chrome.browser.sync.SyncServiceFactory;
@@ -149,8 +150,7 @@ import java.util.concurrent.TimeoutException;
 /** Unit test suite for AutofillProfilesFragment. */
 @RunWith(ChromeJUnit4ClassRunner.class)
 @EnableFeatures({ChromeFeatureList.AUTOFILL_AI_SHOW_DIALOG_IN_SETTINGS_WHEN_UPSTREAMING_FAILS})
-// TODO(crbug.com/521895796): Adapt AutofillTestRule to work with SettingsInTab.
-@DisableFeatures({ChromeFeatureList.SETTINGS_IN_TAB})
+@DisableFeatures({ChromeFeatureList.EMAIL_VERIFICATION_PROTOCOL})
 @CommandLineFlags.Add({ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE})
 @Batch(Batch.PER_CLASS)
 public class AutofillProfilesFragmentTest {
@@ -304,11 +304,13 @@ public class AutofillProfilesFragmentTest {
     public void tearDown() throws TimeoutException {
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
-                    AutofillProfilesFragment fragment = mSettingsTestRule.getFragment();
-                    if (fragment != null && fragment.getProfile() != null) {
-                        UserPrefs.get(fragment.getProfile())
-                                .clearPref(Pref.AUTOFILL_EMAIL_VERIFICATION_ENABLED);
-                    }
+                    // Use ProfileManager instead of mSettingsTestRule.getFragment().getProfile()
+                    // because tests might have navigated to another fragment (e.g.
+                    // AutofillOptionsFragment), causing mSettingsTestRule.getFragment() to throw a
+                    // ClassCastException.
+                    assertTrue(ProfileManager.isInitialized());
+                    UserPrefs.get(ProfileManager.getLastUsedRegularProfile())
+                            .clearPref(Pref.AUTOFILL_EMAIL_VERIFICATION_ENABLED);
                 });
         mUserActionTester.tearDown();
         Intents.release();
@@ -2144,7 +2146,12 @@ public class AutofillProfilesFragmentTest {
     @MediumTest
     @Feature({"Preferences"})
     public void testOnOpenGoogleWallet_OpensWallet() {
-        intending(hasAction(Intent.ACTION_VIEW))
+        // Use allOf(hasAction, hasData) because SettingsInTabTestActivity is also launched
+        // with an ACTION_VIEW intent. Matching on hasAction alone would match multiple intents.
+        intending(
+                        allOf(
+                                hasAction(Intent.ACTION_VIEW),
+                                hasData(GoogleWalletLauncher.GOOGLE_WALLET_PASSES_URL)))
                 .respondWith(new Instrumentation.ActivityResult(Activity.RESULT_OK, null));
 
         ThreadUtils.runOnUiThreadBlocking(
@@ -2152,15 +2159,24 @@ public class AutofillProfilesFragmentTest {
                     mSettingsTestRule.getFragment().onOpenGoogleWalletForTesting(false);
                 });
 
-        intended(hasAction(Intent.ACTION_VIEW));
-        intended(hasData(GoogleWalletLauncher.GOOGLE_WALLET_PASSES_URL));
+        intended(
+                allOf(
+                        hasAction(Intent.ACTION_VIEW),
+                        hasData(GoogleWalletLauncher.GOOGLE_WALLET_PASSES_URL)));
     }
 
     @Test
     @MediumTest
     @Feature({"Preferences"})
     public void testOnOpenGoogleWallet_OpensHelpCenterForPrivateEntity() {
-        intending(hasAction(Intent.ACTION_VIEW))
+        // Use allOf(hasAction, hasData) because SettingsInTabTestActivity is also launched
+        // with an ACTION_VIEW intent. Matching on hasAction alone would match multiple intents.
+        intending(
+                        allOf(
+                                hasAction(Intent.ACTION_VIEW),
+                                hasData(
+                                        GoogleWalletLauncher
+                                                .GOOGLE_WALLET_PRIVATE_PASSES_HELP_CENTER)))
                 .respondWith(new Instrumentation.ActivityResult(Activity.RESULT_OK, null));
 
         ThreadUtils.runOnUiThreadBlocking(
@@ -2168,8 +2184,10 @@ public class AutofillProfilesFragmentTest {
                     mSettingsTestRule.getFragment().onOpenGoogleWalletForTesting(true);
                 });
 
-        intended(hasAction(Intent.ACTION_VIEW));
-        intended(hasData(GoogleWalletLauncher.GOOGLE_WALLET_PRIVATE_PASSES_HELP_CENTER));
+        intended(
+                allOf(
+                        hasAction(Intent.ACTION_VIEW),
+                        hasData(GoogleWalletLauncher.GOOGLE_WALLET_PRIVATE_PASSES_HELP_CENTER)));
     }
 
     private void checkPreferenceCount(int expectedPreferenceCount) {
@@ -2472,7 +2490,7 @@ public class AutofillProfilesFragmentTest {
     }
 
     @Test
-    @EnableFeatures({ChromeFeatureList.EMAIL_VERIFICATION_ANDROID})
+    @EnableFeatures({ChromeFeatureList.EMAIL_VERIFICATION_PROTOCOL})
     @MediumTest
     public void testEmailVerificationToggle_InitialStateTrue() {
         AutofillProfilesFragment fragment = mSettingsTestRule.getFragment();
@@ -2492,7 +2510,7 @@ public class AutofillProfilesFragmentTest {
     }
 
     @Test
-    @EnableFeatures({ChromeFeatureList.EMAIL_VERIFICATION_ANDROID})
+    @EnableFeatures({ChromeFeatureList.EMAIL_VERIFICATION_PROTOCOL})
     @MediumTest
     public void testEmailVerificationToggle_InitialStateFalse() {
         AutofillProfilesFragment fragment = mSettingsTestRule.getFragment();
@@ -2512,7 +2530,7 @@ public class AutofillProfilesFragmentTest {
     }
 
     @Test
-    @EnableFeatures({ChromeFeatureList.EMAIL_VERIFICATION_ANDROID})
+    @EnableFeatures({ChromeFeatureList.EMAIL_VERIFICATION_PROTOCOL})
     @MediumTest
     public void testEmailVerificationToggle_ClickToDisable() {
         AutofillProfilesFragment fragment = mSettingsTestRule.getFragment();
@@ -2547,7 +2565,7 @@ public class AutofillProfilesFragmentTest {
     }
 
     @Test
-    @EnableFeatures({ChromeFeatureList.EMAIL_VERIFICATION_ANDROID})
+    @EnableFeatures({ChromeFeatureList.EMAIL_VERIFICATION_PROTOCOL})
     @MediumTest
     public void testEmailVerificationToggle_ClickToEnable() {
         AutofillProfilesFragment fragment = mSettingsTestRule.getFragment();
@@ -2582,7 +2600,7 @@ public class AutofillProfilesFragmentTest {
     }
 
     @Test
-    @EnableFeatures({ChromeFeatureList.EMAIL_VERIFICATION_ANDROID})
+    @EnableFeatures({ChromeFeatureList.EMAIL_VERIFICATION_PROTOCOL})
     @MediumTest
     public void testEmailVerificationToggle_Visibility() {
         AutofillProfilesFragment fragment = mSettingsTestRule.getFragment();
@@ -2596,7 +2614,7 @@ public class AutofillProfilesFragmentTest {
     }
 
     @Test
-    @EnableFeatures({ChromeFeatureList.EMAIL_VERIFICATION_ANDROID})
+    @EnableFeatures({ChromeFeatureList.EMAIL_VERIFICATION_PROTOCOL})
     @MediumTest
     public void testVerifiedEmailList_EmptyState() {
         AutofillProfilesFragment fragment = mSettingsTestRule.getFragment();
@@ -2623,7 +2641,7 @@ public class AutofillProfilesFragmentTest {
     }
 
     @Test
-    @EnableFeatures({ChromeFeatureList.EMAIL_VERIFICATION_ANDROID})
+    @EnableFeatures({ChromeFeatureList.EMAIL_VERIFICATION_PROTOCOL})
     @MediumTest
     public void testVerifiedEmailList_SingleEmail() {
         AutofillProfilesFragment fragment = mSettingsTestRule.getFragment();
@@ -2648,7 +2666,7 @@ public class AutofillProfilesFragmentTest {
     }
 
     @Test
-    @EnableFeatures({ChromeFeatureList.EMAIL_VERIFICATION_ANDROID})
+    @EnableFeatures({ChromeFeatureList.EMAIL_VERIFICATION_PROTOCOL})
     @MediumTest
     public void testVerifiedEmailList_MultipleEmails() {
         AutofillProfilesFragment fragment = mSettingsTestRule.getFragment();
@@ -2683,7 +2701,7 @@ public class AutofillProfilesFragmentTest {
     }
 
     @Test
-    @EnableFeatures({ChromeFeatureList.EMAIL_VERIFICATION_ANDROID})
+    @EnableFeatures({ChromeFeatureList.EMAIL_VERIFICATION_PROTOCOL})
     @MediumTest
     public void testVerifiedEmailList_EmailTruncation() {
         AutofillProfilesFragment fragment = mSettingsTestRule.getFragment();
@@ -2706,7 +2724,7 @@ public class AutofillProfilesFragmentTest {
     }
 
     @Test
-    @EnableFeatures({ChromeFeatureList.EMAIL_VERIFICATION_ANDROID})
+    @EnableFeatures({ChromeFeatureList.EMAIL_VERIFICATION_PROTOCOL})
     @MediumTest
     public void testVerifiedEmailList_IssuerVisibility() {
         AutofillProfilesFragment fragment = mSettingsTestRule.getFragment();
@@ -2730,7 +2748,7 @@ public class AutofillProfilesFragmentTest {
     }
 
     @Test
-    @EnableFeatures({ChromeFeatureList.EMAIL_VERIFICATION_ANDROID})
+    @EnableFeatures({ChromeFeatureList.EMAIL_VERIFICATION_PROTOCOL})
     @MediumTest
     public void testRemoveEmail_ClickShowsDialog() {
         AutofillProfilesFragment fragment = mSettingsTestRule.getFragment();
@@ -2753,7 +2771,7 @@ public class AutofillProfilesFragmentTest {
     }
 
     @Test
-    @EnableFeatures({ChromeFeatureList.EMAIL_VERIFICATION_ANDROID})
+    @EnableFeatures({ChromeFeatureList.EMAIL_VERIFICATION_PROTOCOL})
     @MediumTest
     public void testRemoveEmail_DialogCancelDoesNotRemove() {
         AutofillProfilesFragment fragment = mSettingsTestRule.getFragment();
@@ -2771,7 +2789,7 @@ public class AutofillProfilesFragmentTest {
     }
 
     @Test
-    @EnableFeatures({ChromeFeatureList.EMAIL_VERIFICATION_ANDROID})
+    @EnableFeatures({ChromeFeatureList.EMAIL_VERIFICATION_PROTOCOL})
     @MediumTest
     public void testRemoveEmail_DialogConfirmRemovesEmail() {
         AutofillProfilesFragment fragment = mSettingsTestRule.getFragment();
@@ -2790,7 +2808,7 @@ public class AutofillProfilesFragmentTest {
     }
 
     @Test
-    @EnableFeatures({ChromeFeatureList.EMAIL_VERIFICATION_ANDROID})
+    @EnableFeatures({ChromeFeatureList.EMAIL_VERIFICATION_PROTOCOL})
     @MediumTest
     public void testRemoveEmail_MultiEmailRemoval() {
         AutofillProfilesFragment fragment = mSettingsTestRule.getFragment();
@@ -2826,7 +2844,7 @@ public class AutofillProfilesFragmentTest {
     }
 
     @Test
-    @EnableFeatures({ChromeFeatureList.EMAIL_VERIFICATION_ANDROID})
+    @EnableFeatures({ChromeFeatureList.EMAIL_VERIFICATION_PROTOCOL})
     @MediumTest
     public void testRemoveEmail_ListTransitionToEmpty() {
         AutofillProfilesFragment fragment = mSettingsTestRule.getFragment();
@@ -2860,7 +2878,7 @@ public class AutofillProfilesFragmentTest {
     }
 
     @Test
-    @EnableFeatures({ChromeFeatureList.EMAIL_VERIFICATION_ANDROID})
+    @EnableFeatures({ChromeFeatureList.EMAIL_VERIFICATION_PROTOCOL})
     @MediumTest
     public void testEmailVerification_InteractionToggleAndList() {
         AutofillProfilesFragment fragment = mSettingsTestRule.getFragment();
@@ -2884,7 +2902,7 @@ public class AutofillProfilesFragmentTest {
     }
 
     @Test
-    @DisableFeatures({ChromeFeatureList.EMAIL_VERIFICATION_ANDROID})
+    @DisableFeatures({ChromeFeatureList.EMAIL_VERIFICATION_PROTOCOL})
     @MediumTest
     public void testEmailVerification_FeatureDisabled() {
         AutofillProfilesFragment fragment = mSettingsTestRule.getFragment();
@@ -2902,7 +2920,7 @@ public class AutofillProfilesFragmentTest {
 
     @Test
     @SmallTest
-    @EnableFeatures(ChromeFeatureList.EMAIL_VERIFICATION_ANDROID)
+    @EnableFeatures(ChromeFeatureList.EMAIL_VERIFICATION_PROTOCOL)
     public void testSearchIndexWhenEmailVerificationEnabled() {
         mSettingsTestRule.startSettingsActivity();
         SettingsIndexData indexDataMock = mock(SettingsIndexData.class);
@@ -2924,7 +2942,7 @@ public class AutofillProfilesFragmentTest {
 
     @Test
     @SmallTest
-    @DisableFeatures(ChromeFeatureList.EMAIL_VERIFICATION_ANDROID)
+    @DisableFeatures(ChromeFeatureList.EMAIL_VERIFICATION_PROTOCOL)
     public void testSearchIndexWhenEmailVerificationDisabled() {
         mSettingsTestRule.startSettingsActivity();
         SettingsIndexData indexDataMock = mock(SettingsIndexData.class);

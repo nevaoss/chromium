@@ -602,6 +602,11 @@ inline constexpr char kTabStripUnificationName[] = "Tab Strip Unification";
 inline constexpr char kTabStripUnificationDescription[] =
     "Unifies horizontal and vertical tab strips to share infrastructure.";
 
+inline constexpr char kNewHorizontalPinnedTabStylingName[] =
+    "New Horizontal Pinned Tab Styling";
+inline constexpr char kNewHorizontalPinnedTabStylingDescription[] =
+    "Enables the updated pinned tab style in the new horizontal tab strip.";
+
 inline constexpr char kEnableSeamlessSigninName[] = "Enable Seamless Sign-in";
 inline constexpr char kEnableSeamlessSigninDescription[] =
     "Enables the Seamless Sign-in flow that signs in the user without showing "
@@ -855,8 +860,7 @@ inline constexpr char kAutofillAndroidDesktopSuppressAccessoryOnEmptyName[] =
 inline constexpr char
     kAutofillAndroidDesktopSuppressAccessoryOnEmptyDescription[] =
         "When enabled, Autofill will suppress keyboard accessory when the form "
-        "field is not a username/password field and does not have any autofill "
-        "suggestions. ";
+        "field does not have any autofill suggestions.";
 
 inline constexpr char kAutofillEnableAutofillSettingsEnterprisePolicyName[] =
     "Enable Autofill settings enterprise policy";
@@ -869,12 +873,6 @@ inline constexpr char kAutofillAmbientAutofillName[] =
     "Autofill Ambient Autofill";
 inline constexpr char kAutofillAmbientAutofillDescription[] =
     "Enables Ambient Autofill.";
-
-inline constexpr char kAutofillAndPasswordsRemoveSignInPromoName[] =
-    "Autofill and passwords remove sign-in promo";
-inline constexpr char kAutofillAndPasswordsRemoveSignInPromoDescription[] =
-    "When enabled, removes the sign-in promo component from the Autofill and "
-    "passwords settings page.";
 
 inline constexpr char kAutofillDisableBnplCountryCheckForTestingName[] =
     "Disable the country check for BNPL testing";
@@ -1039,6 +1037,14 @@ inline constexpr char
     kAutofillEnableBuyNowPayLaterUpdatedSuggestionSecondLineStringDescription
         [] = "When enabled, the second line of a BNPL suggestion is updated to "
              "include the issuer names for better brand recognition.";
+
+inline constexpr char kAutofillEnableCardOnDeviceVerificationEnforcementName[] =
+    "Enable Card-on-Device Verification Enforcement for Payments Autofill";
+inline constexpr char
+    kAutofillEnableCardOnDeviceVerificationEnforcementDescription[] =
+        "When enabled, server card retrieval will ensure a card is verified "
+        "via CVC on a device before proceeding with risk-based or biometric "
+        "authentication.";
 
 inline constexpr char
     kAutofillEnableCvcStorageAndFillingStandaloneFormEnhancementName[] =
@@ -1608,6 +1614,11 @@ inline constexpr char kCollaborationSharedTabGroupAccountDataName[] =
 inline constexpr char kCollaborationSharedTabGroupAccountDataDescription[] =
     "Enable the messaging sync backend for shared tab groups.";
 
+inline constexpr char kComposeboxRichImageSuggestionsName[] =
+    "Composebox Rich Image Suggestions";
+inline constexpr char kComposeboxRichImageSuggestionsDescription[] =
+    "Enables richer image suggestions in the Composebox for image generation.";
+
 inline constexpr char kComposeboxSkillsContextualTasksName[] =
     "Composebox/Searchbox Skills (Contextual Tasks)";
 inline constexpr char kComposeboxSkillsContextualTasksDescription[] =
@@ -1670,6 +1681,12 @@ inline constexpr char kGlicZeroStateSuggestionsDescription[] =
 inline constexpr char kContextualCueingV2Name[] = "Contextual cueing V2";
 inline constexpr char kContextualCueingV2Description[] =
     "Enables the contextual cueing system version 2.";
+
+inline constexpr char kContextualCueingV2MultiSourceName[] =
+    "Contextual cueing V2 multi-source";
+inline constexpr char kContextualCueingV2MultiSourceDescription[] =
+    "Enables parallel evaluation of all registered cue targets and selects the "
+    "winner with UCB scoring for contextual cueing V2.";
 
 inline constexpr char kGeicEnabledName[] = "GEiC enabled";
 inline constexpr char kGeicEnabledDescription[] =
@@ -1896,6 +1913,12 @@ inline constexpr char kGlicContextualCueingV2AutoSubmitName[] =
 inline constexpr char kGlicContextualCueingV2AutoSubmitDescription[] =
     "Enable automatically submitting a suggested prompt when the v2 contextual "
     "cue UI for Glic is clicked.";
+
+inline constexpr char kGlicMessageFirstFreForContextualCueName[] =
+    "Glic Message First FRE for Contextual Cue";
+inline constexpr char kGlicMessageFirstFreForContextualCueDescription[] =
+    "Enables the message-first first run experience (FRE) when auto-submitting "
+    "from a contextual cue.";
 
 inline constexpr char kEnterprisePublishedSkillsPolicyEnabledName[] =
     "Enable EnterprisePublishedSkills policy";
@@ -2377,54 +2400,6 @@ inline constexpr char kDeprecateAltClickName[] =
 inline constexpr char kDeprecateAltClickDescription[] =
     "Start providing notifications about Alt+Click deprecation and enable "
     "Search+Click as an alternative.";
-
-inline constexpr char kMemlogName[] = "Chrome heap profiler start mode.";
-inline constexpr char kMemlogDescription[] =
-    "Starts heap profiling service that records sampled memory allocation "
-    "profile having each sample attributed with a callstack. "
-    "The sampling resolution is controlled with --memlog-sampling-rate flag. "
-    "Recorded heap dumps can be obtained at chrome://tracing "
-    "[category:memory-infra] and chrome://memory-internals. This setting "
-    "controls which processes will be profiled since their start. To profile "
-    "any given process at a later time use chrome://memory-internals page.";
-inline constexpr char kMemlogModeMinimal[] = "Browser and GPU";
-inline constexpr char kMemlogModeAll[] = "All processes";
-inline constexpr char kMemlogModeAllRenderers[] = "All renderers";
-inline constexpr char kMemlogModeRendererSampling[] = "Single renderer";
-inline constexpr char kMemlogModeBrowser[] = "Browser only";
-inline constexpr char kMemlogModeGpu[] = "GPU only";
-inline constexpr char kMemlogModeUtilitySampling[] = "Single utility";
-inline constexpr char kMemlogModeAllUtilities[] = "All utilities";
-
-inline constexpr char kMemlogSamplingRateName[] =
-    "Heap profiling sampling interval (in bytes).";
-inline constexpr char kMemlogSamplingRateDescription[] =
-    "Heap profiling service uses Poisson process to sample allocations. "
-    "Default value for the interval between samples is 1000000 (1MB). "
-    "This results in low noise for large and/or frequent allocations "
-    "[size * frequency >> 1MB]. This means that aggregate numbers [e.g. "
-    "total size of malloc-ed objects] and large and/or frequent allocations "
-    "can be trusted with high fidelity. "
-    "Lower intervals produce higher samples resolution, but come at a cost of "
-    "higher performance overhead.";
-inline constexpr char kMemlogSamplingRate10KB[] = "10KB";
-inline constexpr char kMemlogSamplingRate50KB[] = "50KB";
-inline constexpr char kMemlogSamplingRate100KB[] = "100KB";
-inline constexpr char kMemlogSamplingRate500KB[] = "500KB";
-inline constexpr char kMemlogSamplingRate1MB[] = "1MB";
-inline constexpr char kMemlogSamplingRate5MB[] = "5MB";
-
-inline constexpr char kMemlogStackModeName[] =
-    "Heap profiling stack traces type.";
-inline constexpr char kMemlogStackModeDescription[] =
-    "By default heap profiling service records native stacks. "
-    "A post-processing step is required to symbolize the stacks. "
-    "'Native with thread names' adds the thread name as the first frame of "
-    "each native stack. It's also possible to record a pseudo stack using "
-    "trace events as identifiers. It's also possible to do a mix of both.";
-inline constexpr char kMemlogStackModeNative[] = "Native";
-inline constexpr char kMemlogStackModeNativeWithThreadNames[] =
-    "Native with thread names";
 
 inline constexpr char kEnableDevtoolsDeepLinkViaExtensibilityApiName[] =
     "Extensibility API support for deep-links within DevTools";
@@ -5175,6 +5150,13 @@ inline constexpr char kAppStoreBillingDebugDescription[] =
     "requested using the Payment Request API. This flag removes the "
     "restriction that the TWA has to be installed from the app-store.";
 
+inline constexpr char kSecurePaymentConfirmationCredentialDiscoveryModeName[] =
+    "Secure Payment Confirmation Credential Discovery Mode";
+inline constexpr char
+    kSecurePaymentConfirmationCredentialDiscoveryModeDescription[] =
+        "Controls the strategy for discovering Secure Payment Confirmation "
+        "credentials (e.g. database-only, hybrid, or OS store only).";
+
 inline constexpr char kWebrtcHideLocalIpsWithMdnsName[] =
     "Anonymize local IPs exposed by WebRTC.";
 inline constexpr char kWebrtcHideLocalIpsWithMdnsDecription[] =
@@ -5350,6 +5332,10 @@ inline constexpr char kPromptAPIMultimodalInputDescription[] =
     "sounds. It is NOT suitable for use cases that require factual accuracy "
     "(e.g. answering knowledge questions). "
     "Please refer to the built-in AI documentation [1] for details.";
+
+inline constexpr char kPromptAPIToolUseName[] = "Prompt API Tool Use";
+inline constexpr char kPromptAPIToolUseDescription[] =
+    "Extends the Prompt API with tool use (function calling) capabilities.";
 
 inline constexpr char kPromptAPISamplingModeName[] = "Prompt API Sampling Mode";
 inline constexpr char kPromptAPISamplingModeDescription[] =
@@ -5873,9 +5859,6 @@ inline constexpr char kApb144Patch4Name[] = "Apb144Patch4";
 inline constexpr char kApb144Patch4Description[] =
     "Enables the fourth patch for APB in 144.";
 
-inline constexpr char kApb144Patch5Name[] = "Apb144Patch5";
-inline constexpr char kApb144Patch5Description[] =
-    "Enables the fifth patch for APB in 144.";
 
 inline constexpr char kApb144Patch6Name[] = "Apb144Patch6";
 inline constexpr char kApb144Patch6Description[] =
@@ -5981,12 +5964,6 @@ inline constexpr char kCCTIncognitoAvailableToThirdPartyName[] =
 inline constexpr char kCCTIncognitoAvailableToThirdPartyDescription[] =
     "Enabling it would allow third party apps to open incognito mode for "
     "Chrome Custom Tabs, on Android.";
-
-inline constexpr char kCCTNestedSecurityIconName[] =
-    "Nest the CCT security icon under the title.";
-inline constexpr char kCCTNestedSecurityIconDescription[] =
-    "When enabled, the CCT toolbar security icon will be nested under the "
-    "title.";
 
 inline constexpr char kCCTGoogleBottomBarName[] = "Google Bottom Bar";
 inline constexpr char kCCTGoogleBottomBarDescription[] =
@@ -6955,6 +6932,28 @@ inline constexpr char kRealboxVirtualFocusNavigationDescription[] =
     "from the searchbox, unifying behavior with the Omnibox and improving "
     "accessibility.";
 
+inline constexpr char kOmniboxPopupVirtualFocusNavigationName[] =
+    "Enable WebUI Omnibox Popup Virtual Focus Navigation";
+inline constexpr char kOmniboxPopupVirtualFocusNavigationDescription[] =
+    "Enables virtual focus keyboard navigation within the WebUI Omnibox Popup.";
+
+inline constexpr char kLensOverlayVirtualFocusNavigationName[] =
+    "Enable Lens Overlay Virtual Focus Navigation";
+inline constexpr char kLensOverlayVirtualFocusNavigationDescription[] =
+    "Enables virtual focus keyboard navigation within the Lens Overlay "
+    "searchbox.";
+
+inline constexpr char kOmniboxEverywhereVirtualFocusNavigationName[] =
+    "Enable Omnibox Everywhere Virtual Focus Navigation";
+inline constexpr char kOmniboxEverywhereVirtualFocusNavigationDescription[] =
+    "Enables virtual focus keyboard navigation within Omnibox Everywhere.";
+
+inline constexpr char kWebuiBrowserVirtualFocusNavigationName[] =
+    "Enable WebUI Browser Virtual Focus Navigation";
+inline constexpr char kWebuiBrowserVirtualFocusNavigationDescription[] =
+    "Enables virtual focus keyboard navigation within the WebUI Browser "
+    "searchbox.";
+
 inline constexpr char kMarkAllCredentialsAsLeakedName[] =
     "Mark all credential as leaked";
 inline constexpr char kMarkAllCredentialsAsLeakedDescription[] =
@@ -7110,12 +7109,6 @@ inline constexpr char kNtpRealboxCr23ThemingName[] =
     "Chrome Refresh Themed Realbox";
 inline constexpr char kNtpRealboxCr23ThemingDescription[] =
     "CR23 theming will be applied in Realbox when enabled.";
-
-inline constexpr char kNtpRichImageSuggestionsName[] =
-    "NTP Rich Image Suggestions";
-inline constexpr char kNtpRichImageSuggestionsDescription[] =
-    "Enables richer image suggestions in the NTP Composebox for image "
-    "generation.";
 
 inline constexpr char kNtpScaledActionChipsName[] = "NTP Scaled Action Chips";
 inline constexpr char kNtpScaledActionChipsDescription[] =

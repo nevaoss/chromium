@@ -4373,46 +4373,6 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram
-    name="Ash.Glanceables.TimeManagement.{GlanceableBubble}.ChangeListToLoadTime.{Status}"
-    units="ms" expires_after="2025-12-31">
-  <owner>anasalazar@google.com</owner>
-  <owner>chromeos-launcher@google.com</owner>
-  <summary>
-    The amount of time in ms that the glanceables bubble takes to load up the
-    data from the API after the user triggered an update. Split by bubble type
-    and query status.
-  </summary>
-  <token key="GlanceableBubble">
-    <variant name="Classroom"/>
-    <variant name="Tasks"/>
-  </token>
-  <token key="Status">
-    <variant name="Fail"/>
-    <variant name="Success"/>
-  </token>
-</histogram>
-
-<histogram
-    name="Ash.Glanceables.TimeManagement.{GlanceableBubble}.OpenToInitialLoadTime.{Occurrence}"
-    units="ms" expires_after="2025-12-31">
-  <owner>anasalazar@google.com</owner>
-  <owner>chromeos-launcher@google.com</owner>
-  <summary>
-    The amount of time in ms that the glanceables bubble takes to load up the
-    initial data from the API after opened. Split by bubble type and whether the
-    time represent the first time the bubble was opened in the session or not.
-  </summary>
-  <token key="GlanceableBubble">
-    <variant name="Classroom"/>
-    <variant name="Tasks"/>
-  </token>
-  <token key="Occurrence">
-    <variant name="FirstOcurrence"/>
-    <variant name="SubsequentOccurence"/>
-  </token>
-</histogram>
-
-<histogram
     name="Ash.Glanceables.TimeManagement.{GlanceableBubble}.{ExpandState}.AnimationSmoothness"
     units="%" expires_after="2026-08-02">
   <owner>wcwang@google.com</owner>
@@ -6156,72 +6116,6 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Ash.Personalization.Ambient.LinkToGooglePhotosClicked"
-    enum="BooleanHit" expires_after="2025-06-30">
-  <owner>cowmoo@google.com</owner>
-  <owner>cros-p13n-eng@google.com</owner>
-  <summary>
-    Emitted whenever the user clicks the hyperlink to config Google Photos from
-    the ambient UI albums selection subpage.
-  </summary>
-</histogram>
-
-<histogram name="Ash.Personalization.AmbientMode.AlbumsPath"
-    enum="AmbientModeTopicSource" expires_after="2025-08-31">
-  <owner>cowmoo@google.com</owner>
-  <owner>cros-p13n-eng@google.com</owner>
-  <summary>
-    Emitted when a user navigates to the ambient mode albums selection page in
-    the Personalization Hub. Record the type of albums the user visits.
-  </summary>
-</histogram>
-
-<histogram name="Ash.Personalization.AmbientMode.AnimationTheme2"
-    enum="AmbientModeAnimationTheme" expires_after="2025-06-30">
-  <owner>jasontt@chromium.org</owner>
-  <owner>cros-p13n-eng@google.com</owner>
-  <summary>
-    Emitted when a user selects an animation theme in screensaver subpage or
-    when screensaver is first enabled. In the latter case, the theme is recorded
-    here even without the user explicitly selecting it in the screensaver
-    subpage. The theme in this case will either be the default chosen by the
-    system, or the theme that the user had selected when they last disabled
-    screensaver.
-  </summary>
-</histogram>
-
-<histogram name="Ash.Personalization.AmbientMode.OptIn" enum="BooleanHit"
-    expires_after="2025-08-31">
-  <owner>jasontt@chromium.org</owner>
-  <owner>cros-p13n-eng@google.com</owner>
-  <summary>
-    Emitted when a user presses the `Turn on` button on ambient preview to
-    enable screen saver.
-  </summary>
-</histogram>
-
-<histogram name="Ash.Personalization.AmbientMode.ScreenSaverDuration"
-    enum="AmbientModeDurationOption" expires_after="2025-06-30">
-  <owner>cowmoo@google.com</owner>
-  <owner>cros-p13n-eng@google.com</owner>
-  <summary>
-    Emitted when a user selects a new screen saver duration option.
-  </summary>
-</histogram>
-
-<histogram name="Ash.Personalization.AmbientMode.Video2"
-    enum="AmbientModeVideo" expires_after="2025-06-30">
-  <owner>jasontt@chromium.org</owner>
-  <owner>cros-p13n-eng@google.com</owner>
-  <summary>
-    Emitted when a user selects the video theme, selects a new video in the
-    screensaver subpage, or enables screensaver with a video theme automatically
-    active. The latter can happen if a video theme is the default on that
-    particular device model, or if the user had selected a video theme in the
-    past when they last disabled screensaver.
-  </summary>
-</histogram>
-
 <histogram name="Ash.Personalization.DynamicColor.ColorScheme.Settled"
     enum="PersonalizationDynamicColorColorScheme" expires_after="2025-12-28">
   <owner>cowmoo@google.com</owner>
@@ -6832,15 +6726,6 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Ash.QuickSettings.Button.Activated" enum="QsButtonCatalogName"
-    expires_after="2025-04-13">
-  <owner>jiamingc@google.com</owner>
-  <owner>cros-status-area-eng@google.com</owner>
-  <summary>
-    Recorded when any button in the quick settings view is activated.
-  </summary>
-</histogram>
-
 <histogram name="Ash.QuickSettings.FeaturePod.{FeaturePodBehavior}"
     enum="QsFeatureCatalogName" expires_after="2026-07-05">
   <owner>jiamingc@google.com</owner>
@@ -6857,19 +6742,6 @@ chromium-metrics-reviews@google.com.
     <variant name="ToggledOn" summary="Toggle to enable the feature"/>
     <variant name="Visible" summary="The feature pod is shown"/>
   </token>
-</histogram>
-
-<histogram name="Ash.QuickSettings.PageCountOnClose" units="pages"
-    expires_after="2024-09-29">
-  <owner>etuck@google.com</owner>
-  <owner>cros-status-area-eng@google.com</owner>
-  <summary>
-    The number of quick settings pagination pages in the new quick settings UI.
-    This metric is recorded each time the quick settings are closed. Note that
-    this will also get recorded when the user opens and then closes the status
-    area calendar (even if they never viewed the quick settings), until
-    b/285280977 is fixed.
-  </summary>
 </histogram>
 
 <histogram name="Ash.QuickSettings.Slider.{SliderBehavior}"
@@ -6898,22 +6770,6 @@ chromium-metrics-reviews@google.com.
     button. Starts measuring time whenever the QS bubble is opened, and records
     metric when the QS bubble is closed.
   </summary>
-</histogram>
-
-<histogram name="Ash.QuickSettings.{DeviceMode}.FeaturePodCountOnOpen"
-    units="count" expires_after="2024-09-29">
-  <owner>jiamingc@google.com</owner>
-  <owner>cros-status-area-eng@google.com</owner>
-  <summary>
-    The number of feature pods (e.g. WiFi, Bluetooth, IME, Accessibility, etc.)
-    in the system tray quick settings when it is opened, including pods that
-    overflow to other pages. This metric is logged by 2 different types of
-    {DeviceMode}: &quot;Clamshell&quot; and &quot;Tablet&quot;.
-  </summary>
-  <token key="DeviceMode">
-    <variant name="Clamshell" summary="Regular mode"/>
-    <variant name="Tablet" summary="Tablet mode"/>
-  </token>
 </histogram>
 
 <histogram

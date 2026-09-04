@@ -66,6 +66,7 @@ public class PdfPage extends BasicNativePage {
             // Bind the PDF stream lifetime to the Tab instead of the transient PdfPage view.
             PdfTabHelper.from(tab).setPdfUrl(url);
         }
+
         mIsDownloadSafe = pdfInfo.isDownloadSafe;
         String decodedUrl = PdfUtils.decodePdfPageUrl(url);
         String filepath =
@@ -111,8 +112,12 @@ public class PdfPage extends BasicNativePage {
         super.updateForUrl(url);
         if (!PdfUtils.isReuseFragmentEnabled()) return;
 
+        boolean sameUrl = TextUtils.equals(mUrl, url);
+        if (sameUrl && !mPdfCoordinator.hasChanges()) {
+            return;
+        }
+
         boolean localPdf = PdfUtils.isDownloadedPdf(url);
-        boolean isReload = TextUtils.equals(mUrl, url);
         mUrl = url;
 
         Runnable doUpdate =
@@ -131,7 +136,7 @@ public class PdfPage extends BasicNativePage {
                             pdfUrl, PdfUtils.getFileNameFromUrl(pdfUrl, ""));
                 };
 
-        if (isReload && mPdfCoordinator.hasChanges()) {
+        if (sameUrl && mPdfCoordinator.hasChanges()) {
             mPdfCoordinator.showReloadConfirmationDialog(doUpdate);
         } else {
             doUpdate.run();
@@ -354,5 +359,10 @@ public class PdfPage extends BasicNativePage {
      */
     public @Nullable Uri getFileUri(boolean isWorkProfile, @Nullable String targetPackage) {
         return mPdfCoordinator.getFileUri(isWorkProfile, targetPackage);
+    }
+
+    @Override
+    public void download() {
+        mPdfCoordinator.download();
     }
 }

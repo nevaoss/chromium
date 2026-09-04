@@ -8,6 +8,7 @@
 #include "chrome/browser/enterprise/browser_management/management_service_factory.h"
 #include "chrome/browser/enterprise/util/managed_browser_utils.h"
 #include "chrome/browser/profiles/batch_upload/batch_upload_service_test_helper.h"
+#include "chrome/browser/profiles/profile_attributes_storage.h"
 #include "chrome/browser/signin/account_preview_data_service_factory.h"
 #include "chrome/browser/signin/signin_util.h"
 #include "chrome/browser/sync/device_info_sync_service_factory.h"
@@ -556,7 +557,7 @@ class ProfileMenuViewPixelTest
     }
 
     // Open browser to make changes effective.
-    Browser* tmp_browser = CreateBrowser(&profile);
+    BrowserWindowInterface* tmp_browser = CreateBrowser(&profile);
     CloseBrowserAsynchronously(tmp_browser);
   }
 
@@ -566,7 +567,7 @@ class ProfileMenuViewPixelTest
     // Configures the browser according to the profile type.
     auto browser_created_observer =
         std::make_optional<ui_test_utils::BrowserCreatedObserver>();
-    Browser* new_browser = nullptr;
+    BrowserWindowInterface* new_browser = nullptr;
 
     switch (GetProfileType()) {
       case ProfileTypePixelTestParam::kRegular:
@@ -855,7 +856,7 @@ class ProfileMenuViewPixelTest
   }
 
   ProfileMenuViewBase* profile_menu_view() {
-    auto* coordinator = browser()->GetFeatures().profile_menu_coordinator();
+    auto* coordinator = ProfileMenuCoordinator::From(browser());
     return coordinator ? coordinator->GetProfileMenuViewBaseForTesting()
                        : nullptr;
   }

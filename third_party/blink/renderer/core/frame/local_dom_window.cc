@@ -988,7 +988,7 @@ void LocalDOMWindow::DispatchLoadAndPageshowEvents() {
   // 4.5. ..., invoke the reset algorithm of each of those elements.
   // 4.6.3. Run any session history document visibility change steps ...
   if (document_) {
-    document_->GetFormController().RestoreImmediately();
+    document_->EnsureFormController().RestoreImmediately();
   }
 
   // 4.6.4. Fire an event named pageshow at the Document object's relevant
@@ -1662,6 +1662,13 @@ bool LocalDOMWindow::find(const String& string,
 
 bool LocalDOMWindow::offscreenBuffering() const {
   return true;
+}
+
+bool LocalDOMWindow::alwaysOnTop() const {
+  if (!GetFrame() || !GetFrame()->GetPage()) {
+    return false;
+  }
+  return GetFrame()->GetPage()->AlwaysOnTop();
 }
 
 int LocalDOMWindow::outerHeight() const {

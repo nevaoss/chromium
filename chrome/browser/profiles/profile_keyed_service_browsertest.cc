@@ -197,6 +197,7 @@ class ProfileKeyedServiceBrowserTest : public InProcessBrowserTest {
 #if !BUILDFLAG(IS_ANDROID)
           features::kInitialWebUI,
           features::kWebUIReloadButton,
+          features::kLazyKeyedServiceInstantiation,
 #endif  // !BUILDFLAG(IS_ANDROID)
           features::kTrustSafetySentimentSurvey,
 #if BUILDFLAG(IS_WIN)
@@ -529,6 +530,7 @@ IN_PROC_BROWSER_TEST_F(ProfileKeyedServiceGuestBrowserTest,
     "UsbDeviceManager",
     "UsbDeviceResourceManager",
 #if !BUILDFLAG(IS_ANDROID)
+    "UserEducationService",
     "WaapUIMetricsService",
 #endif  // !BUILDFLAG(IS_ANDROID)
     "sct_reporting::Factory",
@@ -626,6 +628,10 @@ IN_PROC_BROWSER_TEST_F(ProfileKeyedServiceGuestBrowserTest,
   ASSERT_FALSE(guest_otr_profile->IsRegularProfile());
   ASSERT_TRUE(guest_otr_profile->IsOffTheRecord());
   ASSERT_TRUE(guest_otr_profile->IsGuestSession());
+  if (base::FeatureList::IsEnabled(features::kLazyKeyedServiceInstantiation) &&
+      features::kLazyKeyedServiceInstantiationExtensions.Get()) {
+    guest_otr_active_services.erase("SafeBrowsingPrivateEventRouter");
+  }
   TestKeyedProfileServicesActives(guest_otr_profile, guest_otr_active_services);
 }
 
@@ -1040,5 +1046,14 @@ IN_PROC_BROWSER_TEST_F(ProfileKeyedServiceGuestBrowserTest,
   ASSERT_FALSE(guest_parent_profile->IsRegularProfile());
   ASSERT_FALSE(guest_parent_profile->IsOffTheRecord());
   ASSERT_TRUE(guest_parent_profile->IsGuestSession());
+  if (base::FeatureList::IsEnabled(features::kLazyKeyedServiceInstantiation) &&
+      features::kLazyKeyedServiceInstantiationOptimizationGuide.Get()) {
+    guest_active_services.erase("PageContentAnnotationsService");
+    guest_active_services.erase("ZeroSuggestCacheServiceFactory");
+  }
+  if (base::FeatureList::IsEnabled(features::kLazyKeyedServiceInstantiation) &&
+      features::kLazyKeyedServiceInstantiationExtensions.Get()) {
+    guest_active_services.erase("SafeBrowsingPrivateEventRouter");
+  }
   TestKeyedProfileServicesActives(guest_parent_profile, guest_active_services);
 }

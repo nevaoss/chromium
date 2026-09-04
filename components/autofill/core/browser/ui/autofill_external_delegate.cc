@@ -42,11 +42,12 @@
 #include "components/autofill/core/browser/autofill_type.h"
 #include "components/autofill/core/browser/data_manager/addresses/address_data_manager.h"
 #include "components/autofill/core/browser/data_manager/autofill_ai/entity_data_manager.h"
+#include "components/autofill/core/browser/data_manager/autofill_ai/entity_suppression_manager.h"
 #include "components/autofill/core/browser/data_manager/payments/payments_data_manager.h"
 #include "components/autofill/core/browser/data_manager/valuables/valuables_data_manager.h"
 #include "components/autofill/core/browser/data_model/autofill_ai/entity_instance.h"
 #include "components/autofill/core/browser/data_model/valuables/valuable_types.h"
-#include "components/autofill/core/browser/field_type_utils.h"
+#include "components/autofill/core/browser/field_type_util.h"
 #include "components/autofill/core/browser/field_types.h"
 #include "components/autofill/core/browser/filling/addresses/field_filling_address_util.h"
 #include "components/autofill/core/browser/filling/autofill_ai/autofill_ai_access_manager.h"
@@ -64,7 +65,7 @@
 #include "components/autofill/core/browser/integrators/one_time_tokens/otp_suggestion.h"
 #include "components/autofill/core/browser/metrics/autofill_in_devtools_metrics.h"
 #include "components/autofill/core/browser/metrics/autofill_metrics.h"
-#include "components/autofill/core/browser/metrics/autofill_metrics_utils.h"
+#include "components/autofill/core/browser/metrics/autofill_metrics_util.h"
 #include "components/autofill/core/browser/metrics/loyalty_cards_metrics.h"
 #include "components/autofill/core/browser/metrics/suggestions_list_metrics.h"
 #include "components/autofill/core/browser/payments/ai_card_recommendation_manager.h"
@@ -905,6 +906,7 @@ void AutofillExternalDelegate::DidAcceptSuggestion(
     const Suggestion& suggestion,
     const SuggestionMetadata& metadata) {
   CHECK(suggestion.IsAcceptable());
+  // TODO(crbug.com/552871965): Extract the logging here to a separate function.
   base::UmaHistogramEnumeration("Autofill.Suggestions.AcceptedType",
                                 suggestion.type);
 
@@ -913,6 +915,11 @@ void AutofillExternalDelegate::DidAcceptSuggestion(
     manager_->client().GetFormInteractionsUkmLogger().LogSuggestionAccepted(
         manager_->driver().GetPageUkmSourceId(), CHECK_DEREF(form_structure),
         CHECK_DEREF(autofill_field), suggestion.type, metadata.row());
+  }
+  if (autofill_field &&
+      autofill_field->Type().GetAddressType() == EMAIL_ADDRESS) {
+    autofill_metrics::LogMergedEmailAcceptedSuggestionType(
+        suggestion.type, shown_suggestion_types_);
   }
 
   switch (suggestion.type) {
@@ -1197,8 +1204,17 @@ void AutofillExternalDelegate::DidAcceptSuggestion(
       // `RemoveSuggestion`.
       return;
     case SuggestionType::kRemoveAutofillAi:
-      // TODO(crbug.com/541184575): Implement suppression/removal of the entity.
-      NOTIMPLEMENTED();
+      if (!base::FeatureList::IsEnabled(
+              features::kAutofillAmbientAutofillSuppression)) {
+        break;
+      }
+      if (const base::optional_ref<const EntityInstance> entity =
+              GetEntityInstance(suggestion)) {
+        if (EntitySuppressionManager* suppression_manager =
+                manager_->client().GetEntitySuppressionManager()) {
+          suppression_manager->SuppressEntity(*entity);
+        }
+      }
       break;
     case SuggestionType::kAutofillAiSourceAttribution:
       // TODO(crbug.com/541184575): Implement navigation to source URL.

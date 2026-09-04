@@ -2365,7 +2365,7 @@ String Document::nodeName() const {
   return "#document";
 }
 
-FormController& Document::GetFormController() {
+FormController& Document::EnsureFormController() {
   if (!form_controller_) {
     form_controller_ = MakeGarbageCollected<FormController>(*this);
     HistoryItem* history_item = Loader() ? Loader()->GetHistoryItem() : nullptr;
@@ -2384,7 +2384,7 @@ DocumentState* Document::GetDocumentState() const {
 void Document::SetStateForNewControls(const Vector<String>& state_vector) {
   if (!state_vector.size() && !form_controller_)
     return;
-  GetFormController().SetStateForNewControls(state_vector);
+  EnsureFormController().SetStateForNewControls(state_vector);
 }
 
 LocalFrameView* Document::View() const {
@@ -4638,7 +4638,9 @@ bool Document::DispatchBeforeUnloadEvent(
   return false;
 }
 
-void Document::DispatchUnloadEvents(UnloadEventTimingInfo* unload_timing_info) {
+void Document::DispatchUnloadEvents(
+    UnloadEventTimingInfo* unload_timing_info,
+    bool will_commit_new_document_in_this_frame) {
   TRACE_EVENT("blink", "Document::DispatchUnloadEvents",
               perfetto::Flow::FromPointer(this));
   base::ScopedUmaHistogramTimer histogram_timer(
@@ -4660,6 +4662,13 @@ void Document::DispatchUnloadEvents(UnloadEventTimingInfo* unload_timing_info) {
   Element* current_focused_element = FocusedElement();
   if (auto* input = DynamicTo<HTMLInputElement>(current_focused_element))
     input->EndEditing();
+
+  if (!will_commit_new_document_in_this_frame && GetFrame() &&
+      !GetFrame()->IsMainFrame() &&
+      RuntimeEnabledFeatures::OmitSubframeDetachmentEventsOnRemovalEnabled()) {
+    load_event_progress_ = kUnloadEventHandled;
+    return;
+  }
 
   // Since we do not allow registering the unload event handlers in
   // fenced frames, it should not be fired by fencedframes.

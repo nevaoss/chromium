@@ -403,7 +403,12 @@ BASE_FEATURE(kUseDynamicBackingAllocations, base::FEATURE_DISABLED_BY_DEFAULT);
 // scoped_refptr to SharedImageInterface, instead of the raw_ptr as used in
 // SharedImageInterfaceHolder.
 BASE_FEATURE(kUseStrongRefToSharedImageInterface,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+#if BUILDFLAG(IS_CHROMEOS)
+             base::FEATURE_DISABLED_BY_DEFAULT
+#else
+             base::FEATURE_ENABLED_BY_DEFAULT
+#endif
+);
 
 // When enabled, this feature lets ClientSharedImage handle all SyncToken
 // management (i.e. generation, waiting and storing) internally. All SyncTokens
@@ -444,6 +449,10 @@ BASE_FEATURE(kSkiaGraphiteUsePersistentCache,
 bool SkiaGraphiteUsesPersistentCache() {
   return base::FeatureList::IsEnabled(kSkiaGraphiteUsePersistentCache);
 }
+
+// Enables switching Graphite from the sort-based draw ordering to the
+// layer-based system.
+BASE_FEATURE(kSkiaGraphiteDrawListLayer, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kConditionallySkipGpuChannelFlush,
 // To enable on ChromeOS, test failures must be investigated

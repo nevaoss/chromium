@@ -406,6 +406,7 @@ bool ComposeboxQueryController::HasC2paMetadata(
     base::span<const uint8_t> bytes) {
   std::string_view bytes_to_search(reinterpret_cast<const char*>(bytes.data()),
                                    std::min(bytes.size(), kMaxC2paSearchBytes));
+  // TODO(crbug.com/555150321): Improve c2pa detection heuristic.
   return bytes_to_search.find(kC2paMarker) != std::string_view::npos;
 }
 
@@ -414,6 +415,8 @@ ComposeboxQueryController::MaybeCreateC2paBypassImageData(
     base::span<const uint8_t> original_image_bytes,
     int width,
     int height) {
+  // TODO(crbug.com/555150730): Pass the c2pa header detection bit from Java to
+  // c++ so that c2pa header detection can be skipped in the c++ layer.
   if (original_image_bytes.empty() ||
       !base::FeatureList::IsEnabled(
           lens::features::kLensBypassCompressionForC2pa) ||
@@ -2098,6 +2101,13 @@ void ComposeboxQueryController::ProcessDecodedImageAndContinue(
       base::StrCat({"Lens.Composebox.ImageUpload.",
                     ImageTypeToString(image_type), ".InputMaxDimension"}),
       max_dimension, 1, 10000, 50);
+
+  bool has_c2pa =
+      original_image_data && HasC2paMetadata(original_image_data->data);
+  base::UmaHistogramBoolean(
+      base::StrCat({"Lens.Composebox.ImageUpload.",
+                    ImageTypeToString(image_type), ".C2paDetected"}),
+      has_c2pa);
 
   // If the bitmap is a viewport bitmap, it will be destroyed after the
   // owning ContextualInputData is destroyed (i.e. at the end of

@@ -5,6 +5,7 @@
 package org.chromium.chrome.browser.readaloud.player.expanded;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
@@ -32,7 +33,6 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.robolectric.Robolectric;
-import org.robolectric.annotation.Config;
 
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.Features.DisableFeatures;
@@ -50,7 +50,6 @@ import java.util.Locale;
 
 /** Unit tests for {@link ExpandedPlayerSheetContent}. */
 @RunWith(BaseRobolectricTestRunner.class)
-@Config(manifest = Config.NONE)
 @DisableFeatures({ChromeFeatureList.FEED_AUDIO_OVERVIEWS})
 public class ExpandedPlayerSheetContentUnitTest {
     @Rule public final MockitoRule mMockitoRule = MockitoJUnit.rule();
@@ -333,6 +332,21 @@ public class ExpandedPlayerSheetContentUnitTest {
 
         assertTrue(mErrorLayout.getVisibility() == View.GONE);
         assertTrue(mLoadingLayout.getVisibility() == View.VISIBLE);
+    }
+
+    @Test
+    public void testInitialViewStates() {
+        TextView loadingText = mContentView.findViewById(R.id.readaloud_loading_text);
+        assertEquals(View.GONE, mLoadingLayout.getVisibility());
+        assertEquals(View.GONE, loadingText.getVisibility());
+        assertEquals(View.VISIBLE, mNormalLayout.getVisibility());
+
+        assertTrue(mSeekbar.isFocusable());
+        assertFalse(mSeekbar.getDefaultFocusHighlightEnabled());
+
+        assertTrue(mPublisherContainerView.isFocusable());
+        mContent.setInteractionHandler(mInteractionHandler);
+        assertTrue(mPublisherContainerView.isClickable());
     }
 
     @Test

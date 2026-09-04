@@ -1408,7 +1408,6 @@ if (is_android) {
       "//chrome/browser/privacy_sandbox:browser_tests",
       "//chrome/browser/profiles",
       "//chrome/browser/profiles:android_browsertests",
-      "//chrome/browser/profiling_host:profiling_browsertests",
       "//chrome/browser/safe_browsing:test_support",
       "//chrome/browser/safe_browsing/android:test_support_java",
       "//chrome/browser/search_engines",
@@ -2146,7 +2145,6 @@ if (!is_android) {
       "//chrome/browser/profiles:misc",
       "//chrome/browser/profiles:profile_util",
       "//chrome/browser/profiles/keep_alive",
-      "//chrome/browser/profiling_host:profiling_browsertests",
       "//chrome/browser/push_messaging",
       "//chrome/browser/push_messaging:browser_tests",
       "//chrome/browser/push_messaging:service_impl_public",
@@ -2358,8 +2356,14 @@ if (!is_android) {
       "//chrome/browser/ui/views/side_panel",
       "//chrome/browser/ui/views/storage",
       "//chrome/browser/ui/views/tabs:base",
+      "//chrome/browser/ui/views/tabs:browser_tests",
+      "//chrome/browser/ui/views/tabs:new_tab_button",
+      "//chrome/browser/ui/views/tabs:tab",
+      "//chrome/browser/ui/views/tabs:tab_strip",
       "//chrome/browser/ui/views/tabs:tab_style_views",
+      "//chrome/browser/ui/views/tabs:test_support",
       "//chrome/browser/ui/views/tabs/glic",
+      "//chrome/browser/ui/views/tabs/glic:browser_tests",
       "//chrome/browser/ui/views/tabs/groups:browser_tests",
       "//chrome/browser/ui/views/tabs/hovercard",
       "//chrome/browser/ui/views/tabs/hovercard:browser_tests",
@@ -2370,6 +2374,7 @@ if (!is_android) {
       "//chrome/browser/ui/views/user_education",
       "//chrome/browser/ui/views/user_education:browser_tests",
       "//chrome/browser/ui/views/web_apps:launch_dialogs",
+      "//chrome/browser/ui/views/web_apps:web_app_uninstall_dialog_view",
       "//chrome/browser/ui/views/web_apps/isolated_web_apps:installer_base",
       "//chrome/browser/ui/views/web_apps/isolated_web_apps:user_installability_checker",
       "//chrome/browser/ui/views/webauthn:browser_tests",
@@ -2420,6 +2425,7 @@ if (!is_android) {
       "//chrome/browser/ui/webui/top_chrome",
       "//chrome/browser/ui/webui/top_chrome:browser_tests",
       "//chrome/browser/ui/webui/top_chrome:test_support",
+      "//chrome/browser/ui/webui/user_education:browser_tests",
       "//chrome/browser/ui/webui/watermark",
       "//chrome/browser/ui/webui/webui_toolbar:browser_tests",
       "//chrome/browser/ui/webui/webui_toolbar/adapters:impl",
@@ -3008,6 +3014,7 @@ if (!is_android) {
       "../browser/ui/browser_instant_controller_browsertest.cc",
       "../browser/ui/browser_tab_strip_model_delegate_browsertest.cc",
       "../browser/ui/browser_tabrestore_browsertest.cc",
+      "../browser/ui/collected_cookies_browsertest.cc",
       "../browser/ui/desktop_to_mobile_promos/ios_promos_utils_browsertest.cc",
       "../browser/ui/managed_ui_browsertest.cc",
       "../browser/ui/native_window_tracker_browsertest.cc",
@@ -3044,12 +3051,6 @@ if (!is_android) {
       "../browser/ui/views/side_panel/tabs_from_other_devices/tabs_from_other_devices_side_panel_browsertest.cc",
       "../browser/ui/views/storage/storage_pressure_bubble_view_browsertest.cc",
       "../browser/ui/views/tab_search_bubble_host_browsertest.cc",
-      "../browser/ui/views/tabs/browser_tab_strip_controller_browsertest.cc",
-      "../browser/ui/views/tabs/fake_base_tab_strip_controller.cc",
-      "../browser/ui/views/tabs/fake_base_tab_strip_controller.h",
-      "../browser/ui/views/tabs/glic/glic_button_browsertest.cc",
-      "../browser/ui/views/tabs/tab_strip_action_container_browsertest.cc",
-      "../browser/ui/views/tabs/tab_strip_browsertest.cc",
       "../browser/ui/views/web_apps/frame_toolbar/web_app_frame_toolbar_browsertest.cc",
       "../browser/ui/views/web_apps/frame_toolbar/web_app_menu_browsertest.cc",
       "../browser/ui/views/web_apps/frame_toolbar/web_app_minimal_ui_test.cc",
@@ -3216,11 +3217,19 @@ if (!is_android) {
       deps += [
         "//chrome/browser/enterprise/profile_management:browser_tests",
         "//chrome/browser/enterprise/signin:browser_tests",
+        "//chrome/browser/ui/startup/default_browser_prompt:browser_tests",
         "//chrome/browser/ui/views/media_preview/mic_preview:browser_tests",
         "//chrome/browser/ui/views/profiles:profile_picker_view_test_utils",
         "//chrome/browser/ui/views/profiles:profile_picker_web_contents_host",
         "//chrome/browser/ui/webui:profile_helper",
       ]
+      if (enable_dice_support) {
+        deps += [
+          "//chrome/browser/ui/views/profiles:profile_management_step_controller",
+          "//chrome/browser/ui/views/profiles:profile_picker_reauth_provider",
+          "//chrome/browser/ui/views/profiles:profile_picker_sign_in_provider",
+        ]
+      }
     }
 
     if (is_chrome_for_testing) {
@@ -3712,8 +3721,10 @@ if (!is_android) {
         "//chrome/browser/ui/views:content_setting_bubble_contents",
         "//chrome/browser/ui/views:external_protocol_dialog_test_support",
         "//chrome/browser/ui/views:hung_renderer_view",
+        "//chrome/browser/ui/views:incognito_clear_browsing_data_dialog",
         "//chrome/browser/ui/views:javascript_tab_modal_dialog_view_views",
         "//chrome/browser/ui/views:media_picker_utils",
+        "//chrome/browser/ui/views:upgrade_notification_controller",
         "//chrome/browser/ui/views/autofill/autofill_ai",
         "//chrome/browser/ui/views/autofill/payments:autofill_error_dialog_view_native_views",
         "//chrome/browser/ui/views/autofill/payments:bnpl_tos_view_desktop",
@@ -3835,6 +3846,7 @@ if (!is_android) {
           # TaskManagerView is not used or built on Mac.
           "../browser/ui/views/task_manager_view_browsertest.cc",
         ]
+        deps += [ "//chrome/browser/ui/views:task_manager_view" ]
       }
       if (is_win || is_mac || is_linux) {
         sources += [
@@ -5398,8 +5410,6 @@ test("unit_tests") {
     "//chrome/browser/profiles:test_support",
     "//chrome/browser/profiles:unit_tests",
     "//chrome/browser/profiles/keep_alive",
-    "//chrome/browser/profiling_host",
-    "//chrome/browser/profiling_host:unit_tests",
     "//chrome/browser/push_messaging",
     "//chrome/browser/push_messaging:unit_tests",
     "//chrome/browser/pwc:unit_tests",
@@ -5608,7 +5618,6 @@ test("unit_tests") {
     "//components/feedback",
     "//components/feedback/redaction_tool",
     "//components/history/content/browser",
-    "//components/history/core/browser:features",
     "//components/history/core/common",
     "//components/history_clusters/core",
     "//components/history_clusters/core:test_support",
@@ -5794,6 +5803,7 @@ test("unit_tests") {
     "//components/unexportable_keys",
     "//components/unexportable_keys:test_support",
     "//components/unified_consent",
+    "//components/universal_optout",
     "//components/url_formatter/spoof_checks/common_words:common",
     "//components/url_formatter/spoof_checks/common_words:common_words_dafsa",
     "//components/url_formatter/spoof_checks/top_domains:generate_top_domains_test_trie",
@@ -6565,6 +6575,7 @@ test("unit_tests") {
       "//chrome/browser/ui/views/toolbar:unit_tests",
       "//chrome/browser/ui/views/user_education",
       "//chrome/browser/ui/views/user_education:unit_tests",
+      "//chrome/browser/ui/views/web_apps:view_visible_in_active_widget_notifier",
       "//chrome/browser/ui/views/webauthn:unit_tests",
       "//chrome/browser/ui/views/webid:test_support",
       "//chrome/browser/ui/views/webid:unit_tests",
@@ -7740,6 +7751,7 @@ test("unit_tests") {
       "//chrome/browser/ui/commerce:test_support",
       "//chrome/browser/ui/global_media_controls",
       "//chrome/browser/ui/immersive:immersive_mode_controller",
+      "//chrome/browser/ui/location_bar:unit_tests",
       "//chrome/browser/ui/page_info",
       "//chrome/browser/ui/tab_contents",
       "//chrome/browser/ui/tabs:tab_enums",
@@ -7801,7 +7813,10 @@ test("unit_tests") {
       "//chrome/browser/ui/views/tabs:base",
       "//chrome/browser/ui/views/tabs:tab_container",
       "//chrome/browser/ui/views/tabs:tab_group",
+      "//chrome/browser/ui/views/tabs:tab_strip",
+      "//chrome/browser/ui/views/tabs:tab_strip_button",
       "//chrome/browser/ui/views/tabs:tab_style_views",
+      "//chrome/browser/ui/views/tabs:unit_tests",
       "//chrome/browser/ui/views/tabs/dragging",
       "//chrome/browser/ui/views/tabs/dragging:test_support",
       "//chrome/browser/ui/views/tabs/hovercard",
@@ -7890,27 +7905,13 @@ test("unit_tests") {
       "../browser/ui/views/layout_provider_unittest.cc",
       "../browser/ui/views/location_bar/selected_keyword_view_unittest.cc",
       "../browser/ui/views/location_bar/webui_location_bar_unittest.cc",
-      "../browser/ui/views/tabs/fake_base_tab_strip_controller.cc",
-      "../browser/ui/views/tabs/fake_base_tab_strip_controller.h",
-      "../browser/ui/views/tabs/fake_tab_slot_controller.cc",
-      "../browser/ui/views/tabs/fake_tab_slot_controller.h",
-      "../browser/ui/views/tabs/tab_container_unittest.cc",
-      "../browser/ui/views/tabs/tab_group_views_unittest.cc",
-      "../browser/ui/views/tabs/tab_strip_control_button_unittest.cc",
-      "../browser/ui/views/tabs/tab_strip_layout_unittest.cc",
-      "../browser/ui/views/tabs/tab_strip_nudge_button_unittest.cc",
-      "../browser/ui/views/tabs/tab_strip_unittest.cc",
-      "../browser/ui/views/tabs/tab_unittest.cc",
       "../browser/ui/views/task_manager_search_bar_view_unittest.cc",
       "../browser/ui/views/web_apps/isolated_web_apps/callback_delayer_unittest.cc",
       "../browser/ui/views/web_apps/isolated_web_apps/isolated_web_app_installer_view_controller_unittest.cc",
       "../browser/ui/views/web_apps/progress_delay_unittest.cc",
       "../browser/ui/views/web_apps/view_visible_in_active_widget_notifier_unittest.cc",
     ]
-    sources += [
-      "../browser/ui/views/profiles/avatar_badge_view_unittest.cc",
-      "../browser/ui/views/tabs/tab_strip_action_container_unittest.cc",
-    ]
+    sources += [ "../browser/ui/views/profiles/avatar_badge_view_unittest.cc" ]
 
     # TODO(crbug.com/353332589): Remove this dependency when the
     # views/autofill/popup/ unit tests get modularized.
@@ -8038,6 +8039,8 @@ test("unit_tests") {
   fuzztests = [
     "ActorProtoConversionFuzzTest.CanConvertAnyProto",
     "SearchBoxUtilFuzzTest.ParseFrameTokenAndRestrictedIdDoesNotCrash",
+    "WebPaymentsObserverFuzzTest.ThreeDSecureTelemetryChallengePostData",
+    "WebPaymentsObserverFuzzTest.ThreeDSecureTelemetryChallengeResponseValue",
   ]
 
   if (!is_android) {
@@ -8241,6 +8244,7 @@ if (!is_android) {
       "//chrome/browser/ui/views/tabs/vertical",
       "//chrome/browser/ui/views/toolbar",
       "//chrome/browser/ui/views/web_apps:launch_dialogs",
+      "//chrome/browser/ui/views/web_apps:web_app_update_review_dialog",
       "//chrome/browser/ui/web_applications",
       "//chrome/browser/ui/web_applications:launch_utils",
       "//chrome/browser/ui/webui",
@@ -8404,6 +8408,7 @@ if (!is_android) {
       public_deps += [ "//chrome/browser/ui/profiles" ]
       deps += [
         "//chrome/browser/ui/profiles:test_support",
+        "//chrome/browser/ui/views/profiles:profile_picker_sign_in_provider",
         "//chrome/browser/ui/views/profiles:profile_picker_view_test_utils",
       ]
     }
@@ -8982,6 +8987,7 @@ if (!is_android && !is_chromeos_device) {
     if (enable_dice_support && (is_mac || is_linux || is_win)) {
       deps += [
         "//chrome/browser/ui/signin",
+        "//chrome/browser/ui/views/profiles:profile_management_flow_controller",
         "//chrome/browser/ui/webui/signin/signout_confirmation",
       ]
     }
@@ -9084,8 +9090,6 @@ if (!is_android && !is_chromeos_device) {
         "../browser/ui/views/page_action/collaboration_messaging_page_action_icon_view_interactive_uitest.cc",
         "../browser/ui/views/side_panel/side_panel_interactive_uitest.cc",
         "../browser/ui/views/ssl_client_certificate_selector_interactive_uitest.cc",
-        "../browser/ui/views/tabs/tab_group_header_interactive_uitest.cc",
-        "../browser/ui/views/tabs/tab_strip_interactive_uitest.cc",
         "../browser/ui/views/test/view_event_test_base.cc",
         "../browser/ui/views/test/view_event_test_base.h",
       ]
@@ -9168,8 +9172,12 @@ if (!is_android && !is_chromeos_device) {
         "//chrome/browser/ui/views/permissions/chip:interactive_ui_tests",
         "//chrome/browser/ui/views/site_data:interactive_ui_tests",
         "//chrome/browser/ui/views/tab_sharing:interactive_ui_tests",
+        "//chrome/browser/ui/views/tabs:interactive_ui_tests",
+        "//chrome/browser/ui/views/tabs:new_tab_button",
         "//chrome/browser/ui/views/tabs:new_tab_button_menu_model",
+        "//chrome/browser/ui/views/tabs:tab",
         "//chrome/browser/ui/views/tabs:tab_group",
+        "//chrome/browser/ui/views/tabs:tab_strip",
         "//chrome/browser/ui/views/tabs/tab",
         "//chrome/browser/ui/views/tabs/vertical:impl",
         "//chrome/browser/ui/views/translate",
@@ -9420,7 +9428,6 @@ if (!is_android && !is_chromeos_device) {
         "../browser/ui/cocoa/tab_contents/web_contents_view_mac_interactive_uitest.mm",
         "../browser/ui/views/frame/browser_native_widget_mac_interactive_uitest.mm",
         "../browser/ui/views/frame/immersive_mode_controller_mac_interactive_uitest.mm",
-        "../browser/ui/views/tabs/tab_modal_focus_interactive_uitest_mac.mm",
         "//ui/display/mac/test/virtual_display_util_mac_interactive_uitest.mm",
       ]
 
@@ -10113,10 +10120,6 @@ source_set("xr_browser_tests_common") {
   if (!is_mac && !is_android) {
     data_deps = [ "//chrome:packed_resources" ]
   }
-
-  # TODO(crbug.com/40031409): Fix code that adds exit-time destructors and
-  # enable the diagnostic by removing this line.
-  configs += [ "//build/config/compiler:no_exit_time_destructors" ]
 }
 
 if (is_linux || is_mac || is_win) {
@@ -10171,4 +10174,5 @@ test("captcha_provider_fuzztests") {
     "//third_party/fuzztest:fuzztest_gtest_main",
     "//url",
   ]
+  public_deps = [ "//chrome/browser:browser_public_dependencies" ]
 }

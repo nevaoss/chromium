@@ -55,6 +55,8 @@ source_set("impl") {
     "tab_drag_scroll_handler.cc",
     "tab_group_header_view.cc",
     "tab_group_header_view.h",
+    "tab_group_line_view.cc",
+    "tab_group_line_view.h",
     "tab_group_view.cc",
     "tab_group_view.h",
     "tab_group_view_layout.cc",
@@ -179,6 +181,7 @@ source_set("browser_tests") {
     "//chrome/browser/ui/tabs:tab_menu",
     "//chrome/browser/ui/tabs/tab_strip_api",
     "//chrome/browser/ui/views/animations",
+    "//chrome/browser/ui/views/tabs:tab_strip",
     "//chrome/browser/ui/views/tabs/hovercard",
     "//chrome/browser/ui/views/tabs/hovercard:hovercard_helpers",
     "//chrome/browser/ui/views/tabs/shared",
@@ -206,7 +209,6 @@ source_set("unit_tests") {
     ":common",
     ":impl",
     "//base/test:test_support",
-    "//chrome/browser/ui",
     "//chrome/browser/ui:ui_features",
     "//chrome/browser/ui/views/tabs/shared",
     "//chrome/test:test_support",
@@ -223,6 +225,7 @@ source_set("interactive_ui_tests") {
   defines = [ "HAS_OUT_OF_PROC_TEST_RUNNER" ]
   sources = [
     "//chrome/browser/ui/views/tabs/horizontal/horizontal_tab_closing_helper_interactive_uitest.cc",
+    "tab_collection_animating_layout_manager_interactive_uitest.cc",
     "tab_collection_node_interactive_uitest.cc",
     "tab_drag_interactive_uitest.cc",
     "tab_strip_collection_controller_interactive_uitest.cc",

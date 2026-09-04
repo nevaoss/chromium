@@ -67,7 +67,6 @@
 #include "base/uuid.h"
 #include "build/build_config.h"
 #include "components/download/public/common/download_url_parameters.h"
-#include "components/history/core/browser/features.h"
 #include "components/input/input_router.h"
 #include "components/input/timeout_monitor.h"
 #include "components/input/utils.h"
@@ -2625,6 +2624,7 @@ RenderFrameHostImpl::RenderFrameHostImpl(
     const blink::LocalFrameToken& frame_token,
     const blink::DocumentToken& document_token,
     base::UnguessableToken devtools_frame_token,
+    const base::UnguessableToken& initiator_state_token,
     bool renderer_initiated_creation_of_main_frame,
     LifecycleStateImpl lifecycle_state,
     scoped_refptr<BrowsingContextState> browsing_context_state,
@@ -2660,10 +2660,7 @@ RenderFrameHostImpl::RenderFrameHostImpl(
       cookie_observers_(
           base::BindRepeating(&RenderFrameHostImpl::NotifyCookiesAccessed,
                               base::Unretained(this))),
-      // TODO(crbug.com/510258191): Plumb an initiator state token from the
-      // renderer process when the RenderFrameHost is for an initial empty
-      // document first created in the renderer process.
-      current_initiator_state_token_(base::UnguessableToken::Create()),
+      current_initiator_state_token_(initiator_state_token),
       code_cache_host_receivers_(
           GetProcess()->GetStoragePartition()->GetGeneratedCodeCacheContext()),
       fenced_frame_status_(fenced_frame_status),
@@ -4714,6 +4711,7 @@ bool RenderFrameHostImpl::CreateRenderFrame(
           .InitWithNewEndpointAndPassReceiver());
   params->document_token = document_associated_data_->token();
   params->navigation_metrics_token = navigation_metrics_token;
+  params->initiator_state_token = current_initiator_state_token_;
 
   // If this is a new RenderFrameHost for a frame that has already committed a
   // document, we don't have a policy container yet. Indeed, in that case, this
@@ -5259,6 +5257,7 @@ void RenderFrameHostImpl::OnCreateChildFrame(
     const blink::LocalFrameToken& frame_token,
     const base::UnguessableToken& devtools_frame_token,
     const blink::DocumentToken& document_token,
+    const base::UnguessableToken& initiator_state_token,
     const blink::FramePolicy& frame_policy,
     const blink::mojom::FrameOwnerProperties& frame_owner_properties,
     blink::FrameOwnerElementType owner_type,
@@ -5309,7 +5308,7 @@ void RenderFrameHostImpl::OnCreateChildFrame(
       std::move(policy_container_bind_params),
       std::move(associated_interface_provider_receiver), scope, frame_name,
       frame_unique_name, is_created_by_script, frame_token,
-      devtools_frame_token, document_token, frame_policy,
+      devtools_frame_token, document_token, initiator_state_token, frame_policy,
       frame_owner_properties, was_discarded_, owner_type,
       /*is_dummy_frame_for_inner_tree=*/false, std::move(sandbox_origin_token));
 }
@@ -5324,6 +5323,7 @@ void RenderFrameHostImpl::OnPreloadingHeuristicsModelDone(const GURL& url,
 
 void RenderFrameHostImpl::CreateChildFrame(
     const blink::LocalFrameToken& frame_token,
+    const base::UnguessableToken& initiator_state_token,
     mojo::PendingAssociatedRemote<mojom::Frame> frame_remote,
     mojo::PendingReceiver<blink::mojom::BrowserInterfaceBroker>
         browser_interface_broker_receiver,
@@ -5367,6 +5367,14 @@ void RenderFrameHostImpl::CreateChildFrame(
     return;
   }
 
+  // The renderer should never send an empty initiator state token.
+  if (initiator_state_token.is_empty()) {
+    bad_message::ReceivedBadMessage(
+        GetProcess(),
+        bad_message::RFH_CREATE_CHILD_FRAME_INVALID_INITIATOR_TOKEN);
+    return;
+  }
+
   // TODO(crbug.com/40155982). The interface exposed to tests should
   // match the mojo interface.
   OnCreateChildFrame(new_routing_id, std::move(frame_remote),
@@ -5375,7 +5383,8 @@ void RenderFrameHostImpl::CreateChildFrame(
                      std::move(associated_interface_provider_receiver), scope,
                      frame_name, frame_unique_name, is_created_by_script,
                      frame_token, devtools_frame_token, document_token,
-                     frame_policy, *frame_owner_properties, owner_type,
+                     initiator_state_token, frame_policy,
+                     *frame_owner_properties, owner_type,
                      document_ukm_source_id, std::move(sandbox_origin_token));
 }
 
@@ -6000,6 +6009,7 @@ FrameTreeNode* RenderFrameHostImpl::AddChild(
     const blink::LocalFrameToken& frame_token,
     const blink::DocumentToken& document_token,
     base::UnguessableToken devtools_frame_token,
+    const base::UnguessableToken& initiator_state_token,
     const blink::FramePolicy& frame_policy,
     std::string frame_name,
     std::string frame_unique_name,
@@ -6012,8 +6022,8 @@ FrameTreeNode* RenderFrameHostImpl::AddChild(
   // a different one if they navigate away.
   child->render_manager()->InitChild(
       GetSiteInstance(), frame_routing_id, std::move(frame_remote), frame_token,
-      document_token, devtools_frame_token, frame_policy, frame_name,
-      frame_unique_name);
+      document_token, initiator_state_token, devtools_frame_token, frame_policy,
+      frame_name, frame_unique_name);
 
   // Other renderer processes in this BrowsingInstance may need to find out
   // about the new frame.  Create a proxy for the child frame in all
@@ -10827,6 +10837,7 @@ void RenderFrameHostImpl::CreateNewWindow(
       new_rwh->GetRoutingID(), visual_properties, cloned_namespace->id(),
       new_main_rfh->GetDevToolsFrameToken(), wait_for_debugger,
       new_main_rfh->GetDocumentToken(), std::move(sandbox_origin_token),
+      new_main_rfh->current_initiator_state_token(),
       new_main_rfh->policy_container_host()->CreatePolicyContainerForBlink(),
       new_main_rfh->GetSiteInstance()->browsing_instance_token(),
       delegate_->GetColorProviderColorMaps(),
@@ -18749,11 +18760,7 @@ void RenderFrameHostImpl::
   // RenderFrameImpl::MakeDidCommitProvisionalLoadParams().
   // TODO(crbug.com/40161149): Reconsider how we calculate
   // should_update_history.
-  bool does_status_code_qualify_for_history =
-      base::FeatureList::IsEnabled(history::kVisitedLinksOn404) ||
-      browser_http_status_code != 404;
-  const bool browser_should_update_history =
-      !browser_url_is_unreachable && does_status_code_qualify_for_history;
+  const bool browser_should_update_history = !browser_url_is_unreachable;
 
   const bool should_replace_current_entry =
       request->common_params().should_replace_current_entry;
@@ -19501,6 +19508,13 @@ void RenderFrameHostImpl::ReinitializeDocumentAssociatedDataForReuseAfterCrash(
   // - a) the new state set in RenderFrameCreated doesn't get deleted.
   // - b) the old state is not leaked to a new RenderFrameHost.
   document_associated_data_.emplace(*this, blink::DocumentToken());
+}
+
+void RenderFrameHostImpl::ReinitializeInitiatorStateTokenAfterCrash(
+    base::PassKey<RenderFrameHostManager>) {
+  CHECK(is_main_frame());
+  CHECK_EQ(RenderFrameState::kDeleted, render_frame_state_);
+  current_initiator_state_token_ = base::UnguessableToken::Create();
 }
 
 void RenderFrameHostImpl::ReinitializeDocumentAssociatedDataForTesting() {

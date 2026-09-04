@@ -60,6 +60,7 @@ import org.chromium.chrome.browser.omnibox.BackKeyBehaviorDelegate;
 import org.chromium.chrome.browser.omnibox.LocationBarEmbedder;
 import org.chromium.chrome.browser.omnibox.UrlBar;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxControls;
+import org.chromium.chrome.browser.omnibox.suggestions.AutocompleteCoordinator;
 import org.chromium.chrome.browser.omnibox.suggestions.OmniboxLoadUrlParams;
 import org.chromium.chrome.browser.omnibox.suggestions.action.OmniboxActionDelegateImpl;
 import org.chromium.chrome.browser.profiles.Profile;
@@ -85,6 +86,7 @@ import org.chromium.components.tab_group_sync.SavedTabGroup;
 import org.chromium.components.tab_group_sync.TabGroupSyncService;
 import org.chromium.components.tab_group_sync.TabGroupUiActionHandler;
 import org.chromium.ui.AsyncViewStub;
+import org.chromium.ui.base.KeyNavigationUtil;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.edge_to_edge.EdgeToEdgeSystemBarColorHelper;
 import org.chromium.ui.modaldialog.ModalDialogManager;
@@ -412,6 +414,7 @@ public class TabSearchOverlayCoordinator
         mChangeProcessor =
                 PropertyModelChangeProcessor.create(
                         mModel, viewHolder, TabSearchOverlayViewBinder::bind);
+        updatePanelTopMargin();
     }
 
     /**
@@ -503,6 +506,59 @@ public class TabSearchOverlayCoordinator
         var urlBar = (UrlBar) locationBarCoordinator.getContainerView().findViewById(R.id.url_bar);
         if (urlBar != null) {
             urlBar.setTextAppearance(R.style.TextAppearance_TextMedium);
+            urlBar.setAccessibilityTraversalAfter(R.id.tab_search_close_button);
+
+            LinearLayout panelContainer = assumeNonNull(mPanelContainer);
+            View closeButton =
+                    assumeNonNull(panelContainer.findViewById(R.id.tab_search_close_button));
+            closeButton.setFocusableInTouchMode(true);
+
+            var suggestionsVisualState = locationBarCoordinator.getOmniboxSuggestionsVisualState();
+            AutocompleteCoordinator autocompleteCoordinator =
+                    suggestionsVisualState instanceof AutocompleteCoordinator coordinator
+                            ? coordinator
+                            : null;
+            View.OnKeyListener omniboxKeyDownListener =
+                    locationBarCoordinator.getOmniboxStub() instanceof View.OnKeyListener listener
+                            ? listener
+                            : null;
+
+            View.OnKeyListener keyListener =
+                    (v, keyCode, event) -> {
+                        boolean isTabBack = KeyNavigationUtil.isTabBackward(event);
+                        boolean isUp = KeyNavigationUtil.isGoUp(event) && event.hasNoModifiers();
+                        Integer selectedIndex =
+                                autocompleteCoordinator != null
+                                        ? autocompleteCoordinator.getSelectedIndex()
+                                        : null;
+
+                        if (isTabBack || isUp) {
+                            if (selectedIndex == null) {
+                                closeButton.requestFocus();
+                                return true;
+                            } else if (selectedIndex <= 0) {
+                                if (autocompleteCoordinator != null) {
+                                    autocompleteCoordinator.resetSelection();
+                                }
+                                return true;
+                            }
+                        }
+
+                        return omniboxKeyDownListener != null
+                                && omniboxKeyDownListener.onKey(v, keyCode, event);
+                    };
+            urlBar.setKeyDownListener(keyListener);
+            urlBar.setOnKeyListener(keyListener);
+
+            closeButton.setOnKeyListener(
+                    (v, keyCode, event) -> {
+                        if (KeyNavigationUtil.isTabForward(event)
+                                || KeyNavigationUtil.isGoDown(event)) {
+                            urlBar.requestFocus();
+                            return true;
+                        }
+                        return false;
+                    });
         }
 
         // If the profile supplier is null (rare), default to the non-incognito state as it is the
@@ -648,8 +704,7 @@ public class TabSearchOverlayCoordinator
             mPopupWindow.showAtLocation(decorView, Gravity.START | Gravity.TOP, 0, 0);
         }
 
-        // Ensure that transient properties (like empty state visibility) are reset to their
-        // default states before showing the search UI.
+        updatePanelTopMargin();
         mModel.set(TabSearchOverlayProperties.EMPTY_STATE_VISIBLE, false);
         mModel.set(TabSearchOverlayProperties.VISIBLE, true);
         mBackPressStateSupplier.set(true);
@@ -695,6 +750,41 @@ public class TabSearchOverlayCoordinator
     /** Returns whether the tab search overlay is currently visible. */
     public boolean isVisible() {
         return mModel.get(TabSearchOverlayProperties.VISIBLE);
+    }
+
+    /**
+     * Updates the top margin of the panel view based on desktop windowing state.
+     *
+     * <p>In desktop windowing mode (freeform window), the panel starts at the top of the window
+     * (topMargin = 0) to align with the caption bar / tab strip. When not in desktop windowing
+     * (e.g. fullscreen or split screen mode), the panel is offset below the OS application window
+     * toolbar / status bar trigger zone so that the close button remains accessible and clickable.
+     */
+    private void updatePanelTopMargin() {
+        boolean isInDesktopWindow =
+                mDesktopWindowStateManager != null
+                        && mDesktopWindowStateManager.getAppHeaderState() != null
+                        && mDesktopWindowStateManager.getAppHeaderState().isInDesktopWindow();
+        if (mPanelContainer != null) {
+            View panelView = mPanelContainer.findViewById(R.id.tab_search_overlay_panel);
+            if (panelView != null
+                    && panelView.getLayoutParams() instanceof LinearLayout.LayoutParams params) {
+                var res = mPanelContainer.getContext().getResources();
+                int tabStripHeight = res.getDimensionPixelSize(R.dimen.tab_strip_height);
+                int reservedTopPadding =
+                        res.getDimensionPixelSize(R.dimen.tab_strip_reserved_top_padding);
+                int hairlineGap =
+                        res.getDimensionPixelSize(R.dimen.tab_search_overlay_hairline_gap);
+                int topMargin =
+                        !isInDesktopWindow
+                                ? (tabStripHeight - reservedTopPadding - hairlineGap)
+                                : 0;
+                if (params.topMargin != topMargin) {
+                    params.topMargin = topMargin;
+                    panelView.setLayoutParams(params);
+                }
+            }
+        }
     }
 
     /**

@@ -12,6 +12,7 @@
 <translation id="1035113036584565771">Pemberitahuan petua promosi ditutup</translation>
 <translation id="1036348656032585052">Matikan</translation>
 <translation id="1045899828449635435">Kosongkan data?</translation>
+<translation id="1049461303780085993">Cuba Gemini dalam Chrome untuk mendapatkan jawapan, kesimpulan utama dan pelbagai lagi</translation>
 <translation id="1049743911850919806">Inkognito</translation>
 <translation id="1052842760770519282">Sesetengah kata laluan anda tidak dapat diakses</translation>
 <translation id="1057623954802068161">Tatal kepada bahagian atas halaman</translation>
@@ -104,6 +105,7 @@
 <translation id="138181280295369883">Log masuk untuk mendapatkan maklumat anda yang disimpan dan pelbagai lagi pada semua peranti anda</translation>
 <translation id="1381838868249179644">Untuk memastikan anda selamat, kebenaran dialih keluar daripada beberapa laman</translation>
 <translation id="1383876407941801731">Carian</translation>
+<translation id="1384568202352682721">Simpan sebagai…</translation>
 <translation id="1384704387250346179">Terjemah imej dgn Lens <ph name="BEGIN_NEW" />Baharu<ph name="END_NEW" /></translation>
 <translation id="1390418506739274310">Anda mungkin melihat sejarah daripada apl lain yang membuka pautan dalam Chrome. Google Account anda mungkin mengandungi sejarah penyemakan imbas dalam bentuk lain pada <ph name="BEGIN_LINK" />myactivity.google.com<ph name="END_LINK" />.</translation>
 <translation id="139752016751285248">Helaian bawah cerapan harga dibuka pada ketinggian penuh</translation>
@@ -132,6 +134,7 @@ Untuk mendapatkan lebih banyak tetapan yang menggunakan data untuk meningkatkan 
 <translation id="147982357559798527">Diubah</translation>
 <translation id="1480287803138246127">Sesetengah sejarah anda mungkin tidak dipaparkan di sini. Untuk melihat semua sejarah Chrome anda, buka sejarah Chrome penuh.</translation>
 <translation id="1483493594462132177">Hantar</translation>
+<translation id="1485343711570311792">Buka dalam <ph name="NATIVE_APP_NAME" /> • Daripada <ph name="DEVICE_NAME" /></translation>
 <translation id="1495677929897281669">Kembali ke tab</translation>
 <translation id="1496514951988037011">nama pengguna</translation>
 <translation id="1501480321619201731">Padamkan kumpulan</translation>
@@ -326,6 +329,7 @@ Orang yang mengetahui ungkapan laluan anda sahaja yang dapat membaca data anda y
 <translation id="232137538351753795">Leret dari tepi sebelah kiri untuk kembali</translation>
 <translation id="2323763861024343754">Storan tapak</translation>
 <translation id="2327445548174191329">Daripada <ph name="DEVICE_NAME" /></translation>
+<translation id="232757965409810352">Simpan halaman sebagai…</translation>
 <translation id="2328474416100889417">Semua orang akan kehilangan akses kepada kumpulan tab “<ph name="GROUP_NAME" />” dengan serta-merta dan semua pautan undangan akan dimatikan</translation>
 <translation id="2329500425421091035">Memperkenalkan AI Mode dalam Chrome</translation>
 <translation id="2330186936255788117">Lebih banyak penanda halaman</translation>
@@ -1117,6 +1121,7 @@ Google Account anda mungkin mempunyai sejarah penyemakan imbas dalam bentuk lain
 <translation id="5465437530117042974">Perubahan Helaian Bawah Tab ditutup.</translation>
 <translation id="5469852975082458401">Anda boleh menukar halaman dengan kursor teks. Tekan F7 untuk mematikannya.</translation>
 <translation id="5471273988133666918">Tab <ph name="TAB_TITLE" /> tidak dapat dialihkan</translation>
+<translation id="5478718673237429220">Akses peranti antara muka manusia diperlukan</translation>
 <translation id="548278423535722844">Buka dalam apl peta</translation>
 <translation id="5489222148748465285">Benarkan Chrome terus mencari?</translation>
 <translation id="5490848366863949315"><ph name="TAB_TITLE" />, Tab Gambar dalam Gambar dengan Berbilang Pilihan</translation>
@@ -1749,6 +1754,7 @@ Untuk menukar tetapan ini, <ph name="BEGIN_LINK" />padamkan data Chrome dalam ak
 <translation id="7851858861565204677">Peranti lain</translation>
 <translation id="7853202427316060426">Aktiviti</translation>
 <translation id="7859988229622350291">Jangan terjemah</translation>
+<translation id="7862185352068345852">Tinggalkan tapak?</translation>
 <translation id="7866213166286285359">Terjemah halaman di sini</translation>
 <translation id="7875915731392087153">Buat e-mel</translation>
 <translation id="7876243839304621966">Buangkan semua</translation>
@@ -1871,6 +1877,7 @@ Untuk menukar tetapan ini, <ph name="BEGIN_LINK" />padamkan data Chrome dalam ak
 <translation id="8313599942510782709">Tugasan anda masih dalam proses</translation>
 <translation id="8317318757008452355">Buka pilihan untuk mencetak</translation>
 <translation id="8320212361750431956">Aktiviti Baru-baru Ini</translation>
+<translation id="8322452989119079156">Buka dalam <ph name="NATIVE_APP_NAME" /> - Dihantar daripada <ph name="DEVICE_NAME" /></translation>
 <translation id="832514020744584629"><ph name="PREF_TITLE" />  <ph name="BEGIN_NEW" />Baharu<ph name="END_NEW" /></translation>
 <translation id="8333026248928723981">Penanda halaman dan senarai</translation>
 <translation id="8342727528718219152">Chrome akan memaklumi anda tentang laman yang mungkin menghantar terlalu banyak pemberitahuan</translation>
@@ -1963,6 +1970,7 @@ Untuk menukar tetapan ini, <ph name="BEGIN_LINK" />padamkan data Chrome dalam ak
 <translation id="867914734596684889">Tunjukkan atau sembunyikan bar Penanda Halaman</translation>
 <translation id="8683039184091909753">imej</translation>
 <translation id="8688183792442786085"><ph name="TAB_TITLE" />, Tab yang Dipilih</translation>
+<translation id="8694622119922491927"><ph name="APP_NAME" /> memerlukan kebenaran untuk mengakses peranti antara muka manusia (HID) untuk laman ini. Anda boleh menukar tetapan ini kemudian dalam Tetapan &gt; Apl &gt; Akses apl khas.</translation>
 <translation id="8696297579102085705">Hantar kepada peranti anda</translation>
 <translation id="8699120352855309748">Jangan tawarkan untuk menterjemahkan bahasa ini</translation>
 <translation id="8700565880437506364">Memperkenalkan Gemini dalam Chrome</translation>

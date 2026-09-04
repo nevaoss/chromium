@@ -115,6 +115,8 @@ public class UrlBar extends AutocompleteEditText {
     private @Nullable UrlBarTextContextMenuDelegate mTextContextMenuDelegate;
     private @Nullable Callback<Integer> mUrlDirectionListener;
     private @Nullable Callback<Boolean> mUrlTextWrappingChangeListener;
+    private @Nullable Runnable mDetectAndNotifyOnTextWrappingChanges;
+    private boolean mWrapDetectionScheduled;
     private @Nullable Runnable mManageSearchEnginesCallback;
     private boolean mShowAiMode;
     private @Nullable Callback<Boolean> mShowAiModeCallback;
@@ -348,6 +350,12 @@ public class UrlBar extends AutocompleteEditText {
     }
 
     public void destroy() {
+        if (mDetectAndNotifyOnTextWrappingChanges != null) {
+            removeCallbacks(mDetectAndNotifyOnTextWrappingChanges);
+            mDetectAndNotifyOnTextWrappingChanges = null;
+        }
+        mWrapDetectionScheduled = false;
+        mUrlTextWrappingChangeListener = null;
         if (mContextMenuHelper != null) {
             mContextMenuHelper.destroy();
             mContextMenuHelper = null;
@@ -609,10 +617,14 @@ public class UrlBar extends AutocompleteEditText {
                             getTextWithoutAutocomplete(), start, lengthBefore, lengthAfter));
         }
 
-        post(this::detectAndNotifyOnTextWrappingChanges);
+        if (mDetectAndNotifyOnTextWrappingChanges != null && !mWrapDetectionScheduled) {
+            mWrapDetectionScheduled = true;
+            post(mDetectAndNotifyOnTextWrappingChanges);
+        }
     }
 
     private void detectAndNotifyOnTextWrappingChanges() {
+        mWrapDetectionScheduled = false;
         var layout = getLayout();
         boolean textIsWrapped = layout != null && layout.getLineCount() > 1;
 
@@ -767,8 +779,14 @@ public class UrlBar extends AutocompleteEditText {
      *
      * @param listener The listener to be notified.
      */
-    /* package */ void setUrlTextWrappingChangeListener(Callback<Boolean> listener) {
+    /* package */ void setUrlTextWrappingChangeListener(@Nullable Callback<Boolean> listener) {
+        if (mDetectAndNotifyOnTextWrappingChanges != null) {
+            removeCallbacks(mDetectAndNotifyOnTextWrappingChanges);
+        }
+        mWrapDetectionScheduled = false;
         mUrlTextWrappingChangeListener = listener;
+        mDetectAndNotifyOnTextWrappingChanges =
+                listener == null ? null : this::detectAndNotifyOnTextWrappingChanges;
     }
 
     /**
@@ -785,7 +803,7 @@ public class UrlBar extends AutocompleteEditText {
      *
      * @param listener The listener to be notified.
      */
-    public void setTextChangeListener(Callback<String> listener) {
+    public void setTextChangeListener(@Nullable Callback<String> listener) {
         mTextChangeListener = listener;
     }
 
@@ -795,7 +813,7 @@ public class UrlBar extends AutocompleteEditText {
      *
      * @param listener The listener to be notified.
      */
-    public void setRichTextChangeListener(Callback<UrlBarTextChangeInfo> listener) {
+    public void setRichTextChangeListener(@Nullable Callback<UrlBarTextChangeInfo> listener) {
         mRichTextChangeListener = listener;
     }
 
@@ -1703,6 +1721,16 @@ public class UrlBar extends AutocompleteEditText {
     float getMaxHeightOfFont() {
         var fontMetrics = getPaint().getFontMetrics();
         return fontMetrics.bottom - fontMetrics.top;
+    }
+
+    /* package */ @Px
+    int getTextWidth() {
+        return (int) Math.ceil(getPaint().measureText(getText().toString()));
+    }
+
+    /* package */ @Px
+    int getWidthWithoutCompoundPadding() {
+        return getWidth() - getCompoundPaddingLeft() - getCompoundPaddingRight();
     }
 
     /**

@@ -1005,25 +1005,6 @@ targets.bundle(
 )
 
 targets.bundle(
-    name = "android_webview_gpu_telemetry_tests",
-    targets = [
-        "android_webview_pixel_skia_gold_test",
-    ],
-    per_test_modifications = {
-        "android_webview_pixel_skia_gold_test": [
-            targets.mixin(
-                args = [
-                    "--dont-restore-color-profile-after-test",
-                    "--test-machine-name",
-                    "${buildername}",
-                ],
-            ),
-            "gpu_integration_test_common_args",
-        ],
-    },
-)
-
-targets.bundle(
     name = "ash_pixel_gtests",
     targets = [
         "ash_pixeltests",
@@ -3154,6 +3135,27 @@ targets.bundle(
 )
 
 targets.bundle(
+    name = "gpu_all_linux_debug_gtests",
+    targets = [
+        "gpu_linux_debug_gtests",
+        "gpu_fyi_linux_debug_gtests",
+    ],
+)
+
+targets.bundle(
+    name = "gpu_all_linux_debug_telemetry_tests",
+    targets = [
+        "gpu_linux_debug_telemetry_tests",
+        "gpu_fyi_linux_debug_telemetry_tests",
+    ],
+    per_test_modifications = {
+        "webgl_conformance_tests": targets.remove(
+            reason = "Default behavior only tested on non-FYI",
+        ),
+    },
+)
+
+targets.bundle(
     name = "gpu_all_linux_release_gtests",
     targets = [
         "gpu_linux_release_gtests",
@@ -3172,6 +3174,14 @@ targets.bundle(
             reason = "Only run default behavior tests on the non-FYI testers",
         ),
     },
+)
+
+targets.bundle(
+    name = "gpu_all_linux_tsan_gtests",
+    targets = [
+        "gpu_linux_tsan_gtests",
+        "gpu_fyi_linux_tsan_gtests",
+    ],
 )
 
 targets.bundle(
@@ -3525,15 +3535,6 @@ targets.bundle(
             "skia_gold_test",
         ],
     },
-)
-
-targets.bundle(
-    name = "gpu_common_linux_telemetry_tests",
-    targets = [
-        "gpu_common_and_optional_telemetry_tests",
-        "gpu_passthrough_telemetry_tests",
-        "gpu_webgl_conformance_telemetry_tests",
-    ],
 )
 
 targets.bundle(
@@ -4296,9 +4297,6 @@ targets.bundle(
         # Android/ARM only runs Ganesh tests since older devices that we
         # typically use for 32-bit testing do not have good Vulkan support
         # for Graphite.
-        "android_webview_gpu_telemetry_tests",
-        "gpu_passthrough_ganesh_telemetry_tests",
-        "gpu_passthrough_telemetry_tests",
         "gpu_webgl2_conformance_gles_passthrough_telemetry_tests",
         "gpu_webgl2_conformance_validating_telemetry_tests",
         "gpu_webgl_conformance_gles_passthrough_ganesh_telemetry_tests",
@@ -4306,17 +4304,20 @@ targets.bundle(
         "gpu_webgl_conformance_validating_ganesh_telemetry_tests",
         "webcodecs_validating_ganesh_tests",
         "webrtc_validating_ganesh_tests",
+
+        # Migrated individual tests below.
+        # TODO(crbug.com/541312843): Remove this comment once all tests are
+        # directly included.
+        "android_webview_pixel_skia_gold_test",
+        "context_lost_passthrough_ganesh_tests",
+        "context_lost_passthrough_tests",
+        "expected_color_pixel_passthrough_ganesh_test",
+        "expected_color_pixel_passthrough_test",
+        "pixel_skia_gold_passthrough_ganesh_test",
+        "pixel_skia_gold_passthrough_test",
+        "screenshot_sync_passthrough_ganesh_tests",
+        "screenshot_sync_passthrough_tests",
     ],
-    per_test_modifications = {
-        "gpu_process_launch_tests": targets.remove(
-            reason = ("TODO(crbug.com/541312843): Remove this once the test bundles are updated to use the underlying tests. " +
-                      "Currently, both gpu_validating_telemetry_tests and gpu_passthrough_telemetry_tests include this."),
-        ),
-        "hardware_accelerated_feature_tests": targets.remove(
-            reason = ("TODO(crbug.com/541312843): Remove this once the test bundles are updated to use the underlying tests. " +
-                      "Currently, both gpu_validating_telemetry_tests and gpu_passthrough_telemetry_tests include this."),
-        ),
-    },
 )
 
 targets.bundle(
@@ -4352,27 +4353,34 @@ targets.bundle(
     name = "gpu_fyi_chromeos_release_telemetry_tests",
     targets = [
         "gpu_common_and_optional_telemetry_tests",
-        "gpu_passthrough_telemetry_tests",
         "gpu_webrtc_telemetry_test",
         "gpu_webcodecs_telemetry_test",
         "gpu_webgl2_conformance_gles_passthrough_telemetry_tests",
         "gpu_webgl_conformance_gles_passthrough_telemetry_tests",
+
+        # Migrated individual tests below.
+        # TODO(crbug.com/541312843): Remove this comment once all tests are
+        # directly included.
+        "context_lost_passthrough_tests",
+        "expected_color_pixel_passthrough_test",
+        "hardware_accelerated_feature_tests",
+        "gpu_process_launch_tests",
+        "pixel_skia_gold_passthrough_test",
+        "screenshot_sync_passthrough_tests",
     ],
 )
 
 targets.bundle(
     name = "gpu_fyi_linux_debug_gtests",
     targets = [
-        "gpu_common_gtests_passthrough",
+        # No Linux/Debug FYI-only gtests at the moment.
     ],
 )
 
 targets.bundle(
     name = "gpu_fyi_linux_debug_telemetry_tests",
     targets = [
-        "gpu_common_and_optional_telemetry_tests",
-        "gpu_passthrough_telemetry_tests",
-        "gpu_webgl_conformance_gl_passthrough_telemetry_tests",
+        # No Linux/Debug FYI-only tests at the moment.
     ],
 )
 
@@ -4400,6 +4408,13 @@ targets.bundle(
         "gpu_webcodecs_telemetry_test",
         "gpu_webgl2_conformance_gl_passthrough_telemetry_tests",
         "gpu_skia_renderer_vulkan_passthrough_telemetry_tests",
+    ],
+)
+
+targets.bundle(
+    name = "gpu_fyi_linux_tsan_gtests",
+    targets = [
+        "gpu_common_gtests_passthrough_swiftshader",
     ],
 )
 
@@ -4560,6 +4575,22 @@ targets.bundle(
 )
 
 targets.bundle(
+    name = "gpu_linux_debug_gtests",
+    targets = [
+        "gpu_desktop_passthrough_gtests",
+    ],
+)
+
+targets.bundle(
+    name = "gpu_linux_debug_telemetry_tests",
+    targets = [
+        "gpu_common_and_optional_telemetry_tests",
+        "gpu_passthrough_telemetry_tests",
+        "gpu_webgl_conformance_telemetry_tests",
+    ],
+)
+
+targets.bundle(
     name = "gpu_linux_release_gtests",
     targets = [
         "gpu_desktop_passthrough_gtests",
@@ -4570,8 +4601,24 @@ targets.bundle(
     name = "gpu_linux_release_telemetry_tests",
     targets = [
         "gpu_common_and_optional_telemetry_tests",
-        "gpu_passthrough_telemetry_tests",
         "gpu_webgl_conformance_telemetry_tests",
+
+        # Migrated individual tests below.
+        # TODO(crbug.com/541312843): Remove this comment once all tests are
+        # directly included.
+        "context_lost_passthrough_tests",
+        "expected_color_pixel_passthrough_test",
+        "hardware_accelerated_feature_tests",
+        "gpu_process_launch_tests",
+        "pixel_skia_gold_passthrough_test",
+        "screenshot_sync_passthrough_tests",
+    ],
+)
+
+targets.bundle(
+    name = "gpu_linux_tsan_gtests",
+    targets = [
+        # No non-FYI Linux/TSan gtests at the moment.
     ],
 )
 
@@ -4610,27 +4657,6 @@ targets.bundle(
         "gpu_metal_passthrough_graphite_telemetry_tests",
         "gpu_webgl_conformance_metal_passthrough_graphite_telemetry_tests",
     ],
-)
-
-# Copy of gpu_passthrough_telemetry_tests that forces running with Skia/Ganesh.
-targets.bundle(
-    name = "gpu_passthrough_ganesh_telemetry_tests",
-    targets = [
-        "context_lost_passthrough_ganesh_tests",
-        "expected_color_pixel_passthrough_ganesh_test",
-        "gpu_process_launch_tests",
-        "hardware_accelerated_feature_tests",
-        "pixel_skia_gold_passthrough_ganesh_test",
-        "screenshot_sync_passthrough_ganesh_tests",
-    ],
-    per_test_modifications = {
-        "gpu_process_launch_tests": [
-            "gpu_integration_test_common_args",
-        ],
-        "hardware_accelerated_feature_tests": [
-            "gpu_integration_test_common_args",
-        ],
-    },
 )
 
 targets.bundle(
@@ -4834,8 +4860,17 @@ targets.bundle(
     name = "gpu_win_release_telemetry_tests",
     targets = [
         "gpu_common_and_optional_telemetry_tests",
-        "gpu_passthrough_telemetry_tests",
         "gpu_webgl_conformance_d3d11_passthrough_telemetry_tests",
+
+        # Migrated individual tests below.
+        # TODO(crbug.com/541312843): Remove this comment once all tests are
+        # directly included.
+        "context_lost_passthrough_tests",
+        "expected_color_pixel_passthrough_test",
+        "hardware_accelerated_feature_tests",
+        "gpu_process_launch_tests",
+        "pixel_skia_gold_passthrough_test",
+        "screenshot_sync_passthrough_tests",
     ],
 )
 

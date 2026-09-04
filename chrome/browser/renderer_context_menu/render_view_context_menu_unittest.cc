@@ -70,7 +70,7 @@
 #include "components/autofill/core/browser/foundations/test_browser_autofill_manager.h"
 #include "components/autofill/core/browser/suggestions/suggestion_hiding_reason.h"
 #include "components/autofill/core/browser/suggestions/suggestion_type.h"
-#include "components/autofill/core/browser/test_utils/autofill_test_utils.h"
+#include "components/autofill/core/browser/test_utils/autofill_test_util.h"
 #include "components/autofill/core/common/autofill_features.h"
 #include "components/contextual_tasks/public/features.h"
 #include "components/custom_handlers/protocol_handler_registry.h"
@@ -2679,8 +2679,7 @@ TEST_P(RenderViewContextMenuSendTabToSelfPageTest, CheckPageMenuState) {
   const SendTabToSelfPageMenuTestParam& param = GetParam();
   base::test::ScopedFeatureList feature_list;
   feature_list.InitWithFeatureState(
-      send_tab_to_self::kSendTabToSelfEnhancedDesktopUIv2,
-      param.feature_enabled);
+      send_tab_to_self::kSendTabToSelfEnhancedDesktopUI, param.feature_enabled);
 
   auto* sync_service = static_cast<StubSendTabToSelfSyncService*>(
       SendTabToSelfSyncServiceFactory::GetForProfile(profile()));
@@ -2749,8 +2748,10 @@ class RenderViewContextMenuSendTabToSelfLinkTest
 // submenu when enhanced desktop UI v2 is enabled.
 TEST_F(RenderViewContextMenuSendTabToSelfLinkTest, SubmenuPresentForLink) {
   base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndEnableFeature(
-      send_tab_to_self::kSendTabToSelfEnhancedDesktopUIv2);
+  feature_list.InitWithFeatures(
+      {send_tab_to_self::kSendTabToSelfEnhancedDesktopUI,
+       send_tab_to_self::kSendTabToSelfEnhancedDesktopUIv2},
+      {});
 
   auto* sync_service = static_cast<StubSendTabToSelfSyncService*>(
       SendTabToSelfSyncServiceFactory::GetForProfile(profile()));
@@ -2781,8 +2782,10 @@ TEST_F(RenderViewContextMenuSendTabToSelfLinkTest, SubmenuPresentForLink) {
 TEST_F(RenderViewContextMenuSendTabToSelfLinkTest,
        InGroupWithSaveLinkAsAndCopyLinkAddress) {
   base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndEnableFeature(
-      send_tab_to_self::kSendTabToSelfEnhancedDesktopUIv2);
+  feature_list.InitWithFeatures(
+      {send_tab_to_self::kSendTabToSelfEnhancedDesktopUI,
+       send_tab_to_self::kSendTabToSelfEnhancedDesktopUIv2},
+      {});
 
   auto* sync_service = static_cast<StubSendTabToSelfSyncService*>(
       SendTabToSelfSyncServiceFactory::GetForProfile(profile()));
@@ -2822,8 +2825,10 @@ TEST_F(RenderViewContextMenuSendTabToSelfLinkTest,
 TEST_F(RenderViewContextMenuSendTabToSelfLinkTest,
        NoSubmenuWhenNoDevicesForLink) {
   base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndEnableFeature(
-      send_tab_to_self::kSendTabToSelfEnhancedDesktopUIv2);
+  feature_list.InitWithFeatures(
+      {send_tab_to_self::kSendTabToSelfEnhancedDesktopUI,
+       send_tab_to_self::kSendTabToSelfEnhancedDesktopUIv2},
+      {});
 
   auto* sync_service = static_cast<StubSendTabToSelfSyncService*>(
       SendTabToSelfSyncServiceFactory::GetForProfile(profile()));

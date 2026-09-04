@@ -25,6 +25,8 @@
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/side_panel/side_panel_ui.h"
+#include "chrome/browser/ui/tabs/features.h"
+#include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
 #include "chrome/browser/ui/toolbar/pinned_toolbar/pinned_toolbar_actions_model.h"
 #include "chrome/browser/ui/ui_features.h"
@@ -51,6 +53,7 @@
 #include "content/public/test/browser_test.h"
 #include "net/base/url_util.h"
 #include "net/dns/mock_host_resolver.h"
+#include "services/network/public/cpp/shared_url_loader_factory.h"
 
 namespace {
 DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kFirstTab);
@@ -441,6 +444,26 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksEphemeralButtonInteractiveTest,
           kContextualTasksEphemeralToolbarButtonElementId),
       CreateTaskForTab(0), SimulateOpeningContextualTaskSidePanel(),
       SimulateClosingContextualTaskSidePanel(),
+      WaitForShow(kContextualTasksEphemeralToolbarButtonElementId),
+      SelectTab(kTabStripElementId, 1),
+      WaitForHide(kContextualTasksEphemeralToolbarButtonElementId));
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksEphemeralButtonInteractiveTest,
+                       RapidTabSwitchDuringButtonAnimationDoesNotCrash) {
+  RunTestSequence(
+      SignIntoEligibleAccount(), InstrumentTab(kFirstTab),
+      AddInstrumentedTab(kSecondTab, GetTestURL()),
+      SelectTab(kTabStripElementId, 0),
+      EnsureNotPresent(kContextualTasksEphemeralToolbarButtonElementId),
+      CreateTaskForTab(0), SimulateOpeningContextualTaskSidePanel(),
+      SimulateClosingContextualTaskSidePanel(),
+      // Switch tabs back and forth to ensure layer animations and drop shadow
+      // tear down cleanly across active tab changes.
+      WaitForShow(kContextualTasksEphemeralToolbarButtonElementId),
+      SelectTab(kTabStripElementId, 1),
+      WaitForHide(kContextualTasksEphemeralToolbarButtonElementId),
+      SelectTab(kTabStripElementId, 0),
       WaitForShow(kContextualTasksEphemeralToolbarButtonElementId),
       SelectTab(kTabStripElementId, 1),
       WaitForHide(kContextualTasksEphemeralToolbarButtonElementId));
